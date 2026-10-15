@@ -62,6 +62,7 @@ test.beforeAll(async ({ request }) => {
   })
   expect(orgBRes.status(), await orgBRes.text()).toBe(201)
   OTHER_ORG_SLUG = ((await orgBRes.json()).data as { slug: string }).slug
+  expect((await authed('patch', `/api/v1/organizations/${OTHER_ORG_SLUG}`, { supporterEnabled: true, version: 0 })).status()).toBe(200)
 
   // 組織C: PRIVATE + supporterEnabled（AC-11/クロステナント負検証用）
   const orgCRes = await authed('post', '/api/v1/organizations', {
@@ -533,4 +534,46 @@ test('ROLE-MATRIX: ADMINは人数が見える／未所属は限定公開を直�
   await expect(memberPage.getByTestId('scope-header-member-count')).toHaveCount(0)
   await expect(memberPage.getByTestId('scope-header-supporter-count')).toHaveCount(0)
   await memberPage.context().close()
+})
+
+// CMP-261010-1131: 作成者1人・サポーター0人の実データを言語設定UIから確認する。
+// 0/1/2/null/undefined全組合せはコンポーネント試験で固定し、ここでは実画面の単数形を担保する。
+test('CMP1131: en/es/deのチーム・組織ヘッダで1人は単数形、0人は複数形になる', async ({ browser }) => {
+  test.setTimeout(360_000)
+  const page = await openAs(browser, GENERAL)
+  try {
+    for (const [option, member, supporter] of [
+      ['English', '1 member', '0 supporters'],
+      ['Español', '1 miembro', '0 seguidores'],
+      ['Deutsch', '1 Mitglied', '0 Unterstützer'],
+    ] as const) {
+      await openScope(page, '/settings/language')
+      await page.locator('.p-select').first().click()
+      await page.getByRole('option', { name: option, exact: true }).click()
+      const saved = page.waitForResponse(response => response.url().includes('/api/v1/users/me')
+        && response.request().method() === 'PUT' && response.ok())
+      await page.getByRole('button', { name: /^(保存|Save|Guardar|Speichern)$/ }).click()
+      await saved
+      for (const path of [`/teams/${EMPTY_TEAM_SLUG}`, `/organizations/${OTHER_ORG_SLUG}`]) {
+        await openScope(page, path)
+        await expect(page.getByTestId('scope-header-member-count')).toHaveText(member, { timeout: 60_000 })
+        await expect(page.getByTestId('scope-header-supporter-count')).toHaveText(supporter)
+      }
+    }
+  }
+  finally {
+    try {
+      await openScope(page, '/settings/language')
+      await page.locator('.p-select').first().click()
+      await page.getByRole('option', { name: '日本語', exact: true }).click()
+      const restored = page.waitForResponse(response => response.url().includes('/api/v1/users/me')
+        && response.request().method() === 'PUT' && response.ok())
+      await page.getByRole('button', { name: /^(保存|Save|Guardar|Speichern)$/ }).click()
+      await restored
+      await expect(page.getByRole('button', { name: '保存', exact: true })).toBeVisible()
+    }
+    finally {
+      await page.context().close()
+    }
+  }
 })
