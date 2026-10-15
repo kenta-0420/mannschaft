@@ -19,16 +19,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
-import java.time.Duration;
-import java.time.LocalDate;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -48,7 +47,6 @@ class ActivityScheduleSyncIntegrationTest extends AbstractMySqlIntegrationTest {
     private static final long AUTHOR = 940200001L;
     @Autowired private MockMvc mvc;
     @Autowired private ObjectMapper json;
-    @Autowired @Qualifier("wallClock") private Clock wallClock;
     @Autowired private ScheduleRepository schedules;
     @Autowired private ActivityResultRepository activities;
     @Autowired private com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository attendance;
@@ -57,6 +55,15 @@ class ActivityScheduleSyncIntegrationTest extends AbstractMySqlIntegrationTest {
     @PersistenceContext private EntityManager em;
     private Long teamId;
     private Long scheduleId;
+
+    // 選択回（10/12）は終了済み、後続回（10/14）は未来の状態を実行日に依存させない。
+    @TestBean(name = "wallClock", methodName = "fixedWallClock")
+    private Clock wallClock;
+
+    static Clock fixedWallClock() {
+        return Clock.fixed(Instant.parse("2026-10-13T03:00:00Z"),
+                com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE);
+    }
 
     @BeforeEach
     void setup() {
@@ -223,15 +230,6 @@ class ActivityScheduleSyncIntegrationTest extends AbstractMySqlIntegrationTest {
         recurringParent();
         Long child = child(12);
         Long following = child(14);
-        // 実時計で終了済みにならないよう、3予定を同じ日数だけ未来へ移して間隔と跨日を保つ。
-        LocalDateTime originalStart = schedules.findById(scheduleId).orElseThrow().getStartAt();
-        Duration fixtureShift = Duration.between(originalStart,
-                LocalDate.now(wallClock).plusDays(7).atTime(originalStart.toLocalTime()));
-        for (Long id : java.util.List.of(scheduleId, child, following)) {
-            ScheduleEntity source = schedules.findById(id).orElseThrow();
-            schedules.saveAndFlush(source.toBuilder().startAt(source.getStartAt().plus(fixtureShift))
-                    .endAt(source.getEndAt().plus(fixtureShift)).build());
-        }
         JsonNode parentActivity = create();
         JsonNode childActivity = draftFor(child);
         JsonNode followingActivity = draftFor(following);
