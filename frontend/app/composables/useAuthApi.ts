@@ -1,3 +1,4 @@
+import { useApi } from './useApi'
 import type {
   TotpSetupResponse,
   BackupCodesResponse,
@@ -91,9 +92,10 @@ export function useAuthApi() {
     })
   }
 
-  async function beginWebAuthnLogin() {
+  async function beginWebAuthnLogin(email: string) {
     return api<{ data: WebAuthnLoginBeginResponse }>('/api/v1/auth/webauthn/login/begin', {
       method: 'POST',
+      query: { email },
     })
   }
 
