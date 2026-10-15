@@ -53,11 +53,15 @@ const showBroadcastWizard = ref(false)
  */
 const memberCountText = computed(() => {
   const count = props.team.metadata?.memberCount
-  return t('common.scopeShell.memberCount', { count: count === null || count === undefined ? '—' : count })
+  return count === null || count === undefined
+    ? t('common.scopeShell.memberCount', { count: '—' }, 2)
+    : t('common.scopeShell.memberCount', count)
 })
 const supporterCountText = computed(() => {
   const count = props.team.social?.supporterCount
-  return t('common.scopeShell.supporterCount', { count: count === null || count === undefined ? '—' : count })
+  return count === null || count === undefined
+    ? t('common.scopeShell.supporterCount', { count: '—' }, 2)
+    : t('common.scopeShell.supporterCount', count)
 })
 
 /**
