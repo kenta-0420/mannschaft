@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261015-1155",
+  "scope": "app",
+  "implementation": {
+    "pr": 3882,
+    "sha": "92297764003ef08e5a8c8fc5edcc0e7ea03a6548"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "招待プレビューが実APIのtargetName/targetType/valid契約を読み、有効なTEAM招待から参加できる。無効招待と通信・認証失敗を区別し、通信失敗は再試行できる。",
+      "tests": [
+        {
+          "name": "招待ページ単体テスト30件中のAPI契約・有効/無効・失敗分類・再試行ケース",
+          "evidence": "frontend/app/pages/invite/[token].spec.ts"
+        },
+        {
+          "name": "mock E2E 2件（成功・ログイン復帰）、未定義API要求0",
+          "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/38688941514"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "未認証ユーザーをログイン・登録へ案内し、メール/パスワードでログイン後に元の招待URLへ戻す。",
+      "tests": [
+        {
+          "name": "登録・メール確認後の招待復帰テスト",
+          "evidence": "frontend/app/pages/register.spec.ts"
+        },
+        {
+          "name": "メール確認および招待redirect helperの回帰テスト",
+          "evidence": "frontend/app/pages/verify-email.spec.ts"
+        },
+        {
+          "name": "招待redirect unitと認証済み/未認証招待E2E",
+          "evidence": "frontend/tests/e2e/auth/invite.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "非公開チーム・組織の所属管理者は参加申請一覧を取得できる。非認可の非公開情報は404、公開情報への拒否は403を維持し、新規参加申請の既存制限を変えない。",
+      "tests": [
+        {
+          "name": "実MySQL・実SecurityのJoinRequestReviewerScopeContractITと既存契約/Service test、計61件成功・skip0",
+          "evidence": "backend/src/test/java/com/mannschaft/app/joinrequest/controller/JoinRequestReviewerScopeContractIT.java"
+        },
+        {
+          "name": "新規26件、既存契約19件、Service単体16件の最終Backend CI成功",
+          "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/38688941687"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "招待画面のSSR初期状態とclient復元後の表示が一致し、hydration警告を出さない。",
+      "tests": [
+        {
+          "name": "AUTH-009bのhydration warning/error不在assertionと招待E2E",
+          "evidence": "frontend/tests/e2e/auth/invite.spec.ts"
+        },
+        {
+          "name": "最終Frontend CIのType check・Vitest成功",
+          "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/38688941752"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "実機3シナリオと独立contextの住民3名によるアリシゼーションで参加導線を確認し、発見した不具合を是正する。",
+      "tests": [
+        {
+          "name": "実機3件: 実生成招待からの参加、ログイン後の招待復帰、非公開空一覧と既存申請の表示",
+          "evidence": "docs/evidence/CMP-261015-1155-review.md"
+        },
+        {
+          "name": "住民3名（一般、ADHD傾向、低リテラシー）の目的達成とALIC-1描画回帰のred/green",
+          "evidence": "docs/evidence/CMP-261015-1155-review.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    { "runId": 38688941687 },
+    { "runId": 38688941752 },
+    { "runId": 38688941514 },
+    { "runId": 38691616690 }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3882"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261015-1155-review.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261015-1155-review.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "実APIはtargetName/targetType/validを返すが旧画面がname/type/isValidを読み、有効招待を無効表示していた。",
+      "test": "frontend/app/pages/invite/[token].spec.ts: 実APIのTEAMを表示して任意フォルダ付きで参加する",
+      "redEvidence": "docs/evidence/CMP-261015-1155-review.md",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/38688941752",
+      "redResult": "修正前valid=true応答で無効招待DOMとなり、参加先名assertionが失敗。",
+      "greenResult": "契約修正後に同じcase成功。"
+    },
+    {
+      "description": "非公開チーム・組織で所属管理者向け参加申請一覧が404になっていた。",
+      "test": "backend/src/test/java/com/mannschaft/app/joinrequest/controller/JoinRequestReviewerScopeContractIT.java",
+      "redEvidence": "docs/evidence/CMP-261015-1155-review.md",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/38688941687",
+      "redResult": "修正前の実MySQL・実Security test 26件中、非公開管理者の200期待6件が404で失敗。",
+      "greenResult": "修正後、新規IT26件・既存契約19件・Service単体16件の計61件がsuccess、skip0。"
+    },
+    {
+      "description": "認証済み招待のSSR初期状態とclient復元後のDOMが一致せずhydration警告を出していた（ALIC-1）。",
+      "test": "frontend/tests/e2e/auth/invite.spec.ts: AUTH-009b hydration warning/error不在assertion",
+      "redEvidence": "docs/evidence/CMP-261015-1155-review.md",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/38688941752",
+      "redResult": "修正前、招待表示は成功したがhydration警告2件の不在assertionが失敗。",
+      "greenResult": "初期loading stateの復旧後、直列E2E2件成功・警告0、関連unit13件成功。"
+    }
+  ],
+  "limitations": [
+    "別タブで開いた登録メールからの招待復帰情報の永続化は追加していない。",
+    "Google OAuth経路の招待復帰は今回変更・実機検証していない。確認した復帰はメール/パスワード経路。",
+    "非公開化後の承認・却下は現行のPUBLIC制限を維持。",
+    "29 CI checksのうち週次フル履歴scanは対象外でskipped。成功として数えていない。"
+  ]
+}
