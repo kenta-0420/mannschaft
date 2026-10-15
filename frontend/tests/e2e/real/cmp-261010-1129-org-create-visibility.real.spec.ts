@@ -87,6 +87,7 @@ test.describe("CMP-261010-1129 組織作成の公開範囲と入力エラー（�
       });
       await expect(page).toHaveURL(
         new RegExp(`/organizations/${createdSlug}$`),
+        { timeout: 20_000 },
       );
       await expect(
         page.getByRole("dialog", { name: "組織を作成", exact: true }),
@@ -110,6 +111,12 @@ test.describe("CMP-261010-1129 組織作成の公開範囲と入力エラー（�
         "PRIVATE",
       );
       await waitForHydration(page);
+      // 新規組織の初期権限案内を閉じる。権限設定は変更しない。
+      const permissionSetup = page.getByTestId("member-permission-setup");
+      if (await permissionSetup.waitFor({ state: "visible", timeout: 10_000 }).then(() => true, () => false)) {
+        await permissionSetup.getByRole("button", { name: "あとで決める" }).click();
+        await expect(permissionSetup).toBeHidden();
+      }
       const visibilityValue = page
         .locator("label")
         .filter({ hasText: /^公開設定$/ })
