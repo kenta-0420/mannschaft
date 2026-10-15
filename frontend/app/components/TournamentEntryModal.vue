@@ -439,45 +439,48 @@ watch(
           <div
             v-for="form in memberForms"
             :key="form.userId"
-            class="flex items-center gap-3 rounded border border-surface-200 p-2 dark:border-surface-700"
+            class="flex flex-wrap items-center gap-3 rounded border border-surface-200 p-2 dark:border-surface-700 sm:flex-nowrap"
             :class="{ 'bg-surface-50 dark:bg-surface-800': form.selected }"
           >
             <Checkbox v-model="form.selected" binary :input-id="`member-${form.userId}`" />
-            <label :for="`member-${form.userId}`" class="w-32 cursor-pointer truncate text-sm font-medium">
+            <label :for="`member-${form.userId}`" class="min-w-0 flex-1 cursor-pointer truncate text-sm font-medium sm:w-32 sm:flex-none">
               {{ form.displayName }}
               <span v-if="form.memberNumber" class="ml-1 text-xs text-surface-400">#{{ form.memberNumber }}</span>
             </label>
 
-            <InputNumber
-              v-model="form.jerseyNumber"
-              :placeholder="t('tournament.entry.jersey')"
-              :disabled="!form.selected"
-              :use-grouping="false"
-              :min="1"
-              :max="999"
-              class="w-24"
-              size="small"
-            />
+            <Tag v-if="form.isAlreadyEntered" :value="t('tournament.entry.alreadyEntered')" severity="info" class="shrink-0" />
 
-            <InputText
-              v-model="form.position"
-              :placeholder="t('tournament.entry.position')"
-              :disabled="!form.selected"
-              class="w-28"
-              size="small"
-              maxlength="30"
-            />
+            <div class="flex w-full min-w-0 gap-3 sm:w-auto">
+              <InputNumber
+                v-model="form.jerseyNumber"
+                :placeholder="t('tournament.entry.jersey')"
+                :disabled="!form.selected"
+                :use-grouping="false"
+                :min="1"
+                :max="999"
+                class="w-24 shrink-0"
+                input-class="w-full min-w-0"
+                size="small"
+              />
+
+              <InputText
+                v-model="form.position"
+                :placeholder="t('tournament.entry.position')"
+                :disabled="!form.selected"
+                class="min-w-0 flex-1 sm:w-28 sm:flex-none"
+                size="small"
+                maxlength="30"
+              />
+            </div>
 
             <InputText
               v-model="form.notes"
               :placeholder="t('tournament.entry.notes')"
               :disabled="!form.selected"
-              class="flex-1"
+              class="w-full min-w-0 sm:w-auto sm:flex-1"
               size="small"
               maxlength="100"
             />
-
-            <Tag v-if="form.isAlreadyEntered" :value="t('tournament.entry.alreadyEntered')" severity="info" />
           </div>
 
           <div class="flex justify-end pt-2">
