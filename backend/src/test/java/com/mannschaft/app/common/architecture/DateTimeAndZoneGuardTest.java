@@ -367,7 +367,8 @@ class DateTimeAndZoneGuardTest {
      * 認可監査戦役の {@code EXPECTED_LINES_*} 方式を踏襲する。
      * 件数が減った場合はここも追随して更新し、返済の進捗を数値で残すこと。
      */
-    private static final int EXPECTED_FROZEN_NO_ARG_NOW = 1646;
+    // CMP-261015-1152: 旧WebAuthnトークン発行処理の削除でAuthWebAuthnServiceの無引数nowが1→0。台帳1行返済に同期（1646→1645）。
+    private static final int EXPECTED_FROZEN_NO_ARG_NOW = 1645;
     // 2026-10-12 返済 -1件: CMP-260910-0043 で ChatMessageArchiveBatchService の退避閾値（LocalDateTime.now().minusMonths(6)）を
     // SQL 側の UTC_TIMESTAMP() 基準へ置き換えたため（1→0）。
     // 2026-10-01 返済 -1件: CMP-260930-1932 で RecruitmentAutoCancelBatch の通知期限計算（LocalDateTime.now().plusHours(72)）を
