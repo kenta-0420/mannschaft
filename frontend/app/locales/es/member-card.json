@@ -1,0 +1,82 @@
+{
+  "memberCardAdmin": {
+    "title": "Tarjetas QR de socios",
+    "list": "Tarjetas",
+    "history": "Historial de entradas",
+    "stats": "Estadísticas de entradas",
+    "locations": "Ubicaciones",
+    "suspend": "Suspender",
+    "reactivate": "Reactivar",
+    "suspendSuccess": "Tarjeta suspendida",
+    "reactivateSuccess": "Tarjeta reactivada",
+    "empty": "No hay tarjetas coincidentes",
+    "count": "{count} entradas",
+    "period": "Este mes: {from} a {to}",
+    "total": "Total de entradas",
+    "unique": "Socios que entraron",
+    "byDay": "Por día de la semana",
+    "status": {
+      "ALL": "Todas",
+      "ACTIVE": "Activa",
+      "SUSPENDED": "Suspendida",
+      "REVOKED": "Revocada"
+    },
+    "days": {
+      "SUN": "Domingo",
+      "MON": "Lunes",
+      "TUE": "Martes",
+      "WED": "Miércoles",
+      "THU": "Jueves",
+      "FRI": "Viernes",
+      "SAT": "Sábado"
+    },
+    "historyColumns": {
+      "time": "Hora",
+      "type": "Método",
+      "location": "Ubicación",
+      "staff": "Personal",
+      "scan": "Escaneo del personal",
+      "self": "Autoservicio",
+      "empty": "No hay historial de entradas"
+    }
+  },
+  "memberCardGuide": {
+    "title": "Cómo gestionar las tarjetas QR",
+    "description": "Gestione el estado de las tarjetas y las visitas de sus socios. Para añadir miembros o cambiar roles, use Gestión de miembros.",
+    "cards": {
+      "title": "Buscar una tarjeta y cambiar su estado",
+      "body": "Cada tarjeta muestra nombre, número, estado y número de entradas. El socio muestra su propio QR desde las tarjetas de su configuración de cuenta.",
+      "steps": {
+        "step1": "En Tarjetas, elija Todas, Activa, Suspendida o Revocada para buscar.",
+        "step2": "Pulse Suspender para detener el uso de la tarjeta. La afiliación se mantiene.",
+        "step3": "Pulse Reactivar en una tarjeta suspendida. Las tarjetas revocadas no se pueden reactivar aquí."
+      }
+    },
+    "history": {
+      "title": "Ver las entradas de un socio",
+      "body": "Consulte las entradas de los últimos 30 días del socio seleccionado.",
+      "steps": {
+        "step1": "Pulse Historial de entradas en la tarjeta correspondiente.",
+        "step2": "Compruebe la hora, el método, la ubicación y el personal.",
+        "step3": "Para consultar a otra persona, vuelva a Tarjetas y abra el historial de otra tarjeta."
+      }
+    },
+    "team": {
+      "title": "Gestionar estadísticas y ubicaciones del equipo",
+      "body": "Los equipos muestran estadísticas y ubicaciones de autoservicio a administradores y subadministradores. Estas pestañas no están disponibles en las organizaciones.",
+      "steps": {
+        "step1": "Abra Estadísticas de entradas para ver el período desde el inicio del mes hasta hoy, totales, socios y recuentos por día.",
+        "step2": "En Ubicaciones, pulse Añadir ubicación, indique el nombre y la finalización automática de reservas, y créela.",
+        "step3": "Use el lápiz para editar una ubicación o la papelera para eliminarla."
+      }
+    },
+    "errors": {
+      "title": "Si falla la carga",
+      "body": "Los errores de conexión o permisos se distinguen de una lista vacía cargada correctamente.",
+      "steps": {
+        "step1": "Lea el mensaje de error y pulse Reintentar si está disponible.",
+        "step2": "Si faltan permisos, contacte con un administrador del equipo u organización."
+      }
+    }
+  }
+}

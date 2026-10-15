@@ -3,7 +3,6 @@ import type {
   MemberCardListItem,
   MemberCardStatus,
   MemberCardQr,
-  CheckinRecord,
   CheckinStats,
   CheckinHistoryRecord,
   CheckinLocation,
@@ -45,7 +44,7 @@ export function useMemberCardApi() {
     if (range?.from) query.set('from', range.from)
     if (range?.to) query.set('to', range.to)
     const qs = query.toString()
-    const res = await api<{ data: CheckinRecord[] }>(
+    const res = await api<{ data: CheckinHistoryRecord[] }>(
       `/api/v1/member-cards/${id}/checkins${qs ? `?${qs}` : ''}`,
     )
     return res
@@ -82,13 +81,13 @@ export function useMemberCardApi() {
     await api(`/api/v1/member-cards/${id}/reactivate`, { method: 'PATCH' })
   }
 
-  async function listByTeam(teamId: string) {
-    const res = await api<{ data: MemberCard[] }>(`/api/v1/teams/${teamId}/member-cards`)
+  async function listByTeam(teamId: string, status: MemberCardStatus = 'ACTIVE') {
+    const res = await api<{ data: MemberCardListItem[] }>(`/api/v1/teams/${teamId}/member-cards?status=${status}`)
     return res.data
   }
 
-  async function listByOrg(orgId: string) {
-    const res = await api<{ data: MemberCard[] }>(`/api/v1/organizations/${orgId}/member-cards`)
+  async function listByOrg(orgId: string, status: MemberCardStatus = 'ACTIVE') {
+    const res = await api<{ data: MemberCardListItem[] }>(`/api/v1/organizations/${orgId}/member-cards?status=${status}`)
     return res.data
   }
 
@@ -122,8 +121,8 @@ export function useMemberCardApi() {
     return res.data
   }
 
-  async function getTeamCheckinStats(teamId: string) {
-    const res = await api<{ data: CheckinStats }>(`/api/v1/teams/${teamId}/checkins/stats`)
+  async function getTeamCheckinStats(teamId: string, range: { from: string; to: string }) {
+    const res = await api<{ data: CheckinStats }>(`/api/v1/teams/${teamId}/checkins/stats?${new URLSearchParams(range)}`)
     return res.data
   }
 

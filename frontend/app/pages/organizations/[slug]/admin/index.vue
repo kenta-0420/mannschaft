@@ -116,7 +116,7 @@ const allCards = computed<AdminConsoleCard[]>(() => [
     titleKey: 'adminConsole.cards.members.title',
     descKey: 'adminConsole.cards.members.desc',
     icon: 'pi pi-users',
-    to: `${base.value}/member-cards`,
+    to: `${base.value}/members`,
   },
   {
     key: 'settings',
