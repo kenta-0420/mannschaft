@@ -95,7 +95,7 @@ async function loadParticipantsForDivision(divId: number) {
     participantsMap.value[divId] = res.data
     // 管理者のみエントリーサマリーを取得
     if (isAdminOrDeputy.value) {
-      const summary = await getEntrySummary(orgId, tId, divId)
+      const { data: summary } = await getEntrySummary(orgId, tId, divId)
       entrySummaryMap.value[divId] = summary
     }
   } catch {
@@ -120,7 +120,7 @@ async function onEntrySaved() {
   const divId = selectedDivisionId.value
   if (divId && isAdminOrDeputy.value) {
     try {
-      const summary = await getEntrySummary(orgId, tId, divId)
+      const { data: summary } = await getEntrySummary(orgId, tId, divId)
       entrySummaryMap.value[divId] = summary
     } catch {
       // サマリー更新失敗はサイレントで続行

@@ -163,6 +163,8 @@ public class DivisionService {
 
     /**
      * チームを参加登録する（変更系）。tId→orgId・divId→tId の両方を束縛検証する。
+     * 入力 teamId が主催組織の ACTIVE 加盟チームかの検証は team ドメインを引くため、本メソッドではなく
+     * 非トランザクションの {@link ParticipantRegistrationFacade} が行う（D-3T）。Controller は必ず Facade 経由で呼ぶこと。
      */
     @Transactional
     public ParticipantResponse addParticipant(Long orgId, Long tournamentId, Long divisionId, Long userId,

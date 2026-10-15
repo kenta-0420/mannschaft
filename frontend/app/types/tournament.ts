@@ -132,9 +132,12 @@ export interface TournamentParticipant {
   id: number
   divisionId: number
   teamId: number
-  teamName: string
-  teamLogoUrl: string | null
-  registeredAt: string
+  seed: number | null
+  displayName: string | null
+  status: string
+  joinedAt: string | null
+  /** チーム名（BE が team ドメインから一括解決。解決不能なら null） */
+  teamName: string | null
 }
 
 export interface TournamentMatchday {
