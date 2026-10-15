@@ -70,7 +70,7 @@ import static org.awaitility.Awaitility.await;
 /**
  * AC33のnative SQL DATEと保存済みACKを、日曜対照/月曜境界で検査する。
  * driver UTCと局所Clockの専用contextだけを閉じる。JVM UTC/JSTは別プロセスで指定し、global TZを変更しない。
- * 実Facade/queue/transport/MySQLを使うが、source ACK・Ranch consumer付与の証明にはしない。
+ * 実Facade/queue/transport/MySQLを使う。既存2caseはnative週保存、追加1caseはown lease fixtureを使ったsource ACKとconsumerの限定結合を検査する。公開leaseの候補選択・HTTP認可の証明にはしない。
  */
 @TestPropertySource(properties = {
         "spring.datasource.hikari.data-source-properties.serverTimezone=UTC",
