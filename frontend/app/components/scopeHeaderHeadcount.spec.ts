@@ -178,25 +178,18 @@ const PLURAL_CASES: Array<[Locale, string, string, string, string]> = [
 
 describe.each(HEADERS)('%s の人数の単複形（CMP-261010-1131）', (_name, mount) => {
   it.each(PLURAL_CASES)('%s: 0/1/2/null/未取得を正しく描画する', async (locale, memberOne, memberMany, supporterOne, supporterMany) => {
-    const wrapper = await mount({ memberCount: 0, supporterCount: 0 })
-    try {
-      await switchLocale(wrapper, locale)
-      for (const count of [0, 1, 2, null, undefined]) {
-        const counts = { metadata: { memberCount: count }, social: { supporterCount: count } }
-        if (_name === 'TeamPageHeader') {
-          await wrapper.setProps({ team: { ...wrapper.props('team'), ...counts } })
-        }
-        else {
-          await wrapper.setProps({ org: { ...wrapper.props('org'), ...counts } })
-        }
+    for (const count of [0, 1, 2, null, undefined]) {
+      const wrapper = await mount({ memberCount: count, supporterCount: count })
+      try {
+        await switchLocale(wrapper, locale)
         const display = count ?? MISSING
         expect(normalize(memberEl(wrapper).text())).toBe(`${display} ${count === 1 ? memberOne : memberMany}`)
         expect(normalize(supporterEl(wrapper).text())).toBe(`${display} ${count === 1 ? supporterOne : supporterMany}`)
       }
-    }
-    finally {
-      await switchLocale(wrapper, 'ja')
-      wrapper.unmount()
+      finally {
+        await switchLocale(wrapper, 'ja')
+        wrapper.unmount()
+      }
     }
   }, 300000)
 

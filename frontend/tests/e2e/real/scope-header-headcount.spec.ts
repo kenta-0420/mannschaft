@@ -546,7 +546,7 @@ test('CMP1131: en/es/deのチーム・組織ヘッダで1人は単数形、0人�
       ['English', '1 member', '0 supporters'],
       ['Español', '1 miembro', '0 seguidores'],
       ['Deutsch', '1 Mitglied', '0 Unterstützer'],
-    ]) {
+    ] as const) {
       await openScope(page, '/settings/language')
       await page.locator('.p-select').first().click()
       await page.getByRole('option', { name: option, exact: true }).click()
