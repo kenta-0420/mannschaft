@@ -2420,6 +2420,14 @@
     "SUPPORTERS_AND_ABOVE": "支持者及以上",
     "MEMBERS_AND_ABOVE": "成员及以上"
   },
+  "organization_visibility": {
+    "PUBLIC": "公开",
+    "PRIVATE": "限定公开"
+  },
+  "entity_create": {
+    "error_heading": "请检查输入内容",
+    "supporter_label": "启用支持者功能"
+  },
   "module_settings": {
     "enabled_count": "已启用的功能：{count} / {limit}",
     "fetch_error": "获取功能列表失败",
