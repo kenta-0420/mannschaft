@@ -74,6 +74,9 @@ class AuthWebAuthnServiceTest {
     @Mock
     private StatusClaimResolver statusClaimResolver;
 
+    @Mock
+    private AuthService authService;
+
     @InjectMocks
     private AuthWebAuthnService authWebAuthnService;
 
@@ -314,7 +317,7 @@ class AuthWebAuthnServiceTest {
             given(webAuthnCredentialRepository.findByCredentialId(TEST_WEBAUTHN_CREDENTIAL_ID))
                     .willReturn(Optional.of(credential));
             given(redisTemplate.opsForValue()).willReturn(valueOperations);
-            given(valueOperations.get(anyString())).willReturn(null);
+            given(valueOperations.getAndDelete(anyString())).willReturn(null);
 
             // When / Then
             assertThatThrownBy(() -> authWebAuthnService.completeLogin(req, TEST_IP, TEST_USER_AGENT))

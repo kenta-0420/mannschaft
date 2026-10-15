@@ -42,12 +42,12 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * 認証コアサービス（ファサード）。
- * 公開 API はリファクタ前と完全同一。ログイン処理本体と、登録 / セッション / Refresh Token
+ * ログイン処理本体と、登録 / セッション / Refresh Token
  * ローテーション / パスワードリセットの各サブサービスへの委譲を担う。
  *
  * <p>セキュリティ重要: 公開メソッドのシグネチャ・呼び出し順序・引数・戻り値・例外型・エラーコード・
- * 監査ログ記録タイミングはリファクタ前から不変。ログイン本体ロジックは byte-identical に保存し、
- * その他のロジックはサブサービスへ移送した（移送先でも byte-identical）。</p>
+ * 監査ログ記録タイミングは既存契約を維持する。パスワードとUV済みパスキーは、
+ * 同じセッション発行処理で最終ログイン・新端末検知・上限を適用する。</p>
  *
  * <p>分割構成:</p>
  * <ul>
@@ -251,6 +251,39 @@ public class AuthService {
         return ApiResponse.of(issueLoginTokens(user, req, ipAddress, userAgent, reactivated));
     }
 
+    /**
+     * UV/UPと署名の検証を完了したパスキーでログインする。
+     * 論理削除ユーザーを復帰させず、通常ログインと同じ利用状態・ロックを確認する。
+     * UV済みパスキーは独立した二要素認証方式のためTOTPを追加要求しない（F01.1）。
+     */
+    @Transactional
+    public TokenResponse completePasskeyLogin(Long userId, String ipAddress, String userAgent) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_015));
+        if (user.getStatus() == UserEntity.UserStatus.PENDING_VERIFICATION) {
+            eventPublisher.publish(new LoginFailedEvent(
+                    user.getEmail(), ipAddress, userAgent, "PENDING_VERIFICATION"));
+            throw new BusinessException(AuthErrorCode.AUTH_002);
+        }
+        if (user.getStatus() == UserEntity.UserStatus.FROZEN) {
+            eventPublisher.publish(new LoginFailedEvent(user.getEmail(), ipAddress, userAgent, "FROZEN"));
+            throw new BusinessException(AuthErrorCode.AUTH_003);
+        }
+        // 既存パスワードログインと同じValkey障害時fail-open方針でロックを確認する。
+        try {
+            if (Boolean.TRUE.equals(redisTemplate.hasKey(ACCOUNT_LOCK_KEY_PREFIX + userId))) {
+                eventPublisher.publish(new LoginFailedEvent(user.getEmail(), ipAddress, userAgent, "ACCOUNT_LOCKED"));
+                throw new BusinessException(AuthErrorCode.AUTH_003);
+            }
+        } catch (DataAccessException e) {
+            log.warn("アカウントロックチェックをスキップ（Valkey接続失敗）: {}", e.getMessage());
+        }
+        if (user.getStatus() == UserEntity.UserStatus.ARCHIVED) {
+            user.unarchive();
+        }
+        return issueLoginSession(user, null, false, ipAddress, userAgent, "WEBAUTHN");
+    }
+
     // ========================================
     // ログアウト / セッション（AuthSessionService へ委譲）
     // ========================================
@@ -412,6 +445,29 @@ public class AuthService {
      */
     private LoginResponse issueLoginTokens(UserEntity user, LoginRequest req,
                                            String ipAddress, String userAgent, boolean reactivated) {
+        TokenResponse tokens = issueLoginSession(user, req.getDeviceFingerprint(), req.isRememberMe(),
+                ipAddress, userAgent, "PASSWORD");
+
+        // deleted_at設定済みの場合はpendingDeletionUntilを含める
+        LocalDateTime pendingDeletionUntil = user.getDeletedAt() != null
+                ? user.getDeletedAt().plusDays(30) : null;
+
+        return new LoginResponse(
+                tokens.getAccessToken(),
+                tokens.getRefreshToken(),
+                tokens.getExpiresIn(),
+                user.getId(),
+                user.getLastName() + " " + user.getFirstName(),
+                user.getEmail(),
+                pendingDeletionUntil,
+                reactivated);
+    }
+
+    /**
+     * パスワードとパスキーの成功後処理を共有し、セッションと監査の方式差を防ぐ。
+     */
+    private TokenResponse issueLoginSession(UserEntity user, String requestedDeviceFingerprint,
+                                            boolean rememberMe, String ipAddress, String userAgent, String method) {
         // Access Token発行
         // 認可基盤完全根治 Phase 1（§3.2）: 固定 MEMBER ではなく user_roles から SYSTEM_ADMIN を
         // 判定した roles を載せる（RoleClaimResolver に一元化。5発行経路で同一ロジック）。
@@ -424,8 +480,8 @@ public class AuthService {
         // jti を生成して RefreshToken に紐付ける（session_hash の基点）
         String refreshTokenJti = UUID.randomUUID().toString();
 
-        String deviceFingerprint = req.getDeviceFingerprint() != null
-                ? req.getDeviceFingerprint()
+        String deviceFingerprint = requestedDeviceFingerprint != null
+                ? requestedDeviceFingerprint
                 : authTokenService.hashToken(userAgent != null ? userAgent : "");
         String deviceName = UserAgentParser.parse(userAgent).deviceName();
         String locale = user.getLocale() != null ? user.getLocale() : "ja";
@@ -436,7 +492,7 @@ public class AuthService {
                 .userId(user.getId())
                 .tokenHash(refreshTokenHash)
                 .jti(refreshTokenJti)
-                .rememberMe(req.isRememberMe())
+                .rememberMe(rememberMe)
                 .deviceFingerprint(deviceFingerprint)
                 .ipAddress(ipAddress)
                 .userAgent(userAgent)
@@ -454,20 +510,10 @@ public class AuthService {
 
         // ログイン成功イベント発行（sessionHash = SHA-256(refresh_token_jti)）
         eventPublisher.publish(new LoginSuccessEvent(
-                user.getId(), user.getEmail(), ipAddress, userAgent, sessionHash));
+                user.getId(), ipAddress, userAgent, method, sessionHash));
 
-        // deleted_at設定済みの場合はpendingDeletionUntilを含める
-        LocalDateTime pendingDeletionUntil = user.getDeletedAt() != null
-                ? user.getDeletedAt().plusDays(30) : null;
-
-        return new LoginResponse(
-                accessToken,
-                rawRefreshToken,
-                authTokenService.getAccessTokenExpirationSeconds(),
-                user.getId(),
-                user.getLastName() + " " + user.getFirstName(),
-                user.getEmail(),
-                pendingDeletionUntil,
-                reactivated);
+        return new TokenResponse(accessToken, rawRefreshToken, savedToken.getId(),
+                authTokenService.getAccessTokenExpirationSeconds());
     }
+
 }

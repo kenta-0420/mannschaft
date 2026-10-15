@@ -77,6 +77,14 @@ public class WebAuthnCredentialEntity {
     }
 
     /**
+     * 検証済みassertionの署名カウンタと最終使用日時を、取得済みエンティティへ反映する。
+     */
+    public void recordAuthentication(long verifiedSignCount) {
+        this.signCount = verifiedSignCount;
+        this.lastUsedAt = LocalDateTime.now();
+    }
+
+    /**
      * 最終使用日時を更新する。
      */
     public void updateLastUsedAt() {
