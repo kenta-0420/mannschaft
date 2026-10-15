@@ -1,0 +1,100 @@
+{
+  "schema": "cache5-exact-product-source-binding-v1",
+  "sourceHead": "1c6411fcb13cbee4cfd4de7e2a972a2426746735",
+  "sourceTree": "4db5181aaa860916c2edb0a09de6e04c766dc92b",
+  "sourcePinKind": "GIT_CANONICAL_BLOB_SHA256_PHYSICAL_EXACT",
+  "sourceFiles": {
+    ".github/workflows/backend-ci.yml": {
+      "bytes": 39746,
+      "sha256": "d1c4ce915c9c4f6591a033c60d84d6b07a475b6dfa6aadd5e591cb7f28187ec7"
+    },
+    "backend/build.gradle.kts": {
+      "bytes": 78539,
+      "sha256": "859000e1d63c1c765c1914d47914ae810b7a1d16e96e45fff26a8a0a1fc6f268"
+    },
+    "backend/gradle.properties": {
+      "bytes": 2026,
+      "sha256": "b86f6e524ac50fb413fe5f2c3c483f159a9e538f6a7a3b9c381811167bb16b67"
+    },
+    "backend/gradle/wrapper/gradle-wrapper.properties": {
+      "bytes": 253,
+      "sha256": "aef287d114ce3153c3d535697a61928f5034990d570cbb2e93df549e9671483d"
+    },
+    "backend/src/test/resources/shard-weights.properties": {
+      "bytes": 201101,
+      "sha256": "9e19048600cfad21ba5f22f29c046bd60411099e24d20600b86c742e02411407"
+    },
+    "backend/src/test/java/com/mannschaft/app/common/cache/SpringTestContextCacheMaxSizeGuardTest.java": {
+      "bytes": 4823,
+      "sha256": "9d06ef5fa219300592db973c26cdd6e7d4bf22c7f5c3d21632de2395c23b97f7"
+    },
+    "backend/src/test/java/com/mannschaft/app/common/testing/TestJvmHeapLoggingLauncherSessionListener.java": {
+      "bytes": 2326,
+      "sha256": "a3fdff6b0e8ab1ad7ed29d9762f641c8fcfba92effb2c070772bdf9b62ea7070"
+    },
+    "backend/src/test/resources/META-INF/services/org.junit.platform.launcher.LauncherSessionListener": {
+      "bytes": 76,
+      "sha256": "830375496f50bcd65b8958bd04df806bb63b4d04c12d6165de185b026c4a8134"
+    },
+    "backend/src/test/java/com/mannschaft/app/ranch/RanchCareDateRoundTripHttpIT.java": {
+      "bytes": 12182,
+      "sha256": "73c518095e97608756368230db187d7ec3a90257aeea523a9da168c482f19181"
+    },
+    "backend/src/main/java/com/mannschaft/app/ranch/entity/RanchAffinityUnitEntity.java": {
+      "bytes": 1307,
+      "sha256": "4874f2ce48d97aeeb7f4c43d527703521f9089461e9fe06bfff0c55e3bdadbbd"
+    },
+    "backend/src/main/java/com/mannschaft/app/ranch/entity/RanchCareWeekBudgetEntity.java": {
+      "bytes": 1831,
+      "sha256": "fe41247526bcd633c66eabd2a4ad4c6dcc58f9bf44bf695b5567cdbbd9c1341a"
+    },
+    "backend/src/main/java/com/mannschaft/app/ranch/entity/RanchRewardDecisionEntity.java": {
+      "bytes": 2517,
+      "sha256": "2d3b4af8fb650dc1e1f946d26674ed8c2b17bb224111cefad1a36f215bc82881"
+    },
+    "backend/src/main/java/com/mannschaft/app/ranch/entity/RanchWeekBudgetEntity.java": {
+      "bytes": 2132,
+      "sha256": "b8549106b466de97d141b608958724e6000447b2a5df84a9e3343dca26f056ed"
+    },
+    "backend/gradlew": {
+      "bytes": 9316,
+      "sha256": "7301e006d31c9bed1c522ef4dba1e6050786ead469b5e9df0daf2c77e197a737"
+    }
+  },
+  "normalWorkflowSourceSha256": "d1c4ce915c9c4f6591a033c60d84d6b07a475b6dfa6aadd5e591cb7f28187ec7",
+  "normalCompileArgv": [
+    "./gradlew",
+    "compileJava",
+    "compileTestJava",
+    "--no-daemon",
+    "--build-cache"
+  ],
+  "normalShard0TestArgv": [
+    "./gradlew",
+    "test",
+    "--no-daemon",
+    "--continue",
+    "--build-cache",
+    "-Pshard.total=6",
+    "-Pshard.index=0",
+    "-PexcludeMigrationTests=false"
+  ],
+  "diagnosticTestArgv": [
+    "./gradlew",
+    "test",
+    "--no-daemon",
+    "--continue",
+    "--build-cache",
+    "-Pshard.total=6",
+    "-Pshard.index=0",
+    "-PexcludeMigrationTests=false",
+    "-Pspring.test.context.cache.maxSize=5"
+  ],
+  "behaviorArgumentDelta": [
+    "-Pspring.test.context.cache.maxSize=5"
+  ],
+  "migrationInclude": true,
+  "normalConditionalDeadlineMinutes": 105,
+  "hypothesisOnly": true,
+  "normalCiSuccessInherited": false
+}

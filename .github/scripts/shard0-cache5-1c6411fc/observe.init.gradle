@@ -1,0 +1,118 @@
+import groovy.json.JsonOutput
+import org.gradle.api.tasks.testing.Test
+import org.gradle.api.tasks.testing.TestListener
+import org.gradle.api.tasks.testing.TestOutputListener
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
+
+// 設定setter/dependsOn/include/exclude/cache/upToDateの変更は禁止。観測とJSON保存だけ。
+gradle.projectsEvaluated { currentGradle ->
+    def root = currentGradle.rootProject
+    root.tasks.named('test', Test).configure { task ->
+        def workers = ConcurrentHashMap.newKeySet()
+        def active = ConcurrentHashMap.newKeySet()
+        def heapSamples = new ConcurrentHashMap()
+        def peak = new AtomicLong(0)
+        def completed = new AtomicLong(0)
+        def failed = new AtomicLong(0)
+        def skipped = new AtomicLong(0)
+        File out = root.file('build/shard0-cache5-1c6411fc')
+        def writeFinite = { String name, Object value ->
+            synchronized(workers) {
+                out.mkdirs()
+                File target = new File(out, name)
+                File temporary = new File(out, name + '.tmp')
+                temporary.setText(JsonOutput.toJson(value), 'UTF-8')
+                java.nio.file.Files.move(temporary.toPath(), target.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                    java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+            }
+        }
+        def metrics = {
+            writeFinite('observed-worker-progress.json', [
+                schema:'cache5-observed-worker-progress-v1',
+                distinctWorkerSuites:workers.size(), peakConcurrentWorkerSuites:peak.get(),
+                currentWorkerSuites:active.size(), observedCompletedTestEvents:completed.get(),
+                observedFailedTestEvents:failed.get(), observedSkippedTestEvents:skipped.get(),
+                workerHeapSamples:heapSamples.values().toList().sort { it.pid },
+                rootSuiteCompleted:false, sourceOrAcAcceptanceEvaluated:false])
+        }
+        task.doFirst {
+            def settings = [schema:'cache5-effective-test-configuration-v1',
+                taskPath:task.path, requestedCacheMaxSize:root.findProperty('spring.test.context.cache.maxSize'),
+                workerCacheMaxSize:task.systemProperties['spring.test.context.cache.maxSize'],
+                overrideFlag:task.systemProperties['mannschaft.test.contextCacheMaxSize.overridden'],
+                maxHeapSize:task.maxHeapSize, forkEvery:task.forkEvery,
+                configuredMaxParallelForks:task.maxParallelForks,
+                gradleMaxWorkerCount:currentGradle.startParameter.maxWorkerCount,
+                gradleAvailableProcessors:Runtime.runtime.availableProcessors(),
+                configuredParallelUpperBound:Math.min(task.maxParallelForks,currentGradle.startParameter.maxWorkerCount),
+                shardTotal:root.findProperty('shard.total'),shardIndex:root.findProperty('shard.index'),
+                excludeMigrationTests:root.findProperty('excludeMigrationTests'),
+                filterIncludes:task.filter.includePatterns.toList().sort(),
+                filterExcludes:task.filter.excludePatterns.toList().sort(),
+                junitIncludeTags:task.options.includeTags.toList().sort(),
+                junitExcludeTags:task.options.excludeTags.toList().sort(),
+                timezoneFromJvmArgument:task.jvmArgs.contains('-Duser.timezone=Asia/Tokyo') ? 'Asia/Tokyo' : null,
+                g1Gc:task.jvmArgs.contains('-XX:+UseG1GC'),
+                heapDumpOnOutOfMemoryError:task.jvmArgs.contains('-XX:+HeapDumpOnOutOfMemoryError'),
+                sourceOrAcAcceptanceEvaluated:false]
+            writeFinite('effective-test-configuration.json',settings)
+            // 想定外設定は比較不能として拒否し、試験guardを緩めて実行しない。
+            if (settings.requestedCacheMaxSize!='5' || settings.workerCacheMaxSize!='5' ||
+                settings.overrideFlag!='true' || settings.maxHeapSize!='4g' || settings.forkEvery!=180 ||
+                settings.configuredMaxParallelForks!=2 || settings.shardTotal!='6' || settings.shardIndex!='0' ||
+                settings.excludeMigrationTests!='false' || settings.filterIncludes || settings.filterExcludes ||
+                settings.junitExcludeTags!=['archunit','perf'] || settings.timezoneFromJvmArgument!='Asia/Tokyo' || !settings.g1Gc || !settings.heapDumpOnOutOfMemoryError) {
+                throw new org.gradle.api.GradleException('CACHE5_EFFECTIVE_COMPARISON_MISMATCH')
+            }
+            metrics()
+        }
+        task.addTestListener(new TestListener() {
+            void beforeSuite(org.gradle.api.tasks.testing.TestDescriptor suite) {
+                if (suite.name ==~ /Gradle Test Executor \d+/) {
+                    workers.add(suite.name); active.add(suite.name)
+                    peak.updateAndGet { prior -> Math.max(prior,active.size() as long) };metrics()
+                }
+            }
+            void afterSuite(org.gradle.api.tasks.testing.TestDescriptor suite,org.gradle.api.tasks.testing.TestResult result) {
+                if (suite.name ==~ /Gradle Test Executor \d+/) { active.remove(suite.name);metrics() }
+                if (suite.parent==null) {
+                    writeFinite('root-test-counts.json',[schema:'cache5-root-test-counts-v1',
+                        testCount:result.testCount,successfulTestCount:result.successfulTestCount,
+                        failedTestCount:result.failedTestCount,skippedTestCount:result.skippedTestCount,
+                        elapsedMilliseconds:result.endTime-result.startTime,
+                        distinctWorkerSuites:workers.size(),peakConcurrentWorkerSuites:peak.get(),
+                        rootSuiteCompleted:true,sourceOrAcAcceptanceEvaluated:false])
+                }
+            }
+            void beforeTest(org.gradle.api.tasks.testing.TestDescriptor descriptor) {}
+            void afterTest(org.gradle.api.tasks.testing.TestDescriptor descriptor,org.gradle.api.tasks.testing.TestResult result) {
+                long number=completed.incrementAndGet()
+                if (result.resultType==org.gradle.api.tasks.testing.TestResult.ResultType.FAILURE) failed.incrementAndGet()
+                if (result.resultType==org.gradle.api.tasks.testing.TestResult.ResultType.SKIPPED) skipped.incrementAndGet()
+                if (number%100==0) metrics()
+            }
+        })
+        task.addTestOutputListener(new TestOutputListener() {
+            void onOutput(org.gradle.api.tasks.testing.TestDescriptor descriptor,org.gradle.api.tasks.testing.TestOutputEvent event) {
+                event.message.eachLine { line ->
+                    def match=line =~ /^\[test-jvm-heap\] pid=(\d{1,12}) maxMemory=(\d{1,6})MB$/
+                    if (match.matches() && heapSamples.size()<64) {
+                        heapSamples.put(match[0][1],[pid:Long.parseLong(match[0][1]),maxMemoryMb:Long.parseLong(match[0][2])]);metrics()
+                    }
+                }
+            }
+        })
+        // TaskStateはcache/up-to-dateを変更せず、その実事実を保存する。
+        currentGradle.taskGraph.afterTask { finished,state ->
+            if (finished.path==task.path) {
+                writeFinite('test-task-state.json',[schema:'cache5-task-state-v1',
+                    executed:state.executed,didWork:state.didWork,skipped:state.skipped,
+                    skipKind:state.skipMessage in ['FROM-CACHE','UP-TO-DATE','NO-SOURCE','SKIPPED'] ? state.skipMessage : state.skipped ? 'OTHER' : null,
+                    failed:state.failure!=null,rootSuiteCountsRecorded:new File(out,'root-test-counts.json').isFile(),
+                    sourceOrAcAcceptanceEvaluated:false])
+            }
+        }
+    }
+}
