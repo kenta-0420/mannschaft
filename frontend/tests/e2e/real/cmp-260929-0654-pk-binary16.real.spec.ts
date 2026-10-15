@@ -108,6 +108,7 @@ let tIdC = 0
 let divC = 0
 let pC4 = 0
 const createdTemplates: { org: number; team: number; id: string }[] = []
+const createdParticipants: { org: number; tournament: number; division: number; id: number }[] = []
 
 async function ensureParticipant(req: APIRequestContext, orgId: number, tId: number, divId: number, teamId: number): Promise<number> {
   const list = await api(req, 'get', `/organizations/${orgId}/tournaments/${tId}/divisions/${divId}/participants`)
@@ -115,7 +116,9 @@ async function ensureParticipant(req: APIRequestContext, orgId: number, tId: num
   if (found) return found.id
   const add = await api(req, 'post', `/organizations/${orgId}/tournaments/${tId}/divisions/${divId}/participants`, { teamId, seed: 1 })
   expect(add.status, add.text).toBe(201)
-  return Number(add.body.data?.id)
+  const id = Number(add.body.data?.id)
+  createdParticipants.push({ org: orgId, tournament: tId, division: divId, id })
+  return id
 }
 
 test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', () => {
@@ -576,6 +579,11 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
   test.afterAll(async ({ browser }) => {
     const admin = await newPage(browser, adminCred)
     const user = await newPage(browser, userCred)
+    // 既存大会側も含め、本 spec が新規作成した参加チームだけを後始末する。
+    for (const p of createdParticipants) {
+      const removed = await api(admin.request, 'delete', `/organizations/${p.org}/tournaments/${p.tournament}/divisions/${p.division}/participants/${p.id}`)
+      expect(removed.status, removed.text).toBe(204)
+    }
     for (const t of createdTemplates) {
       await api(admin.request, 'delete', `/organizations/${t.org}/teams/${t.team}/entry-templates/${t.id}`)
     }
