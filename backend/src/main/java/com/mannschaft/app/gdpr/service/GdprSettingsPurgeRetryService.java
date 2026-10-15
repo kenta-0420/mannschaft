@@ -30,6 +30,7 @@ import com.mannschaft.app.timeline.event.TimelineBookmarkAnonymizationEventListe
 import com.mannschaft.app.timetable.notes.event.TimetableNoteFieldsPurgeEventListener;
 import com.mannschaft.app.timetable.personal.event.PersonalTimetableSettingsPurgeEventListener;
 import com.mannschaft.app.user.event.UserBlockPurgeEventListener;
+import com.mannschaft.app.visibility.event.VisibilityTemplatePurgeEventListener;
 import com.mannschaft.app.weather.event.WeatherLocationCleanupListener;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +42,7 @@ import java.time.LocalDateTime;
 import java.util.Set;
 
 /**
- * 本人設定27ドメインの GDPR パージ手動 retry サービス。
+ * 本人設定28ドメインの GDPR パージ手動 retry サービス。
  *
  * <p>システム管理者が管理画面から PENDING 状態のドメインパージを手動で再実行する機能を提供する。
  * 各ドメインリスナーの {@code retryPurge(userId)} を呼び出し、完了後に
@@ -93,6 +94,7 @@ public class GdprSettingsPurgeRetryService {
     private final TimetableNoteFieldsPurgeEventListener timetableNoteFieldsPurgeEventListener;
     private final SealScopeDefaultsPurgeEventListener sealScopeDefaultsPurgeEventListener;
     private final CalendarLayerCleanupExecutor calendarLayerCleanupExecutor;
+    private final VisibilityTemplatePurgeEventListener visibilityTemplatePurgeEventListener;
 
     /** 受け付けるドメイン名の集合。不明なドメイン名は即時 IllegalArgumentException。 */
     private static final Set<String> VALID_DOMAINS =
@@ -101,7 +103,7 @@ public class GdprSettingsPurgeRetryService {
                     "contact", "user", "appearance", "navsettings", "gamification",
                     "reflection", "timetable.personal", "cms", "chat", "knowledgebase",
                     "favorite", "membership", "weather", "inbox", "timetable.notes",
-                    "seal", "schedule");
+                    "seal", "schedule", "visibility");
 
     /** 設定専用の retry 対象か判定する。 */
     public boolean supports(String domainName) {
@@ -197,6 +199,7 @@ public class GdprSettingsPurgeRetryService {
                 case "timetable.notes" -> timetableNoteFieldsPurgeEventListener.retryPurge(userId);
                 case "seal" -> sealScopeDefaultsPurgeEventListener.retryPurge(userId);
                 case "schedule" -> calendarLayerCleanupExecutor.retryPurge(userId);
+                case "visibility" -> visibilityTemplatePurgeEventListener.retryPurge(userId);
                 default -> throw new IllegalStateException("到達不能: " + domainName);
             };
         } catch (Exception ex) {

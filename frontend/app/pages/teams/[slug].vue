@@ -24,6 +24,11 @@ import type { ScopeTab } from '~/types/scopeShell'
 import type { TeamResponse } from '~/types/team'
 import TeamSidebar from '~/components/TeamSidebar.vue'
 import { provideTeamShellContext } from '~/composables/useTeamShellContext'
+import {
+  canManageOrgAffiliation as resolveCanManageOrgAffiliation,
+  canManagePermissionGroups as resolveCanManagePermissionGroups,
+  shouldLeaveGuardedTeamTab,
+} from '~/utils/teamAffiliationAccess'
 import { resolveSlugRedirectPath } from '~/utils/slugRedirect'
 
 definePageMeta({
@@ -45,9 +50,12 @@ const teamSlug = computed(() => String(route.params.slug))
 
 const {
   roleName,
+  permissions,
   loading: roleLoading,
   loadPermissions,
   isAdmin,
+  isScopeAdmin,
+  canGrantAdminOnlyPermissions,
   isAdminOrDeputy,
 } = useRoleAccess('team', teamSlug)
 
@@ -244,6 +252,8 @@ async function refresh() {
 const SEGMENT_TO_TAB: Record<string, string> = {
   info: 'info',
   members: 'members',
+  affiliations: 'affiliations',
+  'permission-groups': 'permission-groups',
   invites: 'invites',
   supporters: 'supporters',
   'join-requests': 'join-requests',
@@ -277,6 +287,8 @@ const SHELL_SEGMENTS = new Set([
   'supporters',
   'join-requests',
   'modules',
+  'affiliations',
+  'permission-groups',
   'reservations',
   'nav',
   'guide',
@@ -420,6 +432,22 @@ watch(teamSlug, () => {
   if (isShellRoute.value) void loadShellData()
 })
 
+/**
+ * チームの加盟操作者か（F01.2.1 8-D）。ADMIN 割当（scopeAdmin。SYSTEM_ADMIN 単独は不可）か、
+ * MANAGE_ORG_AFFILIATION を付与された者で、管理者レンズ ON のとき。
+ */
+const canManageOrgAffiliation = computed(() => resolveCanManageOrgAffiliation({
+  adminLens: adminLens.value,
+  isScopeAdmin: isScopeAdmin.value,
+  permissions: permissions.value,
+}))
+
+/** 権限グループの画面・メンバー一覧の割当を出してよいか（チーム ADMIN 割当・管理者レンズ ON。SYSTEM_ADMIN のみは不可）。 */
+const canManagePermissionGroups = computed(() => resolveCanManagePermissionGroups({
+  adminLens: adminLens.value,
+  isScopeAdmin: isScopeAdmin.value,
+}))
+
 /** 管理系タブ key（レンズ OFF・非管理者では滞在させない）。 */
 const ADMIN_ONLY_SEGMENTS = new Set(['invites', 'supporters', 'join-requests', 'modules'])
 
@@ -432,6 +460,26 @@ watch([adminLens, isAdminOrDeputy, () => route.path], () => {
     navigateTo(`/teams/${teamSlug.value}`)
   }
 })
+
+/**
+ * 「所属組織」「権限グループ」タブ（F01.2.1 8-D）の滞在ガード。
+ * 権限の取得が終わってから、レンズ OFF・権限なし・権限剥奪（AC-P05）のときダッシュボードへ戻す。
+ * 取得前は戻さない（管理者を取得前に誤って追い返さない）。権限が無いまま子ページが管理 API を呼ばないよう、
+ * 子ページ側も canManage* が false の間は描画しない。
+ */
+watch(
+  [adminLens, canManageOrgAffiliation, canManagePermissionGroups, roleLoading, teamLoaded, () => route.path],
+  () => {
+    if (shouldLeaveGuardedTeamTab({
+      tab: activeTab.value,
+      ready: teamLoaded.value && !roleLoading.value,
+      canAffiliate: canManageOrgAffiliation.value,
+      canGroups: canManagePermissionGroups.value,
+    })) {
+      navigateTo(`/teams/${teamSlug.value}`)
+    }
+  },
+)
 
 // =============================================================================
 // タブ定義（権限出し分けは visible に移植）
@@ -486,6 +534,20 @@ const tabs = computed<ScopeTab[]>(() => {
       visible: isAdmin.value && adminLens.value,
     },
     {
+      key: 'affiliations',
+      to: `${base}/affiliations`,
+      icon: 'pi pi-sitemap',
+      labelKey: 'teamShell.tab.affiliations',
+      visible: canManageOrgAffiliation.value,
+    },
+    {
+      key: 'permission-groups',
+      to: `${base}/permission-groups`,
+      icon: 'pi pi-shield',
+      labelKey: 'teamShell.tab.permissionGroups',
+      visible: canManagePermissionGroups.value,
+    },
+    {
       key: 'reservations',
       to: `${base}/reservations`,
       icon: 'pi pi-calendar-clock',
@@ -531,6 +593,9 @@ provideTeamShellContext({
   roleName,
   isAdmin,
   isAdminOrDeputy,
+  canManageOrgAffiliation,
+  canManagePermissionGroups,
+  canGrantAdminOnlyPermissions,
   effectiveViewerRole,
   adminLens,
   widgetVisibilitySettings,

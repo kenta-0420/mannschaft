@@ -34,6 +34,14 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
+const route = useRoute()
+// slug 切替中に残る旧ヘッダーの操作を無効化する。
+const archiveSlug = computed(() => route.params.slug === props.team.slug ? props.team.slug : '')
+const archived = computed(() => !!props.team.timestamps?.archivedAt)
+const { available: canArchive, busy: archiveBusy, syncError: archiveSyncError, request: requestArchive, retrySync: retryArchiveSync } = useTeamArchiveAction(
+  archiveSlug, archived, async () => { await navigateTo('/teams') },
+)
+const archiveLabel = computed(() => t(archived.value ? 'teamShell.archive.unarchive' : 'teamShell.archive.archive'))
 
 // F02.8 告知ウィザード（ローカル管理）
 const showBroadcastWizard = ref(false)
@@ -62,7 +70,7 @@ function toggleOverflowMenu(event: Event) {
   overflowMenu.value.toggle(event)
 }
 const overflowMenuItems = computed(() => {
-  const items: { label: string, icon: string, command: () => void }[] = []
+  const items: { label: string, icon: string, command: () => void, disabled?: boolean }[] = []
   if (props.roleName) {
     items.push({
       label: t('market.management.title'),
@@ -91,6 +99,9 @@ const overflowMenuItems = computed(() => {
       icon: 'pi pi-sign-out',
       command: () => emit('showLeaveConfirm'),
     })
+  }
+  if (canArchive.value) {
+    items.push({ label: archiveLabel.value, icon: 'pi pi-box', command: requestArchive, disabled: archiveBusy.value || archiveSyncError.value })
   }
   return items
 })
@@ -324,6 +335,24 @@ const overflowMenuItems = computed(() => {
           @click="emit('showLeaveConfirm')"
         />
 
+        <Button
+          v-if="canArchive"
+          :label="archiveLabel"
+          icon="pi pi-box"
+          severity="secondary"
+          outlined
+          size="small"
+          class="hidden sm:inline-flex min-h-11"
+          data-testid="team-archive-button"
+          :loading="archiveBusy"
+          :disabled="archiveBusy || archiveSyncError"
+          @click="requestArchive"
+        />
+        <span v-if="archiveSyncError" role="alert" class="text-sm text-red-500">
+          {{ $t('teamShell.archive.syncError') }}
+          <Button :label="$t('common.scopeShell.retry')" text :disabled="archiveBusy" @click="retryArchiveSync" />
+        </span>
+
         <!-- モバイル(<sm): 低頻度アクションを「⋯」オーバーフローメニューへ格納 -->
         <div v-if="overflowMenuItems.length > 0" class="sm:hidden">
           <Button
@@ -332,10 +361,16 @@ const overflowMenuItems = computed(() => {
             rounded
             severity="secondary"
             size="small"
+            class="min-h-11 min-w-11"
             :aria-label="$t('common.moreActions')"
             @click="toggleOverflowMenu"
           />
-          <Menu ref="overflowMenu" :model="overflowMenuItems" popup />
+          <Menu
+            ref="overflowMenu"
+            :model="overflowMenuItems"
+            :pt="{ itemLink: { class: 'min-h-11 min-w-11' } }"
+            popup
+          />
         </div>
       </div>
     </div>

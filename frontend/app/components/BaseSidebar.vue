@@ -38,8 +38,13 @@ const enabledSlugs = ref<Set<string>>(new Set())
 const { getOrganizationModules } = useOrganizationModuleApi()
 const { getTeamModules } = useModuleApi()
 
+const featureFlagStore = useFeatureFlagStore()
+
 // 項目表示判定
 function isItemVisible(item: SidebarItem): boolean {
+  // 機能ゲートが閉じている（OFF・未取得）項目は SYSTEM_ADMIN にも出さない（fail-closed）。
+  // route 層の middleware も同じ判定で弾くため、踏めない導線を作らない。
+  if (item.gateKey !== undefined && !featureFlagStore.isEnabled(item.gateKey)) return false
   // レンズが「メンバー」プレビュー中は SYSTEM_ADMIN バイパスも効かせない（実ロールを問わず
   // メンバー項目のみに絞る＝プレビューとして機能させる）。
   if (roleName.value === 'SYSTEM_ADMIN' && !props.memberLensActive) return true

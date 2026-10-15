@@ -201,7 +201,7 @@ public class JobApplicationService {
         JobPostingEntity posting = postingRepository.findById(app.getJobPostingId())
                 .orElseThrow(() -> new BusinessException(JobmatchingErrorCode.JOB_NOT_FOUND));
         if (!jobPolicy.canDecideApplication(requestUserId, posting)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            throw new BusinessException(JobmatchingErrorCode.JOB_APPLICATION_NOT_FOUND);
         }
         return app;
     }

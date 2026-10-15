@@ -9,6 +9,7 @@ import type {
   SurveyContent,
   WizardFormState,
 } from '~/types/announcement_broadcast'
+import { buildAudienceFields } from '~/utils/broadcastAudience'
 
 const props = defineProps<{
   modelValue: WizardFormState
@@ -218,6 +219,33 @@ const canSubmit = computed(() => {
   }
   return typeof c.title === 'string' && (c.title as string).trim().length > 0
 })
+
+// ── 宛先を絞った告知の push 可否（F01.2.1 §13.2）──
+// push の可否はチャネルごとに違う。ステップ1ではチャネルが未定なので、チャネルを選んだ後のここで、
+// 選んだ実チャネルで宛先プレビューを引き直して判定する。
+const { previewAudience } = useBroadcastAudience(props.scopeId)
+const pushDisabled = ref(false)
+const pushCheckError = ref<string | null>(null)
+
+async function checkPush() {
+  const s = props.modelValue
+  pushDisabled.value = false
+  pushCheckError.value = null
+  if (props.scopeType !== 'ORGANIZATION' || s.targetMode === 'ALL' || s.selectedChannel === null) return
+  try {
+    // 削除で空になったテンプレートは、宛先を明示せず templateId だけで解決させる
+    const audience = s.templateEmptied && s.templateId !== null ? { templateId: s.templateId } : buildAudienceFields(s)
+    const result = await previewAudience({ channel: s.selectedChannel, targetRole: s.targetRole, ...audience })
+    pushDisabled.value = result.pushEnabled === false
+  }
+  catch (e: unknown) {
+    const { code, message } = readApiError(e)
+    pushCheckError.value = message ? (code ? `${message} (${code})` : message) : t('announcement.preview_failed')
+  }
+}
+
+onMounted(checkPush)
+watch(() => props.modelValue.selectedChannel, checkPush)
 </script>
 
 <template>
@@ -407,9 +435,26 @@ const canSubmit = computed(() => {
       />
     </div>
 
+    <!-- 宛先を絞った告知: 選んだチャネルで push が送られないとき -->
+    <p
+      v-if="pushDisabled"
+      class="text-sm text-amber-700 dark:text-amber-400"
+      data-testid="broadcast-push-disabled-note"
+    >
+      {{ t('announcement.push_disabled_note') }}
+    </p>
+    <p
+      v-if="pushCheckError"
+      class="text-sm text-red-600 dark:text-red-400"
+      role="alert"
+      data-testid="broadcast-push-check-error"
+    >
+      {{ pushCheckError }}
+    </p>
+
     <!-- ナビゲーション -->
     <div class="flex justify-between pt-2">
-      <Button :label="$t('button.back')" icon="pi pi-arrow-left" severity="secondary" text @click="emit('back')" />
+      <Button :label="$t('button.back')" icon="pi pi-arrow-left" severity="secondary" text data-testid="broadcast-step3-back" @click="emit('back')" />
       <Button
         :label="$t('announcement.submit_button')"
         icon="pi pi-send"

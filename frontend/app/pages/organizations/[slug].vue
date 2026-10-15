@@ -41,6 +41,7 @@ const {
   loading: roleLoading,
   loadPermissions,
   isAdmin,
+  isScopeAdmin,
   isAdminOrDeputy,
 } = useRoleAccess('organization', orgSlug)
 
@@ -52,6 +53,8 @@ const {
 const {
   org,
   orgTeams,
+  orgTeamsError,
+  orgTeamsLoading,
   permissionGroups,
   loading,
   joinRequestStatus,
@@ -437,6 +440,7 @@ provideOrgShellContext({
   displayName,
   roleName,
   isAdmin,
+  isScopeAdmin,
   isAdminOrDeputy,
   effectiveViewerRole,
   adminLens,
@@ -450,6 +454,9 @@ provideOrgShellContext({
   permissionGroups,
   showChildrenTab,
   showTeamSearchLink,
+  orgTeamsError,
+  orgTeamsLoading,
+  refreshOrgTeams: fetchOrgTeams,
   refresh,
   mutators: orgMutators,
 })

@@ -55,7 +55,7 @@
 # 番人は「一度付けた分類が黙って外れること」だけを機械的に止める（# CLASSIFIED_FLOOR）。
 # 分類を増やしたら CLASSIFIED_FLOOR も同じPRで上げること。
 #
-# CLASSIFIED_FLOOR: 28
+# CLASSIFIED_FLOOR: 10
 #
 # 分類は綴りだけでなく「ソースの実際の注釈」と機械照合される（任務4）。
 # TX_NOTIFY_VIA_DELEGATE / TX_NOTIFY_BARE / TX_NOTIFY_IN_TRY について呼び先の宣言から区分を導出し、
@@ -221,44 +221,81 @@
 #   凍結エントリ 50 + REMOVED 8 + AMBIGUOUS 0 = 58（= 是正前の CENSUS_FLOOR）
 #   凍結エントリ 43 + REMOVED 8 + AMBIGUOUS 0 = 51
 # CLASSIFIED_FLOOR は変更なし（本ロットの7件はいずれも未分類行であり、分類済み2件に触れていない）。
+# --- 2026-10-11 Issue #2997 G8: 軽量バッチ群 5件の是正（CENSUS_FLOOR 43 -> 38 / CLASSIFIED_FLOOR 32 -> 27）---
+#
+# 是正した5件（エントリを削除。いずれも ROLLBACK_COUPLED のため CLASSIFIED_FLOOR も同数下げる）:
+#   ActionMemoReminderBatchService#executeAt / TeamMemberTermReminderBatch#executeAt /
+#   TodoDueReminderBatch#notifyAssignees
+#     … 業務データを書き込まない通知バッチ。execute()/sendXxxReminders() の @Transactional(readOnly) を外し、
+#       非トランザクションのオーケストレータにした（通知は createNotification 自身のTXで1件ずつ確定）。
+#       通知呼び出し自体は残す（RAW/STRUCTURAL の下限は減らない）。
+#   ReflectionSpacedReminderService#processDueReminders
+#     … 全体を包む @Transactional を外し、項目ごとに「通知 → SENT 保存」をそれぞれ独立に確定する。
+#       送信済み状態の契約は ReflectionSpacedReminderServiceTest の AC-D で固定。
+#   MemberInfoResponseService#sendRemind
+#     … NotificationHelper#notify の直呼びをやめ、MemberInfoUpdateReminderNotificationEvent を publish する。
+#       実通知は既存の MemberInfoUpdateReminderNotificationListener（AFTER_COMMIT + @Async + sendOne）。
+#
+# ■ CENSUS_FLOOR: 43 -> 38 の裏取り（実測）
+#   是正前: 凍結エントリ 35 + REMOVED 8 + AMBIGUOUS 0 = 43
+#   是正後: 凍結エントリ 30 + REMOVED 8 + AMBIGUOUS 0 = 38
+# ■ CLASSIFIED_FLOOR: 32 -> 27（消した5件はすべて ROLLBACK_COUPLED の分類済み行）
+#
+# ■ 最終（G1 jobmatching と G8 の merge 後の実測）: 凍結エントリ 26 + REMOVED 8 + AMBIGUOUS 0 = 34 / 分類済み 23。
+#   上下の 38 / 39 / 27 / 28 は各単独時点の値であり、有効値は本行の 34 / 23。
 # --- jobmatching ドメイン 4件の是正（Issue #2997 / CENSUS_FLOOR 43 -> 39 / CLASSIFIED_FLOOR 32 -> 28）---
 # JobApplicationService#apply / JobContractService#acceptApplication / #reportCompletion /
 # JobCheckInService#fireNotifications（いずれも TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED）。
 # 業務TX内は JobNotificationEvent の publish のみとし、配送は新設の JobNotificationListener
 # （AFTER_COMMIT + @Async("event-pool")）へ移した。実DB検証: JobNotificationTransactionIT。
 # 裏取り: 凍結エントリ 35 + REMOVED 8 = 43 -> 凍結エントリ 31 + REMOVED 8 = 39。分類済み 32 -> 28。
-# CENSUS_FLOOR: 39
+# Issue #2997 第1陣 G2（recruitment）: RecruitmentListingService#publish / #sendPublishedNotifications / #confirmApplication /
+# MarketFriendTargetService#distributeFriendListing（いずれも ROLLBACK_COUPLED）を是正。
+# 業務TX内は RecruitmentNotificationEvent の publish のみとし、配送は新設の RecruitmentNotificationListener
+# （AFTER_COMMIT + @Async("event-pool") + NotificationDeliveryRunner#sendOne）へ移した。実DB検証: RecruitmentNotificationTransactionIT。
+# 4件とも RecruitmentListingService / MarketFriendTargetService から通知呼び出しが消えたため削除（publish は委譲先が消えた連動）。
+# 裏取り: G2 単独: 凍結エントリ 31 + REMOVED 8 = 39 -> 27 + 8 = 35、分類済み 28 -> 24。G8（main）との合算の最終実数: 凍結エントリ 22 + REMOVED 8 = 30、分類済み 19。
+# Issue #2997 第1陣 G6（shift / ticket）: ShiftPreferenceReminderBatchService#sendReminderToUnsubmittedMembers / #triggerManualReminder /
+# TicketExpiryBatchService#expireTickets / #sendExpiryNotifications（いずれも TX_NOTIFY_BARE | ROLLBACK_COUPLED）を是正。
+#   shift 定期: processReminders から @Transactional を外し非トランザクションのオーケストレータにした。1 スケジュール = 1 項目TX
+#     （ShiftPreferenceReminderRunner#remindOne / REQUIRES_NEW）で ShiftPreferenceReminderNotificationEvent を publish（印は立てない）。
+#     実通知は新設の ShiftPreferenceReminderNotificationListener（AFTER_COMMIT + @Async("event-pool") + NotificationDeliveryRunner#sendOne）。
+#     配送の前に送信済み印（is_reminder_sent_48h / is_reminder_sent）を条件付き UPDATE で先取りして重複配送を排他する。
+#   shift 手動: triggerManualReminder は業務TX内で同イベントの publish のみ。
+#   ticket 期限切れ: expireTickets から @Transactional を外し、1 冊 = 1 項目TX（TicketExpiryRunner#expireOne / REQUIRES_NEW）で
+#     book.expire() を確定し TicketExpiredNotificationEvent を publish。事前通知 sendExpiryNotifications は読み取りTX内で
+#     TicketExpiryWarningNotificationEvent を publish するのみ。配送は新設の TicketExpiryNotificationListener。
+#   実DB検証: ShiftReminderNotificationTransactionIT / TicketExpiryNotificationTransactionIT。
+#   送信済みの印の契約（AC-D・マスター裁可「配送後に印」＋重複配送の排他）: 全員が例外で失敗したら先取りした印を戻す（次回再送）、
+#     deny・一部成功では印を残す（再送しない）、同じイベントが2回発火しても配送は1回、戻す処理の失敗は ERROR ログのみ。
+#     既知の限界: 先取りの後でプロセスが落ちるとそのリマインドは失われる。
+# 裏取り: 凍結エントリ 22 + REMOVED 8 = 30 -> 18 + 8 = 26、分類済み 19 -> 15（4件とも ROLLBACK_COUPLED の分類済み行）。
+# Issue #2997 G7-a（digest / timetable）: DigestAsyncExecutor#generateAiDigestAsync（TX_NOTIFY_BARE / TX_NOTIFY_IN_TRY の 2 行）と
+# TeamSlotNoteNotifyListener#onSlotNoteUpdated（PLAIN_EVENT_LISTENER / TX_NOTIFY_IN_TRY の 2 行）を是正。
+#   digest: executor から @Transactional を外し（AI 呼び出しも TX の外）、GENERATED/FAILED の確定を DigestGenerationRunner
+#     （REQUIRES_NEW・別Bean）に移し、その TX の内側では DigestGenerationNotificationEvent の publish のみとした。配送は新設の
+#     DigestGenerationNotificationListener（AFTER_COMMIT + @Async("event-pool") + NotificationDeliveryRunner#sendOne）。
+#     triggeredBy が null のときは配送しない。実DB検証: DigestNotificationTransactionIT。
+#   timetable: 同期 @EventListener + REQUIRES_NEW(readOnly) を AFTER_COMMIT + @Async("event-pool") + 受信者ごと sendOne に変更し readOnly を撤去。
+#     旧実装は readOnly 配下の通知 INSERT が失敗してリスナーTXが rollback-only となり、UnexpectedRollbackException が
+#     replaceSlots まで伝播していた（実測: TeamSlotNoteNotificationTransactionIT が旧実装で全件 red）。
+#     デバウンスは slotId（毎回再作成で無効だった）から コマ位置キー + UUID トークン + SET NX EX + Lua 解放へ（M8）。
+#   既知の限界（M9）: event-pool 飽和で投入が拒否された回の通知は失われる。
+# 裏取り（最新 main 基準）: 凍結エントリ 16 + REMOVED 8 = 24 -> 12 + 8 = 20、分類済み 13 -> 10（4件中 ROLLBACK_COUPLED の分類済み行は 3）。
+# CENSUS_FLOOR: 20
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
-com.mannschaft.app.actionmemo.service.ActionMemoReminderBatchService#executeAt -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 com.mannschaft.app.admin.batch.BatchEventListener#onCompleted -> PLAIN_EVENT_LISTENER
 com.mannschaft.app.admin.batch.BatchEventListener#onFailed -> PLAIN_EVENT_LISTENER
-com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
-com.mannschaft.app.memberinfo.service.MemberInfoResponseService#sendRemind -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationConfirmService#resendReminder -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processAlertIfNeeded -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
-com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processReminders -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 com.mannschaft.app.notification.fanout.NotificationFanoutWorker#processOne -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
-com.mannschaft.app.recruitment.service.MarketFriendTargetService#distributeFriendListing -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.recruitment.service.RecruitmentListingService#confirmApplication -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.recruitment.service.RecruitmentListingService#sendPublishedNotifications -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.reflection.service.ReflectionSpacedReminderService#processDueReminders -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
-com.mannschaft.app.repairplan.batch.TeamMemberTermReminderBatch#executeAt -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 com.mannschaft.app.reservation.service.EmergencyClosureService#sendClosure -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.reservation.service.ReservationPendingExpireService#notifyApplicant -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.reservation.service.ReservationReminderDispatchBatchService#sendReminder -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.reservation.service.ReservationWaitlistService#notifySlotReopened -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
-com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService#sendReminderToUnsubmittedMembers -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService#triggerManualReminder -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.survey.service.SurveyRemindService#remind -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.survey.service.SurveyService#extendDeadline -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.ticket.service.TicketExpiryBatchService#expireTickets -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.ticket.service.TicketExpiryBatchService#sendExpiryNotifications -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.timetable.personal.listener.TeamSlotNoteNotifyListener#onSlotNoteUpdated -> PLAIN_EVENT_LISTENER
-com.mannschaft.app.timetable.personal.listener.TeamSlotNoteNotifyListener#onSlotNoteUpdated -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
-com.mannschaft.app.todo.batch.TodoDueReminderBatch#notifyAssignees -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 
 # --- 2026-09-01 main 取り込みで増えた既存負債（本PRの差分が生んだものではない）---
 # baseline 採取後に main へ着地した実装が持ち込んだ3件。番人が正しく検知したため既存負債として凍結し、
@@ -1030,7 +1067,6 @@ com.mannschaft.app.role.service.OwnershipTransferOfferService#declineOffer -> TX
 # --- L12 で追加した凍結エントリ（型解決の根治であらたに見えた既存負債 3 件） ---
 # ------------------------------------------------------------------------------
 
-com.mannschaft.app.recruitment.service.RecruitmentListingService#publish -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
 
 # ------------------------------------------------------------------------------
 # --- 2026-09-07 Issue #2990 L13: shiftbudget ドメイン 5件の処理（CENSUS_FLOOR 49 -> 44 / CLASSIFIED_FLOOR 38 -> 33）---

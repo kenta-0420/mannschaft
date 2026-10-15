@@ -18,6 +18,10 @@ import java.util.UUID;
  * @param resolvedTeamIds   宛先チーム（重複排除。ALL では空）
  * @param directMemberCount 直属メンバー数（送信者本人を除く組織メンバー。ALL では 0）
  * @param targetAudience    {@code target_audience} に残す記録（ALL では null）
+ * @param pushEnabled       宛先を絞った組織の告知で push を出すか（§8.5.1。アンケートかつ送信者が push 権限を持つときだけ真。
+ *                          ALL では常に偽）。権限の判定は role ドメインを引くため、告知のトランザクションの外
+ *                          （{@link BroadcastAudienceResolver#resolveForBroadcast}）で決めて運ぶ（D-3T）
+ * @param warnings          警告（テンプレートのグループを除外したときの {@code TEMPLATE_GROUPS_REMOVED:N} など。無ければ空）
  */
 public record ResolvedBroadcastAudience(
         Mode mode,
@@ -27,7 +31,9 @@ public record ResolvedBroadcastAudience(
         Map<UUID, List<Long>> groupTeams,
         List<Long> resolvedTeamIds,
         int directMemberCount,
-        TargetAudience targetAudience) {
+        TargetAudience targetAudience,
+        boolean pushEnabled,
+        List<String> warnings) {
 
     /** 宛先の種類。 */
     public enum Mode {
@@ -41,7 +47,20 @@ public record ResolvedBroadcastAudience(
 
     /** 絞り込みなし。 */
     public static ResolvedBroadcastAudience unrestricted() {
-        return new ResolvedBroadcastAudience(Mode.ALL, List.of(), List.of(), false, Map.of(), List.of(), 0, null);
+        return new ResolvedBroadcastAudience(Mode.ALL, List.of(), List.of(), false, Map.of(), List.of(), 0, null, false,
+                List.of());
+    }
+
+    /** push の可否だけを差し替えた値（{@link BroadcastAudienceResolver} だけが使う）。 */
+    ResolvedBroadcastAudience withPushEnabled(boolean enabled) {
+        return new ResolvedBroadcastAudience(mode, targetTeamIds, groups, includeUnassigned, groupTeams,
+                resolvedTeamIds, directMemberCount, targetAudience, enabled, warnings);
+    }
+
+    /** 警告を差し替えた複製。 */
+    public ResolvedBroadcastAudience withWarnings(List<String> newWarnings) {
+        return new ResolvedBroadcastAudience(mode, targetTeamIds, groups, includeUnassigned, groupTeams,
+                resolvedTeamIds, directMemberCount, targetAudience, pushEnabled, List.copyOf(newWarnings));
     }
 
     /** グループ ID（並び順）。 */

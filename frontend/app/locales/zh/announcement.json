@@ -98,7 +98,8 @@
         "body": "决定通知展示给哪些人（第一步）。",
         "steps": {
           "step1": "从仅成员 / 支持者及以上 / 所有人（公开）中选择送达对象",
-          "step2": "（仅组织通知）将目标团队选为“所有团队”或逐个选择"
+          "step2": "（仅组织通知）将目标团队选为“所有团队”或逐个选择",
+          "step3": "（仅组织公告）选择\"按团队分组选择\"，可按分组或范围（以前／以后）一次性指定收件人。匹配的团队数会显示在画面上"
         }
       },
       "template": {
@@ -162,6 +163,11 @@
     "dynamic_display_note": "显示按当前所属关系判定（已删除的组按发送时的目标团队判定）",
     "template_deleted_groups_removed": "已从模板中移除被删除的团队组",
     "template_range_invalid": "模板的范围包含已删除的团队组。请重新选择范围",
-    "audience_summary": "收件对象：{label}（发送时 {count} 个团队）"
+    "audience_summary": "收件对象：{label}（发送时 {count} 个团队）",
+    "groups_load_failed": "无法获取团队分组列表",
+    "target_range_pick_group": "选择分组",
+    "preview_loading": "正在确认收件人…",
+    "preview_failed": "无法确认收件人",
+    "broadcast_done_title": "公告已发送"
   }
 }

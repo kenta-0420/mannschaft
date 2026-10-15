@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import * as validator from './completion-evidence.mjs';
 import {
   parseTaskList,
   selectEvidencePaths,
@@ -131,6 +132,20 @@ test('pull_request_targetはbase trusted validatorだけを実行しPR headを�
   assert.match(workflow, /github\.rest\.actions\.getWorkflowRun/);
 });
 
+test('AC-9: workflowはfilter all・paginate・世代判定・previous_filename・changed_files照合で実装PRを集める', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/task-list-pr-gate.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /github\.paginate\(github\.rest\.checks\.listForRef, \{ owner, repo, ref: implementationPr\.head\.sha, filter: 'all', per_page: 100 \}\)/);
+  assert.match(workflow, /github\.paginate\(github\.rest\.repos\.listCommitStatusesForRef/);
+  assert.match(workflow, /trustedValidator\.summarizeImplementationChecks\(\{ checkRuns, statuses, mergedAt: implementationPr\.merged_at \}\)/);
+  assert.match(workflow, /previous_filename: file\.previous_filename/);
+  assert.match(workflow, /implementationFiles\.length !== implementationPr\.changed_files/);
+  assert.doesNotMatch(workflow, /latestChecks/);
+  // 既存の信頼境界（validator名・legacy backfill の制約）を維持する
+  assert.match(workflow, /validatorPathInBase = 'scripts\/completion-evidence\.mjs'/);
+  assert.match(workflow, /context\.ref !== 'refs\/heads\/main'/);
+  assert.match(workflow, /Date\.parse\(pr\.created_at\) < rolloutAt/);
+});
+
 test('CLIはgit show経由の正例を通し、過去完了JSON削除を拒否する', async (t) => {
   const repo = await mkdtemp(join(tmpdir(), 'completion-evidence-cli-'));
   t.after(() => rm(repo, { recursive: true, force: true }));
@@ -173,4 +188,124 @@ test('CLIはgit show経由の正例を通し、過去完了JSON削除を拒否�
   const negative = spawnSync(process.execPath, [cli, '--base', goodRef, '--head', badRef], { cwd: repo, encoding: 'utf8' });
   assert.notEqual(negative.status, 0);
   assert.match(negative.stderr, /証拠JSONを削除/);
+});
+
+const TEST_ONLY_3841 = [
+  'backend/src/test/java/com/mannschaft/app/matching/MatchProposalCancelScopeContractIT.java',
+  'backend/src/test/java/com/mannschaft/app/matching/MatchTemplateScopeContractIT.java',
+  'backend/src/test/java/com/mannschaft/app/role/controller/MeControllerMembershipIntegrationTest.java',
+  'backend/src/test/java/com/mannschaft/app/succession/controller/SuccessionCovenantScopeContractIT.java',
+];
+const naTestOnly = { status: 'not-applicable', reason: 'UIを持たないテストのみの変更', scope: 'test-only' };
+const testOnlyEvidence = { ...evidence, scope: 'test-only', stages: { review: passed, real: naTestOnly, exploratory: naTestOnly } };
+const withFiles = (files, extra = {}) => ({ ...validationOptions, implementation: { ...validationOptions.implementation, files, ...extra } });
+const infer = (files) => validator.inferImplementationScope(files);
+const summarizeChecks = (input) => validator.summarizeImplementationChecks(input);
+
+test('AC-1: #3841の4ファイルはtest-onlyで、real/exploratoryをtest-onlyのn/aにすれば通る', () => {
+  assert.equal(infer(TEST_ONLY_3841), 'test-only');
+  assert.equal(infer(TEST_ONLY_3841.map(filename => ({ filename, status: 'added' }))), 'test-only');
+  assert.doesNotThrow(() => validateEvidence(testOnlyEvidence, 'CMP-260101-0101', withFiles(TEST_ONLY_3841)));
+});
+
+test('AC-2: 同居spec・frontend/testsだけはtest-only、scriptsとテストの混在もtest-only、scriptsだけはtooling', () => {
+  assert.equal(infer(['frontend/app/composables/useX.spec.ts', 'frontend/server/api/y.test.mjs', 'frontend/scripts/z.spec.ts', 'frontend/eslint-rules/r.test.mjs']), 'test-only');
+  assert.equal(infer(['frontend/tests/unit/a.spec.ts', 'frontend/tests/e2e/b.spec.ts']), 'test-only');
+  assert.equal(infer(['scripts/check.mjs', 'backend/src/test/java/A.java']), 'test-only');
+  assert.equal(infer(['scripts/check.mjs', '.github/workflows/x.yml']), 'tooling');
+});
+
+test('AC-3: test-onlyのPRはapp申告なら通り、tooling申告は拒否、既存docs/evidence全件は新validatorを通る', () => {
+  const appPassed = { ...evidence, scope: 'app', stages: { review: passed, real: passed, exploratory: passed } };
+  assert.doesNotThrow(() => validateEvidence(appPassed, 'CMP-260101-0101', withFiles(TEST_ONLY_3841)));
+  assert.throws(() => validateEvidence({ ...evidence, scope: 'tooling' }, 'CMP-260101-0101', withFiles(TEST_ONLY_3841)), /scope/);
+  // 回帰: 既存の証拠JSONの構造検証。GitHub API照合（merge状態・check・CI run）はオフラインで再現できないため対象外とし、
+  // 参照ファイルの存在は git HEAD の tree で確認する（sparse checkout でも判定できるように作業木ではなく tree を見る）。
+  const evidenceDir = new URL('../docs/evidence/', import.meta.url);
+  const jsonFiles = readdirSync(evidenceDir).filter(name => /^CMP-.*\.json$/.test(name));
+  assert.ok(jsonFiles.length > 0);
+  const repoRoot = fileURLToPath(new URL('..', import.meta.url));
+  const tree = spawnSync('git', ['ls-tree', '-r', '--name-only', 'HEAD'], { cwd: repoRoot, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  assert.equal(tree.status, 0, tree.stderr);
+  const headFiles = new Set(tree.stdout.split('\n').filter(Boolean));
+  for (const name of jsonFiles) {
+    const item = JSON.parse(readFileSync(new URL(name, evidenceDir), 'utf8'));
+    assert.doesNotThrow(() => validateEvidence(item, name.replace(/\.json$/, ''), {
+      repository: 'kenta-0420/mannschaft',
+      fileExists: ref => headFiles.has(ref),
+    }), name);
+  }
+});
+
+test('AC-4: files空はthrow、null・数値・filename欠落はapp、check0件とmergedAt欠落は拒否', () => {
+  assert.throws(() => infer([]), /変更ファイル/);
+  assert.equal(infer([...TEST_ONLY_3841, null]), 'app');
+  assert.equal(infer([...TEST_ONLY_3841, 42]), 'app');
+  assert.equal(infer([...TEST_ONLY_3841, { status: 'added' }]), 'app');
+  const mergedAt = '2026-10-13T04:12:10Z';
+  const late = { id: 1, name: 'ci', status: 'completed', conclusion: 'success', started_at: '2026-10-13T05:00:00Z', completed_at: '2026-10-13T05:01:00Z' };
+  assert.throws(() => summarizeChecks({ checkRuns: [late], statuses: [], mergedAt }), /check/);
+  assert.throws(() => summarizeChecks({ checkRuns: [], statuses: [], mergedAt }), /check/);
+  assert.throws(() => summarizeChecks({ checkRuns: [], statuses: [], mergedAt: null }), /mergedAt/);
+  assert.throws(() => summarizeChecks({ checkRuns: [], statuses: [], mergedAt: 'not-a-date' }), /mergedAt/);
+});
+
+test('AC-5: completed_atがmergedAtと同時刻なら含め+1秒なら除外し、境界外のパスはapp', () => {
+  const mergedAt = '2026-10-13T04:12:10Z';
+  const at = { id: 1, name: 'ci', status: 'completed', conclusion: 'success', started_at: '2026-10-13T04:00:00Z', completed_at: mergedAt };
+  assert.deepEqual(summarizeChecks({ checkRuns: [at], statuses: [], mergedAt }), ['success']);
+  const plusOne = { ...at, started_at: '2026-10-13T04:12:11Z', completed_at: '2026-10-13T04:12:11Z' };
+  assert.throws(() => summarizeChecks({ checkRuns: [plusOne], statuses: [], mergedAt }), /check/);
+  const status = (state, created_at, id) => ({ id, context: 'ext', state, created_at });
+  assert.deepEqual(summarizeChecks({ checkRuns: [at], statuses: [status('success', mergedAt, 1), status('failure', '2026-10-13T04:12:11Z', 2)], mergedAt }), ['success', 'success']);
+  for (const file of ['backend/src/testdata/x', 'backend/src/test', 'frontend/tests-old/x', 'frontend/app/x.spec.ts.bak', 'frontend/app/x.spec.tsx']) {
+    assert.equal(infer([file]), 'app', file);
+  }
+});
+
+test('AC-6: 混在・大文字・正規化差・絶対パス・バックスラッシュ・main→testリネーム・main削除・テスト設定はapp、stage.scope不一致とreason空は拒否', () => {
+  assert.equal(infer([...TEST_ONLY_3841, 'backend/src/main/java/A.java']), 'app');
+  for (const file of ['Backend/src/Test/X.java', 'backend/src/test/../main/X.java', '/backend/src/test/x', 'backend\\src\\test\\x', 'backend/src/test//x.java', 'frontend/vitest.config.ts']) {
+    assert.equal(infer([file]), 'app', file);
+  }
+  assert.equal(infer([{ filename: 'backend/src/test/java/A.java', previous_filename: 'backend/src/main/java/A.java', status: 'renamed' }]), 'app');
+  assert.equal(infer([{ filename: 'backend/src/main/java/A.java', status: 'removed' }, ...TEST_ONLY_3841]), 'app');
+  const wrongStageScope = { ...testOnlyEvidence, stages: { review: passed, real: n_a, exploratory: n_a } };
+  assert.throws(() => validateEvidence(wrongStageScope, 'CMP-260101-0101', withFiles(TEST_ONLY_3841)), /not-applicable/);
+  const emptyReason = { ...testOnlyEvidence, stages: { ...testOnlyEvidence.stages, real: { ...naTestOnly, reason: '  ' } } };
+  assert.throws(() => validateEvidence(emptyReason, 'CMP-260101-0101', withFiles(TEST_ONLY_3841)), /reason/);
+});
+
+test('AC-7: マージ時点の世代でcheckを判定し、#3847の重複PRによるマージ後failureを採らない', () => {
+  const mergedAt = '2026-10-13T04:12:10Z';
+  const summarize = (checkRuns) => summarizeChecks({ checkRuns, statuses: [], mergedAt });
+  const run = (id, conclusion, started_at, completed_at, suite = 1) => ({ id, name: 'ci', status: completed_at ? 'completed' : 'in_progress', conclusion, started_at, completed_at, check_suite: { id: suite } });
+  // マージ時点で実行中（マージ前に開始し、未完了またはマージ後に完了）
+  assert.throws(() => summarize([run(1, null, '2026-10-13T04:00:00Z', null)]), /実行中/);
+  assert.throws(() => summarize([run(1, 'success', '2026-10-13T04:00:00Z', '2026-10-13T04:20:00Z')]), /実行中/);
+  // マージ前failure → マージ前の再実行success
+  assert.deepEqual(summarize([run(1, 'failure', '2026-10-13T03:00:00Z', '2026-10-13T03:10:00Z'), run(2, 'success', '2026-10-13T03:20:00Z', '2026-10-13T03:30:00Z')]), ['success']);
+  // マージ前failure → マージ後success（同一suite・別suite）はfailureを採って拒否
+  for (const suite of [1, 2]) {
+    const checks = summarize([run(1, 'failure', '2026-10-13T03:00:00Z', '2026-10-13T03:10:00Z', 1), run(2, 'success', '2026-10-13T05:00:00Z', '2026-10-13T05:10:00Z', suite)]);
+    assert.deepEqual(checks, ['failure']);
+    assert.throws(() => validateEvidence(evidence, 'CMP-260101-0101', { ...validationOptions, implementation: { ...validationOptions.implementation, checks } }), /check/);
+  }
+  // マージ前success → マージ後failure
+  assert.deepEqual(summarize([run(1, 'success', '2026-10-13T03:00:00Z', '2026-10-13T03:10:00Z'), run(2, 'failure', '2026-10-13T05:00:00Z', '2026-10-13T05:10:00Z')]), ['success']);
+  // completed_at 同時刻は id 降順
+  assert.deepEqual(summarize([run(2, 'success', '2026-10-13T03:00:00Z', '2026-10-13T03:10:00Z'), run(1, 'failure', '2026-10-13T03:00:00Z', '2026-10-13T03:10:00Z')]), ['success']);
+  // #3847 再現: 02:36 success 完了、08:22 開始の failure、mergedAt 04:12:10Z
+  const gate = (id, conclusion, started_at, completed_at) => ({ id, name: 'Task-List PR Gate', status: 'completed', conclusion, started_at, completed_at });
+  const fixture = [gate(10, 'success', '2026-10-13T02:35:30Z', '2026-10-13T02:36:00Z'), gate(11, 'failure', '2026-10-13T08:22:00Z', '2026-10-13T08:22:40Z')];
+  assert.deepEqual(summarize(fixture), ['success']);
+});
+
+test('AC-8: files 3000件の分類が100ms未満', () => {
+  const files = Array.from({ length: 3000 }, (_, index) => ({ filename: `backend/src/test/java/com/mannschaft/app/T${index}Test.java`, status: 'modified' }));
+  infer(files);
+  const started = process.hrtime.bigint();
+  assert.equal(infer(files), 'test-only');
+  const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
+  assert.ok(elapsedMs < 100, `${elapsedMs}ms`);
 });

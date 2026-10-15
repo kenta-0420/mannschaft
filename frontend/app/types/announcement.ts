@@ -2,6 +2,7 @@
  * F02.6 お知らせウィジェット — 型定義
  */
 import type { components } from '~/types/generated'
+import type { BroadcastTargetAudience } from '~/types/announcement_broadcast'
 
 export type AnnouncementFeedDto = components['schemas']['AnnouncementFeedItemDto']
 
@@ -64,6 +65,8 @@ export interface AnnouncementFeedItem {
   visibility: AnnouncementVisibility
   author: AnnouncementAuthor | null
   sourceMeta: AnnouncementSourceMeta | null
+  /** 送信時の宛先指定の記録（チームグループ宛ての告知のみ。F01.2.1 AC-H17） */
+  targetAudience?: BroadcastTargetAudience | null
   isRead: boolean
   startsAt: string | null
   expiresAt: string | null

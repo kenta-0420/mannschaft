@@ -13,7 +13,17 @@
       "group_mode_required": "必须选择",
       "guidance": "申请表的说明文字",
       "turn_off_pending_confirm": "还有 {count} 条已受理的申请。即使停止受理，这些申请仍可在申请列表中批准或拒绝。",
-      "required_mode_degraded": "由于没有任何分组，分组选择将按「可选」处理"
+      "required_mode_degraded": "由于没有任何分组，分组选择将按「可选」处理",
+      "section_application": "接受加盟申请",
+      "section_groups": "团队分组",
+      "saved": "设置已保存",
+      "save_error": "无法保存设置，请稍后再试",
+      "load_error": "无法加载设置，请稍后再试",
+      "manage_groups": "管理分组",
+      "turn_off_confirm_title": "要停止接受加盟申请吗？",
+      "turn_off_confirm": "停止接受后，组织页面上的“以团队身份申请加盟”按钮将消失。",
+      "turn_off_confirm_ok": "停止接受",
+      "card_desc": "设置加盟申请的接受、团队分组以及申请时的说明文字"
     },
     "view": {
       "teams": "所属团队",
@@ -39,7 +49,11 @@
         "ACTIVE": "已加盟",
         "UNAVAILABLE": "目前无法向该组织申请"
       },
-      "find_orgs": "查找可加盟的组织"
+      "find_orgs": "查找可加盟的组织",
+      "eligibility_error": "由于通信错误，无法确认是否可以申请加盟",
+      "eligibility_retry": "重试",
+      "load_error": "无法加载申请表单，请稍后再试",
+      "submit_error": "申请失败，请检查填写内容后再试"
     },
     "review": {
       "approve": "批准",
@@ -92,5 +106,29 @@
     "bulk_assign": "将所选团队分配到分组",
     "filter_all": "所有分组",
     "disabled_cta": "团队分组功能已停用，可在设置中启用"
+  },
+  "teamAffiliationGuide": {
+    "title": "团队加盟设置的使用方法",
+    "description": "这是让团队可以向组织申请加盟的设置页面。从上往下依次设置即可。",
+    "accept": {
+      "title": "开始接受申请",
+      "body": "开启接受后，组织页面上会出现“以团队身份申请加盟”按钮。该按钮只会显示给负责加盟手续的团队负责人。",
+      "steps": {
+        "step1": "开启“接受团队的加盟申请”",
+        "step2": "如有需要，在“申请表单的说明文字”中写下申请前想告知的内容",
+        "step3": "点击右下角的“保存”"
+      }
+    },
+    "groups": {
+      "title": "使用团队分组",
+      "body": "将加盟团队按年度或地区等分成分组后，可用作通知的发送对象。申请时也可以让团队选择分组。",
+      "mode_off": "不让选择：申请表单不显示分组栏",
+      "mode_optional": "可选：不选择也可以申请",
+      "mode_required": "必须选择：不选择分组则无法申请。没有任何分组时，按“可选”处理"
+    },
+    "stop": {
+      "title": "停止接受时",
+      "body": "关闭接受并保存后会出现确认提示。即使停止接受，已收到的申请仍可在所属团队的“加盟申请”中批准或拒绝。"
+    }
   }
 }

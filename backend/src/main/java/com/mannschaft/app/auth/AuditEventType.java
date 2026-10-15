@@ -99,6 +99,8 @@ public enum AuditEventType {
     TEAM_ORG_APPLICATION_SUBMITTED(AuditEventCategory.TEAM),
     /** F01.2.1 §4.1: チームの加盟操作者が加盟申請を取り下げた（metadata: 組織・加盟 ID）。 */
     TEAM_ORG_APPLICATION_WITHDRAWN(AuditEventCategory.TEAM),
+    /** F01.2.1 §4.1: 組織 ADMIN が加盟申請を拒否した（metadata: 組織・加盟 ID・理由・block）。 */
+    TEAM_ORG_APPLICATION_REJECTED(AuditEventCategory.TEAM),
     /** F01.2.1 §4.1: 組織 ADMIN がチームを加盟に招待した（metadata: チーム・加盟 ID・指定グループ）。 */
     TEAM_ORG_INVITE_SENT(AuditEventCategory.TEAM),
     /** F01.2.1 §4.1: チームの加盟操作者が組織からの招待を辞退した（metadata: 組織・加盟 ID・block）。 */
@@ -109,6 +111,16 @@ public enum AuditEventType {
     TEAM_ORG_MEMBERSHIP_CREATED(AuditEventCategory.TEAM),
     /** F01.2.1 §4.1: 組織 ADMIN が加盟チームのグループ割当を変更した（単体・一括。1チームにつき1行。metadata: from・to のグループ ID）。 */
     TEAM_ORG_GROUP_CHANGED(AuditEventCategory.TEAM),
+    /**
+     * F01.2.1 §6.6（F01.2 ⑤⑥）: ACTIVE の加盟が消えた（metadata.reason: TEAM_LEFT＝チームの離脱 / ORG_REMOVED＝組織の除名・
+     * 加盟 ID・group_id）。
+     */
+    TEAM_ORG_MEMBERSHIP_REMOVED(AuditEventCategory.TEAM),
+    /**
+     * F01.2.1 §4.1・§6.8（7-A）: 応答の無いまま期限（既定60日）を過ぎた PENDING（申請・招待）を夜間バッチが消した
+     * （操作者なし。metadata: 加盟 ID・組織・チーム・direction・group_id）。
+     */
+    TEAM_ORG_PENDING_EXPIRED(AuditEventCategory.TEAM),
 
     // ─── ORGANIZATION (Phase 2+) ──────────────────────────────
     ORGANIZATION_CREATED(AuditEventCategory.ORGANIZATION),

@@ -602,6 +602,9 @@ public class GlobalExceptionHandler {
             Map.entry("SHIFT_036", HttpStatus.TOO_MANY_REQUESTS),
             // F03.5 §11.3.5: 完全一致の重複割当（状態競合）→ 409
             Map.entry("SHIFT_042", HttpStatus.CONFLICT),                    // DUPLICATE_ASSIGNMENT
+            // CMP-261010-1432: 自己審査の禁止は明確な認可拒否 → 403、枠間移動の移動元不一致は状態競合 → 409
+            Map.entry("SHIFT_045", HttpStatus.FORBIDDEN),                   // SELF_REVIEW_FORBIDDEN
+            Map.entry("SHIFT_046", HttpStatus.CONFLICT),                    // MOVE_SOURCE_NOT_ASSIGNED
             // F08.7 シフト予算 (Phase 9-α: 逆算 API)
             Map.entry("SHIFT_BUDGET_001", HttpStatus.SERVICE_UNAVAILABLE),  // FEATURE_DISABLED
             Map.entry("SHIFT_BUDGET_002", HttpStatus.BAD_REQUEST),          // EMPTY_POSITION_LIST
@@ -1829,7 +1832,7 @@ public class GlobalExceptionHandler {
             Map.entry("ANNOUNCE_008", HttpStatus.NOT_FOUND),             // テンプレート不在 → 404
             Map.entry("ANNOUNCE_009", HttpStatus.FORBIDDEN),             // テンプレート操作権限なし → 403
             Map.entry("ANNOUNCE_010", HttpStatus.CONFLICT),              // テンプレート上限超過 → 409
-            Map.entry("BROADCAST_003", HttpStatus.NOT_FOUND),            // 一斉配信テンプレート不在 → 404
+            Map.entry("BROADCAST_003", HttpStatus.BAD_REQUEST),         // 一斉配信テンプレート不在・他スコープ → 400（F01.2.1 §8.6。存在を区別しない）
             Map.entry("ORG_064", HttpStatus.NOT_FOUND), // F01.2.1 §11 チームグループが見つかりません
             Map.entry("ORG_065", HttpStatus.CONFLICT), // F01.2.1 §11 同じ名前のチームグループがすでにあります
             Map.entry("ORG_066", HttpStatus.UNPROCESSABLE_ENTITY), // F01.2.1 §11 チームグループは1組織あたり100件までです
@@ -2154,19 +2157,14 @@ public class GlobalExceptionHandler {
             // 409。SKILL_001 は「カテゴリ不在」「名称重複」「非アクティブカテゴリ」の3意味で割れて
             // いたため、不在（404・SKILL_001 に限定）／名称重複（409・SKILL_009）／非アクティブ
             // （409・SKILL_010）に分割した。
-            // SKILL_003（スコープ越境の拒否／本人でもADMINでもない場合の権限拒否）は
-            // PARKING_020 に起点を持つ「越境は存在秘匿で404」の流儀に揃え、404固定とする
-            // （equipment/membership/todo/corkboard/pointcard で既に同じ流儀を採用）。
-            // かつては WARN=400 の既定のままだったため、404（SKILL_001/002＝不在）と
-            // 400（SKILL_003＝越境）でステータスが割れ、攻撃者が応答の違いだけで
-            // 「そのIDが実在するか」を判別できる存在オラクルになっていた（CMP-052想定）。
-            // 越境も権限拒否も「対象の存在自体を隠す」という同じ目的のため、不在と同一の
-            // 404に畳むのが正しい（不在側を400にする逆方向は選ばない）。
-            // 契約は MemberSkillScopeContractIT / SkillCategoryScopeContractIT が
-            // 「不在と越境の応答が一致すること」として固定している。
+            // SKILL_003 は非推奨・未使用（CMP-261010-2226）。資格 API の拒否は、同チームの権限不足を
+            // COMMON_002（403）、越境（非メンバー）を不在と完全一致の SKILL_002（404）に統一した。
+            // 秘匿は status だけでなく error.code・error.message まで不在時と一致して初めて成立する。
+            // 写像は互換のため残す。契約は MemberSkillAccessConcealmentContractIT /
+            // MemberSkillScopeContractIT / SkillCategoryScopeContractIT が固定している。
             Map.entry("SKILL_001", HttpStatus.NOT_FOUND),                   // カテゴリ不在
             Map.entry("SKILL_002", HttpStatus.NOT_FOUND),                   // 資格不在
-            Map.entry("SKILL_003", HttpStatus.NOT_FOUND),                   // スコープ越境・権限拒否（存在秘匿）
+            Map.entry("SKILL_003", HttpStatus.NOT_FOUND),                   // 非推奨・未使用（互換のため残置）
             Map.entry("SKILL_009", HttpStatus.CONFLICT),                    // カテゴリ名称の重複
             Map.entry("SKILL_010", HttpStatus.CONFLICT),                    // 非アクティブカテゴリへの登録
             Map.entry("SKILL_005", HttpStatus.CONFLICT),                    // 同一資格の重複登録

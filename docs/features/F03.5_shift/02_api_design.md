@@ -20,6 +20,7 @@
 | PATCH | `/api/v1/shifts/slots/{id}` | 必要 | スロット更新（部分更新、PUT から PATCH へ変更） |
 | DELETE | `/api/v1/shifts/slots/{id}` | 必要 | スロット削除（物理削除） |
 | PATCH | `/api/v1/shifts/slots/{id}/assignments` | 必要 | **【v2】D&D UI 用の差分割当 API（個別ユーザー追加・削除）** |
+| POST | `/api/v1/shifts/slots/{id}/assignments/move` | 必要 | **【CMP-261010-1432】枠間移動（1 トランザクションで移動元から外し移動先へ入れる）** |
 | GET | `/api/v1/shifts/requests` | 必要 | 希望一覧取得（管理者用、クエリパラメータ `scheduleId` でスケジュール絞り込み。旧 `GET /shifts/schedules/{id}/requests` を統合） |
 | GET | `/api/v1/shifts/requests/summary` | 必要 | 希望集計サマリー取得（管理者用） |
 | POST | `/api/v1/shifts/requests` | 必要 | 希望提出 |
@@ -50,6 +51,7 @@
 | GET | `/api/v1/shifts/schedules/{id}/assignment-runs` | 必要 | **【v2】自動割当の実行履歴一覧** |
 | GET | `/api/v1/shifts/assignment-runs/{runId}` | 必要 | **【v2】自動割当実行の詳細（スコアリング内訳・警告）** |
 | PATCH | `/api/v1/shifts/slots/{id}/assignments` | 必要 | **【v2】D&D UI 用の差分割当 API（個別ユーザー追加・削除）** |
+| POST | `/api/v1/shifts/slots/{id}/assignments/move` | 必要 | **【CMP-261010-1432】枠間移動（1 トランザクションで移動元から外し移動先へ入れる）** |
 | GET | `/api/v1/shifts/teams/{teamId}/work-constraints` | 必要 | **【v2】チームの勤務制約一覧（デフォルト + 個別、チームスコープ化）** |
 | GET | `/api/v1/shifts/teams/{teamId}/work-constraints/default` | 必要 | **【v2】チームデフォルト勤務制約を取得** |
 | PUT | `/api/v1/shifts/teams/{teamId}/work-constraints/default` | 必要 | **【v2】チームデフォルト勤務制約を作成・更新（upsert）** |
@@ -1798,6 +1800,37 @@ D&D UI 用の差分割当 API。個別ユーザーの追加・削除を `shift_s
 | 400 | バリデーションエラー（add/remove 両方空、無効な user_id 等） |
 | 403 | ADMIN / DEPUTY_ADMIN（MANAGE_SHIFTS）ではない |
 | 404 | スロットが存在しない |
+
+**【CMP-261010-1432】version の返却**: 枠の応答（`GET /schedules/{id}/slots` の各要素・`PATCH /slots/{id}`・本 API）はトップレベルに `version`（`shift_slots.version` の更新後の値）を返す。クライアントは次の操作でその値を `slotVersion` に送る（`0` 固定送信は 2 回目以降の操作で 409 `SHIFT_018` になる）。
+
+#### `POST /api/v1/shifts/slots/{id}/assignments/move`【CMP-261010-1432 新規】
+
+ボードの D&D で「枠 X の割当メンバーを枠 Y へ移す」操作を **1 トランザクション** で行う。削除と追加を 2 回の `PATCH /assignments` に分けると、追加が拒否されたときに移動元の割当だけが失われるため、本 API を使う。
+
+**リクエストボディ**
+```json
+{
+  "targetSlotId": 102,
+  "userId": 12,
+  "sourceSlotVersion": 3,
+  "targetSlotVersion": 5
+}
+```
+
+- パスの `{id}` が移動元の枠。`targetSlotId` は**同じシフト表**の別の枠であること
+- `sourceSlotVersion` / `targetSlotVersion`: 必須。両枠の楽観的ロック（現行値と一致しなければ 409）
+
+**レスポンス（200 OK）**: `{ "source": <ShiftSlotResponse>, "target": <ShiftSlotResponse> }`。両枠とも更新後の `version` を含む。移動先の時間帯が同じメンバーの他の枠と重なる場合は `target.warnings` に警告を入れる（`PATCH /assignments` と同じ規則）
+
+**認可・存在秘匿**: `PATCH /slots/{id}/assignments` と同じ（SYSTEM_ADMIN、または当該チームの ADMIN/DEPUTY_ADMIN）。移動先の検査は認可の後に行い、別シフト表（同チーム）・別チームの枠・不在の枠は**いずれも不在と同一の 404 `SHIFT_002`**（status・code・message まで一致）
+
+**エラーレスポンス**（いずれの拒否でも両枠とも変更しない）
+| ステータス | 条件 |
+|-----------|------|
+| 400 | バリデーションエラー / 移動元と移動先が同じ枠（`COMMON_001`）/ 移動先が満員（`SHIFT_017`） |
+| 403 | 同チームの一般メンバー・SUPPORTER（`COMMON_002`） |
+| 404 | 移動元・移動先の枠が不在、越境、移動先が別シフト表（`SHIFT_002`） |
+| 409 | version 不一致（`SHIFT_018`）/ 移動元に当該メンバーが割り当てられていない（`SHIFT_046`）/ 移動先に既に割り当て済み・同一時間帯の別枠に割当済み（`SHIFT_042`） |
 | 409 | 楽観的ロック競合 / 追加対象ユーザーが ABSOLUTE_REST を提出している / PUBLISHED 状態で時間帯・必要人数変更に該当する操作 |
 
 ---
@@ -1969,7 +2002,7 @@ D&D UI 用の差分割当 API。個別ユーザーの追加・削除を `shift_s
 | 400 | バリデーションエラー（reason 空、request_type 不正、target_slot_id が他スケジュール等） |
 | 403 | チームメンバーではない / 他人の割当に対する依頼 / SUPPORTER・GUEST |
 | 404 | schedule_id / slot_id が存在しない |
-| 409 | `status` が `PUBLISHED / ARCHIVED`（shift_swap_requests の管轄に案内） |
+| 409 | `status` が `PUBLISHED / ARCHIVED`（shift_swap_requests の管轄に案内）。`SHIFT_012`（INVALID_SCHEDULE_STATUS）。**【CMP-261010-1432】で実装**（それまで状態を見ずに作成していた）。認可（非メンバーは不在と同一の 404）の後に判定し、行は作らない |
 | 429 | 同一スケジュールに対する自分の `OPEN` 状態の依頼数が 5 件を超過 |
 
 ---
@@ -2013,6 +2046,7 @@ D&D UI 用の差分割当 API。個別ユーザーの追加・削除を `shift_s
 }
 ```
 
+- **【CMP-261010-1432】実装上の応答形**: 各要素のトップレベルに `requesterName`（依頼者の表示名。退会者など解決できない場合は `null`）を持つ。名前解決は一覧 1 回のバッチ（`NameResolverService#resolveUserDisplayNames`）で行い、件数に依らずクエリ数は一定。`requestInfo.requestedBy`（userId）は従来どおり残す
 - **権限フィルタ**: MEMBER は自分の依頼のみ返却（バックエンドで強制適用。URL 直打ちで他人の一覧は取得不可）。ADMIN / DEPUTY_ADMIN（MANAGE_SHIFTS）はスケジュール全体を閲覧可能
 - **管理画面ソート**: `status = OPEN` を先頭に、続いて `created_at DESC` の複合ソート（未処理を優先表示）
 
@@ -2069,6 +2103,7 @@ D&D UI 用の差分割当 API。個別ユーザーの追加・削除を `shift_s
 |-----------|------|
 | 400 | `action` が ACCEPTED / REJECTED 以外 |
 | 403 | ADMIN / DEPUTY_ADMIN（MANAGE_SHIFTS）ではない |
+| 403 | **【CMP-261010-1432】** `SHIFT_045`: 依頼者本人による審査（自己審査）。SYSTEM_ADMIN も例外なし。自分の依頼は取下げ（`DELETE`）で代替する。判定は `status`・`version` の照合より先に行う（version が古い自己審査も 403 `SHIFT_045`） |
 | 404 | 依頼が存在しない |
 | 409 | `status != 'OPEN'`（二重審査防止）/ 楽観的ロック競合 |
 

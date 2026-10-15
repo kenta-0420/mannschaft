@@ -67,7 +67,9 @@ public class SystemAdminScopeForceUnarchiveController {
 
         String normalizedScopeType = normalizeScopeType(scopeType);
         if (SCOPE_TEAM.equals(normalizedScopeType)) {
-            teamService.unarchiveTeam(scopeId);
+            // 加盟（team_org_memberships）の片付けを admin のトランザクションに持ち込まない（CLAUDE.md 原則5・D-3T）。
+            // 閉鎖前の PENDING は team ドメインがコミット後に自分の tx で片付ける（F01.2.1 2-D・§4.5）
+            teamService.unarchiveTeamDeferringAffiliationCleanup(scopeId);
         } else {
             organizationService.unarchiveOrganization(scopeId);
         }
