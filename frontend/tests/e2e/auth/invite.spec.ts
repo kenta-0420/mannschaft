@@ -26,11 +26,56 @@ test.describe('AUTH-009: 招待リンク', () => {
         JSON.stringify({ id: 1, email: 'invite@example.test', fullName: '招待テスト' }),
       )
     })
-    await page.route('**/api/v1/auth/refresh', (route) =>
+    const unexpectedApiRequests: string[] = []
+    const mockedPaths = [
+      '/api/v1/invite/validtoken123',
+      '/api/v1/me/scope-folders',
+      '/api/v1/feature-flags',
+      '/api/v1/settings/nav',
+      '/api/v1/dashboard/scope-tabs',
+    ]
+    page.on('request', (request) => {
+      const path = new URL(request.url()).pathname
+      if (path.startsWith('/api/v1/') && !mockedPaths.includes(path))
+        unexpectedApiRequests.push(path)
+    })
+    // 認証済み起動時の依存も限定モックし、実BEの401によるglobal logoutを防ぐ。
+    await page.route('**/api/v1/me/scope-folders?scopeType=TEAM', (route) =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: { accessToken: 'mock-access-token', expiresIn: 900 } }),
+        body: JSON.stringify({ data: [] }),
+      }),
+    )
+    await page.route('**/api/v1/feature-flags', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [] }),
+      }),
+    )
+    await page.route('**/api/v1/settings/nav', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { features: [] } }),
+      }),
+    )
+    await page.route('**/api/v1/dashboard/scope-tabs?**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            items: [],
+            page: 0,
+            page_size: 10,
+            total_pages: 0,
+            total_count: 0,
+            has_next: false,
+            has_prev: false,
+          },
+        }),
       }),
     )
     await page.route('**/api/v1/invite/validtoken123', (route) =>
@@ -46,5 +91,7 @@ test.describe('AUTH-009: 招待リンク', () => {
     await waitForHydration(page)
     await expect(page.getByText('テストチーム', { exact: true })).toBeVisible()
     await expect(page.getByTestId('invite-join-button')).toBeVisible()
+    await expect(page.locator('[data-testid="invite-folder-picker"] select')).toBeEnabled()
+    expect(unexpectedApiRequests).toEqual([])
   })
 })
