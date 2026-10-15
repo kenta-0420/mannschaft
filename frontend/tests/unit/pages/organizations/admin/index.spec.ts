@@ -46,18 +46,20 @@ describe('pages/organizations/[slug]/admin/index.vue — カードが実リン�
     const wrapper = await mountSuspended(OrgAdminConsolePage)
     await flushMicrotasks()
 
-    // to を持つカードは budget/payments/paymentRequests/members/settings/teamAffiliation/pointCards の7件（approvals は to: null）。
+    // to を持つカードは budget/payments/paymentRequests/members/memberCards/settings/teamAffiliation/pointCards の8件（approvals は to: null）。
     const anchors = wrapper.findAll('a[href]')
-    expect(anchors.length).toBe(7)
+    expect(anchors.length).toBe(8)
   })
 
-  it('OAC-002: 「設定」カードの href が /organizations/org-000004/settings/faq-settings を指す', async () => {
+  it('OAC-002: 設定・メンバー管理・QR会員証管理がそれぞれの画面を指す', async () => {
     const wrapper = await mountSuspended(OrgAdminConsolePage)
     await flushMicrotasks()
 
     const anchors = wrapper.findAll('a[href]')
     const hrefs = anchors.map(a => a.attributes('href'))
     expect(hrefs).toContain('/organizations/org-000004/settings/faq-settings')
+    expect(hrefs).toContain('/organizations/org-000004/members')
+    expect(hrefs).toContain('/organizations/org-000004/member-cards')
   })
 })
 
