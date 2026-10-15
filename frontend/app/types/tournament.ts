@@ -474,7 +474,7 @@ export interface TeamMemberCandidate {
   displayName: string
   memberNumber: string | null
   position: string | null
-  isAlreadyEntered: boolean
+  alreadyEntered: boolean
 }
 
 export interface EntryMemberListResponse {

@@ -314,6 +314,76 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     await user.context().close()
   })
 
+  // ---------------------------------------------------------------- アリシゼーション確定不備 ALIC-1〜3
+  test('ALIC-1/2/3 [画面] 390px 幅: ページが横にはみ出さず、既存メンバーは選択済みで何も触らず保存しても消えず、ポジション欄を押せる', async ({ browser }) => {
+    const user = await newPage(browser, userCred)
+    const errs = watchErrors(user)
+    // 前提データ作成（API）: 両 participant に USER を既存エントリーとして入れる（画面で先に開くのがどちらでも検証できるように）
+    for (const pId of [pA1, pA2]) {
+      const put = await api(user.request, 'put', base(ORG_A, tIdA, divA, pId), {
+        members: [{ userId: USER_ID, jerseyNumber: 9, position: 'ALIC', notes: 'alic', sortOrder: 1 }],
+      })
+      expect(put.status, put.text).toBe(200)
+    }
+
+    await user.setViewportSize({ width: 390, height: 844 })
+    await user.goto(`/organizations/${ORG_A_SLUG}/tournaments/${tIdA}`)
+    await waitForHydration(user)
+    await dismissPermissionSetup(user)
+    await expect(user.getByTestId(`tournament-division-tab-${divA}`)).toBeVisible({ timeout: 60_000 })
+    // ALIC-3: 上部リンク行が折り返し、ページ横はみ出しが無い
+    const overflow = () => user.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+    expect(await overflow()).toBeLessThanOrEqual(0)
+
+    await user.getByRole('button', { name: 'エントリー管理' }).first().click()
+    const dialog = user.getByRole('dialog')
+    await expect(dialog).toBeVisible({ timeout: 20_000 })
+    await expect(dialog.locator('[id^="member-"]').first()).toBeVisible({ timeout: 20_000 })
+    expect(await overflow()).toBeLessThanOrEqual(0)
+
+    // ALIC-3: モーダル自体と、保存・閉じるが viewport 内にある（保存ボタンは必要ならスクロールして到達できる）
+    const vw = 390
+    const box = await dialog.boundingBox()
+    expect(box!.x).toBeGreaterThanOrEqual(0)
+    expect(box!.x + box!.width).toBeLessThanOrEqual(vw)
+    const closeBtn = dialog.locator('.p-dialog-footer button').last()
+    await closeBtn.scrollIntoViewIfNeeded()
+    const closeBox = await closeBtn.boundingBox()
+    expect(closeBox!.x).toBeGreaterThanOrEqual(0)
+    expect(closeBox!.x + closeBox!.width).toBeLessThanOrEqual(vw)
+    const saveBtn = dialog.getByRole('button', { name: 'エントリーを保存' }).last()
+    await saveBtn.scrollIntoViewIfNeeded()
+    const saveBox = await saveBtn.boundingBox()
+    expect(saveBox!.x).toBeGreaterThanOrEqual(0)
+    expect(saveBox!.x + saveBox!.width).toBeLessThanOrEqual(vw)
+
+    // ALIC-1: 既存メンバー（USER）の行は選択済みで、「登録済み」タグが出ている
+    const selectedRows = dialog.locator('div.rounded.border input[type="checkbox"]:checked')
+    expect(await selectedRows.count()).toBeGreaterThanOrEqual(1)
+
+    // ALIC-2: 選択済み行のポジション欄が、背番号欄に覆われずクリックできる（trial は他要素に遮られると失敗する）
+    const selectedRow = dialog.locator('div.rounded.border').filter({ has: user.locator('input[type="checkbox"]:checked') }).first()
+    const pos = selectedRow.getByPlaceholder('ポジション')
+    await pos.click({ trial: true, timeout: 10_000 })
+    await pos.click()
+    await pos.focus()
+    const jersey = selectedRow.getByPlaceholder('背番号')
+    const jb = await jersey.boundingBox()
+    const pb = await pos.boundingBox()
+    expect(jb!.x + jb!.width).toBeLessThanOrEqual(pb!.x + 1) // 背番号欄がポジション欄に重ならない
+
+    // ALIC-1: 何も変えずに保存しても、既存エントリーは全消しにならない
+    await saveBtn.click()
+    await expect(user.getByText('エントリーを保存しました')).toBeVisible({ timeout: 20_000 })
+    const a1 = await api(user.request, 'get', base(ORG_A, tIdA, divA, pA1))
+    const a2 = await api(user.request, 'get', base(ORG_A, tIdA, divA, pA2))
+    const counts = [a1.body.data.entryCount, a2.body.data.entryCount]
+    expect(counts.sort(), JSON.stringify(counts)).toEqual([1, 1])
+    expect(await overflow()).toBeLessThanOrEqual(0)
+    expect(errs.server, errs.server.join('\n')).toHaveLength(0)
+    await user.context().close()
+  })
+
   test('AC2/AC5 [画面] チームの roster.vue がエントリーテンプレートを読みに行き、500 を出さない', async ({ browser }) => {
     const user = await newPage(browser, userCred)
     const errs = watchErrors(user)

@@ -1,6 +1,12 @@
 {
   "tournament": {
     "detail": {
+      "backToList": "大会一覧に戻る",
+      "noParticipants": "参加チームがいません",
+      "teamName": "チーム名",
+      "entryCount": "エントリー数",
+      "actions": "操作",
+      "manageEntry": "エントリー管理",
       "noDivisions": "部門が登録されていません",
       "divisionsLoadError": "部門一覧の取得に失敗しました",
       "loadError": "大会情報の取得に失敗しました"
@@ -20,6 +26,8 @@
       }
     },
     "entry": {
+      "name": "名前",
+      "overwriteExisting": "既存のエントリーを上書きする",
       "title": "エントリー管理",
       "memberCount": "{count}名",
       "countRange": "{min}〜{max}名",
@@ -44,7 +52,7 @@
         "delete": "テンプレートを削除",
         "maxCount": "最大5件まで作成できます",
         "noTemplates": "テンプレートがありません",
-        "name": "テンプレート名",
+      "name": "テンプレート名",
         "description": "説明",
         "members": "選手一覧",
         "error": {

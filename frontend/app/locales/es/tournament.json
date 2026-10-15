@@ -1,6 +1,12 @@
 {
   "tournament": {
     "detail": {
+      "backToList": "Volver a los torneos",
+      "noParticipants": "No hay equipos participantes",
+      "teamName": "Nombre del equipo",
+      "entryCount": "Inscripciones",
+      "actions": "Acciones",
+      "manageEntry": "Gestionar inscripciones",
       "noDivisions": "No hay divisiones registradas",
       "divisionsLoadError": "No se pudo cargar la lista de divisiones",
       "loadError": "No se pudo cargar el torneo"
@@ -20,6 +26,8 @@
       }
     },
     "entry": {
+      "name": "Nombre",
+      "overwriteExisting": "Sobrescribir las inscripciones existentes",
       "title": "Gestión de inscripción",
       "memberCount": "{count} miembros",
       "countRange": "{min}〜{max} miembros",
@@ -44,7 +52,7 @@
         "delete": "Eliminar plantilla",
         "maxCount": "Se pueden crear hasta 5 plantillas",
         "noTemplates": "No hay plantillas",
-        "name": "Nombre de la plantilla",
+      "name": "Nombre de la plantilla",
         "description": "Descripción",
         "members": "Jugadores",
         "error": {

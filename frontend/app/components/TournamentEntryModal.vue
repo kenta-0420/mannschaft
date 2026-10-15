@@ -144,17 +144,24 @@ function buildMemberForms(candidates: TeamMemberCandidate[]) {
   // 既存エントリーの情報をマップ化
   const existingMap = new Map(entryMembers.value.map(m => [m.userId, m]))
 
-  memberForms.value = candidates.map(c => {
+  // 退団などで候補から外れた既存メンバーも、保存で暗黙に削除しない。
+  const candidateIds = new Set(candidates.map(c => c.userId))
+  const editableMembers = [
+    ...candidates,
+    ...entryMembers.value.filter(m => !candidateIds.has(m.userId)),
+  ]
+
+  memberForms.value = editableMembers.map(c => {
     const existing = existingMap.get(c.userId)
     return {
       userId: c.userId,
       displayName: c.displayName,
       memberNumber: c.memberNumber,
-      isAlreadyEntered: c.isAlreadyEntered,
+      isAlreadyEntered: existing !== undefined,
       jerseyNumber: existing?.jerseyNumber ?? null,
       position: existing?.position ?? c.position ?? null,
       notes: existing?.notes ?? null,
-      selected: c.isAlreadyEntered,
+      selected: existing !== undefined,
     }
   })
 }
@@ -359,7 +366,7 @@ watch(
               {{ data.position ?? '—' }}
             </template>
           </Column>
-          <Column header="名前" field="displayName" />
+          <Column :header="t('tournament.entry.name')" field="displayName" />
           <Column :header="t('tournament.entry.notes')" field="notes">
             <template #body="{ data }">
               {{ data.notes ?? '—' }}
@@ -403,7 +410,7 @@ watch(
           <div class="flex items-center gap-2">
             <Checkbox v-model="overwriteExisting" binary input-id="overwrite" />
             <label for="overwrite" class="text-sm cursor-pointer">
-              既存のエントリーを上書きする
+              {{ t('tournament.entry.overwriteExisting') }}
             </label>
           </div>
         </div>

@@ -13,6 +13,10 @@ import TournamentEntryModal from '~/components/TournamentEntryModal.vue'
  *   ENT-005: テンプレート適用の { data } 包みの応答を剥がして一覧に反映する
  *   ENT-006: 保存（upsert）の { data } 包みの応答を剥がして一覧に反映する
  *   ENT-007: チームから一括ロードの { data } 包みの応答を剥がして一覧に反映する
+ *   ENT-008: BE の JSON キー alreadyEntered で既存メンバーが選択済みになり、何も触らず保存しても PUT に残る（ALIC-1）
+ *   ENT-009: 一括ロード後に保存すると追加分も PUT に含まれる（ALIC-1）
+ *   ENT-010: テンプレート適用後に保存すると追加分も PUT に含まれる（ALIC-1）
+ *   ENT-011: 候補一覧に居ない既存エントリーも保存で黙って消えない（ALIC-1）
  *
  * Dialog は Teleport で body 直下に描画されるため document.body から探す。
  */
@@ -61,8 +65,8 @@ const membersRes = {
       },
     ],
     teamMemberCandidates: [
-      { userId: 1, displayName: '山田太郎', memberNumber: null, position: 'GK', isAlreadyEntered: true },
-      { userId: 2, displayName: '佐藤次郎', memberNumber: null, position: null, isAlreadyEntered: false },
+      { userId: 1, displayName: '山田太郎', memberNumber: null, position: 'GK', alreadyEntered: true },
+      { userId: 2, displayName: '佐藤次郎', memberNumber: null, position: null, alreadyEntered: false },
     ],
     entryCount: 1,
     minEntryCount: null,
@@ -142,8 +146,7 @@ describe('TournamentEntryModal.vue', () => {
       data: { applied: 1, skipped: 0, skippedInactive: 0, total: 2, entryMembers: afterEntryMembers },
     })
     const wrapper = await mountModal()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(wrapper.vm as any).selectedTemplateId = 't-1'
+    ;(wrapper.vm as unknown as { selectedTemplateId: string | null }).selectedTemplateId = 't-1'
     await flushPromises()
 
     findButton('tournament.entry.template.apply').click()
@@ -181,5 +184,88 @@ describe('TournamentEntryModal.vue', () => {
 
     expect(loadEntryMembersFromTeam).toHaveBeenCalledWith('org-000009', 12, 5, 31, { overwriteExisting: false })
     expect(document.body.textContent).toContain('鈴木三郎')
+  })
+  /** 保存ボタン（手動編集セクション側）を押す */
+  async function clickSave() {
+    const saveButtons = Array.from(document.body.querySelectorAll('button'))
+      .filter(b => b.textContent?.includes('tournament.entry.saveMembers'))
+    saveButtons[saveButtons.length - 1]!.click()
+    await flushPromises()
+  }
+
+  function putUserIds(): number[] {
+    const body = upsertEntryMembers.mock.calls[0]![4] as { members: { userId: number }[] }
+    return body.members.map(m => m.userId)
+  }
+
+  const candidates3 = [
+    { userId: 1, displayName: '山田太郎', memberNumber: null, position: 'GK', alreadyEntered: true },
+    { userId: 2, displayName: '佐藤次郎', memberNumber: null, position: null, alreadyEntered: false },
+    { userId: 3, displayName: '鈴木三郎', memberNumber: null, position: null, alreadyEntered: false },
+  ]
+
+  it('ENT-008: alreadyEntered の既存メンバーは選択済みで、何も触らず保存しても PUT に残る', async () => {
+    upsertEntryMembers.mockResolvedValue({
+      data: { entryMembers: [member('em-1', 1, '山田太郎')], entryCount: 1, minEntryCount: null, maxEntryCount: null },
+    })
+    await mountModal()
+    await clickSave()
+
+    expect(putUserIds()).toEqual([1])
+  })
+
+  it('ENT-009: 一括ロード後に保存すると追加分も PUT に含まれる', async () => {
+    getEntryMembers.mockResolvedValue({
+      data: { ...membersRes.data, teamMemberCandidates: candidates3 },
+    })
+    loadEntryMembersFromTeam.mockResolvedValue({
+      data: { added: 1, skipped: 0, total: 2, entryMembers: afterEntryMembers },
+    })
+    upsertEntryMembers.mockResolvedValue({
+      data: { entryMembers: afterEntryMembers, entryCount: 2, minEntryCount: null, maxEntryCount: null },
+    })
+    await mountModal()
+    findButton('tournament.entry.loadFromTeam').click()
+    await flushPromises()
+    await clickSave()
+
+    expect(putUserIds().sort()).toEqual([1, 3])
+  })
+
+  it('ENT-010: テンプレート適用後に保存すると追加分も PUT に含まれる', async () => {
+    getEntryMembers.mockResolvedValue({
+      data: { ...membersRes.data, teamMemberCandidates: candidates3 },
+    })
+    applyEntryTemplate.mockResolvedValue({
+      data: { applied: 1, skipped: 0, skippedInactive: 0, total: 2, entryMembers: afterEntryMembers },
+    })
+    upsertEntryMembers.mockResolvedValue({
+      data: { entryMembers: afterEntryMembers, entryCount: 2, minEntryCount: null, maxEntryCount: null },
+    })
+    const wrapper = await mountModal()
+    ;(wrapper.vm as unknown as { selectedTemplateId: string | null }).selectedTemplateId = 't-1'
+    await flushPromises()
+    findButton('tournament.entry.template.apply').click()
+    await flushPromises()
+    await clickSave()
+
+    expect(putUserIds().sort()).toEqual([1, 3])
+  })
+
+  it('ENT-011: 候補一覧に居ない既存エントリー（チームを抜けた人）も保存で消えない', async () => {
+    getEntryMembers.mockResolvedValue({
+      data: {
+        ...membersRes.data,
+        entryMembers: [member('em-1', 1, '山田太郎'), member('em-9', 9, '退団四郎')],
+        teamMemberCandidates: membersRes.data.teamMemberCandidates,
+      },
+    })
+    upsertEntryMembers.mockResolvedValue({
+      data: { entryMembers: [], entryCount: 0, minEntryCount: null, maxEntryCount: null },
+    })
+    await mountModal()
+    await clickSave()
+
+    expect(putUserIds().sort()).toEqual([1, 9])
   })
 })
