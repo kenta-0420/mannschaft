@@ -53,11 +53,13 @@ import org.springframework.test.context.bean.override.convention.TestBean;
 
 import java.nio.ByteBuffer;
 import java.time.Clock;
+import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.temporal.TemporalAdjusters;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -312,7 +314,10 @@ class RecallRewardWeekTemporalIT extends AbstractMySqlIntegrationTest {
     private void publishAckPolicy(UUID id) {
         var rules = new EnumMap<RanchRewardSourceType, RanchRewardPolicySnapshot.SourceRule>(RanchRewardSourceType.class);
         for (var type : RanchRewardSourceType.values()) rules.put(type, new RanchRewardPolicySnapshot.SourceRule(true, 1, 20));
-        var snapshot = new RanchRewardPolicySnapshot(id, 1, START.minusSeconds(3600), true, 20, rules,
+        var effectiveAt = START.atZone(ZoneOffset.UTC).toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                .atStartOfDay(ZoneOffset.UTC).toInstant();
+        var snapshot = new RanchRewardPolicySnapshot(id, 1, effectiveAt, true, 20, rules,
                 new RanchRewardPolicySnapshot.DeliverySettings(25, 30, 4, 2, 20), "PHASE1_TEST");
         var encoded = RanchRewardPolicyCodec.encode(snapshot, mapper);
         var policy = RanchRewardPolicyEntity.builder().versionNumber(1).effectiveAt(snapshot.effectiveAt()).schemaVersion(1)
