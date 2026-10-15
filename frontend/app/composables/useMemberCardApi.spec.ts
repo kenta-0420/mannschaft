@@ -1,8 +1,9 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { useMemberCardApi } from './useMemberCardApi'
 const api = vi.hoisted(() => vi.fn())
-mockNuxtImport('useApi', () => () => api)
+vi.mock('~/composables/useApi', () => ({ useApi: () => api }))
+vi.stubGlobal('useApi', () => api)
 
 describe('useMemberCardApi 管理契約', () => {
   beforeEach(() => api.mockReset())

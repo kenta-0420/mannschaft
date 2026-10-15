@@ -37,7 +37,7 @@ export function useMemberCardApi() {
    * BE はどちらも解釈せず `meta` も送らないため、総件数は常に undefined だった（CMP-260912-1823）。
    *
    * @param id    会員カードID
-   * @param range 取得期間（ISO 8601）。未指定なら全期間
+   * @param range 取得期間（ISO 8601）。未指定ならBE既定の直近30日間
    */
   async function getCheckins(id: number, range?: { from?: string; to?: string }) {
     const query = new URLSearchParams()

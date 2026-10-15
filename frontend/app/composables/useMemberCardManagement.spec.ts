@@ -1,20 +1,37 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mockNuxtImport } from '@nuxt/test-utils/runtime'
-import { ref } from 'vue'
+import { ref, shallowRef } from 'vue'
+import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
 import { useMemberCardManagement } from './useMemberCardManagement'
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 const mocks = vi.hoisted(() => ({
   listByTeam: vi.fn(), listByOrg: vi.fn(), getTeamCheckinStats: vi.fn(), suspend: vi.fn(), reactivate: vi.fn(),
   getTeam: vi.fn(), getOrganization: vi.fn(), loadPermissions: vi.fn(), handleApiError: vi.fn(), success: vi.fn(),
 }))
-mockNuxtImport('useMemberCardApi', () => () => mocks)
-mockNuxtImport('useTeamApi', () => () => mocks)
-mockNuxtImport('useOrganizationApi', () => () => mocks)
-mockNuxtImport('useRoleAccess', () => () => ({ loadPermissions: mocks.loadPermissions, isAdminOrDeputy: ref(true) }))
-mockNuxtImport('useDatetime', () => () => ({ userTimezone: ref('Asia/Tokyo') }))
-mockNuxtImport('useErrorHandler', () => () => ({ handleApiError: mocks.handleApiError }))
-mockNuxtImport('useNotification', () => () => ({ success: mocks.success }))
-mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
+
+// APIとVueのリアクティビティのみを使うためNuxtアプリを起動しない。
+vi.mock('~/composables/useMemberCardApi', () => ({ useMemberCardApi: () => mocks }))
+vi.mock('~/composables/useTeamApi', () => ({ useTeamApi: () => mocks }))
+vi.mock('~/composables/useOrganizationApi', () => ({ useOrganizationApi: () => mocks }))
+vi.mock('~/composables/useRoleAccess', () => ({ useRoleAccess: () => ({ loadPermissions: mocks.loadPermissions, isAdminOrDeputy: ref(true) }) }))
+vi.mock('~/composables/useDatetime', () => ({ useDatetime: () => ({ userTimezone: ref('Asia/Tokyo') }) }))
+vi.mock('~/composables/useErrorHandler', () => ({ useErrorHandler: () => ({ handleApiError: mocks.handleApiError }) }))
+vi.mock('~/composables/useNotification', () => ({ useNotification: () => ({ success: mocks.success }) }))
+vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
+vi.stubGlobal('ref', ref)
+vi.stubGlobal('shallowRef', shallowRef)
+vi.stubGlobal('useMemberCardApi', () => mocks)
+vi.stubGlobal('useTeamApi', () => mocks)
+vi.stubGlobal('useOrganizationApi', () => mocks)
+vi.stubGlobal('useRoleAccess', () => ({ loadPermissions: mocks.loadPermissions, isAdminOrDeputy: ref(true) }))
+vi.stubGlobal('useDatetime', () => ({ userTimezone: ref('Asia/Tokyo') }))
+vi.stubGlobal('useErrorHandler', () => ({ handleApiError: mocks.handleApiError }))
+vi.stubGlobal('useNotification', () => ({ success: mocks.success }))
+vi.stubGlobal('useI18n', () => ({ t: (key: string) => key }))
 
 describe('useMemberCardManagement', () => {
   beforeEach(() => {
