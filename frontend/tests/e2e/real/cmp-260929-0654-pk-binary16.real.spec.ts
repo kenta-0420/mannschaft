@@ -40,7 +40,7 @@ const ORG_A = 9
 const ORG_A_SLUG = 'org-000009'
 const TEAM_A1 = 1
 const TEAM_A2 = 2
-// 権限なし側: org 4 / team 4（USER は両方 MEMBER）。entry-members 側は org 1（USER は MEMBER）の大会に team 4 を参加させて使う
+// 権限なし側: org 4 / team 4（USER は両方 MEMBER）。entry-members 側も org 1 に自分専用大会を作って使う
 const ORG_B = 4
 const TEAM_B = 4
 const ORG_C = 1
@@ -144,16 +144,20 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     pA1 = await ensureParticipant(user.request, ORG_A, tIdA, divA, TEAM_A1, 'user')
     pA2 = await ensureParticipant(user.request, ORG_A, tIdA, divA, TEAM_A2, 'user')
 
-    // 権限なし側: org 1 の既存 DRAFT/OPEN 大会のディビジョンに team 4 を参加させる（参加追加は SYSTEM_ADMIN）
-    const list = await api(admin.request, 'get', `/organizations/${ORG_C}/tournaments?size=50`)
-    expect(list.status, list.text).toBe(200)
-    const cands = (list.body.data as { id: number; structure?: { status?: string } }[]).filter((x) => ['DRAFT', 'OPEN'].includes(x.structure?.status ?? ''))
-    for (const c of cands) {
-      const divs = await api(admin.request, 'get', `/organizations/${ORG_C}/tournaments/${c.id}/divisions`)
-      const first = (divs.body.data as { id: number }[] | undefined)?.[0]
-      if (first) { tIdC = c.id; divC = first.id; break }
-    }
-    expect(tIdC, 'org 1 に DRAFT/OPEN でディビジョンを持つ大会が必要').toBeGreaterThan(0)
+    // 権限なし側も自分専用の大会・部門・参加行を作り、既存エントリー表を全置換しない。
+    const tc = await api(admin.request, 'post', `/organizations/${ORG_C}/tournaments`, {
+      name: `PKB16-member-${SUFFIX}`, format: 'LEAGUE', season: '2026', startDate: '2026-10-10', endDate: '2026-12-30',
+      winPoints: 3, drawPoints: 1, lossPoints: 0, hasDraw: true, hasSets: false, visibility: 'MEMBERS_AND_ABOVE',
+    })
+    expect(tc.status, tc.text).toBe(201)
+    tIdC = Number(tc.body.data?.id)
+    console.info('[entry-real-created-tournament]', JSON.stringify({ org: ORG_C, id: tIdC, name: `PKB16-member-${SUFFIX}` }))
+    const dc = await api(admin.request, 'post', `/organizations/${ORG_C}/tournaments/${tIdC}/divisions`, {
+      name: 'D-member', level: 1, promotionSlots: 0, relegationSlots: 0, maxParticipants: 12, sortOrder: 1,
+    })
+    expect(dc.status, dc.text).toBe(201)
+    divC = Number(dc.body.data?.id)
+    console.info('[entry-real-created-division]', JSON.stringify({ org: ORG_C, tournament: tIdC, id: divC }))
     pC4 = await ensureParticipant(admin.request, ORG_C, tIdC, divC, TEAM_B, 'admin')
 
     await admin.context().close()
@@ -589,7 +593,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
   test.afterAll(async ({ browser }) => {
     const admin = await newPage(browser, adminCred)
     const user = await newPage(browser, userCred)
-    // 既存大会側も含め、本 spec が新規作成した参加チームだけを後始末する。
+    // 本 spec が新規作成した参加チームだけを、各作成主体で後始末する。
     for (const p of createdParticipants) {
       const creatorRequest = p.actor === 'user' ? user.request : admin.request
       const removed = await api(creatorRequest, 'delete', `/organizations/${p.org}/tournaments/${p.tournament}/divisions/${p.division}/participants/${p.id}`)
@@ -600,7 +604,14 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
       const removed = await api(creatorRequest, 'delete', `/organizations/${t.org}/teams/${t.team}/entry-templates/${t.id}`)
       expect(removed.status, removed.text).toBe(204)
     }
-    await api(user.request, 'delete', `/organizations/${ORG_A}/tournaments/${tIdA}`)
+    if (tIdA > 0) {
+      const removed = await api(user.request, 'delete', `/organizations/${ORG_A}/tournaments/${tIdA}`)
+      expect(removed.status, removed.text).toBe(204)
+    }
+    if (tIdC > 0) {
+      const removed = await api(admin.request, 'delete', `/organizations/${ORG_C}/tournaments/${tIdC}`)
+      expect(removed.status, removed.text).toBe(204)
+    }
     await admin.context().close()
     await user.context().close()
   })
