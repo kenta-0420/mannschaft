@@ -28,6 +28,7 @@ import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -44,6 +45,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** 実MySQL/Guardで耐久受付の原子性を検証する。fixtureの資格をHTTPの時点認可証拠へ流用しない。 */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
+@Isolated
 class ReflectionRanchTransportIT extends AbstractMySqlIntegrationTest {
     @Autowired private UserRepository users;
     @Autowired private ReflectionThemeRepository themes;
@@ -152,9 +154,14 @@ class ReflectionRanchTransportIT extends AbstractMySqlIntegrationTest {
         return deliveryGuard.withLockedDeliveryUser(owner,state->transport.accept(fact));
     }
     private RecallSessionResponse completed(LocalDate date) {
-        UUID entry=entries.saveAndFlush(ReflectionEntryEntity.builder().userId(owner).themeId(themeId)
+        return completedEntry(entry(date));
+    }
+    private UUID entry(LocalDate date) {
+        return entries.saveAndFlush(ReflectionEntryEntity.builder().userId(owner).themeId(themeId)
                 .targetDate(date).structuredContent("{\"free_note\":\"原文fixture\"}")
                 .visibility(ReflectionVisibility.PRIVATE).build()).getId();
+    }
+    private RecallSessionResponse completedEntry(UUID entry) {
         var started=operations.start(owner,entry,UUID.randomUUID(),mapper.createObjectNode());
         var body=mapper.valueToTree(Map.of("version",started.version(),"answers",List.of(Map.of(
                 "promptId",started.prompts().getFirst().id().toString(),"state","ANSWERED","text","回答fixture")),
@@ -213,6 +220,129 @@ class ReflectionRanchTransportIT extends AbstractMySqlIntegrationTest {
                 java.time.Instant stored=probeJdbc.queryForObject("SELECT lease_expires_at FROM reflection_ranch_outboxes WHERE id=? AND lease_token=? AND status='LEASED'",(rs,index)->rs.getTimestamp(1,com.mannschaft.app.common.jdbc.JdbcUtcCalendar.fresh()).toInstant(),event,leaseToken);
                 assertThat(expiry.orElseThrow()).as("公表期限は同じ源TXの実DB期限").isEqualTo(stored);
             });
+        }
+    }
+
+    /** CMP-261016-0104: native完了資格を先に確認し、源所有JDBC DATE境界だけを検査する。auth全経路の証明ではない。 */
+    @Test void 同一UTC週の同entry別完了は生成時既定TZが異なる接続でも例外なく重複を拒否する() throws Exception {
+        UUID entry = entry(LocalDate.of(2026, 10, 3));
+        var first = completedEntry(entry);
+        var second = completedEntry(entry);
+        assertThat(first.id()).isNotEqualTo(second.id());
+        assertThat(first.entryId()).isEqualTo(entry);
+        assertThat(second.entryId()).isEqualTo(entry);
+        assertThat(first.rewardWeek()).isEqualTo(second.rewardWeek());
+        assertThat(operations.get(owner, first.id()).status()).isEqualTo(RecallSessionStatus.COMPLETED);
+        assertThat(operations.get(owner, second.id()).status()).isEqualTo(RecallSessionStatus.COMPLETED);
+        var firstFact = fact(first, UuidV7.generate());
+        var secondFact = fact(second, UuidV7.generate());
+        assertThat(firstFact.eventId()).isNotEqualTo(secondFact.eventId());
+        assertThat(firstFact.recipientUserId()).isEqualTo(owner);
+        assertThat(secondFact.recipientUserId()).isEqualTo(owner);
+        var monday = first.completedAt().atZone(java.time.ZoneOffset.UTC).toLocalDate()
+                .with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
+        assertThat(first.rewardWeek()).isEqualTo(monday);
+        String firstEncoded = mapper.writeValueAsString(firstFact);
+        String secondEncoded = mapper.writeValueAsString(secondFact);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM reflection_recall_sessions WHERE user_id=? "
+                + "AND entry_source_id=? AND status='COMPLETED'", Integer.class, owner, entry.toString())).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM recall_attempts WHERE user_id=? AND entry_id=?",
+                Integer.class, owner, bytes(entry))).isEqualTo(2);
+        var originalZone = java.util.TimeZone.getDefault();
+        try {
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"));
+            try (var utcProbe = cachedDefaultZoneProbe("UTC")) {
+                java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Tokyo"));
+                try (var jstProbe = cachedDefaultZoneProbe("Asia/Tokyo")) {
+                    String driverA = assertCachedDefaultZone(utcProbe, "UTC");
+                    String driverB = assertCachedDefaultZone(jstProbe, "Asia/Tokyo");
+                    var utcJdbc = new JdbcTemplate(utcProbe);
+                    var jstJdbc = new JdbcTemplate(jstProbe);
+                    assertThat(java.util.TimeZone.getDefault().toZoneId()).as("受付時の実JVM既定TZ")
+                            .isEqualTo(java.time.ZoneId.of("Asia/Tokyo"));
+                    assertThat(utcJdbc.queryForObject("SELECT TIMEDIFF(NOW(), UTC_TIMESTAMP())", String.class))
+                            .as("UTC生成接続の実DB offset").isEqualTo("00:00:00");
+                    assertThat(jstJdbc.queryForObject("SELECT TIMEDIFF(NOW(), UTC_TIMESTAMP())", String.class))
+                            .as("JST生成接続の実DB offset").isEqualTo("00:00:00");
+                    String driverClass = driverA.equals("9.6.0") && driverB.equals("9.6.0") ? "9.6.0" : "OTHER_VERSION";
+                    System.out.println("Native週DATE条件: driver=" + driverClass
+                            + " JVM=Asia/Tokyo connectionTimeZone=UTC driverDefaultA=UTC driverDefaultB=Asia/Tokyo DBoffset=UTC");
+                    var utcTx = new org.springframework.transaction.support.TransactionTemplate(
+                            new org.springframework.jdbc.datasource.DataSourceTransactionManager(utcProbe));
+                    var jstTx = new org.springframework.transaction.support.TransactionTemplate(
+                            new org.springframework.jdbc.datasource.DataSourceTransactionManager(jstProbe));
+                    var utcRows = new com.mannschaft.app.reflection.repository.ReflectionRanchTransportRepository(utcJdbc);
+                    var jstRows = new com.mannschaft.app.reflection.repository.ReflectionRanchTransportRepository(jstJdbc);
+                    Boolean firstAccepted = utcTx.execute(status -> utcRows.insertQualified(firstFact, firstEncoded,
+                            java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS)));
+                    Boolean[] secondAccepted = {null};
+                    var softly = new org.assertj.core.api.SoftAssertions();
+                    softly.assertThat(firstAccepted).as("UTC生成接続の先着受付").isTrue();
+                    softly.assertThatCode(() -> secondAccepted[0] = jstTx.execute(status ->
+                            jstRows.insertQualified(secondFact, secondEncoded,
+                                    java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS))))
+                            .as("同entry再受付の例外なし").doesNotThrowAnyException();
+                    softly.assertThat(secondAccepted[0]).as("同一UTC週の再受付").isFalse();
+                    softly.assertThat(count("reflection_ranch_witnesses")).as("同一週のwitness件数").isEqualTo(1);
+                    softly.assertThat(count("reflection_ranch_outboxes")).as("同一週のoutbox件数").isEqualTo(1);
+                    softly.assertThat(jdbc.queryForList("SELECT CAST(reward_week AS CHAR) FROM reflection_ranch_witnesses "
+                            + "WHERE recipient_user_id=?", String.class, owner)).as("実MySQL DATEのUTC月曜")
+                            .containsExactly(monday.toString());
+                    softly.assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM reflection_recall_sessions WHERE user_id=? "
+                            + "AND entry_source_id=? AND status='COMPLETED'", Integer.class, owner, entry.toString())).as("本体の保存件数").isEqualTo(2);
+                    softly.assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM recall_attempts WHERE user_id=? AND entry_id=?",
+                            Integer.class, owner, bytes(entry))).as("完了attempt件数").isEqualTo(2);
+                    softly.assertAll();
+                }
+            }
+        } finally {
+            java.util.TimeZone.setDefault(originalZone);
+        }
+    }
+
+    /** 共有poolを触らず、生成時のConnector/J既定TZだけが異なる専有接続を保持する。 */
+    private com.zaxxer.hikari.HikariDataSource cachedDefaultZoneProbe(String generatedZone) throws Exception {
+        var config = new com.zaxxer.hikari.HikariConfig();
+        config.setJdbcUrl(MYSQL.getJdbcUrl());
+        config.setUsername(MYSQL.getUsername());
+        config.setPassword(MYSQL.getPassword());
+        config.setMaximumPoolSize(1);
+        config.setMinimumIdle(0);
+        config.addDataSourceProperty("serverTimezone", "UTC");
+        config.addDataSourceProperty("cacheDefaultTimeZone", "true");
+        var probe = new com.zaxxer.hikari.HikariDataSource(config);
+        try {
+            assertCachedDefaultZone(probe, generatedZone);
+            return probe;
+        } catch (Exception | AssertionError failure) {
+            probe.close();
+            throw failure;
+        }
+    }
+
+    /** runtimeOnlyの実driverを読み、JVMだけ切り替えて再現したつもりになることを防ぐ。 */
+    private String assertCachedDefaultZone(com.zaxxer.hikari.HikariDataSource probe, String expectedZone) throws Exception {
+        try (var connection = probe.getConnection()) {
+            String driverVersion = connection.getMetaData().getDriverVersion();
+            Class<?> connectionType = Class.forName("com.mysql.cj.jdbc.JdbcConnection");
+            Object driver = connection.unwrap(connectionType);
+            Object properties = connectionType.getMethod("getPropertySet").invoke(driver);
+            Class<?> propertySet = Class.forName("com.mysql.cj.conf.PropertySet");
+            Class<?> runtimeProperty = Class.forName("com.mysql.cj.conf.RuntimeProperty");
+            Object connectionZone = propertySet.getMethod("getStringProperty", String.class)
+                    .invoke(properties, "connectionTimeZone");
+            Object cached = propertySet.getMethod("getBooleanProperty", String.class)
+                    .invoke(properties, "cacheDefaultTimeZone");
+            assertThat(runtimeProperty.getMethod("getValue").invoke(connectionZone)).isEqualTo("UTC");
+            assertThat(runtimeProperty.getMethod("getValue").invoke(cached)).isEqualTo(Boolean.TRUE);
+            Object session = connectionType.getMethod("getSession").invoke(driver);
+            Object server = Class.forName("com.mysql.cj.Session").getMethod("getServerSession").invoke(session);
+            java.util.TimeZone cachedZone = (java.util.TimeZone) Class.forName("com.mysql.cj.protocol.ServerSession")
+                    .getMethod("getDefaultTimeZone").invoke(server);
+            assertThat(cachedZone.toZoneId()).as("接続生成時の実cached default TZ")
+                    .isEqualTo(java.time.ZoneId.of(expectedZone));
+            return java.util.regex.Pattern.compile("(?<![0-9.])9\\.6\\.0(?![0-9.])").matcher(driverVersion).find()
+                    ? "9.6.0" : "OTHER_VERSION";
         }
     }
 }
