@@ -151,14 +151,20 @@ async function ensureMemberScopeFixture(admin: Page, user: Page): Promise<void> 
   const orgToken = await api(admin.request, 'post', `/organizations/${ORG_C_SLUG}/invite-tokens`, { roleId: 4, expiresIn: '1d', maxUses: 1 })
   expect(orgToken.status).toBe(201)
   orgCTokenId = Number(orgToken.body.data.id)
-  const joinOrg = await api(user.request, 'post', `/invite/${String(orgToken.body.data.token)}/join`, {})
-  expect(joinOrg.status, joinOrg.text).toBe(200)
+  const joinOrg = await api(user.request, 'post', `/invite/${String(orgToken.body.data.token)}/join`, {}).catch(() => {
+    // 通信エラーの URL に含まれる招待トークンを失敗ログへ残さない。
+    throw new Error('専用組織の招待リンク受諾への通信に失敗しました')
+  })
+  expect(joinOrg.status, '専用組織の招待リンク受諾').toBe(200)
   userJoinedOrgC = true
   const teamToken = await api(admin.request, 'post', `/teams/${teamCSlug}/invite-tokens`, { roleId: 4, expiresIn: '1d', maxUses: 1 })
   expect(teamToken.status).toBe(201)
   teamCTokenId = Number(teamToken.body.data.id)
-  const joinTeam = await api(user.request, 'post', `/invite/${String(teamToken.body.data.token)}/join`, {})
-  expect(joinTeam.status, joinTeam.text).toBe(200)
+  const joinTeam = await api(user.request, 'post', `/invite/${String(teamToken.body.data.token)}/join`, {}).catch(() => {
+    // 通信エラーの URL に含まれる招待トークンを失敗ログへ残さない。
+    throw new Error('専用チームの招待リンク受諾への通信に失敗しました')
+  })
+  expect(joinTeam.status, '専用チームの招待リンク受諾').toBe(200)
   userJoinedTeamC = true
   for (const scope of [`organizations/${ORG_C_SLUG}`, `teams/${teamCSlug}`]) {
     const member = await api(user.request, 'get', `/${scope}/me/permissions`)
