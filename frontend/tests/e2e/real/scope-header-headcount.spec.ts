@@ -562,11 +562,18 @@ test('CMP1131: en/es/deのチーム・組織ヘッダで1人は単数形、0人�
     }
   }
   finally {
-    await openScope(page, '/settings/language')
-    await page.locator('.p-select').first().click()
-    await page.getByRole('option', { name: '日本語', exact: true }).click()
-    await page.getByRole('button', { name: /^(保存|Save|Guardar|Speichern)$/ }).click()
-    await expect(page.getByRole('button', { name: '保存', exact: true })).toBeVisible()
-    await page.context().close()
+    try {
+      await openScope(page, '/settings/language')
+      await page.locator('.p-select').first().click()
+      await page.getByRole('option', { name: '日本語', exact: true }).click()
+      const restored = page.waitForResponse(response => response.url().includes('/api/v1/users/me')
+        && response.request().method() === 'PUT' && response.ok())
+      await page.getByRole('button', { name: /^(保存|Save|Guardar|Speichern)$/ }).click()
+      await restored
+      await expect(page.getByRole('button', { name: '保存', exact: true })).toBeVisible()
+    }
+    finally {
+      await page.context().close()
+    }
   }
 })
