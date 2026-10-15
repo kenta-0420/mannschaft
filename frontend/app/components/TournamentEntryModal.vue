@@ -394,12 +394,13 @@ watch(
               option-label="name"
               option-value="id"
               :placeholder="t('tournament.entry.template.select')"
-              class="flex-1"
+              class="min-h-11 flex-1"
             />
             <Button
               :label="t('tournament.entry.template.apply')"
               :loading="applyingTemplate"
               :disabled="!selectedTemplateId"
+              class="min-h-11"
               @click="onApplyTemplate"
             />
           </div>
@@ -427,6 +428,7 @@ watch(
             :label="t('tournament.entry.loadFromTeam')"
             severity="secondary"
             size="small"
+            class="min-h-11"
             :loading="saving"
             @click="onLoadFromTeam"
           />
@@ -461,7 +463,6 @@ watch(
                 :max="999"
                 class="w-24 shrink-0"
                 input-class="min-h-11 w-full min-w-0"
-                size="small"
               />
 
               <InputText
@@ -469,7 +470,6 @@ watch(
                 :placeholder="t('tournament.entry.position')"
                 :disabled="!form.selected"
                 class="min-h-11 min-w-0 flex-1 sm:w-28 sm:flex-none"
-                size="small"
                 maxlength="30"
               />
             </div>
@@ -479,7 +479,6 @@ watch(
               :placeholder="t('tournament.entry.notes')"
               :disabled="!form.selected"
               class="min-h-11 w-full min-w-0 sm:w-auto sm:flex-1"
-              size="small"
               maxlength="200"
             />
           </div>
@@ -504,11 +503,13 @@ watch(
           icon="pi pi-file-pdf"
           severity="secondary"
           :loading="downloadingPdf"
+          class="min-h-11"
           @click="onDownloadPdf"
         />
         <Button
           :label="$t('button.close')"
           text
+          class="min-h-11"
           @click="emit('close')"
         />
       </div>

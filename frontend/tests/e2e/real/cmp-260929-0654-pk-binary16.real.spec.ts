@@ -115,6 +115,7 @@ let tIdC = 0
 let divC = 0
 let pC1 = 0
 const createdTemplates: { org: number; team: number; id: string; actor: 'user' | 'admin' }[] = []
+const mobileTemplates: Record<number, { id: string; name: string }> = {}
 const createdParticipants: { org: number; tournament: number; division: number; id: number; actor: 'user' | 'admin' }[] = []
 
 async function ensureParticipant(req: APIRequestContext, orgId: number, tId: number, divId: number, teamId: number, actor: 'user' | 'admin'): Promise<number> {
@@ -398,19 +399,25 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     test(`ALIC-1/2/3 [画面] ${viewportWidth}px 幅: ページが横にはみ出さず、既存メンバーは選択済みで何も触らず保存しても消えず、ポジション欄を押せる`, async ({ browser }) => {
       const user = await newPage(browser, userCred)
       const errs = watchErrors(user)
-      // 一覧は読取専用で再利用し、空の場合だけ自作テンプレートを用意する（適用しない）。
+      // 短い合法名の自作テンプレートを2幅で共有し、選択後の操作領域も確認する（適用しない）。
       for (const teamId of [TEAM_A1, TEAM_A2]) {
         const templatePath = `/organizations/${ORG_A}/teams/${teamId}/entry-templates`
         const existing = await api(user.request, 'get', templatePath)
         expect(existing.status, existing.text).toBe(200)
-        if ((existing.body.data as { id: string }[]).length > 0) continue
+        if (mobileTemplates[teamId]) {
+          expect((existing.body.data as { id: string }[]).some(template => template.id === mobileTemplates[teamId]!.id)).toBe(true)
+          continue
+        }
+        expect((existing.body.data as { id: string }[]).length).toBeLessThan(5)
+        const name = `M44-${teamId}-${SUFFIX.slice(-4)}`
         const template = await api(user.request, 'post', templatePath, {
-          name: `PKB16-alic-${viewportWidth}-${teamId}-${SUFFIX}`,
+          name,
           members: [{ userId: USER_ID, jerseyNumber: 9, position: 'ALIC', sortOrder: 1 }],
         })
         expect(template.status, template.text).toBe(201)
         const id = String(template.body.data.id)
         createdTemplates.push({ org: ORG_A, team: teamId, id, actor: 'user' })
+        mobileTemplates[teamId] = { id, name }
         console.info('[entry-real-created-template]', JSON.stringify({ org: ORG_A, team: teamId, id }))
       }
       // 前提データ作成（API）: 両 participant に USER を既存エントリーとして入れる（画面で先に開くのがどちらでも検証できるように）
@@ -435,6 +442,12 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
       await expect(dialog).toBeVisible({ timeout: 20_000 })
       await expect(dialog.locator('[id^="member-"]').first()).toBeVisible({ timeout: 20_000 })
       await expect(dialog.locator('.p-select')).toBeVisible({ timeout: 20_000 })
+      const templatePlaceholderBox = await dialog.locator('.p-select').boundingBox()
+      await dialog.locator('.p-select').click()
+      const shortTemplate = user.getByRole('option', { name: new RegExp(`^M44-[12]-${SUFFIX.slice(-4)}$`) })
+      await expect(shortTemplate).toHaveCount(1)
+      await shortTemplate.click()
+      await expect(dialog.getByRole('button', { name: '一括適用', exact: true })).toBeEnabled()
       // ALIC-1: 既存メンバー（USER）の行は選択済みになっている。
       const selectedRows = dialog.locator('div.rounded.border input[type="checkbox"]:checked')
       expect(await selectedRows.count()).toBeGreaterThanOrEqual(1)
@@ -480,6 +493,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
       expect(jb!.x + jb!.width).toBeLessThanOrEqual(pb!.x + 1) // 背番号欄がポジション欄に重ならない
       await test.info().attach('entry-mobile-layout', { body: await user.screenshot(), contentType: 'image/png' })
       const touchTargets = [
+        { name: 'テンプレート選択（未選択）', box: templatePlaceholderBox },
         { name: '背番号', box: jb },
         { name: 'ポジション', box: pb },
         { name: '備考', box: await selectedRow.getByPlaceholder('備考').boundingBox() },
@@ -496,7 +510,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
       }
       for (const combo of await dialog.locator('.p-select').all()) {
         if (await combo.isVisible() && !(await combo.evaluate(element => element.classList.contains('p-disabled')))) {
-          touchTargets.push({ name: 'テンプレート選択', box: await combo.boundingBox() })
+          touchTargets.push({ name: 'テンプレート選択（選択後）', box: await combo.boundingBox() })
         }
       }
       const checkboxBox = await selectedRow.locator('.p-checkbox').boundingBox()
@@ -519,6 +533,25 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
       }
       await dialog.locator('.p-select').scrollIntoViewIfNeeded()
       await test.info().attach('entry-mobile-top-controls', { body: await user.screenshot(), contentType: 'image/png' })
+      const inputFonts = await Promise.all([
+        { name: '背番号', input: jersey }, { name: 'ポジション', input: pos }, { name: '備考', input: selectedRow.getByPlaceholder('備考') },
+      ].map(async ({ name, input }) => ({ name, fontSize: await input.evaluate(element => getComputedStyle(element).fontSize) })))
+      console.info('[entry-mobile-input-fonts]', JSON.stringify({ viewport: viewportWidth, inputs: inputFonts }))
+      await user.setViewportSize({ width: 1280, height: 900 })
+      const desktopTargets = []
+      for (const control of await dialog.locator('button, input:not([type="checkbox"]), .p-select, label[for]').all()) {
+        if (!(await control.isVisible()) || !(await control.isEnabled())) continue
+        desktopTargets.push({
+          name: await control.evaluate(element => element.classList.contains('p-dialog-close-button') ? 'ヘッダー閉じる' : element.getAttribute('placeholder') ?? element.textContent?.trim() ?? element.tagName),
+          box: await control.boundingBox(),
+          fontSize: await control.evaluate(element => getComputedStyle(element).fontSize),
+        })
+      }
+      console.info('[entry-desktop-touch-targets]', JSON.stringify({ viewport: 1280, targets: desktopTargets }))
+      await dialog.locator('.p-select').scrollIntoViewIfNeeded()
+      await test.info().attach('entry-desktop-top-controls', { body: await user.screenshot(), contentType: 'image/png' })
+      await user.setViewportSize({ width: viewportWidth, height: 844 })
+      expect(inputFonts.filter(input => Number.parseFloat(input.fontSize) < 16), '入力文字は16px以上').toEqual([])
       expect(insufficientTargets, '各操作領域は関連ラベルを含め44×44px以上').toEqual([])
 
       // ALIC-1: 何も変えずに保存しても、既存エントリーは全消しにならない
