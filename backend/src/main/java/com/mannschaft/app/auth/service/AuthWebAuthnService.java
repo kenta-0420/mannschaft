@@ -67,6 +67,7 @@ public class AuthWebAuthnService {
     private final WebAuthnCredentialRepository webAuthnCredentialRepository;
     private final UserRepository userRepository;
     private final AuthService authService;
+    private final RoleClaimResolver roleClaimResolver;
     private final StringRedisTemplate redisTemplate;
     private final DomainEventPublisher eventPublisher;
 
@@ -350,7 +351,8 @@ public class AuthWebAuthnService {
         }
 
         credential.recordAuthentication(verifiedSignCount);
-        TokenResponse tokenResponse = authService.completePasskeyLogin(userId, ipAddress, userAgent);
+        TokenResponse tokenResponse = authService.completePasskeyLogin(
+                userId, ipAddress, userAgent, roleClaimResolver.resolveRoles(userId));
 
         // 共通のLoginSuccessEventはAuthServiceから1回だけ発行する。
         eventPublisher.publish(new WebAuthnLoginEvent(userId, ipAddress, userAgent, req.getCredentialId()));

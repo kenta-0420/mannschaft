@@ -163,11 +163,12 @@ class PasskeyLoginContractIT extends AbstractMySqlIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"0,0", "0,1", "7,8", "4294967294,4294967295"})
-    void AC7_署名済みカウンタの有効な遷移が成功して永続化する(long stored, long signed) throws Exception {
+    // 0x1d = UP/UV/BE/BS: バックアップ済み同期パスキーの0固定カウンタも受理する。
+    @CsvSource({"0,0,5", "0,1,5", "7,8,5", "4294967294,4294967295,5", "0,0,29"})
+    void AC7_署名済みカウンタの有効な遷移が成功して永続化する(long stored, long signed, int flags) throws Exception {
         setStoredCounter(stored);
         String challenge = begin(user);
-        MvcResult result = complete(assertion(challenge, 5, signed, signed));
+        MvcResult result = complete(assertion(challenge, flags, signed, signed));
 
         assertSuccess(result);
         WebAuthnCredentialEntity reloaded = credentials.findById(credential.getId()).orElseThrow();

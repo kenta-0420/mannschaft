@@ -255,9 +255,11 @@ public class AuthService {
      * UV/UPと署名の検証を完了したパスキーでログインする。
      * 論理削除ユーザーを復帰させず、通常ログインと同じ利用状態・ロックを確認する。
      * UV済みパスキーは独立した二要素認証方式のためTOTPを追加要求しない（F01.1）。
+     * @param resolvedRoles 署名検証済みの認証入口がRoleClaimResolverで解決したroles（HTTP入力は禁止）
      */
     @Transactional
-    public TokenResponse completePasskeyLogin(Long userId, String ipAddress, String userAgent) {
+    public TokenResponse completePasskeyLogin(Long userId, String ipAddress, String userAgent,
+                                              List<String> resolvedRoles) {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_015));
         if (user.getStatus() == UserEntity.UserStatus.PENDING_VERIFICATION) {
@@ -281,7 +283,7 @@ public class AuthService {
         if (user.getStatus() == UserEntity.UserStatus.ARCHIVED) {
             user.unarchive();
         }
-        return issueLoginSession(user, null, false, ipAddress, userAgent, "WEBAUTHN");
+        return issueLoginSession(user, null, false, ipAddress, userAgent, "WEBAUTHN", resolvedRoles);
     }
 
     // ========================================
@@ -446,7 +448,7 @@ public class AuthService {
     private LoginResponse issueLoginTokens(UserEntity user, LoginRequest req,
                                            String ipAddress, String userAgent, boolean reactivated) {
         TokenResponse tokens = issueLoginSession(user, req.getDeviceFingerprint(), req.isRememberMe(),
-                ipAddress, userAgent, "PASSWORD");
+                ipAddress, userAgent, "PASSWORD", roleClaimResolver.resolveRoles(user.getId()));
 
         // deleted_at設定済みの場合はpendingDeletionUntilを含める
         LocalDateTime pendingDeletionUntil = user.getDeletedAt() != null
@@ -467,11 +469,12 @@ public class AuthService {
      * パスワードとパスキーの成功後処理を共有し、セッションと監査の方式差を防ぐ。
      */
     private TokenResponse issueLoginSession(UserEntity user, String requestedDeviceFingerprint,
-                                            boolean rememberMe, String ipAddress, String userAgent, String method) {
+                                            boolean rememberMe, String ipAddress, String userAgent, String method,
+                                            List<String> resolvedRoles) {
         // Access Token発行
-        // 認可基盤完全根治 Phase 1（§3.2）: 固定 MEMBER ではなく user_roles から SYSTEM_ADMIN を
-        // 判定した roles を載せる（RoleClaimResolver に一元化。5発行経路で同一ロジック）。
-        String accessToken = authTokenService.issueAccessToken(user.getId(), roleClaimResolver.resolveRoles(user.getId()),
+        // rolesは各認証入口がRoleClaimResolverで解決した値のみを受け取り、
+        // 共通セッション発行はauthドメインの永続化処理に閉じる。
+        String accessToken = authTokenService.issueAccessToken(user.getId(), resolvedRoles,
                 statusClaimResolver.isPendingParentalConsent(user.getId()));
 
         // Refresh Token発行（DB保存）
