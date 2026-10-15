@@ -52,7 +52,7 @@
         "delete": "テンプレートを削除",
         "maxCount": "最大5件まで作成できます",
         "noTemplates": "テンプレートがありません",
-      "name": "テンプレート名",
+        "name": "テンプレート名",
         "description": "説明",
         "members": "選手一覧",
         "error": {

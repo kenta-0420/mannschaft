@@ -52,7 +52,7 @@
         "delete": "Vorlage löschen",
         "maxCount": "Bis zu 5 Vorlagen können erstellt werden",
         "noTemplates": "Keine Vorlagen vorhanden",
-      "name": "Vorlagenname",
+        "name": "Vorlagenname",
         "description": "Beschreibung",
         "members": "Spieler",
         "error": {

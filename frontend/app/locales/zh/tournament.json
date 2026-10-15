@@ -52,7 +52,7 @@
         "delete": "删除模板",
         "maxCount": "最多可创建5个",
         "noTemplates": "没有模板",
-      "name": "模板名称",
+        "name": "模板名称",
         "description": "说明",
         "members": "选手一览",
         "error": {

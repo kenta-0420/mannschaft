@@ -52,7 +52,7 @@
         "delete": "Delete template",
         "maxCount": "Up to 5 templates can be created",
         "noTemplates": "No templates",
-      "name": "Template name",
+        "name": "Template name",
         "description": "Description",
         "members": "Players",
         "error": {

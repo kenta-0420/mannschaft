@@ -52,7 +52,7 @@
         "delete": "Eliminar plantilla",
         "maxCount": "Se pueden crear hasta 5 plantillas",
         "noTemplates": "No hay plantillas",
-      "name": "Nombre de la plantilla",
+        "name": "Nombre de la plantilla",
         "description": "Descripción",
         "members": "Jugadores",
         "error": {
