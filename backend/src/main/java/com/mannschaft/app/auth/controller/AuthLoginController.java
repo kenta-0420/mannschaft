@@ -377,13 +377,8 @@ public class AuthLoginController {
      * @return ResponseCookie
      */
     private ResponseCookie buildAccessTokenCookie(String token) {
-        return ResponseCookie.from("access_token", token)
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .path("/")
-                .sameSite("Strict")
-                .maxAge(15 * 60)  // 15分（JWT アクセストークンの有効期限に合わせる）
-                .build();
+        return AuthTokenCookies.accessToken(token, cookieSecure,
+                authTokenService.getAccessTokenExpirationSeconds());
     }
 
     /**
@@ -397,13 +392,7 @@ public class AuthLoginController {
      * @return ResponseCookie（maxAge=0）
      */
     private ResponseCookie clearAccessTokenCookie() {
-        return ResponseCookie.from("access_token", "")
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .path("/")
-                .sameSite("Strict")
-                .maxAge(0)
-                .build();
+        return AuthTokenCookies.accessToken("", cookieSecure, 0);
     }
 
     /**
@@ -423,13 +412,8 @@ public class AuthLoginController {
      * @return ResponseCookie
      */
     private ResponseCookie buildRefreshTokenCookie(String token) {
-        return ResponseCookie.from("refresh_token", token)
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .path("/")
-                .sameSite("Strict")
-                .maxAge(authTokenService.getRefreshTokenExpirationSeconds())
-                .build();
+        return AuthTokenCookies.refreshToken(token, cookieSecure,
+                authTokenService.getRefreshTokenExpirationSeconds());
     }
 
     /**
@@ -441,13 +425,7 @@ public class AuthLoginController {
      * @return ResponseCookie（maxAge=0）
      */
     private ResponseCookie clearRefreshTokenCookie() {
-        return ResponseCookie.from("refresh_token", "")
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .path("/")
-                .sameSite("Strict")
-                .maxAge(0)
-                .build();
+        return AuthTokenCookies.refreshToken("", cookieSecure, 0);
     }
 
     /**

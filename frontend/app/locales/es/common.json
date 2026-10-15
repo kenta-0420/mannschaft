@@ -2419,6 +2419,14 @@
     "SUPPORTERS_AND_ABOVE": "Seguidores y superiores",
     "MEMBERS_AND_ABOVE": "Miembros y superiores"
   },
+  "organization_visibility": {
+    "PUBLIC": "Público",
+    "PRIVATE": "Acceso restringido"
+  },
+  "entity_create": {
+    "error_heading": "Revise los datos introducidos",
+    "supporter_label": "Activar la función de simpatizantes"
+  },
   "module_settings": {
     "enabled_count": "Funciones activas: {count} / {limit}",
     "fetch_error": "No se pudo cargar la lista de funciones",

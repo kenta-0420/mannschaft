@@ -12,7 +12,7 @@ withDefaults(
     showBackupCodesDialog: boolean
     renameDialog: boolean
     newDeviceName: string
-    // パスキー登録 UI（オプション: security.vue から利用。account.vue 等では省略可能）
+    // パスキー登録 UI（利用する親画面で状態とイベントを接続する）
     isRegisteringPasskey?: boolean
     registerDialog?: boolean
     newPasskeyName?: string
@@ -163,6 +163,7 @@ function deviceLabel(userAgent: string | null): string {
         translate="no"
         :label="$t('settings.security.webauthn.register_button')"
         icon="pi pi-key"
+        class="min-h-11"
         :loading="isRegisteringPasskey"
         @click="$emit('update:registerDialog', true)"
       />
@@ -252,6 +253,7 @@ function deviceLabel(userAgent: string | null): string {
     :visible="registerDialog"
     :header="$t('settings.security.webauthn.register_dialog_title')"
     :modal="true"
+    :pt="{ pcCloseButton: { root: { class: 'min-h-11 min-w-11' } } }"
     class="w-full max-w-sm"
     @update:visible="$emit('update:registerDialog', $event)"
   >
@@ -261,7 +263,7 @@ function deviceLabel(userAgent: string | null): string {
         <InputText
           :model-value="newPasskeyName"
           :placeholder="$t('settings.security.webauthn.device_name_placeholder')"
-          class="w-full"
+          class="min-h-11 w-full"
           @update:model-value="$emit('update:newPasskeyName', $event as string)"
         />
       </div>
@@ -270,11 +272,13 @@ function deviceLabel(userAgent: string | null): string {
           translate="no"
           :label="$t('settings.security.webauthn.register_cancel')"
           severity="secondary"
+          class="min-h-11"
           @click="$emit('update:registerDialog', false)"
         />
         <Button
           translate="no"
           :label="$t('settings.security.webauthn.register_confirm')"
+          class="min-h-11"
           :loading="isRegisteringPasskey"
           @click="$emit('passkeyRegister')"
         />
