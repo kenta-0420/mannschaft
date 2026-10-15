@@ -397,6 +397,21 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     test(`ALIC-1/2/3 [画面] ${viewportWidth}px 幅: ページが横にはみ出さず、既存メンバーは選択済みで何も触らず保存しても消えず、ポジション欄を押せる`, async ({ browser }) => {
       const user = await newPage(browser, userCred)
       const errs = watchErrors(user)
+      // 一覧は読取専用で再利用し、空の場合だけ自作テンプレートを用意する（適用しない）。
+      for (const teamId of [TEAM_A1, TEAM_A2]) {
+        const templatePath = `/organizations/${ORG_A}/teams/${teamId}/entry-templates`
+        const existing = await api(user.request, 'get', templatePath)
+        expect(existing.status, existing.text).toBe(200)
+        if ((existing.body.data as { id: string }[]).length > 0) continue
+        const template = await api(user.request, 'post', templatePath, {
+          name: `PKB16-alic-${viewportWidth}-${teamId}-${SUFFIX}`,
+          members: [{ userId: USER_ID, jerseyNumber: 9, position: 'ALIC', sortOrder: 1 }],
+        })
+        expect(template.status, template.text).toBe(201)
+        const id = String(template.body.data.id)
+        createdTemplates.push({ org: ORG_A, team: teamId, id, actor: 'user' })
+        console.info('[entry-real-created-template]', JSON.stringify({ org: ORG_A, team: teamId, id }))
+      }
       // 前提データ作成（API）: 両 participant に USER を既存エントリーとして入れる（画面で先に開くのがどちらでも検証できるように）
       for (const pId of [pA1, pA2]) {
         const put = await api(user.request, 'put', base(ORG_A, tIdA, divA, pId), {
@@ -418,6 +433,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
       const dialog = user.getByRole('dialog')
       await expect(dialog).toBeVisible({ timeout: 20_000 })
       await expect(dialog.locator('[id^="member-"]').first()).toBeVisible({ timeout: 20_000 })
+      await expect(dialog.locator('.p-select')).toBeVisible({ timeout: 20_000 })
       // ALIC-1: 既存メンバー（USER）の行は選択済みになっている。
       const selectedRows = dialog.locator('div.rounded.border input[type="checkbox"]:checked')
       expect(await selectedRows.count()).toBeGreaterThanOrEqual(1)
@@ -470,11 +486,26 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
         { name: '閉じる', box: await closeBtn.boundingBox() },
         { name: 'ヘッダー閉じる', box: await dialog.locator('.p-dialog-close-button').boundingBox() },
       ]
+      for (const button of await dialog.getByRole('button').all()) {
+        if (!(await button.isVisible()) || !(await button.isEnabled())) continue
+        if (await button.evaluate(element => element.matches('.p-dialog-close-button') || element.closest('.p-select') !== null)) continue
+        const name = (await button.innerText()).trim()
+        if (name === 'エントリーを保存' || name === '閉じる') continue
+        touchTargets.push({ name: `ボタン:${name}`, box: await button.boundingBox() })
+      }
+      for (const combo of await dialog.locator('.p-select').all()) {
+        if (await combo.isVisible() && !(await combo.evaluate(element => element.classList.contains('p-disabled')))) {
+          touchTargets.push({ name: 'テンプレート選択', box: await combo.boundingBox() })
+        }
+      }
       const checkboxBox = await selectedRow.locator('.p-checkbox').boundingBox()
       const checkboxLabelBox = await selectedRow.locator('label[for^="member-"]').boundingBox()
+      const overwriteCheckboxBox = await dialog.locator('.p-checkbox').filter({ has: user.locator('#overwrite') }).boundingBox()
+      const overwriteLabelBox = await dialog.locator('label[for="overwrite"]').boundingBox()
       console.info('[entry-mobile-touch-targets]', JSON.stringify({
         viewport: viewportWidth, targets: touchTargets,
         checkbox: checkboxBox, checkboxLabel: checkboxLabelBox,
+        overwriteCheckbox: overwriteCheckboxBox, overwriteLabel: overwriteLabelBox,
       }))
       const hasMinimumTouchTarget = (box: { width: number; height: number } | null) =>
         box !== null && box.width >= 44 && box.height >= 44
@@ -482,6 +513,11 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
       if (!hasMinimumTouchTarget(checkboxBox) && !hasMinimumTouchTarget(checkboxLabelBox)) {
         insufficientTargets.push('選択チェックボックスまたは関連ラベル')
       }
+      if (!hasMinimumTouchTarget(overwriteCheckboxBox) && !hasMinimumTouchTarget(overwriteLabelBox)) {
+        insufficientTargets.push('上書きチェックボックスまたは関連ラベル')
+      }
+      await dialog.locator('.p-select').scrollIntoViewIfNeeded()
+      await test.info().attach('entry-mobile-top-controls', { body: await user.screenshot(), contentType: 'image/png' })
       expect(insufficientTargets, '各操作領域は関連ラベルを含め44×44px以上').toEqual([])
 
       // ALIC-1: 何も変えずに保存しても、既存エントリーは全消しにならない
