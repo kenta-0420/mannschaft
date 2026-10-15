@@ -140,7 +140,7 @@ function buildBadgedSvg(rawSvg: string): string {
   const badgeW = Math.min(textW + padX * 2, w * 0.46)
   const badgeH = fontSize + padY * 2
   const cx = w / 2
-  const cy = w * 0.54 + badgeH / 2
+  const cy = w * 0.54
   const rx = badgeH / 2
   const strokeW = Math.max(w * 0.009, w / 160)
   const rectX = cx - badgeW / 2
@@ -236,8 +236,8 @@ defineExpose({
   position: absolute;
   top: 54.3%;
   left: 50%;
-  /* 余白縮小時の位置補正を維持し、さらにバッジ自身の半個分だけ下へ寄せる。 */
-  transform: translate(-50%, 60%);
+  /* 余白縮小時の位置補正を維持する。 */
+  transform: translate(-50%, 10%);
   display: inline-flex;
   align-items: center;
   justify-content: center;

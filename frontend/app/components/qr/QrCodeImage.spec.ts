@@ -28,10 +28,7 @@ describe('QrCodeImage', () => {
       expect(frame.getAttribute('ry')).toBe(frame.getAttribute('rx'))
       const units = Number(document.documentElement.getAttribute('viewBox')!.split(' ')[2])
       const centerY = Number(frame.getAttribute('y')) + Number(frame.getAttribute('height')) / 2
-      expect(centerY / units).toBeCloseTo(
-        0.54 + Number(frame.getAttribute('height')) / units / 2,
-        3,
-      )
+      expect(centerY / units).toBeCloseTo(0.54, 3)
       expect(document.querySelector('text')?.textContent).toBe('Mannschaft')
       wrapper.unmount()
     },

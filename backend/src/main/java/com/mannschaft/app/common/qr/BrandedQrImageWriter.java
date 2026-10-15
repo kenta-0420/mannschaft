@@ -72,7 +72,7 @@ public class BrandedQrImageWriter {
     /** バッジ幅の size に対する上限比率（超える場合はフォントを縮小する）。 */
     private static final float BADGE_MAX_WIDTH_RATIO = 0.46f;
 
-    /** バッジの基準垂直位置（QR全高の54%から高さの半分だけ下へ）。 */
+    /** バッジの基準垂直位置（QR全高の54%）。 */
     private static final float BADGE_VERTICAL_POSITION_RATIO = 0.54f;
 
     /**
@@ -143,7 +143,7 @@ public class BrandedQrImageWriter {
             float borderWidth = Math.max(BADGE_BORDER_WIDTH_MIN, size * BADGE_BORDER_WIDTH_RATIO);
 
             float centerX = size / 2f;
-            float centerY = size * BADGE_VERTICAL_POSITION_RATIO + badgeHeight / 2f;
+            float centerY = size * BADGE_VERTICAL_POSITION_RATIO;
 
             float badgeX = centerX - badgeWidth / 2f;
             float badgeY = centerY - badgeHeight / 2f;
