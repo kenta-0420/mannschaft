@@ -1,189 +1,145 @@
 <script setup lang="ts">
 import type { components } from '~/types/generated'
-definePageMeta({
-  layout: 'auth',
-})
+import type { ScopeType } from '~/types/scopeFolder'
+
+definePageMeta({ layout: 'auth' })
 
 const route = useRoute()
 const api = useApi()
 const authStore = useAuthStore()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
-
+const { t, te } = useI18n()
 const token = computed(() => String(route.params.token))
-
-type InvitePreviewWire = components['schemas']['InvitePreviewResponse']
-// 生成スキーマの任意項目を実行時に検証し、Backend が返し得る null を表示時に扱う。
-type InvitePreview = Omit<InvitePreviewWire, 'targetName' | 'roleName'> & {
-  targetName?: InvitePreviewWire['targetName'] | null
-  roleName?: InvitePreviewWire['roleName'] | null
-  targetType: 'ORGANIZATION' | 'TEAM'
-  valid: boolean
-}
-
-function isInvitePreview(value: unknown): value is InvitePreview {
-  if (!value || typeof value !== 'object') return false
-  const candidate = value as Record<string, unknown>
-  return typeof candidate.valid === 'boolean'
-    && (candidate.targetType === 'TEAM' || candidate.targetType === 'ORGANIZATION')
-    && (candidate.targetName == null || typeof candidate.targetName === 'string')
-    && (candidate.roleName == null || typeof candidate.roleName === 'string')
-}
-
+type InvitePreview = components['schemas']['InvitePreviewResponse']
 const preview = ref<InvitePreview | null>(null)
-const loading = ref(false)
+const loading = ref(true)
 const joining = ref(false)
-const error = ref(false)
-
-/**
- * F15.3: 招待承諾時に配置するマイスコープフォルダ ID（任意）。
- * `null` の場合は Backend 側で「未分類」フォルダへ自動配置される。
- */
+const loadError = shallowRef<unknown>(null)
+const invalid = ref(false)
 const selectedFolderId = ref<number | null>(null)
-
-const roleLabel: Record<string, string> = {
-  ADMIN: '管理者',
-  DEPUTY_ADMIN: '副管理者',
-  MEMBER: 'メンバー',
-  SUPPORTER: 'サポーター',
-  GUEST: 'ゲスト',
-}
-
-const typeLabel: Record<InvitePreview['targetType'], string> = {
-  ORGANIZATION: '組織',
-  TEAM: 'チーム',
-}
-
-const targetName = computed(() => preview.value?.targetName?.trim()
-  || (preview.value ? typeLabel[preview.value.targetType] : ''))
+const scopeType = computed<ScopeType | null>(() => {
+  const value = preview.value?.targetType
+  return value === 'TEAM' || value === 'ORGANIZATION' ? value : null
+})
+const targetName = computed(() => preview.value?.targetName || t('auth.invite.unknown_target'))
+const typeLabel = computed(() => t(`auth.invite.types.${scopeType.value}`))
+const roleLabel = computed(() => {
+  const role = preview.value?.roleName
+  return role ? (te(`role.${role}`) ? t(`role.${role}`) : role) : t('auth.invite.unknown_role')
+})
 
 async function fetchPreview() {
+  if (!authStore.isAuthenticated) {
+    loading.value = false
+    return
+  }
   loading.value = true
-  error.value = false
+  loadError.value = null
+  invalid.value = false
+  preview.value = null
   try {
-    const result = await api<components['schemas']['ApiResponseInvitePreviewResponse']>(`/api/v1/invite/${token.value}`)
-    if (!isInvitePreview(result?.data)) throw new Error('Invalid invite preview response')
+    const result = await api<components['schemas']['ApiResponseInvitePreviewResponse']>(
+      `/api/v1/invite/${token.value}`,
+    )
+    if (result.data?.valid === false) {
+      invalid.value = true
+      return
+    }
+    if (
+      result.data?.valid !== true ||
+      !['TEAM', 'ORGANIZATION'].includes(result.data.targetType ?? '')
+    ) {
+      throw new Error('Invalid invite preview response')
+    }
     preview.value = result.data
-  } catch {
-    error.value = true
+  } catch (err: unknown) {
+    const code = (err as { data?: { error?: { code?: string } } })?.data?.error?.code
+    if (code === 'ROLE_002') invalid.value = true
+    else {
+      loadError.value = err
+      handleApiError(err, t('auth.invite.load_context'))
+    }
   } finally {
     loading.value = false
   }
 }
 
 async function joinWithToken() {
-  if (!preview.value?.valid || joining.value) return
+  if (joining.value || !authStore.isAuthenticated || !preview.value?.valid || !scopeType.value)
+    return
   joining.value = true
   try {
-    // F15.3: フォルダ選択ありなら folderId を body に含める。未選択時は
-    // Backend 側で「未分類」フォルダへ lazy 配置されるため body は空でよい。
-    const body = selectedFolderId.value != null
-      ? { folderId: selectedFolderId.value }
-      : {}
-    await api<undefined>(`/api/v1/invite/${token.value}/join`, {
+    await api(`/api/v1/invite/${token.value}/join`, {
       method: 'POST',
-      body,
+      body: selectedFolderId.value != null ? { folderId: selectedFolderId.value } : {},
     })
-    notification.success(`${typeLabel[preview.value.targetType]}に参加しました`)
-    navigateTo('/dashboard')
-  } catch (err) {
-    handleApiError(err, '招待参加')
+    notification.success(t('auth.invite.joined', { type: typeLabel.value }))
+    await navigateTo('/dashboard')
+  } catch (err: unknown) {
+    handleApiError(err, t('auth.invite.join_context'))
   } finally {
     joining.value = false
   }
 }
 
-function goToLogin() {
-  navigateTo(`/login?redirect=/invite/${token.value}`)
+function goToAuth(path: '/login' | '/register') {
+  return navigateTo({ path, query: { redirect: route.fullPath } })
 }
 
-function goToRegister() {
-  navigateTo(`/register?invite=${token.value}`)
-}
-
-onMounted(() => {
-  fetchPreview()
-})
+onMounted(fetchPreview)
 </script>
 
 <template>
   <div class="flex min-h-screen items-center justify-center p-4">
     <PageLoading v-if="loading" />
-
-    <div v-else-if="error" class="w-full max-w-md rounded-lg border p-8 text-center">
-      <i class="pi pi-exclamation-triangle mb-4 text-5xl text-yellow-500" />
-      <h2 class="mb-2 text-xl font-bold">招待リンクが無効です</h2>
-      <p class="mb-6 text-gray-500">このリンクは無効か、既に期限切れです。</p>
-      <Button label="ホームに戻る" icon="pi pi-home" @click="navigateTo('/')" />
-    </div>
-
-    <div v-else-if="preview" class="w-full max-w-md rounded-lg border p-8">
-      <!-- 無効な招待 -->
-      <template v-if="!preview.valid">
-        <div class="text-center">
-          <i class="pi pi-times-circle mb-4 text-5xl text-red-500" />
-          <h2 class="mb-2 text-xl font-bold">この招待リンクは無効です</h2>
-          <p class="mb-6 text-gray-500">招待リンクが期限切れか、既に無効化されています。</p>
-          <Button label="ホームに戻る" icon="pi pi-home" @click="navigateTo('/')" />
-        </div>
-      </template>
-
-      <!-- 有効な招待 -->
-      <template v-else>
-        <div class="text-center">
-          <Avatar
-            :label="targetName.charAt(0)"
-            shape="circle"
-            size="xlarge"
-            class="mb-4"
-          />
-          <Tag :value="typeLabel[preview.targetType]" severity="info" class="mb-2" />
-          <h2 class="mb-1 text-xl font-bold">
-            {{ targetName }}
-          </h2>
-          <div v-if="preview.roleName" class="mb-6 space-y-2 rounded-lg bg-gray-50 p-4 text-sm">
-            <div class="flex items-center justify-between">
-              <span class="text-gray-500">参加ロール</span>
-              <span class="font-medium">{{ roleLabel[preview.roleName] ?? preview.roleName }}</span>
-            </div>
-          </div>
-
-          <!-- ログイン済み: フォルダ選択（任意）→ 参加ボタン -->
-          <template v-if="authStore.isAuthenticated">
-            <!-- F15.3: マイスコープフォルダ任意選択。未選択時は「未分類」自動配置。 -->
-            <InviteFolderPicker
-              v-model="selectedFolderId"
-              :scope-type="preview.targetType"
-              class="mb-4"
-            />
-            <Button
-              label="参加する"
-              icon="pi pi-check"
-              class="w-full"
-              :loading="joining"
-              data-testid="invite-join-button"
-              @click="joinWithToken"
-            />
-          </template>
-
-          <!-- 未ログイン -->
-          <template v-else>
-            <Button
-              label="ログインして参加"
-              icon="pi pi-sign-in"
-              class="w-full"
-              @click="goToLogin"
-            />
-            <Button
-              label="アカウントをお持ちでない方"
-              icon="pi pi-user-plus"
-              severity="secondary"
-              class="mt-2 w-full"
-              @click="goToRegister"
-            />
-          </template>
-        </div>
-      </template>
-    </div>
+    <SectionCard v-else-if="!authStore.isAuthenticated" class="w-full max-w-md text-center">
+      <h2 class="mb-2 text-xl font-bold">{{ t('auth.invite.title') }}</h2>
+      <p class="mb-6 text-surface-500">{{ t('auth.invite.login_hint') }}</p>
+      <Button
+        :label="t('auth.invite.login')"
+        icon="pi pi-sign-in"
+        class="w-full"
+        @click="goToAuth('/login')"
+      />
+      <Button
+        :label="t('auth.invite.register')"
+        icon="pi pi-user-plus"
+        severity="secondary"
+        class="mt-2 w-full"
+        @click="goToAuth('/register')"
+      />
+    </SectionCard>
+    <SectionCard v-else-if="loadError" class="w-full max-w-md">
+      <DashboardErrorState :error="loadError" :show-retry="true" @retry="fetchPreview" />
+    </SectionCard>
+    <SectionCard
+      v-else-if="invalid"
+      class="w-full max-w-md text-center"
+      data-testid="invite-invalid"
+    >
+      <i class="pi pi-times-circle mb-4 text-5xl text-red-500" />
+      <h2 class="mb-2 text-xl font-bold">{{ t('auth.invite.invalid_title') }}</h2>
+      <p class="mb-6 text-surface-500">{{ t('auth.invite.invalid_hint') }}</p>
+      <Button :label="t('auth.invite.home')" icon="pi pi-home" @click="navigateTo('/')" />
+    </SectionCard>
+    <SectionCard v-else-if="preview && scopeType" class="w-full max-w-md text-center">
+      <Avatar :label="targetName.charAt(0)" shape="circle" size="xlarge" class="mb-4" />
+      <Tag :value="typeLabel" severity="info" class="mb-2" />
+      <h2 class="mb-4 text-xl font-bold">{{ targetName }}</h2>
+      <div class="mb-6 flex items-center justify-between gap-2 text-sm">
+        <span class="text-surface-500">{{ t('auth.invite.role') }}</span>
+        <span class="font-medium">{{ roleLabel }}</span>
+      </div>
+      <InviteFolderPicker v-model="selectedFolderId" :scope-type="scopeType" class="mb-4" />
+      <Button
+        :label="t('auth.invite.join')"
+        icon="pi pi-check"
+        class="w-full"
+        :loading="joining"
+        data-testid="invite-join-button"
+        @click="joinWithToken"
+      />
+    </SectionCard>
   </div>
 </template>

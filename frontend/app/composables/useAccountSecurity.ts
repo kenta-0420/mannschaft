@@ -1,5 +1,6 @@
 import type { AuthSessionResponse, WebAuthnCredentialResponse } from '~/types/auth'
 import type { LoginHistoryResponse } from '~/types/user-settings'
+import { useWebAuthnRegister } from '~/composables/useWebAuthnRegister'
 
 export function useAccountSecurity() {
   const notification = useNotification()
@@ -26,6 +27,9 @@ export function useAccountSecurity() {
   const renameDialog = ref(false)
   const renameTarget = ref<WebAuthnCredentialResponse | null>(null)
   const newDeviceName = ref('')
+  const { registerPasskey, isRegistering: isRegisteringPasskey, error: registerError } = useWebAuthnRegister()
+  const registerDialog = ref(false)
+  const newPasskeyName = ref('')
 
   const loginHistory = ref<LoginHistoryResponse[]>([])
   const loginHistoryNextCursor = ref<string | null>(null)
@@ -132,7 +136,23 @@ export function useAccountSecurity() {
     }
   }
 
+  async function handlePasskeyRegister() {
+    const success = await registerPasskey(newPasskeyName.value.trim() || undefined)
+    if (success) {
+      registerDialog.value = false
+      newPasskeyName.value = ''
+      notification.success(t('settings.security.webauthn.register_success'))
+      await loadSecurity()
+    } else if (registerError.value) {
+      notification.error(t('settings.security.webauthn.register_error'))
+    }
+  }
+
   return {
+    isRegisteringPasskey,
+    registerDialog,
+    newPasskeyName,
+    handlePasskeyRegister,
     sessions,
     credentials,
     totpSetup,
