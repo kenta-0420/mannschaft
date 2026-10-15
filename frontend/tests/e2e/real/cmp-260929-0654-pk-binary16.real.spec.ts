@@ -123,6 +123,25 @@ async function ensureParticipant(req: APIRequestContext, orgId: number, tId: num
   return id
 }
 
+async function ensureMemberScopeFixture(admin: Page): Promise<void> {
+  if (pC1 > 0) return
+  // 権限なし側も自分専用の大会・部門・参加行を作り、既存エントリー表を全置換しない。
+  const tc = await api(admin.request, 'post', `/organizations/${ORG_C}/tournaments`, {
+    name: `PKB16-member-${SUFFIX}`, format: 'LEAGUE', season: '2026', startDate: '2026-10-10', endDate: '2026-12-30',
+    winPoints: 3, drawPoints: 1, lossPoints: 0, hasDraw: true, hasSets: false, visibility: 'MEMBERS_AND_ABOVE',
+  })
+  expect(tc.status, tc.text).toBe(201)
+  tIdC = Number(tc.body.data?.id)
+  console.info('[entry-real-created-tournament]', JSON.stringify({ org: ORG_C, id: tIdC, name: `PKB16-member-${SUFFIX}` }))
+  const dc = await api(admin.request, 'post', `/organizations/${ORG_C}/tournaments/${tIdC}/divisions`, {
+    name: 'D-member', level: 1, promotionSlots: 0, relegationSlots: 0, maxParticipants: 12, sortOrder: 1,
+  })
+  expect(dc.status, dc.text).toBe(201)
+  divC = Number(dc.body.data?.id)
+  console.info('[entry-real-created-division]', JSON.stringify({ org: ORG_C, tournament: tIdC, id: divC }))
+  pC1 = await ensureParticipant(admin.request, ORG_C, tIdC, divC, TEAM_C, 'admin')
+}
+
 test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', () => {
   test.beforeAll(async ({ browser }) => {
     const admin = await newPage(browser, adminCred)
@@ -144,22 +163,6 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     console.info('[entry-real-created-division]', JSON.stringify({ org: ORG_A, tournament: tIdA, id: divA }))
     pA1 = await ensureParticipant(user.request, ORG_A, tIdA, divA, TEAM_A1, 'user')
     pA2 = await ensureParticipant(user.request, ORG_A, tIdA, divA, TEAM_A2, 'user')
-
-    // 権限なし側も自分専用の大会・部門・参加行を作り、既存エントリー表を全置換しない。
-    const tc = await api(admin.request, 'post', `/organizations/${ORG_C}/tournaments`, {
-      name: `PKB16-member-${SUFFIX}`, format: 'LEAGUE', season: '2026', startDate: '2026-10-10', endDate: '2026-12-30',
-      winPoints: 3, drawPoints: 1, lossPoints: 0, hasDraw: true, hasSets: false, visibility: 'MEMBERS_AND_ABOVE',
-    })
-    expect(tc.status, tc.text).toBe(201)
-    tIdC = Number(tc.body.data?.id)
-    console.info('[entry-real-created-tournament]', JSON.stringify({ org: ORG_C, id: tIdC, name: `PKB16-member-${SUFFIX}` }))
-    const dc = await api(admin.request, 'post', `/organizations/${ORG_C}/tournaments/${tIdC}/divisions`, {
-      name: 'D-member', level: 1, promotionSlots: 0, relegationSlots: 0, maxParticipants: 12, sortOrder: 1,
-    })
-    expect(dc.status, dc.text).toBe(201)
-    divC = Number(dc.body.data?.id)
-    console.info('[entry-real-created-division]', JSON.stringify({ org: ORG_C, tournament: tIdC, id: divC }))
-    pC1 = await ensureParticipant(admin.request, ORG_C, tIdC, divC, TEAM_C, 'admin')
 
     await admin.context().close()
     await user.context().close()
@@ -419,6 +422,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
   test('AC4 [API+画面] 権限なし（org/team とも MEMBER の USER）は作成・更新・削除・登録が 403、閲覧は 200。画面に管理ボタンが出ない', async ({ browser }) => {
     const admin = await newPage(browser, adminCred)
     const user = await newPage(browser, userCred)
+    await ensureMemberScopeFixture(admin)
     const tplBaseB = `/organizations/${ORG_B}/teams/${TEAM_B}/entry-templates`
 
     // 権限あり（SYSTEM_ADMIN）が org 4 / team 4 にテンプレートを作る → 201
@@ -472,6 +476,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
   test('AC4 [API] 他チーム・他組織のテンプレート ID／エントリーメンバー ID を指定すると 404', async ({ browser }) => {
     const user = await newPage(browser, userCred)
     const admin = await newPage(browser, adminCred)
+    await ensureMemberScopeFixture(admin)
     const tplA1 = `/organizations/${ORG_A}/teams/${TEAM_A1}/entry-templates`
     const tplA2 = `/organizations/${ORG_A}/teams/${TEAM_A2}/entry-templates`
 
@@ -529,6 +534,11 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const user = await newPage(browser, userCred)
     const errs = watchErrors(user)
     // org 9 の ADMIN である USER が、org 1 の大会 ID を org 9 の slug 配下で開く（ID は API で引いた実在のもの）
+    if (pC1 === 0) {
+      const admin = await newPage(browser, adminCred)
+      await ensureMemberScopeFixture(admin)
+      await admin.context().close()
+    }
     const ids = `tIdC=${tIdC} divC=${divC} pC1=${pC1}`
     await user.goto(`/organizations/${ORG_A_SLUG}/tournaments/${tIdC}`)
     await waitForHydration(user)
