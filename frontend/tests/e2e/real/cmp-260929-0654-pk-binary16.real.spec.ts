@@ -342,6 +342,9 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const dialog = user.getByRole('dialog')
     await expect(dialog).toBeVisible({ timeout: 20_000 })
     await expect(dialog.locator('[id^="member-"]').first()).toBeVisible({ timeout: 20_000 })
+    // ALIC-1: 既存メンバー（USER）の行は選択済みになっている。
+    const selectedRows = dialog.locator('div.rounded.border input[type="checkbox"]:checked')
+    expect(await selectedRows.count()).toBeGreaterThanOrEqual(1)
     expect(await overflow()).toBeLessThanOrEqual(0)
 
     // ALIC-3: モーダル自体と、保存・閉じるが viewport 内にある（保存ボタンは必要ならスクロールして到達できる）
@@ -359,10 +362,6 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const saveBox = await saveBtn.boundingBox()
     expect(saveBox!.x).toBeGreaterThanOrEqual(0)
     expect(saveBox!.x + saveBox!.width).toBeLessThanOrEqual(vw)
-
-    // ALIC-1: 既存メンバー（USER）の行は選択済みで、「登録済み」タグが出ている
-    const selectedRows = dialog.locator('div.rounded.border input[type="checkbox"]:checked')
-    expect(await selectedRows.count()).toBeGreaterThanOrEqual(1)
 
     // ALIC-2: 選択済み行のポジション欄が、背番号欄に覆われずクリックできる（trial は他要素に遮られると失敗する）
     const selectedRow = dialog.locator('div.rounded.border').filter({ has: user.locator('input[type="checkbox"]:checked') }).first()
