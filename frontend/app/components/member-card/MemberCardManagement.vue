@@ -23,7 +23,7 @@ onMounted(loadData)
 
 <template>
   <div class="mx-auto max-w-6xl">
-    <PageHeader :title="$t('memberCardAdmin.title')" help @help="showGuide = true" />
+    <PageHeader :title="$t('memberCardAdmin.title')" class="[&_button]:min-h-11 [&_button]:min-w-11" help @help="showGuide = true" />
     <PageLoading v-if="loading" />
     <DashboardErrorState v-else-if="loadError" :error="loadError" @retry="loadData" />
     <Tabs v-else v-model:value="activeTab">
