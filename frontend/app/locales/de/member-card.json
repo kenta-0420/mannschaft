@@ -1,5 +1,6 @@
 {
   "memberCardAdmin": {
+    "description": "Status der Mitgliedsausweise und Check-in-Verlauf verwalten",
     "title": "QR-Mitgliedsausweise",
     "list": "Ausweise",
     "history": "Check-in-Verlauf",

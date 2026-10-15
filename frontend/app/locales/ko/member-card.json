@@ -1,5 +1,6 @@
 {
   "memberCardAdmin": {
+    "description": "회원증 상태와 체크인 기록을 관리합니다",
     "title": "QR 회원증 관리",
     "list": "회원증 목록",
     "history": "체크인 기록",

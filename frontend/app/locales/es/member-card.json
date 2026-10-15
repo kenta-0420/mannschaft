@@ -1,5 +1,6 @@
 {
   "memberCardAdmin": {
+    "description": "Gestiona el estado de las tarjetas y el historial de entradas",
     "title": "Tarjetas QR de socios",
     "list": "Tarjetas",
     "history": "Historial de entradas",

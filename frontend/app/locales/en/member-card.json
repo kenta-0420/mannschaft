@@ -1,5 +1,6 @@
 {
   "memberCardAdmin": {
+    "description": "Manage membership card status and check-in history",
     "title": "QR membership cards",
     "list": "Cards",
     "history": "Check-in history",

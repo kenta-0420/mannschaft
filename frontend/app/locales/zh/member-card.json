@@ -1,5 +1,6 @@
 {
   "memberCardAdmin": {
+    "description": "管理会员卡状态和签到记录",
     "title": "二维码会员卡管理",
     "list": "会员卡列表",
     "history": "签到记录",
