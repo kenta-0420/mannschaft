@@ -63,9 +63,6 @@ public class BrandedQrImageWriter {
     /** バッジ上下パディングの size に対する比率。 */
     private static final float BADGE_PADDING_Y_RATIO = 0.04f;
 
-    /** バッジ角丸半径の size に対する比率。 */
-    private static final float BADGE_CORNER_RADIUS_RATIO = 0.05f;
-
     /** バッジ枠線幅の size に対する比率（下限2px）。 */
     private static final float BADGE_BORDER_WIDTH_RATIO = 0.009f;
 
@@ -143,7 +140,6 @@ public class BrandedQrImageWriter {
             }
 
             float badgeHeight = textHeight + paddingY * 2;
-            float cornerRadius = size * BADGE_CORNER_RADIUS_RATIO;
             float borderWidth = Math.max(BADGE_BORDER_WIDTH_MIN, size * BADGE_BORDER_WIDTH_RATIO);
 
             float centerX = size / 2f;
@@ -152,8 +148,9 @@ public class BrandedQrImageWriter {
             float badgeX = centerX - badgeWidth / 2f;
             float badgeY = centerY - badgeHeight / 2f;
 
+            // RoundRectangleの末尾2引数は円弧の直径。高さと揃えて左右を半円にする。
             RoundRectangle2D badgeShape = new RoundRectangle2D.Float(
-                    badgeX, badgeY, badgeWidth, badgeHeight, cornerRadius, cornerRadius);
+                    badgeX, badgeY, badgeWidth, badgeHeight, badgeHeight, badgeHeight);
 
             g.setColor(BADGE_BACKGROUND_COLOR);
             g.fill(badgeShape);

@@ -10,6 +10,8 @@ import com.google.zxing.common.HybridBinarizer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -29,6 +31,53 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BrandedQrImageWriterTest {
 
     private final BrandedQrImageWriter writer = new BrandedQrImageWriter();
+
+    @ParameterizedTest
+    @ValueSource(ints = {240, 300, 350, 500})
+    @DisplayName("AC5: 通常URLと長URLを各利用サイズで復号できる")
+    void 各サイズで通常URLと長URLを復号できる(int size) throws Exception {
+        String normal = "https://app.mannschaft.example/invite/0f9c2b7a-3d4e-4f10-9a2b-7c8d9e0f1a2b";
+        String longUrl = "https://app.mannschaft.example/contact-invite/" + "a1b2c3d4".repeat(10);
+
+        assertThat(decode(writer.writePng(normal, size))).isEqualTo(normal);
+        assertThat(decode(writer.writePng(longUrl, size))).isEqualTo(longUrl);
+    }
+
+    @Test
+    @DisplayName("AC4: PNGのバッジ左右端は高さ全体を直径とする半円になる")
+    void PNGのバッジ左右端が半円になる() throws Exception {
+        BufferedImage image = ImageIO.read(new ByteArrayInputStream(writer.writePng("https://example.com/capsule", 350)));
+        int top = image.getHeight();
+        int bottom = 0;
+        for (int y = 0; y < image.getHeight(); y++) {
+            if (leftGrayPixel(image, y) < image.getWidth()) {
+                top = Math.min(top, y);
+                bottom = y;
+            }
+        }
+        assertThat(top).isLessThan(bottom);
+        int height = bottom - top;
+        int nearTop = leftGrayPixel(image, top + Math.max(1, height / 10));
+        int middle = leftGrayPixel(image, (top + bottom) / 2);
+
+        // 半円なら上端近くは中央より大きく内側になる。小さな角丸ではこの差が生じない。
+        assertThat(nearTop - middle).isGreaterThan((int) (height * 0.15));
+    }
+
+    private int leftGrayPixel(BufferedImage image, int y) {
+        for (int x = 0; x < image.getWidth(); x++) {
+            int color = image.getRGB(x, y);
+            int red = (color >> 16) & 255;
+            int green = (color >> 8) & 255;
+            int blue = color & 255;
+            // QRの緑と白を除き、バッジ枠線と文字のグレーだけを観測する。
+            if (Math.abs(red - 107) < 10 && Math.abs(green - 114) < 10 && Math.abs(blue - 128) < 10) {
+                return x;
+            }
+        }
+        return image.getWidth();
+    }
+
 
     // ========================================
     // BQR-001: 自己デコード（中央バッジがあってもスキャン可能なことの証明）
