@@ -4,12 +4,21 @@ import { waitForHydration } from '../helpers/wait'
 test.use({ storageState: { cookies: [], origins: [] } })
 
 test.describe('AUTH-009: 招待リンク', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/api/v1/active-incidents?**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ incidents: [] }),
+      }),
+    )
+  })
   test('AUTH-009a: 未ログインでは招待APIを呼ばずログインと登録を案内する', async ({ page }) => {
     const requests: string[] = []
     page.on('request', (request) => {
       if (request.url().includes('/api/v1/invite/')) requests.push(request.url())
     })
-    await page.goto('/invite/validtoken123?folder=7')
+    await page.goto('/invite/validtoken123?folder=7', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await expect(page.getByRole('button', { name: 'ログインして参加' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'アカウントをお持ちでない方' })).toBeVisible()
@@ -21,6 +30,7 @@ test.describe('AUTH-009: 招待リンク', () => {
   test('AUTH-009b: 認証済みでは実API形状の招待先を表示する', async ({ page }) => {
     await page.addInitScript(() => {
       // 既存のユーザー復元契約を使い、previewの実HTTP応答形状を検証する。
+      window.localStorage.setItem('tokenExpiresAt', String(Date.now() + 900_000))
       window.localStorage.setItem(
         'currentUser',
         JSON.stringify({ id: 1, email: 'invite@example.test', fullName: '招待テスト' }),
@@ -33,6 +43,7 @@ test.describe('AUTH-009: 招待リンク', () => {
       '/api/v1/feature-flags',
       '/api/v1/settings/nav',
       '/api/v1/dashboard/scope-tabs',
+      '/api/v1/active-incidents',
     ]
     page.on('request', (request) => {
       const path = new URL(request.url()).pathname
@@ -87,7 +98,7 @@ test.describe('AUTH-009: 招待リンク', () => {
         }),
       }),
     )
-    await page.goto('/invite/validtoken123')
+    await page.goto('/invite/validtoken123', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await expect(page.getByText('テストチーム', { exact: true })).toBeVisible()
     await expect(page.getByTestId('invite-join-button')).toBeVisible()
