@@ -3,7 +3,6 @@ import type {
   MemberCardListItem,
   MemberCardStatus,
   MemberCardQr,
-  CheckinRecord,
   CheckinStats,
   CheckinHistoryRecord,
   CheckinLocation,
@@ -38,14 +37,14 @@ export function useMemberCardApi() {
    * BE はどちらも解釈せず `meta` も送らないため、総件数は常に undefined だった（CMP-260912-1823）。
    *
    * @param id    会員カードID
-   * @param range 取得期間（ISO 8601）。未指定なら全期間
+   * @param range 取得期間（ISO 8601）。未指定ならBE既定の直近30日間
    */
   async function getCheckins(id: number, range?: { from?: string; to?: string }) {
     const query = new URLSearchParams()
     if (range?.from) query.set('from', range.from)
     if (range?.to) query.set('to', range.to)
     const qs = query.toString()
-    const res = await api<{ data: CheckinRecord[] }>(
+    const res = await api<{ data: CheckinHistoryRecord[] }>(
       `/api/v1/member-cards/${id}/checkins${qs ? `?${qs}` : ''}`,
     )
     return res
@@ -82,13 +81,13 @@ export function useMemberCardApi() {
     await api(`/api/v1/member-cards/${id}/reactivate`, { method: 'PATCH' })
   }
 
-  async function listByTeam(teamId: string) {
-    const res = await api<{ data: MemberCard[] }>(`/api/v1/teams/${teamId}/member-cards`)
+  async function listByTeam(teamId: string, status: MemberCardStatus = 'ACTIVE') {
+    const res = await api<{ data: MemberCardListItem[] }>(`/api/v1/teams/${teamId}/member-cards?status=${status}`)
     return res.data
   }
 
-  async function listByOrg(orgId: string) {
-    const res = await api<{ data: MemberCard[] }>(`/api/v1/organizations/${orgId}/member-cards`)
+  async function listByOrg(orgId: string, status: MemberCardStatus = 'ACTIVE') {
+    const res = await api<{ data: MemberCardListItem[] }>(`/api/v1/organizations/${orgId}/member-cards?status=${status}`)
     return res.data
   }
 
@@ -122,8 +121,8 @@ export function useMemberCardApi() {
     return res.data
   }
 
-  async function getTeamCheckinStats(teamId: string) {
-    const res = await api<{ data: CheckinStats }>(`/api/v1/teams/${teamId}/checkins/stats`)
+  async function getTeamCheckinStats(teamId: string, range: { from: string; to: string }) {
+    const res = await api<{ data: CheckinStats }>(`/api/v1/teams/${teamId}/checkins/stats?${new URLSearchParams(range)}`)
     return res.data
   }
 
