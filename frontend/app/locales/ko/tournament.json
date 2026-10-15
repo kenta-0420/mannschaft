@@ -1,6 +1,12 @@
 {
   "tournament": {
     "detail": {
+      "backToList": "대회 목록으로 돌아가기",
+      "noParticipants": "참가 팀이 없습니다",
+      "teamName": "팀 이름",
+      "entryCount": "등록 인원",
+      "actions": "작업",
+      "manageEntry": "참가 명단 관리",
       "noDivisions": "등록된 부문이 없습니다",
       "divisionsLoadError": "부문 목록을 불러오지 못했습니다",
       "loadError": "대회 정보를 불러오지 못했습니다"
@@ -20,6 +26,8 @@
       }
     },
     "entry": {
+      "name": "이름",
+      "overwriteExisting": "기존 참가 명단 덮어쓰기",
       "title": "엔트리 관리",
       "memberCount": "{count}명",
       "countRange": "{min}〜{max}명",
