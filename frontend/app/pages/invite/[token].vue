@@ -13,7 +13,7 @@ const { t, te } = useI18n()
 const token = computed(() => String(route.params.token))
 type InvitePreview = components['schemas']['InvitePreviewResponse']
 const preview = ref<InvitePreview | null>(null)
-const loading = ref(false)
+const loading = ref(true)
 const joining = ref(false)
 const loadError = shallowRef<unknown>(null)
 const invalid = ref(false)
@@ -30,7 +30,10 @@ const roleLabel = computed(() => {
 })
 
 async function fetchPreview() {
-  if (!authStore.isAuthenticated) return
+  if (!authStore.isAuthenticated) {
+    loading.value = false
+    return
+  }
   loading.value = true
   loadError.value = null
   invalid.value = false

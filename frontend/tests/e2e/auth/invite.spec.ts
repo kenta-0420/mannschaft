@@ -28,6 +28,15 @@ test.describe('AUTH-009: 招待リンク', () => {
     expect(new URL(page.url()).searchParams.get('redirect')).toBe('/invite/validtoken123?folder=7')
   })
   test('AUTH-009b: 認証済みでは実API形状の招待先を表示する', async ({ page }) => {
+    const hydrationMessages: string[] = []
+    page.on('console', (message) => {
+      if (
+        ['error', 'warning'].includes(message.type()) &&
+        /hydration[\s\S]*mismatch/i.test(message.text())
+      ) {
+        hydrationMessages.push(message.text())
+      }
+    })
     await page.addInitScript(() => {
       // 既存のユーザー復元契約を使い、previewの実HTTP応答形状を検証する。
       window.localStorage.setItem('tokenExpiresAt', String(Date.now() + 900_000))
@@ -104,5 +113,6 @@ test.describe('AUTH-009: 招待リンク', () => {
     await expect(page.getByTestId('invite-join-button')).toBeVisible()
     await expect(page.locator('[data-testid="invite-folder-picker"] select')).toBeEnabled()
     expect(unexpectedApiRequests).toEqual([])
+    expect(hydrationMessages).toEqual([])
   })
 })
