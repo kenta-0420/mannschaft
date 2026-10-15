@@ -44,6 +44,7 @@ const TEAM_A2 = 2
 const ORG_B = 4
 const TEAM_B = 4
 const ORG_C = 1
+const TEAM_C = 1
 const ORG_C_SLUG = 'org-000001'
 
 const USER_ID = 23
@@ -106,7 +107,7 @@ let pA1 = 0
 let pA2 = 0
 let tIdC = 0
 let divC = 0
-let pC4 = 0
+let pC1 = 0
 const createdTemplates: { org: number; team: number; id: string; actor: 'user' | 'admin' }[] = []
 const createdParticipants: { org: number; tournament: number; division: number; id: number; actor: 'user' | 'admin' }[] = []
 
@@ -118,7 +119,7 @@ async function ensureParticipant(req: APIRequestContext, orgId: number, tId: num
   expect(add.status, add.text).toBe(201)
   const id = Number(add.body.data?.id)
   createdParticipants.push({ org: orgId, tournament: tId, division: divId, id, actor })
-  console.info('[entry-real-created-participant]', JSON.stringify({ org: orgId, tournament: tId, division: divId, id }))
+  console.info('[entry-real-created-participant]', JSON.stringify({ org: orgId, tournament: tId, division: divId, teamId, id, actor }))
   return id
 }
 
@@ -158,7 +159,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     expect(dc.status, dc.text).toBe(201)
     divC = Number(dc.body.data?.id)
     console.info('[entry-real-created-division]', JSON.stringify({ org: ORG_C, tournament: tIdC, id: divC }))
-    pC4 = await ensureParticipant(admin.request, ORG_C, tIdC, divC, TEAM_B, 'admin')
+    pC1 = await ensureParticipant(admin.request, ORG_C, tIdC, divC, TEAM_C, 'admin')
 
     await admin.context().close()
     await user.context().close()
@@ -438,8 +439,8 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const still = await api(admin.request, 'get', `${tplBaseB}/${tid}`)
     expect(still.body.data.name).toBe(`PKB16-b-${SUFFIX}`)
 
-    // エントリー表: 権限なし（org 1 MEMBER / team 4 MEMBER）は登録・全削除・一括ロード・テンプレ適用が 403、閲覧は 200
-    const eb = base(ORG_C, tIdC, divC, pC4)
+    // エントリー表: 権限なし（org 1 MEMBER / team 1 MEMBER）は登録・全削除・一括ロード・テンプレ適用が 403、閲覧は 200
+    const eb = base(ORG_C, tIdC, divC, pC1)
     const memberPut = await api(user.request, 'put', eb, { members: [{ userId: USER_ID, position: 'FW' }] })
     expect(memberPut.status).toBe(403)
     expect((await api(user.request, 'post', `${eb}/load-from-team`, { overwriteExisting: false })).status).toBe(403)
@@ -512,9 +513,9 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const emId = String((seed.body.data.entryMembers as { id: string }[])[0]!.id)
     expect((await api(user.request, 'delete', `${base(ORG_A, tIdA, divA, pA2)}/${emId}`)).status).toBe(404)
     // 他組織の大会・participant 経由（org 1 の participant を org 9 のパスで指定）: 404
-    expect((await api(user.request, 'delete', `${base(ORG_A, tIdC, divC, pC4)}/${emId}`)).status).toBe(404)
-    expect((await api(user.request, 'get', base(ORG_A, tIdC, divC, pC4))).status).toBe(404)
-    expect((await api(user.request, 'put', base(ORG_A, tIdC, divC, pC4), { members: [{ userId: USER_ID }] })).status).toBe(404)
+    expect((await api(user.request, 'delete', `${base(ORG_A, tIdC, divC, pC1)}/${emId}`)).status).toBe(404)
+    expect((await api(user.request, 'get', base(ORG_A, tIdC, divC, pC1))).status).toBe(404)
+    expect((await api(user.request, 'put', base(ORG_A, tIdC, divC, pC1), { members: [{ userId: USER_ID }] })).status).toBe(404)
     expect(((await api(user.request, 'get', base(ORG_A, tIdA, divA, pA1))).body.data.entryMembers as unknown[]).length).toBe(1)
 
     // 正しい経路での個別削除は 204
@@ -528,7 +529,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const user = await newPage(browser, userCred)
     const errs = watchErrors(user)
     // org 9 の ADMIN である USER が、org 1 の大会 ID を org 9 の slug 配下で開く（ID は API で引いた実在のもの）
-    const ids = `tIdC=${tIdC} divC=${divC} pC4=${pC4}`
+    const ids = `tIdC=${tIdC} divC=${divC} pC1=${pC1}`
     await user.goto(`/organizations/${ORG_A_SLUG}/tournaments/${tIdC}`)
     await waitForHydration(user)
     await dismissPermissionSetup(user)
@@ -545,7 +546,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const summary = await api(user.request, 'get', `/organizations/${ORG_A}/tournaments/${tIdC}/divisions/${divC}/entry-summary`)
     expect(summary.status, summary.text).toBe(404)
     expect(summary.body.error?.code).toBe('TOUR_001')
-    const em = await api(user.request, 'get', base(ORG_A, tIdC, divC, pC4))
+    const em = await api(user.request, 'get', base(ORG_A, tIdC, divC, pC1))
     expect(em.status, em.text).toBe(404)
     expect(em.body.error?.code).toBe('TOUR_018')
     // 5xx は出ない（4xx は想定どおり）
