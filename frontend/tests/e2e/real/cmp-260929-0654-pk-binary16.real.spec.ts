@@ -107,17 +107,17 @@ let pA2 = 0
 let tIdC = 0
 let divC = 0
 let pC4 = 0
-const createdTemplates: { org: number; team: number; id: string }[] = []
-const createdParticipants: { org: number; tournament: number; division: number; id: number }[] = []
+const createdTemplates: { org: number; team: number; id: string; actor: 'user' | 'admin' }[] = []
+const createdParticipants: { org: number; tournament: number; division: number; id: number; actor: 'user' | 'admin' }[] = []
 
-async function ensureParticipant(req: APIRequestContext, orgId: number, tId: number, divId: number, teamId: number): Promise<number> {
+async function ensureParticipant(req: APIRequestContext, orgId: number, tId: number, divId: number, teamId: number, actor: 'user' | 'admin'): Promise<number> {
   const list = await api(req, 'get', `/organizations/${orgId}/tournaments/${tId}/divisions/${divId}/participants`)
   const found = (list.body.data as { id: number; teamId: number }[] | undefined)?.find((p) => p.teamId === teamId)
   if (found) return found.id
   const add = await api(req, 'post', `/organizations/${orgId}/tournaments/${tId}/divisions/${divId}/participants`, { teamId, seed: 1 })
   expect(add.status, add.text).toBe(201)
   const id = Number(add.body.data?.id)
-  createdParticipants.push({ org: orgId, tournament: tId, division: divId, id })
+  createdParticipants.push({ org: orgId, tournament: tId, division: divId, id, actor })
   console.info('[entry-real-created-participant]', JSON.stringify({ org: orgId, tournament: tId, division: divId, id }))
   return id
 }
@@ -141,8 +141,8 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     expect(d.status, d.text).toBe(201)
     divA = Number(d.body.data?.id)
     console.info('[entry-real-created-division]', JSON.stringify({ org: ORG_A, tournament: tIdA, id: divA }))
-    pA1 = await ensureParticipant(user.request, ORG_A, tIdA, divA, TEAM_A1)
-    pA2 = await ensureParticipant(user.request, ORG_A, tIdA, divA, TEAM_A2)
+    pA1 = await ensureParticipant(user.request, ORG_A, tIdA, divA, TEAM_A1, 'user')
+    pA2 = await ensureParticipant(user.request, ORG_A, tIdA, divA, TEAM_A2, 'user')
 
     // 権限なし側: org 1 の既存 DRAFT/OPEN 大会のディビジョンに team 4 を参加させる（参加追加は SYSTEM_ADMIN）
     const list = await api(admin.request, 'get', `/organizations/${ORG_C}/tournaments?size=50`)
@@ -154,7 +154,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
       if (first) { tIdC = c.id; divC = first.id; break }
     }
     expect(tIdC, 'org 1 に DRAFT/OPEN でディビジョンを持つ大会が必要').toBeGreaterThan(0)
-    pC4 = await ensureParticipant(admin.request, ORG_C, tIdC, divC, TEAM_B)
+    pC4 = await ensureParticipant(admin.request, ORG_C, tIdC, divC, TEAM_B, 'admin')
 
     await admin.context().close()
     await user.context().close()
@@ -217,7 +217,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     })
     expect(create.status, create.text).toBe(201) // 以前は 500
     const tplId = String(create.body.data.id)
-    createdTemplates.push({ org: ORG_A, team: TEAM_A1, id: tplId })
+    createdTemplates.push({ org: ORG_A, team: TEAM_A1, id: tplId, actor: 'user' })
     console.info('[entry-real-created-template]', JSON.stringify({ org: ORG_A, team: TEAM_A1, id: tplId }))
     expect(tplId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
     expect(create.body.data.members[0]).toMatchObject({ userId: USER_ID, jerseyNumber: 7, position: POS30 })
@@ -269,7 +269,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
       name: `PKB16-ui-${SUFFIX}`, members: [{ userId: USER_ID, jerseyNumber: 5, position: 'DF', sortOrder: 1 }],
     })
     expect(tpl.status, tpl.text).toBe(201)
-    createdTemplates.push({ org: ORG_A, team: TEAM_A1, id: String(tpl.body.data.id) })
+    createdTemplates.push({ org: ORG_A, team: TEAM_A1, id: String(tpl.body.data.id), actor: 'user' })
     console.info('[entry-real-created-template]', JSON.stringify({ org: ORG_A, team: TEAM_A1, id: String(tpl.body.data.id) }))
 
     await user.goto(`/organizations/${ORG_A_SLUG}/tournaments/${tIdA}`)
@@ -420,7 +420,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const create = await api(admin.request, 'post', tplBaseB, { name: `PKB16-b-${SUFFIX}`, members: [{ userId: USER_ID, position: 'FW', sortOrder: 1 }] })
     expect(create.status, create.text).toBe(201)
     const tid = String(create.body.data.id)
-    createdTemplates.push({ org: ORG_B, team: TEAM_B, id: tid })
+    createdTemplates.push({ org: ORG_B, team: TEAM_B, id: tid, actor: 'admin' })
     console.info('[entry-real-created-template]', JSON.stringify({ org: ORG_B, team: TEAM_B, id: tid }))
 
     // 権限なし（MEMBER）: 作成・更新・削除は 403、閲覧（一覧・詳細）は 200
@@ -473,12 +473,12 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const t1 = await api(user.request, 'post', tplA1, { name: `PKB16-x1-${SUFFIX}`, members: [{ userId: USER_ID, position: 'A' }] })
     expect(t1.status, t1.text).toBe(201)
     const id1 = String(t1.body.data.id)
-    createdTemplates.push({ org: ORG_A, team: TEAM_A1, id: id1 })
+    createdTemplates.push({ org: ORG_A, team: TEAM_A1, id: id1, actor: 'user' })
     console.info('[entry-real-created-template]', JSON.stringify({ org: ORG_A, team: TEAM_A1, id: id1 }))
     const t2 = await api(user.request, 'post', tplA2, { name: `PKB16-x2-${SUFFIX}`, members: [{ userId: USER_ID, position: 'B' }] })
     expect(t2.status, t2.text).toBe(201)
     const id2 = String(t2.body.data.id)
-    createdTemplates.push({ org: ORG_A, team: TEAM_A2, id: id2 })
+    createdTemplates.push({ org: ORG_A, team: TEAM_A2, id: id2, actor: 'user' })
     console.info('[entry-real-created-template]', JSON.stringify({ org: ORG_A, team: TEAM_A2, id: id2 }))
 
     // 他チーム（同一組織）のテンプレート ID: 取得・更新・削除・適用すべて 404、相手のテンプレートは無傷
@@ -495,7 +495,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const other = await api(admin.request, 'post', `/organizations/${ORG_B}/teams/${TEAM_B}/entry-templates`, { name: `PKB16-o-${SUFFIX}`, members: [{ userId: USER_ID, position: 'C' }] })
     expect(other.status, other.text).toBe(201)
     const idO = String(other.body.data.id)
-    createdTemplates.push({ org: ORG_B, team: TEAM_B, id: idO })
+    createdTemplates.push({ org: ORG_B, team: TEAM_B, id: idO, actor: 'admin' })
     console.info('[entry-real-created-template]', JSON.stringify({ org: ORG_B, team: TEAM_B, id: idO }))
     expect((await api(user.request, 'get', `${tplA1}/${idO}`)).status).toBe(404)
     expect((await api(admin.request, 'get', `${tplA1}/${idO}`)).status).toBe(404)
@@ -571,7 +571,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     })
     expect(tplOther.status, tplOther.text).toBe(201)
     const otherId = String(tplOther.body.data.id)
-    createdTemplates.push({ org: ORG_A, team: TEAM_A2, id: otherId })
+    createdTemplates.push({ org: ORG_A, team: TEAM_A2, id: otherId, actor: 'user' })
     console.info('[entry-real-created-template]', JSON.stringify({ org: ORG_A, team: TEAM_A2, id: otherId }))
 
     const url = `${base(ORG_A, tIdA, divA, pA1)}/apply-template`
@@ -591,11 +591,14 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const user = await newPage(browser, userCred)
     // 既存大会側も含め、本 spec が新規作成した参加チームだけを後始末する。
     for (const p of createdParticipants) {
-      const removed = await api(admin.request, 'delete', `/organizations/${p.org}/tournaments/${p.tournament}/divisions/${p.division}/participants/${p.id}`)
+      const creatorRequest = p.actor === 'user' ? user.request : admin.request
+      const removed = await api(creatorRequest, 'delete', `/organizations/${p.org}/tournaments/${p.tournament}/divisions/${p.division}/participants/${p.id}`)
       expect(removed.status, removed.text).toBe(204)
     }
     for (const t of createdTemplates) {
-      await api(admin.request, 'delete', `/organizations/${t.org}/teams/${t.team}/entry-templates/${t.id}`)
+      const creatorRequest = t.actor === 'user' ? user.request : admin.request
+      const removed = await api(creatorRequest, 'delete', `/organizations/${t.org}/teams/${t.team}/entry-templates/${t.id}`)
+      expect(removed.status, removed.text).toBe(204)
     }
     await api(user.request, 'delete', `/organizations/${ORG_A}/tournaments/${tIdA}`)
     await admin.context().close()
