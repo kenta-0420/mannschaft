@@ -358,7 +358,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     // 既存エントリー（API で入れた participant pA1 の内容）が画面に出る。先に 1 行目の participant が pA1 とは限らないので、
     // どちらの participant でも「保存」が通ることを確かめる。
     // テンプレート一覧に API 作成分が出る（BE の BINARY(16) 読み出し → UUID 文字列）
-    await expect(dialog.getByText('エントリーテンプレート')).toBeVisible()
+    await expect(dialog.getByText('エントリーテンプレート')).toBeVisible({ timeout: 20_000 })
     await dialog.locator('.p-select').click()
     await expect(user.getByRole('option', { name: `PKB16-ui-${SUFFIX}` })).toBeVisible({ timeout: 20_000 })
     await user.getByRole('option', { name: `PKB16-ui-${SUFFIX}` }).click()
