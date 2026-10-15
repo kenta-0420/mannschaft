@@ -28,7 +28,7 @@
 | POST | `/api/v1/teams/{slug}/invite-tokens` | 必要（ADMIN / DEPUTY_ADMIN※）| チーム招待トークン発行（※INVITE_MEMBERS + MANAGE_INVITE_TOKENS 権限必要）|
 | GET | `/api/v1/teams/{slug}/invite-tokens` | 必要（ADMIN / DEPUTY_ADMIN※）| チーム招待トークン一覧（※MANAGE_INVITE_TOKENS 権限必要）|
 | DELETE | `/api/v1/teams/{slug}/invite-tokens/{tokenId}` | 必要（ADMIN / DEPUTY_ADMIN※）| 招待トークン失効（※MANAGE_INVITE_TOKENS 権限必要）|
-| GET | `/api/v1/invite/{token}` | 不要 | 招待プレビュー（参加前確認）|
+| GET | `/api/v1/invite/{token}` | 必要 | 招待プレビュー（参加前確認）|
 | POST | `/api/v1/invite/{token}/join` | 必要 | 招待URLで参加 |
 | GET | `/api/v1/teams/{slug}/permission-groups` | 必要（ADMIN）| 権限グループ一覧（`?target_role=DEPUTY_ADMIN\|MEMBER` でフィルタ可）|
 | POST | `/api/v1/teams/{slug}/permission-groups` | 必要（ADMIN）| 権限グループ作成（`target_role` で DEPUTY_ADMIN / MEMBER を指定）|
@@ -452,54 +452,34 @@ MEMBER / SUPPORTER / GUEST またはチーム非メンバー（PUBLIC / ORGANIZA
 
 ---
 
-#### `GET /api/v1/invite/{token}`（未認証可）
+#### `GET /api/v1/invite/{token}`（認証必須）
 
-**レスポンス（200 OK）**
+現在の `SecurityConfig` と `InviteController` に従い、プレビューは認証後に取得する。未ログインの招待画面はAPIを呼ばず、ログイン・登録を案内する。ログインには招待URL全体を `redirect` で渡す。登録時もこの復帰先を確認メール送信案内のログイン導線まで引き継ぎ、チーム・組織のトークンをβ登録用 `inviteToken` として送らない。確認メールを別タブで直接開いた場合の復帰先永続化は行わない。
 
-チーム招待の場合:
+**レスポンス（200 OK）** — `InvitePreviewResponse` の生成型を正本とする。
+
 ```json
 {
   "data": {
-    "invite_type": "TEAM",
-    "target": {
-      "id": 1,
-      "name": "FCマンシャフト",
-      "icon_url": "https://cdn.mannschaft.app/teams/1/icon.webp"
-    },
-    "role": "MEMBER",
-    "expires_at": "2026-03-08T10:00:00Z",
-    "is_valid": true
+    "targetType": "TEAM",
+    "targetName": "FCマンシャフト",
+    "roleName": "MEMBER",
+    "valid": true
   }
 }
 ```
 
-組織招待の場合:
-```json
-{
-  "data": {
-    "invite_type": "ORGANIZATION",
-    "target": {
-      "id": 5,
-      "name": "〇〇サッカー協会",
-      "icon_url": "https://cdn.mannschaft.app/organizations/5/icon.webp"
-    },
-    "role": "MEMBER",
-    "expires_at": "2026-03-08T10:00:00Z",
-    "is_valid": true
-  }
-}
-```
-
-> - `invite_type`: `"TEAM"` または `"ORGANIZATION"`
-> - `target.id`: チームまたは組織の ID（`invite_type` で解釈を切り替える）
-> - `is_valid = false` の場合は期限切れ・上限到達・手動失効のいずれか（詳細は返さない）
-> - `target` は `is_valid = false` でも返す（参加先の名前をUI表示するため）
+- `targetType`: `TEAM` または `ORGANIZATION`。組織招待も同じ形状。
+- `targetName`: 対象が削除された場合は `null` になり得る。画面は参加先の代替文言を表示する。
+- 参加先ID・アイコン・説明・有効期限は現在のプレビュー応答に含まない。
+- `valid=false` または `ROLE_002` は無効招待として表示する。それ以外の取得失敗は取得エラーとして表示し、同じ取得処理による再試行を提供する。
+- 有効なプレビューでは対象種別に応じた任意のフォルダ選択と参加操作を提供する（F15.3 §7.4）。
 
 **エラーレスポンス**
 | ステータス | 条件 |
 |-----------|------|
-| 404 | トークンが存在しない |
-| 429 | レートリミット超過（10 req/min per IP）|
+| 401 | 未認証 |
+| 400 (`ROLE_002`) | 招待トークンが無効 |
 
 ---
 
