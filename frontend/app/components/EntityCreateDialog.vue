@@ -470,6 +470,7 @@ function close() {
     :visible="visible"
     :header="title"
     :style="{ width: '500px' }"
+    :pt="{ pcCloseButton: { root: { class: 'min-h-11 min-w-11' } } }"
     modal
     @update:visible="close"
   >
@@ -479,7 +480,7 @@ function close() {
         <label class="mb-1 block text-sm font-medium"
           >名前 <span class="text-red-500">*</span></label
         >
-        <InputText v-model="form.name" class="w-full" :class="{ 'p-invalid': fieldErrors.name }" />
+        <InputText v-model="form.name" class="min-h-11 w-full" :class="{ 'p-invalid': fieldErrors.name }" />
         <small v-if="fieldErrors.name" class="text-red-500">{{ fieldErrors.name }}</small>
       </div>
 
@@ -488,7 +489,7 @@ function close() {
         <label class="mb-1 block text-sm font-medium">{{ t('slug.label') }}</label>
         <InputText
           v-model="slug"
-          class="w-full"
+          class="min-h-11 w-full"
           :placeholder="t('slug.placeholder')"
           :class="{ 'p-invalid': slugBlocksSubmit || !!fieldErrors.slug }"
           data-testid="entity-create-slug"
@@ -521,13 +522,13 @@ function close() {
       <!-- 名前（カナ） -->
       <div>
         <label class="mb-1 block text-sm font-medium">名前（カナ）</label>
-        <InputText v-model="form.nameKana" class="w-full" />
+        <InputText v-model="form.nameKana" class="min-h-11 w-full" />
       </div>
 
       <!-- ニックネーム -->
       <div>
         <label class="mb-1 block text-sm font-medium">ニックネーム</label>
-        <InputText v-model="form.nickname1" class="w-full" />
+        <InputText v-model="form.nickname1" class="min-h-11 w-full" />
       </div>
 
       <!-- ジャンル（チームのみ） -->
@@ -538,7 +539,7 @@ function close() {
           :options="templateOptions"
           option-label="label"
           option-value="value"
-          class="w-full"
+          class="min-h-11 w-full"
         />
       </div>
 
@@ -550,7 +551,7 @@ function close() {
           :options="orgTypeOptions"
           option-label="label"
           option-value="value"
-          class="w-full"
+          class="min-h-11 w-full"
         />
       </div>
 
@@ -562,7 +563,7 @@ function close() {
           :options="visibilityOptions"
           option-label="label"
           option-value="value"
-          class="w-full"
+          class="min-h-11 w-full"
           :class="{ 'p-invalid': fieldErrors.visibility }"
           data-testid="entity-create-visibility"
         />
@@ -583,7 +584,7 @@ function close() {
             filter
             filter-placeholder="都道府県を検索"
             show-clear
-            class="w-full"
+            class="min-h-11 w-full"
           />
         </div>
         <div>
@@ -598,7 +599,7 @@ function close() {
             show-clear
             :disabled="!selectedPref || citiesLoading"
             :loading="citiesLoading"
-            class="w-full"
+            class="min-h-11 w-full"
           />
         </div>
       </div>
@@ -614,7 +615,7 @@ function close() {
         <ToggleSwitch v-model="form.supporterEnabled" input-id="entity-create-supporter" />
         <label
           for="entity-create-supporter"
-          class="text-sm"
+          class="inline-flex min-h-11 min-w-11 items-center text-sm"
           data-testid="entity-create-supporter-label"
           >{{ t('entity_create.supporter_label') }}</label
         >
@@ -636,8 +637,9 @@ function close() {
     </div>
 
     <template #footer>
-      <Button label="キャンセル" text @click="close" />
+      <Button label="キャンセル" class="min-h-11 min-w-11" text @click="close" />
       <Button
+        class="min-h-11 min-w-11"
         :label="title"
         icon="pi pi-check"
         :loading="submitting"
@@ -653,6 +655,7 @@ function close() {
     :visible="duplicateConfirmVisible"
     :header="t('duplicate_name.title', { entity: isTeam ? 'チーム' : '組織' })"
     :style="{ width: '480px' }"
+    :pt="{ pcCloseButton: { root: { class: 'min-h-11 min-w-11' } } }"
     modal
     data-testid="duplicate-name-confirm-dialog"
     @update:visible="cancelDuplicateConfirm"
@@ -676,12 +679,14 @@ function close() {
 
     <template #footer>
       <Button
+        class="min-h-11 min-w-11"
         :label="t('duplicate_name.cancel')"
         text
         data-testid="duplicate-name-cancel"
         @click="cancelDuplicateConfirm"
       />
       <Button
+        class="min-h-11 min-w-11"
         :label="t('duplicate_name.confirm')"
         icon="pi pi-check"
         severity="warn"
