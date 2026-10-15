@@ -1,0 +1,25 @@
+CREATE TABLE shift_assignment_runs (
+  id                              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  schedule_id                     BIGINT UNSIGNED NOT NULL,
+  strategy                        ENUM('MANUAL','GREEDY_V1','CSP_V1') NOT NULL DEFAULT 'GREEDY_V1',
+  status                          ENUM('RUNNING','SUCCEEDED','FAILED','CONFIRMED','REVOKED') NOT NULL DEFAULT 'RUNNING',
+  triggered_by                    BIGINT UNSIGNED NOT NULL,
+  slots_total                     INT UNSIGNED NOT NULL DEFAULT 0,
+  slots_filled                    INT UNSIGNED NOT NULL DEFAULT 0,
+  warnings_json                   JSON NULL,
+  parameters_json                 JSON NULL,
+  error_message                   VARCHAR(1000) NULL,
+  visual_review_confirmed_by      BIGINT UNSIGNED NULL,
+  visual_review_confirmed_at      DATETIME NULL,
+  visual_review_note              VARCHAR(500) NULL,
+  started_at                      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  completed_at                    DATETIME NULL,
+  version                         INT UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  INDEX idx_shift_assignment_runs_schedule_id (schedule_id),
+  INDEX idx_shift_assignment_runs_status (status),
+  CONSTRAINT fk_shift_assignment_runs_schedule FOREIGN KEY (schedule_id) REFERENCES shift_schedules(id) ON DELETE CASCADE,
+  CONSTRAINT fk_shift_assignment_runs_triggered_by FOREIGN KEY (triggered_by) REFERENCES users(id),
+  CONSTRAINT fk_shift_assignment_runs_visual_review FOREIGN KEY (visual_review_confirmed_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='自動割当実行ログ';

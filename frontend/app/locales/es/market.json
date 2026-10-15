@@ -1,0 +1,365 @@
+{
+  "market": {
+    "title": "Ichi (Mercado)",
+    "listing": {
+      "label": "Anuncio",
+      "count": "{count} anuncios",
+      "regionNone": "Nacional (incluye sin región)"
+    },
+    "page": {
+      "newListing": "Publicar anuncio"
+    },
+    "management": {
+      "title": "Gestionar mercado",
+      "description": "Gestiona los anuncios y solicitudes de este grupo.",
+      "postDescription": "Publica un nuevo anuncio como este equipo u organización.",
+      "history": "Historial de anuncios",
+      "historyDescription": "Consulta los anuncios publicados por este grupo.",
+      "matching": "Estado de emparejamiento",
+      "matchingDescription": "Revisa solicitantes y gestiona confirmaciones por anuncio.",
+      "openMatching": "Gestionar solicitantes",
+      "manageParticipants": "Gestionar solicitantes",
+      "noListings": "Este grupo todavía no ha publicado anuncios.",
+      "permissionRequired": "Se requieren permisos de administrador para publicar anuncios o gestionar solicitantes."
+    },
+    "action": {
+      "post": "Publicar",
+      "apply": "Postularse",
+      "takeDown": "Retirar",
+      "loginToApply": "Inicia sesión",
+      "selectTeam": "Selecciona un equipo para postularte",
+      "goToDashboard": "Ir al panel",
+      "postFromDashboard": "Publica desde el panel de tu equipo/organización"
+    },
+    "region": {
+      "add": "Agregar región",
+      "selected": "Regiones seleccionadas",
+      "none": "Ninguna región seleccionada (cualquier región)"
+    },
+    "filter": {
+      "prefecture": "Prefectura",
+      "city": "Ciudad",
+      "category": "Categoría",
+      "ownerType": "Publicador",
+      "keyword": "Buscar por palabra clave",
+      "allPrefectures": "Nacional",
+      "allCities": "Seleccionar ciudad",
+      "allCategories": "Todas las categorías",
+      "allOwnerTypes": "Todos los publicadores",
+      "includeRegionNone": "Incluir sin región",
+      "mobileToggle": "Filtrar",
+      "search": "Buscar"
+    },
+    "sort": {
+      "label": "Ordenar por",
+      "startAtAsc": "Fecha del evento: más próxima",
+      "deadlineAsc": "Fecha límite: más próxima",
+      "deadlineDesc": "Fecha límite: más lejana"
+    },
+    "ownerType": {
+      "personal": "Persona",
+      "team": "Equipo",
+      "organization": "Organización"
+    },
+    "breadcrumb": {
+      "national": "Nacional",
+      "count": "({count})"
+    },
+    "card": {
+      "deadline": "Fecha límite",
+      "capacity": "{confirmed}/{capacity} inscritos",
+      "region": "Región",
+      "regionNone": "Cualquier región",
+      "category": "Categoría",
+      "organizer": "Organizador"
+    },
+    "status": {
+      "DRAFT": "Borrador",
+      "OPEN": "Abierto",
+      "FULL": "Completo (pendiente)",
+      "COMPLETED": "Completado",
+      "CANCELLED": "Retirado",
+      "AUTO_CANCELLED": "Cancelado automáticamente"
+    },
+    "personal": {
+      "visibility": "Visibilidad",
+      "visibilityPublic": "Público",
+      "visibilitySelectedScopes": "Solo equipos y organizaciones seleccionados",
+      "visibilityDraft": "Borrador privado",
+      "visibilityHelp": "Elige quién puede ver este anuncio personal.",
+      "audience": "Equipos y organizaciones",
+      "audiencePlaceholder": "Selecciona uno o más grupos",
+      "audienceRequired": "Selecciona al menos un equipo u organización.",
+      "visibilityRequiredToPublish": "Elige Público o equipos/organizaciones seleccionados antes de publicar.",
+      "publish": "Publicar",
+      "published": "Anuncio publicado.",
+      "title": "Mi mercado",
+      "description": "Gestiona tus anuncios en borrador.",
+      "create": "Crear borrador",
+      "list": "Mis anuncios",
+      "allStatuses": "Todos los estados",
+      "empty": "Aún no hay anuncios.",
+      "matches": "Emparejamientos",
+      "noMatches": "Aún no hay emparejamientos.",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "created": "Borrador creado.",
+      "loadFailed": "No se pudo cargar tu mercado.",
+      "saveFailed": "No se pudo guardar el borrador.",
+      "cancel": "Retirar anuncio",
+      "cancelled": "Anuncio retirado.",
+      "cancelReason": "Retirado del mercado personal",
+      "cancelConfirm": "¿Retirar este anuncio? Si ya está publicado, afectará a los solicitantes.",
+      "close": "Cerrar",
+      "edit": "Editar borrador",
+      "save": "Guardar",
+      "updated": "Borrador actualizado.",
+      "draftOnly": "Completa los campos obligatorios y guarda primero un borrador privado. Después podrás revisarlo y publicarlo. Los pagos aún no están disponibles para anuncios personales."
+    },
+    "visibility": {
+      "public": "Público",
+      "friendsOnly": "Solo equipos amigos",
+      "label": "Visibilidad"
+    },
+    "friendTarget": {
+      "allFriends": "Todos los equipos amigos",
+      "folder": "Por carpeta",
+      "team": "Equipos específicos",
+      "addTeam": "Agregar equipo",
+      "selectFolder": "Seleccionar carpeta",
+      "noFolders": "Sin carpetas"
+    },
+    "empty": {
+      "title": "Sin anuncios",
+      "cta": {
+        "canPost": "¡Sé el primero en publicar un anuncio para tu equipo!",
+        "noPermission": "Para publicar, conviértete en administrador o pídele a uno que lo haga.",
+        "guest": "Inicia sesión para publicar o postularte"
+      }
+    },
+    "detail": {
+      "organizer": "Organizador",
+      "region": "Región",
+      "regionNone": "Cualquier región",
+      "startAt": "Fecha del evento",
+      "deadline": "Fecha límite",
+      "capacity": "Capacidad",
+      "confirmedCount": "Inscritos",
+      "status": "Estado",
+      "location": "Lugar",
+      "category": "Categoría",
+      "notFound": "Anuncio no encontrado",
+      "notPublic": "Este anuncio no es público"
+    },
+    "report": {
+      "open": "Denunciar este anuncio",
+      "title": "Denunciar anuncio",
+      "reasonLabel": "Motivo",
+      "description": "Detalles (opcional)",
+      "notice": "Solo el equipo de moderación puede revisar la denuncia.",
+      "submit": "Enviar denuncia",
+      "succeeded": "La denuncia se ha enviado.",
+      "failed": "No se pudo enviar la denuncia.",
+      "reason": {
+        "SPAM": "Spam",
+        "HARASSMENT": "Acoso",
+        "INAPPROPRIATE": "Contenido inapropiado",
+        "VIOLENCE": "Contenido violento",
+        "MISINFORMATION": "Desinformación",
+        "COPYRIGHT": "Infracción de derechos de autor",
+        "OTHER": "Otro"
+      }
+    },
+    "notify": {
+      "applicationReceived": "Recibiste una postulación ({owner} / {title})",
+      "friendListing": "{team} te envió: \"{title}\"",
+      "finalizeRequest": "Tu anuncio está lleno. ¿Confirmas y lo cierras?",
+      "reminderShortfall": "La fecha límite se acerca. Aún necesitas {count} postulantes.",
+      "autoCancelled": "\"{title}\" fue cerrado por falta de postulantes.",
+      "cancelledToApplicant": "Lo sentimos, \"{title}\" fue retirado por el organizador.",
+      "seeOtherListings": "Ver otros anuncios de {team}"
+    },
+    "error": {
+      "loadFailed": "Error al cargar el mercado",
+      "MARKET_001": "Código de región inválido o prefectura/ciudad no coinciden",
+      "MARKET_002": "Se requiere al menos un destinatario para anuncios solo para amigos",
+      "MARKET_003": "No se puede especificar un equipo que no sea amigo confirmado",
+      "MARKET_004": "No se puede especificar una carpeta de otro equipo",
+      "MARKET_005": "No se puede combinar solo amigos con destinos de distribución"
+    },
+    "payment": {
+      "breakdown": {
+        "includesFeeNote": "* El total del pago incluye la comisión de procesamiento del pago.",
+        "refundFeeConditionalNote": "* En caso de reembolso, es posible que la comisión de procesamiento no se reembolse (las condiciones de reembolso dependen de la configuración del organizador).",
+        "title": "Desglose del pago",
+        "faceAmountLabel": "Recompensa (valor nominal)",
+        "feeLabel": "Comisión de pago",
+        "totalLabel": "Total a pagar"
+      },
+      "refund": {
+        "title": "Reembolso",
+        "feeBearerLabel": "Quién asume la comisión de procesamiento",
+        "feeBearer": {
+          "PAYER": "La asume el pagador (cancelación a petición del pagador)",
+          "PAYEE": "La asume el receptor (por nuestra parte / cancelación)"
+        },
+        "feeBearerHint": {
+          "PAYER": "Reembolsa al pagador el importe neto (tras deducir las comisiones). La comisión de procesamiento la asume el pagador.",
+          "PAYEE": "Reembolsa al pagador el importe íntegro. La comisión de procesamiento la asumimos nosotros (el receptor) y se liquida finalmente con los pagos futuros, etc."
+        },
+        "submit": "Emitir reembolso",
+        "confirmTitle": "Confirmar reembolso",
+        "confirmPayee": "Este es un reembolso asumido por el receptor. Se reembolsará al pagador el importe íntegro y usted asumirá la comisión de procesamiento. ¿Continuar?",
+        "amountLabel": "Importe del reembolso",
+        "amountFull": "Reembolso total",
+        "amountPartial": "Reembolso parcial",
+        "amountRequired": "Introduce el importe del reembolso.",
+        "amountTooLarge": "El importe del reembolso supera el importe reembolsable.",
+        "reasonLabel": "Motivo (opcional)",
+        "failed": "El reembolso ha fallado."
+      },
+      "connect": {
+        "title": "Cuenta de cobro (recibir recompensas)",
+        "loading": "Cargando…",
+        "statusLabel": "Estado",
+        "status": {
+          "ready": "Completado",
+          "onboarding": "En revisión",
+          "restricted": "Se requiere más información",
+          "notRegistered": "No registrada"
+        },
+        "registrationRequired": "Necesitas registrar una cuenta de cobro para recibir recompensas.",
+        "register": "Registrar cuenta de cobro",
+        "continue": "Continuar registro",
+        "redirecting": "Redirigiendo…",
+        "linkFailed": "No se pudo obtener el enlace de registro de la cuenta de cobro."
+      },
+      "confirm": {
+        "title": "Confirmar pago de recompensa",
+        "intro": "Confirma el pago de la recompensa (autorización de la tarjeta) necesario para tu solicitud.",
+        "expiryNotice": "Esta autorización es válida durante unos 7 días. Se requiere la aprobación final de la finalización del servicio en un plazo de 7 días (después se vuelve a cobrar al finalizar).",
+        "deferredNotice": "Como pasan más de 7 días entre la confirmación y el servicio, ahora no se realiza ninguna autorización. Pagarás de nuevo en la aprobación final de la finalización del servicio.",
+        "alreadyAuthorized": "Este pago ya ha sido confirmado.",
+        "preparing": "Preparando los datos de pago. Espera un momento e inténtalo de nuevo.",
+        "retry": "Recargar",
+        "submit": "Confirmar pago",
+        "processing": "Procesando…",
+        "succeeded": "Confirmación de pago completada.",
+        "loadFailed": "No se pudieron obtener los datos de pago.",
+        "payeeNotReady": "El destinatario aún no ha registrado una cuenta de cobro, por lo que el pago no es posible.",
+        "proceed": "Continuar para confirmar"
+      },
+      "received": {
+        "pageTitle": "Pagos recibidos y reembolsos",
+        "pageSubtitle": "Revisa los pagos que has recibido y emite reembolsos cuando sea necesario.",
+        "scopeLabel": "Destinatario",
+        "scope": {
+          "self": "Yo (individual)",
+          "team": "Equipo",
+          "org": "Organización"
+        },
+        "statusFilterLabel": "Filtrar por estado",
+        "statusFilterAll": "Todos",
+        "loading": "Cargando…",
+        "empty": "Aún no has recibido pagos.",
+        "loadFailed": "No se pudo cargar la lista de pagos recibidos.",
+        "noScope": "No hay destinatarios disponibles. Conviértete en administrador de un equipo/organización para ver su lista de pagos recibidos.",
+        "col": {
+          "source": "Origen",
+          "status": "Estado",
+          "faceAmount": "Importe nominal",
+          "chargeAmount": "Cobrado",
+          "fee": "Comisión",
+          "refunded": "Reembolsado",
+          "createdAt": "Recibido el",
+          "actions": "Acciones"
+        },
+        "sourceKind": {
+          "RECRUITMENT": "Recompensa (anuncio del mercado)",
+          "MEMBERSHIP": "Cuota de membresía",
+          "JOBMATCHING": "Búsqueda de empleo",
+          "FLEAMARKET": "Mercadillo"
+        },
+        "refundButton": "Reembolsar",
+        "refundUnavailable": "No reembolsable",
+        "refundSucceeded": "Reembolso aceptado.",
+        "status": {
+          "PENDING_CONFIRMATION": "Pendiente de confirmación",
+          "DEFERRED": "Pago al completar",
+          "AUTHORIZED": "Autorizado",
+          "HELD": "Pago retenido",
+          "CAPTURED": "Recibido",
+          "PARTIALLY_REFUNDED": "Reembolsado parcialmente",
+          "REFUNDED": "Reembolsado totalmente",
+          "CANCELLED": "Cancelado",
+          "DISPUTED": "En disputa"
+        }
+      }
+    },
+    "market_guide": {
+      "page_title": "Cómo usar Ichi",
+      "what": {
+        "title": "¿Qué es Ichi?",
+        "body": "Ichi es un lugar donde puedes buscar los anuncios de actividades y de captación de participantes que publican personas, equipos y organizaciones.",
+        "steps": {
+          "step1": "Revisa el contenido de los anuncios y busca actividades o convocatorias que te convengan",
+          "step2": "Abre el anuncio que te interese y continúa para postularte o crear un anuncio"
+        }
+      },
+      "search": {
+        "title": "Búsqueda con filtros",
+        "body": "Puedes filtrar los resultados por prefectura, municipio, género, autor y palabra clave.",
+        "steps": {
+          "step1": "Selecciona una prefectura y luego un municipio",
+          "step2": "Configura el género, el autor y la palabra clave libre",
+          "step3": "Elige ordenar por fecha límite más cercana o más lejana",
+          "step4": "Pulsa el botón de búsqueda para mostrar los anuncios que coinciden",
+          "step5": "Las condiciones del filtro se guardan en la URL, por lo que puedes compartirlas o guardarlas como favoritos mediante el enlace"
+        }
+      },
+      "apply": {
+        "title": "Responder a un anuncio (postularse)",
+        "body": "Haz clic en un anuncio que te interese para revisar su contenido y postúlate a los anuncios en estado OPEN. Para postularte debes iniciar sesión.",
+        "steps": {
+          "step1": "Haz clic en un anuncio de la lista para abrir su página de detalle",
+          "step2": "Comprueba la fecha y hora, el lugar, la fecha límite de postulación, el aforo y la zona",
+          "step3": "En las convocatorias de equipos, selecciona el equipo que se postula y pulsa \"Responder al anuncio\". No se puede volver a postular a un anuncio ya solicitado"
+        }
+      },
+      "personal_create": {
+        "title": "Publicar un anuncio personal a partir de un borrador",
+        "body": "Un anuncio personal se crea primero como un borrador privado y se publica después de editar su contenido.",
+        "steps": {
+          "step1": "Introduce los datos necesarios en Mi Ichi y crea un borrador",
+          "step2": "Revisa y edita el título, la fecha y hora, y el lugar obligatorio",
+          "step3": "Elige el alcance de publicación, revisa el contenido y publícalo"
+        }
+      },
+      "visibility": {
+        "title": "Alcance de publicación y nombre mostrado",
+        "body": "En los anuncios personales puedes elegir el alcance de publicación. Los borradores no se publican.",
+        "steps": {
+          "step1": "Los miembros de tus equipos y organizaciones ven tu nombre real registrado",
+          "step2": "El resto de personas ven tu apodo",
+          "step3": "Usa según convenga: público, público para los equipos y organizaciones seleccionados, o borrador privado"
+        }
+      },
+      "team_organization": {
+        "title": "Crear anuncios de equipos y organizaciones y gestionar postulantes",
+        "body": "Para crear anuncios de un equipo u organización y gestionar a los postulantes se necesita el permiso de administración correspondiente.",
+        "steps": {
+          "step1": "Crea un anuncio desde la pantalla del equipo o de la organización",
+          "step2": "Tras publicar, revisa a los postulantes y gestiona el estado de participación si es necesario"
+        }
+      },
+      "cancellation": {
+        "title": "Confirmación y cancelación",
+        "body": "Puedes comprobar si un anuncio se ha confirmado y cancelar los que ya no necesites.",
+        "steps": {
+          "step1": "Comprueba las postulaciones y el aforo, y realiza las acciones necesarias para la confirmación",
+          "step2": "Cancelar un anuncio publicado afecta a los postulantes, así que revisa el contenido antes de hacerlo"
+        }
+      }
+    }
+  }
+}

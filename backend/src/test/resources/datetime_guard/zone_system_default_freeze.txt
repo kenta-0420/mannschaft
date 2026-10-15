@@ -1,0 +1,14 @@
+# 番人: DateTimeAndZoneGuardTest の凍結リスト（種別: ZoneId.systemDefault()）。
+#
+# 【重要】このリストは CMP-023（docs/task-list.md）で返済する「借金の台帳」であり、免罪符ではない。
+# 新規に同じ型（ZoneId.systemDefault()）を書いてここへ追記することは禁止する。
+# 既存分のみ、監査済みの負債として凍結している。根治したら該当行を削除するか件数を減らすこと（chip-away）。
+#
+# 【キー形式は「クラス単位の件数」— メソッド名は含まない（PR #2725 の事故を踏まえた設計）】
+# 行形式: ZONE_SYSTEM_DEFAULT|<完全修飾クラス名>|<そのクラス内での検出件数>
+# メソッド名を含めていた初版は、本 issue と無関係なメソッド名変更だけでCIを赤くする事故を起こした
+# （DateTimeAndZoneGuardTest クラスJavadoc『凍結キーはクラス単位の件数』参照）。
+#
+# 2026-08-13 全件返済（CMP-023 第1ロット）: 実測28件（16サービス/4 payment-stripe/4 excel/4 その他）を
+# すべて UserZoneLocalDateTimeParser.SERVER_ZONE への明示参照へ置き換えたため、台帳は空になった。
+# 挙動は不変（値は変わらない。JacksonTimeTypeSymmetryGuardTest AC-9-3 で往復対称性を確認済み）。

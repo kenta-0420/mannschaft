@@ -1,0 +1,141 @@
+{
+  "quick_memo": {
+    "title": "快速备忘录",
+    "detail": "备忘录详情",
+    "no_memos": "还没有备忘录。试试 🪶 按钮记录一下吧",
+    "no_body": "（无内容）",
+    "saved": "已保存！",
+    "save_error": "保存失败",
+    "updated": "已更新",
+    "update_error": "更新失败",
+    "load_error": "加载失败",
+    "limit_warning": "未整理的备忘录越来越多 🌱 要整理一下吗？（{count}条）",
+    "limit_exceeded": "未整理备忘录已达上限（500条）。请归档或转换为TODO",
+    "settings": "设置",
+    "status": {
+      "UNSORTED": "未整理",
+      "ARCHIVED": "已归档",
+      "CONVERTED": "已转为TODO"
+    },
+    "action": {
+      "convert": "转为TODO",
+      "archive": "归档",
+      "archived": "已归档",
+      "archive_error": "归档失败",
+      "restore": "恢复",
+      "restored": "已恢复",
+      "restore_error": "恢复失败",
+      "deleted": "已删除",
+      "delete_error": "删除失败"
+    },
+    "dashboard_widget": {
+      "title": "快速备忘录",
+      "empty": "没有未整理的快速备忘录",
+      "empty_hint": "随时记录脑海中闪过的想法。长按Logo或按 Ctrl+Shift+M 快速记录",
+      "click_to_edit": "点击编辑",
+      "open_detail": "打开详情",
+      "see_all": "查看全部",
+      "converted": "已转换为待办事项",
+      "convert_error": "转换为待办事项失败"
+    },
+    "capture_modal": {
+      "title": "快速备忘录",
+      "title_placeholder": "现在脑海中浮现的是什么？",
+      "add_body": "添加详情",
+      "body_placeholder": "详情（可选）",
+      "submit": "保存！"
+    },
+    "form": {
+      "add_tag": "+ 标签",
+      "add_reminder": "⏰ 提醒设置"
+    },
+    "tag": {
+      "create": "新建标签",
+      "name_placeholder": "标签名称",
+      "color": "颜色",
+      "create_error": "创建标签失败"
+    },
+    "reminder": {
+      "label": "提醒",
+      "slot1": "第1次",
+      "slot2": "第2次",
+      "slot3": "第3次"
+    },
+    "voice": {
+      "start": "开始语音输入",
+      "stop": "停止语音输入",
+      "listening": "录音中...",
+      "consent_title": "关于语音输入",
+      "consent_body": "语音输入会将音频数据发送到外部服务。请注意个人信息的处理。",
+      "agree": "同意并使用",
+      "consent_error": "同意记录失败"
+    },
+    "convert_modal": {
+      "title": "转为TODO",
+      "priority": "优先级",
+      "due_date": "截止日期（可选）",
+      "submit": "转换",
+      "success": "已转为TODO",
+      "error": "转换失败"
+    },
+    "trash": {
+      "title": "回收站",
+      "no_memos": "回收站为空",
+      "restore": "恢复",
+      "restored": "已从回收站恢复",
+      "restore_error": "恢复失败",
+      "auto_delete_notice": "回收站中的备忘录将在90天后自动永久删除"
+    },
+    "search": {
+      "placeholder": "搜索备忘录..."
+    },
+    "reminder_settings": {
+      "title": "提醒设置",
+      "enable_reminder": "启用提醒",
+      "enable_reminder_desc": "创建备忘录后，在设定的时间收到通知",
+      "days_after": "天后的",
+      "days_suffix": "天",
+      "preview": "创建备忘录后，将在 {slots} 收到通知",
+      "preview_none": "提醒已禁用",
+      "apply_dialog_title": "应用范围",
+      "apply_dialog_body": "此设置应用到哪些备忘录？",
+      "apply_new_only": "仅新建备忘录（推荐）",
+      "apply_unsent": "同时更新未发送的提醒",
+      "apply_all": "重新计算所有备忘录的提醒",
+      "saved": "设置已保存",
+      "load_error": "设置加载失败",
+      "save_error": "设置保存失败"
+    },
+    "guide": {
+      "title": "快速备忘录使用指南",
+      "description": "零摩擦即时记录任何想法，随时整理或转换为待办事项。",
+      "capture": {
+        "title": "即时记录",
+        "body": "长按Logo或使用键盘快捷键随时打开记录弹窗，之后再整理也没关系。",
+        "steps": {
+          "step1": "长按Logo或按 Ctrl+Shift+M 打开弹窗",
+          "step2": "用一行文字输入想法并保存",
+          "step3": "点击「保存！」完成记录"
+        }
+      },
+      "organize": {
+        "title": "整理备忘录",
+        "body": "将备忘录转换为待办事项或归档，保持整洁。尽量在达到500条之前整理。",
+        "steps": {
+          "step1": "在「未整理」标签查看备忘录列表",
+          "step2": "点击勾选图标升级为TODO，或点击收件箱图标归档",
+          "step3": "点击标题可直接编辑"
+        }
+      },
+      "search": {
+        "title": "搜索备忘录",
+        "body": "通过关键词搜索快速找到过去的备忘录。",
+        "steps": {
+          "step1": "在顶部搜索栏输入关键词",
+          "step2": "实时过滤搜索结果",
+          "step3": "点击备忘录查看或编辑详情"
+        }
+      }
+    }
+  }
+}

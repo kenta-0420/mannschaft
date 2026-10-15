@@ -1,0 +1,86 @@
+package com.mannschaft.app.social.announcement.dto;
+
+import com.mannschaft.app.social.announcement.AnnouncementChannel;
+import com.mannschaft.app.social.announcement.BroadcastResult;
+import com.mannschaft.app.social.announcement.audience.TargetAudience;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * F02.8 告知ウィザード実行レスポンス DTO。
+ *
+ * <p>{@link BroadcastResult} をクライアントに返却する形式に変換した DTO。
+ * {@link #from(BroadcastResult)} ファクトリメソッドを使って生成する。</p>
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class BroadcastResponseDto {
+
+    /** 作成されたお知らせフィード ID。 */
+    private Long announcementFeedId;
+
+    /** 使用されたチャネル種別。 */
+    private AnnouncementChannel channel;
+
+    /** 作成されたコンテンツ ID。 */
+    private Long contentId;
+
+    /** コンテンツの URL（フロントエンドでリンク生成に使用）。 */
+    private String contentUrl;
+
+    /** 告知対象ロール（MEMBERS_AND_ABOVE / SUPPORTERS_AND_ABOVE / PUBLIC）。 */
+    private String targetRole;
+
+    /** 組織告知でのチーム絞り込み（null = 全チーム対象）。 */
+    private List<Long> targetTeamIds;
+
+    /** グループ宛て: 範囲を展開したチームグループ ID（並び順。グループ宛てでなければ null）。 */
+    private List<UUID> targetGroupIds;
+
+    /** グループ宛て: 未分類のチームを含めたか。 */
+    private boolean includeUnassigned;
+
+    /** 送信時の宛先指定の記録（送信履歴の「宛先: …（送信時 N チーム）」。絞り込みなしなら null）。 */
+    private TargetAudience targetAudience;
+
+    /** 警告（除外が無ければ空配列。例: {@code TEMPLATE_GROUPS_REMOVED:2}。F01.2.1 §8.6）。 */
+    @Builder.Default
+    private List<String> warnings = List.of();
+
+    /** 優先度（NORMAL / IMPORTANT / URGENT）。 */
+    private String priority;
+
+    /** 作成日時。 */
+    private LocalDateTime createdAt;
+
+    /**
+     * {@link BroadcastResult} からこの DTO を生成するファクトリメソッド。
+     *
+     * @param result サービス層が返す告知実行結果
+     * @return レスポンス DTO
+     */
+    public static BroadcastResponseDto from(BroadcastResult result) {
+        return BroadcastResponseDto.builder()
+                .announcementFeedId(result.getAnnouncementFeedId())
+                .channel(result.getChannel())
+                .contentId(result.getContentId())
+                .contentUrl(result.getContentUrl())
+                .targetRole(result.getTargetRole())
+                .targetTeamIds(result.getTargetTeamIds())
+                .targetGroupIds(result.getTargetGroupIds())
+                .includeUnassigned(result.isIncludeUnassigned())
+                .targetAudience(result.getTargetAudience())
+                .warnings(result.getWarnings())
+                .priority(result.getPriority())
+                .createdAt(result.getCreatedAt())
+                .build();
+    }
+}

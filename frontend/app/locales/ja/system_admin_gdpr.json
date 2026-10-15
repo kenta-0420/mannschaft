@@ -1,0 +1,64 @@
+{
+  "systemAdmin": {
+    "gdpr": {
+      "title": "GDPR パージ状況",
+      "summary": {
+        "completed": "処理完了",
+        "pending": "処理待ち",
+        "alert": "アラート"
+      },
+      "domain": {
+        "role": "ロール",
+        "team": "チーム",
+        "payment": "決済",
+        "chart": "チャート",
+        "proxy": "プロキシ",
+        "errorreport": "エラーレポート"
+      },
+      "status": {
+        "PENDING": "処理待ち",
+        "SUCCESS": "完了"
+      },
+      "table": {
+        "userId": "ユーザーID",
+        "emailHash": "メールハッシュ",
+        "domainName": "ドメイン",
+        "status": "ステータス",
+        "attemptedAt": "処理開始日時",
+        "completedAt": "処理完了日時",
+        "isAlert": "アラート",
+        "retryCount": "retry 回数"
+      },
+      "filter": {
+        "status": "ステータス",
+        "domain": "ドメイン",
+        "dateFrom": "開始日時",
+        "dateTo": "終了日時",
+        "search": "検索",
+        "allStatuses": "全ステータス",
+        "allDomains": "全ドメイン"
+      },
+      "export": "CSV エクスポート",
+      "detail": {
+        "title": "ユーザー詳細",
+        "close": "閉じる"
+      },
+      "noData": "データがありません",
+      "retry": {
+        "button": "再試行",
+        "confirm": "ドメイン「{domain}」の GDPR パージを再試行しますか？",
+        "success": "retry 成功しました",
+        "failed": "retry 失敗（PENDING 継続）",
+        "alreadySuccess": "既に処理済みです",
+        "count": "{count} 回 retry 済み",
+        "lastRetried": "最終 retry: {datetime}"
+      },
+      "toast": {
+        "loadFailed": "データの取得に失敗しました",
+        "detailLoadFailed": "ユーザー詳細の取得に失敗しました",
+        "retryFailed": "retry リクエストに失敗しました"
+      },
+      "quickLinkLabel": "GDPR パージ状況"
+    }
+  }
+}

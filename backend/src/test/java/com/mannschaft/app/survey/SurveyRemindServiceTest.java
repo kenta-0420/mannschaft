@@ -1,0 +1,566 @@
+package com.mannschaft.app.survey;
+
+import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.survey.dto.RemindResponse;
+import com.mannschaft.app.survey.entity.SurveyEntity;
+import com.mannschaft.app.survey.entity.SurveyResponseEntity;
+import com.mannschaft.app.survey.entity.SurveyTargetEntity;
+import com.mannschaft.app.survey.repository.SurveyRepository;
+import com.mannschaft.app.survey.repository.SurveyResponseRepository;
+import com.mannschaft.app.survey.repository.SurveyTargetRepository;
+import com.mannschaft.app.survey.service.SurveyRemindService;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
+/**
+ * {@link SurveyRemindService} の単体テスト。
+ *
+ * <p>F05.4 督促 API の認可・状態・クールダウン・上限・境界値を網羅的に検証する。
+ * 旧 {@code SurveyServiceTest$Remind} から移設（リファクタ: SurveyService の DI 分離）。</p>
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("SurveyRemindService 単体テスト")
+class SurveyRemindServiceTest {
+
+    @Mock
+    private SurveyRepository surveyRepository;
+
+    @Mock
+    private SurveyTargetRepository targetRepository;
+
+    @Mock
+    private SurveyResponseRepository responseRepository;
+
+    @Mock
+    private UserRoleRepository userRoleRepository;
+
+    @Mock
+    private AccessControlService accessControlService;
+
+    @Mock
+    private NotificationHelper notificationHelper;
+
+    @Mock
+    private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
+
+    /** Issue #2715 CMP-055 lot C-5: newly added i18n dependencies. */
+    @Mock private MessageSource messageSource;
+
+    @InjectMocks
+    private SurveyRemindService remindService;
+
+    /**
+     * 母集団解決（{@link com.mannschaft.app.survey.service.SurveyUniverseResolver}）は
+     * <b>本物</b>を注入する。ここをモックにすると「どの母集団を数えるか」という本質が
+     * テストから消えるため、実クラスへ既存のリポジトリモックを渡し、
+     * 従来どおり最下層のスタブ（{@code userRoleRepository} 等）で振る舞いを決める。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void 母集団リゾルバを実クラスで注入する() {
+        org.springframework.test.util.ReflectionTestUtils.setField(remindService, "universeResolver",
+                new com.mannschaft.app.survey.service.SurveyUniverseResolver(
+                        organizationMembershipService, userRoleRepository, targetRepository));
+    }
+
+    /**
+     * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
+     * title/body. Return the supplied default message so existing assertions keep working.
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void stubI18nMessageSource() {
+        org.mockito.Mockito.lenient().when(messageSource.getMessage(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> inv.getArgument(2));
+    }
+
+    private static final Long SURVEY_ID = 100L;
+    private static final Long SCOPE_ID = 1L;
+    private static final Long USER_ID = 10L;
+    private static final Long OTHER_USER_ID = 99L;
+    private static final String SCOPE_TYPE = "TEAM";
+
+    /**
+     * SurveyEntity の BaseEntity.id をリフレクションで設定する。
+     */
+    private void setEntityId(SurveyEntity entity, Long id) {
+        try {
+            var idField = entity.getClass().getSuperclass().getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(entity, id);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /**
+     * TARGETED 配信のドラフトアンケートを生成する（既存テスト互換のデフォルト）。
+     * id は SURVEY_ID で設定済み。
+     */
+    private SurveyEntity createDraftSurvey() {
+        SurveyEntity entity = SurveyEntity.builder()
+                .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).title("テストアンケート")
+                .description("説明").isAnonymous(false).allowMultipleSubmissions(false)
+                .resultsVisibility(ResultsVisibility.AFTER_RESPONSE)
+                .distributionMode(DistributionMode.TARGETED)
+                .createdBy(USER_ID).build();
+        setEntityId(entity, SURVEY_ID);
+        return entity;
+    }
+
+    /**
+     * PUBLISHED 状態の督促可能アンケートを生成する（TARGETED 配信）。
+     * lastRemindedAt = null / manualRemindCount = 0 が初期値。
+     */
+    private SurveyEntity createRemindableSurvey() {
+        SurveyEntity entity = createDraftSurvey();
+        entity.publish();
+        return entity;
+    }
+
+    /**
+     * ALL 配信モードの督促可能アンケートを生成する（F05.4 §1035-1036）。
+     */
+    private SurveyEntity createAllModeRemindableSurvey() {
+        SurveyEntity entity = SurveyEntity.builder()
+                .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).title("ALL配信アンケート")
+                .description("説明").isAnonymous(false).allowMultipleSubmissions(false)
+                .resultsVisibility(ResultsVisibility.AFTER_RESPONSE)
+                .distributionMode(DistributionMode.ALL)
+                .createdBy(USER_ID).build();
+        setEntityId(entity, SURVEY_ID);
+        entity.publish();
+        return entity;
+    }
+
+    /**
+     * 配信対象エンティティを構築する（テスト用ヘルパー）。
+     */
+    private SurveyTargetEntity buildTarget(Long userId) {
+        return SurveyTargetEntity.builder().surveyId(SURVEY_ID).userId(userId).build();
+    }
+
+    /**
+     * 回答済みエンティティを構築する（テスト用ヘルパー）。
+     */
+    private SurveyResponseEntity buildResponse(Long userId) {
+        return SurveyResponseEntity.builder().surveyId(SURVEY_ID).userId(userId)
+                .questionId(1L).build();
+    }
+
+    @Test
+    @DisplayName("督促_作成者が送信_未回答者へ通知し remindedCount と remainingRemindQuota を返す")
+    void 督促_作成者が送信_未回答者へ通知し残回数を返す() {
+        // Given: 作成者 = USER_ID。配信対象3名のうち1名が回答済み → 未回答2名
+        SurveyEntity survey = createRemindableSurvey();
+        given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
+        // 作成者なので AccessControlService は呼ばれないはず
+        given(targetRepository.findBySurveyId(SURVEY_ID)).willReturn(List.of(
+                buildTarget(101L), buildTarget(102L), buildTarget(103L)));
+        given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID)).willReturn(List.of(
+                buildResponse(102L)));
+        given(surveyRepository.save(survey)).willReturn(survey);
+
+        // When
+        RemindResponse result = remindService.remind(SURVEY_ID, USER_ID);
+
+        // Then
+        assertThat(result.surveyId()).isEqualTo(SURVEY_ID);
+        assertThat(result.remindedCount()).isEqualTo(2);
+        assertThat(result.remainingRemindQuota()).isEqualTo(2); // 上限3 - 1回目 = 2
+        assertThat(result.message()).contains("2");
+        assertThat(survey.getManualRemindCount()).isEqualTo(1);
+        assertThat(survey.getLastRemindedAt()).isNotNull();
+        verify(notificationHelper).notifyAllPreAuthorizedLocalized(
+                    eq(List.of(101L, 103L)),
+                    eq(SurveyNotificationType.SURVEY_RESPONSE_REMINDER.name()),
+                    eq("SURVEY"),
+                    eq(SURVEY_ID),
+                    eq(NotificationScopeType.TEAM),
+                    eq(SCOPE_ID),
+                    anyString(),
+                    eq(USER_ID),
+                    any());
+    }
+
+    @Test
+    @DisplayName("督促_ADMIN以上が送信_認可通過して通知される")
+    void 督促_ADMIN以上が送信_認可通過() {
+        // Given: 作成者ではない別ユーザーだが ADMIN 権限あり
+        SurveyEntity survey = createRemindableSurvey();
+        given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
+        given(accessControlService.hasAdminOrPermissionInScope(OTHER_USER_ID, SCOPE_ID, SCOPE_TYPE, "MANAGE_SURVEYS"))
+                .willReturn(true);
+        given(targetRepository.findBySurveyId(SURVEY_ID)).willReturn(List.of(buildTarget(200L)));
+        given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
+                .willReturn(List.of());
+        given(surveyRepository.save(survey)).willReturn(survey);
+
+        // When
+        RemindResponse result = remindService.remind(SURVEY_ID, OTHER_USER_ID);
+
+        // Then
+        assertThat(result.remindedCount()).isEqualTo(1);
+        assertThat(survey.getManualRemindCount()).isEqualTo(1);
+        verify(notificationHelper).notifyAllPreAuthorizedLocalized(
+                    anyList(),
+                    anyString(),
+                    anyString(),
+                    anyLong(),
+                    any(NotificationScopeType.class),
+                    anyLong(),
+                    anyString(),
+                    anyLong(),
+                    any());
+    }
+
+    @Test
+    @DisplayName("督促_作成者でもADMINでもない_BusinessException SURVEY_014")
+    void 督促_認可失敗_REMIND_PERMISSION_DENIED() {
+        // Given
+        SurveyEntity survey = createRemindableSurvey();
+        given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
+        given(accessControlService.hasAdminOrPermissionInScope(OTHER_USER_ID, SCOPE_ID, SCOPE_TYPE, "MANAGE_SURVEYS"))
+                .willReturn(false);
+
+        // When & Then
+        assertThatThrownBy(() -> remindService.remind(SURVEY_ID, OTHER_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(SurveyErrorCode.REMIND_PERMISSION_DENIED));
+        verify(notificationHelper, never()).notifyAllPreAuthorizedLocalized(
+                    anyList(),
+                    anyString(),
+                    anyString(),
+                    anyLong(),
+                    any(NotificationScopeType.class),
+                    anyLong(),
+                    anyString(),
+                    anyLong(),
+                    any());
+        verify(surveyRepository, never()).save(any(SurveyEntity.class));
+    }
+
+    @Test
+    @DisplayName("督促_DRAFT状態_BusinessException INVALID_SURVEY_STATUS")
+    void 督促_DRAFT状態_INVALID_SURVEY_STATUS() {
+        // Given: DRAFT のまま（publish していない）
+        SurveyEntity survey = createDraftSurvey();
+        given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
+
+        // When & Then
+        assertThatThrownBy(() -> remindService.remind(SURVEY_ID, USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(SurveyErrorCode.INVALID_SURVEY_STATUS));
+        verify(notificationHelper, never()).notifyAllPreAuthorizedLocalized(
+                    anyList(),
+                    anyString(),
+                    anyString(),
+                    anyLong(),
+                    any(NotificationScopeType.class),
+                    anyLong(),
+                    anyString(),
+                    anyLong(),
+                    any());
+    }
+
+    @Test
+    @DisplayName("督促_CLOSED状態_BusinessException INVALID_SURVEY_STATUS")
+    void 督促_CLOSED状態_INVALID_SURVEY_STATUS() {
+        // Given: PUBLISHED → CLOSED
+        SurveyEntity survey = createDraftSurvey();
+        survey.publish();
+        survey.close();
+        given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
+
+        // When & Then
+        assertThatThrownBy(() -> remindService.remind(SURVEY_ID, USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(SurveyErrorCode.INVALID_SURVEY_STATUS));
+    }
+
+    @Test
+    @DisplayName("督促_クールダウン中_BusinessException REMIND_COOLDOWN_NOT_ELAPSED")
+    void 督促_クールダウン未経過_REMIND_COOLDOWN_NOT_ELAPSED() {
+        // Given: 直近23時間前に送信済み（24h 未満）
+        SurveyEntity survey = createRemindableSurvey().toBuilder()
+                .lastRemindedAt(LocalDateTime.now().minusHours(23))
+                .manualRemindCount(1)
+                .build();
+        given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
+
+        // When & Then
+        assertThatThrownBy(() -> remindService.remind(SURVEY_ID, USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(SurveyErrorCode.REMIND_COOLDOWN_NOT_ELAPSED));
+        verify(notificationHelper, never()).notifyAllPreAuthorizedLocalized(
+                    anyList(),
+                    anyString(),
+                    anyString(),
+                    anyLong(),
+                    any(NotificationScopeType.class),
+                    anyLong(),
+                    anyString(),
+                    anyLong(),
+                    any());
+    }
+
+    @Test
+    @DisplayName("督促_上限到達_BusinessException REMIND_QUOTA_EXCEEDED")
+    void 督促_上限到達_REMIND_QUOTA_EXCEEDED() {
+        // Given: 既に3回送信済み（クールダウンは過ぎている設定）
+        SurveyEntity survey = createRemindableSurvey().toBuilder()
+                .lastRemindedAt(LocalDateTime.now().minusDays(2))
+                .manualRemindCount(3)
+                .build();
+        given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
+
+        // When & Then
+        assertThatThrownBy(() -> remindService.remind(SURVEY_ID, USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(SurveyErrorCode.REMIND_QUOTA_EXCEEDED));
+        verify(notificationHelper, never()).notifyAllPreAuthorizedLocalized(
+                    anyList(),
+                    anyString(),
+                    anyString(),
+                    anyLong(),
+                    any(NotificationScopeType.class),
+                    anyLong(),
+                    anyString(),
+                    anyLong(),
+                    any());
+    }
+
+    @Test
+    @DisplayName("督促_アンケート存在しない_BusinessException SURVEY_NOT_FOUND")
+    void 督促_アンケート存在しない_SURVEY_NOT_FOUND() {
+        // Given
+        given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> remindService.remind(SURVEY_ID, USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(SurveyErrorCode.SURVEY_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("督促_クールダウン丁度24時間経過_正常通過")
+    void 督促_境界値_24時間経過は通過() {
+        // Given: ぴったり24時間経過（仕様: 24h 以上経過なら OK = `< 24` の判定）
+        SurveyEntity survey = createRemindableSurvey().toBuilder()
+                .lastRemindedAt(LocalDateTime.now().minusHours(24).minusMinutes(1))
+                .manualRemindCount(1)
+                .build();
+        setEntityId(survey, SURVEY_ID);
+        given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
+        given(targetRepository.findBySurveyId(SURVEY_ID)).willReturn(List.of(buildTarget(300L)));
+        given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
+                .willReturn(List.of());
+        given(surveyRepository.save(survey)).willReturn(survey);
+
+        // When
+        RemindResponse result = remindService.remind(SURVEY_ID, USER_ID);
+
+        // Then: 通過する（送信成功）
+        assertThat(result.remindedCount()).isEqualTo(1);
+        assertThat(survey.getManualRemindCount()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("督促_境界値_残上限1回時に成功すると残ゼロ")
+    void 督促_境界値_残上限1回成功で残ゼロ() {
+        // Given: 既に2回送信済み（残1回）
+        SurveyEntity survey = createRemindableSurvey().toBuilder()
+                .lastRemindedAt(LocalDateTime.now().minusDays(2))
+                .manualRemindCount(2)
+                .build();
+        setEntityId(survey, SURVEY_ID);
+        given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
+        given(targetRepository.findBySurveyId(SURVEY_ID)).willReturn(List.of(buildTarget(400L)));
+        given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
+                .willReturn(List.of());
+        given(surveyRepository.save(survey)).willReturn(survey);
+
+        // When
+        RemindResponse result = remindService.remind(SURVEY_ID, USER_ID);
+
+        // Then: 3回目に成功 → 残ゼロ
+        assertThat(result.remindedCount()).isEqualTo(1);
+        assertThat(result.remainingRemindQuota()).isEqualTo(0);
+        assertThat(survey.getManualRemindCount()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("督促_配信対象未登録_対象0件で送信スキップだが状態更新は実施")
+    void 督促_配信対象未登録_送信スキップで状態更新() {
+        // Given: targets が空（事前登録なし）
+        SurveyEntity survey = createRemindableSurvey();
+        given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
+        given(targetRepository.findBySurveyId(SURVEY_ID)).willReturn(List.of());
+        given(surveyRepository.save(survey)).willReturn(survey);
+
+        // When
+        RemindResponse result = remindService.remind(SURVEY_ID, USER_ID);
+
+        // Then
+        assertThat(result.remindedCount()).isEqualTo(0);
+        assertThat(survey.getManualRemindCount()).isEqualTo(1);
+        verify(notificationHelper, never()).notifyAllPreAuthorizedLocalized(
+                    anyList(),
+                    anyString(),
+                    anyString(),
+                    anyLong(),
+                    any(NotificationScopeType.class),
+                    anyLong(),
+                    anyString(),
+                    anyLong(),
+                    any());
+    }
+
+    @Test
+    @DisplayName("督促_ALLモード_user_roles から母集団取得し未回答者のみ通知（F05.4 §1035-1036）")
+    void 督促_ALLモード_user_rolesから母集団取得() {
+        // Given: ALL モード。スコープ内全メンバー 5 名のうち 2 名が回答済み → 未回答 3 名
+        SurveyEntity survey = createAllModeRemindableSurvey();
+        given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
+        given(userRoleRepository.findUserIdsByScope(SCOPE_TYPE, SCOPE_ID))
+                .willReturn(List.of(101L, 102L, 103L, 104L, 105L));
+        given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
+                .willReturn(List.of(buildResponse(102L), buildResponse(104L)));
+        given(surveyRepository.save(survey)).willReturn(survey);
+
+        // When
+        RemindResponse result = remindService.remind(SURVEY_ID, USER_ID);
+
+        // Then: targets ではなく user_roles 経由の母集団から未回答者を抽出する
+        assertThat(result.remindedCount()).isEqualTo(3);
+        assertThat(survey.getManualRemindCount()).isEqualTo(1);
+        verify(notificationHelper).notifyAllPreAuthorizedLocalized(
+                    eq(List.of(101L, 103L, 105L)),
+                    eq(SurveyNotificationType.SURVEY_RESPONSE_REMINDER.name()),
+                    eq("SURVEY"),
+                    eq(SURVEY_ID),
+                    eq(NotificationScopeType.TEAM),
+                    eq(SCOPE_ID),
+                    anyString(),
+                    eq(USER_ID),
+                    any());
+    }
+
+    @Test
+    @DisplayName("督促_ALLモード_survey_targetsは参照されない")
+    void 督促_ALLモード_targetRepositoryは呼ばれない() {
+        // Given: ALL モード。targets が登録されていても user_roles 側の母集団のみが対象
+        SurveyEntity survey = createAllModeRemindableSurvey();
+        given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
+        given(userRoleRepository.findUserIdsByScope(SCOPE_TYPE, SCOPE_ID))
+                .willReturn(List.of(200L));
+        given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
+                .willReturn(List.of());
+        given(surveyRepository.save(survey)).willReturn(survey);
+
+        // When
+        RemindResponse result = remindService.remind(SURVEY_ID, USER_ID);
+
+        // Then
+        assertThat(result.remindedCount()).isEqualTo(1);
+        // ALL モード時は targetRepository.findBySurveyId は呼ばれない
+        verify(targetRepository, never()).findBySurveyId(any());
+    }
+
+    @Test
+    @DisplayName("督促_ORGANIZATIONスコープ_NotificationScopeType.ORGANIZATIONで送信")
+    void 督促_ORGANIZATIONスコープ_ORG通知() {
+        // Given: scopeType = ORGANIZATION の Survey（TARGETED モードで targets を母集団とする）
+        SurveyEntity survey = SurveyEntity.builder()
+                .scopeType("ORGANIZATION").scopeId(SCOPE_ID).title("ORG向け")
+                .description("").isAnonymous(false).allowMultipleSubmissions(false)
+                .resultsVisibility(ResultsVisibility.AFTER_RESPONSE)
+                .distributionMode(DistributionMode.TARGETED)
+                .createdBy(USER_ID).build();
+        setEntityId(survey, SURVEY_ID);
+        survey.publish();
+        given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
+        given(targetRepository.findBySurveyId(SURVEY_ID)).willReturn(List.of(buildTarget(500L)));
+        given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
+                .willReturn(List.of());
+        given(surveyRepository.save(survey)).willReturn(survey);
+
+        // When
+        remindService.remind(SURVEY_ID, USER_ID);
+
+        // Then
+        verify(notificationHelper).notifyAllPreAuthorizedLocalized(
+                    anyList(),
+                    anyString(),
+                    anyString(),
+                    anyLong(),
+                    eq(NotificationScopeType.ORGANIZATION),
+                    eq(SCOPE_ID),
+                    anyString(),
+                    anyLong(),
+                    any());
+    }
+
+    @Test
+    @DisplayName("督促_ORGANIZATION_ALL_配下チーム展開の母集団から未回答者抽出")
+    void 督促_ORG_ALL_配下チーム展開() {
+        // Given: 組織スコープ × ALL（配下チーム展開の窓口経由で母集団を解決）
+        SurveyEntity survey = SurveyEntity.builder()
+                .scopeType("ORGANIZATION").scopeId(SCOPE_ID).title("組織ALL")
+                .description("").isAnonymous(false).allowMultipleSubmissions(false)
+                .resultsVisibility(ResultsVisibility.AFTER_RESPONSE)
+                .distributionMode(DistributionMode.ALL)
+                .includeSupporters(false)
+                .createdBy(USER_ID).build();
+        setEntityId(survey, SURVEY_ID);
+        survey.publish();
+        given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
+        // 配下チーム展開の窓口（組織×ALL のみ呼ばれること）
+        given(organizationMembershipService.resolveOrgDistributionUserIds(SCOPE_ID, false))
+                .willReturn(List.of(11L, 22L, 33L));
+        // 22L は回答済み → 未回答は 11L / 33L
+        given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
+                .willReturn(List.of(buildResponse(22L)));
+        given(surveyRepository.save(survey)).willReturn(survey);
+
+        // When
+        RemindResponse result = remindService.remind(SURVEY_ID, USER_ID);
+
+        // Then: 組織配下展開の窓口経由・findUserIdsByScope は使わない・targets も使わない
+        assertThat(result.remindedCount()).isEqualTo(2);
+        verify(organizationMembershipService).resolveOrgDistributionUserIds(SCOPE_ID, false);
+        verify(userRoleRepository, never()).findUserIdsByScope(anyString(), any());
+        verify(targetRepository, never()).findBySurveyId(any());
+    }
+}

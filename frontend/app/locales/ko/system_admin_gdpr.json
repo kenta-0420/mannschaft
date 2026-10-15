@@ -1,0 +1,64 @@
+{
+  "systemAdmin": {
+    "gdpr": {
+      "title": "GDPR 퍼지 현황",
+      "summary": {
+        "completed": "처리 완료",
+        "pending": "처리 대기",
+        "alert": "알림"
+      },
+      "domain": {
+        "role": "역할",
+        "team": "팀",
+        "payment": "결제",
+        "chart": "차트",
+        "proxy": "프록시",
+        "errorreport": "오류 보고"
+      },
+      "status": {
+        "PENDING": "처리 대기",
+        "SUCCESS": "완료"
+      },
+      "table": {
+        "userId": "사용자 ID",
+        "emailHash": "이메일 해시",
+        "domainName": "도메인",
+        "status": "상태",
+        "attemptedAt": "처리 시작 일시",
+        "completedAt": "처리 완료 일시",
+        "isAlert": "알림",
+        "retryCount": "retry 횟수"
+      },
+      "filter": {
+        "status": "상태",
+        "domain": "도메인",
+        "dateFrom": "시작 일시",
+        "dateTo": "종료 일시",
+        "search": "검색",
+        "allStatuses": "전체 상태",
+        "allDomains": "전체 도메인"
+      },
+      "export": "CSV 내보내기",
+      "detail": {
+        "title": "사용자 상세",
+        "close": "닫기"
+      },
+      "noData": "데이터가 없습니다",
+      "retry": {
+        "button": "재시도",
+        "confirm": "도메인 「{domain}」의 GDPR 퍼지를 재시도하시겠습니까?",
+        "success": "retry 성공했습니다",
+        "failed": "retry 실패（PENDING 계속）",
+        "alreadySuccess": "이미 처리 완료입니다",
+        "count": "{count}회 retry 완료",
+        "lastRetried": "마지막 retry: {datetime}"
+      },
+      "toast": {
+        "loadFailed": "데이터 불러오기 실패",
+        "detailLoadFailed": "사용자 상세 불러오기 실패",
+        "retryFailed": "retry 요청 실패"
+      },
+      "quickLinkLabel": "GDPR 퍼지 현황"
+    }
+  }
+}

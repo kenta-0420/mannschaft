@@ -1,0 +1,211 @@
+{
+  "surveys": {
+    "pageTitle": "Surveys & Polls",
+    "statusLabel": {
+      "DRAFT": "Draft",
+      "PUBLISHED": "Open",
+      "CLOSED": "Closed",
+      "ARCHIVED": "Archived"
+    },
+    "questionType": {
+      "SINGLE_CHOICE": "Single choice",
+      "MULTIPLE_CHOICE": "Multiple choice",
+      "TEXT": "Free text",
+      "RATING": "Rating (1-5)",
+      "DATE": "Date"
+    },
+    "resultsVisibility": {
+      "label": "Results visibility",
+      "CREATOR_ONLY": "Creator only",
+      "RESPONDENTS": "Respondents only",
+      "ALL_MEMBERS": "All members",
+      "AFTER_CLOSE": "All members after close"
+    },
+    "unrespondedVisibility": {
+      "label": "Unresponded visibility",
+      "HIDDEN": "Hidden",
+      "CREATOR_AND_ADMIN": "Creator & admins only",
+      "ALL_MEMBERS": "All members"
+    },
+    "list": {
+      "filterAll": "All",
+      "filterDraft": "Draft",
+      "filterPlaceholder": "Status",
+      "createButton": "Create survey",
+      "editDraft": "Add / edit questions",
+      "answeredBadge": "Answered",
+      "anonymous": "Anonymous",
+      "responseCountUnit": "responses",
+      "empty": "No surveys yet",
+      "loadFailed": "Failed to load surveys"
+    },
+    "create": {
+      "dialogHeader": "Create a survey",
+      "title": "Title",
+      "titlePlaceholder": "e.g. Preferred date for the next event",
+      "description": "Description (optional)",
+      "descriptionPlaceholder": "Describe the purpose or any notes for this survey",
+      "isAnonymous": "Anonymous responses",
+      "allowMultipleSubmissions": "Allow multiple submissions",
+      "deadline": "Deadline (optional)",
+      "deadlinePlaceholder": "Not set",
+      "questions": "Questions",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saveDraft": "Save as draft",
+      "saveAndPublish": "Create & publish",
+      "draftSaved": "Draft saved",
+      "draftRestored": "Previous input restored",
+      "draftHint": "You can add questions later. Save with just a title for now.",
+      "successToast": "Survey created",
+      "draftSuccessToast": "Saved as draft. Add questions and publish when ready.",
+      "failureToast": "Failed to create survey",
+      "validation": {
+        "titleRequired": "Please enter a title",
+        "titleTooLong": "Title must be within 200 characters",
+        "descriptionTooLong": "Description must be within 1000 characters",
+        "questionsRequired": "Please add at least one question",
+        "questionTextRequired": "Please enter text for question {index}",
+        "optionsTooFew": "Question {index} requires at least two options",
+        "optionEmpty": "Question {index} has empty option(s)",
+        "questionTypeUnsupported": "Question {index}: Date questions are not supported yet. Please choose another type."
+      },
+      "questionEditor": {
+        "empty": "No questions yet",
+        "questionNo": "Question {no}",
+        "questionText": "Question text",
+        "questionTextPlaceholder": "Enter the question",
+        "type": "Answer format",
+        "required": "Required",
+        "options": "Options",
+        "optionPlaceholder": "Option text",
+        "addOption": "Add option",
+        "addQuestion": "Add question",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "remove": "Remove",
+        "removeOption": "Remove option",
+        "ratingScale": "Rating scale (1-5)",
+        "textHint": "Respondents will answer in free text",
+        "dateHint": "Respondents will pick a date"
+      },
+      "teamBreakdownEnabled": "Aggregate by team",
+      "teamBreakdownHint": "Aggregate responses per member team (organization distribution only).",
+      "teamBreakdownAnonymousConflict": "Team breakdown is not available for anonymous surveys."
+    },
+    "detail": {
+      "scopeMissing": "Survey scope information is missing",
+      "scopeContext": {
+        "label": "Survey target",
+        "type": { "TEAM": "Target team", "ORGANIZATION": "Target organization" },
+        "loading": "Loading name…",
+        "nameUnavailable": "Name unavailable",
+        "management": {
+          "admin": "Managing as an administrator",
+          "delegated": "Managing with delegated survey permission",
+          "creator": "Managing as the creator",
+          "authorized": "Managing with granted permission"
+        }
+      },
+      "fetchFailed": "Failed to load survey details",
+      "back": "Back",
+      "answeredBadge": "Answered",
+      "deadline": "Deadline",
+      "responseCount": "Responses",
+      "anonymous": "Anonymous",
+      "draftHint": "This survey is a draft. It will not accept responses until published.",
+      "draftAddQuestionsHint": "Add questions before publishing. You can publish without questions, but respondents won't be able to answer.",
+      "draftQuestionsSection": "Add questions",
+      "publishButton": "Publish",
+      "publishSuccess": "Survey published",
+      "publishFailed": "Failed to publish the survey",
+      "closeButton": "Close survey",
+      "closeConfirmHeader": "Close survey",
+      "closeConfirmMessage": "This will close the survey. New responses will no longer be accepted. Are you sure?",
+      "closeSuccess": "Survey closed",
+      "closeFailed": "Failed to close the survey",
+      "deleteButton": "Delete",
+      "deleteConfirmHeader": "Delete survey",
+      "deleteConfirmMessage": "This will permanently delete the survey. This action cannot be undone. Are you sure?",
+      "deleteSuccess": "Survey deleted",
+      "deleteFailed": "Failed to delete the survey",
+      "closedNoPermission": "This survey has been closed. Results are not public.",
+      "form": {
+        "alreadyResponded": "You have already responded to this survey.",
+        "requiredBadge": "Required",
+        "textPlaceholder": "Enter your answer",
+        "validationRequired": "\"{question}\" is required",
+        "validationTextTooLong": "\"{question}\" must be within 2000 characters",
+        "submitNew": "Submit response",
+        "submitUpdate": "Update response",
+        "submitSuccess": "Response submitted",
+        "submitFailed": "Failed to submit response"
+      },
+      "results": {
+        "title": "Results",
+        "reload": "Reload results",
+        "fetchFailed": "Failed to load results",
+        "retry": "Retry",
+        "empty": "No data yet",
+        "loadFailedToast": "Failed to load results",
+        "responsesUnit": "",
+        "responsesLabel": "Responses",
+        "noData": "No data",
+        "noTextResponses": "No text responses",
+        "moreCount": "{count} more"
+      },
+      "respondentsSection": {
+        "title": "Respondents",
+        "toggleShow": "Show",
+        "toggleHide": "Hide"
+      }
+    },
+    "respondents": {
+      "summary": "{responded} / {total} members",
+      "reload": "Reload",
+      "tabResponded": "Responded ({count})",
+      "tabUnresponded": "Unresponded ({count})",
+      "remindHint": "Send a reminder to {count} unresponded members (up to 3 times)",
+      "remindButton": "Send reminder",
+      "remindAutoNotice": "An auto reminder will be sent 24 hours before the deadline",
+      "remindSuccess": "Reminder sent to {count} member(s)",
+      "remindRemaining": "Remaining sends: {count}",
+      "remindFailed": "Failed to send reminder",
+      "remindFailedDetail": "Please check sending limit, cooldown and permissions",
+      "loadFailed": "Failed to load respondents",
+      "loadErrorTitle": "Failed to load respondents",
+      "retry": "Retry",
+      "respondedBadge": "Responded",
+      "unrespondedBadge": "Unresponded",
+      "emptyResponded": "No respondents yet",
+      "emptyUnresponded": "No unresponded members"
+    },
+    "teamBreakdown": {
+      "title": "Team breakdown",
+      "reload": "Reload",
+      "retry": "Retry",
+      "fetchFailed": "Failed to load the team breakdown.",
+      "forbidden": "You do not have permission to view this breakdown.",
+      "empty": "No team breakdown data available.",
+      "masked": "Hidden because fewer than 5 respondents.",
+      "directMembers": "Direct organization members",
+      "totalRespondents": "Total respondents: {count}",
+      "respondentCount": "{count} respondents",
+      "optionCount": "{count} ({percentage}%)",
+      "noOptionData": "No data.",
+      "noQuestionData": "No questions to aggregate."
+    },
+    "results": {
+      "withheldForPrivacy": {
+        "title": "Results are hidden while there are only a few responses",
+        "description": "In anonymous surveys, a change in the tally right after someone responds can reveal that person's answer. Results will be shown once there are at least {threshold} responses. (Currently {count})"
+      },
+      "respondCta": "Respond to this survey",
+      "editResponseCta": "Edit your response",
+      "forbidden": {
+        "title": "You do not have permission to view this survey's results",
+        "description": "This survey is limited to a specific audience and you are not included. If you believe this is a mistake, please contact the survey creator."
+      }
+    }
+  }
+}

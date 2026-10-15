@@ -1,0 +1,82 @@
+{
+  "incident_banner": {
+    "title": "Gestión de Banners de Incidentes",
+    "quick_link_label": "Banners de Incidentes",
+    "create_btn": "Crear Banner",
+    "edit_dialog_title": "Editar Banner",
+    "create_dialog_title": "Crear Banner",
+    "save_btn": "Guardar",
+    "cancel_btn": "Cancelar",
+    "delete_confirm": "¿Estás seguro de que quieres eliminar este banner? Esta acción no se puede deshacer.",
+    "delete_btn": "Eliminar",
+    "publish_btn": "Publicar",
+    "unpublish_btn": "Despublicar",
+    "load_failed": "Error al cargar los datos",
+    "create_success": "Banner creado",
+    "update_success": "Banner actualizado",
+    "delete_success": "Banner eliminado",
+    "publish_success": "Banner publicado",
+    "unpublish_success": "Banner despublicado",
+    "save_failed": "Error al guardar",
+    "delete_failed": "Error al eliminar",
+    "publish_failed": "Error al publicar",
+    "unpublish_failed": "Error al despublicar",
+    "suggestions_load_failed": "Error al cargar sugerencias",
+    "no_data": "No hay banners registrados aún",
+    "translation_pending": "Las traducciones se están generando automáticamente (espere un momento después de guardar)",
+    "form": {
+      "message_label": "Mensaje (original en japonés)",
+      "message_placeholder": "Ingrese la descripción del incidente (máx. 500 caracteres)",
+      "message_required": "El mensaje es obligatorio",
+      "message_too_long": "El mensaje debe tener 500 caracteres o menos",
+      "level_label": "Nivel",
+      "page_pattern_label": "Patrón de página de destino",
+      "page_pattern_placeholder": "Ej: /teams/* (vacío para todas las páginas)",
+      "starts_at_label": "Fecha/hora de inicio",
+      "starts_at_placeholder": "Vacío: inmediato",
+      "ends_at_label": "Fecha/hora de fin",
+      "ends_at_placeholder": "Vacío: hasta despublicar manualmente",
+      "publish_toggle_label": "Publicar inmediatamente después de crear",
+      "preview_label": "Vista previa"
+    },
+    "level": {
+      "INFO": "INFORMACIÓN",
+      "WARNING": "ADVERTENCIA",
+      "CRITICAL": "CRÍTICO"
+    },
+    "table": {
+      "level": "Nivel",
+      "message": "Mensaje",
+      "page_pattern": "Página destino",
+      "status": "Estado",
+      "period": "Período de visualización",
+      "updated_at": "Actualizado el",
+      "actions": "Acciones"
+    },
+    "status": {
+      "published": "Publicado",
+      "draft": "Borrador"
+    },
+    "period_from": "desde",
+    "period_to": "hasta",
+    "period_immediate": "Inmediato",
+    "period_manual": "Hasta detener manualmente",
+    "suggestions": {
+      "title": "Sugerencias de detección (automáticas)",
+      "page_pattern": "Patrón de página",
+      "severity": "Gravedad",
+      "occurrence_count": "Ocurrencias",
+      "affected_users": "Usuarios afectados",
+      "since": "Detectado desde",
+      "create_banner_btn": "Crear banner",
+      "no_data": "No hay sugerencias detectadas en este momento",
+      "severity_critical": "CRÍTICO",
+      "severity_high": "ALTO"
+    },
+    "translations": {
+      "title": "Lista de traducciones",
+      "language": "Idioma",
+      "message": "Mensaje traducido"
+    }
+  }
+}

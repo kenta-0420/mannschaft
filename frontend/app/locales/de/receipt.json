@@ -1,0 +1,157 @@
+{
+  "receipt": {
+    "nav": {
+      "receipts": "Quittungen",
+      "settings": "Ausstellereinstellungen"
+    },
+    "list": {
+      "title": "Quittungsverwaltung",
+      "settingsButton": "Ausstellereinstellungen",
+      "issueButton": "Neu ausstellen",
+      "empty": "Keine Quittungen vorhanden",
+      "amountWithUnit": "{amount} JPY",
+      "column": {
+        "issuedAt": "Ausstellungsdatum",
+        "receiptNumber": "Quittungsnummer",
+        "recipientName": "Quittungsempfänger",
+        "amount": "Betrag",
+        "status": "Status",
+        "action": "Aktionen"
+      },
+      "status": {
+        "DRAFT": "Entwurf",
+        "ISSUED": "Ausgestellt"
+      },
+      "action": {
+        "approve": "Genehmigen",
+        "void": "Stornieren",
+        "reissue": "Neu ausstellen",
+        "pdf": "PDF",
+        "sendEmail": "E-Mail senden"
+      },
+      "dialog": {
+        "issueTitle": "Quittung ausstellen",
+        "recipientName": "Quittungsempfänger",
+        "recipientNamePlaceholder": "z. B. Taro Yamada",
+        "amount": "Betrag (JPY)",
+        "amountPlaceholder": "z. B. 10000",
+        "description": "Posten / Beschreibung",
+        "descriptionPlaceholder": "z. B. Monatlicher Mitgliedsbeitrag",
+        "notes": "Notizen",
+        "notesPlaceholder": "Bemerkungen usw.",
+        "cancel": "Abbrechen",
+        "submit": "Ausstellen",
+        "voidTitle": "Quittung stornieren",
+        "voidReason": "Stornierungsgrund",
+        "voidReasonPlaceholder": "z. B. Falscher Betrag",
+        "voidSubmit": "Stornieren"
+      },
+      "toast": {
+        "loadFailed": "Quittungen konnten nicht geladen werden",
+        "approved": "Genehmigt",
+        "approveFailed": "Genehmigung fehlgeschlagen",
+        "voided": "Storniert",
+        "voidFailed": "Stornierung fehlgeschlagen",
+        "reissued": "Neu ausgestellt",
+        "reissueFailed": "Neuausstellung fehlgeschlagen",
+        "pdfDownloaded": "PDF heruntergeladen",
+        "pdfDownloadFailed": "PDF-Download fehlgeschlagen",
+        "emailSent": "E-Mail gesendet",
+        "emailSendFailed": "E-Mail-Versand fehlgeschlagen",
+        "issued": "Quittung ausgestellt",
+        "issueFailed": "Ausstellung der Quittung fehlgeschlagen"
+      },
+      "notice": {
+        "personalScopeUnsupported": "Die Quittungsverwaltung ist im persönlichen Bereich nicht verfügbar. Bitte wechseln Sie zu einem Team- oder Organisationsbereich.",
+        "scopeNotReady": "Wählen Sie einen Bereich aus, um die Quittungsliste anzuzeigen."
+      },
+      "validation": {
+        "voidReasonRequired": "Bitte geben Sie den Stornierungsgrund ein"
+      }
+    },
+    "settings": {
+      "title": "Quittungsaussteller-Einstellungen",
+      "description": "Legen Sie die für die Ausstellung von Quittungen verwendeten Ausstellerangaben, die Rechnungskonformität (Invoice-System), das Nummernsystem und das PDF-Layout fest.",
+      "backToList": "Zurück zur Quittungsliste",
+      "notice": {
+        "personalScopeUnsupported": "Die Ausstellereinstellungen sind im persönlichen Bereich nicht verfügbar. Bitte wechseln Sie zu einem Team- oder Organisationsbereich."
+      },
+      "firstTimeNotice": "Es wurden noch keine Ausstellereinstellungen hinterlegt. Sie werden beim Speichern angelegt.",
+      "notRetroactiveNotice": "Hier vorgenommene Änderungen gelten für künftig ausgestellte Quittungen. Der Inhalt bereits ausgestellter Quittungen darf gesetzlich nicht geändert werden.",
+      "notRetroactiveAfterSave": "Diese Änderung gilt nur für künftig ausgestellte Quittungen. Bereits ausgestellte Quittungen dürfen gesetzlich nicht geändert werden. Um frühere Quittungen zu korrigieren, stornieren Sie die betreffende Quittung und stellen Sie sie neu aus.",
+      "section": {
+        "issuer": "Ausstellerangaben",
+        "invoice": "Rechnungskonformität (Invoice-System)",
+        "numbering": "Quittungsnummern",
+        "pdf": "PDF-Layout"
+      },
+      "form": {
+        "issuerName": "Name des Ausstellers",
+        "postalCode": "Postleitzahl",
+        "address": "Adresse",
+        "phone": "Telefonnummer",
+        "isQualifiedInvoicer": "Qualifizierter Rechnungsaussteller (Qualified Invoice Issuer)",
+        "invoiceRegistrationNumber": "Rechnungs-Registrierungsnummer (Invoice-Nr.)",
+        "defaultSealVariant": "Stempelvariante",
+        "receiptNoteTemplate": "Vorlage für den Verwendungszweck (Proviso)",
+        "receiptNumberPrefix": "Präfix der Quittungsnummer",
+        "fiscalYearStartMonth": "Startmonat des Geschäftsjahres",
+        "autoResetNumber": "Nummerierung beim Geschäftsjahreswechsel automatisch zurücksetzen",
+        "customFooter": "Benutzerdefinierte PDF-Fußzeile",
+        "logo": "Logo-Bild",
+        "nextReceiptNumber": "Nächste Quittungsnummer"
+      },
+      "placeholder": {
+        "issuerName": "z. B. XX Allgemeiner eingetragener Verein",
+        "postalCode": "z. B. 100-0001",
+        "address": "z. B. 1-2-3 XX, Chiyoda-ku, Tokio",
+        "phone": "z. B. 03-1234-5678",
+        "invoiceRegistrationNumber": "z. B. T1234567890123",
+        "receiptNoteTemplate": "z. B. Für Mitgliedsbeitrag",
+        "receiptNumberPrefix": "z. B. RCP-",
+        "customFooter": "z. B. Bei Fragen wenden Sie sich bitte an das Sekretariat"
+      },
+      "sealVariant": {
+        "LAST_NAME": "Nur Familienname",
+        "FULL_NAME": "Vollständiger Name",
+        "FIRST_NAME": "Nur Vorname"
+      },
+      "hint": {
+        "notFirstYet": "Noch nicht ausgestellt",
+        "nextReceiptNumberFormat": "{prefix}{number} (wird nach der Ausstellung vergeben)",
+        "registrationNumberDisabled": "Geben Sie die Registrierungsnummer nur ein, wenn Sie ein qualifizierter Rechnungsaussteller sind",
+        "registrationNumberWillBeCleared": "Beim Speichern wird auch die Registrierungsnummer gelöscht",
+        "logoResize": "Hochgeladene Bilder werden serverseitig so verkleinert, dass die längere Seite höchstens 200 px beträgt; transparente Bereiche erhalten einen weißen Hintergrund",
+        "logoNotSet": "Kein Logo festgelegt",
+        "logoPosition": "Wenn festgelegt, wird es oben links in der PDF-Kopfzeile und mittig im Titel angezeigt",
+        "logoDisabledUntilSaved": "Bitte speichern Sie zuerst die Ausstellereinstellungen",
+        "unsavedChanges": "Sie haben nicht gespeicherte Änderungen. Diese gehen verloren, wenn Sie die Seite verlassen."
+      },
+      "validation": {
+        "issuerNameRequired": "Bitte geben Sie den Namen des Ausstellers ein",
+        "registrationNumberRequired": "Bitte geben Sie die Rechnungs-Registrierungsnummer ein",
+        "registrationNumberFormat": "Geben Sie das Format T gefolgt von 13 Ziffern ein (z. B. T1234567890123)",
+        "logoTooLarge": "Das Logo-Bild darf höchstens 1 MB groß sein",
+        "logoUnsupportedType": "Das Logo-Bild muss im PNG- oder JPEG-Format vorliegen"
+      },
+      "toast": {
+        "loadFailed": "Ausstellereinstellungen konnten nicht geladen werden",
+        "saved": "Ausstellereinstellungen gespeichert",
+        "saveFailed": "Ausstellereinstellungen konnten nicht gespeichert werden",
+        "logoUploaded": "Logo-Bild hochgeladen",
+        "logoUploadFailed": "Logo-Bild konnte nicht hochgeladen werden",
+        "logoDeleted": "Logo-Bild gelöscht",
+        "logoDeleteFailed": "Logo-Bild konnte nicht gelöscht werden",
+        "forbidden": "Sie haben keine Berechtigung für diese Aktion"
+      },
+      "button": {
+        "save": "Speichern",
+        "uploadLogo": "Logo hochladen",
+        "deleteLogo": "Logo löschen",
+        "deleteLogoConfirm": "Logo-Bild löschen?",
+        "cancel": "Abbrechen",
+        "confirmDelete": "Löschen"
+      }
+    }
+  }
+}

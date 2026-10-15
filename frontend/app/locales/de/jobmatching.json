@@ -1,0 +1,372 @@
+{
+  "jobmatching": {
+    "status": {
+      "posting": {
+        "DRAFT": "Entwurf",
+        "OPEN": "Offen",
+        "CLOSED": "Geschlossen",
+        "CANCELLED": "Abgebrochen"
+      },
+      "application": {
+        "APPLIED": "Beworben",
+        "ACCEPTED": "Angenommen",
+        "REJECTED": "Abgelehnt",
+        "WITHDRAWN": "Zurückgezogen"
+      },
+      "contract": {
+        "MATCHED": "Vermittelt",
+        "CHECKED_IN": "Eingecheckt",
+        "IN_PROGRESS": "In Bearbeitung",
+        "CHECKED_OUT": "Ausgecheckt",
+        "TIME_CONFIRMED": "Arbeitszeit bestätigt",
+        "COMPLETION_REPORTED": "Abschluss gemeldet",
+        "COMPLETED": "Abgeschlossen",
+        "AUTHORIZED": "Genehmigt",
+        "CAPTURED": "Zahlung eingezogen",
+        "PAID": "Bezahlt",
+        "CANCELLED": "Abgebrochen",
+        "DISPUTED": "In Streit"
+      }
+    },
+    "workLocationType": {
+      "ONSITE": "Vor Ort",
+      "ONLINE": "Online",
+      "HYBRID": "Hybrid"
+    },
+    "rewardType": {
+      "LUMP_SUM": "Pauschale",
+      "HOURLY": "Stundenlohn",
+      "DAILY": "Tageslohn"
+    },
+    "visibilityScope": {
+      "TEAM_MEMBERS": "Nur Teammitglieder",
+      "TEAM_MEMBERS_SUPPORTERS": "Teammitglieder und Unterstützer",
+      "JOBBER_INTERNAL": "JOBBER intern",
+      "JOBBER_PUBLIC_BOARD": "JOBBER-Hauptbrett",
+      "ORGANIZATION_SCOPE": "Gesamte Organisation",
+      "CUSTOM_TEMPLATE": "Benutzerdefinierte Sichtbarkeit"
+    },
+    "form": {
+      "title": "Jobtitel",
+      "titlePlaceholder": "z. B. Wochenend-Event-Personal gesucht",
+      "description": "Jobbeschreibung",
+      "descriptionPlaceholder": "Beschreiben Sie die Arbeit und die Anforderungen",
+      "category": "Kategorie",
+      "categoryPlaceholder": "z. B. Event / Leichte Arbeit / Kursleiter",
+      "workLocationType": "Arbeitsform",
+      "workAddress": "Arbeitsadresse",
+      "workAddressPlaceholder": "z. B. Shibuya-ku, Tokio",
+      "workStartAt": "Startzeit",
+      "workEndAt": "Endzeit",
+      "applicationDeadlineAt": "Bewerbungsfrist",
+      "rewardType": "Vergütungsart",
+      "baseRewardJpy": "Grundvergütung (JPY)",
+      "baseRewardJpyHint": "Bei Stunden-/Tageslohn der Betrag pro Stunde/Tag",
+      "capacity": "Teilnehmerzahl",
+      "visibilityScope": "Sichtbarkeit",
+      "visibilityScopeHint": "Wählen Sie aus, wer diese Anzeige sehen kann"
+    },
+    "validation": {
+      "titleRequired": "Jobtitel ist erforderlich",
+      "descriptionRequired": "Jobbeschreibung ist erforderlich",
+      "workDateRequired": "Bitte Start- und Endzeit eingeben",
+      "workEndAfterStart": "Die Endzeit muss nach der Startzeit liegen",
+      "deadlineRequired": "Bitte die Bewerbungsfrist eingeben",
+      "deadlineBeforeStart": "Die Bewerbungsfrist muss vor der Startzeit liegen",
+      "rewardRequired": "Bitte die Grundvergütung eingeben",
+      "rewardRange": "Grundvergütung muss zwischen 1 und 10.000.000 JPY liegen",
+      "capacityMin": "Die Teilnehmerzahl muss mindestens 1 sein",
+      "workAddressRequired": "Für Vor-Ort-Jobs ist die Adresse erforderlich",
+      "failed": "Validierung fehlgeschlagen"
+    },
+    "fee": {
+      "title": "Gebührenvorschau",
+      "placeholder": "Geben Sie den Betrag ein, um die Gebühren zu berechnen",
+      "requester": "Auftraggeber zahlt",
+      "worker": "Arbeitnehmer erhält",
+      "baseReward": "Grundvergütung",
+      "requesterFee": "Gebühr (10 % + 100 JPY)",
+      "requesterFeeTax": "Mehrwertsteuer auf Gebühr",
+      "requesterTotal": "Gesamtkosten für Auftraggeber",
+      "workerFee": "Gebühr (2 % + 100 JPY)",
+      "workerReceipt": "Nettobetrag für Arbeitnehmer"
+    },
+    "card": {
+      "workAt": "Arbeitszeit",
+      "workLocationType": "Arbeitsform",
+      "capacity": "Teilnehmerzahl",
+      "capacityValue": "{count} Personen",
+      "deadline": "Bewerbungsfrist",
+      "deadlineValue": "Bis {at}"
+    },
+    "filter": {
+      "all": "Alle"
+    },
+    "list": {
+      "teamTitle": "Team-Stellenanzeigen",
+      "createButton": "Neue Anzeige erstellen",
+      "empty": "Noch keine Anzeigen"
+    },
+    "create": {
+      "title": "Neue Anzeige erstellen",
+      "description": "Geben Sie die Details ein und speichern oder veröffentlichen Sie",
+      "cancel": "Abbrechen",
+      "saveDraft": "Entwurf speichern",
+      "draftSaved": "Entwurf gespeichert",
+      "failed": "Fehler beim Speichern des Entwurfs"
+    },
+    "edit": {
+      "title": "Anzeige bearbeiten",
+      "description": "Bearbeiten Sie die Details der Anzeige",
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "saved": "Gespeichert",
+      "failed": "Fehler beim Speichern"
+    },
+    "detail": {
+      "notFound": "Anzeige nicht gefunden",
+      "back": "Zurück",
+      "edit": "Bearbeiten",
+      "publish": "Veröffentlichen",
+      "close": "Anzeige schließen",
+      "cancel": "Abbrechen",
+      "delete": "Löschen",
+      "publishSucceeded": "Anzeige veröffentlicht",
+      "publishFailed": "Veröffentlichung fehlgeschlagen",
+      "closeSucceeded": "Anzeige geschlossen",
+      "closeFailed": "Schließen fehlgeschlagen",
+      "cancelSucceeded": "Abgebrochen",
+      "cancelFailed": "Abbruch fehlgeschlagen",
+      "deleteSucceeded": "Gelöscht",
+      "deleteFailed": "Löschen fehlgeschlagen",
+      "sections": {
+        "overview": "Übersicht",
+        "applications": "Bewerbungen ({count})"
+      },
+      "fields": {
+        "workLocationType": "Arbeitsform",
+        "workAddress": "Arbeitsadresse",
+        "workStartAt": "Startzeit",
+        "workEndAt": "Endzeit",
+        "rewardType": "Vergütungsart",
+        "baseRewardJpy": "Grundvergütung",
+        "capacity": "Teilnehmerzahl",
+        "applicationDeadlineAt": "Bewerbungsfrist",
+        "visibilityScope": "Sichtbarkeit",
+        "publishAt": "Veröffentlicht am"
+      }
+    },
+    "application": {
+      "empty": "Noch keine Bewerbungen",
+      "applicantLabel": "Bewerber #{userId}",
+      "appliedAt": "Beworben am: {at}",
+      "accept": "Annehmen",
+      "reject": "Ablehnen",
+      "acceptSucceeded": "Bewerbung angenommen",
+      "acceptFailed": "Fehler beim Annehmen der Bewerbung",
+      "rejectSucceeded": "Bewerbung abgelehnt",
+      "rejectFailed": "Fehler beim Ablehnen der Bewerbung",
+      "rejectDialog": {
+        "title": "Bewerbung ablehnen",
+        "description": "Geben Sie den Grund ein (der Bewerber wird benachrichtigt)",
+        "reasonPlaceholder": "Ablehnungsgrund eingeben",
+        "cancel": "Abbrechen",
+        "confirm": "Ablehnen"
+      }
+    },
+    "workerSearch": {
+      "title": "Jobs finden",
+      "description": "Bewerben Sie sich auf Jobs aus Ihren Teams",
+      "selectTeam": "Team auswählen",
+      "teamPlaceholder": "Bitte wählen Sie ein Team",
+      "noTeams": "Sie sind in keinem Team",
+      "empty": "Keine offenen Anzeigen in diesem Team"
+    },
+    "workerDetail": {
+      "applyButton": "Für diesen Job bewerben",
+      "applySucceeded": "Bewerbung eingereicht",
+      "applyFailed": "Bewerbung fehlgeschlagen",
+      "applyDialog": {
+        "title": "Bewerbung bestätigen",
+        "description": "Möchten Sie sich für diesen Job bewerben? Geben Sie Ihre Selbstvorstellung ein und senden Sie ab.",
+        "selfPrPlaceholder": "Selbstvorstellung / Motivation (optional)",
+        "cancel": "Abbrechen",
+        "confirm": "Bewerben"
+      }
+    },
+    "myJobs": {
+      "title": "Meine Bewerbungen und Verträge",
+      "description": "Verwalten Sie Ihre Bewerbungen und Verträge",
+      "tabs": {
+        "applications": "Bewerbungen",
+        "contracts": "Verträge"
+      },
+      "applicationsEmpty": "Keine aktiven Bewerbungen",
+      "contractsEmpty": "Keine aktiven Verträge",
+      "jobLink": "Job #{id}",
+      "contractLink": "Vertrag für Job #{id}",
+      "withdrawButton": "Bewerbung zurückziehen",
+      "withdrawSucceeded": "Bewerbung zurückgezogen",
+      "withdrawFailed": "Fehler beim Zurückziehen"
+    },
+    "contract": {
+      "actions": {
+        "title": "Vertragsaktionen",
+        "reportCompletion": "Abschluss melden",
+        "approveCompletion": "Abschluss genehmigen",
+        "rejectCompletion": "Zurückweisen",
+        "cancel": "Vertrag abbrechen"
+      },
+      "matchedAt": "Vermittelt am: {at}",
+      "reportSucceeded": "Abschlussmeldung eingereicht",
+      "reportFailed": "Fehler beim Melden des Abschlusses",
+      "approveSucceeded": "Abschluss genehmigt",
+      "approveFailed": "Fehler beim Genehmigen",
+      "rejectReasonRequired": "Bitte einen Ablehnungsgrund eingeben",
+      "rejectSucceeded": "Zurückgewiesen",
+      "rejectFailed": "Fehler beim Zurückweisen",
+      "cancelSucceeded": "Vertrag abgebrochen",
+      "cancelFailed": "Fehler beim Abbrechen",
+      "rejectDialog": {
+        "title": "Abschlussmeldung zurückweisen",
+        "description": "Geben Sie den Grund ein (die Gegenpartei wird benachrichtigt)",
+        "reasonPlaceholder": "z. B. Bitte holen Sie die fehlende Arbeit nach",
+        "cancel": "Schließen",
+        "confirm": "Zurückweisen"
+      },
+      "cancelDialog": {
+        "title": "Vertrag abbrechen",
+        "description": "Geben Sie den Abbruchgrund ein (die Gegenpartei wird benachrichtigt)",
+        "reasonPlaceholder": "Abbruchgrund eingeben",
+        "cancel": "Schließen",
+        "confirm": "Abbrechen"
+      }
+    },
+    "error": {
+      "loadFailed": "Fehler beim Laden der Daten",
+      "applicationsLoadFailed": "Fehler beim Laden der Bewerbungen"
+    },
+    "guide": {
+      "title": "How to Use Job Listings",
+      "description": "On this page, you can search for and apply to open job listings from your teams. Follow the steps below to find a job.",
+      "team": {
+        "title": "Select a Team to Browse Jobs",
+        "body": "Jobs on Mannschaft are posted through teams you belong to. Start by selecting a team from the selector at the top of the page.",
+        "step1": "Click the \"Select a Team\" selector at the top of the page",
+        "step2": "Choose one of your teams from the list",
+        "step3": "Open job listings for that team will be displayed"
+      },
+      "card": {
+        "title": "Reading a Job Card",
+        "body": "Each job card shows the key information about a position at a glance.",
+        "item_status": "Badge (top right) — shows current status such as \"Open\"",
+        "item_pay": "Pay amount and type (lump sum / hourly / daily)",
+        "item_schedule": "Work date/time, location, headcount, and application deadline"
+      },
+      "detail": {
+        "title": "View Job Details",
+        "body": "Click a card to open the detail page, where you can see the full job description, location, pay, and deadline.",
+        "step1": "Click on a job card you're interested in",
+        "step2": "Review the full job description, conditions, and pay",
+        "step3": "Click \"Apply\" when you're ready to apply"
+      },
+      "apply": {
+        "title": "Apply for a Job",
+        "body": "Click \"Apply\" and enter a cover message (up to 500 characters). This is the first thing the hiring manager will see, so write carefully.",
+        "step1": "Click the \"Apply\" button on the job detail page",
+        "step2": "Enter your cover message in the dialog (up to 500 characters — optional)",
+        "step3": "Click \"Submit\" to complete your application",
+        "step4": "After applying, check your application status on \"My Jobs\""
+      },
+      "pagination": {
+        "title": "Browse More Listings",
+        "body": "If there are more than 20 listings, a pagination control will appear at the bottom.",
+        "step1": "Click a page number or the \">\" button at the bottom",
+        "step2": "The next 20 listings will be displayed"
+      }
+    },
+    "qr": {
+      "display": {
+        "title": {
+          "IN": "Eincheck-QR",
+          "OUT": "Auscheck-QR"
+        },
+        "back": "Zurück",
+        "switchIn": "Einchecken",
+        "switchOut": "Auschecken",
+        "loading": "QR wird ausgestellt...",
+        "unavailable": "QR-Code kann nicht angezeigt werden. Bitte drücken Sie die Neu-ausstellen-Taste.",
+        "qrAriaLabel": "QR-Code zum Ein-/Auschecken beim Arbeitsbeginn/-ende",
+        "shortCodeLabel": "Kurzcode (für manuelle Eingabe)",
+        "remainingLabel": "Gültigkeitsdauer",
+        "remainingSeconds": "Noch {sec} Sekunden",
+        "showButton": "QR anzeigen",
+        "showForContract": "Eincheck-QR anzeigen",
+        "screenshotWarning": {
+          "title": "Warnung: Screenshots dürfen nicht geteilt werden",
+          "body": "Dieser QR-Code wird in kurzer Zeit ungültig. Teilen Sie keine Screenshots mit anderen Personen."
+        }
+      },
+      "error": {
+        "issueFailed": "QR-Token konnte nicht ausgestellt werden",
+        "renderFailed": "QR-Code konnte nicht gerendert werden",
+        "contractNotFound": "Vertrag nicht gefunden"
+      },
+      "checkInTimeline": {
+        "sectionTitle": "Eincheck-Status",
+        "empty": "Noch kein Eincheck-Verlauf",
+        "typeIn": "Einchecken",
+        "typeOut": "Auschecken",
+        "duration": "Arbeitszeit",
+        "durationMinutes": "{min} Min.",
+        "geoAnomaly": "Wurde an einem Ort weit vom Arbeitsort entfernt erfasst",
+        "recordedAt": "Erfasst am: {at}"
+      },
+      "scanner": {
+        "title": {
+          "IN": "QR-Scan (Einchecken)",
+          "OUT": "QR-Scan (Auschecken)"
+        },
+        "switchIn": "Einchecken scannen",
+        "switchOut": "Auschecken scannen",
+        "tab": {
+          "camera": "Mit Kamera scannen",
+          "manual": "Code manuell eingeben"
+        },
+        "cameraInactive": "Kamera ist inaktiv",
+        "startCamera": "Kamera starten",
+        "stopCamera": "Kamera stoppen",
+        "submitting": "Wird gesendet...",
+        "offlineBanner": "Sie sind offline. Gescannte Check-ins werden automatisch gesendet, wenn Sie wieder online sind.",
+        "geoConsent": "Standort zur Bestätigung des Arbeitsortes verwenden (optional)",
+        "permission": {
+          "title": "Bitte erlauben Sie den Kamerazugriff",
+          "body": "Kameraberechtigung ist zum Scannen von QR-Codes erforderlich. Das Video wird zum Datenschutz nicht an den Server gesendet."
+        },
+        "manual": {
+          "description": "Geben Sie den 6-stelligen alphanumerischen Code ein, der unter dem QR auf dem Bildschirm des Auftraggebers angezeigt wird.",
+          "placeholder": "ABC123",
+          "submit": "Senden",
+          "invalid": "Bitte 6 alphanumerische Zeichen eingeben"
+        },
+        "submitted": {
+          "inSuccess": "Einchecken erfasst",
+          "outSuccess": "Auschecken erfasst",
+          "outDetail": "Arbeitszeit: {min} Min.",
+          "queuedTitle": "Offline ausstehend",
+          "queuedBody": "Wird automatisch gesendet, wenn das Netzwerk wiederhergestellt ist.",
+          "failedTitle": "Einchecken fehlgeschlagen",
+          "geoAnomalyTitle": "Standortwarnung",
+          "geoAnomalyBody": "Sie befinden sich weit vom registrierten Arbeitsort entfernt. Bitte bestätigen Sie dies mit dem Auftraggeber."
+        },
+        "error": {
+          "cameraFailed": "Kamera konnte nicht gestartet werden: {detail}"
+        },
+        "linkFromContract": {
+          "IN": "Mit QR einchecken",
+          "OUT": "Mit QR auschecken"
+        }
+      }
+    }
+  }
+}

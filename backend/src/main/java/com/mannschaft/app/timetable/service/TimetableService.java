@@ -1,0 +1,335 @@
+package com.mannschaft.app.timetable.service;
+
+import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.timetable.TimetableErrorCode;
+import com.mannschaft.app.timetable.TimetableStatus;
+import com.mannschaft.app.timetable.TimetableVisibility;
+import com.mannschaft.app.timetable.entity.TimetableEntity;
+import com.mannschaft.app.timetable.entity.TimetableSlotEntity;
+import com.mannschaft.app.timetable.entity.TimetableTermEntity;
+import com.mannschaft.app.timetable.event.TimetableActivatedEvent;
+import com.mannschaft.app.timetable.repository.TimetableRepository;
+import com.mannschaft.app.timetable.repository.TimetableSlotRepository;
+import com.mannschaft.app.timetable.repository.TimetableTermRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * 時間割サービス。時間割のCRUD・ステータス遷移・複製を担当する。
+ *
+ * <p><strong>F00 Phase E 確認メモ（2026-05-07）:</strong>
+ * 本サービスは {@code TimetableVisibility}（MEMBERS_ONLY / PUBLIC）を CRUD データとして
+ * 保持・更新するが、visibility でリストをフィルタリングする旧可視性ロジックは存在しない。
+ * チーム時間割に対応する {@code ReferenceType.TIMETABLE} は未定義（Phase 2 予約の
+ * {@code PERSONAL_TIMETABLE} は別概念）であるため、{@code ContentVisibilityChecker}
+ * 経由化の対象外。変更不要を確認済み。</p>
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class TimetableService {
+
+    private final TimetableRepository timetableRepository;
+    private final TimetableSlotRepository slotRepository;
+    private final TimetableTermRepository termRepository;
+    private final ApplicationEventPublisher eventPublisher;
+    private final AccessControlService accessControlService;
+
+    /** 認可根治Wave2: F00.5 メンバーシップ・ロール判定のスコープ種別（チーム）。 */
+    private static final String SCOPE_TEAM = "TEAM";
+
+    /**
+     * チームの時間割一覧を取得する。
+     */
+    public List<TimetableEntity> getByTeamId(Long teamId, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
+        return timetableRepository.findByTeamIdOrderByEffectiveFromDesc(teamId);
+    }
+
+    /**
+     * 時間割を取得する。見つからない場合は例外をスローする。
+     *
+     * <p>{@code findByIdAndTeamId} で teamId 込みで検索するため path の teamId 鵜呑みにはならないが、
+     * それだけでは「非メンバーが自チームの teamId を渡して閲覧する」ケースを防げないため、
+     * 取得後に entity 由来の teamId で {@code checkMembership} する。</p>
+     */
+    public TimetableEntity getById(Long timetableId, Long teamId, Long actorUserId) {
+        TimetableEntity entity = timetableRepository.findByIdAndTeamId(timetableId, teamId)
+                .orElseThrow(() -> new BusinessException(TimetableErrorCode.TIMETABLE_NOT_FOUND));
+        accessControlService.checkMembership(actorUserId, entity.getTeamId(), SCOPE_TEAM);
+        return entity;
+    }
+
+    /**
+     * 時間割をIDのみで取得する（teamId が path に無い内部API用: スロット系エンドポイント等）。
+     *
+     * <p>★BOLA厳禁★: teamId を path から受け取れないため、必ず entity を先に fetch し、
+     * entity 由来の teamId で {@code checkMembership} する（他チームの時間割IDを直接指定した閲覧を防ぐ）。</p>
+     */
+    public TimetableEntity getByIdWithoutTeam(Long timetableId, Long actorUserId) {
+        TimetableEntity entity = timetableRepository.findById(timetableId)
+                .orElseThrow(() -> new BusinessException(TimetableErrorCode.TIMETABLE_NOT_FOUND));
+        accessControlService.checkMembership(actorUserId, entity.getTeamId(), SCOPE_TEAM);
+        return entity;
+    }
+
+    /**
+     * 指定日に有効な時間割を取得する。
+     */
+    public Optional<TimetableEntity> getEffective(Long teamId, LocalDate date, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
+        return timetableRepository.findEffective(teamId, date).stream().findFirst();
+    }
+
+    /**
+     * 時間割を作成する。createは作成先スコープ（path teamId）で checkAdminOrAbove する。
+     */
+    @Transactional
+    public TimetableEntity create(Long teamId, CreateTimetableData data, Long actorUserId) {
+        accessControlService.checkAdminOrAbove(actorUserId, teamId, SCOPE_TEAM);
+
+        // 学期範囲チェック
+        TimetableTermEntity term = termRepository.findById(data.termId())
+                .orElseThrow(() -> new BusinessException(TimetableErrorCode.TERM_NOT_FOUND));
+        validateEffectiveDateRange(data.effectiveFrom(), data.effectiveUntil(), term);
+
+        TimetableEntity entity = TimetableEntity.builder()
+                .teamId(teamId)
+                .termId(data.termId())
+                .name(data.name())
+                .status(TimetableStatus.DRAFT)
+                .visibility(data.visibility())
+                .effectiveFrom(data.effectiveFrom())
+                .effectiveUntil(data.effectiveUntil())
+                .weekPatternEnabled(data.weekPatternEnabled())
+                .weekPatternBaseDate(data.weekPatternBaseDate())
+                .periodOverride(data.periodOverride())
+                .notes(data.notes())
+                .createdBy(data.createdBy())
+                .build();
+
+        return timetableRepository.save(entity);
+    }
+
+    /**
+     * 時間割を更新する。DRAFT状態のみ更新可能。
+     */
+    @Transactional
+    public TimetableEntity update(Long timetableId, Long teamId, UpdateTimetableData data, Long actorUserId) {
+        // 変更系は entity 由来 scope で checkAdminOrAbove（getById が checkMembership 済みだが admin 昇格チェックを別途行う）。
+        TimetableEntity entity = getById(timetableId, teamId, actorUserId);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
+        if (!entity.isDraft()) {
+            throw new BusinessException(TimetableErrorCode.TIMETABLE_NOT_DRAFT);
+        }
+
+        // 学期範囲チェック
+        TimetableTermEntity term = termRepository.findById(entity.getTermId())
+                .orElseThrow(() -> new BusinessException(TimetableErrorCode.TERM_NOT_FOUND));
+
+        LocalDate effectiveFrom = data.effectiveFrom() != null ? data.effectiveFrom() : entity.getEffectiveFrom();
+        LocalDate effectiveUntil = data.effectiveUntil() != null ? data.effectiveUntil() : entity.getEffectiveUntil();
+        validateEffectiveDateRange(effectiveFrom, effectiveUntil, term);
+
+        // toBuilder().build() で作り直すと id=null の新インスタンスになり INSERT 化するため、
+        // managed entity を直接ミューテートして UPDATE に固定する（#1643 同型バグ根治）。
+        entity.applyUpdate(
+                data.name(), data.visibility(),
+                data.effectiveFrom(), data.effectiveUntil(),
+                data.weekPatternEnabled(), data.weekPatternBaseDate(),
+                data.periodOverride(), data.notes());
+        return timetableRepository.save(entity);
+    }
+
+    /**
+     * 時間割を削除する（論理削除）。DRAFT状態のみ削除可能。
+     */
+    @Transactional
+    public void delete(Long timetableId, Long teamId, Long actorUserId) {
+        TimetableEntity entity = getById(timetableId, teamId, actorUserId);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
+        if (!entity.isDraft()) {
+            throw new BusinessException(TimetableErrorCode.TIMETABLE_NOT_DRAFT);
+        }
+        entity.softDelete();
+        timetableRepository.save(entity);
+    }
+
+    /**
+     * 時間割を有効化する（DRAFT → ACTIVE）。
+     * 既存のACTIVEな時間割は自動的にARCHIVEDに変更される。
+     */
+    @Transactional
+    public TimetableEntity activate(Long timetableId, Long teamId, Long actorUserId) {
+        TimetableEntity entity = getById(timetableId, teamId, actorUserId);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
+        if (!entity.isDraft()) {
+            throw new BusinessException(TimetableErrorCode.TIMETABLE_NOT_DRAFT);
+        }
+
+        // 既存ACTIVEを自動アーカイブ
+        List<TimetableEntity> activeOnes =
+                timetableRepository.findByTeamIdAndStatus(teamId, TimetableStatus.ACTIVE);
+        for (TimetableEntity active : activeOnes) {
+            active.archive();
+            timetableRepository.save(active);
+        }
+
+        entity.activate();
+        TimetableEntity saved = timetableRepository.save(entity);
+
+        eventPublisher.publishEvent(new TimetableActivatedEvent(saved.getId(), teamId));
+        log.info("時間割を有効化しました: timetableId={}, teamId={}", timetableId, teamId);
+
+        return saved;
+    }
+
+    /**
+     * 時間割をアーカイブする（ACTIVE → ARCHIVED）。
+     */
+    @Transactional
+    public TimetableEntity archive(Long timetableId, Long teamId, Long actorUserId) {
+        TimetableEntity entity = getById(timetableId, teamId, actorUserId);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
+        if (!entity.isActive()) {
+            throw new BusinessException(TimetableErrorCode.TIMETABLE_NOT_ACTIVE);
+        }
+        entity.archive();
+        return timetableRepository.save(entity);
+    }
+
+    /**
+     * 時間割を下書きに戻す（ARCHIVED → DRAFT）。
+     */
+    @Transactional
+    public TimetableEntity revertToDraft(Long timetableId, Long teamId, Long actorUserId) {
+        TimetableEntity entity = getById(timetableId, teamId, actorUserId);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
+        if (!entity.isArchived()) {
+            throw new BusinessException(TimetableErrorCode.TIMETABLE_NOT_ARCHIVED);
+        }
+        entity.revertToDraft();
+        return timetableRepository.save(entity);
+    }
+
+    /**
+     * 時間割を複製する。時間割本体と全スロットをコピーし、DRAFT状態で作成する。
+     */
+    @Transactional
+    public TimetableEntity duplicate(Long timetableId, Long teamId, DuplicateTimetableData data, Long actorUserId) {
+        TimetableEntity source = getById(timetableId, teamId, actorUserId);
+        accessControlService.checkAdminOrAbove(actorUserId, source.getTeamId(), SCOPE_TEAM);
+
+        // 学期範囲チェック
+        Long newTermId = data.termId() != null ? data.termId() : source.getTermId();
+        TimetableTermEntity term = termRepository.findById(newTermId)
+                .orElseThrow(() -> new BusinessException(TimetableErrorCode.TERM_NOT_FOUND));
+        LocalDate effectiveFrom = data.effectiveFrom() != null ? data.effectiveFrom() : source.getEffectiveFrom();
+        LocalDate effectiveUntil = data.effectiveUntil() != null ? data.effectiveUntil() : source.getEffectiveUntil();
+        validateEffectiveDateRange(effectiveFrom, effectiveUntil, term);
+
+        // 時間割本体をコピー
+        TimetableEntity newEntity = TimetableEntity.builder()
+                .teamId(teamId)
+                .termId(newTermId)
+                .name(data.name() != null ? data.name() : source.getName() + " (コピー)")
+                .status(TimetableStatus.DRAFT)
+                .visibility(source.getVisibility())
+                .effectiveFrom(effectiveFrom)
+                .effectiveUntil(effectiveUntil)
+                .weekPatternEnabled(source.getWeekPatternEnabled())
+                .weekPatternBaseDate(source.getWeekPatternBaseDate())
+                .periodOverride(source.getPeriodOverride())
+                .notes(source.getNotes())
+                .createdBy(data.createdBy())
+                .build();
+
+        TimetableEntity saved = timetableRepository.save(newEntity);
+
+        // スロットをコピー
+        List<TimetableSlotEntity> sourceSlots =
+                slotRepository.findByTimetableIdOrderByDayOfWeekAscPeriodNumberAsc(timetableId);
+        List<TimetableSlotEntity> newSlots = sourceSlots.stream()
+                .<TimetableSlotEntity>map(slot -> TimetableSlotEntity.builder()
+                        .timetableId(saved.getId())
+                        .dayOfWeek(slot.getDayOfWeek())
+                        .periodNumber(slot.getPeriodNumber())
+                        .weekPattern(slot.getWeekPattern())
+                        .subjectName(slot.getSubjectName())
+                        .teacherName(slot.getTeacherName())
+                        .roomName(slot.getRoomName())
+                        .color(slot.getColor())
+                        .notes(slot.getNotes())
+                        .build())
+                .toList();
+        slotRepository.saveAll(newSlots);
+
+        log.info("時間割を複製しました: sourceId={}, newId={}", timetableId, saved.getId());
+        return saved;
+    }
+
+    // ---- Validation Helpers ----
+
+    private void validateEffectiveDateRange(LocalDate effectiveFrom, LocalDate effectiveUntil,
+                                            TimetableTermEntity term) {
+        if (effectiveFrom != null && effectiveFrom.isBefore(term.getStartDate())) {
+            throw new BusinessException(TimetableErrorCode.EFFECTIVE_DATE_OUT_OF_TERM);
+        }
+        if (effectiveUntil != null && effectiveUntil.isAfter(term.getEndDate())) {
+            throw new BusinessException(TimetableErrorCode.EFFECTIVE_DATE_OUT_OF_TERM);
+        }
+        if (effectiveFrom != null && effectiveUntil != null && effectiveFrom.isAfter(effectiveUntil)) {
+            throw new BusinessException(TimetableErrorCode.EFFECTIVE_DATE_OUT_OF_TERM);
+        }
+    }
+
+    /**
+     * 時間割作成データ。
+     */
+    public record CreateTimetableData(
+            Long termId,
+            String name,
+            TimetableVisibility visibility,
+            LocalDate effectiveFrom,
+            LocalDate effectiveUntil,
+            Boolean weekPatternEnabled,
+            LocalDate weekPatternBaseDate,
+            String periodOverride,
+            String notes,
+            Long createdBy
+    ) {}
+
+    /**
+     * 時間割更新データ。
+     */
+    public record UpdateTimetableData(
+            String name,
+            TimetableVisibility visibility,
+            LocalDate effectiveFrom,
+            LocalDate effectiveUntil,
+            Boolean weekPatternEnabled,
+            LocalDate weekPatternBaseDate,
+            String periodOverride,
+            String notes
+    ) {}
+
+    /**
+     * 時間割複製データ。
+     */
+    public record DuplicateTimetableData(
+            Long termId,
+            String name,
+            LocalDate effectiveFrom,
+            LocalDate effectiveUntil,
+            Long createdBy
+    ) {}
+}

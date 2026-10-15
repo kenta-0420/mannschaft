@@ -1,0 +1,779 @@
+package com.mannschaft.app.shift;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
+import com.mannschaft.app.shift.entity.ShiftSlotEntity;
+import com.mannschaft.app.shift.entity.ShiftSwapRequestEntity;
+import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
+import com.mannschaft.app.shift.repository.ShiftSlotRepository;
+import com.mannschaft.app.shift.repository.ShiftSwapRequestRepository;
+import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.jayway.jsonpath.JsonPath;
+import org.springframework.test.web.servlet.MvcResult;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * 認可根治 Wave6 — shift ドメイン（{@code ShiftSwapController} / {@code ShiftSwapService}）
+ * 認可契約テスト。
+ *
+ * <p>金型: {@code ShiftScheduleScopeContractIT}（Wave3-B6）。
+ * {@code @AutoConfigureMockMvc(addFilters=false)} + 実 MySQL + 手動 SecurityContext +
+ * {@code MembershipTestHelper} の構成をそのまま踏襲する。</p>
+ *
+ * <p>本テストが固定する受け入れ条件:</p>
+ * <ol>
+ *   <li>交代申請の一覧に<b>他チームの申請が混入しない</b>（テナント越境の封鎖）</li>
+ *   <li>他チームの管理者が<b>交代申請を承認・却下できない</b>（BOLA の封鎖）</li>
+ *   <li>取消・候補者選定は申請者本人または当該チーム ADMIN のみ</li>
+ *   <li>上記を締めても<b>正当な利用者の正常系が壊れていない</b></li>
+ * </ol>
+ *
+ * <p><b>象限</b>: 非ADMINメンバー（teamA の一般メンバー）/ 別 scope ADMIN（teamB の ADMIN が
+ * teamA の swapId を直接指定）/ 正当 ADMIN（teamA の ADMIN）/ 正当メンバー。</p>
+ *
+ * <p>スコープ違反は同ドメインの既存規約に合わせ <b>403</b> で固定する
+ *（{@code ShiftScheduleScopeContractIT} / {@code ShiftSlotScopeContractIT} と同一）。</p>
+ */
+@AutoConfigureMockMvc(addFilters = false)
+@Transactional
+@EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
+@DisplayName("shift ドメイン（シフト交代申請）認可契約テスト")
+class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private ShiftScheduleRepository scheduleRepository;
+
+    @Autowired
+    private ShiftSlotRepository slotRepository;
+
+    @Autowired
+    private ShiftSwapRequestRepository swapRepository;
+
+    @PersistenceContext
+    private EntityManager em;
+
+    private Long teamAId;
+    private Long teamBId;
+
+    private Long adminTeamAId;    // TEAM A の ADMIN（正当）
+    private Long adminTeamBId;    // TEAM B の ADMIN（別 scope の越境攻撃者）
+    private Long memberTeamAId;   // TEAM A の非 ADMIN メンバー（申請者）
+    private Long member2TeamAId;  // TEAM A のもう一人の非 ADMIN メンバー
+    private Long outsiderId;      // どちらのチームにも属さない部外者
+    private Long userRolesOnlyAdminAId; // TEAM A の user_roles のみ ADMIN（memberships 無し）
+    private Long systemAdminId;   // SYSTEM_ADMIN（非メンバー）
+
+    private Long slotAId;         // TEAM A のシフト枠
+    private Long slotBId;         // TEAM B のシフト枠
+
+    private Long pendingSwapAId;  // TEAM A の PENDING 交代申請（申請者 = memberTeamA）
+    private Long acceptedSwapAId; // TEAM A の ACCEPTED 交代申請（承認・却下の対象）
+    private Long pendingSwapBId;  // TEAM B の PENDING 交代申請（一覧に混入してはならない）
+    private Long openCallSwapAId;  // TEAM A の指名なし（OPEN_CALL）申請（誰でも承諾できる）
+    private Long specificSwapAId;  // TEAM A の member2 を指名した申請
+
+    @BeforeEach
+    void setUp() {
+        teamAId = insertTeam("WAVE6SWAP チームA");
+        teamBId = insertTeam("WAVE6SWAP チームB");
+
+        adminTeamAId = insertUser("wave6-swap-admin-team-a@example.com");
+        adminTeamBId = insertUser("wave6-swap-admin-team-b@example.com");
+        memberTeamAId = insertUser("wave6-swap-member-team-a@example.com");
+        member2TeamAId = insertUser("wave6-swap-member2-team-a@example.com");
+        outsiderId = insertUser("wave6-swap-outsider@example.com");
+        userRolesOnlyAdminAId = insertUser("wave6-swap-ur-admin@example.com");
+        systemAdminId = insertUser("wave6-swap-sysadmin@example.com");
+        MembershipTestHelper.insertUserRole(em, userRolesOnlyAdminAId, "ADMIN", teamAId, null);
+        MembershipTestHelper.insertUserRole(em, systemAdminId, "SYSTEM_ADMIN", null, null);
+
+        // checkAdminOrAbove（user_roles）と isMember（memberships）は別系統のため
+        // ADMIN ユーザーにも memberships 行を張る（ShiftScheduleScopeContractIT 踏襲）。
+        MembershipTestHelper.insertMembership(em, adminTeamAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        MembershipTestHelper.insertUserRole(em, adminTeamAId, "ADMIN", teamAId, null);
+        MembershipTestHelper.insertMembership(em, adminTeamBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
+        MembershipTestHelper.insertUserRole(em, adminTeamBId, "ADMIN", teamBId, null);
+        MembershipTestHelper.insertMembership(em, memberTeamAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, member2TeamAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+
+        slotAId = insertSlot(insertSchedule(teamAId, "WAVE6SWAP A シフト"));
+        slotBId = insertSlot(insertSchedule(teamBId, "WAVE6SWAP B シフト"));
+
+        pendingSwapAId = insertSwap(slotAId, memberTeamAId, SwapRequestStatus.PENDING, false);
+        pendingSwapBId = insertSwap(slotBId, adminTeamBId, SwapRequestStatus.PENDING, false);
+
+        openCallSwapAId = swapRepository.save(
+                buildSwap(slotAId, memberTeamAId, SwapRequestStatus.PENDING, true)).getId();
+
+        ShiftSwapRequestEntity specific = buildSwap(slotAId, memberTeamAId, SwapRequestStatus.PENDING, false);
+        specific.setTargetUserIds("[" + member2TeamAId + "]");
+        specificSwapAId = swapRepository.save(specific).getId();
+
+        ShiftSwapRequestEntity accepted = buildSwap(slotAId, memberTeamAId, SwapRequestStatus.PENDING, false);
+        accepted.accept(member2TeamAId);
+        acceptedSwapAId = swapRepository.save(accepted).getId();
+
+        em.flush();
+        em.clear();
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 1. GET /shifts/swap-requests?teamId=（一覧・★テナント越境の要）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("1. GET /shifts/swap-requests?teamId=（一覧）")
+    class ListSwapRequests {
+
+        @Test
+        @DisplayName("★非ADMINメンバーも200（承諾するための一覧を引ける）")
+        void 非ADMINメンバーも200() throws Exception {
+            setAuth(member2TeamAId);
+            mockMvc.perform(get("/api/v1/shifts/swap-requests").param("teamId", teamAId.toString()))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("★非ADMINメンバーの一覧は自分に関係する依頼だけ（他人同士の依頼は本文にも乗らない）")
+        void 非ADMINメンバーは自分に関係する依頼だけ見える() throws Exception {
+            setAuth(member2TeamAId);
+            mockMvc.perform(get("/api/v1/shifts/swap-requests").param("teamId", teamAId.toString()))
+                    .andExpect(status().isOk())
+                    // 自分が指名された依頼 / 指名なしの依頼 / 自分が承諾済みの依頼は見える
+                    .andExpect(jsonPath("$.data[?(@.id == " + specificSwapAId + ")]").isNotEmpty())
+                    .andExpect(jsonPath("$.data[?(@.id == " + openCallSwapAId + ")]").isNotEmpty())
+                    .andExpect(jsonPath("$.data[?(@.id == " + acceptedSwapAId + ")]").isNotEmpty())
+                    // ★他人同士の依頼（指名されておらず、指名なしでもなく、自分の依頼でもない）は含まれない。
+                    //   交代理由には体調・家庭の事情が書かれうるため、本文に乗ること自体が漏洩になる
+                    .andExpect(jsonPath("$.data[?(@.id == " + pendingSwapAId + ")]").isEmpty())
+                    // ★他チームの依頼も当然含まれない（テナント越境）
+                    .andExpect(jsonPath("$.data[?(@.id == " + pendingSwapBId + ")]").isEmpty())
+                    .andExpect(jsonPath("$.data[?(@.slotId == " + slotBId + ")]").isEmpty());
+        }
+
+        @Test
+        @DisplayName("★申請者本人には自分の依頼が見える")
+        void 申請者本人には自分の依頼が見える() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(get("/api/v1/shifts/swap-requests").param("teamId", teamAId.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[?(@.id == " + pendingSwapAId + ")]").isNotEmpty());
+        }
+
+        @Test
+        @DisplayName("部外者は403（メンバーですらない者には開かない）")
+        void 部外者は403() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(get("/api/v1/shifts/swap-requests").param("teamId", teamAId.toString()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別scope ADMIN（teamBのADMINがteamAを指定）は403（BOLA）")
+        void 別scopeADMINは403() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(get("/api/v1/shifts/swap-requests").param("teamId", teamAId.toString()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("正当ADMINは200（正常系）")
+        void 正当ADMINは200() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(get("/api/v1/shifts/swap-requests").param("teamId", teamAId.toString()))
+                    .andExpect(status().isOk())
+                    // 管理者は従来どおり当該チームの全件が見える（絞り込みで回帰していないこと）
+                    .andExpect(jsonPath("$.data.length()").value(4))
+                    .andExpect(jsonPath("$.data[?(@.id == " + pendingSwapAId + ")]").isNotEmpty())
+                    .andExpect(jsonPath("$.data[?(@.id == " + openCallSwapAId + ")]").isNotEmpty())
+                    .andExpect(jsonPath("$.data[?(@.id == " + specificSwapAId + ")]").isNotEmpty())
+                    .andExpect(jsonPath("$.data[?(@.id == " + acceptedSwapAId + ")]").isNotEmpty());
+        }
+
+        @Test
+        @DisplayName("★正当ADMINの一覧に他チーム（teamB）の交代申請が混入しない")
+        void 他チームの交代申請が一覧に出ない() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(get("/api/v1/shifts/swap-requests").param("teamId", teamAId.toString()))
+                    .andExpect(status().isOk())
+                    // teamB の申請 ID が結果に含まれないこと
+                    .andExpect(jsonPath("$.data[?(@.id == " + pendingSwapBId + ")]").isEmpty())
+                    // teamB のシフト枠 ID が結果に含まれないこと
+                    .andExpect(jsonPath("$.data[?(@.slotId == " + slotBId + ")]").isEmpty());
+        }
+
+        @Test
+        @DisplayName("★ステータス指定でも他チームの交代申請が混入しない")
+        void ステータス指定でも他チームの交代申請が出ない() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(get("/api/v1/shifts/swap-requests")
+                            .param("teamId", teamAId.toString())
+                            .param("status", "PENDING"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(3))
+                    .andExpect(jsonPath("$.data[?(@.id == " + pendingSwapBId + ")]").isEmpty());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 2. POST /shifts/swap-requests（申請作成・slot 実体由来 scope）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("2. POST /shifts/swap-requests（申請作成）")
+    class CreateSwapRequest {
+
+        @Test
+        @DisplayName("部外者は404（存在オラクル是正 W2・不在slotIdと同一応答）")
+        void 部外者は404() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createBody(slotAId))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_002"));
+        }
+
+        @Test
+        @DisplayName("別scope ADMIN（teamBのADMINがteamAのslotIdを指定）は404（BOLA・存在オラクル是正 W2）")
+        void 別scopeADMINは404() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createBody(slotAId))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_002"));
+        }
+
+        @Test
+        @DisplayName("正当メンバーは201（正常系）")
+        void 正当メンバーは201() throws Exception {
+            setAuth(member2TeamAId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createBody(slotAId))))
+                    .andExpect(status().isCreated());
+        }
+
+        /**
+         * AC-1（存在オラクル是正 CMP-260923-0954 W2）: 別scope ADMIN が実在する他チームの slotId を
+         * 叩いた応答と、不在の slotId を叩いた応答が status・error.code で一致すること。
+         */
+        @Test
+        @DisplayName("★AC-1: 別scope ADMINの他チームslotIdと不在slotIdは同一応答（SHIFT_SLOT_NOT_FOUND）")
+        void AC1_別scopeADMINの他チームslotIdと不在slotIdは同一応答() throws Exception {
+            setAuth(adminTeamBId);
+            var crossTeam = mockMvc.perform(post("/api/v1/shifts/swap-requests")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createBody(slotAId))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_002"))
+                    .andReturn();
+            var absent = mockMvc.perform(post("/api/v1/shifts/swap-requests")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createBody(999_999_999L))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_002"))
+                    .andReturn();
+            org.assertj.core.api.Assertions.assertThat(crossTeam.getResponse().getStatus())
+                    .isEqualTo(absent.getResponse().getStatus());
+        }
+
+        private Map<String, Object> createBody(Long slotId) {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("slotId", slotId);
+            body.put("reason", "体調不良のため");
+            body.put("openCall", false);
+            return body;
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 3. POST /shifts/swap-requests/{swapId}/accept（承諾）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("3. POST /shifts/swap-requests/{swapId}/accept（承諾）")
+    class AcceptSwapRequest {
+
+        @Test
+        @DisplayName("部外者は404（存在オラクル是正 W2）")
+        void 部外者は404() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", pendingSwapAId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"));
+        }
+
+        @Test
+        @DisplayName("別scope ADMINは404（BOLA・存在オラクル是正 W2）")
+        void 別scopeADMINは404() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", pendingSwapAId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"));
+        }
+
+        @Test
+        @DisplayName("★AC-1: 別scope ADMINの他チームswapIdと不在swapIdは同一応答")
+        void AC1_別scopeADMINの他チームswapIdと不在swapIdは同一応答() throws Exception {
+            setAuth(adminTeamBId);
+            var crossTeam = mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", pendingSwapAId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"))
+                    .andReturn();
+            var absent = mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", 999_999_999L))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"))
+                    .andReturn();
+            org.assertj.core.api.Assertions.assertThat(crossTeam.getResponse().getStatus())
+                    .isEqualTo(absent.getResponse().getStatus());
+        }
+
+        @Test
+        @DisplayName("正当メンバーは200（正常系）")
+        void 正当メンバーは200() throws Exception {
+            setAuth(member2TeamAId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", pendingSwapAId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("★自分に関係する依頼を承諾すると accepterId が自分になり ACCEPTED になる")
+        void 承諾するとaccepterIdが自分になりACCEPTEDになる() throws Exception {
+            setAuth(member2TeamAId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", specificSwapAId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.status").value("ACCEPTED"))
+                    .andExpect(jsonPath("$.data.accepterId").value(member2TeamAId));
+        }
+
+        @Test
+        @DisplayName("★申請者本人は自分の依頼を承諾できない")
+        void 申請者本人は承諾できない() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", pendingSwapAId))
+                    .andExpect(status().is4xxClientError())
+                    .andExpect(result -> org.assertj.core.api.Assertions
+                            .assertThat(result.getResponse().getStatus()).isNotEqualTo(200));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 4. POST /shifts/swap-requests/{swapId}/resolve（承認・却下・★BOLA の要）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("4. POST /shifts/swap-requests/{swapId}/resolve（承認・却下）")
+    class ResolveSwapRequest {
+
+        @Test
+        @DisplayName("非ADMINメンバーは403")
+        void 非ADMINメンバーは403() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", acceptedSwapAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(resolveBody("APPROVE"))))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("★別scope ADMIN（teamBのADMINがteamAのswapIdを直接指定）は承認できず404（存在オラクル是正 W2）")
+        void 別scopeADMINは承認できない() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", acceptedSwapAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(resolveBody("APPROVE"))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"));
+        }
+
+        @Test
+        @DisplayName("★別scope ADMINは却下もできず404")
+        void 別scopeADMINは却下もできない() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", acceptedSwapAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(resolveBody("REJECT"))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"));
+        }
+
+        @Test
+        @DisplayName("部外者は404")
+        void 部外者は404() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", acceptedSwapAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(resolveBody("APPROVE"))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"));
+        }
+
+        @Test
+        @DisplayName("★AC-1: 別scope ADMINの他チームswapIdと不在swapIdは同一応答")
+        void AC1_別scopeADMINの他チームswapIdと不在swapIdは同一応答() throws Exception {
+            setAuth(adminTeamBId);
+            var crossTeam = mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", acceptedSwapAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(resolveBody("APPROVE"))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"))
+                    .andReturn();
+            var absent = mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", 999_999_999L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(resolveBody("APPROVE"))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"))
+                    .andReturn();
+            org.assertj.core.api.Assertions.assertThat(crossTeam.getResponse().getStatus())
+                    .isEqualTo(absent.getResponse().getStatus());
+        }
+
+        @Test
+        @DisplayName("正当ADMINは200（正常系・大文字 APPROVE が受理される）")
+        void 正当ADMINは200() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", acceptedSwapAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(resolveBody("APPROVE"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.status").value("APPROVED"));
+        }
+
+        @Test
+        @DisplayName("★正当ADMINは大文字 REJECT で却下できる")
+        void 正当ADMINは却下できる() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", acceptedSwapAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(resolveBody("REJECT"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.status").value("REJECTED"));
+        }
+
+        @Test
+        @DisplayName("★小文字 action（reject）は受理されない（FE が大文字で送る契約を固定する）")
+        void 小文字actionは受理されない() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", acceptedSwapAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(resolveBody("reject"))))
+                    .andExpect(status().is4xxClientError());
+        }
+
+        private Map<String, Object> resolveBody(String action) {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("action", action);
+            body.put("adminNote", "契約テスト");
+            return body;
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 5. DELETE /shifts/swap-requests/{swapId}（取消）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("5. DELETE /shifts/swap-requests/{swapId}（取消）")
+    class CancelSwapRequest {
+
+        @Test
+        @DisplayName("同じチームでも申請者でない一般メンバーは403")
+        void 申請者でない一般メンバーは403() throws Exception {
+            setAuth(member2TeamAId);
+            mockMvc.perform(delete("/api/v1/shifts/swap-requests/{id}", pendingSwapAId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別scope ADMINは404（BOLA・存在オラクル是正 W2）")
+        void 別scopeADMINは404() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(delete("/api/v1/shifts/swap-requests/{id}", pendingSwapAId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"));
+        }
+
+        @Test
+        @DisplayName("★AC-1: 別scope ADMINの他チームswapIdと不在swapIdは同一応答")
+        void AC1_別scopeADMINの他チームswapIdと不在swapIdは同一応答() throws Exception {
+            setAuth(adminTeamBId);
+            var crossTeam = mockMvc.perform(delete("/api/v1/shifts/swap-requests/{id}", pendingSwapAId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"))
+                    .andReturn();
+            var absent = mockMvc.perform(delete("/api/v1/shifts/swap-requests/{id}", 999_999_999L))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"))
+                    .andReturn();
+            org.assertj.core.api.Assertions.assertThat(crossTeam.getResponse().getStatus())
+                    .isEqualTo(absent.getResponse().getStatus());
+        }
+
+        @Test
+        @DisplayName("申請者本人は204（正常系）")
+        void 申請者本人は204() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(delete("/api/v1/shifts/swap-requests/{id}", pendingSwapAId))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("当該チームのADMINは204（正常系）")
+        void 当該チームのADMINは204() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(delete("/api/v1/shifts/swap-requests/{id}", pendingSwapAId))
+                    .andExpect(status().isNoContent());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 6. 存在オラクル是正 W2 補完（AC-1 message / AC-3 / AC-10 / AC-11）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("6. 存在オラクル是正 W2 補完")
+    class OracleCompletion {
+
+        private MvcResult call(String kind, Long id) throws Exception {
+            return switch (kind) {
+                case "create" -> mockMvc.perform(post("/api/v1/shifts/swap-requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                Map.of("slotId", id, "reason", "x", "openCall", false)))).andReturn();
+                case "accept" -> mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", id)).andReturn();
+                case "resolve" -> mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                Map.of("action", "APPROVE", "adminNote", "x")))).andReturn();
+                default -> mockMvc.perform(delete("/api/v1/shifts/swap-requests/{id}", id)).andReturn();
+            };
+        }
+
+        private Long realId(String kind) {
+            return switch (kind) {
+                case "create" -> slotAId;
+                case "resolve" -> acceptedSwapAId;
+                default -> pendingSwapAId;
+            };
+        }
+
+        @Test
+        @DisplayName("AC-1: 越境（別scope ADMIN・部外者）の実在IDと不在IDで status・code・message が一致（全EP）")
+        void AC1_全EPでstatusとcodeとmessageが一致() throws Exception {
+            for (Long actor : List.of(adminTeamBId, outsiderId)) {
+                for (String kind : List.of("create", "accept", "resolve", "cancel")) {
+                    setAuth(actor);
+                    assertSameError(call(kind, realId(kind)), call(kind, 999_999_999L));
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("AC-10: ID 境界値（0・-1・Long.MAX_VALUE）は不在IDと同じ応答（全EP）")
+        void AC10_ID境界値は不在IDと同じ応答() throws Exception {
+            setAuth(adminTeamBId);
+            for (String kind : List.of("create", "accept", "resolve", "cancel")) {
+                MvcResult absent = call(kind, 999_999_999L);
+                for (Long id : BOUNDARY_IDS) {
+                    assertSameError(call(kind, id), absent);
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("AC-10: 数値でないパスIDは400のまま")
+        void AC10_数値でないパスIDは400() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", "abc"))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("AC-2/AC-3: user_roles のみの ADMIN は resolve・cancel で許可、member操作(create/accept)は 404 に化けず 403")
+        void AC3_userRolesOnlyAdmin() throws Exception {
+            setAuth(userRolesOnlyAdminAId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", acceptedSwapAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    Map.of("action", "APPROVE", "adminNote", "x"))))
+                    .andExpect(status().isOk());
+            mockMvc.perform(delete("/api/v1/shifts/swap-requests/{id}", pendingSwapAId))
+                    .andExpect(status().isNoContent());
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", openCallSwapAId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+            mockMvc.perform(post("/api/v1/shifts/swap-requests")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    Map.of("slotId", slotAId, "reason", "x", "openCall", false))))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("AC-5: 非メンバーの SYSTEM_ADMIN は resolve できる")
+        void AC5_systemAdminは通る() throws Exception {
+            setAuth(systemAdminId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", acceptedSwapAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    Map.of("action", "APPROVE", "adminNote", "x"))))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("AC-11: 越境で404にした書込みは DB を一切変えない（件数・status・version）")
+        void AC11_越境書込でDB不変() throws Exception {
+            long before = swapRepository.count();
+            setAuth(adminTeamBId);
+            for (String kind : List.of("create", "accept", "resolve", "cancel")) {
+                call(kind, realId(kind));
+            }
+            em.flush();
+            em.clear();
+            org.assertj.core.api.Assertions.assertThat(swapRepository.count()).isEqualTo(before);
+            for (Long id : List.of(pendingSwapAId, acceptedSwapAId, openCallSwapAId)) {
+                org.assertj.core.api.Assertions.assertThat(
+                        swapRepository.findById(id).orElseThrow().getVersion()).isEqualTo(0L);
+            }
+            org.assertj.core.api.Assertions.assertThat(
+                    swapRepository.findById(pendingSwapAId).orElseThrow().getStatus())
+                    .isEqualTo(SwapRequestStatus.PENDING);
+            org.assertj.core.api.Assertions.assertThat(
+                    swapRepository.findById(acceptedSwapAId).orElseThrow().getStatus())
+                    .isEqualTo(SwapRequestStatus.ACCEPTED);
+        }
+    }
+
+    /** AC-1: status・error.code・error.message の3つすべてが一致すること。 */
+    private static void assertSameError(MvcResult crossTeam, MvcResult absent) throws Exception {
+        String a = crossTeam.getResponse().getContentAsString();
+        String b = absent.getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat(crossTeam.getResponse().getStatus())
+                .isEqualTo(absent.getResponse().getStatus());
+        org.assertj.core.api.Assertions.assertThat((String) JsonPath.read(a, "$.error.code"))
+                .isEqualTo(JsonPath.read(b, "$.error.code"));
+        org.assertj.core.api.Assertions.assertThat((String) JsonPath.read(a, "$.error.message"))
+                .isEqualTo(JsonPath.read(b, "$.error.message"));
+    }
+
+    private static final List<Long> BOUNDARY_IDS = List.of(0L, -1L, Long.MAX_VALUE);
+
+    // ═════════════════════════════════════════════════════════════════════
+    // ヘルパー
+    // ═════════════════════════════════════════════════════════════════════
+
+    private void setAuth(Long userId) {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
+    }
+
+    private Long insertSchedule(Long teamId, String title) {
+        return scheduleRepository.save(ShiftScheduleEntity.builder()
+                .teamId(teamId)
+                .title(title)
+                .periodType(ShiftPeriodType.WEEKLY)
+                .startDate(LocalDate.of(2026, 3, 1))
+                .endDate(LocalDate.of(2026, 3, 7))
+                .status(ShiftScheduleStatus.PUBLISHED)
+                .build()).getId();
+    }
+
+    private Long insertSlot(Long scheduleId) {
+        return slotRepository.save(ShiftSlotEntity.builder()
+                .scheduleId(scheduleId)
+                .slotDate(LocalDate.of(2026, 3, 2))
+                .startTime(LocalTime.of(9, 0))
+                .endTime(LocalTime.of(18, 0))
+                .requiredCount(1)
+                .build()).getId();
+    }
+
+    private ShiftSwapRequestEntity buildSwap(Long slotId, Long requesterId,
+                                             SwapRequestStatus status, boolean openCall) {
+        return ShiftSwapRequestEntity.builder()
+                .slotId(slotId)
+                .requesterId(requesterId)
+                .status(status)
+                .reason("契約テスト用")
+                .isOpenCall(openCall)
+                .recipientMode(openCall ? "OPEN_CALL" : "SPECIFIC")
+                .build();
+    }
+
+    private Long insertSwap(Long slotId, Long requesterId, SwapRequestStatus status, boolean openCall) {
+        return swapRepository.save(buildSwap(slotId, requesterId, status, openCall)).getId();
+    }
+
+    private Long insertUser(String email) {
+        em.createNativeQuery(
+                        "INSERT INTO users ("
+                                + "email, last_name, first_name, display_name, status, "
+                                + "is_searchable, handle_searchable, contact_approval_required, "
+                                + "online_visibility, dm_receive_from, encryption_key_version, "
+                                + "locale, timezone, reporting_restricted, follow_list_visibility, "
+                                + "care_notification_enabled, offline_only, "
+                                + "created_at, updated_at) "
+                                + "VALUES (:email, 'WAVE6SWAP', 'テスト', 'WAVE6SWAP テスト', 'ACTIVE', "
+                                + "1, 1, 1, "
+                                + "'NOBODY', 'ANYONE', 1, "
+                                + "'ja', 'Asia/Tokyo', 0, 'PUBLIC', "
+                                + "1, 0, "
+                                + "NOW(), NOW())")
+                .setParameter("email", email)
+                .executeUpdate();
+        return ((Number) em.createNativeQuery("SELECT id FROM users WHERE email = :email")
+                .setParameter("email", email)
+                .getSingleResult()).longValue();
+    }
+
+    private Long insertTeam(String name) {
+        em.createNativeQuery(
+                        "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, "
+                                + "created_at, updated_at) "
+                                + "VALUES (:name, 'PUBLIC', 1, 0, 0, "
+                                + "CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
+                .setParameter("name", name)
+                .executeUpdate();
+        return ((Number) em.createNativeQuery("SELECT id FROM teams WHERE name = :name")
+                .setParameter("name", name)
+                .getSingleResult()).longValue();
+    }
+}

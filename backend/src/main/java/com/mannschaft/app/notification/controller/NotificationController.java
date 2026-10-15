@@ -1,0 +1,143 @@
+package com.mannschaft.app.notification.controller;
+
+import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.notification.dto.NotificationResponse;
+import com.mannschaft.app.notification.dto.SnoozeRequest;
+import com.mannschaft.app.notification.dto.UnreadCountResponse;
+import com.mannschaft.app.notification.service.NotificationService;
+import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
+
+/**
+ * 通知コントローラー。ログインユーザーの通知管理APIを提供する。
+ */
+@RestController
+@RequestMapping("/api/v1/notifications")
+@Tag(name = "通知", description = "F04.3 通知管理")
+@RequiredArgsConstructor
+public class NotificationController {
+
+    private final NotificationService notificationService;
+
+
+    /**
+     * 通知一覧を取得する。
+     *
+     * <p>F15.3: {@code folderId} + {@code scopeType} 両方指定時はマイスコープフォルダによる
+     * フィルタを適用する。未指定時は従来通り全件取得（後方互換）。</p>
+     */
+    // 認可根治戦役 Wave4 ロットD: userId は常に SecurityUtils.getCurrentUserId()。
+    // folderId 指定時も notificationService.listNotificationsByFolder が
+    // myScopeFolderQueryService.getScopeIdsInFolder(userId, folderId)（IDOR防止込み・所有者検証あり）を
+    // 通してから絞り込む（NotificationService.java:96）。
+    @AuthorizedInService
+    @GetMapping
+    @Operation(summary = "通知一覧",
+            description = "folderId と scopeType を両方指定するとフォルダ内通知のみ取得。未指定時は全件")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<PagedResponse<NotificationResponse>> listNotifications(
+            @RequestParam(required = false) Long folderId,
+            @RequestParam(required = false) ScopeType scopeType,
+            Pageable pageable) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        Page<NotificationResponse> page = (folderId != null && scopeType != null)
+                ? notificationService.listNotificationsByFolder(userId, folderId, scopeType, pageable)
+                : notificationService.listNotifications(userId, pageable);
+        PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
+                page.getTotalElements(), page.getNumber(), page.getSize(), page.getTotalPages());
+        return ResponseEntity.ok(PagedResponse.of(page.getContent(), meta));
+    }
+
+    /**
+     * 未読通知件数を取得する。
+     */
+    @SelfScopedEndpoint("notificationRepository.countByUserIdAndIsReadFalse の検索条件が"
+            + "SecurityUtils.getCurrentUserId() のみで、リクエストは他ユーザーの識別子を受け取らない"
+            + "（NotificationService#getUnreadCount）")
+    @GetMapping("/unread-count")
+    @Operation(summary = "未読通知件数")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<UnreadCountResponse>> getUnreadCount() {
+        UnreadCountResponse response = notificationService.getUnreadCount(SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 通知を既読にする。
+     */
+    // 認可根治戦役 Wave4 ロットD: notificationService.markAsRead が findNotificationOrThrow で
+    // notificationRepository.findByIdAndUserId(notificationId, userId)（NotificationService.java:438-441）を
+    // 通し、他ユーザー宛の notificationId は NOTIFICATION_NOT_FOUND として拒否する。
+    @AuthorizedInService
+    @PostMapping("/{notificationId}/read")
+    @Operation(summary = "通知既読")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "既読成功")
+    public ResponseEntity<ApiResponse<NotificationResponse>> markAsRead(
+            @PathVariable Long notificationId) {
+        NotificationResponse response = notificationService.markAsRead(SecurityUtils.getCurrentUserId(), notificationId);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 通知を未読に戻す。
+     */
+    // 認可根治戦役 Wave4 ロットD: notificationService.markAsUnread も同じ
+    // findNotificationOrThrow（NotificationService.java:438-441）で所有者検証する。
+    @AuthorizedInService
+    @PostMapping("/{notificationId}/unread")
+    @Operation(summary = "通知未読戻し")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "未読戻し成功")
+    public ResponseEntity<ApiResponse<NotificationResponse>> markAsUnread(
+            @PathVariable Long notificationId) {
+        NotificationResponse response = notificationService.markAsUnread(SecurityUtils.getCurrentUserId(), notificationId);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 通知をスヌーズする。
+     */
+    // 認可根治戦役 Wave4 ロットD: notificationService.snoozeNotification も同じ
+    // findNotificationOrThrow（NotificationService.java:438-441）で所有者検証する。
+    @AuthorizedInService
+    @PostMapping("/{notificationId}/snooze")
+    @Operation(summary = "通知スヌーズ")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "スヌーズ成功")
+    public ResponseEntity<ApiResponse<NotificationResponse>> snoozeNotification(
+            @PathVariable Long notificationId,
+            @Valid @RequestBody SnoozeRequest request) {
+        NotificationResponse response = notificationService.snoozeNotification(
+                SecurityUtils.getCurrentUserId(), notificationId, request);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 全通知を既読にする。
+     */
+    @SelfScopedEndpoint("notificationRepository.markAllAsReadByUserId の更新条件が"
+            + "SecurityUtils.getCurrentUserId() のみで、リクエストは他ユーザーの識別子を受け取らない"
+            + "（NotificationService#markAllAsRead）")
+    @PostMapping("/read-all")
+    @Operation(summary = "全件既読")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "全件既読成功")
+    public ResponseEntity<ApiResponse<Integer>> markAllAsRead() {
+        int count = notificationService.markAllAsRead(SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(count));
+    }
+}

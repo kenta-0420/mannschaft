@@ -1,0 +1,47 @@
+{
+  "succession": {
+    "unseal": {
+      "title": "封緘解除申請一覧",
+      "selectPrompt": "申請を選択してください",
+      "field": {
+        "id": "申請ID",
+        "preRegistrationId": "事前登録ID",
+        "requestedBy": "申請者",
+        "reason": "申請理由",
+        "status": "ステータス",
+        "firstApprover": "一次承認者",
+        "secondApprover": "二次承認者",
+        "autoResealAt": "自動封緘日時",
+        "createdAt": "申請日時"
+      },
+      "status": {
+        "PENDING": "承認待ち",
+        "FIRST_APPROVED": "一次承認済",
+        "UNSEALED": "開封中",
+        "RE_SEALED": "再封緘済",
+        "CANCELLED": "キャンセル済"
+      },
+      "action": {
+        "firstApprove": "一次承認",
+        "secondApprove": "二次承認（開封）",
+        "cancel": "キャンセル"
+      },
+      "dialog": {
+        "comment": "コメント（任意）",
+        "FIRST_APPROVE": {
+          "title": "一次承認",
+          "submit": "承認する"
+        },
+        "SECOND_APPROVE": {
+          "title": "二次承認（開封）",
+          "submit": "開封する"
+        },
+        "CANCEL": {
+          "title": "申請をキャンセル",
+          "confirm": "この封緘解除申請をキャンセルしますか？",
+          "submit": "キャンセルする"
+        }
+      }
+    }
+  }
+}

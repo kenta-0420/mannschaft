@@ -1,0 +1,180 @@
+{
+  "friends": {
+    "title": "Befreundete Teams",
+    "subtitle": "Verwaltung von Freundschaftsbeziehungen zwischen Teams",
+    "list": {
+      "empty": "Keine befreundeten Teams",
+      "established_at": "Gründungsdatum",
+      "visibility_public": "Öffentlich",
+      "visibility_private": "Privat",
+      "supporter_notice": "Es werden nur öffentliche Freundschaftsteams angezeigt",
+      "target_team_id": "Ziel-Team-ID",
+      "comment_label": "Grußkommentar (optional)"
+    },
+    "actions": {
+      "follow": "Folgen",
+      "unfollow": "Entfolgen",
+      "toggle_visibility": "Sichtbarkeit umschalten"
+    },
+    "messages": {
+      "follow_success": "Gefolgt",
+      "follow_mutual_success": "Gegenseitiges Folgen hergestellt — Sie sind jetzt befreundete Teams",
+      "follow_retry": "Folgen wird verarbeitet. Bitte versuchen Sie es in {seconds} Sekunden erneut",
+      "unfollow_success": "Entfolgt",
+      "unfollow_confirm": "Diesem Team entfolgen?",
+      "visibility_changed": "Sichtbarkeit geändert"
+    },
+    "errors": {
+      "self_follow": "Sie können Ihrem eigenen Team nicht folgen",
+      "already_following": "Sie folgen bereits",
+      "target_not_found": "Ziel-Team nicht gefunden",
+      "permission_denied": "Keine Berechtigung"
+    },
+    "guide": {
+      "title": "So verwendest du Befreundete Teams",
+      "description": "Auf diesem Bildschirm folgst du anderen Teams, wirst mit ihnen befreundet und verwaltest diese Beziehungen.",
+      "what": {
+        "title": "Was sind befreundete Teams?",
+        "body": "Wenn sich zwei Teams gegenseitig folgen, werden sie befreundete Teams. Die Liste zeigt für jedes Team das Gründungsdatum sowie den Status Öffentlich oder Privat. Ab 20 Einträgen wird die Liste in Seiten aufgeteilt.",
+        "note": "Supportern und anderen werden nur öffentliche befreundete Teams angezeigt."
+      },
+      "follow": {
+        "title": "Folgen und befreundet werden",
+        "step1": "Tippe oben im Tab „Befreundete Teams“ auf die Schaltfläche „Folgen“",
+        "step2": "Gib die ID (Zahl) des Teams ein, dem du folgen möchtest",
+        "step3": "Gib einen Begrüßungskommentar ein (optional, bis zu 300 Zeichen)",
+        "step4": "Tippe im Dialog auf „Folgen“",
+        "mutual": "Sobald das andere Team dir ebenfalls folgt, erscheint „Ihr seid jetzt befreundete Teams“ und die Freundschaft ist hergestellt.",
+        "caution_title": "Hinweise",
+        "caution_self": "Dem eigenen Team kannst du nicht folgen",
+        "caution_already": "Einem Team, dem du bereits folgst, kannst du nicht erneut folgen",
+        "caution_busy": "Bei hoher Auslastung wird automatisch bis zu 3-mal erneut versucht. Klappt es trotzdem nicht, versuche es etwas später noch einmal",
+        "caution_role": "Die Schaltfläche „Folgen“ wird nur Administratoren und stellvertretenden Administratoren mit Berechtigung angezeigt"
+      },
+      "visibility": {
+        "title": "Zwischen öffentlich und privat wechseln",
+        "step1": "Betätige den Schalter auf der Karte des befreundeten Teams",
+        "step2": "Prüfe, dass „Sichtbarkeit wurde geändert“ angezeigt wird",
+        "caution_title": "Hinweise",
+        "caution_admin": "Nur Administratoren können das tun. Für alle anderen wird der Schalter deaktiviert angezeigt",
+        "caution_revert": "Schlägt der Wechsel fehl, springt der Schalter in den vorherigen Zustand zurück"
+      },
+      "unfollow": {
+        "title": "Nicht mehr folgen",
+        "step1": "Tippe rechts auf der Karte des befreundeten Teams auf „︙“",
+        "step2": "Wähle im Menü „Entfolgen“",
+        "step3": "Bestätige im Bestätigungsdialog",
+        "caution_title": "Hinweise",
+        "caution_kept": "Auch nach dem Entfolgen bleiben bereits weitergeleitete Beiträge erhalten",
+        "caution_role": "Nur Administratoren und stellvertretende Administratoren mit Berechtigung können entfolgen"
+      },
+      "related": {
+        "title": "Verwandte Bildschirme",
+        "body": "Die folgenden Bildschirme zu befreundeten Teams kannst du über das Teammenü öffnen.",
+        "item_folders": "Freundesordner – Ordne befreundete Teams in Ordnern (bis zu 20 Ordner möglich)",
+        "item_feed": "Admin-Feed – Sieh dir Beiträge befreundeter Teams an und leite sie an dein eigenes Team weiter",
+        "item_exports": "Verlauf der Rückweiterleitung – Sieh nach, an welche Freunde die Beiträge deines Teams weitergeleitet wurden"
+      }
+    }
+  },
+  "folders": {
+    "title": "Freundesordner",
+    "create": "Ordner erstellen",
+    "list": {
+      "empty": "Keine Ordner",
+      "member_count": "{count} Teams",
+      "remaining": "Noch {remaining} erstellbar (max. 20)"
+    },
+    "fields": {
+      "name": "Ordnername",
+      "description": "Beschreibung (optional)",
+      "color": "Farbe"
+    },
+    "actions": {
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "manage_members": "Mitglieder verwalten",
+      "add_member": "Freund hinzufügen",
+      "remove_member": "Entfernen"
+    },
+    "placeholders": {
+      "name": "z.B. Partnerschulen",
+      "description": "Zweck oder Notiz zu diesem Ordner (optional)"
+    },
+    "members": {
+      "title": "Mitgliederverwaltung",
+      "current": "Registrierte Freunde",
+      "available": "Hinzufügbare Freunde",
+      "empty": "Keine Freunde in diesem Ordner registriert",
+      "no_friends": "Keine hinzufügbaren Freunde"
+    },
+    "messages": {
+      "created": "Ordner erstellt",
+      "updated": "Ordner aktualisiert",
+      "deleted": "Ordner gelöscht",
+      "delete_confirm": "Diesen Ordner löschen?",
+      "max_exceeded": "Maximal 20 Ordner können erstellt werden",
+      "name_required": "Bitte geben Sie den Ordnernamen ein",
+      "name_too_long": "Der Ordnername darf maximal 50 Zeichen lang sein",
+      "description_too_long": "Die Beschreibung darf maximal 300 Zeichen lang sein",
+      "name_conflict": "Ein Ordner mit diesem Namen existiert bereits",
+      "member_added": "Freund zum Ordner hinzugefügt",
+      "member_removed": "Freund aus dem Ordner entfernt",
+      "duplicate_member": "Dieser Freund ist bereits im Ordner registriert"
+    }
+  },
+  "friend_feed": {
+    "title": "Admin-Feed",
+    "subtitle": "Beiträge befreundeter Teams prüfen und weiterleiten",
+    "badge": "Von Freunden",
+    "forwarded_badge": "Weitergeleitet",
+    "permission_denied": "Sie haben keine Berechtigung, diese Seite anzuzeigen",
+    "list": {
+      "empty": "Keine Beiträge von Freunden"
+    },
+    "forward": {
+      "button": "An mein Team weiterleiten",
+      "modal_title": "Beitrag weiterleiten",
+      "target_label": "Verbreitungsbereich",
+      "target_member": "Nur Mitglieder",
+      "target_supporter": "Mitglieder + Unterstützer (ab Phase 3)",
+      "target_supporter_tooltip": "Ab Phase 3 verfügbar",
+      "comment_label": "Admin-Kommentar (optional)",
+      "comment_placeholder": "Kommentar für die Weiterleitung eingeben (optional)",
+      "submit": "Weiterleiten",
+      "cancel": "Abbrechen",
+      "success": "Beitrag weitergeleitet",
+      "revoke": "Weiterleitung zurückziehen",
+      "revoke_success": "Weiterleitung zurückgezogen",
+      "revoke_confirm": "Diese Weiterleitung zurückziehen?",
+      "error": "Weiterleitung fehlgeschlagen"
+    }
+  },
+  "forward_exports": {
+    "title": "Ausgehende Weiterleitungen",
+    "subtitle": "Welche befreundeten Teams Beiträge Ihres Teams weitergeleitet haben",
+    "permission_denied": "Sie haben keine Berechtigung, diese Seite anzuzeigen",
+    "list": {
+      "empty": "Noch kein Weiterleitungsverlauf",
+      "anonymous_team": "Anonymes Team",
+      "revoked": "Zurückgezogen",
+      "target_member": "Mitglieder",
+      "target_supporter": "Mitglieder+Unterstützer"
+    },
+    "columns": {
+      "source_post": "Originalbeitrag",
+      "forwarding_team": "Weiterleitendes Team",
+      "forwarded_at": "Weiterleitungszeitpunkt",
+      "target": "Bereich",
+      "status": "Status"
+    },
+    "pagination": {
+      "showing": "{from}–{to} von {total} angezeigt",
+      "prev": "Zurück",
+      "next": "Weiter"
+    }
+  },
+  "nav": {
+    "tab": "Freundschaftsteams"
+  }
+}

@@ -1,0 +1,115 @@
+import type {
+  ProxyInputConsent,
+  ProxyInputRecord,
+  CreateProxyInputConsentRequest,
+  RevokeProxyInputConsentRequest,
+  ScanUploadUrlResponse,
+  ScanDownloadUrlResponse,
+} from '~/types/proxy-input'
+import type { ApiResponse, PagedResponse } from '~/types/api'
+
+/**
+ * 代理入力（Proxy Input）バックエンド API composable。
+ * 同意書の登録・承認・撤回、履歴照会、スキャン画像の S3 presigned URL 発行を担う。
+ */
+export function useProxyInputApi() {
+  const api = useApi()
+
+  /** 自分が代理人として持つ有効同意書一覧（デスク起動時に使用） */
+  async function getActiveConsents(): Promise<ProxyInputConsent[]> {
+    const response = await api<ApiResponse<ProxyInputConsent[]>>(
+      '/api/v1/proxy-input-consents/active',
+    )
+    return response.data
+  }
+
+  /** 組織単位の同意書一覧（管理者用） */
+  async function getConsentsByOrg(
+    orgId: string,
+    params: { page?: number; size?: number } = {},
+  ): Promise<PagedResponse<ProxyInputConsent>> {
+    return api<PagedResponse<ProxyInputConsent>>(
+      `/api/v1/organizations/${orgId}/proxy-input-consents`,
+      { query: params },
+    )
+  }
+
+  /** 同意書登録 */
+  async function createConsent(
+    orgId: string,
+    request: CreateProxyInputConsentRequest,
+  ): Promise<ProxyInputConsent> {
+    const response = await api<ApiResponse<ProxyInputConsent>>(
+      `/api/v1/organizations/${orgId}/proxy-input-consents`,
+      {
+        method: 'POST',
+        body: request,
+      },
+    )
+    return response.data
+  }
+
+  /** 同意書承認 */
+  async function approveConsent(id: number): Promise<ProxyInputConsent> {
+    const response = await api<ApiResponse<ProxyInputConsent>>(
+      `/api/v1/proxy-input-consents/${id}/approve`,
+      {
+        method: 'PATCH',
+      },
+    )
+    return response.data
+  }
+
+  /** 同意書撤回 */
+  async function revokeConsent(id: number, request: RevokeProxyInputConsentRequest): Promise<void> {
+    await api<ApiResponse<null>>(`/api/v1/proxy-input-consents/${id}/revoke`, {
+      method: 'PATCH',
+      body: request,
+    })
+  }
+
+  /** 代理入力履歴（監査用） */
+  async function getRecords(params?: {
+    organizationId?: number
+    subjectUserId?: number
+    page?: number
+    size?: number
+  }): Promise<PagedResponse<ProxyInputRecord>> {
+    const qs = params
+      ? new URLSearchParams(
+          Object.fromEntries(
+            Object.entries(params)
+              .filter(([, v]) => v !== undefined)
+              .map(([k, v]) => [k, String(v)]),
+          ),
+        ).toString()
+      : ''
+    return api<PagedResponse<ProxyInputRecord>>(`/api/v1/proxy-input-records${qs ? `?${qs}` : ''}`)
+  }
+
+  /** スキャン画像アップロード用 presigned URL 発行 */
+  async function getScanUploadUrl(orgId: string): Promise<ScanUploadUrlResponse> {
+    return api<ScanUploadUrlResponse>(
+      `/api/v1/organizations/${orgId}/proxy-input-consents/scan-upload-url`,
+      {
+        method: 'POST',
+      },
+    )
+  }
+
+  /** スキャン画像ダウンロード用 presigned URL 発行 */
+  async function getScanDownloadUrl(id: number): Promise<ScanDownloadUrlResponse> {
+    return api<ScanDownloadUrlResponse>(`/api/v1/proxy-input-consents/${id}/scan-download-url`)
+  }
+
+  return {
+    getActiveConsents,
+    getConsentsByOrg,
+    createConsent,
+    approveConsent,
+    revokeConsent,
+    getRecords,
+    getScanUploadUrl,
+    getScanDownloadUrl,
+  }
+}

@@ -1,0 +1,25 @@
+-- F08.7: SYSTEM_ADMIN管理の競技別プリセットテンプレート
+CREATE TABLE system_tournament_presets (
+    id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    name            VARCHAR(100)    NOT NULL,
+    sport_category  VARCHAR(50)     NOT NULL,
+    description     VARCHAR(500)    NULL,
+    icon            VARCHAR(30)     NULL,
+    supported_formats JSON          NOT NULL,
+    win_points      TINYINT UNSIGNED NOT NULL DEFAULT 3,
+    draw_points     TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    loss_points     TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    has_draw        BOOLEAN         NOT NULL DEFAULT TRUE,
+    has_sets        BOOLEAN         NOT NULL DEFAULT FALSE,
+    sets_to_win     TINYINT UNSIGNED NULL,
+    has_extra_time  BOOLEAN         NOT NULL DEFAULT FALSE,
+    has_penalties   BOOLEAN         NOT NULL DEFAULT FALSE,
+    score_unit_label VARCHAR(20)    NOT NULL DEFAULT '点',
+    bonus_point_rules JSON          NULL,
+    sort_order      INT             NOT NULL DEFAULT 0,
+    created_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at      DATETIME        NULL,
+    PRIMARY KEY (id),
+    INDEX idx_stp_category (sport_category, sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

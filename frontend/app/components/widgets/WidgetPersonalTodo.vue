@@ -1,0 +1,236 @@
+<script setup lang="ts">
+import dayjs from 'dayjs'
+
+const { t } = useI18n()
+const { getPersonalTodos, toggleTodoComplete } = useDashboardApi()
+const { captureQuiet } = useErrorReport()
+const notification = useNotification()
+const teamStore = useTeamStore()
+const orgStore = useOrganizationStore()
+const { userTimezone } = useDatetime()
+
+interface TodoItem {
+  id: number
+  title: string
+  completed: boolean
+  dueDate: string | null
+  priority: string
+  scopeType: string
+  scopeId: string | null
+}
+
+const todos = ref<TodoItem[]>([])
+const overdueCount = ref(0)
+const loading = ref(true)
+
+const teamNameMap = computed(() =>
+  Object.fromEntries(teamStore.myTeams.map((t) => [t.id, t.nickname1 || t.name])),
+)
+const orgNameMap = computed(() =>
+  Object.fromEntries(orgStore.myOrganizations.map((o) => [o.id, o.nickname1 || o.name])),
+)
+
+function scopeLabel(todo: TodoItem): string | null {
+  if (todo.scopeType === 'PERSONAL') return null
+  if (todo.scopeType === 'TEAM' && todo.scopeId) return teamNameMap.value[todo.scopeId] ?? t('dashboard.widgets.personalTodo.teamFallback')
+  if (todo.scopeType === 'ORGANIZATION' && todo.scopeId)
+    return orgNameMap.value[todo.scopeId] ?? t('dashboard.widgets.personalTodo.orgFallback')
+  return null
+}
+
+function scopeColor(scopeType: string): string {
+  if (scopeType === 'TEAM')
+    return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+  return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+}
+
+async function load() {
+  loading.value = true
+  try {
+    const [res] = await Promise.all([
+      getPersonalTodos(),
+      teamStore.myTeams.length === 0 ? teamStore.fetchMyTeams() : Promise.resolve(),
+      orgStore.myOrganizations.length === 0 ? orgStore.fetchMyOrganizations() : Promise.resolve(),
+    ])
+    const todayStart = dayjs().tz(userTimezone.value).startOf('day')
+    todos.value = res.data
+      .filter((t) => t.status !== 'COMPLETED')
+      .map((t) => ({
+        id: t.id,
+        title: t.title,
+        completed: false,
+        dueDate: t.dueDate,
+        priority: t.priority,
+        scopeType: t.scopeType,
+        scopeId: t.scopeId,
+      }))
+      .slice(0, 20)
+    overdueCount.value = todos.value.filter(
+      (t) => t.dueDate !== null && dayjs.tz(t.dueDate, userTimezone.value).isBefore(todayStart),
+    ).length
+  } catch (error) {
+    captureQuiet(error, { context: 'WidgetPersonalTodo: TODO一覧取得' })
+    todos.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+async function onToggle(todo: TodoItem) {
+  try {
+    await toggleTodoComplete(todo.id, !todo.completed)
+    if (!todo.completed) {
+      // 完了にした → ウィジェットから消す
+      todos.value = todos.value.filter((t) => t.id !== todo.id)
+      notification.success(t('dashboard.widgets.personalTodo.completed'))
+    } else {
+      // 未完了に戻した → completed フラグを下げる
+      todo.completed = false
+    }
+  } catch (error) {
+    captureQuiet(error, { context: 'WidgetPersonalTodo: TODO完了切り替え' })
+    notification.error(t('dashboard.widgets.personalTodo.updateFailed'))
+  }
+}
+
+const priorityTextColor: Record<string, string> = {
+  HIGH: 'text-red-500',
+  MEDIUM: 'text-yellow-500',
+  LOW: 'text-green-500',
+  URGENT: 'text-red-600',
+}
+
+function isOverdue(dueDate: string | null): boolean {
+  if (!dueDate) return false
+  return dayjs.tz(dueDate, userTimezone.value).valueOf() < Date.now()
+}
+
+function formatDueDate(dueDate: string): string {
+  return dayjs.tz(dueDate, userTimezone.value).format('M/D')
+}
+
+const todosWithDue = computed(() =>
+  todos.value.filter((t): t is TodoItem & { dueDate: string } => t.dueDate !== null),
+)
+const todosNoDue = computed(() => todos.value.filter((t) => t.dueDate === null))
+
+onMounted(load)
+</script>
+
+<template>
+  <DashboardWidgetCard
+    title="TODO"
+    icon="pi pi-check-square"
+    to="/todos"
+    :loading="loading"
+    refreshable
+    @refresh="load"
+  >
+    <template #action>
+      <NuxtLink to="/todos" class="text-xs text-primary hover:underline">{{ t('dashboard.widgets.common.viewAll') }}</NuxtLink>
+    </template>
+
+    <div v-if="todos.length > 0" class="space-y-3">
+      <div v-if="overdueCount > 0">
+        <Tag :value="t('dashboard.widgets.personalTodo.overdue', { count: overdueCount }, overdueCount)" severity="danger" rounded />
+      </div>
+
+      <!-- 期限あり -->
+      <div v-if="todosWithDue.length > 0">
+        <p class="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-surface-400">
+          {{ t('dashboard.widgets.personalTodo.withDue') }}
+        </p>
+        <div class="grid grid-cols-3 gap-1.5 md:grid-cols-4 lg:grid-cols-5">
+          <div
+            v-for="todo in todosWithDue"
+            :key="todo.id"
+            class="flex cursor-pointer flex-col gap-1 rounded-lg border-2 border-surface-300 p-2 transition-colors hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700/50"
+            @click="navigateTo('/todos/' + todo.id)"
+          >
+            <div class="flex items-center justify-between gap-1">
+              <Checkbox
+                :model-value="todo.completed"
+                binary
+                class="shrink-0"
+                @click.stop
+                @update:model-value="onToggle(todo)"
+              />
+              <span
+                class="shrink-0 text-[13px] font-medium"
+                :class="priorityTextColor[todo.priority]"
+              >{{ $t('todo.priorityValue.' + todo.priority) }}</span>
+            </div>
+            <p
+              class="line-clamp-2 text-xs leading-tight"
+              :class="{ 'text-surface-400 line-through': todo.completed }"
+            >
+              {{ todo.title }}
+            </p>
+            <p
+              class="text-[10px] font-medium"
+              :class="isOverdue(todo.dueDate) ? 'text-red-500' : 'text-surface-400'"
+            >
+              {{ formatDueDate(todo.dueDate) }}
+            </p>
+            <span
+              v-if="scopeLabel(todo)"
+              class="w-fit rounded-full px-1 py-0.5 text-[9px] font-medium"
+              :class="scopeColor(todo.scopeType)"
+            >
+              {{ scopeLabel(todo) }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 期限なし -->
+      <div v-if="todosNoDue.length > 0">
+        <p class="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-surface-400">
+          {{ t('dashboard.widgets.personalTodo.noDue') }}
+        </p>
+        <div class="grid grid-cols-3 gap-1.5 md:grid-cols-4 lg:grid-cols-5">
+          <div
+            v-for="todo in todosNoDue"
+            :key="todo.id"
+            class="flex cursor-pointer flex-col gap-1 rounded-lg border-2 border-surface-300 p-2 transition-colors hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700/50"
+            @click="navigateTo('/todos/' + todo.id)"
+          >
+            <div class="flex items-center justify-between gap-1">
+              <Checkbox
+                :model-value="todo.completed"
+                binary
+                class="shrink-0"
+                @click.stop
+                @update:model-value="onToggle(todo)"
+              />
+              <span
+                class="shrink-0 text-[13px] font-medium"
+                :class="priorityTextColor[todo.priority]"
+              >{{ $t('todo.priorityValue.' + todo.priority) }}</span>
+            </div>
+            <p
+              class="line-clamp-2 text-xs leading-tight"
+              :class="{ 'text-surface-400 line-through': todo.completed }"
+            >
+              {{ todo.title }}
+            </p>
+            <span
+              v-if="scopeLabel(todo)"
+              class="w-fit rounded-full px-1 py-0.5 text-[9px] font-medium"
+              :class="scopeColor(todo.scopeType)"
+            >
+              {{ scopeLabel(todo) }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-1">
+        <NuxtLink to="/todos" class="text-sm text-primary hover:underline">
+          {{ $t('button.view_all') }}
+        </NuxtLink>
+      </div>
+    </div>
+    <DashboardEmptyState v-else icon="pi pi-check-circle" :message="t('dashboard.widgets.personalTodo.allDone')" />
+  </DashboardWidgetCard>
+</template>

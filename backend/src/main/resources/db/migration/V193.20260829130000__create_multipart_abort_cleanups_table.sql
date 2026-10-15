@@ -1,0 +1,23 @@
+CREATE TABLE multipart_abort_cleanups (
+    id BINARY(16) NOT NULL,
+    upload_id VARCHAR(255) NOT NULL,
+    r2_key VARCHAR(500) NOT NULL,
+    owner_id BIGINT UNSIGNED NOT NULL,
+    content_type VARCHAR(100) NOT NULL,
+    feature VARCHAR(30) NOT NULL,
+    scope_type VARCHAR(20) NOT NULL,
+    scope_id BIGINT UNSIGNED NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    next_attempt_at DATETIME NOT NULL,
+    attempt_count INT NOT NULL DEFAULT 0,
+    claimed_at DATETIME NULL,
+    lease_until DATETIME NULL,
+    dead_lettered_at DATETIME NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_multipart_abort_cleanups_upload (upload_id),
+    KEY idx_multipart_abort_cleanups_due (status, next_attempt_at),
+    KEY idx_multipart_abort_cleanups_lease (status, lease_until),
+    KEY idx_multipart_abort_cleanups_dead (status, dead_lettered_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

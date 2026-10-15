@@ -1,0 +1,56 @@
+package com.mannschaft.app.performance.service;
+
+import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.performance.repository.PerformanceRecordRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.util.List;
+
+/**
+ * パフォーマンス月次サマリー日次バッチサービス。
+ * 毎朝3:00に前日の記録を集計し、月次サマリーを UPSERT する。
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class PerformanceBatchService {
+
+    private final PerformanceRecordRepository recordRepository;
+    private final PerformanceSummaryService summaryService;
+
+    /**
+     * 日次バッチ: 前日の記録を月次サマリーに反映する。
+     * 毎朝3:00に実行。
+     */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "前日固定の no-arg 入口しか無く、対象日を指定して再集計する運用経路が無い。止めた日の月次サマリーは恒久的に欠測する")
+    @BatchEndpoint(name = "performance-monthly-summary-aggregation-daily", description = "前日のパフォーマンス記録を毎日 03:00 に月次サマリーへ集計する")
+    @Scheduled(cron = "0 0 3 * * *")
+    // 起動間隔は日次 03:00。前日分の記録を月次サマリーへ集計する。対象は前日 1 日分に限られるが、利用者数に比例するため余裕を取り 1 時間を上限とする。
+    @SchedulerLock(name = "performanceMonthlySummaryAggregation", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
+    @Transactional
+    public void aggregateDailySummaries() {
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+        log.info("パフォーマンス月次サマリーバッチ開始: 対象日={}", yesterday);
+
+        List<Object[]> metricUserPairs = recordRepository.findDistinctMetricUserByDate(yesterday);
+
+        int count = 0;
+        for (Object[] pair : metricUserPairs) {
+            Long metricId = ((Number) pair[0]).longValue();
+            Long userId = ((Number) pair[1]).longValue();
+            summaryService.recalculateSummary(metricId, userId, yesterday);
+            count++;
+        }
+
+        log.info("パフォーマンス月次サマリーバッチ完了: {}件のサマリーを更新", count);
+    }
+}

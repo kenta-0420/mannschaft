@@ -1,0 +1,64 @@
+{
+  "systemAdmin": {
+    "gdpr": {
+      "title": "GDPR Purge Status",
+      "summary": {
+        "completed": "Completed",
+        "pending": "Pending",
+        "alert": "Alerts"
+      },
+      "domain": {
+        "role": "Role",
+        "team": "Team",
+        "payment": "Payment",
+        "chart": "Chart",
+        "proxy": "Proxy",
+        "errorreport": "Error Report"
+      },
+      "status": {
+        "PENDING": "Pending",
+        "SUCCESS": "Success"
+      },
+      "table": {
+        "userId": "User ID",
+        "emailHash": "Email Hash",
+        "domainName": "Domain",
+        "status": "Status",
+        "attemptedAt": "Attempted At",
+        "completedAt": "Completed At",
+        "isAlert": "Alert",
+        "retryCount": "Retries"
+      },
+      "filter": {
+        "status": "Status",
+        "domain": "Domain",
+        "dateFrom": "From",
+        "dateTo": "To",
+        "search": "Search",
+        "allStatuses": "All Statuses",
+        "allDomains": "All Domains"
+      },
+      "export": "Export CSV",
+      "detail": {
+        "title": "User Detail",
+        "close": "Close"
+      },
+      "noData": "No data available",
+      "retry": {
+        "button": "Retry",
+        "confirm": "Retry GDPR purge for domain \"{domain}\"?",
+        "success": "Retry succeeded",
+        "failed": "Retry failed (still PENDING)",
+        "alreadySuccess": "Already completed",
+        "count": "Retried {count} time(s)",
+        "lastRetried": "Last retry: {datetime}"
+      },
+      "toast": {
+        "loadFailed": "Failed to load data",
+        "detailLoadFailed": "Failed to load user detail",
+        "retryFailed": "Retry request failed"
+      },
+      "quickLinkLabel": "GDPR Purge Status"
+    }
+  }
+}

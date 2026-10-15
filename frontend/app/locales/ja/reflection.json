@@ -1,0 +1,302 @@
+{
+  "reflection": {
+    "title": "振り返り",
+    "nav": {
+      "today": "今日の振り返り",
+      "themes": "テーマ一覧",
+      "settings": "通知設定",
+      "dashboard": "ダッシュボード"
+    },
+    "widget": {
+      "pending_recall": "想起待ち",
+      "unwritten": "未記入",
+      "open_today": "今日の振り返りを開く",
+      "empty": "今日のテーマがありません"
+    },
+    "today": {
+      "heading": "今日の振り返り",
+      "date_label": "対象日",
+      "empty": "今日のコマ・テーマがありません。テーマを作成して振り返りを始めましょう。",
+      "free_themes": "テーマ（時間割外）",
+      "timetable_slots": "今日のコマ",
+      "no_theme": "テーマ未設定",
+      "create_theme_for_slot": "このコマのテーマを作成",
+      "create_entry": "振り返りを書く",
+      "edit_entry": "振り返りを編集",
+      "open_recall": "想起テスト",
+      "masked_badge": "想起待ち",
+      "has_entry": "記入済み",
+      "period_label": "{period}限",
+      "main_theme_label": "メインテーマ",
+      "created_at_label": "初回作成",
+      "last_reflected_label": "振り返り実行",
+      "never_reflected": "まだなし"
+    },
+    "theme": {
+      "list_heading": "テーマ一覧",
+      "create": "テーマを作成",
+      "edit": "テーマを編集",
+      "delete": "削除",
+      "delete_confirm": "このテーマと配下の振り返りをすべて削除しますか？",
+      "empty": "まだテーマがありません。最初のテーマを作成しましょう。",
+      "title_label": "テーマ名",
+      "title_placeholder": "例: 数学II / ○○プロジェクト / 日記",
+      "description_label": "説明",
+      "description_placeholder": "任意のメモ",
+      "source_type_label": "種類",
+      "exam_date_label": "定期考査日",
+      "exam_date_help": "設定すると考査の14/7/3/1日前にリマインドが届きます",
+      "exam_date_past_warning": "過去日のためリマインドは生成されません",
+      "exam_date_clear": "考査日をクリア",
+      "recall_interval_label": "想起間隔",
+      "recall_interval_fixed": "{days} 日後に想起テスト（固定）",
+      "open": "開く",
+      "view_entries": "振り返りを見る",
+      "subject_link_label": "科目に紐づける",
+      "subject_link_none": "紐づけなし",
+      "subject_link_placeholder": "時間割の科目から選択",
+      "subject_link_help": "選んだ科目の全コマに、このテーマが今日ビューで表示されます",
+      "subject_link_empty": "時間割が未登録です",
+      "academic_year_label": "学年度",
+      "term_label_label": "学期",
+      "academic_year_placeholder": "例: 2026",
+      "term_label_placeholder": "例: 1学期、前期、Q1",
+      "suggest_from_timetable": "時間割から自動提案します（入力済みの場合は上書きしません）",
+      "parent_theme_label": "親テーマ（単元の上位に教科を設定）",
+      "parent_none": "親なし（トップレベル）"
+    },
+    "archive": {
+      "label": "アーカイブ",
+      "action": {
+        "archive": "アーカイブする",
+        "restore": "復元する"
+      },
+      "confirm": {
+        "archive": "このテーマをアーカイブしますか？想起リマインダーが停止されます。",
+        "restore": "このテーマを復元しますか？"
+      },
+      "bulk_archive_button": "このフォルダを一括アーカイブ",
+      "folder": {
+        "title": "アーカイブフォルダ",
+        "theme_count": "{n}件のテーマ",
+        "no_subject": "科目未設定",
+        "no_year": "学年未設定",
+        "no_term": "学期未設定"
+      },
+      "search": {
+        "placeholder": "タイトル・説明で検索",
+        "empty": "該当するアーカイブはありません"
+      }
+    },
+    "source_type": {
+      "SUBJECT": "授業",
+      "PROJECT": "仕事・案件",
+      "DIARY": "日記",
+      "FREE": "自由"
+    },
+    "template": {
+      "label": "テンプレート",
+      "help": "入力の見出しをひな形から選べます",
+      "heading_selector_label": "含める見出し",
+      "heading_optional_badge": "任意",
+      "NORMAL": "標準",
+      "DIARY": "日記",
+      "WORK": "仕事の振り返り",
+      "CLASS": "授業の振り返り",
+      "VOCAB": "単語帳",
+      "normal_desc": "見出しなし・自由記述",
+      "diary_desc": "出来事／感じたこと／明日に向けて",
+      "work_desc": "成果／課題／学び／次アクション",
+      "class_desc": "学んだこと／つまずき／覚える要点",
+      "vocab_desc": "語句と意味を暗記カードとして登録し、想起テストで交互に出題する",
+      "preset": {
+        "diary": {
+          "event": "出来事",
+          "feeling": "感じたこと",
+          "tomorrow": "明日に向けて"
+        },
+        "work": {
+          "result": "成果",
+          "issue": "課題",
+          "learning": "学び",
+          "next": "次アクション"
+        },
+        "class": {
+          "learned": "学んだこと",
+          "stumble": "つまずき",
+          "keypoint": "覚える要点"
+        },
+        "vocab": {
+          "cards": "今日の単語"
+        }
+      }
+    },
+    "section": {
+      "type": {
+        "outline": "アウトライン",
+        "term_card": "暗記カード"
+      },
+      "type_label": "中見出しの型",
+      "expand": "展開する",
+      "collapse": "折りたたむ",
+      "summary_subsections": "小見出し{n}件",
+      "summary_cards": "カード{n}枚"
+    },
+    "card": {
+      "term_label": "語句",
+      "meaning_label": "意味",
+      "add": "カードを追加",
+      "remove": "カードを削除"
+    },
+    "vocab": {
+      "title": "単語帳（期間横断）",
+      "period_from": "開始日",
+      "period_to": "終了日",
+      "filter_theme": "テーマで絞り込み",
+      "filter_subject": "科目で絞り込み",
+      "mode": {
+        "view": "一覧",
+        "quiz": "自己クイズ"
+      },
+      "direction": {
+        "meaning_to_term": "意味→語句",
+        "term_to_meaning": "語句→意味",
+        "shuffle": "シャッフル"
+      },
+      "flip": "めくる",
+      "empty": "この期間に暗記カードはありません",
+      "total_cards": "{n}枚のカード",
+      "source_label": "出典",
+      "subjects_all": "全教科",
+      "subjects_filter": "教科フィルター",
+      "shuffle": "シャッフル",
+      "shuffle_note": "取得のたびに順番が変わります",
+      "card_limit_warning": "カードが多すぎます。教科または期間を絞ってください（最大500件）",
+      "inline": {
+        "title": "＋単語を追加",
+        "term_placeholder": "語句 (例: apple)",
+        "meaning_placeholder": "意味 (例: りんご)",
+        "add_button": "追加",
+        "added": "追加しました"
+      }
+    },
+    "entry": {
+      "list_heading": "振り返り一覧",
+      "create": "振り返りを作成",
+      "edit": "振り返りを編集",
+      "delete": "削除",
+      "delete_confirm": "この振り返りを削除しますか？",
+      "empty": "まだ振り返りがありません。",
+      "target_date_label": "対象日",
+      "main_theme_label": "メインテーマ",
+      "main_theme_placeholder": "例: 二次関数の最大最小",
+      "section_heading_label": "中見出し",
+      "section_heading_placeholder": "例: 平方完成",
+      "add_section": "中見出しを追加",
+      "remove_section": "中見出しを削除",
+      "sub_heading_label": "小見出し",
+      "sub_heading_placeholder": "例: 基本形への変形",
+      "add_subsection": "小見出しを追加",
+      "remove_subsection": "小見出しを削除",
+      "detail_label": "詳細",
+      "detail_placeholder": "学んだ内容を書く",
+      "supplement_label": "補足",
+      "supplement_placeholder": "補足・メモ",
+      "free_note_label": "自由メモ（想起対象外）",
+      "free_note_placeholder": "所感や質問メモ",
+      "save": "保存",
+      "saved": "保存しました",
+      "save_failed": "保存に失敗しました",
+      "conflict": "他の場所で更新されました。最新を読み込んでからもう一度お試しください。",
+      "masked_notice": "想起テストの対象です。本文は隠れています。",
+      "exported_badge": "ブログ輸出済み",
+      "exported_edited_badge": "輸出後に編集あり"
+    },
+    "recall": {
+      "heading": "想起テスト",
+      "intro": "本文を見ずに、覚えている内容を思い出して書いてみましょう。",
+      "hint_theme": "テーマ",
+      "hint_target_date": "対象日",
+      "hint_due_dates": "想起予定日",
+      "input_label": "思い出した内容",
+      "input_placeholder": "覚えている範囲で書いてください",
+      "self_rating_label": "自己評価",
+      "rating": {
+        "REMEMBERED": "覚えていた",
+        "PARTIAL": "部分的",
+        "FORGOT": "忘れていた"
+      },
+      "submit": "保存して開示",
+      "submitting": "保存中…",
+      "saved": "想起を記録しました",
+      "save_failed": "想起の保存に失敗しました",
+      "revealed_heading": "正解（元の本文）",
+      "your_recall": "あなたの想起",
+      "history_heading": "想起履歴",
+      "card_answer_placeholder": "答えを入力...",
+      "history_empty": "まだ想起履歴がありません。",
+      "not_masked": "このエントリはマスクされていません。通常編集できます。",
+      "back_to_entry": "振り返りへ戻る",
+      "outline_scaffold": {
+        "panel_heading": "足場ヒント",
+        "main_theme_label": "テーマ",
+        "level_note_partial": "各見出しの頭文字だけ表示しています。思い出しながら書いてみましょう。",
+        "aria_panel": "OUTLINE 足場ヒントパネル"
+      }
+    },
+    "export": {
+      "button": "ブログへ輸出",
+      "dialog_title": "ブログへ輸出",
+      "title_label": "記事タイトル",
+      "title_placeholder": "省略するとテーマ名＋対象日になります",
+      "submit": "輸出する",
+      "submitting": "輸出中…",
+      "success": "ブログへ輸出しました（非公開）",
+      "failed": "輸出に失敗しました",
+      "already_exported": "この振り返りは既に輸出済みです",
+      "view_post": "輸出した記事を見る"
+    },
+    "settings": {
+      "heading": "想起通知の設定",
+      "remind_hour_label": "通知時刻",
+      "remind_hour_help": "想起テストのリマインドを送る時刻（あなたのタイムゾーン）",
+      "save": "保存",
+      "saved": "設定を保存しました",
+      "save_failed": "設定の保存に失敗しました",
+      "hour_format": "{hour}時"
+    },
+    "calendar": {
+      "entry_mark": "振り返り",
+      "recall_mark": "想起予定"
+    },
+    "common": {
+      "cancel": "キャンセル",
+      "close": "閉じる",
+      "loading": "読み込み中…",
+      "load_failed": "読み込みに失敗しました"
+    },
+    "guide": {
+      "page_title": "アクティブリコール学習の使い方",
+      "what": {
+        "title": "アクティブリコール学習とは",
+        "body": "学んだ内容を「思い出す」ことで記憶に定着させる学習法です。今日の振り返りを書き、翌日以降に内容を隠した状態で思い出してから答え合わせをします。"
+      },
+      "theme": {
+        "title": "テーマを作る",
+        "body": "振り返りの単位が「テーマ」です。教科・資格・プロジェクト・日記など続けたいテーマを作成します。時間割のコマと紐づけても、自由テーマとして単独で使ってもかまいません。"
+      },
+      "today": {
+        "title": "今日の振り返りを書く",
+        "body": "「今日の振り返り」ビューにその日のコマとテーマが並びます。各カードを開いて、学んだこと・気づきを記入して保存します。"
+      },
+      "recall": {
+        "title": "想起テスト（思い出し）",
+        "body": "翌日以降、記入した内容は自動で隠れます。隠れた内容を自分の言葉で思い出してから、答え合わせで確認します。思い出す負荷が記憶を強くします。"
+      },
+      "reminder": {
+        "title": "リマインドとカレンダー",
+        "body": "復習のタイミングを通知でお知らせします。振り返りを書いた日はマイカレンダーに印が付くので継続状況がひと目で分かります。"
+      }
+    }
+  }
+}

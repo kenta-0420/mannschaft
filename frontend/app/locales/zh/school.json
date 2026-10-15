@@ -1,0 +1,318 @@
+{
+  "school": {
+    "attendance": {
+      "forbidden": {
+        "title": "没有权限",
+        "description": "您没有查看或操作此学校考勤页面的权限。请向班主任或管理员确认。"
+      },
+      "permissionError": {
+        "title": "权限确认失败",
+        "message": "由于无法确认权限，已停止操作和列表获取。请检查网络后重试。"
+      },
+      "status": {
+        "ATTENDING": "出席",
+        "PARTIAL": "部分出席",
+        "ABSENT": "缺席",
+        "UNDECIDED": "未确认"
+      },
+      "absenceReason": {
+        "SICK": "身体不适",
+        "INJURY": "受伤",
+        "FAMILY_REASON": "家庭原因",
+        "BEREAVEMENT": "丧假",
+        "INFECTIOUS_DISEASE": "停课（传染病）",
+        "MENTAL_HEALTH": "身心不适",
+        "OFFICIAL_BUSINESS": "公务活动",
+        "OTHER": "其他"
+      },
+      "dailyRollCall": {
+        "title": "早点名",
+        "date": "日期",
+        "submit": "提交点名",
+        "submitSuccess": "点名已记录",
+        "comment": "备注",
+        "arrivalTime": "到校时间",
+        "leaveTime": "离校时间",
+        "loading": "加载中...",
+        "noStudents": "未找到学生"
+      },
+      "period": {
+        "title": "课时出勤",
+        "periodNumber": "第{n}节",
+        "selectPeriod": "选择课时",
+        "submit": "记录出勤",
+        "submitSuccess": "课时出勤已记录",
+        "previousStatus": "上节课时",
+        "loading": "加载中..."
+      },
+      "summary": {
+        "title": "汇总结果",
+        "total": "合计",
+        "attending": "出席",
+        "partial": "部分出席",
+        "absent": "缺席",
+        "undecided": "未定"
+      },
+      "label": {
+        "student": "学生",
+        "dailyStatus": "当日出勤",
+        "status": "出勤",
+        "reason": "缺席原因",
+        "comment": "备注"
+      }
+    },
+    "familyNotice": {
+      "title": "家长联络",
+      "noticeType": {
+        "ABSENCE": "缺席",
+        "LATE": "迟到",
+        "EARLY_LEAVE": "早退",
+        "OTHER": "其他"
+      },
+      "reason": {
+        "SICK": "身体不适",
+        "INJURY": "受伤",
+        "FAMILY_REASON": "家庭原因",
+        "BEREAVEMENT": "丧假",
+        "INFECTIOUS_DISEASE": "停课（传染病）",
+        "MENTAL_HEALTH": "身心不适",
+        "OFFICIAL_BUSINESS": "公务活动",
+        "OTHER": "其他"
+      },
+      "status": {
+        "PENDING": "未确认",
+        "ACKNOWLEDGED": "已确认",
+        "APPLIED": "已反映至出勤"
+      },
+      "submit": "发送联络",
+      "submitSuccess": "联络已发送",
+      "acknowledge": "确认",
+      "acknowledgeSuccess": "已确认",
+      "apply": "反映至出勤",
+      "applySuccess": "已反映至出勤记录",
+      "attendanceDate": "对象日期",
+      "expectedArrivalTime": "预计到校时间",
+      "expectedLeaveTime": "预计早退时间",
+      "reasonDetail": "详情（可选）",
+      "unacknowledged": "未确认 {count} 件",
+      "noNotices": "暂无联络",
+      "history": "发送历史",
+      "studentName": "学生姓名"
+    },
+    "transitionAlert": {
+      "title": "移动检测警报",
+      "unresolvedOnly": "仅显示未解决",
+      "resolve": "解决",
+      "resolveSuccess": "警报已解决",
+      "resolveNote": "解决原因",
+      "resolveNotePlaceholder": "例：去了保健室、监护人联系延迟等",
+      "alertLevel": {
+        "NORMAL": "普通",
+        "URGENT": "紧急"
+      },
+      "message": "{studentName}在第{previousPeriod}节课时在场，但从第{currentPeriod}节课起缺席",
+      "resolved": "已解决",
+      "noAlerts": "没有警报",
+      "unresolvedCount": "未解决 {count}件"
+    },
+    "statistics": {
+      "title": "出勤统计",
+      "monthly": "月度统计",
+      "term": "学期统计",
+      "year": "年",
+      "month": "月",
+      "from": "开始日期",
+      "to": "结束日期",
+      "totalSchoolDays": "上课天数",
+      "totalStudents": "学生数",
+      "presentCount": "出席",
+      "absentCount": "缺席",
+      "attendanceRate": "出勤率",
+      "lateCount": "迟到",
+      "earlyLeaveCount": "早退",
+      "subjectBreakdown": "科目出勤率",
+      "exportCsv": "导出CSV",
+      "noData": "暂无数据"
+    },
+    "timeline": {
+      "title": "一日出勤时间线",
+      "date": "日期",
+      "dailyStatus": "当日出勤",
+      "periodStatus": "课时出勤",
+      "noPeriods": "暂无课时数据"
+    },
+    "homeroom": {
+      "title": "班主任设置",
+      "homeroomTeacher": "班主任",
+      "assistantTeachers": "副班主任",
+      "academicYear": "学年",
+      "effectiveFrom": "生效日期",
+      "effectiveUntil": "截止日期",
+      "add": "添加班主任",
+      "update": "更新",
+      "addSuccess": "班主任已设置",
+      "updateSuccess": "班主任设置已更新",
+      "noHomerooms": "暂无班主任设置",
+      "current": "当前任职"
+    },
+    "location": {
+      "title": "出勤地点",
+      "current": "当前地点",
+      "changeButton": "变更地点",
+      "changeTitle": "记录地点变更",
+      "from": "变更前",
+      "to": "变更后",
+      "period": "变更课时",
+      "time": "变更时刻",
+      "reason": "原因",
+      "note": "备注（可选）",
+      "submit": "记录",
+      "submitSuccess": "地点变更已记录",
+      "noChanges": "今日暂无移动记录",
+      "CLASSROOM": "教室",
+      "SICK_BAY": "保健室上课",
+      "SEPARATE_ROOM": "隔离室上课",
+      "LIBRARY": "图书室上课",
+      "ONLINE": "线上上课",
+      "HOME_LEARNING": "居家学习",
+      "OUT_OF_SCHOOL": "校外活动",
+      "NOT_APPLICABLE": "不适用",
+      "reason_FELT_SICK": "身体不适",
+      "reason_INJURY": "受伤",
+      "reason_MENTAL_HEALTH": "身心不适",
+      "reason_SCHEDULED": "事先安排",
+      "reason_RECOVERED": "恢复健康",
+      "reason_RETURNED_TO_CLASS": "返回教室",
+      "reason_OTHER": "其他"
+    },
+    "requirement": {
+      "title": "出勤要求规程",
+      "createTitle": "添加规程",
+      "editTitle": "编辑规程",
+      "createSuccess": "规程已添加",
+      "updateSuccess": "规程已更新",
+      "deleteSuccess": "规程已删除",
+      "createError": "添加规程失败",
+      "updateError": "更新规程失败",
+      "deleteError": "删除规程失败",
+      "loadError": "加载规程失败",
+      "name": "规程名称",
+      "category": "类别",
+      "description": "说明（可选）",
+      "minAttendanceRate": "最低出勤率（%）",
+      "maxAbsenceDays": "最大缺席天数",
+      "warningThresholdRate": "警告阈值（%）",
+      "effectiveFrom": "生效日期",
+      "effectiveUntil": "截止日期（可选）",
+      "countSickBayAsPresent": "保健室上课计为出席",
+      "countSeparateRoomAsPresent": "隔离室上课计为出席",
+      "countLibraryAsPresent": "图书室上课计为出席",
+      "countOnlineAsPresent": "线上上课计为出席",
+      "countHomeLearningAsOfficialAbsence": "居家学习计为公假",
+      "countLateAsAbsenceThreshold": "迟到N次计为缺席1天（0=不启用）",
+      "save": "保存",
+      "cancel": "取消",
+      "delete": "删除",
+      "edit": "编辑",
+      "noRules": "暂无规程设置",
+      "category_GRADE_PROMOTION": "升级要求",
+      "category_GRADUATION": "毕业要求",
+      "category_SUBJECT_CREDIT": "学科学分认定",
+      "category_PERFECT_ATTENDANCE": "全勤奖",
+      "category_CUSTOM": "自定义"
+    },
+    "attendanceSummary": {
+      "title": "出勤汇总",
+      "attendanceRate": "出勤率",
+      "totalSchoolDays": "上课天数",
+      "presentDays": "出席天数",
+      "absentDays": "缺席天数",
+      "lateCount": "迟到次数",
+      "earlyLeaveCount": "早退次数",
+      "officialAbsenceDays": "公假天数",
+      "sickBayDays": "保健室上课",
+      "separateRoomDays": "隔离室上课",
+      "onlineDays": "线上上课",
+      "homeLearningDays": "居家学习",
+      "days": "天",
+      "times": "次",
+      "recalculate": "重新汇总",
+      "recalculateSuccess": "已重新汇总",
+      "noData": "暂无汇总数据"
+    },
+    "requirements": {
+      "title": "出勤率要件管理",
+      "filterAll": "全部",
+      "runEvaluation": "执行评估",
+      "evaluationSuccess": "评估完成",
+      "evaluateAll": "评估所有学生",
+      "evaluating": "评估中…",
+      "loadError": "获取列表失败",
+      "resolveSuccess": "已记录解决方案"
+    },
+    "evaluation": {
+      "title": "出勤要求评估",
+      "status": {
+        "OK": "预计达标",
+        "WARNING": "需注意",
+        "RISK": "有未达标风险",
+        "VIOLATION": "确认未达标"
+      },
+      "currentAttendanceRate": "当前出勤率",
+      "remainingAllowedAbsences": "剩余允许缺勤天数",
+      "remainingDays": "还可缺勤{days}天",
+      "noDaysLeft": "不能再缺勤了",
+      "evaluatedAt": "评估时间",
+      "resolve": "解除违规",
+      "resolveTitle": "记录违规解除",
+      "resolveNote": "解除理由",
+      "resolveNoteHint": "例：补课完成・特殊批准等",
+      "resolveSuccess": "违规解除已记录",
+      "resolveError": "违规解除记录失败",
+      "atRisk": "风险学生列表",
+      "noEvaluations": "暂无评估数据",
+      "noAtRisk": "没有风险学生",
+      "dashboard": "要求评估仪表板",
+      "filterByStatus": "按状态筛选",
+      "loadError": "评估数据加载失败"
+    },
+    "disclosure": {
+      "title": "开示决定",
+      "decide": "进行开示决定",
+      "tabDisclose": "开示",
+      "tabWithhold": "暂不开示",
+      "mode": {
+        "label": "开示模式",
+        "WITH_NUMBERS": "包含数值开示",
+        "WITHOUT_NUMBERS": "不含数值开示（仅提醒）",
+        "MEETING_REQUEST_ONLY": "仅发送面谈请求"
+      },
+      "recipients": {
+        "label": "通知对象",
+        "STUDENT_ONLY": "仅学生",
+        "GUARDIAN_ONLY": "仅监护人",
+        "BOTH": "学生和监护人"
+      },
+      "message": "班主任留言（可选）",
+      "messagePlaceholder": "请输入给学生/监护人的留言",
+      "withholdReason": "不开示的理由",
+      "withholdReasonPlaceholder": "将作为指导记录保存",
+      "submit": "确认决定",
+      "submitting": "提交中...",
+      "historyTitle": "开示历史",
+      "historyEmpty": "暂无开示记录",
+      "decision": {
+        "DISCLOSED": "已开示",
+        "WITHHELD": "未开示"
+      },
+      "inbox": {
+        "title": "来自班主任的出勤要求通知",
+        "empty": "暂无来自班主任的开示信息",
+        "contactTeacher": "详情请咨询班主任",
+        "meetingRequest": "班主任已申请面谈，请与其联系",
+        "currentRate": "当前出勤率",
+        "remainingAllowed": "还有 {days} 天的余裕"
+      }
+    }
+  }
+}

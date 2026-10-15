@@ -1,0 +1,88 @@
+{
+  "provisioning": {
+    "admin": {
+      "title": "Promotional Provisioning",
+      "quickLinkLabel": "Promotional Provisioning",
+      "noPermission": "You do not have permission to perform this action",
+      "createOrgBtn": "Create organization",
+      "createTeamBtn": "Create team",
+      "createOrgDialogTitle": "Pre-create an organization",
+      "createTeamDialogTitle": "Pre-create a team",
+      "form": {
+        "nameLabel": "Name",
+        "namePlaceholder": "e.g. Sample Village",
+        "inviteEmailLabel": "Invite email address",
+        "inviteEmailPlaceholder": "admin{'@'}example.com",
+        "nameRequired": "Please enter a name",
+        "emailRequired": "Please enter an invite email address",
+        "emailInvalid": "The email address format is invalid"
+      },
+      "createOrgSuccess": "Organization created and invitation email sent",
+      "createTeamSuccess": "Team created and invitation email sent",
+      "createFailed": "Failed to create",
+      "saveBtn": "Create",
+      "cancelBtn": "Cancel",
+      "invitationsTitle": "Invitations",
+      "loadFailed": "Failed to load invitations",
+      "noData": "No invitations yet",
+      "table": {
+        "target": "Target",
+        "inviteEmail": "Invite email",
+        "status": "Status",
+        "expiresAt": "Expires at",
+        "issuedBy": "Issued by",
+        "actions": "Actions"
+      },
+      "targetOrganization": "Organization",
+      "targetTeam": "Team",
+      "status": {
+        "PENDING": "Pending",
+        "ACCEPTED": "Accepted",
+        "CANCELLED": "Cancelled",
+        "EXPIRED": "Expired"
+      },
+      "resendBtn": "Resend",
+      "cancelInviteBtn": "Cancel",
+      "cancelConfirm": "Cancel this invitation?",
+      "resendSuccess": "Invitation resent",
+      "resendFailed": "Failed to resend invitation",
+      "cancelSuccess": "Invitation cancelled",
+      "cancelFailed": "Failed to cancel invitation",
+      "badge": "SYSTEM ADMIN",
+      "reloadTooltip": "Reload"
+    },
+    "accept": {
+      "title": "Accept admin invitation",
+      "loading": "Checking invitation details…",
+      "loginPrompt": "You need to log in to view this invitation",
+      "loginBtn": "Log in to continue",
+      "targetOrganization": "Organization",
+      "targetTeam": "Team",
+      "expiresAtLabel": "Expires at",
+      "inviteEmailLabel": "Invite email address",
+      "acceptBtn": "Accept invitation",
+      "accepting": "Accepting…",
+      "acceptSuccess": "Invitation accepted",
+      "acceptedTitle": "Invitation accepted",
+      "acceptedMessage": "This invitation has been accepted. You can continue from the admin console.",
+      "previewError": {
+        "title": "Could not check invitation",
+        "message": "We could not check this invitation's details, possibly due to a network issue. Please reload.",
+        "retryBtn": "Reload"
+      },
+      "backToDashboard": "Back to dashboard",
+      "errors": {
+        "notFoundTitle": "Invitation not found",
+        "notFoundMessage": "This invitation link is invalid. Please check the URL.",
+        "expiredTitle": "Invitation has expired",
+        "expiredMessage": "This invitation has already expired. Please ask the issuer to resend it.",
+        "cancelledTitle": "Invitation has been cancelled",
+        "cancelledMessage": "This invitation has been cancelled or invalidated. Please contact the issuer.",
+        "emailMismatchTitle": "Email address does not match",
+        "emailMismatchMessage": "This invitation was sent to a different email address. Please log in with the invited email address.",
+        "genericTitle": "Could not verify invitation",
+        "genericMessage": "An unexpected error occurred. Please try again later."
+      }
+    }
+  }
+}

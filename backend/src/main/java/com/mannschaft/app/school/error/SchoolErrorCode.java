@@ -1,0 +1,84 @@
+package com.mannschaft.app.school.error;
+
+import com.mannschaft.app.common.ErrorCode;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
+/** F03.13 学校出欠管理機能のエラーコード定義。 */
+@Getter
+@RequiredArgsConstructor
+public enum SchoolErrorCode implements ErrorCode {
+
+    /** 学級担任設定が見つからない */
+    HOMEROOM_NOT_FOUND("SCHOOL_HOMEROOM_NOT_FOUND", "学級担任設定が見つかりません", Severity.WARN),
+
+    /** 同一チーム・年度に現役の学級担任設定が既に存在する */
+    HOMEROOM_ALREADY_EXISTS("SCHOOL_HOMEROOM_ALREADY_EXISTS", "指定年度の学級担任設定が既に存在します", Severity.WARN),
+
+    /** 日次出欠レコードが見つからない */
+    DAILY_RECORD_NOT_FOUND("SCHOOL_DAILY_RECORD_NOT_FOUND", "日次出欠レコードが見つかりません", Severity.WARN),
+
+    /** 同日の日次出欠レコードが既に存在する */
+    DAILY_RECORD_DUPLICATE("SCHOOL_DAILY_RECORD_DUPLICATE", "指定日の日次出欠レコードが既に存在します", Severity.WARN),
+
+    /** 時限別出欠レコードが見つからない */
+    PERIOD_RECORD_NOT_FOUND("SCHOOL_PERIOD_RECORD_NOT_FOUND", "時限別出欠レコードが見つかりません", Severity.WARN),
+
+    /** 保護者連絡が見つからない */
+    FAMILY_NOTICE_NOT_FOUND("SCHOOL_FAMILY_NOTICE_NOT_FOUND", "保護者連絡が見つかりません", Severity.WARN),
+
+    /** 保護者連絡は既に出欠に反映済み */
+    FAMILY_NOTICE_ALREADY_APPLIED("SCHOOL_FAMILY_NOTICE_ALREADY_APPLIED", "保護者連絡は既に出欠に反映済みです", Severity.WARN),
+
+    /** 登録対象の生徒がクラスの在籍メンバーでない（400。部分登録せず全件ロールバック） */
+    STUDENT_NOT_ENROLLED("SCHOOL_STUDENT_NOT_ENROLLED", "登録対象の生徒がこのクラスの在籍メンバーではありません", Severity.WARN),
+
+    /** entries に同じ生徒が重複している（400。認可後・在籍確認前に拒否し、副作用を起こさない） */
+    DUPLICATE_STUDENT_ENTRY("SCHOOL_DUPLICATE_STUDENT_ENTRY", "登録対象の生徒が重複しています", Severity.WARN),
+
+    /** 保護者連絡がクラス・生徒・対象日のいずれかと一致しない（400。存在しない連絡も同じ応答にして存在を秘匿） */
+    FAMILY_NOTICE_MISMATCH("SCHOOL_FAMILY_NOTICE_MISMATCH", "保護者連絡がこのクラス・生徒・対象日と一致しません", Severity.WARN),
+
+    /** 移動検知アラートが見つからない */
+    TRANSITION_ALERT_NOT_FOUND("SCHOOL_TRANSITION_ALERT_NOT_FOUND", "移動検知アラートが見つかりません", Severity.WARN),
+
+    /** 移動検知アラートは既に解決済み */
+    TRANSITION_ALERT_ALREADY_RESOLVED("SCHOOL_TRANSITION_ALERT_ALREADY_RESOLVED", "このアラートは既に解決済みです", Severity.WARN),
+
+    /** ロケーション変化レコードが見つからない */
+    LOCATION_CHANGE_NOT_FOUND("SCHOOL_LOCATION_CHANGE_NOT_FOUND", "ロケーション変化レコードが見つかりません", Severity.WARN),
+
+    /** ロケーション変化なし（from と to が同一） */
+    LOCATION_UNCHANGED("SCHOOL_LOCATION_UNCHANGED", "変化前後のロケーションが同一です", Severity.WARN),
+
+    /** 日次出欠レコードが存在しない（ロケーション変化記録の前提） */
+    LOCATION_CHANGE_NO_DAILY_RECORD("SCHOOL_LOCATION_CHANGE_NO_DAILY_RECORD", "対象日の日次出欠レコードが存在しません", Severity.WARN),
+
+    /** 出席要件規程が見つからない */
+    REQUIREMENT_RULE_NOT_FOUND("S030", "出席要件規程が見つかりません", Severity.WARN),
+
+    /** 組織スコープとチームスコープを同時に指定できない */
+    REQUIREMENT_RULE_SCOPE_CONFLICT("S031", "組織スコープとチームスコープを同時に指定できません", Severity.WARN),
+
+    /** 有効期限の開始日が終了日より後 */
+    REQUIREMENT_RULE_DATE_INVALID("S032", "有効期限の開始日が終了日より後です", Severity.WARN),
+
+    /** 出席集計が見つからない（not-found → 404 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
+    SUMMARY_NOT_FOUND("S033", "出席集計が見つかりません", Severity.WARN),
+
+    /** 出席要件評価が見つからない */
+    EVALUATION_NOT_FOUND("S034", "出席要件評価が見つかりません", Severity.WARN),
+
+    /** 評価は既に解消済み（兄弟 SCHOOL_TRANSITION_ALERT_ALREADY_RESOLVED と同じ状態競合 → 409 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
+    EVALUATION_ALREADY_RESOLVED("S035", "この評価は既に解消済みです", Severity.WARN),
+
+    /** 開示対象の評価が見つからない */
+    DISCLOSURE_EVALUATION_NOT_FOUND("SCHOOL_015", "評価が見つかりません", Severity.WARN),
+
+    /** 評価がこのチームに属していない */
+    DISCLOSURE_TEAM_MISMATCH("SCHOOL_016", "評価がこのチームに属していません", Severity.WARN);
+
+    private final String code;
+    private final String message;
+    private final Severity severity;
+}

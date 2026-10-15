@@ -1,0 +1,82 @@
+{
+  "incident_banner": {
+    "title": "障害告知バナー管理",
+    "quick_link_label": "障害告知バナー",
+    "create_btn": "バナーを作成",
+    "edit_dialog_title": "バナーを編集",
+    "create_dialog_title": "バナーを作成",
+    "save_btn": "保存",
+    "cancel_btn": "キャンセル",
+    "delete_confirm": "このバナーを削除してよいですか？この操作は取り消せません。",
+    "delete_btn": "削除",
+    "publish_btn": "公開",
+    "unpublish_btn": "非公開",
+    "load_failed": "データの取得に失敗しました",
+    "create_success": "バナーを作成しました",
+    "update_success": "バナーを更新しました",
+    "delete_success": "バナーを削除しました",
+    "publish_success": "バナーを公開しました",
+    "unpublish_success": "バナーを非公開にしました",
+    "save_failed": "保存に失敗しました",
+    "delete_failed": "削除に失敗しました",
+    "publish_failed": "公開に失敗しました",
+    "unpublish_failed": "非公開への変更に失敗しました",
+    "suggestions_load_failed": "検知候補の取得に失敗しました",
+    "no_data": "バナーはまだ登録されていません",
+    "translation_pending": "翻訳は自動生成中です（保存後しばらくお待ちください）",
+    "form": {
+      "message_label": "メッセージ（日本語原文）",
+      "message_placeholder": "障害内容を入力してください（最大500文字）",
+      "message_required": "メッセージは必須です",
+      "message_too_long": "メッセージは500文字以内で入力してください",
+      "level_label": "レベル",
+      "page_pattern_label": "対象ページパターン",
+      "page_pattern_placeholder": "例: /teams/* （省略時は全ページに表示）",
+      "starts_at_label": "掲示開始日時",
+      "starts_at_placeholder": "省略時: 即時",
+      "ends_at_label": "掲示終了日時",
+      "ends_at_placeholder": "省略時: 手動で非公開にするまで",
+      "publish_toggle_label": "作成後すぐに公開する",
+      "preview_label": "プレビュー"
+    },
+    "level": {
+      "INFO": "INFO（情報）",
+      "WARNING": "WARNING（警告）",
+      "CRITICAL": "CRITICAL（緊急）"
+    },
+    "table": {
+      "level": "レベル",
+      "message": "メッセージ",
+      "page_pattern": "対象ページ",
+      "status": "状態",
+      "period": "掲示期間",
+      "updated_at": "更新日時",
+      "actions": "操作"
+    },
+    "status": {
+      "published": "公開中",
+      "draft": "下書き"
+    },
+    "period_from": "から",
+    "period_to": "まで",
+    "period_immediate": "即時",
+    "period_manual": "手動停止まで",
+    "suggestions": {
+      "title": "検知候補（自動検出）",
+      "page_pattern": "ページパターン",
+      "severity": "深刻度",
+      "occurrence_count": "発生件数",
+      "affected_users": "影響ユーザー数",
+      "since": "検出開始",
+      "create_banner_btn": "バナー化",
+      "no_data": "現在検知された候補はありません",
+      "severity_critical": "CRITICAL",
+      "severity_high": "HIGH"
+    },
+    "translations": {
+      "title": "翻訳一覧",
+      "language": "言語",
+      "message": "翻訳文"
+    }
+  }
+}

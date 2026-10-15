@@ -1,0 +1,108 @@
+{
+  "disclosure": {
+    "title": "Informationsblatt (Referenz)",
+    "subtitle": "Referenzinformationen des Verwaltungsverbands. Kein gesetzliches Formular",
+    "newDraft": "Neuen Entwurf erstellen",
+    "editDraft": "Entwurf bearbeiten",
+    "exportHistory": "Exportverlauf",
+    "exportPdf": "Als PDF exportieren",
+    "exportExcel": "Als Excel exportieren",
+    "exportWord": "Als Word exportieren",
+    "noDrafts": "Noch keine Entwürfe",
+    "noExports": "Noch kein Exportverlauf",
+    "loading": "Wird geladen…",
+    "saving": "Wird gespeichert…",
+    "saved": "Gespeichert",
+    "deleted": "Gelöscht",
+    "deleteConfirm": "Sind Sie sicher, dass Sie löschen möchten?",
+    "back": "Zurück zur Liste",
+    "templatePicker": {
+      "title": "Format auswählen",
+      "prefecture": "Präfektur",
+      "allPrefectures": "Landesweit",
+      "systemTemplates": "Standardformat des Ministeriums",
+      "customTemplates": "Organisationsangepasst",
+      "select": "Mit diesem Format erstellen",
+      "noTemplates": "Keine Formate verfügbar",
+      "version": "Version {version}"
+    },
+    "draftStatus": {
+      "DRAFT": "Entwurf",
+      "READY": "Bereit zum Exportieren",
+      "EXPORTED": "Exportiert"
+    },
+    "outputFormat": {
+      "PDF": "PDF",
+      "EXCEL": "Excel",
+      "WORD": "Word"
+    },
+    "fields": {
+      "title": "Entwurfsname",
+      "template": "Format",
+      "prefecture": "Präfektur",
+      "version": "Version",
+      "targetDwelling": "Zielwohnung",
+      "targetDwellingPlaceholder": "Zimmernummer (z.B. 101)",
+      "status": "Status",
+      "createdAt": "Erstellungsdatum",
+      "updatedAt": "Aktualisierungsdatum",
+      "outputFormat": "Ausgabeformat",
+      "templateCode": "Formatcode",
+      "sha256": "SHA-256",
+      "expiresAt": "Ablaufdatum"
+    },
+    "actions": {
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "create": "Erstellen",
+      "download": "Herunterladen",
+      "viewExports": "Exportverlauf anzeigen"
+    },
+    "autoFill": {
+      "title": "Persönliche Daten automatisch ausfüllen",
+      "allowPersonalInfo": "Automatisches Ausfüllen persönlicher Daten erlauben",
+      "refresh": "Automatische Daten aktualisieren",
+      "note": "Nur auswählen, wenn persönliche Informationen wie der Eigentümername zitiert werden müssen",
+      "refreshed": "Automatische Daten aktualisiert",
+      "refreshFailed": "Fehler beim Aktualisieren der automatischen Daten"
+    },
+    "exported": {
+      "lockedTitle": "Exportierter Entwurf",
+      "lockedMessage": "Dieser Entwurf wurde bereits exportiert und kann nicht bearbeitet werden. Bitte kopieren und einen neuen Entwurf erstellen (Phase 3)."
+    },
+    "warnings": {
+      "title": "Warnungen beim Export",
+      "close": "Schließen"
+    },
+    "errors": {
+      "loadFailed": "Laden fehlgeschlagen",
+      "saveFailed": "Speichern fehlgeschlagen",
+      "deleteFailed": "Löschen fehlgeschlagen",
+      "versionConflict": "Ein anderer Benutzer hat zuerst bearbeitet. Neueste Version wird abgerufen.",
+      "exportFailed": "Export fehlgeschlagen",
+      "downloadFailed": "Download fehlgeschlagen",
+      "tampered": "Integritätsprüfung der Datei fehlgeschlagen (DISCLOSURE_010)"
+    },
+    "limit": {
+      "warning": "Maximal 50 Entwürfe pro Organisation (noch {remaining} verfügbar)",
+      "exceeded": "Das Entwurfslimit (50) wurde erreicht. Bitte löschen Sie nicht benötigte Entwürfe."
+    },
+    "validation": {
+      "required": "Pflichtfeld",
+      "maxLength": "Bitte geben Sie maximal {max} Zeichen ein",
+      "title": "Entwurfsname ist erforderlich",
+      "templateRequired": "Bitte wählen Sie ein Format aus"
+    },
+    "extend_expiry": "Aufbewahrungsfrist verlängern",
+    "extend_expiry_dialog_title": "Aufbewahrungsfrist verlängern",
+    "extend_expiry_date_label": "Neues Aufbewahrungsdatum",
+    "extend_expiry_current_label": "Aktuelles Aufbewahrungsdatum",
+    "extend_expiry_hint": "Sie können ein Datum bis zu 7 Jahre ab heute festlegen",
+    "extend_expiry_validation_future": "Bitte geben Sie ein zukünftiges Datum an",
+    "extend_expiry_validation_max_7_years": "Bitte geben Sie ein Datum innerhalb von 7 Jahren ab heute an",
+    "extend_expiry_success": "Aufbewahrungsfrist bis {date} verlängert",
+    "extend_expiry_error": "Fehler beim Verlängern der Aufbewahrungsfrist"
+  }
+}

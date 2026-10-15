@@ -1,0 +1,2947 @@
+{
+  "skill": {
+    "form": {
+      "noCategoryAdmin": "Este equipo aún no tiene categorías activas. Cree una en la pestaña \"Gestión de categorías\".",
+      "noCategoryMember": "Este equipo aún no tiene categorías activas. Pida a un administrador del equipo que cree una."
+    },
+    "matrix": {
+      "refresh": "Actualizar",
+      "legendPendingNote": "Las certificaciones pendientes de revisión se muestran como no registradas"
+    },
+    "list": {
+      "actions": {
+        "search": "Buscar",
+        "verify": "Aprobar",
+        "edit": "Editar",
+        "delete": "Eliminar",
+        "certificate": "Ver certificado"
+      },
+      "loadDetailFailed": "No se pudieron cargar los detalles de la habilidad",
+      "loadCategoriesFailed": "No se pudieron cargar las categorías",
+      "mineTitle": "Mis habilidades y certificaciones",
+      "deleteConfirm": "¿Eliminar \"{name}\"? Esta acción no se puede deshacer.",
+      "deleteConfirmHeader": "Eliminar certificación"
+    },
+    "category": {
+      "actions": {
+        "edit": "Editar",
+        "delete": "Eliminar"
+      },
+      "deleteConfirm": "¿Eliminar la categoría \"{name}\"?",
+      "deleteConfirmHeader": "Eliminar categoría"
+    },
+    "page": {
+      "permissionLoadFailed": "No se pudo obtener la información de permisos. Vuelva a cargar más tarde",
+      "forbidden": "Solo los miembros de este equipo pueden usar habilidades y certificaciones",
+      "mineTab": "Mis habilidades y certificaciones",
+      "categoriesReloadFailed": "No se pudieron recargar las categorías"
+    }
+  },
+  "chat": {
+    "contextMenu": {
+      "replyInThread": "Responder en hilo",
+      "react": "Reaccionar",
+      "pin": "Fijar",
+      "unpin": "Desfijar",
+      "edit": "Editar",
+      "copy": "Copiar",
+      "forward": "Reenviar",
+      "bookmark": "Marcar",
+      "removeBookmark": "Quitar marcador",
+      "delete": "Eliminar"
+    },
+    "thread": {
+      "activeThreads": "{count} hilos activos",
+      "replyCount": "{count} respuestas",
+      "reply": "Responder"
+    },
+    "boardMigration": {
+      "banner": "El tema se está profundizando. ¿Desea moverlo a un hilo del tablón?",
+      "createThread": "Crear hilo en tablón",
+      "dialogTitle": "Migrar al tablón",
+      "titleLabel": "Título del hilo",
+      "boardLabel": "Tablón destino",
+      "copyHistory": "Copiar historial de conversación",
+      "confirm": "Migrar",
+      "success": "Hilo del tablón creado",
+      "error": "Error al migrar"
+    },
+    "sidebar": {
+      "chat": "Chat",
+      "contacts": "Contactos",
+      "requests": "Solicitudes",
+      "addByHandle": "Agregar por {'@'}handle"
+    },
+    "tab": {
+      "addNew": "Abrir nueva pestaña",
+      "close": "Cerrar pestaña",
+      "closeOthers": "Cerrar otras pestañas",
+      "closeRight": "Cerrar pestañas a la derecha",
+      "openInNewWindow": "Abrir en nueva ventana",
+      "maxReached": "Máximo {max} pestañas permitidas",
+      "kickedNotice": "Fuiste eliminado de {name}. Cerrando pestaña.",
+      "channelDeleted": "{name} ha sido eliminado. Cerrando pestaña.",
+      "unreadBadge": "{count} no leídos",
+      "draftIndicator": "Borrador en progreso",
+      "selectChannelEmpty": "Selecciona un canal o haz clic en + para abrir uno",
+      "channelNotAccessible": "No se puede acceder al canal especificado",
+      "popupBlocked": "Por favor, permite las ventanas emergentes",
+      "subtab": {
+        "channels": "Canales",
+        "contacts": "Contactos",
+        "requests": "Solicitudes"
+      },
+      "comingSoonContacts": "La pestaña de contactos estará disponible próximamente",
+      "comingSoonRequests": "La pestaña de solicitudes estará disponible próximamente",
+      "closed_kicked": "Pestaña cerrada porque fuiste eliminado del canal",
+      "closed_deleted": "Pestaña cerrada porque el canal fue eliminado",
+      "closed_archived": "Pestaña cerrada porque el canal fue archivado"
+    },
+    "typing": {
+      "single": "{name} está escribiendo…",
+      "multiple": "{names} están escribiendo…"
+    },
+    "connection": {
+      "failed": "Conexión perdida. Intentando reconectar…"
+    },
+    "mobile": {
+      "backToList": "Volver a la lista de canales",
+      "noChannels": "Aún no hay canales",
+      "createChannel": "Crear canal"
+    },
+    "invite": {
+      "button": "Invitar al equipo",
+      "sentSuccess": "Invitación enviada",
+      "joinedSuccess": "Te has unido",
+      "declinedSuccess": "Invitación rechazada",
+      "modal": {
+        "title": "Elige un equipo u organización para invitar",
+        "empty": "No hay equipos ni organizaciones disponibles para invitar",
+        "submit": "Enviar invitación"
+      },
+      "card": {
+        "pending": "Tienes una invitación a {scope}",
+        "waiting": "Esperando su respuesta",
+        "statusPending": "Pendiente",
+        "join": "Unirse",
+        "decline": "Rechazar",
+        "joined": "Unido",
+        "declined": "Rechazada",
+        "expired": "Caducada",
+        "revoked": "Cancelada",
+        "expiresAt": "Caduca: {time}"
+      },
+      "preview": {
+        "sent": "Invitación enviada a {scope}"
+      },
+      "notification": {
+        "received": "Has recibido una invitación a {scope}"
+      },
+      "error": {
+        "notTarget": "Esta invitación no es para ti",
+        "privilegedRole": "Los roles de administrador no se pueden invitar de esta forma",
+        "loadFailed": "No se pudieron cargar los equipos/organizaciones para invitar",
+        "sendFailed": "No se pudo enviar la invitación",
+        "joinFailed": "No se pudo unir",
+        "declineFailed": "No se pudo rechazar"
+      }
+    }
+  },
+  "button": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "submit": "Enviar",
+    "close": "Cerrar",
+    "open": "Abrir",
+    "back": "Volver",
+    "help": "Cómo usar",
+    "next": "Siguiente",
+    "search": "Buscar",
+    "loading": "Cargando...",
+    "confirm": "Confirmar",
+    "logout": "Cerrar sesión",
+    "update": "Actualizar",
+    "see_more": "Ver más",
+    "view_all": "Ver todo",
+    "undo": "Deshacer"
+  },
+  "label": {
+    "required": "Obligatorio",
+    "optional": "Opcional",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "name": "Nombre",
+    "created_at": "Creado el",
+    "updated_at": "Actualizado el",
+    "status": "Estado",
+    "actions": "Acciones",
+    "teamFriendCount": "Amigos del equipo",
+    "supporterCount": "Seguidores",
+    "following": "Siguiendo",
+    "followers": "Seguidores",
+    "followListVisibility": "Visibilidad de la lista de seguidos",
+    "visibilityPublic": "Público",
+    "visibilityFriendsOnly": "Solo mutuos",
+    "visibilityPrivate": "Privado",
+    "followListPrivate": "La lista de seguidos de este usuario es privada",
+    "noFollowing": "Aún no sigues a nadie",
+    "noFollowers": "Aún no tienes seguidores",
+    "loadMore": "Cargar más",
+    "unfollow": "Dejar de seguir",
+    "advanced_settings": "Ajustes avanzados"
+  },
+  "dialog": {
+    "confirm_delete": "¿Está seguro de que desea eliminar esto? Esta acción no se puede deshacer.",
+    "confirm_title": "Confirmar",
+    "success": "Completado",
+    "error": "Se produjo un error"
+  },
+  "role": {
+    "SYSTEM_ADMIN": "Administrador del sistema",
+    "ADMIN": "Administrador",
+    "DEPUTY_ADMIN": "Subadministrador",
+    "MEMBER": "Miembro",
+    "SUPPORTER": "Colaborador",
+    "GUEST": "Invitado",
+    "transfer": {
+      "offer": {
+        "button": "Asumir como administrador",
+        "notification": "Se te ha ofrecido ser administrador de {scope}",
+        "pending": "Tienes una oferta pendiente para ser administrador",
+        "pendingByMe": "La transferencia de administración a {name} está pendiente",
+        "accept": "Aceptar",
+        "decline": "Rechazar",
+        "cancel": "Cancelar",
+        "accepted": "Ahora eres el administrador",
+        "declined": "Se rechazó la oferta",
+        "expired": "La oferta ha caducado",
+        "cancelled": "La oferta fue cancelada",
+        "confirmTitle": "Ofrecer la transferencia de propiedad",
+        "confirmMessage": "¿Quieres ofrecer a {name} la transferencia de los permisos de administrador? Si acepta, pasarás a ser miembro (hasta entonces no cambia nada).",
+        "acceptConfirmTitle": "Aceptar la transferencia de administración",
+        "acceptConfirmMessage": "Si aceptas, serás el administrador (ADMIN) y el administrador actual pasará a ser miembro. ¿Continuar?",
+        "declineConfirmTitle": "Rechazar la oferta",
+        "declineConfirmMessage": "¿Quieres rechazar esta oferta? Tu rol no cambiará.",
+        "cancelConfirmTitle": "Cancelar la oferta",
+        "cancelConfirmMessage": "¿Quieres cancelar esta oferta de transferencia? El rol de la otra persona no cambiará.",
+        "created": "Se envió la oferta de transferencia",
+        "cancelSuccess": "Se canceló la oferta"
+      },
+      "error": {
+        "notTarget": "Esta oferta no está dirigida a ti",
+        "need2fa": {
+          "message": "Para ser administrador debes configurar la autenticación en dos pasos",
+          "cta": "Configurar la autenticación en dos pasos"
+        }
+      }
+    }
+  },
+  "timetable": {
+    "title": "Gestión de Horarios",
+    "org_title": "Configuración de Horarios (Plantilla de Organización)",
+    "tab_weekly": "Vista Semanal",
+    "tab_list": "Horarios",
+    "tab_period": "Definiciones de Períodos",
+    "tab_term": "Plantillas de Trimestres",
+    "tab_changes": "Cambios Temporales",
+    "no_timetable": "No hay horario activo",
+    "no_timetable_hint": "Aparecerá un horario aquí una vez que un administrador cree y active uno",
+    "status_draft": "Borrador",
+    "status_active": "Activo",
+    "status_archived": "Archivado",
+    "visibility_members_only": "Solo Miembros",
+    "visibility_public": "Público",
+    "day_off": "Día Libre",
+    "changed": "Cambiado",
+    "cancelled": "Cancelado",
+    "added": "Clase Extra",
+    "create_timetable": "Crear Horario",
+    "timetable_name": "Nombre del Horario",
+    "term": "Trimestre",
+    "effective_from": "Válido Desde",
+    "effective_until": "Válido Hasta",
+    "week_pattern": "Patrón Semana A/B",
+    "week_pattern_base": "Fecha Base Semana A",
+    "notes": "Notas de Administrador",
+    "activate": "Activar",
+    "archive": "Archivar",
+    "revert_draft": "Volver a Borrador",
+    "duplicate": "Duplicar",
+    "export_pdf": "Exportar PDF",
+    "activate_confirm": "¿Activar este horario? El horario activo actual se archivará automáticamente.",
+    "activate_success": "Horario activado",
+    "activate_error": "Error al activar el horario",
+    "archive_success": "Horario archivado",
+    "archive_error": "Error al archivar el horario",
+    "revert_success": "Revertido a borrador",
+    "revert_error": "Error al revertir a borrador",
+    "duplicate_success": "Horario duplicado",
+    "duplicate_error": "Error al duplicar el horario",
+    "create_success": "Horario creado",
+    "create_error": "Error al crear el horario",
+    "load_error": "Error al cargar el horario",
+    "weekly_error": "Error al cargar la vista semanal",
+    "pdf_error": "Error al exportar PDF",
+    "add_change": "Agregar Cambio Temporal",
+    "change_date": "Fecha de Cambio",
+    "change_type": "Tipo de Cambio",
+    "change_type_replace": "Reemplazar",
+    "change_type_cancel": "Cancelar",
+    "change_type_add": "Agregar",
+    "change_type_day_off": "Día Libre",
+    "change_subject": "Nueva Materia",
+    "change_teacher": "Profesor",
+    "change_room": "Aula",
+    "change_reason": "Motivo",
+    "notify_members": "Notificar a miembros",
+    "change_success": "Cambio temporal registrado",
+    "change_error": "Error al registrar el cambio temporal",
+    "delete_change_success": "Cambio temporal eliminado",
+    "delete_change_error": "Error al eliminar el cambio temporal",
+    "period_number": "Período",
+    "period_label": "Etiqueta",
+    "period_start": "Hora de Inicio",
+    "period_end": "Hora de Fin",
+    "period_is_break": "Descanso",
+    "period_hint": "Defina los intervalos de tiempo de los períodos a nivel de organización. Los horarios del equipo heredan estas definiciones.",
+    "term_name": "Nombre del Trimestre",
+    "term_start": "Fecha de Inicio",
+    "term_end": "Fecha de Fin",
+    "term_academic_year": "Año Académico",
+    "term_hint": "Definiciones de trimestres a nivel de organización. Los equipos pueden heredarlas o reemplazarlas.",
+    "add_term": "Agregar Trimestre",
+    "term_success": "Trimestre creado",
+    "term_error": "Error al crear el trimestre",
+    "no_period": "No hay períodos definidos",
+    "no_term": "No hay trimestres definidos",
+    "current_week": "Esta Semana",
+    "prev_week": "Semana Anterior",
+    "next_week": "Semana Siguiente",
+    "week_label": "{start} – {end}",
+    "week_pattern_a": "Semana A",
+    "week_pattern_b": "Semana B",
+    "week_pattern_every": "Cada Semana",
+    "no_change": "No hay cambios temporales",
+    "visibility_label": "Visibilidad",
+    "period_all": "Todos los períodos",
+    "period_number_placeholder": "Número de período",
+    "period_suffix": "º",
+    "term_name_placeholder": "ej: 1er Trimestre"
+  },
+  "error": {
+    "server": "Se produjo un error del servidor",
+    "server_retry": "Por favor, inténtelo de nuevo más tarde.",
+    "rate_limited": "Demasiadas solicitudes",
+    "rate_limited_detail": "Ha realizado demasiadas solicitudes en poco tiempo. Espere un momento e inténtelo de nuevo.",
+    "rate_limited_retry_after": "Ha realizado demasiadas solicitudes en poco tiempo. Inténtelo de nuevo en unos {seconds} segundos.",
+    "network": "Se produjo un error de red",
+    "unauthorized": "Por favor, inicie sesión",
+    "section_load_failed": "No se pudo cargar esta sección. Recarga la página.",
+    "unknown": "Se produjo un error",
+    "COMMON_001": "Hay errores en los datos ingresados",
+    "COMMON_002": "No tiene permiso para realizar esta acción",
+    "COMMON_003": "Actualizado por otro usuario. Por favor, actualice la página",
+    "COMMON_999": "Se produjo un error del sistema",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_EMPTY": "Selecciona al menos un destino de destinatarios",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_AND_GROUP_BOTH_SPECIFIED": "No se pueden seleccionar a la vez destinos individuales y un grupo guardado",
+    "CONFIRMABLE_NOTIFICATION_TARGET_OUT_OF_SCOPE": "La selección contiene una organización o un equipo fuera del ámbito de envío",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENT_GROUP_NOT_FOUND": "El grupo de destinatarios no existe o se ha eliminado",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENTS_EMPTY": "No hay destinatarios que coincidan con los destinos seleccionados",
+    "CONFIRMABLE_NOTIFICATION_GROUP_NAME_DUPLICATE": "Ya existe un grupo de destinatarios con este nombre",
+    "CONFIRMABLE_NOTIFICATION_CREDIT_INSUFFICIENT": "No hay suficientes créditos de notificación",
+    "CONFIRMABLE_NOTIFICATION_DEADLINE_IN_PAST": "Establece la fecha límite de confirmación en el futuro",
+    "AUTH_001": "Correo electrónico o contraseña incorrectos",
+    "AUTH_002": "Su correo electrónico aún no ha sido verificado",
+    "AUTH_003": "Su cuenta está bloqueada. Inténtelo de nuevo en 30 minutos",
+    "AUTH_004": "Este correo electrónico ya está registrado",
+    "AUTH_005": "El enlace del correo de verificación no es válido o ha expirado",
+    "AUTH_008": "La contraseña debe tener al menos 8 caracteres e incluir 3 o más de: mayúsculas, minúsculas, números y símbolos",
+    "AUTH_015": "El enlace para restablecer la contraseña no es válido o ha expirado. Por favor, solicite un nuevo restablecimiento.",
+    "AUTH_009": "La nueva contraseña debe ser diferente de la contraseña actual",
+    "AUTH_010": "La contraseña actual no es correcta",
+    "AUTH_011": "Aún no se ha establecido ninguna contraseña",
+    "AUTH_044": "Demasiadas solicitudes. Por favor, espere un momento y vuelva a intentarlo",
+    "SURVEY_023": "No se puede activar el desglose por equipo en encuestas anónimas",
+    "SCHEDULE_KEEP_001": "No se encontró el plan en espera",
+    "SCHEDULE_KEEP_002": "Introduce un título",
+    "SCHEDULE_KEEP_003": "Se permiten como máximo 10 fechas candidatas",
+    "SCHEDULE_KEEP_004": "El formato de las fechas candidatas no es válido",
+    "SCHEDULE_KEEP_005": "No tienes permiso para operar este plan en espera",
+    "SCHEDULE_KEEP_006": "Este plan en espera no se puede convertir en evento",
+    "SCHEDULE_KEEP_007": "No se puede editar en este estado",
+    "SCHEDULE_KEEP_008": "No se puede deshacer la conversión porque hay respuestas de asistencia",
+    "SCHEDULE_KEEP_009": "Esta operación no está permitida",
+    "SCHEDULE_KEEP_010": "Se alcanzó el límite de planes en espera",
+    "SCHEDULE_KEEP_012": "La indicación de ordenación no es válida",
+    "TIMELINE_017": "Has alcanzado el límite de 200 elementos ocultos. Muestra de nuevo alguno que ya no necesites.",
+    "ROLE_009": "Esta oferta no está dirigida a ti",
+    "ROLE_010": "Para ser administrador debes configurar la autenticación en dos pasos",
+    "ROLE_011": "Ya existe una oferta de transferencia activa",
+    "ROLE_012": "La oferta de transferencia ya se ha resuelto o no es válida",
+    "ROLE_013": "No se encontró el destino",
+    "ROLE_014": "No puedes transferirte la administración a ti mismo"
+  },
+  "annual_plan": {
+    "title": "Plan anual de eventos",
+    "all_categories": "Todos",
+    "category_placeholder": "Categoría",
+    "copy_prev_year": "Copiar año anterior",
+    "no_events": "Sin eventos",
+    "no_data": "No hay datos de eventos",
+    "copy_dialog_title": "Copiar año anterior",
+    "copy_dialog_message": "¿Copiar eventos de {sourceYear} a {targetYear}? Las fechas se ajustarán automáticamente.",
+    "copy_preview": "Vista previa",
+    "copy_execute": "Ejecutar copia",
+    "conflict_with": "Conflicto con {title}",
+    "load_error": "Error al cargar el plan anual de eventos",
+    "copy_error": "Error al copiar eventos",
+    "copy_success": "Se han copiado los eventos del año anterior"
+  },
+  "greeting": {
+    "earlyMorning": "Buenos días",
+    "morning": "Buenos días",
+    "afternoon": "Buenas tardes",
+    "evening": "Buenas noches",
+    "night": "Buenas noches"
+  },
+  "timedMessage": {
+    "earlyMorning": [
+      "Qué mañana tan refrescante. Avancemos paso a paso hoy.",
+      "Al que madruga, Dios le ayuda. Tienes un gran comienzo.",
+      "En la quietud de la mañana, define tus objetivos para hoy.",
+      "Ha comenzado un nuevo amanecer. Que hoy sea un poco mejor que ayer.",
+      "Respira profundo el aire matutino y recarga tu energía.",
+      "Este día no volverá jamás. Vívelo al máximo.",
+      "Comenzar el día significa encontrar pequeñas alegrías en el camino.",
+      "Con el alba llegan nuevas oportunidades.",
+      "La quietud del amanecer trae la energía que necesitas para hoy.",
+      "El día de hoy es como nieve sin huellas — hazlo tuyo.",
+      "Al igual que el sol sale, tus posibilidades también se expanden.",
+      "Como el café de la mañana, que el día de hoy sea cálido y pleno.",
+      "Despertar en sí mismo es un milagro. Comienza hoy con gratitud.",
+      "Cada mañana es una página nueva. ¿Qué historia escribirás?",
+      "El aire fresco de la mañana despeja tu mente para el día.",
+      "Decide un objetivo para hoy y el resto fluirá.",
+      "La mañana está llena de posibilidades. Dale todo.",
+      "Empieza el día con un corazón tan puro como el rocío de la mañana.",
+      "Cada pequeño paso de hoy conecta con el gran camino del futuro.",
+      "La luz matutina está abriendo un día completamente nuevo para ti."
+    ],
+    "morning": [
+      "La mañana es el momento de mayor concentración. Sácale el máximo partido.",
+      "¿Cómo va la primera mitad de tu día?",
+      "Aborda cada tarea con cuidado y atención.",
+      "Resolver lo importante por la mañana hace la tarde mucho más llevadera.",
+      "Tu esfuerzo de hoy está ayudando a alguien en este momento.",
+      "La constancia en pequeños pasos lleva a grandes resultados.",
+      "Hoy has crecido un poco más que ayer — créetelo.",
+      "Bebe un poco de agua y refresca tu mente.",
+      "Está bien avanzar a tu propio ritmo hoy.",
+      "Los desafíos más difíciles son donde más creces.",
+      "El esfuerzo de hoy sin duda ayudará a tu yo del futuro.",
+      "Un pequeño descanso genera la próxima oleada de concentración.",
+      "Tu sonrisa está iluminando el día de alguien ahora mismo.",
+      "Empieza por lo que puedes hacer. Eso es lo más importante.",
+      "El aprendizaje de hoy se convierte en la confianza de mañana.",
+      "Ponerse en marcha es más importante que la perfección.",
+      "Un momento tranquilo con un té ayuda a calmar la mente.",
+      "Está bien si las cosas no salen como planeabas. Mantente flexible.",
+      "Recuerda que tienes compañeros trabajando a tu lado hoy.",
+      "Dale la bienvenida a tu yo de hoy con un cálido saludo."
+    ],
+    "afternoon": [
+      "Mantengamos la energía en la tarde.",
+      "¿Almorzaste? Asegúrate de nutrirse bien.",
+      "¿Un poco de sueño? Estírate y reinicia.",
+      "Brilla como el sol de la tarde y sigue adelante.",
+      "Sigue siendo tu mismo en la segunda mitad del día.",
+      "Date una palmadita en la espalda por todo lo que has logrado hasta ahora.",
+      "Ha pasado la mitad del día. Hagamos que la segunda mitad valga.",
+      "Las tardes son ideales para que surjan ideas frescas.",
+      "Toma aliento y revisa tu objetivo para hoy.",
+      "Si estás cansado, prueba dar un corto paseo al aire libre.",
+      "Tu esfuerzo de la mañana está impulsando tu energía de la tarde.",
+      "Un descanso con café puede recargar tu energía por la tarde.",
+      "Tu trabajo de hoy está conduciendo a la sonrisa de alguien.",
+      "Sin prisa pero sin pausa. Cuida bien lo que queda del día.",
+      "Mira por la ventana — el mundo exterior te está esperando.",
+      "Hora de concentrarse en la tarde. Un empujón más.",
+      "¿Tienes claro lo que necesitas hacer hoy?",
+      "Mover el cuerpo también refresca la mente.",
+      "Estás progresando de manera constante hoy. Ten fe en ti mismo.",
+      "A la luz de la tarde, las cosas pueden verse frescas y nuevas."
+    ],
+    "evening": [
+      "Buen trabajo hoy. Te lo has ganado.",
+      "Al atardecer, reflexiona sobre lo que lograste hoy.",
+      "Encuentra algo por lo que estar agradecido al final del día.",
+      "Disfruta la cena y recarga energías para mañana.",
+      "Date un aplauso por el esfuerzo de hoy.",
+      "Respira despacio y suelta la tensión del día.",
+      "Incluso los logros pequeños merecen ser anotados hoy.",
+      "Los tropiezos de hoy se convierten en la sabiduría de mañana.",
+      "Suelta el trabajo y disfruta tu propio tiempo esta noche.",
+      "Cierra el capitulo de hoy con la calidez de un atardecer.",
+      "Comparte tu gratitud con alguien que hayas visto hoy.",
+      "Al final del día, reserva algo pequeño que esperar con ilusión mañana.",
+      "Sin duda has crecido más que ayer — es verdad.",
+      "La calma del crepúsculo ayuda a serenarte.",
+      "Libera el cansancio de hoy antes de que se arrastre hasta mañana.",
+      "El tiempo con las personas que te importan alimenta la energía de mañana.",
+      "Al mirar atrás en el día de hoy — ¿cuál fue el mejor momento?",
+      "La noche es tu tiempo para alejarte del ruido y volver a ti mismo.",
+      "Hoy fuiste importante para alguien, aunque no lo supieras.",
+      "Deja que la brisa de la tarde se lleve tu cansancio."
+    ],
+    "night": [
+      "Duerme bien esta noche — es un regalo para tu yo de mañana.",
+      "Bajo el cielo estrellado, cierra suavemente el libro del día de hoy.",
+      "Descansa bien y nos reencontramos mañana llenos de energía.",
+      "En la quietud de esta noche, deja que tu mente encuentre paz.",
+      "Descansa pronto para que tu yo de mañana pueda despertar sonriendo.",
+      "Lo hiciste maravillosamente hoy. De verdad.",
+      "Un buen libro esta noche enriquece los pensamientos de mañana.",
+      "Escucha tu música favorita y permítete relajarte esta noche.",
+      "Mañana es otro día completamente nuevo — espéralo con ilusión.",
+      "Respira profundo y recuerda los buenos momentos de hoy.",
+      "La quietud de esta noche está cultivando las ideas de mañana.",
+      "Cuenta tres cosas por las que estés agradecido hoy.",
+      "Un poco de preparación esta noche facilita la mañana de mañana.",
+      "Mirar el cielo nocturno hace que tus preocupaciones parezcan más pequeñas.",
+      "Un buen baño ayuda a relajar cuerpo y mente.",
+      "El sueño de esta noche podría convertirse en la inspiración de mañana.",
+      "Para quienes siguen trabajando tarde — no te esfuerces demasiado.",
+      "Sé agradecido por algo nuevo que encontraste hoy.",
+      "Duerme bien esta noche para despertar fresco mañana.",
+      "Hoy lo hiciste de verdad muy bien. Buenas noches."
+    ]
+  },
+  "settings": {
+    "language": {
+      "title": "Idioma y zona horaria",
+      "display_language": "Idioma de visualización",
+      "timezone": "Zona horaria",
+      "country_code": "País para festivos",
+      "country_code_placeholder": "Seleccionar país (detección automática si no se selecciona)",
+      "load_error": "Error al cargar la configuración",
+      "save_success": "Idioma y zona horaria actualizados",
+      "save_error": "Error al actualizar la configuración"
+    }
+  },
+  "confirmable": {
+    "delivery_stopped": "Entrega detenida",
+    "templates": "Administrar plantillas",
+    "template_name": "Nombre de la plantilla",
+    "default_recipient_group": "Grupo de destinatarios predeterminado",
+    "deleted_group_fallback": "Si se elimina el grupo, se eligen todos los miembros del ámbito.",
+    "audience_mode": {
+      "DEFAULT": "Todos los miembros del ámbito",
+      "TARGETS": "Elegir organizaciones y equipos",
+      "GROUP": "Grupo guardado"
+    },
+    "select_group": "Elegir grupo",
+    "search_targets": "Buscar organizaciones y equipos cargados",
+    "open_children": "Mostrar subgrupos",
+    "load_more_targets": "Cargar más",
+    "previous_targets": "Destinos anteriores",
+    "next_targets": "Destinos siguientes",
+    "no_targets": "No hay destinos",
+    "selected_targets": "Seleccionados: {count}",
+    "targets_required": "Elija destinatarios",
+    "preview_loading": "Comprobando destinatarios",
+    "preview_count": "Destinatarios estimados: {count}",
+    "preview_required": "Compruebe los destinatarios",
+    "delivered_count": "Entregados: {count}",
+    "title": "Confirmación rápida",
+    "page": {
+      "settings_title": "Configuración de notificaciones de confirmación",
+      "settings_subtitle": "Gestiona la configuración, el envío y el historial de notificaciones de confirmación"
+    },
+    "settings": "Configuración de notificaciones de confirmación",
+    "send": "Enviar notificación de confirmación",
+    "history": "Historial de envíos",
+    "recipients": "Lista de destinatarios",
+    "status": {
+      "ACTIVE": "Activo",
+      "COMPLETED": "Completado",
+      "EXPIRED": "Expirado",
+      "CANCELLED": "Cancelado"
+    },
+    "priority": {
+      "NORMAL": "Normal",
+      "HIGH": "Importante",
+      "URGENT": "Urgente"
+    },
+    "confirmed_via": {
+      "APP": "Aplicación",
+      "TOKEN": "Enlace URL",
+      "BULK": "Masivo"
+    },
+    "pending_count": "Confirmaciones pendientes: {count}",
+    "confirmation_rate": "Tasa de confirmación",
+    "deadline": "Fecha límite de confirmación",
+    "confirm_button": "Confirmar",
+    "already_confirmed": "Ya confirmado",
+    "confirmed": "Estado de confirmación",
+    "confirmed_at": "Fecha de confirmación",
+    "confirmed_via_label": "Método de confirmación",
+    "first_reminder_sent": "1er recordatorio enviado",
+    "second_reminder_sent": "2do recordatorio enviado",
+    "reminder_minutes": "Intervalo de recordatorio (minutos)",
+    "first_reminder": "1er recordatorio",
+    "second_reminder": "2do recordatorio",
+    "alert_threshold": "Umbral de alerta sin confirmar",
+    "resend_reminder": "Reenviar recordatorio",
+    "no_history": "Sin historial de envíos",
+    "load_error": "Error al cargar las notificaciones de confirmación",
+    "load_settings_error": "Error al cargar la configuración",
+    "load_recipients_error": "Error al cargar la lista de destinatarios",
+    "save_settings_error": "Error al guardar la configuración",
+    "send_error": "Error al enviar la notificación de confirmación",
+    "cancel_error": "Error al cancelar",
+    "resend_error": "Error al reenviar el recordatorio",
+    "title_required": "Por favor ingresa un título",
+    "recipients_required": "Por favor especifica al menos un destinatario",
+    "unconfirmed_visibility": {
+      "label": "Visibilidad de la lista de no confirmados",
+      "help": "Elige quién puede ver la lista de usuarios que aún no han confirmado.",
+      "HIDDEN": "Oculto",
+      "CREATOR_AND_ADMIN": "Solo creador y administradores",
+      "ALL_MEMBERS": "Todos los miembros"
+    },
+    "unconfirmed_count": "Sin confirmar: {count}",
+    "unconfirmed_list": "Usuarios no confirmados",
+    "recipient_groups": "Grupos de destinatarios",
+    "recipient_groups_help": "Guarde organizaciones o equipos como destinatarios.",
+    "group_name": "Nombre del grupo",
+    "targets": "Destinos",
+    "target_id": "ID de destino",
+    "target_type": {
+      "ORGANIZATION": "Organización",
+      "TEAM": "Equipo"
+    },
+    "template": "Plantilla",
+    "audience": "Destinatarios",
+    "current_scope": "Esta organización o equipo",
+    "current_scope_help": "Enviar a miembros activos del ámbito actual.",
+    "group_audience_help": "Enviar al grupo de destinatarios guardado.",
+    "message_title": "Título",
+    "message_body": "Mensaje",
+    "priority_label": "Prioridad",
+    "accepted": "Entrega aceptada",
+    "accepted_count": "Entrega aceptada (destinatarios estimados: {count})",
+    "recipient": "Destinatario",
+    "withdrawn": "Retirado",
+    "withdrawn_user": "Usuario retirado",
+    "unknown_recipient": "Destinatario desconocido",
+    "unconfirmed": "Sin confirmar",
+    "unconfirmed_only": "Solo sin confirmar",
+    "delivery_status": {
+      "QUEUED": "En cola",
+      "DELIVERING": "Enviando",
+      "DELIVERED": "Entregado",
+      "PARTIALLY_FAILED": "Parcialmente fallido"
+    },
+    "help": {
+      "title": "Notificaciones de confirmación",
+      "body": "Elija un grupo de destinatarios o el ámbito actual. La entrega es asíncrona; consulte el historial."
+    },
+    "guide": {
+      "quickConfirm": {
+        "description": "Úsala para mensajes breves y acuses de recibo. Usa Circulares para documentos que requieren sellos u orden de circulación.",
+        "link": "Abrir Circulares"
+      },
+      "circulation": {
+        "title": "Circulares",
+        "description": "Úsalas para documentos que requieren sellos u orden de circulación. Para un mensaje breve y su confirmación, usa Confirmación rápida.",
+        "link": "Abrir Confirmación rápida"
+      }
+    }
+  },
+  "timeline": {
+    "detail": {
+      "back": "Volver",
+      "loadFailed": "No se pudo obtener la publicación",
+      "repliesLoadFailed": "No se pudieron cargar las respuestas",
+      "replySuccess": "Respuesta enviada",
+      "replyFailed": "No se pudo enviar la respuesta",
+      "bookmarkFailed": "No se pudo actualizar el marcador",
+      "replyPlaceholder": "Escribe una respuesta...",
+      "replySubmit": "Responder",
+      "replyCount": "{count} respuestas",
+      "loadMoreReplies": "Cargar más respuestas",
+      "notFound": "No se encontró la publicación o no se puede mostrar"
+    },
+    "videoProcessing": "Procesando video...",
+    "videoFailed": "Video no disponible",
+    "videoUploadButton": "Adjuntar video",
+    "videoUploading": "Subiendo video...",
+    "videoUploadSuccess": "Video subido correctamente",
+    "videoUploadError": "Error al subir el video",
+    "videoRemove": "Eliminar video",
+    "mitayo": "Visto",
+    "imageTooMany": "Puedes adjuntar hasta 4 imágenes",
+    "imageUploadError": "Error al subir la imagen",
+    "postSuccess": "Publicado correctamente",
+    "postError": "Error al publicar",
+    "announcementRegisterError": "Error al registrar el anuncio. Por favor, regístralo manualmente más tarde.",
+    "postSource": "Publicado en",
+    "writeReply": "Escribir una respuesta",
+    "replySubmit": "Responder",
+    "noReplies": "Aún no hay respuestas",
+    "loadMoreReplies": "Ver más",
+    "composerPlaceholder": {
+      "TEAM": "Publicar en el equipo...",
+      "VILLAGE": "Publicar en el pueblo...",
+      "ORGANIZATION": "Publicar en la organización...",
+      "PUBLIC": "¿Qué está pasando?"
+    },
+    "submitLabel": "Publicar",
+    "pollOptionsCount": "{count} opciones",
+    "deliveryScope": {
+      "label": "Alcance de entrega",
+      "options": {
+        "DIRECT": "Solo los miembros de esta organización",
+        "CHILDREN": "Incluir las organizaciones hijas directas",
+        "DESCENDANTS": "Todas las organizaciones subordinadas"
+      },
+      "hints": {
+        "DIRECT": "Solo se muestra en las cronologías de los miembros de esta organización.",
+        "CHILDREN": "También se muestra a los miembros de las organizaciones justo por debajo de esta.",
+        "DESCENDANTS": "Se muestra a los miembros de todas las organizaciones subordinadas."
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "Ocultar las publicaciones de este equipo",
+        "ORGANIZATION": "Ocultar las publicaciones de esta organización"
+      },
+      "targetType": {
+        "TEAM": "Equipo",
+        "ORGANIZATION": "Organización"
+      },
+      "muted": "Se han ocultado las publicaciones de {name}",
+      "undo": "Deshacer",
+      "unmuted": "Se vuelven a mostrar las publicaciones",
+      "chip": "Ocultos: {count}",
+      "dialogTitle": "Fuentes ocultas",
+      "emptyList": "No has ocultado a nadie.",
+      "unmuteAction": "Volver a mostrar",
+      "unknownTarget": "{type} (ID: {id})"
+    }
+  },
+  "gallery": {
+    "title": "Galería",
+    "createAlbum": "Crear álbum",
+    "photoCount": " fotos",
+    "empty": "No hay álbumes",
+    "albumLoadError": "Error al cargar los álbumes",
+    "videoProcessing": "Procesando video...",
+    "videoFailed": "Video no disponible",
+    "videoPlay": "Reproducir video",
+    "uploadVideo": "Subir video"
+  },
+  "blog": {
+    "media": {
+      "uploadImage": "Insertar imagen",
+      "uploadVideo": "Insertar video",
+      "uploading": "Subiendo...",
+      "uploadSuccess": "Subida completa",
+      "uploadError": "Error al subir",
+      "selectImage": "Seleccionar archivo de imagen",
+      "selectVideo": "Seleccionar archivo de video"
+    },
+    "post": {
+      "readMore": "Leer más",
+      "publishedAt": "Fecha de publicación",
+      "draft": "Borrador",
+      "published": "Publicado",
+      "scheduled": "Programado",
+      "author": "Autor",
+      "series": "Serie",
+      "tags": "Etiquetas",
+      "relatedPosts": "Artículos relacionados",
+      "noPost": "Sin artículos",
+      "createFirst": "Escribe tu primer artículo",
+      "settings": "Configuración del blog",
+      "selfReview": "Autorevisión",
+      "selfReviewDesc": "Establecer tiempo de revisión antes de publicar",
+      "myBlog": "Mi blog",
+      "createNew": "Nuevo artículo",
+      "editPost": "Editar",
+      "deletePost": "Eliminar",
+      "togglePublish": "Publicar/Despublicar",
+      "myPosts": "Mis publicaciones",
+      "allPosts": "Todas las publicaciones",
+      "latestCount": "Últimas {count} / {total} en total",
+      "profileSettings": "Configuración de perfil",
+      "blogTitle": "Título del blog",
+      "blogDescription": "Descripción del blog",
+      "selfReviewStart": "Hora de inicio de autorevisión",
+      "selfReviewEnd": "Hora de fin de autorevisión",
+      "selfReviewHelp": "El período configurado se trata como tiempo de revisión antes de publicar",
+      "saveSettings": "Guardar configuración",
+      "loadFailed": "No se pudo cargar el artículo",
+      "scheduledPublishUnavailable": "La publicación programada no está disponible por ahora. Al publicar, la entrada se hace pública de inmediato.",
+      "listHeading": "Artículos",
+      "createButton": "Crear nuevo",
+      "createDialogTitle": "Crear nuevo artículo",
+      "titleLabel": "Título",
+      "titlePlaceholder": "Introduce el título del artículo",
+      "createDialogHint": "Se guardará como borrador. Después de introducir el título, escribe el contenido en la página de edición.",
+      "loadListFailed": "No se pudo cargar la lista de artículos",
+      "loadListErrorHint": "No se pudo mostrar la lista de artículos. Compruebe la conexión o los permisos y vuelva a cargar.",
+      "reloadList": "Volver a cargar",
+      "createFailed": "No se pudo crear el artículo",
+      "archived": "Archivado",
+      "publishSuccess": "Publicado",
+      "unpublishSuccess": "Publicación retirada",
+      "publishStatusFailed": "No se pudo cambiar el estado",
+      "deleteConfirm": "¿Eliminar este artículo?",
+      "deleteSuccess": "Artículo eliminado",
+      "deleteFailed": "No se pudo eliminar",
+      "publishButton": "Publicar",
+      "unpublishButton": "Retirar",
+      "updatedAt": "Actualizado el"
+    },
+    "autoSave": {
+      "label": "Guardado automático",
+      "saved": "Guardado automáticamente",
+      "lastSaved": "Guardado automáticamente a las {time}",
+      "enabled": "Guardado automático activado",
+      "disabled": "Guardado automático desactivado"
+    },
+    "tag": {
+      "heading": "Etiquetas",
+      "addButton": "Añadir etiqueta",
+      "addDialogTitle": "Añadir etiqueta",
+      "nameLabel": "Nombre de la etiqueta",
+      "namePlaceholder": "Ej.: Avisos",
+      "empty": "No hay etiquetas",
+      "loadFailed": "No se pudieron cargar las etiquetas",
+      "createSuccess": "Etiqueta creada",
+      "createFailed": "No se pudo crear",
+      "deleteSuccess": "Etiqueta eliminada",
+      "deleteFailed": "No se pudo eliminar"
+    },
+    "pageTitle": "Blog y anuncios"
+  },
+  "todo": {
+    "backToList": "Volver a la lista de tareas",
+    "list": {
+      "allDone": "Todas las tareas están completadas",
+      "overdueSuffix": " (vencida)",
+      "toggleCompleteHint": "Clic para cambiar estado de completado",
+      "toggleCompleteAria": "Cambiar estado de completado",
+      "changeLabelHint": "Clic para cambiar etiqueta de estado",
+      "changeLabelAria": "Cambiar etiqueta de estado",
+      "popoverTitle": "Cambiar estado",
+      "popoverLoading": "Cargando...",
+      "popoverEmpty": "Sin etiquetas",
+      "viewModeList": "Vista de lista",
+      "viewModeKanban": "Vista Kanban",
+      "deleteButton": "Eliminar",
+      "deleteAriaLabel": "Eliminar este TODO",
+      "deleteConfirm": "¿Eliminar este TODO? Esta acción no se puede deshacer.",
+      "sortLabel": "Ordenar por",
+      "sortRecent": "Más reciente",
+      "sortPriority": "Prioridad",
+      "deletedToast": "TODO eliminado",
+      "restoredToast": "TODO restaurado",
+      "deleteFailed": "Error al eliminar",
+      "restoreFailed": "No se pudo deshacer",
+      "bulkStatusSuccess": "Se cambió el estado de {count} tareas",
+      "bulkStatusPartial": "Se cambiaron {changedCount}; se omitieron {skippedCount} tareas bloqueadas. Los elementos omitidos siguen seleccionados",
+      "bulkStatusAllLocked": "No se hicieron cambios: las {count} tareas están bloqueadas. Siguen seleccionadas"
+    },
+    "field": {
+      "status": "Estado",
+      "priority": "Prioridad",
+      "dueDate": "Fecha límite",
+      "creator": "Creador",
+      "description": "Descripción",
+      "title": "Título",
+      "descriptionOptional": "Descripción (opcional)",
+      "startDate": "Fecha de inicio",
+      "startDateOptional": "Fecha de inicio (opcional)",
+      "dueDateOptional": "Fecha límite (opcional)",
+      "progressRate": "Progreso"
+    },
+    "detail": {
+      "loadFailed": "Error al cargar la tarea",
+      "assigneesSection": "Asignados",
+      "noAssignees": "Sin asignados",
+      "unknownUser": "Desconocido",
+      "completedByAt": "{name} completó el {at}",
+      "editButton": "Editar"
+    },
+    "action": {
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "updated": "Actualizado",
+      "updateFailed": "Error al actualizar"
+    },
+    "priorityValue": {
+      "URGENT": "Urgente",
+      "HIGH": "Alta",
+      "MEDIUM": "Media",
+      "LOW": "Baja"
+    },
+    "progress": {
+      "updateRateFailed": "Error al actualizar el progreso",
+      "updateModeFailed": "Error al cambiar el modo de progreso"
+    },
+    "statusLabel": {
+      "management": {
+        "title": "Gestión de etiquetas de estado",
+        "create": "Agregar etiqueta",
+        "edit": "Editar",
+        "delete": "Eliminar",
+        "createSuccess": "Etiqueta creada",
+        "updateSuccess": "Etiqueta actualizada",
+        "deleteSuccess": "Etiqueta eliminada",
+        "systemSection": "Predeterminados del sistema (solo lectura)",
+        "userSection": "Etiquetas personales",
+        "teamSection": "Etiquetas de equipo",
+        "organizationSection": "Etiquetas de organización",
+        "empty": "Sin etiquetas todavía",
+        "readOnlyForNonAdmin": "Solo los administradores pueden crear o editar etiquetas (solo lectura)"
+      },
+      "field": {
+        "name": "Nombre",
+        "bucket": "Categoría",
+        "color": "Color",
+        "sortOrder": "Orden"
+      },
+      "bucket": {
+        "OPEN": "Pendiente",
+        "IN_PROGRESS": "En progreso",
+        "COMPLETED": "Completado"
+      },
+      "error": {
+        "duplicate": "Ya existe una etiqueta con el mismo nombre",
+        "limitExceeded": "Puedes crear hasta 20 etiquetas",
+        "inUse": "No se puede eliminar: etiqueta en uso",
+        "inUseWithCount": "No se puede eliminar: esta etiqueta está en uso en {n} tarea(s)",
+        "systemImmutable": "Las etiquetas predeterminadas del sistema no se pueden modificar"
+      },
+      "systemDefault": "(predeterminado del sistema)",
+      "confirmDelete": "¿Estás seguro de que quieres eliminar esto?"
+    },
+    "statusChange": {
+      "section": "Cambiar estado",
+      "applyButton": "Aplicar",
+      "confirmTitle": "Confirmar cambio de estado",
+      "confirmBody": "Cambiar estado de \"{from}\" a \"{to}\". ¿Continuar?",
+      "confirmButton": "Aplicar",
+      "cancelButton": "Cancelar",
+      "success": "Estado cambiado a \"{name}\""
+    },
+    "enhancement": {
+      "gantt": {
+        "title": "TODO Vista Gantt",
+        "no_data": "No hay tareas con rangos de fechas para mostrar en el diagrama de Gantt",
+        "gantt_view_link": "TODO Vista Gantt"
+      },
+      "progress": {
+        "tab_label": "Progreso",
+        "manual_mode": "Modo manual",
+        "auto_mode": "Modo automático",
+        "switch_to_auto": "Cambiar a automático",
+        "switch_to_manual": "Cambiar a manual",
+        "overwrite_warning": "Los valores manuales de subtareas pueden sobreescribirse. ¿Continuar?"
+      },
+      "shared_memo": {
+        "title": "Nota compartida",
+        "placeholder": "Escribe una nota...",
+        "quote_reply": "Citar y responder",
+        "no_data": "Aún no hay notas compartidas"
+      },
+      "personal_memo": {
+        "title": "Nota personal (solo visible para ti)",
+        "placeholder": "Escribe una nota personal... (guardado automático)",
+        "saving": "Guardando...",
+        "saved": "Guardado"
+      }
+    },
+    "create": {
+      "dialog_title": "Crear TODO",
+      "title_label": "Título",
+      "title_placeholder": "Título del TODO",
+      "details_toggle": "Configurar detalles (opcional)",
+      "description_label": "Descripción (opcional)",
+      "description_placeholder": "Detalles o notas",
+      "scope_label": "Compartir con",
+      "scope_personal": "Personal",
+      "priority_label": "Prioridad",
+      "start_date_label": "Fecha de inicio (opcional)",
+      "due_date_label": "Fecha límite (opcional)",
+      "submit_button": "Crear",
+      "cancel_button": "Cancelar",
+      "draft_restored": "Borrador restaurado",
+      "create_success": "TODO creado",
+      "create_failed": "Error al crear el TODO"
+    }
+  },
+  "extended_profile": {
+    "title": "Editar perfil extendido",
+    "section_profile": "Perfil básico",
+    "section_visibility": "Configuración de visibilidad",
+    "section_officers": "Directivos",
+    "section_custom_fields": "Campos personalizados",
+    "homepage_url": "URL de página web",
+    "established_date": "Fecha de fundación",
+    "established_date_precision": "Precisión de fecha",
+    "philosophy": "Filosofía organizacional",
+    "precision_year": "Solo año",
+    "precision_year_month": "Año y mes",
+    "precision_full": "Fecha completa",
+    "visibility_homepage_url": "Mostrar URL de página web",
+    "visibility_established_date": "Mostrar fecha de fundación",
+    "visibility_philosophy": "Mostrar filosofía organizacional",
+    "visibility_officers": "Mostrar directivos",
+    "visibility_custom_fields": "Mostrar campos personalizados",
+    "officer_name": "Nombre del directivo",
+    "officer_title": "Cargo",
+    "officer_visible": "Hacer público",
+    "add_officer": "Agregar directivo",
+    "edit_officer": "Editar directivo",
+    "field_label": "Etiqueta",
+    "field_value": "Valor",
+    "add_custom_field": "Agregar campo personalizado",
+    "edit_custom_field": "Editar campo personalizado",
+    "save_order": "Guardar orden",
+    "save_profile": "Guardar perfil",
+    "profile_saved": "Perfil guardado",
+    "officer_added": "Directivo agregado",
+    "officer_updated": "Directivo actualizado",
+    "officer_deleted": "Directivo eliminado",
+    "order_saved": "Orden guardado",
+    "custom_field_added": "Campo personalizado agregado",
+    "custom_field_updated": "Campo personalizado actualizado",
+    "custom_field_deleted": "Campo personalizado eliminado"
+  },
+  "notification": {
+    "todoHandedOff": {
+      "title": "Se te pasó una tarea",
+      "body": "{from} te pasó \"{title}\" (estado: {label})"
+    },
+    "pageTitle": "Notificaciones",
+    "list": {
+      "all": "Todas",
+      "unread": "No leídas",
+      "markAllRead": "Marcar todas como leídas",
+      "markUnread": "Marcar como no leída",
+      "markRead": "Marcar como leída",
+      "empty": "No hay notificaciones",
+      "loadMore": "Cargar más",
+      "loadError": "No se pudieron cargar las notificaciones",
+      "actionError": "No se pudo completar la acción",
+      "markAllReadError": "No se pudieron marcar todas como leídas",
+      "confirmInfoMissing": "Falta información de la confirmación",
+      "invalidScope": "El ámbito no es válido",
+      "confirmed": "Confirmado",
+      "confirmError": "No se pudo confirmar"
+    },
+    "bell": {
+      "notification": "Notificaciones",
+      "chat": "Chat",
+      "mention": "Menciones",
+      "none": "Ninguna"
+    },
+    "guide": {
+      "title": "Cómo usar las notificaciones",
+      "description": "La lista de notificaciones reúne todo lo dirigido a ti: eventos, chat, avisos, solicitudes de confirmación, cierres de emergencia y más. Toca una fila para marcarla como leída automáticamente e ir a la pantalla relacionada.",
+      "read": {
+        "title": "Leer notificaciones",
+        "body": "Toca una fila de notificación para marcarla como leída e ir a la pantalla relacionada. Las notificaciones aún no leídas llevan un punto azul.",
+        "steps": {
+          "step1": "Toca la fila de la notificación que te interese",
+          "step2": "Se marca como leída automáticamente y vas a la pantalla relacionada",
+          "step3": "Las notificaciones sin leer se reconocen por el punto azul del borde izquierdo"
+        }
+      },
+      "filter": {
+        "title": "Filtrar",
+        "body": "Con el interruptor «Todas / Sin leer» de la parte superior puedes mostrar solo las notificaciones sin leer.",
+        "steps": {
+          "step1": "Pulsa el botón «Todas / Sin leer» de la parte superior de la pantalla",
+          "step2": "Elige «Sin leer» para mostrar solo las notificaciones que aún no has leído",
+          "step3": "Vuelve a «Todas» para ver todas las notificaciones"
+        }
+      },
+      "snooze": {
+        "title": "Posponer",
+        "body": "Si no puedes atender una notificación ahora, pospónla con el icono del reloj. Volverá a aparecer a la hora que elijas.",
+        "steps": {
+          "step1": "Pulsa el icono del reloj situado a la derecha de la notificación",
+          "step2": "Elige cuándo debe volver a mostrarse: en 3 horas, esta noche, mañana por la mañana o la próxima semana",
+          "step3": "A la hora elegida, la notificación vuelve a aparecer en la lista"
+        }
+      },
+      "confirm": {
+        "title": "Notificaciones de confirmación",
+        "body": "En las notificaciones con el botón «Confirmar» puedes avisar al remitente de que has visto el contenido. En ocasiones también se muestra el número de personas que aún no han confirmado.",
+        "steps": {
+          "step1": "Lee el contenido de la notificación de confirmación (la que tiene fondo de color)",
+          "step2": "Pulsa el botón «Confirmar» para marcarla como confirmada",
+          "step3": "Tras confirmar, el botón cambia a la etiqueta «Confirmado»"
+        }
+      },
+      "urgent": {
+        "title": "Cierres de emergencia y marcar todo como leído",
+        "body": "Confirma un aviso de cierre de emergencia pulsando «Confirmar». Para limpiar las notificaciones acumuladas, usa «Marcar todas como leídas» en la esquina superior derecha.",
+        "steps": {
+          "step1": "Confirma el aviso de cierre de emergencia con el botón «Confirmar»",
+          "step2": "Con «Marcar todas como leídas», arriba a la derecha, marcas todas las notificaciones como leídas de una vez",
+          "step3": "Cuando todo está leído, la insignia de la campana también vuelve a 0"
+        }
+      }
+    }
+  },
+  "project": {
+    "milestones": "Hitos",
+    "no_milestones": "No hay hitos",
+    "due_date": "Fecha límite",
+    "gate_progress": "Progreso de la puerta",
+    "next_gate": "Próxima puerta",
+    "next_gate_hint": "Se desbloquea al completar '{title}'",
+    "total_milestones": "Total",
+    "completed_milestones": "Completados",
+    "locked_milestones": "Bloqueados",
+    "locked": "Bloqueado",
+    "locked_by": "Se desbloquea al completar '{title}'",
+    "completion_mode_auto": "Completado automático",
+    "completion_mode_manual": "Completado manual",
+    "force_unlocked": "Desbloqueado forzosamente",
+    "force_unlock_title": "Desbloqueo forzado",
+    "force_unlock_reason_placeholder": "Motivo (máximo 100 caracteres)",
+    "locked_todo_count": "{count} bloqueado(s)",
+    "force_unlock_description": "Se desbloqueará forzosamente el hito '{title}'.",
+    "force_unlock_reason_label": "Motivo",
+    "force_unlock_warning": "El desbloqueo forzado se registra en el registro de auditoría. Utilícelo únicamente como respuesta operativa de emergencia.",
+    "force_unlock_submit": "Ejecutar desbloqueo forzado",
+    "completion_mode_label": "Modo de finalización",
+    "initialize_gate_button": "Inicializar puerta",
+    "initialize_gate_title": "Habilitar función de puerta",
+    "initialize_gate_description": "Habilita la función de puerta para los hitos existentes. Los hitos posteriores se bloquearán mientras el hito anterior esté incompleto.",
+    "initialize_gate_submit": "Habilitar",
+    "force_unlock_success": "Hito desbloqueado forzosamente",
+    "completion_mode_changed": "Modo de finalización actualizado",
+    "initialize_gate_success": "Puerta inicializada",
+    "drag_to_reorder": "Arrastra para reordenar",
+    "reorder_success": "Reordenado",
+    "reorder_failed": "Error al reordenar",
+    "my_projects": "Mis proyectos",
+    "my_projects_description": "Gestión personal de tareas y objetivos",
+    "no_my_projects": "Aún no hay proyectos personales",
+    "team_projects_section": "Proyectos del equipo",
+    "no_team_projects": "Aún no hay proyectos en tus equipos",
+    "org_projects_section": "Proyectos de la organización",
+    "no_org_projects": "Aún no hay proyectos en tus organizaciones",
+    "create_button": "Crear proyecto",
+    "dialog": {
+      "create_title": "Crear proyecto",
+      "edit_title": "Editar proyecto",
+      "title_label": "Título",
+      "title_placeholder": "Nombre del proyecto",
+      "description_label": "Descripción",
+      "due_date_label": "Fecha límite",
+      "cancel": "Cancelar",
+      "create": "Crear",
+      "update": "Actualizar"
+    },
+    "appearance": {
+      "emoji_label": "Emoji",
+      "color_label": "Color",
+      "none": "Ninguno",
+      "custom_emoji": "Personalizado",
+      "custom_color": "Color personalizado",
+      "current": "Actual"
+    },
+    "guide": {
+      "button": "Cómo usar",
+      "page_title": "Cómo usar Proyectos",
+      "description": "Aprenda a utilizar la función de proyectos.",
+      "what": {
+        "title": "¿Qué es un proyecto?",
+        "body": "Un proyecto es una unidad para gestionar tareas (TODOs) e hitos juntos. Puede establecer objetivos y plazos, y realizar un seguimiento del progreso de un vistazo."
+      },
+      "create": {
+        "title": "Cómo crear un proyecto",
+        "body": "Haga clic en 'Crear proyecto' y complete la siguiente información.",
+        "item_title": "Título (obligatorio): Nombre del proyecto",
+        "item_emoji": "Emoji: Icono que representa el proyecto (elegir de los presets)",
+        "item_color": "Color: Color de identificación de la tarjeta (elegir de los presets)",
+        "item_due_date": "Fecha límite: Fecha objetivo de finalización (opcional)"
+      },
+      "milestone": {
+        "title": "Hitos y puertas",
+        "body": "Los hitos son objetivos intermedios dentro de un proyecto. Cuando la función de puertas está activada, el siguiente hito se bloquea hasta que se completa el anterior.",
+        "completion_mode_label": "Sobre el modo de finalización",
+        "mode_auto": "Completar automáticamente",
+        "mode_auto_desc": "Se marca automáticamente como logrado cuando se completan todos los TODOs del hito.",
+        "mode_manual": "Manual",
+        "mode_manual_desc": "Marcar manualmente como logrado independientemente del estado de los TODOs."
+      },
+      "progress": {
+        "title": "Cómo leer el progreso",
+        "body": "Las tarjetas de proyecto muestran una barra de progreso, tasa de finalización y días restantes. La barra de progreso se calcula automáticamente a partir de TODOs completados / total."
+      },
+      "scope": {
+        "title": "Proyectos personales vs. de equipo",
+        "body": "Los proyectos tienen dos tipos de alcance: 'personal' y 'equipo'.",
+        "personal_title": "Proyecto personal",
+        "personal_desc": "Solo usted puede verlo y gestionarlo. Acceso desde 'Mi página' → 'Proyectos'.",
+        "team_title": "Proyecto de equipo",
+        "team_desc": "Comparta y co-gestione con los miembros del equipo. Acceso desde la pestaña 'Proyectos' en la página del equipo."
+      },
+      "back_to_projects": "Volver a la lista de proyectos"
+    },
+    "org_page": {
+      "title": "Proyectos",
+      "empty": "No hay proyectos",
+      "back_label": "Lista de proyectos"
+    },
+    "error": {
+      "fetch_failed": "Error al obtener proyectos",
+      "create_failed": "Error al crear el proyecto",
+      "update_failed": "Error al actualizar",
+      "delete_failed": "Error al eliminar",
+      "status_change_failed": "Error al cambiar el estado",
+      "milestone_save_failed": "Error al guardar el hito"
+    },
+    "status": {
+      "active": "Activo",
+      "completed": "Completado",
+      "archived": "Archivado"
+    },
+    "action": {
+      "edit": "Editar",
+      "complete": "Marcar como completado",
+      "reopen": "Reabrir"
+    },
+    "stats": {
+      "progress": "Progreso",
+      "tasks": "Tareas",
+      "milestones": "Hitos",
+      "due_date": "Fecha de vencimiento",
+      "no_due_date": "Sin definir"
+    },
+    "task_unit": "tareas",
+    "days_remaining": "{n} días restantes",
+    "days_overdue": "{n} días de retraso",
+    "related_tasks": "Tareas relacionadas",
+    "no_related_tasks": "No hay tareas relacionadas con este proyecto",
+    "widget": {
+      "label": "Proyectos",
+      "description": "Progreso y lista de proyectos"
+    }
+  },
+  "inviteToken": {
+    "printQrPdf": "Imprimir QR PDF",
+    "printQrPdfError": "Error al imprimir el PDF"
+  },
+  "visibilityTemplate": {
+    "title": "Plantillas de visibilidad",
+    "systemPresets": "Presets del sistema",
+    "userTemplates": "Mis plantillas",
+    "createNew": "Crear plantilla",
+    "noUserTemplates": "Aún no hay plantillas",
+    "ruleCount": "{n} reglas",
+    "deleteConfirm": "¿Eliminar esta plantilla? Las publicaciones que la usen serán privadas.",
+    "limitReached": "Límite de plantillas (10) alcanzado. Elimina una primero.",
+    "form": {
+      "name": "Nombre",
+      "description": "Descripción",
+      "iconEmoji": "Emoji de icono",
+      "rules": "Reglas",
+      "addRule": "Añadir regla",
+      "ruleType": "Tipo de regla",
+      "ruleTargetId": "ID de destino"
+    },
+    "ruleTypes": {
+      "TEAM_FRIEND_OF": "Miembros de equipos amigos",
+      "ORGANIZATION_MEMBER_OF": "Miembros de organización",
+      "TEAM_MEMBER_OF": "Miembros del equipo",
+      "REGION_MATCH": "Coincidencia de región",
+      "EXPLICIT_TEAM": "Equipo específico",
+      "EXPLICIT_USER": "Usuario específico",
+      "EXPLICIT_SOCIAL_PROFILE": "Perfil social específico"
+    },
+    "preset": {
+      "PRESET_TRAINING_PARTNERS": {
+        "name": "Compañeros de entrenamiento",
+        "description": "Todos los equipos amigos"
+      },
+      "PRESET_LOCAL_TEAMS": {
+        "name": "Equipos locales",
+        "description": "Equipo + equipos de la región"
+      },
+      "PRESET_ALL_FRIENDS": {
+        "name": "Todos los amigos",
+        "description": "Todos los miembros amigos"
+      }
+    }
+  },
+  "survey": {
+    "unresponded_visibility": {
+      "label": "Visibilidad de la lista de no respondidos",
+      "HIDDEN": "Oculto",
+      "CREATOR_AND_ADMIN": "Solo creador y administradores",
+      "ALL_MEMBERS": "Visible para todos"
+    },
+    "unresponded_count": "Sin responder: {count}",
+    "unresponded_list": "Miembros sin responder"
+  },
+  "organization": {
+    "basicInfoEdit": {
+      "sectionTitle": "Información básica",
+      "title": "Editar información básica",
+      "name": "Nombre de la organización",
+      "nameKana": "Nombre de la organización (kana)",
+      "nickname1": "Apodo 1",
+      "nickname2": "Apodo 2",
+      "prefecture": "Prefectura",
+      "city": "Municipio",
+      "selectPlaceholder": "Seleccionar",
+      "nameRequired": "Introduce el nombre de la organización.",
+      "versionMissing": "La organización aún no se ha cargado. Recarga la página e inténtalo de nuevo.",
+      "saved": "Información básica actualizada."
+    },
+    "parent_chain": "Organizaciones superiores",
+    "children": "Sub-organizaciones",
+    "children_tab": "Sub-organizaciones",
+    "no_children": "No hay sub-organizaciones",
+    "hidden_org": "Organización oculta",
+    "archived": "Archivado",
+    "load_more": "Cargar más"
+  },
+  "teamShiftSettings": {
+    "title": "Configuración de recordatorios de turno",
+    "description": "Configura los tiempos de notificación de recordatorio antes de la fecha límite de presentación",
+    "reminder48h": "Recordatorio 48 horas antes",
+    "reminder24h": "Recordatorio 24 horas antes",
+    "reminder12h": "Recordatorio 12 horas antes (próximamente)",
+    "atLeastOneRequired": "Por favor activa al menos un recordatorio",
+    "saved": "Configuración guardada"
+  },
+  "corkboard": {
+    "pin": "Fijar",
+    "unpin": "Desfijar",
+    "pinned": "Fijado",
+    "pinLimitReached": "Espacios de fijado llenos (máx. 50). Desfija otra tarjeta primero",
+    "pinNote": {
+      "title": "Nota adhesiva",
+      "placeholder": "Escribir nota (opcional)",
+      "colorLabel": "Color de la nota",
+      "confirm": "Fijar",
+      "cancel": "Cancelar",
+      "colors": {
+        "white": "Blanco",
+        "yellow": "Amarillo",
+        "blue": "Azul",
+        "green": "Verde",
+        "red": "Rojo",
+        "purple": "Morado",
+        "gray": "Gris"
+      }
+    },
+    "pageTitle": "Mi tablón de corcho",
+    "totalCount": "{count} en total",
+    "sortByPinnedAt": "Ordenar: Fijado en (desc)",
+    "filterByBoard": "Filtrar por tablón",
+    "allBoards": "Todos los tablones",
+    "loadMore": "Cargar más",
+    "addNewPin": "Nuevo fijado",
+    "addNewPinHint": "Crea una tarjeta en un tablón de corcho y prensa el botón de fijado para fijarlo aquí.",
+    "back": "Volver",
+    "loadError": "Error al cargar tarjetas fijadas",
+    "unpinSuccess": "Tarjeta desfijada",
+    "unpinError": "Error al desfijar la tarjeta",
+    "deleteConfirm": "¿Eliminar esta tarjeta? Esta acción no se puede deshacer.",
+    "deleteSuccess": "Tarjeta eliminada",
+    "deleteError": "Error al eliminar la tarjeta",
+    "editTitle": "Editar nota fijada",
+    "editUserNoteLabel": "Nota",
+    "editUserNotePlaceholder": "Nota opcional para esta tarjeta fijada",
+    "saveSuccess": "Nota guardada",
+    "saveError": "Error al guardar la nota",
+    "boardLabel": "Tablón: {boardName}",
+    "pinnedAtLabel": "Fijado: {datetime}",
+    "noAccessLabel": "Sin acceso",
+    "deletedRefLabel": "El elemento referenciado fue eliminado",
+    "navigationFailed": "No se puede acceder al elemento referenciado",
+    "ariaUnpin": "Desfijar tarjeta",
+    "ariaEdit": "Editar nota",
+    "ariaDelete": "Eliminar tarjeta",
+    "ariaNavigate": "Abrir elemento referenciado",
+    "scopePersonal": "Personal",
+    "scopeTeam": "Equipo",
+    "scopeOrganization": "Organización",
+    "cardCount": "{count} tarjetas",
+    "sectionCount": "{count} secciones",
+    "boardNotFound": "Tablero no encontrado",
+    "boardLoadError": "No se pudo cargar el tablero",
+    "scopeMissing": "Falta información de ámbito",
+    "expandSection": "Expandir sección",
+    "collapseSection": "Contraer sección",
+    "refDeletedBadge": "Origen eliminado",
+    "ogImageAlt": "Imagen de vista previa del enlace",
+    "emptyBoard": "Este tablero aún no tiene tarjetas",
+    "ariaCard": "{cardType}: {title}",
+    "cardTypeReference": "Referencia",
+    "cardTypeMemo": "Nota",
+    "cardTypeUrl": "Enlace",
+    "cardTypeSectionHeader": "Encabezado",
+    "unsectioned": "Tarjetas sin sección",
+    "retry": "Reintentar",
+    "actions": {
+      "createCard": "Nueva tarjeta",
+      "editCard": "Editar tarjeta",
+      "deleteCard": "Eliminar tarjeta",
+      "archiveCard": "Archivar",
+      "unarchiveCard": "Desarchivar",
+      "pinCard": "Fijar",
+      "unpinCard": "Quitar fijación",
+      "createSection": "Nueva sección",
+      "editSection": "Editar sección",
+      "deleteSection": "Eliminar sección",
+      "addToSection": "Añadir a sección",
+      "moveToSection": "Mover a sección",
+      "removeFromSection": "Quitar de la sección"
+    },
+    "modal": {
+      "createTitle": "Crear nueva tarjeta",
+      "editTitle": "Editar tarjeta",
+      "cardType": "Tipo de tarjeta",
+      "cardTypeReference": "Referencia",
+      "cardTypeMemo": "Nota",
+      "cardTypeUrl": "Enlace",
+      "cardTypeSectionHeader": "Encabezado",
+      "colorLabel": "Etiqueta de color",
+      "colorWhite": "Blanco",
+      "colorYellow": "Amarillo",
+      "colorRed": "Rojo",
+      "colorBlue": "Azul",
+      "colorGreen": "Verde",
+      "colorPurple": "Morado",
+      "colorGray": "Gris",
+      "position": "Posición en el tablero",
+      "positionX": "Coordenada X",
+      "positionY": "Coordenada Y",
+      "referenceType": "Tipo de referencia",
+      "referenceTypeChatMessage": "Mensaje de chat",
+      "referenceTypeTimelinePost": "Publicación de cronología",
+      "referenceTypeBulletinThread": "Hilo de tablón",
+      "referenceTypeBlogPost": "Entrada de blog",
+      "referenceTypeFile": "Archivo",
+      "referenceTypeTeam": "Equipo",
+      "referenceTypeOrganization": "Organización",
+      "referenceTypeEvent": "Evento",
+      "referenceTypeDocument": "Documento",
+      "referenceTypeUrl": "URL",
+      "referenceId": "ID de referencia",
+      "referenceIdHint": "Introduce el ID numérico que aparece en la URL del contenido objetivo.",
+      "referenceIdPasteHint": "Pega la URL en el campo de abajo para extraer el ID automáticamente (opcional).",
+      "referenceUrlPaste": "Extraer ID desde una URL (opcional)",
+      "referenceUrlPastePlaceholder": "Pega una URL que empiece por https://…",
+      "referenceUrlExtractFailed": "No se pudo extraer un ID desde la URL. Introdúcelo manualmente.",
+      "referenceUrlExtractSuccess": "ID extraído de la URL.",
+      "url": "URL",
+      "urlPlaceholder": "https://example.com/...",
+      "title": "Título",
+      "titleOptional": "Título (opcional)",
+      "titleSectionHint": "Texto mostrado como encabezado",
+      "body": "Contenido",
+      "bodyPlaceholder": "Introduce el contenido de la nota...",
+      "userNote": "Nota",
+      "userNotePlaceholder": "Nota personal para esta tarjeta (opcional)",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "sectionCreateTitle": "Crear nueva sección",
+      "sectionEditTitle": "Editar sección",
+      "sectionTitle": "Nombre de la sección",
+      "sectionDescription": "Descripción (opcional)",
+      "sectionIsCollapsed": "Contraída por defecto",
+      "sectionIsCollapsedHint": "Si se activa, la sección aparece contraída al abrir el tablero.",
+      "sectionMenuTitle": "Elegir una sección"
+    },
+    "confirm": {
+      "deleteTitle": "Eliminar tarjeta",
+      "deleteMessage": "¿Eliminar esta tarjeta? Esta acción no se puede deshacer.",
+      "deleteSectionTitle": "¿Eliminar esta sección?",
+      "deleteSectionMessage": "Se eliminará esta sección. Las tarjetas se mantienen (quedarán sin sección)."
+    },
+    "toast": {
+      "createSuccess": "Tarjeta creada.",
+      "editSuccess": "Tarjeta actualizada.",
+      "deleteSuccess": "Tarjeta eliminada.",
+      "archiveSuccess": "Tarjeta archivada.",
+      "unarchiveSuccess": "Tarjeta desarchivada.",
+      "createError": "No se pudo crear la tarjeta.",
+      "editError": "No se pudo actualizar la tarjeta.",
+      "deleteError": "No se pudo eliminar la tarjeta.",
+      "archiveError": "No se pudo archivar.",
+      "unarchiveError": "No se pudo desarchivar.",
+      "pinSuccess": "Tarjeta fijada.",
+      "unpinSuccess": "Fijación retirada.",
+      "pinError": "No se pudo fijar la tarjeta.",
+      "unpinError": "No se pudo quitar la fijación.",
+      "sectionCreateSuccess": "Sección creada.",
+      "sectionEditSuccess": "Sección actualizada.",
+      "sectionDeleteSuccess": "Sección eliminada.",
+      "sectionCreateError": "No se pudo crear la sección.",
+      "sectionEditError": "No se pudo actualizar la sección.",
+      "sectionDeleteError": "No se pudo eliminar la sección.",
+      "cardAddToSectionSuccess": "Tarjeta añadida a la sección.",
+      "cardRemoveFromSectionSuccess": "Tarjeta retirada de la sección.",
+      "cardSectionChangeError": "No se pudo cambiar la sección de la tarjeta."
+    },
+    "ws": {
+      "disconnected": "Conexión perdida",
+      "reconnecting": "Reconectando…"
+    },
+    "validation": {
+      "required": "Este campo es obligatorio.",
+      "urlInvalid": "Introduce una URL válida.",
+      "referenceIdRequired": "Introduce un ID de referencia.",
+      "referenceTypeRequired": "Selecciona un tipo de referencia.",
+      "memoBodyRequired": "Introduce el contenido de la nota.",
+      "sectionHeaderTitleRequired": "Introduce el título del encabezado.",
+      "sectionTitleRequired": "Introduce un nombre de sección.",
+      "sectionTitleTooLong": "El nombre de la sección debe tener {max} caracteres o menos."
+    },
+    "ariaCardActions": "Acciones de la tarjeta",
+    "ariaCardEdit": "Editar esta tarjeta",
+    "ariaCardDelete": "Eliminar esta tarjeta",
+    "ariaCardArchive": "Archivar esta tarjeta",
+    "ariaCardUnarchive": "Desarchivar esta tarjeta",
+    "ariaCardPin": "Fijar esta tarjeta",
+    "ariaCardUnpin": "Quitar la fijación de esta tarjeta",
+    "ariaCardAddToSection": "Añadir o mover esta tarjeta a una sección",
+    "ariaSectionActions": "Acciones de la sección",
+    "ariaSectionEdit": "Editar esta sección",
+    "ariaSectionDelete": "Eliminar esta sección",
+    "dnd": {
+      "pinned": "Fijada (no se puede mover)",
+      "locked": "Sin permiso de edición (no se puede mover)",
+      "updateError": "Error al actualizar la posición de la tarjeta"
+    },
+    "snapshot": {
+      "refDeleted": "Origen eliminado",
+      "refDeletedAria": "El contenido referenciado ha sido eliminado",
+      "refUpdated": "El origen ha sido actualizado",
+      "refUpdatedAria": "El contenido referenciado se ha actualizado desde la creación de esta tarjeta",
+      "title": "Instantánea",
+      "noContent": "Sin vista previa disponible",
+      "openOriginal": "Abrir contenido original",
+      "openOriginalDisabled": "El contenido original no es accesible"
+    },
+    "ogp": {
+      "imageAlt": "Imagen de vista previa de {title}",
+      "imageAltFallback": "Imagen de vista previa del enlace",
+      "noImage": "Sin imagen",
+      "openLink": "Abrir enlace en una nueva pestaña"
+    },
+    "referenceHint": {
+      "timelinePost": "Introduce el ID numérico final de la URL de una publicación de la línea de tiempo (ej. /timeline/posts/123).",
+      "bulletinThread": "Introduce el ID numérico final de la URL de un hilo del tablón (ej. /bulletin/threads/456).",
+      "blogPost": "Introduce el ID numérico final de la URL de un artículo del blog (ej. /blog/posts/789).",
+      "chatMessage": "Usa la opción «Copiar ID del mensaje» del menú de acciones del chat y pega aquí el ID numérico.",
+      "file": "Introduce el ID numérico final de la URL de detalle del archivo (ej. /files/321).",
+      "team": "Introduce el ID numérico de la URL de detalle del equipo (ej. /teams/12).",
+      "organization": "Introduce el ID numérico de la URL de detalle de la organización (ej. /organizations/3).",
+      "event": "Introduce el ID numérico de la URL de detalle del evento (ej. /events/77).",
+      "document": "Introduce el ID numérico de la URL de detalle del documento (ej. /documents/55).",
+      "url": "Para crear una tarjeta URL, cambia el «Tipo de tarjeta» de arriba a URL."
+    },
+    "guide": {
+      "title": "Cómo usar Mi tablón",
+      "description": "Ve en un solo lugar todas las tarjetas que has fijado en tus tablones.",
+      "what": {
+        "title": "Qué es Mi tablón",
+        "body": "Las tarjetas que has fijado 📌 en cada tablón se reúnen aquí, ordenadas de más reciente a más antigua."
+      },
+      "open": {
+        "title": "Abrir una tarjeta",
+        "body": "Toca una tarjeta para ir a su referencia.",
+        "steps": {
+          "step1": "Toca una tarjeta para ir a la publicación, archivo o evento original.",
+          "step2": "Las tarjetas de URL se abren en una pestaña nueva.",
+          "step3": "Las tarjetas a las que ya no tienes acceso no se pueden abrir (se muestran como “Sin acceso”)."
+        }
+      },
+      "editNote": {
+        "title": "Editar una nota",
+        "body": "Puedes añadir una nota adhesiva a una tarjeta.",
+        "steps": {
+          "step1": "Pulsa el botón del lápiz en la esquina superior derecha de la tarjeta.",
+          "step2": "Escribe tu nota y guárdala.",
+          "step3": "La nota guardada se muestra en la tarjeta como una nota adhesiva."
+        }
+      },
+      "unpinDelete": {
+        "title": "Desfijar / Eliminar",
+        "body": "Quita de la lista o elimina las tarjetas que ya no necesitas.",
+        "steps": {
+          "step1": "Usa el botón 📌 para desfijar; la tarjeta sale de esta lista (la tarjeta del tablón original permanece).",
+          "step2": "Usa el botón 🗑 para eliminar una tarjeta. La eliminación no se puede deshacer."
+        }
+      },
+      "filterAndPin": {
+        "title": "Filtrar / Fijar nueva",
+        "body": "Filtra las tarjetas mostradas o fija nuevas.",
+        "steps": {
+          "step1": "Usa el selector de tablones en la barra de herramientas para mostrar solo las tarjetas de un tablón.",
+          "step2": "Usa “Cargar más” para mostrar tarjetas adicionales.",
+          "step3": "Usa el botón “Fijar nueva” para ir a un tablón y fijar 📌 una tarjeta."
+        }
+      }
+    }
+  },
+  "schedule": {
+    "filter": {
+      "allTeamsOrgs": "Equipos y organizaciones (todos)",
+      "selectScope": "Seleccionar destino"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "Personal",
+        "unknown": "Otros eventos",
+        "loadError": {
+          "summary": "Error al cargar las capas",
+          "detail": "Los filtros de equipo/organización no están disponibles temporalmente. Los eventos siguen mostrándose. Vuelve a intentarlo más tarde."
+        },
+        "hiddenNotice": "La capa en la que lo creaste está oculta",
+        "showIt": "Mostrar",
+        "title": "Capas",
+        "count": "{count} capas",
+        "color": "Cambiar color",
+        "colorAuto": "Restablecer a automático"
+      },
+      "more": "+{count} más",
+      "today": "Hoy",
+      "dayDetail": {
+        "title": "Eventos del {date}"
+      },
+      "empty": "No hay eventos en este período",
+      "view": {
+        "month": "Mes",
+        "week": "Semana",
+        "agenda": "Agenda"
+      },
+      "week": {
+        "allDay": "Todo el día",
+        "now": "Ahora",
+        "dragHint": "Arrastra para crear un evento",
+        "dragHintTouch": "Mantén pulsado y arrastra para crear un evento",
+        "selectedRange": "{start} – {end}"
+      },
+      "a11y": {
+        "selecting": "Seleccionando de {start} a {end}",
+        "emptySlot": "Disponible",
+        "time": "{hour}:{minute}",
+        "weekGrid": "Semana del {range}",
+        "slot": "{date} {time} {content}",
+        "allDayList": "Eventos de todo el día"
+      },
+      "error": {
+        "invalidColor": "Formato de color no válido",
+        "notMember": "No puedes cambiar la configuración de esta capa",
+        "layerLimit": "Se alcanzó el límite de configuraciones de capa",
+        "colorResetRefreshFailed": "El color se restableció a automático, pero no se pudo actualizar el calendario. Recarga la página."
+      }
+    }
+  },
+  "handoff": {
+    "button": {
+      "passToOther": "Pasar a otro miembro"
+    },
+    "dialog": {
+      "title": "Pasar tarea"
+    },
+    "field": {
+      "recipients": "Destinatarios",
+      "recipientsPlaceholder": "Seleccionar miembros",
+      "statusLabel": "Estado",
+      "message": "Mensaje (opcional)",
+      "messagePlaceholder": "Mensaje opcional (hasta 500 caracteres)"
+    },
+    "confirm": {
+      "title": "Confirmar",
+      "body": "Pasar \"{title}\" a {names}. Estado: \"{label}\". ¿Continuar?",
+      "button": "Pasar",
+      "recipientSingle": "{name}",
+      "recipientWithOthers": "{name} y {count} más"
+    },
+    "success": "Tarea pasada",
+    "error": {
+      "loadMembers": "Error al cargar miembros",
+      "loadLabels": "Error al cargar etiquetas de estado",
+      "loadHistory": "Error al cargar historial",
+      "recipientsRequired": "Por favor selecciona destinatarios",
+      "labelRequired": "Por favor selecciona una etiqueta de estado",
+      "notAllowedPersonal": "Las tareas personales no se pueden pasar",
+      "invalidRecipient": "Destinatario no encontrado",
+      "labelScopeMismatch": "La etiqueta seleccionada no se puede usar en el alcance de esta tarea",
+      "milestoneLocked": "No se puede pasar una tarea con un hito bloqueado",
+      "validation": "Error de validación",
+      "notFound": "Tarea no encontrada (puede haber sido eliminada o no tienes permiso)",
+      "generic": "Error al pasar la tarea"
+    },
+    "timeline": {
+      "title": "Historial de transferencias",
+      "empty": "Sin historial todavía",
+      "deletedLabel": "(eliminado)"
+    }
+  },
+  "common": {
+    "cancel": "Cancelar",
+    "search": "Buscar",
+    "edit": "Editar",
+    "save": "Guardar",
+    "detail": "Detalles",
+    "resume": {
+      "title": "Currículum y hoja de vida",
+      "listTitle": "Versiones del currículum",
+      "createNew": "Crear nuevo",
+      "edit": "Editar",
+      "duplicate": "Duplicar",
+      "delete": "Eliminar",
+      "save": "Guardar",
+      "saved": "Guardado",
+      "saving": "Guardando...",
+      "conflictError": "Conflicto de edición detectado. Recargando la versión más reciente.",
+      "preview": "Vista previa",
+      "export": "Exportar",
+      "exportPdf": "Descargar PDF",
+      "exportExcel": "Descargar Excel",
+      "rirekisho": "Currículum",
+      "shokumukeirekisho": "Hoja de vida laboral",
+      "educations": "Educación",
+      "careers": "Experiencia laboral",
+      "qualifications": "Licencias y calificaciones",
+      "skills": "Habilidades",
+      "addRow": "Agregar",
+      "deleteRow": "Eliminar",
+      "isCurrent": "Actualmente empleado",
+      "includeInRirekisho": "Incluir en currículum",
+      "includeInShokumukeireki": "Incluir en hoja de vida",
+      "western": "Año occidental",
+      "japanese": "Era japonesa",
+      "photoUpload": "Foto de identificación",
+      "uploadPhoto": "Seleccionar foto",
+      "deletePhoto": "Eliminar foto",
+      "noVersions": "Sin currículums todavía. Por favor crea uno.",
+      "versionCount": "{n} versión(es)",
+      "confirmDelete": "¿Eliminar esta versión del currículum?",
+      "motivation": "Motivación",
+      "selfPr": "Autopresentación, habilidades especiales y hobbies",
+      "personalRequest": "Condiciones preferidas",
+      "careerSummary": "Resumen profesional",
+      "skillsSummary": "Experiencia, conocimientos y habilidades relevantes",
+      "profileNote": "El nombre, fecha de nacimiento y género se llenan automáticamente desde tu perfil",
+      "readOnlyField": "Se puede cambiar en tu perfil",
+      "loadError": "Error al cargar el currículum",
+      "saveError": "Error al guardar",
+      "deleteError": "Error al eliminar",
+      "duplicateError": "Error al duplicar",
+      "exportError": "Error al exportar",
+      "photoUploadError": "Error al subir foto",
+      "photoDeleteError": "Error al eliminar foto",
+      "deleteSuccess": "Eliminado",
+      "duplicateSuccess": "Duplicado",
+      "exportSuccess": "Descarga lista",
+      "photoUploadSuccess": "Foto subida",
+      "photoDeleteSuccess": "Foto eliminada",
+      "previewPdf": "Vista previa PDF",
+      "downloadPdf": "Descargar PDF",
+      "downloadExcel": "Descargar Excel",
+      "entryYear": "Año",
+      "entryMonth": "Mes",
+      "endYear": "Año de salida",
+      "endMonth": "Mes de salida",
+      "companyName": "Nombre de empresa",
+      "department": "Departamento / Cargo",
+      "employmentType": "Tipo de empleo",
+      "businessSummary": "Descripción del negocio",
+      "jobDescription": "Descripción del puesto",
+      "achievements": "Logros",
+      "qualificationName": "Nombre de calificación / licencia",
+      "note": "Notas",
+      "skillName": "Nombre de habilidad",
+      "skillLevel": "Nivel de dominio",
+      "skillLevels": {
+        "BEGINNER": "Principiante",
+        "INTERMEDIATE": "Intermedio",
+        "ADVANCED": "Avanzado",
+        "EXPERT": "Experto"
+      },
+      "currentAddress": "Dirección actual",
+      "currentAddressKana": "Dirección actual (fonética)",
+      "contactAddress": "Dirección de contacto",
+      "contactAddressKana": "Dirección de contacto (fonética)",
+      "contactPhone": "Teléfono de contacto",
+      "contactEmail": "Email de contacto",
+      "commuteMinutes": "Tiempo de traslado (minutos)",
+      "dependentsCount": "Número de dependientes (excl. cónyuge)",
+      "hasSpouse": "Estado civil",
+      "spouseSupport": "Sostén del cónyuge",
+      "headerSection": "Información básica",
+      "eraFormat": "Formato de año",
+      "versionTitle": "Nombre de versión",
+      "moveUp": "Mover arriba",
+      "moveDown": "Mover abajo",
+      "conflictRetry": "Recargar",
+      "previewLoading": "Generando vista previa...",
+      "exportLoading": "Generando archivo de exportación...",
+      "previewError": "Error al generar vista previa",
+      "backToList": "Volver a la lista",
+      "backToEditor": "Volver al editor",
+      "description": "Descripción",
+      "addressSection": "Dirección y contacto",
+      "entryDate": "Ingreso",
+      "endDate": "Salida",
+      "acquiredYear": "Año de obtención",
+      "acquiredMonth": "Mes de obtención",
+      "photoHint": "JPEG / PNG, máx. 5MB, ratio recomendado 3:4",
+      "skillsSummaryHint": "Describe libremente tu experiencia, conocimientos y habilidades (añade habilidades estructuradas en la sección de habilidades de abajo)",
+      "excelPreviewUnavailable": "La vista previa de archivos Excel no está disponible en el navegador",
+      "downloadLabel": "Descargar {format} ({type})"
+    },
+    "menu": "Menú",
+    "scopeShell": {
+      "memberCount": "{count} miembro | {count} miembros",
+      "supporterCount": "{count} seguidor | {count} seguidores",
+      "supporter_cancel_confirm_title": "¿Dejar de apoyar?",
+      "supporter_cancel_confirm_body": "Dejarás de apoyar a {name}. ¿Estás seguro?",
+      "supporter_cancel_action": "Dejar",
+      "supporter_registered": "Registrado como seguidor",
+      "supporter_applied": "Solicitud de seguidor enviada",
+      "supporter_canceled": "Has dejado de apoyar",
+      "follow_approved_badge": "Eres seguidor/a",
+      "follow_unfollow_aria": "Dejar de apoyar",
+      "follow_pending_label": "Solicitud pendiente",
+      "follow_pending_cancel_button": "Cancelar",
+      "follow_apply_button": "Convertirse en seguidor/a",
+      "leave_action": "Salir",
+      "load_error_title": "No se pudo cargar la información",
+      "load_error_body": "Inténtalo de nuevo más tarde. Puede estar oculto si no tienes permiso.",
+      "back_to_dashboard": "Volver al panel",
+      "retry": "Reintentar",
+      "slow_loading": "La carga está tardando más de lo esperado",
+      "join_request_applied": "Se envió la solicitud de ingreso",
+      "follow_fetch_error": "No se pudo obtener el estado de seguimiento",
+      "follow_permission_sync_error_title": "Error al actualizar los permisos",
+      "follow_permission_sync_error_body": "Dejaste de seguir, pero no se pudieron actualizar tus permisos. Inténtalo de nuevo."
+    },
+    "unsavedChanges": {
+      "title": "Cambios sin guardar",
+      "confirmLeave": "Tienes cambios sin guardar. Si sales de esta página, se perderá lo que has introducido. ¿Continuar?"
+    },
+    "moreActions": "Más acciones",
+    "openNavigation": "Abrir navegación"
+  },
+  "teamHub": {
+    "pageTitle": "Mis equipos",
+    "createTeam": "Crear equipo",
+    "searchTeam": "Buscar equipos",
+    "searchPageTitle": "Búsqueda de equipos",
+    "announcements": "Anuncios del equipo",
+    "myTeams": "Mis equipos",
+    "noTeams": "Todavía no te has unido a ningún equipo",
+    "noTeamsHint": "Crea un equipo o únete a uno existente",
+    "noSearchResults": "No se encontraron equipos que coincidan con tu búsqueda",
+    "viewGrid": "Vista de cuadrícula",
+    "viewList": "Vista de lista",
+    "memberCount": "{count} miembros",
+    "supporterRegistered": "Registrado como seguidor",
+    "becomeSupporter": "Convertirse en seguidor",
+    "supporterSuccess": "Registrado como seguidor",
+    "supporterError": "Error al seguir",
+    "guide": {
+      "title": "Cómo buscar equipos",
+      "description": "Define los criterios para encontrar equipos públicos, consultar sus detalles y registrarte como seguidor.",
+      "searchConditions": {
+        "title": "Definir los criterios de búsqueda",
+        "body": "Combina una palabra clave, una prefectura y una categoría de equipo para acotar los resultados.",
+        "steps": {
+          "step1": "Introduce una palabra clave y selecciona los filtros que necesites.",
+          "step2": "Ejecuta la búsqueda para ver los equipos que coinciden."
+        }
+      },
+      "results": {
+        "title": "Revisar los resultados",
+        "body": "Cada tarjeta muestra el nombre, la categoría, la zona de actividad y el número de miembros del equipo.",
+        "steps": {
+          "step1": "Selecciona un equipo que te interese de la lista.",
+          "step2": "Abre su página de detalles para obtener más información."
+        }
+      },
+      "supporter": {
+        "title": "Registrarse como seguidor",
+        "body": "Los equipos a los que no perteneces y que aceptan seguidores muestran un botón de registro.",
+        "steps": {
+          "step1": "Selecciona «Convertirse en seguidor» en la tarjeta del equipo.",
+          "step2": "Tras registrarte, la tarjeta muestra el estado de registro."
+        }
+      },
+      "createAndMove": {
+        "title": "Crear un equipo y abrir sus detalles",
+        "body": "Puedes crear un equipo con el botón de la parte superior derecha. Al terminar, se abrirá su página de detalles.",
+        "steps": {
+          "step1": "Selecciona «Crear equipo» e introduce la información necesaria.",
+          "step2": "Al terminar, se abrirá la página de detalles del nuevo equipo."
+        }
+      }
+    },
+    "folders": "Organización de carpetas"
+  },
+  "orgHub": {
+    "pageTitle": "Mis organizaciones",
+    "createOrg": "Crear organización",
+    "searchOrg": "Buscar organizaciones",
+    "searchPageTitle": "Búsqueda de organizaciones",
+    "announcements": "Anuncios de la organización",
+    "myOrgs": "Mis organizaciones",
+    "noOrgs": "Todavía no te has unido a ninguna organización",
+    "noOrgsHint": "Crea una organización o únete a una existente",
+    "noSearchResults": "No se encontraron organizaciones que coincidan con tu búsqueda",
+    "viewGrid": "Vista de cuadrícula",
+    "viewList": "Vista de lista",
+    "memberCount": "{count} miembros",
+    "supporterRegistered": "Registrado como seguidor",
+    "becomeSupporter": "Convertirse en seguidor",
+    "supporterSuccess": "Registrado como seguidor",
+    "supporterError": "Error al seguir",
+    "folders": "Organización de carpetas"
+  },
+  "scopeFolder": {
+    "folders": "Carpetas",
+    "addFolder": "Agregar carpeta",
+    "editFolder": "Editar carpeta",
+    "deleteFolder": "Eliminar carpeta",
+    "deleteConfirm": "¿Eliminar esta carpeta? Los equipos serán removidos de la carpeta pero no eliminados.",
+    "folderName": "Nombre de carpeta",
+    "folderColor": "Color de carpeta",
+    "uncategorized": "Sin categoría",
+    "moveToFolder": "Mover a carpeta",
+    "removeFromFolder": "Remover de carpeta",
+    "noFolders": "Sin carpetas todavía",
+    "emptyFolder": "Esta carpeta está vacía",
+    "limitExceeded": "Puedes crear hasta 20 carpetas",
+    "nameDuplicate": "Ya existe una carpeta con el mismo nombre",
+    "title": "Mis carpetas",
+    "untagged": "Sin categoría",
+    "all": "Todo",
+    "createNew": "Crear nueva carpeta",
+    "assignOnJoin": {
+      "label": "Asignar a carpeta (opcional)",
+      "defaultHint": "Si no se selecciona, se colocará en Sin categoría",
+      "unselected": "Sin seleccionar (se asigna a Sin categoría)"
+    },
+    "notifications": {
+      "byFolder": "Notificaciones por carpeta"
+    },
+    "nav": {
+      "allList": "Todo (lista)",
+      "createNew": "Agregar carpeta",
+      "manage": "Gestionar carpetas",
+      "teams": "Equipos",
+      "organizations": "Organizaciones",
+      "showAll": "Ver todo",
+      "foldersSection": "Carpetas",
+      "quickJumpSection": "Ir directamente",
+      "sectionMember": "Miembros",
+      "sectionSupporter": "Seguidores"
+    },
+    "error": {
+      "typeMismatch": "El tipo de ámbito no coincide",
+      "defaultImmutable": "No se puede modificar Sin categoría"
+    }
+  },
+  "systemAdmin": {
+    "logs": {
+      "title": "Registros del sistema",
+      "quickLink": "Registros del sistema",
+      "typeAll": "Todos",
+      "typeSlowQuery": "Consulta lenta",
+      "typeSsrError": "Error SSR",
+      "dateLabel": "Fecha",
+      "fetchButton": "Obtener",
+      "columns": {
+        "type": "Tipo",
+        "date": "Fecha",
+        "fileName": "Nombre de archivo",
+        "sizeKb": "Tamaño (KB)",
+        "download": "Descargar"
+      },
+      "empty": "No se encontraron archivos de registro",
+      "downloadButton": "Descargar"
+    }
+  },
+  "admin": {
+    "quickLinks": {
+      "announcements": "Gestión de anuncios",
+      "featureFlags": "Indicadores de función",
+      "maintenance": "Mantenimiento",
+      "modules": "Gestión de módulos",
+      "templates": "Plantillas",
+      "moderation": "Moderación",
+      "users": "Gestión de usuarios",
+      "organizations": "Gestión de organizaciones",
+      "feedback": "Comentarios",
+      "reports": "Informes",
+      "advertisers": "Gestión de anunciantes",
+      "adRateCards": "Tarifas de anuncios",
+      "adCreditLimitRequests": "Solicitudes de límite de crédito",
+      "affiliateSettings": "Configuración de afiliados",
+      "auditLogs": "Registros de auditoría",
+      "shiftBudget": "Presupuesto de turno",
+      "betaRestriction": "Restricción beta",
+      "errorReports": "Informes de errores",
+      "gdprPurge": "Estado de Purga GDPR",
+      "feedbackInbox": "Buzón de comentarios (Global)",
+      "billing": "Datos maestros de facturación",
+      "priceRevisions": "Revisiones de precios",
+      "betaPerks": "Gestión de ventajas beta",
+      "villageCreationRequests": "Solicitudes de creación de aldeas",
+      "seasonalWallpapers": "Fondos de pantalla de temporada",
+      "pointCardSynonyms": "Sinónimos de tarjetas de puntos",
+      "appeals": "Apelaciones"
+    },
+    "impersonation": {
+      "banner": "Suplantando a: {label}",
+      "exit": "Salir"
+    },
+    "businessAlert": {
+      "title": "Alertas de negocio",
+      "viewAll": "Ver todo",
+      "newReservations": "Nuevas reservas",
+      "pendingApproval": "Pendiente de aprobación",
+      "unreadInquiries": "Consultas",
+      "totalPending": "{count} elementos pendientes",
+      "noAlerts": "Sin alertas",
+      "allClear": "No hay elementos pendientes"
+    }
+  },
+  "notificationCredit": {
+    "title": "Gestión de créditos de notificación",
+    "balanceTitle": "Saldo y uso",
+    "packageTitle": "Comprar créditos",
+    "historyTitle": "Historial de compras",
+    "freeUsage": "Uso de cuota gratuita este mes",
+    "creditBalance": "Saldo de créditos",
+    "unit": "mensajes",
+    "credits": "Créditos otorgados",
+    "price": "Precio",
+    "purchaseButton": "Comprar",
+    "purchaseSuccess": "Compra de créditos completada",
+    "purchaseCancelled": "Compra cancelada",
+    "checkoutFailed": "Error al crear la sesión de pago",
+    "noHistory": "Sin historial de compras",
+    "gracePeriodAlert": "Saldo insuficiente: período de gracia activo",
+    "gracePeriodDescription": "El período de gracia termina: {endsAt}. El exceso de {debt} mensajes se compensará el 1 del próximo mes.",
+    "table": {
+      "paidAt": "Fecha de pago",
+      "packageName": "Nombre del paquete",
+      "priceJpy": "Monto",
+      "credits": "Mensajes",
+      "expiresAt": "Vencimiento",
+      "status": "Estado"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "paid": "Pagado",
+      "cancelled": "Cancelado",
+      "refunded": "Reembolsado"
+    }
+  },
+  "share": {
+    "title": "Compartir",
+    "copyLink": "Copiar enlace",
+    "copied": "¡Copiado!",
+    "shareVia": "Compartir en",
+    "openInApp": "Abrir en la app",
+    "mail": "Enviar por correo",
+    "x": "Compartir en X",
+    "threads": "Compartir en Threads",
+    "line": "Compartir en LINE"
+  },
+  "activity": {
+    "pageTitle": "Registros de actividad",
+    "addRecord": "Agregar registro",
+    "participantCount": "{count} participantes",
+    "noRecords": "No hay registros de actividad",
+    "loadError": "Error al cargar los registros de actividad",
+    "create": {
+      "dialogTitle": "Agregar registro de actividad",
+      "templateLabel": "Plantilla",
+      "templatePlaceholder": "Selecciona una plantilla",
+      "noTemplatesTitle": "Aún no hay plantillas",
+      "noTemplatesBody": "Para crear un registro de actividad, primero crea una plantilla.",
+      "goToTemplates": "Crear plantilla",
+      "titleLabel": "Título",
+      "titlePlaceholder": "Título de la actividad",
+      "dateLabel": "Fecha de la actividad",
+      "descriptionLabel": "Descripción (opcional)",
+      "visibilityLabel": "Visibilidad",
+      "visibilityPublic": "Público",
+      "visibilityMembersOnly": "Solo miembros",
+      "requiredFieldError": "Completa los campos obligatorios",
+      "saveSuccess": "Registro de actividad agregado",
+      "saveError": "Error al agregar el registro de actividad",
+      "submit": "Agregar",
+      "scopeResolveError": "No se pudo identificar el destino",
+      "templatesLoadError": "Error al cargar las plantillas",
+      "draftHint": "Puedes guardar un borrador solo con un título y la fecha de actividad. Las plantillas y campos personalizados se pueden añadir después.",
+      "saveDraft": "Guardar borrador",
+      "draftSaved": "Borrador guardado",
+      "draftRestored": "Entrada anterior restaurada",
+      "draftSuccess": "Guardado como borrador"
+    },
+    "statusLabel": {
+      "DRAFT": "Borrador",
+      "PUBLISHED": "Publicado"
+    },
+    "list": {
+      "filterAll": "Todos",
+      "filterDraft": "Borrador",
+      "editDraft": "Editar y publicar"
+    },
+    "publish": {
+      "success": "Registro de actividad publicado",
+      "error": "Error al publicar"
+    },
+    "guide": {
+      "title": "Cómo usar los registros de actividad",
+      "description": "Registra las actividades de tu equipo u organización (entrenamientos, partidos, eventos, etc.) para revisarlas y compartirlas.",
+      "list": {
+        "title": "Ver registros",
+        "body": "Las actividades se muestran como tarjetas en orden cronológico inverso. Puedes ver rápidamente el título, la fecha, el lugar y el número de participantes. Los registros marcados como «Público» muestran un botón para compartir el enlace externamente."
+      },
+      "add": {
+        "title": "Agregar un registro",
+        "body": "Pulsa «Agregar registro» en la parte superior derecha para crear un nuevo registro de actividad.",
+        "steps": {
+          "step1": "Pulsa «Agregar registro» en la parte superior derecha",
+          "step2": "Elige una plantilla",
+          "step3": "Introduce el título y la fecha de la actividad (ambos obligatorios)",
+          "step4": "Selecciona la visibilidad (Solo miembros / Público)",
+          "step5": "Rellena los campos personalizados de la plantilla si los hay",
+          "step6": "Pulsa «Agregar» para guardar el registro en la lista"
+        }
+      },
+      "template": {
+        "title": "Cuando se necesita una plantilla",
+        "body": "Es necesaria una plantilla para crear un registro. Si aún no existe ninguna, aparece una pantalla de orientación en lugar del formulario. En equipos, ve primero a la página «Plantillas de actividad» para crear una plantilla y luego añade tu registro."
+      },
+      "visibility": {
+        "title": "Visibilidad (quién puede ver el registro)",
+        "members_only_label": "Solo miembros",
+        "members_only_desc": "Solo los miembros del equipo u organización pueden ver este registro.",
+        "public_label": "Público",
+        "public_desc": "Cualquier persona con el enlace puede verlo. Aparece un botón de compartir en la lista para facilitar la difusión externa.",
+        "note": "La visibilidad predeterminada está determinada por la configuración de la plantilla."
+      }
+    },
+    "detail": {
+      "open": "Ver detalles",
+      "publish": "Publicar",
+      "saved": "Borrador guardado",
+      "participants": "Participantes",
+      "participantsHint": "Selecciona a los miembros que participaron realmente",
+      "participantsRequired": "Para publicar esta plantilla se necesitan participantes",
+      "noParticipants": "No hay participantes registrados",
+      "attachments": "Archivos adjuntos",
+      "attachment": "Archivo adjunto {id}",
+      "sourceSchedule": "Evento original",
+      "openSchedule": "Abrir evento",
+      "scheduleUnavailable": "No se puede ver el evento original",
+      "scheduleCancelled": "El evento original se ha cancelado",
+      "endDate": "Fecha de fin (si dura varios días)",
+      "startTime": "Hora de inicio",
+      "endTime": "Hora de fin",
+      "edit": "Editar",
+      "save": "Guardar",
+      "updated": "Registro de actividad guardado"
+    },
+    "sync": {
+      "title": "Revisar los cambios del evento y del registro de actividad",
+      "description": "Elige qué cambios del evento se reflejan en el registro de actividad. Los campos de reflejo automático tampoco se modifican si eliges «Guardar solo el evento».",
+      "record": "Registro de actividad {id}",
+      "automatic": "Reflejo automático",
+      "current": "Registro actual",
+      "updated": "Evento tras el cambio",
+      "scheduleOnly": "Guardar solo el evento",
+      "apply": "Reflejar los campos seleccionados y guardar",
+      "fields": {
+        "title": "Título",
+        "activityDate": "Fecha de la actividad",
+        "activityEndDate": "Fecha de fin",
+        "activityTimeStart": "Hora de inicio",
+        "activityTimeEnd": "Hora de fin"
+      }
+    },
+    "schedule": {
+      "create": "Crear un registro de actividad para este evento",
+      "records": "Registros de actividad",
+      "loadError": "No se pudieron cargar los registros de actividad"
+    },
+    "planned": "Previsto",
+    "unpublished": "Sin publicar",
+    "metadataOnly": "El contenido de la actividad aún no se ha publicado. Aquí solo se muestra la información del evento original.",
+    "delete": {
+      "title": "Eliminar registro de actividad",
+      "action": "Eliminar",
+      "confirm": "Se eliminará este registro de actividad. El evento original se conservará.",
+      "success": "Registro de actividad eliminado"
+    }
+  },
+  "dashboard": {
+    "team_reservation_link": "Gestión de reservas"
+  },
+  "organizationTeamSearch": {
+    "title": "Buscar tiendas",
+    "keywordPlaceholder": "Buscar por nombre de tienda",
+    "prefectureLabel": "Prefectura",
+    "cityLabel": "Ciudad / Municipio",
+    "templateLabel": "Categoría",
+    "searchButton": "Buscar",
+    "resetButton": "Restablecer filtros",
+    "empty": "No se encontraron tiendas",
+    "error": "Error en la búsqueda",
+    "loading": "Buscando...",
+    "resultCount": "{count} resultados",
+    "anyPrefecture": "Cualquiera",
+    "anyCity": "Cualquiera",
+    "anyTemplate": "Cualquiera",
+    "loginToSeeDetails": "Inicia sesión para ver detalles",
+    "retry": "Reintentar",
+    "organizationNotFound": "Organización no encontrada",
+    "rateLimitExceeded": "Demasiadas solicitudes. Inténtalo de nuevo más tarde"
+  },
+  "publicTeamDetail": {
+    "loginToSeeMembers": "Inicia sesión para ver los miembros",
+    "loginToSeeAnnouncements": "Inicia sesión para ver los anuncios",
+    "loginToSeeChat": "Inicia sesión para ver el chat",
+    "loginToSeeMore": "Inicia sesión para ver más",
+    "loginCtaDescription": "Inicia sesión para ver miembros, anuncios, chat y más detalles",
+    "loginButton": "Iniciar sesión",
+    "signupButton": "Registrarse",
+    "mapTitle": "Ubicación de la tienda",
+    "noMap": "Sin información de mapa",
+    "philosophyTitle": "Filosofía",
+    "establishedLabel": "Fundado",
+    "homepageLabel": "Sitio web oficial",
+    "memberCountSuffix": " empleados",
+    "backToSearch": "Volver a la lista de tiendas",
+    "notFound": "Tienda no encontrada"
+  },
+  "favorites": {
+    "title": "Favoritos",
+    "empty": "Aún no hay favoritos. Añádelos con la ⭐ en las páginas de equipo o pueblo",
+    "showMore": "Mostrar {count} más",
+    "collapse": "Contraer",
+    "open": "Abrir",
+    "edit": "Editar",
+    "remove": "Eliminar",
+    "toggleAdd": "Añadir {name} a favoritos",
+    "toggleRemove": "Eliminar {name} de favoritos",
+    "toggleError": "Error al actualizar el favorito",
+    "unavailable": "Este elemento ya no está disponible",
+    "limitReached": "Puedes registrar hasta {max} favoritos",
+    "addSuccess": "Añadido a favoritos",
+    "removeSuccess": "Eliminado de favoritos",
+    "reorderSuccess": "Orden guardado",
+    "quickEditTitle": "Edición rápida",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "loadError": "Error al cargar los favoritos",
+    "saveError": "Error al guardar",
+    "removeConfirm": "¿Seguro que quieres eliminarlo?",
+    "dragHandle": "Reordenar",
+    "labelFavorited": "Guardado",
+    "entityType": {
+      "TEAM": "Equipo",
+      "ORGANIZATION": "Organización",
+      "KB_PAGE": "KB",
+      "BLOG_AUTHOR": "Autor",
+      "VILLAGE": "Aldea"
+    },
+    "restoredToast": "Restaurado a favoritos",
+    "restoreFailed": "No se pudo deshacer"
+  },
+  "succession": {
+    "legalFilings": {
+      "title": "Preparación de trámites legales",
+      "create": "Crear trámite",
+      "filingType": "Tipo de trámite",
+      "absenteePropertyManager": "Solicitud de administrador de bienes de persona ausente",
+      "inheritanceLiquidator": "Solicitud de liquidador de herencia",
+      "buildEvidence": "Generar ZIP de evidencias",
+      "downloadEvidence": "Descargar ZIP de evidencias",
+      "evidenceNotReady": "ZIP de evidencias no generado",
+      "warningLegalCheck": "Esta función es v1 (sin revisión legal). Consulte a un abogado antes de presentar.",
+      "residentRegistryId": "ID del registro de residentes",
+      "dwellingUnitId": "ID de unidad habitacional",
+      "note": "Notas",
+      "createdAt": "Fecha del trámite",
+      "evidenceBuiltAt": "ZIP de evidencias generado en",
+      "externalCaseNumber": "Número de caso externo",
+      "filedExternallyAt": "Presentado externamente en",
+      "action": "Acciones",
+      "cancel": "Cancelar",
+      "submit": "Crear trámite",
+      "createSuccess": "Trámite legal creado",
+      "createError": "Error al crear el trámite",
+      "evidenceBuildSuccess": "ZIP de evidencias generado",
+      "evidenceBuildError": "Error al generar ZIP de evidencias",
+      "downloadError": "Error al obtener URL de descarga",
+      "fetchError": "Error al cargar los trámites legales",
+      "empty": "Sin trámites legales todavía"
+    }
+  },
+  "team": {
+    "mapEmbedUrlLabel": "Mapa de tienda (URL de inserción de Google Maps)",
+    "mapEmbedUrlPlaceholder": "https://www.google.com/maps/embed?...",
+    "mapEmbedUrlWarning": "⚠️ Esta URL es visible para usuarios no autenticados",
+    "mapEmbedUrlHelp": "En Google Maps, haz clic en \"Compartir > Insertar mapa > Copiar HTML\" y pega la URL de src= aquí",
+    "mapEmbedUrlInvalidFormat": "Debe ser una URL de inserción de Google Maps (https://www.google.com/maps/embed?...)",
+    "mapEmbedUrlSaved": "URL del mapa de la tienda guardada",
+    "timezone": {
+      "label": "Zona horaria de reservas",
+      "help": "Zona horaria IANA para interpretar las horas de inicio y fin.",
+      "placeholder": "p. ej., Asia/Tokyo",
+      "invalid": "Introduce una zona horaria IANA válida",
+      "saved": "Zona horaria guardada"
+    },
+    "regionCode": {
+      "label": "Ubicación (prefectura / municipio)",
+      "help": "Al seleccionar una prefectura y un municipio se establecen los valores predeterminados para la búsqueda regional y las publicaciones.",
+      "prefecture": "Prefectura",
+      "city": "Municipio",
+      "prefecturePlaceholder": "Seleccionar prefectura",
+      "cityPlaceholder": "Seleccionar municipio",
+      "saved": "Ubicación guardada"
+    }
+  },
+  "event": {
+    "chatOpen": "Abrir chat"
+  },
+  "surveyPage": {
+    "bulletinOpen": "Discutir en el tablón"
+  },
+  "scopeDashboard": {
+    "storageSummary": {
+      "title": "Almacenamiento",
+      "personal": "Personal",
+      "team": "Equipo",
+      "organization": "Organización",
+      "details": "Ver detalles",
+      "error": "No se pudo cargar el almacenamiento",
+      "retry": "Reintentar",
+      "unconfigured": "Cuota no configurada",
+      "not_available": "Sin datos de almacenamiento",
+      "meterLabel": "Uso de almacenamiento de {scope}",
+      "meterValue": "Uso {percent}%",
+      "warningTitle": "Límite de almacenamiento cercano",
+      "warningMessage": "{scope} usa el {percent}%. Considera actualizar a un plan de pago.",
+      "viewPlans": "Ver planes",
+      "checkStorage": "Comprobar almacenamiento",
+      "cancel": "Cancelar"
+    },
+    "tabs": {
+      "personal": "Personal",
+      "team": "Equipo",
+      "organization": "Organización"
+    },
+    "prevPanel": "Panel anterior",
+    "nextPanel": "Panel siguiente",
+    "switchedTo": "Cambiado al panel {name}",
+    "searchTeam": "Buscar equipos",
+    "searchOrganization": "Buscar organizaciones",
+    "tagBar": {
+      "filterAll": "Todos",
+      "folderFilter": "Filtrar por carpeta",
+      "prevPage": "Página anterior",
+      "nextPage": "Página siguiente",
+      "reorder": "Cambiar orden de visualización",
+      "goToScopePage": "Abrir la página de {name}",
+      "empty": "No perteneces a ningún equipo u organización",
+      "folderEmpty": "No hay alcances en esta carpeta",
+      "loadError": "Error al cargar la lista de etiquetas"
+    },
+    "orderDialog": {
+      "title": "Orden de visualización de etiquetas",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "saveError": "Error al guardar el orden de visualización"
+    }
+  },
+  "slug": {
+    "label": "URL (slug)",
+    "hint": "Se usa en la URL pública del equipo/organización (ej. mi-equipo). Si se deja en blanco, se genera a partir del nombre.",
+    "placeholder": "mi-equipo",
+    "available": "Disponible",
+    "unavailable": "Este identificador ya está en uso",
+    "checking": "Verificando...",
+    "format": "Solo letras minúsculas, números y guiones (3-30 caracteres)",
+    "reason": {
+      "SLUG_REQUIRED": "Introduce un identificador",
+      "SLUG_INVALID_FORMAT": "Formato no válido (letras minúsculas, números y guiones, 3-30 caracteres; sin guiones al inicio/final ni consecutivos)",
+      "SLUG_RESERVED": "Este identificador está reservado y no se puede usar",
+      "SLUG_ALREADY_TAKEN": "Este identificador ya está en uso",
+      "SLUG_RETIRED": "Este identificador se usó antes y no se puede reutilizar (reservado para redirecciones)"
+    },
+    "rename": {
+      "title": "Cambiar URL (slug)",
+      "help": "Cambia el identificador de tu URL pública. Las URL antiguas se redirigen automáticamente a la nueva.",
+      "save": "Cambiar",
+      "saved": "URL (slug) cambiada",
+      "saveError": "Error al cambiar la URL (slug)",
+      "unchanged": "Igual que el identificador actual (sin cambios)"
+    }
+  },
+  "duplicate_name": {
+    "title": "Ya existe un/a {entity} con este nombre",
+    "description": "Ya existe un/a {entity} con el mismo nombre introducido. Revisa el contenido y decide si deseas continuar.",
+    "hidden_note": "Hay {count} {entity}(s) privados adicionales (no se muestran nombres ni detalles)",
+    "cancel": "Cancelar",
+    "confirm": "Crear de todos modos"
+  },
+  "team_visibility": {
+    "PUBLIC": "Público",
+    "GUESTS_AND_ABOVE": "Invitados y superiores",
+    "SUPPORTERS_AND_ABOVE": "Seguidores y superiores",
+    "MEMBERS_AND_ABOVE": "Miembros y superiores"
+  },
+  "organization_visibility": {
+    "PUBLIC": "Público",
+    "PRIVATE": "Acceso restringido"
+  },
+  "entity_create": {
+    "error_heading": "Revise los datos introducidos",
+    "supporter_label": "Activar la función de simpatizantes"
+  },
+  "module_settings": {
+    "enabled_count": "Funciones activas: {count} / {limit}",
+    "fetch_error": "No se pudo cargar la lista de funciones",
+    "empty": "Ahora mismo no hay funciones adicionales disponibles para este ámbito",
+    "toggle_success_on": "Se activó {name}",
+    "toggle_success_off": "Se desactivó {name}",
+    "badge": {
+      "level_unavailable": "No disponible en este nivel",
+      "paid_plan": "Plan de pago",
+      "limit_reached": "Se alcanzó el límite ({limit})"
+    },
+    "error": {
+      "paid_required": "Esta función requiere un plan de pago",
+      "limit_reached": "Has alcanzado el límite (10) de funciones que se pueden activar en el plan gratuito",
+      "level_unavailable": "Esta función no está disponible en este nivel",
+      "generic": "No se pudo cambiar el estado de la función"
+    }
+  },
+  "module_settings_guide": {
+    "title": "Cómo usar los ajustes de funciones",
+    "help_button": "Cómo usar",
+    "description": "En los ajustes de funciones puedes buscar en la lista las funciones disponibles para este equipo u organización y activarlas o desactivarlas con un interruptor. Solo las funciones que actives aquí aparecen en las pantallas de los miembros y quedan a su disposición.",
+    "what": {
+      "title": "Qué son los ajustes de funciones",
+      "body": "Es la lista de funciones (módulos) que puede usar tu equipo u organización. Todas las funciones disponibles aparecen como tarjetas. Si activas una función, los miembros pueden usarla; si la desactivas, se oculta de las pantallas y deja de estar disponible. Elige solo las funciones que necesites para mantener las pantallas despejadas."
+    },
+    "toggle": {
+      "title": "Activar o desactivar una función",
+      "body": "Busca la función que quieras en la lista y activa el interruptor situado a la derecha de su tarjeta. No hace falta el botón de guardar: el cambio se aplica en cuanto pulsas el interruptor.",
+      "steps": {
+        "step1": "Busca en la lista la tarjeta de la función que quieres usar",
+        "step2": "Pulsa el interruptor a la derecha de la tarjeta para activarla (púlsalo de nuevo para desactivarla)",
+        "step3": "Habrás terminado cuando aparezca un aviso de que la función se activó o desactivó (no hace falta guardar)",
+        "step4": "Mientras se cambia, ese interruptor no se puede pulsar durante un momento (para evitar operaciones dobles)"
+      }
+    },
+    "count": {
+      "title": "Comprobar cuántas puedes usar",
+      "body": "En la parte superior de la pantalla aparece, por ejemplo, «Funciones activas: 2 / 10», con el número de funciones activadas y el máximo que puedes activar. Pulsa el botón de actualizar de la derecha (la flecha giratoria) para obtener el estado más reciente."
+    },
+    "restrictions": {
+      "title": "Cuando un interruptor no se puede usar",
+      "body": "Las funciones cuyo interruptor no se puede pulsar (en gris) muestran una insignia con el motivo.",
+      "items": {
+        "paid": "«Plan de pago»: una función que puedes usar al contratar un plan de pago.",
+        "limit": "«Se alcanzó el límite (10)»: el número de funciones que se pueden tener activadas a la vez en el plan gratuito ha llegado al máximo. Desactiva otra función para poder activar una nueva.",
+        "level": "«No disponible en este nivel»: una función que no se puede usar con este tipo de equipo u organización."
+      }
+    },
+    "empty": {
+      "title": "Cuando no se muestra ninguna función",
+      "body": "Si aparece «Ahora mismo no hay funciones adicionales disponibles para este ámbito», significa que de momento no hay funciones que se puedan añadir a este equipo u organización."
+    },
+    "permission": {
+      "title": "Quién puede cambiar los ajustes",
+      "body": "Solo los administradores del equipo u organización pueden abrir los ajustes de funciones. Incluso para los administradores, esta pestaña queda oculta si el selector de vista de la esquina superior derecha está en «Vista de miembro». Para configurar, cambia a «Vista de administrador»."
+    }
+  },
+  "teamShell": {
+    "archive": {
+      "syncError": "El cambio se ha completado, pero no se pudo sincronizar la lista. Vuelva a cargarla.",
+      "archive": "Archivar equipo",
+      "unarchive": "Restaurar equipo",
+      "archiveConfirm": "¿Archivar este equipo? Se cancelarán las solicitudes de afiliación pendientes y las invitaciones. Las afiliaciones activas se mantendrán. Los detalles del equipo dejarán de estar disponibles. Puede restaurarlo desde Equipos archivados en la lista de equipos.",
+      "unarchiveConfirm": "¿Restaurar este equipo? No se recuperarán las solicitudes de afiliación ni las invitaciones canceladas, incluidos los enlaces de invitación caducados.",
+      "archived": "Equipo archivado",
+      "unarchived": "Equipo restaurado",
+      "changed": "El estado del equipo o sus permisos han cambiado. Vuelva a cargar la lista.",
+      "listTitle": "Equipos archivados",
+      "showList": "Mostrar equipos archivados",
+      "hideList": "Cerrar lista",
+      "fetchError": "No se pudieron cargar los equipos archivados.",
+      "empty": "No hay equipos archivados."
+    },
+    "tab": {
+      "affiliations": "Organizaciones afiliadas",
+      "permissionGroups": "Grupos de permisos",
+      "dashboard": "Panel",
+      "info": "Información básica",
+      "members": "Miembros",
+      "invites": "Invitaciones",
+      "supporters": "Gestión de seguidores",
+      "modules": "Funciones",
+      "joinRequests": "Solicitud de ingreso"
+    },
+    "action": {
+      "leave_confirm_title": "Salir del equipo",
+      "leave_confirm_body": "¿Seguro que quieres salir de este equipo? No se puede deshacer.",
+      "left": "Has salido del equipo",
+      "leave_button": "Salir del equipo"
+    }
+  },
+  "orgShell": {
+    "tab": {
+      "dashboard": "Panel",
+      "info": "Información básica",
+      "members": "Miembros",
+      "member_teams": "Equipos",
+      "invites": "Invitaciones",
+      "permission_groups": "Grupos de permisos",
+      "supporters": "Gestión de seguidores",
+      "modules": "Funciones",
+      "joinRequests": "Solicitud de ingreso"
+    },
+    "action": {
+      "leave_confirm_title": "Salir de la organización",
+      "leave_confirm_body": "¿Seguro que quieres salir de esta organización? No se puede deshacer.",
+      "left": "Has salido de la organización",
+      "leave_button": "Salir de la organización"
+    }
+  },
+  "blog_guide": {
+    "title": "Cómo usar Mi Blog",
+    "description": "Escribe artículos y compártelos con los miembros de tu equipo y organización. Guarda como borrador primero, luego publica cuando estés listo.",
+    "what": {
+      "title": "¿Qué es un Blog?",
+      "body": "Un lugar para escribir tus pensamientos y aprendizajes como artículos y compartirlos con los miembros de tu equipo y organización. Los artículos pueden gestionarse en estados de borrador, publicado, programado o archivado."
+    },
+    "create": {
+      "title": "Escribir un Artículo",
+      "body": "Simplemente haz clic en '+ Nuevo Artículo' para crear un artículo en borrador. Puedes cambiar el título más tarde.",
+      "steps": {
+        "step1": "Haz clic en '+ Nuevo Artículo' en la parte superior derecha",
+        "step2": "Ingresa el título del artículo (puede cambiarse más tarde)",
+        "step3": "Selecciona el destino de publicación (personal, equipo u organización)",
+        "step4": "Haz clic en 'Crear y Editar' para ir al editor"
+      }
+    },
+    "publish": {
+      "title": "Publicar un Artículo",
+      "body": "Haz clic en el ícono de ojo en cada tarjeta de 'Mis Publicaciones' para alternar entre público y privado.",
+      "steps": {
+        "step1": "Haz clic en el ícono de ojo en una tarjeta de artículo en borrador",
+        "step2": "Cambia a 'Publicado' y se vuelve visible para los miembros del equipo y la organización",
+        "step3": "Haz clic de nuevo para volver a privado (borrador)"
+      }
+    },
+    "manage": {
+      "title": "Gestionar Artículos",
+      "body": "'Mis Publicaciones' muestra los últimos 5 artículos en un desplazamiento horizontal. Usa los íconos en cada tarjeta para editar o eliminar.",
+      "item_edit": "Ícono de lápiz → Editar contenido del artículo",
+      "item_delete": "Ícono de papelera → Eliminar artículo (no se puede deshacer)",
+      "item_count": "Verifica el conteo de artículos en la parte superior derecha",
+      "item_all": "Todos los artículos están listados en la sección 'Publicaciones de Todos'"
+    },
+    "settings": {
+      "title": "Configuración del Blog",
+      "body": "Puedes configurar el título de tu blog, la descripción y el período de autorrevisión.",
+      "steps": {
+        "step1": "Haz clic en '⚙ Configuración del Blog' en la parte superior derecha",
+        "step2": "Ingresa el título y la descripción de tu blog",
+        "step3": "Establece el período de autorrevisión (período de revisión antes de publicar)",
+        "step4": "Haz clic en 'Guardar Configuración'"
+      }
+    }
+  },
+  "analytics": {
+    "title": "Análisis de Acceso",
+    "loadError": "No se pudieron cargar los datos de análisis de acceso",
+    "empty": "Todavía no hay datos de acceso",
+    "summary": {
+      "totalViews": "PV Total",
+      "uniqueVisitors": "Visitantes Únicos",
+      "memberViews": "Vistas de Miembros",
+      "guestViews": "Vistas de Invitados"
+    },
+    "export": "Exportar Datos",
+    "topContent": {
+      "title": "Contenido Popular",
+      "empty": "No hay datos disponibles"
+    },
+    "chart": {
+      "views": "Páginas Vistas",
+      "daily": "Diario",
+      "monthly": "Mensual",
+      "toggle": "Cambiar Vista",
+      "recentDays": "Estadísticas de acceso de los últimos 30 días",
+      "monthlyTrend": "Estadísticas de tendencia de acceso mensual"
+    },
+    "period": {
+      "allTime": "Todo el Tiempo"
+    },
+    "guide": {
+      "page_title": "Cómo usar Analytics",
+      "what": {
+        "title": "¿Qué es Analytics?",
+        "body": "Analytics le permite ver cuántas veces se visualizan las páginas de su equipo u organización. Utilícelo para comprender los patrones de visita de miembros e invitados y mejorar su contenido."
+      },
+      "metrics": {
+        "title": "Datos medidos",
+        "total_views": "PV total: Número total de veces que se mostraron las páginas",
+        "unique_visitors": "Visitantes únicos: Número de visitantes sin duplicados",
+        "member_views": "Vistas de miembros: Vistas de página por miembros",
+        "guest_views": "Vistas de invitados: Vistas de página por invitados (no miembros)"
+      },
+      "timing": {
+        "title": "Tiempo de actualización de datos",
+        "body": "Los datos de acceso se agregan en un lote diario. Los datos del mismo día se reflejan a la mañana siguiente. Como no es en tiempo real, el acceso de las últimas horas aparecerá al día siguiente."
+      },
+      "chart": {
+        "title": "Cómo leer el gráfico",
+        "body": "Puede cambiar el gráfico entre vistas «Diaria» y «Mensual».",
+        "daily_title": "Gráfico diario",
+        "daily_desc": "Muestra las tendencias diarias de vistas de página en los últimos 30 días.",
+        "monthly_title": "Gráfico mensual",
+        "monthly_desc": "Muestra valores agregados mensuales. Útil para comprender tendencias a largo plazo."
+      },
+      "top_content": {
+        "title": "Contenido popular",
+        "body": "Muestra un ranking del contenido según el número de vistas. Si aún no hay datos de acceso, se mostrará \"No hay datos disponibles\", y el ranking aparecerá automáticamente en cuanto se registren visitas."
+      }
+    }
+  },
+  "comingSoon": {
+    "title": "Próximamente",
+    "description": "Esta función está actualmente en desarrollo. Por favor, vuelva más tarde."
+  },
+  "transferOwnership": {
+    "sectionTitle": "Transferir la propiedad",
+    "sectionDescription": "Ofrece el rol de administrador a otro miembro. Nada cambia hasta que acepte.",
+    "openButton": "Ofrecer transferencia",
+    "dialogTitle": "Ofrecer transferencia de propiedad",
+    "warning": "Si la persona acepta, recibirá los permisos de administrador y tú pasarás a ser miembro. Nada cambia mientras la oferta esté pendiente.",
+    "targetLabel": "Nuevo propietario",
+    "targetPlaceholder": "Selecciona un miembro",
+    "noCandidates": "No hay ningún miembro al que puedas transferir la propiedad.",
+    "confirmLabel": "Escribe “{name}” para confirmar",
+    "confirmMismatch": "El nombre no coincide.",
+    "cancel": "Cancelar",
+    "submit": "Enviar oferta",
+    "successTitle": "Oferta enviada",
+    "successDetail": "Tu rol de administrador no cambiará hasta que la persona acepte."
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "Función no disponible",
+      "body": "Esta función aún no está disponible. Volviendo al panel."
+    },
+    "error": {
+      "fetchFailedTitle": "No se pudo comprobar la disponibilidad de la función",
+      "fetchFailedBody": "No se pudo comprobar si esta función está disponible debido a un error de red. Inténtalo de nuevo más tarde."
+    }
+  },
+  "member": {
+    "columns": {
+      "name": "Miembro",
+      "role": "Rol",
+      "joinedAt": "Fecha de ingreso",
+      "actions": "Acciones"
+    },
+    "empty": "Aún no hay miembros",
+    "roleChanged": "Rol cambiado",
+    "roleChangeFailed": "No se pudo cambiar el rol",
+    "removed": "Miembro eliminado",
+    "removeFailed": "No se pudo eliminar el miembro",
+    "remove": {
+      "confirmTitle": "Eliminar miembro",
+      "confirmMessage": "¿Eliminar a {name} de los miembros?"
+    }
+  },
+  "scopeSwitch": {
+    "hint": "Para cambiar, abre un equipo u organización desde el menú «Equipos» / «Organizaciones» de la parte superior. El que abras pasa a ser el ámbito actual.",
+    "goTeams": "Elegir un equipo",
+    "goOrganizations": "Elegir una organización",
+    "personalUnsupported": "Esta configuración solo está disponible en un ámbito de equipo u organización. No se puede mostrar en el ámbito personal."
+  },
+  "joinRequest": {
+    "apply": "Solicitud de ingreso",
+    "pending": "Solicitud pendiente (a la espera de aprobación)",
+    "approved": "Aprobada",
+    "rejected": "Rechazada",
+    "fetchError": "Error al cargar",
+    "retry": "Reintentar",
+    "admin": {
+      "pendingTitle": "Solicitudes de ingreso pendientes de aprobación",
+      "empty": "No hay solicitudes de ingreso pendientes de aprobación",
+      "requesterLabel": "ID de usuario: {userId}",
+      "requestedAt": "Fecha de solicitud",
+      "approve": "Aprobar",
+      "reject": "Rechazar",
+      "fetchError": "No se pudo cargar la lista",
+      "retry": "Reintentar",
+      "loadMore": "Cargar más",
+      "loadMoreError": "No se pudieron cargar más",
+      "approveSuccess": "Se aprobó la solicitud de ingreso",
+      "rejectSuccess": "Se rechazó la solicitud de ingreso"
+    }
+  },
+  "myPage": {
+    "pageTitle": "Mi página",
+    "cards": {
+      "onboarding": {
+        "label": "Incorporación",
+        "description": "Trámites pendientes de los equipos y organizaciones a los que te uniste"
+      },
+      "shift": {
+        "label": "Mis turnos",
+        "description": "Calendario de tus asignaciones confirmadas"
+      },
+      "reservations": {
+        "label": "Mis reservas",
+        "description": "Lista de tus reservas"
+      },
+      "charts": {
+        "label": "Mis registros",
+        "description": "Consulta registros de actividad y notas"
+      },
+      "performance": {
+        "label": "Mi rendimiento",
+        "description": "Tus resultados y logros"
+      },
+      "projects": {
+        "label": "Mis proyectos",
+        "description": "Gestiona proyectos personales"
+      },
+      "serviceRecords": {
+        "label": "Mi historial de servicios",
+        "description": "Historial de servicios recibidos"
+      },
+      "noShows": {
+        "label": "Historial de cancelaciones",
+        "description": "Historial de ausencias y penalizaciones"
+      },
+      "resume": {
+        "label": "Currículum",
+        "description": "Crea y exporta tu currículum"
+      },
+      "receipts": {
+        "description": "Consulta y descarga los recibos de tus pagos"
+      },
+      "tournamentFees": {
+        "description": "Consulta y paga las cuotas de inscripción a torneos"
+      }
+    }
+  },
+  "auditLog": {
+    "title": "Registro de auditoría",
+    "empty": "No hay registros",
+    "loadFailed": "Error al cargar el registro de auditoría",
+    "column": {
+      "datetime": "Fecha y hora",
+      "user": "Usuario",
+      "category": "Categoría",
+      "event": "Evento"
+    }
+  },
+  "memberProfile": {
+    "fields": {
+      "title": "Campos personalizados",
+      "add": "Añadir campo",
+      "loadFailed": "No se pudieron cargar los campos personalizados",
+      "retry": "Reintentar",
+      "empty": "No hay campos personalizados",
+      "name": "Nombre del campo",
+      "type": "Tipo",
+      "required": "Obligatorio",
+      "active": "Activo",
+      "order": "Orden",
+      "yes": "Sí",
+      "no": "No",
+      "typeText": "Texto",
+      "typeNumber": "Número",
+      "typeDate": "Fecha",
+      "typeSelect": "Selección",
+      "options": "Opciones (una por línea)",
+      "createSuccess": "Campo añadido",
+      "createFailed": "No se pudo añadir el campo"
+    },
+    "loadFailed": "No se pudo cargar la información de los miembros",
+    "unavailable": "Esta función no está disponible actualmente (próximamente)",
+    "saveFailed": "Error al guardar",
+    "deleteFailed": "Error al eliminar",
+    "pages": {
+      "title": "Páginas de presentación de miembros",
+      "newPage": "Crear página nueva",
+      "empty": "Aún no hay páginas",
+      "titleLabel": "Título",
+      "slugLabel": "Slug de URL",
+      "yearLabel": "Año de referencia",
+      "visibilityLabel": "Visibilidad",
+      "visibilityPublic": "Público",
+      "visibilityMembersOnly": "Solo miembros",
+      "statusDraft": "Borrador",
+      "statusPublished": "Publicado",
+      "publish": "Publicar",
+      "unpublish": "Volver a borrador",
+      "delete": "Eliminar página",
+      "deleteConfirm": "¿Eliminar esta página? Esta acción no se puede deshacer.",
+      "createSuccess": "Página creada",
+      "createFailed": "No se pudo crear la página",
+      "updateSuccess": "Página actualizada",
+      "statusChangeFailed": "No se pudo cambiar el estado de publicación",
+      "deleteSuccess": "Página eliminada",
+      "deleteFailed": "No se pudo eliminar la página",
+      "open": "Ver miembros",
+      "copyFromPrevious": "Copiar miembros del año anterior",
+      "copySourceLabel": "Página de origen",
+      "copyConfirm": "Copiar",
+      "copySuccess": "Se copiaron {count} miembro(s)",
+      "copyFailed": "No se pudieron copiar los miembros"
+    },
+    "members": {
+      "title": "Lista de miembros",
+      "add": "Añadir miembro",
+      "edit": "Editar miembro",
+      "empty": "No hay miembros registrados",
+      "bulkRegister": "Registro masivo",
+      "bulkRegisterHelp": "Introduce una persona por línea con el formato «nombre visible,número» (el número es opcional)",
+      "bulkRegisterSuccess": "Se registraron {count} miembros",
+      "bulkRegisterFailed": "Error en el registro masivo",
+      "delete": "Eliminar miembro",
+      "deleteConfirm": "¿Quieres eliminar el perfil de {name}? Esta acción no se puede deshacer.",
+      "deleteSuccess": "Se eliminó el miembro",
+      "back": "Volver a la lista de páginas",
+      "customFieldsError": "No se pudieron cargar los campos personalizados",
+      "optionsInvalidFormat": "El formato de los datos de las opciones no es válido",
+      "optionsLoadFailed": "No se pudieron cargar los datos de las opciones"
+    }
+  },
+  "memberPermissions": {
+    "title": "Permisos predeterminados de MEMBER",
+    "description": "Configura los permisos predeterminados de los usuarios MEMBER que se unan a este equipo u organización.",
+    "sectionTitle": "Permisos predeterminados",
+    "invalidScope": "Selecciona un equipo o una organización antes de abrir esta página.",
+    "loadFailed": "No se pudieron cargar los permisos predeterminados de MEMBER.",
+    "saveSuccess": "Se actualizaron los permisos predeterminados de MEMBER.",
+    "saveFailed": "No se pudieron actualizar los permisos predeterminados de MEMBER.",
+    "inherited": "Heredado de una configuración superior",
+    "accessDenied": "Solo los administradores pueden realizar esta acción.",
+    "permissions": {
+      "MANAGE_SCHEDULES": "Gestionar calendarios",
+      "MANAGE_FILES": "Gestionar archivos",
+      "MANAGE_POSTS": "Gestionar publicaciones"
+    }
+  },
+  "loadErrorState": {
+    "states": {
+      "generic": {
+        "title": "No podemos cargar los datos en este momento",
+        "message": "Puede tratarse de un problema temporal. Espere un momento e inténtelo de nuevo."
+      },
+      "forbidden": {
+        "title": "Esta página no está disponible para esta cuenta",
+        "message": "Si necesita acceder, consulte con una persona administradora."
+      },
+      "notFoundOrForbidden": {
+        "title": "No pudimos mostrar la información que busca",
+        "message": "Puede que ya no esté disponible o que haya cambiado quién puede verla."
+      },
+      "network": {
+        "title": "Parece que la conexión no ha funcionado",
+        "message": "Compruebe su conexión a Internet e inténtelo de nuevo."
+      },
+      "server": {
+        "title": "No podemos cargar los datos en este momento",
+        "message": "Puede tratarse de un problema temporal. Espere un momento e inténtelo de nuevo."
+      }
+    },
+    "retry": "Reintentar"
+  },
+  "searchBar": {
+    "keyword": "Palabra clave",
+    "defaultPlaceholder": "Buscar por nombre",
+    "prefecture": "Prefectura",
+    "selectPrefecture": "Selecciona una prefectura",
+    "filterPrefecture": "Buscar prefecturas",
+    "genre": "Categoría",
+    "all": "Todos"
+  },
+  "scopeLabels": {
+    "template": {
+      "CLUB": "Club o círculo",
+      "CLINIC": "Clínica",
+      "CLASS": "Clase",
+      "COMMUNITY": "Comunidad",
+      "COMPANY": "Empresa",
+      "FAMILY": "Familia",
+      "RESTAURANT": "Restaurante",
+      "BEAUTY": "Salón de belleza",
+      "STORE": "Tienda o comercio",
+      "VOLUNTEER": "Voluntariado u ONG",
+      "NEIGHBORHOOD": "Asociación vecinal",
+      "CONDO": "Comunidad de propietarios",
+      "OTHER": "Otros"
+    },
+    "organizationType": {
+      "GOVERNMENT": "Administración pública",
+      "MUNICIPALITY": "Municipio",
+      "COMPANY": "Empresa",
+      "HOSPITAL": "Hospital o centro médico",
+      "ASSOCIATION": "Asociación o federación",
+      "SCHOOL": "Escuela o centro educativo",
+      "NPO": "ONG o entidad sin ánimo de lucro",
+      "COMMUNITY": "Comunidad",
+      "OTHER": "Otros"
+    },
+    "visibility": {
+      "PUBLIC": "Público",
+      "GUESTS_AND_ABOVE": "Invitados y superiores",
+      "SUPPORTERS_AND_ABOVE": "Seguidores y superiores",
+      "MEMBERS_AND_ABOVE": "Miembros y superiores"
+    }
+  },
+  "relativeTime": {
+    "justNow": "Ahora mismo",
+    "minutesAgo": "hace {count} minuto | hace {count} minutos",
+    "hoursAgo": "hace {count} hora | hace {count} horas",
+    "daysAgo": "hace {count} día | hace {count} días"
+  },
+  "error_page": {
+    "not_found_title": "No se encontró esta página",
+    "not_found_description": "La página que busca no existe o puede haber sido movida o eliminada.",
+    "generic_title": "Se ha producido un error",
+    "generic_description": "Inténtelo de nuevo en unos minutos. Si el problema continúa, póngase en contacto con el administrador.",
+    "back_home": "Volver al inicio"
+  }
+}

@@ -1,0 +1,3 @@
+-- no-op: public_id カラムは V71.20260609125251/125253 で slug に置き換え済みのため、
+-- NOT NULL 化処理は不要。
+-- 元の意図: teams / organizations の public_id を NOT NULL 化（V71 nullable=true 残存の修正）

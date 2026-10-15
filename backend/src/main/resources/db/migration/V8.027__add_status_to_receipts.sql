@@ -1,0 +1,4 @@
+-- F08.4: 領収書発行 — receipts に status カラム追加（DRAFT/ISSUED）
+-- 注: status カラムは V8.021 の CREATE TABLE で既に定義済みのため、このマイグレーションは不要。
+-- 設計ドキュメントとの整合性のために Flyway バージョン番号を確保する。
+-- No-op migration.

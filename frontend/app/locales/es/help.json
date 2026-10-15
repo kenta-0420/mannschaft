@@ -1,0 +1,178 @@
+{
+  "security_help": {
+    "title": "Guía de seguridad",
+    "description": "Aquí se explica cómo usar la autenticación en dos pasos, las sesiones activas y las llaves de seguridad, y qué hacer si detectas un inicio de sesión sospechoso.",
+    "link_label": "❔ Guía de uso",
+    "twofa": {
+      "title": "Autenticación en dos pasos (2FA)",
+      "intro": "Es un mecanismo que protege tu cuenta añadiendo un paso más de verificación de identidad además de la contraseña. Aunque tu contraseña se filtre, un tercero no podrá iniciar sesión solo con ella.",
+      "setup_title": "Cómo activarla",
+      "setup_steps": {
+        "step1": "Ten preparada en tu smartphone una aplicación de autenticación (como Google Authenticator).",
+        "step2": "Pulsa «Configurar 2FA» y se mostrarán un código QR y una clave secreta.",
+        "step3": "Escanea el código QR con la aplicación de autenticación (si no puedes escanearlo, introduce la clave secreta manualmente).",
+        "step4": "Introduce el código de 6 dígitos que muestra la aplicación de autenticación para completar la activación."
+      },
+      "backup_title": "Acerca de los códigos de respaldo",
+      "backup_desc": "Los códigos de respaldo son una vía de acceso de reserva para cuando ya no puedes usar la aplicación de autenticación, por ejemplo si pierdes el smartphone. Guárdalos en un lugar seguro. Cada código solo se puede usar una vez. Al pulsar «Regenerar códigos de respaldo» se emiten códigos nuevos y todos los anteriores quedan invalidados."
+    },
+    "sessions": {
+      "title": "Sesiones activas",
+      "intro": "Lista de los dispositivos que tienen la sesión iniciada en tu cuenta en este momento. Aquí puedes comprobar si hay alguno que no reconozcas.",
+      "row_desc": "Cada fila representa un dispositivo y muestra la información del navegador/SO, la dirección IP y la fecha y hora de inicio de sesión. La cadena de letras del principio es la información del navegador y el SO utilizados.",
+      "current_tag_desc": "La fila con la etiqueta «Actual» es el dispositivo que estás usando ahora.",
+      "revoke_desc": "Puedes invalidar (cerrar la sesión de) una fila sospechosa individualmente con el botón «×».",
+      "revoke_all_desc": "Al pulsar «Cerrar todas las sesiones» se cierra la sesión de todos los demás dispositivos a la vez.",
+      "current_note": "La sesión que estás usando ahora no se puede eliminar individualmente para que no te bloquees por error (el servidor rechaza esa acción). Si quieres cerrar todas las sesiones, usa «Cerrar todas las sesiones»."
+    },
+    "webauthn": {
+      "title": "Llaves de seguridad (WebAuthn)",
+      "intro": "Un método para iniciar sesión con huella digital, reconocimiento facial o una llave de seguridad física (FIDO2). Puedes iniciar sesión de forma rápida y segura sin escribir la contraseña.",
+      "manage_desc": "Puedes ponerles a las llaves registradas nombres fáciles de reconocer (renombrar). Las llaves que ya no uses se pueden eliminar."
+    },
+    "suspicious": {
+      "title": "Si detectas un inicio de sesión que no reconoces",
+      "intro": "Si notas algo sospechoso, como un dispositivo desconocido en las sesiones activas, sigue estos pasos de arriba abajo.",
+      "steps": {
+        "step1": "Invalida con «×» las sesiones que no reconozcas",
+        "step2": "Si tienes dudas, cierra la sesión en todos los dispositivos con «Cerrar todas las sesiones»",
+        "step3": "Cambia tu contraseña",
+        "step4": "Activa la autenticación en dos pasos (2FA)",
+        "step5": "Guarda los códigos de respaldo en un lugar seguro"
+      }
+    }
+  },
+  "contact_request_blocks_help": {
+    "title": "Cómo usar la lista de bloqueo de solicitudes de contacto",
+    "description": "Esta configuración te permite ignorar automáticamente las solicitudes de «agregar como contacto» de personas específicas desde el principio.",
+    "what": {
+      "title": "¿Qué es la lista de bloqueo de solicitudes de contacto?",
+      "body": "Si alguien en esta lista intenta agregarte como contacto, su solicitud se ignora automáticamente. No recibirás ninguna notificación ni sabrás que lo intentaron.",
+      "note": "La otra persona nunca es informada de que fue bloqueada. Puedes detener silenciosamente las solicitudes de personas específicas sin crear ninguna incomodidad."
+    },
+    "list": {
+      "title": "Cómo leer la lista",
+      "body": "Todos los usuarios bloqueados se muestran en una lista. Cada fila contiene la siguiente información.",
+      "item_name": "Icono y nombre — quién estás bloqueando",
+      "item_handle": "Identificador de contacto que comienza con {'@'} — el ID único de esa persona",
+      "item_date": "«Establecido el» — la fecha en que se registró el bloqueo"
+    },
+    "unblock": {
+      "title": "Cómo eliminar un bloqueo",
+      "body": "Puedes eliminar un bloqueo en cualquier momento. Una vez eliminado, esa persona podrá enviarte solicitudes de contacto nuevamente.",
+      "steps": {
+        "step1": "Encuentra la fila de la persona que quieres desbloquear.",
+        "step2": "Pulsa el botón «Desbloquear» en el lado derecho de la fila.",
+        "step3": "Cuando la persona desaparezca de la lista, el bloqueo habrá sido eliminado correctamente."
+      }
+    }
+  },
+  "qa": {
+    "title": "Preguntas frecuentes (Q&A)",
+    "description": "Respuestas a preguntas comunes sobre el uso de Mannschaft, la instalación de la PWA y más.",
+    "search_placeholder": "Buscar preguntas...",
+    "no_results": "No se encontraron preguntas coincidentes",
+    "result_count": "{count} pregunta(s)",
+    "category": {
+      "all": "Todas",
+      "basic": "Básicas",
+      "pwa": "PWA e instalación",
+      "offline": "Sin conexión",
+      "troubleshooting": "Solución de problemas"
+    },
+    "tutorial_banner": {
+      "title": "¿Nuevo en Mannschaft?",
+      "description": "Revisa las operaciones básicas con el tutorial",
+      "button": "Ver tutorial"
+    },
+    "pwa_cta": {
+      "title": "¡Es aún más cómodo como aplicación!",
+      "description": "Agrégalo a la pantalla de inicio para usarlo sin conexión y recibir notificaciones push."
+    },
+    "items": {
+      "basic": {
+        "q1": {
+          "question": "¿Hay diferencias de funciones entre PC y smartphone?",
+          "answer": "Las funciones básicas son las mismas en todos los dispositivos. Los smartphones están optimizados para el uso táctil y pueden agregarse a la pantalla de inicio como PWA. Los PC permiten ver varias informaciones a la vez en una pantalla grande y usar atajos de teclado para escribir rápido."
+        },
+        "q2": {
+          "question": "¿Cuál es la forma recomendada de usarlo en un smartphone?",
+          "answer": "Instala la PWA y ábrela desde la pantalla de inicio. La barra de direcciones del navegador desaparece y podrás usarla como una aplicación nativa. Usa los menús de pulsación larga para acciones rápidas, desliza para cambiar de pantalla y toca las notificaciones para ir directo a la pantalla relacionada."
+        },
+        "q3": {
+          "question": "¿Cómo cambio mi foto de perfil?",
+          "answer": "Toca el icono de la esquina superior derecha, abre Configuración -> Perfil y sube una imagen con el botón de cambio."
+        },
+        "q4": {
+          "question": "¿Cómo cambio el idioma de visualización?",
+          "answer": "Desde Configuración -> Idioma puedes alternar entre los 6 idiomas: japonés, inglés, chino, coreano, español y alemán."
+        },
+        "q5": {
+          "question": "¿Dónde puedo cerrar sesión?",
+          "answer": "Desde el botón Cerrar sesión en la barra de navegación, o en móvil desde Cerrar sesión dentro del menú."
+        }
+      },
+      "pwa": {
+        "q1": {
+          "question": "¿Qué es una PWA?",
+          "answer": "Una PWA (Progressive Web App) permite usar un sitio web como una aplicación. Al agregarla a la pantalla de inicio, se inicia como una app normal y funciona también sin conexión. No es necesario instalarla desde Google Play o la App Store."
+        },
+        "q2": {
+          "question": "¿Cuáles son los beneficios de instalar la PWA?",
+          "answer": "- Se inicia con un toque desde la pantalla de inicio\n- Puedes navegar y crear borradores sin conexión\n- Puedes recibir notificaciones push\n- La barra de direcciones del navegador desaparece y se usa toda la pantalla\n- Inicio rápido\n- Menor consumo de datos"
+        },
+        "q3": {
+          "question": "¿Cómo se instala en un teléfono Android?",
+          "answer": "Abre esta página en Chrome y toca el botón Instalar en la parte superior de esta página de Q&A. Cuando aparezca el diálogo 'Agregar a pantalla de inicio', selecciona 'Agregar'."
+        },
+        "q4": {
+          "question": "¿Cómo se instala en un iPhone?",
+          "answer": "Ábrela con Safari, toca el botón de compartir abajo (cuadrado con flecha hacia arriba) -> 'Agregar a pantalla de inicio' -> 'Agregar'. Ten en cuenta que no se puede agregar desde Chrome/Firefox."
+        }
+      },
+      "offline": {
+        "q1": {
+          "question": "¿Puedo usar la app sin conexión?",
+          "answer": "Sí. Si instalas la PWA, las pantallas principales se pueden mostrar sin conexión. Las acciones de entrada como notas de acción, notas rápidas y agregar TODOs se guardan en el dispositivo y se envían automáticamente al volver en línea."
+        },
+        "q2": {
+          "question": "¿Qué pasa con los datos que edité sin conexión?",
+          "answer": "Se sincronizan automáticamente al volver en línea. Si otro dispositivo u otro miembro editó primero los mismos datos, puedes seleccionar manualmente desde la pantalla de Resolución de conflictos."
+        }
+      },
+      "troubleshooting": {
+        "q1": {
+          "question": "No me llegan las notificaciones.",
+          "answer": "Es necesario instalar la PWA y 'permitir' las notificaciones en el primer inicio. Verifica que las notificaciones no estén bloqueadas en la configuración del navegador o del sistema operativo. iOS admite notificaciones PWA desde iOS 16.4."
+        },
+        "q2": {
+          "question": "La página no carga o el comportamiento es extraño.",
+          "answer": "Primero borra la caché del navegador. Si no mejora, prueba a desinstalar y reinstalar la PWA. Si aun así no se soluciona, contacta con soporte."
+        }
+      }
+    }
+  },
+  "calendar_sync_help": {
+    "title": "Cómo usar la integración con Google Calendar",
+    "description": "Sincroniza automáticamente tus horarios con Google Calendar para poder consultarlos desde tu teléfono u otras aplicaciones.",
+    "what": {
+      "title": "Qué es la integración con Google Calendar",
+      "body": "Los horarios de Mannschaft (personal, de equipo y de organización) se reflejan automáticamente en Google Calendar. Una vez conectado, siempre puedes consultar tus horarios desde cualquier dispositivo o app compatible con Google Calendar."
+    },
+    "connect": {
+      "title": "Conectar tu cuenta",
+      "body": "Pulsa \"Conectar cuenta de Google\" para ir a la pantalla de inicio de sesión de Google. Al conceder acceso al calendario se completa la conexión. Puedes desconectarte en cualquier momento con el botón \"Desconectar\"."
+    },
+    "toggles": {
+      "title": "Activar/desactivar la sincronización de forma individual",
+      "body": "Puedes activar o desactivar la sincronización por separado para el \"Calendario personal\", los \"Calendarios de equipo\" y los \"Calendarios de organización\". Los cambios se aplican de inmediato, no hay botón de guardar.",
+      "item_personal": "Calendario personal: sincroniza tus propios horarios personales",
+      "item_team": "Calendarios de equipo: sincroniza los horarios de los equipos a los que perteneces",
+      "item_org": "Calendarios de organización: sincroniza los horarios de las organizaciones a las que perteneces"
+    },
+    "sync_behavior": {
+      "title": "Cuándo ocurre la sincronización",
+      "body": "Al activar la sincronización se sincronizan de una vez todos los horarios que aún no estaban sincronizados (backfill). Si son muchos, puede tardar unos minutos. Usa el botón \"Sincronización manual\" siempre que quieras reflejar el estado más reciente de inmediato."
+    }
+  }
+}

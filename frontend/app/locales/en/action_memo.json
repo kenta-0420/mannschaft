@@ -1,0 +1,245 @@
+{
+  "title": "Action Memo",
+  "page": {
+    "today_memos": "Today's memos",
+    "empty": "No memos yet. Write your first one.",
+    "settings_link": "Settings",
+    "back_to_memo": "Back to Action Memo",
+    "closing_link": "Close out today",
+    "weekly_link": "Weekly summary",
+    "tags_link": "Tag management",
+    "date_picker_label": "Select date",
+    "back_to_today": "Back to today",
+    "selected_date_memos": "Memos for {date}"
+  },
+  "guide": {
+    "title": "How to use Action Memo",
+    "description": "Record what you're doing right now and review your daily actions. Designed with minimal friction for ADHD.",
+    "record": {
+      "title": "Record a memo",
+      "body": "A short sentence is enough. You can add details later. Track category, duration, and more.",
+      "steps": {
+        "step1": "Type what you were just doing in the input field",
+        "step2": "Press Enter or click 'Record' to save",
+        "step3": "Use advanced fields to add time, progress, or team sharing"
+      }
+    },
+    "past": {
+      "title": "View past memos",
+      "body": "Use the date picker to review past records. 'Back to today' takes you back instantly.",
+      "steps": {
+        "step1": "Select a date using the date picker",
+        "step2": "View all memos from that day",
+        "step3": "Click 'Back to today' to return to today's memos"
+      }
+    },
+    "review": {
+      "title": "Review & reflect",
+      "body": "Use weekly summaries and end-of-day review to check your actions, mood, and TODOs.",
+      "steps": {
+        "step1": "Open 'Weekly summary' to see charts for the past 7 days",
+        "step2": "Use 'Close out today' to reflect and set tomorrow's TODOs",
+        "step3": "Organize your frequently used categories with tag management"
+      }
+    }
+  },
+  "mood": {
+    "great": "Great",
+    "good": "Good",
+    "ok": "OK",
+    "tired": "Tired",
+    "bad": "Tough",
+    "none": "Not selected",
+    "label": "Mood"
+  },
+  "input": {
+    "placeholder": "What are you doing right now?",
+    "submit": "Save",
+    "draft_saved": "Draft saved automatically",
+    "char_count": "{count} / 5000",
+    "shift_enter_hint": "Enter to submit / Shift+Enter for newline"
+  },
+  "card": {
+    "edit": "Edit",
+    "delete": "Delete",
+    "linked_todo": "Related TODO"
+  },
+  "weekly": {
+    "title": "Weekly Reflection",
+    "summary": "This Week's Summary",
+    "memo_count": "Memo count",
+    "posted_days": "Posting days",
+    "avg_mood": "Average mood",
+    "mood_trend": "Mood Trend",
+    "top_tags": "Top Tags",
+    "featured_memos": "Featured Memos",
+    "featured_random_note": "(random pick)",
+    "related_todos": "Related TODOs",
+    "todos_completed": "Completed",
+    "todos_pending": "Pending → carried over",
+    "page_title": "Weekly Summary",
+    "empty_state": "No weekly summaries yet. They are automatically generated on Sunday evenings.",
+    "view_detail": "View detail",
+    "loading": "Loading...",
+    "error": "Failed to load weekly summaries",
+    "retry": "Retry",
+    "next_summary": "The next weekly summary will be generated on Sunday evening",
+    "body_preview_more": "...read more",
+    "period_label": "Period",
+    "load_more": "Load more"
+  },
+  "settings": {
+    "title": "Action Memo Settings",
+    "mood_enabled": {
+      "label": "Enable mood input",
+      "description": "Choose your mood from 5 levels when adding a memo. Off by default."
+    },
+    "reminder": {
+      "label": "Daily Reminder",
+      "description": "Receive a notification at the set time to record your action memo (will be activated after batch implementation)",
+      "time_label": "Notification time"
+    }
+  },
+  "dashboard": {
+    "title": "Member Action Memo Management",
+    "select_team": "Select team",
+    "select_member": "Select member",
+    "no_work_memos": "No WORK memos",
+    "forbidden": "Manager permission required",
+    "error_load": "Failed to load memos",
+    "load_more": "Load more"
+  },
+  "todo_revert": {
+    "button": "Revert TODO",
+    "confirm": "Revert the TODO completion for this memo?",
+    "success": "TODO has been reverted",
+    "error": "Failed to revert TODO"
+  },
+  "error": {
+    "rate_limit": "Too many requests. Please wait a moment and try again.",
+    "daily_limit": "You've reached today's limit (200 memos). Please continue tomorrow.",
+    "future_date": "You can't write to a future date.",
+    "todo_not_found": "The TODO you tried to link was not found.",
+    "load_failed": "Failed to load memos.",
+    "save_failed": "Failed to save memo."
+  },
+  "dialog": {
+    "title": "Edit memo",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "closing": {
+    "title": "End-of-day reflection",
+    "today_memos": "Today's memos",
+    "todos_completed": "Completed TODOs",
+    "todos_pending": "Pending TODOs",
+    "no_completed_todos": "No completed TODOs today yet.",
+    "no_pending_todos": "No pending TODOs today.",
+    "tomorrow_todos": "Tomorrow's TODOs",
+    "tomorrow_input_placeholder": "Type something to do tomorrow",
+    "tomorrow_added": "Added to tomorrow's TODO",
+    "tomorrow_add_failed": "Failed to add TODO",
+    "extra_comment_label": "Closing remark",
+    "extra_comment_placeholder": "A few words about today (optional)",
+    "publish_button": "Close out today",
+    "publish_success": "Posted today's summary ({count} memos)",
+    "publish_error": "Failed to publish summary",
+    "move_to_tomorrow": "Move to tomorrow",
+    "moved_to_tomorrow": "Moved to tomorrow",
+    "move_failed": "Failed to move to tomorrow",
+    "no_memos_hint": "Nothing to publish because there are no memos today."
+  },
+  "offline": {
+    "banner": "You are offline. Your memos will sync when you're back online.",
+    "sync_button": "Sync now",
+    "queued": "{count} memos queued"
+  },
+  "tag": {
+    "list_title": "Tag Management",
+    "create_button": "Create new tag",
+    "name_placeholder": "Tag name",
+    "color_label": "Color",
+    "edit": "Edit",
+    "delete": "Delete",
+    "delete_confirm": "Delete this tag? This cannot be undone.",
+    "search_placeholder": "Search tags...",
+    "max_reached": "Up to 10 tags per memo",
+    "limit_reached": "You can create up to 100 tags",
+    "no_tags": "No tags yet",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "mood_stats": {
+    "title": "Mood Distribution",
+    "total": "Total"
+  },
+  "phase3": {
+    "advanced_fields": "Advanced fields (optional)",
+    "category": {
+      "label": "Category",
+      "work": "Work",
+      "private": "Private",
+      "other": "Other"
+    },
+    "duration": {
+      "label": "Duration (minutes)",
+      "placeholder": "e.g. 30",
+      "unit": "min",
+      "quick_15": "15 min",
+      "quick_30": "30 min",
+      "quick_60": "1 hour",
+      "quick_120": "2 hours"
+    },
+    "progress_rate": {
+      "label": "Progress",
+      "requires_todo": "Linking a TODO is required to enter progress rate"
+    },
+    "completes_todo": {
+      "label": "Mark this TODO as completed",
+      "tooltip": "Checking this will complete the linked TODO when the memo is saved"
+    },
+    "post_to_team": {
+      "button": "Post to team",
+      "select_team": "Select team",
+      "only_work": "Only Work memos can be posted to a team",
+      "already_posted": "This memo has already been posted",
+      "no_teams": "No teams available",
+      "publish_daily": "Post today's Work memos to team",
+      "no_work_memos_hint": "Nothing to post because there are no Work memos today.",
+      "publish_daily_success": "Today's Work memos have been posted to team",
+      "publish_daily_error": "Failed to post to team"
+    },
+    "settings": {
+      "default_team": "Default post team",
+      "default_category": "Default category",
+      "default_team_help": "Team automatically selected when creating a Work memo"
+    },
+    "team_timeline": {
+      "empty": "No Work memos have been posted to this team yet",
+      "load_more": "Load more"
+    }
+  },
+  "phase4": {
+    "org_scope": {
+      "label": "Share with Organization",
+      "select_org": "Select organization to share with",
+      "visibility_label": "Visibility",
+      "team_only": "Team members only",
+      "org_wide": "Visible to entire organization",
+      "no_orgs": "No organizations to join",
+      "already_set": "Organization scope already set",
+      "clear": "Remove organization share"
+    },
+    "audit": {
+      "toggle": "Change history",
+      "empty": "No change history",
+      "loading": "Loading...",
+      "error": "Failed to load history",
+      "event_todo_completed": "Marked related TODO as completed",
+      "event_created": "Memo created",
+      "event_updated": "Memo updated",
+      "event_deleted": "Memo deleted",
+      "event_todo_reverted": "TODO reverted"
+    }
+  }
+}

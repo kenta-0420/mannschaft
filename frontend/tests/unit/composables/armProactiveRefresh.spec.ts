@@ -1,0 +1,310 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+
+/**
+ * armProactiveRefresh / disarmProactiveRefresh（useApi.ts）のユニットテスト。
+ *
+ * 目的: access_token(15分)が失効してから反応する現状（リアクティブ）だと、背景の4ポーラー
+ * （通知unread-count/chat channels/mentions/inbox summary）が失効直後に必ず1回401を出し、
+ * コンソールが401ノイズで汚れる。失効の少し前（60秒前）に先回りリフレッシュを発火する
+ * タイマー式スケジューラの武装/解除挙動を検証する。
+ *
+ * 受け入れ条件（AC）とテストの対応:
+ * - AC-1: armProactiveRefresh はタイマーを武装し、指定遅延で performTokenRefresh を発火する
+ * - AC-2: 先回りリフレッシュ成功後、次のタイマーが再武装される（発火し続ける）
+ * - AC-3: disarmProactiveRefresh 後はタイマーが発火しない
+ * - AC-4: tokenExpiresAt が既に過去/バッファ以内なら遅延0（即時）で発火する
+ * - AC-5: 多重に arm しても常にタイマーは1本のみ（再武装時に前のタイマーをクリアする）
+ * - AC-6: クライアント限定（import.meta.client=false では武装しない）
+ * - AC-7: 先回りリフレッシュが失敗（transient）した場合、短い遅延（30秒）で再武装し回復を試みる
+ * - AC-8: 先回りリフレッシュが auth_failed（refresh_token が本当に無効）だった場合は再武装せず
+ *         logout({ reason: 'session_expired' }) する。再武装すると「何度リトライしても回復しない
+ *         リクエストを 30 秒おきに永久に投げ続ける」ゾンビセッションになるため（本ファイルの根治点）。
+ */
+
+const mockOfetch = vi.fn()
+vi.mock('ofetch', () => ({
+  ofetch: (...args: unknown[]) => mockOfetch(...args),
+}))
+
+vi.mock('~/composables/useApiBaseUrl', () => ({
+  resolveApiBaseUrl: () => 'http://localhost:8080',
+}))
+
+const { armProactiveRefresh, disarmProactiveRefresh, handleAuthFailureLogout }
+  = await import('~/composables/useApi')
+
+type RefreshConfig = Parameters<typeof armProactiveRefresh>[0]
+type RefreshAuthStore = Parameters<typeof armProactiveRefresh>[1]
+
+function makeConfig(): RefreshConfig {
+  return { public: { apiBase: '' } } as unknown as RefreshConfig
+}
+
+function makeAuthStore() {
+  return {
+    setTokens: vi.fn(),
+    logout: vi.fn().mockResolvedValue(undefined),
+  }
+}
+
+function asAuthStore(store: ReturnType<typeof makeAuthStore>): RefreshAuthStore {
+  return store as unknown as RefreshAuthStore
+}
+
+// waitForMicrotasks: setTimeout コールバック内の async performTokenRefresh の
+// Promise 解決をイベントループへ反映させるためのヘルパー。
+// vi.useFakeTimers 環境では advanceTimersByTime 後に Promise の then が
+// 即座には流れないため、実マクロタスクを 1 周挟んで確実に解決させる。
+async function flushPromises() {
+  await Promise.resolve()
+  await Promise.resolve()
+}
+
+describe('armProactiveRefresh / disarmProactiveRefresh', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    mockOfetch.mockReset()
+    localStorage.clear()
+    disarmProactiveRefresh()
+  })
+
+  afterEach(() => {
+    disarmProactiveRefresh()
+    vi.useRealTimers()
+  })
+
+  it('AC-1: 武装した遅延(ms)経過後に performTokenRefresh が発火する（ofetch 呼び出しで検証）', async () => {
+    const nowMs = Date.now()
+    localStorage.setItem('tokenExpiresAt', String(nowMs + 5 * 60_000)) // 5分後に失効
+    const authStore = makeAuthStore()
+    // 実 store の setTokens は成功時に tokenExpiresAt を新しい値へ更新する。このモックも同じ挙動に
+    // しておかないと、成功後の再武装（AC-2）が「期限不明のまま」延々と即時発火を繰り返してしまう
+    // （performTokenRefresh 自体は 1 回しか解決しないよう mockResolvedValueOnce で止めてあるため
+    //   実害は無いが、モックの挙動を実 store に近づけて意図を明確にする）。
+    authStore.setTokens.mockImplementation(() => {
+      localStorage.setItem('tokenExpiresAt', String(Date.now() + 15 * 60_000))
+    })
+    mockOfetch.mockResolvedValueOnce({
+      data: { accessToken: 'a1', refreshToken: 'r1' },
+    })
+
+    armProactiveRefresh(makeConfig(), asAuthStore(authStore))
+
+    // まだ発火していない
+    await vi.advanceTimersByTimeAsync(5 * 60_000 - 60_000 - 1_000)
+    expect(mockOfetch).not.toHaveBeenCalled()
+
+    // バッファ(60秒前)ちょうどで発火する
+    await vi.advanceTimersByTimeAsync(1_000)
+    await flushPromises()
+    expect(mockOfetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('AC-4: tokenExpiresAt が既に過去の場合、setTimeout を挟まず同期的に即時発火する', async () => {
+    localStorage.setItem('tokenExpiresAt', String(Date.now() - 10_000))
+    const authStore = makeAuthStore()
+    // AC-1 と同様、成功後の再武装ループが「期限不明のまま」延々と即時発火し続けないよう、
+    // 実 store と同じく setTokens が tokenExpiresAt を更新する挙動にしておく。
+    authStore.setTokens.mockImplementation(() => {
+      localStorage.setItem('tokenExpiresAt', String(Date.now() + 15 * 60_000))
+    })
+    mockOfetch.mockResolvedValueOnce({
+      data: { accessToken: 'a1', refreshToken: 'r1' },
+    })
+
+    armProactiveRefresh(makeConfig(), asAuthStore(authStore))
+
+    // タイマーを一切進めていない時点で、既に refresh の fetch が同期的に開始されているはず。
+    // setTimeout(fn, 0) 経由だと後続の起動プラグイン（nav-settings.client 等）に
+    // 実行順で先を越され PRR-001（実機E2E）のリロード直後レースに負けるため、
+    // 遅延0は setTimeout を挟まず同一 tick で発火する実装であることをここで直接検証する。
+    expect(mockOfetch).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(0)
+    await flushPromises()
+    expect(mockOfetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('AC-2: 成功後は新しい tokenExpiresAt に基づいて次のタイマーが再武装される', async () => {
+    const nowMs = Date.now()
+    localStorage.setItem('tokenExpiresAt', String(nowMs + 60_000)) // 60秒後 → 即時発火(バッファ=60秒)
+    const authStore = makeAuthStore()
+    // performTokenRefresh は成功時に authStore.setTokens を呼ぶ。
+    // テスト用モックの setTokens は localStorage の tokenExpiresAt を更新する（実 store の挙動を模倣）。
+    authStore.setTokens.mockImplementation(() => {
+      localStorage.setItem('tokenExpiresAt', String(Date.now() + 15 * 60_000))
+    })
+    mockOfetch.mockResolvedValue({
+      data: { accessToken: 'a1', refreshToken: 'r1' },
+    })
+
+    armProactiveRefresh(makeConfig(), asAuthStore(authStore))
+
+    await vi.advanceTimersByTimeAsync(0)
+    await flushPromises()
+    expect(mockOfetch).toHaveBeenCalledTimes(1)
+    expect(authStore.setTokens).toHaveBeenCalledTimes(1)
+
+    // 再武装された次のタイマーは新しい期限（15分後）のバッファ手前まで発火しないはず
+    await vi.advanceTimersByTimeAsync(15 * 60_000 - 60_000 - 1_000)
+    expect(mockOfetch).toHaveBeenCalledTimes(1)
+
+    // バッファ手前でようやく2回目が発火する
+    await vi.advanceTimersByTimeAsync(1_000)
+    await flushPromises()
+    expect(mockOfetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('AC-3: disarmProactiveRefresh 後はタイマーが発火しない', async () => {
+    // 遅延0（同期即時発火）ケースだと disarm する前に既に fetch が走ってしまうため、
+    // ここでは正の遅延（未来の失効時刻）で実際にタイマーが張られるケースを検証する。
+    localStorage.setItem('tokenExpiresAt', String(Date.now() + 5 * 60_000))
+    mockOfetch.mockResolvedValue({
+      data: { accessToken: 'a1', refreshToken: 'r1' },
+    })
+
+    armProactiveRefresh(makeConfig(), asAuthStore(makeAuthStore()))
+    disarmProactiveRefresh()
+
+    await vi.advanceTimersByTimeAsync(24 * 60 * 60_000) // 24時間進めても発火しない
+    await flushPromises()
+    expect(mockOfetch).not.toHaveBeenCalled()
+  })
+
+  it('AC-5: 多重に arm しても常にタイマーは1本のみ（前のタイマーはクリアされる）', () => {
+    // vi.getTimerCount() で「実際に張られているタイマーの本数」を直接検証する
+    // （fetch 呼び出し回数の一致だけでは、performTokenRefresh の single-flight dedup が
+    //   多重タイマーのバグを隠してしまい、AC-5 の意図（タイマー本数）を検証できないため）。
+    localStorage.setItem('tokenExpiresAt', String(Date.now() + 5 * 60_000))
+    const authStore = asAuthStore(makeAuthStore())
+    const config = makeConfig()
+
+    armProactiveRefresh(config, authStore)
+    armProactiveRefresh(config, authStore)
+    armProactiveRefresh(config, authStore)
+
+    expect(vi.getTimerCount()).toBe(1)
+  })
+
+  // AC-6（クライアント限定・SSR でタイマーを張らない）について:
+  // Nuxt/Vite は import.meta.client をビルド時に静的な真偽値へ置換するため、
+  // vi.stubGlobal('import', ...) による実行時の動的な差し替えは効果を持たない
+  // （本リポジトリの他の import.meta.client ガード付きコード（useAuthStore の
+  // setTokens/logout・auth.client プラグイン等）についても同様の理由から
+  // false 分岐を実行時トグルで unit test している例は無い）。
+  // そのため AC-6 は armProactiveRefresh 冒頭の `if (!import.meta.client) return`
+  // ガード（実装済み・他の client 限定処理と同一パターン）で担保し、
+  // ここでは動的トグルに依らない静的な存在確認のみ行う。
+  it('AC-6: armProactiveRefresh は import.meta.client ガードを持つ（静的確認。動的トグルは Vite の静的置換のため unit test 不可）', () => {
+    expect(armProactiveRefresh.toString()).toContain('import.meta.client')
+  })
+
+  it('AC-7: 先回りリフレッシュが失敗（transient）した場合、短い遅延(30秒)で再武装しリトライする', async () => {
+    localStorage.setItem('tokenExpiresAt', String(Date.now() + 60_000)) // 即時発火
+    // 1回目: 5xx で失敗（transient）、2回目: 成功
+    mockOfetch.mockRejectedValueOnce(
+      Object.assign(new Error('HTTP 503'), { response: { status: 503, headers: new Headers() } }),
+    )
+    mockOfetch.mockResolvedValueOnce({
+      data: { accessToken: 'a1', refreshToken: 'r1' },
+    })
+
+    const authStore = makeAuthStore()
+    // 実 store の setTokens は成功時に tokenExpiresAt を新しい値へ更新する。
+    // このモックも同じ挙動にしておかないと、リトライ成功後の再武装が「期限不明のまま」延々と
+    // 即時発火を繰り返してしまい、リトライ回数の検証が不安定になる。
+    authStore.setTokens.mockImplementation(() => {
+      localStorage.setItem('tokenExpiresAt', String(Date.now() + 15 * 60_000))
+    })
+
+    armProactiveRefresh(makeConfig(), asAuthStore(authStore))
+
+    await vi.advanceTimersByTimeAsync(0)
+    await flushPromises()
+    expect(mockOfetch).toHaveBeenCalledTimes(1) // 1回目: 失敗
+
+    // 30秒未満ではまだ再武装分は発火しない
+    await vi.advanceTimersByTimeAsync(29_000)
+    expect(mockOfetch).toHaveBeenCalledTimes(1)
+
+    // 30秒経過でリトライが発火する（連鎖する delay=0 の再武装分もまとめて処理されるよう余裕を持って進める）
+    await vi.advanceTimersByTimeAsync(5_000)
+    await flushPromises()
+    expect(mockOfetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('AC-7: transient 失敗では logout せず再武装のみ行う（回線が遅いだけのユーザーを落とさない）', async () => {
+    localStorage.setItem('tokenExpiresAt', String(Date.now() + 60_000)) // 即時発火
+    mockOfetch.mockRejectedValue(
+      Object.assign(new Error('HTTP 503'), { response: { status: 503, headers: new Headers() } }),
+    )
+    const authStore = makeAuthStore()
+
+    armProactiveRefresh(makeConfig(), asAuthStore(authStore))
+
+    await vi.advanceTimersByTimeAsync(0)
+    await flushPromises()
+    expect(mockOfetch).toHaveBeenCalledTimes(1)
+    // transient はログアウトしない
+    expect(authStore.logout).not.toHaveBeenCalled()
+    // かつ再武装されている（30秒後のリトライタイマーが1本張られている）
+    expect(vi.getTimerCount()).toBe(1)
+  })
+
+  it('AC-8: auth_failed（refresh が 401）では再武装せず logout({reason:"session_expired"}) を呼ぶ', async () => {
+    localStorage.setItem('tokenExpiresAt', String(Date.now() + 60_000)) // 即時発火
+    // refresh_token が本当に無効 → 何度リトライしても回復しない
+    mockOfetch.mockRejectedValue(
+      Object.assign(new Error('HTTP 401'), { response: { status: 401, headers: new Headers() } }),
+    )
+    const authStore = makeAuthStore()
+
+    armProactiveRefresh(makeConfig(), asAuthStore(authStore))
+
+    await vi.advanceTimersByTimeAsync(0)
+    await flushPromises()
+    expect(mockOfetch).toHaveBeenCalledTimes(1)
+
+    // ログアウトが1回だけ呼ばれる（セッション失効の理由付きで /login へ誘導される）
+    expect(authStore.logout).toHaveBeenCalledTimes(1)
+    expect(authStore.logout).toHaveBeenCalledWith({ reason: 'session_expired' })
+
+    // 再武装されていない（リトライタイマーが1本も残っていない）
+    expect(vi.getTimerCount()).toBe(0)
+
+    // 30秒後どころか24時間進めても二度と refresh は撃たれない（永久リトライの根治）
+    await vi.advanceTimersByTimeAsync(24 * 60 * 60_000)
+    await flushPromises()
+    expect(mockOfetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('AC-8: auth_failed が複数経路で同時に観測されても logout は1回に束ねられる（二重ログアウト防止）', async () => {
+    localStorage.setItem('tokenExpiresAt', String(Date.now() + 60_000)) // 即時発火
+    mockOfetch.mockRejectedValue(
+      Object.assign(new Error('HTTP 401'), { response: { status: 401, headers: new Headers() } }),
+    )
+    const authStore = makeAuthStore()
+    // logout は解決を遅らせ、「1回目の logout 実行中に2回目が来る」並行状況を作る。
+    let resolveLogout: (() => void) | undefined
+    authStore.logout.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveLogout = resolve
+        }),
+    )
+
+    // 先回りリフレッシュ経路と 401 interceptor 経路の双方が同一の auth_failed を掴む状況を、
+    // handleAuthFailureLogout を 2 回呼ぶことで再現する。
+    armProactiveRefresh(makeConfig(), asAuthStore(authStore))
+    await vi.advanceTimersByTimeAsync(0)
+    await flushPromises()
+
+    void handleAuthFailureLogout(asAuthStore(authStore))
+    await flushPromises()
+
+    expect(authStore.logout).toHaveBeenCalledTimes(1)
+
+    resolveLogout?.()
+    await flushPromises()
+  })
+})

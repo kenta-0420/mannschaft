@@ -1,0 +1,116 @@
+package com.mannschaft.app.budget.service;
+
+import com.mannschaft.app.budget.entity.BudgetFiscalYearEntity;
+import com.mannschaft.app.budget.repository.BudgetAllocationRepository;
+import com.mannschaft.app.budget.repository.BudgetConfigRepository;
+import com.mannschaft.app.budget.repository.BudgetTransactionRepository;
+import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.SecurityUtils;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.LocalDate;
+import java.util.Collections;
+
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+
+/**
+ * {@link BudgetSummaryService#getCategorySummary} の認可単体テスト（CMP-260917-2102 Phase 1 の追撃）。
+ *
+ * <p>{@link BudgetSummaryService#getFiscalYearSummary} は CMP-260917-1350 Phase 1 で
+ * checkMembership → checkAdminOrAbove に是正済みだが、同一画面（会計年度サマリ）の兄弟
+ * エンドポイントであるカテゴリ別サマリが checkMembership のまま残っていた（実機で MEMBER が
+ * 200 で閲覧できることを確認済み）。TeamSidebar/OrganizationSidebar とも budget は
+ * requiredRole: 'DEPUTY_ADMIN' でスコープ問わず管理者限定のため、スコープ分岐は不要で
+ * getFiscalYearSummary と同じ無条件 checkAdminOrAbove に揃える。</p>
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("BudgetSummaryService 認可単体テスト（getCategorySummary）")
+class BudgetSummaryServiceGetCategorySummaryAuthzTest {
+
+    @Mock private BudgetTransactionRepository transactionRepository;
+    @Mock private BudgetAllocationRepository allocationRepository;
+    @Mock private BudgetConfigRepository configRepository;
+    @Mock private BudgetFiscalYearService fiscalYearService;
+    @Mock private BudgetCategoryService categoryService;
+    @Mock private AccessControlService accessControlService;
+
+    @InjectMocks
+    private BudgetSummaryService service;
+
+    private static final Long SCOPE_ID = 9L;
+    private static final String SCOPE_TYPE = "ORGANIZATION";
+    private static final Long FISCAL_YEAR_ID = 1L;
+    private static final Long CATEGORY_ID = 1L;
+    private static final Long ACTOR_ID = 100L;
+
+    private MockedStatic<SecurityUtils> securityUtils;
+
+    @BeforeEach
+    void setUp() {
+        securityUtils = Mockito.mockStatic(SecurityUtils.class);
+        securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(ACTOR_ID);
+    }
+
+    @AfterEach
+    void tearDown() {
+        securityUtils.close();
+    }
+
+    private BudgetFiscalYearEntity fiscalYear() {
+        return BudgetFiscalYearEntity.builder()
+                .scopeType(SCOPE_TYPE)
+                .scopeId(SCOPE_ID)
+                .name("2026年度")
+                .startDate(LocalDate.of(2026, 4, 1))
+                .endDate(LocalDate.of(2027, 3, 31))
+                .createdBy(1L)
+                .build();
+    }
+
+    @Test
+    @DisplayName("ORGANIZATIONスコープ: MEMBERは403（COMMON_002）で拒否される")
+    void member_isForbidden() {
+        given(fiscalYearService.findById(FISCAL_YEAR_ID)).willReturn(fiscalYear());
+        doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .when(accessControlService).checkAdminOrAbove(eq(ACTOR_ID), eq(SCOPE_ID), eq(SCOPE_TYPE));
+
+        assertThatThrownBy(() -> service.getCategorySummary(CATEGORY_ID, FISCAL_YEAR_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(CommonErrorCode.COMMON_002);
+    }
+
+    @Test
+    @DisplayName("ORGANIZATIONスコープ: ADMINは200相当で取得できる")
+    void admin_isAllowed() {
+        given(fiscalYearService.findById(FISCAL_YEAR_ID)).willReturn(fiscalYear());
+        doNothing().when(accessControlService).checkAdminOrAbove(eq(ACTOR_ID), eq(SCOPE_ID), eq(SCOPE_TYPE));
+        given(categoryService.findById(CATEGORY_ID)).willReturn(
+                com.mannschaft.app.budget.entity.BudgetCategoryEntity.builder()
+                        .fiscalYearId(FISCAL_YEAR_ID)
+                        .name("L13人件費")
+                        .categoryType(com.mannschaft.app.budget.BudgetCategoryType.EXPENSE)
+                        .sortOrder(0)
+                        .build());
+        given(transactionRepository.findByFiscalYearId(FISCAL_YEAR_ID)).willReturn(Collections.emptyList());
+        given(allocationRepository.findByFiscalYearId(FISCAL_YEAR_ID)).willReturn(Collections.emptyList());
+
+        assertThatCode(() -> service.getCategorySummary(CATEGORY_ID, FISCAL_YEAR_ID)).doesNotThrowAnyException();
+    }
+}

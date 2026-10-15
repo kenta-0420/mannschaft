@@ -1,0 +1,157 @@
+{
+  "receipt": {
+    "nav": {
+      "receipts": "영수증 목록",
+      "settings": "발행자 설정"
+    },
+    "list": {
+      "title": "영수증 관리",
+      "settingsButton": "발행자 설정",
+      "issueButton": "신규 발행",
+      "empty": "영수증이 없습니다",
+      "amountWithUnit": "{amount}엔",
+      "column": {
+        "issuedAt": "발행일",
+        "receiptNumber": "영수증 번호",
+        "recipientName": "수신인",
+        "amount": "금액",
+        "status": "상태",
+        "action": "작업"
+      },
+      "status": {
+        "DRAFT": "임시 저장",
+        "ISSUED": "발행 완료"
+      },
+      "action": {
+        "approve": "승인",
+        "void": "무효화",
+        "reissue": "재발행",
+        "pdf": "PDF",
+        "sendEmail": "이메일 전송"
+      },
+      "dialog": {
+        "issueTitle": "영수증 발행",
+        "recipientName": "수신인",
+        "recipientNamePlaceholder": "예: 야마다 다로",
+        "amount": "금액(엔)",
+        "amountPlaceholder": "예: 10000",
+        "description": "품목·적요",
+        "descriptionPlaceholder": "예: 월회비",
+        "notes": "메모",
+        "notesPlaceholder": "비고 등",
+        "cancel": "취소",
+        "submit": "발행하기",
+        "voidTitle": "영수증 무효화",
+        "voidReason": "무효화 사유",
+        "voidReasonPlaceholder": "예: 금액 오류",
+        "voidSubmit": "무효화하기"
+      },
+      "toast": {
+        "loadFailed": "영수증 목록을 가져오지 못했습니다",
+        "approved": "승인했습니다",
+        "approveFailed": "승인에 실패했습니다",
+        "voided": "무효화했습니다",
+        "voidFailed": "무효화에 실패했습니다",
+        "reissued": "재발행했습니다",
+        "reissueFailed": "재발행에 실패했습니다",
+        "pdfDownloaded": "PDF를 다운로드했습니다",
+        "pdfDownloadFailed": "PDF 다운로드에 실패했습니다",
+        "emailSent": "이메일을 전송했습니다",
+        "emailSendFailed": "이메일 전송에 실패했습니다",
+        "issued": "영수증을 발행했습니다",
+        "issueFailed": "영수증 발행에 실패했습니다"
+      },
+      "notice": {
+        "personalScopeUnsupported": "영수증 관리는 개인 스코프에서는 사용할 수 없습니다. 팀 또는 조직 스코프로 전환해 주세요.",
+        "scopeNotReady": "스코프를 선택하면 영수증 목록이 표시됩니다."
+      },
+      "validation": {
+        "voidReasonRequired": "무효화 사유를 입력해 주세요"
+      }
+    },
+    "settings": {
+      "title": "영수증 발행자 설정",
+      "description": "영수증 발행에 사용하는 발행자 정보, 인보이스 대응, 번호 체계, PDF 서식을 설정합니다.",
+      "backToList": "영수증 목록으로 돌아가기",
+      "notice": {
+        "personalScopeUnsupported": "발행자 설정은 개인 스코프에서는 사용할 수 없습니다. 팀 또는 조직 스코프로 전환해 주세요."
+      },
+      "firstTimeNotice": "아직 발행자 설정이 등록되어 있지 않습니다. 저장하면 생성됩니다.",
+      "notRetroactiveNotice": "여기서 변경한 내용은 앞으로 발행하는 영수증에 적용됩니다. 이미 발행된 영수증의 내용은 법령상 변경할 수 없습니다.",
+      "notRetroactiveAfterSave": "이 변경은 앞으로 발행하는 영수증에만 적용됩니다. 이미 발행된 영수증은 법령상 변경할 수 없습니다. 과거분을 정정하려면 해당 영수증을 무효화한 후 재발행해 주세요.",
+      "section": {
+        "issuer": "발행자 정보",
+        "invoice": "인보이스 대응",
+        "numbering": "영수증 번호",
+        "pdf": "PDF 서식"
+      },
+      "form": {
+        "issuerName": "발행자명",
+        "postalCode": "우편번호",
+        "address": "주소",
+        "phone": "전화번호",
+        "isQualifiedInvoicer": "적격청구서 발행사업자입니다",
+        "invoiceRegistrationNumber": "인보이스 등록번호",
+        "defaultSealVariant": "인감 유형",
+        "receiptNoteTemplate": "용도 문구(단서) 템플릿",
+        "receiptNumberPrefix": "영수증 번호 접두사",
+        "fiscalYearStartMonth": "회계연도 시작월",
+        "autoResetNumber": "회계연도 전환 시 번호 자동 초기화",
+        "customFooter": "PDF 사용자 지정 바닥글",
+        "logo": "로고 이미지",
+        "nextReceiptNumber": "다음 영수증 번호"
+      },
+      "placeholder": {
+        "issuerName": "예: 일반사단법인 XX",
+        "postalCode": "예: 100-0001",
+        "address": "예: 도쿄도 지요다구 XX 1-2-3",
+        "phone": "예: 03-1234-5678",
+        "invoiceRegistrationNumber": "예: T1234567890123",
+        "receiptNoteTemplate": "예: 회비로서",
+        "receiptNumberPrefix": "예: RCP-",
+        "customFooter": "예: 문의는 사무국으로 연락해 주세요"
+      },
+      "sealVariant": {
+        "LAST_NAME": "성만",
+        "FULL_NAME": "성명",
+        "FIRST_NAME": "이름만"
+      },
+      "hint": {
+        "notFirstYet": "아직 발행되지 않았습니다",
+        "nextReceiptNumberFormat": "{prefix}{number} (발행 후 채번됩니다)",
+        "registrationNumberDisabled": "등록번호는 적격청구서 발행사업자인 경우에만 입력합니다",
+        "registrationNumberWillBeCleared": "저장하면 등록번호도 삭제됩니다",
+        "logoResize": "업로드한 이미지는 서버에서 긴 변이 200px 이내로 축소되며, 투명한 부분은 흰색 배경이 됩니다",
+        "logoNotSet": "로고 미설정",
+        "logoPosition": "설정하면 PDF 헤더 왼쪽 위와 제목 중앙에 표시됩니다",
+        "logoDisabledUntilSaved": "먼저 발행자 설정을 저장해 주세요",
+        "unsavedChanges": "저장하지 않은 변경 사항이 있습니다. 이동하면 사라집니다."
+      },
+      "validation": {
+        "issuerNameRequired": "발행자명을 입력해 주세요",
+        "registrationNumberRequired": "인보이스 등록번호를 입력해 주세요",
+        "registrationNumberFormat": "T + 숫자 13자리 형식으로 입력해 주세요(예: T1234567890123)",
+        "logoTooLarge": "로고 이미지는 1MB 이하로 해 주세요",
+        "logoUnsupportedType": "로고 이미지는 PNG 또는 JPEG 형식이어야 합니다"
+      },
+      "toast": {
+        "loadFailed": "발행자 설정을 가져오지 못했습니다",
+        "saved": "발행자 설정을 저장했습니다",
+        "saveFailed": "발행자 설정 저장에 실패했습니다",
+        "logoUploaded": "로고 이미지를 업로드했습니다",
+        "logoUploadFailed": "로고 이미지 업로드에 실패했습니다",
+        "logoDeleted": "로고 이미지를 삭제했습니다",
+        "logoDeleteFailed": "로고 이미지 삭제에 실패했습니다",
+        "forbidden": "이 작업을 수행할 권한이 없습니다"
+      },
+      "button": {
+        "save": "저장하기",
+        "uploadLogo": "로고 업로드",
+        "deleteLogo": "로고 삭제",
+        "deleteLogoConfirm": "로고 이미지를 삭제하시겠습니까?",
+        "cancel": "취소",
+        "confirmDelete": "삭제하기"
+      }
+    }
+  }
+}

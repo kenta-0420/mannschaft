@@ -1,0 +1,8 @@
+-- F09.8.1 V9.095 ロールバック手順（手動実行用、Flyway 自動実行されない）
+-- 配置場所: db/rollback/ 配下は Flyway スキャン対象外であり、手動コピー＆実行のテンプレートとして使用する。
+--
+-- ALTER TABLE corkboard_cards
+--     DROP INDEX idx_cc_pinned,
+--     DROP INDEX idx_cc_pinned_at,
+--     DROP COLUMN pinned_at,
+--     DROP COLUMN is_pinned;

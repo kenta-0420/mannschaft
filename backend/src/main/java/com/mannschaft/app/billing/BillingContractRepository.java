@@ -1,0 +1,191 @@
+package com.mannschaft.app.billing;
+
+import com.mannschaft.app.common.repository.AbstractTenantAwareRepository;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * F20.1: 契約リポジトリ（{@code billing_contracts}）。
+ *
+ * <p>{@code organization_id} NULL 許容＋{@code deleted_at} 保持のため
+ * {@link AbstractTenantAwareRepository} を継承する（escrow/fee_recovery_balances 前例・
+ * 設計書 01 §0）。USER スコープ行は {@code organization_id=NULL} を許容する
+ * （この場合テナント絞り込みメソッドの対象外になるだけで実害なし。USER スコープの照会は
+ * scope 系 finder を使う）。</p>
+ *
+ * <p>このフェーズでは Repo 骨格のみ（契約作成・解約・プラン変更 Service は別部隊）。</p>
+ */
+public interface BillingContractRepository
+        extends AbstractTenantAwareRepository<BillingContractEntity, UUID> {
+
+    /** スコープ×状態で契約一覧を取得する（アクティブ契約の存在確認・履歴照会に使用）。 */
+    List<BillingContractEntity> findByScopeKindAndScopeIdAndStatusAndDeletedAtIsNull(
+            EntitlementScopeKind scopeKind, Long scopeId, ContractStatus status);
+
+    /** スコープの契約履歴（全状態）を新しい順で取得する。 */
+    List<BillingContractEntity> findByScopeKindAndScopeIdAndDeletedAtIsNullOrderByContractedAtDesc(
+            EntitlementScopeKind scopeKind, Long scopeId);
+
+    /** 主キーで取得する（deleted_at 除外）。取消・プラン変更時の対象契約解決に使用。 */
+    java.util.Optional<BillingContractEntity> findByIdAndDeletedAtIsNull(UUID id);
+
+    /**
+     * 主キーで取得し、行を {@code PESSIMISTIC_WRITE} ロックする（柱③-B PR-3・退会経路の引継申請）。
+     *
+     * <p>退会イベント由来の引継申請は「この契約の payer が、いま退会したその人自身か」だけを
+     * 認可の根拠にする。判定と要求作成の間に payer が別経路で書き換わると判定が無意味になるため、
+     * 先に行をロックしてから読む。</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT c FROM BillingContractEntity c WHERE c.id = :id AND c.deletedAt IS NULL")
+    java.util.Optional<BillingContractEntity> findByIdForUpdate(@Param("id") UUID id);
+
+    /**
+     * スコープ×状態集合で契約を取得する（退会 purge 連動 AC-45: USER スコープの
+     * PENDING/ACTIVE/PAST_DUE 契約の一括解約に使用）。
+     */
+    List<BillingContractEntity> findByScopeKindAndScopeIdAndStatusInAndDeletedAtIsNull(
+            EntitlementScopeKind scopeKind, Long scopeId, java.util.Collection<ContractStatus> statuses);
+
+    /**
+     * Stripe Subscription ID（{@code psp_subscription_ref}）で契約を逆引きする（実決済 D-2・webhook ルーティング）。
+     * {@code uk_bc_psp_subscription} により最大 1 件。invoice.* / customer.subscription.deleted の billing/membership
+     * 分離判定に使用する（ヒットすれば billing 所有・なければ F08.9 会費側）。
+     */
+    java.util.Optional<BillingContractEntity> findByPspSubscriptionRefAndDeletedAtIsNull(String pspSubscriptionRef);
+
+    /**
+     * 退会 purge で CANCELLED 済みだが Stripe 即時解約の成否が未確認の USER スコープ有償契約を取得する
+     * （残債1: {@code BillingPurgeEventListener#retryPurge} の Stripe リトライ穴埋め用）。
+     *
+     * <p>現行の契約遷移ロジック上、USER スコープの契約が {@code status=CANCELLED} かつ
+     * {@code psp_subscription_ref} が非 NULL のまま残るのは
+     * {@code BillingContractService#cancelAllUserContractsForPurge}（退会 purge）経由のみである
+     * （無償解約は {@code psp_subscription_ref} が常に NULL・有償の通常解約
+     * {@code cancelPaidAtPeriodEnd} は status を ACTIVE のまま維持し CANCELLED にしない）。この一意性を
+     * 利用し、「DB は解約済みだが Stripe 側の解約成否が未確認」な契約を安全に抽出できる。</p>
+     */
+    List<BillingContractEntity> findByScopeKindAndScopeIdAndStatusAndPspSubscriptionRefIsNotNullAndDeletedAtIsNull(
+            EntitlementScopeKind scopeKind, Long scopeId, ContractStatus status);
+
+    /**
+     * 柱③-B: 指定ユーザーが<b>実質決済者（payer）</b>として紐づく契約を取得する
+     * （設計書 billing_payer_handover_design.md §1.2・§5.1・AC-3）。
+     *
+     * <p><b>なぜ必要か（根本原因）</b>: 従来の purge 検出
+     * （{@code findByScopeKindAndScopeIdAndStatusInAndDeletedAtIsNull} を {@code scope_kind=USER} 固定で使う）は
+     * 「契約のスコープが退会者本人か」しか見ていなかった。TEAM/ORG スコープの契約は、実際には退会者個人の
+     * Stripe Customer に課金されていても {@code scope_id} がチーム/組織 ID であるため<b>この検索条件に一切
+     * 引っかからない</b>。結果、退会30日後の強匿名化を経てもなお退会者個人へ課金が継続する（設計書 §1.4）。
+     * 本クエリは {@code payer_user_id} 起点に引き直すことでこの穴を塞ぐ。</p>
+     *
+     * <p>スコープ種別で絞らないのは、USER/TEAM/ORG のいずれであれ「その人が払っている契約」を漏れなく
+     * 拾う必要があるため。呼び出し側で用途に応じて絞り込む。</p>
+     *
+     * @param payerUserId 対象ユーザー（{@code payer_user_id} 一致）
+     * @param statuses    対象ステータス（通常は PENDING/ACTIVE/PAST_DUE）
+     * @return 当該ユーザーが payer である契約
+     */
+    List<BillingContractEntity> findByPayerUserIdAndStatusInAndDeletedAtIsNull(
+            Long payerUserId, java.util.Collection<ContractStatus> statuses);
+
+    /**
+     * 柱③-B: 引継の<b>適用対象</b>となる TEAM/ORG 契約を取得する（設計書 §5.1・R2-P1-6 の絞り込み）。
+     *
+     * <p>{@code psp_subscription_ref IS NOT NULL AND current_period_end IS NOT NULL} を条件に加えている理由:
+     * 引継フロー（{@code trial_end} 方式・pointer 切替）はいずれも「Stripe 側に実在するサブスクリプションの
+     * {@code current_period_end}」を前提にしているため、無償契約（価格 NULL）や PSP 側サブスク未作成の
+     * {@code PENDING} 初期段階の契約には<b>適用できない</b>。これらは Stripe 操作を一切伴わない
+     * 「payer 概念のみの更新」という別経路で処理する（設計書 §5.1 の1行定義）。</p>
+     *
+     * @param payerUserId 対象ユーザー
+     * @param scopeKinds  対象スコープ種別（TEAM/ORG）
+     * @param statuses    対象ステータス
+     * @return 引継適用対象の契約
+     */
+    List<BillingContractEntity>
+            findByPayerUserIdAndScopeKindInAndStatusInAndPspSubscriptionRefIsNotNullAndCurrentPeriodEndIsNotNullAndDeletedAtIsNull(
+            Long payerUserId, java.util.Collection<EntitlementScopeKind> scopeKinds,
+            java.util.Collection<ContractStatus> statuses);
+
+    /**
+     * PENDING 契約へ Stripe Checkout Session ID を条件付き UPDATE（CAS）で紐付ける。
+     *
+     * <p>条件は「対象契約が実在し、論理削除されておらず、status=PENDING であり、Session ref が未設定か
+     * 同一 ref であること」。同一 ref の再送は 1 行更新として通す（冪等）。他の Session ref を既に持つ契約、
+     * PENDING でない契約、削除済み契約は 0 行となって弾かれる。{@code uk_bc_checkout_session} が
+     * 「別契約が同じ Session を握る」経路も DB 側で塞ぐ。</p>
+     *
+     * @return 更新行数（1 のときだけ紐付け成立）
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update BillingContractEntity contract
+               set contract.stripeCheckoutSessionRef = :sessionRef,
+                   contract.updatedAt = :now
+             where contract.id = :id
+               and contract.status = com.mannschaft.app.billing.ContractStatus.PENDING
+               and contract.deletedAt is null
+               and (contract.stripeCheckoutSessionRef is null
+                    or contract.stripeCheckoutSessionRef = :sessionRef)
+            """)
+    int attachCheckoutSessionIfPending(@Param("id") UUID id,
+                                       @Param("sessionRef") String sessionRef,
+                                       @Param("now") java.time.LocalDateTime now);
+
+    /** 指定プランを参照する当該状態の契約が存在するか（シスアド マスタ DELETE の参照中判定・02 §4）。 */
+    boolean existsByPlanKeyAndStatusAndDeletedAtIsNull(String planKey, ContractStatus status);
+
+    /** 指定機能を参照する当該状態の ADDON 契約が存在するか（シスアド マスタ DELETE の参照中判定・02 §4）。 */
+    boolean existsByFeatureKeyAndStatusAndDeletedAtIsNull(String featureKey, ContractStatus status);
+
+    /**
+     * シスアド 契約横断検索（設計書 02 §4）。scopeKind / scopeId / status は任意フィルタ（null=無条件）。
+     * 契約日時の新しい順で返す。
+     */
+    @Query("SELECT c FROM BillingContractEntity c WHERE c.deletedAt IS NULL "
+            + "AND (:scopeKind IS NULL OR c.scopeKind = :scopeKind) "
+            + "AND (:scopeId IS NULL OR c.scopeId = :scopeId) "
+            + "AND (:status IS NULL OR c.status = :status) "
+            + "ORDER BY c.contractedAt DESC")
+    Page<BillingContractEntity> searchContracts(
+            @Param("scopeKind") EntitlementScopeKind scopeKind,
+            @Param("scopeId") Long scopeId,
+            @Param("status") ContractStatus status,
+            Pageable pageable);
+
+    /**
+     * 退会 purge の一括解約で契約を CANCELLED にする（PR6a AC-72b）。
+     *
+     * <p>エンティティを1件ずつ書き換えて flush させると契約数 M に比例した UPDATE が出るため、
+     * 1本の一括 UPDATE に畳む。{@code @PreUpdate} を経由しないので {@code updated_at} は明示的に渡す。
+     * {@code version} 列は触らない（旧・逐次 save でも増えていなかった。CAS は operation 側の責務）。</p>
+     *
+     * <p>永続化コンテキストは<b>クリアする</b>（{@code clearAutomatically=true}）—— 読み出し済みの
+     * 契約エンティティが古い status のまま残ると、同一トランザクションの後続処理が嘘を読む。
+     * 呼び出し元はこの直後に処理を終えること。</p>
+     *
+     * @param ids       対象契約 ID
+     * @param status    遷移先（{@link ContractStatus#CANCELLED}）
+     * @param cancelledAt 解約日時（{@code updated_at} にも入れる）
+     * @return 更新件数
+     */
+    @org.springframework.data.jpa.repository.Modifying(
+            clearAutomatically = true, flushAutomatically = true)
+    @org.springframework.data.jpa.repository.Query(
+            "UPDATE BillingContractEntity c SET c.status = :status, c.cancelledAt = :cancelledAt, "
+                    + "c.updatedAt = :cancelledAt WHERE c.id IN :ids AND c.deletedAt IS NULL")
+    int bulkCancelForPurge(
+            @org.springframework.data.repository.query.Param("ids") java.util.Collection<UUID> ids,
+            @org.springframework.data.repository.query.Param("status") ContractStatus status,
+            @org.springframework.data.repository.query.Param("cancelledAt")
+            java.time.LocalDateTime cancelledAt);
+}

@@ -1,0 +1,26 @@
+-- F02.3: プロジェクト（目標）定義テーブル
+CREATE TABLE projects (
+    id              BIGINT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    scope_type      VARCHAR(20)      NOT NULL COMMENT 'PERSONAL / TEAM / ORGANIZATION',
+    scope_id        BIGINT UNSIGNED  NOT NULL COMMENT 'users.id / teams.id / organizations.id',
+    title           VARCHAR(200)     NOT NULL,
+    description     TEXT             NULL,
+    emoji           VARCHAR(10)      NULL COMMENT 'アイコン絵文字',
+    color           VARCHAR(7)       NULL COMMENT 'テーマカラー HEX',
+    due_date        DATE             NULL,
+    status          VARCHAR(20)      NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE / COMPLETED / ARCHIVED',
+    progress_rate   DECIMAL(5,2)     NOT NULL DEFAULT 0.00 COMMENT '進捗率 0.00〜100.00',
+    total_todos     SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    completed_todos SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    visibility      VARCHAR(20)      NOT NULL DEFAULT 'MEMBERS_ONLY' COMMENT 'PRIVATE / MEMBERS_ONLY / PUBLIC',
+    created_by      BIGINT UNSIGNED  NOT NULL,
+    completed_at    DATETIME         NULL,
+    created_at      DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at      DATETIME         NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_proj_scope_title (scope_type, scope_id, title, deleted_at),
+    INDEX idx_proj_scope_status (scope_type, scope_id, status, due_date),
+    INDEX idx_proj_due_date (due_date, status),
+    INDEX idx_proj_created_by (created_by)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

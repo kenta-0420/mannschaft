@@ -1,0 +1,173 @@
+{
+  "announcement": {
+    "preview": {
+      "title": "본문",
+      "open_source": "원문 페이지 열기",
+      "close": "닫기",
+      "loading": "본문을 불러오는 중입니다",
+      "empty_body": "본문이 없습니다",
+      "retry": "다시 시도",
+      "load_failed": "본문을 불러올 수 없습니다",
+      "locked": "본문을 보려면 이용 조건을 충족해야 합니다",
+      "image_failed": "이미지를 표시할 수 없습니다",
+      "read_failed": "읽음 상태를 업데이트할 수 없습니다"
+    },
+    "widget_title": "공지사항",
+    "all_announcements": "모든 공지사항",
+    "display_in_announcement": "공지 위젯에 표시",
+    "display_in_announcement_hint": "대시보드 상단의 눈에 띄는 위치에 표시됩니다.",
+    "pin": "고정",
+    "unpin": "고정 해제",
+    "priority": {
+      "URGENT": "긴급",
+      "IMPORTANT": "중요",
+      "NORMAL": "일반"
+    },
+    "source_type": {
+      "BLOG_POST": "블로그",
+      "BULLETIN_THREAD": "게시판",
+      "TIMELINE_POST": "타임라인",
+      "CIRCULATION": "회람 문서",
+      "SURVEY": "설문"
+    },
+    "mark_all_read": "모두 읽음 처리",
+    "remove_from_announcements": "공지에서 제거",
+    "expires_at": "만료일",
+    "unread_count": "안 읽은 항목 {count}개",
+    "empty": "새로운 공지사항이 없습니다.",
+    "pin_limit_reached": "고정은 최대 5개까지 가능합니다.",
+    "already_registered": "이 콘텐츠는 이미 공지로 등록되어 있습니다.",
+    "no_longer_available": "이 공지는 공개가 종료되어 목록에서 제거했습니다.",
+    "mark_all_read_partial": "{count}건을 읽은 것으로 처리했습니다. 아직 읽지 않은 공지가 남아 있습니다. 한 번 더 누르시면 계속 처리합니다.",
+    "broadcast_button_team": "팀에 공지 보내기",
+    "broadcast_button_org": "조직 내 공지",
+    "wizard_title": "공지 보내기",
+    "step1_title": "대상 범위",
+    "step2_title": "채널 선택",
+    "step3_title": "내용 입력",
+    "step_of": "{current} / {total}",
+    "target_role_label": "누구에게 전달하시겠습니까?",
+    "target_role_members_only": "회원만",
+    "target_role_supporters_and_above": "서포터 이상",
+    "target_role_public": "전체 (공개)",
+    "target_teams_label": "대상 팀 선택",
+    "target_teams_all": "모든 팀",
+    "target_teams_specific": "특정 팀 선택",
+    "template_select_placeholder": "템플릿에서 불러오기",
+    "template_quick_broadcast": "이 템플릿으로 공지하기",
+    "channel_bulletin": "게시판",
+    "channel_timeline": "타임라인",
+    "channel_blog": "블로그",
+    "channel_todo": "TODO (업무 배분)",
+    "channel_schedule": "일정",
+    "channel_survey": "설문",
+    "channel_disabled_tooltip": "이 범위에서는 {channel}을(를) 사용할 수 없습니다",
+    "todo_assignee_hint": "담당자는 ADMIN이 TODO 페이지에서 지정하거나 각 회원이 자원할 수 있습니다.",
+    "priority_label": "우선순위",
+    "expires_at_label": "표시 마감일 (선택사항)",
+    "preview_title": "미리보기",
+    "submit_button": "공지 보내기",
+    "unsaved_changes_warning": "입력 내용이 사라집니다. 계속하시겠습니까?",
+    "broadcast_success": "공지를 전송했습니다",
+    "broadcast_error_generic": "공지 전송에 실패했습니다",
+    "broadcast_success_cta": "공지 위젯 확인하기",
+    "form_title": "제목",
+    "form_body": "내용",
+    "form_start_at": "시작 일시",
+    "form_end_at": "종료 일시",
+    "form_all_day": "종일",
+    "form_location": "장소 (선택사항)",
+    "form_description": "설명 (선택사항)",
+    "form_closes_at": "마감 일시 (선택사항)",
+    "survey_questions_hint": "설문 질문은 공지 전송 후 설문 편집 페이지에서 추가할 수 있습니다.",
+    "template_name_label": "템플릿 이름",
+    "template_set_default": "기본값으로 설정",
+    "template_create": "템플릿으로 저장",
+    "template_name_placeholder": "템플릿 이름 입력",
+    "template_save_success": "템플릿이 저장되었습니다",
+    "template_save_failed": "템플릿 저장에 실패했습니다",
+    "template_delete_confirm": "이 템플릿을 삭제하시겠습니까?",
+    "incident": {
+      "dismiss": "닫기"
+    },
+    "broadcast_guide": {
+      "toggle": "사용법",
+      "description": "공지 마법사의 사용법을 단계 순서대로 정리했습니다. 위에서부터 차례로 진행하면 공지를 보낼 수 있습니다.",
+      "audience": {
+        "title": "누구에게 전달할지 (대상 범위)",
+        "body": "공지를 보여줄 상대의 범위를 정합니다 (첫 번째 단계).",
+        "steps": {
+          "step1": "수신 대상을 회원만 / 서포터 이상 / 전체 (공개) 중에서 선택한다",
+          "step2": "(조직 공지만) 대상 팀을 「모든 팀」 또는 개별로 선택한다",
+          "step3": "(조직 공지만) \"팀 그룹으로 선택\"에서 그룹이나 범위(이전/이후)로 한꺼번에 수신 대상을 정합니다. 해당 팀 수는 화면에서 확인할 수 있습니다"
+        }
+      },
+      "template": {
+        "title": "템플릿으로 시간 절약",
+        "body": "자주 쓰는 수신 대상 설정을 불러오고 저장할 수 있습니다.",
+        "steps": {
+          "step1": "「템플릿에서 불러오기」로 수신 대상을 자동 입력한다",
+          "step2": "(관리자만) 「템플릿으로 저장」으로 현재 범위를 등록한다 (범위당 20건까지)"
+        }
+      },
+      "channel": {
+        "title": "전달 방법 선택 (채널)",
+        "body": "게시판·타임라인·블로그·TODO·일정·설문 중에서 전달할 곳을 하나 고릅니다.",
+        "steps": {
+          "step1": "6개의 카드 중 하나를 고른다",
+          "step2": "「다음」을 누른다. ※템플릿에 기본 채널이 있으면 이 화면은 건너뜁니다"
+        }
+      },
+      "content": {
+        "title": "내용 작성",
+        "body": "선택한 채널에 따라 입력란이 바뀝니다. *표시는 필수입니다.",
+        "steps": {
+          "step1": "제목·본문 등 필수 항목을 입력한다",
+          "step2": "예: 일정은 시작 일시, 타임라인은 본문이 필수"
+        }
+      },
+      "priority": {
+        "title": "우선순위와 표시 기한",
+        "body": "눈에 띄는 정도와 게시 종료 일시를 설정할 수 있습니다.",
+        "steps": {
+          "step1": "(관리자 이상) 우선순위를 일반 / 중요 / 긴급 중에서 고른다. 일반 회원은 「일반」으로 고정",
+          "step2": "표시 기한을 필요에 따라 설정한다"
+        }
+      },
+      "submit": {
+        "title": "전송 후 확인",
+        "body": "입력이 모두 갖춰지면 전송할 수 있습니다. 전송 후에는 공지사항에 표시됩니다.",
+        "steps": {
+          "step1": "「공지 보내기」를 누른다",
+          "step2": "전송 완료를 확인한다. ※설문 문항과 TODO 담당자는 전송 후 각 화면에서 추가합니다"
+        }
+      }
+    },
+    "target_mode_all": "모든 팀",
+    "target_mode_teams": "팀 선택",
+    "target_mode_groups": "팀 그룹으로 선택",
+    "target_groups_label": "팀 그룹",
+    "target_range_label": "범위로 선택",
+    "target_range_up_to": "{name} 이전 (정렬 순서상 처음부터)",
+    "target_range_from": "{name} 이후 (정렬 순서상 끝까지)",
+    "target_range_between": "{from} 〜 {to}",
+    "target_range_kind_up_to": "~ 이전",
+    "target_range_kind_from": "~ 이후",
+    "target_range_kind_between": "A〜B",
+    "target_include_unassigned": "미분류 팀 포함",
+    "target_direct_members_note": "조직 직속 멤버(어느 팀에도 속하지 않은 사람)에게도 전달됩니다",
+    "target_resolved_count": "해당: {teams}개 팀 + 직속 멤버 {members}명",
+    "target_resolved_empty": "해당하는 사람이 없습니다",
+    "target_order_hint": "정렬 순서는 팀 그룹 관리에서 바꿀 수 있습니다",
+    "push_disabled_note": "이 공지의 푸시 알림은 발송되지 않습니다",
+    "dynamic_display_note": "표시는 현재 소속을 기준으로 판정됩니다(삭제된 그룹은 발송 시점의 대상 팀으로 판정)",
+    "template_deleted_groups_removed": "삭제된 팀 그룹이 템플릿에서 제외되었습니다",
+    "template_range_invalid": "템플릿의 범위에 삭제된 팀 그룹이 포함되어 있습니다. 범위를 다시 선택해 주세요",
+    "audience_summary": "수신 대상: {label} (발송 시 {count}개 팀)",
+    "groups_load_failed": "팀 그룹 목록을 가져오지 못했습니다",
+    "target_range_pick_group": "그룹 선택",
+    "preview_loading": "수신 대상 확인 중…",
+    "preview_failed": "수신 대상을 확인하지 못했습니다",
+    "broadcast_done_title": "공지를 보냈습니다"
+  }
+}

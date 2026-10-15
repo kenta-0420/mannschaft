@@ -1,0 +1,247 @@
+package com.mannschaft.app.todo.event;
+
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.entity.NotificationEntity;
+import com.mannschaft.app.notification.service.NotificationDispatchService;
+import com.mannschaft.app.notification.service.NotificationService;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.service.TeamService;
+import com.mannschaft.app.todo.entity.ProjectEntity;
+import com.mannschaft.app.todo.entity.ProjectMilestoneEntity;
+import com.mannschaft.app.todo.entity.TodoAssigneeEntity;
+import com.mannschaft.app.todo.entity.TodoEntity;
+import com.mannschaft.app.todo.TodoScopeType;
+import com.mannschaft.app.todo.repository.ProjectMilestoneRepository;
+import com.mannschaft.app.todo.repository.ProjectRepository;
+import com.mannschaft.app.todo.repository.TodoAssigneeRepository;
+import com.mannschaft.app.todo.repository.TodoRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * マイルストーンアンロック通知リスナー（F02.7 ↔ F04.3 連携）。
+ *
+ * <p>{@link MilestoneUnlockedEvent} を受信し、アンロックされたマイルストーン配下 TODO の
+ * 担当者全員にプッシュ通知を発行する。担当者が一人もいない場合はプロジェクト作成者に
+ * 送信する（設計書 §5.6 / §6.3 準拠）。</p>
+ *
+ * <p>通知種別:
+ * <ul>
+ *   <li>{@code MILESTONE_UNLOCKED} — priority=NORMAL。前マイルストーン達成による自動アンロック</li>
+ *   <li>{@code MILESTONE_FORCE_UNLOCKED} — priority=HIGH。ADMIN による強制アンロック</li>
+ * </ul>
+ * NotificationDispatchService が WebSocket（STOMP /user/{userId}/queue/notifications）＋
+ * PWA Push を担当するため、リスナー側は createNotification → dispatch を連結するのみ。</p>
+ */
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class MilestoneNotificationListener {
+
+    private final NotificationService notificationService;
+    private final NotificationDispatchService notificationDispatchService;
+    private final ProjectMilestoneRepository milestoneRepository;
+    private final ProjectRepository projectRepository;
+    private final TodoRepository todoRepository;
+    private final TodoAssigneeRepository todoAssigneeRepository;
+    private final TeamService teamService;
+    private final OrganizationService organizationService;
+    private final MessageSource messageSource;
+    private final UserLocaleCache userLocaleCache;
+
+    /**
+     * マイルストーンアンロック時にプッシュ通知・WebSocket 配信を実行する。
+     *
+     * <p>送信先決定ルール:
+     * <ol>
+     *   <li>マイルストーン配下 TODO の担当者を全件収集</li>
+     *   <li>担当者が一人も存在しない場合はプロジェクト作成者を送信先に採用</li>
+     *   <li>マイルストーン自体が削除済み or プロジェクトが削除済みならスキップ</li>
+     * </ol>
+     * </p>
+     *
+     * <p>Issue #2990 L4 で是正。是正前は素の {@code @EventListener} + executor 無指定の
+     * {@code @Async} であり、javadoc は「元トランザクションの commit 後に実行される」と述べていたが
+     * <b>事実ではなかった</b>。{@code @EventListener} は {@code publishEvent} の時点、すなわち
+     * {@code MilestoneGateService} の業務トランザクションが<b>まだコミットしていない</b>間に発火し、
+     * {@code @Async} によって直ちに別スレッド・別コネクションへ渡されていた。その結果:</p>
+     * <ul>
+     *   <li>リスナーが {@code milestoneRepository.findById} 等で読み直す内容は、業務TXの未コミット変更を
+     *       見られない。アンロック直後のマイルストーンが「見当たらず」でスキップされる競合があった</li>
+     *   <li>業務TXがあとからロールバックしても通知だけが残る「逆向きの不整合」が通っていた</li>
+     * </ul>
+     * <p>{@code @TransactionalEventListener(AFTER_COMMIT)} により業務コミット後の発火を保証し、
+     * executor を {@code event-pool} に明示する（無指定でも {@code @Primary} で同じプールへ載るが、
+     * 番人が要求する明示指定に揃える）。通知送信の遅延・失敗が TODO ステータス変更トランザクションへ
+     * 影響しない点は従来どおり。</p>
+     *
+     * @param event マイルストーンアンロックイベント
+     */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。マイルストーン解放の通知。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onMilestoneUnlocked(MilestoneUnlockedEvent event) {
+        ProjectMilestoneEntity milestone = milestoneRepository.findById(event.milestoneId()).orElse(null);
+        if (milestone == null) {
+            log.warn("マイルストーン通知スキップ: マイルストーン見当たらず milestoneId={}", event.milestoneId());
+            return;
+        }
+
+        ProjectEntity project = projectRepository.findByIdAndDeletedAtIsNull(event.projectId()).orElse(null);
+        if (project == null) {
+            log.warn("マイルストーン通知スキップ: プロジェクト削除済 projectId={}, milestoneId={}",
+                    event.projectId(), event.milestoneId());
+            return;
+        }
+
+        Set<Long> recipientUserIds = collectRecipients(milestone.getId(), project.getCreatedBy());
+        if (recipientUserIds.isEmpty()) {
+            log.info("マイルストーン通知送信先なし: milestoneId={}, projectId={}",
+                    milestone.getId(), project.getId());
+            return;
+        }
+
+        String notificationType = event.isForced() ? "MILESTONE_FORCE_UNLOCKED" : "MILESTONE_UNLOCKED";
+        NotificationPriority priority = event.isForced() ? NotificationPriority.HIGH : NotificationPriority.NORMAL;
+        String titleKey = event.isForced()
+                ? "notification.todo.milestoneForceUnlocked.title"
+                : "notification.todo.milestoneUnlocked.title";
+        String titleDefault = event.isForced()
+                ? "マイルストーンが強制アンロックされました"
+                : "マイルストーンがアンロックされました";
+
+        NotificationScopeType scopeType = resolveScopeType(project.getScopeType());
+        String actionUrl = buildActionUrl(project, milestone.getId());
+
+        // Issue #2715 CMP-055 ロットC-6: 受信者ごとに locale が異なるため、ループの外で一括解決する（N+1 防止）。
+        // Codex 検分是正（PR #2873）: バルク取得自体を try で隔離し、失敗時は既定 locale ("ja") で継続する。
+        Map<Long, String> locales;
+        try {
+            locales = userLocaleCache.getLocales(recipientUserIds.stream().toList());
+        } catch (Exception e) {
+            log.warn("locale 一括解決に失敗（既定 locale で継続）: error={}", e.getMessage());
+            locales = Map.of();
+        }
+
+        int dispatched = 0;
+        for (Long userId : recipientUserIds) {
+            try {
+                Locale locale = Locale.forLanguageTag(locales.getOrDefault(userId, "ja"));
+                String title = messageSource.getMessage(titleKey, null, titleDefault, locale);
+                String body = messageSource.getMessage(
+                        "notification.todo.milestoneUnlocked.body",
+                        new Object[]{milestone.getTitle()},
+                        "「" + milestone.getTitle() + "」が操作可能になりました。タスクを進めましょう。",
+                        locale);
+                NotificationEntity entity = notificationService.createNotification(
+                        userId,
+                        notificationType,
+                        priority,
+                        title,
+                        body,
+                        "MILESTONE",
+                        milestone.getId(),
+                        scopeType,
+                        project.getScopeId(),
+                        actionUrl,
+                        null /* actorId: システムトリガー or forcedBy は event に含まれないため省略 */
+                );
+                notificationDispatchService.dispatch(entity);
+                dispatched++;
+            } catch (RuntimeException ex) {
+                log.error("マイルストーン通知送信失敗: userId={}, milestoneId={}, type={}",
+                        userId, milestone.getId(), notificationType, ex);
+            }
+        }
+        log.info("マイルストーンアンロック通知: milestoneId={}, projectId={}, type={}, dispatched={}",
+                milestone.getId(), project.getId(), notificationType, dispatched);
+    }
+
+    /**
+     * 通知送信先ユーザーを収集する。
+     * 配下 TODO の担当者を優先し、誰もいなければプロジェクト作成者にフォールバックする。
+     *
+     * @param milestoneId          対象マイルストーン ID
+     * @param projectCreatedBy     プロジェクト作成者 ID（フォールバック先）
+     * @return ユーザー ID 集合（重複排除済）
+     */
+    private Set<Long> collectRecipients(Long milestoneId, Long projectCreatedBy) {
+        Set<Long> recipients = new HashSet<>();
+
+        List<TodoEntity> todos = todoRepository.findByMilestoneIdAndDeletedAtIsNull(milestoneId);
+        for (TodoEntity todo : todos) {
+            List<TodoAssigneeEntity> assignees = todoAssigneeRepository.findByTodoId(todo.getId());
+            for (TodoAssigneeEntity a : assignees) {
+                recipients.add(a.getUserId());
+            }
+        }
+
+        // 担当者不在時のフォールバック: プロジェクト作成者
+        if (recipients.isEmpty() && projectCreatedBy != null) {
+            recipients.add(projectCreatedBy);
+        }
+        return recipients;
+    }
+
+    /**
+     * TodoScopeType → NotificationScopeType の変換。
+     */
+    private NotificationScopeType resolveScopeType(TodoScopeType scopeType) {
+        return switch (scopeType) {
+            case TEAM -> NotificationScopeType.TEAM;
+            case ORGANIZATION -> NotificationScopeType.ORGANIZATION;
+            case PERSONAL -> NotificationScopeType.PERSONAL;
+        };
+    }
+
+    /**
+     * 通知タップ時の遷移先 URL を組み立てる。
+     *
+     * <p>TEAM / ORGANIZATION は slug ベースの URL を生成する。
+     * slug が取得できない場合（チーム/組織が論理削除済み等）は /projects/{id} にフォールバックする。</p>
+     *
+     * @param project     プロジェクトエンティティ
+     * @param milestoneId マイルストーン ID
+     * @return 遷移先 URL 文字列
+     */
+    private String buildActionUrl(ProjectEntity project, Long milestoneId) {
+        return switch (project.getScopeType()) {
+            case TEAM -> {
+                // TeamService 経由で slug 解決（team Entity の直接参照を排除 / ドメイン境界遵守）
+                String slug = teamService.getSlugById(project.getScopeId());
+                yield slug != null
+                        ? String.format("/teams/%s/projects/%d?milestone=%d",
+                                slug, project.getId(), milestoneId)
+                        : String.format("/projects/%d?milestone=%d",
+                                project.getId(), milestoneId);
+            }
+            case ORGANIZATION -> {
+                // OrganizationService 経由で slug 解決（org Entity の直接参照を排除 / ドメイン境界遵守）
+                String slug = organizationService.getSlugById(project.getScopeId());
+                yield slug != null
+                        ? String.format("/organizations/%s/projects/%d?milestone=%d",
+                                slug, project.getId(), milestoneId)
+                        : String.format("/projects/%d?milestone=%d",
+                                project.getId(), milestoneId);
+            }
+            case PERSONAL -> String.format("/projects/%d?milestone=%d",
+                    project.getId(), milestoneId);
+        };
+    }
+}

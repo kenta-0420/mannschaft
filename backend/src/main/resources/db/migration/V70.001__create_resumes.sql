@@ -1,0 +1,30 @@
+-- F01.10: マイページ履歴書・職務経歴書 — resumes テーブル作成
+-- 設計書: docs/features/F01.10_mypage_resume.md §4.2
+CREATE TABLE resumes (
+  id                    BINARY(16)      NOT NULL,
+  user_id               BIGINT UNSIGNED NOT NULL,
+  title                 VARCHAR(100)    NOT NULL,
+  photo_key             VARCHAR(500)    NULL,
+  era_format            ENUM('WESTERN','JAPANESE') NOT NULL DEFAULT 'WESTERN',
+  current_address       TEXT            NULL,
+  current_address_kana  TEXT            NULL,
+  contact_address       TEXT            NULL,
+  contact_address_kana  TEXT            NULL,
+  contact_phone         TEXT            NULL,
+  contact_email         TEXT            NULL,
+  motivation            TEXT            NULL,
+  self_pr               TEXT            NULL,
+  personal_request      TEXT            NULL,
+  commute_minutes       SMALLINT        NULL,
+  dependents_count      SMALLINT        NULL,
+  has_spouse            BOOLEAN         NULL,
+  spouse_support        BOOLEAN         NULL,
+  career_summary        TEXT            NULL,
+  skills_summary        TEXT            NULL,
+  version               BIGINT          NOT NULL DEFAULT 0,
+  created_at            DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at            DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at            DATETIME        NULL,
+  PRIMARY KEY (id),
+  INDEX idx_resumes_user_id (user_id, deleted_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

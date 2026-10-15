@@ -1,0 +1,180 @@
+{
+  "friends": {
+    "title": "友队",
+    "subtitle": "管理与其他团队的友队关系",
+    "list": {
+      "empty": "没有友队",
+      "established_at": "成立日",
+      "visibility_public": "公开",
+      "visibility_private": "非公开",
+      "supporter_notice": "仅显示已公开的友队",
+      "target_team_id": "目标团队 ID",
+      "comment_label": "问候语（任意）"
+    },
+    "actions": {
+      "follow": "关注",
+      "unfollow": "取消关注",
+      "toggle_visibility": "切换公开设置"
+    },
+    "messages": {
+      "follow_success": "已关注",
+      "follow_mutual_success": "相互关注成立 — 成为友队了",
+      "follow_retry": "正在处理关注。请在{seconds}秒后重试",
+      "unfollow_success": "已取消关注",
+      "unfollow_confirm": "取消对此团队的关注吗？",
+      "visibility_changed": "已更改公开设置"
+    },
+    "errors": {
+      "self_follow": "不能关注自己的团队",
+      "already_following": "已经关注了",
+      "target_not_found": "找不到目标团队",
+      "permission_denied": "没有权限"
+    },
+    "guide": {
+      "title": "友队使用方法",
+      "description": "关注其他团队并成为友队，在此画面管理这些关系。",
+      "what": {
+        "title": "什么是友队",
+        "body": "两个团队互相关注后，就会成为友队。列表中会显示各团队的成立日以及公开或非公开状态。超过20条时会分页显示。",
+        "note": "支持者等只能看到已公开的友队。"
+      },
+      "follow": {
+        "title": "关注并成为友队",
+        "step1": "点击友队标签页顶部的“关注”按钮",
+        "step2": "输入对方团队的ID（数字）",
+        "step3": "输入问候语（可选，最多300个字符）",
+        "step4": "点击对话框中的“关注”",
+        "mutual": "对方团队也关注你后，会显示“成为友队了”，友队关系随即成立。",
+        "caution_title": "注意",
+        "caution_self": "不能关注自己的团队",
+        "caution_already": "不能关注已经关注的团队",
+        "caution_busy": "繁忙时会自动重试最多3次。仍然失败时，请稍后再试",
+        "caution_role": "“关注”按钮仅对管理员和拥有权限的副管理员显示"
+      },
+      "visibility": {
+        "title": "切换公开与非公开",
+        "step1": "切换友队卡片上的开关",
+        "step2": "确认显示“已更改公开设置”",
+        "caution_title": "注意",
+        "caution_admin": "只有管理员可以操作。其他人看到的开关处于禁用状态",
+        "caution_revert": "切换失败时，开关会恢复到原来的状态"
+      },
+      "unfollow": {
+        "title": "取消关注",
+        "step1": "点击友队卡片右侧的“︙”",
+        "step2": "从菜单中选择“取消关注”",
+        "step3": "在确认对话框中确认",
+        "caution_title": "注意",
+        "caution_kept": "即使取消关注，过去转发的帖子也会保留",
+        "caution_role": "只有管理员和拥有权限的副管理员可以取消关注"
+      },
+      "related": {
+        "title": "相关画面",
+        "body": "与友队相关的以下画面可从团队菜单中打开。",
+        "item_folders": "友队文件夹 — 将友队整理到文件夹中（最多可创建20个）",
+        "item_feed": "管理员动态 — 查看友队的帖子并转发到本团队",
+        "item_exports": "反向转发记录 — 查看本团队的帖子被转发给了哪些友队"
+      }
+    }
+  },
+  "folders": {
+    "title": "好友文件夹",
+    "create": "创建文件夹",
+    "list": {
+      "empty": "没有文件夹",
+      "member_count": "{count}个团队",
+      "remaining": "还可创建{remaining}个（最多20个）"
+    },
+    "fields": {
+      "name": "文件夹名称",
+      "description": "说明（任意）",
+      "color": "颜色"
+    },
+    "actions": {
+      "edit": "编辑",
+      "delete": "删除",
+      "manage_members": "管理成员",
+      "add_member": "添加好友",
+      "remove_member": "删除"
+    },
+    "placeholders": {
+      "name": "例：系列学校",
+      "description": "此文件夹的用途・备注（任意）"
+    },
+    "members": {
+      "title": "成员管理",
+      "current": "已注册的好友",
+      "available": "可添加的好友",
+      "empty": "文件夹中没有注册的好友",
+      "no_friends": "没有可添加的好友"
+    },
+    "messages": {
+      "created": "文件夹已创建",
+      "updated": "文件夹已更新",
+      "deleted": "文件夹已删除",
+      "delete_confirm": "删除此文件夹吗？",
+      "max_exceeded": "文件夹最多创建20个",
+      "name_required": "请输入文件夹名称",
+      "name_too_long": "文件夹名称请在50个字符以内",
+      "description_too_long": "说明请在300个字符以内",
+      "name_conflict": "已存在同名文件夹",
+      "member_added": "已将好友添加到文件夹",
+      "member_removed": "已将好友从文件夹删除",
+      "duplicate_member": "此好友已注册到文件夹"
+    }
+  },
+  "friend_feed": {
+    "title": "管理员动态",
+    "subtitle": "确认・转发友队的投稿",
+    "badge": "来自好友",
+    "forwarded_badge": "已转发",
+    "permission_denied": "没有查看此画面的权限",
+    "list": {
+      "empty": "没有来自好友的投稿"
+    },
+    "forward": {
+      "button": "转发到本团队",
+      "modal_title": "转发投稿",
+      "target_label": "发布范围",
+      "target_member": "仅成员",
+      "target_supporter": "成员+支持者（Phase 3以后）",
+      "target_supporter_tooltip": "Phase 3以后可用",
+      "comment_label": "管理员评论（任意）",
+      "comment_placeholder": "输入转发时附加的评论（任意）",
+      "submit": "转发",
+      "cancel": "取消",
+      "success": "已转发投稿",
+      "revoke": "取消转发",
+      "revoke_success": "已取消转发",
+      "revoke_confirm": "取消此转发吗？",
+      "error": "转发失败"
+    }
+  },
+  "forward_exports": {
+    "title": "逆转发历史",
+    "subtitle": "本团队投稿被哪些好友转发了",
+    "permission_denied": "没有查看此画面的权限",
+    "list": {
+      "empty": "还没有转发历史",
+      "anonymous_team": "匿名团队",
+      "revoked": "已取消",
+      "target_member": "成员",
+      "target_supporter": "成员+支持者"
+    },
+    "columns": {
+      "source_post": "原投稿",
+      "forwarding_team": "转发目标团队",
+      "forwarded_at": "转发日时",
+      "target": "发布范围",
+      "status": "状态"
+    },
+    "pagination": {
+      "showing": "{total}件中第{from}～{to}件",
+      "prev": "上一页",
+      "next": "下一页"
+    }
+  },
+  "nav": {
+    "tab": "友队"
+  }
+}

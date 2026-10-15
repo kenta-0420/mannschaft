@@ -1,0 +1,507 @@
+package com.mannschaft.app.budget.service;
+
+import com.mannschaft.app.budget.BudgetApprovalStatus;
+import com.mannschaft.app.budget.BudgetErrorCode;
+import com.mannschaft.app.budget.BudgetFiscalYearStatus;
+import com.mannschaft.app.budget.BudgetMapper;
+import com.mannschaft.app.budget.BudgetPaymentMethod;
+import com.mannschaft.app.budget.BudgetTransactionType;
+import com.mannschaft.app.budget.dto.AttachmentResponse;
+import com.mannschaft.app.budget.dto.CreateTransactionRequest;
+import com.mannschaft.app.budget.dto.RegisterAttachmentRequest;
+import com.mannschaft.app.budget.dto.ReverseTransactionRequest;
+import com.mannschaft.app.budget.dto.TransactionDetailResponse;
+import com.mannschaft.app.budget.dto.TransactionResponse;
+import com.mannschaft.app.budget.dto.UploadUrlResponse;
+import com.mannschaft.app.budget.dto.UserSummary;
+import com.mannschaft.app.budget.entity.BudgetTransactionAttachmentEntity;
+import com.mannschaft.app.budget.entity.BudgetCategoryEntity;
+import com.mannschaft.app.budget.entity.BudgetConfigEntity;
+import com.mannschaft.app.budget.entity.BudgetFiscalYearEntity;
+import com.mannschaft.app.budget.entity.BudgetTransactionEntity;
+import com.mannschaft.app.budget.event.BudgetTransactionCreatedEvent;
+import com.mannschaft.app.budget.event.BudgetTransactionReversedEvent;
+import com.mannschaft.app.budget.repository.BudgetTransactionAttachmentRepository;
+import com.mannschaft.app.budget.repository.BudgetConfigRepository;
+import com.mannschaft.app.budget.repository.BudgetTransactionRepository;
+import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.EnumInputParser;
+import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
+import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.mannschaft.app.common.timezone.TimezoneContextHolder;
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.util.List;
+
+/**
+ * 予算取引サービス。取引のCRUD・承認・取消・自動記帳を担当する。
+ */
+@Slf4j
+@Service
+@Transactional(readOnly = true)
+@RequiredArgsConstructor
+public class BudgetTransactionService {
+
+    private final BudgetTransactionRepository transactionRepository;
+    private final BudgetTransactionAttachmentRepository attachmentRepository;
+    private final BudgetConfigRepository configRepository;
+    private final BudgetFiscalYearService fiscalYearService;
+    private final BudgetCategoryService categoryService;
+    private final BudgetMapper budgetMapper;
+    private final AccessControlService accessControlService;
+    private final DomainEventPublisher domainEventPublisher;
+    private final StorageService storageService;
+    private final StorageAclService storageAclService;
+
+    private static final Duration UPLOAD_URL_TTL = Duration.ofMinutes(15);
+
+    /**
+     * 取引を作成する。承認閾値を超える支出の場合はPENDING_APPROVALとなる。
+     */
+    @Transactional
+    public TransactionResponse create(CreateTransactionRequest request) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        BudgetFiscalYearEntity fy = fiscalYearService.findById(request.fiscalYearId());
+        accessControlService.checkMembership(currentUserId, fy.getScopeId(), fy.getScopeType());
+
+        if (fy.getStatus() != BudgetFiscalYearStatus.OPEN) {
+            throw new BusinessException(BudgetErrorCode.BUDGET_004);
+        }
+
+        BudgetCategoryEntity category = categoryService.findById(request.categoryId());
+        BudgetTransactionType txType = EnumInputParser.parse(
+                BudgetTransactionType.class, request.transactionType(), "transactionType");
+
+        // 承認閾値チェック（支出のみ）
+        BudgetApprovalStatus approvalStatus = determineApprovalStatus(
+                txType, request.amount(), fy.getScopeId(), fy.getScopeType());
+
+        BudgetTransactionEntity entity = BudgetTransactionEntity.builder()
+                .fiscalYearId(request.fiscalYearId())
+                .categoryId(request.categoryId())
+                .scopeType(fy.getScopeType())
+                .scopeId(fy.getScopeId())
+                .transactionType(txType)
+                .amount(request.amount())
+                .transactionDate(request.transactionDate())
+                .title(request.description())
+                .description(request.memo())
+                .paymentMethod(request.paymentMethod())
+                .referenceNumber(request.reference())
+                .approvalStatus(approvalStatus)
+                .recordedBy(currentUserId)
+                .build();
+
+        BudgetTransactionEntity saved = transactionRepository.save(entity);
+
+        // ドメインイベント発行
+        domainEventPublisher.publish(new BudgetTransactionCreatedEvent(
+                saved.getId(), saved.getFiscalYearId(), saved.getCategoryId(),
+                saved.getAmount(), saved.getTransactionType().name(),
+                fy.getScopeId(), fy.getScopeType(), currentUserId));
+
+        log.info("取引を作成しました: id={}, type={}, amount={}, status={}",
+                saved.getId(), txType, request.amount(), approvalStatus);
+
+        return toTransactionResponse(saved, category);
+    }
+
+    /**
+     * 取引をIDで取得する。
+     *
+     * <p>認可根治戦役 Wave3-B9: scopeId/scopeType はクライアント指定値であり信用できない
+     * （BOLA: 別スコープの transactionId を自スコープの scopeId/scopeType と一緒に送れば
+     * 素通りしていた）。entity を先に fetch し、クライアント指定値が entity 由来の
+     * 真の scope と一致することを確認してから（不一致は存在秘匿のため 404）、
+     * その真の scope で checkMembership する。</p>
+     */
+    public TransactionDetailResponse getById(Long id, Long scopeId, String scopeType) {
+        BudgetTransactionEntity entity = findById(id);
+        requireScopeMatchOrConceal(entity, scopeId, scopeType);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkMembership(currentUserId, entity.getScopeId(), entity.getScopeType());
+
+        BudgetCategoryEntity category = categoryService.findById(entity.getCategoryId());
+        List<AttachmentResponse> attachments = attachmentRepository.findByTransactionId(id)
+                .stream()
+                .map(budgetMapper::toAttachmentResponse)
+                .toList();
+
+        return new TransactionDetailResponse(
+                entity.getId(),
+                entity.getFiscalYearId(),
+                entity.getCategoryId(),
+                category.getName(),
+                entity.getTransactionType().name(),
+                entity.getAmount(),
+                entity.getTransactionDate(),
+                entity.getTitle(),
+                entity.getPaymentMethod(),
+                entity.getReferenceNumber(),
+                entity.getDescription(),
+                entity.getApprovalStatus().name(),
+                entity.getReversalOfId(),
+                new UserSummary(entity.getRecordedBy(), null),
+                null,
+                attachments,
+                entity.getCreatedAt(),
+                entity.getUpdatedAt()
+        );
+    }
+
+    /**
+     * スコープ内の取引一覧をページング取得する。
+     */
+    public PagedResponse<TransactionResponse> listByScope(Long fiscalYearId, Pageable pageable) {
+        BudgetFiscalYearEntity fy = fiscalYearService.findById(fiscalYearId);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkMembership(currentUserId, fy.getScopeId(), fy.getScopeType());
+
+        Page<BudgetTransactionEntity> page = transactionRepository.findByFiscalYearId(fiscalYearId, pageable);
+
+        List<TransactionResponse> data = page.getContent().stream()
+                .map(entity -> {
+                    BudgetCategoryEntity category = categoryService.findById(entity.getCategoryId());
+                    return toTransactionResponse(entity, category);
+                })
+                .toList();
+
+        PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
+                page.getTotalElements(), page.getNumber(), page.getSize(), page.getTotalPages());
+        return PagedResponse.of(data, meta);
+    }
+
+    /**
+     * 取引を取消（反転仕訳）する。
+     */
+    @Transactional
+    public TransactionResponse reverse(Long id, ReverseTransactionRequest request) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        BudgetTransactionEntity original = findById(id);
+        BudgetFiscalYearEntity fy = fiscalYearService.findById(original.getFiscalYearId());
+        accessControlService.checkAdminOrAbove(currentUserId, fy.getScopeId(), fy.getScopeType());
+
+        if (fy.getStatus() != BudgetFiscalYearStatus.OPEN) {
+            throw new BusinessException(BudgetErrorCode.BUDGET_004);
+        }
+        if (original.getReversalOfId() != null) {
+            throw new BusinessException(BudgetErrorCode.BUDGET_007);
+        }
+
+        // 反転仕訳を作成
+        BudgetTransactionEntity reversal = BudgetTransactionEntity.builder()
+                .fiscalYearId(original.getFiscalYearId())
+                .categoryId(original.getCategoryId())
+                .scopeType(original.getScopeType())
+                .scopeId(original.getScopeId())
+                .transactionType(
+                        original.getTransactionType() == BudgetTransactionType.INCOME
+                                ? BudgetTransactionType.EXPENSE : BudgetTransactionType.INCOME)
+                .amount(original.getAmount())
+                .transactionDate(LocalDate.now(TimezoneContextHolder.get()))
+                .title("[取消] " + original.getTitle() + " - " + request.reason())
+                .approvalStatus(BudgetApprovalStatus.APPROVED)
+                .reversalOfId(original.getId())
+                .recordedBy(currentUserId)
+                .build();
+
+        BudgetTransactionEntity savedReversal = transactionRepository.save(reversal);
+
+        // ドメインイベント発行
+        domainEventPublisher.publish(new BudgetTransactionReversedEvent(
+                original.getId(), savedReversal.getId(), fy.getId(),
+                original.getAmount(), fy.getScopeId(), fy.getScopeType(), currentUserId));
+
+        BudgetCategoryEntity category = categoryService.findById(reversal.getCategoryId());
+        log.info("取引を取消しました: originalId={}, reversalId={}", id, savedReversal.getId());
+        return toTransactionResponse(savedReversal, category);
+    }
+
+    /**
+     * 取引を削除する。
+     *
+     * <p>認可根治戦役 Wave3-B9: 旧実装は scopeId/scopeType（クライアント指定値）で
+     * checkAdminOrAbove した「後」に id 直指定で削除していたため、任意スコープの ADMIN が
+     * 別スコープの transactionId を渡すだけで削除できる重大 BOLA だった。
+     * entity を先に fetch し、クライアント指定値が entity 由来の真の scope と一致することを
+     * 確認してから（不一致は存在秘匿のため 404）、その真の scope で checkAdminOrAbove する。</p>
+     */
+    @Transactional
+    public void delete(Long id, Long scopeId, String scopeType) {
+        BudgetTransactionEntity entity = findById(id);
+        requireScopeMatchOrConceal(entity, scopeId, scopeType);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(currentUserId, entity.getScopeId(), entity.getScopeType());
+
+        transactionRepository.delete(entity);
+        log.info("取引を削除しました: id={}", id);
+    }
+
+    /**
+     * 取引を承認する（ワークフローからの呼出し）。
+     */
+    @Transactional
+    public void approveTransaction(Long transactionId, Long approvedByUserId) {
+        BudgetTransactionEntity entity = findById(transactionId);
+        if (entity.getApprovalStatus() != BudgetApprovalStatus.PENDING_APPROVAL) {
+            throw new BusinessException(BudgetErrorCode.BUDGET_008);
+        }
+
+        entity.approve();
+        transactionRepository.save(entity);
+        log.info("取引を承認しました: id={}, approvedBy={}", transactionId, approvedByUserId);
+    }
+
+    /**
+     * 取引を却下する（ワークフローからの呼出し）。
+     */
+    @Transactional
+    public void rejectTransaction(Long transactionId, Long rejectedByUserId) {
+        BudgetTransactionEntity entity = findById(transactionId);
+        if (entity.getApprovalStatus() != BudgetApprovalStatus.PENDING_APPROVAL) {
+            throw new BusinessException(BudgetErrorCode.BUDGET_008);
+        }
+
+        entity.reject();
+        transactionRepository.save(entity);
+        log.info("取引を却下しました: id={}, rejectedBy={}", transactionId, rejectedByUserId);
+    }
+
+    /**
+     * 決済完了時に収入を自動記帳する（F08.2 連携）。
+     * source_type + source_id による冪等性を保証する。
+     */
+    @Transactional
+    public void autoRecordPaymentIncome(Long scopeId, String scopeType,
+                                         BigDecimal amount, String description, String paymentMethod,
+                                         Long paymentId) {
+        // 冪等性チェック: 同一決済からの重複記帳を防止
+        if (!transactionRepository.findBySourceTypeAndSourceId("MEMBER_PAYMENT", paymentId).isEmpty()) {
+            log.info("同一決済からの記帳済み、スキップ: paymentId={}", paymentId);
+            return;
+        }
+
+        // スコープに紐づくOPENの会計年度を取得
+        List<BudgetFiscalYearEntity> fiscalYears = fiscalYearService.listByScope(scopeType, scopeId).stream()
+                .map(fy -> fiscalYearService.findById(fy.id()))
+                .filter(fy -> fy.getStatus() == BudgetFiscalYearStatus.OPEN)
+                .toList();
+
+        if (fiscalYears.isEmpty()) {
+            log.warn("自動記帳対象のOPEN会計年度が見つかりません: scopeId={}, scopeType={}", scopeId, scopeType);
+            return;
+        }
+
+        BudgetFiscalYearEntity fy = fiscalYears.getFirst();
+
+        // 収入カテゴリの最初のものに記帳（設定に応じて変更可能）
+        List<BudgetCategoryEntity> incomeCategories = categoryService.listFlatByFiscalYear(fy.getId()).stream()
+                .map(c -> categoryService.findById(c.id()))
+                .filter(c -> c.getCategoryType() == com.mannschaft.app.budget.BudgetCategoryType.INCOME)
+                .toList();
+
+        if (incomeCategories.isEmpty()) {
+            log.warn("自動記帳対象の収入カテゴリが見つかりません: fiscalYearId={}", fy.getId());
+            return;
+        }
+
+        BudgetCategoryEntity category = incomeCategories.getFirst();
+
+        BudgetTransactionEntity entity = BudgetTransactionEntity.builder()
+                .fiscalYearId(fy.getId())
+                .categoryId(category.getId())
+                .scopeType(scopeType)
+                .scopeId(scopeId)
+                .transactionType(BudgetTransactionType.INCOME)
+                .amount(amount)
+                .transactionDate(LocalDate.now(TimezoneContextHolder.get()))
+                .title("[自動記帳] " + description)
+                .approvalStatus(BudgetApprovalStatus.APPROVED)
+                .paymentMethod(paymentMethod)
+                .isAutoRecorded(true)
+                .sourceType("MEMBER_PAYMENT")
+                .sourceId(paymentId)
+                .recordedBy(0L)
+                .build();
+
+        transactionRepository.save(entity);
+        log.info("決済収入を自動記帳しました: fiscalYearId={}, paymentId={}, amount={}", fy.getId(), paymentId, amount);
+    }
+
+    /**
+     * 添付ファイルアップロードURLを生成する。
+     *
+     * <p>認可根治戦役 Wave3-B9: 旧実装は認可ゼロ（任意の認証ユーザーが任意 transactionId に
+     * 対する S3 アップロードURLを取得できた）。本 EP は scope を宣言する query パラメータを
+     * 持たない「ID 直指定」EP のため、entity 由来 scope に非所属の場合は存在秘匿のため 404
+     * （incident ドメイン {@code requireMemberOrConceal} と同じ設計）。所属しているが ADMIN
+     * でない場合は 403。</p>
+     */
+    @Transactional
+    public UploadUrlResponse generateUploadUrl(Long transactionId, String fileName, String contentType) {
+        BudgetTransactionEntity entity = findById(transactionId);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        requireMemberOrConceal(entity, currentUserId);
+        accessControlService.checkAdminOrAbove(currentUserId, entity.getScopeId(), entity.getScopeType());
+
+        String s3Key = "budget/attachments/" + transactionId + "/" + System.currentTimeMillis() + "_" + fileName;
+        PresignedUploadResult result = storageService.generateUploadUrl(s3Key, contentType, UPLOAD_URL_TTL);
+        StorageAclScope aclScope = "TEAM".equals(entity.getScopeType())
+                ? StorageAclScope.team(entity.getScopeId())
+                : StorageAclScope.organization(entity.getScopeId());
+        storageAclService.registerPending(result.s3Key(), currentUserId, aclScope, contentType, UPLOAD_URL_TTL,
+                new StorageAclContentReference("BUDGET_TRANSACTION", transactionId.toString()));
+        return new UploadUrlResponse(result.uploadUrl(), result.s3Key(), result.expiresInSeconds());
+    }
+
+    /**
+     * 添付ファイルを削除する。S3オブジェクトとDBレコードを両方削除する。
+     *
+     * <p>認可根治戦役 Wave3-B9: 旧実装は認可ゼロだった。ID 直指定 EP のため
+     * entity 由来 scope に非所属なら 404（存在秘匿）、所属しているが ADMIN でない場合は 403
+     * （添付ファイルは取引→スコープの親子鎖で辿る）。</p>
+     *
+     * @param transactionId 取引ID
+     * @param attachmentId  添付ファイルID
+     */
+    @Transactional
+    public void deleteAttachment(Long transactionId, Long attachmentId) {
+        BudgetTransactionEntity transaction = findById(transactionId);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        requireMemberOrConceal(transaction, currentUserId);
+        accessControlService.checkAdminOrAbove(currentUserId, transaction.getScopeId(), transaction.getScopeType());
+
+        BudgetTransactionAttachmentEntity attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new BusinessException(BudgetErrorCode.BUDGET_021));
+
+        if (!attachment.getTransactionId().equals(transactionId)) {
+            throw new BusinessException(BudgetErrorCode.BUDGET_021);
+        }
+
+        storageAclService.releaseClaimed(attachment.getFileKey(),
+                new StorageAclAttachmentBinding("BUDGET_TRANSACTION_ATTACHMENT", attachment.getId().toString()));
+        attachmentRepository.delete(attachment);
+        domainEventPublisher.publish(new S3ObjectDeleteEvent(attachment.getFileKey()));
+        log.info("添付ファイルを削除しました: transactionId={}, attachmentId={}", transactionId, attachmentId);
+    }
+
+    /**
+     * 添付ファイルメタデータを登録する。
+     *
+     * <p>認可根治戦役 Wave3-B9: 旧実装は認可ゼロだった。ID 直指定 EP のため
+     * entity 由来 scope に非所属なら 404（存在秘匿）、所属しているが ADMIN でない場合は 403。</p>
+     */
+    @Transactional
+    public AttachmentResponse registerAttachment(RegisterAttachmentRequest request) {
+        BudgetTransactionEntity transaction = findById(request.transactionId());
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        requireMemberOrConceal(transaction, currentUserId);
+        accessControlService.checkAdminOrAbove(currentUserId, transaction.getScopeId(), transaction.getScopeType());
+
+        BudgetTransactionAttachmentEntity entity = BudgetTransactionAttachmentEntity.builder()
+                .transactionId(request.transactionId())
+                .originalFilename(request.fileName())
+                .mimeType(request.fileType())
+                .fileSize(request.fileSize())
+                .fileKey(request.s3Key())
+                .build();
+
+        BudgetTransactionAttachmentEntity saved = attachmentRepository.save(entity);
+        StorageAclScope aclScope = "TEAM".equals(transaction.getScopeType())
+                ? StorageAclScope.team(transaction.getScopeId())
+                : StorageAclScope.organization(transaction.getScopeId());
+        storageAclService.claimPending(request.s3Key(), currentUserId, aclScope,
+                new StorageAclContentReference("BUDGET_TRANSACTION", request.transactionId().toString()),
+                new StorageAclAttachmentBinding("BUDGET_TRANSACTION_ATTACHMENT", saved.getId().toString()));
+        return budgetMapper.toAttachmentResponse(saved);
+    }
+
+    // ========================================
+    // ヘルパー
+    // ========================================
+
+    BudgetTransactionEntity findById(Long id) {
+        return transactionRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(BudgetErrorCode.BUDGET_009));
+    }
+
+    /**
+     * 認可根治戦役 Wave3-B9: getById/delete のようにクライアントが scopeId/scopeType を
+     * 明示的に宣言する EP で使う BOLA ガード。entity 由来の真の scope と一致しない場合は
+     * 越境 ID の存在を秘匿するため、通常の 403 ではなく取引の NOT_FOUND コード（404）を投げる。
+     */
+    private void requireScopeMatchOrConceal(BudgetTransactionEntity entity, Long scopeId, String scopeType) {
+        if (!entity.getScopeId().equals(scopeId) || !entity.getScopeType().equals(scopeType)) {
+            throw new BusinessException(BudgetErrorCode.BUDGET_009);
+        }
+    }
+
+    /**
+     * 認可根治戦役 Wave3-B9: 添付ファイル系 EP（scope を宣言する query パラメータを持たない
+     * 「ID 直指定」EP）で使う BOLA ガード。entity 由来 scope の非メンバーは越境 ID の存在を
+     * 秘匿するため、通常の {@code checkMembership}（403）ではなく取引の NOT_FOUND コード（404）を
+     * 投げる（incident ドメイン {@code requireMemberOrConceal} と同じ設計判断）。
+     */
+    private void requireMemberOrConceal(BudgetTransactionEntity entity, Long currentUserId) {
+        if (!accessControlService.isMember(currentUserId, entity.getScopeId(), entity.getScopeType())) {
+            throw new BusinessException(BudgetErrorCode.BUDGET_009);
+        }
+    }
+
+    private BudgetApprovalStatus determineApprovalStatus(BudgetTransactionType txType,
+                                                          BigDecimal amount,
+                                                          Long scopeId, String scopeType) {
+        // 収入は即時承認
+        if (txType == BudgetTransactionType.INCOME) {
+            return BudgetApprovalStatus.APPROVED;
+        }
+
+        // 設定から承認閾値を取得
+        return configRepository.findByScopeTypeAndScopeId(scopeType, scopeId)
+                .map(config -> {
+                    if (config.getAutoRecordPayments()
+                            && amount.compareTo(config.getApprovalThreshold()) <= 0) {
+                        return BudgetApprovalStatus.APPROVED;
+                    }
+                    return BudgetApprovalStatus.PENDING_APPROVAL;
+                })
+                .orElse(BudgetApprovalStatus.APPROVED); // 設定なしの場合は自動承認
+    }
+
+    private TransactionResponse toTransactionResponse(BudgetTransactionEntity entity,
+                                                       BudgetCategoryEntity category) {
+        return new TransactionResponse(
+                entity.getId(),
+                entity.getFiscalYearId(),
+                entity.getCategoryId(),
+                category.getName(),
+                entity.getTransactionType().name(),
+                entity.getAmount(),
+                entity.getTransactionDate(),
+                entity.getTitle(),
+                entity.getPaymentMethod(),
+                entity.getReferenceNumber(),
+                entity.getApprovalStatus().name(),
+                new UserSummary(entity.getRecordedBy(), null),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt()
+        );
+    }
+}

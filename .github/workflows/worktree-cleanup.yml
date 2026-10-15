@@ -1,0 +1,28 @@
+name: Worktree cleanup guard
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: worktree-cleanup-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Worktree cleanup guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify script syntax
+        run: node --check scripts/worktree-cleanup.mjs
+      - name: Run safety fixtures
+        run: node --test scripts/worktree-cleanup.test.mjs

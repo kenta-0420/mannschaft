@@ -1,0 +1,97 @@
+package com.mannschaft.app.files.controller;
+
+import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.files.dto.CompleteMultipartRequest;
+import com.mannschaft.app.files.dto.CompleteMultipartResponse;
+import com.mannschaft.app.files.dto.PartUrlRequest;
+import com.mannschaft.app.files.dto.PartUrlResponse;
+import com.mannschaft.app.files.dto.StartMultipartUploadRequest;
+import com.mannschaft.app.files.service.MultipartUploadService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * Multipart Upload API コントローラー。
+ * 大容量ファイル（100MB 超）の R2 Multipart Upload フローを提供する。
+ * ドメイン別 API で開始した uploadId に対するパート URL 発行・完了・中断を提供する。
+ * 旧汎用開始エンドポイントは互換性を保って 410 Gone を返す。
+ */
+@RestController
+@RequestMapping("/api/v1/files/multipart")
+@Tag(name = "Multipart Upload", description = "F05.5 大容量ファイル Multipart Upload API")
+@RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
+public class MultipartUploadController {
+
+    private final MultipartUploadService multipartUploadService;
+
+    /**
+     * 廃止済みの汎用開始 API。ドメイン別開始 API が uploadId を発行し、
+     * その uploadId に対する part、complete、abort は維持する。
+     */
+    @PostMapping("/start")
+    @Operation(summary = "廃止済み: 汎用 Multipart Upload 開始")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "410", description = "ドメイン別開始 API へ移行済み")
+    public ResponseEntity<Void> startUpload(
+            @Valid @RequestBody StartMultipartUploadRequest request) {
+        return ResponseEntity.status(HttpStatus.GONE).build();
+    }
+
+    /**
+     * パート用 Presigned URL を発行する。
+     * 指定したパート番号に対する Presigned PUT URL を一括発行する。
+     * クライアントはこの URL に対して直接 PUT リクエストを送信してパートをアップロードする。
+     */
+    @PostMapping("/{uploadId}/part-url")
+    @Operation(summary = "パート Presigned URL 発行")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "URL 発行成功")
+    public ResponseEntity<ApiResponse<PartUrlResponse>> getPartUrls(
+            @PathVariable String uploadId,
+            @Valid @RequestBody PartUrlRequest request) {
+
+        Long userId = SecurityUtils.getCurrentUserId();
+        PartUrlResponse response = multipartUploadService.getPartUrls(uploadId, userId, request);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * Multipart Upload を完了する。
+     * 全パートのアップロード後に呼び出し、R2 にオブジェクトを組み立てる。
+     */
+    @PostMapping("/{uploadId}/complete")
+    @Operation(summary = "Multipart Upload 完了")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アップロード完了")
+    public ResponseEntity<ApiResponse<CompleteMultipartResponse>> completeUpload(
+            @PathVariable String uploadId,
+            @Valid @RequestBody CompleteMultipartRequest request) {
+
+        Long userId = SecurityUtils.getCurrentUserId();
+        CompleteMultipartResponse response = multipartUploadService.completeUpload(uploadId, userId, request);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * Multipart Upload を中断する。
+     * タイムアウトやユーザーキャンセル時に呼び出す。アップロード済みパートを破棄する。
+     */
+    @DeleteMapping("/{uploadId}")
+    @Operation(summary = "Multipart Upload 中断")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "中断完了")
+    public ResponseEntity<Void> abortUpload(@PathVariable String uploadId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        multipartUploadService.abortUpload(uploadId, userId);
+        return ResponseEntity.noContent().build();
+    }
+}

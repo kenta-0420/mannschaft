@@ -1,0 +1,47 @@
+-- Phase 2-B: クロスドメインFK撤廃 第二陣B — search ドメインの user 親 CASCADE を撤廃
+--
+-- 1000万ユーザー耐久DB再構築 クロスドメインFK撤廃キャンペーン Phase 2-B。
+-- CLAUDE.md §1「クロスドメインFKは作らない」/ §2「CASCADE DELETE は同一ドメイン内のみ」原則に従い撤廃。
+--
+-- ━━━ 対象一覧（2件・すべて user 親 ON DELETE CASCADE のクロスドメインFK・search ドメイン）━━━
+--  1. search_histories     / fk_search_histories_user     (user_id → users CASCADE)
+--  2. search_saved_queries / fk_search_saved_queries_user (user_id → users CASCADE)
+--
+-- ━━━ なぜ安全か（退会フローでリスナーが先行削除＝CASCADE 冗長化）━━━
+--
+-- 退会フローは2段階モデル（CLAUDE.md「PII 消去のタイミング §13.12」）:
+--   ・退会受付直後: UserAnonymizedEvent 発火（即時匿名化）。
+--   ・退会受付から最大30日後: AccountPurgeService.purgeUser → users 物理削除 → AccountPurgedEvent 発火。
+--
+-- 本 migration と同時に投入する SearchAnonymizationEventListener が、退会のたびに当該行を
+-- 「users 本体削除より前に」先行削除する。よって ON DELETE CASCADE が発火しうる
+-- 「30日後の users 物理削除」の時点では既に子行は存在せず、CASCADE は完全に冗長になる。
+-- この「リスナー先行削除 → CASCADE 冗長化 → FK 撤廃」は第一陣 notification と同一の論法。
+-- 参照整合性はアプリ層（リスナー）で保証する（CLAUDE.md §1）。
+--
+-- ━━━ なぜ即時/30日で削除タイミングを分けるか（§13.12 二層削除）━━━
+--
+--  ・search_histories（検索履歴）= 退会時【即時削除】（UserAnonymizedEvent 購読）:
+--      検索クエリは「ユーザーが何を探したか」を表す PII。再設定で復旧する性質ではなく、
+--      個人特定リスクが残る。漏洩リスク最小化のため退会受付直後に即時消去する。
+--  ・search_saved_queries（保存済みクエリ）= 30日後の物理削除時【削除】（AccountPurgedEvent 購読）:
+--      保存済みクエリは「ユーザーが意図的に保存した検索条件」＝個人設定で、退会撤回時に復元価値がある。
+--      GDPR Art.17 の30日撤回ウィンドウを保持するため、物理削除完了まで保持してから削除する。
+--
+-- ━━━ index 状況（FK 撤廃後もバッキングインデックスが独立 index として残るか確認）━━━
+--
+-- 2件とも user_id を先頭カラムに含む既存 index が存在するため、撤廃後も index は残る → CREATE INDEX 追加不要。
+--   search_histories.user_id     : INDEX idx_search_histories_user_searched (user_id, searched_at DESC) 既存（先頭=user_id）
+--   search_saved_queries.user_id : INDEX idx_search_saved_queries_user_created (user_id, created_at DESC) 既存（先頭=user_id）
+
+-- ===== search_histories（search ドメイン）=====
+-- fk_search_histories_user: user_id → users (CASCADE) クロスドメイン
+-- → 撤廃。検索履歴は退会即時（UserAnonymizedEvent）でリスナーが先行削除済み＝CASCADE 冗長。
+-- INDEX idx_search_histories_user_searched (user_id, ...) 既存（先頭=user_id）→ index 追加不要
+ALTER TABLE search_histories DROP FOREIGN KEY fk_search_histories_user;
+
+-- ===== search_saved_queries（search ドメイン）=====
+-- fk_search_saved_queries_user: user_id → users (CASCADE) クロスドメイン
+-- → 撤廃。保存済みクエリは退会30日後（AccountPurgedEvent）でリスナーが先行削除済み＝CASCADE 冗長。
+-- INDEX idx_search_saved_queries_user_created (user_id, ...) 既存（先頭=user_id）→ index 追加不要
+ALTER TABLE search_saved_queries DROP FOREIGN KEY fk_search_saved_queries_user;

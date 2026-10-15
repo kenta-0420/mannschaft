@@ -1,0 +1,499 @@
+{
+  "billing": {
+    "plans": {
+      "title": "Planes y precios",
+      "subtitle": "Elija solo las funciones que necesite. Durante el periodo beta, puede probarlo todo gratis.",
+      "free": {
+        "name": "Gratis",
+        "description": "Use las funciones básicas gratis"
+      },
+      "basic": {
+        "name": "Básico",
+        "description": "Un plan que reúne las funciones más utilizadas"
+      },
+      "full": {
+        "name": "Completo",
+        "description": "Un plan con acceso a todas las funciones"
+      },
+      "currentPlan": "Plan actual",
+      "priceUndecided": "El precio se decidirá al terminar la beta",
+      "betaFree": "Pruébelo gratis durante el periodo beta",
+      "perMonth": "/mes",
+      "memberBand": "Precios por número de miembros",
+      "memberBandToggle": "Ver precios por número de miembros",
+      "memberBandUndecided": "Precio sin definir",
+      "memberBandUnlimited": "o más",
+      "memberBandRange": "{min}–{max} miembros",
+      "selectCta": "Elegir este plan",
+      "currentCta": "En uso actualmente",
+      "comingSoon": "Próximamente",
+      "comingSoonDesc": "Los detalles aún están en preparación. Se lo comunicaremos en cuanto estén definidos.",
+      "featuresHeading": "Funciones incluidas",
+      "changeConfirmTitle": "¿Cambiar de plan?",
+      "changeConfirmGained": "Funciones que obtendrá",
+      "changeConfirmLost": "Funciones que perderá",
+      "changeConfirmNone": "Sin cambios",
+      "changeConfirmCta": "Confirmar el cambio",
+      "changeConfirmCancel": "Cancelar",
+      "checkoutRedirecting": "Redirigiendo a la página de pago…",
+      "freeInstantTitle": "Este plan es gratuito y está disponible al instante",
+      "contractSuccessTitle": "Plan actualizado",
+      "contractSuccessBody": "El plan {plan} ya está disponible",
+      "checkoutCancelledTitle": "Se canceló el trámite",
+      "checkoutCancelledBody": "No se ha realizado ningún pago. Puede reanudarlo en cualquier momento",
+      "checkoutReflectingTitle": "Comprobando el pago…",
+      "checkoutReflectingBody": "Puede tardar unos segundos en reflejarse el pago",
+      "loadError": "No se pudo cargar la información de los planes",
+      "contractError": "No se pudo procesar el contrato",
+      "alreadyActiveError": "Este plan ya está contratado",
+      "scopeBandLabel": "Número de miembros de {scope}",
+      "scopeTeam": "el equipo",
+      "scopeOrg": "la organización",
+      "help": {
+        "title": "Guía de planes y precios",
+        "plan": {
+          "title": "¿Qué es un plan?",
+          "body": "Un plan es un conjunto de funciones disponibles. Hay tres planes (Gratis, Básico y Completo) y los planes superiores permiten usar más funciones. Si un equipo u organización contrata un plan, todos sus miembros pueden usar las funciones incluidas."
+        },
+        "addon": {
+          "title": "¿Qué es un complemento?",
+          "body": "Los complementos permiten añadir solo una función concreta en lugar de un plan completo. Si solo necesita una función, un complemento puede resultar más económico que contratar un plan entero. La disponibilidad como complemento varía según la función."
+        },
+        "beta": {
+          "title": "Tratamiento durante el periodo beta",
+          "body": "Durante el periodo beta, todos los planes y complementos sin precio definido son gratuitos. Los precios oficiales se decidirán al terminar la beta y se anunciarán antes en pantalla. Los contratos gratuitos hechos durante la beta no pasarán automáticamente a ser de pago al terminar."
+        },
+        "betaGrant": {
+          "title": "Diferencia con los beneficios beta",
+          "body": "Un «beneficio beta» que la administración concede individualmente a modo de prueba es un mecanismo distinto de la contratación de planes y complementos aquí. Los concede la administración y usted no los contrata. Puede ver la fecha de vencimiento de un beneficio en la pantalla de gestión de facturación."
+        }
+      }
+    },
+    "features": {
+      "template_premium_modules": {
+        "name": "Módulos premium",
+        "description": "Activar módulos de pago"
+      },
+      "reservation_notification_recipients_extended": {
+        "name": "Destinatarios de notificación ampliados",
+        "description": "Registrar 4 o más destinatarios para los correos de notificación de reservas"
+      },
+      "ads_hide": {
+        "name": "Ocultar anuncios",
+        "description": "Oculta los anuncios en toda la aplicación"
+      },
+      "monetization_paywall": {
+        "name": "Paywall",
+        "description": "Ofrecer contenido de pago"
+      },
+      "monetization_membership_fee": {
+        "name": "Cuotas de socio",
+        "description": "Cobrar cuotas de socio a los miembros"
+      }
+    },
+    "paywall": {
+      "title": "Esta función requiere un plan de pago",
+      "description": "No está disponible en tu plan actual. Consulta la lista de planes para más información.",
+      "betaTitle": "Gratis para probar durante el periodo beta",
+      "betaDescription": "Esta función se puede activar gratis durante el periodo beta. El precio oficial se decidirá al finalizar la beta.",
+      "betaCta": "Activar gratis",
+      "addonCta": "Añadir solo esta función",
+      "planCta": "Ver todos los planes",
+      "notAvailable": "Esta función no está disponible actualmente",
+      "activating": "Activando…",
+      "activateSuccess": "Función activada",
+      "activateError": "No se pudo activar. Inténtalo de nuevo más tarde",
+      "close": "Cerrar"
+    },
+    "manage": {
+      "title": "Facturación y gestión de planes",
+      "personalTitle": "Facturación y gestión de planes",
+      "teamTitle": "Facturación y gestión de planes del equipo",
+      "orgTitle": "Facturación y gestión de planes de la organización",
+      "activeContract": "Plan contratado",
+      "addons": "Complementos",
+      "entitledFeatures": "Funciones disponibles",
+      "noContract": "No hay ningún plan contratado (Gratis)",
+      "noAddons": "No hay complementos contratados",
+      "contractedAt": "Fecha de contratación: {date}",
+      "cancelCta": "Cancelar",
+      "cancelConfirmTitle": "¿Cancelar el contrato?",
+      "cancelConfirmBodyFree": "Al cancelar, las funciones afectadas dejarán de estar disponibles de inmediato. ¿Desea continuar?",
+      "cancelConfirmBodyPaid": "Al cancelar, podrá seguir usándolo como hasta ahora hasta el fin del periodo de contrato actual; después dejará de estar disponible. ¿Desea continuar?",
+      "cancelConfirmFeaturesLabel": "Funciones que perderá",
+      "cancelConfirmCta": "Cancelar contrato",
+      "cancelConfirmCancel": "No cancelar",
+      "cancelSuccessFree": "Cancelado. Las funciones afectadas dejan de estar disponibles de inmediato",
+      "cancelSuccessPaid": "La cancelación se ha completado. Podrá seguir usándolo hasta el {date}",
+      "cancelError": "No se pudo cancelar",
+      "cancelReservationTitle": "¿Programar la cancelación?",
+      "cancelReservationBody": "Podrá usarlo hasta el {endDate}. No se le facturará a partir del {nextBillingDate}.",
+      "resumeCancelCta": "Deshacer la cancelación programada",
+      "resumeSuccess": "Se ha deshecho la cancelación programada. Puede seguir usando el servicio",
+      "sourceBadge": {
+        "plan": "Plan",
+        "addon": "Complemento",
+        "betaGrant": "Beneficio beta",
+        "free": "Gratis",
+        "nonprofitFree": "Plan gratuito para organizaciones sin ánimo de lucro"
+      },
+      "validUntil": "Válido hasta: {date}",
+      "noExpiry": "Gratis mientras se preste el servicio",
+      "periodEndNotice": "Disponible hasta el {date}",
+      "adminOnlyNotice": "Solo los administradores pueden cambiar o cancelar planes",
+      "loadError": "No se pudo cargar la información de facturación",
+      "viewPlansCta": "Ver todos los planes",
+      "planChange": {
+        "targetPlanLabel": "Nuevo plan",
+        "targetPlanPlaceholder": "Seleccione un plan",
+        "catalogLoadFailed": "No se pudo cargar la lista de planes. Vuelva a abrirla en unos momentos.",
+        "previewFailed": "No se pudo obtener el importe estimado. Inténtelo de nuevo en unos momentos.",
+        "versionUnavailable": "No se pueden obtener los datos del contrato, por lo que no es posible cambiar de plan.",
+        "appliedSuccess": "Se ha cambiado su plan.",
+        "title": "Cambiar de plan",
+        "amountDueNow": "Importe a pagar ahora",
+        "effectiveAt": "Vigente desde",
+        "amountInclTax": "Total (impuestos incluidos)",
+        "amountExclTax": "Subtotal (sin impuestos)",
+        "taxAmount": "Importe del impuesto",
+        "taxRate": "Tipo impositivo",
+        "staysOnOldPlan": "No se pudo cambiar el plan. Sigue con su plan actual",
+        "pendingPaymentNotice": "El pago del cambio de plan aún no se ha completado",
+        "expiresAtNotice": "Si el pago no se completa antes del {date}, este cambio se cancelará automáticamente",
+        "expiresAtUnknownNotice": "Estamos comprobando la fecha límite de pago. Si el pago no se completa, este cambio se cancelará automáticamente más adelante.",
+        "confirmCta": "Confirmar este cambio",
+        "resumePaymentActionCta": "Reanudar el pago",
+        "cancelCta": "Cancelar"
+      },
+      "help": {
+        "title": "Guía de facturación y gestión de planes",
+        "plan": {
+          "title": "¿Qué es un plan?",
+          "body": "Aquí puede ver su plan actual y las funciones disponibles. Para cambiar de plan, elija uno nuevo en «Ver todos los planes»."
+        },
+        "addon": {
+          "title": "¿Qué es un complemento?",
+          "body": "Si añadió solo funciones concretas en lugar de un plan completo, aparecen aquí. Puede cancelar individualmente los complementos que ya no necesite."
+        },
+        "beta": {
+          "title": "Tratamiento durante el periodo beta",
+          "body": "Los contratos con la insignia «Gratis durante la beta» son gratuitos hasta que se definan los precios oficiales. Le avisaremos con antelación cuando se fijen."
+        },
+        "betaGrant": {
+          "title": "Diferencia con los beneficios beta",
+          "body": "Las funciones con la insignia «Beneficio beta» las ha concedido la administración. Son independientes de los planes y complementos que contrató usted mismo y pueden tener su propia fecha de vencimiento."
+        }
+      }
+    },
+    "betaPerks": {
+      "sectionTitle": "Beneficios beta",
+      "helpButton": "Cómo funciona",
+      "phaseBadge": "Fase beta {phase}",
+      "grantedAt": "Concedido el: {date}",
+      "noExpiryIndividual": "Gratis mientras se preste el servicio",
+      "expiryTeamOrg": "Gratis hasta el {date}",
+      "renewalNote": "Espere un aviso nuestro sobre la renovación (no se renueva automáticamente)",
+      "featureListToggle": "Ver funciones incluidas",
+      "memberSnapshot": "Miembros en el momento de la concesión: {count}",
+      "revoked": "Revocado",
+      "noGrant": "Actualmente no hay beneficios beta concedidos",
+      "eligibility": {
+        "title": "Progreso del beneficio",
+        "autoGrantNote": "El beneficio se concede automáticamente al cumplir las condiciones (no es necesario solicitarlo)",
+        "metric": {
+          "activeDays": "Días activos",
+          "membershipTenureDays": "Días de uso continuado",
+          "activeMembers": "Miembros activos"
+        },
+        "progress": "{actual} / {required}",
+        "achieved": "¡Logrado! Espere a la próxima concesión automática"
+      },
+      "badge": {
+        "name": "Beta tester",
+        "description": "Un título otorgado por la actividad durante el periodo beta"
+      },
+      "help": {
+        "title": "Guía de los beneficios beta",
+        "about": {
+          "title": "¿Qué son los beneficios beta?",
+          "body": "Los beneficios beta le permiten usar ciertas funciones gratis durante el periodo beta. Con independencia de los planes y complementos que contrate usted mismo, los concede la administración a su criterio."
+        },
+        "autoGrant": {
+          "title": "Condiciones de concesión (automática)",
+          "body": "Los beneficios se conceden automáticamente al cumplir condiciones de actividad, como los días activos. No hay formulario de solicitud. Puede comprobar si cumple las condiciones en la barra de progreso del estado de logro."
+        },
+        "period": {
+          "title": "Duración y renovación",
+          "body": "Los beneficios personales son gratuitos mientras se preste el servicio. Los beneficios de equipos / organizaciones tienen fecha de vencimiento y se lo notificaremos cuando se acerque. No se renuevan automáticamente."
+        },
+        "transfer": {
+          "title": "Prohibición de transferencia y revocación",
+          "body": "Los beneficios no se pueden transferir entre cuentas. Si se infringen los términos de uso, el beneficio puede revocarse."
+        }
+      },
+      "admin": {
+        "title": "Gestión de beneficios beta",
+        "tabGrants": "Concesiones",
+        "tabCandidates": "Candidatos",
+        "tabCriteria": "Maestro de criterios",
+        "grantCta": "Conceder beneficio",
+        "revokeCta": "Revocar",
+        "extendCta": "Ampliar",
+        "resolveReviewCta": "Resolver revisión",
+        "flagReviewCta": "Marca de revisión",
+        "reviewFlagged": "Pendiente de revisión",
+        "revokeReasonLabel": "Motivo de la revocación",
+        "revokeReason": {
+          "termsViolation": "Infracción de los términos",
+          "accountTransfer": "Transferencia de cuenta",
+          "other": "Otro"
+        },
+        "skipCriteriaCheck": "Omitir la comprobación de criterios (concesión excepcional)",
+        "skipCriteriaWarning": "Las concesiones excepcionales quedan registradas en la auditoría. Escriba siempre una nota",
+        "extendMonthsLabel": "Periodo de ampliación (meses)",
+        "grantKindIndividual": "Individual",
+        "grantKindTeamOrg": "Equipo / organización",
+        "filterPhase": "Fase",
+        "filterGrantKind": "Tipo de concesión",
+        "filterReviewFlag": "Marca de revisión",
+        "filterAll": "Todos",
+        "reviewFlagOnly": "Solo pendientes de revisión",
+        "reviewFlagNone": "Sin marcar",
+        "colScope": "Destino",
+        "colGrantKind": "Tipo de concesión",
+        "colPhase": "Fase",
+        "colGrantedBy": "Concedido por",
+        "colValidUntil": "Válido hasta",
+        "colReview": "Revisión",
+        "colStatus": "Estado",
+        "colActions": "Acciones",
+        "systemGrantedBy": "SYSTEM",
+        "statusActive": "Activo",
+        "statusRevoked": "Revocado",
+        "validUntilNone": "Gratis mientras se preste el servicio",
+        "grantsEmpty": "No se ha concedido ningún beneficio",
+        "revokeDialogTitle": "Revocar beneficio",
+        "revokeNoteLabel": "Nota (opcional)",
+        "revokeNotePlaceholder": "Motivo y contexto de la revocación",
+        "extendDialogTitle": "Ampliar beneficio",
+        "extendMonthsHelp": "Introduzca un valor de 1 a 24 meses",
+        "flagDialogTitle": "Establecer marca de revisión",
+        "flagNoteLabel": "Nota (opcional)",
+        "flagNotePlaceholder": "Motivo de la marca",
+        "resolveConfirm": "¿Marcar la revisión de este beneficio como resuelta?",
+        "grantDialogTitle": "Conceder beneficio",
+        "grantKindLabel": "Tipo de concesión",
+        "betaPhaseLabel": "Fase beta",
+        "scopeKindLabel": "Tipo de ámbito",
+        "scopeIdLabel": "ID del ámbito",
+        "noteLabel": "Nota (opcional)",
+        "notePlaceholder": "Motivo de la concesión, nombre de la organización piloto, etc.",
+        "grantSubmit": "Conceder",
+        "candidatesTeamOrgNote": "Por ahora los candidatos solo incluyen TEAM_ORG (equipos / organizaciones)",
+        "candidatesEmpty": "No hay candidatos",
+        "candidateScope": "Destino",
+        "candidateMetrics": "Métricas alcanzadas",
+        "criteriaPhaseLabel": "Fase beta",
+        "criteriaGrantKindLabel": "Tipo de concesión",
+        "criteriaLoad": "Cargar criterios",
+        "criteriaNotFound": "Aún no hay un maestro de criterios definido para esta combinación. Puede registrar uno nuevo con el formulario de abajo.",
+        "evaluationWindowDays": "Ventana de evaluación (días)",
+        "minActiveDays": "Mínimo de días activos",
+        "minActiveMembers": "Mínimo de miembros activos (solo TEAM_ORG)",
+        "minMembershipTenureDays": "Mínimo de días de pertenencia",
+        "enabledLabel": "Activado",
+        "criteriaWindowRange": "Introduzca un valor de 1 a 365 días",
+        "criteriaSave": "Guardar criterios",
+        "grantSuccess": "Beneficio concedido",
+        "revokeSuccess": "Beneficio revocado",
+        "extendSuccess": "Beneficio ampliado",
+        "flagSuccess": "Marca de revisión establecida",
+        "resolveSuccess": "Revisión resuelta",
+        "criteriaSaveSuccess": "Maestro de criterios guardado",
+        "criteriaMinOneMetric": "Establezca al menos una métrica de criterio"
+      },
+      "errors": {
+        "alreadyExists": "Ya se ha concedido a este destino un beneficio de la misma fase",
+        "criteriaNotMet": "No se cumplen las condiciones de concesión",
+        "alreadyRevoked": "Este beneficio ya ha sido revocado",
+        "extendNotApplicable": "Los beneficios personales no se pueden ampliar",
+        "reviewNotFlagged": "Este beneficio no está pendiente de revisión",
+        "criteriaAllNull": "Establezca al menos una métrica de criterio",
+        "criteriaNotFound": "No hay un maestro de criterios definido para la fase y el tipo de destino",
+        "load": "No se pudo cargar la información de los beneficios beta"
+      }
+    },
+    "admin": {
+      "title": "Gestión de datos maestros de facturación",
+      "tabs": {
+        "plans": "Planes",
+        "features": "Catálogo de funciones",
+        "priceBands": "Tramos de miembros",
+        "grants": "Concesión manual",
+        "contracts": "Búsqueda de contratos"
+      },
+      "priceWarning": "Si establece un precio, los nuevos contratos a partir de ahora requerirán pago",
+      "plansTab": {
+        "planKey": "Clave de plan",
+        "displayNameKey": "Clave del nombre visible",
+        "descriptionKey": "Clave de descripción",
+        "baseMonthlyPriceJpy": "Precio mensual base (JPY)",
+        "priceUndecided": "Sin definir (gratis durante la beta)",
+        "sortOrder": "Orden de visualización",
+        "enabled": "Activado",
+        "newPlan": "Crear nuevo plan",
+        "editPlan": "Editar plan",
+        "editPriceBands": "Editar tramos de miembros",
+        "editFeatures": "Editar funciones",
+        "createSuccess": "Plan creado",
+        "updateSuccess": "Plan actualizado",
+        "deleteSuccess": "Plan eliminado",
+        "deleteConfirm": "¿Eliminar este plan? (No se puede eliminar si está en uso)",
+        "planKeyExistsNote": "Una clave de plan existente se actualizará (PUT)"
+      },
+      "featuresTab": {
+        "featureKey": "Clave de función",
+        "category": "Categoría",
+        "categoryInternal": "Función interna",
+        "categoryRevenue": "Función de ingresos",
+        "addonAvailable": "Contratable como complemento individual",
+        "addonPriceJpy": "Precio mensual del complemento (JPY)",
+        "freeForNonprofit": "Gratis para organizaciones sin ánimo de lucro",
+        "freeForNonprofitRevenueWarning": "Las funciones de ingresos no pueden ser gratuitas para organizaciones sin ánimo de lucro",
+        "newFeature": "Crear nueva función",
+        "editFeature": "Editar función",
+        "createSuccess": "Función creada",
+        "updateSuccess": "Función actualizada"
+      },
+      "priceBandsTab": {
+        "scopeKind": "Ámbito",
+        "bandNo": "N.º de tramo",
+        "minMembers": "Mínimo de miembros",
+        "maxMembers": "Máximo de miembros",
+        "maxMembersUnlimited": "Ilimitado",
+        "monthlyPriceJpy": "Precio mensual (JPY)",
+        "addBand": "Añadir tramo",
+        "removeBand": "Eliminar",
+        "saveSuccess": "Tramos de miembros guardados",
+        "validationNote": "Los tramos deben ir ordenados por número y el mínimo debe ser el máximo del tramo anterior + 1 (solo el último tramo puede ser ilimitado)",
+        "movedToPriceRevisions": "Gestione los cambios de precios en la nueva pantalla «Revisiones de precios» (/system-admin/price-revisions)"
+      },
+      "planFeaturesTab": {
+        "title": "Funciones incluidas en el plan",
+        "saveSuccess": "Composición de funciones del plan guardada"
+      },
+      "grantsTab": {
+        "scopeKind": "Tipo de ámbito",
+        "scopeId": "ID del ámbito",
+        "contractKind": "Tipo de contrato",
+        "contractKindPlan": "Plan",
+        "contractKindAddon": "Complemento",
+        "planKey": "Clave de plan",
+        "featureKey": "Clave de función",
+        "note": "Nota",
+        "notePlaceholder": "p. ej., concedido para la verificación beta",
+        "submit": "Conceder",
+        "submitSuccess": "Concedido"
+      },
+      "contractsTab": {
+        "scopeKind": "Tipo de ámbito",
+        "scopeId": "ID del ámbito",
+        "status": "Estado",
+        "search": "Buscar",
+        "contractId": "ID de contrato",
+        "planOrFeature": "Plan / función",
+        "contractedAt": "Fecha de contratación",
+        "priceJpySnapshot": "Precio en el momento de la contratación",
+        "priceFree": "Gratis",
+        "empty": "No hay contratos que coincidan"
+      },
+      "loadError": "No se pudieron cargar los datos maestros",
+      "goToPriceRevisions": "Ir a revisiones de precios / códigos fiscales"
+    },
+    "lp": {
+      "heading": "Planes y precios",
+      "betaBadge": "Gratis durante la beta",
+      "betaNotice": "Como estamos en periodo beta, puede probar todos los planes gratis. Los precios oficiales se decidirán al terminar la beta y se anunciarán con antelación.",
+      "priceUndecidedNote": "Los precios oficiales aún no están definidos",
+      "viewPlansCta": "Ver planes",
+      "getStartedCta": "Empezar"
+    },
+    "errors": {
+      "notEntitled": "No tiene derecho a usar esta función",
+      "scopeForbidden": "No tiene permiso para realizar esta acción",
+      "contractAlreadyActive": "Ya tiene un plan contratado",
+      "contractNotFound": "No se encontró el contrato",
+      "addonNotAvailable": "Esta función no se puede añadir de forma individual",
+      "changeRequiresPayment": "No se pueden hacer cambios que afecten a un plan de pago. Cancele primero y luego contrate el nuevo plan",
+      "generic": "No se pudo completar la operación. Inténtelo de nuevo más tarde"
+    },
+    "priceRevisions": {
+      "createTitle": "Crear revisión de precios",
+      "listTitle": "Revisiones de precios",
+      "detailTitle": "Detalle de la revisión de precios",
+      "productKind": "Tipo de producto",
+      "productKey": "Clave de producto",
+      "scopeKind": "Ámbito",
+      "effectiveFrom": "Vigente desde",
+      "effectiveUntil": "Vigente hasta",
+      "status": "Estado",
+      "bandNo": "N.º de tramo",
+      "minMembers": "Mínimo de miembros",
+      "maxMembers": "Máximo de miembros",
+      "inputAmount": "Importe introducido",
+      "taxBehavior": "Tratamiento fiscal",
+      "taxCode": "Código fiscal",
+      "amountExcludingTax": "Importe sin impuestos",
+      "taxAmount": "Importe del impuesto",
+      "amountIncludingTax": "Importe con impuestos",
+      "createAction": "Crear",
+      "provisionAction": "Ejecutar Provision",
+      "retryProvisionAction": "Reintentar Provision",
+      "reconcileProvisionAction": "Conciliar Provision",
+      "activateAction": "Activar",
+      "createSuccess": "Revisión de precios creada (DRAFT)",
+      "provisionSuccess": "Provision ejecutado",
+      "retryProvisionSuccess": "Provision reintentado",
+      "reconcileProvisionSuccess": "Provision conciliado",
+      "activateSuccess": "Revisión de precios aplicada",
+      "confirmActivate": "¿Aplicar esta revisión de precios? (Solo es posible cuando todos los tramos están en READY)",
+      "cancelAction": "Cancelar revisión",
+      "confirmCancel": "¿Cancelar esta revisión de precios? No se puede deshacer (los precios ya creados en Stripe se mantienen).",
+      "cancelSuccess": "Se canceló la revisión de precios",
+      "taxPreviewTitle": "Vista previa de impuestos (comprobación antes de confirmar)",
+      "errorOverlap": "El periodo de vigencia se solapa con una revisión de precios existente",
+      "errorFutureExists": "Ya existe una revisión de precios futura (solo se permite una a la vez)",
+      "errorLockVersionConflict": "Se ha actualizado con otra operación. Recargue la página",
+      "errorStateConflict": "Esta operación no se puede realizar en el estado actual",
+      "errorInvalidTaxCode": "El código fiscal indicado no está disponible",
+      "errorReconcileMismatch": "La información de precios de Stripe no coincide con el registro de la base de datos",
+      "errorProvisionInProgress": "La misma operación ya se está procesando. Inténtelo de nuevo en unos momentos",
+      "errorTaxSnapshotLegacy": "Los datos fiscales de esta banda usan un formato antiguo y no se pueden registrar en Stripe. Cancela esta revisión y créala de nuevo.",
+      "errorInvalidStripeTaxCode": "El formato del código fiscal de Stripe no es válido (txcd_ seguido de 8 dígitos)",
+      "errorNonexistentDstTime": "Esta fecha y hora no existe debido al cambio de horario de verano. Elige otra hora.",
+      "taxCodesTitle": "Maestro de códigos fiscales",
+      "taxCodeCreateAction": "Añadir código fiscal",
+      "noPermission": "No tiene permiso para ver esta pantalla",
+      "loadFailed": "Error al cargar",
+      "noData": "Sin datos",
+      "taxCodeCreateSuccess": "Código fiscal registrado",
+      "attemptCount": "Intentos",
+      "provisionErrorLabel": "Detalle del error",
+      "backToList": "Volver a la lista",
+      "activateDisabledReason": "Activate no se puede ejecutar hasta que todos los tramos estén en READY",
+      "notice": {
+        "nextCycle": "Los contratos existentes mantienen su precio actual hasta el siguiente ciclo de facturación (no cambia de inmediato)",
+        "noSaleOnPartialFailure": "Mientras falle el aprovisionamiento de algún tramo, no se pueden hacer nuevas ventas ni cambios de plan a ese precio"
+      },
+      "errorUnknown": "La operación ha fallado. Inténtalo de nuevo más tarde",
+      "stripePriceRef": "Stripe Price ID",
+      "stripePriceRefUnset": "No creado",
+      "stripeTaxCode": "Código fiscal de Stripe",
+      "stripeTaxCodeUnset": "Sin configurar",
+      "stripeTaxCodePlaceholder": "Código fiscal de Stripe (opcional, p. ej. txcd_10000000)",
+      "taxCodeDisplayName": "Nombre visible",
+      "taxCodeRate": "Tasa (puntos básicos)",
+      "taxCodeEnabled": "Activo"
+    }
+  }
+}

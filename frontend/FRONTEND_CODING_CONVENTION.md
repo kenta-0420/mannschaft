@@ -1,0 +1,571 @@
+# FRONTEND_CODING_CONVENTION.md
+
+## 1. 基本方針 (Core Principles)
+- **Nuxt 3 / Vue 3 (Composition API)**: 全てのコンポーネントで `<script setup lang="ts">` を必須とする。
+- **TypeScript First**: 全ての変数、プロパティ、関数に型定義を行い、`any` の使用を原則禁止する。
+- **Auto-imports**: Nuxt 3 の自動インポート機能を活用し、明示的な `import` 文を最小限に抑える。
+- **Single Responsibility**: 1つのコンポーネントや関数には1つの責務のみを持たせる。
+- **インデント**: **半角スペース2つ**を使用してください。
+
+## 2. 命名規則 (Naming Conventions)
+- **Components**: `PascalCase` で命名し、2語以上の単語を組み合わせる（例: `TeamList.vue`, `UserBaseButton.vue`）。
+- **Variables / Functions**: `camelCase` を使用する。
+- **Constants**: `UPPER_SNAKE_CASE` を使用する。
+- **Files / Directories**: 原則 `kebab-case` とする。ただし以下は例外:
+    - `components/` 配下の `.vue` ファイル: **PascalCase**（例: `TeamList.vue`, `UserBaseButton.vue`）。Nuxt の Auto-import でコンポーネント名として認識させるため。
+    - `composables/` 配下: `use[Feature].ts`（例: `useAuth.ts`, `useErrorHandler.ts`）
+    - `stores/` 配下: `use[Name]Store.ts`（例: `useAuthStore.ts`）
+    - `plugins/` 配下: `camelCase` + 実行環境サフィックス（例: `errorHandler.client.ts`, `dayjs.ts`）。`.client.ts` はクライアント専用、`.server.ts` はサーバー専用、サフィックスなしは両方で実行。
+- **Stores**: `use[Name]Store` 形式で命名する（例: `useAuthStore`）。
+
+## 3. スタイリング
+- **Tailwind CSS**: スタイリングには **Tailwind CSS** を使用してください。
+- **ユーティリティ優先**: インラインの `<style>` は最小限にし、可能な限り Tailwind のユーティリティクラスで完結させること。
+- **ダークモード**: Tailwind の `dark:` バリアントで実装する。`tailwind.config` の `darkMode: 'class'` を使用し、`<html>` 要素へのクラス付与で切替を制御する。ユーザー設定（`user_appearance_settings`）に応じて `useAppearance` composable が自動付与する。OS設定追従（SYSTEM）には `window.matchMedia('(prefers-color-scheme: dark)')` を使用する。
+- **背景色プリセット・シーズナル壁紙**: CSS カスタムプロパティ（`--bg-color`, `--bg-image`）を `<html>` または `<body>` に付与し、Tailwind の任意値（`bg-[var(--bg-color)]`）で参照する。シーズナル壁紙はAPIから取得した `image_url` を設定する。
+
+## 3a. 共通化ルール **【必須】**
+
+> **なぜ共通化するのか**: 同じUIパターンを各ファイルに直書きすると、デザイン変更・バグ修正のたびに数十〜百以上のファイルを修正する羽目になる。共通コンポーネント・composable に一元化することで、1箇所直せば全体に反映される。
+
+### 共通コンポーネント（既存）— 新規実装時は必ずこれを使うこと
+
+| 用途 | 使うコンポーネント | 直書き禁止パターン |
+|---|---|---|
+| ダッシュボードウィジェット | `<DashboardWidgetCard>` | `rounded-xl border border-surface-* bg-surface-0 ...` の直書き |
+| ページ内セクション・カード | `<SectionCard>` | 同上 |
+| ページヘッダー（タイトル+説明） | `<PageHeader>` | `<h1 class="text-2xl font-bold ...">` の直書き |
+| ローディング表示 | `<PageLoading>` | `<ProgressSpinner>` や独自スピナーの直書き |
+| 空状態表示（取得成功・0件） | `<DashboardEmptyState>` | `flex flex-col items-center text-center ...` の直書き |
+| エラー状態表示（取得失敗） | `<DashboardErrorState>` | 空状態コンポーネントへのフォールバック・エラーの握りつぶし |
+| 削除・操作確認 | `<ConfirmDialog>`（PrimeVue）または `useConfirm()` | ネイティブ `confirm()` の使用禁止 |
+
+> **取得失敗を空状態へフォールバックさせてはならない【必須】**: 一覧・詳細の取得が失敗した場合、`catch` でデータを空にリセットするだけで済ませると、権限エラー・通信断が「未登録」「該当なし」として誤読される（CMP-260922-2045）。取得状態（`loading`/`error`/`empty`/`loaded` 等）を持ち、`catch` では空状態ではなく `<DashboardErrorState>`（再試行ボタン付き）を描画すること。手本: `frontend/app/pages/my/shift-availability.vue`。
+>
+> **`<DashboardErrorState>` の再試行は、初回表示と同じ取得処理を呼ぶこと【必須】**: 初回表示（`onMounted`）が「A取得→成功なら依存するB取得」のように複数の取得を連鎖させている場合、`@retry` が A だけを呼ぶ実装にすると、A失敗→再試行で復旧してもBが未取得のまま欠落する（CMP-260922-2045 検分差し戻し・`teams/[slug]/jobs/[jobId]/index.vue` で発生）。初回と再試行は同じ1つの関数（例: `loadPage`）を通すこと。
+
+### 共通 Composable（既存）— 新規実装時は必ずこれを使うこと
+
+| 用途 | 使う Composable | 直書き禁止パターン |
+|---|---|---|
+| API エラー処理 | `useErrorHandler()` | `try/catch` + `console.error` の直書き |
+| フィールドバリデーションエラー表示 | `useErrorHandler().getFieldErrors()` | `fieldErrors.value = {}` の独自管理 |
+| トースト通知 | `useNotification()` | `useToast()` の直接呼び出し |
+| ページネーション状態 | `usePagination()`（未実装なら作って共通化） | `page`, `rows`, `totalRecords` を各ページで個別管理 |
+
+### 判断基準
+- **同じコードが2箇所以上に出現したら共通化する**。コピペで済ませない。
+- 共通コンポーネントが要件に合わない場合は、直書きせずコンポーネント自体を拡張する（props を追加するなど）。
+
+## 3b. レスポンシブ / モバイル **【必須】**
+
+- **タップターゲットは最小 44x44px**: `<button>` 等のインタラクティブ要素はヒット領域を 44x44px 以上確保する。アイコンの視覚サイズ（`text-xs` / `pi` のフォントサイズ等）はそのままでよく、`min-h-11 min-w-11`（`2.75rem` = 44px）＋ `flex items-center justify-center` でパディング側だけ拡大する。密集したアイコン列（通知の既読/スヌーズ、投稿カードのアクションバー等）はこのパターンで統一する。
+  - デスクトップの視覚密度を崩さない範囲であればブレークポイント指定なしで適用してよい。タブバーの「＋」ボタンのようにチュラム（chrome）自体の高さが変わり密度が崩れる場合のみ `max-md:` を付けてモバイル限定にする。
+- **横スクロール（横パン）禁止**: 390px 幅（iPhone SE 相当）でページ全体が横に伸びてはならない。flex の子要素には `min-w-0` を付けて縮小可能にし、本来横に伸びる要素（テーブル・タブ列・コード表示等）は自コンテナ内に `overflow-x-auto` を付けて横スクロールを閉じ込める。
+- **ブレークポイント境界**: `md`（768px）を FE のモバイル/デスクトップの正の境界とする。レイアウト切り替え（サイドバーの折りたたみ等）の判定はこれに揃える。
+- **入力要素のフォントサイズは 16px 以上**: `<input>` / `<textarea>` 等の `font-size` が 16px 未満だと iOS Safari がフォーカス時に自動ズームする。Tailwind の `text-sm`（デフォルト14px）を入力欄に直接使わず、`text-base` 以上を使うか、`tailwind.config.ts` の `fontSize.xs` のように明示的に上書きされたスケールを使うこと。
+
+## 4. ディレクトリ構成と責務 (Directory Structure)
+| ディレクトリ | 役割・責務 |
+| :--- | :--- |
+| `components/` | 再利用可能なUI部品。機能単位のサブディレクトリで管理。 |
+| `composables/` | 状態を持つロジック、および共通APIクライアント。 |
+| `pages/` | ファイルシステムルーティングに基づく各画面。 |
+| `layouts/` | 共通のページ外装。 |
+| `middleware/` | ルートガード（認証チェック、ロール制御、モジュール有効化チェック）。 |
+| `plugins/` | Nuxt プラグイン。グローバルエラーハンドラー等のアプリ初期化処理。 |
+| `stores/` | Piniaによるグローバル状態管理。 |
+| `utils/` | 状態を持たない純粋な関数（Helper）。 |
+| `types/` | TypeScript型定義。`types/generated/` にOpenAPI Generator自動生成型を配置。 |
+| `assets/` | CSSや画像などの静的リソース。 |
+
+### 状態管理の使い分け
+- **Pinia stores**: ログイン情報やカート情報など、アプリケーション全体で共有し画面を跨いで保持すべき状態に使用する。
+- **Composables**: 各機能（ページ）に閉じたロジックや、その画面内だけで使う一時的な状態に使用する。
+- 基本方針: **Composables を優先**し、グローバルな管理が必要になった時のみ Pinia を導入する。
+
+## 5. API通信規約 (API Client & Fetch Settings)
+Nuxt 3 標準の `ofetch` をベースにした共通クライアントを使用する。
+
+### 共通クライアント (`composables/useApi.ts`) の実装指針
+- **Base URL**: `runtimeConfig.public.apiBase` から取得する。
+- **Authentication**: リクエストヘッダーに `Authorization: Bearer <JWT>` を自動付与する（AuthStoreから取得）。
+- **Method Usage**:
+    - `useFetch` / `useAsyncData`: SSRが必要なページ初期データの取得に使用。
+    - `$fetch`: ユーザー操作に伴うデータ送信（POST/PUT/DELETE等）に使用。
+- **Error Handling**: 401 (Unauthorized) 発生時は Refresh Token ローテーション（後述）を試行し、復旧できない場合のみ認証ストアをクリアしてログイン画面へリダイレクトする。
+- **SSR と認証の制約**: JWT は `localStorage` に保存するため、SSR（サーバーサイドレンダリング）時にはアクセスできない。**SSR で実行されるリクエストに認証トークンは付与しない**。SSR は公開ページ（SEO目的）にのみ使用し、認証が必要なページは SPA モードで動作させること。
+
+### `ofetch` インターセプターの活用
+`useApi.ts` では `ofetch.create` で共通クライアントを生成し、以下のインターセプターフックを設定する:
+- **`onRequest`**: `Authorization: Bearer` ヘッダーの自動付与（AuthStore からトークン取得）
+- **`onResponseError`**: 401 受信時の Refresh Token ローテーション処理（下記フロー参照）、5xx 受信時のトースト通知
+
+### 401 受信時の Refresh Token ローテーションフロー
+Access Token の期限切れで 401 が返った場合、即座にログイン画面へ遷移せず、以下のフローで自動復旧を試みる:
+```
+1. 401 受信
+2. Refresh Token で POST /api/v1/auth/refresh を呼ぶ
+   ├── 'refreshed'（成功）→ 新しい Access Token + Refresh Token を保存（Cookie / in-memory）
+   │                        → 元のリクエストを新トークンで自動リトライ + 先回りタイマーを再武装
+   ├── 'auth_failed'（401/403。Refresh Token が無効・失効済み）
+   │                        → AuthStore をクリア + /login?reason=session_expired へリダイレクト
+   └── 'transient'（timeout / ネットワーク断 / 5xx）
+                            → ログアウトしない（回線が遅いだけのユーザーを落とさない）
+```
+- **返り値は 3 状態**: `performTokenRefresh` は boolean ではなく `'refreshed' | 'auth_failed' | 'transient'` を返す。boolean だと「本物の認証失敗」と「一時的な失敗」が区別できず、回線が遅いだけのユーザーを誤ってログアウトさせてしまう
+- **`auth_failed` の判定は 401/403**: バックエンドは無効な refresh_token に対し `AUTH_007` を **401** で返す（`GlobalExceptionHandler.ERROR_CODE_STATUS_MAP`。`docs/security/06` §7.5）。`400` も認証失敗として受理するが、これは旧 BE・旧モバイルクライアント互換の後方互換措置であり、新規実装が 400 に依存してはならない
+- **二重リフレッシュ防止**: 複数リクエストが同時に 401 を受けた場合、リフレッシュ処理は1回だけ実行し、他のリクエストはその結果を待つ（Promise の共有パターン）
+- **二重ログアウト防止**: `auth_failed` は「先回りリフレッシュ経路」と「401 interceptor 経路」の双方から同時に観測され得るため、ログアウトは `handleAuthFailureLogout()` の single-flight ガードを必ず経由する（`navigateTo` の二重発火を防ぐ）
+
+### 先回り（proactive）リフレッシュ
+`armProactiveRefresh()` が access_token 失効の 60 秒前にリフレッシュを発火し、背景ポーラーが 401 ノイズを出す前にトークンを新鮮に保つ。発火結果による分岐は上記 3 状態と対応する:
+
+| 結果 | 挙動 |
+|---|---|
+| `refreshed` | 新しい失効時刻でタイマーを再武装する |
+| `transient` | 30 秒後に再武装してリトライする（ログアウトしない）|
+| `auth_failed` | **再武装せず**ログアウトする。リトライしても永久に回復しないため、再武装すると確実に失敗するリクエストを 30 秒おきに投げ続けるゾンビセッションになる |
+
+タイマーは常に 1 本のみ武装し、SSR では張らない（`import.meta.client` ガード）。ログアウト時は `disarmProactiveRefresh()` で解除する。
+
+### 型安全な API 呼び出し
+OpenAPI Generator で自動生成された型を活用し、API レスポンスに型パラメータを付与する:
+```ts
+// composables/useTeam.ts
+// useApi() は ofetch.create で生成したインスタンスを返す
+// 呼び出しは $fetch と同じシグネチャ（第1引数: URL, 第2引数: オプション）
+const api = useApi()
+
+// GET
+const data = await api<ApiResponse<TeamDetailResponse>>(
+  `/api/v1/teams/${teamId}`
+)
+// data.data は TeamDetailResponse として型推論される
+
+// POST
+const created = await api<ApiResponse<TeamDetailResponse>>(
+  '/api/v1/teams',
+  { method: 'POST', body: createTeamRequest }
+)
+```
+
+### API通信ロジックの配置ルール
+- **`useApi.ts` の役割**: 共通の通信設定（BaseURL、認証ヘッダーの付与、共通エラーハンドリング、Refresh Token ローテーション）のみを記述し、特定のビジネスロジックを持たせない。
+- **機能別 Composable への分散**: 具体的・機能的なAPI呼び出し（例：`fetchOrders`, `updateProfile` 等）は、各機能ごとの `composables/use[Feature].ts` に定義する。
+- **理由**: `useApi.ts` が巨大な一枚岩（モノリス）になるのを防ぎ、機能単位でのテストやメンテナンスを容易にするため。
+
+## 6. コンポーネント設計 (Component Design)
+- **SFC セクション順序**: `<script setup>` → `<template>` → `<style>` の順で記述する。`<script setup>` を先頭に置くことで、テンプレートで参照される変数・関数の定義を先に読める。
+- **Template**: HTML構造は意味論的（Semantic HTML）に記述する。
+- **Script**: `defineProps` および `defineEmits` を用いて、コンポーネントの入出力を型定義する。
+- **Styles**: 原則 `<style scoped>` を使用。共通変数は `assets/css` から読み込む。
+- **Line Limit**: 1つのコンポーネントが **300行** を超える場合は、ロジックを `composables` に、UIをサブコンポーネントに分割する。
+
+## 7. セキュリティ (Security)
+- **XSS対策**: `v-html` は原則禁止。使用する場合はサニタイズ処理を必須とする。
+- **Validation**: フォーム入力は **Zod** と **VeeValidate** を併用する。Zod でバリデーションスキーマ（ルール）を定義し、VeeValidate の `useForm` 等に渡してフォーム管理を行う。Zod の `z.infer<>` を活用して TypeScript 型も抽出すること。
+- **Environment Variables**: APIキー等の機密情報は `runtimeConfig` を介し、ブラウザに公開するもの（public）とサーバー側限定のもの（private）を厳密に区別する。
+
+### 認証トークン管理ルール
+- **保存先**: JWT は **`localStorage`** に統一する。`sessionStorage` は使用しない（タブを閉じるとログアウトされるため UX が悪い）。「ログイン状態を維持」のオプションは Access Token の有効期限（15分）と Refresh Token の有効期限（7日）で自然にカバーされる。
+- **起動時の認証復元**: `AuthStore` は初期化時（`stores/useAuthStore.ts` の Pinia 定義内）に `localStorage` からトークンを読み込み、認証状態を復元する。ページリロードや新しいタブを開いた場合でもログイン状態を維持するため。トークンが期限切れの場合は Refresh Token ローテーション（§5 参照）で自動更新を試みる。
+- **送信方法**: APIリクエストごとに `Authorization: Bearer <token>` ヘッダーをプログラムで付与する。
+- **Cookie 使用禁止**: 認証トークンを Cookie に格納しないこと。Cookie を利用しないことで CSRF 攻撃を構造的に排除する。
+- **XSS対策との併用**: トークン漏洩（XSS）リスクに対しては、Access Token の有効期限を短く（15分）設定し、Refresh Token Rotation を併用することで軽減する。
+- **⚠️ 開発環境の罠（Refresh 用 Cookie は `SameSite=Strict`）**: `Authorization: Bearer` の他に、Refresh Token ローテーション用の `access_token` / `refresh_token` は BE から `SameSite=Strict` の Cookie としても発行される。SameSite の同一サイト判定はホスト名の文字列一致で行われるため、開発時にアプリを `http://127.0.0.1:3000` で開くと `http://localhost:8080` からの `Set-Cookie` が保存されない。ログイン直後は body のトークンが in-memory に載るため正常に見えるが、15分後の先回りリフレッシュ（`armProactiveRefresh`）が Cookie 送信できず 401 となり強制ログアウトされる。**dev サーバーの URL は必ず `http://localhost:3000` を使うこと（`127.0.0.1` は使わない）**。`nuxt.config.ts` の `devServer.host` を `'::'`（デュアルスタック bind）にしてあるため、`localhost` / `127.0.0.1` / `[::1]` のいずれで叩いても正常に 200 が返る。再発防止テスト: `frontend/tests/e2e/real/auth-cookie-origin.spec.ts`。
+
+### フロント・バック間のバリデーション同期
+- **方針**: バックエンドが提供する OpenAPI (Swagger) 仕様書を正（Single Source of Truth）とする。
+- **自動生成の導入**: `openapi-zod-client` 等のツールを活用し、OpenAPI 定義からフロントエンド用の Zod スキーマを自動生成するワークフローを構築する。
+- **目的**: 二重定義による実装漏れや、フロントとバックでのバリデーションルールの乖離を防止し、メンテナンスコストを削減するため。
+
+## 8. 静的解析・フォーマッター (ESLint + Prettier)
+- **ESLint**: TypeScript / Vue ファイルのコード品質チェックに使用する。バックエンドにおける Checkstyle に相当する役割。
+    - **設定ベース**: `@nuxt/eslint-config` をベースに、本規約に合わせてカスタマイズする。
+    - **主な検査項目**:
+        - `any` 型の使用禁止（`@typescript-eslint/no-explicit-any`）
+        - 未使用変数の検出（`@typescript-eslint/no-unused-vars`）
+        - `v-html` の使用警告（`vue/no-v-html`）
+        - コンポーネント命名の PascalCase 強制（`vue/component-name-in-template-casing`）
+    - **CI 統合**: GitHub Actions の CI パイプラインに `npx eslint .` を組み込み、エラーがある場合はビルドを失敗させる。
+- **Prettier**: コードフォーマットの自動統一に使用する。ESLint とはルールが競合しないよう `eslint-config-prettier` で Prettier 側を優先する。
+    - **主な設定**: `semi: false`, `singleQuote: true`, `tabWidth: 2`, `trailingComma: 'all'`（Nuxt 3 コミュニティの標準に準拠）。
+    - **保存時自動整形**: IDE（VS Code 等）の設定で保存時に Prettier を自動実行し、手動フォーマットの手間を排除する。
+- **抑制**: やむを得ず規約に従えない箇所は `// eslint-disable-next-line ルール名 -- 理由` で1行単位で抑制すること。ファイル単位の `/* eslint-disable */` は原則禁止する。
+
+### 設定ファイル一覧
+プロジェクトルートに以下の設定ファイルを配置し、チーム全体で統一する。
+
+**`eslint.config.mjs`**（Flat Config 形式）:
+```js
+import { createConfigForNuxt } from '@nuxt/eslint-config/flat'
+
+export default createConfigForNuxt({
+  features: { tooling: true, stylistic: true },
+}).append({
+  rules: {
+    '@typescript-eslint/no-explicit-any': 'error',
+    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    'vue/no-v-html': 'warn',
+    'vue/component-name-in-template-casing': ['error', 'PascalCase'],
+  },
+})
+```
+
+**`.prettierrc`**:
+```json
+{
+  "semi": false,
+  "singleQuote": true,
+  "tabWidth": 2,
+  "trailingComma": "all",
+  "printWidth": 100,
+  "endOfLine": "lf"
+}
+```
+
+**`.prettierignore`**:
+```
+dist/
+.nuxt/
+.output/
+node_modules/
+types/generated/
+```
+
+### IDE 設定（フロントエンド）
+開発者がコーディング中にリアルタイムでミスに気づけるよう、以下の IDE 設定を整備する。
+
+#### VS Code
+**`.vscode/extensions.json`**（推奨拡張機能）:
+```json
+{
+  "recommendations": [
+    "vue.volar",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "editorconfig.editorconfig",
+    "bradlc.vscode-tailwindcss"
+  ]
+}
+```
+
+**`.vscode/settings.json`**（ワークスペース設定）:
+```json
+{
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "[vue]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "eslint.validate": ["javascript", "typescript", "vue"],
+  "files.eol": "\n",
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "typescript.tsdk": "node_modules/typescript/lib"
+}
+```
+
+上記により、保存時に Prettier によるフォーマットと ESLint による自動修正が同時に実行される。
+
+### pre-commit フック セットアップ手順
+コミット前に ESLint / Prettier を自動実行し、規約違反がリポジトリに混入するのを防止する。
+
+1. **依存インストールと Husky 初期化**:
+```bash
+npm install -D husky lint-staged
+npx husky init
+```
+
+2. **`package.json` に prepare スクリプトを確認**（`npx husky init` で自動追加される）:
+```json
+{
+  "scripts": {
+    "prepare": "husky"
+  }
+}
+```
+
+3. **`.husky/pre-commit` を編集**:
+```bash
+npx lint-staged
+```
+
+4. **`package.json` に lint-staged 設定を追加**:
+```json
+{
+  "lint-staged": {
+    "*.{ts,vue}": ["eslint --fix", "prettier --write"],
+    "*.{json,md,yml,css}": ["prettier --write"]
+  }
+}
+```
+
+5. **動作確認**: `git add` でステージしたファイルのみを対象にチェックが実行される。全ファイルを対象にしないことで高速性を維持する。
+
+6. **新規開発者のオンボーディング**: `npm install` 実行時に `prepare` スクリプト経由で Husky が自動セットアップされるため、追加の手順は不要。
+
+- **強制力**: フックのスキップ（`git commit --no-verify`）は緊急時のみに限定し、通常の開発では禁止する。
+
+## 9. ドラッグ＆ドロップ (Drag & Drop)
+
+コルクボード機能など、カードの自由配置が必要な画面では **`@vueuse/core` の `useDraggable`** を使用する。
+
+- **採用理由**: Nuxt 3 / Vue 3 の Composition API と親和性が高く、リスト並び替えではなく**自由座標配置**に適している。SSR との相性も問題なし（`client-only` ラッパーを使用）
+- **位置の保存**: ドラッグ終了時（`pointerup`）にのみ `PATCH /corkboards/{id}/cards/{cardId}/position` を呼び出す。ドラッグ中は CSS transform でリアルタイム移動させ、APIコールは行わない（過剰なリクエストを防止）
+- **リスト並び替え**（TODO、シフト管理等）が必要な場合は `vue-draggable-next`（Sortable.js ベース）を使用する
+
+```ts
+// 使用例: コルクボードカードの自由配置
+const cardEl = ref<HTMLElement | null>(null)
+const { x, y, isDragging } = useDraggable(cardEl, {
+  initialValue: { x: card.pos_x, y: card.pos_y },
+})
+
+// ドラッグ終了の検知: isDragging を watch し、true → false の変化で API を呼ぶ
+// useDraggable の onEnd オプションはバージョンで API が不安定なため、watch を使う
+watch(isDragging, (dragging, wasDragging) => {
+  if (wasDragging && !dragging) {
+    updateCardPosition(card.id, x.value, y.value)
+  }
+})
+```
+
+## 10. パフォーマンス (Performance)
+- **LCP 目標**: SSR ページ（ブログ、チーム紹介等）は **LCP < 2.5s** を目標とする（README.md 記載の基準）。
+- **NuxtImg**: 画像には `NuxtImg` モジュールを活用し、フォーマット最適化を行う。
+- **Lazy Loading**: ページ下部の重いコンポーネントは `Lazy` プレフィックスコンポーネント（例: `<LazyHeavyChart />`）として読み込む。
+- **`<ClientOnly>`**: SSR 不要なコンポーネント（チャート、地図、WebSocket 接続 UI 等）は `<ClientOnly>` でラップし、サーバー側レンダリングをスキップする。
+- **SEO メタタグ**: SSR ページでは `useHead` / `useSeoMeta` を使用して `title`, `description`, OGP タグを設定する。SPA ページでも `useHead` で基本的な `title` を設定すること。
+
+## 11. テスト (Testing)
+- **基本ツール**: **Vitest** と **Vue Test Utils** を採用する。
+- **テスト対象の優先順位**:
+    1. **Composables**: 共通ロジック（`useApi.ts`, `useErrorHandler.ts` 等）
+    2. **Zodバリデーション定義**: スキーマの正常系・異常系
+    3. **Piniaストア**: 状態管理のアクション・ゲッター
+    4. **UIコンポーネント**: 重要な操作フロー（フォーム送信、条件分岐表示等）
+- **テストファイルの配置ルール**:
+    - テストファイル（`.spec.ts`）は必ず対象ソースファイルと**同一ディレクトリ**に配置すること（例: `composables/useAuth.spec.ts`）。
+    - 同一ディレクトリ内であっても、`__tests__/` などのサブディレクトリを作成してテストを分離することは**禁止**する。
+    - プロジェクト全体でテスト配置のパターンを1つに絞り、ディレクトリ構造の迷いを完全に排除する。
+- **E2Eテスト**: **Playwright** を将来的に導入予定。現時点では方針策定のみとし、プロジェクト成熟後に着手する。
+
+## 12. トースト通知 (Toast Notifications)
+
+API 通信結果のフィードバックやエラー通知に使用する共通パターンを定義する。
+
+### 実装方針
+- **`composables/useToast.ts`** に共通の通知 composable を実装する。
+- 内部実装は **`vue-sonner`**（Nuxt 3 対応のトーストライブラリ）を使用する。ライブラリ変更時は `useToast` の内部だけを差し替える。
+- 全ページ・全レイアウトで使えるよう、**`app.vue`** に `<Toaster />` コンポーネントを1箇所だけ配置する（`layouts/` に置くとカスタムレイアウトやエラーページでトーストが表示されないため）。
+
+### 使い分け
+| 種類 | 用途 | 例 |
+|------|------|-----|
+| **success** | CUD 操作の成功フィードバック | 「チームを作成しました」 |
+| **error** | API エラー（5xx）、ネットワークエラー | 「サーバーに接続できません」 |
+| **warning** | 注意喚起（操作に支障はないが確認が必要） | 「ストレージ容量が残り10%です」 |
+| **info** | 副次的な通知（メール送信完了等） | 「確認メールを送信しました」 |
+
+### ルール
+- トーストは **自動消滅**（5秒）を基本とする。エラー系のみ手動で閉じるまで表示を維持する。
+- 同一メッセージの重複表示を防止する（同じ内容のトーストが連続で出ないよう制御する）。
+- トーストに**アクションボタン**（「再試行」「詳細を見る」等）を含める場合は、クリック後にトーストを自動で閉じること。
+
+---
+
+## 13. エラーレポート (Error Reporting)
+
+アプリケーション全体で発生した予期せぬエラーをユーザー経由で開発者へ通知するための仕組みを設ける。
+
+### グローバルエラーハンドラーの設置
+
+**`plugins/errorHandler.client.ts`** にクライアント専用プラグインを作成し、以下2つのエラーソースを捕捉する。
+
+**注意**: エラーハンドラーのコールバックは Vue の `setup()` コンテキスト外で実行されるため、composable を直接呼び出せない。プラグイン初期化時に composable のインスタンスを取得し、コールバックではそのインスタンスを参照する。
+
+```ts
+export default defineNuxtPlugin((nuxtApp) => {
+  // プラグイン初期化時（setup コンテキスト内）に composable を取得
+  const errorReport = useErrorReport()
+
+  // Vue コンポーネント内の同期・非同期エラー
+  nuxtApp.vueApp.config.errorHandler = (error, instance, info) => {
+    errorReport.capture(error, { context: info })
+  }
+
+  // Promise の未処理 rejection（fetch失敗等）
+  window.addEventListener('unhandledrejection', (event) => {
+    errorReport.capture(event.reason)
+  })
+})
+```
+
+### `useErrorReport` composable
+
+**`composables/useErrorReport.ts`** に実装する。
+
+- **`capture(error, meta?)`**: エラーを受け取り、エラー報告バッジ（`ErrorReportDialog.vue`）を表示状態にする。詳細は自動展開せず、利用者が選択した場合だけ展開する（CMP-260920-1042）。自動収集情報（エラーメッセージ・スタックトレース・URL・UA・タイムスタンプ）を内部 state に保持する。
+- **`submitComment(userComment)`**: 利用者が詳細パネルで入力した任意の追加コメントを `POST /api/v1/error-reports` へ送信する。エラー情報は `capture` 時に自動報告し、追加コメントの送信後は詳細パネルにお礼を表示して閉じる。
+- **エラー連鎖の防止**: `capture` 内でさらにエラーが発生した場合は `console.error` に留め、再帰的なパネル表示を行わない。
+
+### `ErrorReportDialog.vue` コンポーネント
+
+- **`app.vue` の `<ClientOnly>` 内に単一インスタンスを配置する**。layoutにも置くと二重表示になり、default layoutだけに置くと認証・公開ページで報告UIが欠落する。
+- エラー発生時は右上の44x44pxバッジだけを表示し、利用者が選択した場合のみ詳細パネルを展開する（CMP-260920-1042）。画面全体を覆うモーダルや自動展開で主要操作を塞がない。
+- `Teleport` で `<body>` 直下に描画する。バッジと詳細パネルは右上（`top-20 right-4`）に置き、右下の操作領域を避ける。
+- 自動報告と任意の追加コメント送信を維持する。エラー報告状態は `useErrorReport` が保持し、layoutの切替で報告UIを重複させない。
+- エラーの技術的詳細（スタックトレース等）はユーザーに表示しない。
+
+### 送信データ仕様
+
+| フィールド | 取得方法 |
+| :--- | :--- |
+| `error_message` | `error.message` |
+| `stack_trace` | `error.stack`（先頭2,000文字） |
+| `page_url` | `window.location.href` |
+| `user_agent` | `navigator.userAgent` |
+| `user_comment` | ユーザー入力（任意） |
+| `user_id` | AuthStore から取得（未ログイン時は null） |
+| `occurred_at` | `dayjs().format('YYYY-MM-DDTHH:mm:ss')` — JST 前提のタイムゾーンオフセットなし ISO 8601 文字列（`.claudecode.md` §20 日時統一規約に準拠。`toISOString()` は UTC になるため使用しない） |
+
+### 注意事項
+- エラーレポートの送信エンドポイントは認証不要（`POST /api/v1/error-reports` は公開）。ただしレート制限をバックエンドで実施する。
+- **バックエンド設計書**: `docs/features/F12.5_frontend_error_tracking.md` を参照。レート制限（IP単位10回/分）、エラーメッセージ正規化による重複集約、リグレッション検知（RESOLVED→REOPENED）、既知の不具合バナーAPI（`GET /api/v1/active-incidents`）、X-Request-Id 相関などの仕様が定義されている。
+
+## 14. メール送信フィードバック (Email Send Feedback)
+
+**メールを送信するすべての操作は、送信完了を画面でユーザーへ通知すること。**
+APIが 200/201/202 を返した時点で、以下のルールに従いフィードバックを表示する。
+
+### 表示方針
+
+| 状況 | UIパターン | 理由 |
+|------|-----------|------|
+| フォーム送信後にページ遷移しない（例: パスワードリセット申請） | **インラインメッセージ**（フォームの下部に差し込む） | トーストより視線が近く、次のアクションを促しやすい |
+| フォーム送信後にページが切り替わる（例: 会員登録完了画面） | **専用の完了ページ**またはページ上部のバナー | 送信先や有効期限を詳しく伝えられる |
+| 操作中に副次的にメールが送られる（例: OAuth衝突時） | **トースト通知**（画面上部または下部） | 主要フローを妨げずに通知できる |
+
+### メッセージに含める情報
+
+1. **送信先メールアドレス**（マスクせず表示する。ユーザー自身が送信先を把握できることが優先）
+2. **有効期限**（例: 「24時間以内に」「30分以内に」）
+3. **次のアクション**（例: 「メール内のリンクをクリックしてください」）
+4. **届かない場合の対処法**（例: 「メールが届かない場合は迷惑メールフォルダを確認するか、再送信してください」）
+
+### 再送信ボタン
+
+- 「再送信する」ボタンを提供するフローでは、**送信後60秒間はボタンをdisabledにしてカウントダウンを表示**する。
+  - 連打による過剰リクエストを防ぎつつ、ユーザーに待機が必要であることを伝える。
+  - カウントダウン終了後にボタンをアクティブに戻す。
+
+```vue
+<!-- 再送信ボタンの実装例 -->
+<script setup lang="ts">
+const cooldown = ref(0)
+const canResend = computed(() => cooldown.value === 0)
+let timer: ReturnType<typeof setInterval> | null = null
+
+const handleResend = async () => {
+  try {
+    await resendVerificationEmail()
+    cooldown.value = 60
+    timer = setInterval(() => {
+      cooldown.value--
+      if (cooldown.value <= 0) {
+        clearInterval(timer!)
+        timer = null
+      }
+    }, 1000)
+  } catch {
+    // useErrorHandler 等で通知（クールダウンは設定しない）
+  }
+}
+
+// コンポーネントアンマウント時にインターバルをクリーンアップ
+onUnmounted(() => {
+  if (timer) clearInterval(timer)
+})
+</script>
+
+<template>
+  <button :disabled="!canResend" @click="handleResend">
+    {{ canResend ? '再送信する' : `再送信まで ${cooldown}秒` }}
+  </button>
+</template>
+```
+
+### 各フローの表示例
+
+| フロー | 表示メッセージ例 |
+|-------|----------------|
+| 会員登録 | 「確認メールを user@example.com に送信しました。24時間以内にメール内のリンクをクリックして登録を完了してください。」|
+| 確認メール再送信 | 「確認メールを再送信しました。届かない場合は迷惑メールフォルダをご確認ください。」|
+| パスワードリセット申請 | 「パスワードリセット用のメールを user@example.com に送信しました。30分以内に手続きを完了してください。」|
+| メールアドレス変更 | 「確認メールを new@example.com に送信しました。24時間以内にメール内のリンクをクリックして変更を完了してください。」|
+| OAuth衝突（統合確認） | 「このメールアドレスには既存のアカウントが存在します。連携承認メールを user@example.com に送信しました。メールを確認してください。」|
+
+---
+
+## 15. 国際化 (i18n)
+
+UI に表示する文字列は **直書き禁止**。必ずロケールファイル（`app/locales/{ja,en,zh,ko,es,de}/*.json`）に追加してから `$t('key')` / `t('key')` で参照する。デフォルトロケールは `ja`。対応言語は日本語・英語・中国語（簡体）・韓国語・スペイン語・ドイツ語の 6 言語。
+
+**PrimeVue 既定文言**（aria-label・日付・ページ送り等）は `app/utils/primevueLocales.ts` で 6 言語の完全辞書として管理し、`plugins/primevue-locale.ts` が `i18n.locale` に追従させる（SSR 対応）。`app/error.vue` の文言は `common.json` の `error_page.*`。
+
+### ロケール別フォーマット関数を呼ぶ際の注意
+
+`toLocaleDateString` / `toLocaleString` / `Intl.DateTimeFormat` 等にロケールを渡す場合、`useI18n()` から取り出した `locale` は `WritableComputedRef<string>` なので、**必ず `locale.value` を渡すこと**。`locale` をそのまま渡すと実行時に `Ref` オブジェクトが toString されて `[object Object]` となる、または `RangeError: Invalid language tag` を投げる恐れがある。
+
+```ts
+// NG — locale を直接渡している（実行時エラーのリスク）
+const { locale } = useI18n()
+date.toLocaleDateString(locale, { weekday: 'short' })
+
+// OK — locale.value を渡す
+const { locale } = useI18n()
+date.toLocaleDateString(locale.value, { weekday: 'short' })
+```
+
+また、`'ja-JP'` などロケールをハードコードしないこと。ユーザーの言語設定に追従させるため、必ず `locale.value` を使用する。
+
+### i18n ファイル追加時のガードレール
+
+新規ロケール JSON（例: `app/locales/ja/xxx.json`）を追加した際は、**必ず `nuxt.config.ts` の `i18n.locales[*].files` 配列にも登録すること**。登録漏れがあると `@nuxtjs/i18n` の lazy loading 機構が該当ファイルを一切ロードせず、UI にはキー文字列そのまま（例: `shift.index.title`）が表示される。この不具合は lint / unit test / backend CI では検出されない性質のため、機械的なチェックが効かない。
+
+新規追加時の確認手順:
+
+1. **6 言語すべて**（ja/en/zh/ko/es/de）に同じファイル名で JSON を配置し、各言語にその言語の訳を入れる（ja 以外に日本語を置かない。キー集合・プレースホルダ・複数形区切りも ja と揃える）。番人 `tests/unit/i18n/locale-no-japanese-residue.spec.ts` が CI で日本語の残存と構造の不一致を検出する。意図的に日本語を残す値（例: API へ日本語のまま送る入力例）は `tests/unit/i18n/locale-residue-allowlist.json` に理由付きで載せる。
+2. `nuxt.config.ts` の各ロケール定義の `files:` 配列にファイル名を追加する（6 箇所）。
+3. `npm run dev` で該当画面を目視し、キーが実テキストに解決されていることを確認する。
+
+---
+
+## 16. 日付入力（DatePicker）**【必須】**
+
+日付・日時の入力欄は PrimeVue の **`<DatePicker>` を使う**。`<Calendar>` は PrimeVue 3 時代の名前で、v4 では `DatePicker` を継承した非推奨エイリアス（マウント時に `console.warn` を出す）にすぎない。新規に書かないこと。
+
+### 手入力（キーボード入力）は共通パッチで担保されている
+
+PrimeVue 4.5.4 の `DatePicker` には、**キーボードで日付を打つと桁が落ちる**欠陥がある（CMP-260910-1557）。
+
+- 入力欄は `<InputText :defaultValue="inputFieldValue">` として描画され、`InputText` 側は `:value="d_value"` で DOM を完全制御している。
+- 1打鍵ごとに `onInput` がモデルを更新すると `inputFieldValue`（ゼロ詰め済みの整形文字列）が変化し、**利用者が打っている途中の文字列が整形済み文字列で上書きされる**。さらに `DatePicker` の `updated()` が打鍵前のキャレット位置を復元するため、桁がずれた位置に次の文字が入る。
+- 結果、`2026/09/30` と打つと `2026/09/03` が**無警告で保存される**（途中表示は `2026/09/003`）。
+
+この欠陥は `app/plugins/primevue-datepicker-manual-input.client.ts` が `primevue/datepicker` のコンポーネント定義そのものにパッチを当てることで、**アプリ内の全 `<DatePicker>` に一括で効く**。実装は `app/utils/primevueDatePickerManualInput.ts`。
+
+したがって:
+
+- **画面ごとに `@input` を握って自前で整形し直すなどの個別対処をしないこと。** 共通パッチと二重に DOM を書き換えると再び桁ずれる。
+- パッチは区切り文字も正規化するため、`dateFormat` が `yy/mm/dd` の欄に `2026-09-30` や `２０２６年９月３０日` と打っても受理される。
+- 正規化は `selectionMode` を見て、**日付どうしの区切り**（範囲選択の ` - `、複数選択の `,`）で一旦分割してから各日付を個別に処理する。これをしないと `dateFormat="yy/mm/dd"` の範囲選択で `2026/09/01 - 2026/09/30` の ` - ` まで `/` に置換され、`parseValue()` が終了日を分割できず**モデルが無警告で更新されなくなる**。範囲選択の日付欄を新設する場合も画面側の対処は不要だが、この分割規則は PrimeVue の `parseValue()` 実装に追随させること。
+- PrimeVue を更新した際は `tests/unit/components/datepicker/manualInput.spec.ts` が回帰の番人になる。上流が修正されたらパッチを外し、このテストだけ残すこと。

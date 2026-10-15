@@ -1,0 +1,26 @@
+-- F08.4: 領収書発行 — 発行者設定テーブル
+CREATE TABLE receipt_issuer_settings (
+    id                          BIGINT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    scope_type                  VARCHAR(20)      NOT NULL COMMENT 'スコープ（TEAM / ORGANIZATION）',
+    scope_id                    BIGINT UNSIGNED  NOT NULL COMMENT 'スコープ ID',
+    issuer_name                 VARCHAR(200)     NOT NULL COMMENT '発行者名',
+    postal_code                 VARCHAR(10)      NULL     COMMENT '発行者の郵便番号',
+    address                     VARCHAR(500)     NULL     COMMENT '発行者の住所',
+    phone                       VARCHAR(20)      NULL     COMMENT '発行者の電話番号',
+    is_qualified_invoicer       BOOLEAN          NOT NULL DEFAULT FALSE COMMENT '適格請求書発行事業者か',
+    invoice_registration_number VARCHAR(14)      NULL     COMMENT '登録番号（T + 13桁）',
+    default_seal_user_id        BIGINT UNSIGNED  NULL     COMMENT 'FK → users。デフォルト押印者',
+    default_seal_variant        VARCHAR(20)      NULL     COMMENT 'デフォルト印鑑バリアント（LAST_NAME / FULL_NAME / FIRST_NAME）',
+    receipt_note_template       TEXT             NULL     COMMENT '但し書きのテンプレート',
+    logo_storage_key            VARCHAR(500)     NULL     COMMENT 'S3 上のロゴ画像キー',
+    custom_footer               TEXT             NULL     COMMENT 'PDF カスタムフッターテキスト',
+    next_receipt_number         INT UNSIGNED     NOT NULL DEFAULT 1 COMMENT '次の領収書番号',
+    receipt_number_prefix       VARCHAR(20)      NULL     COMMENT '領収書番号のプレフィックス',
+    fiscal_year_start_month     INT              NOT NULL DEFAULT 4 COMMENT '会計年度の開始月（1-12）',
+    auto_reset_number           BOOLEAN          NOT NULL DEFAULT TRUE COMMENT '年度切替時に自動リセットするか',
+    created_at                  DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at                  DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_ris_scope (scope_type, scope_id),
+    CONSTRAINT fk_ris_default_seal_user FOREIGN KEY (default_seal_user_id) REFERENCES users (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='領収書発行者設定';

@@ -1,0 +1,581 @@
+package com.mannschaft.app.social.service;
+
+import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.social.FollowerType;
+import com.mannschaft.app.social.event.TeamFriendNotificationEvent;
+import com.mannschaft.app.social.SocialErrorCode;
+import com.mannschaft.app.social.dto.FollowTeamResponse;
+import com.mannschaft.app.social.dto.PastForwardHandling;
+import com.mannschaft.app.social.dto.TeamFriendListResponse;
+import com.mannschaft.app.social.dto.TeamFriendView;
+import com.mannschaft.app.social.entity.FollowEntity;
+import com.mannschaft.app.social.entity.FriendContentForwardEntity;
+import com.mannschaft.app.social.entity.TeamFriendEntity;
+import com.mannschaft.app.social.repository.FollowRepository;
+import com.mannschaft.app.social.repository.FriendContentForwardRepository;
+import com.mannschaft.app.social.repository.TeamFriendRepository;
+import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.timeline.PostScopeType;
+import com.mannschaft.app.timeline.entity.TimelinePostEntity;
+import com.mannschaft.app.timeline.repository.TimelinePostRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * フレンドチーム関係ファサードサービス（F01.5 Phase 1）。
+ *
+ * <p>
+ * チーム間のフォロー・フォロー解除・相互フォロー検知と、それに伴う監査ログ・通知発火を
+ * 担当する。フレンド一覧取得は {@link TeamFriendQueryService} に、
+ * 公開設定変更は {@link TeamFriendVisibilityService} に委譲する
+ * （リファクタリング第4弾 Phase 4-B で分離）。
+ * </p>
+ *
+ * <p>
+ * 設計書: {@code docs/features/F01.5_team_friend_relationships.md}<br>
+ * リファクタ設計書: {@code docs/refactoring/phase4_overview.md} §2
+ * </p>
+ *
+ * <p>
+ * <b>トランザクション境界</b>: クラスレベルを {@code readOnly = true}（デフォルト
+ * 読み取り専用）とし、更新系メソッドに個別 {@link Transactional} を付与する。
+ * 相互フォロー検知処理は REPEATABLE_READ 分離で実行する（§6 設計）。
+ * </p>
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class TeamFriendsService {
+
+    /** {@code MANAGE_FRIEND_TEAMS} 権限の論理名 */
+    private static final String PERM_MANAGE_FRIEND_TEAMS = "MANAGE_FRIEND_TEAMS";
+
+    /** スコープ識別子（チーム） */
+    private static final String SCOPE_TEAM = "TEAM";
+
+    /** NOWAIT 競合発生時にクライアントに案内する再試行秒数 */
+    private static final int NOWAIT_RETRY_AFTER_SECONDS = 5;
+
+    /** フレンド関係解除時のアーカイブ scope（Phase 1 前倒しで enum 本体未拡張のため暫定文字列） */
+    private static final String FRIEND_ARCHIVE_SCOPE_LITERAL = "FRIEND_ARCHIVE";
+
+    private final FollowRepository followRepository;
+    private final TeamFriendRepository teamFriendRepository;
+    private final FriendContentForwardRepository friendContentForwardRepository;
+    private final TimelinePostRepository timelinePostRepository;
+    private final TeamRepository teamRepository;
+    private final AccessControlService accessControlService;
+    private final AuditLogService auditLogService;
+    private final TeamFriendQueryService teamFriendQueryService;
+    private final TeamFriendVisibilityService teamFriendVisibilityService;
+
+    /**
+     * Issue #2834 / CMP-056 第1群ロットB: フレンド成立／解除の通知は業務コミット後に配送リスナーへ
+     * 委譲する（{@code TeamFriendNotificationListener}）。本サービスは通知を直接組み立てない。
+     * これにより PR #2861 の Codex 検分 P1 が自認していた「通知の DB 例外が rollback-only を立てて
+     * フレンド成立／解除ごと巻き戻す」構造欠陥が根治される。
+     */
+    private final ApplicationEventPublisher applicationEventPublisher;
+
+    // ═════════════════════════════════════════════════════════════
+    // 1. チーム間フォロー + 相互フォロー検知
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * 自チームが他チームをフォローする。
+     *
+     * <p>
+     * 相手チームが既に自チームをフォロー済みであった場合、相互フォロー成立として
+     * {@link TeamFriendEntity} を自動生成する。対称性チェックは
+     * {@code SELECT ... FOR UPDATE NOWAIT} による排他ロックで行い、同時並行の
+     * A→B と B→A が競合した際に二重成立を防止する。ロック取得に失敗した場合は
+     * {@link FollowTeamResponse#getRetryAfterSeconds()} に再試行秒数を入れた
+     * 202 Accepted 相当のレスポンスを返却する。
+     * </p>
+     *
+     * <p>
+     * 認可は {@code MANAGE_FRIEND_TEAMS} 権限で判定する。ADMIN にはデフォルト
+     * 付与されており、DEPUTY_ADMIN は ADMIN が明示的に権限付与した場合のみ実行可能。
+     * </p>
+     *
+     * @param teamId       自チーム ID（パスパラメータ {@code {id}}）
+     * @param targetTeamId フォロー先チーム ID
+     * @param userId       操作実行者のユーザー ID
+     * @return フォロー結果（相互成立時は {@code teamFriendId} / {@code establishedAt} が埋まる）
+     * @throws BusinessException 自己フォロー・権限不足・対象チーム不存在・フォロー重複時
+     */
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    // TODO: SocialドメインとAuthドメイン・Notificationドメイン・Roleドメイン・Teamドメイン・Timelineドメインをまたいでいる。将来はTeamFriendEstablishedEventで分離予定
+    // issue #2496: 旧実装は key = "#teamId" / "#targetTeamId" だったが、@Cacheable 側のキーは
+    // "teamId:userId:page:size:publicOnly" 形式であり、単独の teamId とは一致しないため
+    // 一件も失効していなかった（キャッシュ自体が自己呼び出しで死んでいたため表面化していなかった）。
+    // 閲覧者・ページ・publicOnly の全組み合わせを列挙して個別 evict することは不可能なので、
+    // TeamFriendVisibilityService#setVisibility と同じく allEntries で一括失効させる。
+    @CacheEvict(value = "teamFriendList", allEntries = true)
+    public FollowTeamResponse follow(Long teamId, Long targetTeamId, Long userId) {
+        // 1. 基本バリデーション
+        if (teamId == null || targetTeamId == null) {
+            throw new BusinessException(SocialErrorCode.FRIEND_TARGET_TEAM_NOT_FOUND);
+        }
+        if (teamId.equals(targetTeamId)) {
+            throw new BusinessException(SocialErrorCode.FRIEND_CANNOT_SELF_FOLLOW);
+        }
+
+        // 2. 権限チェック（ADMIN または MANAGE_FRIEND_TEAMS 保持 DEPUTY_ADMIN）
+        requireManageFriendTeams(userId, teamId);
+
+        // 3. 対象チームの存在確認（論理削除済みは @SQLRestriction により自動除外）
+        TeamEntity targetTeam = teamRepository.findById(targetTeamId)
+                .orElseThrow(() -> new BusinessException(SocialErrorCode.FRIEND_TARGET_TEAM_NOT_FOUND));
+
+        // 4. 重複フォローチェック
+        if (followRepository.existsByFollowerTypeAndFollowerIdAndFollowedTypeAndFollowedId(
+                FollowerType.TEAM, teamId, FollowerType.TEAM, targetTeamId)) {
+            throw new BusinessException(SocialErrorCode.FRIEND_ALREADY_FOLLOWING);
+        }
+
+        // 5. follows に INSERT（TEAM → TEAM）
+        FollowEntity follow = followRepository.save(FollowEntity.builder()
+                .followerType(FollowerType.TEAM)
+                .followerId(teamId)
+                .followedType(FollowerType.TEAM)
+                .followedId(targetTeamId)
+                .build());
+
+        log.info("チームフォロー成立: teamId={}, targetTeamId={}, followId={}",
+                teamId, targetTeamId, follow.getId());
+
+        // 6. 対称性チェック（NOWAIT 排他ロック）
+        FollowEntity reverseFollow;
+        try {
+            Optional<FollowEntity> reverseOpt = followRepository
+                    .findByFollowerAndFollowedForUpdateNoWait(
+                            FollowerType.TEAM, targetTeamId,
+                            FollowerType.TEAM, teamId);
+            if (reverseOpt.isEmpty()) {
+                // 片方向フォローのまま終了
+                recordFollowAudit(userId, teamId, targetTeamId, follow.getId());
+                return FollowTeamResponse.builder()
+                        .followId(follow.getId())
+                        .followerTeamId(teamId)
+                        .followedTeamId(targetTeamId)
+                        .mutual(false)
+                        .createdAt(follow.getCreatedAt())
+                        .build();
+            }
+            reverseFollow = reverseOpt.get();
+        } catch (PessimisticLockingFailureException ex) {
+            // NOWAIT タイムアウト → 202 Accepted 再試行指示
+            // CannotAcquireLockException は PessimisticLockingFailureException のサブクラスなので一括でキャッチされる
+            log.warn("相互フォロー検知 NOWAIT 競合発生: teamId={}, targetTeamId={}, cause={}",
+                    teamId, targetTeamId, ex.getClass().getSimpleName());
+            return FollowTeamResponse.builder()
+                    .followId(follow.getId())
+                    .followerTeamId(teamId)
+                    .followedTeamId(targetTeamId)
+                    .mutual(false)
+                    .createdAt(follow.getCreatedAt())
+                    .retryAfterSeconds(NOWAIT_RETRY_AFTER_SECONDS)
+                    .build();
+        }
+
+        // 7. 相互フォロー成立 → team_friends に INSERT（正規化）
+        TeamFriendEntity teamFriend = createTeamFriend(teamId, targetTeamId, follow, reverseFollow);
+
+        // 8. 監査ログ + 通知発火（Phase 2: FRIEND_ESTABLISHED）
+        recordFollowAudit(userId, teamId, targetTeamId, follow.getId());
+        recordFriendEstablishedAudit(userId, teamFriend);
+        log.info("相互フォロー確定・フレンド関係成立: teamFriendId={}, teamAId={}, teamBId={}",
+                teamFriend.getId(), teamFriend.getTeamAId(), teamFriend.getTeamBId());
+
+        // 9. 両チームの ADMIN への FRIEND_ESTABLISHED 通知は業務コミット後に配送する
+        //    （Issue #2834 / CMP-056 第1群ロットB。TeamFriendNotificationListener が AFTER_COMMIT で受ける）。
+        applicationEventPublisher.publishEvent(new TeamFriendNotificationEvent(
+                TeamFriendNotificationEvent.Kind.ESTABLISHED,
+                teamId, targetTeamId, teamFriend.getId(), userId));
+
+        return FollowTeamResponse.builder()
+                .followId(follow.getId())
+                .followerTeamId(teamId)
+                .followedTeamId(targetTeamId)
+                .mutual(true)
+                .teamFriendId(teamFriend.getId())
+                .establishedAt(teamFriend.getEstablishedAt())
+                .isPublic(teamFriend.getIsPublic())
+                .createdAt(follow.getCreatedAt())
+                .build();
+    }
+
+    /**
+     * {@link TeamFriendEntity} を生成し保存する。{@code team_a_id &lt; team_b_id} の
+     * 正規化を行い、UNIQUE 制約違反（並行成立による二重 INSERT レース）時は
+     * 既存レコードを取得して返却する（冪等性担保）。
+     *
+     * @param teamId         自チーム ID
+     * @param targetTeamId   相手チーム ID
+     * @param follow         自→相手 {@code follows} レコード
+     * @param reverseFollow  相手→自 {@code follows} レコード
+     * @return 生成または既存の {@link TeamFriendEntity}
+     */
+    private TeamFriendEntity createTeamFriend(
+            Long teamId, Long targetTeamId,
+            FollowEntity follow, FollowEntity reverseFollow) {
+
+        long aId = Math.min(teamId, targetTeamId);
+        long bId = Math.max(teamId, targetTeamId);
+        Long aFollowId = teamId.equals(aId) ? follow.getId() : reverseFollow.getId();
+        Long bFollowId = teamId.equals(aId) ? reverseFollow.getId() : follow.getId();
+
+        try {
+            return teamFriendRepository.save(TeamFriendEntity.builder()
+                    .teamAId(aId)
+                    .teamBId(bId)
+                    .aFollowId(aFollowId)
+                    .bFollowId(bFollowId)
+                    .establishedAt(LocalDateTime.now())
+                    .isPublic(false)
+                    .build());
+        } catch (DataIntegrityViolationException ex) {
+            // UNIQUE 制約違反（uq_tf_pair）→ 並行成立レース → 既存レコードを再取得
+            log.warn("team_friends UNIQUE 制約違反（並行成立レース）: teamAId={}, teamBId={}", aId, bId);
+            return teamFriendRepository.findByTeamAIdAndTeamBId(aId, bId)
+                    .orElseThrow(() -> new BusinessException(
+                            SocialErrorCode.FRIEND_RELATION_NOT_FOUND, ex));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // 2. フォロー解除 + フレンド解除 + 過去転送処理（3モード）
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * 自チームが他チームへのフォローを解除する。相互フォロー状態だった場合は
+     * フレンド関係（{@link TeamFriendEntity}）も自動削除する。
+     *
+     * <p>
+     * 過去転送投稿（{@link FriendContentForwardEntity}）の扱いは {@code mode}
+     * に従って 3 モードで分岐する:
+     * </p>
+     *
+     * <ul>
+     *   <li>{@link PastForwardHandling#KEEP}: 転送履歴を保持（既定）</li>
+     *   <li>{@link PastForwardHandling#SOFT_DELETE}: 転送投稿を論理削除し
+     *       {@code is_revoked = TRUE} を立てる</li>
+     *   <li>{@link PastForwardHandling#ARCHIVE}: 転送投稿の
+     *       {@code scope_type} を {@code FRIEND_ARCHIVE} に変更し通常タイムラインから除外</li>
+     * </ul>
+     *
+     * <p>
+     * 設計書 §6 の方針により、B→A のフォロー（相手側）は自動削除しない。片方向
+     * フォロー状態が残り、相手チームが自発的に解除するまで維持される。
+     * </p>
+     *
+     * @param teamId       自チーム ID
+     * @param targetTeamId フォロー解除先チーム ID
+     * @param mode         過去転送投稿の扱い（null の場合は {@link PastForwardHandling#KEEP} が適用される）
+     * @param userId       操作実行者のユーザー ID
+     * @throws BusinessException 権限不足・フォロー関係不存在時
+     */
+    @Transactional
+    // TODO: SocialドメインとAuthドメイン・Notificationドメイン・Roleドメイン・Teamドメイン・Timelineドメインをまたいでいる。将来はTeamFriendDissolvedEventで分離予定
+    // issue #2496: follow と同じ理由で allEntries に統一（旧 key = "#teamId" は @Cacheable 側の
+    // "teamId:userId:page:size:publicOnly" キーと噛み合わず、一件も失効していなかった）。
+    @CacheEvict(value = "teamFriendList", allEntries = true)
+    public void unfollow(Long teamId, Long targetTeamId, PastForwardHandling mode, Long userId) {
+        // 1. 基本バリデーション
+        if (teamId == null || targetTeamId == null) {
+            throw new BusinessException(SocialErrorCode.FRIEND_FOLLOW_NOT_FOUND);
+        }
+        if (teamId.equals(targetTeamId)) {
+            throw new BusinessException(SocialErrorCode.FRIEND_CANNOT_SELF_FOLLOW);
+        }
+
+        // 2. 権限チェック
+        requireManageFriendTeams(userId, teamId);
+
+        // 3. 該当 follows を取得
+        FollowEntity follow = followRepository
+                .findByFollowerTypeAndFollowerIdAndFollowedTypeAndFollowedId(
+                        FollowerType.TEAM, teamId, FollowerType.TEAM, targetTeamId)
+                .orElseThrow(() -> new BusinessException(SocialErrorCode.FRIEND_FOLLOW_NOT_FOUND));
+
+        PastForwardHandling effectiveMode = (mode != null) ? mode : PastForwardHandling.KEEP;
+
+        // 4. team_friends の存在チェック（正規化ペア）
+        long aId = Math.min(teamId, targetTeamId);
+        long bId = Math.max(teamId, targetTeamId);
+        Optional<TeamFriendEntity> friendOpt = teamFriendRepository.findByTeamAIdAndTeamBId(aId, bId);
+
+        // 5. 過去転送投稿の処理（フレンド関係が成立していた場合のみ意味を持つ）
+        if (friendOpt.isPresent()) {
+            handlePastForwards(teamId, targetTeamId, effectiveMode, userId);
+        }
+
+        // 6. team_friends 物理削除 — team_friend_folder_members は FK CASCADE で自動削除
+        friendOpt.ifPresent(friend -> {
+            teamFriendRepository.deleteByTeamAIdAndTeamBId(friend.getTeamAId(), friend.getTeamBId());
+            log.info("フレンド関係解除: teamFriendId={}, teamAId={}, teamBId={}, mode={}",
+                    friend.getId(), friend.getTeamAId(), friend.getTeamBId(), effectiveMode);
+        });
+
+        // 7. follows 削除
+        followRepository.delete(follow);
+
+        // 8. 監査ログ + 通知発火（Phase 2: FRIEND_DISSOLVED）
+        recordUnfollowAudit(userId, teamId, targetTeamId, effectiveMode);
+        friendOpt.ifPresent(friend -> {
+            recordFriendDissolvedAudit(userId, friend, effectiveMode);
+            // 両チームの ADMIN への FRIEND_DISSOLVED 通知は業務コミット後に配送する
+            //（Issue #2834 / CMP-056 第1群ロットB）。
+            applicationEventPublisher.publishEvent(new TeamFriendNotificationEvent(
+                    TeamFriendNotificationEvent.Kind.DISSOLVED,
+                    teamId, targetTeamId, friend.getId(), userId));
+        });
+    }
+
+    /**
+     * 過去転送投稿（双方向の両チームから出発したものすべて）を {@code mode} に従って処理する。
+     *
+     * @param teamId        自チーム ID（解除操作を行っている側）
+     * @param targetTeamId  相手チーム ID
+     * @param mode          過去転送投稿の扱い
+     * @param userId        操作実行者のユーザー ID
+     */
+    private void handlePastForwards(Long teamId, Long targetTeamId,
+                                    PastForwardHandling mode, Long userId) {
+        if (mode == PastForwardHandling.KEEP) {
+            return;
+        }
+
+        // 自チームが転送した（source = 相手チーム）履歴
+        List<FriendContentForwardEntity> outgoing = friendContentForwardRepository
+                .findByForwardingTeamIdAndIsRevokedFalseOrderByForwardedAtDesc(
+                        teamId, Pageable.unpaged());
+        // 相手チームが転送した（source = 自チーム）履歴
+        List<FriendContentForwardEntity> incoming = friendContentForwardRepository
+                .findByForwardingTeamIdAndIsRevokedFalseOrderByForwardedAtDesc(
+                        targetTeamId, Pageable.unpaged());
+
+        for (FriendContentForwardEntity fwd : outgoing) {
+            if (!targetTeamId.equals(fwd.getSourceTeamId())) {
+                continue;
+            }
+            applyForwardHandling(fwd, mode, userId);
+        }
+        for (FriendContentForwardEntity fwd : incoming) {
+            if (!teamId.equals(fwd.getSourceTeamId())) {
+                continue;
+            }
+            applyForwardHandling(fwd, mode, userId);
+        }
+    }
+
+    /**
+     * 単一の転送レコードに対して解除時処理を適用する。
+     *
+     * @param fwd    転送レコード
+     * @param mode   処理モード（KEEP は呼び出し側で除外済み）
+     * @param userId 操作実行者のユーザー ID
+     */
+    private void applyForwardHandling(FriendContentForwardEntity fwd,
+                                      PastForwardHandling mode, Long userId) {
+        Optional<TimelinePostEntity> postOpt = timelinePostRepository
+                .findById(fwd.getForwardedPostId());
+        if (postOpt.isEmpty()) {
+            return;
+        }
+        TimelinePostEntity post = postOpt.get();
+
+        switch (mode) {
+            case SOFT_DELETE -> {
+                post.softDelete();
+                timelinePostRepository.save(post);
+                fwd.revoke(userId);
+                friendContentForwardRepository.save(fwd);
+            }
+            case ARCHIVE -> {
+                // Phase 1 時点では PostScopeType に FRIEND_ARCHIVE が enum 追加されていない
+                // 可能性があるため、追加済みなら列挙値で、未追加なら UPDATE SQL で scope_type を切り替える
+                // （Phase 3 で enum 正式化される見込み）。
+                archivePost(post);
+                // is_revoked は立てない（設計書 §6: ARCHIVE は履歴価値を残したまま非表示化）
+            }
+            case KEEP -> { /* 到達しない */ }
+        }
+    }
+
+    /**
+     * 転送投稿をアーカイブ領域に移す。既存 {@link PostScopeType} 列挙に
+     * {@code FRIEND_ARCHIVE} が追加済みならその値を、未追加なら enum 追加が
+     * 入るまでは {@code softDelete} + 別テーブル待避で暫定対応する。
+     *
+     * <p>
+     * Phase 1 の現時点では {@link PostScopeType} に {@code FRIEND_ARCHIVE} は
+     * 未追加のため、暫定的に {@link TimelinePostEntity#hide()}（非表示化）で代替する。
+     * 正式な FRIEND_ARCHIVE スコープ対応は Phase 3 のタイムライン統合フェーズで
+     * {@code scope_type} enum 拡張とセットで実装する。
+     * </p>
+     *
+     * @param post 対象投稿
+     */
+    private void archivePost(TimelinePostEntity post) {
+        // TODO: Phase 3 で PostScopeType.FRIEND_ARCHIVE 正式追加後に
+        //       post = post.toBuilder().scopeType(PostScopeType.FRIEND_ARCHIVE).build()
+        //       に置き換える（参照: 設計書 §10 F04.1 タイムライン波及修正）。
+        // Phase 1 暫定: 非表示化（HIDDEN）でタイムラインから除外する。
+        post.hide();
+        timelinePostRepository.save(post);
+        log.info("フレンド解除 ARCHIVE 暫定処理（HIDDEN）: postId={}, scopeHint={}",
+                post.getId(), FRIEND_ARCHIVE_SCOPE_LITERAL);
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // 3. フレンド一覧取得（TeamFriendQueryService へ委譲）
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * 自チームのフレンドチーム一覧を取得する。{@link TeamFriendQueryService} へ委譲する。
+     *
+     * @param teamId     自チーム ID
+     * @param userId     閲覧者ユーザー ID
+     * @param pageable   ページング
+     * @param publicOnly {@code true} の場合 {@code is_public = TRUE} のみ返却（SUPPORTER 向け）
+     * @return フレンドチーム一覧
+     */
+    public Page<TeamFriendView> listFriends(Long teamId, Long userId,
+                                            Pageable pageable, boolean publicOnly) {
+        return teamFriendQueryService.listFriends(teamId, userId, pageable, publicOnly);
+    }
+
+    /**
+     * {@link TeamFriendListResponse} として整形したレスポンスを返却する。
+     * {@link TeamFriendQueryService} へ委譲する。
+     *
+     * @param teamId     自チーム ID
+     * @param userId     閲覧者ユーザー ID
+     * @param pageable   ページング
+     * @param publicOnly SUPPORTER 向け {@code is_public} 絞り込みフラグ
+     * @return レスポンス
+     */
+    public TeamFriendListResponse listFriendsResponse(Long teamId, Long userId,
+                                                      Pageable pageable, boolean publicOnly) {
+        return teamFriendQueryService.listFriendsResponse(teamId, userId, pageable, publicOnly);
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // 4. 公開設定変更（TeamFriendVisibilityService へ委譲）
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * フレンド関係の公開設定（{@code is_public}）を変更する。
+     * {@link TeamFriendVisibilityService} へ委譲する。
+     *
+     * @param teamId       自チーム ID
+     * @param teamFriendId フレンド関係 ID
+     * @param isPublic     公開フラグ
+     * @param userId       操作実行者のユーザー ID
+     */
+    @Transactional
+    public void setVisibility(Long teamId, Long teamFriendId, boolean isPublic, Long userId) {
+        teamFriendVisibilityService.setVisibility(teamId, teamFriendId, isPublic, userId);
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // 権限・監査ログのヘルパー
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * ADMIN または {@code MANAGE_FRIEND_TEAMS} 権限を保持していることを要求する。
+     * 失敗時は 403 に相当する {@link BusinessException} をスローする。
+     *
+     * <p>
+     * ADMIN にはデフォルトで {@code MANAGE_FRIEND_TEAMS} が付与される仕様のため、
+     * {@link AccessControlService#checkPermission(Long, Long, String, String)}
+     * の一度の判定で ADMIN / DEPUTY_ADMIN（権限保持）の両方を網羅できる。ただし
+     * {@code AccessControlService} は内部で {@link com.mannschaft.app.common.CommonErrorCode#COMMON_002}
+     * （403）をスローするため、Service 呼び出し側では独自の
+     * {@link SocialErrorCode#FRIEND_INSUFFICIENT_PERMISSION} を使いたい場合は
+     * {@code hasPermission} で事前判定する必要がある。ここでは監査性を優先し
+     * 既存ヘルパーの {@link AccessControlService#checkPermission} を採用する。
+     * </p>
+     *
+     * @param userId ユーザー ID
+     * @param teamId チーム ID
+     */
+    private void requireManageFriendTeams(Long userId, Long teamId) {
+        accessControlService.checkPermission(userId, teamId, SCOPE_TEAM, PERM_MANAGE_FRIEND_TEAMS);
+    }
+
+    /**
+     * フォロー実行の監査ログを記録する。
+     */
+    private void recordFollowAudit(Long userId, Long followerTeamId,
+                                   Long followedTeamId, Long followId) {
+        auditLogService.record(
+                "TEAM_FOLLOW", userId, null,
+                followerTeamId, null,
+                null, null, null,
+                String.format(
+                        "{\"follower_team_id\":%d,\"followed_team_id\":%d,\"follow_id\":%d}",
+                        followerTeamId, followedTeamId, followId));
+    }
+
+    /**
+     * フォロー解除の監査ログを記録する。
+     */
+    private void recordUnfollowAudit(Long userId, Long followerTeamId,
+                                     Long followedTeamId, PastForwardHandling mode) {
+        auditLogService.record(
+                "TEAM_UNFOLLOW", userId, null,
+                followerTeamId, null,
+                null, null, null,
+                String.format(
+                        "{\"follower_team_id\":%d,\"followed_team_id\":%d,\"past_forward_handling\":\"%s\"}",
+                        followerTeamId, followedTeamId, mode.name()));
+    }
+
+    /**
+     * フレンド成立の監査ログを記録する。
+     */
+    private void recordFriendEstablishedAudit(Long userId, TeamFriendEntity friend) {
+        auditLogService.record(
+                "FRIEND_ESTABLISHED", userId, null,
+                friend.getTeamAId(), null,
+                null, null, null,
+                String.format(
+                        "{\"team_a_id\":%d,\"team_b_id\":%d,\"team_friend_id\":%d}",
+                        friend.getTeamAId(), friend.getTeamBId(), friend.getId()));
+    }
+
+    /**
+     * フレンド解除の監査ログを記録する。
+     */
+    private void recordFriendDissolvedAudit(Long userId, TeamFriendEntity friend,
+                                            PastForwardHandling mode) {
+        auditLogService.record(
+                "FRIEND_DISSOLVED", userId, null,
+                friend.getTeamAId(), null,
+                null, null, null,
+                String.format(
+                        "{\"team_a_id\":%d,\"team_b_id\":%d,\"past_forward_handling\":\"%s\"}",
+                        friend.getTeamAId(), friend.getTeamBId(), mode.name()));
+    }
+
+}

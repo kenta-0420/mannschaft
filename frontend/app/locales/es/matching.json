@@ -1,0 +1,65 @@
+{
+  "matching": {
+    "pageTitle": "Emparejamiento",
+    "teamPageTitle": "Emparejamiento",
+    "listHeading": "Anuncios de encuentros e intercambios",
+    "empty": "Sin anuncios",
+    "filter": {
+      "prefecture": "Prefectura",
+      "allPrefectures": "Todas las prefecturas",
+      "city": "Ciudad",
+      "allCities": "Todas las ciudades",
+      "category": "Categoría",
+      "allCategories": "Todas las categorías",
+      "keyword": "Buscar por palabra clave",
+      "search": "Buscar",
+      "clear": "Limpiar",
+      "mobileToggle": "Filtros"
+    },
+    "category": {
+      "ANY": "Sin especificar",
+      "ELEMENTARY": "Primaria",
+      "JUNIOR_HIGH": "Secundaria básica",
+      "HIGH_SCHOOL": "Secundaria",
+      "UNIVERSITY": "Universidad",
+      "ADULT": "Adultos",
+      "SENIOR": "Sénior"
+    },
+    "history": {
+      "title": "Búsquedas recientes"
+    },
+    "create": {
+      "button": "Crear anuncio"
+    },
+    "guide": {
+      "title": "Buscar encuentros — Cómo usar",
+      "browse": {
+        "title": "Explorar anuncios",
+        "body": "Se muestran todos los anuncios de encuentros e intercambios de la plataforma. Cada tarjeta muestra el nombre del equipo, tipo, nivel y número de solicitudes. Busca anuncios con el estado «Abierto»."
+      },
+      "status": {
+        "title": "Entender los estados",
+        "body": "Consulta la insignia de color en la esquina superior izquierda de cada tarjeta para ver su estado.",
+        "open": "Abierto (verde) — Actualmente aceptando solicitudes",
+        "matched": "Emparejado (azul) — Ya se confirmó un oponente",
+        "cancelled": "Cancelado (rojo) — El anuncio ha sido retirado"
+      },
+      "types": {
+        "title": "Tipos, categorías y niveles",
+        "body": "Las tarjetas muestran el tipo, categoría y nivel. Encuentra anuncios que se ajusten a las condiciones de tu equipo.",
+        "competition": "Partido — Anuncios para partidos oficiales o de práctica",
+        "practice": "Práctica — Anuncios para práctica conjunta o participación como invitado",
+        "exchange": "Intercambio — Partidos amistosos o intercambios en formato de evento",
+        "recruit": "Reclutamiento — Anuncios para jugadores sustitutos o participación puntual"
+      },
+      "create": {
+        "title": "Publicar un anuncio desde tu equipo",
+        "body": "Para encontrar rivales o compañeros de intercambio, crea un anuncio desde la pestaña Emparejamiento en la página de tu equipo.",
+        "step1": "Abrir la página del equipo",
+        "step2": "Tocar la pestaña «Emparejamiento»",
+        "step3": "Tocar el botón «Crear anuncio»",
+        "step4": "Introducir título, tipo y categoría, luego tocar «Crear»"
+      }
+    }
+  }
+}

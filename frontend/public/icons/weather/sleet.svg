@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- 雲 -->
+  <path d="M12 34 Q12 26 20 26 Q22 18 32 18 Q42 18 44 26 Q52 26 52 34 Q52 40 44 40 L18 40 Q10 40 10 34 Q10 34 12 34 Z" fill="#94A3B8"/>
+  <!-- 雨滴 2本（左） -->
+  <line x1="20" y1="45" x2="18" y2="54" stroke="#60A5FA" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="30" y1="45" x2="28" y2="54" stroke="#60A5FA" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- 雪片（右）6方向の線 -->
+  <line x1="44" y1="45" x2="44" y2="57" stroke="#BAE6FD" stroke-width="2" stroke-linecap="round"/>
+  <line x1="38.8" y1="48" x2="49.2" y2="54" stroke="#BAE6FD" stroke-width="2" stroke-linecap="round"/>
+  <line x1="38.8" y1="54" x2="49.2" y2="48" stroke="#BAE6FD" stroke-width="2" stroke-linecap="round"/>
+</svg>

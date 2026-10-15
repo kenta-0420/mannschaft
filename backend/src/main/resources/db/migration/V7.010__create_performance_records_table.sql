@@ -1,0 +1,26 @@
+-- F07.2 パフォーマンス管理: パフォーマンス記録テーブル
+CREATE TABLE performance_records (
+    id                  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    metric_id           BIGINT UNSIGNED NOT NULL,
+    user_id             BIGINT UNSIGNED NOT NULL,
+    schedule_id         BIGINT UNSIGNED NULL,
+    activity_result_id  BIGINT UNSIGNED NULL,
+    recorded_date       DATE            NOT NULL,
+    value               DECIMAL(15,4)   NOT NULL,
+    note                VARCHAR(300)    NULL,
+    source              ENUM('ADMIN', 'SELF', 'SCHEDULE', 'ACTIVITY') NOT NULL DEFAULT 'ADMIN',
+    recorded_by         BIGINT UNSIGNED NULL,
+    created_at          DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_pr_metric     FOREIGN KEY (metric_id)          REFERENCES performance_metrics (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_pr_user       FOREIGN KEY (user_id)            REFERENCES users (id)                ON DELETE RESTRICT,
+    CONSTRAINT fk_pr_schedule   FOREIGN KEY (schedule_id)        REFERENCES schedules (id)            ON DELETE SET NULL,
+    CONSTRAINT fk_pr_activity   FOREIGN KEY (activity_result_id) REFERENCES activity_results (id)     ON DELETE SET NULL,
+    CONSTRAINT fk_pr_recorded_by FOREIGN KEY (recorded_by)       REFERENCES users (id)                ON DELETE SET NULL,
+    INDEX idx_pr_metric_user (metric_id, user_id),
+    INDEX idx_pr_metric_date (metric_id, recorded_date DESC),
+    INDEX idx_pr_user_date (user_id, recorded_date DESC),
+    INDEX idx_pr_schedule (schedule_id),
+    INDEX idx_pr_activity (activity_result_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -1,0 +1,578 @@
+package com.mannschaft.app.shift.service;
+
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
+import com.mannschaft.app.proxy.ProxyInputContext;
+import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
+import com.mannschaft.app.shift.ShiftErrorCode;
+import com.mannschaft.app.shift.ShiftMapper;
+import com.mannschaft.app.shift.ShiftPreference;
+import com.mannschaft.app.shift.ShiftScheduleStatus;
+import com.mannschaft.app.shift.dto.CreateShiftRequestRequest;
+import com.mannschaft.app.shift.dto.ShiftRequestResponse;
+import com.mannschaft.app.shift.dto.ShiftRequestSummaryResponse;
+import com.mannschaft.app.shift.dto.UpdateShiftRequestRequest;
+import com.mannschaft.app.shift.entity.ShiftRequestEntity;
+import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
+import com.mannschaft.app.shift.repository.ShiftRequestRepository;
+import com.mannschaft.app.shift.repository.ShiftSlotRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.lang.reflect.Method;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
+/**
+ * {@link ShiftRequestService} の単体テスト。
+ * シフト希望の提出・更新・削除・サマリーを検証する。
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("ShiftRequestService 単体テスト")
+class ShiftRequestServiceTest {
+
+    @Mock
+    private ShiftRequestRepository requestRepository;
+
+    @Mock
+    private ShiftSlotRepository slotRepository;
+
+    @Mock
+    private ShiftScheduleService scheduleService;
+
+    @Mock
+    private ShiftMapper shiftMapper;
+
+    @Mock
+    private ProxyInputContext proxyInputContext;
+
+    @Mock
+    private ProxyInputRecordRepository proxyInputRecordRepository;
+
+    @Mock
+    private Clock wallClock;
+
+    @InjectMocks
+    private ShiftRequestService shiftRequestService;
+
+    // ========================================
+    // テスト用定数・ヘルパー
+    // ========================================
+
+    private static final Long SCHEDULE_ID = 100L;
+    private static final Long USER_ID = 10L;
+    private static final Long REQUEST_ID = 300L;
+    private static final Long TEAM_ID = 1L;
+    private static final LocalDateTime CURRENT_TIME = LocalDateTime.of(2026, 2, 1, 12, 0);
+    private static final Instant CURRENT_INSTANT = CURRENT_TIME
+            .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
+            .toInstant();
+    private static final List<Long> TEN_MEMBERS = List.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L);
+
+    @BeforeEach
+    void setUpWallClock() {
+        lenient().when(wallClock.instant()).thenReturn(CURRENT_INSTANT);
+        lenient().when(wallClock.getZone()).thenReturn(UserZoneLocalDateTimeParser.SERVER_ZONE);
+    }
+
+    // 本 UT の検証対象は tx 本体の業務ロジックと scope 解決。認可は tx の外の ShiftRequestFacade が行う
+    // （順序は ShiftRequestFacadeTest、per-scope 認可と存在秘匿の成否は ScopeConcealingAccessGateTest と
+    // 契約IT（ShiftRequestPositionScopeContractIT）で固定する）。
+
+    private ShiftScheduleEntity createCollectingSchedule() {
+        ShiftScheduleEntity entity = ShiftScheduleEntity.builder()
+                .teamId(TEAM_ID)
+                .title("テストスケジュール")
+                .startDate(LocalDate.of(2026, 3, 1))
+                .endDate(LocalDate.of(2026, 3, 7))
+                .status(ShiftScheduleStatus.COLLECTING)
+                .requestDeadline(CURRENT_TIME.plusDays(7))
+                .build();
+        return entity;
+    }
+
+    private ShiftScheduleEntity createDraftSchedule() {
+        return ShiftScheduleEntity.builder()
+                .teamId(TEAM_ID)
+                .title("下書きスケジュール")
+                .startDate(LocalDate.of(2026, 3, 1))
+                .endDate(LocalDate.of(2026, 3, 7))
+                .status(ShiftScheduleStatus.DRAFT)
+                .build();
+    }
+
+    private ShiftScheduleEntity createExpiredSchedule() {
+        return ShiftScheduleEntity.builder()
+                .teamId(TEAM_ID)
+                .title("期限切れスケジュール")
+                .startDate(LocalDate.of(2026, 3, 1))
+                .endDate(LocalDate.of(2026, 3, 7))
+                .status(ShiftScheduleStatus.COLLECTING)
+                .requestDeadline(CURRENT_TIME.minusDays(1))
+                .build();
+    }
+
+    private ShiftRequestEntity createRequestEntity() {
+        ShiftRequestEntity entity = ShiftRequestEntity.builder()
+                .scheduleId(SCHEDULE_ID)
+                .userId(USER_ID)
+                .slotDate(LocalDate.of(2026, 3, 2))
+                .preference(ShiftPreference.PREFERRED)
+                .note("希望します")
+                .build();
+        callOnCreate(entity);
+        return entity;
+    }
+
+    private ShiftRequestResponse createRequestResponse() {
+        return new ShiftRequestResponse(
+                REQUEST_ID, SCHEDULE_ID, USER_ID, null,
+                LocalDate.of(2026, 3, 2), "PREFERRED", "希望します",
+                CURRENT_TIME, false);
+    }
+
+    private void callOnCreate(ShiftRequestEntity entity) {
+        try {
+            Method method = ShiftRequestEntity.class.getDeclaredMethod("onCreate");
+            method.setAccessible(true);
+            method.invoke(entity);
+        } catch (Exception ignored) {
+        }
+    }
+
+    // ========================================
+    // listRequests
+    // ========================================
+
+    @Nested
+    @DisplayName("listRequests")
+    class ListRequests {
+
+        @Test
+        @DisplayName("スケジュールの希望一覧取得_正常_リスト返却")
+        void スケジュールの希望一覧取得_正常_リスト返却() {
+            // Given
+            ShiftRequestEntity entity = createRequestEntity();
+            ShiftRequestResponse response = createRequestResponse();
+            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(createCollectingSchedule());
+            given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
+                    .willReturn(List.of(entity));
+            given(shiftMapper.toRequestResponseList(List.of(entity)))
+                    .willReturn(List.of(response));
+
+            // When
+            List<ShiftRequestResponse> result = shiftRequestService.listRequests(SCHEDULE_ID);
+
+            // Then
+            assertThat(result).hasSize(1);
+        }
+    }
+
+    // ========================================
+    // scope 解決（Facade が認可の前に呼ぶ readOnly の読み取り）
+    // ========================================
+
+    @Nested
+    @DisplayName("resolveScheduleScope / resolveRequestScope")
+    class ResolveScope {
+
+        @Test
+        @DisplayName("scheduleId から scope 解決_正常_teamId を返す")
+        void scheduleId_正常() {
+            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(createCollectingSchedule());
+
+            assertThat(shiftRequestService.resolveScheduleScope(SCHEDULE_ID).teamId()).isEqualTo(TEAM_ID);
+        }
+
+        @Test
+        @DisplayName("scheduleId から scope 解決_不在_SHIFT_001")
+        void scheduleId_不在() {
+            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID))
+                    .willThrow(new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+
+            assertThatThrownBy(() -> shiftRequestService.resolveScheduleScope(SCHEDULE_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(t -> assertThat(((BusinessException) t).getErrorCode())
+                            .isEqualTo(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("requestId から scope 解決_正常_teamId と提出者を返し、ロックは取らない")
+        void requestId_正常() {
+            ShiftRequestEntity entity = createRequestEntity();
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(scheduleService.findSchedule(entity.getScheduleId()))
+                    .willReturn(Optional.of(createCollectingSchedule()));
+
+            ShiftRequestService.RequestScope scope = shiftRequestService.resolveRequestScope(REQUEST_ID);
+
+            assertThat(scope.teamId()).isEqualTo(TEAM_ID);
+            assertThat(scope.ownerUserId()).isEqualTo(USER_ID);
+            verify(scheduleService, never()).findScheduleForUpdate(any());
+        }
+
+        @Test
+        @DisplayName("requestId から scope 解決_親削除済み_希望の不在コードSHIFT_003")
+        void requestId_親削除済み() {
+            ShiftRequestEntity entity = createRequestEntity();
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(scheduleService.findSchedule(entity.getScheduleId())).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> shiftRequestService.resolveRequestScope(REQUEST_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(t -> assertThat(((BusinessException) t).getErrorCode())
+                            .isEqualTo(ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("requestId から scope 解決_希望不在_SHIFT_003")
+        void requestId_希望不在() {
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> shiftRequestService.resolveRequestScope(REQUEST_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(t -> assertThat(((BusinessException) t).getErrorCode())
+                            .isEqualTo(ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND));
+        }
+    }
+
+    // ========================================
+    // listMyRequests
+    // ========================================
+
+    @Nested
+    @DisplayName("listMyRequests")
+    class ListMyRequests {
+
+        @Test
+        @DisplayName("自分の希望一覧取得_正常_リスト返却")
+        void 自分の希望一覧取得_正常_リスト返却() {
+            // Given
+            ShiftRequestEntity entity = createRequestEntity();
+            ShiftRequestResponse response = createRequestResponse();
+            given(requestRepository.findHistoryByUserIdIncludingDeleted(USER_ID))
+                    .willReturn(List.of(entity));
+            given(shiftMapper.toRequestResponseList(List.of(entity)))
+                    .willReturn(List.of(response));
+
+            // When
+            List<ShiftRequestResponse> result = shiftRequestService.listMyRequests(USER_ID);
+
+            // Then
+            assertThat(result).hasSize(1);
+        }
+    }
+
+    // ========================================
+    // submitRequest
+    // ========================================
+
+    @Nested
+    @DisplayName("submitRequest")
+    class SubmitRequest {
+
+        @Test
+        @DisplayName("シフト希望提出_正常_レスポンス返却")
+        void シフト希望提出_正常_レスポンス返却() {
+            // Given
+            CreateShiftRequestRequest req = new CreateShiftRequestRequest(
+                    SCHEDULE_ID, null, LocalDate.of(2026, 3, 2), "PREFERRED", "希望します");
+            ShiftScheduleEntity schedule = createCollectingSchedule();
+            ShiftRequestEntity savedEntity = createRequestEntity();
+            ShiftRequestResponse response = createRequestResponse();
+
+            given(scheduleService.findScheduleForUpdateOrThrow(SCHEDULE_ID)).willReturn(schedule);
+            given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
+                    SCHEDULE_ID, USER_ID, LocalDate.of(2026, 3, 2)))
+                    .willReturn(Optional.empty());
+            given(requestRepository.saveAndFlush(any(ShiftRequestEntity.class))).willReturn(savedEntity);
+            given(shiftMapper.toRequestResponse(savedEntity)).willReturn(response);
+
+            // When
+            ShiftRequestResponse result = shiftRequestService.submitRequest(req, USER_ID);
+
+            // Then
+            assertThat(result).isNotNull();
+            verify(requestRepository).saveAndFlush(any(ShiftRequestEntity.class));
+        }
+
+        @Test
+        @DisplayName("シフト希望提出_COLLECTING以外_BusinessException")
+        void シフト希望提出_COLLECTING以外_BusinessException() {
+            // Given
+            CreateShiftRequestRequest req = new CreateShiftRequestRequest(
+                    SCHEDULE_ID, null, LocalDate.of(2026, 3, 2), "PREFERRED", null);
+            ShiftScheduleEntity schedule = createDraftSchedule();
+            given(scheduleService.findScheduleForUpdateOrThrow(SCHEDULE_ID)).willReturn(schedule);
+
+            // When & Then
+            assertThatThrownBy(() -> shiftRequestService.submitRequest(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ShiftErrorCode.INVALID_SCHEDULE_STATUS));
+        }
+
+        @Test
+        @DisplayName("シフト希望提出_期限超過_BusinessException")
+        void シフト希望提出_期限超過_BusinessException() {
+            // Given
+            CreateShiftRequestRequest req = new CreateShiftRequestRequest(
+                    SCHEDULE_ID, null, LocalDate.of(2026, 3, 2), "PREFERRED", null);
+            ShiftScheduleEntity schedule = createExpiredSchedule();
+            given(scheduleService.findScheduleForUpdateOrThrow(SCHEDULE_ID)).willReturn(schedule);
+
+            // When & Then
+            assertThatThrownBy(() -> shiftRequestService.submitRequest(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ShiftErrorCode.REQUEST_DEADLINE_PASSED));
+            verify(wallClock).instant();
+            verify(wallClock).getZone();
+        }
+
+        @Test
+        @DisplayName("シフト希望提出_重複_BusinessException")
+        void シフト希望提出_重複_BusinessException() {
+            // Given
+            CreateShiftRequestRequest req = new CreateShiftRequestRequest(
+                    SCHEDULE_ID, null, LocalDate.of(2026, 3, 2), "PREFERRED", null);
+            ShiftScheduleEntity schedule = createCollectingSchedule();
+            ShiftRequestEntity existing = createRequestEntity();
+
+            given(scheduleService.findScheduleForUpdateOrThrow(SCHEDULE_ID)).willReturn(schedule);
+            given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
+                    SCHEDULE_ID, USER_ID, LocalDate.of(2026, 3, 2)))
+                    .willReturn(Optional.of(existing));
+
+            // When & Then
+            assertThatThrownBy(() -> shiftRequestService.submitRequest(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ShiftErrorCode.REQUEST_ALREADY_EXISTS));
+        }
+    }
+
+    // ========================================
+    // updateRequest
+    // ========================================
+
+    @Nested
+    @DisplayName("updateRequest")
+    class UpdateRequest {
+
+        @Test
+        @DisplayName("シフト希望更新_正常_更新後レスポンス返却")
+        void シフト希望更新_正常_更新後レスポンス返却() {
+            // Given
+            ShiftRequestEntity entity = createRequestEntity();
+            ShiftScheduleEntity schedule = createCollectingSchedule();
+            UpdateShiftRequestRequest req = new UpdateShiftRequestRequest("AVAILABLE", "変更しました");
+            ShiftRequestResponse response = createRequestResponse();
+
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(scheduleService.findScheduleForUpdate(entity.getScheduleId())).willReturn(Optional.of(schedule));
+            given(requestRepository.save(entity)).willReturn(entity);
+            given(shiftMapper.toRequestResponse(entity)).willReturn(response);
+
+            // When
+            shiftRequestService.updateRequest(REQUEST_ID, req);
+
+            // Then
+            assertThat(entity.getPreference()).isEqualTo(ShiftPreference.AVAILABLE);
+            assertThat(entity.getNote()).isEqualTo("変更しました");
+        }
+
+        @Test
+        @DisplayName("シフト希望更新_存在しない_BusinessException")
+        void シフト希望更新_存在しない_BusinessException() {
+            // Given
+            UpdateShiftRequestRequest req = new UpdateShiftRequestRequest("AVAILABLE", null);
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> shiftRequestService.updateRequest(REQUEST_ID, req))
+                    .isInstanceOf(BusinessException.class);
+        }
+    }
+
+    // ========================================
+    // deleteRequest
+    // ========================================
+
+    @Nested
+    @DisplayName("deleteRequest")
+    class DeleteRequest {
+
+        @Test
+        @DisplayName("シフト希望削除_正常_WITHDRAWNで論理削除される")
+        void シフト希望削除_正常_論理削除が呼ばれる() {
+            // Given
+            ShiftRequestEntity entity = createRequestEntity();
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(scheduleService.findScheduleForUpdate(entity.getScheduleId()))
+                    .willReturn(Optional.of(createCollectingSchedule()));
+
+            // When
+            shiftRequestService.deleteRequest(REQUEST_ID);
+
+            // Then
+            verify(requestRepository).softDeleteById(REQUEST_ID);
+            verify(requestRepository, never()).delete(entity);
+        }
+
+        @Test
+        @DisplayName("シフト希望削除_親スケジュール削除済み_希望の不在コードSHIFT_003で拒否し削除しない")
+        void シフト希望削除_親削除済み_SHIFT_003() {
+            // Given
+            ShiftRequestEntity entity = createRequestEntity();
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(scheduleService.findScheduleForUpdate(entity.getScheduleId())).willReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> shiftRequestService.deleteRequest(REQUEST_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(t -> assertThat(((BusinessException) t).getErrorCode())
+                            .isEqualTo(ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND));
+            verify(requestRepository, never()).softDeleteById(any());
+        }
+
+        @Test
+        @DisplayName("シフト希望削除_存在しない_BusinessException")
+        void シフト希望削除_存在しない_BusinessException() {
+            // Given
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> shiftRequestService.deleteRequest(REQUEST_ID))
+                    .isInstanceOf(BusinessException.class);
+        }
+    }
+
+    // ========================================
+    // getRequestSummary
+    // ========================================
+
+    @Nested
+    @DisplayName("getRequestSummary")
+    class GetRequestSummary {
+
+        @Test
+        @DisplayName("希望提出サマリー取得_正常_カウント正確")
+        void 希望提出サマリー取得_正常_カウント正確() {
+            // Given
+            ShiftScheduleEntity schedule = createCollectingSchedule();
+            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
+            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, TEN_MEMBERS)).willReturn(3L);
+            given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID))
+                    .willReturn(List.of());
+
+            // When
+            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID, TEN_MEMBERS);
+
+            // Then
+            assertThat(result.getScheduleId()).isEqualTo(SCHEDULE_ID);
+            assertThat(result.getTotalMembers()).isEqualTo(10L);
+            assertThat(result.getSubmittedCount()).isEqualTo(3L);
+            assertThat(result.getPendingCount()).isEqualTo(7L);
+        }
+
+        @Test
+        @DisplayName("希望提出サマリー取得_対象者ゼロなら提出者照会を行わない")
+        void 希望提出サマリー取得_対象者ゼロ() {
+            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(createCollectingSchedule());
+            given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID)).willReturn(List.of());
+
+            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID, List.of());
+
+            assertThat(result.getTotalMembers()).isZero();
+            assertThat(result.getSubmittedCount()).isZero();
+            assertThat(result.getPendingCount()).isZero();
+            verify(requestRepository, never()).countSubmittedMembersByScheduleId(any(), any());
+        }
+
+        @Test
+        @DisplayName("希望提出サマリー取得_5段階preference別集計_正確にカウント")
+        void 希望提出サマリー取得_5段階preference別集計_正確にカウント() {
+            // Given
+            ShiftScheduleEntity schedule = createCollectingSchedule();
+            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
+            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, TEN_MEMBERS)).willReturn(5L);
+            given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID))
+                    .willReturn(List.of(
+                            new Object[]{ShiftPreference.PREFERRED, 7L},
+                            new Object[]{ShiftPreference.AVAILABLE, 12L},
+                            new Object[]{ShiftPreference.WEAK_REST, 2L},
+                            new Object[]{ShiftPreference.STRONG_REST, 3L},
+                            new Object[]{ShiftPreference.ABSOLUTE_REST, 1L}));
+
+            // When
+            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID, TEN_MEMBERS);
+
+            // Then
+            assertThat(result.getPreferredCount()).isEqualTo(7L);
+            assertThat(result.getAvailableCount()).isEqualTo(12L);
+            assertThat(result.getWeakRestCount()).isEqualTo(2L);
+            assertThat(result.getStrongRestCount()).isEqualTo(3L);
+            assertThat(result.getAbsoluteRestCount()).isEqualTo(1L);
+            // 互換フィールド: STRONG_REST + ABSOLUTE_REST
+            assertThat(result.getUnavailableCount()).isEqualTo(4L);
+        }
+
+        @Test
+        @DisplayName("希望提出サマリー取得_一部preferenceのみ_他は0")
+        void 希望提出サマリー取得_一部preferenceのみ_他は0() {
+            // Given
+            ShiftScheduleEntity schedule = createCollectingSchedule();
+            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
+            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, TEN_MEMBERS)).willReturn(2L);
+            given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID))
+                    .willReturn(List.of(
+                            new Object[]{ShiftPreference.PREFERRED, 3L},
+                            new Object[]{ShiftPreference.ABSOLUTE_REST, 1L}));
+
+            // When
+            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID, TEN_MEMBERS);
+
+            // Then
+            assertThat(result.getPreferredCount()).isEqualTo(3L);
+            assertThat(result.getAvailableCount()).isEqualTo(0L);
+            assertThat(result.getWeakRestCount()).isEqualTo(0L);
+            assertThat(result.getStrongRestCount()).isEqualTo(0L);
+            assertThat(result.getAbsoluteRestCount()).isEqualTo(1L);
+            assertThat(result.getUnavailableCount()).isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("希望提出サマリー取得_候補に重複があっても人数は重複排除して数える")
+        void 希望提出サマリー取得_候補重複は排除() {
+            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(createCollectingSchedule());
+            List<Long> distinct = List.of(1L, 2L);
+            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, distinct)).willReturn(1L);
+            given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID)).willReturn(List.of());
+
+            ShiftRequestSummaryResponse result =
+                    shiftRequestService.getRequestSummary(SCHEDULE_ID, List.of(1L, 2L, 2L, 1L));
+
+            assertThat(result.getTotalMembers()).isEqualTo(2L);
+            assertThat(result.getPendingCount()).isEqualTo(1L);
+        }
+    }
+}

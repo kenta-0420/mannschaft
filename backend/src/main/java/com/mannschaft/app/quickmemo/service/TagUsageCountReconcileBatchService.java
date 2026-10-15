@@ -1,0 +1,75 @@
+package com.mannschaft.app.quickmemo.service;
+
+import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.quickmemo.entity.TagEntity;
+import com.mannschaft.app.quickmemo.repository.QuickMemoTagLinkRepository;
+import com.mannschaft.app.quickmemo.repository.TagRepository;
+import com.mannschaft.app.quickmemo.repository.TodoTagLinkRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+/**
+ * タグ使用数整合性バッチ。
+ * 毎日深夜3:30に実行。usage_count と実リンク数の不整合を検出・修正する。
+ * テナント越境防止のため全テーブル一括 UPDATE は禁止。ID 単位で個別 UPDATE。
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class TagUsageCountReconcileBatchService {
+
+    private static final int BATCH_LIMIT = 10000;
+    private static final int ALERT_THRESHOLD = 100;
+
+    private final TagRepository tagRepository;
+    private final QuickMemoTagLinkRepository memoTagLinkRepository;
+    private final TodoTagLinkRepository todoTagLinkRepository;
+    private final AuditLogService auditLogService;
+
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。タグ usage_count の不整合検出と修正であり、再開後に同じ差分を検出し直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
+    @BatchEndpoint(name = "quickmemo-tag-usage-reconcile-daily", description = "タグ usage_count と実リンク数の不整合を毎日 03:30 に検出・修正する")
+    @Scheduled(cron = "0 30 3 * * *")
+    // 起動間隔は日次 03:30。全タグの usage_count と実リンク数を突き合わせるためタグ数に比例する。
+    // 余裕を取り 1 時間を上限とする。
+    @SchedulerLock(name = "quickmemoTagUsageReconcileDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
+    @Transactional
+    public void execute() {
+        log.info("タグ整合性バッチ開始");
+
+        Page<TagEntity> page = tagRepository.findAll(PageRequest.of(0, BATCH_LIMIT));
+        List<TagEntity> tags = page.getContent();
+
+        int fixedCount = 0;
+        for (TagEntity tag : tags) {
+            int actualCount = (int)(memoTagLinkRepository.countByTagId(tag.getId())
+                    + todoTagLinkRepository.countByTagId(tag.getId()));
+
+            if (!tag.getUsageCount().equals(actualCount)) {
+                tagRepository.setUsageCount(tag.getId(), actualCount);
+                fixedCount++;
+                log.debug("usage_count修正: tagId={}, old={}, new={}", tag.getId(), tag.getUsageCount(), actualCount);
+            }
+        }
+
+        if (fixedCount > ALERT_THRESHOLD) {
+            log.error("タグ整合性バッチ: 不整合件数が閾値超過 fixedCount={} (閾値={})", fixedCount, ALERT_THRESHOLD);
+        } else {
+            log.info("タグ整合性バッチ完了: 修正{}件", fixedCount);
+        }
+
+        auditLogService.record("TAG_USAGE_COUNT_RECONCILE_BATCH", null, null, null, null, null, null, null,
+                "{\"checkedTags\":" + tags.size() + ",\"fixedTags\":" + fixedCount + "}");
+    }
+}

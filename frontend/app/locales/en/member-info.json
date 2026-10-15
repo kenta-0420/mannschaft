@@ -1,0 +1,51 @@
+{
+  "memberInfo": {
+    "title": "Member Information",
+    "settings": {
+      "title": "Member Info Field Settings",
+      "fieldList": "Field List",
+      "addField": "Add Field",
+      "editField": "Edit Field",
+      "deleteField": "Delete Field",
+      "deleteConfirm": "Are you sure you want to delete this field?",
+      "statusTable": "Response Status",
+      "sendRemind": "Send Reminder",
+      "remindSent": "Reminder sent",
+      "remindTooSoon": "A reminder was already sent within 24 hours"
+    },
+    "field": {
+      "name": "Field Name",
+      "type": "Input Type",
+      "required": "Required",
+      "sensitive": "Sensitive",
+      "sensitiveHint": "Stored encrypted",
+      "refreshInterval": "Renewal Period",
+      "intervalNone": "None",
+      "interval12": "1 year (12 months)",
+      "interval36": "3 years (36 months)",
+      "interval60": "5 years (60 months)",
+      "typeText": "Text",
+      "typePhone": "Phone",
+      "typeEmail": "Email",
+      "typeDate": "Date"
+    },
+    "response": {
+      "title": "Enter Information",
+      "myInfo": "My Information",
+      "saveAll": "Save All",
+      "saved": "Saved",
+      "overdue": "Overdue",
+      "notAnswered": "Not answered",
+      "nextDue": "Next renewal due",
+      "confirmedAt": "Last confirmed"
+    },
+    "status": {
+      "completed": "Completed",
+      "incomplete": "Incomplete",
+      "overdue": "Overdue",
+      "totalMembers": "Total Members",
+      "completedCount": "Completed",
+      "overdueCount": "Overdue"
+    }
+  }
+}

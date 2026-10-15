@@ -1,0 +1,26 @@
+-- F08.7: 順位表の非正規化キャッシュ
+CREATE TABLE tournament_standings (
+    id                 BIGINT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    division_id        BIGINT UNSIGNED  NOT NULL,
+    participant_id     BIGINT UNSIGNED  NOT NULL,
+    `rank`             SMALLINT UNSIGNED NOT NULL,
+    played             SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    wins               SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    draws              SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    losses             SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    score_for          INT              NOT NULL DEFAULT 0,
+    score_against      INT              NOT NULL DEFAULT 0,
+    score_difference   INT              NOT NULL DEFAULT 0,
+    points             INT              NOT NULL DEFAULT 0,
+    bonus_points       SMALLINT         NOT NULL DEFAULT 0,
+    sets_won           SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    sets_lost          SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    form               VARCHAR(10)      NULL,
+    promotion_zone     ENUM('PROMOTED','PLAYOFF','SAFE','RELEGATED') NULL,
+    last_calculated_at DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE INDEX uq_ts_div_part (division_id, participant_id),
+    INDEX idx_ts_rank (division_id, `rank`),
+    CONSTRAINT fk_ts_division FOREIGN KEY (division_id) REFERENCES tournament_divisions (id) ON DELETE CASCADE,
+    CONSTRAINT fk_ts_participant FOREIGN KEY (participant_id) REFERENCES tournament_participants (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

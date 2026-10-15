@@ -1,0 +1,161 @@
+[
+  {
+    "name": "mobile-390",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "url": "http://localhost:3003/notifications",
+    "loginStatus": 200,
+    "meStatus": 200,
+    "found": true,
+    "targetText": "募集ペナルティが解除されました\n\n再計算（DISPUTE_REVOKED）により募集ペナルティが解除されました。\n\n26分前",
+    "readAction": false,
+    "body": "Mannschaft\n2\n戻る\n通知\n使い方\nすべて\n未読\nすべて既読にする\n\n新しいデバイスからのログイン\n\nHeadlessChrome on Windows 10 からログインがありました。心当たりがない場合はセッション管理画面を確認してください。\n\n5分前\n\n募集ペナルティが解除されました\n\n再計算（DISPUTE_REVOKED）により募集ペナルティが解除されました。\n\n26分前",
+    "geometry": {
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "buttons": [
+        {
+          "label": "メニューを開く",
+          "width": 36,
+          "height": 36
+        },
+        {
+          "label": "",
+          "width": 40,
+          "height": 40
+        },
+        {
+          "label": "使い方",
+          "width": 86,
+          "height": 35
+        },
+        {
+          "label": "すべて",
+          "width": 80.25,
+          "height": 42
+        },
+        {
+          "label": "未読",
+          "width": 65,
+          "height": 42
+        },
+        {
+          "label": "すべて既読にする",
+          "width": 132.609375,
+          "height": 35
+        }
+      ]
+    },
+    "events": [
+      {
+        "method": "GET",
+        "status": 200,
+        "url": "http://localhost:8081/api/v1/notifications/unread-count"
+      },
+      {
+        "method": "GET",
+        "status": 200,
+        "url": "http://localhost:8081/api/v1/notifications?page=0&size=20"
+      },
+      {
+        "method": "POST",
+        "status": 200,
+        "url": "http://localhost:8081/api/v1/notifications/3255966/read"
+      }
+    ]
+  },
+  {
+    "name": "desktop-1440",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "url": "http://localhost:3003/notifications",
+    "loginStatus": 200,
+    "meStatus": 200,
+    "found": true,
+    "targetText": "募集ペナルティが解除されました\n\n再計算（DISPUTE_REVOKED）により募集ペナルティが解除されました。\n\n26分前",
+    "readAction": false,
+    "body": "Mannschaft\nチーム\n組織\n1\nホーム\nダッシュボード\nカレンダー\nインボックス\nつながり\n村\nタイムライン\nブログ\nチャット\nくらし\n市\n求人\nマッチング\n予約確認\nポイントカード\nしごと\nTODO\nシフト管理\nマイファイル\nマイシフト\nアカウント\nマイページ\nQ&A\n設定\n戻る\n通知\n使い方\nすべて\n未読\nすべて既読にする\n\n新しいデバイスからのログイン\n\nHeadlessChrome on Windows 10 からログインがありました。心当たりがない場合はセッション管理画面を確認してください。\n\n6分前\n\n募集ペナルティが解除されました\n\n再計算（DISPUTE_REVOKED）により募集ペナルティが解除されました。\n\n26分前",
+    "geometry": {
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "buttons": [
+        {
+          "label": "サイドバーをたたむ",
+          "width": 36,
+          "height": 36
+        },
+        {
+          "label": "チーム",
+          "width": 112,
+          "height": 36
+        },
+        {
+          "label": "組織",
+          "width": 98.40625,
+          "height": 36
+        },
+        {
+          "label": "",
+          "width": 40,
+          "height": 40
+        },
+        {
+          "label": "",
+          "width": 40,
+          "height": 40
+        },
+        {
+          "label": "",
+          "width": 40,
+          "height": 40
+        },
+        {
+          "label": "使い方",
+          "width": 86,
+          "height": 35
+        },
+        {
+          "label": "すべて",
+          "width": 80.25,
+          "height": 42
+        },
+        {
+          "label": "未読",
+          "width": 65,
+          "height": 42
+        },
+        {
+          "label": "すべて既読にする",
+          "width": 132.609375,
+          "height": 35
+        }
+      ]
+    },
+    "events": [
+      {
+        "method": "GET",
+        "status": 200,
+        "url": "http://localhost:8081/api/v1/notifications?page=0&size=20"
+      },
+      {
+        "method": "GET",
+        "status": 200,
+        "url": "http://localhost:8081/api/v1/notifications/unread-count"
+      },
+      {
+        "method": "POST",
+        "status": 200,
+        "url": "http://localhost:8081/api/v1/notifications/3255966/unread"
+      },
+      {
+        "method": "POST",
+        "status": 200,
+        "url": "http://localhost:8081/api/v1/notifications/3255966/read"
+      }
+    ]
+  }
+]

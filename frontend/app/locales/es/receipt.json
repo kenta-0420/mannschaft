@@ -1,0 +1,157 @@
+{
+  "receipt": {
+    "nav": {
+      "receipts": "Recibos",
+      "settings": "Configuración del emisor"
+    },
+    "list": {
+      "title": "Gestión de recibos",
+      "settingsButton": "Configuración del emisor",
+      "issueButton": "Emitir nuevo",
+      "empty": "No hay recibos",
+      "amountWithUnit": "{amount} JPY",
+      "column": {
+        "issuedAt": "Fecha de emisión",
+        "receiptNumber": "N.º de recibo",
+        "recipientName": "Nombre del destinatario",
+        "amount": "Importe",
+        "status": "Estado",
+        "action": "Acciones"
+      },
+      "status": {
+        "DRAFT": "Borrador",
+        "ISSUED": "Emitido"
+      },
+      "action": {
+        "approve": "Aprobar",
+        "void": "Anular",
+        "reissue": "Reemitir",
+        "pdf": "PDF",
+        "sendEmail": "Enviar correo electrónico"
+      },
+      "dialog": {
+        "issueTitle": "Emitir recibo",
+        "recipientName": "Nombre del destinatario",
+        "recipientNamePlaceholder": "p. ej., Taro Yamada",
+        "amount": "Importe (JPY)",
+        "amountPlaceholder": "p. ej., 10000",
+        "description": "Concepto / Descripción",
+        "descriptionPlaceholder": "p. ej., Cuota mensual de socio",
+        "notes": "Notas",
+        "notesPlaceholder": "Observaciones, etc.",
+        "cancel": "Cancelar",
+        "submit": "Emitir",
+        "voidTitle": "Anular recibo",
+        "voidReason": "Motivo de la anulación",
+        "voidReasonPlaceholder": "p. ej., Importe incorrecto",
+        "voidSubmit": "Anular"
+      },
+      "toast": {
+        "loadFailed": "No se pudieron obtener los recibos",
+        "approved": "Aprobado",
+        "approveFailed": "No se pudo aprobar",
+        "voided": "Anulado",
+        "voidFailed": "No se pudo anular",
+        "reissued": "Reemitido",
+        "reissueFailed": "No se pudo reemitir",
+        "pdfDownloaded": "PDF descargado",
+        "pdfDownloadFailed": "No se pudo descargar el PDF",
+        "emailSent": "Correo electrónico enviado",
+        "emailSendFailed": "No se pudo enviar el correo electrónico",
+        "issued": "Recibo emitido",
+        "issueFailed": "No se pudo emitir el recibo"
+      },
+      "notice": {
+        "personalScopeUnsupported": "La gestión de recibos no está disponible en el ámbito personal. Cambie al ámbito de equipo u organización.",
+        "scopeNotReady": "Seleccione un ámbito para mostrar la lista de recibos."
+      },
+      "validation": {
+        "voidReasonRequired": "Introduzca el motivo de la anulación"
+      }
+    },
+    "settings": {
+      "title": "Configuración del emisor de recibos",
+      "description": "Configure la información del emisor, el cumplimiento de facturas (sistema Invoice), el esquema de numeración y el formato del PDF que se usan al emitir recibos.",
+      "backToList": "Volver a la lista de recibos",
+      "notice": {
+        "personalScopeUnsupported": "La configuración del emisor no está disponible en el ámbito personal. Cambie al ámbito de equipo u organización."
+      },
+      "firstTimeNotice": "Aún no se ha registrado la configuración del emisor. Se creará al guardar.",
+      "notRetroactiveNotice": "Los cambios realizados aquí se aplican a los recibos que se emitan a partir de ahora. El contenido de los recibos ya emitidos no puede modificarse por ley.",
+      "notRetroactiveAfterSave": "Este cambio se aplica únicamente a los recibos que se emitan a partir de ahora. Los recibos ya emitidos no pueden modificarse por ley. Para corregir recibos anteriores, anule el recibo correspondiente y vuelva a emitirlo.",
+      "section": {
+        "issuer": "Información del emisor",
+        "invoice": "Cumplimiento de facturas (sistema Invoice)",
+        "numbering": "Numeración de recibos",
+        "pdf": "Formato del PDF"
+      },
+      "form": {
+        "issuerName": "Nombre del emisor",
+        "postalCode": "Código postal",
+        "address": "Dirección",
+        "phone": "Número de teléfono",
+        "isQualifiedInvoicer": "Emisor de facturas cualificado (Qualified Invoice Issuer)",
+        "invoiceRegistrationNumber": "Número de registro de factura (Invoice)",
+        "defaultSealVariant": "Variante del sello",
+        "receiptNoteTemplate": "Plantilla del concepto («en concepto de»)",
+        "receiptNumberPrefix": "Prefijo del número de recibo",
+        "fiscalYearStartMonth": "Mes de inicio del ejercicio fiscal",
+        "autoResetNumber": "Reiniciar la numeración automáticamente al cambiar el ejercicio fiscal",
+        "customFooter": "Pie de página personalizado del PDF",
+        "logo": "Imagen del logotipo",
+        "nextReceiptNumber": "Próximo número de recibo"
+      },
+      "placeholder": {
+        "issuerName": "p. ej., Asociación General XX",
+        "postalCode": "p. ej., 100-0001",
+        "address": "p. ej., 1-2-3 XX, Chiyoda-ku, Tokio",
+        "phone": "p. ej., 03-1234-5678",
+        "invoiceRegistrationNumber": "p. ej., T1234567890123",
+        "receiptNoteTemplate": "p. ej., En concepto de cuota de socio",
+        "receiptNumberPrefix": "p. ej., RCP-",
+        "customFooter": "p. ej., Para consultas, póngase en contacto con la secretaría"
+      },
+      "sealVariant": {
+        "LAST_NAME": "Solo apellido",
+        "FULL_NAME": "Nombre completo",
+        "FIRST_NAME": "Solo nombre de pila"
+      },
+      "hint": {
+        "notFirstYet": "Aún no emitido",
+        "nextReceiptNumberFormat": "{prefix}{number} (se asigna después de emitir)",
+        "registrationNumberDisabled": "Introduzca el número de registro solo si es un emisor de facturas cualificado",
+        "registrationNumberWillBeCleared": "Al guardar, también se eliminará el número de registro",
+        "logoResize": "Las imágenes subidas se reducen en el servidor para que el lado largo no supere los 200 px, y las zonas transparentes pasan a fondo blanco",
+        "logoNotSet": "Sin logotipo",
+        "logoPosition": "Si se configura, aparece en la parte superior izquierda del encabezado del PDF y en el centro del título",
+        "logoDisabledUntilSaved": "Guarde primero la configuración del emisor",
+        "unsavedChanges": "Tiene cambios sin guardar. Se perderán si sale de esta página."
+      },
+      "validation": {
+        "issuerNameRequired": "Introduzca el nombre del emisor",
+        "registrationNumberRequired": "Introduzca el número de registro de factura",
+        "registrationNumberFormat": "Introduzca el formato T seguido de 13 dígitos (p. ej., T1234567890123)",
+        "logoTooLarge": "La imagen del logotipo debe pesar 1 MB o menos",
+        "logoUnsupportedType": "La imagen del logotipo debe estar en formato PNG o JPEG"
+      },
+      "toast": {
+        "loadFailed": "No se pudo obtener la configuración del emisor",
+        "saved": "Configuración del emisor guardada",
+        "saveFailed": "No se pudo guardar la configuración del emisor",
+        "logoUploaded": "Imagen del logotipo subida",
+        "logoUploadFailed": "No se pudo subir la imagen del logotipo",
+        "logoDeleted": "Imagen del logotipo eliminada",
+        "logoDeleteFailed": "No se pudo eliminar la imagen del logotipo",
+        "forbidden": "No tiene permiso para realizar esta acción"
+      },
+      "button": {
+        "save": "Guardar",
+        "uploadLogo": "Subir logotipo",
+        "deleteLogo": "Eliminar logotipo",
+        "deleteLogoConfirm": "¿Eliminar la imagen del logotipo?",
+        "cancel": "Cancelar",
+        "confirmDelete": "Eliminar"
+      }
+    }
+  }
+}

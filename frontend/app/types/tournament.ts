@@ -1,0 +1,809 @@
+import type { components } from '~/types/generated'
+
+export type TournamentFormat = 'LEAGUE' | 'KNOCKOUT' | 'GROUP_KNOCKOUT'
+export type TournamentStatus = 'DRAFT' | 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'ARCHIVED'
+
+/**
+ * 大会の競技種別（F08.10 多競技対応・🟡-1b）。
+ *
+ * 生成型 `CreateTournamentRequest.sport`（openapi-typescript 自動生成・BE `@Pattern` の 8 値）
+ * から `NonNullable` で導出する。手書き列挙はせず生成型を正本とし、BE が競技を増減した場合は
+ * openapi 再生成で自動追従する（`~/types/match` の `Sport` と同じ導出パターン）。
+ */
+export type TournamentSport = NonNullable<components['schemas']['CreateTournamentRequest']['sport']>
+
+/**
+ * 大会作成/編集フォームの競技選択肢（既定先頭 SOCCER）。
+ * ラベルは i18n（`tournament.sport.options.*`）で引く。生成型 `TournamentSport` の
+ * 全候補を網羅した配列で、要素が増減すると型エラーで検知できるよう `TournamentSport[]` で固定。
+ */
+export const TOURNAMENT_SPORTS: readonly TournamentSport[] = [
+  'SOCCER',
+  'FUTSAL',
+  'BASKETBALL',
+  'VOLLEYBALL',
+  'SHOGI',
+  'GO',
+  'FIGURE_SKATING',
+  'GYMNASTICS',
+] as const
+
+// ===== TournamentResponse ネスト化 DTO =====
+
+export interface TournamentScopeDto {
+  organizationId?: number
+  templateId?: number
+  previousTournamentId?: number
+}
+
+export interface TournamentContentDto {
+  name?: string
+  description?: string | null
+  format?: TournamentFormat
+  season?: string | null
+  startDate?: string | null
+  endDate?: string | null
+}
+
+export interface TournamentScoringDto {
+  winPoints?: number
+  drawPoints?: number
+  lossPoints?: number
+  hasDraw?: boolean
+  hasSets?: boolean
+  setsToWin?: number | null
+  hasExtraTime?: boolean
+  hasPenalties?: boolean
+  scoreUnitLabel?: string | null
+  bonusPointRules?: string | null
+}
+
+export interface TournamentStructureDto {
+  leagueRoundType?: string | null
+  knockoutLegs?: number | null
+  visibility?: string
+  status?: TournamentStatus
+}
+
+export interface TournamentAuditDto {
+  version?: number
+  createdBy?: number | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface TiebreakerResponse {
+  id?: number
+  priority?: number
+  criteria?: string
+  direction?: string
+}
+
+export interface StatDefResponse {
+  id?: number
+  name?: string
+  statKey?: string
+  unit?: string
+  dataType?: string
+  aggregationType?: string
+  isRankingTarget?: boolean
+  rankingLabel?: string | null
+  sortOrder?: number
+}
+
+export interface TournamentResponse {
+  id: number
+  scope?: TournamentScopeDto
+  content?: TournamentContentDto
+  scoring?: TournamentScoringDto
+  structure?: TournamentStructureDto
+  tiebreakers?: TiebreakerResponse[]
+  statDefs?: StatDefResponse[]
+  audit?: TournamentAuditDto
+}
+
+// ===== TournamentDivision ネスト化 DTO =====
+
+export interface DivisionSlotsDto {
+  promotionSlots?: number
+  relegationSlots?: number
+  playoffPromotionSlots?: number
+  maxParticipants?: number
+  minEntryCount?: number | null
+  maxEntryCount?: number | null
+  sortOrder?: number
+}
+
+export interface DivisionAuditDto {
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface TournamentDivision {
+  id: number
+  tournamentId?: number
+  name?: string
+  level?: number
+  slots?: DivisionSlotsDto
+  audit?: DivisionAuditDto
+}
+
+export interface TournamentParticipant {
+  id: number
+  divisionId: number
+  teamId: number
+  seed: number | null
+  displayName: string | null
+  status: string
+  joinedAt: string | null
+  /** チーム名（BE が team ドメインから一括解決。解決不能なら null） */
+  teamName: string | null
+}
+
+export interface TournamentMatchday {
+  id: number
+  divisionId: number
+  roundNumber: number
+  matchDate: string | null
+  matches: TournamentMatch[]
+}
+
+// ===== TournamentMatch ネスト化 DTO =====
+
+export interface MatchParticipantsDto {
+  homeParticipantId?: number
+  awayParticipantId?: number
+  winnerParticipantId?: number | null
+}
+
+export interface MatchScoreDto {
+  homeScore?: number | null
+  awayScore?: number | null
+  // 延長別スコア（homeExtraScore/awayExtraScore）は Phase 5b-3 で廃止。
+  // 延長得点は本戦スコア（homeScore/awayScore）へ合算済み（05 §H.1 移行表）。
+  homePenaltyScore?: number | null
+  awayPenaltyScore?: number | null
+}
+
+export interface MatchInfoDto {
+  matchNumber?: number | null
+  scheduledDatetime?: string | null
+  venue?: string | null
+  result?: string | null
+  leg?: number | null
+  notes?: string | null
+  status?: string
+  nextMatchId?: number | null
+  nextMatchSlot?: string | null
+  scheduleId?: number | null
+}
+
+export interface MatchAuditDto {
+  version?: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface TournamentMatch {
+  id: number
+  matchdayId?: number
+  participants?: MatchParticipantsDto
+  score?: MatchScoreDto
+  info?: MatchInfoDto
+  sets?: Array<{ setNumber: number; homeScore: number; awayScore: number }>
+  playerStats?: unknown[]
+  audit?: MatchAuditDto
+}
+
+// ===== TournamentStanding ネスト化 DTO =====
+
+export interface StandingMetaDto {
+  divisionId?: number
+  participantId?: number
+}
+
+export interface StandingTeamDto {
+  teamId?: number
+  teamName?: string
+  rank?: number
+}
+
+export interface StandingRecordDto {
+  played?: number
+  wins?: number
+  draws?: number
+  losses?: number
+}
+
+export interface StandingScoreDto {
+  scoreFor?: number
+  scoreAgainst?: number
+  scoreDifference?: number
+  points?: number
+  bonusPoints?: number
+  setsWon?: number | null
+  setsLost?: number | null
+}
+
+export interface StandingStatusDto {
+  promotionZone?: string | null
+  lastCalculatedAt?: string | null
+}
+
+export interface TournamentStanding {
+  id?: number
+  meta?: StandingMetaDto
+  team?: StandingTeamDto
+  record?: StandingRecordDto
+  score?: StandingScoreDto
+  /** 直近フォーム（例: "WWLDW"）。BE は文字列で返す。 */
+  form?: string | null
+  status?: StandingStatusDto
+}
+
+// ===== IndividualRanking ネスト化 DTO =====
+
+export interface IndividualRankingContextDto {
+  tournamentId?: number
+  userId?: number
+  participantId?: number
+  matchesPlayed?: number
+  /**
+   * F08.7 順位UI 項目①（BE #1466）: F19.1 本人可視性経由で解決した表示名。
+   * MINOR 保護・退会済み・本名/サポーター開示規約に従う（無条件 displayName ではない）。
+   */
+  displayName?: string | null
+  /**
+   * 汎用ラベル（「投稿者」「退会済みユーザー」「匿名のユーザー#…」等・BE がサーバ側日本語固定値で返す）に
+   * フォールバックしたか。true のとき FE は i18n のローカライズ済み匿名ラベルを表示する。
+   */
+  anonymized?: boolean
+  /** 表示するアバター URL（開示許可時は実 URL、不可視時は汎用プレースホルダパス）。 */
+  avatarUrl?: string | null
+}
+
+export interface IndividualRankingStatDto {
+  statKey?: string
+  rankingLabel?: string | null
+  totalValueInt?: number | null
+  totalValueDecimal?: number | null
+  /** BE は LocalTime を JSON 文字列 "HH:mm:ss" で返す（数値ではない）。 */
+  totalValueTime?: string | null
+}
+
+export interface IndividualRanking {
+  id?: number
+  context?: IndividualRankingContextDto
+  stat?: IndividualRankingStatDto
+  rank?: number
+  lastCalculatedAt?: string | null
+}
+
+// ===== 全ランキング一覧（RankingSummaryResponse 整合） =====
+// BE: RankingSummaryResponse { categories: RankingCategory[] }
+
+export interface RankingCategory {
+  statKey: string
+  name: string
+  rankingLabel: string
+  unit: string
+  leader: IndividualRanking | null
+}
+
+export interface RankingSummary {
+  categories: RankingCategory[]
+}
+
+export interface TournamentTemplate {
+  id: number
+  organizationId: number
+  name: string
+  sportCategory: string
+  format: TournamentFormat
+  winPoints: number
+  drawPoints: number
+  lossPoints: number
+  tiebreakers: string[]
+  statDefs: Array<{ key: string; label: string; aggregationType: string }>
+}
+
+export interface TournamentPreset {
+  id: number
+  name: string
+  sportCategory: string
+  format: TournamentFormat
+  winPoints: number
+  drawPoints: number
+  lossPoints: number
+  tiebreakers: string[]
+  statDefs: Array<{ key: string; label: string; aggregationType: string }>
+}
+
+// ===== 対戦マトリクス（BE MatrixResponse 整合） =====
+// BE: MatrixResponse { participants: ParticipantSummary[], cells: Map<String, MatrixCell> }
+// cells のキーは `${homeParticipantId}_${awayParticipantId}`（JSON では Record<string, ...> として届く）。
+
+export interface MatrixParticipantSummary {
+  participantId: number
+  teamId: number
+  teamName: string
+}
+
+export interface MatrixCell {
+  matchId: number | null
+  homeScore: number | null
+  awayScore: number | null
+  result: string
+}
+
+export interface TournamentMatrix {
+  participants: MatrixParticipantSummary[]
+  cells: Record<string, MatrixCell>
+}
+
+// ===== PromotionRecord ネスト化 DTO =====
+
+export interface PromotionRecordContextDto {
+  tournamentId?: number
+  teamId?: number
+}
+
+export interface PromotionRecordDetailDto {
+  fromDivisionId?: number
+  toDivisionId?: number
+  type?: string
+  finalRank?: number | null
+  reason?: string | null
+}
+
+export interface PromotionRecordExecutionDto {
+  executedBy?: number
+  executedAt?: string
+}
+
+export interface PromotionRecord {
+  id?: string
+  context?: PromotionRecordContextDto
+  detail?: PromotionRecordDetailDto
+  execution?: PromotionRecordExecutionDto
+}
+
+export interface TournamentRoster {
+  id: number
+  matchId: number
+  teamId: number
+  userId: number
+  displayName: string
+  jerseyNumber: number | null
+  position: string | null
+}
+
+// ===== TeamTournamentHistoryResponse ネスト化 DTO =====
+
+/** @deprecated 旧型。新規実装では TeamTournamentHistoryResponse / TeamTournamentStatsResponse を使うこと */
+export interface TournamentHistory {
+  tournamentId: number
+  title: string
+  seasonYear: number
+  divisionName: string
+  finalRank: number | null
+  played: number
+  won: number
+  drawn: number
+  lost: number
+  points: number
+  organizationId: number
+  divisionId: number
+  participantId: number
+}
+
+/** @deprecated 旧型。新規実装では TeamTournamentStatsResponse を使うこと */
+export interface TournamentTeamStats {
+  totalTournaments: number
+  totalMatches: number
+  wins: number
+  draws: number
+  losses: number
+  goalsFor: number
+  goalsAgainst: number
+}
+
+export interface TournamentHistoryEntryMeta {
+  tournamentName?: string
+  season?: string | null
+  divisionName?: string
+  finalRank?: number | null
+}
+
+export interface TournamentHistoryEntryIdentifiers {
+  tournamentId?: number
+  divisionId?: number
+  participantId?: number
+}
+
+export interface TournamentHistoryEntryRecord {
+  played?: number
+  wins?: number
+  draws?: number
+  losses?: number
+  points?: number
+}
+
+export interface TournamentHistoryEntry {
+  organizationId?: number
+  meta?: TournamentHistoryEntryMeta
+  identifiers?: TournamentHistoryEntryIdentifiers
+  record?: TournamentHistoryEntryRecord
+}
+
+export interface TeamTournamentHistoryResponse {
+  teamId?: number
+  history?: TournamentHistoryEntry[]
+}
+
+export interface TeamTournamentStatsResponse {
+  teamId?: number
+  totalTournaments?: number
+  totalPlayed?: number
+  totalWins?: number
+  totalDraws?: number
+  totalLosses?: number
+  totalScoreFor?: number
+  totalScoreAgainst?: number
+  bestRank?: number | null
+}
+
+// ===== Phase 9: 大会エントリー表機能 =====
+
+export interface TournamentEntryMember {
+  id: string
+  participantId: number
+  userId: number
+  displayName: string
+  memberNumber: string | null
+  position: string | null
+  jerseyNumber: number | null
+  notes: string | null
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TeamMemberCandidate {
+  userId: number
+  displayName: string
+  memberNumber: string | null
+  position: string | null
+  alreadyEntered: boolean
+}
+
+export interface EntryMemberListResponse {
+  entryMembers: TournamentEntryMember[]
+  teamMemberCandidates?: TeamMemberCandidate[]
+  entryCount: number
+  minEntryCount: number | null
+  maxEntryCount: number | null
+}
+
+export interface EntryLoadResponse {
+  added: number
+  skipped: number
+  total: number
+  entryMembers: TournamentEntryMember[]
+}
+
+export interface EntryMemberSummaryItem {
+  participantId: number
+  teamId: number
+  displayName: string
+  entryCount: number
+  isMinMet: boolean
+  isMaxExceeded: boolean
+  lastUpdatedAt: string | null
+}
+
+export interface EntryMemberSummary {
+  divisionId: number
+  divisionName: string
+  minEntryCount: number | null
+  maxEntryCount: number | null
+  summary: EntryMemberSummaryItem[]
+}
+
+// ===== Phase 9-B: エントリーテンプレート管理 =====
+
+export interface EntryTemplate {
+  id: string
+  name: string
+  description: string | null
+  sortOrder: number
+  memberCount: number
+  updatedAt: string
+}
+
+export interface EntryTemplateMember {
+  id: string
+  userId: number
+  displayName: string
+  jerseyNumber: number | null
+  position: string | null
+  sortOrder: number
+}
+
+export interface EntryTemplateDetail extends Omit<EntryTemplate, 'memberCount'> {
+  members: EntryTemplateMember[]
+}
+
+export interface ApplyTemplateResponse {
+  applied: number
+  skipped: number
+  skippedInactive: number
+  total: number
+  entryMembers: TournamentEntryMember[]
+}
+
+// ──────────────────────────────────────────────────
+// F08.7.1 / 05: 試合メンバー表（自チーム作成＋テンプレ流用＋主催者締切管理）
+// ──────────────────────────────────────────────────
+
+/** 試合メンバー表の選手 1 行 */
+export interface RosterPlayerResponse {
+  id: number
+  userId: number
+  displayName: string
+  isStarter: boolean | null
+  jerseyNumber: number | null
+  position: string | null
+  registrationNumber: string | null
+  uniformSetId: string | null
+}
+
+/** 試合メンバー表のベンチ入り役員 1 行 */
+export interface RosterStaffResponse {
+  id: string
+  role: string
+  name: string
+  userId: number | null
+}
+
+/** 自チーム分の試合メンバー表（GET / PUT rosters/me のレスポンス・BE FixtureRosterResponse 整合） */
+export interface FixtureRosterResponse {
+  matchId: number
+  participantId: number
+  teamId: number
+  rosterDeadline: string | null
+  locked: boolean
+  players: RosterPlayerResponse[]
+  staff: RosterStaffResponse[]
+}
+
+/** 主催者ビュー: 参加チーム単位の提出状況・内容 */
+export interface OrganizerRosterView {
+  participantId: number
+  teamId: number
+  teamDisplayName: string
+  submitted: boolean
+  playerCount: number
+  staffCount: number
+  players: RosterPlayerResponse[]
+  staff: RosterStaffResponse[]
+}
+
+/** PUT rosters/me リクエスト: 選手エントリー */
+export interface RosterPlayerEntry {
+  userId: number
+  isStarter?: boolean | null
+  jerseyNumber?: number | null
+  position?: string | null
+  registrationNumber?: string | null
+  uniformSetId?: string | null
+}
+
+/** PUT rosters/me リクエスト: ベンチ役員エントリー */
+export interface RosterStaffEntry {
+  role: string
+  name: string
+  userId?: number | null
+}
+
+/** PUT rosters/me リクエスト */
+export interface SubmitRosterRequest {
+  players?: RosterPlayerEntry[] | null
+  staff?: RosterStaffEntry[] | null
+}
+
+/** POST rosters/me/apply-template リクエスト */
+export interface ApplyRosterTemplateRequest {
+  templateId: string
+  overwriteExisting?: boolean
+  defaultUniformSetId?: string | null
+}
+
+// ──────────────────────────────────────────────────
+// F08.7.1 / 02 ②: 主催大会サマリ（ORG_TOURNAMENT_SUMMARY ウィジェット）
+// GET /api/v1/organizations/{orgId}/tournaments/summary
+// ──────────────────────────────────────────────────
+
+export interface OrganizationTournamentSummaryDivision {
+  divisionId: number
+  name: string
+  participantCount: number
+  leaderTeamName: string | null
+}
+
+export interface OrganizationTournamentSummaryEntry {
+  tournamentId: number
+  name: string
+  status: string
+  divisions: OrganizationTournamentSummaryDivision[]
+}
+
+export interface OrganizationTournamentSummary {
+  tournaments: OrganizationTournamentSummaryEntry[]
+}
+
+// =====================================================================
+// F08.7.1: 大会連絡スペース
+// =====================================================================
+
+/** 連絡スペース（大会・ディビジョン共通）。 */
+export interface TournamentContactSpace {
+  /** 連絡スペースID（UUID）。 */
+  id: string
+  /** 掲示板参照ID。null の場合は掲示板スペースなし。 */
+  bulletinRefId: number | null
+  /** チャットチャンネルID。null の場合はチャットスペースなし。 */
+  chatChannelId: number | null
+  /** 公開フラグ。false の場合は参加者のみ閲覧可能。 */
+  isPublic: boolean
+  /** スペース名称（任意）。 */
+  name?: string | null
+}
+
+/** 連絡スペース一覧レスポンス。 */
+export interface TournamentContactSpaceListResponse {
+  data: TournamentContactSpace[]
+}
+
+/** 連絡スペース公開設定更新リクエスト。 */
+export interface UpdateContactSpaceVisibilityRequest {
+  isPublic: boolean
+}
+
+// ──────────────────────────────────────────────────
+// F08.7.1 / FE-E: 書類提出受付
+// /api/v1/organizations/{orgId}/tournaments/{tournamentId}/submission-requirements
+// ──────────────────────────────────────────────────
+
+export type SubmissionRequirementTarget = 'ALL' | 'SPECIFIC'
+export type SubmissionStatusValue = 'NOT_SUBMITTED' | 'SUBMITTED' | 'APPROVED' | 'REJECTED'
+
+export interface SubmissionRequirementResponse {
+  id: number
+  tournamentId: number
+  formTemplateId: number
+  formTemplateName: string | null
+  deadline: string | null
+  target: SubmissionRequirementTarget
+  targetTeamIds: number[] | null
+  requiresPayment: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateSubmissionRequirementRequest {
+  formTemplateId: number
+  deadline?: string | null
+  target: SubmissionRequirementTarget
+  targetTeamIds?: number[] | null
+  requiresPayment?: boolean
+}
+
+export interface UpdateSubmissionRequirementRequest {
+  formTemplateId?: number
+  deadline?: string | null
+  target?: SubmissionRequirementTarget
+  targetTeamIds?: number[] | null
+  requiresPayment?: boolean
+}
+
+export interface TeamSubmissionStatusItem {
+  teamId: number
+  teamName: string
+  status: SubmissionStatusValue
+  submittedAt: string | null
+  formSubmissionId: number | null
+}
+
+export interface SubmissionStatusDashboardResponse {
+  requirementId: number
+  formTemplateName: string | null
+  deadline: string | null
+  teamStatuses: TeamSubmissionStatusItem[]
+}
+
+export interface SubmitForTeamRequest {
+  formSubmissionId?: number
+  values?: Array<{
+    fieldKey: string
+    fieldType?: string
+    textValue?: string | null
+    numberValue?: number | null
+    dateValue?: string | null
+    fileKey?: string | null
+  }>
+}
+
+// ──────────────────────────────────────────────────
+// F08.7.1: 大会参加費 Connect 決済（自分の参加費一覧・チェックアウト）
+// GET  /api/v1/tournament-fees/my
+// POST /api/v1/tournament-fees/{feeId}/checkout
+// ──────────────────────────────────────────────────
+
+export interface MyTournamentFeeItem {
+  feeId: string
+  tournamentId: number
+  tournamentName: string
+  divisionId: number | null
+  divisionName: string | null
+  title: string
+  paymentItemId: number
+  faceAmount: number
+  payerSurcharge: number
+  totalCharge: number
+  dueDate: string | null
+  alreadyPaid: boolean
+  paidAt: string | null
+}
+
+export interface MyTournamentFeesResponse {
+  fees: MyTournamentFeeItem[]
+}
+
+export interface TournamentFeeCheckoutRequest {
+  idempotencyKey?: string
+}
+
+export interface TournamentFeeCheckoutResponse {
+  clientSecret: string | null
+  memberPaymentId: number
+  escrowTransactionId: string
+}
+
+// ──────────────────────────────────────────────────
+// F08.7 順位UI Wave B-3: 大会スコアキーパー指名管理
+// 主催組織 ADMIN が「当該大会のスコア入力を許可するユーザー」を指名・解除・一覧する。
+// BE: TournamentScorekeeperController（#1464）。
+//   GET    /api/v1/organizations/{orgId}/tournaments/{tId}/scorekeepers      → ScorekeeperResponse[]
+//   POST   /api/v1/organizations/{orgId}/tournaments/{tId}/scorekeepers      → 201（既存指名は冪等）
+//   DELETE /api/v1/organizations/{orgId}/tournaments/{tId}/scorekeepers/{skId} → 204
+// すべて主催組織 ADMIN / SYSTEM_ADMIN 限定。
+// NOTE: BE の ScorekeeperResponse は displayName を同梱する（F08.7 ③・NameResolverService 解決）。
+//       退会済み/不明ユーザーは BE 側で既定フォールバック名（「不明なユーザー」等）が入る。
+//       openapi.json に未掲載（BE 再生成漏れ）のため手動型として定義する。
+// ──────────────────────────────────────────────────
+
+/** スコアキーパー指名（BE ScorekeeperResponse 整合）。id は UUIDv7 を文字列で受ける。 */
+export interface ScorekeeperResponse {
+  /** 指名 ID（UUIDv7） */
+  id: string
+  /** 対象大会 ID */
+  tournamentId: number
+  /** スコアキーパーに指名されたユーザー ID */
+  userId: number
+  /**
+   * 指名されたユーザーの表示名（BE NameResolverService 解決）。
+   * 退会済み/不明ユーザーは BE 既定フォールバック名。後方互換のため optional。
+   */
+  displayName?: string
+  /** 指名した主催組織 ADMIN の user_id */
+  createdBy: number
+  /** 指名日時（ISO-8601） */
+  createdAt: string
+}
+
+/** スコアキーパー指名追加リクエスト（BE CreateScorekeeperRequest 整合）。 */
+export interface CreateScorekeeperRequest {
+  /** スコアキーパーに指名するユーザー ID */
+  userId: number
+}

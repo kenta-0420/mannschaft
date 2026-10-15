@@ -1,0 +1,151 @@
+package com.mannschaft.app.signage.service;
+
+import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.signage.SignageErrorCode;
+import com.mannschaft.app.signage.entity.SignageEmergencyMessageEntity;
+import com.mannschaft.app.signage.entity.SignageScreenEntity;
+import com.mannschaft.app.signage.repository.SignageEmergencyMessageRepository;
+import com.mannschaft.app.signage.repository.SignageScreenRepository;
+import com.mannschaft.app.signage.websocket.SignageWebSocketPublisher;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * デジタルサイネージ 緊急メッセージ管理サービス。
+ * 緊急メッセージのブロードキャスト・履歴取得を担う。
+ */
+@Slf4j
+@Service
+@Transactional(readOnly = true)
+@RequiredArgsConstructor
+public class SignageEmergencyService {
+
+    /** 取得する緊急メッセージ履歴の上限件数 */
+    private static final int RECENT_MESSAGE_LIMIT = 30;
+
+    private final SignageEmergencyMessageRepository emergencyRepository;
+    private final SignageScreenRepository screenRepository;
+    private final SignageWebSocketPublisher webSocketPublisher;
+    private final AccessControlService accessControlService;
+
+    // ========================================
+    // DTO 定義
+    // ========================================
+
+    /**
+     * 緊急メッセージブロードキャストリクエスト DTO。
+     */
+    public record BroadcastEmergencyRequest(
+            String message,
+            /** 背景色（HEX形式。例: #FF0000） */
+            String bgColor,
+            /** 文字色（HEX形式。例: #FFFFFF） */
+            String textColor,
+            /** 表示秒数 */
+            Integer durationSeconds
+    ) {}
+
+    /**
+     * 緊急メッセージレスポンス DTO。
+     */
+    public record EmergencyMessageResponse(
+            Long id,
+            Long screenId,
+            String message,
+            String bgColor,
+            String textColor,
+            Integer durationSeconds,
+            LocalDateTime createdAt
+    ) {}
+
+    // ========================================
+    // 公開メソッド
+    // ========================================
+
+    /**
+     * 緊急メッセージをブロードキャストする。
+     * DBへの永続化後、WebSocketで全接続クライアントに即時配信する。
+     *
+     * @param screenId 画面ID
+     * @param sentBy   送信者ユーザーID
+     * @param req      ブロードキャストリクエスト
+     * @return 作成した緊急メッセージレスポンス
+     */
+    @Transactional
+    public EmergencyMessageResponse broadcastEmergency(Long screenId, Long sentBy, BroadcastEmergencyRequest req) {
+        // 画面の存在確認
+        SignageScreenEntity screen = screenRepository.findByIdAndDeletedAtIsNull(screenId)
+                .orElseThrow(() -> new BusinessException(SignageErrorCode.SIGNAGE_001));
+
+        // 認可: 当該画面スコープの ADMIN/DEPUTY_ADMIN のみ緊急配信可能（偽の緊急告知の根治）
+        accessControlService.checkAdminOrAbove(sentBy, screen.getScopeId(), screen.getScopeType());
+
+        // 緊急メッセージを保存
+        SignageEmergencyMessageEntity entity = SignageEmergencyMessageEntity.builder()
+                .screenId(screenId)
+                .message(req.message())
+                .backgroundColor(req.bgColor() != null ? req.bgColor() : "#FF0000")
+                .textColor(req.textColor() != null ? req.textColor() : "#FFFFFF")
+                .sentBy(sentBy)
+                .isActive(true)
+                .build();
+
+        SignageEmergencyMessageEntity saved = emergencyRepository.save(entity);
+        log.info("緊急メッセージ保存: id={}, screenId={}", saved.getId(), screenId);
+
+        // WebSocket で接続中クライアントへ即時配信
+        webSocketPublisher.publishEmergency(screenId, req.message());
+        log.info("緊急メッセージWebSocket配信完了: screenId={}", screenId);
+
+        return toResponse(saved);
+    }
+
+    /**
+     * 画面に紐づく緊急メッセージ履歴を直近30件取得する（createdAt降順）。
+     *
+     * <p>認可根治戦役 Wave7: {@link AccessControlService#checkMembership} でスコープの会員に
+     * 限定する。兄弟の {@link #broadcastEmergency} は ADMIN 限定だが、参照は会員であれば可とする
+     * （読取＝会員・変更＝ADMINの通例）。</p>
+     *
+     * @param screenId 画面ID
+     * @param actor    閲覧ユーザーID
+     * @return 緊急メッセージレスポンス一覧
+     */
+    public List<EmergencyMessageResponse> listEmergencyMessages(Long screenId, Long actor) {
+        SignageScreenEntity screen = screenRepository.findByIdAndDeletedAtIsNull(screenId)
+                .orElseThrow(() -> new BusinessException(SignageErrorCode.SIGNAGE_001));
+        accessControlService.checkMembership(actor, screen.getScopeId(), screen.getScopeType());
+
+        return emergencyRepository.findByScreenIdOrderByCreatedAtDesc(screenId)
+                .stream()
+                .limit(RECENT_MESSAGE_LIMIT)
+                .map(this::toResponse)
+                .toList();
+    }
+
+    // ========================================
+    // 内部メソッド
+    // ========================================
+
+    /**
+     * エンティティをレスポンス DTO に変換する。
+     */
+    private EmergencyMessageResponse toResponse(SignageEmergencyMessageEntity e) {
+        return new EmergencyMessageResponse(
+                e.getId(),
+                e.getScreenId(),
+                e.getMessage(),
+                e.getBackgroundColor(),
+                e.getTextColor(),
+                null, // durationSeconds は Entity に存在しないためnull
+                e.getCreatedAt()
+        );
+    }
+}

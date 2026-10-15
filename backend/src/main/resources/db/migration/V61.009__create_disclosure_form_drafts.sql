@@ -1,0 +1,30 @@
+-- F09.14 重要事項説明書: 入力中ドラフト
+-- 設計書 §3 disclosure_form_drafts テーブル定義に対応
+CREATE TABLE disclosure_form_drafts (
+    id                          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    scope_type                  VARCHAR(20)     NOT NULL,
+    scope_id                    BIGINT UNSIGNED NOT NULL,
+    template_id                 BIGINT UNSIGNED NOT NULL,
+    template_version_snapshot   VARCHAR(20)     NOT NULL,
+    title                       VARCHAR(200)    NOT NULL,
+    target_dwelling_unit_id     BIGINT UNSIGNED NULL,
+    form_data                   JSON            NOT NULL,
+    referenced_package_ids      JSON            NULL,
+    status                      VARCHAR(20)     NOT NULL DEFAULT 'DRAFT',
+    created_by                  BIGINT UNSIGNED NOT NULL,
+    updated_by                  BIGINT UNSIGNED NULL,
+    version                     BIGINT          NOT NULL DEFAULT 0,
+    created_at                  DATETIME        NOT NULL,
+    updated_at                  DATETIME        NOT NULL,
+    deleted_at                  DATETIME        NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_dfd_template       FOREIGN KEY (template_id)             REFERENCES disclosure_form_templates (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_dfd_dwelling       FOREIGN KEY (target_dwelling_unit_id) REFERENCES dwelling_units (id)            ON DELETE SET NULL,
+    CONSTRAINT fk_dfd_created_by     FOREIGN KEY (created_by)              REFERENCES users (id)                     ON DELETE RESTRICT,
+    CONSTRAINT fk_dfd_updated_by     FOREIGN KEY (updated_by)              REFERENCES users (id)                     ON DELETE SET NULL,
+    CONSTRAINT chk_dfd_scope_type CHECK (scope_type IN ('ORGANIZATION')),
+    CONSTRAINT chk_dfd_status CHECK (status IN ('DRAFT','READY','EXPORTED')),
+    INDEX idx_dfd_scope_status (scope_type, scope_id, status, updated_at),
+    INDEX idx_dfd_dwelling     (target_dwelling_unit_id),
+    INDEX idx_dfd_template     (template_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

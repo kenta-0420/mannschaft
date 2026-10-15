@@ -1,0 +1,25 @@
+{
+  "profile_media": {
+    "icon": "Symbol",
+    "banner": "Banner",
+    "upload_icon": "Symbol ändern",
+    "upload_banner": "Banner ändern",
+    "delete_icon": "Symbol löschen",
+    "delete_banner": "Banner löschen",
+    "upload_success": "Bild erfolgreich hochgeladen",
+    "delete_success": "Bild gelöscht",
+    "upload_error": "Upload fehlgeschlagen",
+    "delete_error": "Löschen fehlgeschlagen",
+    "crop_title": "Symbol zuschneiden",
+    "crop_hint": "Ziehen zum Neupositionieren",
+    "confirm_delete_icon": "Symbol-Bild löschen?",
+    "confirm_delete_banner": "Banner-Bild löschen?",
+    "file_too_large_icon": "Symbol darf max. 5 MB groß sein",
+    "file_too_large_banner": "Banner darf max. 10 MB groß sein",
+    "unsupported_type": "Dateiformat nicht unterstützt (JPEG, PNG, WebP, GIF)",
+    "banner_no_gif": "GIF ist für Banner nicht erlaubt",
+    "select_file": "Datei auswählen",
+    "confirm_crop": "Zuschnitt bestätigen",
+    "uploading": "Wird hochgeladen..."
+  }
+}

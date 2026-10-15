@@ -1,0 +1,365 @@
+{
+  "market": {
+    "title": "市（いち）",
+    "listing": {
+      "label": "札",
+      "count": "{count}件",
+      "regionNone": "全国（地域指定なしを含む）"
+    },
+    "page": {
+      "newListing": "札を立てる"
+    },
+    "management": {
+      "title": "市の管理",
+      "description": "この主体が立てた札と応募状況を管理します。",
+      "postDescription": "このチーム・組織の名義で新しい札を立てます。",
+      "history": "立てた札（履歴）",
+      "historyDescription": "この主体が立てた札の一覧を確認します。",
+      "matching": "マッチング状況",
+      "matchingDescription": "札ごとの応募者を確認し、成立を管理します。",
+      "openMatching": "応募者を管理する",
+      "manageParticipants": "応募者を管理",
+      "noListings": "この主体が立てた札はまだありません。",
+      "permissionRequired": "札の作成・応募者管理には管理者権限が必要です。"
+    },
+    "action": {
+      "post": "札を立てる",
+      "apply": "札に応じる",
+      "takeDown": "札を下げる",
+      "loginToApply": "ログインして応募",
+      "selectTeam": "応募するチームを選択",
+      "goToDashboard": "ダッシュボードへ",
+      "postFromDashboard": "チーム/組織のダッシュボードで札を立てる"
+    },
+    "region": {
+      "add": "地域を追加",
+      "selected": "選択中の地域",
+      "none": "地域未選択（地域問わず）"
+    },
+    "filter": {
+      "prefecture": "都道府県",
+      "city": "市区町村",
+      "category": "ジャンル",
+      "ownerType": "札主",
+      "keyword": "キーワード検索",
+      "allPrefectures": "全国",
+      "allCities": "市区町村を選択",
+      "allCategories": "すべてのジャンル",
+      "allOwnerTypes": "すべての札主",
+      "includeRegionNone": "地域指定なしも含む",
+      "mobileToggle": "絞り込み",
+      "search": "検索"
+    },
+    "sort": {
+      "label": "並び順",
+      "startAtAsc": "開催日が近い順",
+      "deadlineAsc": "締切が近い順",
+      "deadlineDesc": "締切が遠い順"
+    },
+    "ownerType": {
+      "personal": "個人",
+      "team": "チーム",
+      "organization": "組織"
+    },
+    "breadcrumb": {
+      "national": "全国",
+      "count": "({count}件)"
+    },
+    "card": {
+      "deadline": "締切",
+      "capacity": "{confirmed}/{capacity}人",
+      "region": "地域",
+      "regionNone": "地域問わず",
+      "category": "ジャンル",
+      "organizer": "主催"
+    },
+    "status": {
+      "DRAFT": "下書き",
+      "OPEN": "募集中",
+      "FULL": "満員（認証待ち）",
+      "COMPLETED": "成立",
+      "CANCELLED": "取り下げ済み",
+      "AUTO_CANCELLED": "不成立（自動取消）"
+    },
+    "personal": {
+      "visibility": "公開範囲",
+      "visibilityPublic": "全体公開",
+      "visibilitySelectedScopes": "選択したチーム・組織のみ",
+      "visibilityDraft": "下書き（非公開）",
+      "visibilityHelp": "個人札の閲覧範囲を選択します。選択した所属先の現メンバーには登録名、それ以外にはニックネームが表示されます。",
+      "audience": "公開するチーム・組織",
+      "audiencePlaceholder": "1つ以上選択してください",
+      "audienceRequired": "公開するチームまたは組織を1つ以上選択してください。",
+      "visibilityRequiredToPublish": "公開範囲を「全体公開」または「所属先を選ぶ」に変更してから公開してください。",
+      "publish": "公開する",
+      "published": "個人札を公開しました。",
+      "title": "自分の市",
+      "description": "自分名義の下書き札を管理します。",
+      "create": "下書きの札を立てる",
+      "list": "立てた札",
+      "allStatuses": "すべての状態",
+      "empty": "立てた札はまだありません。最初の下書きを作成しましょう。",
+      "matches": "マッチング状況",
+      "noMatches": "マッチングはまだありません。",
+      "previous": "前へ",
+      "next": "次へ",
+      "created": "下書きを作成しました。",
+      "loadFailed": "個人市の情報取得に失敗しました。",
+      "saveFailed": "下書きの保存に失敗しました。",
+      "cancel": "札を取り下げる",
+      "cancelled": "札を取り下げました。",
+      "cancelReason": "個人市からの札の取り下げ",
+      "cancelConfirm": "この札を取り下げますか？ 公開済みの場合は応募者にも影響します。",
+      "close": "閉じる",
+      "edit": "下書きを編集",
+      "save": "保存",
+      "updated": "下書きを更新しました。",
+      "draftOnly": "必要項目を入力して、まず非公開の下書きとして保存します。保存後に内容を確認して公開できます。個人札の決済はまだ利用できません。"
+    },
+    "visibility": {
+      "public": "市に公開",
+      "friendsOnly": "フレンドチームのみ",
+      "label": "公開範囲"
+    },
+    "friendTarget": {
+      "allFriends": "すべての成立フレンド",
+      "folder": "フォルダ指定",
+      "team": "個別に指定",
+      "addTeam": "チームを追加",
+      "selectFolder": "フォルダを選択",
+      "noFolders": "フォルダがありません"
+    },
+    "empty": {
+      "title": "札が見つかりません",
+      "cta": {
+        "canPost": "あなたのチームで最初の札を立てませんか？",
+        "noPermission": "札を立てるにはチーム/組織の管理者になるか、管理者に依頼してください",
+        "guest": "ログインして札を立てる / 応募する"
+      }
+    },
+    "detail": {
+      "organizer": "主催",
+      "region": "開催地域",
+      "regionNone": "地域問わず",
+      "startAt": "開催日時",
+      "deadline": "応募締切",
+      "capacity": "定員",
+      "confirmedCount": "応募中",
+      "status": "ステータス",
+      "location": "場所",
+      "category": "ジャンル",
+      "notFound": "この札は見つかりません",
+      "notPublic": "この札は公開されていません"
+    },
+    "report": {
+      "open": "この札を通報",
+      "title": "札を通報",
+      "reasonLabel": "理由",
+      "description": "詳細（任意）",
+      "notice": "通報内容は運営だけが確認します。虚偽や繰り返しの通報はお控えください。",
+      "submit": "通報する",
+      "succeeded": "通報を受け付けました。",
+      "failed": "通報を送信できませんでした。",
+      "reason": {
+        "SPAM": "スパム",
+        "HARASSMENT": "嫌がらせ",
+        "INAPPROPRIATE": "不適切な内容",
+        "VIOLENCE": "暴力的な内容",
+        "MISINFORMATION": "誤情報",
+        "COPYRIGHT": "著作権侵害",
+        "OTHER": "その他"
+      }
+    },
+    "notify": {
+      "applicationReceived": "あなたの札に声がかかりました（{owner} / {title}）",
+      "friendListing": "{team}から「{title}」が届きました",
+      "finalizeRequest": "募集が定員に達しました。確定して札を下げますか？",
+      "reminderShortfall": "締切が近づいています。あと{count}名の応募が必要です",
+      "autoCancelled": "「{title}」は応募が集まらず締め切られました",
+      "cancelledToApplicant": "申し訳ありません。「{title}」は主催者により取り下げられました",
+      "seeOtherListings": "{team}の他の札を見る"
+    },
+    "error": {
+      "loadFailed": "市の情報取得に失敗しました",
+      "MARKET_001": "地域コードが不正または都道府県と市区町村が一致しません",
+      "MARKET_002": "フレンドチームのみの場合は宛先を1件以上指定してください",
+      "MARKET_003": "フレンド未成立のチームは宛先に指定できません",
+      "MARKET_004": "他のチームが所有するフォルダは指定できません",
+      "MARKET_005": "フレンドのみ公開と配信先の併用はできません"
+    },
+    "payment": {
+      "breakdown": {
+        "includesFeeNote": "※お支払い合計には決済手数料が含まれます。",
+        "refundFeeConditionalNote": "※ご返金の場合、決済手数料が返金されないことがあります（返金条件は募集主の設定によります）。",
+        "title": "お支払い内訳",
+        "faceAmountLabel": "謝礼（額面）",
+        "feeLabel": "支払手数料",
+        "totalLabel": "お支払い合計"
+      },
+      "refund": {
+        "title": "返金",
+        "feeBearerLabel": "決済手数料の負担者",
+        "feeBearer": {
+          "PAYER": "支払者が負担（支払者都合のキャンセル）",
+          "PAYEE": "受取側が負担（こちらの都合・中止）"
+        },
+        "feeBearerHint": {
+          "PAYER": "支払者へ受取額（手数料を差し引いた額）を返金します。決済手数料は支払者の負担です。",
+          "PAYEE": "支払者へ満額を返金します。決済手数料はこちら（受取側）の負担となり、最終的に次回入金等で精算されます。"
+        },
+        "submit": "返金する",
+        "confirmTitle": "返金の確認",
+        "confirmPayee": "受取側負担での返金です。支払者へ満額が返金され、決済手数料はこちらの負担となります。よろしいですか？",
+        "amountLabel": "返金額",
+        "amountFull": "全額返金",
+        "amountPartial": "一部返金",
+        "amountRequired": "返金額を入力してください。",
+        "amountTooLarge": "返金額が返金可能額を超えています。",
+        "reasonLabel": "理由（任意）",
+        "failed": "返金に失敗しました。"
+      },
+      "connect": {
+        "title": "受取口座（謝礼の受け取り）",
+        "loading": "読み込み中…",
+        "statusLabel": "状態",
+        "status": {
+          "ready": "登録完了",
+          "onboarding": "審査中",
+          "restricted": "追加情報が必要",
+          "notRegistered": "未登録"
+        },
+        "registrationRequired": "謝礼を受け取るには受取口座の登録が必要です。",
+        "register": "受取口座を登録する",
+        "continue": "登録を続ける",
+        "redirecting": "遷移中…",
+        "linkFailed": "受取口座の登録リンクを取得できませんでした。"
+      },
+      "confirm": {
+        "title": "謝礼のお支払い確認",
+        "intro": "申込に必要な謝礼のお支払い（カード与信）を確認してください。",
+        "expiryNotice": "この与信は約7日間有効です。7日以内に役務完了の最終認証が必要です（超過時は完了時に改めてお支払いいただきます）。",
+        "deferredNotice": "成立から役務完了まで7日を超えるため、いまは与信を行いません。役務完了の最終認証時に改めてお支払いいただきます。",
+        "alreadyAuthorized": "このお支払いは確認済みです。",
+        "preparing": "決済情報を準備しています。少し待ってから再度お試しください。",
+        "retry": "再読み込み",
+        "submit": "お支払いを確認する",
+        "processing": "処理中…",
+        "succeeded": "お支払いの確認が完了しました。",
+        "loadFailed": "決済情報の取得に失敗しました。",
+        "payeeNotReady": "受取側の受取口座が未登録のため、まだお支払いできません。",
+        "proceed": "成立を続行する"
+      },
+      "received": {
+        "pageTitle": "謝礼の受け取り・返金管理",
+        "pageSubtitle": "受け取った謝礼を確認し、必要に応じて返金できます。",
+        "scopeLabel": "受取先",
+        "scope": {
+          "self": "自分（個人）",
+          "team": "チーム",
+          "org": "組織"
+        },
+        "statusFilterLabel": "状態で絞り込む",
+        "statusFilterAll": "すべて",
+        "loading": "読み込み中…",
+        "empty": "受け取った謝礼はまだありません。",
+        "loadFailed": "受取一覧の取得に失敗しました。",
+        "noScope": "受取先がありません。チーム/組織の管理者になると、その受取一覧を確認できます。",
+        "col": {
+          "source": "出所",
+          "status": "状態",
+          "faceAmount": "額面",
+          "chargeAmount": "請求額",
+          "fee": "手数料",
+          "refunded": "返金済",
+          "createdAt": "受取日",
+          "actions": "操作"
+        },
+        "sourceKind": {
+          "RECRUITMENT": "謝礼（市の札）",
+          "MEMBERSHIP": "会費",
+          "JOBMATCHING": "ジョブマッチング",
+          "FLEAMARKET": "フリマ"
+        },
+        "refundButton": "返金",
+        "refundUnavailable": "返金不可",
+        "refundSucceeded": "返金を受け付けました。",
+        "status": {
+          "PENDING_CONFIRMATION": "確認待ち",
+          "DEFERRED": "完了時払い予定",
+          "AUTHORIZED": "与信済",
+          "HELD": "払出保留",
+          "CAPTURED": "受取確定",
+          "PARTIALLY_REFUNDED": "一部返金済",
+          "REFUNDED": "全額返金済",
+          "CANCELLED": "取消",
+          "DISPUTED": "係争中"
+        }
+      }
+    },
+    "market_guide": {
+      "page_title": "市の使い方",
+      "what": {
+        "title": "市とは？",
+        "body": "市は、個人・チーム・組織が公開する活動や参加者募集の札を探せる場所です。",
+        "steps": {
+          "step1": "札の内容を確認し、自分に合う活動や募集を探します",
+          "step2": "気になる札を開いて、応募または札の作成へ進みます"
+        }
+      },
+      "search": {
+        "title": "絞り込み検索",
+        "body": "都道府県・市区町村・ジャンル・札主・キーワードで条件を絞り込めます。",
+        "steps": {
+          "step1": "都道府県を選び、市区町村を選択します",
+          "step2": "ジャンル、札主、自由入力キーワードを設定します",
+          "step3": "締切が近い順または遠い順を選びます",
+          "step4": "検索ボタンを押して条件に合う札を表示します",
+          "step5": "絞り込み条件はURLに保存されるため、リンクで共有・ブックマークが可能です"
+        }
+      },
+      "apply": {
+        "title": "札に応じる（応募する）",
+        "body": "気になる札をクリックして内容を確認し、OPENの札へ応募できます。応募にはログインが必要です。",
+        "steps": {
+          "step1": "一覧から気になる札をクリックして詳細ページを開く",
+          "step2": "開催日時・開催場所・応募締切・定員・地域を確認する",
+          "step3": "チーム募集では応募するチームを選び、「札に応じる」を押します。応募済みの札には再応募できません"
+        }
+      },
+      "personal_create": {
+        "title": "個人札を下書きから公開する",
+        "body": "個人の札は、まず非公開の下書きとして作成し、内容を編集してから公開します。",
+        "steps": {
+          "step1": "マイ市で必要な内容を入力し、下書きを作成します",
+          "step2": "タイトル、開催日時、必須の開催場所などを確認して編集します",
+          "step3": "公開範囲を選び、内容を確認して公開します"
+        }
+      },
+      "visibility": {
+        "title": "公開範囲と表示名",
+        "body": "個人札では公開範囲を選べます。下書きは公開されません。",
+        "steps": {
+          "step1": "所属チーム・組織のメンバーには登録済みの実名が表示されます",
+          "step2": "それ以外の人にはニックネームが表示されます",
+          "step3": "公開、選択したチーム・組織への公開、下書きの非公開を使い分けます"
+        }
+      },
+      "team_organization": {
+        "title": "チーム・組織の札作成と応募者管理",
+        "body": "チーム・組織の札の作成と応募者の管理には、対象の管理権限が必要です。",
+        "steps": {
+          "step1": "チームまたは組織の画面から札を作成します",
+          "step2": "公開後は応募者を確認し、必要に応じて参加状況を管理します"
+        }
+      },
+      "cancellation": {
+        "title": "成立と取消",
+        "body": "札の成立状況を確認し、不要になった札は取り消せます。",
+        "steps": {
+          "step1": "応募状況と定員を確認して、成立に必要な対応を行います",
+          "step2": "公開済みの札を取り消すと、応募者に影響するため内容を確認してから実行します"
+        }
+      }
+    }
+  }
+}

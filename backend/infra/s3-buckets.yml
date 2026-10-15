@@ -1,0 +1,166 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Mannschaft S3バケット設定 — Intelligent-Tiering + ライフサイクルポリシー。
+  コスト最適化: アクセス頻度に応じた自動階層移動、一時ファイル自動削除、
+  古いバージョンの自動クリーンアップ。
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [dev, staging, prod]
+
+  MainBucketName:
+    Type: String
+    Default: mannschaft-prod
+
+  TmpBucketName:
+    Type: String
+    Default: mannschaft-tmp
+
+Resources:
+  # =========================================================================
+  # メインバケット（ユーザーアップロード・サムネイル・添付ファイル等）
+  # =========================================================================
+  MainBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref MainBucketName
+      VersioningConfiguration:
+        Status: Enabled
+
+      # --- Intelligent-Tiering 自動設定 ---
+      # 保存料を最大40%削減: アクセスされないオブジェクトを自動で安い層へ移動
+      IntelligentTieringConfigurations:
+        - Id: auto-tier
+          Status: Enabled
+          Tierings:
+            # 90日アクセスなし → Archive Instant Access（取得遅延なし、保存40%安）
+            - AccessTier: ARCHIVE_INSTANT_ACCESS
+              Days: 90
+            # 180日アクセスなし → Archive Access（取得に数分、保存68%安）
+            - AccessTier: ARCHIVE_ACCESS
+              Days: 180
+
+      LifecycleConfiguration:
+        Rules:
+          # --- 新規アップロードをIntelligent-Tieringに自動移行 ---
+          - Id: move-to-intelligent-tiering
+            Status: Enabled
+            Transitions:
+              - StorageClass: INTELLIGENT_TIERING
+                TransitionInDays: 0
+
+          # --- ファイルバージョニングのクリーンアップ ---
+          # 古い非最新バージョンは90日後に削除（バージョン管理は最大20世代だが安全マージン）
+          - Id: cleanup-old-versions
+            Status: Enabled
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 90
+
+          # --- 不完全なマルチパートアップロードのクリーンアップ ---
+          - Id: abort-incomplete-uploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+
+      # --- CORS設定（Pre-signed URLアップロード用） ---
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - '*'
+            AllowedMethods:
+              - GET
+              - PUT
+            AllowedHeaders:
+              - '*'
+            MaxAge: 3600
+
+      # --- 暗号化 ---
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+      # --- パブリックアクセスブロック ---
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+      Tags:
+        - Key: Project
+          Value: mannschaft
+        - Key: Environment
+          Value: !Ref Environment
+
+  # =========================================================================
+  # 一時バケット（ZIPエクスポート、フォーム添付等）
+  # =========================================================================
+  TmpBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref TmpBucketName
+
+      LifecycleConfiguration:
+        Rules:
+          # --- 1時間後に自動削除 ---
+          # S3ライフサイクルの最小単位は1日なので、1日で設定
+          - Id: auto-delete-tmp-files
+            Status: Enabled
+            ExpirationInDays: 1
+
+          # --- 不完全なマルチパートアップロードのクリーンアップ ---
+          - Id: abort-incomplete-uploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+      Tags:
+        - Key: Project
+          Value: mannschaft
+        - Key: Environment
+          Value: !Ref Environment
+
+  # =========================================================================
+  # CloudFront OAC（Origin Access Control）— S3直接アクセスをブロック
+  # =========================================================================
+  MainBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MainBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontOAC
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${MainBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/*'
+
+Outputs:
+  MainBucketArn:
+    Value: !GetAtt MainBucket.Arn
+    Export:
+      Name: !Sub '${Environment}-mannschaft-main-bucket-arn'
+
+  TmpBucketArn:
+    Value: !GetAtt TmpBucket.Arn
+    Export:
+      Name: !Sub '${Environment}-mannschaft-tmp-bucket-arn'

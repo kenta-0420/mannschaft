@@ -1,0 +1,224 @@
+import { computed, defineComponent, h, ref } from 'vue'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises } from '@vue/test-utils'
+import { mountSuspended } from '@nuxt/test-utils/runtime'
+import TeamSidebar from '~/components/TeamSidebar.vue'
+import OrganizationSidebar from '~/components/OrganizationSidebar.vue'
+import TeamConfirmableNotificationsPage from '~/pages/teams/[slug]/settings/confirmable-notifications.vue'
+import OrgConfirmableNotificationsPage from '~/pages/organizations/[slug]/settings/confirmable-notifications.vue'
+
+/**
+ * CMP-260909-1141: 確認通知（F04.9）を /admin/reservation-settings.vue から
+ * teams/[slug]/settings/confirmable-notifications.vue・organizations/[slug]/settings/confirmable-notifications.vue
+ * へ移設したことの回帰テスト。
+ *
+ * 検証観点:
+ *  CN-SIDEBAR-001/002: 両サイドバーの日常導線で回覧板の直後から既存URLへ到達できること
+ *    （DEPUTY_ADMIN 以上に表示。BE の checkAdminOrAbove に合わせた権限）
+ *  CN-SIDEBAR-003/004: MEMBER には表示されないこと（金銭・通知送信操作のため）
+ *  CN-PAGE-001/002: 新ページが3コンポーネントへ正しい scope-type/scope-id を渡すこと
+ *    （TEAM/ORGANIZATION の双方で、useScopeStore().current.id をそのまま使う）
+ */
+
+const roleName = ref<string | null>('ADMIN')
+vi.mock('~/composables/useRoleAccess', () => ({
+  useRoleAccess: () => ({
+    roleName,
+    isAdmin: computed(() => roleName.value === 'ADMIN'),
+    isAdminOrDeputy: computed(
+      () => roleName.value === 'ADMIN' || roleName.value === 'DEPUTY_ADMIN',
+    ),
+    loadPermissions: vi.fn().mockResolvedValue(undefined),
+  }),
+}))
+
+const enabledModules = ref<{ moduleSlug: string, isEnabled: boolean }[]>([])
+vi.mock('~/composables/useOrganizationModuleApi', () => ({
+  useOrganizationModuleApi: () => ({
+    getOrganizationModules: () => Promise.resolve(enabledModules.value),
+  }),
+}))
+vi.mock('~/composables/useModuleApi', () => ({
+  useModuleApi: () => ({
+    getTeamModules: () => Promise.resolve({ data: enabledModules.value }),
+  }),
+}))
+
+/**
+ * useScopeStore を直接モックする（実 Pinia を介した状態受け渡しは、mountSuspended が
+ * 構築する Nuxt アプリコンテキストと、テストが setActivePinia したコンテキストが
+ * 一致しない実測により scope-id が空文字になる事故があったため採用しない）。
+ */
+const currentScope = ref<{ type: 'personal' | 'team' | 'organization', id: string | null, name: string }>({
+  type: 'personal',
+  id: null,
+  name: '個人',
+})
+vi.mock('~/stores/useScopeStore', () => ({
+  useScopeStore: () => ({
+    current: currentScope.value,
+    loadFromStorage: vi.fn(),
+  }),
+}))
+
+const teamNumericId = ref(123)
+const getTeam = vi.fn(async () => ({ data: { numericId: teamNumericId.value } }))
+vi.mock('~/composables/useTeamApi', () => ({
+  useTeamApi: () => ({ getTeam }),
+}))
+
+const orgNumericId = ref(456)
+vi.mock('~/composables/useOrgShellContext', () => ({
+  useOrgShellContext: () => ({
+    org: computed(() => ({ numericId: orgNumericId.value })),
+  }),
+}))
+
+async function mountTeamSidebar() {
+  const wrapper = await mountSuspended(TeamSidebar, { props: { teamId: 'team-1' } })
+  await new Promise(resolve => setTimeout(resolve, 0))
+  await wrapper.vm.$nextTick()
+  return wrapper
+}
+
+async function mountOrgSidebar() {
+  const wrapper = await mountSuspended(OrganizationSidebar, { props: { orgId: 'org-1' } })
+  await new Promise(resolve => setTimeout(resolve, 0))
+  await wrapper.vm.$nextTick()
+  return wrapper
+}
+
+describe('クイック確認ページへの日常導線（サイドバー）', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    roleName.value = 'ADMIN'
+    enabledModules.value = []
+  })
+
+  it('CN-SIDEBAR-001: TeamSidebar で回覧板の直後から到達できる（DEPUTY_ADMIN）', async () => {
+    roleName.value = 'DEPUTY_ADMIN'
+    enabledModules.value = [{ moduleSlug: 'circulation', isEnabled: true }]
+    const wrapper = await mountTeamSidebar()
+    const circulation = wrapper.get('a[href="/teams/team-1/circulation"]')
+    const quickConfirm = wrapper.get('a[href="/teams/team-1/settings/confirmable-notifications"]')
+    expect(circulation.element.parentElement).toBe(quickConfirm.element.parentElement)
+    const links = [...circulation.element.parentElement!.querySelectorAll('a')]
+    expect(links.indexOf(quickConfirm.element as HTMLAnchorElement)).toBe(
+      links.indexOf(circulation.element as HTMLAnchorElement) + 1,
+    )
+  })
+
+  it('CN-SIDEBAR-002: OrganizationSidebar で回覧板の直後から到達できる（DEPUTY_ADMIN）', async () => {
+    roleName.value = 'DEPUTY_ADMIN'
+    enabledModules.value = [{ moduleSlug: 'circular', isEnabled: true }]
+    const wrapper = await mountOrgSidebar()
+    const circulation = wrapper.get('a[href="/organizations/org-1/circulation"]')
+    const quickConfirm = wrapper.get('a[href="/organizations/org-1/settings/confirmable-notifications"]')
+    expect(circulation.element.parentElement).toBe(quickConfirm.element.parentElement)
+    const links = [...circulation.element.parentElement!.querySelectorAll('a')]
+    expect(links.indexOf(quickConfirm.element as HTMLAnchorElement)).toBe(
+      links.indexOf(circulation.element as HTMLAnchorElement) + 1,
+    )
+  })
+
+  it('CN-SIDEBAR-003: MEMBER には TeamSidebar から表示されない', async () => {
+    roleName.value = 'MEMBER'
+    const wrapper = await mountTeamSidebar()
+    expect(wrapper.html()).not.toContain('settings/confirmable-notifications')
+  })
+
+  it('CN-SIDEBAR-004: MEMBER には OrganizationSidebar から表示されない', async () => {
+    roleName.value = 'MEMBER'
+    const wrapper = await mountOrgSidebar()
+    expect(wrapper.html()).not.toContain('settings/confirmable-notifications')
+  })
+})
+
+const SettingsStub = defineComponent({
+  name: 'ConfirmableNotificationSettings',
+  props: { scopeType: String, scopeId: String },
+  setup(props) {
+    return () => h('div', { 'data-testid': 'settings-stub', 'data-scope-type': props.scopeType, 'data-scope-id': props.scopeId })
+  },
+})
+const SenderStub = defineComponent({
+  name: 'ConfirmableNotificationSender',
+  props: { scopeType: String, scopeId: String },
+  emits: ['sent'],
+  setup(props) {
+    return () => h('div', { 'data-testid': 'sender-stub', 'data-scope-type': props.scopeType, 'data-scope-id': props.scopeId })
+  },
+})
+const HistoryStub = defineComponent({
+  name: 'ConfirmableNotificationHistory',
+  props: { scopeType: String, scopeId: String },
+  setup(props) {
+    return () => h('div', { 'data-testid': 'history-stub', 'data-scope-type': props.scopeType, 'data-scope-id': props.scopeId })
+  },
+})
+
+describe('クイック確認ページ: props の受け渡し', () => {
+  beforeEach(() => {
+    currentScope.value = { type: 'personal', id: null, name: '個人' }
+    teamNumericId.value = 123
+    orgNumericId.value = 456
+  })
+
+  it('CN-PAGE-001: TEAM スコープでは scope-type=TEAM・scope-id=現在の team id が渡る', async () => {
+    const wrapper = await mountSuspended(TeamConfirmableNotificationsPage, {
+      route: '/teams/team-123/settings/confirmable-notifications',
+      global: {
+        stubs: {
+          ConfirmableNotificationSettings: SettingsStub,
+          ConfirmableNotificationSender: SenderStub,
+          ConfirmableNotificationHistory: HistoryStub,
+          ConfirmableRecipientGroupManager: true,
+          ConfirmableTemplateManager: true,
+          ConfirmableCirculationGuide: true,
+        },
+      },
+    })
+    await flushPromises()
+
+    const settings = wrapper.get('[data-testid="settings-stub"]')
+    expect(settings.attributes('data-scope-type')).toBe('TEAM')
+    expect(settings.attributes('data-scope-id')).toBe('123')
+
+    const sender = wrapper.get('[data-testid="sender-stub"]')
+    expect(sender.attributes('data-scope-type')).toBe('TEAM')
+    expect(sender.attributes('data-scope-id')).toBe('123')
+
+    const history = wrapper.get('[data-testid="history-stub"]')
+    expect(history.attributes('data-scope-type')).toBe('TEAM')
+    expect(history.attributes('data-scope-id')).toBe('123')
+  })
+
+  it('CN-PAGE-002: ORGANIZATION スコープでは scope-type=ORGANIZATION・scope-id=現在の org id が渡る', async () => {
+    const wrapper = await mountSuspended(OrgConfirmableNotificationsPage, {
+      route: '/organizations/org-456/settings/confirmable-notifications',
+      global: {
+        stubs: {
+          ConfirmableNotificationSettings: SettingsStub,
+          ConfirmableNotificationSender: SenderStub,
+          ConfirmableNotificationHistory: HistoryStub,
+          ConfirmableRecipientGroupManager: true,
+          ConfirmableTemplateManager: true,
+          ConfirmableCirculationGuide: true,
+        },
+      },
+    })
+    await flushPromises()
+
+    const settings = wrapper.get('[data-testid="settings-stub"]')
+    expect(settings.attributes('data-scope-type')).toBe('ORGANIZATION')
+    expect(settings.attributes('data-scope-id')).toBe('456')
+
+    const sender = wrapper.get('[data-testid="sender-stub"]')
+    expect(sender.attributes('data-scope-type')).toBe('ORGANIZATION')
+    expect(sender.attributes('data-scope-id')).toBe('456')
+
+    const history = wrapper.get('[data-testid="history-stub"]')
+    expect(history.attributes('data-scope-type')).toBe('ORGANIZATION')
+    expect(history.attributes('data-scope-id')).toBe('456')
+  })
+})

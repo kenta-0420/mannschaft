@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- 太陽本体（左上寄り） -->
+  <circle cx="24" cy="24" r="9" fill="#F59E0B"/>
+  <!-- 放射線 8本 -->
+  <line x1="24" y1="8" x2="24" y2="13" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="24" y1="35" x2="24" y2="40" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="8" y1="24" x2="13" y2="24" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="35" y1="24" x2="40" y2="24" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="12.7" y1="12.7" x2="16.3" y2="16.3" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="31.7" y1="31.7" x2="35.3" y2="35.3" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="35.3" y1="12.7" x2="31.7" y2="16.3" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="16.3" y1="31.7" x2="12.7" y2="35.3" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- 雲（手前） -->
+  <path d="M20 48 Q20 42 26 42 Q27 36 34 36 Q42 36 42 43 Q48 43 48 49 Q48 54 42 54 L24 54 Q18 54 18 49 Q18 48 20 48 Z" fill="#94A3B8"/>
+</svg>
