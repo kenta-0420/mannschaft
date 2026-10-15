@@ -1,4 +1,4 @@
-﻿import type { Page, Response } from "@playwright/test";
+import type { Locator, Page, Response } from "@playwright/test";
 import { expect, loginViaApi, test } from "../fixtures/auth";
 import { waitForHydration } from "../helpers/wait";
 
@@ -38,12 +38,23 @@ async function openCreateDialog(page: Page) {
   return dialog;
 }
 
+// FE規約§3b: 実ブラウザのクリック領域を測る。softで後続の認可検証と後始末も続ける。
+async function expectTouchTarget(target: Locator, name: string) {
+  const bounds = await target.boundingBox();
+  expect.soft(bounds, `${name}の実クリック領域`).not.toBeNull();
+  if (bounds) {
+    expect.soft(bounds.width, `${name}の幅`).toBeGreaterThanOrEqual(44);
+    expect.soft(bounds.height, `${name}の高さ`).toBeGreaterThanOrEqual(44);
+  }
+}
+
 test.describe("CMP-261010-1129 組織作成の公開範囲と入力エラー（実BE）", () => {
   test("PRIVATEを画面から作成・保持更新し、非所属者の一覧と直URLには内部を出さない", async ({
     page,
     browser,
   }) => {
     test.setTimeout(180_000);
+    await page.setViewportSize({ width: 768, height: 1024 });
     await loginViaApi(page, ownerCredentials, { apiBaseUrl: apiBase });
     const organizationName = `組織実機 ${Date.now()}`;
     let createdSlug: string | undefined;
@@ -52,6 +63,45 @@ test.describe("CMP-261010-1129 組織作成の公開範囲と入力エラー（�
     });
     try {
       const dialog = await openCreateDialog(page);
+      // enter transitionを終端へ進め、44px境界の測定をアニメーション倍率に依存させない。
+      await test.info().attach("組織作成タブレット", {
+        body: await dialog.screenshot({ animations: "disabled" }),
+        contentType: "image/png",
+      });
+      await expectTouchTarget(
+        dialog.locator(".p-dialog-header button"),
+        "閉じる",
+      );
+      await expectTouchTarget(
+        dialog.getByRole("button", { name: "キャンセル", exact: true }),
+        "キャンセル",
+      );
+      await expectTouchTarget(
+        page.getByTestId("entity-create-submit"),
+        "組織を作成",
+      );
+      const textInputs = dialog.locator("input.p-inputtext, textarea");
+      await expect(textInputs).toHaveCount(5);
+      for (let index = 0; index < (await textInputs.count()); index++) {
+        const input = textInputs.nth(index);
+        await expectTouchTarget(input, `入力欄${index + 1}`);
+        const fontSize = await input.evaluate((element) =>
+          Number.parseFloat(getComputedStyle(element).fontSize),
+        );
+        expect
+          .soft(fontSize, `入力欄${index + 1}の文字サイズ`)
+          .toBeGreaterThanOrEqual(16);
+      }
+      const selects = dialog.locator(".p-select");
+      await expect(selects).toHaveCount(4);
+      for (let index = 0; index < (await selects.count()); index++) {
+        await expectTouchTarget(selects.nth(index), `選択欄${index + 1}`);
+      }
+      // スイッチ本体の視覚寸法は維持し、関連labelのクリック領域で44pxを確保する。
+      await expectTouchTarget(
+        page.getByTestId("entity-create-supporter-label"),
+        "サポーター設定ラベル",
+      );
       await dialog.locator("input").first().fill(organizationName);
       // slugの可用性チェックとの競合を避け、実UIで空にしてBE自動生成を選ぶ。
       await page.getByTestId("entity-create-slug").fill("");
@@ -113,8 +163,17 @@ test.describe("CMP-261010-1129 組織作成の公開範囲と入力エラー（�
       await waitForHydration(page);
       // 新規組織の初期権限案内を閉じる。権限設定は変更しない。
       const permissionSetup = page.getByTestId("member-permission-setup");
-      if (await permissionSetup.waitFor({ state: "visible", timeout: 10_000 }).then(() => true, () => false)) {
-        await permissionSetup.getByRole("button", { name: "あとで決める" }).click();
+      if (
+        await permissionSetup
+          .waitFor({ state: "visible", timeout: 10_000 })
+          .then(
+            () => true,
+            () => false,
+          )
+      ) {
+        await permissionSetup
+          .getByRole("button", { name: "あとで決める" })
+          .click();
         await expect(permissionSetup).toBeHidden();
       }
       const visibilityValue = page
@@ -122,7 +181,7 @@ test.describe("CMP-261010-1129 組織作成の公開範囲と入力エラー（�
         .filter({ hasText: /^公開設定$/ })
         .locator("..")
         .locator("p");
-      await expect(visibilityValue).toHaveText("PRIVATE");
+      await expect.soft(visibilityValue).toHaveText("限定公開");
 
       // 作成値を保持したままUIで保存しても、PRIVATEがPUBLICへ戻らない。
       await page.getByTestId("org-basic-info-edit-button").click();
@@ -140,7 +199,7 @@ test.describe("CMP-261010-1129 組織作成の公開範囲と入力エラー（�
         "PRIVATE",
       );
       await expect(page.getByTestId("org-basic-info-edit-dialog")).toBeHidden();
-      await expect(visibilityValue).toHaveText("PRIVATE");
+      await expect.soft(visibilityValue).toHaveText("限定公開");
 
       const outsider = await outsiderContext.newPage();
       // newContextはbaseURLを継承しないため、同一FEオリジンを明示する。
