@@ -1814,8 +1814,8 @@
     },
     "menu": "Menú",
     "scopeShell": {
-      "memberCount": "{count} miembros",
-      "supporterCount": "{count} seguidores",
+      "memberCount": "{count} miembro | {count} miembros",
+      "supporterCount": "{count} seguidor | {count} seguidores",
       "supporter_cancel_confirm_title": "¿Dejar de apoyar?",
       "supporter_cancel_confirm_body": "Dejarás de apoyar a {name}. ¿Estás seguro?",
       "supporter_cancel_action": "Dejar",
