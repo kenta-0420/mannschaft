@@ -1,0 +1,307 @@
+{
+  "browserClosed": true,
+  "independentResidents": 3,
+  "reviewedBy": "root",
+  "findings": 0,
+  "residents": [
+    {
+      "role": "admin",
+      "personaId": "CMP0927-admin",
+      "journeyId": "CMP0927-admin-journey",
+      "runId": "20261016-admin",
+      "idAssignment": "原本にIDがないため登録時付与",
+      "sourceHead": "561ed2cd5136eac04fb598bca7206c7d5845696c",
+      "generatedAppHead": "bc8f63befa",
+      "generatedAppDiff": 0,
+      "personaArchetype": "一般×素直",
+      "purpose": "管理コンソールから請求・立替を確認し戻る",
+      "sourceReportSha256": "1abf26ad7012a720e97620d027fdde48926e497086468de51829d1a1af0f3c2d",
+      "result": {
+        "achieved": true,
+        "conclusion": "対象チームの請求と立替・精算はいずれも『請求はありません』。画面上の対応行なし。戻るを2回選んで管理コンソールへ復帰。管理コンソールから請求管理へ到達できた。製品不具合は断定していない。"
+      },
+      "observations": [
+        "初期権限dialogはあとで決めるで閉じた。保存/権限変更なし",
+        "運営・予算メニュー内では広告主管理のみ見えた",
+        "設定→管理コンソール→請求管理で請求画面到達",
+        "管理コンソールの請求カード説明は作成・管理。請求空画面の可視操作は戻る/立替・精算のみ",
+        "立替・精算の空表示は請求はありません",
+        "locator button:has-text(メニュー)はaria-labelのみのボタンに合致せずtimeout。selector補正後成功。製品エラーとしない"
+      ],
+      "events": [
+        {
+          "time": "2026-10-16T12:00:16.656Z",
+          "label": "start",
+          "path": "/teams/billingaccess-1792148871313"
+        },
+        {
+          "time": "2026-10-16T12:00:49.061Z",
+          "label": "dismiss-initial-permissions",
+          "path": "/teams/billingaccess-1792148871313"
+        },
+        {
+          "time": "2026-10-16T12:01:28.466Z",
+          "label": "open-team-menu",
+          "path": "/teams/billingaccess-1792148871313"
+        },
+        {
+          "time": "2026-10-16T12:01:49.254Z",
+          "label": "operations-budget-menu",
+          "path": "/teams/billingaccess-1792148871313"
+        },
+        {
+          "time": "2026-10-16T12:02:04.287Z",
+          "label": "settings-menu",
+          "path": "/teams/billingaccess-1792148871313"
+        },
+        {
+          "time": "2026-10-16T12:02:12.319Z",
+          "label": "management-console",
+          "path": "/teams/billingaccess-1792148871313"
+        },
+        {
+          "time": "2026-10-16T12:02:21.091Z",
+          "label": "console-loaded",
+          "path": "/teams/billingaccess-1792148871313/admin"
+        },
+        {
+          "time": "2026-10-16T12:02:41.149Z",
+          "label": "billing-entry",
+          "path": "/teams/billingaccess-1792148871313/payment-requests"
+        },
+        {
+          "time": "2026-10-16T12:02:59.197Z",
+          "label": "billing-empty",
+          "path": "/teams/billingaccess-1792148871313/payment-requests"
+        },
+        {
+          "time": "2026-10-16T12:03:06.562Z",
+          "label": "advances-entry",
+          "path": "/teams/billingaccess-1792148871313/payment-requests"
+        },
+        {
+          "time": "2026-10-16T12:03:22.381Z",
+          "label": "advances-empty",
+          "path": "/teams/billingaccess-1792148871313/payments/advances"
+        },
+        {
+          "time": "2026-10-16T12:03:31.814Z",
+          "label": "return-from-advances",
+          "path": "/teams/billingaccess-1792148871313/payment-requests"
+        },
+        {
+          "time": "2026-10-16T12:03:43.645Z",
+          "label": "return-to-team",
+          "path": "/teams/billingaccess-1792148871313/admin"
+        },
+        {
+          "time": "2026-10-16T12:03:59.059Z",
+          "label": "returned-console",
+          "path": "/teams/billingaccess-1792148871313/admin"
+        }
+      ],
+      "financialApis": [
+        {
+          "path": "/api/v1/teams/1250/payment-requests",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/teams/1250/payment-advances",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/teams/1250/payment-requests",
+          "method": "GET",
+          "status": 200
+        }
+      ],
+      "evidenceImage": "docs/evidence/CMP-261016-0927/images/resident-admin.png",
+      "rootReview": "殿が原reportと画像を確認。追加の認可・機能finding0。memberの部分達成を全面目的達成と読み替えない。未実証console errorは不具合に昇格しない。"
+    },
+    {
+      "role": "deputy",
+      "personaId": "CMP0927-deputy",
+      "journeyId": "CMP0927-deputy-journey",
+      "runId": "20261016-deputy",
+      "idAssignment": "原本にIDがないため登録時付与",
+      "sourceHead": "561ed2cd5136eac04fb598bca7206c7d5845696c",
+      "generatedAppHead": "bc8f63befa",
+      "generatedAppDiff": 0,
+      "personaArchetype": "ADHD傾向×中断・放棄",
+      "purpose": "副管理者が請求・立替を確認し中断から復帰する",
+      "sourceReportSha256": "78130305b07667d787167a6c4fba1b23986c32b51b2c16c09932f1dc9cedf3f4",
+      "result": {
+        "achieved": true,
+        "observed": "請求画面と立替・精算画面はいずれも「請求はありません」。別タブ中断後も立替・精算URL/見出し/空表示を保持",
+        "limitations": [
+          "空データのみ。実際の未精算項目に対する文脈復帰は未検証",
+          "初回networkidle timeoutと未確認の完全一致heading待機timeoutは観測手段の待機として扱い製品不具合と断定しない",
+          "consoleの2件のresource接続エラーは対応URL未採取で原因未特定"
+        ],
+        "visualViewed": [
+          "01-start.png",
+          "10-billing-current.png",
+          "13-returned.png",
+          "14-resumed.png"
+        ]
+      },
+      "observations": [],
+      "events": [
+        {
+          "time": "2026-10-16T11:53:43.096Z",
+          "label": "01-start",
+          "path": "/teams/billingaccess-1792148871313"
+        },
+        {
+          "time": "2026-10-16T11:54:02.514Z",
+          "label": "02-admin",
+          "path": "/teams/billingaccess-1792148871313"
+        },
+        {
+          "time": "2026-10-16T11:54:22.566Z",
+          "label": "03-tasks",
+          "path": "/teams/billingaccess-1792148871313"
+        },
+        {
+          "time": "2026-10-16T11:54:48.648Z",
+          "label": "04-menu",
+          "path": "/teams/billingaccess-1792148871313"
+        },
+        {
+          "time": "2026-10-16T11:56:12.437Z",
+          "label": "05-settings-menu",
+          "path": "/teams/billingaccess-1792148871313"
+        },
+        {
+          "time": "2026-10-16T11:56:23.949Z",
+          "label": "06-admin-console",
+          "path": "/teams/billingaccess-1792148871313/admin"
+        },
+        {
+          "time": "2026-10-16T11:59:39.608Z",
+          "label": "08-current",
+          "path": "/teams/billingaccess-1792148871313/admin"
+        },
+        {
+          "time": "2026-10-16T12:00:17.822Z",
+          "label": "09-billing-entry",
+          "path": "/teams/billingaccess-1792148871313/payment-requests"
+        },
+        {
+          "time": "2026-10-16T12:00:36.558Z",
+          "label": "10-billing-current",
+          "path": "/teams/billingaccess-1792148871313/payment-requests"
+        },
+        {
+          "time": "2026-10-16T12:00:47.074Z",
+          "label": "11-advances-entry",
+          "path": "/teams/billingaccess-1792148871313/payment-requests"
+        },
+        {
+          "time": "2026-10-16T12:00:54.109Z",
+          "label": "12-advances-current",
+          "path": "/teams/billingaccess-1792148871313/payments/advances"
+        },
+        {
+          "time": "2026-10-16T12:01:06.561Z",
+          "label": "13-returned",
+          "path": "/teams/billingaccess-1792148871313/payments/advances"
+        },
+        {
+          "time": "2026-10-16T12:01:42.260Z",
+          "label": "14-resumed",
+          "path": "/teams/billingaccess-1792148871313/payments/advances"
+        }
+      ],
+      "financialApis": [
+        {
+          "path": "/api/v1/teams/1250/payment-requests",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/teams/1250/payment-advances",
+          "method": "GET",
+          "status": 200
+        }
+      ],
+      "evidenceImage": "docs/evidence/CMP-261016-0927/images/resident-deputy.png",
+      "rootReview": "殿が原reportと画像を確認。追加の認可・機能finding0。memberの部分達成を全面目的達成と読み替えない。未実証console errorは不具合に昇格しない。"
+    },
+    {
+      "role": "member",
+      "personaId": "CMP0927-member",
+      "journeyId": "CMP0927-member-journey",
+      "runId": "20261016-member",
+      "idAssignment": "原本にIDがないため登録時付与",
+      "sourceHead": "561ed2cd5136eac04fb598bca7206c7d5845696c",
+      "generatedAppHead": "bc8f63befa",
+      "generatedAppDiff": 0,
+      "personaArchetype": "スマホ片手操作×隙間狙い",
+      "purpose": "スマホで通常メニューと管理操作の境界を確認する",
+      "sourceReportSha256": "e3210a5243524619243f17ca110623e60b22861738c89594f68f94ed6c3739ca",
+      "result": {
+        "achieved": false,
+        "conclusion": "部分達成:課金プラン閲覧到達、管理操作非表示、/payments直打ちは管理者限定表示。請求/精算データや操作は見えず。不具合断定なし。"
+      },
+      "observations": [],
+      "events": [
+        {
+          "time": "2026-10-16T11:55:56.318Z",
+          "label": "01-initial",
+          "path": "/teams/billingaccess-1792148871313"
+        },
+        {
+          "time": "2026-10-16T11:56:11.821Z",
+          "label": "02-dashboard-bottom",
+          "path": "/teams/billingaccess-1792148871313"
+        },
+        {
+          "time": "2026-10-16T11:56:36.129Z",
+          "label": "03-team-menu",
+          "path": "/teams/billingaccess-1792148871313"
+        },
+        {
+          "time": "2026-10-16T11:56:46.330Z",
+          "label": "04-settings-menu",
+          "path": "/teams/billingaccess-1792148871313"
+        },
+        {
+          "time": "2026-10-16T11:57:05.804Z",
+          "label": "05-billing",
+          "path": "/teams/billingaccess-1792148871313/settings/billing"
+        },
+        {
+          "time": "2026-10-16T11:57:28.890Z",
+          "label": "06-team-return",
+          "path": "/teams/billingaccess-1792148871313"
+        },
+        {
+          "time": "2026-10-16T11:57:49.685Z",
+          "label": "07-menu-return",
+          "path": "/teams/billingaccess-1792148871313"
+        },
+        {
+          "time": "2026-10-16T11:57:56.851Z",
+          "label": "08-data-menu",
+          "path": "/teams/billingaccess-1792148871313"
+        },
+        {
+          "time": "2026-10-16T11:58:17.153Z",
+          "label": "09-payments-url",
+          "path": "/teams/billingaccess-1792148871313/payments"
+        },
+        {
+          "time": "2026-10-16T11:58:39.758Z",
+          "label": "10-payments-stable",
+          "path": "/teams/billingaccess-1792148871313/payments"
+        }
+      ],
+      "financialApis": [],
+      "evidenceImage": "docs/evidence/CMP-261016-0927/images/resident-member.png",
+      "rootReview": "殿が原reportと画像を確認。追加の認可・機能finding0。memberの部分達成を全面目的達成と読み替えない。未実証console errorは不具合に昇格しない。"
+    }
+  ]
+}

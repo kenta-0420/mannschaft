@@ -1,0 +1,134 @@
+{
+  "runId": "CMP-261016-0927-resident-registration",
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "registeredAt": "2026-10-16T12:10:11.072Z",
+  "idAssignment": "原住民reportにpersona/journey/run/insight IDがないためCMP0927固有IDを登録時付与。固定P01等へ変換しない。",
+  "environment": {
+    "sourceHead": "561ed2cd5136eac04fb598bca7206c7d5845696c",
+    "generatedAppHead": "bc8f63befa",
+    "generatedAppDiff": 0,
+    "browser": "Playwright Chromium、SPA配信、実BE、serviceWorkers block。スマホpersonaも物理端末ではない"
+  },
+  "personas": [
+    {
+      "id": "CMP0927-admin",
+      "personaArchetype": "一般×素直",
+      "runId": "20261016-admin",
+      "sourceHead": "561ed2cd5136eac04fb598bca7206c7d5845696c",
+      "evidencePath": "docs/evidence/CMP-261016-0927/residents-summary.json"
+    },
+    {
+      "id": "CMP0927-deputy",
+      "personaArchetype": "ADHD傾向×中断・放棄",
+      "runId": "20261016-deputy",
+      "sourceHead": "561ed2cd5136eac04fb598bca7206c7d5845696c",
+      "evidencePath": "docs/evidence/CMP-261016-0927/residents-summary.json"
+    },
+    {
+      "id": "CMP0927-member",
+      "personaArchetype": "スマホ片手操作×隙間狙い",
+      "runId": "20261016-member",
+      "sourceHead": "561ed2cd5136eac04fb598bca7206c7d5845696c",
+      "evidencePath": "docs/evidence/CMP-261016-0927/residents-summary.json"
+    }
+  ],
+  "journeys": [
+    {
+      "id": "CMP0927-admin-journey",
+      "personaId": "CMP0927-admin",
+      "purpose": "管理コンソールから請求・立替を確認し戻る",
+      "runId": "20261016-admin",
+      "sourceHead": "561ed2cd5136eac04fb598bca7206c7d5845696c",
+      "evidencePath": "docs/evidence/CMP-261016-0927/residents-summary.json"
+    },
+    {
+      "id": "CMP0927-deputy-journey",
+      "personaId": "CMP0927-deputy",
+      "purpose": "副管理者が請求・立替を確認し中断から復帰する",
+      "runId": "20261016-deputy",
+      "sourceHead": "561ed2cd5136eac04fb598bca7206c7d5845696c",
+      "evidencePath": "docs/evidence/CMP-261016-0927/residents-summary.json"
+    },
+    {
+      "id": "CMP0927-member-journey",
+      "personaId": "CMP0927-member",
+      "purpose": "スマホで通常メニューと管理操作の境界を確認する",
+      "runId": "20261016-member",
+      "sourceHead": "561ed2cd5136eac04fb598bca7206c7d5845696c",
+      "evidencePath": "docs/evidence/CMP-261016-0927/residents-summary.json"
+    }
+  ],
+  "results": [],
+  "insights": [
+    {
+      "id": "CMP-261016-0927-admin-O1",
+      "featureKey": "billing-payment",
+      "featureDetail": "チーム請求管理の閲覧権限と導線",
+      "title": "管理コンソールから請求・立替へ到達した",
+      "detail": "設定→管理コンソール→請求管理を選び、請求と立替のAPI200・両emptyを観測。戻る2回で管理コンソールへ復帰した。",
+      "personaId": "CMP0927-admin",
+      "journeyId": "CMP0927-admin-journey",
+      "personaArchetype": "一般×素直",
+      "originalRunId": "20261016-admin",
+      "sourceHead": "561ed2cd5136eac04fb598bca7206c7d5845696c",
+      "evidencePath": "docs/evidence/CMP-261016-0927/residents-summary.json",
+      "screenshotPath": "docs/evidence/CMP-261016-0927/images/resident-admin.png",
+      "urgency": "when-free",
+      "priority": "could",
+      "status": "observed-unverified"
+    },
+    {
+      "id": "CMP-261016-0927-deputy-O2",
+      "featureKey": "billing-payment",
+      "featureDetail": "チーム請求管理の閲覧権限と導線",
+      "title": "中断後も立替の位置と空表示を保持した",
+      "detail": "請求・立替API200と両emptyを観測。about:blankへ16.9秒離脱後、元のURL・見出し・空表示へ復帰した。実際の未精算項目の文脈復帰は未検証。",
+      "personaId": "CMP0927-deputy",
+      "journeyId": "CMP0927-deputy-journey",
+      "personaArchetype": "ADHD傾向×中断・放棄",
+      "originalRunId": "20261016-deputy",
+      "sourceHead": "561ed2cd5136eac04fb598bca7206c7d5845696c",
+      "evidencePath": "docs/evidence/CMP-261016-0927/residents-summary.json",
+      "screenshotPath": "docs/evidence/CMP-261016-0927/images/resident-deputy.png",
+      "urgency": "when-free",
+      "priority": "could",
+      "status": "observed-unverified"
+    },
+    {
+      "id": "CMP-261016-0927-member-O3",
+      "featureKey": "billing-payment",
+      "featureDetail": "チーム請求管理の閲覧権限と導線",
+      "title": "一般メンバーは管理操作と金融情報を表示しなかった",
+      "detail": "幅390pxで課金プラン閲覧へ到達した。請求/精算データと管理操作は見えず、自律推測した/payments直接URLは管理者限定表示だった。請求/立替3URLの正式拒否試験とは別観測。",
+      "personaId": "CMP0927-member",
+      "journeyId": "CMP0927-member-journey",
+      "personaArchetype": "スマホ片手操作×隙間狙い",
+      "originalRunId": "20261016-member",
+      "sourceHead": "561ed2cd5136eac04fb598bca7206c7d5845696c",
+      "evidencePath": "docs/evidence/CMP-261016-0927/residents-summary.json",
+      "screenshotPath": "docs/evidence/CMP-261016-0927/images/resident-member.png",
+      "urgency": "when-free",
+      "priority": "could",
+      "status": "observed-unverified"
+    },
+    {
+      "id": "CMP-261016-0927-admin-O4",
+      "featureKey": "billing-payment",
+      "featureDetail": "チーム請求管理の閲覧権限と導線",
+      "title": "請求導線とカード説明に関する未検証観測",
+      "detail": "運営・予算メニューでは広告主管理のみ可視。請求カード説明は作成・管理だが受信請求emptyには作成操作が無かった。設計/文言の整合は未実証であり、機能不具合・blocker・追加CMPとは認定しない。",
+      "personaId": "CMP0927-admin",
+      "journeyId": "CMP0927-admin-journey",
+      "personaArchetype": "一般×素直",
+      "originalRunId": "20261016-admin",
+      "sourceHead": "561ed2cd5136eac04fb598bca7206c7d5845696c",
+      "evidencePath": "docs/evidence/CMP-261016-0927/residents-summary.json",
+      "screenshotPath": "docs/evidence/CMP-261016-0927/images/resident-admin.png",
+      "urgency": "when-free",
+      "priority": "could",
+      "status": "observed-unverified"
+    }
+  ]
+}
