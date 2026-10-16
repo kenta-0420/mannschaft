@@ -1,5 +1,5 @@
 import { waitForHydratedShell } from '../helpers/waitForHydratedShell'
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
 import { TEAM_ID, mockTeam, mockTeamFeatureApis } from '../teams/helpers'
 
 async function prepare(page: Page) {
@@ -269,5 +269,90 @@ for (const language of [
     await expect(input).toBeVisible()
     await page.getByRole('button', { name: language.cancel, exact: true }).click()
     await expect(input).not.toBeVisible()
+  })
+}
+
+/** ナビゲータを通常クリックし、smooth scroll の停止後にリンクを操作する。 */
+async function revealScopeTab(tabRoot: Locator, link: Locator) {
+  for (let attempt = 0; attempt <= 6; attempt++) {
+    const state = await link.evaluate(element => {
+      const root = element.closest('[data-pc-name="tablist"]')!
+      const content = root.querySelector('[data-pc-section="content"]')!
+      const rect = element.getBoundingClientRect(), viewport = content.getBoundingClientRect()
+      let left = Math.max(viewport.left, 0), right = Math.min(viewport.right, innerWidth)
+      for (const button of root.querySelectorAll('button[data-pc-group-section="navigator"]')) {
+        const box = button.getBoundingClientRect()
+        if (button.getAttribute('data-pc-section') === 'prevbutton') left = Math.max(left, box.right)
+        if (button.getAttribute('data-pc-section') === 'nextbutton') right = Math.min(right, box.left)
+      }
+      const x = rect.x + rect.width / 2, y = rect.y + rect.height / 2
+      const hit = document.elementFromPoint(x, y)
+      return { ready: element.contains(hit) && x > left && x < right, direction: x <= left ? 'prevbutton' : x >= right ? 'nextbutton' : null, scrollLeft: content.scrollLeft, x: rect.x }
+    })
+    if (state.ready) return
+    expect(attempt, '通常ナビゲータ6回以内でタブを操作できる').toBeLessThan(6)
+    expect(state.direction, 'ナビゲータで隠れた側へ移動する').not.toBeNull()
+    await tabRoot.locator(`button[data-pc-section="${state.direction}"]`).click()
+    const settled = await link.evaluate((element, before) => new Promise<boolean>(resolve => {
+      const root = element.closest('[data-pc-name="tablist"]')!
+      const content = root.querySelector('[data-pc-section="content"]')!
+      const rect = (node: Element) => { const r = node.getBoundingClientRect(); return [r.x, r.y, r.width, r.height] }
+      let started = false, stableSince = 0, previous = '', frame = 0, timer = 0
+      const finish = (ok: boolean) => { cancelAnimationFrame(frame); clearTimeout(timer); resolve(ok) }
+      const sample = () => {
+        const now = performance.now(), target = rect(element)
+        const signature = JSON.stringify([content.scrollLeft, target, rect(content), [...root.querySelectorAll<HTMLButtonElement>('button[data-pc-group-section="navigator"]')].filter(button => button.getClientRects().length).map(button => [button.getAttribute('data-pc-section'), button.disabled, rect(button)])])
+        started ||= Math.abs(content.scrollLeft - before.scrollLeft) > 0.5 || Math.abs(target[0]! - before.x) > 0.5
+        if (started) {
+          if (signature !== previous) { previous = signature; stableSince = now }
+          if (now - stableSince >= 200) { finish(true); return }
+        }
+        frame = requestAnimationFrame(sample)
+      }
+      timer = window.setTimeout(() => finish(false), 10000)
+      frame = requestAnimationFrame(sample)
+    }), state)
+    expect(settled, '移動開始後に矩形・scroll位置・ナビゲータ構成が200ms連続安定する').toBe(true)
+  }
+}
+
+// ADMIN は sidebar/lens が同居するため、MEMBER の横幅確認だけではタブの圧縮を検出できない。
+for (const width of [360, 390, 768, 1280]) {
+  test(`INSIGHT-SHELL-NAV: ${width}pxで切替操作がタブを潰さず自然に招待へ移動できる`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await prepare(page)
+    await page.goto(`/teams/${TEAM_ID}`, { waitUntil: 'domcontentloaded' })
+    await waitForHydratedShell(page)
+    const invite = page.locator(`[role="tablist"] a[href="/teams/${TEAM_ID}/invites"]`)
+    await expect(invite).toBeVisible()
+    const tabRoot = page.locator('[data-pc-name="tablist"]').filter({ has: invite })
+    const menu = page.getByTestId('scope-sidebar-toggle')
+    const lens = page.getByTestId('scope-lens-admin').locator('xpath=..')
+    await expect(menu).toBeVisible()
+    await expect(lens).toBeVisible()
+    const content = tabRoot.locator('[data-pc-section="content"]')
+    const contentBox = (await content.boundingBox())!
+    const tabBox = (await tabRoot.boundingBox())!
+    const menuBox = (await menu.boundingBox())!
+    const lensBox = (await lens.boundingBox())!
+    const navigatorWidths = await tabRoot.locator('button[data-pc-group-section="navigator"]').evaluateAll(buttons =>
+      buttons.reduce((sum, button) => sum + button.getBoundingClientRect().width, 0),
+    )
+    // 両ナビゲータが覆う幅を差し引いても、リンクを操作できる正の領域が残る。
+    expect(contentBox.width - navigatorWidths).toBeGreaterThanOrEqual(44)
+    if (width < 768) {
+      expect(menuBox.y).toBeGreaterThanOrEqual(tabBox.y + tabBox.height - 1)
+      expect(lensBox.y).toBeGreaterThanOrEqual(tabBox.y + tabBox.height - 1)
+    } else {
+      // md 以上は従来どおり同じ行に配置する。
+      expect(menuBox.y).toBeLessThan(tabBox.y + tabBox.height)
+      expect(lensBox.y).toBeLessThan(tabBox.y + tabBox.height)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0)
+    // URL 直打ちで招待に着地せず、実際に表示されたタブを通常クリックする。
+    await revealScopeTab(tabRoot, invite)
+    await invite.click()
+    await expect(page).toHaveURL(new RegExp(`/teams/${TEAM_ID}/invites$`))
+    await expect(page.getByRole('button', { name: '新規作成', exact: true })).toBeVisible()
   })
 }
