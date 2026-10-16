@@ -43,7 +43,7 @@ function textFor(locale: LoyaltyLocale) {
   }
 }
 
-// ????UI???????????actor??????????????????fixture??GET????????
+// 言語設定UIは対象外のため、専用actorの永続設定をfixtureで準備し実GETで確認する。
 async function prepareLocale(page: Page, actor: { email: string; password: string }, locale: LoyaltyLocale) {
   const saved = await page.request.put(API + '/api/v1/users/me', { data: { locale, timezone: 'Asia/Tokyo' } })
   expect(saved.status()).toBe(200)
@@ -492,7 +492,7 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
       const rule = page.locator('form').filter({ has: page.getByText(t('loyalty.rule.amount'), { exact: true }) })
       // 実SFC/VeeValidateの入力境界を各言語で通す。対象操作のAPI呼出やレスポンスmockはしない。
       const validationKeys = await page.locator('#__nuxt').evaluate(element => {
-        const app = (element as Element & { __vue_app__: { config: { globalProperties: {
+        const app = (element as unknown as Element & { __vue_app__: { config: { globalProperties: {
           $nuxt: { $i18n: { te: (key: string) => boolean } },
         } } } }).__vue_app__
         return { flat: app.config.globalProperties.$nuxt.$i18n.te('required'), nested: app.config.globalProperties.$nuxt.$i18n.te('validation.required') }
