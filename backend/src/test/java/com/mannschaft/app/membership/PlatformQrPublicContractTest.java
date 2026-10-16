@@ -39,7 +39,7 @@ class PlatformQrPublicContractTest {
         checkins = mock(MemberCardCheckinRepository.class);
         locations = mock(CheckinLocationRepository.class);
         tokens = new QrTokenService(Clock.fixed(Instant.ofEpochSecond(NOW), ZoneOffset.UTC));
-        service = new MemberCardService(cards, checkins, locations, tokens, null, null, null);
+        service = new MemberCardService(cards, checkins, locations, tokens, null, null, null, null);
         locationService = new CheckinLocationService(locations, checkins, tokens, null, null);
     }
 

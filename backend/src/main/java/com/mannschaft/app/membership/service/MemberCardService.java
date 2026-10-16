@@ -45,7 +45,6 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class MemberCardService {
 
     /** ポイント読取用の検証済み共通会員証。更新処理の権限は表さない。 */
@@ -53,10 +52,11 @@ public class MemberCardService {
 
     /** activeな本人の共通会員証を確保する。停止済みカードは復活させない。 */
     public ApiResponse<com.mannschaft.app.membership.dto.PlatformCardResponse> ensureMyPlatformCard(Long actorUserId) {
-        throw new UnsupportedOperationException("共通会員証確保は未実装");
+        return platformCardService.ensure(actorUserId);
     }
 
     /** 共通会員QRを検証し、チェックイン等の副作用を起こさず本人を解決する。 */
+    @Transactional(readOnly = true)
     public VerifiedPlatformCard verifyPlatformQr(String qrToken) {
         if (qrToken == null || qrToken.length() > 512) {
             throw new BusinessException(MembershipErrorCode.MEMBERSHIP_021);
@@ -101,6 +101,7 @@ public class MemberCardService {
     private final ApplicationEventPublisher eventPublisher;
     private final NameResolverService nameResolverService;
     private final AccessControlService accessControlService;
+    private final PlatformCardService platformCardService;
 
     /**
      * 自分の会員証一覧を取得する。
