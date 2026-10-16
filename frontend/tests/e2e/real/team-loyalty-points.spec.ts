@@ -3,7 +3,7 @@
  * 設定/受付QR発行/本人確定/スタッフ承認/取消/却下は実画面で操作する。
  * QRは画面のSVGをスクリーンショットし、既存ZXingで実デコードする。
  */
-import { test, expect, chromium, type Page, type BrowserContext } from '@playwright/test'
+import { test, expect, chromium, type Page, type Browser, type BrowserContext } from '@playwright/test'
 import sharp from 'sharp'
 import { BinaryBitmap, HybridBinarizer, RGBLuminanceSource, QRCodeReader } from '@zxing/library'
 import { loginViaApi } from '../fixtures/auth'
@@ -19,6 +19,41 @@ test.use({
   trace: 'off',
   screenshot: 'off',
 })
+
+// 実画面の期待値は出荷する辞書から取得する。locale番人UTとは別に、保存・再読込・操作を通す。
+const localeNames = {
+  ja: '日本語', en: 'English', zh: '中文（简体）', ko: '한국어', es: 'Español', de: 'Deutsch',
+} as const
+type LoyaltyLocale = keyof typeof localeNames
+function textFor(locale: LoyaltyLocale) {
+  const common = JSON.parse(readFileSync(resolve('app/locales', locale, 'common.json'), 'utf8'))
+  const settings = JSON.parse(readFileSync(resolve('app/locales', locale, 'settings.json'), 'utf8'))
+  const dictionary: Record<string, unknown> = { ...common, ...settings }
+  return (key: string, values: Record<string, string | number> = {}): string => {
+    const value = key.split('.').reduce<unknown>((node, part) =>
+      node && typeof node === 'object' ? (node as Record<string, unknown>)[part] : undefined,
+    dictionary)
+    if (typeof value !== 'string') throw new Error(`Missing locale text: ${locale}:${key}`)
+    return value.replace(/\{(\w+)\}/g, (match, name: string) => String(values[name] ?? match))
+  }
+}
+
+async function saveDisplayLocale(page: Page, from: LoyaltyLocale, to: LoyaltyLocale) {
+  const before = textFor(from)
+  const after = textFor(to)
+  await page.goto('/settings/account')
+  const section = page.getByRole('heading', {
+    name: before('settings.locale.section_title'), exact: true,
+  }).locator('..')
+  await section.getByRole('combobox').first().click()
+  await page.getByRole('option', { name: localeNames[to], exact: true }).click()
+  await section.getByRole('button', { name: before('button.save'), exact: true }).click()
+  await expect(page.getByText(after('settings.locale.toast.save_success'), { exact: true })).toBeVisible()
+  await page.reload()
+  await expect(page.getByRole('heading', {
+    name: after('settings.locale.section_title'), exact: true,
+  })).toBeVisible()
+}
 const API = process.env.API_BASE_URL ?? 'http://localhost:8081'
 const BASE = process.env.BASE_URL
 if (!BASE) throw new Error('BASE_URL must explicitly select the isolated frontend server')
@@ -172,15 +207,16 @@ test('AC03/11/15: 実会員QRをカメラ映像から読取り付与・交換し
   await expect(page.getByTestId('member-qr')).toBeVisible()
   const token = await decodeQr(page, '[data-testid="member-qr"] .qr-code-image')
   const frame = await cameraFrame(token)
-  const cameraBrowser = await chromium.launch({
-    args: [
-      '--use-fake-ui-for-media-stream',
-      '--use-fake-device-for-media-stream',
-      `--use-file-for-fake-video-capture=${frame.file}`,
-      '--host-resolver-rules=MAP localhost 127.0.0.1',
-    ],
-  })
+  let cameraBrowser: Browser | undefined
   try {
+    cameraBrowser = await chromium.launch({
+      args: [
+        '--use-fake-ui-for-media-stream',
+        '--use-fake-device-for-media-stream',
+        `--use-file-for-fake-video-capture=${frame.file}`,
+        '--host-resolver-rules=MAP localhost 127.0.0.1',
+      ],
+    })
     const staff = await cameraBrowser.newPage({
       baseURL: BASE,
       viewport: { width: 390, height: 844 },
@@ -216,8 +252,11 @@ test('AC03/11/15: 実会員QRをカメラ映像から読取り付与・交換し
     await expect(page.getByText(/· 特典交換 ·/)).toBeVisible()
     await noOverflow(page)
   } finally {
-    await cameraBrowser.close()
-    await cleanupCameraFrame(frame)
+    try {
+      await cameraBrowser?.close()
+    } finally {
+      await cleanupCameraFrame(frame)
+    }
   }
 })
 
@@ -361,3 +400,160 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
     expect([200, 204]).toContain(cleanup.status())
   }
 })
+
+for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
+  test(`AC20/31: ${locale}のQR・財布・申請承認・設定確認・実カメラ拒否`, async ({ page, browser }) => {
+    test.setTimeout(240_000)
+    const t = textFor(locale)
+    const suffix = `${locale}-${Date.now().toString(36)}`
+    const slug = `e2e-loyalty-locale-${suffix}`
+    const ruleName = `Visit ${suffix}`
+    const locationName = `Reception ${suffix}`
+    let memberContext: BrowserContext | undefined
+    let member: Page | undefined
+    let staffLocale: LoyaltyLocale = 'ja'
+    let memberLocale: LoyaltyLocale = 'ja'
+    let createdTeam = false
+    try {
+      // 同じactorの並行ログインを避け、全caseはreal configのworkers=1で順次実行する。
+      await loginViaApi(page, ADMIN, { apiBaseUrl: API })
+      await saveDisplayLocale(page, 'ja', locale)
+      staffLocale = locale
+      const created = await page.request.post(`${API}/api/v1/teams`, {
+        data: { name: `Locale ${suffix}`, slug, visibility: 'MEMBERS_AND_ABOVE' },
+      })
+      expect(created.status()).toBe(201)
+      createdTeam = true
+      const team = ((await created.json()) as { data: { numericId: number } }).data
+      memberContext = await browser.newContext({
+        baseURL: BASE, viewport: { width: 390, height: 844 }, storageState: { cookies: [], origins: [] },
+      })
+      member = await memberContext.newPage()
+      await loginViaApi(member, USER, { apiBaseUrl: API })
+      await saveDisplayLocale(member, 'ja', locale)
+      memberLocale = locale
+      await member.goto('/my/member-qr')
+      await expect(member.getByRole('heading', { name: t('loyalty.memberQr.title'), exact: true })).toBeVisible()
+      await expect(member.getByTestId('member-qr')).toBeVisible()
+      await member.getByRole('button', { name: t('loyalty.refresh'), exact: true }).click()
+      await expect(member.getByTestId('member-qr')).toBeVisible()
+      await noOverflow(member)
+      await member.goto('/wallet')
+      await expect(member.getByRole('heading', { name: t('loyalty.wallet.title'), exact: true })).toBeVisible()
+      await expect(member.getByRole('dialog')).toHaveCount(0)
+
+      await page.goto(`/teams/${slug}/settings/loyalty`)
+      await expect(page.getByRole('heading', { name: t('loyalty.settings.title'), exact: true })).toBeVisible()
+      await page.getByText(t('loyalty.settings.enabled'), { exact: true }).click()
+      await page.getByText(t('loyalty.audience.membersAndAbove'), { exact: true }).click()
+      await page.getByRole('option', { name: t('loyalty.audience.allAuthenticated'), exact: true }).click()
+      await page.getByRole('button', { name: t('loyalty.save'), exact: true }).first().click()
+      await expect(page.getByText(t('loyalty.saved'), { exact: true })).toBeVisible()
+      const rule = page.locator('form').filter({ has: page.getByText(t('loyalty.rule.amount'), { exact: true }) })
+      await rule.getByRole('textbox').fill(ruleName)
+      await rule.getByRole('spinbutton').fill('1')
+      await rule.getByRole('button', { name: t('loyalty.save'), exact: true }).click()
+      await page.getByText(t('loyalty.reception.newLocation'), { exact: false }).locator('input').fill(locationName)
+      await page.getByRole('button', { name: t('loyalty.reception.create'), exact: true }).click()
+      await page.getByRole('button', { name: t('loyalty.reception.preview'), exact: true }).click()
+      await expect(page.getByText(t('loyalty.reception.printInstructions'), { exact: true })).toBeVisible()
+      const url = await decodeQr(page, '[data-testid="loyalty-reception-print"] .qr-code-image')
+      await noOverflow(page)
+      await page.goto(`/teams/${slug}/loyalty`)
+      await expect(page.getByText(t('loyalty.requests.empty'), { exact: true })).toBeVisible()
+      // ブラウザの実permissionをdenyし、getUserMediaの拒否をUIから通す（API/関数のmockなし）。
+      const cdp = await page.context().newCDPSession(page)
+      try {
+        const { targetInfo } = await cdp.send('Target.getTargetInfo')
+        await cdp.send('Browser.setPermission', {
+          permission: { name: 'videoCapture' }, setting: 'denied', origin: BASE,
+          browserContextId: targetInfo.browserContextId,
+        })
+        await expect.poll(() => page.evaluate(async () =>
+          (await navigator.permissions.query({ name: 'camera' as PermissionName })).state,
+        )).toBe('denied')
+        await page.getByRole('button', { name: t('loyalty.scan.camera'), exact: true }).click()
+        await expect(page.getByRole('alert').filter({ hasText: t('loyalty.scan.cameraDenied') })).toBeVisible()
+      } finally {
+        await page.context().clearPermissions()
+        await cdp.detach()
+      }
+      await member.goto(url)
+      await expect(member.getByRole('heading', { name: t('loyalty.self.confirm'), exact: true })).toBeVisible()
+      await expect(member.getByText(t('loyalty.mode.staffApproval'), { exact: true })).toBeVisible()
+      await expect(member.getByTestId('loyalty-balance')).toHaveText(t('loyalty.balance', { points: 0 }))
+      expect(new URL(member.url()).hash).toBe('')
+      await member.getByRole('button', { name: t('loyalty.confirm'), exact: true }).click()
+      await expect(member.getByRole('status')).toHaveText(t('loyalty.requests.status.pending'))
+      const codePattern = t('loyalty.requests.code', { code: '__CODE__' })
+      const [prefix, postfix] = codePattern.split('__CODE__')
+      const codeLine = (await member.getByText(new RegExp(`^${prefix!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)).textContent())!
+      const code = codeLine.slice(prefix!.length, postfix ? -postfix.length : undefined).trim()
+      expect(code).toMatch(/^[A-Z0-9]{8}$/)
+      await expect(member.getByText(t('loyalty.requests.showStaff'), { exact: true })).toBeVisible()
+      await member.getByRole('link', { name: t('loyalty.requests.title'), exact: true }).last().click()
+      await member.getByRole('link').filter({ hasText: t('loyalty.requests.status.pending') }).first().click()
+      const detailUrl = member.url()
+      await page.goto(`/teams/${slug}/loyalty`)
+      await page.getByRole('button').filter({ hasText: ruleName }).click()
+      await expect(page.getByText(t('loyalty.requests.compareBeforeApprove'), { exact: true })).toBeVisible()
+      await page.getByLabel(t('loyalty.requests.enterCode')).fill(code)
+      const approved = page.waitForResponse(response => response.request().method() === 'POST' && /\/approve$/.test(response.url()))
+      await page.getByRole('button', { name: t('loyalty.requests.approve'), exact: true }).click()
+      expect((await approved).status()).toBe(200)
+      await expect(page.getByText(t('loyalty.requests.empty'), { exact: true })).toBeVisible()
+      await member.goto(detailUrl)
+      await expect(member.getByRole('status')).toHaveText(t('loyalty.requests.status.approved'))
+      await member.getByRole('link', { name: t('loyalty.wallet.title'), exact: true }).click()
+      await expect(member.getByTestId('loyalty-balance')).toHaveText(t('loyalty.balance', { points: 1 }))
+      await expect(member.getByText(`${ruleName} · ${t('loyalty.history.award')} · 1`)).toBeVisible()
+      await member.getByRole('button', { name: t('loyalty.refresh'), exact: true }).click()
+      await expect(member.getByTestId('loyalty-balance')).toHaveText(t('loyalty.balance', { points: 1 }))
+      await noOverflow(member)
+      await member.goto('/wallet')
+      await member.getByRole('link').filter({ hasText: `Locale ${suffix}` }).click()
+      await expect(member.getByTestId('loyalty-balance')).toHaveText(t('loyalty.balance', { points: 1 }))
+      expect(team.numericId).toBeGreaterThan(0)
+
+      await page.goto(`/teams/${slug}/settings/loyalty`)
+      await page.getByText(t('loyalty.mode.staffApproval'), { exact: true }).click()
+      await page.getByRole('option', { name: t('loyalty.mode.auto'), exact: true }).click()
+      await page.getByRole('button', { name: t('loyalty.save'), exact: true }).first().click()
+      const dialog = page.getByRole('alertdialog')
+      await expect(dialog.getByText(t('loyalty.mode.autoWarning'), { exact: true })).toBeVisible()
+      await dialog.getByRole('button', { name: t('loyalty.save'), exact: true }).click()
+      await page.getByTestId('loyalty-location-select').click()
+      await page.getByRole('option', { name: locationName, exact: true }).click()
+      await page.getByRole('button', { name: t('loyalty.reception.stop'), exact: true }).click()
+      const stopDialog = page.getByRole('alertdialog')
+      await expect(stopDialog.getByText(t('loyalty.reception.sharedLocationStopWarning'), { exact: true })).toBeVisible()
+      await stopDialog.getByRole('button', { name: t('loyalty.reception.stop'), exact: true }).click()
+      // 停止を読取で観測してから本人受付を再表示する。エラー応答自体を偽装しない。
+      await expect(page.getByRole('button', { name: t('loyalty.reception.preview'), exact: true })).toBeDisabled()
+      await member.goto(url)
+      await expect(member.getByTestId('load-error-state')).toBeVisible()
+      await expect(member.getByRole('button', { name: t('loyalty.confirm'), exact: true })).toHaveCount(0)
+      await expect(member.getByText(t('loyalty.self.rescan'), { exact: true })).toBeVisible()
+      await noOverflow(member)
+      await test.info().attach(`locale-state-${locale}`, {
+        body: JSON.stringify({ locale, staff: 'admin', applicant: 'individual', cleanupTargetLocale: 'ja', viewport: '390x844' }),
+        contentType: 'application/json',
+      })
+    } finally {
+      // 次case/住民へアカウント言語を持ち越さない。対象操作と同じ実UIから戻す。
+      try {
+        if (member && !member.isClosed()) await saveDisplayLocale(member, memberLocale, 'ja')
+      } finally {
+        await memberContext?.close()
+        try {
+          await saveDisplayLocale(page, staffLocale, 'ja')
+        } finally {
+          if (createdTeam) {
+            const cleanup = await page.request.delete(`${API}/api/v1/teams/${slug}`)
+            expect([200, 204]).toContain(cleanup.status())
+          }
+        }
+      }
+    }
+  })
+}
