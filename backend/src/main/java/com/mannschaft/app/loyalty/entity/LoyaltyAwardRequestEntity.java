@@ -62,6 +62,7 @@ public class LoyaltyAwardRequestEntity extends UuidV7Entity {
     private String locationName;
 
     @Column(name = "award_on", nullable = false)
+    @org.hibernate.annotations.JdbcType(org.hibernate.type.descriptor.jdbc.LocalDateJdbcType.class)
     private LocalDate awardOn;
 
     @Column(name = "expires_at", nullable = false)
