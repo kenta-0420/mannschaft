@@ -878,6 +878,12 @@ WHERE tom.organization_id IN (SELECT id FROM org_subtree)
 
 ---
 
+### アーカイブのスコープ独立性
+
+組織のアーカイブ（手動・自動）は、加盟チームのアーカイブ状態・個人加入用の招待（`invite_tokens`）・既存在籍に影響しない。組織にのみ加盟するチームも、複数組織に加盟するチームも同じである。チームは自身の手動操作または自動アーカイブ判定条件によってのみアーカイブされる。組織のアーカイブを理由としたチームの連動アーカイブ・招待失効・在籍削除は行わない。
+
+組織自身の個人招待は組織のアーカイブで全失効し、解除しても復元しない。既存の組織・チーム在籍と ACTIVE 加盟は維持する。F01.2.1 §4.5 の PENDING 加盟申請・招待の取消は個人加入用招待とは別契約であり、この非連動規定では変更しない。
+
 ### 自動アーカイブバッチ（チーム）
 
 **スケジュール**: 毎月1日 03:00 JST（Spring `@Scheduled(cron = "0 0 3 1 * *")`）
@@ -969,19 +975,12 @@ WHERE o.archived_at IS NULL
 ```
 1. 上記 SQL で対象組織 ID リストを取得
 2. organizations.archived_at = NOW() を一括 UPDATE
-3. カスケードアーカイブ対象チームを抽出:
-     「対象組織ID にのみ ACTIVE 所属し、他に ACTIVE な org 所属を持たないチーム」
-     （複数組織に所属するチームはカスケード対象外・他組織配下での継続稼働を保護）
-4. 対象チームの teams.archived_at = NOW() を一括 UPDATE
-5. 対象組織・カスケードチームの invite_tokens を一括失効:
+3. 対象組織自身の invite_tokens のみを一括失効:
      UPDATE invite_tokens SET revoked_at = NOW()
-     WHERE (organization_id IN (...対象組織ID...)
-        OR team_id IN (...カスケードチームID...))
-     AND revoked_at IS NULL
-6. audit_logs に ORGANIZATION_ARCHIVED（reason: AUTO_INACTIVE）を件数分 INSERT
-7. カスケードアーカイブされたチームの audit_logs に
-     TEAM_ARCHIVED（reason: AUTO_CASCADE_ORG）を件数分 INSERT
-8. バッチ実行ログに組織・チームそれぞれのアーカイブ件数を記録
+     WHERE organization_id IN (...対象組織ID...) AND revoked_at IS NULL
+4. 加盟チームの archived_at・個人招待・既存在籍は変更しない
+5. audit_logs に ORGANIZATION_ARCHIVED（reason: AUTO_INACTIVE）を件数分 INSERT
+6. バッチ実行ログに組織のアーカイブ件数を記録
 ```
 
 ---
@@ -1001,23 +1000,18 @@ WHERE o.archived_at IS NULL
 7. 200 OK を返す
 ```
 
-**組織の場合（カスケードあり）:**
+**組織の場合（加盟チームへ非連動）:**
 ```
 1. PATCH /api/v1/organizations/{id}/archive を受付
 2. ADMIN 権限チェック → ADMIN 未満は 403
 3. archived_at IS NOT NULL → すでにアーカイブ済み → 422
 4. organizations.archived_at = NOW() で UPDATE
-5. カスケードアーカイブ対象チームを抽出:
-     「この組織にのみ ACTIVE 所属し、他に ACTIVE な org 所属を持たないチーム」
-     ※ 複数組織に所属するチームはカスケード対象外
-6. 対象チームの teams.archived_at = NOW() を UPDATE
-7. 組織・カスケードチームの invite_tokens を一括失効:
+5. 組織自身の invite_tokens のみを一括失効:
      UPDATE invite_tokens SET revoked_at = NOW()
-     WHERE (organization_id = 対象ID OR team_id IN (...カスケードチームID...))
-     AND revoked_at IS NULL
-8. audit_logs に ORGANIZATION_ARCHIVED（reason: MANUAL）を記録
-9. カスケードされたチームの audit_logs に TEAM_ARCHIVED（reason: MANUAL_CASCADE_ORG）を記録
-10. 204 No Content を返す
+     WHERE organization_id = 対象ID AND revoked_at IS NULL
+6. 加盟チームの archived_at・個人招待・既存在籍は変更しない
+7. audit_logs に ORGANIZATION_ARCHIVED（reason: MANUAL）を記録
+8. 204 No Content を返す
 ```
 
 ---
