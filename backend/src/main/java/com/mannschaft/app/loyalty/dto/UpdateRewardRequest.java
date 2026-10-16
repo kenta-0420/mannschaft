@@ -17,4 +17,8 @@ public record UpdateRewardRequest(
         @NotNull @Min(1) @Max(1000000) Integer requiredPoints,
         @NotNull @PositiveOrZero Long expectedVersion,
         @NotNull Boolean isActive) {
+    /** Bean Validationへ渡す前に設計どおり名称の前後空白を除く。 */
+    public UpdateRewardRequest {
+        name = name == null ? null : name.strip();
+    }
 }

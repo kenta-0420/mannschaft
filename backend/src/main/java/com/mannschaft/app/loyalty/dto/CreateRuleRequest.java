@@ -16,4 +16,8 @@ public record CreateRuleRequest(
         @NotNull @Min(1) @Max(10000) Integer points,
         @NotNull Frequency frequency,
         @NotNull Boolean isSelfAwardEnabled) {
+    /** Bean Validationへ渡す前に設計どおり名称の前後空白を除く。 */
+    public CreateRuleRequest {
+        name = name == null ? null : name.strip();
+    }
 }

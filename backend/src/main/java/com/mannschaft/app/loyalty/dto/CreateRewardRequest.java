@@ -14,4 +14,8 @@ public record CreateRewardRequest(
         @NotBlank @Size(max = 100) String name,
         @Size(max = 500) String description,
         @NotNull @Min(1) @Max(1000000) Integer requiredPoints) {
+    /** Bean Validationへ渡す前に設計どおり名称の前後空白を除く。 */
+    public CreateRewardRequest {
+        name = name == null ? null : name.strip();
+    }
 }

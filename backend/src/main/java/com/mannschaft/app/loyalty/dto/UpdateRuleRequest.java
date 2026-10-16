@@ -19,4 +19,8 @@ public record UpdateRuleRequest(
         @NotNull Boolean isSelfAwardEnabled,
         @NotNull @PositiveOrZero Long expectedVersion,
         @NotNull Boolean isActive) {
+    /** Bean Validationへ渡す前に設計どおり名称の前後空白を除く。 */
+    public UpdateRuleRequest {
+        name = name == null ? null : name.strip();
+    }
 }
