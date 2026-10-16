@@ -88,7 +88,15 @@ jobs:
       # F15.4 と F22.1 の smoke spec をまとめて 1 回の dev サーバ起動で実行する。
       # 両 spec とも page.route() で全 API をモックするためバックエンド非依存。
       - name: Run smoke E2E (F15.4 + F22.1)
-        run: npx playwright test F15.4-org-team-search f221-swipe-dashboard F15.4-slug-navigation mobile/insight-ui-regressions --project=chromium --workers=1 --timeout=120000
+        run: npx playwright test F15.4-org-team-search f221-swipe-dashboard F15.4-slug-navigation mobile/insight-ui-regressions --project=chromium --workers=1 --timeout=120000 --trace=retain-on-failure --output=test-results/smoke
+
+      - name: smoke E2Eの失敗時証跡を保存
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-e2e-first-failure-evidence
+          path: frontend/test-results/smoke/
+          retention-days: 14
 
       - name: I18N-004 の SSR・Cookie 保持を確認
         env:
@@ -111,12 +119,4 @@ jobs:
         with:
           name: playwright-report-smoke
           path: frontend/playwright-report/
-          retention-days: 14
-
-      - name: Upload Playwright trace (on failure)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-trace-smoke
-          path: frontend/test-results/
           retention-days: 14
