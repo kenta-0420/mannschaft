@@ -487,6 +487,60 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
         }
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(ProjectionChange.class)
+    void 補強_AC25現在状態の変更は実HTTPへ投影しGETでは保存申請を変更しない(ProjectionChange change) throws Exception {
+        Long team = team(); Long staff = users.saveAndFlush(LoyaltyTestFixture.user()).getId(); admin(staff,team);
+        var program = store.getPrograms().saveAndFlush(LoyaltyTestFixture.program(team).toBuilder()
+                .targetAudience(Audience.SUPPORTERS_AND_ABOVE).build());
+        var membership = memberships.saveAndFlush(com.mannschaft.app.membership.entity.MembershipEntity.builder()
+                .userId(actorId).scopeType(com.mannschaft.app.membership.domain.ScopeType.TEAM).scopeId(team)
+                .roleKind(com.mannschaft.app.membership.domain.RoleKind.SUPPORTER).joinedAt(time.now()).invitedBy(actorId).build());
+        var rule = store.getRules().saveAndFlush(LoyaltyTestFixture.rule(team)); var location = location(team,true); var now = time.now();
+        var row = store.getRequests().saveAndFlush(LoyaltyAwardRequestEntity.builder().teamId(team).userId(actorId).ruleId(rule.getId())
+                .sourceLocationId(location.getId()).programVersion(0).ruleVersion(0).points(1).ruleName("来店").locationName("受付")
+                .awardOn(now.toLocalDate()).expiresAt(time.expiresAt(now)).status(RequestStatus.PENDING).verificationCode("ABCDEFGH")
+                .submitKey(UUID.randomUUID()).submitPayloadHash(new byte[32]).createdAt(now).updatedAt(now).build());
+        switch (change) {
+            case AUDIENCE -> { program.update(true,Audience.MEMBERS_AND_ABOVE,SelfAwardMode.STAFF_APPROVAL,now); store.getPrograms().saveAndFlush(program); }
+            case MODE -> { program.update(true,Audience.SUPPORTERS_AND_ABOVE,SelfAwardMode.AUTO,now); store.getPrograms().saveAndFlush(program); }
+            case RULE_POINTS -> { rule.update("新版来店",2,Frequency.ONCE_PER_JST_DAY,true,true,now); store.getRules().saveAndFlush(rule); }
+            case LOCATION -> { location.update("受付",false,false); locations.saveAndFlush(location); }
+            case USER -> { var owner = users.findById(actorId).orElseThrow(); owner.freeze(); users.saveAndFlush(owner); }
+            case MEMBERSHIP -> {
+                membership.setLeftAt(now); membership.setLeaveReason(com.mannschaft.app.membership.domain.LeaveReason.SELF);
+                membership.setLeftTrigger(com.mannschaft.app.membership.domain.LeftTrigger.SELF); memberships.saveAndFlush(membership);
+            }
+        }
+        if (change == ProjectionChange.USER) {
+            mvc.perform(get("/api/v1/loyalty/award-requests/me").with(user(actorId.toString()))).andExpect(status().isForbidden());
+            mvc.perform(get("/api/v1/loyalty/award-requests/"+row.getId()+"/me").with(user(actorId.toString()))).andExpect(status().isForbidden());
+        } else {
+            mvc.perform(get("/api/v1/loyalty/award-requests/me").with(user(actorId.toString())))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].status").value("INVALIDATED"))
+                    .andExpect(jsonPath("$.data[0].reason").value(change.reason.name())).andExpect(jsonPath("$.data[0].canCancel").value(false));
+            mvc.perform(get("/api/v1/loyalty/award-requests/"+row.getId()+"/me").with(user(actorId.toString())))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data.reason").value(change.reason.name()))
+                    .andExpect(jsonPath("$.data.canCancel").value(false));
+        }
+        mvc.perform(get("/api/v1/teams/"+team+"/loyalty/award-requests").param("status","ALL").with(user(staff.toString())))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].status").value("INVALIDATED"))
+                .andExpect(jsonPath("$.data[0].reason").value(change.reason.name())).andExpect(jsonPath("$.data[0].canApprove").value(false));
+        mvc.perform(get("/api/v1/teams/"+team+"/loyalty/award-requests/"+row.getId()).with(user(staff.toString())))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.reason").value(change.reason.name()))
+                .andExpect(jsonPath("$.data.points").value(1)).andExpect(jsonPath("$.data.canApprove").value(false));
+        assertThat(jdbc.queryForMap("SELECT status,version,closed_at FROM team_loyalty_award_requests WHERE team_id=? AND id=?",team,row.getId().toString()))
+                .containsEntry("status","PENDING").containsEntry("version",0L).containsEntry("closed_at",null);
+        assertThat(store.getAccounts().findByTeamIdAndUserId(team,actorId)).isEmpty();
+    }
+
+    private enum ProjectionChange {
+        AUDIENCE(RequestReason.VERSION_CHANGED), MODE(RequestReason.VERSION_CHANGED), RULE_POINTS(RequestReason.VERSION_CHANGED),
+        LOCATION(RequestReason.LOCATION_INACTIVE), USER(RequestReason.USER_INACTIVE), MEMBERSHIP(RequestReason.INELIGIBLE);
+        final RequestReason reason;
+        ProjectionChange(RequestReason reason) { this.reason = reason; }
+    }
+
     private void autoSelfAward(Long team, int points) throws Exception {
         var program = LoyaltyTestFixture.program(team); program.update(true,Audience.ALL_AUTHENTICATED,SelfAwardMode.AUTO,time.now());
         store.getPrograms().saveAndFlush(program);
