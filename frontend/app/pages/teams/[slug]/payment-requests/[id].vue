@@ -110,6 +110,7 @@ async function startPayment(): Promise<void> {
   } catch (error: unknown) {
     if (!isCurrent()) return
     const detail = await fetchDetail()
+    if (!isCurrent()) return
     if (teamId.value && detail && detail.status !== 'PROCESSING') {
       paymentRequestApi.clearPaymentRequestIdempotencyKey(teamId.value, requestId.value)
     }
@@ -149,8 +150,9 @@ function onPaymentDialogVisible(visible: boolean): void {
 
 async function pollPaymentStatus(attempt = 1): Promise<void> {
   if (unmounted || !polling.value) return
+  const generation = paymentGeneration
   const updated = await fetchDetail()
-  if (unmounted || !polling.value) return
+  if (unmounted || !polling.value || generation !== paymentGeneration) return
   if (updated?.status === 'PAID') {
     stopPolling()
     if (teamId.value) paymentRequestApi.clearPaymentRequestIdempotencyKey(teamId.value, requestId.value)

@@ -178,6 +178,42 @@ describe.each([
     expect(wrapper.find('payment-request-payment-dialog-stub').exists()).toBe(false)
   })
 
+  if (Page === RequestDetail) it('旧チームのpoll完了から現在チームの二重pollを生成しない', async () => {
+    vi.useFakeTimers()
+    try {
+      const oldPoll = deferred<unknown>()
+      const currentPoll = deferred<unknown>()
+      let oldReads = 0
+      let currentReads = 0
+      mocks.api.mockImplementation((url: string) => {
+        if (url === '/api/v1/teams/1/payment-requests/request-a') {
+          oldReads += 1
+          return oldReads === 1 ? Promise.resolve({ data: { ...detail, status: 'PROCESSING' } }) : oldPoll.promise
+        }
+        if (url === '/api/v1/teams/2/payment-requests/request-a') {
+          currentReads += 1
+          return currentReads === 1 ? Promise.resolve({ data: { ...detail, status: 'PROCESSING' } }) : currentPoll.promise
+        }
+        return respond(url)
+      })
+      const wrapper = mount(Page, options)
+      await flushPromises()
+      expect(oldReads).toBe(2)
+      params.slug = 'team-b'
+      await flushPromises()
+      expect(currentReads).toBe(2)
+      oldPoll.resolve({ data: { ...detail, status: 'PROCESSING' } })
+      await flushPromises()
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(currentReads).toBe(2)
+      wrapper.unmount()
+      currentPoll.resolve({ data: { ...detail, status: 'PAID' } })
+      await flushPromises()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   if (Page !== RequestDetail) it('正常応答data:nullは空状態を表示する', async () => {
     empty = true
     const wrapper = mount(Page, options)
