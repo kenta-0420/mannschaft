@@ -2,16 +2,34 @@ package com.mannschaft.app.loyalty;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.AccessControlService.TeamUserKey;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EncryptionService;
-import com.mannschaft.app.loyalty.entity.*;
-import com.mannschaft.app.loyalty.repository.*;
+import com.mannschaft.app.loyalty.entity.LoyaltyAccountEntity;
+import com.mannschaft.app.loyalty.entity.LoyaltyAwardRequestEntity;
+import com.mannschaft.app.loyalty.entity.LoyaltyProgramEntity;
+import com.mannschaft.app.loyalty.entity.LoyaltyRuleEntity;
+import com.mannschaft.app.loyalty.entity.LoyaltyRewardEntity;
+import com.mannschaft.app.loyalty.entity.LoyaltyTransactionEntity;
+import com.mannschaft.app.loyalty.repository.LoyaltyAccountRepository;
+import com.mannschaft.app.loyalty.repository.LoyaltyAwardRequestRepository;
+import com.mannschaft.app.loyalty.repository.LoyaltyProgramRepository;
+import com.mannschaft.app.loyalty.repository.LoyaltyRuleRepository;
+import com.mannschaft.app.loyalty.repository.LoyaltyRewardRepository;
+import com.mannschaft.app.loyalty.repository.LoyaltyTransactionRepository;
 import com.mannschaft.app.membership.service.CheckinLocationService;
 import com.mannschaft.app.team.service.TeamService;
 import java.time.Clock;
@@ -25,7 +43,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
-import org.springframework.data.domain.Pageable;
 
 /** 実Reader・実投影・実署名cursorを通し、自表repoと外部契約だけを置換する。 */
 class LoyaltyQueryServiceTest {
@@ -69,6 +86,7 @@ class LoyaltyQueryServiceTest {
         when(teams.getActiveStates(any())).thenReturn(Map.of());
         when(memberships.getTeamMembershipStates(any())).thenReturn(Map.of());
         var result = query.account(1L, 10L);
+        assertThat(result).isNotNull();
         assertThat(result.balance()).isEqualTo(100);
         assertThat(result.teamName()).isEqualTo("利用終了したチーム");
         assertThat(result.isEligibleForAward()).isFalse();
@@ -83,6 +101,7 @@ class LoyaltyQueryServiceTest {
 
     @Test void 在籍者の未作成口座は永続化せずゼロを返す() {
         var result = query.account(1L, 10L);
+        assertThat(result).isNotNull();
         assertThat(result.accountId()).isNull();
         assertThat(result.balance()).isZero();
         assertThat(result.isEligibleForAward()).isTrue();
@@ -100,6 +119,7 @@ class LoyaltyQueryServiceTest {
         var first = account(20); var peek = account(30);
         when(accounts.firstPage(eq(1L), any())).thenReturn(List.of(first, peek));
         var page = query.listAccounts(1L, null, 1);
+        assertThat(page).isNotNull();
         assertThat(page.getData()).hasSize(1);
         assertThat(page.getMeta().isHasNext()).isTrue();
         assertThat(cursor.decode(new LoyaltyCursorCodec.Context(LoyaltyCursorCodec.Stream.ACCOUNTS, 1L, null),
@@ -112,6 +132,7 @@ class LoyaltyQueryServiceTest {
         when(programs.findByTeamId(10L)).thenReturn(Optional.empty());
         when(rules.findByTeamId(10L)).thenReturn(Optional.empty());
         var value = query.settings(10L);
+        assertThat(value).isNotNull();
         assertThat(value.id()).isNull(); assertThat(value.version()).isNull();
         assertThat(value.isEnabled()).isFalse();
         assertThat(value.targetAudience()).isEqualTo(Audience.MEMBERS_AND_ABOVE);
@@ -123,6 +144,7 @@ class LoyaltyQueryServiceTest {
         when(programs.findByTeamId(10L)).thenReturn(Optional.of(LoyaltyProgramEntity.builder().teamId(10L)
                 .isEnabled(false).targetAudience(Audience.ALL_AUTHENTICATED).selfAwardMode(SelfAwardMode.STAFF_APPROVAL).version(1).build()));
         var value = query.operationCatalog(10L);
+        assertThat(value).isNotNull();
         assertThat(value.isEnabled()).isFalse(); assertThat(value.rule()).isNotNull();
     }
 
@@ -132,6 +154,7 @@ class LoyaltyQueryServiceTest {
                 .thenReturn(List.of(a, b, peek));
         when(users.getActiveDisplayStates(any())).thenReturn(Map.of());
         var page = query.staffRequests(1L, 10L, RequestFilter.PENDING, null, 1);
+        assertThat(page).isNotNull();
         assertThat(page.getData()).isEmpty(); assertThat(page.getMeta().isHasNext()).isTrue();
         var position = cursor.decode(new LoyaltyCursorCodec.Context(LoyaltyCursorCodec.Stream.STAFF_PENDING, 1L, 10L),
                 page.getMeta().getNextCursor());
@@ -149,6 +172,7 @@ class LoyaltyQueryServiceTest {
         var a = request(1); var b = request(2); var c = request(3);
         when(requests.pendingFirstPage(any(), anyLong(), anyLong(), any(), any(), any())).thenReturn(List.of(a,b,c));
         var page = query.staffRequests(1L, 10L, RequestFilter.PENDING, null, 1);
+        assertThat(page).isNotNull();
         assertThat(page.getData()).extracting(r -> r.id()).containsExactly(a.getId());
         assertThat(page.getData().getFirst().canApprove()).isTrue();
         assertThat(cursor.decode(new LoyaltyCursorCodec.Context(LoyaltyCursorCodec.Stream.STAFF_PENDING, 1L, 10L),
@@ -159,6 +183,7 @@ class LoyaltyQueryServiceTest {
         when(requests.pendingFirstPage(any(), anyLong(), anyLong(), any(), any(), any())).thenReturn(List.of(request(1)));
         when(users.getActiveDisplayStates(any())).thenReturn(Map.of());
         var page = query.staffRequests(1L, 10L, RequestFilter.PENDING, null, 1);
+        assertThat(page).isNotNull();
         assertThat(page.getData()).isEmpty(); assertThat(page.getMeta().isHasNext()).isFalse();
         assertThat(page.getMeta().getNextCursor()).isNull();
     }
@@ -176,6 +201,7 @@ class LoyaltyQueryServiceTest {
         when(users.getActiveDisplayStates(any())).thenReturn(Map.of());
         when(locations.getTeamLocationStates(any())).thenReturn(Map.of());
         var value = query.myRequest(2L, row.getId());
+        assertThat(value).isNotNull();
         assertThat(value.applicantDisplayName()).isEqualTo("退会済み利用者");
         assertThat(value.locationName()).isEqualTo("利用終了した受付");
         assertThat(value.reason()).isEqualTo(RequestReason.LOCATION_INACTIVE);
@@ -196,6 +222,7 @@ class LoyaltyQueryServiceTest {
         when(requests.findByIdAndUserId(row.getId(),2L)).thenReturn(Optional.of(row));
         when(teams.getActiveStates(any())).thenReturn(Map.of());
         var value = query.myRequest(2L,row.getId());
+        assertThat(value).isNotNull();
         assertThat(value.status()).isEqualTo(RequestStatus.CANCELLED);
         assertThat(value.canApprove()).isFalse(); assertThat(value.canCancel()).isFalse();
     }

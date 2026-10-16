@@ -42,13 +42,17 @@ public class LoyaltyQueryExternalStates {
             return s != null && s.active() && s.regularMemberOrAbove();
         }
         public String teamName(Long id) {
-            var s = teams.get(id); return s != null && s.active() ? s.displayName() : "利用終了したチーム";
+            var s = teams.get(id);
+            return label(s != null && s.active() ? s.displayName() : null, "利用終了したチーム");
         }
         public String userName(Long id) {
-            var s = users.get(id); return s != null && s.active() ? s.displayName() : "退会済み利用者";
+            var s = users.get(id);
+            return label(s != null && s.active() ? s.displayName() : null, "退会済み利用者");
         }
         public String locationName(Long id) {
-            var s = locations.get(id); return s != null && s.active() ? s.name() : "利用終了した受付";
+            var s = locations.get(id);
+            return label(s != null && s.active() ? s.name() : null, "利用終了した受付");
         }
+        private String label(String value, String fallback) { return value == null || value.isBlank() ? fallback : value; }
     }
 }

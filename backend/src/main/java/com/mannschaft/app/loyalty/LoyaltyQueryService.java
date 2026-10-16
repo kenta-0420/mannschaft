@@ -60,6 +60,7 @@ public class LoyaltyQueryService {
     }
 
     private AccountDetail account(Long actor, Long team, boolean bootstrap) {
+        validateTeam(team);
         validate(actor, team);
         var own = reader.catalog(team, actor);
         var snapshot = external.read(Set.of(team), Set.of(actor), Set.of(), Set.of(new TeamUserKey(team, actor)));
@@ -93,8 +94,8 @@ public class LoyaltyQueryService {
         var snapshot = external.read(Set.of(team), Set.of(), Set.of(), Set.of());
         if (own.program() == null) return new OperationCatalog(team, snapshot.teamName(team), false,
                 null, SelfAwardMode.STAFF_APPROVAL, null, List.of());
-        return new OperationCatalog(team, snapshot.teamName(team), own.program().isEnabled() && snapshot.teamActive(team),
-                own.program().getVersion(), own.program().getSelfAwardMode(),
+        return mapper.operationCatalog(own.program(), team, snapshot.teamName(team),
+                own.program().isEnabled() && snapshot.teamActive(team),
                 own.rule() != null && own.rule().isActive() ? mapper.rule(own.rule()) : null,
                 own.rewards().stream().filter(r -> r.isActive()).map(mapper::reward).toList());
     }
@@ -104,8 +105,7 @@ public class LoyaltyQueryService {
         var own = reader.catalog(team, null);
         if (own.program() == null) return new ProgramSettings(null, team, false, Audience.MEMBERS_AND_ABOVE,
                 SelfAwardMode.STAFF_APPROVAL, null, List.of(), List.of());
-        return new ProgramSettings(own.program().getId(), team, own.program().isEnabled(),
-                own.program().getTargetAudience(), own.program().getSelfAwardMode(), own.program().getVersion(),
+        return mapper.programSettings(own.program(), team,
                 own.rule() == null ? List.of() : List.of(mapper.rule(own.rule())),
                 own.rewards().stream().map(mapper::reward).toList());
     }
@@ -137,12 +137,14 @@ public class LoyaltyQueryService {
     }
 
     public AwardRequestResponse staffRequest(Long actor, Long team, UUID request) {
+        validateTeam(team);
         validate(actor, team); validateRequest(request);
         var now = time.now(); var own = reader.staffRequest(team, request, now);
         return project(own.rows().getFirst(), actor, true, own, snapshot(own.rows()), now);
     }
 
     public int balance(Long team, Long user) {
+        validateTeam(team);
         validate(user, team);
         return reader.balance(team, user);
     }
@@ -204,6 +206,7 @@ public class LoyaltyQueryService {
     }
 
     private LoyaltyCursorCodec.Context context(LoyaltyCursorCodec.Stream stream, Long actor, Long team, int limit) {
+        if (stream != LoyaltyCursorCodec.Stream.ACCOUNTS && stream != LoyaltyCursorCodec.Stream.MY_REQUESTS) validateTeam(team);
         validate(actor, team);
         if (limit < 1 || limit > 100) throw new BusinessException(CommonErrorCode.COMMON_001);
         return new LoyaltyCursorCodec.Context(stream, actor, team);
