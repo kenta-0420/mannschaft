@@ -7,6 +7,8 @@ import com.mannschaft.app.auth.dto.SystemAdminUserSummaryResponse;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.organization.SystemAdminOrganizationSummaryMapper;
 import com.mannschaft.app.organization.dto.SystemAdminOrganizationSummaryResponse;
@@ -98,6 +100,8 @@ public class SystemAdminDashboardController {
     }
 
     /** 復元する削除済みチームだけを固定順・ページ単位で取得する。 */
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "SYSTEM_ADMINによる削除済みチームの復元管理をGate状態にかかわらず継続するため")
     @GetMapping("/teams/deleted")
     @Operation(summary = "削除済みチームの復元対象一覧取得",
             description = "削除日時・IDの降順に固定してDBページングする。size上限は100。外部sort指定は無視する。")

@@ -24,7 +24,7 @@ HTTP|com.mannschaft.app.admin.controller.SystemAdminAnnouncementController|5|5
 HTTP|com.mannschaft.app.admin.controller.SystemAdminBatchController|3|3
 HTTP|com.mannschaft.app.admin.controller.SystemAdminBatchLogController|1|1
 HTTP|com.mannschaft.app.admin.controller.SystemAdminBetaRestrictionController|2|2
-HTTP|com.mannschaft.app.admin.controller.SystemAdminDashboardController|6|6
+HTTP|com.mannschaft.app.admin.controller.SystemAdminDashboardController|6|7
 HTTP|com.mannschaft.app.admin.controller.SystemAdminEmailOutboxController|5|5
 HTTP|com.mannschaft.app.admin.controller.SystemAdminFeatureFlagController|0|2
 HTTP|com.mannschaft.app.admin.controller.SystemAdminFeedbackController|3|3
