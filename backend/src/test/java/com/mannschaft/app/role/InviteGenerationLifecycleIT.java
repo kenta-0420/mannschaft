@@ -1,0 +1,216 @@
+package com.mannschaft.app.role;
+
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.entity.MembershipEntity;
+import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.role.entity.PermissionGroupEntity;
+import com.mannschaft.app.role.entity.UserPermissionGroupEntity;
+import com.mannschaft.app.role.repository.PermissionGroupRepository;
+import com.mannschaft.app.role.repository.UserPermissionGroupRepository;
+import com.mannschaft.app.role.batch.InviteTokenClosureCleanupBatch;
+import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
+import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
+import com.mannschaft.app.team.service.TeamService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.jdbc.core.ConnectionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/** 実archive入口と、イベント未配送を実SQLで作る回復経路の試練。 */
+@EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
+@ExtendWith(OutputCaptureExtension.class)
+class InviteGenerationLifecycleIT extends InviteGenerationItSupport {
+    @Autowired private TeamService teamService;
+    @Autowired private OrganizationService organizationService;
+    @Autowired private TeamOrgMembershipRepository affiliations;
+    @Autowired private InviteTokenClosureCleanupBatch recovery;
+    @Autowired private MembershipRepository memberships;
+    @Autowired private PermissionGroupRepository permissionGroups;
+    @Autowired private UserPermissionGroupRepository userPermissionGroups;
+    private final List<Long> ownedAffiliations = new ArrayList<>();
+    private final List<Long> ownedPermissionGroups = new ArrayList<>();
+
+    @ParameterizedTest
+    @ValueSource(strings = {"TEAM", "ORGANIZATION"})
+    @DisplayName("G12: 1scopeの実DB失効失敗は他scopeを止めず、次batchで取り直す")
+    void recoveryContinuesAfterDatabaseFailureAndRepairsOnNextRun(String type, CapturedOutput output) {
+        assertThat(MYSQL.isRunning()).as("一時triggerは起動中のTestcontainersだけに作成する").isTrue();
+        assertThat(jdbc.execute((ConnectionCallback<String>) connection -> connection.getMetaData().getURL()))
+                .isEqualTo(MYSQL.getJdbcUrl());
+        assertThat(jdbc.queryForObject("SELECT DATABASE()", String.class)).isEqualTo(MYSQL.getDatabaseName());
+        Scope failing = scope(type);
+        Scope other = scope(type);
+        var blockedToken = token(failing, 0);
+        var otherToken = token(other, 0);
+        var sameGeneration = token(failing, 1);
+        for (Scope scope : List.of(failing, other)) {
+            jdbc.update("UPDATE " + scope.table() + " SET closure_generation = 1 WHERE id = ?", scope.id());
+        }
+        String triggerName = "it_invite_revoke_failure_" + blockedToken.getId();
+        // ユーザー裁可の試験例外: Beanの動作を置換せず、所有tokenだけ実DBエラーを発生させる。
+        // Testcontainers専用schema内で作成しfinallyで必ず破棄する。通常fixtureはEntity/Repositoryのまま。
+        jdbc.execute("CREATE TRIGGER " + triggerName + " BEFORE UPDATE ON invite_tokens FOR EACH ROW BEGIN "
+                + "IF OLD.id = " + blockedToken.getId() + " AND NEW.revoked_at IS NOT NULL THEN "
+                + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'owned invite cleanup failure'; END IF; END");
+        try {
+            recovery.cleanUp();
+            assertThat(tokens.findById(blockedToken.getId()).orElseThrow().getRevokedAt()).isNull();
+            assertThat(tokens.findById(otherToken.getId()).orElseThrow().getRevokedAt()).isNotNull();
+            assertThat(output.getAll()).contains("scopeId=" + failing.id());
+        } finally {
+            jdbc.execute("DROP TRIGGER IF EXISTS " + triggerName);
+        }
+
+        recovery.cleanUp();
+        assertThat(tokens.findById(blockedToken.getId()).orElseThrow().getRevokedAt()).isNotNull();
+        assertThat(tokens.findById(sameGeneration.getId()).orElseThrow().getRevokedAt()).isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"TEAM", "ORGANIZATION"})
+    @DisplayName("G18: 休止・失効・解除は既存在籍/権限ロール/権限groupの全列を変更しない")
+    void closureAndRecoveryKeepExistingMembershipRoleAndPermissionGroup(String type) {
+        Scope scope = scope(type);
+        Long member = actorWithRole(scope, "DEPUTY_ADMIN", 3);
+        inTx(() -> {
+            memberships.saveAndFlush(MembershipEntity.builder().userId(member).scopeType(ScopeType.valueOf(type))
+                    .scopeId(scope.id()).roleKind(RoleKind.MEMBER).joinedAt(LocalDateTime.of(2026, 1, 1, 0, 0)).build());
+            var builder = PermissionGroupEntity.builder().name("世代試練権限")
+                    .targetRole(PermissionGroupEntity.TargetRole.DEPUTY_ADMIN).createdBy(member);
+            if (type.equals("TEAM")) {
+                builder.teamId(scope.id());
+            } else {
+                builder.organizationId(scope.id());
+            }
+            Long group = permissionGroups.saveAndFlush(builder.build()).getId();
+            ownedPermissionGroups.add(group);
+            userPermissionGroups.saveAndFlush(UserPermissionGroupEntity.builder().userId(member).groupId(group).assignedBy(member).build());
+            return null;
+        });
+        var tables = List.of("memberships", "user_roles", "user_permission_groups");
+        var before = tables.stream().map(table -> jdbc.queryForList("SELECT * FROM " + table + " WHERE user_id = ? ORDER BY id", member)).toList();
+        assertThat(before).allSatisfy(rows -> assertThat(rows).isNotEmpty());
+        token(scope, 0);
+
+        archive(scope, false);
+        recovery.cleanUp();
+        if (type.equals("TEAM")) {
+            teamService.unarchiveTeam(scope.id());
+        } else {
+            organizationService.unarchiveOrganization(scope.id());
+        }
+        recovery.cleanUp();
+
+        var after = tables.stream().map(table -> jdbc.queryForList("SELECT * FROM " + table + " WHERE user_id = ? ORDER BY id", member)).toList();
+        assertThat(after).isEqualTo(before);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"TEAM,false", "TEAM,true", "ORGANIZATION,false", "ORGANIZATION,true"})
+    @DisplayName("G12: イベント未配送の閉鎖/解除後でも回復batchが旧世代だけを失効する")
+    void recoveryRepairsMissingEventWithoutRevokingNewGeneration(String type, boolean reopened) {
+        Scope scope = scope(type);
+        var old = token(scope, 0);
+        // listener未配送を作るためだけの直接UPDATE。実archive経路は別の試練で通す。
+        jdbc.update("UPDATE " + scope.table() + " SET closure_generation = 1, archived_at = "
+                + (reopened ? "NULL" : "UTC_TIMESTAMP()") + " WHERE id = ?", scope.id());
+        var current = reopened ? token(scope, 1) : null;
+
+        recovery.cleanUp();
+
+        var revokedAt = tokens.findById(old.getId()).orElseThrow().getRevokedAt();
+        assertThat(revokedAt).isNotNull();
+        recovery.cleanUp();
+        assertThat(tokens.findById(old.getId()).orElseThrow().getRevokedAt()).isEqualTo(revokedAt);
+        if (current != null) {
+            assertThat(tokens.findById(current.getId()).orElseThrow().getRevokedAt()).isNull();
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"TEAM", "ORGANIZATION"})
+    @DisplayName("G13: 実archiveがrollbackした場合は世代もtokenも変更しない")
+    void rollbackDoesNotDeliverClosureCleanup(String type) {
+        Scope scope = scope(type);
+        var old = token(scope, 0);
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            archive(scope, false);
+            status.setRollbackOnly();
+        });
+
+        assertThat(jdbc.queryForObject("SELECT closure_generation FROM " + scope.table() + " WHERE id = ?", Long.class, scope.id())).isZero();
+        assertThat(jdbc.queryForObject("SELECT archived_at FROM " + scope.table() + " WHERE id = ?", LocalDateTime.class, scope.id())).isNull();
+        assertThat(tokens.findById(old.getId()).orElseThrow().getRevokedAt()).isNull();
+    }
+
+    @ParameterizedTest
+    @CsvSource({"TEAM,false", "TEAM,true", "ORGANIZATION,false"})
+    @DisplayName("実archiveの全サービス入口はcommit後にそのscopeの旧tokenを失効する")
+    void committedArchiveDeliversTokenCleanup(String type, boolean deferred) {
+        Scope scope = scope(type);
+        var old = token(scope, 0);
+
+        archive(scope, deferred);
+
+        assertThat(jdbc.queryForObject("SELECT closure_generation FROM " + scope.table() + " WHERE id = ?", Long.class, scope.id())).isEqualTo(1);
+        assertThat(tokens.findById(old.getId()).orElseThrow().getRevokedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("G16/G17: 組織休止は所属teamの状態/世代/tokenとACTIVE加盟を変更しない")
+    void organizationClosureDoesNotPropagateToAffiliatedTeam() {
+        Scope org = scope("ORGANIZATION");
+        Scope team = scope("TEAM");
+        var teamToken = token(team, 0);
+        Long affiliation = inTx(() -> affiliations.saveAndFlush(TeamOrgMembershipEntity.builder()
+                .teamId(team.id()).organizationId(org.id()).status(TeamOrgMembershipEntity.Status.ACTIVE)
+                .invitedAt(LocalDateTime.of(2026, 1, 1, 0, 0)).build()).getId());
+        ownedAffiliations.add(affiliation);
+        var before = jdbc.queryForMap("SELECT * FROM team_org_memberships WHERE id = ?", affiliation);
+
+        organizationService.archiveOrganization(org.id());
+
+        assertThat(jdbc.queryForObject("SELECT archived_at FROM teams WHERE id = ?", LocalDateTime.class, team.id())).isNull();
+        assertThat(jdbc.queryForObject("SELECT closure_generation FROM teams WHERE id = ?", Long.class, team.id())).isZero();
+        assertThat(tokens.findById(teamToken.getId()).orElseThrow().getRevokedAt()).isNull();
+        assertThat(jdbc.queryForMap("SELECT * FROM team_org_memberships WHERE id = ?", affiliation)).isEqualTo(before);
+    }
+
+    private void archive(Scope scope, boolean deferred) {
+        if ("ORGANIZATION".equals(scope.type())) {
+            organizationService.archiveOrganization(scope.id());
+        } else if (deferred) {
+            teamService.archiveTeamDeferringAffiliationCleanup(scope.id());
+        } else {
+            teamService.archiveTeam(scope.id());
+        }
+    }
+
+    @AfterEach
+    void removeOwnedAffiliations() {
+        for (Long id : ownedAffiliations) {
+            jdbc.update("DELETE FROM team_org_memberships WHERE id = ?", id);
+        }
+        for (Long group : ownedPermissionGroups) {
+            jdbc.update("DELETE FROM user_permission_groups WHERE group_id = ?", group);
+            jdbc.update("DELETE FROM permission_groups WHERE id = ?", group);
+        }
+    }
+}
