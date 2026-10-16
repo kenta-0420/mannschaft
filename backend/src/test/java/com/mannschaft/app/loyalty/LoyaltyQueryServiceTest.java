@@ -64,7 +64,7 @@ class LoyaltyQueryServiceTest {
                 new AccessControlService.TeamMembershipState(true, true)));
     }
 
-    @Test void 既存口座は退会後も匿名チーム名で読め特典交換に在籍条件を課さない() {
+    @Test void 既存口座は退会後も匿名チーム名で読める() {
         when(accounts.findByTeamIdAndUserId(10L, 1L)).thenReturn(Optional.of(account(100)));
         when(teams.getActiveStates(any())).thenReturn(Map.of());
         when(memberships.getTeamMembershipStates(any())).thenReturn(Map.of());
@@ -208,6 +208,119 @@ class LoyaltyQueryServiceTest {
         assertThatThrownBy(() -> query.listAccounts(1L,null,0)).isInstanceOf(BusinessException.class);
         assertThatThrownBy(() -> query.listAccounts(1L,null,101)).isInstanceOf(BusinessException.class);
         verifyNoInteractions(accounts, requests);
+    }
+
+    @Test void 現在表示名がnull空でも保存PIIへ戻さず必須文字列を返す() {
+        var row = request(1);
+        when(requests.findByIdAndUserId(row.getId(), 2L)).thenReturn(Optional.of(row));
+        when(teams.getActiveStates(any())).thenReturn(Map.of(10L, new TeamService.ActiveState(true, null)));
+        when(users.getActiveDisplayStates(any())).thenReturn(Map.of(2L, new UserService.ActiveDisplayState(true, " ")));
+        when(locations.getTeamLocationStates(any())).thenReturn(Map.of(20L,
+                new CheckinLocationService.TeamLocationState(true,10L,null)));
+        var value = query.myRequest(2L,row.getId());
+        assertThat(value).isNotNull();
+        assertThat(value.teamName()).isEqualTo("利用終了したチーム");
+        assertThat(value.applicantDisplayName()).isEqualTo("退会済み利用者");
+        assertThat(value.locationName()).isEqualTo("利用終了した受付");
+    }
+
+    @Test void TEAM必須入口はnullを未関係ゼロや既定設定として返さない() {
+        assertThatThrownBy(() -> query.account(1L,null)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> query.transactions(1L,null,null,10)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> query.staffRequests(1L,null,RequestFilter.ALL,null,10)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> query.staffRequest(1L,null,new UUID(0,1))).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> query.balance(null,1L)).isInstanceOf(BusinessException.class);
+        verifyNoInteractions(accounts, requests);
+    }
+
+    @Test void 特典進捗は在籍資格で交換を抑止せず不足をゼロ下限にする() {
+        when(accounts.findByTeamIdAndUserId(10L,1L)).thenReturn(Optional.of(account(100)));
+        when(memberships.getTeamMembershipStates(any())).thenReturn(Map.of());
+        when(rewards.findByTeamIdOrderById(10L)).thenReturn(List.of(
+                reward(1,80,true),reward(2,150,true),reward(3,10,false)));
+        var value = query.account(1L,10L);
+        assertThat(value).isNotNull(); assertThat(value.isEligibleForAward()).isFalse();
+        assertThat(value.rewards()).hasSize(2);
+        assertThat(value.rewards().getFirst().remainingPoints()).isZero();
+        assertThat(value.rewards().getFirst().canRedeem()).isTrue();
+        assertThat(value.rewards().getLast().remainingPoints()).isEqualTo(50);
+        assertThat(value.rewards().getLast().canRedeem()).isFalse();
+    }
+
+    @Test void 設定は停止特典も返し操作カタログは有効特典だけ返す() {
+        when(rewards.findByTeamIdOrderById(10L)).thenReturn(List.of(reward(1,80,true),reward(2,150,false)));
+        assertThat(query.settings(10L).rewards()).hasSize(2);
+        assertThat(query.operationCatalog(10L).rewards()).hasSize(1);
+        when(programs.findByTeamId(10L)).thenReturn(Optional.empty());
+        var absent = query.operationCatalog(10L);
+        assertThat(absent).isNotNull(); assertThat(absent.rule()).isNull();
+        assertThat(absent.programVersion()).isNull(); assertThat(absent.rewards()).isEmpty();
+    }
+
+    @Test void 取引は本人TEAMと降順cursorへ束縛し確定時ラベルを保持する() {
+        when(accounts.findByTeamIdAndUserId(10L,1L)).thenReturn(Optional.of(account(100)));
+        var first = LoyaltyTransactionEntity.builder().id(new UUID(0,3)).teamId(10L).userId(1L)
+                .label("当時の特典名").kind(TransactionKind.REDEEM).build();
+        var peek = LoyaltyTransactionEntity.builder().id(new UUID(0,2)).teamId(10L).userId(1L).build();
+        when(transactions.firstPage(eq(10L),eq(1L),any())).thenReturn(List.of(first,peek));
+        var page = query.transactions(1L,10L,null,1);
+        assertThat(page).isNotNull(); assertThat(page.getData().getFirst().label()).isEqualTo("当時の特典名");
+        var next = page.getMeta().getNextCursor(); assertThat(next).isNotBlank();
+        query.transactions(1L,10L,next,1);
+        verify(transactions).firstPage(eq(10L),eq(1L),argThat(p -> p.getPageSize()==2));
+        verify(transactions).nextPage(eq(10L),eq(1L),eq(first.getId()),any());
+        assertThatThrownBy(() -> query.transactions(1L,11L,next,1)).isInstanceOf(BusinessException.class);
+    }
+
+    @Test void 本人申請一覧は除外せず投影し本人取消だけ許す() {
+        var first = request(3); var peek = request(2);
+        when(requests.myFirstPage(eq(2L),any())).thenReturn(List.of(first,peek));
+        var page = query.myRequests(2L,null,1);
+        assertThat(page).isNotNull(); assertThat(page.getData()).hasSize(1);
+        assertThat(page.getData().getFirst().canApprove()).isFalse();
+        assertThat(page.getData().getFirst().canCancel()).isTrue();
+        query.myRequests(2L,page.getMeta().getNextCursor(),1);
+        verify(requests).myNextPage(eq(2L),eq(first.getId()),any());
+    }
+
+    @Test void 日次と残高snapshotは申請者の組だけで投影しGETを保存しない() {
+        var row = request(1);
+        when(requests.findByIdAndTeamId(row.getId(),10L)).thenReturn(Optional.of(row));
+        when(accounts.findByTeamIdInAndUserIdIn(any(),any())).thenReturn(List.of(
+                LoyaltyAccountEntity.builder().teamId(10L).userId(2L).balance(Integer.MAX_VALUE).build()));
+        assertThat(query.staffRequest(1L,10L,row.getId()).reason()).isEqualTo(RequestReason.POINT_LIMIT);
+        var other = LoyaltyTransactionEntity.builder().teamId(10L).userId(99L).ruleId(row.getRuleId())
+                .awardOn(row.getAwardOn()).build();
+        when(transactions.findByTeamIdInAndUserIdInAndAwardOn(any(),any(),any())).thenReturn(List.of(other));
+        assertThat(query.staffRequest(1L,10L,row.getId()).reason()).isEqualTo(RequestReason.POINT_LIMIT);
+        var own = LoyaltyTransactionEntity.builder().teamId(10L).userId(2L).ruleId(row.getRuleId())
+                .awardOn(row.getAwardOn()).build();
+        when(transactions.findByTeamIdInAndUserIdInAndAwardOn(any(),any(),any())).thenReturn(List.of(own));
+        assertThat(query.staffRequest(1L,10L,row.getId()).reason()).isEqualTo(RequestReason.DAILY_AWARDED);
+        assertThat(row.getStatus()).isEqualTo(RequestStatus.PENDING);
+        verify(requests,never()).save(any());
+    }
+
+    @Test void 空ページでは外部照会せずpreview残高は本人TEAMだけ読む() {
+        var page = query.listAccounts(1L,null,100);
+        assertThat(page).isNotNull(); assertThat(page.getData()).isEmpty();
+        assertThat(page.getMeta().isHasNext()).isFalse();
+        verifyNoInteractions(teams,users,locations,memberships);
+        assertThat(query.balance(10L,1L)).isZero();
+        when(accounts.findByTeamIdAndUserId(10L,1L)).thenReturn(Optional.of(account(123)));
+        assertThat(query.balance(10L,1L)).isEqualTo(123);
+    }
+
+    @Test void 公開snapshot障害を有効PENDINGや匿名表示で隠さない() {
+        var row = request(1); when(requests.findByIdAndUserId(row.getId(),2L)).thenReturn(Optional.of(row));
+        when(users.getActiveDisplayStates(any())).thenThrow(new IllegalStateException("test outage"));
+        assertThatThrownBy(() -> query.myRequest(2L,row.getId())).isInstanceOf(IllegalStateException.class);
+        verify(requests,never()).save(any());
+    }
+
+    private LoyaltyRewardEntity reward(int id, int points, boolean active) {
+        return LoyaltyRewardEntity.builder().id(new UUID(0,id)).teamId(10L).name("特典"+id)
+                .requiredPoints(points).isActive(active).version(1).build();
     }
 
     private LoyaltyProgramEntity program() { return LoyaltyProgramEntity.builder().teamId(10L).isEnabled(true)
