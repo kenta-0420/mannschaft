@@ -6,6 +6,7 @@ import com.mannschaft.app.auth.SystemAdminUserSummaryMapper;
 import com.mannschaft.app.auth.dto.SystemAdminUserSummaryResponse;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.organization.SystemAdminOrganizationSummaryMapper;
 import com.mannschaft.app.organization.dto.SystemAdminOrganizationSummaryResponse;
@@ -13,7 +14,9 @@ import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.team.SystemAdminTeamSummaryMapper;
 import com.mannschaft.app.team.dto.SystemAdminTeamSummaryResponse;
+import com.mannschaft.app.team.dto.DeletedTeamSummaryResponse;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +54,7 @@ public class SystemAdminDashboardController {
     private final SystemAdminDashboardService dashboardService;
     private final OrganizationRepository organizationRepository;
     private final TeamRepository teamRepository;
+    private final TeamService teamService;
     private final UserRepository userRepository;
     private final OrganizationService organizationService;
     private final SystemAdminUserSummaryMapper userSummaryMapper;
@@ -90,6 +94,14 @@ public class SystemAdminDashboardController {
         Page<SystemAdminTeamSummaryResponse> page =
                 teamRepository.findAll(pageable).map(teamSummaryMapper::toSummary);
         return ResponseEntity.ok(ApiResponse.of(page));
+    }
+
+    /** 復元する削除済みチームだけを固定順・ページ単位で取得する。 */
+    @GetMapping("/teams/deleted")
+    @Operation(summary = "削除済みチームの復元対象一覧取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<PagedResponse<DeletedTeamSummaryResponse>> getDeletedTeams(Pageable pageable) {
+        return ResponseEntity.ok(teamService.getDeletedTeamsForSystemAdmin(pageable));
     }
 
     /**

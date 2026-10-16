@@ -22,6 +22,11 @@ import java.util.stream.Collectors;
 public interface TeamRepository
         extends JpaRepository<TeamEntity, Long>, JpaSpecificationExecutor<TeamEntity> {
 
+    /** SYS認可済み復元一覧専用。論理削除を含むnative Entity変換とDBページングを使う。 */
+    @Query(value = "SELECT * FROM teams WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC, id DESC",
+            countQuery = "SELECT COUNT(*) FROM teams WHERE deleted_at IS NOT NULL", nativeQuery = true)
+    Page<TeamEntity> findDeletedTeamsForSystemAdmin(Pageable pageable);
+
     /**
      * カスタムスラッグでチームを取得する（URL識別子）。
      *

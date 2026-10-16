@@ -20,6 +20,7 @@ import com.mannschaft.app.team.entity.TeamSlugHistoryEntity;
 import com.mannschaft.app.common.dto.SlugAvailabilityResponse;
 import com.mannschaft.app.common.dto.SlugResolveResponse;
 import com.mannschaft.app.team.TeamErrorCode;
+import com.mannschaft.app.team.SystemAdminTeamSummaryMapper;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
@@ -46,6 +47,7 @@ import com.mannschaft.app.common.util.SlugValidator;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.team.dto.CreateTeamRequest;
+import com.mannschaft.app.team.dto.DeletedTeamSummaryResponse;
 import com.mannschaft.app.team.dto.TeamPublicDetailResponse;
 import com.mannschaft.app.team.dto.TeamResponse;
 import com.mannschaft.app.team.dto.TeamSummaryResponse;
@@ -69,6 +71,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -83,6 +86,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TeamService {
 
     private final TeamRepository teamRepository;
+    private final SystemAdminTeamSummaryMapper systemAdminTeamSummaryMapper;
     private final TeamSlugHistoryRepository teamSlugHistoryRepository;
     private final TeamBlockRepository teamBlockRepository;
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
@@ -103,6 +107,16 @@ public class TeamService {
     private final AdminRoleMutationLockService adminRoleMutationLockService;
     private final DuplicateNameGuardService duplicateNameGuardService;
     private final TeamOrgLifecycleCleanupService teamOrgLifecycleCleanupService;
+
+    /** SYSパス認可後の復元対象一覧。外部sortは破棄し、削除日時・IDの固定順だけを使う。 */
+    public PagedResponse<DeletedTeamSummaryResponse> getDeletedTeamsForSystemAdmin(Pageable pageable) {
+        var fixedPage = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+        var result = teamRepository.findDeletedTeamsForSystemAdmin(fixedPage)
+                .map(systemAdminTeamSummaryMapper::toDeletedSummary);
+        var meta = new PagedResponse.PageMeta(result.getTotalElements(), result.getNumber(),
+                result.getSize(), result.getTotalPages());
+        return PagedResponse.of(result.getContent(), meta);
+    }
 
     /**
      * チームを作成し、作成者をADMINロールで紐付ける。

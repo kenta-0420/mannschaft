@@ -32,9 +32,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -334,6 +337,125 @@ class TeamRestoreSecurityFilterContractIT extends AbstractMySqlIntegrationTest {
     private void awaitEventPool() {
         await().atMost(Duration.ofSeconds(15)).until(() -> eventPool.getActiveCount() == 0
                 && eventPool.getThreadPoolExecutor().getQueue().isEmpty());
+    }
+
+    private static final String DELETED_TEAMS = "/api/v1/system-admin/dashboard/teams/deleted";
+
+    @Test
+    void 削除済チーム一覧はJWT無しを401で拒否する() throws Exception {
+        saveDeletedTeam("MEMBERS_AND_ABOVE", "ACTIVE", "2036-01-01 00:00:00");
+        mockMvc.perform(get(DELETED_TEAMS)).andExpect(status().isUnauthorized());
+    }
+
+    @ParameterizedTest
+    @EnumSource(NonSystemActor.class)
+    void 削除済チーム一覧は非SYSに内容を返さず403にする(NonSystemActor actor) throws Exception {
+        saveDeletedTeam("MEMBERS_AND_ABOVE", "PROVISIONED", "2036-01-01 00:00:00");
+        Long userId = switch (actor) {
+            case TEAM_ADMIN -> adminAId;
+            case OTHER_TEAM_ADMIN -> adminBId;
+            case MEMBER -> memberAId;
+            case OUTSIDER -> outsiderId;
+        };
+        mockMvc.perform(get(DELETED_TEAMS).header("Authorization", bearer(userId)))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    void SYSの削除済一覧は公開非公開と利用状態を問わず専用4項目だけ返す() throws Exception {
+        List<Long> ids = new ArrayList<>();
+        for (String visibility : List.of("PUBLIC", "MEMBERS_AND_ABOVE")) {
+            for (String lifecycle : List.of("ACTIVE", "PROVISIONED")) {
+                ids.add(saveDeletedTeam(visibility, lifecycle, "2036-01-01 00:00:00"));
+            }
+        }
+        var response = deletedTeams(0, 20, null);
+        assertThat(response.path("meta").path("total").asInt()).isEqualTo(4);
+        assertThat(response.path("data").size()).isEqualTo(4);
+        Set<String> returnedSlugs = new HashSet<>();
+        for (var row : response.path("data")) {
+            Set<String> fields = new HashSet<>();
+            row.fieldNames().forEachRemaining(fields::add);
+            assertThat(fields).containsExactlyInAnyOrder("name", "slug", "deletedAt", "lifecycleStatus");
+            assertThat(row.path("name").asText()).isEqualTo("実Filter復元契約チーム");
+            assertThat(row.path("lifecycleStatus").asText()).isIn("ACTIVE", "PROVISIONED");
+            returnedSlugs.add(row.path("slug").asText());
+            Instant expected = inTransaction(() -> teamRepository.findByIdIncludingDeleted(ids.getFirst())
+                    .orElseThrow().getDeletedAt()
+                    .atZone(com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant());
+            assertThat(Instant.parse(row.path("deletedAt").asText())).isEqualTo(expected);
+        }
+        Set<String> expectedSlugs = inTransaction(() -> {
+            Set<String> slugs = new HashSet<>();
+            for (Long id : ids) slugs.add(teamRepository.findByIdIncludingDeleted(id).orElseThrow().getSlug());
+            return slugs;
+        });
+        assertThat(returnedSlugs).isEqualTo(expectedSlugs).doesNotContain(teamASlug);
+    }
+
+    @Test
+    void 削除済一覧は空と固定順の各頁と範囲外を返し外部sortを無視する() throws Exception {
+        var empty = deletedTeams(0, 2, null);
+        assertThat(empty.path("data").size()).isZero();
+        assertThat(empty.path("meta").path("total").asInt()).isZero();
+        List<String> slugs = new ArrayList<>();
+        for (String timestamp : List.of("2036-01-01 00:00:00", "2036-01-02 00:00:00",
+                "2036-01-02 00:00:00", "2036-01-03 00:00:00")) {
+            Long id = saveDeletedTeam("PUBLIC", "ACTIVE", timestamp);
+            slugs.add(inTransaction(() -> teamRepository.findByIdIncludingDeleted(id).orElseThrow().getSlug()));
+        }
+        var first = deletedTeams(0, 2, "name,asc");
+        assertThat(first.path("data").get(0).path("slug").asText()).isEqualTo(slugs.get(3));
+        assertThat(first.path("data").get(1).path("slug").asText()).isEqualTo(slugs.get(2));
+        assertThat(first.path("meta").path("totalPages").asInt()).isEqualTo(2);
+        assertThat(first.path("meta").path("size").asInt()).isEqualTo(2);
+        var next = deletedTeams(1, 2, "untrusted_sql_expression,desc");
+        assertThat(next.path("meta").path("page").asInt()).isEqualTo(1);
+        assertThat(next.path("data").get(0).path("slug").asText()).isEqualTo(slugs.get(1));
+        assertThat(next.path("data").get(1).path("slug").asText()).isEqualTo(slugs.get(0));
+        assertThat(deletedTeams(2, 2, null).path("data").size()).isZero();
+    }
+
+    @Test
+    void 削除済一覧のsizeは共通上限100で丸める() throws Exception {
+        for (int i = 0; i < 101; i++) saveDeletedTeam("PUBLIC", "ACTIVE", "2036-01-01 00:00:00");
+        for (int size : List.of(100, 101)) {
+            var response = deletedTeams(0, size, null);
+            assertThat(response.path("data").size()).isEqualTo(100);
+            assertThat(response.path("meta").path("size").asInt()).isEqualTo(100);
+            assertThat(response.path("meta").path("total").asInt()).isEqualTo(101);
+            assertThat(response.path("meta").path("totalPages").asInt()).isEqualTo(2);
+        }
+    }
+
+    @Test
+    void 一覧から復元したチームは一覧の再取得でも消える() throws Exception {
+        Long id = saveDeletedTeam("PUBLIC", "ACTIVE", "2036-01-01 00:00:00");
+        String slug = inTransaction(() -> teamRepository.findByIdIncludingDeleted(id).orElseThrow().getSlug());
+        assertThat(deletedTeams(0, 20, null).path("data").size()).isEqualTo(1);
+        mockMvc.perform(patch("/api/v1/teams/{slug}/restore", slug).header("Authorization", bearer(systemAdminId)))
+                .andExpect(status().isNoContent());
+        assertThat(deletedTeams(0, 20, null).path("data").size()).isZero();
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode deletedTeams(int page, int size, String sort) throws Exception {
+        var request = get(DELETED_TEAMS).header("Authorization", bearer(systemAdminId))
+                .param("page", String.valueOf(page)).param("size", String.valueOf(size));
+        if (sort != null) request.param("sort", sort);
+        var response = mockMvc.perform(request).andExpect(status().isOk()).andReturn().getResponse();
+        return objectMapper.readTree(response.getContentAsString());
+    }
+
+    private Long saveDeletedTeam(String visibility, String lifecycle, String utcDeletedAt) {
+        return inTransaction(() -> {
+            Long id = saveTeam();
+            // fixture文字列はDB格納基準UTCの壁時計。JSTのLocalDateTimeをnative SQLへ束縛しない。
+            em.createNativeQuery("UPDATE teams SET visibility = :visibility, lifecycle_status = :lifecycle, "
+                            + "deleted_at = :deletedAt WHERE id = :id")
+                    .setParameter("visibility", visibility).setParameter("lifecycle", lifecycle)
+                    .setParameter("deletedAt", utcDeletedAt).setParameter("id", id).executeUpdate();
+            return id;
+        });
     }
 
     private void assertNoRestoreAudit() {
