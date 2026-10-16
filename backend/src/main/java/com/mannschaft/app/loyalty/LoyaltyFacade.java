@@ -37,6 +37,8 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class LoyaltyFacade {
+    static UUID idempotencyKey(String raw) { return null; }
+
     public CursorPagedResponse<AccountSummary> listAccounts(Long actor, String cursor, int limit) { return null; }
     public AccountDetail account(Long actor, Long team) { return null; }
     public CursorPagedResponse<TransactionResponse> transactions(Long actor, Long team, String cursor, int limit) { return null; }
