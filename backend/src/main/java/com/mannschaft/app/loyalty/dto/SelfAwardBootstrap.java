@@ -6,6 +6,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 /** チームポイントの業務契約。 */
 @Schema(name = "LoyaltySelfAwardBootstrap")
 public record SelfAwardBootstrap(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         SelfAwardPreview preview,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         AccountDetail account) {
 }

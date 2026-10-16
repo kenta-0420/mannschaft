@@ -10,12 +10,20 @@ import java.util.UUID;
 /** チームポイントの業務契約。 */
 @Schema(name = "LoyaltyProgramSettings")
 public record ProgramSettings(
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         UUID id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         Long teamId,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         boolean isEnabled,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         Audience targetAudience,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         SelfAwardMode selfAwardMode,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         Long version,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         List<RuleResponse> rules,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         List<RewardResponse> rewards) {
 }

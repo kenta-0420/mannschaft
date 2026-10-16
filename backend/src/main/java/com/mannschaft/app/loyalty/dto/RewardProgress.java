@@ -7,12 +7,20 @@ import java.util.UUID;
 /** チームポイントの業務契約。 */
 @Schema(name = "LoyaltyRewardProgress")
 public record RewardProgress(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         UUID id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         String name,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         String description,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         int requiredPoints,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         boolean isActive,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         long version,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         int remainingPoints,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         boolean canRedeem) {
 }
