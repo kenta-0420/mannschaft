@@ -2139,3 +2139,44 @@ com.mannschaft.app.reflection.RecallSessionCommandType#START
 com.mannschaft.app.reflection.RecallSessionCommandType#ANSWERS
 com.mannschaft.app.reflection.RecallSessionCommandType#COMPLETE
 com.mannschaft.app.reflection.RecallSessionCommandType#CANCEL
+# F18.1: 新設 team_loyalty_* 6表だけへ保存する36定数（設計§10）。既存表への値追加なし。
+# programs: Audience/target_audience, SelfAwardMode/self_award_mode; rules: Frequency/frequency。
+# transactions: TransactionKind/kind, TransactionChannel/channel, RequestOperation/operation。
+# award_requests: RequestStatus/status, RequestReason/terminal_reason, RequestOperation/action_operation。
+# 新表を読まない旧アプリと共存可能。書込開始は6表migration適用と新API配置の後。
+com.mannschaft.app.loyalty.Audience#ALL_AUTHENTICATED
+com.mannschaft.app.loyalty.Audience#MEMBERS_AND_ABOVE
+com.mannschaft.app.loyalty.Audience#SUPPORTERS_AND_ABOVE
+com.mannschaft.app.loyalty.SelfAwardMode#AUTO
+com.mannschaft.app.loyalty.SelfAwardMode#STAFF_APPROVAL
+com.mannschaft.app.loyalty.Frequency#EACH_STAFF_CONFIRMATION
+com.mannschaft.app.loyalty.Frequency#ONCE_PER_JST_DAY
+com.mannschaft.app.loyalty.RequestStatus#APPROVED
+com.mannschaft.app.loyalty.RequestStatus#CANCELLED
+com.mannschaft.app.loyalty.RequestStatus#EXPIRED
+com.mannschaft.app.loyalty.RequestStatus#INVALIDATED
+com.mannschaft.app.loyalty.RequestStatus#PENDING
+com.mannschaft.app.loyalty.RequestStatus#REJECTED
+com.mannschaft.app.loyalty.RequestStatus#SUPERSEDED
+com.mannschaft.app.loyalty.RequestReason#DAILY_AWARDED
+com.mannschaft.app.loyalty.RequestReason#DAY_CHANGED
+com.mannschaft.app.loyalty.RequestReason#INELIGIBLE
+com.mannschaft.app.loyalty.RequestReason#LOCATION_INACTIVE
+com.mannschaft.app.loyalty.RequestReason#POINT_LIMIT
+com.mannschaft.app.loyalty.RequestReason#STAFF_REJECTED
+com.mannschaft.app.loyalty.RequestReason#TEAM_INACTIVE
+com.mannschaft.app.loyalty.RequestReason#TTL_EXPIRED
+com.mannschaft.app.loyalty.RequestReason#USER_CANCELLED
+com.mannschaft.app.loyalty.RequestReason#USER_INACTIVE
+com.mannschaft.app.loyalty.RequestReason#VERSION_CHANGED
+com.mannschaft.app.loyalty.TransactionKind#AWARD
+com.mannschaft.app.loyalty.TransactionKind#REDEEM
+com.mannschaft.app.loyalty.TransactionChannel#SELF_APPROVED
+com.mannschaft.app.loyalty.TransactionChannel#SELF_AUTO
+com.mannschaft.app.loyalty.TransactionChannel#STAFF
+com.mannschaft.app.loyalty.RequestOperation#APPROVE
+com.mannschaft.app.loyalty.RequestOperation#CANCEL
+com.mannschaft.app.loyalty.RequestOperation#REDEEM
+com.mannschaft.app.loyalty.RequestOperation#REJECT
+com.mannschaft.app.loyalty.RequestOperation#SELF_SUBMIT
+com.mannschaft.app.loyalty.RequestOperation#STAFF_AWARD
