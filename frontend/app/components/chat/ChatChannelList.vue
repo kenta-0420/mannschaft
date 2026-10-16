@@ -93,6 +93,7 @@ defineExpose({ refresh: loadChannels, refreshAndSelect })
         v-tooltip.right="'新しい会話'"
         icon="pi pi-plus"
         aria-label="チャンネル追加"
+        class="!min-h-11 !min-w-11 shrink-0"
         text
         rounded
         size="small"

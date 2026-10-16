@@ -69,6 +69,7 @@ onMounted(() => {
     <div class="mb-2 flex justify-end">
       <Button
         :label="$t('dashboard.widget_settings.config_button')"
+        class="!min-h-11 !min-w-11 shrink-0"
         icon="pi pi-cog"
         text
         size="small"

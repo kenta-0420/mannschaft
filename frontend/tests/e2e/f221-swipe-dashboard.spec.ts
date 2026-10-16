@@ -1,3 +1,4 @@
+import { waitForHydratedShell } from './helpers/waitForHydratedShell'
 import { test, expect, type Page, type Route } from '@playwright/test'
 
 /**
@@ -138,11 +139,16 @@ async function mockDashboardApis(page: Page, opts: MockOptions = {}): Promise<vo
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      // data を null・配列・オブジェクトのいずれでも受けられるよう空オブジェクトで返す。
-      // 多くの widget は data 不在をローディング解除＆空状態として扱う。
-      body: JSON.stringify({ data: {}, meta: {} }),
+      // 未指定の一覧APIは空配列で返す。オブジェクト契約のAPIは専用fixtureで上書きする。
+      body: JSON.stringify({ data: [], meta: {} }),
     })
   })
+
+  // ストアと設定取得は配列契約。空objectを渡すとrenderが停止するため専用fixtureを返す。
+  for (const endpoint of ['me/teams', 'me/organizations', 'dashboard/widgets?**']) {
+    await page.route(`**/api/v1/${endpoint}`, route => route.fulfill({ json: { data: [] } }))
+  }
+  await page.route('**/api/v1/admin/member-permissions?**', route => route.fulfill({ json: { data: { permissions: [] } } }))
 
   // 容量サマリーは配列レスポンスを前提とするため、catch-allより後に専用mockを登録する。
   await page.route('**/api/v1/me/storage/usage', async (route: Route) => {
@@ -648,4 +654,81 @@ test('F22.1-10: unselected scope chips are selected without navigation by keyboa
   await secondaryOrgChip.press('Space')
   await expect(secondaryOrgChip).toHaveAttribute('aria-pressed', 'true')
   await expect(page).toHaveURL(/\/dashboard(?:\/|$)/)
+})
+
+// CMP-261016-0955: ブラウザの実寸・行位置でモバイル表示の回帰を検証する。
+for (const width of [360, 390, 312, 1280]) {
+  test(`INSIGHT-I6: ${width}pxでスコープ切替と設定の操作領域を確保する`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.addInitScript(() => localStorage.setItem('tokenExpiresAt', String(Date.now() + 3600000)))
+    await loginAsMember(page)
+    await mockDashboardApis(page, { withSlug: true })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
+    await waitForHydratedShell(page)
+    await waitForCarousel(page)
+    const tablist = page.getByTestId('scope-segment-tablist')
+    const previous = page.getByTestId('scope-prev')
+    const next = page.getByTestId('scope-next')
+    const tabs = tablist.getByRole('tab')
+    const config = page.getByRole('button', { name: 'ウィジェット設定', exact: true })
+    for (const target of [previous, next, config, ...await tabs.all()]) {
+      await expect(target).toBeVisible()
+      const box = await target.boundingBox()
+      expect(box).not.toBeNull()
+      expect.soft(box!.width).toBeGreaterThanOrEqual(44)
+      expect.soft(box!.height).toBeGreaterThanOrEqual(44)
+    }
+    const tabBox = (await tablist.boundingBox())!
+    const prevBox = (await previous.boundingBox())!
+    const nextBox = (await next.boundingBox())!
+    if (width < 768) {
+      expect.soft(prevBox.y).toBeGreaterThanOrEqual(tabBox.y + tabBox.height)
+      expect.soft(nextBox.y).toBeGreaterThanOrEqual(tabBox.y + tabBox.height)
+    } else {
+      expect(prevBox.x + prevBox.width).toBeLessThanOrEqual(tabBox.x)
+      expect(nextBox.x).toBeGreaterThanOrEqual(tabBox.x + tabBox.width)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0)
+    await next.click()
+    await expect(page.getByTestId('scope-segment-TEAM')).toHaveAttribute('aria-selected', 'true')
+    await previous.click()
+    await expect(page.getByTestId('scope-segment-PERSONAL')).toHaveAttribute('aria-selected', 'true')
+    await config.click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+  })
+}
+
+test('INSIGHT-I6-DE: 360pxのドイツ語を200%文字で読んで切り替えられる', async ({ page, baseURL }) => {
+  await page.setViewportSize({ width: 360, height: 1000 })
+  await page.context().addCookies([{ name: 'i18n_locale', value: 'de', url: baseURL ?? 'http://localhost:8081' }])
+  await page.addInitScript(() => localStorage.setItem('tokenExpiresAt', String(Date.now() + 3600000)))
+  await loginAsMember(page)
+  await mockDashboardApis(page, { withSlug: true })
+  await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
+    await waitForHydratedShell(page)
+  await waitForCarousel(page)
+  await page.locator("[data-testid=\"scope-segment-tablist\"] [role=\"tab\"]").evaluateAll(elements => {
+    const sizes = elements.map(element => Number.parseFloat(getComputedStyle(element).fontSize))
+    elements.forEach((element, index) => (element as HTMLElement).style.setProperty('font-size', String(sizes[index]! * 2) + 'px', 'important'))
+  })
+  const tablist = page.getByTestId('scope-segment-tablist')
+  await expect(tablist.getByRole('tab', { name: 'Organisation', exact: true })).toBeVisible()
+  for (const tab of await tablist.getByRole('tab').all()) {
+    const text = await tab.evaluate(element => {
+      const node = [...element.childNodes].find(child => child.nodeType === Node.TEXT_NODE && child.textContent?.trim())
+      if (!node) return null
+      const range = document.createRange()
+      range.selectNodeContents(node)
+      return [...range.getClientRects()].map(rect => ({ top: rect.top, right: rect.right, left: rect.left }))
+    })
+    expect(text).not.toBeNull()
+    expect(text).toHaveLength(1)
+    const box = (await tab.boundingBox())!
+    expect(text![0]!.left).toBeGreaterThanOrEqual(box.x)
+    expect(text![0]!.right).toBeLessThanOrEqual(box.x + box.width)
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0)
+  await tablist.getByRole('tab', { name: 'Organisation', exact: true }).click()
+  await expect(page.getByTestId('scope-segment-ORGANIZATION')).toHaveAttribute('aria-selected', 'true')
 })

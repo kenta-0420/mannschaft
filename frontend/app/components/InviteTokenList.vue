@@ -136,7 +136,7 @@ onMounted(() => loadTokens())
 </script>
 
 <template>
-  <div>
+  <div class="min-w-0 max-w-full">
     <div class="mb-4 flex items-center justify-between">
       <h3 class="text-lg font-semibold">招待リンク</h3>
       <Button
@@ -147,7 +147,7 @@ onMounted(() => loadTokens())
       />
     </div>
 
-    <DataTable :value="tokens" :loading="loading" data-key="id">
+    <DataTable :value="tokens" :loading="loading" data-key="id" class="max-w-full" scrollable>
       <Column header="ロール" style="width: 120px">
         <template #body="{ data }">
           <RoleBadge :role="data.roleName" />
@@ -167,10 +167,11 @@ onMounted(() => loadTokens())
       </Column>
       <Column header="操作" style="width: 120px">
         <template #body="{ data }">
-          <div class="flex gap-1">
+          <div class="flex flex-wrap gap-1">
             <Button
               v-if="!isExpired(data)"
               v-tooltip.top="'URLをコピー'"
+              class="!min-h-11 !min-w-11 shrink-0"
               icon="pi pi-copy"
               text
               rounded
@@ -179,7 +180,9 @@ onMounted(() => loadTokens())
             />
             <Button
               v-if="props.scopeType === 'team'"
-              v-tooltip.top="t('inviteToken.printQrPdf')"
+              :label="t('inviteToken.printQrPdf')"
+              :aria-label="t('inviteToken.printQrPdf')"
+              class="!min-h-11 !min-w-11 shrink-0 whitespace-nowrap"
               icon="pi pi-file-pdf"
               text
               rounded
@@ -190,6 +193,7 @@ onMounted(() => loadTokens())
             <Button
               v-if="!isExpired(data)"
               v-tooltip.top="'無効にする'"
+              class="!min-h-11 !min-w-11 shrink-0"
               icon="pi pi-times"
               severity="danger"
               text

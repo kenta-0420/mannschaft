@@ -340,14 +340,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex flex-col" data-testid="scope-carousel">
-    <!-- PC: 上部セグメントトグル + 左右矢印 -->
-    <div class="mb-4 flex items-center justify-center gap-7">
+  <div class="flex min-w-0 flex-col" data-testid="scope-carousel">
+    <!-- モバイルはタブを全幅にし、矢印を次の行へ配置する。 -->
+    <div class="mb-4 flex flex-wrap items-center justify-center gap-2 md:flex-nowrap md:gap-7">
       <Button
         icon="pi pi-chevron-left"
         text
         rounded
         data-testid="scope-prev"
+        class="!min-h-11 !min-w-11 shrink-0"
         :aria-label="$t('scopeDashboard.prevPanel')"
         @click="prev"
       />
@@ -356,7 +357,7 @@ onBeforeUnmount(() => {
         role="tablist"
         data-testid="scope-segment-tablist"
         :aria-label="$t('scopeDashboard.tabs.personal')"
-        class="field-bordered border-2 flex items-center gap-1 rounded-full bg-surface-100 p-1 dark:bg-surface-800"
+        class="field-bordered order-first flex w-full flex-wrap items-center justify-center gap-1 rounded-3xl border-2 bg-surface-100 p-1 dark:bg-surface-800 md:order-none md:w-auto md:rounded-full"
       >
         <button
           v-for="(p, idx) in PANELS"
@@ -367,7 +368,7 @@ onBeforeUnmount(() => {
           :data-testid="`scope-segment-${p.panel}`"
           :aria-selected="idx === activeIndex"
           :aria-controls="`scope-panel-${p.panel}`"
-          class="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
+          class="flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition-colors md:px-4"
           :class="
             idx === activeIndex
               ? 'bg-primary text-primary-contrast'
@@ -389,6 +390,7 @@ onBeforeUnmount(() => {
         text
         rounded
         data-testid="scope-next"
+        class="!min-h-11 !min-w-11 shrink-0"
         :aria-label="$t('scopeDashboard.nextPanel')"
         @click="next"
       />
