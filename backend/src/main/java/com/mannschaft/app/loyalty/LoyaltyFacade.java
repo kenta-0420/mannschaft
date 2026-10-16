@@ -1,6 +1,8 @@
 package com.mannschaft.app.loyalty;
 
 import com.mannschaft.app.common.CursorPagedResponse;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.loyalty.dto.AccountDetail;
 import com.mannschaft.app.loyalty.dto.AccountSummary;
 import com.mannschaft.app.loyalty.dto.ApproveRequest;
@@ -37,7 +39,13 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class LoyaltyFacade {
-    static UUID idempotencyKey(String raw) { return null; }
+    /** Java UUIDパーサーが許す短縮形を排除し、生headerを例外へ含めない。 */
+    static UUID idempotencyKey(String raw) {
+        if (raw == null || !raw.matches("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")) {
+            throw new BusinessException(CommonErrorCode.COMMON_001);
+        }
+        return UUID.fromString(raw);
+    }
 
     public CursorPagedResponse<AccountSummary> listAccounts(Long actor, String cursor, int limit) { return null; }
     public AccountDetail account(Long actor, Long team) { return null; }
