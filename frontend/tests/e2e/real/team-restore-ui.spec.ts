@@ -138,7 +138,13 @@ for (const [key, width] of [
       await expect(former.getByText(team.scheduleTitle, { exact: true }).first()).toBeVisible()
       await page.setViewportSize({ width, height: 900 })
       await login(page, 'sys_test')
-      await openList(page)
+      await page.goto('/system-admin')
+      await waitForHydration(page)
+      const listedResponse = page.waitForResponse(
+        (r) => new URL(r.url()).pathname === deletedApi && r.request().method() === 'GET',
+      )
+      await page.getByRole('link', { name: '削除済みチームの復元' }).click()
+      expect((await listedResponse).status()).toBe(200)
       const target = page.getByTestId(`restore-${team.slug}`)
       await target.click()
       const restored = page.waitForResponse(
@@ -153,17 +159,21 @@ for (const [key, width] of [
       await page.screenshot({ path: testInfo.outputPath('restored-success.png'), fullPage: true })
       await page.getByTestId('restored-team-link').click()
       await expect(page).toHaveURL(new RegExp(`/teams/${team.slug}$`))
-      await openList(page)
-      const reloaded = page.waitForResponse(
-        (r) => new URL(r.url()).pathname === deletedApi && r.request().method() === 'GET',
+      await page.getByTestId('scope-sidebar-toggle').click()
+      await page.getByRole('button', { name: 'スケジュール', exact: true }).click()
+      await page.locator(`a[href="/teams/${team.slug}/schedule"]:visible`).click()
+      await expect(page).toHaveURL(new RegExp(`/teams/${team.slug}/schedule$`))
+      const selected = page.waitForResponse(
+        (r) =>
+          r.request().method() === 'GET' &&
+          new URL(r.url()).pathname === `/api/v1/teams/${team.slug}/schedules/${team.scheduleId}`,
       )
-      await page.reload()
-      expect((await reloaded).status()).toBe(200)
-      await expect(page.getByTestId(`restore-${fixtures.teams.explore_public!.slug}`)).toBeVisible()
-      await expect(target).toHaveCount(0)
-      // 既存予定画面の詳細を開き、表示された削除ボタンを操作する。
-      await page.goto(`/teams/${team.slug}/schedule?eventId=${team.scheduleId}`)
-      await waitForHydration(page)
+      await page
+        .getByText(team.scheduleTitle, { exact: false })
+        .filter({ visible: true })
+        .first()
+        .click()
+      expect((await selected).status()).toBe(200)
       const editButton = page.locator('[data-testid="schedule-edit"]:visible')
       await expect(editButton.locator('..').locator('..')).toContainText(team.scheduleTitle)
       const deleteButton = editButton.locator('..').locator('button:has(.pi-trash)')
@@ -190,6 +200,14 @@ for (const [key, width] of [
         path: testInfo.outputPath('former-calendar-after-delete.png'),
         fullPage: true,
       })
+      await openList(page)
+      const reloaded = page.waitForResponse(
+        (r) => new URL(r.url()).pathname === deletedApi && r.request().method() === 'GET',
+      )
+      await page.reload()
+      expect((await reloaded).status()).toBe(200)
+      await expect(page.getByTestId(`restore-${fixtures.teams.explore_public!.slug}`)).toBeVisible()
+      await expect(target).toHaveCount(0)
     } finally {
       await formerContext.close()
     }
