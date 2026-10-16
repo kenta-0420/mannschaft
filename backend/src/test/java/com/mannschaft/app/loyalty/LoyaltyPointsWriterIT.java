@@ -780,4 +780,26 @@ class LoyaltyPointsWriterIT {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_transactions WHERE team_id=?", Long.class, teamId)).isEqualTo(1L);
     }
 
+    @Test
+    void 事後補強_AC14_INT_MAXへの追加付与は拒否し承認はPOINT_LIMIT終端をcommitする() {
+        LocalDateTime now = LocalDateTime.of(2026, 10, 16, 23, 50);
+        store.getAccounts().saveAndFlush(com.mannschaft.app.loyalty.entity.LoyaltyAccountEntity.builder()
+                .teamId(teamId).userId(20L).balance(Integer.MAX_VALUE).lifetimeEarned(Integer.MAX_VALUE)
+                .createdAt(now).updatedAt(now).build());
+        assertThatThrownBy(() -> writer.award(command(UUID.randomUUID(), 0, new byte[32])))
+                .isInstanceOf(com.mannschaft.app.common.BusinessException.class)
+                .extracting("errorCode").isEqualTo(LoyaltyErrorCode.LOYALTY_009);
+        var request = writer.submit(new LoyaltyWriteCommand(teamId, 20L, 20L, ruleId, 0, 0,
+                RequestOperation.SELF_SUBMIT, UUID.randomUUID(), new byte[32], 30L, "受付")).request();
+        var denied = writer.act(new LoyaltyRequestActionCommand(teamId, 10L, request.getId(), 0,
+                request.getVerificationCode(), RequestOperation.APPROVE, UUID.randomUUID(), new byte[32], null));
+        assertThat(denied.errorCode()).isEqualTo(LoyaltyErrorCode.LOYALTY_014);
+        assertThat(store.getRequests().findById(request.getId())).get()
+                .extracting("status", "reason", "version", "closedAt")
+                .containsExactly(RequestStatus.INVALIDATED, RequestReason.POINT_LIMIT, 1L, now);
+        assertThat(store.getAccounts().findByTeamIdAndUserId(teamId, 20L)).get()
+                .extracting("balance", "lifetimeEarned").containsExactly(Integer.MAX_VALUE, (long) Integer.MAX_VALUE);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_transactions WHERE team_id=?", Long.class, teamId)).isZero();
+    }
+
 }
