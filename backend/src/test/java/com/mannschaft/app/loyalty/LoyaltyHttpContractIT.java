@@ -65,6 +65,7 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private JdbcTemplate jdbc;
     @Autowired private LoyaltyMapper mapper;
     @Autowired private LoyaltyRequestStatePolicy requestStates;
+    @Autowired private LoyaltyCursorCodec cursors;
     @Autowired private com.mannschaft.app.membership.repository.MembershipRepository memberships;
     @Autowired private com.mannschaft.app.membership.repository.MemberCardRepository memberCards;
     @Autowired private com.mannschaft.app.membership.repository.MemberCardCheckinRepository checkins;
@@ -532,6 +533,42 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
         assertThat(jdbc.queryForMap("SELECT status,version,closed_at FROM team_loyalty_award_requests WHERE team_id=? AND id=?",team,row.getId().toString()))
                 .containsEntry("status","PENDING").containsEntry("version",0L).containsEntry("closed_at",null);
         assertThat(store.getAccounts().findByTeamIdAndUserId(team,actorId)).isEmpty();
+    }
+
+    @Test
+    void 補強_AC30無効候補201件の空ページでも検査済み200件目から次へ進む() throws Exception {
+        Long team = team(); admin(actorId,team);
+        store.getPrograms().saveAndFlush(LoyaltyTestFixture.program(team));
+        var rule = store.getRules().saveAndFlush(LoyaltyTestFixture.rule(team));
+        var location = location(team,false); var now = time.now();
+        var owners = users.saveAllAndFlush(java.util.stream.IntStream.range(0,201)
+                .mapToObj(index -> LoyaltyTestFixture.user()).toList());
+        String alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+        var candidates = new java.util.ArrayList<LoyaltyAwardRequestEntity>();
+        for (int index = 0; index < owners.size(); index++) {
+            candidates.add(LoyaltyAwardRequestEntity.builder().teamId(team).userId(owners.get(index).getId()).ruleId(rule.getId())
+                    .sourceLocationId(location.getId()).programVersion(0).ruleVersion(0).points(1).ruleName("来店").locationName("受付")
+                    .awardOn(now.toLocalDate()).expiresAt(time.expiresAt(now)).status(RequestStatus.PENDING)
+                    .verificationCode("AAAAAA"+alphabet.charAt(index/32)+alphabet.charAt(index%32))
+                    .submitKey(UUID.randomUUID()).submitPayloadHash(new byte[32]).createdAt(now).updatedAt(now).build());
+        }
+        var saved = store.getRequests().saveAllAndFlush(candidates);
+        String path = "/api/v1/teams/"+team+"/loyalty/award-requests";
+        var first = mvc.perform(get(path).param("status","PENDING").param("limit","100").with(user(actorId.toString())))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data").isEmpty())
+                .andExpect(jsonPath("$.meta.hasNext").value(true)).andExpect(jsonPath("$.meta.limit").value(100)).andReturn();
+        String cursor = json.readTree(first.getResponse().getContentAsString()).path("meta").path("nextCursor").asText();
+        assertThat(cursor).isNotBlank();
+        var position = cursors.decode(new LoyaltyCursorCodec.Context(LoyaltyCursorCodec.Stream.STAFF_PENDING,actorId,team),cursor);
+        var ordered = saved.stream().sorted(java.util.Comparator.comparing(row -> row.getId().toString())).toList();
+        assertThat(position.id()).isEqualTo(ordered.get(199).getId());
+        assertThat(position.expiresAt()).isEqualTo(time.expiresAt(now));
+        mvc.perform(get(path).param("status","PENDING").param("limit","100").param("cursor",cursor).with(user(actorId.toString())))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data").isEmpty())
+                .andExpect(jsonPath("$.meta.hasNext").value(false)).andExpect(jsonPath("$.meta.nextCursor").isEmpty());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_award_requests WHERE team_id=? AND status='PENDING'",Long.class,team))
+                .isEqualTo(201);
+        // 所有TEAM・201本人・受付はclassのテストTXで作成し、終了時にまとめてrollbackする。
     }
 
     private enum ProjectionChange {
