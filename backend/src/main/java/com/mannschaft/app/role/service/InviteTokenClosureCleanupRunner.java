@@ -4,6 +4,7 @@ import com.mannschaft.app.role.repository.InviteTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 /** 親domainのcommit済み閉鎖世代を値で受け取り、roleの招待だけを失効する。 */
 @Service
@@ -11,9 +12,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class InviteTokenClosureCleanupRunner {
     private final InviteTokenRepository inviteTokenRepository;
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int revokeBeforeGeneration(String scopeType, Long scopeId, long observedGeneration) {
-        // 試練用signature骨格。既存行保持・strict世代差・冪等性の実DB REDを先行する。
-        return 0;
+        if (observedGeneration <= 0) {
+            return 0;
+        }
+        return switch (scopeType) {
+            case "TEAM" -> inviteTokenRepository.revokeTeamBeforeGeneration(scopeId, observedGeneration);
+            case "ORGANIZATION" -> inviteTokenRepository.revokeOrganizationBeforeGeneration(scopeId, observedGeneration);
+            default -> throw new IllegalArgumentException("個人招待のscope種別が不正です");
+        };
     }
 }

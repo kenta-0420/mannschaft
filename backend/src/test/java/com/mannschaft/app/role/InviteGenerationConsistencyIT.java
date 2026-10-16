@@ -78,7 +78,9 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
             var closing = executor.submit(() -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
                 cleanupConnection.set(jdbc.queryForObject("SELECT CONNECTION_ID()", Long.class));
                 // cleanupの単独UPDATEを実DBで先行させ、実row lockをcommitまで保持する。
-                jdbc.update("UPDATE invite_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL", firstRevocation, token.getId());
+                jdbc.update("UPDATE invite_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL",
+                        java.sql.Timestamp.from(firstRevocation.atZone(
+                                com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()), token.getId());
                 tokenLocked.countDown();
                 await(commitCleanup);
             }));

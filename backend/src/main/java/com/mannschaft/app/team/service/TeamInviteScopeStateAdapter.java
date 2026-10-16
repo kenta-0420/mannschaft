@@ -24,13 +24,18 @@ public class TeamInviteScopeStateAdapter implements InviteScopeStatePort {
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Optional<InviteScopeState> readCommittedStateForInviteDecision(Long scopeId) {
-        // 試練用signature骨格。出陣前にDB読取の仕様アサーションREDを確かめる。
-        return Optional.empty();
+        // primary固定の新TXの最初の単独SELECT。外側roleのRR snapshot/親row lockを引き継がない。
+        return teamRepository.findByIdIncludingDeleted(scopeId)
+                .map(team -> new InviteScopeState(team.getArchivedAt() != null, team.getDeletedAt() != null,
+                        team.isProvisioned(), team.getClosureGeneration()));
     }
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Optional<InviteScopeState> recheckCommittedStateAfterInviteIssue(Long scopeId) {
-        return Optional.empty();
+        // 呼出し時はroleの発行TXがcommit済み。user/token lockを持ったjoinからは呼ばない。
+        return teamRepository.findByIdForShare(scopeId)
+                .map(team -> new InviteScopeState(team.getArchivedAt() != null, false,
+                        team.isProvisioned(), team.getClosureGeneration()));
     }
 }

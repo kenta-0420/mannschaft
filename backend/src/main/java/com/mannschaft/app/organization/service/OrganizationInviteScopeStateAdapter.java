@@ -24,13 +24,17 @@ public class OrganizationInviteScopeStateAdapter implements InviteScopeStatePort
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Optional<InviteScopeState> readCommittedStateForInviteDecision(Long scopeId) {
-        // 試練用signature骨格。出陣前にDB読取の仕様アサーションREDを確かめる。
-        return Optional.empty();
+        // primary固定の新TXの最初の単独SELECT。joinは親lockを待たずcommit済み状態で判定する。
+        return organizationRepository.findByIdIncludingDeleted(scopeId)
+                .map(org -> new InviteScopeState(org.getArchivedAt() != null, org.getDeletedAt() != null,
+                        org.isProvisioned(), org.getClosureGeneration()));
     }
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Optional<InviteScopeState> recheckCommittedStateAfterInviteIssue(Long scopeId) {
-        return Optional.empty();
+        return organizationRepository.findByIdForShare(scopeId)
+                .map(org -> new InviteScopeState(org.getArchivedAt() != null, false,
+                        org.isProvisioned(), org.getClosureGeneration()));
     }
 }

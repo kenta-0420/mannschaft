@@ -215,26 +215,28 @@
       → ADMIN（priority=2）/ SYSTEM_ADMIN（priority=1）のトークン作成は 403
    c. 操作者が SYSTEM_ADMIN の場合: role_id の priority >= 2（ADMIN 以下）まで許可
 5. expires_in のバリデーション（1d / 7d / 30d / 90d / unlimited のいずれか）→ 不正値は 400
-6. invite_tokens に INSERT（token = UUID v4 生成、expires_at を expires_in から計算）
+6. invite_tokens に INSERT（token = UUID v4、expires_at を計算、scope_closure_generation = 親から取得した発行時世代）
 7. audit_logs に TEAM_INVITE_TOKEN_CREATED または ORGANIZATION_INVITE_TOKEN_CREATED を記録
 8. 201 Created を返す
 ```
 
 > - ADMIN は自分と同等以上のロール（priority <= 2）のトークンを作成できない（ロール昇格制限と同一ポリシー）
 > - SYSTEM_ADMIN は ADMIN 以下のトークンを作成可能（SYSTEM_ADMIN 自身のトークン作成は不可・プラットフォームスコープのため招待対象外）
+> - 共有/DM発行は非TX入口→親専属primary読取→role専属発行TXのcommit→親専属の短いFOR SHARE再確認の順に行う。201応答・DMカード投稿の前に、親の利用可能状態と発行世代一致を再確認する。事前に閉鎖済みならtoken/cardを作らない。発行commit後に閉鎖・世代前進を検出した場合は生成tokenを補償失効して拒否し、監査可能な失効行を保持する。親とtokenの更新TXは混在させない。
 
 ### 招待参加フロー
 
 ```
 1. GET /api/v1/invite/{token} でプレビュー（オプション）
 2. POST /api/v1/invite/{token}/join を受付
-3. invite_tokens を SELECT ... FOR UPDATE で取得（排他ロック）
+3. ACTIVE user行→invite_tokensの順でSELECT ... FOR UPDATEを取得する
 4. 有効性チェック: revoked_at IS NULL かつ
    (expires_at IS NULL OR expires_at > NOW()) かつ
    (max_uses IS NULL OR used_count < max_uses)
    → いずれか失敗で 400
-5. 招待先チーム/組織のアーカイブチェック:
-   招待先エンティティの archived_at IS NOT NULL → 422（アーカイブ済みのため参加不可）
+5. 親専属REQUIRES_NEWのprimary TXで最新commit済み状態を単独nonlocking SELECTし、
+   親が存在・未削除・未休止・通常利用可能、かつ記録世代 = 現在世代であることを確認する。
+   閉鎖中/世代不一致はROLE_002（404）で加入前に拒否し、在籍・role・group・used_countを変更しない。
 6. ブロック済みチェック:
    - チーム招待（invite_tokens.team_id IS NOT NULL）の場合:
      team_blocks に (team_id = invite_tokens.team_id, user_id = current_user_id) が存在すれば 403
@@ -250,6 +252,14 @@
 ```
 
 > - `invite_token_id` をメタデータに含めることで、どの招待トークン経由で参加したかを事後追跡可能にする（トークン発行者の特定・悪用調査に有用）
+
+#### 個人招待の閉鎖世代契約
+
+- preview・join・未加入者のDMカード・管理一覧・重複PENDING判定は、物理失効の完了を待たず親状態と発行世代を照合する。古いDMカードはREVOKED、既加入者はJOINED優先を維持する。旧世代の未失効PENDINGは解除後の再発行を妨げない。
+- 受諾の判定点は手順5のfresh primary readとする。操作時間が休止と重なり、開いている親を検証済みなら受諾先行として成立しうる（在籍commitが親の休止commitより後になる場合を含む）。休止完了後に開始したjoinは拒否する。user/token lockを保持したjoinでは親共有lockを取らない。
+- 休止・削除はその親の`closure_generation`を同じ親TXで進める。AFTER_COMMITで捕捉済み世代をrole専属新TXへ渡し、scope一致・`scope_closure_generation < 捕捉世代 AND revoked_at IS NULL`だけを`UTC_TIMESTAMP()`で失効する。期限/使用上限/宛先で除外せず、既失効日時は維持する。解除・復元後に同世代で新規発行したtokenは対象外とする。
+- イベント未配送・失効失敗は日次03:40 JSTの`invite-token-closure-cleanup`が、親専属primary readとrole専属失効TXを分けて回復する。失敗scopeは記録して次回へ残し、他scopeの処理を継続する。親欠落時は利用を拒否し、不明な世代を推測して一括失効しない。
+- 解除・復元は世代を戻さず旧tokenを復元しない。組織休止では所属team自身の状態・世代・個人招待・既存在籍を変更しない。月次の非活動休止実装は別課題#3915で追跡し、本件で実装済みとはしない。
 
 ### オーナー委譲 承諾フロー（2ステップ・承諾型 / 2026-07-18 マスター御裁可）
 
@@ -906,9 +916,7 @@ WHERE t.archived_at IS NULL
 **バッチフロー**:
 ```
 1. 上記 SQL で対象チームを一括 UPDATE（archived_at = NOW()）
-2. 対象チームの invite_tokens を一括失効:
-     UPDATE invite_tokens SET revoked_at = NOW()
-     WHERE team_id IN (...対象チームID...) AND revoked_at IS NULL
+2. 対象team自身の閉鎖世代を親休止と同じTXで進め、commit後に「個人招待の閉鎖世代契約」のstrict旧世代失効を行う
 3. audit_logs に TEAM_ARCHIVED（reason: AUTO_INACTIVE）を件数分 INSERT
 4. バッチ実行ログにアーカイブ件数を記録
 ```
@@ -970,9 +978,7 @@ WHERE o.archived_at IS NULL
 ```
 1. 上記 SQL で対象組織 ID リストを取得
 2. organizations.archived_at = NOW() を一括 UPDATE
-3. 対象組織自身の invite_tokens のみを一括失効:
-     UPDATE invite_tokens SET revoked_at = NOW()
-     WHERE organization_id IN (...対象組織ID...) AND revoked_at IS NULL
+3. 対象組織自身の閉鎖世代を親休止と同じTXで進め、commit後に「個人招待の閉鎖世代契約」のstrict旧世代失効を行う
 4. 加盟チームの archived_at・個人招待・既存在籍は変更しない
 5. audit_logs に ORGANIZATION_ARCHIVED（reason: AUTO_INACTIVE）を件数分 INSERT
 6. バッチ実行ログに組織のアーカイブ件数を記録
@@ -988,9 +994,7 @@ WHERE o.archived_at IS NULL
 2. 対象チームの ADMIN / DEPUTY_ADMIN 割当チェック → それ以外は 403
 3. archived_at IS NOT NULL → すでにアーカイブ済み → 422
 4. teams.archived_at = NOW() で UPDATE
-5. invite_tokens を一括失効:
-     UPDATE invite_tokens SET revoked_at = NOW()
-     WHERE team_id = 対象ID AND revoked_at IS NULL
+5. team自身の閉鎖世代を親休止と同じTXで進め、commit後に「個人招待の閉鎖世代契約」のstrict旧世代失効を行う
 6. audit_logs に TEAM_ARCHIVED（reason: MANUAL）を記録
 7. 200 OK を返す
 ```
@@ -1001,9 +1005,7 @@ WHERE o.archived_at IS NULL
 2. ADMIN 権限チェック → ADMIN 未満は 403
 3. archived_at IS NOT NULL → すでにアーカイブ済み → 422
 4. organizations.archived_at = NOW() で UPDATE
-5. 組織自身の invite_tokens のみを一括失効:
-     UPDATE invite_tokens SET revoked_at = NOW()
-     WHERE organization_id = 対象ID AND revoked_at IS NULL
+5. 組織自身の閉鎖世代を親休止と同じTXで進め、commit後に「個人招待の閉鎖世代契約」のstrict旧世代失効を行う
 6. 加盟チームの archived_at・個人招待・既存在籍は変更しない
 7. audit_logs に ORGANIZATION_ARCHIVED（reason: MANUAL）を記録
 8. 204 No Content を返す

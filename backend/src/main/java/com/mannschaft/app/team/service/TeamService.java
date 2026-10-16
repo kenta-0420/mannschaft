@@ -20,6 +20,7 @@ import com.mannschaft.app.common.dto.SlugResolveResponse;
 import com.mannschaft.app.team.TeamErrorCode;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.event.PersonalInviteScopeClosedEvent;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
@@ -760,6 +761,7 @@ public class TeamService {
         TeamEntity team = teamRepository.findByIdForUpdate(teamId)
                 .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
         team.softDelete();
+        eventPublisher.publishEvent(new PersonalInviteScopeClosedEvent("TEAM", teamId, team.getClosureGeneration()));
 
         // 監査ログ用イベント発行
         eventPublisher.publishEvent(new TeamDeletedEvent(userId, teamId));
@@ -815,6 +817,7 @@ public class TeamService {
             throw new BusinessException(TeamErrorCode.TEAM_002);
         }
         team.archive();
+        eventPublisher.publishEvent(new PersonalInviteScopeClosedEvent("TEAM", teamId, team.getClosureGeneration()));
         return team;
     }
 
