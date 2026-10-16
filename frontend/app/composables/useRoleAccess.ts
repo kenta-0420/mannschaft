@@ -17,7 +17,11 @@ interface EffectivePermissions {
   canGrantAdminOnlyPermissions?: boolean
 }
 
-export function useRoleAccess(scopeType: 'team' | 'organization', scopeId: Ref<string> | string) {
+export function useRoleAccess(
+  scopeType: 'team' | 'organization',
+  scopeId: Ref<string> | string,
+  options: { watchScope?: boolean } = {},
+) {
   const api = useApi()
   const permissions = ref<string[]>([])
   const roleName = ref<RoleName | null>(null)
@@ -130,7 +134,7 @@ export function useRoleAccess(scopeType: 'team' | 'organization', scopeId: Ref<s
   )
 
   // scopeIdがリアクティブな場合、変更時に自動リロード
-  if (isRef(scopeId)) {
+  if (isRef(scopeId) && options.watchScope !== false) {
     watch(scopeId, (newId) => {
       if (newId) loadPermissions()
     })
