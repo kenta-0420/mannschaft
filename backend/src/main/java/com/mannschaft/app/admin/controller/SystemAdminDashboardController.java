@@ -22,6 +22,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -98,9 +99,10 @@ public class SystemAdminDashboardController {
 
     /** 復元する削除済みチームだけを固定順・ページ単位で取得する。 */
     @GetMapping("/teams/deleted")
-    @Operation(summary = "削除済みチームの復元対象一覧取得")
+    @Operation(summary = "削除済みチームの復元対象一覧取得",
+            description = "削除日時・IDの降順に固定してDBページングする。size上限は100。外部sort指定は無視する。")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<PagedResponse<DeletedTeamSummaryResponse>> getDeletedTeams(Pageable pageable) {
+    public ResponseEntity<PagedResponse<DeletedTeamSummaryResponse>> getDeletedTeams(@ParameterObject Pageable pageable) {
         return ResponseEntity.ok(teamService.getDeletedTeamsForSystemAdmin(pageable));
     }
 
