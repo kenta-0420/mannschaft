@@ -1,6 +1,8 @@
 package com.mannschaft.app.role.event;
 
 import com.mannschaft.app.common.event.PersonalInviteScopeClosedEvent;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.role.service.InviteTokenClosureCleanupRunner;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +18,8 @@ public class InviteScopeClosureListener {
     private final InviteTokenClosureCleanupRunner cleanup;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "個人招待の閉鎖失効専用gate_keyは無いため常時実行する。イベントは再配信されず、停止中も旧世代の物理失効を進め、失敗時は回復batchで補う")
     public void onClosed(PersonalInviteScopeClosedEvent event) {
         try {
             cleanup.revokeBeforeGeneration(event.getScopeType(), event.getScopeId(), event.getClosureGeneration());
