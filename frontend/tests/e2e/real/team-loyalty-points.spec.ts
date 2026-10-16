@@ -308,7 +308,7 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
   try {
     await page.goto(`/teams/${slug}/settings/loyalty`, { waitUntil: 'commit' })
     await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: 'チームポイント設定' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'チームポイント設定' })).toBeVisible()
     await page.getByText('ポイントプログラムを有効化', { exact: true }).click()
     await page.getByText('メンバー以上', { exact: true }).click()
     await page.getByRole('option', { name: '全認証済み個人（非所属を含む）' }).click()
@@ -349,7 +349,7 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
     })
     await member.goto(url, { waitUntil: 'commit' })
     await waitForHydration(member)
-    await expect(member.getByRole('heading', { name: '受付内容の確認' })).toBeVisible()
+    await expect(member.getByRole('heading', { level: 1, name: '受付内容の確認' })).toBeVisible()
     await expect(member.getByRole('button', { name: '内容を確認して確定' })).toBeVisible()
     expect(member.url()).not.toContain('locationToken')
     expect(writes).toEqual([])
@@ -510,7 +510,7 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
       memberLocale = locale
       await member.goto('/my/member-qr', { waitUntil: 'commit' })
       await waitForHydration(member)
-      await expect(member.getByRole('heading', { name: t('loyalty.memberQr.title'), exact: true })).toBeVisible()
+      await expect(member.getByRole('heading', { level: 1, name: t('loyalty.memberQr.title'), exact: true })).toBeVisible()
       await expect(member.getByTestId('member-qr')).toBeVisible()
       await member.getByRole('button', { name: t('loyalty.refresh'), exact: true }).click()
       await expect(member.getByTestId('member-qr')).toBeVisible()
@@ -522,7 +522,7 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
 
       await page.goto(`/teams/${slug}/settings/loyalty`, { waitUntil: 'commit' })
       await waitForHydration(page)
-      await expect(page.getByRole('heading', { name: t('loyalty.settings.title'), exact: true })).toBeVisible()
+      await expect(page.getByRole('heading', { level: 1, name: t('loyalty.settings.title'), exact: true })).toBeVisible()
       await page.getByText(t('loyalty.settings.enabled'), { exact: true }).click()
       await page.getByText(t('loyalty.audience.membersAndAbove'), { exact: true }).click()
       await page.getByRole('option', { name: t('loyalty.audience.allAuthenticated'), exact: true }).click()
@@ -547,18 +547,24 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
         await form.getByRole('button').click()
         await expect(form.getByRole('alert').first()).toBeVisible()
         expect.soft(await form.getByRole('alert').allTextContents()).toContain(t('required'))
+        const requiredMessages = await form.getByRole('alert').allTextContents()
         await name.fill('a'.repeat(101))
         await form.getByRole('button').click()
-        await expect.poll(() => form.getByRole('alert').allTextContents()).not.toContain(t('required'))
+        await expect.poll(() => form.getByRole('alert').allTextContents()).not.toEqual(requiredMessages)
         expect.soft(await form.getByRole('alert').allTextContents()).toContain(t('max_length', { max: 100 }))
+        const longNameMessages = await form.getByRole('alert').allTextContents()
         await name.fill(`Valid ${suffix}`)
         if (numeric) {
           await form.getByRole('spinbutton').fill('')
           await form.getByRole('spinbutton').blur()
           await form.getByRole('button').click()
-          await expect(form.getByRole('alert').first()).toBeVisible()
+          await expect.poll(async () => {
+            const messages = await form.getByRole('alert').allTextContents()
+            return messages.length > 0 && JSON.stringify(messages) !== JSON.stringify(longNameMessages)
+          }).toBe(true)
           expect.soft(await form.getByRole('alert').allTextContents()).toContain(t('invalid_format'))
           await form.getByRole('spinbutton').fill('20')
+          await form.getByRole('spinbutton').blur()
         }
       }
       await invalidName(rule, true)
@@ -575,11 +581,13 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
         await reward.getByRole('textbox').first().fill(`Reward ${suffix}`)
         await reward.locator('textarea').fill('a'.repeat(501))
         await reward.getByRole('button').click()
-        await expect.poll(async () => invalidDescriptionSends > 0 || await reward.getByRole('alert').count() > 0).toBe(true)
+        await expect.poll(async () => invalidDescriptionSends > 0
+          || (await reward.getByRole('alert').allTextContents()).includes(t('max_length', { max: 500 }))).toBe(true)
         expect.soft(invalidDescriptionSends, '501文字は実APIへ送信する前に拒否する').toBe(0)
         expect.soft(await reward.getByRole('alert').allTextContents()).toContain(t('max_length', { max: 500 }))
         await reward.locator('textarea').fill('a'.repeat(500))
-        const rewardCreated = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === rewardPath)
+        const rewardCreated = page.waitForResponse(response => response.request().method() === 'POST'
+          && new URL(response.url()).pathname === rewardPath && response.request().postDataJSON()?.description?.length === 500)
         await reward.getByRole('button').click()
         expect((await rewardCreated).status()).toBe(201)
       } finally {
@@ -632,7 +640,7 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
       async function submitReception() {
         await applicant.goto(url, { waitUntil: 'commit' })
         await waitForHydration(applicant)
-        await expect(applicant.getByRole('heading', { name: t('loyalty.self.confirm'), exact: true })).toBeVisible()
+        await expect(applicant.getByRole('heading', { level: 1, name: t('loyalty.self.confirm'), exact: true })).toBeVisible()
         await expect(applicant.getByText(t('loyalty.mode.staffApproval'), { exact: true })).toBeVisible()
         await applicant.getByRole('button', { name: t('loyalty.confirm'), exact: true }).click()
         await expect(applicant.getByRole('status')).toHaveText(t('loyalty.requests.status.pending'))
@@ -661,7 +669,7 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
       await saveProgram()
       await member.goto(url, { waitUntil: 'commit' })
       await waitForHydration(member)
-      await expect(member.getByRole('heading', { name: t('loyalty.self.confirm'), exact: true })).toBeVisible()
+      await expect(member.getByRole('heading', { level: 1, name: t('loyalty.self.confirm'), exact: true })).toBeVisible()
       await expect(member.getByText(t('loyalty.mode.staffApproval'), { exact: true })).toBeVisible()
       await expect(member.getByTestId('loyalty-balance')).toHaveText(t('loyalty.balance', { points: 0 }))
       expect(new URL(member.url()).hash).toBe('')
