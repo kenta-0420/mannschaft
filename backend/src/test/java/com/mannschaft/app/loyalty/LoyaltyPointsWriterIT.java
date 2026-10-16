@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class LoyaltyPointsWriterIT {
     /** 他ドメインへの境界はHTTP契約試練で確認し、ここでは実Writer/TX/DDLを限定起動する。 */
-    @org.springframework.boot.test.context.TestConfiguration(proxyBeanMethods = false)
+    @org.springframework.context.annotation.Configuration(proxyBeanMethods = false)
     @org.springframework.boot.autoconfigure.EnableAutoConfiguration
     @org.springframework.boot.autoconfigure.domain.EntityScan(basePackageClasses = com.mannschaft.app.loyalty.entity.LoyaltyProgramEntity.class)
     @org.springframework.data.jpa.repository.config.EnableJpaRepositories(basePackageClasses = com.mannschaft.app.loyalty.repository.LoyaltyProgramRepository.class)
@@ -66,6 +66,7 @@ class LoyaltyPointsWriterIT {
     @Autowired private LoyaltyStore store;
     @Autowired private LoyaltyPointsWriter writer;
     @Autowired private LoyaltySettingsWriter settings;
+    @Autowired private LoyaltyRequestStatePolicy statePolicy;
     @Autowired private org.springframework.transaction.PlatformTransactionManager transactionManager;
     @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
@@ -350,18 +351,18 @@ class LoyaltyPointsWriterIT {
     void removeOnlyOwnedRows() {
         if (teamId == null) return;
         new org.springframework.transaction.support.TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            var page = org.springframework.data.domain.PageRequest.of(0, 100);
-            store.getRequests().deleteAll(store.getRequests().teamFirstPage(teamId, page));
-            store.getTransactions().deleteAll(store.getTransactions().firstPage(teamId, 20L, page));
-            store.getAccounts().findByTeamIdAndUserId(teamId, 20L).ifPresent(store.getAccounts()::delete);
-            store.getRewards().deleteAll(store.getRewards().findByTeamIdOrderById(teamId));
-            store.getRules().findByTeamId(teamId).ifPresent(store.getRules()::delete);
-            store.getPrograms().findByTeamId(teamId).ifPresent(store.getPrograms()::delete);
+            // 専用Testcontainerで当試練のteamだけを片付ける。200人fixtureも残さない。
+            jdbc.update("DELETE FROM team_loyalty_award_requests WHERE team_id=?", teamId);
+            jdbc.update("DELETE FROM team_loyalty_transactions WHERE team_id=?", teamId);
+            jdbc.update("DELETE FROM team_loyalty_accounts WHERE team_id=?", teamId);
+            jdbc.update("DELETE FROM team_loyalty_rewards WHERE team_id=?", teamId);
+            jdbc.update("DELETE FROM team_loyalty_rules WHERE team_id=?", teamId);
+            jdbc.update("DELETE FROM team_loyalty_programs WHERE team_id=?", teamId);
         });
     }
     @Test
     @org.junit.jupiter.api.parallel.ResourceLock("java.util.TimeZone.default")
-    void AC08_接続作成後のJVM時差に影響されずJST日付とUTC保存時刻が往復する() {
+    void AC08_接続作成後のJVM時差に影響されずSQL_DATEのJST日付が往復する() {
         java.util.TimeZone original = java.util.TimeZone.getDefault();
         jdbc.queryForObject("SELECT 1", Integer.class); // 先に接続を作る。
         try {
@@ -369,14 +370,10 @@ class LoyaltyPointsWriterIT {
             TransactionResponse result = writer.award(command(UUID.randomUUID(), 0, new byte[32]));
             assertThat(result).isNotNull();
             assertThat(result.awardOn()).isEqualTo(java.time.LocalDate.of(2026, 10, 16));
-            assertThat(result.createdAt()).isEqualTo(LocalDateTime.of(2026, 10, 16, 23, 50));
             assertThat(jdbc.queryForObject("SELECT CAST(award_on AS CHAR) FROM team_loyalty_transactions WHERE team_id=?", String.class, teamId))
                     .isEqualTo("2026-10-16");
-            assertThat(jdbc.queryForObject("SELECT DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') FROM team_loyalty_transactions WHERE team_id=?", String.class, teamId))
-                    .isEqualTo("2026-10-16 14:50:00");
             assertThat(store.getTransactions().findById(result.id())).get()
-                    .extracting("awardOn", "createdAt")
-                    .containsExactly(java.time.LocalDate.of(2026, 10, 16), LocalDateTime.of(2026, 10, 16, 23, 50));
+                    .extracting("awardOn").isEqualTo(java.time.LocalDate.of(2026, 10, 16));
         } finally {
             java.util.TimeZone.setDefault(original);
         }
@@ -391,5 +388,124 @@ class LoyaltyPointsWriterIT {
         assertThat(result.request()).isNotNull();
         assertThat(result.request().getExpiresAt()).isEqualTo(LocalDateTime.of(2026, 10, 17, 0, 0));
         assertThat(result.request().getAwardOn()).isEqualTo(java.time.LocalDate.of(2026, 10, 16));
+    }
+    @Test
+    void AC07_同じkey20並列は一つの確定取引と残高1を返す() throws Exception {
+        LoyaltyWriteCommand input = command(UUID.randomUUID(), 0, new byte[32]);
+        var results = parallel(20, ignored -> attempt(() -> writer.award(input)));
+        assertThat(results).allSatisfy(result -> {
+            assertThat(result.error()).isNull(); assertThat(result.value()).isInstanceOf(TransactionResponse.class);
+        });
+        assertThat(results.stream().map(result -> ((TransactionResponse) result.value()).id()).distinct()).hasSize(1);
+        assertThat(store.getAccounts().findByTeamIdAndUserId(teamId, 20L)).get()
+                .extracting("balance", "lifetimeEarned").containsExactly(1, 1L);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_transactions WHERE team_id=?", Long.class, teamId)).isEqualTo(1L);
+    }
+
+    @Test
+    void AC08_同一口座別key20並列の日次枠は一つだけ() throws Exception {
+        var results = parallel(20, ignored -> attempt(() -> writer.award(command(UUID.randomUUID(), 0, new byte[32]))));
+        assertThat(results.stream().filter(result -> result.value() instanceof TransactionResponse)).hasSize(1);
+        assertThat(results.stream().filter(result -> result.error() == LoyaltyErrorCode.LOYALTY_005)).hasSize(19);
+        assertThat(store.getAccounts().findByTeamIdAndUserId(teamId, 20L)).get()
+                .extracting("balance", "lifetimeEarned").containsExactly(1, 1L);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_transactions WHERE team_id=?", Long.class, teamId)).isEqualTo(1L);
+    }
+
+    @Test
+    void AC19_別人初回200並列はprogram共有lock下で全員一回だけ作成する() throws Exception {
+        var results = parallel(200, index -> attempt(() -> writer.award(new LoyaltyWriteCommand(
+                teamId, 10L, 1000L + index, ruleId, 0, 0, RequestOperation.STAFF_AWARD,
+                UUID.randomUUID(), new byte[32], null, null))));
+        assertThat(results).allSatisfy(result -> {
+            assertThat(result.error()).isNull();
+            assertThat(result.value()).isInstanceOf(TransactionResponse.class);
+            assertThat(((TransactionResponse) result.value()).balanceAfter()).isEqualTo(1);
+        });
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_accounts WHERE team_id=?", Long.class, teamId)).isEqualTo(200L);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_transactions WHERE team_id=?", Long.class, teamId)).isEqualTo(200L);
+        assertThat(jdbc.queryForObject("SELECT SUM(balance) FROM team_loyalty_accounts WHERE team_id=?", Long.class, teamId)).isEqualTo(200L);
+    }
+
+    @Test
+    void AC28_申請insert対staff先行でも有効な二重加算を生まない() throws Exception {
+        LoyaltyWriteCommand submit = new LoyaltyWriteCommand(teamId, 20L, 20L, ruleId, 0, 0,
+                RequestOperation.SELF_SUBMIT, UUID.randomUUID(), new byte[32], 30L, "受付");
+        var results = parallel(2, index -> index == 0 ? attempt(() -> writer.submit(submit))
+                : attempt(() -> writer.award(command(UUID.randomUUID(), 0, new byte[32]))));
+        assertThat(results.get(1).value()).isInstanceOf(TransactionResponse.class);
+        assertThat(results.get(1).error()).isNull();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_transactions WHERE team_id=?", Long.class, teamId)).isEqualTo(1L);
+        assertThat(store.getAccounts().findByTeamIdAndUserId(teamId, 20L)).get().extracting("balance").isEqualTo(1);
+        if (results.get(0).value() instanceof LoyaltySubmissionOutcome submitted) {
+            assertThat(submitted.request()).isNotNull();
+            var saved = store.getRequests().findById(submitted.request().getId()).orElseThrow();
+            assertThat(statePolicy.evaluate(saved, store.getPrograms().findByTeamId(teamId).orElseThrow(),
+                    store.getRules().findById(ruleId).orElseThrow(), null, true, 1, LocalDateTime.of(2026, 10, 16, 23, 50)))
+                    .isEqualTo(new LoyaltyEffectiveRequestState(RequestStatus.SUPERSEDED, RequestReason.DAILY_AWARDED));
+        } else {
+            assertThat(results.get(0).error()).isEqualTo(LoyaltyErrorCode.LOYALTY_005);
+        }
+    }
+
+    @Test
+    void AC30_mode更新と同一SELF_SUBMITkeyが競合しても台帳と申請を両方作らない() throws Exception {
+        UUID key = UUID.randomUUID(); byte[] nextHash = new byte[32]; nextHash[0] = 1;
+        LoyaltyWriteCommand oldMode = new LoyaltyWriteCommand(teamId, 20L, 20L, ruleId, 0, 0,
+                RequestOperation.SELF_SUBMIT, key, new byte[32], 30L, "受付");
+        LoyaltyWriteCommand newMode = new LoyaltyWriteCommand(teamId, 20L, 20L, ruleId, 0, 1,
+                RequestOperation.SELF_SUBMIT, key, nextHash, 30L, "受付");
+        var results = parallel(3, index -> switch (index) {
+            case 0 -> attempt(() -> settings.updateProgram(teamId, new com.mannschaft.app.loyalty.dto.UpdateProgramRequest(
+                    0L, true, Audience.ALL_AUTHENTICATED, SelfAwardMode.AUTO)));
+            case 1 -> attempt(() -> writer.submit(oldMode));
+            default -> attempt(() -> writer.submit(newMode));
+        });
+        assertThat(results.get(0).error()).isNull();
+        for (int index = 1; index < results.size(); index++) {
+            assertThat(results.get(index).error()).isIn(null, LoyaltyErrorCode.LOYALTY_006, LoyaltyErrorCode.LOYALTY_007);
+        }
+        WriteAttempt retry = attempt(() -> writer.submit(newMode));
+        if (retry.error() == null) assertThat(retry.value()).isInstanceOf(LoyaltySubmissionOutcome.class);
+        else assertThat(retry.error()).isEqualTo(LoyaltyErrorCode.LOYALTY_006);
+        long transactions = jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_transactions WHERE team_id=?", Long.class, teamId);
+        long requests = jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_award_requests WHERE team_id=?", Long.class, teamId);
+        assertThat(transactions + requests).isEqualTo(1L);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_accounts WHERE team_id=?", Long.class, teamId)).isEqualTo(transactions);
+    }
+
+    private WriteAttempt attempt(java.util.function.Supplier<Object> work) {
+        try { return new WriteAttempt(work.get(), null); }
+        catch (com.mannschaft.app.common.BusinessException exception) { return new WriteAttempt(null, exception.getErrorCode()); }
+    }
+    private record WriteAttempt(Object value, com.mannschaft.app.common.ErrorCode error) { }
+
+    private java.util.List<WriteAttempt> parallel(int count, java.util.function.IntFunction<WriteAttempt> action) throws Exception {
+        var ready = new java.util.concurrent.CountDownLatch(count);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        try (var workers = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+            var futures = new java.util.ArrayList<java.util.concurrent.Future<WriteAttempt>>();
+            for (int index = 0; index < count; index++) {
+                final int task = index;
+                futures.add(workers.submit(() -> { ready.countDown(); start.await(); return action.apply(task); }));
+            }
+            try { assertThat(ready.await(30, java.util.concurrent.TimeUnit.SECONDS)).as("全要求を同時開始前に準備").isTrue(); }
+            finally { start.countDown(); }
+            var results = new java.util.ArrayList<WriteAttempt>();
+            for (var future : futures) results.add(future.get(120, java.util.concurrent.TimeUnit.SECONDS));
+            return results;
+        }
+    }
+    @Test
+    void AC08_規約JVM_JSTで固定Clockのアプリ時刻とDB_UTC時刻が往復する() {
+        assertThat(java.util.TimeZone.getDefault().toZoneId())
+                .isEqualTo(com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE);
+        TransactionResponse result = writer.award(command(UUID.randomUUID(), 0, new byte[32]));
+        assertThat(result).isNotNull();
+        assertThat(result.createdAt()).isEqualTo(LocalDateTime.of(2026, 10, 16, 23, 50));
+        assertThat(jdbc.queryForObject("SELECT DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') FROM team_loyalty_transactions WHERE team_id=?", String.class, teamId))
+                .isEqualTo("2026-10-16 14:50:00");
+        assertThat(store.getTransactions().findById(result.id())).get()
+                .extracting("createdAt").isEqualTo(LocalDateTime.of(2026, 10, 16, 23, 50));
     }
 }
