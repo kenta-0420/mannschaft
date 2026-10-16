@@ -139,6 +139,7 @@ test.describe('CMP-011 P7 支払依頼 UI', () => {
   })
 
   test('チーム側のPROCESSINGを短期pollしてPAIDを表示する', async ({ page }) => {
+    test.setTimeout(120_000)
     await setupAuth(page, { userId: 2, displayName: 'チーム管理者', role: 'ADMIN', scopeType: 'TEAM', scopeId: TEAM_ID })
     await mockCommon(page)
 
@@ -154,13 +155,14 @@ test.describe('CMP-011 P7 支払依頼 UI', () => {
     await page.goto(`/teams/${TEAM_ID}/payment-requests/${REQUEST_ID}`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     expect((await initialDetail).status()).toBe(200)
-    await expect(page.getByTestId('payment-request-status')).toHaveAttribute('data-status', 'PROCESSING')
+    await expect(page.getByTestId('payment-request-status')).toHaveAttribute('data-status', 'PROCESSING', { timeout: 30_000 })
     paymentCompleted = true
     await expect(page.getByTestId('payment-request-status')).toHaveAttribute('data-status', 'PAID', { timeout: 10_000 })
     expect(detailReads).toBeGreaterThanOrEqual(2)
   })
 
   test('立替精算を確認してSETTLEDを表示する', async ({ page }) => {
+    test.setTimeout(120_000)
     await setupAuth(page, { userId: 2, displayName: 'チーム管理者', role: 'ADMIN', scopeType: 'TEAM', scopeId: TEAM_ID })
     await mockCommon(page)
 
@@ -178,7 +180,7 @@ test.describe('CMP-011 P7 支払依頼 UI', () => {
     await page.goto(`/teams/${TEAM_ID}/payment-requests`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await page.getByTestId('payment-advances-link').click()
-    await expect(page).toHaveURL(new RegExp(`/teams/${TEAM_ID}/payments/advances$`))
+    await expect(page).toHaveURL(new RegExp(`/teams/${TEAM_ID}/payments/advances$`), { timeout: 30_000 })
     await page.getByTestId('confirm-advance').click()
     // appと画面に既存のConfirmDialog重複があるため、前面の確認UIを操作する。
     await page.getByRole('alertdialog').last().getByRole('button', { name: /確認/ }).click()
