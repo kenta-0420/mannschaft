@@ -504,18 +504,18 @@ class LoyaltyPointsWriterIT {
     }
     private record WriteAttempt(Object value, com.mannschaft.app.common.ErrorCode error) { }
 
-    private java.util.List<WriteAttempt> parallel(int count, java.util.function.IntFunction<WriteAttempt> action) throws Exception {
+    private <T> java.util.List<T> parallel(int count, java.util.function.IntFunction<T> action) throws Exception {
         var ready = new java.util.concurrent.CountDownLatch(count);
         var start = new java.util.concurrent.CountDownLatch(1);
         try (var workers = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
-            var futures = new java.util.ArrayList<java.util.concurrent.Future<WriteAttempt>>();
+            var futures = new java.util.ArrayList<java.util.concurrent.Future<T>>();
             for (int index = 0; index < count; index++) {
                 final int task = index;
                 futures.add(workers.submit(() -> { ready.countDown(); start.await(); return action.apply(task); }));
             }
             try { assertThat(ready.await(30, java.util.concurrent.TimeUnit.SECONDS)).as("全要求を同時開始前に準備").isTrue(); }
             finally { start.countDown(); }
-            var results = new java.util.ArrayList<WriteAttempt>();
+            var results = new java.util.ArrayList<T>();
             for (var future : futures) results.add(future.get(120, java.util.concurrent.TimeUnit.SECONDS));
             return results;
         }
