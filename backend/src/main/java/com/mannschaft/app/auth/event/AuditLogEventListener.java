@@ -814,11 +814,17 @@ public class AuditLogEventListener {
         );
     }
 
-    /** ポイント初回commit後の監査接続骨格。実afterCommit先行試練のred後に接続する。 */
+    /** ポイントの初回commitだけを監査へ接続する。秘密や表示名はmetadataへ含めない。 */
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
             reason = "止めると確定済みポイント操作の監査証跡が恒久的に欠落する")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleLoyaltyCommitted(LoyaltyCommittedEvent event) {
+        var metadata = new java.util.LinkedHashMap<String, Object>();
+        metadata.put("operation", event.operation().name());
+        if (event.transactionId() != null) metadata.put("transactionId", event.transactionId());
+        if (event.requestId() != null) metadata.put("requestId", event.requestId());
+        auditLogService.recordSync(LoyaltyCommittedEvent.AUDIT_EVENT_TYPE, event.actorUserId(),
+                event.targetUserId(), event.teamId(), null, null, null, null, toJson(metadata));
     }
 }
