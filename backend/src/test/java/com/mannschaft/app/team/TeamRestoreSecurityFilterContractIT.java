@@ -1,5 +1,6 @@
 package com.mannschaft.app.team;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.auth.service.RoleClaimResolver;
 import com.mannschaft.app.auth.service.StatusClaimResolver;
@@ -23,6 +24,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -34,6 +36,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,12 +57,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * AuthService.login自身やValkey失効は対象外。内部Beanのmock/spyや認証context手注入は行わない。
  * 共有基底の外部Redis mockだけを継承する。fixtureはcommitし、更新を新transactionで読み直す。</p>
  *
- * <p>候補段階: RANDOM_PORT再宣言とDirtiesContextはBase性能規約との適用判断待ち。
- * 正本/既承認根拠とrootレビュー後に適用し、現時点で新CI・pushは行わない。</p>
+ * <p>内部HTTP契約なので共通基底のMOCK構成を継承し、TCPリスナーは起動しない。</p>
  */
-// 構成判断待ち: @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-// 構成判断待ち: @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-@AutoConfigureMockMvc(addFilters = true)
+@AutoConfigureMockMvc(print = MockMvcPrint.NONE, addFilters = true)
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("CMP-260902-0059: 実JWTとSecurityFilterによるチーム復元契約")
 class TeamRestoreSecurityFilterContractIT extends AbstractMySqlIntegrationTest {
@@ -68,6 +71,7 @@ class TeamRestoreSecurityFilterContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private ScheduleRepository scheduleRepository;
     @Autowired private UserRoleRepository userRoleRepository;
     @Autowired private PlatformTransactionManager txManager;
+    @Autowired private ObjectMapper objectMapper;
     @Autowired @Qualifier("event-pool") private ThreadPoolTaskExecutor eventPool;
     @PersistenceContext private EntityManager em;
 
@@ -190,6 +194,19 @@ class TeamRestoreSecurityFilterContractIT extends AbstractMySqlIntegrationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("COMMON_002"));
         assertThat(snapshot()).isEqualTo(before);
+        mockMvc.perform(patch("/api/v1/teams/{slug}/restore", teamASlug).header("Authorization", bearer(userId)))
+                .andExpect(status().isForbidden());
+        assertThat(snapshot()).isEqualTo(before);
+        inTransaction(() -> {
+            em.createNativeQuery("UPDATE teams SET deleted_at = UTC_TIMESTAMP() WHERE id = :id")
+                    .setParameter("id", teamAId).executeUpdate();
+            return null;
+        });
+        TargetSnapshot deletedBefore = snapshot();
+        mockMvc.perform(patch("/api/v1/teams/{slug}/restore", teamASlug).header("Authorization", bearer(userId)))
+                .andExpect(status().isForbidden());
+        assertThat(snapshot()).isEqualTo(deletedBefore);
+        assertNoRestoreAudit();
     }
 
     @Test
@@ -199,6 +216,7 @@ class TeamRestoreSecurityFilterContractIT extends AbstractMySqlIntegrationTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("TEAM_001"));
         assertThat(snapshot()).isEqualTo(before);
+        assertNoRestoreAudit();
     }
 
     @Test
@@ -206,8 +224,10 @@ class TeamRestoreSecurityFilterContractIT extends AbstractMySqlIntegrationTest {
         TargetSnapshot before = snapshot();
         mockMvc.perform(patch("/api/v1/teams/{slug}/restore", teamASlug).header("Authorization", bearer(systemAdminId)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("TEAM_006"));
+                .andExpect(jsonPath("$.error.code").value("TEAM_006"))
+                .andExpect(jsonPath("$.error.message").value("このチームは削除されていないため、復元できません"));
         assertThat(snapshot()).isEqualTo(before);
+        assertNoRestoreAudit();
     }
 
     @Test
@@ -246,6 +266,84 @@ class TeamRestoreSecurityFilterContractIT extends AbstractMySqlIntegrationTest {
         // 認証context/Authorization/cookieを設定しない。実FilterChainの匿名境界を確認する。
         mockMvc.perform(patch("/api/v1/teams/{slug}/restore", teamASlug)).andExpect(status().isUnauthorized());
         assertThat(snapshot()).isEqualTo(before);
+    }
+
+    @Test
+    void 予定も加盟も無い削除済チームはアーカイブ状態を保って復元し再復元は409() throws Exception {
+        LocalDateTime archivedAt = LocalDateTime.of(2026, 1, 2, 3, 4);
+        inTransaction(() -> {
+            em.createNativeQuery("UPDATE teams SET archived_at = :archived, deleted_at = UTC_TIMESTAMP(), "
+                            + "closure_generation = 7 WHERE id = :id")
+                    .setParameter("archived", archivedAt).setParameter("id", teamAId).executeUpdate();
+            return null;
+        });
+        List<List<Object>> state = inTransaction(() -> rows(
+                "SELECT archived_at, lifecycle_status, visibility, closure_generation FROM teams WHERE id = :id", teamAId));
+        String deletedAt = inTransaction(() -> teamRepository.findByIdIncludingDeleted(teamAId)
+                .orElseThrow().getDeletedAt().toString());
+        mockMvc.perform(patch("/api/v1/teams/{slug}/restore", teamASlug).header("Authorization", bearer(systemAdminId)))
+                .andExpect(status().isNoContent());
+        assertThat(inTransaction(() -> rows(
+                "SELECT archived_at, lifecycle_status, visibility, closure_generation FROM teams WHERE id = :id", teamAId)))
+                .isEqualTo(state);
+        await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> assertThat(restoreAuditRows()).hasSize(1));
+        List<Object> audit = restoreAuditRows().getFirst();
+        assertThat(((Number) audit.get(0)).longValue()).isEqualTo(systemAdminId);
+        assertThat(((Number) audit.get(1)).longValue()).isEqualTo(teamAId);
+        var metadata = objectMapper.readTree(String.valueOf(audit.get(2)));
+        assertThat(metadata.get("restored_by").longValue()).isEqualTo(systemAdminId);
+        assertThat(metadata.get("originally_deleted_at").textValue()).isEqualTo(deletedAt);
+        mockMvc.perform(patch("/api/v1/teams/{slug}/restore", teamASlug).header("Authorization", bearer(systemAdminId)))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("TEAM_006"))
+                .andExpect(jsonPath("$.error.message").value("このチームは削除されていないため、復元できません"));
+        awaitEventPool();
+        assertThat(restoreAuditRows()).hasSize(1);
+    }
+
+    @Test
+    void 同時復元は204と409を一件ずつ返し成功監査も一件だけ() throws Exception {
+        inTransaction(() -> {
+            em.createNativeQuery("UPDATE teams SET deleted_at = UTC_TIMESTAMP() WHERE id = :id")
+                    .setParameter("id", teamAId).executeUpdate();
+            return null;
+        });
+        String token = bearer(systemAdminId);
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        Callable<Integer> restore = () -> {
+            ready.countDown();
+            assertThat(start.await(10, TimeUnit.SECONDS)).isTrue();
+            return mockMvc.perform(patch("/api/v1/teams/{slug}/restore", teamASlug)
+                    .header("Authorization", token)).andReturn().getResponse().getStatus();
+        };
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(restore);
+            var second = executor.submit(restore);
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            assertThat(List.of(first.get(30, TimeUnit.SECONDS), second.get(30, TimeUnit.SECONDS)))
+                    .containsExactlyInAnyOrder(204, 409);
+        } finally {
+            start.countDown();
+        }
+        await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> assertThat(restoreAuditRows()).hasSize(1));
+        awaitEventPool();
+        assertThat(restoreAuditRows()).hasSize(1);
+    }
+
+    private void awaitEventPool() {
+        await().atMost(Duration.ofSeconds(15)).until(() -> eventPool.getActiveCount() == 0
+                && eventPool.getThreadPoolExecutor().getQueue().isEmpty());
+    }
+
+    private void assertNoRestoreAudit() {
+        awaitEventPool();
+        assertThat(restoreAuditRows()).isEmpty();
+    }
+
+    private List<List<Object>> restoreAuditRows() {
+        return inTransaction(() -> rows("SELECT user_id, team_id, metadata FROM audit_logs "
+                + "WHERE team_id = :id AND event_type = 'TEAM_RESTORED' ORDER BY id", teamAId));
     }
 
     private Long saveTeam() {

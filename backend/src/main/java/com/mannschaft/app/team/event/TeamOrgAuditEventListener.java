@@ -70,6 +70,20 @@ public class TeamOrgAuditEventListener {
     }
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "停止するとチーム復元の成功監査が欠落する。復元イベントは再生されないため証跡を恒久的に失う")
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleTeamRestored(TeamRestoredEvent event) {
+        auditLogService.record(
+                AuditEventType.TEAM_RESTORED.name(),
+                event.getUserId(), null, event.getTeamId(), null,
+                null, null, null,
+                toJson(Map.of("restored_by", event.getUserId(),
+                        "originally_deleted_at", event.getOriginallyDeletedAt().toString()))
+        );
+    }
+
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
             reason = "止めるとチーム・組織の作成削除とメンバー操作の監査記録が欠落する。イベントは再生されないため停止期間の証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

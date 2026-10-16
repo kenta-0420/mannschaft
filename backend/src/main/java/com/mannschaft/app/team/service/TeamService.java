@@ -9,6 +9,7 @@ import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.event.TeamArchivedEvent;
 import com.mannschaft.app.team.event.TeamCreatedEvent;
 import com.mannschaft.app.team.event.TeamDeletedEvent;
+import com.mannschaft.app.team.event.TeamRestoredEvent;
 import com.mannschaft.app.team.event.TeamMemberRemovedEvent;
 import com.mannschaft.app.team.event.TeamUnarchivedEvent;
 import com.mannschaft.app.team.repository.TeamRepository;
@@ -1114,9 +1115,13 @@ public class TeamService {
             // 復元後もフレンド名が空欄のまま最大 30 分表示され続ける。
             @CacheEvict(value = "teamFriendList", allEntries = true)
     })
-    public void restoreTeam(Long teamId) {
-        if (teamRepository.countByIdIncludingDeleted(teamId) == 0) {
-            throw new BusinessException(TeamErrorCode.TEAM_001);
+    public void restoreTeam(Long teamId, Long userId) {
+        TeamEntity team = teamRepository.findByIdIncludingDeletedForUpdate(teamId)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
+        // ロッキングリードで同時復元を直列化する。片付けは永続化コンテキストをクリアするため旧値を先に捕捉する。
+        java.time.LocalDateTime originallyDeletedAt = team.getDeletedAt();
+        if (originallyDeletedAt == null) {
+            throw new BusinessException(TeamErrorCode.TEAM_006);
         }
         // F01.2.1 §4.5: 論理削除の片付け（加盟の PENDING・ACTIVE と制限）がまだ済んでいなければ、復元の前に同じ tx で済ませる
         // （チーム行のロックの下で状態を確かめる。復元で削除前の加盟を戻さない。済んでいれば何もしない）
@@ -1125,7 +1130,14 @@ public class TeamService {
         if (updated == 0) {
             throw new BusinessException(TeamErrorCode.TEAM_006);
         }
+        eventPublisher.publishEvent(new TeamRestoredEvent(userId, teamId, originallyDeletedAt));
         log.info("チーム復元完了: teamId={}", teamId);
+    }
+
+    /** SYSTEM_ADMIN認可後の復元経路専用。通常のresolveTeamIdの生存・ACTIVE条件は変えない。 */
+    public Long resolveTeamIdForRestore(String slug) {
+        return teamRepository.findIdBySlugIncludingDeleted(slug)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
     }
 
     // ========================================

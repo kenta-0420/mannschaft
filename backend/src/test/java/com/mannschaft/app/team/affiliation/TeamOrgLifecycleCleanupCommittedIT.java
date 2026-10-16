@@ -10,8 +10,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
@@ -19,6 +22,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * F01.2.1 部隊 2-D — 組織・チームのアーカイブ／論理削除に伴う片付け（§4.5）の統合テスト（試練）。
@@ -41,7 +45,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>AC-G107: チームの論理削除で PENDING・ACTIVE・制限が消える</li>
  * </ul>
  */
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(print = MockMvcPrint.NONE, addFilters = true)
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("F01.2.1 2-D アーカイブ・削除の片付け（コミットを伴う検証）")
 class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupport {
@@ -63,8 +67,14 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
     @Autowired
     private TeamOrgLifecycleCleanupBatch cleanupBatch;
 
+    @Autowired
+    @Qualifier("event-pool")
+    private ThreadPoolTaskExecutor eventPool;
+
     @AfterEach
-    void cleanUp() {
+    void cleanUp() throws Exception {
+        awaitCondition("所有fixtureを削除する前に監査・イベント処理が完了する", () -> eventPool.getActiveCount() == 0
+                && eventPool.getThreadPoolExecutor().getQueue().isEmpty());
         deleteCommittedFixtures(jdbc);
     }
 
@@ -880,7 +890,7 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
                         + "closure_generation = closure_generation + 1 WHERE id = :id")
                 .setParameter("id", fx.team().id()).executeUpdate());
 
-        teamService.restoreTeam(fx.team().id());
+        teamService.restoreTeam(fx.team().id(), fx.ta());
 
         assertThat(jdbc.queryForObject("SELECT deleted_at IS NULL FROM teams WHERE id = ?", Boolean.class,
                 fx.team().id())).as("復元はコミットされる").isTrue();
@@ -888,6 +898,39 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
         assertThat(statusOf(active)).as("削除前の ACTIVE も戻さない").isNull();
         assertThat(restrictionCountOfTeam(fx.team().id())).isZero();
         assertThat(jobIdsOf(apply, CANCELLED)).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("CMP-260902-0059 R7/R9: 復元更新が失敗すると加盟・制限・取消outboxも巻き戻り、成功監査は残らない")
+    void チーム復元の更新失敗は加盟片付けと通知予約も巻き戻す() throws Exception {
+        Fixture fx = fixture();
+        OrgFx keeper = inTx(() -> newOrg(true, false, "OFF", "PUBLIC"));
+        long apply = membership(fx.team().id(), fx.org().id(), "PENDING", "TEAM_APPLY", null);
+        long active = membership(fx.team().id(), keeper.id(), "ACTIVE", "ORG_INVITE", null);
+        blockRestriction(fx.team().id(), keeper.id(), "TEAM_APPLY");
+        inTxVoid(() -> em.createNativeQuery("UPDATE teams SET deleted_at = UTC_TIMESTAMP() WHERE id = :id")
+                .setParameter("id", fx.team().id()).executeUpdate());
+        // 専用Testcontainers DBの所有slugだけに復元UPDATE失敗を注入する。特権が要るTRIGGERやDB全体設定は使わない。
+        String constraintName = "restore_failure_" + UUID.randomUUID().toString().replace("-", "");
+        String ownedSlug = fx.team().slug().replace("'", "''");
+        jdbc.execute("ALTER TABLE teams ADD CONSTRAINT " + constraintName
+                + " CHECK (slug <> '" + ownedSlug + "' OR deleted_at IS NOT NULL)");
+        try {
+            assertThatThrownBy(() -> teamService.restoreTeam(fx.team().id(), fx.ta()))
+                    .hasStackTraceContaining(constraintName);
+        } finally {
+            jdbc.execute("ALTER TABLE teams DROP CHECK " + constraintName);
+        }
+        assertThat(jdbc.queryForObject("SELECT deleted_at IS NOT NULL FROM teams WHERE id = ?", Boolean.class,
+                fx.team().id())).isTrue();
+        assertThat(statusOf(apply)).isEqualTo("PENDING");
+        assertThat(statusOf(active)).isEqualTo("ACTIVE");
+        assertThat(restrictionCountOfTeam(fx.team().id())).isEqualTo(1);
+        assertThat(jobIdsOf(apply, CANCELLED)).isEmpty();
+        awaitCondition("復元失敗後の非同期処理が完了する", () -> eventPool.getActiveCount() == 0
+                && eventPool.getThreadPoolExecutor().getQueue().isEmpty());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE team_id = ? "
+                + "AND event_type = 'TEAM_RESTORED'", Long.class, fx.team().id())).isZero();
     }
 
     // =====================================================================

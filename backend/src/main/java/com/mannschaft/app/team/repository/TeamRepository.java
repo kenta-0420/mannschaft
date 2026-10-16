@@ -161,6 +161,13 @@ public interface TeamRepository
     Optional<TeamEntity> findByIdIncludingDeleted(@Param("id") Long id);
 
     /**
+     * 復元専用: 削除済み・PROVISIONEDを含め、現行slugの一意索引でIDだけを取得する。
+     * SYSTEM_ADMIN認可を済ませた復元経路だけで使い、通常のslug解決には流用しない。
+     */
+    @Query(value = "SELECT id FROM teams WHERE slug = :slug", nativeQuery = true)
+    Optional<Long> findIdBySlugIncludingDeleted(@Param("slug") String slug);
+
+    /**
      * 論理削除済みを含めてチーム行を {@code SELECT ... FOR UPDATE} で取る（F01.2.1 2-D・加盟の片付け）。
      *
      * <p>片付けは、ロックの下でチームの<b>現在の</b>状態（アーカイブ・論理削除）を確かめてから行を消す。
