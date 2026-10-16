@@ -39,7 +39,8 @@ public final class LoyaltyOpenApiNullableCustomizer implements OpenApiCustomizer
         }
         for (Class<?> record : OWNED_RECORDS) {
             Schema recordSchema = record.getAnnotation(Schema.class);
-            var schema = openApi.getComponents().getSchemas().get(recordSchema.name());
+            io.swagger.v3.oas.models.media.Schema<?> schema =
+                    openApi.getComponents().getSchemas().get(recordSchema.name());
             if (schema == null || schema.getProperties() == null) continue;
             for (var component : record.getRecordComponents()) {
                 Schema annotation = component.getAccessor().getAnnotation(Schema.class);
