@@ -17,6 +17,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -67,12 +69,13 @@ class PlatformCardEnsureContractTest {
         reject(7L,"MEMBERSHIP_003");
         verify(cards,never()).saveAndFlush(any());
     }
-    @Test
-    void 競合失敗の後に確定したカードを再読取する() {
+    @ParameterizedTest
+    @ValueSource(strings={"uq_member_cards_active_platform_user_id","member_cards.uq_member_cards_active_platform_user_id"})
+    void 共通slot一意競合の後に確定したカードを再読取する(String constraintName) {
         active("表示名");
         when(cards.findByUserIdAndScopeTypeAndDeletedAtIsNull(7L,ScopeType.PLATFORM))
                 .thenReturn(Optional.empty(),Optional.of(card(CardStatus.ACTIVE)));
-        when(cards.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("duplicate-contract"));
+        when(cards.saveAndFlush(any())).thenThrow(slotFailure(constraintName));
         assertThat(service.ensure(7L).getData().getMemberCardId()).isEqualTo(9L);
         verify(cards,times(2)).findByUserIdAndScopeTypeAndDeletedAtIsNull(7L,ScopeType.PLATFORM);
         verify(cards).saveAndFlush(any());
@@ -81,7 +84,7 @@ class PlatformCardEnsureContractTest {
     void 再読取でも存在しなければ元DB失敗を返す() {
         active("表示名");
         when(cards.findByUserIdAndScopeTypeAndDeletedAtIsNull(7L,ScopeType.PLATFORM)).thenReturn(Optional.empty());
-        var failure=new DataIntegrityViolationException("other-contract");
+        var failure=slotFailure("uq_member_cards_active_platform_user_id");
         when(cards.saveAndFlush(any())).thenThrow(failure);
         assertThatThrownBy(()->service.ensure(7L)).isSameAs(failure);
         verify(cards,times(2)).findByUserIdAndScopeTypeAndDeletedAtIsNull(7L,ScopeType.PLATFORM);
@@ -98,6 +101,22 @@ class PlatformCardEnsureContractTest {
         assertThat(service.ensure(7L).getData().getMemberCardId()).isEqualTo(9L);
         verify(users).getActiveDisplayStates(List.of(7L));
         verifyNoMoreInteractions(users);
+    }
+    @Test
+    void 別制約違反は同user勝者が存在しても回収しない() {
+        active("表示名");
+        when(cards.findByUserIdAndScopeTypeAndDeletedAtIsNull(7L,ScopeType.PLATFORM))
+                .thenReturn(Optional.empty(),Optional.of(card(CardStatus.ACTIVE)));
+        var failure=slotFailure("uq_member_cards_card_code");
+        when(cards.saveAndFlush(any())).thenThrow(failure);
+        assertThatThrownBy(()->service.ensure(7L)).isSameAs(failure);
+        verify(cards).findByUserIdAndScopeTypeAndDeletedAtIsNull(7L,ScopeType.PLATFORM);
+    }
+    private DataIntegrityViolationException slotFailure(String constraintName) {
+        return new DataIntegrityViolationException("synthetic-constraint",
+                new ConstraintViolationException("synthetic-constraint",
+                        new java.sql.SQLIntegrityConstraintViolationException("synthetic-duplicate","23000",1062),
+                        constraintName));
     }
     private void active(String name) {
         when(users.getActiveDisplayStates(List.of(7L))).thenReturn(Map.of(7L,new UserService.ActiveDisplayState(true,name)));
