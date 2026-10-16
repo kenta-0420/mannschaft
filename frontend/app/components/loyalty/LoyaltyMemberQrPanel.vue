@@ -8,38 +8,83 @@ const loading = ref(false)
 const error = shallowRef<unknown>(null)
 const seconds = ref(0)
 let deadline = 0
+let generation = 0
 let timer: ReturnType<typeof setInterval> | undefined
 async function load() {
   if (loading.value) return
+  const requestGeneration = ++generation
   loading.value = true
   qr.value = null
   error.value = null
   try {
     const card = await api.ensurePlatform()
-    qr.value = await api.getQr(card.memberCardId)
-    seconds.value = qr.value.expiresIn
-    deadline = Date.now() + seconds.value * 1000
-  } catch (e) { error.value = e; handleApiError(e) }
-  finally { loading.value = false }
+    if (requestGeneration !== generation) return
+    // 応答受信時からTTLを数えると通信遅延ぶん署名期限を超えるため、要求開始時を基準にする。
+    const requestedAt = Date.now()
+    const nextQr = await api.getQr(card.memberCardId)
+    if (requestGeneration !== generation || document.hidden) return
+    deadline = requestedAt + nextQr.expiresIn * 1000
+    seconds.value = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
+    qr.value = seconds.value > 0 ? nextQr : null
+  } catch (e) {
+    if (requestGeneration !== generation) return
+    error.value = e
+    handleApiError(e, 'team-loyalty')
+  } finally {
+    if (requestGeneration === generation) loading.value = false
+  }
 }
 function tick() {
   seconds.value = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
-  if (qr.value && seconds.value === 0) { qr.value = null; void load() }
+  if (qr.value && seconds.value === 0) {
+    qr.value = null
+    void load()
+  }
 }
-function resume() { if (!document.hidden) { qr.value = null; void load() } }
-onMounted(() => { void load(); timer = setInterval(tick, 1000); document.addEventListener('visibilitychange', resume) })
-onUnmounted(() => { clearInterval(timer); document.removeEventListener('visibilitychange', resume) })
+function resume() {
+  generation++
+  qr.value = null
+  seconds.value = 0
+  loading.value = false
+  if (!document.hidden) void load()
+}
+onMounted(() => {
+  void load()
+  timer = setInterval(tick, 1000)
+  document.addEventListener('visibilitychange', resume)
+})
+onUnmounted(() => {
+  generation++
+  clearInterval(timer)
+  document.removeEventListener('visibilitychange', resume)
+})
 </script>
 
 <template>
   <SectionCard :title="t('loyalty.memberQr.title')">
     <PageLoading v-if="loading" />
     <DashboardErrorState v-else-if="error" :error="error" @retry="load" />
-    <div v-else-if="qr && seconds > 0" class="flex min-w-0 flex-col items-center gap-3" data-testid="member-qr">
+    <div
+      v-else-if="qr && seconds > 0"
+      class="flex min-w-0 flex-col items-center gap-3"
+      data-testid="member-qr"
+    >
       <p>{{ qr.displayName }}</p>
-      <QrCodeImage :value="qr.qrToken" :size="280" :aria-label="t('loyalty.memberQr.title')" class="max-w-full" />
+      <QrCodeImage
+        :value="qr.qrToken"
+        :size="280"
+        :aria-label="t('loyalty.memberQr.title')"
+        class="max-w-full"
+      />
       <p role="status">{{ t('loyalty.memberQr.expiresIn', { seconds }) }}</p>
     </div>
-    <Button class="mt-3 min-h-11" :label="t('loyalty.refresh')" :disabled="loading" icon="pi pi-refresh" @click="load" />
+    <p v-else role="status">{{ t('loyalty.memberQr.expired') }}</p>
+    <Button
+      class="mt-3 min-h-11"
+      :label="t('loyalty.refresh')"
+      :disabled="loading"
+      icon="pi pi-refresh"
+      @click="load"
+    />
   </SectionCard>
 </template>

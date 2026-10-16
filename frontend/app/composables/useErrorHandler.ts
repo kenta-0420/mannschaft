@@ -20,8 +20,9 @@ export const useErrorHandler = () => {
   // #2426: BE（CommonErrorCode）が理由入りの具体的な message を返している場合、
   // 汎用 i18n キー（例: error.COMMON_001）で上書きして理由を握りつぶさない。
   // BE message を最優先し、無ければ従来どおり i18n キー→汎用文言にフォールバックする。
-  const resolveMessage = (code: string, fallback?: string): string => {
+  const resolveMessage = (code: string, fallback?: string, context?: string): string => {
     const key = `error.${code}`
+    if (code === 'COMMON_003' && context === 'team-loyalty') return t('loyalty.error.changed')
     if (code.startsWith('LOYALTY_')) {
       const loyaltyKeys: Record<string, string> = {
         LOYALTY_001: 'loadErrorState.states.notFoundOrForbidden.message',
@@ -62,7 +63,7 @@ export const useErrorHandler = () => {
     }
 
     if (apiError?.data?.error?.code) {
-      const message = resolveMessage(apiError.data.error.code, apiError.data.error.message)
+      const message = resolveMessage(apiError.data.error.code, apiError.data.error.message, context)
       notification.error(t('dialog.error'), message)
       return
     }

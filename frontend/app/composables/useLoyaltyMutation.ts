@@ -13,12 +13,15 @@ export function useLoyaltyMutation<T>() {
       attempt = null
       return result.value
     } catch (error) {
-      const status = (error as { statusCode?: number; status?: number }).statusCode
-        ?? (error as { status?: number }).status
+      const status =
+        (error as { statusCode?: number; status?: number }).statusCode ??
+        (error as { status?: number }).status
       uncertain.value = !status || status >= 500
       if (!uncertain.value) attempt = null
       throw error
-    } finally { pending.value = false }
+    } finally {
+      pending.value = false
+    }
   }
   function start<B extends object>(body: B, operation: (body: B, key: string) => Promise<T>) {
     if (pending.value || uncertain.value) return Promise.resolve(undefined)
