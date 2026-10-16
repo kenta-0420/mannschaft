@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,20 @@ import java.util.stream.Collectors;
  */
 public interface TeamRepository
         extends JpaRepository<TeamEntity, Long>, JpaSpecificationExecutor<TeamEntity> {
+
+    /** 受付投影に必要なteam scalar状態だけを読む。 */
+    interface ActiveStateRow {
+        Long getId();
+        String getName();
+        TeamEntity.LifecycleStatus getLifecycleStatus();
+        LocalDateTime getArchivedAt();
+        LocalDateTime getDeletedAt();
+    }
+
+    @Query("SELECT t.id AS id, t.name AS name, t.lifecycleStatus AS lifecycleStatus, "
+            + "t.archivedAt AS archivedAt, t.deletedAt AS deletedAt FROM TeamEntity t WHERE t.id IN :ids")
+    List<ActiveStateRow> findActiveStateRows(@Param("ids") Collection<Long> ids);
+
 
     /**
      * カスタムスラッグでチームを取得する（URL識別子）。
