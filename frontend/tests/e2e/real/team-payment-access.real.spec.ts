@@ -8,7 +8,8 @@ import type { components } from '../../../app/types/generated'
 // 請求/Connect/精算の既存データは変更しない。正常詳細の描画はSFC/既存モックE2Eで補完する。
 // 実行: BASE_URL=http://localhost:3001 API_BASE_URL=http://localhost:8080 npx playwright test
 // tests/e2e/real/team-payment-access.real.spec.ts --project chromium-real --no-deps --workers=1
-test.use({ storageState: { cookies: [], origins: [] } })
+// 閲覧認可の試験にPWA大量precacheやオフライン経路を混在させない。
+test.use({ storageState: { cookies: [], origins: [] }, serviceWorkers: 'block' })
 test.describe.configure({ mode: 'serial' })
 const BE = process.env.API_BASE_URL ?? 'http://localhost:8080'
 const missingRequestId = '00000000-0000-4000-8000-000000000001'
@@ -81,6 +82,9 @@ test.beforeAll(async () => {
     throw new Error('created team numeric ID was not returned by /me/teams')
   }
   team = { id: numericId, slug: created.slug }
+  const outsiderTeams = (await json<Array<{ id: number; role: string }>>(sessions.get('OTHER_TEAM_ADMIN')!.api, '/me/teams')).data
+  expect(outsiderTeams.some((scope) => scope.role === 'ADMIN' && scope.id !== numericId), '別チームの実ADMINであること').toBe(true)
+  expect(outsiderTeams.some((scope) => scope.id === numericId), '対象チームには未所属であること').toBe(false)
   const invitation = (await json<{ id: number; token: string }>(admin.api, `/teams/${team!.slug}/invite-tokens`, 'POST', {
     roleId: 4, expiresIn: '1d', maxUses: 2,
   })).data
