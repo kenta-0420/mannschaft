@@ -657,6 +657,58 @@ test('F22.1-10: unselected scope chips are selected without navigation by keyboa
 })
 
 // CMP-261016-0955: ブラウザの実寸・行位置でモバイル表示の回帰を検証する。
+for (const width of [360, 390, 1024]) {
+  test(`INSIGHT-I6-DOTS: ${width}pxで下部ドットを44pxの領域で操作できる`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.addInitScript(() => localStorage.setItem('tokenExpiresAt', String(Date.now() + 3600000)))
+    await loginAsMember(page)
+    await mockDashboardApis(page, { withSlug: true })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
+    await waitForHydratedShell(page)
+    await waitForCarousel(page)
+    const carousel = page.getByTestId('scope-carousel')
+    const panels = [
+      { name: '個人', panel: 'PERSONAL' },
+      { name: 'チーム', panel: 'TEAM' },
+      { name: '組織', panel: 'ORGANIZATION' },
+    ]
+    await page.getByTestId('scope-next').click()
+    const metrics = []
+    for (const { name, panel } of panels) {
+      const dot = carousel.getByRole('button', { name, exact: true })
+      await expect(dot).toHaveCount(1)
+      await dot.scrollIntoViewIfNeeded()
+      const box = (await dot.boundingBox())!
+      metrics.push({ name, box })
+      expect.soft(box.width).toBeGreaterThanOrEqual(44)
+      expect.soft(box.height).toBeGreaterThanOrEqual(44)
+      await dot.click()
+      await expect(dot).toHaveAttribute('aria-current', 'true')
+      await expect(carousel.locator('button[aria-current="true"]')).toHaveCount(1)
+      await expect(page.locator(`#scope-panel-${panel}`)).toHaveAttribute('aria-hidden', 'false')
+      await expect(page.getByTestId(`scope-segment-${panel}`)).toHaveAttribute('aria-selected', 'true')
+    }
+    for (let index = 1; index < metrics.length; index += 1) {
+      const previous = metrics[index - 1]!.box
+      expect(metrics[index]!.box.x).toBeGreaterThanOrEqual(previous.x + previous.width)
+    }
+    await testInfo.attach(`dot-hit-areas-${width}`, { body: JSON.stringify({ width, metrics }), contentType: 'application/json' })
+    await testInfo.attach(`dot-controls-${width}`, { body: await page.screenshot(), contentType: 'image/png' })
+    const visuals = []
+    for (const { name } of panels) {
+      const visual = carousel.getByRole('button', { name, exact: true }).locator('span[aria-hidden="true"]')
+      await expect(visual).toHaveCount(1)
+      const visualBox = (await visual.boundingBox())!
+      visuals.push({ name, box: visualBox })
+      expect(visualBox.width).toBe(10)
+      expect(visualBox.height).toBe(10)
+      expect(await visual.evaluate(element => getComputedStyle(element).borderRadius)).toBe('9999px')
+    }
+    await testInfo.attach(`dot-visuals-${width}`, { body: JSON.stringify({ width, visuals }), contentType: 'application/json' })
+  })
+}
+
 for (const width of [360, 390, 312, 1024, 1280]) {
   test(`INSIGHT-I6: ${width}pxでスコープ切替と設定の操作領域を確保する`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })

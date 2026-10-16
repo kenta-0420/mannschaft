@@ -437,12 +437,17 @@ onBeforeUnmount(() => {
         v-for="(p, idx) in PANELS"
         :key="`dot-${p.panel}`"
         type="button"
-        class="h-2.5 w-2.5 rounded-full transition-colors"
-        :class="idx === activeIndex ? 'bg-primary' : 'bg-surface-300 dark:bg-surface-600'"
+        class="flex min-h-11 min-w-11 items-center justify-center rounded-full"
         :aria-label="$t(p.labelKey)"
         :aria-current="idx === activeIndex ? 'true' : undefined"
         @click="goTo(idx)"
-      />
+      >
+        <span
+          aria-hidden="true"
+          class="h-2.5 w-2.5 rounded-full transition-colors"
+          :class="idx === activeIndex ? 'bg-primary' : 'bg-surface-300 dark:bg-surface-600'"
+        />
+      </button>
     </div>
 
     <!-- スクリーンリーダー向けライブ通知 -->
