@@ -1,4 +1,4 @@
-﻿{
+{
   "adminConsole": {
     "comingSoon": "Próximamente",
     "team": {
@@ -124,6 +124,9 @@
         "summary": "{enabled} activos / {total} en total",
         "fetchFailed": "No se pudo cargar la información de módulos"
       }
+    },
+    "settingsHub": {
+      "readOnly": "Solo consulta. Solo un administrador puede editar estas etiquetas."
     }
   }
 }

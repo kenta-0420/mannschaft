@@ -79,5 +79,26 @@
         "step2": "权限不足时，请联系相应团队或组织的管理员。"
       }
     }
+  },
+  "checkinLocationManager": {
+    "title": "自助签到地点",
+    "add": "添加地点",
+    "empty": "尚未登记地点",
+    "name": "地点名称",
+    "status": "状态",
+    "active": "启用",
+    "inactive": "停用",
+    "autoComplete": "自动完成预约",
+    "actions": "操作",
+    "edit": "编辑地点",
+    "delete": "删除地点",
+    "placeholder": "例如：总店前台",
+    "autoCompleteHint": "签到时自动完成预约",
+    "cancel": "取消",
+    "update": "更新",
+    "create": "创建",
+    "created": "地点已创建",
+    "updated": "地点已更新",
+    "deleted": "地点已删除"
   }
 }

@@ -31500,7 +31500,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * チーム公開設定取得
+         * @description GETのパス識別子はslug。管理認可後に数値IDと現在の2設定を返す。
+         */
+        get: operations["getTeamPublicSettings"];
         put?: never;
         post?: never;
         delete?: never;
@@ -31786,7 +31790,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * 組織公開設定取得
+         * @description GETのパス識別子はslug。管理認可後に数値IDと現在の2設定を返す。
+         */
+        get: operations["getOrganizationPublicSettings"];
         put?: never;
         post?: never;
         delete?: never;
@@ -84493,6 +84501,15 @@ export interface components {
             newMode?: "DISPLAY_NAME" | "REAL_NAME";
             /** @enum {string} */
             oldMode?: "DISPLAY_NAME" | "REAL_NAME";
+        };
+        ApiResponsePublicSettingsResponse: {
+            data?: components["schemas"]["PublicSettingsResponse"];
+        };
+        PublicSettingsResponse: {
+            /** Format: int64 */
+            numericId?: number;
+            publicEventsEnabled?: boolean;
+            timelinePostsPublic?: boolean;
         };
         /** @description 自由FAQ 1問 */
         CustomFaqItem: {
@@ -151019,6 +151036,55 @@ export interface operations {
             };
         };
     };
+    getTeamPublicSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 管理認可済みの設定 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+            /** @description 未認証 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+            /** @description スコープ管理権限なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+            /** @description 対象slugなし・削除済み・ACTIVE対象外 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+        };
+    };
     patchTeamPublicSettings: {
         parameters: {
             query?: never;
@@ -151449,6 +151515,55 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["SupporterNameDisclosureResponse"];
+                };
+            };
+        };
+    };
+    getOrganizationPublicSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 管理認可済みの設定 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+            /** @description 未認証 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+            /** @description スコープ管理権限なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+            /** @description 対象slugなし・削除済み・ACTIVE対象外 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
                 };
             };
         };

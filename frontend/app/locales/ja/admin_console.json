@@ -1,4 +1,4 @@
-﻿{
+{
   "adminConsole": {
     "comingSoon": "近日公開",
     "team": {
@@ -124,6 +124,9 @@
         "summary": "有効 {enabled} / 全 {total}",
         "fetchFailed": "モジュール情報を取得できませんでした"
       }
+    },
+    "settingsHub": {
+      "readOnly": "閲覧のみ。ラベルを編集できるのは管理者です。"
     }
   }
 }

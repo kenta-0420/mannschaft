@@ -450,7 +450,7 @@ HTTP|com.mannschaft.app.proxyvote.controller.ProxyDelegationController|4|4
 HTTP|com.mannschaft.app.proxyvote.controller.ProxyVoteExportController|4|4
 HTTP|com.mannschaft.app.proxyvote.controller.ProxyVoteMotionController|10|10
 HTTP|com.mannschaft.app.proxyvote.controller.ProxyVoteSessionController|14|14
-HTTP|com.mannschaft.app.publicview.controller.AdminPublicSettingsController|2|2
+HTTP|com.mannschaft.app.publicview.controller.AdminPublicSettingsController|2|4
 HTTP|com.mannschaft.app.publicview.controller.AdminSupporterNameDisclosureController|4|4
 HTTP|com.mannschaft.app.publicview.controller.PublicDiscoverController|2|2
 HTTP|com.mannschaft.app.publicview.controller.PublicEventController|2|2
