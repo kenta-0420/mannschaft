@@ -11,4 +11,18 @@ public class LoyaltyPointsWriter {
     public TransactionResponse award(LoyaltyWriteCommand command) {
         return null;
     }
+    @Transactional
+    public TransactionResponse redeem(LoyaltyWriteCommand command) {
+        return null;
+    }
+
+    @Transactional
+    public LoyaltySubmissionOutcome submit(LoyaltyWriteCommand command) {
+        return null;
+    }
+
+    @Transactional
+    public LoyaltyRequestActionOutcome act(LoyaltyRequestActionCommand command) {
+        return null;
+    }
 }

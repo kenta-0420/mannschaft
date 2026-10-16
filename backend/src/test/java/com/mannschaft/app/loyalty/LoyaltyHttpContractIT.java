@@ -1,7 +1,6 @@
 package com.mannschaft.app.loyalty;
 
 import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.entity.UserEntity.UserStatus;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,7 +9,6 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
-import java.util.UUID;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -18,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** AC05/14/22/30のHTTP・実認可・実DB境界。Controllerの直呼びや内部Beanのmockは使わない。 */
+@org.springframework.transaction.annotation.Transactional
 @AutoConfigureMockMvc
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
@@ -27,9 +26,7 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void createActor() {
-        UserEntity actor = UserEntity.builder().email("loyalty-" + UUID.randomUUID() + "@example.test")
-                .lastName("試験").firstName("利用者").displayName("ポイント本人")
-                .isSearchable(false).locale("ja").timezone("Asia/Tokyo").status(UserStatus.ACTIVE).build();
+        UserEntity actor = LoyaltyTestFixture.user();
         actorId = users.saveAndFlush(actor).getId();
     }
 

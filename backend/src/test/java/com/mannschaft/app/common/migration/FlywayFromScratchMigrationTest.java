@@ -1424,4 +1424,48 @@ class FlywayFromScratchMigrationTest {
         String location = domain.getCodeSource().getLocation().getPath();
         return location.contains("/classes/java/test");
     }
+
+    @Test
+    @Order(90)
+    void チームポイント6表の所有境界と申請索引が存在する() throws Exception {
+        try (Connection conn = connect(); Statement statement = conn.createStatement()) {
+            for (String suffix : List.of("programs", "rules", "rewards", "accounts", "transactions", "award_requests")) {
+                String table = "team_loyalty_" + suffix;
+                try (ResultSet columns = conn.getMetaData().getColumns(conn.getCatalog(), null, table, "id")) {
+                    assertThat(columns.next()).as(table + " UUID主キー").isTrue();
+                    assertThat(columns.getString("TYPE_NAME")).isEqualToIgnoringCase("BINARY");
+                    assertThat(columns.getInt("COLUMN_SIZE")).isEqualTo(16);
+                }
+                try (ResultSet result = statement.executeQuery("SELECT TABLE_COLLATION FROM information_schema.TABLES "
+                        + "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='" + table + "'")) {
+                    assertThat(result.next()).isTrue();
+                    assertThat(result.getString(1)).isEqualTo("utf8mb4_0900_ai_ci");
+                }
+                try (ResultSet keys = conn.getMetaData().getImportedKeys(conn.getCatalog(), null, table)) {
+                    while (keys.next()) {
+                        assertThat(keys.getString("PKTABLE_NAME")).as("他ドメインFKを作らない").startsWith("team_loyalty_");
+                        assertThat(keys.getShort("DELETE_RULE")).isEqualTo((short) DatabaseMetaData.importedKeyRestrict);
+                    }
+                }
+            }
+            try (ResultSet result = statement.executeQuery("SELECT COLUMN_NAME FROM information_schema.STATISTICS "
+                    + "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='team_loyalty_award_requests' "
+                    + "AND INDEX_NAME='idx_tlar_pending_current' ORDER BY SEQ_IN_INDEX")) {
+                List<String> columns = new ArrayList<>();
+                while (result.next()) columns.add(result.getString(1));
+                assertThat(columns).containsExactly("team_id", "status", "program_version", "rule_version", "award_on", "expires_at", "id");
+            }
+            try (ResultSet result = statement.executeQuery("SELECT GENERATION_EXPRESSION,EXTRA FROM information_schema.COLUMNS "
+                    + "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='team_loyalty_award_requests' AND COLUMN_NAME='pending_unique_key'")) {
+                assertThat(result.next()).isTrue();
+                assertThat(result.getString(1)).containsIgnoringCase("PENDING");
+                assertThat(result.getString(2)).contains("VIRTUAL GENERATED");
+            }
+            try (ResultSet result = statement.executeQuery("SELECT scope FROM permissions WHERE name='TEAM_LOYALTY_OPERATE'")) {
+                assertThat(result.next()).as("権限を実カタログへ登録する").isTrue();
+                assertThat(result.getString(1)).isEqualTo("TEAM");
+                assertThat(result.next()).isFalse();
+            }
+        }
+    }
 }
