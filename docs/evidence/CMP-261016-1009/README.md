@@ -52,3 +52,4 @@ APIソースは分離したbase main `e12dc538ec21834b7e28905cfcc97900f5b40fdb`�
 製品修正と検証は完了したが、専用合成schema `mobile_menu_20261016`、専用appuser、Redis DB13のデータcleanupは未完了で残存している。専用FE／BE／REPLは停止済み。初回preflightはroot `.env`不存在で接続前停止した。既存DockerコンテナのDB管理資格情報をメモリ内だけで利用する次のcleanup preflightは、自動承認レビューが「資格情報探索・明示承認なし」として拒否し、実行していない。迂回せず、cleanup認証利用について利用者の明示承認を待つ。[cleanup状態](data-cleanup-status.json)を参照。
 
 共有fixtureは変更していない。共有worktreeのcleanup checkは他作業のdirty／locked／junction／稼働中資産を理由に非0（保存したcheck-only証跡はexit2）、削除0で保持した。このゲートを合格扱いにせず、[保全証跡](worktree-cleanup-preservation.json)を残した。
+[専用資源cleanupの阻害記録](owned-cleanup-blocked.sanitized.json)は記録時点の状態であり、後続のworktree撤去状態と区別する。
