@@ -5,7 +5,7 @@ const props = defineProps<{
   teamId: string
 }>()
 
-const categories: SidebarCategory[] = [
+const categories = computed<SidebarCategory[]>(() => [
   {
     key: 'home',
     labelKey: 'teamSidebar.category.home',
@@ -153,11 +153,12 @@ const categories: SidebarCategory[] = [
       { labelKey: 'teamSidebar.item.bulletinCategories', icon: 'pi pi-tags', path: '', absolutePath: '/admin/bulletin-categories', moduleSlug: 'bulletin', requiredRole: 'DEPUTY_ADMIN' },
     ],
   },
-]
+])
 </script>
 
 <template>
   <BaseSidebar
+    :key="props.teamId"
     scope-type="team"
     :scope-id="props.teamId"
     :categories="categories"
