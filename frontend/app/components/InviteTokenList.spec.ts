@@ -122,13 +122,21 @@ describe('スコープ招待の英語表示', () => {
   for (const locale of ['ja', 'en', 'zh', 'ko', 'es', 'de'] as const) {
     it(`${locale}の一覧とフォームが辞書の表示文言を使用する`, async () => {
       const wrapper = await mountList('team', locale)
-      expect(wrapper.text()).toContain(messages[locale].inviteToken.title)
-      expect(wrapper.text()).toContain(messages[locale].inviteToken.empty)
+      // Nuxtの辞書importはASTになるため、期待する表示文字列もi18nのtで解決する。
+      const expected = createI18n({ legacy: false, locale, messages }).global
+      const expectedText = (key: string) => {
+        const text = expected.t(key)
+        expect(text).not.toBe('')
+        expect(text).not.toBe(key)
+        return text
+      }
+      expect(wrapper.text()).toContain(expectedText('inviteToken.title'))
+      expect(wrapper.text()).toContain(expectedText('inviteToken.empty'))
       await openForm(wrapper)
-      expect(wrapper.text()).toContain(messages[locale].inviteToken.createTitle)
-      expect(wrapper.text()).toContain(messages[locale].inviteToken.maxUses)
-      expect(wrapper.text()).toContain(messages[locale].inviteToken.never)
-      expect(wrapper.text()).toContain(messages[locale].role.MEMBER)
+      expect(wrapper.text()).toContain(expectedText('inviteToken.createTitle'))
+      expect(wrapper.text()).toContain(expectedText('inviteToken.maxUses'))
+      expect(wrapper.text()).toContain(expectedText('inviteToken.never'))
+      expect(wrapper.text()).toContain(expectedText('role.MEMBER'))
       expect(wrapper.text()).not.toContain('inviteToken.')
     })
   }
