@@ -47,9 +47,10 @@ APIソースは分離したbase main `e12dc538ec21834b7e28905cfcc97900f5b40fdb`�
 
 専用NuxtのPostCSS読込停滞は旧Jiti1がnested NuxtKitのESM `import.meta.dev`をCJSとして評価する検証環境の問題だった。Node22の標準native preloadで同CSS146727bytesの読込に成功し、専用launcherだけを修正して回復した。製品コード・依存は変更していない。原住民のtimeout／未確認と当時のCI・regressionsのpendingは履歴として残し、追加root実機greenと分けて評価する。
 最終head `25ece9b77159e117c631ddb82e88311bc7665570`の[正式検分](final-release-review-25ece9b771.json)はfinding0、必須CI成功、実画面再試験完了。追加ADMIN導線は通常Drawerから招待390px（一覧API200）、権限グループ390px（正常空一覧）、機能設定360px（catalog200・42 switches）へ到達し、いずれもDrawer0。画面ログインを使用し、3枚のPNGはroot視認済み。[最終回帰一覧](regressions-final.json)は6欠陥のred／green／実画面を対応付ける。core merge実体を最新origin/mainで確認し、台帳の対象1行へ完了証拠を反映した。
-## 後片付けの残存制限
+## 専用資源の後片付け
 
-製品修正と検証は完了したが、専用合成schema `mobile_menu_20261016`、専用appuser、Redis DB13のデータcleanupは未完了で残存している。専用FE／BE／REPLは停止済み。初回preflightはroot `.env`不存在で接続前停止した。既存DockerコンテナのDB管理資格情報をメモリ内だけで利用する次のcleanup preflightは、自動承認レビューが「資格情報探索・明示承認なし」として拒否し、実行していない。迂回せず、cleanup認証利用について利用者の明示承認を待つ。[cleanup状態](data-cleanup-status.json)を参照。
+ユーザーの「削除してよい」という明示承認後、専用合成schema `mobile_menu_20261016`・専用appuser・Redis DB13の削除を完了した。別のread-only確認でschema不在・appuser不在・Redis DB13空を確認した。専用FE／BE／REPLは停止済み。共有書込・outbox読取・Redis DB14への操作は行っていない。[最終sanitized結果の原値](cleanup-completed.md)を参照。
 
-共有fixtureは変更していない。共有worktreeのcleanup checkは他作業のdirty／locked／junction／稼働中資産を理由に非0（保存したcheck-only証跡はexit2）、削除0で保持した。このゲートを合格扱いにせず、[保全証跡](worktree-cleanup-preservation.json)を残した。
-[専用資源cleanupの阻害記録](owned-cleanup-blocked.sanitized.json)は記録時点の状態であり、後続のworktree撤去状態と区別する。
+当初の[cleanup承認待ち](data-cleanup-status.json)、[阻害記録](owned-cleanup-blocked.sanitized.json)、[当時の完了要約](completion-summary.json)に残る未削除・承認待ちは記録時点の履歴であり、現在状態は上記の完了記録を参照する。これらの原記録は書き換えていない。
+
+共有worktreeのcleanup checkが他作業のdirty／locked／junction／稼働中資産を理由に非0（exit2）、削除0だった[保全証跡](worktree-cleanup-preservation.json)も当時の履歴として保持し、共有環境全体のゲートを合格へ読み替えない。他者資産は変更していない。
