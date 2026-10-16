@@ -49,7 +49,7 @@ class NewDeviceLoginNotificationListenerTest {
         verify(notificationHelper).notify(eq(10L), eq(NotificationType.NEW_DEVICE_LOGIN.name()),
                 eq(NotificationType.NEW_DEVICE_LOGIN.getPriority()), anyString(), body.capture(),
                 eq("USER"), eq(null), eq(NotificationScopeType.PERSONAL), eq(10L),
-                eq("/account/sessions"), eq(null));
+                eq("/settings/security"), eq(null));
         assertThat(body.getValue()).doesNotContain("192.0.2.1");
     }
 
