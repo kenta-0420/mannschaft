@@ -1,5 +1,7 @@
 package com.mannschaft.app.loyalty;
 
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
+
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.loyalty.dto.TransactionResponse;
@@ -12,7 +14,7 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.sql.SQLException;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -68,7 +70,7 @@ public class LoyaltyPointsWriter {
                     .orElseThrow(() -> error(LoyaltyErrorCode.LOYALTY_008));
             receipt = transactionReceipt(command);
             if (receipt != null) return mapper.transaction(receipt);
-            LocalDateTime now = time.now();
+            Instant now = time.now();
             account.apply(-reward.getRequiredPoints(), now);
             var row = transaction(command, account, program, TransactionKind.REDEEM, TransactionChannel.STAFF,
                     -reward.getRequiredPoints(), null, reward.getId(), null, reward.getName(), reward.getVersion(), now);
@@ -94,8 +96,8 @@ public class LoyaltyPointsWriter {
             if (program.getSelfAwardMode() == SelfAwardMode.AUTO) {
                 return new LoyaltySubmissionOutcome(awardLocked(command, program, rule), null);
             }
-            LocalDateTime now = time.now();
-            var pending = store.getRequests().lockPending(command.teamId(), command.userId(), rule.getId(), now.toLocalDate());
+            Instant now = time.now();
+            var pending = store.getRequests().lockPending(command.teamId(), command.userId(), rule.getId(), LocalDate.ofInstant(now, UserZoneLocalDateTimeParser.SERVER_ZONE));
             var snapshot = command.pendingSnapshot();
             UUID currentPending = pending.isEmpty() ? null : pending.getFirst().getId();
             if (snapshot != null && !java.util.Objects.equals(snapshot.requestId(), currentPending)) {
@@ -104,7 +106,7 @@ public class LoyaltyPointsWriter {
             var account = store.getAccounts().lockExclusive(command.teamId(), command.userId()).orElse(null);
             receipt = submissionReceipt(command);
             if (receipt != null) return receipt;
-            boolean awarded = daily(command.teamId(), command.userId(), rule.getId(), now.toLocalDate());
+            boolean awarded = daily(command.teamId(), command.userId(), rule.getId(), LocalDate.ofInstant(now, UserZoneLocalDateTimeParser.SERVER_ZONE));
             for (var row : pending) {
                 var state = states.evaluate(row, program, rule, snapshot == null ? null : snapshot.externalFailure(),
                         awarded, account == null ? 0 : account.getBalance(), now);
@@ -122,7 +124,7 @@ public class LoyaltyPointsWriter {
             var row = LoyaltyAwardRequestEntity.builder().teamId(command.teamId()).userId(command.userId())
                     .ruleId(rule.getId()).sourceLocationId(command.sourceLocationId()).programVersion(program.getVersion())
                     .ruleVersion(rule.getVersion()).points(rule.getPoints()).ruleName(rule.getName())
-                    .locationName(command.locationName()).awardOn(now.toLocalDate()).expiresAt(time.expiresAt(now))
+                    .locationName(command.locationName()).awardOn(LocalDate.ofInstant(now, UserZoneLocalDateTimeParser.SERVER_ZONE)).expiresAt(time.expiresAt(now))
                     .status(RequestStatus.PENDING).version(0).verificationCode(verificationCode())
                     .submitKey(command.requestKey()).submitPayloadHash(command.payloadHash().clone())
                     .createdAt(now).updatedAt(now).build();
@@ -157,7 +159,7 @@ public class LoyaltyPointsWriter {
             if (command.operation() != RequestOperation.APPROVE && command.operation() != RequestOperation.CANCEL
                     && command.operation() != RequestOperation.REJECT) throw new BusinessException(CommonErrorCode.COMMON_001);
             var account = store.getAccounts().lockExclusive(command.teamId(), row.getUserId()).orElse(null);
-            LocalDateTime now = time.now();
+            Instant now = time.now();
             var state = states.evaluate(row, program, rule, command.externalFailure(),
                     daily(command.teamId(), row.getUserId(), ruleId, row.getAwardOn()), account == null ? 0 : account.getBalance(), now);
             if (state.status() != RequestStatus.PENDING) {
@@ -202,8 +204,8 @@ public class LoyaltyPointsWriter {
     }
 
     private TransactionResponse awardLocked(LoyaltyWriteCommand command, LoyaltyProgramEntity program, LoyaltyRuleEntity rule) {
-        LocalDateTime now = time.now();
-        LocalDate day = rule.getFrequency() == Frequency.ONCE_PER_JST_DAY ? now.toLocalDate() : null;
+        Instant now = time.now();
+        LocalDate day = rule.getFrequency() == Frequency.ONCE_PER_JST_DAY ? LocalDate.ofInstant(now, UserZoneLocalDateTimeParser.SERVER_ZONE) : null;
         List<LoyaltyAwardRequestEntity> pending = day == null ? List.of()
                 : store.getRequests().lockPending(command.teamId(), command.userId(), rule.getId(), day);
         var account = store.getAccounts().lockExclusive(command.teamId(), command.userId())
@@ -242,13 +244,13 @@ public class LoyaltyPointsWriter {
     private boolean daily(Long team, Long user, UUID rule, LocalDate day) {
         return store.getTransactions().existsByTeamIdAndUserIdAndRuleIdAndAwardOn(team, user, rule, day);
     }
-    private LoyaltyAccountEntity createAccount(Long team, Long user, LocalDateTime now) {
+    private LoyaltyAccountEntity createAccount(Long team, Long user, Instant now) {
         return store.getAccounts().saveAndFlush(LoyaltyAccountEntity.builder().teamId(team).userId(user).balance(0)
                 .lifetimeEarned(0).createdAt(now).updatedAt(now).build());
     }
     private LoyaltyTransactionEntity transaction(LoyaltyWriteCommand c, LoyaltyAccountEntity a,
             LoyaltyProgramEntity p, TransactionKind kind, TransactionChannel channel, int delta,
-            UUID rule, UUID reward, LocalDate day, String label, long version, LocalDateTime now) {
+            UUID rule, UUID reward, LocalDate day, String label, long version, Instant now) {
         return LoyaltyTransactionEntity.builder().teamId(c.teamId()).accountId(a.getId()).userId(c.userId())
                 .actorUserId(c.actorUserId()).kind(kind).channel(channel).requestOperation(c.operation()).delta(delta)
                 .balanceAfter(a.getBalance()).ruleId(rule).rewardId(reward).sourceLocationId(c.sourceLocationId())
@@ -296,7 +298,7 @@ public class LoyaltyPointsWriter {
                 || row.getStatus() == RequestStatus.SUPERSEDED;
         return new LoyaltyRequestActionOutcome(row, null, invalid ? LoyaltyErrorCode.LOYALTY_014 : LoyaltyErrorCode.LOYALTY_013);
     }
-    private void closeAutomatically(LoyaltyAwardRequestEntity row, LoyaltyEffectiveRequestState state, LocalDateTime now) {
+    private void closeAutomatically(LoyaltyAwardRequestEntity row, LoyaltyEffectiveRequestState state, Instant now) {
         row.close(state.status(), state.reason(), null, null, null, null, null, now);
     }
     private String verificationCode() {

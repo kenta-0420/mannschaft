@@ -8,7 +8,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -47,12 +47,12 @@ public class LoyaltyRuleEntity extends UuidV7Entity {
     private long version;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
-    public void update(String name, int points, Frequency frequency, boolean selfEnabled, boolean active, LocalDateTime now) {
+    public void update(String name, int points, Frequency frequency, boolean selfEnabled, boolean active, Instant now) {
         this.name = name;
         this.points = points;
         this.frequency = frequency;

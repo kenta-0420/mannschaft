@@ -4,7 +4,7 @@ import com.mannschaft.app.loyalty.RequestOperation;
 import com.mannschaft.app.loyalty.entity.LoyaltyAwardRequestEntity;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -54,8 +54,8 @@ public interface LoyaltyAwardRequestRepository extends JpaRepository<LoyaltyAwar
     List<LoyaltyAwardRequestEntity> teamNextPage(Long teamId, UUID before, Pageable pageable);
 
     @Query("select r from LoyaltyAwardRequestEntity r where r.teamId = :teamId and r.status = com.mannschaft.app.loyalty.RequestStatus.PENDING and r.programVersion = :programVersion and r.ruleVersion = :ruleVersion and r.awardOn = :today and r.expiresAt > :now order by r.expiresAt, r.id")
-    List<LoyaltyAwardRequestEntity> pendingFirstPage(Long teamId, long programVersion, long ruleVersion, LocalDate today, LocalDateTime now, Pageable pageable);
+    List<LoyaltyAwardRequestEntity> pendingFirstPage(Long teamId, long programVersion, long ruleVersion, LocalDate today, Instant now, Pageable pageable);
 
     @Query("select r from LoyaltyAwardRequestEntity r where r.teamId = :teamId and r.status = com.mannschaft.app.loyalty.RequestStatus.PENDING and r.programVersion = :programVersion and r.ruleVersion = :ruleVersion and r.awardOn = :today and r.expiresAt > :now and (r.expiresAt > :afterTime or (r.expiresAt = :afterTime and r.id > :afterId)) order by r.expiresAt, r.id")
-    List<LoyaltyAwardRequestEntity> pendingNextPage(Long teamId, long programVersion, long ruleVersion, LocalDate today, LocalDateTime now, LocalDateTime afterTime, UUID afterId, Pageable pageable);
+    List<LoyaltyAwardRequestEntity> pendingNextPage(Long teamId, long programVersion, long ruleVersion, LocalDate today, Instant now, Instant afterTime, UUID afterId, Pageable pageable);
 }

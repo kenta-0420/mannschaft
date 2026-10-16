@@ -4,27 +4,29 @@ import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
-/** UTC Clockをアプリ層のJST壁時計へ明示変換する。 */
+/** Clockの瞬間を保持し、営業日と日末だけをJSTへ明示変換する。 */
 @Component
 @RequiredArgsConstructor
 public class LoyaltyTime {
     private final Clock clock;
 
-    public LocalDateTime now() {
+    public Instant now() {
         // DATETIME(0)への丸めで日末のcreated_atがexpires_atへ繰り上がることを防ぐ。
-        return LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE)).withNano(0);
+        return clock.instant().truncatedTo(ChronoUnit.SECONDS);
     }
 
     public LocalDate today() {
-        return now().toLocalDate();
+        return LocalDate.ofInstant(now(), UserZoneLocalDateTimeParser.SERVER_ZONE);
     }
 
-    public LocalDateTime expiresAt(LocalDateTime createdAt) {
-        LocalDateTime ttl = createdAt.plusMinutes(30);
-        LocalDateTime dayEnd = createdAt.toLocalDate().plusDays(1).atStartOfDay();
+    public Instant expiresAt(Instant createdAt) {
+        Instant ttl = createdAt.plus(30, ChronoUnit.MINUTES);
+        Instant dayEnd = LocalDate.ofInstant(createdAt, UserZoneLocalDateTimeParser.SERVER_ZONE)
+                .plusDays(1).atStartOfDay(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant();
         return ttl.isBefore(dayEnd) ? ttl : dayEnd;
     }
 }

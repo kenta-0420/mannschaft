@@ -7,7 +7,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -36,13 +36,13 @@ public class LoyaltyAccountEntity extends UuidV7Entity {
     private long lifetimeEarned;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     /** チームポイントの業務契約。 */
-    public void apply(int delta, LocalDateTime now) {
+    public void apply(int delta, Instant now) {
         long nextBalance = (long) balance + delta;
         if (nextBalance < 0) {
             throw new BusinessException(LoyaltyErrorCode.LOYALTY_008);

@@ -5,7 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -39,12 +39,12 @@ public class LoyaltyRewardEntity extends UuidV7Entity {
     private long version;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
-    public void update(String name, String description, int points, boolean active, LocalDateTime now) {
+    public void update(String name, String description, int points, boolean active, Instant now) {
         this.name = name;
         this.description = description;
         this.requiredPoints = points;

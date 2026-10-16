@@ -1,21 +1,23 @@
 package com.mannschaft.app.loyalty;
 
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
+
 import com.mannschaft.app.loyalty.entity.LoyaltyAwardRequestEntity;
 import com.mannschaft.app.loyalty.entity.LoyaltyProgramEntity;
 import com.mannschaft.app.loyalty.entity.LoyaltyRuleEntity;
 import org.junit.jupiter.api.Test;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** AC24/25/28/29の純粋状態判定の先行試練。時計やDBをmockしない。 */
 class LoyaltyRequestStatePolicyTest {
     private final LoyaltyRequestStatePolicy policy = new LoyaltyRequestStatePolicy();
-    private final LocalDateTime created = LocalDateTime.of(2026, 10, 16, 23, 50);
+    private final Instant created = Instant.parse("2026-10-16T14:50:00Z");
 
     private LoyaltyAwardRequestEntity request() {
         return LoyaltyAwardRequestEntity.builder().status(RequestStatus.PENDING).awardOn(LocalDate.of(2026, 10, 16))
-                .programVersion(3).ruleVersion(4).points(2).expiresAt(created.plusMinutes(10)).build();
+                .programVersion(3).ruleVersion(4).points(2).expiresAt(created.plus(10, java.time.temporal.ChronoUnit.MINUTES)).build();
     }
 
     private LoyaltyProgramEntity program() {
@@ -30,20 +32,20 @@ class LoyaltyRequestStatePolicyTest {
     @Test
     void AC24_JST日跨ぎはTTL到達より優先してDAY_CHANGED() {
         assertThat(policy.evaluate(request(), program(), rule(), RequestReason.LOCATION_INACTIVE,
-                true, Integer.MAX_VALUE, created.plusMinutes(10)))
+                true, Integer.MAX_VALUE, created.plus(10, java.time.temporal.ChronoUnit.MINUTES)))
                 .isEqualTo(new LoyaltyEffectiveRequestState(RequestStatus.EXPIRED, RequestReason.DAY_CHANGED));
     }
 
     @Test
     void AC24_同日30分ちょうどはTTL_EXPIRED() {
-        LoyaltyAwardRequestEntity request = request().toBuilder().expiresAt(created.plusMinutes(5)).build();
-        assertThat(policy.evaluate(request, program(), rule(), null, false, 0, created.plusMinutes(5)))
+        LoyaltyAwardRequestEntity request = request().toBuilder().expiresAt(created.plus(5, java.time.temporal.ChronoUnit.MINUTES)).build();
+        assertThat(policy.evaluate(request, program(), rule(), null, false, 0, created.plus(5, java.time.temporal.ChronoUnit.MINUTES)))
                 .isEqualTo(new LoyaltyEffectiveRequestState(RequestStatus.EXPIRED, RequestReason.TTL_EXPIRED));
     }
 
     @Test
     void AC24_期限の1秒前なら有効() {
-        assertThat(policy.evaluate(request(), program(), rule(), null, false, 0, created.plusMinutes(10).minusSeconds(1)))
+        assertThat(policy.evaluate(request(), program(), rule(), null, false, 0, created.plus(10, java.time.temporal.ChronoUnit.MINUTES).minusSeconds(1)))
                 .isEqualTo(new LoyaltyEffectiveRequestState(RequestStatus.PENDING, null));
     }
 
@@ -67,7 +69,7 @@ class LoyaltyRequestStatePolicyTest {
     void AC25_保存済終端は外部状態が復帰しても変更されない() {
         LoyaltyAwardRequestEntity terminal = request().toBuilder().status(RequestStatus.INVALIDATED)
                 .reason(RequestReason.LOCATION_INACTIVE).closedAt(created).build();
-        assertThat(policy.evaluate(terminal, program(), rule(), null, true, 0, created.plusDays(1)))
+        assertThat(policy.evaluate(terminal, program(), rule(), null, true, 0, created.plus(1, java.time.temporal.ChronoUnit.DAYS)))
                 .isEqualTo(new LoyaltyEffectiveRequestState(RequestStatus.INVALIDATED, RequestReason.LOCATION_INACTIVE));
     }
 

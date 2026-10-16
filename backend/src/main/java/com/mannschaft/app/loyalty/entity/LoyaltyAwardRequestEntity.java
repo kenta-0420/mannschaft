@@ -13,7 +13,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -66,7 +66,7 @@ public class LoyaltyAwardRequestEntity extends UuidV7Entity {
     private LocalDate awardOn;
 
     @Column(name = "expires_at", nullable = false)
-    private LocalDateTime expiresAt;
+    private Instant expiresAt;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
@@ -105,21 +105,21 @@ public class LoyaltyAwardRequestEntity extends UuidV7Entity {
     private UUID transactionId;
 
     @Column(name = "closed_at", nullable = true)
-    private LocalDateTime closedAt;
+    private Instant closedAt;
 
     @Column(name = "pending_unique_key", insertable = false, updatable = false,
             columnDefinition = "tinyint generated always as (if(status = 'PENDING', 1, null)) virtual")
     private Integer pendingUniqueKey;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     /** チームポイントの業務契約。 */
     public void close(RequestStatus status, RequestReason reason, Long actor, RequestOperation action,
-                      UUID key, byte[] hash, UUID transaction, LocalDateTime now) {
+                      UUID key, byte[] hash, UUID transaction, Instant now) {
         if (this.status != RequestStatus.PENDING) {
             throw new BusinessException(LoyaltyErrorCode.LOYALTY_013);
         }

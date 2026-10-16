@@ -1,12 +1,15 @@
 package com.mannschaft.app.loyalty;
 
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
+
 import com.mannschaft.app.loyalty.dto.TransactionResponse;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -200,7 +203,7 @@ class LoyaltyPointsWriterIT {
                 RequestOperation.SELF_SUBMIT, UUID.randomUUID(), new byte[32], 30L, "受付"));
         assertThat(submitted).isNotNull();
         var program = store.getPrograms().findByTeamId(teamId).orElseThrow();
-        program.update(true, Audience.ALL_AUTHENTICATED, SelfAwardMode.AUTO, LocalDateTime.now());
+        program.update(true, Audience.ALL_AUTHENTICATED, SelfAwardMode.AUTO, Instant.now());
         store.getPrograms().saveAndFlush(program);
         var request = submitted.request();
         LoyaltyRequestActionOutcome invalidated = writer.act(new LoyaltyRequestActionCommand(teamId, 10L,
@@ -219,7 +222,7 @@ class LoyaltyPointsWriterIT {
         var reward = store.getRewards().saveAndFlush(LoyaltyTestFixture.reward(teamId, 20));
         store.getAccounts().saveAndFlush(com.mannschaft.app.loyalty.entity.LoyaltyAccountEntity.builder()
                 .teamId(teamId).userId(20L).balance(balance).lifetimeEarned(balance)
-                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+                .createdAt(Instant.now()).updatedAt(Instant.now()).build());
         LoyaltyWriteCommand input = new LoyaltyWriteCommand(teamId, 10L, 20L, reward.getId(), 0, 0,
                 RequestOperation.REDEEM, UUID.randomUUID(), new byte[32], null, null);
         if (balance < 20) {
@@ -426,7 +429,7 @@ class LoyaltyPointsWriterIT {
                 .isEqualTo("2026-10-16");
         assertThat(store.getRequests().findById(row.getId())).get()
                 .extracting("createdAt", "expiresAt")
-                .containsExactly(LocalDateTime.of(2026, 10, 16, 23, 59, 59), LocalDateTime.of(2026, 10, 17, 0, 0));
+                .containsExactly(Instant.parse("2026-10-16T14:59:59Z"), Instant.parse("2026-10-16T15:00:00Z"));
     }
 
     @Test
@@ -436,7 +439,7 @@ class LoyaltyPointsWriterIT {
         LoyaltySubmissionOutcome result = writer.submit(submit);
         assertThat(result).isNotNull();
         assertThat(result.request()).isNotNull();
-        assertThat(result.request().getExpiresAt()).isEqualTo(LocalDateTime.of(2026, 10, 17, 0, 0));
+        assertThat(result.request().getExpiresAt()).isEqualTo(Instant.parse("2026-10-16T15:00:00Z"));
         assertThat(result.request().getAwardOn()).isEqualTo(java.time.LocalDate.of(2026, 10, 16));
     }
     @Test
@@ -479,19 +482,19 @@ class LoyaltyPointsWriterIT {
 
     @Test
     void AC28_staff日次成功は仮投影で期限切れの保存PENDINGだけを閉じる() {
-        LocalDateTime now = LocalDateTime.of(2026, 10, 16, 23, 50);
+        Instant now = Instant.parse("2026-10-16T14:50:00Z");
         var pending = com.mannschaft.app.loyalty.entity.LoyaltyAwardRequestEntity.builder()
                 .teamId(teamId).userId(20L).ruleId(ruleId).sourceLocationId(30L)
                 .programVersion(0).ruleVersion(0).points(1).ruleName("来店").locationName("受付")
-                .awardOn(now.toLocalDate()).expiresAt(now.minusMinutes(1))
+                .awardOn(LocalDate.ofInstant(now, UserZoneLocalDateTimeParser.SERVER_ZONE)).expiresAt(now.minus(1, java.time.temporal.ChronoUnit.MINUTES))
                 .status(RequestStatus.PENDING).version(0).verificationCode("ABCDEFGH")
                 .submitKey(UUID.randomUUID()).submitPayloadHash(new byte[32])
-                .createdAt(now.minusMinutes(20)).updatedAt(now.minusMinutes(20)).build();
+                .createdAt(now.minus(20, java.time.temporal.ChronoUnit.MINUTES)).updatedAt(now.minus(20, java.time.temporal.ChronoUnit.MINUTES)).build();
         store.getRequests().saveAndFlush(pending);
         var terminal = pending.toBuilder().id(null).verificationCode("BCDEFGHI")
                 .submitKey(UUID.randomUUID()).status(RequestStatus.CANCELLED).reason(RequestReason.USER_CANCELLED)
                 .version(1).terminalActorUserId(20L).terminalAction(RequestOperation.CANCEL)
-                .actionKey(UUID.randomUUID()).actionPayloadHash(new byte[32]).closedAt(now.minusMinutes(2)).build();
+                .actionKey(UUID.randomUUID()).actionPayloadHash(new byte[32]).closedAt(now.minus(2, java.time.temporal.ChronoUnit.MINUTES)).build();
         store.getRequests().saveAndFlush(terminal);
         assertThat(statePolicy.evaluate(pending, store.getPrograms().findByTeamId(teamId).orElseThrow(),
                 store.getRules().findByTeamId(teamId).orElseThrow(), null, false, 0, now))
@@ -519,7 +522,7 @@ class LoyaltyPointsWriterIT {
             assertThat(submitted.request()).isNotNull();
             var saved = store.getRequests().findById(submitted.request().getId()).orElseThrow();
             assertThat(statePolicy.evaluate(saved, store.getPrograms().findByTeamId(teamId).orElseThrow(),
-                    store.getRules().findById(ruleId).orElseThrow(), null, true, 1, LocalDateTime.of(2026, 10, 16, 23, 50)))
+                    store.getRules().findById(ruleId).orElseThrow(), null, true, 1, Instant.parse("2026-10-16T14:50:00Z")))
                     .isEqualTo(new LoyaltyEffectiveRequestState(RequestStatus.SUPERSEDED, RequestReason.DAILY_AWARDED));
         } else {
             assertThat(results.get(0).error()).isEqualTo(LoyaltyErrorCode.LOYALTY_005);
@@ -580,11 +583,11 @@ class LoyaltyPointsWriterIT {
                 .isEqualTo(com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE);
         TransactionResponse result = writer.award(command(UUID.randomUUID(), 0, new byte[32]));
         assertThat(result).isNotNull();
-        assertThat(result.createdAt()).isEqualTo(LocalDateTime.of(2026, 10, 16, 23, 50));
+        assertThat(result.createdAt()).isEqualTo(Instant.parse("2026-10-16T14:50:00Z"));
         assertThat(jdbc.queryForObject("SELECT DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') FROM team_loyalty_transactions WHERE team_id=?", String.class, teamId))
                 .isEqualTo("2026-10-16 14:50:00");
         assertThat(store.getTransactions().findById(result.id())).get()
-                .extracting("createdAt").isEqualTo(LocalDateTime.of(2026, 10, 16, 23, 50));
+                .extracting("createdAt").isEqualTo(Instant.parse("2026-10-16T14:50:00Z"));
     }
     @Test
     void Reader_本人TEAMとseekとSQL回数(@Autowired LoyaltyQueryReader reader) {
@@ -621,13 +624,13 @@ class LoyaltyPointsWriterIT {
     @Test
     void 事後補強_AC28_先行日次と入違いのPENDINGを再申請409でも終端commitする() {
         assertThat(writer.award(command(UUID.randomUUID(), 0, new byte[32]))).isNotNull();
-        LocalDateTime now = LocalDateTime.of(2026, 10, 16, 23, 50);
+        Instant now = Instant.parse("2026-10-16T14:50:00Z");
         UUID originalKey = UUID.randomUUID();
         // staffの空候補読取後に申請INSERTがcommitした合法な入違い状態を実表に作る。
         var pending = store.getRequests().saveAndFlush(com.mannschaft.app.loyalty.entity.LoyaltyAwardRequestEntity.builder()
                 .teamId(teamId).userId(20L).ruleId(ruleId).sourceLocationId(30L)
                 .programVersion(0).ruleVersion(0).points(1).ruleName("来店").locationName("受付")
-                .awardOn(now.toLocalDate()).expiresAt(now.toLocalDate().plusDays(1).atStartOfDay())
+                .awardOn(LocalDate.ofInstant(now, UserZoneLocalDateTimeParser.SERVER_ZONE)).expiresAt(LocalDate.ofInstant(now, UserZoneLocalDateTimeParser.SERVER_ZONE).plusDays(1).atStartOfDay(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant())
                 .status(RequestStatus.PENDING).version(0).verificationCode("ABCDEFGH")
                 .submitKey(originalKey).submitPayloadHash(new byte[32]).createdAt(now).updatedAt(now).build());
         var denied = writer.submit(new LoyaltyWriteCommand(teamId, 20L, 20L, ruleId, 0, 0,
@@ -651,7 +654,7 @@ class LoyaltyPointsWriterIT {
     @Test
     void 事後補強_AC11_残高25の20ポイント交換2並列は一件だけ成功する() throws Exception {
         var reward = store.getRewards().saveAndFlush(LoyaltyTestFixture.reward(teamId, 20));
-        LocalDateTime now = LocalDateTime.of(2026, 10, 16, 23, 50);
+        Instant now = Instant.parse("2026-10-16T14:50:00Z");
         store.getAccounts().saveAndFlush(com.mannschaft.app.loyalty.entity.LoyaltyAccountEntity.builder()
                 .teamId(teamId).userId(20L).balance(25).lifetimeEarned(25).createdAt(now).updatedAt(now).build());
         var results = parallel(2, index -> attempt(() -> writer.redeem(new LoyaltyWriteCommand(teamId,
@@ -689,7 +692,7 @@ class LoyaltyPointsWriterIT {
     void 事後補強_AC29_承認の各表途中失敗は申請残高台帳を全部rollbackする(String table) {
         var request = writer.submit(new LoyaltyWriteCommand(teamId, 20L, 20L, ruleId, 0, 0,
                 RequestOperation.SELF_SUBMIT, UUID.randomUUID(), new byte[32], 30L, "受付")).request();
-        LocalDateTime now = LocalDateTime.of(2026, 10, 16, 23, 50);
+        Instant now = Instant.parse("2026-10-16T14:50:00Z");
         store.getAccounts().saveAndFlush(com.mannschaft.app.loyalty.entity.LoyaltyAccountEntity.builder()
                 .teamId(teamId).userId(20L).balance(0).lifetimeEarned(0).createdAt(now).updatedAt(now).build());
         String trigger = "loyalty_fault_" + teamId;
@@ -782,7 +785,7 @@ class LoyaltyPointsWriterIT {
 
     @Test
     void 事後補強_AC14_INT_MAXへの追加付与は拒否し承認はPOINT_LIMIT終端をcommitする() {
-        LocalDateTime now = LocalDateTime.of(2026, 10, 16, 23, 50);
+        Instant now = Instant.parse("2026-10-16T14:50:00Z");
         store.getAccounts().saveAndFlush(com.mannschaft.app.loyalty.entity.LoyaltyAccountEntity.builder()
                 .teamId(teamId).userId(20L).balance(Integer.MAX_VALUE).lifetimeEarned(Integer.MAX_VALUE)
                 .createdAt(now).updatedAt(now).build());
