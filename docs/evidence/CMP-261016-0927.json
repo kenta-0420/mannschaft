@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "scope": "app",
+  "cmpId": "CMP-261016-0927",
+  "status": "実装中",
+  "implementation": {
+    "pr": 3912,
+    "sha": "f24814de75"
+  },
+  "ci": [
+    {
+      "runId": 38831746372
+    },
+    {
+      "runId": 38831746387
+    },
+    {
+      "runId": 38831746399
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "pending",
+      "evidence": "docs/evidence/CMP-261016-0927-review.md"
+    },
+    "real": {
+      "status": "blocked",
+      "evidence": "docs/evidence/CMP-261016-0927-review.md"
+    },
+    "exploratory": {
+      "status": "pending",
+      "evidence": "docs/evidence/CMP-261016-0927-review.md"
+    }
+  },
+  "limitations": [
+    "CIは旧head bd292b2a3bの成功記録。現行headのCIは未完了。",
+    "正規SSR dev環境が成立せず、正規lock版SPAと実BEでクライアント受入条件を確認中。SSR・旧slug301・非空実請求詳細は未検証。",
+    "実機初回ADMIN一覧200/正常0件と一覧再読込は成功。立替再読込で親payments画面を描画する追加不具合を検出し、payments/index.vueへ移動。移動後実機greenはWSL E_UNEXPECTEDにより未完了。",
+    "独立探索未実施。専用失敗run team1249の削除承認待ち。metadata保全、固定cleanup未実行。"
+  ],
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "ADMIN/DEPUTYが直URL・再読込・管理ハブ経由で一覧/詳細/立替へ到達",
+      "tests": [
+        {
+          "name": "管理者・副管理者の各3画面SFC回帰、実機role横断",
+          "evidence": "docs/evidence/CMP-261016-0927-review.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "MEMBER/SUPPORTER/非所属を拒否し金融情報を描画しない",
+      "tests": [
+        {
+          "name": "非管理者・他scope SFC回帰、実機role横断未完",
+          "evidence": "docs/evidence/CMP-261016-0927-review.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "権限取得中は拒否を誤表示しない",
+      "tests": [
+        {
+          "name": "permission pending SFC回帰",
+          "evidence": "docs/evidence/CMP-261016-0927-review.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "権限/一覧取得失敗はerrorと一連処理再試行",
+      "tests": [
+        {
+          "name": "permission/data failure/retry/403 SFC回帰",
+          "evidence": "docs/evidence/CMP-261016-0927-review.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "正常0件/data:nullはempty",
+      "tests": [
+        {
+          "name": "empty/null SFC回帰、ADMIN実機一覧empty",
+          "evidence": "docs/evidence/CMP-261016-0927-review.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "slug切替で旧データ/旧応答/決済秘密/pollを残さない",
+      "tests": [
+        {
+          "name": "scope切替・遅延応答・payment世代/poll race SFC回帰",
+          "evidence": "docs/evidence/CMP-261016-0927-review.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-7",
+      "description": "親fullshellを初期化せず必要な権限/一覧だけ取得",
+      "tests": [
+        {
+          "name": "useTeamPaymentPage/useRoleAccess実装とSFC API回数確認",
+          "evidence": "docs/evidence/CMP-261016-0927-review.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-8",
+      "description": "立替の直URL/再読込で子画面を表示し既存/paymentsも維持",
+      "tests": [
+        {
+          "name": "実機advances reload red。payments.vue→payments/index.vue移動、構造テスト1件green。実機再検証未完",
+          "evidence": "docs/evidence/CMP-261016-0927-review.md"
+        }
+      ]
+    }
+  ],
+  "regressions": [
+    {
+      "description": "親shell権限未ロードによる管理者拒否",
+      "test": "access.spec.tsほか4ファイル",
+      "redEvidence": "billing-red-dom.log:31fail/4pass SHA256 E02A7C6051BCBCFF10D737D7E991F7A3D577182C2EBF095B812FCB3FBBC69BB1",
+      "greenEvidence": "billing-final-unit.log:55pass SHA256 C7527157ABA3DC37EDF6C65197E622BE8F5252A24782C159AC7E3DAB45038A29"
+    },
+    {
+      "description": "旧team poll待機中のscope切替で新team pollを二重起動",
+      "test": "access.spec.ts poll競合",
+      "redEvidence": "billing-poll-red.log:expected2/received3 SHA256 34697EF4BD088AC7F13720B456A3628D2F9D590DE9457889F18B3BE023162913",
+      "greenEvidence": "billing-final-unit.log:55pass"
+    },
+    {
+      "description": "advances再読込が親payments画面へ落ちる",
+      "test": "team-payment-access.real.spec.ts line160",
+      "redEvidence": "billing-real-static-nosw.log SHA256 FC09813093CC3177DD1663A007D82B1E1F2927B7B341FF5DBD0679989299CE18",
+      "greenEvidence": "未完了（WSL環境blocked）。構造テストのみ1件green。"
+    }
+  ]
+}
