@@ -404,6 +404,32 @@ class LoyaltyPointsWriterIT {
     }
 
     @Test
+    void AC24_日付境界900ミリ秒の申請をDATETIME精度0でも翌日へ丸めない() {
+        var fractional = new LoyaltyTime(java.time.Clock.fixed(
+                java.time.Instant.parse("2026-10-16T14:59:59.900Z"), java.time.ZoneOffset.UTC));
+        var created = fractional.now();
+        var row = com.mannschaft.app.loyalty.entity.LoyaltyAwardRequestEntity.builder()
+                .teamId(teamId).userId(20L).ruleId(ruleId).sourceLocationId(30L)
+                .programVersion(0).ruleVersion(0).points(1).ruleName("来店").locationName("受付")
+                .awardOn(fractional.today()).expiresAt(fractional.expiresAt(created))
+                .status(RequestStatus.PENDING).version(0).verificationCode("ABCDEFGH")
+                .submitKey(UUID.randomUUID()).submitPayloadHash(new byte[32])
+                .createdAt(created).updatedAt(created).build();
+        org.assertj.core.api.Assertions.assertThatCode(() -> store.getRequests().saveAndFlush(row))
+                .as("端数が日付境界へ丸まりcreated_at=expires_atになる保存失敗を起こさない")
+                .doesNotThrowAnyException();
+        assertThat(jdbc.queryForObject("SELECT DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') FROM team_loyalty_award_requests WHERE team_id=?", String.class, teamId))
+                .isEqualTo("2026-10-16 14:59:59");
+        assertThat(jdbc.queryForObject("SELECT DATE_FORMAT(expires_at,'%Y-%m-%d %H:%i:%s') FROM team_loyalty_award_requests WHERE team_id=?", String.class, teamId))
+                .isEqualTo("2026-10-16 15:00:00");
+        assertThat(jdbc.queryForObject("SELECT CAST(award_on AS CHAR) FROM team_loyalty_award_requests WHERE team_id=?", String.class, teamId))
+                .isEqualTo("2026-10-16");
+        assertThat(store.getRequests().findById(row.getId())).get()
+                .extracting("createdAt", "expiresAt")
+                .containsExactly(LocalDateTime.of(2026, 10, 16, 23, 59, 59), LocalDateTime.of(2026, 10, 17, 0, 0));
+    }
+
+    @Test
     void AC24_23時50分申請は翌日0時で失効し30分後に延長しない() {
         LoyaltyWriteCommand submit = new LoyaltyWriteCommand(teamId, 20L, 20L, ruleId, 0, 0,
                 RequestOperation.SELF_SUBMIT, UUID.randomUUID(), new byte[32], 1L, "受付");
