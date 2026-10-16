@@ -81,6 +81,14 @@ public class UserService {
             boolean publicProfileEnabled) {
     }
 
+    /** 他ドメインへ公開する最小の本人状態。inactive時にPIIを返さない。 */
+    public record ActiveDisplayState(boolean active, String displayName) { }
+
+    /** 候補ページの本人状態を集合照会する。 */
+    public Map<Long, ActiveDisplayState> getActiveDisplayStates(Collection<Long> userIds) {
+        throw new UnsupportedOperationException("本人状態投影は未実装");
+    }
+
     private final UserRepository userRepository;
     private final UserRowLockService userRowLockService;
     private final EmailChangeTokenRepository emailChangeTokenRepository;

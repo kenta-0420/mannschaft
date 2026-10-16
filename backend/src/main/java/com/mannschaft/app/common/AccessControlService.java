@@ -40,6 +40,17 @@ public class AccessControlService {
      */
     public static final String PLATFORM_SCOPE_TYPE = "PLATFORM";
 
+    /** TEAM所属の集合照会キー。 */
+    public record TeamUserKey(Long teamId, Long userId) { }
+
+    /** SYSTEM_ADMINの全体昇格を使わない在籍資格。 */
+    public record TeamMembershipState(boolean active, boolean regularMemberOrAbove) { }
+
+    /** 候補ページのTEAM在籍資格を集合照会する。 */
+    public Map<TeamUserKey, TeamMembershipState> getTeamMembershipStates(java.util.Collection<TeamUserKey> keys) {
+        throw new UnsupportedOperationException("TEAM在籍投影は未実装");
+    }
+
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
     private final RoleService roleService;

@@ -43,6 +43,14 @@ import com.mannschaft.app.common.SecurityUtils;
 @RequiredArgsConstructor
 public class MemberCardController {
 
+    /** 本人の共通会員証を確保する。対象IDを入力できない自己スコープAPI。 */
+    @SelfScopedEndpoint("MemberCardService#ensureMyPlatformCard が認証主体のみのPLATFORMカードを確保する")
+    @PostMapping("/platform/me")
+    @Operation(summary = "共通会員証確保")
+    public ResponseEntity<ApiResponse<com.mannschaft.app.membership.dto.PlatformCardResponse>> ensureMyPlatformCard() {
+        return ResponseEntity.ok(memberCardService.ensureMyPlatformCard(SecurityUtils.getCurrentUserId()));
+    }
+
     private final MemberCardService memberCardService;
 
     /**

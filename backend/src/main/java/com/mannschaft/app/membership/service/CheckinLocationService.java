@@ -35,6 +35,22 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class CheckinLocationService {
 
+    /** 署名と状態を検証したTEAM受付。 */
+    public record VerifiedTeamLocation(Long locationId, Long teamId) { }
+
+    /** 受付申請投影用の現在のTEAM受付状態。 */
+    public record TeamLocationState(boolean active, Long teamId, String name) { }
+
+    /** 固定受付QRを検証する。チェックインは作成しない。 */
+    public VerifiedTeamLocation resolveTeamLocationQr(String locationToken) {
+        throw new UnsupportedOperationException("TEAM受付検証は未実装");
+    }
+
+    /** 候補ページの受付状態を集合照会する。 */
+    public java.util.Map<Long, TeamLocationState> getTeamLocationStates(java.util.Collection<Long> locationIds) {
+        throw new UnsupportedOperationException("受付状態投影は未実装");
+    }
+
     private static final int MAX_LOCATIONS_PER_SCOPE = 20;
 
     private final CheckinLocationRepository locationRepository;

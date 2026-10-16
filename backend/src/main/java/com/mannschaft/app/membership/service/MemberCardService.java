@@ -48,6 +48,19 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class MemberCardService {
 
+    /** ポイント読取用の検証済み共通会員証。更新処理の権限は表さない。 */
+    public record VerifiedPlatformCard(Long userId, Long memberCardId, long expiresAtEpoch) { }
+
+    /** activeな本人の共通会員証を確保する。停止済みカードは復活させない。 */
+    public ApiResponse<com.mannschaft.app.membership.dto.PlatformCardResponse> ensureMyPlatformCard(Long actorUserId) {
+        throw new UnsupportedOperationException("共通会員証確保は未実装");
+    }
+
+    /** 共通会員QRを検証し、チェックイン等の副作用を起こさず本人を解決する。 */
+    public VerifiedPlatformCard verifyPlatformQr(String qrToken) {
+        throw new UnsupportedOperationException("共通会員証検証は未実装");
+    }
+
     private static final int CHECKIN_COOLDOWN_MINUTES = 5;
 
     private final MemberCardRepository memberCardRepository;

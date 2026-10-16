@@ -80,6 +80,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class TeamService {
 
+    /** 受付申請投影用の現在のチーム状態。 */
+    public record ActiveState(boolean active, String displayName) { }
+
+    /** 候補ページのチーム状態を集合照会する。 */
+    public Map<Long, ActiveState> getActiveStates(Collection<Long> teamIds) {
+        throw new UnsupportedOperationException("チーム状態投影は未実装");
+    }
+
     private final TeamRepository teamRepository;
     private final TeamSlugHistoryRepository teamSlugHistoryRepository;
     private final TeamBlockRepository teamBlockRepository;
