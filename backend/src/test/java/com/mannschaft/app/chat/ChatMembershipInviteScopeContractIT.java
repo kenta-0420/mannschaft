@@ -15,10 +15,10 @@ import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
+import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.NoResultException;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
@@ -87,6 +87,7 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private UserRepository users;
     @Autowired private TeamRepository teams;
     @Autowired private OrganizationRepository organizations;
+    @Autowired private RoleRepository roles;
 
     private Long teamAId;
     private Long orgAId;
@@ -572,22 +573,10 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
     }
 
-    /** roles.name から id を解決（test profile では Flyway 無効のため無ければ on-demand 投入）。 */
+    /** setupの共通MembershipTestHelperがseedした正規ロールだけを使う。 */
     private Long resolveRoleId(String roleName) {
-        try {
-            return ((Number) em.createNativeQuery("SELECT id FROM roles WHERE name = :name")
-                    .setParameter("name", roleName)
-                    .getSingleResult()).longValue();
-        } catch (NoResultException e) {
-            em.createNativeQuery(
-                            "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                                    + "VALUES (:name, :name, 99, 0, NOW(), NOW())")
-                    .setParameter("name", roleName)
-                    .executeUpdate();
-            return ((Number) em.createNativeQuery("SELECT id FROM roles WHERE name = :name")
-                    .setParameter("name", roleName)
-                    .getSingleResult()).longValue();
-        }
+        return roles.findByName(roleName).orElseThrow(() ->
+                new IllegalStateException("通常fixtureの共通ロールがない: " + roleName)).getId();
     }
 
     private boolean hasUserRole(Long userId, Long teamId, String roleName) {
