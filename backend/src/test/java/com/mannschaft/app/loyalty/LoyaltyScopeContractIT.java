@@ -35,9 +35,10 @@ import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import java.time.Clock;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
-import java.time.ZoneId;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -88,14 +89,14 @@ class LoyaltyScopeContractIT extends AbstractMySqlIntegrationTest {
     private UUID mineRequest;
     private UUID otherRequest;
     private UUID cancelKey;
-    private LocalDateTime now;
+    private Instant now;
 
     @BeforeEach void fixture() {
         me = users.saveAndFlush(LoyaltyTestFixture.user()).getId();
         other = users.saveAndFlush(LoyaltyTestFixture.user()).getId();
         teamA = team("本人側");
         teamB = team("別チーム");
-        now = LocalDateTime.ofInstant(clock.instant(), ZoneId.of("Asia/Tokyo")).withNano(0);
+        now = clock.instant().truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
         mineAccount = account(teamA, me, 7);
         otherAccount = account(teamB, other, 19);
         mineRequest = request(teamA, me, "ABCDEFGH", false);
@@ -369,7 +370,7 @@ class LoyaltyScopeContractIT extends AbstractMySqlIntegrationTest {
         UUID id = UuidV7.generate();
         var builder = LoyaltyAwardRequestEntity.builder().id(id).teamId(team).userId(owner).ruleId(rule.getId())
                 .sourceLocationId(987654321L).programVersion(0).ruleVersion(0).points(1).ruleName("来店")
-                .locationName("受付").awardOn(now.toLocalDate()).expiresAt(now.plusMinutes(10))
+                .locationName("受付").awardOn(LocalDate.ofInstant(now, UserZoneLocalDateTimeParser.SERVER_ZONE)).expiresAt(now.plus(10, java.time.temporal.ChronoUnit.MINUTES))
                 .status(closed ? RequestStatus.CANCELLED : RequestStatus.PENDING).version(closed ? 1 : 0)
                 .verificationCode(code).submitKey(UUID.randomUUID()).submitPayloadHash(new byte[32])
                 .createdAt(now).updatedAt(now);

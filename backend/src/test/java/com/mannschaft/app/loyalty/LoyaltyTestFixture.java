@@ -4,12 +4,12 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.loyalty.entity.LoyaltyProgramEntity;
 import com.mannschaft.app.loyalty.entity.LoyaltyRuleEntity;
 import com.mannschaft.app.loyalty.entity.LoyaltyRewardEntity;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 /** 各試練が所有する最小の有効fixtureを作る。 */
 final class LoyaltyTestFixture {
-    private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, 10, 16, 12, 0);
+    private static final Instant CREATED_AT = Instant.parse("2026-10-16T03:00:00Z");
     private LoyaltyTestFixture() { }
 
     static UserEntity user() {
