@@ -38,11 +38,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * MemberCardController#ensureMyPlatformCard を実Security・実MySQLで検査する。
  * 共通QR検証・受付解決・状態投影はDBを更新しない。
  * 20同時確保はEntityのDDLではなく実Flyway由来のNULL一意制約を通す。
+ * fixtureをcommitして独立writer TXから観測させ、所有行だけを後処理する。
  */
 @AutoConfigureMockMvc
 @org.springframework.test.context.TestPropertySource(properties = {
         "spring.flyway.enabled=true", "spring.jpa.hibernate.ddl-auto=none"})
-@Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class PlatformCardPublicContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private MockMvc mvc;
@@ -61,6 +61,9 @@ class PlatformCardPublicContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private com.mannschaft.app.role.repository.RoleRepository roles;
     @Autowired private com.mannschaft.app.role.repository.UserRoleRepository userRoles;
     @Autowired private jakarta.persistence.EntityManagerFactory entityManagerFactory;
+    @Autowired private org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate jdbc;
+    private final java.util.List<Long> ownedUsers = new java.util.ArrayList<>();
+    private final java.util.List<Long> ownedTeams = new java.util.ArrayList<>();
 
     @Test
     void 未認証の確保は401() throws Exception {
@@ -69,7 +72,7 @@ class PlatformCardPublicContractIT extends AbstractMySqlIntegrationTest {
 
     @Test
     void active本人の再表示は同一カードで本人QRへ接続できる() throws Exception {
-        Long actor = users.saveAndFlush(PlatformCardTestFixture.user()).getId();
+        Long actor = saveUser(PlatformCardTestFixture.user()).getId();
         mvc.perform(post("/api/v1/member-cards/platform/me").with(user(actor.toString())))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.scopeType").value("PLATFORM"))
                 .andExpect(jsonPath("$.data.status").value("ACTIVE"));
@@ -84,7 +87,7 @@ class PlatformCardPublicContractIT extends AbstractMySqlIntegrationTest {
     @Test
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     void 初回確保を20同時実行してもNULLスコープは1枚だけ() throws Exception {
-        Long actor = users.saveAndFlush(PlatformCardTestFixture.user()).getId();
+        Long actor = saveUser(PlatformCardTestFixture.user()).getId();
         var start = new java.util.concurrent.CountDownLatch(1);
         try (var executor = java.util.concurrent.Executors.newFixedThreadPool(20)) {
             var futures = new java.util.ArrayList<java.util.concurrent.Future<Long>>();
@@ -106,18 +109,18 @@ class PlatformCardPublicContractIT extends AbstractMySqlIntegrationTest {
 
     @Test
     void inactive本人の確保と既存QRの他人取得は拒否する() throws Exception {
-        Long frozen = users.saveAndFlush(PlatformCardTestFixture.user().toBuilder().status(UserEntity.UserStatus.FROZEN).build()).getId();
+        Long frozen = saveUser(PlatformCardTestFixture.user().toBuilder().status(UserEntity.UserStatus.FROZEN).build()).getId();
         mvc.perform(post("/api/v1/member-cards/platform/me").with(user(frozen.toString())))
                 .andExpect(status().isForbidden());
         assertThat(cards.findByUserIdAndDeletedAtIsNullOrderByIssuedAtAsc(frozen)).isEmpty();
-        Long actor = users.saveAndFlush(PlatformCardTestFixture.user()).getId();
+        Long actor = saveUser(PlatformCardTestFixture.user()).getId();
         var card = cards.saveAndFlush(PlatformCardTestFixture.card(actor, ScopeType.PLATFORM, null, CardStatus.ACTIVE));
         assertThatThrownBy(() -> cardService.getQrToken(card.getId(), frozen)).isInstanceOf(BusinessException.class);
     }
 
     @Test
     void 停止カードを確保で復活させず別カードも増やさない() {
-        Long actor = users.saveAndFlush(PlatformCardTestFixture.user()).getId();
+        Long actor = saveUser(PlatformCardTestFixture.user()).getId();
         var card = cards.saveAndFlush(PlatformCardTestFixture.card(actor, ScopeType.PLATFORM, null, CardStatus.SUSPENDED));
         assertThatThrownBy(() -> cardService.ensureMyPlatformCard(actor)).isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(MembershipErrorCode.MEMBERSHIP_003);
@@ -127,7 +130,7 @@ class PlatformCardPublicContractIT extends AbstractMySqlIntegrationTest {
 
     @Test
     void QR検証はチェックインと所属を書き込まない() {
-        Long actor = users.saveAndFlush(PlatformCardTestFixture.user()).getId();
+        Long actor = saveUser(PlatformCardTestFixture.user()).getId();
         var card = cards.saveAndFlush(PlatformCardTestFixture.card(actor, ScopeType.PLATFORM, null, CardStatus.ACTIVE));
         long beforeCheckins = checkins.count();
         long beforeMemberships = memberships.count();
@@ -140,8 +143,8 @@ class PlatformCardPublicContractIT extends AbstractMySqlIntegrationTest {
 
     @Test
     void TEAM受付だけを副作用無しで解決する() {
-        Long actor = users.saveAndFlush(PlatformCardTestFixture.user()).getId();
-        Long team = teams.saveAndFlush(PlatformCardTestFixture.team()).getId();
+        Long actor = saveUser(PlatformCardTestFixture.user()).getId();
+        Long team = saveTeam(PlatformCardTestFixture.team()).getId();
         var location = locations.saveAndFlush(CheckinLocationEntity.builder().scopeType(ScopeType.TEAM).scopeId(team)
                 .name("受付").locationCode(UUID.randomUUID().toString()).locationSecret(qrTokens.generateSecret())
                 .isActive(true).autoCompleteReservation(true).createdBy(actor).build());
@@ -155,9 +158,9 @@ class PlatformCardPublicContractIT extends AbstractMySqlIntegrationTest {
 
     @Test
     void 状態バッチは所属種別を守り不明IDとinactiveのPIIを返さない() {
-        Long actor = users.saveAndFlush(PlatformCardTestFixture.user()).getId();
-        Long frozen = users.saveAndFlush(PlatformCardTestFixture.user().toBuilder().status(UserEntity.UserStatus.FROZEN).build()).getId();
-        Long team = teams.saveAndFlush(PlatformCardTestFixture.team()).getId();
+        Long actor = saveUser(PlatformCardTestFixture.user()).getId();
+        Long frozen = saveUser(PlatformCardTestFixture.user().toBuilder().status(UserEntity.UserStatus.FROZEN).build()).getId();
+        Long team = saveTeam(PlatformCardTestFixture.team()).getId();
         memberships.saveAndFlush(MembershipEntity.builder().userId(actor)
                 .scopeType(com.mannschaft.app.membership.domain.ScopeType.TEAM).scopeId(team).roleKind(RoleKind.SUPPORTER).build());
         var key = new AccessControlService.TeamUserKey(team, actor);
@@ -175,11 +178,11 @@ class PlatformCardPublicContractIT extends AbstractMySqlIntegrationTest {
 
     @Test
     void 在籍snapshotはMEMBERと明示TEAM管理者を正式資格としglobal昇格を使わず定数SQLで読む() {
-        Long team = teams.saveAndFlush(PlatformCardTestFixture.team()).getId();
-        Long member = users.saveAndFlush(PlatformCardTestFixture.user()).getId();
-        Long supporterAdmin = users.saveAndFlush(PlatformCardTestFixture.user()).getId();
-        Long guest = users.saveAndFlush(PlatformCardTestFixture.user()).getId();
-        Long systemAdmin = users.saveAndFlush(PlatformCardTestFixture.user()).getId();
+        Long team = saveTeam(PlatformCardTestFixture.team()).getId();
+        Long member = saveUser(PlatformCardTestFixture.user()).getId();
+        Long supporterAdmin = saveUser(PlatformCardTestFixture.user()).getId();
+        Long guest = saveUser(PlatformCardTestFixture.user()).getId();
+        Long systemAdmin = saveUser(PlatformCardTestFixture.user()).getId();
         for (Long id : List.of(member, supporterAdmin)) {
             memberships.saveAndFlush(MembershipEntity.builder().userId(id)
                     .scopeType(com.mannschaft.app.membership.domain.ScopeType.TEAM).scopeId(team)
@@ -208,4 +211,33 @@ class PlatformCardPublicContractIT extends AbstractMySqlIntegrationTest {
             stats.setStatisticsEnabled(wasEnabled);
         }
     }
+    private UserEntity saveUser(UserEntity entity) {
+        UserEntity saved = users.saveAndFlush(entity);
+        ownedUsers.add(saved.getId());
+        return saved;
+    }
+
+    private com.mannschaft.app.team.entity.TeamEntity saveTeam(com.mannschaft.app.team.entity.TeamEntity entity) {
+        var saved = teams.saveAndFlush(entity);
+        ownedTeams.add(saved.getId());
+        return saved;
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void 所有fixtureだけを片付ける() {
+        if (!ownedUsers.isEmpty()) {
+            var params = java.util.Map.of("ids", ownedUsers);
+            jdbc.update("DELETE FROM member_card_checkins WHERE member_card_id IN "
+                    + "(SELECT id FROM member_cards WHERE user_id IN (:ids))", params);
+            jdbc.update("DELETE FROM member_cards WHERE user_id IN (:ids)", params);
+            jdbc.update("DELETE FROM checkin_locations WHERE created_by IN (:ids)", params);
+            jdbc.update("DELETE FROM user_roles WHERE user_id IN (:ids)", params);
+            jdbc.update("DELETE FROM memberships WHERE user_id IN (:ids)", params);
+            jdbc.update("DELETE FROM users WHERE id IN (:ids)", params);
+        }
+        if (!ownedTeams.isEmpty()) {
+            jdbc.update("DELETE FROM teams WHERE id IN (:ids)", java.util.Map.of("ids", ownedTeams));
+        }
+    }
+
 }
