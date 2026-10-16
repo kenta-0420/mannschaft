@@ -85,6 +85,9 @@ class TeamRestoreHttpContractIT extends AbstractMySqlIntegrationTest {
         String calendarUrl = "/api/v1/my/calendar?from=2030-01-01T00:00:00&to=2030-01-02T00:00:00";
         assertThat(calendarContainsSchedule(request("GET", calendarUrl, fixture.admin()))).isTrue();
         assertThat(request("DELETE", teamUrl, fixture.admin()).statusCode()).isEqualTo(204);
+        assertThat(request("GET", teamUrl, fixture.systemAdmin()).statusCode()).isEqualTo(404);
+        assertThat(request("GET", teamUrl + "/schedules?from=2030-01-01T00:00:00&to=2030-01-02T00:00:00",
+                fixture.systemAdmin()).statusCode()).isEqualTo(404);
         assertThat(request("PATCH", teamUrl + "/restore", fixture.systemAdmin()).statusCode()).isEqualTo(204);
         assertThat(request("DELETE", scheduleUrl, fixture.outsider()).statusCode()).isEqualTo(403);
         assertThat(request("DELETE", scheduleUrl + "?updateScope=THIS_ONLY", fixture.systemAdmin()).statusCode()).isEqualTo(204);
