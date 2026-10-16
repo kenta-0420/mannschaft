@@ -17,7 +17,7 @@ const route = { path: '/system-admin/teams/deleted', fullPath: '/system-admin/te
 // spyへの差し替えを行うsystem-admin.spec.tsとは分離し、Nuxtが提供する実ToastServiceを使う。
 describe('system-admin 拒否通知の実表示', () => {
   let nuxtApp: ReturnType<typeof useNuxtApp>
-  let originalHydrating: boolean
+  let originalHydrating: ReturnType<typeof useNuxtApp>['isHydrating']
   let originalToastAdd: ToastServiceMethods['add'] | undefined
   let toastHost: HTMLDivElement
   let unmountToast: (() => void) | undefined
