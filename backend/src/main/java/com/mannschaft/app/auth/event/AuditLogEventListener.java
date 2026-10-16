@@ -9,6 +9,7 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.member.event.MemberSubtabVisibilityUpdatedEvent;
+import com.mannschaft.app.loyalty.LoyaltyCommittedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -811,5 +812,13 @@ public class AuditLogEventListener {
             null,
             event.getMetadataJson()
         );
+    }
+
+    /** ポイント初回commit後の監査接続骨格。実afterCommit先行試練のred後に接続する。 */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると確定済みポイント操作の監査証跡が恒久的に欠落する")
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleLoyaltyCommitted(LoyaltyCommittedEvent event) {
     }
 }
