@@ -166,6 +166,7 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
     void cleanupIsStrictCompleteAndIdempotent(String type) {
         Scope scope = scope(type);
         Scope other = scope(type);
+        Scope otherType = scope("TEAM".equals(type) ? "ORGANIZATION" : "TEAM");
         Long target = user();
         List<InviteTokenEntity> old = List.of(token(scope, 0),
                 token(scope, 0, LocalDateTime.of(2020, 1, 1, 0, 0), null, 0, null, null),
@@ -173,6 +174,7 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
                 token(scope, 0, null, 1, 0, target, null));
         InviteTokenEntity fresh = token(scope, 1);
         InviteTokenEntity unrelated = token(other, 0);
+        InviteTokenEntity unrelatedType = token(otherType, 0);
         LocalDateTime existingTimestamp = LocalDateTime.of(2025, 2, 3, 4, 5, 6);
         InviteTokenEntity revoked = token(scope, 0, null, null, 0, null, existingTimestamp);
 
@@ -181,8 +183,11 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
         assertThat(first).doesNotContainNull();
         assertThat(tokens.findById(fresh.getId()).orElseThrow().getRevokedAt()).isNull();
         assertThat(tokens.findById(unrelated.getId()).orElseThrow().getRevokedAt()).isNull();
+        assertThat(tokens.findById(unrelatedType.getId()).orElseThrow().getRevokedAt()).isNull();
         assertThat(tokens.findById(revoked.getId()).orElseThrow().getRevokedAt()).isEqualTo(existingTimestamp);
         assertThat(cleanup.revokeBeforeGeneration(type, scope.id(), 1)).isZero();
+        assertThat(cleanup.revokeBeforeGeneration(type, scope.id(), 0)).as("遅れて届いた古い観測世代も新tokenを失効しない").isZero();
+        assertThat(tokens.findById(fresh.getId()).orElseThrow().getRevokedAt()).isNull();
         assertThat(old.stream().map(t -> tokens.findById(t.getId()).orElseThrow().getRevokedAt()).toList()).isEqualTo(first);
     }
 
