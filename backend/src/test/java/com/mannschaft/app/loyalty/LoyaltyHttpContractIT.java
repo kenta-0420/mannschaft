@@ -72,6 +72,8 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private com.mannschaft.app.role.repository.PermissionGroupRepository permissionGroups;
     @Autowired private com.mannschaft.app.role.repository.PermissionGroupPermissionRepository groupPermissions;
     @Autowired private com.mannschaft.app.role.repository.UserPermissionGroupRepository userGroups;
+    @Autowired @org.springframework.beans.factory.annotation.Qualifier("event-pool")
+    private java.util.concurrent.Executor eventExecutor;
     private Long actorId;
 
     @BeforeEach
@@ -420,6 +422,69 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
         mvc.perform(post(path).with(user(actorId.toString())).header("Idempotency-Key",key)
                         .contentType("application/json").content(json.writeValueAsString(body)))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.error.code").value("LOYALTY_002"));
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void 補強_AC13実afterCommit監査が失敗しても確定残高と台帳を巻き戻さない() throws Exception {
+        String constraint = "ck_loyalty_audit_"+UUID.randomUUID().toString().replace("-","");
+        var failureObserved = new java.util.concurrent.atomic.AtomicBoolean();
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(com.mannschaft.app.auth.service.AuditLogService.class);
+        var appender = new ch.qos.logback.core.AppenderBase<ch.qos.logback.classic.spi.ILoggingEvent>() {
+            @Override protected void append(ch.qos.logback.classic.spi.ILoggingEvent event) {
+                if (!event.getFormattedMessage().contains(LoyaltyCommittedEvent.AUDIT_EVENT_TYPE)
+                        || !event.getFormattedMessage().endsWith("userId="+actorId)) return;
+                for (var cause = event.getThrowableProxy(); cause != null; cause = cause.getCause()) {
+                    if (cause.getMessage() != null && cause.getMessage().contains(constraint)) failureObserved.set(true);
+                }
+            }
+        };
+        appender.start(); logger.addAppender(appender);
+        Long team = null; Long locationId = null; boolean constraintCreated = false;
+        try {
+            team = team();
+            var program = LoyaltyTestFixture.program(team); program.update(true,Audience.ALL_AUTHENTICATED,SelfAwardMode.AUTO,time.now());
+            store.getPrograms().saveAndFlush(program);
+            var rule = store.getRules().saveAndFlush(LoyaltyTestFixture.rule(team)); var location = location(team,true); locationId = location.getId();
+            // 自分のactor/typeだけを拒否する。専用testcontainer内で他試練の監査を妨げない。
+            jdbc.execute("ALTER TABLE audit_logs ADD CONSTRAINT "+constraint+" CHECK (event_type <> '"
+                    +LoyaltyCommittedEvent.AUDIT_EVENT_TYPE+"' OR user_id <> "+actorId+")");
+            constraintCreated = true;
+            String token = qr.generateLocationQrToken(location.getLocationCode(),location.getLocationSecret());
+            var response = mvc.perform(post("/api/v1/teams/"+team+"/loyalty/self-awards").with(user(actorId.toString()))
+                            .header("Idempotency-Key",UUID.randomUUID()).contentType("application/json")
+                            .content(json.writeValueAsString(new SelfAwardRequest(token,rule.getId(),0L,1L))))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data.transaction.balanceAfter").value(1)).andReturn();
+            UUID id = UUID.fromString(json.readTree(response.getResponse().getContentAsString()).path("data").path("transaction").path("id").asText());
+            await().atMost(Duration.ofSeconds(10)).untilTrue(failureObserved);
+            assertThat(audits()).isZero();
+            assertThat(store.getAccounts().findByTeamIdAndUserId(team,actorId).orElseThrow().getBalance()).isEqualTo(1);
+            assertThat(store.getTransactions().findById(id).orElseThrow().getBalanceAfter()).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_transactions WHERE team_id=? AND user_id=?",Long.class,team,actorId)).isEqualTo(1);
+        } finally {
+            try {
+                // 実executorの完了を待ってから拒否制約を外す。非同期監査をcleanup後へ持ち越さない。
+                var pool = (org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor) eventExecutor;
+                await().atMost(Duration.ofSeconds(10)).until(() -> pool.getActiveCount() == 0 && pool.getThreadPoolExecutor().getQueue().isEmpty());
+            } finally {
+                try {
+                    if (constraintCreated) jdbc.execute("ALTER TABLE audit_logs DROP CHECK "+constraint);
+                } finally {
+                    try {
+                        jdbc.update("DELETE FROM audit_logs WHERE user_id=? AND event_type=?",actorId,LoyaltyCommittedEvent.AUDIT_EVENT_TYPE);
+                        if (team != null) {
+                            jdbc.update("DELETE FROM team_loyalty_transactions WHERE team_id=? AND user_id=?",team,actorId);
+                            jdbc.update("DELETE FROM team_loyalty_accounts WHERE team_id=? AND user_id=?",team,actorId);
+                            jdbc.update("DELETE FROM team_loyalty_rules WHERE team_id=?",team);
+                            jdbc.update("DELETE FROM team_loyalty_programs WHERE team_id=?",team);
+                        }
+                        if (locationId != null) locations.deleteById(locationId);
+                        if (team != null) teams.deleteById(team);
+                        users.deleteById(actorId);
+                    } finally { logger.detachAppender(appender); appender.stop(); }
+                }
+            }
+        }
     }
 
     private void autoSelfAward(Long team, int points) throws Exception {
