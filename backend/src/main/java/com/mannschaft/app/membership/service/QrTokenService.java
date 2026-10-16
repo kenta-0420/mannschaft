@@ -10,7 +10,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.time.Instant;
 import java.util.Base64;
 
 /**
@@ -24,7 +23,16 @@ public class QrTokenService {
 
     /** PLATFORM検証で300秒TTLと未来発行を検査する。既存チェックインの期限境界は維持する。 */
     public boolean hasValidMemberCardTimes(MemberCardTokenPayload payload) {
-        throw new UnsupportedOperationException("共通QRの時刻検証は未実装");
+        if (payload == null) {
+            return false;
+        }
+        long issuedAt = payload.issuedAt();
+        long now = clock.instant().getEpochSecond();
+        return issuedAt >= 0
+                && issuedAt <= now
+                && issuedAt <= Long.MAX_VALUE - QR_TOKEN_EXPIRY_SECONDS
+                && payload.expiresAt() == issuedAt + QR_TOKEN_EXPIRY_SECONDS
+                && now <= payload.expiresAt();
     }
 
     private static final String HMAC_ALGORITHM = "HmacSHA256";
@@ -41,7 +49,7 @@ public class QrTokenService {
      * @return 署名付きQRトークン
      */
     public String generateMemberCardQrToken(String cardCode, String qrSecret) {
-        long issuedAt = Instant.now().getEpochSecond();
+        long issuedAt = clock.instant().getEpochSecond();
         long expiresAt = issuedAt + QR_TOKEN_EXPIRY_SECONDS;
 
         String payload = cardCode + "." + issuedAt + "." + expiresAt;
@@ -99,7 +107,7 @@ public class QrTokenService {
      * @return 有効期限内であればtrue
      */
     public boolean isTokenExpired(MemberCardTokenPayload payload) {
-        return Instant.now().getEpochSecond() > payload.expiresAt();
+        return clock.instant().getEpochSecond() > payload.expiresAt();
     }
 
     /**
