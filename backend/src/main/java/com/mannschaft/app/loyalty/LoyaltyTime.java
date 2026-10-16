@@ -14,7 +14,8 @@ public class LoyaltyTime {
     private final Clock clock;
 
     public LocalDateTime now() {
-        return LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE));
+        // DATETIME(0)への丸めで日末のcreated_atがexpires_atへ繰り上がることを防ぐ。
+        return LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE)).withNano(0);
     }
 
     public LocalDate today() {
