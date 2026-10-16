@@ -4,7 +4,6 @@ import com.mannschaft.app.actionmemo.repository.ActionMemoRepository;
 import com.mannschaft.app.actionmemo.repository.ActionMemoTagLinkRepository;
 import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
 import com.mannschaft.app.actionmemo.repository.UserActionMemoSettingsRepository;
-import com.mannschaft.app.auth.repository.AuditLogRepository;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
@@ -75,8 +74,6 @@ class PersonalDataCollectorTest {
     private ChartRecordRepository chartRecordRepository;
     @Mock
     private TimelinePostRepository timelinePostRepository;
-    @Mock
-    private AuditLogRepository auditLogRepository;
     @Mock
     private NotificationRepository notificationRepository;
     @Mock
@@ -191,7 +188,7 @@ class PersonalDataCollectorTest {
 
             // memberships は事前取得が必要（F01.2.1 2-D）。0 件の事前取得を渡す
             Map<String, String> result = collector.collect(1L, null,
-                    new com.mannschaft.app.gdpr.dto.PrefetchedPersonalData(List.of()));
+                    new com.mannschaft.app.gdpr.dto.PrefetchedPersonalData(List.of(), List.of(), List.of()));
 
             assertThat(result).hasSize(20);
             assertThat(result.keySet()).containsExactlyInAnyOrder(

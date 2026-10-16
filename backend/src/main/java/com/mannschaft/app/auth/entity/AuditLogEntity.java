@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 /**
  * 監査ログエンティティ。ユーザー操作の監査証跡を記録する（イミュータブル）。
  */
-@PersonalData(category = "auditLogs")
+@PersonalData(category = "audit_logs")
 @Entity
 @Table(name = "audit_logs")
 @Getter
