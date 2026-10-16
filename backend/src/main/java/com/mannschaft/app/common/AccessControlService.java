@@ -70,7 +70,7 @@ public class AccessControlService {
                 .collect(java.util.stream.Collectors.toSet());
         for (MembershipRepository.TeamMembershipStateRow row : rows) {
             TeamUserKey key = new TeamUserKey(row.getTeamId(), row.getUserId());
-            if (states.containsKey(key) && row.getLeftAt() == null && row.getArchivedAt() == null) {
+            if (states.containsKey(key) && Boolean.TRUE.equals(row.getActive())) {
                 states.put(key, new TeamMembershipState(true,
                         row.getRoleKind() == RoleKind.MEMBER || admins.contains(key)));
             }

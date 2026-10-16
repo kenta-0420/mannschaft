@@ -27,13 +27,13 @@ public interface TeamRepository
     interface ActiveStateRow {
         Long getId();
         String getName();
-        TeamEntity.LifecycleStatus getLifecycleStatus();
-        LocalDateTime getArchivedAt();
-        LocalDateTime getDeletedAt();
+        Boolean getActive();
     }
 
-    @Query("SELECT t.id AS id, t.name AS name, t.lifecycleStatus AS lifecycleStatus, "
-            + "t.archivedAt AS archivedAt, t.deletedAt AS deletedAt FROM TeamEntity t WHERE t.id IN :ids")
+    @Query("SELECT t.id AS id, t.name AS name, "
+            + "CASE WHEN t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE "
+            + "AND t.archivedAt IS NULL AND t.deletedAt IS NULL THEN true ELSE false END AS active "
+            + "FROM TeamEntity t WHERE t.id IN :ids")
     List<ActiveStateRow> findActiveStateRows(@Param("ids") Collection<Long> ids);
 
 

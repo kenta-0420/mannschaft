@@ -94,8 +94,7 @@ public class TeamService {
         }
         Map<Long, ActiveState> states = new java.util.LinkedHashMap<>();
         for (TeamRepository.ActiveStateRow row : teamRepository.findActiveStateRows(ids)) {
-            boolean active = row.getLifecycleStatus() == TeamEntity.LifecycleStatus.ACTIVE
-                    && row.getArchivedAt() == null && row.getDeletedAt() == null;
+            boolean active = Boolean.TRUE.equals(row.getActive());
             states.put(row.getId(), new ActiveState(active, active ? row.getName() : null));
         }
         return Map.copyOf(states);

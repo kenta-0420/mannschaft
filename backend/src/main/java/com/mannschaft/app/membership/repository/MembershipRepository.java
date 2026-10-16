@@ -31,12 +31,11 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
         Long getTeamId();
         Long getUserId();
         RoleKind getRoleKind();
-        LocalDateTime getLeftAt();
-        LocalDateTime getArchivedAt();
+        Boolean getActive();
     }
 
     @Query("SELECT m.scopeId AS teamId, m.userId AS userId, m.roleKind AS roleKind, "
-            + "m.leftAt AS leftAt, m.archivedAt AS archivedAt FROM MembershipEntity m "
+            + "CASE WHEN m.leftAt IS NULL AND m.archivedAt IS NULL THEN true ELSE false END AS active FROM MembershipEntity m "
             + "WHERE m.scopeType = com.mannschaft.app.membership.domain.ScopeType.TEAM "
             + "AND m.scopeId IN :teamIds AND m.userId IN :userIds "
             + "AND m.leftAt IS NULL AND m.archivedAt IS NULL")

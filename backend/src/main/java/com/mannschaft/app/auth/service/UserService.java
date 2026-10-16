@@ -95,8 +95,7 @@ public class UserService {
         }
         Map<Long, ActiveDisplayState> states = new LinkedHashMap<>();
         for (UserRepository.ActiveDisplayStateRow row : userRepository.findActiveDisplayStateRows(ids)) {
-            boolean active = row.getStatus() == UserEntity.UserStatus.ACTIVE
-                    && row.getArchivedAt() == null && row.getDeletedAt() == null;
+            boolean active = Boolean.TRUE.equals(row.getActive());
             states.put(row.getId(), new ActiveDisplayState(active, active ? row.getDisplayName() : null));
         }
         return Map.copyOf(states);

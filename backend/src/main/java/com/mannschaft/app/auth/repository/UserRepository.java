@@ -26,13 +26,13 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     interface ActiveDisplayStateRow {
         Long getId();
         String getDisplayName();
-        UserStatus getStatus();
-        LocalDateTime getArchivedAt();
-        LocalDateTime getDeletedAt();
+        Boolean getActive();
     }
 
-    @Query("SELECT u.id AS id, u.displayName AS displayName, u.status AS status, "
-            + "u.archivedAt AS archivedAt, u.deletedAt AS deletedAt FROM UserEntity u WHERE u.id IN :ids")
+    @Query("SELECT u.id AS id, u.displayName AS displayName, "
+            + "CASE WHEN u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE "
+            + "AND u.archivedAt IS NULL AND u.deletedAt IS NULL THEN true ELSE false END AS active "
+            + "FROM UserEntity u WHERE u.id IN :ids")
     List<ActiveDisplayStateRow> findActiveDisplayStateRows(@Param("ids") Collection<Long> ids);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

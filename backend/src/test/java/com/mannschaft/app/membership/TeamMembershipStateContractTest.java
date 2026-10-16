@@ -6,7 +6,6 @@ import com.mannschaft.app.common.AccessControlService.TeamMembershipState;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
-import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -37,14 +36,14 @@ class TeamMembershipStateContractTest {
     @ParameterizedTest
     @EnumSource(RoleKind.class)
     void MEMBERは正式会員でSUPPORTERは在籍だけとする(RoleKind kind) {
-        when(memberships.findTeamMembershipStateRows(any(),any())).thenReturn(List.of(row(KEY,kind,null,null)));
+        when(memberships.findTeamMembershipStateRows(any(),any())).thenReturn(List.of(row(KEY,kind,true)));
         when(roles.findExplicitTeamAdminKeys(any(),any())).thenReturn(List.of());
         assertThat(service.getTeamMembershipStates(List.of(KEY)).get(KEY))
                 .isEqualTo(new TeamMembershipState(true,kind==RoleKind.MEMBER));
     }
     @Test
     void SUPPORTERでも同TEAM明示管理権限があれば正式以上とする() {
-        when(memberships.findTeamMembershipStateRows(any(),any())).thenReturn(List.of(row(KEY,RoleKind.SUPPORTER,null,null)));
+        when(memberships.findTeamMembershipStateRows(any(),any())).thenReturn(List.of(row(KEY,RoleKind.SUPPORTER,true)));
         when(roles.findExplicitTeamAdminKeys(any(),any())).thenReturn(List.of(admin(KEY)));
         assertThat(service.getTeamMembershipStates(List.of(KEY)).get(KEY)).isEqualTo(new TeamMembershipState(true,true));
     }
@@ -55,14 +54,14 @@ class TeamMembershipStateContractTest {
         assertThat(service.getTeamMembershipStates(List.of(KEY)).get(KEY)).isEqualTo(new TeamMembershipState(false,false));
     }
     @Test
-    void archive在籍は管理権限があっても資格なしとする() {
-        when(memberships.findTeamMembershipStateRows(any(),any())).thenReturn(List.of(row(KEY,RoleKind.MEMBER,null,LocalDateTime.of(2026,1,1,0,0))));
+    void inactive在籍投影は管理権限があっても資格なしとする() {
+        when(memberships.findTeamMembershipStateRows(any(),any())).thenReturn(List.of(row(KEY,RoleKind.MEMBER,false)));
         when(roles.findExplicitTeamAdminKeys(any(),any())).thenReturn(List.of(admin(KEY)));
         assertThat(service.getTeamMembershipStates(List.of(KEY)).get(KEY)).isEqualTo(new TeamMembershipState(false,false));
     }
     @Test
-    void 退会在籍は資格なしとする() {
-        when(memberships.findTeamMembershipStateRows(any(),any())).thenReturn(List.of(row(KEY,RoleKind.MEMBER,LocalDateTime.of(2026,1,1,0,0),null)));
+    void active不明の在籍投影は資格なしとする() {
+        when(memberships.findTeamMembershipStateRows(any(),any())).thenReturn(List.of(row(KEY,RoleKind.MEMBER,null)));
         when(roles.findExplicitTeamAdminKeys(any(),any())).thenReturn(List.of());
         assertThat(service.getTeamMembershipStates(List.of(KEY)).get(KEY)).isEqualTo(new TeamMembershipState(false,false));
     }
@@ -79,18 +78,17 @@ class TeamMembershipStateContractTest {
     void IN集合の交差行で未要求の資格を混入しない() {
         var other=new TeamUserKey(14L,8L);
         var cross=new TeamUserKey(13L,8L);
-        when(memberships.findTeamMembershipStateRows(any(),any())).thenReturn(List.of(row(cross,RoleKind.MEMBER,null,null)));
+        when(memberships.findTeamMembershipStateRows(any(),any())).thenReturn(List.of(row(cross,RoleKind.MEMBER,true)));
         when(roles.findExplicitTeamAdminKeys(any(),any())).thenReturn(List.of(admin(cross)));
         assertThat(service.getTeamMembershipStates(List.of(KEY,other))).containsOnlyKeys(KEY,other)
                 .allSatisfy((key,value)->assertThat(value).isEqualTo(new TeamMembershipState(false,false)));
     }
-    private MembershipRepository.TeamMembershipStateRow row(TeamUserKey key,RoleKind kind,LocalDateTime left,LocalDateTime archived) {
+    private MembershipRepository.TeamMembershipStateRow row(TeamUserKey key,RoleKind kind,Boolean active) {
         return new MembershipRepository.TeamMembershipStateRow() {
             public Long getTeamId(){return key.teamId();}
             public Long getUserId(){return key.userId();}
             public RoleKind getRoleKind(){return kind;}
-            public LocalDateTime getLeftAt(){return left;}
-            public LocalDateTime getArchivedAt(){return archived;}
+            public Boolean getActive(){return active;}
         };
     }
     private UserRoleRepository.TeamAdminKeyRow admin(TeamUserKey key) {
