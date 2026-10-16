@@ -126,6 +126,8 @@ test('INSIGHT-LOCATION: 360pxの空拠点一覧から追加Dialogを開き44px�
   await add.click()
   const dialog = page.getByRole('dialog', { name: '拠点を追加', exact: true })
   await expect(dialog).toBeVisible()
+  // 表示直後はenterのscaleアニメーション中なので、通常サイズに戻ってから操作領域を測る。
+  await expect(dialog).not.toHaveClass(/p-dialog-enter-active/)
   const cancel = dialog.getByRole('button', { name: 'キャンセル', exact: true })
   for (const target of [add, cancel, dialog.getByRole('button', { name: '作成', exact: true })]) {
     const box = (await target.boundingBox())!
@@ -163,6 +165,7 @@ for (const width of [360, 390, 1024, 1280]) {
     const dialog = page.getByRole('dialog')
     await expect.soft(dialog).toHaveAccessibleName('Create invite link', { timeout: 1000 })
     await expect(dialog).toBeVisible()
+    await expect(dialog).not.toHaveClass(/p-dialog-enter-active/)
     await expect.soft(dialog).not.toContainText(/[ぁ-んァ-ヶ一-龯]/, { timeout: 1000 })
     await expect.soft(dialog.getByText('Maximum uses (leave blank for unlimited)', { exact: true })).toBeVisible({ timeout: 1000 })
     const combos = dialog.getByRole('combobox')
