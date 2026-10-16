@@ -14,6 +14,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -45,6 +47,7 @@ final class LoyaltyQueryReaderFixture {
     private final EntityManagerFactory factory;
     private final JdbcTemplate jdbc;
     private final List<Long> teams = new ArrayList<>();
+    private final Map<Long, UUID> ownedPrograms = new HashMap<>();
     private final Long actor = identity();
     private final Long other = actor + 2_000_000;
     private int code;
@@ -214,7 +217,9 @@ final class LoyaltyQueryReaderFixture {
     }
 
     private UUID seedTeam(EntityManager em, Long team) {
-        em.persist(LoyaltyTestFixture.program(team).toBuilder().version(1).build());
+        var program = LoyaltyTestFixture.program(team).toBuilder().version(1).build();
+        em.persist(program);
+        ownedPrograms.put(team, program.getId());
         var rule = LoyaltyTestFixture.rule(team).toBuilder().version(1).build();
         em.persist(rule); em.flush(); return rule.getId();
     }
@@ -258,9 +263,14 @@ final class LoyaltyQueryReaderFixture {
     private void cleanup() {
         if (teams.isEmpty()) return;
         inTransaction(em -> {
+            // ランダムTEAM番号が既存行と衝突してseedが失敗しても、他試験の行を消さない。
+            var verifiedTeams = teams.stream().filter(team -> em.createQuery(
+                    "select p.id from LoyaltyProgramEntity p where p.teamId=:team", UUID.class)
+                    .setParameter("team", team).getResultList().contains(ownedPrograms.get(team))).toList();
+            if (verifiedTeams.isEmpty()) return;
             for (String entity : List.of("LoyaltyAwardRequestEntity", "LoyaltyTransactionEntity", "LoyaltyAccountEntity",
                     "LoyaltyRewardEntity", "LoyaltyRuleEntity", "LoyaltyProgramEntity")) {
-                em.createQuery("delete from " + entity + " e where e.teamId in :teams").setParameter("teams", teams).executeUpdate();
+                em.createQuery("delete from " + entity + " e where e.teamId in :teams").setParameter("teams", verifiedTeams).executeUpdate();
             }
         });
     }
