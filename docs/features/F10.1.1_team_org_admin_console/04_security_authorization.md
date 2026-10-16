@@ -34,13 +34,14 @@
 
 ### 2.1 SYSTEM_ADMIN の扱い（FE トグル表示と BE 認可の食い違い解消）【C・SYSTEM_ADMIN 整合 根治】
 
-> **偵察で判明した食い違い（R7/R8）**: FE の `useRoleAccess.isAdminOrDeputy` は **SYSTEM_ADMIN でも true**（`isAdmin = roleName==='ADMIN' || roleName==='SYSTEM_ADMIN'`）。一方 BE の `AccessControlService.checkAdminOrAbove` / `isAdminOrAbove` は `getRoleName`（scope 内ロール）の結果を `ADMIN_ROLES = {"ADMIN","DEPUTY_ADMIN"}` で判定するため、**SYSTEM_ADMIN が当該 scope に ADMIN/DEPUTY ロールを持たない場合は false（403）**になる。FE はトグルを出すのに BE が API を 403 で弾く、という不整合が起きうる。
+> **2026-10-16 現行契約との照合**: `EffectivePermissionsResponse.roleName` は表示用の最強ロールで、`AccessControlService.resolveEffectiveRoleName` は SYSTEM_ADMIN を優先する。したがって、従来の「`me/permissions` は常に scope 内ロールを返す」という説明だけでは兼任者を正しく扱えない。スコープ ADMIN の割当は応答の `scopeAdmin`（BE の `AccessControlService.isAdmin` と同じ判定）で明示され、FE の既存 `useRoleAccess.isScopeAdmin` がこれを参照する。
 
 **確定ポリシー**: 「SYSTEM_ADMIN は scope 内ロールを別途持たない限り、チーム/組織の管理コンソールでは管理者として扱わない」。
 
-- **BE**: 本機能の管理 API は `checkAdminOrAbove`（scope 内 ADMIN/DEPUTY のみ・SYSTEM_ADMIN を scope 管理者と見なさない）を入口に置く。SYSTEM_ADMIN がプラットフォーム横断で操作する用途は F10.1 区分 B（`/system-admin`）の責務であり、本コンソール（区分 A）の対象外（[README](./README.md) §2）。`me/permissions` の `roleName` が SYSTEM_ADMIN でも scope ロールが無ければ本 API は 403 を返す。
-- **FE**: `me/permissions` EP の `roleName` は scope 内の実効ロールを返す。SYSTEM_ADMIN がその scope に ADMIN/DEPUTY を持たない場合、`me/permissions` は scope ロール（`null`/`MEMBER` 等）を返すため `isAdminOrDeputy` は false になり、トグルも `admin-console` 通過も発生しない。**この前提（`me/permissions` が scope 実効ロールを返す）を満たす限り FE と BE は一致する**。
-- 念のため FE 側のレンズトグル表示条件は「`isAdminOrDeputy` かつ `roleName !== 'SYSTEM_ADMIN'` ではなく」**`me/permissions` の scope 実効 roleName が ADMIN/DEPUTY_ADMIN であること**に揃える（SYSTEM_ADMIN がグローバル権限だけで scope ロールを持たない場合はトグルを出さない）。これにより BE 403 とのちぐはぐ（トグルは出るが API で弾かれる）を根絶する。
+- **BE**: 本機能の管理 API は `checkAdminOrAbove`（scope 内 ADMIN/DEPUTY のみ）を入口に置く。現行 `isAdminOrAbove` は表示用最強ロールを流用せず、スコープ付き `user_roles` を直接確認する。SYSTEM_ADMIN 単独は 403、当該スコープの ADMIN/DEPUTY 兼任者は許可される。プラットフォーム横断操作は引き続き区分 B（`/system-admin`）の責務。
+- **設定ハブの ADMIN 条件**: 既存 `isScopeAdmin` を使う。`scopeAdmin=true` の SYSTEM_ADMIN 兼任者も許可し、ADMIN 専用リンクを表示する。`scopeAdmin` を返さない旧BEでは同 helper の既存フォールバック（`roleName==='ADMIN'`）に従う。グローバル SYSTEM_ADMIN を含む `isAdmin` だけで判定しない。
+- **設定ハブの DEPUTY 条件**: 通常の `roleName==='DEPUTY_ADMIN'` は許可する。`roleName==='SYSTEM_ADMIN'` かつ `isScopeAdmin=false` は、現行応答だけでは「単独 SYSTEM_ADMIN」と「スコープ DEPUTY 兼任」を識別できないため、既存 `getAdminActionRequired(scopeType, slug, 0)` で正準BE認可を確認する。`AdminActionRequiredFacade` の入口は `checkAdminOrAbove` を強制する。200なら副管理者向けリンクのみ、403なら正常なアクセス拒否、それ以外は取得エラーとして同じ処理を再試行する。
+- 追加確認は曖昧な SYSTEM_ADMIN の場合だけ1回行い、`preview_size=0` で個人情報プレビューを取得しない。通常の ADMIN/DEPUTY と `scopeAdmin=true` の兼任者には追加GETを行わない。権限文字列からロールを推測せず、新API・DTO・共通権限helperの変更は行わない。スコープ変更時は要求番号と要求時slugを照合し、旧応答で新スコープの拒否やエラー状態を上書きしない。
 
 ---
 

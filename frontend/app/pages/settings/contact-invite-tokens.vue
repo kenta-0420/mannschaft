@@ -14,6 +14,7 @@ definePageMeta({
         <Button
           :label="$t('contact_invite.create_button')"
           icon="pi pi-plus"
+          class="min-h-11"
           @click="showCreateForm = !showCreateForm"
         />
       </template>

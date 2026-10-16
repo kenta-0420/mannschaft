@@ -79,5 +79,26 @@
         "step2": "For permission problems, contact an administrator of the relevant team or organization."
       }
     }
+  },
+  "checkinLocationManager": {
+    "title": "Self-check-in locations",
+    "add": "Add location",
+    "empty": "No locations registered",
+    "name": "Location name",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "autoComplete": "Auto-complete reservations",
+    "actions": "Actions",
+    "edit": "Edit location",
+    "delete": "Delete location",
+    "placeholder": "e.g. Main reception",
+    "autoCompleteHint": "Automatically complete reservations at check-in",
+    "cancel": "Cancel",
+    "update": "Update",
+    "create": "Create",
+    "created": "Location created",
+    "updated": "Location updated",
+    "deleted": "Location deleted"
   }
 }

@@ -511,7 +511,7 @@
         "description": "検索・DM受信・オンライン状態の公開範囲"
       },
       "contactInviteTokens": {
-        "description": "連絡先追加用の招待URLを発行・管理"
+        "description": "連絡先追加用の招待URLとQRコードを発行・表示・管理します"
       },
       "contactRequestBlocks": {
         "label": "申請事前拒否リスト",

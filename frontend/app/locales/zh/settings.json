@@ -511,7 +511,7 @@
         "description": "搜索、私信接收、在线状态的公开范围"
       },
       "contactInviteTokens": {
-        "description": "发放和管理用于添加联系人的邀请链接"
+        "description": "创建、查看和管理用于添加联系人的邀请链接和二维码"
       },
       "contactRequestBlocks": {
         "label": "申请预先拒绝列表",
