@@ -1,5 +1,7 @@
 package com.mannschaft.app.loyalty;
 
+import static com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE;
+
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -34,6 +36,7 @@ import java.time.LocalDateTime;
 import java.time.Duration;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -153,7 +156,7 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
         var body = new SelfAwardRequest("invalid-location-token",rule.getId(),0L,0L);
         var row = LoyaltyAwardRequestEntity.builder().teamId(team).userId(actorId).ruleId(rule.getId())
                 .sourceLocationId(Long.MAX_VALUE).programVersion(0).ruleVersion(0).points(1).ruleName("来店")
-                .locationName("保存受付名").awardOn(now.toLocalDate()).expiresAt(time.expiresAt(now))
+                .locationName("保存受付名").awardOn(LocalDate.ofInstant(now, SERVER_ZONE)).expiresAt(time.expiresAt(now))
                 .status(RequestStatus.PENDING).verificationCode("ABCDEFGH").submitKey(key)
                 .submitPayloadHash(new LoyaltyPayloadHasher().selfSubmit(team,body)).createdAt(now).updatedAt(now).build();
         row.close(RequestStatus.CANCELLED,RequestReason.USER_CANCELLED,actorId,RequestOperation.CANCEL,
@@ -231,7 +234,7 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
         var now = time.now();
         var old = store.getRequests().saveAndFlush(LoyaltyAwardRequestEntity.builder().teamId(team).userId(actorId)
                 .ruleId(rule.getId()).sourceLocationId(oldLocation.getId()).programVersion(0).ruleVersion(0).points(1)
-                .ruleName("来店").locationName("旧受付").awardOn(now.toLocalDate()).expiresAt(time.expiresAt(now))
+                .ruleName("来店").locationName("旧受付").awardOn(LocalDate.ofInstant(now, SERVER_ZONE)).expiresAt(time.expiresAt(now))
                 .status(RequestStatus.PENDING).verificationCode("ABCDEFGH").submitKey(UUID.randomUUID())
                 .submitPayloadHash(new byte[32]).createdAt(now).updatedAt(now).build());
         String token = qr.generateLocationQrToken(activeLocation.getLocationCode(),activeLocation.getLocationSecret());
@@ -256,7 +259,7 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
         var now = time.now();
         var old = store.getRequests().saveAndFlush(LoyaltyAwardRequestEntity.builder().teamId(team).userId(actorId)
                 .ruleId(rule.getId()).sourceLocationId(location.getId()).programVersion(0).ruleVersion(0).points(1)
-                .ruleName("来店").locationName("受付").awardOn(now.toLocalDate()).expiresAt(time.expiresAt(now))
+                .ruleName("来店").locationName("受付").awardOn(LocalDate.ofInstant(now, SERVER_ZONE)).expiresAt(time.expiresAt(now))
                 .status(RequestStatus.PENDING).verificationCode("ABCDEFGH").submitKey(UUID.randomUUID())
                 .submitPayloadHash(new byte[32]).createdAt(now).updatedAt(now).build());
         String token = qr.generateLocationQrToken(location.getLocationCode(),location.getLocationSecret());
@@ -275,7 +278,7 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
         var now = time.now();
         var row = store.getRequests().saveAndFlush(LoyaltyAwardRequestEntity.builder().teamId(team).userId(actorId)
                 .ruleId(rule.getId()).sourceLocationId(location.getId()).programVersion(0).ruleVersion(0).points(1)
-                .ruleName("来店").locationName("受付").awardOn(now.toLocalDate()).expiresAt(time.expiresAt(now))
+                .ruleName("来店").locationName("受付").awardOn(LocalDate.ofInstant(now, SERVER_ZONE)).expiresAt(time.expiresAt(now))
                 .status(RequestStatus.PENDING).verificationCode("ABCDEFGH").submitKey(UUID.randomUUID())
                 .submitPayloadHash(new byte[32]).createdAt(now).updatedAt(now).build());
         var stopped = teams.findById(team).orElseThrow(); stopped.archive(); teams.saveAndFlush(stopped);
@@ -359,10 +362,11 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
         var node = json.readTree(result.getResponse().getContentAsString()).path("data").get(0);
         assertThat(OffsetDateTime.parse(node.path("createdAt").asText()).toInstant()).isEqualTo(instant);
         var decoded = json.treeToValue(node,com.mannschaft.app.loyalty.dto.TransactionResponse.class);
-        assertThat(decoded.createdAt()).isEqualTo(LocalDateTime.of(2026,10,17,0,0));
+        assertThat(node.path("createdAt").asText()).isEqualTo(instant.toString());
+        assertThat(decoded.createdAt()).isEqualTo(instant);
         String raw = jdbc.queryForObject("SELECT CAST(created_at AS CHAR) FROM team_loyalty_transactions WHERE team_id=? AND id=UNHEX(REPLACE(?,'-',''))",
                 String.class,team,saved.id().toString());
-        assertThat(LocalDateTime.parse(raw.replace(' ','T'))).isEqualTo(LocalDateTime.of(2026,10,16,15,0));
+        assertThat(Instant.parse(raw.replace(' ','T')+"Z")).isEqualTo(instant);
     }
 
     @Test
@@ -370,7 +374,7 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
         Long a = team(); Long b = team();
         var membership = memberships.saveAndFlush(com.mannschaft.app.membership.entity.MembershipEntity.builder()
                 .userId(actorId).scopeType(com.mannschaft.app.membership.domain.ScopeType.TEAM).scopeId(a)
-                .roleKind(com.mannschaft.app.membership.domain.RoleKind.SUPPORTER).joinedAt(time.now()).invitedBy(actorId).build());
+                .roleKind(com.mannschaft.app.membership.domain.RoleKind.SUPPORTER).joinedAt(LocalDateTime.ofInstant(time.now(), SERVER_ZONE)).invitedBy(actorId).build());
         var card = memberCards.saveAndFlush(com.mannschaft.app.membership.entity.MemberCardEntity.builder()
                 .userId(actorId).scopeType(com.mannschaft.app.membership.ScopeType.TEAM).scopeId(a)
                 .cardCode(UUID.randomUUID().toString()).cardNumber(UUID.randomUUID().toString().substring(0,16))
@@ -378,7 +382,7 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
                 .totalSpend(new java.math.BigDecimal("99.50")).build());
         var oldCheckin = checkins.saveAndFlush(com.mannschaft.app.membership.entity.MemberCardCheckinEntity.builder()
                 .memberCardId(card.getId()).checkinType(com.mannschaft.app.membership.CheckinType.SELF)
-                .checkedInAt(time.now()).location("既存受付").build());
+                .checkedInAt(LocalDateTime.ofInstant(time.now(), SERVER_ZONE)).location("既存受付").build());
         var oldCard = jdbc.queryForMap("SELECT scope_type,scope_id,status,checkin_count,total_spend,last_checkin_at FROM member_cards WHERE id=?",card.getId());
         var oldCheckinValues = jdbc.queryForMap("SELECT * FROM member_card_checkins WHERE id=?",oldCheckin.getId());
         autoSelfAward(a,1);
@@ -399,7 +403,7 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
         Long team = team();
         memberships.saveAndFlush(com.mannschaft.app.membership.entity.MembershipEntity.builder().userId(actorId)
                 .scopeType(com.mannschaft.app.membership.domain.ScopeType.TEAM).scopeId(team)
-                .roleKind(com.mannschaft.app.membership.domain.RoleKind.MEMBER).joinedAt(time.now()).invitedBy(actorId).build());
+                .roleKind(com.mannschaft.app.membership.domain.RoleKind.MEMBER).joinedAt(LocalDateTime.ofInstant(time.now(), SERVER_ZONE)).invitedBy(actorId).build());
         var deputy = roles.findByName("DEPUTY_ADMIN").orElseGet(() -> roles.saveAndFlush(RoleEntity.builder()
                 .name("DEPUTY_ADMIN").displayName("副管理者").priority(100).isSystem(true).build()));
         userRoles.saveAndFlush(UserRoleEntity.builder().userId(actorId).roleId(deputy.getId()).teamId(team).grantedBy(actorId).build());
@@ -496,11 +500,11 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
                 .targetAudience(Audience.SUPPORTERS_AND_ABOVE).build());
         var membership = memberships.saveAndFlush(com.mannschaft.app.membership.entity.MembershipEntity.builder()
                 .userId(actorId).scopeType(com.mannschaft.app.membership.domain.ScopeType.TEAM).scopeId(team)
-                .roleKind(com.mannschaft.app.membership.domain.RoleKind.SUPPORTER).joinedAt(time.now()).invitedBy(actorId).build());
+                .roleKind(com.mannschaft.app.membership.domain.RoleKind.SUPPORTER).joinedAt(LocalDateTime.ofInstant(time.now(), SERVER_ZONE)).invitedBy(actorId).build());
         var rule = store.getRules().saveAndFlush(LoyaltyTestFixture.rule(team)); var location = location(team,true); var now = time.now();
         var row = store.getRequests().saveAndFlush(LoyaltyAwardRequestEntity.builder().teamId(team).userId(actorId).ruleId(rule.getId())
                 .sourceLocationId(location.getId()).programVersion(0).ruleVersion(0).points(1).ruleName("来店").locationName("受付")
-                .awardOn(now.toLocalDate()).expiresAt(time.expiresAt(now)).status(RequestStatus.PENDING).verificationCode("ABCDEFGH")
+                .awardOn(LocalDate.ofInstant(now, SERVER_ZONE)).expiresAt(time.expiresAt(now)).status(RequestStatus.PENDING).verificationCode("ABCDEFGH")
                 .submitKey(UUID.randomUUID()).submitPayloadHash(new byte[32]).createdAt(now).updatedAt(now).build());
         switch (change) {
             case AUDIENCE -> { program.update(true,Audience.MEMBERS_AND_ABOVE,SelfAwardMode.STAFF_APPROVAL,now); store.getPrograms().saveAndFlush(program); }
@@ -509,7 +513,7 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
             case LOCATION -> { location.update("受付",false,false); locations.saveAndFlush(location); }
             case USER -> { var owner = users.findById(actorId).orElseThrow(); owner.freeze(); users.saveAndFlush(owner); }
             case MEMBERSHIP -> {
-                membership.setLeftAt(now); membership.setLeaveReason(com.mannschaft.app.membership.domain.LeaveReason.SELF);
+                membership.setLeftAt(LocalDateTime.ofInstant(now, SERVER_ZONE)); membership.setLeaveReason(com.mannschaft.app.membership.domain.LeaveReason.SELF);
                 membership.setLeftTrigger(com.mannschaft.app.membership.domain.LeftTrigger.SELF); memberships.saveAndFlush(membership);
             }
         }
@@ -548,7 +552,7 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
         for (int index = 0; index < owners.size(); index++) {
             candidates.add(LoyaltyAwardRequestEntity.builder().teamId(team).userId(owners.get(index).getId()).ruleId(rule.getId())
                     .sourceLocationId(location.getId()).programVersion(0).ruleVersion(0).points(1).ruleName("来店").locationName("受付")
-                    .awardOn(now.toLocalDate()).expiresAt(time.expiresAt(now)).status(RequestStatus.PENDING)
+                    .awardOn(LocalDate.ofInstant(now, SERVER_ZONE)).expiresAt(time.expiresAt(now)).status(RequestStatus.PENDING)
                     .verificationCode("AAAAAA"+alphabet.charAt(index/32)+alphabet.charAt(index%32))
                     .submitKey(UUID.randomUUID()).submitPayloadHash(new byte[32]).createdAt(now).updatedAt(now).build());
         }
@@ -615,7 +619,7 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
         return store.getTransactions().saveAndFlush(LoyaltyTransactionEntity.builder().teamId(team).userId(user).actorUserId(actorId)
                 .accountId(account.getId()).kind(TransactionKind.AWARD)
                 .channel(operation==RequestOperation.SELF_SUBMIT?TransactionChannel.SELF_AUTO:TransactionChannel.STAFF)
-                .requestOperation(operation).delta(1).balanceAfter(1).ruleId(rule).awardOn(now.toLocalDate())
+                .requestOperation(operation).delta(1).balanceAfter(1).ruleId(rule).awardOn(LocalDate.ofInstant(now, SERVER_ZONE))
                 .sourceLocationId(operation==RequestOperation.SELF_SUBMIT?Long.MAX_VALUE:null).label("来店")
                 .ruleOrRewardVersion(0).programVersion(0).requestKey(key).payloadHash(hash).createdAt(now).updatedAt(now).build());
     }

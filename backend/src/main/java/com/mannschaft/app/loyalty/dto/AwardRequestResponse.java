@@ -5,7 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import com.mannschaft.app.loyalty.RequestReason;
 import com.mannschaft.app.loyalty.RequestStatus;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 /** チームポイントの業務契約。 */
@@ -36,11 +36,11 @@ public record AwardRequestResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         long version,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
-        LocalDateTime createdAt,
+        Instant createdAt,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
-        LocalDateTime expiresAt,
+        Instant expiresAt,
         @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
-        LocalDateTime closedAt,
+        Instant closedAt,
         @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         UUID transactionId,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)

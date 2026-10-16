@@ -13,7 +13,7 @@ import com.mannschaft.app.loyalty.dto.ProgramSettings;
 import com.mannschaft.app.loyalty.dto.TransactionResponse;
 import com.mannschaft.app.loyalty.entity.LoyaltyAwardRequestEntity;
 import com.mannschaft.app.loyalty.entity.LoyaltyProgramEntity;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -151,7 +151,7 @@ public class LoyaltyQueryService {
 
     /** 候補を追加取得せず、出力上限か検査上限で打ち切った位置を署名する。 */
     private CursorPagedResponse<AwardRequestResponse> requestsPage(Long actor, boolean staff, boolean pending,
-            LoyaltyQueryReader.Requests own, LoyaltyCursorCodec.Context context, int limit, LocalDateTime now) {
+            LoyaltyQueryReader.Requests own, LoyaltyCursorCodec.Context context, int limit, Instant now) {
         var snapshot = snapshot(own.rows());
         var data = new ArrayList<AwardRequestResponse>();
         int inspected = 0;
@@ -176,7 +176,7 @@ public class LoyaltyQueryService {
 
     /** 保存終端はそのまま、PENDINGだけ現在snapshotで投影しEntityへ書き戻さない。 */
     private AwardRequestResponse project(LoyaltyAwardRequestEntity row, Long actor, boolean staff,
-            LoyaltyQueryReader.Requests own, LoyaltyQueryExternalStates.Snapshot snapshot, LocalDateTime now) {
+            LoyaltyQueryReader.Requests own, LoyaltyQueryExternalStates.Snapshot snapshot, Instant now) {
         var program = own.programs().get(row.getTeamId());
         var location = snapshot.locations().get(row.getSourceLocationId());
         boolean locationActive = location != null && location.active() && row.getTeamId().equals(location.teamId());

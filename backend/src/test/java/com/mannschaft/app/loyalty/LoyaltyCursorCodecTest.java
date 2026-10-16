@@ -3,7 +3,10 @@ package com.mannschaft.app.loyalty;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.EncryptionService;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.nio.ByteBuffer;
+import java.util.Base64;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -15,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class LoyaltyCursorCodecTest {
     private final LoyaltyCursorCodec codec = new LoyaltyCursorCodec(new EncryptionService(new byte[32], new byte[32]));
     private final UUID id = UUID.fromString("019a1000-0000-7000-8000-000000000001");
-    private final LocalDateTime expires = LocalDateTime.of(2026, 10, 16, 12, 30);
+    private final Instant expires = Instant.parse("2026-10-16T03:30:00Z");
     private LoyaltyCursorCodec.Context context(LoyaltyCursorCodec.Stream stream) {
         return new LoyaltyCursorCodec.Context(stream, 10L,
                 stream == LoyaltyCursorCodec.Stream.ACCOUNTS || stream == LoyaltyCursorCodec.Stream.MY_REQUESTS ? null : 20L);
@@ -66,6 +69,31 @@ class LoyaltyCursorCodecTest {
         assertThatThrownBy(() -> codec.encode(context(LoyaltyCursorCodec.Stream.STAFF_PENDING), new LoyaltyCursorCodec.Position(id, null)))
                 .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(CommonErrorCode.COMMON_001);
         assertThatThrownBy(() -> codec.encode(context(LoyaltyCursorCodec.Stream.STAFF_ALL), new LoyaltyCursorCodec.Position(id, expires)))
+                .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(CommonErrorCode.COMMON_001);
+    }
+
+    @Test
+    void AC30_瞬間型でもv1の48byteとJST日付秒wireを維持する() {
+        var scope = context(LoyaltyCursorCodec.Stream.STAFF_PENDING);
+        Instant before = Instant.parse("2026-10-16T14:59:59Z");
+        Instant midnight = before.plusSeconds(1);
+        for (Instant expiry : new Instant[]{before,midnight}) {
+            var position = new LoyaltyCursorCodec.Position(id,expiry);
+            String cursor = codec.encode(scope,position);
+            byte[] payload = Base64.getUrlDecoder().decode(cursor.split("\\.")[0]);
+            assertThat(payload).hasSize(48);
+            assertThat(payload[0]).isEqualTo((byte)1);
+            var data = ByteBuffer.wrap(payload); data.position(36);
+            assertThat(data.getLong()).isEqualTo(LocalDate.of(2026,10,expiry.equals(before)?16:17).toEpochDay());
+            assertThat(data.getInt()).isEqualTo(expiry.equals(before)?86_399:0);
+            assertThat(codec.decode(scope,cursor)).isEqualTo(position);
+        }
+    }
+
+    @Test
+    void AC30_v1で表現できない小数秒を無音で丸めない() {
+        assertThatThrownBy(() -> codec.encode(context(LoyaltyCursorCodec.Stream.STAFF_PENDING),
+                new LoyaltyCursorCodec.Position(id,expires.plusNanos(1))))
                 .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(CommonErrorCode.COMMON_001);
     }
 

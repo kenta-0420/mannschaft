@@ -1,5 +1,7 @@
 package com.mannschaft.app.loyalty;
 
+import static com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -10,7 +12,9 @@ import com.mannschaft.app.loyalty.entity.LoyaltyTransactionEntity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import java.nio.ByteBuffer;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -35,7 +39,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Entityで所有行だけを作成し、finallyの自TEAM限定JPQLで片付ける。</p>
  */
 final class LoyaltyQueryReaderFixture {
-    private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 16, 23, 50);
+    private static final Instant NOW = Instant.parse("2026-10-16T14:50:00Z");
     private static final String INDEX = "idx_tlar_pending_current";
     private static final String PENDING_SQL = "SELECT r.* FROM team_loyalty_award_requests r "
             + "WHERE r.team_id=? AND r.status='PENDING' AND r.program_version=1 AND r.rule_version=1 "
@@ -95,7 +99,7 @@ final class LoyaltyQueryReaderFixture {
             em.persist(transaction(anotherTeam, actor, another.getId(), rules.getLast(), 0));
             for (int i = 0; i < 21; i++) {
                 var row = request(team, i == 0 ? actor : actor + i + 100, rules.getFirst(), 1,
-                        NOW.plusMinutes(1 + i / 3));
+                        NOW.plus(1 + i / 3, ChronoUnit.MINUTES));
                 em.persist(row); pending.add(row); if (i == 0) personal.add(row);
             }
             for (Long ownerTeam : List.of(team, anotherTeam)) {
@@ -105,9 +109,9 @@ final class LoyaltyQueryReaderFixture {
                 em.persist(row); personal.add(row);
             }
             // 各WHERE条件を単独で外す保存行を置き、候補SQLの絞込自体を確認する。
-            em.persist(request(team, other + 100, rules.getFirst(), 0, NOW.plusMinutes(5)));
-            var yesterday = request(team, other + 101, rules.getFirst(), 1, NOW.plusMinutes(5))
-                    .toBuilder().awardOn(NOW.toLocalDate().minusDays(1)).build();
+            em.persist(request(team, other + 100, rules.getFirst(), 0, NOW.plus(5, ChronoUnit.MINUTES)));
+            var yesterday = request(team, other + 101, rules.getFirst(), 1, NOW.plus(5, ChronoUnit.MINUTES))
+                    .toBuilder().awardOn(LocalDate.ofInstant(NOW, SERVER_ZONE).minusDays(1)).build();
             em.persist(yesterday);
             em.persist(request(team, other + 102, rules.getFirst(), 1, NOW.minusSeconds(1)));
             em.flush(); em.clear();
@@ -155,7 +159,7 @@ final class LoyaltyQueryReaderFixture {
                 new LoyaltyCursorCodec.Position(last.getId(), last.getExpiresAt()), 201, NOW)).rows())
                 .extracting(LoyaltyAwardRequestEntity::getId)
                 .containsExactlyElementsOf(pending.subList(1,pending.size()).stream().map(LoyaltyAwardRequestEntity::getId).toList());
-        assertThat(pendingAll.awarded()).contains(new LoyaltyQueryReader.DailyKey(team, actor, rules.getFirst(), NOW.toLocalDate()));
+        assertThat(pendingAll.awarded()).contains(new LoyaltyQueryReader.DailyKey(team, actor, rules.getFirst(), LocalDate.ofInstant(NOW, SERVER_ZONE)));
         assertThat(pendingAll.balances()).containsEntry(new LoyaltyQueryReader.AccountKey(team, actor), 7);
     }
 
@@ -166,7 +170,7 @@ final class LoyaltyQueryReaderFixture {
             rule[0] = seedTeam(em, team);
             em.unwrap(Session.class).setJdbcBatchSize(100);
             for (int i = 0; i < 100_000; i++) {
-                em.persist(request(team, actor + i, rule[0], 0, NOW.plusMinutes(5)));
+                em.persist(request(team, actor + i, rule[0], 0, NOW.plus(5, ChronoUnit.MINUTES)));
                 if ((i + 1) % 500 == 0) { em.flush(); em.clear(); }
             }
             em.flush(); em.clear();
@@ -174,22 +178,22 @@ final class LoyaltyQueryReaderFixture {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_award_requests WHERE team_id=? AND program_version=0",
                 Long.class, team)).isEqualTo(100_000L);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_award_requests WHERE team_id=? AND award_on=?",
-                Long.class, team, NOW.toLocalDate().toString())).isEqualTo(100_000L);
+                Long.class, team, LocalDate.ofInstant(NOW, SERVER_ZONE).toString())).isEqualTo(100_000L);
         assertThat(jdbc.queryForObject("SELECT DATE_FORMAT(expires_at,'%Y-%m-%d %H:%i:%s') "
                 + "FROM team_loyalty_award_requests WHERE team_id=? LIMIT 1", String.class, team))
                 .as("EXPLAINのbind時刻と実JPAのUTC格納値が一致する")
-                .isEqualTo(databaseTime(NOW.plusMinutes(5)));
+                .isEqualTo(databaseTime(NOW.plus(5, ChronoUnit.MINUTES)));
         assertThat(measured(3, () -> reader.staff(team, true, null, 201, NOW)).rows()).isEmpty();
-        List<Object> arguments = List.of(team, NOW.toLocalDate().toString(), databaseTime(NOW));
+        List<Object> arguments = List.of(team, LocalDate.ofInstant(NOW, SERVER_ZONE).toString(), databaseTime(NOW));
         verifyPlan(PENDING_SQL + ORDER_SQL, arguments.toArray());
         var seekArguments = new ArrayList<Object>(arguments);
-        seekArguments.add(databaseTime(NOW.plusMinutes(1)));
-        seekArguments.add(databaseTime(NOW.plusMinutes(1)));
+        seekArguments.add(databaseTime(NOW.plus(1, ChronoUnit.MINUTES)));
+        seekArguments.add(databaseTime(NOW.plus(1, ChronoUnit.MINUTES)));
         seekArguments.add(uuidBytes(new UUID(0, 0)));
         verifyPlan(PENDING_SQL + SEEK_SQL + ORDER_SQL, seekArguments.toArray());
         // 件数制約も実データで確認する。旧版集合は残したまま現版202件を同じ索引へ追加する。
         inTransaction(em -> {
-            for (int i = 0; i < 202; i++) em.persist(request(team, actor + 200_000 + i, rule[0], 1, NOW.plusMinutes(5)));
+            for (int i = 0; i < 202; i++) em.persist(request(team, actor + 200_000 + i, rule[0], 1, NOW.plus(5, ChronoUnit.MINUTES)));
             em.flush(); em.clear();
         });
         assertThat(measured(7, () -> reader.staff(team, true, null, 201, NOW)).rows()).hasSize(201);
@@ -225,20 +229,20 @@ final class LoyaltyQueryReaderFixture {
     }
     private LoyaltyAccountEntity account(Long team, Long user) {
         return LoyaltyAccountEntity.builder().teamId(team).userId(user).balance(7).lifetimeEarned(7)
-                .createdAt(NOW.minusHours(1)).updatedAt(NOW).build();
+                .createdAt(NOW.minus(1, ChronoUnit.HOURS)).updatedAt(NOW).build();
     }
     private LoyaltyTransactionEntity transaction(Long team, Long user, UUID account, UUID rule, int day) {
         return LoyaltyTransactionEntity.builder().teamId(team).userId(user).actorUserId(other).accountId(account)
                 .kind(TransactionKind.AWARD).channel(TransactionChannel.STAFF).requestOperation(RequestOperation.STAFF_AWARD)
-                .delta(1).balanceAfter(7).ruleId(rule).awardOn(NOW.toLocalDate().minusDays(day)).label("確定ラベル")
+                .delta(1).balanceAfter(7).ruleId(rule).awardOn(LocalDate.ofInstant(NOW, SERVER_ZONE).minusDays(day)).label("確定ラベル")
                 .ruleOrRewardVersion(1).programVersion(1).requestKey(UUID.randomUUID()).payloadHash(new byte[32])
-                .createdAt(NOW.minusHours(1)).updatedAt(NOW).build();
+                .createdAt(NOW.minus(1, ChronoUnit.HOURS)).updatedAt(NOW).build();
     }
-    private LoyaltyAwardRequestEntity request(Long team, Long user, UUID rule, long version, LocalDateTime expiry) {
+    private LoyaltyAwardRequestEntity request(Long team, Long user, UUID rule, long version, Instant expiry) {
         return LoyaltyAwardRequestEntity.builder().teamId(team).userId(user).ruleId(rule).sourceLocationId(other)
                 .programVersion(version).ruleVersion(version).points(1).ruleName("来店").locationName("試験受付")
-                .awardOn(NOW.toLocalDate()).expiresAt(expiry).status(RequestStatus.PENDING).verificationCode(code(++code))
-                .submitKey(UUID.randomUUID()).submitPayloadHash(new byte[32]).createdAt(NOW.minusHours(1)).updatedAt(NOW).build();
+                .awardOn(LocalDate.ofInstant(NOW, SERVER_ZONE)).expiresAt(expiry).status(RequestStatus.PENDING).verificationCode(code(++code))
+                .submitKey(UUID.randomUUID()).submitPayloadHash(new byte[32]).createdAt(NOW.minus(1, ChronoUnit.HOURS)).updatedAt(NOW).build();
     }
     private String code(int number) {
         char[] value = "AAAAAAAA".toCharArray(); String alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -251,11 +255,10 @@ final class LoyaltyQueryReaderFixture {
         transaction.executeWithoutResult(status -> action.accept(Objects.requireNonNull(
                 EntityManagerFactoryUtils.getTransactionalEntityManager(factory))));
     }
-    private String databaseTime(LocalDateTime value) {
-        // UTC JDBC格納と同じ壁時計値を文字列で渡し、JdbcTemplateのTimestamp再変換を避ける。
-        return value.atZone(com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE)
-                .withZoneSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime()
-                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+    private String databaseTime(Instant value) {
+        // EXPLAINはUTC格納値を比較し、JDBCの暗黙timezone変換を避ける。
+        return java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                .withZone(java.time.ZoneOffset.UTC).format(value);
     }
     private byte[] uuidBytes(UUID id) {
         return ByteBuffer.allocate(16).putLong(id.getMostSignificantBits()).putLong(id.getLeastSignificantBits()).array();

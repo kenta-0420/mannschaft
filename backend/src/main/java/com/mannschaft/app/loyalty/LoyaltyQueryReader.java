@@ -1,5 +1,7 @@
 package com.mannschaft.app.loyalty;
 
+import static com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE;
+
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.loyalty.entity.LoyaltyAccountEntity;
 import com.mannschaft.app.loyalty.entity.LoyaltyAwardRequestEntity;
@@ -7,7 +9,8 @@ import com.mannschaft.app.loyalty.entity.LoyaltyProgramEntity;
 import com.mannschaft.app.loyalty.entity.LoyaltyRewardEntity;
 import com.mannschaft.app.loyalty.entity.LoyaltyRuleEntity;
 import com.mannschaft.app.loyalty.entity.LoyaltyTransactionEntity;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,14 +46,14 @@ public class LoyaltyQueryReader {
                 : store.getTransactions().nextPage(team, actor, before, PageRequest.of(0, size));
     }
 
-    public Requests personal(Long actor, UUID before, int size, LocalDateTime now) {
+    public Requests personal(Long actor, UUID before, int size, Instant now) {
         var rows = before == null ? store.getRequests().myFirstPage(actor, PageRequest.of(0, size))
                 : store.getRequests().myNextPage(actor, before, PageRequest.of(0, size));
         return requests(rows, now);
     }
 
     public Requests staff(Long team, boolean pending, LoyaltyCursorCodec.Position after, int size,
-            LocalDateTime now) {
+            Instant now) {
         if (!pending) {
             return requests(after == null ? store.getRequests().teamFirstPage(team, PageRequest.of(0, size))
                     : store.getRequests().teamNextPage(team, after.id(), PageRequest.of(0, size)), now);
@@ -63,18 +66,18 @@ public class LoyaltyQueryReader {
         }
         var rows = after == null
                 ? store.getRequests().pendingFirstPage(team, program.getVersion(), rule.getVersion(),
-                        now.toLocalDate(), now, PageRequest.of(0, size))
+                        LocalDate.ofInstant(now, SERVER_ZONE), now, PageRequest.of(0, size))
                 : store.getRequests().pendingNextPage(team, program.getVersion(), rule.getVersion(),
-                        now.toLocalDate(), now, after.expiresAt(), after.id(), PageRequest.of(0, size));
+                        LocalDate.ofInstant(now, SERVER_ZONE), now, after.expiresAt(), after.id(), PageRequest.of(0, size));
         return requests(rows, now);
     }
 
-    public Requests personalRequest(Long actor, UUID id, LocalDateTime now) {
+    public Requests personalRequest(Long actor, UUID id, Instant now) {
         return requests(List.of(store.getRequests().findByIdAndUserId(id, actor).orElseThrow(
                 () -> new BusinessException(LoyaltyErrorCode.LOYALTY_001))), now);
     }
 
-    public Requests staffRequest(Long team, UUID id, LocalDateTime now) {
+    public Requests staffRequest(Long team, UUID id, Instant now) {
         return requests(List.of(store.getRequests().findByIdAndTeamId(id, team).orElseThrow(
                 () -> new BusinessException(LoyaltyErrorCode.LOYALTY_001))), now);
     }
@@ -120,7 +123,7 @@ public class LoyaltyQueryReader {
         return store.getTransactions().existsByTeamIdAndUserIdAndRuleIdAndAwardOn(team, user, rule, day);
     }
 
-    private Requests requests(List<LoyaltyAwardRequestEntity> rows, LocalDateTime now) {
+    private Requests requests(List<LoyaltyAwardRequestEntity> rows, Instant now) {
         if (rows.isEmpty()) return new Requests(List.of(), Map.of(), Map.of(), Map.of(), Set.of());
         var teams = rows.stream().map(LoyaltyAwardRequestEntity::getTeamId).collect(Collectors.toSet());
         var users = rows.stream().map(LoyaltyAwardRequestEntity::getUserId).collect(Collectors.toSet());
@@ -130,7 +133,7 @@ public class LoyaltyQueryReader {
                 LoyaltyRuleEntity::getTeamId, Function.identity()));
         var balances = store.getAccounts().findByTeamIdInAndUserIdIn(teams, users).stream().collect(Collectors.toMap(
                 a -> new AccountKey(a.getTeamId(), a.getUserId()), LoyaltyAccountEntity::getBalance));
-        var awarded = store.getTransactions().findByTeamIdInAndUserIdInAndAwardOn(teams, users, now.toLocalDate())
+        var awarded = store.getTransactions().findByTeamIdInAndUserIdInAndAwardOn(teams, users, LocalDate.ofInstant(now, SERVER_ZONE))
                 .stream().filter(t -> t.getRuleId() != null).map(t -> new DailyKey(t.getTeamId(), t.getUserId(),
                         t.getRuleId(), t.getAwardOn())).collect(Collectors.toSet());
         return new Requests(List.copyOf(rows), programs, rules, balances, awarded);

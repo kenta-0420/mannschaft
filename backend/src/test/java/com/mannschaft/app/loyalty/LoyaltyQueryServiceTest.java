@@ -1,5 +1,7 @@
 package com.mannschaft.app.loyalty;
 
+import static com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -34,7 +36,8 @@ import com.mannschaft.app.membership.service.CheckinLocationService;
 import com.mannschaft.app.team.service.TeamService;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
@@ -59,7 +62,7 @@ class LoyaltyQueryServiceTest {
     private final UserService users = mock(UserService.class);
     private final CheckinLocationService locations = mock(CheckinLocationService.class);
     private final AccessControlService memberships = mock(AccessControlService.class);
-    private final LocalDateTime now = LocalDateTime.of(2026, 10, 16, 12, 0);
+    private final Instant now = Instant.parse("2026-10-16T03:00:00Z");
     private final LoyaltyCursorCodec cursor = new LoyaltyCursorCodec(new EncryptionService(new byte[32], new byte[32]));
     private LoyaltyQueryService query;
     private LocaleContext previousLocale;
@@ -184,7 +187,7 @@ class LoyaltyQueryServiceTest {
 
     @Test void PENDING候補は上限まで検査して空ページでも最終検査位置から再開する() {
         var a = request(1); var b = request(2); var peek = request(3);
-        when(requests.pendingFirstPage(eq(10L), eq(1L), eq(1L), eq(now.toLocalDate()), eq(now), any()))
+        when(requests.pendingFirstPage(eq(10L), eq(1L), eq(1L), eq(LocalDate.ofInstant(now, SERVER_ZONE)), eq(now), any()))
                 .thenReturn(List.of(a, b, peek));
         when(users.getActiveDisplayStates(any())).thenReturn(Map.of());
         var page = query.staffRequests(1L, 10L, RequestFilter.PENDING, null, 1);
@@ -392,6 +395,6 @@ class LoyaltyQueryServiceTest {
             .teamId(10L).userId(1L).balance(balance).lifetimeEarned(balance).build(); }
     private LoyaltyAwardRequestEntity request(int id) { return LoyaltyAwardRequestEntity.builder().id(new UUID(0,id))
             .teamId(10L).userId(2L).ruleId(new UUID(0,9)).sourceLocationId(20L).programVersion(1).ruleVersion(1)
-            .points(5).ruleName("来場").locationName("保存受付名").awardOn(now.toLocalDate())
-            .expiresAt(now.plusMinutes(10)).status(RequestStatus.PENDING).version(0).build(); }
+            .points(5).ruleName("来場").locationName("保存受付名").awardOn(LocalDate.ofInstant(now, SERVER_ZONE))
+            .expiresAt(now.plus(10, ChronoUnit.MINUTES)).status(RequestStatus.PENDING).version(0).build(); }
 }

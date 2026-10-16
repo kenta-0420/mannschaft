@@ -7,7 +7,8 @@ import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.time.DateTimeException;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import java.time.LocalTime;
 import java.util.Base64;
 import java.util.HexFormat;
@@ -28,7 +29,7 @@ public class LoyaltyCursorCodec {
         boolean pending = context.stream() == Stream.STAFF_PENDING;
         if (position == null || position.id() == null || pending != (position.expiresAt() != null)
                 || pending && position.expiresAt().getNano() != 0) throw invalid();
-        LocalDateTime expiry = position.expiresAt();
+        var expiry = pending ? position.expiresAt().atZone(UserZoneLocalDateTimeParser.SERVER_ZONE) : null;
         byte[] payload = ByteBuffer.allocate(PAYLOAD_BYTES).put(VERSION).put((byte) context.stream().ordinal())
                 .putLong(context.actorUserId()).put((byte) (context.teamId() == null ? 0 : 1))
                 .putLong(context.teamId() == null ? 0 : context.teamId())
@@ -59,7 +60,8 @@ public class LoyaltyCursorCodec {
             byte expiryMarker = data.get(); long day = data.getLong(); int second = data.getInt();
             boolean pending = context.stream() == Stream.STAFF_PENDING;
             if (expiryMarker != (pending ? 1 : 0) || !pending && (day != 0 || second != 0)) throw invalid();
-            LocalDateTime expiry = pending ? LocalDate.ofEpochDay(day).atTime(LocalTime.ofSecondOfDay(second)) : null;
+            Instant expiry = pending ? LocalDate.ofEpochDay(day).atTime(LocalTime.ofSecondOfDay(second))
+                    .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant() : null;
             return new Position(id, expiry);
         } catch (IllegalArgumentException | DateTimeException exception) {
             throw invalid();
@@ -81,5 +83,5 @@ public class LoyaltyCursorCodec {
     /** v1のwire順序。並べ替える場合はcursor版も変更する。 */
     public enum Stream { ACCOUNTS, TRANSACTIONS, MY_REQUESTS, STAFF_ALL, STAFF_PENDING }
     public record Context(Stream stream, Long actorUserId, Long teamId) { }
-    public record Position(UUID id, LocalDateTime expiresAt) { }
+    public record Position(UUID id, Instant expiresAt) { }
 }

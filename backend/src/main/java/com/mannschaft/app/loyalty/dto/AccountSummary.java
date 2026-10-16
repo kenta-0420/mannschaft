@@ -2,7 +2,7 @@ package com.mannschaft.app.loyalty.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 /** チームポイントの業務契約。 */
@@ -19,5 +19,5 @@ public record AccountSummary(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         long lifetimeEarned,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
-        LocalDateTime updatedAt) {
+        Instant updatedAt) {
 }
