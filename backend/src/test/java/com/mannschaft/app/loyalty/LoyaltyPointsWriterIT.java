@@ -634,7 +634,7 @@ class LoyaltyPointsWriterIT {
                 RequestOperation.SELF_SUBMIT, UUID.randomUUID(), new byte[32], 30L, "受付",
                 new LoyaltyWriteCommand.PendingSnapshot(pending.getId(), null)));
         assertThat(denied).isNotNull();
-        assertThat(denied.errorCode()).isEqualTo(LoyaltyErrorCode.LOYALTY_005);
+        assertThat(denied.errorCode()).isEqualTo(LoyaltyErrorCode.LOYALTY_014);
         assertThat(store.getRequests().findById(pending.getId())).get()
                 .extracting("status", "reason", "version", "closedAt")
                 .containsExactly(RequestStatus.SUPERSEDED, RequestReason.DAILY_AWARDED, 1L, now);

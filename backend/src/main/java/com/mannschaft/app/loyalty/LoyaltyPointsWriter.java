@@ -117,7 +117,7 @@ public class LoyaltyPointsWriter {
                 if (pending.isEmpty()) throw error(LoyaltyErrorCode.LOYALTY_005);
                 var closed = pending.getFirst();
                 publish(command.teamId(), command.actorUserId(), command.userId(), RequestOperation.SELF_SUBMIT, null, closed.getId());
-                return new LoyaltySubmissionOutcome(null, closed, LoyaltyErrorCode.LOYALTY_005);
+                return new LoyaltySubmissionOutcome(null, closed, LoyaltyErrorCode.LOYALTY_014);
             }
             var row = LoyaltyAwardRequestEntity.builder().teamId(command.teamId()).userId(command.userId())
                     .ruleId(rule.getId()).sourceLocationId(command.sourceLocationId()).programVersion(program.getVersion())
