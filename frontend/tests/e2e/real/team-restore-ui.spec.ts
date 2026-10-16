@@ -95,6 +95,20 @@ test('管理入口・取消・閉じる・Escapeと360/390pxの操作性', async
       await restore.click()
       const dialog = page.getByRole('alertdialog')
       await expect(dialog).toContainText(fixtures.teams.restore_public!.slug)
+      await expect
+        .poll(() =>
+          dialog.evaluate((element) => {
+            const style = getComputedStyle(element)
+            return (
+              !Array.from(element.classList).some((name) =>
+                /-enter-(from|active|to)$/.test(name),
+              ) &&
+              style.opacity === '1' &&
+              (style.transform === 'none' || new DOMMatrixReadOnly(style.transform).isIdentity)
+            )
+          }),
+        )
+        .toBe(true)
       await noHorizontalPan(page)
       const cancel = dialog.getByRole('button', { name: 'キャンセル', exact: true })
       await touchTarget(cancel)
@@ -135,7 +149,9 @@ for (const [key, width] of [
       await former.goto('/calendar')
       await waitForHydration(former)
       await former.getByTestId('calendar-view-agenda').click()
-      await expect(former.getByText(team.scheduleTitle, { exact: true }).first()).toBeVisible()
+      await expect(
+        former.getByText(team.scheduleTitle, { exact: true }).filter({ visible: true }).first(),
+      ).toBeVisible()
       await page.setViewportSize({ width, height: 900 })
       await login(page, 'sys_test')
       await page.goto('/system-admin')
@@ -160,7 +176,10 @@ for (const [key, width] of [
       await page.getByTestId('restored-team-link').click()
       await expect(page).toHaveURL(new RegExp(`/teams/${team.slug}$`))
       await page.getByTestId('scope-sidebar-toggle').click()
-      await page.getByRole('button', { name: 'スケジュール', exact: true }).click()
+      await page
+        .getByRole('dialog')
+        .getByRole('button', { name: 'スケジュール', exact: false })
+        .click()
       await page.locator(`a[href="/teams/${team.slug}/schedule"]:visible`).click()
       await expect(page).toHaveURL(new RegExp(`/teams/${team.slug}/schedule$`))
       const selected = page.waitForResponse(
@@ -194,7 +213,9 @@ for (const [key, width] of [
       expect((await calendarLoaded).status()).toBe(200)
       const controlTitle = fixtures.teams.alive_control!.scheduleTitle
       if (!controlTitle) throw new Error('OWNED_CALENDAR_CONTROL_REQUIRED')
-      await expect(former.getByText(controlTitle, { exact: true }).first()).toBeVisible()
+      await expect(
+        former.getByText(controlTitle, { exact: true }).filter({ visible: true }).first(),
+      ).toBeVisible()
       await expect(former.getByText(team.scheduleTitle, { exact: true })).toHaveCount(0)
       await former.screenshot({
         path: testInfo.outputPath('former-calendar-after-delete.png'),
@@ -258,3 +279,233 @@ for (const role of ['former_admin', 'member', 'other_admin']) {
     })
   })
 }
+
+// 復元済みの所有fixtureを使い、復元・予定削除を繰り返さずに通常メニューの導線を検査する。
+test('復元後メニューの360/390px主要操作は44px以上で予定へ進める', async ({ browser }, testInfo) => {
+  const team = fixtures.teams.restore_public!
+  const measurements: {
+    width: number
+    control: string
+    box: Awaited<ReturnType<Locator['boundingBox']>>
+  }[] = []
+  async function measureTarget(control: Locator, name: string, width: number) {
+    const box = await control.boundingBox()
+    measurements.push({ width, control: name, box })
+    await touchTarget(control)
+    expect(box!.x).toBeGreaterThanOrEqual(0)
+    expect(box!.x + box!.width).toBeLessThanOrEqual(width)
+  }
+  async function waitForDrawer(drawer: Locator) {
+    await expect(drawer).toBeVisible()
+    await expect
+      .poll(() =>
+        drawer.evaluate((element) => {
+          const style = getComputedStyle(element)
+          return (
+            style.opacity === '1' &&
+            (style.transform === 'none' || new DOMMatrixReadOnly(style.transform).isIdentity) &&
+            !Array.from(element.classList).some((name) => /-enter-(from|active|to)$/.test(name)) &&
+            element
+              .getAnimations({ subtree: true })
+              .every((animation) => animation.playState !== 'running')
+          )
+        }),
+      )
+      .toBe(true)
+  }
+  const context = await browser.newContext({
+    baseURL: fixtures.baseUrl,
+    locale: 'ja-JP',
+    timezoneId: 'Asia/Tokyo',
+    isMobile: true,
+    hasTouch: true,
+    viewport: { width: 360, height: 844 },
+  })
+  const page = await context.newPage()
+  try {
+    await login(page, 'sys_explore')
+    for (const width of [360, 390]) {
+      await page.setViewportSize({ width, height: 844 })
+      await page.goto(`/teams/${team.slug}`)
+      await waitForHydration(page)
+      const toggle = page.getByTestId('scope-sidebar-toggle')
+      await expect(toggle).toBeVisible()
+      await noHorizontalPan(page)
+      await page.screenshot({
+        path: testInfo.outputPath(`team-menu-toggle-${width}.png`),
+        fullPage: true,
+      })
+      await measureTarget(toggle, 'menu', width)
+      await toggle.tap()
+      const drawer = page.getByRole('dialog')
+      await waitForDrawer(drawer)
+      const close = drawer.locator('button[aria-label]').first()
+      await measureTarget(close, 'close', width)
+      await close.tap()
+      await expect(drawer).toHaveCount(0)
+
+      await toggle.tap()
+      await waitForDrawer(drawer)
+      const category = drawer.getByRole('button', { name: 'スケジュール', exact: false })
+      await expect(category).toBeVisible()
+      await measureTarget(category, 'schedule-category', width)
+      const schedule = drawer.locator(`a[href="/teams/${team.slug}/schedule"]`)
+      // カテゴリ状態はlocalStorageへ残るため、2幅目も実際のリンク可視状態から開閉する。
+      if (!(await schedule.isVisible())) await category.tap()
+      await expect(schedule).toBeVisible()
+      await measureTarget(schedule, 'schedule-link', width)
+      await noHorizontalPan(page)
+      await page.screenshot({
+        path: testInfo.outputPath(`team-menu-open-${width}.png`),
+        fullPage: true,
+      })
+      await schedule.tap()
+      await expect(page).toHaveURL(new RegExp(`/teams/${team.slug}/schedule$`))
+      await expect(page.getByRole('heading', { name: 'スケジュール', exact: true })).toBeVisible()
+      await noHorizontalPan(page)
+    }
+  } finally {
+    await testInfo.attach('touch-target-measurements', {
+      body: JSON.stringify(measurements),
+      contentType: 'application/json',
+    })
+    await context.close()
+  }
+})
+
+// 以下は既存の所有fixtureを読むだけの独立回帰。復元・予定編集・予定削除は行わない。
+async function mobileControlBounds(control: Locator, width: number, height: number) {
+  await expect(control).toBeVisible()
+  await control.scrollIntoViewIfNeeded()
+  await expect
+    .poll(() =>
+      control.evaluate((element) =>
+        element
+          .getAnimations({ subtree: true })
+          .every((animation) => animation.playState !== 'running'),
+      ),
+    )
+    .toBe(true)
+  const box = await control.boundingBox()
+  await touchTarget(control)
+  expect(box!.x).toBeGreaterThanOrEqual(0)
+  expect(box!.y).toBeGreaterThanOrEqual(0)
+  expect(box!.x + box!.width).toBeLessThanOrEqual(width)
+  expect(box!.y + box!.height).toBeLessThanOrEqual(height)
+  return box
+}
+
+test('復元一覧のページ操作は360/390pxで44px以上', async ({ browser }, testInfo) => {
+  const context = await browser.newContext({
+    baseURL: fixtures.baseUrl,
+    locale: 'ja-JP',
+    timezoneId: 'Asia/Tokyo',
+    isMobile: true,
+    hasTouch: true,
+    viewport: { width: 360, height: 844 },
+  })
+  const page = await context.newPage()
+  const measurements: unknown[] = []
+  try {
+    await login(page, 'sys_explore')
+    for (const width of [360, 390]) {
+      await page.setViewportSize({ width, height: 844 })
+      const listed = page.waitForResponse(
+        (r) => new URL(r.url()).pathname === deletedApi && r.request().method() === 'GET',
+      )
+      await page.goto(deletedPath)
+      expect((await listed).status()).toBe(200)
+      await waitForHydration(page)
+      const firstRestore = page.locator('button[data-testid^="restore-"]').first()
+      await expect(firstRestore).toBeVisible()
+      const paginator = page.locator('[data-pc-name="paginator"]')
+      const current = paginator.locator('button[aria-current="page"]')
+      await expect(current).toBeEnabled()
+      await current.scrollIntoViewIfNeeded()
+      await page.screenshot({ path: testInfo.outputPath(`paginator-${width}.png`), fullPage: true })
+      measurements.push({ width, control: 'current-page', box: await current.boundingBox() })
+      await mobileControlBounds(current, width, 844)
+      for (const section of ['prev', 'next']) {
+        const control = paginator.locator(`button[data-pc-section="${section}"]`)
+        await expect(control).toBeDisabled()
+        const box = await mobileControlBounds(control, width, 844)
+        measurements.push({ width, control: section, box })
+      }
+      await noHorizontalPan(page)
+      const loaded = page.waitForResponse(
+        (r) => new URL(r.url()).pathname === deletedApi && r.request().method() === 'GET',
+      )
+      await current.tap()
+      expect((await loaded).status()).toBe(200)
+      await expect(paginator.locator('button[aria-current="page"]')).toHaveText('1')
+      await expect(firstRestore).toBeVisible()
+      await noHorizontalPan(page)
+    }
+  } finally {
+    await testInfo.attach('paginator-target-measurements', {
+      body: JSON.stringify(measurements),
+      contentType: 'application/json',
+    })
+    await context.close()
+  }
+})
+
+test('予定詳細の編集と削除は360/390pxで44px以上かつ操作名を持つ', async ({ browser }, testInfo) => {
+  const team = fixtures.teams.alive_control!
+  if (!team.scheduleId || !team.scheduleTitle) throw new Error('OWNED_SCHEDULE_FIXTURE_REQUIRED')
+  const context = await browser.newContext({
+    baseURL: fixtures.baseUrl,
+    locale: 'ja-JP',
+    timezoneId: 'Asia/Tokyo',
+    isMobile: true,
+    hasTouch: true,
+    viewport: { width: 360, height: 844 },
+  })
+  const page = await context.newPage()
+  const measurements: unknown[] = []
+  try {
+    await login(page, 'sys_explore')
+    for (const width of [360, 390]) {
+      await page.setViewportSize({ width, height: 844 })
+      await page.goto(`/teams/${team.slug}/schedule`)
+      await waitForHydration(page)
+      const selected = page.waitForResponse(
+        (r) =>
+          r.request().method() === 'GET' &&
+          new URL(r.url()).pathname === `/api/v1/teams/${team.slug}/schedules/${team.scheduleId}`,
+      )
+      await page
+        .getByText(team.scheduleTitle, { exact: true })
+        .filter({ visible: true })
+        .first()
+        .tap()
+      expect((await selected).status()).toBe(200)
+      const heading = page
+        .getByRole('heading', { level: 2, name: team.scheduleTitle, exact: true })
+        .filter({ visible: true })
+      await expect(heading).toBeVisible()
+      const header = heading.locator('..').locator('..').locator('..')
+      const edit = header.locator('button:has(.pi-pencil)')
+      const remove = header.locator('button:has(.pi-trash)')
+      await expect(edit).toHaveAttribute('data-testid', 'schedule-edit')
+      await edit.scrollIntoViewIfNeeded()
+      await page.screenshot({
+        path: testInfo.outputPath(`event-detail-${width}.png`),
+        fullPage: true,
+      })
+      measurements.push({ width, control: 'edit', box: await edit.boundingBox() })
+      await mobileControlBounds(edit, width, 844)
+      await expect(edit).toHaveAccessibleName('編集')
+      measurements.push({ width, control: 'delete', box: await remove.boundingBox() })
+      await mobileControlBounds(remove, width, 844)
+      await expect(remove).toHaveAccessibleName('削除')
+      await noHorizontalPan(page)
+    }
+  } finally {
+    await testInfo.attach('event-detail-target-measurements', {
+      body: JSON.stringify(measurements),
+      contentType: 'application/json',
+    })
+    await context.close()
+  }
+})

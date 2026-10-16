@@ -167,6 +167,11 @@ onMounted(load)
             :total-records="totalRecords"
             :page-link-size="3"
             template="PrevPageLink PageLinks NextPageLink"
+            :pt="{
+              prev: { class: 'min-h-11 min-w-11' },
+              page: { class: 'min-h-11 min-w-11' },
+              next: { class: 'min-h-11 min-w-11' },
+            }"
             @page="changePage"
           />
         </fieldset>
