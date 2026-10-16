@@ -1,5 +1,10 @@
 package com.mannschaft.app.membership.service;
 
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.membership.CardStatus;
+import com.mannschaft.app.membership.MembershipErrorCode;
+import com.mannschaft.app.membership.ScopeType;
+import com.mannschaft.app.membership.entity.MemberCardEntity;
 import com.mannschaft.app.membership.dto.PlatformCardResponse;
 import com.mannschaft.app.membership.repository.MemberCardRepository;
 import java.util.Optional;
@@ -17,11 +22,35 @@ public class PlatformCardWriter {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public PlatformCardResponse ensure(Long userId, String displayName) {
-        throw new UnsupportedOperationException("共通会員証writerは未実装");
+        Optional<MemberCardEntity> existing = memberCardRepository
+                .findByUserIdAndScopeTypeAndDeletedAtIsNull(userId, ScopeType.PLATFORM);
+        if (existing.isPresent()) {
+            return toResponse(existing.get());
+        }
+        MemberCardEntity card = MemberCardEntity.builder()
+                .userId(userId)
+                .scopeType(ScopeType.PLATFORM)
+                .scopeId(null)
+                .cardCode(java.util.UUID.randomUUID().toString())
+                .cardNumber("M-" + Long.toString(userId, 36))
+                .displayName(displayName)
+                .status(CardStatus.ACTIVE)
+                .qrSecret(qrTokenService.generateSecret())
+                .build();
+        // 一意制約競合はこのtransactionをrollbackさせ、呼出側の別transactionで再読取する。
+        return toResponse(memberCardRepository.saveAndFlush(card));
     }
 
     @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
     public Optional<PlatformCardResponse> findExisting(Long userId) {
-        throw new UnsupportedOperationException("共通会員証競合再読取は未実装");
+        return memberCardRepository.findByUserIdAndScopeTypeAndDeletedAtIsNull(userId, ScopeType.PLATFORM)
+                .map(this::toResponse);
+    }
+    private PlatformCardResponse toResponse(MemberCardEntity card) {
+        if (card.getScopeType() != ScopeType.PLATFORM || card.getScopeId() != null
+                || card.getDeletedAt() != null || card.getStatus() != CardStatus.ACTIVE) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_003);
+        }
+        return new PlatformCardResponse(card.getId(), card.getScopeType().name(), card.getStatus().name());
     }
 }
