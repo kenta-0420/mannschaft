@@ -1875,6 +1875,10 @@
       "description": "F03.5 シフト PDF ダウンロード"
     },
     {
+      "name": "Team loyalty",
+      "description": "チームポイントの本人・スタッフ・設定操作"
+    },
+    {
       "name": "チームスケジュール管理",
       "description": "F03.1 チームスコープのスケジュール・出欠管理"
     },
@@ -9969,6 +9973,340 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseNotificationPreferenceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/loyalty/settings": {
+      "get": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "ポイント設定の取得",
+        "operationId": "loyaltySettings",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyProgramSettings"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyProgramSettings"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyProgramSettings"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyProgramSettings"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyProgramSettings"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "ポイント設定の更新",
+        "operationId": "loyaltyUpdateSettings",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoyaltyUpdateProgramRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyProgramSettings"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyProgramSettings"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyProgramSettings"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyProgramSettings"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyProgramSettings"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/loyalty/rules/{ruleId}": {
+      "put": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "付与ルールの更新",
+        "operationId": "loyaltyUpdateRule",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "ruleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoyaltyUpdateRuleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRuleResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRuleResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRuleResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRuleResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRuleResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/loyalty/rewards/{rewardId}": {
+      "put": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "特典の更新",
+        "operationId": "loyaltyUpdateReward",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "rewardId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoyaltyUpdateRewardRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRewardResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRewardResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRewardResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRewardResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRewardResponse"
                 }
               }
             }
@@ -46431,6 +46769,904 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/loyalty/self-awards": {
+      "post": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "本人の受付確定",
+        "operationId": "loyaltySelfAward",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoyaltySelfAwardRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltySelfAwardResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltySelfAwardResult"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltySelfAwardResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltySelfAwardResult"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltySelfAwardResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/loyalty/self-award-previews": {
+      "post": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "本人の受付確認",
+        "operationId": "loyaltySelfPreview",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoyaltySelfAwardPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltySelfAwardPreview"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltySelfAwardPreview"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltySelfAwardPreview"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltySelfAwardPreview"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltySelfAwardPreview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/loyalty/scan-previews": {
+      "post": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "会員QRの付与前確認",
+        "operationId": "loyaltyScanPreview",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoyaltyScanPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyScanPreview"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyScanPreview"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyScanPreview"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyScanPreview"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyScanPreview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/loyalty/rules": {
+      "post": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "付与ルールの作成",
+        "operationId": "loyaltyCreateRule",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoyaltyCreateRuleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "作成済み",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRuleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRuleResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRuleResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRuleResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRuleResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRuleResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/loyalty/rewards": {
+      "post": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "特典の作成",
+        "operationId": "loyaltyCreateReward",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoyaltyCreateRewardRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "作成済み",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRewardResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRewardResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRewardResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRewardResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRewardResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRewardResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/loyalty/redemptions": {
+      "post": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "特典交換の確定",
+        "operationId": "loyaltyRedeem",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoyaltyRedeemRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/loyalty/redemption-previews": {
+      "post": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "会員QRの交換前確認",
+        "operationId": "loyaltyRedemptionPreview",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoyaltyRedemptionPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRedemptionPreview"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRedemptionPreview"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRedemptionPreview"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRedemptionPreview"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyRedemptionPreview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/loyalty/awards": {
+      "post": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "スタッフによる付与確定",
+        "operationId": "loyaltyAward",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoyaltyStaffAwardRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/loyalty/award-requests/{requestId}/reject": {
+      "post": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "申請の却下",
+        "operationId": "loyaltyReject",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoyaltyRequestActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/loyalty/award-requests/{requestId}/approve": {
+      "post": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "照合コードによる申請承認",
+        "operationId": "loyaltyApprove",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoyaltyApproveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/line/test": {
       "post": {
         "tags": [
@@ -77025,6 +78261,27 @@
         }
       }
     },
+    "/api/v1/member-cards/platform/me": {
+      "post": {
+        "tags": [
+          "QR会員証"
+        ],
+        "summary": "共通会員証確保",
+        "operationId": "ensureMyPlatformCard",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePlatformCardResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/voice-input-consents": {
       "post": {
         "tags": [
@@ -80467,6 +81724,167 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseIncidentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/loyalty/self-award-bootstrap/me": {
+      "post": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "掲示QRから本人の受付情報を取得",
+        "operationId": "loyaltyBootstrap",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoyaltySelfAwardBootstrapRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltySelfAwardBootstrap"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltySelfAwardBootstrap"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltySelfAwardBootstrap"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltySelfAwardBootstrap"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltySelfAwardBootstrap"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/loyalty/award-requests/{requestId}/cancel/me": {
+      "post": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "本人による申請取消",
+        "operationId": "loyaltyCancel",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoyaltyRequestActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
                 }
               }
             }
@@ -120882,6 +122300,428 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/loyalty/transactions/me": {
+      "get": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "本人のチーム別履歴",
+        "operationId": "loyaltyTransactions",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyTransactionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/loyalty/operation-catalog": {
+      "get": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "スタッフ操作対象の取得",
+        "operationId": "loyaltyOperationCatalog",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyOperationCatalog"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyOperationCatalog"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyOperationCatalog"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyOperationCatalog"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyOperationCatalog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/loyalty/award-requests": {
+      "get": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "スタッフの承認申請一覧",
+        "operationId": "loyaltyStaffRequests",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "PENDING",
+              "enum": [
+                "PENDING",
+                "ALL"
+              ]
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/loyalty/award-requests/{requestId}": {
+      "get": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "スタッフの承認申請詳細",
+        "operationId": "loyaltyStaffRequest",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/loyalty/account/me": {
+      "get": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "本人のチーム別残高",
+        "operationId": "loyaltyAccount",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAccountDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAccountDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAccountDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAccountDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAccountDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/line/logs": {
       "get": {
         "tags": [
@@ -143518,6 +145358,244 @@
         }
       }
     },
+    "/api/v1/loyalty/award-requests/{requestId}/me": {
+      "get": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "本人の申請詳細",
+        "operationId": "loyaltyMyRequest",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/loyalty/award-requests/me": {
+      "get": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "本人の申請一覧",
+        "operationId": "loyaltyMyRequests",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyAwardRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/loyalty/accounts/me": {
+      "get": {
+        "tags": [
+          "Team loyalty"
+        ],
+        "summary": "本人のチームポイント一覧",
+        "operationId": "loyaltyListAccounts",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "入力形式または業務条件の不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyAccountSummary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "本人の認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyAccountSummary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該操作の資格なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyAccountSummary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象が存在しない、または閲覧不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyAccountSummary"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版または同一キーの内容が競合",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseLoyaltyAccountSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/jobs/{jobId}/applications": {
       "get": {
         "tags": [
@@ -161039,6 +163117,307 @@
           },
           "prefectureCode": {
             "type": "string"
+          }
+        }
+      },
+      "LoyaltyUpdateProgramRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "selfAwardMode": {
+            "type": "string",
+            "enum": [
+              "STAFF_APPROVAL",
+              "AUTO"
+            ]
+          },
+          "targetAudience": {
+            "type": "string",
+            "enum": [
+              "ALL_AUTHENTICATED",
+              "SUPPORTERS_AND_ABOVE",
+              "MEMBERS_AND_ABOVE"
+            ]
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "isEnabled",
+          "selfAwardMode",
+          "targetAudience"
+        ]
+      },
+      "ApiResponseLoyaltyProgramSettings": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/LoyaltyProgramSettings"
+          }
+        }
+      },
+      "LoyaltyProgramSettings": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "rewards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LoyaltyRewardResponse"
+            }
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LoyaltyRuleResponse"
+            }
+          },
+          "selfAwardMode": {
+            "type": "string",
+            "enum": [
+              "STAFF_APPROVAL",
+              "AUTO"
+            ]
+          },
+          "targetAudience": {
+            "type": "string",
+            "enum": [
+              "ALL_AUTHENTICATED",
+              "SUPPORTERS_AND_ABOVE",
+              "MEMBERS_AND_ABOVE"
+            ]
+          },
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "isEnabled",
+          "rewards",
+          "rules",
+          "selfAwardMode",
+          "targetAudience",
+          "teamId",
+          "version"
+        ]
+      },
+      "LoyaltyRewardResponse": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "requiredPoints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "description",
+          "id",
+          "isActive",
+          "name",
+          "requiredPoints",
+          "version"
+        ]
+      },
+      "LoyaltyRuleResponse": {
+        "type": "object",
+        "properties": {
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "ONCE_PER_JST_DAY",
+              "EACH_STAFF_CONFIRMATION"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "isSelfAwardEnabled": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "points": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "frequency",
+          "id",
+          "isActive",
+          "isSelfAwardEnabled",
+          "name",
+          "points",
+          "version"
+        ]
+      },
+      "LoyaltyUpdateRuleRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "ONCE_PER_JST_DAY",
+              "EACH_STAFF_CONFIRMATION"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "isSelfAwardEnabled": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "points": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 10000,
+            "minimum": 1
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "frequency",
+          "isActive",
+          "isSelfAwardEnabled",
+          "name",
+          "points"
+        ]
+      },
+      "ApiResponseLoyaltyRuleResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/LoyaltyRuleResponse"
+          }
+        }
+      },
+      "LoyaltyUpdateRewardRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "requiredPoints": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 1000000,
+            "minimum": 1
+          }
+        },
+        "required": [
+          "description",
+          "expectedVersion",
+          "isActive",
+          "name",
+          "requiredPoints"
+        ]
+      },
+      "ApiResponseLoyaltyRewardResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/LoyaltyRewardResponse"
           }
         }
       },
@@ -187167,6 +189546,647 @@
           "kind"
         ]
       },
+      "LoyaltySelfAwardRequest": {
+        "type": "object",
+        "properties": {
+          "expectedProgramVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expectedRuleVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "locationToken": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 0
+          },
+          "ruleId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "expectedProgramVersion",
+          "expectedRuleVersion",
+          "locationToken",
+          "ruleId"
+        ]
+      },
+      "ApiResponseLoyaltySelfAwardResult": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/LoyaltySelfAwardResult"
+          }
+        }
+      },
+      "LoyaltyAwardRequestResponse": {
+        "type": "object",
+        "properties": {
+          "applicantDisplayName": {
+            "type": "string"
+          },
+          "awardOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "canApprove": {
+            "type": "boolean"
+          },
+          "canCancel": {
+            "type": "boolean"
+          },
+          "closedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "locationName": {
+            "type": "string"
+          },
+          "points": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "USER_CANCELLED",
+                  "STAFF_REJECTED",
+                  "TTL_EXPIRED",
+                  "DAY_CHANGED",
+                  "VERSION_CHANGED",
+                  "LOCATION_INACTIVE",
+                  "TEAM_INACTIVE",
+                  "USER_INACTIVE",
+                  "INELIGIBLE",
+                  "DAILY_AWARDED",
+                  "POINT_LIMIT"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ruleName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "CANCELLED",
+              "REJECTED",
+              "EXPIRED",
+              "INVALIDATED",
+              "SUPERSEDED"
+            ]
+          },
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "teamName": {
+            "type": "string"
+          },
+          "transactionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verificationCode": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "applicantDisplayName",
+          "awardOn",
+          "canApprove",
+          "canCancel",
+          "closedAt",
+          "createdAt",
+          "expiresAt",
+          "id",
+          "locationName",
+          "points",
+          "reason",
+          "ruleName",
+          "status",
+          "teamId",
+          "teamName",
+          "transactionId",
+          "verificationCode",
+          "version"
+        ]
+      },
+      "LoyaltySelfAwardResult": {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "AWARDED",
+              "SUBMITTED"
+            ]
+          },
+          "request": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LoyaltyAwardRequestResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "transaction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LoyaltyTransactionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "outcome",
+          "request",
+          "transaction"
+        ]
+      },
+      "LoyaltyTransactionResponse": {
+        "type": "object",
+        "properties": {
+          "awardOn": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "balanceAfter": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "STAFF",
+              "SELF_AUTO",
+              "SELF_APPROVED"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "delta": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "AWARD",
+              "REDEEM"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "rewardId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ruleId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "awardOn",
+          "balanceAfter",
+          "channel",
+          "createdAt",
+          "delta",
+          "id",
+          "kind",
+          "label",
+          "rewardId",
+          "ruleId",
+          "teamId"
+        ]
+      },
+      "LoyaltySelfAwardPreviewRequest": {
+        "type": "object",
+        "properties": {
+          "locationToken": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 0
+          },
+          "ruleId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "locationToken",
+          "ruleId"
+        ]
+      },
+      "ApiResponseLoyaltySelfAwardPreview": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/LoyaltySelfAwardPreview"
+          }
+        }
+      },
+      "LoyaltySelfAwardPreview": {
+        "type": "object",
+        "properties": {
+          "balance": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isAlreadyAwardedToday": {
+            "type": "boolean"
+          },
+          "isEligibleForAward": {
+            "type": "boolean"
+          },
+          "programVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "rule": {
+            "$ref": "#/components/schemas/LoyaltyRuleResponse"
+          },
+          "selfAwardMode": {
+            "type": "string",
+            "enum": [
+              "STAFF_APPROVAL",
+              "AUTO"
+            ]
+          },
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "teamName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "balance",
+          "isAlreadyAwardedToday",
+          "isEligibleForAward",
+          "programVersion",
+          "rule",
+          "selfAwardMode",
+          "teamId",
+          "teamName"
+        ]
+      },
+      "LoyaltyScanPreviewRequest": {
+        "type": "object",
+        "properties": {
+          "qrToken": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 0
+          },
+          "ruleId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "qrToken",
+          "ruleId"
+        ]
+      },
+      "ApiResponseLoyaltyScanPreview": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/LoyaltyScanPreview"
+          }
+        }
+      },
+      "LoyaltyScanPreview": {
+        "type": "object",
+        "properties": {
+          "balance": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "isEligibleForAward": {
+            "type": "boolean"
+          },
+          "programVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "rule": {
+            "$ref": "#/components/schemas/LoyaltyRuleResponse"
+          }
+        },
+        "required": [
+          "balance",
+          "displayName",
+          "isEligibleForAward",
+          "programVersion",
+          "rule"
+        ]
+      },
+      "LoyaltyCreateRuleRequest": {
+        "type": "object",
+        "properties": {
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "ONCE_PER_JST_DAY",
+              "EACH_STAFF_CONFIRMATION"
+            ]
+          },
+          "isSelfAwardEnabled": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "points": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 10000,
+            "minimum": 1
+          }
+        },
+        "required": [
+          "frequency",
+          "isSelfAwardEnabled",
+          "name",
+          "points"
+        ]
+      },
+      "LoyaltyCreateRewardRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "requiredPoints": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 1000000,
+            "minimum": 1
+          }
+        },
+        "required": [
+          "description",
+          "name",
+          "requiredPoints"
+        ]
+      },
+      "LoyaltyRedeemRequest": {
+        "type": "object",
+        "properties": {
+          "expectedProgramVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expectedRewardVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "qrToken": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 0
+          },
+          "rewardId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "expectedProgramVersion",
+          "expectedRewardVersion",
+          "qrToken",
+          "rewardId"
+        ]
+      },
+      "ApiResponseLoyaltyTransactionResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/LoyaltyTransactionResponse"
+          }
+        }
+      },
+      "LoyaltyRedemptionPreviewRequest": {
+        "type": "object",
+        "properties": {
+          "qrToken": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 0
+          },
+          "rewardId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "qrToken",
+          "rewardId"
+        ]
+      },
+      "ApiResponseLoyaltyRedemptionPreview": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/LoyaltyRedemptionPreview"
+          }
+        }
+      },
+      "LoyaltyRedemptionPreview": {
+        "type": "object",
+        "properties": {
+          "balance": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "canRedeem": {
+            "type": "boolean"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "programVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reward": {
+            "$ref": "#/components/schemas/LoyaltyRewardResponse"
+          }
+        },
+        "required": [
+          "balance",
+          "canRedeem",
+          "displayName",
+          "programVersion",
+          "reward"
+        ]
+      },
+      "LoyaltyStaffAwardRequest": {
+        "type": "object",
+        "properties": {
+          "expectedProgramVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expectedRuleVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "qrToken": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 0
+          },
+          "ruleId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "expectedProgramVersion",
+          "expectedRuleVersion",
+          "qrToken",
+          "ruleId"
+        ]
+      },
+      "LoyaltyRequestActionRequest": {
+        "type": "object",
+        "properties": {
+          "expectedRequestVersion": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "expectedRequestVersion"
+        ]
+      },
+      "ApiResponseLoyaltyAwardRequestResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/LoyaltyAwardRequestResponse"
+          }
+        }
+      },
+      "LoyaltyApproveRequest": {
+        "type": "object",
+        "properties": {
+          "expectedRequestVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "verificationCode": {
+            "type": "string",
+            "pattern": "[A-Z2-7]{8}"
+          }
+        },
+        "required": [
+          "expectedRequestVersion",
+          "verificationCode"
+        ]
+      },
       "TestMessageRequest": {
         "type": "object",
         "properties": {
@@ -202835,6 +205855,29 @@
           }
         }
       },
+      "ApiResponsePlatformCardResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PlatformCardResponse"
+          }
+        }
+      },
+      "PlatformCardResponse": {
+        "type": "object",
+        "properties": {
+          "memberCardId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeType": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
       "VoiceInputConsentRequest": {
         "type": "object",
         "properties": {
@@ -205555,6 +208598,145 @@
             "format": "int64"
           }
         }
+      },
+      "LoyaltySelfAwardBootstrapRequest": {
+        "type": "object",
+        "properties": {
+          "locationToken": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "locationToken"
+        ]
+      },
+      "ApiResponseLoyaltySelfAwardBootstrap": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/LoyaltySelfAwardBootstrap"
+          }
+        }
+      },
+      "LoyaltyAccountDetail": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "balance": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isEligibleForAward": {
+            "type": "boolean"
+          },
+          "isProgramEnabled": {
+            "type": "boolean"
+          },
+          "lifetimeEarned": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "rewards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LoyaltyRewardProgress"
+            }
+          },
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "teamName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "accountId",
+          "balance",
+          "isEligibleForAward",
+          "isProgramEnabled",
+          "lifetimeEarned",
+          "rewards",
+          "teamId",
+          "teamName"
+        ]
+      },
+      "LoyaltyRewardProgress": {
+        "type": "object",
+        "properties": {
+          "canRedeem": {
+            "type": "boolean"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "remainingPoints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "requiredPoints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "canRedeem",
+          "description",
+          "id",
+          "isActive",
+          "name",
+          "remainingPoints",
+          "requiredPoints",
+          "version"
+        ]
+      },
+      "LoyaltySelfAwardBootstrap": {
+        "type": "object",
+        "properties": {
+          "account": {
+            "$ref": "#/components/schemas/LoyaltyAccountDetail"
+          },
+          "preview": {
+            "$ref": "#/components/schemas/LoyaltySelfAwardPreview"
+          }
+        },
+        "required": [
+          "account",
+          "preview"
+        ]
       },
       "CreateJobPostingRequest": {
         "type": "object",
@@ -226274,6 +229456,108 @@
           }
         }
       },
+      "CursorPagedResponseLoyaltyTransactionResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LoyaltyTransactionResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/CursorMeta"
+          }
+        }
+      },
+      "ApiResponseLoyaltyOperationCatalog": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/LoyaltyOperationCatalog"
+          }
+        }
+      },
+      "LoyaltyOperationCatalog": {
+        "type": "object",
+        "properties": {
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "programVersion": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rewards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LoyaltyRewardResponse"
+            }
+          },
+          "rule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LoyaltyRuleResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "selfAwardMode": {
+            "type": "string",
+            "enum": [
+              "STAFF_APPROVAL",
+              "AUTO"
+            ]
+          },
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "teamName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "isEnabled",
+          "programVersion",
+          "rewards",
+          "rule",
+          "selfAwardMode",
+          "teamId",
+          "teamName"
+        ]
+      },
+      "CursorPagedResponseLoyaltyAwardRequestResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LoyaltyAwardRequestResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/CursorMeta"
+          }
+        }
+      },
+      "ApiResponseLoyaltyAccountDetail": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/LoyaltyAccountDetail"
+          }
+        }
+      },
       "LineMessageLogResponse": {
         "type": "object",
         "properties": {
@@ -244780,6 +248064,56 @@
             "type": "string"
           }
         }
+      },
+      "CursorPagedResponseLoyaltyAccountSummary": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LoyaltyAccountSummary"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/CursorMeta"
+          }
+        }
+      },
+      "LoyaltyAccountSummary": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "balance": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lifetimeEarned": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "teamName": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "accountId",
+          "balance",
+          "lifetimeEarned",
+          "teamId",
+          "teamName",
+          "updatedAt"
+        ]
       },
       "JobPostingSummaryResponse": {
         "type": "object",
