@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 /** 実archive入口と、イベント未配送を実SQLで作る回復経路の試練。 */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
@@ -49,6 +50,41 @@ class InviteGenerationLifecycleIT extends InviteGenerationItSupport {
 
     @ParameterizedTest
     @ValueSource(strings = {"TEAM", "ORGANIZATION"})
+    @DisplayName("G12: commit後listener失敗は親休止を巻戻さず、解除後のbatchで旧tokenだけ回復する")
+    void committedListenerFailureIsRecoveredAfterReopening(String type, CapturedOutput output) {
+        assertThat(MYSQL.isRunning()).isTrue();
+        assertThat(jdbc.execute((ConnectionCallback<String>) connection -> connection.getMetaData().getURL())).isEqualTo(MYSQL.getJdbcUrl());
+        assertThat(jdbc.queryForObject("SELECT DATABASE()", String.class)).isEqualTo(MYSQL.getDatabaseName());
+        Scope scope = scope(type);
+        var old = token(scope, 0);
+        String triggerName = "it_invite_listener_failure_" + old.getId();
+        // 許可済み最小DDL例外。実AFTER_COMMIT経路のUPDATEだけを所有PKで故障させる。
+        jdbc.execute("CREATE TRIGGER " + triggerName + " BEFORE UPDATE ON invite_tokens FOR EACH ROW BEGIN "
+                + "IF OLD.id = " + old.getId() + " AND NEW.revoked_at IS NOT NULL THEN "
+                + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'owned invite listener failure'; END IF; END");
+        try {
+            assertThatCode(() -> archive(scope, false)).doesNotThrowAnyException();
+            assertThat(jdbc.queryForObject("SELECT closure_generation FROM " + scope.table() + " WHERE id = ?", Long.class, scope.id())).isEqualTo(1);
+            assertThat(tokens.findById(old.getId()).orElseThrow().getRevokedAt()).isNull();
+            assertThat(output.getAll()).contains("scopeId=" + scope.id());
+        } finally {
+            jdbc.execute("DROP TRIGGER IF EXISTS " + triggerName);
+        }
+        if ("TEAM".equals(type)) {
+            teamService.unarchiveTeam(scope.id());
+        } else {
+            organizationService.unarchiveOrganization(scope.id());
+        }
+        var current = token(scope, 1);
+
+        recovery.cleanUp();
+
+        assertThat(tokens.findById(old.getId()).orElseThrow().getRevokedAt()).isNotNull();
+        assertThat(tokens.findById(current.getId()).orElseThrow().getRevokedAt()).isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"TEAM", "ORGANIZATION"})
     @DisplayName("G12: 1scopeの実DB失効失敗は他scopeを止めず、次batchで取り直す")
     void recoveryContinuesAfterDatabaseFailureAndRepairsOnNextRun(String type, CapturedOutput output) {
         assertThat(MYSQL.isRunning()).as("一時triggerは起動中のTestcontainersだけに作成する").isTrue();
@@ -57,6 +93,7 @@ class InviteGenerationLifecycleIT extends InviteGenerationItSupport {
         assertThat(jdbc.queryForObject("SELECT DATABASE()", String.class)).isEqualTo(MYSQL.getDatabaseName());
         Scope failing = scope(type);
         Scope other = scope(type);
+        var siblingOld = token(failing, 0);
         var blockedToken = token(failing, 0);
         var otherToken = token(other, 0);
         for (Scope scope : List.of(failing, other)) {
@@ -72,6 +109,7 @@ class InviteGenerationLifecycleIT extends InviteGenerationItSupport {
         try {
             recovery.cleanUp();
             assertThat(tokens.findById(blockedToken.getId()).orElseThrow().getRevokedAt()).isNull();
+            assertThat(tokens.findById(siblingOld.getId()).orElseThrow().getRevokedAt()).as("失敗scopeの失効TXを全体rollbackする").isNull();
             assertThat(tokens.findById(otherToken.getId()).orElseThrow().getRevokedAt()).isNotNull();
             assertThat(output.getAll()).contains("scopeId=" + failing.id());
         } finally {
@@ -80,6 +118,7 @@ class InviteGenerationLifecycleIT extends InviteGenerationItSupport {
 
         recovery.cleanUp();
         assertThat(tokens.findById(blockedToken.getId()).orElseThrow().getRevokedAt()).isNotNull();
+        assertThat(tokens.findById(siblingOld.getId()).orElseThrow().getRevokedAt()).isNotNull();
         assertThat(tokens.findById(sameGeneration.getId()).orElseThrow().getRevokedAt()).isNull();
     }
 
