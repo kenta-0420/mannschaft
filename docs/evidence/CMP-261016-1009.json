@@ -146,7 +146,7 @@
   "causalLimit": "最初のADMIN200後空Drawerの初期例外stackは未保存。実証済み取得状態・スコープ更新・旧tab導線のみ根拠。",
   "cleanup": {
     "worktrees": "他作業資産保全、check-only exit2、削除0",
-    "status": "専用schema・appuser・Redis13の削除と独立read-only確認完了（ユーザー明示承認後）",
+    "status": "専用schema・appuser・Redis13と承認済み共有fixture4件のcleanup・独立確認完了（共有fixtureは論理削除）",
     "evidence": "docs/evidence/CMP-261016-1009/cleanup-completed.md",
     "servers": "専用FE/BE/REPL停止済み"
   },
