@@ -1,6 +1,6 @@
 import { test, expect, request, type APIRequestContext, type Page } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
-import { writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import type { TeamResponse } from '../../../app/types/team'
 import type { components } from '../../../app/types/generated'
 
@@ -72,6 +72,31 @@ test.beforeAll(async () => {
   await login('OTHER_TEAM_ADMIN', process.env.TEST_PAYMENT_OUTSIDER_EMAIL ?? 'e2e-dummy-10@test.mannschaft.local')
   await login('SUPPORTER', process.env.TEST_SUPPORTER_EMAIL ?? 'e2e-supporter@test.mannschaft.local')
   const admin = sessions.get('ADMIN')!
+  if (process.env.REUSE_PAYMENT_ACCESS_FIXTURE === 'true') {
+    // 再試行では同じ専用scopeの読取検証だけを行い、所属変更や後始末はしない。
+    expect(process.env.KEEP_PAYMENT_ACCESS_FIXTURE).toBe('true')
+    const saved: { team: { id: number; slug: string }; inviteId: number; users: Record<string, { id: number }> } = JSON.parse(
+      await readFile('tests/e2e/.auth/team-payment-fixture.json', 'utf8'),
+    )
+    expect(Number.isSafeInteger(saved.team.id) && saved.team.id > 0).toBe(true)
+    expect(saved.team.slug).toMatch(/^billingaccess-\d+$/)
+    const current = (await json<TeamResponse>(admin.api, `/teams/${saved.team.slug}`)).data
+    expect(current.numericId).toBe(saved.team.id)
+    expect(current.slug).toBe(saved.team.slug)
+    const outsiderTeams = (await json<Array<{ id: number; role: string }>>(sessions.get('OTHER_TEAM_ADMIN')!.api, '/me/teams')).data
+    expect(outsiderTeams.some(scope => scope.role === 'ADMIN' && scope.id !== saved.team.id)).toBe(true)
+    expect(outsiderTeams.some(scope => scope.id === saved.team.id)).toBe(false)
+    for (const [role, session] of sessions) {
+      expect(session.user.id).toBe(saved.users[role]?.id)
+      const permissions = await json<{ roleName: string | null }>(session.api, `/teams/${saved.team.slug}/me/permissions`)
+      expect(permissions.data.roleName).toBe(role === 'OTHER_TEAM_ADMIN' ? null : role)
+      await session.api.storageState({ path: `tests/e2e/.auth/team-payment-${role}.json` })
+    }
+    team = saved.team
+    inviteId = saved.inviteId
+    setupComplete = true
+    return
+  }
   const createTeam: components['schemas']['CreateTeamRequest'] = { name: `BillingAccess_${Date.now()}`, visibility: 'PUBLIC' }
   const created = (await json<TeamResponse>(admin.api, '/teams', 'POST', createTeam)).data
   expect(typeof created.slug, '作成応答のslug').toBe('string')
