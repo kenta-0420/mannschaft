@@ -2943,5 +2943,146 @@
     "generic_title": "Se ha producido un error",
     "generic_description": "Inténtelo de nuevo en unos minutos. Si el problema continúa, póngase en contacto con el administrador.",
     "back_home": "Volver al inicio"
+  },
+  "loyalty": {
+    "memberQr": {
+      "title": "QR de miembro",
+      "expiresIn": "Válido por {seconds} segundos",
+      "expired": "Actualiza el QR",
+      "disabled": "Esta tarjeta está suspendida o revocada. No se volverá a emitir automáticamente."
+    },
+    "wallet": {
+      "title": "Puntos del equipo",
+      "empty": "Aún no hay puntos"
+    },
+    "balance": "{points} puntos",
+    "remaining": "Faltan {points} puntos",
+    "lifetime": "Total: {points} puntos",
+    "refresh": "Actualizar",
+    "more": "Continuar",
+    "confirm": "Confirmar estos datos",
+    "retrySame": "Reintentar la misma solicitud",
+    "save": "Guardar",
+    "saved": "Guardado",
+    "cancel": "Volver",
+    "name": "Nombre",
+    "description": "Descripción (opcional)",
+    "active": "Activo",
+    "externalCards": "Activar tarjetas externas",
+    "history": {
+      "title": "Historial de puntos",
+      "award": "Acumular",
+      "redeem": "Canjear recompensa",
+      "empty": "Sin historial"
+    },
+    "audience": {
+      "title": "Quién puede acumular",
+      "allAuthenticated": "Todas las personas conectadas (incluidos no miembros)",
+      "supportersAndAbove": "Colaboradores y superiores",
+      "membersAndAbove": "Miembros y superiores"
+    },
+    "rule": {
+      "title": "Regla de acumulación",
+      "amount": "Puntos por visita",
+      "points": "{points} puntos por visita",
+      "frequency": "Frecuencia",
+      "frequencyDaily": "Una vez al día (JST)",
+      "frequencyStaff": "Con cada confirmación del personal",
+      "selfEnabled": "Permitir QR de autoservicio",
+      "selfDailyOnly": "El autoservicio requiere la regla diaria"
+    },
+    "reward": {
+      "title": "Recompensas",
+      "add": "Añadir recompensa",
+      "amount": "Puntos necesarios",
+      "required": "Canjear por {points} puntos",
+      "confirm": "Usar {points} puntos para {reward}"
+    },
+    "scan": {
+      "title": "Recepción de puntos",
+      "camera": "Escanear QR con cámara",
+      "cameraDenied": "Cámara no disponible. Revisa los permisos y reintenta.",
+      "confirmAward": "Añadir {points} puntos en {team}",
+      "success": "Operación completada",
+      "next": "Iniciar siguiente recepción"
+    },
+    "self": {
+      "confirm": "Confirmar recepción",
+      "rescan": "Escanea de nuevo el QR de recepción"
+    },
+    "error": {
+      "uncertain": "Resultado desconocido. Reintenta la misma solicitud.",
+      "alreadyAwarded": "Ya se otorgaron puntos hoy",
+      "ineligible": "No cumples los requisitos actuales",
+      "changed": "Los datos cambiaron. Revísalos.",
+      "insufficient": "Puntos insuficientes"
+    },
+    "program": {
+      "disabled": "Programa desactivado",
+      "closedTeam": "Equipo cerrado"
+    },
+    "settings": {
+      "title": "Ajustes de puntos del equipo",
+      "enabled": "Activar programa de puntos"
+    },
+    "mode": {
+      "title": "Modo de autoservicio",
+      "staffApproval": "Aprobación del personal (sin puntos hasta aprobar)",
+      "auto": "Puntos automáticos",
+      "autoWarning": "Un QR fijo puede fotografiarse y reutilizarse a distancia. El límite diario no acredita una visita."
+    },
+    "reception": {
+      "title": "QR de recepción de puntos",
+      "location": "Lugar de recepción",
+      "newLocation": "Nombre del nuevo lugar",
+      "create": "Crear lugar de recepción",
+      "preview": "Vista previa del QR",
+      "print": "Imprimir o compartir",
+      "stop": "Desactivar lugar",
+      "sharedLocationStopWarning": "Desactivar este lugar también detiene los registros de entrada. Desactiva el programa para detener solo los puntos.",
+      "printTitle": "Recepción de puntos",
+      "printInstructions": "Escanea, inicia sesión, revisa y confirma. Una vez al día (JST)."
+    },
+    "requests": {
+      "title": "Solicitudes de recepción",
+      "empty": "No hay solicitudes",
+      "submitted": "Solicitud enviada (sin puntos aún)",
+      "code": "Código de verificación: {code}",
+      "expiresAt": "Caduca: {datetime} (se acorta a medianoche JST)",
+      "showStaff": "Muestra tu pantalla al personal para verificar",
+      "approve": "Aprobar y añadir puntos",
+      "reject": "Rechazar",
+      "cancel": "Cancelar solicitud",
+      "compareBeforeApprove": "Compara nombre y código con la pantalla del solicitante antes de aprobar",
+      "enterCode": "Código de la pantalla del solicitante",
+      "moreCandidates": "Sin solicitudes válidas en este tramo. Continuar.",
+      "selfApprovalForbidden": "No puedes aprobar esta solicitud. Muestra tu propia solicitud a otro empleado.",
+      "all": "Todos los estados",
+      "deletedUser": "Usuario dado de baja",
+      "closedLocation": "Recepción cerrada",
+      "reapply": "Revisar datos y volver a solicitar",
+      "status": {
+        "pending": "Pendiente",
+        "approved": "Aprobada",
+        "cancelled": "Cancelada",
+        "rejected": "Rechazada",
+        "expired": "Caducada",
+        "invalidated": "Invalidada",
+        "superseded": "Otorgados por otra vía"
+      },
+      "reason": {
+        "userCancelled": "Cancelada por el solicitante",
+        "staffRejected": "Rechazada por el personal",
+        "ttlExpired": "La solicitud caducó",
+        "dayChanged": "Cambió la fecha JST",
+        "versionChanged": "Los ajustes o la regla cambiaron",
+        "locationInactive": "Lugar desactivado",
+        "teamInactive": "El equipo está inactivo",
+        "userInactive": "El usuario está inactivo",
+        "ineligible": "Ya no cumple los requisitos",
+        "dailyAwarded": "Ya se otorgaron puntos hoy",
+        "pointLimit": "Límite de puntos alcanzado"
+      }
+    }
   }
 }

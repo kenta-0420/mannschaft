@@ -35,8 +35,13 @@ export interface MemberCardListItem {
 }
 
 export interface MemberCardQr {
-  token: string
-  expiresAt: string
+  memberCardId: number
+  qrToken: string
+  expiresIn: number
+  cardNumber: string
+  displayName: string
+  scopeType: string
+  scopeName: string | null
 }
 
 export interface CheckinRecord {

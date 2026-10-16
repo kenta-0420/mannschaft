@@ -2943,5 +2943,146 @@
     "generic_title": "Es ist ein Fehler aufgetreten",
     "generic_description": "Bitte versuchen Sie es in Kürze erneut. Besteht das Problem weiterhin, wenden Sie sich an Ihre Administration.",
     "back_home": "Zurück zur Startseite"
+  },
+  "loyalty": {
+    "memberQr": {
+      "title": "Mitglieds-QR",
+      "expiresIn": "Noch {seconds} Sekunden",
+      "expired": "QR aktualisieren",
+      "disabled": "Diese Mitgliedskarte ist gesperrt oder widerrufen. Sie wird nicht automatisch neu ausgestellt."
+    },
+    "wallet": {
+      "title": "Teampunkte",
+      "empty": "Noch keine Teampunkte"
+    },
+    "balance": "{points} Punkte",
+    "remaining": "Noch {points} Punkte nötig",
+    "lifetime": "Insgesamt: {points} Punkte",
+    "refresh": "Aktualisieren",
+    "more": "Weiter",
+    "confirm": "Angaben bestätigen",
+    "retrySame": "Dieselbe Anfrage wiederholen",
+    "save": "Speichern",
+    "saved": "Gespeichert",
+    "cancel": "Zurück",
+    "name": "Name",
+    "description": "Beschreibung (optional)",
+    "active": "Aktiv",
+    "externalCards": "Externe Punktekarten aktivieren",
+    "history": {
+      "title": "Punkteverlauf",
+      "award": "Gutschrift",
+      "redeem": "Prämie einlösen",
+      "empty": "Noch kein Verlauf"
+    },
+    "audience": {
+      "title": "Berechtigte Personen",
+      "allAuthenticated": "Alle angemeldeten Personen (auch Nichtmitglieder)",
+      "supportersAndAbove": "Unterstützer und höher",
+      "membersAndAbove": "Mitglieder und höher"
+    },
+    "rule": {
+      "title": "Gutschriftregel",
+      "amount": "Punkte je Besuch",
+      "points": "{points} Punkte je Besuch",
+      "frequency": "Häufigkeit",
+      "frequencyDaily": "Einmal täglich (JST)",
+      "frequencyStaff": "Bei jeder Personalbestätigung",
+      "selfEnabled": "Selbstbedienungs-QR zulassen",
+      "selfDailyOnly": "Selbstbedienung erfordert die tägliche Regel"
+    },
+    "reward": {
+      "title": "Prämien",
+      "add": "Prämie hinzufügen",
+      "amount": "Benötigte Punkte",
+      "required": "Für {points} Punkte einlösen",
+      "confirm": "{points} Punkte für {reward} verwenden"
+    },
+    "scan": {
+      "title": "Punkteannahme",
+      "camera": "Mitglieds-QR mit Kamera scannen",
+      "cameraDenied": "Kamera nicht verfügbar. Browserberechtigung prüfen und erneut versuchen.",
+      "confirmAward": "{points} Punkte bei {team} gutschreiben",
+      "success": "Punktevorgang abgeschlossen",
+      "next": "Nächste Annahme starten"
+    },
+    "self": {
+      "confirm": "Annahme bestätigen",
+      "rescan": "Bitte Annahme-QR erneut scannen"
+    },
+    "error": {
+      "uncertain": "Ergebnis unklar. Dieselbe Anfrage erneut senden.",
+      "alreadyAwarded": "Heute bereits gutgeschrieben",
+      "ineligible": "Derzeit nicht berechtigt",
+      "changed": "Angaben geändert. Bitte erneut prüfen.",
+      "insufficient": "Nicht genügend Punkte"
+    },
+    "program": {
+      "disabled": "Punkteprogramm deaktiviert",
+      "closedTeam": "Geschlossenes Team"
+    },
+    "settings": {
+      "title": "Teampunkte-Einstellungen",
+      "enabled": "Punkteprogramm aktivieren"
+    },
+    "mode": {
+      "title": "Selbstbedienungsmodus",
+      "staffApproval": "Personalbestätigung (Punkte erst nach Freigabe)",
+      "auto": "Automatische Gutschrift",
+      "autoWarning": "Ein fester QR kann fotografiert und aus der Ferne genutzt werden. Ein Tageslimit beweist keinen Besuch."
+    },
+    "reception": {
+      "title": "Punkteannahme-QR",
+      "location": "Annahmestelle",
+      "newLocation": "Name der neuen Annahmestelle",
+      "create": "Annahmestelle erstellen",
+      "preview": "QR-Vorschau",
+      "print": "Drucken oder teilen",
+      "stop": "Annahmestelle deaktivieren",
+      "sharedLocationStopWarning": "Das Deaktivieren stoppt auch den Check-in. Nur Punkte stoppen: Punkteprogramm deaktivieren.",
+      "printTitle": "Punkteannahme",
+      "printInstructions": "Scannen, anmelden, Angaben prüfen und bestätigen. Einmal täglich (JST)."
+    },
+    "requests": {
+      "title": "Annahmeanträge",
+      "empty": "Keine Annahmeanträge",
+      "submitted": "Antrag eingereicht (noch keine Gutschrift)",
+      "code": "Prüfcode: {code}",
+      "expiresAt": "Gültig bis: {datetime} (spätestens Mitternacht JST)",
+      "showStaff": "Eigenen Bildschirm dem Personal zur Prüfung zeigen",
+      "approve": "Freigeben und gutschreiben",
+      "reject": "Ablehnen",
+      "cancel": "Antrag stornieren",
+      "compareBeforeApprove": "Vor Freigabe Namen und Code mit dem Bildschirm der antragstellenden Person vergleichen",
+      "enterCode": "Code vom Bildschirm der antragstellenden Person",
+      "moreCandidates": "Keine gültigen Anträge in diesem Bereich. Weiter.",
+      "selfApprovalForbidden": "Dieser Antrag kann nicht freigegeben werden. Eigene Anträge anderem Personal zeigen.",
+      "all": "Alle Status",
+      "deletedUser": "Ausgeschiedene Person",
+      "closedLocation": "Geschlossene Annahmestelle",
+      "reapply": "Angaben prüfen und erneut beantragen",
+      "status": {
+        "pending": "Ausstehend",
+        "approved": "Freigegeben",
+        "cancelled": "Storniert",
+        "rejected": "Abgelehnt",
+        "expired": "Abgelaufen",
+        "invalidated": "Ungültig",
+        "superseded": "Über anderen Weg gutgeschrieben"
+      },
+      "reason": {
+        "userCancelled": "Von antragstellender Person storniert",
+        "staffRejected": "Vom Personal abgelehnt",
+        "ttlExpired": "Antrag abgelaufen",
+        "dayChanged": "JST-Datum hat gewechselt",
+        "versionChanged": "Einstellungen oder Regel geändert",
+        "locationInactive": "Annahmestelle deaktiviert",
+        "teamInactive": "Team ist inaktiv",
+        "userInactive": "Person ist inaktiv",
+        "ineligible": "Nicht mehr berechtigt",
+        "dailyAwarded": "Heute bereits gutgeschrieben",
+        "pointLimit": "Punktegrenze erreicht"
+      }
+    }
   }
 }
