@@ -1489,4 +1489,14 @@ class FlywayFromScratchMigrationTest {
         }
     }
 
+    @Test
+    @Order(91)
+    void チームポイント追加migrationは旧F18カードと残高履歴を保持する() throws Exception {
+        migrateFromScratch();
+        // 同所有Testcontainersの専用接続だけでclone schemaを作り、共有DBやglobalGRANTへ触れない。
+        try (Connection connection = DriverManager.getConnection(MYSQL.getJdbcUrl(), "root", MYSQL.getPassword())) {
+            LoyaltyLegacyMigrationFixture.verify(connection);
+        }
+    }
+
 }
