@@ -43,29 +43,17 @@ function textFor(locale: LoyaltyLocale) {
   }
 }
 
-async function saveDisplayLocale(page: Page, from: LoyaltyLocale, to: LoyaltyLocale) {
-  console.info(`[loyalty-ui] locale ${from}->${to}: account navigation`)
-  const before = textFor(from)
-  const after = textFor(to)
-  const documentResponse = await page.goto('/settings/account', { waitUntil: 'commit' })
-  console.info('[loyalty-ui] locale: account document committed', documentResponse?.status())
-  await waitForHydration(page)
-  console.info('[loyalty-ui] locale: account hydrated; language selection')
-  const section = page.getByRole('heading', {
-    name: before('settings.locale.section_title'), exact: true,
-  }).locator('..')
-  await section.getByRole('combobox').first().click()
-  await page.getByRole('option', { name: localeNames[to], exact: true }).click()
-  console.info('[loyalty-ui] locale: save')
-  await section.getByRole('button', { name: before('button.save'), exact: true }).click()
-  await expect(page.getByText(after('settings.locale.toast.save_success'), { exact: true })).toBeVisible()
-  await page.reload({ waitUntil: 'commit' })
-  await waitForHydration(page)
-  await expect(page.getByRole('heading', {
-    name: after('settings.locale.section_title'), exact: true,
-  })).toBeVisible()
-  console.info(`[loyalty-ui] locale ${to}: saved and reloaded`)
+// ????UI???????????actor??????????????????fixture??GET????????
+async function prepareLocale(page: Page, actor: { email: string; password: string }, locale: LoyaltyLocale) {
+  const saved = await page.request.put(API + '/api/v1/users/me', { data: { locale, timezone: 'Asia/Tokyo' } })
+  expect(saved.status()).toBe(200)
+  const profile = await page.request.get(API + '/api/v1/users/me')
+  expect(profile.status()).toBe(200)
+  expect(((await profile.json()) as { data: { locale: string } }).data.locale).toBe(locale)
+  await loginViaApi(page, actor, { apiBaseUrl: API })
+  console.info('[loyalty-ui] persisted actor locale prepared', locale)
 }
+
 const API = process.env.API_BASE_URL
 if (API !== 'http://localhost:8083') throw new Error('API_BASE_URL must select the dedicated localhost:8083 server')
 const BASE = process.env.BASE_URL
@@ -457,8 +445,6 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
     const locationName = `Reception ${suffix}`
     let memberContext: BrowserContext | undefined
     let member: Page | undefined
-    let staffLocale: LoyaltyLocale = 'ja'
-    let memberLocale: LoyaltyLocale = 'ja'
     let createdTeam = false
     let primaryError: unknown
     const failures: Array<{ method: string; path: string; status?: number }> = []
@@ -488,38 +474,13 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
       console.info(`[loyalty-ui] ${locale}: dedicated admin login`)
       await loginViaApi(page, ADMIN, { apiBaseUrl: API })
       console.info(`[loyalty-ui] ${locale}: admin authenticated`)
-      await saveDisplayLocale(page, 'ja', locale)
-      staffLocale = locale
+      await prepareLocale(page, ADMIN, locale)
       const created = await page.request.post(`${API}/api/v1/teams`, {
         data: { name: `Locale ${suffix}`, slug, visibility: 'MEMBERS_AND_ABOVE' },
       })
       expect(created.status()).toBe(201)
       createdTeam = true
       const team = ((await created.json()) as { data: { numericId: number } }).data
-      memberContext = await browser.newContext({
-        baseURL: BASE, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
-        storageState: { cookies: [], origins: [] },
-      })
-      member = await memberContext.newPage()
-      member.on('pageerror', error => console.info('[loyalty-ui] member browser error type', error.name))
-      member.on('requestfailed', request => console.info('[loyalty-ui] member request failed', new URL(request.url()).pathname))
-      console.info(`[loyalty-ui] ${locale}: dedicated member login`)
-      await loginViaApi(member, USER, { apiBaseUrl: API })
-      console.info(`[loyalty-ui] ${locale}: member authenticated; locale operation`)
-      await saveDisplayLocale(member, 'ja', locale)
-      memberLocale = locale
-      await member.goto('/my/member-qr', { waitUntil: 'commit' })
-      await waitForHydration(member)
-      await expect(member.getByRole('heading', { level: 1, name: t('loyalty.memberQr.title'), exact: true })).toBeVisible()
-      await expect(member.getByTestId('member-qr')).toBeVisible()
-      await member.getByRole('button', { name: t('loyalty.refresh'), exact: true }).click()
-      await expect(member.getByTestId('member-qr')).toBeVisible()
-      await noOverflow(member)
-      await member.goto('/wallet', { waitUntil: 'commit' })
-      await waitForHydration(member)
-      await expect(member.getByRole('heading', { name: t('loyalty.wallet.title'), exact: true })).toBeVisible()
-      await expect(member.getByRole('dialog')).toHaveCount(0)
-
       await page.goto(`/teams/${slug}/settings/loyalty`, { waitUntil: 'commit' })
       await waitForHydration(page)
       await expect(page.getByRole('heading', { level: 1, name: t('loyalty.settings.title'), exact: true })).toBeVisible()
@@ -595,6 +556,29 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
       }
       // 最初は同じ既存caseのフォーム部分だけでred/greenを取り、その後19件全体を実行する。
       if (process.env.LOYALTY_FORM_REGRESSION_ONLY === 'true') return
+      memberContext = await browser.newContext({
+        baseURL: BASE, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
+        storageState: { cookies: [], origins: [] },
+      })
+      member = await memberContext.newPage()
+      member.on('pageerror', error => console.info('[loyalty-ui] member browser error type', error.name))
+      member.on('requestfailed', request => console.info('[loyalty-ui] member request failed', new URL(request.url()).pathname))
+      console.info(`[loyalty-ui] ${locale}: dedicated member login`)
+      await loginViaApi(member, USER, { apiBaseUrl: API })
+      console.info(`[loyalty-ui] ${locale}: member authenticated; locale operation`)
+      await prepareLocale(member, USER, locale)
+      await member.goto('/my/member-qr', { waitUntil: 'commit' })
+      await waitForHydration(member)
+      await expect(member.getByRole('heading', { level: 1, name: t('loyalty.memberQr.title'), exact: true })).toBeVisible()
+      await expect(member.getByTestId('member-qr')).toBeVisible()
+      await member.getByRole('button', { name: t('loyalty.refresh'), exact: true }).click()
+      await expect(member.getByTestId('member-qr')).toBeVisible()
+      await noOverflow(member)
+      await member.goto('/wallet', { waitUntil: 'commit' })
+      await waitForHydration(member)
+      await expect(member.getByRole('heading', { name: t('loyalty.wallet.title'), exact: true })).toBeVisible()
+      await expect(member.getByRole('dialog')).toHaveCount(0)
+
       await rule.getByRole('textbox').fill(ruleName)
       await rule.getByRole('spinbutton').fill('1')
       await rule.getByRole('button', { name: t('loyalty.save'), exact: true }).click()
@@ -777,11 +761,11 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
       try {
       // 次case/住民へアカウント言語を持ち越さない。対象操作と同じ実UIから戻す。
       try {
-        if (member && !member.isClosed()) await saveDisplayLocale(member, memberLocale, 'ja')
+        if (member && !member.isClosed()) await prepareLocale(member, USER, 'ja')
       } finally {
         await memberContext?.close()
         try {
-          await saveDisplayLocale(page, staffLocale, 'ja')
+          await prepareLocale(page, ADMIN, 'ja')
         } finally {
           if (createdTeam) {
             const cleanup = await page.request.delete(`${API}/api/v1/teams/${slug}`)
