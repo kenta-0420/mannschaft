@@ -399,9 +399,10 @@ jobs:
     needs: detect
     if: needs.detect.outputs.backend_changed == 'true'
     runs-on: ubuntu-latest
-    # 通常PRは75分を維持。cache5診断（run38682333037）はmigration込みで
-    # job105分27秒／test97分46秒だったため、後処理に15分の余裕を確保する。
-    timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 120 || 75 }}
+    # 通常PRは100分、migration込みは120分を観測用上限とする（完走・根治の保証ではない）。
+    # test stepは85/105分。setup＋compileが15分を超えると回収余白を保証しない。
+    # workflow自身の変更もmigration-sensitive判定の対象とする。
+    timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 120 || 100 }}
     defaults:
       run:
         working-directory: ./backend
@@ -460,14 +461,93 @@ jobs:
       # cache5診断のshard0完走を踏まえcontext保持を5に制限する。
       # heap/fork・テスト選別は維持し、ローカル既定10は変更しない。
       - name: Run tests (shard ${{ matrix.shard }} / ${{ env.SHARD_TOTAL }})
-        run: >-
-          ./gradlew test --no-daemon --continue --build-cache
-          -Pshard.total=${{ env.SHARD_TOTAL }}
-          -Pshard.index=${{ matrix.shard }}
-          -PexcludeMigrationTests=${{ needs.detect.outputs.migrations_changed == 'true' && 'false' || 'true' }}
-          -Pspring.test.context.cache.maxSize=5
+        timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 105 || 85 }}
+        run: |
+          set -euo pipefail
+          INIT_ARGS=()
+          if [ "$CI_SHARD_INDEX" = "3" ]; then
+            export CI_DIAGNOSTIC_DIR="$PWD/build/ci-diagnostics"
+            mkdir -p "$CI_DIAGNOSTIC_DIR"
+            cat > "$RUNNER_TEMP/class-progress.init.gradle" <<'GROOVY'
+          import org.gradle.api.tasks.testing.Test
+          import java.time.Instant
+
+          def directory = new File(System.getenv('CI_DIAGNOSTIC_DIR'))
+          directory.mkdirs()
+          def lock = new Object()
+          def emit = { String name, String message ->
+              def line = Instant.now().toString() + ' ' + message
+              synchronized (lock) { new File(directory, name).append(line + '\n', 'UTF-8') }
+              println(line)
+          }
+          gradle.allprojects { project ->
+              project.tasks.withType(Test).configureEach { task ->
+                  def classBoundary = { descriptor -> descriptor.className != null && descriptor.parent?.className != descriptor.className }
+                  task.beforeSuite { descriptor ->
+                      if (classBoundary(descriptor)) emit('class-progress.log', "[ci-class-start] task=${task.path} class=${descriptor.className}")
+                  }
+                  task.afterSuite { descriptor, result ->
+                      if (classBoundary(descriptor)) emit('class-progress.log', "[ci-class-end] task=${task.path} class=${descriptor.className} elapsedMs=${result.endTime - result.startTime} result=${result.resultType}")
+                  }
+              }
+          }
+          gradle.taskGraph.afterTask { task, state ->
+              if (task instanceof Test) emit('task-state.log', "[ci-test-task-state] task=${task.path} skipped=${state.skipped} skipMessage=${state.skipMessage} upToDate=${state.upToDate} noSource=${state.noSource} failed=${state.failure != null}")
+          }
+          GROOVY
+            INIT_ARGS=(--init-script "$RUNNER_TEMP/class-progress.init.gradle")
+            TEST_STARTED_AT=$(date +%s)
+            MONITOR_PID=""
+            finish_diagnostics() {
+              TEST_EXIT_CODE=$?
+              trap - EXIT
+              set +e
+              # 停止対象は、このshellが起動した正の子PID 1件だけ。Gradleの終了管理はGHAへ委ねる。
+              if [[ "$MONITOR_PID" =~ ^[0-9]+$ ]] && [ "$MONITOR_PID" -gt 1 ] && [ "$MONITOR_PID" -ne "$$" ] && \
+                 [ "$(ps -o ppid= -p "$MONITOR_PID" | tr -d ' ')" = "$$" ]; then
+                kill -TERM "$MONITOR_PID"
+                wait "$MONITOR_PID"
+              fi
+              ps -C java -o pid,ppid,etimes,time,pcpu,rss,comm >> "$CI_DIAGNOSTIC_DIR/worker-resources.log"
+              PS_EXIT_CODE=$?
+              printf '{"testStepExitCode":%s,"startedAtEpoch":%s,"finishedAtEpoch":%s,"jobLimitMinutes":%s,"testStepLimitMinutes":%s,"finalPsExitCode":%s,"artifactRecoveryGuaranteed":false}\n' \
+                "$TEST_EXIT_CODE" "$TEST_STARTED_AT" "$(date +%s)" "$CI_JOB_TIMEOUT_MINUTES" "$CI_TEST_TIMEOUT_MINUTES" "$PS_EXIT_CODE" \
+                > "$CI_DIAGNOSTIC_DIR/result.json"
+              exit "$TEST_EXIT_CODE"
+            }
+            trap finish_diagnostics EXIT
+            # 別shell/sleepの残骸を作らず、監視1子PIDの中で5分ごとにpsの数値だけを記録する。
+            python3 -u - > "$CI_DIAGNOSTIC_DIR/worker-resources.log" 2>&1 <<'PYTHON' &
+          import datetime, subprocess, time
+          while True:
+              print(datetime.datetime.now(datetime.timezone.utc).isoformat(), flush=True)
+              subprocess.run(["ps", "-C", "java", "-o", "pid,ppid,etimes,time,pcpu,rss,comm"], check=False)
+              time.sleep(300)
+          PYTHON
+            MONITOR_PID=$!
+          fi
+          ./gradlew test --no-daemon --continue --build-cache \
+            -Pshard.total=${{ env.SHARD_TOTAL }} \
+            -Pshard.index=${{ matrix.shard }} \
+            -PexcludeMigrationTests=${{ needs.detect.outputs.migrations_changed == 'true' && 'false' || 'true' }} \
+            -Pspring.test.context.cache.maxSize=5 "${INIT_ARGS[@]}"
         env:
           TESTCONTAINERS_RYUK_DISABLED: "false"
+          CI_SHARD_INDEX: ${{ matrix.shard }}
+          CI_JOB_TIMEOUT_MINUTES: ${{ needs.detect.outputs.migrations_changed == 'true' && 120 || 100 }}
+          CI_TEST_TIMEOUT_MINUTES: ${{ needs.detect.outputs.migrations_changed == 'true' && 105 || 85 }}
+
+      # cancellation時のtrap/収集欠損は未取得とする。診断が無いことを性能改善の証拠にしない。
+      # XML重み収集のtest-results-xml接頭辞は使用しない。
+      - name: shard3のクラス進捗とJVM診断をアップロード
+        if: ${{ always() && matrix.shard == 3 }}
+        timeout-minutes: 2
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-runtime-diag-pr-${{ github.event.pull_request.number || 'manual' }}-shard-3
+          path: backend/build/ci-diagnostics/
+          retention-days: 7
+          if-no-files-found: warn
 
       # OOM (OutOfMemoryError) 発生時のみ、-XX:HeapDumpOnOutOfMemoryError で
       # backend/build/heap-dumps/java_pid<PID>.hprof に書き出されるヒープダンプを
