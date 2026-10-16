@@ -72,7 +72,7 @@ public class LoyaltyController {
     private final LoyaltyFacade facade;
 
     @SelfScopedEndpoint("LoyaltyFacade.listAccountsはSecurityUtils由来の本人IDを検索条件に必須とし他人の口座・申請へ到達させない")
-    @Operation(summary = "本人のチームポイント一覧")
+    @Operation(operationId = "loyaltyListAccounts", summary = "本人のチームポイント一覧")
     @GetMapping("/loyalty/accounts/me")
     public CursorPagedResponse<AccountSummary> listAccounts(
             @RequestParam(required = false) String cursor,
@@ -82,7 +82,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "本人のチーム別残高")
+    @Operation(operationId = "loyaltyAccount", summary = "本人のチーム別残高")
     @GetMapping("/teams/{teamId}/loyalty/account/me")
     public ApiResponse<AccountDetail> account(
             @PathVariable Long teamId) {
@@ -91,7 +91,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "本人のチーム別履歴")
+    @Operation(operationId = "loyaltyTransactions", summary = "本人のチーム別履歴")
     @GetMapping("/teams/{teamId}/loyalty/transactions/me")
     public CursorPagedResponse<TransactionResponse> transactions(
             @PathVariable Long teamId,
@@ -102,7 +102,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "スタッフ操作対象の取得")
+    @Operation(operationId = "loyaltyOperationCatalog", summary = "スタッフ操作対象の取得")
     @GetMapping("/teams/{teamId}/loyalty/operation-catalog")
     public ApiResponse<OperationCatalog> operationCatalog(
             @PathVariable Long teamId) {
@@ -111,7 +111,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "ポイント設定の取得")
+    @Operation(operationId = "loyaltySettings", summary = "ポイント設定の取得")
     @GetMapping("/teams/{teamId}/loyalty/settings")
     public ApiResponse<ProgramSettings> settings(
             @PathVariable Long teamId) {
@@ -120,7 +120,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "ポイント設定の更新")
+    @Operation(operationId = "loyaltyUpdateSettings", summary = "ポイント設定の更新")
     @PutMapping("/teams/{teamId}/loyalty/settings")
     public ApiResponse<ProgramSettings> updateSettings(
             @PathVariable Long teamId,
@@ -130,7 +130,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "付与ルールの作成", responses = {
+    @Operation(operationId = "loyaltyCreateRule", summary = "付与ルールの作成", responses = {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成済み", useReturnTypeSchema = true)
     })
     @PostMapping("/teams/{teamId}/loyalty/rules")
@@ -144,7 +144,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "付与ルールの更新")
+    @Operation(operationId = "loyaltyUpdateRule", summary = "付与ルールの更新")
     @PutMapping("/teams/{teamId}/loyalty/rules/{ruleId}")
     public ApiResponse<RuleResponse> updateRule(
             @PathVariable Long teamId,
@@ -155,7 +155,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "特典の作成", responses = {
+    @Operation(operationId = "loyaltyCreateReward", summary = "特典の作成", responses = {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成済み", useReturnTypeSchema = true)
     })
     @PostMapping("/teams/{teamId}/loyalty/rewards")
@@ -169,7 +169,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "特典の更新")
+    @Operation(operationId = "loyaltyUpdateReward", summary = "特典の更新")
     @PutMapping("/teams/{teamId}/loyalty/rewards/{rewardId}")
     public ApiResponse<RewardResponse> updateReward(
             @PathVariable Long teamId,
@@ -180,7 +180,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "会員QRの付与前確認")
+    @Operation(operationId = "loyaltyScanPreview", summary = "会員QRの付与前確認")
     @PostMapping("/teams/{teamId}/loyalty/scan-previews")
     public ApiResponse<ScanPreview> scanPreview(
             @PathVariable Long teamId,
@@ -190,7 +190,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "会員QRの交換前確認")
+    @Operation(operationId = "loyaltyRedemptionPreview", summary = "会員QRの交換前確認")
     @PostMapping("/teams/{teamId}/loyalty/redemption-previews")
     public ApiResponse<RedemptionPreview> redemptionPreview(
             @PathVariable Long teamId,
@@ -200,7 +200,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "スタッフによる付与確定")
+    @Operation(operationId = "loyaltyAward", summary = "スタッフによる付与確定")
     @PostMapping("/teams/{teamId}/loyalty/awards")
     public ApiResponse<TransactionResponse> award(
             @PathVariable Long teamId,
@@ -211,7 +211,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "特典交換の確定")
+    @Operation(operationId = "loyaltyRedeem", summary = "特典交換の確定")
     @PostMapping("/teams/{teamId}/loyalty/redemptions")
     public ApiResponse<TransactionResponse> redeem(
             @PathVariable Long teamId,
@@ -222,7 +222,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "掲示QRから本人の受付情報を取得")
+    @Operation(operationId = "loyaltyBootstrap", summary = "掲示QRから本人の受付情報を取得")
     @PostMapping("/loyalty/self-award-bootstrap/me")
     public ApiResponse<SelfAwardBootstrap> bootstrap(
             @Valid @RequestBody SelfAwardBootstrapRequest body) {
@@ -231,7 +231,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "本人の受付確認")
+    @Operation(operationId = "loyaltySelfPreview", summary = "本人の受付確認")
     @PostMapping("/teams/{teamId}/loyalty/self-award-previews")
     public ApiResponse<SelfAwardPreview> selfPreview(
             @PathVariable Long teamId,
@@ -241,7 +241,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "本人の受付確定")
+    @Operation(operationId = "loyaltySelfAward", summary = "本人の受付確定")
     @PostMapping("/teams/{teamId}/loyalty/self-awards")
     public ApiResponse<SelfAwardResult> selfAward(
             @PathVariable Long teamId,
@@ -251,7 +251,7 @@ public class LoyaltyController {
     }
 
     @SelfScopedEndpoint("LoyaltyFacade.myRequestsはSecurityUtils由来の本人IDを検索条件に必須とし他人の口座・申請へ到達させない")
-    @Operation(summary = "本人の申請一覧")
+    @Operation(operationId = "loyaltyMyRequests", summary = "本人の申請一覧")
     @GetMapping("/loyalty/award-requests/me")
     public CursorPagedResponse<AwardRequestResponse> myRequests(
             @RequestParam(required = false) String cursor,
@@ -260,7 +260,7 @@ public class LoyaltyController {
     }
 
     @SelfScopedEndpoint("LoyaltyFacade.myRequestはSecurityUtils由来の本人IDを検索条件に必須とし他人の口座・申請へ到達させない")
-    @Operation(summary = "本人の申請詳細")
+    @Operation(operationId = "loyaltyMyRequest", summary = "本人の申請詳細")
     @GetMapping("/loyalty/award-requests/{requestId}/me")
     public ApiResponse<AwardRequestResponse> myRequest(
             @PathVariable UUID requestId) {
@@ -268,7 +268,7 @@ public class LoyaltyController {
     }
 
     @SelfScopedEndpoint("LoyaltyFacade.cancelはSecurityUtils由来の本人IDを検索条件に必須とし他人の口座・申請へ到達させない")
-    @Operation(summary = "本人による申請取消")
+    @Operation(operationId = "loyaltyCancel", summary = "本人による申請取消")
     @PostMapping("/loyalty/award-requests/{requestId}/cancel/me")
     public ApiResponse<AwardRequestResponse> cancel(
             @PathVariable UUID requestId,
@@ -279,7 +279,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "スタッフの承認申請一覧")
+    @Operation(operationId = "loyaltyStaffRequests", summary = "スタッフの承認申請一覧")
     @GetMapping("/teams/{teamId}/loyalty/award-requests")
     public CursorPagedResponse<AwardRequestResponse> staffRequests(
             @PathVariable Long teamId,
@@ -291,7 +291,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "スタッフの承認申請詳細")
+    @Operation(operationId = "loyaltyStaffRequest", summary = "スタッフの承認申請詳細")
     @GetMapping("/teams/{teamId}/loyalty/award-requests/{requestId}")
     public ApiResponse<AwardRequestResponse> staffRequest(
             @PathVariable Long teamId,
@@ -301,7 +301,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "照合コードによる申請承認")
+    @Operation(operationId = "loyaltyApprove", summary = "照合コードによる申請承認")
     @PostMapping("/teams/{teamId}/loyalty/award-requests/{requestId}/approve")
     public ApiResponse<TransactionResponse> approve(
             @PathVariable Long teamId,
@@ -313,7 +313,7 @@ public class LoyaltyController {
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
-    @Operation(summary = "申請の却下")
+    @Operation(operationId = "loyaltyReject", summary = "申請の却下")
     @PostMapping("/teams/{teamId}/loyalty/award-requests/{requestId}/reject")
     public ApiResponse<AwardRequestResponse> reject(
             @PathVariable Long teamId,
