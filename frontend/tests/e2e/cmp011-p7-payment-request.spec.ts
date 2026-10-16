@@ -33,7 +33,12 @@ const pendingAdvance = (settlementStatus: 'PENDING' | 'SETTLED') => ({
 async function mockCommon(page: Page): Promise<void> {
   await page.addInitScript(() => {
     localStorage.setItem('locale', 'ja')
+    // 起動時の即時refreshを避け、請求UIの試験に認証更新を混在させない。
+    localStorage.setItem('tokenExpiresAt', String(Date.now() + 3_600_000))
   })
+
+  // 公開gateもモックし、実BEの可用性に依存せず請求画面まで到達させる。
+  await page.route('**/api/v1/feature-flags', jsonResponse({ data: [{ flagKey: 'FEATURE_BILLING_PAYMENT_ENABLED', enabled: true }] }))
 
   await page.route('**/api/v1/auth/refresh', async (route) => {
     await route.fulfill({
@@ -124,7 +129,8 @@ test.describe('CMP-011 P7 支払依頼 UI', () => {
       })
     })
 
-    await page.goto(`/teams/${TEAM_ID}/payment-requests/${REQUEST_ID}`)
+    await page.goto(`/teams/${TEAM_ID}/payment-requests/${REQUEST_ID}`, { waitUntil: 'domcontentloaded' })
+    await waitForHydration(page)
     await page.getByTestId('payment-request-pay').click()
 
     await expect(page.getByRole('dialog')).toBeVisible()
@@ -137,14 +143,19 @@ test.describe('CMP-011 P7 支払依頼 UI', () => {
     await mockCommon(page)
 
     let detailReads = 0
+    let paymentCompleted = false
     await page.route(`**/api/v1/teams/${TEAM_ID}/payment-requests/${REQUEST_ID}`, async (route) => {
       detailReads += 1
-      const status = detailReads === 1 ? 'PROCESSING' : 'PAID'
+      const status = paymentCompleted ? 'PAID' : 'PROCESSING'
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: processingRequest(status) }) })
     })
 
-    await page.goto(`/teams/${TEAM_ID}/payment-requests/${REQUEST_ID}`)
+    const initialDetail = page.waitForResponse(response => response.url().includes(`/teams/${TEAM_ID}/payment-requests/${REQUEST_ID}`) && response.request().method() === 'GET')
+    await page.goto(`/teams/${TEAM_ID}/payment-requests/${REQUEST_ID}`, { waitUntil: 'domcontentloaded' })
+    await waitForHydration(page)
+    expect((await initialDetail).status()).toBe(200)
     await expect(page.getByTestId('payment-request-status')).toHaveAttribute('data-status', 'PROCESSING')
+    paymentCompleted = true
     await expect(page.getByTestId('payment-request-status')).toHaveAttribute('data-status', 'PAID', { timeout: 10_000 })
     expect(detailReads).toBeGreaterThanOrEqual(2)
   })
@@ -164,11 +175,13 @@ test.describe('CMP-011 P7 支払依頼 UI', () => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: pendingAdvance('SETTLED') }) })
     })
 
-    await page.goto(`/teams/${TEAM_ID}/payment-requests`)
+    await page.goto(`/teams/${TEAM_ID}/payment-requests`, { waitUntil: 'domcontentloaded' })
+    await waitForHydration(page)
     await page.getByTestId('payment-advances-link').click()
     await expect(page).toHaveURL(new RegExp(`/teams/${TEAM_ID}/payments/advances$`))
     await page.getByTestId('confirm-advance').click()
-    await page.getByRole('dialog').getByRole('button', { name: /確認/ }).click()
+    // appと画面に既存のConfirmDialog重複があるため、前面の確認UIを操作する。
+    await page.getByRole('alertdialog').last().getByRole('button', { name: /確認/ }).click()
     await expect(page.getByTestId('payment-advance-status')).toHaveAttribute('data-status', 'SETTLED')
     await expect(page.getByText(/精算を確認しました/)).toBeVisible()
   })
