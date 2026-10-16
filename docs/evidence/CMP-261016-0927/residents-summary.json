@@ -14,7 +14,7 @@
       "generatedAppHead": "bc8f63befa",
       "generatedAppDiff": 0,
       "personaArchetype": "一般×素直",
-      "purpose": "管理コンソールから請求・立替を確認し戻る",
+      "purpose": "専用テストチームの請求状況と立替精算状況を調べ、今対応すべきことがあるか理解して戻る",
       "sourceReportSha256": "1abf26ad7012a720e97620d027fdde48926e497086468de51829d1a1af0f3c2d",
       "result": {
         "achieved": true,
@@ -130,7 +130,7 @@
       "generatedAppHead": "bc8f63befa",
       "generatedAppDiff": 0,
       "personaArchetype": "ADHD傾向×中断・放棄",
-      "purpose": "副管理者が請求・立替を確認し中断から復帰する",
+      "purpose": "専用チームの立替精算に対応が必要か調べ、途中中断後も請求/精算状況を理解できるか確かめる",
       "sourceReportSha256": "78130305b07667d787167a6c4fba1b23986c32b51b2c16c09932f1dc9cedf3f4",
       "result": {
         "achieved": true,
@@ -240,7 +240,7 @@
       "generatedAppHead": "bc8f63befa",
       "generatedAppDiff": 0,
       "personaArchetype": "スマホ片手操作×隙間狙い",
-      "purpose": "スマホで通常メニューと管理操作の境界を確認する",
+      "purpose": "自分が見てよい会計関連情報を探し、チームの請求管理/精算の管理操作が保護されるか確かめる",
       "sourceReportSha256": "e3210a5243524619243f17ca110623e60b22861738c89594f68f94ed6c3739ca",
       "result": {
         "achieved": false,

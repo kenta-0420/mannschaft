@@ -38,7 +38,7 @@
     {
       "id": "CMP0927-admin-journey",
       "personaId": "CMP0927-admin",
-      "purpose": "管理コンソールから請求・立替を確認し戻る",
+      "purpose": "専用テストチームの請求状況と立替精算状況を調べ、今対応すべきことがあるか理解して戻る",
       "runId": "20261016-admin",
       "sourceHead": "561ed2cd5136eac04fb598bca7206c7d5845696c",
       "evidencePath": "docs/evidence/CMP-261016-0927/residents-summary.json"
@@ -46,7 +46,7 @@
     {
       "id": "CMP0927-deputy-journey",
       "personaId": "CMP0927-deputy",
-      "purpose": "副管理者が請求・立替を確認し中断から復帰する",
+      "purpose": "専用チームの立替精算に対応が必要か調べ、途中中断後も請求/精算状況を理解できるか確かめる",
       "runId": "20261016-deputy",
       "sourceHead": "561ed2cd5136eac04fb598bca7206c7d5845696c",
       "evidencePath": "docs/evidence/CMP-261016-0927/residents-summary.json"
@@ -54,7 +54,7 @@
     {
       "id": "CMP0927-member-journey",
       "personaId": "CMP0927-member",
-      "purpose": "スマホで通常メニューと管理操作の境界を確認する",
+      "purpose": "自分が見てよい会計関連情報を探し、チームの請求管理/精算の管理操作が保護されるか確かめる",
       "runId": "20261016-member",
       "sourceHead": "561ed2cd5136eac04fb598bca7206c7d5845696c",
       "evidencePath": "docs/evidence/CMP-261016-0927/residents-summary.json"
