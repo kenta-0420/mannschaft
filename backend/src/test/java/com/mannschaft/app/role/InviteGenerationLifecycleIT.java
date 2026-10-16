@@ -59,10 +59,10 @@ class InviteGenerationLifecycleIT extends InviteGenerationItSupport {
         Scope other = scope(type);
         var blockedToken = token(failing, 0);
         var otherToken = token(other, 0);
-        var sameGeneration = token(failing, 1);
         for (Scope scope : List.of(failing, other)) {
             jdbc.update("UPDATE " + scope.table() + " SET closure_generation = 1 WHERE id = ?", scope.id());
         }
+        var sameGeneration = token(failing, 1);
         String triggerName = "it_invite_revoke_failure_" + blockedToken.getId();
         // ユーザー裁可の試験例外: Beanの動作を置換せず、所有tokenだけ実DBエラーを発生させる。
         // Testcontainers専用schema内で作成しfinallyで必ず破棄する。通常fixtureはEntity/Repositoryのまま。
