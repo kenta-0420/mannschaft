@@ -28,7 +28,7 @@ final class PlatformCardMigrationFixture {
         assertThat(hasColumn(connection, "member_cards", "active_platform_user_id"))
                 .as("全Flyway適用後にPLATFORM生成列が存在する").isTrue();
         var resources = new PathMatchingResourcePatternResolver()
-                .getResources("classpath:db/migration/V250.*__ensure_platform_card_unique.sql");
+                .getResources("classpath:db/migration/V*__ensure_platform_card_unique.sql");
         assertThat(resources).hasSize(1);
         String sql = resources[0].getContentAsString(StandardCharsets.UTF_8);
         try (Statement statement = connection.createStatement()) {
