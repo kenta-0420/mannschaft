@@ -92,6 +92,18 @@ public class GlobalExceptionHandler {
      */
     // 型推論限界回避のため明示型指定（エントリ数増加に伴う javac 推論破綻を根治）
     private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.<String, HttpStatus>ofEntries(
+            // F18.1: 入力不正400と所有/認可/状態競合を区別する（設計§9）。
+            Map.entry("LOYALTY_001", HttpStatus.NOT_FOUND),
+            Map.entry("LOYALTY_002", HttpStatus.FORBIDDEN),
+            Map.entry("LOYALTY_003", HttpStatus.FORBIDDEN),
+            Map.entry("LOYALTY_005", HttpStatus.CONFLICT),
+            Map.entry("LOYALTY_006", HttpStatus.CONFLICT),
+            Map.entry("LOYALTY_007", HttpStatus.CONFLICT),
+            Map.entry("LOYALTY_011", HttpStatus.NOT_FOUND),
+            Map.entry("LOYALTY_012", HttpStatus.TOO_MANY_REQUESTS),
+            Map.entry("LOYALTY_013", HttpStatus.CONFLICT),
+            Map.entry("LOYALTY_014", HttpStatus.CONFLICT),
+            Map.entry("LOYALTY_015", HttpStatus.FORBIDDEN),
             // 本人出生・診断の専用コード。既存authコードの意味は変更しない。
             Map.entry("BIRTHPROFILE_001", HttpStatus.BAD_REQUEST),
             Map.entry("BIRTHPROFILE_002", HttpStatus.CONFLICT),
@@ -3259,7 +3271,7 @@ public class GlobalExceptionHandler {
         };
     }
 
-    /** 新本人APIだけを判定し、既存他APIの例外応答・ログには触れない。 */
+    /** 本人機密入力とloyaltyのQR/照合コードだけを値なし拒否へ限定する。 */
     private static boolean isPrivateSelfInput(HttpServletRequest explicitRequest) {
         HttpServletRequest request = explicitRequest;
         if (request == null && RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
@@ -3268,6 +3280,8 @@ public class GlobalExceptionHandler {
         if (request == null) return false;
         String path = request.getRequestURI();
         if (path == null) return false;
+        if (path.equals("/api/v1/loyalty") || path.startsWith("/api/v1/loyalty/")
+                || path.matches("/api/v1/teams/[^/]+/loyalty(?:/.*)?")) return true;
         if (path.matches("/api/v1/me/reflections/entries/[^/]+/recall-sessions")) return true;
         for (String prefix : List.of("/api/v1/me/birth-profile", "/api/v1/me/diagnoses", "/api/v1/me/ranch",
                 "/api/v1/me/reflections/recall-sessions")) {
