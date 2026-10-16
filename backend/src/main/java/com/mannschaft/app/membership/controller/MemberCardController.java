@@ -1,6 +1,8 @@
 package com.mannschaft.app.membership.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.membership.dto.CardStatusResponse;
@@ -45,6 +47,7 @@ public class MemberCardController {
 
     /** 本人の共通会員証を確保する。対象IDを入力できない自己スコープAPI。 */
     @SelfScopedEndpoint("MemberCardService#ensureMyPlatformCard が認証主体のみのPLATFORMカードを確保する")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "認証本人だけの共通会員QRを確保する基盤API")
     @PostMapping("/platform/me")
     @Operation(summary = "共通会員証確保")
     public ResponseEntity<ApiResponse<com.mannschaft.app.membership.dto.PlatformCardResponse>> ensureMyPlatformCard() {

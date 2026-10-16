@@ -1,6 +1,8 @@
 package com.mannschaft.app.loyalty;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
@@ -58,7 +60,6 @@ import org.springframework.web.bind.annotation.RestController;
  * TXを持たないLoyaltyFacadeへ委譲する。入力QRをログへ出力しない。</p>
  */
 @RestController
-@RequestMapping("/api/v1")
 @RequiredArgsConstructor
 @Tag(name = "Team loyalty", description = "チームポイントの本人・スタッフ・設定操作")
 @ApiResponses({
@@ -68,11 +69,13 @@ import org.springframework.web.bind.annotation.RestController;
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "対象が存在しない、または閲覧不可"),
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "版または同一キーの内容が競合")
 })
+@RequestMapping("/api/v1")
 public class LoyaltyController {
     private final LoyaltyFacade facade;
 
     @SelfScopedEndpoint("LoyaltyFacade.listAccountsはSecurityUtils由来の本人IDを検索条件に必須とし他人の口座・申請へ到達させない")
     @Operation(operationId = "loyaltyListAccounts", summary = "本人のチームポイント一覧")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "認証本人の既存残高と履歴を本人スコープで公開する基盤API")
     @GetMapping("/loyalty/accounts/me")
     public CursorPagedResponse<AccountSummary> listAccounts(
             @RequestParam(required = false) String cursor,
@@ -83,6 +86,7 @@ public class LoyaltyController {
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
     @Operation(operationId = "loyaltyAccount", summary = "本人のチーム別残高")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "認証本人の既存残高と履歴を本人スコープで公開する基盤API")
     @GetMapping("/teams/{teamId}/loyalty/account/me")
     public ApiResponse<AccountDetail> account(
             @PathVariable Long teamId) {
@@ -92,6 +96,7 @@ public class LoyaltyController {
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
     @Operation(operationId = "loyaltyTransactions", summary = "本人のチーム別履歴")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "認証本人の既存残高と履歴を本人スコープで公開する基盤API")
     @GetMapping("/teams/{teamId}/loyalty/transactions/me")
     public CursorPagedResponse<TransactionResponse> transactions(
             @PathVariable Long teamId,
@@ -103,6 +108,7 @@ public class LoyaltyController {
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
     @Operation(operationId = "loyaltyOperationCatalog", summary = "スタッフ操作対象の取得")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "当該TEAMの現スタッフ権限とポイント設定で制御する基盤API")
     @GetMapping("/teams/{teamId}/loyalty/operation-catalog")
     public ApiResponse<OperationCatalog> operationCatalog(
             @PathVariable Long teamId) {
@@ -112,6 +118,7 @@ public class LoyaltyController {
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
     @Operation(operationId = "loyaltySettings", summary = "ポイント設定の取得")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "当該TEAM管理者が基本ポイント設定を管理する基盤API")
     @GetMapping("/teams/{teamId}/loyalty/settings")
     public ApiResponse<ProgramSettings> settings(
             @PathVariable Long teamId) {
@@ -121,6 +128,7 @@ public class LoyaltyController {
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
     @Operation(operationId = "loyaltyUpdateSettings", summary = "ポイント設定の更新")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "当該TEAM管理者が基本ポイント設定を管理する基盤API")
     @PutMapping("/teams/{teamId}/loyalty/settings")
     public ApiResponse<ProgramSettings> updateSettings(
             @PathVariable Long teamId,
@@ -129,10 +137,11 @@ public class LoyaltyController {
     }
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
-    @AuthorizedInService
     @Operation(operationId = "loyaltyCreateRule", summary = "付与ルールの作成", responses = {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成済み", useReturnTypeSchema = true)
     })
+    @AuthorizedInService
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "当該TEAM管理者が基本ポイント設定を管理する基盤API")
     @PostMapping("/teams/{teamId}/loyalty/rules")
     public ResponseEntity<ApiResponse<RuleResponse>> createRule(
             @PathVariable Long teamId,
@@ -145,6 +154,7 @@ public class LoyaltyController {
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
     @Operation(operationId = "loyaltyUpdateRule", summary = "付与ルールの更新")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "当該TEAM管理者が基本ポイント設定を管理する基盤API")
     @PutMapping("/teams/{teamId}/loyalty/rules/{ruleId}")
     public ApiResponse<RuleResponse> updateRule(
             @PathVariable Long teamId,
@@ -154,10 +164,11 @@ public class LoyaltyController {
     }
 
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
-    @AuthorizedInService
     @Operation(operationId = "loyaltyCreateReward", summary = "特典の作成", responses = {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成済み", useReturnTypeSchema = true)
     })
+    @AuthorizedInService
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "当該TEAM管理者が基本ポイント設定を管理する基盤API")
     @PostMapping("/teams/{teamId}/loyalty/rewards")
     public ResponseEntity<ApiResponse<RewardResponse>> createReward(
             @PathVariable Long teamId,
@@ -170,6 +181,7 @@ public class LoyaltyController {
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
     @Operation(operationId = "loyaltyUpdateReward", summary = "特典の更新")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "当該TEAM管理者が基本ポイント設定を管理する基盤API")
     @PutMapping("/teams/{teamId}/loyalty/rewards/{rewardId}")
     public ApiResponse<RewardResponse> updateReward(
             @PathVariable Long teamId,
@@ -181,6 +193,7 @@ public class LoyaltyController {
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
     @Operation(operationId = "loyaltyScanPreview", summary = "会員QRの付与前確認")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "当該TEAMの現スタッフ権限とポイント設定で制御する基盤API")
     @PostMapping("/teams/{teamId}/loyalty/scan-previews")
     public ApiResponse<ScanPreview> scanPreview(
             @PathVariable Long teamId,
@@ -191,6 +204,7 @@ public class LoyaltyController {
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
     @Operation(operationId = "loyaltyRedemptionPreview", summary = "会員QRの交換前確認")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "当該TEAMの現スタッフ権限とポイント設定で制御する基盤API")
     @PostMapping("/teams/{teamId}/loyalty/redemption-previews")
     public ApiResponse<RedemptionPreview> redemptionPreview(
             @PathVariable Long teamId,
@@ -201,6 +215,7 @@ public class LoyaltyController {
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
     @Operation(operationId = "loyaltyAward", summary = "スタッフによる付与確定")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "当該TEAMの現スタッフ権限とポイント設定で制御する基盤API")
     @PostMapping("/teams/{teamId}/loyalty/awards")
     public ApiResponse<TransactionResponse> award(
             @PathVariable Long teamId,
@@ -212,6 +227,7 @@ public class LoyaltyController {
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
     @Operation(operationId = "loyaltyRedeem", summary = "特典交換の確定")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "当該TEAMの現スタッフ権限とポイント設定で制御する基盤API")
     @PostMapping("/teams/{teamId}/loyalty/redemptions")
     public ApiResponse<TransactionResponse> redeem(
             @PathVariable Long teamId,
@@ -223,6 +239,7 @@ public class LoyaltyController {
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
     @Operation(operationId = "loyaltyBootstrap", summary = "掲示QRから本人の受付情報を取得")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "認証本人がTEAM受付QRと現在の付与条件で利用する基盤API")
     @PostMapping("/loyalty/self-award-bootstrap/me")
     public ApiResponse<SelfAwardBootstrap> bootstrap(
             @Valid @RequestBody SelfAwardBootstrapRequest body) {
@@ -232,6 +249,7 @@ public class LoyaltyController {
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
     @Operation(operationId = "loyaltySelfPreview", summary = "本人の受付確認")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "認証本人がTEAM受付QRと現在の付与条件で利用する基盤API")
     @PostMapping("/teams/{teamId}/loyalty/self-award-previews")
     public ApiResponse<SelfAwardPreview> selfPreview(
             @PathVariable Long teamId,
@@ -242,6 +260,7 @@ public class LoyaltyController {
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
     @Operation(operationId = "loyaltySelfAward", summary = "本人の受付確定")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "認証本人がTEAM受付QRと現在の付与条件で利用する基盤API")
     @PostMapping("/teams/{teamId}/loyalty/self-awards")
     public ApiResponse<SelfAwardResult> selfAward(
             @PathVariable Long teamId,
@@ -252,6 +271,7 @@ public class LoyaltyController {
 
     @SelfScopedEndpoint("LoyaltyFacade.myRequestsはSecurityUtils由来の本人IDを検索条件に必須とし他人の口座・申請へ到達させない")
     @Operation(operationId = "loyaltyMyRequests", summary = "本人の申請一覧")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "認証本人の申請閲覧と取消を本人スコープで制御する基盤API")
     @GetMapping("/loyalty/award-requests/me")
     public CursorPagedResponse<AwardRequestResponse> myRequests(
             @RequestParam(required = false) String cursor,
@@ -261,6 +281,7 @@ public class LoyaltyController {
 
     @SelfScopedEndpoint("LoyaltyFacade.myRequestはSecurityUtils由来の本人IDを検索条件に必須とし他人の口座・申請へ到達させない")
     @Operation(operationId = "loyaltyMyRequest", summary = "本人の申請詳細")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "認証本人の申請閲覧と取消を本人スコープで制御する基盤API")
     @GetMapping("/loyalty/award-requests/{requestId}/me")
     public ApiResponse<AwardRequestResponse> myRequest(
             @PathVariable UUID requestId) {
@@ -269,6 +290,7 @@ public class LoyaltyController {
 
     @SelfScopedEndpoint("LoyaltyFacade.cancelはSecurityUtils由来の本人IDを検索条件に必須とし他人の口座・申請へ到達させない")
     @Operation(operationId = "loyaltyCancel", summary = "本人による申請取消")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "認証本人の申請閲覧と取消を本人スコープで制御する基盤API")
     @PostMapping("/loyalty/award-requests/{requestId}/cancel/me")
     public ApiResponse<AwardRequestResponse> cancel(
             @PathVariable UUID requestId,
@@ -280,6 +302,7 @@ public class LoyaltyController {
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
     @Operation(operationId = "loyaltyStaffRequests", summary = "スタッフの承認申請一覧")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "当該TEAMの現スタッフ権限とポイント設定で制御する基盤API")
     @GetMapping("/teams/{teamId}/loyalty/award-requests")
     public CursorPagedResponse<AwardRequestResponse> staffRequests(
             @PathVariable Long teamId,
@@ -292,6 +315,7 @@ public class LoyaltyController {
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
     @Operation(operationId = "loyaltyStaffRequest", summary = "スタッフの承認申請詳細")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "当該TEAMの現スタッフ権限とポイント設定で制御する基盤API")
     @GetMapping("/teams/{teamId}/loyalty/award-requests/{requestId}")
     public ApiResponse<AwardRequestResponse> staffRequest(
             @PathVariable Long teamId,
@@ -302,6 +326,7 @@ public class LoyaltyController {
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
     @Operation(operationId = "loyaltyApprove", summary = "照合コードによる申請承認")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "当該TEAMの現スタッフ権限とポイント設定で制御する基盤API")
     @PostMapping("/teams/{teamId}/loyalty/award-requests/{requestId}/approve")
     public ApiResponse<TransactionResponse> approve(
             @PathVariable Long teamId,
@@ -314,6 +339,7 @@ public class LoyaltyController {
     /** LoyaltyFacadeからLoyaltyAccessPolicyでTEAM資格・対象リソースまたは署名拠点を検証する。 */
     @AuthorizedInService
     @Operation(operationId = "loyaltyReject", summary = "申請の却下")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "当該TEAMの現スタッフ権限とポイント設定で制御する基盤API")
     @PostMapping("/teams/{teamId}/loyalty/award-requests/{requestId}/reject")
     public ApiResponse<AwardRequestResponse> reject(
             @PathVariable Long teamId,
