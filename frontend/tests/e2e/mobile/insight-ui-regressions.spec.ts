@@ -151,7 +151,7 @@ for (const width of [360, 390, 1024, 1280]) {
         await route.fulfill({ status: 201, json: { data: {} } })
         return
       }
-      await route.fulfill({ json: { data: created ? [{ id: 99, token: 'english-invite', roleName: 'MEMBER', expiresAt: null, maxUses: null, usedCount: 0, revokedAt: null, createdAt: '2026-10-16T00:00:00' }] : [] } })
+      await route.fulfill({ json: { data: created ? [{ id: 99, token: 'english-invite', roleName: 'MEMBER', expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), maxUses: null, usedCount: 0, revokedAt: null, createdAt: '2026-10-16T00:00:00' }] : [] } })
     })
     await page.route(`**/api/v1/teams/${TEAM_ID}/invite-tokens/99/pdf`, route => route.fulfill({ status: 200, contentType: 'application/pdf', body: '%PDF-1.4\n%%EOF' }))
     await page.goto(`/teams/${TEAM_ID}/invites`, { waitUntil: 'domcontentloaded' })
