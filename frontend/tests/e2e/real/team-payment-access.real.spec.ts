@@ -120,7 +120,15 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   const admin = sessions.get('ADMIN')
-  if (team && admin && !(setupComplete && process.env.KEEP_PAYMENT_ACCESS_FIXTURE === 'true')) {
+  const keepFixture = process.env.KEEP_PAYMENT_ACCESS_FIXTURE === 'true'
+  // 承認待ちの検証ではsetup途中の失敗でも削除せず、作成scopeをrun別に保全する。
+  if (team && keepFixture) {
+    await writeFile(`tests/e2e/.auth/team-payment-fixture-${team.id}.json`, JSON.stringify({
+      team, inviteId, setupComplete, joinedRoles,
+      users: Object.fromEntries([...sessions].map(([role, session]) => [role, session.user])),
+    }))
+  }
+  if (team && admin && !keepFixture) {
     if (inviteId) {
       const revoked = await admin.api.delete(`${BE}/api/v1/teams/${team.slug}/invite-tokens/${inviteId}`)
       expect(revoked.ok()).toBe(true)
