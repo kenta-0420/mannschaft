@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -49,23 +50,25 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
     @Autowired private MembershipInviteTokenIssuer tokenIssuer;
 
     @ParameterizedTest
-    @ValueSource(strings = {"TEAM", "ORGANIZATION"})
-    @DisplayName("G11: 補償失効を重ねても既失効日時を上書きしない")
-    void compensationPreservesExistingRevokedTimestamp(String type) {
+    @CsvSource({"TEAM,COMPENSATION", "TEAM,SHARED_CANCEL", "ORGANIZATION,COMPENSATION", "ORGANIZATION,SHARED_CANCEL"})
+    @DisplayName("G11: 補償/共有取消を重ねても既失効日時を上書きしない")
+    void compensationPreservesExistingRevokedTimestamp(String type, String action) {
         Scope scope = scope(type);
+        Long actor = admin(scope);
         LocalDateTime firstRevocation = LocalDateTime.of(2025, 2, 3, 4, 5, 6);
         var token = token(scope, 0, null, 1, 0, user(), firstRevocation);
 
-        tokenIssuer.revokeForCompensation(token.getId());
+        revokeForAction(action, token.getId(), actor);
 
         assertThat(tokens.findById(token.getId()).orElseThrow().getRevokedAt()).isEqualTo(firstRevocation);
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"TEAM", "ORGANIZATION"})
-    @DisplayName("G11: cleanupと補償が重なっても最初にcommitした失効日時を保持する")
-    void compensationDoesNotOverwriteConcurrentCleanup(String type) throws Exception {
+    @CsvSource({"TEAM,COMPENSATION", "TEAM,SHARED_CANCEL", "ORGANIZATION,COMPENSATION", "ORGANIZATION,SHARED_CANCEL"})
+    @DisplayName("G11: cleanupと補償/共有取消が重なっても最初にcommitした失効日時を保持する")
+    void compensationDoesNotOverwriteConcurrentCleanup(String type, String action) throws Exception {
         Scope scope = scope(type);
+        Long actor = admin(scope);
         var token = token(scope, 0, null, 1, 0, user(), null);
         LocalDateTime firstRevocation = LocalDateTime.of(2025, 2, 3, 4, 5, 6);
         CountDownLatch tokenLocked = new CountDownLatch(1);
@@ -80,7 +83,7 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
                 await(commitCleanup);
             }));
             assertThat(tokenLocked.await(15, TimeUnit.SECONDS)).isTrue();
-            var compensating = executor.submit(() -> tokenIssuer.revokeForCompensation(token.getId()));
+            var compensating = executor.submit(() -> revokeForAction(action, token.getId(), actor));
             try {
                 awaitTokenWait(cleanupConnection.get(), token.getId(), compensating);
             } finally {
@@ -246,6 +249,14 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
 
     private InviteScopeStatePort port(String type) {
         return ports.stream().filter(p -> p.scopeType().equals(type)).findFirst().orElseThrow();
+    }
+
+    private void revokeForAction(String action, Long tokenId, Long actor) {
+        if ("COMPENSATION".equals(action)) {
+            tokenIssuer.revokeForCompensation(tokenId);
+        } else {
+            invites.revokeInviteToken(tokenId, actor);
+        }
     }
 
     /** 既存BirthProfileLockWaitObserver/RanchDevelopmentPolicyITと同じ専用container実lock観測。 */
