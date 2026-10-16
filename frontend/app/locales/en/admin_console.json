@@ -28,7 +28,7 @@
       },
       "members": {
         "title": "Members",
-        "desc": "Manage the member list, role changes, member cards and profiles"
+        "desc": "View members, change roles and remove members"
       },
       "settings": {
         "title": "Settings",

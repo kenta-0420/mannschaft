@@ -3,8 +3,9 @@ import type { RouteLocationRaw } from 'vue-router'
 
 defineOptions({ inheritAttrs: false })
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
+    collapsed?: boolean
     title?: string
     icon?: string
     loading?: boolean
@@ -30,6 +31,7 @@ withDefaults(
     maxHeight?: string
   }>(),
   {
+    collapsed: undefined,
     title: undefined,
     icon: undefined,
     colSpan: undefined,
@@ -41,9 +43,19 @@ withDefaults(
 
 const emit = defineEmits<{
   refresh: []
+  'collapse-change': [collapsed: boolean]
+  'update:collapsed': [collapsed: boolean]
 }>()
 
-const collapsed = ref(false)
+const localCollapsed = ref(false)
+const collapsed = computed({
+  get: () => props.collapsed ?? localCollapsed.value,
+  set: value => {
+    if (props.collapsed === undefined) localCollapsed.value = value
+    emit('update:collapsed', value)
+  },
+})
+watch(collapsed, value => emit('collapse-change', value), { flush: 'sync' })
 </script>
 
 <template>
@@ -83,7 +95,7 @@ const collapsed = ref(false)
           v-if="icon"
           class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover/title:bg-primary/15 dark:bg-primary/15"
         >
-          <i :class="icon" class="text-sm" />
+          <i :class="icon" class="text-sm" aria-hidden="true" />
         </span>
         <h3
           class="text-sm font-semibold tracking-wide text-surface-600 transition-colors group-hover/title:text-primary dark:text-surface-300"
@@ -92,6 +104,7 @@ const collapsed = ref(false)
         </h3>
         <i
           class="pi pi-external-link text-xs text-surface-400 opacity-0 transition-opacity group-hover/title:opacity-100"
+          aria-hidden="true"
         />
       </NuxtLink>
       <div v-else class="flex items-center gap-2.5">

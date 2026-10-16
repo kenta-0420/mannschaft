@@ -1,0 +1,83 @@
+{
+  "memberCardAdmin": {
+    "description": "Manage membership card status and check-in history",
+    "title": "QR membership cards",
+    "list": "Cards",
+    "history": "Check-in history",
+    "stats": "Check-in statistics",
+    "locations": "Locations",
+    "suspend": "Suspend",
+    "reactivate": "Reactivate",
+    "suspendSuccess": "Card suspended",
+    "reactivateSuccess": "Card reactivated",
+    "empty": "No matching membership cards",
+    "count": "{count} check-ins",
+    "period": "This month: {from} to {to}",
+    "total": "Total check-ins",
+    "unique": "Members checked in",
+    "byDay": "By weekday",
+    "status": {
+      "ALL": "All",
+      "ACTIVE": "Active",
+      "SUSPENDED": "Suspended",
+      "REVOKED": "Revoked"
+    },
+    "days": {
+      "SUN": "Sunday",
+      "MON": "Monday",
+      "TUE": "Tuesday",
+      "WED": "Wednesday",
+      "THU": "Thursday",
+      "FRI": "Friday",
+      "SAT": "Saturday"
+    },
+    "historyColumns": {
+      "time": "Time",
+      "type": "Method",
+      "location": "Location",
+      "staff": "Staff member",
+      "scan": "Staff scan",
+      "self": "Self check-in",
+      "empty": "No check-in history"
+    }
+  },
+  "memberCardGuide": {
+    "title": "How to manage QR membership cards",
+    "description": "Manage card status and visit history for your members. Use Member management to change roles or remove members.",
+    "cards": {
+      "title": "Find a card and change its status",
+      "body": "Each entry shows the member name, card number, status and check-in count. Members display their own QR code from their account membership-card settings.",
+      "steps": {
+        "step1": "On Cards, select All, Active, Suspended or Revoked to find a card.",
+        "step2": "Select Suspend to stop card use. Membership is retained.",
+        "step3": "On a suspended card, select Reactivate to restore use. Revoked cards cannot be reactivated here."
+      }
+    },
+    "history": {
+      "title": "View a member’s check-ins",
+      "body": "View check-ins from the last 30 days for the selected member.",
+      "steps": {
+        "step1": "Select Check-in history on the member’s card.",
+        "step2": "Check the time, method, location and staff member.",
+        "step3": "To view someone else, return to Cards and select Check-in history on another card."
+      }
+    },
+    "team": {
+      "title": "Manage team statistics and locations",
+      "body": "Teams show statistics and self-check-in locations to administrators and deputy administrators. These tabs are unavailable for organizations.",
+      "steps": {
+        "step1": "Open Check-in statistics for this month’s period, total check-ins, unique members and weekday counts.",
+        "step2": "In Locations, select Add location, enter a name and the automatic reservation completion setting, then create it.",
+        "step3": "Use the pencil to edit a location or the trash button to delete it."
+      }
+    },
+    "errors": {
+      "title": "If loading fails",
+      "body": "A loading error caused by connectivity or permissions is shown separately from a successful empty result.",
+      "steps": {
+        "step1": "Read the error message and select Retry when available.",
+        "step2": "For permission problems, contact an administrator of the relevant team or organization."
+      }
+    }
+  }
+}

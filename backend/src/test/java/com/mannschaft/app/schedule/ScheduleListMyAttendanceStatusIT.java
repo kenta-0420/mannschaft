@@ -8,6 +8,7 @@ import com.mannschaft.app.schedule.entity.ScheduleAttendanceEntity;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.schedule.repository.ScheduleRanchTransportRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
@@ -15,6 +16,7 @@ import jakarta.persistence.PersistenceContext;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -26,13 +28,16 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -55,7 +60,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code MembershipBatchQueryServiceIntegrationTest} の Hibernate {@link Statistics} パターンを踏襲。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
-@Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("スケジュール一覧 myAttendanceStatus バッチ供給 契約テスト（試練）")
 class ScheduleListMyAttendanceStatusIT extends AbstractMySqlIntegrationTest {
@@ -72,6 +76,12 @@ class ScheduleListMyAttendanceStatusIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private ScheduleAttendanceRepository attendanceRepository;
 
+    @Autowired
+    private PlatformTransactionManager transactions;
+
+    @Autowired
+    private ScheduleRanchTransportRepository ranchRows;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -82,6 +92,7 @@ class ScheduleListMyAttendanceStatusIT extends AbstractMySqlIntegrationTest {
 
     private Long userAId; // 出欠回答本人
     private Long userBId; // 別ユーザー（漏洩検証用）
+    private final List<Long> ownScheduleIds = new ArrayList<>();
 
     private static final LocalDateTime FROM = LocalDateTime.of(2026, 4, 1, 0, 0);
     private static final LocalDateTime TO = LocalDateTime.of(2026, 4, 30, 0, 0);
@@ -89,6 +100,12 @@ class ScheduleListMyAttendanceStatusIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        ownScheduleIds.clear();
+        // 回答本体は独立TXなので、fixtureも先にcommitして同じDB状態を閲覧させる。
+        new TransactionTemplate(transactions).executeWithoutResult(status -> setUpCommittedRows());
+    }
+
+    private void setUpCommittedRows() {
         // slug 列は VARCHAR(30) かつ一意制約。"wb-myattend-team-" + nanoTime()（19桁）は
         // 36文字超で Data too long になる（既存不良・本件の差分とは無関係）。
         // 接頭辞を短縮し nanoTime() を6桁に丸めて 30文字以内に収める。
@@ -98,8 +115,8 @@ class ScheduleListMyAttendanceStatusIT extends AbstractMySqlIntegrationTest {
         teamId = insertTeam("MYATTEND チーム", teamSlug);
         orgId = insertOrganization("MYATTEND 組織", orgSlug);
 
-        userAId = insertUser("myattend-a@example.com");
-        userBId = insertUser("myattend-b@example.com");
+        userAId = insertUser(UUID.randomUUID() + "@myattend-a.invalid");
+        userBId = insertUser(UUID.randomUUID() + "@myattend-b.invalid");
 
         // 検分差し戻し是正（2026-08-15、二度目）: schedules.min_response_role は DDL
         // NOT NULL DEFAULT 'MEMBER_PLUS' であり ScheduleEntity 側も @Builder.Default で
@@ -117,6 +134,39 @@ class ScheduleListMyAttendanceStatusIT extends AbstractMySqlIntegrationTest {
 
         em.flush();
         em.clear();
+    }
+
+    @AfterEach
+    void cleanupOwnCommittedRows() {
+        SecurityContextHolder.clearContext();
+        new TransactionTemplate(transactions).executeWithoutResult(status -> {
+            // 源のFKなし台帳を本人IDで先に消し、出欠→予定→所属→scope→本人の順に閉じる。
+            for (Long userId : new Long[]{userAId, userBId}) {
+                if (userId != null) ranchRows.deleteForUser(userId);
+            }
+            for (Long scheduleId : ownScheduleIds) {
+                em.createNativeQuery("DELETE FROM schedule_attendances WHERE schedule_id=:id")
+                        .setParameter("id", scheduleId).executeUpdate();
+                em.createNativeQuery("DELETE FROM schedules WHERE id=:id")
+                        .setParameter("id", scheduleId).executeUpdate();
+            }
+            for (Long userId : new Long[]{userAId, userBId}) {
+                if (userId == null) continue;
+                em.createNativeQuery("DELETE FROM memberships WHERE user_id=:userId "
+                                + "AND ((scope_type='TEAM' AND scope_id=:teamId) "
+                                + "OR (scope_type='ORGANIZATION' AND scope_id=:orgId))")
+                        .setParameter("userId", userId).setParameter("teamId", teamId)
+                        .setParameter("orgId", orgId).executeUpdate();
+            }
+            if (teamId != null) em.createNativeQuery("DELETE FROM teams WHERE id=:id")
+                    .setParameter("id", teamId).executeUpdate();
+            if (orgId != null) em.createNativeQuery("DELETE FROM organizations WHERE id=:id")
+                    .setParameter("id", orgId).executeUpdate();
+            for (Long userId : new Long[]{userAId, userBId}) {
+                if (userId != null) em.createNativeQuery("DELETE FROM users WHERE id=:id")
+                        .setParameter("id", userId).executeUpdate();
+            }
+        });
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -271,6 +321,12 @@ class ScheduleListMyAttendanceStatusIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
 
     private Long createTeamSchedule(String title, boolean attendanceRequired) {
+        Long id = new TransactionTemplate(transactions).execute(status -> createTeamScheduleRow(title, attendanceRequired));
+        ownScheduleIds.add(id);
+        return id;
+    }
+
+    private Long createTeamScheduleRow(String title, boolean attendanceRequired) {
         ScheduleEntity schedule = scheduleRepository.save(ScheduleEntity.builder()
                 .teamId(teamId)
                 .title(title)
@@ -289,6 +345,12 @@ class ScheduleListMyAttendanceStatusIT extends AbstractMySqlIntegrationTest {
     }
 
     private Long createOrgSchedule(String title, boolean attendanceRequired) {
+        Long id = new TransactionTemplate(transactions).execute(status -> createOrgScheduleRow(title, attendanceRequired));
+        ownScheduleIds.add(id);
+        return id;
+    }
+
+    private Long createOrgScheduleRow(String title, boolean attendanceRequired) {
         ScheduleEntity schedule = scheduleRepository.save(ScheduleEntity.builder()
                 .organizationId(orgId)
                 .title(title)
@@ -312,6 +374,10 @@ class ScheduleListMyAttendanceStatusIT extends AbstractMySqlIntegrationTest {
      * 出欠募集の全経路（イベントリスナー等）を通す必要はなく、レコード存在有無だけがテスト対象）。
      */
     private void generateAttendance(Long scheduleId, Long userId) {
+        new TransactionTemplate(transactions).executeWithoutResult(status -> generateAttendanceRow(scheduleId, userId));
+    }
+
+    private void generateAttendanceRow(Long scheduleId, Long userId) {
         attendanceRepository.save(ScheduleAttendanceEntity.builder()
                 .scheduleId(scheduleId)
                 .userId(userId)

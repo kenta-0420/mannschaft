@@ -1,0 +1,83 @@
+{
+  "memberCardAdmin": {
+    "description": "Status der Mitgliedsausweise und Check-in-Verlauf verwalten",
+    "title": "QR-Mitgliedsausweise",
+    "list": "Ausweise",
+    "history": "Check-in-Verlauf",
+    "stats": "Check-in-Statistik",
+    "locations": "Standorte",
+    "suspend": "Sperren",
+    "reactivate": "Reaktivieren",
+    "suspendSuccess": "Ausweis gesperrt",
+    "reactivateSuccess": "Ausweis reaktiviert",
+    "empty": "Keine passenden Mitgliedsausweise",
+    "count": "{count} Check-ins",
+    "period": "Dieser Monat: {from} bis {to}",
+    "total": "Check-ins gesamt",
+    "unique": "Eingecheckte Mitglieder",
+    "byDay": "Nach Wochentag",
+    "status": {
+      "ALL": "Alle",
+      "ACTIVE": "Aktiv",
+      "SUSPENDED": "Gesperrt",
+      "REVOKED": "Widerrufen"
+    },
+    "days": {
+      "SUN": "Sonntag",
+      "MON": "Montag",
+      "TUE": "Dienstag",
+      "WED": "Mittwoch",
+      "THU": "Donnerstag",
+      "FRI": "Freitag",
+      "SAT": "Samstag"
+    },
+    "historyColumns": {
+      "time": "Zeitpunkt",
+      "type": "Methode",
+      "location": "Standort",
+      "staff": "Zuständige Person",
+      "scan": "Personal-Scan",
+      "self": "Selbst-Check-in",
+      "empty": "Kein Check-in-Verlauf"
+    }
+  },
+  "memberCardGuide": {
+    "title": "Anleitung zur Ausweisverwaltung",
+    "description": "Verwalten Sie den Status und die Besuchshistorie Ihrer Mitglieder. Zum Ändern von Rollen oder Entfernen von Mitgliedern verwenden Sie die Mitgliederverwaltung.",
+    "cards": {
+      "title": "Ausweis finden und Status ändern",
+      "body": "Jeder Eintrag zeigt Namen, Ausweisnummer, Status und Check-in-Anzahl. Den eigenen QR-Code öffnen Mitglieder in den Ausweiseinstellungen ihres Kontos.",
+      "steps": {
+        "step1": "Wählen Sie unter Ausweise Alle, Aktiv, Gesperrt oder Widerrufen.",
+        "step2": "Wählen Sie Sperren, um die Ausweisnutzung zu stoppen. Die Mitgliedschaft bleibt bestehen.",
+        "step3": "Wählen Sie Reaktivieren bei einem gesperrten Ausweis. Widerrufene Ausweise können hier nicht reaktiviert werden."
+      }
+    },
+    "history": {
+      "title": "Check-ins eines Mitglieds ansehen",
+      "body": "Zeigt die Check-ins des ausgewählten Mitglieds aus den letzten 30 Tagen.",
+      "steps": {
+        "step1": "Wählen Sie Check-in-Verlauf auf dem gewünschten Ausweis.",
+        "step2": "Prüfen Sie Zeitpunkt, Methode, Standort und zuständige Person.",
+        "step3": "Kehren Sie für ein anderes Mitglied zu Ausweise zurück und öffnen Sie dessen Verlauf."
+      }
+    },
+    "team": {
+      "title": "Teamstatistiken und Standorte verwalten",
+      "body": "In Teams sehen Administratoren und Stellvertreter Statistiken und Selbst-Check-in-Standorte. Organisationen bieten diese Registerkarten nicht.",
+      "steps": {
+        "step1": "Öffnen Sie Check-in-Statistik für den Zeitraum vom Monatsanfang bis heute, Gesamtzahl, Mitglieder und Wochentage.",
+        "step2": "Wählen Sie unter Standorte Standort hinzufügen, geben Sie den Namen und die automatische Reservierungsfertigstellung an und erstellen Sie ihn.",
+        "step3": "Bearbeiten Sie einen Standort mit dem Stift oder löschen Sie ihn mit dem Papierkorb."
+      }
+    },
+    "errors": {
+      "title": "Wenn das Laden fehlschlägt",
+      "body": "Verbindungs- und Berechtigungsfehler werden von erfolgreich geladenen leeren Listen unterschieden.",
+      "steps": {
+        "step1": "Lesen Sie den Fehlerhinweis und wählen Sie Erneut versuchen, falls verfügbar.",
+        "step2": "Wenden Sie sich bei fehlenden Rechten an einen Administrator des Teams oder der Organisation."
+      }
+    }
+  }
+}

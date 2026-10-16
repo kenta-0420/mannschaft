@@ -25,7 +25,7 @@ import { nextTick } from 'vue'
  * そのため useI18n をキーをそのまま返すスタブに差し替える。
  */
 
-const { mockPasskeyLogin, mockSetTokens, mockSetUser, mockSyncSettings, mockServerLogout, mockApplyLocale, mockNavigate } = vi.hoisted(() => ({
+const { mockPasskeyLogin, mockSetTokens, mockSetUser, mockSyncSettings, mockServerLogout, mockApplyLocale, mockNavigate, mockArmProactiveRefresh } = vi.hoisted(() => ({
   mockPasskeyLogin: vi.fn(),
   mockSetTokens: vi.fn(),
   mockSetUser: vi.fn(),
@@ -33,6 +33,7 @@ const { mockPasskeyLogin, mockSetTokens, mockSetUser, mockSyncSettings, mockServ
   mockServerLogout: vi.fn(),
   mockApplyLocale: vi.fn(),
   mockNavigate: vi.fn(),
+  mockArmProactiveRefresh: vi.fn(),
 }))
 const authState = vi.hoisted(() => ({ isSystemAdmin: false }))
 mockNuxtImport('useWebAuthnLogin', () => () => ({ loginWithPasskey: mockPasskeyLogin }))
@@ -44,7 +45,7 @@ mockNuxtImport('readPrefilledInputValue', () => () => '')
 const mockApi = vi.fn()
 vi.mock('~/composables/useApi', () => ({
   useApi: () => mockApi,
-  armProactiveRefresh: vi.fn(),
+  armProactiveRefresh: mockArmProactiveRefresh,
 }))
 
 const mockNotifyError = vi.fn()
@@ -125,6 +126,7 @@ beforeEach(() => {
   mockServerLogout.mockReset()
   mockApplyLocale.mockReset()
   mockNavigate.mockReset()
+  mockArmProactiveRefresh.mockReset()
 })
 
 describe('pages/login.vue ログイン失敗時のエラー出し分け', () => {
@@ -335,6 +337,7 @@ describe('pages/login.vue パスキーでログイン', () => {
     await flush(8)
 
     expect(mockServerLogout).toHaveBeenCalledOnce()
+    expect(mockArmProactiveRefresh).not.toHaveBeenCalled()
     expect(mockNavigate).toHaveBeenCalledWith({ path: '/login', query: { redirect: '/my/profile' } }, { replace: true })
     expect(mockSyncSettings).not.toHaveBeenCalled()
     expect(mockNotifyError).toHaveBeenCalledWith('auth.login.failed', 'auth.login.passkey_profile_failed')
@@ -378,5 +381,64 @@ describe('pages/login.vue パスワード成功経路の回帰', () => {
 
     expect(mockSetTokens).not.toHaveBeenCalled()
     expect(mockNavigate).toHaveBeenCalledWith('/2fa-verify?session=mfa-session')
+  })
+})
+
+describe('pages/login.vue 本人復元後の先回り更新', () => {
+  const result = { ...tokenResponse, userId: 42, fullName: 'Test Member', email: profile.email }
+
+  it.each(['password', 'passkey'] as const)('%s成功は本人とlocaleの復元後だけタイマーを武装する', async (method) => {
+    let finishUser: () => void = () => {}
+    let finishLocale: () => void = () => {}
+    mockSetUser.mockReturnValue(new Promise<void>(resolve => { finishUser = resolve }))
+    mockApplyLocale.mockReturnValue(new Promise<void>(resolve => { finishLocale = resolve }))
+    if (method === 'password')
+      mockApi.mockResolvedValueOnce({ data: result }).mockResolvedValueOnce({ data: profile })
+    else {
+      mockPasskeyLogin.mockResolvedValue(tokenResponse)
+      mockApi.mockResolvedValue({ data: profile })
+    }
+    const wrapper = await mountPasskeyPage()
+    try {
+      if (method === 'password') await submit(wrapper)
+      else await wrapper.find('[data-passkey-login]').trigger('click')
+      await flush(8)
+      expect(mockSetUser).toHaveBeenCalledOnce()
+      expect(mockArmProactiveRefresh).not.toHaveBeenCalled()
+      finishUser()
+      await flush(8)
+      expect(mockApplyLocale).toHaveBeenCalledWith('ja')
+      expect(mockArmProactiveRefresh).not.toHaveBeenCalled()
+      finishLocale()
+      await flush(8)
+      expect(mockArmProactiveRefresh).toHaveBeenCalledOnce()
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard')
+    } finally {
+      finishUser()
+      finishLocale()
+      await flush(8)
+    }
+  })
+
+  it('passwordのプロフィール失敗でも基本本人の復元完了までタイマーを武装しない', async () => {
+    let finishUser: () => void = () => {}
+    mockSetUser.mockReturnValue(new Promise<void>(resolve => { finishUser = resolve }))
+    mockApi.mockResolvedValueOnce({ data: result }).mockRejectedValueOnce(new Error('profile'))
+    const wrapper = await mountPasskeyPage()
+    try {
+      await submit(wrapper)
+      await flush(8)
+      expect(mockSetUser).toHaveBeenCalledWith({ id: 42, email: profile.email, fullName: 'Test Member', profileImageUrl: null })
+      expect(mockArmProactiveRefresh).not.toHaveBeenCalled()
+      finishUser()
+      await flush(8)
+      expect(mockArmProactiveRefresh).toHaveBeenCalledOnce()
+      expect(mockApplyLocale).not.toHaveBeenCalled()
+      expect(mockServerLogout).not.toHaveBeenCalled()
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard')
+    } finally {
+      finishUser()
+      await flush(8)
+    }
   })
 })

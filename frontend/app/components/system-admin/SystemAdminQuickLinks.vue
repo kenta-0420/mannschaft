@@ -13,6 +13,13 @@ interface QuickLink {
 
 const quickLinks: QuickLink[] = [
   {
+    label: t('ranch.admin.title'),
+    icon: 'pi pi-sliders-h',
+    to: '/system-admin/ranch',
+    color: 'text-green-500',
+    bg: 'bg-green-50 dark:bg-green-900/20',
+  },
+  {
     label: t('admin.quickLinks.announcements'),
     icon: 'pi pi-megaphone',
     to: '/admin/announcements',

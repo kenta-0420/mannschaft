@@ -12,6 +12,8 @@
 
 ## 1. ルート全体像
 
+> **現行メンバー導線の修正（2026-10-15）**: 管理ハブの「メンバー管理」と管理者レンズのメンバー統計は、チーム・組織とも既存 `/{teams|organizations}/{slug}/members` へ直結する。会員証管理の `member-cards` は別機能のため、メンバー管理の代用にしない。将来の `/admin/members` 整備は本修正に含めない。
+
 ```
 /teams/[slug]/admin                          ← L2 ハブ（NEW）
   ├ /admin/reservations                      ← L3 予約確認（既存 reservations.vue を admin 配下へ再配置/リダイレクト）
