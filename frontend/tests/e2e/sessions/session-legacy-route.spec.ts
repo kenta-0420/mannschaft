@@ -49,6 +49,57 @@ test('旧 URL は query/hash に依存せず正規画面へ転送し、空一覧
   expect(calls.sessions).toBe(1)
 })
 
+test('保存済み通知の旧 URL を SPA クリックしてもセッション画面を一度だけ読み込む', async ({
+  page,
+}) => {
+  await authenticate(page)
+  const calls = await stubApis(page)
+  await page.route(/\/api\/v1\/notifications(?:\?.*)?$/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [
+          {
+            id: 1721,
+            notificationType: 'NEW_DEVICE_LOGIN',
+            priority: 'HIGH',
+            title: '保存済みの新規デバイス通知',
+            body: 'セッション管理画面を確認してください。',
+            sourceType: 'USER',
+            sourceId: null,
+            scopeType: 'PERSONAL',
+            scopeId: '10',
+            scopeName: null,
+            actionUrl: '/account/sessions',
+            actor: null,
+            isRead: true,
+            readAt: null,
+            snoozedUntil: null,
+            createdAt: '2026-10-17T06:00:00+09:00',
+          },
+        ],
+        meta: { page: 0, size: 20, total: 1, totalPages: 1 },
+      }),
+    })
+  })
+  await page.goto('/notifications')
+  await waitForHydration(page)
+  await expect(page.getByRole('heading', { name: '通知', exact: true })).toBeVisible()
+  const savedNotification = page.locator('[data-notification-id="1721"]')
+  await expect(savedNotification).toContainText('保存済みの新規デバイス通知')
+  expect(calls.sessions).toBe(0)
+  const documentTimeOrigin = await page.evaluate(() => performance.timeOrigin)
+
+  await savedNotification.click()
+
+  await expect(page).toHaveURL(/\/settings\/security$/)
+  await expect(page.getByRole('heading', { name: 'セキュリティ', exact: true })).toBeVisible()
+  await expect(page.getByText('セッション情報がありません', { exact: true })).toBeVisible()
+  expect(calls.sessions).toBe(1)
+  expect(await page.evaluate(() => performance.timeOrigin)).toBe(documentTimeOrigin)
+})
+
 test('旧 URL の転送は履歴を置換する', async ({ page }) => {
   await authenticate(page)
   await stubApis(page)
