@@ -87,6 +87,39 @@ public class LoyaltyQueryReader {
         return store.getAccounts().findByTeamIdAndUserId(team, user).map(LoyaltyAccountEntity::getBalance).orElse(0);
     }
 
+    /** 再送照合はQRの解析や現在の資格確認をせず、成功保存行だけを読む。 */
+    public LoyaltyTransactionEntity transactionReceipt(Long team, Long actor, RequestOperation operation, UUID key) {
+        return store.getTransactions().findByTeamIdAndActorUserIdAndRequestOperationAndRequestKey(team, actor, operation, key)
+                .orElse(null);
+    }
+
+    public LoyaltyAwardRequestEntity submissionReceipt(Long team, Long actor, UUID key) {
+        return store.getRequests().findByTeamIdAndUserIdAndSubmitKey(team, actor, key).orElse(null);
+    }
+
+    public LoyaltyAwardRequestEntity actionReceipt(Long team, Long actor, RequestOperation operation, UUID key) {
+        return store.getRequests().findByTeamIdAndTerminalActorUserIdAndTerminalActionAndActionKey(team, actor, operation, key)
+                .orElse(null);
+    }
+
+    public LoyaltyAwardRequestEntity personalRequestRow(Long actor, UUID id) {
+        return store.getRequests().findByIdAndUserId(id, actor)
+                .orElseThrow(() -> new BusinessException(LoyaltyErrorCode.LOYALTY_001));
+    }
+
+    public LoyaltyAwardRequestEntity teamRequestRow(Long team, UUID id) {
+        return store.getRequests().findByIdAndTeamId(id, team)
+                .orElseThrow(() -> new BusinessException(LoyaltyErrorCode.LOYALTY_001));
+    }
+
+    public LoyaltyAwardRequestEntity pendingSnapshot(Long team, Long user, UUID rule, java.time.LocalDate day) {
+        return store.getRequests().findPendingSnapshot(team, user, rule, day).orElse(null);
+    }
+
+    public boolean awardedToday(Long team, Long user, UUID rule, java.time.LocalDate day) {
+        return store.getTransactions().existsByTeamIdAndUserIdAndRuleIdAndAwardOn(team, user, rule, day);
+    }
+
     private Requests requests(List<LoyaltyAwardRequestEntity> rows, LocalDateTime now) {
         if (rows.isEmpty()) return new Requests(List.of(), Map.of(), Map.of(), Map.of(), Set.of());
         var teams = rows.stream().map(LoyaltyAwardRequestEntity::getTeamId).collect(Collectors.toSet());
