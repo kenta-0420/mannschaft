@@ -20,6 +20,8 @@ test.use({
   screenshot: 'off',
 })
 const API = process.env.API_BASE_URL ?? 'http://localhost:8081'
+const BASE = process.env.BASE_URL
+if (!BASE) throw new Error('BASE_URL must explicitly select the isolated frontend server')
 type ActorRole =
   | 'admin'
   | 'individual'
@@ -180,7 +182,7 @@ test('AC03/11/15: 実会員QRをカメラ映像から読取り付与・交換し
   })
   try {
     const staff = await cameraBrowser.newPage({
-      baseURL: process.env.BASE_URL ?? 'http://localhost:3002',
+      baseURL: BASE,
       viewport: { width: 390, height: 844 },
       permissions: ['camera'],
       locale: 'ja-JP',
@@ -197,6 +199,7 @@ test('AC03/11/15: 実会員QRをカメラ映像から読取り付与・交換し
     await page.goto(`/my/team-points/${fixture.team.numericId}`)
     await expect(page.getByTestId('loyalty-balance')).toBeVisible()
     await expect(page.getByText(/· 加算 ·/)).toBeVisible()
+    await staff.getByRole('button', { name: '次の受付を開始', exact: true }).click()
     await staff.getByText('特典交換', { exact: true }).click()
     await staff.getByLabel('特典', { exact: true }).click()
     await staff.getByRole('option').first().click()
@@ -259,7 +262,7 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
     await noOverflow(page)
     memberContext = await browser.newContext({
       viewport: { width: 390, height: 844 },
-      baseURL: process.env.BASE_URL ?? 'http://localhost:3002',
+      baseURL: BASE,
       locale: 'ja-JP',
     })
     const member = await memberContext.newPage()

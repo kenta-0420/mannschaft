@@ -67,7 +67,7 @@ async function login(actor) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: actor.email, password: actor.password }),
   })
-  if (!response.ok) throw new Error(`Dedicated actor login failed (${response.status()})`)
+  if (!response.ok) throw new Error(`Dedicated actor login failed (${response.status})`)
   return response.headers
     .getSetCookie()
     .map((value) => value.split(';')[0])
@@ -79,7 +79,7 @@ async function post(cookie, path, body, method = 'POST') {
     headers: { Cookie: cookie, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  if (!response.ok) throw new Error(`Fixture preparation failed at ${path} (${response.status()})`)
+  if (!response.ok) throw new Error(`Fixture preparation failed at ${path} (${response.status})`)
   return (await response.json()).data
 }
 async function assign(userId, role, scopeType, scopeId, adminId) {
@@ -153,6 +153,8 @@ try {
   })
   await database.beginTransaction()
   await assign(actors.member.id, 'MEMBER', 'TEAM', teamId, actors.admin.id)
+  await assign(actors.resident2.id, 'MEMBER', 'TEAM', teamId, actors.admin.id)
+  await assign(actors.resident3.id, 'ADMIN', 'TEAM', teamId, actors.admin.id)
   await assign(actors.supporter.id, 'SUPPORTER', 'TEAM', teamId, actors.admin.id)
   await assign(actors.deputy.id, 'DEPUTY_ADMIN', 'TEAM', teamId, actors.admin.id)
   await assign(actors.delegatedDeputy.id, 'DEPUTY_ADMIN', 'TEAM', teamId, actors.admin.id)
