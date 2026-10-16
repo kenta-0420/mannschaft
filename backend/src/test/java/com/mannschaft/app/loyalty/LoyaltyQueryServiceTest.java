@@ -69,7 +69,8 @@ class LoyaltyQueryServiceTest {
         previousLocale = LocaleContextHolder.getLocaleContext();
         LocaleContextHolder.setLocale(java.util.Locale.JAPANESE);
         query = new LoyaltyQueryService(new LoyaltyQueryReader(new LoyaltyStore(programs, rules, rewards,
-                accounts, transactions, requests)), new LoyaltyQueryExternalStates(teams, users, locations, memberships),
+                accounts, transactions, requests)), new LoyaltyQueryExternalStates(teams, users, locations, memberships,
+                new com.mannschaft.app.config.I18nConfig().messageSource()),
                 Mappers.getMapper(LoyaltyMapper.class), cursor,
                 new LoyaltyTime(Clock.fixed(Instant.parse("2026-10-16T03:00:00Z"), ZoneOffset.UTC)),
                 new LoyaltyRequestStatePolicy(), new LoyaltyEligibilityPolicy());

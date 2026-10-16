@@ -190,7 +190,7 @@ public class LoyaltyQueryService {
                 own.balances().getOrDefault(new LoyaltyQueryReader.AccountKey(row.getTeamId(), row.getUserId()), 0), now);
         boolean pending = state.status() == RequestStatus.PENDING;
         return mapper.awardRequest(row, snapshot.teamName(row.getTeamId()), snapshot.userName(row.getUserId()),
-                locationActive ? snapshot.locationName(row.getSourceLocationId()) : "利用終了した受付", state.status(), state.reason(),
+                locationActive ? snapshot.locationName(row.getSourceLocationId()) : snapshot.closedLocationName(), state.status(), state.reason(),
                 staff && !actor.equals(row.getUserId()) && pending, actor.equals(row.getUserId()) && pending);
     }
 
