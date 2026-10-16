@@ -6,6 +6,7 @@ import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.service.InviteScopeStatePort;
 import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.role.service.InviteTokenClosureCleanupRunner;
+import com.mannschaft.app.role.service.MembershipInviteTokenIssuer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -41,6 +42,57 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
     @Autowired private InviteService invites;
     @Autowired private InviteTokenClosureCleanupRunner cleanup;
     @Autowired private ConfigurableApplicationContext context;
+    @Autowired private MembershipInviteTokenIssuer tokenIssuer;
+
+    @ParameterizedTest
+    @ValueSource(strings = {"TEAM", "ORGANIZATION"})
+    @DisplayName("G11: 補償失効を重ねても既失効日時を上書きしない")
+    void compensationPreservesExistingRevokedTimestamp(String type) {
+        Scope scope = scope(type);
+        LocalDateTime firstRevocation = LocalDateTime.of(2025, 2, 3, 4, 5, 6);
+        var token = token(scope, 0, null, 1, 0, user(), firstRevocation);
+
+        tokenIssuer.revokeForCompensation(token.getId());
+
+        assertThat(tokens.findById(token.getId()).orElseThrow().getRevokedAt()).isEqualTo(firstRevocation);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"TEAM", "ORGANIZATION"})
+    @DisplayName("G11: cleanupと補償が重なっても最初にcommitした失効日時を保持する")
+    void compensationDoesNotOverwriteConcurrentCleanup(String type) throws Exception {
+        Scope scope = scope(type);
+        var token = token(scope, 0, null, 1, 0, user(), null);
+        LocalDateTime firstRevocation = LocalDateTime.of(2025, 2, 3, 4, 5, 6);
+        CountDownLatch tokenLocked = new CountDownLatch(1);
+        CountDownLatch commitCleanup = new CountDownLatch(1);
+        CountDownLatch compensationStarted = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var closing = executor.submit(() -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                // cleanupの単独UPDATEを実DBで先行させ、実row lockをcommitまで保持する。
+                jdbc.update("UPDATE invite_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL", firstRevocation, token.getId());
+                tokenLocked.countDown();
+                await(commitCleanup);
+            }));
+            assertThat(tokenLocked.await(15, TimeUnit.SECONDS)).isTrue();
+            var compensating = executor.submit(() -> {
+                compensationStarted.countDown();
+                tokenIssuer.revokeForCompensation(token.getId());
+            });
+            assertThat(compensationStarted.await(15, TimeUnit.SECONDS)).isTrue();
+            try {
+                assertThatThrownBy(() -> compensating.get(500, TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+            } finally {
+                commitCleanup.countDown();
+            }
+            closing.get(15, TimeUnit.SECONDS);
+            compensating.get(15, TimeUnit.SECONDS);
+        } finally {
+            commitCleanup.countDown();
+        }
+
+        assertThat(tokens.findById(token.getId()).orElseThrow().getRevokedAt()).isEqualTo(firstRevocation);
+    }
 
     @ParameterizedTest
     @ValueSource(strings = {"TEAM", "ORGANIZATION"})
