@@ -61,7 +61,20 @@ export const useErrorHandler = () => {
     }
 
     // バックエンドへ静かに送信（4xx含む全エラーを記録）
-    errorReport.captureQuiet(error, { context })
+    const reportedError = context === 'team-loyalty'
+      ? (() => {
+          // QR を含み得る FetchError の message/body/cause を報告基盤へ渡さない。
+          const rawCode = apiError?.data?.error?.code
+          const code = typeof rawCode === 'string'
+            && /^(LOYALTY_00[1-9]|LOYALTY_01[0-5]|COMMON_003|MEMBERSHIP_003)$/.test(rawCode)
+            ? rawCode : 'UNKNOWN'
+          const rawStatus = apiError?.statusCode
+          const status = typeof rawStatus === 'number' && Number.isInteger(rawStatus)
+            && rawStatus >= 100 && rawStatus <= 599 ? rawStatus : 0
+          return new Error(`Team loyalty API error (${code}; HTTP ${status})`)
+        })()
+      : error
+    errorReport.captureQuiet(reportedError, { context })
 
     // F20.1: ENTITLEMENT_003（402）は useApi の共通ハンドラが既にグローバルペイウォール
     // モーダルを開いている（usePaywallStore）。ここで追加のトーストを出すと二重表示になるため

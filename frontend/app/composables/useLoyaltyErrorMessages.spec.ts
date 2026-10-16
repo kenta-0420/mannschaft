@@ -45,3 +45,31 @@ describe('ポイント業務エラーの実翻訳経路（AC20/31）', () => {
     })
   }
 })
+
+describe('ポイントの秘密を含むエラー報告（AC31）', () => {
+  it('元FetchErrorのQR・body・causeを報告へ渡さない', () => {
+    report.captureQuiet.mockClear()
+    i18n.t.mockImplementation((key: string) => key)
+    i18n.te.mockReturnValue(false)
+    const secret = 'sensitive-member-qr-test-only'
+    const original = Object.assign(new Error(secret), {
+      statusCode: 500,
+      data: { error: { code: 'LOYALTY_001', message: secret } },
+      options: { body: { qrToken: secret } },
+      request: secret,
+      response: { body: secret },
+      cause: new Error(secret),
+    })
+    useErrorHandler().handleApiError(original, 'team-loyalty')
+    const reported = report.captureQuiet.mock.calls[0]?.[0]
+    expect(reported).not.toBe(original)
+    expect(reported).toBeInstanceOf(Error)
+    expect(reported.message).not.toContain(secret)
+    expect(reported.stack).not.toContain(secret)
+    expect(reported).not.toHaveProperty('options')
+    expect(reported).not.toHaveProperty('request')
+    expect(reported).not.toHaveProperty('response')
+    expect(reported).not.toHaveProperty('cause')
+    expect(report.captureQuiet.mock.calls[0]?.[1]).toEqual({ context: 'team-loyalty' })
+  })
+})
