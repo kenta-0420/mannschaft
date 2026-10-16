@@ -21,6 +21,15 @@ public interface LoyaltyAwardRequestRepository extends JpaRepository<LoyaltyAwar
     Optional<LoyaltyAwardRequestEntity> findByTeamIdAndUserIdAndSubmitKey(Long teamId, Long userId, UUID submitKey);
     Optional<LoyaltyAwardRequestEntity> findByTeamIdAndTerminalActorUserIdAndTerminalActionAndActionKey(
             Long teamId, Long terminalActorUserId, RequestOperation terminalAction, UUID actionKey);
+    Optional<LoyaltyAwardRequestEntity> findByTeamIdAndTransactionId(Long teamId, UUID transactionId);
+
+    @Query("select r.ruleId from LoyaltyAwardRequestEntity r where r.teamId = :teamId and r.id = :id")
+    Optional<UUID> findRuleId(Long teamId, UUID id);
+
+    /** 生成uniqueの全列を絞り、終端履歴を走査せず既存PENDINGだけをsnapshot取得する。 */
+    @Query("select r from LoyaltyAwardRequestEntity r where r.teamId = :teamId and r.userId = :userId and r.ruleId = :ruleId and r.awardOn = :awardOn and r.pendingUniqueKey = 1")
+    Optional<LoyaltyAwardRequestEntity> findPendingSnapshot(Long teamId, Long userId, UUID ruleId, LocalDate awardOn);
+
     boolean existsByRuleId(UUID ruleId);
     boolean existsByTeamIdAndVerificationCode(Long teamId, String verificationCode);
 
