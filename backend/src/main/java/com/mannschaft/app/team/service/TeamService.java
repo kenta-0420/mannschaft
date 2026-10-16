@@ -5,6 +5,7 @@ import com.mannschaft.app.common.duplicatename.DuplicateNameGuardService;
 import com.mannschaft.app.common.duplicatename.DuplicateNameNormalizer;
 import com.mannschaft.app.common.duplicatename.DuplicateNameScopeKind;
 import com.mannschaft.app.common.EnumInputParser;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.event.TeamArchivedEvent;
 import com.mannschaft.app.team.event.TeamCreatedEvent;
@@ -1130,7 +1131,8 @@ public class TeamService {
         if (updated == 0) {
             throw new BusinessException(TeamErrorCode.TEAM_006);
         }
-        eventPublisher.publishEvent(new TeamRestoredEvent(userId, teamId, originallyDeletedAt));
+        eventPublisher.publishEvent(new TeamRestoredEvent(userId, teamId,
+                originallyDeletedAt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()));
         log.info("チーム復元完了: teamId={}", teamId);
     }
 
