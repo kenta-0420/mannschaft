@@ -10,6 +10,10 @@ import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.publicview.service.AdminPublicSettingsService;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
+import com.mannschaft.app.team.TeamErrorCode;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.organization.OrgErrorCode;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
@@ -48,13 +52,15 @@ class AdminPublicSettingsReadTest {
     private final TeamRepository teams = mock(TeamRepository.class);
     private final OrganizationRepository organizations = mock(OrganizationRepository.class);
     private final AccessControlService access = mock(AccessControlService.class);
+    private final TeamService teamService = mock(TeamService.class);
+    private final OrganizationService organizationService = mock(OrganizationService.class);
     private MockMvc mvc;
 
     @BeforeEach
     void setUp() {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("9", null, List.of()));
-        var service = new AdminPublicSettingsService(teams, organizations, access);
+        var service = new AdminPublicSettingsService(teams, organizations, access, teamService, organizationService);
         mvc = MockMvcBuilders.standaloneSetup(new AdminPublicSettingsController(service))
                 .setControllerAdvice(new GlobalExceptionHandler(new StaticMessageSource())).build();
     }
@@ -70,15 +76,15 @@ class AdminPublicSettingsReadTest {
             when(team.getId()).thenReturn(SCOPE_ID);
             when(team.isTimelinePostsPublic()).thenReturn(true);
             when(team.getPublicEventsEnabled()).thenReturn(false);
-            when(teams.findBySlugAndDeletedAtIsNullAndLifecycleStatus("private-scope", TeamEntity.LifecycleStatus.ACTIVE))
-                    .thenReturn(Optional.of(team));
+            when(teamService.resolveTeamId("private-scope")).thenReturn(SCOPE_ID);
+            when(teams.findById(SCOPE_ID)).thenReturn(Optional.of(team));
         } else {
             var org = mock(OrganizationEntity.class);
             when(org.getId()).thenReturn(SCOPE_ID);
             when(org.isTimelinePostsPublic()).thenReturn(true);
             when(org.isPublicEventsEnabled()).thenReturn(false);
-            when(organizations.findBySlugAndDeletedAtIsNullAndLifecycleStatus("private-scope", OrganizationEntity.LifecycleStatus.ACTIVE))
-                    .thenReturn(Optional.of(org));
+            when(organizationService.resolveOrgId("private-scope")).thenReturn(SCOPE_ID);
+            when(organizations.findById(SCOPE_ID)).thenReturn(Optional.of(org));
         }
     }
 
@@ -101,6 +107,8 @@ class AdminPublicSettingsReadTest {
                 .when(access).checkAdminOrAbove(USER_ID, SCOPE_ID, scopeType(scope));
         mvc.perform(get("/api/v1/admin/{scope}/private-scope/public-settings", scope))
                 .andExpect(status().isForbidden());
+        verify(teams, never()).findById(anyLong());
+        verify(organizations, never()).findById(anyLong());
     }
 
     @ParameterizedTest @ValueSource(strings = {"teams", "organizations"})
@@ -116,9 +124,47 @@ class AdminPublicSettingsReadTest {
     @ParameterizedTest @ValueSource(strings = {"teams", "organizations"})
     @DisplayName("存在しない・削除済み・正準ACTIVE解決外のslugは404")
     void missingScope(String scope) throws Exception {
+        if (scope.equals("teams")) {
+            when(teamService.resolveTeamId("missing"))
+                    .thenThrow(new BusinessException(TeamErrorCode.TEAM_001));
+        } else {
+            when(organizationService.resolveOrgId("missing"))
+                    .thenThrow(new BusinessException(OrgErrorCode.ORG_001));
+        }
         mvc.perform(get("/api/v1/admin/{scope}/missing/public-settings", scope))
                 .andExpect(status().isNotFound());
+        verify(teams, never()).findById(anyLong());
+        verify(organizations, never()).findById(anyLong());
+        verify(access, never()).checkAdminOrAbove(anyLong(), anyLong(), anyString());
     }
+    @ParameterizedTest @ValueSource(strings = {"teams", "organizations"})
+    @DisplayName("正準ID解決後に対象がなくなった場合も404")
+    void missingAfterResolution(String scope) throws Exception {
+        if (scope.equals("teams")) {
+            when(teamService.resolveTeamId("private-scope")).thenReturn(SCOPE_ID);
+        } else {
+            when(organizationService.resolveOrgId("private-scope")).thenReturn(SCOPE_ID);
+        }
+        mvc.perform(get("/api/v1/admin/{scope}/private-scope/public-settings", scope))
+                .andExpect(status().isNotFound());
+        verify(access).checkAdminOrAbove(USER_ID, SCOPE_ID, scopeType(scope));
+    }
+
+    @ParameterizedTest @ValueSource(strings = {"teams", "organizations"})
+    @DisplayName("正準ID解決後に論理削除された対象は404")
+    void deletedAfterResolution(String scope) throws Exception {
+        existingPrivateScope(scope);
+        if (scope.equals("teams")) {
+            when(teams.findById(SCOPE_ID).orElseThrow().getDeletedAt())
+                    .thenReturn(java.time.LocalDateTime.of(2026, 1, 1, 0, 0));
+        } else {
+            when(organizations.findById(SCOPE_ID).orElseThrow().getDeletedAt())
+                    .thenReturn(java.time.LocalDateTime.of(2026, 1, 1, 0, 0));
+        }
+        mvc.perform(get("/api/v1/admin/{scope}/private-scope/public-settings", scope))
+                .andExpect(status().isNotFound());
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"teams", "organizations"})
     @DisplayName("実GETの認可式は正準slugを数値IDへ解決しSYS・管理者だけを許可する")
@@ -160,7 +206,7 @@ class AdminPublicSettingsReadTest {
             handler.setApplicationContext(context);
             var manager = new org.springframework.security.authorization.method.PreAuthorizeAuthorizationManager();
             manager.setExpressionHandler(handler);
-            var controller = new AdminPublicSettingsController(new AdminPublicSettingsService(teams, organizations, access));
+            var controller = new AdminPublicSettingsController(new AdminPublicSettingsService(teams, organizations, access, teamService, organizationService));
             var factory = new org.springframework.aop.framework.ProxyFactory(controller);
             factory.setProxyTargetClass(true);
             factory.addAdvisor(org.springframework.security.authorization.method.AuthorizationManagerBeforeMethodInterceptor.preAuthorize(manager));

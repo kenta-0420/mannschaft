@@ -4,11 +4,13 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.publicview.dto.UpdatePublicSettingsRequest;
 import com.mannschaft.app.publicview.dto.PublicSettingsResponse;
 import com.mannschaft.app.publicview.error.PublicViewErrorCode;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -38,23 +40,29 @@ public class AdminPublicSettingsService {
     // TODO: publicview → organization のクロスドメイン参照。将来はイベント駆動化候補。
     private final OrganizationRepository organizationRepository;
     private final AccessControlService accessControlService;
+    private final TeamService teamService;
+    private final OrganizationService organizationService;
 
     /** 私有チームも、既存の管理認可を通した後で現在値を返す。 */
     public PublicSettingsResponse getTeamPublicSettings(String slug, Long operatorId) {
-        TeamEntity team = teamRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(
-                        slug, TeamEntity.LifecycleStatus.ACTIVE)
+        // ACTIVE・未削除の正準slug解決は、所有ドメインのServiceに委ねる。
+        Long teamId = teamService.resolveTeamId(slug);
+        checkScopeAdminAccess(operatorId, teamId, "TEAM");
+        TeamEntity team = teamRepository.findById(teamId)
+                .filter(t -> t.getDeletedAt() == null)
                 .orElseThrow(() -> new BusinessException(PublicViewErrorCode.PUBLIC_001));
-        checkScopeAdminAccess(operatorId, team.getId(), "TEAM");
         return new PublicSettingsResponse(team.getId(), team.isTimelinePostsPublic(),
                 Boolean.TRUE.equals(team.getPublicEventsEnabled()));
     }
 
     /** 私有組織も、既存の管理認可を通した後で現在値を返す。 */
     public PublicSettingsResponse getOrganizationPublicSettings(String slug, Long operatorId) {
-        OrganizationEntity org = organizationRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(
-                        slug, OrganizationEntity.LifecycleStatus.ACTIVE)
+        // ACTIVE・未削除の正準slug解決は、所有ドメインのServiceに委ねる。
+        Long organizationId = organizationService.resolveOrgId(slug);
+        checkScopeAdminAccess(operatorId, organizationId, "ORGANIZATION");
+        OrganizationEntity org = organizationRepository.findById(organizationId)
+                .filter(o -> o.getDeletedAt() == null)
                 .orElseThrow(() -> new BusinessException(PublicViewErrorCode.PUBLIC_001));
-        checkScopeAdminAccess(operatorId, org.getId(), "ORGANIZATION");
         return new PublicSettingsResponse(org.getId(), org.isTimelinePostsPublic(), org.isPublicEventsEnabled());
     }
 
