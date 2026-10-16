@@ -347,6 +347,30 @@ class LoyaltyPointsWriterIT {
         assertThat(store.getRewards().countByTeamId(teamId)).isEqualTo(20);
     }
 
+    @Test
+    void AC12_初回program作成2並列は一件成功と正確な設定版競合になる() throws Exception {
+        // 独立した開始を繰り返し、存在しないprogramへのgap/unique競合も実MySQLへ通す。
+        for (int round = 0; round < 10; round++) {
+            jdbc.update("DELETE FROM team_loyalty_programs WHERE team_id=?", teamId);
+            var outcomes = parallel(2, ignored -> {
+                try {
+                    return (Object) settings.updateProgram(teamId,
+                            new com.mannschaft.app.loyalty.dto.UpdateProgramRequest(null, true,
+                                    Audience.ALL_AUTHENTICATED, SelfAwardMode.STAFF_APPROVAL));
+                } catch (RuntimeException failure) {
+                    // 未変換のDB障害を成功扱いせず、後段で正確なBusinessException/codeを要求する。
+                    return (Object) failure;
+                }
+            });
+            assertThat(outcomes.stream().filter(value -> value instanceof com.mannschaft.app.loyalty.dto.ProgramSettings)).hasSize(1);
+            assertThat(outcomes.stream().filter(value -> !(value instanceof com.mannschaft.app.loyalty.dto.ProgramSettings)))
+                    .singleElement().isInstanceOf(com.mannschaft.app.common.BusinessException.class)
+                    .extracting("errorCode").isEqualTo(com.mannschaft.app.common.CommonErrorCode.COMMON_003);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_programs WHERE team_id=?", Long.class, teamId)).isEqualTo(1L);
+            assertThat(store.getPrograms().findByTeamId(teamId)).get().extracting("version").isEqualTo(0L);
+        }
+    }
+
     @org.junit.jupiter.api.AfterEach
     void removeOnlyOwnedRows() {
         if (teamId == null) return;
