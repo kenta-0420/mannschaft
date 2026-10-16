@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { SidebarCategory, SidebarItem } from '~/types/sidebar'
+import type { SidebarCategory } from '~/types/sidebar'
 
 const props = defineProps<{
   orgId: string
@@ -39,10 +39,10 @@ const categories = computed<SidebarCategory[]>(() => [
     labelKey: 'orgSidebar.category.member',
     icon: 'pi pi-users',
     items: [
-      { labelKey: 'orgSidebar.memberList', icon: 'pi pi-users', path: '', moduleSlug: null, requiredRole: 'MEMBER' },
+      { labelKey: 'orgSidebar.memberList', icon: 'pi pi-users', path: 'members', moduleSlug: null, requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.memberProfiles', icon: 'pi pi-id-card', path: 'member-profiles', moduleSlug: 'member_intro', requiredRole: 'MEMBER' },
-      { labelKey: 'orgSidebar.invite', icon: 'pi pi-user-plus', path: '', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
-      { labelKey: 'orgSidebar.permissionGroups', icon: 'pi pi-shield', path: '', moduleSlug: null, requiredRole: 'ADMIN' },
+      { labelKey: 'orgSidebar.invite', icon: 'pi pi-user-plus', path: 'invites', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
+      { labelKey: 'orgSidebar.permissionGroups', icon: 'pi pi-shield', path: 'permission-groups', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.onboarding', icon: 'pi pi-flag', path: 'onboarding', moduleSlug: null, requiredRole: 'ADMIN' },
     ],
   },
@@ -153,7 +153,7 @@ const categories = computed<SidebarCategory[]>(() => [
       // F10.1.1 P2a: 管理コンソール（L2 ハブ）への入口。DEPUTY_ADMIN 以上に表示。
       { labelKey: 'orgSidebar.adminConsole', icon: 'pi pi-shield', path: 'admin', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
       { labelKey: 'orgSidebar.memberPermissions', icon: 'pi pi-user-edit', path: '', absolutePath: '/admin/member-permissions', moduleSlug: null, requiredRole: 'ADMIN' },
-      { labelKey: 'orgSidebar.settingsModules', icon: 'pi pi-sliders-h', path: '', moduleSlug: null, requiredRole: 'ADMIN' },
+      { labelKey: 'orgSidebar.settingsModules', icon: 'pi pi-sliders-h', path: 'modules', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.notificationCredits', icon: 'pi pi-bell', path: 'settings/notification-credits', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.todoStatusLabels', icon: 'pi pi-tags', path: 'settings/todo-status-labels', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.faqSettings', icon: 'pi pi-question-circle', path: 'settings/faq-settings', moduleSlug: null, requiredRole: 'ADMIN' },
@@ -171,21 +171,6 @@ const categories = computed<SidebarCategory[]>(() => [
   },
 ])
 
-// タブ遷移
-// index.vue のタブ番号確認済み:
-//   value=2: メンバー、value=4: 招待（isAdminOrDeputy）、value=5: 権限グループ（isAdmin）、value=7: 機能設定（isAdmin）
-const router = useRouter()
-const tabMap: Record<string, number> = {
-  'orgSidebar.memberList': 2,
-  'orgSidebar.invite': 4,
-  'orgSidebar.permissionGroups': 5,
-  'orgSidebar.settingsModules': 7,
-}
-
-function handleTabNavigate(item: SidebarItem) {
-  const tab = tabMap[item.labelKey]
-  router.push(`/organizations/${props.orgId}${tab !== undefined ? `?tab=${tab}` : ''}`)
-}
 </script>
 
 <template>
@@ -195,6 +180,5 @@ function handleTabNavigate(item: SidebarItem) {
     :scope-id="props.orgId"
     :categories="categories"
     :member-lens-active="props.memberLensActive"
-    @tab-navigate="handleTabNavigate"
   />
 </template>

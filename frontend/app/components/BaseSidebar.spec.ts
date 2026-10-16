@@ -122,6 +122,29 @@ describe('BaseSidebar の取得状態', () => {
     if (role !== 'MEMBER') expect(wrapper.find('nav').exists()).toBe(false)
   })
 
+  it.each(['members', 'invites', 'permission-groups', 'modules'])('組織の%s項目は実際の子ルートへのリンクを描画する', async path => {
+    const wrapper = await mountSuspended(OrganizationSidebar, { props: { orgId: 'org-a' } })
+    await flushPromises()
+
+    expect(wrapper.find(`a[href="/organizations/org-a/${path}"]`).exists()).toBe(true)
+  })
+
+  it.each([
+    ['MEMBER', ['members']],
+    ['DEPUTY_ADMIN', ['members', 'invites']],
+    ['ADMIN', ['members', 'invites', 'permission-groups', 'modules']],
+  ] as const)('組織の子ルートリンクは%sの表示権限を維持する', async (role, expectedPaths) => {
+    apiMock.mockImplementation((url: string) => Promise.resolve(
+      url.endsWith('/me/permissions') ? permissions(role) : { data: [] },
+    ))
+    const wrapper = await mountSuspended(OrganizationSidebar, { props: { orgId: 'org-a' } })
+    await flushPromises()
+
+    for (const path of ['members', 'invites', 'permission-groups', 'modules']) {
+      expect(wrapper.find(`a[href="/organizations/org-a/${path}"]`).exists()).toBe((expectedPaths as readonly string[]).includes(path))
+    }
+  })
+
   it('チーム切替後はモジュールを取り直し業者リンクも新しいチームへ向ける', async () => {
     apiMock.mockImplementation((url: string) => Promise.resolve(url.endsWith('/me/permissions')
       ? permissions()
