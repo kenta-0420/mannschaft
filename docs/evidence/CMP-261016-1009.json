@@ -23,7 +23,7 @@
       "tests": [
         {
           "name": "QR会員証管理→使い方",
-          "evidence": "docs/evidence/CMP-261016-1009/unit/ci-summary-25ece9b771.json"
+          "evidence": "docs/evidence/CMP-261016-1009/manual-final-report.json"
         }
       ]
     },
@@ -74,6 +74,10 @@
         {
           "name": "追加発見：組織メンバー一覧の旧tabリンクを現行routeへ統一",
           "evidence": "docs/evidence/CMP-261016-1009/root-final-admin-routes/admin-final-summary.json"
+        },
+        {
+          "name": "追加発見：組織メンバー一覧の旧tabリンクを現行routeへ統一",
+          "evidence": "docs/evidence/CMP-261016-1009/root-final-routes/member-final-summary.json"
         }
       ]
     }
