@@ -66,7 +66,20 @@ public class CheckinLocationService {
 
     /** 候補ページの受付状態を集合照会する。 */
     public java.util.Map<Long, TeamLocationState> getTeamLocationStates(java.util.Collection<Long> locationIds) {
-        throw new UnsupportedOperationException("受付状態投影は未実装");
+        if (locationIds == null || locationIds.isEmpty()) {
+            return java.util.Map.of();
+        }
+        java.util.Set<Long> ids = locationIds.stream().filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+        if (ids.isEmpty()) {
+            return java.util.Map.of();
+        }
+        java.util.Map<Long, TeamLocationState> states = new java.util.LinkedHashMap<>();
+        for (CheckinLocationRepository.TeamLocationStateRow row : locationRepository.findTeamLocationStateRows(ids)) {
+            boolean active = Boolean.TRUE.equals(row.getActive()) && row.getTeamId() != null;
+            states.put(row.getId(), new TeamLocationState(active, row.getTeamId(), active ? row.getName() : null));
+        }
+        return java.util.Map.copyOf(states);
     }
 
     private static final int MAX_LOCATIONS_PER_SCOPE = 20;
