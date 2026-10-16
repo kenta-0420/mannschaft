@@ -44,7 +44,7 @@ final class LoyaltyLegacyMigrationFixture {
             created = true;
             connection.setCatalog(clone);
             for (String table : List.of(CARDS, EVENTS)) {
-                statement.execute("CREATE TABLE " + identifier(table) + " LIKE "
+                statement.execute("CREATE TABLE " + identifier(clone) + "." + identifier(table) + " LIKE "
                         + identifier(originalCatalog) + "." + identifier(table));
             }
             seed(connection);
