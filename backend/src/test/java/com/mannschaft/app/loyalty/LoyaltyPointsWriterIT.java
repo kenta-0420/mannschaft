@@ -648,4 +648,40 @@ class LoyaltyPointsWriterIT {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_award_requests WHERE team_id=?", Long.class, teamId)).isEqualTo(1L);
     }
 
+    @Test
+    void 事後補強_AC11_残高25の20ポイント交換2並列は一件だけ成功する() throws Exception {
+        var reward = store.getRewards().saveAndFlush(LoyaltyTestFixture.reward(teamId, 20));
+        LocalDateTime now = LocalDateTime.of(2026, 10, 16, 23, 50);
+        store.getAccounts().saveAndFlush(com.mannschaft.app.loyalty.entity.LoyaltyAccountEntity.builder()
+                .teamId(teamId).userId(20L).balance(25).lifetimeEarned(25).createdAt(now).updatedAt(now).build());
+        var results = parallel(2, index -> attempt(() -> writer.redeem(new LoyaltyWriteCommand(teamId,
+                10L, 20L, reward.getId(), 0, 0, RequestOperation.REDEEM, UUID.randomUUID(), new byte[32], null, null))));
+        assertThat(results.stream().filter(result -> result.error() == null)).hasSize(1);
+        assertThat(results.stream().filter(result -> result.error() == LoyaltyErrorCode.LOYALTY_008)).hasSize(1);
+        assertThat(store.getAccounts().findByTeamIdAndUserId(teamId, 20L)).get()
+                .extracting("balance", "lifetimeEarned").containsExactly(5, 25L);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_transactions WHERE team_id=?", Long.class, teamId)).isEqualTo(1L);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value = RequestOperation.class, names = {"APPROVE", "CANCEL", "REJECT"})
+    void 事後補強_AC27_承認と承認取消却下の並列は終端と加算を一度だけ確定する(RequestOperation competing) throws Exception {
+        var request = writer.submit(new LoyaltyWriteCommand(teamId, 20L, 20L, ruleId, 0, 0,
+                RequestOperation.SELF_SUBMIT, UUID.randomUUID(), new byte[32], 30L, "受付")).request();
+        var results = parallel(2, index -> attempt(() -> writer.act(new LoyaltyRequestActionCommand(teamId,
+                index == 0 ? 10L : competing == RequestOperation.CANCEL ? 20L : 11L, request.getId(), 0,
+                request.getVerificationCode(), index == 0 ? RequestOperation.APPROVE : competing,
+                UUID.randomUUID(), new byte[32], null))));
+        assertThat(results).allSatisfy(result -> assertThat(result.error()).isNull());
+        var outcomes = results.stream().map(result -> (LoyaltyRequestActionOutcome) result.value()).toList();
+        assertThat(outcomes.stream().filter(result -> result.errorCode() == null)).hasSize(1);
+        assertThat(outcomes.stream().filter(result -> result.errorCode() == LoyaltyErrorCode.LOYALTY_013)).hasSize(1);
+        var saved = store.getRequests().findById(request.getId()).orElseThrow();
+        assertThat(saved.getVersion()).isEqualTo(1);
+        long awards = saved.getStatus() == RequestStatus.APPROVED ? 1 : 0;
+        assertThat(saved.getStatus()).isIn(RequestStatus.APPROVED, RequestStatus.CANCELLED, RequestStatus.REJECTED);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_transactions WHERE team_id=?", Long.class, teamId)).isEqualTo(awards);
+        assertThat(store.getAccounts().findByTeamIdAndUserId(teamId, 20L).map(account -> account.getBalance()).orElse(0)).isEqualTo((int) awards);
+    }
+
 }
