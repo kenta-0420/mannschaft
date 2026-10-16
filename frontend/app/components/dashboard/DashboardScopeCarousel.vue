@@ -422,7 +422,7 @@ onBeforeUnmount(() => {
           :aria-hidden="slot.index !== activeIndex"
           class="w-full shrink-0 grow-0 basis-full"
         >
-          <DashboardPersonalPanel v-if="slot.panel === 'PERSONAL'" />
+          <DashboardPersonalPanel v-if="slot.panel === 'PERSONAL'" :active="slot.index === activeIndex" />
           <DashboardTeamPanel v-else-if="slot.panel === 'TEAM'" />
           <DashboardOrgPanel v-else />
         </section>

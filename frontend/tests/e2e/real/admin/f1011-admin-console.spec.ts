@@ -537,7 +537,7 @@ test.describe('F10.1.1 管理者レンズ — 導線遷移（要素1の成果検
     const linkTestIds: { testId: string; expectPath: RegExp }[] = [
       { testId: 'admin-reservations-link', expectPath: new RegExp(`/teams/${teamSlug}/reservations`) },
       { testId: 'admin-budget-link-TEAM', expectPath: new RegExp(`/teams/${teamSlug}/budget`) },
-      { testId: 'admin-members-link-TEAM', expectPath: new RegExp(`/teams/${teamSlug}/member-cards`) },
+      { testId: 'admin-members-link-TEAM', expectPath: new RegExp(`/teams/${teamSlug}/members`) },
       { testId: 'admin-console-link-TEAM', expectPath: new RegExp(`/teams/${teamSlug}/admin`) },
     ]
 
@@ -568,7 +568,7 @@ test.describe('F10.1.1 管理者レンズ — 導線遷移（要素1の成果検
       { testId: 'admin-budget-link-ORGANIZATION', expectPath: new RegExp(`/organizations/${orgSlug}/budget`) },
       {
         testId: 'admin-members-link-ORGANIZATION',
-        expectPath: new RegExp(`/organizations/${orgSlug}/member-cards`),
+        expectPath: new RegExp(`/organizations/${orgSlug}/members`),
       },
       { testId: 'admin-console-link-ORGANIZATION', expectPath: new RegExp(`/organizations/${orgSlug}/admin`) },
     ]

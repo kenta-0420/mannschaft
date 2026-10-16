@@ -155,6 +155,7 @@
     "create": "Crear",
     "submit": "Enviar",
     "close": "Cerrar",
+    "open": "Abrir",
     "back": "Volver",
     "help": "Cómo usar",
     "next": "Siguiente",
@@ -1814,8 +1815,8 @@
     },
     "menu": "Menú",
     "scopeShell": {
-      "memberCount": "{count} miembros",
-      "supporterCount": "{count} seguidores",
+      "memberCount": "{count} miembro | {count} miembros",
+      "supporterCount": "{count} seguidor | {count} seguidores",
       "supporter_cancel_confirm_title": "¿Dejar de apoyar?",
       "supporter_cancel_confirm_body": "Dejarás de apoyar a {name}. ¿Estás seguro?",
       "supporter_cancel_action": "Dejar",
@@ -2418,6 +2419,14 @@
     "GUESTS_AND_ABOVE": "Invitados y superiores",
     "SUPPORTERS_AND_ABOVE": "Seguidores y superiores",
     "MEMBERS_AND_ABOVE": "Miembros y superiores"
+  },
+  "organization_visibility": {
+    "PUBLIC": "Público",
+    "PRIVATE": "Acceso restringido"
+  },
+  "entity_create": {
+    "error_heading": "Revise los datos introducidos",
+    "supporter_label": "Activar la función de simpatizantes"
   },
   "module_settings": {
     "enabled_count": "Funciones activas: {count} / {limit}",

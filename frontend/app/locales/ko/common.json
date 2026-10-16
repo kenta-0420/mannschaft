@@ -155,6 +155,7 @@
     "create": "만들기",
     "submit": "제출",
     "close": "닫기",
+    "open": "열기",
     "back": "뒤로",
     "help": "사용법",
     "next": "다음",
@@ -2418,6 +2419,14 @@
     "GUESTS_AND_ABOVE": "게스트 이상",
     "SUPPORTERS_AND_ABOVE": "서포터 이상",
     "MEMBERS_AND_ABOVE": "멤버 이상"
+  },
+  "organization_visibility": {
+    "PUBLIC": "공개",
+    "PRIVATE": "제한 공개"
+  },
+  "entity_create": {
+    "error_heading": "입력 내용을 확인해 주세요",
+    "supporter_label": "서포터 기능 활성화"
   },
   "module_settings": {
     "enabled_count": "활성화된 기능: {count} / {limit}",

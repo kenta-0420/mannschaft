@@ -318,6 +318,7 @@ defineExpose({ refresh })
       @bookmark="onBookmark"
       @pin="onPin"
       @delete="onDelete"
+      @edited="loadFeed()"
       @repost="onRepost"
       @mute="onMute"
     />
@@ -335,6 +336,7 @@ defineExpose({ refresh })
       @bookmark="onBookmark"
       @pin="onPin"
       @delete="onDelete"
+      @edited="loadFeed()"
       @repost="onRepost"
       @mute="onMute"
     />

@@ -43,6 +43,7 @@ import com.mannschaft.app.pointcard.repository.PointCardGroupItemRepository;
 import com.mannschaft.app.pointcard.repository.PointCardGroupRepository;
 import com.mannschaft.app.pointcard.repository.PointCardUserSettingsRepository;
 import com.mannschaft.app.pointcard.repository.UserPointCardRepository;
+import com.mannschaft.app.ranch.service.RanchPersonalDataExportService;
 import com.mannschaft.app.resume.entity.ResumeCareerEntity;
 import com.mannschaft.app.resume.entity.ResumeEducationEntity;
 import com.mannschaft.app.resume.entity.ResumeEntity;
@@ -119,6 +120,7 @@ public class PersonalDataCollector {
     // 追加しない。ArchUnit D-1（CrossDomainEntityImportArchTest）に抵触しないよう、
     // ScheduleCommentEntity を直接参照せず ScheduleCommentService 経由で DTO を受け取る。
     private final ScheduleCommentService scheduleCommentService;
+    private final RanchPersonalDataExportService ranchPersonalDataExportService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -157,7 +159,8 @@ public class PersonalDataCollector {
             // AC-35 は collect() の戻り Map のキーが category 文字列そのものであることを検証するため
             // （他カテゴリの慣例は snake_case ファイル名だが、本カテゴリはキー＝ファイル名を一致させる）、
             // ファイル名も category と同一文字列にする。
-            Map.entry("scheduleComments", "scheduleComments")
+            Map.entry("scheduleComments", "scheduleComments"),
+            Map.entry("ranch", "ranch.json")
     );
 
     /**
@@ -237,6 +240,7 @@ public class PersonalDataCollector {
             case "resumes" -> collectResumes(userId);
             case "inbox" -> collectInbox(userId);
             case "scheduleComments" -> collectScheduleComments(userId);
+            case "ranch" -> ranchPersonalDataExportService.exportUser(userId);
             default -> "[]";
         };
     }

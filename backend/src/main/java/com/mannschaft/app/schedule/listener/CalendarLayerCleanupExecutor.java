@@ -38,6 +38,7 @@ public class CalendarLayerCleanupExecutor {
     private final AccountPurgeCompletionService completionService;
 
     private final UserCalendarLayerSettingRepository repository;
+    private final com.mannschaft.app.schedule.repository.ScheduleRanchTransportRepository ranchTransport;
 
     /**
      * 指定スコープ（チーム／組織）の設定行を全ユーザー分、新規トランザクションで物理削除する。
@@ -85,5 +86,6 @@ public class CalendarLayerCleanupExecutor {
     private void purgeSettings(Long userId) {
         syncRepository.deleteByUserId(userId);
         repository.deleteByUserId(userId);
+        ranchTransport.deleteForUser(userId);
     }
 }

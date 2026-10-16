@@ -297,6 +297,34 @@
         "add_button": "Add",
         "added": "Added"
       }
+    },
+    "arSession": {
+      "title": "Recall practice",
+      "description": "Recall what you can before viewing the saved original. This practice is optional.",
+      "start": "Start recall practice",
+      "freeRecall": "Recall in your own words",
+      "card": "Recall card",
+      "side": {
+        "TERM": "Term cue",
+        "MEANING": "Meaning cue"
+      },
+      "answered": "I can recall it",
+      "forgot": "I cannot recall it now",
+      "answer": "Your answer",
+      "selfRating": "How much do you recall?",
+      "rating": {
+        "REMEMBERED": "Remembered",
+        "PARTIAL": "Partly remembered",
+        "FORGOT": "Could not recall"
+      },
+      "ratingNeutral": "Your rating does not change the reward amount.",
+      "save": "Save answers",
+      "complete": "Finish and view original",
+      "cancel": "Cancel practice",
+      "cancelled": "This practice was cancelled.",
+      "retry": "Retry",
+      "failed": "Could not load or save. Try again.",
+      "original": "Saved original"
     }
   }
 }

@@ -8,6 +8,7 @@ const props = defineProps<{
 const memberCardApi = useMemberCardApi()
 const notification = useNotification()
 
+const loadError = shallowRef<unknown>(null)
 const locations = ref<CheckinLocation[]>([])
 const loading = ref(true)
 const showDialog = ref(false)
@@ -20,10 +21,11 @@ const form = ref({
 
 async function loadLocations() {
   loading.value = true
+  loadError.value = null
   try {
     locations.value = await memberCardApi.listLocations(props.teamId)
-  } catch {
-    notification.error('拠点一覧の取得に失敗しました')
+  } catch (error) {
+    loadError.value = error
   } finally {
     loading.value = false
   }
@@ -77,7 +79,8 @@ onMounted(loadLocations)
       <Button label="拠点を追加" icon="pi pi-plus" size="small" @click="openCreate" />
     </div>
 
-    <DataTable :value="locations" :loading="loading" data-key="id" striped-rows>
+    <DashboardErrorState v-if="loadError" :error="loadError" @retry="loadLocations" />
+    <DataTable v-else :value="locations" :loading="loading" data-key="id" striped-rows>
       <template #empty>
         <div class="py-8 text-center text-surface-500">拠点が登録されていません</div>
       </template>

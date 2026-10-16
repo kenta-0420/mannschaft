@@ -28,7 +28,7 @@
       },
       "members": {
         "title": "Mitglieder",
-        "desc": "Verwalte die Mitgliederliste, Rollenänderungen, Mitgliedskarten und Profile"
+        "desc": "Mitglieder ansehen, Rollen ändern und Mitglieder entfernen"
       },
       "settings": {
         "title": "Einstellungen",

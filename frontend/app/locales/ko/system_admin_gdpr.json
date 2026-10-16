@@ -45,6 +45,7 @@
       },
       "noData": "데이터가 없습니다",
       "retry": {
+        "queued": "재시도가 접수되었습니다. 완료를 기다린 후 상태를 확인해 주세요.",
         "button": "재시도",
         "confirm": "도메인 「{domain}」의 GDPR 퍼지를 재시도하시겠습니까?",
         "success": "retry 성공했습니다",

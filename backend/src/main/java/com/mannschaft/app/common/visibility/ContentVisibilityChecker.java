@@ -2,10 +2,12 @@ package com.mannschaft.app.common.visibility;
 
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.timeline.service.TimelinePostVisibilityAccessGuard;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
@@ -61,6 +63,7 @@ public class ContentVisibilityChecker {
     private final Map<ReferenceType, ContentVisibilityResolver<?>> resolverMap;
     private final VisibilityMetrics visibilityMetrics;
     private final AuditLogService auditLogService;
+    private final TimelinePostVisibilityAccessGuard timelineAccess;
 
     /**
      * Spring が {@link ContentVisibilityResolver} の全 Bean を List で渡す。
@@ -74,13 +77,15 @@ public class ContentVisibilityChecker {
      * @param resolvers         Spring が収集した Resolver Bean の List (空でもよい)
      * @param visibilityMetrics メトリクス記録用 (必須 DI)
      * @param auditLogService   監査ログサービス ({@code null} 可)
+     * @param timelineAccess    TL単件リンク用の既正準認可ゲート ({@code null} 可、欠落時は拒否)
      * @throws IllegalStateException referenceType が重複した場合
      */
     @Autowired
     public ContentVisibilityChecker(
             List<ContentVisibilityResolver<?>> resolvers,
             VisibilityMetrics visibilityMetrics,
-            @Autowired(required = false) AuditLogService auditLogService) {
+            @Autowired(required = false) AuditLogService auditLogService,
+            @Autowired(required = false) TimelinePostVisibilityAccessGuard timelineAccess) {
         Map<ReferenceType, ContentVisibilityResolver<?>> map = new EnumMap<>(ReferenceType.class);
         for (ContentVisibilityResolver<?> resolver : resolvers) {
             ReferenceType type = resolver.referenceType();
@@ -95,9 +100,16 @@ public class ContentVisibilityChecker {
         this.resolverMap = Map.copyOf(map);
         this.visibilityMetrics = visibilityMetrics;
         this.auditLogService = auditLogService;
+        this.timelineAccess = timelineAccess;
         log.info("ContentVisibilityChecker initialized with {} resolver(s): {} (auditLogService={})",
             this.resolverMap.size(), this.resolverMap.keySet(),
             auditLogService != null ? "wired" : "absent");
+    }
+
+    /** 既存UTの構築互換。TL正準guard未配線時に独自認可へ置き換えない。 */
+    public ContentVisibilityChecker(List<ContentVisibilityResolver<?>> resolvers,
+            VisibilityMetrics visibilityMetrics, AuditLogService auditLogService) {
+        this(resolvers, visibilityMetrics, auditLogService, null);
     }
 
     /**
@@ -110,6 +122,38 @@ public class ContentVisibilityChecker {
             List<ContentVisibilityResolver<?>> resolvers,
             VisibilityMetrics visibilityMetrics) {
         this(resolvers, visibilityMetrics, null);
+    }
+
+    /**
+     * 呼出元ドメインの読取終了後に、独立した PRIMARY トランザクションで閲覧権限を再評価する。
+     * Spring プロキシ経由で呼び出し、源トランザクションを保持したまま、または源のコールバックで使用しない。
+     * readOnly=false で PRIMARY を明示し、既存 Resolver の全判定条件をそのまま適用する。
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
+    public boolean canViewIsolated(ReferenceType type, Long contentId, Long userId) {
+        return canView(type, contentId, userId);
+    }
+
+    /** {@link #canViewIsolated(ReferenceType, Long, Long)} と同じ境界を持つ UUID 主キー用の入口。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
+    public boolean canViewUuidIsolated(ReferenceType type, UUID contentId, Long userId) {
+        return canViewUuid(type, contentId, userId);
+    }
+
+    /**
+     * 源metadata TXの終了後、本人記録リンク用にTLの既正準guardを独立PRIMARYで呼ぶ。
+     * PUBLIC/PERSONAL/所属/組織配信/村/転送の判定をここへ複製しない。
+     * 単件専用であり、未登録のgeneric TL resolverやbatch SQL契約を実装済みと扱わない。
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
+    public boolean canViewTimelineIsolated(Long postId, Long userId) {
+        Timer.Sample sample = visibilityMetrics.startCheckTimer();
+        try {
+            if (postId == null || userId == null || timelineAccess == null) return false;
+            return timelineAccess.canViewPost(postId, userId);
+        } finally {
+            visibilityMetrics.stopCheckTimer(sample, ReferenceType.TIMELINE_POST, OP_CAN_VIEW);
+        }
     }
 
     /**

@@ -35,7 +35,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.junit.jupiter.api.AfterEach;
+import java.util.ArrayList;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -60,7 +63,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * <p>対象EP: {@code TimelinePostController#createPost}。</p>
  */
 @DisplayName("timeline 書き込み経路 実効スコープ認可契約テスト（認可根治 Wave6 追加戦）")
-@Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
 
@@ -98,11 +100,37 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
     private static final Long PROXY_TEAM = 70_302L;
 
     private UUID villageId;
+    @Autowired private PlatformTransactionManager transactionManager;
+    private final List<Long> ownMemberships = new ArrayList<>();
+    private final List<UUID> ownVillageMemberships = new ArrayList<>();
+    private final List<Long> ownPosts = new ArrayList<>();
+    private final List<Long> ownUserRoles = new ArrayList<>();
+    private final List<Long> ownRoles = new ArrayList<>();
+
+    /** 通常Controllerと同じ非ambient入口。fixtureは事前commitし、元認可とassertを維持する。 */
+    private ResponseEntity<ApiResponse<PostResponse>> createPost(CreatePostRequest request) {
+        var response = postController.createPost(request);
+        ownPosts.add(response.getBody().getData().getId());
+        return response;
+    }
+
+    @AfterEach
+    void cleanupOwnCommittedRows() {
+        SecurityContextHolder.clearContext();
+        for (int i = ownPosts.size() - 1; i >= 0; i--) postRepository.deleteById(ownPosts.get(i));
+        for (UUID id : ownVillageMemberships) villageMembershipRepository.deleteById(id);
+        if (villageId != null) villageRepository.deleteById(villageId);
+        for (Long id : ownMemberships) membershipRepository.deleteById(id);
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            for (Long id : ownUserRoles) em.createNativeQuery("DELETE FROM user_roles WHERE id=:id").setParameter("id", id).executeUpdate();
+            for (Long id : ownRoles) em.createNativeQuery("DELETE FROM roles WHERE id=:id").setParameter("id", id).executeUpdate();
+        });
+    }
 
     @BeforeEach
     void setUp() {
-        membershipRepository.save(membership(USER_TEAM_A_MEMBER, ScopeType.TEAM, TEAM_A));
-        membershipRepository.save(membership(USER_ORG_A_MEMBER, ScopeType.ORGANIZATION, ORG_A));
+        ownMemberships.add(membershipRepository.saveAndFlush(membership(USER_TEAM_A_MEMBER, ScopeType.TEAM, TEAM_A)).getId());
+        ownMemberships.add(membershipRepository.saveAndFlush(membership(USER_ORG_A_MEMBER, ScopeType.ORGANIZATION, ORG_A)).getId());
 
         VillageEntity village = villageRepository.save(VillageEntity.builder()
                 .slug("w6w-village-" + System.nanoTime())
@@ -113,9 +141,9 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
                 .bulletinVisibility(VillageBulletinVisibility.MEMBERS_ONLY)
                 .build());
         villageId = village.getId();
-        villageMembershipRepository.save(villageMembership(VillageSubjectType.USER, USER_VILLAGE_MEMBER));
-        villageMembershipRepository.save(villageMembership(VillageSubjectType.USER, USER_TEAM_REPRESENTATIVE));
-        villageMembershipRepository.save(villageMembership(VillageSubjectType.TEAM, PROXY_TEAM));
+        ownVillageMemberships.add(villageMembershipRepository.saveAndFlush(villageMembership(VillageSubjectType.USER, USER_VILLAGE_MEMBER)).getId());
+        ownVillageMemberships.add(villageMembershipRepository.saveAndFlush(villageMembership(VillageSubjectType.USER, USER_TEAM_REPRESENTATIVE)).getId());
+        ownVillageMemberships.add(villageMembershipRepository.saveAndFlush(villageMembership(VillageSubjectType.TEAM, PROXY_TEAM)).getId());
     }
 
     private MembershipEntity membership(Long userId, ScopeType scopeType, Long scopeId) {
@@ -139,7 +167,7 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private TimelinePostEntity savePost(PostScopeType scopeType, Long scopeId, UUID scopeVillageId, Long userId) {
-        return postRepository.save(TimelinePostEntity.builder()
+        var saved = postRepository.saveAndFlush(TimelinePostEntity.builder()
                 .scopeType(scopeType)
                 .scopeId(scopeId)
                 .scopeVillageId(scopeVillageId)
@@ -148,6 +176,8 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
                 .content("parent-" + scopeType + "-" + userId)
                 .status(PostStatus.PUBLISHED)
                 .build());
+        ownPosts.add(saved.getId());
+        return saved;
     }
 
     private void setAuthentication(Long userId) {
@@ -180,6 +210,10 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
     // 同一 JVM 内の同居テストが変わり得るため、盲目的 INSERT は禁止。
     // AbstractSpotlightIT#insertRole と同型の対処）。
     private void insertRole(String name) {
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> insertRoleInTransaction(name));
+    }
+
+    private void insertRoleInTransaction(String name) {
         Number existingRoleCount = (Number) em.createNativeQuery("SELECT COUNT(*) FROM roles WHERE name = :name")
                 .setParameter("name", name)
                 .getSingleResult();
@@ -193,6 +227,7 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
                 .setParameter("dn", name)
                 .setParameter("priority", 100)
                 .executeUpdate();
+        ownRoles.add(((Number) em.createNativeQuery("SELECT LAST_INSERT_ID()").getSingleResult()).longValue());
     }
 
     private Long roleId(String name) {
@@ -202,6 +237,10 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private void insertUserRole(Long userId, Long roleIdParam, Long teamIdParam) {
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> insertUserRoleInTransaction(userId, roleIdParam, teamIdParam));
+    }
+
+    private void insertUserRoleInTransaction(Long userId, Long roleIdParam, Long teamIdParam) {
         em.createNativeQuery(
                         "INSERT INTO user_roles (user_id, role_id, team_id, organization_id, created_at, updated_at) "
                                 + "VALUES (:uid, :rid, :tid, NULL, NOW(), NOW())")
@@ -209,6 +248,7 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
                 .setParameter("rid", roleIdParam)
                 .setParameter("tid", teamIdParam)
                 .executeUpdate();
+        ownUserRoles.add(((Number) em.createNativeQuery("SELECT LAST_INSERT_ID()").getSingleResult()).longValue());
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -225,7 +265,7 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
             Long parentId = savePost(PostScopeType.TEAM, TEAM_A, null, USER_TEAM_A_MEMBER).getId();
             setAuthentication(USER_OUTSIDER);
 
-            assertThatThrownBy(() -> postController.createPost(reply(parentId)))
+            assertThatThrownBy(() -> createPost(reply(parentId)))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
@@ -240,7 +280,7 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
             Long parentId = savePost(PostScopeType.TEAM, TEAM_A, null, USER_TEAM_A_MEMBER).getId();
             setAuthentication(USER_OUTSIDER);
 
-            assertThatThrownBy(() -> postController.createPost(replyDeclaringPublic(parentId)))
+            assertThatThrownBy(() -> createPost(replyDeclaringPublic(parentId)))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
@@ -253,7 +293,7 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
             Long parentId = savePost(PostScopeType.ORGANIZATION, ORG_A, null, USER_ORG_A_MEMBER).getId();
             setAuthentication(USER_OUTSIDER);
 
-            assertThatThrownBy(() -> postController.createPost(replyDeclaringPublic(parentId)))
+            assertThatThrownBy(() -> createPost(replyDeclaringPublic(parentId)))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
@@ -266,7 +306,7 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
             Long parentId = savePost(PostScopeType.PERSONAL, USER_POST_OWNER, null, USER_POST_OWNER).getId();
             setAuthentication(USER_OUTSIDER);
 
-            assertThatThrownBy(() -> postController.createPost(reply(parentId)))
+            assertThatThrownBy(() -> createPost(reply(parentId)))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
@@ -279,7 +319,7 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
             Long parentId = savePost(PostScopeType.VILLAGE, 0L, villageId, USER_VILLAGE_MEMBER).getId();
             setAuthentication(USER_OUTSIDER);
 
-            assertThatThrownBy(() -> postController.createPost(reply(parentId)))
+            assertThatThrownBy(() -> createPost(reply(parentId)))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(VillageErrorCode.NOT_MEMBER));
@@ -295,7 +335,7 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
             CreatePostRequest req = new CreatePostRequest("なりすましリプライ", null, (Long) null,
                     "TEAM", PROXY_TEAM, parentId, null, null, null, null);
 
-            assertThatThrownBy(() -> postController.createPost(req))
+            assertThatThrownBy(() -> createPost(req))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(VillageErrorCode.VILLAGE_POSTING_IDENTITY_FORBIDDEN));
@@ -318,7 +358,7 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuthentication(USER_TEAM_A_MEMBER);
 
             ResponseEntity<ApiResponse<PostResponse>> response =
-                    postController.createPost(reply(parentId));
+                    createPost(reply(parentId));
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
             assertThat(replyCount(parentId)).isEqualTo(1L);
@@ -335,7 +375,7 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuthentication(USER_ORG_A_MEMBER);
 
             ResponseEntity<ApiResponse<PostResponse>> response =
-                    postController.createPost(reply(parentId));
+                    createPost(reply(parentId));
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
             assertThat(replyCount(parentId)).isEqualTo(1L);
@@ -352,7 +392,7 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuthentication(USER_OUTSIDER);
 
             ResponseEntity<ApiResponse<PostResponse>> response =
-                    postController.createPost(reply(parentId));
+                    createPost(reply(parentId));
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
             assertThat(replyCount(parentId)).isEqualTo(1L);
@@ -365,7 +405,7 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuthentication(USER_POST_OWNER);
 
             ResponseEntity<ApiResponse<PostResponse>> response =
-                    postController.createPost(reply(parentId));
+                    createPost(reply(parentId));
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
             assertThat(replyCount(parentId)).isEqualTo(1L);
@@ -378,7 +418,7 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuthentication(USER_VILLAGE_MEMBER);
 
             ResponseEntity<ApiResponse<PostResponse>> response =
-                    postController.createPost(reply(parentId));
+                    createPost(reply(parentId));
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
             assertThat(replyCount(parentId)).isEqualTo(1L);
@@ -398,14 +438,14 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
             // 1) チーム主体で村へ新規投稿できること
             CreatePostRequest proxyPost = new CreatePostRequest("チームからの村への告知", "VILLAGE", "0",
                     "TEAM", PROXY_TEAM, null, null, null, null, null, null, villageId);
-            ResponseEntity<ApiResponse<PostResponse>> created = postController.createPost(proxyPost);
+            ResponseEntity<ApiResponse<PostResponse>> created = createPost(proxyPost);
             assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
             Long parentId = created.getBody().getData().getId();
 
             // 2) そのチーム代理投稿へ、同じチーム主体でリプライできること
             CreatePostRequest proxyReply = new CreatePostRequest("チームからのリプライ", null, (Long) null,
                     "TEAM", PROXY_TEAM, parentId, null, null, null, null);
-            ResponseEntity<ApiResponse<PostResponse>> repliedAsTeam = postController.createPost(proxyReply);
+            ResponseEntity<ApiResponse<PostResponse>> repliedAsTeam = createPost(proxyReply);
 
             assertThat(repliedAsTeam.getStatusCode()).isEqualTo(HttpStatus.CREATED);
             assertThat(replyCount(parentId)).isEqualTo(1L);
@@ -435,7 +475,7 @@ class TimelineWriteScopeContractIT extends AbstractMySqlIntegrationTest {
             CreatePostRequest req = new CreatePostRequest("リポスト試み", "PUBLIC", 0L,
                     "USER", null, null, original.getId(), null, null, null);
 
-            assertThatThrownBy(() -> postController.createPost(req))
+            assertThatThrownBy(() -> createPost(req))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
