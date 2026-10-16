@@ -10,7 +10,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 /** チームポイントの業務契約。 */
 @Schema(name = "LoyaltyUpdateProgramRequest")
 public record UpdateProgramRequest(
-        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(types = {"integer", "null"}, nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         @PositiveOrZero Long expectedVersion,
         @NotNull Boolean isEnabled,
         @NotNull Audience targetAudience,

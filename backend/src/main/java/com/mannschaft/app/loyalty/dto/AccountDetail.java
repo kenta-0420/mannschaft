@@ -8,7 +8,7 @@ import java.util.UUID;
 /** チームポイントの業務契約。 */
 @Schema(name = "LoyaltyAccountDetail")
 public record AccountDetail(
-        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(types = {"string", "null"}, nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         UUID accountId,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         Long teamId,

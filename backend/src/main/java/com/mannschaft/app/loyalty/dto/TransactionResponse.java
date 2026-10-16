@@ -23,13 +23,13 @@ public record TransactionResponse(
         int delta,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         int balanceAfter,
-        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(types = {"string", "null"}, nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         UUID ruleId,
-        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(types = {"string", "null"}, nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         UUID rewardId,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         String label,
-        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(types = {"string", "null"}, nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         LocalDate awardOn,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         Instant createdAt) {

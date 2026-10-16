@@ -31,7 +31,7 @@ public record AwardRequestResponse(
         String verificationCode,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         RequestStatus status,
-        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(types = {"string", "null"}, nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         RequestReason reason,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         long version,
@@ -39,9 +39,9 @@ public record AwardRequestResponse(
         Instant createdAt,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         Instant expiresAt,
-        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(types = {"string", "null"}, nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         Instant closedAt,
-        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(types = {"string", "null"}, nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         UUID transactionId,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         boolean canApprove,
