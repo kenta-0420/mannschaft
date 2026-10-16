@@ -10,6 +10,7 @@ import com.mannschaft.app.role.entity.UserPermissionGroupEntity;
 import com.mannschaft.app.role.repository.PermissionGroupRepository;
 import com.mannschaft.app.role.repository.UserPermissionGroupRepository;
 import com.mannschaft.app.role.batch.InviteTokenClosureCleanupBatch;
+import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.team.service.TeamService;
@@ -42,6 +43,7 @@ class InviteGenerationLifecycleIT extends InviteGenerationItSupport {
     @Autowired private OrganizationService organizationService;
     @Autowired private TeamOrgMembershipRepository affiliations;
     @Autowired private InviteTokenClosureCleanupBatch recovery;
+    @Autowired private InviteService invites;
     @Autowired private MembershipRepository memberships;
     @Autowired private PermissionGroupRepository permissionGroups;
     @Autowired private UserPermissionGroupRepository userPermissionGroups;
@@ -223,12 +225,15 @@ class InviteGenerationLifecycleIT extends InviteGenerationItSupport {
                 .invitedAt(LocalDateTime.of(2026, 1, 1, 0, 0)).build()).getId());
         ownedAffiliations.add(affiliation);
         var before = jdbc.queryForMap("SELECT * FROM team_org_memberships WHERE id = ?", affiliation);
+        assertThat(invites.previewInvite(teamToken.getToken()).getData().isValid()).isTrue();
 
         organizationService.archiveOrganization(org.id());
 
         assertThat(jdbc.queryForObject("SELECT archived_at FROM teams WHERE id = ?", LocalDateTime.class, team.id())).isNull();
         assertThat(jdbc.queryForObject("SELECT closure_generation FROM teams WHERE id = ?", Long.class, team.id())).isZero();
         assertThat(tokens.findById(teamToken.getId()).orElseThrow().getRevokedAt()).isNull();
+        assertThat(tokens.findById(teamToken.getId()).orElseThrow().getScopeClosureGeneration()).isZero();
+        assertThat(invites.previewInvite(teamToken.getToken()).getData().isValid()).isTrue();
         assertThat(jdbc.queryForMap("SELECT * FROM team_org_memberships WHERE id = ?", affiliation)).isEqualTo(before);
     }
 
