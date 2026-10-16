@@ -1,0 +1,88 @@
+{
+    "source":  "アリシゼーションテスト",
+    "personaId":  "R1",
+    "personaType":  "スマホ片手操作×表示崩れ",
+    "journeyId":  "mobile-admin-members-qr",
+    "runId":  "mobile-menu-empty-20261016",
+    "sourceHeadAtStart":  "12a58857f80535a8bc2f675eef0b74c4abf7e62a",
+    "sourceNote":  "探索中にrootより別の組織メンバー一覧導線修正が進行中と通知あり。最終source差分を独立検証していない。各画像mtime/API時刻で区別。",
+    "status":  "目的は部分達成。両所属の通常管理導線とQR使い方/閉じる/戻るは達成。組織members安定表示は未確認。",
+    "observations":  [
+                         {
+                             "type":  "測定観測",
+                             "text":  "scope-sidebar-toggle32x32、drawer閉じる40x40、navカテゴリ36px高/子リンク32px高。rootより既存CMP-261016-0955扱いと通知。バグ断定しない。",
+                             "evidence":  "03-team-menu-stable-390.json"
+                         },
+                         {
+                             "type":  "表示観測",
+                             "text":  "全取得状態でdocument横幅はviewport内。タブ行とメンバー表の内部スクロールをページ横パンと区別。チーム見出しは省略記号、メンバー表ロール列は狭く縦折返し。",
+                             "evidence":  [
+                                              "12-team-members-current-390.png",
+                                              "22-org-settings-360.png"
+                                          ]
+                         },
+                         {
+                             "type":  "迷い",
+                             "text":  "最初はメンバーカテゴリの紹介/資格しか見えず、管理者表示を試してから設定で管理コンソールを発見。設定配下guide文字列は省略表示だが管理コンソールは判読可能。"
+                         },
+                         {
+                             "type":  "待機",
+                             "text":  "goto初回30秒、role設定ボタン30秒、想定heading待ち60秒、orgadmin復帰見出し60秒、members/table60秒等はタイムアウト記録。後続で成功した状態と未確認を分離。"
+                         }
+                     ],
+    "timeouts":  [
+                     {
+                         "file":  "result-0.json",
+                         "result":  {
+                                        "error":  "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3003/teams/mobile-menu-20261016-team-a\", waiting until \"load\"\u001b[22m\n"
+                                    }
+                     },
+                     {
+                         "file":  "result-10.json",
+                         "result":  {
+                                        "error":  "locator.waitFor: Timeout 60000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole(\u0027heading\u0027, { name: /メンバー/ }).first() to be visible\u001b[22m\n"
+                                    }
+                     },
+                     {
+                         "file":  "result-14.json",
+                         "result":  {
+                                        "error":  "s.context.setViewportSize is not a function"
+                                    }
+                     },
+                     {
+                         "file":  "result-18.json",
+                         "result":  {
+                                        "error":  "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator(\u0027.p-drawer-content button\u0027).filter({ hasText: /^設定$/ })\u001b[22m\n\u001b[2m    - locator resolved to \u003cbutton class=\"flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors\"\u003e…\u003c/button\u003e\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - \u003cdiv data-p=\"modal\" data-pc-section=\"mask\" class=\"p-dialog-mask p-overlay-mask p-overlay-mask-enter-active\"\u003e…\u003c/div\u003e intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - \u003cdiv data-p=\"modal\" data-pc-section=\"mask\" class=\"p-dialog-mask p-overlay-mask p-overlay-mask-enter-active\"\u003e…\u003c/div\u003e intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    46 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is visible, enabled and stable\u001b[22m\n\u001b[2m       - scrolling into view if needed\u001b[22m\n\u001b[2m       - done scrolling\u001b[22m\n\u001b[2m       - \u003cdiv data-p=\"modal\" data-pc-section=\"mask\" class=\"p-dialog-mask p-overlay-mask p-overlay-mask-enter-active\"\u003e…\u003c/div\u003e intercepts pointer events\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+                                    }
+                     },
+                     {
+                         "file":  "result-23.json",
+                         "result":  {
+                                        "error":  "locator.waitFor: Timeout 60000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText(\u0027組織管理コンソール\u0027, { exact: true }) to be visible\u001b[22m\n"
+                                    }
+                     },
+                     {
+                         "file":  "result-24.json",
+                         "result":  {
+                                        "error":  "locator.waitFor: Timeout 60000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText(\u0027Mobile Menu Member\u0027, { exact: true }).first() to be visible\u001b[22m\n"
+                                    }
+                     },
+                     {
+                         "file":  "result-26.json",
+                         "result":  {
+                                        "error":  "locator.waitFor: Timeout 60000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator(\u0027table\u0027) to be visible\u001b[22m\n"
+                                    }
+                     },
+                     {
+                         "file":  "result-5.json",
+                         "result":  {
+                                        "error":  "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator(\u0027.p-drawer-content\u0027).getByRole(\u0027button\u0027, { name: \u0027設定\u0027, exact: true })\u001b[22m\n"
+                                    }
+                     }
+                 ],
+    "limitations":  [
+                        "Team members360の安定表示は追加検証せず。",
+                        "Org members両幅の安定表示は未確認、loadingを合格扱いしない。",
+                        "画面操作による権限/データ変更・DB操作・APIモックなし。"
+                    ]
+}
