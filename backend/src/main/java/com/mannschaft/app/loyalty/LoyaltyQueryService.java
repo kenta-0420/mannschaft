@@ -9,7 +9,7 @@ import com.mannschaft.app.loyalty.dto.ProgramSettings;
 import com.mannschaft.app.loyalty.dto.TransactionResponse;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import lombok.RequiredArgsConstructor;
 
 /**
  * 読取専用接続契約の骨格。actor active/staff/adminの入口認可はFacade/AccessPolicyが先に行う。
@@ -17,8 +17,16 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>現段階はnull/0骨格。業務実装・green完了・merge可能とは扱わない。</p>
  */
 @Service
-@Transactional(readOnly = true)
+@RequiredArgsConstructor
 public class LoyaltyQueryService {
+    private final LoyaltyQueryReader reader;
+    private final LoyaltyQueryExternalStates external;
+    private final LoyaltyMapper mapper;
+    private final LoyaltyCursorCodec cursors;
+    private final LoyaltyTime time;
+    private final LoyaltyRequestStatePolicy states;
+    private final LoyaltyEligibilityPolicy eligibility;
+
     public CursorPagedResponse<AccountSummary> listAccounts(Long actor, String cursor, int limit) { return null; }
     public AccountDetail account(Long actor, Long team) { return null; }
     public CursorPagedResponse<TransactionResponse> transactions(Long actor, Long team, String cursor, int limit) { return null; }

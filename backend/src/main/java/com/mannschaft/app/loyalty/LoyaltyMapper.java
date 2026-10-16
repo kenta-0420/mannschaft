@@ -6,6 +6,13 @@ import com.mannschaft.app.loyalty.dto.TransactionResponse;
 import com.mannschaft.app.loyalty.entity.LoyaltyRuleEntity;
 import com.mannschaft.app.loyalty.entity.LoyaltyRewardEntity;
 import com.mannschaft.app.loyalty.entity.LoyaltyTransactionEntity;
+import com.mannschaft.app.loyalty.dto.AccountDetail;
+import com.mannschaft.app.loyalty.dto.AccountSummary;
+import com.mannschaft.app.loyalty.dto.AwardRequestResponse;
+import com.mannschaft.app.loyalty.dto.RewardProgress;
+import com.mannschaft.app.loyalty.entity.LoyaltyAccountEntity;
+import com.mannschaft.app.loyalty.entity.LoyaltyAwardRequestEntity;
+import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -20,4 +27,22 @@ public interface LoyaltyMapper {
     RewardResponse reward(LoyaltyRewardEntity entity);
 
     TransactionResponse transaction(LoyaltyTransactionEntity entity);
+
+    @Mapping(source = "entity.id", target = "accountId")
+    AccountSummary accountSummary(LoyaltyAccountEntity entity, String teamName);
+
+    @Mapping(source = "entity.id", target = "accountId")
+    @Mapping(source = "teamId", target = "teamId")
+    AccountDetail accountDetail(LoyaltyAccountEntity entity, Long teamId, String teamName,
+            boolean isProgramEnabled, boolean isEligibleForAward, List<RewardProgress> rewards);
+
+    @Mapping(source = "entity.active", target = "isActive")
+    RewardProgress rewardProgress(LoyaltyRewardEntity entity, int remainingPoints, boolean canRedeem);
+
+    @Mapping(source = "locationName", target = "locationName")
+    @Mapping(source = "status", target = "status")
+    @Mapping(source = "reason", target = "reason")
+    AwardRequestResponse awardRequest(LoyaltyAwardRequestEntity entity, String teamName,
+            String applicantDisplayName, String locationName, RequestStatus status,
+            RequestReason reason, boolean canApprove, boolean canCancel);
 }
