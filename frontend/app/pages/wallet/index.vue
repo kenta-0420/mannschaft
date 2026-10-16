@@ -11,8 +11,8 @@ import type {
 /**
  * F18 ウォレットホーム。
  *
- * <p>設計書 §8.1 / §7.1 に基づき、初回アクセス時または規約未同意の場合は
- * `TermsAcceptModal` を強制表示し、同意完了で `updateSettings` を呼び有効化する。</p>
+ * <p>共通会員QR・チームポイントは外部カードのopt-inから独立して表示する。
+ * 外部カードの開始操作で規約を表示し、同意完了で `updateSettings` を呼ぶ。</p>
  *
  * <p>カード / グループの 2 タブ構成。カードタブは検索バー + お気に入りセクション +
  * 全カードセクション。グループタブは GroupTile のリスト。</p>
@@ -27,6 +27,7 @@ definePageMeta({
 
 const { t } = useI18n()
 const walletApi = useWalletApi()
+const { handleApiError } = useErrorHandler()
 
 // ─────────────────────────────────────────────
 // State
@@ -41,6 +42,9 @@ const groups = ref<PointCardGroupListItem[]>([])
 const loadingSettings = ref(true)
 const loadingCards = ref(false)
 const loadingGroups = ref(false)
+const settingsError = shallowRef<unknown>(null)
+const cardsError = shallowRef<unknown>(null)
+const groupsError = shallowRef<unknown>(null)
 
 const showTerms = ref(false)
 const showGuide = ref(false)
@@ -52,7 +56,10 @@ const searchQuery = ref('')
 
 /** ウォレット機能が有効かつ規約同意済みかを判定 */
 const isWalletReady = computed(
-  () => settings.value?.isEnabled === true && settings.value?.termsAcceptedAt != null,
+  () =>
+    !settingsError.value &&
+    settings.value?.isEnabled === true &&
+    settings.value?.termsAcceptedAt != null,
 )
 
 /** 検索フィルタ後のカード（displayName / providerDisplayName 部分一致） */
@@ -75,10 +82,12 @@ const otherCards = computed(() => filteredCards.value.filter((c) => !c.favorite)
 
 async function loadSettings() {
   loadingSettings.value = true
+  settingsError.value = null
   try {
     settings.value = await walletApi.getSettings()
   } catch (error) {
-    console.error('[wallet] failed to load settings', error)
+    settingsError.value = error
+    handleApiError(error)
   } finally {
     loadingSettings.value = false
   }
@@ -87,10 +96,12 @@ async function loadSettings() {
 async function loadCards() {
   if (!isWalletReady.value) return
   loadingCards.value = true
+  cardsError.value = null
   try {
     cards.value = await walletApi.listCards()
   } catch (error) {
-    console.error('[wallet] failed to load cards', error)
+    cardsError.value = error
+    handleApiError(error)
   } finally {
     loadingCards.value = false
   }
@@ -99,10 +110,12 @@ async function loadCards() {
 async function loadGroups() {
   if (!isWalletReady.value) return
   loadingGroups.value = true
+  groupsError.value = null
   try {
     groups.value = await walletApi.listGroups()
   } catch (error) {
-    console.error('[wallet] failed to load groups', error)
+    groupsError.value = error
+    handleApiError(error)
   } finally {
     loadingGroups.value = false
   }
@@ -120,7 +133,7 @@ async function onTermsAccepted(termsVersion: string) {
     })
     await Promise.all([loadCards(), loadGroups()])
   } catch (error) {
-    console.error('[wallet] failed to accept terms', error)
+    handleApiError(error)
   }
 }
 
@@ -131,12 +144,13 @@ async function onTermsAccepted(termsVersion: string) {
 // Lifecycle
 // ─────────────────────────────────────────────
 
-onMounted(async () => {
+async function loadPage() {
   await loadSettings()
-  if (isWalletReady.value) {
+  if (!settingsError.value && isWalletReady.value) {
     await Promise.all([loadCards(), loadGroups()])
   }
-})
+}
+onMounted(loadPage)
 
 watch(activeTab, (newTab) => {
   if (!isWalletReady.value) return
@@ -153,12 +167,8 @@ watch(activeTab, (newTab) => {
     <div class="mx-auto max-w-[720px] px-4 pb-8">
       <PageHeader :title="t('wallet.title')" help @help="showGuide = true">
         <template #actions>
-          <NuxtLink v-if="activeTab === 'cards'" to="/wallet/cards/new">
-            <Button
-              :label="t('wallet.actions.add_card')"
-              icon="pi pi-plus"
-              size="small"
-            />
+          <NuxtLink v-if="isWalletReady && activeTab === 'cards'" to="/wallet/cards/new">
+            <Button :label="t('wallet.actions.add_card')" icon="pi pi-plus" size="small" />
           </NuxtLink>
           <NuxtLink
             to="/wallet/settings"
@@ -170,7 +180,9 @@ watch(activeTab, (newTab) => {
         </template>
       </PageHeader>
       <LoyaltyWalletPanel />
-      <SectionCard v-if="!loadingSettings && !isWalletReady" :title="t('wallet.title')" class="mb-4">
+      <PageLoading v-if="loadingSettings" />
+      <DashboardErrorState v-else-if="settingsError" :error="settingsError" @retry="loadPage" />
+      <SectionCard v-else-if="!isWalletReady" :title="t('wallet.title')" class="mb-4">
         <Button class="min-h-11" :label="t('loyalty.externalCards')" @click="showTerms = true" />
       </SectionCard>
       <div
@@ -214,6 +226,7 @@ watch(activeTab, (newTab) => {
         />
 
         <div v-if="loadingCards" class="py-12 text-center text-surface-400">…</div>
+        <DashboardErrorState v-else-if="cardsError" :error="cardsError" @retry="loadPage" />
 
         <template v-else-if="cards.length === 0">
           <div class="py-12 text-center text-surface-500">
@@ -254,12 +267,12 @@ watch(activeTab, (newTab) => {
             </ul>
           </div>
         </template>
-
       </section>
 
       <!-- ===== Groups タブ ===== -->
       <section v-else-if="isWalletReady" class="flex flex-col gap-4">
         <div v-if="loadingGroups" class="py-12 text-center text-surface-400">…</div>
+        <DashboardErrorState v-else-if="groupsError" :error="groupsError" @retry="loadPage" />
 
         <template v-else-if="groups.length === 0">
           <div class="py-12 text-center text-surface-500">

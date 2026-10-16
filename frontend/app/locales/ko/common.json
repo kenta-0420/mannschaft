@@ -2948,7 +2948,8 @@
     "memberQr": {
       "title": "회원 QR",
       "expiresIn": "남은 시간 {seconds}초",
-      "expired": "QR을 새로 고치세요"
+      "expired": "QR을 새로 고치세요",
+      "disabled": "이 회원증은 정지 또는 무효 상태이며 자동으로 재발급되지 않습니다."
     },
     "wallet": {
       "title": "팀 포인트",

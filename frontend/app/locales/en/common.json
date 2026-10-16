@@ -2948,7 +2948,8 @@
     "memberQr": {
       "title": "Member QR",
       "expiresIn": "Valid for {seconds} seconds",
-      "expired": "Refresh your QR"
+      "expired": "Refresh your QR",
+      "disabled": "This member card is suspended or revoked. It will not be reissued automatically."
     },
     "wallet": {
       "title": "Team points",

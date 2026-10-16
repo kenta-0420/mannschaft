@@ -23,16 +23,24 @@ export const useErrorHandler = () => {
   const resolveMessage = (code: string, fallback?: string, context?: string): string => {
     const key = `error.${code}`
     if (code === 'COMMON_003' && context === 'team-loyalty') return t('loyalty.error.changed')
+    if (code === 'MEMBERSHIP_003' && context === 'team-loyalty')
+      return t('loyalty.memberQr.disabled')
     if (code.startsWith('LOYALTY_')) {
       const loyaltyKeys: Record<string, string> = {
         LOYALTY_001: 'loadErrorState.states.notFoundOrForbidden.message',
         LOYALTY_002: 'loadErrorState.states.forbidden.message',
-        LOYALTY_003: 'loyalty.error.ineligible', LOYALTY_004: 'loyalty.program.disabled',
-        LOYALTY_005: 'loyalty.error.alreadyAwarded', LOYALTY_006: 'loyalty.error.changed',
-        LOYALTY_007: 'loyalty.error.changed', LOYALTY_008: 'loyalty.error.insufficient',
-        LOYALTY_009: 'loyalty.error.changed', LOYALTY_010: 'loyalty.self.rescan',
-        LOYALTY_011: 'loyalty.self.rescan', LOYALTY_012: 'error.server_retry',
-        LOYALTY_013: 'loyalty.error.changed', LOYALTY_014: 'loyalty.error.changed',
+        LOYALTY_003: 'loyalty.error.ineligible',
+        LOYALTY_004: 'loyalty.program.disabled',
+        LOYALTY_005: 'loyalty.error.alreadyAwarded',
+        LOYALTY_006: 'loyalty.error.changed',
+        LOYALTY_007: 'loyalty.error.changed',
+        LOYALTY_008: 'loyalty.error.insufficient',
+        LOYALTY_009: 'loyalty.error.changed',
+        LOYALTY_010: 'loyalty.self.rescan',
+        LOYALTY_011: 'loyalty.self.rescan',
+        LOYALTY_012: 'error.server_retry',
+        LOYALTY_013: 'loyalty.error.changed',
+        LOYALTY_014: 'loyalty.error.changed',
         LOYALTY_015: 'loyalty.requests.selfApprovalForbidden',
       }
       const loyaltyKey = loyaltyKeys[code]

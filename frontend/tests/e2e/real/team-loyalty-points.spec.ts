@@ -10,7 +10,7 @@ import { loginViaApi } from '../fixtures/auth'
 import { readFileSync } from 'node:fs'
 import { mkdtemp, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import QRCode from 'qrcode'
 
 test.use({
@@ -30,6 +30,9 @@ type ActorRole =
   | 'otherTeamAdmin'
   | 'organizationAdmin'
   | 'systemAdmin'
+  | 'resident1'
+  | 'resident2'
+  | 'resident3'
 interface LoyaltyFixture {
   actors: Record<ActorRole, { email: string; password: string }>
   team: { slug: string; numericId: number }
@@ -88,6 +91,16 @@ async function cameraFrame(token: string): Promise<{ directory: string; file: st
     ]),
   )
   return { directory, file }
+}
+
+async function cleanupCameraFrame(frame: { directory: string; file: string }) {
+  if (
+    dirname(frame.file) !== frame.directory ||
+    dirname(resolve(frame.directory)) !== resolve(tmpdir()) ||
+    !basename(frame.directory).startsWith('mannschaft-loyalty-camera-')
+  )
+    throw new Error('Temporary camera cleanup path guard failed')
+  await rm(frame.directory, { recursive: true, force: true })
 }
 
 test('AC01/16/20: サイドバーから会員QR・walletに到達し外部規約が妨げない', async ({ page }) => {
@@ -199,7 +212,7 @@ test('AC03/11/15: 実会員QRをカメラ映像から読取り付与・交換し
     await noOverflow(page)
   } finally {
     await cameraBrowser.close()
-    await rm(frame.directory, { recursive: true, force: true })
+    await cleanupCameraFrame(frame)
   }
 })
 
@@ -287,6 +300,10 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
     await member.getByRole('link', { name: '受付申請', exact: true }).last().click()
     await member.getByRole('link').filter({ hasText: '承認待ち' }).click()
     detailUrl = member.url()
+    // 本人専用UUIDを別のログイン主体から開いても申請者名・照合コードを開示しない。
+    await page.goto(new URL(detailUrl).pathname)
+    await expect(page.getByTestId('load-error-state')).toBeVisible()
+    await expect(page.getByText(/^照合コード /)).toHaveCount(0)
     await page.goto(`/teams/${slug}/loyalty`)
     await page.getByRole('button').filter({ hasText: '来店ポイント' }).last().click()
     await page.getByLabel('本人画面の照合コード').fill(code)
@@ -308,6 +325,30 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
     await member.goto(`/teams/${slug}/settings/loyalty`)
     await expect(member.getByTestId('load-error-state')).toBeVisible()
     await expect(member.getByRole('button', { name: '保存', exact: true })).toHaveCount(0)
+    await page.goto(`/teams/${slug}/settings/loyalty`)
+    await page.getByText('スタッフ承認（確定まで加算なし）', { exact: true }).click()
+    await page.getByRole('option', { name: '自動加算', exact: true }).click()
+    await page.getByRole('button', { name: '保存', exact: true }).first().click()
+    const dialog = page.getByRole('alertdialog')
+    await expect(dialog.getByText(/固定QRの撮影・遠隔再利用/)).toBeVisible()
+    await dialog.getByRole('button', { name: '保存', exact: true }).click()
+    await loginViaApi(member, fixture.actors.resident1, { apiBaseUrl: API })
+    await member.goto(url)
+    await expect(member.getByText(/固定QRの撮影・遠隔再利用/)).toBeVisible()
+    await member.getByRole('button', { name: '内容を確認して確定' }).click()
+    await expect(member.getByTestId('loyalty-balance')).toHaveText('1ポイント')
+    await page.getByTestId('loyalty-location-select').click()
+    await page.getByRole('option', { name: 'ポイント受付', exact: true }).click()
+    await page.getByRole('button', { name: '受付拠点を停止', exact: true }).click()
+    await expect(page.getByRole('alertdialog').getByText(/チェックインも停止/)).toBeVisible()
+    await page
+      .getByRole('alertdialog')
+      .getByRole('button', { name: '受付拠点を停止', exact: true })
+      .click()
+    await loginViaApi(member, fixture.actors.resident2, { apiBaseUrl: API })
+    await member.goto(url)
+    await expect(member.getByTestId('load-error-state')).toBeVisible()
+    await expect(member.getByRole('button', { name: '内容を確認して確定' })).toHaveCount(0)
     expect(team.numericId).toBeGreaterThan(0)
   } finally {
     await memberContext?.close()

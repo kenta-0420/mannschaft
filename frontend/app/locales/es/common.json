@@ -2948,7 +2948,8 @@
     "memberQr": {
       "title": "QR de miembro",
       "expiresIn": "Válido por {seconds} segundos",
-      "expired": "Actualiza el QR"
+      "expired": "Actualiza el QR",
+      "disabled": "Esta tarjeta está suspendida o revocada. No se volverá a emitir automáticamente."
     },
     "wallet": {
       "title": "Puntos del equipo",

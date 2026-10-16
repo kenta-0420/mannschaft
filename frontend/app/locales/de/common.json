@@ -2948,7 +2948,8 @@
     "memberQr": {
       "title": "Mitglieds-QR",
       "expiresIn": "Noch {seconds} Sekunden",
-      "expired": "QR aktualisieren"
+      "expired": "QR aktualisieren",
+      "disabled": "Diese Mitgliedskarte ist gesperrt oder widerrufen. Sie wird nicht automatisch neu ausgestellt."
     },
     "wallet": {
       "title": "Teampunkte",

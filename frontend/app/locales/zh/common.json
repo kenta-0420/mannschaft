@@ -2948,7 +2948,8 @@
     "memberQr": {
       "title": "会员二维码",
       "expiresIn": "剩余{seconds}秒",
-      "expired": "请刷新二维码"
+      "expired": "请刷新二维码",
+      "disabled": "此会员卡已停用或撤销，不会自动重新发行。"
     },
     "wallet": {
       "title": "团队积分",

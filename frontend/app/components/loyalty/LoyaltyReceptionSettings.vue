@@ -25,7 +25,8 @@ async function load() {
   qrUrl.value = ''
   try {
     locations.value = await api.listLocations(String(props.teamId))
-    if (!locations.value.some(location => location.id === selected.value && location.isActive)) selected.value = null
+    if (!locations.value.some((location) => location.id === selected.value && location.isActive))
+      selected.value = null
   } catch (e) {
     error.value = e
     handleApiError(e, 'team-loyalty')
@@ -93,6 +94,7 @@ onMounted(load)
           >{{ t('loyalty.reception.location')
           }}<Select
             v-model="selected"
+            data-testid="loyalty-location-select"
             class="my-2 w-full"
             :options="locations.filter((item) => item.isActive)"
             option-label="name"

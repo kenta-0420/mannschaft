@@ -29,6 +29,7 @@ describe('ポイント業務エラーの実翻訳経路（AC20/31）', () => {
       for (const code of [
         ...Array.from({ length: 15 }, (_, i) => `LOYALTY_${String(i + 1).padStart(3, '0')}`),
         'COMMON_003',
+        'MEMBERSHIP_003',
       ]) {
         notification.error.mockClear()
         handler.handleApiError(

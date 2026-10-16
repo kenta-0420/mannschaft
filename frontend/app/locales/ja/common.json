@@ -2948,7 +2948,8 @@
     "memberQr": {
       "title": "会員QR",
       "expiresIn": "残り{seconds}秒",
-      "expired": "QRを更新してください"
+      "expired": "QRを更新してください",
+      "disabled": "この会員証は停止または無効になっています。自動では再発行されません"
     },
     "wallet": {
       "title": "チームポイント",
