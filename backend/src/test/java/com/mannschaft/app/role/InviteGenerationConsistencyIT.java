@@ -20,6 +20,8 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
@@ -27,6 +29,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -66,22 +70,19 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
         LocalDateTime firstRevocation = LocalDateTime.of(2025, 2, 3, 4, 5, 6);
         CountDownLatch tokenLocked = new CountDownLatch(1);
         CountDownLatch commitCleanup = new CountDownLatch(1);
-        CountDownLatch compensationStarted = new CountDownLatch(1);
+        AtomicLong cleanupConnection = new AtomicLong();
         try (var executor = Executors.newFixedThreadPool(2)) {
             var closing = executor.submit(() -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                cleanupConnection.set(jdbc.queryForObject("SELECT CONNECTION_ID()", Long.class));
                 // cleanupの単独UPDATEを実DBで先行させ、実row lockをcommitまで保持する。
                 jdbc.update("UPDATE invite_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL", firstRevocation, token.getId());
                 tokenLocked.countDown();
                 await(commitCleanup);
             }));
             assertThat(tokenLocked.await(15, TimeUnit.SECONDS)).isTrue();
-            var compensating = executor.submit(() -> {
-                compensationStarted.countDown();
-                tokenIssuer.revokeForCompensation(token.getId());
-            });
-            assertThat(compensationStarted.await(15, TimeUnit.SECONDS)).isTrue();
+            var compensating = executor.submit(() -> tokenIssuer.revokeForCompensation(token.getId()));
             try {
-                assertThatThrownBy(() -> compensating.get(500, TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+                awaitTokenWait(cleanupConnection.get(), token.getId(), compensating);
             } finally {
                 commitCleanup.countDown();
             }
@@ -245,6 +246,53 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
 
     private InviteScopeStatePort port(String type) {
         return ports.stream().filter(p -> p.scopeType().equals(type)).findFirst().orElseThrow();
+    }
+
+    /** 既存BirthProfileLockWaitObserver/RanchDevelopmentPolicyITと同じ専用container実lock観測。 */
+    private void awaitTokenWait(long blockerConnection, Long tokenId, Future<?> worker) {
+        String url = MYSQL.getJdbcUrl();
+        url += (url.contains("?") ? "&" : "?")
+                + "connectTimeout=1000&socketTimeout=1000&useSSL=false&allowPublicKeyRetrieval=true";
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        // fixtureの資格情報だけを使う読取専用観測。アプリDS/秘密/DB設定へ触れない。
+        try (var observer = DriverManager.getConnection(url, "root", MYSQL.getPassword());
+             var query = observer.prepareStatement("""
+                     SELECT COUNT(*) FROM performance_schema.data_lock_waits waits
+                     JOIN performance_schema.data_locks requested
+                       ON requested.ENGINE = waits.ENGINE
+                      AND requested.ENGINE_LOCK_ID = waits.REQUESTING_ENGINE_LOCK_ID
+                     JOIN performance_schema.threads blocker ON blocker.THREAD_ID = waits.BLOCKING_THREAD_ID
+                     WHERE requested.OBJECT_SCHEMA = ? AND requested.OBJECT_NAME = 'invite_tokens'
+                       AND requested.INDEX_NAME = 'PRIMARY' AND requested.LOCK_TYPE = 'RECORD'
+                       AND requested.LOCK_DATA = ? AND blocker.PROCESSLIST_ID = ?
+                     """)) {
+            query.setQueryTimeout(1);
+            query.setString(1, MYSQL.getDatabaseName());
+            query.setString(2, tokenId.toString());
+            query.setLong(3, blockerConnection);
+            while (System.nanoTime() < deadline) {
+                try (var rows = query.executeQuery()) {
+                    if (rows.next() && rows.getLong(1) > 0) {
+                        return;
+                    }
+                }
+                if (worker.isDone()) {
+                    try {
+                        worker.get();
+                    } catch (ExecutionException failure) {
+                        throw new AssertionError("対象tokenの実待機前に補償workerが失敗しました");
+                    }
+                    throw new AssertionError("対象tokenの実待機前に補償workerが終了しました");
+                }
+                Thread.sleep(25);
+            }
+            throw new AssertionError("5秒以内に所有token行の実ロック待機を観測できませんでした");
+        } catch (SQLException failure) {
+            throw new AssertionError("専用MySQLコンテナのtoken待機観測接続またはSELECTに失敗しました");
+        } catch (InterruptedException failure) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError("token行のロック観測が中断されました");
+        }
     }
 
     private static void await(CountDownLatch latch) {
