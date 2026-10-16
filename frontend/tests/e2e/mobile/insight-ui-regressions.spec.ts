@@ -136,3 +136,56 @@ test('INSIGHT-LOCATION: 360pxの空拠点一覧から追加Dialogを開き44px�
   await cancel.click()
   await expect(dialog).not.toBeVisible()
 })
+
+for (const width of [360, 390, 1024, 1280]) {
+  test(`INSIGHT-INVITE-EN: ${width}pxで英語の条件を確認して招待を作成しPDFを取得できる`, async ({ page, baseURL }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.context().addCookies([{ name: 'i18n_locale', value: 'en', url: baseURL! }])
+    await prepare(page)
+    let created = false
+    let payload: unknown
+    await page.route(`**/api/v1/teams/${TEAM_ID}/invite-tokens`, async route => {
+      if (route.request().method() === 'POST') {
+        payload = route.request().postDataJSON()
+        created = true
+        await route.fulfill({ status: 201, json: { data: {} } })
+        return
+      }
+      await route.fulfill({ json: { data: created ? [{ id: 99, token: 'english-invite', roleName: 'MEMBER', expiresAt: null, maxUses: null, usedCount: 0, revokedAt: null, createdAt: '2026-10-16T00:00:00' }] : [] } })
+    })
+    await page.route(`**/api/v1/teams/${TEAM_ID}/invite-tokens/99/pdf`, route => route.fulfill({ status: 200, contentType: 'application/pdf', body: '%PDF-1.4\n%%EOF' }))
+    await page.goto(`/teams/${TEAM_ID}/invites`, { waitUntil: 'domcontentloaded' })
+    await waitForHydratedShell(page)
+    await expect.soft(page.getByText('No invite links yet', { exact: true })).toBeVisible({ timeout: 1000 })
+    const open = page.locator('button:has(.pi-plus)').last()
+    await expect.soft(open).toHaveAccessibleName('New invite link', { timeout: 1000 })
+    await open.click()
+    const dialog = page.getByRole('dialog')
+    await expect.soft(dialog).toHaveAccessibleName('Create invite link', { timeout: 1000 })
+    await expect(dialog).toBeVisible()
+    await expect.soft(dialog).not.toContainText(/[ぁ-んァ-ヶ一-龯]/, { timeout: 1000 })
+    await expect.soft(dialog.getByText('Maximum uses (leave blank for unlimited)', { exact: true })).toBeVisible({ timeout: 1000 })
+    const combos = dialog.getByRole('combobox')
+    await expect.soft(combos.nth(0)).toHaveText('Member', { timeout: 1000 })
+    await expect.soft(combos.nth(1)).toHaveText('7 days', { timeout: 1000 })
+    // Selectのクリックを受けるroot divを測定する。内部combobox spanの寸法では判定しない。
+    const selectRoots = [combos.nth(0).locator('xpath=..'), combos.nth(1).locator('xpath=..')]
+    for (const target of [open, ...selectRoots, dialog.getByRole('spinbutton'), dialog.locator('.p-dialog-close-button'), dialog.locator('.p-dialog-footer button').first(), dialog.locator('button:has(.pi-check)')]) {
+      const box = await target.boundingBox()
+      expect(box).not.toBeNull()
+      expect.soft(box!.width).toBeGreaterThanOrEqual(44)
+      expect.soft(box!.height).toBeGreaterThanOrEqual(44)
+    }
+    await dialog.locator('button:has(.pi-check)').click()
+    await expect(dialog).not.toBeVisible()
+    expect(payload).toEqual({ roleId: 4, expiresIn: '7d', maxUses: null })
+    const pdf = page.getByRole('button', { name: 'Print QR PDF', exact: true })
+    await expect(pdf).toBeVisible()
+    await expect.soft(page.getByRole('button', { name: 'Copy invite URL', exact: true })).toBeVisible({ timeout: 1000 })
+    await expect.soft(page.getByRole('button', { name: 'Revoke invite link', exact: true })).toBeVisible({ timeout: 1000 })
+    const download = page.waitForEvent('download')
+    await pdf.click()
+    await download
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0)
+  })
+}
