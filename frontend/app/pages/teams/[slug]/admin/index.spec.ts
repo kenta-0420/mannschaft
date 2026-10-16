@@ -28,7 +28,16 @@ describe('管理コンソール設定カード', () => {
   ] as const)('%sの設定カードは個別設定ではなく集約ハブを指す', async (scope, component) => {
     const router = createRouter({ history: createMemoryHistory(), routes: [] })
     const wrapper = mount(component, {
-      global: { plugins: [router, createI18n({ legacy: false, locale: 'en', messages: { en } })] },
+      global: {
+        plugins: [
+          router,
+          createI18n({
+            legacy: false,
+            locale: 'en',
+            messages: { ja: {}, en, zh: {}, ko: {}, es: {}, de: {} },
+          }),
+        ],
+      },
     })
     expect(wrapper.find(`a[href="/${scope}/sample/admin/settings"]`).exists()).toBe(true)
   })

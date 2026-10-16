@@ -37,7 +37,15 @@ async function mountHub(scopeType: 'team' | 'organization' = 'team') {
   const wrapper = mount(AdminSettingsHub, {
     props: { scopeType, slug: 'sample' },
     global: {
-      plugins: [router, PrimeVue, createI18n({ legacy: false, locale: 'en', messages: { en } })],
+      plugins: [
+        router,
+        PrimeVue,
+        createI18n({
+          legacy: false,
+          locale: 'en',
+          messages: { ja: {}, en, zh: {}, ko: {}, es: {}, de: {} },
+        }),
+      ],
       stubs: { NuxtLink: RouterLink, PageHeader: true },
     },
   })

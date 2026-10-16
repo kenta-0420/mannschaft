@@ -30,7 +30,11 @@ describe('チャットから自分の連絡先QRへの導線', () => {
         plugins: [
           createPinia(),
           router,
-          createI18n({ legacy: false, locale: 'en', messages: { en } }),
+          createI18n({
+            legacy: false,
+            locale: 'en',
+            messages: { ja: {}, en, zh: {}, ko: {}, es: {}, de: {} },
+          }),
         ],
         stubs: {
           NuxtLink: RouterLink,

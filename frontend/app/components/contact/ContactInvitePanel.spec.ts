@@ -22,7 +22,11 @@ async function mountPanel(showCreateForm = false) {
     global: {
       plugins: [
         PrimeVue,
-        createI18n({ legacy: false, locale: 'en', messages: { en: { ...common, ...en } } }),
+        createI18n({
+          legacy: false,
+          locale: 'en',
+          messages: { ja: {}, en: { ...common, ...en }, zh: {}, ko: {}, es: {}, de: {} },
+        }),
       ],
       stubs: {
         DashboardEmptyState: {
