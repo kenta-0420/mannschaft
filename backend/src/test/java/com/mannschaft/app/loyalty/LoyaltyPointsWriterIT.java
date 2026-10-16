@@ -478,6 +478,34 @@ class LoyaltyPointsWriterIT {
     }
 
     @Test
+    void AC28_staff日次成功は仮投影で期限切れの保存PENDINGだけを閉じる() {
+        LocalDateTime now = LocalDateTime.of(2026, 10, 16, 23, 50);
+        var pending = com.mannschaft.app.loyalty.entity.LoyaltyAwardRequestEntity.builder()
+                .teamId(teamId).userId(20L).ruleId(ruleId).sourceLocationId(30L)
+                .programVersion(0).ruleVersion(0).points(1).ruleName("来店").locationName("受付")
+                .awardOn(now.toLocalDate()).expiresAt(now.minusMinutes(1))
+                .status(RequestStatus.PENDING).version(0).verificationCode("ABCDEFGH")
+                .submitKey(UUID.randomUUID()).submitPayloadHash(new byte[32])
+                .createdAt(now.minusMinutes(20)).updatedAt(now.minusMinutes(20)).build();
+        store.getRequests().saveAndFlush(pending);
+        var terminal = pending.toBuilder().id(null).verificationCode("BCDEFGHI")
+                .submitKey(UUID.randomUUID()).status(RequestStatus.CANCELLED).reason(RequestReason.USER_CANCELLED)
+                .version(1).terminalActorUserId(20L).terminalAction(RequestOperation.CANCEL)
+                .actionKey(UUID.randomUUID()).actionPayloadHash(new byte[32]).closedAt(now.minusMinutes(2)).build();
+        store.getRequests().saveAndFlush(terminal);
+        assertThat(statePolicy.evaluate(pending, store.getPrograms().findByTeamId(teamId).orElseThrow(),
+                store.getRules().findByTeamId(teamId).orElseThrow(), null, false, 0, now))
+                .isEqualTo(new LoyaltyEffectiveRequestState(RequestStatus.EXPIRED, RequestReason.TTL_EXPIRED));
+        TransactionResponse awarded = writer.award(command(UUID.randomUUID(), 0, new byte[32]));
+        assertThat(awarded).isNotNull();
+        assertThat(awarded.balanceAfter()).isEqualTo(1);
+        assertThat(store.getRequests().findById(pending.getId())).get()
+                .extracting("status", "reason", "version").containsExactly(RequestStatus.SUPERSEDED, RequestReason.DAILY_AWARDED, 1L);
+        assertThat(store.getRequests().findById(terminal.getId())).get()
+                .extracting("status", "reason", "version").containsExactly(RequestStatus.CANCELLED, RequestReason.USER_CANCELLED, 1L);
+    }
+
+    @Test
     void AC28_申請insert対staff先行でも有効な二重加算を生まない() throws Exception {
         LoyaltyWriteCommand submit = new LoyaltyWriteCommand(teamId, 20L, 20L, ruleId, 0, 0,
                 RequestOperation.SELF_SUBMIT, UUID.randomUUID(), new byte[32], 30L, "受付");
