@@ -109,6 +109,7 @@ public class MemberCardService {
      * @param userId ユーザーID
      * @return 会員証一覧
      */
+    @Transactional(readOnly = true)
     public ApiResponse<List<MemberCardResponse>> getMyCards(Long userId) {
         List<MemberCardEntity> cards = memberCardRepository
                 .findByUserIdAndDeletedAtIsNullOrderByIssuedAtAsc(userId);
@@ -127,6 +128,7 @@ public class MemberCardService {
      * @param userId リクエストユーザーID
      * @return 会員証詳細
      */
+    @Transactional(readOnly = true)
     public ApiResponse<MemberCardDetailResponse> getCardDetail(Long cardId, Long userId) {
         MemberCardEntity card = findCardOrThrow(cardId);
 
@@ -157,6 +159,7 @@ public class MemberCardService {
      * @param userId リクエストユーザーID
      * @return QRトークン
      */
+    @Transactional(readOnly = true)
     public ApiResponse<QrTokenResponse> getQrToken(Long cardId, Long userId) {
         MemberCardEntity card = findCardOrThrow(cardId);
 
@@ -422,6 +425,7 @@ public class MemberCardService {
      * @param q             検索クエリ
      * @return 会員証一覧とメタ情報
      */
+    @Transactional(readOnly = true)
     public Map<String, Object> getScopeMemberCards(Long currentUserId, ScopeType scopeType, Long scopeId,
                                                     CardStatus status, String q) {
         // 認可: スコープの ADMIN/DEPUTY_ADMIN のみ。非管理者・非メンバー・他スコープ指定は 403。
@@ -537,6 +541,7 @@ public class MemberCardService {
      * @param to     終了日時
      * @return チェックイン履歴
      */
+    @Transactional(readOnly = true)
     public ApiResponse<List<CheckinHistoryResponse>> getCheckinHistory(
             Long cardId, Long userId, LocalDateTime from, LocalDateTime to) {
         MemberCardEntity card = findCardOrThrow(cardId);
@@ -591,6 +596,7 @@ public class MemberCardService {
      * @param to        終了日時
      * @return チェックイン履歴
      */
+    @Transactional(readOnly = true)
     public ApiResponse<List<CheckinHistoryResponse>> getScopeCheckins(
             ScopeType scopeType, Long scopeId, LocalDateTime from, LocalDateTime to) {
         accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), scopeId, scopeType.name());
