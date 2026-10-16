@@ -31,7 +31,7 @@ class LoyaltyPointsWriterIT {
     @org.springframework.data.jpa.repository.config.EnableJpaRepositories(basePackageClasses = com.mannschaft.app.loyalty.repository.LoyaltyProgramRepository.class)
     @org.springframework.context.annotation.Import({LoyaltyStore.class, LoyaltyPointsWriter.class,
             LoyaltySettingsWriter.class, LoyaltyTime.class, LoyaltyMapperImpl.class,
-            LoyaltyRequestStatePolicy.class, LoyaltyQueryReader.class, com.mannschaft.app.config.TimeZoneConfig.class})
+            LoyaltyRequestStatePolicy.class, LoyaltyQueryReader.class, CommitProbe.class, com.mannschaft.app.config.TimeZoneConfig.class})
     static class PersistenceConfiguration { }
 
     @SuppressWarnings("resource")
@@ -748,6 +748,36 @@ class LoyaltyPointsWriterIT {
             assertThat(store.getAccounts().findByTeamIdAndUserId(teamId, 20L)).isEmpty();
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_transactions WHERE team_id=?", Long.class, teamId)).isZero();
         }
+    }
+
+    static class CommitProbe {
+        private final java.util.Queue<LoyaltyCommittedEvent> events = new java.util.concurrent.ConcurrentLinkedQueue<>();
+        @org.springframework.transaction.event.TransactionalEventListener(phase = org.springframework.transaction.event.TransactionPhase.AFTER_COMMIT)
+        public void committed(LoyaltyCommittedEvent event) { events.add(event); }
+        java.util.List<LoyaltyCommittedEvent> forTeam(Long team) {
+            return events.stream().filter(event -> event.teamId().equals(team)).toList();
+        }
+    }
+
+    @Test
+    void 事後補強_AC13_Writer確定監査は初回commitだけで再送とrollbackは発火しない(@Autowired CommitProbe probe) {
+        UUID key = UUID.randomUUID();
+        var first = writer.award(command(key, 0, new byte[32]));
+        assertThat(writer.award(command(key, 0, new byte[32])).id()).isEqualTo(first.id());
+        assertThat(probe.forTeam(teamId)).containsExactly(new LoyaltyCommittedEvent(teamId, 10L, 20L,
+                RequestOperation.STAFF_AWARD, first.id(), null));
+        var template = new org.springframework.transaction.support.TransactionTemplate(transactionManager);
+        assertThatThrownBy(() -> template.executeWithoutResult(status -> {
+            assertThat(writer.award(new LoyaltyWriteCommand(teamId, 10L, 21L, ruleId, 0, 0,
+                    RequestOperation.STAFF_AWARD, UUID.randomUUID(), new byte[32], null, null))).isNotNull();
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override public void beforeCommit(boolean readOnly) { throw new IllegalStateException("owned_before_commit"); }
+                    });
+        })).isInstanceOf(IllegalStateException.class).hasMessage("owned_before_commit");
+        assertThat(probe.forTeam(teamId)).hasSize(1);
+        assertThat(store.getAccounts().findByTeamIdAndUserId(teamId, 21L)).isEmpty();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_transactions WHERE team_id=?", Long.class, teamId)).isEqualTo(1L);
     }
 
 }
