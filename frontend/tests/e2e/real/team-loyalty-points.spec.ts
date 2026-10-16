@@ -473,7 +473,7 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
       try {
         const { targetInfo } = await cdp.send('Target.getTargetInfo')
         await cdp.send('Browser.setPermission', {
-          permission: { name: 'videoCapture' }, setting: 'denied', origin: BASE,
+          permission: { name: 'camera' }, setting: 'denied', origin: BASE,
           browserContextId: targetInfo.browserContextId,
         })
         await expect.poll(() => page.evaluate(async () =>
