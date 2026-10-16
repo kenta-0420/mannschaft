@@ -42,6 +42,34 @@ describe('BaseSidebar の取得状態', () => {
     expect(apiMock).toHaveBeenCalledWith('/api/v1/teams/team-a/me/permissions')
   })
 
+  it('未所属のSYSTEM_ADMINは所属限定モジュールAPIを取得せずメニューリンクを表示する', async () => {
+    apiMock.mockImplementation((url: string) => url.endsWith('/me/permissions')
+      ? Promise.resolve(permissions('SYSTEM_ADMIN'))
+      : Promise.reject(Object.assign(new Error('membership required'), { statusCode: 403 })))
+    const wrapper = await mountSidebar()
+    await flushPromises()
+
+    expect(wrapper.find('a[href="/teams/team-a/admin"]').exists()).toBe(true)
+    expect(wrapper.get('a[href="/teams/team-a/admin"]').isVisible()).toBe(true)
+    expect(wrapper.findComponent({ name: 'DashboardErrorState' }).exists()).toBe(false)
+    expect(apiMock).toHaveBeenCalledWith('/api/v1/teams/team-a/me/permissions')
+    expect(apiMock).not.toHaveBeenCalledWith('/api/v1/teams/team-a/modules')
+  })
+
+  it('SYSTEM_ADMINもメンバーレンズ中のモジュール取得失敗をエラーとして表示する', async () => {
+    apiMock.mockImplementation((url: string) => url.endsWith('/me/permissions')
+      ? Promise.resolve(permissions('SYSTEM_ADMIN'))
+      : Promise.reject(Object.assign(new Error('membership required'), { statusCode: 403 })))
+    const wrapper = await mountSuspended(BaseSidebar, {
+      props: { scopeType: 'team', scopeId: 'team-a', categories, memberLensActive: true },
+    })
+    await flushPromises()
+
+    expect(wrapper.findComponent({ name: 'DashboardErrorState' }).exists()).toBe(true)
+    expect(wrapper.find('nav').exists()).toBe(false)
+    expect(apiMock).toHaveBeenCalledWith('/api/v1/teams/team-a/modules')
+  })
+
   it('Drawerを開いたとき実TeamSidebarが権限を取得しリンクを描画する', async () => {
     const wrapper = await mountSuspended(ScopePageShell, {
       props: { tabs: [], activeTab: 'dashboard', sidebar: markRaw(TeamSidebar), sidebarProps: { teamId: 'team-a' } },

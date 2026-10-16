@@ -85,6 +85,7 @@ public enum AuditEventType {
     TEAM_MEMBER_REMOVED(AuditEventCategory.TEAM),
     TEAM_CREATED(AuditEventCategory.TEAM),
     TEAM_DELETED(AuditEventCategory.TEAM),
+    TEAM_RESTORED(AuditEventCategory.TEAM),
     TEAM_MEMBER_BLOCKED(AuditEventCategory.TEAM),
     TEAM_MEMBER_UNBLOCKED(AuditEventCategory.TEAM),
     TEAM_INVITE_TOKEN_CREATED(AuditEventCategory.TEAM),

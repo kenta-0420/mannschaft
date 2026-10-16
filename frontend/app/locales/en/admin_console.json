@@ -128,5 +128,21 @@
     "settingsHub": {
       "readOnly": "View only. Only an administrator can edit these labels."
     }
+  },
+  "deletedTeams": {
+    "title": "Restore deleted teams",
+    "description": "Select a deleted team to restore it.",
+    "restore": "Restore",
+    "confirmTitle": "Restore this team?",
+    "confirm": "Restore “{name}” ({slug})? Visibility, archive status and activation status will stay the same. Previous organization affiliations will not be restored.",
+    "cancel": "Cancel",
+    "success": "“{name}” has been restored.",
+    "openTeam": "Open team",
+    "provisionedHint": "This team is still awaiting activation. Its regular team page is not available yet.",
+    "processing": "Restoring…",
+    "empty": "There are no deleted teams.",
+    "deletedAt": "Deleted at",
+    "active": "Activated",
+    "provisioned": "Awaiting activation"
   }
 }

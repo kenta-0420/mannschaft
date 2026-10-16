@@ -128,5 +128,21 @@
     "settingsHub": {
       "readOnly": "閲覧のみ。ラベルを編集できるのは管理者です。"
     }
+  },
+  "deletedTeams": {
+    "title": "削除済みチームの復元",
+    "description": "削除済みのチームを選択して復元します。",
+    "restore": "復元",
+    "confirmTitle": "チームを復元しますか？",
+    "confirm": "「{name}」（{slug}）を復元します。公開・アーカイブ・利用開始の状態は変わりません。削除前の組織加盟は復元されません。",
+    "cancel": "キャンセル",
+    "success": "「{name}」を復元しました。",
+    "openTeam": "チームを開く",
+    "provisionedHint": "利用開始前の状態を維持しています。通常のチーム画面はまだ利用できません。",
+    "processing": "復元しています…",
+    "empty": "削除済みのチームはありません。",
+    "deletedAt": "削除日時",
+    "active": "利用開始済み",
+    "provisioned": "利用開始前"
   }
 }

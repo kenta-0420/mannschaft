@@ -113,6 +113,7 @@ const lensModel = computed<boolean>({
             text
             rounded
             size="small"
+            class="min-h-11 min-w-11"
             :aria-label="$t('common.menu')"
             data-testid="scope-sidebar-toggle"
             @click="showSidebarDrawer = true"
@@ -137,6 +138,7 @@ const lensModel = computed<boolean>({
       v-model:visible="showSidebarDrawer"
       position="left"
       class="!w-72"
+      :pt="{ pcCloseButton: { root: { class: 'min-h-11 min-w-11' } } }"
     >
       <template #header>
         <span class="font-semibold">{{ $t('common.menu') }}</span>
