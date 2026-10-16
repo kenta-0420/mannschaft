@@ -192,3 +192,82 @@ for (const width of [360, 390, 1024, 1280]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0)
   })
 }
+
+for (const language of [
+  { locale: 'ja', create: '新しいURLを発行', close: '閉じる', cancel: 'キャンセル', placeholder: 'SNS用など' },
+  { locale: 'en', create: 'Issue New URL', close: 'Close', cancel: 'Cancel', placeholder: 'e.g. For SNS' },
+]) {
+  test(`INSIGHT-CONTACT-HEADER: ${language.locale}の見出しと操作ラベルを狭幅・文字拡大でも読める`, async ({ page, baseURL }, testInfo) => {
+    await page.context().addCookies([{ name: 'i18n_locale', value: language.locale, url: baseURL! }])
+    await prepare(page)
+    await page.goto('/settings/contact-invite-tokens', { waitUntil: 'domcontentloaded' })
+    await waitForHydratedShell(page)
+    const title = page.getByRole('heading', { level: 1 })
+    const help = page.getByTestId('page-header-help')
+    const create = page.getByRole('button', { name: language.create, exact: true })
+    await expect(create).toBeVisible()
+
+    async function check(width: number, enlarged: boolean) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.evaluate(async () => {
+        await document.fonts.ready
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+      })
+      const titleBox = (await title.boundingBox())!
+      const row = (await title.locator('..').boundingBox())!
+      const rowStyle = await title.locator('..').evaluate(element => ({ flexWrap: getComputedStyle(element).flexWrap, display: getComputedStyle(element).display }))
+      if (width < 640) expect.soft(titleBox.width).toBeGreaterThanOrEqual(row.width - 1)
+      const controls = []
+      for (const button of [help, create]) {
+        const box = (await button.boundingBox())!
+        const label = await button.locator('.p-button-label').evaluate(element => {
+          const range = document.createRange()
+          range.selectNodeContents(element)
+          return {
+            text: element.textContent,
+            scrollWidth: element.scrollWidth,
+            clientWidth: element.clientWidth,
+            rects: [...range.getClientRects()].map(rect => ({ left: rect.left, right: rect.right, top: rect.top })),
+          }
+        })
+        expect.soft(box.width).toBeGreaterThanOrEqual(44)
+        expect.soft(box.height).toBeGreaterThanOrEqual(44)
+        expect.soft(label.rects.length).toBeLessThanOrEqual(enlarged ? 2 : 1)
+        expect.soft(label.scrollWidth).toBeLessThanOrEqual(label.clientWidth)
+        for (const rect of label.rects) {
+          expect.soft(rect.left).toBeGreaterThanOrEqual(box.x - 0.5)
+          expect.soft(rect.right).toBeLessThanOrEqual(box.x + box.width + 0.5)
+        }
+        if (width < 640) expect.soft(box.y).toBeGreaterThanOrEqual(titleBox.y + titleBox.height)
+        else expect.soft(box.y).toBeLessThan(titleBox.y + titleBox.height)
+        controls.push({ box, label })
+      }
+      const documentSize = await page.evaluate(() => ({ client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }))
+      expect.soft(documentSize.scroll).toBeLessThanOrEqual(documentSize.client)
+      await testInfo.attach(`header-${language.locale}-${width}-${enlarged ? '200' : '100'}`, { body: JSON.stringify({ titleBox, row, rowStyle, controls, documentSize }, null, 2), contentType: 'application/json' })
+      await testInfo.attach(`header-${language.locale}-${width}-${enlarged ? '200' : '100'}-image`, { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
+    }
+
+    for (const width of [360, 390, 1280]) await check(width, false)
+    for (const target of [title, help, create]) {
+      await target.evaluate(element => {
+        const style = getComputedStyle(element)
+        const fontSize = Number.parseFloat(style.fontSize)
+        const lineHeight = Number.parseFloat(style.lineHeight)
+        element.style.fontSize = `${fontSize * 2}px`
+        element.style.lineHeight = `${lineHeight * 2}px`
+      })
+    }
+    for (const width of [360, 390]) await check(width, true)
+    await help.click()
+    const guide = page.getByTestId('contact-invite-guide-modal')
+    await expect(guide).toBeVisible()
+    await guide.getByRole('button', { name: language.close, exact: true }).last().click()
+    await expect(guide).not.toBeVisible()
+    await create.click()
+    const input = page.getByPlaceholder(language.placeholder)
+    await expect(input).toBeVisible()
+    await page.getByRole('button', { name: language.cancel, exact: true }).click()
+    await expect(input).not.toBeVisible()
+  })
+}
