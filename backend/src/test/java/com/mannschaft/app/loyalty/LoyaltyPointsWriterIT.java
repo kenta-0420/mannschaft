@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @org.springframework.boot.test.context.SpringBootTest(properties = {
         "spring.flyway.enabled=true", "spring.jpa.hibernate.ddl-auto=none"})
 @org.springframework.test.context.ActiveProfiles("test")
+@org.springframework.context.annotation.Import(LoyaltyPointsWriterIT.FixedClockConfiguration.class)
 @org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class LoyaltyPointsWriterIT {
     @SuppressWarnings("resource")
@@ -44,6 +45,14 @@ class LoyaltyPointsWriterIT {
     @org.springframework.test.context.bean.override.mockito.MockitoBean
     private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
 
+    @org.springframework.boot.test.context.TestConfiguration(proxyBeanMethods = false)
+    static class FixedClockConfiguration {
+        @org.springframework.context.annotation.Bean
+        @org.springframework.context.annotation.Primary
+        java.time.Clock loyaltyFixtureClock() {
+            return java.time.Clock.fixed(java.time.Instant.parse("2026-10-16T14:50:00Z"), java.time.ZoneOffset.UTC);
+        }
+    }
     @Autowired private LoyaltyStore store;
     @Autowired private LoyaltyPointsWriter writer;
     @Autowired private LoyaltySettingsWriter settings;
@@ -339,5 +348,38 @@ class LoyaltyPointsWriterIT {
             store.getRules().findByTeamId(teamId).ifPresent(store.getRules()::delete);
             store.getPrograms().findByTeamId(teamId).ifPresent(store.getPrograms()::delete);
         });
+    }
+    @Test
+    @org.junit.jupiter.api.parallel.ResourceLock("java.util.TimeZone.default")
+    void AC08_接続作成後のJVM時差に影響されずJST日付とUTC保存時刻が往復する() {
+        java.util.TimeZone original = java.util.TimeZone.getDefault();
+        jdbc.queryForObject("SELECT 1", Integer.class); // 先に接続を作る。
+        try {
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Pacific/Honolulu"));
+            TransactionResponse result = writer.award(command(UUID.randomUUID(), 0, new byte[32]));
+            assertThat(result).isNotNull();
+            assertThat(result.awardOn()).isEqualTo(java.time.LocalDate.of(2026, 10, 16));
+            assertThat(result.createdAt()).isEqualTo(LocalDateTime.of(2026, 10, 16, 23, 50));
+            assertThat(jdbc.queryForObject("SELECT CAST(award_on AS CHAR) FROM team_loyalty_transactions WHERE team_id=?", String.class, teamId))
+                    .isEqualTo("2026-10-16");
+            assertThat(jdbc.queryForObject("SELECT DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') FROM team_loyalty_transactions WHERE team_id=?", String.class, teamId))
+                    .isEqualTo("2026-10-16 14:50:00");
+            assertThat(store.getTransactions().findById(result.id())).get()
+                    .extracting("awardOn", "createdAt")
+                    .containsExactly(java.time.LocalDate.of(2026, 10, 16), LocalDateTime.of(2026, 10, 16, 23, 50));
+        } finally {
+            java.util.TimeZone.setDefault(original);
+        }
+    }
+
+    @Test
+    void AC24_23時50分申請は翌日0時で失効し30分後に延長しない() {
+        LoyaltyWriteCommand submit = new LoyaltyWriteCommand(teamId, 20L, 20L, ruleId, 0, 0,
+                RequestOperation.SELF_SUBMIT, UUID.randomUUID(), new byte[32], 1L, "受付");
+        LoyaltySubmissionOutcome result = writer.submit(submit);
+        assertThat(result).isNotNull();
+        assertThat(result.request()).isNotNull();
+        assertThat(result.request().getExpiresAt()).isEqualTo(LocalDateTime.of(2026, 10, 17, 0, 0));
+        assertThat(result.request().getAwardOn()).isEqualTo(java.time.LocalDate.of(2026, 10, 16));
     }
 }
