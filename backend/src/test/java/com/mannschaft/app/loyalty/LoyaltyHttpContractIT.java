@@ -252,6 +252,31 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    void 先行_AC25TEAM停止後も現スタッフ権限で本人とALLと詳細の無効理由を読める() throws Exception {
+        Long team = team(); admin(actorId,team);
+        store.getPrograms().saveAndFlush(LoyaltyTestFixture.program(team));
+        var rule = store.getRules().saveAndFlush(LoyaltyTestFixture.rule(team)); var location = location(team,true);
+        var now = time.now();
+        var row = store.getRequests().saveAndFlush(LoyaltyAwardRequestEntity.builder().teamId(team).userId(actorId)
+                .ruleId(rule.getId()).sourceLocationId(location.getId()).programVersion(0).ruleVersion(0).points(1)
+                .ruleName("来店").locationName("受付").awardOn(now.toLocalDate()).expiresAt(time.expiresAt(now))
+                .status(RequestStatus.PENDING).verificationCode("ABCDEFGH").submitKey(UUID.randomUUID())
+                .submitPayloadHash(new byte[32]).createdAt(now).updatedAt(now).build());
+        var stopped = teams.findById(team).orElseThrow(); stopped.archive(); teams.saveAndFlush(stopped);
+        mvc.perform(get("/api/v1/loyalty/award-requests/me").with(user(actorId.toString())))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].reason").value("TEAM_INACTIVE"));
+        mvc.perform(get("/api/v1/loyalty/award-requests/"+row.getId()+"/me").with(user(actorId.toString())))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("INVALIDATED"))
+                .andExpect(jsonPath("$.data.reason").value("TEAM_INACTIVE"));
+        mvc.perform(get("/api/v1/teams/"+team+"/loyalty/award-requests").param("status","ALL")
+                        .with(user(actorId.toString())))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].reason").value("TEAM_INACTIVE"));
+        mvc.perform(get("/api/v1/teams/"+team+"/loyalty/award-requests/"+row.getId()).with(user(actorId.toString())))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.reason").value("TEAM_INACTIVE"));
+        assertThat(store.getRequests().findById(row.getId()).orElseThrow().getStatus()).isEqualTo(RequestStatus.PENDING);
+    }
+
+    @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void 先行_監査は実afterCommitで最小metadataだけ保存しrollback時には保存しない() {
         Long team = Math.abs(UUID.randomUUID().getLeastSignificantBits()%1_000_000_000L)+1_000_000_000L;
