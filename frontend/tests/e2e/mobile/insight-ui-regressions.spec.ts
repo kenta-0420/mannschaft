@@ -100,7 +100,9 @@ test('INSIGHT-CONTACT: 360pxで発行・コピー・無効化と発行フォー�
   const label = page.getByPlaceholder('SNS用など')
   await expect(label).toBeVisible()
   const cancel = page.getByRole('button', { name: 'キャンセル', exact: true })
-  for (const target of [open, page.locator('button:has(.pi-copy)'), page.locator('button:has(.pi-trash)'), label, ...await page.getByRole('combobox').all(), page.getByRole('button', { name: '発行', exact: true }), cancel]) {
+  // Selectのcomboboxは内側span。クリックを受ける外枠divを測る。
+  const selects = (await page.getByRole('combobox').all()).map(combobox => combobox.locator('xpath=..'))
+  for (const target of [open, page.locator('button:has(.pi-copy)'), page.locator('button:has(.pi-trash)'), label, ...selects, page.getByRole('button', { name: '発行', exact: true }), cancel]) {
     await expect(target).toBeVisible()
     const box = (await target.boundingBox())!
     expect.soft(box.width).toBeGreaterThanOrEqual(44)
