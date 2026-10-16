@@ -59,6 +59,7 @@ describe('BaseSidebar の取得状態', () => {
     const wrapper = await mountSidebar()
 
     expect(wrapper.find('[role="status"]').exists()).toBe(true)
+    expect(wrapper.get('[role="status"]').attributes('aria-label')).toBe('Loading...')
     expect(wrapper.find('nav').exists()).toBe(false)
   })
 

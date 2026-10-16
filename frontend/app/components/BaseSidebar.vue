@@ -150,7 +150,7 @@ function isItemActive(item: SidebarItem): boolean {
 </script>
 
 <template>
-  <div v-if="loadState === 'loading'" role="status" :aria-label="$t('common.loading')">
+  <div v-if="loadState === 'loading'" role="status" :aria-label="$t('button.loading')">
     <PageLoading class="!min-h-0 !pb-0 py-8" />
   </div>
   <DashboardErrorState
