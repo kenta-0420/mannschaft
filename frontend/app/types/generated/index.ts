@@ -37708,6 +37708,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system-admin/dashboard/teams/deleted": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 削除済みチームの復元対象一覧取得
+         * @description 削除日時・IDの降順に固定してDBページングする。size上限は100。外部sort指定は無視する。
+         */
+        get: operations["getDeletedTeams"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-admin/dashboard/organizations": {
         parameters: {
             query?: never;
@@ -78293,6 +78313,18 @@ export interface components {
             updatedAt?: string;
             /** @enum {string} */
             visibility?: "PUBLIC" | "GUESTS_AND_ABOVE" | "SUPPORTERS_AND_ABOVE" | "MEMBERS_AND_ABOVE";
+        };
+        DeletedTeamSummaryResponse: {
+            /** Format: date-time */
+            deletedAt: string;
+            /** @enum {string} */
+            lifecycleStatus: "PROVISIONED" | "ACTIVE";
+            name: string;
+            slug: string;
+        };
+        PagedResponseDeletedTeamSummaryResponse: {
+            data?: components["schemas"]["DeletedTeamSummaryResponse"][];
+            meta?: components["schemas"]["PageMeta"];
         };
         ApiResponsePageSystemAdminOrganizationSummaryResponse: {
             data?: components["schemas"]["PageSystemAdminOrganizationSummaryResponse"];
@@ -159750,6 +159782,33 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponsePageSystemAdminTeamSummaryResponse"];
+                };
+            };
+        };
+    };
+    getDeletedTeams: {
+        parameters: {
+            query?: {
+                /** @description Zero-based page index (0..N) */
+                page?: number;
+                /** @description The size of the page to be returned */
+                size?: number;
+                /** @description Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported. */
+                sort?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseDeletedTeamSummaryResponse"];
                 };
             };
         };

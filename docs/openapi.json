@@ -126830,6 +126830,64 @@
         }
       }
     },
+    "/api/v1/system-admin/dashboard/teams/deleted": {
+      "get": {
+        "tags": [
+          "システム管理 - ダッシュボード"
+        ],
+        "summary": "削除済みチームの復元対象一覧取得",
+        "description": "削除日時・IDの降順に固定してDBページングする。size上限は100。外部sort指定は無視する。",
+        "operationId": "getDeletedTeams",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseDeletedTeamSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/system-admin/dashboard/organizations": {
       "get": {
         "tags": [
@@ -232680,6 +232738,48 @@
               "SUPPORTERS_AND_ABOVE",
               "MEMBERS_AND_ABOVE"
             ]
+          }
+        }
+      },
+      "DeletedTeamSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "deletedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lifecycleStatus": {
+            "type": "string",
+            "enum": [
+              "PROVISIONED",
+              "ACTIVE"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deletedAt",
+          "lifecycleStatus",
+          "name",
+          "slug"
+        ]
+      },
+      "PagedResponseDeletedTeamSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeletedTeamSummaryResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
           }
         }
       },

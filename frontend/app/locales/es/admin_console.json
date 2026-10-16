@@ -1,4 +1,4 @@
-﻿{
+{
   "adminConsole": {
     "comingSoon": "Próximamente",
     "team": {
@@ -125,5 +125,21 @@
         "fetchFailed": "No se pudo cargar la información de módulos"
       }
     }
+  },
+  "deletedTeams": {
+    "title": "Restaurar equipos eliminados",
+    "description": "Selecciona un equipo eliminado para restaurarlo.",
+    "restore": "Restaurar",
+    "confirmTitle": "¿Restaurar este equipo?",
+    "confirm": "¿Restaurar «{name}» ({slug})? Se mantendrán la visibilidad, el estado de archivo y el de activación. No se restaurarán las afiliaciones anteriores a organizaciones.",
+    "cancel": "Cancelar",
+    "success": "Se ha restaurado «{name}».",
+    "openTeam": "Abrir equipo",
+    "provisionedHint": "Este equipo sigue pendiente de activación. Su página habitual todavía no está disponible.",
+    "processing": "Restaurando…",
+    "empty": "No hay equipos eliminados.",
+    "deletedAt": "Fecha de eliminación",
+    "active": "Activado",
+    "provisioned": "Pendiente de activación"
   }
 }

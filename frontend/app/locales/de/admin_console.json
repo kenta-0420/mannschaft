@@ -1,4 +1,4 @@
-﻿{
+{
   "adminConsole": {
     "comingSoon": "Demnächst verfügbar",
     "team": {
@@ -125,5 +125,21 @@
         "fetchFailed": "Modulinformationen konnten nicht geladen werden"
       }
     }
+  },
+  "deletedTeams": {
+    "title": "Gelöschte Teams wiederherstellen",
+    "description": "Wähle ein gelöschtes Team zur Wiederherstellung aus.",
+    "restore": "Wiederherstellen",
+    "confirmTitle": "Dieses Team wiederherstellen?",
+    "confirm": "„{name}“ ({slug}) wiederherstellen? Sichtbarkeit, Archivierungsstatus und Aktivierungsstatus bleiben erhalten. Frühere Organisationszugehörigkeiten werden nicht wiederhergestellt.",
+    "cancel": "Abbrechen",
+    "success": "„{name}“ wurde wiederhergestellt.",
+    "openTeam": "Team öffnen",
+    "provisionedHint": "Dieses Team wartet weiterhin auf die Aktivierung. Die reguläre Teamseite ist noch nicht verfügbar.",
+    "processing": "Wird wiederhergestellt…",
+    "empty": "Es gibt keine gelöschten Teams.",
+    "deletedAt": "Gelöscht am",
+    "active": "Aktiviert",
+    "provisioned": "Wartet auf Aktivierung"
   }
 }
