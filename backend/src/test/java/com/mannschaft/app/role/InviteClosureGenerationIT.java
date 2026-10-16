@@ -5,6 +5,9 @@ import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.service.InviteService;
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
@@ -15,6 +18,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -25,6 +29,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 個人招待の閉鎖世代契約（#3892）。
@@ -42,16 +47,28 @@ class InviteClosureGenerationIT extends AbstractMySqlIntegrationTest {
     @Autowired private RoleRepository roleRepository;
     @Autowired private TeamRepository teamRepository;
     @Autowired private OrganizationRepository organizationRepository;
+    @Autowired private UserRepository userRepository;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private PlatformTransactionManager transactionManager;
 
     private final List<Fixture> fixtures = new ArrayList<>();
     private final List<Long> createdRoleIds = new ArrayList<>();
+    private final List<Long> createdUserIds = new ArrayList<>();
 
     @AfterEach
     void cleanUp() {
         for (Fixture fixture : fixtures) {
             jdbc.update("DELETE FROM invite_tokens WHERE token = ?", fixture.token());
+        }
+        for (Long userId : createdUserIds) {
+            jdbc.update("DELETE FROM user_permission_groups WHERE user_id = ?", userId);
+            jdbc.update("DELETE FROM user_roles WHERE user_id = ?", userId);
+            jdbc.update("DELETE FROM memberships WHERE user_id = ?", userId);
+            jdbc.update("DELETE FROM my_scope_folder_items WHERE folder_id IN (SELECT id FROM my_scope_folders WHERE user_id = ?)", userId);
+            jdbc.update("DELETE FROM my_scope_folders WHERE user_id = ?", userId);
+            jdbc.update("DELETE FROM users WHERE id = ?", userId);
+        }
+        for (Fixture fixture : fixtures) {
             jdbc.update("DELETE FROM " + fixture.table() + " WHERE id = ?", fixture.scopeId());
         }
         for (Long roleId : createdRoleIds) {
@@ -98,6 +115,35 @@ class InviteClosureGenerationIT extends AbstractMySqlIntegrationTest {
         assertThat(inviteService.previewInvite(fixture.token()).getData().isValid()).isTrue();
     }
 
+    @ParameterizedTest
+    @CsvSource({"TEAM,true", "TEAM,false", "ORGANIZATION,true", "ORGANIZATION,false"})
+    @DisplayName("G08: 閉鎖が完了してから開始した受諾は旧世代を拒否し加入・権限・回数を変更しない")
+    void oldGenerationJoinChangesNothing(String scopeType, boolean remainsArchived) {
+        Fixture fixture = fixture(scopeType);
+        Long userId = new TransactionTemplate(transactionManager).execute(status -> userRepository.saveAndFlush(
+                UserEntity.builder().email(UUID.randomUUID() + "@example.com")
+                        .lastName("世代").firstName("試験").displayName("世代試験")
+                        .isSearchable(true).locale("ja").timezone("Asia/Tokyo")
+                        .status(UserEntity.UserStatus.ACTIVE).build()).getId());
+        createdUserIds.add(userId);
+        jdbc.update("UPDATE " + fixture.table()
+                        + " SET archived_at = UTC_TIMESTAMP(), closure_generation = closure_generation + 1 WHERE id = ?",
+                fixture.scopeId());
+        if (!remainsArchived) {
+            jdbc.update("UPDATE " + fixture.table() + " SET archived_at = NULL WHERE id = ?", fixture.scopeId());
+        }
+
+        assertThatThrownBy(() -> inviteService.joinByInvite(fixture.token(), userId))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).getErrorCode()).isEqualTo(RoleErrorCode.ROLE_002));
+
+        for (String table : List.of("memberships", "user_roles", "user_permission_groups")) {
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE user_id = ?", Long.class, userId))
+                    .as("旧招待の拒否時は%sを増やさない", table).isZero();
+        }
+        assertThat(tokenRepository.findByToken(fixture.token()).orElseThrow().getUsedCount()).isZero();
+    }
+
     private Fixture fixture(String scopeType) {
         return new TransactionTemplate(transactionManager).execute(status -> {
             String slug = "ig-" + UUID.randomUUID().toString().substring(0, 18);
@@ -111,7 +157,7 @@ class InviteClosureGenerationIT extends AbstractMySqlIntegrationTest {
                             .supporterEnabled(true).build()).getId();
             RoleEntity role = roleRepository.findByName("MEMBER").orElseGet(() -> {
                 RoleEntity created = roleRepository.saveAndFlush(RoleEntity.builder().name("MEMBER")
-                        .displayName("メンバー").priority(10).isSystem(true).build());
+                        .displayName("メンバー").priority(4).isSystem(true).build());
                 createdRoleIds.add(created.getId());
                 return created;
             });
