@@ -352,13 +352,13 @@ class LoyaltyScopeContractIT extends AbstractMySqlIntegrationTest {
 
     private TeamEntity.TeamEntityBuilder<?, ?> teamFixture(String label) {
         return TeamEntity.builder().name(label).slug("policy-team-" + UUID.randomUUID().toString().substring(0, 12))
-                .visibility(TeamEntity.Visibility.PRIVATE).supporterEnabled(false);
+                .visibility(TeamEntity.Visibility.MEMBERS_AND_ABOVE).supporterEnabled(false);
     }
 
     private Long team(String label) {
         return teams.saveAndFlush(TeamEntity.builder().name(label)
                 .slug("loyalty-" + UUID.randomUUID().toString().substring(0, 12))
-                .visibility(TeamEntity.Visibility.PRIVATE).supporterEnabled(false).build()).getId();
+                .visibility(TeamEntity.Visibility.MEMBERS_AND_ABOVE).supporterEnabled(false).build()).getId();
     }
     private UUID account(Long team, Long owner, int balance) {
         return store.getAccounts().saveAndFlush(LoyaltyAccountEntity.builder().teamId(team).userId(owner)
