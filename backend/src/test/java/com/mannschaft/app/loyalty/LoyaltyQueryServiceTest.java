@@ -41,8 +41,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
+import org.springframework.context.i18n.LocaleContext;
+import org.springframework.context.i18n.LocaleContextHolder;
 
 /** 実Reader・実投影・実署名cursorを通し、自表repoと外部契約だけを置換する。 */
 class LoyaltyQueryServiceTest {
@@ -59,9 +62,12 @@ class LoyaltyQueryServiceTest {
     private final LocalDateTime now = LocalDateTime.of(2026, 10, 16, 12, 0);
     private final LoyaltyCursorCodec cursor = new LoyaltyCursorCodec(new EncryptionService(new byte[32], new byte[32]));
     private LoyaltyQueryService query;
+    private LocaleContext previousLocale;
 
     @BeforeEach
     void prepare() {
+        previousLocale = LocaleContextHolder.getLocaleContext();
+        LocaleContextHolder.setLocale(java.util.Locale.JAPANESE);
         query = new LoyaltyQueryService(new LoyaltyQueryReader(new LoyaltyStore(programs, rules, rewards,
                 accounts, transactions, requests)), new LoyaltyQueryExternalStates(teams, users, locations, memberships),
                 Mappers.getMapper(LoyaltyMapper.class), cursor,
@@ -79,6 +85,33 @@ class LoyaltyQueryServiceTest {
         when(memberships.getTeamMembershipStates(any())).thenReturn(Map.of(new TeamUserKey(10L, 1L),
                 new AccessControlService.TeamMembershipState(true, true), new TeamUserKey(10L, 2L),
                 new AccessControlService.TeamMembershipState(true, true)));
+    }
+
+    @AfterEach void restoreLocale() {
+        if (previousLocale == null) LocaleContextHolder.resetLocaleContext();
+        else LocaleContextHolder.setLocaleContext(previousLocale);
+    }
+
+    @Test void 英語localeではシステム汎用名三種と別TEAM受付の代替名も英語になる() {
+        LocaleContext before = LocaleContextHolder.getLocaleContext();
+        try {
+            LocaleContextHolder.setLocale(java.util.Locale.ENGLISH);
+            var row = request(1);
+            when(requests.findByIdAndUserId(row.getId(), 2L)).thenReturn(Optional.of(row));
+            when(teams.getActiveStates(any())).thenReturn(Map.of());
+            when(users.getActiveDisplayStates(any())).thenReturn(Map.of());
+            when(locations.getTeamLocationStates(any())).thenReturn(Map.of(20L,
+                    new CheckinLocationService.TeamLocationState(true, 99L, "別TEAM設定名")));
+            var value = query.myRequest(2L, row.getId());
+            assertThat(value).isNotNull();
+            assertThat(value.teamName()).isEqualTo("Team no longer available");
+            assertThat(value.applicantDisplayName()).isEqualTo("Former user");
+            assertThat(value.locationName()).isEqualTo("Location no longer available");
+            assertThat(value.reason()).isEqualTo(RequestReason.TEAM_INACTIVE);
+        } finally {
+            if (before == null) LocaleContextHolder.resetLocaleContext();
+            else LocaleContextHolder.setLocaleContext(before);
+        }
     }
 
     @Test void 既存口座は退会後も匿名チーム名で読める() {
