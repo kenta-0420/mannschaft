@@ -16,6 +16,8 @@ import QRCode from 'qrcode'
 test.use({
   storageState: { cookies: [], origins: [] },
   viewport: { width: 390, height: 844 },
+  isMobile: true,
+  hasTouch: true,
   trace: 'off',
   screenshot: 'off',
 })
@@ -220,6 +222,8 @@ test('AC03/11/15: 実会員QRをカメラ映像から読取り付与・交換し
     const staff = await cameraBrowser.newPage({
       baseURL: BASE,
       viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
       permissions: ['camera'],
       locale: 'ja-JP',
     })
@@ -303,6 +307,8 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
     await noOverflow(page)
     memberContext = await browser.newContext({
       viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
       baseURL: BASE,
       locale: 'ja-JP',
     })
@@ -426,7 +432,8 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
       createdTeam = true
       const team = ((await created.json()) as { data: { numericId: number } }).data
       memberContext = await browser.newContext({
-        baseURL: BASE, viewport: { width: 390, height: 844 }, storageState: { cookies: [], origins: [] },
+        baseURL: BASE, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
+        storageState: { cookies: [], origins: [] },
       })
       member = await memberContext.newPage()
       await loginViaApi(member, USER, { apiBaseUrl: API })
@@ -489,7 +496,7 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
       const [prefix, postfix] = codePattern.split('__CODE__')
       const codeLine = (await member.getByText(new RegExp(`^${prefix!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)).textContent())!
       const code = codeLine.slice(prefix!.length, postfix ? -postfix.length : undefined).trim()
-      expect(code).toMatch(/^[A-Z0-9]{8}$/)
+      expect(code).toMatch(/^[A-Z2-7]{8}$/)
       await expect(member.getByText(t('loyalty.requests.showStaff'), { exact: true })).toBeVisible()
       await member.getByRole('link', { name: t('loyalty.requests.title'), exact: true }).last().click()
       await member.getByRole('link').filter({ hasText: t('loyalty.requests.status.pending') }).first().click()
