@@ -409,7 +409,7 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
 
 for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
   test(`AC20/31: ${locale}のQR・財布・申請承認・設定確認・実カメラ拒否`, async ({ page, browser }) => {
-    test.setTimeout(240_000)
+    test.setTimeout(360_000)
     const t = textFor(locale)
     const suffix = `${locale}-${Date.now().toString(36)}`
     const slug = `e2e-loyalty-locale-${suffix}`
@@ -485,6 +485,46 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
         await page.context().clearPermissions()
         await cdp.detach()
       }
+      const applicant = member
+      async function saveProgram(autoWarning = false) {
+        const saved = page.waitForResponse(response => response.request().method() === 'PUT'
+          && new URL(response.url()).pathname === `/api/v1/teams/${team.numericId}/loyalty/settings`)
+        await page.getByRole('button', { name: t('loyalty.save'), exact: true }).first().click()
+        if (autoWarning) {
+          const dialog = page.getByRole('alertdialog')
+          await expect(dialog.getByText(t('loyalty.mode.autoWarning'), { exact: true })).toBeVisible()
+          await dialog.getByRole('button', { name: t('loyalty.save'), exact: true }).click()
+        }
+        expect((await saved).status()).toBe(200)
+        await expect(page.getByText(t('loyalty.saved'), { exact: true })).toBeVisible()
+      }
+      async function submitReception() {
+        await applicant.goto(url)
+        await expect(applicant.getByRole('heading', { name: t('loyalty.self.confirm'), exact: true })).toBeVisible()
+        await expect(applicant.getByText(t('loyalty.mode.staffApproval'), { exact: true })).toBeVisible()
+        await applicant.getByRole('button', { name: t('loyalty.confirm'), exact: true }).click()
+        await expect(applicant.getByRole('status')).toHaveText(t('loyalty.requests.status.pending'))
+      }
+      async function openPendingRequest() {
+        await applicant.getByRole('link', { name: t('loyalty.requests.title'), exact: true }).last().click()
+        await applicant.getByRole('link').filter({ hasText: ruleName })
+          .filter({ hasText: t('loyalty.requests.status.pending') }).click()
+        return applicant.url()
+      }
+      // 対象条件も実設定UIで変更し、非所属本人の003を各言語で観測する。
+      await page.goto(`/teams/${slug}/settings/loyalty`)
+      await page.getByText(t('loyalty.audience.allAuthenticated'), { exact: true }).click()
+      await page.getByRole('option', { name: t('loyalty.audience.membersAndAbove'), exact: true }).click()
+      await saveProgram()
+      const ineligible = member.waitForResponse(response => response.request().method() === 'POST'
+        && new URL(response.url()).pathname === '/api/v1/loyalty/self-award-bootstrap/me')
+      await member.goto(url)
+      expect(((await (await ineligible).json()) as { error: { code: string } }).error.code).toBe('LOYALTY_003')
+      await expect(member.getByText(t('loyalty.error.ineligible'), { exact: true })).toBeVisible()
+      await expect(member.getByRole('button', { name: t('loyalty.confirm'), exact: true })).toHaveCount(0)
+      await page.getByText(t('loyalty.audience.membersAndAbove'), { exact: true }).click()
+      await page.getByRole('option', { name: t('loyalty.audience.allAuthenticated'), exact: true }).click()
+      await saveProgram()
       await member.goto(url)
       await expect(member.getByRole('heading', { name: t('loyalty.self.confirm'), exact: true })).toBeVisible()
       await expect(member.getByText(t('loyalty.mode.staffApproval'), { exact: true })).toBeVisible()
@@ -492,15 +532,48 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
       expect(new URL(member.url()).hash).toBe('')
       await member.getByRole('button', { name: t('loyalty.confirm'), exact: true }).click()
       await expect(member.getByRole('status')).toHaveText(t('loyalty.requests.status.pending'))
+      await openPendingRequest()
+      await member.getByRole('button', { name: t('loyalty.requests.cancel'), exact: true }).click()
+      await expect(member.getByRole('status')).toHaveText(t('loyalty.requests.status.cancelled'))
+      await expect(member.getByText(t('loyalty.requests.reason.userCancelled'), { exact: true })).toBeVisible()
+      await submitReception()
+      const rejectedDetail = await openPendingRequest()
+      await page.goto(`/teams/${slug}/loyalty`)
+      await page.getByRole('button').filter({ hasText: ruleName }).click()
+      const rejected = page.waitForResponse(response => response.request().method() === 'POST' && /\/reject$/.test(response.url()))
+      await page.getByRole('button', { name: t('loyalty.requests.reject'), exact: true }).click()
+      expect((await rejected).status()).toBe(200)
+      await member.goto(rejectedDetail)
+      await expect(member.getByRole('status')).toHaveText(t('loyalty.requests.status.rejected'))
+      await expect(member.getByText(t('loyalty.requests.reason.staffRejected'), { exact: true })).toBeVisible()
+      await submitReception()
+      const invalidatedDetail = await openPendingRequest()
+      // 同じ申請の最新previewを開いた後、mode変更でprogram版だけ更新する。加算数1は変えない。
+      await member.goto(url)
+      await expect(member.getByRole('button', { name: t('loyalty.confirm'), exact: true })).toBeVisible()
+      await page.goto(`/teams/${slug}/settings/loyalty`)
+      await page.getByText(t('loyalty.mode.staffApproval'), { exact: true }).click()
+      await page.getByRole('option', { name: t('loyalty.mode.auto'), exact: true }).click()
+      await saveProgram(true)
+      const changed = member.waitForResponse(response => response.request().method() === 'POST' && /\/self-awards$/.test(response.url()))
+      await member.getByRole('button', { name: t('loyalty.confirm'), exact: true }).click()
+      expect(((await (await changed).json()) as { error: { code: string } }).error.code).toBe('LOYALTY_007')
+      await expect(member.getByText(t('loyalty.error.changed'), { exact: true })).toBeVisible()
+      await member.goto(invalidatedDetail)
+      await expect(member.getByRole('status')).toHaveText(t('loyalty.requests.status.invalidated'))
+      await expect(member.getByText(t('loyalty.requests.reason.versionChanged'), { exact: true })).toBeVisible()
+      // TTL短縮や時計操作でなく、設定版変更による無効化をUIで確認して再申請する。
+      await page.getByText(t('loyalty.mode.auto'), { exact: true }).click()
+      await page.getByRole('option', { name: t('loyalty.mode.staffApproval'), exact: true }).click()
+      await saveProgram()
+      await submitReception()
       const codePattern = t('loyalty.requests.code', { code: '__CODE__' })
       const [prefix, postfix] = codePattern.split('__CODE__')
       const codeLine = (await member.getByText(new RegExp(`^${prefix!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)).textContent())!
       const code = codeLine.slice(prefix!.length, postfix ? -postfix.length : undefined).trim()
       expect(code).toMatch(/^[A-Z2-7]{8}$/)
       await expect(member.getByText(t('loyalty.requests.showStaff'), { exact: true })).toBeVisible()
-      await member.getByRole('link', { name: t('loyalty.requests.title'), exact: true }).last().click()
-      await member.getByRole('link').filter({ hasText: t('loyalty.requests.status.pending') }).first().click()
-      const detailUrl = member.url()
+      const detailUrl = await openPendingRequest()
       await page.goto(`/teams/${slug}/loyalty`)
       await page.getByRole('button').filter({ hasText: ruleName }).click()
       await expect(page.getByText(t('loyalty.requests.compareBeforeApprove'), { exact: true })).toBeVisible()
@@ -523,12 +596,6 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
       expect(team.numericId).toBeGreaterThan(0)
 
       await page.goto(`/teams/${slug}/settings/loyalty`)
-      await page.getByText(t('loyalty.mode.staffApproval'), { exact: true }).click()
-      await page.getByRole('option', { name: t('loyalty.mode.auto'), exact: true }).click()
-      await page.getByRole('button', { name: t('loyalty.save'), exact: true }).first().click()
-      const dialog = page.getByRole('alertdialog')
-      await expect(dialog.getByText(t('loyalty.mode.autoWarning'), { exact: true })).toBeVisible()
-      await dialog.getByRole('button', { name: t('loyalty.save'), exact: true }).click()
       await page.getByTestId('loyalty-location-select').click()
       await page.getByRole('option', { name: locationName, exact: true }).click()
       await page.getByRole('button', { name: t('loyalty.reception.stop'), exact: true }).click()
