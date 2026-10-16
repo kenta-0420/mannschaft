@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261016-1009",
+  "scope": "app",
+  "implementation": {
+    "pr": 3923,
+    "sha": "25ece9b77159e117c631ddb82e88311bc7665570"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC1",
+      "description": "390/360px、Team A／Organization Aの通常トップ→Drawer→管理コンソール→メンバー",
+      "tests": [
+        {
+          "name": "390/360px、Team A／Organization Aの通常トップ→Drawer→管理コンソール→メンバー",
+          "evidence": "docs/evidence/CMP-261016-1009/manual-final-report.json"
+        }
+      ]
+    },
+    {
+      "id": "AC2",
+      "description": "QR会員証管理→使い方",
+      "tests": [
+        {
+          "name": "QR会員証管理→使い方",
+          "evidence": "docs/evidence/CMP-261016-1009/manual-final-report.json"
+        },
+        {
+          "name": "QR会員証管理→使い方",
+          "evidence": "docs/evidence/CMP-261016-1009/manual/admin-team360-qr-guide.png"
+        }
+      ]
+    },
+    {
+      "id": "AC3",
+      "description": "取得中、失敗、再試行・回復",
+      "tests": [
+        {
+          "name": "取得中、失敗、再試行・回復",
+          "evidence": "docs/evidence/CMP-261016-1009/unit/mobile-menu-happy-dom-final-green.json"
+        }
+      ]
+    },
+    {
+      "id": "AC4",
+      "description": "スコープ切替で再取得し前スコープの管理リンクを残さない",
+      "tests": [
+        {
+          "name": "スコープ切替で再取得し前スコープの管理リンクを残さない",
+          "evidence": "docs/evidence/CMP-261016-1009/unit/ci-summary-25ece9b771.json"
+        }
+      ]
+    },
+    {
+      "id": "AC5",
+      "description": "MEMBER／非所属／未認証は管理情報を取得できない",
+      "tests": [
+        {
+          "name": "MEMBER／非所属／未認証は管理情報を取得できない",
+          "evidence": "docs/evidence/CMP-261016-1009/manual-final-report.json"
+        }
+      ]
+    },
+    {
+      "id": "AC6",
+      "description": "3住民が別ログインで自律探索しrootが実証",
+      "tests": [
+        {
+          "name": "3住民が別ログインで自律探索しrootが実証",
+          "evidence": "docs/evidence/CMP-261016-1009/final-release-review-25ece9b771.json"
+        }
+      ]
+    },
+    {
+      "id": "AC7",
+      "description": "追加発見：組織メンバー一覧の旧tabリンクを現行routeへ統一",
+      "tests": [
+        {
+          "name": "追加発見：組織メンバー一覧の旧tabリンクを現行routeへ統一",
+          "evidence": "docs/evidence/CMP-261016-1009/root-final-admin-routes/admin-final-summary.json"
+        },
+        {
+          "name": "追加発見：組織メンバー一覧の旧tabリンクを現行routeへ統一",
+          "evidence": "docs/evidence/CMP-261016-1009/root-final-routes/member-final-summary.json"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38867635983
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261016-1009/final-release-review-25ece9b771.json"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261016-1009/completion-summary.json"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261016-1009/final-release-review-25ece9b771.json"
+    }
+  },
+  "regressions": [
+    {
+      "description": "権限・モジュール取得中の空Drawerに読み込み状態がない",
+      "test": "frontend/app/components/BaseSidebar.spec.ts: 取得中は空白にせず読み込み状態を示す",
+      "redEvidence": "docs/evidence/CMP-261016-1009/unit/mobile-menu-happy-dom-red.json",
+      "greenEvidence": "docs/evidence/CMP-261016-1009/unit/mobile-menu-happy-dom-final-green.json"
+    },
+    {
+      "description": "権限取得失敗を権限なしと同じ空白にして再試行できない",
+      "test": "frontend/app/components/BaseSidebar.spec.ts: 権限取得失敗は再試行可能なエラーとして表示し回復後にリンクを表示する",
+      "redEvidence": "docs/evidence/CMP-261016-1009/unit/mobile-menu-happy-dom-red.json",
+      "greenEvidence": "docs/evidence/CMP-261016-1009/unit/mobile-menu-happy-dom-final-green.json"
+    },
+    {
+      "description": "スコープ切替でモジュール再取得と業者リンクのスコープ更新が欠ける",
+      "test": "frontend/app/components/BaseSidebar.spec.ts: チーム切替後/組織切替後はモジュールを取り直し業者リンクも新しいスコープへ向ける",
+      "redEvidence": "docs/evidence/CMP-261016-1009/unit/mobile-menu-happy-dom-red.json",
+      "greenEvidence": "docs/evidence/CMP-261016-1009/unit/mobile-menu-happy-dom-final-green.json"
+    },
+    {
+      "description": "権限取得失敗後もモジュール取得が保留中だとエラー表示されない",
+      "test": "frontend/app/components/BaseSidebar.spec.ts: 権限取得失敗は保留中のモジュール取得を待たずにエラー表示する",
+      "redEvidence": "docs/evidence/CMP-261016-1009/unit/mobile-menu-happy-dom-p2-red.json",
+      "greenEvidence": "docs/evidence/CMP-261016-1009/unit/mobile-menu-happy-dom-final-green.json"
+    },
+    {
+      "description": "読み込み状態aria-labelが存在しないcommon.loadingキーを表示する",
+      "test": "frontend/app/components/BaseSidebar.spec.ts: 読み込みaria-label equals Loading...",
+      "redEvidence": "docs/evidence/CMP-261016-1009/unit/mobile-menu-label-red.json",
+      "greenEvidence": "docs/evidence/CMP-261016-1009/unit/mobile-menu-label-green.json"
+    },
+    {
+      "description": "組織のメンバー一覧・招待・権限グループ・機能設定が旧tabクエリを生成し現行子ルートへ遷移しない",
+      "test": "frontend/app/components/BaseSidebar.spec.ts: 4子ルートリンクとMEMBER/DEPUTY_ADMIN/ADMIN表示条件の7ケース",
+      "redEvidence": "docs/evidence/CMP-261016-1009/unit/org-route-red.json",
+      "greenEvidence": "docs/evidence/CMP-261016-1009/unit/org-route-green.json"
+    }
+  ],
+  "causalLimit": "最初のADMIN200後空Drawerの初期例外stackは未保存。実証済み取得状態・スコープ更新・旧tab導線のみ根拠。",
+  "cleanup": {
+    "worktrees": "他作業資産保全、check-only exit2、削除0",
+    "status": "データcleanupのみ未完了・承認待ち",
+    "evidence": "docs/evidence/CMP-261016-1009/data-cleanup-status.json",
+    "servers": "専用FE/BE/REPL停止済み"
+  },
+  "inventoryValidation": "既存生成447戦役対現正本498戦役で未合格。全面同期は未実施"
+}
