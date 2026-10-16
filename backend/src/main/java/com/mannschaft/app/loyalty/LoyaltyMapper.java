@@ -12,6 +12,9 @@ import com.mannschaft.app.loyalty.dto.AwardRequestResponse;
 import com.mannschaft.app.loyalty.dto.RewardProgress;
 import com.mannschaft.app.loyalty.dto.ProgramSettings;
 import com.mannschaft.app.loyalty.dto.OperationCatalog;
+import com.mannschaft.app.loyalty.dto.ScanPreview;
+import com.mannschaft.app.loyalty.dto.RedemptionPreview;
+import com.mannschaft.app.loyalty.dto.SelfAwardPreview;
 import com.mannschaft.app.loyalty.entity.LoyaltyAccountEntity;
 import com.mannschaft.app.loyalty.entity.LoyaltyAwardRequestEntity;
 import com.mannschaft.app.loyalty.entity.LoyaltyProgramEntity;
@@ -59,4 +62,17 @@ public interface LoyaltyMapper {
     @Mapping(source = "isEnabled", target = "isEnabled")
     OperationCatalog operationCatalog(LoyaltyProgramEntity program, Long teamId, String teamName,
             boolean isEnabled, RuleResponse rule, List<RewardResponse> rewards);
+
+    @Mapping(source = "program.version", target = "programVersion")
+    ScanPreview scanPreview(String displayName, int balance, LoyaltyProgramEntity program,
+            RuleResponse rule, boolean isEligibleForAward);
+
+    @Mapping(source = "program.version", target = "programVersion")
+    RedemptionPreview redemptionPreview(String displayName, int balance, LoyaltyProgramEntity program,
+            RewardResponse reward, boolean canRedeem);
+
+    @Mapping(source = "program.version", target = "programVersion")
+    @Mapping(source = "teamId", target = "teamId")
+    SelfAwardPreview selfAwardPreview(Long teamId, String teamName, LoyaltyProgramEntity program,
+            RuleResponse rule, int balance, boolean isEligibleForAward, boolean isAlreadyAwardedToday);
 }
