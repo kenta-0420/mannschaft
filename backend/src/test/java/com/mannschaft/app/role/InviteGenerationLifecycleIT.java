@@ -11,6 +11,7 @@ import com.mannschaft.app.role.repository.PermissionGroupRepository;
 import com.mannschaft.app.role.repository.UserPermissionGroupRepository;
 import com.mannschaft.app.role.batch.InviteTokenClosureCleanupBatch;
 import com.mannschaft.app.role.service.InviteService;
+import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.team.service.TeamService;
@@ -26,14 +27,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.jdbc.core.ConnectionCallback;
+import org.springframework.dao.DataAccessException;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import java.sql.SQLException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** 実archive入口と、イベント未配送を実SQLで作る回復経路の試練。 */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
@@ -94,18 +99,16 @@ class InviteGenerationLifecycleIT extends InviteGenerationItSupport {
         assertThat(jdbc.queryForObject("SELECT DATABASE()", String.class)).isEqualTo(MYSQL.getDatabaseName());
         Scope scope = scope(type);
         var old = token(scope, 0);
-        String triggerName = "it_invite_listener_failure_" + old.getId();
-        // 許可済み最小DDL例外。実AFTER_COMMIT経路のUPDATEだけを所有PKで故障させる。
-        jdbc.execute("CREATE TRIGGER " + triggerName + " BEFORE UPDATE ON invite_tokens FOR EACH ROW BEGIN "
-                + "IF OLD.id = " + old.getId() + " AND NEW.revoked_at IS NOT NULL THEN "
-                + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'owned invite listener failure'; END IF; END");
+        String constraintName = "it_invite_listener_failure_" + old.getId();
+        addOwnedRevokeFailure(constraintName, old);
         try {
+            assertOwnedRevokeFailure(constraintName, old);
             assertThatCode(() -> archive(scope, false)).doesNotThrowAnyException();
             assertThat(jdbc.queryForObject("SELECT closure_generation FROM " + scope.table() + " WHERE id = ?", Long.class, scope.id())).isEqualTo(1);
             assertThat(tokens.findById(old.getId()).orElseThrow().getRevokedAt()).isNull();
             assertThat(output.getAll()).contains("scopeId=" + scope.id());
         } finally {
-            jdbc.execute("DROP TRIGGER IF EXISTS " + triggerName);
+            jdbc.execute("ALTER TABLE invite_tokens DROP CHECK " + constraintName);
         }
         if ("TEAM".equals(type)) {
             teamService.unarchiveTeam(scope.id());
@@ -124,7 +127,7 @@ class InviteGenerationLifecycleIT extends InviteGenerationItSupport {
     @ValueSource(strings = {"TEAM", "ORGANIZATION"})
     @DisplayName("G12: 1scopeの実DB失効失敗は他scopeを止めず、次batchで取り直す")
     void recoveryContinuesAfterDatabaseFailureAndRepairsOnNextRun(String type, CapturedOutput output) {
-        assertThat(MYSQL.isRunning()).as("一時triggerは起動中のTestcontainersだけに作成する").isTrue();
+        assertThat(MYSQL.isRunning()).as("一時CHECKは起動中のTestcontainersだけに作成する").isTrue();
         assertThat(jdbc.execute((ConnectionCallback<String>) connection -> connection.getMetaData().getURL()))
                 .isEqualTo(MYSQL.getJdbcUrl());
         assertThat(jdbc.queryForObject("SELECT DATABASE()", String.class)).isEqualTo(MYSQL.getDatabaseName());
@@ -137,26 +140,47 @@ class InviteGenerationLifecycleIT extends InviteGenerationItSupport {
             jdbc.update("UPDATE " + scope.table() + " SET closure_generation = 1 WHERE id = ?", scope.id());
         }
         var sameGeneration = token(failing, 1);
-        String triggerName = "it_invite_revoke_failure_" + blockedToken.getId();
-        // ユーザー裁可の試験例外: Beanの動作を置換せず、所有tokenだけ実DBエラーを発生させる。
-        // Testcontainers専用schema内で作成しfinallyで必ず破棄する。通常fixtureはEntity/Repositoryのまま。
-        jdbc.execute("CREATE TRIGGER " + triggerName + " BEFORE UPDATE ON invite_tokens FOR EACH ROW BEGIN "
-                + "IF OLD.id = " + blockedToken.getId() + " AND NEW.revoked_at IS NOT NULL THEN "
-                + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'owned invite cleanup failure'; END IF; END");
+        String constraintName = "it_invite_revoke_failure_" + blockedToken.getId();
+        addOwnedRevokeFailure(constraintName, blockedToken);
         try {
+            assertOwnedRevokeFailure(constraintName, blockedToken);
             recovery.cleanUp();
             assertThat(tokens.findById(blockedToken.getId()).orElseThrow().getRevokedAt()).isNull();
             assertThat(tokens.findById(siblingOld.getId()).orElseThrow().getRevokedAt()).as("失敗scopeの失効TXを全体rollbackする").isNull();
             assertThat(tokens.findById(otherToken.getId()).orElseThrow().getRevokedAt()).isNotNull();
             assertThat(output.getAll()).contains("scopeId=" + failing.id());
         } finally {
-            jdbc.execute("DROP TRIGGER IF EXISTS " + triggerName);
+            jdbc.execute("ALTER TABLE invite_tokens DROP CHECK " + constraintName);
         }
 
         recovery.cleanUp();
         assertThat(tokens.findById(blockedToken.getId()).orElseThrow().getRevokedAt()).isNotNull();
         assertThat(tokens.findById(siblingOld.getId()).orElseThrow().getRevokedAt()).isNotNull();
         assertThat(tokens.findById(sameGeneration.getId()).orElseThrow().getRevokedAt()).isNull();
+    }
+
+    /** 既存ConfirmableNotificationReminderBatchTransactionIT同型。TRIGGER/SUPER権限不要の最小DDL例外。 */
+    private void addOwnedRevokeFailure(String constraintName, InviteTokenEntity token) {
+        // 呼出元の専用container/URL/schema確認後、所有する不変UUIDだけを対象にする。
+        assertThat(UUID.fromString(token.getToken()).toString()).isEqualTo(token.getToken());
+        jdbc.execute("ALTER TABLE invite_tokens ADD CONSTRAINT " + constraintName
+                + " CHECK (revoked_at IS NULL OR token <> '" + token.getToken() + "')");
+    }
+
+    private void assertOwnedRevokeFailure(String constraintName, InviteTokenEntity token) {
+        assertThatThrownBy(() -> new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+                jdbc.update("UPDATE invite_tokens SET revoked_at = UTC_TIMESTAMP() WHERE id = ?", token.getId())))
+                .isInstanceOf(DataAccessException.class)
+                .satisfies(failure -> {
+                    Throwable cause = failure;
+                    while (cause.getCause() != null) {
+                        cause = cause.getCause();
+                    }
+                    assertThat(cause).isInstanceOf(SQLException.class);
+                    assertThat(((SQLException) cause).getErrorCode()).isEqualTo(3819);
+                    assertThat(cause.getMessage()).contains(constraintName);
+                });
+        assertThat(tokens.findById(token.getId()).orElseThrow().getRevokedAt()).isNull();
     }
 
     @ParameterizedTest
