@@ -5,6 +5,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import java.util.List;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import com.mannschaft.app.membership.dto.PlatformCardResponse;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class PlatformCardService {
+    private static final String PLATFORM_CARD_UNIQUE = "uq_member_cards_active_platform_user_id";
     private final UserService userService;
     private final PlatformCardWriter platformCardWriter;
 
@@ -31,9 +33,22 @@ public class PlatformCardService {
         try {
             return ApiResponse.of(platformCardWriter.ensure(actorUserId, displayName));
         } catch (DataIntegrityViolationException failure) {
+            if (!isPlatformCardUniqueConflict(failure)) {
+                throw failure;
+            }
             // writerのrollback完了後、別transactionの新しいsnapshotで競合勝者を読む。
             return platformCardWriter.findExisting(actorUserId).map(ApiResponse::of)
                     .orElseThrow(() -> failure);
         }
+    }
+    private boolean isPlatformCardUniqueConflict(Throwable failure) {
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException violation) {
+                String name = violation.getConstraintName();
+                return PLATFORM_CARD_UNIQUE.equals(name)
+                        || (name != null && name.endsWith("." + PLATFORM_CARD_UNIQUE));
+            }
+        }
+        return false;
     }
 }
