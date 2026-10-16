@@ -5,6 +5,7 @@ import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.organization.event.OrganizationCreatedEvent;
 import com.mannschaft.app.organization.event.OrganizationDeletedEvent;
 import com.mannschaft.app.organization.event.OrganizationInviteTokenCreatedEvent;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 /**
@@ -66,6 +68,21 @@ public class TeamOrgAuditEventListener {
                 event.getTeamId(),
                 null,
                 null, null, null, null
+        );
+    }
+
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "停止するとチーム復元の成功監査が欠落する。復元イベントは再生されないため証跡を恒久的に失う")
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleTeamRestored(TeamRestoredEvent event) {
+        auditLogService.record(
+                AuditEventType.TEAM_RESTORED.name(),
+                event.getUserId(), null, event.getTeamId(), null,
+                null, null, null,
+                toJson(Map.of("restored_by", event.getUserId(),
+                        "originally_deleted_at", LocalDateTime.ofInstant(event.getOriginallyDeletedAt(),
+                                UserZoneLocalDateTimeParser.SERVER_ZONE).toString()))
         );
     }
 

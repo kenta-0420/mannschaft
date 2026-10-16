@@ -23,8 +23,14 @@ export const useErrorHandler = () => {
   const resolveMessage = (code: string, fallback?: string): string => {
     const key = `error.${code}`
     // CMP-260920-1040 AC-36: 確認通知は errorCode ごとの6言語文言を表示する。
-    // BE の message は日本語固定なので、このドメインだけ登録済み i18n を優先する。
-    if (code.startsWith('CONFIRMABLE_NOTIFICATION_') && te(key)) return t(key)
+    // 確認通知とチームの固定不在/復元409だけ登録済みi18nを優先し、他codeの具体的理由は維持する。
+    if (
+      (code.startsWith('CONFIRMABLE_NOTIFICATION_') ||
+        code === 'TEAM_001' ||
+        code === 'TEAM_006') &&
+      te(key)
+    )
+      return t(key)
     if (fallback) return fallback
     if (te(key)) return t(key)
     return t('error.unknown')
