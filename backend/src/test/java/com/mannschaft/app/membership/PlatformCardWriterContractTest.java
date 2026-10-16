@@ -4,6 +4,8 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.entity.MemberCardEntity;
 import com.mannschaft.app.membership.repository.MemberCardRepository;
 import com.mannschaft.app.membership.service.PlatformCardWriter;
+import com.mannschaft.app.membership.mapper.PlatformCardMapper;
+import org.mapstruct.factory.Mappers;
 import com.mannschaft.app.membership.service.QrTokenService;
 import java.time.Clock;
 import java.util.Optional;
@@ -23,7 +25,7 @@ class PlatformCardWriterContractTest {
     @BeforeEach
     void 準備() {
         cards = mock(MemberCardRepository.class);
-        writer = new PlatformCardWriter(cards, new QrTokenService(Clock.systemUTC()));
+        writer = new PlatformCardWriter(cards, new QrTokenService(Clock.systemUTC()), Mappers.getMapper(PlatformCardMapper.class));
     }
 
     @Test
