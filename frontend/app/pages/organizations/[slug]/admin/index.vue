@@ -130,7 +130,7 @@ const allCards = computed<AdminConsoleCard[]>(() => [
     titleKey: 'adminConsole.cards.settings.title',
     descKey: 'adminConsole.cards.settings.desc',
     icon: 'pi pi-cog',
-    to: `${base.value}/settings/faq-settings`,
+    to: `${base.value}/admin/settings`,
   },
   {
     // F01.2.1 8-A: 加盟の設定（設定画面は org-role-guard で ADMIN 専用。DEPUTY には導線を出さない）

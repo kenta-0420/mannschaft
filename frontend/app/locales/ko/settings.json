@@ -511,7 +511,7 @@
         "description": "검색・DM 수신・온라인 상태 공개 범위"
       },
       "contactInviteTokens": {
-        "description": "연락처 추가용 초대 URL 발급・관리"
+        "description": "연락처 추가용 초대 URL과 QR 코드를 만들고 확인하고 관리합니다"
       },
       "contactRequestBlocks": {
         "label": "신청 사전 거부 목록",

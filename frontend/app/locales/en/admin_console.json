@@ -124,6 +124,9 @@
         "summary": "{enabled} enabled / {total} total",
         "fetchFailed": "Could not load module information"
       }
+    },
+    "settingsHub": {
+      "readOnly": "View only. Only an administrator can edit these labels."
     }
   },
   "deletedTeams": {

@@ -130,7 +130,7 @@ const cards = computed<AdminConsoleCard[]>(() => [
     titleKey: 'adminConsole.cards.settings.title',
     descKey: 'adminConsole.cards.settings.desc',
     icon: 'pi pi-cog',
-    to: `${base.value}/settings/shift`,
+    to: `${base.value}/admin/settings`,
   },
 ])
 

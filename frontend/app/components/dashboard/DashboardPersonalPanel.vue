@@ -66,9 +66,17 @@ onMounted(() => {
         <p class="mt-1 text-sm text-surface-500">{{ timedMessage }}</p>
       </div>
     </div>
-    <div class="mb-2 flex justify-end">
+    <div class="mb-2 flex flex-wrap items-center justify-end gap-2">
+      <NuxtLink
+        to="/settings/contact-invite-tokens"
+        class="mr-auto inline-flex min-h-11 min-w-11 max-w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium leading-normal text-primary hover:bg-primary-50 dark:hover:bg-primary-950"
+      >
+        <i class="pi pi-qrcode shrink-0" aria-hidden="true" />
+        <span class="min-w-0 break-words">{{ $t('contact_invite.my_qr') }}</span>
+      </NuxtLink>
       <Button
         :label="$t('dashboard.widget_settings.config_button')"
+        class="!min-h-11 !min-w-11 shrink-0"
         icon="pi pi-cog"
         text
         size="small"

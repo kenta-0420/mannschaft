@@ -124,6 +124,9 @@
         "summary": "{enabled} aktiv / {total} gesamt",
         "fetchFailed": "Modulinformationen konnten nicht geladen werden"
       }
+    },
+    "settingsHub": {
+      "readOnly": "Nur Ansicht. Nur Administratoren können diese Bezeichnungen bearbeiten."
     }
   },
   "deletedTeams": {

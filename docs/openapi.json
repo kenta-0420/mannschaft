@@ -111207,6 +111207,66 @@
       }
     },
     "/api/v1/admin/teams/{teamId}/public-settings": {
+      "get": {
+        "tags": [
+          "公開設定管理 (F19.1 Phase 7)"
+        ],
+        "summary": "チーム公開設定取得",
+        "description": "GETのパス識別子はslug。管理認可後に数値IDと現在の2設定を返す。",
+        "operationId": "getTeamPublicSettings",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "管理認可済みの設定",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePublicSettingsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未認証",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePublicSettingsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "スコープ管理権限なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePublicSettingsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象slugなし・削除済み・ACTIVE対象外",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePublicSettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
       "patch": {
         "tags": [
           "公開設定管理 (F19.1 Phase 7)"
@@ -111953,6 +112013,66 @@
       }
     },
     "/api/v1/admin/organizations/{organizationId}/public-settings": {
+      "get": {
+        "tags": [
+          "公開設定管理 (F19.1 Phase 7)"
+        ],
+        "summary": "組織公開設定取得",
+        "description": "GETのパス識別子はslug。管理認可後に数値IDと現在の2設定を返す。",
+        "operationId": "getOrganizationPublicSettings",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "管理認可済みの設定",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePublicSettingsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未認証",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePublicSettingsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "スコープ管理権限なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePublicSettingsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象slugなし・削除済み・ACTIVE対象外",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePublicSettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
       "patch": {
         "tags": [
           "公開設定管理 (F19.1 Phase 7)"
@@ -248606,6 +248726,29 @@
               "DISPLAY_NAME",
               "REAL_NAME"
             ]
+          }
+        }
+      },
+      "ApiResponsePublicSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PublicSettingsResponse"
+          }
+        }
+      },
+      "PublicSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "numericId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "publicEventsEnabled": {
+            "type": "boolean"
+          },
+          "timelinePostsPublic": {
+            "type": "boolean"
           }
         }
       },

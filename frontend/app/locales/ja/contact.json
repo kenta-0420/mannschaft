@@ -1,6 +1,6 @@
 {
   "contact_invite": {
-    "page_title": "招待URL管理",
+    "page_title": "招待URL・連絡先QR管理",
     "page_description": "連絡先追加用の招待URLを発行・管理します。URLを共有した相手があなたを連絡先に追加できます。",
     "create_button": "新しいURLを発行",
     "form": {
@@ -44,7 +44,8 @@
       "revoke_error": "無効化に失敗しました",
       "copy_success": "URLをコピーしました",
       "copy_error": "コピーに失敗しました"
-    }
+    },
+    "my_qr": "自分の連絡先QR"
   },
   "contact_invite_guide": {
     "title": "招待URL管理の使い方",

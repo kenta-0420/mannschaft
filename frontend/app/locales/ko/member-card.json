@@ -79,5 +79,26 @@
         "step2": "권한이 부족하면 해당 팀 또는 조직의 관리자에게 문의합니다."
       }
     }
+  },
+  "checkinLocationManager": {
+    "title": "셀프 체크인 장소",
+    "add": "장소 추가",
+    "empty": "등록된 장소가 없습니다",
+    "name": "장소 이름",
+    "status": "상태",
+    "active": "활성",
+    "inactive": "비활성",
+    "autoComplete": "예약 자동 완료",
+    "actions": "작업",
+    "edit": "장소 수정",
+    "delete": "장소 삭제",
+    "placeholder": "예: 본점 안내 데스크",
+    "autoCompleteHint": "체크인 시 예약을 자동으로 완료",
+    "cancel": "취소",
+    "update": "수정",
+    "create": "만들기",
+    "created": "장소를 만들었습니다",
+    "updated": "장소를 수정했습니다",
+    "deleted": "장소를 삭제했습니다"
   }
 }

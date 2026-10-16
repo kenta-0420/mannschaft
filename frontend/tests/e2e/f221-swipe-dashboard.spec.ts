@@ -1,3 +1,4 @@
+import { waitForHydratedShell } from './helpers/waitForHydratedShell'
 import { test, expect, type Page, type Route } from '@playwright/test'
 
 /**
@@ -138,11 +139,16 @@ async function mockDashboardApis(page: Page, opts: MockOptions = {}): Promise<vo
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      // data を null・配列・オブジェクトのいずれでも受けられるよう空オブジェクトで返す。
-      // 多くの widget は data 不在をローディング解除＆空状態として扱う。
-      body: JSON.stringify({ data: {}, meta: {} }),
+      // 未指定の一覧APIは空配列で返す。オブジェクト契約のAPIは専用fixtureで上書きする。
+      body: JSON.stringify({ data: [], meta: {} }),
     })
   })
+
+  // ストアと設定取得は配列契約。空objectを渡すとrenderが停止するため専用fixtureを返す。
+  for (const endpoint of ['me/teams', 'me/organizations', 'dashboard/widgets?**']) {
+    await page.route(`**/api/v1/${endpoint}`, route => route.fulfill({ json: { data: [] } }))
+  }
+  await page.route('**/api/v1/admin/member-permissions?**', route => route.fulfill({ json: { data: { permissions: [] } } }))
 
   // 容量サマリーは配列レスポンスを前提とするため、catch-allより後に専用mockを登録する。
   await page.route('**/api/v1/me/storage/usage', async (route: Route) => {
@@ -648,4 +654,185 @@ test('F22.1-10: unselected scope chips are selected without navigation by keyboa
   await secondaryOrgChip.press('Space')
   await expect(secondaryOrgChip).toHaveAttribute('aria-pressed', 'true')
   await expect(page).toHaveURL(/\/dashboard(?:\/|$)/)
+})
+
+// CMP-261016-0955: ブラウザの実寸・行位置でモバイル表示の回帰を検証する。
+for (const locale of ['ja', 'de']) {
+  test(`INSIGHT-I5-HOME: ${locale}のホームから自分の連絡先QRを開ける`, async ({ page, baseURL }) => {
+    await page.context().addCookies([{ name: 'i18n_locale', value: locale, url: baseURL! }])
+    await page.setViewportSize({ width: 360, height: 900 })
+    await loginAsMember(page)
+    await page.addInitScript(() => localStorage.setItem('tokenExpiresAt', String(Date.now() + 3600000)))
+    await mockDashboardApis(page, { withSlug: true })
+    const contactMutations: string[] = []
+    const homeContactRequests: string[] = []
+    page.on('request', request => {
+      if (request.url().includes('/api/v1/contact-invite-tokens')) {
+        if (request.method() !== 'GET') contactMutations.push(request.method())
+        if (new URL(page.url()).pathname === '/dashboard') homeContactRequests.push(request.url())
+      }
+    })
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
+    await waitForHydratedShell(page)
+    await waitForCarousel(page)
+    const panel = page.locator('#scope-panel-PERSONAL')
+    const qr = panel.getByRole('link', { name: locale === 'de' ? 'Mein Kontakt-QR-Code' : '自分の連絡先QR', exact: true })
+    await expect(qr).toHaveAttribute('href', '/settings/contact-invite-tokens')
+    if (locale === 'de') await qr.evaluate(element => { element.style.fontSize = `${parseFloat(getComputedStyle(element).fontSize) * 2}px` })
+    for (const width of [360, 390]) {
+      await page.setViewportSize({ width, height: 900 })
+      const box = (await qr.boundingBox())!
+      expect(box.width).toBeGreaterThanOrEqual(44)
+      expect(box.height).toBeGreaterThanOrEqual(44)
+      expect(box.x).toBeGreaterThanOrEqual(0)
+      expect(box.x + box.width).toBeLessThanOrEqual(width)
+      expect(await qr.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+      const textRects = await qr.locator('span').evaluate(element => {
+        const range = document.createRange()
+        range.selectNodeContents(element)
+        return [...range.getClientRects()].map(rect => ({ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom }))
+      })
+      expect(textRects.length).toBeGreaterThan(0)
+      for (const rect of textRects) {
+        expect(rect.left).toBeGreaterThanOrEqual(box.x - 1)
+        expect(rect.right).toBeLessThanOrEqual(box.x + box.width + 1)
+        expect(rect.top).toBeGreaterThanOrEqual(box.y - 1)
+        expect(rect.bottom).toBeLessThanOrEqual(box.y + box.height + 1)
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+    }
+    expect(homeContactRequests).toEqual([])
+    await qr.click()
+    await expect(page).toHaveURL(/\/settings\/contact-invite-tokens$/)
+    await expect(page.locator('h1')).toContainText(locale === 'de' ? 'Kontakt' : '連絡先QR')
+    expect(contactMutations).toEqual([])
+  })
+}
+
+for (const width of [360, 390, 1024]) {
+  test(`INSIGHT-I6-DOTS: ${width}pxで下部ドットを44pxの領域で操作できる`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.addInitScript(() => localStorage.setItem('tokenExpiresAt', String(Date.now() + 3600000)))
+    await loginAsMember(page)
+    await mockDashboardApis(page, { withSlug: true })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
+    await waitForHydratedShell(page)
+    await waitForCarousel(page)
+    const carousel = page.getByTestId('scope-carousel')
+    const panels = [
+      { name: '個人', panel: 'PERSONAL' },
+      { name: 'チーム', panel: 'TEAM' },
+      { name: '組織', panel: 'ORGANIZATION' },
+    ]
+    await page.getByTestId('scope-next').click()
+    const metrics = []
+    for (const { name, panel } of panels) {
+      const dot = carousel.getByRole('button', { name, exact: true })
+      await expect(dot).toHaveCount(1)
+      await dot.scrollIntoViewIfNeeded()
+      const box = (await dot.boundingBox())!
+      metrics.push({ name, box })
+      expect.soft(box.width).toBeGreaterThanOrEqual(44)
+      expect.soft(box.height).toBeGreaterThanOrEqual(44)
+      await dot.click()
+      await expect(dot).toHaveAttribute('aria-current', 'true')
+      await expect(carousel.locator('button[aria-current="true"]')).toHaveCount(1)
+      await expect(page.locator(`#scope-panel-${panel}`)).toHaveAttribute('aria-hidden', 'false')
+      await expect(page.getByTestId(`scope-segment-${panel}`)).toHaveAttribute('aria-selected', 'true')
+    }
+    for (let index = 1; index < metrics.length; index += 1) {
+      const previous = metrics[index - 1]!.box
+      expect(metrics[index]!.box.x).toBeGreaterThanOrEqual(previous.x + previous.width)
+    }
+    await testInfo.attach(`dot-hit-areas-${width}`, { body: JSON.stringify({ width, metrics }), contentType: 'application/json' })
+    await testInfo.attach(`dot-controls-${width}`, { body: await page.screenshot(), contentType: 'image/png' })
+    const visuals = []
+    for (const { name } of panels) {
+      const visual = carousel.getByRole('button', { name, exact: true }).locator('span[aria-hidden="true"]')
+      await expect(visual).toHaveCount(1)
+      const visualBox = (await visual.boundingBox())!
+      visuals.push({ name, box: visualBox })
+      expect(visualBox.width).toBe(10)
+      expect(visualBox.height).toBe(10)
+      expect(await visual.evaluate(element => getComputedStyle(element).borderRadius)).toBe('9999px')
+    }
+    await testInfo.attach(`dot-visuals-${width}`, { body: JSON.stringify({ width, visuals }), contentType: 'application/json' })
+  })
+}
+
+for (const width of [360, 390, 312, 1024, 1280]) {
+  test(`INSIGHT-I6: ${width}pxでスコープ切替と設定の操作領域を確保する`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.addInitScript(() => localStorage.setItem('tokenExpiresAt', String(Date.now() + 3600000)))
+    await loginAsMember(page)
+    await mockDashboardApis(page, { withSlug: true })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
+    await waitForHydratedShell(page)
+    await waitForCarousel(page)
+    const tablist = page.getByTestId('scope-segment-tablist')
+    const previous = page.getByTestId('scope-prev')
+    const next = page.getByTestId('scope-next')
+    const tabs = tablist.getByRole('tab')
+    const config = page.getByRole('button', { name: 'ウィジェット設定', exact: true })
+    for (const target of [previous, next, config, ...await tabs.all()]) {
+      await expect(target).toBeVisible()
+      const box = await target.boundingBox()
+      expect(box).not.toBeNull()
+      expect.soft(box!.width).toBeGreaterThanOrEqual(44)
+      expect.soft(box!.height).toBeGreaterThanOrEqual(44)
+    }
+    const tabBox = (await tablist.boundingBox())!
+    const prevBox = (await previous.boundingBox())!
+    const nextBox = (await next.boundingBox())!
+    if (width < 768) {
+      expect.soft(prevBox.y).toBeGreaterThanOrEqual(tabBox.y + tabBox.height)
+      expect.soft(nextBox.y).toBeGreaterThanOrEqual(tabBox.y + tabBox.height)
+    } else {
+      expect(prevBox.x + prevBox.width).toBeLessThanOrEqual(tabBox.x)
+      expect(nextBox.x).toBeGreaterThanOrEqual(tabBox.x + tabBox.width)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0)
+    await next.click()
+    await expect(page.getByTestId('scope-segment-TEAM')).toHaveAttribute('aria-selected', 'true')
+    await previous.click()
+    await expect(page.getByTestId('scope-segment-PERSONAL')).toHaveAttribute('aria-selected', 'true')
+    await config.click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+  })
+}
+
+test('INSIGHT-I6-DE: 360pxのドイツ語を200%文字で読んで切り替えられる', async ({ page, baseURL }) => {
+  await page.setViewportSize({ width: 360, height: 1000 })
+  await page.context().addCookies([{ name: 'i18n_locale', value: 'de', url: baseURL ?? 'http://localhost:8081' }])
+  await page.addInitScript(() => localStorage.setItem('tokenExpiresAt', String(Date.now() + 3600000)))
+  await loginAsMember(page)
+  await mockDashboardApis(page, { withSlug: true })
+  await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
+    await waitForHydratedShell(page)
+  await waitForCarousel(page)
+  await page.locator("[data-testid=\"scope-segment-tablist\"] [role=\"tab\"]").evaluateAll(elements => {
+    const sizes = elements.map(element => Number.parseFloat(getComputedStyle(element).fontSize))
+    elements.forEach((element, index) => (element as HTMLElement).style.setProperty('font-size', String(sizes[index]! * 2) + 'px', 'important'))
+  })
+  const tablist = page.getByTestId('scope-segment-tablist')
+  await expect(tablist.getByRole('tab', { name: 'Organisation', exact: true })).toBeVisible()
+  for (const tab of await tablist.getByRole('tab').all()) {
+    const text = await tab.evaluate(element => {
+      const node = [...element.childNodes].find(child => child.nodeType === Node.TEXT_NODE && child.textContent?.trim())
+      if (!node) return null
+      const range = document.createRange()
+      range.selectNodeContents(node)
+      return [...range.getClientRects()].map(rect => ({ top: rect.top, right: rect.right, left: rect.left }))
+    })
+    expect(text).not.toBeNull()
+    expect(text).toHaveLength(1)
+    const box = (await tab.boundingBox())!
+    expect(text![0]!.left).toBeGreaterThanOrEqual(box.x)
+    expect(text![0]!.right).toBeLessThanOrEqual(box.x + box.width)
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0)
+  await tablist.getByRole('tab', { name: 'Organisation', exact: true }).click()
+  await expect(page.getByTestId('scope-segment-ORGANIZATION')).toHaveAttribute('aria-selected', 'true')
 })
