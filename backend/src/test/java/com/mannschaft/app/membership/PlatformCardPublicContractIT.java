@@ -15,7 +15,6 @@ import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.service.CheckinLocationService;
 import com.mannschaft.app.membership.service.MemberCardService;
 import com.mannschaft.app.membership.service.QrTokenService;
-import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.service.TeamService;
 import java.util.List;
@@ -41,10 +40,32 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * fixtureをcommitして独立writer TXから観測させ、所有行だけを後処理する。
  */
 @AutoConfigureMockMvc
-@org.springframework.test.context.TestPropertySource(properties = {
+@org.springframework.boot.test.context.SpringBootTest(properties = {
         "spring.flyway.enabled=true", "spring.jpa.hibernate.ddl-auto=none"})
-@EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-class PlatformCardPublicContractIT extends AbstractMySqlIntegrationTest {
+@org.springframework.test.context.ActiveProfiles("test")
+@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
+@EnabledIf("isDockerAvailable")
+class PlatformCardPublicContractIT {
+    @SuppressWarnings("resource")
+    private static final org.testcontainers.containers.MySQLContainer<?> MYSQL =
+            new org.testcontainers.containers.MySQLContainer<>("mysql:8.0")
+                    .withDatabaseName("platform_card_public_flyway").withUsername("test").withPassword("test")
+                    .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"))
+                    .withCommand("--log_bin_trust_function_creators=1");
+    static { if (isDockerAvailable()) MYSQL.start(); }
+
+    static boolean isDockerAvailable() {
+        return org.testcontainers.DockerClientFactory.instance().isDockerAvailable();
+    }
+    @org.springframework.test.context.DynamicPropertySource
+    static void database(org.springframework.test.context.DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", MYSQL::getJdbcUrl);
+        registry.add("spring.datasource.username", MYSQL::getUsername);
+        registry.add("spring.datasource.password", MYSQL::getPassword);
+    }
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+
     @Autowired private MockMvc mvc;
     @Autowired private UserRepository users;
     @Autowired private TeamRepository teams;
