@@ -657,6 +657,58 @@ test('F22.1-10: unselected scope chips are selected without navigation by keyboa
 })
 
 // CMP-261016-0955: ブラウザの実寸・行位置でモバイル表示の回帰を検証する。
+for (const locale of ['ja', 'de']) {
+  test(`INSIGHT-I5-HOME: ${locale}のホームから自分の連絡先QRを開ける`, async ({ page, baseURL }) => {
+    await page.context().addCookies([{ name: 'i18n_locale', value: locale, url: baseURL! }])
+    await page.setViewportSize({ width: 360, height: 900 })
+    await loginAsMember(page)
+    await page.addInitScript(() => localStorage.setItem('tokenExpiresAt', String(Date.now() + 3600000)))
+    await mockDashboardApis(page, { withSlug: true })
+    const contactMutations: string[] = []
+    const homeContactRequests: string[] = []
+    page.on('request', request => {
+      if (request.url().includes('/api/v1/contact-invite-tokens')) {
+        if (request.method() !== 'GET') contactMutations.push(request.method())
+        if (new URL(page.url()).pathname === '/dashboard') homeContactRequests.push(request.url())
+      }
+    })
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
+    await waitForHydratedShell(page)
+    await waitForCarousel(page)
+    const panel = page.locator('#scope-panel-PERSONAL')
+    const qr = panel.getByRole('link', { name: locale === 'de' ? 'Mein Kontakt-QR-Code' : '自分の連絡先QR', exact: true })
+    await expect(qr).toHaveAttribute('href', '/settings/contact-invite-tokens')
+    if (locale === 'de') await qr.evaluate(element => { element.style.fontSize = `${parseFloat(getComputedStyle(element).fontSize) * 2}px` })
+    for (const width of [360, 390]) {
+      await page.setViewportSize({ width, height: 900 })
+      const box = (await qr.boundingBox())!
+      expect(box.width).toBeGreaterThanOrEqual(44)
+      expect(box.height).toBeGreaterThanOrEqual(44)
+      expect(box.x).toBeGreaterThanOrEqual(0)
+      expect(box.x + box.width).toBeLessThanOrEqual(width)
+      expect(await qr.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+      const textRects = await qr.locator('span').evaluate(element => {
+        const range = document.createRange()
+        range.selectNodeContents(element)
+        return [...range.getClientRects()].map(rect => ({ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom }))
+      })
+      expect(textRects.length).toBeGreaterThan(0)
+      for (const rect of textRects) {
+        expect(rect.left).toBeGreaterThanOrEqual(box.x - 1)
+        expect(rect.right).toBeLessThanOrEqual(box.x + box.width + 1)
+        expect(rect.top).toBeGreaterThanOrEqual(box.y - 1)
+        expect(rect.bottom).toBeLessThanOrEqual(box.y + box.height + 1)
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+    }
+    expect(homeContactRequests).toEqual([])
+    await qr.click()
+    await expect(page).toHaveURL(/\/settings\/contact-invite-tokens$/)
+    await expect(page.locator('h1')).toContainText(locale === 'de' ? 'Kontakt' : '連絡先QR')
+    expect(contactMutations).toEqual([])
+  })
+}
+
 for (const width of [360, 390, 1024]) {
   test(`INSIGHT-I6-DOTS: ${width}pxで下部ドットを44pxの領域で操作できる`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })
