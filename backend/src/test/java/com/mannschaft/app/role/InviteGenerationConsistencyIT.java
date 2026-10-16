@@ -29,7 +29,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -87,7 +86,7 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
             assertThat(tokenLocked.await(15, TimeUnit.SECONDS)).isTrue();
             var compensating = executor.submit(() -> revokeForAction(action, token.getId(), actor));
             try {
-                awaitTokenWait(cleanupConnection.get(), token.getId(), compensating);
+                awaitRowWait("invite_tokens", cleanupConnection.get(), token.getId(), compensating);
             } finally {
                 commitCleanup.countDown();
             }
@@ -161,8 +160,10 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
         Scope scope = scope(type);
         CountDownLatch parentLocked = new CountDownLatch(1);
         CountDownLatch commitClosure = new CountDownLatch(1);
+        AtomicLong closureConnection = new AtomicLong();
         try (var executor = Executors.newFixedThreadPool(2)) {
             var closure = executor.submit(() -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                closureConnection.set(jdbc.queryForObject("SELECT CONNECTION_ID()", Long.class));
                 jdbc.update("UPDATE " + scope.table() + " SET archived_at = UTC_TIMESTAMP(), closure_generation = 1 WHERE id = ?",
                         scope.id());
                 parentLocked.countDown();
@@ -171,7 +172,7 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
             assertThat(parentLocked.await(15, TimeUnit.SECONDS)).isTrue();
             var reading = executor.submit(() -> port(type).recheckCommittedStateAfterInviteIssue(scope.id()));
             try {
-                assertThatThrownBy(() -> reading.get(250, TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+                awaitRowWait(scope.table(), closureConnection.get(), scope.id(), reading);
             } finally {
                 commitClosure.countDown();
             }
@@ -262,7 +263,7 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
     }
 
     /** 既存BirthProfileLockWaitObserver/RanchDevelopmentPolicyITと同じ専用container実lock観測。 */
-    private void awaitTokenWait(long blockerConnection, Long tokenId, Future<?> worker) {
+    private void awaitRowWait(String table, long blockerConnection, Long rowId, Future<?> worker) {
         String url = MYSQL.getJdbcUrl();
         url += (url.contains("?") ? "&" : "?")
                 + "connectTimeout=1000&socketTimeout=1000&useSSL=false&allowPublicKeyRetrieval=true";
@@ -275,14 +276,15 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
                        ON requested.ENGINE = waits.ENGINE
                       AND requested.ENGINE_LOCK_ID = waits.REQUESTING_ENGINE_LOCK_ID
                      JOIN performance_schema.threads blocker ON blocker.THREAD_ID = waits.BLOCKING_THREAD_ID
-                     WHERE requested.OBJECT_SCHEMA = ? AND requested.OBJECT_NAME = 'invite_tokens'
+                     WHERE requested.OBJECT_SCHEMA = ? AND requested.OBJECT_NAME = ?
                        AND requested.INDEX_NAME = 'PRIMARY' AND requested.LOCK_TYPE = 'RECORD'
                        AND requested.LOCK_DATA = ? AND blocker.PROCESSLIST_ID = ?
                      """)) {
             query.setQueryTimeout(1);
             query.setString(1, MYSQL.getDatabaseName());
-            query.setString(2, tokenId.toString());
-            query.setLong(3, blockerConnection);
+            query.setString(2, table);
+            query.setString(3, rowId.toString());
+            query.setLong(4, blockerConnection);
             while (System.nanoTime() < deadline) {
                 try (var rows = query.executeQuery()) {
                     if (rows.next() && rows.getLong(1) > 0) {
@@ -293,18 +295,18 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
                     try {
                         worker.get();
                     } catch (ExecutionException failure) {
-                        throw new AssertionError("対象tokenの実待機前に補償workerが失敗しました");
+                        throw new AssertionError("対象行の実待機前にworkerが失敗しました", failure);
                     }
-                    throw new AssertionError("対象tokenの実待機前に補償workerが終了しました");
+                    throw new AssertionError("対象行の実待機前にworkerが終了しました");
                 }
                 Thread.sleep(25);
             }
-            throw new AssertionError("5秒以内に所有token行の実ロック待機を観測できませんでした");
+            throw new AssertionError("5秒以内に所有行の実ロック待機を観測できませんでした");
         } catch (SQLException failure) {
-            throw new AssertionError("専用MySQLコンテナのtoken待機観測接続またはSELECTに失敗しました");
+            throw new AssertionError("専用MySQLコンテナの待機観測接続またはSELECTに失敗しました", failure);
         } catch (InterruptedException failure) {
             Thread.currentThread().interrupt();
-            throw new AssertionError("token行のロック観測が中断されました");
+            throw new AssertionError("所有行のロック観測が中断されました", failure);
         }
     }
 
