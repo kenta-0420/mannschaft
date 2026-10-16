@@ -90,13 +90,25 @@ describe('既存設定の集約ハブ', () => {
     },
   )
 
-  it('SYSTEM_ADMIN単独はscopeAdmin=falseなら設定リンクを表示しない', async () => {
-    state.role = 'SYSTEM_ADMIN'
-    state.scopeAdmin = false
-    const wrapper = await mountHub()
-    expect(wrapper.findAll('a')).toHaveLength(0)
-    expect(state.probe).toHaveBeenCalledWith('TEAM', 'sample', 0)
-  })
+  it.each(['team', 'organization'] as const)(
+    'SYSTEM_ADMIN単独でも%sの既存例外であるFAQ・公開設定だけを案内する',
+    async (scope) => {
+      state.role = 'SYSTEM_ADMIN'
+      state.scopeAdmin = false
+      state.shift = true
+      state.loaded = false
+      const wrapper = await mountHub(scope)
+      expect(wrapper.find('a[href$="/faq-settings"]').exists()).toBe(true)
+      expect(wrapper.find('a[href$="/public-settings"]').exists()).toBe(true)
+      expect(wrapper.findAll('a')).toHaveLength(2)
+      expect(state.probe).toHaveBeenCalledWith(
+        scope === 'team' ? 'TEAM' : 'ORGANIZATION',
+        'sample',
+        0,
+      )
+      expect(state.loadFlags).not.toHaveBeenCalled()
+    },
+  )
 
   it.each(['team', 'organization'] as const)(
     'SYSTEM_ADMIN兼任の%s副管理者は正準API成功時だけ副管理者向けリンクを表示する',
@@ -112,7 +124,7 @@ describe('既存設定の集約ハブ', () => {
         0,
       )
       expect(wrapper.find('a[href$="/public-settings"]').exists()).toBe(true)
-      expect(wrapper.find('a[href$="/faq-settings"]').exists()).toBe(false)
+      expect(wrapper.find('a[href$="/faq-settings"]').exists()).toBe(true)
       expect(wrapper.find('a[href$="/notification-credits"]').exists()).toBe(false)
       expect(wrapper.find('a[href$="/todo-status-labels"]').exists()).toBe(scope === 'team')
     },
@@ -125,6 +137,7 @@ describe('既存設定の集約ハブ', () => {
     state.probe.mockRejectedValueOnce({ statusCode: 503 }).mockResolvedValueOnce({})
     const wrapper = await mountHub()
     expect(wrapper.find('[data-testid="load-error-state"]').exists()).toBe(true)
+    expect(wrapper.findAll('a')).toHaveLength(0)
     await wrapper.get('[data-testid="load-error-state-retry"]').trigger('click')
     await flushPromises()
     expect(wrapper.find('a[href$="/public-settings"]').exists()).toBe(true)
@@ -144,10 +157,17 @@ describe('既存設定の集約ハブ', () => {
     const wrapper = await mountHub()
     await wrapper.setProps({ slug: 'other' })
     await flushPromises()
-    expect(wrapper.findAll('a')).toHaveLength(0)
+    expect(wrapper.findAll('a')).toHaveLength(2)
+    expect(wrapper.find('a[href$="/todo-status-labels"]').exists()).toBe(false)
     allowOld()
     await flushPromises()
-    expect(wrapper.findAll('a')).toHaveLength(0)
+    expect(wrapper.findAll('a')).toHaveLength(2)
+    expect(
+      wrapper
+        .findAll('a')
+        .every((link) => link.attributes('href')?.startsWith('/teams/other/settings/')),
+    ).toBe(true)
+    expect(wrapper.find('a[href$="/todo-status-labels"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="load-error-state"]').exists()).toBe(false)
     expect(state.probe.mock.calls).toEqual([
       ['TEAM', 'sample', 0],
@@ -163,7 +183,7 @@ describe('既存設定の集約ハブ', () => {
     expect(state.loadFlags).not.toHaveBeenCalled()
   })
 
-  it.each(['MEMBER', 'GUEST', 'SYSTEM_ADMIN'])(
+  it.each(['MEMBER', 'GUEST'])(
     'スコープ管理権限のない%sには設定リンクを表示しない',
     async (role) => {
       state.role = role

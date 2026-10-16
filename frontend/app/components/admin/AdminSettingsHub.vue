@@ -15,9 +15,11 @@ const flags = useFeatureFlagStore()
 const loading = ref(true)
 const loadError = shallowRef<unknown>(null)
 const confirmedScopeManager = ref(false)
-const canAccess = computed(
+const isSystemAdmin = computed(() => roleName.value === 'SYSTEM_ADMIN')
+const scopeManagerAccess = computed(
   () => isAdmin.value || roleName.value === 'DEPUTY_ADMIN' || confirmedScopeManager.value,
 )
+const hubAccess = computed(() => scopeManagerAccess.value || isSystemAdmin.value)
 const base = computed(
   () => `/${props.scopeType === 'team' ? 'teams' : 'organizations'}/${props.slug}`,
 )
@@ -26,13 +28,14 @@ interface SettingsLink {
   path: string
   title: string
   adminOnly?: boolean
+  sysAllowed?: boolean
   readOnly?: boolean
 }
 
 const links = computed(() => {
   const settings: SettingsLink[] = [
-    { path: 'faq-settings', title: 'faq.settings.title', adminOnly: true },
-    { path: 'public-settings', title: 'public.publicSettings.title' },
+    { path: 'faq-settings', title: 'faq.settings.title', adminOnly: true, sysAllowed: true },
+    { path: 'public-settings', title: 'public.publicSettings.title', sysAllowed: true },
     {
       path: 'todo-status-labels',
       title: 'todo.statusLabel.management.title',
@@ -50,7 +53,9 @@ const links = computed(() => {
     })
   }
   return settings.filter((link) => {
-    if (!canAccess.value || (link.adminOnly && !isAdmin.value)) return false
+    const systemException = isSystemAdmin.value && link.sysAllowed
+    if (!scopeManagerAccess.value && !systemException) return false
+    if (link.adminOnly && !isAdmin.value && !systemException) return false
     const gate = matchGateKey(`${base.value}/settings/${link.path}`)
     return gate === null || (flags.publicLoaded && flags.isEnabled(gate))
   })
@@ -83,7 +88,7 @@ async function loadPage() {
         if (getLoadErrorHttpStatus(error) !== 403) throw error
       }
     }
-    if (canAccess.value && props.scopeType === 'team' && !flags.publicLoaded) {
+    if (scopeManagerAccess.value && props.scopeType === 'team' && !flags.publicLoaded) {
       await flags.loadPublicFlags()
     }
   } catch (error) {
@@ -103,7 +108,7 @@ watch(slug, loadPage)
     <PageLoading v-if="loading" />
     <DashboardErrorState v-else-if="loadError" :error="loadError" @retry="loadPage" />
     <DashboardEmptyState
-      v-else-if="!canAccess"
+      v-else-if="!hubAccess"
       icon="pi pi-lock"
       :message="t('adminConsole.middleware.accessDeniedBody')"
     />

@@ -36,11 +36,12 @@
 
 > **2026-10-16 現行契約との照合**: `EffectivePermissionsResponse.roleName` は表示用の最強ロールで、`AccessControlService.resolveEffectiveRoleName` は SYSTEM_ADMIN を優先する。したがって、従来の「`me/permissions` は常に scope 内ロールを返す」という説明だけでは兼任者を正しく扱えない。スコープ ADMIN の割当は応答の `scopeAdmin`（BE の `AccessControlService.isAdmin` と同じ判定）で明示され、FE の既存 `useRoleAccess.isScopeAdmin` がこれを参照する。
 
-**確定ポリシー**: 「SYSTEM_ADMIN は scope 内ロールを別途持たない限り、チーム/組織の管理コンソールでは管理者として扱わない」。
+**確定ポリシー**: 管理集約API・管理者レンズは、SYSTEM_ADMINでもscope内ADMIN/DEPUTYの割当を必要とする。設定ハブは既存設定ページの認可を維持し、FAQ・公開設定に限り既存のSYSTEM_ADMIN例外を案内する。この例外を他の設定や集約APIへ一般化しない。
 
 - **BE**: 本機能の管理 API は `checkAdminOrAbove`（scope 内 ADMIN/DEPUTY のみ）を入口に置く。現行 `isAdminOrAbove` は表示用最強ロールを流用せず、スコープ付き `user_roles` を直接確認する。SYSTEM_ADMIN 単独は 403、当該スコープの ADMIN/DEPUTY 兼任者は許可される。プラットフォーム横断操作は引き続き区分 B（`/system-admin`）の責務。
 - **設定ハブの ADMIN 条件**: 既存 `isScopeAdmin` を使う。`scopeAdmin=true` の SYSTEM_ADMIN 兼任者も許可し、ADMIN 専用リンクを表示する。`scopeAdmin` を返さない旧BEでは同 helper の既存フォールバック（`roleName==='ADMIN'`）に従う。グローバル SYSTEM_ADMIN を含む `isAdmin` だけで判定しない。
-- **設定ハブの DEPUTY 条件**: 通常の `roleName==='DEPUTY_ADMIN'` は許可する。`roleName==='SYSTEM_ADMIN'` かつ `isScopeAdmin=false` は、現行応答だけでは「単独 SYSTEM_ADMIN」と「スコープ DEPUTY 兼任」を識別できないため、既存 `getAdminActionRequired(scopeType, slug, 0)` で正準BE認可を確認する。`AdminActionRequiredFacade` の入口は `checkAdminOrAbove` を強制する。200なら副管理者向けリンクのみ、403なら正常なアクセス拒否、それ以外は取得エラーとして同じ処理を再試行する。
+- **設定ハブの DEPUTY 条件**: 通常の `roleName==='DEPUTY_ADMIN'` は許可する。`roleName==='SYSTEM_ADMIN'` かつ `isScopeAdmin=false` は、現行応答だけでは「単独 SYSTEM_ADMIN」と「スコープ DEPUTY 兼任」を識別できないため、既存 `getAdminActionRequired(scopeType, slug, 0)` で正準BE認可を確認する。`AdminActionRequiredFacade` の入口は `checkAdminOrAbove` を強制する。200なら副管理者向けのスコープ設定も表示し、403ならスコープ設定だけを正常拒否する。既存SYSTEM_ADMIN例外のFAQ・公開設定は両方の場合に表示する。それ以外の取得失敗はハブ全体のエラー表示とし、リンクを出さず同じ処理を再試行する。
+- **既存設定のSYSTEM_ADMIN例外**: FAQは `AdminFaqController` の `AccessGuard.isScopeAdmin` と `FaqAdminService.checkScopeAdminAccess`、公開設定は `AdminPublicSettingsService.checkScopeAdminAccess` がSYSTEM_ADMINを明示許可する。FEも `FaqSettingsEditor` の `isAdmin` と公開設定の `isAdminOrDeputy` が同じ例外を含むため、ハブはこの2リンクだけに `sysAllowed` を付ける。入口許可とスコープ管理権限を分け、シフト・TODO・通知クレジットには例外を流用しない。公開フラグはスコープ管理権限を持つチーム管理者だけが取得する。
 - 追加確認は曖昧な SYSTEM_ADMIN の場合だけ1回行い、`preview_size=0` で個人情報プレビューを取得しない。通常の ADMIN/DEPUTY と `scopeAdmin=true` の兼任者には追加GETを行わない。権限文字列からロールを推測せず、新API・DTO・共通権限helperの変更は行わない。スコープ変更時は要求番号と要求時slugを照合し、旧応答で新スコープの拒否やエラー状態を上書きしない。
 
 ---
