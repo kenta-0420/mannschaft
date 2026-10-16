@@ -1468,4 +1468,13 @@ class FlywayFromScratchMigrationTest {
             }
         }
     }
+    @Test
+    @Order(2)
+    void PLATFORM一意制約は既存全scopeと履歴を保持し重複時は旧行を残して停止する() throws Exception {
+        migrateFromScratch();
+        try (Connection connection = connect()) {
+            PlatformCardMigrationFixture.verify(connection);
+        }
+    }
+
 }

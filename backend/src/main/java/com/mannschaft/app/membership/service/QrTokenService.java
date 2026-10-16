@@ -1,6 +1,8 @@
 package com.mannschaft.app.membership.service;
 
 import org.springframework.stereotype.Service;
+import lombok.RequiredArgsConstructor;
+import java.time.Clock;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -15,7 +17,15 @@ import java.util.Base64;
  * QRトークンの生成・検証を担当するサービス。HMAC-SHA256署名付きトークンを扱う。
  */
 @Service
+@RequiredArgsConstructor
 public class QrTokenService {
+
+    private final Clock clock;
+
+    /** PLATFORM検証で300秒TTLと未来発行を検査する。既存チェックインの期限境界は維持する。 */
+    public boolean hasValidMemberCardTimes(MemberCardTokenPayload payload) {
+        throw new UnsupportedOperationException("共通QRの時刻検証は未実装");
+    }
 
     private static final String HMAC_ALGORITHM = "HmacSHA256";
     private static final int QR_TOKEN_EXPIRY_SECONDS = 300;

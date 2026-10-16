@@ -37,8 +37,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * F18.1 AC02/AC04/AC10の共通公開契約。
  * MemberCardController#ensureMyPlatformCard を実Security・実MySQLで検査する。
  * 共通QR検証・受付解決・状態投影はDBを更新しない。
+ * 20同時確保はEntityのDDLではなく実Flyway由来のNULL一意制約を通す。
  */
 @AutoConfigureMockMvc
+@org.springframework.test.context.TestPropertySource(properties = {
+        "spring.flyway.enabled=true", "spring.jpa.hibernate.ddl-auto=none"})
 @Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class PlatformCardPublicContractIT extends AbstractMySqlIntegrationTest {
@@ -55,6 +58,9 @@ class PlatformCardPublicContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private UserService userService;
     @Autowired private TeamService teamService;
     @Autowired private AccessControlService accessControl;
+    @Autowired private com.mannschaft.app.role.repository.RoleRepository roles;
+    @Autowired private com.mannschaft.app.role.repository.UserRoleRepository userRoles;
+    @Autowired private jakarta.persistence.EntityManagerFactory entityManagerFactory;
 
     @Test
     void 未認証の確保は401() throws Exception {
@@ -73,6 +79,40 @@ class PlatformCardPublicContractIT extends AbstractMySqlIntegrationTest {
         var token = cardService.getQrToken(first.getMemberCardId(), actor).getData();
         assertThat(cardService.verifyPlatformQr(token.getQrToken()).userId()).isEqualTo(actor);
         assertThat(cards.findById(first.getMemberCardId()).orElseThrow().getScopeId()).isNull();
+    }
+
+    @Test
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    void 初回確保を20同時実行してもNULLスコープは1枚だけ() throws Exception {
+        Long actor = users.saveAndFlush(PlatformCardTestFixture.user()).getId();
+        var start = new java.util.concurrent.CountDownLatch(1);
+        try (var executor = java.util.concurrent.Executors.newFixedThreadPool(20)) {
+            var futures = new java.util.ArrayList<java.util.concurrent.Future<Long>>();
+            for (int i = 0; i < 20; i++) {
+                futures.add(executor.submit(() -> {
+                    start.await();
+                    return cardService.ensureMyPlatformCard(actor).getData().getMemberCardId();
+                }));
+            }
+            start.countDown();
+            var ids = new java.util.HashSet<Long>();
+            for (var future : futures) {
+                ids.add(future.get(60, java.util.concurrent.TimeUnit.SECONDS));
+            }
+            assertThat(ids).hasSize(1);
+            assertThat(cards.findByUserIdAndDeletedAtIsNullOrderByIssuedAtAsc(actor)).hasSize(1);
+        }
+    }
+
+    @Test
+    void inactive本人の確保と既存QRの他人取得は拒否する() throws Exception {
+        Long frozen = users.saveAndFlush(PlatformCardTestFixture.user().toBuilder().status(UserEntity.UserStatus.FROZEN).build()).getId();
+        mvc.perform(post("/api/v1/member-cards/platform/me").with(user(frozen.toString())))
+                .andExpect(status().isForbidden());
+        assertThat(cards.findByUserIdAndDeletedAtIsNullOrderByIssuedAtAsc(frozen)).isEmpty();
+        Long actor = users.saveAndFlush(PlatformCardTestFixture.user()).getId();
+        var card = cards.saveAndFlush(PlatformCardTestFixture.card(actor, ScopeType.PLATFORM, null, CardStatus.ACTIVE));
+        assertThatThrownBy(() -> cardService.getQrToken(card.getId(), frozen)).isInstanceOf(BusinessException.class);
     }
 
     @Test
@@ -131,5 +171,41 @@ class PlatformCardPublicContractIT extends AbstractMySqlIntegrationTest {
         assertThat(userService.getActiveDisplayStates(List.of(Long.MAX_VALUE))).doesNotContainKey(Long.MAX_VALUE);
         assertThat(teamService.getActiveStates(List.of(team)).get(team).active()).isTrue();
         assertThat(teamService.getActiveStates(List.of(Long.MAX_VALUE))).doesNotContainKey(Long.MAX_VALUE);
+    }
+
+    @Test
+    void 在籍snapshotはMEMBERと明示TEAM管理者を正式資格としglobal昇格を使わず定数SQLで読む() {
+        Long team = teams.saveAndFlush(PlatformCardTestFixture.team()).getId();
+        Long member = users.saveAndFlush(PlatformCardTestFixture.user()).getId();
+        Long supporterAdmin = users.saveAndFlush(PlatformCardTestFixture.user()).getId();
+        Long guest = users.saveAndFlush(PlatformCardTestFixture.user()).getId();
+        Long systemAdmin = users.saveAndFlush(PlatformCardTestFixture.user()).getId();
+        for (Long id : List.of(member, supporterAdmin)) {
+            memberships.saveAndFlush(MembershipEntity.builder().userId(id)
+                    .scopeType(com.mannschaft.app.membership.domain.ScopeType.TEAM).scopeId(team)
+                    .roleKind(id.equals(member) ? RoleKind.MEMBER : RoleKind.SUPPORTER).build());
+        }
+        userRoles.saveAndFlush(com.mannschaft.app.role.entity.UserRoleEntity.builder().userId(supporterAdmin)
+                .teamId(team).roleId(roles.findByName("ADMIN").orElseThrow().getId()).build());
+        userRoles.saveAndFlush(com.mannschaft.app.role.entity.UserRoleEntity.builder().userId(guest)
+                .teamId(team).roleId(roles.findByName("GUEST").orElseThrow().getId()).build());
+        userRoles.saveAndFlush(com.mannschaft.app.role.entity.UserRoleEntity.builder().userId(systemAdmin)
+                .roleId(roles.findByName("SYSTEM_ADMIN").orElseThrow().getId()).build());
+        var keys = List.of(member, supporterAdmin, guest, systemAdmin).stream()
+                .map(id -> new AccessControlService.TeamUserKey(team, id)).toList();
+        var stats = entityManagerFactory.unwrap(org.hibernate.SessionFactory.class).getStatistics();
+        boolean wasEnabled = stats.isStatisticsEnabled();
+        stats.setStatisticsEnabled(true);
+        long before = stats.getPrepareStatementCount();
+        try {
+            var states = accessControl.getTeamMembershipStates(keys);
+            assertThat(stats.getPrepareStatementCount() - before).isEqualTo(2);
+            assertThat(states.get(keys.get(0))).isEqualTo(new AccessControlService.TeamMembershipState(true, true));
+            assertThat(states.get(keys.get(1))).isEqualTo(new AccessControlService.TeamMembershipState(true, true));
+            assertThat(states.get(keys.get(2))).isEqualTo(new AccessControlService.TeamMembershipState(false, false));
+            assertThat(states.get(keys.get(3))).isEqualTo(new AccessControlService.TeamMembershipState(false, false));
+        } finally {
+            stats.setStatisticsEnabled(wasEnabled);
+        }
     }
 }
