@@ -207,10 +207,10 @@ public class LoyaltyFacade {
         });
     }
     public CursorPagedResponse<AwardRequestResponse> staffRequests(Long actor, Long team, RequestFilter status, String cursor, int limit) {
-        operator(actor, team); policy.requireActiveTeam(team); return query.staffRequests(actor, team, status, cursor, limit);
+        operator(actor, team); return query.staffRequests(actor, team, status, cursor, limit);
     }
     public AwardRequestResponse staffRequest(Long actor, Long team, UUID request) {
-        operator(actor, team); policy.requireActiveTeam(team); return query.staffRequest(actor, team, request);
+        operator(actor, team); return query.staffRequest(actor, team, request);
     }
     public TransactionResponse approve(Long actor, Long team, UUID request, ApproveRequest body, String idempotencyKey) {
         operator(actor, team);
