@@ -51,6 +51,41 @@ class InviteGenerationLifecycleIT extends InviteGenerationItSupport {
     private final List<Long> ownedPermissionGroups = new ArrayList<>();
 
     @ParameterizedTest
+    @CsvSource({"TEAM,false", "TEAM,true", "ORGANIZATION,false", "ORGANIZATION,true"})
+    @DisplayName("実delete入口はcommit時だけ旧世代を失効し、rollback/既失効日時を維持する")
+    void deletionPreservesCommitRollbackAndExistingTimestamp(String type, boolean rollback) {
+        Scope scope = scope(type);
+        Long actor = admin(scope);
+        var old = token(scope, 0);
+        var firstRevocation = LocalDateTime.of(2025, 2, 3, 4, 5, 6);
+        var alreadyRevoked = token(scope, 0, null, null, 0, null, firstRevocation);
+
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            if ("TEAM".equals(type)) {
+                teamService.deleteTeam(scope.id(), actor);
+            } else {
+                organizationService.deleteOrganization(scope.id(), actor);
+            }
+            if (rollback) {
+                status.setRollbackOnly();
+            }
+        });
+
+        assertThat(jdbc.queryForObject("SELECT closure_generation FROM " + scope.table() + " WHERE id = ?", Long.class, scope.id()))
+                .isEqualTo(rollback ? 0L : 1L);
+        var deletedAt = jdbc.queryForObject("SELECT deleted_at FROM " + scope.table() + " WHERE id = ?", LocalDateTime.class, scope.id());
+        var revokedAt = tokens.findById(old.getId()).orElseThrow().getRevokedAt();
+        if (rollback) {
+            assertThat(deletedAt).isNull();
+            assertThat(revokedAt).isNull();
+        } else {
+            assertThat(deletedAt).isNotNull();
+            assertThat(revokedAt).isNotNull();
+        }
+        assertThat(tokens.findById(alreadyRevoked.getId()).orElseThrow().getRevokedAt()).isEqualTo(firstRevocation);
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"TEAM", "ORGANIZATION"})
     @DisplayName("G12: commit後listener失敗は親休止を巻戻さず、解除後のbatchで旧tokenだけ回復する")
     void committedListenerFailureIsRecoveredAfterReopening(String type, CapturedOutput output) {
