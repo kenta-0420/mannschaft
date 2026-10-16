@@ -58,7 +58,38 @@ public class MemberCardService {
 
     /** 共通会員QRを検証し、チェックイン等の副作用を起こさず本人を解決する。 */
     public VerifiedPlatformCard verifyPlatformQr(String qrToken) {
-        throw new UnsupportedOperationException("共通会員証検証は未実装");
+        if (qrToken == null || qrToken.length() > 512) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_021);
+        }
+        QrTokenService.MemberCardTokenPayload payload = qrTokenService.parseMemberCardToken(qrToken);
+        if (payload == null || !isCanonicalCardCode(payload.cardCode())
+                || !qrTokenService.hasValidMemberCardTimes(payload)) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_021);
+        }
+        MemberCardEntity card = memberCardRepository.findByCardCodeAndDeletedAtIsNull(payload.cardCode())
+                .filter(found -> found.getDeletedAt() == null)
+                .orElseThrow(() -> new BusinessException(MembershipErrorCode.MEMBERSHIP_007));
+        if (!qrTokenService.verifyMemberCardSignature(payload, card.getQrSecret())) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_006);
+        }
+        if (card.getScopeType() != ScopeType.PLATFORM || card.getScopeId() != null) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_012);
+        }
+        if (card.getStatus() != CardStatus.ACTIVE) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_003);
+        }
+        return new VerifiedPlatformCard(card.getUserId(), card.getId(), payload.expiresAt());
+    }
+
+    private boolean isCanonicalCardCode(String code) {
+        if (code == null || code.length() != 36) {
+            return false;
+        }
+        try {
+            return java.util.UUID.fromString(code).toString().equalsIgnoreCase(code);
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
     }
 
     private static final int CHECKIN_COOLDOWN_MINUTES = 5;

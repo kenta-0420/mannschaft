@@ -43,7 +43,25 @@ public class CheckinLocationService {
 
     /** 固定受付QRを検証する。チェックインは作成しない。 */
     public VerifiedTeamLocation resolveTeamLocationQr(String locationToken) {
-        throw new UnsupportedOperationException("TEAM受付検証は未実装");
+        if (locationToken == null || locationToken.length() > 256) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_013);
+        }
+        QrTokenService.LocationTokenPayload payload = qrTokenService.parseLocationToken(locationToken);
+        if (payload == null) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_013);
+        }
+        CheckinLocationEntity location = locationRepository
+                .findByLocationCodeAndDeletedAtIsNull(payload.locationCode())
+                .filter(found -> found.getDeletedAt() == null)
+                .orElseThrow(() -> new BusinessException(MembershipErrorCode.MEMBERSHIP_013));
+        if (!qrTokenService.verifyLocationSignature(payload, location.getLocationSecret())
+                || location.getScopeType() != ScopeType.TEAM || location.getScopeId() == null) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_013);
+        }
+        if (!Boolean.TRUE.equals(location.getIsActive())) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_014);
+        }
+        return new VerifiedTeamLocation(location.getId(), location.getScopeId());
     }
 
     /** 候補ページの受付状態を集合照会する。 */
