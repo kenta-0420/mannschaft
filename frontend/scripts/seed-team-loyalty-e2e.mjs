@@ -32,8 +32,8 @@ function encrypt(plain) {
   ]).toString('base64')
 }
 const apiBase = required('API_BASE_URL')
-if (!/^http:\/\/localhost:8081$/.test(apiBase))
-  throw new Error('Seed API must be the dedicated localhost:8081 server')
+if (!/^http:\/\/localhost:8083$/.test(apiBase))
+  throw new Error('Seed API must be the dedicated localhost:8083 server')
 const runId = randomBytes(5).toString('hex')
 const roles = [
   'admin',
