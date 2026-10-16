@@ -10,19 +10,29 @@ const api = useTeamLoyaltyApi()
 const { handleApiError } = useErrorHandler()
 const notification = useNotification()
 const { defineField, handleSubmit, errors, isSubmitting } = useForm({
-  validationSchema: toTypedSchema(
-    z
-      .object({
-        name: z.string().trim().min(1).max(100),
-        points: z.number().int().min(1).max(10000),
-        frequency: z.enum(['ONCE_PER_JST_DAY', 'EACH_STAFF_CONFIRMATION']),
-        isSelfAwardEnabled: z.boolean(),
-        isActive: z.boolean(),
-      })
-      .refine(
-        (value) => value.frequency !== 'EACH_STAFF_CONFIRMATION' || !value.isSelfAwardEnabled,
-        { path: ['frequency'], message: t('loyalty.rule.selfDailyOnly') },
-      ),
+  validationSchema: computed(() =>
+    toTypedSchema(
+      z
+        .object({
+          name: z
+            .string()
+            .trim()
+            .min(1, t('required'))
+            .max(100, t('max_length', { max: 100 })),
+          points: z
+            .number({ invalid_type_error: t('invalid_format') })
+            .int(t('invalid_format'))
+            .min(1, t('invalid_format'))
+            .max(10000, t('invalid_format')),
+          frequency: z.enum(['ONCE_PER_JST_DAY', 'EACH_STAFF_CONFIRMATION']),
+          isSelfAwardEnabled: z.boolean(),
+          isActive: z.boolean(),
+        })
+        .refine(
+          (value) => value.frequency !== 'EACH_STAFF_CONFIRMATION' || !value.isSelfAwardEnabled,
+          { path: ['frequency'], message: t('loyalty.rule.selfDailyOnly') },
+        ),
+    ),
   ),
   initialValues: props.rule ?? {
     name: '',

@@ -15,7 +15,17 @@ const qrUrl = ref('')
 const loading = ref(true)
 const error = shallowRef<unknown>(null)
 const { defineField, handleSubmit, errors, isSubmitting, resetForm } = useForm({
-  validationSchema: toTypedSchema(z.object({ name: z.string().trim().min(1).max(100) })),
+  validationSchema: computed(() =>
+    toTypedSchema(
+      z.object({
+        name: z
+          .string()
+          .trim()
+          .min(1, t('required'))
+          .max(100, t('max_length', { max: 100 })),
+      }),
+    ),
+  ),
   initialValues: { name: '' },
 })
 const [name] = defineField('name')

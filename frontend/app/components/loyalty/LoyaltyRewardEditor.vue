@@ -10,13 +10,26 @@ const api = useTeamLoyaltyApi()
 const { handleApiError } = useErrorHandler()
 const notification = useNotification()
 const { defineField, handleSubmit, errors, isSubmitting, resetForm } = useForm({
-  validationSchema: toTypedSchema(
-    z.object({
-      name: z.string().trim().min(1).max(100),
-      description: z.string().max(1000).nullable(),
-      requiredPoints: z.number().int().min(1).max(1000000),
-      isActive: z.boolean(),
-    }),
+  validationSchema: computed(() =>
+    toTypedSchema(
+      z.object({
+        name: z
+          .string()
+          .trim()
+          .min(1, t('required'))
+          .max(100, t('max_length', { max: 100 })),
+        description: z
+          .string()
+          .max(500, t('max_length', { max: 500 }))
+          .nullable(),
+        requiredPoints: z
+          .number({ invalid_type_error: t('invalid_format') })
+          .int(t('invalid_format'))
+          .min(1, t('invalid_format'))
+          .max(1000000, t('invalid_format')),
+        isActive: z.boolean(),
+      }),
+    ),
   ),
   initialValues: props.reward ?? {
     name: '',
