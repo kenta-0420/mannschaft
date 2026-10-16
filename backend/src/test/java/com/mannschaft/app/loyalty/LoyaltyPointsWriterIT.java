@@ -710,4 +710,44 @@ class LoyaltyPointsWriterIT {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_transactions WHERE team_id=?", Long.class, teamId)).isZero();
     }
 
+    private LoyaltyPointsWriter writerAt(String instant, LoyaltyMapper mapper,
+            org.springframework.context.ApplicationEventPublisher publisher) {
+        return new LoyaltyPointsWriter(store, new LoyaltyTime(java.time.Clock.fixed(java.time.Instant.parse(instant),
+                java.time.ZoneOffset.UTC)), mapper, statePolicy, publisher, transactionManager);
+    }
+
+    @Test
+    void 事後補強_AC08_JST日末と翌日零時には同じルールを各一回加算できる(
+            @Autowired LoyaltyMapper mapper, @Autowired org.springframework.context.ApplicationEventPublisher publisher) {
+        assertThat(writerAt("2026-10-16T14:59:59Z", mapper, publisher).award(command(UUID.randomUUID(), 0, new byte[32]))).isNotNull();
+        assertThat(writerAt("2026-10-16T15:00:00Z", mapper, publisher).award(command(UUID.randomUUID(), 0, new byte[32]))).isNotNull();
+        assertThat(jdbc.queryForList("SELECT CAST(award_on AS CHAR) FROM team_loyalty_transactions WHERE team_id=? ORDER BY award_on", String.class, teamId))
+                .containsExactly("2026-10-16", "2026-10-17");
+        assertThat(store.getAccounts().findByTeamIdAndUserId(teamId, 20L)).get().extracting("balance").isEqualTo(2);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints = {1799, 1800})
+    void 事後補強_AC24_29分59秒では承認でき30分丁度は失効を永続化する(int elapsed,
+            @Autowired LoyaltyMapper mapper, @Autowired org.springframework.context.ApplicationEventPublisher publisher) {
+        var request = writerAt("2026-10-16T14:00:00Z", mapper, publisher).submit(new LoyaltyWriteCommand(teamId,
+                20L, 20L, ruleId, 0, 0, RequestOperation.SELF_SUBMIT, UUID.randomUUID(), new byte[32], 30L, "受付")).request();
+        String instant = java.time.Instant.parse("2026-10-16T14:00:00Z").plusSeconds(elapsed).toString();
+        var result = writerAt(instant, mapper, publisher).act(new LoyaltyRequestActionCommand(teamId, 10L,
+                request.getId(), 0, request.getVerificationCode(), RequestOperation.APPROVE, UUID.randomUUID(), new byte[32], null));
+        var saved = store.getRequests().findById(request.getId()).orElseThrow();
+        assertThat(saved.getVersion()).isEqualTo(1);
+        if (elapsed == 1799) {
+            assertThat(result.errorCode()).isNull();
+            assertThat(saved.getStatus()).isEqualTo(RequestStatus.APPROVED);
+            assertThat(store.getAccounts().findByTeamIdAndUserId(teamId, 20L)).get().extracting("balance").isEqualTo(1);
+        } else {
+            assertThat(result.errorCode()).isEqualTo(LoyaltyErrorCode.LOYALTY_014);
+            assertThat(saved.getStatus()).isEqualTo(RequestStatus.EXPIRED);
+            assertThat(saved.getReason()).isEqualTo(RequestReason.TTL_EXPIRED);
+            assertThat(store.getAccounts().findByTeamIdAndUserId(teamId, 20L)).isEmpty();
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_transactions WHERE team_id=?", Long.class, teamId)).isZero();
+        }
+    }
+
 }
