@@ -684,4 +684,30 @@ class LoyaltyPointsWriterIT {
         assertThat(store.getAccounts().findByTeamIdAndUserId(teamId, 20L).map(account -> account.getBalance()).orElse(0)).isEqualTo((int) awards);
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"team_loyalty_accounts", "team_loyalty_transactions", "team_loyalty_award_requests"})
+    void 事後補強_AC29_承認の各表途中失敗は申請残高台帳を全部rollbackする(String table) {
+        var request = writer.submit(new LoyaltyWriteCommand(teamId, 20L, 20L, ruleId, 0, 0,
+                RequestOperation.SELF_SUBMIT, UUID.randomUUID(), new byte[32], 30L, "受付")).request();
+        LocalDateTime now = LocalDateTime.of(2026, 10, 16, 23, 50);
+        store.getAccounts().saveAndFlush(com.mannschaft.app.loyalty.entity.LoyaltyAccountEntity.builder()
+                .teamId(teamId).userId(20L).balance(0).lifetimeEarned(0).createdAt(now).updatedAt(now).build());
+        String trigger = "loyalty_fault_" + teamId;
+        String operation = table.equals("team_loyalty_transactions") ? "INSERT" : "UPDATE";
+        jdbc.execute("CREATE TRIGGER " + trigger + " BEFORE " + operation + " ON " + table
+                + " FOR EACH ROW BEGIN IF NEW.team_id = " + teamId
+                + " THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='loyalty_owned_fault'; END IF; END");
+        try {
+            assertThatThrownBy(() -> writer.act(new LoyaltyRequestActionCommand(teamId, 10L, request.getId(),
+                    0, request.getVerificationCode(), RequestOperation.APPROVE, UUID.randomUUID(), new byte[32], null)))
+                    .hasStackTraceContaining("loyalty_owned_fault");
+        } finally { jdbc.execute("DROP TRIGGER " + trigger); }
+        assertThat(store.getRequests().findById(request.getId())).get()
+                .extracting("status", "version", "closedAt", "transactionId")
+                .containsExactly(RequestStatus.PENDING, 0L, null, null);
+        assertThat(store.getAccounts().findByTeamIdAndUserId(teamId, 20L)).get()
+                .extracting("balance", "lifetimeEarned").containsExactly(0, 0L);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_transactions WHERE team_id=?", Long.class, teamId)).isZero();
+    }
+
 }
