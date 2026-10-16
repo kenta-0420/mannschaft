@@ -13,6 +13,7 @@ import jakarta.validation.constraints.Size;
 @Schema(name = "LoyaltyUpdateRewardRequest")
 public record UpdateRewardRequest(
         @NotBlank @Size(max = 100) String name,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         @Size(max = 500) String description,
         @NotNull @Min(1) @Max(1000000) Integer requiredPoints,
         @NotNull @PositiveOrZero Long expectedVersion,
