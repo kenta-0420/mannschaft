@@ -86,7 +86,20 @@ public class UserService {
 
     /** 候補ページの本人状態を集合照会する。 */
     public Map<Long, ActiveDisplayState> getActiveDisplayStates(Collection<Long> userIds) {
-        throw new UnsupportedOperationException("本人状態投影は未実装");
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> ids = userIds.stream().filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, ActiveDisplayState> states = new LinkedHashMap<>();
+        for (UserRepository.ActiveDisplayStateRow row : userRepository.findActiveDisplayStateRows(ids)) {
+            boolean active = row.getStatus() == UserEntity.UserStatus.ACTIVE
+                    && row.getArchivedAt() == null && row.getDeletedAt() == null;
+            states.put(row.getId(), new ActiveDisplayState(active, active ? row.getDisplayName() : null));
+        }
+        return Map.copyOf(states);
     }
 
     private final UserRepository userRepository;
