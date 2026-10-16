@@ -596,4 +596,56 @@ class LoyaltyPointsWriterIT {
         LoyaltyQueryReaderFixture.verifyPendingIndexWithOldVersions(reader, transactionManager, jdbc);
     }
 
+    @Test
+    void 事後補強_AC23_申請版と照合コードの不一致は013で状態を変えない() {
+        var created = writer.submit(new LoyaltyWriteCommand(teamId, 20L, 20L, ruleId, 0, 0,
+                RequestOperation.SELF_SUBMIT, UUID.randomUUID(), new byte[32], 30L, "受付"));
+        assertThat(created).isNotNull();
+        var request = created.request();
+        assertThat(request).isNotNull();
+        assertThatThrownBy(() -> writer.act(new LoyaltyRequestActionCommand(teamId, 10L, request.getId(),
+                1, request.getVerificationCode(), RequestOperation.APPROVE, UUID.randomUUID(), new byte[32], null)))
+                .isInstanceOf(com.mannschaft.app.common.BusinessException.class)
+                .extracting("errorCode").isEqualTo(LoyaltyErrorCode.LOYALTY_013);
+        String wrongCode = request.getVerificationCode().equals("AAAAAAAA") ? "BBBBBBBB" : "AAAAAAAA";
+        assertThatThrownBy(() -> writer.act(new LoyaltyRequestActionCommand(teamId, 10L, request.getId(),
+                0, wrongCode, RequestOperation.APPROVE, UUID.randomUUID(), new byte[32], null)))
+                .isInstanceOf(com.mannschaft.app.common.BusinessException.class)
+                .extracting("errorCode").isEqualTo(LoyaltyErrorCode.LOYALTY_013);
+        assertThat(store.getRequests().findById(request.getId())).get()
+                .extracting("status", "version").containsExactly(RequestStatus.PENDING, 0L);
+        assertThat(store.getAccounts().findByTeamIdAndUserId(teamId, 20L)).isEmpty();
+        assertThat(store.getTransactions().existsByRuleId(ruleId)).isFalse();
+    }
+
+    @Test
+    void 事後補強_AC28_先行日次と入違いのPENDINGを再申請409でも終端commitする() {
+        assertThat(writer.award(command(UUID.randomUUID(), 0, new byte[32]))).isNotNull();
+        LocalDateTime now = LocalDateTime.of(2026, 10, 16, 23, 50);
+        UUID originalKey = UUID.randomUUID();
+        // staffの空候補読取後に申請INSERTがcommitした合法な入違い状態を実表に作る。
+        var pending = store.getRequests().saveAndFlush(com.mannschaft.app.loyalty.entity.LoyaltyAwardRequestEntity.builder()
+                .teamId(teamId).userId(20L).ruleId(ruleId).sourceLocationId(30L)
+                .programVersion(0).ruleVersion(0).points(1).ruleName("来店").locationName("受付")
+                .awardOn(now.toLocalDate()).expiresAt(now.toLocalDate().plusDays(1).atStartOfDay())
+                .status(RequestStatus.PENDING).version(0).verificationCode("ABCDEFGH")
+                .submitKey(originalKey).submitPayloadHash(new byte[32]).createdAt(now).updatedAt(now).build());
+        var denied = writer.submit(new LoyaltyWriteCommand(teamId, 20L, 20L, ruleId, 0, 0,
+                RequestOperation.SELF_SUBMIT, UUID.randomUUID(), new byte[32], 30L, "受付",
+                new LoyaltyWriteCommand.PendingSnapshot(pending.getId(), null)));
+        assertThat(denied).isNotNull();
+        assertThat(denied.errorCode()).isEqualTo(LoyaltyErrorCode.LOYALTY_005);
+        assertThat(store.getRequests().findById(pending.getId())).get()
+                .extracting("status", "reason", "version", "closedAt")
+                .containsExactly(RequestStatus.SUPERSEDED, RequestReason.DAILY_AWARDED, 1L, now);
+        var replay = writer.submit(new LoyaltyWriteCommand(teamId, 20L, 20L, ruleId, 0, 0,
+                RequestOperation.SELF_SUBMIT, originalKey, new byte[32], 30L, "受付"));
+        assertThat(replay.errorCode()).isNull();
+        assertThat(replay.request().getId()).isEqualTo(pending.getId());
+        assertThat(replay.request().getStatus()).isEqualTo(RequestStatus.SUPERSEDED);
+        assertThat(store.getAccounts().findByTeamIdAndUserId(teamId, 20L)).get().extracting("balance").isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_transactions WHERE team_id=?", Long.class, teamId)).isEqualTo(1L);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM team_loyalty_award_requests WHERE team_id=?", Long.class, teamId)).isEqualTo(1L);
+    }
+
 }

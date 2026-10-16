@@ -113,7 +113,12 @@ public class LoyaltyPointsWriter {
             }
             // HibernateはINSERTをUPDATEより先に流すため、旧PENDINGのunique枠を同TX内で先に解放する。
             if (!pending.isEmpty()) store.getRequests().flush();
-            if (awarded) throw error(LoyaltyErrorCode.LOYALTY_005);
+            if (awarded) {
+                if (pending.isEmpty()) throw error(LoyaltyErrorCode.LOYALTY_005);
+                var closed = pending.getFirst();
+                publish(command.teamId(), command.actorUserId(), command.userId(), RequestOperation.SELF_SUBMIT, null, closed.getId());
+                return new LoyaltySubmissionOutcome(null, closed, LoyaltyErrorCode.LOYALTY_005);
+            }
             var row = LoyaltyAwardRequestEntity.builder().teamId(command.teamId()).userId(command.userId())
                     .ruleId(rule.getId()).sourceLocationId(command.sourceLocationId()).programVersion(program.getVersion())
                     .ruleVersion(rule.getVersion()).points(rule.getPoints()).ruleName(rule.getName())
@@ -146,9 +151,9 @@ public class LoyaltyPointsWriter {
                 throw error(LoyaltyErrorCode.LOYALTY_015);
             }
             if (row.getStatus() != RequestStatus.PENDING) return terminal(row);
-            if (row.getVersion() != command.expectedRequestVersion()) throw error(LoyaltyErrorCode.LOYALTY_007);
+            if (row.getVersion() != command.expectedRequestVersion()) throw error(LoyaltyErrorCode.LOYALTY_013);
             if (command.operation() == RequestOperation.APPROVE
-                    && !row.getVerificationCode().equals(command.verificationCode())) throw error(LoyaltyErrorCode.LOYALTY_007);
+                    && !row.getVerificationCode().equals(command.verificationCode())) throw error(LoyaltyErrorCode.LOYALTY_013);
             if (command.operation() != RequestOperation.APPROVE && command.operation() != RequestOperation.CANCEL
                     && command.operation() != RequestOperation.REJECT) throw new BusinessException(CommonErrorCode.COMMON_001);
             var account = store.getAccounts().lockExclusive(command.teamId(), row.getUserId()).orElse(null);
