@@ -18,12 +18,22 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * <p>「事後補強」で始まる設定試験はSettingsWriter実装後の追加であり、TDDのred証拠とは扱わない。</p>
  */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@org.springframework.boot.test.context.SpringBootTest(properties = {
+@org.springframework.boot.test.context.SpringBootTest(classes = LoyaltyPointsWriterIT.PersistenceConfiguration.class, properties = {
         "spring.flyway.enabled=true", "spring.jpa.hibernate.ddl-auto=none"})
 @org.springframework.test.context.ActiveProfiles("test")
 @org.springframework.context.annotation.Import(LoyaltyPointsWriterIT.FixedClockConfiguration.class)
 @org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class LoyaltyPointsWriterIT {
+    /** 他ドメインへの境界はHTTP契約試練で確認し、ここでは実Writer/TX/DDLを限定起動する。 */
+    @org.springframework.boot.test.context.TestConfiguration(proxyBeanMethods = false)
+    @org.springframework.boot.autoconfigure.EnableAutoConfiguration
+    @org.springframework.boot.autoconfigure.domain.EntityScan(basePackageClasses = com.mannschaft.app.loyalty.entity.LoyaltyProgramEntity.class)
+    @org.springframework.data.jpa.repository.config.EnableJpaRepositories(basePackageClasses = com.mannschaft.app.loyalty.repository.LoyaltyProgramRepository.class)
+    @org.springframework.context.annotation.Import({LoyaltyStore.class, LoyaltyPointsWriter.class,
+            LoyaltySettingsWriter.class, LoyaltyTime.class, LoyaltyMapperImpl.class,
+            LoyaltyRequestStatePolicy.class, com.mannschaft.app.config.TimeZoneConfig.class})
+    static class PersistenceConfiguration { }
+
     @SuppressWarnings("resource")
     static final org.testcontainers.containers.MySQLContainer<?> MYSQL =
             new org.testcontainers.containers.MySQLContainer<>("mysql:8.0")
