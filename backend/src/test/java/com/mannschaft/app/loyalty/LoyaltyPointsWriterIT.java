@@ -31,7 +31,7 @@ class LoyaltyPointsWriterIT {
     @org.springframework.data.jpa.repository.config.EnableJpaRepositories(basePackageClasses = com.mannschaft.app.loyalty.repository.LoyaltyProgramRepository.class)
     @org.springframework.context.annotation.Import({LoyaltyStore.class, LoyaltyPointsWriter.class,
             LoyaltySettingsWriter.class, LoyaltyTime.class, LoyaltyMapperImpl.class,
-            LoyaltyRequestStatePolicy.class, com.mannschaft.app.config.TimeZoneConfig.class})
+            LoyaltyRequestStatePolicy.class, LoyaltyQueryReader.class, com.mannschaft.app.config.TimeZoneConfig.class})
     static class PersistenceConfiguration { }
 
     @SuppressWarnings("resource")
@@ -586,4 +586,14 @@ class LoyaltyPointsWriterIT {
         assertThat(store.getTransactions().findById(result.id())).get()
                 .extracting("createdAt").isEqualTo(LocalDateTime.of(2026, 10, 16, 23, 50));
     }
+    @Test
+    void Reader_本人TEAMとseekとSQL回数(@Autowired LoyaltyQueryReader reader) {
+        LoyaltyQueryReaderFixture.verifyScopeAndSeek(reader, transactionManager, jdbc);
+    }
+
+    @Test
+    void AC30_旧版十万件で現版rangeを直接読む(@Autowired LoyaltyQueryReader reader) {
+        LoyaltyQueryReaderFixture.verifyPendingIndexWithOldVersions(reader, transactionManager, jdbc);
+    }
+
 }
