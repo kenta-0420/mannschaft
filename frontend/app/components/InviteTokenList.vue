@@ -147,7 +147,15 @@ onMounted(() => loadTokens())
       />
     </div>
 
-    <DataTable :value="tokens" :loading="loading" data-key="id" class="max-w-full" scrollable>
+    <!-- 操作列を固定し、データ列は表の中で横スクロールして読む。 -->
+    <DataTable
+      :value="tokens"
+      :loading="loading"
+      data-key="id"
+      class="max-w-full"
+      table-class="min-w-[496px] sm:min-w-[680px]"
+      scrollable
+    >
       <Column header="ロール" style="width: 120px">
         <template #body="{ data }">
           <RoleBadge :role="data.roleName" />
@@ -165,7 +173,13 @@ onMounted(() => loadTokens())
           {{ data.usedCount }} / {{ data.maxUses ?? '∞' }}
         </template>
       </Column>
-      <Column header="操作" style="width: 120px">
+      <Column
+        header="操作"
+        header-class="w-[136px] whitespace-nowrap sm:w-80"
+        body-class="w-[136px] sm:w-80"
+        align-frozen="right"
+        frozen
+      >
         <template #body="{ data }">
           <div class="flex flex-wrap gap-1">
             <Button
@@ -182,7 +196,7 @@ onMounted(() => loadTokens())
               v-if="props.scopeType === 'team'"
               :label="t('inviteToken.printQrPdf')"
               :aria-label="t('inviteToken.printQrPdf')"
-              class="!min-h-11 !min-w-11 shrink-0 whitespace-nowrap"
+              class="!min-h-11 !min-w-11 w-full shrink-0 whitespace-normal sm:w-auto sm:whitespace-nowrap"
               icon="pi pi-file-pdf"
               text
               rounded
