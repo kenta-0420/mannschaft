@@ -2141,8 +2141,8 @@ com.mannschaft.app.reflection.RecallSessionCommandType#COMPLETE
 com.mannschaft.app.reflection.RecallSessionCommandType#CANCEL
 # F18.1: 新設 team_loyalty_* 6表だけへ保存する36定数（設計§10）。既存表への値追加なし。
 # programs: Audience/target_audience, SelfAwardMode/self_award_mode; rules: Frequency/frequency。
-# transactions: TransactionKind/kind, TransactionChannel/channel, RequestOperation/operation。
-# award_requests: RequestStatus/status, RequestReason/terminal_reason, RequestOperation/action_operation。
+# transactions: TransactionKind/kind, TransactionChannel/channel, RequestOperation/request_operation。
+# award_requests: RequestStatus/status, RequestReason/reason, RequestOperation/terminal_action。
 # 新表を読まない旧アプリと共存可能。書込開始は6表migration適用と新API配置の後。
 com.mannschaft.app.loyalty.Audience#ALL_AUTHENTICATED
 com.mannschaft.app.loyalty.Audience#MEMBERS_AND_ABOVE

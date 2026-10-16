@@ -84,4 +84,41 @@ class LoyaltyRequestStatePolicyTest {
         assertThat(policy.evaluate(request(), program(), rule(), null, false, Integer.MAX_VALUE - 2, created))
                 .isEqualTo(new LoyaltyEffectiveRequestState(RequestStatus.PENDING, null));
     }
+    @Test
+    void AC25_外部状態の仮投影は復旧すればPENDINGへ戻るが保存行を変更しない() {
+        LoyaltyAwardRequestEntity pending = request();
+        assertThat(policy.evaluate(pending, program(), rule(), RequestReason.LOCATION_INACTIVE,
+                false, 0, created)).isEqualTo(new LoyaltyEffectiveRequestState(
+                        RequestStatus.INVALIDATED, RequestReason.LOCATION_INACTIVE));
+        assertThat(policy.evaluate(pending, program(), rule(), null, false, 0, created))
+                .isEqualTo(new LoyaltyEffectiveRequestState(RequestStatus.PENDING, null));
+        assertThat(pending.getStatus()).isEqualTo(RequestStatus.PENDING);
+        assertThat(pending.getClosedAt()).isNull();
+        assertThat(pending.getVersion()).isZero();
+    }
+
+    @Test
+    void AC25_版モード停止自己付与禁止と保存points変更を自動承認しない() {
+        for (LoyaltyProgramEntity changed : new LoyaltyProgramEntity[]{
+                program().toBuilder().version(5).build(),
+                program().toBuilder().isEnabled(false).build(),
+                program().toBuilder().selfAwardMode(SelfAwardMode.AUTO).build()}) {
+            assertThat(policy.evaluate(request(), changed, rule(), null, false, 0, created))
+                    .isEqualTo(new LoyaltyEffectiveRequestState(RequestStatus.INVALIDATED, RequestReason.VERSION_CHANGED));
+        }
+        for (LoyaltyRuleEntity changed : new LoyaltyRuleEntity[]{
+                rule().toBuilder().version(5).build(), rule().toBuilder().isActive(false).build(),
+                rule().toBuilder().isSelfAwardEnabled(false).build(), rule().toBuilder().points(3).build()}) {
+            assertThat(policy.evaluate(request(), program(), changed, null, false, 0, created))
+                    .isEqualTo(new LoyaltyEffectiveRequestState(RequestStatus.INVALIDATED, RequestReason.VERSION_CHANGED));
+        }
+    }
+
+    @Test
+    void AC25_設定行欠落は版不一致へfailClosedする() {
+        assertThat(policy.evaluate(request(), null, rule(), null, false, 0, created))
+                .isEqualTo(new LoyaltyEffectiveRequestState(RequestStatus.INVALIDATED, RequestReason.VERSION_CHANGED));
+        assertThat(policy.evaluate(request(), program(), null, null, false, 0, created))
+                .isEqualTo(new LoyaltyEffectiveRequestState(RequestStatus.INVALIDATED, RequestReason.VERSION_CHANGED));
+    }
 }

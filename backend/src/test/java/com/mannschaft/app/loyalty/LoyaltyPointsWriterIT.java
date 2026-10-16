@@ -13,10 +13,37 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * AC03/07/08/11/12/13の書込試練。実Bean/実MySQL/commitを観測する。
+ * <p>生成列・CHECK・複合FKによる競合/rollbackを検証するため、Hibernate生成schemaではなく専用MySQLに実Flywayを適用する。
+ * 共有基底と異なるschema契約なので専用contextを使い、クラス終了時に閉じる。</p>
  * <p>「事後補強」で始まる設定試験はSettingsWriter実装後の追加であり、TDDのred証拠とは扱わない。</p>
  */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-class LoyaltyPointsWriterIT extends AbstractMySqlIntegrationTest {
+@org.springframework.boot.test.context.SpringBootTest(properties = {
+        "spring.flyway.enabled=true", "spring.jpa.hibernate.ddl-auto=none"})
+@org.springframework.test.context.ActiveProfiles("test")
+@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
+class LoyaltyPointsWriterIT {
+    @SuppressWarnings("resource")
+    static final org.testcontainers.containers.MySQLContainer<?> MYSQL =
+            new org.testcontainers.containers.MySQLContainer<>("mysql:8.0")
+                    .withDatabaseName("loyalty_writer_flyway")
+                    .withUsername("test").withPassword("test")
+                    .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"))
+                    .withCommand("--log_bin_trust_function_creators=1");
+    static {
+        if (AbstractMySqlIntegrationTest.isDockerAvailable()) {
+            MYSQL.start();
+        }
+    }
+    @org.springframework.test.context.DynamicPropertySource
+    static void database(org.springframework.test.context.DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", MYSQL::getJdbcUrl);
+        registry.add("spring.datasource.username", MYSQL::getUsername);
+        registry.add("spring.datasource.password", MYSQL::getPassword);
+    }
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+
     @Autowired private LoyaltyStore store;
     @Autowired private LoyaltyPointsWriter writer;
     @Autowired private LoyaltySettingsWriter settings;

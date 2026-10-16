@@ -1428,6 +1428,10 @@ class FlywayFromScratchMigrationTest {
     @Test
     @Order(90)
     void チームポイント6表の所有境界と申請索引が存在する() throws Exception {
+        migrateFromScratch();
+        try (Connection connection = connect()) {
+            LoyaltyMigrationFixture.verify(connection);
+        }
         try (Connection conn = connect(); Statement statement = conn.createStatement()) {
             for (String suffix : List.of("programs", "rules", "rewards", "accounts", "transactions", "award_requests")) {
                 String table = "team_loyalty_" + suffix;
@@ -1465,6 +1469,14 @@ class FlywayFromScratchMigrationTest {
                 assertThat(result.next()).as("権限を実カタログへ登録する").isTrue();
                 assertThat(result.getString(1)).isEqualTo("TEAM");
                 assertThat(result.next()).isFalse();
+            }
+            try (ResultSet result = statement.executeQuery("SELECT r.name,rp.is_default FROM role_permissions rp "
+                    + "JOIN roles r ON r.id=rp.role_id JOIN permissions p ON p.id=rp.permission_id "
+                    + "WHERE p.name='TEAM_LOYALTY_OPERATE'")) {
+                assertThat(result.next()).isTrue();
+                assertThat(result.getString(1)).isEqualTo("ADMIN");
+                assertThat(result.getBoolean(2)).isTrue();
+                assertThat(result.next()).as("DEPUTY天井行も恒常付与も登録しない").isFalse();
             }
         }
     }
