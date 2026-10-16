@@ -36,6 +36,7 @@ import com.mannschaft.app.team.repository.TeamRepository;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.util.List;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
@@ -90,6 +91,11 @@ class LoyaltyScopeContractIT extends AbstractMySqlIntegrationTest {
     private UUID otherRequest;
     private UUID cancelKey;
     private Instant now;
+
+    /** 既存ドメインのfixture境界だけをJST壁時計へ変換する。 */
+    private LocalDateTime legacyJstNow() {
+        return LocalDateTime.ofInstant(now, UserZoneLocalDateTimeParser.SERVER_ZONE);
+    }
 
     @BeforeEach void fixture() {
         me = users.saveAndFlush(LoyaltyTestFixture.user()).getId();
@@ -180,13 +186,13 @@ class LoyaltyScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Test void Policy_アーカイブ本人は共通権限不足で拒否する() {
         UserEntity archived = users.saveAndFlush(LoyaltyTestFixture.user().toBuilder()
-                .archivedAt(now).build());
+                .archivedAt(legacyJstNow()).build());
         denied(() -> policy.requireActiveActor(archived.getId()), CommonErrorCode.COMMON_002);
     }
 
     @Test void Policy_論理削除本人は共通権限不足で拒否する() {
         UserEntity deleted = users.saveAndFlush(LoyaltyTestFixture.user().toBuilder()
-                .deletedAt(now).build());
+                .deletedAt(legacyJstNow()).build());
         denied(() -> policy.requireActiveActor(deleted.getId()), CommonErrorCode.COMMON_002);
     }
 
@@ -195,8 +201,8 @@ class LoyaltyScopeContractIT extends AbstractMySqlIntegrationTest {
         denied(() -> policy.requireActiveTeam(Long.MAX_VALUE), LoyaltyErrorCode.LOYALTY_001);
         TeamEntity provisioned = teams.saveAndFlush(teamFixture("未承諾")
                 .lifecycleStatus(TeamEntity.LifecycleStatus.PROVISIONED).build());
-        TeamEntity archived = teams.saveAndFlush(teamFixture("アーカイブ").archivedAt(now).build());
-        TeamEntity deleted = teams.saveAndFlush(teamFixture("削除").deletedAt(now).build());
+        TeamEntity archived = teams.saveAndFlush(teamFixture("アーカイブ").archivedAt(legacyJstNow()).build());
+        TeamEntity deleted = teams.saveAndFlush(teamFixture("削除").deletedAt(legacyJstNow()).build());
         denied(() -> policy.requireActiveTeam(provisioned.getId()), LoyaltyErrorCode.LOYALTY_001);
         denied(() -> policy.requireActiveTeam(archived.getId()), LoyaltyErrorCode.LOYALTY_001);
         denied(() -> policy.requireActiveTeam(deleted.getId()), LoyaltyErrorCode.LOYALTY_001);
@@ -301,7 +307,7 @@ class LoyaltyScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Test void Policy_退会済み所属は所属対象から除く() {
         MembershipEntity left = member(me, teamA, RoleKind.MEMBER);
-        left.setLeftAt(now);
+        left.setLeftAt(legacyJstNow());
         left.setLeaveReason(LeaveReason.SELF);
         left.setLeftTrigger(LeftTrigger.SELF);
         left.setLeftBy(me);
@@ -330,7 +336,7 @@ class LoyaltyScopeContractIT extends AbstractMySqlIntegrationTest {
 
     private MembershipEntity member(Long user, Long team, RoleKind kind) {
         return memberships.saveAndFlush(MembershipEntity.builder().userId(user).scopeType(ScopeType.TEAM)
-                .scopeId(team).roleKind(kind).joinedAt(now).invitedBy(user).build());
+                .scopeId(team).roleKind(kind).joinedAt(legacyJstNow()).invitedBy(user).build());
     }
 
     private void role(Long user, Long team, Long organization, String name) {
