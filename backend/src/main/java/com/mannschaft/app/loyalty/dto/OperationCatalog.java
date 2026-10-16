@@ -14,11 +14,11 @@ public record OperationCatalog(
         String teamName,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         boolean isEnabled,
-        @Schema(types = {"integer", "null"}, nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         Long programVersion,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         SelfAwardMode selfAwardMode,
-        @Schema(types = {"object", "null"}, nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         RuleResponse rule,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         List<RewardResponse> rewards) {

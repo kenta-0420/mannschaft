@@ -10,6 +10,7 @@ import java.util.UUID;
 /** チームポイントの業務契約。 */
 @Schema(name = "LoyaltySelfAwardPreviewRequest")
 public record SelfAwardPreviewRequest(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank @Size(max = 512) String locationToken,
         @NotNull UUID ruleId) {
 }

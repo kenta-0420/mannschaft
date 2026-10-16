@@ -11,7 +11,7 @@ public record RewardProgress(
         UUID id,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         String name,
-        @Schema(types = {"string", "null"}, nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         String description,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         int requiredPoints,

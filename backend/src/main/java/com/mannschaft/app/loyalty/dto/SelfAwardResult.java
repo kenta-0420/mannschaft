@@ -9,8 +9,8 @@ import com.mannschaft.app.loyalty.SelfAwardOutcome;
 public record SelfAwardResult(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         SelfAwardOutcome outcome,
-        @Schema(types = {"object", "null"}, nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         TransactionResponse transaction,
-        @Schema(types = {"object", "null"}, nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         AwardRequestResponse request) {
 }

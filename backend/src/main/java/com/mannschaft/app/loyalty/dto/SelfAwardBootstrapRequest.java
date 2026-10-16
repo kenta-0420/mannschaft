@@ -8,5 +8,6 @@ import jakarta.validation.constraints.Size;
 /** チームポイントの業務契約。 */
 @Schema(name = "LoyaltySelfAwardBootstrapRequest")
 public record SelfAwardBootstrapRequest(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank @Size(max = 512) String locationToken) {
 }

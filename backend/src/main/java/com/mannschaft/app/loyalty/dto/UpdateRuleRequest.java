@@ -13,6 +13,7 @@ import jakarta.validation.constraints.Size;
 /** チームポイントの業務契約。 */
 @Schema(name = "LoyaltyUpdateRuleRequest")
 public record UpdateRuleRequest(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank @Size(max = 100) String name,
         @NotNull @Min(1) @Max(10000) Integer points,
         @NotNull Frequency frequency,

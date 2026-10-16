@@ -11,8 +11,9 @@ import jakarta.validation.constraints.Size;
 /** チームポイントの業務契約。 */
 @Schema(name = "LoyaltyCreateRewardRequest")
 public record CreateRewardRequest(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank @Size(max = 100) String name,
-        @Schema(types = {"string", "null"}, nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         @Size(max = 500) String description,
         @NotNull @Min(1) @Max(1000000) Integer requiredPoints) {
     /** Bean Validationへ渡す前に設計どおり名称の前後空白を除く。 */

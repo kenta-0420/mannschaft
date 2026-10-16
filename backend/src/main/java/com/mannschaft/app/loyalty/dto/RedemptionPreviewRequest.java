@@ -10,6 +10,7 @@ import java.util.UUID;
 /** チームポイントの業務契約。 */
 @Schema(name = "LoyaltyRedemptionPreviewRequest")
 public record RedemptionPreviewRequest(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank @Size(max = 512) String qrToken,
         @NotNull UUID rewardId) {
 }

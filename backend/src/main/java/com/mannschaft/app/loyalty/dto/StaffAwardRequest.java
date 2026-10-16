@@ -11,6 +11,7 @@ import java.util.UUID;
 /** チームポイントの業務契約。 */
 @Schema(name = "LoyaltyStaffAwardRequest")
 public record StaffAwardRequest(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank @Size(max = 512) String qrToken,
         @NotNull UUID ruleId,
         @NotNull @PositiveOrZero Long expectedRuleVersion,
