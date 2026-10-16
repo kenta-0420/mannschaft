@@ -79,6 +79,10 @@ public class LoyaltyQueryReader {
                 () -> new BusinessException(LoyaltyErrorCode.LOYALTY_001))), now);
     }
 
+    public LoyaltyAccountEntity account(Long team, Long user) {
+        return store.getAccounts().findByTeamIdAndUserId(team, user).orElse(null);
+    }
+
     public int balance(Long team, Long user) {
         return store.getAccounts().findByTeamIdAndUserId(team, user).map(LoyaltyAccountEntity::getBalance).orElse(0);
     }
