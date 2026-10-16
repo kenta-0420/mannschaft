@@ -20,6 +20,7 @@ export interface SidebarItem {
    */
   gateKey?: string
   requiredRole: 'MEMBER' | 'DEPUTY_ADMIN' | 'ADMIN'
+  access?: 'loyalty-operate' | 'scope-admin'
 }
 
 export interface SidebarCategory {

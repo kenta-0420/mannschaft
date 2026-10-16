@@ -2943,5 +2943,145 @@
     "generic_title": "发生了错误",
     "generic_description": "请稍后再试。如果问题仍然存在，请联系管理员。",
     "back_home": "返回首页"
+  },
+  "loyalty": {
+    "memberQr": {
+      "title": "会员二维码",
+      "expiresIn": "剩余{seconds}秒",
+      "expired": "请刷新二维码"
+    },
+    "wallet": {
+      "title": "团队积分",
+      "empty": "暂无团队积分"
+    },
+    "balance": "{points}积分",
+    "remaining": "还需{points}积分",
+    "lifetime": "累计获得{points}积分",
+    "refresh": "刷新",
+    "more": "继续查看",
+    "confirm": "确认内容并提交",
+    "retrySame": "重试同一请求",
+    "save": "保存",
+    "saved": "已保存",
+    "cancel": "返回",
+    "name": "名称",
+    "description": "说明（可选）",
+    "active": "启用",
+    "externalCards": "开始使用外部积分卡",
+    "history": {
+      "title": "积分记录",
+      "award": "积分增加",
+      "redeem": "兑换奖励",
+      "empty": "暂无记录"
+    },
+    "audience": {
+      "title": "积分对象",
+      "allAuthenticated": "所有已登录个人（含非成员）",
+      "supportersAndAbove": "支持者及以上",
+      "membersAndAbove": "成员及以上"
+    },
+    "rule": {
+      "title": "积分规则",
+      "amount": "每次积分",
+      "points": "每次{points}积分",
+      "frequency": "频率",
+      "frequencyDaily": "每天一次（日本时间）",
+      "frequencyStaff": "每次员工确认",
+      "selfEnabled": "允许本人扫描接待二维码",
+      "selfDailyOnly": "自助接待仅支持每日一次规则"
+    },
+    "reward": {
+      "title": "奖励",
+      "add": "添加奖励",
+      "amount": "所需积分",
+      "required": "使用{points}积分兑换",
+      "confirm": "使用{points}积分兑换{reward}"
+    },
+    "scan": {
+      "title": "积分接待",
+      "camera": "使用相机扫描会员二维码",
+      "cameraDenied": "无法使用相机。请检查相机权限后重试。",
+      "confirmAward": "在{team}增加{points}积分",
+      "success": "积分操作完成",
+      "next": "开始下一次接待"
+    },
+    "self": {
+      "confirm": "确认接待信息",
+      "rescan": "请重新扫描接待二维码"
+    },
+    "error": {
+      "uncertain": "结果尚未确认。请重试同一请求。",
+      "alreadyAwarded": "今日已获得积分",
+      "ineligible": "目前不符合积分条件",
+      "changed": "内容已变更，请重新确认。",
+      "insufficient": "积分不足"
+    },
+    "program": {
+      "disabled": "积分计划已停用",
+      "closedTeam": "已关闭的团队"
+    },
+    "settings": {
+      "title": "团队积分设置",
+      "enabled": "启用积分计划"
+    },
+    "mode": {
+      "title": "自助接待模式",
+      "staffApproval": "员工审批（批准前不增加积分）",
+      "auto": "自动积分",
+      "autoWarning": "固定二维码可能被拍摄并远程重复使用。每日一次限制不能证明实际到访。"
+    },
+    "reception": {
+      "title": "积分接待二维码",
+      "location": "接待地点",
+      "newLocation": "新接待地点名称",
+      "create": "创建接待地点",
+      "preview": "预览二维码",
+      "print": "打印或分享",
+      "stop": "停用接待地点",
+      "sharedLocationStopWarning": "停用此地点也会停止签到。仅停止积分时请停用积分计划。",
+      "printTitle": "积分接待",
+      "printInstructions": "扫描、登录并确认内容后提交。每天一次（日本时间）。"
+    },
+    "requests": {
+      "title": "接待申请",
+      "empty": "暂无接待申请",
+      "submitted": "申请已提交（尚未增加积分）",
+      "code": "核对码：{code}",
+      "expiresAt": "有效期：{datetime}（日本时间午夜提前截止）",
+      "showStaff": "请向员工出示本人屏幕进行核对",
+      "approve": "批准并增加积分",
+      "reject": "拒绝",
+      "cancel": "取消申请",
+      "compareBeforeApprove": "批准前请核对申请人屏幕的名称和核对码",
+      "enterCode": "申请人屏幕上的核对码",
+      "moreCandidates": "此范围无有效申请，继续查看",
+      "selfApprovalForbidden": "无法批准此申请。请将本人申请出示给其他员工。",
+      "all": "所有状态",
+      "deletedUser": "已注销用户",
+      "closedLocation": "已关闭的接待地点",
+      "reapply": "确认当前内容后重新申请",
+      "status": {
+        "pending": "待审批",
+        "approved": "已批准",
+        "cancelled": "已取消",
+        "rejected": "已拒绝",
+        "expired": "已过期",
+        "invalidated": "已失效",
+        "superseded": "已通过其他途径积分"
+      },
+      "reason": {
+        "userCancelled": "申请人已取消",
+        "staffRejected": "员工已拒绝",
+        "ttlExpired": "已超过有效期",
+        "dayChanged": "日本时间日期已变更",
+        "versionChanged": "设置或规则已变更",
+        "locationInactive": "接待地点已停用",
+        "teamInactive": "团队已停用",
+        "userInactive": "用户已停用",
+        "ineligible": "不再符合积分条件",
+        "dailyAwarded": "今日已获得积分",
+        "pointLimit": "已达积分上限"
+      }
+    }
   }
 }

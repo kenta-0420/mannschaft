@@ -2943,5 +2943,145 @@
     "generic_title": "エラーが発生しました",
     "generic_description": "しばらくしてからもう一度お試しください。問題が続く場合は、管理者へお問い合わせください。",
     "back_home": "ホームへ戻る"
+  },
+  "loyalty": {
+    "memberQr": {
+      "title": "会員QR",
+      "expiresIn": "残り{seconds}秒",
+      "expired": "QRを更新してください"
+    },
+    "wallet": {
+      "title": "チームポイント",
+      "empty": "まだチームポイントがありません"
+    },
+    "balance": "{points}ポイント",
+    "remaining": "あと{points}ポイント",
+    "lifetime": "累計獲得 {points}ポイント",
+    "refresh": "更新",
+    "more": "続きを確認",
+    "confirm": "内容を確認して確定",
+    "retrySame": "同じ内容で結果を確認",
+    "save": "保存",
+    "saved": "保存しました",
+    "cancel": "戻る",
+    "name": "名称",
+    "description": "説明（任意）",
+    "active": "有効",
+    "externalCards": "外部ポイントカードの利用を開始",
+    "history": {
+      "title": "加算・交換履歴",
+      "award": "加算",
+      "redeem": "特典交換",
+      "empty": "履歴がありません"
+    },
+    "audience": {
+      "title": "付与対象",
+      "allAuthenticated": "全認証済み個人（非所属を含む）",
+      "supportersAndAbove": "サポーター以上",
+      "membersAndAbove": "メンバー以上"
+    },
+    "rule": {
+      "title": "付与ルール",
+      "amount": "1回の加算数",
+      "points": "1回{points}ポイント",
+      "frequency": "頻度",
+      "frequencyDaily": "JSTで一日一回",
+      "frequencyStaff": "スタッフ確認ごと",
+      "selfEnabled": "本人による受付QR読取を許可",
+      "selfDailyOnly": "本人受付は一日一回のルールのみ利用できます"
+    },
+    "reward": {
+      "title": "特典",
+      "add": "特典を追加",
+      "amount": "必要ポイント",
+      "required": "{points}ポイントで交換",
+      "confirm": "{reward}に{points}ポイント使用"
+    },
+    "scan": {
+      "title": "ポイント受付",
+      "camera": "会員QRをカメラで読取",
+      "cameraDenied": "カメラを利用できません。ブラウザのカメラ許可を確認して再試行してください",
+      "confirmAward": "{team}で{points}ポイント加算",
+      "success": "ポイント処理が完了しました",
+      "next": "次の受付を開始"
+    },
+    "self": {
+      "confirm": "受付内容の確認",
+      "rescan": "受付QRをもう一度読み取ってください"
+    },
+    "error": {
+      "uncertain": "結果は未確定です。同じ内容で再送して結果を確認してください",
+      "alreadyAwarded": "本日は加算済みです",
+      "ineligible": "現在の付与対象ではありません",
+      "changed": "内容が変更されました。再確認してください",
+      "insufficient": "ポイントが不足しています"
+    },
+    "program": {
+      "disabled": "ポイントプログラムは停止中です",
+      "closedTeam": "利用終了したチーム"
+    },
+    "settings": {
+      "title": "チームポイント設定",
+      "enabled": "ポイントプログラムを有効化"
+    },
+    "mode": {
+      "title": "本人受付の方式",
+      "staffApproval": "スタッフ承認（確定まで加算なし）",
+      "auto": "自動加算",
+      "autoWarning": "固定QRの撮影・遠隔再利用は防げず、同日1回の制限でも来店そのものは証明できません"
+    },
+    "reception": {
+      "title": "ポイント受付QR",
+      "location": "受付拠点",
+      "newLocation": "新しい受付拠点名",
+      "create": "受付拠点を作成",
+      "preview": "QRプレビュー",
+      "print": "印刷・共有",
+      "stop": "受付拠点を停止",
+      "sharedLocationStopWarning": "この拠点を停止すると、同じ拠点のチェックインも停止します。ポイントだけ止める場合はプログラムを停止してください",
+      "printTitle": "ポイント受付",
+      "printInstructions": "QRを読み取り、ログインして内容を確認後、確定してください。JSTで一日一回です"
+    },
+    "requests": {
+      "title": "受付申請",
+      "empty": "受付申請がありません",
+      "submitted": "申請しました（まだ加算されていません）",
+      "code": "照合コード {code}",
+      "expiresAt": "有効期限 {datetime}（JST日跨ぎで短縮）",
+      "showStaff": "本人画面をスタッフに提示して確認を受けてください",
+      "approve": "承認して加算",
+      "reject": "却下",
+      "cancel": "申請を取り消す",
+      "compareBeforeApprove": "本人画面の表示名と照合コードを比較してから承認してください",
+      "enterCode": "本人画面の照合コード",
+      "moreCandidates": "この範囲に有効申請なし・続きを確認",
+      "selfApprovalForbidden": "この申請は承認できません。自分の申請は別のスタッフへ提示してください",
+      "all": "全状態",
+      "deletedUser": "退会済み利用者",
+      "closedLocation": "利用終了した受付",
+      "reapply": "現在の内容を確認して再申請",
+      "status": {
+        "pending": "承認待ち",
+        "approved": "承認済み",
+        "cancelled": "取消済み",
+        "rejected": "却下済み",
+        "expired": "期限切れ",
+        "invalidated": "内容変更等で無効",
+        "superseded": "別経路で加算済み"
+      },
+      "reason": {
+        "userCancelled": "本人が取り消しました",
+        "staffRejected": "スタッフが却下しました",
+        "ttlExpired": "有効期限を過ぎました",
+        "dayChanged": "JSTの日付が変わりました",
+        "versionChanged": "設定・ルールが変更されました",
+        "locationInactive": "受付拠点が停止しました",
+        "teamInactive": "チームが停止しました",
+        "userInactive": "利用者が無効になりました",
+        "ineligible": "現在の付与対象ではありません",
+        "dailyAwarded": "本日は加算済みです",
+        "pointLimit": "ポイント上限に達しました"
+      }
+    }
   }
 }

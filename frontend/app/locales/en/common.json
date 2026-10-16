@@ -2943,5 +2943,145 @@
     "generic_title": "Something went wrong",
     "generic_description": "Please try again in a moment. If the problem continues, contact your administrator.",
     "back_home": "Back to home"
+  },
+  "loyalty": {
+    "memberQr": {
+      "title": "Member QR",
+      "expiresIn": "Valid for {seconds} seconds",
+      "expired": "Refresh your QR"
+    },
+    "wallet": {
+      "title": "Team points",
+      "empty": "No team points yet"
+    },
+    "balance": "{points} points",
+    "remaining": "{points} more points needed",
+    "lifetime": "Total earned: {points} points",
+    "refresh": "Refresh",
+    "more": "Continue",
+    "confirm": "Confirm these details",
+    "retrySame": "Retry the same request",
+    "save": "Save",
+    "saved": "Saved",
+    "cancel": "Back",
+    "name": "Name",
+    "description": "Description (optional)",
+    "active": "Active",
+    "externalCards": "Start using external point cards",
+    "history": {
+      "title": "Points history",
+      "award": "Earn points",
+      "redeem": "Redeem reward",
+      "empty": "No history yet"
+    },
+    "audience": {
+      "title": "Who can earn points",
+      "allAuthenticated": "All signed-in individuals (including non-members)",
+      "supportersAndAbove": "Supporters and above",
+      "membersAndAbove": "Members and above"
+    },
+    "rule": {
+      "title": "Earning rule",
+      "amount": "Points per visit",
+      "points": "{points} points per visit",
+      "frequency": "Frequency",
+      "frequencyDaily": "Once per day (JST)",
+      "frequencyStaff": "Each staff confirmation",
+      "selfEnabled": "Allow self-service reception QR",
+      "selfDailyOnly": "Self-service requires the daily rule"
+    },
+    "reward": {
+      "title": "Rewards",
+      "add": "Add reward",
+      "amount": "Required points",
+      "required": "Redeem for {points} points",
+      "confirm": "Use {points} points for {reward}"
+    },
+    "scan": {
+      "title": "Points reception",
+      "camera": "Scan member QR with camera",
+      "cameraDenied": "Camera unavailable. Check browser camera permission and retry.",
+      "confirmAward": "Add {points} points at {team}",
+      "success": "Points operation completed",
+      "next": "Start next reception"
+    },
+    "self": {
+      "confirm": "Confirm reception details",
+      "rescan": "Please scan the reception QR again"
+    },
+    "error": {
+      "uncertain": "Result unknown. Retry the same request to recover the result.",
+      "alreadyAwarded": "Already awarded today",
+      "ineligible": "Currently not eligible to earn points",
+      "changed": "Details changed. Review them again.",
+      "insufficient": "Insufficient points"
+    },
+    "program": {
+      "disabled": "Points program is disabled",
+      "closedTeam": "Closed team"
+    },
+    "settings": {
+      "title": "Team points settings",
+      "enabled": "Enable points program"
+    },
+    "mode": {
+      "title": "Self-service mode",
+      "staffApproval": "Staff approval (no points until approved)",
+      "auto": "Automatic points",
+      "autoWarning": "A fixed QR can be photographed and reused remotely. A daily limit does not prove a visit."
+    },
+    "reception": {
+      "title": "Points reception QR",
+      "location": "Reception location",
+      "newLocation": "New reception location name",
+      "create": "Create reception location",
+      "preview": "Preview QR",
+      "print": "Print or share",
+      "stop": "Disable reception location",
+      "sharedLocationStopWarning": "Disabling this location also stops check-in here. Disable the points program to stop points only.",
+      "printTitle": "Points reception",
+      "printInstructions": "Scan, sign in, review the details, then confirm. Once per day (JST)."
+    },
+    "requests": {
+      "title": "Reception requests",
+      "empty": "No reception requests",
+      "submitted": "Request submitted (points not yet added)",
+      "code": "Verification code: {code}",
+      "expiresAt": "Expires: {datetime} (shortened at JST midnight)",
+      "showStaff": "Show your screen to staff for verification",
+      "approve": "Approve and add points",
+      "reject": "Reject",
+      "cancel": "Cancel request",
+      "compareBeforeApprove": "Compare the name and code with the applicant's screen before approving",
+      "enterCode": "Code from applicant's screen",
+      "moreCandidates": "No valid requests in this range. Continue.",
+      "selfApprovalForbidden": "You cannot approve this request. Show your own request to another staff member.",
+      "all": "All statuses",
+      "deletedUser": "Former user",
+      "closedLocation": "Closed reception",
+      "reapply": "Review current details and apply again",
+      "status": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "cancelled": "Cancelled",
+        "rejected": "Rejected",
+        "expired": "Expired",
+        "invalidated": "Invalidated",
+        "superseded": "Awarded through another channel"
+      },
+      "reason": {
+        "userCancelled": "Cancelled by applicant",
+        "staffRejected": "Rejected by staff",
+        "ttlExpired": "Request expired",
+        "dayChanged": "The JST date changed",
+        "versionChanged": "Settings or rule changed",
+        "locationInactive": "Reception location disabled",
+        "teamInactive": "Team is inactive",
+        "userInactive": "User is inactive",
+        "ineligible": "No longer eligible",
+        "dailyAwarded": "Already awarded today",
+        "pointLimit": "Points limit reached"
+      }
+    }
   }
 }

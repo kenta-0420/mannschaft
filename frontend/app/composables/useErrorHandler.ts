@@ -22,6 +22,21 @@ export const useErrorHandler = () => {
   // BE message を最優先し、無ければ従来どおり i18n キー→汎用文言にフォールバックする。
   const resolveMessage = (code: string, fallback?: string): string => {
     const key = `error.${code}`
+    if (code.startsWith('LOYALTY_')) {
+      const loyaltyKeys: Record<string, string> = {
+        LOYALTY_001: 'loadErrorState.states.notFoundOrForbidden.message',
+        LOYALTY_002: 'loadErrorState.states.forbidden.message',
+        LOYALTY_003: 'loyalty.error.ineligible', LOYALTY_004: 'loyalty.program.disabled',
+        LOYALTY_005: 'loyalty.error.alreadyAwarded', LOYALTY_006: 'loyalty.error.changed',
+        LOYALTY_007: 'loyalty.error.changed', LOYALTY_008: 'loyalty.error.insufficient',
+        LOYALTY_009: 'loyalty.error.changed', LOYALTY_010: 'loyalty.self.rescan',
+        LOYALTY_011: 'loyalty.self.rescan', LOYALTY_012: 'error.server_retry',
+        LOYALTY_013: 'loyalty.error.changed', LOYALTY_014: 'loyalty.error.changed',
+        LOYALTY_015: 'loyalty.requests.selfApprovalForbidden',
+      }
+      const loyaltyKey = loyaltyKeys[code]
+      if (loyaltyKey) return t(loyaltyKey)
+    }
     // CMP-260920-1040 AC-36: 確認通知は errorCode ごとの6言語文言を表示する。
     // BE の message は日本語固定なので、このドメインだけ登録済み i18n を優先する。
     if (code.startsWith('CONFIRMABLE_NOTIFICATION_') && te(key)) return t(key)

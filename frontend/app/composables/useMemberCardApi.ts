@@ -13,6 +13,12 @@ import type {
 export function useMemberCardApi() {
   const api = useApi()
 
+  async function ensurePlatform() {
+    return (await api<{ data: { memberCardId: number; scopeType: 'PLATFORM'; status: MemberCardStatus } }>(
+      '/api/v1/member-cards/platform/me', { method: 'POST' },
+    )).data
+  }
+
   async function listMy() {
     const res = await api<{ data: MemberCard[] }>('/api/v1/member-cards/my')
     return res.data
@@ -139,7 +145,7 @@ export function useMemberCardApi() {
     return res.data
   }
 
-  async function updateLocation(teamId: string, id: number, body: CreateCheckinLocationRequest) {
+  async function updateLocation(teamId: string, id: number, body: CreateCheckinLocationRequest & { isActive?: boolean }) {
     const res = await api<{ data: CheckinLocation }>(
       `/api/v1/teams/${teamId}/checkin-locations/${id}`,
       { method: 'PUT', body },
@@ -152,13 +158,14 @@ export function useMemberCardApi() {
   }
 
   async function getLocationQr(teamId: string, id: number) {
-    const res = await api<{ data: { qrToken: string } }>(
+    const res = await api<{ data: { locationId: number; name: string; qrToken: string; scopeName: string; printInstructions: string } }>(
       `/api/v1/teams/${teamId}/checkin-locations/${id}/qr`,
     )
     return res.data
   }
 
   return {
+    ensurePlatform,
     listMy,
     get,
     getQr,

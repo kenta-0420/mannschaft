@@ -77,9 +77,6 @@ async function loadSettings() {
   loadingSettings.value = true
   try {
     settings.value = await walletApi.getSettings()
-    if (!isWalletReady.value) {
-      showTerms.value = true
-    }
   } catch (error) {
     console.error('[wallet] failed to load settings', error)
   } finally {
@@ -172,7 +169,12 @@ watch(activeTab, (newTab) => {
           </NuxtLink>
         </template>
       </PageHeader>
+      <LoyaltyWalletPanel />
+      <SectionCard v-if="!loadingSettings && !isWalletReady" :title="t('wallet.title')" class="mb-4">
+        <Button class="min-h-11" :label="t('loyalty.externalCards')" @click="showTerms = true" />
+      </SectionCard>
       <div
+        v-if="isWalletReady"
         class="mb-4 flex gap-1 border-b border-surface-200 dark:border-surface-700"
         role="tablist"
       >
@@ -203,7 +205,7 @@ watch(activeTab, (newTab) => {
       </div>
 
       <!-- ===== Cards タブ ===== -->
-      <section v-if="activeTab === 'cards'" class="flex flex-col gap-4">
+      <section v-if="isWalletReady && activeTab === 'cards'" class="flex flex-col gap-4">
         <InputText
           v-model="searchQuery"
           class="w-full"
@@ -256,7 +258,7 @@ watch(activeTab, (newTab) => {
       </section>
 
       <!-- ===== Groups タブ ===== -->
-      <section v-else class="flex flex-col gap-4">
+      <section v-else-if="isWalletReady" class="flex flex-col gap-4">
         <div v-if="loadingGroups" class="py-12 text-center text-surface-400">…</div>
 
         <template v-else-if="groups.length === 0">
