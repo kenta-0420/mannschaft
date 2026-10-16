@@ -198,6 +198,7 @@ test('AC03/11/15: 実会員QRをカメラ映像から読取り付与・交換し
     expect((await awarded).status()).toBe(200)
     await page.goto(`/my/team-points/${fixture.team.numericId}`)
     await expect(page.getByTestId('loyalty-balance')).toBeVisible()
+    await expect(page.getByTestId('loyalty-balance')).toHaveText('25ポイント')
     await expect(page.getByText(/· 加算 ·/)).toBeVisible()
     await staff.getByRole('button', { name: '次の受付を開始', exact: true }).click()
     await staff.getByText('特典交換', { exact: true }).click()
@@ -211,6 +212,7 @@ test('AC03/11/15: 実会員QRをカメラ映像から読取り付与・交換し
     await staff.getByRole('button', { name: '内容を確認して確定' }).click()
     expect((await redeemed).status()).toBe(200)
     await page.getByRole('button', { name: '更新', exact: true }).click()
+    await expect(page.getByTestId('loyalty-balance')).toHaveText('5ポイント')
     await expect(page.getByText(/· 特典交換 ·/)).toBeVisible()
     await noOverflow(page)
   } finally {

@@ -87,7 +87,7 @@ async function assign(userId, role, scopeType, scopeId, adminId) {
     const [catalog] = await database.execute('SELECT id FROM roles WHERE name=?', [role])
     if (catalog.length !== 1) throw new Error('Role catalog mismatch')
     await insert(
-      'INSERT INTO user_roles (user_id,role_id,team_id,organization_id,granted_by,created_at,updated_at) VALUES (?,?,?,?,?,NOW(),NOW())',
+      'INSERT INTO user_roles (user_id,role_id,team_id,organization_id,granted_by,created_at,updated_at) VALUES (?,?,?,?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP())',
       [
         userId,
         catalog[0].id,
@@ -99,7 +99,7 @@ async function assign(userId, role, scopeType, scopeId, adminId) {
   }
   if (scopeType)
     await insert(
-      'INSERT INTO memberships (user_id,scope_type,scope_id,role_kind,joined_at,invited_by,created_at,updated_at) VALUES (?,?,?,?,NOW(),?,NOW(),NOW())',
+      'INSERT INTO memberships (user_id,scope_type,scope_id,role_kind,joined_at,invited_by,created_at,updated_at) VALUES (?,?,?,?,UTC_TIMESTAMP(),?,UTC_TIMESTAMP(),UTC_TIMESTAMP())',
       [userId, scopeType, scopeId, role === 'SUPPORTER' ? 'SUPPORTER' : 'MEMBER', adminId],
     )
 }
@@ -112,7 +112,7 @@ try {
     const email = `loyalty-${runId}-${role.toLowerCase()}@test.mannschaft.local`
     const name = `Loyalty ${role}`
     const id = await insert(
-      'INSERT INTO users (email,password_hash,last_name,first_name,display_name,is_searchable,encryption_key_version,locale,timezone,status,reporting_restricted,created_at,updated_at) VALUES (?,?,?,?,?,1,1,?,?,?,0,NOW(),NOW())',
+      'INSERT INTO users (email,password_hash,last_name,first_name,display_name,is_searchable,encryption_key_version,locale,timezone,status,reporting_restricted,created_at,updated_at) VALUES (?,?,?,?,?,1,1,?,?,?,0,UTC_TIMESTAMP(),UTC_TIMESTAMP())',
       [
         email,
         await bcrypt.hash(password, 12),
@@ -164,15 +164,15 @@ try {
   )
   if (permission.length !== 1) throw new Error('TEAM_LOYALTY_OPERATE catalog is missing')
   const groupId = await insert(
-    'INSERT INTO permission_groups (team_id,organization_id,target_role,name,created_by,created_at,updated_at) VALUES (?,NULL,?,?,?,NOW(),NOW())',
+    'INSERT INTO permission_groups (team_id,organization_id,target_role,name,created_by,created_at,updated_at) VALUES (?,NULL,?,?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP())',
     [teamId, 'DEPUTY_ADMIN', `Loyalty ${runId}`, actors.admin.id],
   )
   await insert(
-    'INSERT INTO permission_group_permissions (group_id,permission_id,created_at) VALUES (?,?,NOW())',
+    'INSERT INTO permission_group_permissions (group_id,permission_id,created_at) VALUES (?,?,UTC_TIMESTAMP())',
     [groupId, permission[0].id],
   )
   await insert(
-    'INSERT INTO user_permission_groups (user_id,group_id,assigned_by,created_at) VALUES (?,?,?,NOW())',
+    'INSERT INTO user_permission_groups (user_id,group_id,assigned_by,created_at) VALUES (?,?,?,UTC_TIMESTAMP())',
     [actors.delegatedDeputy.id, groupId, actors.admin.id],
   )
   await database.commit()

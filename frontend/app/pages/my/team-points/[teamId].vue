@@ -4,6 +4,7 @@ definePageMeta({ middleware: ['auth'], key: (route) => route.path })
 const route = useRoute()
 const api = useTeamLoyaltyApi()
 const { t } = useI18n()
+const { formatDateTime } = useDatetime()
 const { handleApiError } = useErrorHandler()
 const account = ref<LoyaltyAccount | null>(null)
 const history = ref<LoyaltyPage<LoyaltyTransaction> | null>(null)
@@ -46,7 +47,7 @@ onMounted(() => load())
               {{ item.label }} · {{ t(`loyalty.history.${item.kind.toLowerCase()}`) }} ·
               {{ item.delta }}
             </p>
-            <p>{{ item.createdAt }} · {{ t('loyalty.balance', { points: item.balanceAfter }) }}</p>
+            <p>{{ formatDateTime(item.createdAt) }} · {{ t('loyalty.balance', { points: item.balanceAfter }) }}</p>
           </li>
         </ul>
         <Button

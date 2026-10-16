@@ -2,6 +2,7 @@
 import type { LoyaltyAwardRequest } from '~/types/team-loyalty'
 defineProps<{ request: LoyaltyAwardRequest }>()
 const { t } = useI18n()
+const { formatDateTime } = useDatetime()
 const key = (value: string) =>
   value.toLowerCase().replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase())
 </script>
@@ -18,7 +19,7 @@ const key = (value: string) =>
       <p class="my-4 break-all text-3xl font-bold tracking-wider">
         {{ t('loyalty.requests.code', { code: request.verificationCode }) }}
       </p>
-      <p>{{ t('loyalty.requests.expiresAt', { datetime: request.expiresAt }) }}</p>
+      <p>{{ t('loyalty.requests.expiresAt', { datetime: formatDateTime(request.expiresAt) }) }}</p>
       <p>{{ t('loyalty.requests.showStaff') }}</p>
     </template>
     <slot />
