@@ -137,7 +137,7 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
         var body = new SelfAwardRequest("invalid-location-token",rule.getId(),0L,0L);
         var row = LoyaltyAwardRequestEntity.builder().teamId(team).userId(actorId).ruleId(rule.getId())
                 .sourceLocationId(Long.MAX_VALUE).programVersion(0).ruleVersion(0).points(1).ruleName("来店")
-                .locationName("保存受付名").awardOn(now.toLocalDate()).expiresAt(now.plusMinutes(5))
+                .locationName("保存受付名").awardOn(now.toLocalDate()).expiresAt(time.expiresAt(now))
                 .status(RequestStatus.PENDING).verificationCode("ABCDEFGH").submitKey(key)
                 .submitPayloadHash(new LoyaltyPayloadHasher().selfSubmit(team,body)).createdAt(now).updatedAt(now).build();
         row.close(RequestStatus.CANCELLED,RequestReason.USER_CANCELLED,actorId,RequestOperation.CANCEL,
@@ -215,7 +215,7 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
         var now = time.now();
         var old = store.getRequests().saveAndFlush(LoyaltyAwardRequestEntity.builder().teamId(team).userId(actorId)
                 .ruleId(rule.getId()).sourceLocationId(oldLocation.getId()).programVersion(0).ruleVersion(0).points(1)
-                .ruleName("来店").locationName("旧受付").awardOn(now.toLocalDate()).expiresAt(now.plusMinutes(5))
+                .ruleName("来店").locationName("旧受付").awardOn(now.toLocalDate()).expiresAt(time.expiresAt(now))
                 .status(RequestStatus.PENDING).verificationCode("ABCDEFGH").submitKey(UUID.randomUUID())
                 .submitPayloadHash(new byte[32]).createdAt(now).updatedAt(now).build());
         String token = qr.generateLocationQrToken(activeLocation.getLocationCode(),activeLocation.getLocationSecret());
@@ -240,7 +240,7 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
         var now = time.now();
         var old = store.getRequests().saveAndFlush(LoyaltyAwardRequestEntity.builder().teamId(team).userId(actorId)
                 .ruleId(rule.getId()).sourceLocationId(location.getId()).programVersion(0).ruleVersion(0).points(1)
-                .ruleName("来店").locationName("受付").awardOn(now.toLocalDate()).expiresAt(now.plusMinutes(5))
+                .ruleName("来店").locationName("受付").awardOn(now.toLocalDate()).expiresAt(time.expiresAt(now))
                 .status(RequestStatus.PENDING).verificationCode("ABCDEFGH").submitKey(UUID.randomUUID())
                 .submitPayloadHash(new byte[32]).createdAt(now).updatedAt(now).build());
         String token = qr.generateLocationQrToken(location.getLocationCode(),location.getLocationSecret());
@@ -287,8 +287,8 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
                 .isActive(active).createdBy(actorId).build());
     }
     private Long team() {
-        return teams.saveAndFlush(TeamEntity.builder().name("HTTP試験").slug("loyalty-http-"+UUID.randomUUID())
-                .visibility(TeamEntity.Visibility.PRIVATE).supporterEnabled(false).build()).getId();
+        return teams.saveAndFlush(TeamEntity.builder().name("HTTP試験").slug("loyalty-http-"+UUID.randomUUID().toString().substring(0,12))
+                .visibility(TeamEntity.Visibility.MEMBERS_AND_ABOVE).supporterEnabled(false).build()).getId();
     }
     private UserRoleEntity admin(Long user, Long team) {
         var role = roles.findByName("ADMIN").orElseGet(() -> roles.saveAndFlush(RoleEntity.builder()
