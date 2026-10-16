@@ -29,6 +29,8 @@ const roleName = ref<string | null>('MEMBER')
 vi.mock('~/composables/useRoleAccess', () => ({
   useRoleAccess: () => ({
     roleName,
+    isScopeAdmin: computed(() => roleName.value === 'ADMIN'),
+    can: vi.fn(() => false),
     isAdmin: computed(() => roleName.value === 'ADMIN' || roleName.value === 'SYSTEM_ADMIN'),
     isAdminOrDeputy: computed(
       () => ['ADMIN', 'SYSTEM_ADMIN', 'DEPUTY_ADMIN'].includes(roleName.value ?? ''),
