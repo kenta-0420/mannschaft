@@ -24,7 +24,7 @@ vi.mock('~/composables/useRoleAccess', () => ({
     isAdminOrDeputy: computed(
       () => roleName.value === 'ADMIN' || roleName.value === 'DEPUTY_ADMIN',
     ),
-    loadPermissions: vi.fn().mockResolvedValue(undefined),
+    loadPermissions: vi.fn().mockResolvedValue({ ok: true }),
   }),
 }))
 
