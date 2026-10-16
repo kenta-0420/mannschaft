@@ -32,6 +32,10 @@ import com.mannschaft.app.team.repository.TeamRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.time.Duration;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -59,6 +63,15 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private ApplicationEventPublisher events;
     @Autowired private PlatformTransactionManager transactionManager;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private LoyaltyMapper mapper;
+    @Autowired private LoyaltyRequestStatePolicy requestStates;
+    @Autowired private com.mannschaft.app.membership.repository.MembershipRepository memberships;
+    @Autowired private com.mannschaft.app.membership.repository.MemberCardRepository memberCards;
+    @Autowired private com.mannschaft.app.membership.repository.MemberCardCheckinRepository checkins;
+    @Autowired private com.mannschaft.app.role.repository.PermissionRepository permissions;
+    @Autowired private com.mannschaft.app.role.repository.PermissionGroupRepository permissionGroups;
+    @Autowired private com.mannschaft.app.role.repository.PermissionGroupPermissionRepository groupPermissions;
+    @Autowired private com.mannschaft.app.role.repository.UserPermissionGroupRepository userGroups;
     private Long actorId;
 
     @BeforeEach
@@ -300,6 +313,125 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
             jdbc.update("DELETE FROM audit_logs WHERE user_id=? AND event_type=?",actorId,LoyaltyCommittedEvent.AUDIT_EVENT_TYPE);
             users.deleteById(actorId);
         }
+    }
+
+    @Test
+    void 補強_AC09本人付与の混入userIdとpointsとawardOnを採用しない() throws Exception {
+        Long team = team(); Long other = users.saveAndFlush(LoyaltyTestFixture.user()).getId();
+        var program = LoyaltyTestFixture.program(team);
+        program.update(true, Audience.ALL_AUTHENTICATED, SelfAwardMode.AUTO, time.now());
+        store.getPrograms().saveAndFlush(program);
+        var rule = store.getRules().saveAndFlush(LoyaltyTestFixture.rule(team)); var location = location(team,true);
+        var body = new java.util.LinkedHashMap<String,Object>();
+        body.put("locationToken",qr.generateLocationQrToken(location.getLocationCode(),location.getLocationSecret()));
+        body.put("ruleId",rule.getId()); body.put("expectedRuleVersion",0); body.put("expectedProgramVersion",1);
+        body.put("userId",other); body.put("points",9999); body.put("awardOn","1900-01-01");
+        var response = mvc.perform(post("/api/v1/teams/"+team+"/loyalty/self-awards").with(user(actorId.toString()))
+                        .header("Idempotency-Key",UUID.randomUUID()).contentType("application/json").content(json.writeValueAsString(body)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.outcome").value("AWARDED"))
+                .andExpect(jsonPath("$.data.transaction.delta").value(1))
+                .andExpect(jsonPath("$.data.transaction.awardOn").value(time.today().toString())).andReturn();
+        UUID id = UUID.fromString(json.readTree(response.getResponse().getContentAsString()).path("data").path("transaction").path("id").asText());
+        var saved = store.getTransactions().findById(id).orElseThrow();
+        assertThat(saved.getUserId()).isEqualTo(actorId);
+        assertThat(saved.getDelta()).isEqualTo(rule.getPoints());
+        assertThat(saved.getAwardOn()).isEqualTo(time.today());
+        assertThat(store.getAccounts().findByTeamIdAndUserId(team,actorId).orElseThrow().getBalance()).isEqualTo(1);
+        assertThat(store.getAccounts().findByTeamIdAndUserId(team,other)).isEmpty();
+    }
+
+    @Test
+    void 補強_固定ClockのJST日付とUTC保存値が本人HTTPのISO日時を往復する() throws Exception {
+        Long team = team();
+        store.getPrograms().saveAndFlush(LoyaltyTestFixture.program(team));
+        var rule = store.getRules().saveAndFlush(LoyaltyTestFixture.rule(team));
+        Instant instant = Instant.parse("2026-10-16T15:00:00Z");
+        var fixedTime = new LoyaltyTime(Clock.fixed(instant,ZoneOffset.UTC));
+        var actualWriter = new LoyaltyPointsWriter(store,fixedTime,mapper,requestStates,events,transactionManager);
+        var saved = actualWriter.award(new LoyaltyWriteCommand(team,actorId,actorId,rule.getId(),0L,0L,
+                RequestOperation.STAFF_AWARD,UUID.randomUUID(),new byte[32],null,null));
+        var result = mvc.perform(get("/api/v1/teams/"+team+"/loyalty/transactions/me").with(user(actorId.toString())))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].id").value(saved.id().toString()))
+                .andExpect(jsonPath("$.data[0].awardOn").value("2026-10-17")).andReturn();
+        var node = json.readTree(result.getResponse().getContentAsString()).path("data").get(0);
+        assertThat(OffsetDateTime.parse(node.path("createdAt").asText()).toInstant()).isEqualTo(instant);
+        var decoded = json.treeToValue(node,com.mannschaft.app.loyalty.dto.TransactionResponse.class);
+        assertThat(decoded.createdAt()).isEqualTo(LocalDateTime.of(2026,10,17,0,0));
+        String raw = jdbc.queryForObject("SELECT CAST(created_at AS CHAR) FROM team_loyalty_transactions WHERE team_id=? AND id=?",
+                String.class,team,saved.id().toString());
+        assertThat(LocalDateTime.parse(raw.replace(' ','T'))).isEqualTo(LocalDateTime.of(2026,10,16,15,0));
+    }
+
+    @Test
+    void 補強_AC03TEAM別残高は独立し既存所属とカードとcheckinを変更しない() throws Exception {
+        Long a = team(); Long b = team();
+        var membership = memberships.saveAndFlush(com.mannschaft.app.membership.entity.MembershipEntity.builder()
+                .userId(actorId).scopeType(com.mannschaft.app.membership.domain.ScopeType.TEAM).scopeId(a)
+                .roleKind(com.mannschaft.app.membership.domain.RoleKind.SUPPORTER).joinedAt(time.now()).invitedBy(actorId).build());
+        var card = memberCards.saveAndFlush(com.mannschaft.app.membership.entity.MemberCardEntity.builder()
+                .userId(actorId).scopeType(com.mannschaft.app.membership.ScopeType.TEAM).scopeId(a)
+                .cardCode(UUID.randomUUID().toString()).cardNumber(UUID.randomUUID().toString().substring(0,16))
+                .displayName("既存カード").qrSecret(qr.generateSecret()).checkinCount(5)
+                .totalSpend(new java.math.BigDecimal("99.50")).build());
+        var oldCheckin = checkins.saveAndFlush(com.mannschaft.app.membership.entity.MemberCardCheckinEntity.builder()
+                .memberCardId(card.getId()).checkinType(com.mannschaft.app.membership.CheckinType.SELF)
+                .checkedInAt(time.now()).location("既存受付").build());
+        var oldCard = jdbc.queryForMap("SELECT scope_type,scope_id,status,checkin_count,total_spend,last_checkin_at FROM member_cards WHERE id=?",card.getId());
+        var oldCheckinValues = jdbc.queryForMap("SELECT * FROM member_card_checkins WHERE id=?",oldCheckin.getId());
+        autoSelfAward(a,1);
+        assertThat(store.getAccounts().findByTeamIdAndUserId(b,actorId)).isEmpty();
+        autoSelfAward(b,7);
+        assertThat(store.getAccounts().findByTeamIdAndUserId(a,actorId).orElseThrow().getBalance()).isEqualTo(1);
+        assertThat(store.getAccounts().findByTeamIdAndUserId(b,actorId).orElseThrow().getBalance()).isEqualTo(7);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM memberships WHERE user_id=?",Long.class,actorId)).isEqualTo(1);
+        assertThat(memberships.findById(membership.getId()).orElseThrow().getLeftAt()).isNull();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM member_cards WHERE user_id=?",Long.class,actorId)).isEqualTo(1);
+        assertThat(jdbc.queryForMap("SELECT scope_type,scope_id,status,checkin_count,total_spend,last_checkin_at FROM member_cards WHERE id=?",card.getId())).isEqualTo(oldCard);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM member_card_checkins WHERE member_card_id=?",Long.class,card.getId())).isEqualTo(1);
+        assertThat(jdbc.queryForMap("SELECT * FROM member_card_checkins WHERE id=?",oldCheckin.getId())).isEqualTo(oldCheckinValues);
+    }
+
+    @Test
+    void 補強_AC06委任解除した副管理者は保存済みreceiptも403になる() throws Exception {
+        Long team = team();
+        memberships.saveAndFlush(com.mannschaft.app.membership.entity.MembershipEntity.builder().userId(actorId)
+                .scopeType(com.mannschaft.app.membership.domain.ScopeType.TEAM).scopeId(team)
+                .roleKind(com.mannschaft.app.membership.domain.RoleKind.MEMBER).joinedAt(time.now()).invitedBy(actorId).build());
+        var deputy = roles.findByName("DEPUTY_ADMIN").orElseGet(() -> roles.saveAndFlush(RoleEntity.builder()
+                .name("DEPUTY_ADMIN").displayName("副管理者").priority(100).isSystem(true).build()));
+        userRoles.saveAndFlush(UserRoleEntity.builder().userId(actorId).roleId(deputy.getId()).teamId(team).grantedBy(actorId).build());
+        var permission = permissions.findByNameIn(java.util.List.of("TEAM_LOYALTY_OPERATE")).stream().findFirst()
+                .orElseGet(() -> permissions.saveAndFlush(com.mannschaft.app.role.entity.PermissionEntity.builder()
+                        .name("TEAM_LOYALTY_OPERATE").displayName("ポイント操作").scope(com.mannschaft.app.role.entity.PermissionEntity.Scope.TEAM).build()));
+        var group = permissionGroups.saveAndFlush(com.mannschaft.app.role.entity.PermissionGroupEntity.builder().teamId(team)
+                .targetRole(com.mannschaft.app.role.entity.PermissionGroupEntity.TargetRole.DEPUTY_ADMIN).name("ポイント委任").createdBy(actorId).build());
+        groupPermissions.saveAndFlush(com.mannschaft.app.role.entity.PermissionGroupPermissionEntity.builder()
+                .groupId(group.getId()).permissionId(permission.getId()).build());
+        var assignment = userGroups.saveAndFlush(com.mannschaft.app.role.entity.UserPermissionGroupEntity.builder()
+                .userId(actorId).groupId(group.getId()).assignedBy(actorId).build());
+        UUID key = UUID.randomUUID(); var rule = store.getRules().saveAndFlush(LoyaltyTestFixture.rule(team));
+        var body = new StaffAwardRequest("invalid-platform-qr",rule.getId(),0L,0L);
+        var saved = receipt(team,actorId,key,RequestOperation.STAFF_AWARD,rule.getId(),new LoyaltyPayloadHasher().staffAward(team,body));
+        String path = "/api/v1/teams/"+team+"/loyalty/awards";
+        mvc.perform(post(path).with(user(actorId.toString())).header("Idempotency-Key",key)
+                        .contentType("application/json").content(json.writeValueAsString(body)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.id").value(saved.getId().toString()));
+        userGroups.delete(assignment); userGroups.flush();
+        mvc.perform(post(path).with(user(actorId.toString())).header("Idempotency-Key",key)
+                        .contentType("application/json").content(json.writeValueAsString(body)))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.error.code").value("LOYALTY_002"));
+    }
+
+    private void autoSelfAward(Long team, int points) throws Exception {
+        var program = LoyaltyTestFixture.program(team); program.update(true,Audience.ALL_AUTHENTICATED,SelfAwardMode.AUTO,time.now());
+        store.getPrograms().saveAndFlush(program);
+        var rule = LoyaltyTestFixture.rule(team); rule.update("来店",points,Frequency.ONCE_PER_JST_DAY,true,true,time.now());
+        store.getRules().saveAndFlush(rule); var location = location(team,true);
+        String token = qr.generateLocationQrToken(location.getLocationCode(),location.getLocationSecret());
+        mvc.perform(post("/api/v1/teams/"+team+"/loyalty/self-awards").with(user(actorId.toString()))
+                .header("Idempotency-Key",UUID.randomUUID()).contentType("application/json")
+                .content(json.writeValueAsString(new SelfAwardRequest(token,rule.getId(),1L,1L))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.transaction.delta").value(points));
     }
 
     private Long audits() {
