@@ -360,7 +360,7 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
         assertThat(OffsetDateTime.parse(node.path("createdAt").asText()).toInstant()).isEqualTo(instant);
         var decoded = json.treeToValue(node,com.mannschaft.app.loyalty.dto.TransactionResponse.class);
         assertThat(decoded.createdAt()).isEqualTo(LocalDateTime.of(2026,10,17,0,0));
-        String raw = jdbc.queryForObject("SELECT CAST(created_at AS CHAR) FROM team_loyalty_transactions WHERE team_id=? AND id=?",
+        String raw = jdbc.queryForObject("SELECT CAST(created_at AS CHAR) FROM team_loyalty_transactions WHERE team_id=? AND id=UNHEX(REPLACE(?,'-',''))",
                 String.class,team,saved.id().toString());
         assertThat(LocalDateTime.parse(raw.replace(' ','T'))).isEqualTo(LocalDateTime.of(2026,10,16,15,0));
     }
@@ -530,7 +530,7 @@ class LoyaltyHttpContractIT extends AbstractMySqlIntegrationTest {
         mvc.perform(get("/api/v1/teams/"+team+"/loyalty/award-requests/"+row.getId()).with(user(staff.toString())))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.reason").value(change.reason.name()))
                 .andExpect(jsonPath("$.data.points").value(1)).andExpect(jsonPath("$.data.canApprove").value(false));
-        assertThat(jdbc.queryForMap("SELECT status,version,closed_at FROM team_loyalty_award_requests WHERE team_id=? AND id=?",team,row.getId().toString()))
+        assertThat(jdbc.queryForMap("SELECT status,version,closed_at FROM team_loyalty_award_requests WHERE team_id=? AND id=UNHEX(REPLACE(?,'-',''))",team,row.getId().toString()))
                 .containsEntry("status","PENDING").containsEntry("version",0L).containsEntry("closed_at",null);
         assertThat(store.getAccounts().findByTeamIdAndUserId(team,actorId)).isEmpty();
     }
