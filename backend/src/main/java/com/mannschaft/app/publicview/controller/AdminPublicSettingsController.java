@@ -2,6 +2,8 @@ package com.mannschaft.app.publicview.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.publicview.dto.PublicSettingsResponse;
 import com.mannschaft.app.publicview.dto.UpdatePublicSettingsRequest;
 import com.mannschaft.app.publicview.service.AdminPublicSettingsService;
@@ -33,6 +35,8 @@ public class AdminPublicSettingsController {
 
     /** 非公開チームも、正準slug解決と既存スコープ管理認可の後に設定を取得する。 */
     @GetMapping("/api/v1/admin/teams/{teamId}/public-settings")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "管理者が公開機能OFF・非公開状態でも自身のスコープの現在の公開設定を確認する基本設定入口")
     @PreAuthorize("@accessGuard.isScopeAdmin(authentication, @teamService.resolveTeamId(#slug), 'TEAM')")
     @Operation(summary = "チーム公開設定取得", description = "GETのパス識別子はslug。管理認可後に数値IDと現在の2設定を返す。")
     @io.swagger.v3.oas.annotations.responses.ApiResponses({
@@ -47,6 +51,8 @@ public class AdminPublicSettingsController {
 
     /** 非公開組織も、正準slug解決と既存スコープ管理認可の後に設定を取得する。 */
     @GetMapping("/api/v1/admin/organizations/{organizationId}/public-settings")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "管理者が公開機能OFF・非公開状態でも自身のスコープの現在の公開設定を確認する基本設定入口")
     @PreAuthorize("@accessGuard.isScopeAdmin(authentication, @organizationService.resolveOrgId(#slug), 'ORGANIZATION')")
     @Operation(summary = "組織公開設定取得", description = "GETのパス識別子はslug。管理認可後に数値IDと現在の2設定を返す。")
     @io.swagger.v3.oas.annotations.responses.ApiResponses({
