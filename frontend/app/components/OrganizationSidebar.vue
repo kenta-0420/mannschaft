@@ -7,7 +7,7 @@ const props = defineProps<{
   memberLensActive?: boolean
 }>()
 
-const categories: SidebarCategory[] = [
+const categories = computed<SidebarCategory[]>(() => [
   {
     key: 'home',
     labelKey: 'orgSidebar.category.home',
@@ -169,7 +169,7 @@ const categories: SidebarCategory[] = [
       { labelKey: 'orgSidebar.bulletinCategories', icon: 'pi pi-tags', path: '', absolutePath: '/admin/bulletin-categories', moduleSlug: 'bulletin', requiredRole: 'DEPUTY_ADMIN' },
     ],
   },
-]
+])
 
 // タブ遷移
 // index.vue のタブ番号確認済み:
@@ -190,6 +190,7 @@ function handleTabNavigate(item: SidebarItem) {
 
 <template>
   <BaseSidebar
+    :key="props.orgId"
     scope-type="organization"
     :scope-id="props.orgId"
     :categories="categories"
