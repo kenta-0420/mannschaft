@@ -657,7 +657,7 @@ test('F22.1-10: unselected scope chips are selected without navigation by keyboa
 })
 
 // CMP-261016-0955: ブラウザの実寸・行位置でモバイル表示の回帰を検証する。
-for (const width of [360, 390, 312, 1280]) {
+for (const width of [360, 390, 312, 1024, 1280]) {
   test(`INSIGHT-I6: ${width}pxでスコープ切替と設定の操作領域を確保する`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.addInitScript(() => localStorage.setItem('tokenExpiresAt', String(Date.now() + 3600000)))

@@ -13,7 +13,7 @@ async function prepare(page: Page) {
   await page.route('**/api/v1/admin/member-permissions?**', route => route.fulfill({ json: { data: { permissions: [] } } }))
 }
 
-for (const width of [360, 390, 312, 1280]) {
+for (const width of [360, 390, 312, 1024, 1280]) {
   test(`INSIGHT-I1: ${width}pxで招待PDFをホバーせず識別して保存できる`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await prepare(page)

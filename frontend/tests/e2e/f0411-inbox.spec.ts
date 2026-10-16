@@ -313,7 +313,7 @@ test.describe('F04.11 統合通知インボックス', () => {
   })
 })
 
-for (const width of [360, 390, 312, 1280]) {
+for (const width of [360, 390, 312, 1024, 1280]) {
   test(`INSIGHT-I7: ${width}pxで通知タブとヘッダー操作を独立して使える`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.addInitScript(() => localStorage.setItem('tokenExpiresAt', String(Date.now() + 3600000)))
