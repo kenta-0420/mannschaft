@@ -85,7 +85,20 @@ public class TeamService {
 
     /** 候補ページのチーム状態を集合照会する。 */
     public Map<Long, ActiveState> getActiveStates(Collection<Long> teamIds) {
-        throw new UnsupportedOperationException("チーム状態投影は未実装");
+        if (teamIds == null || teamIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> ids = teamIds.stream().filter(java.util.Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, ActiveState> states = new java.util.LinkedHashMap<>();
+        for (TeamRepository.ActiveStateRow row : teamRepository.findActiveStateRows(ids)) {
+            boolean active = row.getLifecycleStatus() == TeamEntity.LifecycleStatus.ACTIVE
+                    && row.getArchivedAt() == null && row.getDeletedAt() == null;
+            states.put(row.getId(), new ActiveState(active, active ? row.getName() : null));
+        }
+        return Map.copyOf(states);
     }
 
     private final TeamRepository teamRepository;
