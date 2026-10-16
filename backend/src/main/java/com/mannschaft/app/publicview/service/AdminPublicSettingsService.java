@@ -5,6 +5,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.publicview.dto.UpdatePublicSettingsRequest;
+import com.mannschaft.app.publicview.dto.PublicSettingsResponse;
 import com.mannschaft.app.publicview.error.PublicViewErrorCode;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
@@ -37,6 +38,26 @@ public class AdminPublicSettingsService {
     // TODO: publicview → organization のクロスドメイン参照。将来はイベント駆動化候補。
     private final OrganizationRepository organizationRepository;
     private final AccessControlService accessControlService;
+
+    /** 私有チームも、既存の管理認可を通した後で現在値を返す。 */
+    public PublicSettingsResponse getTeamPublicSettings(String slug, Long operatorId) {
+        TeamEntity team = teamRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(
+                        slug, TeamEntity.LifecycleStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(PublicViewErrorCode.PUBLIC_001));
+        checkScopeAdminAccess(operatorId, team.getId(), "TEAM");
+        return new PublicSettingsResponse(team.getId(), team.isTimelinePostsPublic(),
+                Boolean.TRUE.equals(team.getPublicEventsEnabled()));
+    }
+
+    /** 私有組織も、既存の管理認可を通した後で現在値を返す。 */
+    public PublicSettingsResponse getOrganizationPublicSettings(String slug, Long operatorId) {
+        OrganizationEntity org = organizationRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(
+                        slug, OrganizationEntity.LifecycleStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(PublicViewErrorCode.PUBLIC_001));
+        checkScopeAdminAccess(operatorId, org.getId(), "ORGANIZATION");
+        return new PublicSettingsResponse(org.getId(), org.isTimelinePostsPublic(), org.isPublicEventsEnabled());
+    }
+
 
     /**
      * チームの公開設定（タイムライン投稿 / イベント）を更新する。
