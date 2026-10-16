@@ -11,11 +11,15 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** AC03/07/08/11/12/13の書込試練。実Bean/実MySQL/commitを観測する。 */
+/**
+ * AC03/07/08/11/12/13の書込試練。実Bean/実MySQL/commitを観測する。
+ * <p>「事後補強」で始まる設定試験はSettingsWriter実装後の追加であり、TDDのred証拠とは扱わない。</p>
+ */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class LoyaltyPointsWriterIT extends AbstractMySqlIntegrationTest {
     @Autowired private LoyaltyStore store;
     @Autowired private LoyaltyPointsWriter writer;
+    @Autowired private LoyaltySettingsWriter settings;
     @Autowired private org.springframework.transaction.PlatformTransactionManager transactionManager;
     @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
@@ -224,6 +228,76 @@ class LoyaltyPointsWriterIT extends AbstractMySqlIntegrationTest {
         })).hasMessage("loyalty-injected-before-commit");
         assertThat(store.getAccounts().findByTeamIdAndUserId(teamId, 20L)).isEmpty();
         assertThat(store.getTransactions().existsByRuleId(ruleId)).isFalse();
+    }
+
+    @Test
+    void 事後補強_AC14_未作成設定の作成はexpectedVersionがnullで版0となる() {
+        Long newTeam = teamId + 10000000000L;
+        try {
+            var result = settings.updateProgram(newTeam, new com.mannschaft.app.loyalty.dto.UpdateProgramRequest(
+                    null, false, Audience.MEMBERS_AND_ABOVE, SelfAwardMode.STAFF_APPROVAL));
+            assertThat(result.id()).isNotNull();
+            assertThat(result.version()).isZero();
+            assertThat(result.isEnabled()).isFalse();
+            assertThat(result.targetAudience()).isEqualTo(Audience.MEMBERS_AND_ABOVE);
+            assertThat(result.selfAwardMode()).isEqualTo(SelfAwardMode.STAFF_APPROVAL);
+            assertThat(result.rules()).isEmpty();
+            assertThat(result.rewards()).isEmpty();
+        } finally {
+            store.getPrograms().findByTeamId(newTeam).ifPresent(store.getPrograms()::delete);
+        }
+    }
+
+    @Test
+    void 事後補強_AC12_設定の楽観競合はCOMMON003で保存値不変() {
+        assertThatThrownBy(() -> settings.updateProgram(teamId, new com.mannschaft.app.loyalty.dto.UpdateProgramRequest(
+                1L, false, Audience.MEMBERS_AND_ABOVE, SelfAwardMode.AUTO)))
+                .isInstanceOf(com.mannschaft.app.common.BusinessException.class)
+                .extracting("errorCode").isEqualTo(com.mannschaft.app.common.CommonErrorCode.COMMON_003);
+        assertThat(store.getPrograms().findByTeamId(teamId)).get()
+                .extracting("enabled", "version", "selfAwardMode").containsExactly(true, 0L, SelfAwardMode.STAFF_APPROVAL);
+    }
+
+    @Test
+    void 事後補強_AC21_mode変更はprogram版を増やす() {
+        var updated = settings.updateProgram(teamId, new com.mannschaft.app.loyalty.dto.UpdateProgramRequest(
+                0L, true, Audience.ALL_AUTHENTICATED, SelfAwardMode.AUTO));
+        assertThat(updated.version()).isEqualTo(1L);
+        assertThat(updated.selfAwardMode()).isEqualTo(SelfAwardMode.AUTO);
+    }
+
+    @Test
+    void 事後補強_AC14_来店ルール複製は400で元ルール1件を保持する() {
+        assertThatThrownBy(() -> settings.createRule(teamId, new com.mannschaft.app.loyalty.dto.CreateRuleRequest(
+                "別来店", 2, Frequency.ONCE_PER_JST_DAY, true)))
+                .isInstanceOf(com.mannschaft.app.common.BusinessException.class)
+                .extracting("errorCode").isEqualTo(LoyaltyErrorCode.LOYALTY_009);
+        assertThat(store.getRules().findByTeamId(teamId)).get().extracting("id").isEqualTo(ruleId);
+    }
+
+    @Test
+    void 事後補強_AC14_都度ルールの本人読取許可との不正組合せを拒否する() {
+        assertThatThrownBy(() -> settings.updateRule(teamId, ruleId, new com.mannschaft.app.loyalty.dto.UpdateRuleRequest(
+                "都度", 1, Frequency.EACH_STAFF_CONFIRMATION, true, 0L, true)))
+                .isInstanceOf(com.mannschaft.app.common.BusinessException.class)
+                .extracting("errorCode").isEqualTo(LoyaltyErrorCode.LOYALTY_009);
+        assertThat(store.getRules().findById(ruleId)).get().extracting("frequency").isEqualTo(Frequency.ONCE_PER_JST_DAY);
+    }
+
+    @Test
+    void 事後補強_AC14_停止済みを含む特典上限20件と説明の空白正規化() {
+        for (int i = 0; i < 20; i++) {
+            var reward = settings.createReward(teamId, new com.mannschaft.app.loyalty.dto.CreateRewardRequest(
+                    "  特典" + i + "  ", "   ", 20));
+            assertThat(reward.name()).isEqualTo("特典" + i);
+            assertThat(reward.description()).isNull();
+            settings.updateReward(teamId, reward.id(), new com.mannschaft.app.loyalty.dto.UpdateRewardRequest(
+                    reward.name(), null, 20, 0L, false));
+        }
+        assertThatThrownBy(() -> settings.createReward(teamId, new com.mannschaft.app.loyalty.dto.CreateRewardRequest(
+                "21件目", null, 20))).isInstanceOf(com.mannschaft.app.common.BusinessException.class)
+                .extracting("errorCode").isEqualTo(LoyaltyErrorCode.LOYALTY_009);
+        assertThat(store.getRewards().countByTeamId(teamId)).isEqualTo(20);
     }
 
     @org.junit.jupiter.api.AfterEach
