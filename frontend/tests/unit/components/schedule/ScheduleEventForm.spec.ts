@@ -1,6 +1,7 @@
+import { useNuxtApp } from '#app'
 import { defineComponent, h, ref } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import ScheduleEventForm from '~/components/schedule/ScheduleEventForm.vue'
@@ -160,7 +161,7 @@ describe('ScheduleEventForm: saved イベントのスコープ', () => {
 
     // 保存ボタンを押す（作成先はチームA＝team_t1 のまま）
     const buttons = wrapper.findAll('button')
-    const submitButton = buttons.find(b => b.text() === '作成')
+    const submitButton = buttons.find(b => b.text() === wrapper.vm.$t('button.create'))
     expect(submitButton).toBeTruthy()
     await submitButton!.trigger('click')
     await flushPromises()
@@ -527,5 +528,38 @@ describe('ScheduleEventForm: recurrence update scope', () => {
 
     expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(true)
     expect(scheduleApiMock.updatePersonalSchedule).not.toHaveBeenCalled()
+  })
+})
+
+
+describe('ScheduleEventForm: 見出しと操作の翻訳（CMP-261017-1629）', () => {
+  beforeAll(async () => {
+    await Promise.all((['ja', 'en', 'zh', 'ko', 'es', 'de'] as const)
+      .map(locale => useNuxtApp().$i18n.loadLocaleMessages(locale)))
+  })
+  beforeEach(() => { setActivePinia(createPinia()) })
+
+  it.each([
+    { isPersonal: false, scheduleId: undefined, key: 'createEvent' },
+    { isPersonal: false, scheduleId: 42, key: 'editEvent' },
+    { isPersonal: true, scheduleId: undefined, key: 'addPersonal' },
+    { isPersonal: true, scheduleId: 42, key: 'editPersonal' },
+  ].flatMap(mode => (['ja', 'en', 'zh', 'ko', 'es', 'de'] as const)
+    .map(locale => ({ ...mode, locale }))))('$key/$localeが表示中切替する', async ({ key, locale: targetLocale, ...mode }) => {
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType: 'team', scopeId: 'team-a', ...mode },
+      global: { stubs: globalStubs },
+    })
+    for (const locale of [targetLocale === 'en' ? 'de' : 'en', targetLocale] as const) {
+      await wrapper.vm.$i18n.setLocale(locale)
+      await flushPromises()
+      const label = wrapper.vm.$t(`schedule.form.${key}`)
+      expect(label).not.toBe(`schedule.form.${key}`)
+      const formDialog = wrapper.findAllComponents(DialogStub)
+        .find(dialog => dialog.find('[data-testid="schedule-submit"]').exists())
+      expect(formDialog?.props('header')).toBe(label)
+      expect(wrapper.text()).toContain(wrapper.vm.$t('button.cancel'))
+      expect(wrapper.text()).toContain(wrapper.vm.$t(mode.scheduleId ? 'button.update' : 'button.create'))
+    }
   })
 })

@@ -1,5 +1,37 @@
 {
   "schedule": {
+    "form": {
+      "createEvent": "イベントを作成",
+      "editEvent": "イベントを編集",
+      "addPersonal": "予定を追加",
+      "editPersonal": "予定を編集",
+      "title": "タイトル",
+      "attendanceRequired": "出欠確認する",
+      "allDay": "終日",
+      "history": "履歴:",
+      "startDate": "開始日",
+      "startTime": "開始時刻",
+      "endDate": "終了日",
+      "endTime": "終了時刻",
+      "location": "場所",
+      "locationPlaceholder": "場所（任意）",
+      "scope": "作成先",
+      "color": "色",
+      "personalScope": "個人の予定"
+    },
+    "status": {
+      "draft": "下書き",
+      "published": "公開中",
+      "scheduled": "予定",
+      "cancelled": "キャンセル",
+      "completed": "完了"
+    },
+    "detail": {
+      "delegationError": "代理出席件数を取得できませんでした"
+    },
+    "selectDateOrEvent": "日付またはイベントを選択してください",
+    "confirmDelete": "この予定を削除しますか？",
+    "selectEvent": "イベントを選択してください",
     "page_title": "スケジュール",
     "created_by": "作成: {name}",
     "attendance": {
