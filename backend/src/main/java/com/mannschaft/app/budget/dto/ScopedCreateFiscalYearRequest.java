@@ -1,5 +1,6 @@
 package com.mannschaft.app.budget.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -12,6 +13,7 @@ import java.time.LocalDate;
  */
 public record ScopedCreateFiscalYearRequest(
 
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank
         @Size(max = 100)
         String name,
