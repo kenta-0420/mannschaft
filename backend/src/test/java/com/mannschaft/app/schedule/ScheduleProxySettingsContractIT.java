@@ -72,7 +72,7 @@ class ScheduleProxySettingsContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void 準備() {
-        String nonce = UUID.randomUUID().toString();
+        String nonce = UUID.randomUUID().toString().substring(0, 12);
         teamId = ScheduleCommentTestFixtures.insertTeam(em, "代理設定試練", "proxy-team-" + nonce);
         orgId = ScheduleCommentTestFixtures.insertOrganization(em, "代理設定組織", "proxy-org-" + nonce);
         foreignTeam = ScheduleCommentTestFixtures.insertTeam(em, "他scope", "proxy-other-" + nonce);
