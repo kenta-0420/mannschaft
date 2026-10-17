@@ -1,10 +1,11 @@
 <script setup lang="ts">
 const appearanceStore = useAppearanceStore()
+const { t } = useI18n()
 
-const themeOptions = [
-  { label: 'ライト', value: 'LIGHT', icon: 'pi pi-sun' },
-  { label: 'ダーク', value: 'DARK', icon: 'pi pi-moon' },
-]
+const themeOptions = computed(() => [
+  { label: t('appearance.themeLightLabel'), value: 'LIGHT', icon: 'pi pi-sun' },
+  { label: t('appearance.themeDarkLabel'), value: 'DARK', icon: 'pi pi-moon' },
+])
 
 const selectedTheme = computed({
   get: () => appearanceStore.theme,
@@ -17,7 +18,7 @@ const selectedTheme = computed({
 
 <template>
   <div>
-    <label class="mb-2 block text-sm font-medium">テーマ</label>
+    <label class="mb-2 block text-sm font-medium">{{ t('appearance.themeLabel') }}</label>
     <SelectButton
       v-model="selectedTheme"
       :options="themeOptions"

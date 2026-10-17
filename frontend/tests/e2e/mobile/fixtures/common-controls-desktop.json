@@ -1,0 +1,78 @@
+[
+    {
+        "viewport":  768,
+        "baseline":  {
+                         "source":  "ea6aaee20bde9cf9ecfb31c8c0b00cbe803b1008",
+                         "nuxt":  "3.21.11",
+                         "primevue":  "4.5.5"
+                     },
+        "targets":  {
+                        "input":  {
+                                      "height":  42
+                                  },
+                        "submit":  {
+                                       "height":  44
+                                   },
+                        "paginator":  {
+                                          "width":  40,
+                                          "height":  40
+                                      },
+                        "rowIcon":  {
+                                        "width":  32,
+                                        "height":  35
+                                    },
+                        "switch":  {
+                                       "width":  40,
+                                       "height":  24
+                                   },
+                        "slider":  {
+                                       "width":  40,
+                                       "height":  24
+                                   },
+                        "handle":  {
+                                       "width":  16,
+                                       "height":  16
+                                   }
+                    },
+        "uncheckedHandleOffset":  4,
+        "checkedHandleOffset":  20
+    },
+    {
+        "viewport":  1280,
+        "baseline":  {
+                         "source":  "ea6aaee20bde9cf9ecfb31c8c0b00cbe803b1008",
+                         "nuxt":  "3.21.11",
+                         "primevue":  "4.5.5"
+                     },
+        "targets":  {
+                        "input":  {
+                                      "height":  42
+                                  },
+                        "submit":  {
+                                       "height":  44
+                                   },
+                        "paginator":  {
+                                          "width":  40,
+                                          "height":  40
+                                      },
+                        "rowIcon":  {
+                                        "width":  32,
+                                        "height":  35
+                                    },
+                        "switch":  {
+                                       "width":  40,
+                                       "height":  24
+                                   },
+                        "slider":  {
+                                       "width":  40,
+                                       "height":  24
+                                   },
+                        "handle":  {
+                                       "width":  16,
+                                       "height":  16
+                                   }
+                    },
+        "uncheckedHandleOffset":  4,
+        "checkedHandleOffset":  20
+    }
+]
