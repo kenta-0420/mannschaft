@@ -5,7 +5,7 @@
  */
 import { test, expect, chromium, type Page, type Browser, type BrowserContext, type Locator } from '@playwright/test'
 import sharp from 'sharp'
-import { BinaryBitmap, HybridBinarizer, RGBLuminanceSource, QRCodeReader } from '@zxing/library'
+import { decodeQrPixels } from '../helpers/qr-image'
 import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration } from '../helpers/wait'
 import { readFileSync } from 'node:fs'
@@ -90,19 +90,8 @@ async function decodeQr(page: Page, selector: string): Promise<string> {
     .removeAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true })
-  const pixels = new Uint8ClampedArray(info.width * info.height)
-  for (let i = 0; i < pixels.length; i++)
-    pixels[i] = Math.round(
-      (data[i * info.channels]! + data[i * info.channels + 1]! + data[i * info.channels + 2]!) / 3,
-    )
   try {
-    return new QRCodeReader()
-      .decode(
-        new BinaryBitmap(
-          new HybridBinarizer(new RGBLuminanceSource(pixels, info.width, info.height)),
-        ),
-      )
-      .getText()
+    return decodeQrPixels(data, info.width, info.height, info.channels)
   } catch (error) {
     // QRには署名tokenが含まれるため、失敗画像は公開成果物と分けたignored私有領域だけへ保存する。
     try {
