@@ -179,7 +179,7 @@ onMounted(async () => {
           />
         </SectionCard>
         <SectionCard v-else class="p-8">
-          <DashboardEmptyState icon="pi pi-calendar" message="イベントを選択してください" />
+          <DashboardEmptyState icon="pi pi-calendar" :message="$t('schedule.selectEvent')" />
         </SectionCard>
       </div>
     </div>

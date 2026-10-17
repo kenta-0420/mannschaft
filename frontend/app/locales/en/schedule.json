@@ -1,5 +1,34 @@
 {
   "schedule": {
+    "form": {
+      "createEvent": "Create event",
+      "editEvent": "Edit event",
+      "addPersonal": "Add personal event",
+      "editPersonal": "Edit personal event",
+      "title": "Title",
+      "attendanceRequired": "Request attendance",
+      "allDay": "All day",
+      "history": "Recent times:",
+      "startDate": "Start date",
+      "startTime": "Start time",
+      "endDate": "End date",
+      "endTime": "End time",
+      "location": "Location",
+      "locationPlaceholder": "Location (optional)",
+      "scope": "Create in",
+      "personalScope": "Personal events"
+    },
+    "status": {
+      "draft": "Draft",
+      "published": "Published",
+      "scheduled": "Scheduled",
+      "cancelled": "Cancelled",
+      "completed": "Completed"
+    },
+    "detail": {
+      "delegationError": "Could not load proxy attendance count"
+    },
+    "selectEvent": "Select an event",
     "page_title": "Schedule",
     "created_by": "Created by: {name}",
     "attendance": {

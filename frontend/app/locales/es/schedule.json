@@ -1,5 +1,34 @@
 {
   "schedule": {
+    "form": {
+      "createEvent": "Crear evento",
+      "editEvent": "Editar evento",
+      "addPersonal": "Añadir evento personal",
+      "editPersonal": "Editar evento personal",
+      "title": "Título",
+      "attendanceRequired": "Solicitar asistencia",
+      "allDay": "Todo el día",
+      "history": "Horas recientes:",
+      "startDate": "Fecha de inicio",
+      "startTime": "Hora de inicio",
+      "endDate": "Fecha de fin",
+      "endTime": "Hora de fin",
+      "location": "Lugar",
+      "locationPlaceholder": "Lugar (opcional)",
+      "scope": "Crear en",
+      "personalScope": "Eventos personales"
+    },
+    "status": {
+      "draft": "Borrador",
+      "published": "Publicado",
+      "scheduled": "Programado",
+      "cancelled": "Cancelado",
+      "completed": "Completado"
+    },
+    "detail": {
+      "delegationError": "No se pudo cargar el número de asistencias delegadas"
+    },
+    "selectEvent": "Selecciona un evento",
     "page_title": "Agenda",
     "created_by": "Creado por: {name}",
     "attendance": {

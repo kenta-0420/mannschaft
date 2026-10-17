@@ -62,6 +62,13 @@ describe('予定詳細の代理出席件数（CMP-261017-1629）', () => {
     },
   )
 
+  it('同じ予定の表示情報だけが再描画されても取得を重複発行しない', async () => {
+    const wrapper = await panel()
+    await wrapper.setProps({ event: { ...event(), title: '翻訳後も同じ予定' } })
+    await flushPromises()
+    expect(mocks.api).toHaveBeenCalledTimes(2)
+  })
+
   it.each(['MEMBER', 'SUPPORTER', 'GUEST'])('canEdit=true固定でも%sは管理者APIを呼ばない', async (role) => {
     mocks.api.mockResolvedValue(perms(role))
     const wrapper = await panel()
@@ -125,6 +132,20 @@ describe('予定詳細の代理出席件数（CMP-261017-1629）', () => {
     await flushPromises()
     expect(wrapper.find('[data-testid="schedule-delegation-count"]').exists()).toBe(false)
     expect(mocks.api).toHaveBeenCalledTimes(2)
+  })
+
+  it('表示済み件数も次の予定取得開始時に消し、次の成功結果まで表示しない', async () => {
+    const wrapper = await panel()
+    expect(wrapper.get('[data-testid="schedule-delegation-count"]').text()).toContain('7')
+    const next = deferred()
+    mocks.api.mockImplementation((url: string) => url.endsWith('/me/permissions') ? Promise.resolve(perms()) : next.promise)
+    await wrapper.setProps({ event: event(456) })
+    expect(wrapper.find('[data-testid="schedule-delegation-count"]').exists()).toBe(false)
+    await flushPromises()
+    next.resolve(summary(0))
+    await flushPromises()
+    expect(wrapper.find('[data-testid="schedule-delegation-count"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="schedule-delegation-error"]').exists()).toBe(false)
   })
 
   it('scopeType切替中の旧権限応答から旧管理者APIを発行しない', async () => {

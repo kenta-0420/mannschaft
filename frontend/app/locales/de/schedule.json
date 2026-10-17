@@ -1,5 +1,34 @@
 {
   "schedule": {
+    "form": {
+      "createEvent": "Termin erstellen",
+      "editEvent": "Termin bearbeiten",
+      "addPersonal": "Persönlichen Termin hinzufügen",
+      "editPersonal": "Persönlichen Termin bearbeiten",
+      "title": "Titel",
+      "attendanceRequired": "Teilnahme abfragen",
+      "allDay": "Ganztägig",
+      "history": "Letzte Zeiten:",
+      "startDate": "Startdatum",
+      "startTime": "Startzeit",
+      "endDate": "Enddatum",
+      "endTime": "Endzeit",
+      "location": "Ort",
+      "locationPlaceholder": "Ort (optional)",
+      "scope": "Erstellen in",
+      "personalScope": "Persönliche Termine"
+    },
+    "status": {
+      "draft": "Entwurf",
+      "published": "Veröffentlicht",
+      "scheduled": "Geplant",
+      "cancelled": "Abgesagt",
+      "completed": "Abgeschlossen"
+    },
+    "detail": {
+      "delegationError": "Die Anzahl der Vertretungen konnte nicht geladen werden"
+    },
+    "selectEvent": "Bitte einen Termin auswählen",
     "page_title": "Terminplan",
     "created_by": "Erstellt von: {name}",
     "attendance": {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useScheduleDelegationSummary } from '~/composables/schedule/useScheduleDelegationSummary'
 import type { MatchOrgOption } from '~/composables/match/useMatchOrgContext'
 
 const props = defineProps<{
@@ -188,17 +189,17 @@ interface ScheduledTaskView {
 const scheduledTasks = ref<ScheduledTaskView[]>([])
 const cancellingTaskId = ref<string | null>(null)
 
-const taskTypeLabel: Record<string, string> = {
+const taskTypeLabel = computed<Record<string, string>>(() => ({
   SURVEY: t('schedule.scheduled_task.type_survey'),
   ATTENDANCE: t('schedule.scheduled_task.type_attendance'),
-}
+}))
 
-const taskStatusConfig: Record<string, { label: string; severity: string }> = {
+const taskStatusConfig = computed<Record<string, { label: string; severity: string }>>(() => ({
   PENDING: { label: t('schedule.scheduled_task.status_pending'), severity: 'info' },
   CREATED: { label: t('schedule.scheduled_task.status_created'), severity: 'success' },
   CANCELLED: { label: t('schedule.scheduled_task.status_cancelled'), severity: 'secondary' },
   FAILED: { label: t('schedule.scheduled_task.status_failed'), severity: 'danger' },
-}
+}))
 
 async function loadScheduledTasks() {
   try {
@@ -225,26 +226,24 @@ async function cancelTask(taskId: string) {
   }
 }
 
-const statusConfig: Record<string, { label: string; severity: string }> = {
-  DRAFT: { label: '下書き', severity: 'secondary' },
-  PUBLISHED: { label: '公開中', severity: 'success' },
-  CANCELLED: { label: 'キャンセル', severity: 'danger' },
-}
+const statusConfig = computed<Record<string, { label: string; severity: string }>>(() => ({
+  DRAFT: { label: t('schedule.status.draft'), severity: 'secondary' },
+  PUBLISHED: { label: t('schedule.status.published'), severity: 'success' },
+  SCHEDULED: { label: t('schedule.status.scheduled'), severity: 'success' },
+  CANCELLED: { label: t('schedule.status.cancelled'), severity: 'danger' },
+  COMPLETED: { label: t('schedule.status.completed'), severity: 'secondary' },
+}))
 
-// F03.10 第四陣 Wave2-B 代理出席件数バッジ
-const { fetchDelegations } = useEventDelegationApi()
-const delegationCount = ref(0)
+const { count: delegationCount, error: delegationError, reload: reloadDelegations } =
+  useScheduleDelegationSummary(() => ({
+    scheduleId: props.event.id,
+    scopeType: props.scopeType,
+    scopeId: props.scopeId,
+    canEdit: props.canEdit,
+    skip: props.skipDelegations ?? false,
+  }))
 
 onMounted(async () => {
-  if (props.canEdit && !props.skipDelegations) {
-    try {
-      const res = await fetchDelegations(props.event.id, 1, 1)
-      delegationCount.value = res.total ?? 0
-    } catch {
-      // サイドパネルの補助情報なので失敗しても 0 件扱いで継続
-      delegationCount.value = 0
-    }
-  }
   // 機能55: 予約タスクは編集権限者かつチーム/組織スコープにのみ表示・取消可能
   // 個人予定（scopeId が空）の場合は GET /teams//schedules/{id} の二重スラッシュを避けるためスキップ
   if (props.canEdit && props.scopeId) {
@@ -400,8 +399,17 @@ onMounted(async () => {
     </div>
 
     <!-- F03.10 第四陣 Wave2-B 代理出席件数バッジ（管理者 + 1件以上の場合のみ表示） -->
+    <DashboardErrorState
+      v-if="delegationError"
+      :error="delegationError"
+      :title="$t('schedule.detail.delegationError')"
+      :show-retry="true"
+      testid="schedule-delegation-error"
+      @retry="reloadDelegations"
+    />
     <div
-      v-if="canEdit && delegationCount > 0"
+      v-else-if="canEdit && delegationCount !== null && delegationCount > 0"
+      data-testid="schedule-delegation-count"
       class="mt-3 rounded border border-yellow-200 bg-yellow-50 p-2 text-sm dark:border-yellow-800 dark:bg-yellow-900/20"
     >
       <span class="font-medium text-yellow-800 dark:text-yellow-200">{{ $t('proxy.delegation.admin.tab') }}: </span>

@@ -341,7 +341,7 @@ interface CreateScope {
 }
 
 const createScopeOptions = computed<CreateScope[]>(() => [
-  { label: '個人の予定', value: PERSONAL_SCOPE_KEY, isPersonal: true, scopeType: 'team', scopeId: '' },
+  { label: t('schedule.form.personalScope'), value: PERSONAL_SCOPE_KEY, isPersonal: true, scopeType: 'team', scopeId: '' },
   ...availableScopes.value.map(sc => ({
     label: sc.label,
     value: sc.value,

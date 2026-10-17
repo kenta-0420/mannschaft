@@ -86,13 +86,20 @@ describe('予定詳細の作成者翻訳（CMP-261017-0854）', () => {
 describe('予定詳細の状態翻訳（CMP-261017-1629）', () => {
   it('BE実状態3種が6言語へ表示中切替し、未知状態のfallbackを維持する', async () => {
     const wrapper = await mountPanel('')
+    const labels = {
+      ja: ['予定', 'キャンセル', '完了'], en: ['Scheduled', 'Cancelled', 'Completed'],
+      zh: ['已安排', '已取消', '已完成'], ko: ['예정', '취소됨', '완료됨'],
+      es: ['Programado', 'Cancelado', 'Completado'], de: ['Geplant', 'Abgesagt', 'Abgeschlossen'],
+    }
     for (const locale of ['ja', 'en', 'zh', 'ko', 'es', 'de'] as const) {
       await wrapper.vm.$i18n.setLocale(locale)
-      for (const status of ['SCHEDULED', 'CANCELLED', 'COMPLETED']) {
+      for (const [index, status] of ['SCHEDULED', 'CANCELLED', 'COMPLETED'].entries()) {
         await wrapper.setProps({ event: { ...event(''), status } })
         const label = wrapper.vm.$t(`schedule.status.${status.toLowerCase()}`)
         expect(label).not.toBe(`schedule.status.${status.toLowerCase()}`)
         expect(wrapper.text()).toContain(label)
+        expect(wrapper.text()).toContain(labels[locale][index])
+        expect(wrapper.text()).not.toContain('schedule.status.')
         expect(wrapper.text()).not.toContain(status)
       }
     }

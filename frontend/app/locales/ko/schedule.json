@@ -1,5 +1,34 @@
 {
   "schedule": {
+    "form": {
+      "createEvent": "이벤트 만들기",
+      "editEvent": "이벤트 수정",
+      "addPersonal": "개인 일정 추가",
+      "editPersonal": "개인 일정 수정",
+      "title": "제목",
+      "attendanceRequired": "출석 확인",
+      "allDay": "종일",
+      "history": "최근 시간:",
+      "startDate": "시작 날짜",
+      "startTime": "시작 시간",
+      "endDate": "종료 날짜",
+      "endTime": "종료 시간",
+      "location": "장소",
+      "locationPlaceholder": "장소 (선택 사항)",
+      "scope": "생성 위치",
+      "personalScope": "개인 일정"
+    },
+    "status": {
+      "draft": "초안",
+      "published": "공개됨",
+      "scheduled": "예정",
+      "cancelled": "취소됨",
+      "completed": "완료됨"
+    },
+    "detail": {
+      "delegationError": "대리 출석 건수를 불러오지 못했습니다"
+    },
+    "selectEvent": "이벤트를 선택해 주세요",
     "page_title": "일정",
     "created_by": "작성자: {name}",
     "attendance": {
