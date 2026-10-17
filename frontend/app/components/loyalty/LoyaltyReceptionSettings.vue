@@ -147,6 +147,9 @@ onMounted(load)
       <QrCodeImage
         :value="qrUrl"
         :size="280"
+        error-correction-level="M"
+        :margin="4"
+        center-label=""
         class="mx-auto max-w-full"
         :aria-label="t('loyalty.reception.printTitle')"
       />
