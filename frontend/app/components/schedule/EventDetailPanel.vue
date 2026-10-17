@@ -275,8 +275,8 @@ onMounted(async () => {
         />
       </div>
       <div v-if="canEdit || canManageSchedule" class="flex gap-1">
-        <Button icon="pi pi-pencil" text rounded size="small" data-testid="schedule-edit" @click="emit('edit')" />
-        <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="emit('delete')" />
+        <Button icon="pi pi-pencil" text rounded size="small" class="min-h-11 min-w-11" :aria-label="t('button.edit')" data-testid="schedule-edit" @click="emit('edit')" />
+        <Button icon="pi pi-trash" text rounded size="small" severity="danger" class="min-h-11 min-w-11" :aria-label="t('button.delete')" @click="emit('delete')" />
       </div>
     </div>
 

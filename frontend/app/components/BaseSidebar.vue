@@ -33,6 +33,8 @@ const isMember = computed(() =>
 
 // モジュール有効スラッグセット
 const enabledSlugs = ref<Set<string>>(new Set())
+const loadState = ref<'loading' | 'error' | 'loaded'>('loading')
+const loadError = shallowRef<unknown>()
 
 // モジュールAPI
 const { getOrganizationModules } = useOrganizationModuleApi()
@@ -72,25 +74,34 @@ const basePath = computed(() =>
     : `/teams/${props.scopeId}`,
 )
 
-onMounted(async () => {
-  await Promise.all([
-    loadPermissions(),
-    (async () => {
-      if (props.scopeType === 'organization') {
-        const modules = await getOrganizationModules(props.scopeId)
-        enabledSlugs.value = new Set(
-          modules.filter(m => m.isEnabled).map(m => m.moduleSlug),
-        )
-      }
-      else {
-        const res = await getTeamModules(props.scopeId)
-        enabledSlugs.value = new Set(
-          res.data.filter(m => m.isEnabled).map(m => m.moduleSlug),
-        )
-      }
-    })(),
-  ])
-})
+// 初回と再試行で権限を確認し、表示判定に必要なモジュールを取り直す。取得失敗は「権限なし」や
+// 「モジュール未有効」と区別し、利用者が再試行できるエラー面へ送る。
+async function loadSidebar() {
+  loadState.value = 'loading'
+  loadError.value = undefined
+  enabledSlugs.value = new Set()
+  try {
+    const result = await loadPermissions()
+    if (!result.ok) throw result.error
+    // SYSTEM_ADMINの通常表示はモジュール有効状態を使わない。所属限定APIも取得しない。
+    // メンバーレンズ中は通常どおりモジュール有効状態に従う。
+    if (roleName.value !== 'SYSTEM_ADMIN' || props.memberLensActive) {
+      const modules = props.scopeType === 'organization'
+        ? await getOrganizationModules(props.scopeId)
+        : (await getTeamModules(props.scopeId)).data
+      enabledSlugs.value = new Set(
+        modules.filter(module => module.isEnabled).map(module => module.moduleSlug),
+      )
+    }
+    loadState.value = 'loaded'
+  }
+  catch (error) {
+    loadError.value = error
+    loadState.value = 'error'
+  }
+}
+
+onMounted(loadSidebar)
 
 // アコーディオン開閉状態（localStorage）
 const STORAGE_KEY = computed(
@@ -139,12 +150,21 @@ function isItemActive(item: SidebarItem): boolean {
 </script>
 
 <template>
-  <nav v-if="isMember" class="flex flex-col gap-0.5 py-2 px-1">
+  <div v-if="loadState === 'loading'" role="status" :aria-label="$t('button.loading')">
+    <PageLoading class="!min-h-0 !pb-0 py-8" />
+  </div>
+  <DashboardErrorState
+    v-else-if="loadState === 'error'"
+    :error="loadError"
+    class="[&_button]:min-h-11 [&_button]:min-w-11"
+    @retry="loadSidebar"
+  />
+  <nav v-else-if="isMember" class="flex flex-col gap-0.5 py-2 px-1">
     <template v-for="category in categories" :key="category.key">
       <div v-if="isCategoryVisible(category)">
         <!-- カテゴリヘッダー（クリックで展開/折り畳み） -->
         <button
-          class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
+          class="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
           @click="toggleCategory(category.key)"
         >
           <i :class="category.icon" class="text-sm" />
@@ -158,7 +178,7 @@ function isItemActive(item: SidebarItem): boolean {
             <NuxtLink
               v-if="isItemVisible(item) && isLinkItem(item)"
               :to="itemLinkTo(item)"
-              class="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors hover:bg-surface-100 dark:hover:bg-surface-700"
+              class="flex min-h-11 items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors hover:bg-surface-100 dark:hover:bg-surface-700"
               :class="isItemActive(item) ? 'bg-primary/10 text-primary font-medium' : 'text-surface-600 dark:text-surface-300'"
             >
               <i :class="item.icon" class="text-sm w-4" />
@@ -167,7 +187,7 @@ function isItemActive(item: SidebarItem): boolean {
             <!-- タブ遷移アイテム（path === ''） -->
             <button
               v-else-if="isItemVisible(item) && !isLinkItem(item)"
-              class="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-surface-600 dark:text-surface-300 transition-colors hover:bg-surface-100 dark:hover:bg-surface-700 text-left"
+              class="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-surface-600 dark:text-surface-300 transition-colors hover:bg-surface-100 dark:hover:bg-surface-700 text-left"
               @click="emit('tabNavigate', item)"
             >
               <i :class="item.icon" class="text-sm w-4" />

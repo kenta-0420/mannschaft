@@ -511,7 +511,7 @@
         "description": "Sichtbarkeitseinstellungen für Suche, Direktnachrichten und Online-Status"
       },
       "contactInviteTokens": {
-        "description": "Einladungs-URLs zum Hinzufügen von Kontakten ausstellen und verwalten"
+        "description": "Einladungslinks und QR-Codes zum Hinzufügen von Kontakten erstellen, anzeigen und verwalten"
       },
       "contactRequestBlocks": {
         "label": "Liste vorab abgelehnter Anfragen",

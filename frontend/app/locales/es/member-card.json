@@ -79,5 +79,26 @@
         "step2": "Si faltan permisos, contacte con un administrador del equipo u organización."
       }
     }
+  },
+  "checkinLocationManager": {
+    "title": "Ubicaciones de autorregistro",
+    "add": "Añadir ubicación",
+    "empty": "No hay ubicaciones registradas",
+    "name": "Nombre de la ubicación",
+    "status": "Estado",
+    "active": "Activa",
+    "inactive": "Inactiva",
+    "autoComplete": "Completar reservas automáticamente",
+    "actions": "Acciones",
+    "edit": "Editar ubicación",
+    "delete": "Eliminar ubicación",
+    "placeholder": "Ej.: Recepción principal",
+    "autoCompleteHint": "Completar las reservas automáticamente al registrarse",
+    "cancel": "Cancelar",
+    "update": "Actualizar",
+    "create": "Crear",
+    "created": "Ubicación creada",
+    "updated": "Ubicación actualizada",
+    "deleted": "Ubicación eliminada"
   }
 }

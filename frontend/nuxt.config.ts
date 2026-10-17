@@ -1045,6 +1045,8 @@ export default defineNuxtConfig({
         'chart.js',
         'dompurify',
         'vuedraggable',
+        // 連絡先QRへの初回SPA遷移で遅延依存の検出による再読み込みを避ける。
+        'qrcode',
         'marked',
         'zod',
         '@vee-validate/zod',

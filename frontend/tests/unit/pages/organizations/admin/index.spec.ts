@@ -51,13 +51,14 @@ describe('pages/organizations/[slug]/admin/index.vue — カードが実リン�
     expect(anchors.length).toBe(8)
   })
 
-  it('OAC-002: 設定・メンバー管理・QR会員証管理がそれぞれの画面を指す', async () => {
+  it('OAC-002: 設定ハブ・メンバー管理・QR会員証管理がそれぞれの画面を指す', async () => {
     const wrapper = await mountSuspended(OrgAdminConsolePage)
     await flushMicrotasks()
 
     const anchors = wrapper.findAll('a[href]')
     const hrefs = anchors.map(a => a.attributes('href'))
-    expect(hrefs).toContain('/organizations/org-000004/settings/faq-settings')
+    expect(hrefs).toContain('/organizations/org-000004/admin/settings')
+    expect(hrefs).not.toContain('/organizations/org-000004/settings/faq-settings')
     expect(hrefs).toContain('/organizations/org-000004/members')
     expect(hrefs).toContain('/organizations/org-000004/member-cards')
   })

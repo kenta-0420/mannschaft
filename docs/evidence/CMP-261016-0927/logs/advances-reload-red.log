@@ -1,0 +1,54 @@
+
+Running 5 tests using 1 worker
+
+node.exe : (node:47360) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+発生場所 行:1 文字:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:47360) Wa... env being set.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:47360) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  1 [chromium-real] › tests\e2e\real\team-payment-access.real.spec.ts:144:3 › ADMIN: 管理ハブ→請求・再読込・立替・詳細URLへ到達する (32.8s)
+  -  2 [chromium-real] › tests\e2e\real\team-payment-access.real.spec.ts:144:3 › DEPUTY_ADMIN: 管理ハブ→請求・再読込・立替・詳細URLへ到達する
+  -  3 [chromium-real] › tests\e2e\real\team-payment-access.real.spec.ts:170:3 › MEMBER: 請求一覧/詳細/立替を直URLでも閲覧できない
+  -  4 [chromium-real] › tests\e2e\real\team-payment-access.real.spec.ts:170:3 › SUPPORTER: 請求一覧/詳細/立替を直URLでも閲覧できない
+  -  5 [chromium-real] › tests\e2e\real\team-payment-access.real.spec.ts:170:3 › OTHER_TEAM_ADMIN: 請求一覧/詳細/立替を直URLでも閲覧できない
+
+
+  1) [chromium-real] › tests\e2e\real\team-payment-access.real.spec.ts:144:3 › ADMIN: 管理ハブ→請求・再読込・立替・詳細URLへ到達する
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('請求はありません', { exact: true })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" with timeout 5000ms
+      - waiting for getByText('請求はありません', { exact: true })
+
+
+      158 |     await page.reload({ waitUntil: 'domcontentloaded' })
+      159 |     await waitForHydration(page)
+    > 160 |     await expect(page.getByText('請求はありません', { exact: true })).toBeVisible()
+          |                                                               ^
+      161 |     const detail = page.waitForResponse((response) => response.url().includes(`/teams/${team!.id}/payment-requests/${missingRequestId}`))
+      162 |     await page.goto(`${base}/payment-requests/${missingRequestId}`, { waitUntil: 'domcontentloaded' })
+      163 |     expect((await detail).status()).toBe(404)
+        at <workspace>\frontend\tests\e2e\real\team-payment-access.real.spec.ts:160:63
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\billing-real-static-nosw\real-team-payment-access.r-37221-N-管理ハブ→請求・再読込・立替・詳細URLへ到達する-chromium-real\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\billing-real-static-nosw\real-team-payment-access.r-37221-N-管理ハブ→請求・再読込・立替・詳細URLへ到達する-chromium-real\error-context.md
+
+    Error Context: test-results\billing-real-static-nosw\real-team-payment-access.r-37221-N-管理ハブ→請求・再読込・立替・詳細URLへ到達する-chromium-real\error-context.md
+
+  1 failed
+    [chromium-real] › tests\e2e\real\team-payment-access.real.spec.ts:144:3 › ADMIN: 管理ハブ→請求・再読込・立替・詳細URLへ到達する
+  4 did not run

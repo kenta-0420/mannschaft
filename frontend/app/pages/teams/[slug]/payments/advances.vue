@@ -5,17 +5,16 @@ definePageMeta({ middleware: 'auth', layout: 'default' })
 
 const route = useRoute()
 const { t, locale } = useI18n()
-const { isAdminOrDeputy } = useTeamShellContext()
-const { resolveScopeId } = useActivityScopeId()
 const paymentRequestApi = usePaymentRequestApi()
 const notification = useNotification()
-const { handleApiError } = useErrorHandler()
 const confirm = useConfirm()
 
 const teamSlug = computed(() => String(route.params.slug))
-const teamId = ref<number | null>(null)
-const advances = ref<TeamPaymentAdvanceResponse[]>([])
-const loading = ref(true)
+const { data: advances, teamId, loading, state, loadError, load, fail } = useTeamPaymentPage(
+  teamSlug,
+  async (id) => (await paymentRequestApi.listTeamPaymentAdvances(id)).data ?? [],
+  () => [] as TeamPaymentAdvanceResponse[],
+)
 const confirmingId = ref<string | null>(null)
 
 function amountLabel(advance: TeamPaymentAdvanceResponse): string {
@@ -24,46 +23,37 @@ function amountLabel(advance: TeamPaymentAdvanceResponse): string {
   }).format(advance.advancedAmount ?? 0)
 }
 
-async function load(): Promise<void> {
-  loading.value = true
-  try {
-    teamId.value = await resolveScopeId('TEAM', teamSlug.value)
-    if (teamId.value === null) return
-    const response = await paymentRequestApi.listTeamPaymentAdvances(teamId.value)
-    advances.value = response.data ?? []
-  } catch (error: unknown) {
-    handleApiError(error, 'payment-request.advance.list')
-  } finally {
-    loading.value = false
-  }
-}
 
 async function settle(advance: TeamPaymentAdvanceResponse): Promise<void> {
   if (!teamId.value || !advance.id || advance.settlementStatus !== 'PENDING' || confirmingId.value) return
+  const slug = teamSlug.value
   confirmingId.value = advance.id
   try {
     await paymentRequestApi.confirmPaymentAdvanceSettlement(teamId.value, advance.id)
+    if (slug !== teamSlug.value) return
     notification.success(t('payment.membership.paymentRequest.confirmSettlementSuccess'))
     await load()
   } catch (error: unknown) {
-    handleApiError(error, 'payment-request.advance.confirm')
+    if (slug !== teamSlug.value) return
+    fail(error)
   } finally {
-    confirmingId.value = null
+    if (slug === teamSlug.value) confirmingId.value = null
   }
 }
 
 function confirmSettlement(advance: TeamPaymentAdvanceResponse): void {
   if (advance.settlementStatus !== 'PENDING') return
+  const slug = teamSlug.value
   confirm.require({
     message: t('payment.membership.paymentRequest.confirm'),
     header: t('payment.membership.paymentRequest.confirmSettlement'),
     acceptLabel: t('button.confirm'),
     rejectLabel: t('button.cancel'),
-    accept: () => void settle(advance),
+    accept: () => { if (slug === teamSlug.value) void settle(advance) },
   })
 }
 
-onMounted(load)
+watch(teamSlug, () => { confirmingId.value = null }, { flush: 'sync' })
 </script>
 
 <template>
@@ -73,8 +63,8 @@ onMounted(load)
       :title="t('payment.membership.paymentRequest.advanceTitle')"
     />
     <PageLoading v-if="loading" />
-    <Message v-else-if="!isAdminOrDeputy" severity="error" :closable="false">{{ t('payment.admin.permissionDenied') }}</Message>
-    <Message v-else-if="teamId === null" severity="error" :closable="false">{{ t('payment.membership.paymentRequest.loadError') }}</Message>
+    <DashboardErrorState v-else-if="state === 'error'" :error="loadError" :show-retry="true" @retry="load" />
+    <Message v-else-if="state === 'denied'" severity="error" :closable="false">{{ t('payment.admin.permissionDenied') }}</Message>
     <DashboardEmptyState
       v-else-if="advances.length === 0"
       icon="pi pi-wallet"

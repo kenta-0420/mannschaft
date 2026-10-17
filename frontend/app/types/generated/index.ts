@@ -31500,7 +31500,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * チーム公開設定取得
+         * @description GETのパス識別子はslug。管理認可後に数値IDと現在の2設定を返す。
+         */
+        get: operations["getTeamPublicSettings"];
         put?: never;
         post?: never;
         delete?: never;
@@ -31786,7 +31790,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * 組織公開設定取得
+         * @description GETのパス識別子はslug。管理認可後に数値IDと現在の2設定を返す。
+         */
+        get: operations["getOrganizationPublicSettings"];
         put?: never;
         post?: never;
         delete?: never;
@@ -37700,6 +37708,26 @@ export interface paths {
         };
         /** 全チーム一覧取得 */
         get: operations["getTeams"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/dashboard/teams/deleted": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 削除済みチームの復元対象一覧取得
+         * @description 削除日時・IDの降順に固定してDBページングする。size上限は100。外部sort指定は無視する。
+         */
+        get: operations["getDeletedTeams"];
         put?: never;
         post?: never;
         delete?: never;
@@ -78294,6 +78322,18 @@ export interface components {
             /** @enum {string} */
             visibility?: "PUBLIC" | "GUESTS_AND_ABOVE" | "SUPPORTERS_AND_ABOVE" | "MEMBERS_AND_ABOVE";
         };
+        DeletedTeamSummaryResponse: {
+            /** Format: date-time */
+            deletedAt: string;
+            /** @enum {string} */
+            lifecycleStatus: "PROVISIONED" | "ACTIVE";
+            name: string;
+            slug: string;
+        };
+        PagedResponseDeletedTeamSummaryResponse: {
+            data?: components["schemas"]["DeletedTeamSummaryResponse"][];
+            meta?: components["schemas"]["PageMeta"];
+        };
         ApiResponsePageSystemAdminOrganizationSummaryResponse: {
             data?: components["schemas"]["PageSystemAdminOrganizationSummaryResponse"];
         };
@@ -84493,6 +84533,15 @@ export interface components {
             newMode?: "DISPLAY_NAME" | "REAL_NAME";
             /** @enum {string} */
             oldMode?: "DISPLAY_NAME" | "REAL_NAME";
+        };
+        ApiResponsePublicSettingsResponse: {
+            data?: components["schemas"]["PublicSettingsResponse"];
+        };
+        PublicSettingsResponse: {
+            /** Format: int64 */
+            numericId?: number;
+            publicEventsEnabled?: boolean;
+            timelinePostsPublic?: boolean;
         };
         /** @description 自由FAQ 1問 */
         CustomFaqItem: {
@@ -151019,6 +151068,55 @@ export interface operations {
             };
         };
     };
+    getTeamPublicSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 管理認可済みの設定 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+            /** @description 未認証 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+            /** @description スコープ管理権限なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+            /** @description 対象slugなし・削除済み・ACTIVE対象外 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+        };
+    };
     patchTeamPublicSettings: {
         parameters: {
             query?: never;
@@ -151449,6 +151547,55 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["SupporterNameDisclosureResponse"];
+                };
+            };
+        };
+    };
+    getOrganizationPublicSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 管理認可済みの設定 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+            /** @description 未認証 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+            /** @description スコープ管理権限なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+            /** @description 対象slugなし・削除済み・ACTIVE対象外 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
                 };
             };
         };
@@ -159750,6 +159897,33 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponsePageSystemAdminTeamSummaryResponse"];
+                };
+            };
+        };
+    };
+    getDeletedTeams: {
+        parameters: {
+            query?: {
+                /** @description Zero-based page index (0..N) */
+                page?: number;
+                /** @description The size of the page to be returned */
+                size?: number;
+                /** @description Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported. */
+                sort?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseDeletedTeamSummaryResponse"];
                 };
             };
         };

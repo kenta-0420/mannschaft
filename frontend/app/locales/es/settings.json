@@ -511,7 +511,7 @@
         "description": "Configuración de visibilidad para búsqueda, mensajes directos y estado en línea"
       },
       "contactInviteTokens": {
-        "description": "Emitir y gestionar URLs de invitación para agregar contactos"
+        "description": "Crear, ver y gestionar URL de invitación y códigos QR para añadir contactos"
       },
       "contactRequestBlocks": {
         "label": "Lista de solicitudes bloqueadas previamente",

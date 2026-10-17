@@ -124,9 +124,16 @@ export interface PublicEventResponse {
  * エンドポイント: PATCH /api/v1/admin/teams/{teamId}/public-settings
  *                PATCH /api/v1/admin/organizations/{orgId}/public-settings
  */
+/** 管理認可済みの公開設定。公開閲覧用DTOとは分離する。 */
+export interface PublicSettingsResponse {
+  numericId: number
+  timelinePostsPublic: boolean
+  publicEventsEnabled: boolean
+}
+
 export interface UpdatePublicSettingsRequest {
-  timelinePostsPublic?: boolean
-  publicEventsEnabled?: boolean
+  timelinePostsPublic: boolean
+  publicEventsEnabled: boolean
 }
 
 /** F19.1 公開投稿一覧用の summary DTO。 */
