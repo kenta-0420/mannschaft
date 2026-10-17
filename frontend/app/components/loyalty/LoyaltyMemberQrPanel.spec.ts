@@ -2,8 +2,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import LoyaltyMemberQrPanel from './LoyaltyMemberQrPanel.vue'
+import QrCodeImage from '~/components/qr/QrCodeImage.vue'
+import sharp from 'sharp'
+import { BinaryBitmap, HybridBinarizer, RGBLuminanceSource, QRCodeReader } from '@zxing/library'
 import type { MemberCardQr } from '~/types/member-card'
-import { ref, shallowRef, onMounted, onUnmounted } from 'vue'
+import { ref, shallowRef, computed, watch, onMounted, onUnmounted } from 'vue'
 import { createI18n } from 'vue-i18n'
 const mocks = vi.hoisted(() => ({
   ensurePlatform: vi.fn(),
@@ -17,6 +20,8 @@ vi.stubGlobal('useErrorHandler', () => mocks)
 vi.stubGlobal('useI18n', () => ({ t: (key: string) => key }))
 vi.stubGlobal('ref', ref)
 vi.stubGlobal('shallowRef', shallowRef)
+vi.stubGlobal('computed', computed)
+vi.stubGlobal('watch', watch)
 vi.stubGlobal('onMounted', onMounted)
 vi.stubGlobal('onUnmounted', onUnmounted)
 
@@ -30,16 +35,19 @@ const qr = (token: string): MemberCardQr => ({
   scopeName: null,
 })
 const wrappers: ReturnType<typeof mount>[] = []
-function mountPanel() {
+function mountPanel(actualQr = false) {
   mocks.ensurePlatform.mockResolvedValue({ memberCardId: 1 })
   const wrapper = mount(LoyaltyMemberQrPanel, {
     global: {
+      components: { QrCodeImage },
       plugins: [
         createI18n({ legacy: false, locale: 'ja', missingWarn: false, fallbackWarn: false }),
       ],
       stubs: {
         SectionCard: { template: '<section><slot /></section>' },
-        QrCodeImage: { props: ['value'], template: '<div class="qr-render">{{ value }}</div>' },
+        QrCodeImage: actualQr
+          ? false
+          : { props: ['value'], template: '<div class="qr-render">{{ value }}</div>' },
         PageLoading: true,
         DashboardErrorState: true,
         Button: true,
@@ -55,6 +63,30 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 describe('会員QRの実期限と背景復帰（AC01/10/20）', () => {
+  it('実Panelが生成した102文字の未署名QRを元の画像decoderで読み取れる', async () => {
+    // 実tokenを含まない固定合成データ。有限候補5件目で旧H描画の検出失敗を再現した。
+    const unsigned = 'FAKE.vq2ow8F8GLj1Bh-A4TOWhAyQDoD7K__vU4UMEUwHlOJeuJ30rlLB8fD2DyjNtplJdS1IXMxmFM2GpZKBMqDB0gvq2ow8F8GLj'
+    mocks.getQr.mockResolvedValue(qr(unsigned))
+    const wrapper = mountPanel(true)
+    await flushPromises()
+    const svg = wrapper.getComponent(QrCodeImage).get('svg').element.outerHTML
+    const { data, info } = await sharp(Buffer.from(svg)).removeAlpha().raw()
+      .toBuffer({ resolveWithObject: true })
+    const pixels = new Uint8ClampedArray(info.width * info.height)
+    for (let i = 0; i < pixels.length; i++)
+      pixels[i] = Math.round(
+        (data[i * info.channels]! + data[i * info.channels + 1]! + data[i * info.channels + 2]!) / 3,
+      )
+    let decoded: string | null = null
+    try {
+      decoded = new QRCodeReader().decode(new BinaryBitmap(
+        new HybridBinarizer(new RGBLuminanceSource(pixels, info.width, info.height)),
+      )).getText()
+    } catch {
+      // 復号できない画像はnullのまま、生成元の値との一致assertionで失敗させる。
+    }
+    expect(decoded).toBe(unsigned)
+  })
   it('表示中の会員QRを名前付き画像として公開する', async () => {
     mocks.getQr.mockResolvedValue(qr('accessible-token'))
     const wrapper = mountPanel()

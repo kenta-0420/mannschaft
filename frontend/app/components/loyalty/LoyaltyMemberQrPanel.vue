@@ -73,6 +73,9 @@ onUnmounted(() => {
       <QrCodeImage
         :value="qr.qrToken"
         :size="280"
+        error-correction-level="Q"
+        :margin="4"
+        center-label=""
         role="img"
         :aria-label="t('loyalty.memberQr.title')"
         class="max-w-full"
