@@ -256,7 +256,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
@@ -342,7 +342,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
@@ -424,7 +424,7 @@ jobs:
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
         if: steps.aws-check.outputs.skip != 'true'
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
