@@ -64,6 +64,11 @@ const connectSrc = [
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
+  typescript: {
+    tsConfig: {
+      exclude: ['../test-results/**'],
+    },
+  },
   // 本番では Nuxt DevTools を無効化（情報露出・バンドル肥大の抑止）。
   // Nuxt DevTools の専用パネルは利用方針により全環境で無効化する（インストール時の互換パッチは維持）。
   devtools: { enabled: false },
