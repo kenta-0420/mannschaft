@@ -9,7 +9,7 @@ import { BinaryBitmap, HybridBinarizer, RGBLuminanceSource, QRCodeReader } from 
 import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration } from '../helpers/wait'
 import { readFileSync } from 'node:fs'
-import { mkdtemp, writeFile, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import QRCode from 'qrcode'
@@ -95,13 +95,33 @@ async function decodeQr(page: Page, selector: string): Promise<string> {
     pixels[i] = Math.round(
       (data[i * info.channels]! + data[i * info.channels + 1]! + data[i * info.channels + 2]!) / 3,
     )
-  return new QRCodeReader()
-    .decode(
-      new BinaryBitmap(
-        new HybridBinarizer(new RGBLuminanceSource(pixels, info.width, info.height)),
-      ),
-    )
-    .getText()
+  try {
+    return new QRCodeReader()
+      .decode(
+        new BinaryBitmap(
+          new HybridBinarizer(new RGBLuminanceSource(pixels, info.width, info.height)),
+        ),
+      )
+      .getText()
+  } catch (error) {
+    // QRには署名tokenが含まれるため、失敗画像は公開成果物と分けたignored私有領域だけへ保存する。
+    try {
+      const privateRoot = resolve('test-results/loyalty-private/qr-decode-failures')
+      await mkdir(privateRoot, { recursive: true })
+      const directory = await mkdtemp(join(privateRoot, 'failure-'))
+      await writeFile(join(directory, 'element.png'), screenshot, { flag: 'wx' })
+      await writeFile(join(directory, 'metadata.json'), JSON.stringify({
+        at: new Date().toISOString(), test: test.info().title, selector,
+        width: info.width, height: info.height, channels: info.channels,
+        errorName: (error as Error).constructor.name,
+      }, null, 2), { flag: 'wx' })
+      await writeFile(join(directory, 'raw.svg'), await page.locator(selector).locator('svg').evaluate(element => element.outerHTML), { flag: 'wx' })
+      console.info('[loyalty-ui] private QR failure evidence', directory)
+    } catch (captureError) {
+      console.warn('[loyalty-ui] private QR capture failed', (captureError as Error).name)
+    }
+    throw error
+  }
 }
 
 async function noOverflow(page: Page) {
@@ -294,7 +314,8 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
   page,
   browser,
 }) => {
-  test.setTimeout(180_000)
+  // dev実測の自然mount20.5〜25秒×13遷移＋操作60秒＋余裕35秒を有限予算にする。
+  test.setTimeout(420_000)
   await loginViaApi(page, ADMIN, { apiBaseUrl: API })
   const suffix = Date.now().toString(36)
   const slug = `e2e-loyalty-${suffix}`
@@ -328,6 +349,24 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
     await page.getByRole('button', { name: '受付拠点を作成', exact: true }).click()
     await page.getByRole('button', { name: 'QRプレビュー', exact: true }).click()
     await expect(page.getByTestId('loyalty-reception-print')).toBeVisible()
+    const locationSelect = page.getByTestId('loyalty-location-select')
+    const selectedLocation = await locationSelect.innerText()
+    const locationNameInput = page.getByText('新しい受付拠点名', { exact: false }).locator('input')
+    await locationNameInput.fill('未保存の受付名')
+    const updatedRule = page.waitForResponse(
+      response => response.request().method() === 'PUT'
+        && new URL(response.url()).pathname.includes('/loyalty/rules/'),
+    )
+    const refreshedSettings = page.waitForResponse(
+      response => response.request().method() === 'GET'
+        && new URL(response.url()).pathname.endsWith('/loyalty/settings'),
+    )
+    await rule.getByRole('button', { name: '保存', exact: true }).click()
+    expect((await updatedRule).status()).toBe(200)
+    expect((await refreshedSettings).status()).toBe(200)
+    await expect(locationSelect).toHaveText(selectedLocation)
+    await expect(locationNameInput).toHaveValue('未保存の受付名')
+    await expect(page.getByTestId('loyalty-reception-print')).toBeVisible()
     const url = await decodeQr(page, '[data-testid="loyalty-reception-print"] .qr-code-image')
     expect(new URL(url).pathname).toBe('/my/team-points/receive')
     expect(new URL(url).search).toBe('')
@@ -341,13 +380,52 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
     })
     const member = await memberContext.newPage()
     await loginViaApi(member, USER, { apiBaseUrl: API })
+    let rejecting = false
+    member.on('request', request => {
+      const path = new URL(request.url()).pathname
+      if (request.resourceType() === 'document')
+        console.info('[loyalty-order]', JSON.stringify({ event: 'member-document', at: Date.now(), path }))
+      if (path === '/api/v1/loyalty/self-award-bootstrap/me')
+        console.info('[loyalty-order]', JSON.stringify({ event: 'bootstrap-start', at: Date.now() }))
+    })
+    member.on('response', async response => {
+      if (new URL(response.url()).pathname === '/api/v1/loyalty/self-award-bootstrap/me') {
+        const body = await response.json() as { code?: string; errorCode?: string; error?: { code?: string } }
+        console.info('[loyalty-order]', JSON.stringify({ event: 'bootstrap-response', at: Date.now(), status: response.status(), code: body.code ?? body.errorCode ?? body.error?.code }))
+      }
+    })
+    page.on('request', request => {
+      if (request.method() === 'POST' && new URL(request.url()).pathname.endsWith('/reject')) {
+        rejecting = true
+        console.info('[loyalty-order]', JSON.stringify({ event: 'reject-start', at: Date.now() }))
+      }
+    })
+    page.on('response', response => {
+      if (response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/reject'))
+        console.info('[loyalty-order]', JSON.stringify({ event: 'reject-response', at: Date.now(), status: response.status() }))
+    })
+    member.on('request', request => {
+      if (rejecting && request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/loyalty/award-requests/me')
+        console.info('[loyalty-order]', JSON.stringify({ event: 'member-list-start', at: Date.now() }))
+    })
+    member.on('response', async response => {
+      if (rejecting && response.request().method() === 'GET' && new URL(response.url()).pathname === '/api/v1/loyalty/award-requests/me') {
+        const body = await response.json() as { data: Array<{ status: string }> }
+        console.info('[loyalty-order]', JSON.stringify({ event: 'member-list-response', at: Date.now(), status: response.status(), states: body.data.map(item => item.status) }))
+      }
+    })
     const writes: string[] = []
     member.on('request', (request) => {
       if (request.method() === 'POST' && /\/self-awards$|\/self-checkin$/.test(request.url()))
         writes.push(request.url())
     })
     await member.goto(url, { waitUntil: 'commit' })
-    await waitForHydration(member)
+    await waitForHydration(member, { reloadOnTimeout: false })
+    console.info('[loyalty-order]', JSON.stringify({
+      event: 'member-ready-initial',
+      navigationType: await member.evaluate(() => (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.type),
+      rescanVisible: await member.getByText(textFor('ja')('loyalty.self.rescan'), { exact: true }).isVisible(),
+    }))
     await expect(member.getByRole('heading', { level: 1, name: '受付内容の確認' })).toBeVisible()
     await expect(member.getByRole('button', { name: '内容を確認して確定' })).toBeVisible()
     expect(member.url()).not.toContain('locationToken')
@@ -363,7 +441,12 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
     await member.getByRole('button', { name: '申請を取り消す', exact: true }).click()
     await expect(member.getByText('取消済み', { exact: true })).toBeVisible()
     await member.goto(url, { waitUntil: 'commit' })
-    await waitForHydration(member)
+    await waitForHydration(member, { reloadOnTimeout: false })
+    console.info('[loyalty-order]', JSON.stringify({
+      event: 'member-ready-after-cancel',
+      navigationType: await member.evaluate(() => (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.type),
+      rescanVisible: await member.getByText(textFor('ja')('loyalty.self.rescan'), { exact: true }).isVisible(),
+    }))
     await member.getByRole('button', { name: '内容を確認して確定' }).click()
     await expect(member.getByText('承認待ち', { exact: true })).toBeVisible()
     await page.goto(`/teams/${slug}/loyalty`, { waitUntil: 'commit' })
@@ -374,7 +457,7 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
     await member.getByRole('link').filter({ hasText: '却下済み' }).click()
     await expect(member.getByText('却下済み', { exact: true })).toBeVisible()
     await member.goto(url, { waitUntil: 'commit' })
-    await waitForHydration(member)
+    await waitForHydration(member, { reloadOnTimeout: false })
     await member.getByRole('button', { name: '内容を確認して確定' }).click()
     await expect(member.getByText('承認待ち', { exact: true })).toBeVisible()
     code = (await member.getByText(/^照合コード /).textContent())!.replace('照合コード ', '').trim()
@@ -421,7 +504,7 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
     await dialog.getByRole('button', { name: '保存', exact: true }).click()
     await loginViaApi(member, fixture.actors.resident1, { apiBaseUrl: API })
     await member.goto(url, { waitUntil: 'commit' })
-    await waitForHydration(member)
+    await waitForHydration(member, { reloadOnTimeout: false })
     await expect(member.getByText(/固定QRの撮影・遠隔再利用/)).toBeVisible()
     await member.getByRole('button', { name: '内容を確認して確定' }).click()
     await expect(member.getByTestId('loyalty-balance')).toHaveText('1ポイント')
@@ -435,7 +518,7 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
       .click()
     await loginViaApi(member, fixture.actors.resident2, { apiBaseUrl: API })
     await member.goto(url, { waitUntil: 'commit' })
-    await waitForHydration(member)
+    await waitForHydration(member, { reloadOnTimeout: false })
     await expect(member.getByTestId('load-error-state')).toBeVisible()
     await expect(member.getByRole('button', { name: '内容を確認して確定' })).toHaveCount(0)
     expect(team.numericId).toBeGreaterThan(0)
@@ -634,7 +717,7 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
       }
       async function submitReception() {
         await applicant.goto(url, { waitUntil: 'commit' })
-        await waitForHydration(applicant)
+        await waitForHydration(applicant, { reloadOnTimeout: false })
         await expect(applicant.getByRole('heading', { level: 1, name: t('loyalty.self.confirm'), exact: true })).toBeVisible()
         await expect(applicant.getByText(t('loyalty.mode.staffApproval'), { exact: true })).toBeVisible()
         await applicant.getByRole('button', { name: t('loyalty.confirm'), exact: true }).click()
@@ -655,7 +738,7 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
       const ineligible = member.waitForResponse(response => response.request().method() === 'POST'
         && new URL(response.url()).pathname === '/api/v1/loyalty/self-award-bootstrap/me')
       await member.goto(url, { waitUntil: 'commit' })
-      await waitForHydration(member)
+      await waitForHydration(member, { reloadOnTimeout: false })
       expect(((await (await ineligible).json()) as { error: { code: string } }).error.code).toBe('LOYALTY_003')
       await expect(member.getByText(t('loyalty.error.ineligible'), { exact: true })).toBeVisible()
       await expect(member.getByRole('button', { name: t('loyalty.confirm'), exact: true })).toHaveCount(0)
@@ -663,7 +746,7 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
       await page.getByRole('option', { name: t('loyalty.audience.allAuthenticated'), exact: true }).click()
       await saveProgram()
       await member.goto(url, { waitUntil: 'commit' })
-      await waitForHydration(member)
+      await waitForHydration(member, { reloadOnTimeout: false })
       await expect(member.getByRole('heading', { level: 1, name: t('loyalty.self.confirm'), exact: true })).toBeVisible()
       await expect(member.getByText(t('loyalty.mode.staffApproval'), { exact: true })).toBeVisible()
       await expect(member.getByTestId('loyalty-balance')).toHaveText(t('loyalty.balance', { points: 0 }))
@@ -690,7 +773,7 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
       const invalidatedDetail = await openPendingRequest()
       // 同じ申請の最新previewを開いた後、mode変更でprogram版だけ更新する。加算数1は変えない。
       await member.goto(url, { waitUntil: 'commit' })
-      await waitForHydration(member)
+      await waitForHydration(member, { reloadOnTimeout: false })
       await expect(member.getByRole('button', { name: t('loyalty.confirm'), exact: true })).toBeVisible()
       await page.goto(`/teams/${slug}/settings/loyalty`, { waitUntil: 'commit' })
       await waitForHydration(page)
@@ -752,7 +835,7 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
       // 停止を読取で観測してから本人受付を再表示する。エラー応答自体を偽装しない。
       await expect(page.getByRole('button', { name: t('loyalty.reception.preview'), exact: true })).toBeDisabled()
       await member.goto(url, { waitUntil: 'commit' })
-      await waitForHydration(member)
+      await waitForHydration(member, { reloadOnTimeout: false })
       await expect(member.getByTestId('load-error-state')).toBeVisible()
       await expect(member.getByRole('button', { name: t('loyalty.confirm'), exact: true })).toHaveCount(0)
       await expect(member.getByText(t('loyalty.self.rescan'), { exact: true })).toBeVisible()
