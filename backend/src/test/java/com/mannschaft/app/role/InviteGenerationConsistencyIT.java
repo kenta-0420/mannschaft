@@ -21,6 +21,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.List;
@@ -77,9 +78,13 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
             var closing = executor.submit(() -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
                 cleanupConnection.set(jdbc.queryForObject("SELECT CONNECTION_ID()", Long.class));
                 // cleanupの単独UPDATEを実DBで先行させ、実row lockをcommitまで保持する。
+                // JPAはJST壁時計をUTC格納する。JdbcTemplateにもUTCのLocalDateTimeを渡し、
+                // Calendar無しTimestamp bindingによるJST格納・JPA読取時の9時間差を防ぐ。
+                LocalDateTime storedRevocation = firstRevocation.atZone(
+                                com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE)
+                        .withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
                 jdbc.update("UPDATE invite_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL",
-                        java.sql.Timestamp.from(firstRevocation.atZone(
-                                com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()), token.getId());
+                        storedRevocation, token.getId());
                 tokenLocked.countDown();
                 await(commitCleanup);
             }));
