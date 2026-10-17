@@ -1,6 +1,7 @@
 package com.mannschaft.app.auth;
 
 import com.mannschaft.app.auth.entity.RefreshTokenEntity;
+import com.mannschaft.app.auth.event.LogoutEvent;
 import com.mannschaft.app.auth.repository.RefreshTokenRepository;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -9,10 +10,15 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.data.redis.RedisConnectionFailureException;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
@@ -29,6 +35,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -39,12 +46,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * DBの確定状態を観測するためテスト全体を@Transactionalで包まない。
  */
 @AutoConfigureMockMvc
+@RecordApplicationEvents
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class AuthLogoutScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private AuthTokenService authTokenService;
     @Autowired private RefreshTokenRepository refreshTokenRepository;
     @Autowired private JdbcTemplate jdbcTemplate;
+    @Autowired private ApplicationEvents events;
 
     private final Map<String, String> redisValues = new HashMap<>();
     private long actorId;
@@ -52,13 +61,15 @@ class AuthLogoutScopeContractIT extends AbstractMySqlIntegrationTest {
     private String accessToken;
     private String rawRefreshToken;
     private Long sessionId;
+    private ValueOperations<String, String> valueOps;
 
     @BeforeEach
     void 本人と他端末の独立セッションを用意する() {
         actorId = Math.abs(UUID.randomUUID().getMostSignificantBits() % 1_000_000_000L) + 70_000_000L;
         otherActorId = actorId + 1;
         @SuppressWarnings("unchecked")
-        ValueOperations<String, String> valueOps = mock(ValueOperations.class);
+        ValueOperations<String, String> mockedValueOps = mock(ValueOperations.class);
+        valueOps = mockedValueOps;
         given(redisTemplate.opsForValue()).willReturn(valueOps);
         given(redisTemplate.hasKey(anyString())).willAnswer(invocation -> redisValues.containsKey(invocation.getArgument(0)));
         given(valueOps.get(anyString())).willAnswer(invocation -> redisValues.get(invocation.getArgument(0)));
@@ -73,7 +84,6 @@ class AuthLogoutScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @AfterEach
     void 所有行だけを片付ける() {
-        refreshTokenRepository.deleteAll(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(actorId));
         jdbcTemplate.update("DELETE FROM refresh_tokens WHERE user_id IN (?, ?)", actorId, otherActorId);
     }
 
@@ -93,6 +103,7 @@ class AuthLogoutScopeContractIT extends AbstractMySqlIntegrationTest {
         assertThat(isRevoked(anotherDevice.getId())).isFalse();
         assertThat(isRevoked(anotherActor.getId())).isFalse();
         assertThat(authTokenService.isJtiBlacklisted(jti)).isTrue();
+        assertThat(events.stream(LogoutEvent.class).map(LogoutEvent::getUserId).toList()).containsExactly(actorId);
     }
 
     @Test
@@ -115,8 +126,9 @@ class AuthLogoutScopeContractIT extends AbstractMySqlIntegrationTest {
         assertThat(isRevoked(legacyDevice.getId())).isFalse();
     }
 
-    @Test
-    void 他人Cookieと偽造query_本人accessだけ失効し別人に到達しない() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"refresh_token", "refresh_token_hash"})
+    void 他人Cookieと偽造query_本人accessだけ失効し別人に到達しない(String cookieName) throws Exception {
         String foreignRaw = UUID.randomUUID().toString();
         RefreshTokenEntity foreign = saveSession(otherActorId, foreignRaw);
         String foreignAccess = authTokenService.issueAccessToken(otherActorId, List.of("MEMBER"));
@@ -124,12 +136,14 @@ class AuthLogoutScopeContractIT extends AbstractMySqlIntegrationTest {
         String actorJti = accessJti();
         mockMvc.perform(post("/api/v1/auth/logout").param("jti", foreignJti).param("exp", "9999999999")
                         .param("userId", String.valueOf(otherActorId))
-                        .cookie(new Cookie("access_token", accessToken), new Cookie("refresh_token", foreignRaw)))
+                        .cookie(new Cookie("access_token", accessToken), new Cookie(cookieName,
+                                "refresh_token".equals(cookieName) ? foreignRaw : foreign.getTokenHash())))
                 .andExpect(status().isOk());
         assertThat(isRevoked(foreign.getId())).isFalse();
         assertThat(isRevoked(sessionId)).isFalse();
         assertThat(authTokenService.isJtiBlacklisted(actorJti)).isTrue();
         assertThat(authTokenService.isJtiBlacklisted(foreignJti)).isFalse();
+        assertThat(events.stream(LogoutEvent.class)).isEmpty();
     }
 
     @Test
@@ -139,6 +153,29 @@ class AuthLogoutScopeContractIT extends AbstractMySqlIntegrationTest {
                 .andExpect(status().isOk());
         assertThat(authTokenService.isJtiBlacklisted(jti)).isTrue();
         assertThat(isRevoked(sessionId)).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", " ", "malformed-refresh"})
+    void 空や不正refreshCookie_本人accessだけ失効する(String rawToken) throws Exception {
+        String jti = accessJti();
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .cookie(new Cookie("access_token", accessToken), new Cookie("refresh_token", rawToken)))
+                .andExpect(status().isOk());
+        assertThat(authTokenService.isJtiBlacklisted(jti)).isTrue();
+        assertThat(isRevoked(sessionId)).isFalse();
+    }
+
+    @Test
+    void Valkey障害_本人refresh失効は実commitされる() throws Exception {
+        doThrow(new RedisConnectionFailureException("意図したValkey障害"))
+                .when(valueOps).set(anyString(), anyString(), anyLong(), any(TimeUnit.class));
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .cookie(new Cookie("access_token", accessToken), new Cookie("refresh_token", rawRefreshToken)))
+                .andExpect(status().isOk());
+
+        assertThat(isRevoked(sessionId)).isTrue();
     }
 
     @Test
