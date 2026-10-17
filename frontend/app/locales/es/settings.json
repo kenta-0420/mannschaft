@@ -11,7 +11,7 @@
     "step_failed": "La exportación falló",
     "step_processing": "Exportando...",
     "step_preparing": "Preparando...",
-    "description": "Puede exportar sus datos personales como un archivo ZIP."
+    "description": "Exporte sus datos personales en un ZIP. Los nuevos ZIP se protegen con AES-256; la contraseña llega en el correo de finalización. Se necesita una aplicación de extracción compatible con AES. Las herramientas integradas de Windows no admiten ZIP cifrados y no se garantiza la extracción con las de macOS. Los ZIP creados antes de este cambio pueden no estar cifrados y conservan su formato y vencimiento originales."
   },
   "deletion_preview": {
     "dialog_title": "Confirmar eliminación de cuenta",

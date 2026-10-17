@@ -11,7 +11,7 @@
     "step_failed": "导出失败",
     "step_processing": "导出中...",
     "step_preparing": "准备中...",
-    "description": "您可以将个人数据导出为 ZIP 文件。"
+    "description": "可将个人数据导出为ZIP。新生成的ZIP使用AES-256保护，密码通过完成通知邮件发送。解压需要支持AES的应用。Windows内置工具不支持加密ZIP，macOS内置工具能否解压也不作保证。此次变更前生成的ZIP可能未加密，并保留原有格式和到期时间。"
   },
   "deletion_preview": {
     "dialog_title": "确认账户删除",
