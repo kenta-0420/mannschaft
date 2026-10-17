@@ -17,7 +17,7 @@
     "step_failed": "エクスポートに失敗しました",
     "step_processing": "エクスポート中...",
     "step_preparing": "準備中...",
-    "description": "あなたの個人データをZIPファイルとしてエクスポートできます。"
+    "description": "個人データをZIPで出力できます。新規ZIPはAES-256で保護され、パスワードは完了メールで届きます。AES対応の解凍アプリが必要です。Windows標準機能は暗号化ZIPに非対応で、macOS標準機能での展開も保証されません。変更前の作成済みZIPは暗号化されていない場合がありますが、元の形式と期限を保持します。"
   },
   "deletion_preview": {
     "dialog_title": "アカウント削除の確認",

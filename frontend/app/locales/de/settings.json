@@ -17,7 +17,7 @@
     "step_failed": "Export fehlgeschlagen",
     "step_processing": "Exportiere...",
     "step_preparing": "Wird vorbereitet...",
-    "description": "Sie können Ihre persönlichen Daten als ZIP-Datei exportieren."
+    "description": "Exportieren Sie Ihre personenbezogenen Daten als ZIP. Neue ZIPs werden mit AES-256 geschützt; das Passwort erhalten Sie per Abschluss-E-Mail. Zum Entpacken ist eine AES-kompatible Anwendung erforderlich. Windows-Bordmittel unterstützen keine verschlüsselten ZIPs; das Entpacken mit macOS-Bordmitteln ist ebenfalls nicht garantiert. Vor dieser Änderung erstellte ZIPs können unverschlüsselt sein und behalten ihr ursprüngliches Format und Ablaufdatum."
   },
   "deletion_preview": {
     "dialog_title": "Kontolöschung bestätigen",
