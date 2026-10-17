@@ -149,6 +149,47 @@ test('deの組織予定の見出し・追加操作・未選択案内を翻訳す
   }
 })
 
+test('date-value: 360/390pxの編集日付を横スクロールせず全文表示する', async ({ page }, testInfo) => {
+  test.setTimeout(180_000)
+  const slug = process.env.SCHEDULE_I18N_TEAM_SLUG
+  const id = process.env.SCHEDULE_I18N_TEAM_SCHEDULE_ID
+  if (!slug || !id) throw new Error('専用fixtureのteamと予定IDが必要です')
+  const writes: string[] = []
+  page.on('request', request => {
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method()) && new URL(request.url()).pathname.includes('/schedules')) writes.push(request.method())
+  })
+  await page.goto(`/teams/${encodeURIComponent(slug)}/schedule?eventId=${encodeURIComponent(id)}`, { waitUntil: 'domcontentloaded' })
+  const edit = page.getByTestId('schedule-edit').filter({ visible: true })
+  await readyForInteraction(page, edit)
+  await edit.click()
+  const form = page.getByRole('dialog').filter({ has: page.getByTestId('schedule-submit') })
+  await expect(form).toBeVisible()
+  await expect(form.locator('#schedule-start-date')).toHaveValue(/\d{4}/)
+  for (const width of [360, 390]) {
+    await page.setViewportSize({ width, height: 844 })
+    await page.evaluate(() => document.fonts.ready)
+    for (const field of ['schedule-start-date', 'schedule-end-date']) {
+      const metrics = await form.locator(`#${field}`).evaluate(element => {
+        const input = element as HTMLInputElement
+        const style = getComputedStyle(input)
+        const context = document.createElement('canvas').getContext('2d')
+        if (!context) throw new Error('日付の実font幅を測定できません')
+        context.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
+        const letterSpacing = Number.parseFloat(style.letterSpacing) || 0
+        const textWidth = context.measureText(input.value).width + letterSpacing * Math.max(0, input.value.length - 1)
+        const padding = Number.parseFloat(style.paddingLeft) + Number.parseFloat(style.paddingRight)
+        return { value: input.value, font: context.font, textWidth, clientWidth: input.clientWidth, padding, availableWidth: input.clientWidth - padding, scrollLeft: input.scrollLeft }
+      })
+      await testInfo.attach(`date-${width}-${field}.json`, { body: JSON.stringify(metrics), contentType: 'application/json' })
+      expect.soft(metrics.scrollLeft).toBe(0)
+      expect.soft(metrics.textWidth, `${width}px ${field}の日付全文が入力欄へ収まる`).toBeLessThanOrEqual(metrics.availableWidth)
+    }
+  }
+  await form.getByRole('button', { name: /^(Abbrechen|Cancel)$/ }).click()
+  await expect(form).toBeHidden()
+  expect(writes).toEqual([])
+})
+
 test('deの個人カレンダーのタブ・未選択案内・個人予定の色を翻訳する', async ({ page }) => {
   test.setTimeout(180_000)
   // 未選択サイドパネルはデスクトップだけに描画される。
