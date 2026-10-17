@@ -75,7 +75,7 @@ describe('予定周辺の実翻訳と表示中切替（CMP-261017-1629）', () =
     const wrapper = await mountSuspended(ScheduleListRow, {
       props: { scopeType: 'team', scopeId: 'team-a', event: {
         id: 1, uniqueKey: '1', title: '練習', startAt: '2026-08-05T01:00:00+09:00',
-        endAt: '2026-08-05T02:00:00+09:00', allDay: false, color: null,
+        endAt: '2026-08-05T02:00:00+09:00', allDay: false, color: null, isPersonal: false,
         attendanceRequired: true, myAttendance: null,
       } },
     })
