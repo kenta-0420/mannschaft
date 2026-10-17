@@ -1,5 +1,71 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
+test.describe('calendar-mobile-header: 真mobileの見出しと詳細操作', () => {
+  test.use({ isMobile: true, hasTouch: true })
+
+  test('360pxと390pxで操作が画面内に収まり、予定詳細を閉じられる', async ({ page }, testInfo) => {
+    test.setTimeout(180_000)
+    const locale = process.env.I18N_TAP_LOCALE === 'en' ? 'en' : 'de'
+    const id = process.env.SCHEDULE_I18N_ORG_SCHEDULE_ID
+    if (!id) throw new Error('専用fixtureの組織予定IDが必要です')
+    const writes: string[] = []
+    page.on('request', request => {
+      if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method()) && new URL(request.url()).pathname.includes('/schedules')) writes.push(request.method())
+    })
+    for (const width of [360, 390]) {
+      await page.setViewportSize({ width, height: 800 })
+      await page.goto('/calendar', { waitUntil: 'domcontentloaded' })
+      const add = page.getByRole('button', { name: locale === 'en' ? 'Add event' : 'Termin hinzufügen', exact: true })
+      const header = page.locator('main h1').last().locator('..')
+      await readyForInteraction(page, header.locator('h1'))
+      const controls = [header.locator('h1'), header.getByTestId('page-header-help'), header.getByRole('combobox'), add]
+      const boxes = []
+      for (const control of controls) {
+        await expect(control).toBeVisible()
+        const box = await control.boundingBox()
+        boxes.push(box)
+        expect.soft(box!.x, `${width}pxで見出し操作の左端が画面内`).toBeGreaterThanOrEqual(0)
+        expect.soft(box!.x + box!.width, `${width}pxで見出し操作の右端が画面内`).toBeLessThanOrEqual(width)
+      }
+      const viewport = await page.evaluate(() => ({
+        innerWidth: window.innerWidth,
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        visualWidth: window.visualViewport?.width,
+      }))
+      await testInfo.attach(`calendar-header-${width}.json`, { body: JSON.stringify({ width, boxes, viewport }), contentType: 'application/json' })
+      expect.soft(viewport.innerWidth).toBeLessThanOrEqual(width)
+      expect.soft(viewport.scrollWidth).toBeLessThanOrEqual(width)
+      expect.soft(viewport.visualWidth!).toBeLessThanOrEqual(width + 1)
+
+      await page.goto(`/calendar?scheduleId=${encodeURIComponent(id)}`, { waitUntil: 'domcontentloaded' })
+      const detail = page.getByRole('dialog').filter({ has: page.getByTestId('schedule-edit') })
+      await expect(detail).toBeVisible({ timeout: 120_000 })
+      const close = detail.locator('.p-dialog-close-button')
+      await expect(close).toBeVisible()
+      const detailBox = await detail.boundingBox()
+      const closeBox = await close.boundingBox()
+      await testInfo.attach(`calendar-detail-${width}.json`, { body: JSON.stringify({ width, detailBox, closeBox }), contentType: 'application/json' })
+      expect.soft(detailBox!.x).toBeGreaterThanOrEqual(0)
+      expect.soft(detailBox!.x + detailBox!.width).toBeLessThanOrEqual(width)
+      expect.soft(closeBox!.x).toBeGreaterThanOrEqual(0)
+      expect.soft(closeBox!.x + closeBox!.width).toBeLessThanOrEqual(width)
+      let closeError: string | null = null
+      try {
+        await close.click({ timeout: 5_000 })
+        await expect(detail).toBeHidden({ timeout: 5_000 })
+      }
+      catch (error) {
+        closeError = String(error)
+        await testInfo.attach(`calendar-detail-close-${width}.png`, { body: await page.screenshot(), contentType: 'image/png' })
+        await page.keyboard.press('Escape')
+      }
+      expect.soft(closeError, `${width}pxで実際の閉じる操作が成功する`).toBeNull()
+    }
+    expect(writes).toEqual([])
+  })
+})
+
 /** 初期権限の案内は既存の後回し操作で閉じ、業務操作の前提だけを整える。 */
 async function readyForInteraction(page: Page, target: Locator) {
   await expect(target).toBeVisible({ timeout: 120_000 })
