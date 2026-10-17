@@ -1,11 +1,13 @@
 package com.mannschaft.app.gdpr;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.gdpr.dto.PrefetchedPersonalData;
 import com.mannschaft.app.gdpr.dto.UserEmailInfo;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
 import com.mannschaft.app.gdpr.repository.DataExportRepository;
 import com.mannschaft.app.gdpr.service.DataExportService;
+import com.mannschaft.app.gdpr.service.PersonalDataCollector;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -15,19 +17,24 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -44,6 +51,8 @@ class ChatAuditExportFailureIT extends AbstractMySqlIntegrationTest {
     @Autowired private DataExportRepository exports;
     @Autowired private PlatformTransactionManager transactionManager;
     @Autowired private JdbcTemplate jdbc;
+    // 実collectorの結果は置換せず、対象引数で発生した例外を非同期スレッドから観測する。
+    @MockitoSpyBean private PersonalDataCollector collector;
     // 既存の R2 具体型依存も保つため、外部ストレージ実装の型で置換する。
     @MockitoBean private R2StorageService storage;
 
@@ -52,7 +61,8 @@ class ChatAuditExportFailureIT extends AbstractMySqlIntegrationTest {
     @ParameterizedTest
     @ValueSource(strings = {"chat_messages", "audit_logs"})
     void G6_事前取得が欠けたら空の成功ZIPを出さずFAILEDをcommitする(String category) {
-        assertFailed(category, PrefetchedPersonalData.none());
+        assertFailed(category, PrefetchedPersonalData.none(),
+                category + " は PersonalDataPrefetcher による事前取得が必要", null);
     }
 
     @ParameterizedTest
@@ -63,10 +73,25 @@ class ChatAuditExportFailureIT extends AbstractMySqlIntegrationTest {
         PrefetchedPersonalData prefetched = "chat_messages".equals(category)
                 ? new PrefetchedPersonalData(null, invalid, null)
                 : new PrefetchedPersonalData(null, null, invalid);
-        assertFailed(category, prefetched);
+        assertFailed(category, prefetched, category + " の書き出しに失敗した", JsonProcessingException.class);
     }
 
-    private void assertFailed(String category, PrefetchedPersonalData prefetched) {
+    private void assertFailed(String category, PrefetchedPersonalData prefetched,
+                              String internalMessage, Class<? extends Throwable> internalCause) {
+        AtomicReference<RuntimeException> collectionFailure = new AtomicReference<>();
+        AtomicReference<Thread> collectionThread = new AtomicReference<>();
+        AtomicReference<Boolean> collectionTransaction = new AtomicReference<>();
+        Thread callerThread = Thread.currentThread();
+        doAnswer(invocation -> {
+            collectionThread.set(Thread.currentThread());
+            collectionTransaction.set(TransactionSynchronizationManager.isActualTransactionActive());
+            try {
+                return invocation.callRealMethod();
+            } catch (RuntimeException failure) {
+                collectionFailure.set(failure);
+                throw failure;
+            }
+        }).when(collector).collect(eq(OWNER), eq(Set.of(category)), same(prefetched));
         exportId = new TransactionTemplate(transactionManager).execute(status -> exports.saveAndFlush(
                 DataExportEntity.builder().userId(OWNER).status("PENDING").categories(category)
                         .progressPercent(0).build()).getId());
@@ -78,8 +103,16 @@ class ChatAuditExportFailureIT extends AbstractMySqlIntegrationTest {
             DataExportEntity result = exports.findById(exportId).orElseThrow();
             assertThat(result.getStatus()).isEqualTo("FAILED");
             assertThat(result.getS3Key()).isNull();
-            assertThat(result.getErrorMessage()).contains(category);
+            // 公開DB文言へ例外本文を戻さず、内部の対象経路を別に厳密検証する。
+            assertThat(result.getErrorMessage()).isEqualTo("エクスポート処理に失敗しました");
+            assertThat(collectionThread.get()).isNotNull().isNotSameAs(callerThread);
+            assertThat(collectionTransaction.get()).isTrue();
+            assertThat(collectionFailure.get()).isExactlyInstanceOf(IllegalStateException.class)
+                    .hasMessage(internalMessage);
+            if (internalCause == null) assertThat(collectionFailure.get()).hasNoCause();
+            else assertThat(collectionFailure.get()).hasCauseInstanceOf(internalCause);
         });
+        verify(collector).collect(eq(OWNER), eq(Set.of(category)), same(prefetched));
         verify(storage, never()).upload(anyString(), any(byte[].class), eq("application/zip"));
     }
 
