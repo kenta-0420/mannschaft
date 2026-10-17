@@ -168,7 +168,7 @@ test('AC01/16/20: サイドバーから会員QR・walletに到達し外部規約
     if (/qrserver|create-qr-code/.test(request.url())) external.push(request.url())
   })
   await page.goto('/dashboard', { waitUntil: 'commit' })
-  await waitForHydration(page)
+  await waitForHydration(page, { reloadOnTimeout: false })
   await page.getByRole('button', { name: 'メニューを開く', exact: true }).click()
   const navigation = page.getByRole('navigation', { name: 'グローバルナビゲーション', exact: true })
   await expect(navigation).toBeVisible()
@@ -179,7 +179,7 @@ test('AC01/16/20: サイドバーから会員QR・walletに到達し外部規約
   await expect(navigation).toBeVisible()
   await navigation.getByRole('link', { name: 'ポイントカード', exact: true }).click()
   await expect(page).toHaveURL(/\/wallet$/)
-  await waitForHydration(page)
+  await waitForHydration(page, { reloadOnTimeout: false })
   await expect(page.getByRole('heading', { name: 'チームポイント', exact: true })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('link', { name: '会員QR', exact: true }).last().click()
@@ -212,7 +212,7 @@ for (const role of [
     const staffAllowed = role === 'admin' || role === 'delegatedDeputy'
     const settingsAllowed = role === 'admin'
     await page.goto(`/teams/${fixture.team.slug}/loyalty`, { waitUntil: 'commit' })
-    await waitForHydration(page)
+    await waitForHydration(page, { reloadOnTimeout: false })
     if (staffAllowed) {
       await expect(page.getByRole('button', { name: '会員QRをカメラで読取' })).toBeVisible()
       await expect(page.getByRole('link', { name: 'チームポイント設定', exact: true })).toHaveCount(
@@ -223,7 +223,7 @@ for (const role of [
       await expect(page.getByRole('button', { name: '会員QRをカメラで読取' })).toHaveCount(0)
     }
     await page.goto(`/teams/${fixture.team.slug}/settings/loyalty`, { waitUntil: 'commit' })
-    await waitForHydration(page)
+    await waitForHydration(page, { reloadOnTimeout: false })
     if (settingsAllowed)
       await expect(page.getByRole('button', { name: '保存', exact: true }).first()).toBeVisible()
     else {
@@ -762,8 +762,12 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
       await page.getByText(t('loyalty.audience.allAuthenticated'), { exact: true }).click()
       await page.getByRole('option', { name: t('loyalty.audience.membersAndAbove'), exact: true }).click()
       await saveProgram()
-      const ineligible = member.waitForResponse(response => response.request().method() === 'POST'
-        && new URL(response.url()).pathname === '/api/v1/loyalty/self-award-bootstrap/me')
+      // 初回の実Vue mount18〜25秒を含む待機だけ、既存hydration75秒＋API15秒の予算を与える。
+      const ineligible = member.waitForResponse(
+        response => response.request().method() === 'POST'
+          && new URL(response.url()).pathname === '/api/v1/loyalty/self-award-bootstrap/me',
+        { timeout: 90_000 },
+      )
       await member.goto(url, { waitUntil: 'commit' })
       await waitForHydration(member, { reloadOnTimeout: false })
       expect(((await (await ineligible).json()) as { error: { code: string } }).error.code).toBe('LOYALTY_003')
