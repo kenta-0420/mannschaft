@@ -133,6 +133,7 @@ onBeforeUnmount(() => {
     <PageHeader
       :title="t('budget_accounting.title')"
       :back-to="`/teams/${teamSlug}`"
+      class="flex-wrap [&_[data-testid=page-header-help]]:min-h-11 [&_[data-testid=page-header-help]]:min-w-11"
       help
       @help="showGuide = true"
     >
