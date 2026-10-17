@@ -4,7 +4,7 @@ const color = defineModel<string>('color', { required: true })
 
 <template>
   <div>
-    <label class="mb-1 block text-sm font-medium">色</label>
+    <label class="mb-1 block text-sm font-medium">{{ $t('schedule.form.color') }}</label>
     <div class="flex gap-2">
       <button
         v-for="c in ['#6366f1', '#ef4444', '#22c55e', '#f59e0b', '#3b82f6', '#ec4899']"

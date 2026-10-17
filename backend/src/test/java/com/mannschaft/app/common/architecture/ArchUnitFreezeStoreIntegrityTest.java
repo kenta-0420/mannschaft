@@ -709,7 +709,8 @@ class ArchUnitFreezeStoreIntegrityTest {
     //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
     //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 2）。
     // CMP-260925-0905: ConfirmableNotificationReminderBatchService が UserEntity に依存しなくなり6行減。2044→2038。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2038;
+    // Issue #3892: OrganizationService の InviteTokenEntity 直接依存解消で1行減（追加0）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2037;
 
     /**
      * 越境 {@code @Transactional} 禁止ストア（D-3）の期待行数。
@@ -738,7 +739,8 @@ class ArchUnitFreezeStoreIntegrityTest {
     //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
     //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 4）。
     // Issue #2997 G7-a: 1304 -> 1298（-6）。DigestAsyncExecutor と TeamSlotNoteNotifyListener が @Transactional を外した（各 3 行、追加 0・削除 6）。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1298;
+    // Issue #3892: OrganizationService の InviteTokenRepository 直接依存解消で3行減（追加0）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1295;
 
     /**
      * 推移的クロスドメイン {@code @Transactional} 番人（D-3T）の初期凍結行数。
@@ -877,7 +879,8 @@ class ArchUnitFreezeStoreIntegrityTest {
     // CMP-261015-1152: 共通セッション発行へ統合し旧AuthWebAuthnService.issueTokenPairを削除。全Arch走査で旧入口1行のみ消滅（追加0）、7145 -> 7144。
     // CMP-261016-0950: MemberCardServiceのclassTX除去でprivate3入口×2repoのみ分類対象外。
     // 旧public read6本は明示readOnlyを維持し、越境根治による減少とは扱わない。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7138;
+    // Issue #3892: deleteOrganization の InviteTokenRepository 推移到達解消でさらに1行減（追加0）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7137;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -967,7 +970,8 @@ class ArchUnitFreezeStoreIntegrityTest {
     // CMP-261012-0313: SkillMatrixService がマトリクスの行を role の UserRoleRepository（UserRoleEntity）から引くのをやめ、
     //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
     //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 4）。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1858;
+    // Issue #3892: OrganizationService の InviteTokenRepository 直接依存解消で3行減（追加0）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1855;
 
     /**
      * ServiceAPIの正本行数。更新は実削減の原因検分と同一コミットに限る。

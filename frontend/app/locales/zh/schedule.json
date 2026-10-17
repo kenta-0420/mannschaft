@@ -1,5 +1,37 @@
 {
   "schedule": {
+    "form": {
+      "createEvent": "创建活动",
+      "editEvent": "编辑活动",
+      "addPersonal": "添加个人日程",
+      "editPersonal": "编辑个人日程",
+      "title": "标题",
+      "attendanceRequired": "确认出勤",
+      "allDay": "全天",
+      "history": "最近时间：",
+      "startDate": "开始日期",
+      "startTime": "开始时间",
+      "endDate": "结束日期",
+      "endTime": "结束时间",
+      "location": "地点",
+      "locationPlaceholder": "地点（可选）",
+      "scope": "创建到",
+      "color": "颜色",
+      "personalScope": "个人日程"
+    },
+    "status": {
+      "draft": "草稿",
+      "published": "已发布",
+      "scheduled": "已安排",
+      "cancelled": "已取消",
+      "completed": "已完成"
+    },
+    "detail": {
+      "delegationError": "无法加载代理出勤数量"
+    },
+    "selectDateOrEvent": "请选择日期或活动",
+    "confirmDelete": "确定删除此活动吗？",
+    "selectEvent": "请选择活动",
     "page_title": "日程",
     "created_by": "创建者：{name}",
     "attendance": {

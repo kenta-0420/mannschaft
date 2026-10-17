@@ -693,9 +693,10 @@ provideTeamShellContext({
           <Button
             :label="t('common.scopeShell.retry')"
             icon="pi pi-refresh"
+            class="min-h-11 min-w-11"
             @click="retryShellData"
           />
-          <NuxtLink to="/dashboard" class="inline-block text-primary-600 hover:underline">
+          <NuxtLink to="/dashboard" class="inline-flex min-h-11 items-center text-primary-600 hover:underline">
             <i class="pi pi-arrow-left mr-1" />
             {{ t('common.scopeShell.back_to_dashboard') }}
           </NuxtLink>
