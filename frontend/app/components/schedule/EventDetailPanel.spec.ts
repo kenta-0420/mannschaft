@@ -52,7 +52,7 @@ async function mountPanel(displayName: string) {
 // 実際の言語切替と描画は各case内で行い、cold切替は実機で検証する。
 beforeAll(async () => {
   const i18n = useNuxtApp().$i18n
-  await Promise.all((['de', 'en', 'ja'] as const).map((locale) => i18n.loadLocaleMessages(locale)))
+  await Promise.all((['de', 'en', 'ja', 'zh', 'ko', 'es'] as const).map((locale) => i18n.loadLocaleMessages(locale)))
 })
 
 describe('予定詳細の作成者翻訳（CMP-261017-0854）', () => {
@@ -80,5 +80,23 @@ describe('予定詳細の作成者翻訳（CMP-261017-0854）', () => {
     })
     expect(wrapper.find('.pi-user').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Erstellt von:')
+  })
+})
+
+describe('予定詳細の状態翻訳（CMP-261017-1629）', () => {
+  it('BE実状態3種が6言語へ表示中切替し、未知状態のfallbackを維持する', async () => {
+    const wrapper = await mountPanel('')
+    for (const locale of ['ja', 'en', 'zh', 'ko', 'es', 'de'] as const) {
+      await wrapper.vm.$i18n.setLocale(locale)
+      for (const status of ['SCHEDULED', 'CANCELLED', 'COMPLETED']) {
+        await wrapper.setProps({ event: { ...event(''), status } })
+        const label = wrapper.vm.$t(`schedule.status.${status.toLowerCase()}`)
+        expect(label).not.toBe(`schedule.status.${status.toLowerCase()}`)
+        expect(wrapper.text()).toContain(label)
+        expect(wrapper.text()).not.toContain(status)
+      }
+    }
+    await wrapper.setProps({ event: { ...event(''), status: 'FUTURE_STATUS' } })
+    expect(wrapper.text()).toContain('FUTURE_STATUS')
   })
 })
