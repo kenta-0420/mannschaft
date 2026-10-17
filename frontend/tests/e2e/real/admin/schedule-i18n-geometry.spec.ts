@@ -37,13 +37,38 @@ test.describe('calendar-mobile-header: 真mobileの見出しと詳細操作', ()
     const locale = process.env.I18N_TAP_LOCALE === 'en' ? 'en' : 'de'
     const id = process.env.SCHEDULE_I18N_ORG_SCHEDULE_ID
     if (!id) throw new Error('専用fixtureの組織予定IDが必要です')
+    const navigation: object[] = []
+    const startedAt = Date.now()
+    page.on('response', response => {
+      const url = new URL(response.url())
+      if (['localhost', '127.0.0.1'].includes(url.hostname)) {
+        navigation.push({ elapsedMs: Date.now() - startedAt, pathname: url.pathname, status: response.status(), timing: response.request().timing() })
+      }
+    })
+    page.on('requestfailed', request => {
+      const url = new URL(request.url())
+      if (['localhost', '127.0.0.1'].includes(url.hostname)) {
+        navigation.push({ elapsedMs: Date.now() - startedAt, pathname: url.pathname, failure: request.failure()?.errorText })
+      }
+    })
+    async function navigate(path: string) {
+      navigation.push({ elapsedMs: Date.now() - startedAt, navigatingTo: new URL(path, 'http://localhost').pathname })
+      try {
+        await page.goto(path, { waitUntil: 'domcontentloaded', timeout: 30_000 })
+      }
+      catch (error) {
+        await testInfo.attach('calendar-navigation-failure.json', { body: JSON.stringify(navigation), contentType: 'application/json' })
+        await testInfo.attach('calendar-navigation-failure.png', { body: await page.screenshot(), contentType: 'image/png' })
+        throw error
+      }
+    }
     const writes: string[] = []
     page.on('request', request => {
       if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method()) && new URL(request.url()).pathname.includes('/schedules')) writes.push(request.method())
     })
     for (const width of [360, 390]) {
       await page.setViewportSize({ width, height: 800 })
-      await page.goto('/calendar', { waitUntil: 'domcontentloaded' })
+      await navigate('/calendar')
       const add = page.getByRole('button', { name: locale === 'en' ? 'Add event' : 'Termin hinzufügen', exact: true })
       const header = page.locator('main h1').last().locator('..')
       await readyForInteraction(page, header.locator('h1'))
@@ -89,7 +114,7 @@ test.describe('calendar-mobile-header: 真mobileの見出しと詳細操作', ()
         }
       }
 
-      await page.goto(`/calendar?scheduleId=${encodeURIComponent(id)}`, { waitUntil: 'domcontentloaded' })
+      await navigate(`/calendar?scheduleId=${encodeURIComponent(id)}`)
       const detail = page.getByRole('dialog').filter({ has: page.getByTestId('schedule-edit') })
       await expect(detail).toBeVisible({ timeout: 120_000 })
       const close = detail.locator('.p-dialog-close-button')
@@ -114,6 +139,7 @@ test.describe('calendar-mobile-header: 真mobileの見出しと詳細操作', ()
       expect.soft(closeError, `${width}pxで実際の閉じる操作が成功する`).toBeNull()
     }
     expect(writes).toEqual([])
+    await testInfo.attach('calendar-navigation.json', { body: JSON.stringify(navigation), contentType: 'application/json' })
   })
 })
 
