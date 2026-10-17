@@ -1,0 +1,229 @@
+{
+    "schemaVersion":  1,
+    "cmpId":  "CMP-261017-1629",
+    "scope":  "app",
+    "implementation":  {
+                           "pr":  3952,
+                           "sha":  "3a40f88ca967c0127dd6e29f40534be7913189af"
+                       },
+    "acceptanceCriteria":  [
+                               {
+                                   "id":  "AC-1",
+                                   "description":  "作成/編集フォーム・通常/終日/履歴/作成先・未選択案内を6localeで解決し表示中の切替に追従、payload/validation保持",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "ScheduleEventForm/ScheduleSurroundings 最終60green",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-real.md"
+                                                 },
+                                                 {
+                                                     "name":  "正式red/greenと未検証限界の対応",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-regressions.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-2",
+                                   "description":  "モバイル予定行の曜日が選択localeに追従し本人timezoneの跨日を保持",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "ScheduleSurroundings 曜日locale・本人TZ跨日",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-real.md"
+                                                 },
+                                                 {
+                                                     "name":  "正式red/greenと未検証限界の対応",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-regressions.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-3",
+                                   "description":  "実BE状態SCHEDULED/CANCELLED/COMPLETEDを翻訳し表示中locale切替・未知値fallbackを保持",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "frontend/app/components/schedule/EventDetailPanel.spec.ts — %s: BE実状態3種・旧2状態の表示中切替と未知状態を維持する",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-real.md"
+                                                 },
+                                                 {
+                                                     "name":  "正式red/greenと未検証限界の対応",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-regressions.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-4",
+                                   "description":  "全EventDetailPanel呼出元でevent.idのschedule delegation APIを使いevents同数値/異数値IDを混ぜず個人skip非呼出",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "EventDetailPanel.delegations scheduleId=null/event.id/payload.total・個人skip",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-real.md"
+                                                 },
+                                                 {
+                                                     "name":  "正式red/greenと未検証限界の対応",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-regressions.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-5",
+                                   "description":  "event/skip/権限切替と遅延応答を混ぜず0件/失敗を区別し補助領域errorと再試行を提供",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "EventDetailPanel.delegations 18case scope/role/遅延/0/error/retry",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-real.md"
+                                                 },
+                                                 {
+                                                     "name":  "正式red/greenと未検証限界の対応",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-regressions.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-6",
+                                   "description":  "真mobile360/390 de/enのフォーム/詳細に横パン・文字欠落がない",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "org/date de/en4green・calendar真mobile回帰・root画像",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-real.md"
+                                                 },
+                                                 {
+                                                     "name":  "正式red/greenと未検証限界の対応",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-regressions.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-7",
+                                   "description":  "admin/member/outsiderの既認可を保持しcalendar/widgetの一般MEMBERにadmin一覧を呼ばせない",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "委任権限単体・実API3role・境界住民390/360",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-real.md"
+                                                 },
+                                                 {
+                                                     "name":  "正式red/greenと未検証限界の対応",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-regressions.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-8",
+                                   "description":  "SSR遅延・1152幅clicktimeout・予定名省略を実証と限界付きで判定し憶測修正しない",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "root cold/warm測定・住民1152詳細読解",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-real.md"
+                                                 },
+                                                 {
+                                                     "name":  "正式red/greenと未検証限界の対応",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-regressions.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-TAP",
+                                   "description":  "限定対象Keep/Record/calendar/comments/retry/TabList前後/dashboardReturnを44pxへ修正し導線を維持",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "実機de8/en3・真mobilereturn4",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-real.md"
+                                                 },
+                                                 {
+                                                     "name":  "正式red/greenと未検証限界の対応",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-regressions.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-UPCOMING",
+                                   "description":  "Upcomingのすべて見るから同じスコープの実予定一覧へ移動し、TEAM/ORGANIZATION双方で実予定詳細へ到達する",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "frontend/tests/unit/components/dashboard/DashboardSwipeWidgetGrid.spec.ts — TEAM/ORGANIZATIONの予定データを予定一覧へつなぐ（実href）",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-regressions.md"
+                                                 },
+                                                 {
+                                                     "name":  "frontend/tests/e2e/real/admin/schedule-i18n-geometry.spec.ts — upcoming-route: TEAM/ORGANIZATIONのすべて見るから実予定一覧へ移動する（実API list→detail）",
+                                                     "evidence":  "docs/evidence/CMP-261017-1629-real.md"
+                                                 }
+                                             ]
+                               }
+                           ],
+    "ci":  [
+               {
+                   "runId":  39027876063
+               },
+               {
+                   "runId":  39027876058
+               },
+               {
+                   "runId":  39027876037
+               },
+               {
+                   "runId":  39027876097
+               }
+           ],
+    "stages":  {
+                   "review":  {
+                                  "status":  "passed",
+                                  "evidence":  "docs/evidence/CMP-261017-1629-review.md"
+                              },
+                   "real":  {
+                                "status":  "passed",
+                                "evidence":  "docs/evidence/CMP-261017-1629-real.md"
+                            },
+                   "exploratory":  {
+                                       "status":  "passed",
+                                       "evidence":  "docs/evidence/CMP-261017-1629-exploratory.md"
+                                   }
+               },
+    "regressions":  [
+                        {
+                            "description":  "フォーム/locale/曜日/TZ/状態",
+                            "test":  "frontend/tests/unit/components/schedule/ScheduleEventForm.spec.ts — $key/$localeが表示中切替する; frontend/app/components/schedule/ScheduleSurroundings.spec.ts — %s: 基本入力・履歴・作成先が表示中切替へ追従し、終日の入力条件とpayloadを保つ / %s: 曜日と出欠ラベルが表示中localeへ追従し、本人TZの暦日を維持する; frontend/app/components/schedule/EventDetailPanel.spec.ts — %s: BE実状態3種・旧2状態の表示中切替と未知状態を維持する",
+                            "redEvidence":  "docs/evidence/CMP-261017-1629-regressions.md",
+                            "greenEvidence":  "docs/evidence/CMP-261017-1629-regressions.md"
+                        },
+                        {
+                            "description":  "delegation誤events経路・payload.total",
+                            "test":  "frontend/app/components/schedule/EventDetailPanel.delegations.spec.ts — scheduleId=nullでもevent.idを予定APIへ渡し、実data.totalを表示する",
+                            "redEvidence":  "docs/evidence/CMP-261017-1629-regressions.md",
+                            "greenEvidence":  "docs/evidence/CMP-261017-1629-regressions.md"
+                        },
+                        {
+                            "description":  "scope/role/遅延混線・error/retry",
+                            "test":  "frontend/app/components/schedule/EventDetailPanel.delegations.spec.ts — scopeType切替中の旧権限応答から旧管理者APIを発行しない / 予定変更で旧件数を消し、遅延した旧応答で新予定を上書きしない / 成功0件と失敗を区別し、再試行では権限取得から一度だけ実行する",
+                            "redEvidence":  "docs/evidence/CMP-261017-1629-regressions.md",
+                            "greenEvidence":  "docs/evidence/CMP-261017-1629-regressions.md"
+                        },
+                        {
+                            "description":  "限定対象44px",
+                            "test":  "frontend/tests/e2e/real/admin/schedule-i18n-geometry.spec.ts — 予定周辺のtap領域が${width}pxで44px以上になる; frontend/tests/e2e/real/schedule-surroundings-return-link.spec.ts — ${scope}の不在案内からダッシュボードへ戻るリンクは${width}pxで44px以上",
+                            "redEvidence":  "docs/evidence/CMP-261017-1629-regressions.md",
+                            "greenEvidence":  "docs/evidence/CMP-261017-1629-regressions.md"
+                        },
+                        {
+                            "description":  "orgAdd360 glyphclip",
+                            "test":  "frontend/tests/e2e/real/admin/schedule-i18n-geometry.spec.ts — 組織予定の見出し・追加操作・未選択案内を選択言語で表示する（360/390px追加文字幅assert）",
+                            "redEvidence":  "docs/evidence/CMP-261017-1629-regressions.md",
+                            "greenEvidence":  "docs/evidence/CMP-261017-1629-regressions.md"
+                        },
+                        {
+                            "description":  "DatePicker360日付末尾clip",
+                            "test":  "frontend/tests/e2e/real/admin/schedule-i18n-geometry.spec.ts — date-value: 360pxと390pxの編集日付を横スクロールせず全文表示する",
+                            "redEvidence":  "docs/evidence/CMP-261017-1629-regressions.md",
+                            "greenEvidence":  "docs/evidence/CMP-261017-1629-regressions.md"
+                        },
+                        {
+                            "description":  "calendar header横溢れ→modalclose画面外",
+                            "test":  "frontend/tests/e2e/real/admin/schedule-i18n-geometry.spec.ts — calendar-mobile-header: 真mobileの見出しと詳細操作 / 360pxと390pxで操作が画面内に収まり、予定詳細を閉じられる",
+                            "redEvidence":  "docs/evidence/CMP-261017-1629-regressions.md",
+                            "greenEvidence":  "docs/evidence/CMP-261017-1629-regressions.md"
+                        },
+                        {
+                            "description":  "Upcoming ViewAllの/events誤遷移",
+                            "test":  "frontend/tests/unit/components/dashboard/DashboardSwipeWidgetGrid.spec.ts — TEAM/ORGANIZATIONの予定データを予定一覧へつなぐ; frontend/tests/e2e/real/admin/schedule-i18n-geometry.spec.ts — upcoming-route: TEAM/ORGANIZATIONのすべて見るから実予定一覧へ移動する",
+                            "redEvidence":  "docs/evidence/CMP-261017-1629-regressions.md",
+                            "greenEvidence":  "docs/evidence/CMP-261017-1629-regressions.md"
+                        }
+                    ]
+}

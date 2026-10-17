@@ -47,6 +47,10 @@ public class InviteTokenEntity {
 
     private LocalDateTime revokedAt;
 
+    /** 招待先自身の発行時閉鎖世代。組織所属先の閉鎖世代には連動しない（#3892）。 */
+    @Column(name = "scope_closure_generation", nullable = false, updatable = false, columnDefinition = "BIGINT NOT NULL DEFAULT 0")
+    private long scopeClosureGeneration;
+
     private Long createdBy;
 
     /**
@@ -68,7 +72,9 @@ public class InviteTokenEntity {
      * トークンを無効化する。
      */
     public void revoke() {
-        this.revokedAt = LocalDateTime.now();
+        if (this.revokedAt == null) {
+            this.revokedAt = LocalDateTime.now();
+        }
     }
 
     /**

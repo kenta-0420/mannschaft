@@ -74,6 +74,11 @@ public interface TeamRepository
     @Query("SELECT t FROM TeamEntity t WHERE t.id = :id")
     Optional<TeamEntity> findByIdForUpdate(@Param("id") Long id);
 
+    /** 個人招待のrole発行commit後だけ、短いteam専属TXで休止と直列化して再確認する。 */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_READ)
+    @Query("SELECT t FROM TeamEntity t WHERE t.id = :id")
+    Optional<TeamEntity> findByIdForShare(@Param("id") Long id);
+
     /**
      * CMP-260901-1538 柱③-A: 同名確認フロー用の候補検索。
      *

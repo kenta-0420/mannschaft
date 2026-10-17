@@ -176,6 +176,7 @@ defineExpose({ reset: () => { body.value = ''; selectedMentions.value = [] } })
           severity="primary"
           :disabled="!canSubmit"
           :loading="submitting"
+          class="min-h-11 min-w-11"
           data-testid="schedule-comment-submit"
           @click="submit"
         />

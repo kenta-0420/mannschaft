@@ -86,7 +86,7 @@ const lensModel = computed<boolean>({
       <div class="flex flex-wrap items-center md:flex-nowrap">
         <div class="w-full min-w-0 overflow-x-auto md:w-auto md:flex-1">
           <Tabs :value="activeTab">
-            <TabList>
+            <TabList :pt="{ prevButton: { class: 'min-h-11 min-w-11' }, nextButton: { class: 'min-h-11 min-w-11' } }">
               <Tab
                 v-for="tab in visibleTabs"
                 :key="tab.key"
