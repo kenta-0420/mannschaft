@@ -7,8 +7,11 @@ import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import BudgetPage from './budget.vue'
+import jaCommonRaw from '~/locales/ja/common.json?raw'
 import BudgetGuideModal from '~/components/budget/BudgetGuideModal.vue'
 import BudgetGuideContent from '~/components/budget/BudgetGuideContent.vue'
+
+const jaCommon = JSON.parse(jaCommonRaw) as { budget_guide: { description: string } }
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -33,7 +36,8 @@ mockNuxtImport('useErrorHandler', () => () => ({
   getFieldErrors: () => ({}),
 }))
 mockNuxtImport('useI18n', () => () => ({
-  t: (key: string) => key,
+  t: (key: string) =>
+    key === 'budget_guide.description' ? jaCommon.budget_guide.description : key,
   tm: () => ({ step1: '' }),
   locale: ref('ja'),
 }))
@@ -53,7 +57,7 @@ const summary = (id: number) => ({
 })
 const stubs = {
   PageHeader: {
-    props: ['title', 'help'],
+    props: ['title', 'help', 'backTo'],
     emits: ['help'],
     template:
       '<header>{{title}}<button data-testid="help" @click="$emit(\'help\')">help</button><slot name="actions" /></header>',
@@ -119,8 +123,48 @@ beforeEach(() => {
   mocks.create.mockResolvedValue({ data: fy(2) })
 })
 describe('チーム予算画面', () => {
+  it('直URLで開いてもヘッダーの戻り先はチームトップになる', async () => {
+    const wrapper = await render()
+    expect(wrapper.getComponent(stubs.PageHeader).props('backTo')).toBe('/teams/team-a')
+  })
+  it('保存済み年度の期間を表示し、年度切替とリロードに追随する', async () => {
+    mocks.list.mockResolvedValue({
+      data: [fy(1), { ...fy(2), startDate: '2027-04-01', endDate: '2028-03-31' }],
+    })
+    const wrapper = await render()
+    expect(wrapper.get('[data-testid="fiscal-year-period"]').text()).toContain('2026/04/01')
+    expect(wrapper.get('[data-testid="fiscal-year-period"]').text()).toContain('2027/03/31')
+
+    await wrapper.get('nav button:last-child').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[data-testid="fiscal-year-period"]').text()).toContain('2027/04/01')
+    expect(wrapper.get('[data-testid="fiscal-year-period"]').text()).toContain('2028/03/31')
+    wrapper.unmount()
+    mocks.list.mockResolvedValue({
+      data: [{ ...fy(1), startDate: '2026-01-01', endDate: '2026-12-31' }],
+    })
+    const reloaded = await render()
+    expect(reloaded.get('[data-testid="fiscal-year-period"]').text()).toContain('2026/01/01')
+    expect(reloaded.get('[data-testid="fiscal-year-period"]').text()).toContain('2026/12/31')
+  })
+  it('年度一覧が0件なら期間は表示しない', async () => {
+    mocks.list.mockResolvedValue({ data: [] })
+    const wrapper = await render()
+    expect(wrapper.find('[data-testid="fiscal-year-period"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('budget_accounting.empty_years')
+  })
+  it('ガイドに閲覧権限と一般メンバーの相談先を示す', async () => {
+    const wrapper = await render()
+    await wrapper.get('[data-testid="help"]').trigger('click')
+    expect(wrapper.text()).toContain('管理者・副管理者')
+    expect(wrapper.text()).toContain('一般メンバー')
+    expect(wrapper.text()).toContain('管理者に相談')
+  })
   it('年度追加の3項目を送り、旧年度があっても新年度を選択し0集計を表示する', async () => {
     const wrapper = await render()
+    mocks.create.mockResolvedValueOnce({
+      data: { ...fy(2), startDate: '2026-05-01', endDate: '2027-04-30' },
+    })
     await openForm(wrapper)
     await wrapper.get('form').trigger('submit')
     await vi.waitFor(() => expect(mocks.create).toHaveBeenCalledOnce())
@@ -131,6 +175,8 @@ describe('チーム予算画面', () => {
       endDate: '2027-03-31',
     })
     expect(wrapper.get('[data-selected="true"]').text()).toBe('年度2')
+    expect(wrapper.get('[data-testid="fiscal-year-period"]').text()).toContain('2026/05/01')
+    expect(wrapper.get('[data-testid="fiscal-year-period"]').text()).toContain('2027/04/30')
     expect(wrapper.text()).toContain('￥0')
     expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
     expect(mocks.list).toHaveBeenCalledOnce()
@@ -166,6 +212,7 @@ describe('チーム予算画面', () => {
       expect(wrapper.find('[data-testid="retry"]').exists()).toBe(true)
       expect(wrapper.find('[data-testid="empty"]').exists()).toBe(false)
       expect(mocks.summary).not.toHaveBeenCalled()
+      expect(wrapper.find('[data-testid="fiscal-year-period"]').exists()).toBe(false)
     },
   )
   it('一覧GET失敗の再試行は初回と同じく一覧から集計まで取得する', async () => {
@@ -178,7 +225,9 @@ describe('チーム予算画面', () => {
     expect(wrapper.find('[data-testid="retry"]').exists()).toBe(false)
   })
   it('集計失敗は前の年度の金額を消して同じ年度を再試行する', async () => {
-    mocks.list.mockResolvedValue({ data: [fy(1), fy(2)] })
+    mocks.list.mockResolvedValue({
+      data: [fy(1), { ...fy(2), startDate: '2027-04-01', endDate: '2028-03-31' }],
+    })
     mocks.summary
       .mockResolvedValueOnce({ data: { ...summary(1), totalIncome: 500 } })
       .mockRejectedValueOnce(new Error('offline'))
@@ -187,6 +236,8 @@ describe('チーム予算画面', () => {
     await wrapper.get('nav button:last-child').trigger('click')
     await flushPromises()
     expect(wrapper.text()).not.toContain('￥500')
+    expect(wrapper.get('[data-testid="fiscal-year-period"]').text()).toContain('2027/04/01')
+    expect(wrapper.get('[data-testid="fiscal-year-period"]').text()).toContain('2028/03/31')
     expect(wrapper.find('[data-testid="empty"]').exists()).toBe(false)
     await wrapper.get('[data-testid="retry"]').trigger('click')
     await flushPromises()
