@@ -66,7 +66,7 @@ onMounted(load)
 <template>
   <main class="mx-auto max-w-2xl space-y-4 p-4">
     <PageHeader :title="t('loyalty.settings.title')" />
-    <PageLoading v-if="loading" />
+    <PageLoading v-if="loading && !settings" />
     <DashboardErrorState v-else-if="error" :error="error" @retry="load" />
     <template v-else-if="settings">
       <NuxtLink

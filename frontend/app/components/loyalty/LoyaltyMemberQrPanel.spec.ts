@@ -55,6 +55,13 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 describe('会員QRの実期限と背景復帰（AC01/10/20）', () => {
+  it('表示中の会員QRを名前付き画像として公開する', async () => {
+    mocks.getQr.mockResolvedValue(qr('accessible-token'))
+    const wrapper = mountPanel()
+    await flushPromises()
+    expect(wrapper.find('.qr-render').attributes('role')).toBe('img')
+    expect(wrapper.find('.qr-render').attributes('aria-label')).toBe('loyalty.memberQr.title')
+  })
   it('2秒遅延した3秒TTL応答を実期限の3秒時点で隠す', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(0)
