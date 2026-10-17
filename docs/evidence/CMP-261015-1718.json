@@ -251,7 +251,7 @@
                         {
                             "description":  "旧製品で閉鎖/解除招待が有効・受諾可能となる",
                             "test":  "InviteClosureGenerationIT G06/G07/G08目的RED8件からgreenへ",
-                            "redEvidence":  "https://github.com/kenta-0420/mannschaft/actions/runs/38837174946",
+                            "redEvidence":  "docs/evidence/CMP-261015-1718-review.md",
                             "greenEvidence":  "https://github.com/kenta-0420/mannschaft/actions/runs/39004467696"
                         }
                     ],
@@ -346,6 +346,10 @@
                            {
                                "path":  "worktree-cleanup-check-after3892-20261017.json",
                                "sha256":  "e62e3c399132f5c8f1307f1a5f7cd264197f2e6d7fae6e02e0e22ae1fb7f5ccc"
+                           },
+                           {
+                               "path":  "root-initial-red-confirmed.json",
+                               "sha256":  "2f09afe6c621cd3ec5fddbf208f2859a57891b46f73914c174e2e827dfbb65f5"
                            }
                        ],
     "deferred":  [
