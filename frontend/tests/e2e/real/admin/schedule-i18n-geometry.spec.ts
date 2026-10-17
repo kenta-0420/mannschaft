@@ -36,6 +36,7 @@ for (const scope of ['TEAM', 'ORGANIZATION'] as const) {
       const link = upcoming.getByRole('link')
       const expectedPath = `/${scope === 'TEAM' ? 'teams' : 'organizations'}/${slug}/schedule`
       await expect(link).toHaveAttribute('href', expectedPath)
+      await readyForInteraction(page, link)
       await link.click({ timeout: 10_000 })
       await expect(page).toHaveURL(url => url.pathname === expectedPath, { timeout: 30_000 })
       mark('schedule-list-arrived')
