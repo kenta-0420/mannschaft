@@ -204,7 +204,8 @@ class ActivityAutomaticCreationPathsIntegrationTest extends AbstractMySqlIntegra
             executeOwnedTriggerDdl("CREATE TRIGGER " + trigger + " BEFORE INSERT ON activity_results FOR EACH ROW BEGIN "
                     + "IF NEW.scope_type='TEAM' AND NEW.scope_id=" + teamId + " AND NEW.is_auto_generated_from_schedule=TRUE THEN "
                     + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='owned auto creation trial failure'; END IF; END");
-            CreateScheduleRequest request = json.convertValue(body(Map.of("recurrenceRule", recurrence())), CreateScheduleRequest.class);
+            CreateScheduleRequest request = json.convertValue(body(Map.of("recurrenceRule", recurrence(),
+                    "allowProxyAttendance", true, "isProxyAutoAccept", true)), CreateScheduleRequest.class);
             assertThatThrownBy(() -> scheduleService.createSchedule(request, teamId, "TEAM", AUTHOR))
                     .isInstanceOf(RuntimeException.class)
                     .hasStackTraceContaining("owned auto creation trial failure");
