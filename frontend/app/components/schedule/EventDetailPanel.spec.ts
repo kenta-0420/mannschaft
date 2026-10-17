@@ -52,7 +52,7 @@ async function mountPanel(displayName: string) {
 // 実際の言語切替と描画は各case内で行い、cold切替は実機で検証する。
 beforeAll(async () => {
   const i18n = useNuxtApp().$i18n
-  await Promise.all(['de', 'en', 'ja'].map((locale) => i18n.loadLocaleMessages(locale)))
+  await Promise.all((['de', 'en', 'ja'] as const).map((locale) => i18n.loadLocaleMessages(locale)))
 })
 
 describe('予定詳細の作成者翻訳（CMP-261017-0854）', () => {
