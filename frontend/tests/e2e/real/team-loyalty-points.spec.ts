@@ -436,7 +436,7 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
       .replace('照合コード ', '')
       .trim()
     await member.getByRole('link', { name: '受付申請', exact: true }).last().click()
-    await member.getByRole('link').filter({ hasText: '承認待ち' }).click()
+    await member.getByRole('link').filter({ hasText: `E2Eポイント${suffix}` }).filter({ hasText: '承認待ち' }).click()
     let detailUrl = member.url()
     await member.getByRole('button', { name: '申請を取り消す', exact: true }).click()
     await expect(member.getByText('取消済み', { exact: true })).toBeVisible()
@@ -452,9 +452,13 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
     await page.goto(`/teams/${slug}/loyalty`, { waitUntil: 'commit' })
     await waitForHydration(page)
     await page.getByRole('button').filter({ hasText: '来店ポイント' }).last().click()
+    const rejected = page.waitForResponse(
+      (response) => response.request().method() === 'POST' && /\/reject$/.test(response.url()),
+    )
     await page.getByRole('button', { name: '却下', exact: true }).click()
+    expect((await rejected).status()).toBe(200)
     await member.getByRole('link', { name: '受付申請', exact: true }).last().click()
-    await member.getByRole('link').filter({ hasText: '却下済み' }).click()
+    await member.getByRole('link').filter({ hasText: `E2Eポイント${suffix}` }).filter({ hasText: '却下済み' }).click()
     await expect(member.getByText('却下済み', { exact: true })).toBeVisible()
     await member.goto(url, { waitUntil: 'commit' })
     await waitForHydration(member, { reloadOnTimeout: false })
@@ -462,7 +466,7 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
     await expect(member.getByText('承認待ち', { exact: true })).toBeVisible()
     code = (await member.getByText(/^照合コード /).textContent())!.replace('照合コード ', '').trim()
     await member.getByRole('link', { name: '受付申請', exact: true }).last().click()
-    await member.getByRole('link').filter({ hasText: '承認待ち' }).click()
+    await member.getByRole('link').filter({ hasText: `E2Eポイント${suffix}` }).filter({ hasText: '承認待ち' }).click()
     detailUrl = member.url()
     // 本人専用UUIDを別のログイン主体から開いても申請者名・照合コードを開示しない。
     await page.goto(new URL(detailUrl).pathname, { waitUntil: 'commit' })
