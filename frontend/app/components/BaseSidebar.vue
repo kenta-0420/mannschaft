@@ -22,7 +22,9 @@ const emit = defineEmits<{
 }>()
 
 // ロールアクセス
-const { roleName, isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess(props.scopeType, toRef(props, 'scopeId'))
+const { roleName, isAdmin, isScopeAdmin, can, isAdminOrDeputy, loadPermissions } = useRoleAccess(props.scopeType, toRef(props, 'scopeId'))
+
+const loyaltyAccess = useLoyaltyStaffAccess(toRef(props, 'scopeId'), computed(() => props.scopeType === 'team' ? roleName.value : null), isScopeAdmin, can)
 
 // MEMBER以上判定（SUPPORTER/GUEST/未加入は除外）
 const isMember = computed(() =>
@@ -44,6 +46,8 @@ const featureFlagStore = useFeatureFlagStore()
 
 // 項目表示判定
 function isItemVisible(item: SidebarItem): boolean {
+  if (item.access === 'scope-admin') return !props.memberLensActive && isScopeAdmin.value
+  if (item.access === 'loyalty-operate') return !props.memberLensActive && loyaltyAccess.allowed.value
   // 機能ゲートが閉じている（OFF・未取得）項目は SYSTEM_ADMIN にも出さない（fail-closed）。
   // route 層の middleware も同じ判定で弾くため、踏めない導線を作らない。
   if (item.gateKey !== undefined && !featureFlagStore.isEnabled(item.gateKey)) return false
@@ -160,6 +164,7 @@ function isItemActive(item: SidebarItem): boolean {
     @retry="loadSidebar"
   />
   <nav v-else-if="isMember" class="flex flex-col gap-0.5 py-2 px-1">
+    <DashboardErrorState v-if="loyaltyAccess.error.value && scopeType === 'team'" :error="loyaltyAccess.error.value" @retry="loyaltyAccess.refresh" />
     <template v-for="category in categories" :key="category.key">
       <div v-if="isCategoryVisible(category)">
         <!-- カテゴリヘッダー（クリックで展開/折り畳み） -->
