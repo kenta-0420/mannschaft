@@ -22,6 +22,10 @@ vi.mock('~/composables/useErrorHandler', () => ({
 }))
 vi.mock('~/composables/useNotification', () => ({ useNotification: () => ({ success }) }))
 vi.mock('#app/composables/head', () => ({ useHead: () => {} }))
+vi.mock('#app/composables/router', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  navigateTo: navigate,
+}))
 for (const [name, value] of Object.entries({
   ref,
   shallowRef,
