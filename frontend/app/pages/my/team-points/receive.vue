@@ -1,55 +1,94 @@
 <script setup lang="ts">
-import { takeLoyaltyReceptionToken } from '~/utils/loyaltyReceptionToken'
+import {
+  subscribeLoyaltyReceptionToken,
+  takeLoyaltyReceptionToken,
+} from '~/utils/loyaltyReceptionToken'
 import type { LoyaltyBootstrap, LoyaltySelfResult } from '~/types/team-loyalty'
 definePageMeta({ middleware: ['auth'] })
 const { t } = useI18n()
 const api = useTeamLoyaltyApi()
 const { handleApiError } = useErrorHandler()
 const notification = useNotification()
-const token = takeLoyaltyReceptionToken()
+const token = ref<string | null>(null)
 const data = ref<LoyaltyBootstrap | null>(null)
 const loading = ref(true)
 const error = shallowRef<unknown>(null)
-const mutation = useLoyaltyMutation<LoyaltySelfResult>()
+const mutation = shallowRef(useLoyaltyMutation<LoyaltySelfResult>())
+let generation = 0
+let mounted = false
+let unsubscribe: (() => void) | undefined
 async function load() {
+  const currentGeneration = ++generation
+  const currentToken = token.value
   loading.value = true
   error.value = null
+  data.value = null
   try {
-    if (token) data.value = await api.bootstrap(token)
+    if (currentToken) {
+      const preview = await api.bootstrap(currentToken)
+      if (mounted && generation === currentGeneration) data.value = preview
+    }
   } catch (e) {
-    error.value = e
-    handleApiError(e, 'team-loyalty')
+    if (mounted && generation === currentGeneration) {
+      error.value = e
+      handleApiError(e, 'team-loyalty')
+    }
   } finally {
-    loading.value = false
+    if (mounted && generation === currentGeneration) loading.value = false
   }
 }
+function receiveNewEntry() {
+  const nextToken = takeLoyaltyReceptionToken()
+  if (!nextToken) return
+  generation++
+  token.value = nextToken
+  data.value = null
+  error.value = null
+  mutation.value = useLoyaltyMutation<LoyaltySelfResult>()
+  loading.value = true
+  if (mounted) void load()
+}
 async function submit(retry = false) {
-  if (!data.value || !token) return
+  const currentData = data.value
+  const currentToken = token.value
+  const currentMutation = mutation.value
+  const currentGeneration = generation
+  if (!currentData || !currentToken) return
   try {
-    const preview = data.value.preview
+    const preview = currentData.preview
     const result = retry
-      ? await mutation.retry()
-      : await mutation.start(
+      ? await currentMutation.retry()
+      : await currentMutation.start(
           {
-            locationToken: token,
+            locationToken: currentToken,
             ruleId: preview.rule.id,
             expectedRuleVersion: preview.rule.version,
             expectedProgramVersion: preview.programVersion,
           },
           (body, key) => api.selfAward(preview.teamId, body, key),
         )
-    if (result) {
+    if (result && mounted && generation === currentGeneration) {
       notification.success(
         t(result.outcome === 'SUBMITTED' ? 'loyalty.requests.submitted' : 'loyalty.scan.success'),
       )
       if (result.outcome === 'AWARDED') await navigateTo(`/my/team-points/${preview.teamId}`)
     }
   } catch (e) {
-    handleApiError(e, 'team-loyalty')
+    if (mounted && generation === currentGeneration) handleApiError(e, 'team-loyalty')
   }
 }
 useHead({ title: () => t('loyalty.self.confirm') })
-onMounted(load)
+onMounted(() => {
+  mounted = true
+  token.value = takeLoyaltyReceptionToken()
+  unsubscribe = subscribeLoyaltyReceptionToken(receiveNewEntry)
+  void load()
+})
+onUnmounted(() => {
+  mounted = false
+  generation++
+  unsubscribe?.()
+})
 </script>
 <template>
   <main class="mx-auto max-w-xl space-y-4 p-4">
