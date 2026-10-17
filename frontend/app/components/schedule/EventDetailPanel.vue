@@ -299,7 +299,7 @@ onMounted(async () => {
       </div>
       <div v-if="event.createdBy" class="flex items-center gap-2">
         <i class="pi pi-user text-surface-400" />
-        <span>作成: {{ event.createdBy.displayName }}</span>
+        <span>{{ t('schedule.created_by', { name: event.createdBy.displayName }) }}</span>
       </div>
       <div v-if="showAudience !== false" class="flex items-start gap-2">
         <i class="pi pi-users mt-0.5 text-surface-400" aria-hidden="true" />

@@ -1,5 +1,7 @@
 {
   "schedule": {
+    "page_title": "Terminplan",
+    "created_by": "Erstellt von: {name}",
     "attendance": {
       "yes": "Teilnehmen",
       "no": "Abwesend",
