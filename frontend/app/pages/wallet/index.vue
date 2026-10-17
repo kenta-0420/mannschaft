@@ -165,14 +165,19 @@ watch(activeTab, (newTab) => {
 <template>
   <div>
     <div class="mx-auto max-w-[720px] px-4 pb-8">
-      <PageHeader :title="t('wallet.title')" help @help="showGuide = true">
+      <PageHeader
+        :title="t('wallet.title')"
+        class="flex-wrap [&>h1]:basis-full sm:[&>h1]:basis-auto [&>div]:ml-0 [&>div]:max-w-full [&>div]:flex-wrap sm:[&>div]:ml-auto [&_button]:min-h-11 [&_button]:min-w-11 [&_button]:shrink-0 [&_button]:whitespace-nowrap"
+        help
+        @help="showGuide = true"
+      >
         <template #actions>
           <NuxtLink v-if="isWalletReady && activeTab === 'cards'" to="/wallet/cards/new">
             <Button :label="t('wallet.actions.add_card')" icon="pi pi-plus" size="small" />
           </NuxtLink>
           <NuxtLink
             to="/wallet/settings"
-            class="inline-flex h-9 w-9 items-center justify-center rounded-full text-surface-600 transition-colors hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-700"
+            class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-surface-600 transition-colors hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-700"
             :aria-label="t('wallet.actions.settings')"
           >
             <i class="pi pi-cog text-lg" aria-hidden="true" />
