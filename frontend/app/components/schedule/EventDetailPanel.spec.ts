@@ -4,20 +4,36 @@ import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import EventDetailPanel from './EventDetailPanel.vue'
 
 mockNuxtImport('useDatetime', () => () => ({
-  formatDate: (value: string) => value, formatDateTime: (value: string) => value,
+  formatDate: (value: string) => value,
+  formatDateTime: (value: string) => value,
 }))
-mockNuxtImport('useMatchOrgContext', () => () => ({ resolveContext: vi.fn().mockResolvedValue(null) }))
-mockNuxtImport('useMatchApi', () => () => ({ resolveMatchBySchedule: vi.fn(), createMatch: vi.fn() }))
+mockNuxtImport('useMatchOrgContext', () => () => ({
+  resolveContext: vi.fn().mockResolvedValue(null),
+}))
+mockNuxtImport('useMatchApi', () => () => ({
+  resolveMatchBySchedule: vi.fn(),
+  createMatch: vi.fn(),
+}))
 mockNuxtImport('useScheduleApi', () => () => ({}))
 mockNuxtImport('useNotification', () => () => ({}))
 mockNuxtImport('useEventDelegationApi', () => () => ({ fetchDelegations: vi.fn() }))
 
 function event(displayName: string) {
   return {
-    id: 1, title: '練習', description: null, location: '広場',
-    startAt: '2026-10-17T12:00:00+09:00', endAt: '2026-10-17T13:00:00+09:00',
-    allDay: false, status: 'PUBLISHED', categoryName: null, categoryColor: null,
-    createdBy: { displayName }, attendanceRequired: false, myAttendance: null, attendanceStats: null,
+    id: 1,
+    title: '練習',
+    description: null,
+    location: '広場',
+    startAt: '2026-10-17T12:00:00+09:00',
+    endAt: '2026-10-17T13:00:00+09:00',
+    allDay: false,
+    status: 'PUBLISHED',
+    categoryName: null,
+    categoryColor: null,
+    createdBy: { displayName },
+    attendanceRequired: false,
+    myAttendance: null,
+    attendanceStats: null,
   }
 }
 
@@ -51,7 +67,9 @@ describe('予定詳細の作成者翻訳（CMP-261017-0854）', () => {
     expect(wrapper.text()).toContain('Erstellt von:')
 
     // 型上は必須だが、既存v-ifが防御しているruntime nullも維持する。
-    await wrapper.setProps({ event: { ...event(''), createdBy: null } as unknown as ReturnType<typeof event> })
+    await wrapper.setProps({
+      event: { ...event(''), createdBy: null } as unknown as ReturnType<typeof event>,
+    })
     expect(wrapper.find('.pi-user').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Erstellt von:')
   })

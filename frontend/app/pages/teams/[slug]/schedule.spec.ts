@@ -13,8 +13,14 @@ mockNuxtImport('useRoleAccess', () => () => ({
   loadPermissions: vi.fn(),
 }))
 mockNuxtImport('useCalendarEvents', () => () => ({
-  currentYear: ref(2026), currentMonth: ref(10), events: ref([]), loading: ref(false),
-  loadEvents: vi.fn(), refresh: vi.fn(), onPrevMonth: vi.fn(), onNextMonth: vi.fn(),
+  currentYear: ref(2026),
+  currentMonth: ref(10),
+  events: ref([]),
+  loading: ref(false),
+  loadEvents: vi.fn(),
+  refresh: vi.fn(),
+  onPrevMonth: vi.fn(),
+  onNextMonth: vi.fn(),
 }))
 mockNuxtImport('useScheduleApi', () => () => ({}))
 mockNuxtImport('useErrorHandler', () => () => ({ handleApiError: vi.fn() }))
@@ -23,8 +29,11 @@ async function mountPage() {
   const wrapper = await mountSuspended(SchedulePage, {
     global: {
       stubs: {
-        CalendarGrid: true, ScheduleMobileListView: true, EventDetailPanel: true,
-        ScheduleEventForm: true, DashboardEmptyState: true,
+        CalendarGrid: true,
+        ScheduleMobileListView: true,
+        EventDetailPanel: true,
+        ScheduleEventForm: true,
+        DashboardEmptyState: true,
       },
     },
   })
@@ -34,7 +43,10 @@ async function mountPage() {
 }
 
 describe('チーム予定の翻訳（CMP-261017-0854）', () => {
-  beforeEach(() => { role.admin = true; role.canManage = false })
+  beforeEach(() => {
+    role.admin = true
+    role.canManage = false
+  })
 
   it('deの見出しと追加ボタンを表示し、表示中の言語変更に追従する', async () => {
     const wrapper = await mountPage()
@@ -47,10 +59,13 @@ describe('チーム予定の翻訳（CMP-261017-0854）', () => {
     expect(wrapper.text()).toContain('Add event')
   })
 
-  it.each([false, true])('MEMBERの予定管理権限=%sに応じて翻訳済み追加ボタンを出し分ける', async (canManage) => {
-    role.admin = false
-    role.canManage = canManage
-    const wrapper = await mountPage()
-    expect(wrapper.text().includes('Termin hinzufügen')).toBe(canManage)
-  })
+  it.each([false, true])(
+    'MEMBERの予定管理権限=%sに応じて翻訳済み追加ボタンを出し分ける',
+    async (canManage) => {
+      role.admin = false
+      role.canManage = canManage
+      const wrapper = await mountPage()
+      expect(wrapper.text().includes('Termin hinzufügen')).toBe(canManage)
+    },
+  )
 })
