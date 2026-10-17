@@ -24,7 +24,10 @@ for (const scope of ['TEAM', 'ORGANIZATION'] as const) {
     await expect(link).toHaveAttribute('href', expectedPath)
     await link.click()
     await expect(page).toHaveURL(url => url.pathname === expectedPath, { timeout: 30_000 })
-    await expect(page.getByTestId('schedule-list-row').filter({ hasText: title }).filter({ visible: true })).toBeVisible({ timeout: 30_000 })
+    const event = page.locator('main').getByText(title).filter({ visible: true }).first()
+    await expect(event).toBeVisible({ timeout: 30_000 })
+    await event.click()
+    await expect(page.getByRole('heading', { name: title, exact: true }).filter({ visible: true })).toBeVisible()
     expect(writes).toEqual([])
   })
 }
