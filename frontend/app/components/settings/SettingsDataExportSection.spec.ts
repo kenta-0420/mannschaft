@@ -36,7 +36,7 @@ async function mountExport() {
   }), {
     attachTo: document.body,
     global: { plugins: [createPinia(), PrimeVue, ToastService, createI18n({
-      legacy: false, locale: 'en', messages: { en: { ...common, ...settings } },
+      legacy: false, locale: 'en', messages: { ja: {}, en: { ...common, ...settings }, zh: {}, ko: {}, es: {}, de: {} },
     })] },
   })
   await flushPromises()
