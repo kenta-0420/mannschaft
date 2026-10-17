@@ -96,3 +96,67 @@ test('deの予定追加ボタンが360/390pxの画面内に収まり、ページ
     })
   }
 })
+
+test('deの組織予定の見出し・追加操作・未選択案内を翻訳する', async ({ page }) => {
+  test.setTimeout(180_000)
+  const slug = process.env.SCHEDULE_I18N_ORG_SLUG
+  if (!slug) throw new Error('SCHEDULE_I18N_ORG_SLUGに専用fixtureが必要です')
+  await page.goto(`/organizations/${encodeURIComponent(slug)}/schedule`, { waitUntil: 'domcontentloaded' })
+  const heading = page.locator('main h1').last()
+  const add = page.getByRole('button').filter({ has: page.locator('.pi-plus') }).first()
+  const empty = page.locator('div.py-8').filter({ has: page.locator('i.pi-calendar') }).locator('p').first()
+  await expect(heading).toBeVisible({ timeout: 120_000 })
+  await expect(add).toBeVisible()
+  await expect(empty).toBeVisible()
+  expect.soft((await heading.textContent())?.trim()).toBe('Terminplan')
+  expect.soft((await add.textContent())?.trim()).toBe('Termin hinzufügen')
+  expect.soft((await empty.textContent())?.trim()).toBe('Bitte einen Termin auswählen')
+})
+
+test('deの個人カレンダーのタブ・未選択案内・個人予定の色を翻訳する', async ({ page }) => {
+  test.setTimeout(180_000)
+  // 未選択サイドパネルはデスクトップだけに描画される。
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.goto('/calendar', { waitUntil: 'domcontentloaded' })
+  const tab = page.getByRole('button').filter({ has: page.locator('i.pi-calendar') }).first()
+  const empty = page.locator('div.py-8').filter({ has: page.locator('i.pi-calendar') }).locator('p').first()
+  await expect(tab).toBeVisible({ timeout: 120_000 })
+  await expect(empty).toBeVisible()
+  expect.soft((await tab.textContent())?.trim()).toBe('Kalender')
+  expect.soft((await empty.textContent())?.trim()).toBe('Bitte ein Datum oder einen Termin auswählen')
+  await page.getByRole('button', { name: 'Termin hinzufügen', exact: true }).click()
+  const form = page.getByRole('dialog').filter({ has: page.getByTestId('schedule-submit') })
+  await expect(form).toBeVisible()
+  await expect(form.locator('button[style*="background-color"]').first()).toBeVisible()
+  expect.soft((await form.locator('label').last().textContent())?.trim()).toBe('Farbe')
+})
+
+for (const scope of ['team', 'organization', 'calendar'] as const) {
+  test(`deの${scope}予定の削除確認を翻訳し、キャンセル時にDELETEを送らない`, async ({ page }) => {
+    test.setTimeout(180_000)
+    const slug = process.env[scope === 'organization' ? 'SCHEDULE_I18N_ORG_SLUG' : 'SCHEDULE_I18N_TEAM_SLUG']
+    const id = process.env[scope === 'organization' ? 'SCHEDULE_I18N_ORG_SCHEDULE_ID' : 'SCHEDULE_I18N_TEAM_SCHEDULE_ID']
+    if (!slug || !id) throw new Error('専用fixtureのscopeと予定IDが必要です')
+    const url = scope === 'calendar'
+      ? `/calendar?scheduleId=${encodeURIComponent(id)}`
+      : `/${scope === 'team' ? 'teams' : 'organizations'}/${encodeURIComponent(slug)}/schedule?eventId=${encodeURIComponent(id)}`
+    const deletes: string[] = []
+    page.on('request', request => {
+      if (request.method() === 'DELETE' && new URL(request.url()).pathname.includes('/schedules/')) {
+        deletes.push(new URL(request.url()).pathname)
+      }
+    })
+    await page.goto(url, { waitUntil: 'domcontentloaded' })
+    const remove = page.getByRole('button', { name: 'Löschen', exact: true }).filter({ has: page.locator('.pi-trash') }).first()
+    await expect(remove).toBeVisible({ timeout: 120_000 })
+    const dialogPromise = page.waitForEvent('dialog')
+    const clickPromise = remove.click()
+    const confirmation = await dialogPromise
+    const message = confirmation.message()
+    await confirmation.dismiss()
+    await clickPromise
+    expect.soft(message).toBe('Diesen Termin löschen?')
+    expect(deletes).toEqual([])
+    await expect(remove).toBeVisible()
+  })
+}
