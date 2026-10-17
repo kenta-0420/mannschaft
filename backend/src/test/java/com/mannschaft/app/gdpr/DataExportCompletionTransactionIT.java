@@ -72,6 +72,22 @@ class DataExportCompletionTransactionIT extends AbstractMySqlIntegrationTest {
         assertThat(exports.findById(entity.getId()).orElseThrow().getStatus()).isEqualTo("FAILED");
         assertThat(count("GDPR_EXPORT_READY", entity.getId())).isZero();
         assertThat(count("GDPR_EXPORT_FAILED", entity.getId())).isEqualTo(1);
+        verify(storage).delete("gdpr-exports/" + USER_ID + "/" + entity.getId() + ".zip");
+    }
+
+    @Test
+    void 異常_失敗通知も登録できなくてもFAILEDを巻き戻さない() {
+        UserEmailInfo own = new UserEmailInfo(USER_ID + 2, "zip-tx-fail@example.com",
+                "試験", "本人", new PrefetchedPersonalData(List.of()));
+        DataExportEntity entity = service.requestExport(own.userId(), Set.of("memberships"));
+        org.mockito.Mockito.doThrow(new IllegalStateException("owned persistent outbox failure"))
+                .when(encryption).encryptBytes(any(byte[].class));
+
+        service.processExportAsync(entity.getId(), own, Set.of("memberships"));
+
+        assertThat(exports.findById(entity.getId()).orElseThrow().getStatus()).isEqualTo("FAILED");
+        assertThat(count("GDPR_EXPORT_READY", entity.getId())).isZero();
+        assertThat(count("GDPR_EXPORT_FAILED", entity.getId())).isZero();
     }
 
     @Test
@@ -84,7 +100,7 @@ class DataExportCompletionTransactionIT extends AbstractMySqlIntegrationTest {
 
         assertThat(exports.findById(entity.getId()).orElseThrow().getStatus()).isEqualTo("COMPLETED");
         byte[] encrypted = jdbc.queryForObject(
-                "SELECT payload_json FROM email_outbox WHERE idempotency_key = ?", byte[].class,
+                "SELECT payload_json FROM email_outbox WHERE source_event_id = ?", byte[].class,
                 "gdpr-export-ready:" + entity.getId());
         assertThat(encrypted).isNotNull();
         assertThat(new String(encrypted, java.nio.charset.StandardCharsets.UTF_8)).doesNotContain("ZIPパスワード");
@@ -111,7 +127,7 @@ class DataExportCompletionTransactionIT extends AbstractMySqlIntegrationTest {
     }
 
     private long count(String kind, long exportId) {
-        return jdbc.queryForObject("SELECT COUNT(*) FROM email_outbox WHERE template_kind = ? AND idempotency_key = ?",
+        return jdbc.queryForObject("SELECT COUNT(*) FROM email_outbox WHERE template_kind = ? AND source_event_id = ?",
                 Long.class, kind, (kind.equals("GDPR_EXPORT_READY") ? "gdpr-export-ready:" : "gdpr-export-failed:") + exportId);
     }
 }

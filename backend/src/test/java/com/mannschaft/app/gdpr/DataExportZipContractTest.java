@@ -47,6 +47,7 @@ class DataExportZipContractTest {
     @Mock private PersonalDataCollector collector;
     @Mock private StorageService storage;
     @Mock private EmailOutboxService outbox;
+    @Mock private org.springframework.transaction.PlatformTransactionManager transactionManager;
     @InjectMocks private DataExportService service;
 
     private DataExportEntity entity;
@@ -154,6 +155,7 @@ class DataExportZipContractTest {
                     assertThat(entry.getEncryptionMethod()).isEqualTo(EncryptionMethod.AES);
                     assertThat(entry.getAesExtraDataRecord().getAesKeyStrength()).isEqualTo(AesKeyStrength.KEY_STRENGTH_256);
                     assertThat(entry.getAesExtraDataRecord().getAesVersion()).isEqualTo(AesVersion.TWO);
+                    assertThat(entry.getCrc()).isZero();
                 }
                 result.put(entry.getFileName(), new String(zip.readAllBytes(), StandardCharsets.UTF_8));
             }
