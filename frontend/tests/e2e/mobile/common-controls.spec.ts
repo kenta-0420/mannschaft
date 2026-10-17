@@ -239,7 +239,10 @@ for (const width of [360, 390]) {
       await input.click({ position })
       checked = !checked
       await expect(input).toBeChecked({ checked })
-      await slider.locator('.p-toggleswitch-handle').evaluate(async el => { await Promise.all(el.getAnimations().map(animation => animation.finished)) })
+      await expect.poll(async () => {
+        const handle = await slider.locator('.p-toggleswitch-handle').boundingBox()
+        return handle!.x - visual!.x
+      }).toBe(checked ? desktopBaselines[0]!.checkedHandleOffset : desktopBaselines[0]!.uncheckedHandleOffset)
       const handle = await slider.locator('.p-toggleswitch-handle').boundingBox()
       expect(handle!.x).toBeGreaterThanOrEqual(visual!.x)
       expect(handle!.x + handle!.width).toBeLessThanOrEqual(visual!.x + visual!.width)
@@ -346,7 +349,7 @@ for (const width of [768, 1280]) {
     const uncheckedHandleOffset = await handleOffset()
     await switchInput.click()
     await expect(switchInput).toBeChecked()
-    await handle.evaluate(async el => { await Promise.all(el.getAnimations().map(animation => animation.finished)) })
+    await expect.poll(handleOffset).toBe(baseline.checkedHandleOffset)
     const checkedHandleOffset = await handleOffset()
     expect(checkedHandleOffset).toBeGreaterThan(uncheckedHandleOffset)
     for (const [name, size] of Object.entries(sizes)) expect(size).toEqual(baseline.targets[name as keyof typeof baseline.targets])
