@@ -1,5 +1,5 @@
 import { defineComponent, h } from 'vue'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import DashboardSwipeWidgetGrid from '~/components/dashboard/DashboardSwipeWidgetGrid.vue'
 import DashboardScopeListWidget from '~/components/dashboard/DashboardScopeListWidget.vue'
@@ -9,6 +9,12 @@ mockNuxtImport('useDatetime', () => () => ({
   formatDate: (value: string) => value,
   formatDateTime: (value: string) => value,
 }))
+
+// 共通mount helperの初回準備を、予定導線の描画検証から分離する。
+beforeAll(async () => {
+  const wrapper = await mountSuspended(defineComponent({ render: () => h('div') }))
+  wrapper.unmount()
+})
 
 const Card = defineComponent({
   setup(_, { slots }) {
