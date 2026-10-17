@@ -735,17 +735,22 @@ onMounted(async () => {
 <template>
   <PageLoading v-if="loading" />
   <div v-else>
-    <PageHeader :title="t('schedule.calendar_guide.page_title')" help @help="showGuide = true">
+    <PageHeader
+      :title="t('schedule.calendar_guide.page_title')"
+      help
+      class="flex-col items-stretch sm:flex-row sm:flex-wrap sm:items-end [&>div:last-child]:ml-0 [&>div:last-child]:w-full [&>div:last-child]:flex-wrap [&>div:last-child]:max-w-full sm:[&>div:last-child]:ml-auto sm:[&>div:last-child]:w-auto [&_button]:min-h-11 [&_button]:min-w-11"
+      @help="showGuide = true"
+    >
       <!-- #52: スコープ選択 + 予定を追加 -->
       <template #actions>
-        <div class="flex items-center gap-2">
+        <div class="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
           <Select
             v-if="createScopeOptions.length > 1"
             v-model="createScopeKey"
             :options="createScopeOptions"
             option-label="label"
             option-value="value"
-            class="text-sm"
+            class="min-h-11 max-w-full text-sm"
             style="min-width: 120px"
           />
           <Button :label="t('schedule.event_add')" icon="pi pi-plus" @click="openCreateDialog()" />
