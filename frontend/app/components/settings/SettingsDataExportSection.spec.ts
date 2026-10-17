@@ -212,6 +212,19 @@ describe('個人データ出力の復帰と操作別案内', () => {
     expect(wrapper.find('[data-testid="load-error-state-retry"]').exists()).toBe(true)
   })
 
+  it('処理中制限の再同期が失敗しても取得成功と案内せず既存状態とretryを保つ', async () => {
+    const wrapper = await mountExport()
+    state.api.mockRejectedValueOnce(businessError('GDPR_002', 409)).mockRejectedValueOnce({ statusCode: 503 })
+    await button(wrapper, 'Export Personal Data').trigger('click')
+    await flushPromises()
+    expect(document.body.textContent).toContain('Please wait for it to complete')
+    expect(document.body.textContent).not.toContain('has been refreshed')
+    expect(button(wrapper, 'Download').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="load-error-state-retry"]').exists()).toBe(true)
+    expect(calls(REQUEST)).toHaveLength(1)
+    expect(calls(STATUS)).toHaveLength(2)
+  })
+
   it.each([
     ['GDPR_009', 'not ready for download'], ['GDPR_010', 'download has expired'],
     ['OTHER', 'Failed to download export'],

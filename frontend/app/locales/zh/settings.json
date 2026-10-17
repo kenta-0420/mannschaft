@@ -1,7 +1,7 @@
 {
   "data_export": {
     "request_daily_limit": "每24小时只能导出一次个人数据。现有导出仍可使用。",
-    "request_in_progress": "数据导出已在处理中。已刷新最新状态。",
+    "request_in_progress": "数据导出已在处理中。请等待导出完成。",
     "request_error": "无法请求数据导出。请重试。",
     "download_not_ready": "导出尚未准备好下载。请在完成后重试。",
     "download_expired": "此导出的下载保留期限已过。可以再次请求时，请重新导出。",
