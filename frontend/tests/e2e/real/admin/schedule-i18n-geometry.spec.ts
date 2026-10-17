@@ -41,6 +41,24 @@ test.describe('calendar-mobile-header: 真mobileの見出しと詳細操作', ()
       expect.soft(viewport.innerWidth).toBeLessThanOrEqual(width)
       expect.soft(viewport.scrollWidth).toBeLessThanOrEqual(width)
       expect.soft(viewport.visualWidth!).toBeLessThanOrEqual(width + 1)
+      const selectBox = boxes[2]!
+      const selectInside = selectBox.x >= 0 && selectBox.x + selectBox.width <= width
+      expect.soft(selectInside, '長い組織名も実Select操作で検査できる').toBe(true)
+      if (selectInside) {
+        await header.getByRole('combobox').click({ timeout: 5_000 })
+        const organization = page.getByRole('option').filter({ hasText: 'Surroundings owned org 261017' })
+        await expect(organization).toBeVisible()
+        await organization.click()
+        const selectedControls = await Promise.all(controls.slice(1).map(control => control.boundingBox()))
+        const selectedScrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
+        await testInfo.attach(`calendar-header-org-${width}.json`, { body: JSON.stringify({ width, selectedControls, selectedScrollWidth }), contentType: 'application/json' })
+        expect.soft(selectedScrollWidth).toBeLessThanOrEqual(width)
+        for (const box of selectedControls) {
+          expect.soft(box!.x).toBeGreaterThanOrEqual(0)
+          expect.soft(box!.x + box!.width).toBeLessThanOrEqual(width)
+          expect.soft(box!.height).toBeGreaterThanOrEqual(44)
+        }
+      }
 
       await page.goto(`/calendar?scheduleId=${encodeURIComponent(id)}`, { waitUntil: 'domcontentloaded' })
       const detail = page.getByRole('dialog').filter({ has: page.getByTestId('schedule-edit') })
