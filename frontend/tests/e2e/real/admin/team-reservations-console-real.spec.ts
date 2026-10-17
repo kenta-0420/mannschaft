@@ -119,6 +119,9 @@ for (const [role, email, expectedRole] of [
     await expect(page.getByRole('link', { name: /予約確認/ })).toHaveCount(0)
     await expect(page.getByTestId('admin-reservations-link')).toHaveCount(0)
     // 拒否後も実在するチーム画面が表示され、空白や汎用エラーでないこと。
-    await expect(page.getByRole('tab', { name: '予約', exact: true })).toBeVisible()
+    await expect(page.locator('.scope-shell__tab').first()).toBeVisible()
+    if (role === '他チームADMIN') {
+      await expect(page.getByRole('tab', { name: '予約', exact: true })).toHaveCount(0)
+    }
   })
 }
