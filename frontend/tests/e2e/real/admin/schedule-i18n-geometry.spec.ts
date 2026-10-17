@@ -11,6 +11,26 @@ test('deの予定追加ボタンが360/390pxの画面内に収まり、ページ
   const teamSlug = process.env.SCHEDULE_I18N_TEAM_SLUG
   if (!teamSlug) throw new Error('SCHEDULE_I18N_TEAM_SLUGに専用実機fixtureのslugが必要です')
 
+  const apiBase = process.env.API_BASE_URL
+  if (!baseURL || !apiBase) throw new Error('専用実機のbaseURLとAPI_BASE_URLが必要です')
+  const allowedOrigins = new Set([new URL(baseURL).origin, new URL(apiBase).origin])
+  const blockedOrigins = new Set<string>()
+  // 外部送信だけを停止する。アプリとAPIは実通信のままで、応答をモックしない。
+  await page.context().route('**/*', async (route) => {
+    const url = new URL(route.request().url())
+    if (['data:', 'blob:'].includes(url.protocol) || allowedOrigins.has(url.origin)) {
+      await route.continue()
+      return
+    }
+    await route.abort()
+    if (!blockedOrigins.has(url.origin)) {
+      blockedOrigins.add(url.origin)
+      await testInfo.attach('blocked-origin.json', {
+        body: JSON.stringify({ origin: url.origin }),
+        contentType: 'application/json',
+      })
+    }
+  })
   await page.goto(`/teams/${encodeURIComponent(teamSlug)}/schedule`, {
     waitUntil: 'domcontentloaded',
   })
