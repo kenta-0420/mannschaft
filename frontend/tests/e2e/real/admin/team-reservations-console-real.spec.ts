@@ -97,7 +97,12 @@ test('ADMIN: ダッシュボード管理ウィジェットから独立予約ペ�
   const link = page.getByTestId('admin-reservations-link')
   await expect(link).toHaveAttribute('href', consolePath)
   await markDocument(page)
-  await link.click()
+  await Promise.all([
+    page.waitForResponse((response) =>
+      response.url().includes(`/teams/${teamSlug}/reservation-lines`) && response.request().method() === 'GET' && response.ok(),
+    ),
+    link.click(),
+  ])
   await expectConsole(page)
   await expectSameDocument(page)
 })
