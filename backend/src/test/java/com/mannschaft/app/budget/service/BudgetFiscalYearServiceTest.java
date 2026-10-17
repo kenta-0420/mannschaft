@@ -5,6 +5,7 @@ import com.mannschaft.app.budget.BudgetMapper;
 import com.mannschaft.app.budget.dto.CreateFiscalYearRequest;
 import com.mannschaft.app.budget.entity.BudgetFiscalYearEntity;
 import com.mannschaft.app.budget.repository.BudgetFiscalYearRepository;
+import com.mannschaft.app.budget.repository.BudgetTransactionRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
@@ -45,6 +46,8 @@ class BudgetFiscalYearServiceTest {
 
     @Mock
     private BudgetFiscalYearRepository fiscalYearRepository;
+    @Mock
+    private BudgetTransactionRepository transactionRepository;
     @Mock
     private BudgetCategoryService categoryService;
     @Mock
