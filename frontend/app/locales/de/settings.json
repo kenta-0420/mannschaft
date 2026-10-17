@@ -1,5 +1,11 @@
 {
   "data_export": {
+    "request_daily_limit": "Personenbezogene Daten können einmal alle 24 Stunden exportiert werden. Der vorhandene Export bleibt verfügbar.",
+    "request_in_progress": "Ein Export wird bereits verarbeitet. Der Status wurde aktualisiert.",
+    "request_error": "Der Datenexport konnte nicht angefordert werden. Bitte versuche es erneut.",
+    "download_not_ready": "Der Export steht noch nicht zum Download bereit. Bitte versuche es nach Abschluss erneut.",
+    "download_expired": "Dieser Exportdownload ist abgelaufen. Fordere einen neuen Export an, sobald dies möglich ist.",
+    "download_error": "Der Export konnte nicht heruntergeladen werden. Bitte versuche es erneut.",
     "section_title": "Datenexport",
     "export_button": "Persönliche Daten exportieren",
     "status_completed": "Abgeschlossen",

@@ -1,5 +1,11 @@
 {
   "data_export": {
+    "request_daily_limit": "Los datos personales se pueden exportar una vez cada 24 horas. La exportación existente sigue disponible.",
+    "request_in_progress": "Ya hay una exportación en curso. Se ha actualizado su estado.",
+    "request_error": "No se pudo solicitar la exportación. Inténtalo de nuevo.",
+    "download_not_ready": "La exportación aún no está lista para descargar. Inténtalo cuando termine.",
+    "download_expired": "La descarga de esta exportación ha caducado. Solicita una nueva exportación cuando esté disponible.",
+    "download_error": "No se pudo descargar la exportación. Inténtalo de nuevo.",
     "section_title": "Exportación de datos",
     "export_button": "Exportar datos personales",
     "status_completed": "Completado",
