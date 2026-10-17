@@ -79,7 +79,7 @@ test('ADMIN: 管理カードからSPA遷移・管理ハブへ戻る・履歴・�
   await waitForHydration(page)
   await expect(page).toHaveURL(new RegExp(`${oldPath}/?$`))
   await expect(page.locator('.scope-shell__tab').first()).toBeVisible()
-  await expect(page.getByRole('tab', { name: '予約', exact: true })).toBeVisible()
+  await expect(page.getByRole('tab', { name: /予約$/ })).toBeVisible()
   await expect(page.getByRole('tab', { name: '予約する', exact: true })).toBeVisible()
 })
 
@@ -124,7 +124,7 @@ for (const [role, email, expectedRole] of [
     // 拒否後も実在するチーム画面が表示され、空白や汎用エラーでないこと。
     await expect(page.locator('.scope-shell__tab').first()).toBeVisible()
     if (role === '他チームADMIN') {
-      await expect(page.getByRole('tab', { name: '予約', exact: true })).toHaveCount(0)
+      await expect(page.getByRole('tab', { name: /予約$/ })).toHaveCount(0)
     }
   })
 }
