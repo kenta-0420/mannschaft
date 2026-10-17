@@ -26,12 +26,15 @@ export default defineNuxtRouteMiddleware(() => {
     | { add: (opts: Record<string, unknown>) => void }
     | undefined
   if (toast) {
-    toast.add({
+    const notify = () => toast.add({
       severity: 'error',
       summary: t('adminConsole.middleware.accessDeniedTitle'),
       detail: t('adminConsole.middleware.accessDeniedBody'),
       life: 5000,
     })
+    // 初期ガードはToastの購読開始より先に走るため、初回だけマウント完了を待つ。
+    if (nuxtApp.isHydrating) onNuxtReady(notify)
+    else notify()
   }
   return navigateTo('/dashboard')
 })

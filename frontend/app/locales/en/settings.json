@@ -511,7 +511,7 @@
         "description": "Visibility settings for search, DMs, and online status"
       },
       "contactInviteTokens": {
-        "description": "Issue and manage invite URLs for adding contacts"
+        "description": "Create, view and manage invite URLs and QR codes for adding contacts"
       },
       "contactRequestBlocks": {
         "label": "Pre-blocked request list",

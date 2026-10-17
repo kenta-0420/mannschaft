@@ -79,5 +79,26 @@
         "step2": "Wenden Sie sich bei fehlenden Rechten an einen Administrator des Teams oder der Organisation."
       }
     }
+  },
+  "checkinLocationManager": {
+    "title": "Standorte für den Selbst-Check-in",
+    "add": "Standort hinzufügen",
+    "empty": "Keine Standorte registriert",
+    "name": "Standortname",
+    "status": "Status",
+    "active": "Aktiv",
+    "inactive": "Inaktiv",
+    "autoComplete": "Reservierungen automatisch abschließen",
+    "actions": "Aktionen",
+    "edit": "Standort bearbeiten",
+    "delete": "Standort löschen",
+    "placeholder": "Z. B. Hauptempfang",
+    "autoCompleteHint": "Reservierungen beim Check-in automatisch abschließen",
+    "cancel": "Abbrechen",
+    "update": "Aktualisieren",
+    "create": "Erstellen",
+    "created": "Standort erstellt",
+    "updated": "Standort aktualisiert",
+    "deleted": "Standort gelöscht"
   }
 }

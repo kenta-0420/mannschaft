@@ -477,15 +477,20 @@
 ### 論理削除復元フロー
 
 ```
-1. PATCH /api/v1/teams/{id}/restore（または /organizations/{id}/restore）を受付
+1. PATCH /api/v1/teams/{slug}/restore（または /organizations/{slug}/restore）を受付
 2. 操作者が SYSTEM_ADMIN か確認 → SYSTEM_ADMIN 以外は 403
 3. 対象エンティティが存在するか確認 → なければ 404
-4. deleted_at IS NULL → 論理削除されていない → 422
+4. deleted_at IS NULL → 論理削除されていない → 409（チームは行ロックの下で判定し、同時復元の後続も409）
 5. deleted_at = NULL で UPDATE（復元）
 6. audit_logs に TEAM_RESTORED（または ORGANIZATION_RESTORED）を記録
    metadata: {"restored_by": SYSTEM_ADMIN の user_id, "originally_deleted_at": 元の deleted_at}
 7. 204 No Content を返す
 ```
+
+チームは認可後の専用slug検索で論理削除済み・PROVISIONEDも解決する。通常slug検索の生存・ACTIVE条件は維持する。
+チーム復元の元deleted_atを片付け前に捕捉し、既存の加盟・制限の片付けと復元更新を同一txで確定する。
+チーム監査は成功コミット後の `AFTER_COMMIT` から既存best-effort基盤へ渡し、拒否・失敗・rollbackでは記録しない。
+組織の409は既存実装との仕様同期であり、組織の復元処理・監査・文言を本修正では変更しない。
 
 > - 復元後、招待トークンは自動復元しない（論理削除時に失効済み）。ADMIN が必要に応じて新規トークンを発行すること
 > - 復元後、`user_roles` は論理削除後も保持されているためそのまま利用可能

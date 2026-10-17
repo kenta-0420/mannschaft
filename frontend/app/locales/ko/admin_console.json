@@ -1,4 +1,4 @@
-﻿{
+{
   "adminConsole": {
     "comingSoon": "곧 공개",
     "team": {
@@ -124,6 +124,25 @@
         "summary": "활성화 {enabled} / 전체 {total}",
         "fetchFailed": "모듈 정보를 가져오지 못했습니다"
       }
+    },
+    "settingsHub": {
+      "readOnly": "조회 전용입니다. 관리자만 라벨을 수정할 수 있습니다."
     }
+  },
+  "deletedTeams": {
+    "title": "삭제된 팀 복원",
+    "description": "복원할 삭제된 팀을 선택하세요.",
+    "restore": "복원",
+    "confirmTitle": "이 팀을 복원할까요?",
+    "confirm": "“{name}”({slug}) 팀을 복원할까요? 공개 범위, 보관 상태 및 활성화 상태는 유지됩니다. 삭제 전의 조직 소속은 복원되지 않습니다.",
+    "cancel": "취소",
+    "success": "“{name}” 팀을 복원했습니다.",
+    "openTeam": "팀 열기",
+    "provisionedHint": "이 팀은 아직 활성화 대기 중입니다. 일반 팀 화면은 아직 사용할 수 없습니다.",
+    "processing": "복원 중…",
+    "empty": "삭제된 팀이 없습니다.",
+    "deletedAt": "삭제 일시",
+    "active": "활성화됨",
+    "provisioned": "활성화 대기 중"
   }
 }

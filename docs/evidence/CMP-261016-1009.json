@@ -146,8 +146,8 @@
   "causalLimit": "最初のADMIN200後空Drawerの初期例外stackは未保存。実証済み取得状態・スコープ更新・旧tab導線のみ根拠。",
   "cleanup": {
     "worktrees": "他作業資産保全、check-only exit2、削除0",
-    "status": "データcleanupのみ未完了・承認待ち",
-    "evidence": "docs/evidence/CMP-261016-1009/data-cleanup-status.json",
+    "status": "専用schema・appuser・Redis13と承認済み共有fixture4件のcleanup・独立確認完了（共有fixtureは論理削除）",
+    "evidence": "docs/evidence/CMP-261016-1009/cleanup-completed.md",
     "servers": "専用FE/BE/REPL停止済み"
   },
   "inventoryValidation": "既存生成447戦役対現正本498戦役で未合格。全面同期は未実施"

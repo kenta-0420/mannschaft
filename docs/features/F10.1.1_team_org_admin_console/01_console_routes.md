@@ -129,6 +129,20 @@
 - 既存の `settings/*` 個別ルートを内包するハブ。各設定は既存ページをそのまま導線集約する（§4 再編マッピング）。
 - DEPUTY_ADMIN の可否はセクションごとに権限グループで分岐（[04](./04_security_authorization.md) §4）。
 
+**2026-10-16 導線補完**: チームの設定カードがシフト設定1ページに直結し、シフト未公開時に設定全体へ到達できなかったため、チーム・組織の `/admin/settings` に既存設定へのリンク集約を整備する（[05](./05_decisions.md) §16）。P4時点のサブページ未新設方針は当時の段階措置として維持し、今回整備する設定ハブに限り解除する。各設定ページ・API・認可・公開ゲートは変更しない。
+
+| 設定 | チーム | 組織 | 既存ページに合わせた導線条件 |
+|---|---|---|---|
+| シフト通知 | `settings/shift` | なし | ADMIN/DEPUTY_ADMIN、`FEATURE_SHIFT_ENABLED` 公開時のみ |
+| FAQ | `settings/faq-settings` | 同左 | ADMIN または既存例外の SYSTEM_ADMIN（組織は既存 `org-role-guard` も維持） |
+| 公開設定 | `settings/public-settings` | 同左 | ADMIN/DEPUTY_ADMIN または既存例外の SYSTEM_ADMIN |
+| TODOラベル | `settings/todo-status-labels` | 同左 | チームはADMIN編集・DEPUTY_ADMIN閲覧、組織は既存ADMIN限定 |
+| 通知クレジット | なし | `settings/notification-credits` | 既存ADMIN限定 |
+
+`settings/care-overrides` は本人の見守り関係に対する個別設定であり、管理者向け設定集約には含めない。ハブの権限は `auth`・`admin-console` と本体表示の二重で確認する。権限・公開フラグの取得失敗は空一覧へ倒さず再試行可能なエラー表示とし、公開済み設定だけを案内する。新しい権限名やAPIは追加しない。
+
+SYSTEM_ADMIN兼任者は表示用 `roleName` だけで許可・拒否を決めず、既存 `isScopeAdmin` と、必要時だけプレビュー0件の既存管理APIでスコープ管理権限を確認する（[04](./04_security_authorization.md) §2.1）。通常のADMIN/DEPUTYにはこの追加確認を行わない。 FAQ・公開設定は既存BE/FEのSYSTEM_ADMIN例外を維持し、スコープ管理権限がなくてもこの2リンクだけを表示する。シフト・TODO・通知クレジットへ例外を広げず、スコープ管理権限のないSYSTEM_ADMINではシフト公開フラグの追加取得も行わない。
+
 ---
 
 ## 4. 既存ルート再編マッピング表

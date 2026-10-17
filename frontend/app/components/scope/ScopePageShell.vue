@@ -82,8 +82,9 @@ const lensModel = computed<boolean>({
     <!-- タブナビ（ルート連動 / 村方式）                                   -->
     <!-- ============================================================== -->
     <div class="border-b border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900">
-      <div class="flex items-center">
-        <div class="flex-1 min-w-0 overflow-x-auto">
+      <!-- モバイルでは切替操作を次の行へ置き、タブのスクロール領域を確保する。 -->
+      <div class="flex flex-wrap items-center md:flex-nowrap">
+        <div class="w-full min-w-0 overflow-x-auto md:w-auto md:flex-1">
           <Tabs :value="activeTab">
             <TabList>
               <Tab
@@ -112,6 +113,7 @@ const lensModel = computed<boolean>({
             text
             rounded
             size="small"
+            class="min-h-11 min-w-11"
             :aria-label="$t('common.menu')"
             data-testid="scope-sidebar-toggle"
             @click="showSidebarDrawer = true"
@@ -136,6 +138,7 @@ const lensModel = computed<boolean>({
       v-model:visible="showSidebarDrawer"
       position="left"
       class="!w-72"
+      :pt="{ pcCloseButton: { root: { class: 'min-h-11 min-w-11' } } }"
     >
       <template #header>
         <span class="font-semibold">{{ $t('common.menu') }}</span>

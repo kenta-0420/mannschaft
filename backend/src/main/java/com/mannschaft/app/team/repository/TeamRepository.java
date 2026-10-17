@@ -36,6 +36,10 @@ public interface TeamRepository
             + "FROM TeamEntity t WHERE t.id IN :ids")
     List<ActiveStateRow> findActiveStateRows(@Param("ids") Collection<Long> ids);
 
+    /** SYS認可済み復元一覧専用。論理削除を含むnative Entity変換とDBページングを使う。 */
+    @Query(value = "SELECT * FROM teams WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC, id DESC",
+            countQuery = "SELECT COUNT(*) FROM teams WHERE deleted_at IS NOT NULL", nativeQuery = true)
+    Page<TeamEntity> findDeletedTeamsForSystemAdmin(Pageable pageable);
 
     /**
      * カスタムスラッグでチームを取得する（URL識別子）。
@@ -174,6 +178,13 @@ public interface TeamRepository
      */
     @Query(value = "SELECT * FROM teams WHERE id = :id", nativeQuery = true)
     Optional<TeamEntity> findByIdIncludingDeleted(@Param("id") Long id);
+
+    /**
+     * 復元専用: 削除済み・PROVISIONEDを含め、現行slugの一意索引でIDだけを取得する。
+     * SYSTEM_ADMIN認可を済ませた復元経路だけで使い、通常のslug解決には流用しない。
+     */
+    @Query(value = "SELECT id FROM teams WHERE slug = :slug", nativeQuery = true)
+    Optional<Long> findIdBySlugIncludingDeleted(@Param("slug") String slug);
 
     /**
      * 論理削除済みを含めてチーム行を {@code SELECT ... FOR UPDATE} で取る（F01.2.1 2-D・加盟の片付け）。

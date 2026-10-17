@@ -151,7 +151,7 @@ Scene は登録された同個体・同段階の静止 fallback を動き抑制�
 
 ### 紐付けと所属
 
-- **招待URL・QRコード**: チーム/組織が発行した招待URL またはQRコードから個人がスムーズにメンバー加入。QRコードには有効期限（1日/7日/30日/90日/無期限）と使用回数上限（nullable）を設定可能。期限切れ・上限到達・手動無効化で即座に失効する
+- **招待URL・QRコード**: チーム/組織が発行した招待URL またはQRコードから個人がスムーズにメンバー加入。QRコードには有効期限（1日/7日/30日/90日/無期限）と使用回数上限（nullable）を設定可能。期限切れ・上限到達・手動無効化で即座に失効する。招待一覧・作成フォーム・通知は6言語に対応し、作成・条件選択・コピー・無効化・ダイアログ操作は44px以上のタッチ領域を確保する
 - **マルチ所属**: 1つの個人アカウントで複数のチームや組織に同時に所属可能
 - **サポーター枠**: 招待不要で、外部から特定のチームを支援・フォローできる独立した枠組み
 
@@ -210,6 +210,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 - **レート制限・ブルートフォース対策**: ログイン試行を IP + アカウント単位で Valkey カウンター管理。5回失敗でアカウントを **30分** ロック。パスワードリセット・2FA検証エンドポイントにも同様のレート制限を適用する
 - **アカウント凍結・退会フロー**: 管理者によるアカウント凍結、ユーザー自身の退会申請。退会申請後30日間は論理削除（猶予期間）、その後個人情報を物理削除。決済履歴は税法に基づき7年間保持。詳細は `.claudecode.md` §8「データ保持・削除規約」を参照
 - **チームの手動アーカイブ・解除**: 対象チームの管理者・副管理者はヘッダー（モバイルでは「その他」）から確認後にアーカイブできる。モバイルメニューとアーカイブ・解除確認の確定／キャンセル／閉じるは44x44px以上の操作領域を確保する。解除はチーム一覧の「アーカイブ済みチーム」から行う。PENDING の加盟申請・招待は取り消され、成立済みの加盟は維持される。解除しても取り消された申請・招待は復元しない。本人の所属チーム一覧 API は表示ロールとは独立した `canManageArchive` を返す（SYSTEM_ADMIN 単独は操作不可）。
+- **削除済みチームの復元**: SYSTEM_ADMINは管理ダッシュボードの「削除済みチームの復元」から削除済み一覧を開き、確認して復元できる（`/system-admin/teams/deleted`）。既存 `PATCH /api/v1/teams/{slug}/restore` を使い、未削除・復元済みは409 `TEAM_006`。公開範囲・予定・役割は保持し、削除前の組織加盟は戻さない。既存の孤児予定は復元後にチーム予定UIから削除できる（[API仕様](docs/features/F01.2_org_team_member_role/02_api_design.md)、[システム管理UI](docs/features/F10.1_admin_dashboard.md)）。
 - **非アクティブアーカイブ**: 一定期間ログインがないユーザー・チーム・組織を段階的にアーカイブする。アーカイブ前にメール通知を送り、ログインで即時解除可能
 
   | 対象 | アーカイブトリガー | 根拠 |
@@ -818,6 +819,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 #### AA. 管理者ダッシュボード
 - 全管理機能を `/admin` 配下に集約
+- **公開設定**: 非公開のチーム・組織も管理 GET で現在値と数値 ID を取得し、既存 PATCH に両設定値を送る。ADMIN/DEPUTY_ADMIN・SYSTEM_ADMIN の既存認可と公開閲覧の拒否条件を維持する（[F19.1 API契約](docs/features/F19.1_public_pages_identity_disclosure.md#62-既存エンドポイント拡張)）。
 - ユーザー管理、ロール・パーミッション管理、モジュール設定、スケジュール管理、ブログ管理、掲示板カテゴリ管理、備品管理、メンバー紹介管理、広告・スポンサー管理（将来: 自チーム/組織の広告出稿申請・クリエイティブ登録）、予約管理設定、Googleカレンダー設定、LINE設定、SNS設定
 - **DEPUTY_ADMIN 権限グループ管理**: パーミッションを個別選択した名前付きグループの作成・編集・複製・削除。グループはテンプレートとして保存でき、DEPUTY_ADMIN ユーザーへ割り当てる。「グループ1（受付・安否確認担当）」「グループ2（スケジュール・ファイル管理担当）」など複数グループの運用が可能。SYSTEM_ADMIN が定めた権限の上限（天井）の範囲内で設定可能
 - **権限グループの更新**: チーム・組織で、同じパーミッションを保持した改名と権限の差し替えを行える。途中失敗時は名前・紐付けをまとめて旧状態へ戻す。
@@ -929,15 +931,15 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 | Phase | 機能領域 | 詳細設計 |
 |-------|---------|---------|
 | 1 | 認証・権限・ユーザー基盤、プラットフォーム設定、チーム・組織・グループ階層、テンプレート・モジュール、プラン・サブスクリプション、チーム間相互フォロー・フレンドチーム | [F01.1](docs/features/F01.1_auth.md), [F01.2](docs/features/F01.2_org_team_member_role.md), [F01.2.1](docs/features/F01.2.1_org_team_groups.md), [F01.3](docs/features/F01.3_template_module.md), [F01.4](docs/features/F01.4_family_team.md), [F01.5](docs/features/F01.5_team_friend_relationships.md) |
-| 2 | QR会員証（管理一覧・履歴・使い方ガイド）、ダッシュボード、帰省・滞在予定、TODO・プロジェクト、アクセス解析、外観設定、オンボーディング | [F02.1](docs/features/F02.1_qr_membership.md), [F02.2](docs/features/F02.2_dashboard.md), [F02.11](docs/features/F02.11_return_stay_plan.md), [F02.3](docs/features/F02.3_todo_project.md), [F02.4](docs/features/F02.4_onboarding.md) |
+| 2 | QR会員証（管理一覧・履歴・拠点管理の6言語対応・使い方ガイド）、ダッシュボード、帰省・滞在予定、TODO・プロジェクト、アクセス解析、外観設定、オンボーディング | [F02.1](docs/features/F02.1_qr_membership.md), [F02.2](docs/features/F02.2_dashboard.md), [F02.11](docs/features/F02.11_return_stay_plan.md), [F02.3](docs/features/F02.3_todo_project.md), [F02.4](docs/features/F02.4_onboarding.md) |
 | 3 | スケジュール・出欠、個人スケジュール、Googleカレンダー連携、予約管理、シフト管理、緊急安否確認、順番待ち、イベント管理 | [F03.1](docs/features/F03.1_schedule_shared.md), [F03.2](docs/features/F03.2_schedule_personal.md), [F03.3](docs/features/F03.3_google_calendar.md), [F03.4](docs/features/F03.4_reservation.md)（v2枝番: [F03.4.1 メニュー](docs/features/F03.4.1_reservation_menu.md), [F03.4.2 枠テンプレート](docs/features/F03.4.2_reservation_slot_template.md), [F03.4.3 予約グループ](docs/features/F03.4.3_reservation_group_booking.md), [F03.4.4 マトリックスUI](docs/features/F03.4.4_reservation_matrix_ui.md)）, [F03.5](docs/features/F03.5_shift.md), [F03.6](docs/features/F03.6_safety_check.md), [F03.7](docs/features/F03.7_queue.md), [F03.8](docs/features/F03.8_event_management.md) |
-| 4 | タイムライン、チャット、プッシュ通知、ソーシャルプロフィール・フォロー、通報・モデレーション、グローバル検索、ゲーミフィケーション | [F04.1](docs/features/F04.1_timeline.md), [F04.2](docs/features/F04.2_chat.md), [F04.3](docs/features/F04.3_push_notification.md), [F04.4](docs/features/F04.4_social_profiles.md), [F04.5](docs/features/F04.5_moderation.md), [F04.6](docs/features/F04.6_search.md), [F04.7](docs/features/F04.7_gamification.md) |
+| 4 | タイムライン、チャット（自分の連絡先QR管理への入口）、プッシュ通知、ソーシャルプロフィール・フォロー、通報・モデレーション、グローバル検索、ゲーミフィケーション | [F04.1](docs/features/F04.1_timeline.md), [F04.2](docs/features/F04.2_chat.md), [F04.3](docs/features/F04.3_push_notification.md), [F04.4](docs/features/F04.4_social_profiles.md), [F04.5](docs/features/F04.5_moderation.md), [F04.6](docs/features/F04.6_search.md), [F04.7](docs/features/F04.7_gamification.md), [F04.8](docs/features/F04.8_contact.md) |
 | 5 | 掲示板、回覧板、電子印鑑、アンケート・投票、ファイル共有、ワークフロー・承認、フォームビルダー | [F05.1](docs/features/F05.1_bulletin_board.md), [F05.2](docs/features/F05.2_circular.md), [F05.3](docs/features/F05.3_digital_seal.md), [F05.4](docs/features/F05.4_survey_vote.md), [F05.5](docs/features/F05.5_file_sharing.md), [F05.6](docs/features/F05.6_workflow_approval.md), [F05.7](docs/features/F05.7_form_builder.md) |
 | 6 | CMS・ブログ、メンバー紹介・ギャラリー、タイムラインダイジェスト、活動記録、ナレッジベース | [F06.1](docs/features/F06.1_cms_blog.md), [F06.2](docs/features/F06.2_member_gallery.md), [F06.3](docs/features/F06.3_timeline_digest.md), [F06.4](docs/features/F06.4_activity_records.md), [F06.5](docs/features/F06.5_knowledge_base.md) |
 | 7 | サービス記録、パフォーマンス管理、備品管理、カルテ、スキル・資格管理、インシデント管理 | [F07.1](docs/features/F07.1_service_records.md), [F07.2](docs/features/F07.2_performance.md), [F07.3](docs/features/F07.3_equipment.md), [F07.4](docs/features/F07.4_chart.md), [F07.5](docs/features/F07.5_skill_certification.md), [F07.6](docs/features/F07.6_incident_management.md) |
 | 8 | マッチング、大会・リーグ管理、決済・会費・入退室、議決権行使・委任状、領収書、回数券、予算・会計管理 | [F08.1](docs/features/F08.1_matching.md), [F08.2](docs/features/F08.2_payments_access_control.md), [F08.3](docs/features/F08.3_voting_proxy.md), [F08.4](docs/features/F08.4_receipt.md), [F08.5](docs/features/F08.5_ticket_book.md), [F08.6](docs/features/F08.6_budget_accounting.md), [F08.7](docs/features/F08.7_tournament_league.md) |
 | 9 | 住民台帳、プロモーション配信、駐車場区画、LINE/SNS連携、施設予約、ダイレクトメール、広告、コルクボード、Webhook/外部API、デジタルサイネージ、メール配信基盤 | [F09.1](docs/features/F09.1_resident_registry.md), [F09.2](docs/features/F09.2_promotion_targeting.md), [F09.3](docs/features/F09.3_parking.md), [F09.4](docs/features/F09.4_line_sns.md), [F09.5](docs/features/F09.5_facility_booking.md), [F09.6](docs/features/F09.6_direct_mail.md), [F09.7](docs/features/F09.7_advertising.md), [F09.8](docs/features/F09.8_corkboard.md), [F09.9](docs/features/F09.9_webhook_api.md), [F09.10](docs/features/F09.10_digital_signage.md), [F09.18](docs/features/F09.18_email_delivery_infrastructure.md) |
-| 10 | 管理者ダッシュボード、通報モデレーション、監査ログ、経営分析、パフォーマンス監視、エラー監視 | [F10.1](docs/features/F10.1_admin_dashboard.md), [F10.2](docs/features/F10.2_moderation.md), [F10.3](docs/features/F10.3_audit_logs.md), [F10.4](docs/features/F10.4_business_analytics.md), [F10.5](docs/features/F10.5_performance_monitoring.md), [F10.6](docs/features/F10.6_error_monitoring.md) |
+| 10 | 管理者ダッシュボード（チーム・組織の設定集約）、通報モデレーション、監査ログ、経営分析、パフォーマンス監視、エラー監視 | [F10.1](docs/features/F10.1_admin_dashboard.md), [F10.1.1](docs/features/F10.1.1_team_org_admin_console/README.md), [F10.2](docs/features/F10.2_moderation.md), [F10.3](docs/features/F10.3_audit_logs.md), [F10.4](docs/features/F10.4_business_analytics.md), [F10.5](docs/features/F10.5_performance_monitoring.md), [F10.6](docs/features/F10.6_error_monitoring.md) |
 | 11 | オフライン対応/PWA、多言語コンテンツ、ポリッシュ・テスト・Docker化 | [F11.1](docs/features/F11.1_offline_pwa.md), [F11.2](docs/features/F11.2_multilingual_content.md) |
 
 ---

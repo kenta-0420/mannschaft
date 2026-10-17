@@ -78,25 +78,25 @@ const basePath = computed(() =>
     : `/teams/${props.scopeId}`,
 )
 
-// 初回と再試行で権限・モジュールを一緒に取り直す。取得失敗は「権限なし」や
+// 初回と再試行で権限を確認し、表示判定に必要なモジュールを取り直す。取得失敗は「権限なし」や
 // 「モジュール未有効」と区別し、利用者が再試行できるエラー面へ送る。
 async function loadSidebar() {
   loadState.value = 'loading'
   loadError.value = undefined
   enabledSlugs.value = new Set()
   try {
-    const [, modules] = await Promise.all([
-      // 権限取得は成否を返す契約なので、失敗を拒否へ変換し、モジュール応答を待たずに表示する。
-      loadPermissions().then((result) => {
-        if (!result.ok) throw result.error
-      }),
-      props.scopeType === 'organization'
-        ? getOrganizationModules(props.scopeId)
-        : getTeamModules(props.scopeId).then(response => response.data),
-    ])
-    enabledSlugs.value = new Set(
-      modules.filter(module => module.isEnabled).map(module => module.moduleSlug),
-    )
+    const result = await loadPermissions()
+    if (!result.ok) throw result.error
+    // SYSTEM_ADMINの通常表示はモジュール有効状態を使わない。所属限定APIも取得しない。
+    // メンバーレンズ中は通常どおりモジュール有効状態に従う。
+    if (roleName.value !== 'SYSTEM_ADMIN' || props.memberLensActive) {
+      const modules = props.scopeType === 'organization'
+        ? await getOrganizationModules(props.scopeId)
+        : (await getTeamModules(props.scopeId)).data
+      enabledSlugs.value = new Set(
+        modules.filter(module => module.isEnabled).map(module => module.moduleSlug),
+      )
+    }
     loadState.value = 'loaded'
   }
   catch (error) {
@@ -169,7 +169,7 @@ function isItemActive(item: SidebarItem): boolean {
       <div v-if="isCategoryVisible(category)">
         <!-- カテゴリヘッダー（クリックで展開/折り畳み） -->
         <button
-          class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
+          class="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
           @click="toggleCategory(category.key)"
         >
           <i :class="category.icon" class="text-sm" />
@@ -183,7 +183,7 @@ function isItemActive(item: SidebarItem): boolean {
             <NuxtLink
               v-if="isItemVisible(item) && isLinkItem(item)"
               :to="itemLinkTo(item)"
-              class="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors hover:bg-surface-100 dark:hover:bg-surface-700"
+              class="flex min-h-11 items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors hover:bg-surface-100 dark:hover:bg-surface-700"
               :class="isItemActive(item) ? 'bg-primary/10 text-primary font-medium' : 'text-surface-600 dark:text-surface-300'"
             >
               <i :class="item.icon" class="text-sm w-4" />
@@ -192,7 +192,7 @@ function isItemActive(item: SidebarItem): boolean {
             <!-- タブ遷移アイテム（path === ''） -->
             <button
               v-else-if="isItemVisible(item) && !isLinkItem(item)"
-              class="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-surface-600 dark:text-surface-300 transition-colors hover:bg-surface-100 dark:hover:bg-surface-700 text-left"
+              class="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-surface-600 dark:text-surface-300 transition-colors hover:bg-surface-100 dark:hover:bg-surface-700 text-left"
               @click="emit('tabNavigate', item)"
             >
               <i :class="item.icon" class="text-sm w-4" />

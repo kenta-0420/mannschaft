@@ -79,5 +79,26 @@
         "step2": "権限不足の場合は、対象のチーム・組織の管理者へ確認してください。"
       }
     }
+  },
+  "checkinLocationManager": {
+    "title": "セルフチェックイン拠点",
+    "add": "拠点を追加",
+    "empty": "拠点が登録されていません",
+    "name": "拠点名",
+    "status": "ステータス",
+    "active": "有効",
+    "inactive": "無効",
+    "autoComplete": "予約自動完了",
+    "actions": "操作",
+    "edit": "拠点を編集",
+    "delete": "拠点を削除",
+    "placeholder": "例: 本店受付",
+    "autoCompleteHint": "チェックイン時に予約を自動完了",
+    "cancel": "キャンセル",
+    "update": "更新",
+    "create": "作成",
+    "created": "拠点を作成しました",
+    "updated": "拠点を更新しました",
+    "deleted": "拠点を削除しました"
   }
 }
