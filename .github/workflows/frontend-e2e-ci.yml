@@ -93,9 +93,9 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=6144
         run: |
           free -m
-          node --input-type=module <<'NODE'
-          import { getHeapStatistics } from 'node:v8'
-          import { Worker } from 'node:worker_threads'
+          node <<'NODE'
+          const { getHeapStatistics } = require('node:v8')
+          const { Worker } = require('node:worker_threads')
           const heapMiB = () => Math.round(getHeapStatistics().heap_size_limit / 1024 / 1024)
           console.log(JSON.stringify({ scope: 'smoke-main', nodeOptions: process.env.NODE_OPTIONS, heapLimitMiB: heapMiB() }))
           const worker = new Worker(`
@@ -107,10 +107,12 @@ jobs:
             })
           `, { eval: true })
           worker.once('message', data => console.log(JSON.stringify(data)))
-          await new Promise((resolve, reject) => {
-            worker.once('error', reject)
-            worker.once('exit', code => code === 0 ? resolve() : reject(new Error(`heap診断worker exit ${code}`)))
-          })
+          ;(async () => {
+            await new Promise((resolve, reject) => {
+              worker.once('error', reject)
+              worker.once('exit', code => code === 0 ? resolve() : reject(new Error(`heap診断worker exit ${code}`)))
+            })
+          })().catch(error => { console.error(error); process.exitCode = 1 })
           NODE
           npx playwright test F15.4-org-team-search f221-swipe-dashboard F15.4-slug-navigation mobile/insight-ui-regressions mobile/common-controls --project=chromium --workers=1 --timeout=120000 --trace=retain-on-failure --output=test-results/smoke
 
