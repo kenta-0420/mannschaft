@@ -6,8 +6,10 @@ import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleDelegationRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.schedule.service.ScheduleAttendanceService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
@@ -56,6 +58,8 @@ class ScheduleProxySettingsContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private ObjectMapper json;
     @Autowired private ScheduleRepository schedules;
     @Autowired private ScheduleDelegationRepository delegations;
+    @Autowired private ScheduleAttendanceRepository attendances;
+    @Autowired private ScheduleAttendanceService attendanceService;
     @Autowired private ScheduleMapper mapper;
     @Autowired private EntityManagerFactory entityManagerFactory;
     @PersistenceContext private EntityManager em;
@@ -232,6 +236,7 @@ class ScheduleProxySettingsContractIT extends AbstractMySqlIntegrationTest {
             long single = listQueryCount(statistics);
             for (int i = 0; i < 8; i++) create("team", flags(i % 2 == 0, false));
             long many = listQueryCount(statistics);
+            System.out.printf("proxy-settings-query-count single=%d many=%d%n", single, many);
             assertThat(many).isLessThanOrEqualTo(single + 2);
         } finally {
             statistics.setStatisticsEnabled(original);
@@ -249,14 +254,22 @@ class ScheduleProxySettingsContractIT extends AbstractMySqlIntegrationTest {
     @Test
     void AC8_OFF後も既存の承認待ちと受諾済みを維持して新規だけ拒否する() throws Exception {
         long id = create("team", flags(true, false));
+        attendanceService.generateAttendanceRecords(id, List.of(admin, deputy, member, delegate));
         UUID pending = UUID.fromString(createDelegation(id, member, delegate).path("id").asText());
         update("team", id, Map.of("isProxyAutoAccept", true), "THIS_ONLY");
         UUID accepted = UUID.fromString(createDelegation(id, admin, deputy).path("id").asText());
+        em.flush();
+        em.clear();
+        // 委任作成に伴う正当な出欠変更の後、OFF 操作だけの影響を比較する。
+        JsonNode attendanceBefore = json.valueToTree(attendances.findByScheduleIdOrderByUserIdAsc(id));
+        assertThat(attendanceBefore).hasSize(4);
         update("team", id, flags(false, false), "THIS_ONLY");
         em.flush();
         em.clear();
         assertThat(delegations.findById(pending).orElseThrow().getStatus()).isEqualTo(ScheduleDelegationStatus.PENDING);
         assertThat(delegations.findById(accepted).orElseThrow().getStatus()).isEqualTo(ScheduleDelegationStatus.ACCEPTED);
+        assertThat(json.<JsonNode>valueToTree(attendances.findByScheduleIdOrderByUserIdAsc(id)))
+                .isEqualTo(attendanceBefore);
         mvc.perform(post("/api/v1/schedules/{id}/delegations", id).with(user(member.toString()))
                 .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("delegateId", deputy))))
                 .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.error.code").value("SCHEDULE_076"));
