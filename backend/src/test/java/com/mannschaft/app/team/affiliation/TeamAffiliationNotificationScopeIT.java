@@ -198,14 +198,16 @@ class TeamAffiliationNotificationScopeIT extends TeamNotificationOutboxItSupport
                 .containsOnly(direction.teamSide() ? f.team().id() : f.org().id());
     }
 
-    @Test
-    void 本人通知一覧_他人所有folderIdは404で通知を返さない() throws Exception {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 本人通知一覧_他人所有と不存在folderIdは404で通知を返さない(boolean missing) throws Exception {
         Fixture f = fixture(true);
         long folder = createFolder(f.actor(), NotificationScopeType.ORGANIZATION);
         addItem(folder, f.org().id());
 
         mockMvc.perform(get("/api/v1/notifications").with(user(String.valueOf(f.outsider())))
-                        .param("folderId", String.valueOf(folder)).param("scopeType", "ORGANIZATION"))
+                        .param("folderId", String.valueOf(missing ? Long.MAX_VALUE : folder))
+                        .param("scopeType", "ORGANIZATION"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("SCOPE_FOLDER_NOT_FOUND"));
     }
