@@ -5,12 +5,13 @@ import { flushPromises, mount } from '@vue/test-utils'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
-dayjs.extend(utc)
-dayjs.extend(timezone)
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import BudgetPage from './budget.vue'
 import BudgetGuideModal from '~/components/budget/BudgetGuideModal.vue'
 import BudgetGuideContent from '~/components/budget/BudgetGuideContent.vue'
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
