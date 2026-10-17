@@ -27,6 +27,10 @@ test.describe('calendar-mobile-header: 真mobileの見出しと詳細操作', ()
         expect.soft(box!.x, `${width}pxで見出し操作の左端が画面内`).toBeGreaterThanOrEqual(0)
         expect.soft(box!.x + box!.width, `${width}pxで見出し操作の右端が画面内`).toBeLessThanOrEqual(width)
       }
+      for (const box of boxes.slice(1)) {
+        expect.soft(box!.height, `${width}pxで見出し操作の高さを確保する`).toBeGreaterThanOrEqual(44)
+        expect.soft(box!.width, `${width}pxで見出し操作の幅を確保する`).toBeGreaterThanOrEqual(44)
+      }
       const viewport = await page.evaluate(() => ({
         innerWidth: window.innerWidth,
         clientWidth: document.documentElement.clientWidth,
