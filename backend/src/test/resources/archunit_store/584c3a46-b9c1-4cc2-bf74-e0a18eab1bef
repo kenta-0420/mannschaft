@@ -1108,7 +1108,6 @@ com.mannschaft.app.organization.service.OrganizationMembershipService (domain 'o
 com.mannschaft.app.organization.service.OrganizationMembershipService (domain 'organization') depends on other-domain entity com.mannschaft.app.team.entity.TeamOrgMembershipEntity (domain 'team')
 com.mannschaft.app.organization.service.OrganizationMembershipService (domain 'organization') depends on other-domain entity com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status (domain 'team')
 com.mannschaft.app.organization.service.OrganizationMembershipService (domain 'organization') depends on other-domain entity com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status (domain 'team')
-com.mannschaft.app.organization.service.OrganizationService (domain 'organization') depends on other-domain entity com.mannschaft.app.role.entity.InviteTokenEntity (domain 'role')
 com.mannschaft.app.organization.service.OrganizationService (domain 'organization') depends on other-domain entity com.mannschaft.app.role.entity.UserRoleEntity (domain 'role')
 com.mannschaft.app.organization.service.OrganizationService (domain 'organization') depends on other-domain entity com.mannschaft.app.role.entity.UserRoleEntity$UserRoleEntityBuilder (domain 'role')
 com.mannschaft.app.organization.service.OrganizationService (domain 'organization') depends on other-domain entity com.mannschaft.app.role.entity.UserRoleEntity$UserRoleEntityBuilder (domain 'role')
