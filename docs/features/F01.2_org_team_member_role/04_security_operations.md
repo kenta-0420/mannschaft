@@ -72,6 +72,7 @@ slug は既存 BIGINT 主キーテーブル（`teams` / `organizations`）上の
   - 親組織が存在しない・論理削除済みの場合は 404、権限不足は 403 を返す（存在チェックと権限チェックを分けることで情報漏洩を防ぐ）
   - チーム作成（`POST /teams`）は常に独立した状態で作成され、組織への所属は `POST /organizations/{slug}/team-invites` 経由で行うため、親リソース認可チェックは不要
 - **招待トークン**: UUID v4（推測不可能）を使用。HTTPS 必須。`SELECT ... FOR UPDATE` でアトミックに使用回数チェックと更新を行い同時参加による上限超過を防ぐ
+- **個人招待の閉鎖世代**: 発行世代と親の最新commit済み世代・状態を照合する。物理失効が遅延しても旧リンク/QR・DMから参加できず、解除で復元しない。roleのuser/token lock下では親を独立primary TXでnonlocking読取し、受諾と休止が重なる場合の判定点はその読取とする（§5「個人招待の閉鎖世代契約」）。親共有lockはrole発行commit後の再確認でのみ取得する。
 - **ロール昇格制限**: ADMIN は自分と同等以上（priority <= 2）のロールを他ユーザーに付与できない（自己昇格・SYSTEM_ADMIN 付与を防止）
 - **ADMIN 昇格時の2FA必須**: ADMIN ロールへの昇格操作は、対象ユーザーが `two_factor_auth` テーブルに有効な TOTP レコードを持つ場合のみ許可する。2FA 未設定のまま ADMIN にすることはできない（README: 「SYSTEM_ADMIN・ADMIN には2FA必須」）
 - **オーナー委譲の宛先照合（承諾型・IDOR 防止 / 2026-07-18）**: オーナー委譲は承諾型（`ownership_transfer_offers`）で行う。`accept`/`decline` は **オファーの `target_user_id` と実行ユーザー ID を Service 入口で照合** し、不一致は 403 とする（他人宛ての委譲オファーを第三者が承諾する IDOR を封じる）。承諾時に 2FA を再チェックし、`checkLastAdmin` は承諾（新 ADMIN 確定後）でのみスキップする。オファー作成（打診）は ADMIN のみ・同一スコープの PENDING は 1 件まで（409）。監査ログは `TEAM_OWNERSHIP_TRANSFER_OFFERED` / `ORGANIZATION_OWNERSHIP_TRANSFER_OFFERED`（打診）、`TEAM_ADMIN_TRANSFERRED` / `ORGANIZATION_ADMIN_TRANSFERRED`（承諾＝実行・metadata に `offer_id` 含む）、`*_OWNERSHIP_TRANSFER_DECLINED` / `*_OWNERSHIP_TRANSFER_CANCELLED`（辞退/取消）を記録する

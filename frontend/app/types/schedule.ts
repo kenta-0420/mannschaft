@@ -234,7 +234,7 @@ export interface CreateScheduleDelegationRequest {
 }
 
 export interface ScheduleDelegationListResponse {
-  data: ScheduleDelegationResponse[]
+  delegations: ScheduleDelegationResponse[]
   total: number
   page: number
   size: number
