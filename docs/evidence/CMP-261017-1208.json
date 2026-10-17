@@ -124,11 +124,19 @@
       "description": "使い方5カードと6言語",
       "tests": [
         {
-          "name": "使い方をヘッダーから開き閉じる / 6言語locale番人 / モバイル実機回帰",
+          "name": "使い方をヘッダーから開き閉じる",
           "evidence": "frontend/app/pages/teams/[slug]/budget.spec.ts"
         },
         {
-          "name": "green結果と実機・住民の照合報告",
+          "name": "6言語ロケールの日本語残存・構造・コンパイル・検出器の番人（46件成功）",
+          "evidence": "frontend/tests/unit/i18n/locale-no-japanese-residue.spec.ts"
+        },
+        {
+          "name": "会計年度フォーム・日付選択・使い方の操作領域は360px幅でも44x44px以上",
+          "evidence": "frontend/tests/e2e/real/budget-mobile-touch-targets.spec.ts"
+        },
+        {
+          "name": "案内5カード・6言語と実機・住民の検証結果",
           "evidence": "docs/evidence/CMP-261017-1208/report.md"
         }
       ]
@@ -138,12 +146,12 @@
       "description": "HTTP呼出回数が一覧1・summary1・費目追加0",
       "tests": [
         {
-          "name": "チームslugの年度作成は期間3項目をそのまま送る / 実機HTTP計測",
-          "evidence": "frontend/app/composables/useBudgetApi.spec.ts"
+          "name": "実HTTP計測: reload時の年度一覧GET1・summary GET1・費目別追加GET0",
+          "evidence": "docs/evidence/CMP-261017-1208/report.md"
         },
         {
-          "name": "green結果と実機・住民の照合報告",
-          "evidence": "docs/evidence/CMP-261017-1208/report.md"
+          "name": "関連契約の裏付け: チームslugの年度作成は期間3項目をそのまま送る（呼出回数の証明は実HTTP計測を参照）",
+          "evidence": "frontend/app/composables/useBudgetApi.spec.ts"
         }
       ]
     }
