@@ -133,13 +133,19 @@ test('deの組織予定の見出し・追加操作・未選択案内を翻訳す
     const titleBox = await heading.boundingBox()
     const addBox = await add.boundingBox()
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
+    const contentWidth = await add.evaluate(button => ({
+      scroll: button.scrollWidth,
+      client: button.clientWidth,
+      label: button.querySelector('.p-button-label')?.getBoundingClientRect().toJSON(),
+    }))
     await testInfo.attach(`org-header-${width}.json`, {
-      body: JSON.stringify({ width, titleBox, addBox, scrollWidth }), contentType: 'application/json',
+      body: JSON.stringify({ width, titleBox, addBox, scrollWidth, contentWidth }), contentType: 'application/json',
     })
     expect.soft(scrollWidth).toBeLessThanOrEqual(width)
     expect.soft(titleBox!.x + titleBox!.width).toBeLessThanOrEqual(width)
     expect.soft(addBox!.x + addBox!.width).toBeLessThanOrEqual(width)
     expect.soft(addBox!.height).toBeGreaterThanOrEqual(44)
+    expect.soft(contentWidth.scroll, `${width}pxで追加ボタンの文字を切らない`).toBeLessThanOrEqual(contentWidth.client)
   }
 })
 
