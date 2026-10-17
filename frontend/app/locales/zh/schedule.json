@@ -16,6 +16,7 @@
       "location": "地点",
       "locationPlaceholder": "地点（可选）",
       "scope": "创建到",
+      "color": "颜色",
       "personalScope": "个人日程"
     },
     "status": {
@@ -28,6 +29,8 @@
     "detail": {
       "delegationError": "无法加载代理出勤数量"
     },
+    "selectDateOrEvent": "请选择日期或活动",
+    "confirmDelete": "确定删除此活动吗？",
     "selectEvent": "请选择活动",
     "page_title": "日程",
     "created_by": "创建者：{name}",

@@ -9,6 +9,7 @@ import {
 
 definePageMeta({ middleware: 'auth' })
 
+const { t } = useI18n()
 const route = useRoute()
 const orgSlug = String(route.params.slug)
 const scheduleApi = useScheduleApi()
@@ -67,7 +68,7 @@ function onEditEvent() {
 
 async function onDeleteEvent() {
   if (!canManageSchedule.value) return
-  if (!selectedEventId.value || !confirm('このイベントを削除しますか？')) return
+  if (!selectedEventId.value || !confirm(t('schedule.confirmDelete'))) return
   try {
     await scheduleApi.deleteSchedule('organization', orgSlug, selectedEventId.value)
     showDetailPanel.value = false
@@ -97,8 +98,8 @@ onMounted(async () => {
   <PageLoading v-if="loading" />
   <div v-else>
     <div class="mb-4 flex items-center justify-between">
-      <PageHeader title="スケジュール" />
-      <Button v-if="canManageSchedule" label="予定を追加" icon="pi pi-plus" @click="onAddButtonClick" />
+      <PageHeader :title="t('schedule.page_title')" />
+      <Button v-if="canManageSchedule" :label="t('schedule.event_add')" class="min-h-11 min-w-11" icon="pi pi-plus" @click="onAddButtonClick" />
     </div>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -130,7 +131,7 @@ onMounted(async () => {
           />
         </SectionCard>
         <SectionCard v-else>
-          <DashboardEmptyState icon="pi pi-calendar" message="イベントを選択してください" />
+          <DashboardEmptyState icon="pi pi-calendar" :message="t('schedule.selectEvent')" />
         </SectionCard>
       </div>
     </div>

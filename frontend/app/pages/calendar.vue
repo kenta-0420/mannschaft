@@ -302,7 +302,7 @@ function onEditEvent() {
 }
 
 async function onDeleteEvent() {
-  if (!selectedEventId.value || !confirm('この予定を削除しますか？')) return
+  if (!selectedEventId.value || !confirm(t('schedule.confirmDelete'))) return
   try {
     if (selectedEventIsPersonal.value) {
       await scheduleApi.deletePersonalSchedule(selectedEventId.value)
@@ -784,7 +784,7 @@ onMounted(async () => {
           : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'"
         @click="onTabChange('calendar')"
       >
-        <i class="pi pi-calendar mr-1.5" />カレンダー
+        <i class="pi pi-calendar mr-1.5" />{{ t('nav.calendar') }}
       </button>
       <button
         type="button"
@@ -1027,7 +1027,7 @@ onMounted(async () => {
 
           <!-- 空状態 -->
           <SectionCard v-else>
-            <DashboardEmptyState icon="pi pi-calendar" message="日付またはイベントを選択してください" />
+            <DashboardEmptyState icon="pi pi-calendar" :message="t('schedule.selectDateOrEvent')" />
           </SectionCard>
         </div>
       </div>

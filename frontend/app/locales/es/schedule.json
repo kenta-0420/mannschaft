@@ -16,6 +16,7 @@
       "location": "Lugar",
       "locationPlaceholder": "Lugar (opcional)",
       "scope": "Crear en",
+      "color": "Color",
       "personalScope": "Eventos personales"
     },
     "status": {
@@ -28,6 +29,8 @@
     "detail": {
       "delegationError": "No se pudo cargar el número de asistencias delegadas"
     },
+    "selectDateOrEvent": "Selecciona una fecha o un evento",
+    "confirmDelete": "¿Eliminar este evento?",
     "selectEvent": "Selecciona un evento",
     "page_title": "Agenda",
     "created_by": "Creado por: {name}",

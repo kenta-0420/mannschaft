@@ -328,7 +328,7 @@ onMounted(async () => {
         icon="pi pi-play"
         outlined
         size="small"
-        class="w-full"
+        class="w-full min-h-11 min-w-11"
         :loading="recordingMatch"
         :disabled="recordBlocked"
         @click="recordMatch"

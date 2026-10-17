@@ -16,6 +16,7 @@
       "location": "場所",
       "locationPlaceholder": "場所（任意）",
       "scope": "作成先",
+      "color": "色",
       "personalScope": "個人の予定"
     },
     "status": {
@@ -28,6 +29,8 @@
     "detail": {
       "delegationError": "代理出席件数を取得できませんでした"
     },
+    "selectDateOrEvent": "日付またはイベントを選択してください",
+    "confirmDelete": "この予定を削除しますか？",
     "selectEvent": "イベントを選択してください",
     "page_title": "スケジュール",
     "created_by": "作成: {name}",

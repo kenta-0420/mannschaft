@@ -16,6 +16,7 @@
       "location": "Ort",
       "locationPlaceholder": "Ort (optional)",
       "scope": "Erstellen in",
+      "color": "Farbe",
       "personalScope": "Persönliche Termine"
     },
     "status": {
@@ -28,6 +29,8 @@
     "detail": {
       "delegationError": "Die Anzahl der Vertretungen konnte nicht geladen werden"
     },
+    "selectDateOrEvent": "Bitte ein Datum oder einen Termin auswählen",
+    "confirmDelete": "Diesen Termin löschen?",
     "selectEvent": "Bitte einen Termin auswählen",
     "page_title": "Terminplan",
     "created_by": "Erstellt von: {name}",

@@ -16,6 +16,7 @@
       "location": "Location",
       "locationPlaceholder": "Location (optional)",
       "scope": "Create in",
+      "color": "Color",
       "personalScope": "Personal events"
     },
     "status": {
@@ -28,6 +29,8 @@
     "detail": {
       "delegationError": "Could not load proxy attendance count"
     },
+    "selectDateOrEvent": "Select a date or event",
+    "confirmDelete": "Delete this event?",
     "selectEvent": "Select an event",
     "page_title": "Schedule",
     "created_by": "Created by: {name}",
