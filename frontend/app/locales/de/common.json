@@ -2967,5 +2967,79 @@
     "generic_title": "Es ist ein Fehler aufgetreten",
     "generic_description": "Bitte versuchen Sie es in Kürze erneut. Besteht das Problem weiterhin, wenden Sie sich an Ihre Administration.",
     "back_home": "Zurück zur Startseite"
+  },
+  "budget_accounting": {
+    "title": "予算・会計",
+    "add_year": "年度を追加",
+    "fiscal_year": "会計年度",
+    "default_name": "{year}年度",
+    "name": "年度名（必須）",
+    "name_placeholder": "例: 2026年度",
+    "start_date": "開始日（必須）",
+    "end_date": "終了日（必須）",
+    "add": "追加",
+    "created": "年度を追加しました",
+    "empty_years": "会計年度がありません",
+    "empty_years_hint": "「年度を追加」から、集計したい期間を登録してください。",
+    "totalIncome": "収入",
+    "totalExpense": "支出",
+    "balance": "残高",
+    "categories": "費目別の予算と実績",
+    "empty_categories": "この年度には費目がありません",
+    "budget_amount": "予算 {amount}",
+    "actual_amount": "実績 {amount}",
+    "execution_rate": "消化率 {rate}%",
+    "validation": {
+      "name_required": "年度名を入力してください。",
+      "name_max": "年度名は100文字以内で入力してください。",
+      "date_required": "日付を入力してください。",
+      "date_order": "終了日は開始日より後の日付にしてください。"
+    }
+  },
+  "budget_guide": {
+    "title": "予算・会計の使い方",
+    "description": "年度を選び、その期間の収入・支出と費目別の予算を確認します。",
+    "what": {
+      "title": "会計年度とは",
+      "body": "収支をまとめて確認する期間です。4月から翌年3月に限らず、チームの活動に合う開始日と終了日を設定できます。",
+      "steps": {
+        "step1": "まず、確認したい期間の年度があるか、画面上部の年度一覧を見ます。"
+      }
+    },
+    "create": {
+      "title": "年度を追加する",
+      "body": "管理者・副管理者が操作できます。追加するのは費目ではなく、収支を集計する年度です。",
+      "steps": {
+        "step1": "「年度を追加」を押します。",
+        "step2": "年度名（空白以外の1〜100文字）、開始日、終了日を入力します。終了日は開始日より後にします。",
+        "step3": "「追加」を押します。成功すると新しい年度が選ばれます。収支や費目が未登録なら集計は0円、費目は未登録と表示されます。"
+      }
+    },
+    "switch": {
+      "title": "確認する年度を切り替える",
+      "body": "画面上部の年度名を選ぶと、その年度の集計に切り替わります。",
+      "steps": {
+        "step1": "確認したい年度名を押します。",
+        "step2": "読み込みが終わったら、収入・支出・残高と費目を確認します。"
+      }
+    },
+    "summary": {
+      "title": "集計と費目の読み方",
+      "body": "収入は入ったお金、支出は使ったお金、残高は収入から支出を引いた金額です。費目はお金の用途ごとの分類です。",
+      "steps": {
+        "step1": "費目ごとの「予算」は予定額、「実績」は記録済みの金額です。",
+        "step2": "「消化率」は予算に対する実績の割合です。100%を超えると赤字で表示されます。",
+        "step3": "この画面で行える登録は年度追加です。費目作成や収支の直接入力はこの画面にはありません。"
+      }
+    },
+    "trouble": {
+      "title": "困ったとき",
+      "body": "データがない場合と、読み込みに失敗した場合は表示が異なります。",
+      "steps": {
+        "step1": "「会計年度がありません」と出たら、「年度を追加」から最初の期間を登録します。",
+        "step2": "通信エラーでは「再試行」を押します。権限エラーではチームの管理者に確認してください。",
+        "step3": "追加に失敗しても入力は残ります。表示された理由や入力内容を確認してから、もう一度「追加」を押します。"
+      }
+    }
   }
 }
