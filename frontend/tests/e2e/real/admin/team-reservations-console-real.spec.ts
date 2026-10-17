@@ -65,7 +65,7 @@ test('ADMIN: 管理カードからSPA遷移・管理ハブへ戻る・履歴・�
   await expectSameDocument(page)
   await page.screenshot({ path: 'test-results/team-reservations-console-desktop.png', fullPage: true })
   await page.getByTestId('team-admin-reservations')
-    .getByRole('link', { name: 'チーム管理コンソール', exact: true }).click()
+    .locator(`a[href="${hubPath}"]`).click()
   await expect(page).toHaveURL(new RegExp(`${hubPath}/?$`))
   await expectSameDocument(page)
   await page.goBack()
