@@ -13,7 +13,9 @@ mockNuxtImport('useTeamApi', () => () => ({ getTeam }))
 mockNuxtImport('useModuleApi', () => () => ({ getTeamModules }))
 mockNuxtImport('useScopeLabels', () => () => ({ templateLabel: {}, visibilityLabel: {} }))
 mockNuxtImport('useRoleAccess', () => () => ({
-  roleName: ref('ADMIN'), loading: ref(false), isAdmin: ref(true), isAdminOrDeputy: ref(true),
+  roleName: ref('ADMIN'), permissions: ref([]), loading: ref(false),
+  isAdmin: ref(true), isScopeAdmin: ref(true), canGrantAdminOnlyPermissions: ref(true),
+  isAdminOrDeputy: ref(true),
   loadPermissions: vi.fn().mockResolvedValue({ ok: true }),
 }))
 mockNuxtImport('useDashboardWidgetVisibility', () => () => ({
