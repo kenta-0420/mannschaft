@@ -84,16 +84,19 @@ describe('予定詳細の作成者翻訳（CMP-261017-0854）', () => {
 })
 
 describe('予定詳細の状態翻訳（CMP-261017-1629）', () => {
-  it('BE実状態3種が6言語へ表示中切替し、未知状態のfallbackを維持する', async () => {
+  it('BE実状態3種・旧2状態が6言語へ表示中切替し、未知状態のfallbackを維持する', async () => {
     const wrapper = await mountPanel('')
     const labels = {
-      ja: ['予定', 'キャンセル', '完了'], en: ['Scheduled', 'Cancelled', 'Completed'],
-      zh: ['已安排', '已取消', '已完成'], ko: ['예정', '취소됨', '완료됨'],
-      es: ['Programado', 'Cancelado', 'Completado'], de: ['Geplant', 'Abgesagt', 'Abgeschlossen'],
+      ja: ['予定', 'キャンセル', '完了', '下書き', '公開中'],
+      en: ['Scheduled', 'Cancelled', 'Completed', 'Draft', 'Published'],
+      zh: ['已安排', '已取消', '已完成', '草稿', '已发布'],
+      ko: ['예정', '취소됨', '완료됨', '초안', '공개됨'],
+      es: ['Programado', 'Cancelado', 'Completado', 'Borrador', 'Publicado'],
+      de: ['Geplant', 'Abgesagt', 'Abgeschlossen', 'Entwurf', 'Veröffentlicht'],
     }
     for (const locale of ['ja', 'en', 'zh', 'ko', 'es', 'de'] as const) {
       await wrapper.vm.$i18n.setLocale(locale)
-      for (const [index, status] of ['SCHEDULED', 'CANCELLED', 'COMPLETED'].entries()) {
+      for (const [index, status] of ['SCHEDULED', 'CANCELLED', 'COMPLETED', 'DRAFT', 'PUBLISHED'].entries()) {
         await wrapper.setProps({ event: { ...event(''), status } })
         const label = wrapper.vm.$t(`schedule.status.${status.toLowerCase()}`)
         expect(label).not.toBe(`schedule.status.${status.toLowerCase()}`)
