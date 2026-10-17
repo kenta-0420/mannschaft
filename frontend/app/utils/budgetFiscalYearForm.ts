@@ -40,4 +40,5 @@ export function budgetFiscalYearSchema(t: (key: string) => string) {
     })
 }
 
-export type FiscalYearForm = z.infer<ReturnType<typeof budgetFiscalYearSchema>>
+export type FiscalYearFormInput = z.input<ReturnType<typeof budgetFiscalYearSchema>>
+export type FiscalYearForm = z.output<ReturnType<typeof budgetFiscalYearSchema>>

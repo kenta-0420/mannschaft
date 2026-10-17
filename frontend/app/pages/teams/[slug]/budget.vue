@@ -4,7 +4,11 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import type { FiscalYearResponse, BudgetSummary } from '~/types/budget'
 import { toLocalDateString } from '~/utils/localDate'
-import { budgetFiscalYearSchema, type FiscalYearForm } from '~/utils/budgetFiscalYearForm'
+import {
+  budgetFiscalYearSchema,
+  type FiscalYearForm,
+  type FiscalYearFormInput,
+} from '~/utils/budgetFiscalYearForm'
 
 definePageMeta({ layout: 'team', middleware: 'auth' })
 const route = useRoute()
@@ -30,7 +34,7 @@ let summaryRequest = 0
 
 const schema = budgetFiscalYearSchema(t)
 const { defineField, handleSubmit, errors, resetForm, setErrors, isSubmitting } =
-  useForm<FiscalYearForm>({
+  useForm<FiscalYearFormInput, FiscalYearForm>({
     validationSchema: toTypedSchema(schema),
     initialValues: { name: '', startDate: null, endDate: null },
   })
