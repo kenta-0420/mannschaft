@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
+import { useNuxtApp } from '#app'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import EventDetailPanel from './EventDetailPanel.vue'
@@ -46,6 +47,13 @@ async function mountPanel(displayName: string) {
   await flushPromises()
   return wrapper
 }
+
+// 表示の追従を検査するため、辞書のcoldロードはhookで完了させる。
+// 実際の言語切替と描画は各case内で行い、cold切替は実機で検証する。
+beforeAll(async () => {
+  const i18n = useNuxtApp().$i18n
+  await Promise.all(['de', 'en', 'ja'].map((locale) => i18n.loadLocaleMessages(locale)))
+})
 
 describe('予定詳細の作成者翻訳（CMP-261017-0854）', () => {
   it('特殊文字を名前のテキストとして保持し、表示中の言語変更に追従する', async () => {

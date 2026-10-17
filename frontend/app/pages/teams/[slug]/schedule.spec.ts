@@ -1,5 +1,6 @@
+import { useNuxtApp } from '#app'
 import { ref } from 'vue'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import SchedulePage from './schedule.vue'
@@ -41,6 +42,13 @@ async function mountPage() {
   await flushPromises()
   return wrapper
 }
+
+// 表示の追従を検査するため、辞書のcoldロードはhookで完了させる。
+// 実際の言語切替と描画は各case内で行い、cold切替は実機で検証する。
+beforeAll(async () => {
+  const i18n = useNuxtApp().$i18n
+  await Promise.all(['de', 'en', 'ja'].map((locale) => i18n.loadLocaleMessages(locale)))
+})
 
 describe('チーム予定の翻訳（CMP-261017-0854）', () => {
   beforeEach(() => {
