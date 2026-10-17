@@ -389,6 +389,7 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
       expect(href).toBeTruthy()
       await link.click()
       await expect(member).toHaveURL(new URL(href!, BASE).href)
+      await expect(link).toHaveCount(0)
       return member.url()
     }
     await loginViaApi(member, USER, { apiBaseUrl: API })
@@ -752,6 +753,7 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
         expect(href).toBeTruthy()
         await link.click()
         await expect(applicant).toHaveURL(new URL(href!, BASE).href)
+        await expect(link).toHaveCount(0)
         return applicant.url()
       }
       // 対象条件も実設定UIで変更し、非所属本人の003を各言語で観測する。
