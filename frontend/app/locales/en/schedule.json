@@ -1,5 +1,7 @@
 {
   "schedule": {
+    "page_title": "Schedule",
+    "created_by": "Created by: {name}",
     "attendance": {
       "yes": "Attend",
       "no": "Absent",

@@ -1,5 +1,7 @@
 {
   "schedule": {
+    "page_title": "일정",
+    "created_by": "작성자: {name}",
     "attendance": {
       "yes": "참석",
       "no": "불참",

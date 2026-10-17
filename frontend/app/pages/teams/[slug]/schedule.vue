@@ -105,12 +105,12 @@ onMounted(async () => {
   <PageLoading v-if="loading" />
   <div v-else>
     <div class="mb-4 flex items-center justify-between">
-      <PageHeader title="スケジュール" />
+      <PageHeader :title="$t('schedule.page_title')" />
       <div class="flex items-center gap-2">
         <NuxtLink :to="`/teams/${teamSlug}/schedule-keeps`">
           <Button :label="$t('scheduleKeep.title')" icon="pi pi-bookmark" outlined data-testid="schedule-keep-nav-link" />
         </NuxtLink>
-        <Button v-if="canManageSchedule" label="予定を追加" icon="pi pi-plus" @click="onAddButtonClick" />
+        <Button v-if="canManageSchedule" :label="$t('schedule.event_add')" icon="pi pi-plus" @click="onAddButtonClick" />
       </div>
     </div>
 

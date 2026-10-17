@@ -1,5 +1,7 @@
 {
   "schedule": {
+    "page_title": "日程",
+    "created_by": "创建者：{name}",
     "attendance": {
       "yes": "出席",
       "no": "缺席",
