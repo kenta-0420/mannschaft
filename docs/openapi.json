@@ -51076,7 +51076,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateFiscalYearRequest"
+                "$ref": "#/components/schemas/ScopedCreateFiscalYearRequest"
               }
             }
           },
@@ -75639,7 +75639,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateFiscalYearRequest"
+                "$ref": "#/components/schemas/ScopedCreateFiscalYearRequest"
               }
             }
           },
@@ -189916,7 +189916,7 @@
           }
         }
       },
-      "CreateFiscalYearRequest": {
+      "ScopedCreateFiscalYearRequest": {
         "type": "object",
         "properties": {
           "endDate": {
@@ -189928,14 +189928,6 @@
             "maxLength": 100,
             "minLength": 0
           },
-          "scopeId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "scopeType": {
-            "type": "string",
-            "minLength": 1
-          },
           "startDate": {
             "type": "string",
             "format": "date"
@@ -189943,7 +189935,7 @@
         },
         "required": [
           "endDate",
-          "scopeId",
+          "name",
           "startDate"
         ]
       },
@@ -218668,6 +218660,37 @@
             "type": "boolean"
           }
         }
+      },
+      "CreateFiscalYearRequest": {
+        "type": "object",
+        "properties": {
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeType": {
+            "type": "string",
+            "minLength": 1
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "endDate",
+          "scopeId",
+          "startDate"
+        ]
       },
       "UpdatePublicVisibleRequest": {
         "type": "object",
