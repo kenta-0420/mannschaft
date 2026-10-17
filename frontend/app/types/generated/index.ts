@@ -63539,7 +63539,8 @@ export interface components {
         FollowTeamRequest: {
             comment?: string;
             /** Format: int64 */
-            targetTeamId: number;
+            targetTeamId?: number;
+            targetTeamSlug?: string;
         };
         ApiResponseFollowTeamResponse: {
             data?: components["schemas"]["FollowTeamResponse"];

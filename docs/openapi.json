@@ -192422,11 +192422,11 @@
           "targetTeamId": {
             "type": "integer",
             "format": "int64"
+          },
+          "targetTeamSlug": {
+            "type": "string"
           }
-        },
-        "required": [
-          "targetTeamId"
-        ]
+        }
       },
       "ApiResponseFollowTeamResponse": {
         "type": "object",

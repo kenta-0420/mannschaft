@@ -1272,4 +1272,46 @@ public class TeamService {
                         team.getArchivedAt(), team.getCreatedAt()))
                 .build();
     }
+
+    // ═════════════════════════════════════════════════════════════
+    // フレンドチームのフォロー先判定（CMP-261012-0315）
+    // 他ドメイン（social）に TeamEntity を渡さず、ID と真偽値だけを返す。
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * slug からフォロー可能なチームの ID を解決する。
+     *
+     * <p>不在・論理削除済み・アーカイブ済み・ACTIVE 以外（PROVISIONED）は空を返す。
+     * 呼び出し側（social）は空を一律に「フォロー対象が存在しない」として扱う。</p>
+     *
+     * @param slug チームの slug
+     * @return フォロー可能なチームの ID。該当なしは空
+     */
+    public Optional<Long> resolveFollowableTeamId(String slug) {
+        if (slug == null) {
+            return Optional.empty();
+        }
+        return teamRepository.findBySlugAndDeletedAtIsNull(slug)
+                .filter(TeamService::isFollowable)
+                .map(TeamEntity::getId);
+    }
+
+    /**
+     * 指定 ID のチームがフォロー可能か判定する。
+     * 不在・論理削除済み・アーカイブ済み・ACTIVE 以外（PROVISIONED）は false。
+     *
+     * @param teamId チーム ID
+     * @return フォロー可能なら true
+     */
+    public boolean isFollowableTeam(Long teamId) {
+        if (teamId == null) {
+            return false;
+        }
+        return teamRepository.findById(teamId).filter(TeamService::isFollowable).isPresent();
+    }
+
+    private static boolean isFollowable(TeamEntity team) {
+        return team.getArchivedAt() == null
+                && team.getLifecycleStatus() == TeamEntity.LifecycleStatus.ACTIVE;
+    }
 }
