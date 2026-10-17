@@ -202,7 +202,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 > 📄 詳細設計: [docs/features/F01.1_auth.md](docs/features/F01.1_auth.md) | [docs/features/F01.2_org_team_member_role.md](docs/features/F01.2_org_team_member_role.md) | [docs/features/F01.2.1_org_team_groups.md](docs/features/F01.2.1_org_team_groups.md)（チーム加盟の双方向化・チームグループ／🟡 実装中: 申請受付設定・申請フォーム・申請ボタン判定・公開 API の受付フラグ・所属チーム一覧からの除名 UI は実装済み。除名は組織 ADMIN の管理レンズで確認後に実行でき、グループ機能 off でも利用可能） | [docs/features/F01.5_team_friend_relationships.md](docs/features/F01.5_team_friend_relationships.md)
 
-- **2要素認証 (2FA)**: TOTP（Google Authenticator等）対応。SYSTEM_ADMIN・ADMINには必須化
+- **多要素認証 (2FA)**: TOTP（Google Authenticator等）・メールのワンタイムコード・バックアップコード・WebAuthn対応（SMSは非採用）。ログイン時の試行はセッション単位5回・ユーザー単位10回/30分で制限。SYSTEM_ADMIN・ADMINには必須化
 - **OAuth2ソーシャルログイン**: Google / LINE / Apple によるワンクリック登録・ログイン
 - **パスワードリセット**: メールによるリセットフロー。トークン有効期限は **30分**
 - **レート制限・ブルートフォース対策**: ログイン試行を IP + アカウント単位で Valkey カウンター管理。5回失敗でアカウントを **30分** ロック。パスワードリセット・2FA検証エンドポイントにも同様のレート制限を適用する
