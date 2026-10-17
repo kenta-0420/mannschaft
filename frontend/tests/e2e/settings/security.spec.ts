@@ -309,6 +309,11 @@ test.describe('未解析セッションのモバイル折返し', () => {
         expect(box!.height).toBeGreaterThanOrEqual(44)
         expect(box!.x).toBeGreaterThanOrEqual(0)
         expect(box!.x + box!.width).toBeLessThanOrEqual(width)
+        const bulk = await page.getByRole('button', { name: '全てログアウト', exact: true }).boundingBox()
+        expect(bulk).not.toBeNull()
+        expect(bulk!.width).toBeGreaterThanOrEqual(44)
+        expect(bulk!.height).toBeGreaterThanOrEqual(44)
+        expect(bulk!.x + bulk!.width).toBeLessThanOrEqual(width)
         const textLayout = await label.evaluate(el => {
           const style = getComputedStyle(el)
           const range = document.createRange()
