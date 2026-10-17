@@ -18,6 +18,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -109,6 +110,9 @@ public class DataExportService {
      * @param categories 収集カテゴリ
      */
     @Async("job-pool")
+    // 呼出し元TXを外側の失敗処理へ持ち込まず、内部のREQUIRES_NEWごとに確定する。
+    // D-3Tの既存28件は実TX越境が未解消のため、この入口の監視を維持する。
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void processExportAsync(Long exportId, UserEmailInfo userInfo, Set<String> categories) {
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);

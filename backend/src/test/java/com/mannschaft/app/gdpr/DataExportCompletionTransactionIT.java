@@ -11,10 +11,14 @@ import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.Map;
 import java.util.List;
@@ -37,6 +41,7 @@ class DataExportCompletionTransactionIT extends AbstractMySqlIntegrationTest {
     @Autowired private DataExportService service;
     @Autowired private DataExportRepository exports;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private PlatformTransactionManager transactionManager;
     // Storageは外部I/O境界。具象型を必要とする既存管理Beanとの型互換も維持する。
     @MockitoBean private R2StorageService storage;
     @MockitoBean(name = "job-pool") private Executor jobs;
@@ -73,6 +78,42 @@ class DataExportCompletionTransactionIT extends AbstractMySqlIntegrationTest {
         assertThat(count("GDPR_EXPORT_READY", entity.getId())).isZero();
         assertThat(count("GDPR_EXPORT_FAILED", entity.getId())).isEqualTo(1);
         verify(storage).delete("gdpr-exports/" + USER_ID + "/" + entity.getId() + ".zip");
+    }
+
+    @Test
+    void 異常_呼出し元TXを外部削除へ持ち込まずrollback後もFAILEDと失敗通知を保持する() {
+        UserEmailInfo own = new UserEmailInfo(USER_ID + 3, "zip-tx-caller@example.com",
+                "試験", "本人", new PrefetchedPersonalData(List.of()));
+        DataExportEntity entity = service.requestExport(own.userId(), Set.of("memberships"));
+        AtomicBoolean first = new AtomicBoolean(true);
+        AtomicBoolean cleanupCalled = new AtomicBoolean(false);
+        AtomicBoolean cleanupHadTransaction = new AtomicBoolean(true);
+        doAnswer(invocation -> {
+            if (first.getAndSet(false)) throw new IllegalStateException("owned caller outbox failure");
+            return invocation.callRealMethod();
+        }).when(encryption).encryptBytes(any(byte[].class));
+        doAnswer(invocation -> {
+            cleanupCalled.set(true);
+            cleanupHadTransaction.set(TransactionSynchronizationManager.isActualTransactionActive());
+            return null;
+        }).when(storage).delete("gdpr-exports/" + own.userId() + "/" + entity.getId() + ".zip");
+
+        // 同期job executorでもSpring proxyを通し、実呼出し元TXの中断・再開を観測する。
+        assertThat(AopUtils.isAopProxy(service)).isTrue();
+        TransactionTemplate caller = new TransactionTemplate(transactionManager);
+        caller.executeWithoutResult(status -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+            service.processExportAsync(entity.getId(), own, Set.of("memberships"));
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+            status.setRollbackOnly();
+        });
+
+        assertThat(cleanupCalled).isTrue();
+        assertThat(cleanupHadTransaction).isFalse();
+        assertThat(exports.findById(entity.getId()).orElseThrow().getStatus()).isEqualTo("FAILED");
+        assertThat(count("GDPR_EXPORT_READY", entity.getId())).isZero();
+        assertThat(count("GDPR_EXPORT_FAILED", entity.getId())).isEqualTo(1);
+        verify(jobs).execute(any(Runnable.class));
     }
 
     @Test
