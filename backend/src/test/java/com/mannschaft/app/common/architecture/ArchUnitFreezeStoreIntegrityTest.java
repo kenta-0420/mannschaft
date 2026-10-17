@@ -965,7 +965,8 @@ class ArchUnitFreezeStoreIntegrityTest {
     // CMP-261012-0313: SkillMatrixService がマトリクスの行を role の UserRoleRepository（UserRoleEntity）から引くのをやめ、
     //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
     //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 4）。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1858;
+    // CMP-261017-0549: Collector の未使用 AuditLogRepository 依存（field・ctor）2 件を解消。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1856;
 
     /**
      * ServiceAPIの正本行数。更新は実削減の原因検分と同一コミットに限る。

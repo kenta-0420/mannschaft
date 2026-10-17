@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
 /**
  * OAuth連携アカウントエンティティ。外部プロバイダとの連携情報を管理する。
  */
-@PersonalData(category = "oauthAccounts")
+@PersonalData(category = "oauth")
 @Entity
 @Table(name = "oauth_accounts")
 @Getter
