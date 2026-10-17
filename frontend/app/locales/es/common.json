@@ -3108,5 +3108,79 @@
         "pointLimit": "Límite de puntos alcanzado"
       }
     }
+  },
+  "budget_accounting": {
+    "title": "Presupuesto y contabilidad",
+    "add_year": "Añadir ejercicio",
+    "fiscal_year": "Ejercicio contable",
+    "default_name": "Ejercicio {year}",
+    "name": "Nombre del ejercicio (obligatorio)",
+    "name_placeholder": "p. ej., Ejercicio 2026",
+    "start_date": "Fecha de inicio (obligatoria)",
+    "end_date": "Fecha de fin (obligatoria)",
+    "add": "Añadir",
+    "created": "Ejercicio añadido",
+    "empty_years": "No hay ejercicios contables",
+    "empty_years_hint": "Selecciona «Añadir ejercicio» para registrar el período que quieres consultar.",
+    "totalIncome": "Ingresos",
+    "totalExpense": "Gastos",
+    "balance": "Saldo",
+    "categories": "Presupuesto e importes reales por categoría",
+    "empty_categories": "No hay categorías para este ejercicio",
+    "budget_amount": "Presupuesto {amount}",
+    "actual_amount": "Importe real {amount}",
+    "execution_rate": "Uso del presupuesto {rate}%",
+    "validation": {
+      "name_required": "Introduce el nombre del ejercicio.",
+      "name_max": "El nombre del ejercicio debe tener como máximo 100 caracteres.",
+      "date_required": "Introduce una fecha.",
+      "date_order": "La fecha de fin debe ser posterior a la fecha de inicio."
+    }
+  },
+  "budget_guide": {
+    "title": "Cómo usar el presupuesto y la contabilidad",
+    "description": "Selecciona un ejercicio para consultar los ingresos, los gastos y los presupuestos por categoría de ese período.",
+    "what": {
+      "title": "¿Qué es un ejercicio contable?",
+      "body": "Es un período para revisar conjuntamente los ingresos y los gastos. Puedes elegir las fechas de inicio y fin que se adapten a las actividades de tu equipo; no es necesario que vaya de abril a marzo del año siguiente.",
+      "steps": {
+        "step1": "Primero, comprueba en la lista de ejercicios de la parte superior si existe el período que quieres consultar."
+      }
+    },
+    "create": {
+      "title": "Añadir un ejercicio",
+      "body": "Los administradores y subadministradores pueden realizar esta operación. Se añade un ejercicio para resumir ingresos y gastos, no una categoría.",
+      "steps": {
+        "step1": "Pulsa «Añadir ejercicio».",
+        "step2": "Introduce un nombre (entre 1 y 100 caracteres, no solo espacios), una fecha de inicio y una de fin. La fecha de fin debe ser posterior a la de inicio.",
+        "step3": "Pulsa «Añadir». Si se añade correctamente, se selecciona el nuevo ejercicio. Si no hay ingresos, gastos ni categorías registrados, los totales muestran 0 yenes y las categorías aparecen como no registradas."
+      }
+    },
+    "switch": {
+      "title": "Cambiar de ejercicio",
+      "body": "Selecciona el nombre de un ejercicio en la parte superior para ver sus totales.",
+      "steps": {
+        "step1": "Pulsa el nombre del ejercicio que quieres consultar.",
+        "step2": "Cuando termine la carga, revisa los ingresos, los gastos, el saldo y las categorías."
+      }
+    },
+    "summary": {
+      "title": "Interpretar los totales y las categorías",
+      "body": "Los ingresos son el dinero recibido, los gastos son el dinero utilizado y el saldo es la diferencia entre ingresos y gastos. Las categorías clasifican el dinero según su finalidad.",
+      "steps": {
+        "step1": "En cada categoría, «Presupuesto» es el importe previsto e «Importe real» es el importe ya registrado.",
+        "step2": "«Uso del presupuesto» es el importe real como porcentaje del presupuesto. Los valores superiores al 100% se muestran en rojo.",
+        "step3": "En esta pantalla puedes añadir ejercicios. No permite crear categorías ni introducir ingresos o gastos directamente."
+      }
+    },
+    "trouble": {
+      "title": "Solución de problemas",
+      "body": "La ausencia de datos y un error de carga se muestran de forma diferente.",
+      "steps": {
+        "step1": "Si aparece «No hay ejercicios contables», selecciona «Añadir ejercicio» para registrar el primer período.",
+        "step2": "Si hay un error de conexión, pulsa «Reintentar». Si hay un error de permisos, consulta al administrador de tu equipo.",
+        "step3": "Si no se puede añadir, los datos introducidos se conservan. Revisa el motivo indicado y los datos, y vuelve a pulsar «Añadir»."
+      }
+    }
   }
 }

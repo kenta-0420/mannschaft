@@ -3108,5 +3108,79 @@
         "pointLimit": "Punktegrenze erreicht"
       }
     }
+  },
+  "budget_accounting": {
+    "title": "Budget und Buchhaltung",
+    "add_year": "Geschäftsjahr hinzufügen",
+    "fiscal_year": "Geschäftsjahr",
+    "default_name": "Geschäftsjahr {year}",
+    "name": "Name des Geschäftsjahres (erforderlich)",
+    "name_placeholder": "z. B. Geschäftsjahr 2026",
+    "start_date": "Startdatum (erforderlich)",
+    "end_date": "Enddatum (erforderlich)",
+    "add": "Hinzufügen",
+    "created": "Geschäftsjahr hinzugefügt",
+    "empty_years": "Keine Geschäftsjahre vorhanden",
+    "empty_years_hint": "Wählen Sie „Geschäftsjahr hinzufügen“, um den auszuwertenden Zeitraum anzulegen.",
+    "totalIncome": "Einnahmen",
+    "totalExpense": "Ausgaben",
+    "balance": "Saldo",
+    "categories": "Budget und Istbeträge nach Kategorie",
+    "empty_categories": "Keine Kategorien für dieses Geschäftsjahr",
+    "budget_amount": "Budget {amount}",
+    "actual_amount": "Istbetrag {amount}",
+    "execution_rate": "Budgetauslastung {rate}%",
+    "validation": {
+      "name_required": "Geben Sie einen Namen für das Geschäftsjahr ein.",
+      "name_max": "Der Name des Geschäftsjahres darf höchstens 100 Zeichen lang sein.",
+      "date_required": "Geben Sie ein Datum ein.",
+      "date_order": "Das Enddatum muss nach dem Startdatum liegen."
+    }
+  },
+  "budget_guide": {
+    "title": "Anleitung zu Budget und Buchhaltung",
+    "description": "Wählen Sie ein Geschäftsjahr, um Einnahmen, Ausgaben und Budgets nach Kategorie für diesen Zeitraum anzuzeigen.",
+    "what": {
+      "title": "Was ist ein Geschäftsjahr?",
+      "body": "Ein Zeitraum zur gemeinsamen Auswertung von Einnahmen und Ausgaben. Start- und Enddatum können an die Aktivitäten Ihres Teams angepasst werden; der Zeitraum muss nicht von April bis zum folgenden März reichen.",
+      "steps": {
+        "step1": "Prüfen Sie zunächst in der Liste oben auf der Seite, ob das gewünschte Geschäftsjahr vorhanden ist."
+      }
+    },
+    "create": {
+      "title": "Ein Geschäftsjahr hinzufügen",
+      "body": "Administratoren und stellvertretende Administratoren können diese Aktion ausführen. Sie legen ein Geschäftsjahr zur Auswertung von Einnahmen und Ausgaben an, keine Kategorie.",
+      "steps": {
+        "step1": "Wählen Sie „Geschäftsjahr hinzufügen“.",
+        "step2": "Geben Sie einen Namen (1–100 Zeichen, nicht nur Leerzeichen), ein Startdatum und ein Enddatum ein. Das Enddatum muss nach dem Startdatum liegen.",
+        "step3": "Wählen Sie „Hinzufügen“. Nach erfolgreichem Anlegen wird das neue Geschäftsjahr ausgewählt. Ohne erfasste Einnahmen, Ausgaben oder Kategorien werden Summen von 0 Yen und keine registrierten Kategorien angezeigt."
+      }
+    },
+    "switch": {
+      "title": "Geschäftsjahr wechseln",
+      "body": "Wählen Sie oben auf der Seite den Namen eines Geschäftsjahres, um dessen Summen anzuzeigen.",
+      "steps": {
+        "step1": "Wählen Sie das gewünschte Geschäftsjahr.",
+        "step2": "Prüfen Sie nach dem Laden Einnahmen, Ausgaben, Saldo und Kategorien."
+      }
+    },
+    "summary": {
+      "title": "Summen und Kategorien verstehen",
+      "body": "Einnahmen sind erhaltenes Geld, Ausgaben sind ausgegebenes Geld. Der Saldo ergibt sich aus Einnahmen minus Ausgaben. Kategorien ordnen Geld nach seinem Verwendungszweck.",
+      "steps": {
+        "step1": "„Budget“ ist der geplante Betrag einer Kategorie, „Istbetrag“ der bereits erfasste Betrag.",
+        "step2": "„Budgetauslastung“ zeigt den Istbetrag als Prozentsatz des Budgets. Werte über 100% werden rot dargestellt.",
+        "step3": "Auf dieser Seite können Sie Geschäftsjahre hinzufügen. Kategorien lassen sich hier nicht erstellen und Einnahmen oder Ausgaben nicht direkt erfassen."
+      }
+    },
+    "trouble": {
+      "title": "Hilfe bei Problemen",
+      "body": "Fehlende Daten und Fehler beim Laden werden unterschiedlich angezeigt.",
+      "steps": {
+        "step1": "Bei „Keine Geschäftsjahre vorhanden“ wählen Sie „Geschäftsjahr hinzufügen“, um den ersten Zeitraum anzulegen.",
+        "step2": "Wählen Sie bei einem Verbindungsfehler „Erneut versuchen“. Wenden Sie sich bei einem Berechtigungsfehler an die Teamadministration.",
+        "step3": "Ihre Eingaben bleiben bei einem Fehler erhalten. Prüfen Sie die angezeigte Ursache und Ihre Eingaben und wählen Sie erneut „Hinzufügen“."
+      }
+    }
   }
 }

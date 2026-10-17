@@ -3108,5 +3108,79 @@
         "pointLimit": "Points limit reached"
       }
     }
+  },
+  "budget_accounting": {
+    "title": "Budget and accounting",
+    "add_year": "Add fiscal year",
+    "fiscal_year": "Fiscal year",
+    "default_name": "Fiscal year {year}",
+    "name": "Fiscal year name (required)",
+    "name_placeholder": "e.g. Fiscal year 2026",
+    "start_date": "Start date (required)",
+    "end_date": "End date (required)",
+    "add": "Add",
+    "created": "Fiscal year added",
+    "empty_years": "No fiscal years",
+    "empty_years_hint": "Select “Add fiscal year” to register the period you want to summarize.",
+    "totalIncome": "Income",
+    "totalExpense": "Expenses",
+    "balance": "Balance",
+    "categories": "Budget and actual amounts by category",
+    "empty_categories": "No categories for this fiscal year",
+    "budget_amount": "Budget {amount}",
+    "actual_amount": "Actual {amount}",
+    "execution_rate": "Budget utilization {rate}%",
+    "validation": {
+      "name_required": "Enter a fiscal year name.",
+      "name_max": "Enter a fiscal year name of 100 characters or fewer.",
+      "date_required": "Enter a date.",
+      "date_order": "The end date must be after the start date."
+    }
+  },
+  "budget_guide": {
+    "title": "How to use budget and accounting",
+    "description": "Select a fiscal year to view income, expenses, and budgets by category for that period.",
+    "what": {
+      "title": "What is a fiscal year?",
+      "body": "A period for reviewing income and expenses together. You can choose start and end dates that suit your team’s activities; the period does not have to run from April to the following March.",
+      "steps": {
+        "step1": "First, check the fiscal year list at the top of the page for the period you want to view."
+      }
+    },
+    "create": {
+      "title": "Add a fiscal year",
+      "body": "Administrators and deputy administrators can do this. You are adding a fiscal year for summarizing income and expenses, rather than a category.",
+      "steps": {
+        "step1": "Select “Add fiscal year”.",
+        "step2": "Enter a fiscal year name (1–100 characters, not just whitespace), a start date, and an end date. The end date must be after the start date.",
+        "step3": "Select “Add”. On success, the new fiscal year is selected. If no income, expenses, or categories have been registered, totals show 0 yen and categories show as unregistered."
+      }
+    },
+    "switch": {
+      "title": "Switch fiscal years",
+      "body": "Select a fiscal year name at the top of the page to view its totals.",
+      "steps": {
+        "step1": "Select the fiscal year name you want to view.",
+        "step2": "After loading finishes, review the income, expenses, balance, and categories."
+      }
+    },
+    "summary": {
+      "title": "Read totals and categories",
+      "body": "Income is money received, expenses are money spent, and the balance is income minus expenses. Categories group money by its purpose.",
+      "steps": {
+        "step1": "For each category, “Budget” is the planned amount and “Actual” is the recorded amount.",
+        "step2": "“Budget utilization” is the actual amount as a percentage of the budget. Values over 100% appear in red.",
+        "step3": "You can add fiscal years on this page. Creating categories and entering income or expenses directly are not available here."
+      }
+    },
+    "trouble": {
+      "title": "Troubleshooting",
+      "body": "No data and a loading failure have different displays.",
+      "steps": {
+        "step1": "If you see “No fiscal years”, select “Add fiscal year” to register the first period.",
+        "step2": "For a connection error, select “Retry”. For a permission error, contact your team administrator.",
+        "step3": "Your input is retained if adding fails. Check the displayed reason and your input, then select “Add” again."
+      }
+    }
   }
 }

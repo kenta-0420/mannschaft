@@ -63286,13 +63286,10 @@ export interface components {
             /** Format: int32 */
             tierOrder?: number;
         };
-        CreateFiscalYearRequest: {
+        ScopedCreateFiscalYearRequest: {
             /** Format: date */
             endDate: string;
-            name?: string;
-            /** Format: int64 */
-            scopeId: number;
-            scopeType?: string;
+            name: string;
             /** Format: date */
             startDate: string;
         };
@@ -73687,6 +73684,16 @@ export interface components {
         };
         SetLockRequest: {
             locked?: boolean;
+        };
+        CreateFiscalYearRequest: {
+            /** Format: date */
+            endDate: string;
+            name?: string;
+            /** Format: int64 */
+            scopeId: number;
+            scopeType?: string;
+            /** Format: date */
+            startDate: string;
         };
         UpdatePublicVisibleRequest: {
             publicVisible: boolean;
@@ -115707,7 +115714,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateFiscalYearRequest"];
+                "application/json": components["schemas"]["ScopedCreateFiscalYearRequest"];
             };
         };
         responses: {
@@ -130485,7 +130492,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateFiscalYearRequest"];
+                "application/json": components["schemas"]["ScopedCreateFiscalYearRequest"];
             };
         };
         responses: {
