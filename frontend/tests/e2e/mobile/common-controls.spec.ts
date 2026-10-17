@@ -122,7 +122,7 @@ async function noPagePan(page: Page) {
     }
     const heading = document.querySelector('h1')
     const ancestors = []
-    for (let el = heading; el; el = el.parentElement) ancestors.push(describe(el))
+    for (let el: HTMLElement | null = heading; el; el = el.parentElement) ancestors.push(describe(el))
     return { viewport, scrollWidth: document.documentElement.scrollWidth, ancestors, elements: [...document.querySelectorAll('body *')].filter(el => { const rect = el.getBoundingClientRect(); return rect.width > 0 && rect.right > viewport + 1 && !el.closest('.p-datatable-table-container') }).slice(0, 25).map(describe) }
   })
   if (overflow) await test.info().attach('page-overflow.json', { body: JSON.stringify(overflow, null, 2), contentType: 'application/json' })
