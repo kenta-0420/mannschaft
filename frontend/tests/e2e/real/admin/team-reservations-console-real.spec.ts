@@ -55,15 +55,17 @@ test('ADMIN: 管理カードからSPA遷移・管理ハブへ戻る・履歴・�
   await waitForHydration(page)
   await expect(page.getByRole('heading', { name: 'チーム管理コンソール', exact: true })).toBeVisible()
   await markDocument(page)
-  const linesLoaded = page.waitForResponse((response) =>
-    response.url().includes(`/teams/${teamSlug}/reservation-lines`) && response.request().method() === 'GET' && response.ok(),
-  )
-  await page.getByRole('link', { name: /予約確認/ }).click()
+  await Promise.all([
+    page.waitForResponse((response) =>
+      response.url().includes(`/teams/${teamSlug}/reservation-lines`) && response.request().method() === 'GET' && response.ok(),
+    ),
+    page.locator(`a[href="${consolePath}"]`).click(),
+  ])
   await expectConsole(page)
-  await linesLoaded
   await expectSameDocument(page)
   await page.screenshot({ path: 'test-results/team-reservations-console-desktop.png', fullPage: true })
-  await page.getByRole('link', { name: 'チーム管理コンソール', exact: true }).click()
+  await page.getByTestId('team-admin-reservations')
+    .getByRole('link', { name: 'チーム管理コンソール', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`${hubPath}/?$`))
   await expectSameDocument(page)
   await page.goBack()
@@ -86,7 +88,8 @@ test('ADMIN: ダッシュボード管理ウィジェットから独立予約ペ�
   await page.goto('/dashboard')
   await waitForHydration(page)
   await page.getByTestId('scope-segment-TEAM').click()
-  await page.getByTestId(`scope-tab-chip-TEAM-${teamSlug}`).click()
+  const teamChip = page.getByTestId(`scope-tab-chip-TEAM-${teamSlug}`)
+  if (await teamChip.getAttribute('aria-pressed') !== 'true') await teamChip.click()
   const adminToggle = page.getByTestId('admin-lens-toggle-TEAM')
   await expect(adminToggle).toBeVisible()
   if (await adminToggle.getAttribute('aria-pressed') !== 'true') await adminToggle.click()
@@ -116,7 +119,7 @@ for (const [role, email, expectedRole] of [
     await page.goto(consolePath)
     await expect(page).toHaveURL(new RegExp(`/teams/${teamSlug}/?$`))
     await expect(page.getByTestId('team-admin-reservations')).toHaveCount(0)
-    await expect(page.getByRole('link', { name: /予約確認/ })).toHaveCount(0)
+    await expect(page.locator(`a[href="${consolePath}"]`)).toHaveCount(0)
     await expect(page.getByTestId('admin-reservations-link')).toHaveCount(0)
     // 拒否後も実在するチーム画面が表示され、空白や汎用エラーでないこと。
     await expect(page.locator('.scope-shell__tab').first()).toBeVisible()
