@@ -7,6 +7,7 @@ import { expect, test } from '@playwright/test'
  */
 test('deの予定追加ボタンが360/390pxの画面内に収まり、ページが横へ伸びない', async ({
   page,
+  baseURL,
 }, testInfo) => {
   const teamSlug = process.env.SCHEDULE_I18N_TEAM_SLUG
   if (!teamSlug) throw new Error('SCHEDULE_I18N_TEAM_SLUGに専用実機fixtureのslugが必要です')
