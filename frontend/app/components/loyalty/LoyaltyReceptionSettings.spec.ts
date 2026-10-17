@@ -6,6 +6,7 @@ import sharp from 'sharp'
 import { BinaryBitmap, HybridBinarizer, RGBLuminanceSource, QRCodeReader } from '@zxing/library'
 import LoyaltyReceptionSettings from './LoyaltyReceptionSettings.vue'
 import QrCodeImage from '~/components/qr/QrCodeImage.vue'
+import { createI18n } from 'vue-i18n'
 
 const mocks = vi.hoisted(() => ({
   listLocations: vi.fn(),
@@ -13,6 +14,9 @@ const mocks = vi.hoisted(() => ({
   handleApiError: vi.fn(),
   require: vi.fn(),
 }))
+vi.mock('~/composables/useMemberCardApi', () => ({ useMemberCardApi: () => mocks }))
+vi.mock('~/composables/useErrorHandler', () => ({ useErrorHandler: () => mocks }))
+vi.mock('primevue/useconfirm', () => ({ useConfirm: () => mocks }))
 vi.stubGlobal('useMemberCardApi', () => mocks)
 vi.stubGlobal('useErrorHandler', () => mocks)
 vi.stubGlobal('useConfirm', () => mocks)
@@ -41,6 +45,9 @@ describe('受付QRの読み取り', () => {
     const wrapper = mount(LoyaltyReceptionSettings, {
       props: { teamId: 1, teamName: 'チーム', mode: 'AUTO' },
       global: {
+        plugins: [
+          createI18n({ legacy: false, locale: 'ja', missingWarn: false, fallbackWarn: false }),
+        ],
         components: { QrCodeImage },
         stubs: {
           SectionCard: { template: '<section><slot /></section>' },

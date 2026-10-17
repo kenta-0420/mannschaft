@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { ref, shallowRef, onMounted, onUnmounted } from 'vue'
+import { createI18n } from 'vue-i18n'
 import ReceivePage from './receive.vue'
 import {
   captureLoyaltyReceptionToken,
@@ -9,10 +10,18 @@ import {
 } from '~/utils/loyaltyReceptionToken'
 import { useLoyaltyMutation } from '~/composables/useLoyaltyMutation'
 
-const api = { bootstrap: vi.fn(), selfAward: vi.fn() }
-const errors = vi.fn()
-const success = vi.fn()
-const navigate = vi.fn()
+const { api, errors, success, navigate } = vi.hoisted(() => ({
+  api: { bootstrap: vi.fn(), selfAward: vi.fn() },
+  errors: vi.fn(),
+  success: vi.fn(),
+  navigate: vi.fn(),
+}))
+vi.mock('~/composables/useTeamLoyaltyApi', () => ({ useTeamLoyaltyApi: () => api }))
+vi.mock('~/composables/useErrorHandler', () => ({
+  useErrorHandler: () => ({ handleApiError: errors }),
+}))
+vi.mock('~/composables/useNotification', () => ({ useNotification: () => ({ success }) }))
+vi.mock('#app/composables/head', () => ({ useHead: () => {} }))
 for (const [name, value] of Object.entries({
   ref,
   shallowRef,
@@ -54,6 +63,9 @@ const wrappers: ReturnType<typeof mount>[] = []
 function mountPage() {
   const wrapper = mount(ReceivePage, {
     global: {
+      plugins: [
+        createI18n({ legacy: false, locale: 'ja', missingWarn: false, fallbackWarn: false }),
+      ],
       stubs: {
         PageHeader: true,
         PageLoading: { template: '<p data-testid="loading" />' },
