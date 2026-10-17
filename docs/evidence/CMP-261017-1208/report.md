@@ -79,4 +79,4 @@ runId `budget-261017-1208-exploratory`。独立アカウントとBrowserContext�
 
 残る年度1・費目1・配分1と合成4account/2teamは、campaign label、DB UUID、container ID、mountとvolume排他を再確認した専用MySQL/Valkeyの2container・2volumeの廃棄で回収。第三者データ混入なし、廃棄後の専用container/volume不在を確認した。専用FE3001/API8081はcmdline/cwd/startTokenで所有PIDを確認して終了し、port消失を確認。別作業3004/PID6599と共有DBには触れていない。WSL全体の停止もしていない。
 
-原本 `cleanup-report.json` のSHA256と最少集計は `cleanup-summary.json`。証跡archiveは135ファイル・277,544,716 bytes、全copy SHA一致。manifest SHA256 `632d34bc2c5a7ead12f0730e511ed38322a54544ebb4247dd52170d9e680c246`。fixture秘密はarchiveと公開候補へ追加していない。ローカルfixtureファイルは非公開領域に保全し、DB実体は消去済み。所有するLinux一時ディレクトリ4個も実path・非symlink・生存process無参照を確認して全撤去（skip0）。bounded keepaliveは殿の後段判断用に残っており、この報告では停止済みとしない。
+原本 `cleanup-report.json` のSHA256と最少集計は `cleanup-summary.json`。証跡archiveは135ファイル・277,544,716 bytes、全copy SHA一致。manifest SHA256 `632d34bc2c5a7ead12f0730e511ed38322a54544ebb4247dd52170d9e680c246`。fixture秘密はarchiveと公開候補へ追加していない。ローカルfixtureファイルは非公開領域に保全し、DB実体は消去済み。所有するLinux一時ディレクトリ4個も実path・非symlink・生存process無参照を確認して全撤去（skip0）。別作業3004を保全するため、起動済みの最大4時間のWSL維持用待機は予定の自然終了まで維持する。検証サーバーはすべて停止済みで、この待機を停止済みとは記載しない。
