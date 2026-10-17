@@ -75,7 +75,19 @@ class DataExportZipContractTest {
         assertThat(password).hasSize(12).matches("[A-Za-z0-9!@#$%]{12}");
         assertThat(BCrypt.checkpw(password, entity.getZipPasswordHash())).isTrue();
         assertThat(read(archive, password.toCharArray(), true)).isEqualTo(input);
+        byte[] fallback = ReflectionTestUtils.invokeMethod(service, "generateMetadataOnlyZip", input, password);
+        assertThat(read(fallback, password.toCharArray(), true)).isEqualTo(input);
+    }
+
+    @Test
+    void 異常_password無しで内容を読めない() {
+        byte[] archive = run(Map.of("profile.json", "{\"text\":\"本人\"}"));
         assertThatThrownBy(() -> read(archive, null, false)).isInstanceOf(IOException.class);
+    }
+
+    @Test
+    void 異常_誤passwordで内容を読めない() {
+        byte[] archive = run(Map.of("profile.json", "{\"text\":\"本人\"}"));
         assertThatThrownBy(() -> read(archive, "wrong-password".toCharArray(), false))
                 .isInstanceOf(IOException.class);
     }

@@ -1,13 +1,12 @@
 package com.mannschaft.app.gdpr;
 
 import com.mannschaft.app.common.EncryptionService;
-import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.gdpr.dto.PrefetchedPersonalData;
 import com.mannschaft.app.gdpr.dto.UserEmailInfo;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
 import com.mannschaft.app.gdpr.repository.DataExportRepository;
 import com.mannschaft.app.gdpr.service.DataExportService;
-import com.mannschaft.app.gdpr.service.PersonalDataCollector;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,13 +17,13 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import java.util.Map;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 
@@ -38,18 +37,19 @@ class DataExportCompletionTransactionIT extends AbstractMySqlIntegrationTest {
     @Autowired private DataExportService service;
     @Autowired private DataExportRepository exports;
     @Autowired private JdbcTemplate jdbc;
-    @MockitoBean private PersonalDataCollector collector;
-    @MockitoBean private StorageService storage;
+    // Storageは外部I/O境界。具象型を必要とする既存管理Beanとの型互換も維持する。
+    @MockitoBean private R2StorageService storage;
     @MockitoBean(name = "job-pool") private Executor jobs;
     @MockitoSpyBean private EncryptionService encryption;
 
     private static final long USER_ID = 9001316L;
+    private static final PrefetchedPersonalData PREFETCHED = new PrefetchedPersonalData(
+            List.of(Map.of("id", 1315L, "teamId", 1L, "organizationId", 2L, "invitedBy", USER_ID)));
     private static final UserEmailInfo USER = new UserEmailInfo(
-            USER_ID, "zip-tx@example.com", "試験", "本人", PrefetchedPersonalData.none());
+            USER_ID, "zip-tx@example.com", "試験", "本人", PREFETCHED);
 
     @BeforeEach
     void 準備() {
-        given(collector.collect(any(), any(), any())).willReturn(Map.of("profile.json", "[]"));
         doAnswer(invocation -> {
             invocation.<Runnable>getArgument(0).run();
             return null;
@@ -58,7 +58,7 @@ class DataExportCompletionTransactionIT extends AbstractMySqlIntegrationTest {
 
     @Test
     void 異常_READYoutboxのREQUIRED失敗でもFAILEDを別TXで確定する() {
-        DataExportEntity entity = service.requestExport(USER_ID, Set.of("profile"));
+        DataExportEntity entity = service.requestExport(USER_ID, Set.of("memberships"));
         AtomicBoolean first = new AtomicBoolean(true);
         // 実enqueueの@Transactional境界内で暗号化が失敗し、業務TXがrollback-onlyになる。
         doAnswer(invocation -> {
@@ -66,7 +66,7 @@ class DataExportCompletionTransactionIT extends AbstractMySqlIntegrationTest {
             return invocation.callRealMethod();
         }).when(encryption).encryptBytes(any(byte[].class));
 
-        service.processExportAsync(entity.getId(), USER, Set.of("profile"));
+        service.processExportAsync(entity.getId(), USER, Set.of("memberships"));
 
         verify(jobs).execute(any(Runnable.class));
         assertThat(exports.findById(entity.getId()).orElseThrow().getStatus()).isEqualTo("FAILED");
@@ -78,9 +78,9 @@ class DataExportCompletionTransactionIT extends AbstractMySqlIntegrationTest {
     void 正常_完了と暗号化READYoutboxが同時に永続化される() {
         // 他テストのCOMPLETEDの24h上限とは異なる本人fixtureを使う。
         UserEmailInfo own = new UserEmailInfo(USER_ID + 1, "zip-tx-ok@example.com",
-                "試験", "本人", PrefetchedPersonalData.none());
-        DataExportEntity entity = service.requestExport(own.userId(), Set.of("profile"));
-        service.processExportAsync(entity.getId(), own, Set.of("profile"));
+                "試験", "本人", new PrefetchedPersonalData(List.of()));
+        DataExportEntity entity = service.requestExport(own.userId(), Set.of("memberships"));
+        service.processExportAsync(entity.getId(), own, Set.of("memberships"));
 
         assertThat(exports.findById(entity.getId()).orElseThrow().getStatus()).isEqualTo("COMPLETED");
         byte[] encrypted = jdbc.queryForObject(
@@ -88,8 +88,26 @@ class DataExportCompletionTransactionIT extends AbstractMySqlIntegrationTest {
                 "gdpr-export-ready:" + entity.getId());
         assertThat(encrypted).isNotNull();
         assertThat(new String(encrypted, java.nio.charset.StandardCharsets.UTF_8)).doesNotContain("ZIPパスワード");
-        assertThat(new String(encryption.decryptBytes(encrypted), java.nio.charset.StandardCharsets.UTF_8))
-                .contains("ZIPパスワード");
+        String payload = new String(encryption.decryptBytes(encrypted), java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(payload).contains("ZIPパスワード");
+        try {
+            String body = new com.fasterxml.jackson.databind.ObjectMapper().readTree(payload).get("body").asText();
+            String password = body.substring(body.indexOf("<strong>") + 8, body.indexOf("</strong>"));
+            assertThat(org.springframework.security.crypto.bcrypt.BCrypt.checkpw(password,
+                    exports.findById(entity.getId()).orElseThrow().getZipPasswordHash())).isTrue();
+            org.mockito.ArgumentCaptor<byte[]> archive = org.mockito.ArgumentCaptor.forClass(byte[].class);
+            verify(storage).upload(any(), archive.capture(), any());
+            try (var zip = new net.lingala.zip4j.io.inputstream.ZipInputStream(
+                    new java.io.ByteArrayInputStream(archive.getValue()), password.toCharArray())) {
+                var entry = zip.getNextEntry();
+                assertThat(entry.getFileName()).isEqualTo("memberships.json");
+                assertThat(entry.isEncrypted()).isTrue();
+                assertThat(new String(zip.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)).isEqualTo("[]");
+                assertThat(zip.getNextEntry()).isNull();
+            }
+        } catch (java.io.IOException e) {
+            throw new AssertionError("暗号化outboxのpasswordと実ZIPを照合できない", e);
+        }
     }
 
     private long count(String kind, long exportId) {
