@@ -1060,6 +1060,34 @@ export default defineNuxtConfig({
     },
   },
 
+  $development: {
+    hooks: {
+      'vite:extendConfig'(config, { isServer }) {
+        if (!isServer || !config.resolve?.alias) return
+        // SSRごとのappをdevtools待機キューに保持しないNode用bundleへ限定する。
+        const alias = config.resolve.alias
+        config.resolve = {
+          ...config.resolve,
+          alias: Array.isArray(alias)
+            ? alias.map((entry) =>
+                entry.find === 'vue-i18n'
+                  ? {
+                      ...entry,
+                      replacement: entry.replacement.replace(/vue-i18n\.mjs$/, 'vue-i18n.node.mjs'),
+                    }
+                  : entry,
+              )
+            : {
+                ...alias,
+                ...(typeof alias['vue-i18n'] === 'string'
+                  ? { 'vue-i18n': alias['vue-i18n'].replace(/vue-i18n\.mjs$/, 'vue-i18n.node.mjs') }
+                  : {}),
+              },
+        }
+      },
+    },
+  },
+
   // ──────────────────────────────────────────────────────────────────────────
   // 本番ビルド（nuxt build）のメモリ枯渇対策（CMP-260821-2130）
   // ──────────────────────────────────────────────────────────────────────────
