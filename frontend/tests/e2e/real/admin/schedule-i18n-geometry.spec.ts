@@ -111,8 +111,12 @@ test('deの予定追加ボタンが360/390pxの画面内に収まり、ページ
   }
 })
 
-test('deの組織予定の見出し・追加操作・未選択案内を翻訳する', async ({ page }, testInfo) => {
+test('組織予定の見出し・追加操作・未選択案内を選択言語で表示する', async ({ page }, testInfo) => {
   test.setTimeout(180_000)
+  const locale = process.env.I18N_TAP_LOCALE === 'en' ? 'en' : 'de'
+  const labels = locale === 'en'
+    ? ['Schedule', 'Add event', 'Select an event']
+    : ['Terminplan', 'Termin hinzufügen', 'Bitte einen Termin auswählen']
   const slug = process.env.SCHEDULE_I18N_ORG_SLUG
   if (!slug) throw new Error('SCHEDULE_I18N_ORG_SLUGに専用fixtureが必要です')
   await page.goto(`/organizations/${encodeURIComponent(slug)}/schedule`, { waitUntil: 'domcontentloaded' })
@@ -120,13 +124,13 @@ test('deの組織予定の見出し・追加操作・未選択案内を翻訳す
   const add = page.getByRole('button').filter({ has: page.locator('.pi-plus') }).first()
   const empty = page.locator('div.py-8').filter({ has: page.locator('i.pi-calendar') }).locator('p').first()
   await expect(heading).toBeVisible({ timeout: 120_000 })
-  await expect(page.locator('html')).toHaveAttribute('lang', 'de')
+  await expect(page.locator('html')).toHaveAttribute('lang', locale)
   await expect(add).toBeVisible()
   await expect(empty).toBeVisible()
   await readyForInteraction(page, add)
-  expect.soft((await heading.textContent())?.trim()).toBe('Terminplan')
-  expect.soft((await add.textContent())?.trim()).toBe('Termin hinzufügen')
-  expect.soft((await empty.textContent())?.trim()).toBe('Bitte einen Termin auswählen')
+  expect.soft((await heading.textContent())?.trim()).toBe(labels[0])
+  expect.soft((await add.textContent())?.trim()).toBe(labels[1])
+  expect.soft((await empty.textContent())?.trim()).toBe(labels[2])
   for (const width of [360, 390]) {
     await page.setViewportSize({ width, height: 844 })
     await page.evaluate(() => document.fonts.ready)
