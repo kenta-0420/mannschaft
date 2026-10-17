@@ -1,5 +1,34 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
+for (const scope of ['TEAM', 'ORGANIZATION'] as const) {
+  test(`upcoming-route: ${scope}のすべて見るから実予定一覧へ移動する`, async ({ page }) => {
+    test.setTimeout(180_000)
+    const slug = process.env[scope === 'TEAM' ? 'SCHEDULE_I18N_TEAM_SLUG' : 'SCHEDULE_I18N_ORG_SLUG']
+    if (!slug) throw new Error('専用fixtureのscope slugが必要です')
+    const title = scope === 'TEAM' ? 'Surroundings fixture admin' : 'Surroundings org schedule'
+    const writes: string[] = []
+    page.on('request', request => {
+      if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method()) && new URL(request.url()).pathname.includes('/schedules')) writes.push(request.method())
+    })
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
+    const segment = page.getByTestId(`scope-segment-${scope}`)
+    await readyForInteraction(page, segment)
+    await segment.click()
+    const chip = page.getByTestId(`scope-tab-chip-${scope}-${slug}`)
+    await expect(chip).toBeVisible({ timeout: 30_000 })
+    await chip.click()
+    const upcoming = page.getByTestId(`swipe-widget-grid-${scope}`).locator(':scope > *').first()
+    await expect(upcoming.getByText(title, { exact: true })).toBeVisible({ timeout: 30_000 })
+    const link = upcoming.getByRole('link')
+    const expectedPath = `/${scope === 'TEAM' ? 'teams' : 'organizations'}/${slug}/schedule`
+    await expect(link).toHaveAttribute('href', expectedPath)
+    await link.click()
+    await expect(page).toHaveURL(url => url.pathname === expectedPath, { timeout: 30_000 })
+    await expect(page.getByTestId('schedule-list-row').filter({ hasText: title }).filter({ visible: true })).toBeVisible({ timeout: 30_000 })
+    expect(writes).toEqual([])
+  })
+}
+
 test.describe('calendar-mobile-header: 真mobileの見出しと詳細操作', () => {
   test.use({ isMobile: true, hasTouch: true })
 
