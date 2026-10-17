@@ -1,34 +1,54 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
 for (const scope of ['TEAM', 'ORGANIZATION'] as const) {
-  test(`upcoming-route: ${scope}のすべて見るから実予定一覧へ移動する`, async ({ page }) => {
+  test(`upcoming-route: ${scope}のすべて見るから実予定一覧へ移動する`, async ({ page }, testInfo) => {
     test.setTimeout(180_000)
     const slug = process.env[scope === 'TEAM' ? 'SCHEDULE_I18N_TEAM_SLUG' : 'SCHEDULE_I18N_ORG_SLUG']
     if (!slug) throw new Error('専用fixtureのscope slugが必要です')
     const title = scope === 'TEAM' ? 'Surroundings fixture admin' : 'Surroundings org schedule'
+    const trace: object[] = []
+    const startedAt = Date.now()
+    const mark = (stage: string) => trace.push({ stage, elapsedMs: Date.now() - startedAt, pathname: new URL(page.url(), 'http://localhost').pathname })
+    page.on('response', response => {
+      const url = new URL(response.url())
+      if (['localhost', '127.0.0.1'].includes(url.hostname)) trace.push({ pathname: url.pathname, status: response.status(), elapsedMs: Date.now() - startedAt, timing: response.request().timing() })
+    })
     const writes: string[] = []
     page.on('request', request => {
       if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method()) && new URL(request.url()).pathname.includes('/schedules')) writes.push(request.method())
     })
-    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
-    const segment = page.getByTestId(`scope-segment-${scope}`)
-    await readyForInteraction(page, segment)
-    await segment.click()
-    const chip = page.getByTestId(`scope-tab-chip-${scope}-${slug}`)
-    await expect(chip).toBeVisible({ timeout: 30_000 })
-    await chip.click()
-    const upcoming = page.getByTestId(`swipe-widget-grid-${scope}`).locator(':scope > *').first()
-    await expect(upcoming.getByText(title, { exact: true })).toBeVisible({ timeout: 30_000 })
-    const link = upcoming.getByRole('link')
-    const expectedPath = `/${scope === 'TEAM' ? 'teams' : 'organizations'}/${slug}/schedule`
-    await expect(link).toHaveAttribute('href', expectedPath)
-    await link.click()
-    await expect(page).toHaveURL(url => url.pathname === expectedPath, { timeout: 30_000 })
-    const event = page.locator('main').getByText(title).filter({ visible: true }).first()
-    await expect(event).toBeVisible({ timeout: 30_000 })
-    await event.click()
-    await expect(page.getByRole('heading', { name: title, exact: true }).filter({ visible: true })).toBeVisible()
-    expect(writes).toEqual([])
+    try {
+      mark('dashboard-navigation')
+      await page.goto('/dashboard', { waitUntil: 'domcontentloaded', timeout: 30_000 })
+      mark('dashboard-domcontentloaded')
+      const segment = page.getByTestId(`scope-segment-${scope}`)
+      await expect(segment).toBeVisible({ timeout: 30_000 })
+      await readyForInteraction(page, segment)
+      mark('scope-segment-ready')
+      await segment.click({ timeout: 10_000 })
+      const chip = page.getByTestId(`scope-tab-chip-${scope}-${slug}`)
+      await expect(chip).toBeVisible({ timeout: 30_000 })
+      await chip.click({ timeout: 10_000 })
+      mark('scope-chip-selected')
+      const upcoming = page.getByTestId(`swipe-widget-grid-${scope}`).locator(':scope > *').first()
+      await expect(upcoming.getByText(title, { exact: true })).toBeVisible({ timeout: 30_000 })
+      mark('upcoming-data-ready')
+      const link = upcoming.getByRole('link')
+      const expectedPath = `/${scope === 'TEAM' ? 'teams' : 'organizations'}/${slug}/schedule`
+      await expect(link).toHaveAttribute('href', expectedPath)
+      await link.click({ timeout: 10_000 })
+      await expect(page).toHaveURL(url => url.pathname === expectedPath, { timeout: 30_000 })
+      mark('schedule-list-arrived')
+      const event = page.locator('main').getByText(title).filter({ visible: true }).first()
+      await expect(event).toBeVisible({ timeout: 30_000 })
+      await event.click({ timeout: 10_000 })
+      await expect(page.getByRole('heading', { name: title, exact: true }).filter({ visible: true })).toBeVisible()
+      expect(writes).toEqual([])
+      mark('schedule-detail-ready')
+    }
+    finally {
+      await testInfo.attach('upcoming-navigation.json', { body: JSON.stringify(trace), contentType: 'application/json' })
+    }
   })
 }
 
