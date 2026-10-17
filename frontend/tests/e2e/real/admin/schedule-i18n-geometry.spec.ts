@@ -233,11 +233,17 @@ for (const width of [360, 390, 1440]) {
     await measure('comment-post', page.getByTestId('schedule-comment-submit').filter({ visible: true }).first())
     const nextTab = page.locator('.p-tablist-next-button').first()
     if (width < 768) await expect(nextTab).toBeVisible()
+    let movedTabs = false
     if (await nextTab.isVisible()) {
       await measure('tablist-next', nextTab)
-      if (await nextTab.isEnabled()) await nextTab.click()
+      if (await nextTab.isEnabled()) {
+        await nextTab.click()
+        movedTabs = true
+      }
     }
     const prevTab = page.locator('.p-tablist-prev-button').first()
+    // TabListのsmooth scroll完了を待ち、直後の非表示判定でprevを落とさない。
+    if (movedTabs) await expect(prevTab).toBeVisible({ timeout: 5_000 })
     if (await prevTab.isVisible()) await measure('tablist-prev', prevTab)
     await testInfo.attach(`tablist-visibility-${width}.json`, {
       body: JSON.stringify({ width, next: await nextTab.isVisible(), prev: await prevTab.isVisible() }),
