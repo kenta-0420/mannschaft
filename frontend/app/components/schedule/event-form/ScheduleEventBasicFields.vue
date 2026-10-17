@@ -47,7 +47,7 @@ const form = defineModel<ScheduleEventFormState>('form', { required: true })
       {{ h.startTime }}〜{{ h.endTime }}
     </button>
   </div>
-  <div class="grid grid-cols-2 gap-3">
+  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
     <div>
       <label for="schedule-start-date" class="mb-1 block text-sm font-medium">{{ $t('schedule.form.startDate') }}</label>
       <DatePicker
@@ -70,7 +70,7 @@ const form = defineModel<ScheduleEventFormState>('form', { required: true })
       />
     </div>
   </div>
-  <div class="grid grid-cols-2 gap-3">
+  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
     <div>
       <label for="schedule-end-date" class="mb-1 block text-sm font-medium">{{ $t('schedule.form.endDate') }}</label>
       <DatePicker
