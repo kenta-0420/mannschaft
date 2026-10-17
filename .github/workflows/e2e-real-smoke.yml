@@ -177,7 +177,7 @@ jobs:
       # 未検証の失敗本文・login/token/cookie は含めない。
       - name: CMP1921 HTTP evidence
         if: always() && (steps.cmp1921-http.outcome == 'success' || steps.cmp1921-http.outcome == 'failure')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cmp1921-http-contract-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/cmp1921-http-contract
@@ -193,7 +193,7 @@ jobs:
       # 失敗時のデバッグ用にバックエンドログをアップロードする
       - name: バックエンドログをアップロード（失敗時）
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-log-${{ github.run_id }}
           path: /tmp/backend.log
