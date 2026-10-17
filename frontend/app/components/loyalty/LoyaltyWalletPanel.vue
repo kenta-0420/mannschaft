@@ -24,7 +24,7 @@ onMounted(() => load())
   <SectionCard :title="t('loyalty.wallet.title')" class="mb-5">
     <div class="mb-4 flex flex-wrap gap-3">
       <NuxtLink to="/my/member-qr" class="inline-flex min-h-11 items-center gap-2"
-        ><i class="pi pi-qrcode" />{{ t('loyalty.memberQr.title') }}</NuxtLink
+        ><i class="pi pi-qrcode" aria-hidden="true" />{{ t('loyalty.memberQr.title') }}</NuxtLink
       >
       <NuxtLink to="/my/team-point-requests" class="inline-flex min-h-11 items-center">{{
         t('loyalty.requests.title')

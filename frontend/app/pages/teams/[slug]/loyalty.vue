@@ -27,7 +27,7 @@ onMounted(load)
 <template>
   <main class="mx-auto max-w-3xl space-y-4 p-4">
     <PageHeader :title="t('loyalty.scan.title')" />
-    <PageLoading v-if="loading" />
+    <PageLoading v-if="loading && !catalog" />
     <DashboardErrorState v-else-if="error" :error="error" @retry="load" />
     <template v-else-if="catalog">
       <NuxtLink

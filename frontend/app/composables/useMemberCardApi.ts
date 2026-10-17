@@ -9,6 +9,14 @@ import type {
   VerifyResponse,
   CreateCheckinLocationRequest,
 } from '~/types/member-card'
+import type { components } from '~/types/generated'
+
+type CheckinLocationResponse = Required<components['schemas']['CheckinLocationResponse']>
+
+// 既存APIの応答はactive、画面モデルと更新本文はisActiveを使う。
+function toCheckinLocation({ active, ...location }: CheckinLocationResponse): CheckinLocation {
+  return { ...location, isActive: active }
+}
 
 export function useMemberCardApi() {
   const api = useApi()
@@ -133,24 +141,24 @@ export function useMemberCardApi() {
   }
 
   async function listLocations(teamId: string) {
-    const res = await api<{ data: CheckinLocation[] }>(`/api/v1/teams/${teamId}/checkin-locations`)
-    return res.data
+    const res = await api<{ data: CheckinLocationResponse[] }>(`/api/v1/teams/${teamId}/checkin-locations`)
+    return res.data.map(toCheckinLocation)
   }
 
   async function createLocation(teamId: string, body: CreateCheckinLocationRequest) {
-    const res = await api<{ data: CheckinLocation }>(`/api/v1/teams/${teamId}/checkin-locations`, {
+    const res = await api<{ data: CheckinLocationResponse }>(`/api/v1/teams/${teamId}/checkin-locations`, {
       method: 'POST',
       body,
     })
-    return res.data
+    return toCheckinLocation(res.data)
   }
 
   async function updateLocation(teamId: string, id: number, body: CreateCheckinLocationRequest & { isActive?: boolean }) {
-    const res = await api<{ data: CheckinLocation }>(
+    const res = await api<{ data: CheckinLocationResponse }>(
       `/api/v1/teams/${teamId}/checkin-locations/${id}`,
       { method: 'PUT', body },
     )
-    return res.data
+    return toCheckinLocation(res.data)
   }
 
   async function deleteLocation(teamId: string, id: number) {
