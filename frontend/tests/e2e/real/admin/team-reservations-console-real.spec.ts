@@ -93,6 +93,7 @@ test('ADMIN: ダッシュボード管理ウィジェットから独立予約ペ�
   const adminToggle = page.getByTestId('admin-lens-toggle-TEAM')
   await expect(adminToggle).toBeVisible()
   if (await adminToggle.getAttribute('aria-pressed') !== 'true') await adminToggle.click()
+  await page.getByRole('heading', { name: '予約', exact: true, level: 2 }).scrollIntoViewIfNeeded()
   const link = page.getByTestId('admin-reservations-link')
   await expect(link).toHaveAttribute('href', consolePath)
   await markDocument(page)
