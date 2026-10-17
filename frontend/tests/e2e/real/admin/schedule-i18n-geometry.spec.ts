@@ -47,6 +47,13 @@ test('deの予定追加ボタンが360/390pxの画面内に収まり、ページ
       await page.evaluate(async () => {
         await document.fonts.ready
       })
+      const laterButton = page.getByRole('button', { name: 'Später entscheiden', exact: true })
+      if (await laterButton.isVisible()) {
+        await laterButton.click()
+        await expect(laterButton).toBeHidden()
+      }
+      // 実クリックせず、dialogに覆われず操作できることを確認する。
+      await addButton.click({ trial: true })
       const geometry = await addButton.evaluate((button) => {
         const rect = button.getBoundingClientRect()
         const root = document.documentElement
@@ -54,6 +61,8 @@ test('deの予定追加ボタンが360/390pxの画面内に収まり、ページ
           clientWidth: root.clientWidth,
           scrollWidth: root.scrollWidth,
           clientHeight: root.clientHeight,
+          width: rect.width,
+          height: rect.height,
           left: rect.left,
           right: rect.right,
           top: rect.top,
@@ -72,6 +81,10 @@ test('deの予定追加ボタンが360/390pxの画面内に収まり、ページ
       expect
         .soft(geometry.scrollWidth, `${width}pxでページ横パンがない`)
         .toBeLessThanOrEqual(geometry.clientWidth)
+      expect.soft(geometry.width, `${width}pxで追加ボタン幅が44px以上`).toBeGreaterThanOrEqual(44)
+      expect
+        .soft(geometry.height, `${width}pxで追加ボタン高さが44px以上`)
+        .toBeGreaterThanOrEqual(44)
       expect.soft(geometry.left, `${width}pxで追加ボタンの左端が画面内`).toBeGreaterThanOrEqual(0)
       expect
         .soft(geometry.right, `${width}pxで追加ボタンの右端が画面内`)
