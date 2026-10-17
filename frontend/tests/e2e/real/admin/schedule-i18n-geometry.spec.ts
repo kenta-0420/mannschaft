@@ -149,7 +149,7 @@ test('deの組織予定の見出し・追加操作・未選択案内を翻訳す
   }
 })
 
-test('date-value: 360/390pxの編集日付を横スクロールせず全文表示する', async ({ page }, testInfo) => {
+test('date-value: 360pxと390pxの編集日付を横スクロールせず全文表示する', async ({ page }, testInfo) => {
   test.setTimeout(180_000)
   const slug = process.env.SCHEDULE_I18N_TEAM_SLUG
   const id = process.env.SCHEDULE_I18N_TEAM_SCHEDULE_ID
