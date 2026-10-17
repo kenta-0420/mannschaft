@@ -13,7 +13,7 @@ const MOCK_SESSIONS = {
       id: 1,
       ipAddress: '192.168.1.1',
       userAgent: REAL_UA,
-      isCurrent: true,
+      current: true,
       createdAt: '2026-03-01T10:00:00Z',
       lastActiveAt: '2026-04-04T10:00:00Z',
     },
@@ -282,8 +282,8 @@ test.describe('未解析セッションのモバイル折返し', () => {
           }
           await route.fulfill({ json: { data: [
             ...MOCK_SESSIONS.data,
-            { ...MOCK_SESSIONS.data[0], id: 2, userAgent: longUa, isCurrent: false },
-            { ...MOCK_SESSIONS.data[0], id: 3, userAgent: null, isCurrent: true },
+            { ...MOCK_SESSIONS.data[0], id: 2, userAgent: longUa, current: false },
+            { ...MOCK_SESSIONS.data[0], id: 3, userAgent: null, current: true },
           ] } })
         })
         await page.route('**/api/v1/users/me/login-history**', route => route.fulfill({ json: {
