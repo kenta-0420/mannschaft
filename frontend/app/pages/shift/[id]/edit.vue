@@ -39,23 +39,34 @@ const canManage = computed(() => {
   )
 })
 
-onMounted(async () => {
+/** 取得失敗（空状態へ倒さず DashboardErrorState で出す。AC-E1〜E3） */
+const loadError = ref<unknown>(null)
+
+async function load() {
   loading.value = true
-  await teamStore.fetchMyTeams()
+  loadError.value = null
   // schedule を先に取得してチームIDを得る
   try {
-    schedule.value = await getSchedule(scheduleId.value)
+    const s = await getSchedule(scheduleId.value)
     const [sl, pos] = await Promise.all([
       listSlots(scheduleId.value),
-      listPositions(String(schedule.value.teamId)),
+      listPositions(String(s.teamId)),
     ])
+    schedule.value = s
     slots.value = sl
     positions.value = pos
   } catch (error) {
-    handleApiError(error)
+    schedule.value = null
+    slots.value = []
+    loadError.value = error
   } finally {
     loading.value = false
   }
+}
+
+onMounted(async () => {
+  await teamStore.fetchMyTeams()
+  await load()
 })
 
 // =====================================================
@@ -200,36 +211,19 @@ function formatDate(dateStr: string): string {
       <ShiftStatusBadge v-if="schedule" :status="schedule.status.status" />
     </div>
 
-    <!-- タブ -->
-    <nav class="mb-6 flex gap-1 overflow-x-auto border-b border-surface-200 dark:border-surface-700">
-      <NuxtLink
-        :to="`/shift/${scheduleId}`"
-        class="flex shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium text-surface-500 transition-colors hover:text-surface-800 dark:hover:text-surface-200"
-      >
-        <i class="pi pi-calendar" />{{ t('shift.detail.tabOverview') }}
-      </NuxtLink>
-      <span class="flex shrink-0 items-center gap-1.5 border-b-2 border-primary px-4 py-2 text-sm font-medium text-primary">
-        <i class="pi pi-pencil" />{{ t('shift.detail.tabEdit') }}
-      </span>
-      <NuxtLink
-        v-if="canManage"
-        :to="`/shift/${scheduleId}/requests`"
-        class="flex shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium text-surface-500 transition-colors hover:text-surface-800 dark:hover:text-surface-200"
-      >
-        <i class="pi pi-list" />{{ t('shift.detail.tabRequests') }}
-      </NuxtLink>
-      <NuxtLink
-        v-if="canManage"
-        :to="`/shift/${scheduleId}/work-constraints`"
-        class="flex shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium text-surface-500 transition-colors hover:text-surface-800 dark:hover:text-surface-200"
-      >
-        <i class="pi pi-shield" />{{ t('shift.detail.tabConstraints') }}
-      </NuxtLink>
-    </nav>
+    <DashboardErrorState
+      v-if="loadError"
+      :error="loadError"
+      testid="shift-load-error"
+      @retry="load"
+    />
 
-    <PageLoading v-if="loading" />
+    <PageLoading v-else-if="loading" />
 
     <template v-else>
+      <!-- タブ -->
+      <ShiftDetailTabs :schedule-id="scheduleId" :team-id="schedule?.teamId ?? null" current="edit" />
+
       <!-- アクションバー -->
       <div v-if="canManage" class="mb-4 flex flex-wrap gap-2">
         <Button
@@ -410,7 +404,7 @@ function formatDate(dateStr: string): string {
       <template #footer>
         <Button :label="t('common.cancel')" text @click="showBulkDialog = false" />
         <Button
-          :label="t('common.create')"
+          :label="t('button.create')"
           icon="pi pi-check"
           :loading="bulkCreating"
           :disabled="!bulkForm.fromDate || !bulkForm.toDate"

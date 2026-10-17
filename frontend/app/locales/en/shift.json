@@ -70,7 +70,14 @@
       "reject": "Reject",
       "reviewComment": "Review Comment",
       "openCallLimit": "Open calls are limited to 3 per month",
-      "fetchError": "Failed to fetch change requests"
+      "fetchError": "Failed to fetch change requests",
+      "requester": "Requester",
+      "unknownRequester": "Unknown user",
+      "createSuccess": "Change request submitted",
+      "approveSuccess": "Change request approved",
+      "rejectSuccess": "Change request rejected",
+      "withdrawSuccess": "Change request withdrawn",
+      "closedForNew": "This schedule is already published, so new change requests are no longer accepted."
     },
     "pdf": {
       "teamLayout": "Team Schedule PDF",
@@ -157,7 +164,9 @@
       "colDate": "Date",
       "colSlots": "Slots",
       "editDialogTitle": "Edit Shift",
-      "accessDeniedRedirect": "You do not have permission to view this page"
+      "accessDeniedRedirect": "You do not have permission to view this page",
+      "tabBoard": "Shift board",
+      "tabChangeRequests": "Change requests"
     },
     "slot": {
       "createTitle": "Create Slot",
@@ -255,7 +264,14 @@
       "userId": "User ID",
       "userIdPlaceholder": "Enter user ID",
       "saveSuccess": "Work constraints saved",
-      "deleteSuccess": "Work constraints deleted"
+      "deleteSuccess": "Work constraints deleted",
+      "unknownMember": "Unknown user",
+      "selectMember": "Select a member",
+      "searchMember": "Search by name",
+      "noSelectableMembers": "No members available to add",
+      "membersLoadError": "Could not load the member list",
+      "deleteTitle": "Delete work constraint",
+      "deleteConfirm": "Delete this work constraint?"
     },
     "validation": {
       "atLeastOneConstraint": "Please specify at least one constraint"
@@ -392,7 +408,8 @@
       "bulkRequest": "Submit requests in bulk",
       "board": "Shift board",
       "weeklyDefault": "Set weekly defaults",
-      "closed": "Request submission has closed"
+      "closed": "Request submission has closed",
+      "changeRequest": "Change request"
     },
     "submitConfirm": {
       "title": "Submit with this content?",

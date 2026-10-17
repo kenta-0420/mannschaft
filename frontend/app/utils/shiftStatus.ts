@@ -62,3 +62,13 @@ export function isAcceptingShiftRequests(schedule: ShiftScheduleResponse): boole
   if (!deadline) return true
   return dayjs().isBefore(dayjs(deadline))
 }
+
+/**
+ * 変更依頼を新規に受け付けられるシフト表の状態かを判定する（CMP-261010-1432 AC-J3b）。
+ *
+ * 仕様（F03.5 01_db_design）は PUBLISHED から新規受付不可。閲覧・取り下げは受付外でもできる。
+ * 作成フォームの出し分けは、一覧・/shift/{id}・直 URL のどこから来てもこの関数に揃える。
+ */
+export function isAcceptingChangeRequests(status: ShiftScheduleStatus): boolean {
+  return status !== 'PUBLISHED' && status !== 'ARCHIVED'
+}
