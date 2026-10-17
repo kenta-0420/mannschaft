@@ -273,8 +273,8 @@ public class AuthService {
      * 詳細は {@link AuthSessionService#logout} を参照。
      */
     @Transactional
-    public void logout(String refreshTokenHash, String jti, long expEpoch) {
-        authSessionService.logout(refreshTokenHash, jti, expEpoch);
+    public void logout(Long userId, String refreshTokenHash, String jti, long expEpoch) {
+        authSessionService.logout(userId, refreshTokenHash, jti, expEpoch);
     }
 
     /**
