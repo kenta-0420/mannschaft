@@ -97,7 +97,7 @@ test('deの予定追加ボタンが360/390pxの画面内に収まり、ページ
   }
 })
 
-test('deの組織予定の見出し・追加操作・未選択案内を翻訳する', async ({ page }) => {
+test('deの組織予定の見出し・追加操作・未選択案内を翻訳する', async ({ page }, testInfo) => {
   test.setTimeout(180_000)
   const slug = process.env.SCHEDULE_I18N_ORG_SLUG
   if (!slug) throw new Error('SCHEDULE_I18N_ORG_SLUGに専用fixtureが必要です')
@@ -112,6 +112,20 @@ test('deの組織予定の見出し・追加操作・未選択案内を翻訳す
   expect.soft((await heading.textContent())?.trim()).toBe('Terminplan')
   expect.soft((await add.textContent())?.trim()).toBe('Termin hinzufügen')
   expect.soft((await empty.textContent())?.trim()).toBe('Bitte einen Termin auswählen')
+  for (const width of [360, 390]) {
+    await page.setViewportSize({ width, height: 844 })
+    await page.evaluate(() => document.fonts.ready)
+    const titleBox = await heading.boundingBox()
+    const addBox = await add.boundingBox()
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
+    await testInfo.attach(`org-header-${width}.json`, {
+      body: JSON.stringify({ width, titleBox, addBox, scrollWidth }), contentType: 'application/json',
+    })
+    expect.soft(scrollWidth).toBeLessThanOrEqual(width)
+    expect.soft(titleBox!.x + titleBox!.width).toBeLessThanOrEqual(width)
+    expect.soft(addBox!.x + addBox!.width).toBeLessThanOrEqual(width)
+    expect.soft(addBox!.height).toBeGreaterThanOrEqual(44)
+  }
 })
 
 test('deの個人カレンダーのタブ・未選択案内・個人予定の色を翻訳する', async ({ page }) => {
