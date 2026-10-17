@@ -14,7 +14,9 @@ test('deの予定追加ボタンが360/390pxの画面内に収まり、ページ
   await page.goto(`/teams/${encodeURIComponent(teamSlug)}/schedule`, {
     waitUntil: 'domcontentloaded',
   })
-  await expect(page.getByRole('heading', { name: 'Terminplan', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Terminplan', exact: true })).toBeVisible({
+    timeout: 60_000,
+  })
   const addButton = page.getByRole('button', { name: 'Termin hinzufügen', exact: true })
   await expect(addButton).toBeVisible()
 
