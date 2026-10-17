@@ -332,7 +332,11 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
     await page.getByText('ポイントプログラムを有効化', { exact: true }).click()
     await page.getByText('メンバー以上', { exact: true }).click()
     await page.getByRole('option', { name: '全認証済み個人（非所属を含む）' }).click()
+    const initialSettingsSaved = page.waitForResponse(response => response.request().method() === 'PUT'
+      && new URL(response.url()).pathname === `/api/v1/teams/${team.numericId}/loyalty/settings`)
     await page.getByRole('button', { name: '保存', exact: true }).first().click()
+    expect((await initialSettingsSaved).status()).toBe(200)
+    await expect(page.getByText(textFor('ja')('loyalty.saved'), { exact: true })).toBeVisible()
     const rule = page
       .locator('form')
       .filter({ has: page.getByText('1回の加算数', { exact: true }) })
@@ -379,6 +383,14 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
       locale: 'ja-JP',
     })
     const member = await memberContext.newPage()
+    async function openRequestDetail(state: string) {
+      const link = member.getByRole('link').filter({ hasText: `E2Eポイント${suffix}` }).filter({ hasText: state })
+      const href = await link.getAttribute('href')
+      expect(href).toBeTruthy()
+      await link.click()
+      await expect(member).toHaveURL(new URL(href!, BASE).href)
+      return member.url()
+    }
     await loginViaApi(member, USER, { apiBaseUrl: API })
     let rejecting = false
     member.on('request', request => {
@@ -436,7 +448,7 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
       .replace('照合コード ', '')
       .trim()
     await member.getByRole('link', { name: '受付申請', exact: true }).last().click()
-    await member.getByRole('link').filter({ hasText: `E2Eポイント${suffix}` }).filter({ hasText: '承認待ち' }).click()
+    await openRequestDetail('承認待ち')
     let detailUrl = member.url()
     await member.getByRole('button', { name: '申請を取り消す', exact: true }).click()
     await expect(member.getByText('取消済み', { exact: true })).toBeVisible()
@@ -458,7 +470,7 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
     await page.getByRole('button', { name: '却下', exact: true }).click()
     expect((await rejected).status()).toBe(200)
     await member.getByRole('link', { name: '受付申請', exact: true }).last().click()
-    await member.getByRole('link').filter({ hasText: `E2Eポイント${suffix}` }).filter({ hasText: '却下済み' }).click()
+    await openRequestDetail('却下済み')
     await expect(member.getByText('却下済み', { exact: true })).toBeVisible()
     await member.goto(url, { waitUntil: 'commit' })
     await waitForHydration(member, { reloadOnTimeout: false })
@@ -466,7 +478,7 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
     await expect(member.getByText('承認待ち', { exact: true })).toBeVisible()
     code = (await member.getByText(/^照合コード /).textContent())!.replace('照合コード ', '').trim()
     await member.getByRole('link', { name: '受付申請', exact: true }).last().click()
-    await member.getByRole('link').filter({ hasText: `E2Eポイント${suffix}` }).filter({ hasText: '承認待ち' }).click()
+    await openRequestDetail('承認待ち')
     detailUrl = member.url()
     // 本人専用UUIDを別のログイン主体から開いても申請者名・照合コードを開示しない。
     await page.goto(new URL(detailUrl).pathname, { waitUntil: 'commit' })
@@ -505,7 +517,11 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
     await page.getByRole('button', { name: '保存', exact: true }).first().click()
     const dialog = page.getByRole('alertdialog')
     await expect(dialog.getByText(/固定QRの撮影・遠隔再利用/)).toBeVisible()
+    const autoSettingsSaved = page.waitForResponse(response => response.request().method() === 'PUT'
+      && new URL(response.url()).pathname === `/api/v1/teams/${team.numericId}/loyalty/settings`)
     await dialog.getByRole('button', { name: '保存', exact: true }).click()
+    expect((await autoSettingsSaved).status()).toBe(200)
+    await expect(page.getByText(textFor('ja')('loyalty.saved'), { exact: true })).toBeVisible()
     await loginViaApi(member, fixture.actors.resident1, { apiBaseUrl: API })
     await member.goto(url, { waitUntil: 'commit' })
     await waitForHydration(member, { reloadOnTimeout: false })
@@ -520,6 +536,7 @@ test('AC17/21/22/23/31/32: 設定→印刷QR実読取→本人申請→別スタ
       .getByRole('alertdialog')
       .getByRole('button', { name: '受付拠点を停止', exact: true })
       .click()
+    await expect(page.getByRole('button', { name: 'QRプレビュー', exact: true })).toBeDisabled()
     await loginViaApi(member, fixture.actors.resident2, { apiBaseUrl: API })
     await member.goto(url, { waitUntil: 'commit' })
     await waitForHydration(member, { reloadOnTimeout: false })
@@ -729,8 +746,12 @@ for (const locale of Object.keys(localeNames) as LoyaltyLocale[]) {
       }
       async function openPendingRequest() {
         await applicant.getByRole('link', { name: t('loyalty.requests.title'), exact: true }).last().click()
-        await applicant.getByRole('link').filter({ hasText: ruleName })
-          .filter({ hasText: t('loyalty.requests.status.pending') }).click()
+        const link = applicant.getByRole('link').filter({ hasText: ruleName })
+          .filter({ hasText: t('loyalty.requests.status.pending') })
+        const href = await link.getAttribute('href')
+        expect(href).toBeTruthy()
+        await link.click()
+        await expect(applicant).toHaveURL(new URL(href!, BASE).href)
         return applicant.url()
       }
       // 対象条件も実設定UIで変更し、非所属本人の003を各言語で観測する。
