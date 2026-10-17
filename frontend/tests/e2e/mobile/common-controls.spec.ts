@@ -39,7 +39,7 @@ async function stubBoundary(page: Page, authenticated = true, emptyReceipts = fa
       '/api/v1/me/teams': [{ id: 1, slug: 'ui-fixture', name: 'UI Fixture', role: 'ADMIN', template: 'GENERAL', memberCount: 1, nickname1: null, iconUrl: null }],
       '/api/v1/me/organizations': [],
       '/api/v1/settings/nav': { features: [] },
-      '/api/v1/feature-flags': [],
+      '/api/v1/feature-flags': [{ flagKey: 'FEATURE_WEBHOOK_SYNC_ENABLED', enabled: true }],
       '/api/v1/dashboard/scope-tabs': { items: [], page: 0, page_size: 20, total_pages: 0, total_count: 0, has_next: false, has_prev: false },
       '/api/v1/settings/appearance': { theme: 'LIGHT', bgColor: '#f3efe0', darkBgColor: '#18181b', seasonalThemeId: null, hideChatPreview: false },
       '/api/v1/notifications/unread-count': { unreadCount: 0 },
@@ -55,8 +55,8 @@ async function stubBoundary(page: Page, authenticated = true, emptyReceipts = fa
       '/api/v1/users/1/seals': [], '/api/v1/users/1/seals/scope-defaults': [],
       '/api/v1/me/google-calendar/status': { connected: false, googleAccountEmail: null, googleCalendarId: null, active: false, personalSyncEnabled: false, lastSyncError: null },
       '/api/v1/admin/receipt-settings': { id: 1, scopeType: 'TEAM', scopeId: 1, issuerName: 'UI Fixture', isQualifiedInvoicer: false, invoiceRegistrationNumber: null, autoResetNumber: true, fiscalYearStartMonth: 4, nextReceiptNumber: 1 },
-      '/api/v1/teams/ui-fixture': { id: 'ui-fixture', slug: 'ui-fixture', numericId: 1, basicInfo: { name: 'UI Fixture' }, location: { template: 'OTHER' }, visibility: { visibility: 'MEMBERS_AND_ABOVE', supporterEnabled: false }, metadata: { memberCount: 1 }, social: { supporterCount: 0 }, timezone: 'Asia/Tokyo' },
-      '/api/v1/organizations/ui-fixture': { id: 'ui-fixture', slug: 'ui-fixture', numericId: 1, basicInfo: { name: 'UI Fixture' }, visibility: { visibility: 'PRIVATE', supporterEnabled: false }, metadata: { memberCount: 1 }, social: { supporterCount: 0 } },
+      '/api/v1/teams/ui-fixture': { id: 'ui-fixture', slug: 'ui-fixture', numericId: 1, basicInfo: { name: 'UI Team Fixture' }, location: { template: 'OTHER' }, visibility: { visibility: 'MEMBERS_AND_ABOVE', supporterEnabled: false }, metadata: { memberCount: 1 }, social: { supporterCount: 0 }, timezone: 'Asia/Tokyo' },
+      '/api/v1/organizations/ui-fixture': { id: 'ui-fixture', slug: 'ui-fixture', numericId: 1, basicInfo: { name: 'UI Organization Fixture' }, visibility: { visibility: 'PRIVATE', supporterEnabled: false }, metadata: { memberCount: 1 }, social: { supporterCount: 0 } },
       '/api/v1/teams/ui-fixture/me/permissions': { roleName: 'ADMIN', permissions: [], scopeAdmin: true },
       '/api/v1/organizations/ui-fixture/me/permissions': { roleName: 'ADMIN', permissions: [], scopeAdmin: true },
       '/api/v1/dashboard/team/ui-fixture/widget-visibility': { widgets: [] },
@@ -145,6 +145,8 @@ for (const width of [360, 390]) {
       }, `/${scope}/ui-fixture/info`)
       await expect(page).toHaveURL(new RegExp(`/${scope}/ui-fixture/info$`))
       await waitForHydration(page)
+      // URL/page:finishだけでは遷移中の旧scopeが残るため、対象componentの実表示を待つ。
+      await expect(page.getByRole('heading', { name: scope === 'teams' ? 'UI Team Fixture' : 'UI Organization Fixture', exact: true })).toBeVisible()
       const toggle = page.getByTestId('scope-sidebar-toggle')
       await targetBox(toggle)
       await toggle.click()
@@ -220,6 +222,7 @@ for (const width of [360, 390]) {
     await page.goto('/admin/receipt-settings')
     await waitForHydration(page)
     const input = page.locator('#isQualifiedInvoicer')
+    await input.scrollIntoViewIfNeeded()
     const box = await targetBox(input)
     const slider = input.locator('..').locator('.p-toggleswitch-slider')
     const visual = await slider.boundingBox()
@@ -229,6 +232,10 @@ for (const width of [360, 390]) {
     expect(Math.abs(visual!.y + 12 - box.y - box.height / 2)).toBeLessThanOrEqual(0.5)
     let checked = false
     for (const position of [{ x: 1, y: 1 }, { x: box.width - 1, y: 1 }, { x: 1, y: box.height - 1 }, { x: box.width - 1, y: box.height - 1 }]) {
+      expect(await input.evaluate((el, point) => {
+        const rect = el.getBoundingClientRect()
+        return document.elementFromPoint(rect.x + point.x, rect.y + point.y) === el
+      }, position), '透明inputの四隅が実クリックtargetである').toBe(true)
       await input.click({ position })
       checked = !checked
       await expect(input).toBeChecked({ checked })

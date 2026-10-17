@@ -85,6 +85,11 @@ body {
     flex-shrink: 0;
   }
 
+  /* 透明inputの角も操作領域に含め、sliderの丸い見た目は維持する。 */
+  .p-toggleswitch .p-toggleswitch-input {
+    border-radius: 0;
+  }
+
   .p-toggleswitch .p-toggleswitch-handle {
     margin-inline-start: calc(-1 * var(--p-toggleswitch-border-width));
   }
