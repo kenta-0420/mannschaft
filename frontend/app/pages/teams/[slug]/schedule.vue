@@ -110,7 +110,7 @@ onMounted(async () => {
         <NuxtLink :to="`/teams/${teamSlug}/schedule-keeps`">
           <Button :label="$t('scheduleKeep.title')" icon="pi pi-bookmark" outlined data-testid="schedule-keep-nav-link" />
         </NuxtLink>
-        <Button v-if="canManageSchedule" :label="$t('schedule.event_add')" icon="pi pi-plus" @click="onAddButtonClick" />
+        <Button v-if="canManageSchedule" :label="$t('schedule.event_add')" icon="pi pi-plus" class="min-h-11" @click="onAddButtonClick" />
       </div>
     </div>
 
