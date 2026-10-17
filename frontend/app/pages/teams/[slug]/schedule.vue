@@ -104,9 +104,9 @@ onMounted(async () => {
 <template>
   <PageLoading v-if="loading" />
   <div v-else>
-    <div class="mb-4 flex items-center justify-between">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <PageHeader :title="$t('schedule.page_title')" />
-      <div class="flex items-center gap-2">
+      <div class="flex min-w-0 flex-wrap items-center gap-2">
         <NuxtLink :to="`/teams/${teamSlug}/schedule-keeps`">
           <Button :label="$t('scheduleKeep.title')" icon="pi pi-bookmark" outlined data-testid="schedule-keep-nav-link" />
         </NuxtLink>
