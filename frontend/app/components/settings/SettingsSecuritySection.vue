@@ -117,6 +117,7 @@ function deviceLabel(userAgent: string | null): string {
         translate="no"
         :label="$t('settings.security.logout_all_button')"
         icon="pi pi-sign-out"
+        class="min-h-11 min-w-11"
         severity="danger"
         text
         size="small"
