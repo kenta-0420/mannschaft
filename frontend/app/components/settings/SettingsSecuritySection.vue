@@ -136,14 +136,14 @@ function deviceLabel(userAgent: string | null): string {
         <div class="min-w-0 flex-1">
           <p class="text-sm font-medium [overflow-wrap:anywhere]">
             {{ deviceLabel(session.userAgent) }}
-            <Tag v-if="session.isCurrent" :value="$t('settings.security.current_session_tag')" severity="success" class="ml-2" />
+            <Tag v-if="session.current" :value="$t('settings.security.current_session_tag')" severity="success" class="ml-2" />
           </p>
           <p class="text-xs text-surface-500 [overflow-wrap:anywhere]">
             IP: {{ session.ipAddress || '-' }} / {{ formatDate(session.createdAt) }}
           </p>
         </div>
         <Button
-          v-if="!session.isCurrent"
+          v-if="!session.current"
           icon="pi pi-times"
           severity="danger"
           text
