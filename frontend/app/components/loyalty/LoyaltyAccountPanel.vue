@@ -13,7 +13,7 @@ const { t } = useI18n()
     <ul class="mt-4 space-y-4">
       <li v-for="reward in account.rewards" :key="reward.id">
         <h3 class="font-semibold">{{ reward.name }}</h3>
-        <p v-if="reward.description">{{ reward.description }}</p>
+        <p v-if="reward.description" class="[overflow-wrap:anywhere]">{{ reward.description }}</p>
         <p>{{ t('loyalty.reward.required', { points: reward.requiredPoints }) }}</p>
         <progress
           class="w-full"
