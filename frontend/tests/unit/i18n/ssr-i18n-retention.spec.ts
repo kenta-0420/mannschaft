@@ -2,6 +2,9 @@
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { loadNuxtConfig } from '@nuxt/kit'
+import { resolveConfig, type UserConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import VueI18nPlugin from '@intlify/unplugin-vue-i18n'
 import { createSSRApp, h } from 'vue'
 import { renderToString } from '@vue/server-renderer'
 import { describe, expect, it } from 'vitest'
@@ -18,6 +21,7 @@ async function resolveBundle(
   isServer: boolean,
   arrayAlias: boolean,
   original = browserBundle,
+  applyHook = true,
 ) {
   const nuxt = await loadNuxtConfig({
     cwd: process.cwd(),
@@ -26,16 +30,24 @@ async function resolveBundle(
     rcFile: false,
     globalRc: false,
   })
-  const config: ViteConfig = {
+  const config: UserConfig & ViteConfig = {
+    configFile: false,
+    envFile: false,
+    logLevel: 'silent',
+    plugins: [
+      vue(),
+      VueI18nPlugin.vite({ runtimeOnly: original.includes('.runtime.'), include: [] }),
+    ],
     resolve: {
       alias: arrayAlias ? [{ find: 'vue-i18n', replacement: original }] : { 'vue-i18n': original },
     },
   }
   const hook = nuxt.hooks?.['vite:extendConfig'] as ConfigHook | undefined
-  await hook?.(config, { isServer, isClient: !isServer })
-  return Array.isArray(config.resolve.alias)
-    ? config.resolve.alias.find((alias) => alias.find === 'vue-i18n')!.replacement
-    : config.resolve.alias['vue-i18n']!
+  if (applyHook) await hook?.(config, { isServer, isClient: !isServer })
+  const resolved = await resolveConfig(config, 'serve', environment)
+  return require.resolve(
+    resolved.resolve.alias.find((alias) => alias.find === 'vue-i18n')!.replacement,
+  )
 }
 
 describe('開発SSRのvue-i18n解決', () => {
@@ -70,11 +82,15 @@ describe('開発SSRのvue-i18n解決', () => {
   )
 
   it.each([false, true])('ブラウザのbundleを変更しない（alias配列=%s）', async (arrayAlias) => {
-    expect(await resolveBundle('development', false, arrayAlias)).toBe(browserBundle)
+    expect(await resolveBundle('development', false, arrayAlias)).toBe(
+      await resolveBundle('development', false, arrayAlias, browserBundle, false),
+    )
   })
 
   it.each(['vue-i18n.mjs', 'vue-i18n.runtime.mjs'])('本番の%sを変更しない', async (file) => {
     const original = require.resolve(`vue-i18n/dist/${file}`)
-    expect(await resolveBundle('production', true, false, original)).toBe(original)
+    expect(await resolveBundle('production', true, false, original)).toBe(
+      await resolveBundle('production', true, false, original, false),
+    )
   })
 })
