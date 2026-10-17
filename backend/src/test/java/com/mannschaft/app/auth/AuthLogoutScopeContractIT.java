@@ -56,6 +56,7 @@ class AuthLogoutScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private ApplicationEvents events;
 
     private final Map<String, String> redisValues = new HashMap<>();
+    private final Map<String, Long> redisTtls = new HashMap<>();
     private long actorId;
     private long otherActorId;
     private String accessToken;
@@ -75,6 +76,7 @@ class AuthLogoutScopeContractIT extends AbstractMySqlIntegrationTest {
         given(valueOps.get(anyString())).willAnswer(invocation -> redisValues.get(invocation.getArgument(0)));
         doAnswer(invocation -> {
             redisValues.put(invocation.getArgument(0), invocation.getArgument(1));
+            redisTtls.put(invocation.getArgument(0), invocation.getArgument(2));
             return null;
         }).when(valueOps).set(anyString(), anyString(), anyLong(), any(TimeUnit.class));
         accessToken = authTokenService.issueAccessToken(actorId, List.of("MEMBER"));
@@ -142,6 +144,7 @@ class AuthLogoutScopeContractIT extends AbstractMySqlIntegrationTest {
         assertThat(isRevoked(foreign.getId())).isFalse();
         assertThat(isRevoked(sessionId)).isFalse();
         assertThat(authTokenService.isJtiBlacklisted(actorJti)).isTrue();
+        assertThat(redisTtls.get("mannschaft:auth:blacklist:" + actorJti)).isBetween(1L, 900L);
         assertThat(authTokenService.isJtiBlacklisted(foreignJti)).isFalse();
         assertThat(events.stream(LogoutEvent.class)).isEmpty();
     }
@@ -203,6 +206,17 @@ class AuthLogoutScopeContractIT extends AbstractMySqlIntegrationTest {
         assertThat(status).isIn(401, 403);
         assertThat(isRevoked(sessionId)).isFalse();
         assertThat(redisValues).isEmpty();
+    }
+
+    @Test
+    void 無効JWT_有効refreshCookieがあっても失効しない() throws Exception {
+        int status = mockMvc.perform(post("/api/v1/auth/logout")
+                        .cookie(new Cookie("access_token", "invalid-jwt"), new Cookie("refresh_token", rawRefreshToken)))
+                .andReturn().getResponse().getStatus();
+        assertThat(status).isIn(401, 403);
+        assertThat(isRevoked(sessionId)).isFalse();
+        assertThat(redisValues).isEmpty();
+        assertThat(events.stream(LogoutEvent.class)).isEmpty();
     }
 
     private RefreshTokenEntity saveSession(long userId, String rawToken) {
