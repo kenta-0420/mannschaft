@@ -122,7 +122,7 @@ test('braces GHSA は名指しで通り、期限・lock版・範囲・消費者�
     () =>
       check(
         report(bracesGraph()),
-        Date.parse('2026-10-17T00:00:00Z'),
+        Date.parse('2026-10-24T00:00:00Z'),
         BRACES_LOCK,
       ),
     /GHSA-vfj7-8cjw-p6xm の除外期限切れ/,
@@ -216,11 +216,11 @@ test('実監査の2advisory混在19件は循環とforge専用辺を含めて通�
   assert.equal(value.metadata.vulnerabilities.high, 19)
   assert.equal(check(value, NOW, MIXED_LOCK), true)
   assert.equal(
-    check(value, Date.parse('2026-10-16T23:59:59.999Z'), MIXED_LOCK),
+    check(value, Date.parse('2026-10-23T23:59:59.999Z'), MIXED_LOCK),
     true,
   )
   assert.throws(
-    () => check(value, Date.parse('2026-10-17T00:00:00Z'), MIXED_LOCK),
+    () => check(value, Date.parse('2026-10-24T00:00:00Z'), MIXED_LOCK),
     /期限切れ/,
   )
 })
@@ -282,10 +282,10 @@ test('同じGHSAでもcritical・別package・別range・直接依存・別versi
     /許可されない advisory/,
   )
 })
-test('UTC10月16日末まで通り、17日0時ちょうどから例外を拒否する', () => {
-  assert.equal(check(allowed(), Date.parse('2026-10-16T23:59:59.999Z')), true)
+test('UTC10月23日末まで通り、24日0時ちょうどから例外を拒否する', () => {
+  assert.equal(check(allowed(), Date.parse('2026-10-23T23:59:59.999Z')), true)
   assert.throws(
-    () => check(allowed(), Date.parse('2026-10-17T00:00:00Z')),
+    () => check(allowed(), Date.parse('2026-10-24T00:00:00Z')),
     /期限切れ/,
   )
   assert.throws(
