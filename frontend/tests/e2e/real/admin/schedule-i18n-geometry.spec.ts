@@ -183,14 +183,14 @@ for (const width of [360, 390, 1440]) {
     }
     await page.goto(`/teams/${encodeURIComponent(slug)}/schedule?eventId=${encodeURIComponent(id)}`, { waitUntil: 'domcontentloaded' })
     await measure('keep', page.getByTestId('schedule-keep-nav-link'))
-    const calendarHeader = page.locator('h2.text-lg.font-extrabold').first().locator('..')
+    const calendarHeader = page.locator('h2.text-lg.font-extrabold').filter({ visible: true }).first().locator('..')
     await measure('calendar-prev', calendarHeader.getByRole('button').filter({ has: page.locator('.pi-chevron-left') }))
     await measure('calendar-next', calendarHeader.getByRole('button').filter({ has: page.locator('.pi-chevron-right') }))
     await measure('record', page.getByRole('button').filter({ has: page.locator('.pi-play') }).first())
-    const input = page.getByTestId('schedule-comment-input').first()
+    const input = page.getByTestId('schedule-comment-input').filter({ visible: true }).first()
     await expect(input).toBeVisible()
     await input.fill('Geometry check (not submitted)')
-    await measure('comment-post', page.getByTestId('schedule-comment-submit').first())
+    await measure('comment-post', page.getByTestId('schedule-comment-submit').filter({ visible: true }).first())
     if (width < 768) {
       const nextTab = page.locator('.p-tablist-next-button').first()
       await measure('tablist-next', nextTab)
@@ -204,8 +204,10 @@ for (const width of [360, 390, 1440]) {
     const delegationUrl = (url: URL) => url.pathname === `/api/v1/schedules/${id}/delegations`
     await page.route(delegationUrl, async route => { interrupted++; await route.abort() })
     await page.reload({ waitUntil: 'domcontentloaded' })
-    await measure('delegation-error-retry', page.getByTestId('schedule-delegation-error-retry'))
-    expect(interrupted).toBe(1)
+    await measure('delegation-error-retry', page.getByTestId('schedule-delegation-error-retry').filter({ visible: true }))
+    // チーム画面はCSSで切り替えるmobile/desktop各1パネルをmountする。
+    // useApiは401のみ再試行するため、通信中断では各instanceの1回ずつとなる。
+    await expect.poll(() => interrupted).toBe(2)
     await page.unroute(delegationUrl)
 
     await page.goto('/teams/surroundings-missing-261017/schedule', { waitUntil: 'domcontentloaded' })
