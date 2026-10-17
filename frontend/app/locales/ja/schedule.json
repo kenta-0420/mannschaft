@@ -1,5 +1,7 @@
 {
   "schedule": {
+    "page_title": "スケジュール",
+    "created_by": "作成: {name}",
     "attendance": {
       "yes": "出席",
       "no": "欠席",
