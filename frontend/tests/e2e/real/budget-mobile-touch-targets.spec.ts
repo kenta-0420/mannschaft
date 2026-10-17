@@ -147,8 +147,24 @@ for (const locale of ['ja', 'de']) {
         await expectTouchTargets(form, page)
         await form.locator('button[data-pc-name="pcclosebutton"]').click()
         await expect(form).toBeHidden()
+        const navigationStarted = Date.now()
         await back.click()
-        await expect(page).toHaveURL(new RegExp(`/teams/${slug}$`))
+        // 遷移先の初回コンパイルを含め、実URLへ到達するまで待つ。
+        try {
+          await page.waitForURL(new RegExp(`/teams/${slug}$`), {
+            timeout: 120_000,
+            waitUntil: 'domcontentloaded',
+          })
+        } finally {
+          await test.info().attach('戻るの遷移結果', {
+            body: JSON.stringify({
+              url: page.url(),
+              expectedUrl: `/teams/${slug}`,
+              elapsedMs: Date.now() - navigationStarted,
+            }),
+            contentType: 'application/json',
+          })
+        }
       } finally {
         const restored = await page.request.put(profileUrl, { data: { locale: originalLocale } })
         expect(restored.ok(), '専用アカウントの言語を復元する').toBeTruthy()
