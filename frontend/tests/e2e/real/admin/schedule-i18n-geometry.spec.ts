@@ -18,7 +18,7 @@ test.describe('calendar-mobile-header: 真mobileの見出しと詳細操作', ()
       const add = page.getByRole('button', { name: locale === 'en' ? 'Add event' : 'Termin hinzufügen', exact: true })
       const header = page.locator('main h1').last().locator('..')
       await readyForInteraction(page, header.locator('h1'))
-      const controls = [header.locator('h1'), header.getByTestId('page-header-help'), header.getByRole('combobox'), add]
+      const controls = [header.locator('h1'), header.getByTestId('page-header-help'), header.locator('.p-select'), add]
       const boxes = []
       for (const control of controls) {
         await expect(control).toBeVisible()
