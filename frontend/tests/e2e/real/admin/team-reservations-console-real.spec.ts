@@ -117,7 +117,13 @@ for (const [role, email, expectedRole] of [
     } else {
       expect(teams.some((team) => team.slug === teamSlug && team.role === expectedRole)).toBe(true)
     }
-    await page.goto(consolePath)
+    await Promise.all([
+      page.waitForResponse((response) =>
+        new URL(response.url()).pathname === `/api/v1/teams/${teamSlug}/me/permissions`
+        && response.request().method() === 'GET' && response.ok(),
+      ),
+      page.goto(consolePath),
+    ])
     await expect(page).toHaveURL(new RegExp(`/teams/${teamSlug}/?$`))
     await expect(page.getByTestId('team-admin-reservations')).toHaveCount(0)
     await expect(page.locator(`a[href="${consolePath}"]`)).toHaveCount(0)
