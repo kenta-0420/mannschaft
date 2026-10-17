@@ -3,6 +3,7 @@ import dayjs from 'dayjs'
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import type { FiscalYearResponse, BudgetSummary } from '~/types/budget'
+import { fiscalYearDatePickerPt } from '~/constants/budgetFiscalYearUi'
 import { toLocalDateString } from '~/utils/localDate'
 import {
   budgetFiscalYearSchema,
@@ -31,13 +32,14 @@ const showGuide = ref(false)
 const showCreateDialog = ref(false)
 const saving = ref(false)
 let summaryRequest = 0
-
 const schema = budgetFiscalYearSchema(t)
-const { defineField, handleSubmit, errors, resetForm, setErrors, isSubmitting } =
-  useForm<FiscalYearFormInput, FiscalYearForm>({
-    validationSchema: toTypedSchema(schema),
-    initialValues: { name: '', startDate: null, endDate: null },
-  })
+const { defineField, handleSubmit, errors, resetForm, setErrors, isSubmitting } = useForm<
+  FiscalYearFormInput,
+  FiscalYearForm
+>({
+  validationSchema: toTypedSchema(schema),
+  initialValues: { name: '', startDate: null, endDate: null },
+})
 const [name] = defineField('name')
 const [startDate] = defineField('startDate')
 const [endDate] = defineField('endDate')
@@ -225,7 +227,7 @@ onBeforeUnmount(() => {
       v-model:visible="showCreateDialog"
       modal
       :header="t('budget_accounting.add_year')"
-      class="w-full max-w-md"
+      class="w-full max-w-md [&_.p-button]:min-h-11 [&_.p-button]:min-w-11"
       :closable="!saving"
       :close-on-escape="!saving"
     >
@@ -235,7 +237,7 @@ onBeforeUnmount(() => {
           <InputText
             id="fiscal-year-name"
             v-model="name"
-            class="text-base"
+            class="min-h-11 text-base"
             :placeholder="t('budget_accounting.name_placeholder')"
             :invalid="!!errors.name"
             :disabled="saving"
@@ -248,7 +250,8 @@ onBeforeUnmount(() => {
           <label for="fiscal-year-start">{{ t('budget_accounting.start_date') }}</label>
           <DatePicker
             v-model="startDate"
-            input-class="text-base"
+            input-class="min-h-11 text-base"
+            :pt="fiscalYearDatePickerPt"
             input-id="fiscal-year-start"
             date-format="yy/mm/dd"
             show-icon
@@ -263,7 +266,8 @@ onBeforeUnmount(() => {
           <label for="fiscal-year-end">{{ t('budget_accounting.end_date') }}</label>
           <DatePicker
             v-model="endDate"
-            input-class="text-base"
+            input-class="min-h-11 text-base"
+            :pt="fiscalYearDatePickerPt"
             input-id="fiscal-year-end"
             date-format="yy/mm/dd"
             show-icon

@@ -7,13 +7,20 @@ const visible = defineModel<boolean>('visible', { required: true })
   <Dialog
     v-model:visible="visible"
     modal
+    :pt="{ pcCloseButton: { root: { class: 'min-h-11 min-w-11' } } }"
     :header="$t('budget_guide.title')"
     class="w-full max-w-2xl"
     data-testid="budget-guide-modal"
   >
     <div class="overflow-y-auto py-2"><BudgetGuideContent /></div>
     <template #footer>
-      <Button :label="$t('button.close')" icon="pi pi-times" text @click="visible = false" />
+      <Button
+        :label="$t('button.close')"
+        icon="pi pi-times"
+        class="min-h-11 min-w-11"
+        text
+        @click="visible = false"
+      />
     </template>
   </Dialog>
 </template>
