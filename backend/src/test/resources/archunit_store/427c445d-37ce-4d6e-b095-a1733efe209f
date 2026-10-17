@@ -780,8 +780,6 @@ com.mannschaft.app.gdpr.service.PersonalDataCollector (domain 'gdpr') depends on
 com.mannschaft.app.gdpr.service.PersonalDataCollector (domain 'gdpr') depends on other-domain repository com.mannschaft.app.actionmemo.repository.UserActionMemoSettingsRepository (domain 'actionmemo')
 com.mannschaft.app.gdpr.service.PersonalDataCollector (domain 'gdpr') depends on other-domain repository com.mannschaft.app.actionmemo.repository.UserActionMemoSettingsRepository (domain 'actionmemo')
 com.mannschaft.app.gdpr.service.PersonalDataCollector (domain 'gdpr') depends on other-domain repository com.mannschaft.app.actionmemo.repository.UserActionMemoSettingsRepository (domain 'actionmemo')
-com.mannschaft.app.gdpr.service.PersonalDataCollector (domain 'gdpr') depends on other-domain repository com.mannschaft.app.auth.repository.AuditLogRepository (domain 'auth')
-com.mannschaft.app.gdpr.service.PersonalDataCollector (domain 'gdpr') depends on other-domain repository com.mannschaft.app.auth.repository.AuditLogRepository (domain 'auth')
 com.mannschaft.app.gdpr.service.PersonalDataCollector (domain 'gdpr') depends on other-domain repository com.mannschaft.app.auth.repository.OAuthAccountRepository (domain 'auth')
 com.mannschaft.app.gdpr.service.PersonalDataCollector (domain 'gdpr') depends on other-domain repository com.mannschaft.app.auth.repository.OAuthAccountRepository (domain 'auth')
 com.mannschaft.app.gdpr.service.PersonalDataCollector (domain 'gdpr') depends on other-domain repository com.mannschaft.app.auth.repository.OAuthAccountRepository (domain 'auth')

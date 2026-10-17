@@ -73040,6 +73040,25 @@ export interface components {
         UpdateSessionDeviceNameRequest: {
             deviceName?: string;
         };
+        ApiResponseAuthSessionResponse: {
+            data?: components["schemas"]["AuthSessionResponse"];
+        };
+        AuthSessionResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            current?: boolean;
+            deviceName?: string;
+            deviceType?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: int64 */
+            id?: number;
+            ipAddress?: string;
+            /** Format: date-time */
+            lastUsedAt?: string;
+            rememberMe?: boolean;
+            userAgent?: string;
+        };
         UpdateRequirementRuleRequest: {
             /** @enum {string} */
             category?: "GRADE_PROMOTION" | "GRADUATION" | "SUBJECT_CREDIT" | "PERFECT_ATTENDANCE" | "CUSTOM";
@@ -84382,8 +84401,8 @@ export interface components {
         ApiResponseListWebAuthnCredentialResponse: {
             data?: components["schemas"]["WebAuthnCredentialResponse"][];
         };
-        ApiResponseListSessionResponse: {
-            data?: components["schemas"]["SessionResponse"][];
+        ApiResponseListAuthSessionResponse: {
+            data?: components["schemas"]["AuthSessionResponse"][];
         };
         ApiResponseRateSimulatorResponse: {
             data?: components["schemas"]["RateSimulatorResponse"];
@@ -136823,13 +136842,11 @@ export interface operations {
     };
     logout: {
         parameters: {
-            query?: {
-                jti?: string;
-                exp?: number;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: {
+                refresh_token?: string;
                 refresh_token_hash?: string;
             };
         };
@@ -150898,7 +150915,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseSessionResponse"];
+                    "*/*": components["schemas"]["ApiResponseAuthSessionResponse"];
                 };
             };
         };
@@ -171805,7 +171822,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListSessionResponse"];
+                    "*/*": components["schemas"]["ApiResponseListAuthSessionResponse"];
                 };
             };
         };

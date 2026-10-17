@@ -13,7 +13,6 @@ import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
 import com.mannschaft.app.actionmemo.repository.UserActionMemoSettingsRepository;
 import com.mannschaft.app.auth.entity.OAuthAccountEntity;
 import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.AuditLogRepository;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
@@ -87,7 +86,6 @@ public class PersonalDataCollector {
     private final MemberPaymentRepository memberPaymentRepository;
     private final ChartRecordRepository chartRecordRepository;
     private final TimelinePostRepository timelinePostRepository;
-    private final AuditLogRepository auditLogRepository;
     private final NotificationRepository notificationRepository;
     private final ActionMemoRepository actionMemoRepository;
     private final ActionMemoTagRepository actionMemoTagRepository;
@@ -204,10 +202,11 @@ public class PersonalDataCollector {
         for (String category : targets) {
             String fileName = CATEGORY_FILES.get(category);
             if (fileName == null) continue;
-            if (PersonalDataPrefetcher.MEMBERSHIPS.equals(category)) {
+            if (Set.of(PersonalDataPrefetcher.MEMBERSHIPS, PersonalDataPrefetcher.CHAT_MESSAGES,
+                    PersonalDataPrefetcher.AUDIT_LOGS).contains(category)) {
                 // 事前取得の欠落は「0 件」ではなく収集の失敗。"[]" に畳むと実データ 0 件と区別できず、欠けた ZIP が
                 // COMPLETED になる。握らずに伝播させ、エクスポートを FAILED にする（DataExportService#processExportAsync）
-                data.put(fileName, collectMemberships(prefetched));
+                data.put(fileName, collectPrefetched(category, prefetched));
                 continue;
             }
             try {
@@ -227,9 +226,7 @@ public class PersonalDataCollector {
             case "profiles" -> collectProfiles(userId);
             case "payments" -> collectPayments(userId);
             case "charts" -> collectCharts(userId);
-            case "chat_messages" -> collectChatMessages(userId);
             case "timeline" -> collectTimeline(userId);
-            case "audit_logs" -> collectAuditLogs(userId);
             case "notifications" -> collectNotifications(userId);
             case "action_memos" -> collectActionMemos(userId);
             case "error_reports" -> collectErrorReports(userId);
@@ -519,19 +516,21 @@ public class PersonalDataCollector {
         }).toList());
     }
 
-    private String collectMemberships(PrefetchedPersonalData prefetched) {
-        // F01.2.1 §15・AC-G127: team_org_memberships の invited_by・responded_by として関わった加盟。
-        // エクスポートの gdpr トランザクションから team の Repository へ届かせないため、呼び出し元がトランザクションの外で
-        // 事前取得した値を書き出すだけにする（PersonalDataPrefetcher・D-3T）。事前取得していなければ収集の失敗として扱い、
-        // 呼び出し元へ伝播させる（"[]" に畳まない）
-        if (prefetched == null || prefetched.teamOrgMemberships() == null) {
-            throw new IllegalStateException(
-                    "memberships は PersonalDataPrefetcher による事前取得が必要（エクスポートの tx 内では収集しない）");
+    private String collectPrefetched(String category, PrefetchedPersonalData prefetched) {
+        // ドメイン内の読取 TX で得た値だけを書き出す。欠落・直列化失敗を 0 件へ変えない（D-3T）。
+        List<Map<String, Object>> values = prefetched == null ? null : switch (category) {
+            case PersonalDataPrefetcher.MEMBERSHIPS -> prefetched.teamOrgMemberships();
+            case PersonalDataPrefetcher.CHAT_MESSAGES -> prefetched.chatMessages();
+            case PersonalDataPrefetcher.AUDIT_LOGS -> prefetched.auditLogs();
+            default -> throw new IllegalArgumentException("事前取得対象外のカテゴリ: " + category);
+        };
+        if (values == null) {
+            throw new IllegalStateException(category + " は PersonalDataPrefetcher による事前取得が必要");
         }
         try {
-            return OBJECT_MAPPER.writeValueAsString(prefetched.teamOrgMemberships());
+            return OBJECT_MAPPER.writeValueAsString(values);
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            throw new IllegalStateException("memberships の書き出しに失敗した", e);
+            throw new IllegalStateException(category + " の書き出しに失敗した", e);
         }
     }
 
@@ -551,21 +550,9 @@ public class PersonalDataCollector {
                         userId, Pageable.unpaged()).getContent());
     }
 
-    private String collectChatMessages(Long userId) throws Exception {
-        // ChatMessageRepositoryはchannelId検索のみ対応、userId検索メソッドが存在しない
-        log.warn("リポジトリ未実装: category=chat_messages (userId検索メソッドなし)");
-        return "[]";
-    }
-
     private String collectTimeline(Long userId) throws Exception {
         return OBJECT_MAPPER.writeValueAsString(
                 timelinePostRepository.findByUserIdOrderByCreatedAtDesc(userId, Pageable.unpaged()));
-    }
-
-    private String collectAuditLogs(Long userId) throws Exception {
-        // AuditLogRepositoryはJpaRepositoryのみ継承、userId検索メソッドが存在しない
-        log.warn("リポジトリ未実装: category=audit_logs (userId検索メソッドなし)");
-        return "[]";
     }
 
     private String collectNotifications(Long userId) throws Exception {

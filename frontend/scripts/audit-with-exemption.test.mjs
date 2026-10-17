@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { checkAudit } from './audit-with-exemption.mjs'
 
+// 単体fixtureの時刻入力。製品CLIの実時計は置き換えない。
 const NOW = Date.parse('2026-10-02T03:00:00Z')
 const URL = 'https://github.com/advisories/GHSA-86w9-cpqp-85rv'
 const LOCK = { packages: { 'node_modules/node-forge': { version: '1.4.0' } } }
@@ -282,20 +283,67 @@ test('同じGHSAでもcritical・別package・別range・直接依存・別versi
     /許可されない advisory/,
   )
 })
-test('UTC10月23日末まで通り、24日0時ちょうどから例外を拒否する', () => {
-  assert.equal(check(allowed(), Date.parse('2026-10-23T23:59:59.999Z')), true)
-  assert.throws(
-    () => check(allowed(), Date.parse('2026-10-24T00:00:00Z')),
-    /期限切れ/,
-  )
-  assert.throws(
-    () => check(allowed(), Date.parse('2026-11-01T00:00:00Z')),
-    /期限切れ/,
-  )
+test('両GHSA単独・混在でUTC10月23日末まで通り、24日0時以降は拒否する', () => {
+  for (const [value, lock] of [
+    [allowed(), LOCK],
+    [report(bracesGraph()), BRACES_LOCK],
+    [report(mixedGraph()), MIXED_LOCK],
+  ]) {
+    assert.equal(
+      check(value, Date.parse('2026-10-23T23:59:59.999Z'), lock),
+      true,
+    )
+    for (const timestamp of [
+      '2026-10-24T00:00:00Z',
+      '2026-10-24T00:00:00.001Z',
+    ]) {
+      assert.throws(() => check(value, Date.parse(timestamp), lock), /期限切れ/)
+    }
+    for (const invalidTime of [NaN, Infinity, -Infinity]) {
+      assert.throws(() => check(value, invalidTime, lock), /期限切れ/)
+    }
+  }
   assert.equal(
     check(report(), Date.parse('2026-11-01T00:00:00Z'), LOCK, 0),
     false,
   )
+})
+
+test('forge既知消費者名でも未知node・末端の別nodeは拒否する', () => {
+  for (const name of [
+    'node-forge',
+    'listhen',
+    'nitropack',
+    '@nuxt/cli',
+    '@nuxt/nitro-server',
+    '@nuxt/vite-builder',
+    'nuxt',
+  ]) {
+    const graph = mixedGraph()
+    const node = `node_modules/unknown/node_modules/${name}`
+    graph[name].nodes.push(node)
+    const lock = {
+      packages: { ...MIXED_LOCK.packages, [node]: { version: '1.4.0' } },
+    }
+    assert.throws(() => check(report(graph), NOW, lock), /許可されない依存経路/)
+  }
+})
+
+test('forge既知名間の経路付替え・未知の循環辺は拒否する', () => {
+  for (const [name, via] of [
+    ['@nuxt/cli', 'node-forge'],
+    ['nuxt', 'listhen'],
+    ['listhen', 'nitropack'],
+  ]) {
+    const graph = mixedGraph()
+    // forgeだけの未知循環を検証し、bracesの消費者制限による先行拒否と区別する。
+    graph.nitropack.via = ['listhen']
+    graph[name].via.push(via)
+    assert.throws(
+      () => check(report(graph), NOW, MIXED_LOCK),
+      /許可されない依存経路/,
+    )
+  }
 })
 test('不正JSON・構造欠落・error・npm異常終了は拒否する', () => {
   assert.throws(() => checkAudit('{', 1, LOCK, NOW))

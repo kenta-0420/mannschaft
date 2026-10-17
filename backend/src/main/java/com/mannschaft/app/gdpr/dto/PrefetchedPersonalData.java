@@ -13,11 +13,21 @@ import java.util.Map;
  *
  * @param teamOrgMemberships {@code memberships} カテゴリ（F01.2.1 §15・AC-G127。team_org_memberships の
  *                           invited_by・responded_by として関わった加盟）。カテゴリが収集対象でなければ {@code null}
+ * @param chatMessages 本人のチャット発言。収集対象でなければ {@code null}
+ * @param auditLogs 本人が操作者の監査ログ。収集対象でなければ {@code null}
  */
-public record PrefetchedPersonalData(List<Map<String, Object>> teamOrgMemberships) {
+public record PrefetchedPersonalData(
+        List<Map<String, Object>> teamOrgMemberships,
+        List<Map<String, Object>> chatMessages,
+        List<Map<String, Object>> auditLogs) {
+
+    /** 加盟だけを事前取得する既存の呼び出しとの互換用。 */
+    public PrefetchedPersonalData(List<Map<String, Object>> teamOrgMemberships) {
+        this(teamOrgMemberships, null, null);
+    }
 
     /** 何も事前取得していない（事前取得の要るカテゴリは収集できない）。 */
     public static PrefetchedPersonalData none() {
-        return new PrefetchedPersonalData(null);
+        return new PrefetchedPersonalData(null, null, null);
     }
 }

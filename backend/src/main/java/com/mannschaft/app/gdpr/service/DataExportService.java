@@ -18,9 +18,15 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -29,8 +35,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
+import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicBoolean;
+import net.lingala.zip4j.io.outputstream.ZipOutputStream;
+import net.lingala.zip4j.model.ZipParameters;
+import net.lingala.zip4j.model.enums.AesKeyStrength;
+import net.lingala.zip4j.model.enums.AesVersion;
+import net.lingala.zip4j.model.enums.EncryptionMethod;
 
 /**
  * GDPRデータエクスポートサービス。
@@ -48,6 +59,7 @@ public class DataExportService {
     private final PersonalDataCollector personalDataCollector;
     private final StorageService storageService;
     private final EmailOutboxService emailOutboxService;
+    private final PlatformTransactionManager transactionManager;
 
     /**
      * エクスポートリクエストを受け付け、DataExportEntityを作成する。
@@ -98,8 +110,54 @@ public class DataExportService {
      * @param categories 収集カテゴリ
      */
     @Async("job-pool")
-    @Transactional
+    // 呼出し元TXを外側の失敗処理へ持ち込まず、内部のREQUIRES_NEWごとに確定する。
+    // D-3Tの既存28件は実TX越境が未解消のため、この入口の監視を維持する。
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void processExportAsync(Long exportId, UserEmailInfo userInfo, Set<String> categories) {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        AtomicBoolean uploaded = new AtomicBoolean(false);
+        try {
+            // REQUIREDのoutbox失敗でrollback-onlyになったTXの外へ出てから失敗を確定する。
+            transaction.executeWithoutResult(status -> {
+                try {
+                    processExportInTransaction(exportId, userInfo, categories, uploaded);
+                } catch (IOException e) {
+                    throw new UncheckedIOException("ZIP生成失敗", e);
+                }
+            });
+        } catch (Exception e) {
+            // 例外の本文には収集内容や秘密が含まれ得るため、識別子と原因型だけを記録する。
+            log.error("データエクスポート処理失敗: exportId={}, userId={}, causeType={}",
+                    exportId, userInfo.userId(), e.getClass().getName());
+            if (uploaded.get()) {
+                try {
+                    storageService.delete("gdpr-exports/" + userInfo.userId() + "/" + exportId + ".zip");
+                } catch (Exception cleanupFailure) {
+                    log.error("失敗した出力の削除失敗: exportId={}, causeType={}",
+                            exportId, cleanupFailure.getClass().getName());
+                }
+            }
+            transaction.executeWithoutResult(status -> {
+                // rollbackされたmanaged entityを再利用せず、未完了行を読み直す。
+                DataExportEntity failed = dataExportRepository.findById(exportId)
+                        .orElseThrow(() -> new IllegalStateException("ExportEntity not found: " + exportId));
+                failed.markFailed("エクスポート処理に失敗しました");
+                dataExportRepository.save(failed);
+            });
+            try {
+                // 失敗通知自体がenqueueできなくても、確定済みFAILEDを巻き戻さない。
+                transaction.executeWithoutResult(status -> sendFailureEmail(userInfo, exportId));
+            } catch (Exception notificationFailure) {
+                log.error("エクスポート失敗通知の登録失敗: exportId={}, causeType={}",
+                        exportId, notificationFailure.getClass().getName());
+            }
+        }
+    }
+
+    /** 暗号化出力の完了とpassword通知の永続化を一つのTXに揃える。 */
+    private void processExportInTransaction(Long exportId, UserEmailInfo userInfo, Set<String> categories,
+                                            AtomicBoolean uploaded) throws IOException {
         Long userId = userInfo.userId();
         DataExportEntity entity = dataExportRepository.findById(exportId)
                 .orElseThrow(() -> new IllegalStateException("ExportEntity not found: " + exportId));
@@ -107,56 +165,50 @@ public class DataExportService {
         entity.markProcessing();
         dataExportRepository.save(entity);
 
-        try {
-            // データ収集
-            entity.updateProgress(10, "collecting_data");
-            dataExportRepository.save(entity);
+        // データ収集
+        entity.updateProgress(10, "collecting_data");
+        dataExportRepository.save(entity);
 
-            // 他ドメインの一部カテゴリは呼び出し元がこの tx の外で事前取得したもの（userInfo.prefetched()。D-3T）
-            Map<String, String> collectedData = personalDataCollector.collect(userId, categories, userInfo.prefetched());
+        // 他ドメインの一部カテゴリは呼び出し元がこの tx の外で事前取得したもの（userInfo.prefetched()。D-3T）
+        Map<String, String> collectedData = personalDataCollector.collect(userId, categories, userInfo.prefetched());
 
-            entity.updateProgress(60, "generating_zip");
-            dataExportRepository.save(entity);
+        entity.updateProgress(60, "generating_zip");
+        dataExportRepository.save(entity);
 
-            // ZIPパスワード生成（12文字英数記号）
-            String zipPassword = generateZipPassword();
+        // ZIPパスワード生成（12文字英数記号）
+        String zipPassword = generateZipPassword();
 
-            // ZIP生成
-            byte[] zipBytes = generatePasswordProtectedZip(collectedData, zipPassword);
+        // ZIP生成
+        byte[] zipBytes = generatePasswordProtectedZip(collectedData, zipPassword);
 
-            // サイズチェック（500MB超の場合はメタデータのみにフォールバック）
-            if (zipBytes.length > MAX_ZIP_SIZE_BYTES) {
-                log.warn("エクスポートZIPが500MB超: userId={}, size={}MB",
-                        userId, zipBytes.length / 1024 / 1024);
-                zipBytes = generateMetadataOnlyZip(collectedData, zipPassword);
-            }
-
-            entity.updateProgress(80, "uploading");
-            dataExportRepository.save(entity);
-
-            // S3アップロード
-            String s3Key = "gdpr-exports/" + userId + "/" + exportId + ".zip";
-            storageService.upload(s3Key, zipBytes, "application/zip");
-
-            // bcryptハッシュを保存（平文は保存しない）
-            String zipPasswordHash = BCrypt.hashpw(zipPassword, BCrypt.gensalt());
-            LocalDateTime expiresAt = LocalDateTime.now().plusHours(24);
-
-            entity.markCompleted(s3Key, zipBytes.length, zipPasswordHash, expiresAt);
-            dataExportRepository.save(entity);
-
-            entity.updateProgress(100, "completed");
-            dataExportRepository.save(entity);
-
-            // 完了通知メール（ZIPパスワード平文をメールで送信）
-            sendCompletionEmail(userInfo, zipPassword, expiresAt, exportId);
-
-        } catch (Exception e) {
-            log.error("データエクスポート処理失敗: exportId={}, userId={}", exportId, userId, e);
-            entity.markFailed(e.getMessage() != null ? e.getMessage() : "不明なエラー");
-            dataExportRepository.save(entity);
-            sendFailureEmail(userInfo, exportId);
+        // サイズチェック（500MB超の場合はメタデータのみにフォールバック）
+        if (zipBytes.length > MAX_ZIP_SIZE_BYTES) {
+            log.warn("エクスポートZIPが500MB超: userId={}, size={}MB",
+                    userId, zipBytes.length / 1024 / 1024);
+            zipBytes = generateMetadataOnlyZip(collectedData, zipPassword);
         }
+
+        entity.updateProgress(80, "uploading");
+        dataExportRepository.save(entity);
+
+        // S3アップロード
+        String s3Key = "gdpr-exports/" + userId + "/" + exportId + ".zip";
+        storageService.upload(s3Key, zipBytes, "application/zip");
+        uploaded.set(true);
+
+        // bcryptハッシュを保存（平文は保存しない）
+        String zipPasswordHash = BCrypt.hashpw(zipPassword, BCrypt.gensalt());
+        LocalDateTime expiresAt = LocalDateTime.now().plusHours(24);
+
+        entity.markCompleted(s3Key, zipBytes.length, zipPasswordHash, expiresAt);
+        dataExportRepository.save(entity);
+
+        entity.updateProgress(100, "completed");
+        dataExportRepository.save(entity);
+
+        // 完了通知メール（ZIPパスワード平文をメールで送信）
+        sendCompletionEmail(userInfo, zipPassword, expiresAt, exportId);
+
     }
 
     /**
@@ -244,22 +296,29 @@ public class DataExportService {
         return sb.toString();
     }
 
-    private byte[] generatePasswordProtectedZip(Map<String, String> data, String password) throws Exception {
-        // 標準JavaのZipOutputStreamはパスワード非対応のため通常ZIPとして生成し、
-        // パスワードはメール本文に記載する方式で対応する。
+    private byte[] generatePasswordProtectedZip(Map<String, String> data, String password) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try (ZipOutputStream zos = new ZipOutputStream(baos)) {
+        char[] passwordChars = password.toCharArray();
+        try (ZipOutputStream zos = new ZipOutputStream(baos, passwordChars)) {
             for (Map.Entry<String, String> entry : data.entrySet()) {
-                ZipEntry zipEntry = new ZipEntry(entry.getKey());
-                zos.putNextEntry(zipEntry);
+                ZipParameters parameters = new ZipParameters();
+                parameters.setFileNameInZip(entry.getKey());
+                parameters.setEncryptFiles(true);
+                parameters.setEncryptionMethod(EncryptionMethod.AES);
+                parameters.setAesKeyStrength(AesKeyStrength.KEY_STRENGTH_256);
+                parameters.setAesVersion(AesVersion.TWO);
+                zos.putNextEntry(parameters);
                 zos.write(entry.getValue().getBytes(StandardCharsets.UTF_8));
                 zos.closeEntry();
             }
+        } finally {
+            // BCrypt・既存メールpayloadの不変Stringは消去できないが、writer用可変bufferは残さない。
+            Arrays.fill(passwordChars, '\0');
         }
         return baos.toByteArray();
     }
 
-    private byte[] generateMetadataOnlyZip(Map<String, String> data, String password) throws Exception {
+    private byte[] generateMetadataOnlyZip(Map<String, String> data, String password) throws IOException {
         log.warn("メタデータのみフォールバックZIP生成");
         return generatePasswordProtectedZip(data, password);
     }

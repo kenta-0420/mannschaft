@@ -1,5 +1,11 @@
 {
   "data_export": {
+    "request_daily_limit": "每24小时只能导出一次个人数据。现有导出仍可使用。",
+    "request_in_progress": "数据导出已在处理中。请等待导出完成。",
+    "request_error": "无法请求数据导出。请重试。",
+    "download_not_ready": "导出尚未准备好下载。请在完成后重试。",
+    "download_expired": "此导出的下载保留期限已过。可以再次请求时，请重新导出。",
+    "download_error": "无法下载导出数据。请重试。",
     "section_title": "数据导出",
     "export_button": "导出个人数据",
     "status_completed": "已完成",
@@ -11,7 +17,7 @@
     "step_failed": "导出失败",
     "step_processing": "导出中...",
     "step_preparing": "准备中...",
-    "description": "您可以将个人数据导出为 ZIP 文件。"
+    "description": "可将个人数据导出为ZIP。新生成的ZIP使用AES-256保护，密码通过完成通知邮件发送。解压需要支持AES的应用。Windows内置工具不支持加密ZIP，macOS内置工具能否解压也不作保证。此次变更前生成的ZIP可能未加密，并保留原有格式和到期时间。"
   },
   "deletion_preview": {
     "dialog_title": "确认账户删除",

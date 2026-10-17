@@ -87816,7 +87816,7 @@
         "operationId": "logout",
         "parameters": [
           {
-            "name": "refresh_token_hash",
+            "name": "refresh_token",
             "in": "cookie",
             "required": false,
             "schema": {
@@ -87824,21 +87824,11 @@
             }
           },
           {
-            "name": "jti",
-            "in": "query",
+            "name": "refresh_token_hash",
+            "in": "cookie",
             "required": false,
             "schema": {
               "type": "string"
-            }
-          },
-          {
-            "name": "exp",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "default": 0
             }
           }
         ],
@@ -110934,7 +110924,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseSessionResponse"
+                  "$ref": "#/components/schemas/ApiResponseAuthSessionResponse"
                 }
               }
             }
@@ -147582,7 +147572,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListSessionResponse"
+                  "$ref": "#/components/schemas/ApiResponseListAuthSessionResponse"
                 }
               }
             }
@@ -218836,6 +218826,53 @@
           }
         }
       },
+      "ApiResponseAuthSessionResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AuthSessionResponse"
+          }
+        }
+      },
+      "AuthSessionResponse": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "current": {
+            "type": "boolean"
+          },
+          "deviceName": {
+            "type": "string"
+          },
+          "deviceType": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ipAddress": {
+            "type": "string"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "rememberMe": {
+            "type": "boolean"
+          },
+          "userAgent": {
+            "type": "string"
+          }
+        }
+      },
       "UpdateRequirementRuleRequest": {
         "type": "object",
         "properties": {
@@ -248337,13 +248374,13 @@
           }
         }
       },
-      "ApiResponseListSessionResponse": {
+      "ApiResponseListAuthSessionResponse": {
         "type": "object",
         "properties": {
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/SessionResponse"
+              "$ref": "#/components/schemas/AuthSessionResponse"
             }
           }
         }
