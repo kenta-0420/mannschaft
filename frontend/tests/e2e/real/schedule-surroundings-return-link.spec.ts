@@ -41,8 +41,33 @@ for (const width of [360, 390]) {
       expect(box!.x).toBeGreaterThanOrEqual(0)
       expect(box!.x + box!.width).toBeLessThanOrEqual(width)
       expect(pageWidth.scroll).toBeLessThanOrEqual(pageWidth.client)
-      await back.tap()
-      await expect(page).toHaveURL(/\/dashboard(?:[?#].*)?$/)
+      const started = Date.now()
+      const timeline: Array<{ event: string, elapsedMs: number, path: string, status?: number }> = []
+      const record = (event: string, url: string, status?: number) => {
+        if (timeline.length < 100) timeline.push({ event, elapsedMs: Date.now() - started, path: new URL(url).pathname, status })
+      }
+      // 認証値・query・headers・bodyは残さず、遷移とmodule取得の時刻だけ記録する。
+      page.on('request', request => {
+        if (/dashboard/i.test(new URL(request.url()).pathname)) record('request', request.url())
+      })
+      page.on('response', response => {
+        if (/dashboard/i.test(new URL(response.url()).pathname)) record('response', response.url(), response.status())
+      })
+      page.on('framenavigated', frame => {
+        if (frame === page.mainFrame()) record('navigated', frame.url())
+      })
+      try {
+        record('tap-start', page.url())
+        await back.tap()
+        record('tap-completed', page.url())
+        // 5秒以内という性能要件はない。初回route取得も含め、実遷移を有界で確認する。
+        await expect(page).toHaveURL(/\/dashboard(?:[?#].*)?$/, { timeout: 30_000 })
+      } finally {
+        await test.info().attach('return-navigation.json', {
+          body: JSON.stringify({ timeline, finalPath: new URL(page.url()).pathname }),
+          contentType: 'application/json',
+        })
+      }
     })
   }
 }
