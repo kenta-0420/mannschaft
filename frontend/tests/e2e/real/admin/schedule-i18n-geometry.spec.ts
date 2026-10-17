@@ -204,7 +204,7 @@ for (const width of [360, 390, 1440]) {
     if (!slug || !id) throw new Error('専用fixtureのteamと予定IDが必要です')
     await page.setViewportSize({ width, height: 900 })
     const measure = async (name: string, target: Locator) => {
-      await expect(target).toBeVisible({ timeout: 120_000 })
+      await expect(target).toBeVisible({ timeout: 15_000 })
       await page.evaluate(() => document.fonts.ready)
       const box = await target.boundingBox()
       await testInfo.attach(`${name}-${width}.json`, {
@@ -216,11 +216,18 @@ for (const width of [360, 390, 1440]) {
     await page.goto(`/teams/${encodeURIComponent(slug)}/schedule?eventId=${encodeURIComponent(id)}`, { waitUntil: 'domcontentloaded' })
     await readyForInteraction(page, page.getByTestId('schedule-keep-nav-link'))
     await measure('keep', page.getByTestId('schedule-keep-nav-link'))
-    const calendarHeader = page.locator('h2.text-lg.font-extrabold').filter({ visible: true }).first().locator('..')
-    await measure('calendar-prev', calendarHeader.getByRole('button').filter({ has: page.locator('.pi-chevron-left') }))
-    await measure('calendar-next', calendarHeader.getByRole('button').filter({ has: page.locator('.pi-chevron-right') }))
+    if (width < 768) {
+      // mobileは既に44pxのリスト月送り。desktopのCalendarGridとは別DOM。
+      await measure('mobile-month-prev', page.getByRole('button', { name: /^(Vorheriger Monat|Previous month)$/ }))
+      await measure('mobile-month-next', page.getByRole('button', { name: /^(Nächster Monat|Next month)$/ }))
+    } else {
+      const calendarHeader = page.locator('h2.text-lg.font-extrabold').filter({ visible: true }).first().locator('..')
+      await measure('calendar-prev', calendarHeader.getByRole('button').filter({ has: page.locator('.pi-chevron-left') }))
+      await measure('calendar-next', calendarHeader.getByRole('button').filter({ has: page.locator('.pi-chevron-right') }))
+    }
     await measure('record', page.getByRole('button').filter({ has: page.locator('.pi-play') }).first())
     const input = page.getByTestId('schedule-comment-input').filter({ visible: true }).first()
+    await expect(input).toBeVisible({ timeout: 15_000 })
     await readyForInteraction(page, input)
     await input.fill('Geometry check (not submitted)')
     await measure('comment-post', page.getByTestId('schedule-comment-submit').filter({ visible: true }).first())
@@ -244,6 +251,7 @@ for (const width of [360, 390, 1440]) {
     await page.route(delegationUrl, async route => { interrupted++; await route.abort() })
     await page.reload({ waitUntil: 'domcontentloaded' })
     const retry = page.getByTestId('schedule-delegation-error-retry').filter({ visible: true })
+    await expect(retry).toBeVisible({ timeout: 15_000 })
     await readyForInteraction(page, retry)
     await measure('delegation-error-retry', retry)
     // チーム画面はCSSで切り替えるmobile/desktop各1パネルをmountする。
