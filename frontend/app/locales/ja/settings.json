@@ -1,5 +1,11 @@
 {
   "data_export": {
+    "request_daily_limit": "データ出力は24時間に1回までです。既存の出力は引き続き利用できます。",
+    "request_in_progress": "データ出力はすでに処理中です。完了までお待ちください。",
+    "request_error": "データ出力を要求できませんでした。もう一度お試しください。",
+    "download_not_ready": "まだダウンロードできません。データ出力の完了後にもう一度お試しください。",
+    "download_expired": "ダウンロードの保持期限が切れています。要求可能になったら新しくデータを出力してください。",
+    "download_error": "データをダウンロードできませんでした。もう一度お試しください。",
     "section_title": "データエクスポート",
     "export_button": "個人データをエクスポート",
     "status_completed": "完了",
