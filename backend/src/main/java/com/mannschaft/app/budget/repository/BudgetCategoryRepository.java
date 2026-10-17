@@ -22,14 +22,16 @@ public interface BudgetCategoryRepository extends JpaRepository<BudgetCategoryEn
         Long getId();
         String getName();
         String getCategoryType();
-        java.time.LocalDateTime getDeletedAt();
+        Integer getDeletedFlag();
     }
 
-    @Query(value = "SELECT id, name, category_type AS categoryType, deleted_at AS deletedAt "
+    @Query(value = "SELECT id, name, category_type AS categoryType, "
+            + "CASE WHEN deleted_at IS NULL THEN 0 ELSE 1 END AS deletedFlag "
             + "FROM budget_categories WHERE fiscal_year_id = :fiscalYearId ORDER BY sort_order, id", nativeQuery = true)
     List<HistoricalCategory> findHistoricalByFiscalYearId(@Param("fiscalYearId") Long fiscalYearId);
 
-    @Query(value = "SELECT id, name, category_type AS categoryType, deleted_at AS deletedAt "
+    @Query(value = "SELECT id, name, category_type AS categoryType, "
+            + "CASE WHEN deleted_at IS NULL THEN 0 ELSE 1 END AS deletedFlag "
             + "FROM budget_categories WHERE fiscal_year_id = :fiscalYearId AND id = :categoryId", nativeQuery = true)
     Optional<HistoricalCategory> findHistoricalByFiscalYearIdAndId(
             @Param("fiscalYearId") Long fiscalYearId, @Param("categoryId") Long categoryId);

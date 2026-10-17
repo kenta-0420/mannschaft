@@ -260,7 +260,7 @@ public class BudgetCategoryService {
     }
 
     private HistoricalBudgetCategory toHistoricalCategory(BudgetCategoryRepository.HistoricalCategory category) {
-        boolean deleted = category.getDeletedAt() != null;
+        boolean deleted = Integer.valueOf(1).equals(category.getDeletedFlag());
         return new HistoricalBudgetCategory(category.getId(),
                 category.getName() + (deleted ? "（削除済み費目）" : ""), category.getCategoryType(), deleted);
     }
