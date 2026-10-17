@@ -1,4 +1,18 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
+
+/** 初期権限の案内は既存の後回し操作で閉じ、業務操作の前提だけを整える。 */
+async function readyForInteraction(page: Page, target: Locator) {
+  await expect(target).toBeVisible({ timeout: 120_000 })
+  await expect(async () => {
+    const later = page.getByRole('button', { name: /^(Später entscheiden|Decide later)$/ }).first()
+    if (await later.isVisible()) {
+      await later.click({ timeout: 2_000 })
+      await expect(later).toBeHidden({ timeout: 2_000 })
+    }
+    // 遅れて現れたmaskも検知し、180秒のclick待ちへ入らない。
+    await target.click({ trial: true, timeout: 1_000 })
+  }).toPass({ timeout: 15_000, intervals: [250, 500, 1_000] })
+}
 
 /**
  * CMP-261017-0854 AC-6。APIモックなし・deの管理者fixtureで実予定画面を検査する。
@@ -109,6 +123,7 @@ test('deの組織予定の見出し・追加操作・未選択案内を翻訳す
   await expect(page.locator('html')).toHaveAttribute('lang', 'de')
   await expect(add).toBeVisible()
   await expect(empty).toBeVisible()
+  await readyForInteraction(page, add)
   expect.soft((await heading.textContent())?.trim()).toBe('Terminplan')
   expect.soft((await add.textContent())?.trim()).toBe('Termin hinzufügen')
   expect.soft((await empty.textContent())?.trim()).toBe('Bitte einen Termin auswählen')
@@ -140,7 +155,9 @@ test('deの個人カレンダーのタブ・未選択案内・個人予定の色
   await expect(empty).toBeVisible()
   expect.soft((await tab.textContent())?.trim()).toBe('Kalender')
   expect.soft((await empty.textContent())?.trim()).toBe('Bitte ein Datum oder einen Termin auswählen')
-  await page.getByRole('button', { name: 'Termin hinzufügen', exact: true }).click()
+  const add = page.getByRole('button', { name: 'Termin hinzufügen', exact: true })
+  await readyForInteraction(page, add)
+  await add.click()
   const form = page.getByRole('dialog').filter({ has: page.getByTestId('schedule-submit') })
   await expect(form).toBeVisible()
   await expect(form.locator('button[style*="background-color"]').first()).toBeVisible()
@@ -166,6 +183,7 @@ for (const scope of ['team', 'organization', 'calendar'] as const) {
     const remove = page.getByRole('button', { name: 'Löschen', exact: true }).filter({ has: page.locator('.pi-trash') }).first()
     await expect(remove).toBeVisible({ timeout: 120_000 })
     await expect(page.locator('html')).toHaveAttribute('lang', 'de')
+    await readyForInteraction(page, remove)
     const dialogPromise = page.waitForEvent('dialog')
     const clickPromise = remove.click()
     const confirmation = await dialogPromise
@@ -185,7 +203,7 @@ for (const width of [360, 390, 1440]) {
     const id = process.env.SCHEDULE_I18N_TEAM_SCHEDULE_ID
     if (!slug || !id) throw new Error('専用fixtureのteamと予定IDが必要です')
     await page.setViewportSize({ width, height: 900 })
-    const measure = async (name: string, target: import('@playwright/test').Locator) => {
+    const measure = async (name: string, target: Locator) => {
       await expect(target).toBeVisible({ timeout: 120_000 })
       await page.evaluate(() => document.fonts.ready)
       const box = await target.boundingBox()
@@ -196,21 +214,28 @@ for (const width of [360, 390, 1440]) {
       expect.soft(box?.width, `${name}の幅`).toBeGreaterThanOrEqual(44)
     }
     await page.goto(`/teams/${encodeURIComponent(slug)}/schedule?eventId=${encodeURIComponent(id)}`, { waitUntil: 'domcontentloaded' })
+    await readyForInteraction(page, page.getByTestId('schedule-keep-nav-link'))
     await measure('keep', page.getByTestId('schedule-keep-nav-link'))
     const calendarHeader = page.locator('h2.text-lg.font-extrabold').filter({ visible: true }).first().locator('..')
     await measure('calendar-prev', calendarHeader.getByRole('button').filter({ has: page.locator('.pi-chevron-left') }))
     await measure('calendar-next', calendarHeader.getByRole('button').filter({ has: page.locator('.pi-chevron-right') }))
     await measure('record', page.getByRole('button').filter({ has: page.locator('.pi-play') }).first())
     const input = page.getByTestId('schedule-comment-input').filter({ visible: true }).first()
-    await expect(input).toBeVisible()
+    await readyForInteraction(page, input)
     await input.fill('Geometry check (not submitted)')
     await measure('comment-post', page.getByTestId('schedule-comment-submit').filter({ visible: true }).first())
-    if (width < 768) {
-      const nextTab = page.locator('.p-tablist-next-button').first()
+    const nextTab = page.locator('.p-tablist-next-button').first()
+    if (width < 768) await expect(nextTab).toBeVisible()
+    if (await nextTab.isVisible()) {
       await measure('tablist-next', nextTab)
-      await nextTab.click()
-      await measure('tablist-prev', page.locator('.p-tablist-prev-button').first())
+      if (await nextTab.isEnabled()) await nextTab.click()
     }
+    const prevTab = page.locator('.p-tablist-prev-button').first()
+    if (await prevTab.isVisible()) await measure('tablist-prev', prevTab)
+    await testInfo.attach(`tablist-visibility-${width}.json`, {
+      body: JSON.stringify({ width, next: await nextTab.isVisible(), prev: await prevTab.isVisible() }),
+      contentType: 'application/json',
+    })
     expect.soft(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
 
     // 通信失敗注入。権限と予定取得は実APIのまま、委任一覧だけを中断する。
@@ -218,10 +243,19 @@ for (const width of [360, 390, 1440]) {
     const delegationUrl = (url: URL) => url.pathname === `/api/v1/schedules/${id}/delegations`
     await page.route(delegationUrl, async route => { interrupted++; await route.abort() })
     await page.reload({ waitUntil: 'domcontentloaded' })
-    await measure('delegation-error-retry', page.getByTestId('schedule-delegation-error-retry').filter({ visible: true }))
+    const retry = page.getByTestId('schedule-delegation-error-retry').filter({ visible: true })
+    await readyForInteraction(page, retry)
+    await measure('delegation-error-retry', retry)
     // チーム画面はCSSで切り替えるmobile/desktop各1パネルをmountする。
     // useApiは401のみ再試行するため、通信中断では各instanceの1回ずつとなる。
-    await expect.poll(() => interrupted).toBe(2)
+    try {
+      await expect.poll(() => interrupted).toBe(2)
+    } finally {
+      await testInfo.attach(`delegation-network-fault-${width}.json`, {
+        body: JSON.stringify({ interrupted, path: `/api/v1/schedules/${id}/delegations`, injected: 'route.abort', normalApiSuccessEvidence: false }),
+        contentType: 'application/json',
+      })
+    }
     await page.unroute(delegationUrl)
 
     await page.goto('/teams/surroundings-missing-261017/schedule', { waitUntil: 'domcontentloaded' })
