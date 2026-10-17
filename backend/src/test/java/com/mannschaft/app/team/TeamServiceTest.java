@@ -345,10 +345,18 @@ class TeamServiceTest {
 
             assertThat(team.getArchivedAt()).isNotNull();
             org.mockito.ArgumentCaptor<Object> event = org.mockito.ArgumentCaptor.forClass(Object.class);
-            org.mockito.Mockito.verify(eventPublisher).publishEvent(event.capture());
-            assertThat(event.getValue()).isInstanceOfSatisfying(
+            org.mockito.Mockito.verify(eventPublisher, org.mockito.Mockito.times(2)).publishEvent(event.capture());
+            assertThat(event.getAllValues()).filteredOn(value -> value instanceof com.mannschaft.app.team.event.TeamArchivedEvent)
+                    .singleElement().isInstanceOfSatisfying(
                     com.mannschaft.app.team.event.TeamArchivedEvent.class,
                     e -> assertThat(e.getTeamId()).isEqualTo(TEAM_ID));
+            assertThat(event.getAllValues()).filteredOn(value -> value instanceof com.mannschaft.app.common.event.PersonalInviteScopeClosedEvent)
+                    .singleElement().isInstanceOfSatisfying(com.mannschaft.app.common.event.PersonalInviteScopeClosedEvent.class,
+                            e -> {
+                                assertThat(e.getScopeType()).isEqualTo("TEAM");
+                                assertThat(e.getScopeId()).isEqualTo(TEAM_ID);
+                                assertThat(e.getClosureGeneration()).isEqualTo(1);
+                            });
         }
     }
 

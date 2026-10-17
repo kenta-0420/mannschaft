@@ -17,6 +17,7 @@ import com.mannschaft.app.organization.repository.OrganizationSlugHistoryReposit
 import com.mannschaft.app.common.dto.SlugAvailabilityResponse;
 import com.mannschaft.app.common.dto.SlugResolveResponse;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.event.PersonalInviteScopeClosedEvent;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.PagedResponse;
@@ -27,8 +28,6 @@ import com.mannschaft.app.organization.dto.OrgAllMembersResponse;
 import com.mannschaft.app.organization.dto.OrganizationResponse;
 import com.mannschaft.app.organization.dto.OrganizationSummaryResponse;
 import com.mannschaft.app.organization.dto.UpdateOrganizationRequest;
-import com.mannschaft.app.role.entity.InviteTokenEntity;
-import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -77,7 +76,6 @@ public class OrganizationService {
     private final OrganizationSlugHistoryRepository organizationSlugHistoryRepository;
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
-    private final InviteTokenRepository inviteTokenRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final OrganizationMembershipService organizationMembershipService;
     private final OrganizationHierarchyService organizationHierarchyService;
@@ -713,7 +711,6 @@ public class OrganizationService {
      * 本メソッドは認可済み呼び出しを前提とする。</p>
      */
     @Transactional
-    // TODO: OrganizationドメインとRoleドメインをまたいでいる。将来はOrganizationDeletedEventで分離予定
     @CacheEvict(value = "org-detail", allEntries = true)
     public void deleteOrganization(Long orgId, Long userId) {
         // F01.2.1 §4.5: 閉鎖の世代番号（closure_generation）を組織行のロックの下で進める。申請の作成（チーム行 → 組織行）・
@@ -721,10 +718,8 @@ public class OrganizationService {
         OrganizationEntity org = organizationRepository.findByIdForUpdate(orgId)
                 .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
         org.softDelete();
-
-        // 招待トークン一括失効
-        inviteTokenRepository.findByOrganizationIdAndRevokedAtIsNull(orgId)
-                .forEach(InviteTokenEntity::revoke);
+        // role更新は親TXへ持ち込まない。個人招待だけをcommit後にstrict旧世代で片付ける。
+        eventPublisher.publishEvent(new PersonalInviteScopeClosedEvent("ORGANIZATION", orgId, org.getClosureGeneration()));
 
         // F01.2.1 §4.5: チームグループは同じ organization ドメインなので、同じトランザクションで全件を論理削除する
         // （加盟の PENDING・制限の片付けは team ドメインが OrganizationDeletedEvent の AFTER_COMMIT で行う）
@@ -762,6 +757,7 @@ public class OrganizationService {
             throw new BusinessException(OrgErrorCode.ORG_003);
         }
         org.archive();
+        eventPublisher.publishEvent(new PersonalInviteScopeClosedEvent("ORGANIZATION", orgId, org.getClosureGeneration()));
         // 当該組織の PENDING（申請・招待）の片付けは team ドメインが AFTER_COMMIT で行う（§4.5。ACTIVE は残す）
         eventPublisher.publishEvent(new OrganizationArchivedEvent(null, orgId));
         log.info("組織アーカイブ完了: orgId={}", orgId);
