@@ -36,6 +36,12 @@ source `37204ebcbcb6d80015e9329afd862fdb6b87d5c7` のSmoke E2E（run `3901921937
 
 Windows局所環境の旧NuxtでIPC切断・画面500を観測した試行は前提未達のまま保持した。所有FEだけを同source/dependencies/SSR/API境界のまま一度再起動し、3分以内のHTTP200到達後に上記追試を実施した。キャッシュ削除やSPA化、依存再導入による回避は行っていない。
 
+## transition取消と最終寸法の番人
+
+source `9d5eb15dcaf17acb155809ebb2ff61606e49086e` の正式Smoke（run `39023499750`）ではSWITCHの360/390pxが `animation.finished` の `AbortError` で失敗した。四隅click後のchecked確認には到達しており、取消可能なCSS transitionのPromiseをそのまま待つ試験が、目的とする最終handle位置の確認前に中断していた。
+
+mobileとdesktopの待機2か所を、実boundingBoxから求めたhandle offsetが既存baselineに一致する `expect.poll` へ変更した。取消例外を握りつぶさず、従来のslider内bounds・checked/unchecked offset・四隅hit・Space/focus・desktop寸法のassertionを保持する。製品CSS、共有helper、timeout/retry上限、baselineは変更していない。局所ではAPI境界をstubした所有SSRでSWITCH2件・DESKTOP2件を確認し、正式CIの全23件判定とは区別する。
+
 ## 出荷判定の残条件
 
 既存Smoke E2Eへcommon-controlsを追加した。標準Chromium設定、既存120秒上限、1workerのLinux正式CIで全23件の合否を判定する。ローカルの未到達分や修正後の未検証を合格扱いにしない。修正後のドイツ語360px画像による目視確認、モックなしの実機・権限横断・自然導線・isMobile/hasTouch確認は別途必要である。
