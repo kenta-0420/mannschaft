@@ -25,4 +25,3 @@ expect(received).toBeGreaterThanOrEqual(expected)
 Expected: >= 44
 Received:    40
 ```
-
