@@ -3,6 +3,8 @@ package com.mannschaft.app.budget.repository;
 import com.mannschaft.app.budget.BudgetCategoryType;
 import com.mannschaft.app.budget.entity.BudgetCategoryEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -11,6 +13,26 @@ import java.util.Optional;
  * 予算費目リポジトリ。
  */
 public interface BudgetCategoryRepository extends JpaRepository<BudgetCategoryEntity, Long> {
+
+    /**
+     * 認可済み年度の履歴表示専用。SQLRestrictionを迂回するがEntityを返さず、
+     * 削除済みEntityの一次キャッシュ混入や更新を避ける。
+     */
+    interface HistoricalCategory {
+        Long getId();
+        String getName();
+        String getCategoryType();
+        java.time.LocalDateTime getDeletedAt();
+    }
+
+    @Query(value = "SELECT id, name, category_type AS categoryType, deleted_at AS deletedAt "
+            + "FROM budget_categories WHERE fiscal_year_id = :fiscalYearId ORDER BY sort_order, id", nativeQuery = true)
+    List<HistoricalCategory> findHistoricalByFiscalYearId(@Param("fiscalYearId") Long fiscalYearId);
+
+    @Query(value = "SELECT id, name, category_type AS categoryType, deleted_at AS deletedAt "
+            + "FROM budget_categories WHERE fiscal_year_id = :fiscalYearId AND id = :categoryId", nativeQuery = true)
+    Optional<HistoricalCategory> findHistoricalByFiscalYearIdAndId(
+            @Param("fiscalYearId") Long fiscalYearId, @Param("categoryId") Long categoryId);
 
     /**
      * 年度IDで費目を検索する。
