@@ -2,9 +2,12 @@ package com.mannschaft.app.notification.fanout;
 
 import com.mannschaft.app.common.i18n.DeliveryLocales;
 import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationBulkFanoutService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 
 import java.time.LocalDateTime;
@@ -18,6 +21,7 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -41,6 +45,46 @@ import static org.mockito.Mockito.verify;
  */
 @DisplayName("fan-out チャンク INSERT 回数・カーソル番人（Issue #2871・AC-3 / AC-4）")
 class FanoutChunkInsertCountGuardTest {
+
+    @ParameterizedTest
+    @CsvSource({"TEAM_AFFILIATION_OPS,TEAM", "ORGANIZATION_ADMINS,ORGANIZATION"})
+    @DisplayName("#3894 AC12: 2keyの保存scopeは500件境界を跨いでも各bulkへ同じ値を渡す")
+    @SuppressWarnings("unchecked")
+    void 加盟通知scopeは複数チャンクでも同一でINSERT回数を増やさない(String strategy, String storedScope) {
+        MixedLocaleSource recipients = new MixedLocaleSource(501);
+        FanoutRecipientSource source = new FanoutRecipientSource() {
+            @Override
+            public String scopeType() {
+                return strategy;
+            }
+
+            @Override
+            public List<FanoutRecipient> nextPage(FanoutPageRequest request) {
+                return recipients.nextPage(request);
+            }
+        };
+        FanoutRecipientSourceRegistry registry = new FanoutRecipientSourceRegistry(List.of(source));
+        NotificationFanoutJobService jobService = mock(NotificationFanoutJobService.class);
+        NotificationBulkFanoutService bulk = mock(NotificationBulkFanoutService.class);
+        NotificationFanoutJobMessageRepository messages = mock(NotificationFanoutJobMessageRepository.class);
+        given(messages.findByJobId(any())).willReturn(sixLocaleMessages());
+        NotificationFanoutWorker worker = new NotificationFanoutWorker(
+                registry, jobService, bulk, List.of(), messages);
+        NotificationFanoutJob job = job();
+        job.setScopeType(strategy);
+
+        worker.processOne(job);
+
+        // 実DB保存は11方向ITで検査する。本番bulkの呼出し数とscope引数の境界だけを既存金型で固定する。
+        ArgumentCaptor<List<NotificationBulkFanoutService.RecipientMessage>> chunks =
+                ArgumentCaptor.forClass(List.class);
+        verify(bulk, times(2)).insertAndDispatchChunk(chunks.capture(), any(), any(), any(), any(),
+                eq(NotificationScopeType.valueOf(storedScope)), eq(1L), any(), any(), any());
+        assertThat(chunks.getAllValues()).extracting(List::size).containsExactly(500, 1);
+        verify(messages, times(1)).findByJobId(job.getId());
+        verify(jobService).advanceCursor(job.getId(), 500L, 500L);
+        verify(jobService).advanceCursor(job.getId(), 501L, 1L);
+    }
 
     private static final String SCOPE = "GUARD_SCOPE";
     private static final String SCOPE_REF = "1";
