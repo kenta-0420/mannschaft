@@ -138,6 +138,23 @@ beforeEach(() => {
 })
 
 describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
+  it('独立管理ページのtimezoneを古いshellより優先し変更も反映する', async () => {
+    roleOverride.isAdmin = true
+    roleOverride.isAdminOrDeputy = true
+    roleOverride.roleName = 'ADMIN'
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug', teamTimezone: 'Europe/Berlin' },
+    })
+    await flushPromises()
+
+    expect(wrapper.findComponent(SlotMatrixPicker).props('teamTimezone')).toBe('Europe/Berlin')
+    expect(wrapper.findComponent(ReservationUnavailabilityManager).props('teamTimezone')).toBe('Europe/Berlin')
+
+    await wrapper.setProps({ teamTimezone: 'Pacific/Honolulu' })
+    expect(wrapper.findComponent(SlotMatrixPicker).props('teamTimezone')).toBe('Pacific/Honolulu')
+    expect(wrapper.findComponent(ReservationUnavailabilityManager).props('teamTimezone')).toBe('Pacific/Honolulu')
+  })
+
   it('SlotMatrixPickerへTeamShellContextのタイムゾーンを渡す', async () => {
     mockGetReservationSettings.mockResolvedValue({ data: { allowPublicReservation: true } })
     mockGetLines.mockResolvedValue({ data: [activeLine] })
