@@ -106,6 +106,7 @@ test('deの組織予定の見出し・追加操作・未選択案内を翻訳す
   const add = page.getByRole('button').filter({ has: page.locator('.pi-plus') }).first()
   const empty = page.locator('div.py-8').filter({ has: page.locator('i.pi-calendar') }).locator('p').first()
   await expect(heading).toBeVisible({ timeout: 120_000 })
+  await expect(page.locator('html')).toHaveAttribute('lang', 'de')
   await expect(add).toBeVisible()
   await expect(empty).toBeVisible()
   expect.soft((await heading.textContent())?.trim()).toBe('Terminplan')
@@ -121,6 +122,7 @@ test('deの個人カレンダーのタブ・未選択案内・個人予定の色
   const tab = page.getByRole('button').filter({ has: page.locator('i.pi-calendar') }).first()
   const empty = page.locator('div.py-8').filter({ has: page.locator('i.pi-calendar') }).locator('p').first()
   await expect(tab).toBeVisible({ timeout: 120_000 })
+  await expect(page.locator('html')).toHaveAttribute('lang', 'de')
   await expect(empty).toBeVisible()
   expect.soft((await tab.textContent())?.trim()).toBe('Kalender')
   expect.soft((await empty.textContent())?.trim()).toBe('Bitte ein Datum oder einen Termin auswählen')
@@ -149,6 +151,7 @@ for (const scope of ['team', 'organization', 'calendar'] as const) {
     await page.goto(url, { waitUntil: 'domcontentloaded' })
     const remove = page.getByRole('button', { name: 'Löschen', exact: true }).filter({ has: page.locator('.pi-trash') }).first()
     await expect(remove).toBeVisible({ timeout: 120_000 })
+    await expect(page.locator('html')).toHaveAttribute('lang', 'de')
     const dialogPromise = page.waitForEvent('dialog')
     const clickPromise = remove.click()
     const confirmation = await dialogPromise
@@ -158,5 +161,56 @@ for (const scope of ['team', 'organization', 'calendar'] as const) {
     expect.soft(message).toBe('Diesen Termin löschen?')
     expect(deletes).toEqual([])
     await expect(remove).toBeVisible()
+  })
+}
+
+for (const width of [360, 390, 1440]) {
+  test(`予定周辺のtap領域が${width}pxで44px以上になる`, async ({ page }, testInfo) => {
+    test.setTimeout(240_000)
+    const slug = process.env.SCHEDULE_I18N_TEAM_SLUG
+    const id = process.env.SCHEDULE_I18N_TEAM_SCHEDULE_ID
+    if (!slug || !id) throw new Error('専用fixtureのteamと予定IDが必要です')
+    await page.setViewportSize({ width, height: 900 })
+    const measure = async (name: string, target: import('@playwright/test').Locator) => {
+      await expect(target).toBeVisible({ timeout: 120_000 })
+      await page.evaluate(() => document.fonts.ready)
+      const box = await target.boundingBox()
+      await testInfo.attach(`${name}-${width}.json`, {
+        body: JSON.stringify({ width, name, box }), contentType: 'application/json',
+      })
+      expect.soft(box?.height, `${name}の高さ`).toBeGreaterThanOrEqual(44)
+      expect.soft(box?.width, `${name}の幅`).toBeGreaterThanOrEqual(44)
+    }
+    await page.goto(`/teams/${encodeURIComponent(slug)}/schedule?eventId=${encodeURIComponent(id)}`, { waitUntil: 'domcontentloaded' })
+    await measure('keep', page.getByTestId('schedule-keep-nav-link'))
+    const calendarHeader = page.locator('h2.text-lg.font-extrabold').first().locator('..')
+    await measure('calendar-prev', calendarHeader.getByRole('button').filter({ has: page.locator('.pi-chevron-left') }))
+    await measure('calendar-next', calendarHeader.getByRole('button').filter({ has: page.locator('.pi-chevron-right') }))
+    await measure('record', page.getByRole('button').filter({ has: page.locator('.pi-play') }).first())
+    const input = page.getByTestId('schedule-comment-input').first()
+    await expect(input).toBeVisible()
+    await input.fill('Geometry check (not submitted)')
+    await measure('comment-post', page.getByTestId('schedule-comment-submit').first())
+    if (width < 768) {
+      const nextTab = page.locator('.p-tablist-next-button').first()
+      await measure('tablist-next', nextTab)
+      await nextTab.click()
+      await measure('tablist-prev', page.locator('.p-tablist-prev-button').first())
+    }
+    expect.soft(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+
+    // 通信失敗注入。権限と予定取得は実APIのまま、委任一覧だけを中断する。
+    let interrupted = 0
+    const delegationUrl = (url: URL) => url.pathname === `/api/v1/schedules/${id}/delegations`
+    await page.route(delegationUrl, async route => { interrupted++; await route.abort() })
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await measure('delegation-error-retry', page.getByTestId('schedule-delegation-error-retry'))
+    expect(interrupted).toBe(1)
+    await page.unroute(delegationUrl)
+
+    await page.goto('/teams/surroundings-missing-261017/schedule', { waitUntil: 'domcontentloaded' })
+    await measure('shell-retry', page.getByRole('button').filter({ has: page.locator('.pi-refresh') }).first())
+
+    expect.soft(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
   })
 }
