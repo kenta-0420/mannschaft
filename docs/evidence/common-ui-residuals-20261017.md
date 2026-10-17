@@ -22,6 +22,20 @@
 
 ブラウザ番人は外部API境界をstubした実Nuxt/PrimeVueのviewport・mouse/keyboard試験である。未知APIを正常空へ偽装せず500で拒否する。AUXだけはstub済みentryから実Nuxt routerで画面初期化するため、自然導線を検証したものではない。
 
+## 正式CIで判明した残りと局所修正
+
+source `37204ebcbcb6d80015e9329afd862fdb6b87d5c7` のSmoke E2E（run `39019219376`）では当該23件中17成功・6失敗だった。360/390pxの各幅で次の3類型が失敗し、retryでも解消せず、jobは既存30分上限に達した。これを全件合格とは扱わない。
+
+- SWITCH: 実input四隅の最初の通常clickが親rootのpointer interceptで120秒失敗。44pxの透明inputにAura由来の30px丸角が残り、四隅のhit領域が欠けていた。mobileの透明inputだけを角形にし、slider/handleの丸い見た目は維持する。番人は四隅の `elementFromPoint` と通常click・checked・Space/focusを検査する。
+- ACCOUNT: 詳細ボタンの遷移がcalendar-syncではなくdashboardへ戻った。対象routeは `FEATURE_WEBHOOK_SYNC_ENABLED` の公開gate配下であり、空flag fixtureでは既存gateが正しく拒否していた。当該flagだけを正契約で有効にする試験前提の修正とし、製品gateは変更しない。
+- AUX: 第2scopeの組織で通常click後にDrawerが表示されず失敗。局所観測ではURL・Nuxt route・`page:finish` が更新済みでも旧Team componentのbuttonが残り、click後に新Org componentへ差し替わっていた。team/orgのfixture名を分け、対象scopeの実見出しを待ってから操作する。内部hookの追加では解決しなかったため採用しない。固定sleep・再click・forceや共有helperの変更で補わない。
+
+祖先DOM診断の変数型は `HTMLElement | null` を明示する一行修正を別途実施した。対象lintとBundler解決のstrict限定型検査は成功したが、正式CIのfull型検査・unit・Smokeの合格を代替しない。
+
+局所追試は、透明input・対象flag修正後の10件runが8成功・AUX2失敗、その後の対象見出し待ち修正でAUX2件が成功した（各runのskip/flakyは0）。先行8件では360/390pxの四隅hitと通常click・checked・Space/focus、disabled、ACCOUNT通常遷移、768/1280pxの既存control寸法を確認した。後続で変更したのはAUX用team/org詳細fixture名とAUXの描画前提だけで、共通CSSと先行8件の試験本体は同一byteである。単一runで10件全成功と称さない。最終対象lint・Bundler strict限定型検査・差分検査は成功した。
+
+Windows局所環境の旧NuxtでIPC切断・画面500を観測した試行は前提未達のまま保持した。所有FEだけを同source/dependencies/SSR/API境界のまま一度再起動し、3分以内のHTTP200到達後に上記追試を実施した。キャッシュ削除やSPA化、依存再導入による回避は行っていない。
+
 ## 出荷判定の残条件
 
 既存Smoke E2Eへcommon-controlsを追加した。標準Chromium設定、既存120秒上限、1workerのLinux正式CIで全23件の合否を判定する。ローカルの未到達分や修正後の未検証を合格扱いにしない。修正後のドイツ語360px画像による目視確認、モックなしの実機・権限横断・自然導線・isMobile/hasTouch確認は別途必要である。
