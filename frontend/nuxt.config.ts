@@ -1065,27 +1065,25 @@ export default defineNuxtConfig({
     hooks: {
       'vite:extendConfig'(config, { isServer }) {
         if (!isServer) return
+        if (!config.plugins) throw new Error('SSR Vite plugins are missing')
         // i18n pluginの設定後、SSRのappをdevtools待機キューに保持しないNode用bundleへ解決する。
-        config.plugins = [
-          ...(config.plugins ?? []),
-          {
-            name: 'mannschaft:ssr-i18n-node',
-            config: {
-              order: 'post',
-              handler() {
-                return {
-                  resolve: {
-                    alias: {
-                      'vue-i18n': createRequire(import.meta.url).resolve(
-                        'vue-i18n/dist/vue-i18n.node.mjs',
-                      ),
-                    },
+        config.plugins.push({
+          name: 'mannschaft:ssr-i18n-node',
+          config: {
+            order: 'post',
+            handler() {
+              return {
+                resolve: {
+                  alias: {
+                    'vue-i18n': createRequire(import.meta.url).resolve(
+                      'vue-i18n/dist/vue-i18n.node.mjs',
+                    ),
                   },
-                }
-              },
+                },
+              }
             },
           },
-        ]
+        })
       },
     },
   },

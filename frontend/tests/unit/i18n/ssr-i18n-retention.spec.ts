@@ -2,7 +2,7 @@
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { loadNuxtConfig } from '@nuxt/kit'
-import { resolveConfig, type UserConfig } from 'vite'
+import { resolveConfig, type InlineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import VueI18nPlugin from '@intlify/unplugin-vue-i18n'
 import { createSSRApp, h } from 'vue'
@@ -30,7 +30,7 @@ async function resolveBundle(
     rcFile: false,
     globalRc: false,
   })
-  const config: UserConfig & ViteConfig = {
+  const config: InlineConfig & ViteConfig = {
     configFile: false,
     envFile: false,
     logLevel: 'silent',
@@ -65,7 +65,14 @@ describe('開発SSRのvue-i18n解決', () => {
           const i18n = createI18n({
             legacy: false,
             locale: 'ja',
-            messages: { ja: { greeting: '翻訳済み' } },
+            messages: {
+              ja: { greeting: '翻訳済み' },
+              en: { greeting: 'Translated' },
+              zh: { greeting: '已翻译' },
+              ko: { greeting: '번역됨' },
+              es: { greeting: 'Traducido' },
+              de: { greeting: 'Übersetzt' },
+            },
           })
           const app = createSSRApp({ render: () => h('p', i18n.global.t('greeting')) })
           app.use(i18n)
