@@ -233,7 +233,7 @@ test.describe('SET-006〜008: セキュリティ設定', () => {
     await mockSecurityApis(page)
     await page.goto('/settings/security')
     await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: 'セキュリティ' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'セキュリティ', exact: true })).toBeVisible({
       timeout: 10_000,
     })
   })
@@ -242,7 +242,7 @@ test.describe('SET-006〜008: セキュリティ設定', () => {
     await mockSecurityApis(page)
     await page.goto('/settings/security')
     await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: 'セキュリティ' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'セキュリティ', exact: true })).toBeVisible({
       timeout: 10_000,
     })
     // parseUserAgent(REAL_UA) → browser='Chrome', os='Windows'
@@ -256,7 +256,7 @@ test.describe('SET-006〜008: セキュリティ設定', () => {
     await mockSecurityApis(page)
     await page.goto('/settings/security')
     await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: 'セキュリティ' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'セキュリティ', exact: true })).toBeVisible({
       timeout: 10_000,
     })
     await expect(page.getByRole('button', { name: '2FAをセットアップ' })).toBeVisible({
