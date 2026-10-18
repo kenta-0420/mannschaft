@@ -326,6 +326,8 @@ const pathSegments = computed<string[]>(() =>
  *  slug セグメントがヒットして activeTab が誤る。slice(2) で slug を照合から外す。
  */
 const matchedShellSegment = computed<string | null>(() => {
+  // 管理コンソールは独立ページ。末尾に予約などのタブ名があってもshellで包まない。
+  if (pathSegments.value[2] === 'admin') return null
   for (const seg of pathSegments.value.slice(2)) {
     if (SHELL_SEGMENTS.has(seg)) return seg
   }

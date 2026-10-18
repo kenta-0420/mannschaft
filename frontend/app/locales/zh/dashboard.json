@@ -38,6 +38,7 @@
       "save_success": "已保存小部件的公开设置",
       "save_error": "保存设置失败。请重试",
       "public_viewer_hint": "您不是该团队的成员，部分小部件已被隐藏",
+      "public_viewer_hint_organization": "由于您不是此组织的成员，部分小组件已隐藏",
       "public_viewer_hint_dismiss": "关闭",
       "join_request_link": "申请加入会员"
     },

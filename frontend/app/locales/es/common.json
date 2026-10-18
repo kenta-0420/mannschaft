@@ -3139,7 +3139,7 @@
   },
   "budget_guide": {
     "title": "Cómo usar el presupuesto y la contabilidad",
-    "description": "Selecciona un ejercicio para consultar los ingresos, los gastos y los presupuestos por categoría de ese período.",
+    "description": "Selecciona un ejercicio fiscal para consultar los ingresos, los gastos y los presupuestos por categoría de ese período. Esta página está dirigida a administradores, administradores adjuntos y otros usuarios con permiso de consulta. Los miembros generales no pueden verla. Si necesitas acceso, consulta con un administrador.",
     "what": {
       "title": "¿Qué es un ejercicio contable?",
       "body": "Es un período para revisar conjuntamente los ingresos y los gastos. Puedes elegir las fechas de inicio y fin que se adapten a las actividades de tu equipo; no es necesario que vaya de abril a marzo del año siguiente.",
