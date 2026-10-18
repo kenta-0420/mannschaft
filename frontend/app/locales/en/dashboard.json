@@ -38,6 +38,7 @@
       "save_success": "Widget visibility settings saved",
       "save_error": "Failed to save settings. Please try again",
       "public_viewer_hint": "You are not a member of this team, so some widgets are hidden",
+      "public_viewer_hint_organization": "Some widgets are hidden because you are not a member of this organization",
       "public_viewer_hint_dismiss": "Dismiss",
       "join_request_link": "Request membership"
     },
