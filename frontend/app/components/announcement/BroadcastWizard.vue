@@ -32,9 +32,8 @@ const { broadcast, broadcasting, broadcastError } = useAnnouncementBroadcast(pro
 
 const currentStep = ref<WizardStep>(1)
 
-/** 使い方ガイドの展開状態（②インライン折りたたみ式） */
+/** 使い方モーダルの表示状態 */
 const showHelp = ref(false)
-const guidePanelId = `broadcast-guide-panel-${useId()}`
 
 const initialFormState: WizardFormState = {
   step: 1,
@@ -81,6 +80,7 @@ const stepTitle = computed(() => {
 })
 
 function resetWizard() {
+  showHelp.value = false
   sentResult.value = null
   currentStep.value = 1
   formState.value = { ...initialFormState }
@@ -199,17 +199,6 @@ function buildChannelContent(
   } as SurveyContent
 }
 
-// preferred_channel がある場合ステップ2をスキップする
-function goToNextStep() {
-  if (currentStep.value === 1 && formState.value.selectedChannel !== null) {
-    // テンプレートで preferred_channel が設定されていればステップ3へ
-    currentStep.value = 3
-    formState.value = { ...formState.value, step: 3 }
-  } else {
-    onNext()
-  }
-}
-
 // visible が false になった際にウィザードをリセット
 watch(
   () => props.visible,
@@ -225,37 +214,23 @@ watch(
     :header="stepTitle"
     :modal="true"
     :closable="true"
+    :close-on-escape="!showHelp"
     :style="{ width: '560px', maxWidth: '95vw' }"
     :draggable="false"
     @update:visible="handleClose"
   >
     <div class="py-2">
-      <!-- 使い方トグル（本文先頭・右寄せ・全ステップ共通） -->
+      <!-- 使い方モーダルを開く（全ステップ共通） -->
       <div class="mb-2 flex justify-end">
         <Button
           :label="$t('announcement.broadcast_guide.toggle')"
-          :icon="showHelp ? 'pi pi-chevron-up' : 'pi pi-question-circle'"
+          icon="pi pi-question-circle"
           text
           size="small"
-          :aria-expanded="showHelp"
-          :aria-controls="guidePanelId"
+          aria-haspopup="dialog"
           data-testid="broadcast-guide-toggle"
-          @click="showHelp = !showHelp"
+          @click="showHelp = true"
         />
-      </div>
-
-      <!-- 使い方ガイド展開領域（フェード＋高さスムーズ伸縮・同一モーダル内・重ねない） -->
-      <div
-        :id="guidePanelId"
-        class="grid transition-all duration-300 ease-in-out motion-reduce:transition-none"
-        :class="showHelp ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'"
-        data-testid="broadcast-guide-panel"
-      >
-        <div class="overflow-hidden">
-          <div class="mb-4 rounded-lg border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800">
-            <BroadcastGuideContent />
-          </div>
-        </div>
       </div>
 
       <!-- 送信完了（宛先を絞った告知のみ）: 送信履歴と同じ「宛先: …（送信時 N チーム）」を見せる -->
@@ -281,7 +256,7 @@ watch(
         :scope-type="scopeType"
         :scope-id="scopeId"
         :is-admin="isAdmin"
-        @next="goToNextStep"
+        @next="onNext"
       />
       <BroadcastStep2Channel
         v-else-if="currentStep === 2"
@@ -301,4 +276,5 @@ watch(
       />
     </div>
   </Dialog>
+  <BroadcastGuideModal v-model:visible="showHelp" />
 </template>
