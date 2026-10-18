@@ -180755,6 +180755,9 @@
           "allDay": {
             "type": "boolean"
           },
+          "allowProxyAttendance": {
+            "type": "boolean"
+          },
           "attendanceDeadline": {
             "type": "string",
             "format": "date-time"
@@ -180782,6 +180785,9 @@
             "type": "string"
           },
           "includeSupporters": {
+            "type": "boolean"
+          },
+          "isProxyAutoAccept": {
             "type": "boolean"
           },
           "location": {
@@ -181074,6 +181080,9 @@
           "academic": {
             "$ref": "#/components/schemas/ScheduleAcademicDto"
           },
+          "allowProxyAttendance": {
+            "type": "boolean"
+          },
           "audit": {
             "$ref": "#/components/schemas/ScheduleAuditDto"
           },
@@ -181083,6 +181092,9 @@
           "id": {
             "type": "integer",
             "format": "int64"
+          },
+          "isProxyAutoAccept": {
+            "type": "boolean"
           },
           "myAttendanceStatus": {
             "type": "string"
@@ -181434,6 +181446,9 @@
           "allDay": {
             "type": "boolean"
           },
+          "allowProxyAttendance": {
+            "type": "boolean"
+          },
           "attendanceDeadline": {
             "type": "string",
             "format": "date-time"
@@ -181459,6 +181474,9 @@
           },
           "eventType": {
             "type": "string"
+          },
+          "isProxyAutoAccept": {
+            "type": "boolean"
           },
           "location": {
             "type": "string",
