@@ -202,6 +202,24 @@ class ReservationHistoryScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    @DisplayName("AC-2: native集約のTIME抽出はEntityのLocalTimeと同じ業務時刻を返す")
+    void 履歴集約の時刻抽出はEntityの時刻変換と一致する() {
+        ReservationSlotEntity slot = saveSlot(TEAM_ID, 10);
+        ReservationEntity primary = saveReservation(slot, saveLine(TEAM_ID), TEAM_ID, OWNER_ID,
+                ReservationStatus.CANCELLED, UUID.randomUUID(), true);
+        entityManager.flush();
+        entityManager.clear();
+
+        Object[] aggregate = reservationRepository.aggregateGroupsForHistory(
+                java.util.List.of(primary.getId()), OWNER_ID).get(0);
+        LocalTime entityEndTime = slotRepository.findById(slot.getId()).orElseThrow().getEndTime();
+
+        assertThat(aggregate[2]).as("CHARではなくHibernateの正規TIME抽出を使う").isInstanceOf(java.sql.Time.class);
+        assertThat(((java.sql.Time) aggregate[2]).toLocalTime()).isEqualTo(entityEndTime)
+                .isEqualTo(LocalTime.of(11, 0));
+    }
+
+    @Test
     @DisplayName("AC-3/4: 非所属本人の履歴は返り他人の履歴は返らない")
     void 履歴取得は所属によらず認証本人だけに限定する() throws Exception {
         saveReservation(saveSlot(TEAM_ID, 10), saveLine(TEAM_ID), TEAM_ID, OWNER_ID,

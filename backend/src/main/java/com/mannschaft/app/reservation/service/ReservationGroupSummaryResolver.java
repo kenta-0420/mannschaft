@@ -56,7 +56,7 @@ public class ReservationGroupSummaryResolver {
             Object[] aggregate = aggregates.get(entity.getId());
             Integer size = aggregate != null ? ((Number) aggregate[1]).intValue() : null;
             LocalTime endTime = aggregate != null && aggregate[2] != null
-                    ? LocalTime.parse((String) aggregate[2]) : null;
+                    ? ((java.sql.Time) aggregate[2]).toLocalTime() : null;
             ReservationMenuEntity menu = entity.getMenuId() != null ? menus.get(entity.getMenuId()) : null;
             // 不整合なmenuIdでも別チームの名前を履歴へ混入させない（同チームの削除済み名は保持）。
             String menuName = menu != null && entity.getTeamId().equals(menu.getTeamId()) ? menu.getName() : null;
