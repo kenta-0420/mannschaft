@@ -3,7 +3,7 @@
   "cmpId": "CMP-261018-2030",
   "scope": "app",
   "draft": true,
-  "draftReason": "製品PR未マージ・933最終CI走行中・main追従後real smoke未確定。3住民探索実施済み、目的達成状況を分けて記録し殿統合裏取り待ち。完了検証未合格。",
+  "draftReason": "レビュー・実機・今回AC範囲の探索は実施完了。製品933最終CI/merge未確定のためdraft、台帳実装中を維持。",
   "implementation": {
     "pr": 3987,
     "sha": "933bc6746f864398f055354480567e1e5ddbd0d4"
@@ -14,7 +14,7 @@
       "description": "全3手順で使い方モーダルを開閉し親の手順・入力を維持する",
       "tests": [
         {
-          "name": "全3手順でガイドを開閉でき、対象範囲・チャネル・入力を維持する（局所green、実機green範囲は報告書参照、探索統合待ち）",
+          "name": "全3手順でガイドを開閉でき、対象範囲・チャネル・入力を維持する（局所green、実機・探索の範囲と限界は報告書参照）",
           "evidence": "docs/evidence/CMP-261018-2030.md"
         }
       ]
@@ -24,7 +24,7 @@
       "description": "Escはガイドのみ閉じ、親を再表示したときガイド非表示",
       "tests": [
         {
-          "name": "Escはガイドだけを閉じ、親を閉じて再表示するとガイドは非表示になる（局所green、実機green範囲は報告書参照、探索統合待ち）",
+          "name": "Escはガイドだけを閉じ、親を閉じて再表示するとガイドは非表示になる（局所green、実機・探索の範囲と限界は報告書参照）",
           "evidence": "docs/evidence/CMP-261018-2030.md"
         }
       ]
@@ -34,7 +34,7 @@
       "description": "テンプレート推奨チャネルを手順2で確認・変更してから手順3へ進む",
       "tests": [
         {
-          "name": "テンプレートの推奨チャネルを手順2で確認・変更し、往復しても選択を維持する（局所green、実機green範囲は報告書参照、探索統合待ち）",
+          "name": "テンプレートの推奨チャネルを手順2で確認・変更し、往復しても選択を維持する（局所green、実機・探索の範囲と限界は報告書参照）",
           "evidence": "docs/evidence/CMP-261018-2030.md"
         }
       ]
@@ -44,7 +44,7 @@
       "description": "テンプレートなし・推奨nullは手順2で選択必須",
       "tests": [
         {
-          "name": "テンプレート利用false/trueで未選択・推奨nullなら次へ無効（局所2件green、実機green範囲は報告書参照、探索統合待ち）",
+          "name": "テンプレート利用false/trueで未選択・推奨nullなら次へ無効（局所2件green、実機・探索の範囲と限界は報告書参照）",
           "evidence": "docs/evidence/CMP-261018-2030.md"
         }
       ]
@@ -54,7 +54,7 @@
       "description": "手順3→2→1→2でも選択維持し手順2を省略しない",
       "tests": [
         {
-          "name": "推奨チャネルの確認・変更・往復試験（局所green、実機green範囲は報告書参照、探索統合待ち）",
+          "name": "推奨チャネルの確認・変更・往復試験（局所green、実機・探索の範囲と限界は報告書参照）",
           "evidence": "docs/evidence/CMP-261018-2030.md"
         }
       ]
@@ -73,16 +73,15 @@
   "ci": [],
   "stages": {
     "review": {
-      "status": "pending",
-      "reason": "一次製品検分blocking0、最終差分確定待ち"
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261018-2030.md"
     },
     "real": {
-      "status": "pending",
-      "reason": "b0機能5/5、最終member1pass、root44同一spec red4assert→green1pass、保存ANNC-UI-002 1passを確認。最終出荷時の殿統合確認待ち。main追従後933の統合smoke結果は未確定"
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261018-2030.md"
     },
     "exploratory": {
-      "status": "pending",
-      "reason": "3住民探索実施済み。english達成/mobile部分達成/supporter部分達成。今回ガイド/手順の確定新不具合0。別件既存掲示板nullを殿独立再現しCMP-261018-2237未着手へ記録下書き。933統合smoke・最終CI/merge・殿最終統合判断待ち",
+      "status": "passed",
       "evidence": "docs/evidence/CMP-261018-2030.md"
     }
   },
