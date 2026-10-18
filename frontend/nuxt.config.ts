@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module'
 import Aura from '@primeuix/themes/aura'
 import { buildGateRouteRules } from './app/constants/featureGates'
 
@@ -64,6 +65,11 @@ const connectSrc = [
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
+  typescript: {
+    tsConfig: {
+      exclude: ['../test-results/**'],
+    },
+  },
   // 本番では Nuxt DevTools を無効化（情報露出・バンドル肥大の抑止）。
   // Nuxt DevTools の専用パネルは利用方針により全環境で無効化する（インストール時の互換パッチは維持）。
   devtools: { enabled: false },
@@ -1052,6 +1058,33 @@ export default defineNuxtConfig({
         '@vee-validate/zod',
         'vee-validate',
       ],
+    },
+  },
+
+  $development: {
+    hooks: {
+      'vite:extendConfig'(config, { isServer }) {
+        if (!isServer) return
+        if (!config.plugins) throw new Error('SSR Vite plugins are missing')
+        // i18n pluginの設定後、SSRのappをdevtools待機キューに保持しないNode用bundleへ解決する。
+        config.plugins.push({
+          name: 'mannschaft:ssr-i18n-node',
+          config: {
+            order: 'post',
+            handler() {
+              return {
+                resolve: {
+                  alias: {
+                    'vue-i18n': createRequire(import.meta.url).resolve(
+                      'vue-i18n/dist/vue-i18n.node.mjs',
+                    ),
+                  },
+                },
+              }
+            },
+          },
+        })
+      },
     },
   },
 

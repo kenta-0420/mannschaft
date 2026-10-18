@@ -479,11 +479,11 @@
     },
     "wallet_guide": {
       "title": "How to use Wallet",
-      "description": "Carry your point cards on your smartphone and present barcodes at checkout.",
+      "description": "Check your team point balances and member QR, and carry external point cards on your smartphone.",
       "overview": {
-        "title": "What is Wallet?",
+        "title": "About external point cards",
         "body": "Register barcodes from your point cards and membership cards in the app, and present them on your smartphone screen. You can register up to 200 cards.",
-        "hint": "You will need to agree to the terms of service the first time you open it."
+        "hint": "You only need to accept the terms when you enable external point cards."
       },
       "add_card": {
         "title": "Register a Card",
@@ -514,6 +514,14 @@
           "step3": "Hold your smartphone screen toward the staff for scanning",
           "step4": "(If biometric authentication is enabled) Unlock with face/fingerprint first"
         }
+      },
+      "team_points": {
+        "title": "Use team points",
+        "balance": "Each team has a separate balance. Points are not combined with other teams or external cards.",
+        "member_qr": "Show your shared member QR to staff to receive points or redeem rewards.",
+        "reception": "Scan the displayed reception QR, check the details and confirm. Depending on the team settings, points are added immediately or after staff approval.",
+        "requests": "Check the status under Point requests and cancel requests before approval. Open the team details to see points remaining for rewards and your history.",
+        "consent": "You can use team points and your member QR without enabling external point cards or accepting their terms."
       }
     }
   }

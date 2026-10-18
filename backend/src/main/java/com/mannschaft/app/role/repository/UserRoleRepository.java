@@ -22,6 +22,20 @@ import java.util.Set;
  */
 public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> {
 
+    /** 全体SYSTEM_ADMINを含まない当該TEAMの明示管理権限。 */
+    interface TeamAdminKeyRow {
+        Long getTeamId();
+        Long getUserId();
+    }
+
+    @Query("SELECT DISTINCT ur.teamId AS teamId, ur.userId AS userId "
+            + "FROM UserRoleEntity ur JOIN RoleEntity r ON r.id = ur.roleId "
+            + "WHERE ur.teamId IN :teamIds AND ur.userId IN :userIds "
+            + "AND ur.organizationId IS NULL AND r.name IN ('ADMIN', 'DEPUTY_ADMIN')")
+    List<TeamAdminKeyRow> findExplicitTeamAdminKeys(
+            @Param("teamIds") Collection<Long> teamIds, @Param("userIds") Collection<Long> userIds);
+
+
     /**
      * F03.16 §4.5.0 段1 — <b>1 スコープ × 複数ユーザー</b>の権限ロール一括解決（TEAM）。
      *

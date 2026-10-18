@@ -56,6 +56,8 @@ export function useAppNavGroups() {
       icon: 'pi pi-home',
       path: '/dashboard',
     })
+    list.push({ key: 'member-qr', labelKey: 'loyalty.memberQr.title', icon: 'pi pi-qrcode', path: '/my/member-qr' })
+    list.push({ key: 'team-point-requests', labelKey: 'loyalty.requests.title', icon: 'pi pi-ticket', path: '/my/team-point-requests' })
 
     // ナビ設定ストアの表示項目（BE 側で表示順ソート済み。配列順をそのまま尊重する）
     for (const feature of navSettingsStore.visibleFeatures) {
