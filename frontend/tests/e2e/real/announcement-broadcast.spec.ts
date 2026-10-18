@@ -670,11 +670,11 @@ test.describe('チームに告知を送る（F02.8 告知ウィザード）実�
 
   test('ANNC-UI-002: 使い方ガイドをモーダルで開閉できる', async ({ page }) => {
     ensureUiReady()
-    await page.setViewportSize({ width: 390, height: 844 })
     await loginUi(page, E2E_USER.email, E2E_USER.password)
     await page.goto(`${FRONTEND_URL}/teams/${TEAM_SLUG}`)
     await settle(page)
     await openWizard(page)
+    await page.setViewportSize({ width: 390, height: 844 })
 
     await page.getByRole('dialog').getByRole('button', { name: TXT.next }).click()
 
@@ -684,7 +684,7 @@ test.describe('チームに告知を送る（F02.8 告知ウィザード）実�
     await toggle.click()
     await expect(guide).toBeVisible()
     await expect(guide.getByText(TXT.guideAudienceTitle)).toBeVisible({ timeout: 5_000 })
-    const close = guide.getByRole('button', { name: '閉じる', exact: true })
+    const close = guide.locator('.p-dialog-footer').getByRole('button', { name: '閉じる', exact: true })
     for (const { name, button } of [
       { name: '使い方を開く', button: toggle },
       { name: 'ガイドを閉じる', button: close },
