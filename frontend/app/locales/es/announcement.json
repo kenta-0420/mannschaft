@@ -115,7 +115,7 @@
         "body": "Elige un destino entre Tablón, Línea de tiempo, Blog, TODO, Agenda y Encuesta.",
         "steps": {
           "step1": "Elige una de las 6 tarjetas",
-          "step2": "Pulsa «Siguiente». Nota: si la plantilla tiene un canal predeterminado, se omite esta pantalla"
+          "step2": "Revisa o cambia aquí el canal predeterminado de la plantilla y pulsa «Siguiente» para introducir el contenido"
         }
       },
       "content": {
