@@ -2,7 +2,10 @@ package com.mannschaft.app.reservation.repository;
 
 import com.mannschaft.app.reservation.entity.ReservationLineEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -10,6 +13,14 @@ import java.util.Optional;
  * 予約ラインリポジトリ。
  */
 public interface ReservationLineRepository extends JpaRepository<ReservationLineEntity, Long> {
+
+    /**
+     * 本人予約履歴の対象名を一括解決する。通常検索の論理削除除外は維持するため、
+     * 履歴に限り native SQL で @SQLRestriction を迂回する。ID は本人予約から導出し、
+     * 呼出側で予約とラインのチーム帰属を照合する。
+     */
+    @Query(value = "SELECT * FROM reservation_lines WHERE id IN (:ids)", nativeQuery = true)
+    List<ReservationLineEntity> findAllByIdIncludingDeletedForHistory(@Param("ids") Collection<Long> ids);
 
     /**
      * チームの予約ラインを表示順で取得する。

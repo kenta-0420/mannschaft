@@ -29,14 +29,10 @@ const isFullAdminView = computed(() => props.managementView && isAdmin.value)
 /** 呼称の動的差し込み（F03.4.5 §5.2）: 管理タブ名・件数バッジに使う。 */
 const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
 
-const activeTab = ref(0)
-
-/** 管理タブを開いた状態でメンバー表示へ切り替えた場合は、予約タブへ戻す。 */
-watch(isManagementView, (enabled) => {
-  if (!enabled && activeTab.value > 1) {
-    activeTab.value = 0
-  }
-})
+const permissionsLoaded = ref(false)
+// nullは初期・取得失敗・未所属のいずれでも管理権限の確定に使わない。book/listは常に選択可能。
+const permissionsResolved = computed(() => permissionsLoaded.value && roleName.value !== null)
+const activeTab = useReservationTab(isManagementView, permissionsResolved)
 
 /** 使い方ガイドモーダルの表示状態。 */
 const showGuide = ref(false)
@@ -261,7 +257,8 @@ function onResourceNameChanged() {
 }
 
 onMounted(async () => {
-  await loadPermissions()
+  const result = await loadPermissions()
+  permissionsLoaded.value = result.ok
   await loadReservationSettings()
   await loadResourceName()
 })
