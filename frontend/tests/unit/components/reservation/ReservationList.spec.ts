@@ -72,6 +72,55 @@ beforeEach(() => {
 })
 
 describe('ReservationList.vue（mine モード）', () => {
+  it('AC-3: グループ末尾が不明なら単枠終了時刻へ短縮せず不明と示す', async () => {
+    mockListMyReservations.mockResolvedValue({ data: [{
+      id: 93,
+      slot: { slotDate: '2026-07-10', startTime: '10:00', endTime: '10:30', lineName: '履歴の対象' },
+      group: { groupId: 'partial-history-group', groupSize: 2, groupEndTime: null, menuName: 'History menu' },
+      status: { status: 'COMPLETED' },
+    }] })
+    const wrapper = await mountSuspended(ReservationList, {
+      props: { teamId: 'team-slug', canManage: false, mode: 'mine' as const },
+    })
+    await new Promise(r => setTimeout(r, 0))
+
+    expect(wrapper.text()).toContain('10:00 - Time unavailable')
+    expect(wrapper.text()).not.toContain('10:30')
+    expect(wrapper.text()).toContain('History menu')
+  })
+
+  it('AC-3: 元情報が存在しない履歴は空欄でなく日時と対象が不明であることを示す', async () => {
+    mockListMyReservations.mockResolvedValue({ data: [{ id: 91, slot: null, status: { status: 'CANCELLED' } }] })
+
+    const wrapper = await mountSuspended(ReservationList, {
+      props: { teamId: 'team-slug', canManage: false, mode: 'mine' as const },
+    })
+    await new Promise(r => setTimeout(r, 0))
+
+    expect(wrapper.text()).toContain('Date unavailable')
+    expect(wrapper.text()).toContain('Time unavailable')
+    expect(wrapper.text()).toContain('Bookable item unavailable')
+  })
+
+  it('AC-3: 一部欠落でも既知の日付とグループ末尾時刻を維持する', async () => {
+    mockListMyReservations.mockResolvedValue({ data: [{
+      id: 92,
+      slot: { slotDate: '2026-07-10', startTime: null, endTime: '10:30', lineName: null },
+      group: { groupId: 'history-group', groupSize: 2, groupEndTime: '11:00', menuName: 'History menu' },
+      status: { status: 'COMPLETED' },
+    }] })
+    const wrapper = await mountSuspended(ReservationList, {
+      props: { teamId: 'team-slug', canManage: false, mode: 'mine' as const },
+    })
+    await new Promise(r => setTimeout(r, 0))
+
+    expect(wrapper.text()).toContain('2026-07-10')
+    expect(wrapper.text()).toContain('Time unavailable - 11:00')
+    expect(wrapper.text()).toContain('Bookable item unavailable')
+    expect(wrapper.text()).toContain('History menu')
+    expect(wrapper.text()).not.toContain('10:30')
+  })
+
   it('MINE-001: meta 無しの { data: [1件] } でも空にならず予約行が描画される', async () => {
     // meta を意図的に持たせない（実 BE と同一形状）。旧実装ならここで res.meta 参照が例外化した。
     mockListMyReservations.mockResolvedValue({ data: [myReservation] })
