@@ -8,7 +8,8 @@ mock の型・外部境界、annotation、stub 値、業務 assertion は変え�
 
 対象は filters 無効の 7 IT（budget/chat/circulation/filesharing/match/skill 2 本）と、
 filters 有効の receipt 3 IT。filters の異なる構成は共有しない。
-所有権移譲の IT、共通 MySQL 基底、heap/cache/fork/shard 設定は変更しない。
+所有権移譲の IT、共通 MySQL 基底、heap/fork/shard 設定は変更しない。
+Phase 1 当初は cache/timeout も維持したが、全量失敗後に nightly の実行設定を改訂する（後述）。
 
 ## 試験と受け入れ条件
 
@@ -47,8 +48,49 @@ Gradle 8.14.4 の task 単位オプションであり、依存 compile の build
 
 修正前は metadata の 4 key を計測し、4 つの実 context は起動していない。
 修正後の代表 2 context 共有は上記 probe で検証する。
-全体の context 生成・close 数は未計測であり、この 2 key 削減だけで OOM が解消したとは主張しない。
-全量 2 回連続 green の達成と出荷判断は別途 CI の証拠で確認する。
+全体の context 生成・close 数と retained heap 内訳は未計測であり、
+この 2 key 削減だけで OOM が解消したとは主張しない。
+
+## 全量失敗と nightly 実行設定の改訂
+
+Phase 1 の固定 head `5aad90ef1531e3b8649343f5872fec3e807d33a5` に対する
+nightly full run `39126089014` は失敗した。shard 0 の安全ログ集計では実 OOM marker 3、
+test 5074 case 中成功 5053・失敗 20・skip 1、migration 除外 false を確認した。
+安全 XML 集計では20失敗はすべて `OwnershipTransferOfferScopeContractIT` の
+5 nested suite に属し、例外型はいずれも `IllegalStateException` だった。
+失敗順・最初の cause は未確認であり、OOM との因果関係は断定しない。
+shard 4 は最大実行時間超過の annotation と job 実時間 90分18秒を確認した。
+shard 3/4 の test step は cancelled、shard 0 は test step failure 後に job cancelled であり、
+job と test step の結果を分けて確認し、cancelled を成功と扱わない。上記の局所 353 case green と
+代表 metadata の 4→2 key は維持するが、全量成功の証拠にはならない。
+
+通常 CI（`backend-ci.yml`）は context cache 上限5、migration 込みでは
+job 120分・test step 105分である。一方、失敗時の nightly は cache 上書きなし
+（Gradle 既定10）・job 90分だった。保持 context の上限と全量実行可能時間の差を解消するため、
+nightly の test に `-Pspring.test.context.cache.maxSize=5` を追加し、
+full-test job を120分、test step を105分へ揃える。
+job と step の差15分は compile・結果アップロード等の余裕とする。
+setup/compile が15分を超える場合、test 105分と後処理の余裕は保証しない。
+これは Phase 1 の cache/timeout 不変更方針の明示的な改訂であり、
+field 名統一だけで OOM が解消するという仮説は棄却する。
+cache5 で必ず解消すると断定せず、新固定 head の全量実走で検証する。
+
+heap 4g、forkEvery 180、parallel 2、6 shard と選別・重み表、migration、
+Java/test/Gradle のソースはこの改訂で変更しない。
+専用 archTest の単独 JVM・3g・30分、compile cache の read-only、
+test/archTest の task 単位 `--rerun` も維持する。
+過去の cache5 診断 run `38682333037` は migration 込み shard 0 の test が
+約97分46秒で成功したが、workflow head `5c017` と製品 checkout `1c6411fc` は異なり、
+今回のソースとも異なる。1 shard の診断を6 shard全量成功や同条件の性能比較の根拠にしない。
+変更前と case 集合が完全一致する全量成功 baseline もないため、
+ソース保持・選別不変更と今回の全6 shard 実走の証拠は区別する。
+
+修復後の migration 込み6 shard＋専用 archTest＋shard別 archUnit engine/後段 guard の
+**同一固定 head で2回連続実走 green は未達**であり、出荷判断は保留する。
+OOM 0、既存 suite/case の欠落・重複0、追加11 case、migration 期待集合、skip 理由を
+全量の XML と安全ログで照合する。timeout/cancelled、artifact 欠落、XML 不完、
+task の FROM-CACHE/UP-TO-DATE を実走成功として数えない。
+context 生成・close 総数と retained heap 内訳の未計測も残る。
 
 製品の UI/API を変更しない test-only のため、今回変更の実機 E2E・探索試験は対象外。
 別の製品機能の実機結果を本件の完了証拠へ転用しない。

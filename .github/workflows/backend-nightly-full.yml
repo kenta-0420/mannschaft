@@ -16,8 +16,8 @@
 #   - PR はブロックしない（必須チェックにしない）。失敗はこの workflow が
 #     赤くなることで可視化する（Actions のスケジュール失敗は既定でリポジトリ
 #     管理者へ通知される）。
-#   - shard 構成は backend-ci.yml と揃える（6 分割）。フル実行のため 1 shard の
-#     壁時計は PR 時より長くなる想定で timeout を 90 分に取る。
+#   - shard 構成（6分割）・context cache 上限5を backend-ci.yml と揃える。
+#     通常CIのmigration込み設定と同じ job 120分・test step 105分を採用する。
 #
 # ※ このジョブ名を main ブランチ保護 Ruleset の必須チェックに登録しないこと。
 #   登録すると PR ごとに起動しない workflow が永久 pending となりマージ不能になる。
@@ -51,7 +51,7 @@ jobs:
   full-test:
     name: Full test (shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     defaults:
       run:
         working-directory: ./backend
@@ -87,11 +87,16 @@ jobs:
         run: ./gradlew compileJava compileTestJava --no-daemon --build-cache
 
       # -PexcludeMigrationTests を渡さない = マイグレーションテストを含む全件実行
+      # 通常CIのmigration込み設定に揃え、context保持上限を5に制限する。
+      # jobとの差15分はcompile・結果アップロード等の余裕とする。
+      # setup/compileが15分を超える場合、test105分と後処理の余裕は保証しない。
       - name: Run tests (shard ${{ matrix.shard }} / ${{ env.SHARD_TOTAL }}, 除外なし)
+        timeout-minutes: 105
         run: >-
           ./gradlew test --rerun --no-daemon --continue --build-cache
           -Pshard.total=${{ env.SHARD_TOTAL }}
           -Pshard.index=${{ matrix.shard }}
+          -Pspring.test.context.cache.maxSize=5
         env:
           TESTCONTAINERS_RYUK_DISABLED: "false"
 
