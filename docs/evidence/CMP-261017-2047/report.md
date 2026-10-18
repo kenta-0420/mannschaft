@@ -71,4 +71,4 @@ de1152×720の通常start.click→fill/end.click→fillでは日付panelは常�
 
 ![削除履歴の再読込後の金額](final-08-api-deleted-history-reload.png)
 
-2点は殿が実見した合成データ画像です。秘密・認証情報・環境設定・fixture・生XML・trace・通信dump・個人絶対パスは公開候補へ含めません。
+2点は殿が実見した合成データ画像です。秘密・認証情報・環境設定・fixture・生XML・trace・通信dump・個人絶対パスは公開資料へ含めません。

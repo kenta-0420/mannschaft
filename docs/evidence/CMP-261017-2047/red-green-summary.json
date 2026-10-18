@@ -117,7 +117,7 @@
   },
   "stages": {
     "review": "旧検分finding0＋新2製品差分検分finding0",
-    "real": "旧sourceの固定実機/API/mobile実証を保持。新head実API再検証待ち。",
+    "real": "旧UI/mobileと28648 API11PASS、4ac82予算コード等価継承を殿が最終照合passed。",
     "exploratory": "旧source3住民の14AC関連目標達成を保持。最新実装headへの予算コード等価継承を殿が最終照合しpassed。"
   },
   "residents": {
@@ -280,7 +280,7 @@
       }
     ],
     "runtimeBlocker": {
-      "status": "1f381a8の検証完了・main追従後の再確認待ち",
+      "status": "1f時点の完了記録。後続mainSync/main2Sync参照",
       "environmentRecovered": true,
       "newJarBuildCompleted": true,
       "fullBlobSourceEquivalenceVerified": true,
