@@ -113,6 +113,8 @@ public class OrgScheduleController {
                 entity, SecurityUtils.getCurrentUserId());
         ScheduleResponse response = ScheduleResponse.builder()
                 .id(entity.getId())
+                .allowProxyAttendance(entity.getAllowProxyAttendance())
+                .isProxyAutoAccept(entity.getIsProxyAutoAccept())
                 .content(new ScheduleResponse.ScheduleContentDto(
                         entity.getTitle(),
                         entity.getStatus().name(),
