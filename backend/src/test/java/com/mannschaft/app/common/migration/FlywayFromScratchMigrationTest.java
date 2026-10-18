@@ -1424,4 +1424,79 @@ class FlywayFromScratchMigrationTest {
         String location = domain.getCodeSource().getLocation().getPath();
         return location.contains("/classes/java/test");
     }
+
+    @Test
+    @Order(90)
+    void チームポイント6表の所有境界と申請索引が存在する() throws Exception {
+        migrateFromScratch();
+        try (Connection connection = connect()) {
+            LoyaltyMigrationFixture.verify(connection);
+        }
+        try (Connection conn = connect(); Statement statement = conn.createStatement()) {
+            for (String suffix : List.of("programs", "rules", "rewards", "accounts", "transactions", "award_requests")) {
+                String table = "team_loyalty_" + suffix;
+                try (ResultSet columns = conn.getMetaData().getColumns(conn.getCatalog(), null, table, "id")) {
+                    assertThat(columns.next()).as(table + " UUID主キー").isTrue();
+                    assertThat(columns.getString("TYPE_NAME")).isEqualToIgnoringCase("BINARY");
+                    assertThat(columns.getInt("COLUMN_SIZE")).isEqualTo(16);
+                }
+                try (ResultSet result = statement.executeQuery("SELECT TABLE_COLLATION FROM information_schema.TABLES "
+                        + "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='" + table + "'")) {
+                    assertThat(result.next()).isTrue();
+                    assertThat(result.getString(1)).isEqualTo("utf8mb4_0900_ai_ci");
+                }
+                try (ResultSet keys = conn.getMetaData().getImportedKeys(conn.getCatalog(), null, table)) {
+                    while (keys.next()) {
+                        assertThat(keys.getString("PKTABLE_NAME")).as("他ドメインFKを作らない").startsWith("team_loyalty_");
+                        assertThat(keys.getShort("DELETE_RULE")).isEqualTo((short) DatabaseMetaData.importedKeyRestrict);
+                    }
+                }
+            }
+            try (ResultSet result = statement.executeQuery("SELECT COLUMN_NAME FROM information_schema.STATISTICS "
+                    + "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='team_loyalty_award_requests' "
+                    + "AND INDEX_NAME='idx_tlar_pending_current' ORDER BY SEQ_IN_INDEX")) {
+                List<String> columns = new ArrayList<>();
+                while (result.next()) columns.add(result.getString(1));
+                assertThat(columns).containsExactly("team_id", "status", "program_version", "rule_version", "award_on", "expires_at", "id");
+            }
+            try (ResultSet result = statement.executeQuery("SELECT GENERATION_EXPRESSION,EXTRA FROM information_schema.COLUMNS "
+                    + "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='team_loyalty_award_requests' AND COLUMN_NAME='pending_unique_key'")) {
+                assertThat(result.next()).isTrue();
+                assertThat(result.getString(1)).containsIgnoringCase("PENDING");
+                assertThat(result.getString(2)).contains("VIRTUAL GENERATED");
+            }
+            try (ResultSet result = statement.executeQuery("SELECT scope FROM permissions WHERE name='TEAM_LOYALTY_OPERATE'")) {
+                assertThat(result.next()).as("権限を実カタログへ登録する").isTrue();
+                assertThat(result.getString(1)).isEqualTo("TEAM");
+                assertThat(result.next()).isFalse();
+            }
+            try (ResultSet result = statement.executeQuery("SELECT r.name,rp.is_default FROM role_permissions rp "
+                    + "JOIN roles r ON r.id=rp.role_id JOIN permissions p ON p.id=rp.permission_id "
+                    + "WHERE p.name='TEAM_LOYALTY_OPERATE'")) {
+                assertThat(result.next()).isTrue();
+                assertThat(result.getString(1)).isEqualTo("ADMIN");
+                assertThat(result.getBoolean(2)).isTrue();
+                assertThat(result.next()).as("DEPUTY天井行も恒常付与も登録しない").isFalse();
+            }
+        }
+    }
+    @Test
+    @Order(2)
+    void PLATFORM一意制約は既存全scopeと履歴を保持し重複時は旧行を残して停止する() throws Exception {
+        migrateFromScratch();
+        try (Connection connection = connect()) {
+            PlatformCardMigrationFixture.verify(connection);
+        }
+    }
+
+    @Test
+    @Order(91)
+    void チームポイント追加migrationは旧F18カードと残高履歴を保持する() throws Exception {
+        migrateFromScratch();
+        // 同所有Testcontainersの専用接続だけでclone schemaを作り、共有DBやglobalGRANTへ触れない。
+        try (Connection connection = DriverManager.getConnection(MYSQL.getJdbcUrl(), "root", MYSQL.getPassword())) {
+            LoyaltyLegacyMigrationFixture.verify(connection);
+        }
+    }
+
 }

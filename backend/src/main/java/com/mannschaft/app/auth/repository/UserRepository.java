@@ -22,6 +22,19 @@ import java.util.stream.Collectors;
  */
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
+    /** 表示投影に必要なscalarだけを読む。inactiveの表示値はService境界で破棄する。 */
+    interface ActiveDisplayStateRow {
+        Long getId();
+        String getDisplayName();
+        Boolean getActive();
+    }
+
+    @Query("SELECT u.id AS id, u.displayName AS displayName, "
+            + "CASE WHEN u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE "
+            + "AND u.archivedAt IS NULL AND u.deletedAt IS NULL THEN true ELSE false END AS active "
+            + "FROM UserEntity u WHERE u.id IN :ids")
+    List<ActiveDisplayStateRow> findActiveDisplayStateRows(@Param("ids") Collection<Long> ids);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from UserEntity u where u.id = :id "
             + "and u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE")
