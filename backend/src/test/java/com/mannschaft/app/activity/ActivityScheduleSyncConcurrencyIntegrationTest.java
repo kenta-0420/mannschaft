@@ -102,7 +102,8 @@ class ActivityScheduleSyncConcurrencyIntegrationTest extends AbstractMySqlIntegr
     @Test
     void 予定保存後の同期検証失敗は両方rollbackする() throws Exception {
         JsonNode activity = create();
-        Map<String, Object> update = Map.of("title", "保存されない予定", "startAt", "2026-10-12T23:00:00+09:00", "endAt", "2026-10-13T01:00:00+09:00");
+        Map<String, Object> update = Map.of("title", "保存されない予定", "startAt", "2026-10-12T23:00:00+09:00", "endAt", "2026-10-13T01:00:00+09:00",
+                "allowProxyAttendance", true, "isProxyAutoAccept", true);
         var previewResult = mvc.perform(post("/api/v1/teams/{team}/schedules/{schedule}/activity-sync-preview", teamId, scheduleId)
                 .with(user(Long.toString(AUTHOR))).contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(Map.of("scheduleUpdate", update, "updateScope", "THIS_ONLY"))))
@@ -119,6 +120,11 @@ class ActivityScheduleSyncConcurrencyIntegrationTest extends AbstractMySqlIntegr
         LocalDate date = tx.execute(status -> activities.findById(activity.path("id").asLong()).orElseThrow().getActivityDate());
         assertThat(title).isEqualTo("予定由来");
         assertThat(date).isEqualTo(LocalDate.of(2026, 10, 10));
+        tx.executeWithoutResult(status -> {
+            var schedule = schedules.findById(scheduleId).orElseThrow();
+            assertThat(schedule.getAllowProxyAttendance()).isFalse();
+            assertThat(schedule.getIsProxyAutoAccept()).isFalse();
+        });
     }
 
     private JsonNode create() throws Exception {
@@ -131,7 +137,7 @@ class ActivityScheduleSyncConcurrencyIntegrationTest extends AbstractMySqlIntegr
     @Test
     void 参加者変更はversionを進め古い同期確認を拒否する() throws Exception {
         JsonNode activity = create();
-        var update = Map.<String, Object>of("title", "競合予定");
+        var update = Map.<String, Object>of("title", "競合予定", "allowProxyAttendance", true, "isProxyAutoAccept", true);
         var result = mvc.perform(post("/api/v1/teams/{team}/schedules/{schedule}/activity-sync-preview", teamId, scheduleId)
                 .with(user(Long.toString(AUTHOR))).contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(Map.of("scheduleUpdate", update))))
@@ -149,6 +155,11 @@ class ActivityScheduleSyncConcurrencyIntegrationTest extends AbstractMySqlIntegr
                 .andExpect(status().isConflict());
         Long version = tx.execute(status -> activities.findById(activity.path("id").asLong()).orElseThrow().getVersion());
         assertThat(version).isGreaterThan(activity.path("version").asLong());
+        tx.executeWithoutResult(status -> {
+            var schedule = schedules.findById(scheduleId).orElseThrow();
+            assertThat(schedule.getAllowProxyAttendance()).isFalse();
+            assertThat(schedule.getIsProxyAutoAccept()).isFalse();
+        });
     }
 
     @Test
@@ -167,7 +178,7 @@ class ActivityScheduleSyncConcurrencyIntegrationTest extends AbstractMySqlIntegr
             activities.findById(activity.path("id").asLong()).orElseThrow().publish();
         });
         setMemberSchedulePermission(true);
-        var update = Map.of("title", "予定担当の保存");
+        var update = Map.<String, Object>of("title", "予定担当の保存", "allowProxyAttendance", true, "isProxyAutoAccept", false);
         var preview = mvc.perform(post("/api/v1/teams/{team}/schedules/{schedule}/activity-sync-preview", teamId, scheduleId)
                 .with(user(Long.toString(member))).contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(Map.of("scheduleUpdate", update))))
@@ -180,6 +191,11 @@ class ActivityScheduleSyncConcurrencyIntegrationTest extends AbstractMySqlIntegr
         String activityTitle = tx.execute(status -> activities.findById(activity.path("id").asLong()).orElseThrow().getTitle());
         Long activityVersion = tx.execute(status -> activities.findById(activity.path("id").asLong()).orElseThrow().getVersion());
         assertThat(scheduleTitle).isEqualTo("予定担当の保存");
+        tx.executeWithoutResult(status -> {
+            var schedule = schedules.findById(scheduleId).orElseThrow();
+            assertThat(schedule.getAllowProxyAttendance()).isTrue();
+            assertThat(schedule.getIsProxyAutoAccept()).isFalse();
+        });
         assertThat(activityTitle).isEqualTo("予定由来");
         assertThat(activityVersion).isEqualTo(activity.path("version").asLong() + 1);
         setMemberSchedulePermission(false);
