@@ -59288,6 +59288,7 @@ export interface components {
             /** Format: int32 */
             academicYear?: number;
             allDay: boolean;
+            allowProxyAttendance?: boolean;
             /** Format: date-time */
             attendanceDeadline?: string;
             attendanceRequired: boolean;
@@ -59299,6 +59300,7 @@ export interface components {
             eventCategoryId?: number;
             eventType: string;
             includeSupporters?: boolean;
+            isProxyAutoAccept?: boolean;
             location?: string;
             minResponseRole?: string;
             minViewRole?: string;
@@ -59395,10 +59397,12 @@ export interface components {
         };
         ScheduleResponse: {
             academic?: components["schemas"]["ScheduleAcademicDto"];
+            allowProxyAttendance?: boolean;
             audit?: components["schemas"]["ScheduleAuditDto"];
             content?: components["schemas"]["ScheduleContentDto"];
             /** Format: int64 */
             id?: number;
+            isProxyAutoAccept?: boolean;
             myAttendanceStatus?: string;
             recurrenceInfo?: components["schemas"]["ScheduleRecurrenceDto"];
             reminders?: components["schemas"]["ReminderResponse"][];
@@ -59525,6 +59529,7 @@ export interface components {
             /** Format: int32 */
             academicYear?: number;
             allDay?: boolean;
+            allowProxyAttendance?: boolean;
             /** Format: date-time */
             attendanceDeadline?: string;
             attendanceRequired?: boolean;
@@ -59535,6 +59540,7 @@ export interface components {
             /** Format: int64 */
             eventCategoryId?: number;
             eventType?: string;
+            isProxyAutoAccept?: boolean;
             location?: string;
             minResponseRole?: string;
             minViewRole?: string;
