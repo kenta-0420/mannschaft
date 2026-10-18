@@ -8,14 +8,18 @@ type RecurringBlockedTimeResponse = components['schemas']['RecurringBlockedTimeR
 
 const props = withDefaults(defineProps<{
   teamId: string
+  /** 独立管理ページが取得したチームのtimezone。未指定時は従来のshell値を使う。 */
+  teamTimezone?: string
   /** 管理者権限を持つ利用者に管理UIを表示するか。メンバー表示では false。 */
   managementView?: boolean
 }>(), {
+  teamTimezone: undefined,
   managementView: true,
 })
 
 const { t } = useI18n()
 const { team } = useTeamShellContext()
+const teamTimezone = computed(() => props.teamTimezone ?? team.value?.timezone ?? 'Asia/Tokyo')
 const { isAdmin, isAdminOrDeputy, isMember, roleName, loadPermissions } = useRoleAccess('team', computed(() => props.teamId))
 
 /** 管理者レンズがメンバー表示のときは、実ロールが管理者でも利用者向けUIへ切り替える。 */
@@ -298,7 +302,7 @@ onMounted(async () => {
             <SlotMatrixPicker
               ref="slotMatrixPickerRef"
               :team-id="props.teamId"
-              :team-timezone="team?.timezone ?? 'Asia/Tokyo'"
+              :team-timezone="teamTimezone"
               :is-admin="isFullAdminView"
               @slot-selected="onSlotSelected"
               @manage-lines="activeTab = 2"
@@ -486,7 +490,7 @@ onMounted(async () => {
                       </p>
                       <ReservationUnavailabilityManager
                         :team-id="props.teamId"
-                        :team-timezone="team?.timezone ?? 'Asia/Tokyo'"
+                        :team-timezone="teamTimezone"
                         :disabled="!isAdmin"
                       />
                     </div>
