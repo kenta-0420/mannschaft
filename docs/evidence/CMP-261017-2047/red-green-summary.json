@@ -1,0 +1,453 @@
+{
+  "cmpId": "CMP-261017-2047",
+  "implementation": {
+    "pr": 3962,
+    "sha": "4ac82e6a0744a66884d846a7852ef4bd849beef6",
+    "merged": true,
+    "fullCi": "実装head4ac82の28checks＝26success・正当skip2・失敗/未完0。Backend39104125939全6 shard＋aggregate、Frontend39104125966成功。",
+    "realApi": "28648固定jarで11/11成功。実装head4ac82は当PR30パス全blob・BE予算subtree不変による予算コード等価継承。新jar/API重複実行不要、jar全体同一とはしない。",
+    "mergeCommit": "27759534b5a0d0f94d63e84a4b95212c3dda2744",
+    "mergedAt": "2026-10-18T08:10:02Z"
+  },
+  "backend": {
+    "red": {
+      "sourceBase": "e79b0532505afec81280692e7171ddfda6b53fc3",
+      "tests": 24,
+      "passed": 7,
+      "failed": 17,
+      "skipped": 0,
+      "meaningfulProductFailures": 16,
+      "contractProductFailures": 15,
+      "migrationProductFailures": 1,
+      "excludedFixtureFailures": 1,
+      "exclusion": "AC3の配分作成fixtureに必須monthがなく400になった1件を製品redから除外する。"
+    },
+    "green": {
+      "sourceCommit": "835162976918db28cc442b2070a0fbccbdc5fb3a",
+      "tests": 133,
+      "passed": 133,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "newDeletionContract": 23,
+      "migration": 1,
+      "existingAuthorizationAndOtherRegression": 109,
+      "ac3": "month=6を補った修正済みAC3を含め、契約23件は全green。",
+      "ciScope": "局所実行ではArchUnit関連taskを除外。全体CIの代用にはしない。",
+      "scope": "旧source835（対象treeは9dae/ab0と同等）の局所133件成功。新head全BE treeとの同等性は主張しない。"
+    },
+    "realHttp": {
+      "redStatus": 500,
+      "greenStatus": 204,
+      "allocationAmountBefore": 12000,
+      "allocationAmountAfter": 12000,
+      "transactionAmountBefore": 2500,
+      "transactionAmountAfter": 2500,
+      "categoryAndHistoryIdsPreserved": true,
+      "sameNameFiscalYearRecreated": true,
+      "sameNameChildRecreated": true,
+      "flyway": "検証者の手動DDL/DML・手動repairなし。既存起動hookは自動repair後migrate。ログにfailedなし/repaired表示、realign/checksum変更行なし。起動前全checksum snapshot未取得のため全既存checksum不変は未証明。今回のため新たなrepair運用は追加していない。",
+      "note": "実Flyway適用DBのHTTP500再現は単体/契約red件数と別証拠。削除後のAPI履歴をブラウザ再読込でも表示確認。",
+      "uniquenessScope": "年度同名・有効親配下の同名子費目の再作成を対象とし、親NULLの従来扱いを強化していない。",
+      "source": "旧BE9daeの実証。新headのAPI結果・jar/source証拠は後続追補。"
+    }
+  },
+  "frontendUnit": {
+    "red": {
+      "passed": 9,
+      "failed": 5,
+      "skipped": 0
+    },
+    "green": {
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    },
+    "nameEvidence": "frontend/app/pages/teams/[slug]/budget.spec.ts",
+    "scope": "旧sourceのFE14件。当PRの予算関連30パスはmain追従前後で不変。予算外のmain先行変更を含むためFE app全tree不変とは主張しない。"
+  },
+  "mobile": {
+    "red": {
+      "locale": "de",
+      "configuredWidth": 360,
+      "documentWidth": 466,
+      "helpHeight": 35,
+      "productSource": "b82b1205b80822b5f10d699e50465395a82adcbf"
+    },
+    "green": {
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "flaky": 0,
+      "locales": [
+        "ja",
+        "de"
+      ],
+      "widths": [
+        360,
+        390
+      ],
+      "originalFormCalendarTargets": 142,
+      "additionalTargetsPerCase": 12,
+      "minTargetWidth": 44,
+      "minTargetHeight": 44,
+      "backMeasuredSeparately": true,
+      "footerAndHeaderCloseNormalClick": true,
+      "expectedTeamUrlReached": true
+    },
+    "diagnosticSpecSha256": "5a6be48f017b82bea88c85e8fee42ab526032a6904ecf9f7f998e2e57eed5583",
+    "permanentSpecSha256": "2a31bdadd485249325b0ca3c70742daac7de81f0854fb778b6769df049af5a00",
+    "permanentChange": "一時health/debugを削除。実URL待機とelapsed/URL/寸法添付を維持。製品アプリ差分なし。",
+    "scope": "旧BE9dae/FEbc15の同run5件実証。新head全BE treeとの同一性を主張しない。"
+  },
+  "runtime": {
+    "backendSource": "9dae0456e9a81c67e5e18c8c92e4a0b193172305",
+    "backendTree": "6005377a7ca26098fd53e9858d3d4b6d5f76e43b",
+    "frontendSource": "bc15c01f9288984b592cecc3b89b500f409040d0",
+    "frontendAppTree": "f358c8aa24d9ca9ade2e71cb2bdae8805dbbffd1",
+    "backendJarSha256": "13ffa6055375eea43ddb2db49cc3a4e25fc69a8333a896cab108eefbbfb1dab0",
+    "remainingFrontendDifference": "旧ab0との比較はモバイルE2E specのみ。main追従後は予算外FE変更も含むため全app tree同一とはしない。",
+    "primaryUiPassed": 10,
+    "apiCompleted": true,
+    "deletedHistoryReloadCompleted": true,
+    "equivalentToPriorImplementationHead": "ab0cf25b9bf2c8aaa2acf84c0f9a3464f2e83af3",
+    "currentImplementationHead": "4ac82e6a0744a66884d846a7852ef4bd849beef6",
+    "currentBackendTreeEquivalentToPriorRuntime": false,
+    "newRuntimeVerification": "28648固定jarで11/11成功。実装head4ac82は当PR30パス全blob・BE予算subtree不変による予算コード等価継承。新jar/API重複実行不要、jar全体同一とはしない。 殿の受入最終照合passed。"
+  },
+  "stages": {
+    "review": "旧検分finding0＋新2製品差分検分finding0",
+    "real": "旧sourceの固定実機/API/mobile実証を保持。新head実API再検証待ち。",
+    "exploratory": "旧source3住民の14AC関連目標達成を保持。最新実装headへの予算コード等価継承を殿が最終照合しpassed。"
+  },
+  "residents": {
+    "member": "予算403と非漏洩、案内と管理者への相談先、チーム戻り先を確認。",
+    "mobile": "ja/de・360/390で管理コンソールから予算へ到達し期間・案内・入力保持・通常戻るを確認。年度列は内部スクロール、選択末尾は読める。",
+    "desktop": "America/Los_Angeles・deで2040-02-29〜2040-03-11の任意期間を201作成（合成ID8）。表示29.02.2040〜11.03.2040とAPIが一致。",
+    "separateObservation": "de1152×720で通常start.click→fill/end.click→fillはpanel常に1枚、Escape後0枚、名前の通常click成功を殿が画像2枚とともに確認。直接連続locator.fillのみ2panel+interceptを再現。DatePicker定義はorigin/mainと同一の未変更で、今回の回帰・操作不能という確定指摘なし。ハーネス/フォーカス依存観測として分離。Tabがアイコンにも止まるkeyboard比較は有効比較に採用しない。",
+    "limitation": "チームへの戻るは期待URL到達を確認。チーム内部loading完了までをすべての画像で証明したものではない。隣接するチームのウィジェット設定35pxも今回の予算主要操作とは分離する。",
+    "adjacentObservation": "チームhomeのウィジェット設定35pxは今回対象外の未確定候補として気づき箱inboxへ登録済み。"
+  },
+  "insights": {
+    "originalRequestedIds": [
+      "ALI-budget-261017-1208-exploratory-budget-261017-period-recheck",
+      "ALI-budget-261017-1208-exploratory-budget-261017-back-blank",
+      "ALI-budget-261017-1208-exploratory-budget-261017-guide-permission"
+    ],
+    "originalRequestedDoneCount": 3,
+    "originalTouchCard": {
+      "id": "ALI-budget-261017-1208-exploratory-budget-261017-touch-targets",
+      "status": "inbox"
+    },
+    "finalState": {
+      "total": 6,
+      "done": 4,
+      "inbox": 2,
+      "stage": "B2",
+      "reloaded": true,
+      "separateBrowserReopened": true
+    },
+    "newCalendarObservation": {
+      "id": "ALI-budget-261017-2047-exploratory-budget-2047-calendar-focus-harness",
+      "uiTransition": [
+        "inbox",
+        "planned",
+        "done"
+      ],
+      "status": "done",
+      "reason": "通常pointer入力はpanel1枚、Escape後0枚、名前の通常click成功。観測の整理済みであり製品修正を主張しない。"
+    },
+    "newWidgetObservation": {
+      "id": "ALI-budget-261017-2047-exploratory-budget-2047-widget-target",
+      "status": "inbox",
+      "reason": "予算画面外の35px観測。未確定の対象外候補。"
+    },
+    "profile": "検証専用persistent profile。利用者profileではない。",
+    "originalOverlayTrusted": false,
+    "originalOverlayStatus": "observed-unverified",
+    "originalCardMetadataUnchanged": true,
+    "originalBundles": 3,
+    "newBundles": 2,
+    "currentRunImageRootInspected": true,
+    "note": "元要求3件done・元touch inboxを保持したまま新2件を取込。殿がUI状態遷移・画像・別ブラウザー再開を確認。"
+  },
+  "images": [
+    {
+      "file": "final-01-admin-period.png",
+      "sha256": "85ceb5c66e42f4dfe75db3d1494d54b489da1c5a3bc77a38705ecbfe80806bbd",
+      "syntheticData": true,
+      "rootVisuallyInspected": true
+    },
+    {
+      "file": "final-08-api-deleted-history-reload.png",
+      "sha256": "aae1503883301e855c52ecc5a5f67087a751d6dbc926a0b194dea69e54901826",
+      "syntheticData": true,
+      "rootVisuallyInspected": true
+    }
+  ],
+  "publication": {
+    "excluded": [
+      "秘密値",
+      "認証情報",
+      "環境設定",
+      "config.env",
+      "fixture",
+      "生XML",
+      "trace",
+      "要求/応答dump",
+      "個人の絶対パス",
+      "未許可画像"
+    ],
+    "note": "公開候補は本集計・日本語報告・AC JSON・許可された合成画像2点のみ。原本は非公開作業領域へ保全。"
+  },
+  "boardValidation": {
+    "baseline": {
+      "head": "27d274385020141efebf220ffdff3b604c4b378f",
+      "clean": true,
+      "exitCode": 1,
+      "line": 37,
+      "reason": "CMP正本行数と参照抽出数が一致しません"
+    },
+    "generatedCopy": {
+      "exitCode": 1,
+      "line": 46,
+      "reason": "GitHubスナップショットの参照集合が正本と不一致です"
+    },
+    "fullBaseDataValidationPassed": false,
+    "focusedOverlayContract": {
+      "passed": true,
+      "residentOverlayAccepted": true,
+      "invalidOverlaysRejected": 8
+    },
+    "sharedMainDataChanged": false,
+    "runnerExecuted": false,
+    "runnerCoveragePassClaim": false,
+    "note": "baselineと生成copyは異なる箇所で停止。overlay契約の選択検証成功と、基礎データ全体の検証未合格・runner/coverage判定を区別する。"
+  },
+  "guardFollowup": {
+    "previousHead": "ab0cf25b9bf2c8aaa2acf84c0f9a3464f2e83af3",
+    "failedBackendRunId": 39039836508,
+    "previousCi": {
+      "failedShard": 0,
+      "otherShardsPassed": 5,
+      "aggregate": "従属失敗",
+      "failure": "nativeQuery RepositoryのHistoricalCategory LocalDateTime getDeletedAt宣言をRawSqlTimeColumnGuardTestが検出"
+    },
+    "head": "1f381a8bb7bc1bc6124c7025f4517fee01bacf7b",
+    "changedProductPaths": [
+      "backend/src/main/java/com/mannschaft/app/budget/repository/BudgetCategoryRepository.java",
+      "backend/src/main/java/com/mannschaft/app/budget/service/BudgetCategoryService.java"
+    ],
+    "implementation": "SQL CASE WHEN deleted_at IS NULL THEN 0 ELSE 1 END AS deletedFlag、Integer getDeletedFlag、serviceでInteger 1判定。時刻値をJavaへ取得しない。",
+    "guardAndFreezeLedgerChanged": false,
+    "rootDiffReviewFindings": 0,
+    "localGreen": {
+      "tests": 35,
+      "passed": 35,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suites": [
+        {
+          "name": "RawSqlTimeColumnGuardTest",
+          "tests": 2
+        },
+        {
+          "name": "RawSqlTimeColumnGuardScanningLogicTest",
+          "tests": 10
+        },
+        {
+          "name": "BudgetCategoryDeletionContractIT",
+          "tests": 23
+        }
+      ]
+    },
+    "newApiVerified": true,
+    "newRuntimeJarSha256": "b0536e53474efc94772e1c76cedaa9cef05cb7f6d051b6878d3e228d447c0873",
+    "newRuntimeSourceVerified": true,
+    "ci": [
+      {
+        "workflow": "Backend CI",
+        "runId": 39048602621,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "workflow": "Frontend CI",
+        "runId": 39048602623,
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ],
+    "runtimeBlocker": {
+      "status": "1f381a8の検証完了・main追従後の再確認待ち",
+      "environmentRecovered": true,
+      "newJarBuildCompleted": true,
+      "fullBlobSourceEquivalenceVerified": true,
+      "newApiVerified": true,
+      "note": "この完了値はguardFollowup.headの1f381a8に限る。最新28648のjar/API完了を示さない。"
+    },
+    "sameHeadChecks": {
+      "total": 28,
+      "completed": 28,
+      "success": 26,
+      "skipped": 2,
+      "failed": 0
+    },
+    "runtimeVerification": {
+      "sourceHead": "1f381a8bb7bc1bc6124c7025f4517fee01bacf7b",
+      "jarSha256": "b0536e53474efc94772e1c76cedaa9cef05cb7f6d051b6878d3e228d447c0873",
+      "sourceBlobCount": 17899,
+      "sourceMismatch": 0,
+      "apiChecks": 11,
+      "passed": 11,
+      "completed": true,
+      "deletedCategoryId": 1,
+      "activeCategoryId": 6,
+      "deletedFlag": 1,
+      "activeDeletedFlag": 0,
+      "allocationAmount": 12000,
+      "transactionAmount": 2500,
+      "historyRetained": true,
+      "activeZeroCategoryAndDeletedCategoryMixedApiPassed": true,
+      "ownedJvmStopped": true,
+      "port8081Closed": true,
+      "flyway": {
+        "before": {
+          "type": "flyway",
+          "totalRows": 1220,
+          "failedRows": 0,
+          "checksumSum": -26274295042
+        },
+        "after": {
+          "type": "flyway",
+          "totalRows": 1220,
+          "failedRows": 0,
+          "checksumSum": -26274295042
+        },
+        "aggregateChecksumAndRowCountUnchanged": true,
+        "individualChecksumComparison": false,
+        "manualDdlDmlOrRepair": false,
+        "existingAutoRepairThenMigrate": true
+      }
+    }
+  },
+  "mainSync": {
+    "head": "28648a49cca8fe9a4064b94a7e60112d421c4f3c",
+    "mainHead": "ad79885e0cb888aade6a9c64b3b3f8b5e1082d31",
+    "priorHead": "1f381a8bb7bc1bc6124c7025f4517fee01bacf7b",
+    "prPaths": 30,
+    "changedPrPaths": 0,
+    "budgetSubtreeUnchanged": true,
+    "budgetTree": "81dfd734d645e7622721836b786bc6c8a6d523d4",
+    "precedingMainChangedFiles": 24,
+    "overlapWithPr": 0,
+    "mainChanges": "予約SPAのadmin shell判定・通知scope・文書など予算外の変更。",
+    "frontendWholeAppTreeUnchangedClaim": false,
+    "ci": [
+      {
+        "workflow": "Backend CI",
+        "runId": 39098022435,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "workflow": "Frontend CI",
+        "runId": 39098022295,
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ],
+    "fixedJarVerified": true,
+    "apiVerified": true,
+    "merged": false,
+    "runtimeVerification": {
+      "sourceHead": "28648a49cca8fe9a4064b94a7e60112d421c4f3c",
+      "jarSha256": "405bdb20eebed70acc691ad7dd2911d741ff47447dc7055a1a2490e78a358767",
+      "sourceBlobCount": 17908,
+      "sourceMismatch": 0,
+      "apiChecks": 11,
+      "passed": 11,
+      "completed": true,
+      "reusedActiveCategoryId": 6,
+      "budgetMutationRequests": 0,
+      "requestScope": "認証POSTとGETのみ",
+      "allocationAmount": 12000,
+      "transactionAmount": 2500,
+      "relatedIdsAndTotalsUnchanged": true,
+      "ownedJvmStopped": true,
+      "ports8081And3002Closed": true,
+      "flyway": {
+        "before": {
+          "type": "flyway",
+          "totalRows": 1220,
+          "failedRows": 0,
+          "checksumSum": -26274295042
+        },
+        "after": {
+          "type": "flyway",
+          "totalRows": 1220,
+          "failedRows": 0,
+          "checksumSum": -26274295042
+        },
+        "perVersionChecksumRows": 1220,
+        "perVersionChecksumSha256Before": "033e38e02a5db6cc72c117595ad192d95ecf897e0416d9582be4073899c83931",
+        "perVersionChecksumSha256After": "033e38e02a5db6cc72c117595ad192d95ecf897e0416d9582be4073899c83931",
+        "individualVersionChecksumRowsSha256Unchanged": true,
+        "manualDdlDmlOrRepair": false,
+        "existingAutoRepairThenMigrate": true,
+        "comparisonLimit": "順序付き全version/checksum行のSHA比較。スキーマおよび業務データ全体の比較ではない。"
+      }
+    },
+    "sameHeadChecks": {
+      "total": 28,
+      "success": 26,
+      "skipped": 2,
+      "failed": 0
+    }
+  },
+  "main2Sync": {
+    "head": "4ac82e6a0744a66884d846a7852ef4bd849beef6",
+    "priorHead": "28648a49cca8fe9a4064b94a7e60112d421c4f3c",
+    "mainHead": "7f6e6852f0e9062f88e688abf7bff3ea44bc1457",
+    "incomingFiles": 19,
+    "incomingScope": "予定代理設定と文書など予算外",
+    "prPaths": 30,
+    "changedPrPaths": 0,
+    "budgetSubtreeUnchanged": true,
+    "budgetTree": "81dfd734d645e7622721836b786bc6c8a6d523d4",
+    "ledgerSemanticChecks": {
+      "ownCmp2047Unchanged": true,
+      "mainCmp1726ProxySettingsRecordPreserved": true,
+      "mainCmp2052CleanupRecordPreserved": true,
+      "mainCmp1443NewRegistrationPreserved": true
+    },
+    "rootIncomingReviewFindings": 0,
+    "allApplicationOrJarIdenticalClaim": false,
+    "apiEvidenceSourceHead": "28648a49cca8fe9a4064b94a7e60112d421c4f3c",
+    "budgetCodeEquivalentEvidenceInherited": true,
+    "newJarApiRepeatRequired": false,
+    "ci": [
+      {
+        "workflow": "Backend CI",
+        "runId": 39104125939,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "workflow": "Frontend CI",
+        "runId": 39104125966,
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ],
+    "merged": true,
+    "mergeCommit": "27759534b5a0d0f94d63e84a4b95212c3dda2744",
+    "finalAcceptanceReconciliation": "passed"
+  },
+  "finalStages": {
+    "review": "passed",
+    "real": "passed",
+    "exploratory": "passed"
+  }
+}
