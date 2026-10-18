@@ -86,7 +86,7 @@ const cards = computed<AdminConsoleCard[]>(() => [
     titleKey: 'adminConsole.cards.reservations.title',
     descKey: 'adminConsole.cards.reservations.desc',
     icon: 'pi pi-calendar-clock',
-    to: `${base.value}/reservations`,
+    to: `${base.value}/admin/reservations`,
   },
   {
     key: 'budget',
