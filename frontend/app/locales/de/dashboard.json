@@ -38,6 +38,7 @@
       "save_success": "Widget-Sichtbarkeitseinstellungen gespeichert",
       "save_error": "Speichern der Einstellungen fehlgeschlagen. Bitte erneut versuchen",
       "public_viewer_hint": "Du bist kein Mitglied dieses Teams, daher sind einige Widgets ausgeblendet",
+      "public_viewer_hint_organization": "Einige Widgets sind ausgeblendet, da Sie kein Mitglied dieser Organisation sind",
       "public_viewer_hint_dismiss": "Schließen",
       "join_request_link": "Mitgliedschaft beantragen"
     },
