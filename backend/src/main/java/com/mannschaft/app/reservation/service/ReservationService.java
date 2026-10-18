@@ -807,7 +807,13 @@ public class ReservationService {
         // F03.4.3 §5.6 #10: グループは代表行 1 件に折りたたむ。
         List<ReservationEntity> reservations =
                 reservationRepository.findByUserIdAndIsGroupPrimaryTrueOrderByBookedAtDesc(userId);
-        return enrichHistoryList(reservations, userId);
+        if (reservations.isEmpty()) {
+            return List.of();
+        }
+        // 氏名の他ドメイン参照は既存の一覧入口に留め、履歴サマリ解決には解決結果だけを渡す。
+        Set<Long> userIds = reservations.stream().map(ReservationEntity::getUserId).collect(Collectors.toSet());
+        Map<Long, String> userNames = nameResolverService.resolveUserFullNames(userIds);
+        return enrichHistoryList(reservations, userId, userNames);
     }
 
     /**
@@ -970,7 +976,8 @@ public class ReservationService {
      * 本人履歴では保管中の削除済み枠・対象名も解決する（既存G-14の履歴解決と同じ方針）。
      * 予約時点のsnapshotではなく、参照行に残る最終値を返す。
      */
-    private List<ReservationResponse> enrichHistoryList(List<ReservationEntity> entities, Long userId) {
+    private List<ReservationResponse> enrichHistoryList(List<ReservationEntity> entities, Long userId,
+            Map<Long, String> userNames) {
         if (entities.isEmpty()) {
             return List.of();
         }
@@ -982,10 +989,6 @@ public class ReservationService {
                 .stream().collect(Collectors.toMap(ReservationSlotEntity::getId, slot -> slot));
         Map<Long, ReservationLineEntity> lines = lineRepository.findAllByIdIncludingDeletedForHistory(lineIds)
                 .stream().collect(Collectors.toMap(ReservationLineEntity::getId, line -> line));
-        Set<Long> userIds = entities.stream()
-                .map(ReservationEntity::getUserId)
-                .collect(Collectors.toSet());
-        Map<Long, String> userNames = nameResolverService.resolveUserFullNames(userIds);
         Map<Long, ReservationResponse.GroupSummaryDto> groupSummaries =
                 groupSummaryResolver.resolveForHistory(entities, userId);
         return entities.stream()
