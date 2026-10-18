@@ -62,7 +62,7 @@ test.describe('MEMBERの真モバイル', () => {
     await expect(page).toHaveURL(new RegExp(`/teams/${teamSlug}/info$`))
     await page.goBack()
     await expect(mineTab).toHaveAttribute('aria-selected', 'true')
-    await expect(firstRow).toHaveText(rowText)
+    await expect(firstRow).toHaveText(rowText, { useInnerText: true })
     await page.goForward()
     await expect(page).toHaveURL(new RegExp(`/teams/${teamSlug}/info$`))
     await page.goBack()
