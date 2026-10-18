@@ -4,7 +4,7 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import type { FiscalYearResponse, BudgetSummary } from '~/types/budget'
 import { fiscalYearDatePickerPt } from '~/constants/budgetFiscalYearUi'
-import { toLocalDateString } from '~/utils/localDate'
+import { formatLocalDateOnly, toLocalDateString } from '~/utils/localDate'
 import {
   budgetFiscalYearSchema,
   type FiscalYearForm,
@@ -43,12 +43,7 @@ const { defineField, handleSubmit, errors, resetForm, setErrors, isSubmitting } 
 const [name] = defineField('name')
 const [startDate] = defineField('startDate')
 const [endDate] = defineField('endDate')
-const money = (value: number) =>
-  new Intl.NumberFormat(locale.value, {
-    style: 'currency',
-    currency: 'JPY',
-    maximumFractionDigits: 0,
-  }).format(value)
+const formatDate = (ymd: string) => formatLocalDateOnly(ymd, locale.value)
 
 function openCreateDialog() {
   if (!canCreate.value || saving.value) return
@@ -135,7 +130,13 @@ onBeforeUnmount(() => {
 
 <template>
   <div>
-    <PageHeader :title="t('budget_accounting.title')" help @help="showGuide = true">
+    <PageHeader
+      :title="t('budget_accounting.title')"
+      :back-to="`/teams/${teamSlug}`"
+      class="flex-wrap [&_[data-testid=page-header-help]]:min-h-11 [&_[data-testid=page-header-help]]:min-w-11"
+      help
+      @help="showGuide = true"
+    >
       <template #actions>
         <Button
           v-if="canCreate"
@@ -169,59 +170,21 @@ onBeforeUnmount(() => {
         :message="t('budget_accounting.empty_years')"
         :sub-message="t('budget_accounting.empty_years_hint')"
       />
+      <p
+        v-if="selectedFy"
+        class="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-surface-600 dark:text-surface-300"
+        data-testid="fiscal-year-period"
+      >
+        <span>{{ t('budget_accounting.start_date') }}: {{ formatDate(selectedFy.startDate) }}</span>
+        <span>{{ t('budget_accounting.end_date') }}: {{ formatDate(selectedFy.endDate) }}</span>
+      </p>
       <PageLoading v-if="summaryLoading" />
       <DashboardErrorState
         v-else-if="summaryError"
         :error="summaryError"
         @retry="selectedFy && selectFy(selectedFy)"
       />
-      <template v-else-if="summary">
-        <div class="grid gap-4 sm:grid-cols-3">
-          <SectionCard
-            v-for="metric in ['totalIncome', 'totalExpense', 'balance'] as const"
-            :key="metric"
-          >
-            <p class="text-xs text-surface-500">{{ t(`budget_accounting.${metric}`) }}</p>
-            <p
-              class="text-2xl font-bold"
-              :class="
-                metric === 'totalExpense' || summary[metric] < 0 ? 'text-red-500' : 'text-primary'
-              "
-            >
-              {{ money(summary[metric]) }}
-            </p>
-          </SectionCard>
-        </div>
-        <SectionCard class="mt-4">
-          <h2 class="mb-3 font-semibold">{{ t('budget_accounting.categories') }}</h2>
-          <DashboardEmptyState
-            v-if="!summary.categories.length"
-            icon="pi pi-list"
-            :message="t('budget_accounting.empty_categories')"
-          />
-          <div v-else class="space-y-3">
-            <div
-              v-for="cat in summary.categories"
-              :key="cat.categoryId"
-              class="flex flex-wrap items-center justify-between gap-2 border-b border-surface-100 py-2 dark:border-surface-700"
-            >
-              <span>{{ cat.categoryName }}</span>
-              <div class="flex flex-wrap gap-3 text-sm">
-                <span>{{
-                  t('budget_accounting.budget_amount', { amount: money(cat.budgetAmount) })
-                }}</span>
-                <span :class="cat.categoryType === 'INCOME' ? 'text-green-600' : 'text-red-500'">{{
-                  t('budget_accounting.actual_amount', { amount: money(cat.actualAmount) })
-                }}</span>
-                <span
-                  :class="cat.executionRate > 100 ? 'font-bold text-red-500' : 'text-surface-500'"
-                  >{{ t('budget_accounting.execution_rate', { rate: cat.executionRate }) }}</span
-                >
-              </div>
-            </div>
-          </div>
-        </SectionCard>
-      </template>
+      <BudgetSummaryPanel v-else-if="summary" :summary="summary" />
     </template>
     <Dialog
       v-model:visible="showCreateDialog"

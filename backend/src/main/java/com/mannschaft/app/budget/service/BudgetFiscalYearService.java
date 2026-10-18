@@ -7,6 +7,7 @@ import com.mannschaft.app.budget.dto.CreateFiscalYearRequest;
 import com.mannschaft.app.budget.dto.FiscalYearResponse;
 import com.mannschaft.app.budget.entity.BudgetFiscalYearEntity;
 import com.mannschaft.app.budget.repository.BudgetFiscalYearRepository;
+import com.mannschaft.app.budget.repository.BudgetTransactionRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
@@ -28,6 +29,7 @@ import java.util.List;
 public class BudgetFiscalYearService {
 
     private final BudgetFiscalYearRepository fiscalYearRepository;
+    private final BudgetTransactionRepository transactionRepository;
     private final BudgetCategoryService categoryService;
     private final BudgetMapper budgetMapper;
     private final AccessControlService accessControlService;
@@ -184,7 +186,11 @@ public class BudgetFiscalYearService {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         accessControlService.checkAdminOrAbove(currentUserId, entity.getScopeId(), entity.getScopeType());
 
-        fiscalYearRepository.delete(entity);
+        if (transactionRepository.countAllHistoryByFiscalYearId(id) > 0) {
+            throw new BusinessException(BudgetErrorCode.BUDGET_020);
+        }
+        entity.softDelete();
+        fiscalYearRepository.save(entity);
         log.info("会計年度を削除しました: id={}", id);
     }
 
