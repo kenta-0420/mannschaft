@@ -227,6 +227,7 @@ watch(
           icon="pi pi-question-circle"
           text
           size="small"
+          class="min-h-11 min-w-11"
           aria-haspopup="dialog"
           data-testid="broadcast-guide-toggle"
           @click="showHelp = true"
