@@ -36,7 +36,7 @@ backend無しのため `active-incidents` のAPI 404が3件、`public/stats` の
 
 公開HTTP/UIの成功とは別に、標準Docker healthcheckの接続失敗を確認した。同じ専有コンテナを再起動して再現し、`HOST=0.0.0.0` で待受は `0.0.0.0:3000` のみ、localhostの名前解決順は `::1` → `127.0.0.1` だった。コンテナ内の `wget http://localhost:3000/` と `[::1]` は接続拒否・exit 1、`127.0.0.1` はSSR HTML取得・exit 0、公開ポートはHTTP 200だった。背景APIの404とは別のTCP接続失敗である。
 
-標準health設定（interval 30秒、timeout 10秒、startPeriod 15秒、retries 3）のまま、FailingStreak 1→2→3、`starting` → `unhealthy` を実測した。CIは公開ポートの応答成功を確認した直後に終了し、`Health.Status=healthy` を確認しないため本件を検出していない。調査時main `6d393636ea905c1fb4683e711488a8a8986a3ca6` のDockerfileも同じblob `8fa9ce58858950ff7e0f6ba85d03a18d75afb26a` で未修正。本追補では製品コードを変更せず、別件未解決として保持する。Issue本文案はローカルの `ssr/health-issue-body.md` にあり、現時点でIssueは未作成。
+標準health設定（interval 30秒、timeout 10秒、startPeriod 15秒、retries 3）のまま、FailingStreak 1→2→3、`starting` → `unhealthy` を実測した。CIは公開ポートの応答成功を確認した直後に終了し、`Health.Status=healthy` を確認しないため本件を検出していない。調査時main `6d393636ea905c1fb4683e711488a8a8986a3ca6` のDockerfileも同じblob `8fa9ce58858950ff7e0f6ba85d03a18d75afb26a` で未修正。本追補では製品コードを変更せず、別件未解決として保持する。Issue本文はローカルの `ssr/health-issue-body.md` に保持し、未修正の別件として [#3988](https://github.com/kenta-0420/mannschaft/issues/3988) に登録した。
 
 再現後は同じ専有コンテナを通常stopしactual exit 0、事後inspectでRunning=false・コンテナExitCode=0・OOMKilled=falseを確認した。2026-10-18T12:57:34Zの終了記録で、専有ポート13022への接続結果111（接続拒否）を確認した。imageとソースは保持し、他サービスは操作していない。
 
