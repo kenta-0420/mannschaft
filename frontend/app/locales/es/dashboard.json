@@ -38,6 +38,7 @@
       "save_success": "Se guardó la configuración de visibilidad del widget",
       "save_error": "Error al guardar la configuración. Inténtalo de nuevo",
       "public_viewer_hint": "No eres miembro de este equipo, por lo que algunos widgets están ocultos",
+      "public_viewer_hint_organization": "Algunos widgets están ocultos porque no eres miembro de esta organización",
       "public_viewer_hint_dismiss": "Cerrar",
       "join_request_link": "Solicitar membresía"
     },

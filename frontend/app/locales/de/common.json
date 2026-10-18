@@ -2998,7 +2998,7 @@
   },
   "budget_guide": {
     "title": "Anleitung zu Budget und Buchhaltung",
-    "description": "Wählen Sie ein Geschäftsjahr, um Einnahmen, Ausgaben und Budgets nach Kategorie für diesen Zeitraum anzuzeigen.",
+    "description": "Wähle ein Geschäftsjahr aus, um Einnahmen, Ausgaben und Budgets nach Kategorie für diesen Zeitraum einzusehen. Diese Seite ist für Administratoren, stellvertretende Administratoren und andere Nutzer mit Leseberechtigung bestimmt. Reguläre Mitglieder können sie nicht einsehen. Wende dich bei Bedarf an einen Administrator.",
     "what": {
       "title": "Was ist ein Geschäftsjahr?",
       "body": "Ein Zeitraum zur gemeinsamen Auswertung von Einnahmen und Ausgaben. Start- und Enddatum können an die Aktivitäten Ihres Teams angepasst werden; der Zeitraum muss nicht von April bis zum folgenden März reichen.",
