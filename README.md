@@ -1060,6 +1060,10 @@ docker compose up -d
 docker ps  # mannschaft-mysql と mannschaft-valkey が Running であれば OK
 ```
 
+### 本番FEコンテナのヘルスチェック
+
+本番FEコンテナは `HOST=0.0.0.0` / `PORT=3000` で待ち受け、healthは `http://127.0.0.1:3000/` をGETする。`localhost` がIPv6を先に解決する環境でもIPv4待受と一致させるためである。main push限定のFrontend CIは公開HTTPを60秒、続いてDocker `healthy` を180秒の期限で待ち、成功時にも公開HTTPを再確認する。状態不正・health欠損・期限超過は失敗とし、コンテナ状態とログを出力して専有コンテナを撤去する。開発用ブラウザURLは下記の `localhost` を使う。
+
 ### application-local.yml の作成（初回のみ・gitignore 対象）
 
 `backend/src/main/resources/application-local.yml` は `.gitignore` で管理されていないため、新環境では手動作成が必要。
