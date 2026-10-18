@@ -32,6 +32,41 @@ public class ReservationGroupSummaryResolver {
     private final ReservationMenuRepository menuRepository;
 
     /**
+     * 本人履歴に限り、削除済み枠を含むグループを一括解決する。
+     * 通常の管理一覧・直近予約の集約には適用しない。
+     */
+    public Map<Long, ReservationResponse.GroupSummaryDto> resolveForHistory(
+            List<ReservationEntity> entities, Long userId) {
+        List<ReservationEntity> groupRows = entities.stream()
+                .filter(e -> e.getGroupId() != null && userId.equals(e.getUserId()))
+                .toList();
+        if (groupRows.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> reservationIds = groupRows.stream().map(ReservationEntity::getId).toList();
+        Map<Long, Object[]> aggregates = reservationRepository.aggregateGroupsForHistory(reservationIds, userId)
+                .stream().collect(Collectors.toMap(row -> ((Number) row[0]).longValue(), row -> row));
+        Set<UUID> menuIds = groupRows.stream().map(ReservationEntity::getMenuId)
+                .filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+        Map<UUID, ReservationMenuEntity> menus = menuIds.isEmpty() ? Map.of()
+                : menuRepository.findAllByIdIncludingDeleted(menuIds).stream()
+                        .collect(Collectors.toMap(ReservationMenuEntity::getId, menu -> menu));
+        Map<Long, ReservationResponse.GroupSummaryDto> result = new HashMap<>();
+        for (ReservationEntity entity : groupRows) {
+            Object[] aggregate = aggregates.get(entity.getId());
+            Integer size = aggregate != null ? ((Number) aggregate[1]).intValue() : null;
+            LocalTime endTime = aggregate != null && aggregate[2] != null
+                    ? ((java.sql.Time) aggregate[2]).toLocalTime() : null;
+            ReservationMenuEntity menu = entity.getMenuId() != null ? menus.get(entity.getMenuId()) : null;
+            // 不整合なmenuIdでも別チームの名前を履歴へ混入させない（同チームの削除済み名は保持）。
+            String menuName = menu != null && entity.getTeamId().equals(menu.getTeamId()) ? menu.getName() : null;
+            result.put(entity.getId(), new ReservationResponse.GroupSummaryDto(
+                    entity.getGroupId(), size, endTime, menuName));
+        }
+        return result;
+    }
+
+    /**
      * 予約行リストからグループ要約を entity ID キーで一括解決する。
      *
      * @param entities 予約エンティティリスト（グループ所属・単枠混在可）

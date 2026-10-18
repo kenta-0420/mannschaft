@@ -38,6 +38,7 @@
       "save_success": "위젯 공개 설정을 저장했습니다",
       "save_error": "설정 저장에 실패했습니다. 다시 시도해 주세요",
       "public_viewer_hint": "이 팀의 멤버가 아니므로 일부 위젯이 숨겨집니다",
+      "public_viewer_hint_organization": "이 조직의 멤버가 아니므로 일부 위젯이 숨겨져 있습니다",
       "public_viewer_hint_dismiss": "닫기",
       "join_request_link": "멤버십 신청"
     },

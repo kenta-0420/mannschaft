@@ -38,7 +38,7 @@ const tabs: { view: MemberTeamsView, labelKey: string }[] = [
       v-for="tab in tabs"
       :key="tab.view"
       type="button"
-      class="inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400"
+      class="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400"
       :class="current === tab.view
         ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
         : 'border-surface-300 bg-surface-0 text-surface-700 hover:bg-surface-100 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-200'"
