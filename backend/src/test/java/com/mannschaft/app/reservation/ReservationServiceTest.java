@@ -1348,6 +1348,38 @@ class ReservationServiceTest {
     class ListMyReservations {
 
         @Test
+        @DisplayName("本人履歴の参照解決は件数によらず枠・ライン各1回の一括取得である")
+        void 複数履歴の参照を一括取得する() {
+            ReservationEntity first = createReservationEntity();
+            ReservationEntity second = first.toBuilder().reservationSlotId(SLOT_ID + 1).lineId(LINE_ID + 1).build();
+            List<ReservationEntity> entities = List.of(first, second);
+            given(reservationRepository.findByUserIdAndIsGroupPrimaryTrueOrderByBookedAtDesc(USER_ID))
+                    .willReturn(entities);
+
+            assertThat(service.listMyReservations(USER_ID)).hasSize(2);
+
+            verify(slotRepository, times(1)).findAllByIdIncludingDeletedForHistory(
+                    java.util.Set.of(SLOT_ID, SLOT_ID + 1));
+            verify(lineRepository, times(1)).findAllByIdIncludingDeletedForHistory(
+                    java.util.Set.of(LINE_ID, LINE_ID + 1));
+            verify(groupSummaryResolver, times(1)).resolveForHistory(entities, USER_ID);
+            verify(slotRepository, org.mockito.Mockito.never()).findAllById(anyIterable());
+            verify(lineRepository, org.mockito.Mockito.never()).findAllById(anyIterable());
+        }
+
+        @Test
+        @DisplayName("空の本人履歴は関連情報を検索せず空一覧を返す")
+        void 空の履歴では関連検索を実行しない() {
+            given(reservationRepository.findByUserIdAndIsGroupPrimaryTrueOrderByBookedAtDesc(USER_ID))
+                    .willReturn(List.of());
+
+            assertThat(service.listMyReservations(USER_ID)).isEmpty();
+
+            org.mockito.Mockito.verifyNoInteractions(slotRepository, lineRepository,
+                    groupSummaryResolver, nameResolverService);
+        }
+
+        @Test
         @DisplayName("正常系: ユーザーの予約一覧が返却される")
         void マイ予約一覧_正常() {
             // Given

@@ -138,6 +138,17 @@ beforeEach(() => {
 })
 
 describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
+  it('AC-6: URLのlist指定から自分の予約タブを復元する', async () => {
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug', managementView: false },
+      // コンポーネント単体ではページのauth middlewareを経由せず、query復元を検査する。
+      route: '/?tab=list',
+    })
+    await flushPromises()
+
+    expect(wrapper.findAll('[role="tab"]')[1]!.attributes('aria-selected')).toBe('true')
+  })
+
   it('独立管理ページのtimezoneを古いshellより優先し変更も反映する', async () => {
     roleOverride.isAdmin = true
     roleOverride.isAdminOrDeputy = true
@@ -365,6 +376,8 @@ describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
 
     const tabs = wrapper.findAll('[role="tab"]')
     expect(tabs).toHaveLength(2)
+    expect([undefined, 'book'], 'URLは予約タブの明示値または未指定の既定値である').toContain(wrapper.vm.$route.query.tab)
+    expect(wrapper.findComponent({ name: 'Tabs' }).props('value'), '親のmodelは予約タブである').toBe(0)
     expect(tabs[0]!.attributes('aria-selected')).toBe('true')
   })
 

@@ -183,6 +183,11 @@
         "advanced": { "title": "详细设置", "description": "设置公开范围和通知" }
       }
     },
+    "history": {
+      "date_unavailable": "日期未知",
+      "time_unavailable": "时间未知",
+      "line_unavailable": "预约对象未知"
+    },
     "column": {
       "datetime": "日期时间",
       "line": "预约对象",

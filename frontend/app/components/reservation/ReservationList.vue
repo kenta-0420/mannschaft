@@ -306,7 +306,7 @@ defineExpose({ refresh: loadReservations })
 </script>
 
 <template>
-  <div>
+  <div data-testid="reservation-list">
     <div class="mb-4">
       <Select v-model="statusFilter" :options="statusOptions" option-label="label" option-value="value" class="w-40" />
     </div>
@@ -314,9 +314,9 @@ defineExpose({ refresh: loadReservations })
       <Column :header="t('reservation.column.datetime')" style="width: 200px">
         <template #body="{ data }">
           <div class="text-sm">
-            <p class="font-medium">{{ data.slot?.slotDate }}</p>
+            <p class="font-medium">{{ data.slot?.slotDate || t('reservation.history.date_unavailable') }}</p>
             <p class="text-surface-500">
-              {{ data.slot?.startTime }} - {{ data.group?.groupEndTime ?? data.slot?.endTime }}
+              {{ data.slot?.startTime || t('reservation.history.time_unavailable') }} - {{ (data.group ? data.group.groupEndTime : data.slot?.endTime) || t('reservation.history.time_unavailable') }}
             </p>
             <!-- F03.4.3 §5.6#10: グループ予約はメニュー名・枠数を併記（単枠は group=null） -->
             <p v-if="data.group" class="mt-0.5 text-xs text-primary">
@@ -336,7 +336,7 @@ defineExpose({ refresh: loadReservations })
         </template>
       </Column>
       <Column :header="t('reservation.column.line')" style="width: 120px">
-        <template #body="{ data }">{{ data.slot?.lineName }}</template>
+        <template #body="{ data }">{{ data.slot?.lineName || t('reservation.history.line_unavailable') }}</template>
       </Column>
       <Column v-if="mode === 'team'" :header="t('reservation.column.reserver')" style="width: 140px">
         <template #body="{ data }">{{ data.identifier?.userName }}</template>
