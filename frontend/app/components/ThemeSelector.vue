@@ -25,6 +25,7 @@ const selectedTheme = computed({
       option-label="label"
       option-value="value"
       :allow-empty="false"
+      :pt="{ pcToggleButton: { root: { class: 'max-md:min-h-11 max-md:min-w-11' } } }"
     >
       <template #option="slotProps">
         <div class="flex items-center gap-2">
