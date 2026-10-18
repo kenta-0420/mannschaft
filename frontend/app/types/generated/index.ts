@@ -1537,6 +1537,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/loyalty/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** ポイント設定の取得 */
+        get: operations["loyaltySettings"];
+        /** ポイント設定の更新 */
+        put: operations["loyaltyUpdateSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/rules/{ruleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 付与ルールの更新 */
+        put: operations["loyaltyUpdateRule"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/rewards/{rewardId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 特典の更新 */
+        put: operations["loyaltyUpdateReward"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/line/config": {
         parameters: {
             query?: never;
@@ -10855,6 +10907,176 @@ export interface paths {
         put?: never;
         /** 試合作成 */
         post: operations["createMatch_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/self-awards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 本人の受付確定 */
+        post: operations["loyaltySelfAward"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/self-award-previews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 本人の受付確認 */
+        post: operations["loyaltySelfPreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/scan-previews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 会員QRの付与前確認 */
+        post: operations["loyaltyScanPreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 付与ルールの作成 */
+        post: operations["loyaltyCreateRule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/rewards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 特典の作成 */
+        post: operations["loyaltyCreateReward"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/redemptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 特典交換の確定 */
+        post: operations["loyaltyRedeem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/redemption-previews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 会員QRの交換前確認 */
+        post: operations["loyaltyRedemptionPreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/awards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** スタッフによる付与確定 */
+        post: operations["loyaltyAward"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/award-requests/{requestId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 申請の却下 */
+        post: operations["loyaltyReject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/award-requests/{requestId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 照合コードによる申請承認 */
+        post: operations["loyaltyApprove"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20350,6 +20572,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/member-cards/platform/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 共通会員証確保 */
+        post: operations["ensureMyPlatformCard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/voice-input-consents": {
         parameters: {
             query?: never;
@@ -21645,6 +21884,40 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["triggerManually"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/loyalty/self-award-bootstrap/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 掲示QRから本人の受付情報を取得 */
+        post: operations["loyaltyBootstrap"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/loyalty/award-requests/{requestId}/cancel/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 本人による申請取消 */
+        post: operations["loyaltyCancel"];
         delete?: never;
         options?: never;
         head?: never;
@@ -35250,6 +35523,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/loyalty/transactions/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 本人のチーム別履歴 */
+        get: operations["loyaltyTransactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/operation-catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** スタッフ操作対象の取得 */
+        get: operations["loyaltyOperationCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/award-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** スタッフの承認申請一覧 */
+        get: operations["loyaltyStaffRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/award-requests/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** スタッフの承認申請詳細 */
+        get: operations["loyaltyStaffRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/account/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 本人のチーム別残高 */
+        get: operations["loyaltyAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/line/logs": {
         parameters: {
             query?: never;
@@ -44561,6 +44919,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/loyalty/award-requests/{requestId}/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 本人の申請詳細 */
+        get: operations["loyaltyMyRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/loyalty/award-requests/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 本人の申請一覧 */
+        get: operations["loyaltyMyRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/loyalty/accounts/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 本人のチームポイント一覧 */
+        get: operations["loyaltyListAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/{jobId}/applications": {
         parameters: {
             query?: never;
@@ -52028,6 +52437,80 @@ export interface components {
             cityCode?: string;
             isEnabled?: boolean;
             prefectureCode?: string;
+        };
+        LoyaltyUpdateProgramRequest: {
+            expectedVersion: number | null;
+            isEnabled: boolean;
+            /** @enum {string} */
+            selfAwardMode: "STAFF_APPROVAL" | "AUTO";
+            /** @enum {string} */
+            targetAudience: "ALL_AUTHENTICATED" | "SUPPORTERS_AND_ABOVE" | "MEMBERS_AND_ABOVE";
+        };
+        ApiResponseLoyaltyProgramSettings: {
+            data?: components["schemas"]["LoyaltyProgramSettings"];
+        };
+        LoyaltyProgramSettings: {
+            id: string | null;
+            isEnabled: boolean;
+            rewards: components["schemas"]["LoyaltyRewardResponse"][];
+            rules: components["schemas"]["LoyaltyRuleResponse"][];
+            /** @enum {string} */
+            selfAwardMode: "STAFF_APPROVAL" | "AUTO";
+            /** @enum {string} */
+            targetAudience: "ALL_AUTHENTICATED" | "SUPPORTERS_AND_ABOVE" | "MEMBERS_AND_ABOVE";
+            /** Format: int64 */
+            teamId: number;
+            version: number | null;
+        };
+        LoyaltyRewardResponse: {
+            description: string | null;
+            /** Format: uuid */
+            id: string;
+            isActive: boolean;
+            name: string;
+            /** Format: int32 */
+            requiredPoints: number;
+            /** Format: int64 */
+            version: number;
+        };
+        LoyaltyRuleResponse: {
+            /** @enum {string} */
+            frequency: "ONCE_PER_JST_DAY" | "EACH_STAFF_CONFIRMATION";
+            /** Format: uuid */
+            id: string;
+            isActive: boolean;
+            isSelfAwardEnabled: boolean;
+            name: string;
+            /** Format: int32 */
+            points: number;
+            /** Format: int64 */
+            version: number;
+        };
+        LoyaltyUpdateRuleRequest: {
+            /** Format: int64 */
+            expectedVersion: number;
+            /** @enum {string} */
+            frequency: "ONCE_PER_JST_DAY" | "EACH_STAFF_CONFIRMATION";
+            isActive: boolean;
+            isSelfAwardEnabled: boolean;
+            name: string;
+            /** Format: int32 */
+            points: number;
+        };
+        ApiResponseLoyaltyRuleResponse: {
+            data?: components["schemas"]["LoyaltyRuleResponse"];
+        };
+        LoyaltyUpdateRewardRequest: {
+            description: string | null;
+            /** Format: int64 */
+            expectedVersion: number;
+            isActive: boolean;
+            name: string;
+            /** Format: int32 */
+            requiredPoints: number;
+        };
+        ApiResponseLoyaltyRewardResponse: {
+            data?: components["schemas"]["LoyaltyRewardResponse"];
         };
         UpdateLineBotConfigRequest: {
             botUserId?: string;
@@ -61732,6 +62215,175 @@ export interface components {
             tournamentFixtureId?: number;
             venue?: string;
         };
+        LoyaltySelfAwardRequest: {
+            /** Format: int64 */
+            expectedProgramVersion: number;
+            /** Format: int64 */
+            expectedRuleVersion: number;
+            locationToken: string;
+            /** Format: uuid */
+            ruleId: string;
+        };
+        ApiResponseLoyaltySelfAwardResult: {
+            data?: components["schemas"]["LoyaltySelfAwardResult"];
+        };
+        LoyaltyAwardRequestResponse: {
+            applicantDisplayName: string;
+            /** Format: date */
+            awardOn: string;
+            canApprove: boolean;
+            canCancel: boolean;
+            closedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: uuid */
+            id: string;
+            locationName: string;
+            /** Format: int32 */
+            points: number;
+            reason: ("USER_CANCELLED" | "STAFF_REJECTED" | "TTL_EXPIRED" | "DAY_CHANGED" | "VERSION_CHANGED" | "LOCATION_INACTIVE" | "TEAM_INACTIVE" | "USER_INACTIVE" | "INELIGIBLE" | "DAILY_AWARDED" | "POINT_LIMIT") | null;
+            ruleName: string;
+            /** @enum {string} */
+            status: "PENDING" | "APPROVED" | "CANCELLED" | "REJECTED" | "EXPIRED" | "INVALIDATED" | "SUPERSEDED";
+            /** Format: int64 */
+            teamId: number;
+            teamName: string;
+            transactionId: string | null;
+            verificationCode: string;
+            /** Format: int64 */
+            version: number;
+        };
+        LoyaltySelfAwardResult: {
+            /** @enum {string} */
+            outcome: "AWARDED" | "SUBMITTED";
+            request: components["schemas"]["LoyaltyAwardRequestResponse"] | null;
+            transaction: components["schemas"]["LoyaltyTransactionResponse"] | null;
+        };
+        LoyaltyTransactionResponse: {
+            awardOn: string | null;
+            /** Format: int32 */
+            balanceAfter: number;
+            /** @enum {string} */
+            channel: "STAFF" | "SELF_AUTO" | "SELF_APPROVED";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int32 */
+            delta: number;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "AWARD" | "REDEEM";
+            label: string;
+            rewardId: string | null;
+            ruleId: string | null;
+            /** Format: int64 */
+            teamId: number;
+        };
+        LoyaltySelfAwardPreviewRequest: {
+            locationToken: string;
+            /** Format: uuid */
+            ruleId: string;
+        };
+        ApiResponseLoyaltySelfAwardPreview: {
+            data?: components["schemas"]["LoyaltySelfAwardPreview"];
+        };
+        LoyaltySelfAwardPreview: {
+            /** Format: int32 */
+            balance: number;
+            isAlreadyAwardedToday: boolean;
+            isEligibleForAward: boolean;
+            /** Format: int64 */
+            programVersion: number;
+            rule: components["schemas"]["LoyaltyRuleResponse"];
+            /** @enum {string} */
+            selfAwardMode: "STAFF_APPROVAL" | "AUTO";
+            /** Format: int64 */
+            teamId: number;
+            teamName: string;
+        };
+        LoyaltyScanPreviewRequest: {
+            qrToken: string;
+            /** Format: uuid */
+            ruleId: string;
+        };
+        ApiResponseLoyaltyScanPreview: {
+            data?: components["schemas"]["LoyaltyScanPreview"];
+        };
+        LoyaltyScanPreview: {
+            /** Format: int32 */
+            balance: number;
+            displayName: string;
+            isEligibleForAward: boolean;
+            /** Format: int64 */
+            programVersion: number;
+            rule: components["schemas"]["LoyaltyRuleResponse"];
+        };
+        LoyaltyCreateRuleRequest: {
+            /** @enum {string} */
+            frequency: "ONCE_PER_JST_DAY" | "EACH_STAFF_CONFIRMATION";
+            isSelfAwardEnabled: boolean;
+            name: string;
+            /** Format: int32 */
+            points: number;
+        };
+        LoyaltyCreateRewardRequest: {
+            description: string | null;
+            name: string;
+            /** Format: int32 */
+            requiredPoints: number;
+        };
+        LoyaltyRedeemRequest: {
+            /** Format: int64 */
+            expectedProgramVersion: number;
+            /** Format: int64 */
+            expectedRewardVersion: number;
+            qrToken: string;
+            /** Format: uuid */
+            rewardId: string;
+        };
+        ApiResponseLoyaltyTransactionResponse: {
+            data?: components["schemas"]["LoyaltyTransactionResponse"];
+        };
+        LoyaltyRedemptionPreviewRequest: {
+            qrToken: string;
+            /** Format: uuid */
+            rewardId: string;
+        };
+        ApiResponseLoyaltyRedemptionPreview: {
+            data?: components["schemas"]["LoyaltyRedemptionPreview"];
+        };
+        LoyaltyRedemptionPreview: {
+            /** Format: int32 */
+            balance: number;
+            canRedeem: boolean;
+            displayName: string;
+            /** Format: int64 */
+            programVersion: number;
+            reward: components["schemas"]["LoyaltyRewardResponse"];
+        };
+        LoyaltyStaffAwardRequest: {
+            /** Format: int64 */
+            expectedProgramVersion: number;
+            /** Format: int64 */
+            expectedRuleVersion: number;
+            qrToken: string;
+            /** Format: uuid */
+            ruleId: string;
+        };
+        LoyaltyRequestActionRequest: {
+            /** Format: int64 */
+            expectedRequestVersion: number;
+        };
+        ApiResponseLoyaltyAwardRequestResponse: {
+            data?: components["schemas"]["LoyaltyAwardRequestResponse"];
+        };
+        LoyaltyApproveRequest: {
+            /** Format: int64 */
+            expectedRequestVersion: number;
+            verificationCode: string;
+        };
         TestMessageRequest: {
             lineUserId?: string;
             message?: string;
@@ -67452,6 +68104,15 @@ export interface components {
             message?: string;
             reason?: string;
         };
+        ApiResponsePlatformCardResponse: {
+            data?: components["schemas"]["PlatformCardResponse"];
+        };
+        PlatformCardResponse: {
+            /** Format: int64 */
+            memberCardId?: number;
+            scopeType?: string;
+            status?: string;
+        };
         VoiceInputConsentRequest: {
             /** Format: int32 */
             version: number;
@@ -68377,6 +69038,43 @@ export interface components {
             rating?: number;
             /** Format: int64 */
             revieweeTeamId?: number;
+        };
+        LoyaltySelfAwardBootstrapRequest: {
+            locationToken: string;
+        };
+        ApiResponseLoyaltySelfAwardBootstrap: {
+            data?: components["schemas"]["LoyaltySelfAwardBootstrap"];
+        };
+        LoyaltyAccountDetail: {
+            accountId: string | null;
+            /** Format: int32 */
+            balance: number;
+            isEligibleForAward: boolean;
+            isProgramEnabled: boolean;
+            /** Format: int64 */
+            lifetimeEarned: number;
+            rewards: components["schemas"]["LoyaltyRewardProgress"][];
+            /** Format: int64 */
+            teamId: number;
+            teamName: string;
+        };
+        LoyaltyRewardProgress: {
+            canRedeem: boolean;
+            description: string | null;
+            /** Format: uuid */
+            id: string;
+            isActive: boolean;
+            name: string;
+            /** Format: int32 */
+            remainingPoints: number;
+            /** Format: int32 */
+            requiredPoints: number;
+            /** Format: int64 */
+            version: number;
+        };
+        LoyaltySelfAwardBootstrap: {
+            account: components["schemas"]["LoyaltyAccountDetail"];
+            preview: components["schemas"]["LoyaltySelfAwardPreview"];
         };
         CreateJobPostingRequest: {
             /** Format: date-time */
@@ -75873,6 +76571,31 @@ export interface components {
             data?: components["schemas"]["MatchSummaryResponse"][];
             meta?: components["schemas"]["PageMeta"];
         };
+        CursorPagedResponseLoyaltyTransactionResponse: {
+            data?: components["schemas"]["LoyaltyTransactionResponse"][];
+            meta?: components["schemas"]["CursorMeta"];
+        };
+        ApiResponseLoyaltyOperationCatalog: {
+            data?: components["schemas"]["LoyaltyOperationCatalog"];
+        };
+        LoyaltyOperationCatalog: {
+            isEnabled: boolean;
+            programVersion: number | null;
+            rewards: components["schemas"]["LoyaltyRewardResponse"][];
+            rule: components["schemas"]["LoyaltyRuleResponse"] | null;
+            /** @enum {string} */
+            selfAwardMode: "STAFF_APPROVAL" | "AUTO";
+            /** Format: int64 */
+            teamId: number;
+            teamName: string;
+        };
+        CursorPagedResponseLoyaltyAwardRequestResponse: {
+            data?: components["schemas"]["LoyaltyAwardRequestResponse"][];
+            meta?: components["schemas"]["CursorMeta"];
+        };
+        ApiResponseLoyaltyAccountDetail: {
+            data?: components["schemas"]["LoyaltyAccountDetail"];
+        };
         LineMessageLogResponse: {
             contentSummary?: string;
             /** Format: date-time */
@@ -83088,6 +83811,23 @@ export interface components {
             code?: string;
             name?: string;
         };
+        CursorPagedResponseLoyaltyAccountSummary: {
+            data?: components["schemas"]["LoyaltyAccountSummary"][];
+            meta?: components["schemas"]["CursorMeta"];
+        };
+        LoyaltyAccountSummary: {
+            /** Format: uuid */
+            accountId: string;
+            /** Format: int32 */
+            balance: number;
+            /** Format: int64 */
+            lifetimeEarned: number;
+            /** Format: int64 */
+            teamId: number;
+            teamName: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
         JobPostingSummaryResponse: {
             /** Format: date-time */
             applicationDeadlineAt?: string;
@@ -89644,6 +90384,252 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseNotificationPreferenceResponse"];
+                };
+            };
+        };
+    };
+    loyaltySettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+        };
+    };
+    loyaltyUpdateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyUpdateProgramRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+        };
+    };
+    loyaltyUpdateRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                ruleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyUpdateRuleRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+        };
+    };
+    loyaltyUpdateReward: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                rewardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyUpdateRewardRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
                 };
             };
         };
@@ -111365,6 +112351,656 @@ export interface operations {
             };
         };
     };
+    loyaltySelfAward: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltySelfAwardRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardResult"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardResult"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardResult"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardResult"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardResult"];
+                };
+            };
+        };
+    };
+    loyaltySelfPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltySelfAwardPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardPreview"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardPreview"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardPreview"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardPreview"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardPreview"];
+                };
+            };
+        };
+    };
+    loyaltyScanPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyScanPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyScanPreview"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyScanPreview"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyScanPreview"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyScanPreview"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyScanPreview"];
+                };
+            };
+        };
+    };
+    loyaltyCreateRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyCreateRuleRequest"];
+            };
+        };
+        responses: {
+            /** @description 作成済み */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+        };
+    };
+    loyaltyCreateReward: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyCreateRewardRequest"];
+            };
+        };
+        responses: {
+            /** @description 作成済み */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+        };
+    };
+    loyaltyRedeem: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyRedeemRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+        };
+    };
+    loyaltyRedemptionPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyRedemptionPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRedemptionPreview"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRedemptionPreview"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRedemptionPreview"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRedemptionPreview"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRedemptionPreview"];
+                };
+            };
+        };
+    };
+    loyaltyAward: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyStaffAwardRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+        };
+    };
+    loyaltyReject: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                teamId: number;
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyRequestActionRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+        };
+    };
+    loyaltyApprove: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                teamId: number;
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyApproveRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+        };
+    };
     sendTestForTeam: {
         parameters: {
             query?: never;
@@ -129712,6 +131348,26 @@ export interface operations {
             };
         };
     };
+    ensureMyPlatformCard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePlatformCardResponse"];
+                };
+            };
+        };
+    };
     grantConsent: {
         parameters: {
             query?: never;
@@ -132012,6 +133668,130 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseIncidentResponse"];
+                };
+            };
+        };
+    };
+    loyaltyBootstrap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltySelfAwardBootstrapRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardBootstrap"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardBootstrap"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardBootstrap"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardBootstrap"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardBootstrap"];
+                };
+            };
+        };
+    };
+    loyaltyCancel: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyRequestActionRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
                 };
             };
         };
@@ -156559,6 +158339,304 @@ export interface operations {
             };
         };
     };
+    loyaltyTransactions: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyTransactionResponse"];
+                };
+            };
+        };
+    };
+    loyaltyOperationCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyOperationCatalog"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyOperationCatalog"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyOperationCatalog"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyOperationCatalog"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyOperationCatalog"];
+                };
+            };
+        };
+    };
+    loyaltyStaffRequests: {
+        parameters: {
+            query?: {
+                status?: "PENDING" | "ALL";
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+        };
+    };
+    loyaltyStaffRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+        };
+    };
+    loyaltyAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAccountDetail"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAccountDetail"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAccountDetail"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAccountDetail"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAccountDetail"];
+                };
+            };
+        };
+    };
     logsForTeam: {
         parameters: {
             query: {
@@ -169380,6 +171458,182 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListCityResponse"];
+                };
+            };
+        };
+    };
+    loyaltyMyRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+        };
+    };
+    loyaltyMyRequests: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+        };
+    };
+    loyaltyListAccounts: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAccountSummary"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAccountSummary"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAccountSummary"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAccountSummary"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAccountSummary"];
                 };
             };
         };

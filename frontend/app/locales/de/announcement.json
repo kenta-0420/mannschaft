@@ -115,7 +115,7 @@
         "body": "Wähle einen Zielkanal aus Pinnwand, Zeitleiste, Blog, TODO, Kalender und Umfrage.",
         "steps": {
           "step1": "Wähle eine der 6 Karten",
-          "step2": "Klicke auf „Weiter“. Hinweis: Hat die Vorlage einen Standardkanal, wird dieser Bildschirm übersprungen"
+          "step2": "Prüfe oder ändere hier den Standardkanal der Vorlage und klicke auf „Weiter“, um den Inhalt einzugeben"
         }
       },
       "content": {
