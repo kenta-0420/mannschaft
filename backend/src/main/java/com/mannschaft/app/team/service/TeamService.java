@@ -86,6 +86,26 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class TeamService {
 
+    /** 受付申請投影用の現在のチーム状態。 */
+    public record ActiveState(boolean active, String displayName) { }
+
+    /** 候補ページのチーム状態を集合照会する。 */
+    public Map<Long, ActiveState> getActiveStates(Collection<Long> teamIds) {
+        if (teamIds == null || teamIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> ids = teamIds.stream().filter(java.util.Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, ActiveState> states = new java.util.LinkedHashMap<>();
+        for (TeamRepository.ActiveStateRow row : teamRepository.findActiveStateRows(ids)) {
+            boolean active = Boolean.TRUE.equals(row.getActive());
+            states.put(row.getId(), new ActiveState(active, active ? row.getName() : null));
+        }
+        return Map.copyOf(states);
+    }
+
     private final TeamRepository teamRepository;
     private final SystemAdminTeamSummaryMapper systemAdminTeamSummaryMapper;
     private final TeamSlugHistoryRepository teamSlugHistoryRepository;

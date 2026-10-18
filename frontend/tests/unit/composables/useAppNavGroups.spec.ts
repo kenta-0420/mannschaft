@@ -104,7 +104,7 @@ describe('useAppNavGroups', () => {
   })
 
   describe('AC7 / AC16: 表示項目が空でも例外を投げず、空グループを出力しない', () => {
-    it('visibleFeatures が空でも dashboard を含む home グループのみ出力され、例外を投げない', () => {
+    it('visibleFeatures が空でも本人用の固定導線を保ち、例外を投げない', () => {
       const navSettingsStore = useNavSettingsStore()
       navSettingsStore.features = []
 
@@ -122,8 +122,10 @@ describe('useAppNavGroups', () => {
       expect(homeGroup?.items.map((i) => i.key)).toEqual(['dashboard'])
 
       // 条件付き項目（proxy-desk/system-admin/sync）を出す条件が全て false のため
-      // living/work/account/admin/other グループは出力されない
-      expect(groups!.value.map((g) => g.key)).toEqual(['home'])
+      // living/work/admin/other は出さず、本人用の会員QR・申請は常設する
+      expect(groups!.value.map((g) => g.key)).toEqual(['home', 'account'])
+      const accountGroup = groups!.value.find((g) => g.key === 'account')
+      expect(accountGroup?.items.map((i) => i.key)).toEqual(['member-qr', 'team-point-requests'])
     })
   })
 
