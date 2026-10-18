@@ -29,3 +29,13 @@ D4からmain `9c1fdb1b1e84ca7b7acbe10da5e67c50bfed2541` を通常mergeしたMで
 Mのscripted実機は [実機記録](CMP-261017-1726-real.md) の4 UI/4 API補完/8 foreign/PERSONALで成功した。Mの先行2試行は遅延する権限初期案内・保存時の活動同期確認をハーネスが扱わず失敗。既存UI操作の処理を補い3試行目で成功し、製品コードはその補正で変更していない。前段のWSL I/O・容量不足や、同代理人再利用による既存GLOBAL `SCHEDULE_075` は環境/fixtureの前提不備として分離した。
 
 探索の未達と周辺の既存表示は [住民観測](CMP-261017-1726-exploratory.md) へ残し、この回帰修正の成功と混同しない。
+
+## merge後mainの別条件での失敗
+
+main `7f6e6852f0e9062f88e688abf7bff3ea44bc1457` の [Backend run 39103867155](https://github.com/kenta-0420/mannschaft/actions/runs/39103867155) はfailure。[shard 0 job 117605554320](https://github.com/kenta-0420/mannschaft/actions/runs/39103867155/job/117605554320) は4985 tests中20 failed・1 skippedで、最初の `OwnershipTransferOfferScopeContractIT$MyOffersInbox.memberCannotListPendingScopeOffer` のcontext起動OOMと19件のthreshold連鎖を確認した。4 GB heapで実行され、shard 1/3/5 success、2/4 cancelled、BE deploy skippedだった。
+
+比較対象のM run 39097041997 shard 0は `excludeMigrationTests=true` でmigration 79 classを除外した42分50秒の実走success（FROM-CACHE 0）。N run 39102408984のshard 0は同profileの `test` がFROM-CACHEだった。mainではfull migration（重み2729のclass）を実走してOOMとなった。この条件差を残し、M/Nのgreenをmainの同量・同条件成功とみなさない。
+
+新規 `ScheduleProxySettingsContractIT` は共有base継承と既定の `@AutoConfigureMockMvc`・`@Transactional`・`@EnabledIf` を使い、独自 `@MockitoBean`・`@SpringBootTest`・`@DynamicPropertySource`・`@DirtiesContext` はない。不要なcontext追加の根拠は未確認だが、heap dump保持objectが未解析のため、既存CMP-261004-2047と同一根因・環境flaky・今回変更無関係のいずれも断定しない。全Testのcontext cache上限10の設定は存在するが、失敗PIDの実行時読取値は未実証。
+
+機能差分の検分合格とmain CI合格を混同せず、既存CI課題は未着手として保持する。本人の方針回答とroot判断まで完了登録PRをdraftに保つ。無根拠retry・heap増量・dump読取は行っていない。
