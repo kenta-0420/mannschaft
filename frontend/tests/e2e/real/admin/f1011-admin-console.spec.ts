@@ -535,7 +535,7 @@ test.describe('F10.1.1 管理者レンズ — 導線遷移（要素1の成果検
 
     // 要素1で整備された正本ルート直結（01 §180）。各リンクの href を取得して着地確認する。
     const linkTestIds: { testId: string; expectPath: RegExp }[] = [
-      { testId: 'admin-reservations-link', expectPath: new RegExp(`/teams/${teamSlug}/reservations`) },
+      { testId: 'admin-reservations-link', expectPath: new RegExp(`/teams/${teamSlug}/admin/reservations`) },
       { testId: 'admin-budget-link-TEAM', expectPath: new RegExp(`/teams/${teamSlug}/budget`) },
       { testId: 'admin-members-link-TEAM', expectPath: new RegExp(`/teams/${teamSlug}/members`) },
       { testId: 'admin-console-link-TEAM', expectPath: new RegExp(`/teams/${teamSlug}/admin`) },

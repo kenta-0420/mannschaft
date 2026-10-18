@@ -1,6 +1,7 @@
 package com.mannschaft.app.notification.fanout;
 
 import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationBulkFanoutService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,8 +13,15 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 /**
  * AC-15 戦略シーム（横展開の証明）を固定する<b>ユニットテスト</b>（Spring context 不要・高速）。
@@ -25,16 +33,16 @@ import static org.mockito.Mockito.mock;
  * <ul>
  *   <li><b>seam プランビング（現行 green）</b>: {@link FanoutRecipientSourceRegistry} が擬似ソースを
  *       {@code scope_type} で解決できる。これは seam が存在することの証明（{@link #registryResolvesArbitraryScopeType()}）。</li>
- *   <li><b>ワーカーが seam 経由で配信（現行 red）</b>: ワーカーが擬似 scope のジョブを、レジストリで解決した
- *       擬似ソースから受信者を得て配信する。現行は {@link NotificationFanoutWorker#processOne} 未実装ゆえ
- *       {@link UnsupportedOperationException} で FAIL する（{@link #workerDeliversViaArbitraryScopeSourceWithoutVillage()}）。</li>
+ *   <li><b>ワーカーが seam 経由で配信</b>: 擬似ソースから受信者を得て、非数値 scope_ref を解釈せず
+ *       SYSTEM/null の既定バルク経路で配送し、失敗記録なしで DONE に進む
+ *       （{@link #workerDeliversViaArbitraryScopeSourceWithoutVillage()}）。</li>
  * </ul>
  */
 @DisplayName("AC-15 fan-out 戦略シーム（横展開）ユニット試練")
 class NotificationFanoutStrategySeamTest {
 
     private static final String TEST_SCOPE = "TEST_SCOPE";
-    private static final String SCOPE_REF = "4242";
+    private static final String SCOPE_REF = "external-scope-reference";
 
     /** 村実装に依存しない擬似受信者ソース（横展開の証明用）。 */
     private static final class FakeRecipientSource implements FanoutRecipientSource {
@@ -78,7 +86,7 @@ class NotificationFanoutStrategySeamTest {
     }
 
     @Test
-    @DisplayName("AC-15(worker): ワーカーは擬似 scope のジョブを seam 経由で配信する（村実装非依存・現行 red）")
+    @DisplayName("AC-15(worker)/#3894 AC08: 非数値の擬似 scope は SYSTEM/null で配送完了する")
     void workerDeliversViaArbitraryScopeSourceWithoutVillage() {
         FakeRecipientSource fake = new FakeRecipientSource(List.of(10L, 20L, 30L));
         FanoutRecipientSourceRegistry registry = new FanoutRecipientSourceRegistry(List.of(fake));
@@ -113,12 +121,15 @@ class NotificationFanoutStrategySeamTest {
                 .build();
 
         // done 条件: ワーカーは村実装に触れず、レジストリで解決した擬似ソースから受信者を得て配信する。
-        // 現行は processOne 未実装（UnsupportedOperationException）ゆえ、この呼び出しが FAIL=red。
         worker.processOne(job);
 
-        // green の暁には擬似ソースの nextPage が消費される（村 Repository を一切呼ばずに配信できる）。
         assertThat(fake.calls.get())
                 .as("AC-15: ワーカーは seam（擬似ソース）経由で受信者を取得して配信する（村実装非依存）")
                 .isGreaterThan(0);
+        verify(bulkFanoutService).insertAndDispatchChunk(any(), eq("TEST_TYPE"), eq(NotificationPriority.NORMAL),
+                isNull(), isNull(), eq(NotificationScopeType.SYSTEM), isNull(), isNull(), isNull(), isNull());
+        verify(jobService).markDone(job.getId());
+        verify(jobService, never()).recordFailure(any(), any(), anyInt());
+        verify(jobService, never()).recordFailure(any(), any(), anyInt(), anyBoolean());
     }
 }

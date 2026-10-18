@@ -195,7 +195,7 @@
 
 | ウィジェット | 旧導線（デッドリンク） | 新導線（既存正本） | 備考 |
 |-------------|----------------------|-------------------|------|
-| `DashboardAdminReservationSummaryWidget` | `/teams/{slug}/admin/reservations` | `/teams/{slug}/reservations` | 実在確認済み |
+| `DashboardAdminReservationSummaryWidget` | `/teams/{slug}/admin/reservations` | `/teams/{slug}/admin/reservations` | 2026-10-17 独立管理ページ整備・§16で更新 |
 | `DashboardAdminPaymentsWidget` | `/organizations/{slug}/admin/payments` | `/organizations/{slug}/payments` | 実在確認済み |
 | `DashboardAdminMemberStatsWidget` | `/{base}/{slug}/admin/members` | `/{base}/{slug}/member-cards` | team/org 両方に実在確認済み |
 | `DashboardAdminReportsWidget` | `/{base}/{slug}/admin/reports` | `/{base}/{slug}/admin`（暫定） | スコープ別通報ページ未整備につき管理コンソールハブを暫定設定。F10.1 母体モデレーション画面（スコープ別）が整備された時点で切替 |
@@ -240,3 +240,16 @@
 **境界**: 設定ごとの条件は01 §3.5の表に従い、実在する既存ページの認可条件を維持する。シフトリンクの公開判定には既存ルート公開ゲートの対応表を使い、ゲートを緩和しない。ハブ自体はシフト機能の一部ではない。本人用見守り設定は管理ハブから除外する。権限・公開フラグの取得失敗を「利用可能な設定なし」と偽らない。
 
 **SYSTEM_ADMIN兼任**: `roleName` は表示用最強ロールであり、ADMIN兼任の可否は既存 `isScopeAdmin` を使う。これで判別できないSYSTEM_ADMINのDEPUTY兼任だけは、既存管理集約APIへ `preview_size=0` で1回確認し、入口の `checkAdminOrAbove` に判断を委ねる。200は副管理者向けスコープ導線も表示し、403はスコープ導線だけを拒否する。FAQ・公開設定は既存BE/FEがSYSTEM_ADMINを明示許可しているため、この2つに限り兼任の有無にかかわらず表示する。他の設定へ許可を広げず、スコープ管理権限がない場合は公開フラグを取得しない。その他の取得失敗はハブ全体の再試行可能なエラーとし、リンクを表示しない（04 §2.1）。新API・DTO・権限helperは追加・改変しない。
+
+
+---
+
+## §16. 予約管理だけ独立した管理コンソールページへSPA遷移する（2026-10-17）
+
+**決定**: 今回のユーザー指示により、管理コンソールの予約カードと `DashboardAdminReservationSummaryWidget` は `/teams/{slug}/admin/reservations` へ `NuxtLink` で遷移する。§14の既存ルート直結方針を予約について更新する。他の管理導線は従来方針を保つ。
+
+- 新ページは `layout: team`、`auth`・`admin-console` middlewareを使い、ダッシュボードshellを表示しない。管理コンソールへ戻るリンク・再読込・ブラウザ履歴による復帰を保つ。
+- 予約機能は既存 `TeamReservationsPanel` を再利用し、初期タブや空状態は変更しない。旧 `/teams/{slug}/reservations` は既存予約タブとして保持し、リダイレクトしない。
+- 独立ページでチーム取得に成功してからパネルを表示する。チームtimezoneは明示propsで渡し、親shellの古いチーム値を使わない。取得失敗は空状態へ倒さず共通エラーと再試行を表示する。
+- 親ルートは先頭 `admin` の子経路をshell対象外にし、末尾 `reservations` を理由としたshellのデータ取得・外装表示を防ぐ。
+- ADMIN/DEPUTYを許可し、MEMBER/SUPPORTER/他テナントは既存管理コンソールの認可で拒否する。新規API・権限モデルの変更は行わない。

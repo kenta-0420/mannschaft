@@ -16,7 +16,7 @@
 
 ```
 /teams/[slug]/admin                          ← L2 ハブ（NEW）
-  ├ /admin/reservations                      ← L3 予約確認（既存 reservations.vue を admin 配下へ再配置/リダイレクト）
+  ├ /admin/reservations                      ← L3 予約管理（独立ページ・既存 TeamReservationsPanel を再利用）
   ├ /admin/budget                            ← L3 予算管理（既存 budget.vue を admin 配下へ再配置/リダイレクト）
   ├ /admin/approvals                         ← L3 横断承認待ち（NEW・集約API）
   ├ /admin/members                           ← L3 メンバー管理/統計（既存 member-* を集約・導線）
@@ -96,8 +96,10 @@
 
 - **データソース（既存流用）**: `GET /api/v1/teams/{teamId}/reservations`（`?status=PENDING` で承認待ち抽出）。`TeamReservationController` が実在。**組織スコープの予約 API は存在しない**（`ReservationEntity` に `organization_id` 無し）ため、組織ハブに予約カードは出さない。
 - **操作（既存流用）**: `POST .../confirm` `/cancel` `/complete` `/no-show` `/reschedule` `PATCH .../admin-note`。
-- **画面**: 承認待ち（PENDING）を上部に強調、確定済み・完了・キャンセルをタブ切替。各予約に confirm/cancel/complete/no-show/reschedule のアクションボタン。
-- **既存ルート**: `teams/[slug]/reservations.vue` が実在。これを admin 配下へリダイレクト（§4.1）。新規 API は不要。
+- **画面**: `TeamReservationsPanel` を独立ページで再利用し、既存の予約・一覧・管理タブと空状態を維持する。管理コンソールへ戻るリンクを設け、ダッシュボードのヘッダー・タブ・サイドバーでは包まない。
+- **ルート**: `teams/[slug]/admin/reservations.vue` を新設し、ハブカード・管理者レンズの予約サマリから `NuxtLink` でSPA遷移する。旧 `teams/[slug]/reservations.vue` は予約タブとして保持し、転送しない（2026-10-17 ユーザー指示・[05 §16](./05_decisions.md)）。新規 API は不要。
+- **初期取得**: `useTeamApi.getTeam(slug)` 成功後のみパネルを表示し、取得したチームのtimezoneを明示propsで渡す。取得中は `PageLoading`、失敗時は `DashboardErrorState` を表示し、初回と同じ `loadPage` で再試行する。別slugはNuxt既定の子ページkeyで再生成し、親shellに残る別チームのtimezoneには依存しない。
+- **認可**: 既存 `auth`・`admin-console` middlewareを適用し、ADMIN/DEPUTYのみ通す。予約操作の認可は既存パネルとBE APIで維持する。
 
 ### 3.2 予算管理 `/admin/budget`【budget 二重定義の解消】
 
@@ -153,7 +155,7 @@ SYSTEM_ADMIN兼任者は表示用 `roleName` だけで許可・拒否を決め�
 
 | 既存ルート（実在） | 再編後の位置 | 方式 | 根拠 |
 |-----------|-------------|------|------|
-| `reservations.vue` | `/admin/reservations` | リダイレクト（旧パス温存・`navigateTo` 転送） | 被リンク・ブックマーク保護 |
+| `reservations.vue` | `/admin/reservations` | 独立ページ追加・旧予約タブ保持（転送しない） | 共通パネル再利用・管理導線のみ変更（2026-10-17） |
 | `budget.vue` | `/admin/budget` | リダイレクト | 同上。実装は既存 budget.vue を正本に温存（§3.2・二重定義解消） |
 | `payments.vue` | `/admin/payments` | リダイレクト | 同上 |
 | `matching.vue` | `/admin/matching` | リダイレクト | 同上 |
@@ -187,13 +189,13 @@ SYSTEM_ADMIN兼任者は表示用 `roleName` だけで許可・拒否を決め�
 
 ### 4.3 再編方式の決定理由
 
-- **リダイレクト方式（トップ直下の reservations/budget/payments/matching/shifts・member-*）**: 既存の被リンク・ブックマーク・他機能からのディープリンク・既存 E2E が多いルートは、旧パスを温存して `middleware`（または `definePageMeta` の `redirect`）で新パスへ転送する。旧パスを物理削除すると 404 が発生し既存 E2E・通知 URL を壊すため。
+- **リダイレクト方式（トップ直下の budget/payments/matching/shifts・member-*）**: 既存の被リンク・ブックマーク・他機能からのディープリンク・既存 E2E が多いルートは、旧パスを温存して `middleware`（または `definePageMeta` の `redirect`）で新パスへ転送する。旧パスを物理削除すると 404 が発生し既存 E2E・通知 URL を壊すため。
 - **導線追加方式（settings/*）**: 設定群は被リンクが少なく、ハブの index ページからリンクを集約するだけで「散在解消」の目的を達成できる。物理移設はディレクトリ階層変更による import パス破壊リスクが大きいため避ける。
 - いずれの方式も**既存ページの中身（実装）は変更しない**。本機能の主眼は「導線の統一」であり、各機能の挙動は不変。budget.vue は二重実装を作らず既存を正本とする（§3.2）。
 
 > **段階適用（P2 → P4）**: P2 ではハブの index と導線追加（settings 系）を先に出し、P4 でトップ直下ルート・member-* のリダイレクト整理＋E2E を行う。リダイレクトは既存 E2E を壊しうるため、E2E 修正とセットで後段に回す。
 
-> **P4 A-1 追記（2026-06-19）: L1 ウィジェット（管理者レンズ）の導線は既存正本ルートへ直結**。`/admin/*` サブページが未整備の現時点において、`DashboardAdmin*Widget.vue` の `:to` はハブカードと同じ「既存正本ルート直結」方式とする（詳細は [05_decisions.md §14](./05_decisions.md)）。上記 §4.1・§4.2 の「リダイレクト」方式（旧パス保護・段階適用）は `/admin/*` サブページが整備された後で適用する。**ウィジェット導線は `/admin/*` を経由しない・`/admin/*` サブページは P4 では新設しない**。
+> **P4 A-1 追記（2026-06-19）: L1 ウィジェット（管理者レンズ）の導線は既存正本ルートへ直結**。`/admin/*` サブページが未整備の現時点において、`DashboardAdmin*Widget.vue` の `:to` はハブカードと同じ「既存正本ルート直結」方式とする（詳細は [05_decisions.md §14](./05_decisions.md)）。上記 §4.1・§4.2 の「リダイレクト」方式（旧パス保護・段階適用）は `/admin/*` サブページが整備された後で適用する。**ウィジェット導線は `/admin/*` を経由しない・`/admin/*` サブページは P4 では新設しない**。ただし予約は2026-10-17のユーザー指示で独立管理ページを採用し、ハブ・予約サマリの導線を `/admin/reservations` に変更する（[05 §16](./05_decisions.md)）。
 
 ---
 
@@ -246,7 +248,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
 - **ガード**: 非管理者（MEMBER）で `/teams/[slug]/admin` にアクセス → スコープトップへリダイレクト＋エラートースト（404 ではない）。ADMIN → ハブ表示。
 - **取得失敗**: `me/permissions` が 503 を返すようモックし、`/admin` アクセス → エラー画面（再試行）。権限なし扱いに倒れないこと。
-- **導線**: ハブの各カード押下 → 対応 L3 へ遷移。リダイレクト系（reservations/budget 等）は旧パスからの転送も検証。
+- **導線**: ハブの各カード押下 → 対応 L3 へ遷移。予約は独立管理画面へのSPA遷移・戻る・再読込と旧予約タブの保持を検証。ほかのリダイレクト系（budget 等）は旧パスからの転送も検証。
 - **承認待ち**: team の `/admin/approvals` で `RESERVATION`/`SHIFT_REQUEST`/`MATCHING` のドメイン別件数が描画される。org では `PAYMENT` のみ描画される（モックではなく実 BE で件数 0 でないことを確認 — メモリ `feedback_e2e_real_full_crud` 準拠）。
 - **degraded**: 1ドメインの集計を一時障害にして `degraded` バッジが 0 件と区別表示されることを確認。
 - **IDOR**: 別組織の slug で `/organizations/{other}/admin` → BE API が 403、FE はスコープトップへリダイレクト。
