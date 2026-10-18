@@ -120,7 +120,7 @@ public class BudgetTransactionService {
         log.info("取引を作成しました: id={}, type={}, amount={}, status={}",
                 saved.getId(), txType, request.amount(), approvalStatus);
 
-        return toTransactionResponse(saved, category);
+        return toTransactionResponse(saved, category.getName());
     }
 
     /**
@@ -138,7 +138,7 @@ public class BudgetTransactionService {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         accessControlService.checkMembership(currentUserId, entity.getScopeId(), entity.getScopeType());
 
-        BudgetCategoryEntity category = categoryService.findById(entity.getCategoryId());
+        var category = categoryService.findHistoricalById(entity.getFiscalYearId(), entity.getCategoryId());
         List<AttachmentResponse> attachments = attachmentRepository.findByTransactionId(id)
                 .stream()
                 .map(budgetMapper::toAttachmentResponse)
@@ -148,7 +148,7 @@ public class BudgetTransactionService {
                 entity.getId(),
                 entity.getFiscalYearId(),
                 entity.getCategoryId(),
-                category.getName(),
+                category.name(),
                 entity.getTransactionType().name(),
                 entity.getAmount(),
                 entity.getTransactionDate(),
@@ -175,11 +175,12 @@ public class BudgetTransactionService {
         accessControlService.checkMembership(currentUserId, fy.getScopeId(), fy.getScopeType());
 
         Page<BudgetTransactionEntity> page = transactionRepository.findByFiscalYearId(fiscalYearId, pageable);
+        var categories = categoryService.historicalByFiscalYear(fiscalYearId);
 
         List<TransactionResponse> data = page.getContent().stream()
                 .map(entity -> {
-                    BudgetCategoryEntity category = categoryService.findById(entity.getCategoryId());
-                    return toTransactionResponse(entity, category);
+                    var category = categoryService.requireHistoricalById(categories, entity.getCategoryId());
+                    return toTransactionResponse(entity, category.name());
                 })
                 .toList();
 
@@ -229,9 +230,9 @@ public class BudgetTransactionService {
                 original.getId(), savedReversal.getId(), fy.getId(),
                 original.getAmount(), fy.getScopeId(), fy.getScopeType(), currentUserId));
 
-        BudgetCategoryEntity category = categoryService.findById(reversal.getCategoryId());
+        var category = categoryService.findHistoricalById(fy.getId(), reversal.getCategoryId());
         log.info("取引を取消しました: originalId={}, reversalId={}", id, savedReversal.getId());
-        return toTransactionResponse(savedReversal, category);
+        return toTransactionResponse(savedReversal, category.name());
     }
 
     /**
@@ -486,12 +487,12 @@ public class BudgetTransactionService {
     }
 
     private TransactionResponse toTransactionResponse(BudgetTransactionEntity entity,
-                                                       BudgetCategoryEntity category) {
+                                                       String categoryName) {
         return new TransactionResponse(
                 entity.getId(),
                 entity.getFiscalYearId(),
                 entity.getCategoryId(),
-                category.getName(),
+                categoryName,
                 entity.getTransactionType().name(),
                 entity.getAmount(),
                 entity.getTransactionDate(),
