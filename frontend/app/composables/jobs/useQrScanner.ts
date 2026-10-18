@@ -119,26 +119,36 @@ export function useQrScanner() {
   let stream: MediaStream | null = null
   let detectTimer: ReturnType<typeof setInterval> | null = null
   let zxingControls: { stop: () => void } | null = null
+  let generation = 0
 
   /** カメラを起動し、検出ループを開始する。 */
   async function start(opts: StartOptions): Promise<void> {
     if (state.value === 'running' || state.value === 'starting') return
+    const current = ++generation
     state.value = 'starting'
     errorMessage.value = null
 
+    let acquired: MediaStream
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
+      acquired = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' },
         audio: false,
       })
     }
     catch (e) {
+      if (current !== generation) return
       state.value = 'error'
       errorMessage.value = String(e)
       opts.onError?.(e)
       throw e
     }
 
+    // 許可ダイアログ待ちの間に離脱・停止されたstreamは映像へ接続しない。
+    if (current !== generation) {
+      stopStream(acquired)
+      return
+    }
+    stream = acquired
     opts.videoEl.srcObject = stream
     opts.videoEl.playsInline = true
     opts.videoEl.muted = true
@@ -146,22 +156,25 @@ export function useQrScanner() {
       await opts.videoEl.play()
     }
     catch { /* iOS でユーザーイベント起因でないと play が拒否されるケースのみ。呼び出し側でボタン押下後に叩く想定なので通常は通る。 */ }
+    if (current !== generation) return
 
     const ctor = getBarcodeDetectorCtor()
     if (ctor) {
-      await startWithBarcodeDetector(ctor, opts)
-      state.value = 'running'
+      await startWithBarcodeDetector(ctor, opts, current)
+      if (current === generation) state.value = 'running'
       return
     }
 
     // フォールバック: @zxing/browser を動的 import
     try {
       const { BrowserMultiFormatReader } = await import('@zxing/browser')
+      if (current !== generation) return
       const reader = new BrowserMultiFormatReader()
-      zxingControls = await reader.decodeFromStream(
-        stream,
+      const controls = await reader.decodeFromStream(
+        acquired,
         opts.videoEl,
         (result, err) => {
+          if (current !== generation) return
           if (result) {
             const text = result.getText()
             pulseVibration()
@@ -178,9 +191,15 @@ export function useQrScanner() {
           }
         },
       )
+      if (current !== generation) {
+        try { controls.stop() } catch { /* noop */ }
+        return
+      }
+      zxingControls = controls
       state.value = 'running'
     }
     catch (e) {
+      if (current !== generation) return
       state.value = 'error'
       errorMessage.value = String(e)
       opts.onError?.(e)
@@ -189,13 +208,14 @@ export function useQrScanner() {
     }
   }
 
-  async function startWithBarcodeDetector(ctor: BarcodeDetectorCtor, opts: StartOptions) {
+  async function startWithBarcodeDetector(ctor: BarcodeDetectorCtor, opts: StartOptions, current: number) {
     const detector = new ctor({ formats: ['qr_code'] })
     const interval = opts.detectIntervalMs ?? 250
     detectTimer = setInterval(async () => {
-      if (!opts.videoEl.videoWidth) return
+      if (current !== generation || !opts.videoEl.videoWidth) return
       try {
         const results = await detector.detect(opts.videoEl)
+        if (current !== generation) return
         if (results.length > 0) {
           pulseVibration()
           playBeep()
@@ -208,13 +228,14 @@ export function useQrScanner() {
       }
       catch (e) {
         // フレーム取得の一時エラーは無視（ログのみ）。
-        opts.onError?.(e)
+        if (current === generation) opts.onError?.(e)
       }
     }, interval)
   }
 
   /** 検出ループとカメラストリームを停止する。 */
   function stop(): void {
+    generation++
     if (detectTimer !== null) {
       clearInterval(detectTimer)
       detectTimer = null
@@ -227,18 +248,16 @@ export function useQrScanner() {
     state.value = 'stopped'
   }
 
-  function stopStream() {
-    if (stream) {
-      stream.getTracks().forEach((t) => {
+  function stopStream(candidate: MediaStream | null = stream) {
+    if (candidate) {
+      candidate.getTracks().forEach((t) => {
         try { t.stop() } catch { /* noop */ }
       })
-      stream = null
     }
+    if (candidate === stream) stream = null
   }
 
-  onBeforeUnmount(() => {
-    if (state.value === 'running') stop()
-  })
+  onBeforeUnmount(stop)
 
   return {
     state: readonly(state),
