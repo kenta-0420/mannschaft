@@ -45,8 +45,8 @@ jobs:
   # ---------------------------------------------------------------------------
   # full-test: 除外なしの全テストを 6 並列で実行する
   #
-  # backend-ci.yml の shard ジョブとの唯一の差は -PexcludeMigrationTests を
-  # 渡さないこと（＝ build.gradle.kts 側の既定 false ＝ 何も除外しない）。
+  # -PexcludeMigrationTests を渡さず、既定 false で全量を検証する。
+  # test / archTest は --rerun で実走を保証し、依存 compile の build cache は維持する。
   # ---------------------------------------------------------------------------
   full-test:
     name: Full test (shard ${{ matrix.shard }})
@@ -89,7 +89,7 @@ jobs:
       # -PexcludeMigrationTests を渡さない = マイグレーションテストを含む全件実行
       - name: Run tests (shard ${{ matrix.shard }} / ${{ env.SHARD_TOTAL }}, 除外なし)
         run: >-
-          ./gradlew test --no-daemon --continue --build-cache
+          ./gradlew test --rerun --no-daemon --continue --build-cache
           -Pshard.total=${{ env.SHARD_TOTAL }}
           -Pshard.index=${{ matrix.shard }}
         env:
@@ -147,7 +147,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run ArchUnit tests（archTest・別 JVM）
-        run: ./gradlew archTest --no-daemon --continue --build-cache
+        run: ./gradlew archTest --rerun --no-daemon --continue --build-cache
 
       - name: テスト結果XML（JUnit）をアップロード
         if: always()
