@@ -1,0 +1,31 @@
+# 代理出席設定保存の回帰記録
+
+PR [#3963](https://github.com/kenta-0420/mannschaft/pull/3963)、最終実装HEAD `5b4b9c3d4a63b60d2b1fdc6c42f37a0ab8a4d31a`（N）。予定フォームの両設定がDTO/保存/応答/編集payloadを往復しない問題を対象とした。main取込前の開発過程で実AC redを確認し、greenの詳細結果はD4時点で採取した。redをD4実装HEAD上で出した、またはM/Nでローカル再実行したとは扱わない。
+
+## バックエンド
+
+実装前の共通 `ScheduleProxySettingsContractIT` は29件の実AC assertion failure、error/skip 0を確認した。fixture slug不備や依存起動失敗をredへ算入していない。29件のfailureは1つの保存経路問題から複数ACへ波及するため、29個の独立製品バグとは数えない。旧CIのcancelled runもred/green根拠に使わない。
+
+実装後は共通IT29件、`ActivityScheduleSyncConcurrencyIntegrationTest` 5件、`ActivityAutomaticCreationPathsIntegrationTest` 6件の独立40件がpass、failure/error/skip 0、Gradle exit 0。その後AC-8/AC-13の既存2試験を補強して再実行し、2/2 pass。独立試験を42件へ水増ししない。出欠4行のOFF直前/直後一致と、一覧1予定/9予定の実queryがともに25件であることを確認した。
+
+対象は両Boolean全組合せ、POST省略/null、PATCH省略/null/明示false、snake alias、PERSONAL、POST/PATCH/GET/list応答、Mapper/クロス招待、繰返し対象範囲、実scope権限、保存後の実同期validation・自動活動INSERT失敗rollback、不正string/object/arrayの400、既存syncConfirmation競合409を含む。新Versionや全非Boolean token拒否へ仕様を拡張していない。
+
+テスト参照：
+
+- `backend/src/test/java/com/mannschaft/app/schedule/ScheduleProxySettingsContractIT.java`
+- `backend/src/test/java/com/mannschaft/app/activity/ActivityScheduleSyncConcurrencyIntegrationTest.java`
+- `backend/src/test/java/com/mannschaft/app/activity/ActivityAutomaticCreationPathsIntegrationTest.java`
+
+## フロントエンド
+
+検査口を正しく補正したredで、共有予定の編集保持/OFFのpayload欠落4件を実証した。初回のstub不備・翻訳待機timeoutは別履歴として残し、製品redへ数えない。修正後は `frontend/tests/unit/components/schedule/ScheduleEventForm.spec.ts` の53/53 pass、担当2ファイルのESLint exit 0。許可OFF時auto=false、PERSONAL非送信、保存済み設定の復元/送信を確認した。
+
+## Mへの対応と実機の補強
+
+D4からmain `9c1fdb1b1e84ca7b7acbe10da5e67c50bfed2541` を通常mergeしたMでも、台帳以外の機能差分17ファイルのblobと対象台帳行は不変とrootが独立確認した。Mの同HEAD 15 workflow runsは全success、最終checksはsuccess 28/通常skip 2。[選定M CI run](https://github.com/kenta-0420/mannschaft/actions/runs/39097041997) を参照。D4詳細テストとこの不変性・M CIを併記し、D4のCIをMのrunとして流用しない。
+
+さらに出荷前にmain `6bb6238b2f12c27c90757ca3d63e95f0edb4fb16` を通常mergeしたNは、上流文書2パスのみの変更。rootはbackend/frontend/scriptsのGit treeと対象1726行がM/Nで同一と[確認](CMP-261017-1726-review.md)した。Nの同head CIは30 checks中success 28・通常skip 2、failure/pending 0。rootが [BE run 39102408984](https://github.com/kenta-0420/mannschaft/actions/runs/39102408984) と [FE run 39102408996](https://github.com/kenta-0420/mannschaft/actions/runs/39102408996) のsuccess・head一致を確認した。Mの実機をNで再実行したとは記録しない。
+
+Mのscripted実機は [実機記録](CMP-261017-1726-real.md) の4 UI/4 API補完/8 foreign/PERSONALで成功した。Mの先行2試行は遅延する権限初期案内・保存時の活動同期確認をハーネスが扱わず失敗。既存UI操作の処理を補い3試行目で成功し、製品コードはその補正で変更していない。前段のWSL I/O・容量不足や、同代理人再利用による既存GLOBAL `SCHEDULE_075` は環境/fixtureの前提不備として分離した。
+
+探索の未達と周辺の既存表示は [住民観測](CMP-261017-1726-exploratory.md) へ残し、この回帰修正の成功と混同しない。
