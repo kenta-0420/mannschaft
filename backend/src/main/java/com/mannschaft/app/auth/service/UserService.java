@@ -81,6 +81,26 @@ public class UserService {
             boolean publicProfileEnabled) {
     }
 
+    /** 他ドメインへ公開する最小の本人状態。inactive時にPIIを返さない。 */
+    public record ActiveDisplayState(boolean active, String displayName) { }
+
+    /** 候補ページの本人状態を集合照会する。 */
+    public Map<Long, ActiveDisplayState> getActiveDisplayStates(Collection<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> ids = userIds.stream().filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, ActiveDisplayState> states = new LinkedHashMap<>();
+        for (UserRepository.ActiveDisplayStateRow row : userRepository.findActiveDisplayStateRows(ids)) {
+            boolean active = Boolean.TRUE.equals(row.getActive());
+            states.put(row.getId(), new ActiveDisplayState(active, active ? row.getDisplayName() : null));
+        }
+        return Map.copyOf(states);
+    }
+
     private final UserRepository userRepository;
     private final UserRowLockService userRowLockService;
     private final EmailChangeTokenRepository emailChangeTokenRepository;

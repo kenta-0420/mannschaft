@@ -561,7 +561,7 @@ records:
       beta: コア
       deploy_safety: 不明
       gate_key: null
-    blockers: []
+    blockers: ["CMP-261018-2237: null投稿者の掲示板詳細でcharAt例外により題名が非表示（殿独立再現、未修正）"]
     notes: "COREへ昇格（2026-08-19、マスター裁可）。掲示板とコルクボードを別能力カードとして表示。両方の画面/API/DBを確認し、コルクボードの整合batchも確認。掲示板の実環境E2Eはあるが、コルクボードの実環境E2Eは未作成。"
 
   - feature_key: pointcard
