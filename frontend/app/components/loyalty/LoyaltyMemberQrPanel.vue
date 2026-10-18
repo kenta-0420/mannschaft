@@ -10,8 +10,10 @@ const seconds = ref(0)
 let deadline = 0
 let generation = 0
 let timer: ReturnType<typeof setInterval> | undefined
+let expiryTimer: ReturnType<typeof setTimeout> | undefined
 async function load() {
   if (loading.value) return
+  clearTimeout(expiryTimer)
   const requestGeneration = ++generation
   loading.value = true
   qr.value = null
@@ -26,6 +28,12 @@ async function load() {
     deadline = requestedAt + nextQr.expiresIn * 1000
     seconds.value = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
     qr.value = seconds.value > 0 ? nextQr : null
+    if (qr.value) {
+      // 残秒表示のintervalとは別に、要求開始時からの期限ちょうどに旧QRを隠す。
+      expiryTimer = setTimeout(() => {
+        if (requestGeneration === generation) tick()
+      }, Math.max(0, deadline - Date.now()))
+    }
   } catch (e) {
     if (requestGeneration !== generation) return
     error.value = e
@@ -42,6 +50,7 @@ function tick() {
   }
 }
 function resume() {
+  clearTimeout(expiryTimer)
   generation++
   qr.value = null
   seconds.value = 0
@@ -56,6 +65,7 @@ onMounted(() => {
 onUnmounted(() => {
   generation++
   clearInterval(timer)
+  clearTimeout(expiryTimer)
   document.removeEventListener('visibilitychange', resume)
 })
 </script>
