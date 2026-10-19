@@ -836,3 +836,87 @@ test('INSIGHT-I6-DE: 360pxのドイツ語を200%文字で読んで切り替え�
   await tablist.getByRole('tab', { name: 'Organisation', exact: true }).click()
   await expect(page.getByTestId('scope-segment-ORGANIZATION')).toHaveAttribute('aria-selected', 'true')
 })
+
+// CMP-261019-1229: 所属がある場合のスコープナビを実描画の文字行・矩形で保護する。
+for (const width of [360, 390, 1280]) {
+  test.describe(`スコープナビ ${width}px`, () => {
+    const mobile = width < 768
+    test.use({ viewport: { width, height: 800 }, isMobile: mobile, hasTouch: mobile })
+
+    for (const scopeType of ['TEAM', 'ORGANIZATION'] as const) {
+      test(`NAV-GEOMETRY: ${scopeType}の一覧を横に読み、一覧と直接ジャンプを操作できる`, async ({ page, baseURL }, testInfo) => {
+        await page.context().addCookies([{ name: 'i18n_locale', value: 'ja', url: baseURL! }])
+        await page.addInitScript(() => localStorage.setItem('tokenExpiresAt', String(Date.now() + 3600000)))
+        await loginAsMember(page)
+        await mockDashboardApis(page, { withSlug: true })
+        const team = { id: TEAM_ID, slug: TEAM_SLUG, name: 'ナビ回帰チーム', nickname1: null, role: 'MEMBER' }
+        const org = { id: ORG_ID, slug: ORG_SLUG, name: 'ナビ回帰組織', nickname1: null, role: 'MEMBER' }
+        await page.route('**/api/v1/me/teams', route => route.fulfill({ json: { data: [team] } }))
+        await page.route('**/api/v1/me/organizations', route => route.fulfill({ json: { data: [org] } }))
+        await page.route('**/api/v1/me/scope-folders**', route => route.fulfill({ json: { data: [] } }))
+        await page.emulateMedia({ reducedMotion: 'reduce' })
+        await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
+        await waitForHydratedShell(page)
+        await waitForCarousel(page)
+
+        const scope = scopeType === 'TEAM' ? team : org
+        const basePath = scopeType === 'TEAM' ? '/teams' : '/organizations'
+        const openMenu = async () => {
+          const trigger = page.locator(`[data-testid="scope-nav-dropdown-toggle-${scopeType}"]:visible`).first()
+          if (!await trigger.isVisible()) {
+            await page.getByRole('button', { name: 'メニューを開く', exact: true }).tap()
+          }
+          if (mobile) await trigger.tap()
+          else await trigger.click()
+          const hub = page.locator(`[data-testid="scope-nav-dropdown-all-hub-${scopeType}"]:visible`)
+          await expect(hub).toBeVisible()
+          const panel = page.locator('.p-popover:visible').filter({ has: hub })
+          await expect(panel).toHaveCount(1)
+          const jump = panel.getByTestId(`scope-nav-dropdown-scope-${scope.id}`)
+          await expect(jump).toBeVisible()
+          return { panel, hub, jump }
+        }
+        let menu = await openMenu()
+        const all = menu.panel.getByRole('menuitem', { name: 'すべて（一覧）', exact: true })
+        await expect(all).toBeVisible()
+        await page.evaluate(() => document.fonts.ready.then(() => true))
+        const lines = await all.locator('span').evaluate(element => {
+          const range = document.createRange()
+          range.selectNodeContents(element)
+          return [...range.getClientRects()].map(rect => ({ top: rect.top, left: rect.left, right: rect.right }))
+        })
+        const foldersBox = await all.evaluate(element => {
+          const box = element.parentElement!.parentElement!.getBoundingClientRect()
+          return { x: box.x, y: box.y, width: box.width, height: box.height }
+        })
+        const jumpBox = await menu.jump.evaluate(element => {
+          const box = element.parentElement!.getBoundingClientRect()
+          return { x: box.x, y: box.y, width: box.width, height: box.height }
+        })
+        const documentSize = await page.evaluate(() => ({ width: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth, bodyWidth: document.body.scrollWidth }))
+        await testInfo.attach('scope-navigation-geometry', { body: JSON.stringify({ width, scopeType, lines, foldersBox, jumpBox, documentSize }), contentType: 'application/json' })
+        expect(lines, 'ALL_LIST_TEXT_HORIZONTAL: 一覧の文字が複数行に縦折返ししている').toHaveLength(1)
+        if (mobile) {
+          expect(jumpBox.y).toBeGreaterThanOrEqual(foldersBox.y + foldersBox.height - 1)
+        } else {
+          expect(Math.abs(jumpBox.y - foldersBox.y)).toBeLessThanOrEqual(1)
+          expect(jumpBox.x).toBeGreaterThanOrEqual(foldersBox.x + foldersBox.width - 1)
+        }
+        expect(documentSize.scrollWidth).toBeLessThanOrEqual(documentSize.width)
+        expect(documentSize.bodyWidth).toBeLessThanOrEqual(documentSize.width)
+
+        if (mobile) await all.tap()
+        else await all.click()
+        await expect(menu.panel.getByRole('menuitem', { name: scope.name, exact: true })).toHaveCount(2)
+        if (mobile) await menu.hub.tap()
+        else await menu.hub.click()
+        await expect(page).toHaveURL(new RegExp(`${basePath}$`))
+        await expect(menu.panel).toBeHidden()
+        menu = await openMenu()
+        if (mobile) await menu.jump.tap()
+        else await menu.jump.click()
+        await expect(page).toHaveURL(new RegExp(`${basePath}/${scope.slug}$`))
+      })
+    }
+  })
+}
