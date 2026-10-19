@@ -132,7 +132,7 @@ class ReceiptIssuerSettingsContractIT extends AbstractMySqlIntegrationTest {
      * 解決できなくなる（既存 IT の Javadoc に記録された既知の罠）。</p>
      */
     @MockitoBean
-    private R2StorageService storageService;
+    private R2StorageService r2StorageService;
 
     /** 発行者設定が「作成済み」のチーム。 */
     private Long teamAId;
@@ -145,7 +145,7 @@ class ReceiptIssuerSettingsContractIT extends AbstractMySqlIntegrationTest {
     void setUp() {
         // presign はローカル署名計算だが、資格情報が無いと SdkClientException になる（上記 Javadoc 参照）。
         // 生成された URL の形は本テストの関心ではなく、「キーそのままではない絶対 URL が返ること」が AC-38。
-        given(storageService.generateDownloadUrl(anyString(), any(Duration.class)))
+        given(r2StorageService.generateDownloadUrl(anyString(), any(Duration.class)))
                 .willAnswer(invocation -> "https://storage.example.test/mannschaft-storage/"
                         + invocation.getArgument(0) + "?X-Amz-Signature=dummy");
 

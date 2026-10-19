@@ -115,7 +115,7 @@
         "body": "Pick one destination from Bulletin, Timeline, Blog, TODO, Schedule and Survey.",
         "steps": {
           "step1": "Choose one of the 6 cards",
-          "step2": "Click \"Next\". Note: if the template has a default channel, this screen is skipped"
+          "step2": "Review or change the template's default channel here, then click \"Next\" to enter the content"
         }
       },
       "content": {

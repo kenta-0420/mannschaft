@@ -19,4 +19,32 @@ describe('useMemberCardApi 管理契約', () => {
     await useMemberCardApi().getTeamCheckinStats('12', { from: '2026-10-01', to: '2026-10-15' })
     expect(api).toHaveBeenCalledWith('/api/v1/teams/12/checkins/stats?from=2026-10-01&to=2026-10-15')
   })
+
+  const location = {
+    id: 7,
+    name: '受付拠点',
+    locationCode: 'test-location',
+    autoCompleteReservation: false,
+    checkinCountToday: 0,
+    createdAt: '2026-10-17T05:00:00',
+  }
+  it.each([true, false])('一覧のwire active=%sを画面のisActiveへ変換する', async (active) => {
+    api.mockResolvedValue({ data: [{ ...location, active }] })
+    expect(await useMemberCardApi().listLocations('12')).toEqual([{ ...location, isActive: active }])
+  })
+  it.each([true, false])('作成応答のwire active=%sを画面のisActiveへ変換する', async (active) => {
+    api.mockResolvedValue({ data: { ...location, active } })
+    expect(await useMemberCardApi().createLocation('12', {
+      name: location.name, autoCompleteReservation: false,
+    })).toEqual({ ...location, isActive: active })
+  })
+  it.each([true, false])('更新応答のwire active=%sを変換しPUTのisActiveは維持する', async (active) => {
+    api.mockResolvedValue({ data: { ...location, active } })
+    const body = { name: location.name, isActive: active, autoCompleteReservation: false }
+    expect(await useMemberCardApi().updateLocation('12', location.id, body))
+      .toEqual({ ...location, isActive: active })
+    expect(api).toHaveBeenCalledWith('/api/v1/teams/12/checkin-locations/7', {
+      method: 'PUT', body,
+    })
+  })
 })

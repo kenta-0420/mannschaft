@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,19 @@ import java.util.stream.Collectors;
  */
 public interface TeamRepository
         extends JpaRepository<TeamEntity, Long>, JpaSpecificationExecutor<TeamEntity> {
+
+    /** 受付投影に必要なteam scalar状態だけを読む。 */
+    interface ActiveStateRow {
+        Long getId();
+        String getName();
+        Boolean getActive();
+    }
+
+    @Query("SELECT t.id AS id, t.name AS name, "
+            + "CASE WHEN t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE "
+            + "AND t.archivedAt IS NULL AND t.deletedAt IS NULL THEN true ELSE false END AS active "
+            + "FROM TeamEntity t WHERE t.id IN :ids")
+    List<ActiveStateRow> findActiveStateRows(@Param("ids") Collection<Long> ids);
 
     /** SYS認可済み復元一覧専用。論理削除を含むnative Entity変換とDBページングを使う。 */
     @Query(value = "SELECT * FROM teams WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC, id DESC",
