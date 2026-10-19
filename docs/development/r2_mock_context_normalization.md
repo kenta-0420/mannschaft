@@ -115,7 +115,7 @@ PR head自体で上記2回の全量実走を行ったとは記録しない。
 全量成功baselineは未計測。field名統一だけでOOMを解消したという因果は断定しない。
 CMP-261004-2047の約135 ITを含む全体改善は引き続き実装中とする。
 
-## main CI の実行設定整合と未完了ゲート
+## main CI の実行設定整合と実走結果
 
 main merge commit `33caf032d4ea8d33f28225326ac4610f90004646` の
 [Backend CI run 39186841443](https://github.com/kenta-0420/mannschaft/actions/runs/39186841443) は
@@ -140,8 +140,31 @@ main の test job を通常 PR と同じ条件付き job 120/100分・test step 
 テスト選別、heap/fork、Arch、deploy の `needs` と AWS guard は維持する。
 これは成功実績のある有界 profile への整合であり、時間延長だけで成功を主張しない。
 cache10 が遅延または OOM の根因だったか、cache5 で解消するかも未確定。
-新しい main run で6 shardと専用 Arch の成功、各 profile と XML の完全性、実 OOM 0を
-確認するまで、main 全量ゲートは未了とする。
+
+修正を取り込んだ main `fb7819aa4beae46421640071efba935dac4fd6cc` の
+[run 39194671671](https://github.com/kenta-0420/mannschaft/actions/runs/39194671671)
+（attempt 1）は completed/success。Detect、6 shard、専用 Arch、Build & Deploy の
+全9 job が success だった。Build & Deploy は AWS 資格情報確認まで成功し、
+以降の JAR・ECR・ECS の step は全て skip されたため、本番配備実施の証拠ではない。
+7対象 job の安全ログは全て completeRead、実 OOM・未分類 marker は0、
+6 shard 全てで migration 除外 false。最終ログ集計は通常 test 31310 case、
+専用 Arch 299 case、shard 内 archUnit engine 37 case、後段 guard 12 case。
+安全ログ集約はローカルの
+`.claude/evidence/proxy-settings-20261018/ci-context-normalization/main-39194671671-safe-log-projections.json`。
+
+結果 XML は7 artifact・7277 suite・31609 case（通常31310＋専用 Arch299）。
+各 suite の宣言 tests/skip と実 case が一致し、failure/error 0、既存skip17。
+通常＋専用 Arch の case 識別・状態の多重集合は固定 head の2回の全量成功と一致し、
+欠落・追加・状態差分は0。追加11 case は全て期待どおり成功・skip 0。
+migration 80 outer class/195 case も成功・skip 0で、通常 test の outer class が
+複数 artifact に跨る例は0。shard 内 engine 37 case と後段 guard 12 case は
+main の結果 XML の対象外であり、7 job の安全ログ最終集計で成功・skip 0を別途確認した。
+合計31658 case中、成功31641・既存skip17・失敗0、実 OOM・未分類 marker 0。
+これにより今回の main 全量ゲートは合格。XML 集約原本はローカルの
+`.claude/evidence/proxy-settings-20261018/ci-context-normalization/main-ci-39194671671-attempt-1.json`。
+表示名が衝突する Java method の uniqueId 完全同定、全runnerのcontext生成・close総数と
+retained heap 内訳は未計測。cache5への整合後に main で成功した事実と、
+cache10 が旧runの遅延・OOMを引き起こしたかという因果は区別する。
 
 製品の UI/API を変更しない test-only のため、今回変更の実機 E2E・探索試験は対象外。
 別の製品機能の実機結果を本件の完了証拠へ転用しない。
