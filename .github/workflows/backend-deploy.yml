@@ -237,8 +237,9 @@ jobs:
     name: Test (shard ${{ matrix.shard }})
     needs: detect
     runs-on: ubuntu-latest
-    # PR CI と同じテスト量を実行するため、後処理を含む実測 60m21s に余裕を持たせる。
-    timeout-minutes: 75
+    # PR CI と同じ実行設定。migration 込みは120分、それ以外は100分を観測用上限とする。
+    # test step は105/85分。setup＋compileが15分を超えると後処理の余裕は保証しない。
+    timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 120 || 100 }}
     concurrency:
       group: backend-main-test-${{ github.ref }}-shard-${{ matrix.shard }}
       cancel-in-progress: false
@@ -276,11 +277,13 @@ jobs:
       # まで短縮する。判定不能時は detect 側が既に true（フル実行）に倒して
       # いるため、ここでは受け取った値をそのまま使うだけでよい。
       - name: Run tests (shard ${{ matrix.shard }} / ${{ env.SHARD_TOTAL }})
+        timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 105 || 85 }}
         run: >-
           ./gradlew test --no-daemon --continue
           -Pshard.total=${{ env.SHARD_TOTAL }}
           -Pshard.index=${{ matrix.shard }}
           -PexcludeMigrationTests=${{ needs.detect.outputs.migrations_changed == 'true' && 'false' || 'true' }}
+          -Pspring.test.context.cache.maxSize=5
         env:
           # Testcontainers host resolution inside GitHub Actions
           TESTCONTAINERS_RYUK_DISABLED: "false"

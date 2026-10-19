@@ -115,5 +115,33 @@ PR head自体で上記2回の全量実走を行ったとは記録しない。
 全量成功baselineは未計測。field名統一だけでOOMを解消したという因果は断定しない。
 CMP-261004-2047の約135 ITを含む全体改善は引き続き実装中とする。
 
+## main CI の実行設定整合と未完了ゲート
+
+main merge commit `33caf032d4ea8d33f28225326ac4610f90004646` の
+[Backend CI run 39186841443](https://github.com/kenta-0420/mannschaft/actions/runs/39186841443) は
+completed/cancelled。専用 Arch と shard 2/3 は success だったが、shard 0/1/4/5 は
+75分台で cancelled となり、4 job に最大実行時間の annotation があった。
+安全ログは7 jobすべて completeRead、6 shard の migration 除外は false。
+shard 0 に実 OOM marker が2行あるが、独立した2件とは数えず、発生 task/class も未特定。
+他の6 jobの実 OOM markerは0。取消された4 shard の通常 test 完走 case 数は未取得であり、
+task の EXECUTED 行だけを全量成功の証拠にしない。この run は main 上の全量ゲートを満たさない。
+安全集約はローカルの
+`.claude/evidence/proxy-settings-20261018/ci-context-normalization/main-39186841443-safe-log-projections.json` と
+`main-39186841443-timeout-annotations.json` を参照する。
+
+上記 main の backend tree `92badf96720ea2c15d188d4ff46ff25c28d9318d` と nightly workflow blob
+`c24139e65721091bf79b79dcb6d19d919c563fd6` は、2回連続全量成功した固定 head
+`522bfb7fe6ea4b665c384b86411120cc5f755bc8` と一致する。ただし main の test job は
+75分・test step上限なし・context cache既定10で、全量成功時の nightly は
+120分・test step105分・cache5だった。別条件の2成功を main の成功へ読み替えない。
+
+main の test job を通常 PR と同じ条件付き job 120/100分・test step 105/85分・
+`-Pspring.test.context.cache.maxSize=5` に揃える。migration 判定、6 shard、
+テスト選別、heap/fork、Arch、deploy の `needs` と AWS guard は維持する。
+これは成功実績のある有界 profile への整合であり、時間延長だけで成功を主張しない。
+cache10 が遅延または OOM の根因だったか、cache5 で解消するかも未確定。
+新しい main run で6 shardと専用 Arch の成功、各 profile と XML の完全性、実 OOM 0を
+確認するまで、main 全量ゲートは未了とする。
+
 製品の UI/API を変更しない test-only のため、今回変更の実機 E2E・探索試験は対象外。
 別の製品機能の実機結果を本件の完了証拠へ転用しない。
