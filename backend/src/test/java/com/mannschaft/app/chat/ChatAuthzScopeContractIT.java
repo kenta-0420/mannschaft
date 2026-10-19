@@ -162,7 +162,7 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
      * （{@code BudgetFlatWriteScopeContractIT} / {@code CirculationExportScopeContractIT} と同一方針）。</p>
      */
     @MockitoBean
-    private R2StorageService storageService;
+    private R2StorageService r2StorageService;
 
     @PersistenceContext
     private EntityManager em;
@@ -1237,11 +1237,11 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
 
     /** 署名 URL 発行が決定的な値を返すようにする（認可通過後に外部依存でステータスが揺れないようにする）。 */
     private void stubStorageService() {
-        given(storageService.generateUploadUrl(any(), any(), any()))
+        given(r2StorageService.generateUploadUrl(any(), any(), any()))
                 .willAnswer(invocation -> new PresignedUploadResult(
                         "https://storage.test.invalid/upload/" + invocation.getArgument(0),
                         invocation.getArgument(0), 900L));
-        given(storageService.generateDownloadUrl(any(), any()))
+        given(r2StorageService.generateDownloadUrl(any(), any()))
                 .willAnswer(invocation ->
                         "https://storage.test.invalid/download/" + invocation.getArgument(0));
     }
