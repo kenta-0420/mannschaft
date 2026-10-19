@@ -29,6 +29,24 @@ const EXEMPTIONS = {
       '@nuxt/vite-builder',
       'nuxt',
     ]),
+    nodes: {
+      'node-forge': ['node_modules/node-forge'],
+      listhen: ['node_modules/listhen'],
+      nitropack: ['node_modules/nitropack'],
+      '@nuxt/cli': ['node_modules/@nuxt/cli'],
+      '@nuxt/nitro-server': ['node_modules/@nuxt/nitro-server'],
+      '@nuxt/vite-builder': ['node_modules/@nuxt/vite-builder'],
+      nuxt: ['node_modules/nuxt'],
+    },
+    edges: {
+      'node-forge': [],
+      listhen: ['node-forge'],
+      nitropack: ['listhen'],
+      '@nuxt/cli': ['listhen'],
+      '@nuxt/nitro-server': ['nitropack', 'nuxt'],
+      '@nuxt/vite-builder': ['nuxt'],
+      nuxt: ['@nuxt/cli', '@nuxt/nitro-server', '@nuxt/vite-builder'],
+    },
   },
   // braces: 実監査で確認したノードと braces に到達する参照辺だけ。
   'https://github.com/advisories/GHSA-vfj7-8cjw-p6xm': {
@@ -197,7 +215,7 @@ export function checkAudit(raw, status, lock, now = Date.now()) {
     for (const advisory of high) {
       const spec = EXEMPTIONS[advisory.url]
       const target = spec && vulnerabilities[spec.name]
-      // forge だけに到達する混在辺は braces の表で制限しない。
+      // 混在辺は、現在検証している GHSA に到達する辺だけを制限する。
       if (spec?.nodes) {
         const allowedNodes = spec.nodes[name]
         const allowedEdges = spec.edges[name]

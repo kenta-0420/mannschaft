@@ -783,7 +783,7 @@ onMounted(async () => {
     <div class="mb-4 flex gap-1 rounded-lg border border-surface-300 bg-surface-100 p-1 dark:border-surface-600 dark:bg-surface-700 w-fit">
       <button
         type="button"
-        class="rounded-md px-4 py-1.5 text-sm font-medium transition-colors"
+        class="min-h-11 rounded-md px-4 py-1.5 text-sm font-medium transition-colors md:min-h-0"
         :class="activeTab === 'calendar'
           ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
           : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'"
@@ -793,7 +793,7 @@ onMounted(async () => {
       </button>
       <button
         type="button"
-        class="rounded-md px-4 py-1.5 text-sm font-medium transition-colors"
+        class="min-h-11 rounded-md px-4 py-1.5 text-sm font-medium transition-colors md:min-h-0"
         :class="activeTab === 'gantt'
           ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
           : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'"

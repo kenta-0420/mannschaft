@@ -112,6 +112,8 @@ updates:
 
 §4 の「修正不可能な transitive 依存」の管理規則に基づき、`frontend/scripts/audit-with-exemption.mjs` で **当該 URL・パッケージ・high・影響範囲・間接依存・lock の 1.4.0** が一致するものだけを一時除外する。実監査の high 7 パッケージ（`node-forge` / `listhen` / `nitropack` / `@nuxt/cli` / `@nuxt/nitro-server` / `@nuxt/vite-builder` / `nuxt`）に限定する。Nuxt の循環を含む `via` の参照先も追い、末端 advisory を全て検証する。別 high/critical、未知の high 消費者、参照欠落、末端のない high 循環、不正 JSON・集計・到達 advisory より低い依存の深刻度、取得失敗は CI を落とす。Node 標準テストを CI の必須ステップとして実行する。
 
+2026-10-17（CMP-261017-1604）にnode-forge側も上記7パッケージの既知`nodes`と当該GHSAへ到達する`via`の依存辺へ限定した。既知名でも別node・経路付替え・未知の循環辺を拒否する。末端は`node_modules/node-forge`のみでlockの1.4.0を確認する。2 GHSA混在時は各GHSAへ実際に到達する辺だけをそれぞれの表で判定し、braces側の制限は維持する。既存2例外の対象・承認済み期限・深刻度・fail-closed条件・依存関係は変更しない。Node標準試験18件で未知経路拒否と両件単独/混在の期限直前・一致・直後、非有限時刻を確認する。これは経路制限の強化であり、脆弱性の解消ではない。
+
 到達経路の根拠: `listhen` 1.10.0 の `dist/shared/listhen.DmCHmEQ1.cjs` は forge を読み、`resolveCertificate` で RSA 鍵生成と証明書署名を行い、HTTPS オプション時に呼ぶ。当該署名検証の `.verify` 呼び出しはこの経路に無く、`frontend/nuxt.config.ts` の `devServer` に HTTPS 設定は無い。アプリ・サーバーに forge/RSA の直接利用も確認されなかった。Nuxt は `dependencies` にあるため「devOnly」とは扱わず、**本番 `.output` からの除外は未実測**。脆弱性そのものが直ったという判断ではない。
 
 有効期限は **2026-10-23 UTC 当日まで（2026-10-24T00:00:00Z 以降は当該例外を拒否）**。解除管理は `docs/task-list.md` の CMP-261002-1135。公式修正版を導入するか listhen から依存が撤去されたら、例外を削除して通常の `npm audit --audit-level=high` に戻す。期限以前でも、RSA 署名検証の利用追加・新しい消費者・依存の直接化があれば例外を削除し、到達可能性を再評価する。期限延長を自動では行わない。
