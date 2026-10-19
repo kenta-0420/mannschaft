@@ -30,7 +30,7 @@ Mのscripted実機は [実機記録](CMP-261017-1726-real.md) の4 UI/4 API補�
 
 探索の未達と周辺の既存表示は [住民観測](CMP-261017-1726-exploratory.md) へ残し、この回帰修正の成功と混同しない。
 
-## merge後mainの別条件での失敗
+## merge後mainの別条件での失敗と当時の保留
 
 main `7f6e6852f0e9062f88e688abf7bff3ea44bc1457` の [Backend run 39103867155](https://github.com/kenta-0420/mannschaft/actions/runs/39103867155) はfailure。[shard 0 job 117605554320](https://github.com/kenta-0420/mannschaft/actions/runs/39103867155/job/117605554320) は4985 tests中20 failed・1 skippedで、最初の `OwnershipTransferOfferScopeContractIT$MyOffersInbox.memberCannotListPendingScopeOffer` のcontext起動OOMと19件のthreshold連鎖を確認した。4 GB heapで実行され、shard 1/3/5 success、2/4 cancelled、BE deploy skippedだった。
 
@@ -38,4 +38,14 @@ main `7f6e6852f0e9062f88e688abf7bff3ea44bc1457` の [Backend run 39103867155](ht
 
 新規 `ScheduleProxySettingsContractIT` は共有base継承と既定の `@AutoConfigureMockMvc`・`@Transactional`・`@EnabledIf` を使い、独自 `@MockitoBean`・`@SpringBootTest`・`@DynamicPropertySource`・`@DirtiesContext` はない。不要なcontext追加の根拠は未確認だが、heap dump保持objectが未解析のため、既存CMP-261004-2047と同一根因・環境flaky・今回変更無関係のいずれも断定しない。全Testのcontext cache上限10の設定は存在するが、失敗PIDの実行時読取値は未実証。
 
-機能差分の検分合格とmain CI合格を混同せず、既存CI課題は未着手として保持する。本人の方針回答とroot判断まで完了登録PRをdraftに保つ。無根拠retry・heap増量・dump読取は行っていない。
+機能差分の検分合格とmain CI合格を混同せず、この時点では既存CI課題を未着手として保持し、本人の方針回答とroot判断まで完了登録PRをdraftに保った。これは当時の保留履歴であり、現在のCI改善結果は次節に記録する。無根拠retry・heap増量・dump読取は行っていない。
+
+## CI改善後の全量回帰確認
+
+R2 mock field名統一とnightlyのcache5/job120分/test105分への改訂後、固定source head `522bfb7fe6ea4b665c384b86411120cc5f755bc8` の [run 39135193568](https://github.com/kenta-0420/mannschaft/actions/runs/39135193568) / [run 39170400055](https://github.com/kenta-0420/mannschaft/actions/runs/39170400055) は、migration込み6 shard＋専用Archを2回連続実走success。各31658 case、failure/error 0、既存skip 17、追加11 caseはskip 0。各migration 80 class/195 case、専用Arch 299 case、shard内engine 37 case、後段guard 12 caseを照合した。
+
+各7対象jobの安全ログはcompleteRead、実OOM/未分類marker 0、対象task実走・migration除外false、outer class複数artifact配置flag 0。rootの全task case識別と状態の多重集合比較は欠落・追加・状態差分0だった。既存skipを成功へ数えず、表示名衝突233群のJava method完全同定は未検証とする。[検分記録](CMP-261017-1726-review.md) に安全原本SHA-256と計測限界を記録した。
+
+旧5aadの全量失敗・ローカル353 caseは履歴として保持し、条件改訂前後を同条件性能比較には使わない。runtimeの全context数・heap内訳は未計測で、CMP-261004-2047全体の約135 IT改善は実装中のまま。今回のCI/test-only変更の実機・探索は対象外とし、代理設定保存のM実機証拠は元の検証範囲を維持する。
+
+[CI改善PR #3986](https://github.com/kenta-0420/mannschaft/pull/3986) はhead `a920be6259e8fd7fdba2f0436cfefc5f160b4dab` を通常mergeし、main merge commitは `33caf032d4ea8d33f28225326ac4610f90004646`。全量実走head `522bfb7fe6ea4b665c384b86411120cc5f755bc8` とは別headだが、backend Git tree `92badf96720ea2c15d188d4ff46ff25c28d9318d` とnightly workflow blob `c24139e65721091bf79b79dcb6d19d919c563fd6` は一致する。PR headの[必須Backend CI run 39179907298](https://github.com/kenta-0420/mannschaft/actions/runs/39179907298) と[Task-List PR Gate run 39186764926](https://github.com/kenta-0420/mannschaft/actions/runs/39186764926) はsuccess。2回の全量実走をPR head自身の結果と混同せず、当時の保留は解除する。
