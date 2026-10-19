@@ -914,6 +914,7 @@ for (const width of [360, 390, 1280]) {
         else await menu.hub.click()
         await expect(page).toHaveURL(new RegExp(`${basePath}$`))
         await expect(menu.panel).toBeHidden()
+        if (mobile) await expect(page.locator('.p-drawer')).toBeHidden()
         menu = await openMenu()
         if (mobile) await menu.jump.tap()
         else await menu.jump.click()
