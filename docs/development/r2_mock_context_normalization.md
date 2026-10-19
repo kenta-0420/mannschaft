@@ -85,12 +85,63 @@ test/archTest の task 単位 `--rerun` も維持する。
 変更前と case 集合が完全一致する全量成功 baseline もないため、
 ソース保持・選別不変更と今回の全6 shard 実走の証拠は区別する。
 
-修復後の migration 込み6 shard＋専用 archTest＋shard別 archUnit engine/後段 guard の
-**同一固定 head で2回連続実走 green は未達**であり、出荷判断は保留する。
-OOM 0、既存 suite/case の欠落・重複0、追加11 case、migration 期待集合、skip 理由を
-全量の XML と安全ログで照合する。timeout/cancelled、artifact 欠落、XML 不完、
-task の FROM-CACHE/UP-TO-DATE を実走成功として数えない。
-context 生成・close 総数と retained heap 内訳の未計測も残る。
+## 修復後の全量ゲート結果
+
+固定 source head `522bfb7fe6ea4b665c384b86411120cc5f755bc8` の
+[run 39135193568](https://github.com/kenta-0420/mannschaft/actions/runs/39135193568) と
+[run 39170400055](https://github.com/kenta-0420/mannschaft/actions/runs/39170400055) は、
+migration 込み6 shard＋専用 archTest＋shard別 archUnit engine/後段 guard を
+同一 head で2回連続実走して success。各runは7 artifact・7301 suite・31658 case、
+failure/error 0、既存skip 17、追加11 caseのskip 0。migration 80 class/195 case、
+専用Arch 299 case、shard内engine 37 case、後段guard 12 caseを照合した。
+安全ログは全7対象jobでcompleteRead、実OOM/未分類marker 0、migration除外false、
+task実走、outer class複数artifact配置flag 0。全taskのcase識別と状態の多重集合比較では
+欠落・追加・状態差分0だった。既存skipを成功へ算入しない。表示名が衝突する233群の
+Java method完全同定は未検証。安全集約原本はローカルの
+`.claude/evidence/proxy-settings-20261018/ci-context-normalization/root-full-ci-acceptance-522bfb7f.json`。
+
+通常mergeされた [PR #3986](https://github.com/kenta-0420/mannschaft/pull/3986) は
+PR head `a920be6259e8fd7fdba2f0436cfefc5f160b4dab`、main merge commit
+`33caf032d4ea8d33f28225326ac4610f90004646`。固定source headとは別headだが、
+両者のbackend Git tree `92badf96720ea2c15d188d4ff46ff25c28d9318d` と
+nightly workflow blob `c24139e65721091bf79b79dcb6d19d919c563fd6` は一致する。
+PR head上の[必須Backend CI run 39179907298](https://github.com/kenta-0420/mannschaft/actions/runs/39179907298) と
+[Task-List PR Gate run 39186764926](https://github.com/kenta-0420/mannschaft/actions/runs/39186764926) もsuccess。
+PR head自体で上記2回の全量実走を行ったとは記録しない。
+
+旧head `5aad90ef1531e3b8649343f5872fec3e807d33a5` の全量失敗と
+ローカル353 case greenは別条件の履歴であり、同条件性能比較に用いない。
+全runnerのcontext生成・close総数とretained heap内訳、変更前の同一case集合の
+全量成功baselineは未計測。field名統一だけでOOMを解消したという因果は断定しない。
+CMP-261004-2047の約135 ITを含む全体改善は引き続き実装中とする。
+
+## main CI の実行設定整合と未完了ゲート
+
+main merge commit `33caf032d4ea8d33f28225326ac4610f90004646` の
+[Backend CI run 39186841443](https://github.com/kenta-0420/mannschaft/actions/runs/39186841443) は
+completed/cancelled。専用 Arch と shard 2/3 は success だったが、shard 0/1/4/5 は
+75分台で cancelled となり、4 job に最大実行時間の annotation があった。
+安全ログは7 jobすべて completeRead、6 shard の migration 除外は false。
+shard 0 に実 OOM marker が2行あるが、独立した2件とは数えず、発生 task/class も未特定。
+他の6 jobの実 OOM markerは0。取消された4 shard の通常 test 完走 case 数は未取得であり、
+task の EXECUTED 行だけを全量成功の証拠にしない。この run は main 上の全量ゲートを満たさない。
+安全集約はローカルの
+`.claude/evidence/proxy-settings-20261018/ci-context-normalization/main-39186841443-safe-log-projections.json` と
+`main-39186841443-timeout-annotations.json` を参照する。
+
+上記 main の backend tree `92badf96720ea2c15d188d4ff46ff25c28d9318d` と nightly workflow blob
+`c24139e65721091bf79b79dcb6d19d919c563fd6` は、2回連続全量成功した固定 head
+`522bfb7fe6ea4b665c384b86411120cc5f755bc8` と一致する。ただし main の test job は
+75分・test step上限なし・context cache既定10で、全量成功時の nightly は
+120分・test step105分・cache5だった。別条件の2成功を main の成功へ読み替えない。
+
+main の test job を通常 PR と同じ条件付き job 120/100分・test step 105/85分・
+`-Pspring.test.context.cache.maxSize=5` に揃える。migration 判定、6 shard、
+テスト選別、heap/fork、Arch、deploy の `needs` と AWS guard は維持する。
+これは成功実績のある有界 profile への整合であり、時間延長だけで成功を主張しない。
+cache10 が遅延または OOM の根因だったか、cache5 で解消するかも未確定。
+新しい main run で6 shardと専用 Arch の成功、各 profile と XML の完全性、実 OOM 0を
+確認するまで、main 全量ゲートは未了とする。
 
 製品の UI/API を変更しない test-only のため、今回変更の実機 E2E・探索試験は対象外。
 別の製品機能の実機結果を本件の完了証拠へ転用しない。
