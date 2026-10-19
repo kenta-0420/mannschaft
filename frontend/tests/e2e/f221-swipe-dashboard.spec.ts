@@ -877,7 +877,9 @@ for (const width of [360, 390, 1280]) {
           return { panel, hub, jump }
         }
         let menu = await openMenu()
-        const all = menu.panel.getByRole('menuitem', { name: 'すべて（一覧）', exact: true })
+        const all = menu.panel.getByRole('menuitem').filter({ has: page.getByText('すべて（一覧）', { exact: true }) })
+        await expect(all).toHaveCount(1)
+        await expect(all.locator('span')).toHaveText('すべて（一覧）')
         await expect(all).toBeVisible()
         await page.evaluate(() => document.fonts.ready.then(() => true))
         const lines = await all.locator('span').evaluate(element => {
