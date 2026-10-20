@@ -22,6 +22,7 @@ import {
   putSettings,
   sql,
   valkeyDel,
+  browserApiOrigins,
 } from './helpers/f0121-org-groups-world'
 
 /**
@@ -466,5 +467,6 @@ test('BC-99 後始末', async () => {
   for (const k of KEYS) results.push(await archiveScope('teams', w.A[k], w.T[k].slug))
   results.push(await archiveScope('organizations', w.XA, w.X.slug))
   results.push(await archiveScope('organizations', w.A['1'], w.Z.slug))
+  console.log(`[F0121-B] browser API origins ${[...browserApiOrigins].join(',')} (FE ${process.env.BASE_URL})`)
   console.log(`[F0121-B] cleanup statuses ${results.join(',')}`)
 })

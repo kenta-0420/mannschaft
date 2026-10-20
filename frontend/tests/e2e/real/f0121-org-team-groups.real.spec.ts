@@ -22,6 +22,7 @@ import {
   sql,
   systemAdmin,
   triggerBatch,
+  browserApiOrigins,
 } from './helpers/f0121-org-groups-world'
 
 /**
@@ -592,5 +593,6 @@ test('GRP-99 後始末', async () => {
     await archiveScope('organizations', w.XA, w.X.slug),
     await archiveScope('organizations', w.YA, w.Y.slug),
   ]
+  console.log(`[F0121-G] browser API origins ${[...browserApiOrigins].join(',')} (FE ${process.env.BASE_URL})`)
   console.log(`[F0121-G] cleanup statuses ${results.join(',')}`)
 })

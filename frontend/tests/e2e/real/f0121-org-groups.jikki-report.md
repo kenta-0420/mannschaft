@@ -14,14 +14,16 @@
 | 項目 | 内容 |
 |---|---|
 | BE | 検証用 `http://localhost:8081`（WSL ネイティブ clone `~/jikki-orggroups-20261020` を bootJar → `java -jar`、`MANNSCHAFT_ALLOWED_ORIGINS=http://localhost:3001,http://localhost:8081`）。DB は共有の `mannschaft-mysql`、Valkey は `mannschaft-valkey` |
-| FE | 検証用 `http://localhost:3001`（同じ clone の `nuxt dev`。`NUXT_PUBLIC_API_BASE`・`NUXT_INTERNAL_API_BASE` とも 8081） |
-| Playwright | WSL 内で `playwright-real.config.ts --project=chromium-real --no-deps`、`BASE_URL=http://localhost:3001 API_BASE_URL=http://localhost:8081` |
+| FE | 検証用 `http://localhost:3021`（同じ clone の `nuxt dev`。`NUXT_PUBLIC_API_BASE`・`NUXT_INTERNAL_API_BASE` とも 8081。BE の CORS 許可を 3021・8081 に設定） |
+| Playwright | WSL 内で `playwright-real.config.ts --project=chromium-real --no-deps`、`BASE_URL=http://localhost:3021 API_BASE_URL=http://localhost:8081` |
+| 向き先の裏取り | `ss -ltnp` で 3021・8081 が自分のプロセスであることを確認。spec の後始末 test が「画面が呼んだ API のオリジン」を出力し、加盟・グループの spec で `http://localhost:8081` のみ |
 | 本陣 8080/3000 | 使用せず・停止せず |
 
 環境上の注記（製品欠陥ではない）:
 
 - Windows 側 worktree（本陣 node_modules の junction）で動かした `nuxt dev` は、高負荷の共有機で 1 画面の水和に 40〜160 秒かかり、spec が時間切れで落ちた。Windows 側の `nuxt build` は 70 分を超えても終わらなかったため中止し、WSL ネイティブ clone で FE を立て直した（水和 10 秒前後）。
 - 本陣 `node_modules` は main より古く `unicode-segmenter` が無いため、本番ビルドでは解決に失敗する（dev では該当ページを開かない限り顕在化しない）。clone では `npm install --no-save` で lock に揃えた。
+- 3001 は途中から別セッションの検証 FE（`~/verify-friend3`、BE 8091 向き）が `0.0.0.0:3001` を占有しており、自分の FE は空きを探して 3000 で待ち受けていた。この間の実行は他セッションの FE・BE を画面が叩いていたため結果に採らず、FE を 3021 に立て直して全 spec を再実行した（下表はその最終実行）。他セッションのサーバーには触れていない。
 - 前提作成の都合で、登録 API（10 件/時/IP）・申請 API（10 件/時/利用者）・告知送信 API（5 件/5 分/利用者）のレート制限カウンタを Valkey 上で戻している（各 AC の対象はレート制限ではないため）。利用者の有効化はメール認証トークンが平文で取れないため `users.status` を直更新している。
 
 ## 実行結果（最終実行）

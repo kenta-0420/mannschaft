@@ -354,6 +354,9 @@ export function typeOf(notification: { notificationType?: string; type?: string 
 /** fan-out ワーカーは5秒間隔。push の到達・不到達の観測前に置く待ち時間（設計書 §16.0）。 */
 export const FANOUT_WAIT_MS = 12_000
 
+/** 画面（ブラウザ）が呼んだ API のオリジン一覧。 */
+export const browserApiOrigins = new Set<string>()
+
 /** 新しいブラウザ文脈で利用者としてログインし、指定 URL を開く（1文脈=1ログイン）。 */
 export async function openAs(
   browser: Browser,
@@ -369,6 +372,10 @@ export async function openAs(
     viewport,
   })
   const page = await context.newPage()
+  // 画面が実際に叩いた API のオリジンを記録する（検証用 BE を見ていることの証拠。後始末の test で出力する）
+  page.on('request', (request) => {
+    if (request.url().includes('/api/v1/')) browserApiOrigins.add(new URL(request.url()).origin)
+  })
   if (actor) {
     await page.goto(`${FE}/robots.txt`)
     await loginViaApi(page, actor, { apiBaseUrl: API, deferNavigation: true })

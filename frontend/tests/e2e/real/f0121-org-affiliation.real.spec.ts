@@ -25,6 +25,7 @@ import {
   triggerBatch,
   typeOf,
   valkeyDel,
+  browserApiOrigins,
 } from './helpers/f0121-org-groups-world'
 
 /**
@@ -999,5 +1000,6 @@ test('ORGAFF-99 後始末', async () => {
     await archiveScope('organizations', w.XA, w.X.slug),
     await archiveScope('organizations', w.YA, w.Y.slug),
   ]
+  console.log(`[F0121] browser API origins ${[...browserApiOrigins].join(',')} (FE ${process.env.BASE_URL})`)
   console.log(`[F0121] cleanup statuses ${results.join(',')}`)
 })
