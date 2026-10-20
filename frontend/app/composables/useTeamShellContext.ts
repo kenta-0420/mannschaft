@@ -51,6 +51,13 @@ export interface TeamShellContext {
   displayName: ComputedRef<string>
   /** 自分の実効ロール名（取得失敗/未所属時は null）。 */
   roleName: Ref<string | null>
+  /**
+   * ロール解決が完了したか（成功・失敗とも true）。roleName=null は読込中・未所属・取得失敗で
+   * 同じになるため、「解決済みかつ null＝未所属」を判定する用（CMP-261013-1226）。
+   */
+  roleResolved: Ref<boolean>
+  /** ロール取得に失敗したか（roleResolved=true かつ true のときエラー表示を出す）。 */
+  roleLoadFailed: Ref<boolean>
   /** 管理権限（ADMIN / SYSTEM_ADMIN）を持つか。 */
   isAdmin: ComputedRef<boolean>
   /** 管理者または副管理者か。 */
