@@ -1076,16 +1076,32 @@ class ReservationNotificationTransactionIT extends AbstractMySqlIntegrationTest 
         return stats.getPrepareStatementCount();
     }
 
-    /** event-pool を満杯にして、次の投入が拒否される（AbortPolicy）状態にする。 */
-    private void saturateEntirePool(CountDownLatch release) {
-        for (int i = 0; i < 1_000; i++) {
-            try {
-                eventPool.execute(() -> awaitQuietly(release));
-            } catch (RejectedExecutionException saturated) {
-                return;
-            }
+    /**
+     * event-pool を確実に満杯にする。実 Bean から maxPoolSize とキュー容量を取り、
+     * 「max 本のワーカー全員がブロッカーを掴んだ」ことと「キューが容量ぴったりで残容量 0」を確認してから戻る。
+     * ThreadPoolExecutor は core を超えるワーカーをキューが満杯になって初めて起こすため、投入数は
+     * {@code max + キュー容量} ぴったり（走るのは max 本、キューに積まれるのは容量ぶん）。
+     * 「最初の拒否で止める」方式は、再利用待ちのワーカーがキューを取り出す前の一時的な拒否で止まり得るため使わない。
+     */
+    private void saturateEntirePool(CountDownLatch release) throws InterruptedException {
+        ThreadPoolTaskExecutor pool = (ThreadPoolTaskExecutor) eventPool;
+        java.util.concurrent.ThreadPoolExecutor executor = pool.getThreadPoolExecutor();
+        int max = executor.getMaximumPoolSize();
+        int queueCapacity = executor.getQueue().remainingCapacity() + executor.getQueue().size();
+        CountDownLatch workersBlocked = new CountDownLatch(max);
+        for (int i = 0; i < max + queueCapacity; i++) {
+            // 1 本でも拒否されたら前提（空のプール）が崩れている。例外はそのままテスト失敗にする。
+            eventPool.execute(() -> {
+                workersBlocked.countDown();
+                awaitQuietly(release);
+            });
         }
-        throw new IllegalStateException("event-pool が満杯にならなかった");
+        assertThat(workersBlocked.await(30, TimeUnit.SECONDS))
+                .as("max=%d 本の全ワーカーがブロッカーを掴んだ（active=%d poolSize=%d queued=%d）", max,
+                        pool.getActiveCount(), pool.getPoolSize(), executor.getQueue().size())
+                .isTrue();
+        assertThat(pool.getActiveCount()).as("active == max").isEqualTo(max);
+        assertThat(executor.getQueue().remainingCapacity()).as("キューの残容量 0").isZero();
     }
 
     private static void awaitQuietly(CountDownLatch latch) {
