@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260912-1525",
+  "scope": "app",
+  "implementation": {
+    "pr": 3294,
+    "sha": "e6e2528c4929eb8dac620ce56a17f40547c2a557"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "全メンバーを1回で取得できる経路があり、時給設定画面がそれを使っている",
+      "tests": [
+        {
+          "name": "一括取得 API とスコープ契約の統合テスト",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftHourlyRateScopeContractIT.java"
+        },
+        {
+          "name": "時給サービスの単体テスト",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftHourlyRateServiceTest.java"
+        },
+        {
+          "name": "チームコントローラの単体テスト",
+          "evidence": "backend/src/test/java/com/mannschaft/app/team/controller/TeamControllerTest.java"
+        },
+        {
+          "name": "時給設定画面のメンバー取得 composable の単体テスト",
+          "evidence": "frontend/tests/unit/composables/useHourlyRateMemberPage.spec.ts"
+        },
+        {
+          "name": "実機E2E: 画面表示時の実ネットワークで一括取得が1回のみ",
+          "evidence": "docs/evidence/CMP-260912-1525.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "docs/openapi.json が再生成されドリフト検査が緑である",
+      "tests": [
+        {
+          "name": "再生成済みの OpenAPI 仕様（getAllTeamMembers が組織版と衝突しない）",
+          "evidence": "docs/openapi.json"
+        },
+        {
+          "name": "OpenAPI Drift Check は実装PR head SHA で success（CI run 35062266948）",
+          "evidence": "docs/evidence/CMP-260912-1525.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 35062266976
+    },
+    {
+      "runId": 35062266925
+    },
+    {
+      "runId": 35062266948
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3294"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260912-1525.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260912-1525.md"
+    }
+  },
+  "regressions": []
+}
