@@ -158,9 +158,33 @@ function splitTernary(expr: string): { consequent: string, alternate: string } |
   return null
 }
 
+/** 式全体を包む外側の括弧を（多重でも）剥がす。先頭の ( の対応する ) が末尾にあるときだけ剥がす */
+function stripOuterParens(expr: string): string {
+  let e = expr.trim()
+  while (e.startsWith('(') && e.endsWith(')')) {
+    let quote = ''
+    let depth = 0
+    let closeAt = -1
+    for (let i = 0; i < e.length; i++) {
+      const c = e[i] as string
+      if (quote) {
+        if (c === '\\') i++
+        else if (c === quote) quote = ''
+        continue
+      }
+      if (c === '\'' || c === '"' || c === '`') quote = c
+      else if (c === '(') depth++
+      else if (c === ')' && --depth === 0) { closeAt = i; break }
+    }
+    if (closeAt !== e.length - 1) break
+    e = e.slice(1, -1).trim()
+  }
+  return e
+}
+
 /** :is の式から「描画結果になる位置」の PascalCase 文字列だけを取り出す（式全体のリテラル / 三項演算子の両枝） */
 function renderedStrings(expr: string): string[] {
-  const e = expr.trim()
+  const e = stripOuterParens(expr)
   const literal = e.match(/^(['"`])([A-Z][A-Za-z0-9]+)\1$/)
   if (literal) return [literal[2] as string]
   const t = splitTernary(e)
@@ -215,6 +239,17 @@ describe('findMisreferencesInSource（合成入力）', () => {
     expect(names(`${imp}<template><div /></template>`)).toEqual(['FriendsFriendFeedPostList'])
     const imp2 = '<script setup lang="ts">\nimport FriendsFriendFeedPostList from \'~/x/Y.vue\'\n</script>'
     expect(names(`${imp2}<template><component :is="'FriendsFriendFeedPostList'" /></template>`)).toEqual(['FriendsFriendFeedPostList'])
+  })
+  it('検出する: 括弧で包まれた枝・二重括弧・式全体の括弧', () => {
+    const bad = ['FriendsFriendFeedPostList']
+    expect(names(`<template><component :is="ok ? ('FriendsFriendFeedPostList') : 'div'" /></template>`)).toEqual(bad)
+    expect(names(`<template><component :is="ok ? (('FriendsFriendFeedPostList')) : 'div'" /></template>`)).toEqual(bad)
+    expect(names(`<template><component :is="ok ? 'div' : ('FriendsFriendFeedPostList')" /></template>`)).toEqual(bad)
+    expect(names(`<template><component :is="('FriendsFriendFeedPostList')" /></template>`)).toEqual(bad)
+    expect(names(`<template><component :is="(ok ? 'FriendsFriendFeedPostList' : 'div')" /></template>`)).toEqual(bad)
+  })
+  it('検出しない: 括弧付きの比較（条件部）の文字列', () => {
+    expect(names(`<template><component :is="(kind === 'FriendsFriendFeedPostList') ? PageHeader : 'div'" /></template>`)).toEqual([])
   })
   it('検出しない: 正名・Lazy 付き正名・無関係な名前', () => {
     expect(names('<template><FriendFeedPostList /><LazyFriendFeedPostList /><Button /><NuxtLink /></template>')).toEqual([])
