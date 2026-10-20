@@ -1,3 +1,5 @@
+import type { components } from './generated'
+
 export type MemberCardScopeType = 'PLATFORM' | 'TEAM' | 'ORGANIZATION'
 export type MemberCardStatus = 'ACTIVE' | 'SUSPENDED' | 'REVOKED'
 export type CheckinType = 'STAFF_SCAN' | 'SELF'
@@ -33,8 +35,13 @@ export interface MemberCardListItem {
 }
 
 export interface MemberCardQr {
-  token: string
-  expiresAt: string
+  memberCardId: number
+  qrToken: string
+  expiresIn: number
+  cardNumber: string
+  displayName: string
+  scopeType: string
+  scopeName: string | null
 }
 
 export interface CheckinRecord {
@@ -46,12 +53,8 @@ export interface CheckinRecord {
   checkedInAt: string
 }
 
-export interface CheckinStats {
-  totalCheckins: number
-  byDayOfWeek: Record<string, number>
-  byHour: Record<string, number>
-  monthlyTrend: { month: string; count: number }[]
-}
+/** BE の統計DTOに追従する。 */
+export type CheckinStats = components['schemas']['CheckinStatsResponse']
 
 export interface CheckinLocation {
   id: number

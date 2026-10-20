@@ -26,6 +26,11 @@ public interface ReflectionEntryRepository extends JpaRepository<ReflectionEntry
     /** 本人所有検証用。 */
     Optional<ReflectionEntryEntity> findByIdAndUserId(UUID id, Long userId);
 
+    /** 新想起の保存前に、本人と未削除を同時にcurrent readで確認する。 */
+    @Query(value = "SELECT * FROM reflection_entries WHERE id=:id AND user_id=:userId "
+            + "AND deleted_at IS NULL FOR UPDATE", nativeQuery = true)
+    Optional<ReflectionEntryEntity> findOwnedForUpdate(@Param("id") UUID id, @Param("userId") Long userId);
+
     /** 今日の振り返りビュー（§4.3）でユーザーの当日エントリを一括取得。 */
     List<ReflectionEntryEntity> findByUserIdAndTargetDate(Long userId, LocalDate targetDate);
 

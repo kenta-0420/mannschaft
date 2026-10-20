@@ -18,7 +18,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -97,7 +96,7 @@ class ParentalConsentCleanupBatchServiceTest {
         @DisplayName("正常_期限切れなし_何も実行されない")
         void 正常_期限切れなし_何も実行されない() {
             // given: 期限切れ PENDING リンクが存在しない
-            when(parentalConsentLinkRepository.findByStatusAndExpiresAtBefore(
+            when(parentalConsentLinkRepository.findExpiredChildUserIds(
                     eq(ParentalConsentLinkStatus.PENDING), any(LocalDateTime.class)))
                     .thenReturn(List.of());
 
@@ -105,7 +104,7 @@ class ParentalConsentCleanupBatchServiceTest {
             cleanupBatchService.execute();
 
             // then: ユーザー取得・メール送信は呼ばれない
-            verify(userRepository, never()).findById(any());
+            verify(userRepository, never()).findByIdForUpdateIncludingDeleted(any());
             verify(emailOutboxService, never()).enqueue(any());
         }
 
@@ -117,14 +116,13 @@ class ParentalConsentCleanupBatchServiceTest {
             ParentalConsentLinkEntity expiredLink = buildExpiredPendingLink(childUserId);
             UserEntity childUser = buildChildUser(childUserId, "child@example.com");
 
-            when(parentalConsentLinkRepository.findByStatusAndExpiresAtBefore(
+            when(parentalConsentLinkRepository.findExpiredChildUserIds(
                     eq(ParentalConsentLinkStatus.PENDING), any(LocalDateTime.class)))
-                    .thenReturn(List.of(expiredLink));
-            when(userRepository.findById(childUserId)).thenReturn(Optional.of(childUser));
+                    .thenReturn(List.of(childUserId));
+            when(userRepository.findByIdForUpdateIncludingDeleted(childUserId)).thenReturn(Optional.of(childUser));
             // APPROVED も PENDING も残っていない → 削除対象
-            when(parentalConsentLinkRepository.existsByChildUserIdAndStatusIn(
-                    eq(childUserId), any(Collection.class)))
-                    .thenReturn(false);
+            when(parentalConsentLinkRepository.findByChildUserIdForUpdate(childUserId))
+                    .thenReturn(List.of(expiredLink));
 
             // when
             cleanupBatchService.execute();
@@ -142,15 +140,18 @@ class ParentalConsentCleanupBatchServiceTest {
             ParentalConsentLinkEntity expiredLink = buildExpiredPendingLink(childUserId);
             UserEntity childUser = buildChildUser(childUserId, "child2@example.com");
 
-            when(parentalConsentLinkRepository.findByStatusAndExpiresAtBefore(
+            when(parentalConsentLinkRepository.findExpiredChildUserIds(
                     eq(ParentalConsentLinkStatus.PENDING), any(LocalDateTime.class)))
-                    .thenReturn(List.of(expiredLink));
-            when(userRepository.findById(childUserId)).thenReturn(Optional.of(childUser));
+                    .thenReturn(List.of(childUserId));
+            when(userRepository.findByIdForUpdateIncludingDeleted(childUserId)).thenReturn(Optional.of(childUser));
 
             // APPROVED リンクが存在する（1回目の呼び出し = APPROVED チェック）
-            when(parentalConsentLinkRepository.existsByChildUserIdAndStatusIn(
-                    eq(childUserId), any(Collection.class)))
-                    .thenReturn(true); // APPROVED が残っている
+            ParentalConsentLinkEntity approvedLink = ParentalConsentLinkEntity.builder()
+                    .childUserId(childUserId).status(ParentalConsentLinkStatus.APPROVED)
+                    .parentEmail("approved@example.com").tokenHash("approved-fixture")
+                    .expiresAt(LocalDateTime.now().plusDays(1)).build();
+            when(parentalConsentLinkRepository.findByChildUserIdForUpdate(childUserId))
+                    .thenReturn(List.of(expiredLink, approvedLink)); // APPROVED が残っている
 
             // when
             cleanupBatchService.execute();
@@ -170,14 +171,13 @@ class ParentalConsentCleanupBatchServiceTest {
             ParentalConsentLinkEntity expiredLink = buildExpiredPendingLink(childUserId);
             UserEntity childUser = buildChildUser(childUserId, "child3@example.com");
 
-            when(parentalConsentLinkRepository.findByStatusAndExpiresAtBefore(
+            when(parentalConsentLinkRepository.findExpiredChildUserIds(
                     eq(ParentalConsentLinkStatus.PENDING), any(LocalDateTime.class)))
-                    .thenReturn(List.of(expiredLink));
-            when(userRepository.findById(childUserId)).thenReturn(Optional.of(childUser));
+                    .thenReturn(List.of(childUserId));
+            when(userRepository.findByIdForUpdateIncludingDeleted(childUserId)).thenReturn(Optional.of(childUser));
             // 両方のステータスチェックで false を返す
-            when(parentalConsentLinkRepository.existsByChildUserIdAndStatusIn(
-                    eq(childUserId), any(Collection.class)))
-                    .thenReturn(false);
+            when(parentalConsentLinkRepository.findByChildUserIdForUpdate(childUserId))
+                    .thenReturn(List.of(expiredLink));
             when(userRepository.save(any())).thenReturn(childUser);
 
             // when
@@ -206,10 +206,11 @@ class ParentalConsentCleanupBatchServiceTest {
             Long childUserId = 4L;
             ParentalConsentLinkEntity expiredLink = buildExpiredPendingLink(childUserId);
 
-            when(parentalConsentLinkRepository.findByStatusAndExpiresAtBefore(
+            when(parentalConsentLinkRepository.findExpiredChildUserIds(
                     eq(ParentalConsentLinkStatus.PENDING), any(LocalDateTime.class)))
-                    .thenReturn(List.of(expiredLink));
-            when(userRepository.findById(childUserId)).thenReturn(Optional.empty());
+                    .thenReturn(List.of(childUserId));
+            when(userRepository.findByIdForUpdateIncludingDeleted(childUserId)).thenReturn(Optional.empty());
+            when(parentalConsentLinkRepository.findByChildUserIdForUpdate(childUserId)).thenReturn(List.of(expiredLink));
 
             // when
             cleanupBatchService.execute();

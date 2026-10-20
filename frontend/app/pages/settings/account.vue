@@ -86,6 +86,10 @@ const {
   handleDeleteCredential,
   openRenameDialog,
   handleRenameCredential,
+  isRegisteringPasskey,
+  registerDialog,
+  newPasskeyName,
+  handlePasskeyRegister,
 } = useAccountSecurity()
 
 const {
@@ -211,6 +215,9 @@ onMounted(async () => {
         v-model:show-backup-codes-dialog="showBackupCodesDialog"
         v-model:rename-dialog="renameDialog"
         v-model:new-device-name="newDeviceName"
+        v-model:register-dialog="registerDialog"
+        v-model:new-passkey-name="newPasskeyName"
+        :is-registering-passkey="isRegisteringPasskey"
         :totp-setup="totpSetup"
         :setting2fa="setting2fa"
         :regenerating="regenerating"
@@ -224,6 +231,7 @@ onMounted(async () => {
         @delete-credential="handleDeleteCredential"
         @open-rename-dialog="openRenameDialog"
         @rename-credential="handleRenameCredential"
+        @passkey-register="handlePasskeyRegister"
       />
 
       <SettingsLinkedAccountsSection

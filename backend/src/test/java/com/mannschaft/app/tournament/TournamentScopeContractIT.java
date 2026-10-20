@@ -223,8 +223,10 @@ class TournamentScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("正当ADMINの参加チーム追加は201")
+        @DisplayName("正当ADMINの参加チーム追加は201（チームは主催組織に ACTIVE 加盟済み）")
         void 正当ADMINの参加チーム追加は201() throws Exception {
+            insertActiveTeamOrgMembership(teamAId, orgAId);
+            em.flush();
             setAuthentication(adminAId);
 
             Map<String, Object> body = new LinkedHashMap<>();
@@ -236,6 +238,23 @@ class TournamentScopeContractIT extends AbstractMySqlIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(body)))
                     .andExpect(status().isCreated());
+        }
+
+        @Test
+        @DisplayName("主催組織に未加盟のチームの参加追加は404 TOUR_026（存在しないチームと同じ応答）")
+        void 未加盟チームの参加チーム追加は404() throws Exception {
+            setAuthentication(adminAId);
+
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("teamId", teamAId);
+
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{orgId}/tournaments/{tId}/divisions/{divId}/participants",
+                            orgAId, tPubA, divPubA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("TOUR_026"));
         }
 
         @Test
@@ -865,6 +884,15 @@ class TournamentScopeContractIT extends AbstractMySqlIntegrationTest {
                         "SELECT MAX(id) FROM tournament_matches WHERE matchday_id = :mdId")
                 .setParameter("mdId", matchdayId)
                 .getSingleResult()).longValue();
+    }
+
+    private void insertActiveTeamOrgMembership(Long teamId, Long orgId) {
+        em.createNativeQuery(
+                        "INSERT INTO team_org_memberships (team_id, organization_id, status, invited_at, created_at) "
+                                + "VALUES (:teamId, :orgId, 'ACTIVE', NOW(), NOW())")
+                .setParameter("teamId", teamId)
+                .setParameter("orgId", orgId)
+                .executeUpdate();
     }
 
     private Long insertParticipant(Long divisionId, Long teamId) {

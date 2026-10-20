@@ -1,0 +1,50 @@
+{
+    "head":  "25ece9b77159e117c631ddb82e88311bc7665570",
+    "recordedAt":  "2026-10-16T08:22:10.843Z",
+    "role":  "MEMBER",
+    "setup":  "実ログイン画面の入力・送信で認証200、APIによる対象操作代替なし",
+    "cases":  [
+                  "org-member360-route-green",
+                  "org-member390-route-green"
+              ],
+    "pageerrors":  0,
+    "auth":  [
+                 {
+                     "path":  "/api/v1/auth/login",
+                     "status":  200
+                 }
+             ],
+    "api":  [
+                {
+                    "at":  "2026-10-16T08:14:15.749Z",
+                    "path":  "/api/v1/users/me",
+                    "status":  200
+                },
+                {
+                    "at":  "2026-10-16T08:16:33.569Z",
+                    "path":  "/api/v1/users/me",
+                    "status":  200
+                },
+                {
+                    "at":  "2026-10-16T08:19:58.620Z",
+                    "path":  "/api/v1/organizations/mobile-menu-20261016-org-a/modules",
+                    "status":  200
+                },
+                {
+                    "at":  "2026-10-16T08:20:07.388Z",
+                    "path":  "/api/v1/organizations/mobile-menu-20261016-org-a/members",
+                    "status":  200
+                },
+                {
+                    "at":  "2026-10-16T08:21:07.186Z",
+                    "path":  "/api/v1/organizations/mobile-menu-20261016-org-a/modules",
+                    "status":  200
+                },
+                {
+                    "at":  "2026-10-16T08:21:08.562Z",
+                    "path":  "/api/v1/organizations/mobile-menu-20261016-org-a/members",
+                    "status":  200
+                }
+            ],
+    "publicationNote":  "元要約から認証200と対象操作の関連応答だけを選択。本文・Cookie・認証情報なし。"
+}

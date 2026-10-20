@@ -78,6 +78,7 @@ import java.util.stream.Collectors;
 public class BlogPostService {
     private final BlogMediaAclService mediaAclService;
     private final BlogMediaCopyService mediaCopyService;
+    private final BlogRanchPublicationCapture ranchPublicationCapture;
 
     private final BlogPostRepository postRepository;
     private final BlogPostTagRepository postTagRepository;
@@ -414,25 +415,14 @@ public class BlogPostService {
      */
     @Transactional
     public BlogPostResponse changeStatus(Long id, Long userId, PublishRequest request) {
-        BlogPostEntity entity = findPostOrThrow(id);
+        BlogPostEntity entity = request.getRanchCaptureContext()!=null && request.getRanchCaptureContext().qualified()
+                ? postRepository.findForPublicationUpdate(id).orElseThrow(() -> new BusinessException(CmsErrorCode.POST_NOT_FOUND))
+                : findPostOrThrow(id);
         checkWriteAccess(entity, userId);
-        PostStatus newStatus = EnumInputParser.parse(PostStatus.class, request.getStatus(), "status");
+        PostStatus newStatus = BlogRanchNativeMutationRules.changeStatus(entity, request, LocalDateTime.now());
 
-        if (newStatus == PostStatus.REJECTED && (request.getRejectionReason() == null || request.getRejectionReason().isBlank())) {
-            throw new BusinessException(CmsErrorCode.REJECTION_REASON_REQUIRED);
-        }
-
-        // 基準時刻は 1 回だけ取得し、公開判定と非公開化判定で同一の値を使う
-        // （エンティティ側は現在時刻を取得しない。CMP-023 / DateTimeAndZoneGuardTest）。
-        LocalDateTime baseTime = LocalDateTime.now();
-
-        switch (newStatus) {
-            // 予約公開（issue #2616・AC-1〜3）: publishedAt が未来なら BlogPostEntity#publish が
-            // DRAFT に据え置き、published_at だけを記録する（PostStatus.SCHEDULED は新設しない）。
-            case PUBLISHED -> entity.publish(request.getPublishedAt(), baseTime);
-            case REJECTED -> entity.reject(request.getRejectionReason());
-            default -> entity.changeStatus(newStatus, baseTime);
-        }
+        if(request.getRanchCaptureContext()!=null) ranchPublicationCapture.capture(entity,userId,request.getRanchCaptureContext(),
+                java.util.Objects.equals(entity.getAuthorId(),userId) ? com.mannschaft.app.ranch.reward.api.RanchRewardEnvelope.PublicationKind.MANUAL : com.mannschaft.app.ranch.reward.api.RanchRewardEnvelope.PublicationKind.EDITOR_APPROVAL);
 
         BlogPostEntity saved = postRepository.save(entity);
         log.info("記事ステータス変更: postId={}, status={}", id, newStatus);
@@ -560,7 +550,7 @@ public class BlogPostService {
         LocalDateTime baseTime = LocalDateTime.now();
 
         for (Long id : request.getIds()) {
-            BlogPostEntity entity = postRepository.findById(id).orElse(null);
+            BlogPostEntity entity = request.getRanchCaptureContext()!=null ? postRepository.findForPublicationUpdate(id).orElse(null) : postRepository.findById(id).orElse(null);
             if (entity == null) {
                 skippedIds.add(id);
                 continue;
@@ -592,6 +582,11 @@ public class BlogPostService {
                         // 予約時刻をそのまま渡すことで BlogPostEntity#publish が DRAFT に据え置く。
                         entity.publish(entity.getPublishedAt(), baseTime);
                         if (entity.getStatus() == PostStatus.PUBLISHED) {
+                            if(request.getRanchCaptureContext()!=null) {
+                                var context=request.getRanchCaptureContext().forAuthor(entity.getAuthorId());
+                                ranchPublicationCapture.capture(entity,userId,context,com.mannschaft.app.ranch.reward.api.RanchRewardEnvelope.PublicationKind.BULK);
+                                request.getRanchCaptureContext().collect(context);
+                            }
                             postRepository.save(entity);
                             processedCount++;
                         } else {
@@ -660,23 +655,15 @@ public class BlogPostService {
      */
     @Transactional
     public BlogPostResponse selfReview(Long postId, Long userId, SelfReviewRequest request) {
-        BlogPostEntity entity = findPostOrThrow(postId);
+        BlogPostEntity entity = request.getRanchCaptureContext()!=null && request.getRanchCaptureContext().qualified()
+                ? postRepository.findForPublicationUpdate(postId).orElseThrow(() -> new BusinessException(CmsErrorCode.POST_NOT_FOUND))
+                : findPostOrThrow(postId);
         checkWriteAccess(entity, userId);
 
-        if (entity.getStatus() != PostStatus.PENDING_SELF_REVIEW) {
-            throw new BusinessException(CmsErrorCode.INVALID_STATUS_TRANSITION);
-        }
+        BlogRanchNativeMutationRules.selfReview(entity, request, LocalDateTime.now());
 
-        LocalDateTime baseTime = LocalDateTime.now();
-
-        switch (request.getAction().toUpperCase()) {
-            // 予約公開（issue #2616・AC-17）: 予約時刻を持つ記事はその時刻を尊重し、
-            // 未来ならセルフレビュー承認後も DRAFT へ据え置いてバッチの公開を待つ。
-            case "PUBLISH" -> entity.publish(entity.getPublishedAt(), baseTime);
-            case "DRAFT" -> entity.changeStatus(PostStatus.DRAFT, baseTime);
-            case "DELETE" -> entity.softDelete();
-            default -> throw new BusinessException(CmsErrorCode.INVALID_STATUS_TRANSITION);
-        }
+        if(request.getRanchCaptureContext()!=null) ranchPublicationCapture.capture(entity,userId,request.getRanchCaptureContext(),
+                com.mannschaft.app.ranch.reward.api.RanchRewardEnvelope.PublicationKind.SELF_APPROVAL);
 
         BlogPostEntity saved = postRepository.save(entity);
         log.info("セルフレビュー: postId={}, action={}", postId, request.getAction());

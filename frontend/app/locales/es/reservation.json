@@ -183,6 +183,11 @@
         "advanced": { "title": "Configuración avanzada", "description": "Configura visibilidad y avisos" }
       }
     },
+    "history": {
+      "date_unavailable": "Fecha no disponible",
+      "time_unavailable": "Hora no disponible",
+      "line_unavailable": "Recurso de reserva no disponible"
+    },
     "column": {
       "datetime": "Fecha y hora",
       "line": "Elemento reservable",

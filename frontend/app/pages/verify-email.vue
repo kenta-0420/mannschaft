@@ -1,9 +1,15 @@
 <script setup lang="ts">
+import { inviteRedirect } from '~/utils/inviteRedirect'
 definePageMeta({
   layout: 'auth',
 })
 
 const route = useRoute()
+const returnPath = computed(() => inviteRedirect(route.query.redirect))
+const loginTarget = computed(() => ({
+  path: '/login',
+  query: returnPath.value ? { redirect: returnPath.value } : {},
+}))
 const api = useApi()
 const notification = useNotification()
 
@@ -26,7 +32,7 @@ async function verifyToken() {
     })
     verified.value = true
     notification.success('メール認証が完了しました')
-    setTimeout(() => navigateTo('/login'), 2000)
+    setTimeout(() => navigateTo(loginTarget.value), 2000)
   }
   catch {
     verifyError.value = true
@@ -81,7 +87,7 @@ onMounted(() => {
           label="ログインへ"
           icon="pi pi-sign-in"
           class="w-full"
-          @click="navigateTo('/login')"
+          @click="navigateTo(loginTarget)"
         />
       </template>
 
@@ -99,7 +105,7 @@ onMounted(() => {
           class="w-full"
           @click="resendVerification"
         />
-        <NuxtLink to="/login" class="text-sm text-primary hover:underline">
+        <NuxtLink :to="loginTarget" class="text-sm text-primary hover:underline">
           ログインページへ戻る
         </NuxtLink>
       </template>
@@ -122,7 +128,7 @@ onMounted(() => {
         class="w-full"
         @click="resendVerification"
       />
-      <NuxtLink to="/login" class="text-sm text-primary hover:underline">
+      <NuxtLink :to="loginTarget" class="text-sm text-primary hover:underline">
         ログインページへ戻る
       </NuxtLink>
     </template>

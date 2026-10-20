@@ -1,3 +1,4 @@
+import { expectSingleLineLabel, waitForHydratedShell } from './helpers/waitForHydratedShell'
 import { test, expect, type Page } from '@playwright/test'
 
 /**
@@ -98,6 +99,7 @@ async function injectAuth(page: Page) {
       username: 'e2e_inbox_user',
       email: 'e2e-inbox@example.com',
       displayName: 'E2E テストユーザー',
+      fullName: 'E2E テストユーザー',
       timezone: 'Asia/Tokyo',
       roles: ['USER'],
     }
@@ -309,4 +311,72 @@ test.describe('F04.11 統合通知インボックス', () => {
     await page.getByTestId('inbox-tab-inbox').click()
     await expect(page.getByText('E2Eテスト通知')).toBeVisible()
   })
+})
+
+for (const width of [360, 390, 312, 1024, 1280]) {
+  test(`INSIGHT-I7: ${width}pxで通知タブとヘッダー操作を独立して使える`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.addInitScript(() => localStorage.setItem('tokenExpiresAt', String(Date.now() + 3600000)))
+    await injectAuth(page)
+    await page.route('**/api/v1/**', route => route.fulfill({ json: { data: [], meta: {} } }))
+    await setupBaseRoutes(page)
+    await page.route('**/api/v1/inbox?**', route => route.fulfill({ json: { data: { items: [], page: 0, size: 20, totalEstimated: 0, hasMore: false } } }))
+    await page.route('**/api/v1/inbox/labels', route => route.fulfill({ json: { data: [] } }))
+    await page.route('**/api/v1/inbox/summary', route => route.fulfill({ json: makeSummary({ inbox: 12345, snoozed: 999, archived: 0 }) }))
+    await page.goto('/inbox', { waitUntil: 'domcontentloaded' })
+    await waitForHydratedShell(page)
+    const tabs = page.getByRole('tablist').filter({ has: page.getByTestId('inbox-tab-inbox') })
+    await expect(page.getByTestId('inbox-tab-inbox')).toBeVisible()
+    const settings = page.getByTestId('inbox-label-manage-btn')
+    const mode = page.getByTestId('inbox-bulk-mode-btn')
+    for (const tab of await tabs.getByRole('tab').all()) await expectSingleLineLabel(tab.locator(':scope > span').first())
+    const tabBox = (await tabs.boundingBox())!
+    const settingsBox = (await settings.boundingBox())!
+    if (width < 768) expect(settingsBox.y).toBeGreaterThanOrEqual(tabBox.y + tabBox.height)
+    else expect(settingsBox.x).toBeGreaterThanOrEqual(tabBox.x + tabBox.width)
+    for (const target of [settings, mode, ...await tabs.getByRole('tab').all()]) {
+      const box = (await target.boundingBox())!
+      expect(box.width).toBeGreaterThanOrEqual(44)
+      expect(box.height).toBeGreaterThanOrEqual(44)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0)
+    await page.getByTestId('inbox-tab-snoozed').click()
+    await expect(page.getByTestId('inbox-tab-snoozed')).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByTestId('inbox-empty-state')).toBeVisible()
+    await settings.click()
+    await expect(page.getByTestId('inbox-label-manager-panel')).toBeVisible()
+    await mode.click()
+    await expect(page.getByTestId('inbox-bulk-bar')).toBeVisible()
+  })
+}
+
+test('INSIGHT-I7-DE: 360pxのドイツ語と多桁バッジを200%文字で読める', async ({ page, baseURL }) => {
+  await page.setViewportSize({ width: 360, height: 1000 })
+  await page.context().addCookies([{ name: 'i18n_locale', value: 'de', url: baseURL ?? 'http://localhost:8081' }])
+  await page.addInitScript(() => localStorage.setItem('tokenExpiresAt', String(Date.now() + 3600000)))
+  await injectAuth(page)
+  await page.route('**/api/v1/**', route => route.fulfill({ json: { data: [], meta: {} } }))
+  await setupBaseRoutes(page)
+    await page.route('**/api/v1/inbox?**', route => route.fulfill({ json: { data: { items: [], page: 0, size: 20, totalEstimated: 0, hasMore: false } } }))
+  await page.route('**/api/v1/inbox/labels', route => route.fulfill({ json: { data: [] } }))
+  await page.route('**/api/v1/inbox/summary', route => route.fulfill({ json: makeSummary({ inbox: 12345, snoozed: 999, archived: 0 }) }))
+  await page.goto('/inbox', { waitUntil: 'domcontentloaded' })
+    await waitForHydratedShell(page)
+  const tabs = page.getByRole('tablist').filter({ has: page.getByTestId('inbox-tab-inbox') })
+  await expect(tabs).toBeVisible()
+  await page.locator("[role=\"tablist\"] [role=\"tab\"], [role=\"tablist\"] .p-badge").evaluateAll(elements => {
+    const sizes = elements.map(element => Number.parseFloat(getComputedStyle(element).fontSize))
+    elements.forEach((element, index) => (element as HTMLElement).style.setProperty('font-size', String(sizes[index]! * 2) + 'px', 'important'))
+  })
+  for (const tab of await tabs.getByRole('tab').all()) {
+    await expectSingleLineLabel(tab.locator(':scope > span').first())
+    const box = (await tab.boundingBox())!
+    expect(box.x).toBeGreaterThanOrEqual(0)
+    expect(box.x + box.width).toBeLessThanOrEqual(360)
+    expect(await tab.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+  }
+  const badge = page.getByTestId('inbox-tab-inbox').getByText('12345', { exact: true })
+  await expect(badge).toBeVisible()
+  expect(await badge.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0)
 })

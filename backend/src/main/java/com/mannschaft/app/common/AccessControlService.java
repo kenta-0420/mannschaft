@@ -40,6 +40,44 @@ public class AccessControlService {
      */
     public static final String PLATFORM_SCOPE_TYPE = "PLATFORM";
 
+    /** TEAM所属の集合照会キー。 */
+    public record TeamUserKey(Long teamId, Long userId) { }
+
+    /** SYSTEM_ADMINの全体昇格を使わない在籍資格。 */
+    public record TeamMembershipState(boolean active, boolean regularMemberOrAbove) { }
+
+    /**
+     * 候補ページのTEAM在籍資格を2照会で返す。本人activeはUserServiceの公開状態とANDする。
+     * 既存helperの意味を変えず、この投影ではarchive済み在籍も除外する。
+     */
+    public Map<TeamUserKey, TeamMembershipState> getTeamMembershipStates(java.util.Collection<TeamUserKey> keys) {
+        if (keys == null || keys.isEmpty()) {
+            return Map.of();
+        }
+        List<TeamUserKey> requested = keys.stream().filter(java.util.Objects::nonNull)
+                .filter(key -> key.teamId() != null && key.userId() != null).distinct().toList();
+        if (requested.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> teamIds = requested.stream().map(TeamUserKey::teamId).distinct().toList();
+        List<Long> userIds = requested.stream().map(TeamUserKey::userId).distinct().toList();
+        Map<TeamUserKey, TeamMembershipState> states = new LinkedHashMap<>();
+        requested.forEach(key -> states.put(key, new TeamMembershipState(false, false)));
+        List<MembershipRepository.TeamMembershipStateRow> rows = membershipRepository
+                .findTeamMembershipStateRows(teamIds, userIds);
+        Set<TeamUserKey> admins = userRoleRepository.findExplicitTeamAdminKeys(teamIds, userIds).stream()
+                .map(row -> new TeamUserKey(row.getTeamId(), row.getUserId()))
+                .collect(java.util.stream.Collectors.toSet());
+        for (MembershipRepository.TeamMembershipStateRow row : rows) {
+            TeamUserKey key = new TeamUserKey(row.getTeamId(), row.getUserId());
+            if (states.containsKey(key) && Boolean.TRUE.equals(row.getActive())) {
+                states.put(key, new TeamMembershipState(true,
+                        row.getRoleKind() == RoleKind.MEMBER || admins.contains(key)));
+            }
+        }
+        return Map.copyOf(states);
+    }
+
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
     private final RoleService roleService;

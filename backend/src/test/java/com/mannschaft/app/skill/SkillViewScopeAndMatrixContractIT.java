@@ -109,7 +109,7 @@ class SkillViewScopeAndMatrixContractIT extends AbstractMySqlIntegrationTest {
     private SkillCategoryRepository skillCategoryRepository;
 
     @MockitoBean
-    private R2StorageService storageService;
+    private R2StorageService r2StorageService;
 
     @PersistenceContext
     private EntityManager em;
@@ -170,7 +170,7 @@ class SkillViewScopeAndMatrixContractIT extends AbstractMySqlIntegrationTest {
         em.flush();
         em.clear();
 
-        given(storageService.generateUploadUrl(anyString(), anyString(), any(Duration.class)))
+        given(r2StorageService.generateUploadUrl(anyString(), anyString(), any(Duration.class)))
                 .willReturn(new PresignedUploadResult("https://storage.example.invalid/upload", "k", 900L));
     }
 

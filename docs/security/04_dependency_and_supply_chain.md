@@ -2,7 +2,7 @@
 
 > **ステータス**: 🟢 設計確定
 > **実装フェーズ**: Security Hardening Phase 1
-> **最終更新**: 2026-10-02
+> **最終更新**: 2026-10-17
 > **関連ドキュメント**: [README](README.md)
 
 ---
@@ -112,9 +112,11 @@ updates:
 
 §4 の「修正不可能な transitive 依存」の管理規則に基づき、`frontend/scripts/audit-with-exemption.mjs` で **当該 URL・パッケージ・high・影響範囲・間接依存・lock の 1.4.0** が一致するものだけを一時除外する。実監査の high 7 パッケージ（`node-forge` / `listhen` / `nitropack` / `@nuxt/cli` / `@nuxt/nitro-server` / `@nuxt/vite-builder` / `nuxt`）に限定する。Nuxt の循環を含む `via` の参照先も追い、末端 advisory を全て検証する。別 high/critical、未知の high 消費者、参照欠落、末端のない high 循環、不正 JSON・集計・到達 advisory より低い依存の深刻度、取得失敗は CI を落とす。Node 標準テストを CI の必須ステップとして実行する。
 
+2026-10-17（CMP-261017-1604）にnode-forge側も上記7パッケージの既知`nodes`と当該GHSAへ到達する`via`の依存辺へ限定した。既知名でも別node・経路付替え・未知の循環辺を拒否する。末端は`node_modules/node-forge`のみでlockの1.4.0を確認する。2 GHSA混在時は各GHSAへ実際に到達する辺だけをそれぞれの表で判定し、braces側の制限は維持する。既存2例外の対象・承認済み期限・深刻度・fail-closed条件・依存関係は変更しない。Node標準試験18件で未知経路拒否と両件単独/混在の期限直前・一致・直後、非有限時刻を確認する。これは経路制限の強化であり、脆弱性の解消ではない。
+
 到達経路の根拠: `listhen` 1.10.0 の `dist/shared/listhen.DmCHmEQ1.cjs` は forge を読み、`resolveCertificate` で RSA 鍵生成と証明書署名を行い、HTTPS オプション時に呼ぶ。当該署名検証の `.verify` 呼び出しはこの経路に無く、`frontend/nuxt.config.ts` の `devServer` に HTTPS 設定は無い。アプリ・サーバーに forge/RSA の直接利用も確認されなかった。Nuxt は `dependencies` にあるため「devOnly」とは扱わず、**本番 `.output` からの除外は未実測**。脆弱性そのものが直ったという判断ではない。
 
-有効期限は **2026-10-16 UTC 当日まで（2026-10-17T00:00:00Z 以降は当該例外を拒否）**。解除管理は `docs/task-list.md` の CMP-261002-1135。公式修正版を導入するか listhen から依存が撤去されたら、例外を削除して通常の `npm audit --audit-level=high` に戻す。期限以前でも、RSA 署名検証の利用追加・新しい消費者・依存の直接化があれば例外を削除し、到達可能性を再評価する。期限延長を自動では行わない。
+有効期限は **2026-10-23 UTC 当日まで（2026-10-24T00:00:00Z 以降は当該例外を拒否）**。解除管理は `docs/task-list.md` の CMP-261002-1135。公式修正版を導入するか listhen から依存が撤去されたら、例外を削除して通常の `npm audit --audit-level=high` に戻す。期限以前でも、RSA 署名検証の利用追加・新しい消費者・依存の直接化があれば例外を削除し、到達可能性を再評価する。期限延長を自動では行わない。
 
 ### 4.4. braces の期限付き個別例外（2026-10-03）
 
@@ -126,17 +128,19 @@ updates:
 
 braces 側は上記16パッケージについて実監査の既知 `nodes` と、braces advisory に到達する `via` の依存辺だけを許容する。末端は `node_modules/braces` に限定し lock の3.0.3を確認する。既知名でも未知ノード・経路付替えは拒否する。Nuxt の既知循環を許容し、forge だけに到達する混在辺は braces の表で判定しない。消費者全バージョンや lock 全体の固定は行わない。
 
-有効期限は **2026-10-16 UTC 当日まで（2026-10-17T00:00:00Z 以降は当該例外を拒否）**。解除管理は既存 CMP-261003-1229 に集約する。解除条件: `braces` の修正版が公開されたら lock を引き上げ、除外を削除して通常の `npm audit --audit-level=high` に戻す。期限延長を自動では行わない。
+有効期限は **2026-10-23 UTC 当日まで（2026-10-24T00:00:00Z 以降は当該例外を拒否）**。解除管理は既存 CMP-261003-1229 に集約する。解除条件: `braces` の修正版が公開されたら lock を引き上げ、除外を削除して通常の `npm audit --audit-level=high` に戻す。期限延長を自動では行わない。
 
-### 4.5. 修正版 simple-git と DevTools の互換対応（2026-10-06）
+2026-10-17、公式修正版が両件とも未公開であることを再確認し、ユーザーの「２延長可」により既存2例外の期限だけを7日延長した。URL・版・high・間接依存・許可 packages/nodes/edges と fail-closed の拒否条件は変更しない。脆弱性の解消や本番非到達の証明とは扱わない。
 
-[GHSA-x6jw-m9v5-85vh](https://github.com/advisories/GHSA-x6jw-m9v5-85vh) の修正版 `simple-git` 4.0.1 と、[GHSA-v5rq-49vh-5v5c](https://github.com/advisories/GHSA-v5rq-49vh-5v5c) の修正版 `argv-parser` 2.0.1 を固定する。simple-git 4.0.1 自体が要求する argv-parser 2.0.0 も影響範囲内なので、後者にも override が必要である。
+### 4.5. 修正版依存と simple-git v4 の限定consumer互換補正（2026-10-06）
 
-simple-git 4 は default export を廃止したが、既存の `@nuxt/devtools` 3.4.1 は default import を使う。安定版 3.4.2 も同じ import を持ち、4 系 beta への更新は Nuxt/Vite の変更を伴う。このため DevTools を 3.4.1 に固定し、`frontend/scripts/prepare-devtools-simple-git.mjs` をインストール時に実行して、公式配布物の import 1 行だけを `simpleGit` の named export へ変更する。追加 npm パッケージは使わない。Docker の依存インストール段階にも同じスクリプトを渡す。
+新しい監査findingは `simple-git`（GHSA-x6jw-m9v5-85vh / GHSA-g4wm-2vf7-vfgr / GHSA-858h-whjf-mvg5）、`@simple-git/argv-parser`（GHSA-v5rq-49vh-5v5c）、`@vue/server-renderer`（GHSA-g2v6-rqmx-r4w6）、`seroval`（GHSA-jp82-f5mq-hwhp）、`source-map-js`（GHSA-68fv-2mgg-jv7q）。公式修正版をそれぞれ simple-git 4.0.1、argv-parser 2.0.1、Vue/server-renderer 3.5.42、seroval 1.6.3、source-map-js 1.2.2 へ引き上げる。simple-git 4.0.1 自身の argv-parser 依存は exact 2.0.0 のため、その子依存と他の消費者も exact 2.0.1 へ指定する。監査例外の追加・閾値緩和・Nuxtの降格は行わない。
 
-対象版に加え、公式配布物の SHA-256 `13f0dbd2e845848ad98fe644eab152c43a0a8cb88d6ff04a4bd77d12a68ac784` と変更後の `e42d96ee5d9a85f68785341fcac20b161da70336c5a10a11da5ea703d6c7406e` を検証する。版・内容・ファイル不一致では Nuxt prepare の前に停止し、変更済みの同一内容なら再実行しても書き換えない。修正版 simple-git を正しく利用できる安定版 DevTools の導入時に、この対応と DevTools の固定を取り除く。
+Nuxt DevTools は `@nuxt/devtools` override で3.4.1に固定する。安定版3.4.2も同じdefault importを持ち、4系betaへの更新はNuxt/Viteの変更を伴うため採用しない。Nuxt DevTools 3.4.1 は配布物 `dist/chunks/module-main.mjs` に default import を一つ持つ。一方、simple-git v4 は default export を削除したため、`scripts/patch-nuxt-devtools-simple-git.mjs` を正規 postinstall の `nuxt prepare` より前に実行し、その唯一の import を `import { simpleGit as Git } from 'simple-git'` へ合わせる。Gitの branch/revparse/status APIや本体の認可・Git unsafe guard は変更しない。対象版3.4.1・元配布SHA256 `13f0dbd2e845848ad98fe644eab152c43a0a8cb88d6ff04a4bd77d12a68ac784`・補正後SHA256 `e42d96ee5d9a85f68785341fcac20b161da70336c5a10a11da5ea703d6c7406e` が一致するものだけを受理し、既に同一補正済みの場合のみ冪等とする。未知版・改変bytes・symlink・任意pathは失敗させる。変更対象は install された node_modules 内の一ファイルだけで、公式配布物をリポジトリへ複製しない。追加npmパッケージは使わず、Dockerの依存インストール段階にも同じ厳格スクリプトを渡す。postcss-selector-parserは7.1.6へ固定する。
 
-同時に Vue 関連パッケージを 3.5.42、seroval を 1.6.3、source-map-js を 1.2.2、postcss-selector-parser を 7.1.6 へ更新する。既存の監査閾値、§4.3・§4.4 の例外対象と期限は変更しない。修正版の導入と互換性の検証を行い、当該 advisory の新たな除外は設けない。
+解除条件は、安定版の公式DevToolsがnamed importへ対応し、適切な修正済みsimple-git/argv-parserへ依存し、正規npm ci→nuxt prepareと実監査ゲート・FE CIが通ること。その時に互換script/test・postinstall挿入を除去し、不要となった限定overrideも見直す。版を更新してSHA検査を単に緩める運用は禁止。既node-forge/bracesの個別例外は変更しない。
+
+本節の版指定だけで検証済みとは扱わない。正規lock生成、実npm ci/nuxt prepare、配布bytesを用いた互換補正テスト、実auditと既監査ゲート、FE unit/lint/type/type-drift の実行結果が別途必要。
 
 ### 4.6. simple-git 等の修正版と DevTools 無効化（2026-10-07）
 
@@ -167,7 +171,8 @@ simple-git 4 は default export を廃止したが、既存の `@nuxt/devtools` 
 
 | 日付 | 変更 |
 |---|---|
-| 2026-10-06 | §4.5 に simple-git / argv-parser の修正版導入と DevTools の版・内容を検証する互換対応、解除条件を記録 |
+| 2026-10-17 | ユーザー再承認により§4.3/§4.4の既存2例外を10月23日UTC当日まで7日延長。対象・経路・拒否条件は不変 |
+| 2026-10-06 | §4.5 に修正版依存の指定と DevTools 3.4.1 の版・配布SHAを検証する厳格互換対応、Docker連携・解除条件を記録 |
 | 2026-10-02 | §4.3 に未修正版 node-forge の個別例外と利用経路・限界・UTC期限・解除条件を記録。取得失敗・不正レポート・別 high/critical を停止する門番と必須試験を追加 |
 | 2026-06-13 | 残存 moderate 3 件の解消バージョンを `nuxt` 3.21.8 → **3.21.6** に修正。3.21.8 は CI（`ssr: false`）の dev サーバー起動が `No entry found in rollupOptions.input` でクラッシュするリグレッション（[nuxt#35033](https://github.com/nuxt/nuxt/issues/35033)）を含むため。両 GHSA の first patched version である 3.21.6 で `npm audit` 全レベル 0 件かつ dev/CI 起動可能を両立 |
 | 2026-06-13 | high/critical 11 件の全件解消を確認し、残存 moderate 3 件も `nuxt` patch 更新で解消（`npm audit` 全レベル 0 件）。§2/§4/§4.1/§4.2/§6 のステータスを「解消済み・ブロッキング化済み」へ更新 |

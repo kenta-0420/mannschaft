@@ -345,3 +345,23 @@ commits = [
 paths = [
   '''^backend/\.claude/settings\.local\.json$''',
 ]
+
+[[allowlists]]
+description = "CMP-261016-0950: LoyaltyIdempotencyKeyTestのテスト用Idempotency-Key固定UUID。実秘密ではないため当該pathと値だけに限定"
+condition = "AND"
+paths = [
+  '''^backend/src/test/java/com/mannschaft/app/loyalty/LoyaltyIdempotencyKeyTest\.java$''',
+]
+regexes = [
+  '''^c6972335-c091-42fd-aa47-341d6b408d57$''',
+]
+
+[[allowlists]]
+description = "CMP-261016-0950: LoyaltyControllerRoutingTestのテスト用Idempotency-Key固定UUID。実秘密ではないため当該pathと値だけに限定"
+condition = "AND"
+paths = [
+  '''^backend/src/test/java/com/mannschaft/app/loyalty/LoyaltyControllerRoutingTest\.java$''',
+]
+regexes = [
+  '''^5e24b0b0-73e9-4efa-92fa-52a4b28da03d$''',
+]

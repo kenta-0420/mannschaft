@@ -67,6 +67,8 @@ public enum AuditEventType {
     USER_FROZEN(AuditEventCategory.ADMIN_ACTION),
     USER_UNFROZEN(AuditEventCategory.ADMIN_ACTION),
     ACCOUNT_UNLOCKED(AuditEventCategory.ADMIN_ACTION),
+    /** SYSTEM_ADMINによる牧場規則公開と運営制御の適用。最小metadataのみ。 */
+    RANCH_ADMIN_ACTION_APPLIED(AuditEventCategory.ADMIN_ACTION),
 
     // ─── LIFECYCLE ───────────────────────────────────────────
     USER_ARCHIVED(AuditEventCategory.LIFECYCLE),
@@ -83,6 +85,7 @@ public enum AuditEventType {
     TEAM_MEMBER_REMOVED(AuditEventCategory.TEAM),
     TEAM_CREATED(AuditEventCategory.TEAM),
     TEAM_DELETED(AuditEventCategory.TEAM),
+    TEAM_RESTORED(AuditEventCategory.TEAM),
     TEAM_MEMBER_BLOCKED(AuditEventCategory.TEAM),
     TEAM_MEMBER_UNBLOCKED(AuditEventCategory.TEAM),
     TEAM_INVITE_TOKEN_CREATED(AuditEventCategory.TEAM),

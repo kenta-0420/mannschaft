@@ -6,6 +6,8 @@ import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.publicview.dto.UpdatePublicSettingsRequest;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
+import com.mannschaft.app.organization.service.OrganizationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -41,6 +43,12 @@ class AdminPublicSettingsServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    @Mock
+    private TeamService teamService;
+
+    @Mock
+    private OrganizationService organizationService;
 
     @InjectMocks
     private AdminPublicSettingsService service;

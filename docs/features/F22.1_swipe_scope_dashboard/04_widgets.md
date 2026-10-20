@@ -64,6 +64,8 @@ F02.2 の既存 widget_key（`TEAM_NOTICES` / `TEAM_LATEST_POSTS` 等）は**チ
 | ⑦ | `SWIPE_ORG_TODO` | TODO | MEMBER | `orgTodo`（実装済み）| 既存流用 |
 | ⑧ | `SWIPE_ORG_ACTION_REQUIRED` | 要対応 | MEMBER | `orgActionRequired` + `GET /dashboard/organization/{id}/action-required`（**新規**）| 新規（§5 集約） |
 
+チーム・組織の「今後の予定」は予定データを表示し、「すべて見る」はそれぞれ `/teams/{slug}/schedule`・`/organizations/{slug}/schedule` の予定一覧へ移動する。
+
 > **組織スコープの未実装に関する根治方針**: F02.2 のチーム dashboard は ①②③ を返すが、組織 dashboard はタイムライン/掲示板/チャット/ブログ/カレンダーを返していない。本機能では症状を隠さず、組織スコープでもこれらを返す Service / レスポンスフィールドを**新規実装する**（02 §3.3）。組織スコープのタイムライン/掲示板等の「実体がそもそも無い」場合は、空配列（`items:[]`）+ `total:0` を正直に返し、FE は「まだ投稿がありません」の空状態を表示する（フラグで握りつぶさない）。
 
 ---

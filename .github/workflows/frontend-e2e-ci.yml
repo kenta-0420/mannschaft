@@ -5,7 +5,7 @@
 #
 # 設計方針:
 #   - 全 1809 spec を CI で走らせると約 7.5 時間と非現実的のため、
-#     smoke subset のみを実行（F15.4-org-team-search・f221-swipe-dashboard、拡大予定）。
+#     smoke subset のみを実行（F15.4-org-team-search・f221-swipe-dashboard・F15.4-slug-navigation・mobile/insight-ui-regressions、拡大予定）。
 #   - これらの spec は `page.route()` で全 API をモック化しているため、バックエンド非依存。
 #   - dev サーバは playwright.config.ts の `webServer` 設定で自動起動。
 #   - Playwright Chromium ブラウザは package-lock.json ハッシュをキーにキャッシュ。
@@ -85,10 +85,44 @@ jobs:
             echo '{"cookies":[],"origins":[]}' > tests/e2e/.auth/user.json
           fi
 
-      # F15.4 と F22.1 の smoke spec をまとめて 1 回の dev サーバ起動で実行する。
-      # 両 spec とも page.route() で全 API をモックするためバックエンド非依存。
-      - name: Run smoke E2E (F15.4 + F22.1)
-        run: npx playwright test F15.4-org-team-search f221-swipe-dashboard F15.4-slug-navigation --project=chromium --workers=1 --timeout=120000
+      # 共通UIを含む smoke spec を 1 回の dev サーバ起動で実行する。
+      # 各 spec は page.route() で API 境界をモックするためバックエンド非依存。
+      - name: Run smoke E2E (F15.4 + F22.1 + common UI)
+        # SmokeのSSR worker用にheap余裕を与え、本番・通常dev設定へ広げない。
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: |
+          free -m
+          node <<'NODE'
+          const { getHeapStatistics } = require('node:v8')
+          const { Worker } = require('node:worker_threads')
+          const heapMiB = () => Math.round(getHeapStatistics().heap_size_limit / 1024 / 1024)
+          console.log(JSON.stringify({ scope: 'smoke-main', nodeOptions: process.env.NODE_OPTIONS, heapLimitMiB: heapMiB() }))
+          const worker = new Worker(`
+            const { parentPort, resourceLimits } = require('node:worker_threads')
+            const { getHeapStatistics } = require('node:v8')
+            parentPort.postMessage({
+              scope: 'smoke-worker', nodeOptions: process.env.NODE_OPTIONS,
+              heapLimitMiB: Math.round(getHeapStatistics().heap_size_limit / 1024 / 1024), resourceLimits,
+            })
+          `, { eval: true })
+          worker.once('message', data => console.log(JSON.stringify(data)))
+          ;(async () => {
+            await new Promise((resolve, reject) => {
+              worker.once('error', reject)
+              worker.once('exit', code => code === 0 ? resolve() : reject(new Error(`heap診断worker exit ${code}`)))
+            })
+          })().catch(error => { console.error(error); process.exitCode = 1 })
+          NODE
+          npx playwright test F15.4-org-team-search f221-swipe-dashboard F15.4-slug-navigation mobile/insight-ui-regressions mobile/common-controls mobile/calendar-layout --project=chromium --workers=1 --timeout=120000 --trace=retain-on-failure --output=test-results/smoke
+
+      - name: smoke E2Eの失敗時証跡を保存
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-e2e-first-failure-evidence
+          path: frontend/test-results/smoke/
+          retention-days: 14
 
       - name: I18N-004 の SSR・Cookie 保持を確認
         env:
@@ -111,12 +145,4 @@ jobs:
         with:
           name: playwright-report-smoke
           path: frontend/playwright-report/
-          retention-days: 14
-
-      - name: Upload Playwright trace (on failure)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-trace-smoke
-          path: frontend/test-results/
           retention-days: 14

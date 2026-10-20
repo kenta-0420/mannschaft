@@ -807,7 +807,13 @@ public class ReservationService {
         // F03.4.3 §5.6 #10: グループは代表行 1 件に折りたたむ。
         List<ReservationEntity> reservations =
                 reservationRepository.findByUserIdAndIsGroupPrimaryTrueOrderByBookedAtDesc(userId);
-        return enrichList(reservations);
+        if (reservations.isEmpty()) {
+            return List.of();
+        }
+        // 氏名の他ドメイン参照は既存の一覧入口に留め、履歴サマリ解決には解決結果だけを渡す。
+        Set<Long> userIds = reservations.stream().map(ReservationEntity::getUserId).collect(Collectors.toSet());
+        Map<Long, String> userNames = nameResolverService.resolveUserFullNames(userIds);
+        return enrichHistoryList(reservations, userId, userNames);
     }
 
     /**
@@ -964,6 +970,47 @@ public class ReservationService {
                                 userNames.getOrDefault(e.getUserId(), "不明なユーザー")),
                         groupSummaryFor(groupSummaries, e)))
                 .toList();
+    }
+
+    /**
+     * 本人履歴では保管中の削除済み枠・対象名も解決する（既存G-14の履歴解決と同じ方針）。
+     * 予約時点のsnapshotではなく、参照行に残る最終値を返す。
+     */
+    private List<ReservationResponse> enrichHistoryList(List<ReservationEntity> entities, Long userId,
+            Map<Long, String> userNames) {
+        if (entities.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> slotIds = entities.stream().map(ReservationEntity::getReservationSlotId)
+                .collect(Collectors.toSet());
+        Set<Long> lineIds = entities.stream().map(ReservationEntity::getLineId)
+                .collect(Collectors.toSet());
+        Map<Long, ReservationSlotEntity> slots = slotRepository.findAllByIdIncludingDeletedForHistory(slotIds)
+                .stream().collect(Collectors.toMap(ReservationSlotEntity::getId, slot -> slot));
+        Map<Long, ReservationLineEntity> lines = lineRepository.findAllByIdIncludingDeletedForHistory(lineIds)
+                .stream().collect(Collectors.toMap(ReservationLineEntity::getId, line -> line));
+        Map<Long, ReservationResponse.GroupSummaryDto> groupSummaries =
+                groupSummaryResolver.resolveForHistory(entities, userId);
+        return entities.stream()
+                .map(e -> withGroupSummary(
+                        withUserName(
+                                reservationMapper.toReservationResponse(
+                                        e, slotInReservationTeam(e, slots.get(e.getReservationSlotId())),
+                                        lineInReservationTeam(e, lines.get(e.getLineId()))),
+                                e.getUserId(),
+                                userNames.getOrDefault(e.getUserId(), "不明なユーザー")),
+                        groupSummaryFor(groupSummaries, e)))
+                .toList();
+    }
+
+    /** 不整合な参照IDから別チームの元情報を返さない。 */
+    private ReservationSlotEntity slotInReservationTeam(ReservationEntity reservation, ReservationSlotEntity slot) {
+        return slot != null && reservation.getTeamId().equals(slot.getTeamId()) ? slot : null;
+    }
+
+    /** 共通枠の選択ラインも予約のチームに帰属する場合だけ表示する。 */
+    private ReservationLineEntity lineInReservationTeam(ReservationEntity reservation, ReservationLineEntity line) {
+        return line != null && reservation.getTeamId().equals(line.getTeamId()) ? line : null;
     }
 
     /**

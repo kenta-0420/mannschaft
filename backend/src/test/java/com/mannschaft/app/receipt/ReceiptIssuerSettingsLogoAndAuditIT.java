@@ -149,7 +149,7 @@ class ReceiptIssuerSettingsLogoAndAuditIT extends AbstractMySqlIntegrationTest {
      * 発行者設定サービスへの {@code StorageService} 注入も同じモックで満たされる。</p>
      */
     @MockitoBean
-    private R2StorageService storageService;
+    private R2StorageService r2StorageService;
 
     private Long teamAId;
 
@@ -234,7 +234,7 @@ class ReceiptIssuerSettingsLogoAndAuditIT extends AbstractMySqlIntegrationTest {
                 .andExpect(status().isOk());
 
         ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
-        verify(storageService).upload(keyCaptor.capture(), any(byte[].class), anyString());
+        verify(r2StorageService).upload(keyCaptor.capture(), any(byte[].class), anyString());
 
         String key = keyCaptor.getValue();
         assertThat(key).matches(
@@ -266,7 +266,7 @@ class ReceiptIssuerSettingsLogoAndAuditIT extends AbstractMySqlIntegrationTest {
                         .param("scopeId", String.valueOf(teamAId)))
                 .andExpect(status().isOk());
 
-        verify(storageService).delete(firstKey);
+        verify(r2StorageService).delete(firstKey);
         assertThat(reload().getLogoStorageKey()).isNotEqualTo(firstKey);
     }
 
@@ -283,7 +283,7 @@ class ReceiptIssuerSettingsLogoAndAuditIT extends AbstractMySqlIntegrationTest {
                 .andExpect(status().isOk());
 
         ArgumentCaptor<byte[]> bytesCaptor = ArgumentCaptor.forClass(byte[].class);
-        verify(storageService).upload(anyString(), bytesCaptor.capture(), anyString());
+        verify(r2StorageService).upload(anyString(), bytesCaptor.capture(), anyString());
 
         BufferedImage stored = ImageIO.read(new ByteArrayInputStream(bytesCaptor.getValue()));
         assertThat(stored).isNotNull();
@@ -304,7 +304,7 @@ class ReceiptIssuerSettingsLogoAndAuditIT extends AbstractMySqlIntegrationTest {
                 .andExpect(status().isOk());
 
         ArgumentCaptor<byte[]> bytesCaptor = ArgumentCaptor.forClass(byte[].class);
-        verify(storageService).upload(anyString(), bytesCaptor.capture(), anyString());
+        verify(r2StorageService).upload(anyString(), bytesCaptor.capture(), anyString());
 
         BufferedImage stored = ImageIO.read(new ByteArrayInputStream(bytesCaptor.getValue()));
         assertThat(stored).isNotNull();
@@ -323,7 +323,7 @@ class ReceiptIssuerSettingsLogoAndAuditIT extends AbstractMySqlIntegrationTest {
                 .andExpect(status().isOk());
 
         ArgumentCaptor<byte[]> bytesCaptor = ArgumentCaptor.forClass(byte[].class);
-        verify(storageService).upload(anyString(), bytesCaptor.capture(), anyString());
+        verify(r2StorageService).upload(anyString(), bytesCaptor.capture(), anyString());
 
         BufferedImage stored = ImageIO.read(new ByteArrayInputStream(bytesCaptor.getValue()));
         assertThat(stored).isNotNull();
@@ -347,7 +347,7 @@ class ReceiptIssuerSettingsLogoAndAuditIT extends AbstractMySqlIntegrationTest {
                 .andExpect(status().isOk());
 
         ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
-        verify(storageService).upload(keyCaptor.capture(), any(byte[].class), anyString());
+        verify(r2StorageService).upload(keyCaptor.capture(), any(byte[].class), anyString());
 
         assertThat(keyCaptor.getValue())
                 .startsWith("receipt-logos/TEAM/" + teamAId + "/");

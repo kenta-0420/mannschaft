@@ -12,7 +12,7 @@ withDefaults(
     showBackupCodesDialog: boolean
     renameDialog: boolean
     newDeviceName: string
-    // パスキー登録 UI（オプション: security.vue から利用。account.vue 等では省略可能）
+    // パスキー登録 UI（利用する親画面で状態とイベントを接続する）
     isRegisteringPasskey?: boolean
     registerDialog?: boolean
     newPasskeyName?: string
@@ -110,13 +110,14 @@ function deviceLabel(userAgent: string | null): string {
   </SectionCard>
 
   <SectionCard>
-    <div class="mb-4 flex items-center justify-between">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
       <h2 class="text-lg font-semibold">{{ $t('settings.security.sessions_section_title') }}</h2>
       <Button
         v-if="sessions.length > 0"
         translate="no"
         :label="$t('settings.security.logout_all_button')"
         icon="pi pi-sign-out"
+        class="min-h-11 min-w-11"
         severity="danger"
         text
         size="small"
@@ -130,24 +131,25 @@ function deviceLabel(userAgent: string | null): string {
       <div
         v-for="session in sessions"
         :key="session.id"
-        class="flex items-center justify-between rounded-lg border border-surface-100 p-3 dark:border-surface-600"
+        class="flex items-center justify-between gap-3 rounded-lg border border-surface-100 p-3 dark:border-surface-600"
       >
-        <div>
-          <p class="text-sm font-medium">
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-medium [overflow-wrap:anywhere]">
             {{ deviceLabel(session.userAgent) }}
-            <Tag v-if="session.isCurrent" :value="$t('settings.security.current_session_tag')" severity="success" class="ml-2" />
+            <Tag v-if="session.current" :value="$t('settings.security.current_session_tag')" severity="success" class="ml-2" />
           </p>
-          <p class="text-xs text-surface-500">
+          <p class="text-xs text-surface-500 [overflow-wrap:anywhere]">
             IP: {{ session.ipAddress || '-' }} / {{ formatDate(session.createdAt) }}
           </p>
         </div>
         <Button
-          v-if="!session.isCurrent"
+          v-if="!session.current"
           icon="pi pi-times"
           severity="danger"
           text
           rounded
           size="small"
+          class="min-h-11 min-w-11 shrink-0"
           @click="$emit('revokeSession', session.id)"
         />
       </div>
@@ -163,6 +165,7 @@ function deviceLabel(userAgent: string | null): string {
         translate="no"
         :label="$t('settings.security.webauthn.register_button')"
         icon="pi pi-key"
+        class="min-h-11"
         :loading="isRegisteringPasskey"
         @click="$emit('update:registerDialog', true)"
       />
@@ -252,6 +255,7 @@ function deviceLabel(userAgent: string | null): string {
     :visible="registerDialog"
     :header="$t('settings.security.webauthn.register_dialog_title')"
     :modal="true"
+    :pt="{ pcCloseButton: { root: { class: 'min-h-11 min-w-11' } } }"
     class="w-full max-w-sm"
     @update:visible="$emit('update:registerDialog', $event)"
   >
@@ -261,7 +265,7 @@ function deviceLabel(userAgent: string | null): string {
         <InputText
           :model-value="newPasskeyName"
           :placeholder="$t('settings.security.webauthn.device_name_placeholder')"
-          class="w-full"
+          class="min-h-11 w-full"
           @update:model-value="$emit('update:newPasskeyName', $event as string)"
         />
       </div>
@@ -270,11 +274,13 @@ function deviceLabel(userAgent: string | null): string {
           translate="no"
           :label="$t('settings.security.webauthn.register_cancel')"
           severity="secondary"
+          class="min-h-11"
           @click="$emit('update:registerDialog', false)"
         />
         <Button
           translate="no"
           :label="$t('settings.security.webauthn.register_confirm')"
+          class="min-h-11"
           :loading="isRegisteringPasskey"
           @click="$emit('passkeyRegister')"
         />
