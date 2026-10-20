@@ -52,5 +52,12 @@
       "scope": "tooling"
     }
   },
-  "regressions": []
+  "regressions": [
+    {
+      "description": "旧検証器に新テストのみ適用すると20件中8件が失敗: AC-1(#3841の4ファイル分類) / AC-2(同居spec・scripts分類) / AC-4(files空・欠落・check0件の扱い) / AC-5(completed_atとmergedAtの境界) / AC-6(混在・正規化差・リネーム・削除の扱い) / AC-7(マージ時点の世代でcheck判定) / AC-8(files 3000件の分類性能) / AC-9(workflowの実装PR収集)",
+      "test": "scripts/completion-evidence.test.mjs",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/commit/9ac7b27176b737a490ecc77bf92be92139610da4",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/commit/86f0824aefe0df106645d2999a8ba8cfe72038c0"
+    }
+  ]
 }

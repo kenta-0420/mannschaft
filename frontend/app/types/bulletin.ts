@@ -20,7 +20,7 @@ export interface BulletinThreadResponse {
   categoryColor: string | null
   scopeType: BulletinScopeType
   scopeId: string
-  author: { id: number; displayName: string; avatarUrl: string | null }
+  author: { id: number | null; displayName: string | null; avatarUrl: string | null }
   title: string
   body: string
   priority: BulletinPriority

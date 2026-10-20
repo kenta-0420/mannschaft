@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260910-0044",
+  "scope": "app",
+  "implementation": {
+    "pr": 3816,
+    "sha": "01c1dcf0b20845e8b76a1329734a0e38ade1e7ea"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "監査ログのアーカイブ基準（閾値・月スライス境界・最古ログの月・閾値月の DROP 判定）が、同一クラス内で UTC 壁時計に統一される",
+      "tests": [
+        {
+          "name": "基準日時は UTC 壁時計で作り、JPA 束縛値(JST壁時計)へ変換して渡す",
+          "evidence": "backend/src/test/java/com/mannschaft/app/auth/AuditLogArchiveBatchServiceTest.java"
+        },
+        {
+          "name": "月境界: UTC 1/31 16:00(JST 2/1 01:00)の最古ログは UTC の1月として処理し p_2020_01 を DROP する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/auth/AuditLogArchiveBatchServiceTest.java"
+        },
+        {
+          "name": "JST では翌月でも UTC ではまだ当月: 閾値月(UTC 2024-09)は DROP しない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/auth/AuditLogArchiveBatchServiceTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "番人の凍結台帳から本行の返済対象が外れる",
+      "tests": [
+        {
+          "name": "凍結件数（CMP-023返済台帳）が記録済みスナップショットと一致している（増減とも検知）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/DateTimeAndZoneGuardTest.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38325322737
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3816"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260910-0044.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260910-0044.md"
+    }
+  },
+  "regressions": []
+}
