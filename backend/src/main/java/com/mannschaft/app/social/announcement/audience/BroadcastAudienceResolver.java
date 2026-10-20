@@ -43,6 +43,11 @@ import java.util.UUID;
  * スコープは 403 {@code COMMON_002}）。宛先の検証（他組織のグループ ID は 400 {@code BROADCAST_006} など）を
  * 認可より先に行うと、非メンバーに他組織のグループやチームの存在が漏れるため、順序を固定する（AC-G122）。</p>
  *
+ * <p>「チームを選ぶ」のチームは URL 識別子（slug）で受け取る（{@code GET /organizations/{slug}/teams} の {@code id} と
+ * 同じ値。URL 識別子は slug 一本化）。slug を内部 ID へ写すのは {@link TeamService#findActiveTeamIdsBySlugs} で、
+ * 存在しない slug・他組織のチームの slug・未加盟のチームの slug は区別せず同じ 400 {@code BROADCAST_002} にする
+ * （他組織のチームの存在を漏らさない。実機E2E #4009 D-3）。</p>
+ *
  * <p>候補は「組織に ACTIVE で加盟しているチーム」だけである（PENDING・離脱済み・他組織は含めない。AC-K07）。
  * 「チームを選ぶ」の検証は {@link TeamOrgMembershipQueryService#findActiveTeamIdsIn}、グループの展開は
  * {@link TeamOrgMembershipQueryService#findActiveTeamGroupAssignments} で行う。</p>
@@ -215,7 +220,7 @@ public class BroadcastAudienceResolver {
         }
         boolean includeSupporters = includesSupporters(s.targetRole());
         if (s.hasTeamItems()) {
-            return resolveTeams(callerUserId, scopeId, s.targetTeamIds(), includeSupporters);
+            return resolveTeams(callerUserId, scopeId, toTeamIds(s.targetTeamSlugs()), includeSupporters);
         }
         if (s.hasGroupItems()) {
             return resolveGroups(callerUserId, scopeId, s, includeSupporters, false);
@@ -285,6 +290,84 @@ public class BroadcastAudienceResolver {
     /** MEMBERS_AND_ABOVE（と未指定）は純 SUPPORTER を含めない。SUPPORTERS_AND_ABOVE・PUBLIC は含める（§8.5.2）。 */
     private static boolean includesSupporters(String targetRole) {
         return targetRole != null && !AnnouncementVisibility.MEMBERS_AND_ABOVE.equals(targetRole);
+    }
+
+    /**
+     * 範囲テンプレートに保存する「チームを選ぶ」のチーム（slug）を内部 ID へ写して検証する（何も書き込まない）。
+     *
+     * <p>呼び出す前に、保存できる人かの認可（{@code AnnouncementRangeTemplateAuthorizer#checkWritable}）を済ませること。
+     * null・空配列は従来どおり「すべてのチーム」（null）として扱う。それ以外は broadcast と同じ検証
+     * （上限超過は 400 {@code BROADCAST_010}、存在しない・他組織・未加盟のチームは区別せず 400 {@code BROADCAST_002}）。</p>
+     *
+     * @param organizationId 組織 ID
+     * @param teamSlugs      チームの slug（null 可）
+     * @return 保存するチーム ID（重複排除・指定順）。「すべてのチーム」なら null
+     */
+    public List<Long> resolveTemplateTeams(Long organizationId, List<String> teamSlugs) {
+        if (teamSlugs == null || teamSlugs.isEmpty()) {
+            return null;
+        }
+        List<Long> ids = toTeamIds(teamSlugs);
+        Set<Long> active = new HashSet<>(membershipQueryService.findActiveTeamIdsIn(organizationId, ids));
+        if (!active.containsAll(ids)) {
+            throw new BusinessException(AnnouncementErrorCode.BROADCAST_002);
+        }
+        return ids;
+    }
+
+    /**
+     * 内部のチーム ID を、API で返す URL 識別子（slug）へ写す（順序を保つ。論理削除済みなど slug を引けないものは除く）。
+     *
+     * @param teamIds チーム ID（null なら null）
+     * @return slug の一覧。入力が null なら null（「すべてのチーム」の意味を保つ）
+     */
+    public List<String> teamSlugsOf(List<Long> teamIds) {
+        if (teamIds == null) {
+            return null;
+        }
+        if (teamIds.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, String> slugs = teamSlugsByIds(teamIds);
+        return teamIds.stream().map(slugs::get).filter(Objects::nonNull).toList();
+    }
+
+    /**
+     * 内部のチーム ID → URL 識別子（slug）の写像をまとめて引く（一覧の応答で N+1 にしないため）。
+     *
+     * @param teamIds チーム ID（null・空なら空 Map）
+     * @return ID → slug（論理削除済みなど引けないものは含まない）
+     */
+    public Map<Long, String> teamSlugsByIds(java.util.Collection<Long> teamIds) {
+        return teamService.getSlugsByIds(teamIds);
+    }
+
+    /**
+     * 「チームを選ぶ」の slug を内部 ID へ写す: 空配列の拒否 → 上限 → null・空文字の拒否 → 重複排除 → slug の解決。
+     * 1 件でも解決できなければ全体を 400 {@code BROADCAST_002} にする（他組織・未加盟と同じ応答。存在を漏らさない）。
+     */
+    private List<Long> toTeamIds(List<String> slugs) {
+        if (slugs.isEmpty()) {
+            // 明示の空配列は「誰も選ばなかった」。すべてのチームに倒さない
+            throw new BusinessException(AnnouncementErrorCode.BROADCAST_009);
+        }
+        if (slugs.size() > MAX_TARGET_TEAMS) {
+            throw new BusinessException(AnnouncementErrorCode.BROADCAST_010);
+        }
+        if (slugs.stream().anyMatch(slug -> slug == null || slug.isBlank())) {
+            throw new BusinessException(AnnouncementErrorCode.BROADCAST_002);
+        }
+        List<String> distinct = List.copyOf(new LinkedHashSet<>(slugs));
+        Map<String, Long> idBySlug = teamService.findActiveTeamIdsBySlugs(distinct);
+        List<Long> ids = new ArrayList<>(distinct.size());
+        for (String slug : distinct) {
+            Long id = idBySlug.get(slug);
+            if (id == null) {
+                throw new BusinessException(AnnouncementErrorCode.BROADCAST_002);
+            }
+            ids.add(id);
+        }
+        return List.copyOf(new LinkedHashSet<>(ids));
     }
 
     /** 「チームを選ぶ」: 空配列の拒否 → 上限 → 重複排除 → ACTIVE 加盟の照合（1 件でも外れれば全体を拒否）。 */

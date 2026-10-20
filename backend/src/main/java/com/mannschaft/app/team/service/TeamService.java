@@ -1220,6 +1220,29 @@ public class TeamService {
     }
 
     /**
+     * slug の集合を、承諾済み（ACTIVE）で論理削除されていないチームの ID へまとめて解決する（SQL 1 本）。
+     *
+     * <p>告知の「チームを選ぶ」は URL 識別子（slug）で受け取るため（slug 一本化）、宛先の検証の前に内部 ID へ写す。
+     * 存在しない slug・論理削除済み・承諾前（PROVISIONED）のチームは結果に含まれない。どの組織に加盟しているかは
+     * ここでは見ない（呼び出し側が {@link TeamOrgMembershipQueryService#findActiveTeamIdsIn} で確かめる）。
+     * Entity は外へ渡さず、slug → ID の Map だけを返す。</p>
+     *
+     * @param slugs 解決する slug（null・空なら空 Map）
+     * @return slug → チーム ID（見つかったものだけ。キーは DB に保存された slug）
+     */
+    public Map<String, Long> findActiveTeamIdsBySlugs(Collection<String> slugs) {
+        if (slugs == null || slugs.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<String, Long> ids = new HashMap<>();
+        for (TeamEntity team : teamRepository.findBySlugInAndDeletedAtIsNullAndLifecycleStatus(
+                slugs, TeamEntity.LifecycleStatus.ACTIVE)) {
+            ids.put(team.getSlug(), team.getId());
+        }
+        return ids;
+    }
+
+    /**
      * 単一チーム ID から slug を取得する。
      *
      * <p>論理削除済み・存在しない場合は {@code null} を返す（例外を投げない）。</p>
