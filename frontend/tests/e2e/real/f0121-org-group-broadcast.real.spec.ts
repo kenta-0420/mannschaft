@@ -21,7 +21,7 @@ import {
   openAs,
   putSettings,
   sql,
-  valkeyDel,
+  resetUserRateLimit,
   browserApiOrigins,
 } from './helpers/f0121-org-groups-world'
 
@@ -66,12 +66,12 @@ test.beforeAll(async () => {
     w = JSON.parse(readFileSync(cacheFile, 'utf8')) as World
     return
   }
-  const XA = await createActor('BXA')
-  const XM = await createActor('BXM')
-  const XO = await createActor('BXO')
-  const B13 = await createActor('B13')
+  const XA = await createActor('BXA', 'bc')
+  const XM = await createActor('BXM', 'bc')
+  const XO = await createActor('BXO', 'bc')
+  const B13 = await createActor('B13', 'bc')
   const A = {} as World['A']
-  for (const k of KEYS) A[k] = await createActor(`BA${k}`)
+  for (const k of KEYS) A[k] = await createActor(`BA${k}`, 'bc')
   const X = await createOrg(XA, `実機告知組織X ${RUN}`)
   await joinScope('organizations', XA, X.slug, XM, 'MEMBER')
   await joinScope('organizations', XA, X.slug, XO, 'MEMBER')
@@ -197,6 +197,27 @@ async function openOrgDashboard(browser: import('@playwright/test').Browser, act
   return { ...s, panel }
 }
 
+/** 送信時の宛先表示（AC-H17）。範囲「G2 以前」・送信時 2 チーム。 */
+const B1_AUDIENCE = () => `宛先: ${GN['2']} 以前（並び順で先頭から）（送信時 2 チーム）`
+
+/**
+ * 送信履歴（組織のお知らせ一覧）で、告知 B1 の項目に限って宛先表示を検証する。
+ * 改名後の名前が出ないこと（送信時の名前のまま）も確かめる。soft=true なら宛先表示の不一致を記録して続ける。
+ */
+async function expectHistoryAudience(browser: import('@playwright/test').Browser, when: string, soft = false) {
+  const check = soft ? expect.soft : expect
+  const history = await openOrgDashboard(browser, w.XA)
+  try {
+    const item = history.panel.locator('[data-announcement-item]').filter({ hasText: B1 })
+    await expect(item, `${when}: 送信履歴に B1 の項目がある`).toHaveCount(1, { timeout: 30_000 })
+    const summary = item.getByTestId('broadcast-audience-summary')
+    await check(summary, `${when}: B1 の宛先表示（宛先名・範囲・送信時のチーム数）`).toHaveText(B1_AUDIENCE(), { timeout: 10_000 })
+    await expect(item, `${when}: 改名後の名前は出ない`).not.toContainText(`G2改 ${RUN}`)
+  } finally {
+    await history.context.close()
+  }
+}
+
 const B1 = `G2以前の掲示板 ${RUN}`
 const S1 = `G2以前のアンケート ${RUN}`
 
@@ -221,8 +242,7 @@ test.describe('F01.2.1 グループ宛てお知らせの実機E2E', () => {
       // 送信後の完了パネル（宛先: G2 以前…（送信時 2 チーム））
       const panel = page.getByTestId('broadcast-sent-panel')
       await expect(panel).toBeVisible({ timeout: 30_000 })
-      await expect(panel.getByTestId('broadcast-audience-summary')).toContainText('（送信時 2 チーム）')
-      await expect(panel.getByTestId('broadcast-audience-summary')).toContainText(GN['2'])
+      await expect(panel.getByTestId('broadcast-audience-summary')).toHaveText(B1_AUDIENCE())
       await page.getByTestId('broadcast-sent-close').click()
       await expect(panel).toBeHidden()
     } finally {
@@ -357,31 +377,25 @@ test.describe('F01.2.1 グループ宛てお知らせの実機E2E', () => {
     // 準備: T3 を G2 へ移す（割当の画面操作は GRP-03 で検証済み。ここでは表示判定の観測が目的）
     await must(w.XA, 'PUT', `/api/v1/organizations/${w.X.slug}/teams/${w.T['3'].slug}/team-group`, { groupId: w.G['2'] })
     expect(await teamDashboardShows(browser, w.A['3'], w.T['3'], B1), 'AC-H04 T3 に出る').toBe(true)
-    // 改名しても送信履歴の宛先表示は変わらない（AC-H17）
+    // AC-H17: 送信履歴（組織のお知らせ一覧＝/dashboard の「組織」タブ）で、対象の告知 B1 の項目に
+    // 「宛先: G2 以前（並び順で先頭から）（送信時 2 チーム）」が出る。宛先名・範囲・件数は送信時の記録なので、
+    // G2 を改名しても、削除しても変わらない。
+    // 【今の main では FAIL】ダッシュボード API の orgNotices が target_audience を返さず FE も写さない（製品欠陥 D-2）。
     await must(w.XA, 'PATCH', `/api/v1/organizations/${w.X.slug}/team-groups/${w.G['2']}`, { name: `G2改 ${RUN}` })
-    // 送信履歴: 組織ダッシュボードのお知らせ一覧の項目に「宛先: …（送信時 N チーム）」が出る
-    const history = await openOrgDashboard(browser, w.XA)
-    try {
-      // 【製品欠陥の記録】組織ダッシュボードのお知らせ一覧（唯一の組織お知らせ一覧）には宛先が表示されない。
-      // ダッシュボード API の orgNotices が target_audience を返さず、FE の toDashboardAnnouncementItem も写さないため。
-      // 項目自体は出ている（B1 が一覧にある）ことを確かめ、宛先表示は soft で記録して後続の判定を続ける。
-      await expect(history.panel.getByText(B1).first()).toBeVisible({ timeout: 30_000 })
-      const summary = history.panel.getByTestId('broadcast-audience-summary').filter({ hasText: GN['2'] }).first()
-      await expect.soft(summary, '送信履歴（組織お知らせ一覧）に宛先: G2 以前（送信時 2 チーム）').toBeVisible({ timeout: 10_000 })
-      await expect(history.panel.getByTestId('broadcast-audience-summary').filter({ hasText: `G2改 ${RUN}` })).toHaveCount(0)
-    } finally {
-      await history.context.close()
-    }
+    // 改名後は soft（後続の H20/H23 の判定を続ける）。削除後は通常の判定
+    await expectHistoryAudience(browser, '改名後', true)
     // G2 削除 → T2 はスナップショットで出続け（AC-H20）、T3 は送信時に対象でないので出ない（AC-H23）
     await must(w.XA, 'DELETE', `/api/v1/organizations/${w.X.slug}/team-groups/${w.G['2']}`)
     expect(await teamDashboardShows(browser, w.A['2'], w.T['2'], B1), 'AC-H20 T2 に出続ける').toBe(true)
     expect(await teamDashboardShows(browser, w.A['1'], w.T['1'], B1), 'AC-H20 T1 に出続ける').toBe(true)
     expect(await teamDashboardShows(browser, w.A['3'], w.T['3'], B1), 'AC-H23 T3 には出ない').toBe(false)
     expect(await teamDashboardShows(browser, w.A['4'], w.T['4'], B1)).toBe(false)
+    await expectHistoryAudience(browser, '削除後')
   })
 
   test('BC-08 [AC-H05/H12/K05/H14b] 告知 API の契約（範囲逆転・他組織グループ・TEAM スコープ・併用・501 チーム）', async () => {
-    valkeyDel('*broadcast:send*')
+    resetUserRateLimit('broadcast:send', w.XA)
+    resetUserRateLimit('broadcast:send', w.A['1'])
     const base = `/api/v1/organizations/${w.X.numericId}/broadcast`
     const content = { title: `契約 ${RUN}`, body: '本文' }
     const call = (extra: Record<string, unknown>) =>
@@ -419,7 +433,7 @@ test.describe('F01.2.1 グループ宛てお知らせの実機E2E', () => {
     test.setTimeout(900_000)
     const send = async (mode: 'all' | 'teams', channel: '掲示板' | 'アンケート', title: string) => {
       // 告知送信のレート制限（5 件/5 分/利用者）は本 AC の対象外のため、前提としてカウンタを戻す
-      valkeyDel('*broadcast:send*')
+      resetUserRateLimit('broadcast:send', w.XA)
       const since = utcNow()
       const s = await openAs(browser, w.XA, `/organizations/${w.X.slug}`)
       try {
@@ -462,11 +476,7 @@ test.describe('F01.2.1 グループ宛てお知らせの実機E2E', () => {
   })
 })
 
-test('BC-99 後始末', async () => {
-  const results: number[] = []
-  for (const k of KEYS) results.push(await archiveScope('teams', w.A[k], w.T[k].slug))
-  results.push(await archiveScope('organizations', w.XA, w.X.slug))
-  results.push(await archiveScope('organizations', w.A['1'], w.Z.slug))
+test.afterAll(() => {
+  // 画面が実際に叩いた API のオリジン（検証 BE を見ていることの証拠）。資産の削除は globalTeardown が行う。
   console.log(`[F0121-B] browser API origins ${[...browserApiOrigins].join(',')} (FE ${process.env.BASE_URL})`)
-  console.log(`[F0121-B] cleanup statuses ${results.join(',')}`)
 })

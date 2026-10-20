@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { expect, type Browser, type BrowserContext, type Page, type Response } from '@playwright/test'
 import { loginViaApi } from '../../fixtures/auth'
@@ -163,47 +163,51 @@ export const systemAdmin: Actor = {
   nickname: 'e2e-admin',
 }
 
-/** 共有 Valkey 上のキーを消す（前提作成用。登録のレート制限カウンタのリセットに使う）。 */
-export function valkeyDel(pattern: string): void {
-  const script = `for k in $(valkey-cli --scan --pattern '${pattern}'); do valkey-cli DEL "$k" >/dev/null; done`
-  const args = ['exec', 'mannschaft-valkey', 'sh', '-c', script]
+/** 共有 Valkey 上の「1 つのキー」を消す（パターン削除はしない。並行セッションの状態を変えないため）。 */
+function valkeyDelKeys(keys: string[]): void {
+  if (keys.length === 0) return
+  const args = ['exec', 'mannschaft-valkey', 'valkey-cli', 'DEL', ...keys]
   if (process.platform === 'win32') execFileSync('wsl.exe', ['-e', 'docker', ...args], { stdio: 'pipe', timeout: 60_000 })
   else execFileSync('docker', args, { stdio: 'pipe', timeout: 60_000 })
 }
 
-/**
- * 検証用利用者の置き場（実行をまたいで再利用する）。登録 API は 1 IP あたり 10 件/時の制限があるため、
- * 同じ役割名の利用者は一度だけ登録し、以後は使い回す。所属は毎回新しく作る組織・チームで決まるので、
- * 使い回しても固定人物の意味は変わらない（N は一度もどこにも所属させない）。
- */
-const POOL_FILE = path.resolve('tests/e2e/.auth', 'f0121-actor-pool.json')
-
-function readPool(): Record<string, Actor> {
-  if (!existsSync(POOL_FILE)) return {}
-  return JSON.parse(readFileSync(POOL_FILE, 'utf8')) as Record<string, Actor>
+function valkeyKeysOf(pattern: string): string[] {
+  const args = ['exec', 'mannschaft-valkey', 'valkey-cli', '--scan', '--pattern', pattern]
+  const out =
+    process.platform === 'win32'
+      ? execFileSync('wsl.exe', ['-e', 'docker', ...args], { encoding: 'utf8', timeout: 60_000 })
+      : execFileSync('docker', args, { encoding: 'utf8', timeout: 60_000 })
+  return out.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
 }
 
-/** 利用者を用意する（置き場にあれば再利用、無ければ登録して有効化）。 */
-export async function createActor(label: string): Promise<Actor> {
-  // 既定は毎回新規登録（実行をまたいだ所属・通知の持ち越しで観測が濁らないように）。
-  // F0121_REUSE_ACTORS=1 のときだけ置き場を再利用する。
-  const pool = process.env.F0121_REUSE_ACTORS === '1' ? readPool() : {}
-  const pooled = pool[label]
-  if (pooled) {
-    const alive = await netFetch(`${API}/api/v1/auth/login`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email: pooled.email, password: pooled.password }),
-    })
-    if (alive.ok) {
-      tokenCache.set(pooled.email, (await alive.json()).data.accessToken)
-      return pooled
-    }
-  }
+/**
+ * テスト接続元（このランナーの IP）の登録レート制限カウンタだけを戻す（前提作成用）。
+ * 登録 API は 1 IP あたり 10 件/時で、AC の対象ではないため。キーは接続元 IP に固定し、他の IP の分は触らない。
+ */
+const CLIENT_IP = process.env.F0121_CLIENT_IP ?? '127.0.0.1'
+function resetRegisterLimitForThisClient(): void {
+  valkeyDelKeys([`mannschaft:auth:register_attempt:${CLIENT_IP}`])
+}
+
+/**
+ * テスト利用者 1 人分のレート制限カウンタだけを戻す（前提作成用）。
+ * キーは `mannschaft:rate:{zone}:u:{userId}:{窓}` で、利用者 ID を固定したパターンだけを走査する。
+ */
+export function resetUserRateLimit(zone: 'team-org-affiliation:apply' | 'broadcast:send', actor: Actor): void {
+  if (!actor.id) throw new Error(`レート制限の対象利用者 ID が無い: ${actor.label}`)
+  valkeyDelKeys(valkeyKeysOf(`mannschaft:rate:${zone}:u:${actor.id}:*`))
+}
+
+/**
+ * 利用者を新規登録して有効化する。メールアドレスは「spec の識別子・役割名・実行 ID」で決まり、
+ * 同じ Playwright 実行で複数の spec を流しても重複しない。
+ */
+export async function createActor(label: string, spec: string): Promise<Actor> {
   const slug = label.toLowerCase().replace(/[^a-z0-9]/g, '')
-  const email = `e2e-og-${slug}-${RUN}@test.mannschaft.local`
-  const nickname = `og${slug}${RUN}`
-  valkeyDel('mannschaft:auth:register_attempt:*')
+  const specSlug = spec.toLowerCase().replace(/[^a-z0-9]/g, '')
+  const email = `e2e-og-${specSlug}-${slug}-${RUN}@test.mannschaft.local`
+  const nickname = `og${specSlug}${slug}${RUN}`
+  resetRegisterLimitForThisClient()
   const register = await netFetch(`${API}/api/v1/auth/register`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -230,11 +234,25 @@ export async function createActor(label: string): Promise<Actor> {
   const id = Number(sql(`SELECT id FROM users WHERE email='${email}';`))
   const actor = { label, email, password: PASSWORD, id, nickname }
   await bearer(actor, true)
-  const next = readPool()
-  next[label] = actor
-  mkdirSync(path.dirname(POOL_FILE), { recursive: true })
-  writeFileSync(POOL_FILE, JSON.stringify(next, null, 2))
   return actor
+}
+
+/**
+ * 作成した組織・チームの記録（後始末用）。1 行 1 JSON で追記し、globalTeardown
+ * （`f0121-global-teardown.ts`）が実行の最後に、テストの成否にかかわらず削除して 204 を検証する。
+ */
+export const ASSET_FILE = path.resolve('test-results', 'f0121-assets.jsonl')
+
+export interface AssetRecord {
+  kind: 'organizations' | 'teams'
+  slug: string
+  owner: { email: string; password: string }
+  deleted?: boolean
+}
+
+function recordAsset(record: AssetRecord): void {
+  mkdirSync(path.dirname(ASSET_FILE), { recursive: true })
+  appendFileSync(ASSET_FILE, `${JSON.stringify(record)}\n`)
 }
 
 export interface Scope {
@@ -257,18 +275,30 @@ async function settleMemberPermissions(owner: Actor, scopeType: 'ORGANIZATION' |
   await must(owner, 'PUT', `/api/v1/admin/member-permissions?${query}`, { permissions })
 }
 
+/**
+ * 作成する組織・チームの slug を明示する（名前からの自動生成に任せない）。
+ * 日本語名から自動生成すると英数字部分（実行 ID）だけの slug になり、同じ実行の別 spec と衝突して作成が 500 になるため
+ * （自動生成 slug の衝突、削除済みを含む、が 500 COMMON_999 になるのは別の製品欠陥として報告済み）。
+ */
+function uniqueSlug(prefix: string): string {
+  return `${prefix}-${RUN}-${Math.random().toString(36).slice(2, 7)}`
+}
+
 export async function createOrg(owner: Actor, name: string, visibility = 'PUBLIC'): Promise<Scope> {
   const body = await must(owner, 'POST', '/api/v1/organizations', {
+    slug: uniqueSlug('og'),
     name,
     visibility,
     orgType: 'ASSOCIATION',
   })
+  recordAsset({ kind: 'organizations', slug: body.data.slug, owner: { email: owner.email, password: owner.password } })
   await settleMemberPermissions(owner, 'ORGANIZATION', body.data.numericId)
   return { slug: body.data.slug, numericId: body.data.numericId, name }
 }
 
 export async function createTeam(owner: Actor, name: string, visibility = 'PUBLIC'): Promise<Scope> {
-  const body = await must(owner, 'POST', '/api/v1/teams', { name, visibility })
+  const body = await must(owner, 'POST', '/api/v1/teams', { slug: uniqueSlug('tm'), name, visibility })
+  recordAsset({ kind: 'teams', slug: body.data.slug, owner: { email: owner.email, password: owner.password } })
   await settleMemberPermissions(owner, 'TEAM', body.data.numericId)
   return { slug: body.data.slug, numericId: body.data.numericId, name }
 }
@@ -374,7 +404,10 @@ export async function openAs(
   const page = await context.newPage()
   // 画面が実際に叩いた API のオリジンを記録する（検証用 BE を見ていることの証拠。後始末の test で出力する）
   page.on('request', (request) => {
-    if (request.url().includes('/api/v1/')) browserApiOrigins.add(new URL(request.url()).origin)
+    if (!request.url().includes('/api/v1/')) return
+    const url = new URL(request.url())
+    // 検証 BE 以外へ出た呼び出しは、どのパスかも残す
+    browserApiOrigins.add(url.origin === API ? url.origin : `${url.origin}${url.pathname}`)
   })
   if (actor) {
     await page.goto(`${FE}/robots.txt`)
@@ -441,12 +474,12 @@ export async function triggerBatch(name: string): Promise<ApiResult> {
   return apiAs(systemAdmin, 'POST', `/api/v1/system-admin/batch/${name}/trigger?sync=true`)
 }
 
-/** 後始末: 作成した組織・チームをアーカイブ（論理削除）する。失敗は結果として返す（隠さない）。 */
-export async function archiveScope(
-  kind: 'organizations' | 'teams',
-  owner: Actor,
-  slug: string,
-): Promise<number> {
+/**
+ * テストの途中で組織・チームを削除する（対象操作の前提・後片付け）。204 を検証し、記録に削除済みと書く。
+ * 実行末尾の後始末は globalTeardown が行う。
+ */
+export async function archiveScope(kind: 'organizations' | 'teams', owner: Actor, slug: string): Promise<void> {
   const result = await apiAs(owner, 'DELETE', `/api/v1/${kind}/${slug}`)
-  return result.status
+  if (result.status !== 204) throw new Error(`削除失敗 ${kind}/${slug}: ${result.status} ${JSON.stringify(result.body)}`)
+  recordAsset({ kind, slug, owner: { email: owner.email, password: owner.password }, deleted: true })
 }

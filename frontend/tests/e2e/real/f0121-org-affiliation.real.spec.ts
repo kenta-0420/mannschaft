@@ -24,7 +24,7 @@ import {
   systemAdmin,
   triggerBatch,
   typeOf,
-  valkeyDel,
+  resetUserRateLimit,
   browserApiOrigins,
 } from './helpers/f0121-org-groups-world'
 
@@ -68,7 +68,7 @@ let w: World
 
 async function buildWorld(): Promise<World> {
   const actors: Actor[] = []
-  for (const label of ['XA', 'XD', 'XM', 'TA', 'TD', 'TM', 'TG', 'YA', 'UA', 'N']) actors.push(await createActor(label))
+  for (const label of ['XA', 'XD', 'XM', 'TA', 'TD', 'TM', 'TG', 'YA', 'UA', 'N']) actors.push(await createActor(label, 'aff'))
   const [XA, XD, XM, TA, TD, TM, TG, YA, UA, N] = actors
   const X = await createOrg(XA, `実機組織X ${RUN}`)
   const Y = await createOrg(YA, `実機組織Y ${RUN}`)
@@ -791,14 +791,28 @@ test.describe('F01.2.1 加盟の実機E2E', () => {
     } finally {
       await close(xa, ta)
     }
-    const again = await apiAs(w.XA, 'POST', `/api/v1/organizations/${w.X.slug}/team-invites`, { teamSlug: w.T.slug })
-    expect([again.status, again.body.error.code]).toEqual([403, 'TEAM_068'])
-    sql(
-      `UPDATE team_org_affiliation_restrictions r JOIN teams t ON t.id=r.team_id JOIN organizations o ON o.id=r.organization_id ` +
-        `SET r.restricted_until = r.restricted_until - INTERVAL 25 HOUR WHERE t.slug='${w.T.slug}' AND o.slug='${w.X.slug}' AND r.restricted_until IS NOT NULL;`,
-    )
-    const later = await apiAs(w.XA, 'POST', `/api/v1/organizations/${w.X.slug}/team-invites`, { teamSlug: w.T.slug })
-    expect(later.status, 'AC-D05 24時間後').toBe(201)
+    // AC-D05 後半: 取消直後の再招待は画面でも 403 TEAM_068（エラー表示）。時計を 25 時間進めると画面から再招待でき、
+    // TA の受信一覧に出る
+    const xa2 = await openAs(browser, w.XA, `/organizations/${w.X.slug}`)
+    const ta2 = await openAs(browser, w.TA, `/teams/${w.T.slug}`)
+    try {
+      const again = await inviteViaUi(xa2.page, 403)
+      expect((await again.json()).error.code).toBe('TEAM_068')
+      await expect(xa2.page.getByTestId('invite-error')).toBeVisible()
+      sql(
+        `UPDATE team_org_affiliation_restrictions r JOIN teams t ON t.id=r.team_id JOIN organizations o ON o.id=r.organization_id ` +
+          `SET r.restricted_until = r.restricted_until - INTERVAL 25 HOUR WHERE t.slug='${w.T.slug}' AND o.slug='${w.X.slug}' AND r.restricted_until IS NOT NULL;`,
+      )
+      await inviteViaUi(xa2.page, 201)
+      await expect(xa2.page.getByText('招待を送りました').first()).toBeVisible()
+      await expect(xa2.page.getByTestId('invite-row').filter({ hasText: w.T.name })).toBeVisible()
+      await ta2.page.goto(`/teams/${w.T.slug}/affiliations?view=invites`)
+      await expect(ta2.page.getByTestId('invite-row').filter({ hasText: w.X.name }), 'AC-D05 24時間後に TA の受信一覧に出る').toBeVisible({
+        timeout: 30_000,
+      })
+    } finally {
+      await close(xa2, ta2)
+    }
   })
 
   test('ORGAFF-10 [AC-E04/E06/B16] 60 日応答の無い申請は期限切れバッチで消え期限切れ通知。加盟バッチ3本は trigger?sync=true で 200（画面なし・API）', async () => {
@@ -881,11 +895,11 @@ test.describe('F01.2.1 加盟の実機E2E', () => {
     }
     for (let i = 0; i < 9; i++) {
       // 申請の 10 件/時/利用者のレート制限（§10.10）は B09 の対象外なので、前提としてカウンタを戻す
-      valkeyDel('*team-org-affiliation:apply*')
+      resetUserRateLimit('team-org-affiliation:apply', w.UA)
       const r = await apply(w.UA, V.slug, { organizationSlug: extraOrgs[i].slug })
       expect(r.status, `B09 ${i + 2} 件目`).toBe(201)
     }
-    valkeyDel('*team-org-affiliation:apply*')
+    resetUserRateLimit('team-org-affiliation:apply', w.UA)
     const b09 = await apply(w.UA, V.slug, { organizationSlug: extraOrgs[9].slug })
     expect([b09.status, b09.body.error?.code], 'B09 11 件目').toEqual([422, 'TEAM_069'])
     // E03: 未加盟の組み合わせで離脱・除名
@@ -991,15 +1005,7 @@ test.describe('F01.2.1 加盟の実機E2E', () => {
   })
 })
 
-test('ORGAFF-99 後始末', async () => {
-  // 後始末: 作成した組織・チームを削除する（利用者は匿名の検証用として残す）
-  const results = [
-    await archiveScope('teams', w.TA, w.T.slug),
-    await archiveScope('teams', w.UA, w.U.slug),
-    await archiveScope('teams', w.UA, w.P.slug),
-    await archiveScope('organizations', w.XA, w.X.slug),
-    await archiveScope('organizations', w.YA, w.Y.slug),
-  ]
+test.afterAll(() => {
+  // 画面が実際に叩いた API のオリジン（検証 BE を見ていることの証拠）。資産の削除は globalTeardown が行う。
   console.log(`[F0121] browser API origins ${[...browserApiOrigins].join(',')} (FE ${process.env.BASE_URL})`)
-  console.log(`[F0121] cleanup statuses ${results.join(',')}`)
 })

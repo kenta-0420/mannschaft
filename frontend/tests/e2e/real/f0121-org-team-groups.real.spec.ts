@@ -68,11 +68,11 @@ test.beforeAll(async () => {
     w = JSON.parse(readFileSync(cacheFile, 'utf8')) as World
     return
   }
-  const XA = await createActor('XA')
-  const XD = await createActor('XD')
-  const XM = await createActor('XM')
-  const YA = await createActor('YA')
-  const TA = await createActor('TA')
+  const XA = await createActor('XA', 'grp')
+  const XD = await createActor('XD', 'grp')
+  const XM = await createActor('XM', 'grp')
+  const YA = await createActor('YA', 'grp')
+  const TA = await createActor('TA', 'grp')
   const X = await createOrg(XA, `実機G組織X ${RUN}`)
   const Y = await createOrg(YA, `実機G組織Y ${RUN}`)
   await joinScope('organizations', XA, X.slug, XD, 'DEPUTY_ADMIN')
@@ -334,6 +334,35 @@ test.describe('F01.2.1 チームグループの実機E2E', () => {
     const cross = await apiAs(w.YA, 'PATCH', `/api/v1/organizations/${w.Y.slug}/team-groups/${idA}`, { name: '越境' })
     expect(cross.status).toBe(404)
     expect(cross.body.error.code).toBe('ORG_064')
+
+    // 他テナント管理者 YA のブラウザセッション: X の設定・管理 URL を直打ちしても入れない（画面と文言で確認）
+    const ya = await openAs(browser, w.YA, `/organizations/${w.X.slug}/settings/team-affiliation`)
+    try {
+      // 加盟の設定: 組織トップ（ダッシュボード）へ戻され、設定フォームは出ず、非メンバー向けの案内文が出る
+      await expect(ya.page).toHaveURL(new RegExp(`/organizations/${w.X.slug}$`), { timeout: 30_000 })
+      await expect(ya.page.getByTestId('team-affiliation-settings-form')).toHaveCount(0)
+      await expect(ya.page.getByRole('heading', { name: w.X.name, level: 1 })).toBeVisible({ timeout: 30_000 })
+      await expect(
+        ya.page.getByText('あなたはこの組織のメンバーではないため、一部のウィジェットは非表示になっています'),
+      ).toBeVisible({ timeout: 30_000 })
+      await expect(ya.page.getByTestId('scope-lens-admin')).toHaveCount(0)
+      // 管理 view（グループ・申請・招待・制限）: view が外れ、切替・グループ管理・割当 UI が出ない
+      for (const view of ['groups', 'applications', 'invites', 'restrictions']) {
+        await ya.page.goto(`/organizations/${w.X.slug}/member-teams?view=${view}`)
+        await expect(ya.page, `YA ${view}`).not.toHaveURL(new RegExp(`view=${view}`), { timeout: 30_000 })
+        await expect(ya.page.getByTestId('member-teams-view-switcher')).toHaveCount(0)
+        await expect(ya.page.getByTestId(`member-teams-${view}`)).toHaveCount(0)
+        await expect(ya.page.getByTestId('group-create-open')).toHaveCount(0)
+        await expect(ya.page.getByTestId(`team-assign-${w.T1.slug}`)).toHaveCount(0)
+      }
+      await test.info().attach('YA の直打ち後の画面', {
+        body: await ya.page.screenshot(),
+        contentType: 'image/png',
+      })
+      console.log(`[F0121-G] YA 直打ち後の URL: ${ya.page.url()}`)
+    } finally {
+      await ya.context.close()
+    }
   })
 
   test('GRP-05 [AC-G04/G05/G07/K06] 一括割当・単体割当の契約（未加盟 slug・501 件・空配列・他組織グループ）', async () => {
@@ -581,18 +610,7 @@ test.describe('F01.2.1 チームグループの実機E2E', () => {
   })
 })
 
-test('GRP-99 後始末', async () => {
-  const results = [
-    await archiveScope('teams', w.TA, w.T1.slug),
-    await archiveScope('teams', w.TA, w.T2.slug),
-    await archiveScope('teams', w.TA, w.T3.slug),
-    await archiveScope('teams', w.TA, w.T4.slug),
-    await archiveScope('teams', w.TA, w.T5.slug),
-    await archiveScope('teams', w.TA, w.T6.slug),
-    await archiveScope('teams', w.TA, w.T7.slug),
-    await archiveScope('organizations', w.XA, w.X.slug),
-    await archiveScope('organizations', w.YA, w.Y.slug),
-  ]
+test.afterAll(() => {
+  // 画面が実際に叩いた API のオリジン（検証 BE を見ていることの証拠）。資産の削除は globalTeardown が行う。
   console.log(`[F0121-G] browser API origins ${[...browserApiOrigins].join(',')} (FE ${process.env.BASE_URL})`)
-  console.log(`[F0121-G] cleanup statuses ${results.join(',')}`)
 })
