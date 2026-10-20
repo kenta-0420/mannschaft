@@ -148,7 +148,7 @@ slug は既存 BIGINT 主キーテーブル（`teams` / `organizations`）上の
 
 ## 7. Flywayマイグレーション
 
-> **F01.2.1（チーム加盟の双方向化とチームグループ）の migration** は、F01.2.1 §12 に6本の分割と既存データの扱いを定めた。版番号は実装 PR のマージ時に origin/main の最大 major + 1 で確定し、minor はタイムスタンプとする（本書の旧連番方式には従わない）。
+> **F01.2.1（チーム加盟の双方向化とチームグループ）の migration** は、F01.2.1 §12 に分割と既存データの扱いを定めた。実装で確定した版は V231（`MANAGE_ORG_AFFILIATION` 権限）・V232（組織設定4列・`org_team_groups`・`team_org_memberships` 列追加・`team_org_affiliation_restrictions`）・V234（告知のグループ宛て列・スナップショット・fan-out 宛先集合）・V238/V239（通知 outbox）・V240〜V242（`invite_notified_at`・閉鎖世代）で、minor はタイムスタンプとする（本書の旧連番方式には従わない）。
 
 ```
 V2.001__create_organizations_table.sql
@@ -368,6 +368,7 @@ V{major}.{yyyyMMddHHmmss}__create_ownership_transfer_offers_table.sql
 | 2026-09-25 | チーム加盟の双方向化とチームグループ（F01.2.1・🟡 設計中）に合わせて改訂: ① `team_org_memberships` に `direction`（ORG_INVITE / TEAM_APPLY）・`group_id`・`message`・`updated_at` を追加（既存行は ORG_INVITE・未分類）② `organizations` に申請受付・グループ機能・申請時グループ選択・案内文の4列を追加 ③ `org_team_groups` と `team_org_affiliation_restrictions` を追加 ④ 加盟の書き込み API（招待・申請・承認・拒否・取下げ・取消・離脱・除名）を slug パスで正式化し、契約の正本を F01.2.1 §10 に置いた（いずれも未実装）⑤ 拒否時の物理削除は見直したうえで維持し、再申請の抑止は制限テーブル（30日の冷却・任意でブロック）で行う設計にした ⑥ 01_db_design の `updated_at` 記載と V2.011 の乖離を注記 |
 | 2026-09-25 | F01.2.1 第1パス精査の反映: ① 1チームの複数組織への同時加盟を正式に保証し、単一親前提の読み手22件（BE 18・FE 4）の改修を F01.2.1 §9 に定義 ② 取下げ・取消に24時間の冷却、PENDING の60日期限、組織・チームの削除／アーカイブ時の PENDING 片付けを追加 ③ 招待先チームの可視性チェック（見えないチームは不在と同じ 404）④ 索引を `(organization_id, group_id, status)` 等に見直し |
 | 2026-10-16 | **マスター判断（Issue #3892）**: 組織の手動・自動アーカイブによるチームの連動アーカイブを廃止。加盟が当該組織だけの場合も、チームの休止状態・個人加入用招待・既存在籍へ影響させず、チームは自身の条件でのみ休止する。組織自身の招待失効・解除後非復元は維持する。招待世代方式のカラム追加と業務TX例外なしの方針は裁可済みだが、詳細は別途設計する。12か月境界は本変更の対象外。 |
+| 2026-10-20 | **F01.2.1 の実装に追従（9-A）**: 加盟の書き込み API（招待・申請・承認・拒否・取下げ・取消・離脱・除名）、申請受付設定、チームグループ、割当、宛先プレビューが実装済みになったため、`02_api_design`・`03_business_logic`・`01_db_design` の「未実装」「追加予定」の注記を改めた。加盟の通知は同一 tx の outbox 書き込み（relay が fan-out へ取り込む）に改まった旨と、Flyway の確定版（V231・V232・V234・V238〜V242）を記した。実機E2E・アリシゼーションは未実施 |
 
 ---
 
