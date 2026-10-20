@@ -1,5 +1,6 @@
 {
   "bulletin": {
+    "unknownAuthor": "Autor desconocido",
     "title": "Tablón de anuncios",
     "tab": {
       "threads": "Hilos",
