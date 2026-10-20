@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
+import { useNuxtApp } from '#imports'
 import TeamFriendList from '~/components/friends/TeamFriendList.vue'
 
 /**
@@ -57,6 +58,11 @@ async function mountList(canToggleVisibility = true) {
   return w
 }
 
+// テスト環境のロケールに依存しないよう、実際の i18n キーから期待文言を引く
+function label(key: 'visibility_public' | 'visibility_private'): string {
+  return useNuxtApp().$i18n.t(`friends.list.${key}`)
+}
+
 function badgeText(w: Awaited<ReturnType<typeof mountList>>, index: number): string {
   return w.findAll('.p-tag')[index]?.text() ?? ''
 }
@@ -81,8 +87,8 @@ describe('components/friends — 公開フラグ(public キー)の表示と切�
   it('AC-1: public:true は「公開」バッジ・スイッチ ON、public:false は「非公開」・OFF', async () => {
     api.listFriends.mockResolvedValue(respond([friend(1, true), friend(2, false)]))
     const w = await mountList()
-    expect(badgeText(w, 0)).toBe('公開')
-    expect(badgeText(w, 1)).toBe('非公開')
+    expect(badgeText(w, 0)).toBe(label('visibility_public'))
+    expect(badgeText(w, 1)).toBe(label('visibility_private'))
     const inputs = switchInputs(w)
     expect(inputs).toHaveLength(2)
     expect((inputs[0]!.element as HTMLInputElement).checked).toBe(true)
@@ -92,7 +98,7 @@ describe('components/friends — 公開フラグ(public キー)の表示と切�
   it('AC-1: 操作権限なし(SUPPORTER 相当)ではスイッチが無効のまま公開状態を表示する', async () => {
     api.listFriends.mockResolvedValue(respond([friend(1, true)]))
     const w = await mountList(false)
-    expect(badgeText(w, 0)).toBe('公開')
+    expect(badgeText(w, 0)).toBe(label('visibility_public'))
     const input = switchInputs(w)[0]!.element as HTMLInputElement
     expect(input.checked).toBe(true)
     expect(input.disabled).toBe(true)
@@ -105,17 +111,17 @@ describe('components/friends — 公開フラグ(public キー)の表示と切�
       current = req.isPublic
     })
     const w = await mountList()
-    expect(badgeText(w, 0)).toBe('公開')
+    expect(badgeText(w, 0)).toBe(label('visibility_public'))
 
     await switchInputs(w)[0]!.setValue(false)
     await flushPromises()
     expect(api.setVisibility).toHaveBeenLastCalledWith('team-1', 1, { isPublic: false })
-    expect(badgeText(w, 0)).toBe('非公開')
+    expect(badgeText(w, 0)).toBe(label('visibility_private'))
 
     await switchInputs(w)[0]!.setValue(true)
     await flushPromises()
     expect(api.setVisibility).toHaveBeenLastCalledWith('team-1', 1, { isPublic: true })
-    expect(badgeText(w, 0)).toBe('公開')
+    expect(badgeText(w, 0)).toBe(label('visibility_public'))
     expect(api.setVisibility).toHaveBeenCalledTimes(2)
   })
 
