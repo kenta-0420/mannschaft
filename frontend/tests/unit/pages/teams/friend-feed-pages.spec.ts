@@ -124,9 +124,13 @@ describe('friend-forward-exports ページ', () => {
     await flushPromises()
     const list = wrapper.findComponent(FriendForwardExportList)
     const buttons = () => list.findAll('.flex.gap-2 button')
+    // 成功時は「40件中…」の範囲表示が出る
+    expect(list.find('.mt-4 > span').text()).toContain('40')
     await buttons()[1]!.trigger('click')
     await flushPromises()
     expect(list.find('[data-testid="forward-exports-error"]').exists()).toBe(true)
+    // 失敗時は古い件数・範囲の表示を隠す
+    expect(list.find('.mt-4 > span').text()).toBe('')
     expect(buttons()).toHaveLength(2)
     expect(buttons()[0]!.attributes('disabled')).toBeUndefined()
     expect(buttons()[1]!.attributes('disabled')).toBeDefined()

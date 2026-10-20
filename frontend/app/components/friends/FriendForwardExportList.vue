@@ -173,13 +173,14 @@ onMounted(() => {
       v-if="!loading && totalPages > 1"
       class="mt-4 flex items-center justify-between text-sm text-surface-500"
     >
-      <span>
+      <span v-if="!loadFailed">
         {{ t('forward_exports.pagination.showing', {
           from: showingFrom,
           to: showingTo,
           total: totalElements,
         }) }}
       </span>
+      <span v-else />
       <div class="flex gap-2">
         <Button
           :label="t('forward_exports.pagination.prev')"

@@ -103,23 +103,69 @@ function findMisreferencesInSource(src: string, ctx: Context): Hit[] {
   )
   const imported = collectImportedNames(script)
 
-  const candidates = new Set<string>()
-  for (const m of tpl.matchAll(/<([A-Z][A-Za-z0-9]+)(?=[\s/>])/g)) candidates.add(m[1] as string)
+  // タグ参照: 明示 import されたローカル名は束縛が優先されるので除外する
+  const tagNames = new Set<string>()
+  for (const m of tpl.matchAll(/<([A-Z][A-Za-z0-9]+)(?=[\s/>])/g)) tagNames.add(m[1] as string)
+  // 文字列参照: 文字列は import 束縛では解決されない（実行時にグローバル登録名で引かれる）ので除外しない
+  const stringNames = new Set<string>()
   for (const m of `${script}\n${tpl}`.matchAll(/(?:resolveComponent|resolveDynamicComponent)\(\s*['"`]([A-Z][A-Za-z0-9]+)['"`]/g)) {
-    candidates.add(m[1] as string)
+    stringNames.add(m[1] as string)
   }
-  for (const m of tpl.matchAll(/(?<![\w-]):is\s*=\s*"([^"]*)"/g)) {
-    for (const lit of (m[1] as string).matchAll(/'([A-Z][A-Za-z0-9]+)'/g)) candidates.add(lit[1] as string)
+  for (const m of tpl.matchAll(/(?<![\w:-])(?:v-bind)?:is\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
+    for (const name of renderedStrings((m[1] ?? m[2]) as string)) stringNames.add(name)
   }
-  for (const m of tpl.matchAll(/(?<![\w:-])is\s*=\s*"([A-Z][A-Za-z0-9]+)"/g)) candidates.add(m[1] as string)
+  for (const m of tpl.matchAll(/(?<![\w:-])is\s*=\s*(?:"([A-Z][A-Za-z0-9]+)"|'([A-Z][A-Za-z0-9]+)')/g)) {
+    stringNames.add((m[1] ?? m[2]) as string)
+  }
 
   const hits: Hit[] = []
-  for (const name of candidates) {
-    if (imported.has(name)) continue
+  const check = (name: string) => {
     const hit = judge(name, ctx)
     if (hit) hits.push(hit)
   }
+  for (const name of tagNames) if (!imported.has(name)) check(name)
+  for (const name of stringNames) check(name)
   return hits
+}
+
+/** 式の最上位にある三項演算子を { consequent, alternate } に分解する。なければ null */
+function splitTernary(expr: string): { consequent: string, alternate: string } | null {
+  let quote = ''
+  let depth = 0
+  let qIdx = -1
+  let nested = 0
+  for (let i = 0; i < expr.length; i++) {
+    const c = expr[i] as string
+    if (quote) {
+      if (c === '\\') i++
+      else if (c === quote) quote = ''
+      continue
+    }
+    if (c === '\'' || c === '"' || c === '`') quote = c
+    else if ('([{'.includes(c)) depth++
+    else if (')]}'.includes(c)) depth--
+    else if (c === '?' && depth === 0) {
+      const next = expr[i + 1]
+      if (next === '.' || next === '?') { i++; continue }
+      if (qIdx < 0) qIdx = i
+      else nested++
+    }
+    else if (c === ':' && depth === 0 && qIdx >= 0) {
+      if (nested > 0) nested--
+      else return { consequent: expr.slice(qIdx + 1, i), alternate: expr.slice(i + 1) }
+    }
+  }
+  return null
+}
+
+/** :is の式から「描画結果になる位置」の PascalCase 文字列だけを取り出す（式全体のリテラル / 三項演算子の両枝） */
+function renderedStrings(expr: string): string[] {
+  const e = expr.trim()
+  const literal = e.match(/^(['"`])([A-Z][A-Za-z0-9]+)\1$/)
+  if (literal) return [literal[2] as string]
+  const t = splitTernary(e)
+  if (!t) return []
+  return [...renderedStrings(t.consequent), ...renderedStrings(t.alternate)]
 }
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -151,6 +197,24 @@ describe('findMisreferencesInSource（合成入力）', () => {
   })
   it('検出する: 多階層ディレクトリ連結の接頭辞（alpha/beta/Gamma.vue → AlphaBetaGamma）', () => {
     expect(names('<template><AlphaBetaGamma /></template>')).toEqual(['AlphaBetaGamma'])
+  })
+  it('検出する: v-bind:is と、単引用符で囲んだ属性値', () => {
+    expect(names('<template><component v-bind:is="\'FriendsFriendFeedPostList\'" /></template>')).toEqual(['FriendsFriendFeedPostList'])
+    expect(names('<template><component :is=\'"FriendsFriendFeedPostList"\' /></template>')).toEqual(['FriendsFriendFeedPostList'])
+  })
+  it('検出する: 入れ子の三項演算子の枝・式全体が文字列リテラルの場合', () => {
+    expect(names('<template><component :is="a ? \'PageHeader\' : b ? \'FriendsFriendFeedPostList\' : \'div\'" /></template>'))
+      .toEqual(['FriendsFriendFeedPostList'])
+  })
+  it('検出しない: :is の式中の比較値など、描画結果にならない文字列', () => {
+    expect(names('<template><component :is="kind === \'FriendsFriendFeedPostList\' ? PageHeader : \'div\'" /></template>')).toEqual([])
+    expect(names('<template><component :is="map[\'FriendsFriendFeedPostList\']" /></template>')).toEqual([])
+  })
+  it('検出する: import 済みでも resolveComponent / 文字列の :is は違反（文字列は import 束縛で解決されない）', () => {
+    const imp = '<script setup lang="ts">\nimport FriendsFriendFeedPostList from \'~/x/Y.vue\'\nconst C = resolveComponent(\'FriendsFriendFeedPostList\')\n</script>'
+    expect(names(`${imp}<template><div /></template>`)).toEqual(['FriendsFriendFeedPostList'])
+    const imp2 = '<script setup lang="ts">\nimport FriendsFriendFeedPostList from \'~/x/Y.vue\'\n</script>'
+    expect(names(`${imp2}<template><component :is="'FriendsFriendFeedPostList'" /></template>`)).toEqual(['FriendsFriendFeedPostList'])
   })
   it('検出しない: 正名・Lazy 付き正名・無関係な名前', () => {
     expect(names('<template><FriendFeedPostList /><LazyFriendFeedPostList /><Button /><NuxtLink /></template>')).toEqual([])
