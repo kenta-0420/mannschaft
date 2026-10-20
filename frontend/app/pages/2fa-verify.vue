@@ -235,8 +235,6 @@ async function handleVerify() {
       code: currentCode.value,
     })
     authStore.setTokens(data.data.accessToken ?? '', data.data.refreshToken ?? '')
-    // 2FA 検証成功直後に先回りリフレッシュタイマーを武装する。
-    armProactiveRefresh(runtimeConfig, authStore)
 
     // 検証レスポンスにユーザー情報は無い。フルプロフィール（timezone・locale 等）を取得して store を更新する。
     // 検証自体は成功しているため、取得失敗は「コード不正」と混同せず別文言で伝えて遷移は続ける。
@@ -267,6 +265,9 @@ async function handleVerify() {
     } catch {
       notification.error(t('auth.mfa.error_profile_failed'))
     }
+
+    // 本人の復元による世代更新が終わってからタイマーを武装する。
+    armProactiveRefresh(runtimeConfig, authStore)
 
     // ログイン成立直後にアカウント設定（外観・ナビ）をサーバーから同期する。
     // 新ブラウザ（シークレット等）で localStorage が空でも BEの保存済み設定が反映される。

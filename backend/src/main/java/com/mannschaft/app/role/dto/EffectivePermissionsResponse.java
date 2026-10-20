@@ -13,6 +13,8 @@ import java.util.List;
  * 「対象スコープの ADMIN 割当があるか」を判定できない。{@code scopeAdmin} がその判定結果で、
  * {@code AccessControlService#isAdmin}（対象スコープの割当を直接確認）と同じ値を返す。
  * スコープ ADMIN 専用の画面・操作の出し分けには {@code roleName} ではなくこちらを使うこと。</p>
+ *
+ * <p>ADMIN 専用権限の付与・剥奪の可否は {@code canGrantAdminOnlyPermissions} で別に返す（SYSTEM_ADMIN 兼任者は不可）。</p>
  */
 @Getter
 @RequiredArgsConstructor
@@ -22,4 +24,10 @@ public class EffectivePermissionsResponse {
     private final List<String> permissions;
     /** 対象スコープの ADMIN 割当があるか（SYSTEM_ADMIN の有無とは独立）。 */
     private final boolean scopeAdmin;
+    /**
+     * ADMIN 専用権限（MANAGE_ORG_AFFILIATION など）を含む権限グループの作成・更新・割当ができるか。
+     * {@code AccessControlService#checkScopeAdminOnly} が通る条件（スコープ ADMIN 本人で、SYSTEM_ADMIN でない）と同じ。
+     * SYSTEM_ADMIN とスコープ ADMIN の兼任者は {@code scopeAdmin=true} でもここが false（付与・剥奪とも 403）。
+     */
+    private final boolean canGrantAdminOnlyPermissions;
 }

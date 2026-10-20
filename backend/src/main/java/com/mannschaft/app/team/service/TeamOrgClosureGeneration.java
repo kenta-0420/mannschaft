@@ -42,6 +42,32 @@ public final class TeamOrgClosureGeneration {
     }
 
     /**
+     * PENDING の行が、閉鎖の片付け（{@code TeamOrgLifecycleCleanupService}）の対象か（F01.2.1 §4.5・§6.8・7-A）。
+     * 片付けが消す条件と同じく、次のどれかなら true:
+     * <ul>
+     *   <li>チームの行が無い・論理削除済み・アーカイブ済み（{@code cleanUpTeam} が PENDING を消す）</li>
+     *   <li>組織の行が無い・アーカイブ済み・論理削除済み（{@code cleanUpOrganization} が PENDING を消す）</li>
+     *   <li>組織またはチームの閉鎖より前に作られた行（解除・復元済みでも片付けが消す。{@link #createdBeforeClosure}）</li>
+     * </ul>
+     * 期限切れはこれらの行を消さず片付けに残す。片付けは残った側へ取消（{@code TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM}）を届け、
+     * 期限切れの通知と二重にならない（通知は1種類だけ）。
+     *
+     * @param row          加盟行（ロック済み）
+     * @param team         チーム（論理削除済みを含めてロックして読んだもの。行が無ければ null）
+     * @param organization 組織の最新の閉鎖の状態（行が無ければ null）
+     */
+    static boolean isLifecycleCleanupTarget(TeamOrgMembershipEntity row, TeamEntity team,
+                                            TeamAffiliationOrganizationPort.OrganizationClosureState organization) {
+        if (team == null || team.getDeletedAt() != null || team.getArchivedAt() != null) {
+            return true;
+        }
+        if (organization == null || organization.closed()) {
+            return true;
+        }
+        return createdBeforeClosure(row, organization.closureGeneration(), team.getClosureGeneration());
+    }
+
+    /**
      * 加盟行が、組織またはチームの閉鎖より前に作られたか。
      *
      * @param row                    加盟行

@@ -6,7 +6,7 @@
  * - {@link useFriendTeamsApi.listFriends} でフレンド一覧を取得し、
  *   {@link TeamFriendCard} を map 表示する。
  * - ページネーション UI（PrimeVue Paginator）を提供する。
- * - 空状態は {@link DashboardEmptyState} を使用。
+ * - 空状態は {@link DashboardEmptyState}、取得失敗は {@link DashboardErrorState}（403=権限なし案内、5xx・通信断=再試行付き）。
  * - ローディング中は {@link PageLoading} を使用。
  *
  * Props:
@@ -40,9 +40,12 @@ const loading = ref(true)
 const page = ref(0)
 const pageSize = ref(20)
 const totalElements = ref(0)
+// 取得失敗は空状態と区別して保持する（403=権限なし案内、5xx・通信断=エラー表示＋再試行）
+const loadError = shallowRef<unknown>(null)
 
 async function load() {
   loading.value = true
+  loadError.value = null
   try {
     const response = await listFriends(props.teamId, {
       page: page.value,
@@ -52,7 +55,9 @@ async function load() {
     totalElements.value = response.pagination.totalElements
   }
   catch (error) {
-    handleApiError(error)
+    friends.value = []
+    totalElements.value = 0
+    loadError.value = error
   }
   finally {
     loading.value = false
@@ -111,6 +116,13 @@ defineExpose({ refresh })
   <div class="flex flex-col gap-3">
     <PageLoading v-if="loading" size="40px" />
 
+    <DashboardErrorState
+      v-else-if="loadError"
+      testid="friend-list-error"
+      :error="loadError"
+      @retry="load"
+    />
+
     <template v-else>
       <template v-if="friends.length > 0">
         <TeamFriendCard
@@ -131,11 +143,12 @@ defineExpose({ refresh })
           @page="onPageChange"
         />
       </template>
-      <DashboardEmptyState
-        v-else
-        icon="pi pi-users"
-        :message="t('friends.list.empty')"
-      />
+      <div v-else data-testid="friend-list-empty">
+        <DashboardEmptyState
+          icon="pi pi-users"
+          :message="t('friends.list.empty')"
+        />
+      </div>
     </template>
   </div>
 </template>

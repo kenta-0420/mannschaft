@@ -1,8 +1,14 @@
 package com.mannschaft.app.team;
 
 import com.mannschaft.app.team.dto.SystemAdminTeamSummaryResponse;
+import com.mannschaft.app.team.dto.DeletedTeamSummaryResponse;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.team.entity.TeamEntity;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 
 /**
  * システム管理ダッシュボード用のチームサマリ変換マッパー（team ドメイン所有）。
@@ -20,4 +26,13 @@ import org.mapstruct.Mapper;
 public interface SystemAdminTeamSummaryMapper {
 
     SystemAdminTeamSummaryResponse toSummary(TeamEntity entity);
+
+    @Mapping(target = "deletedAt", source = "deletedAt", qualifiedByName = "deletedAtInstant")
+    DeletedTeamSummaryResponse toDeletedSummary(TeamEntity entity);
+
+    /** JPA変換済みの日時を既存サーバーゾーンで瞬間へ戻す。DB scalarの壁時計を推測しない。 */
+    @Named("deletedAtInstant")
+    default Instant deletedAtInstant(LocalDateTime deletedAt) {
+        return deletedAt == null ? null : deletedAt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant();
+    }
 }

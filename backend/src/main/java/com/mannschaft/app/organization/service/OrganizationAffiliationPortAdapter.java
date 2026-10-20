@@ -165,6 +165,24 @@ public class OrganizationAffiliationPortAdapter implements TeamAffiliationOrgani
     }
 
     @Override
+    @Transactional
+    public Map<UUID, Long> findAliveGroupOrganizationIds(Collection<UUID> groupIds) {
+        // プライマリ固定（F01.2.1 7-A・孤児 group_id の修復）: 判定に使う読み取りなので readOnly にしない。readOnly = true は
+        // ReplicaRoutingAspect がレプリカへ振り、複製遅延で作ったばかりのグループが見えないと、削除済みと見誤って割当を
+        // 未分類へ戻してしまう。書き込みはしない（ロックも取らない）
+        if (groupIds == null || groupIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, Long> result = new HashMap<>();
+        for (OrgTeamGroupEntity group : orgTeamGroupRepository.findAllById(groupIds)) {
+            if (group.getDeletedAt() == null) {
+                result.put(group.getId(), group.getOrganizationId());
+            }
+        }
+        return result;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Map<UUID, GroupRef> findAliveGroupRefs(Collection<UUID> groupIds) {
         if (groupIds == null || groupIds.isEmpty()) {

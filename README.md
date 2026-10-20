@@ -2,6 +2,27 @@
 
 あらゆる組織・チーム・個人をシームレスに管理するWebアプリケーション。
 
+告知ウィザードは各手順から使い方モーダルを開ける。テンプレートの推奨チャネルも手順2で確認・変更してから内容入力へ進む。詳細は[F02.8 告知ウィザード](docs/features/F02.8_dashboard_announcement.md)を参照。
+
+[チームポイント（F18.1）](docs/features/F18.1_team_loyalty_points.md) を実装し、受け入れ検証中です。本人は共通会員QR・残高・特典・履歴・受付申請を利用し、管理者が設定、管理者と明示委任副管理者が付与・交換・承認を行います。QR期限の位相ずれは単体回帰6件で修正確認済みです。3住民・26観測による対象アリシゼーションと操作域/説明の回帰7件・9画像確認を完了しました。正式19件は18成功・1timeoutで、該当1件の同60秒予算追試は成功しましたが原因は未確定です。ユーザー指示により大規模性能試験を後続へ延期し、timeout調査と最新main統合を進めています。統合前のFE/BE/E2E CIは成功、統合後CIは待ちです。物理iPhone・キーボード・読み上げは別途未実施、全32AC合格とはせず、未実施事項を残して統合後CIと調査結果をもとにマージ判断します（詳細は仕様書§13とPR #3920）。
+
+[本人の恐竜アバター Phase 1](docs/features/F04.7_dinosaur_ranch/05_acceptance_rollout.md) は製造中で、73受け入れ条件・実機・アリシゼーションの全体合格は未完了です。全64素材と対応表は未承認・未登録で、本番公開 gate は OFF を維持します。明示した非本番の隔離 fixture は実装検証専用で、素材完成や本番公開準備の証拠には数えません。
+
+恐竜の部屋の「遊び方」は、ページを移動せず共通ダイアログで確認できます。準備中の素材・対応表や停止中のお世話も区別して案内します。
+
+本人の64タイプ診断結果は、保存した六軸の極ラベルから本人の傾向を表示し、同点時は本人の選択を示します。旧結果は元の本人セッションに保存した定義から表示だけを補足し、保存説明を変更しません。初期草案の質問・翻訳は未承認と明示し、恐竜対応付けと公開 gate は引き続き閉じています。
+
+本人の診断結果一覧は1〜100件を取得し、版・本人・診断方式・MICROS時刻・UUIDに束縛した署名付きcursorで続きを指定します。旧無署名cursorや別本人・別方式・改ざんcursorは400で拒否します。0/1/100/101件・limit境界・一定query数の試験コードを追加しましたが、新しい実MySQL試験とCI実証は未実行です。
+
+本人の未完了診断は `GET /api/v1/me/diagnoses/sessions/pending` で最新の途中回答を取得して再開します。未完了がない場合は200の `data: null`、取得失敗は再試行として区別します。既存セッションの質問定義と回答を保持し、牧場参加を必要としません。
+
+承認素材の登録は `frontend/scripts/verify-ranch-production-assets.mjs` に pack directory・manifest SHA256・master file/SHA256 を明示して行います。全512組の実 bytes・hash・PNG atlas/fallback を照合し、`--repository` に指定した隔離 checkout 内へ同じ artifact の BE classpath/FE public と有限 TS registry を配置します。TS は両配置の後に原子的に置換し、別 bytes の既存 pack は上書きしません。現在の対応形式は静的8bit RGB/RGBA・非 interlace PNG の均等 atlas（PIXEL は96×96）です。care 公開設定とは独立した素材登録であり、検証器の合成試験は素材承認を代行しません。
+Scene は登録された同個体・同段階の静止 fallback を動き抑制時と atlas 取得失敗時に使用し、静止画像も失敗した場合は状態文字を保ちます。初回非表示では画像を取得せず、公開素材 pack 未登録の現在は本番表示 gate が閉じています。canvas の実画素・実ブラウザ資源停止は別の実機確認対象です。
+運営の源配送集計・明示再予約は現在の SYSTEM_ADMIN/ACTIVE 資格で源の専用窓口へ接続します。4源の実 provider が未閉束の間は利用不可として表示し、正常なゼロ件を捏造しません。保存 ACK を照会できない503では同じ再送 key/body を保持します。実 HTTP のロール横断・4源配送と E2E の全体合格は未証明です。
+ログインはメール＋パスワード、パスキー、Googleの順に利用できる。パスキーはメールだけで開始し、署名・UP/UVと一回限りのチャレンジを検証する。通常ログインと同じ状態確認・セッション管理・認証Cookieを適用する。詳細は[F01.1 認証](docs/features/F01.1_auth.md#webauthn-ログインフロー)を参照。
+
+チーム・組織の参加申請管理一覧は、所属する ADMIN / DEPUTY_ADMIN が公開範囲によらず取得できる。非公開化後の申請履歴と0件の空ページも取得でき、非公開スコープの権限がない利用者には不存在と同じ404を返す。新規申請・承認・却下の公開条件と、削除・アーカイブ・事前作成中のスコープの拒否条件は維持する。
+
 活動記録の認証付き詳細と予定連携は、[F06.4 §13](docs/features/F06.4_activity_records.md#13-認証付き詳細と予定連携cmp-261007-1510)で設計する。予定から下書きを作成し、予定由来の未編集項目だけを追従させる。公開済み・手動編集済みの項目は差分を選択して反映し、本文・結果・添付・実参加者を保全する。実装・検証の完了状態は[戦役台帳](docs/task-list.md)を正本とする。
 
 チーム・組織の具体予定を保存すると活動記録に「予定・未公開」が自動表示され、終了日時経過後の毎分処理で「予定」が外れる。実績を自動公開せず、一般所属には元予定の閲覧範囲内の予定情報だけを表示する。活動記録の削除は元予定を残す。[F06.4 §14](docs/features/F06.4_activity_records.md#14-予定作成時の自動活動記録cmp-261008-1203)に契約と実証範囲を記載し、追加の認可・取消API・JDBC binder性能試験も照合済みで、PR #3729の最終CI・検分・マージ（a41c06d5）を確認した。2026-10-09の稼働反映では既存期限超過予定846件が0件へ収束し、手動活動59件と内容digestを保持した。FEは匿名実Browserでlogin表示・HTTP200と実import経由のcompiled source 5件のGit blob一致も確認した。
@@ -9,6 +30,8 @@
 ブログ・予定のmultipartメディアは保存済み所有スコープと添付IDへ束縛し、ACL照合後に署名URLを発行する。開始・完了・再試行・旧データの扱いは[ファイル・ストレージセキュリティ](docs/security/07_file_and_storage_security.md#42-cmp-057-multipart-の保存台帳とclaim2026-09)を参照。
 
 お知らせのブログ（通常記事・公告）と掲示板は、[F02.6 本文プレビュー](docs/features/F02.6_announcement_widget.md)で所有スコープ・最新配信対象・元記事の可視性・課金を照合してモーダル表示する。プレビュー GET は既読・閲覧数を変更せず、LOCKED は本文と元参照を秘匿し、HIDDEN は404を返す。課金評価・メディア台帳取得・署名の障害は専用読取入口から500へ伝播させ、正常な本文やHIDDENへ丸めない。通常記事の既存fallback契約は維持する。
+
+組織作成の非公開選択は `PRIVATE` を送信し、タイムラインの通常本人投稿は本文だけを編集して保存後に再取得する（[組織 API 設計](docs/features/F01.2_org_team_member_role/02_api_design.md)、[タイムライン](docs/features/F04.1_timeline.md)）。
 
 ---
 
@@ -130,7 +153,7 @@
 
 ### 紐付けと所属
 
-- **招待URL・QRコード**: チーム/組織が発行した招待URL またはQRコードから個人がスムーズにメンバー加入。QRコードには有効期限（1日/7日/30日/90日/無期限）と使用回数上限（nullable）を設定可能。期限切れ・上限到達・手動無効化で即座に失効する
+- **招待URL・QRコード**: チーム/組織が発行した招待URL またはQRコードから個人がスムーズにメンバー加入。QRコードには有効期限（1日/7日/30日/90日/無期限）と使用回数上限（nullable）を設定可能。期限切れ・上限到達・手動無効化で即座に失効する。招待一覧・作成フォーム・通知は6言語に対応し、作成・条件選択・コピー・無効化・ダイアログ操作は44px以上のタッチ領域を確保する
 - **マルチ所属**: 1つの個人アカウントで複数のチームや組織に同時に所属可能
 - **サポーター枠**: 招待不要で、外部から特定のチームを支援・フォローできる独立した枠組み
 
@@ -181,13 +204,15 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 ### セキュリティ・認証
 
-> 📄 詳細設計: [docs/features/F01.1_auth.md](docs/features/F01.1_auth.md) | [docs/features/F01.2_org_team_member_role.md](docs/features/F01.2_org_team_member_role.md) | [docs/features/F01.2.1_org_team_groups.md](docs/features/F01.2.1_org_team_groups.md)（チーム加盟の双方向化・チームグループ／🟡 実装中: 申請受付設定・申請フォーム・申請ボタン判定・公開 API の受付フラグは実装済み） | [docs/features/F01.5_team_friend_relationships.md](docs/features/F01.5_team_friend_relationships.md)
+> 📄 詳細設計: [docs/features/F01.1_auth.md](docs/features/F01.1_auth.md) | [docs/features/F01.2_org_team_member_role.md](docs/features/F01.2_org_team_member_role.md) | [docs/features/F01.2.1_org_team_groups.md](docs/features/F01.2.1_org_team_groups.md)（チーム加盟の双方向化・チームグループ／🟡 実装中: 申請受付設定・申請フォーム・申請ボタン判定・公開 API の受付フラグ・所属チーム一覧からの除名 UI は実装済み。除名は組織 ADMIN の管理レンズで確認後に実行でき、グループ機能 off でも利用可能） | [docs/features/F01.5_team_friend_relationships.md](docs/features/F01.5_team_friend_relationships.md)
 
 - **2要素認証 (2FA)**: TOTP（Google Authenticator等）対応。SYSTEM_ADMIN・ADMINには必須化
 - **OAuth2ソーシャルログイン**: Google / LINE / Apple によるワンクリック登録・ログイン
 - **パスワードリセット**: メールによるリセットフロー。トークン有効期限は **30分**
 - **レート制限・ブルートフォース対策**: ログイン試行を IP + アカウント単位で Valkey カウンター管理。5回失敗でアカウントを **30分** ロック。パスワードリセット・2FA検証エンドポイントにも同様のレート制限を適用する
 - **アカウント凍結・退会フロー**: 管理者によるアカウント凍結、ユーザー自身の退会申請。退会申請後30日間は論理削除（猶予期間）、その後個人情報を物理削除。決済履歴は税法に基づき7年間保持。詳細は `.claudecode.md` §8「データ保持・削除規約」を参照
+- **チームの手動アーカイブ・解除**: 対象チームの管理者・副管理者はヘッダー（モバイルでは「その他」）から確認後にアーカイブできる。モバイルメニューとアーカイブ・解除確認の確定／キャンセル／閉じるは44x44px以上の操作領域を確保する。解除はチーム一覧の「アーカイブ済みチーム」から行う。PENDING の加盟申請・招待は取り消され、成立済みの加盟は維持される。解除しても取り消された申請・招待は復元しない。本人の所属チーム一覧 API は表示ロールとは独立した `canManageArchive` を返す（SYSTEM_ADMIN 単独は操作不可）。
+- **削除済みチームの復元**: SYSTEM_ADMINは管理ダッシュボードの「削除済みチームの復元」から削除済み一覧を開き、確認して復元できる（`/system-admin/teams/deleted`）。既存 `PATCH /api/v1/teams/{slug}/restore` を使い、未削除・復元済みは409 `TEAM_006`。公開範囲・予定・役割は保持し、削除前の組織加盟は戻さない。既存の孤児予定は復元後にチーム予定UIから削除できる（[API仕様](docs/features/F01.2_org_team_member_role/02_api_design.md)、[システム管理UI](docs/features/F10.1_admin_dashboard.md)）。
 - **非アクティブアーカイブ**: 一定期間ログインがないユーザー・チーム・組織を段階的にアーカイブする。アーカイブ前にメール通知を送り、ログインで即時解除可能
 
   | 対象 | アーカイブトリガー | 根拠 |
@@ -317,7 +342,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 | 11 | カルテ | 問診票・ビフォーアフター写真・身体チャート・薬剤レシピ・経過グラフ（**有料プラン必須**） |
 | 12 | 共用施設予約 | マンション・スポーツ施設・学校等の共用施設（ゲストルーム・集会室・BBQエリア等）の予約管理 |
 | 13 | 順番待ち管理 | 病院・市役所・飲食店等の窓口順番待ち。QRコード受付・ネット予約・リアルタイム待ち状況・呼び出し通知・NO_SHOWペナルティ |
-| 14 | 大会・リーグ管理 | リーグ戦・トーナメント運営、順位表自動計算、得点ランキング、昇降格管理、PDF出力 |
+| 14 | 大会・リーグ管理 | リーグ戦・トーナメント運営、順位表自動計算、得点ランキング、昇降格管理、エントリー表編集・参加チーム名表示、PDF出力 |
 | 15 | 時間割管理 | 曜日×時限の週間パターン定義・学期別切替・教科/担当/教室設定・臨時変更通知・PDF出力 |
 
 ※ 運営側が随時新モジュールを追加予定。選択式モジュールが10個を超えた場合、11個目以降の有効化には有料プランが必要
@@ -796,8 +821,10 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 #### AA. 管理者ダッシュボード
 - 全管理機能を `/admin` 配下に集約
+- **公開設定**: 非公開のチーム・組織も管理 GET で現在値と数値 ID を取得し、既存 PATCH に両設定値を送る。ADMIN/DEPUTY_ADMIN・SYSTEM_ADMIN の既存認可と公開閲覧の拒否条件を維持する（[F19.1 API契約](docs/features/F19.1_public_pages_identity_disclosure.md#62-既存エンドポイント拡張)）。
 - ユーザー管理、ロール・パーミッション管理、モジュール設定、スケジュール管理、ブログ管理、掲示板カテゴリ管理、備品管理、メンバー紹介管理、広告・スポンサー管理（将来: 自チーム/組織の広告出稿申請・クリエイティブ登録）、予約管理設定、Googleカレンダー設定、LINE設定、SNS設定
 - **DEPUTY_ADMIN 権限グループ管理**: パーミッションを個別選択した名前付きグループの作成・編集・複製・削除。グループはテンプレートとして保存でき、DEPUTY_ADMIN ユーザーへ割り当てる。「グループ1（受付・安否確認担当）」「グループ2（スケジュール・ファイル管理担当）」など複数グループの運用が可能。SYSTEM_ADMIN が定めた権限の上限（天井）の範囲内で設定可能
+- **権限グループの更新**: チーム・組織で、同じパーミッションを保持した改名と権限の差し替えを行える。途中失敗時は名前・紐付けをまとめて旧状態へ戻す。
 - **DEPUTY_ADMIN の割り当て**: 複数ユーザーを DEPUTY_ADMIN に任命し、それぞれに権限グループを割り当て
 - **MEMBER の権限調整**: チェックボックスで MEMBER のデフォルト操作を ON/OFF（`team_role_permissions` に保存）
 - **コンテンツ削除ポリシー**: 掲示板・タイムライン・チャット等の他者コンテンツ削除は ADMIN が担う。DEPUTY_ADMIN への削除権限付与は権限グループで明示的に設定した場合のみ有効
@@ -906,15 +933,15 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 | Phase | 機能領域 | 詳細設計 |
 |-------|---------|---------|
 | 1 | 認証・権限・ユーザー基盤、プラットフォーム設定、チーム・組織・グループ階層、テンプレート・モジュール、プラン・サブスクリプション、チーム間相互フォロー・フレンドチーム | [F01.1](docs/features/F01.1_auth.md), [F01.2](docs/features/F01.2_org_team_member_role.md), [F01.2.1](docs/features/F01.2.1_org_team_groups.md), [F01.3](docs/features/F01.3_template_module.md), [F01.4](docs/features/F01.4_family_team.md), [F01.5](docs/features/F01.5_team_friend_relationships.md) |
-| 2 | QR会員証、ダッシュボード、帰省・滞在予定、TODO・プロジェクト、アクセス解析、外観設定、オンボーディング | [F02.1](docs/features/F02.1_qr_membership.md), [F02.2](docs/features/F02.2_dashboard.md), [F02.11](docs/features/F02.11_return_stay_plan.md), [F02.3](docs/features/F02.3_todo_project.md), [F02.4](docs/features/F02.4_onboarding.md) |
+| 2 | QR会員証（管理一覧・履歴・拠点管理の6言語対応・使い方ガイド）、ダッシュボード、帰省・滞在予定、TODO・プロジェクト、アクセス解析、外観設定、オンボーディング | [F02.1](docs/features/F02.1_qr_membership.md), [F02.2](docs/features/F02.2_dashboard.md), [F02.11](docs/features/F02.11_return_stay_plan.md), [F02.3](docs/features/F02.3_todo_project.md), [F02.4](docs/features/F02.4_onboarding.md) |
 | 3 | スケジュール・出欠、個人スケジュール、Googleカレンダー連携、予約管理、シフト管理、緊急安否確認、順番待ち、イベント管理 | [F03.1](docs/features/F03.1_schedule_shared.md), [F03.2](docs/features/F03.2_schedule_personal.md), [F03.3](docs/features/F03.3_google_calendar.md), [F03.4](docs/features/F03.4_reservation.md)（v2枝番: [F03.4.1 メニュー](docs/features/F03.4.1_reservation_menu.md), [F03.4.2 枠テンプレート](docs/features/F03.4.2_reservation_slot_template.md), [F03.4.3 予約グループ](docs/features/F03.4.3_reservation_group_booking.md), [F03.4.4 マトリックスUI](docs/features/F03.4.4_reservation_matrix_ui.md)）, [F03.5](docs/features/F03.5_shift.md), [F03.6](docs/features/F03.6_safety_check.md), [F03.7](docs/features/F03.7_queue.md), [F03.8](docs/features/F03.8_event_management.md) |
-| 4 | タイムライン、チャット、プッシュ通知、ソーシャルプロフィール・フォロー、通報・モデレーション、グローバル検索、ゲーミフィケーション | [F04.1](docs/features/F04.1_timeline.md), [F04.2](docs/features/F04.2_chat.md), [F04.3](docs/features/F04.3_push_notification.md), [F04.4](docs/features/F04.4_social_profiles.md), [F04.5](docs/features/F04.5_moderation.md), [F04.6](docs/features/F04.6_search.md), [F04.7](docs/features/F04.7_gamification.md) |
+| 4 | タイムライン、チャット（自分の連絡先QR管理への入口）、プッシュ通知、ソーシャルプロフィール・フォロー、通報・モデレーション、グローバル検索、ゲーミフィケーション | [F04.1](docs/features/F04.1_timeline.md), [F04.2](docs/features/F04.2_chat.md), [F04.3](docs/features/F04.3_push_notification.md), [F04.4](docs/features/F04.4_social_profiles.md), [F04.5](docs/features/F04.5_moderation.md), [F04.6](docs/features/F04.6_search.md), [F04.7](docs/features/F04.7_gamification.md), [F04.8](docs/features/F04.8_contact.md) |
 | 5 | 掲示板、回覧板、電子印鑑、アンケート・投票、ファイル共有、ワークフロー・承認、フォームビルダー | [F05.1](docs/features/F05.1_bulletin_board.md), [F05.2](docs/features/F05.2_circular.md), [F05.3](docs/features/F05.3_digital_seal.md), [F05.4](docs/features/F05.4_survey_vote.md), [F05.5](docs/features/F05.5_file_sharing.md), [F05.6](docs/features/F05.6_workflow_approval.md), [F05.7](docs/features/F05.7_form_builder.md) |
 | 6 | CMS・ブログ、メンバー紹介・ギャラリー、タイムラインダイジェスト、活動記録、ナレッジベース | [F06.1](docs/features/F06.1_cms_blog.md), [F06.2](docs/features/F06.2_member_gallery.md), [F06.3](docs/features/F06.3_timeline_digest.md), [F06.4](docs/features/F06.4_activity_records.md), [F06.5](docs/features/F06.5_knowledge_base.md) |
 | 7 | サービス記録、パフォーマンス管理、備品管理、カルテ、スキル・資格管理、インシデント管理 | [F07.1](docs/features/F07.1_service_records.md), [F07.2](docs/features/F07.2_performance.md), [F07.3](docs/features/F07.3_equipment.md), [F07.4](docs/features/F07.4_chart.md), [F07.5](docs/features/F07.5_skill_certification.md), [F07.6](docs/features/F07.6_incident_management.md) |
 | 8 | マッチング、大会・リーグ管理、決済・会費・入退室、議決権行使・委任状、領収書、回数券、予算・会計管理 | [F08.1](docs/features/F08.1_matching.md), [F08.2](docs/features/F08.2_payments_access_control.md), [F08.3](docs/features/F08.3_voting_proxy.md), [F08.4](docs/features/F08.4_receipt.md), [F08.5](docs/features/F08.5_ticket_book.md), [F08.6](docs/features/F08.6_budget_accounting.md), [F08.7](docs/features/F08.7_tournament_league.md) |
 | 9 | 住民台帳、プロモーション配信、駐車場区画、LINE/SNS連携、施設予約、ダイレクトメール、広告、コルクボード、Webhook/外部API、デジタルサイネージ、メール配信基盤 | [F09.1](docs/features/F09.1_resident_registry.md), [F09.2](docs/features/F09.2_promotion_targeting.md), [F09.3](docs/features/F09.3_parking.md), [F09.4](docs/features/F09.4_line_sns.md), [F09.5](docs/features/F09.5_facility_booking.md), [F09.6](docs/features/F09.6_direct_mail.md), [F09.7](docs/features/F09.7_advertising.md), [F09.8](docs/features/F09.8_corkboard.md), [F09.9](docs/features/F09.9_webhook_api.md), [F09.10](docs/features/F09.10_digital_signage.md), [F09.18](docs/features/F09.18_email_delivery_infrastructure.md) |
-| 10 | 管理者ダッシュボード、通報モデレーション、監査ログ、経営分析、パフォーマンス監視、エラー監視 | [F10.1](docs/features/F10.1_admin_dashboard.md), [F10.2](docs/features/F10.2_moderation.md), [F10.3](docs/features/F10.3_audit_logs.md), [F10.4](docs/features/F10.4_business_analytics.md), [F10.5](docs/features/F10.5_performance_monitoring.md), [F10.6](docs/features/F10.6_error_monitoring.md) |
+| 10 | 管理者ダッシュボード（チーム・組織の設定集約）、通報モデレーション、監査ログ、経営分析、パフォーマンス監視、エラー監視 | [F10.1](docs/features/F10.1_admin_dashboard.md), [F10.1.1](docs/features/F10.1.1_team_org_admin_console/README.md), [F10.2](docs/features/F10.2_moderation.md), [F10.3](docs/features/F10.3_audit_logs.md), [F10.4](docs/features/F10.4_business_analytics.md), [F10.5](docs/features/F10.5_performance_monitoring.md), [F10.6](docs/features/F10.6_error_monitoring.md) |
 | 11 | オフライン対応/PWA、多言語コンテンツ、ポリッシュ・テスト・Docker化 | [F11.1](docs/features/F11.1_offline_pwa.md), [F11.2](docs/features/F11.2_multilingual_content.md) |
 
 ---
@@ -952,6 +979,10 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 `POST /export/team/{id}`, `GET /export/status/{jobId}`, `GET /export/download/{jobId}`
 
 ---
+
+### 個人データのエクスポート
+
+設定のアカウント画面から本人データを出力できます。新規ZIPはAES-256で保護し、パスワードは完了メールで通知します。展開にはAES対応アプリが必要です（Windows標準機能は暗号化ZIPに非対応、macOS標準機能のAES対応も保証しません）。変更前の作成済みZIPは元の形式・期限を保持し、再暗号化や一括失効は行いません。詳細は[F12.3 GDPR](docs/features/F12.3_gdpr_personal_data.md)を参照してください。
 
 ## 実装フェーズ
 
@@ -1032,6 +1063,10 @@ cd /mnt/c/Claude/mannschaft
 docker compose up -d
 docker ps  # mannschaft-mysql と mannschaft-valkey が Running であれば OK
 ```
+
+### 本番FEコンテナのヘルスチェック
+
+本番FEコンテナは `HOST=0.0.0.0` / `PORT=3000` で待ち受け、healthは `http://127.0.0.1:3000/` をGETする。`localhost` がIPv6を先に解決する環境でもIPv4待受と一致させるためである。main push限定のFrontend CIは公開HTTPを60秒、続いてDocker `healthy` を180秒の期限で待ち、成功時にも公開HTTPを再確認する。状態不正・health欠損・期限超過は失敗とし、コンテナ状態とログを出力して専有コンテナを撤去する。開発用ブラウザURLは下記の `localhost` を使う。
 
 ### application-local.yml の作成（初回のみ・gitignore 対象）
 
@@ -1199,3 +1234,7 @@ Phase 9 以降で実装される機能（**広告表示 #27・コルクボード
 - 開発にあたっては、必ずルートの `.claudecode.md` および `BACKEND_CODING_CONVENTION.md`,`FRONTEND_CODING_CONVENTION.md` に記載された規約を最優先で遵守すること。
 - ディレクトリ構成は機能別（Feature-based）パッケージングを採用すること。
 - 開発フローの制約（AI/人間の区別）は `.claudecode.md` §17 を参照すること。
+
+### チームの予算・会計画面
+
+`/teams/{slug}/budget` では管理者・副管理者が会計年度を追加し、年度ごとの収入・支出・残高と費目別の予算・実績・消化率を確認できます。選択した年度の開始日・終了日は作成後や年度切替後にも表示し、集計取得に失敗しても確認できます。戻るリンクはチームトップへ移動します。ページ上部の「使い方」には、閲覧権限を持つ利用者向けであることと、一般メンバーの管理者への相談先を案内しています。会計APIでは、費目の削除と取引のない年度の削除は論理削除とし、予算配分・取引の履歴と集計金額を保持します。取引のある年度は削除できません。見出しと操作は画面幅に応じて折り返し、日本語・ドイツ語の360/390px幅でもページを横に広げません。見出しのヘルプ・年度フォーム・日付選択・ガイドの操作領域は44×44px以上を確保しています。費目の作成や収支の直接入力はこの画面の対象外です。

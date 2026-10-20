@@ -19,6 +19,9 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshTokenEntity
 
     Optional<RefreshTokenEntity> findByTokenHash(String tokenHash);
 
+    /** 署名検証済み本人の単一セッションだけをログアウト対象として取得する。 */
+    Optional<RefreshTokenEntity> findByTokenHashAndUserId(String tokenHash, Long userId);
+
     /**
      * 悲観ロック（{@code PESSIMISTIC_WRITE}）付きでリフレッシュトークンを取得する。
      *

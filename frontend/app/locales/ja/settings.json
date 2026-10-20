@@ -1,5 +1,11 @@
 {
   "data_export": {
+    "request_daily_limit": "データ出力は24時間に1回までです。既存の出力は引き続き利用できます。",
+    "request_in_progress": "データ出力はすでに処理中です。完了までお待ちください。",
+    "request_error": "データ出力を要求できませんでした。もう一度お試しください。",
+    "download_not_ready": "まだダウンロードできません。データ出力の完了後にもう一度お試しください。",
+    "download_expired": "ダウンロードの保持期限が切れています。要求可能になったら新しくデータを出力してください。",
+    "download_error": "データをダウンロードできませんでした。もう一度お試しください。",
     "section_title": "データエクスポート",
     "export_button": "個人データをエクスポート",
     "status_completed": "完了",
@@ -11,7 +17,7 @@
     "step_failed": "エクスポートに失敗しました",
     "step_processing": "エクスポート中...",
     "step_preparing": "準備中...",
-    "description": "あなたの個人データをZIPファイルとしてエクスポートできます。"
+    "description": "個人データをZIPで出力できます。新規ZIPはAES-256で保護され、パスワードは完了メールで届きます。AES対応の解凍アプリが必要です。Windows標準機能は暗号化ZIPに非対応で、macOS標準機能での展開も保証されません。変更前の作成済みZIPは暗号化されていない場合がありますが、元の形式と期限を保持します。"
   },
   "deletion_preview": {
     "dialog_title": "アカウント削除の確認",
@@ -578,7 +584,7 @@
         "description": "検索・DM受信・オンライン状態の公開範囲"
       },
       "contactInviteTokens": {
-        "description": "連絡先追加用の招待URLを発行・管理"
+        "description": "連絡先追加用の招待URLとQRコードを発行・表示・管理します"
       },
       "contactRequestBlocks": {
         "label": "申請事前拒否リスト",

@@ -1,4 +1,4 @@
-﻿{
+{
   "adminConsole": {
     "comingSoon": "Demnächst verfügbar",
     "team": {
@@ -28,7 +28,7 @@
       },
       "members": {
         "title": "Mitglieder",
-        "desc": "Verwalte die Mitgliederliste, Rollenänderungen, Mitgliedskarten und Profile"
+        "desc": "Mitglieder ansehen, Rollen ändern und Mitglieder entfernen"
       },
       "settings": {
         "title": "Einstellungen",
@@ -124,6 +124,25 @@
         "summary": "{enabled} aktiv / {total} gesamt",
         "fetchFailed": "Modulinformationen konnten nicht geladen werden"
       }
+    },
+    "settingsHub": {
+      "readOnly": "Nur Ansicht. Nur Administratoren können diese Bezeichnungen bearbeiten."
     }
+  },
+  "deletedTeams": {
+    "title": "Gelöschte Teams wiederherstellen",
+    "description": "Wähle ein gelöschtes Team zur Wiederherstellung aus.",
+    "restore": "Wiederherstellen",
+    "confirmTitle": "Dieses Team wiederherstellen?",
+    "confirm": "„{name}“ ({slug}) wiederherstellen? Sichtbarkeit, Archivierungsstatus und Aktivierungsstatus bleiben erhalten. Frühere Organisationszugehörigkeiten werden nicht wiederhergestellt.",
+    "cancel": "Abbrechen",
+    "success": "„{name}“ wurde wiederhergestellt.",
+    "openTeam": "Team öffnen",
+    "provisionedHint": "Dieses Team wartet weiterhin auf die Aktivierung. Die reguläre Teamseite ist noch nicht verfügbar.",
+    "processing": "Wird wiederhergestellt…",
+    "empty": "Es gibt keine gelöschten Teams.",
+    "deletedAt": "Gelöscht am",
+    "active": "Aktiviert",
+    "provisioned": "Wartet auf Aktivierung"
   }
 }

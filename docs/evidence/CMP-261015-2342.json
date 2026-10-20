@@ -1,0 +1,241 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261015-2342",
+  "scope": "app",
+  "implementation": {
+    "pr": 3902,
+    "sha": "d68b44815ac586e51866aa6630978a6374b6414e",
+    "mergedAt": "2026-10-15T17:26:29Z",
+    "mergeCommit": "98cdd8481e2311d33064fa873dbb8f479c74b136"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "既存メンバー画面と独立QR管理画面に通常カードから到達する。",
+      "tests": [
+        {
+          "name": "TAC-001/TAC-002、OAC-001/OAC-002の実href",
+          "evidence": "frontend/tests/unit/pages/teams/admin/index.spec.ts"
+        },
+        {
+          "name": "組織管理ハブの実href",
+          "evidence": "frontend/tests/unit/pages/organizations/admin/index.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "内部numericIdと全状態を取得し、空/失敗を区別して同じ処理で再試行する。",
+      "tests": [
+        {
+          "name": "状態クエリ契約",
+          "evidence": "frontend/app/composables/useMemberCardApi.spec.ts"
+        },
+        {
+          "name": "内部ID、組織0件、部分失敗、権限取得失敗、ID欠落",
+          "evidence": "frontend/app/composables/useMemberCardManagement.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "管理一覧が本人QRを呼ばず氏名/状態を表示し、履歴・停止・再開へ接続する。",
+      "tests": [
+        {
+          "name": "非空表示・履歴選択・停止/再開イベント・本人QR未呼出し",
+          "evidence": "frontend/app/components/member-card/MemberCardAdminList.spec.ts"
+        },
+        {
+          "name": "停止/再開後の全状態再取得",
+          "evidence": "frontend/app/composables/useMemberCardManagement.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "個別履歴のスタッフ名・会員切替・再試行と統計期間が実API契約に一致する。",
+      "tests": [
+        {
+          "name": "履歴スタッフ名・切替・失敗再試行",
+          "evidence": "frontend/app/components/member-card/CheckinHistory.spec.ts"
+        },
+        {
+          "name": "統計必須期間・ユーザーTZ月境界",
+          "evidence": "frontend/app/composables/useMemberCardManagement.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "PageHeader helpの金型ガイドを6言語で開閉し、実機能に即して案内する。",
+      "tests": [
+        {
+          "name": "ガイド閉じる操作",
+          "evidence": "frontend/app/components/member-card/MemberCardGuideModal.spec.ts"
+        },
+        {
+          "name": "PageHeader併置番人",
+          "evidence": "frontend/tests/unit/pageheader-backbutton-coexistence.spec.ts"
+        },
+        {
+          "name": "6言語照合とガイド実機",
+          "evidence": "docs/evidence/CMP-261015-2342-review.md"
+        },
+        {
+          "name": "390/360幅の使い方・上下閉じるに同一>=44px DOMアサート6件green、安定6画像実視",
+          "evidence": "docs/evidence/CMP-261015-2342-review.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "管理者・一般メンバー・他チーム管理者の境界および3住民探索を確認する。",
+      "tests": [
+        {
+          "name": "TEAM/ORG/MEMBER/OTHER実機とR1/R2/R3探索実施、初回未達/限定入口/未確定観測を分離した最終記録",
+          "evidence": "docs/evidence/CMP-261015-2342-review.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38775143211
+    },
+    {
+      "runId": 38775143443
+    },
+    {
+      "runId": 38775143247
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261015-2342-review.md",
+      "note": "殿がレビュー指摘残0、最終headの全CI成功、実機・探索実施と検証限界を確認して出荷承認。実装PRはマージ済み。"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261015-2342-review.md",
+      "note": "ロール横断はf27bで確認。今回99dの変更はガイド寸法に限定し同一DOM red/green・390/360安定画像6枚で再確認。BEソース変更なし。"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261015-2342-review.md",
+      "note": "3住民の独立探索実施を確認。R1最終99d組織/desktop5条件PASS、R2初回自然探索の未達と別context管理ハブ起点の達成を分離、R3拒否探索を実施。確定P2はred/green修正済み、emptyDrawerは未確定のまま。全体自然導線100%成功は主張しない。"
+    }
+  },
+  "regressions": [
+    {
+      "description": "使い方/上下閉じるが44px未満の確定P2を呼出し側限定で修正。390/360幅ともred6fail、green6pass。",
+      "test": "実ブラウザの同一DOM width>=44 && height>=44、390/360安定6画像実視、ガイド開閉とPageHeader番人2件pass",
+      "redEvidence": "docs/evidence/CMP-261015-2342-review.md",
+      "greenEvidence": "docs/evidence/CMP-261015-2342-review.md",
+      "rawRedEvidence": ".claude/evidence/member-qr-fix-20261016/tap-target-red/report.json",
+      "rawGreenEvidence": ".claude/evidence/member-qr-fix-20261016/tap-target-green-stable/report.json",
+      "summaryEvidence": ".claude/evidence/member-qr-fix-20261016/tap-target-verification-summary.json",
+      "severity": "P2",
+      "status": "fixed",
+      "fixedHead": "99ddeec2fe0fe3fd1ee96cce216356e4e1023fad"
+    }
+  ],
+  "limitations": [
+    "実機カードは全状態0件。非空一覧・状態変更・個別履歴は単体検証のみ。",
+    "BEは専用DBを使うbaseline jarでmembershipが最終ソースと同一。BE全体を最終headのビルドとはしない。",
+    "R2初回のホーム起点探索は会員証管理に未到達。別contextの管理ハブ限定入口では目的達成したが、ホームからの自然発見性を保証しない。",
+    "Drawer空の原観測はobserved-unverified。保存最終networkは権限ADMIN200が2本/pending空であり、初期親観測との採取時差とrequest所有元未確定を保持する。",
+    "actual-resident-artifactsの構造化ファイルと正本自己検証は作成済み。既存root overlay/boardは未再生成で、気づき箱UIへ反映済みではない。",
+    "R1のQR→hub復帰は未確認で、復帰確認はR2 mobileのみ（R1補助selector不一致・誤名画像は復帰証拠から除外）。",
+    "R1の1024x576/1152x720は125%相当のCSS viewport近似であり、実ブラウザズームではない。",
+    "拠点作成/編集/削除と6言語すべての画面操作は今回の実機レポートにはない。"
+  ],
+  "unverifiedObservations": [
+    {
+      "id": "MEMBER-QR-20261016-R2-O1-DRAWER",
+      "trusted": false,
+      "status": "observed-unverified",
+      "source": "アリシゼーションテスト",
+      "personaId": "R2",
+      "journeyId": "member-qr-mobile",
+      "originalRunId": "member-qr-explore-20261016",
+      "sourceHead": "f27b4732bb1125f6612012a58d9877404f867d6e",
+      "evidence": ".claude/evidence/member-qr-fix-20261016/explore-mobile/report.json",
+      "registrationFile": ".claude/evidence/member-qr-fix-20261016/.b0-local/run-member-qr-mobile-observation-20261016.json",
+      "validationReport": ".claude/evidence/member-qr-fix-20261016/mobile-observation-overlay-validation.json",
+      "boardRegenerated": false,
+      "indexedDbImported": false,
+      "interpretation": "未確定観測を保持したのみ。確定不備・PR起因・coverage合格とはしていない。"
+    }
+  ],
+  "previousHeadValidation": {
+    "sourceHead": "99ddeec2fe0fe3fd1ee96cce216356e4e1023fad",
+    "ci": [
+      {
+        "runId": 38772539168
+      },
+      {
+        "runId": 38772539626
+      },
+      {
+        "runId": 38772539143
+      }
+    ],
+    "frontendUnitFiles": 574,
+    "frontendUnitTests": 4975,
+    "note": "実機・探索・44px修正の検証head。製品ツリーが最終d68と完全一致し、最終headのCIも別途成功。"
+  },
+  "exploratoryCoverage": {
+    "executionStatus": "passed",
+    "claimsAllNaturalJourneysSucceeded": false,
+    "residents": [
+      {
+        "id": "R1",
+        "status": "completed",
+        "evidence": ".claude/evidence/member-qr-fix-20261016/explore-admin/post-fix-report.json",
+        "sourceHead": "99ddeec2fe0fe3fd1ee96cce216356e4e1023fad",
+        "notes": "組織の通常メニューから管理機能を発見。desktop5条件のmin44・opacity1・画面内を実測し5画像実視。context閉鎖。QR→hubは未確認。"
+      },
+      {
+        "id": "R2",
+        "status": "completed-with-limited-entry",
+        "evidence": ".claude/evidence/member-qr-fix-20261016/explore-mobile/hub-report.json",
+        "initialJourneyEvidence": ".claude/evidence/member-qr-fix-20261016/explore-mobile/report.json",
+        "notes": "初回ホーム起点は目的未達のまま保持。別contextのadmin起点では目的達成・復帰。発見P2は99dで修正済み。"
+      },
+      {
+        "id": "R3",
+        "status": "completed",
+        "evidence": ".claude/evidence/member-qr-fix-20261016/explore-denied/observations.json",
+        "notes": "通常入口とadmin/QR直打ちの拒否を独立観測。context終了。"
+      }
+    ]
+  },
+  "productIdentity": {
+    "sourceHead": "d68b44815ac586e51866aa6630978a6374b6414e",
+    "validatedProductHead": "99ddeec2fe0fe3fd1ee96cce216356e4e1023fad",
+    "frontendTree": "3db3ee87f43155751c5ea297bc1a600568d33eca",
+    "backendTree": "b0a866aef677a2916944b380c052fcd4185710f1",
+    "frontendIdentical": true,
+    "backendIdentical": true,
+    "changedPaths": [
+      "docs/evidence/CMP-261015-2329-review.md",
+      "docs/evidence/CMP-261015-2329.json",
+      "docs/task-list.md"
+    ],
+    "evidence": ".claude/evidence/member-qr-fix-20261016/final-product-tree-identity.json"
+  },
+  "environmentCleanup": {
+    "evidence": ".claude/evidence/member-qr-fix-20261016/cleanup-final-status.json",
+    "ownedBackendPidAbsent": true,
+    "ownedBackendPort8081ListenerPresent": false,
+    "dedicatedSchemaPresent": false,
+    "dedicatedSchemaGrantRowsPresent": false,
+    "redisDb13Size": 0,
+    "ownedRedisPrefixKeysRemaining": 0,
+    "runtimeTempDirectoryPresent": false,
+    "privateCredentialsFilePresent": false,
+    "temporaryRootCredentialCopyPresent": false,
+    "dropActorAttribution": "not_assumed"
+  }
+}

@@ -1,0 +1,138 @@
+{
+  "teamAffiliations": {
+    "title": "Gestión de organizaciones",
+    "discover": "Buscar organizaciones a las que unirse",
+    "switcher_label": "Cambiar vista",
+    "count_error": "No se pudo obtener el número de invitaciones",
+    "view": {
+      "organizations": "Organizaciones",
+      "invites": "Invitaciones recibidas",
+      "applications": "Solicitudes pendientes",
+      "restrictions": "Bloqueos de invitación"
+    },
+    "organizations": {
+      "load_error": "No se pudo cargar la lista de organizaciones. Inténtalo de nuevo más tarde.",
+      "empty": "Este equipo no pertenece a ninguna organización",
+      "group": "Grupo: {group}",
+      "leave": "Salir",
+      "leave_confirm_title": "¿Salir de la organización?",
+      "leave_confirm": "Saldrás de «{org}». Los anuncios de esta organización dejarán de llegar al equipo. Para volver a unirte hará falta una nueva solicitud o invitación.",
+      "leave_error": "No se pudo salir. Inténtalo de nuevo más tarde.",
+      "left": "Has salido de la organización"
+    },
+    "invites": {
+      "load_error": "No se pudo cargar la lista de invitaciones. Inténtalo de nuevo más tarde.",
+      "empty": "No hay invitaciones pendientes de respuesta",
+      "group": "Grupo: {group}",
+      "invited_at": "Fecha de invitación: {date}",
+      "expires_at": "Se cancelará automáticamente si no hay respuesta antes del {date}",
+      "accept": "Aceptar",
+      "decline": "Rechazar",
+      "accepted": "Invitación aceptada. El equipo se ha unido a la organización",
+      "declined": "Invitación rechazada",
+      "action_error": "No se pudo procesar. Puede que se haya cancelado o ya se haya gestionado. Se ha actualizado la lista",
+      "decline_title": "Rechazar la invitación de {org}",
+      "decline_hint": "Si rechazas, esta organización no podrá volver a invitar al equipo durante un tiempo. Elige «No aceptar en el futuro» para bloquearla sin límite (podrás levantarlo en «Bloqueos de invitación»).",
+      "decline_block": "No aceptar invitaciones de esta organización en el futuro",
+      "decline_error": "No se pudo rechazar. Puede que se haya cancelado o ya se haya gestionado"
+    },
+    "applications": {
+      "load_error": "No se pudo cargar la lista de solicitudes. Inténtalo de nuevo más tarde.",
+      "empty": "No hay solicitudes pendientes",
+      "group": "Grupo preferido: {group}",
+      "requested_at": "Fecha de solicitud: {date}",
+      "expires_at": "Se retirará automáticamente si no hay respuesta antes del {date}",
+      "withdraw": "Retirar",
+      "withdrawn": "Solicitud retirada",
+      "withdraw_confirm_title": "¿Retirar la solicitud?",
+      "withdraw_confirm": "Retirarás la solicitud a «{org}». Tras retirarla, el equipo no podrá volver a solicitar a esta organización durante un tiempo.",
+      "withdraw_error": "No se pudo retirar. Puede que ya se haya aprobado o rechazado. Se ha actualizado la lista"
+    },
+    "restrictions": {
+      "hint": "Son invitaciones de organizaciones que el equipo ha bloqueado al rechazarlas. Al levantar el bloqueo, esa organización podrá volver a invitar al equipo.",
+      "action_error": "No se pudo levantar. Puede que haya caducado o ya se haya levantado. Se ha actualizado la lista",
+      "load_error": "No se pudo cargar la lista de bloqueos. Inténtalo de nuevo más tarde.",
+      "empty": "No hay invitaciones bloqueadas",
+      "kind_blocked": "Sin límite (no aceptar en el futuro)",
+      "kind_cooldown": "Temporal",
+      "until": "Hasta el {date}",
+      "created_at": "Registrado el {date}",
+      "lift": "Levantar",
+      "lifted": "Bloqueo levantado"
+    },
+    "guide": {
+      "title": "Cómo usar las organizaciones",
+      "description": "Aquí puedes consultar y abandonar las organizaciones del equipo, y gestionar invitaciones y solicitudes. Solo pueden usarlo los administradores del equipo y quienes tengan encargada la gestión de afiliación.",
+      "organizations": {
+        "title": "Organizaciones",
+        "body": "Lista de organizaciones a las que pertenece el equipo. Pulsa «Salir» y confirma para abandonarla. Después, sus anuncios dejarán de llegar al equipo."
+      },
+      "invites": {
+        "title": "Invitaciones recibidas",
+        "body": "Invitaciones de afiliación enviadas por organizaciones. «Aceptar» para unirte, «Rechazar» para declinar. Al rechazar puedes elegir «No aceptar en el futuro» para bloquear sus invitaciones."
+      },
+      "applications": {
+        "title": "Solicitudes pendientes",
+        "body": "Solicitudes que el equipo ha enviado a organizaciones. Mientras esperas respuesta puedes cancelarlas con «Retirar». Al aprobarse, la organización aparece en Organizaciones."
+      },
+      "restrictions": {
+        "title": "Bloqueos de invitación",
+        "body": "Invitaciones bloqueadas al rechazarlas. Pulsa «Levantar» para que esa organización pueda volver a invitar al equipo."
+      }
+    },
+    "permission_groups": {
+      "title": "Grupos de permisos",
+      "hint": "Grupos de permisos del equipo. Quien esté en un grupo con «Gestionar afiliación a organizaciones» puede solicitar el ingreso y aceptar invitaciones sin ser administrador. Concede o retira el permiso con el botón «Grupos de permisos» de cada miembro en la lista de miembros (solo administradores del equipo).",
+      "load_error": "No se pudo cargar la lista de grupos de permisos. Inténtalo de nuevo más tarde.",
+      "create": "Crear grupo de permisos",
+      "go_members": "Asignar desde la lista de miembros",
+      "admin_only_notice": "Crear, cambiar o asignar grupos con permisos solo de administrador (como «Gestionar afiliación a organizaciones») solo lo puede hacer el propio administrador del equipo, no quien además sea SYSTEM_ADMIN"
+    },
+    "permission_group_list": {
+      "empty": "Aún no se ha creado ningún grupo de permisos",
+      "count": "{count} permisos",
+      "target_role": "Destino: {role}",
+      "affiliation_mark": "Gestionar afiliación a organizaciones",
+      "edit": "Editar {name}"
+    },
+    "member_menu": {
+      "permission_groups": "Grupos de permisos",
+      "permission_groups_aria": "Cambiar los grupos de permisos de {name}",
+      "title": "Grupos de permisos de {name}",
+      "hint": "Lo marcado es la asignación actual. Los cambios se muestran abajo. Al guardar, los grupos elegidos pasan a ser la asignación de este miembro (si desmarcas todo, queda sin ninguno).",
+      "load_error": "No se pudo cargar la lista de grupos de permisos. Inténtalo de nuevo más tarde.",
+      "empty": "Aún no hay grupos de permisos. Crea uno primero.",
+      "save": "Guardar",
+      "saved": "Grupos de permisos actualizados",
+      "save_error": "No se pudo guardar. Inténtalo de nuevo más tarde.",
+      "diff_add": "Añadir: {groups}",
+      "diff_remove": "Quitar: {groups}",
+      "current_unknown": "No se pudo obtener la asignación actual, así que no se puede guardar para no borrar las existentes. Recarga la lista de miembros e inténtalo de nuevo.",
+      "admin_only_reason": "Los grupos con permisos solo de administrador, como «Gestionar afiliación a organizaciones», solo puede concederlos el propio administrador del equipo (no si también es SYSTEM_ADMIN). No se pueden seleccionar",
+      "admin_only_locked": "Este miembro ya tiene un grupo con permisos solo de administrador. Los cambios que afecten a estos permisos (incluido quitarlos) solo los puede hacer el propio administrador del equipo (no si también es SYSTEM_ADMIN)",
+      "role_mismatch": "El rol de destino no coincide (este miembro es {role})",
+      "role_mismatch_remove": "Siguen asignados grupos cuyo rol de destino ya no coincide ({groups}). Desmárcalos antes de guardar (no se podrán volver a marcar)"
+    },
+    "group_form": {
+      "create_title": "Crear grupo de permisos",
+      "edit_title": "Editar grupo de permisos",
+      "name": "Nombre",
+      "target_role": "Rol de destino",
+      "target_role_hint": "Rol de los miembros a quienes se puede asignar este grupo",
+      "target_role_deputy": "Administrador adjunto",
+      "target_role_member": "Miembro",
+      "permissions": "Permisos",
+      "admin_only": "Solo administradores del equipo",
+      "load_error": "No se pudo cargar la lista de permisos. Inténtalo de nuevo más tarde.",
+      "save": "Guardar",
+      "save_error": "No se pudo guardar. Inténtalo de nuevo más tarde.",
+      "saved": "Grupo de permisos guardado",
+      "saved_hint": "Puedes asignar este grupo con el botón «Grupos de permisos» de cada miembro en la lista de miembros.",
+      "go_members": "Asignar desde la lista de miembros",
+      "admin_only_reason": "Los permisos solo de administrador, como «Gestionar afiliación a organizaciones», solo puede concederlos el propio administrador del equipo (no si también es SYSTEM_ADMIN). No se pueden seleccionar",
+      "admin_only_locked": "Este grupo incluye permisos solo de administrador. Los cambios (incluido quitar permisos) solo los puede hacer el propio administrador del equipo (no si también es SYSTEM_ADMIN)",
+      "role_reason": "No se puede conceder a este rol de destino (los permisos de facturación son solo para administradores adjuntos)",
+      "role_conflict": "Este grupo incluye permisos que no se pueden conceder al rol de destino elegido, así que no se podría asignar a nadie. Revisa el rol de destino o los permisos"
+    }
+  }
+}

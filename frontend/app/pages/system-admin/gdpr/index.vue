@@ -173,6 +173,8 @@ async function retryDomain(row: GdprPurgeStatusRow) {
       } else {
         notification.success(t('systemAdmin.gdpr.retry.success'))
       }
+    } else if (result.queued) {
+      notification.info(t('systemAdmin.gdpr.retry.queued'))
     } else {
       notification.error(t('systemAdmin.gdpr.retry.failed'))
     }

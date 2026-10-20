@@ -1,6 +1,6 @@
 {
   "contact_invite": {
-    "page_title": "Invite URL Management",
+    "page_title": "Invite URLs & Contact QR Codes",
     "page_description": "Issue and manage invite URLs for adding contacts. Anyone you share the URL with can add you as a contact.",
     "create_button": "Issue New URL",
     "form": {
@@ -44,7 +44,8 @@
       "revoke_error": "Failed to revoke invite URL",
       "copy_success": "URL copied",
       "copy_error": "Failed to copy URL"
-    }
+    },
+    "my_qr": "My contact QR"
   },
   "contact_invite_guide": {
     "title": "How to Use Invite URL Management",

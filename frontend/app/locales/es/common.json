@@ -155,6 +155,7 @@
     "create": "Crear",
     "submit": "Enviar",
     "close": "Cerrar",
+    "open": "Abrir",
     "back": "Volver",
     "help": "Cómo usar",
     "next": "Siguiente",
@@ -340,6 +341,8 @@
     "unauthorized": "Por favor, inicie sesión",
     "section_load_failed": "No se pudo cargar esta sección. Recarga la página.",
     "unknown": "Se produjo un error",
+    "TEAM_001": "No se ha encontrado el equipo.",
+    "TEAM_006": "Este equipo no se puede restaurar porque no se ha eliminado.",
     "COMMON_001": "Hay errores en los datos ingresados",
     "COMMON_002": "No tiene permiso para realizar esta acción",
     "COMMON_003": "Actualizado por otro usuario. Por favor, actualice la página",
@@ -1242,7 +1245,29 @@
   },
   "inviteToken": {
     "printQrPdf": "Imprimir QR PDF",
-    "printQrPdfError": "Error al imprimir el PDF"
+    "printQrPdfError": "Error al imprimir el PDF",
+    "title": "Enlaces de invitación",
+    "createNew": "Nuevo enlace de invitación",
+    "createTitle": "Crear enlace de invitación",
+    "role": "Rol",
+    "expiry": "Validez",
+    "uses": "Usos",
+    "inviteRole": "Rol de la invitación",
+    "maxUses": "Máximo de usos (dejar en blanco para uso ilimitado)",
+    "empty": "Aún no hay enlaces de invitación",
+    "never": "Sin vencimiento",
+    "copy": "Copiar URL de invitación",
+    "revoke": "Revocar enlace de invitación",
+    "revokeConfirm": "¿Revocar este enlace de invitación?",
+    "createSuccess": "Enlace de invitación creado",
+    "createError": "No se pudo crear el enlace de invitación",
+    "revokeSuccess": "Enlace de invitación revocado",
+    "revokeError": "No se pudo revocar el enlace de invitación",
+    "copied": "URL de invitación copiada",
+    "oneDay": "1 día",
+    "sevenDays": "7 días",
+    "thirtyDays": "30 días",
+    "ninetyDays": "90 días"
   },
   "visibilityTemplate": {
     "title": "Plantillas de visibilidad",
@@ -1814,8 +1839,8 @@
     },
     "menu": "Menú",
     "scopeShell": {
-      "memberCount": "{count} miembros",
-      "supporterCount": "{count} seguidores",
+      "memberCount": "{count} miembro | {count} miembros",
+      "supporterCount": "{count} seguidor | {count} seguidores",
       "supporter_cancel_confirm_title": "¿Dejar de apoyar?",
       "supporter_cancel_confirm_body": "Dejarás de apoyar a {name}. ¿Estás seguro?",
       "supporter_cancel_action": "Dejar",
@@ -2419,6 +2444,14 @@
     "SUPPORTERS_AND_ABOVE": "Seguidores y superiores",
     "MEMBERS_AND_ABOVE": "Miembros y superiores"
   },
+  "organization_visibility": {
+    "PUBLIC": "Público",
+    "PRIVATE": "Acceso restringido"
+  },
+  "entity_create": {
+    "error_heading": "Revise los datos introducidos",
+    "supporter_label": "Activar la función de simpatizantes"
+  },
   "module_settings": {
     "enabled_count": "Funciones activas: {count} / {limit}",
     "fetch_error": "No se pudo cargar la lista de funciones",
@@ -2478,6 +2511,21 @@
     }
   },
   "teamShell": {
+    "archive": {
+      "syncError": "El cambio se ha completado, pero no se pudo sincronizar la lista. Vuelva a cargarla.",
+      "archive": "Archivar equipo",
+      "unarchive": "Restaurar equipo",
+      "archiveConfirm": "¿Archivar este equipo? Se cancelarán las solicitudes de afiliación pendientes y las invitaciones. Las afiliaciones activas se mantendrán. Los detalles del equipo dejarán de estar disponibles. Puede restaurarlo desde Equipos archivados en la lista de equipos.",
+      "unarchiveConfirm": "¿Restaurar este equipo? No se recuperarán las solicitudes de afiliación ni las invitaciones canceladas, incluidos los enlaces de invitación caducados.",
+      "archived": "Equipo archivado",
+      "unarchived": "Equipo restaurado",
+      "changed": "El estado del equipo o sus permisos han cambiado. Vuelva a cargar la lista.",
+      "listTitle": "Equipos archivados",
+      "showList": "Mostrar equipos archivados",
+      "hideList": "Cerrar lista",
+      "fetchError": "No se pudieron cargar los equipos archivados.",
+      "empty": "No hay equipos archivados."
+    },
     "tab": {
       "affiliations": "Organizaciones afiliadas",
       "permissionGroups": "Grupos de permisos",
@@ -2919,5 +2967,220 @@
     "generic_title": "Se ha producido un error",
     "generic_description": "Inténtelo de nuevo en unos minutos. Si el problema continúa, póngase en contacto con el administrador.",
     "back_home": "Volver al inicio"
+  },
+  "loyalty": {
+    "memberQr": {
+      "title": "QR de miembro",
+      "expiresIn": "Válido por {seconds} segundos",
+      "expired": "Actualiza el QR",
+      "disabled": "Esta tarjeta está suspendida o revocada. No se volverá a emitir automáticamente."
+    },
+    "wallet": {
+      "title": "Puntos del equipo",
+      "empty": "Aún no hay puntos"
+    },
+    "balance": "{points} puntos",
+    "remaining": "Faltan {points} puntos",
+    "lifetime": "Total: {points} puntos",
+    "refresh": "Actualizar",
+    "more": "Continuar",
+    "confirm": "Confirmar estos datos",
+    "retrySame": "Reintentar la misma solicitud",
+    "save": "Guardar",
+    "saved": "Guardado",
+    "cancel": "Volver",
+    "name": "Nombre",
+    "description": "Descripción (opcional)",
+    "active": "Activo",
+    "externalCards": "Activar tarjetas externas",
+    "history": {
+      "title": "Historial de puntos",
+      "award": "Acumular",
+      "redeem": "Canjear recompensa",
+      "empty": "Sin historial"
+    },
+    "audience": {
+      "title": "Quién puede acumular",
+      "allAuthenticated": "Todas las personas conectadas (incluidos no miembros)",
+      "supportersAndAbove": "Colaboradores y superiores",
+      "membersAndAbove": "Miembros y superiores"
+    },
+    "rule": {
+      "title": "Regla de acumulación",
+      "amount": "Puntos por visita",
+      "points": "{points} puntos por visita",
+      "frequency": "Frecuencia",
+      "frequencyDaily": "Una vez al día (JST)",
+      "frequencyStaff": "Con cada confirmación del personal",
+      "selfEnabled": "Permitir QR de autoservicio",
+      "selfDailyOnly": "El autoservicio requiere la regla diaria"
+    },
+    "reward": {
+      "title": "Recompensas",
+      "add": "Añadir recompensa",
+      "amount": "Puntos necesarios",
+      "required": "Canjear por {points} puntos",
+      "confirm": "Usar {points} puntos para {reward}"
+    },
+    "scan": {
+      "title": "Recepción de puntos",
+      "camera": "Escanear QR con cámara",
+      "cameraDenied": "Cámara no disponible. Revisa los permisos y reintenta.",
+      "confirmAward": "Añadir {points} puntos en {team}",
+      "success": "Operación completada",
+      "next": "Iniciar siguiente recepción"
+    },
+    "self": {
+      "confirm": "Confirmar recepción",
+      "rescan": "Escanea de nuevo el QR de recepción"
+    },
+    "error": {
+      "uncertain": "Resultado desconocido. Reintenta la misma solicitud.",
+      "alreadyAwarded": "Ya se otorgaron puntos hoy",
+      "ineligible": "No cumples los requisitos actuales",
+      "changed": "Los datos cambiaron. Revísalos.",
+      "insufficient": "Puntos insuficientes"
+    },
+    "program": {
+      "disabled": "Programa desactivado",
+      "closedTeam": "Equipo cerrado"
+    },
+    "settings": {
+      "title": "Ajustes de puntos del equipo",
+      "enabled": "Activar programa de puntos"
+    },
+    "mode": {
+      "title": "Modo de autoservicio",
+      "staffApproval": "Aprobación del personal (sin puntos hasta aprobar)",
+      "auto": "Puntos automáticos",
+      "autoWarning": "Un QR fijo puede fotografiarse y reutilizarse a distancia. El límite diario no acredita una visita."
+    },
+    "reception": {
+      "title": "QR de recepción de puntos",
+      "location": "Lugar de recepción",
+      "newLocation": "Nombre del nuevo lugar",
+      "create": "Crear lugar de recepción",
+      "preview": "Vista previa del QR",
+      "print": "Imprimir o compartir",
+      "stop": "Desactivar lugar",
+      "sharedLocationStopWarning": "Desactivar este lugar también detiene los registros de entrada. Desactiva el programa para detener solo los puntos.",
+      "printTitle": "Recepción de puntos",
+      "printInstructions": "Escanea, inicia sesión, revisa y confirma. Una vez al día (JST)."
+    },
+    "requests": {
+      "title": "Solicitudes de recepción",
+      "empty": "No hay solicitudes",
+      "submitted": "Solicitud enviada (sin puntos aún)",
+      "code": "Código de verificación: {code}",
+      "expiresAt": "Caduca: {datetime} (se acorta a medianoche JST)",
+      "showStaff": "Muestra tu pantalla al personal para verificar",
+      "approve": "Aprobar y añadir puntos",
+      "reject": "Rechazar",
+      "cancel": "Cancelar solicitud",
+      "compareBeforeApprove": "Compara nombre y código con la pantalla del solicitante antes de aprobar",
+      "enterCode": "Código de la pantalla del solicitante",
+      "moreCandidates": "Sin solicitudes válidas en este tramo. Continuar.",
+      "selfApprovalForbidden": "No puedes aprobar esta solicitud. Muestra tu propia solicitud a otro empleado.",
+      "all": "Todos los estados",
+      "deletedUser": "Usuario dado de baja",
+      "closedLocation": "Recepción cerrada",
+      "reapply": "Revisar datos y volver a solicitar",
+      "status": {
+        "pending": "Pendiente",
+        "approved": "Aprobada",
+        "cancelled": "Cancelada",
+        "rejected": "Rechazada",
+        "expired": "Caducada",
+        "invalidated": "Invalidada",
+        "superseded": "Otorgados por otra vía"
+      },
+      "reason": {
+        "userCancelled": "Cancelada por el solicitante",
+        "staffRejected": "Rechazada por el personal",
+        "ttlExpired": "La solicitud caducó",
+        "dayChanged": "Cambió la fecha JST",
+        "versionChanged": "Los ajustes o la regla cambiaron",
+        "locationInactive": "Lugar desactivado",
+        "teamInactive": "El equipo está inactivo",
+        "userInactive": "El usuario está inactivo",
+        "ineligible": "Ya no cumple los requisitos",
+        "dailyAwarded": "Ya se otorgaron puntos hoy",
+        "pointLimit": "Límite de puntos alcanzado"
+      }
+    }
+  },
+  "budget_accounting": {
+    "title": "Presupuesto y contabilidad",
+    "add_year": "Añadir ejercicio",
+    "fiscal_year": "Ejercicio contable",
+    "default_name": "Ejercicio {year}",
+    "name": "Nombre del ejercicio (obligatorio)",
+    "name_placeholder": "p. ej., Ejercicio 2026",
+    "start_date": "Fecha de inicio (obligatoria)",
+    "end_date": "Fecha de fin (obligatoria)",
+    "add": "Añadir",
+    "created": "Ejercicio añadido",
+    "empty_years": "No hay ejercicios contables",
+    "empty_years_hint": "Selecciona «Añadir ejercicio» para registrar el período que quieres consultar.",
+    "totalIncome": "Ingresos",
+    "totalExpense": "Gastos",
+    "balance": "Saldo",
+    "categories": "Presupuesto e importes reales por categoría",
+    "empty_categories": "No hay categorías para este ejercicio",
+    "budget_amount": "Presupuesto {amount}",
+    "actual_amount": "Importe real {amount}",
+    "execution_rate": "Uso del presupuesto {rate}%",
+    "validation": {
+      "name_required": "Introduce el nombre del ejercicio.",
+      "name_max": "El nombre del ejercicio debe tener como máximo 100 caracteres.",
+      "date_required": "Introduce una fecha.",
+      "date_order": "La fecha de fin debe ser posterior a la fecha de inicio."
+    }
+  },
+  "budget_guide": {
+    "title": "Cómo usar el presupuesto y la contabilidad",
+    "description": "Selecciona un ejercicio fiscal para consultar los ingresos, los gastos y los presupuestos por categoría de ese período. Esta página está dirigida a administradores, administradores adjuntos y otros usuarios con permiso de consulta. Los miembros generales no pueden verla. Si necesitas acceso, consulta con un administrador.",
+    "what": {
+      "title": "¿Qué es un ejercicio contable?",
+      "body": "Es un período para revisar conjuntamente los ingresos y los gastos. Puedes elegir las fechas de inicio y fin que se adapten a las actividades de tu equipo; no es necesario que vaya de abril a marzo del año siguiente.",
+      "steps": {
+        "step1": "Primero, comprueba en la lista de ejercicios de la parte superior si existe el período que quieres consultar."
+      }
+    },
+    "create": {
+      "title": "Añadir un ejercicio",
+      "body": "Los administradores y subadministradores pueden realizar esta operación. Se añade un ejercicio para resumir ingresos y gastos, no una categoría.",
+      "steps": {
+        "step1": "Pulsa «Añadir ejercicio».",
+        "step2": "Introduce un nombre (entre 1 y 100 caracteres, no solo espacios), una fecha de inicio y una de fin. La fecha de fin debe ser posterior a la de inicio.",
+        "step3": "Pulsa «Añadir». Si se añade correctamente, se selecciona el nuevo ejercicio. Si no hay ingresos, gastos ni categorías registrados, los totales muestran 0 yenes y las categorías aparecen como no registradas."
+      }
+    },
+    "switch": {
+      "title": "Cambiar de ejercicio",
+      "body": "Selecciona el nombre de un ejercicio en la parte superior para ver sus totales.",
+      "steps": {
+        "step1": "Pulsa el nombre del ejercicio que quieres consultar.",
+        "step2": "Cuando termine la carga, revisa los ingresos, los gastos, el saldo y las categorías."
+      }
+    },
+    "summary": {
+      "title": "Interpretar los totales y las categorías",
+      "body": "Los ingresos son el dinero recibido, los gastos son el dinero utilizado y el saldo es la diferencia entre ingresos y gastos. Las categorías clasifican el dinero según su finalidad.",
+      "steps": {
+        "step1": "En cada categoría, «Presupuesto» es el importe previsto e «Importe real» es el importe ya registrado.",
+        "step2": "«Uso del presupuesto» es el importe real como porcentaje del presupuesto. Los valores superiores al 100% se muestran en rojo.",
+        "step3": "En esta pantalla puedes añadir ejercicios. No permite crear categorías ni introducir ingresos o gastos directamente."
+      }
+    },
+    "trouble": {
+      "title": "Solución de problemas",
+      "body": "La ausencia de datos y un error de carga se muestran de forma diferente.",
+      "steps": {
+        "step1": "Si aparece «No hay ejercicios contables», selecciona «Añadir ejercicio» para registrar el primer período.",
+        "step2": "Si hay un error de conexión, pulsa «Reintentar». Si hay un error de permisos, consulta al administrador de tu equipo.",
+        "step3": "Si no se puede añadir, los datos introducidos se conservan. Revisa el motivo indicado y los datos, y vuelve a pulsar «Añadir»."
+      }
+    }
   }
 }

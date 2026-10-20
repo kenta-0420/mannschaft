@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * API の mapped method が feature gate または明示的な常時到達理由を宣言することを監査する番人。
- * HTTP は 3,566 件（ブログ・スケジュール画像の完了確認2エンドポイント追加後）、
+ * HTTP は 3,722 件（管理公開設定 GET 2本・削除済みチーム一覧1本・共通本人QR1本・チームポイント24本・多要素認証の穴埋め6本追加後）、
  * STOMP は Chat の 2 件と VillageLobbyPresenceController の 3 件、計 5 件を走査する。
  */
 class ApiGateDeclarationGuardTest {
@@ -42,10 +42,15 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3651);   // main 3645 + CMP-261012-0910 多要素認証の穴埋め 6（Auth2faController の
+                .isEqualTo(3722);   // main 3716 + CMP-261012-0910 多要素認証の穴埋め 6（Auth2faController の
                                     //   email/send・email/setup・email/enable・reauth/email/send・disable・status）。
                                     //   6本とも @AlwaysReachable(CORE) を宣言済みのため未宣言数は増えない（6|6 → 6|12）
-                                    // main 3645 = main 3643 + F01.2.1 2-D 離脱1（TeamOrgMembershipLeaveController）・除名1（OrgTeamMembershipRemovalController）
+                                    // 3716 = 最新main統合後の実走査: 3688 + 管理公開設定2 + 削除済みチーム一覧1 + 共通本人QR1 + チームポイント24。
+                                    // 3688 = main 3646 + 牧場/診断42本。双方のHTTP台帳を保持。
+                                    // 新GETは理由付き@AlwaysReachable(GATE_CONTROL_PLANE)宣言済み。既存未宣言6件は維持（6|7）。
+                                    // 新 GET は CORE 宣言済みのため未宣言は既存 PATCH 2本のまま（AdminPublicSettingsController: 2|4）。
+                                    // 3646 = 3645 + F01.2.1 8-D 権限カタログ GET /api/v1/permissions 1本（PermissionCatalogController・@AlwaysReachable(CORE) 宣言済みで未宣言数は増えない 0|1）
+                                    // 3645 = main 3643 + F01.2.1 2-D 離脱1（TeamOrgMembershipLeaveController）・除名1（OrgTeamMembershipRemovalController）
                                     // main 3643 = 3642 + CMP-261010-1432 シフト枠間移動1（ShiftSlotController の既存 EP と同じく未宣言 7|7）
                                     // main 3642 = 3639 + F01.2.1 2-B2 組織側の受信申請3（OrgTeamApplicationController: 一覧・承認・拒否）
                                     // main 3639 = 3638 + CMP-260826-1456 本人参加申請履歴1

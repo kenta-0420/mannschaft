@@ -43,12 +43,12 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * 認証コアサービス（ファサード）。
- * 公開 API はリファクタ前と完全同一。ログイン処理本体と、登録 / セッション / Refresh Token
+ * ログイン処理本体と、登録 / セッション / Refresh Token
  * ローテーション / パスワードリセットの各サブサービスへの委譲を担う。
  *
  * <p>セキュリティ重要: 公開メソッドのシグネチャ・呼び出し順序・引数・戻り値・例外型・エラーコード・
- * 監査ログ記録タイミングはリファクタ前から不変。ログイン本体ロジックは byte-identical に保存し、
- * その他のロジックはサブサービスへ移送した（移送先でも byte-identical）。</p>
+ * 監査ログ記録タイミングは既存契約を維持する。パスワードとUV済みパスキーは、
+ * 同じセッション発行処理で最終ログイン・新端末検知・上限を適用する。</p>
  *
  * <p>分割構成:</p>
  * <ul>
@@ -90,7 +90,7 @@ public class AuthService {
     // アカウントロック設定
     private static final int ACCOUNT_LOCK_THRESHOLD = 5;
     private static final Duration ACCOUNT_LOCK_DURATION = Duration.ofMinutes(30);
-    private static final String ACCOUNT_LOCK_KEY_PREFIX = "mannschaft:auth:account_lock:";
+    static final String ACCOUNT_LOCK_KEY_PREFIX = "mannschaft:auth:account_lock:";
     private static final String LOGIN_FAIL_COUNT_KEY_PREFIX = "mannschaft:auth:login_fail_count:";
     private static final String MFA_SESSION_KEY_PREFIX = MfaSessionService.SESSION_KEY_PREFIX;
 
@@ -257,6 +257,19 @@ public class AuthService {
         return ApiResponse.of(issueLoginTokens(user, req, ipAddress, userAgent, reactivated));
     }
 
+    /**
+     * 同auth.service内でパスキーの検証済みユーザーへ、通常ログインと共通のセッションを発行する。
+     * 署名・UP/UV・利用状態確認とARCHIVED復帰は認証入口で完了していること。
+     * UV済みパスキーは独立した二要素認証方式のためTOTPを追加要求しない（F01.1）。
+     * @param user 認証入口で検証・復帰済みの管理対象エンティティ
+     * @param resolvedRoles 復帰後にRoleClaimResolverで解決したroles（HTTP入力は禁止）
+     */
+    @Transactional
+    TokenResponse completePasskeyLogin(UserEntity user, String ipAddress, String userAgent,
+                                              List<String> resolvedRoles) {
+        return issueLoginSession(user, null, false, ipAddress, userAgent, "WEBAUTHN", resolvedRoles);
+    }
+
     // ========================================
     // ログアウト / セッション（AuthSessionService へ委譲）
     // ========================================
@@ -266,8 +279,8 @@ public class AuthService {
      * 詳細は {@link AuthSessionService#logout} を参照。
      */
     @Transactional
-    public void logout(String refreshTokenHash, String jti, long expEpoch) {
-        authSessionService.logout(refreshTokenHash, jti, expEpoch);
+    public void logout(Long userId, String refreshTokenHash, String jti, long expEpoch) {
+        authSessionService.logout(userId, refreshTokenHash, jti, expEpoch);
     }
 
     /**
@@ -418,10 +431,34 @@ public class AuthService {
      */
     private LoginResponse issueLoginTokens(UserEntity user, LoginRequest req,
                                            String ipAddress, String userAgent, boolean reactivated) {
+        TokenResponse tokens = issueLoginSession(user, req.getDeviceFingerprint(), req.isRememberMe(),
+                ipAddress, userAgent, "PASSWORD", roleClaimResolver.resolveRoles(user.getId()));
+
+        // deleted_at設定済みの場合はpendingDeletionUntilを含める
+        LocalDateTime pendingDeletionUntil = user.getDeletedAt() != null
+                ? user.getDeletedAt().plusDays(30) : null;
+
+        return new LoginResponse(
+                tokens.getAccessToken(),
+                tokens.getRefreshToken(),
+                tokens.getExpiresIn(),
+                user.getId(),
+                user.getLastName() + " " + user.getFirstName(),
+                user.getEmail(),
+                pendingDeletionUntil,
+                reactivated);
+    }
+
+    /**
+     * パスワードとパスキーの成功後処理を共有し、セッションと監査の方式差を防ぐ。
+     */
+    private TokenResponse issueLoginSession(UserEntity user, String requestedDeviceFingerprint,
+                                            boolean rememberMe, String ipAddress, String userAgent, String method,
+                                            List<String> resolvedRoles) {
         // Access Token発行
-        // 認可基盤完全根治 Phase 1（§3.2）: 固定 MEMBER ではなく user_roles から SYSTEM_ADMIN を
-        // 判定した roles を載せる（RoleClaimResolver に一元化。5発行経路で同一ロジック）。
-        String accessToken = authTokenService.issueAccessToken(user.getId(), roleClaimResolver.resolveRoles(user.getId()),
+        // rolesは各認証入口がRoleClaimResolverで解決した値のみを受け取り、
+        // 共通セッション発行はauthドメインの永続化処理に閉じる。
+        String accessToken = authTokenService.issueAccessToken(user.getId(), resolvedRoles,
                 statusClaimResolver.isPendingParentalConsent(user.getId()));
 
         // Refresh Token発行（DB保存）
@@ -430,8 +467,8 @@ public class AuthService {
         // jti を生成して RefreshToken に紐付ける（session_hash の基点）
         String refreshTokenJti = UUID.randomUUID().toString();
 
-        String deviceFingerprint = req.getDeviceFingerprint() != null
-                ? req.getDeviceFingerprint()
+        String deviceFingerprint = requestedDeviceFingerprint != null
+                ? requestedDeviceFingerprint
                 : authTokenService.hashToken(userAgent != null ? userAgent : "");
         String deviceName = UserAgentParser.parse(userAgent).deviceName();
         String locale = user.getLocale() != null ? user.getLocale() : "ja";
@@ -442,7 +479,7 @@ public class AuthService {
                 .userId(user.getId())
                 .tokenHash(refreshTokenHash)
                 .jti(refreshTokenJti)
-                .rememberMe(req.isRememberMe())
+                .rememberMe(rememberMe)
                 .deviceFingerprint(deviceFingerprint)
                 .ipAddress(ipAddress)
                 .userAgent(userAgent)
@@ -460,20 +497,10 @@ public class AuthService {
 
         // ログイン成功イベント発行（sessionHash = SHA-256(refresh_token_jti)）
         eventPublisher.publish(new LoginSuccessEvent(
-                user.getId(), user.getEmail(), ipAddress, userAgent, sessionHash));
+                user.getId(), ipAddress, userAgent, method, sessionHash));
 
-        // deleted_at設定済みの場合はpendingDeletionUntilを含める
-        LocalDateTime pendingDeletionUntil = user.getDeletedAt() != null
-                ? user.getDeletedAt().plusDays(30) : null;
-
-        return new LoginResponse(
-                accessToken,
-                rawRefreshToken,
-                authTokenService.getAccessTokenExpirationSeconds(),
-                user.getId(),
-                user.getLastName() + " " + user.getFirstName(),
-                user.getEmail(),
-                pendingDeletionUntil,
-                reactivated);
+        return new TokenResponse(accessToken, rawRefreshToken, savedToken.getId(),
+                authTokenService.getAccessTokenExpirationSeconds());
     }
+
 }

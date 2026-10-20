@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { inviteRedirect } from '~/utils/inviteRedirect'
 import dayjs from 'dayjs'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
@@ -15,6 +16,11 @@ const { t } = useI18n()
 const api = useApi()
 const { getGoogleAuthUrl } = useAuthApi()
 const route = useRoute()
+const returnPath = computed(() => inviteRedirect(route.query.redirect))
+const loginTarget = computed(() => ({
+  path: '/login',
+  query: returnPath.value ? { redirect: returnPath.value } : {},
+}))
 const notification = useNotification()
 const { userTimezone } = useDatetime()
 const loading = ref(false)
@@ -184,7 +190,10 @@ const onSubmit = handleSubmit(async (values) => {
       },
     })
     notification.success('登録が完了しました。メールをご確認ください。')
-    navigateTo(`/verify-email?email=${encodeURIComponent(values.email)}`)
+    navigateTo({
+      path: '/verify-email',
+      query: { email: values.email, ...(returnPath.value ? { redirect: returnPath.value } : {}) },
+    })
   } catch (e: unknown) {
     const err = e as { data?: { error?: { code?: string; message?: string } } }
     const code = err?.data?.error?.code
@@ -202,12 +211,17 @@ const onSubmit = handleSubmit(async (values) => {
     loading.value = false
   }
 })
+
+function submitRegistration() {
+  submitted.value = true
+  return onSubmit()
+}
 </script>
 
 <template>
   <form
     novalidate
-    @submit.prevent="submitted = true; onSubmit()"
+    @submit.prevent="submitRegistration"
   >
     <div class="flex flex-col gap-4">
       <!-- 戻るリンク -->
@@ -409,7 +423,7 @@ const onSubmit = handleSubmit(async (values) => {
       />
 
       <div class="text-center">
-        <NuxtLink to="/login" class="text-sm text-primary hover:underline">
+        <NuxtLink :to="loginTarget" class="text-sm text-primary hover:underline">
           すでにアカウントをお持ちですか？
         </NuxtLink>
       </div>

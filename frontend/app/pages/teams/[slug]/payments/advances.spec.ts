@@ -9,8 +9,8 @@ const source = readFileSync(
 
 describe('立替・精算ページ', () => {
   it('slugを数値team IDへ解決し、BE認可と同じ管理権限で表示を制御する', () => {
-    expect(source).toContain("resolveScopeId('TEAM', teamSlug.value)")
-    expect(source).toContain('isAdminOrDeputy')
+    expect(source).toContain('useTeamPaymentPage(')
+    expect(source).toContain("state === 'denied'")
   })
 
   it('PENDINGだけに精算確認操作を表示し、ハンドラでも状態を再検証する', () => {

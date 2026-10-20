@@ -116,6 +116,13 @@ const allCards = computed<AdminConsoleCard[]>(() => [
     titleKey: 'adminConsole.cards.members.title',
     descKey: 'adminConsole.cards.members.desc',
     icon: 'pi pi-users',
+    to: `${base.value}/members`,
+  },
+  {
+    key: 'member-cards',
+    titleKey: 'memberCardAdmin.title',
+    descKey: 'memberCardAdmin.description',
+    icon: 'pi pi-id-card',
     to: `${base.value}/member-cards`,
   },
   {
@@ -123,7 +130,7 @@ const allCards = computed<AdminConsoleCard[]>(() => [
     titleKey: 'adminConsole.cards.settings.title',
     descKey: 'adminConsole.cards.settings.desc',
     icon: 'pi pi-cog',
-    to: `${base.value}/settings/faq-settings`,
+    to: `${base.value}/admin/settings`,
   },
   {
     // F01.2.1 8-A: 加盟の設定（設定画面は org-role-guard で ADMIN 専用。DEPUTY には導線を出さない）

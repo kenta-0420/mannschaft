@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261014-0920",
+  "scope": "tooling",
+  "implementation": {
+    "pr": 3866,
+    "sha": "86f0824aefe0df106645d2999a8ba8cfe72038c0"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "テストコードだけの実装PR（#3841 の4ファイル）は test-only と判定され、real・exploratory を理由つき not-applicable にできる。アプリのコードを含むPRは従来どおり passed 必須（#3866）",
+      "tests": [
+        {
+          "name": "AC-1〜AC-6: scope 判定の単体テスト（試練で20件中8件が red だったものを green 化）",
+          "evidence": "scripts/completion-evidence.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "マージ時点の check 世代判定（completed_at <= mergedAt の最新のみ採用、マージ後の重複PRの failure は無視）を summarizeImplementationChecks で固定する（#3866）",
+      "tests": [
+        {
+          "name": "AC-4・AC-5: files空・check0件・mergedAt欠落・境界の判定",
+          "evidence": "scripts/completion-evidence.test.mjs"
+        },
+        {
+          "name": "Harness CI（harness-tests）success",
+          "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/38548944243"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    { "runId": 38548944243 }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3866",
+      "note": "殿による検分（2026-10-14）。Codex の独立検分で指摘ゼロ、関連テスト20/20成功"
+    },
+    "real": {
+      "status": "not-applicable",
+      "reason": "scripts/・.github/・docs/ のみの変更でUIなし",
+      "scope": "tooling"
+    },
+    "exploratory": {
+      "status": "not-applicable",
+      "reason": "scripts/・.github/・docs/ のみの変更でUIなし",
+      "scope": "tooling"
+    }
+  },
+  "regressions": []
+}

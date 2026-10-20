@@ -106,6 +106,11 @@ async function onApplicationsChanged() {
   await Promise.all([refreshPendingCount(), refreshOrgTeams()])
 }
 
+/** 除名の送信後に view が変わっても、同じ組織の常駐シェルの一覧を同期する。 */
+async function refreshAfterRemoval(removedOrgSlug: string) {
+  if (orgSlug.value === removedOrgSlug) await refreshOrgTeams()
+}
+
 onMounted(() => void refreshPendingCount())
 watch(canManage, (allowed) => {
   if (allowed) void refreshPendingCount()
@@ -125,7 +130,7 @@ const viewTitleKey = computed(() => `teamAffiliation.view.${activeView.value}`)
       <NuxtLink
         :to="`/organizations/${orgSlug}/settings/team-affiliation`"
         :aria-label="$t('teamAffiliation.settings.entry_button')"
-        class="inline-flex items-center gap-2 rounded-md border border-surface-300 bg-surface-0 px-3 py-2 text-sm font-medium text-surface-700 transition-colors hover:bg-surface-100 focus:outline-none focus:ring-2 focus:ring-primary-400 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-200"
+        class="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-md border border-surface-300 bg-surface-0 px-3 py-2 text-sm font-medium text-surface-700 transition-colors hover:bg-surface-100 focus:outline-none focus:ring-2 focus:ring-primary-400 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-200"
         data-testid="team-affiliation-settings-link"
       >
         <i class="pi pi-cog" aria-hidden="true" />
@@ -162,6 +167,7 @@ const viewTitleKey = computed(() => `teamAffiliation.view.${activeView.value}`)
         :can-assign="canManage"
         :refreshing="orgTeamsLoading"
         :load-failed="orgTeamsError"
+        :refresh-after-removal="refreshAfterRemoval"
         @changed="refreshOrgTeams"
         @retry="refreshOrgTeams"
       />
@@ -169,6 +175,7 @@ const viewTitleKey = computed(() => `teamAffiliation.view.${activeView.value}`)
 
     <div v-else class="mt-4 space-y-4">
       <PageHeader
+        class="flex-wrap [&_.p-button]:min-h-11 [&_.p-button]:min-w-11"
         :title="t(viewTitleKey)"
         size="sm"
         :back-to="`/organizations/${orgSlug}/member-teams`"

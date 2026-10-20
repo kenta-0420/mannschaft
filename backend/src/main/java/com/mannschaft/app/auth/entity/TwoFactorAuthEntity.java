@@ -40,7 +40,7 @@ public class TwoFactorAuthEntity {
     /**
      * 2FA の主手段（CMP-261012-0910）。既存行は Flyway で TOTP が入る。
      *
-     * <p>DB 既定値 {@code 'TOTP'} は Flyway（V239）と同じものを {@link ColumnDefault} でも宣言する。
+     * <p>DB 既定値 {@code 'TOTP'} は Flyway（V251）と同じものを {@link ColumnDefault} でも宣言する。
      * Hibernate が生成するスキーマ（test プロファイル）にも同じ既定値を持たせ、method を指定しない INSERT
      * （既存コード・ネイティブ SQL）が本番と同じく TOTP になるようにする。</p>
      */

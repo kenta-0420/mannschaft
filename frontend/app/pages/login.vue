@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { PasskeyLoginError } from '~/composables/useWebAuthnLogin'
+import { useLoginSession, type LoginResult } from '~/composables/useLoginSession'
+
 definePageMeta({
   layout: 'auth',
   middleware: 'guest',
@@ -28,16 +31,16 @@ const loading = ref(
   && document.getElementById('login-form')?.dataset.preHydrationSubmit === 'pending',
 )
 const googleLoading = ref(false)
+const passkeyLoading = ref(false)
+let passwordPending = false
+const busy = computed(() => loading.value || googleLoading.value || passkeyLoading.value)
+const { loginWithPasskey } = useWebAuthnLogin()
 
 const api = useApi()
-const authStore = useAuthStore()
-// 先回りリフレッシュ武装に渡す runtimeConfig は、必ず setup コンテキストで capture しておく
-// （イベントハンドラ内で useRuntimeConfig() を呼ぶ落とし穴を避ける。armProactiveRefresh 参照）。
-const runtimeConfig = useRuntimeConfig()
+const { completeLogin } = useLoginSession()
 const { getGoogleAuthUrl } = useAuthApi()
 const notification = useNotification()
 const route = useRoute()
-const { applyAccountLocale } = useLocale()
 const { t } = useI18n()
 
 onMounted(async () => {
@@ -76,6 +79,7 @@ const sessionNoticeMessage = computed<string | null>(() => {
 })
 
 async function loginWithGoogle() {
+  if (busy.value) return
   googleLoading.value = true
   try {
     const res = await getGoogleAuthUrl()
@@ -86,7 +90,36 @@ async function loginWithGoogle() {
   }
 }
 
+async function handlePasskeyLogin() {
+  if (busy.value) return
+  // パスワード欄のrequiredを評価せず、共用メール欄のみブラウザ検証する。
+  const emailInput = document.getElementById('email') as HTMLInputElement | null
+  if (!emailInput?.reportValidity()) return
+  passkeyLoading.value = true
+  let navigationTarget: string | null = null
+  try {
+    const tokens = await loginWithPasskey(email.value)
+    if (tokens) navigationTarget = await completeLogin(tokens)
+  } catch (error: unknown) {
+    const detail = error instanceof PasskeyLoginError
+      ? error.reason
+      : error instanceof Error && error.message === 'profile' ? 'profile_failed' : 'failed'
+    notification.error(t('auth.login.failed'), t(`auth.login.passkey_${detail}`))
+  }
+  if (!navigationTarget) {
+    passkeyLoading.value = false
+    return
+  }
+  try {
+    await navigateTo(navigationTarget)
+  } finally {
+    passkeyLoading.value = false
+  }
+}
+
 async function handleLogin() {
+  if (passwordPending || passkeyLoading.value || googleLoading.value) return
+  passwordPending = true
   loading.value = true
   // 遷移先。ログイン処理が成功した経路でのみ設定し、実際の遷移は try/catch の外で行う。
   // try の中で navigateTo すると、遷移側の失敗を catch が拾って
@@ -94,18 +127,10 @@ async function handleLogin() {
   let navigationTarget: string | null = null
   try {
     const data = await api<{
-      data: {
-        accessToken: string
-        refreshToken: string
-        userId: number
-        fullName: string
-        email: string
-        mfaRequired?: boolean
-        mfaSessionToken?: string
+      data: LoginResult & {
         // MfaRequiredResponse（CMP-261012-0910 AC-27）。旧 BE 応答では欠落しうる。
         primaryMethod?: 'TOTP' | 'EMAIL' | 'BACKUP_CODE' | null
         availableMethods?: Array<'TOTP' | 'EMAIL' | 'BACKUP_CODE'> | null
-        reactivated?: boolean
       }
     }>('/api/v1/auth/login', {
       method: 'POST',
@@ -122,73 +147,7 @@ async function handleLogin() {
       if (typeof route.query.redirect === 'string') mfaQuery.set('redirect', route.query.redirect)
       navigationTarget = `/2fa-verify?${mfaQuery.toString()}`
     } else {
-      authStore.setTokens(data.data.accessToken, data.data.refreshToken)
-      // ログイン成功直後に先回りリフレッシュタイマーを武装する（capture 済み runtimeConfig を渡す）。
-      armProactiveRefresh(runtimeConfig, authStore)
-
-      // /api/v1/users/me でフルプロフィール（systemRole・locale・avatarUrl 等）を一括取得
-      try {
-        const profile = await api<{
-          data: {
-            id: number
-            email: string
-            lastName: string
-            firstName: string
-            avatarUrl: string | null
-            systemRole: string | null
-            locale: string
-            timezone: string | null
-            status: string | null
-          }
-        }>('/api/v1/users/me')
-        // PENDING_PARENTAL_CONSENT: 保護者同意待ち → 専用ページへリダイレクト
-        // （setUser・設定同期は行わず、遷移先だけを決めて以降の処理を飛ばす）
-        if (profile.data.status === 'PENDING_PARENTAL_CONSENT') {
-          navigationTarget = '/parental-consent/pending'
-        }
-        else {
-          await authStore.setUser({
-            id: profile.data.id,
-            email: profile.data.email,
-            fullName: profile.data.lastName + ' ' + profile.data.firstName,
-            profileImageUrl: profile.data.avatarUrl,
-            systemRole: profile.data.systemRole ?? undefined,
-            timezone: profile.data.timezone ?? undefined,
-            locale: profile.data.locale || undefined,
-          })
-          if (profile.data.locale) {
-            await applyAccountLocale(profile.data.locale)
-          }
-        }
-      } catch {
-        // プロフィール取得失敗時はログインレスポンスの基本情報で続行
-        await authStore.setUser({
-          id: data.data.userId,
-          email: data.data.email,
-          fullName: data.data.fullName,
-          profileImageUrl: null,
-        })
-      }
-
-      // 保護者同意待ちで遷移先が既に決まっている場合は、設定同期も遷移先の再決定も行わない。
-      if (!navigationTarget) {
-        // ログイン成立直後にアカウント設定（外観・ナビ）をサーバーから同期する。
-        // 新ブラウザ（シークレット等）で localStorage が空でも BEの保存済み設定が反映される。
-        authStore.syncAccountSettings()
-
-        // 遷移先の決定。
-        //
-        // 一般ユーザーの既定を `/`（ランディング）ではなく `/dashboard` にしている理由:
-        // `/` には `guest` ミドルウェアが付いており、認証済みユーザーは即座に `/dashboard` へ
-        // 弾き返される。`/` 経由にすると「認証済みユーザーが決して見ないランディングページ」を
-        // 読み込んでから捨てることになり、遷移が二段になって待ち時間が伸びるだけで利点がない。
-        navigationTarget = data.data.reactivated
-          ? '/account-restore'
-          : (route.query.redirect as string)
-            || (authStore.isSystemAdmin ? '/system-admin' : '/dashboard')
-
-        notification.success(data.data.reactivated ? 'ログインしました' : 'ログイン成功')
-      }
+      navigationTarget = await completeLogin(data.data, data.data)
     }
   } catch (e: unknown) {
     // backend は AuthErrorCode を { error: { code, message } } 形式で返す。
@@ -213,6 +172,7 @@ async function handleLogin() {
   if (!navigationTarget) {
     // 認証に失敗した経路。遷移しないのでここで操作可能状態へ戻す。
     loading.value = false
+    passwordPending = false
     return
   }
 
@@ -231,6 +191,7 @@ async function handleLogin() {
     await navigateTo(navigationTarget)
   } finally {
     loading.value = false
+    passwordPending = false
   }
 }
 </script>
@@ -272,25 +233,6 @@ async function handleLogin() {
         <span>{{ oauthConflictMessage }}</span>
       </div>
 
-      <!-- Google ログインボタン -->
-      <Button
-        type="button"
-        :label="$t('auth.oauth.google_login')"
-        icon="pi pi-google"
-        severity="secondary"
-        outlined
-        class="w-full"
-        :loading="googleLoading"
-        @click="loginWithGoogle"
-      />
-
-      <!-- セパレーター -->
-      <div class="flex items-center gap-3">
-        <div class="flex-1 border-t border-surface-200 dark:border-surface-600" />
-        <span class="text-sm text-surface-400">{{ $t('auth.oauth.or') }}</span>
-        <div class="flex-1 border-t border-surface-200 dark:border-surface-600" />
-      </div>
-
       <div class="flex flex-col gap-2">
         <label for="email">{{ t('auth.login.email') }}</label>
         <InputText
@@ -321,9 +263,10 @@ async function handleLogin() {
         icon="pi pi-sign-in"
         loading-icon="pi pi-spinner pi-spin"
         :loading="loading"
+        :disabled="busy"
         :aria-busy="loading || undefined"
         data-login-submit
-        class="mt-2"
+        class="mt-2 min-h-11"
       />
       <div class="flex flex-col items-center gap-2">
         <NuxtLink to="/forgot-password" class="text-sm text-primary hover:underline">
@@ -333,6 +276,39 @@ async function handleLogin() {
           {{ t('auth.register.title') }}
         </NuxtLink>
       </div>
+      <!-- セパレーター -->
+      <div class="flex items-center gap-3">
+        <div class="flex-1 border-t border-surface-200 dark:border-surface-600" />
+        <span class="text-sm text-surface-400">{{ $t('auth.oauth.or') }}</span>
+        <div class="flex-1 border-t border-surface-200 dark:border-surface-600" />
+      </div>
+      <Button
+        type="button"
+        :label="t('auth.login.passkey_submit')"
+        icon="pi pi-key"
+        severity="secondary"
+        outlined
+        class="min-h-11 w-full"
+        :loading="passkeyLoading"
+        :disabled="busy"
+        :aria-busy="passkeyLoading || undefined"
+        data-passkey-login
+        @click="handlePasskeyLogin"
+      />
+      <!-- Google ログインボタン -->
+      <Button
+        type="button"
+        :label="$t('auth.oauth.google_login')"
+        icon="pi pi-google"
+        severity="secondary"
+        outlined
+        class="min-h-11 w-full"
+        :loading="googleLoading"
+        :disabled="busy"
+        @click="loginWithGoogle"
+      />
+
+
     </div>
   </form>
 </template>
