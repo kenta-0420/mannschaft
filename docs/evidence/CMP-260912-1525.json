@@ -38,8 +38,8 @@
       "description": "docs/openapi.json が再生成されドリフト検査が緑である",
       "tests": [
         {
-          "name": "再生成済みの OpenAPI 仕様（getAllTeamMembers が組織版と衝突しない）",
-          "evidence": "docs/openapi.json"
+          "name": "API 設計書（チームメンバー一括取得 API の追記。OpenAPI 再生成とドリフト検査緑は実機記録を参照）",
+          "evidence": "docs/features/F01.2_org_team_member_role/02_api_design.md"
         },
         {
           "name": "OpenAPI Drift Check は実装PR head SHA で success（CI run 35062266948）",
