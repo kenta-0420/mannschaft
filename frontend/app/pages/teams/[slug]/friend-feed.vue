@@ -82,7 +82,7 @@ function onForwardSuccess(forwardId: number) {
 
       <div class="mx-auto max-w-2xl">
         <!-- 投稿一覧 -->
-        <FriendsFriendFeedPostList
+        <FriendFeedPostList
           ref="feedListRef"
           :team-id="teamSlug"
           @forward="onForward"
@@ -90,7 +90,7 @@ function onForwardSuccess(forwardId: number) {
       </div>
 
       <!-- 転送モーダル -->
-      <FriendsFriendForwardModal
+      <FriendForwardModal
         v-model="forwardModalVisible"
         :team-id="teamSlug"
         :post-id="forwardPostId"

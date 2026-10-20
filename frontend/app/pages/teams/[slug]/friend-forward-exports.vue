@@ -58,7 +58,7 @@ onMounted(async () => {
 
       <div class="mx-auto max-w-3xl">
         <SectionCard>
-          <FriendsFriendForwardExportList :team-id="teamSlug" />
+          <FriendForwardExportList :team-id="teamSlug" />
         </SectionCard>
       </div>
     </div>

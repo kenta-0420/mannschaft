@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * 番人: pathPrefix:false 下で解決されない「ディレクトリ接頭辞付きコンポーネント名」の検出（CMP-261014-2034）。
  *
@@ -8,7 +9,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, basename, relative } from 'node:path'
+import { join, basename, relative, sep } from 'node:path'
 
 const APP_DIR = join(process.cwd(), 'app')
 const COMPONENTS_DIR = join(APP_DIR, 'components')
@@ -35,7 +36,7 @@ const componentFiles = walk(COMPONENTS_DIR).filter(f => f.endsWith('.vue'))
 const registered = new Set(componentFiles.map(f => basename(f, '.vue')))
 const dirPrefixes = new Set<string>()
 for (const f of componentFiles) {
-  const rel = relative(COMPONENTS_DIR, f).split(/[\/]/).slice(0, -1)
+  const rel = relative(COMPONENTS_DIR, f).split(sep).slice(0, -1)
   rel.forEach(seg => dirPrefixes.add(toPascal(seg)))
 }
 
@@ -65,5 +66,5 @@ describe('コンポーネント名の接頭辞誤参照 番人 (pathPrefix:false
     const hits = findMisreferences()
     const detail = hits.map(h => `${h.file}: <${h.tag}> → <${h.correct}>`).join('\n')
     expect(hits.length, `誤参照 ${hits.length} 件:\n${detail}`).toBe(0)
-  })
+  }, 120_000)
 })

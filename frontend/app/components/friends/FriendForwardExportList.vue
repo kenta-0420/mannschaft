@@ -18,6 +18,7 @@ const props = defineProps<{
 
 const exports = ref<FriendForwardExportView[]>([])
 const loading = ref(true)
+const loadFailed = ref(false)
 const currentPage = ref(0)
 const pageSize = 20
 const totalElements = ref(0)
@@ -27,6 +28,7 @@ const hasNext = ref(false)
 /** データ取得 */
 async function fetchExports() {
   loading.value = true
+  loadFailed.value = false
   try {
     const response = await listForwardExports(props.teamId, {
       page: currentPage.value,
@@ -38,6 +40,7 @@ async function fetchExports() {
     hasNext.value = response.pagination.hasNext
   }
   catch (error) {
+    loadFailed.value = true
     handleApiError(error, 'friend-forward-exports')
   }
   finally {
@@ -91,6 +94,16 @@ onMounted(() => {
   <div>
     <!-- ローディング -->
     <PageLoading v-if="loading" size="32px" />
+
+    <!-- 取得失敗（空状態に偽装しない） -->
+    <div
+      v-else-if="loadFailed"
+      class="py-4 text-center text-red-500"
+      data-testid="forward-exports-error"
+    >
+      <i class="pi pi-exclamation-triangle mr-2" />
+      {{ t('forward_exports.list.error') }}
+    </div>
 
     <!-- 空状態 -->
     <DashboardEmptyState

@@ -156,6 +156,7 @@
     "permission_denied": "No tiene permiso para ver esta pantalla",
     "list": {
       "empty": "Aún no hay historial de reenvíos",
+      "error": "No se pudo cargar el historial de reenvíos",
       "anonymous_team": "Equipo anónimo",
       "revoked": "Cancelado",
       "target_member": "Miembros",

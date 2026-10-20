@@ -133,8 +133,8 @@ watch([dateFrom, dateTo], load)
     <div v-if="loading" class="flex justify-center py-20"><LoadingBounce /></div>
 
     <template v-else-if="performance">
-      <AdvertiserCampaignMetricsCards :performance="performance" />
-      <AdvertiserCampaignDataTables
+      <CampaignMetricsCards :performance="performance" />
+      <CampaignDataTables
         :points="performance.points"
         :creatives="creatives"
         :breakdown="breakdown"

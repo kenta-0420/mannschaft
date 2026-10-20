@@ -65,7 +65,7 @@ defineExpose({ markAsForwarded })
 
     <!-- 投稿カード一覧 -->
     <div v-else class="flex flex-col gap-4">
-      <FriendsFriendFeedPostCard
+      <FriendFeedPostCard
         v-for="post in posts"
         :key="post.postId"
         :post="toCardPost(post)"
