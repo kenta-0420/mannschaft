@@ -156,7 +156,6 @@
     "permission_denied": "이 화면을 표시할 권한이 없습니다",
     "list": {
       "empty": "전달 내역이 아직 없습니다",
-      "error": "전달 이력을 불러오지 못했습니다",
       "anonymous_team": "익명 팀",
       "revoked": "취소됨",
       "target_member": "멤버",

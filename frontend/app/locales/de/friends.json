@@ -156,7 +156,6 @@
     "permission_denied": "Sie haben keine Berechtigung, diese Seite anzuzeigen",
     "list": {
       "empty": "Noch kein Weiterleitungsverlauf",
-      "error": "Weiterleitungsverlauf konnte nicht geladen werden",
       "anonymous_team": "Anonymes Team",
       "revoked": "Zurückgezogen",
       "target_member": "Mitglieder",

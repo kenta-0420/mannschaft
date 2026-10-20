@@ -156,7 +156,6 @@
     "permission_denied": "没有查看此画面的权限",
     "list": {
       "empty": "还没有转发历史",
-      "error": "加载转发历史失败",
       "anonymous_team": "匿名团队",
       "revoked": "已取消",
       "target_member": "成员",

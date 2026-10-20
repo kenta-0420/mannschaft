@@ -4,23 +4,27 @@
  *
  * nuxt.config.ts は components: [{ path: '~/components', pathPrefix: false }] のため、
  * 自動登録名はファイル名のみ（components/friends/FriendFeedPostList.vue → <FriendFeedPostList>）。
- * <FriendsFriendFeedPostList> のような接頭辞付きタグは Vue が解決できず、警告のみで無描画になる。
+ * <FriendsFriendFeedPostList> のような接頭辞付き名は Vue が解決できず、警告のみで無描画になる。
  * typecheck / lint / CI はこれを検知しないため、静的に走査して止める。
+ *
+ * 検出対象の参照形式:
+ *  - テンプレートの PascalCase タグ（Lazy 接頭辞付きを含む）
+ *  - resolveComponent('X') / resolveDynamicComponent('X')
+ *  - :is="'X'" などの属性内の文字列リテラル、静的な is="X"
+ * 接頭辞は components 配下のディレクトリ名の連続区間を連結したもの（alpha/beta/Gamma.vue → Alpha / Beta / AlphaBeta）。
+ * 除外: 明示 import されたローカル名、HTML コメント・JS コメント内の記述。
  */
 import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, basename, relative, sep } from 'node:path'
 
-const APP_DIR = join(process.cwd(), 'app')
-const COMPONENTS_DIR = join(APP_DIR, 'components')
-
-function walk(dir: string, out: string[] = []): string[] {
-  for (const name of readdirSync(dir)) {
-    const full = join(dir, name)
-    if (statSync(full).isDirectory()) walk(full, out)
-    else out.push(full)
-  }
-  return out
+interface Context {
+  registered: Set<string>
+  prefixes: Set<string>
+}
+interface Hit {
+  name: string
+  correct: string
 }
 
 /** ディレクトリ名（kebab/camel/snake）を PascalCase に変換する */
@@ -32,39 +36,153 @@ function toPascal(s: string): string {
     .join('')
 }
 
-const componentFiles = walk(COMPONENTS_DIR).filter(f => f.endsWith('.vue'))
-const registered = new Set(componentFiles.map(f => basename(f, '.vue')))
-const dirPrefixes = new Set<string>()
-for (const f of componentFiles) {
-  const rel = relative(COMPONENTS_DIR, f).split(sep).slice(0, -1)
-  rel.forEach(seg => dirPrefixes.add(toPascal(seg)))
-}
-
-/** 検査対象: app 配下の全 .vue のテンプレート中の PascalCase タグ */
-function findMisreferences(): { file: string, tag: string, correct: string }[] {
-  const hits: { file: string, tag: string, correct: string }[] = []
-  for (const file of walk(APP_DIR).filter(f => f.endsWith('.vue'))) {
-    const src = readFileSync(file, 'utf8')
-    const tpl = src.includes('<template') ? src.slice(src.indexOf('<template')) : ''
-    const tags = new Set([...tpl.matchAll(/<([A-Z][A-Za-z0-9]+)(?=[\s/>])/g)].map(m => m[1] as string))
-    for (const tag of tags) {
-      if (registered.has(tag)) continue
-      // <ディレクトリ名PascalCase><登録名> 形式のみ誤参照とみなす（PrimeVue 等の誤検知を避ける）
-      for (const dir of dirPrefixes) {
-        if (tag.startsWith(dir) && registered.has(tag.slice(dir.length))) {
-          hits.push({ file: relative(APP_DIR, file), tag, correct: tag.slice(dir.length) })
-          break
-        }
+/** components 配下の相対パス（区切りは / ）一覧から登録名と接頭辞候補を作る */
+function buildContext(relPaths: string[]): Context {
+  const registered = new Set<string>()
+  const prefixes = new Set<string>()
+  for (const rel of relPaths) {
+    const segs = rel.split('/')
+    registered.add(basename(segs[segs.length - 1] as string, '.vue'))
+    const dirs = segs.slice(0, -1).map(toPascal)
+    for (let i = 0; i < dirs.length; i++) {
+      let acc = ''
+      for (let j = i; j < dirs.length; j++) {
+        acc += dirs[j]
+        prefixes.add(acc)
       }
     }
+  }
+  return { registered, prefixes }
+}
+
+function stripComments(src: string, kind: 'html' | 'js'): string {
+  if (kind === 'html') return src.replace(/<!--[\s\S]*?-->/g, '')
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:\w'"`])\/\/[^\n]*/g, '$1')
+}
+
+/** 解決される名前か。Lazy 接頭辞付きも登録名として許容する */
+function judge(name: string, ctx: Context): Hit | null {
+  if (ctx.registered.has(name)) return null
+  const base = name.startsWith('Lazy') && name.length > 4 ? name.slice(4) : name
+  if (ctx.registered.has(base)) return null
+  for (const prefix of ctx.prefixes) {
+    if (base.startsWith(prefix) && ctx.registered.has(base.slice(prefix.length))) {
+      return { name, correct: base.slice(prefix.length) }
+    }
+  }
+  return null
+}
+
+/** 明示 import されたローカル名を集める（import X / import { A as X } / import X, { Y }） */
+function collectImportedNames(script: string): Set<string> {
+  const names = new Set<string>()
+  for (const m of script.matchAll(/import\s+([^'";]+?)\s+from\s+['"][^'"]+['"]/g)) {
+    const clause = m[1] as string
+    const braces = clause.match(/\{([^}]*)\}/)
+    const head = clause.replace(/\{[^}]*\}/, '').replace(/type\s+/, '').replace(/,/g, ' ').trim()
+    for (const n of head.split(/\s+/)) if (n && n !== '*' && n !== 'as') names.add(n)
+    if (braces) {
+      for (const part of (braces[1] as string).split(',')) {
+        const local = part.trim().split(/\s+as\s+/).pop()?.trim()
+        if (local) names.add(local)
+      }
+    }
+  }
+  return names
+}
+
+/** .vue 1ファイルの本文から誤参照を検出する */
+function findMisreferencesInSource(src: string, ctx: Context): Hit[] {
+  const scriptBlocks = [...src.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1] as string)
+  const script = stripComments(scriptBlocks.join('\n'), 'js')
+  const tpl = stripComments(
+    src.replace(/<script\b[\s\S]*?<\/script>/g, '').replace(/<style\b[\s\S]*?<\/style>/g, ''),
+    'html',
+  )
+  const imported = collectImportedNames(script)
+
+  const candidates = new Set<string>()
+  for (const m of tpl.matchAll(/<([A-Z][A-Za-z0-9]+)(?=[\s/>])/g)) candidates.add(m[1] as string)
+  for (const m of `${script}\n${tpl}`.matchAll(/(?:resolveComponent|resolveDynamicComponent)\(\s*['"`]([A-Z][A-Za-z0-9]+)['"`]/g)) {
+    candidates.add(m[1] as string)
+  }
+  for (const m of tpl.matchAll(/(?<![\w-]):is\s*=\s*"([^"]*)"/g)) {
+    for (const lit of (m[1] as string).matchAll(/'([A-Z][A-Za-z0-9]+)'/g)) candidates.add(lit[1] as string)
+  }
+  for (const m of tpl.matchAll(/(?<![\w:-])is\s*=\s*"([A-Z][A-Za-z0-9]+)"/g)) candidates.add(m[1] as string)
+
+  const hits: Hit[] = []
+  for (const name of candidates) {
+    if (imported.has(name)) continue
+    const hit = judge(name, ctx)
+    if (hit) hits.push(hit)
   }
   return hits
 }
 
+function walk(dir: string, out: string[] = []): string[] {
+  for (const name of readdirSync(dir)) {
+    const full = join(dir, name)
+    if (statSync(full).isDirectory()) walk(full, out)
+    else out.push(full)
+  }
+  return out
+}
+
+describe('findMisreferencesInSource（合成入力）', () => {
+  const ctx = buildContext(['friends/FriendFeedPostList.vue', 'alpha/beta/Gamma.vue', 'common/PageHeader.vue'])
+  const names = (src: string) => findMisreferencesInSource(src, ctx).map(h => h.name)
+
+  it('検出する: 接頭辞付きタグ', () => {
+    expect(names('<template><FriendsFriendFeedPostList /></template>')).toEqual(['FriendsFriendFeedPostList'])
+  })
+  it('検出する: resolveComponent の文字列リテラル', () => {
+    const src = '<script setup lang="ts">const X = resolveComponent(\'FriendsFriendFeedPostList\')</script><template><div/></template>'
+    expect(names(src)).toEqual(['FriendsFriendFeedPostList'])
+  })
+  it('検出する: :is の文字列リテラル（三項演算子内も）', () => {
+    expect(names('<template><component :is="ok ? \'FriendsFriendFeedPostList\' : \'PageHeader\'" /></template>'))
+      .toEqual(['FriendsFriendFeedPostList'])
+  })
+  it('検出する: Lazy 接頭辞付きの誤参照', () => {
+    expect(names('<template><LazyFriendsFriendFeedPostList /></template>')).toEqual(['LazyFriendsFriendFeedPostList'])
+  })
+  it('検出する: 多階層ディレクトリ連結の接頭辞（alpha/beta/Gamma.vue → AlphaBetaGamma）', () => {
+    expect(names('<template><AlphaBetaGamma /></template>')).toEqual(['AlphaBetaGamma'])
+  })
+  it('検出しない: 正名・Lazy 付き正名・無関係な名前', () => {
+    expect(names('<template><FriendFeedPostList /><LazyFriendFeedPostList /><Button /><NuxtLink /></template>')).toEqual([])
+  })
+  it('検出しない: 明示 import されたローカル名', () => {
+    const src = '<script setup lang="ts">\nimport FriendsFriendFeedPostList from \'~/x/Y.vue\'\n</script><template><FriendsFriendFeedPostList /></template>'
+    expect(names(src)).toEqual([])
+  })
+  it('検出しない: 別名 import（as）で付けたローカル名', () => {
+    const src = '<script setup lang="ts">\nimport { Z as FriendsFriendFeedPostList } from \'~/x\'\n</script><template><FriendsFriendFeedPostList /></template>'
+    expect(names(src)).toEqual([])
+  })
+  it('検出しない: HTML コメント・JS コメント内の記述', () => {
+    const src = '<script setup lang="ts">\n// <FriendsFriendFeedPostList>\n/* resolveComponent(\'FriendsFriendFeedPostList\') */\n</script><template><!-- <FriendsFriendFeedPostList /> --><div /></template>'
+    expect(names(src)).toEqual([])
+  })
+})
+
 describe('コンポーネント名の接頭辞誤参照 番人 (pathPrefix:false)', () => {
-  it('ディレクトリ名を前置した未登録のコンポーネント名をテンプレートで使っていない', () => {
-    const hits = findMisreferences()
-    const detail = hits.map(h => `${h.file}: <${h.tag}> → <${h.correct}>`).join('\n')
-    expect(hits.length, `誤参照 ${hits.length} 件:\n${detail}`).toBe(0)
+  it('app 配下の .vue が、ディレクトリ名を前置した未登録のコンポーネント名を使っていない', () => {
+    const appDir = join(process.cwd(), 'app')
+    const componentsDir = join(appDir, 'components')
+    const rels = walk(componentsDir)
+      .filter(f => f.endsWith('.vue'))
+      .map(f => relative(componentsDir, f).split(sep).join('/'))
+    const ctx = buildContext(rels)
+    const lines: string[] = []
+    for (const file of walk(appDir).filter(f => f.endsWith('.vue'))) {
+      for (const h of findMisreferencesInSource(readFileSync(file, 'utf8'), ctx)) {
+        lines.push(`${relative(appDir, file)}: <${h.name}> → <${h.correct}>`)
+      }
+    }
+    expect(lines.length, `誤参照 ${lines.length} 件:\n${lines.join('\n')}`).toBe(0)
   }, 120_000)
 })

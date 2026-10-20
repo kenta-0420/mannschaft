@@ -156,7 +156,6 @@
     "permission_denied": "この画面を表示する権限がありません",
     "list": {
       "empty": "転送履歴はまだありません",
-      "error": "転送履歴の取得に失敗しました",
       "anonymous_team": "匿名チーム",
       "revoked": "取消済",
       "target_member": "メンバー",

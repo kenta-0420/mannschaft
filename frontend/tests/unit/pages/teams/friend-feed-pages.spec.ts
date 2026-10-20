@@ -76,11 +76,64 @@ describe('friend-feed ページ', () => {
 })
 
 describe('friend-forward-exports ページ', () => {
-  it('AC-2: FriendForwardExportList を解決して描画する', async () => {
-    apiMock.mockResolvedValue({ data: [], pagination: { totalElements: 0, totalPages: 0, hasNext: false } })
+  const exportRows = [
+    { forwardId: 1, sourcePostId: 101, forwardingTeamName: 'Friend FC', target: 'MEMBER', forwardedAt: '2026-10-01T00:00:00Z', isRevoked: false },
+    { forwardId: 2, sourcePostId: 102, forwardingTeamName: 'Other FC', target: 'MEMBER_AND_SUPPORTER', forwardedAt: '2026-10-02T00:00:00Z', isRevoked: true },
+  ]
+
+  it('AC-2: FriendForwardExportList を解決し、履歴の各行（投稿ID・転送先・取消状態）を描画する', async () => {
+    apiMock.mockResolvedValue({ data: exportRows, pagination: { totalElements: 2, totalPages: 1, hasNext: false } })
     const wrapper = await mountSuspended(ForwardExportsPage, { route: '/teams/t1/friend-forward-exports' })
     await flushPromises()
-    expect(wrapper.findComponent(FriendForwardExportList).exists()).toBe(true)
+    const list = wrapper.findComponent(FriendForwardExportList)
+    expect(list.exists()).toBe(true)
+    const rows = list.findAll('tbody tr')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]!.text()).toContain('#101')
+    expect(rows[0]!.text()).toContain('Friend FC')
+    expect(rows[1]!.text()).toContain('#102')
+    expect(rows[1]!.text()).toContain('Other FC')
+    // 取消済みの行だけに状態タグが出る
+    expect(rows[0]!.find('.p-tag').exists()).toBe(false)
+    expect(rows[1]!.find('.p-tag').exists()).toBe(true)
+  })
+
+  it('AC-3: 取得失敗時は DashboardErrorState の再試行で再取得し、成功すれば履歴が出る', async () => {
+    apiMock
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce({ data: exportRows, pagination: { totalElements: 2, totalPages: 1, hasNext: false } })
+    const wrapper = await mountSuspended(ForwardExportsPage, { route: '/teams/t1/friend-forward-exports' })
+    await flushPromises()
+    const list = wrapper.findComponent(FriendForwardExportList)
+    expect(list.findComponent({ name: 'DashboardErrorState' }).exists()).toBe(true)
+    expect(apiMock).toHaveBeenCalledTimes(1)
+    await list.find('[data-testid="forward-exports-error-retry"]').trigger('click')
+    await flushPromises()
+    expect(apiMock).toHaveBeenCalledTimes(2)
+    expect(list.find('[data-testid="forward-exports-error"]').exists()).toBe(false)
+    expect(list.findAll('tbody tr')).toHaveLength(2)
+  })
+
+  it('AC-3: 2ページ目の取得に失敗してもページ送り（前へ）は残り、前ページへ戻れる', async () => {
+    const page = { totalElements: 40, totalPages: 2 }
+    apiMock
+      .mockResolvedValueOnce({ data: exportRows, pagination: { ...page, hasNext: true } })
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce({ data: exportRows, pagination: { ...page, hasNext: true } })
+    const wrapper = await mountSuspended(ForwardExportsPage, { route: '/teams/t1/friend-forward-exports' })
+    await flushPromises()
+    const list = wrapper.findComponent(FriendForwardExportList)
+    const buttons = () => list.findAll('.flex.gap-2 button')
+    await buttons()[1]!.trigger('click')
+    await flushPromises()
+    expect(list.find('[data-testid="forward-exports-error"]').exists()).toBe(true)
+    expect(buttons()).toHaveLength(2)
+    expect(buttons()[0]!.attributes('disabled')).toBeUndefined()
+    expect(buttons()[1]!.attributes('disabled')).toBeDefined()
+    await buttons()[0]!.trigger('click')
+    await flushPromises()
+    expect(list.find('[data-testid="forward-exports-error"]').exists()).toBe(false)
+    expect(list.findAll('tbody tr')).toHaveLength(2)
   })
 
   it('AC-3: 0件のとき空状態の文言を出す', async () => {
@@ -90,7 +143,7 @@ describe('friend-forward-exports ページ', () => {
     expect(wrapper.findComponent(FriendForwardExportList).findComponent({ name: 'DashboardEmptyState' }).exists()).toBe(true)
   })
 
-  it('AC-3: 取得失敗時は一覧内にエラーを表示する（空状態に偽装しない）', async () => {
+  it('AC-3: 取得失敗時は一覧内に DashboardErrorState を表示する（空状態に偽装しない）', async () => {
     apiMock.mockRejectedValue(new Error('boom'))
     const wrapper = await mountSuspended(ForwardExportsPage, { route: '/teams/t1/friend-forward-exports' })
     await flushPromises()

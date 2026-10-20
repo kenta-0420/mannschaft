@@ -156,7 +156,6 @@
     "permission_denied": "You do not have permission to view this page",
     "list": {
       "empty": "No forward history yet",
-      "error": "Failed to load forward history",
       "anonymous_team": "Anonymous team",
       "revoked": "Revoked",
       "target_member": "Members",
