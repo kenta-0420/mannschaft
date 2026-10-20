@@ -139,6 +139,8 @@ class ReservationReminderDispatchNotificationListenerTest {
         verify(reminderRunner).claim(eq(1L), claimed.capture());
         verify(reminderRunner).release(eq(1L), released.capture());
         assertThat(released.getValue()).as("自分の claim だけを戻す").isEqualTo(claimed.getValue());
+        // 本番 DDL の sent_at は秒精度（V3.065）。小数秒が残ると保存時に切り捨てられ release の照合が外れる。
+        assertThat(claimed.getValue().getNano()).as("claimedAt は DB 精度（秒）に揃える").isZero();
     }
 
     @Test

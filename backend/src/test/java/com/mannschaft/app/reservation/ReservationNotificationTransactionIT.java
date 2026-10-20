@@ -57,6 +57,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -163,23 +164,30 @@ class ReservationNotificationTransactionIT extends AbstractMySqlIntegrationTest 
         ClosureFx fx = closureFixture(2);
         AtomicLong closureId = new AtomicLong();
 
+        // publish の後・commit の前（BEFORE_COMMIT）に失敗させる。業務本体からの例外ではなく、配送要求が publish 済みでも
+        // コミットが失敗すれば AFTER_COMMIT の配送が起きないことを見る。
+        CommitFailer.armClosure();
         try {
-            transactionTemplate.executeWithoutResult(tx -> {
-                closureId.set(closureService.sendClosure(fx.teamId, fx.operatorId, closureRequest(fx, true)).getId());
-                throw new IllegalStateException("模擬: publish 後・コミット前の失敗");
-            });
-        } catch (IllegalStateException expected) {
-            // 強制ロールバック
+            assertThatThrownBy(() -> closureId.set(
+                    closureService.sendClosure(fx.teamId, fx.operatorId, closureRequest(fx, true)).getId()))
+                    .hasStackTraceContaining("模擬コミット失敗");
+        } finally {
+            CommitFailer.disarm();
         }
+        Long closureTeamId = fx.teamId;
+        closureId.set(transactionTemplate.execute(tx -> closureRepository
+                .findByTeamIdOrderByCreatedAtDesc(closureTeamId).stream().findFirst().map(c -> c.getId()).orElse(-1L)));
 
-        assertThat(closureRepository.findById(closureId.get())).as("休業行はロールバックで残らない").isEmpty();
+        assertThat(closureId.get()).as("休業行はコミット失敗で残らない").isEqualTo(-1L);
         // 非同期配送が走り切る余地を与えたうえで 0 件であること（drain 後に確認する）。
         drainEventPool();
         for (Long user : fx.userIds) {
             assertThat(rows(user, "EMERGENCY_CLOSURE", "EMERGENCY_CLOSURE", closureId.get())).isEmpty();
         }
         verify(notificationDeliveryRunner, never()).sendOne(argThat(r -> r != null
-                && closureId.get() == (r.sourceId() == null ? -1L : r.sourceId())));
+                && "EMERGENCY_CLOSURE".equals(r.sourceType()) && fx.userIds.contains(r.recipientUserId())));
+        assertThat(applicationEvents.stream(EmergencyClosureNotificationEvent.class).count())
+                .as("配送要求は publish 済み（commit 前に失敗させた証拠）").isEqualTo(1L);
     }
 
     @Test
@@ -328,6 +336,11 @@ class ReservationNotificationTransactionIT extends AbstractMySqlIntegrationTest 
 
         reminderBatch.dispatchDueReminders();
 
+        // 失敗を注入した対象（userIds[1]）への sendOne に実際に到達した証拠（呼出回数）。
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
+                verify(notificationDeliveryRunner, times(1)).sendOne(argThat(r -> r != null
+                        && fx.userIds.get(1).equals(r.recipientUserId())
+                        && fx.reservationIds.get(1).equals(r.sourceId()))));
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> {
             assertThat(rows(fx.userIds.get(0), "RESERVATION_REMINDER", "RESERVATION", fx.reservationIds.get(0))).hasSize(1);
             assertThat(rows(fx.userIds.get(2), "RESERVATION_REMINDER", "RESERVATION", fx.reservationIds.get(2))).hasSize(1);
@@ -462,14 +475,15 @@ class ReservationNotificationTransactionIT extends AbstractMySqlIntegrationTest 
     void waitlistRollbackCreatesNoNotification() {
         WaitFx fx = waitFixture(2);
 
+        CommitFailer.armSlot(fx.slotId);
         try {
-            transactionTemplate.executeWithoutResult(tx -> {
-                eventPublisher.publishEvent(new ReservationSlotReopenedEvent(fx.teamId, fx.slotId));
-                throw new IllegalStateException("模擬: publish 後・コミット前の失敗");
-            });
-        } catch (IllegalStateException expected) {
-            // 強制ロールバック
+            assertThatThrownBy(() -> publishReopened(fx)).hasStackTraceContaining("模擬コミット失敗");
+        } finally {
+            CommitFailer.disarm();
         }
+        assertThat(applicationEvents.stream(ReservationSlotReopenedEvent.class)
+                .filter(e -> fx.slotId.equals(e.getSlotId())).count())
+                .as("空き復帰イベントは publish 済み（commit 前に失敗させた証拠）").isEqualTo(1L);
 
         drainEventPool();
         for (Long user : fx.userIds) {
@@ -813,19 +827,47 @@ class ReservationNotificationTransactionIT extends AbstractMySqlIntegrationTest 
     @org.springframework.boot.test.context.TestComponent
     static class CommitFailer {
         private static volatile Long targetReminderId;
+        private static volatile boolean closureArmed;
+        private static volatile Long targetSlotId;
 
         static void armFor(Long reminderId) {
             targetReminderId = reminderId;
         }
 
+        static void armClosure() {
+            closureArmed = true;
+        }
+
+        static void armSlot(Long slotId) {
+            targetSlotId = slotId;
+        }
+
         static void disarm() {
             targetReminderId = null;
+            closureArmed = false;
+            targetSlotId = null;
         }
 
         @org.springframework.transaction.event.TransactionalEventListener(
                 phase = org.springframework.transaction.event.TransactionPhase.BEFORE_COMMIT)
         void onBeforeCommit(ReservationReminderDispatchEvent event) {
             if (event.reminderId().equals(targetReminderId)) {
+                throw new IllegalStateException("模擬コミット失敗（BEFORE_COMMIT）");
+            }
+        }
+
+        @org.springframework.transaction.event.TransactionalEventListener(
+                phase = org.springframework.transaction.event.TransactionPhase.BEFORE_COMMIT)
+        void onBeforeCommit(EmergencyClosureNotificationEvent event) {
+            if (closureArmed) {
+                throw new IllegalStateException("模擬コミット失敗（BEFORE_COMMIT）");
+            }
+        }
+
+        @org.springframework.transaction.event.TransactionalEventListener(
+                phase = org.springframework.transaction.event.TransactionPhase.BEFORE_COMMIT)
+        void onBeforeCommit(ReservationSlotReopenedEvent event) {
+            if (event.getSlotId().equals(targetSlotId)) {
                 throw new IllegalStateException("模擬コミット失敗（BEFORE_COMMIT）");
             }
         }

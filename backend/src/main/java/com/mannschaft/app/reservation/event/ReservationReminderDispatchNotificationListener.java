@@ -71,9 +71,10 @@ public class ReservationReminderDispatchNotificationListener {
         }
 
         // 配送の前に印を先取りする。取得できなければ他の配送が担当済みなので何もしない。
-        // 戻すときの照合キーにするため、DATETIME(6) で往復できる精度（マイクロ秒）に丸める。
+        // 戻すときの照合キーにするため、本番 DDL の sent_at は秒精度の DATETIME（V3.065）なので、秒に丸める。
+        // 小数秒を持たせると保存時に切り捨てられ、release の sent_at = claimedAt が一致せず SENT が残って再送されない。
         LocalDateTime claimedAt = LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE))
-                .truncatedTo(ChronoUnit.MICROS);
+                .truncatedTo(ChronoUnit.SECONDS);
         try {
             if (!reminderRunner.claim(event.reminderId(), claimedAt)) {
                 log.info("予約リマインドは配送済みまたは他の配送が担当済みのためスキップ: reminderId={}, reservationId={}",
