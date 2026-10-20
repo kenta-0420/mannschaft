@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
 import { useNuxtApp } from '#imports'
@@ -72,7 +72,7 @@ function switchInputs(w: Awaited<ReturnType<typeof mountList>>) {
 }
 
 describe('components/friends — 公開フラグ(public キー)の表示と切替', () => {
-  let warn: ReturnType<typeof vi.spyOn>
+  let warn: MockInstance<(...data: unknown[]) => void>
 
   beforeEach(() => {
     api.listFriends.mockReset()
@@ -128,7 +128,7 @@ describe('components/friends — 公開フラグ(public キー)の表示と切�
   it('AC-3: Vue の prop 型警告（isPublic が undefined）が出ない', async () => {
     api.listFriends.mockResolvedValue(respond([friend(1, true), friend(2, false)]))
     await mountList()
-    const messages = warn.mock.calls.map(args => args.map(String).join(' '))
-    expect(messages.filter(m => m.includes('Invalid prop'))).toEqual([])
+    const messages = warn.mock.calls.map((args: unknown[]) => args.map(String).join(' '))
+    expect(messages.filter((m: string) => m.includes('Invalid prop'))).toEqual([])
   })
 })
