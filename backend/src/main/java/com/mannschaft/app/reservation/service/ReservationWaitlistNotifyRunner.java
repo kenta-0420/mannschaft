@@ -1,5 +1,6 @@
 package com.mannschaft.app.reservation.service;
 
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.reservation.SlotStatus;
 import com.mannschaft.app.reservation.WaitlistStatus;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
@@ -94,7 +95,10 @@ public class ReservationWaitlistNotifyRunner {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean claim(UUID entryId, LocalDateTime claimedAt, LocalDateTime suppressBefore) {
-        return waitlistRepository.claimNotification(entryId, claimedAt, suppressBefore) == 1;
+        // updated_at はエンティティの @PrePersist/@PreUpdate と同じ基準（JVM 既定ゾーンの壁時計）で入れる。
+        // notified_at(claimedAt) は UTC Clock 基準なので、同じ値を流用すると 9 時間ずれる。
+        return waitlistRepository.claimNotification(entryId, claimedAt,
+                LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE), suppressBefore) == 1;
     }
 
     /**

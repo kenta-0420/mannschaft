@@ -174,20 +174,20 @@ class ReservationNotificationTransactionIT extends AbstractMySqlIntegrationTest 
         } finally {
             CommitFailer.disarm();
         }
-        Long closureTeamId = fx.teamId;
-        closureId.set(transactionTemplate.execute(tx -> closureRepository
-                .findByTeamIdOrderByCreatedAtDesc(closureTeamId).stream().findFirst().map(c -> c.getId()).orElse(-1L)));
-
-        assertThat(closureId.get()).as("休業行はコミット失敗で残らない").isEqualTo(-1L);
+        // publish 済みイベントの実 ID（コミット失敗で行は残らないが、配送要求は publish されている）。
+        List<EmergencyClosureNotificationEvent> published = applicationEvents
+                .stream(EmergencyClosureNotificationEvent.class).toList();
+        assertThat(published).as("配送要求は publish 済み（commit 前に失敗させた証拠）").hasSize(1);
+        Long publishedClosureId = published.get(0).closureId();
+        closureId.set(publishedClosureId);
+        assertThat(closureRepository.findById(publishedClosureId)).as("休業行はコミット失敗で残らない").isEmpty();
         // 非同期配送が走り切る余地を与えたうえで 0 件であること（drain 後に確認する）。
         drainEventPool();
         for (Long user : fx.userIds) {
             assertThat(rows(user, "EMERGENCY_CLOSURE", "EMERGENCY_CLOSURE", closureId.get())).isEmpty();
         }
         verify(notificationDeliveryRunner, never()).sendOne(argThat(r -> r != null
-                && "EMERGENCY_CLOSURE".equals(r.sourceType()) && fx.userIds.contains(r.recipientUserId())));
-        assertThat(applicationEvents.stream(EmergencyClosureNotificationEvent.class).count())
-                .as("配送要求は publish 済み（commit 前に失敗させた証拠）").isEqualTo(1L);
+                && "EMERGENCY_CLOSURE".equals(r.sourceType()) && publishedClosureId.equals(r.sourceId())));
     }
 
     @Test
@@ -358,10 +358,12 @@ class ReservationNotificationTransactionIT extends AbstractMySqlIntegrationTest 
 
         reminderBatch.dispatchDueReminders();
 
+        // claim（SENT）だけでなく、配送（sendOne = deny）に到達するまで待ってから観測する。
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
-                assertThat(reminderStatus(fx.reminderIds.get(0))).isEqualTo(ReminderStatus.SENT));
-        verify(notificationDeliveryRunner, times(1)).sendOne(argThat(r -> r != null
-                && fx.reservationIds.get(0).equals(r.sourceId())));
+                verify(notificationDeliveryRunner, times(1)).sendOne(argThat(r -> r != null
+                        && fx.reservationIds.get(0).equals(r.sourceId()))));
+        drainEventPool();
+        assertThat(reminderStatus(fx.reminderIds.get(0))).as("deny でも SENT を保持").isEqualTo(ReminderStatus.SENT);
         assertThat(rows(fx.userIds.get(0), "RESERVATION_REMINDER", "RESERVATION", fx.reservationIds.get(0))).isEmpty();
     }
 
@@ -583,12 +585,14 @@ class ReservationNotificationTransactionIT extends AbstractMySqlIntegrationTest 
 
         publishReopened(fx);
 
-        await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> {
-            for (Long user : fx.userIds) {
-                assertThat(notifiedAt(fx.slotId, user)).as("deny は印を保持").isNotNull();
-            }
-        });
-        verify(notificationDeliveryRunner, times(2)).sendOne(argThat(r -> r != null && fx.slotId.equals(r.sourceId())));
+        // claim だけでなく、全員ぶんの配送（sendOne = deny）に到達するまで待ってから観測する。
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
+                verify(notificationDeliveryRunner, times(2)).sendOne(argThat(r -> r != null
+                        && fx.slotId.equals(r.sourceId()))));
+        drainEventPool();
+        for (Long user : fx.userIds) {
+            assertThat(notifiedAt(fx.slotId, user)).as("deny は印を保持").isNotNull();
+        }
         for (Long user : fx.userIds) {
             assertThat(rows(user, "RESERVATION_WAITLIST_OPENING", "RESERVATION", fx.slotId)).isEmpty();
         }
@@ -801,6 +805,12 @@ class ReservationNotificationTransactionIT extends AbstractMySqlIntegrationTest 
         assertThat(waitlistNotifyRunner.claim(entryId, claimedAt.plusSeconds(1), notified))
                 .as("取得後は同じ基準で再取得できない（二重 claim なし）").isFalse();
         assertThat(notifiedAt(fx.slotId, fx.userIds.get(0))).isEqualTo(claimedAt);
+        // updated_at は既存の生成・更新と同じ基準（JVM 既定ゾーンの壁時計）で入る。notified_at の基準（UTC Clock）と混ぜない。
+        LocalDateTime updatedAt = transactionTemplate.execute(tx -> waitlistRepository.findById(entryId).orElseThrow().getUpdatedAt());
+        assertThat(updatedAt).as("updated_at は JVM 既定ゾーン基準").isBetween(
+                LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE).minusMinutes(5), LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE).plusMinutes(5));
+        assertThat(java.time.Duration.between(updatedAt, claimedAt).abs())
+                .as("notified_at(UTC) と updated_at(JST) は別基準なので同じ値にならない").isGreaterThan(java.time.Duration.ofHours(1));
     }
 
     @Test

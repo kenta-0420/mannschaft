@@ -72,11 +72,12 @@ public interface ReservationWaitlistEntryRepository
      * 戻り値が 1 のときだけ取得成功。</p>
      */
     @Modifying
-    @Query("UPDATE ReservationWaitlistEntryEntity w SET w.notifiedAt = :claimedAt, w.updatedAt = :claimedAt "
+    @Query("UPDATE ReservationWaitlistEntryEntity w SET w.notifiedAt = :claimedAt, w.updatedAt = :updatedAt "
             + "WHERE w.id = :id AND w.status = com.mannschaft.app.reservation.WaitlistStatus.WAITING "
             + "AND (w.notifiedAt IS NULL OR w.notifiedAt <= :suppressBefore)")
     int claimNotification(@Param("id") UUID id,
                           @Param("claimedAt") LocalDateTime claimedAt,
+                          @Param("updatedAt") LocalDateTime updatedAt,
                           @Param("suppressBefore") LocalDateTime suppressBefore);
 
     /**
