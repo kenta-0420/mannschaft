@@ -4,6 +4,10 @@ import type {
   ErrorReportResponse,
   ErrorReportStatsResponse,
 } from '~/types/system-admin'
+import type { components } from '~/types/generated'
+import type { PagedResponse } from '~/types/api'
+
+export type DeletedTeamSummary = components['schemas']['DeletedTeamSummaryResponse']
 
 const BASE = '/api/v1/system-admin'
 
@@ -37,6 +41,10 @@ export function useSystemAdminDashboard() {
     query.set('page', String(params?.page ?? 0))
     query.set('size', String(params?.size ?? 20))
     return api<{ data: Record<string, unknown>[] }>(`${BASE}/dashboard/teams?${query}`)
+  }
+
+  async function getDeletedTeams(params: { page: number; size: number }) {
+    return api<PagedResponse<DeletedTeamSummary>>(`${BASE}/dashboard/teams/deleted`, { params })
   }
 
   async function getDashboardUsers(params?: { page?: number; size?: number }) {
@@ -131,6 +139,7 @@ export function useSystemAdminDashboard() {
     freezeOrganization,
     unfreezeOrganization,
     getDashboardTeams,
+    getDeletedTeams,
     getDashboardUsers,
     getNotificationStats,
     getReports,

@@ -297,6 +297,34 @@
         "add_button": "추가",
         "added": "추가했습니다"
       }
+    },
+    "arSession": {
+      "title": "떠올리기 연습",
+      "description": "저장된 원문을 보기 전에 기억나는 내용을 적어 보세요. 이 연습은 선택 사항입니다.",
+      "start": "떠올리기 연습 시작",
+      "freeRecall": "자신의 말로 떠올리기",
+      "card": "떠올리기 카드",
+      "side": {
+        "TERM": "용어 힌트",
+        "MEANING": "의미 힌트"
+      },
+      "answered": "기억나요",
+      "forgot": "지금은 기억나지 않아요",
+      "answer": "내 답변",
+      "selfRating": "얼마나 떠올렸나요?",
+      "rating": {
+        "REMEMBERED": "떠올렸어요",
+        "PARTIAL": "일부 떠올렸어요",
+        "FORGOT": "떠올리지 못했어요"
+      },
+      "ratingNeutral": "자기 평가는 보상의 양에 영향을 주지 않습니다.",
+      "save": "답변 저장",
+      "complete": "완료하고 원문 보기",
+      "cancel": "연습 취소",
+      "cancelled": "이 연습은 취소되었습니다.",
+      "retry": "다시 시도",
+      "failed": "불러오거나 저장하지 못했습니다. 다시 시도해 주세요.",
+      "original": "저장된 원문"
     }
   }
 }

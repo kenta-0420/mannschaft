@@ -1,6 +1,7 @@
+import { useNuxtApp } from '#app'
 import { defineComponent, h, ref } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import ScheduleEventForm from '~/components/schedule/ScheduleEventForm.vue'
@@ -160,7 +161,7 @@ describe('ScheduleEventForm: saved イベントのスコープ', () => {
 
     // 保存ボタンを押す（作成先はチームA＝team_t1 のまま）
     const buttons = wrapper.findAll('button')
-    const submitButton = buttons.find(b => b.text() === '作成')
+    const submitButton = buttons.find(b => b.text() === wrapper.vm.$t('button.create'))
     expect(submitButton).toBeTruthy()
     await submitButton!.trigger('click')
     await flushPromises()
@@ -527,5 +528,120 @@ describe('ScheduleEventForm: recurrence update scope', () => {
 
     expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(true)
     expect(scheduleApiMock.updatePersonalSchedule).not.toHaveBeenCalled()
+  })
+})
+
+
+describe('ScheduleEventForm: 見出しと操作の翻訳（CMP-261017-1629）', () => {
+  beforeAll(async () => {
+    await Promise.all((['ja', 'en', 'zh', 'ko', 'es', 'de'] as const)
+      .map(locale => useNuxtApp().$i18n.loadLocaleMessages(locale)))
+  })
+  beforeEach(() => { setActivePinia(createPinia()) })
+
+  it.each([
+    { isPersonal: false, scheduleId: undefined, key: 'createEvent' },
+    { isPersonal: false, scheduleId: 42, key: 'editEvent' },
+    { isPersonal: true, scheduleId: undefined, key: 'addPersonal' },
+    { isPersonal: true, scheduleId: 42, key: 'editPersonal' },
+  ].flatMap(mode => (['ja', 'en', 'zh', 'ko', 'es', 'de'] as const)
+    .map(locale => ({ ...mode, locale }))))('$key/$localeが表示中切替する', async ({ key, locale: targetLocale, ...mode }) => {
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType: 'team', scopeId: 'team-a', ...mode },
+      global: { stubs: globalStubs },
+    })
+    for (const locale of [targetLocale === 'en' ? 'de' : 'en', targetLocale] as const) {
+      await wrapper.vm.$i18n.setLocale(locale)
+      await flushPromises()
+      const label = wrapper.vm.$t(`schedule.form.${key}`)
+      expect(label).not.toBe(`schedule.form.${key}`)
+      const formDialog = wrapper.findAllComponents(DialogStub)
+        .find(dialog => dialog.find('[data-testid="schedule-submit"]').exists())
+      expect(formDialog?.props('header')).toBe(label)
+      expect(wrapper.text()).toContain(wrapper.vm.$t('button.cancel'))
+      expect(wrapper.text()).toContain(wrapper.vm.$t(mode.scheduleId ? 'button.update' : 'button.create'))
+    }
+  })
+})
+
+describe('ScheduleEventForm: 代理出席設定の保存（CMP-261017-1726）', () => {
+  const ProxyCheckboxStub = defineComponent({
+    name: 'Checkbox',
+    props: { modelValue: Boolean, binary: Boolean, inputId: String },
+    emits: ['update:modelValue'],
+    setup(props, { emit }) {
+      return () => h('input', {
+        type: 'checkbox', id: props.inputId, checked: props.modelValue,
+        onChange: (event: Event) => emit('update:modelValue', (event.target as HTMLInputElement).checked),
+      })
+    },
+  })
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    scheduleApiMock.getSchedule.mockReset()
+    scheduleApiMock.getMyScheduleDetail.mockReset()
+    scheduleApiMock.updateSchedule.mockReset().mockResolvedValue({ data: {} })
+    scheduleApiMock.updatePersonalSchedule.mockReset().mockResolvedValue({ data: {} })
+    previewApiMock.mockReset().mockResolvedValue({ data: { expectedScheduleState, activities: [] } })
+  })
+
+  async function mountProxyEdit(scope: 'team' | 'organization' | 'personal') {
+    const response = { data: {
+      content: { title: '代理設定のある予定' },
+      time: {},
+      allowProxyAttendance: true,
+      isProxyAutoAccept: true,
+    } }
+    scheduleApiMock.getSchedule.mockResolvedValue(response)
+    scheduleApiMock.getMyScheduleDetail.mockResolvedValue(response)
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType: scope === 'personal' ? 'team' : scope, scopeId: 'scope-one', scheduleId: 42, isPersonal: scope === 'personal' },
+      global: { stubs: { ...globalStubs, Checkbox: ProxyCheckboxStub } },
+    })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    return wrapper
+  }
+
+  it.each(['team', 'organization'] as const)('%s の編集で復元した代理設定をタイトル変更後の更新にも保持する', async (scope) => {
+    const wrapper = await mountProxyEdit(scope)
+    expect((wrapper.get('#scheduleAllowProxy').element as HTMLInputElement).checked).toBe(true)
+    expect((wrapper.get('#scheduleAutoAccept').element as HTMLInputElement).checked).toBe(true)
+
+    await wrapper.get('[data-testid="title-input"]').setValue('代理設定を保持')
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(scheduleApiMock.updateSchedule).toHaveBeenCalledWith(scope, 'scope-one', 42, expect.objectContaining({
+      title: '代理設定を保持', allow_proxy_attendance: true, is_proxy_auto_accept: true,
+    }), undefined)
+  })
+
+  it.each(['team', 'organization'] as const)('%s の代理許可をOFFにすると自動受諾もfalseで更新する', async (scope) => {
+    const wrapper = await mountProxyEdit(scope)
+    await wrapper.get('#scheduleAllowProxy').setValue(false)
+    expect(wrapper.find('#scheduleAutoAccept').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).toMatchObject({
+      allow_proxy_attendance: false, is_proxy_auto_accept: false,
+    })
+  })
+
+  it('個人予定の編集には代理設定を表示・送信しない', async () => {
+    const wrapper = await mountProxyEdit('personal')
+    expect(wrapper.find('#scheduleAllowProxy').exists()).toBe(false)
+    expect(wrapper.find('#scheduleAutoAccept').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(scheduleApiMock.updatePersonalSchedule).toHaveBeenCalledTimes(1)
+    const body = scheduleApiMock.updatePersonalSchedule.mock.calls[0]?.[1]
+    expect(body).not.toHaveProperty('allow_proxy_attendance')
+    expect(body).not.toHaveProperty('is_proxy_auto_accept')
   })
 })

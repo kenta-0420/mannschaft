@@ -183,6 +183,11 @@
         "advanced": { "title": "詳細設定", "description": "公開範囲や通知を設定" }
       }
     },
+    "history": {
+      "date_unavailable": "日付不明",
+      "time_unavailable": "時刻不明",
+      "line_unavailable": "予約対象不明"
+    },
     "column": {
       "datetime": "日時",
       "line": "予約対象",

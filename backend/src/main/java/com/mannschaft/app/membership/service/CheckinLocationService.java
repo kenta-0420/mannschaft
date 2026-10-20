@@ -35,6 +35,53 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class CheckinLocationService {
 
+    /** 署名と状態を検証したTEAM受付。 */
+    public record VerifiedTeamLocation(Long locationId, Long teamId) { }
+
+    /** 受付申請投影用の現在のTEAM受付状態。 */
+    public record TeamLocationState(boolean active, Long teamId, String name) { }
+
+    /** 固定受付QRを検証する。チェックインは作成しない。 */
+    public VerifiedTeamLocation resolveTeamLocationQr(String locationToken) {
+        if (locationToken == null || locationToken.length() > 256) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_013);
+        }
+        QrTokenService.LocationTokenPayload payload = qrTokenService.parseLocationToken(locationToken);
+        if (payload == null) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_013);
+        }
+        CheckinLocationEntity location = locationRepository
+                .findByLocationCodeAndDeletedAtIsNull(payload.locationCode())
+                .filter(found -> found.getDeletedAt() == null)
+                .orElseThrow(() -> new BusinessException(MembershipErrorCode.MEMBERSHIP_013));
+        if (!qrTokenService.verifyLocationSignature(payload, location.getLocationSecret())
+                || location.getScopeType() != ScopeType.TEAM || location.getScopeId() == null) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_013);
+        }
+        if (!Boolean.TRUE.equals(location.getIsActive())) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_014);
+        }
+        return new VerifiedTeamLocation(location.getId(), location.getScopeId());
+    }
+
+    /** 候補ページの受付状態を集合照会する。 */
+    public java.util.Map<Long, TeamLocationState> getTeamLocationStates(java.util.Collection<Long> locationIds) {
+        if (locationIds == null || locationIds.isEmpty()) {
+            return java.util.Map.of();
+        }
+        java.util.Set<Long> ids = locationIds.stream().filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+        if (ids.isEmpty()) {
+            return java.util.Map.of();
+        }
+        java.util.Map<Long, TeamLocationState> states = new java.util.LinkedHashMap<>();
+        for (CheckinLocationRepository.TeamLocationStateRow row : locationRepository.findTeamLocationStateRows(ids)) {
+            boolean active = Boolean.TRUE.equals(row.getActive()) && row.getTeamId() != null;
+            states.put(row.getId(), new TeamLocationState(active, row.getTeamId(), active ? row.getName() : null));
+        }
+        return java.util.Map.copyOf(states);
+    }
+
     private static final int MAX_LOCATIONS_PER_SCOPE = 20;
 
     private final CheckinLocationRepository locationRepository;

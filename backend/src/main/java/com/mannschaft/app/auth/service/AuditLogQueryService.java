@@ -8,6 +8,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -109,11 +111,11 @@ public class AuditLogQueryService {
         }
         if (from != null) {
             where.append(" AND created_at >= ?");
-            params.add(from);
+            params.add(toUtcWallClock(from));
         }
         if (to != null) {
             where.append(" AND created_at <= ?");
-            params.add(to);
+            params.add(toUtcWallClock(to));
         }
 
         String countSql = "SELECT COUNT(*) FROM audit_logs" + where;
@@ -180,11 +182,11 @@ public class AuditLogQueryService {
         }
         if (from != null) {
             where.append(" AND created_at >= ?");
-            params.add(from);
+            params.add(toUtcWallClock(from));
         }
         if (to != null) {
             where.append(" AND created_at <= ?");
-            params.add(to);
+            params.add(toUtcWallClock(to));
         }
 
         // limit+1 件取得して hasNext を判定する
@@ -273,11 +275,11 @@ public class AuditLogQueryService {
         }
         if (from != null) {
             where.append(" AND created_at >= ?");
-            params.add(from);
+            params.add(toUtcWallClock(from));
         }
         if (to != null) {
             where.append(" AND created_at <= ?");
-            params.add(to);
+            params.add(toUtcWallClock(to));
         }
 
         String sql = "SELECT id, user_id, target_user_id, team_id, organization_id,"
@@ -366,11 +368,11 @@ public class AuditLogQueryService {
         }
         if (from != null) {
             where.append(" AND created_at >= ?");
-            params.add(from);
+            params.add(toUtcWallClock(from));
         }
         if (to != null) {
             where.append(" AND created_at <= ?");
-            params.add(to);
+            params.add(toUtcWallClock(to));
         }
 
         String sql = "SELECT id, user_id, target_user_id, team_id, organization_id,"
@@ -516,10 +518,24 @@ public class AuditLogQueryService {
         return ((Number) value).longValue();
     }
 
+    /** JDBC の UTC 壁時計と Timestamp の瞬間を、API が扱う SERVER_ZONE の壁時計へ戻す。 */
     private LocalDateTime toLocalDateTime(Object value) {
         if (value == null) return null;
-        if (value instanceof LocalDateTime ldt) return ldt;
-        if (value instanceof java.sql.Timestamp ts) return ts.toLocalDateTime();
+        if (value instanceof LocalDateTime ldt) {
+            return ldt.atOffset(ZoneOffset.UTC)
+                    .atZoneSameInstant(UserZoneLocalDateTimeParser.SERVER_ZONE)
+                    .toLocalDateTime();
+        }
+        if (value instanceof java.sql.Timestamp ts) {
+            return ts.toInstant().atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toLocalDateTime();
+        }
         return null;
+    }
+
+    /** Hibernate を通さない日時条件は、アプリの壁時計から DB 格納基準の UTC 壁時計へ変換する。 */
+    private LocalDateTime toUtcWallClock(LocalDateTime value) {
+        return value.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
+                .withZoneSameInstant(ZoneOffset.UTC)
+                .toLocalDateTime();
     }
 }

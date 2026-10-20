@@ -1,5 +1,11 @@
 {
   "data_export": {
+    "request_daily_limit": "Personal data can be exported once every 24 hours. Your existing export remains available.",
+    "request_in_progress": "An export is already in progress. Please wait for it to complete.",
+    "request_error": "Failed to request data export. Please try again.",
+    "download_not_ready": "Your export is not ready for download. Please try again after it completes.",
+    "download_expired": "This export download has expired. Please request a new export when available.",
+    "download_error": "Failed to download export. Please try again.",
     "section_title": "Data Export",
     "export_button": "Export Personal Data",
     "status_completed": "Completed",
@@ -11,7 +17,7 @@
     "step_failed": "Export failed",
     "step_processing": "Exporting...",
     "step_preparing": "Preparing...",
-    "description": "You can export your personal data as a ZIP file."
+    "description": "Export your personal data as a ZIP. New ZIPs use AES-256 protection; the password arrives in the completion email. An AES-compatible extraction app is required. Windows built-in tools do not support encrypted ZIPs, and extraction with macOS built-in tools is not guaranteed. ZIPs created before this change may be unencrypted and retain their original format and expiry."
   },
   "deletion_preview": {
     "dialog_title": "Confirm Account Deletion",
@@ -511,7 +517,7 @@
         "description": "Visibility settings for search, DMs, and online status"
       },
       "contactInviteTokens": {
-        "description": "Issue and manage invite URLs for adding contacts"
+        "description": "Create, view and manage invite URLs and QR codes for adding contacts"
       },
       "contactRequestBlocks": {
         "label": "Pre-blocked request list",

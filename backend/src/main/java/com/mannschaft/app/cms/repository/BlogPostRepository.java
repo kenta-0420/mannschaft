@@ -19,6 +19,12 @@ import java.util.Optional;
  */
 public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> {
 
+    /** Entity初回loadの時点でcurrent native公開行をロックする。 */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT bp FROM BlogPostEntity bp WHERE bp.id=:id")
+    Optional<BlogPostEntity> findForPublicationUpdate(@Param("id") Long id);
+
+
     boolean existsByIdAndTeamId(Long id, Long teamId);
 
     boolean existsByIdAndOrganizationId(Long id, Long organizationId);

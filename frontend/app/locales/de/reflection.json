@@ -297,6 +297,34 @@
         "add_button": "Hinzufügen",
         "added": "Hinzugefügt"
       }
+    },
+    "arSession": {
+      "title": "Erinnerungsübung",
+      "description": "Schreibe auf, woran du dich erinnerst, bevor du das gespeicherte Original ansiehst. Die Teilnahme ist freiwillig.",
+      "start": "Erinnerungsübung starten",
+      "freeRecall": "Mit eigenen Worten erinnern",
+      "card": "Erinnerungskarte",
+      "side": {
+        "TERM": "Begriff als Hinweis",
+        "MEANING": "Bedeutung als Hinweis"
+      },
+      "answered": "Ich erinnere mich",
+      "forgot": "Ich erinnere mich gerade nicht",
+      "answer": "Deine Antwort",
+      "selfRating": "Wie viel erinnerst du?",
+      "rating": {
+        "REMEMBERED": "Erinnert",
+        "PARTIAL": "Teilweise erinnert",
+        "FORGOT": "Nicht erinnert"
+      },
+      "ratingNeutral": "Deine Selbsteinschätzung ändert die Höhe der Belohnung nicht.",
+      "save": "Antworten speichern",
+      "complete": "Abschließen und Original ansehen",
+      "cancel": "Übung abbrechen",
+      "cancelled": "Diese Übung wurde abgebrochen.",
+      "retry": "Erneut versuchen",
+      "failed": "Laden oder Speichern fehlgeschlagen. Versuche es erneut.",
+      "original": "Gespeichertes Original"
     }
   }
 }

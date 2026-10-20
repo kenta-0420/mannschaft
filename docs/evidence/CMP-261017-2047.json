@@ -1,0 +1,334 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261017-2047",
+  "scope": "app",
+  "implementation": {
+    "pr": 3962,
+    "sha": "4ac82e6a0744a66884d846a7852ef4bd849beef6"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "正当なTEAM/ORGANIZATION管理者が、配分なし・0円・正額配分の費目を204で論理削除できる。",
+      "tests": [
+        {
+          "name": "配分なし0円正額の費目を204論理削除し配分ID金額を保持する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/budget/BudgetCategoryDeletionContractIT.java"
+        },
+        {
+          "name": "受け入れ条件と各sourceのgreen・実機・探索の最終照合結果",
+          "evidence": "docs/evidence/CMP-261017-2047/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "別TX再読込でdeleted_atと物理行保持、配分/取引のID・金額保持を確認する。",
+      "tests": [
+        {
+          "name": "配分なし0円正額の費目を204論理削除し配分ID金額を保持する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/budget/BudgetCategoryDeletionContractIT.java"
+        },
+        {
+          "name": "削除後も配分取引詳細一覧CSVと集計を同額で保持し取消できる",
+          "evidence": "backend/src/test/java/com/mannschaft/app/budget/BudgetCategoryDeletionContractIT.java"
+        },
+        {
+          "name": "受け入れ条件と各sourceのgreen・実機・探索の最終照合結果",
+          "evidence": "docs/evidence/CMP-261017-2047/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "削除済み費目を通常一覧・前年度コピー・新規配分/取引から除外し、再DELETEは404とする。",
+      "tests": [
+        {
+          "name": "削除済み費目は新規配分取引親指定から拒否され無履歴の削除済み費目は集計に出ない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/budget/BudgetCategoryDeletionContractIT.java"
+        },
+        {
+          "name": "前年度コピーは削除済み費目を含めず有効な親指定を維持する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/budget/BudgetCategoryDeletionContractIT.java"
+        },
+        {
+          "name": "受け入れ条件と各sourceのgreen・実機・探索の最終照合結果",
+          "evidence": "docs/evidence/CMP-261017-2047/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "配分、取引一覧/詳細/取消、CSV、年度集計/報告書が削除後も参照でき、削除済み費目の識別・金額と明細/総計の一致を保持する。",
+      "tests": [
+        {
+          "name": "削除後も配分取引詳細一覧CSVと集計を同額で保持し取消できる",
+          "evidence": "backend/src/test/java/com/mannschaft/app/budget/BudgetCategoryDeletionContractIT.java"
+        },
+        {
+          "name": "報告書CSVは削除済み費目の明細と総計を保持する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/budget/BudgetCategoryDeletionContractIT.java"
+        },
+        {
+          "name": "受け入れ条件と各sourceのgreen・実機・探索の最終照合結果",
+          "evidence": "docs/evidence/CMP-261017-2047/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "生存する子費目がある親の削除は業務エラーで拒否し、子削除後は親削除が成功する。拒否時にデータを変更しない。",
+      "tests": [
+        {
+          "name": "生存子費目がある親は400で保持し子削除後に親を削除できる",
+          "evidence": "backend/src/test/java/com/mannschaft/app/budget/BudgetCategoryDeletionContractIT.java"
+        },
+        {
+          "name": "受け入れ条件と各sourceのgreen・実機・探索の最終照合結果",
+          "evidence": "docs/evidence/CMP-261017-2047/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "匿名401、MEMBER403、別テナントID404と、費目の親年度から解決する実スコープの管理者認可を維持する。組織祖先ADMINの新規継承は追加しない。",
+      "tests": [
+        {
+          "name": "不正主体は削除できず物理行を保持する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/budget/BudgetCategoryDeletionContractIT.java"
+        },
+        {
+          "name": "費目別集計で他年度の費目名を取得できない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/budget/BudgetCategoryDeletionContractIT.java"
+        },
+        {
+          "name": "受け入れ条件と各sourceのgreen・実機・探索の最終照合結果",
+          "evidence": "docs/evidence/CMP-261017-2047/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-7",
+      "description": "削除途中の失敗では同一TXの削除を巻き戻し、履歴参照の費目解決を一括取得してN+1を増やさない。",
+      "tests": [
+        {
+          "name": "削除後の途中失敗は同じトランザクションで巻き戻る",
+          "evidence": "backend/src/test/java/com/mannschaft/app/budget/BudgetCategoryDeletionContractIT.java"
+        },
+        {
+          "name": "配分と取引の一覧は費目数が増えても問い合わせ数が増えない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/budget/BudgetCategoryDeletionContractIT.java"
+        },
+        {
+          "name": "受け入れ条件と各sourceのgreen・実機・探索の最終照合結果",
+          "evidence": "docs/evidence/CMP-261017-2047/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-8",
+      "description": "選択年度の開始/終了日を作成直後・切替・再読込・集計0件/取得エラーでも表示する。年度0件/一覧失敗では未取得期間を表示せず、LocalDateの日ずれを起こさない。",
+      "tests": [
+        {
+          "name": "保存済み年度の期間を表示し、年度切替とリロードに追随する",
+          "evidence": "frontend/app/pages/teams/[slug]/budget.spec.ts"
+        },
+        {
+          "name": "年度一覧が0件なら期間は表示しない",
+          "evidence": "frontend/app/pages/teams/[slug]/budget.spec.ts"
+        },
+        {
+          "name": "年度追加の3項目を送り、旧年度があっても新年度を選択し0集計を表示する",
+          "evidence": "frontend/app/pages/teams/[slug]/budget.spec.ts"
+        },
+        {
+          "name": "集計失敗は前の年度の金額を消して同じ年度を再試行する",
+          "evidence": "frontend/app/pages/teams/[slug]/budget.spec.ts"
+        },
+        {
+          "name": "受け入れ条件と各sourceのgreen・実機・探索の最終照合結果",
+          "evidence": "docs/evidence/CMP-261017-2047/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-9",
+      "description": "管理者・MEMBER・他チームの直URLから戻ると対象チーム詳細URLへ遷移し、about:blankに移動しない。",
+      "tests": [
+        {
+          "name": "直URLで開いてもヘッダーの戻り先はチームトップになる",
+          "evidence": "frontend/app/pages/teams/[slug]/budget.spec.ts"
+        },
+        {
+          "name": "予算ヘッダーと使い方はja/360pxで横溢れせず通常操作できる",
+          "evidence": "frontend/tests/e2e/real/budget-mobile-touch-targets.spec.ts"
+        },
+        {
+          "name": "予算ヘッダーと使い方はde/390pxで横溢れせず通常操作できる",
+          "evidence": "frontend/tests/e2e/real/budget-mobile-touch-targets.spec.ts"
+        },
+        {
+          "name": "受け入れ条件と各sourceのgreen・実機・探索の最終照合結果",
+          "evidence": "docs/evidence/CMP-261017-2047/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-10",
+      "description": "使い方冒頭で現行閲覧権限と一般メンバーの相談先を6言語で案内し、権限拒否時にも案内を開ける。",
+      "tests": [
+        {
+          "name": "ガイドに閲覧権限と一般メンバーの相談先を示す",
+          "evidence": "frontend/app/pages/teams/[slug]/budget.spec.ts"
+        },
+        {
+          "name": "使い方をヘッダーから開き閉じる",
+          "evidence": "frontend/app/pages/teams/[slug]/budget.spec.ts"
+        },
+        {
+          "name": "AC-7: 全言語の全メッセージが @intlify/message-compiler でエラーなくコンパイルできる",
+          "evidence": "frontend/tests/unit/i18n/locale-no-japanese-residue.spec.ts"
+        },
+        {
+          "name": "受け入れ条件と各sourceのgreen・実機・探索の最終照合結果",
+          "evidence": "docs/evidence/CMP-261017-2047/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-11",
+      "description": "360/390pxで期間と案内を読め、ページ横溢れ・操作領域不足を増やさない。",
+      "tests": [
+        {
+          "name": "会計年度フォーム・日付選択・使い方の操作領域は360px幅でも44x44px以上",
+          "evidence": "frontend/tests/e2e/real/budget-mobile-touch-targets.spec.ts"
+        },
+        {
+          "name": "予算ヘッダーと使い方はja/390pxで横溢れせず通常操作できる",
+          "evidence": "frontend/tests/e2e/real/budget-mobile-touch-targets.spec.ts"
+        },
+        {
+          "name": "予算ヘッダーと使い方はde/360pxで横溢れせず通常操作できる",
+          "evidence": "frontend/tests/e2e/real/budget-mobile-touch-targets.spec.ts"
+        },
+        {
+          "name": "受け入れ条件と各sourceのgreen・実機・探索の最終照合結果",
+          "evidence": "docs/evidence/CMP-261017-2047/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-12",
+      "description": "削除済み費目だけが残る無取引年度を仕様どおり論理削除でき、費目保持による親削除FK500を起こさない。取引あり年度の削除拒否を維持する。",
+      "tests": [
+        {
+          "name": "削除済み費目だけの年度も論理削除でき取引あり年度は拒否する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/budget/BudgetCategoryDeletionContractIT.java"
+        },
+        {
+          "name": "論理削除済み取引履歴がある年度も削除を拒否する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/budget/BudgetCategoryDeletionContractIT.java"
+        },
+        {
+          "name": "受け入れ条件と各sourceのgreen・実機・探索の最終照合結果",
+          "evidence": "docs/evidence/CMP-261017-2047/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-13",
+      "description": "削除後に同名・同期間の年度と、同一有効親配下の同名子費目を再作成できる。旧ID・名称を保持し、生存行の一意性を正規migrationで維持する。親NULLの従来扱いは強化しない。",
+      "tests": [
+        {
+          "name": "削除済み年度と子費目の同名再作成を許可し生存一意性と旧業務値を保持する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/budget/migration/BudgetSoftDeleteUniqueMigrationIT.java"
+        },
+        {
+          "name": "受け入れ条件と各sourceのgreen・実機・探索の最終照合結果",
+          "evidence": "docs/evidence/CMP-261017-2047/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-14",
+      "description": "ja/de各360/390pxでページ横溢れ0、期間可読、help/年度追加/戻る/ガイド閉じる44×44px以上を確保し、footer/右上の通常クリックが成功する。",
+      "tests": [
+        {
+          "name": "予算ヘッダーと使い方はja/360pxで横溢れせず通常操作できる",
+          "evidence": "frontend/tests/e2e/real/budget-mobile-touch-targets.spec.ts"
+        },
+        {
+          "name": "予算ヘッダーと使い方はja/390pxで横溢れせず通常操作できる",
+          "evidence": "frontend/tests/e2e/real/budget-mobile-touch-targets.spec.ts"
+        },
+        {
+          "name": "予算ヘッダーと使い方はde/360pxで横溢れせず通常操作できる",
+          "evidence": "frontend/tests/e2e/real/budget-mobile-touch-targets.spec.ts"
+        },
+        {
+          "name": "予算ヘッダーと使い方はde/390pxで横溢れせず通常操作できる",
+          "evidence": "frontend/tests/e2e/real/budget-mobile-touch-targets.spec.ts"
+        },
+        {
+          "name": "受け入れ条件と各sourceのgreen・実機・探索の最終照合結果",
+          "evidence": "docs/evidence/CMP-261017-2047/report.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 39104125939,
+      "workflow": "Backend — CI (PR Check)",
+      "note": "実装head全6 shardとaggregate成功。"
+    },
+    {
+      "runId": 39104125966,
+      "workflow": "Frontend — CI (PR Check)",
+      "note": "同一実装headで成功。"
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261017-2047/report.md",
+      "note": "旧source・guard追加2製品ファイル・main先行変更の殿検分finding0。第2main追従19ファイルのincoming実読finding0、当PR30パス不変。"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261017-2047/report.md",
+      "note": "UI10件・reload・mobile5件を確認。実APIは28648固定jarで11/11成功。最新実装headは当PR30パス・BE予算subtree不変で予算コード等価継承し、殿が最終照合済み。全アプリ/jar同一性は主張しない。"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261017-2047/report.md",
+      "note": "3住民の14AC関連目標達成を殿が画像・通常pointer比較を含め最終照合。最新実装headは予算30パス・BE予算subtree不変。DatePickerの直接fill観測と予算外widget35px候補は別観測として保存。"
+    }
+  },
+  "regressions": [
+    {
+      "description": "費目の物理削除・履歴参照・生存行一意性の回帰。BE24件の失敗17件中、不正fixture1件を除く有意味red16件から契約23＋migration1を含む133件greenへ。実HTTP500→204は別の実DB証拠として区別する。",
+      "test": "BudgetCategoryDeletionContractIT / BudgetSoftDeleteUniqueMigrationIT",
+      "redEvidence": "docs/evidence/CMP-261017-2047/red-green-summary.json",
+      "greenEvidence": "docs/evidence/CMP-261017-2047/red-green-summary.json"
+    },
+    {
+      "description": "年度期間・明示戻り先・権限案内のFE回帰。修正前5失敗/9成功から14成功/0skipへ。",
+      "test": "budget.spec.ts",
+      "redEvidence": "docs/evidence/CMP-261017-2047/red-green-summary.json",
+      "greenEvidence": "docs/evidence/CMP-261017-2047/red-green-summary.json"
+    },
+    {
+      "description": "de360でdocument466px・help35pxの実寸redから、ja/de各360/390pxと既存フォーム/カレンダーの5件同run成功へ。",
+      "test": "budget-mobile-touch-targets.spec.ts",
+      "redEvidence": "docs/evidence/CMP-261017-2047/red-green-summary.json",
+      "greenEvidence": "docs/evidence/CMP-261017-2047/red-green-summary.json"
+    },
+    {
+      "description": "旧ab0全体CIのRawSqlTimeColumnGuardTest失敗に対応。nativeQuery射影から時刻型取得を除きSQLの0/1 flagとInteger getterへ変更し、guard2＋scanner10＋費目削除契約23の35件をgreen化。1f381a8の全体CI・実API11件成功を確認。main追従後の28648も固定jar実API11件成功。28648 CI成功を履歴保持し、最新4ac82は予算コード等価継承・同head CI成功。",
+      "test": "RawSqlTimeColumnGuardTest / RawSqlTimeColumnGuardScanningLogicTest / BudgetCategoryDeletionContractIT",
+      "redEvidence": "docs/evidence/CMP-261017-2047/red-green-summary.json",
+      "greenEvidence": "docs/evidence/CMP-261017-2047/red-green-summary.json"
+    }
+  ]
+}

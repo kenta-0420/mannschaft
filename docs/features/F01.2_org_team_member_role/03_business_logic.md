@@ -215,26 +215,28 @@
       → ADMIN（priority=2）/ SYSTEM_ADMIN（priority=1）のトークン作成は 403
    c. 操作者が SYSTEM_ADMIN の場合: role_id の priority >= 2（ADMIN 以下）まで許可
 5. expires_in のバリデーション（1d / 7d / 30d / 90d / unlimited のいずれか）→ 不正値は 400
-6. invite_tokens に INSERT（token = UUID v4 生成、expires_at を expires_in から計算）
+6. invite_tokens に INSERT（token = UUID v4、expires_at を計算、scope_closure_generation = 親から取得した発行時世代）
 7. audit_logs に TEAM_INVITE_TOKEN_CREATED または ORGANIZATION_INVITE_TOKEN_CREATED を記録
 8. 201 Created を返す
 ```
 
 > - ADMIN は自分と同等以上のロール（priority <= 2）のトークンを作成できない（ロール昇格制限と同一ポリシー）
 > - SYSTEM_ADMIN は ADMIN 以下のトークンを作成可能（SYSTEM_ADMIN 自身のトークン作成は不可・プラットフォームスコープのため招待対象外）
+> - 共有/DM発行は非TX入口→親専属primary読取→role専属発行TXのcommit→親専属の短いFOR SHARE再確認の順に行う。201応答・DMカード投稿の前に、親の利用可能状態と発行世代一致を再確認する。事前に閉鎖済みならtoken/cardを作らない。発行commit後に閉鎖・世代前進を検出した場合は生成tokenを補償失効して拒否し、監査可能な失効行を保持する。親とtokenの更新TXは混在させない。
 
 ### 招待参加フロー
 
 ```
 1. GET /api/v1/invite/{token} でプレビュー（オプション）
 2. POST /api/v1/invite/{token}/join を受付
-3. invite_tokens を SELECT ... FOR UPDATE で取得（排他ロック）
+3. ACTIVE user行→invite_tokensの順でSELECT ... FOR UPDATEを取得する
 4. 有効性チェック: revoked_at IS NULL かつ
    (expires_at IS NULL OR expires_at > NOW()) かつ
    (max_uses IS NULL OR used_count < max_uses)
    → いずれか失敗で 400
-5. 招待先チーム/組織のアーカイブチェック:
-   招待先エンティティの archived_at IS NOT NULL → 422（アーカイブ済みのため参加不可）
+5. 親専属REQUIRES_NEWのprimary TXで最新commit済み状態を単独nonlocking SELECTし、
+   親が存在・未削除・未休止・通常利用可能、かつ記録世代 = 現在世代であることを確認する。
+   閉鎖中/世代不一致はROLE_002（404）で加入前に拒否し、在籍・role・group・used_countを変更しない。
 6. ブロック済みチェック:
    - チーム招待（invite_tokens.team_id IS NOT NULL）の場合:
      team_blocks に (team_id = invite_tokens.team_id, user_id = current_user_id) が存在すれば 403
@@ -250,6 +252,14 @@
 ```
 
 > - `invite_token_id` をメタデータに含めることで、どの招待トークン経由で参加したかを事後追跡可能にする（トークン発行者の特定・悪用調査に有用）
+
+#### 個人招待の閉鎖世代契約
+
+- preview・join・未加入者のDMカード・管理一覧・重複PENDING判定は、物理失効の完了を待たず親状態と発行世代を照合する。古いDMカードはREVOKED、既加入者はJOINED優先を維持する。旧世代の未失効PENDINGは解除後の再発行を妨げない。
+- 受諾の判定点は手順5のfresh primary readとする。操作時間が休止と重なり、開いている親を検証済みなら受諾先行として成立しうる（在籍commitが親の休止commitより後になる場合を含む）。休止完了後に開始したjoinは拒否する。user/token lockを保持したjoinでは親共有lockを取らない。
+- 休止・削除はその親の`closure_generation`を同じ親TXで進める。AFTER_COMMITで捕捉済み世代をrole専属新TXへ渡し、scope一致・`scope_closure_generation < 捕捉世代 AND revoked_at IS NULL`だけを`UTC_TIMESTAMP()`で失効する。期限/使用上限/宛先で除外せず、既失効日時は維持する。解除・復元後に同世代で新規発行したtokenは対象外とする。
+- イベント未配送・失効失敗は日次03:40 JSTの`invite-token-closure-cleanup`が、親専属primary readとrole専属失効TXを分けて回復する。失敗scopeは記録して次回へ残し、他scopeの処理を継続する。親欠落時は利用を拒否し、不明な世代を推測して一括失効しない。
+- 解除・復元は世代を戻さず旧tokenを復元しない。組織休止では所属team自身の状態・世代・個人招待・既存在籍を変更しない。月次の非活動休止実装は別課題#3915で追跡し、本件で実装済みとはしない。
 
 ### オーナー委譲 承諾フロー（2ステップ・承諾型 / 2026-07-18 マスター御裁可）
 
@@ -477,15 +487,20 @@
 ### 論理削除復元フロー
 
 ```
-1. PATCH /api/v1/teams/{id}/restore（または /organizations/{id}/restore）を受付
+1. PATCH /api/v1/teams/{slug}/restore（または /organizations/{slug}/restore）を受付
 2. 操作者が SYSTEM_ADMIN か確認 → SYSTEM_ADMIN 以外は 403
 3. 対象エンティティが存在するか確認 → なければ 404
-4. deleted_at IS NULL → 論理削除されていない → 422
+4. deleted_at IS NULL → 論理削除されていない → 409（チームは行ロックの下で判定し、同時復元の後続も409）
 5. deleted_at = NULL で UPDATE（復元）
 6. audit_logs に TEAM_RESTORED（または ORGANIZATION_RESTORED）を記録
    metadata: {"restored_by": SYSTEM_ADMIN の user_id, "originally_deleted_at": 元の deleted_at}
 7. 204 No Content を返す
 ```
+
+チームは認可後の専用slug検索で論理削除済み・PROVISIONEDも解決する。通常slug検索の生存・ACTIVE条件は維持する。
+チーム復元の元deleted_atを片付け前に捕捉し、既存の加盟・制限の片付けと復元更新を同一txで確定する。
+チーム監査は成功コミット後の `AFTER_COMMIT` から既存best-effort基盤へ渡し、拒否・失敗・rollbackでは記録しない。
+組織の409は既存実装との仕様同期であり、組織の復元処理・監査・文言を本修正では変更しない。
 
 > - 復元後、招待トークンは自動復元しない（論理削除時に失効済み）。ADMIN が必要に応じて新規トークンを発行すること
 > - 復元後、`user_roles` は論理削除後も保持されているためそのまま利用可能
@@ -693,6 +708,8 @@ README 記載の 3 層制御は DEPUTY_ADMIN と MEMBER の両ロールに適用
 
 ### MEMBER 権限グループ設定フロー
 
+チーム・組織の権限グループは、同じパーミッションを保持したまま名前を変更できる。更新時の名前とパーミッション紐付けの差し替えは同じトランザクションで行い、途中で失敗した場合は両方を旧状態へ戻す。他スコープのグループには影響しない。
+
 **例1: MANAGE_ANNOUNCEMENTS を追加しつつ基本権限も維持したい場合**
 ```
 1. ADMIN が MEMBER 用権限グループを作成
@@ -871,6 +888,12 @@ WHERE tom.organization_id IN (SELECT id FROM org_subtree)
 
 ---
 
+### アーカイブのスコープ独立性
+
+組織のアーカイブ（手動・自動）は、加盟チームのアーカイブ状態・個人加入用の招待（`invite_tokens`）・既存在籍に影響しない。組織にのみ加盟するチームも、複数組織に加盟するチームも同じである。チームは自身の手動操作または自動アーカイブ判定条件によってのみアーカイブされる。組織のアーカイブを理由としたチームの連動アーカイブ・招待失効・在籍削除は行わない。
+
+組織自身の個人招待は組織のアーカイブで全失効し、解除しても復元しない。既存の組織・チーム在籍と ACTIVE 加盟は維持する。F01.2.1 §4.5 の PENDING 加盟申請・招待の取消は個人加入用招待とは別契約であり、この非連動規定では変更しない。
+
 ### 自動アーカイブバッチ（チーム）
 
 **スケジュール**: 毎月1日 03:00 JST（Spring `@Scheduled(cron = "0 0 3 1 * *")`）
@@ -898,9 +921,7 @@ WHERE t.archived_at IS NULL
 **バッチフロー**:
 ```
 1. 上記 SQL で対象チームを一括 UPDATE（archived_at = NOW()）
-2. 対象チームの invite_tokens を一括失効:
-     UPDATE invite_tokens SET revoked_at = NOW()
-     WHERE team_id IN (...対象チームID...) AND revoked_at IS NULL
+2. 対象team自身の閉鎖世代を親休止と同じTXで進め、commit後に「個人招待の閉鎖世代契約」のstrict旧世代失効を行う
 3. audit_logs に TEAM_ARCHIVED（reason: AUTO_INACTIVE）を件数分 INSERT
 4. バッチ実行ログにアーカイブ件数を記録
 ```
@@ -962,19 +983,10 @@ WHERE o.archived_at IS NULL
 ```
 1. 上記 SQL で対象組織 ID リストを取得
 2. organizations.archived_at = NOW() を一括 UPDATE
-3. カスケードアーカイブ対象チームを抽出:
-     「対象組織ID にのみ ACTIVE 所属し、他に ACTIVE な org 所属を持たないチーム」
-     （複数組織に所属するチームはカスケード対象外・他組織配下での継続稼働を保護）
-4. 対象チームの teams.archived_at = NOW() を一括 UPDATE
-5. 対象組織・カスケードチームの invite_tokens を一括失効:
-     UPDATE invite_tokens SET revoked_at = NOW()
-     WHERE (organization_id IN (...対象組織ID...)
-        OR team_id IN (...カスケードチームID...))
-     AND revoked_at IS NULL
-6. audit_logs に ORGANIZATION_ARCHIVED（reason: AUTO_INACTIVE）を件数分 INSERT
-7. カスケードアーカイブされたチームの audit_logs に
-     TEAM_ARCHIVED（reason: AUTO_CASCADE_ORG）を件数分 INSERT
-8. バッチ実行ログに組織・チームそれぞれのアーカイブ件数を記録
+3. 対象組織自身の閉鎖世代を親休止と同じTXで進め、commit後に「個人招待の閉鎖世代契約」のstrict旧世代失効を行う
+4. 加盟チームの archived_at・個人招待・既存在籍は変更しない
+5. audit_logs に ORGANIZATION_ARCHIVED（reason: AUTO_INACTIVE）を件数分 INSERT
+6. バッチ実行ログに組織のアーカイブ件数を記録
 ```
 
 ---
@@ -987,30 +999,21 @@ WHERE o.archived_at IS NULL
 2. 対象チームの ADMIN / DEPUTY_ADMIN 割当チェック → それ以外は 403
 3. archived_at IS NOT NULL → すでにアーカイブ済み → 422
 4. teams.archived_at = NOW() で UPDATE
-5. invite_tokens を一括失効:
-     UPDATE invite_tokens SET revoked_at = NOW()
-     WHERE team_id = 対象ID AND revoked_at IS NULL
+5. team自身の閉鎖世代を親休止と同じTXで進め、commit後に「個人招待の閉鎖世代契約」のstrict旧世代失効を行う
 6. audit_logs に TEAM_ARCHIVED（reason: MANUAL）を記録
 7. 200 OK を返す
 ```
 
-**組織の場合（カスケードあり）:**
+**組織の場合（加盟チームへ非連動）:**
 ```
 1. PATCH /api/v1/organizations/{id}/archive を受付
 2. ADMIN 権限チェック → ADMIN 未満は 403
 3. archived_at IS NOT NULL → すでにアーカイブ済み → 422
 4. organizations.archived_at = NOW() で UPDATE
-5. カスケードアーカイブ対象チームを抽出:
-     「この組織にのみ ACTIVE 所属し、他に ACTIVE な org 所属を持たないチーム」
-     ※ 複数組織に所属するチームはカスケード対象外
-6. 対象チームの teams.archived_at = NOW() を UPDATE
-7. 組織・カスケードチームの invite_tokens を一括失効:
-     UPDATE invite_tokens SET revoked_at = NOW()
-     WHERE (organization_id = 対象ID OR team_id IN (...カスケードチームID...))
-     AND revoked_at IS NULL
-8. audit_logs に ORGANIZATION_ARCHIVED（reason: MANUAL）を記録
-9. カスケードされたチームの audit_logs に TEAM_ARCHIVED（reason: MANUAL_CASCADE_ORG）を記録
-10. 204 No Content を返す
+5. 組織自身の閉鎖世代を親休止と同じTXで進め、commit後に「個人招待の閉鎖世代契約」のstrict旧世代失効を行う
+6. 加盟チームの archived_at・個人招待・既存在籍は変更しない
+7. audit_logs に ORGANIZATION_ARCHIVED（reason: MANUAL）を記録
+8. 204 No Content を返す
 ```
 
 ---

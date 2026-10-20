@@ -302,7 +302,7 @@ function onEditEvent() {
 }
 
 async function onDeleteEvent() {
-  if (!selectedEventId.value || !confirm('この予定を削除しますか？')) return
+  if (!selectedEventId.value || !confirm(t('schedule.confirmDelete'))) return
   try {
     if (selectedEventIsPersonal.value) {
       await scheduleApi.deletePersonalSchedule(selectedEventId.value)
@@ -341,7 +341,7 @@ interface CreateScope {
 }
 
 const createScopeOptions = computed<CreateScope[]>(() => [
-  { label: '個人の予定', value: PERSONAL_SCOPE_KEY, isPersonal: true, scopeType: 'team', scopeId: '' },
+  { label: t('schedule.form.personalScope'), value: PERSONAL_SCOPE_KEY, isPersonal: true, scopeType: 'team', scopeId: '' },
   ...availableScopes.value.map(sc => ({
     label: sc.label,
     value: sc.value,
@@ -735,17 +735,22 @@ onMounted(async () => {
 <template>
   <PageLoading v-if="loading" />
   <div v-else>
-    <PageHeader :title="t('schedule.calendar_guide.page_title')" help @help="showGuide = true">
+    <PageHeader
+      :title="t('schedule.calendar_guide.page_title')"
+      help
+      class="flex-col items-stretch sm:flex-row sm:flex-wrap sm:items-end [&>div:last-child]:ml-0 [&>div:last-child]:w-full [&>div:last-child]:flex-wrap [&>div:last-child]:max-w-full sm:[&>div:last-child]:ml-auto sm:[&>div:last-child]:w-auto [&_button]:min-h-11 [&_button]:min-w-11"
+      @help="showGuide = true"
+    >
       <!-- #52: スコープ選択 + 予定を追加 -->
       <template #actions>
-        <div class="flex items-center gap-2">
+        <div class="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
           <Select
             v-if="createScopeOptions.length > 1"
             v-model="createScopeKey"
             :options="createScopeOptions"
             option-label="label"
             option-value="value"
-            class="text-sm"
+            class="min-h-11 max-w-full text-sm"
             style="min-width: 120px"
           />
           <Button :label="t('schedule.event_add')" icon="pi pi-plus" @click="openCreateDialog()" />
@@ -778,17 +783,17 @@ onMounted(async () => {
     <div class="mb-4 flex gap-1 rounded-lg border border-surface-300 bg-surface-100 p-1 dark:border-surface-600 dark:bg-surface-700 w-fit">
       <button
         type="button"
-        class="rounded-md px-4 py-1.5 text-sm font-medium transition-colors"
+        class="min-h-11 rounded-md px-4 py-1.5 text-sm font-medium transition-colors md:min-h-0"
         :class="activeTab === 'calendar'
           ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
           : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'"
         @click="onTabChange('calendar')"
       >
-        <i class="pi pi-calendar mr-1.5" />カレンダー
+        <i class="pi pi-calendar mr-1.5" />{{ t('nav.calendar') }}
       </button>
       <button
         type="button"
-        class="rounded-md px-4 py-1.5 text-sm font-medium transition-colors"
+        class="min-h-11 rounded-md px-4 py-1.5 text-sm font-medium transition-colors md:min-h-0"
         :class="activeTab === 'gantt'
           ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
           : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'"
@@ -1027,7 +1032,7 @@ onMounted(async () => {
 
           <!-- 空状態 -->
           <SectionCard v-else>
-            <DashboardEmptyState icon="pi pi-calendar" message="日付またはイベントを選択してください" />
+            <DashboardEmptyState icon="pi pi-calendar" :message="t('schedule.selectDateOrEvent')" />
           </SectionCard>
         </div>
       </div>

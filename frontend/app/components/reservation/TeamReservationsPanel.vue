@@ -8,14 +8,18 @@ type RecurringBlockedTimeResponse = components['schemas']['RecurringBlockedTimeR
 
 const props = withDefaults(defineProps<{
   teamId: string
+  /** 独立管理ページが取得したチームのtimezone。未指定時は従来のshell値を使う。 */
+  teamTimezone?: string
   /** 管理者権限を持つ利用者に管理UIを表示するか。メンバー表示では false。 */
   managementView?: boolean
 }>(), {
+  teamTimezone: undefined,
   managementView: true,
 })
 
 const { t } = useI18n()
 const { team } = useTeamShellContext()
+const teamTimezone = computed(() => props.teamTimezone ?? team.value?.timezone ?? 'Asia/Tokyo')
 const { isAdmin, isAdminOrDeputy, isMember, roleName, loadPermissions } = useRoleAccess('team', computed(() => props.teamId))
 
 /** 管理者レンズがメンバー表示のときは、実ロールが管理者でも利用者向けUIへ切り替える。 */
@@ -25,14 +29,10 @@ const isFullAdminView = computed(() => props.managementView && isAdmin.value)
 /** 呼称の動的差し込み（F03.4.5 §5.2）: 管理タブ名・件数バッジに使う。 */
 const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
 
-const activeTab = ref(0)
-
-/** 管理タブを開いた状態でメンバー表示へ切り替えた場合は、予約タブへ戻す。 */
-watch(isManagementView, (enabled) => {
-  if (!enabled && activeTab.value > 1) {
-    activeTab.value = 0
-  }
-})
+const permissionsLoaded = ref(false)
+// nullは初期・取得失敗・未所属のいずれでも管理権限の確定に使わない。book/listは常に選択可能。
+const permissionsResolved = computed(() => permissionsLoaded.value && roleName.value !== null)
+const activeTab = useReservationTab(isManagementView, permissionsResolved)
 
 /** 使い方ガイドモーダルの表示状態。 */
 const showGuide = ref(false)
@@ -257,7 +257,8 @@ function onResourceNameChanged() {
 }
 
 onMounted(async () => {
-  await loadPermissions()
+  const result = await loadPermissions()
+  permissionsLoaded.value = result.ok
   await loadReservationSettings()
   await loadResourceName()
 })
@@ -298,7 +299,7 @@ onMounted(async () => {
             <SlotMatrixPicker
               ref="slotMatrixPickerRef"
               :team-id="props.teamId"
-              :team-timezone="team?.timezone ?? 'Asia/Tokyo'"
+              :team-timezone="teamTimezone"
               :is-admin="isFullAdminView"
               @slot-selected="onSlotSelected"
               @manage-lines="activeTab = 2"
@@ -486,7 +487,7 @@ onMounted(async () => {
                       </p>
                       <ReservationUnavailabilityManager
                         :team-id="props.teamId"
-                        :team-timezone="team?.timezone ?? 'Asia/Tokyo'"
+                        :team-timezone="teamTimezone"
                         :disabled="!isAdmin"
                       />
                     </div>

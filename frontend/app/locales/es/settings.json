@@ -1,5 +1,11 @@
 {
   "data_export": {
+    "request_daily_limit": "Los datos personales se pueden exportar una vez cada 24 horas. La exportación existente sigue disponible.",
+    "request_in_progress": "Ya hay una exportación en curso. Espera a que termine.",
+    "request_error": "No se pudo solicitar la exportación. Inténtalo de nuevo.",
+    "download_not_ready": "La exportación aún no está lista para descargar. Inténtalo cuando termine.",
+    "download_expired": "La descarga de esta exportación ha caducado. Solicita una nueva exportación cuando esté disponible.",
+    "download_error": "No se pudo descargar la exportación. Inténtalo de nuevo.",
     "section_title": "Exportación de datos",
     "export_button": "Exportar datos personales",
     "status_completed": "Completado",
@@ -11,7 +17,7 @@
     "step_failed": "La exportación falló",
     "step_processing": "Exportando...",
     "step_preparing": "Preparando...",
-    "description": "Puede exportar sus datos personales como un archivo ZIP."
+    "description": "Exporte sus datos personales en un ZIP. Los nuevos ZIP se protegen con AES-256; la contraseña llega en el correo de finalización. Se necesita una aplicación de extracción compatible con AES. Las herramientas integradas de Windows no admiten ZIP cifrados y no se garantiza la extracción con las de macOS. Los ZIP creados antes de este cambio pueden no estar cifrados y conservan su formato y vencimiento originales."
   },
   "deletion_preview": {
     "dialog_title": "Confirmar eliminación de cuenta",
@@ -511,7 +517,7 @@
         "description": "Configuración de visibilidad para búsqueda, mensajes directos y estado en línea"
       },
       "contactInviteTokens": {
-        "description": "Emitir y gestionar URLs de invitación para agregar contactos"
+        "description": "Crear, ver y gestionar URL de invitación y códigos QR para añadir contactos"
       },
       "contactRequestBlocks": {
         "label": "Lista de solicitudes bloqueadas previamente",

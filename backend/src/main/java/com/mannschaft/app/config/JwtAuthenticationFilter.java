@@ -2,6 +2,7 @@ package com.mannschaft.app.config;
 
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.security.VerifiedAccessToken;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -49,6 +50,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
 
         String token = extractToken(request);
+        request.removeAttribute(VerifiedAccessToken.REQUEST_ATTRIBUTE);
 
         if (token == null) {
             filterChain.doFilter(request, response);
@@ -82,6 +84,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
             details.put("ppc", pendingParentalConsent);
             authentication.setDetails(details);
+
+            // 変身フィルタはprincipalとdetailsを置き換えるため、本人credentialの失効情報を別途保持する。
+            // 値は署名検証済みclaimだけから作り、任意のquery/headerからは取得しない。
+            if (jtiClaim != null && !jtiClaim.isBlank() && claims.getExpiration() != null) {
+                request.setAttribute(VerifiedAccessToken.REQUEST_ATTRIBUTE, new VerifiedAccessToken(
+                        Long.valueOf(userId), jtiClaim, claims.getExpiration().getTime() / 1000));
+            }
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
         } catch (BusinessException e) {

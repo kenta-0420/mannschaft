@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module'
 import Aura from '@primeuix/themes/aura'
 import { buildGateRouteRules } from './app/constants/featureGates'
 
@@ -64,6 +65,11 @@ const connectSrc = [
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
+  typescript: {
+    tsConfig: {
+      exclude: ['../test-results/**'],
+    },
+  },
   // 本番では Nuxt DevTools を無効化（情報露出・バンドル肥大の抑止）。
   // Nuxt DevTools の専用パネルは利用方針により全環境で無効化する（インストール時の互換パッチは維持）。
   devtools: { enabled: false },
@@ -425,6 +431,7 @@ export default defineNuxtConfig({
       // 設計書: docs/features/F18_point_card_wallet.md §1.4 / §16 / §17
       // 既定 false（凍結中）。再開時は NUXT_PUBLIC_F18_BALANCE_ENABLED=true で復活可能。
       f18BalanceEnabled: process.env.NUXT_PUBLIC_F18_BALANCE_ENABLED === 'true',
+      ranchDevelopmentVisuals: process.env.NUXT_PUBLIC_RANCH_DEVELOPMENT_VISUALS === 'true',
       // F08.9 P5 継続課金（Stripe.js）公開可能キー。
       // クライアントで `loadStripe(publishableKey)` に渡す。公開鍵は秘匿情報ではない（pk_*）が、
       // 環境（test/live）で切り替えるため値はコミットせず環境変数から注入する。
@@ -482,6 +489,7 @@ export default defineNuxtConfig({
         name: '日本語',
         files: [
           'ja/common.json',
+          'ja/ranch.json',
           'ja/auth.json',
           'ja/validation.json',
           'ja/landing.json',
@@ -515,6 +523,7 @@ export default defineNuxtConfig({
           'ja/settings.json',
           'ja/timetable.json',
           'ja/member-info.json',
+          'ja/member-card.json',
           'ja/property.json',
           'ja/disclosure.json',
           'ja/error_report.json',
@@ -562,6 +571,7 @@ export default defineNuxtConfig({
         name: 'English',
         files: [
           'en/common.json',
+          'en/ranch.json',
           'en/auth.json',
           'en/validation.json',
           'en/landing.json',
@@ -595,6 +605,7 @@ export default defineNuxtConfig({
           'en/settings.json',
           'en/timetable.json',
           'en/member-info.json',
+          'en/member-card.json',
           'en/property.json',
           'en/disclosure.json',
           'en/error_report.json',
@@ -642,6 +653,7 @@ export default defineNuxtConfig({
         name: '中文（简体）',
         files: [
           'zh/common.json',
+          'zh/ranch.json',
           'zh/auth.json',
           'zh/validation.json',
           'zh/landing.json',
@@ -675,6 +687,7 @@ export default defineNuxtConfig({
           'zh/settings.json',
           'zh/timetable.json',
           'zh/member-info.json',
+          'zh/member-card.json',
           'zh/property.json',
           'zh/disclosure.json',
           'zh/error_report.json',
@@ -722,6 +735,7 @@ export default defineNuxtConfig({
         name: '한국어',
         files: [
           'ko/common.json',
+          'ko/ranch.json',
           'ko/auth.json',
           'ko/validation.json',
           'ko/landing.json',
@@ -755,6 +769,7 @@ export default defineNuxtConfig({
           'ko/settings.json',
           'ko/timetable.json',
           'ko/member-info.json',
+          'ko/member-card.json',
           'ko/property.json',
           'ko/disclosure.json',
           'ko/error_report.json',
@@ -802,6 +817,7 @@ export default defineNuxtConfig({
         name: 'Español',
         files: [
           'es/common.json',
+          'es/ranch.json',
           'es/auth.json',
           'es/validation.json',
           'es/landing.json',
@@ -835,6 +851,7 @@ export default defineNuxtConfig({
           'es/settings.json',
           'es/timetable.json',
           'es/member-info.json',
+          'es/member-card.json',
           'es/property.json',
           'es/disclosure.json',
           'es/error_report.json',
@@ -882,6 +899,7 @@ export default defineNuxtConfig({
         name: 'Deutsch',
         files: [
           'de/common.json',
+          'de/ranch.json',
           'de/auth.json',
           'de/validation.json',
           'de/landing.json',
@@ -915,6 +933,7 @@ export default defineNuxtConfig({
           'de/settings.json',
           'de/timetable.json',
           'de/member-info.json',
+          'de/member-card.json',
           'de/property.json',
           'de/disclosure.json',
           'de/error_report.json',
@@ -1032,11 +1051,40 @@ export default defineNuxtConfig({
         'chart.js',
         'dompurify',
         'vuedraggable',
+        // 連絡先QRへの初回SPA遷移で遅延依存の検出による再読み込みを避ける。
+        'qrcode',
         'marked',
         'zod',
         '@vee-validate/zod',
         'vee-validate',
       ],
+    },
+  },
+
+  $development: {
+    hooks: {
+      'vite:extendConfig'(config, { isServer }) {
+        if (!isServer) return
+        if (!config.plugins) throw new Error('SSR Vite plugins are missing')
+        // i18n pluginの設定後、SSRのappをdevtools待機キューに保持しないNode用bundleへ解決する。
+        config.plugins.push({
+          name: 'mannschaft:ssr-i18n-node',
+          config: {
+            order: 'post',
+            handler() {
+              return {
+                resolve: {
+                  alias: {
+                    'vue-i18n': createRequire(import.meta.url).resolve(
+                      'vue-i18n/dist/vue-i18n.node.mjs',
+                    ),
+                  },
+                },
+              }
+            },
+          },
+        })
+      },
     },
   },
 

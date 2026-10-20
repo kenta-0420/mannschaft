@@ -1,6 +1,12 @@
 {
   "tournament": {
     "detail": {
+      "backToList": "Zurück zur Turnierliste",
+      "noParticipants": "Keine teilnehmenden Teams",
+      "teamName": "Teamname",
+      "entryCount": "Meldungen",
+      "actions": "Aktionen",
+      "manageEntry": "Meldungen verwalten",
       "noDivisions": "Es sind keine Divisionen registriert",
       "divisionsLoadError": "Die Divisionen konnten nicht geladen werden",
       "loadError": "Das Turnier konnte nicht geladen werden"
@@ -20,6 +26,8 @@
       }
     },
     "entry": {
+      "name": "Name",
+      "overwriteExisting": "Bestehende Meldungen überschreiben",
       "title": "Meldungsverwaltung",
       "memberCount": "{count} Mitglieder",
       "countRange": "{min}〜{max} Mitglieder",
