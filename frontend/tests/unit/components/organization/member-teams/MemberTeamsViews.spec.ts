@@ -200,13 +200,14 @@ describe('MemberTeamsInvitesView', () => {
 })
 
 describe('MemberTeamsRestrictionsView', () => {
-  const restriction = (id: string, kind: string): TeamOrgAffiliationRestriction => ({
+  // reason は BE の列挙値（REJECTED / DECLINED / WITHDRAWN / CANCELLED）。自由文ではない（F01.2.1 §5.4）
+  const restriction = (id: string, kind: string, reason = 'REJECTED'): TeamOrgAffiliationRestriction => ({
     id,
     kind,
-    direction: 'TEAM_APPLICATION',
+    direction: 'TEAM_APPLY',
     team: { slug: `team-${id}`, name: `チーム${id}` },
     restrictedUntil: kind === 'COOLDOWN' ? '2026-11-01T00:00:00Z' : undefined,
-    reason: '地域外',
+    reason,
   })
 
   beforeEach(() => {
@@ -260,5 +261,27 @@ describe('MemberTeamsRestrictionsView', () => {
     listRestrictions.mockResolvedValue(page([]))
     const empty = await mountView()
     expect(empty.find('[data-testid="restrictions-empty"]').exists()).toBe(true)
+  })
+
+  // テストの i18n は en ロケールで描画される（既存の種別表示も In cooldown / Blocked）
+  it('RV-05: 理由は列挙値の生値ではなく、利用者向けのラベルで出す（実機E2E #4009 D-1）', async () => {
+    listRestrictions.mockResolvedValue(page([
+      restriction('r1', 'COOLDOWN', 'REJECTED'),
+      restriction('r2', 'BLOCK', 'DECLINED'),
+    ]))
+    const wrapper = await mountView()
+    const rows = wrapper.findAll('[data-testid="restriction-row"]')
+    expect(rows[0]!.text()).toContain('Application rejected')
+    expect(rows[0]!.text()).not.toContain('REJECTED')
+    expect(rows[1]!.text()).toContain('Invitation declined')
+    expect(rows[1]!.text()).not.toContain('DECLINED')
+  })
+
+  it('RV-06: 未知の理由コードは生値を出さず「その他の理由」にまとめる', async () => {
+    listRestrictions.mockResolvedValue(page([restriction('r1', 'BLOCK', 'SOMETHING_NEW')]))
+    const wrapper = await mountView()
+    const row = wrapper.find('[data-testid="restriction-row"]')
+    expect(row.text()).toContain('Other reason')
+    expect(row.text()).not.toContain('SOMETHING_NEW')
   })
 })
