@@ -92,7 +92,8 @@ class CalendarLayerLifecycleListenerTest {
 
         // 委譲先 Bean は実物を使う（リスナー→Executor→Repository の経路そのものを踏む）。
         listener = new CalendarLayerLifecycleListener(new CalendarLayerCleanupExecutor(mock(UserCalendarSyncSettingRepository.class),
-                mock(AccountPurgeCompletionService.class), repository));
+                mock(AccountPurgeCompletionService.class), repository,
+                mock(com.mannschaft.app.schedule.repository.ScheduleRanchTransportRepository.class)));
     }
 
     // ------------------------------------------------------------------

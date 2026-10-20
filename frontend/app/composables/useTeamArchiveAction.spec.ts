@@ -7,10 +7,10 @@ import { useTeamArchiveAction } from './useTeamArchiveAction'
 import type { ConfirmationOptions } from 'primevue/confirmationoptions'
 
 const mocks = vi.hoisted(() => ({ api: vi.fn(), archive: vi.fn(), unarchive: vi.fn(),
-  require: vi.fn(), success: vi.fn(), error: vi.fn(), handleError: vi.fn(), fetchMyTeams: vi.fn() }))
+  require: vi.fn(), close: vi.fn(), success: vi.fn(), error: vi.fn(), handleError: vi.fn(), fetchMyTeams: vi.fn() }))
 vi.mock('primevue/useconfirm', async (original) => ({
   ...await original<typeof import('primevue/useconfirm')>(),
-  useConfirm: () => ({ require: mocks.require }),
+  useConfirm: () => ({ require: mocks.require, close: mocks.close }),
 }))
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
 mockNuxtImport('useApi', () => () => mocks.api)
@@ -55,6 +55,9 @@ describe('チームアーカイブ操作', () => {
   it('確認前とキャンセル後は更新しない', async () => {
     const wrapper = await setup()
     action.request()
+    expect(mocks.close).toHaveBeenCalledOnce()
+    expect(mocks.close.mock.invocationCallOrder[0]).toBeLessThan(mocks.require.mock.invocationCallOrder[0]!)
+    expect(dialog().group).toBe('team-archive')
     expect(mocks.archive).not.toHaveBeenCalled()
     dialog().reject?.()
     expect(mocks.archive).not.toHaveBeenCalled()

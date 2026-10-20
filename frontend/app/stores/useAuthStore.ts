@@ -220,7 +220,7 @@ export const useAuthStore = defineStore('auth', {
       this.refreshToken = null
       this.user = null
       // 武装中の先回りリフレッシュタイマーを解除する（AC-3）。以後リフレッシュは発火しない。
-      disarmProactiveRefresh()
+      disarmProactiveRefresh(this)
       if (import.meta.client) {
         // accessToken・refreshToken の localStorage エントリは廃止済みだが、
         // 移行前の古いデータが残っている場合のクリーンアップとして削除する。

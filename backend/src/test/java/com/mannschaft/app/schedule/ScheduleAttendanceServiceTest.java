@@ -231,7 +231,7 @@ class ScheduleAttendanceServiceTest {
             given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(true);
 
             ScheduleAttendanceEntity attendance = createAttendanceEntity(AttendanceStatus.UNDECIDED);
-            given(attendanceRepository.findByScheduleIdAndUserId(SCHEDULE_ID, USER_ID))
+            given(attendanceRepository.findForResponseUpdate(SCHEDULE_ID, USER_ID))
                     .willReturn(Optional.of(attendance));
             given(attendanceRepository.save(any(ScheduleAttendanceEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
@@ -367,7 +367,7 @@ class ScheduleAttendanceServiceTest {
             given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(true);
 
             ScheduleAttendanceEntity attendance = createAttendanceEntity(AttendanceStatus.UNDECIDED);
-            given(attendanceRepository.findByScheduleIdAndUserId(SCHEDULE_ID, USER_ID))
+            given(attendanceRepository.findForResponseUpdate(SCHEDULE_ID, USER_ID))
                     .willReturn(Optional.of(attendance));
             given(attendanceRepository.save(any(ScheduleAttendanceEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
@@ -420,7 +420,7 @@ class ScheduleAttendanceServiceTest {
 
         private void stubSaveAndDeadline() {
             ScheduleAttendanceEntity attendance = createAttendanceEntity(AttendanceStatus.UNDECIDED);
-            given(attendanceRepository.findByScheduleIdAndUserId(SCHEDULE_ID, USER_ID))
+            given(attendanceRepository.findForResponseUpdate(SCHEDULE_ID, USER_ID))
                     .willReturn(Optional.of(attendance));
             given(attendanceRepository.save(any(ScheduleAttendanceEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));

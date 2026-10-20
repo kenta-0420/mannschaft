@@ -45,6 +45,7 @@ class BlogScheduledPublishBatchServiceTest {
 
     @Mock
     private BlogScheduledPublishService scheduledPublishService;
+    @Mock private BlogRanchScheduledOperationFacade ranchScheduled;
 
     /**
      * 固定した壁時計 Clock。本番では {@code ClockConfig#wallClock}（業務ローカル時刻ゾーン）が
@@ -58,7 +59,7 @@ class BlogScheduledPublishBatchServiceTest {
 
     @BeforeEach
     void setUp() {
-        batchService = new BlogScheduledPublishBatchService(scheduledPublishService, FIXED_CLOCK);
+        batchService = new BlogScheduledPublishBatchService(scheduledPublishService, ranchScheduled, FIXED_CLOCK);
     }
 
     // ────────────────────────────────────────────────────────────

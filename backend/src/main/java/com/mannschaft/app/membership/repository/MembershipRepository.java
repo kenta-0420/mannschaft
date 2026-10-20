@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -24,6 +25,23 @@ import java.util.Optional;
  * <p>設計書: docs/features/F00.5_membership_basis.md §5 / §7</p>
  */
 public interface MembershipRepository extends JpaRepository<MembershipEntity, Long> {
+
+    /** TEAM資格のscalar投影。本人activeはUserService側の別責務。 */
+    interface TeamMembershipStateRow {
+        Long getTeamId();
+        Long getUserId();
+        RoleKind getRoleKind();
+        Boolean getActive();
+    }
+
+    @Query("SELECT m.scopeId AS teamId, m.userId AS userId, m.roleKind AS roleKind, "
+            + "CASE WHEN m.leftAt IS NULL AND m.archivedAt IS NULL THEN true ELSE false END AS active FROM MembershipEntity m "
+            + "WHERE m.scopeType = com.mannschaft.app.membership.domain.ScopeType.TEAM "
+            + "AND m.scopeId IN :teamIds AND m.userId IN :userIds "
+            + "AND m.leftAt IS NULL AND m.archivedAt IS NULL")
+    List<TeamMembershipStateRow> findTeamMembershipStateRows(
+            @Param("teamIds") Collection<Long> teamIds, @Param("userIds") Collection<Long> userIds);
+
 
     /**
      * 個人横断表示で使う現役所属を、最近参加した順に安定取得する。

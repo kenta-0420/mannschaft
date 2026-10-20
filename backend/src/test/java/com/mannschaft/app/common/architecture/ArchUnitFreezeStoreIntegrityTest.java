@@ -709,7 +709,8 @@ class ArchUnitFreezeStoreIntegrityTest {
     //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
     //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 2）。
     // CMP-260925-0905: ConfirmableNotificationReminderBatchService が UserEntity に依存しなくなり6行減。2044→2038。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2038;
+    // Issue #3892: OrganizationService の InviteTokenEntity 直接依存解消で1行減（追加0）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2037;
 
     /**
      * 越境 {@code @Transactional} 禁止ストア（D-3）の期待行数。
@@ -738,7 +739,8 @@ class ArchUnitFreezeStoreIntegrityTest {
     //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
     //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 4）。
     // Issue #2997 G7-a: 1304 -> 1298（-6）。DigestAsyncExecutor と TeamSlotNoteNotifyListener が @Transactional を外した（各 3 行、追加 0・削除 6）。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1298;
+    // Issue #3892: OrganizationService の InviteTokenRepository 直接依存解消で3行減（追加0）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1295;
 
     /**
      * 推移的クロスドメイン {@code @Transactional} 番人（D-3T）の初期凍結行数。
@@ -874,7 +876,11 @@ class ArchUnitFreezeStoreIntegrityTest {
     // CMP-261012-0313: main の 7163 から SkillMatrixService を主語とする 2 行が解消し 7161（ストア実数と一致）。
     // CMP-260925-0905: ConfirmableNotificationReminderBatchService#processAlertIfNeeded の@Transactional解消で1行減。7158→7157。
     // Issue #2997 G7-a: 最新 main の 7157 -> 7145（-12）。DigestAsyncExecutor と TeamSlotNoteNotifyListener が @Transactional を外した（各 6 行、追加 0・削除 12）。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7145;
+    // CMP-261015-1152: 共通セッション発行へ統合し旧AuthWebAuthnService.issueTokenPairを削除。全Arch走査で旧入口1行のみ消滅（追加0）、7145 -> 7144。
+    // CMP-261016-0950: MemberCardServiceのclassTX除去でprivate3入口×2repoのみ分類対象外。
+    // 旧public read6本は明示readOnlyを維持し、越境根治による減少とは扱わない。
+    // Issue #3892: deleteOrganization の InviteTokenRepository 推移到達解消でさらに1行減（追加0）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7137;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -914,7 +920,10 @@ class ArchUnitFreezeStoreIntegrityTest {
      * <p>ScheduleMediaUploadEntity が {@code UuidV7Entity} を継承済みとなり、凍結ストアから解消行 1 件が
      * 自動で縮退したため 568 → 567（PR #3387 の main 追従で反映）。</p>
      */
-    private static final int EXPECTED_LINES_UUID_V7_D2B = 567;
+    // RanchCollectibleCatalogEntity は承認済み置物の自然キーを主キーとする設計是認例外。
+    // 凍結ストアへの当該1行追加を正確に追随し、新規 Entity の検出規則は維持する。
+    // V245のid=1固定管理行は独立発番を持たないsingleton設計是認例外。追加は当該1型だけ。
+    private static final int EXPECTED_LINES_UUID_V7_D2B = 569;
 
     /**
      * 越境 Repository 依存禁止ストア（D-5）の期待行数。
@@ -961,7 +970,10 @@ class ArchUnitFreezeStoreIntegrityTest {
     // CMP-261012-0313: SkillMatrixService がマトリクスの行を role の UserRoleRepository（UserRoleEntity）から引くのをやめ、
     //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
     //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 4）。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1858;
+    // CMP-261017-0549: Collector の未使用 AuditLogRepository 依存（field・ctor）2 件を解消。
+    // Issue #3892: OrganizationService の InviteTokenRepository 直接依存解消で3行減（追加0）。
+    // 共通base 1858から独立した2件と3件を両方除去し、1853を維持する。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1853;
 
     /**
      * ServiceAPIの正本行数。更新は実削減の原因検分と同一コミットに限る。

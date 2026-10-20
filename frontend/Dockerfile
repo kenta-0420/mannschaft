@@ -7,7 +7,7 @@ WORKDIR /app
 
 # Install only production + build-time deps via ci for reproducibility
 COPY package.json package-lock.json ./
-COPY scripts/prepare-devtools-simple-git.mjs ./scripts/prepare-devtools-simple-git.mjs
+COPY scripts/patch-nuxt-devtools-simple-git.mjs ./scripts/patch-nuxt-devtools-simple-git.mjs
 RUN npm ci
 
 # ============================================================
@@ -67,9 +67,9 @@ ENV NODE_ENV=production
 
 EXPOSE 3000
 
-# Health check — hits Nuxt's built-in /_nuxt/... or the root page
+# HOST=0.0.0.0 のIPv4待受に合わせ、localhostのIPv6解決に依存しない。
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-  CMD wget -qO- http://localhost:3000/ || exit 1
+  CMD wget -qO- http://127.0.0.1:3000/ || exit 1
 
 # Nuxt 3 standalone entry point
 CMD ["node", "server/index.mjs"]

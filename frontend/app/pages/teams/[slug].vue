@@ -328,6 +328,8 @@ const pathSegments = computed<string[]>(() =>
  *  slug セグメントがヒットして activeTab が誤る。slice(2) で slug を照合から外す。
  */
 const matchedShellSegment = computed<string | null>(() => {
+  // 管理コンソールは独立ページ。末尾に予約などのタブ名があってもshellで包まない。
+  if (pathSegments.value[2] === 'admin') return null
   for (const seg of pathSegments.value.slice(2)) {
     if (SHELL_SEGMENTS.has(seg)) return seg
   }
@@ -697,9 +699,10 @@ provideTeamShellContext({
           <Button
             :label="t('common.scopeShell.retry')"
             icon="pi pi-refresh"
+            class="min-h-11 min-w-11"
             @click="retryShellData"
           />
-          <NuxtLink to="/dashboard" class="inline-block text-primary-600 hover:underline">
+          <NuxtLink to="/dashboard" class="inline-flex min-h-11 items-center text-primary-600 hover:underline">
             <i class="pi pi-arrow-left mr-1" />
             {{ t('common.scopeShell.back_to_dashboard') }}
           </NuxtLink>

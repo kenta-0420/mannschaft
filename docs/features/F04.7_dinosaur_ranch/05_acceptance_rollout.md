@@ -117,7 +117,7 @@ ACK済みoutboxの短期archive/削除はcanonical witness/dedupを残したま�
 卵の約7日elapsed/三方式/独自数秘/24問構成は採択済み。ひび具体境界は開発snapshot値、質問内容/全対応表/初期16種×4外見素材は承認待ち。未裁可算法をテスト済み/実装確定と表現しない。出欠の実EnumはATTENDING/PARTIAL/ABSENTを基準ソースと照合し、旧略記ATを仕様に残さない。
 ## 採択済み契約と未完了gate
 
-三方式/独自数秘/24問構成/本人結果独立/命名は01、source配送とDDLは02、API/auth guard/確認参照は03、画面/両styleは04を正本とする。質問の公開内容、全恐竜デザイン/対応表、親密度と運営値の本番調整、TL/Blog完全一致期間案は未承認。実装は部分製造で全体合格ではない。初回証拠とtransport loss窓はAC07/09/11/21/22/31/72で現在状態からの資格捏造なしを検証する。
+三方式/独自数秘/24問構成/本人結果独立/命名は01、source配送とDDLは02、API/auth guard/確認参照は03、画面/両styleは04を正本とする。質問の公開内容、全恐竜デザイン/対応表、親密度と運営値の本番調整は未承認。TL/Blogの同本人・同機能・同UTC週の完全一致初回のみは2026-10-04ユーザー裁可済み。実装は部分製造で全体合格ではない。初回証拠とtransport loss窓はAC07/09/11/21/22/31/72で現在状態からの資格捏造なしを検証する。
 
 ### AC61 孵化時の不可逆命名（ユーザー確定）
 
@@ -135,7 +135,7 @@ AC51/53/58で16 species×4 variantの全64組・type対応・版固定・成長/
 |---|---|---|
 | 62 本人結果閲覧 | 64診断/占い各0件・一方式のみ完成・両完成・履歴ありの導線。卵/孵化後、再読込/別端末、PAUSED/非表示/STOPPED/care・報酬停止/残高0でも読取可。退会申請で拒否・取消で同result復帰・最終削除でcleanup。anonymous401、他人/不在/未完了同形404、不正cursor400。raw DOB/name/回答の返却・共有・ログ0。版変更でも過去snapshot維持、再診断で恐竜アバターID/名前/species/variant/XP/親密度/points不変。6言語・keyboard・画面到達を検証 | UT/IT/FE UT/E2E |
 
-ACは追補込み73件。追加結果閲覧はユーザー確定したPhase 1要件。全ACの主検証欄は計画で、実装class/methodとgreen実テスト名の照合は未完了。技術契約は02/03に統合し、質問内容/対応表/素材とsource完全一致期間案を未決として残す。
+ACは追補込み73件。追加結果閲覧はユーザー確定したPhase 1要件。全ACの主検証欄は計画で、実装class/methodとgreen実テスト名の照合は未完了。技術契約は02/03に統合し、質問内容/対応表/素材を未決として残す。source完全一致の比較範囲は2026-10-04裁可済み、製造と検証は未完了。
 
 対応表を決める時期はユーザー確定: 診断/占いと具体的な恐竜との対応表は恐竜のデザイン完成後に作成する。基本設計の完了に実際の割り当てデータは要求しない。版付きmappingの入出力・未登録時は有効化不可・旧個体を置換しない境界は設計で維持する。16種名簿/4外見/素材制作と対応表作成を後続タスクに分け、公開前にはAC51の全64対応を検証する。基本設計の完了と素材完成・初期公開可能の判定を混同しない。
 
@@ -151,7 +151,7 @@ ACは追補込み73件。追加結果閲覧はユーザー確定したPhase 1要
 | 64 非減衰指標の保存 | versioned affinity unit(kind+UTC日dev値)でfeeding/touch各初回だけ加算、別key/二tab/連打0。週XP枠後も反応可、egg touchはXP0、pause/放置で減少0、権利/成長倍率/points差0 | CORE Care/Affinity | UT64-unit±1 / IT64-concurrentUnit / UI64-reactionNoGauge / REAL64-cappedTouch |
 | 65 出生確認能力の境界 | ACTIVE先lock→PRIMARY成功lookup→live profile検証の順、MICROSのDB/JSON/HMAC一致。本人revision/HMAC用途/nonce/withdrawalAttemptId/expiryを検査。TTL直前/丁度/後、未知/他人ref、鍵rotationで旧ref拒否、全profile変更経路後の旧ref拒否。診断作成・Ranch出生選定それぞれの成功PRIMARY replayをlive検査より優先し、成功同key再送はprofile変更後も元result。初回出生選定はlive確認ref revision R=OwnedResult内部sourceProfileRevision、DIAGNOSIS=null/BIRTH_STYLE>=0を照合。新refで旧profile由来resultは409、内部metadataは公開Summaryに追加せず、本人履歴閲覧は維持。name/DOB/kana/refのlog複製0 | AUTH+DIAGNOSIS | UT65-signatureExpiry / IT65-profileWritePathsRace / UI65-reconfirm / REAL65-twoTabProfile |
 | 66 退会状態の新旧照合 | request→cancel→re-requestを逆順配送しても古い通知は無効。既存attemptIdと最新auth状態で照合し、PURGING barrierとconsumer/command/latequeue競合後再作成0。partial cleanup失敗→retryは同じ削除結果、OFF下も実行、取消は元PAUSED保持。出生結果保存/初回選定とprofile更新/申請を競合させても、ACTIVE lock・同revision照合・成功replay優先を維持しguard再帰0 | AUTH+全cleanup | UT66-withdrawalAttemptOrder / IT66-purgeBarrierRace / UI66-cancelRestores / REAL66-lifecycle |
-| 67 完全一致証跡（比較期間/正規化はユーザー回答待ち） | 承認normalization/version/window内で新ID同文一件だけ、NFC/改行/前後空白/添付/記事title比較fixtureと同時winnerを照合。窓±1/keyrotation/loss/retentionを明示、本文複製0、源外/想起意味比較0 | TL/CMS | UT67-normalizationMatrix / IT67-duplicateRaceLoss / UI=—source内 / REAL67-newIdDuplicate |
+| 67 完全一致証跡 | 同本人・同機能・同UTC週で新ID同内容は最初一件だけ（2026-10-04裁可）。NFC/改行/前後空白/添付/記事title比較fixtureと同時winnerを照合。窓±1/keyrotation/loss/retentionを明示、本文複製0、源外/想起意味比較0 | TL/CMS | UT67-normalizationMatrix / IT67-duplicateRaceLoss / UI=—source内 / REAL67-newIdDuplicate |
 | 68 私的一覧keyset | records/inventory/results 0/1/100/101件、limit0/1/100/101、同timestamp cursor、別user/filter/tamper cursor400。completedAt MICROSのDB/JSON/cursor一致で重複0、data量でquery数が増えずbounded keyset、raw source/name/回答なし | CORE/DIAGNOSIS | UT68-cursorBinding / IT68-queryCount / UI68-emptyNextPage / REAL68-pagination |
 | 69 診断回答とtie版 | 全3→tie6、正負同点、tie0/1/6、23/24/25問、未知/重複/boolean/0/6拒否。tie表示後回答改版→古tie409。保留再開同snapshot、cancel後complete不可、二tab/retry一result/無報酬 | DIAGNOSIS | UT69-sixAxisMatrix / IT69-answerRevisionRace / UI69-holdResume / REAL69-tieResume |
 | 70 公開coverage | 全64type×16種4外見、3habitat候補、EGG/BABY/JUVENILE/ADULT×両style×基本反応/静止fallbackをmanifest照合。type欠落/重複/非approved/未登録rule/pool空で有効化拒否、fixture catalogはprod登録不可 | OPS/FE manifest | UT70-coverage / IT70-enableRejected / UI70-preparing / REAL70-unavailable |
@@ -178,8 +178,65 @@ ACは追補込み73件。追加結果閲覧はユーザー確定したPhase 1要
 
 当時の担当報告ではRANCH-CORE骨格61ファイルのcommitは2a6a1810、AUTH/DIAGNOSISの41pathは未commitでstubを含み、FEの17UTはローカルcomponent/純粋計算のみgreen、型チェック未完了だった。BEも:compileJava通過後、compileTestJava時のWSL EIOでtest未到達との報告だった。WSL疎通回復後は旧/tmpがすべて不存在で原因未確認（親担当からのWSL再起動・削除は実施していない）、旧native commitと試験logの実体を現在確認できない。これらは歴史報告であり、現在の保全・合格証拠ではない。親担当はbase38（38f8264212c2a3730ce645cebf40502d2d16338e）のcleanな新/var/tmp/mannschaft-ranch-20261003-koko配下4worktreeを作成し、Windows保存scriptsから再構成・再試験中。17FE試験も再実行必須。全checks/73AC照合/実Security401・403・IDOR/実MySQL race/実機E2E/住民探索/mergeの合格は未証明。draft PR #3617（当時記録head ddaf52）は未mergeの記録で、現在headの証拠とは分ける。資料・静的HTML検査をアプリや実機の合格として扱わない。
 
-活動consumer・運営/商品/slot/旧badge統合・四源transport・AR実画面・最終purge・全素材manifest/対応表が残る。TL/Blogの新ID同内容完全一致は、同user・同feature・同UTC週で最初一件だけとする比較案がユーザー回答待ち。正規化/比較期間を確定と書かず、そのsource仕様と公開gateに未決を限定する。他の製造を停止する理由にしない。
+活動consumer・運営/商品/slot/旧badge統合・四源transport・AR実画面・最終purge・全素材manifest/対応表が残る。TL/Blogの新ID同内容完全一致は、同user・同feature・同UTC週で最初一件だけとする方針が2026-10-04にユーザー裁可された。本文・タイトル・添付の組合せとNFC・改行・前後空白の正規化を実装fixtureへ対応付ける。未製造・未検証を公開可能と扱わず、他の製造は継続する。
 
 ### 採択済みauth admissionの検証追跡
 
 AC65/66/72の並行/途中失敗fixtureに、非TX Guard→single Semaphore.tryAcquire→別REQUIRES_NEW Runner proxy→PRIMARY read/writer順次→commit/rollback後finally permit復帰を含める。P不明/P<2は503、P2/3/4/5/50のG式と2G≤P、上限即503/callback0、ambient TX/再帰拒否、成功/認可失敗/callback例外/commit失敗のpermit復帰を検証する。既存共有pool他経路の完全予約を保証せず、3秒connection timeoutも観測する。設計採用済み、製造/実MySQL試験未実行。
+
+## Ranch STRING enum の段階展開
+
+`docs/development/persisted_enum_deployment.md` の二段階手順に従う。今回の17定数は既存テーブルの値の改名ではなく、新設Ranchテーブルの初期集合である。互換性台帳への登録は旧タスク退場の証明ではない。
+
+| enum | DB列 | 列長・CHECK | 定数 |
+|---|---|---|---|
+| `AssignmentMethod` | `ranch_dinosaurs.assignment_method` | VARCHAR(30)、`chk_ranch_dinosaurs_8` | HABITAT_RANDOM / BIRTH_STYLE / DIAGNOSIS |
+| `DinosaurStage` | `ranch_dinosaurs.stage` | VARCHAR(20)、`chk_ranch_dinosaurs_3` | EGG / BABY / JUVENILE / ADULT |
+| `Habitat` | `ranch_dinosaurs.habitat` | VARCHAR(8)、`chk_ranch_dinosaurs_2` | LAND / SEA / AIR |
+| `MotionMode` | `ranch_owners.motion_mode` | VARCHAR(20)、`chk_ranch_owners_5` | NORMAL / REDUCED / STOPPED |
+| `ParticipationStatus` | `ranch_owners.status` | VARCHAR(20)、`chk_ranch_owners_2` | ACTIVE / PAUSED |
+| `RenderStyle` | `ranch_owners.render_style` | VARCHAR(20)、`chk_ranch_owners_4` | PIXEL / PAINT_2D |
+
+第1段階では定数と読取り互換性を全API・worker・batchへ配布する。開発用fixtureは本番OFFのままとし、Ranch開始・選定・孵化・設定など全書込み経路を公開しない。全タスクの旧versionが0になった時刻・環境・image digestをリリース記録へ残す。第2段階で別リリースとして本人書込みを有効化し、新規行の再読込とrollback下限を確認する。機能フラグをOFFにするだけでは、書込み済み新値を読めない旧バイナリへrollbackできない。
+
+## 2026-10-07 検証checkpoint（B845）
+
+以下はB845時点の証跡の限定範囲を記録する。親担当の最終検分・押印とmerge判断は未済。上記2026-10-03の記録と失敗履歴は当時の記録として保持する。73AC本文・完了条件を変更せず、全体green・本番ready・正式公開・戦役完了は宣言しない。PR #3652は入力進捗記録時点でDraft・未merge。
+
+### 入力証跡とCIの確認範囲
+
+作業領域の相対パスとして以下を参照した。これらのローカル証跡は製品リポジトリへの収録済みを意味しない。公開参照は[PR #3652](https://github.com/kenta-0420/mannschaft/pull/3652)、[Backend CI run 37496082771](https://github.com/kenta-0420/mannschaft/actions/runs/37496082771)のJUnit artifacts（6 shardとArchUnit）、[Frontend CI run 37496082739](https://github.com/kenta-0420/mannschaft/actions/runs/37496082739)のjob 112380863445ログ。CIの公開参照とローカルで保存した限定照合を併記する。
+
+- `outputs/mannschaft-ranch-phase1-progress-20261006.md`（v26実機・住民探索完了・四活動事前停止までの時点別記録）
+- `work/ci-resume-20261006/root-ci-evidence-adoption-b845c0.json`（親検分済み、`wholeAcceptanceComplete=false`）
+- `work/ci-resume-20261006/ci-evidence-index-candidate.json`（元候補の照合範囲・workflow HEADとmerge checkoutの区別）
+- `work/recovery-phase1/diagnosis/resume-plan-20261006/merge-publication-boundary-b845c0-candidate-01/`（`classification.md`・`candidate-manifest.json`のA/B/C境界案、分類は親未採択）
+
+PR/workflow HEADは `b845c0152e1d7230af09f5c4783136401d2e86f7`。13 CI workflowは完了し必須ジョブ成功、Backend全6 shard・Non-JST・各ゲート・集約成功。schedule/main-onlyの2ジョブは条件skip。Frontendの監査・lint・型検査・Vitestは成功し、503ファイル／5,008テスト成功を観測した。ただしFrontend jobの実checkoutはPR merge ref `c2d89e28c8937e70a9a0b8c316d0e7b6b6f87cab`であり、B845単独checkoutでの再実行とは表現しない。
+
+親採択されたBackend照合は71直接JUnit一致＋12 source method／表示名／parameterized名の照合で計83候補。PASSは各assertの範囲に限る。Frontendの候補は9 specファイルの成功証跡で、13候補行・14展開例を含むが、ファイル進捗だけからmethod単位PASSを推定しない。元候補indexの未採択表記と、後続の親採択JSONを時点別に区別する。いずれも73AC全条件の合格に昇格しない。extractorがJSON生成後にKeyErrorとなった旧失敗と、v2 exit 0の記録も保持する。
+
+### 実機・住民探索の限定結果
+
+v26/stage17は親がactual BE/FE所有関係とHEAD/JARを採択。新人工本人のSMOKE 2件・選定1件・命名/描画/給餌1件・診断保存1件が成功し、成功直後readinessによる4baselineを登録した。匿名warmupのDCL30秒超過は保持し、login mount観測・private牧場GET0・ログイン/保存0のwarmupをAC成功へ算入しない。旧ownerのbaselineを新ownerで実行したとは扱わない。
+
+- 住民A（1280×900/en）はDashboard→Village（空）→My Page→Settingsで部屋へ到達。Interactの本人分身に触れた反応と、無料枠後のFood「Growth: 0 XP」を確認した。初見の寄り道は導線の観測として保持し、成体画像の準備中表示は正式ADULT素材未制作と区別する。
+- 住民B（1280×900/en）は本人結果閲覧とCalendar離脱後の同じ結果再表示を確認。6軸の判定側が分かりにくいfindingは別担当が最小修正を製造中で、修正・検証完了にはしない。
+- 住民C（390×844）はMotion=Stop motionを選びSave後の表示と、予約の空状態ガイドを確認。reload/再訪保持と実アニメーション停止は未確認。
+
+3住民は別contextで自律探索を完了しbrokerは終了。full-page画像と上記viewportだけの観測で、全端末・tap 44px・全localeを網羅した証拠ではない。画像のマゼンタはinput/textareaを伏せるscreenshot mask、selector構文による操作失敗はtool/runtime errorであり、製品不具合と混同しない。
+
+### 未完了AC・mergeと正式公開の境界
+
+全73ACのclass/method・実green・assert範囲・実UI証跡の最終照合は未完了。次の部分成功・保留を受入条件の削除や完了へ読み替えない。
+
+| 範囲 | 現在の証拠と未完了条件 |
+|---|---|
+| 四活動・報酬・認可（AC07〜17/26/31/40/50/67/72など） | v26 run-activityはUI実行前の`LOCALE_BYTE_BOUND` guard拒否で0 proof groups、選択7認可caseはNOT_STARTED。実Linux/Git LFはcommon.json 134600 bytes・4locale合計163727 bytes、serialized labels 228107 bytes。Windows CRLF観測はcommon.json 137398 bytes・4locale合計166915 bytesで、サイズを混同しない。実Linux commonも旧131072上限を超えるguardfindingであり、v26時点のpayload262144 guardは維持。報酬成功・製品不具合の証拠にせず、TL編集・非公開組織の実機境界も未実証として残す。 |
+| care・無料成体（AC05/41/64など） | care実機1件と住民の枠後反応は限定成功。残1XP calculator assertは原子二tab競合を代用せず、同entityへのXP追加UTだけで次UTC週budget/無料未所属の任意利用を証明しない。 |
+| 運営・認可・退会（AC26/40/45/66など） | ownerを作らないadmin読取200はpublish/control/retry全操作を代用しない。MockMvc/仮principalは実browser Cookie/CORS/他tenant直打ちを代用せず、purge rollback ITだけで全世代/PURGING barrier競合を網羅しない。 |
+| 表示・motion・結果（AC27/28/58/59/62/63/69/71など） | settings到達・結果再表示とCの保存後表示は限定成功。全6言語/keyboard/zoom/dark/二tab、reload/別端末保持、個別非active timer/RAF/audio停止、診断判定側findingの修正確認は未完了。 |
+| 正式公開（AC44/49/51/52/53/56/58/59/70など） | 正式質問文/翻訳/採点、全64type mapping、16種×4外見、全stage×両style×反応/静止素材は未承認・未完成。fixtureのsynthetic64/pack受理と欠落拒否はgate機構の限定証拠で正式coverage完成ではない。公開gateはclosed。 |
+| 性能・運用（§4/AC23/68/72など） | QA配送一点を全range/本番SLO承認へ拡張しない。通常負荷p95/gzip等の公開前実測と、明記された二worker/基本failure matrix/0・1・100・101 keysetは必要証拠として残す。 |
+
+境界候補のAはmerge前の基盤・安全契約と明記基礎fixture、Bは後続の正式素材/原稿/mapping/運営値の制作・裁可、Cは基礎fixture成立後の追加組合せ/長時間soak/将来規模測定を分けた案である。同じACに複数区分があり、親最終判断欄は未採択。B/Cへの分類案だけでAの認可・失敗回復・基本競合・個別visibility等を免除しない。通常負荷の公開前SLOも残し、merge可否と正式公開可否を分ける。台帳close・README完成・受入条件撤回はこのcheckpointの対象外。

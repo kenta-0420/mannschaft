@@ -104,7 +104,7 @@ const selectedTemplate = computed(() =>
 async function fetchEntryMembers() {
   loading.value = true
   try {
-    const res = await getEntryMembers(
+    const { data: res } = await getEntryMembers(
       props.orgId,
       props.tournamentId,
       props.divisionId,
@@ -132,8 +132,8 @@ async function fetchEntryMembers() {
 async function fetchTemplates() {
   if (!props.isAdmin) return
   try {
-    const res = await getEntryTemplates(props.orgId, props.teamId)
-    templates.value = Array.isArray(res) ? res : []
+    const { data } = await getEntryTemplates(props.orgId, props.teamId)
+    templates.value = data
   }
   catch {
     // エラーは useApi の onResponseError で処理される
@@ -144,17 +144,24 @@ function buildMemberForms(candidates: TeamMemberCandidate[]) {
   // 既存エントリーの情報をマップ化
   const existingMap = new Map(entryMembers.value.map(m => [m.userId, m]))
 
-  memberForms.value = candidates.map(c => {
+  // 退団などで候補から外れた既存メンバーも、保存で暗黙に削除しない。
+  const candidateIds = new Set(candidates.map(c => c.userId))
+  const editableMembers = [
+    ...candidates,
+    ...entryMembers.value.filter(m => !candidateIds.has(m.userId)),
+  ]
+
+  memberForms.value = editableMembers.map(c => {
     const existing = existingMap.get(c.userId)
     return {
       userId: c.userId,
       displayName: c.displayName,
       memberNumber: c.memberNumber,
-      isAlreadyEntered: c.isAlreadyEntered,
+      isAlreadyEntered: existing !== undefined,
       jerseyNumber: existing?.jerseyNumber ?? null,
       position: existing?.position ?? c.position ?? null,
       notes: existing?.notes ?? null,
-      selected: c.isAlreadyEntered,
+      selected: existing !== undefined,
     }
   })
 }
@@ -165,7 +172,7 @@ async function onApplyTemplate() {
   if (!selectedTemplateId.value) return
   applyingTemplate.value = true
   try {
-    const res = await applyEntryTemplate(
+    const { data: res } = await applyEntryTemplate(
       props.orgId,
       props.tournamentId,
       props.divisionId,
@@ -209,7 +216,7 @@ async function onSaveMembers() {
         sortOrder: i + 1,
       }))
 
-    const res = await upsertEntryMembers(
+    const { data: res } = await upsertEntryMembers(
       props.orgId,
       props.tournamentId,
       props.divisionId,
@@ -237,7 +244,7 @@ async function onSaveMembers() {
 async function onLoadFromTeam() {
   saving.value = true
   try {
-    const res = await loadEntryMembersFromTeam(
+    const { data: res } = await loadEntryMembersFromTeam(
       props.orgId,
       props.tournamentId,
       props.divisionId,
@@ -304,6 +311,8 @@ watch(
       selectedTemplateId.value = null
     }
   },
+  // 親は v-if でモーダルを生成するため、生成時点で isOpen は既に true。immediate で初回も取得する
+  { immediate: true },
 )
 </script>
 
@@ -313,6 +322,7 @@ watch(
     :header="t('tournament.entry.title')"
     :style="{ width: '700px' }"
     :breakpoints="{ '768px': '95vw' }"
+    :close-button-props="{ class: 'min-h-11 min-w-11' }"
     modal
     @update:visible="emit('close')"
   >
@@ -357,7 +367,7 @@ watch(
               {{ data.position ?? '—' }}
             </template>
           </Column>
-          <Column header="名前" field="displayName" />
+          <Column :header="t('tournament.entry.name')" field="displayName" />
           <Column :header="t('tournament.entry.notes')" field="notes">
             <template #body="{ data }">
               {{ data.notes ?? '—' }}
@@ -384,12 +394,13 @@ watch(
               option-label="name"
               option-value="id"
               :placeholder="t('tournament.entry.template.select')"
-              class="flex-1"
+              class="min-h-11 flex-1"
             />
             <Button
               :label="t('tournament.entry.template.apply')"
               :loading="applyingTemplate"
               :disabled="!selectedTemplateId"
+              class="min-h-11"
               @click="onApplyTemplate"
             />
           </div>
@@ -400,8 +411,8 @@ watch(
 
           <div class="flex items-center gap-2">
             <Checkbox v-model="overwriteExisting" binary input-id="overwrite" />
-            <label for="overwrite" class="text-sm cursor-pointer">
-              既存のエントリーを上書きする
+            <label for="overwrite" class="inline-flex min-h-11 min-w-11 cursor-pointer items-center text-sm">
+              {{ t('tournament.entry.overwriteExisting') }}
             </label>
           </div>
         </div>
@@ -417,6 +428,7 @@ watch(
             :label="t('tournament.entry.loadFromTeam')"
             severity="secondary"
             size="small"
+            class="min-h-11"
             :loading="saving"
             @click="onLoadFromTeam"
           />
@@ -430,51 +442,52 @@ watch(
           <div
             v-for="form in memberForms"
             :key="form.userId"
-            class="flex items-center gap-3 rounded border border-surface-200 p-2 dark:border-surface-700"
+            class="flex flex-wrap items-center gap-3 rounded border border-surface-200 p-2 dark:border-surface-700 sm:flex-nowrap"
             :class="{ 'bg-surface-50 dark:bg-surface-800': form.selected }"
           >
             <Checkbox v-model="form.selected" binary :input-id="`member-${form.userId}`" />
-            <label :for="`member-${form.userId}`" class="w-32 cursor-pointer truncate text-sm font-medium">
+            <label :for="`member-${form.userId}`" class="min-h-11 min-w-0 flex-1 cursor-pointer truncate py-3 text-sm font-medium sm:w-32 sm:flex-none">
               {{ form.displayName }}
               <span v-if="form.memberNumber" class="ml-1 text-xs text-surface-400">#{{ form.memberNumber }}</span>
             </label>
 
-            <InputNumber
-              v-model="form.jerseyNumber"
-              :placeholder="t('tournament.entry.jersey')"
-              :disabled="!form.selected"
-              :use-grouping="false"
-              :min="1"
-              :max="999"
-              class="w-24"
-              size="small"
-            />
+            <Tag v-if="form.isAlreadyEntered" :value="t('tournament.entry.alreadyEntered')" severity="info" class="shrink-0" />
 
-            <InputText
-              v-model="form.position"
-              :placeholder="t('tournament.entry.position')"
-              :disabled="!form.selected"
-              class="w-28"
-              size="small"
-              maxlength="30"
-            />
+            <div class="flex w-full min-w-0 gap-3 sm:w-auto">
+              <InputNumber
+                v-model="form.jerseyNumber"
+                :placeholder="t('tournament.entry.jersey')"
+                :disabled="!form.selected"
+                :use-grouping="false"
+                :min="1"
+                :max="999"
+                class="w-24 shrink-0"
+                input-class="min-h-11 w-full min-w-0"
+              />
+
+              <InputText
+                v-model="form.position"
+                :placeholder="t('tournament.entry.position')"
+                :disabled="!form.selected"
+                class="min-h-11 min-w-0 flex-1 sm:w-28 sm:flex-none"
+                maxlength="30"
+              />
+            </div>
 
             <InputText
               v-model="form.notes"
               :placeholder="t('tournament.entry.notes')"
               :disabled="!form.selected"
-              class="flex-1"
-              size="small"
-              maxlength="100"
+              class="min-h-11 w-full min-w-0 sm:w-auto sm:flex-1"
+              maxlength="200"
             />
-
-            <Tag v-if="form.isAlreadyEntered" :value="t('tournament.entry.alreadyEntered')" severity="info" />
           </div>
 
           <div class="flex justify-end pt-2">
             <Button
               :label="t('tournament.entry.saveMembers')"
               :loading="saving"
+              class="min-h-11 min-w-11"
               @click="onSaveMembers"
             />
           </div>
@@ -490,11 +503,13 @@ watch(
           icon="pi pi-file-pdf"
           severity="secondary"
           :loading="downloadingPdf"
+          class="min-h-11"
           @click="onDownloadPdf"
         />
         <Button
-          :label="$t('common.close')"
+          :label="$t('button.close')"
           text
+          class="min-h-11"
           @click="emit('close')"
         />
       </div>

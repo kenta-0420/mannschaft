@@ -2,7 +2,9 @@ package com.mannschaft.app.role.service;
 
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.role.dto.MembershipInviteIssuedToken;
+import com.mannschaft.app.role.dto.MembershipInviteTokenCommand;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +25,7 @@ import java.util.UUID;
  *
  * <p>本番では発行 → カード投稿がそれぞれ独立コミットされる Saga となり、カード投稿失敗時は
  * {@link #revokeForCompensation(Long)} でトークンを失効して宙に浮いた PENDING を残さない。
- * 契約テスト（{@code @Transactional}）配下では周囲のテスト tx に参加するため、同一 tx で可視となる。</p>
+     * 発行facadeはNOT_SUPPORTEDで、親再確認の前にrole発行TXを完了する。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -36,33 +38,28 @@ public class MembershipInviteTokenIssuer {
     /**
      * 宛先付き承諾型トークンを発行する（{@code target_user_id} 非 NULL・{@code max_uses = 1}）。
      *
-     * @param scopeType    スコープ種別（{@code TEAM} / {@code ORGANIZATION}）
-     * @param scopeId      招待先チーム/組織 ID
-     * @param roleId       付与ロール ID（非特権のみ・呼出側で検証済み）
-     * @param targetUserId 宛先ユーザー ID（DM 相手）
-     * @param createdBy    発行者ユーザー ID
-     * @param expiresAt    有効期限
+     * @param command 呼出し側の検証済み値と親の発行時世代
      * @return 発行済みトークン
      */
     @Transactional
-    public MembershipInviteIssuedToken issue(String scopeType, Long scopeId, Long roleId,
-                                             Long targetUserId, Long createdBy, LocalDateTime expiresAt) {
+    public MembershipInviteIssuedToken issue(MembershipInviteTokenCommand command) {
         var builder = InviteTokenEntity.builder()
                 .token(UUID.randomUUID().toString())
-                .roleId(roleId)
-                .createdBy(createdBy)
-                .expiresAt(expiresAt)
+                .roleId(command.roleId())
+                .createdBy(command.createdBy())
+                .expiresAt(LocalDateTime.ofInstant(command.expiresAt(), UserZoneLocalDateTimeParser.SERVER_ZONE))
                 .maxUses(1)
                 .usedCount(0)
-                .targetUserId(targetUserId);
-        if ("TEAM".equals(scopeType)) {
-            builder.teamId(scopeId);
+                .targetUserId(command.targetUserId())
+                .scopeClosureGeneration(command.scopeClosureGeneration());
+        if ("TEAM".equals(command.scopeType())) {
+            builder.teamId(command.scopeId());
         } else {
-            builder.organizationId(scopeId);
+            builder.organizationId(command.scopeId());
         }
         InviteTokenEntity token = inviteTokenRepository.save(builder.build());
         log.info("承諾型招待トークン発行: tokenId={}, scopeType={}, scopeId={}, targetUserId={}",
-                token.getId(), scopeType, scopeId, targetUserId);
+                token.getId(), command.scopeType(), command.scopeId(), command.targetUserId());
         return new MembershipInviteIssuedToken(token.getId(), token.getToken());
     }
 
@@ -73,7 +70,10 @@ public class MembershipInviteTokenIssuer {
      */
     @Transactional
     public void revokeForCompensation(Long tokenId) {
-        inviteTokenRepository.findById(tokenId).ifPresent(token -> {
+        inviteTokenRepository.findByIdForUpdate(tokenId).ifPresent(token -> {
+            if (token.getRevokedAt() != null) {
+                return;
+            }
             token.revoke();
             inviteTokenRepository.save(token);
             boolean team = token.getTeamId() != null;

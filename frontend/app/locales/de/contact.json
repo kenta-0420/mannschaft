@@ -1,6 +1,6 @@
 {
   "contact_invite": {
-    "page_title": "Einladungslink-Verwaltung",
+    "page_title": "Einladungslinks und Kontakt-QR-Codes",
     "page_description": "Erstellen und verwalten Sie Einladungslinks zum Hinzufügen von Kontakten. Wer den Link erhält, kann Sie als Kontakt hinzufügen.",
     "create_button": "Neuen Link erstellen",
     "form": {
@@ -44,7 +44,8 @@
       "revoke_error": "Fehler beim Widerrufen",
       "copy_success": "Link kopiert",
       "copy_error": "Fehler beim Kopieren"
-    }
+    },
+    "my_qr": "Mein Kontakt-QR-Code"
   },
   "contact_invite_guide": {
     "title": "So verwenden Sie die Einladungslink-Verwaltung",

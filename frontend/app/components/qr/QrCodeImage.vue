@@ -135,13 +135,13 @@ function buildBadgedSvg(rawSvg: string): string {
 
   const fontSize = w * 0.052
   const padX = w * 0.05
-  const padY = w * 0.04
+  const padY = w * 0.025
   const textW = fontSize * 0.6 * props.centerLabel.length
   const badgeW = Math.min(textW + padX * 2, w * 0.46)
   const badgeH = fontSize + padY * 2
   const cx = w / 2
-  const cy = w / 2 + badgeH * 0.1
-  const rx = w * 0.05
+  const cy = w * 0.54
+  const rx = badgeH / 2
   const strokeW = Math.max(w * 0.009, w / 160)
   const rectX = cx - badgeW / 2
   const rectY = cy - badgeH / 2
@@ -170,16 +170,16 @@ function buildBadgedSvg(rawSvg: string): string {
  * 中央ブランドバッジの寸法を size に比例させるインラインスタイル。
  * scoped CSS で固定 px にすると小さい QR で比率が崩れるため、
  * フォント・パディング・縁取り幅・角丸・白ハローをすべて size 連動にする。
- * 例: size=320 → fontSize≈17px / padding≈13px 16px / border≈3px / radius≈16px。
+ * 例: size=320 → fontSize≈17px / padding≈8px 16px / border≈3px / 左右半円。
  * 枠線色・文字色は frameColor（灰色）を適用する。
  */
 const badgeStyle = computed(() => {
   const s = props.size
   return {
     fontSize: `${Math.round(s * 0.052)}px`,
-    padding: `${Math.round(s * 0.04)}px ${Math.round(s * 0.05)}px`,
+    padding: `${Math.round(s * 0.025)}px ${Math.round(s * 0.05)}px`,
     borderWidth: `${Math.max(2, Math.round(s * 0.009))}px`,
-    borderRadius: `${Math.round(s * 0.05)}px`,
+    borderRadius: '9999px',
     boxShadow: `0 0 0 ${Math.max(3, Math.round(s * 0.013))}px #fff`,
     borderColor: props.frameColor,
     color: props.frameColor,
@@ -226,7 +226,7 @@ defineExpose({
   height: auto;
 }
 /**
- * 中央ブランドバッジ。四角い縁取り（角丸）＋白背景＋太字で "Mannschaft" をフル表示。
+ * 中央ブランドバッジ。左右半円のカプセル枠＋白背景＋太字で "Mannschaft" をフル表示。
  * ellipsis は使わずフル表示する（省略防止）。寸法は badgeStyle（インライン）で size 連動。
  * 枠線色・文字色は badgeStyle 側で frameColor（灰色）を与える（緑QRから独立）。
  * 灰色枠＋白ハローで周囲の緑モジュールから分離しスキャン性を確保する。
@@ -234,11 +234,9 @@ defineExpose({
  */
 .qr-code-image__badge {
   position: absolute;
-  top: 50%;
+  top: 54.3%;
   left: 50%;
-  /* 水平は中央維持。垂直は translateY=10%（中央から自身の高さ0.6個分下）。
-     中央=translateY(-50%)、1個分=100% → 0.6個分下 = -50% + 60% = 10%。
-     translateY(%) は要素自身の高さ基準なので size 非依存。 */
+  /* 余白縮小時の位置補正を維持する。 */
   transform: translate(-50%, 10%);
   display: inline-flex;
   align-items: center;

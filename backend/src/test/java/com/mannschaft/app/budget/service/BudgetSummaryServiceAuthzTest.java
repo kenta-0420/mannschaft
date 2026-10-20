@@ -99,7 +99,7 @@ class BudgetSummaryServiceAuthzTest {
         doNothing().when(accessControlService).checkAdminOrAbove(eq(ACTOR_ID), eq(SCOPE_ID), eq(SCOPE_TYPE));
         given(transactionRepository.findByFiscalYearId(FISCAL_YEAR_ID)).willReturn(Collections.emptyList());
         given(allocationRepository.findByFiscalYearId(FISCAL_YEAR_ID)).willReturn(Collections.emptyList());
-        given(categoryService.listFlatByFiscalYear(FISCAL_YEAR_ID)).willReturn(Collections.emptyList());
+        given(categoryService.listHistoricalByFiscalYear(FISCAL_YEAR_ID)).willReturn(Collections.emptyList());
 
         assertThatCode(() -> service.getFiscalYearSummary(FISCAL_YEAR_ID)).doesNotThrowAnyException();
     }

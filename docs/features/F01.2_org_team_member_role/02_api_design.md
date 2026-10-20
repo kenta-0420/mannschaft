@@ -28,7 +28,7 @@
 | POST | `/api/v1/teams/{slug}/invite-tokens` | 必要（ADMIN / DEPUTY_ADMIN※）| チーム招待トークン発行（※INVITE_MEMBERS + MANAGE_INVITE_TOKENS 権限必要）|
 | GET | `/api/v1/teams/{slug}/invite-tokens` | 必要（ADMIN / DEPUTY_ADMIN※）| チーム招待トークン一覧（※MANAGE_INVITE_TOKENS 権限必要）|
 | DELETE | `/api/v1/teams/{slug}/invite-tokens/{tokenId}` | 必要（ADMIN / DEPUTY_ADMIN※）| 招待トークン失効（※MANAGE_INVITE_TOKENS 権限必要）|
-| GET | `/api/v1/invite/{token}` | 不要 | 招待プレビュー（参加前確認）|
+| GET | `/api/v1/invite/{token}` | 必要 | 招待プレビュー（参加前確認）|
 | POST | `/api/v1/invite/{token}/join` | 必要 | 招待URLで参加 |
 | GET | `/api/v1/teams/{slug}/permission-groups` | 必要（ADMIN）| 権限グループ一覧（`?target_role=DEPUTY_ADMIN\|MEMBER` でフィルタ可）|
 | POST | `/api/v1/teams/{slug}/permission-groups` | 必要（ADMIN）| 権限グループ作成（`target_role` で DEPUTY_ADMIN / MEMBER を指定）|
@@ -181,6 +181,12 @@ DEPUTY_ADMIN・MEMBER 以外のロール、および未割当のメンバーは�
 > 組織作成（`POST /api/v1/organizations`）も同一仕様（slug をユーザー任意入力・必須・エラーコードは `ORG_SLUG_INVALID` / `ORG_SLUG_TAKEN` / `ORG_SLUG_RESERVED`）。
 
 ---
+
+#### 組織作成ダイアログの公開範囲（2026-10-07）
+
+組織作成の選択値は BE 契約どおり `PUBLIC` / `PRIVATE`。非公開ラベルは既存6言語の `label.visibilityPrivate` を使用する。
+旧組織下書きの `MEMBERS_AND_ABOVE` は復元／送信境界だけで `PRIVATE` へ移行する。
+チームの4段階は変更せず、作成対象の種類を切り替えたときは公開範囲を初期値 `PUBLIC` に戻し、別種の enum を持ち越さない。
 
 #### `GET /api/v1/teams/search`
 
@@ -452,54 +458,34 @@ MEMBER / SUPPORTER / GUEST またはチーム非メンバー（PUBLIC / ORGANIZA
 
 ---
 
-#### `GET /api/v1/invite/{token}`（未認証可）
+#### `GET /api/v1/invite/{token}`（認証必須）
 
-**レスポンス（200 OK）**
+現在の `SecurityConfig` と `InviteController` に従い、プレビューは認証後に取得する。未ログインの招待画面はAPIを呼ばず、ログイン・登録を案内する。ログインには招待URL全体を `redirect` で渡す。登録時もこの復帰先を確認メール送信案内のログイン導線まで引き継ぎ、チーム・組織のトークンをβ登録用 `inviteToken` として送らない。確認メールを別タブで直接開いた場合の復帰先永続化は行わない。
 
-チーム招待の場合:
+**レスポンス（200 OK）** — `InvitePreviewResponse` の生成型を正本とする。
+
 ```json
 {
   "data": {
-    "invite_type": "TEAM",
-    "target": {
-      "id": 1,
-      "name": "FCマンシャフト",
-      "icon_url": "https://cdn.mannschaft.app/teams/1/icon.webp"
-    },
-    "role": "MEMBER",
-    "expires_at": "2026-03-08T10:00:00Z",
-    "is_valid": true
+    "targetType": "TEAM",
+    "targetName": "FCマンシャフト",
+    "roleName": "MEMBER",
+    "valid": true
   }
 }
 ```
 
-組織招待の場合:
-```json
-{
-  "data": {
-    "invite_type": "ORGANIZATION",
-    "target": {
-      "id": 5,
-      "name": "〇〇サッカー協会",
-      "icon_url": "https://cdn.mannschaft.app/organizations/5/icon.webp"
-    },
-    "role": "MEMBER",
-    "expires_at": "2026-03-08T10:00:00Z",
-    "is_valid": true
-  }
-}
-```
-
-> - `invite_type`: `"TEAM"` または `"ORGANIZATION"`
-> - `target.id`: チームまたは組織の ID（`invite_type` で解釈を切り替える）
-> - `is_valid = false` の場合は期限切れ・上限到達・手動失効のいずれか（詳細は返さない）
-> - `target` は `is_valid = false` でも返す（参加先の名前をUI表示するため）
+- `targetType`: `TEAM` または `ORGANIZATION`。組織招待も同じ形状。
+- `targetName`: 対象が削除された場合は `null` になり得る。画面は参加先の代替文言を表示する。
+- 参加先ID・アイコン・説明・有効期限は現在のプレビュー応答に含まない。
+- `valid=false` または `ROLE_002` は無効招待として表示する。それ以外の取得失敗は取得エラーとして表示し、同じ取得処理による再試行を提供する。
+- 有効なプレビューでは対象種別に応じた任意のフォルダ選択と参加操作を提供する（F15.3 §7.4）。
 
 **エラーレスポンス**
 | ステータス | 条件 |
 |-----------|------|
-| 404 | トークンが存在しない |
-| 429 | レートリミット超過（10 req/min per IP）|
+| 401 | 未認証 |
+| 400 (`ROLE_002`) | 招待トークンが無効 |
 
 ---
 
@@ -1199,7 +1185,19 @@ ADMIN が別メンバーへオーナー委譲を打診する。この時点で�
 | 401 | 未認証 |
 | 403 | 権限不足（SYSTEM_ADMIN のみ）|
 | 404 | チーム/組織が存在しない |
-| 422 | 論理削除されていない（`deleted_at IS NULL`）|
+| 409 | 論理削除されていない（`deleted_at IS NULL`。復元済みの再実行を含む）|
+
+チーム復元は認可後に削除済み・PROVISIONEDを含む現行slugを解決する。非SYSTEM_ADMINは対象の実在・削除状態にかかわらず403。
+未削除のチームは `TEAM_006`「このチームは削除されていないため、復元できません」を返す。
+同時復元はチーム行のロックで直列化し、成功1件を204、後続を409とする。
+
+復元で戻すのは `deleted_at` のみ。公開範囲・アーカイブ・lifecycle・閉鎖世代・役割・予定は保持し、
+削除前の組織加盟と制限は既存規則どおり同一トランザクションで片付け、加盟自体は復元しない。
+PROVISIONEDは復元後も通常GET・予定APIから404のまま隠す。
+成功コミット後に `TEAM_RESTORED` を既存best-effort監査基盤へ記録し、拒否・失敗・rollbackでは成功監査を残さない。
+チームの復元UIはシステム管理の `/system-admin/teams/deleted` に置き、専用の削除済み一覧から選択する（[F10.1](../F10.1_admin_dashboard.md)）。
+孤児予定の掃除はSYSTEM_ADMINが復元後に既存のチーム予定UIで行い、
+元ADMINがチームを再削除する（元ADMINが不在の場合は別途運用判断が必要）。
 
 ---
 

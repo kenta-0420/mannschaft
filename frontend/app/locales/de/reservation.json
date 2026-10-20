@@ -183,6 +183,11 @@
         "advanced": { "title": "Erweiterte Einstellungen", "description": "Sichtbarkeit und Benachrichtigungen" }
       }
     },
+    "history": {
+      "date_unavailable": "Datum nicht verfügbar",
+      "time_unavailable": "Uhrzeit nicht verfügbar",
+      "line_unavailable": "Buchungsobjekt nicht verfügbar"
+    },
     "column": {
       "datetime": "Datum & Uhrzeit",
       "line": "Buchbares Element",

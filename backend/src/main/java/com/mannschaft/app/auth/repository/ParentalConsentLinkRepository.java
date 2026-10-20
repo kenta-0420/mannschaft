@@ -5,6 +5,8 @@ import com.mannschaft.app.auth.entity.ParentalConsentLinkEntity;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
@@ -58,6 +60,26 @@ public interface ParentalConsentLinkRepository extends JpaRepository<ParentalCon
      * @return 一致する同意リンク（存在しない場合は空 Optional）
      */
     Optional<ParentalConsentLinkEntity> findByTokenHash(String tokenHash);
+
+    /** 判断前はEntityをloadせずchild IDのみ読む。RR snapshot後の本読取はFOR UPDATEを使う。 */
+    @Query("select l.childUserId from ParentalConsentLinkEntity l where l.tokenHash = :tokenHash")
+    Optional<Long> findChildUserIdByTokenHash(@Param("tokenHash") String tokenHash);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select l from ParentalConsentLinkEntity l where l.tokenHash = :tokenHash")
+    Optional<ParentalConsentLinkEntity> findByTokenHashForUpdate(@Param("tokenHash") String tokenHash);
+
+    /** usersの後、同じ子のリンクをID昇順でcurrent readする。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select l from ParentalConsentLinkEntity l where l.childUserId = :childUserId order by l.id")
+    List<ParentalConsentLinkEntity> findByChildUserIdForUpdate(@Param("childUserId") Long childUserId);
+
+    /** cleanupはusersを全件昇順で先にlockするため、候補はscalarだけを読む。 */
+    @Query("select distinct l.childUserId from ParentalConsentLinkEntity l "
+            + "where l.status = :status and l.expiresAt < :threshold order by l.childUserId")
+    List<Long> findExpiredChildUserIds(@Param("status") ParentalConsentLinkStatus status,
+                                      @Param("threshold") LocalDateTime threshold);
+
 
     /**
      * 子ユーザーとステータスで同意リンク数をカウントする。

@@ -86,6 +86,7 @@ export const WidgetKeyMap: Record<
   // F02.3 プロジェクト進捗
   projects: { team: 'TEAM_PROJECT_PROGRESS', organization: 'ORG_PROJECT_PROGRESS' },
   // --- personal スコープ（対象3-B / #1849 で確定した BE WidgetKey） ---
+  'dinosaur-ranch': { personal: 'PERSONAL_DINOSAUR_RANCH' },
   'event-dismissal-reminder': { personal: 'PERSONAL_EVENT_DISMISSAL_REMINDER' },
   notices: { personal: 'NOTICES' },
   'my-calendar': { personal: 'PERSONAL_CALENDAR' },
@@ -162,6 +163,7 @@ export function backendKeyForWidget(
 }
 
 const ALL_WIDGETS: WidgetDefinition[] = [
+  { key: 'dinosaur-ranch', label: '恐竜の部屋', labelKey: 'ranch.title', icon: 'pi pi-sparkles', description: '自分の恐竜の分身', descriptionKey: 'ranch.avatar.description', scope: ['personal'] },
   {
     key: 'return-stay-plan',
     label: '帰省・滞在予定',
@@ -656,7 +658,7 @@ export function useDashboardWidgets(
   )
 
   // ====================================================================
-  // personal / team / organization: DB 永続化（SSR で順序確定 → 初回描画から保存順）
+  // personal / team / organization: 本人認証後に DB 設定を読み、確定後に描画する
   // personal は scope_id=0 として BE が個人設定を識別する
   // ====================================================================
   if (isApiScope) {
@@ -684,8 +686,8 @@ export function useDashboardWidgets(
       hiddenKeys.value = hidden
     }
 
-    // useAsyncData で SSR 時にサーバ取得し、初期描画時点で保存順を確定させる。
-    // これにより onMounted 後の再ソート＝再描画アニメ／hydration mismatch を排除する。
+    // 本人認証は client plugin で復元されるため、私的設定はブラウザーで取得する。
+    // SSR の認証なし応答を payload に固定すると、reload 後に保存済み非表示が失われる。
     // personal スコープの場合は scopeId=undefined（scope_id=0 相当として BE が識別）。
     const effectiveScopeId = apiScopeType === 'personal' ? undefined : resolvedId
     const dataKey = `dashboard-widgets:${apiScopeType}:${effectiveScopeId ?? '0'}`
@@ -697,7 +699,7 @@ export function useDashboardWidgets(
         })
         return res.data
       },
-      { default: () => [] as WidgetSettingResponse[] },
+      { server: false, default: () => [] as WidgetSettingResponse[] },
     )
 
     watch(
@@ -709,9 +711,9 @@ export function useDashboardWidgets(
     )
 
     // 並び順が確定する（success/error）まではウィジェットを描画させないためのフラグ。
-    // クライアント遷移時は useAsyncData が後追いで解決するため、確定前に描画すると
+    // 初回 hydration とクライアント遷移では取得が後追いで解決するため、確定前に描画すると
     // 「デフォルト順→保存順」の位置ジャンプが見える。確定後に初描画することで根絶する。
-    // SSR/ペイロードキャッシュ時は描画時点で既に success のため初回から保存順で出る。
+    // SSR では idle のまま既定設定を描画せず、本人 GET の確定後に保存順で出す。
     const ready = computed(() => status.value === 'success' || status.value === 'error')
 
     /**

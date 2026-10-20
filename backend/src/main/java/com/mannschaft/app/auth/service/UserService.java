@@ -81,7 +81,28 @@ public class UserService {
             boolean publicProfileEnabled) {
     }
 
+    /** 他ドメインへ公開する最小の本人状態。inactive時にPIIを返さない。 */
+    public record ActiveDisplayState(boolean active, String displayName) { }
+
+    /** 候補ページの本人状態を集合照会する。 */
+    public Map<Long, ActiveDisplayState> getActiveDisplayStates(Collection<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> ids = userIds.stream().filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, ActiveDisplayState> states = new LinkedHashMap<>();
+        for (UserRepository.ActiveDisplayStateRow row : userRepository.findActiveDisplayStateRows(ids)) {
+            boolean active = Boolean.TRUE.equals(row.getActive());
+            states.put(row.getId(), new ActiveDisplayState(active, active ? row.getDisplayName() : null));
+        }
+        return Map.copyOf(states);
+    }
+
     private final UserRepository userRepository;
+    private final UserRowLockService userRowLockService;
     private final EmailChangeTokenRepository emailChangeTokenRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final OAuthAccountRepository oauthAccountRepository;
@@ -264,7 +285,12 @@ public class UserService {
      */
     @Transactional
     public ApiResponse<UserProfileResponse> updateProfile(Long userId, UpdateProfileRequest req) {
+        // ACTIVE以外もlockは取得する。既存FROZENプロフィール資格は維持し、削除済みだけ明示拒否する。
+        userRowLockService.lock(userId);
         UserEntity user = findUserOrThrow(userId);
+        if (user.getDeletedAt() != null) {
+            throw new BusinessException(AuthErrorCode.AUTH_005);
+        }
 
         // countryCode バリデーション（ISO 3166-1 alpha-2: アルファベット大文字2文字）
         if (req.getCountryCode() != null && !COUNTRY_CODE_PATTERN.matcher(req.getCountryCode()).matches()) {

@@ -73,6 +73,27 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
     List<Object[]> aggregateGroupSummaries(@Param("groupIds") Collection<UUID> groupIds);
 
     /**
+     * 本人履歴のグループを代表予約IDごとに集約する。
+     *
+     * <p>同じグループIDでも予約の本人・チームが一致する兄弟行だけを数える。
+     * 枠は削除済みも含めるため native SQL を使い、同チームの枠へ LEFT JOIN する。
+     * 不在・他チームの枠が一つでもあれば、既知の予約件数は維持し終了時刻を不明とする。
+     * TIME のまま返し、Entity と同じ Hibernate の JDBC 時刻変換を適用する。
+     * CHAR 化すると UTC 保管値が未変換で返り、業務時刻からずれる。</p>
+     *
+     * @return [代表予約ID(Number), 兄弟予約件数(Number), 末尾時刻(java.sql.Time、参照不明時null)]
+     */
+    @Query(value = "SELECT p.id, COUNT(r.id), "
+            + "CASE WHEN COUNT(s.id) = COUNT(r.id) THEN MAX(s.end_time) ELSE NULL END "
+            + "FROM reservations p JOIN reservations r ON r.group_id = p.group_id "
+            + "AND r.team_id = p.team_id AND r.user_id = p.user_id AND r.deleted_at IS NULL "
+            + "LEFT JOIN reservation_slots s ON s.id = r.reservation_slot_id AND s.team_id = r.team_id "
+            + "WHERE p.id IN (:reservationIds) AND p.user_id = :userId "
+            + "AND p.deleted_at IS NULL AND p.is_group_primary = TRUE GROUP BY p.id", nativeQuery = true)
+    List<Object[]> aggregateGroupsForHistory(@Param("reservationIds") Collection<Long> reservationIds,
+            @Param("userId") Long userId);
+
+    /**
      * IDとユーザーIDで予約を取得する。
      */
     Optional<ReservationEntity> findByIdAndUserId(Long id, Long userId);

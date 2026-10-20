@@ -648,11 +648,12 @@ public class TeamController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
             description = "SYSTEM_ADMIN でない（当該チームの ADMIN であっても不可）")
     public ResponseEntity<Void> restoreTeam(@PathVariable String slug) {
-        Long id = teamService.resolveTeamId(slug);
         // 本 EP は SYSTEM_ADMIN 専用（@Operation summary・TeamService#restoreTeam の宣言どおり）。
         // チーム ADMIN に開放すると自チームを任意に復活させられるため checkAdminOrAbove では緩すぎる。
-        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
-        teamService.restoreTeam(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkSystemAdmin(userId);
+        Long id = teamService.resolveTeamIdForRestore(slug);
+        teamService.restoreTeam(id, userId);
         return ResponseEntity.noContent().build();
     }
 

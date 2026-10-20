@@ -1,0 +1,47 @@
+{
+    "campaign":  "CMP-261016-1009",
+    "pr":  3923,
+    "head":  "12a58857f80535a8bc2f675eef0b74c4abf7e62a",
+    "baseMain":  "e12dc538ec21834b7e28905cfcc97900f5b40fdb",
+    "runId":  38844406161,
+    "runUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/38844406161",
+    "conclusion":  "success",
+    "unit":  {
+                 "filesPassed":  609,
+                 "testsPassed":  5984,
+                 "durationSeconds":  958.30,
+                 "target":  "app/components/BaseSidebar.spec.ts",
+                 "targetTestsPassed":  11,
+                 "targetDurationMs":  3716,
+                 "targetIntlifyWarnings":  0
+             },
+    "labelRegression":  {
+                            "red":  "expected \u0027common.loading\u0027 to be \u0027Loading...\u0027 (0 pass / 1 fail)",
+                            "green":  "existing button.loading with real BaseSidebar + VueI18n + en JSON (1 pass / 0 fail)",
+                            "permanentAssertion":  "loading status aria-label equals Loading...",
+                            "targetEslint":  "success",
+                            "diffCheck":  "success"
+                        },
+    "prChecks":  "all success or normal skipped; no pending/failure",
+    "taskListGate":  {
+                         "conclusion":  "success",
+                         "runId":  38845362227,
+                         "fix":  "PR本文のCMP-IDは本件1個だけとし、依存元は台帳参照へ整理"
+                     },
+    "otherSuccessfulChecks":  [
+                                  "Smoke E2E",
+                                  "Lighthouse",
+                                  "OpenAPI Drift",
+                                  "gitleaks",
+                                  "lockfile glibc/musl",
+                                  "Worktree cleanup guard",
+                                  "harness-tests"
+                              ],
+    "remaining":  [
+                      "元のADMIN200後も空Drawerという観測の因果は未確定、rootが実機調査中",
+                      "390/360pxの通常トップ→Drawer→管理/会員証、ロール横断、住民探索はroot担当",
+                      "PR Draft維持、mergeしない"
+                  ],
+    "artifacts":  "downloadable compiled frontend .output/.nuxt artifact無し、workflow変更無し",
+    "unrelatedExistingWarnings":  "MemberTablePermissionGroups.spec.tsにcommon.loading/common.retry未定義警告が残る。今回Sidebar警告は解消し、対象外componentは変更していない。"
+}

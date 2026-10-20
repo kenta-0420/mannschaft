@@ -60,6 +60,11 @@ const Step3 = defineComponent({
   emits: ['submit', 'back'],
   template: `<button data-testid="s3" @click="$emit('submit')">s3</button>`,
 })
+const Step2 = defineComponent({
+  props: ['modelValue'],
+  emits: ['next'],
+  template: `<button data-testid="s2" @click="$emit('next')">s2</button>`,
+})
 const Dialog = defineComponent({
   props: ['visible', 'header'],
   template: `<section v-if="visible"><h2 data-testid="header">{{ header }}</h2><slot /></section>`,
@@ -85,13 +90,19 @@ async function render(step1: unknown) {
       stubs: {
         Dialog, Button,
         BroadcastStep1Audience: step1 as never,
-        BroadcastStep2Channel: true,
+        BroadcastStep2Channel: Step2,
         BroadcastStep3Content: Step3,
         BroadcastGuideContent: true,
       },
     },
   })
   await w.get('[data-testid="s1"]').trigger('click')
+  await flushPromises()
+  expect(w.findComponent(Step2).props('modelValue')).toMatchObject({
+    step: 2,
+    selectedChannel: 'BULLETIN_THREAD',
+  })
+  await w.get('[data-testid="s2"]').trigger('click')
   await flushPromises()
   await w.get('[data-testid="s3"]').trigger('click')
   await flushPromises()

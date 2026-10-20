@@ -1,0 +1,82 @@
+{
+    "personaId":  "R3",
+    "type":  "一般×隙間狙い",
+    "journeyId":  "mobile-menu-tenant-boundary",
+    "runId":  "mobile-menu-empty-20261016-R3",
+    "locale":  "ja-JP",
+    "source":  "12a58857f80535a8bc2f675eef0b74c4abf7e62a",
+    "purpose":  "通常入口から自チーム管理へ到達し、別チーム・別組織の管理情報が表示されないことを観測する",
+    "result":  {
+                   "ownTeamManagementReached":  true,
+                   "otherTeamManagementDisplayed":  false,
+                   "otherOrganizationManagementDisplayed":  false,
+                   "scopeReturnedToOwnTeam":  true,
+                   "dataMutations":  "権限変更・削除・作成を実行せず。初回権限モーダルは「あとで決める」で閉じた"
+               },
+    "observations":  [
+                         {
+                             "state":  "03-team-b-modal-390",
+                             "text":  "初期権限モーダルがヘッダーメニューへのクリックを遮り、30秒click timeoutとなった。その後モーダルを実見して「あとで決める」で進めた",
+                             "selector":  "button[aria-label=\"あとで決める\"]",
+                             "box":  {
+                                         "x":  50.71875,
+                                         "y":  649,
+                                         "width":  121.53125,
+                                         "height":  42
+                                     }
+                         },
+                         {
+                             "state":  "05-team-b-admin-390 / 20-return-team-b-stable-360",
+                             "text":  "スコープメニューの実測32x32。ウィジェット設定は高さ35px",
+                             "selector":  "[data-testid=\"scope-sidebar-toggle\"]",
+                             "dimensions":  {
+                                                "width":  32,
+                                                "height":  32
+                                            }
+                         },
+                         {
+                             "state":  "07-team-b-scope-drawer-stable-390 / 08-team-b-settings-expanded-390 / 22-return-team-b-drawer-stable-360",
+                             "text":  "ドロワーの主要カテゴリ36px高、子リンク32px高、閉じる40x40。管理コンソールへ実クリックで到達できた",
+                             "selector":  ".p-drawer-content a[href=\"/teams/mobile-menu-20261016-team-b/admin\"]",
+                             "box":  {
+                                         "x":  32,
+                                         "y":  768,
+                                         "width":  231,
+                                         "height":  32
+                                     }
+                         },
+                         {
+                             "state":  "12-team-b-members-stable-390 / 13-team-b-members-360",
+                             "text":  "メンバー表は狭幅で名前・ロールが縦に折返し、予定色以右の列はviewport外。ページ横パンは0px。表内横スクロールとページ横パンを区別し、不備は断定しない",
+                             "selector":  "[data-testid=\"member-permission-groups-3\"]",
+                             "box":  {
+                                         "x":  766.78125,
+                                         "y":  703,
+                                         "width":  32,
+                                         "height":  32
+                                     }
+                         },
+                         {
+                             "state":  "17-org-a-admin-stable-360",
+                             "text":  "403後の同文権限エラートースト2枚が一時表示。情報取得不可本文の上部がトースト背後に隠れた。トースト終了後390画像では本文を実見",
+                             "selector":  "button[aria-label=\"閉じる\"]",
+                             "dimensions":  {
+                                                "width":  28,
+                                                "height":  28
+                                            }
+                         }
+                     ],
+    "limitations":  [
+                        "computed styleを採取できないため文字切れ・重なりの原因は断定していない",
+                        "通常load待ちタイムアウトとstdin終了のdriver問題で2回、旧Browser終了確認後に殿の許可で技術的セッション再作成。最終試行は1BrowserContext、他住民と非共有",
+                        "主要目的にフォーム保存/バリデーションが含まれないため権限を変える送信は実施していない"
+                    ],
+    "pageHorizontalOverflow":  [
+
+                               ],
+    "pageErrors":  [
+
+                   ],
+    "browserClosed":  true,
+    "publicationNote":  "原報告から認証情報・コンソール・全DOM・API本文を除いた抜粋。原報告のIDを保持。"
+}

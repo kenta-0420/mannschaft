@@ -43,6 +43,9 @@ class DataExportServiceTest {
     private EmailOutboxService emailOutboxService;
 
     @Mock
+    private org.springframework.transaction.PlatformTransactionManager transactionManager;
+
+    @Mock
     private UserRepository userRepository;
 
     @InjectMocks
