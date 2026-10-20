@@ -8,6 +8,7 @@ import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.reservation.service.ReservationReminderDispatchRunner;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -56,6 +58,7 @@ public class ReservationReminderDispatchNotificationListener {
     private final ReservationReminderDispatchRunner reminderRunner;
     private final UserLocaleCache userLocaleCache;
     private final MessageSource messageSource;
+    private final Clock clock;
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
             reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。予約リマインドの配信。"
@@ -69,7 +72,8 @@ public class ReservationReminderDispatchNotificationListener {
 
         // 配送の前に印を先取りする。取得できなければ他の配送が担当済みなので何もしない。
         // 戻すときの照合キーにするため、DATETIME(6) で往復できる精度（マイクロ秒）に丸める。
-        LocalDateTime claimedAt = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS);
+        LocalDateTime claimedAt = LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE))
+                .truncatedTo(ChronoUnit.MICROS);
         try {
             if (!reminderRunner.claim(event.reminderId(), claimedAt)) {
                 log.info("予約リマインドは配送済みまたは他の配送が担当済みのためスキップ: reminderId={}, reservationId={}",
@@ -92,8 +96,8 @@ public class ReservationReminderDispatchNotificationListener {
                         request.recipientUserId(), request.notificationType(),
                         request.sourceType(), request.sourceId());
             } else {
-                log.info("予約リマインド送出: reservationId={}, userId={}, slotStartAt={}",
-                        event.reservationId(), event.userId(), event.slotStartAt());
+                log.info("予約リマインド送出: reservationId={}, userId={}, slotDate={}, slotStartTime={}",
+                        event.reservationId(), event.userId(), event.slotDate(), event.slotStartTime());
             }
         } catch (Exception e) {
             // 非同期イベント失敗の監査記録（規約上必須）。catch は TX 外なので rollback で消えない。
@@ -116,7 +120,7 @@ public class ReservationReminderDispatchNotificationListener {
     /** 通知配送要求を組み立てる（業務TX外・AFTER_COMMIT 後に実行される）。 */
     private NotificationDeliveryRequest buildRequest(ReservationReminderDispatchEvent event) {
         Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(event.userId()));
-        String slotAtStr = event.slotStartAt().format(SLOT_AT_FORMAT);
+        String slotAtStr = event.slotDate().atTime(event.slotStartTime()).format(SLOT_AT_FORMAT);
         String slotTitle = event.slotTitle() != null ? event.slotTitle()
                 : messageSource.getMessage("notification.reservation.common.defaultSlotTitle", null, "ご予約", locale);
 

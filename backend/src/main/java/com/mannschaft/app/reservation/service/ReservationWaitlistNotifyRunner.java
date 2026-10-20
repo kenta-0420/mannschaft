@@ -12,7 +12,9 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -49,7 +51,7 @@ public class ReservationWaitlistNotifyRunner {
     private final ReservationWaitlistEntryRepository waitlistRepository;
 
     /** 通知候補の 1 行。{@code prevNotifiedAt} は失敗時に戻す値。 */
-    public record Target(UUID entryId, Long userId, LocalDateTime prevNotifiedAt) {
+    public record Target(UUID entryId, Long userId, Instant prevNotifiedAt) {
     }
 
     /** 通知候補の一覧と、文面に使う枠の情報。 */
@@ -73,7 +75,8 @@ public class ReservationWaitlistNotifyRunner {
         }
         List<Target> targets = waitlistRepository.findBySlotIdAndStatus(slotId, WaitlistStatus.WAITING).stream()
                 .filter(entry -> isNotifiable(entry.getNotifiedAt(), suppressBefore))
-                .map(entry -> new Target(entry.getId(), entry.getUserId(), entry.getNotifiedAt()))
+                .map(entry -> new Target(entry.getId(), entry.getUserId(),
+                        entry.getNotifiedAt() == null ? null : entry.getNotifiedAt().toInstant(ZoneOffset.UTC)))
                 .toList();
         if (targets.isEmpty()) {
             return null;
@@ -101,8 +104,9 @@ public class ReservationWaitlistNotifyRunner {
      * 取り直した新しい印は消さない（0 件更新はエラー扱いにしない）。</p>
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void release(UUID entryId, LocalDateTime claimedAt, LocalDateTime prevNotifiedAt) {
-        int updated = waitlistRepository.releaseNotification(entryId, claimedAt, prevNotifiedAt);
+    public void release(UUID entryId, LocalDateTime claimedAt, Instant prevNotifiedAt) {
+        LocalDateTime prev = prevNotifiedAt == null ? null : LocalDateTime.ofInstant(prevNotifiedAt, ZoneOffset.UTC);
+        int updated = waitlistRepository.releaseNotification(entryId, claimedAt, prev);
         if (updated == 0) {
             log.info("キャンセル待ち通知の印は戻さなかった（別の周回が取り直した等）: entryId={}", entryId);
         }

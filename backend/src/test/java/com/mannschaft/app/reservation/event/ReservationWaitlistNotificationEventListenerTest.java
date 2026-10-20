@@ -80,7 +80,7 @@ class ReservationWaitlistNotificationEventListenerTest {
     }
 
     private static Target target(long userId, LocalDateTime prev) {
-        return new Target(UUID.randomUUID(), userId, prev);
+        return new Target(UUID.randomUUID(), userId, prev == null ? null : prev.toInstant(ZoneOffset.UTC));
     }
 
     private void givenTargets(Target... targets) {
@@ -182,7 +182,7 @@ class ReservationWaitlistNotificationEventListenerTest {
 
         fire();
 
-        verify(notifyRunner).release(failing.entryId(), NOW, prev);
+        verify(notifyRunner).release(failing.entryId(), NOW, prev.toInstant(ZoneOffset.UTC));
         verify(notifyRunner, never()).release(eq(ok.entryId()), any(), any());
         verify(deliveryRunner, times(2)).sendOne(any());
     }

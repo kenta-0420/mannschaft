@@ -138,7 +138,8 @@ class ReservationReminderDispatchBatchServiceTest {
             assertThat(event.reservationId()).isEqualTo(RESERVATION_ID);
             assertThat(event.teamId()).isEqualTo(TEAM_ID);
             assertThat(event.userId()).isEqualTo(USER_ID);
-            assertThat(event.slotStartAt()).isEqualTo(LocalDateTime.of(2026, 4, 2, 10, 0));
+            assertThat(event.slotDate()).isEqualTo(LocalDate.of(2026, 4, 2));
+            assertThat(event.slotStartTime()).isEqualTo(LocalTime.of(10, 0));
             assertThat(event.slotTitle()).isEqualTo("整体60分コース");
         }
 

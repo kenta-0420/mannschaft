@@ -40,7 +40,7 @@ import static org.mockito.Mockito.verify;
 class ReservationReminderDispatchNotificationListenerTest {
 
     private static final ReservationReminderDispatchEvent EVENT = new ReservationReminderDispatchEvent(
-            1L, 100L, 300L, 400L, LocalDateTime.of(2026, 4, 2, 10, 0), "整体60分コース");
+            1L, 100L, 300L, 400L, java.time.LocalDate.of(2026, 4, 2), java.time.LocalTime.of(10, 0), "整体60分コース");
 
     @Mock
     private NotificationDeliveryRunner deliveryRunner;
@@ -64,7 +64,7 @@ class ReservationReminderDispatchNotificationListenerTest {
     void setUp() {
         lenient().when(userLocaleCache.getLocale(anyLong())).thenReturn("ja");
         listener = new ReservationReminderDispatchNotificationListener(
-                deliveryRunner, reminderRunner, userLocaleCache, messageSource);
+                deliveryRunner, reminderRunner, userLocaleCache, messageSource, java.time.Clock.systemUTC());
     }
 
     @Test
@@ -157,7 +157,7 @@ class ReservationReminderDispatchNotificationListenerTest {
     @DisplayName("受信者がいない（userId null）なら何もしない")
     void 受信者なしは何もしない() {
         listener.onReservationReminderDispatch(new ReservationReminderDispatchEvent(
-                1L, 100L, 300L, null, LocalDateTime.of(2026, 4, 2, 10, 0), "枠"));
+                1L, 100L, 300L, null, java.time.LocalDate.of(2026, 4, 2), java.time.LocalTime.of(10, 0), "枠"));
 
         verify(reminderRunner, never()).claim(any(), any());
         verify(deliveryRunner, never()).sendOne(any());

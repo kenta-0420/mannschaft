@@ -720,7 +720,7 @@ class ReservationNotificationTransactionIT extends AbstractMySqlIntegrationTest 
         ReminderFx fx = reminderFixture(1);
         ReservationReminderDispatchEvent event = new ReservationReminderDispatchEvent(
                 fx.reminderIds.get(0), fx.reservationIds.get(0), fx.teamId, fx.userIds.get(0),
-                LocalDateTime.of(FUTURE, LocalTime.of(10, 0)), "二重");
+                FUTURE, LocalTime.of(10, 0), "二重");
 
         // 2 つの項目TXが同じリマインダーを publish した状況（次周回／管理画面の再実行が配送完了前に走った）を再現する。
         transactionTemplate.executeWithoutResult(tx -> eventPublisher.publishEvent(event));

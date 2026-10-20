@@ -110,7 +110,8 @@ public class ReservationReminderDispatchBatchService {
                         reservation.getId(),
                         reservation.getTeamId(),
                         reservation.getUserId(),
-                        slot.getSlotDate().atTime(slot.getStartTime()),
+                        slot.getSlotDate(),
+                        slot.getStartTime(),
                         slot.getTitle()))) {
                     published++;
                 }

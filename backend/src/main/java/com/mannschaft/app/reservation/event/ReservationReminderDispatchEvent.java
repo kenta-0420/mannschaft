@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.event;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 /**
  * 予約リマインドの通知配送要求イベント（Issue #2997 / CMP-260827-1152 G3）。
@@ -18,7 +19,8 @@ import java.time.LocalDateTime;
  * @param reservationId 予約ID（通知の source）
  * @param teamId        チームID
  * @param userId        予約者（受信者）ユーザーID
- * @param slotStartAt   枠の開始日時（業務ローカル時刻）
+ * @param slotDate      枠の開催日（業務ローカル）
+ * @param slotStartTime 枠の開始時刻（業務ローカル）
  * @param slotTitle     枠タイトル（無ければ {@code null}）
  */
 public record ReservationReminderDispatchEvent(
@@ -26,6 +28,7 @@ public record ReservationReminderDispatchEvent(
         Long reservationId,
         Long teamId,
         Long userId,
-        LocalDateTime slotStartAt,
+        LocalDate slotDate,
+        LocalTime slotStartTime,
         String slotTitle) {
 }
