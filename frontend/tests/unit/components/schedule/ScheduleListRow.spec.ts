@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { ref } from 'vue'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { setActivePinia, createPinia } from 'pinia'
 import ScheduleListRow from '~/components/schedule/ScheduleListRow.vue'
@@ -20,7 +21,7 @@ import { useAuthStore } from '~/stores/useAuthStore'
 
 const mockNavigate = vi.fn()
 
-mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
+mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key, locale: ref('en') }))
 mockNuxtImport('useScheduleApi', () => () => ({
   respondAttendance: vi.fn(),
 }))

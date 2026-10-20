@@ -54,6 +54,8 @@ export function useTeamArchiveAction(
 
   function request() {
     if (!available.value || busy.value || syncError.value) return
+    // 専用groupを開く前に既存の確認を閉じ、確認画面を二重表示しない。
+    confirm.close()
     const confirmationId = ++confirmationSeq
     const targetSlug = slug.value
     const wasArchived = archived.value
@@ -62,11 +64,14 @@ export function useTeamArchiveAction(
     let accepted = false
     let completed = false
     confirm.require({
+      group: 'team-archive',
       message: t(wasArchived ? 'teamShell.archive.unarchiveConfirm' : 'teamShell.archive.archiveConfirm'),
       header: t(wasArchived ? 'teamShell.archive.unarchive' : 'teamShell.archive.archive'),
       icon: 'pi pi-exclamation-triangle',
       rejectLabel: t('button.cancel'),
       acceptLabel: t(wasArchived ? 'teamShell.archive.unarchive' : 'teamShell.archive.archive'),
+      acceptClass: 'min-h-11 min-w-11',
+      rejectClass: 'min-h-11 min-w-11',
       reject: () => { if (confirmationId === confirmationSeq) busy.value = false },
       accept: async () => {
         if (accepted || confirmationId !== confirmationSeq) return

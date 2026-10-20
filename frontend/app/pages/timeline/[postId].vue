@@ -133,6 +133,7 @@ onMounted(() => loadPost())
         :replies-accordion="false"
         @mitayo-toggled="onMitayoToggled"
         @bookmark="onBookmark"
+        @edited="loadPost"
         @click-post="() => {}"
       />
 

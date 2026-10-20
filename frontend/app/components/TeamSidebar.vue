@@ -5,7 +5,7 @@ const props = defineProps<{
   teamId: string
 }>()
 
-const categories: SidebarCategory[] = [
+const categories = computed<SidebarCategory[]>(() => [
   {
     key: 'home',
     labelKey: 'teamSidebar.category.home',
@@ -80,6 +80,7 @@ const categories: SidebarCategory[] = [
     labelKey: 'teamSidebar.category.ops_admin',
     icon: 'pi pi-wallet',
     items: [
+      { labelKey: 'loyalty.scan.title', icon: 'pi pi-qrcode', path: 'loyalty', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN', access: 'loyalty-operate' },
       { labelKey: 'teamSidebar.item.budget', icon: 'pi pi-wallet', path: 'budget', moduleSlug: 'budget', requiredRole: 'DEPUTY_ADMIN' },
       // CMP-260907-0851: 領収書はチームスコープでも発行できる（BE ReceiptScopeType に TEAM がある）ため、
       // 組織サイドバーと同じ条件（payment モジュール有効・DEPUTY_ADMIN 以上）でチームにも導線を置く。
@@ -122,6 +123,7 @@ const categories: SidebarCategory[] = [
     labelKey: 'teamSidebar.category.settings',
     icon: 'pi pi-cog',
     items: [
+      { labelKey: 'loyalty.settings.title', icon: 'pi pi-star', path: 'settings/loyalty', moduleSlug: null, requiredRole: 'ADMIN', access: 'scope-admin' },
       { labelKey: 'teamSidebar.item.guide', icon: 'pi pi-book', path: 'guide', moduleSlug: null, requiredRole: 'MEMBER' },
       // F10.1.1 P2a: 管理コンソール（L2 ハブ）への入口。DEPUTY_ADMIN 以上に表示。
       { labelKey: 'teamSidebar.item.adminConsole', icon: 'pi pi-shield', path: 'admin', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
@@ -151,11 +153,12 @@ const categories: SidebarCategory[] = [
       { labelKey: 'teamSidebar.item.bulletinCategories', icon: 'pi pi-tags', path: '', absolutePath: '/admin/bulletin-categories', moduleSlug: 'bulletin', requiredRole: 'DEPUTY_ADMIN' },
     ],
   },
-]
+])
 </script>
 
 <template>
   <BaseSidebar
+    :key="props.teamId"
     scope-type="team"
     :scope-id="props.teamId"
     :categories="categories"

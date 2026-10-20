@@ -69,9 +69,86 @@ function evidenceJsonLink(cell, cmpId) {
 
 const TOOLING_PATH = /^(?:scripts\/|\.github\/|\.claude\/|docs\/|CLAUDE\.md$|AGENTS\.md$|README\.md$|TEST_CONVENTION\.md$)/;
 
+/** テストコードだけの変更と認めるpath。大文字小文字を区別し、テスト設定（vitest/playwright設定・package.json・build.gradle）は含めない。 */
+const TEST_PATH = /^(?:backend\/src\/test\/|frontend\/tests\/|frontend\/(?:app|server|scripts|eslint-rules)\/.+\.(?:spec|test)\.(?:ts|mjs)$)/;
+const SCOPES = ['app', 'tooling', 'test-only'];
+const NOT_APPLICABLE_SCOPES = new Set(['tooling', 'test-only']);
+
+/** 1pathを app / tooling / test に分類する（先勝ち）。正規形でないpathは常に app とする。 */
+function classifyPath(filePath) {
+  if (typeof filePath !== 'string' || filePath === '') return 'app';
+  if (filePath.startsWith('/') || filePath.startsWith('\\') || filePath.includes('\\')) return 'app';
+  if (filePath.split('/').includes('..') || path.posix.normalize(filePath) !== filePath) return 'app';
+  if (TOOLING_PATH.test(filePath)) return 'tooling';
+  if (TEST_PATH.test(filePath)) return 'test';
+  return 'app';
+}
+
+function classifyFile(file) {
+  if (typeof file === 'string') return [classifyPath(file)];
+  if (!file || typeof file !== 'object' || Array.isArray(file)) return ['app'];
+  const kinds = [classifyPath(file.filename)];
+  if (file.previous_filename !== undefined && file.previous_filename !== null) kinds.push(classifyPath(file.previous_filename));
+  return kinds;
+}
+
+/** 実装PRの変更ファイル（文字列または {filename, previous_filename, status}）から scope を推定する。 */
 export function inferImplementationScope(files) {
   if (!Array.isArray(files) || files.length === 0) throw new Error('実装PRの変更ファイル一覧を取得できません');
-  return files.every(file => TOOLING_PATH.test(typeof file === 'string' ? file : file.filename ?? '')) ? 'tooling' : 'app';
+  let hasTest = false;
+  for (const file of files) {
+    for (const kind of classifyFile(file)) {
+      if (kind === 'app') return 'app';
+      if (kind === 'test') hasTest = true;
+    }
+  }
+  return hasTest ? 'test-only' : 'tooling';
+}
+
+function parseTimestamp(value, label) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const time = Date.parse(value);
+  if (Number.isNaN(time)) throw new Error(`${label} の時刻が不正です: ${value}`);
+  return time;
+}
+
+/**
+ * 実装PRのマージ時点の世代だけで check/status を要約する。
+ * 同じhead SHAから後で開かれた別PRのcheck（マージ後に開始）は無視し、マージ時点で実行中だったcheckは拒否する。
+ */
+export function summarizeImplementationChecks({ checkRuns, statuses, mergedAt } = {}) {
+  const mergedTime = typeof mergedAt === 'string' ? Date.parse(mergedAt) : Number.NaN;
+  if (Number.isNaN(mergedTime)) throw new Error(`実装PRのmergedAtが欠落または不正です: ${mergedAt}`);
+  if (!Array.isArray(checkRuns) || !Array.isArray(statuses)) throw new Error('実装PRのcheck/status一覧を取得できません');
+  const latestChecks = new Map();
+  for (const check of checkRuns) {
+    const name = check?.name;
+    const started = parseTimestamp(check?.started_at, `check ${name}`);
+    const completed = parseTimestamp(check?.completed_at, `check ${name}`);
+    if (completed !== null && completed <= mergedTime) {
+      const current = latestChecks.get(name);
+      if (!current || completed > current.completed || (completed === current.completed && (check.id ?? 0) > (current.id ?? 0))) {
+        latestChecks.set(name, { completed, id: check.id, conclusion: check.conclusion });
+      }
+    } else if (started === null || started <= mergedTime) {
+      throw new Error(`check ${name} はマージ時点で実行中でした（started_at=${check?.started_at}, completed_at=${check?.completed_at}）`);
+    }
+  }
+  const latestStatuses = new Map();
+  for (const status of statuses) {
+    const created = parseTimestamp(status?.created_at, `status ${status?.context}`);
+    if (created === null || created > mergedTime) continue;
+    const current = latestStatuses.get(status.context);
+    if (!current || created > current.created || (created === current.created && (status.id ?? 0) > (current.id ?? 0))) {
+      latestStatuses.set(status.context, { created, id: status.id, state: status.state });
+    }
+  }
+  const summary = [
+    ...[...latestChecks.values()].map(check => String(check.conclusion)),
+    ...[...latestStatuses.values()].map(status => status.state === 'success' ? 'success' : String(status.state)),
+  ];
+  if (summary.length === 0) throw new Error('実装PRのマージ時点までに完了したcheck/statusがありません');
+  return summary;
 }
 
 /** 完了遷移または変更された完了証拠だけを返す。未変更の過去証拠はAPI取得対象にしない。 */
@@ -138,7 +215,7 @@ export function validateEvidence(evidence, cmpId, options = {}) {
   if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) throw new Error(`${cmpId}: 証拠JSONが空または不正です`);
   if (evidence.schemaVersion !== 1) throw new Error(`${cmpId}: schemaVersion は1でなければなりません`);
   if (evidence.cmpId !== cmpId) throw new Error(`${cmpId}: cmpId が一致しません`);
-  if (!['app', 'tooling'].includes(evidence.scope)) throw new Error(`${cmpId}: scope はapp/toolingのいずれかが必要です`);
+  if (!SCOPES.includes(evidence.scope)) throw new Error(`${cmpId}: scope はapp/tooling/test-onlyのいずれかが必要です`);
   if (!evidence.implementation || !Number.isSafeInteger(evidence.implementation.pr) || evidence.implementation.pr < 1 || !/^[0-9a-f]{40}$/i.test(evidence.implementation.sha ?? '')) {
     throw new Error(`${cmpId}: implementation PR/head SHAが不正です`);
   }
@@ -165,7 +242,9 @@ export function validateEvidence(evidence, cmpId, options = {}) {
     if (stage.status === 'passed') validateReference(stage.evidence, cmpId, options);
     if (stage.status === 'not-applicable') {
       if (typeof stage.reason !== 'string' || !stage.reason.trim()) throw new Error(`${cmpId}: ${name} not-applicableにreasonが必要です`);
-      if ((name === 'real' || name === 'exploratory') && (evidence.scope !== 'tooling' || stage.scope !== 'tooling')) throw new Error(`${cmpId}: appでは実機・探索をnot-applicableにできません`);
+      if ((name === 'real' || name === 'exploratory') && (!NOT_APPLICABLE_SCOPES.has(evidence.scope) || stage.scope !== evidence.scope)) {
+        throw new Error(`${cmpId}: 実機・探索のnot-applicableはtooling/test-onlyで、stage.scopeが証拠のscopeと一致する場合だけです`);
+      }
     }
   }
   if (evidence.scope === 'app' && (stages.real.status !== 'passed' || stages.exploratory.status !== 'passed')) throw new Error(`${cmpId}: appはrealとexploratoryがpassed必須です`);
@@ -187,7 +266,8 @@ export function validateEvidence(evidence, cmpId, options = {}) {
     if (!Array.isArray(implementation.checks) || implementation.checks.length === 0 || !implementation.checks.includes('success') || implementation.checks.some(conclusion => !acceptableChecks.has(conclusion))) {
       throw new Error(`${cmpId}: 実装PR head SHAに失敗・未完了checkがあるか成功checkがありません`);
     }
-    if (inferImplementationScope(implementation.files) !== evidence.scope) throw new Error(`${cmpId}: scopeが実装PRの変更ファイル範囲と一致しません`);
+    const inferredScope = inferImplementationScope(implementation.files);
+    if (inferredScope !== evidence.scope && evidence.scope !== 'app') throw new Error(`${cmpId}: scopeが実装PRの変更ファイル範囲と一致しません`);
   }
   if (options.runs) {
     for (const ci of evidence.ci) {

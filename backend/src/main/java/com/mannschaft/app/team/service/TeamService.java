@@ -5,10 +5,12 @@ import com.mannschaft.app.common.duplicatename.DuplicateNameGuardService;
 import com.mannschaft.app.common.duplicatename.DuplicateNameNormalizer;
 import com.mannschaft.app.common.duplicatename.DuplicateNameScopeKind;
 import com.mannschaft.app.common.EnumInputParser;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.event.TeamArchivedEvent;
 import com.mannschaft.app.team.event.TeamCreatedEvent;
 import com.mannschaft.app.team.event.TeamDeletedEvent;
+import com.mannschaft.app.team.event.TeamRestoredEvent;
 import com.mannschaft.app.team.event.TeamMemberRemovedEvent;
 import com.mannschaft.app.team.event.TeamUnarchivedEvent;
 import com.mannschaft.app.team.repository.TeamRepository;
@@ -18,8 +20,10 @@ import com.mannschaft.app.team.entity.TeamSlugHistoryEntity;
 import com.mannschaft.app.common.dto.SlugAvailabilityResponse;
 import com.mannschaft.app.common.dto.SlugResolveResponse;
 import com.mannschaft.app.team.TeamErrorCode;
+import com.mannschaft.app.team.SystemAdminTeamSummaryMapper;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.event.PersonalInviteScopeClosedEvent;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
@@ -44,6 +48,7 @@ import com.mannschaft.app.common.util.SlugValidator;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.team.dto.CreateTeamRequest;
+import com.mannschaft.app.team.dto.DeletedTeamSummaryResponse;
 import com.mannschaft.app.team.dto.TeamPublicDetailResponse;
 import com.mannschaft.app.team.dto.TeamResponse;
 import com.mannschaft.app.team.dto.TeamSummaryResponse;
@@ -67,6 +72,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -80,7 +86,28 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class TeamService {
 
+    /** 受付申請投影用の現在のチーム状態。 */
+    public record ActiveState(boolean active, String displayName) { }
+
+    /** 候補ページのチーム状態を集合照会する。 */
+    public Map<Long, ActiveState> getActiveStates(Collection<Long> teamIds) {
+        if (teamIds == null || teamIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> ids = teamIds.stream().filter(java.util.Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, ActiveState> states = new java.util.LinkedHashMap<>();
+        for (TeamRepository.ActiveStateRow row : teamRepository.findActiveStateRows(ids)) {
+            boolean active = Boolean.TRUE.equals(row.getActive());
+            states.put(row.getId(), new ActiveState(active, active ? row.getName() : null));
+        }
+        return Map.copyOf(states);
+    }
+
     private final TeamRepository teamRepository;
+    private final SystemAdminTeamSummaryMapper systemAdminTeamSummaryMapper;
     private final TeamSlugHistoryRepository teamSlugHistoryRepository;
     private final TeamBlockRepository teamBlockRepository;
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
@@ -101,6 +128,16 @@ public class TeamService {
     private final AdminRoleMutationLockService adminRoleMutationLockService;
     private final DuplicateNameGuardService duplicateNameGuardService;
     private final TeamOrgLifecycleCleanupService teamOrgLifecycleCleanupService;
+
+    /** SYSパス認可後の復元対象一覧。外部sortは破棄し、削除日時・IDの固定順だけを使う。 */
+    public PagedResponse<DeletedTeamSummaryResponse> getDeletedTeamsForSystemAdmin(Pageable pageable) {
+        var fixedPage = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+        var result = teamRepository.findDeletedTeamsForSystemAdmin(fixedPage)
+                .map(systemAdminTeamSummaryMapper::toDeletedSummary);
+        var meta = new PagedResponse.PageMeta(result.getTotalElements(), result.getNumber(),
+                result.getSize(), result.getTotalPages());
+        return PagedResponse.of(result.getContent(), meta);
+    }
 
     /**
      * チームを作成し、作成者をADMINロールで紐付ける。
@@ -760,6 +797,7 @@ public class TeamService {
         TeamEntity team = teamRepository.findByIdForUpdate(teamId)
                 .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
         team.softDelete();
+        eventPublisher.publishEvent(new PersonalInviteScopeClosedEvent("TEAM", teamId, team.getClosureGeneration()));
 
         // 監査ログ用イベント発行
         eventPublisher.publishEvent(new TeamDeletedEvent(userId, teamId));
@@ -815,6 +853,7 @@ public class TeamService {
             throw new BusinessException(TeamErrorCode.TEAM_002);
         }
         team.archive();
+        eventPublisher.publishEvent(new PersonalInviteScopeClosedEvent("TEAM", teamId, team.getClosureGeneration()));
         return team;
     }
 
@@ -1114,9 +1153,13 @@ public class TeamService {
             // 復元後もフレンド名が空欄のまま最大 30 分表示され続ける。
             @CacheEvict(value = "teamFriendList", allEntries = true)
     })
-    public void restoreTeam(Long teamId) {
-        if (teamRepository.countByIdIncludingDeleted(teamId) == 0) {
-            throw new BusinessException(TeamErrorCode.TEAM_001);
+    public void restoreTeam(Long teamId, Long userId) {
+        TeamEntity team = teamRepository.findByIdIncludingDeletedForUpdate(teamId)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
+        // ロッキングリードで同時復元を直列化する。片付けは永続化コンテキストをクリアするため旧値を先に捕捉する。
+        java.time.LocalDateTime originallyDeletedAt = team.getDeletedAt();
+        if (originallyDeletedAt == null) {
+            throw new BusinessException(TeamErrorCode.TEAM_006);
         }
         // F01.2.1 §4.5: 論理削除の片付け（加盟の PENDING・ACTIVE と制限）がまだ済んでいなければ、復元の前に同じ tx で済ませる
         // （チーム行のロックの下で状態を確かめる。復元で削除前の加盟を戻さない。済んでいれば何もしない）
@@ -1125,7 +1168,15 @@ public class TeamService {
         if (updated == 0) {
             throw new BusinessException(TeamErrorCode.TEAM_006);
         }
+        eventPublisher.publishEvent(new TeamRestoredEvent(userId, teamId,
+                originallyDeletedAt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()));
         log.info("チーム復元完了: teamId={}", teamId);
+    }
+
+    /** SYSTEM_ADMIN認可後の復元経路専用。通常のresolveTeamIdの生存・ACTIVE条件は変えない。 */
+    public Long resolveTeamIdForRestore(String slug) {
+        return teamRepository.findIdBySlugIncludingDeleted(slug)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
     }
 
     // ========================================

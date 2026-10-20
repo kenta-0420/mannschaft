@@ -631,10 +631,8 @@ async function submit(updateScope?: 'THIS_ONLY' | 'THIS_AND_FOLLOWING') {
   } else {
     if (!isEdit.value) body.eventType = 'OTHER'
     body.attendanceRequired = form.value.attendanceRequired
-    if (!isEdit.value) {
-      body.allow_proxy_attendance = form.value.allowProxyAttendance
-      body.is_proxy_auto_accept = form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false
-    }
+    body.allow_proxy_attendance = form.value.allowProxyAttendance
+    body.is_proxy_auto_accept = form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false
     body.targetMode = targetMode.value
     body.targetUserIds = targetMode.value === 'SELECTED_MEMBERS' ? targetUserIds.value : []
     // F03.1 (B) チーム別内訳トグルは組織スコープ + 出欠ありのときのみ送る
@@ -834,11 +832,11 @@ function close() {
     :header="
       effectiveScope.isPersonal
         ? isEdit
-          ? '予定を編集'
-          : '予定を追加'
+          ? t('schedule.form.editPersonal')
+          : t('schedule.form.addPersonal')
         : isEdit
-          ? 'イベントを編集'
-          : 'イベントを作成'
+          ? t('schedule.form.editEvent')
+          : t('schedule.form.createEvent')
     "
     :style="{ width: '500px' }"
     class="[&_.p-dialog-close-button]:min-h-11 [&_.p-dialog-close-button]:min-w-11"
@@ -949,9 +947,9 @@ function close() {
       </div>
     </div>
     <template #footer>
-      <Button label="キャンセル" class="min-h-11" text @click="close" />
+      <Button :label="$t('button.cancel')" class="min-h-11" text @click="close" />
       <Button
-        :label="isEdit ? '更新' : '作成'"
+        :label="isEdit ? $t('button.update') : $t('button.create')"
         icon="pi pi-check"
         class="min-h-11"
         :loading="submitting || editLoading"

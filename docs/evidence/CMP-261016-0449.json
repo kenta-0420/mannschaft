@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "scope": "app",
+  "implementation": {
+    "pr": 3652,
+    "sha": "48de137c9f4e29cc0f241adfac1b46aefc7c5249",
+    "mergedAt": "2026-10-15T23:08:13Z",
+    "mergeCommit": "05bbc3537f134904affde925e923de801a54ad76"
+  },
+  "ci": [
+    {
+      "runId": 38798725381
+    },
+    {
+      "runId": 38798725352
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/ranch-pr3652-20261016.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/ranch-pr3652-20261016.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/ranch-pr3652-20261016.md"
+    }
+  },
+  "limitations": [
+    "個別戦役の完了であり、Phase1全73AC達成・正式公開の完了を示さない。公開ゲートCLOSEDと親戦役の状態を維持する。",
+    "実機・探索の範囲と未実証項目は共通証拠文書に記録する。"
+  ],
+  "cmpId": "CMP-261016-0449",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "固定href・可視タイトルを維持する。",
+      "tests": [
+        {
+          "name": "to 指定で title が NuxtLink (<a>) になり href が正しい",
+          "evidence": "frontend/tests/unit/components/DashboardWidgetCard.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "装飾アイコンを読み上げ名から除外し日本語タイトルと完全一致、source/app権限不変、既存27実機ケースを維持する。",
+      "tests": [
+        {
+          "name": "装飾iconの読み上げ名red3回と、同27ケース実green・skip0",
+          "evidence": "docs/evidence/ranch-pr3652-20261016.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "通常導線・権限境界と独立3住民探索を確認する。",
+      "tests": [
+        {
+          "name": "widget27・活動権限9・独立3住民探索",
+          "evidence": "docs/evidence/ranch-pr3652-20261016.md"
+        }
+      ]
+    }
+  ],
+  "regressions": [
+    {
+      "description": "装飾glyphの読み上げ名混入を実機3回再現しaria-hiddenの限定修正後に既存27ケースを維持してgreen。途中の計測分類不整合と製品不具合を区別する。",
+      "test": "実ブラウザのタイトルaccessible name完全一致・固定href・可視表示、widget27",
+      "redEvidence": "docs/evidence/ranch-pr3652-20261016.md",
+      "greenEvidence": "docs/evidence/ranch-pr3652-20261016.md"
+    }
+  ]
+}

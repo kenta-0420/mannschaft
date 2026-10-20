@@ -38,6 +38,18 @@ describe('useRoleAccess.loadPermissions（最後の要求が勝つ）', () => {
     expect(apiMock).toHaveBeenCalledWith('/api/v1/teams/team-a/me/permissions')
   })
 
+  it('一連取得を呼び出し元で管理するときはスコープ変更による自動取得を止められる', async () => {
+    apiMock.mockResolvedValue(perms('ADMIN'))
+    const slug = ref('team-a')
+    const { loadPermissions } = useRoleAccess('team', slug, { watchScope: false })
+    await loadPermissions()
+    slug.value = 'team-b'
+    await nextTick()
+    expect(apiMock).toHaveBeenCalledTimes(1)
+    await loadPermissions()
+    expect(apiMock).toHaveBeenLastCalledWith('/api/v1/teams/team-b/me/permissions')
+  })
+
   it('失敗すると roleName=null・ok: false を返す（後方互換）', async () => {
     apiMock.mockRejectedValue(new Error('boom'))
     const { roleName, loadPermissions } = useRoleAccess('organization', 'org-a')

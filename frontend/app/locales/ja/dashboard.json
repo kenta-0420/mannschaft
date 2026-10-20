@@ -38,6 +38,7 @@
       "save_success": "ウィジェットの公開設定を保存しました",
       "save_error": "設定の保存に失敗しました。再度お試しください",
       "public_viewer_hint": "あなたはこのチームのメンバーではないため、一部のウィジェットは非表示になっています",
+      "public_viewer_hint_organization": "あなたはこの組織のメンバーではないため、一部のウィジェットは非表示になっています",
       "public_viewer_hint_dismiss": "閉じる",
       "join_request_link": "メンバーシップを申請する"
     },

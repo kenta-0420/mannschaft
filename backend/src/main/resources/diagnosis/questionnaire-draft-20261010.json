@@ -1,0 +1,436 @@
+{
+  "questionnaireVersion": "draft-20261010-v2",
+  "scoringVersion": "signed-centered-v1",
+  "approved": false,
+  "translationsApproved": false,
+  "questions": [
+    {
+      "id": "Q01",
+      "axis": "FAMILIAR_NEW",
+      "polarity": 1,
+      "text": {
+        "ja": "食べ物や飲み物を選ぶなら：いつものお気に入り ↔ まだ試していないもの",
+        "en": "Choosing food or a drink: a familiar favorite ↔ something you have not tried yet",
+        "zh": "选择食物或饮品时：熟悉的最爱 ↔ 还没尝试过的",
+        "ko": "음식이나 음료를 고른다면: 늘 좋아하던 것 ↔ 아직 맛보지 않은 것",
+        "es": "Al elegir comida o bebida: un favorito de siempre ↔ algo que aún no has probado",
+        "de": "Wenn du Essen oder ein Getränk auswählst: ein vertrauter Favorit ↔ etwas, das du noch nicht probiert hast"
+      }
+    },
+    {
+      "id": "Q05",
+      "axis": "FOCUS_VARIETY",
+      "polarity": 1,
+      "text": {
+        "ja": "自由時間に楽しむなら：一つのことをじっくり続ける ↔ いくつかのことを少しずつ楽しむ",
+        "en": "Enjoying free time: spend time on one activity ↔ enjoy a little of several activities",
+        "zh": "享受自由时间时：专心做一件事 ↔ 几件事各体验一点",
+        "ko": "자유 시간을 즐긴다면: 한 가지를 차분히 계속하기 ↔ 여러 가지를 조금씩 즐기기",
+        "es": "En tu tiempo libre: dedicarte con calma a una actividad ↔ disfrutar un poco de varias",
+        "de": "In deiner freien Zeit: bei einer Tätigkeit bleiben und dir Zeit nehmen ↔ mehrere Tätigkeiten jeweils ein wenig genießen"
+      }
+    },
+    {
+      "id": "Q09",
+      "axis": "SPONTANEOUS_PLAN",
+      "polarity": 1,
+      "text": {
+        "ja": "初めての場所を歩くなら：歩きながら行く順番を決める ↔ 先に行く順番を決めておく",
+        "en": "Walking somewhere new: decide where to go as you walk ↔ decide the order beforehand",
+        "zh": "在新地方散步时：边走边决定先去哪里 ↔ 提前安排好顺序",
+        "ko": "처음 가는 곳을 걷는다면: 걸으면서 갈 순서를 정하기 ↔ 미리 갈 순서를 정해 두기",
+        "es": "Al caminar por un lugar nuevo: decidir por dónde ir sobre la marcha ↔ decidir el orden de antemano",
+        "de": "Wenn du an einem neuen Ort spazieren gehst: unterwegs die Reihenfolge entscheiden ↔ die Reihenfolge vorher festlegen"
+      }
+    },
+    {
+      "id": "Q13",
+      "axis": "SOLO_TOGETHER",
+      "polarity": 1,
+      "text": {
+        "ja": "気分転換するなら：自分のペースで一人で過ごす ↔ 誰かと同じ時間を過ごす",
+        "en": "For a change of pace: spend time alone at your own pace ↔ spend time with someone",
+        "zh": "转换心情时：独自按自己的节奏度过 ↔ 和别人一起度过",
+        "ko": "기분 전환을 한다면: 혼자 자신의 속도로 보내기 ↔ 누군가와 함께 시간 보내기",
+        "es": "Para cambiar de aire: pasar tiempo a solas a tu ritmo ↔ compartir tiempo con alguien",
+        "de": "Für etwas Abwechslung: allein in deinem eigenen Tempo Zeit verbringen ↔ Zeit mit jemandem verbringen"
+      }
+    },
+    {
+      "id": "Q17",
+      "axis": "EXPRESSION",
+      "polarity": 1,
+      "text": {
+        "ja": "うれしい知らせがあったら：まず自分の中で味わう ↔ 言葉やしぐさで表す",
+        "en": "Hearing good news: first savor it inside ↔ express it with words or gestures",
+        "zh": "听到好消息时：先在心里感受喜悦 ↔ 用言语或动作表达",
+        "ko": "기쁜 소식을 들었다면: 먼저 마음속으로 기쁨을 느끼기 ↔ 말이나 몸짓으로 표현하기",
+        "es": "Al recibir una buena noticia: disfrutarla primero por dentro ↔ expresarla con palabras o gestos",
+        "de": "Wenn du gute Nachrichten bekommst: die Freude zuerst innerlich genießen ↔ sie mit Worten oder Gesten ausdrücken"
+      }
+    },
+    {
+      "id": "Q21",
+      "axis": "NOTICE",
+      "polarity": 1,
+      "text": {
+        "ja": "初めて見る景色で目に入るのは：まず全体の雰囲気 ↔ 色や形など個々の特徴",
+        "en": "Seeing a new view, you notice: the overall atmosphere first ↔ individual features such as colors or shapes",
+        "zh": "初见一处风景时，注意到的是：整体氛围 ↔ 颜色或形状等具体特征",
+        "ko": "처음 보는 풍경에서 눈에 들어오는 것은: 먼저 전체 분위기 ↔ 색이나 모양 같은 개별 특징",
+        "es": "Al ver un paisaje nuevo, te llama la atención: primero el ambiente general ↔ detalles como los colores o las formas",
+        "de": "Bei einer neuen Aussicht fällt dir auf: zuerst die gesamte Stimmung ↔ einzelne Merkmale wie Farben oder Formen"
+      }
+    },
+    {
+      "id": "Q02",
+      "axis": "FAMILIAR_NEW",
+      "polarity": -1,
+      "text": {
+        "ja": "物語を楽しむなら：まだ知らない話 ↔ 前に楽しんだ好きな話",
+        "en": "Enjoying a story: one you do not know yet ↔ a favorite you have enjoyed before",
+        "zh": "欣赏故事时：还不知道的故事 ↔ 以前喜欢的故事",
+        "ko": "이야기를 즐긴다면: 아직 모르는 이야기 ↔ 전에 즐겼던 좋아하는 이야기",
+        "es": "Para disfrutar de una historia: una que aún no conoces ↔ una favorita que ya has disfrutado",
+        "de": "Wenn du eine Geschichte genießen möchtest: eine noch unbekannte ↔ eine Lieblingsgeschichte, die dir schon gefallen hat"
+      }
+    },
+    {
+      "id": "Q06",
+      "axis": "FOCUS_VARIETY",
+      "polarity": -1,
+      "text": {
+        "ja": "片づけをするなら：いくつかの場所を行き来する ↔ 一つの場所を終えてから次へ進む",
+        "en": "Tidying up: move between several areas ↔ finish one area before moving to the next",
+        "zh": "整理东西时：在几个地方之间轮换 ↔ 整理完一个地方再去下一个",
+        "ko": "정리를 한다면: 여러 곳을 오가며 정리하기 ↔ 한 곳을 끝낸 뒤 다음 곳으로 가기",
+        "es": "Al ordenar: ir alternando entre varios lugares ↔ terminar uno antes de pasar al siguiente",
+        "de": "Beim Aufräumen: zwischen mehreren Bereichen wechseln ↔ einen Bereich fertig machen, bevor du zum nächsten gehst"
+      }
+    },
+    {
+      "id": "Q10",
+      "axis": "SPONTANEOUS_PLAN",
+      "polarity": -1,
+      "text": {
+        "ja": "いくつか用事があるなら：先に順番を決める ↔ そのときの流れで次を選ぶ",
+        "en": "Having several things to do: decide the order first ↔ choose what comes next as things unfold",
+        "zh": "有几件事要做时：先决定顺序 ↔ 顺着当时的情况选择下一件",
+        "ko": "할 일이 몇 가지 있다면: 먼저 순서를 정하기 ↔ 그때의 흐름에 따라 다음 일을 고르기",
+        "es": "Si tienes varias cosas que hacer: decidir primero el orden ↔ elegir lo siguiente según vaya el momento",
+        "de": "Wenn du mehrere Dinge zu erledigen hast: zuerst die Reihenfolge festlegen ↔ im jeweiligen Moment das Nächste wählen"
+      }
+    },
+    {
+      "id": "Q14",
+      "axis": "SOLO_TOGETHER",
+      "polarity": -1,
+      "text": {
+        "ja": "何かを作るなら：人と相談しながら進める ↔ 自分のペースで進める",
+        "en": "Making something: work while discussing it with others ↔ work at your own pace",
+        "zh": "制作东西时：和别人商量着进行 ↔ 按自己的节奏进行",
+        "ko": "무언가를 만든다면: 다른 사람과 의논하며 진행하기 ↔ 자신의 속도로 진행하기",
+        "es": "Al crear algo: avanzar consultando con otras personas ↔ avanzar a tu propio ritmo",
+        "de": "Wenn du etwas gestaltest: dich dabei mit anderen beraten ↔ in deinem eigenen Tempo vorgehen"
+      }
+    },
+    {
+      "id": "Q18",
+      "axis": "EXPRESSION",
+      "polarity": -1,
+      "text": {
+        "ja": "面白いものを見つけたら：誰かに話してみる ↔ 自分の中でゆっくり楽しむ",
+        "en": "Finding something amusing: tell someone about it ↔ enjoy it quietly inside",
+        "zh": "发现有趣的东西时：和别人说说 ↔ 在心里慢慢享受",
+        "ko": "재미있는 것을 발견했다면: 누군가에게 이야기하기 ↔ 마음속으로 천천히 즐기기",
+        "es": "Si descubres algo divertido: contárselo a alguien ↔ disfrutarlo con calma por dentro",
+        "de": "Wenn du etwas Lustiges entdeckst: jemandem davon erzählen ↔ es in Ruhe innerlich genießen"
+      }
+    },
+    {
+      "id": "Q22",
+      "axis": "NOTICE",
+      "polarity": -1,
+      "text": {
+        "ja": "説明や案内を読むとき：具体的な言葉や数字 ↔ 全体として伝えたいこと",
+        "en": "Reading an explanation or guide, you notice: specific words or numbers ↔ the overall message",
+        "zh": "阅读说明或指引时：具体的词语或数字 ↔ 整体想表达的意思",
+        "ko": "설명이나 안내를 읽을 때: 구체적인 말이나 숫자 ↔ 전체적으로 전하려는 뜻",
+        "es": "Al leer una explicación o guía: las palabras o cifras concretas ↔ el mensaje general",
+        "de": "Wenn du eine Erklärung oder Anleitung liest: konkrete Wörter oder Zahlen ↔ die gesamte Aussage"
+      }
+    },
+    {
+      "id": "Q03",
+      "axis": "FAMILIAR_NEW",
+      "polarity": 1,
+      "text": {
+        "ja": "分身の見た目を選ぶなら：しっくりくるいつもの雰囲気 ↔ これまでと違う雰囲気",
+        "en": "Choosing your avatar's look: a familiar style that feels right ↔ a style different from before",
+        "zh": "选择分身的外观时：熟悉又自在的风格 ↔ 和以往不同的风格",
+        "ko": "분신의 모습을 고른다면: 익숙하고 편안한 분위기 ↔ 지금까지와 다른 분위기",
+        "es": "Al elegir el aspecto de tu avatar: un estilo familiar con el que te sientes a gusto ↔ un estilo distinto al de antes",
+        "de": "Wenn du das Aussehen deines Avatars wählst: ein vertrauter Stil, der sich richtig anfühlt ↔ ein anderer Stil als bisher"
+      }
+    },
+    {
+      "id": "Q07",
+      "axis": "FOCUS_VARIETY",
+      "polarity": 1,
+      "text": {
+        "ja": "気になるテーマが見つかったら：一つを掘り下げる ↔ 関連するいくつかを見てみる",
+        "en": "Finding a topic that interests you: explore one in depth ↔ look into several related topics",
+        "zh": "发现感兴趣的话题时：深入了解一个 ↔ 看看几个相关的话题",
+        "ko": "관심 있는 주제를 찾았다면: 하나를 깊이 알아보기 ↔ 관련된 여러 주제를 살펴보기",
+        "es": "Si encuentras un tema que te interesa: profundizar en uno ↔ explorar varios relacionados",
+        "de": "Wenn du ein interessantes Thema findest: eines vertiefen ↔ mehrere verwandte Themen ansehen"
+      }
+    },
+    {
+      "id": "Q11",
+      "axis": "SPONTANEOUS_PLAN",
+      "polarity": 1,
+      "text": {
+        "ja": "初めての遊びを試すなら：まず触ってからやり方を考える ↔ やり方を確かめてから始める",
+        "en": "Trying a new game: try it first and figure out how it works ↔ check how it works before starting",
+        "zh": "尝试新游戏时：先玩一玩再琢磨玩法 ↔ 了解玩法后再开始",
+        "ko": "새로운 놀이를 해 본다면: 먼저 해 보면서 방법을 생각하기 ↔ 방법을 확인한 뒤 시작하기",
+        "es": "Al probar un juego nuevo: probar primero y descubrir cómo funciona ↔ comprobar cómo funciona antes de empezar",
+        "de": "Wenn du ein neues Spiel ausprobierst: erst ausprobieren und dabei herausfinden, wie es geht ↔ erst die Spielweise klären und dann anfangen"
+      }
+    },
+    {
+      "id": "Q15",
+      "axis": "SOLO_TOGETHER",
+      "polarity": 1,
+      "text": {
+        "ja": "気になった話題を楽しむなら：一人で味わう ↔ 誰かと感想を交わす",
+        "en": "Enjoying an interesting topic: savor it on your own ↔ exchange thoughts with someone",
+        "zh": "享受感兴趣的话题时：独自品味 ↔ 和别人交流感想",
+        "ko": "관심 있는 이야기를 즐긴다면: 혼자 음미하기 ↔ 누군가와 감상을 나누기",
+        "es": "Al disfrutar de un tema que te interesa: saborearlo a solas ↔ intercambiar impresiones con alguien",
+        "de": "Wenn du ein interessantes Thema genießt: es allein auf dich wirken lassen ↔ Eindrücke mit jemandem austauschen"
+      }
+    },
+    {
+      "id": "Q19",
+      "axis": "EXPRESSION",
+      "polarity": 1,
+      "text": {
+        "ja": "楽しい出来事を思い出したら：心の中で楽しさを味わう ↔ 表情やしぐさに楽しさが出る",
+        "en": "Remembering a happy moment: enjoy the feeling inside ↔ let the joy show in your face or gestures",
+        "zh": "回想开心的事情时：在心里感受快乐 ↔ 快乐流露在表情或动作中",
+        "ko": "즐거운 일을 떠올렸다면: 마음속으로 즐거움을 느끼기 ↔ 표정이나 몸짓에 즐거움이 드러나기",
+        "es": "Al recordar un momento agradable: disfrutar la alegría por dentro ↔ mostrarla en la expresión o los gestos",
+        "de": "Wenn du dich an ein schönes Erlebnis erinnerst: die Freude innerlich genießen ↔ sie im Gesicht oder in Gesten zeigen"
+      }
+    },
+    {
+      "id": "Q23",
+      "axis": "NOTICE",
+      "polarity": 1,
+      "text": {
+        "ja": "音楽を聴くとき：曲全体の流れや雰囲気 ↔ 音の重なりやリズムの違い",
+        "en": "Listening to music, you notice: the song's overall flow or mood ↔ layers of sound or differences in rhythm",
+        "zh": "听音乐时：整首曲子的流动与氛围 ↔ 声音的层次或节奏的变化",
+        "ko": "음악을 들을 때: 곡 전체의 흐름이나 분위기 ↔ 소리의 겹침이나 리듬의 차이",
+        "es": "Al escuchar música: el desarrollo o ambiente de toda la canción ↔ las capas de sonido o los cambios de ritmo",
+        "de": "Wenn du Musik hörst: den gesamten Verlauf oder die Stimmung des Stücks ↔ Klangschichten oder Unterschiede im Rhythmus"
+      }
+    },
+    {
+      "id": "Q04",
+      "axis": "FAMILIAR_NEW",
+      "polarity": -1,
+      "text": {
+        "ja": "道を選べるなら：知らない道を通る ↔ 慣れた道を通る",
+        "en": "If you can choose a route: take an unfamiliar path ↔ take a familiar path",
+        "zh": "可以选择路线时：走不熟悉的路 ↔ 走熟悉的路",
+        "ko": "길을 고를 수 있다면: 모르는 길로 가기 ↔ 익숙한 길로 가기",
+        "es": "Si puedes elegir el camino: tomar uno desconocido ↔ tomar uno conocido",
+        "de": "Wenn du den Weg wählen kannst: einen unbekannten Weg nehmen ↔ einen vertrauten Weg nehmen"
+      }
+    },
+    {
+      "id": "Q08",
+      "axis": "FOCUS_VARIETY",
+      "polarity": -1,
+      "text": {
+        "ja": "落書きを楽しむなら：いろいろな絵を少しずつ描く ↔ 一つの絵をじっくり描く",
+        "en": "Doodling for fun: sketch a little of many things ↔ take time on one drawing",
+        "zh": "随手涂画时：各种画都画一点 ↔ 慢慢画好一幅",
+        "ko": "낙서를 즐긴다면: 여러 그림을 조금씩 그리기 ↔ 한 그림을 차분히 그리기",
+        "es": "Al dibujar por diversión: hacer varios dibujos pequeños ↔ dedicar tiempo a un solo dibujo",
+        "de": "Wenn du zum Spaß kritzelst: verschiedene Bilder ein wenig zeichnen ↔ dir für ein Bild Zeit nehmen"
+      }
+    },
+    {
+      "id": "Q12",
+      "axis": "SPONTANEOUS_PLAN",
+      "polarity": -1,
+      "text": {
+        "ja": "休憩をとるなら：先に時間を決めておく ↔ その日の流れに合わせてとる",
+        "en": "Taking a break: set a time beforehand ↔ take it when it fits the day",
+        "zh": "休息时：提前定好时间 ↔ 按当天的节奏休息",
+        "ko": "쉬는 시간을 갖는다면: 미리 시간을 정해 두기 ↔ 그날의 흐름에 맞춰 쉬기",
+        "es": "Para hacer una pausa: fijar antes la hora ↔ hacerla según el ritmo del día",
+        "de": "Wenn du eine Pause machst: vorher eine Zeit festlegen ↔ sie dem Tagesverlauf anpassen"
+      }
+    },
+    {
+      "id": "Q16",
+      "axis": "SOLO_TOGETHER",
+      "polarity": -1,
+      "text": {
+        "ja": "好きな場所でひと息つくなら：誰かと一緒に過ごす ↔ 一人でくつろぐ",
+        "en": "Relaxing in a place you like: spend time with someone ↔ relax on your own",
+        "zh": "在喜欢的地方歇一歇时：和别人一起度过 ↔ 独自放松",
+        "ko": "좋아하는 곳에서 잠시 쉰다면: 누군가와 함께 보내기 ↔ 혼자 편히 쉬기",
+        "es": "Al descansar en un lugar que te gusta: estar con alguien ↔ relajarte a solas",
+        "de": "Wenn du an einem Lieblingsort ausruhst: Zeit mit jemandem verbringen ↔ allein entspannen"
+      }
+    },
+    {
+      "id": "Q20",
+      "axis": "EXPRESSION",
+      "polarity": -1,
+      "text": {
+        "ja": "好きな作品を楽しむとき：感想を言葉にする ↔ 心の中で味わう",
+        "en": "Enjoying a favorite work: put your impressions into words ↔ savor them inside",
+        "zh": "欣赏喜欢的作品时：用语言说出感想 ↔ 在心里品味",
+        "ko": "좋아하는 작품을 즐길 때: 감상을 말로 표현하기 ↔ 마음속으로 음미하기",
+        "es": "Al disfrutar de una obra que te gusta: poner tus impresiones en palabras ↔ saborearlas por dentro",
+        "de": "Wenn du ein Lieblingswerk genießt: deine Eindrücke in Worte fassen ↔ sie innerlich auf dich wirken lassen"
+      }
+    },
+    {
+      "id": "Q24",
+      "axis": "NOTICE",
+      "polarity": -1,
+      "text": {
+        "ja": "模様やデザインを見るなら：線や小さな配置 ↔ 全体のまとまり",
+        "en": "Looking at a pattern or design, you notice: lines or small arrangements ↔ how the whole fits together",
+        "zh": "看图案或设计时：线条或细小的布局 ↔ 整体的协调",
+        "ko": "무늬나 디자인을 본다면: 선이나 작은 배치 ↔ 전체의 조화",
+        "es": "Al mirar un patrón o diseño: las líneas o pequeñas disposiciones ↔ el conjunto",
+        "de": "Wenn du ein Muster oder Design ansiehst: Linien oder kleine Anordnungen ↔ den Gesamteindruck"
+      }
+    }
+  ],
+  "ties": [
+    {
+      "axisId": "FAMILIAR_NEW",
+      "zero": {
+        "ja": "お気に入りの場所を味わう",
+        "en": "Enjoy a favorite place",
+        "zh": "享受喜欢的地方",
+        "ko": "좋아하는 장소를 즐기기",
+        "es": "Disfrutar de un lugar favorito",
+        "de": "Einen Lieblingsort genießen"
+      },
+      "one": {
+        "ja": "初めての場所をのぞいてみる",
+        "en": "Explore a new place",
+        "zh": "探索新的地方",
+        "ko": "새로운 장소를 둘러보기",
+        "es": "Explorar un lugar nuevo",
+        "de": "Einen neuen Ort erkunden"
+      }
+    },
+    {
+      "axisId": "FOCUS_VARIETY",
+      "zero": {
+        "ja": "一つの楽しみにゆっくり浸る",
+        "en": "Immerse yourself in one enjoyable activity",
+        "zh": "慢慢沉浸在一种乐趣中",
+        "ko": "한 가지 즐거움에 차분히 빠져들기",
+        "es": "Sumergirte con calma en una actividad agradable",
+        "de": "In Ruhe in einer schönen Tätigkeit aufgehen"
+      },
+      "one": {
+        "ja": "いくつかの楽しみを少しずつ",
+        "en": "Enjoy a little of several activities",
+        "zh": "几种乐趣各体验一点",
+        "ko": "여러 가지 즐거움을 조금씩",
+        "es": "Disfrutar un poco de varias actividades",
+        "de": "Mehrere Tätigkeiten jeweils ein wenig genießen"
+      }
+    },
+    {
+      "axisId": "SPONTANEOUS_PLAN",
+      "zero": {
+        "ja": "そのときの気分で選ぶ",
+        "en": "Choose according to how you feel in the moment",
+        "zh": "按当时的心情选择",
+        "ko": "그때의 기분에 따라 고르기",
+        "es": "Elegir según lo que te apetezca en el momento",
+        "de": "Nach deiner Stimmung im Moment wählen"
+      },
+      "one": {
+        "ja": "先にしたいことを選んでおく",
+        "en": "Choose what you want to do beforehand",
+        "zh": "提前选好想做的事",
+        "ko": "하고 싶은 일을 미리 골라 두기",
+        "es": "Elegir de antemano lo que quieres hacer",
+        "de": "Vorher auswählen, was du tun möchtest"
+      }
+    },
+    {
+      "axisId": "SOLO_TOGETHER",
+      "zero": {
+        "ja": "一人で静かな時間を楽しむ",
+        "en": "Enjoy quiet time on your own",
+        "zh": "独自享受安静的时间",
+        "ko": "혼자 조용한 시간을 즐기기",
+        "es": "Disfrutar de un rato tranquilo a solas",
+        "de": "Allein ruhige Zeit genießen"
+      },
+      "one": {
+        "ja": "誰かと同じ時間を楽しむ",
+        "en": "Enjoy time with someone",
+        "zh": "和别人一起享受时光",
+        "ko": "누군가와 함께 시간을 즐기기",
+        "es": "Disfrutar de tiempo con alguien",
+        "de": "Zeit mit jemandem genießen"
+      }
+    },
+    {
+      "axisId": "EXPRESSION",
+      "zero": {
+        "ja": "気持ちを心の中で味わいたい",
+        "en": "Savor your feelings inside",
+        "zh": "在心里感受情绪",
+        "ko": "마음속으로 감정을 느끼고 싶다",
+        "es": "Saborear tus emociones por dentro",
+        "de": "Deine Gefühle innerlich genießen"
+      },
+      "one": {
+        "ja": "小さな動きや声で表したい",
+        "en": "Express your feelings through small movements or your voice",
+        "zh": "用小动作或声音表达",
+        "ko": "작은 움직임이나 목소리로 표현하고 싶다",
+        "es": "Expresarlas con pequeños movimientos o con la voz",
+        "de": "Sie durch kleine Bewegungen oder deine Stimme ausdrücken"
+      }
+    },
+    {
+      "axisId": "NOTICE",
+      "zero": {
+        "ja": "景色全体の雰囲気を味わう",
+        "en": "Enjoy the overall atmosphere of a view",
+        "zh": "感受整片风景的氛围",
+        "ko": "풍경 전체의 분위기를 느끼기",
+        "es": "Disfrutar del ambiente general de un paisaje",
+        "de": "Die gesamte Stimmung einer Aussicht genießen"
+      },
+      "one": {
+        "ja": "葉や石の小さな違いを味わう",
+        "en": "Enjoy small differences in leaves or stones",
+        "zh": "欣赏叶子或石头的细微差别",
+        "ko": "나뭇잎이나 돌의 작은 차이를 느끼기",
+        "es": "Disfrutar de pequeñas diferencias en hojas o piedras",
+        "de": "Kleine Unterschiede bei Blättern oder Steinen genießen"
+      }
+    }
+  ]
+}

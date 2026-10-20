@@ -56,39 +56,40 @@ public class AuthSessionService {
      * 単一デバイスからのログアウトを行う。
      * Refresh Token失効 + JTIブラックリスト追加。
      *
-     * @param refreshTokenHash Refresh TokenのSHA-256ハッシュ
-     * @param jti              Access TokenのJTI
-     * @param expEpoch         Access Tokenの有効期限（epoch秒）
+     * @param userId           署名検証済みAccess Tokenの所有者
+     * @param refreshTokenHash Refresh TokenのSHA-256ハッシュ（nullable）
+     * @param jti              署名検証済みAccess TokenのJTI
+     * @param expEpoch         署名検証済みAccess Tokenの有効期限（epoch秒）
      */
     @Transactional
-    public void logout(String refreshTokenHash, String jti, long expEpoch) {
-        // 1. RefreshToken失効
-        refreshTokenRepository.findByTokenHash(refreshTokenHash)
+    public void logout(Long userId, String refreshTokenHash, String jti, long expEpoch) {
+        // Cookieの提示だけでは所有者を信頼せず、検索条件を署名済み本人に束縛する。
+        if (refreshTokenHash != null && !refreshTokenHash.isBlank()) {
+            refreshTokenRepository.findByTokenHashAndUserId(refreshTokenHash, userId)
                 .ifPresent(token -> {
                     token.revoke();
-                    Long userId = token.getUserId();
 
-                    // 2. JTIブラックリスト追加（残存TTL）
-                    // Instant.now() で UTC epoch 秒を正確に取得する。
-                    // LocalDateTime.now().toEpochSecond(UTC) は JVM TZ が非 UTC の場合にズレが生じるため使用禁止。
-                    long remainingTtl = expEpoch - Instant.now().getEpochSecond();
-                    // Valkey 障害時も @Transactional によるDB ロールバックを防ぐため try-catch で囲む。
-                    // リフレッシュトークンは DB 側で失効済みのため新トークン発行は不可。
-                    // アクセストークンは最大 remainingTtl 秒後に自然失効する（許容範囲）。
-                    try {
-                        authTokenService.addJtiToBlacklist(jti, remainingTtl);
-                    } catch (Exception e) {
-                        log.error("ログアウト時のJTIブラックリスト追加失敗（アクセストークンが{}秒有効なままになる可能性）: jti={}, error={}",
-                                remainingTtl, jti, e.getMessage());
-                    }
-
-                    // 3. session_hash 計算（refresh_token の jti から）
+                    // 既存監査のsession_hashはrefresh_tokenのjtiを基点とする。
                     String sessionHash = token.getJti() != null && !token.getJti().isBlank()
                             ? SessionHashUtil.hash(token.getJti()) : null;
 
-                    // 4. イベント発行
                     eventPublisher.publish(new LogoutEvent(userId, 1, LogoutType.SESSION, null, sessionHash));
                 });
+        }
+
+        // Refresh Cookieが無い・不正・別人のものでも、現在のAccess Tokenは本人の署名済みJTIで失効する。
+        // InstantでUTC epoch秒を取得する（JVM既定TZの壁時計をUTCとして扱わない）。
+        long remainingTtl = expEpoch - Instant.now().getEpochSecond();
+        if (jti == null || jti.isBlank() || remainingTtl <= 0) {
+            return;
+        }
+        try {
+            authTokenService.addJtiToBlacklist(jti, remainingTtl);
+        } catch (Exception e) {
+            // Valkeyの既存fail-open方針を維持する。DB操作の例外は捕捉せず失敗を呼出元へ伝える。
+            log.error("ログアウト時のJTIブラックリスト追加失敗（アクセストークンが{}秒有効なままになる可能性）: userId={}",
+                    remainingTtl, userId, e);
+        }
     }
 
     /**

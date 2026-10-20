@@ -92,6 +92,7 @@ class ScheduleAttendanceSolicitationServiceTest {
                 proxyInputContext, proxyInputRecordRepository,
                 scheduleDelegationService,
                 scheduleTargetRepository,
+                null, // 既存募集Unitは新報酬捕捉を検証しない。
                 organizationMembershipService,
                 accessControlService,
                 Clock.system(UserZoneLocalDateTimeParser.SERVER_ZONE));

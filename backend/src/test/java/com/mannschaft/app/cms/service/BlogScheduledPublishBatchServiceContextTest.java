@@ -37,7 +37,7 @@ class BlogScheduledPublishBatchServiceContextTest {
         @Bean
         BlogScheduledPublishBatchService blogScheduledPublishBatchService(
                 BlogScheduledPublishService scheduledPublishService) {
-            return new BlogScheduledPublishBatchService(scheduledPublishService, Clock.systemUTC());
+            return new BlogScheduledPublishBatchService(scheduledPublishService, Mockito.mock(BlogRanchScheduledOperationFacade.class), Clock.systemUTC());
         }
     }
 

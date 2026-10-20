@@ -398,22 +398,22 @@ class TeamControllerTest {
     @Test
     @DisplayName("restoreTeam: 204 No Content（checkSystemAdmin を必ず呼ぶ）")
     void restoreTeam_204() {
-        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        given(teamService.resolveTeamIdForRestore(TEAM_SLUG)).willReturn(TEAM_ID);
         assertThat(controller.restoreTeam(TEAM_SLUG).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         // チーム ADMIN 判定（checkAdminOrAbove）ではなく SYSTEM_ADMIN 判定であることを固定する
         verify(accessControlService).checkSystemAdmin(USER_ID);
-        verify(teamService).restoreTeam(TEAM_ID);
+        verify(teamService).restoreTeam(TEAM_ID, USER_ID);
     }
 
     @Test
     @DisplayName("restoreTeam: SYSTEM_ADMIN でなければ 403 を送出し復元本体を呼ばない")
     void restoreTeam_403_whenNotSystemAdmin() {
-        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
         willThrow(new BusinessException(CommonErrorCode.COMMON_002))
                 .given(accessControlService).checkSystemAdmin(USER_ID);
         assertThatThrownBy(() -> controller.restoreTeam(TEAM_SLUG))
                 .isInstanceOf(BusinessException.class);
-        verify(teamService, Mockito.never()).restoreTeam(TEAM_ID);
+        verify(teamService, Mockito.never()).resolveTeamIdForRestore(Mockito.anyString());
+        verify(teamService, Mockito.never()).restoreTeam(Mockito.anyLong(), Mockito.anyLong());
     }
 
     @Test

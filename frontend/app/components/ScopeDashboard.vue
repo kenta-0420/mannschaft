@@ -249,7 +249,13 @@ function onDragEnd() {
       class="text-sm"
       @close="dismissPublicHint"
     >
-      {{ $t('dashboard.widget_visibility.public_viewer_hint') }}
+      {{
+        $t(
+          scopeType === 'organization'
+            ? 'dashboard.widget_visibility.public_viewer_hint_organization'
+            : 'dashboard.widget_visibility.public_viewer_hint',
+        )
+      }}
     </Message>
 
     <!-- ウィジェット設定ボタン -->

@@ -1,5 +1,11 @@
 {
   "data_export": {
+    "request_daily_limit": "Personenbezogene Daten können einmal alle 24 Stunden exportiert werden. Der vorhandene Export bleibt verfügbar.",
+    "request_in_progress": "Ein Export wird bereits verarbeitet. Bitte warte, bis er abgeschlossen ist.",
+    "request_error": "Der Datenexport konnte nicht angefordert werden. Bitte versuche es erneut.",
+    "download_not_ready": "Der Export steht noch nicht zum Download bereit. Bitte versuche es nach Abschluss erneut.",
+    "download_expired": "Dieser Exportdownload ist abgelaufen. Fordere einen neuen Export an, sobald dies möglich ist.",
+    "download_error": "Der Export konnte nicht heruntergeladen werden. Bitte versuche es erneut.",
     "section_title": "Datenexport",
     "export_button": "Persönliche Daten exportieren",
     "status_completed": "Abgeschlossen",
@@ -11,7 +17,7 @@
     "step_failed": "Export fehlgeschlagen",
     "step_processing": "Exportiere...",
     "step_preparing": "Wird vorbereitet...",
-    "description": "Sie können Ihre persönlichen Daten als ZIP-Datei exportieren."
+    "description": "Exportieren Sie Ihre personenbezogenen Daten als ZIP. Neue ZIPs werden mit AES-256 geschützt; das Passwort erhalten Sie per Abschluss-E-Mail. Zum Entpacken ist eine AES-kompatible Anwendung erforderlich. Windows-Bordmittel unterstützen keine verschlüsselten ZIPs; das Entpacken mit macOS-Bordmitteln ist ebenfalls nicht garantiert. Vor dieser Änderung erstellte ZIPs können unverschlüsselt sein und behalten ihr ursprüngliches Format und Ablaufdatum."
   },
   "deletion_preview": {
     "dialog_title": "Kontolöschung bestätigen",
@@ -511,7 +517,7 @@
         "description": "Sichtbarkeitseinstellungen für Suche, Direktnachrichten und Online-Status"
       },
       "contactInviteTokens": {
-        "description": "Einladungs-URLs zum Hinzufügen von Kontakten ausstellen und verwalten"
+        "description": "Einladungslinks und QR-Codes zum Hinzufügen von Kontakten erstellen, anzeigen und verwalten"
       },
       "contactRequestBlocks": {
         "label": "Liste vorab abgelehnter Anfragen",

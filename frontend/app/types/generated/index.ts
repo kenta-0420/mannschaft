@@ -1537,6 +1537,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/loyalty/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** ポイント設定の取得 */
+        get: operations["loyaltySettings"];
+        /** ポイント設定の更新 */
+        put: operations["loyaltyUpdateSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/rules/{ruleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 付与ルールの更新 */
+        put: operations["loyaltyUpdateRule"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/rewards/{rewardId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 特典の更新 */
+        put: operations["loyaltyUpdateReward"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/line/config": {
         parameters: {
             query?: never;
@@ -2503,6 +2555,22 @@ export interface paths {
         get: operations["getSettings_6"];
         /** 運営の発行者設定更新 */
         put: operations["updateSettings_6"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/ranch/operational-controls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["controls"];
+        put: operations["updateControls"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4712,6 +4780,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/reflections/recall-sessions/{sessionId}/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["answers"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/reflections/entries": {
         parameters: {
             query?: never;
@@ -4722,6 +4806,54 @@ export interface paths {
         get?: never;
         /** エントリ upsert（作成/更新） */
         put: operations["upsertEntry"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/ranch/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/ranch/room/slots/{slotKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["place"];
+        post?: never;
+        delete: operations["clear"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/ranch/assignment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["assign"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4811,6 +4943,38 @@ export interface paths {
         get: operations["getPersonalSync"];
         /** 個人カレンダー同期ON/OFF */
         put: operations["togglePersonalSync"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/diagnoses/sessions/{id}/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["answerSession"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/birth-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_18"];
+        put: operations["update_45"];
         post?: never;
         delete?: never;
         options?: never;
@@ -5422,7 +5586,7 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getById_1"];
-        put: operations["update_45"];
+        put: operations["update_46"];
         post?: never;
         delete: operations["delete_43"];
         options?: never;
@@ -5438,9 +5602,9 @@ export interface paths {
             cookie?: never;
         };
         /** MEMBER既定権限取得 */
-        get: operations["get_18"];
+        get: operations["get_19"];
         /** MEMBER既定権限更新 */
-        put: operations["update_46"];
+        put: operations["update_47"];
         post?: never;
         delete?: never;
         options?: never;
@@ -5479,7 +5643,7 @@ export interface paths {
          * 年齢区分設定更新
          * @description 指定した年齢区分の機能設定・テーマ設定を更新する（SYSTEM_ADMIN のみ）
          */
-        put: operations["update_47"];
+        put: operations["update_48"];
         post?: never;
         delete?: never;
         options?: never;
@@ -10447,7 +10611,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** チーム区画割り当て */
-        post: operations["assign"];
+        post: operations["assign_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10743,6 +10907,176 @@ export interface paths {
         put?: never;
         /** 試合作成 */
         post: operations["createMatch_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/self-awards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 本人の受付確定 */
+        post: operations["loyaltySelfAward"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/self-award-previews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 本人の受付確認 */
+        post: operations["loyaltySelfPreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/scan-previews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 会員QRの付与前確認 */
+        post: operations["loyaltyScanPreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 付与ルールの作成 */
+        post: operations["loyaltyCreateRule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/rewards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 特典の作成 */
+        post: operations["loyaltyCreateReward"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/redemptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 特典交換の確定 */
+        post: operations["loyaltyRedeem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/redemption-previews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 会員QRの交換前確認 */
+        post: operations["loyaltyRedemptionPreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/awards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** スタッフによる付与確定 */
+        post: operations["loyaltyAward"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/award-requests/{requestId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 申請の却下 */
+        post: operations["loyaltyReject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/award-requests/{requestId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 照合コードによる申請承認 */
+        post: operations["loyaltyApprove"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13428,6 +13762,54 @@ export interface paths {
         put?: never;
         /** プリセット作成 */
         post: operations["createPreset_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/ranch/policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["policies"];
+        put?: never;
+        post: operations["publishPolicy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/ranch/outboxes/{sourceType}/{eventId}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["retrySource"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/ranch/care-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["careRules"];
+        put?: never;
+        post: operations["publishCare"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16607,7 +16989,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 組織区画割り当て */
-        post: operations["assign_1"];
+        post: operations["assign_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20190,6 +20572,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/member-cards/platform/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 共通会員証確保 */
+        post: operations["ensureMyPlatformCard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/voice-input-consents": {
         parameters: {
             query?: never;
@@ -20517,6 +20916,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/reflections/recall-sessions/{sessionId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/reflections/recall-sessions/{sessionId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cancel_11"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/reflections/entries/{entryId}/recall": {
         parameters: {
             query?: never;
@@ -20528,6 +20959,22 @@ export interface paths {
         put?: never;
         /** 想起テスト保存＝開示 */
         post: operations["recordRecall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/reflections/entries/{entryId}/recall-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["start"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20562,6 +21009,134 @@ export interface paths {
         put?: never;
         /** テーマ一括アーカイブ */
         post: operations["bulkArchive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/ranch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["read"];
+        put?: never;
+        post: operations["enroll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/ranch/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["resume_5"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/ranch/purchases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["purchase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/ranch/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["pause_4"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/ranch/interactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["touch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/ranch/hatch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["hatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/ranch/feeding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["feed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/ranch/collectibles/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["sync_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20803,7 +21378,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 個人札の取消 */
-        post: operations["cancel_11"];
+        post: operations["cancel_12"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20947,6 +21522,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/diagnoses/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["startSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/diagnoses/sessions/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["completeSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/diagnoses/sessions/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cancelSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/diagnoses/birth-style-results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["birthResult"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/confirmable-notifications/{notificationId}/confirm": {
         parameters: {
             query?: never;
@@ -20992,6 +21631,22 @@ export interface paths {
         put?: never;
         /** ケア対象者招待（見守り者から） */
         post: operations["inviteRecipient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/birth-profile/confirmations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["confirm_7"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21111,12 +21766,12 @@ export interface paths {
          * 契約の解約（期末解約の予約）
          * @description 有償契約は current_period_end までの利用を残したまま解約を予約する。Idempotency-Key 必須。
          */
-        post: operations["cancel_12"];
+        post: operations["cancel_13"];
         /**
          * 解約予約の撤回
          * @description 期末を跨ぐ前に限り、cancel_at_period_end を解除して契約を継続させる。Idempotency-Key 必須。
          */
-        delete: operations["resume_5"];
+        delete: operations["resume_6"];
         options?: never;
         head?: never;
         patch?: never;
@@ -21229,6 +21884,40 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["triggerManually"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/loyalty/self-award-bootstrap/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 掲示QRから本人の受付情報を取得 */
+        post: operations["loyaltyBootstrap"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/loyalty/award-requests/{requestId}/cancel/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 本人による申請取消 */
+        post: operations["loyaltyCancel"];
         delete?: never;
         options?: never;
         head?: never;
@@ -24193,7 +24882,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** @deprecated */
-        post: operations["resume_6"];
+        post: operations["resume_7"];
         delete?: never;
         options?: never;
         head?: never;
@@ -24210,7 +24899,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** @deprecated */
-        post: operations["pause_4"];
+        post: operations["pause_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -24244,7 +24933,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** @deprecated */
-        post: operations["cancel_13"];
+        post: operations["cancel_14"];
         delete?: never;
         options?: never;
         head?: never;
@@ -25209,7 +25898,7 @@ export interface paths {
             cookie?: never;
         };
         /** 計画項目取得 */
-        get: operations["get_19"];
+        get: operations["get_20"];
         put?: never;
         post?: never;
         /** 計画項目削除（ADMIN/DEPUTY_ADMIN、If-Match 必須） */
@@ -25217,7 +25906,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 計画項目更新（ADMIN/DEPUTY_ADMIN、If-Match 必須） */
-        patch: operations["update_48"];
+        patch: operations["update_49"];
         trace?: never;
     };
     "/api/v1/{scopeType}/{scopeId}/bulletin/archive/threads/{threadId}/folder": {
@@ -25262,7 +25951,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村詳細取得 */
-        get: operations["get_20"];
+        get: operations["get_21"];
         put?: never;
         post?: never;
         /** 村論理削除（HEADMAN / SYSTEM_ADMIN） */
@@ -25270,7 +25959,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 村更新（HEADMAN / SYSTEM_ADMIN） */
-        patch: operations["update_49"];
+        patch: operations["update_50"];
         trace?: never;
     };
     "/api/v1/villages/{villageId}/memberships/{membershipId}/role": {
@@ -25315,14 +26004,14 @@ export interface paths {
             cookie?: never;
         };
         /** 寄合詳細を取得する（候補日込み） */
-        get: operations["get_21"];
+        get: operations["get_22"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 寄合を部分更新する（幹事のみ） */
-        patch: operations["update_50"];
+        patch: operations["update_51"];
         trace?: never;
     };
     "/api/v1/villages/{villageId}/match-recruits/{recruitId}": {
@@ -25333,14 +26022,14 @@ export interface paths {
             cookie?: never;
         };
         /** 練習試合・審判募集の詳細（村人のみ） */
-        get: operations["get_22"];
+        get: operations["get_23"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 練習試合・審判募集を更新（投稿者本人のみ） */
-        patch: operations["update_51"];
+        patch: operations["update_52"];
         trace?: never;
     };
     "/api/v1/villages/{villageId}/festivals/{festivalId}": {
@@ -25351,14 +26040,14 @@ export interface paths {
             cookie?: never;
         };
         /** 村のお祭り詳細を取得する */
-        get: operations["get_23"];
+        get: operations["get_24"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 村のお祭りを部分更新する（HEADMAN / ELDER のみ） */
-        patch: operations["update_52"];
+        patch: operations["update_53"];
         trace?: never;
     };
     "/api/v1/villages/{villageId}/charter/articles/order": {
@@ -25386,7 +26075,7 @@ export interface paths {
             cookie?: never;
         };
         /** 歳時記イベントの詳細を取得する（村人のみ） */
-        get: operations["get_24"];
+        get: operations["get_25"];
         put?: never;
         post?: never;
         /** 歳時記イベントを論理削除する（HEADMAN / ELDER のみ） */
@@ -25394,7 +26083,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 歳時記イベントを部分更新する（HEADMAN / ELDER のみ） */
-        patch: operations["update_53"];
+        patch: operations["update_54"];
         trace?: never;
     };
     "/api/v1/users/me/public-profile": {
@@ -25864,7 +26553,7 @@ export interface paths {
             cookie?: never;
         };
         /** チームキープ詳細 */
-        get: operations["get_25"];
+        get: operations["get_26"];
         put?: never;
         post?: never;
         /** チームキープ削除 */
@@ -25872,7 +26561,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** チームキープ更新 */
-        patch: operations["update_54"];
+        patch: operations["update_55"];
         trace?: never;
     };
     "/api/v1/teams/{teamPublicId}/members/{memberUserId}/calendar-color": {
@@ -26562,7 +27251,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** チーム来場者予約完了 */
-        patch: operations["complete"];
+        patch: operations["complete_1"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/parking/visitor-reservations/{id}/check-in": {
@@ -27182,7 +27871,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 確認通知キャンセル */
-        patch: operations["cancel_14"];
+        patch: operations["cancel_15"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/circulations/{documentId}": {
@@ -27245,13 +27934,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_26"];
+        get: operations["get_27"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["update_55"];
+        patch: operations["update_56"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/attendance/periods/{recordId}": {
@@ -27733,7 +28422,7 @@ export interface paths {
          * セキュリティインシデント更新
          * @description ステータス変更・DPA 通知記録を行う。
          */
-        patch: operations["update_56"];
+        patch: operations["update_57"];
         trace?: never;
     };
     "/api/v1/system-admin/safety-checks/templates/{templateId}": {
@@ -27882,14 +28571,14 @@ export interface paths {
             cookie?: never;
         };
         /** エラーレポート詳細取得 */
-        get: operations["get_27"];
+        get: operations["get_28"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** エラーレポート更新 */
-        patch: operations["update_57"];
+        patch: operations["update_58"];
         trace?: never;
     };
     "/api/v1/system-admin/error-reports/{id}/workflow-stage": {
@@ -27923,7 +28612,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 担当者割り当て/解除 */
-        patch: operations["assign_2"];
+        patch: operations["assign_3"];
         trace?: never;
     };
     "/api/v1/system-admin/error-reports/bulk": {
@@ -28587,14 +29276,14 @@ export interface paths {
             cookie?: never;
         };
         /** 募集枠詳細取得 */
-        get: operations["get_28"];
+        get: operations["get_29"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 募集枠編集 (§5.7) */
-        patch: operations["update_58"];
+        patch: operations["update_59"];
         trace?: never;
     };
     "/api/v1/quick-memos/{id}/restore": {
@@ -28908,7 +29597,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** チームグループ変更 */
-        patch: operations["update_59"];
+        patch: operations["update_60"];
         trace?: never;
     };
     "/api/v1/organizations/{slug}/restore": {
@@ -29133,7 +29822,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 組織来場者予約完了 */
-        patch: operations["complete_1"];
+        patch: operations["complete_2"];
         trace?: never;
     };
     "/api/v1/organizations/{organizationId}/parking/visitor-reservations/{id}/check-in": {
@@ -29436,7 +30125,7 @@ export interface paths {
             cookie?: never;
         };
         /** 組織キープ詳細 */
-        get: operations["get_29"];
+        get: operations["get_30"];
         put?: never;
         post?: never;
         /** 組織キープ削除 */
@@ -29444,7 +30133,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 組織キープ更新 */
-        patch: operations["update_60"];
+        patch: operations["update_61"];
         trace?: never;
     };
     "/api/v1/organizations/{orgPublicId}/members/{memberUserId}/calendar-color": {
@@ -29819,7 +30508,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 協会請求の取消（CANCELLED） */
-        patch: operations["cancel_15"];
+        patch: operations["cancel_16"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/matches/{matchId}/events/{eventId}": {
@@ -29942,7 +30631,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 確認通知キャンセル（組織） */
-        patch: operations["cancel_16"];
+        patch: operations["cancel_17"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/circulations/{documentId}": {
@@ -29971,13 +30660,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_30"];
+        get: operations["get_31"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["update_61"];
+        patch: operations["update_62"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/announcements/{id}/pin": {
@@ -30102,7 +30791,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** カスタム項目更新 */
-        patch: operations["update_62"];
+        patch: operations["update_63"];
         trace?: never;
     };
     "/api/v1/me/schedules/{id}": {
@@ -30132,7 +30821,7 @@ export interface paths {
             cookie?: never;
         };
         /** 個人キープ詳細 */
-        get: operations["get_31"];
+        get: operations["get_32"];
         put?: never;
         post?: never;
         /** 個人キープ削除 */
@@ -30140,7 +30829,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 個人キープ更新 */
-        patch: operations["update_63"];
+        patch: operations["update_64"];
         trace?: never;
     };
     "/api/v1/me/reflections/themes/{themeId}": {
@@ -30204,7 +30893,7 @@ export interface paths {
             cookie?: never;
         };
         /** 個人時間割詳細 */
-        get: operations["get_32"];
+        get: operations["get_33"];
         put?: never;
         post?: never;
         /** 個人時間割論理削除 */
@@ -30212,7 +30901,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 個人時間割メタ情報更新 */
-        patch: operations["update_64"];
+        patch: operations["update_65"];
         trace?: never;
     };
     "/api/v1/me/market/listings/{id}": {
@@ -30229,7 +30918,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 個人札のDRAFT編集 */
-        patch: operations["update_65"];
+        patch: operations["update_66"];
         trace?: never;
     };
     "/api/v1/me/favorites/reorder": {
@@ -30783,14 +31472,14 @@ export interface paths {
             cookie?: never;
         };
         /** ポリシー詳細 (段階含む) */
-        get: operations["get_33"];
+        get: operations["get_34"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** ポリシー編集 (is_template_policy=true のみ) */
-        patch: operations["update_66"];
+        patch: operations["update_67"];
         trace?: never;
     };
     "/api/v1/bulletin/threads/{threadId}/priority": {
@@ -30857,7 +31546,7 @@ export interface paths {
         delete: operations["delete_53"];
         options?: never;
         head?: never;
-        patch: operations["update_67"];
+        patch: operations["update_68"];
         trace?: never;
     };
     "/api/v1/budget/categories/{categoryId}": {
@@ -30873,7 +31562,7 @@ export interface paths {
         delete: operations["delete_54"];
         options?: never;
         head?: never;
-        patch: operations["update_68"];
+        patch: operations["update_69"];
         trace?: never;
     };
     "/api/v1/blog/posts/{id}/publish": {
@@ -31084,7 +31773,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * チーム公開設定取得
+         * @description GETのパス識別子はslug。管理認可後に数値IDと現在の2設定を返す。
+         */
+        get: operations["getTeamPublicSettings"];
         put?: never;
         post?: never;
         delete?: never;
@@ -31306,7 +31999,7 @@ export interface paths {
          * 同義語編集
          * @description synonymDisplay 指定時は再正規化と重複チェックを行う。
          */
-        patch: operations["update_69"];
+        patch: operations["update_70"];
         trace?: never;
     };
     "/api/v1/admin/permission-groups/{id}/unassign/{userId}": {
@@ -31370,7 +32063,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * 組織公開設定取得
+         * @description GETのパス識別子はslug。管理認可後に数値IDと現在の2設定を返す。
+         */
+        get: operations["getOrganizationPublicSettings"];
         put?: never;
         post?: never;
         delete?: never;
@@ -32339,7 +33036,7 @@ export interface paths {
             cookie?: never;
         };
         /** 指定月の村史を取得する（YYYY-MM-DD 形式） */
-        get: operations["get_34"];
+        get: operations["get_35"];
         put?: never;
         post?: never;
         delete?: never;
@@ -32356,7 +33053,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村憲章を取得する（read 公開ゲート・PUBLIC は非メンバー可・UNLISTED はメンバー/SYSTEM_ADMIN） */
-        get: operations["get_35"];
+        get: operations["get_36"];
         put?: never;
         post?: never;
         delete?: never;
@@ -34826,6 +35523,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/loyalty/transactions/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 本人のチーム別履歴 */
+        get: operations["loyaltyTransactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/operation-catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** スタッフ操作対象の取得 */
+        get: operations["loyaltyOperationCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/award-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** スタッフの承認申請一覧 */
+        get: operations["loyaltyStaffRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/award-requests/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** スタッフの承認申請詳細 */
+        get: operations["loyaltyStaffRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/loyalty/account/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 本人のチーム別残高 */
+        get: operations["loyaltyAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/line/logs": {
         parameters: {
             query?: never;
@@ -36779,6 +37561,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system-admin/ranch/outbox-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["sourceHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-admin/provisioning/invitations": {
         parameters: {
             query?: never;
@@ -37276,6 +38074,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system-admin/dashboard/teams/deleted": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 削除済みチームの復元対象一覧取得
+         * @description 削除日時・IDの降順に固定してDBページングする。size上限は100。外部sort指定は無視する。
+         */
+        get: operations["getDeletedTeams"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-admin/dashboard/organizations": {
         parameters: {
             query?: never;
@@ -37324,7 +38142,7 @@ export interface paths {
          * 価格改定 revision 取得
          * @description band明細を含む。不在・論理削除済みは404。
          */
-        get: operations["get_36"];
+        get: operations["get_37"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42601,7 +43419,7 @@ export interface paths {
             cookie?: never;
         };
         /** ピン留め村の最新動きをダッシュボード向けに集約取得（本文は村人である村のみ） */
-        get: operations["feed"];
+        get: operations["feed_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42874,6 +43692,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/reflections/recall-sessions/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_38"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/reflections/linkable-slots": {
         parameters: {
             query?: never;
@@ -43006,6 +43840,70 @@ export interface paths {
          * @description フォロー先チーム/組織の最新OPEN募集を最大20件返す
          */
         get: operations["myFeed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/ranch/shop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["shop"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/ranch/records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["records"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/ranch/commands/{commandId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["command"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/ranch/collectibles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["collectibles"];
         put?: never;
         post?: never;
         delete?: never;
@@ -43511,6 +44409,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/diagnoses/sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["readSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/diagnoses/sessions/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["readPendingSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/diagnoses/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listResults"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/diagnoses/results/{resultId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getResult"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/dashboard/timetable-today": {
         parameters: {
             query?: never;
@@ -43949,6 +44911,57 @@ export interface paths {
         };
         /** 市区町村一覧 */
         get: operations["listCities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/loyalty/award-requests/{requestId}/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 本人の申請詳細 */
+        get: operations["loyaltyMyRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/loyalty/award-requests/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 本人の申請一覧 */
+        get: operations["loyaltyMyRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/loyalty/accounts/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 本人のチームポイント一覧 */
+        get: operations["loyaltyListAccounts"];
         put?: never;
         post?: never;
         delete?: never;
@@ -44506,7 +45519,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_37"];
+        get: operations["get_39"];
         put?: never;
         post?: never;
         delete?: never;
@@ -47218,7 +48231,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** チーム申請取消 */
-        delete: operations["cancel_17"];
+        delete: operations["cancel_18"];
         options?: never;
         head?: never;
         patch?: never;
@@ -47789,7 +48802,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 招待の取消（組織 ADMIN） */
-        delete: operations["cancel_18"];
+        delete: operations["cancel_19"];
         options?: never;
         head?: never;
         patch?: never;
@@ -47908,7 +48921,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 組織申請取消 */
-        delete: operations["cancel_19"];
+        delete: operations["cancel_20"];
         options?: never;
         head?: never;
         patch?: never;
@@ -48120,7 +49133,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 継続課金 期末解約（F08.9 P5） */
-        delete: operations["cancel_20"];
+        delete: operations["cancel_21"];
         options?: never;
         head?: never;
         patch?: never;
@@ -51425,6 +52438,80 @@ export interface components {
             isEnabled?: boolean;
             prefectureCode?: string;
         };
+        LoyaltyUpdateProgramRequest: {
+            expectedVersion: number | null;
+            isEnabled: boolean;
+            /** @enum {string} */
+            selfAwardMode: "STAFF_APPROVAL" | "AUTO";
+            /** @enum {string} */
+            targetAudience: "ALL_AUTHENTICATED" | "SUPPORTERS_AND_ABOVE" | "MEMBERS_AND_ABOVE";
+        };
+        ApiResponseLoyaltyProgramSettings: {
+            data?: components["schemas"]["LoyaltyProgramSettings"];
+        };
+        LoyaltyProgramSettings: {
+            id: string | null;
+            isEnabled: boolean;
+            rewards: components["schemas"]["LoyaltyRewardResponse"][];
+            rules: components["schemas"]["LoyaltyRuleResponse"][];
+            /** @enum {string} */
+            selfAwardMode: "STAFF_APPROVAL" | "AUTO";
+            /** @enum {string} */
+            targetAudience: "ALL_AUTHENTICATED" | "SUPPORTERS_AND_ABOVE" | "MEMBERS_AND_ABOVE";
+            /** Format: int64 */
+            teamId: number;
+            version: number | null;
+        };
+        LoyaltyRewardResponse: {
+            description: string | null;
+            /** Format: uuid */
+            id: string;
+            isActive: boolean;
+            name: string;
+            /** Format: int32 */
+            requiredPoints: number;
+            /** Format: int64 */
+            version: number;
+        };
+        LoyaltyRuleResponse: {
+            /** @enum {string} */
+            frequency: "ONCE_PER_JST_DAY" | "EACH_STAFF_CONFIRMATION";
+            /** Format: uuid */
+            id: string;
+            isActive: boolean;
+            isSelfAwardEnabled: boolean;
+            name: string;
+            /** Format: int32 */
+            points: number;
+            /** Format: int64 */
+            version: number;
+        };
+        LoyaltyUpdateRuleRequest: {
+            /** Format: int64 */
+            expectedVersion: number;
+            /** @enum {string} */
+            frequency: "ONCE_PER_JST_DAY" | "EACH_STAFF_CONFIRMATION";
+            isActive: boolean;
+            isSelfAwardEnabled: boolean;
+            name: string;
+            /** Format: int32 */
+            points: number;
+        };
+        ApiResponseLoyaltyRuleResponse: {
+            data?: components["schemas"]["LoyaltyRuleResponse"];
+        };
+        LoyaltyUpdateRewardRequest: {
+            description: string | null;
+            /** Format: int64 */
+            expectedVersion: number;
+            isActive: boolean;
+            name: string;
+            /** Format: int32 */
+            requiredPoints: number;
+        };
+        ApiResponseLoyaltyRewardResponse: {
+            data?: components["schemas"]["LoyaltyRewardResponse"];
+        };
         UpdateLineBotConfigRequest: {
             botUserId?: string;
             channelAccessToken?: string;
@@ -52991,6 +54078,26 @@ export interface components {
             scopeType?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        RanchOperationalControlsRequest: {
+            isCareEnabled?: boolean;
+            isDeliveryPaused?: boolean;
+            isRewardsPaused?: boolean;
+            isShopEnabled?: boolean;
+            reasonCode?: string;
+            version?: string;
+        };
+        ApiResponseRanchOperationalControlsResponse: {
+            data?: components["schemas"]["RanchOperationalControlsResponse"];
+        };
+        RanchOperationalControlsResponse: {
+            isCareEnabled?: boolean;
+            isDeliveryPaused?: boolean;
+            isRewardsPaused?: boolean;
+            isShopEnabled?: boolean;
+            /** Format: date-time */
+            updatedAt?: string;
+            version?: string;
         };
         NavFeatureUpdateRequest: {
             enabled: boolean;
@@ -55158,17 +56265,8 @@ export interface components {
             /** Format: int32 */
             remindHour?: number;
         };
-        UpsertReflectionEntryRequest: {
-            /** Format: int64 */
-            expectedVersion?: number;
-            structuredContent: components["schemas"]["JsonNode"];
-            /** Format: date */
-            targetDate: string;
-            /** Format: uuid */
-            themeId: string;
-        };
-        ApiResponseReflectionEntryResponse: {
-            data?: components["schemas"]["ReflectionEntryResponse"];
+        ApiResponseRecallSessionResponse: {
+            data?: components["schemas"]["RecallSessionResponse"];
         };
         MaskedHint: {
             cardQuiz?: components["schemas"]["ReflectionMaskedCardQuiz"][];
@@ -55182,6 +56280,46 @@ export interface components {
             /** Format: date */
             targetDate?: string;
             themeTitle?: string;
+        };
+        RecallSessionAnswer: {
+            /** Format: uuid */
+            promptId?: string;
+            /** @enum {string} */
+            state?: "ANSWERED" | "FORGOT";
+            text?: string;
+        };
+        RecallSessionPrompt: {
+            heading?: string;
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            kind?: "TERM_CARD" | "FREE_RECALL";
+            /** Format: int32 */
+            maxAnswerLength?: number;
+            promptSide?: string;
+            promptText?: string;
+        };
+        RecallSessionResponse: {
+            answers?: components["schemas"]["RecallSessionAnswer"][];
+            /** Format: date-time */
+            completedAt?: string;
+            /** Format: uuid */
+            entryId?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: uuid */
+            id?: string;
+            original?: components["schemas"]["ReflectionEntryResponse"];
+            prompts?: components["schemas"]["RecallSessionPrompt"][];
+            /** Format: date */
+            rewardWeek?: string;
+            /** @enum {string} */
+            selfRating?: "REMEMBERED" | "PARTIAL" | "FORGOT";
+            /** Format: date-time */
+            startedAt?: string;
+            /** @enum {string} */
+            status?: "STARTED" | "COMPLETED" | "CANCELLED";
+            version?: string;
         };
         ReflectionEntryResponse: {
             /** Format: int64 */
@@ -55224,6 +56362,89 @@ export interface components {
         };
         ReflectionMaskedOutlineSection: {
             heading?: string;
+        };
+        UpsertReflectionEntryRequest: {
+            /** Format: int64 */
+            expectedVersion?: number;
+            structuredContent: components["schemas"]["JsonNode"];
+            /** Format: date */
+            targetDate: string;
+            /** Format: uuid */
+            themeId: string;
+        };
+        ApiResponseReflectionEntryResponse: {
+            data?: components["schemas"]["ReflectionEntryResponse"];
+        };
+        RanchSettingsRequest: {
+            isSoundEnabled: boolean;
+            /** @enum {string} */
+            motionMode: "NORMAL" | "REDUCED" | "STOPPED";
+            /** @enum {string} */
+            renderStyle: "PIXEL" | "PAINT_2D";
+            /** Format: int32 */
+            soundVolume: number;
+            version?: string;
+        };
+        ApiResponseRanchSettings: {
+            data?: components["schemas"]["RanchSettings"];
+        };
+        RanchSettings: {
+            isSoundEnabled?: boolean;
+            isVisible?: boolean;
+            /** @enum {string} */
+            motionMode?: "NORMAL" | "REDUCED" | "STOPPED";
+            /** @enum {string} */
+            renderStyle?: "PIXEL" | "PAINT_2D";
+            /** Format: int32 */
+            soundVolume?: number;
+            version?: string;
+            viewMode?: string;
+        };
+        RanchSlotRequest: {
+            /** Format: uuid */
+            inventoryId: string;
+            version?: string;
+        };
+        ApiResponseRoomSlotSummary: {
+            data?: components["schemas"]["RoomSlotSummary"];
+        };
+        Decoration: {
+            assetKey?: string;
+            collectibleKey?: string;
+            labelKey?: string;
+        };
+        RoomSlotSummary: {
+            decoration?: components["schemas"]["Decoration"];
+            inventoryId?: string | null;
+            slotKey?: string;
+            version?: string;
+        };
+        RanchAssignmentRequest: {
+            confirmationRef?: string;
+            /** @enum {string} */
+            habitat?: "LAND" | "SEA" | "AIR";
+            /** @enum {string} */
+            method: "HABITAT_RANDOM" | "BIRTH_STYLE" | "DIAGNOSIS";
+            /** Format: uuid */
+            resultId?: string;
+            version?: string;
+        };
+        ApiResponseAssignmentResult: {
+            data?: components["schemas"]["AssignmentResult"];
+        };
+        AssignmentResult: {
+            /** Format: date-time */
+            confirmedAt?: string;
+            /** Format: uuid */
+            dinosaurId?: string;
+            /** @enum {string} */
+            habitat?: "LAND" | "SEA" | "AIR";
+            /** @enum {string} */
+            method?: "HABITAT_RANDOM" | "BIRTH_STYLE" | "DIAGNOSIS";
+            speciesCatalogVersion?: string;
+            speciesKey?: string;
+            variantKey?: string;
+            version?: string;
         };
         BulkPersonalTimetableSlotRequest: {
             slots: components["schemas"]["PersonalTimetableSlotRequest"][];
@@ -55327,6 +56548,55 @@ export interface components {
             /** Format: int32 */
             backfillCount?: number;
             personalSyncEnabled?: boolean;
+        };
+        ApiResponseDiagnosisSessionResponse: {
+            data?: components["schemas"]["DiagnosisSessionResponse"];
+        };
+        DiagnosisAnswer: {
+            questionId?: string;
+            /** Format: int32 */
+            value?: number;
+        };
+        DiagnosisQuestion: {
+            /** @enum {string} */
+            axis?: "FAMILIAR_NEW" | "FOCUS_VARIETY" | "SPONTANEOUS_PLAN" | "SOLO_TOGETHER" | "EXPRESSION" | "NOTICE";
+            id?: string;
+            /** Format: int32 */
+            polarity?: number;
+            text?: {
+                [key: string]: string;
+            };
+        };
+        DiagnosisSessionResponse: {
+            answerRevision?: string;
+            answers?: components["schemas"]["DiagnosisAnswer"][];
+            /** Format: uuid */
+            id?: string;
+            questionnaireVersion?: string;
+            questions?: components["schemas"]["DiagnosisQuestion"][];
+            /** Format: uuid */
+            resultId?: string;
+            scoringVersion?: string;
+            /** @enum {string} */
+            status?: "STARTED" | "TIE_BREAK_REQUIRED" | "COMPLETED" | "CANCELLED";
+            tieQuestions?: components["schemas"]["DiagnosisTieQuestion"][];
+            version?: string;
+        };
+        DiagnosisTieQuestion: {
+            /** @enum {string} */
+            axisId?: "FAMILIAR_NEW" | "FOCUS_VARIETY" | "SPONTANEOUS_PLAN" | "SOLO_TOGETHER" | "EXPRESSION" | "NOTICE";
+            one?: {
+                [key: string]: string;
+            };
+            zero?: {
+                [key: string]: string;
+            };
+        };
+        ApiResponseBirthProfileUpdateResponse: {
+            data?: components["schemas"]["BirthProfileUpdateResponse"];
+        };
+        BirthProfileUpdateResponse: {
+            revision?: string;
         };
         UpdateUserAdPreferencesRequest: {
             acceptAnnouncementAds?: boolean;
@@ -58501,6 +59771,7 @@ export interface components {
             /** Format: int32 */
             academicYear?: number;
             allDay: boolean;
+            allowProxyAttendance?: boolean;
             /** Format: date-time */
             attendanceDeadline?: string;
             attendanceRequired: boolean;
@@ -58512,6 +59783,7 @@ export interface components {
             eventCategoryId?: number;
             eventType: string;
             includeSupporters?: boolean;
+            isProxyAutoAccept?: boolean;
             location?: string;
             minResponseRole?: string;
             minViewRole?: string;
@@ -58608,10 +59880,12 @@ export interface components {
         };
         ScheduleResponse: {
             academic?: components["schemas"]["ScheduleAcademicDto"];
+            allowProxyAttendance?: boolean;
             audit?: components["schemas"]["ScheduleAuditDto"];
             content?: components["schemas"]["ScheduleContentDto"];
             /** Format: int64 */
             id?: number;
+            isProxyAutoAccept?: boolean;
             myAttendanceStatus?: string;
             recurrenceInfo?: components["schemas"]["ScheduleRecurrenceDto"];
             reminders?: components["schemas"]["ReminderResponse"][];
@@ -58738,6 +60012,7 @@ export interface components {
             /** Format: int32 */
             academicYear?: number;
             allDay?: boolean;
+            allowProxyAttendance?: boolean;
             /** Format: date-time */
             attendanceDeadline?: string;
             attendanceRequired?: boolean;
@@ -58748,6 +60023,7 @@ export interface components {
             /** Format: int64 */
             eventCategoryId?: number;
             eventType?: string;
+            isProxyAutoAccept?: boolean;
             location?: string;
             minResponseRole?: string;
             minViewRole?: string;
@@ -60939,6 +62215,175 @@ export interface components {
             tournamentFixtureId?: number;
             venue?: string;
         };
+        LoyaltySelfAwardRequest: {
+            /** Format: int64 */
+            expectedProgramVersion: number;
+            /** Format: int64 */
+            expectedRuleVersion: number;
+            locationToken: string;
+            /** Format: uuid */
+            ruleId: string;
+        };
+        ApiResponseLoyaltySelfAwardResult: {
+            data?: components["schemas"]["LoyaltySelfAwardResult"];
+        };
+        LoyaltyAwardRequestResponse: {
+            applicantDisplayName: string;
+            /** Format: date */
+            awardOn: string;
+            canApprove: boolean;
+            canCancel: boolean;
+            closedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: uuid */
+            id: string;
+            locationName: string;
+            /** Format: int32 */
+            points: number;
+            reason: ("USER_CANCELLED" | "STAFF_REJECTED" | "TTL_EXPIRED" | "DAY_CHANGED" | "VERSION_CHANGED" | "LOCATION_INACTIVE" | "TEAM_INACTIVE" | "USER_INACTIVE" | "INELIGIBLE" | "DAILY_AWARDED" | "POINT_LIMIT") | null;
+            ruleName: string;
+            /** @enum {string} */
+            status: "PENDING" | "APPROVED" | "CANCELLED" | "REJECTED" | "EXPIRED" | "INVALIDATED" | "SUPERSEDED";
+            /** Format: int64 */
+            teamId: number;
+            teamName: string;
+            transactionId: string | null;
+            verificationCode: string;
+            /** Format: int64 */
+            version: number;
+        };
+        LoyaltySelfAwardResult: {
+            /** @enum {string} */
+            outcome: "AWARDED" | "SUBMITTED";
+            request: components["schemas"]["LoyaltyAwardRequestResponse"] | null;
+            transaction: components["schemas"]["LoyaltyTransactionResponse"] | null;
+        };
+        LoyaltyTransactionResponse: {
+            awardOn: string | null;
+            /** Format: int32 */
+            balanceAfter: number;
+            /** @enum {string} */
+            channel: "STAFF" | "SELF_AUTO" | "SELF_APPROVED";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int32 */
+            delta: number;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "AWARD" | "REDEEM";
+            label: string;
+            rewardId: string | null;
+            ruleId: string | null;
+            /** Format: int64 */
+            teamId: number;
+        };
+        LoyaltySelfAwardPreviewRequest: {
+            locationToken: string;
+            /** Format: uuid */
+            ruleId: string;
+        };
+        ApiResponseLoyaltySelfAwardPreview: {
+            data?: components["schemas"]["LoyaltySelfAwardPreview"];
+        };
+        LoyaltySelfAwardPreview: {
+            /** Format: int32 */
+            balance: number;
+            isAlreadyAwardedToday: boolean;
+            isEligibleForAward: boolean;
+            /** Format: int64 */
+            programVersion: number;
+            rule: components["schemas"]["LoyaltyRuleResponse"];
+            /** @enum {string} */
+            selfAwardMode: "STAFF_APPROVAL" | "AUTO";
+            /** Format: int64 */
+            teamId: number;
+            teamName: string;
+        };
+        LoyaltyScanPreviewRequest: {
+            qrToken: string;
+            /** Format: uuid */
+            ruleId: string;
+        };
+        ApiResponseLoyaltyScanPreview: {
+            data?: components["schemas"]["LoyaltyScanPreview"];
+        };
+        LoyaltyScanPreview: {
+            /** Format: int32 */
+            balance: number;
+            displayName: string;
+            isEligibleForAward: boolean;
+            /** Format: int64 */
+            programVersion: number;
+            rule: components["schemas"]["LoyaltyRuleResponse"];
+        };
+        LoyaltyCreateRuleRequest: {
+            /** @enum {string} */
+            frequency: "ONCE_PER_JST_DAY" | "EACH_STAFF_CONFIRMATION";
+            isSelfAwardEnabled: boolean;
+            name: string;
+            /** Format: int32 */
+            points: number;
+        };
+        LoyaltyCreateRewardRequest: {
+            description: string | null;
+            name: string;
+            /** Format: int32 */
+            requiredPoints: number;
+        };
+        LoyaltyRedeemRequest: {
+            /** Format: int64 */
+            expectedProgramVersion: number;
+            /** Format: int64 */
+            expectedRewardVersion: number;
+            qrToken: string;
+            /** Format: uuid */
+            rewardId: string;
+        };
+        ApiResponseLoyaltyTransactionResponse: {
+            data?: components["schemas"]["LoyaltyTransactionResponse"];
+        };
+        LoyaltyRedemptionPreviewRequest: {
+            qrToken: string;
+            /** Format: uuid */
+            rewardId: string;
+        };
+        ApiResponseLoyaltyRedemptionPreview: {
+            data?: components["schemas"]["LoyaltyRedemptionPreview"];
+        };
+        LoyaltyRedemptionPreview: {
+            /** Format: int32 */
+            balance: number;
+            canRedeem: boolean;
+            displayName: string;
+            /** Format: int64 */
+            programVersion: number;
+            reward: components["schemas"]["LoyaltyRewardResponse"];
+        };
+        LoyaltyStaffAwardRequest: {
+            /** Format: int64 */
+            expectedProgramVersion: number;
+            /** Format: int64 */
+            expectedRuleVersion: number;
+            qrToken: string;
+            /** Format: uuid */
+            ruleId: string;
+        };
+        LoyaltyRequestActionRequest: {
+            /** Format: int64 */
+            expectedRequestVersion: number;
+        };
+        ApiResponseLoyaltyAwardRequestResponse: {
+            data?: components["schemas"]["LoyaltyAwardRequestResponse"];
+        };
+        LoyaltyApproveRequest: {
+            /** Format: int64 */
+            expectedRequestVersion: number;
+            verificationCode: string;
+        };
         TestMessageRequest: {
             lineUserId?: string;
             message?: string;
@@ -61847,13 +63292,10 @@ export interface components {
             /** Format: int32 */
             tierOrder?: number;
         };
-        CreateFiscalYearRequest: {
+        ScopedCreateFiscalYearRequest: {
             /** Format: date */
             endDate: string;
-            name?: string;
-            /** Format: int64 */
-            scopeId: number;
-            scopeType?: string;
+            name: string;
             /** Format: date */
             startDate: string;
         };
@@ -63082,6 +64524,92 @@ export interface components {
             /** Format: int32 */
             sortOrder?: number;
         };
+        Delivery: {
+            /** Format: int32 */
+            batchSize?: number;
+            /** Format: int32 */
+            initialBackoffSeconds?: number;
+            /** Format: int32 */
+            leaseSeconds?: number;
+            /** Format: int32 */
+            maxAttempts?: number;
+            /** Format: int32 */
+            maxBackoffSeconds?: number;
+        };
+        RanchPolicyPublicationRequest: {
+            delivery?: components["schemas"]["Delivery"];
+            /** Format: date-time */
+            effectiveAt?: string;
+            enabled?: boolean;
+            globalWeeklyCap?: string;
+            reasonCode?: string;
+            sources?: components["schemas"]["SourceRule"][];
+        };
+        SourceRule: {
+            amountPoints?: string;
+            /** Format: int32 */
+            countLimit?: number;
+            enabled?: boolean;
+            /** @enum {string} */
+            sourceType?: "ATTENDANCE_RESPONSE" | "TIMELINE_ORIGINAL" | "BLOG_FIRST_PUBLISH" | "PERSONAL_RECALL_COMPLETE";
+        };
+        ApiResponseRanchPolicyPublicationResponse: {
+            data?: components["schemas"]["RanchPolicyPublicationResponse"];
+        };
+        RanchPolicyPublicationResponse: {
+            /** Format: date-time */
+            effectiveAt?: string;
+            hash?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: date-time */
+            publishedAt?: string;
+            publishedBy?: string;
+            settings?: components["schemas"]["RanchPolicyPublicationRequest"];
+            version?: string;
+        };
+        SourceOutboxAdminRetryRequest: {
+            reasonCode?: string;
+        };
+        ApiResponseSourceOutboxAdminRetryAck: {
+            data?: components["schemas"]["SourceOutboxAdminRetryAck"];
+        };
+        SourceOutboxAdminRetryAck: {
+            /** Format: uuid */
+            commandId?: string;
+            /** Format: date-time */
+            completedAt?: string;
+            /** @enum {string} */
+            disposition?: "RETRY_SCHEDULED" | "ALREADY_TERMINAL";
+            /** Format: uuid */
+            eventId?: string;
+            /** @enum {string} */
+            sourceType?: "ATTENDANCE_RESPONSE" | "TIMELINE_ORIGINAL" | "BLOG_FIRST_PUBLISH" | "PERSONAL_RECALL_COMPLETE";
+        };
+        RanchCareRulePublicationRequest: {
+            adultXp?: string;
+            amountXp?: string;
+            /** Format: date-time */
+            effectiveAt?: string;
+            juvenileXp?: string;
+            reasonCode?: string;
+            weeklyCapXp?: string;
+        };
+        ApiResponseRanchCareRulePublicationResponse: {
+            data?: components["schemas"]["RanchCareRulePublicationResponse"];
+        };
+        RanchCareRulePublicationResponse: {
+            contentHash?: string;
+            /** Format: date-time */
+            effectiveAt?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: date-time */
+            publishedAt?: string;
+            publishedBy?: string;
+            settings?: components["schemas"]["RanchCareRulePublicationRequest"];
+            version?: string;
+        };
         ProvisioningTeamCreateRequest: {
             confirmDuplicate?: boolean;
             duplicateNameFingerprint?: string;
@@ -63144,6 +64672,7 @@ export interface components {
             domainName?: string;
             message?: string;
             newStatus?: string;
+            queued?: boolean;
             /** Format: int32 */
             retryCount?: number;
             succeeded?: boolean;
@@ -65639,6 +67168,7 @@ export interface components {
             status?: string;
             /** Format: int64 */
             teamId?: number;
+            teamName?: string;
         };
         LoadFromTeamRequest: {
             overwriteExisting?: boolean;
@@ -66575,6 +68105,15 @@ export interface components {
             message?: string;
             reason?: string;
         };
+        ApiResponsePlatformCardResponse: {
+            data?: components["schemas"]["PlatformCardResponse"];
+        };
+        PlatformCardResponse: {
+            /** Format: int64 */
+            memberCardId?: number;
+            scopeType?: string;
+            status?: string;
+        };
         VoiceInputConsentRequest: {
             /** Format: int32 */
             version: number;
@@ -66788,6 +68327,202 @@ export interface components {
             /** Format: int32 */
             archivedCount?: number;
         };
+        EmptyRanchRequest: Record<string, never>;
+        ApiResponseRanchState: {
+            data?: components["schemas"]["RanchState"];
+        };
+        AssignmentSummary: {
+            availableMethods?: ("HABITAT_RANDOM" | "BIRTH_STYLE" | "DIAGNOSIS")[];
+            confirmedMethod?: ("HABITAT_RANDOM" | "BIRTH_STYLE" | "DIAGNOSIS") | null;
+            selectionConfirmed?: boolean;
+        };
+        CareBudget: {
+            amountXp?: string;
+            awardedXp?: string;
+            remainingXp?: string;
+            ruleVersion?: string;
+            /** Format: date-time */
+            weekEndsAt?: string;
+            /** Format: date */
+            weekStartsOn?: string;
+            weeklyCapXp?: string;
+        };
+        DinosaurSummary: {
+            affinityBand?: string;
+            egg?: components["schemas"]["EggSummary"] | null;
+            habitat?: ("LAND" | "SEA" | "AIR") | null;
+            /** Format: uuid */
+            id?: string;
+            name?: string | null;
+            namedAt?: string | null;
+            nextStageXp?: string | null;
+            speciesCatalogVersion?: string | null;
+            speciesKey?: string | null;
+            /** @enum {string} */
+            stage?: "EGG" | "BABY" | "JUVENILE" | "ADULT";
+            variantKey?: string | null;
+            version?: string;
+            xp?: string;
+        };
+        EggSummary: {
+            /** @enum {string} */
+            crackStage?: "INTACT" | "SMALL_CRACK" | "WIDE_CRACK" | "READY";
+            hatchReady?: boolean;
+            hatchedAt?: string | null;
+            /** Format: date-time */
+            readyAt?: string;
+            /** Format: date-time */
+            startedAt?: string;
+        };
+        OwnerSummary: {
+            balance?: string;
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            status?: "ACTIVE" | "PAUSED";
+            version?: string;
+        };
+        RanchState: {
+            assignment?: components["schemas"]["AssignmentSummary"] | null;
+            careBudget?: components["schemas"]["CareBudget"] | null;
+            deliveryPaused?: boolean;
+            dinosaur?: components["schemas"]["DinosaurSummary"] | null;
+            featureStatus?: string;
+            owner?: components["schemas"]["OwnerSummary"] | null;
+            policyVersion?: string | null;
+            rewardsStatus?: string;
+            roomSlots?: components["schemas"]["RoomSlotSummary"][];
+            /** Format: date-time */
+            serverTime?: string;
+            settings?: components["schemas"]["RanchSettings"] | null;
+            shopAvailable?: boolean;
+            weekBudget?: components["schemas"]["WeekBudget"] | null;
+        };
+        WeekBudget: {
+            awardedTotal?: string;
+            globalCap?: string;
+            /** Format: int32 */
+            personalCompletedCount?: number;
+            personalRequiredCount?: string;
+            policyVersion?: string;
+            remaining?: string;
+            /** Format: date-time */
+            weekEndsAt?: string;
+            /** Format: date */
+            weekStartsOn?: string;
+        };
+        RanchVersionRequest: {
+            version?: string;
+        };
+        ApiResponseOwnerSummary: {
+            data?: components["schemas"]["OwnerSummary"];
+        };
+        RanchPurchaseRequest: {
+            priceVersion?: string;
+            skuKey?: string;
+            version?: string;
+        };
+        ApiResponseRanchPurchaseResult: {
+            data?: components["schemas"]["RanchPurchaseResult"];
+        };
+        RanchPurchaseResult: {
+            balanceAfter?: string;
+            /** Format: uuid */
+            commandId?: string;
+            /** Format: date-time */
+            completedAt?: string;
+            costPoints?: string;
+            /** Format: uuid */
+            inventoryId?: string;
+            priceVersion?: string;
+            skuKey?: string;
+        };
+        RanchInteractionRequest: {
+            /** @enum {string} */
+            kind: "TOUCH";
+            version?: string;
+        };
+        ApiResponseInteractionResult: {
+            data?: components["schemas"]["InteractionResult"];
+        };
+        InteractionResult: {
+            affinityBand?: string;
+            affinityChanged?: boolean;
+            /** Format: uuid */
+            commandId?: string;
+            /** Format: date-time */
+            completedAt?: string;
+            /** Format: uuid */
+            dinosaurId?: string;
+            reactionKey?: string;
+        };
+        RanchHatchRequest: {
+            name: string;
+            nameConfirmed: boolean;
+            version?: string;
+        };
+        ApiResponseHatchResponse: {
+            data?: components["schemas"]["HatchResponse"];
+        };
+        HatchResponse: {
+            /** @enum {string} */
+            kind?: "HATCH_RESULT" | "CURRENT_STATE";
+            result?: components["schemas"]["HatchResult"] | null;
+            state?: components["schemas"]["RanchState"] | null;
+        };
+        HatchResult: {
+            /** Format: uuid */
+            commandId?: string;
+            /** Format: uuid */
+            dinosaurId?: string;
+            /** Format: date-time */
+            hatchedAt?: string;
+            name?: string;
+            /** Format: date-time */
+            namedAt?: string;
+            /** @enum {string} */
+            stage?: "EGG" | "BABY" | "JUVENILE" | "ADULT";
+            version?: string;
+        };
+        ApiResponseFeedingResult: {
+            data?: components["schemas"]["FeedingResult"];
+        };
+        FeedingResult: {
+            balanceAfter?: string;
+            careKind?: string;
+            /** Format: uuid */
+            commandId?: string;
+            /** Format: date-time */
+            completedAt?: string;
+            costPoints?: string;
+            /** Format: uuid */
+            dinosaurId?: string;
+            gainedXp?: string;
+            isGrowthCapped?: boolean;
+            ruleVersion?: string;
+            /** @enum {string} */
+            stageAfter?: "EGG" | "BABY" | "JUVENILE" | "ADULT";
+            /** @enum {string} */
+            stageBefore?: "EGG" | "BABY" | "JUVENILE" | "ADULT";
+        };
+        RanchLegacySyncRequest: {
+            afterAwardId?: string;
+        };
+        ApiResponseRanchLegacySyncResult: {
+            data?: components["schemas"]["RanchLegacySyncResult"];
+        };
+        RanchLegacySyncResult: {
+            /** Format: uuid */
+            commandId?: string;
+            /** Format: date-time */
+            completedAt?: string;
+            hasNext?: boolean;
+            /** Format: int32 */
+            importedCount?: number;
+            nextAfterAwardId?: string;
+            /** Format: int32 */
+            processedCount?: number;
+        };
         ApiResponsePilgrimageRecommendationResponse: {
             data?: components["schemas"]["PilgrimageRecommendationResponse"];
         };
@@ -66993,6 +68728,60 @@ export interface components {
             id?: string;
             pageUrl?: string;
         };
+        ApiResponseDiagnosisResultSummary: {
+            data?: components["schemas"]["DiagnosisResultSummary"];
+        };
+        DiagnosisAxisSelection: {
+            one?: {
+                [key: string]: string;
+            };
+            /** Format: int32 */
+            side?: number;
+            zero?: {
+                [key: string]: string;
+            };
+        };
+        DiagnosisNumberSummary: {
+            /** Format: int32 */
+            dateSum?: number;
+            /** Format: int32 */
+            lifePathNumber?: number;
+            /** Format: int32 */
+            nameNumber?: number;
+            /** Format: int32 */
+            nameSum?: number;
+        };
+        DiagnosisResultSummary: {
+            axes?: {
+                [key: string]: number;
+            };
+            axisDescriptions?: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+            /** @description 保存時の六軸の極ラベルと本人の選択側。旧結果やBIRTH_STYLEではnullを許す */
+            axisSelections?: {
+                [key: string]: components["schemas"]["DiagnosisAxisSelection"];
+            } | null;
+            /** Format: date-time */
+            completedAt?: string;
+            descriptionSnapshot?: {
+                [key: string]: string;
+            };
+            /** Format: uuid */
+            id?: string;
+            mappingVersion?: string;
+            /** @enum {string} */
+            method?: "DIAGNOSIS" | "BIRTH_STYLE";
+            normalizationVersion?: string;
+            numberSummary?: components["schemas"]["DiagnosisNumberSummary"];
+            questionnaireVersion?: string;
+            resultSchemaVersion?: string;
+            ruleVersion?: string;
+            scoringVersion?: string;
+            typeCode?: string;
+        };
         InviteWatcherRequest: {
             /** @enum {string} */
             careCategory: "MINOR" | "ELDERLY" | "DISABILITY_SUPPORT" | "GENERAL_FAMILY";
@@ -67040,6 +68829,16 @@ export interface components {
             careRecipientUserId: number;
             /** @enum {string} */
             relationship: "PARENT" | "CHILD" | "SPOUSE" | "GRANDPARENT" | "GRANDCHILD" | "SIBLING" | "LEGAL_GUARDIAN" | "CARETAKER" | "OTHER";
+        };
+        ApiResponseBirthProfileConfirmationResponse: {
+            data?: components["schemas"]["BirthProfileConfirmationResponse"];
+        };
+        BirthProfileConfirmationResponse: {
+            /** Format: uuid */
+            confirmationRef?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+            profileRevision?: string;
         };
         CreateBillingQuoteRequest: {
             productKey?: string;
@@ -67240,6 +69039,43 @@ export interface components {
             rating?: number;
             /** Format: int64 */
             revieweeTeamId?: number;
+        };
+        LoyaltySelfAwardBootstrapRequest: {
+            locationToken: string;
+        };
+        ApiResponseLoyaltySelfAwardBootstrap: {
+            data?: components["schemas"]["LoyaltySelfAwardBootstrap"];
+        };
+        LoyaltyAccountDetail: {
+            accountId: string | null;
+            /** Format: int32 */
+            balance: number;
+            isEligibleForAward: boolean;
+            isProgramEnabled: boolean;
+            /** Format: int64 */
+            lifetimeEarned: number;
+            rewards: components["schemas"]["LoyaltyRewardProgress"][];
+            /** Format: int64 */
+            teamId: number;
+            teamName: string;
+        };
+        LoyaltyRewardProgress: {
+            canRedeem: boolean;
+            description: string | null;
+            /** Format: uuid */
+            id: string;
+            isActive: boolean;
+            name: string;
+            /** Format: int32 */
+            remainingPoints: number;
+            /** Format: int32 */
+            requiredPoints: number;
+            /** Format: int64 */
+            version: number;
+        };
+        LoyaltySelfAwardBootstrap: {
+            account: components["schemas"]["LoyaltyAccountDetail"];
+            preview: components["schemas"]["LoyaltySelfAwardPreview"];
         };
         CreateJobPostingRequest: {
             /** Format: date-time */
@@ -71856,6 +73692,16 @@ export interface components {
         SetLockRequest: {
             locked?: boolean;
         };
+        CreateFiscalYearRequest: {
+            /** Format: date */
+            endDate: string;
+            name?: string;
+            /** Format: int64 */
+            scopeId: number;
+            scopeType?: string;
+            /** Format: date */
+            startDate: string;
+        };
         UpdatePublicVisibleRequest: {
             publicVisible: boolean;
         };
@@ -71898,6 +73744,25 @@ export interface components {
         };
         UpdateSessionDeviceNameRequest: {
             deviceName?: string;
+        };
+        ApiResponseAuthSessionResponse: {
+            data?: components["schemas"]["AuthSessionResponse"];
+        };
+        AuthSessionResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            current?: boolean;
+            deviceName?: string;
+            deviceType?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: int64 */
+            id?: number;
+            ipAddress?: string;
+            /** Format: date-time */
+            lastUsedAt?: string;
+            rememberMe?: boolean;
+            userAgent?: string;
         };
         UpdateRequirementRuleRequest: {
             /** @enum {string} */
@@ -74726,6 +76591,31 @@ export interface components {
             data?: components["schemas"]["MatchSummaryResponse"][];
             meta?: components["schemas"]["PageMeta"];
         };
+        CursorPagedResponseLoyaltyTransactionResponse: {
+            data?: components["schemas"]["LoyaltyTransactionResponse"][];
+            meta?: components["schemas"]["CursorMeta"];
+        };
+        ApiResponseLoyaltyOperationCatalog: {
+            data?: components["schemas"]["LoyaltyOperationCatalog"];
+        };
+        LoyaltyOperationCatalog: {
+            isEnabled: boolean;
+            programVersion: number | null;
+            rewards: components["schemas"]["LoyaltyRewardResponse"][];
+            rule: components["schemas"]["LoyaltyRuleResponse"] | null;
+            /** @enum {string} */
+            selfAwardMode: "STAFF_APPROVAL" | "AUTO";
+            /** Format: int64 */
+            teamId: number;
+            teamName: string;
+        };
+        CursorPagedResponseLoyaltyAwardRequestResponse: {
+            data?: components["schemas"]["LoyaltyAwardRequestResponse"][];
+            meta?: components["schemas"]["CursorMeta"];
+        };
+        ApiResponseLoyaltyAccountDetail: {
+            data?: components["schemas"]["LoyaltyAccountDetail"];
+        };
         LineMessageLogResponse: {
             contentSummary?: string;
             /** Format: date-time */
@@ -76615,6 +78505,57 @@ export interface components {
             retentionUntil?: string;
             storageKey?: string;
         };
+        CursorPagedResponseRanchPolicySummary: {
+            data?: components["schemas"]["RanchPolicySummary"][];
+            meta?: components["schemas"]["CursorMeta"];
+        };
+        RanchPolicySummary: {
+            contentHash?: string;
+            /** Format: date-time */
+            effectiveAt?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: date-time */
+            publishedAt?: string;
+            publishedBy?: string;
+            settings?: components["schemas"]["RanchPolicyPublicationRequest"];
+            version?: string;
+        };
+        ApiResponseSourceOutboxHealthSummary: {
+            data?: components["schemas"]["SourceOutboxHealthSummary"];
+        };
+        SourceOutboxHealthRow: {
+            deadCount?: string;
+            /** Format: int64 */
+            oldestAgeSeconds?: number;
+            pendingCount?: string;
+            /** @enum {string} */
+            sourceType?: "ATTENDANCE_RESPONSE" | "TIMELINE_ORIGINAL" | "BLOG_FIRST_PUBLISH" | "PERSONAL_RECALL_COMPLETE";
+        };
+        SourceOutboxHealthSummary: {
+            /** Format: date-time */
+            observedAt?: string;
+            sources?: components["schemas"]["SourceOutboxHealthRow"][];
+        };
+        CursorPagedResponseRanchCareRuleSummary: {
+            data?: components["schemas"]["RanchCareRuleSummary"][];
+            meta?: components["schemas"]["CursorMeta"];
+        };
+        RanchCareRuleSummary: {
+            adultXp?: string;
+            amountXp?: string;
+            contentHash?: string;
+            /** Format: date-time */
+            effectiveAt?: string;
+            /** Format: uuid */
+            id?: string;
+            juvenileXp?: string;
+            /** Format: date-time */
+            publishedAt?: string;
+            publishedBy?: string;
+            version?: string;
+            weeklyCapXp?: string;
+        };
         BillingRecordResponse: {
             /** Format: date-time */
             billedAt?: string;
@@ -77136,6 +79077,18 @@ export interface components {
             updatedAt?: string;
             /** @enum {string} */
             visibility?: "PUBLIC" | "GUESTS_AND_ABOVE" | "SUPPORTERS_AND_ABOVE" | "MEMBERS_AND_ABOVE";
+        };
+        DeletedTeamSummaryResponse: {
+            /** Format: date-time */
+            deletedAt: string;
+            /** @enum {string} */
+            lifecycleStatus: "PROVISIONED" | "ACTIVE";
+            name: string;
+            slug: string;
+        };
+        PagedResponseDeletedTeamSummaryResponse: {
+            data?: components["schemas"]["DeletedTeamSummaryResponse"][];
+            meta?: components["schemas"]["PageMeta"];
         };
         ApiResponsePageSystemAdminOrganizationSummaryResponse: {
             data?: components["schemas"]["PageSystemAdminOrganizationSummaryResponse"];
@@ -80939,6 +82892,65 @@ export interface components {
             title?: string;
             visibility?: string;
         };
+        ApiResponseListRanchShopItem: {
+            data?: components["schemas"]["RanchShopItem"][];
+        };
+        RanchShopItem: {
+            assetKey?: string;
+            collectibleKey?: string;
+            isOwned?: boolean;
+            labelKey?: string;
+            pricePoints?: string;
+            priceVersion?: string;
+            skuKey?: string;
+        };
+        CursorPagedResponseRanchRecord: {
+            data?: components["schemas"]["RanchRecord"][];
+            meta?: components["schemas"]["CursorMeta"];
+        };
+        RanchRecord: {
+            deltaPoints?: string;
+            deltaXp?: string;
+            /** Format: uuid */
+            id?: string;
+            kind?: string;
+            /** Format: date-time */
+            occurredAt?: string;
+            sourceLink?: components["schemas"]["SourceLink"] | null;
+            sourceType?: string | null;
+        };
+        SourceLink: {
+            id?: string;
+            kind?: string;
+            url?: string;
+        };
+        ApiResponseCommandResult: {
+            data?: components["schemas"]["CommandResult"];
+        };
+        CommandResult: {
+            /** Format: uuid */
+            commandId?: string;
+            commandType?: string;
+            /** Format: date-time */
+            completedAt?: string;
+            result?: components["schemas"]["JsonNode"];
+        };
+        CursorPagedResponseRanchInventoryItem: {
+            data?: components["schemas"]["RanchInventoryItem"][];
+            meta?: components["schemas"]["CursorMeta"];
+        };
+        RanchInventoryItem: {
+            acquisitionKind?: string;
+            assetKey?: string;
+            /** Format: date-time */
+            awardedAt?: string;
+            collectibleKey?: string;
+            /** Format: uuid */
+            id?: string;
+            isRevoked?: boolean;
+            labelKey?: string;
+            placedSlotKey?: string;
+        };
         ApiResponseListPilgrimageRecommendationResponse: {
             data?: components["schemas"]["PilgrimageRecommendationResponse"][];
         };
@@ -81296,6 +83308,13 @@ export interface components {
             favoriteId?: string;
             isFavorited?: boolean;
         };
+        PendingDiagnosisSessionResponse: {
+            data: components["schemas"]["DiagnosisSessionResponse"] | null;
+        };
+        CursorPagedResponseDiagnosisResultSummary: {
+            data?: components["schemas"]["DiagnosisResultSummary"][];
+            meta?: components["schemas"]["CursorMeta"];
+        };
         ApiResponseDashboardTimetableTodayResponse: {
             data?: components["schemas"]["DashboardTimetableTodayResponse"];
         };
@@ -81363,6 +83382,17 @@ export interface components {
         };
         ApiResponseListCalendarLayerResponse: {
             data?: components["schemas"]["CalendarLayerResponse"][];
+        };
+        ApiResponseBirthProfileResponse: {
+            data?: components["schemas"]["BirthProfileResponse"];
+        };
+        BirthProfileResponse: {
+            birthDate?: string;
+            firstName?: string;
+            firstNameKana?: string;
+            lastName?: string;
+            lastNameKana?: string;
+            revision?: string;
         };
         ApiResponseBillingManageableScopeList: {
             data?: components["schemas"]["BillingManageableScopeList"];
@@ -81800,6 +83830,23 @@ export interface components {
         CityResponse: {
             code?: string;
             name?: string;
+        };
+        CursorPagedResponseLoyaltyAccountSummary: {
+            data?: components["schemas"]["LoyaltyAccountSummary"][];
+            meta?: components["schemas"]["CursorMeta"];
+        };
+        LoyaltyAccountSummary: {
+            /** Format: uuid */
+            accountId: string;
+            /** Format: int32 */
+            balance: number;
+            /** Format: int64 */
+            lifetimeEarned: number;
+            /** Format: int64 */
+            teamId: number;
+            teamName: string;
+            /** Format: date-time */
+            updatedAt: string;
         };
         JobPostingSummaryResponse: {
             /** Format: date-time */
@@ -83101,8 +85148,8 @@ export interface components {
         ApiResponseListWebAuthnCredentialResponse: {
             data?: components["schemas"]["WebAuthnCredentialResponse"][];
         };
-        ApiResponseListSessionResponse: {
-            data?: components["schemas"]["SessionResponse"][];
+        ApiResponseListAuthSessionResponse: {
+            data?: components["schemas"]["AuthSessionResponse"][];
         };
         ApiResponseRateSimulatorResponse: {
             data?: components["schemas"]["RateSimulatorResponse"];
@@ -83259,6 +85306,15 @@ export interface components {
             newMode?: "DISPLAY_NAME" | "REAL_NAME";
             /** @enum {string} */
             oldMode?: "DISPLAY_NAME" | "REAL_NAME";
+        };
+        ApiResponsePublicSettingsResponse: {
+            data?: components["schemas"]["PublicSettingsResponse"];
+        };
+        PublicSettingsResponse: {
+            /** Format: int64 */
+            numericId?: number;
+            publicEventsEnabled?: boolean;
+            timelinePostsPublic?: boolean;
         };
         /** @description 自由FAQ 1問 */
         CustomFaqItem: {
@@ -88352,6 +90408,252 @@ export interface operations {
             };
         };
     };
+    loyaltySettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+        };
+    };
+    loyaltyUpdateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyUpdateProgramRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyProgramSettings"];
+                };
+            };
+        };
+    };
+    loyaltyUpdateRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                ruleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyUpdateRuleRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+        };
+    };
+    loyaltyUpdateReward: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                rewardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyUpdateRewardRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+        };
+    };
     getForTeam: {
         parameters: {
             query?: never;
@@ -91040,6 +93342,52 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseIssuerSettingsResponse"];
+                };
+            };
+        };
+    };
+    controls: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRanchOperationalControlsResponse"];
+                };
+            };
+        };
+    };
+    updateControls: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RanchOperationalControlsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRanchOperationalControlsResponse"];
                 };
             };
         };
@@ -97186,6 +99534,34 @@ export interface operations {
             };
         };
     };
+    answers: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JsonNode"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRecallSessionResponse"];
+                };
+            };
+        };
+    };
     upsertEntry: {
         parameters: {
             query?: never;
@@ -97206,6 +99582,109 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseReflectionEntryResponse"];
+                };
+            };
+        };
+    };
+    settings: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RanchSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRanchSettings"];
+                };
+            };
+        };
+    };
+    place: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                slotKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RanchSlotRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRoomSlotSummary"];
+                };
+            };
+        };
+    };
+    clear: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "If-Match": string;
+            };
+            path: {
+                slotKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    assign: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RanchAssignmentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAssignmentResult"];
                 };
             };
         };
@@ -97420,6 +99899,80 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponsePersonalSyncToggleResponse"];
+                };
+            };
+        };
+    };
+    answerSession: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JsonNode"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseDiagnosisSessionResponse"];
+                };
+            };
+        };
+    };
+    get_18: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBirthProfileResponse"];
+                };
+            };
+        };
+    };
+    update_45: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JsonNode"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBirthProfileUpdateResponse"];
                 };
             };
         };
@@ -98894,7 +101447,7 @@ export interface operations {
             };
         };
     };
-    update_45: {
+    update_46: {
         parameters: {
             query?: never;
             header?: never;
@@ -98940,7 +101493,7 @@ export interface operations {
             };
         };
     };
-    get_18: {
+    get_19: {
         parameters: {
             query: {
                 scopeType: string;
@@ -98963,7 +101516,7 @@ export interface operations {
             };
         };
     };
-    update_46: {
+    update_47: {
         parameters: {
             query: {
                 scopeType: string;
@@ -99058,7 +101611,7 @@ export interface operations {
             };
         };
     };
-    update_47: {
+    update_48: {
         parameters: {
             query?: never;
             header?: never;
@@ -109133,7 +111686,7 @@ export interface operations {
             };
         };
     };
-    assign: {
+    assign_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -109814,6 +112367,656 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    loyaltySelfAward: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltySelfAwardRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardResult"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardResult"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardResult"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardResult"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardResult"];
+                };
+            };
+        };
+    };
+    loyaltySelfPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltySelfAwardPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardPreview"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardPreview"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardPreview"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardPreview"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardPreview"];
+                };
+            };
+        };
+    };
+    loyaltyScanPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyScanPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyScanPreview"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyScanPreview"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyScanPreview"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyScanPreview"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyScanPreview"];
+                };
+            };
+        };
+    };
+    loyaltyCreateRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyCreateRuleRequest"];
+            };
+        };
+        responses: {
+            /** @description 作成済み */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRuleResponse"];
+                };
+            };
+        };
+    };
+    loyaltyCreateReward: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyCreateRewardRequest"];
+            };
+        };
+        responses: {
+            /** @description 作成済み */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRewardResponse"];
+                };
+            };
+        };
+    };
+    loyaltyRedeem: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyRedeemRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+        };
+    };
+    loyaltyRedemptionPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyRedemptionPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRedemptionPreview"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRedemptionPreview"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRedemptionPreview"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRedemptionPreview"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyRedemptionPreview"];
+                };
+            };
+        };
+    };
+    loyaltyAward: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyStaffAwardRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+        };
+    };
+    loyaltyReject: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                teamId: number;
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyRequestActionRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+        };
+    };
+    loyaltyApprove: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                teamId: number;
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyApproveRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyTransactionResponse"];
                 };
             };
         };
@@ -112537,7 +115740,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateFiscalYearRequest"];
+                "application/json": components["schemas"]["ScopedCreateFiscalYearRequest"];
             };
         };
         responses: {
@@ -115128,6 +118331,133 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseSafetyPresetResponse"];
+                };
+            };
+        };
+    };
+    policies: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseRanchPolicySummary"];
+                };
+            };
+        };
+    };
+    publishPolicy: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RanchPolicyPublicationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRanchPolicyPublicationResponse"];
+                };
+            };
+        };
+    };
+    retrySource: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                sourceType: "ATTENDANCE_RESPONSE" | "TIMELINE_ORIGINAL" | "BLOG_FIRST_PUBLISH" | "PERSONAL_RECALL_COMPLETE";
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SourceOutboxAdminRetryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseSourceOutboxAdminRetryAck"];
+                };
+            };
+        };
+    };
+    careRules: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseRanchCareRuleSummary"];
+                };
+            };
+        };
+    };
+    publishCare: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RanchCareRulePublicationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRanchCareRulePublicationResponse"];
                 };
             };
         };
@@ -121083,7 +124413,7 @@ export interface operations {
             };
         };
     };
-    assign_1: {
+    assign_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -127188,7 +130518,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateFiscalYearRequest"];
+                "application/json": components["schemas"]["ScopedCreateFiscalYearRequest"];
             };
         };
         responses: {
@@ -128038,6 +131368,26 @@ export interface operations {
             };
         };
     };
+    ensureMyPlatformCard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePlatformCardResponse"];
+                };
+            };
+        };
+    };
     grantConsent: {
         parameters: {
             query?: never;
@@ -128650,6 +132000,62 @@ export interface operations {
             };
         };
     };
+    complete: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JsonNode"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRecallSessionResponse"];
+                };
+            };
+        };
+    };
+    cancel_11: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JsonNode"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRecallSessionResponse"];
+                };
+            };
+        };
+    };
     recordRecall: {
         parameters: {
             query?: never;
@@ -128672,6 +132078,34 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseReflectionEntryResponse"];
+                };
+            };
+        };
+    };
+    start: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JsonNode"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRecallSessionResponse"];
                 };
             };
         };
@@ -128722,6 +132156,234 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseBulkArchiveResult"];
+                };
+            };
+        };
+    };
+    read: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRanchState"];
+                };
+            };
+        };
+    };
+    enroll: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmptyRanchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRanchState"];
+                };
+            };
+        };
+    };
+    resume_5: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RanchVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOwnerSummary"];
+                };
+            };
+        };
+    };
+    purchase: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RanchPurchaseRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRanchPurchaseResult"];
+                };
+            };
+        };
+    };
+    pause_4: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RanchVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOwnerSummary"];
+                };
+            };
+        };
+    };
+    touch: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RanchInteractionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseInteractionResult"];
+                };
+            };
+        };
+    };
+    hatch: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RanchHatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseHatchResponse"];
+                };
+            };
+        };
+    };
+    feed: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RanchVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeedingResult"];
+                };
+            };
+        };
+    };
+    sync_1: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RanchLegacySyncRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRanchLegacySyncResult"];
                 };
             };
         };
@@ -129123,7 +132785,7 @@ export interface operations {
             };
         };
     };
-    cancel_11: {
+    cancel_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -129403,6 +133065,114 @@ export interface operations {
             };
         };
     };
+    startSession: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JsonNode"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseDiagnosisSessionResponse"];
+                };
+            };
+        };
+    };
+    completeSession: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JsonNode"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseDiagnosisSessionResponse"];
+                };
+            };
+        };
+    };
+    cancelSession: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JsonNode"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseDiagnosisSessionResponse"];
+                };
+            };
+        };
+    };
+    birthResult: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JsonNode"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseDiagnosisResultSummary"];
+                };
+            };
+        };
+    };
     confirm_6: {
         parameters: {
             query?: never;
@@ -129467,6 +133237,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseCareLinkResponse"];
+                };
+            };
+        };
+    };
+    confirm_7: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JsonNode"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBirthProfileConfirmationResponse"];
                 };
             };
         };
@@ -129650,7 +133446,7 @@ export interface operations {
             };
         };
     };
-    cancel_12: {
+    cancel_13: {
         parameters: {
             query?: never;
             header: {
@@ -129678,7 +133474,7 @@ export interface operations {
             };
         };
     };
-    resume_5: {
+    resume_6: {
         parameters: {
             query?: never;
             header: {
@@ -129892,6 +133688,130 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseIncidentResponse"];
+                };
+            };
+        };
+    };
+    loyaltyBootstrap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltySelfAwardBootstrapRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardBootstrap"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardBootstrap"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardBootstrap"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardBootstrap"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltySelfAwardBootstrap"];
+                };
+            };
+        };
+    };
+    loyaltyCancel: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoyaltyRequestActionRequest"];
+            };
+        };
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
                 };
             };
         };
@@ -134709,13 +138629,11 @@ export interface operations {
     };
     logout: {
         parameters: {
-            query?: {
-                jti?: string;
-                exp?: number;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: {
+                refresh_token?: string;
                 refresh_token_hash?: string;
             };
         };
@@ -135128,7 +139046,7 @@ export interface operations {
             };
         };
     };
-    resume_6: {
+    resume_7: {
         parameters: {
             query: {
                 organizationId: number;
@@ -135152,7 +139070,7 @@ export interface operations {
             };
         };
     };
-    pause_4: {
+    pause_5: {
         parameters: {
             query: {
                 organizationId: number;
@@ -135200,7 +139118,7 @@ export interface operations {
             };
         };
     };
-    cancel_13: {
+    cancel_14: {
         parameters: {
             query: {
                 organizationId: number;
@@ -137058,7 +140976,7 @@ export interface operations {
             };
         };
     };
-    get_19: {
+    get_20: {
         parameters: {
             query?: never;
             header: {
@@ -137109,7 +141027,7 @@ export interface operations {
             };
         };
     };
-    update_48: {
+    update_49: {
         parameters: {
             query?: never;
             header: {
@@ -137194,7 +141112,7 @@ export interface operations {
             };
         };
     };
-    get_20: {
+    get_21: {
         parameters: {
             query?: never;
             header?: never;
@@ -137236,7 +141154,7 @@ export interface operations {
             };
         };
     };
-    update_49: {
+    update_50: {
         parameters: {
             query?: never;
             header?: {
@@ -137317,7 +141235,7 @@ export interface operations {
             };
         };
     };
-    get_21: {
+    get_22: {
         parameters: {
             query?: never;
             header?: never;
@@ -137340,7 +141258,7 @@ export interface operations {
             };
         };
     };
-    update_50: {
+    update_51: {
         parameters: {
             query?: never;
             header?: never;
@@ -137367,7 +141285,7 @@ export interface operations {
             };
         };
     };
-    get_22: {
+    get_23: {
         parameters: {
             query?: never;
             header?: never;
@@ -137390,7 +141308,7 @@ export interface operations {
             };
         };
     };
-    update_51: {
+    update_52: {
         parameters: {
             query?: never;
             header?: never;
@@ -137417,7 +141335,7 @@ export interface operations {
             };
         };
     };
-    get_23: {
+    get_24: {
         parameters: {
             query?: never;
             header?: never;
@@ -137440,7 +141358,7 @@ export interface operations {
             };
         };
     };
-    update_52: {
+    update_53: {
         parameters: {
             query?: never;
             header?: never;
@@ -137493,7 +141411,7 @@ export interface operations {
             };
         };
     };
-    get_24: {
+    get_25: {
         parameters: {
             query?: never;
             header?: never;
@@ -137537,7 +141455,7 @@ export interface operations {
             };
         };
     };
-    update_53: {
+    update_54: {
         parameters: {
             query?: never;
             header?: never;
@@ -138387,7 +142305,7 @@ export interface operations {
             };
         };
     };
-    get_25: {
+    get_26: {
         parameters: {
             query?: never;
             header?: never;
@@ -138431,7 +142349,7 @@ export interface operations {
             };
         };
     };
-    update_54: {
+    update_55: {
         parameters: {
             query?: never;
             header?: never;
@@ -139789,7 +143707,7 @@ export interface operations {
             };
         };
     };
-    complete: {
+    complete_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -141007,7 +144925,7 @@ export interface operations {
             };
         };
     };
-    cancel_14: {
+    cancel_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -141153,7 +145071,7 @@ export interface operations {
             };
         };
     };
-    get_26: {
+    get_27: {
         parameters: {
             query?: never;
             header?: never;
@@ -141175,7 +145093,7 @@ export interface operations {
             };
         };
     };
-    update_55: {
+    update_56: {
         parameters: {
             query?: never;
             header?: never;
@@ -142208,7 +146126,7 @@ export interface operations {
             };
         };
     };
-    update_56: {
+    update_57: {
         parameters: {
             query?: never;
             header?: never;
@@ -142472,7 +146390,7 @@ export interface operations {
             };
         };
     };
-    get_27: {
+    get_28: {
         parameters: {
             query?: never;
             header?: never;
@@ -142494,7 +146412,7 @@ export interface operations {
             };
         };
     };
-    update_57: {
+    update_58: {
         parameters: {
             query?: never;
             header?: never;
@@ -142546,7 +146464,7 @@ export interface operations {
             };
         };
     };
-    assign_2: {
+    assign_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -143716,7 +147634,7 @@ export interface operations {
             };
         };
     };
-    get_28: {
+    get_29: {
         parameters: {
             query?: never;
             header?: never;
@@ -143738,7 +147656,7 @@ export interface operations {
             };
         };
     };
-    update_58: {
+    update_59: {
         parameters: {
             query?: never;
             header?: never;
@@ -144352,7 +148270,7 @@ export interface operations {
             };
         };
     };
-    update_59: {
+    update_60: {
         parameters: {
             query?: never;
             header?: never;
@@ -144797,7 +148715,7 @@ export interface operations {
             };
         };
     };
-    complete_1: {
+    complete_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -145345,7 +149263,7 @@ export interface operations {
             };
         };
     };
-    get_29: {
+    get_30: {
         parameters: {
             query?: never;
             header?: never;
@@ -145389,7 +149307,7 @@ export interface operations {
             };
         };
     };
-    update_60: {
+    update_61: {
         parameters: {
             query?: never;
             header?: never;
@@ -146168,7 +150086,7 @@ export interface operations {
             };
         };
     };
-    cancel_15: {
+    cancel_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -146439,7 +150357,7 @@ export interface operations {
             };
         };
     };
-    cancel_16: {
+    cancel_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -146531,7 +150449,7 @@ export interface operations {
             };
         };
     };
-    get_30: {
+    get_31: {
         parameters: {
             query?: never;
             header?: never;
@@ -146553,7 +150471,7 @@ export interface operations {
             };
         };
     };
-    update_61: {
+    update_62: {
         parameters: {
             query?: never;
             header?: never;
@@ -146796,7 +150714,7 @@ export interface operations {
             };
         };
     };
-    update_62: {
+    update_63: {
         parameters: {
             query?: never;
             header?: never;
@@ -146892,7 +150810,7 @@ export interface operations {
             };
         };
     };
-    get_31: {
+    get_32: {
         parameters: {
             query?: never;
             header?: never;
@@ -146934,7 +150852,7 @@ export interface operations {
             };
         };
     };
-    update_63: {
+    update_64: {
         parameters: {
             query?: never;
             header?: never;
@@ -147074,7 +150992,7 @@ export interface operations {
             };
         };
     };
-    get_32: {
+    get_33: {
         parameters: {
             query?: never;
             header?: never;
@@ -147116,7 +151034,7 @@ export interface operations {
             };
         };
     };
-    update_64: {
+    update_65: {
         parameters: {
             query?: never;
             header?: never;
@@ -147142,7 +151060,7 @@ export interface operations {
             };
         };
     };
-    update_65: {
+    update_66: {
         parameters: {
             query?: never;
             header?: never;
@@ -148347,7 +152265,7 @@ export interface operations {
             };
         };
     };
-    get_33: {
+    get_34: {
         parameters: {
             query?: never;
             header?: never;
@@ -148369,7 +152287,7 @@ export interface operations {
             };
         };
     };
-    update_66: {
+    update_67: {
         parameters: {
             query?: never;
             header?: never;
@@ -148515,7 +152433,7 @@ export interface operations {
             };
         };
     };
-    update_67: {
+    update_68: {
         parameters: {
             query?: never;
             header?: never;
@@ -148564,7 +152482,7 @@ export interface operations {
             };
         };
     };
-    update_68: {
+    update_69: {
         parameters: {
             query: {
                 scopeId: number;
@@ -148784,7 +152702,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseSessionResponse"];
+                    "*/*": components["schemas"]["ApiResponseAuthSessionResponse"];
                 };
             };
         };
@@ -148957,6 +152875,55 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["SupporterNameDisclosureResponse"];
+                };
+            };
+        };
+    };
+    getTeamPublicSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 管理認可済みの設定 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+            /** @description 未認証 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+            /** @description スコープ管理権限なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+            /** @description 対象slugなし・削除済み・ACTIVE対象外 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
                 };
             };
         };
@@ -149291,7 +153258,7 @@ export interface operations {
             };
         };
     };
-    update_69: {
+    update_70: {
         parameters: {
             query?: never;
             header?: never;
@@ -149391,6 +153358,55 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["SupporterNameDisclosureResponse"];
+                };
+            };
+        };
+    };
+    getOrganizationPublicSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 管理認可済みの設定 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+            /** @description 未認証 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+            /** @description スコープ管理権限なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
+                };
+            };
+            /** @description 対象slugなし・削除済み・ACTIVE対象外 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicSettingsResponse"];
                 };
             };
         };
@@ -150800,7 +154816,7 @@ export interface operations {
             };
         };
     };
-    get_34: {
+    get_35: {
         parameters: {
             query?: never;
             header?: never;
@@ -150823,7 +154839,7 @@ export interface operations {
             };
         };
     };
-    get_35: {
+    get_36: {
         parameters: {
             query?: never;
             header?: never;
@@ -154341,6 +158357,304 @@ export interface operations {
             };
         };
     };
+    loyaltyTransactions: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyTransactionResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyTransactionResponse"];
+                };
+            };
+        };
+    };
+    loyaltyOperationCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyOperationCatalog"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyOperationCatalog"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyOperationCatalog"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyOperationCatalog"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyOperationCatalog"];
+                };
+            };
+        };
+    };
+    loyaltyStaffRequests: {
+        parameters: {
+            query?: {
+                status?: "PENDING" | "ALL";
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+        };
+    };
+    loyaltyStaffRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+        };
+    };
+    loyaltyAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAccountDetail"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAccountDetail"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAccountDetail"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAccountDetail"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAccountDetail"];
+                };
+            };
+        };
+    };
     logsForTeam: {
         parameters: {
             query: {
@@ -157065,6 +161379,26 @@ export interface operations {
             };
         };
     };
+    sourceHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseSourceOutboxHealthSummary"];
+                };
+            };
+        };
+    };
     list_86: {
         parameters: {
             query?: never;
@@ -157676,6 +162010,33 @@ export interface operations {
             };
         };
     };
+    getDeletedTeams: {
+        parameters: {
+            query?: {
+                /** @description Zero-based page index (0..N) */
+                page?: number;
+                /** @description The size of the page to be returned */
+                size?: number;
+                /** @description Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported. */
+                sort?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseDeletedTeamSummaryResponse"];
+                };
+            };
+        };
+    };
     getOrganizations_1: {
         parameters: {
             query: {
@@ -157720,7 +162081,7 @@ export interface operations {
             };
         };
     };
-    get_36: {
+    get_37: {
         parameters: {
             query?: never;
             header?: never;
@@ -165106,7 +169467,7 @@ export interface operations {
             };
         };
     };
-    feed: {
+    feed_1: {
         parameters: {
             query?: {
                 limit?: number;
@@ -165463,6 +169824,28 @@ export interface operations {
             };
         };
     };
+    get_38: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRecallSessionResponse"];
+                };
+            };
+        };
+    };
     listLinkableSlots: {
         parameters: {
             query?: never;
@@ -165660,6 +170043,94 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListRecruitmentFeedItemResponse"];
+                };
+            };
+        };
+    };
+    shop: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListRanchShopItem"];
+                };
+            };
+        };
+    };
+    records: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseRanchRecord"];
+                };
+            };
+        };
+    };
+    command: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                commandId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseCommandResult"];
+                };
+            };
+        };
+    };
+    collectibles: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseRanchInventoryItem"];
                 };
             };
         };
@@ -166372,6 +170843,94 @@ export interface operations {
             };
         };
     };
+    readSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseDiagnosisSessionResponse"];
+                };
+            };
+        };
+    };
+    readPendingSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PendingDiagnosisSessionResponse"];
+                };
+            };
+        };
+    };
+    listResults: {
+        parameters: {
+            query?: {
+                method?: "DIAGNOSIS" | "BIRTH_STYLE";
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseDiagnosisResultSummary"];
+                };
+            };
+        };
+    };
+    getResult: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                resultId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseDiagnosisResultSummary"];
+                };
+            };
+        };
+    };
     today_2: {
         parameters: {
             query?: never;
@@ -166917,6 +171476,182 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListCityResponse"];
+                };
+            };
+        };
+    };
+    loyaltyMyRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+        };
+    };
+    loyaltyMyRequests: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAwardRequestResponse"];
+                };
+            };
+        };
+    };
+    loyaltyListAccounts: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 入力形式または業務条件の不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAccountSummary"];
+                };
+            };
+            /** @description 本人の認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAccountSummary"];
+                };
+            };
+            /** @description 当該操作の資格なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAccountSummary"];
+                };
+            };
+            /** @description 対象が存在しない、または閲覧不可 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAccountSummary"];
+                };
+            };
+            /** @description 版または同一キーの内容が競合 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseLoyaltyAccountSummary"];
                 };
             };
         };
@@ -167682,7 +172417,7 @@ export interface operations {
             };
         };
     };
-    get_37: {
+    get_39: {
         parameters: {
             query: {
                 organizationId: number;
@@ -169348,7 +174083,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListSessionResponse"];
+                    "*/*": components["schemas"]["ApiResponseListAuthSessionResponse"];
                 };
             };
         };
@@ -171361,7 +176096,7 @@ export interface operations {
             };
         };
     };
-    cancel_17: {
+    cancel_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -172063,7 +176798,7 @@ export interface operations {
             };
         };
     };
-    cancel_18: {
+    cancel_19: {
         parameters: {
             query?: never;
             header?: never;
@@ -172244,7 +176979,7 @@ export interface operations {
             };
         };
     };
-    cancel_19: {
+    cancel_20: {
         parameters: {
             query?: never;
             header?: never;
@@ -172509,7 +177244,7 @@ export interface operations {
             };
         };
     };
-    cancel_20: {
+    cancel_21: {
         parameters: {
             query?: never;
             header?: never;
