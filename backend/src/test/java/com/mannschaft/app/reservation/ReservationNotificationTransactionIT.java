@@ -54,6 +54,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -93,7 +94,8 @@ import static org.mockito.Mockito.verify;
  */
 @AutoConfigureMockMvc(addFilters = false)
 @RecordApplicationEvents
-@Import(ReservationNotificationTransactionIT.CommitFailer.class)
+@Import({ReservationNotificationTransactionIT.CommitFailer.class,
+        ReservationNotificationTransactionIT.EventPoolRejectSwitchConfig.class})
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("Issue #2997 G3 予約ドメイン付随通知のトランザクション分離の実DB検証")
 class ReservationNotificationTransactionIT extends AbstractMySqlIntegrationTest {
@@ -133,7 +135,7 @@ class ReservationNotificationTransactionIT extends AbstractMySqlIntegrationTest 
     @AfterEach
     void drainEventPool() {
         // 非同期配送の残りが次のテストへ漏れないよう、event-pool が静まるのを待つ。
-        ThreadPoolTaskExecutor pool = (ThreadPoolTaskExecutor) eventPool;
+        ThreadPoolTaskExecutor pool = EventPoolRejectSwitch.delegateOf(eventPool);
         await().atMost(20, TimeUnit.SECONDS).until(() ->
                 pool.getActiveCount() == 0 && pool.getThreadPoolExecutor().getQueue().isEmpty());
     }
@@ -389,31 +391,18 @@ class ReservationNotificationTransactionIT extends AbstractMySqlIntegrationTest 
     void reminderPoolRejectionLeavesPendingAndIsRetried() throws Exception {
         ReminderFx fx = reminderFixture(1);
         Long reminderId = fx.reminderIds.get(0);
-        // 拒否ハンドラ（AsyncConfig の ERROR ログ）が呼ばれたことを到達の証拠として数える。
-        ch.qos.logback.classic.Logger asyncLogger =
-                (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(com.mannschaft.app.config.AsyncConfig.class);
-        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> rejections =
-                new ch.qos.logback.core.read.ListAppender<>();
-        rejections.start();
-        asyncLogger.addAppender(rejections);
-        CountDownLatch release = new CountDownLatch(1);
+        // event-pool が次の 1 件の投入を拒否する（本物のプールが満杯のとき AbortPolicy が投げる TaskRejectedException と同じ）。
+        // 共有プールを実際に埋める方式は、他テストのアイドルワーカーとの競合で確実性が得られないため使わない。
+        EventPoolRejectSwitch.rejectNext(1);
         try {
-            saturateEntirePool(release);
-            // 前提: event-pool が実際に満杯であること（前提が崩れていれば、ここで原因が分かる形で落ちる）。
-            assertPoolRejects("バッチ実行前");
-            long rejectionsBefore = rejectionCount(rejections);
-
             reminderBatch.dispatchDueReminders();
 
-            // 配送リスナーの投入が拒否された証拠（拒否ハンドラの呼出）を待つ。
+            // 拒否スイッチが発火した（配送リスナーの投入が拒否された）到達証拠。
             await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
-                    assertThat(rejectionCount(rejections)).as("リスナー投入が event-pool に拒否された").isGreaterThan(rejectionsBefore));
+                    assertThat(EventPoolRejectSwitch.fired()).as("リスナー投入が拒否された").isEqualTo(1));
             assertThat(reminderStatus(reminderId)).as("投入拒否では印を立てない").isEqualTo(ReminderStatus.PENDING);
-            assertPoolRejects("バッチ実行後");
         } finally {
-            release.countDown();
-            asyncLogger.detachAppender(rejections);
-            rejections.stop();
+            EventPoolRejectSwitch.reset();
         }
         drainEventPool();
         // 拒否された配送は後から実行されない（claim に一度も到達していない）。
@@ -427,20 +416,6 @@ class ReservationNotificationTransactionIT extends AbstractMySqlIntegrationTest 
             assertThat(rows(fx.userIds.get(0), "RESERVATION_REMINDER", "RESERVATION", fx.reservationIds.get(0))).hasSize(1);
             assertThat(reminderStatus(reminderId)).isEqualTo(ReminderStatus.SENT);
         });
-    }
-
-    /** event-pool が満杯で、いま投入すると拒否されること（満杯が成立している前提の確認。受理された場合は即座に流れて消える空タスク）。 */
-    private void assertPoolRejects(String when) {
-        ThreadPoolTaskExecutor pool = (ThreadPoolTaskExecutor) eventPool;
-        assertThatThrownBy(() -> eventPool.execute(() -> { }))
-                .as("event-pool が満杯であること（%s）: poolSize=%d active=%d queued=%d", when,
-                        pool.getPoolSize(), pool.getActiveCount(), pool.getThreadPoolExecutor().getQueue().size())
-                .isInstanceOf(org.springframework.core.task.TaskRejectedException.class);
-    }
-
-    private static long rejectionCount(ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender) {
-        return new ArrayList<>(appender.list).stream()
-                .filter(e -> e.getFormattedMessage().contains("event-pool 投入拒否")).count();
     }
 
     @Test
@@ -865,6 +840,63 @@ class ReservationNotificationTransactionIT extends AbstractMySqlIntegrationTest 
     }
 
     /**
+     * "event-pool" Bean を本物の {@link ThreadPoolTaskExecutor} へ委譲するラッパに差し替える、このテストクラス専用の構成。
+     * 既定は素通し。{@link EventPoolRejectSwitch#rejectNext} で次の N 件の投入だけ {@code TaskRejectedException} を投げる。
+     */
+    @org.springframework.boot.test.context.TestConfiguration
+    static class EventPoolRejectSwitchConfig {
+        @org.springframework.context.annotation.Bean
+        static org.springframework.beans.factory.config.BeanPostProcessor eventPoolRejectSwitchPostProcessor() {
+            return new org.springframework.beans.factory.config.BeanPostProcessor() {
+                @Override
+                public Object postProcessAfterInitialization(Object bean, String beanName) {
+                    if ("event-pool".equals(beanName) && bean instanceof ThreadPoolTaskExecutor real) {
+                        return new EventPoolRejectSwitch(real);
+                    }
+                    return bean;
+                }
+            };
+        }
+    }
+
+    /** 委譲＋拒否スイッチ。@Async は Executor として扱うため execute で拒否する（本番の拒否と同じ TaskRejectedException）。 */
+    static final class EventPoolRejectSwitch implements Executor {
+        private static final AtomicInteger REMAINING = new AtomicInteger();
+        private static final AtomicInteger FIRED = new AtomicInteger();
+        private final ThreadPoolTaskExecutor delegate;
+
+        EventPoolRejectSwitch(ThreadPoolTaskExecutor delegate) {
+            this.delegate = delegate;
+        }
+
+        static void rejectNext(int n) {
+            FIRED.set(0);
+            REMAINING.set(n);
+        }
+
+        static void reset() {
+            REMAINING.set(0);
+        }
+
+        static int fired() {
+            return FIRED.get();
+        }
+
+        static ThreadPoolTaskExecutor delegateOf(Executor executor) {
+            return executor instanceof EventPoolRejectSwitch sw ? sw.delegate : (ThreadPoolTaskExecutor) executor;
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            if (REMAINING.getAndUpdate(n -> n > 0 ? n - 1 : 0) > 0) {
+                FIRED.incrementAndGet();
+                throw new org.springframework.core.task.TaskRejectedException("模擬: event-pool 投入拒否（テスト用スイッチ）");
+            }
+            delegate.execute(command);
+        }
+    }
+
+    /**
      * publish 後・コミット前に例外を投げ、項目TXのコミットを失敗させる検証用リスナー（AC-A: publish 済みでも通知が出ない）。
      * 対象リマインダーIDを指定したときだけ作動する。
      */
@@ -1074,34 +1106,6 @@ class ReservationNotificationTransactionIT extends AbstractMySqlIntegrationTest 
                 .unwrap(org.hibernate.SessionFactory.class).getStatistics();
         stats.setStatisticsEnabled(true);
         return stats.getPrepareStatementCount();
-    }
-
-    /**
-     * event-pool を確実に満杯にする。実 Bean から maxPoolSize とキュー容量を取り、
-     * 「max 本のワーカー全員がブロッカーを掴んだ」ことと「キューが容量ぴったりで残容量 0」を確認してから戻る。
-     * ThreadPoolExecutor は core を超えるワーカーをキューが満杯になって初めて起こすため、投入数は
-     * {@code max + キュー容量} ぴったり（走るのは max 本、キューに積まれるのは容量ぶん）。
-     * 「最初の拒否で止める」方式は、再利用待ちのワーカーがキューを取り出す前の一時的な拒否で止まり得るため使わない。
-     */
-    private void saturateEntirePool(CountDownLatch release) throws InterruptedException {
-        ThreadPoolTaskExecutor pool = (ThreadPoolTaskExecutor) eventPool;
-        java.util.concurrent.ThreadPoolExecutor executor = pool.getThreadPoolExecutor();
-        int max = executor.getMaximumPoolSize();
-        int queueCapacity = executor.getQueue().remainingCapacity() + executor.getQueue().size();
-        CountDownLatch workersBlocked = new CountDownLatch(max);
-        for (int i = 0; i < max + queueCapacity; i++) {
-            // 1 本でも拒否されたら前提（空のプール）が崩れている。例外はそのままテスト失敗にする。
-            eventPool.execute(() -> {
-                workersBlocked.countDown();
-                awaitQuietly(release);
-            });
-        }
-        assertThat(workersBlocked.await(30, TimeUnit.SECONDS))
-                .as("max=%d 本の全ワーカーがブロッカーを掴んだ（active=%d poolSize=%d queued=%d）", max,
-                        pool.getActiveCount(), pool.getPoolSize(), executor.getQueue().size())
-                .isTrue();
-        assertThat(pool.getActiveCount()).as("active == max").isEqualTo(max);
-        assertThat(executor.getQueue().remainingCapacity()).as("キューの残容量 0").isZero();
     }
 
     private static void awaitQuietly(CountDownLatch latch) {
