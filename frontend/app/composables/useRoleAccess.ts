@@ -28,6 +28,13 @@ export function useRoleAccess(
   const scopeAdminFromApi = ref<boolean | null>(null)
   const canGrantFromApi = ref<boolean | null>(null)
   const loading = ref(false)
+  /**
+   * ロール解決が完了したか（成功・失敗いずれでも true）。roleName=null は「読込中」「未所属」
+   * 「取得失敗」で同じになるため、呼び出し元がこの2つの状態で区別する（CMP-261013-1226）。
+   */
+  const roleResolved = ref(false)
+  /** 直近のロール解決が失敗したか（roleResolved=true かつ true のとき取得失敗）。 */
+  const roleLoadFailed = ref(false)
 
   const resolvedId = computed(() => isRef(scopeId) ? scopeId.value : scopeId)
 
@@ -76,6 +83,8 @@ export function useRoleAccess(
         permissions.value = response.data.permissions
         roleName.value = response.data.roleName
         scopeAdminFromApi.value = response.data.scopeAdmin ?? null
+        roleResolved.value = true
+        roleLoadFailed.value = false
         canGrantFromApi.value = response.data.canGrantAdminOnlyPermissions ?? null
       }
       result = { ok: true }
@@ -86,6 +95,8 @@ export function useRoleAccess(
         permissions.value = []
         roleName.value = null
         scopeAdminFromApi.value = null
+        roleResolved.value = true
+        roleLoadFailed.value = true
         canGrantFromApi.value = null
       }
       result = { ok: false, error }
@@ -136,6 +147,9 @@ export function useRoleAccess(
   // scopeIdがリアクティブな場合、変更時に自動リロード
   if (isRef(scopeId) && options.watchScope !== false) {
     watch(scopeId, (newId) => {
+      // 別スコープへ遷移したら前スコープの解決結果は無効（読込中へ戻す）
+      roleResolved.value = false
+      roleLoadFailed.value = false
       if (newId) loadPermissions()
     })
   }
@@ -143,6 +157,8 @@ export function useRoleAccess(
   return {
     permissions,
     roleName,
+    roleResolved,
+    roleLoadFailed,
     loading,
     loadPermissions,
     can,

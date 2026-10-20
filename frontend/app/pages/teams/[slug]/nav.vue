@@ -5,7 +5,7 @@
  * 本文上部のツールバーに「使い方」（所属者全員）と「フォロー」（ADMIN、または
  * MANAGE_FRIEND_TEAMS を持つ DEPUTY_ADMIN）を置く。
  * 管理者にはフォルダ/フィード/転送履歴へのショートカットを表示する。
- * 直リンク防御: 未所属（roleName null）と GUEST（user_roles のみで在籍なし。BE の resolveEffectiveRole は
+ * 直リンク防御: ロール解決済みで未所属（roleName null。読込中・取得失敗は別扱い）と GUEST（user_roles のみで在籍なし。BE の resolveEffectiveRole は
  * GUEST を非 null で返すため単純な falsy ガードを素通りする）には権限なし案内を出す。
  * 加えて一覧取得の 403 も TeamFriendList が権限なし案内に倒す（二重防御）。
  *
@@ -22,7 +22,7 @@ definePageMeta({
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))
 
-const { isAdmin, isAdminOrDeputy, roleName } = useTeamShellContext()
+const { isAdmin, isAdminOrDeputy, roleName, roleResolved, roleLoadFailed, refresh } = useTeamShellContext()
 // シェルコンテキストは個別権限（MANAGE_FRIEND_TEAMS）を持たないため、判定のみ useRoleAccess で補う
 const { can, loadPermissions } = useRoleAccess('team', teamSlug)
 
@@ -36,7 +36,13 @@ const canManageFriends = computed(
 )
 // 本文を見せてよいのは在籍ロール（GUEST は在籍なしのため除外）
 const canViewTab = computed(() => !!roleName.value && roleName.value !== 'GUEST')
-const isGuestView = computed(() => roleName.value === 'GUEST')
+// 権限なし案内: GUEST、または「ロール解決済みで取得成功なのに roleName=null」（公開チームの未所属・他テナント）。
+// 読込中（roleResolved=false）と取得失敗は別扱い（ちらつき防止・失敗を権限なしに倒さない）。
+const isForbiddenView = computed(
+  () => roleName.value === 'GUEST'
+    || (roleResolved.value && !roleLoadFailed.value && !roleName.value),
+)
+const isRoleLoadError = computed(() => roleResolved.value && roleLoadFailed.value && !roleName.value)
 const isSupporterView = computed(() => roleName.value === 'SUPPORTER')
 
 async function onFollowSuccess(_response: FollowTeamResponse) {
@@ -112,9 +118,14 @@ onMounted(() => {
       <FriendTeamGuideModal v-model:visible="showGuide" />
     </template>
     <DashboardErrorState
-      v-else-if="isGuestView"
+      v-else-if="isForbiddenView"
       testid="friend-forbidden"
       kind="forbidden"
+    />
+    <DashboardErrorState
+      v-else-if="isRoleLoadError"
+      testid="friend-role-error"
+      @retry="refresh()"
     />
   </div>
 </template>
