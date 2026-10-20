@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch, type Component } from 'vue'
 import Avatar from 'primevue/avatar'
 import SectionCard from '../SectionCard.vue'
 import BulletinThreadDetail from './BulletinThreadDetail.vue'
@@ -142,10 +142,12 @@ describe('掲示板詳細の投稿者表示', () => {
   })
 })
 
-describe.each([
+const threadListCases: Array<[string, Component, typeof mocks.getThreads]> = [
   ['一覧', BulletinThreadList, mocks.getThreads],
   ['保管庫', BulletinArchiveView, mocks.getArchiveThreads],
-] as const)('掲示板%sの投稿者表示', (_name, component, getThreads) => {
+]
+
+describe.each(threadListCases)('掲示板%sの投稿者表示', (_name, component, getThreads) => {
   it.each([null, '', '山田太郎'])('AC5: 投稿者名%sを代替名または通常名で描画する', async (name) => {
     getThreads.mockResolvedValue({ data: [thread(name)], meta: { page: 0, totalPages: 1 } })
     const view = mount(component, {
