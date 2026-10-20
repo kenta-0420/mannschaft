@@ -388,25 +388,59 @@ class ReservationNotificationTransactionIT extends AbstractMySqlIntegrationTest 
     @DisplayName("event-pool 投入拒否: 印は立たず PENDING のまま、バッチは正常終了し、次周回で再送される")
     void reminderPoolRejectionLeavesPendingAndIsRetried() throws Exception {
         ReminderFx fx = reminderFixture(1);
+        Long reminderId = fx.reminderIds.get(0);
+        // 拒否ハンドラ（AsyncConfig の ERROR ログ）が呼ばれたことを到達の証拠として数える。
+        ch.qos.logback.classic.Logger asyncLogger =
+                (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(com.mannschaft.app.config.AsyncConfig.class);
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> rejections =
+                new ch.qos.logback.core.read.ListAppender<>();
+        rejections.start();
+        asyncLogger.addAppender(rejections);
         CountDownLatch release = new CountDownLatch(1);
-        saturateEntirePool(release);
         try {
+            saturateEntirePool(release);
+            // 前提: event-pool が実際に満杯であること（前提が崩れていれば、ここで原因が分かる形で落ちる）。
+            assertPoolRejects("バッチ実行前");
+            long rejectionsBefore = rejectionCount(rejections);
+
             reminderBatch.dispatchDueReminders();
 
-            assertThat(reminderStatus(fx.reminderIds.get(0))).as("投入拒否では印を立てない").isEqualTo(ReminderStatus.PENDING);
+            // 配送リスナーの投入が拒否された証拠（拒否ハンドラの呼出）を待つ。
+            await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
+                    assertThat(rejectionCount(rejections)).as("リスナー投入が event-pool に拒否された").isGreaterThan(rejectionsBefore));
+            assertThat(reminderStatus(reminderId)).as("投入拒否では印を立てない").isEqualTo(ReminderStatus.PENDING);
+            assertPoolRejects("バッチ実行後");
         } finally {
             release.countDown();
+            asyncLogger.detachAppender(rejections);
+            rejections.stop();
         }
         drainEventPool();
-        assertThat(reminderStatus(fx.reminderIds.get(0))).isEqualTo(ReminderStatus.PENDING);
+        // 拒否された配送は後から実行されない（claim に一度も到達していない）。
+        verify(reminderRunner, never()).claim(eq(reminderId), any());
+        assertThat(reminderStatus(reminderId)).isEqualTo(ReminderStatus.PENDING);
         assertThat(rows(fx.userIds.get(0), "RESERVATION_REMINDER", "RESERVATION", fx.reservationIds.get(0))).isEmpty();
 
         reminderBatch.dispatchDueReminders();
 
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> {
             assertThat(rows(fx.userIds.get(0), "RESERVATION_REMINDER", "RESERVATION", fx.reservationIds.get(0))).hasSize(1);
-            assertThat(reminderStatus(fx.reminderIds.get(0))).isEqualTo(ReminderStatus.SENT);
+            assertThat(reminderStatus(reminderId)).isEqualTo(ReminderStatus.SENT);
         });
+    }
+
+    /** event-pool が満杯で、いま投入すると拒否されること（満杯が成立している前提の確認。受理された場合は即座に流れて消える空タスク）。 */
+    private void assertPoolRejects(String when) {
+        ThreadPoolTaskExecutor pool = (ThreadPoolTaskExecutor) eventPool;
+        assertThatThrownBy(() -> eventPool.execute(() -> { }))
+                .as("event-pool が満杯であること（%s）: poolSize=%d active=%d queued=%d", when,
+                        pool.getPoolSize(), pool.getActiveCount(), pool.getThreadPoolExecutor().getQueue().size())
+                .isInstanceOf(org.springframework.core.task.TaskRejectedException.class);
+    }
+
+    private static long rejectionCount(ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender) {
+        return new ArrayList<>(appender.list).stream()
+                .filter(e -> e.getFormattedMessage().contains("event-pool 投入拒否")).count();
     }
 
     @Test
