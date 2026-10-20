@@ -1,4 +1,5 @@
 import type { AnnouncementFeedDto, AnnouncementFeedItem } from '~/types/announcement'
+import type { BroadcastTargetAudience } from '~/types/announcement_broadcast'
 
 /** generated DTO から表示名だけを変換する。古い実在 sourceUrl は保持し、URL を捏造しない。 */
 type FeedInput = Partial<AnnouncementFeedDto> & Partial<Pick<AnnouncementFeedItem,
@@ -45,6 +46,9 @@ export function toAnnouncementItem(input: FeedInput): AnnouncementFeedItem {
 export function toDashboardAnnouncementItem(input: Record<string, unknown>): AnnouncementFeedItem {
   const number = (key: string): number | undefined => typeof input[key] === 'number' ? input[key] as number : undefined
   const string = (key: string): string | undefined => typeof input[key] === 'string' ? input[key] as string : undefined
+  // 送信時の宛先の記録（AC-H17）。BE は組織 MEMBER 以上にだけ載せる。中身は告知 API と同じ camelCase のオブジェクト
+  const audience = input.target_audience
+  const targetAudience = audience !== null && typeof audience === 'object' ? audience as BroadcastTargetAudience : null
   return toAnnouncementItem({
     id: number('id'), scopeId: number('scope_id'), scopeType: string('scope_type'),
     sourceId: number('source_id'), sourceType: string('source_type'),
@@ -54,5 +58,6 @@ export function toDashboardAnnouncementItem(input: Record<string, unknown>): Ann
     isPinned: input.is_pinned === true, isRead: input.is_read === true,
     contentPreviewAvailable: typeof input.content_preview_available === 'boolean' ? input.content_preview_available : undefined,
     createdAt: string('created_at'), expiresAt: string('expires_at'), startsAt: string('starts_at'),
+    targetAudience,
   })
 }
