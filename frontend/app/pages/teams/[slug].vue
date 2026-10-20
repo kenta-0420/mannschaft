@@ -50,6 +50,8 @@ const teamSlug = computed(() => String(route.params.slug))
 
 const {
   roleName,
+  roleResolved,
+  roleLoadFailed,
   permissions,
   loading: roleLoading,
   loadPermissions,
@@ -593,6 +595,8 @@ provideTeamShellContext({
   team: computed(() => team.value),
   displayName,
   roleName,
+  roleResolved,
+  roleLoadFailed,
   isAdmin,
   isAdminOrDeputy,
   canManageOrgAffiliation,

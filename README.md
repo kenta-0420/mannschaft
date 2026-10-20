@@ -204,7 +204,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 ### セキュリティ・認証
 
-> 📄 詳細設計: [docs/features/F01.1_auth.md](docs/features/F01.1_auth.md) | [docs/features/F01.2_org_team_member_role.md](docs/features/F01.2_org_team_member_role.md) | [docs/features/F01.2.1_org_team_groups.md](docs/features/F01.2.1_org_team_groups.md)（チーム加盟の双方向化・チームグループ／🟡 実装中: 申請受付設定・申請フォーム・申請ボタン判定・公開 API の受付フラグ・所属チーム一覧からの除名 UI は実装済み。除名は組織 ADMIN の管理レンズで確認後に実行でき、グループ機能 off でも利用可能） | [docs/features/F01.5_team_friend_relationships.md](docs/features/F01.5_team_friend_relationships.md)
+> 📄 詳細設計: [docs/features/F01.1_auth.md](docs/features/F01.1_auth.md) | [docs/features/F01.2_org_team_member_role.md](docs/features/F01.2_org_team_member_role.md) | [docs/features/F01.2.1_org_team_groups.md](docs/features/F01.2.1_org_team_groups.md)（チーム加盟の双方向化・チームグループ／🟢 実装済み。全部隊が main に着地済みで、実機E2E・アリシゼーションは未実施） | [docs/features/F01.5_team_friend_relationships.md](docs/features/F01.5_team_friend_relationships.md)
 
 - **2要素認証 (2FA)**: TOTP（Google Authenticator等）対応。SYSTEM_ADMIN・ADMINには必須化
 - **OAuth2ソーシャルログイン**: Google / LINE / Apple によるワンクリック登録・ログイン
@@ -212,6 +212,8 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 - **レート制限・ブルートフォース対策**: ログイン試行を IP + アカウント単位で Valkey カウンター管理。5回失敗でアカウントを **30分** ロック。パスワードリセット・2FA検証エンドポイントにも同様のレート制限を適用する
 - **アカウント凍結・退会フロー**: 管理者によるアカウント凍結、ユーザー自身の退会申請。退会申請後30日間は論理削除（猶予期間）、その後個人情報を物理削除。決済履歴は税法に基づき7年間保持。詳細は `.claudecode.md` §8「データ保持・削除規約」を参照
 - **チームの手動アーカイブ・解除**: 対象チームの管理者・副管理者はヘッダー（モバイルでは「その他」）から確認後にアーカイブできる。モバイルメニューとアーカイブ・解除確認の確定／キャンセル／閉じるは44x44px以上の操作領域を確保する。解除はチーム一覧の「アーカイブ済みチーム」から行う。PENDING の加盟申請・招待は取り消され、成立済みの加盟は維持される。解除しても取り消された申請・招待は復元しない。本人の所属チーム一覧 API は表示ロールとは独立した `canManageArchive` を返す（SYSTEM_ADMIN 単独は操作不可）。
+- **チーム加盟の双方向化（F01.2.1）**: 組織からの招待に加え、チームから組織への加盟申請ができる（組織が受付を許可している場合のみ。既定は off）。組織 ADMIN は申請を承認（グループを確定）・拒否（30日の冷却、または無期限ブロック）でき、チーム側は取下げ・招待の承諾／辞退・離脱ができる。チーム側の操作は新権限 `MANAGE_ORG_AFFILIATION`（チーム ADMIN は常に保持、DEPUTY_ADMIN・MEMBER は権限グループで付与）を持つ人が行う。組織側は招待・取消・除名・申請の承認／拒否。1チームは複数の組織に同時に加盟でき、親組織を1つと仮定していた読み手（可視性・行事カテゴリ・契約のテナントなど）は複数親に対応した。組織の設定は `/organizations/{slug}/settings/team-affiliation`、チーム側は `/teams/{slug}/affiliations`・`/teams/{slug}/permission-groups`。PENDING は60日で夜間バッチが取り消し、組織・チームのアーカイブ／削除時も片付ける（`team-org-pending-expiry` / `team-org-group-orphan-repair` / `team-org-lifecycle-cleanup` を `POST /api/v1/system-admin/batch/{name}/trigger?sync=true` で手動起動できる）。加盟の通知は操作と同じトランザクションの outbox 表に書き、通知ドメインの relay が fan-out に取り込む。
+- **チームグループとグループ宛てのお知らせ（F01.2.1）**: 組織は加盟チームを「チームグループ」（平坦・並び順付き・1組織100件まで・1加盟1グループ）に分け、`/organizations/{slug}/member-teams` で作成・並び替え・削除・単体／一括割当ができる。告知ウィザードでは「チームを選ぶ」（500チームまで）に加えて「チームグループで選ぶ」（個別・並び順の範囲・未分類・組織の直属メンバー）を選べ、送信前に宛先をプレビューできる（`POST /api/v1/organizations/{orgId}/broadcast/audience-preview`）。表示は閲覧時の所属で判定し（削除済みグループは送信時スナップショット）、アンケートの push は送信時に宛先チームを固定して宛先チームのメンバーと直属メンバーだけに届く。詳細は [F01.2.1](docs/features/F01.2.1_org_team_groups.md)・[F02.8](docs/features/F02.8_dashboard_announcement.md)。
 - **削除済みチームの復元**: SYSTEM_ADMINは管理ダッシュボードの「削除済みチームの復元」から削除済み一覧を開き、確認して復元できる（`/system-admin/teams/deleted`）。既存 `PATCH /api/v1/teams/{slug}/restore` を使い、未削除・復元済みは409 `TEAM_006`。公開範囲・予定・役割は保持し、削除前の組織加盟は戻さない。既存の孤児予定は復元後にチーム予定UIから削除できる（[API仕様](docs/features/F01.2_org_team_member_role/02_api_design.md)、[システム管理UI](docs/features/F10.1_admin_dashboard.md)）。
 - **非アクティブアーカイブ**: 一定期間ログインがないユーザー・チーム・組織を段階的にアーカイブする。アーカイブ前にメール通知を送り、ログインで即時解除可能
 
@@ -463,7 +465,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 **組織ダッシュボード:**
 - 傘下チーム一覧と各チームの活動状況
 - 組織TODO（担当者・担当チームの割り振り、期限設定、優先度、進捗ステータス管理）
-- 組織全体のお知らせ、統計サマリー
+- 組織全体のお知らせ（チームグループ宛て・並び順の範囲指定に対応）、統計サマリー
 - **今月の課金サマリー（`BillingAccessGuard.manage=true` の ADMIN または課金権限を明示付与された DEPUTY_ADMIN のみ表示。MEMBER/未許可DEPUTYは非表示）**:
   - 今月の課金合計（税込）をウィジェット上部に表示
   - 内訳: モジュール課金 / パッケージ課金 / ストレージ課金 / 組織数課金（現在のチーム数・無料枠・超過チーム数）をそれぞれ明示

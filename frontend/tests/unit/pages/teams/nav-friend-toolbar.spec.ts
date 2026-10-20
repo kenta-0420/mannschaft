@@ -1,4 +1,4 @@
-import { computed, defineComponent } from 'vue'
+import { computed, defineComponent, ref } from 'vue'
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import TeamNavPage from '~/pages/teams/[slug]/nav.vue'
@@ -21,11 +21,17 @@ const shell = vi.hoisted(() => ({
   isAdmin: true,
   isAdminOrDeputy: true,
   permissions: [] as string[],
+  roleResolved: true,
+  roleLoadFailed: false,
+  refresh: vi.fn(async () => {}),
 }))
 
 vi.mock('~/composables/useTeamShellContext', () => ({
   useTeamShellContext: () => ({
-    roleName: { value: shell.roleName },
+    roleName: ref(shell.roleName),
+    roleResolved: ref(shell.roleResolved),
+    roleLoadFailed: ref(shell.roleLoadFailed),
+    refresh: shell.refresh,
     isAdmin: computed(() => shell.isAdmin),
     isAdminOrDeputy: computed(() => shell.isAdminOrDeputy),
   }),
@@ -47,6 +53,8 @@ const stubs = { TeamFriendList: true, FriendFollowDialog: true, FriendTeamGuideM
 
 function setRole(role: string, permissions: string[] = []) {
   shell.roleName = role
+  shell.roleResolved = true
+  shell.roleLoadFailed = false
   shell.isAdmin = role === 'ADMIN'
   shell.isAdminOrDeputy = role === 'ADMIN' || role === 'DEPUTY_ADMIN'
   shell.permissions = permissions
@@ -153,5 +161,44 @@ describe('pages/teams/[slug]/nav.vue — フレンドチームタブのツール
     const w = await mountNav()
     expect(w.find('[data-testid="friend-admin-shortcuts"]').exists()).toBe(false)
     expect(w.find('[data-testid="friend-follow-button"]').exists()).toBe(false)
+  })
+
+  // CMP-261013-1226 AC-14a〜c: 未所属（roleName=null）はロール解決の状態で出し分ける
+  describe('AC-14 roleName=null 経路（解決状態で出し分け）', () => {
+    function setNull(state: { resolved: boolean; failed: boolean }) {
+      setRole('MEMBER')
+      shell.roleName = null
+      shell.isAdmin = false
+      shell.isAdminOrDeputy = false
+      shell.roleResolved = state.resolved
+      shell.roleLoadFailed = state.failed
+    }
+
+    it('AC-14a: 解決済みで roleName=null（未所属・他テナント）は forbidden 案内を出し、一覧はマウントしない', async () => {
+      setNull({ resolved: true, failed: false })
+      const w = await mountNav()
+      expect(w.find('[data-testid="friend-forbidden"]').exists()).toBe(true)
+      expect(w.find('[data-testid="friend-role-error"]').exists()).toBe(false)
+      expect(w.find('[data-testid="friend-toolbar"]').exists()).toBe(false)
+      expect(w.findComponent({ name: 'TeamFriendList' }).exists()).toBe(false)
+    })
+
+    it('AC-14b: 読込中は forbidden 案内もエラーも出さない（ちらつき防止）', async () => {
+      setNull({ resolved: false, failed: false })
+      const w = await mountNav()
+      expect(w.find('[data-testid="friend-forbidden"]').exists()).toBe(false)
+      expect(w.find('[data-testid="friend-role-error"]').exists()).toBe(false)
+      expect(w.findComponent({ name: 'TeamFriendList' }).exists()).toBe(false)
+    })
+
+    it('AC-14c: ロール取得失敗は forbidden ではなくエラー表示（再試行つき）を出す', async () => {
+      setNull({ resolved: true, failed: true })
+      const w = await mountNav()
+      expect(w.find('[data-testid="friend-role-error"]').exists()).toBe(true)
+      expect(w.find('[data-testid="friend-forbidden"]').exists()).toBe(false)
+      expect(w.findComponent({ name: 'TeamFriendList' }).exists()).toBe(false)
+      await w.find('[data-testid="friend-role-error-retry"]').trigger('click')
+      expect(shell.refresh).toHaveBeenCalled()
+    })
   })
 })
