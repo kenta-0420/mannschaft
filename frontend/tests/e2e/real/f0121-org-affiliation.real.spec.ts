@@ -955,14 +955,17 @@ test.describe('F01.2.1 加盟の実機E2E', () => {
     const uOrgs = JSON.stringify((await apiAs(w.UA, 'GET', `/api/v1/teams/${w.U.slug}/organizations`)).body)
     expect(uOrgs, 'C04 b').toContain(w.X.slug)
     expect(uOrgs, 'C04 b').toContain(w.Y.slug)
-    // N14: /me/teams の代表親組織は 10 回呼んでも同じ
-    const reps = new Set<string>()
+    // N14: /me/teams の代表親組織（organizationId）は 10 回呼んでも毎回同じで、§9.3 の規則どおり
+    // 最初に成立した加盟の組織＝ Y（前提で先に加盟。X への加盟は直前に成立）になる。
+    // 応答ごとに対象チーム U の要素と organizationId の存在を検証する（欠落を null で同一視して PASS にしない）。
     for (let i = 0; i < 10; i++) {
-      const teams = (await apiAs(w.UA, 'GET', '/api/v1/me/teams')).body.data as Array<{ slug?: string; organizationId?: unknown; organization_id?: unknown }>
-      const u = teams.find((t) => t.slug === w.U.slug) as Record<string, unknown> | undefined
-      reps.add(JSON.stringify(u?.organizationId ?? u?.organization_id ?? null))
+      const res = await apiAs(w.UA, 'GET', '/api/v1/me/teams')
+      expect(res.status, `N14 ${i + 1} 回目の応答`).toBe(200)
+      const teams = res.body.data as Array<{ slug?: string; organizationId?: number | null }>
+      const u = teams.find((t) => t.slug === w.U.slug)
+      expect(u, `N14 ${i + 1} 回目: /me/teams に U がある`).toBeDefined()
+      expect(u?.organizationId, `N14 ${i + 1} 回目: 代表親組織は先に加盟した Y`).toBe(w.Y.numericId)
     }
-    expect([...reps], 'N14').toHaveLength(1)
     // C14: 申請中のチーム V を削除すると、X の申請行が消え XA に取消の通知が届く
     expect(membershipRow(w.X.slug, V.slug)?.status).toBe('PENDING')
     for (const team of [V, W]) await archiveScope('teams', w.UA, team.slug)
