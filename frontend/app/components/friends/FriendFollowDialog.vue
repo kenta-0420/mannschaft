@@ -63,7 +63,10 @@ let searchSeq = 0
 const slugInput = ref('')
 const comment = ref<string>('')
 
-const autoCompleteRef = ref<{ search: (event: Event | undefined, query: string, source: string) => void } | null>(null)
+const autoCompleteRef = ref<{
+  search: (event: Event | undefined, query: string, source: string) => void
+  hide: () => void
+} | null>(null)
 
 const visible = computed({
   get: () => props.modelValue,
@@ -87,6 +90,16 @@ const canSubmit = computed(
 
 const commentRemaining = computed(() => COMMENT_MAX - (comment.value?.length ?? 0))
 
+/**
+ * 候補が無いとき（0 件・検索失敗）は AutoComplete 標準のオーバーレイを閉じる。
+ * 開いたままだと、パネルの外に出す自前の案内・再試行ボタンを覆い隠してしまう。
+ * （suggestions が空のまま空で更新された場合、PrimeVue 側の自動クローズは動かない）
+ */
+async function closeOverlayWhenEmpty() {
+  await nextTick()
+  if (suggestions.value.length === 0) autoCompleteRef.value?.hide()
+}
+
 async function runSearch(keyword: string) {
   const seq = ++searchSeq
   lastKeyword.value = keyword
@@ -96,12 +109,14 @@ async function runSearch(keyword: string) {
     if (seq !== searchSeq) return
     suggestions.value = result.data.map(({ name, slug }) => ({ name, slug }))
     searchStatus.value = 'done'
+    await closeOverlayWhenEmpty()
   }
   catch {
     // 失敗は 0 件と区別して表示し、再検索ボタンで復旧できるようにする（例外は握りつぶさない）
     if (seq !== searchSeq) return
     suggestions.value = []
     searchStatus.value = 'error'
+    await closeOverlayWhenEmpty()
   }
 }
 
@@ -178,6 +193,7 @@ function onFollowed(response: FollowTeamResponse) {
           :placeholder="t('friends.follow_dialog.search_placeholder')"
           :delay="SEARCH_DEBOUNCE_MS"
           :min-length="1"
+          :show-empty-message="false"
           class="w-full"
           fluid
           data-testid="friend-follow-search-input"
@@ -193,7 +209,7 @@ function onFollowed(response: FollowTeamResponse) {
         </AutoComplete>
         <div
           v-if="searchStatus === 'error'"
-          class="mt-2 flex items-center gap-2 text-sm text-red-500"
+          class="mt-2 flex flex-wrap items-center gap-2 text-sm text-red-500"
           role="alert"
           data-testid="friend-follow-search-error"
         >
@@ -203,6 +219,7 @@ function onFollowed(response: FollowTeamResponse) {
             icon="pi pi-refresh"
             size="small"
             text
+            class="whitespace-nowrap"
             data-testid="friend-follow-search-retry"
             @click="retrySearch"
           />

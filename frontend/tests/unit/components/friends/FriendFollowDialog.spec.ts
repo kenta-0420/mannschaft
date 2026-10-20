@@ -225,6 +225,9 @@ describe('FriendFollowDialog（CMP-261012-0315）', () => {
     expect(noResults!.textContent).toContain('friends.follow_dialog.no_results')
     expect(noResults!.textContent).toContain('friends.follow_dialog.slug_input_hint')
     expect(q('[data-testid="friend-follow-search-error"]')).toBeNull()
+    // PrimeVue の hide() は setTimeout(0) で閉じる（スクリーンリーダー対策）。fake timer を進めてから確認する
+    await vi.advanceTimersByTimeAsync(10)
+    expect(inputOf('friend-follow-search-input').getAttribute('aria-expanded'), '0件のときも標準の空結果オーバーレイを開かず、自前案内だけを出す').toBe('false')
     expect(q('[data-testid="friend-follow-slug-input"]'), 'slug 直接入力欄は常に使える').not.toBeNull()
   })
 
@@ -314,6 +317,9 @@ describe('FriendFollowDialog（CMP-261012-0315）', () => {
     expect(error).not.toBeNull()
     expect(error!.textContent).toContain('friends.follow_dialog.search_error')
     expect(q('[data-testid="friend-follow-no-results"]'), 'エラーを0件と混同しない').toBeNull()
+    // PrimeVue の hide() は setTimeout(0) で閉じる（スクリーンリーダー対策）。fake timer を進めてから確認する
+    await vi.advanceTimersByTimeAsync(10)
+    expect(inputOf('friend-follow-search-input').getAttribute('aria-expanded'), '検索失敗中は AutoComplete 標準のオーバーレイを開かない（エラー表示・再試行ボタンを隠すため）').toBe('false')
 
     const retry = q('[data-testid="friend-follow-search-retry"]')
     expect(retry).not.toBeNull()
