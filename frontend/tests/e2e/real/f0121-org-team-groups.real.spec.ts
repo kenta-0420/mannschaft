@@ -28,8 +28,9 @@ import {
 /**
  * F01.2.1 チームグループ（作成・改名・並び替え・削除・単体/一括割当・絞り込み）の実機E2E（CMP-261011-0035）。
  *
- * 実行: BASE_URL=http://localhost:3001 API_BASE_URL=http://localhost:8081
- *   node node_modules/playwright/cli.js test -c playwright-real.config.ts --project=chromium-real --no-deps \
+ * 実行（専用設定。globalTeardown で作成データを必ず削除する。通常設定ではこの spec は除外される）:
+ *   BASE_URL=http://localhost:3021 API_BASE_URL=http://localhost:8081
+ *   node node_modules/playwright/cli.js test -c playwright-f0121.config.ts \
  *   tests/e2e/real/f0121-org-team-groups.real.spec.ts
  *
  * API は、ログイン・前提作成（利用者・組織・チーム・加盟）・後始末・観測（DB）と、受け入れ条件が

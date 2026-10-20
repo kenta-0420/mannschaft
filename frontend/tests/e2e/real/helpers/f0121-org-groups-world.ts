@@ -11,11 +11,20 @@ import { loginViaApi } from '../../fixtures/auth'
  *   受け入れ条件の対象操作は spec 側で必ず画面のクリック・入力・送信で行う。
  * - 利用者は毎回新規登録する（seed の認証情報ドリフトを避ける）。メール認証トークンは
  *   SHA-256 で保存され平文を復元できないため、有効化だけは users.status の直更新で行う。
- * - 検証用 BE（既定 8081）と検証用 FE（既定 3001）を前提にする。本陣 8080/3000 は使わない。
+ * - 検証用 BE・検証用 FE の既定値は f0121-endpoints.ts（8081 / 3021）。本陣 8080/3000 は使わない。
  */
 
-export const API = process.env.API_BASE_URL ?? 'http://localhost:8081'
-export const FE = process.env.BASE_URL ?? 'http://localhost:3001'
+import { API, FE, F0121_CONFIG_MARK } from './f0121-endpoints'
+
+export { API, FE }
+
+/**
+ * 後始末（作成した組織・チームの削除）は専用設定の globalTeardown が担う。通常設定から読み込まれた場合は
+ * 後始末が保証されないため、データを作る前に止める（playwright-real.config.ts 等では testIgnore で除外済み）。
+ */
+if (process.env[F0121_CONFIG_MARK] !== '1') {
+  throw new Error('F01.2.1 の実機E2E は playwright-f0121.config.ts から実行すること（globalTeardown による後始末のため）')
+}
 export const PASSWORD = 'Passw0rd!2026'
 const SYSTEM_ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.local'
 const SYSTEM_ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!'

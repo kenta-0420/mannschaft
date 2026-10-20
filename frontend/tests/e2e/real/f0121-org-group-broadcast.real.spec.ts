@@ -28,8 +28,9 @@ import {
 /**
  * F01.2.1 グループ宛てお知らせ（告知ウィザード）の実機E2E（CMP-261011-0035）。
  *
- * 実行: BASE_URL=http://localhost:3001 API_BASE_URL=http://localhost:8081
- *   node node_modules/playwright/cli.js test -c playwright-real.config.ts --project=chromium-real --no-deps \
+ * 実行（専用設定。globalTeardown で作成データを必ず削除する。通常設定ではこの spec は除外される）:
+ *   BASE_URL=http://localhost:3021 API_BASE_URL=http://localhost:8081
+ *   node node_modules/playwright/cli.js test -c playwright-f0121.config.ts \
  *   tests/e2e/real/f0121-org-group-broadcast.real.spec.ts
  *
  * 前提（設計書 §16 H）: 組織X にグループ G1〜G4（この順）、各グループにチーム1つ（T1〜T4）、未分類 T0、
@@ -473,6 +474,58 @@ test.describe('F01.2.1 グループ宛てお知らせの実機E2E', () => {
     expect(await received(w.A['0']), 'AC-H18 T0').toBe(0)
     const bulletin = await send('teams', '掲示板', `T1宛て掲示板 ${RUN}`)
     expect(bulletin, 'AC-H28 掲示板').toEqual([])
+  })
+
+  /**
+   * 「チームを選ぶ」で T1 だけを宛先にして画面から送信する（ステップ1〜3）。
+   * 【今の main では宛先プレビューが 400 で止まる（製品欠陥 D-3）】修正後は送信まで進む。
+   */
+  async function sendToT1ViaUi(browser: import('@playwright/test').Browser, actor: Actor, channel: '掲示板' | 'アンケート', title: string) {
+    resetUserRateLimit('broadcast:send', actor)
+    const s = await openAs(browser, actor, `/organizations/${w.X.slug}`)
+    try {
+      await openWizard(s.page)
+      await s.page.getByTestId('broadcast-target-mode-teams').click()
+      const preview = s.page.waitForResponse((r) => r.url().includes('/broadcast/audience-preview'), { timeout: 60_000 })
+      await s.page.getByRole('checkbox', { name: w.T['1'].name, exact: true }).click()
+      const previewed = await preview
+      expect(previewed.status(), `チームを選ぶの宛先プレビュー（D-3）: ${previewed.request().postData()} -> ${await previewed.text()}`).toBe(200)
+      await expect(s.page.getByTestId('broadcast-resolved-count')).toContainText('該当: 1 チーム')
+      await goChannelAndContent(s.page, channel, title)
+      const sent = await submit(s.page)
+      expect(sent.status(), await sent.text()).toBeLessThan(300)
+      expect(sent.request().postDataJSON()).toMatchObject({ targetTeamIds: [w.T['1'].numericId] })
+    } finally {
+      await s.context.close()
+    }
+  }
+
+  test('BC-10 [AC-H27] XM（MEMBER）が「チームを選ぶ」で T1 宛てのアンケートを画面から送ると、表示は T1 にだけ出て、push は誰にも届かずジョブも作られない', async ({ browser }) => {
+    test.setTimeout(900_000)
+    const title = `XMのT1宛てアンケート ${RUN}`
+    const since = utcNow()
+    await sendToT1ViaUi(browser, w.XM, 'アンケート', title)
+    await new Promise((r) => setTimeout(r, FANOUT_WAIT_MS))
+    expect(jobsSince(w.X.numericId, since), 'AC-H27 ジョブなし').toEqual([])
+    const received = async (actor: Actor) =>
+      (await notificationsOf(actor)).filter((n) => `${n.title ?? ''}${(n as { body?: string }).body ?? ''}`.includes(title)).length
+    expect(await received(w.A['1']), 'AC-H27 T1 に push なし').toBe(0)
+    expect(await received(w.XO), 'AC-H27 XO に push なし').toBe(0)
+    expect(await teamDashboardShows(browser, w.A['1'], w.T['1'], title), 'AC-H27 T1 に出る').toBe(true)
+    expect(await teamDashboardShows(browser, w.A['2'], w.T['2'], title), 'AC-H27 T2 には出ない').toBe(false)
+  })
+
+  test('BC-11 [AC-H29] 「チームを選ぶ」で T1 宛ての掲示板を画面から送ると T1 にだけ出て、送信後に T1 が別グループへ移っても T1 に出続ける', async ({ browser }) => {
+    test.setTimeout(900_000)
+    const title = `T1宛て掲示板（表示確認） ${RUN}`
+    await sendToT1ViaUi(browser, w.XA, '掲示板', title)
+    expect(await teamDashboardShows(browser, w.A['1'], w.T['1'], title), 'AC-H29 T1 に出る').toBe(true)
+    expect(await teamDashboardShows(browser, w.A['2'], w.T['2'], title), 'AC-H29 T2 には出ない').toBe(false)
+    expect(await teamDashboardShows(browser, w.A['0'], w.T['0'], title), 'AC-H29 T0 には出ない').toBe(false)
+    // 準備: T1 を G1 から G3 へ移す（割当の画面操作は GRP-03 で検証済み。ここでは表示判定の観測が目的）
+    await must(w.XA, 'PUT', `/api/v1/organizations/${w.X.slug}/teams/${w.T['1'].slug}/team-group`, { groupId: w.G['3'] })
+    expect(await teamDashboardShows(browser, w.A['1'], w.T['1'], title), 'AC-H29 移動後も T1 に出る').toBe(true)
+    expect(await teamDashboardShows(browser, w.A['3'], w.T['3'], title), 'AC-H29 移動先グループの T3 には出ない').toBe(false)
   })
 })
 

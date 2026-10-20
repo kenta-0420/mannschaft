@@ -31,8 +31,9 @@ import {
 /**
  * F01.2.1 チーム加盟（申請・承認・拒否・招待・離脱・除名・制限・権限）の実機E2E（CMP-261011-0035）。
  *
- * 実行: BASE_URL=http://localhost:3001 API_BASE_URL=http://localhost:8081
- *   node node_modules/playwright/cli.js test -c playwright-real.config.ts --project=chromium-real --no-deps \
+ * 実行（専用設定。globalTeardown で作成データを必ず削除する。通常設定ではこの spec は除外される）:
+ *   BASE_URL=http://localhost:3021 API_BASE_URL=http://localhost:8081
+ *   node node_modules/playwright/cli.js test -c playwright-f0121.config.ts \
  *   tests/e2e/real/f0121-org-affiliation.real.spec.ts
  *
  * API を使うのは、ログイン・前提作成（利用者・組織・チーム・所属）・後始末・観測（通知一覧・DB）と、
