@@ -147,7 +147,8 @@
       "revoke": "Weiterleitung zurückziehen",
       "revoke_success": "Weiterleitung zurückgezogen",
       "revoke_confirm": "Diese Weiterleitung zurückziehen?",
-      "error": "Weiterleitung fehlgeschlagen"
+      "error": "Weiterleitung fehlgeschlagen",
+      "already_forwarded": "Dieser Beitrag wurde bereits weitergeleitet. Die Liste wurde aktualisiert"
     }
   },
   "forward_exports": {

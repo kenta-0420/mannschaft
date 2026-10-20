@@ -42,7 +42,7 @@ function onForward(postId: number) {
 }
 
 /** 親コンポーネントから呼び出せるよう公開する */
-defineExpose({ markAsForwarded })
+defineExpose({ markAsForwarded, refresh: () => fetchFeed() })
 </script>
 
 <template>

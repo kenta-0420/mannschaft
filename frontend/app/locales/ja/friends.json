@@ -147,7 +147,8 @@
       "revoke": "転送を取消",
       "revoke_success": "転送を取消しました",
       "revoke_confirm": "この転送を取り消しますか？",
-      "error": "転送に失敗しました"
+      "error": "転送に失敗しました",
+      "already_forwarded": "この投稿は既に転送済みです。一覧を更新しました"
     }
   },
   "forward_exports": {

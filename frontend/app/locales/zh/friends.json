@@ -147,7 +147,8 @@
       "revoke": "取消转发",
       "revoke_success": "已取消转发",
       "revoke_confirm": "取消此转发吗？",
-      "error": "转发失败"
+      "error": "转发失败",
+      "already_forwarded": "该帖子已转发。列表已刷新"
     }
   },
   "forward_exports": {

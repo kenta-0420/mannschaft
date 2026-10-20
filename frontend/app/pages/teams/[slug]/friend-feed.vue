@@ -24,7 +24,10 @@ const forwardPostId = ref<number | null>(null)
 const forwardSourceTeamName = ref('')
 
 /** FriendFeedPostList への ref（markAsForwarded 呼び出し用） */
-const feedListRef = ref<{ markAsForwarded: (postId: number, forwardId: number) => void } | null>(null)
+const feedListRef = ref<{
+  markAsForwarded: (postId: number, forwardId: number) => void
+  refresh: () => Promise<void>
+} | null>(null)
 
 /** 権限チェック */
 onMounted(async () => {
@@ -96,6 +99,7 @@ function onForwardSuccess(forwardId: number) {
         :post-id="forwardPostId"
         :source-team-name="forwardSourceTeamName"
         @success="onForwardSuccess"
+        @already-forwarded="feedListRef?.refresh()"
       />
     </div>
   </div>

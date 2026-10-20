@@ -147,7 +147,8 @@
       "revoke": "Cancelar reenvío",
       "revoke_success": "Reenvío cancelado",
       "revoke_confirm": "¿Cancelar este reenvío?",
-      "error": "Error al reenviar"
+      "error": "Error al reenviar",
+      "already_forwarded": "Esta publicación ya fue reenviada. Se actualizó la lista"
     }
   },
   "forward_exports": {

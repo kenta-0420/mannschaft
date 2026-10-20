@@ -147,7 +147,8 @@
       "revoke": "전달 취소",
       "revoke_success": "전달을 취소했습니다",
       "revoke_confirm": "이 전달을 취소하시겠습니까?",
-      "error": "전달에 실패했습니다"
+      "error": "전달에 실패했습니다",
+      "already_forwarded": "이미 전달된 게시물입니다. 목록을 새로 고쳤습니다"
     }
   },
   "forward_exports": {
