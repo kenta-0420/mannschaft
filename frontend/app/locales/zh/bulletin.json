@@ -1,5 +1,6 @@
 {
   "bulletin": {
+    "unknownAuthor": "未知作者",
     "title": "公告板",
     "tab": {
       "threads": "列表",

@@ -151,7 +151,7 @@ defineExpose({ refresh: () => loadThreads() })
           </h3>
 
           <div class="mt-1 flex items-center gap-3 text-xs text-surface-400">
-            <span>{{ thread.author.displayName }}</span>
+            <span>{{ thread.author.displayName || t('bulletin.unknownAuthor') }}</span>
             <span>{{ relativeTime(thread.createdAt) }}</span>
             <span v-if="thread.replyCount"><i class="pi pi-comment" /> {{ thread.replyCount }}</span>
             <span v-if="thread.readTrackingMode !== 'NONE'"><i class="pi pi-eye" /> {{ thread.readCount }}</span>
