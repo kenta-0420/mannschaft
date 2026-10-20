@@ -28,6 +28,8 @@ const { t } = useI18n()
 const authStore = useAuthStore()
 
 const thread = ref<BulletinThreadResponse | null>(null)
+/** システム生成などで投稿者名がない場合もスレッド本体を描画する。 */
+const authorDisplayName = computed(() => thread.value?.author.displayName || t('bulletin.unknownAuthor'))
 /** 返信一覧（スレッド詳細とは別APIで取得: GET /api/v1/bulletin/threads/{threadId}/replies） */
 const replies = ref<BulletinReplyResponse[]>([])
 /** 添付ファイル一覧 */
@@ -159,8 +161,8 @@ watch(() => props.threadId, () => loadThread())
     <SectionCard>
       <h2 class="mb-2 text-xl font-bold">{{ thread.title }}</h2>
       <div class="mb-4 flex items-center gap-3 text-sm text-surface-400">
-        <Avatar :label="thread.author.displayName.charAt(0)" shape="circle" size="small" />
-        <span>{{ thread.author.displayName }}</span>
+        <Avatar :label="authorDisplayName.charAt(0)" shape="circle" size="small" />
+        <span>{{ authorDisplayName }}</span>
         <span>{{ relativeTime(thread.createdAt) }}</span>
         <span v-if="thread.readTrackingMode !== 'NONE'"><i class="pi pi-eye" /> {{ thread.readCount }}人既読</span>
       </div>
