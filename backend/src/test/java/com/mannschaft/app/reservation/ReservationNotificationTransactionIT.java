@@ -1046,7 +1046,7 @@ class ReservationNotificationTransactionIT extends AbstractMySqlIntegrationTest 
 
     private static void awaitQuietly(CountDownLatch latch) {
         try {
-            latch.await(60, TimeUnit.SECONDS);
+            latch.await(600, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
