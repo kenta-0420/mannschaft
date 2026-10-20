@@ -41,9 +41,9 @@ onMounted(async () => {
 })
 
 /** 転送ボタン押下 → モーダル表示 */
-function onForward(postId: number) {
+function onForward(postId: number, sourceTeamName: string) {
   forwardPostId.value = postId
-  forwardSourceTeamName.value = ''
+  forwardSourceTeamName.value = sourceTeamName
   forwardModalVisible.value = true
 }
 

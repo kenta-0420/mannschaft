@@ -15,10 +15,10 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  forward: [postId: number]
+  forward: [postId: number, sourceTeamName: string]
 }>()
 
-const { posts, loading, error, fetchFeed, markAsForwarded } = useFriendFeed(props.teamId)
+const { posts, loading, error, failed, fetchFeed, markAsForwarded } = useFriendFeed(props.teamId)
 
 onMounted(() => {
   fetchFeed()
@@ -36,7 +36,9 @@ function toCardPost(p: FriendFeedPost) {
 }
 
 function onForward(postId: number) {
-  emit('forward', postId)
+  // 転送モーダルに転送元チーム名を渡す（投稿データに含まれている）
+  const sourceTeamName = posts.value.find(p => p.postId === postId)?.sourceTeam.name ?? ''
+  emit('forward', postId, sourceTeamName)
 }
 
 /** 親コンポーネントから呼び出せるよう公開する */
@@ -51,10 +53,12 @@ defineExpose({ markAsForwarded })
     </div>
 
     <!-- エラー -->
-    <div v-else-if="error" class="py-4 text-center text-red-500">
-      <i class="pi pi-exclamation-triangle mr-2" />
-      {{ error }}
-    </div>
+    <DashboardErrorState
+      v-else-if="failed"
+      :error="error"
+      testid="friend-feed-error"
+      @retry="fetchFeed()"
+    />
 
     <!-- 投稿なし -->
     <DashboardEmptyState

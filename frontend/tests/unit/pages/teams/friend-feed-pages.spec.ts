@@ -67,11 +67,21 @@ describe('friend-feed ページ', () => {
     expect(wrapper.findComponent({ name: 'DashboardEmptyState' }).exists()).toBe(true)
   })
 
-  it('AC-3: 取得失敗時はエラーを表示する', async () => {
-    apiMock.mockRejectedValue(new Error('boom'))
+  it('AC-3: 取得失敗時は DashboardErrorState を出し、再試行で再取得して投稿が出る', async () => {
+    apiMock
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce({ data: [feedPost], meta: { nextCursor: null, limit: 20, hasNext: false } })
     const wrapper = await mountSuspended(FriendFeedPage, { route: '/teams/t1/friend-feed' })
     await flushPromises()
-    expect(wrapper.findComponent(FriendFeedPostList).find('.pi-exclamation-triangle').exists()).toBe(true)
+    const list = wrapper.findComponent(FriendFeedPostList)
+    expect(handleApiError).toHaveBeenCalled()
+    expect(list.findComponent({ name: 'DashboardErrorState' }).exists()).toBe(true)
+    expect(list.findComponent({ name: 'DashboardEmptyState' }).exists()).toBe(false)
+    await list.find('[data-testid="friend-feed-error-retry"]').trigger('click')
+    await flushPromises()
+    expect(apiMock).toHaveBeenCalledTimes(2)
+    expect(list.find('[data-testid="friend-feed-error"]').exists()).toBe(false)
+    expect(list.findComponent(FriendFeedPostCard).exists()).toBe(true)
   })
 })
 
