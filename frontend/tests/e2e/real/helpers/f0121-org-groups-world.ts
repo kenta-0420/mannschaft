@@ -70,7 +70,7 @@ export function sql(statement: string): string {
  * WSL2 mirrored 越しの接続リセット（ECONNRESET 等。HTTP 応答が返る前の通信断）だけを再試行する fetch。
  * HTTP ステータスの付いた応答（4xx/5xx を含む）は再試行せずそのまま返す（製品の応答を隠さない）。
  */
-async function netFetch(url: string, init?: RequestInit): Promise<globalThis.Response> {
+export async function netFetch(url: string, init?: RequestInit): Promise<globalThis.Response> {
   let lastError: unknown
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
