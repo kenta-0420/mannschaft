@@ -10,10 +10,10 @@
 
 | 項目 | 調査結果 | 実検証 |
 |---|---|---|
-| 1 Boot 互換版 | 候補を Modulith 1.4.13 とする。公式互換表で 1.4 は Boot 3.5 向け。1.4 公式文書の例と API は 1.4.13 | 依存解決・起動未実行 |
+| 1 Boot 互換版 | 候補を Modulith 1.4.13 とする。公式互換表で 1.4 は Boot 3.5 向け。1.4 公式文書の例と API は 1.4.13 | 全Modulith artifactが1.4.13へ解決することを実確認。起動未実行 |
 | 2 JPA Registry DDL | 公式 1.4.13 Entity は id、publicationDate、listenerId、serializedEvent、eventType、completionDate。DefaultJpaEventPublication の表名は EVENT_PUBLICATION。試行回数・処理状態列と Entity の索引指定は見当たらない。completion-mode は update/delete/archive | 実 MySQL の SHOW CREATE TABLE・索引照合未実行。§11.2 の型・長さ・索引は確定不可 |
 | 3 登録対象と完了 | 標準 multicaster は AFTER_COMMIT リスナー配信全般を保存。public/nonfinal DefaultEventPublicationRegistry の store(Object, Stream<PublicationTargetIdentifier>) を差し替え、ReliableEvent と ModuleEventListener の listener ID の両方を照合する検体を予定。markCompleted は REQUIRES_NEW | 既存 UserRegisteredEvent 非保存の red/green、tx 無し async 正常完了・例外未完了とも未実行 |
-| 4 ArchUnit | 公式 1.4 GA 発表は ArchUnit 1.4 を含む。既存は1.3.0 | dependencyInsight と1.3.0固定検証未実行 |
+| 4 ArchUnit | 公式 1.4 GA 発表は ArchUnit 1.4 を含む。既存は1.3.0 | spikeRuntimeClasspath本体は既定1.4.2。core/junit5-api/engine/engine-apiを1.3.0にforceした依存解決は成功。解析実行・全凍結番人は未実行 |
 | 5 全本番違反 | ApplicationModules で全トップレベルパッケージを個別に検査する | 全本番コンパイル・依存違反/循環/common発集計未実行 |
 | 6 モジュール抽出 | 依存は発生元、循環は参加モジュール全てで判定。TransitionalBridge 注釈クラスだけを ApplicationModules の ignored predicate から除外する最小陽性/陰性検体を予定 | 公開API確定・webhook件数・検体未実行 |
 | 7 jobmatching/chat | jobmatching→chat.api のみ、イベントと保険リスナーは jobmatching 自身に置く検体を予定 | 循環0の実証未実行 |
@@ -65,3 +65,28 @@ gh issue view 4022 --repo kenta-0420/mannschaft --json body,comments
 - 同じ専用 Test タスクが既存の archunit タグ除外を継承して空実行しないよう、専用タスク内だけタグ集合を明示解除した。既存番人タスクの設定は変更していない。
 - 保持者は MSYS PID190676、WINPID48628、CREATED20261021065352。読取の ps -ef で MSYS 子190784（別 worktree の Gradle wrapper）を確認。保持者・子・ロックを停止/解除していない。
 - 実行の red/green、DDL、依存解決、違反件数、webhook起動結果のログは未取得。待機ログだけを合格根拠にしない。
+## 依存解決と実行環境の実測
+
+対象 SHA `90b2b55e08401233a034168d4782631ba5db0ea7`（依存設定は試練commit以来同じ）。依存解決は Windows Temurin21.0.10、Gradle8.14.4、既存 Windows user cache。実コード試験は Windows に Docker CLI/標準DockerDesktopが無いため、既存 WSL Ubuntu-24.04（JDK21.0.12.1、Docker Engine29.4.1、既存Linux Gradle cache）へ差し替えた。Engine到達性は docker info で確認。TCP公開などの環境設定変更なし。
+
+| コマンドの目的 | 結果 | ログ |
+|---|---|---|
+| Modulith同居のArchUnit既定版 | core1.4.2へ競合解決。BUILD SUCCESSFUL、4分25秒 | `CMP-261021-1602-modulith-dependency-default.log` |
+| 全Modulithの版 | api/apt/core/docs/events-api/core/jackson/jpa/moments/starter-core/jpa/test/testが1.4.13。既存AWS BOMの1.3.1要求も1.4.13へ解決。BUILD SUCCESSFUL、44秒 | `CMP-261021-1602-modulith-dependency-modulith.log` |
+| ArchUnit1.3.0固定 | core/junit5-api/engine/engine-apiのforce解決成功。BUILD SUCCESSFUL、1分10秒 | `CMP-261021-1602-modulith-dependency-pin-resolved.log` |
+
+```powershell
+# backend/。metadataのみ、compile/testは起動しない
+.\gradlew.bat dependencyInsight --configuration spikeRuntimeClasspath --dependency com.tngtech.archunit --console=plain
+.\gradlew.bat dependencyInsight --configuration spikeRuntimeClasspath --dependency org.springframework.modulith --console=plain
+.\gradlew.bat dependencyInsight --configuration spikeRuntimeClasspath --dependency com.tngtech.archunit '-Pspike.archunitPin=true' --console=plain
+```
+
+最初の pin 呼出は PowerShell に未引用の dotted property を分割され、Task .archunitPin=true not found で失敗した。これは依存互換性の失敗ではない。一引数へ引用した再実行が上記の成功結果。1.3.0へ解決できたことは Modulith実解析の動作成功や既存freeze全体の同値を証明しない。後続の実解析と導入時CIを別に要する。
+
+旧Windows redはGradle未開始の待機中に自分のscriptだけを終了し、Windows turnstileの外側でWSLを呼ぶ形へ差し替えた。他者保持者には触れていない。WSLが独自のlockroot/PID namespaceでWindows保持者をstale扱いする経路は使用しない。既存cache削除なし。WSLのproject cacheだけを `/tmp/mannschaft-modulith-4022-gradle` に隔離する。gradlewのCR文字0も確認済み。
+
+```bash
+# Windows Git Bash、backend/。実試験はまだturnstile待機
+./scripts/gradle-turnstile.sh wsl.exe -d Ubuntu-24.04 -- bash scripts/modulith-spike-wsl.sh modulithRegistrySpike
+```
