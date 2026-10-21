@@ -1,6 +1,9 @@
 package com.mannschaft.app.common.architecture;
 
 import external.transitivetx.ExternalPortBridge;
+import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.SuperDefaultBridge;
+import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.MixedDefaultBridge;
+import com.mannschaft.app.proxy.repository.InheritedProxyRepository;
 import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.SafeDefaultParent;
 import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.UnsafeDefaultChild;
 import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.ChildDefaultBridge;
@@ -151,6 +154,19 @@ class CrossDomainTransactionalL1G0ConditionTest {
             UnsafeDefaultChild.class, ClassDefaultOverride.class)).isEmpty();
     }
 
+    @Test
+    void classのoverrideから明示super委譲した親default本体を保持する() {
+        assertThat(d3t(DefaultEntry.class, DefaultPort.class, SuperDefaultBridge.class)).hasSize(1);
+    }
+
+    @Test
+    void 同一行の明示super委譲と通常interface呼出しは両本体を保持する() {
+        assertThat(d3t(MixedDefaultBridge.class, DefaultPort.class))
+            .hasSize(2)
+            .anyMatch(v -> v.contains(TransitiveProxyRepository.class.getName()))
+            .anyMatch(v -> v.contains(InheritedProxyRepository.class.getName()));
+    }
+
     @ParameterizedTest(name = "D-3 合成TX [{index}] {0}")
     @MethodSource("composedEntries")
     void 合成TXをD3が検出する(Class<?> entry) {
@@ -191,7 +207,7 @@ class CrossDomainTransactionalL1G0ConditionTest {
         List<Class<?>> types = new ArrayList<>(Arrays.asList(candidates));
         types.addAll(List.of(Port.class, ChildPort.class, AbstractBridge.class, ExcludedImplementationReference.class,
             ComposedTx.class, NestedTx.class, PlainListener.class, CycleA.class, CycleB.class,
-            TransitiveProxyRepository.class, TransitiveResidentRepository.class));
+            TransitiveProxyRepository.class, TransitiveResidentRepository.class, InheritedProxyRepository.class));
         return new ClassFileImporter().importClasses(types);
     }
 

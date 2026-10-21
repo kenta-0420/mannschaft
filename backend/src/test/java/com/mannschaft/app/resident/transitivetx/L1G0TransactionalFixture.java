@@ -1,6 +1,7 @@
 package com.mannschaft.app.resident.transitivetx;
 
 import com.mannschaft.app.proxy.repository.TransitiveProxyRepository;
+import com.mannschaft.app.proxy.repository.InheritedProxyRepository;
 import com.mannschaft.app.resident.repository.TransitiveResidentRepository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
@@ -106,6 +107,22 @@ public class L1G0TransactionalFixture {
     public static class ChildDefaultEntry {
         @Transactional
         public void execute(SafeDefaultParent port) { port.forward(); }
+    }
+    /** class overrideから明示的に親defaultへ委譲する検体。 */
+    public static class SuperDefaultBridge implements DefaultPort {
+        @Override
+        public void forward() { DefaultPort.super.forward(); }
+    }
+    /** 同じorigin・target・行にspecialと通常呼び出しが混在する検体。 */
+    public static class MixedDefaultBridge implements DefaultPort {
+        @Override
+        public void forward() { new InheritedProxyRepository().saveInherited(); }
+
+        @Transactional
+        public void execute(DefaultPort peer) {
+            // 同一accessへ畳まれても両本体を失わないことを検査するため同じ行へ置く。
+            DefaultPort.super.forward(); peer.forward();
+        }
     }
     /** interface を経由して再帰する検体。 */
     public static class RecursiveBridge implements Port {
