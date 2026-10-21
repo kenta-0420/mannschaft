@@ -36,6 +36,8 @@ class StructureSpikeIT {
         }
         assertThat(imported).containsAll(compiled);
         assertThat(imported).noneMatch(name -> name.contains("SpikeIT") || name.startsWith("com.mannschaft.spike."));
+        assertThat(modules.stream()).as("循環検査で除外されるOPENモジュールが本番に無いこと")
+                .noneMatch(org.springframework.modulith.core.ApplicationModule::isOpen);
         var all = modules.detectViolations().getMessages();
         Map<String, Integer> dependencies = new LinkedHashMap<>();
         Set<String> dependencyMessages = new LinkedHashSet<>();
