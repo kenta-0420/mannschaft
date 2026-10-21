@@ -51,6 +51,8 @@ function clearRetryTimer() {
 }
 
 async function execute() {
+  // 再入ガード: :disabled/:loading は再描画後にしか効かないため、同一 tick の連打はここで弾く
+  if (submitting.value) return
   submitting.value = true
   try {
     const response = await follow(props.teamId, {

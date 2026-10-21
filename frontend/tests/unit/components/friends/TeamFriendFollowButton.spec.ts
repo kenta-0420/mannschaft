@@ -89,4 +89,35 @@ describe('TeamFriendFollowButton（CMP-261012-0315）', () => {
     const wrapper = await mountButton()
     expect(wrapper.find('button[data-testid="friend-follow-submit"]').exists()).toBe(true)
   })
+
+  it('再入ガード: API 未解決のまま同期的に複数回クリックしても API は1回だけ呼ばれる', async () => {
+    let resolveFollow: (v: unknown) => void = () => {}
+    mockApi.mockImplementationOnce(() => new Promise((resolve) => { resolveFollow = resolve }))
+    const wrapper = await mountButton()
+    const button = wrapper.get('button')
+
+    for (let i = 0; i < 8; i++) {
+      void button.trigger('click')
+    }
+    await flushPromises()
+    expect(mockApi).toHaveBeenCalledTimes(1)
+
+    resolveFollow({ data: FOLLOW_RESPONSE })
+    await flushPromises()
+    expect(wrapper.emitted('followed')).toHaveLength(1)
+  })
+
+  it('再入ガード: 失敗後はガードが解除され再度送信できる', async () => {
+    mockApi.mockRejectedValueOnce(Object.assign(new Error('Conflict'), { statusCode: 409 }))
+    mockApi.mockResolvedValueOnce({ data: FOLLOW_RESPONSE })
+    const wrapper = await mountButton()
+
+    await wrapper.get('button').trigger('click')
+    await flushPromises()
+    await wrapper.get('button').trigger('click')
+    await flushPromises()
+
+    expect(mockApi).toHaveBeenCalledTimes(2)
+    expect(wrapper.emitted('followed')).toHaveLength(1)
+  })
 })
