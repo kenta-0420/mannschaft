@@ -32,7 +32,7 @@ AC9/10は設計で指定された段取り境界の単体検査であり、協�
 
 ## 出陣後に追加する FE・実機試験
 
-試練コマンド正本の規定によりFEコンポーネント試験とE2Eは画面/API実装後に行う。以下は未実施であり、完了・greenとは扱わない。
+試練コマンド正本の規定によりFEコンポーネント試験とE2Eは画面/API実装後に行う。以下は試練時点の計画であり、実装後の結果は末尾の進捗記録に区別して記す。
 
 | AC | 検証先・必須観点 |
 |---|---|
@@ -64,7 +64,7 @@ F01.5とdocs/security/03_role_authority_model.md §3.5へ、このAPIのcheckPer
 
 2026-10-21、復旧後の正式BE実行は64件（成功63・失敗1・errors0・skip0）。初期red42件は全件greenになった。唯一の失敗は追加したAC8の `page=2147483647&size=100` で、JPAの `Page offset exceeds Integer.MAX_VALUE` による500。通常範囲外99ページは成功した。失敗を受け、JPA offset上限を超える場合だけ通常ページと同一のCOUNTクエリから元のpage/sizeを保った空ページを返す修正を追加した。最大pageのsize=1/100、状態別・異種混在・正規化pair除外のCOUNT回帰を追加し、修正後の再検証は未実施。
 
-FEは親のrefresh重複取得を実際の回帰試験が検出し、兄弟一覧だけを更新する結線へ修正した後、5スイート49件成功。さらにページ補正の再取得失敗・再取得中の総数0を追加した51件の実行は、WSL接続リセットと同時に中断し集計未取得のため合格に数えない。新旧一覧の回帰、Dialogのslug事前入力と409、実効権限ごとの表示、翻訳済み通知を含む。最新変更のFE再実行・typecheck、OpenAPI生成、CI、実機・アリシゼーションは未完了である。
+FEは親のrefresh重複取得を実際の回帰試験が検出し、兄弟一覧だけを更新する結線へ修正した後、5スイート49件成功。追加2件を含むローカル51件はWSL接続リセットで集計を取得できず合格に数えなかった。その後、head `fd54c73af1abc2e1dc48be434905f6060a5bffad` の [Frontend CI run 39564699382](https://github.com/kenta-0420/mannschaft/actions/runs/39564699382) でNode22.23.2、Lint、typecheck、全665ファイル・6529件が成功し、対象5スイート51件も全成功・skip0を確認した。新旧一覧、Dialogのslug事前入力と409、実効権限表示、翻訳済み通知、ページ補正再取得の失敗/総数0を含む。新specのmock呼出配列4箇所の型エラーは期待値を変えず修正した。詳細は [FE CI観測](observations/CMP-261021-0020-frontend-ci.json)。同等以上のCI実証によりローカル51件の重複再実行は省略する。
 
 AC13は1001件のpending fixtureで、100件取得・total=1001を確認し、一覧とCOUNTの実SQLにEXPLAINを実施した。MockMvcリクエスト所要時間は328.65ms。詳細と制約は [性能実測](observations/CMP-261021-0020-performance.json)。これはFlyway無効・Hibernate createのテストDBで、FollowEntityが本番のuk_follows索引を宣言していない。EXPLAINのALL/filesort・推定rows=1を本番の計画や実行行数と同一視しない。fixtureは未commitのテストTX内でrollbackし、DDL/ANALYZEを実行していない。現証拠だけではfilesort支配と断定せず、本番DDL追加は行っていない。
 
@@ -85,4 +85,4 @@ main `3bad46f846cd094a64bd46524aed69479b0c76bf` を取り込んだhead `4c184472
 
 初回headのnullable=true注記ではnull unionが生成されないことを実生成JSONで検出し、既存ActivityRecordResponseのtypes={string,null}へ2項目だけ揃えた。初回artifactは観測として保存し、現入力へ採用していない。ローカルOpenAPI重複生成は省略した。
 
-生成後headの最終CI・境界修正後のBE65/FE51・実機/アリシゼーションは引き続き未完了。台帳完了・最終completion証拠は追加していない。
+最新main `7e9f82b3cae1ddd89b8a18add75217adcc811ce1` の追加分は文書/台帳7パスのみで、追従head `0872146200da916249f7c3575626fe09dfb5ccb6` のbackend treeは `0cada4cbd94208d6c0345af6bc9e8af727d30e6c`、frontend treeは `ceca7924e24f59cfca0badb3062a94c6b4b13ae6`。FE成功headの製品入力と等価である。生成同期後のheadではOpenAPI Drift、生成型、Harness、秘密情報scanが成功した。境界修正後のBE65はCI実行中で未検証、追従後headの最終CI・実機/アリシゼーションも未完了。台帳完了・最終completion証拠は追加していない。
