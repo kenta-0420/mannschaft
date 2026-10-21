@@ -6,7 +6,7 @@ import org.springframework.test.context.cache.ContextCache;
 import org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate;
 
 /** 起動失敗も含む試験クラス経過時間と同一JVMの標準context cache統計だけを記録する。 */
-public class ContextMetricsListener implements TestExecutionListener {
+public class ContextMetricsListener implements TestExecutionListener, org.springframework.core.Ordered {
     private long started;
     private final CacheAccess access = new CacheAccess();
 
