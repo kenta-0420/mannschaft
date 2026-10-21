@@ -54,7 +54,6 @@ class ErrorReportAsyncExecutorTest {
     @Mock
     private ErrorReportAggregator aggregator;
 
-    @InjectMocks
     private ErrorReportAsyncExecutor executor;
 
     @Nested
@@ -64,7 +63,7 @@ class ErrorReportAsyncExecutorTest {
         @Test
         @DisplayName("新規例外: status=NEW で error_reports に保存され、HIGH 以上は Slack 通知される")
         void newException_savedAsNewAndNotifiedWhenHigh() {
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+            given(errorReportRepository.findFirstActiveForUpdate(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.empty());
             given(errorReportRepository.save(any(ErrorReportEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -96,7 +95,7 @@ class ErrorReportAsyncExecutorTest {
         @Test
         @DisplayName("F10.6 §5.6-③: 新規 HIGH でも Aggregator が BUFFERED を返したら Slack 即時通知は抑制される")
         void newException_high_butBuffered_skipsSlack() {
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+            given(errorReportRepository.findFirstActiveForUpdate(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.empty());
             given(errorReportRepository.save(any(ErrorReportEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -119,7 +118,7 @@ class ErrorReportAsyncExecutorTest {
         @Test
         @DisplayName("MEDIUM severity の新規例外は Slack/SYSTEM_ADMIN 通知が走らない")
         void newException_notNotifiedWhenMedium() {
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+            given(errorReportRepository.findFirstActiveForUpdate(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.empty());
             given(errorReportRepository.save(any(ErrorReportEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -133,7 +132,7 @@ class ErrorReportAsyncExecutorTest {
         @Test
         @DisplayName("requestId は MDC から取得して error_reports.request_id に積まれる")
         void requestId_isReadFromMdc() {
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+            given(errorReportRepository.findFirstActiveForUpdate(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.empty());
             given(errorReportRepository.save(any(ErrorReportEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -151,7 +150,7 @@ class ErrorReportAsyncExecutorTest {
         @Test
         @DisplayName("エラーハッシュは ex クラス名 + 先頭スタックフレームから計算される（同一例外で同一ハッシュ）")
         void errorHash_isStable() {
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+            given(errorReportRepository.findFirstActiveForUpdate(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.empty());
             given(errorReportRepository.save(any(ErrorReportEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -177,7 +176,7 @@ class ErrorReportAsyncExecutorTest {
         @Test
         @DisplayName("pageUrl/userAgent/ipAddress 直渡し: error_reports に正しく保存される（後続-④）")
         void requestFields_areExtracted() {
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+            given(errorReportRepository.findFirstActiveForUpdate(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.empty());
             given(errorReportRepository.save(any(ErrorReportEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -198,7 +197,7 @@ class ErrorReportAsyncExecutorTest {
         @Test
         @DisplayName("F10.5/F10.6 後続-④: pageUrl が null/空のときは 'backend' フォールバック")
         void pageUrl_fallbackToBackend_whenNull() {
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+            given(errorReportRepository.findFirstActiveForUpdate(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.empty());
             given(errorReportRepository.save(any(ErrorReportEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -213,7 +212,7 @@ class ErrorReportAsyncExecutorTest {
         @Test
         @DisplayName("F10.5/F10.6 後続-④: URI テンプレート pageUrl が保存される（slow request 想定）")
         void pageUrl_templateIsPersisted() {
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+            given(errorReportRepository.findFirstActiveForUpdate(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.empty());
             given(errorReportRepository.save(any(ErrorReportEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -242,7 +241,7 @@ class ErrorReportAsyncExecutorTest {
                     .firstOccurredAt(LocalDateTime.now())
                     .lastOccurredAt(LocalDateTime.now())
                     .build();
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+            given(errorReportRepository.findFirstActiveForUpdate(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.of(existing));
 
             executor.doRecordBackendException(
@@ -270,7 +269,7 @@ class ErrorReportAsyncExecutorTest {
                     .firstOccurredAt(LocalDateTime.now())
                     .lastOccurredAt(LocalDateTime.now())
                     .build();
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+            given(errorReportRepository.findFirstActiveForUpdate(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.of(existing));
 
             ErrorReportEntity result = executor.doRecordBackendException(
@@ -288,7 +287,7 @@ class ErrorReportAsyncExecutorTest {
         @Test
         @DisplayName("単体テスト（プロキシなし）でも recordBackendException は doRecordBackendException 経由で save が走る")
         void wrapperInvokesCore_inUnitTest() {
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+            given(errorReportRepository.findFirstActiveForUpdate(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.empty());
             given(errorReportRepository.save(any(ErrorReportEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -304,7 +303,7 @@ class ErrorReportAsyncExecutorTest {
         @Test
         @DisplayName("コア処理が例外を投げても呼び出し側スレッドへ伝搬しない（warn ログのみ）")
         void wrapperSwallowsException() {
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+            given(errorReportRepository.findFirstActiveForUpdate(org.mockito.ArgumentMatchers.anyString()))
                     .willThrow(new RuntimeException("DB down"));
 
             // 例外が投げ返されないこと（@Async スレッド内で握って warn ログのみ残す挙動）
@@ -312,4 +311,20 @@ class ErrorReportAsyncExecutorTest {
                     new RuntimeException("e"), null, null, null, null, ErrorReportSeverity.MEDIUM);
         }
     }
+    @org.junit.jupiter.api.BeforeEach
+    void connectR1Boundaries() {
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        var retry = new ErrorReportWriteRetry(new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
+        var redis = org.mockito.Mockito.mock(org.springframework.data.redis.core.StringRedisTemplate.class);
+        var dispatcher = org.mockito.Mockito.mock(ErrorReportAiAnalysisDispatcher.class);
+        var ingest = new ErrorReportIngestService(new ErrorReportIngestTx(errorReportRepository, ingestHook,
+                eventPublisher, dispatcher, aggregator, redis), retry, redis);
+        executor = new ErrorReportAsyncExecutor(ingest);
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void clearR1Synchronization() {
+        org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+    }
+
 }

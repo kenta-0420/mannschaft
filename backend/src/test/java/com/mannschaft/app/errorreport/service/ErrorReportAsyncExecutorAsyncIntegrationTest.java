@@ -41,14 +41,28 @@ import static org.mockito.BDDMockito.given;
  * 配送リスナーは本コンテキストに載せていないので、publish しても副作用は無い。</p>
  */
 @SpringJUnitConfig
-@Import({AsyncConfig.class, ErrorReportAsyncExecutor.class})
+@Import({AsyncConfig.class, ErrorReportAsyncExecutor.class, ErrorReportIngestHook.class,
+        ErrorReportIngestService.class, ErrorReportIngestTx.class, ErrorReportWriteRetry.class,
+        ErrorReportAiAnalysisDispatcher.class, ErrorReportAiBudgetService.class,
+        com.mannschaft.app.errorreport.ErrorReportProperties.class})
 @DisplayName("ErrorReportAsyncExecutor @Async プロキシ統合テスト (F10.5/F10.6 後続-⑥ リグレッション)")
 class ErrorReportAsyncExecutorAsyncIntegrationTest {
 
     @TestConfiguration
+    @org.springframework.transaction.annotation.EnableTransactionManagement
     static class Config {
-        // SpringJUnitConfig + @Import で必要な Bean は全て上がる。
-        // MockBean を使うため空の TestConfiguration を置く。
+        @org.springframework.context.annotation.Bean
+        org.springframework.transaction.PlatformTransactionManager transactionManager() {
+            // Repository は従来どおり外部stub。実TX proxy/synchronizationはH2接続で維持する。
+            var dataSource = new org.springframework.jdbc.datasource.DriverManagerDataSource(
+                    "jdbc:h2:mem:error-report-async-r1;DB_CLOSE_DELAY=-1", "sa", "");
+            return new org.springframework.jdbc.datasource.DataSourceTransactionManager(dataSource);
+        }
+
+        @org.springframework.context.annotation.Bean
+        io.micrometer.core.instrument.MeterRegistry meterRegistry() {
+            return new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
+        }
     }
 
     @Autowired
@@ -60,6 +74,12 @@ class ErrorReportAsyncExecutorAsyncIntegrationTest {
     @MockitoBean
     private ErrorReportAggregator aggregator;
 
+    @MockitoBean
+    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+
+    @MockitoBean
+    private ErrorReportAiAnalysisAsyncRunner aiRunner;
+
     @Test
     @DisplayName("recordBackendException は呼び出し側スレッドとは別スレッド（event-pool）で実行される")
     void recordBackendException_runsOnDifferentThread() throws Exception {
@@ -69,7 +89,7 @@ class ErrorReportAsyncExecutorAsyncIntegrationTest {
 
         // Repository.findByErrorHash 呼び出し時点で実行スレッド情報をキャプチャする。
         // doRecordBackendException 内の最初に行われるアクションのため、確実に Async スレッドで動いている。
-        given(errorReportRepository.findByErrorHash(anyString()))
+        given(errorReportRepository.findFirstActiveForUpdate(anyString()))
                 .willAnswer((InvocationOnMock inv) -> {
                     runThreadName.set(Thread.currentThread().getName());
                     runThreadId.set(Thread.currentThread().getId());

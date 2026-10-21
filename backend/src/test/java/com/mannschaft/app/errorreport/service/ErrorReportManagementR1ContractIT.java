@@ -37,6 +37,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 /**
  * AC1h・7・7h・9。実Securityフィルタ、Controller、業務Bean、MySQLを通すHTTP契約。
@@ -247,7 +248,9 @@ class ErrorReportManagementR1ContractIT extends ErrorReportR1TestSupport {
         Object body = bulk ? new ErrorReportBulkUpdateRequest(List.of(report.getId()), "RESOLVED")
                 : new ErrorReportUpdateRequest("RESOLVED", null, null);
 
-        mvc.perform(admin(request).content(mapper.writeValueAsString(body))).andExpect(status().isServiceUnavailable());
+        mvc.perform(admin(request).content(mapper.writeValueAsString(body)))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.error.code").value("ERROR_REPORT_014"));
 
         assertThat(attempts.get()).isEqualTo(3);
         assertThat(reload(report.getId()).getStatus()).isEqualTo(ErrorReportStatus.IGNORED);
