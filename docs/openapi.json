@@ -76901,7 +76901,7 @@
           "告知ウィザード"
         ],
         "summary": "組織への告知ウィザード実行",
-        "description": "F02.8 告知ウィザード。組織スコープでコンテンツ作成 + お知らせフィード登録を一括実行する。targetTeamIds を指定した場合は組織配下チームであることを検証する。",
+        "description": "F02.8 告知ウィザード。組織スコープでコンテンツ作成 + お知らせフィード登録を一括実行する。targetTeamIds はチームの slug（組織所属チーム一覧の id）で指定し、組織に ACTIVE で加盟しているチームであることを検証する（存在しない・他組織・未加盟は区別せず 400 BROADCAST_002）。",
         "operationId": "broadcastToOrg",
         "parameters": [
           {
@@ -166184,13 +166184,10 @@
           },
           "targetTeamIds": {
             "type": "array",
+            "description": "組織告知でのチーム絞り込み（チームの slug。組織所属チーム一覧の id と同じ値）。null・空は全チーム",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
-          },
-          "targetTeamIdsJson": {
-            "type": "string"
           }
         }
       },
@@ -166265,8 +166262,7 @@
           "targetTeamIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         }
@@ -193117,9 +193113,9 @@
           },
           "targetTeamIds": {
             "type": "array",
+            "description": "組織告知でのチーム絞り込み（チームの slug。組織所属チーム一覧の id と同じ値）。null は全チーム",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           "templateId": {
@@ -193192,8 +193188,7 @@
           "targetTeamIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           "warnings": {
@@ -205552,9 +205547,9 @@
           },
           "targetTeamIds": {
             "type": "array",
+            "description": "「チームを選ぶ」のチーム（チームの slug。組織所属チーム一覧の id と同じ値）",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           "templateId": {
