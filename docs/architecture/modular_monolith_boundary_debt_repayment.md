@@ -821,27 +821,29 @@ flowchart LR
 - **Flyway の migration は Phase 3 で `:db-migration` サブプロジェクト（リソースのみ）に独立させる。** ディレクトリは1つのまま（1,223 本の適用順は全体で1列で、モジュールごとに分けると順序の保証が崩れるため）。`:app` と各束のテストが `:db-migration` に依存し、Testcontainers の Flyway が同じ migration を参照できる形にする。`FlywayTimestampNamingGuardTest`・`MigrationCollationDeclarationGuardTest` などの migration 走査番人は、走査するパスを `:db-migration` へ付け替える（L3-0）。表の持ち主は既存の `TableDomainResolver` で引ける。
 - パターン F の chat の状態列など、ロットで DDL が要る場合は、そのロットで同じ採番規則に従う。
 
-### 11.2 `event_publication` 表（暫定。L0-S で公式スキーマに差し替える）
+### 11.2 `event_publication` 表（Modulith 1.4.13 実測DDL）
 
-以下は Spring Modulith 1.x の JPA Registry の既知の形を元にした**暫定案**で、列名・型・索引は L0-S で確定させる。確定までこの DDL で実装してはならない。
+Spring Boot 3.5.13 向け Spring Modulith 1.4.13 の JPA Registry から生成したDDLを、実MySQLで確認した基準形とする。証拠は `CMP-261021-1602-modulith-spike` のRegistry suiteと実DDL記録（snapshot `2a822a4eb7878a7b3ce18ff8a44643d34ff3a6c0` / `5f8bac8a71a27cd3ecc4eb2c6f9a70fde75f64f4`）。詳細な実測値・JUnit証跡は[Modulithスパイク証拠文書](../evidence/CMP-261021-1602-modulith-spike.md)を参照。この測定は §11 全体や本計画のAC完了を意味しない。
 
 ```sql
 CREATE TABLE event_publication (
-    id               BINARY(16)   NOT NULL,           -- Modulith が採番する UUID（UUIDv7 ではない）
-    listener_id      VARCHAR(512) NOT NULL,
-    event_type       VARCHAR(512) NOT NULL,
-    serialized_event TEXT         NOT NULL,           -- ID と scope のみ（§4.5）
-    publication_date DATETIME(6)  NOT NULL,
     completion_date  DATETIME(6)  NULL,
-    PRIMARY KEY (id),
-    KEY idx_event_publication_incomplete (completion_date, publication_date)
+    publication_date DATETIME(6)  NOT NULL,
+    id               BINARY(16)   NOT NULL,
+    event_type       VARCHAR(255) NOT NULL,
+    listener_id      VARCHAR(255) NOT NULL,
+    serialized_event VARCHAR(255) NOT NULL,
+    PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 ```
 
-- **原則6（UuidV7Entity）の例外**: この表はライブラリが管理し、主キーはライブラリが採番する。`UuidV7Entity` を継承させる余地が無いため、マスタ・シングルトン表と同じく例外とする。Modulith の Entity は `com.mannschaft.app` 配下でないため D-2b の番人の対象外になる見込み（L0-S で確認）。
-- 照合順序は `utf8mb4_0900_ai_ci`（`MigrationCollationDeclarationGuardTest`）。
-- **完了した行は削除する**: 版が対応していれば完了時に削除する設定を使い、無ければ短期保持のあと掃除バッチで削除する（保持期間は L1-M で決める）。完了済みの行を長く残さない（ID だけとはいえ利用者 ID が残るため）。
-- **試行回数・状態の永続化**: 採用版の表に試行回数や状態（処理中・失敗・隔離）を持つ列が無い場合は、本計画側の補助表（`event_publication_attempts` 等。新規表なので UuidV7Entity 継承）を L1-M で追加する。DDL は L0-S の結論を受けて L1-M で確定する。
+- 実測SHOW CREATE TABLEでは6列、SHOW INDEXではPRIMARY KEYのみ。Modulith 1.4.13 の公式Entityには副索引の宣言がない。
+- **追加索引案（本計画側・公式スキーマ外）**: 旧暫定案の `(completion_date, publication_date)` は本計画が加える候補であり、公式DDLには無い。上記の公式基準DDLには含めない。残すかはL1-Mで未完了検索SQLと実行計画を確認して決める。
+- `ENGINE=InnoDB`、`DEFAULT CHARSET=utf8mb4`、`COLLATE=utf8mb4_0900_ai_ci` は今回のMySQL環境のSHOW CREATE出力である。ライブラリがこれらを宣言しているという意味ではない。プロジェクトmigrationの照合順序は `MigrationCollationDeclarationGuardTest` で別途担保する。
+- **原則6（UuidV7Entity）の例外**: この表はライブラリが管理し、主キーはライブラリが採番する。`UuidV7Entity` を継承させる余地が無いため、マスタ・シングルトン表と同じく例外とする。`EntityUuidV7ConventionArchTest` の対象packages (`com.mannschaft.app`) と `DoNotIncludeTests`、公式Entity FQCNをソース照合し、D-2b番人の対象外と確認した（番人自体の再実行ではない）。
+- **完了時の処理**: 本計画では `spring.modulith.events.completion-mode=delete` を採用し、完了した行を削除する。別contextの実DB試験で、公開API `markCompleted` を直接呼び、行数が1から0になることを確認した。非TX非同期listenerの正常完了は、Registry suiteで `update` を明示し、completion dateの設定と行の保持を確認した。未指定時のdefault値は公式sourceで確認した。hot切替とARCHIVE設定は未測定。
+- **試行回数・状態の永続化**: 実測した1.4.13の表にはattempt/state（処理中・失敗・隔離）列がない。再投入回数などの永続化は本計画側の補助表（`event_publication_attempts` 等、新規表は `UuidV7Entity` 継承）をL1-Mで設計・確定する。
+- `event_type`、`listener_id`、`serialized_event` は実測上いずれも `VARCHAR(255)`。特にserialized payloadの長さをL1-Mで実イベントと測定し、必要なら拡張の要否を決める。ここで `TEXT` や512文字へ変更したDDLを確定しない。
 
 ### 11.3 Registry の運用値
 
