@@ -70,7 +70,7 @@ class RanchProductionMasterRegistryTest {
                         20, 100, 60, 100, 1, 3, 6)));
         var diagnosis = mock(DiagnosisPublicationReadiness.class);
         when(diagnosis.approvedVersionAvailable(master.questionnaireVersion(), master.scoringVersion())).thenReturn(true);
-        var resolver = new RanchVerifiedAssignmentResolver(null, null, diagnosis, rules,
+        var resolver = new RanchVerifiedAssignmentResolver(null, null, null, diagnosis, rules,
                 Clock.systemUTC());
         UUID diagnosisId = UUID.randomUUID();
         var diagnosisSummary = new DiagnosisResultSummary(diagnosisId, DiagnosisMethod.DIAGNOSIS,

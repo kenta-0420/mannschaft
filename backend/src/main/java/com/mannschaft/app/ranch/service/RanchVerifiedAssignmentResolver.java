@@ -30,6 +30,7 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class RanchVerifiedAssignmentResolver implements RanchAssignmentResolver {
     private final RanchDevelopmentVisualCatalog development;
+    private final RanchDevelopmentClipCatalog clips;
     private final RanchProductionMasterRegistry production;
     private final DiagnosisPublicationReadiness diagnosisPublication;
     private final RanchRuleProvider rules;
