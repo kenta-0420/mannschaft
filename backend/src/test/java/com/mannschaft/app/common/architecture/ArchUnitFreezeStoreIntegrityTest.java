@@ -890,7 +890,9 @@ class ArchUnitFreezeStoreIntegrityTest {
     //   OwnershipTransferOfferService.createOffer は 4、declineOffer は 4 が、通知を業務TX内で呼ばなくなったため解消
     //   （追加 0・削除 16。Organization / Role / UserRole への到達は母集団解決・認可という業務由来のため残る）。
     //   G3 を取り込んだ最新 main 上で archUnitTest（--tests 絞込みなし）を実行して実測した値。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7099;
+    // CMP-261021-2157 L1-G0: 単一interface実装・合成TXの全体再解析で新規226行を検出。既存行の消失0。
+    // 計画§5.2のL1-F完了前特例により7099 -> 7325（追加226・削除0、他ストア不変更）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7325;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。

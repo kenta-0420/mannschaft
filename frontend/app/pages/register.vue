@@ -216,6 +216,10 @@ function submitRegistration() {
   submitted.value = true
   return onSubmit()
 }
+
+function applyGeneratedPassword(value: string): void {
+  password.value = value
+}
 </script>
 
 <template>
@@ -274,6 +278,12 @@ function submitRegistration() {
           toggle-mask
           fluid
           :invalid="submitted && !!errors.password"
+          :input-props="{ autocomplete: 'new-password' }"
+        />
+        <PasswordGeneratorActions
+          :password="password ?? ''"
+          :disabled="submitting"
+          @generated="applyGeneratedPassword"
         />
         <small v-if="submitted && errors.password" class="text-red-500">{{
           errors.password
