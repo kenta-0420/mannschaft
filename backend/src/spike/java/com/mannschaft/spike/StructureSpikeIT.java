@@ -89,7 +89,11 @@ class StructureSpikeIT {
             if (component.size() > 1) { stronglyConnected.add(component); }
         }
         var output = Path.of(System.getProperty("spike.output") + "-structure.txt");
-        String summary = "compiledProductionClasses=" + compiled.size() + "\nimportedProductionClasses=" + imported.size() + "\nmodules=" + modules.stream().count() + "\nall=" + all.size()
+        String summary = "archunitImplementationVersion=" + JavaClass.class.getPackage().getImplementationVersion()
+                + "\narchunitCodeSource=" + JavaClass.class.getProtectionDomain().getCodeSource().getLocation()
+                + "\nmodulithImplementationVersion=" + ApplicationModules.class.getPackage().getImplementationVersion()
+                + "\nmodulithCodeSource=" + ApplicationModules.class.getProtectionDomain().getCodeSource().getLocation()
+                + "\ncompiledProductionClasses=" + compiled.size() + "\nimportedProductionClasses=" + imported.size() + "\nmodules=" + modules.stream().count() + "\nall=" + all.size()
                 + "\ndependencyTotal=" + dependencies.values().stream().mapToInt(Integer::intValue).sum()
                 + "\nglobalUniqueDependencies=" + globalDependencies.size()
                 + "\noriginDuplicateMessages=" + (dependencies.values().stream().mapToInt(Integer::intValue).sum() - dependencyMessages.size())
