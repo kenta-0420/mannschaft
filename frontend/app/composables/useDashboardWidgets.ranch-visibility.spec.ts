@@ -11,6 +11,19 @@ const external = vi.hoisted(() => ({
   auth: vi.fn(),
   toast: vi.fn(),
 }))
+
+// 公式Nuxt設定が挿入する静的auto-importも、外部通信・認証・Nuxt境界で隔離する。
+vi.mock('~/composables/useApi', () => ({ useApi: () => external.api }))
+vi.mock('~/stores/useAuthStore', () => ({ useAuthStore: () => external.auth() }))
+vi.mock('#app/composables/asyncData', () => ({
+  useAsyncData: (...args: unknown[]) => external.settings(...args),
+}))
+vi.mock('#app/nuxt', () => ({
+  useNuxtApp: () => ({
+    $i18n: { t: (key: string) => key },
+    $toast: { add: external.toast },
+  }),
+}))
 afterEach(() => vi.unstubAllGlobals())
 const unmountDashboards: (() => void)[] = []
 afterEach(async () => {
