@@ -242,7 +242,7 @@ flowchart TB
 | **B AFTER_COMMIT イベント** | 自分の tx 内で `publishEvent`、相手は AFTER_COMMIT で購読 | 書き込みを伴うが、**取りこぼしても業務上許容できる**連携（キャッシュ無効化・統計・補助的な通知など） | 相手側の反映は commit 後で遅れる。相手が失敗しても自分は巻き戻らない。取りこぼしうる |
 | **C Registry 確実配信** | B に加え、Spring Modulith の Event Publication Registry に記録し、未完了なら再配信 | 書き込みを伴い、**業務上必ず起きなければならない**連携 | B に加え、未完了の購読は Registry に残り再配信される。**購読側は冪等必須** |
 | **D tx 外読み取り snapshot** | 自分の tx の外（または前）で相手の API から値を読み、値として持ち込む | 書き込みの判断材料として他モジュールの状態が要るが、同一 tx の一貫性までは要らない | 読んだ値が古くなりうる（決定の根拠をログ・列に残す） |
-| **F 予約→確定** | トランザクションを持たない調停役が、(a) 相手の公開 API で「保留状態」の作成物を相手自身の tx で作って ID を得る → (b) 自モジュールの tx で本体を確定し、同じ tx で Registry にイベントを記録 → (c) コミット後に相手の API で作成物を「確定（有効化）」する。(c) が失敗したら、**自モジュールの** Registry リスナーが (c) を呼び直す。(b) が拒否・失敗したら、相手は自身の掃除処理で保留を失効させる（ID は保持し、遅れて来た確定は同一 ID で有効化できる） | **即時に結果（相手の作成物の ID）が要る書き込み連携**で、同一 tx までは要らないもの | 応答には (a) の ID が必ず入る（外部 API 不変）。(c) が遅れる間は作成物が保留のまま見えない。**相手側は (a)(c) の冪等性が必須** |
+| **F 予約→確定** | トランザクションを持たない調停役が、(a) 相手の公開 API で「保留状態」の作成物を相手自身の tx で作って ID を得る → (b) 自モジュールの tx で本体を確定し、同じ tx で Registry にイベントを記録 → (c) コミット後に相手の API で作成物を「確定（有効化）」する。(c) が失敗したら、**自モジュールの** Registry リスナーが (c) を呼び直す。(b) が拒否されたら、調停役が相手の公開 API で予約を明示的に取り消す。取り消せなかった予約は相手が自身の掃除処理で失効させる（失効は物理削除せず ID を保持し、遅れて来た確定は同一 ID で有効化できる） | **即時に結果（相手の作成物の ID）が要る書き込み連携**で、同一 tx までは要らないもの | 応答には (a) の ID が必ず入る（外部 API 不変）。(c) が遅れる間は作成物が保留のまま見えない。**相手側は (a)(c) の冪等性が必須** |
 | **E 同一 tx 不可欠の台帳化** | 越境のまま残し、理由つきで台帳に載せる | F でも整合が保てない**不可分な更新**（片方だけ確定した状態が一瞬でも外から見えると業務が壊れ、保留・補償でも代替できない） | 変化なし。台帳に理由・代替不能の根拠・見直し条件を書く |
 
 **判定の順序**: まず A（読み取りか）→ 書き込みで即時に結果が要らなければ C か B（取りこぼし許容か）→ **即時に結果が要る書き込みでも、まず F（予約→確定）を検討する** → 判断材料の読み取りなら D → **E は F でも整合が保てない不可分な更新に限る**。「即時に結果が要る」ことは「同一トランザクションが要る」ことではない。
@@ -281,7 +281,14 @@ public JobContractResponse acceptApplication(Long applicationId, Long requesterI
     Long chatRoomId = chatRoomApi.reserveRoomForSource("JOB_APPLICATION", applicationId, requesterId);
     // (b) jobmatching の tx（ロック・応募 ACCEPT・契約 INSERT・定員 CLOSED・通知イベントは現状どおり1 tx）
     //     chat は触らない。契約に chatRoomId を入れ、同じ tx で JobContractConcludedEvent を Registry に記録
-    JobContractEntity contract = jobContractCommandService.conclude(applicationId, requesterId, chatRoomId);
+    JobContractEntity contract;
+    try {
+        contract = jobContractCommandService.conclude(applicationId, requesterId, chatRoomId);
+    } catch (BusinessException e) {
+        // (b) が業務上の拒否で巻き戻ったことが確定している場合だけ、予約を明示的に取り消す（枠を即時に戻す）
+        chatRoomApi.cancelReservation(chatRoomId);
+        throw e;   // エラー応答は従来どおり
+    }
     // (c) コミット後に確定（chat 自身の tx。参加者と初期メッセージをここで作る。冪等）
     try {
         chatRoomApi.activateRoom(chatRoomId, contract.getRequesterUserId(), contract.getWorkerUserId());
@@ -303,7 +310,7 @@ void on(JobContractConcludedEvent e) {
 
 1. **jobmatching の tx の範囲は変えない**。ロック（GET_LOCK＋FOR UPDATE）・応募 ACCEPT・契約 INSERT・定員 CLOSED・通知イベントは現状どおり1つの tx に残す（ロック範囲・定員の原子性は不変）。この tx の中では chat を一切触らない。
 2. **予約の冪等キー**: (b) の前に決まる値でなければならない（契約 ID は (b) まで無い）。応募 ID を使い、`sourceType = "JOB_APPLICATION"`、`sourceId = applicationId` とする案を第一とする。1応募から契約は最大1件（`V13.032__create_job_contracts.sql:32` の `uk_jc_application UNIQUE (job_application_id)`）なので、応募 ID で一意に決まる。chat 側の一意性は既存の `uk_channel_source (source_type, source_id)`（`V4.013__create_chat_channels_table.sql:22`）で担保され、同じ応募で (a) が二重に走っても1部屋だけになる。既存の `sourceType = "JOB_CONTRACT"` の行との互換（読み出し側が `JOB_CONTRACT` で引いている箇所の有無）はロット着手時に実コードで確認する。
-3. **事前検査と予約の上限**: 予約の前に、読み取りのみ・ロックなしの事前検査（呼び出し者の認可、応募の状態、求人が OPEN か、定員に空きがあるか）を行い、通らなければ予約せず従来どおりのエラー応答にする。事前検査はあくまで無駄な予約を減らすためのもので、**最終判定は従来どおり (b) の jobmatching の1 tx 内（GET_LOCK＋FOR UPDATE のロック下）で行う**（事前検査と (b) の間に状態が変わりうるため）。さらに、並行な採用確定で事前検査をすり抜けた予約が積み上がらないよう、chat の `reserveRoomForSource` は**作成者（`created_by`）ごとの未確定（保留・失効）ルームの件数に上限**を設け、超えたら予約を拒否する（上限の初期値は 20 件。1つの冪等キーにつき予約は1件なので、同じ応募の再試行では増えない）。上限超過のエラーコードは既存の流量制限系を流用できるかをロット着手時に実コードで確認し、無ければその時点の最大 + 1 で予約する（§12）。
+3. **事前検査と予約の上限**: 予約の前に、読み取りのみ・ロックなしの事前検査（呼び出し者の認可、応募の状態、求人が OPEN か、定員に空きがあるか）を行い、通らなければ予約せず従来どおりのエラー応答にする。事前検査はあくまで無駄な予約を減らすためのもので、**最終判定は従来どおり (b) の jobmatching の1 tx 内（GET_LOCK＋FOR UPDATE のロック下）で行う**（事前検査と (b) の間に状態が変わりうるため）。さらに、並行な採用確定で事前検査をすり抜けた予約が積み上がらないよう、chat の `reserveRoomForSource` は**作成者（`created_by`）ごとの「保留」状態の予約の件数に上限**を設け、超えたら予約を拒否する（上限の初期値は 20 件。1つの冪等キーにつき予約は1件なので、同じ応募の再試行では増えない）。**枠を消費するのは「保留」だけ**で、取消・失効・有効は数えない。(b) が拒否された場合は調停役が明示的に取り消すので（項目6）、枠は即時に戻る。並行な予約で上限を超えないよう、件数の確認と予約の作成は原子的に行う（作成者単位の行ロック、条件付き INSERT など。採用方式はロット着手時に実コードで確定する）。上限超過のエラーコードは既存の流量制限系を流用できるかをロット着手時に実コードで確認し、無ければその時点の最大 + 1 で予約する（§12）。
 4. **予約の中身と状態機械**: (a) の予約は**チャンネル行だけ**を作り、参加者（`chat_channel_members`）と初期メッセージは作らない。参加者と初期メッセージは (c) の確定で作る（参加者の一意性は既存の `uk_channel_user (channel_id, user_id)` が担保し、確定を繰り返しても重複しない）。チャンネル行には状態を持たせる（既存の列で表せなければ状態列を追加する。DDL の要否はロット着手時に実コードで確定）。
 
    ```mermaid
@@ -311,18 +318,20 @@ void on(JobContractConcludedEvent e) {
      [*] --> 保留: (a) 予約
      保留 --> 有効: (c) 確定（参加者・初期メッセージを作る）
      保留 --> 失効: 掃除（一定時間確定されない）
+     保留 --> 取消: 調停役の明示取消 cancelReservation（(b) の拒否を確認したとき）
      失効 --> 有効: 遅れて来た (c) 確定（同一 ID のまま）
-     失効 --> [*]: 物理削除（長期経過かつ一度も確定されていないものだけ）
+     失効 --> 取消: 調停役の明示取消
+     取消 --> [*]: 物理削除（猶予期間の後）
      有効 --> 有効: (c) の再実行（何もしない）
    ```
 
-   - **掃除は物理削除しない**。一定時間（初期値 24 時間）確定されない保留を「失効」にするだけで、ID は保持する。遅れて来た確定は、失効からも**同一 ID のまま**有効化できる（確定は冪等）。
-   - **物理削除**は、失効から十分長い期間（初期値 90 日。jobmatching 側の保険の隔離・手動再開＝§11.3 の週次確認の期間より十分長い）が経ち、かつ一度も確定されていないものに限る。
-   - **確定と掃除の排他**: どちらも条件付きの状態遷移 UPDATE で行う。確定は `UPDATE ... SET status = '有効' WHERE id = ? AND status IN ('保留', '失効')`（0 行なら現状を読み、有効なら何もしない＝冪等、物理削除済みなら警告）、掃除は `UPDATE ... SET status = '失効' WHERE status = '保留' AND created_at < ?`、物理削除は `DELETE ... WHERE status = '失効' AND 一度も確定されていない AND 失効から 90 日超` とする。確定の tx は、状態遷移の UPDATE が当たった場合にだけ参加者と初期メッセージを作る。同じ行への確定と掃除が同時に走っても、InnoDB の行ロックにより片方の UPDATE が先に確定し、もう片方は条件で外れるため、「有効なのに参加者が無い」「失効なのに参加者がいる」状態は生じない。
-5. **保留・失効の秘匿（遮断する箇所）**: 保留・失効のルームは利用者に見えてはならない。参加者を作らないため、参加者を起点にする経路（`ChatChannelRepository.java:30-32` の `findByMemberUserId`、`:38-46` の `findExistingDm`、`ChatChannelMemberRepository.java` の未読合計 `sumUnreadCountByUserIdAndChannelIds`（:117）・未読加算 `incrementUnreadCountForOthers`（:138）、通知の宛先）には自然に出ない。参加者を起点にしない経路は状態で遮断する: (i) ID の直接参照 `ChatChannelService#findChannelOrThrow`（`channelRepository.findById`。`ChatUploadController` 等のパッケージ外からも呼ばれる）、(ii) 冪等キーの参照 `findBySourceTypeAndSourceId`（:63。予約・確定の内部用途を除く）、(iii) チーム・組織の一覧（:20・:25。求人のルームはチーム・組織に属さない見込みだが、ロット着手時に確認する）、(iv) 管理・個人データ出力（`ChatPersonalDataQueryService` 等）とアーカイブ・予約投稿などのバッチ。ロット着手時に chat の全 Repository 呼び出しを洗い、遮断箇所の一覧を確定して PR 本文に載せる。**直接参照は、存在しないルームと同じ 404・同じエラーコード `CHAT_001`（`ChatErrorCode.CHANNEL_NOT_FOUND`、`GlobalExceptionHandler.java:775` で 404）を返す**（存在オラクルを作らない）。「準備中」表示は作らない。
-6. **(b) が拒否・失敗した場合**: 定員超過・状態遷移エラー・認可拒否などの `BusinessException` は**従来どおりエラー応答**にする。(a) の予約は残るが、参加者もメッセージも無いので誰にも見えず、chat 自身の掃除（`@Scheduled`＋`@SchedulerLock`）が失効させ、長期経過後に物理削除する。chat は jobmatching を知らない。
+   - **掃除は物理削除しない**。一定時間（初期値 24 時間）確定されない保留を「失効」にするだけで、ID は保持する。**失効は墓標として残し、物理削除しない**（行はチャンネル行1つで小さい）。契約に ID が保存されている可能性があるため（現状も `JobContractService.java:154-156` で契約に ID を入れている）、遅れて来た確定は失効からも**同一 ID のまま**有効化できる（確定は冪等）。
+   - **物理削除してよいのは「取消」だけ**。取消は、発行側（調停役）が (b) の拒否で巻き戻ったことを確認したうえで、chat の公開 API `cancelReservation(id)` を呼んだ予約である（依存は jobmatching → chat の一方向のまま）。取消済みは確定できず（確定が来たら警告）、猶予期間（初期値 7 日）の後に物理削除してよい。失効のままのものは削除しない。
+   - **状態遷移の排他**: すべて条件付きの状態遷移 UPDATE で行う。確定は `UPDATE ... SET status = '有効' WHERE id = ? AND status IN ('保留', '失効')`（0 行なら現状を読み、有効なら何もしない＝冪等、取消なら警告）、掃除は `UPDATE ... SET status = '失効' WHERE status = '保留' AND created_at < ?`、取消は `UPDATE ... SET status = '取消' WHERE id = ? AND status IN ('保留', '失効')`、物理削除は `DELETE ... WHERE status = '取消' AND cancelled_at < ?` とする。確定の tx は、状態遷移の UPDATE が当たった場合にだけ参加者と初期メッセージを作る。同じ行への確定・掃除・取消が同時に走っても、InnoDB の行ロックにより1つの UPDATE が先に確定し、残りは条件で外れるため、「有効なのに参加者が無い」「失効・取消なのに参加者がいる」状態は生じない。
+5. **保留・失効・取消の秘匿（遮断する箇所）**: 以下「保留・失効」と書く箇所は取消も含む。保留・失効のルームは利用者に見えてはならない。参加者を作らないため、参加者を起点にする経路（`ChatChannelRepository.java:30-32` の `findByMemberUserId`、`:38-46` の `findExistingDm`、`ChatChannelMemberRepository.java` の未読合計 `sumUnreadCountByUserIdAndChannelIds`（:117）・未読加算 `incrementUnreadCountForOthers`（:138）、通知の宛先）には自然に出ない。参加者を起点にしない経路は状態で遮断する: (i) ID の直接参照 `ChatChannelService#findChannelOrThrow`（`channelRepository.findById`。`ChatUploadController` 等のパッケージ外からも呼ばれる）、(ii) 冪等キーの参照 `findBySourceTypeAndSourceId`（:63。予約・確定の内部用途を除く）、(iii) チーム・組織の一覧（:20・:25。求人のルームはチーム・組織に属さない見込みだが、ロット着手時に確認する）、(iv) **招待経路** `ChatMembershipInviteCardService#resolveDmCounterpart`（:57-71）。共通の `findChannelOrThrow` を通らず `channelRepository.findById` を直接呼び（:58）、DM で参加者が2名でなければ 422 `CHANNEL_NOT_DM` を返すため（:67-71）、参加者0件の保留ルームでは**422 になって存在が漏れる**。参加者数の判定より前に状態で遮断し、404・`CHAT_001` を返す。同じクラスの最終メッセージ更新（:117 の `findById`）も保留・失効を対象にしない、(v) 管理・個人データ出力（`ChatPersonalDataQueryService` 等）とアーカイブ・予約投稿などのバッチ、(vi) **chat 以外のドメインが `ChatChannelRepository` を直接使っている箇所**（偵察時点: `admin/service/AdminBusinessAlertService`、`common/storage/migration/StoragePathMigrationBatchService`、`dashboard/service/ChatHubService`・`ScopeWidgetSummaryService`、`user/service/UserBlockService`、`village/service/VillageFeedService`・`VillageLobbyService`・`VillageSearchService`、および `jobmatching/service/JobChatService` 自身）。これらは D-5 の越境で、各ロットで chat の公開 API へ付け替えるまでは保留・失効を除外できているかを個別に確認する。chat 配下で `channelRepository.findById` を直接呼ぶのは、偵察時点で `ChatChannelService.java:650`・`ChatMembershipInviteCardService.java:58`・`:117` の3箇所。ロット着手時に chat の全 Repository 呼び出しと上記の越境箇所を洗い直し、遮断箇所の一覧を確定して PR 本文に載せる。**直接参照は、存在しないルームと同じ 404・同じエラーコード `CHAT_001`（`ChatErrorCode.CHANNEL_NOT_FOUND`、`GlobalExceptionHandler.java:775` で 404）を返す**（存在オラクルを作らない）。「準備中」表示は作らない。
+6. **(b) が拒否・失敗した場合**: 定員超過・状態遷移エラー・認可拒否などの `BusinessException` は**従来どおりエラー応答**にする。(b) が `BusinessException` で巻き戻ったことは確定しているので、調停役は `cancelReservation(id)` で予約を明示的に取り消してから例外をそのまま投げる（枠は即時に戻り、取消は猶予期間の後に物理削除される）。取消の呼び出し自体が失敗した場合や、(b) の結果が不明な障害（コミットの成否が分からない接続断など）の場合は取り消さない。予約は保留のまま掃除で失効し、墓標として残る（参加者もメッセージも無いので誰にも見えない）。chat は jobmatching を知らない。
 7. **(a) が失敗した場合**: 契約は作らずエラー応答にする（現状も chat の insert が失敗すれば tx ごと巻き戻ってエラーになるので、利用者から見た挙動は同じ）。
-8. **(c) が失敗した場合**: 契約は確定済みで、応答には (a) の ID が入る。jobmatching の Registry リスナーが確定を呼び直す。掃除で失効していても同一 ID のまま有効化される。§11.3 の隔離・手動再開も**同一 ID を復旧する**（別 ID へ書き換えない）。物理削除済みで確定できない場合（90 日を超えて復旧されなかった場合）は ERROR として人が扱う。
+8. **(c) が失敗した場合**: 契約は確定済みで、応答には (a) の ID が入る。jobmatching の Registry リスナーが確定を呼び直す。掃除で失効していても同一 ID のまま有効化される（失効は物理削除しないので、復旧が何週間遅れても ID は失われない）。§11.3 の隔離・手動再開も**同一 ID を復旧する**（別 ID へ書き換えない）。取消済みのルームに確定が来た場合（本来起きない）は ERROR として人が扱う。
 9. **例外の扱い**: 業務・認可の拒否（`BusinessException` 等）は従来どおりエラー応答にする。Registry の保険に回すのは**再試行で直りうる障害だけ**（一時的なデータアクセス障害など。対象の例外型はロットで列挙する）。`RuntimeException` の一括捕捉は禁止（握りつぶしになるため）。
 10. **調停役と保険リスナーに tx が無いこと**: コメントではなく**テストで保証する**。調停役の (a) と (c) の開始時、および保険リスナーが chat を呼ぶ時点で `TransactionSynchronizationManager.isActualTransactionActive() == false` であることを検査し、外側に tx がある状態から調停役を呼んだ場合も検査する（外側 tx に巻き込まれると (c) がコミット前に走り、予約→確定の前提が崩れるため。呼ばれたら fail させる）。保険リスナーは `@ApplicationModuleListener` の既定（`REQUIRES_NEW`）を使わず、tx 属性を持たない `@ModuleEventListener`（§4.4）で購読する。
 11. **初期メッセージの日本語直書き**: 現状 `JobChatService.java:61`（`"求人: " + posting.getTitle()`）と `:83`（契約成立の本文）は日本語の直書きで、DB に保存される。本計画では**現状の文言を維持**し、chat の公開 API の引数で文言（またはテンプレートのキー）を渡す形にするだけにとどめる。i18n 化は本計画の範囲外とし、別 CMP の候補として親 Issue に記録する。
@@ -331,12 +340,14 @@ void on(JobContractConcludedEvent e) {
 
 - [ ] 正常時、採用確定の応答の `chatRoomId` が非 null の整数で、そのルームは有効で両者が参加者として見える。
 - [ ] (c) を失敗させても契約は保存され、応答の `chatRoomId` は非 null。Registry の再配信で有効化され、部屋は1つだけ。
-- [ ] (b) を拒否（定員超過など）させると、エラー応答はこれまでと同じコード・ステータスで、予約は掃除で失効し、利用者には一度も見えない。
+- [ ] (b) を拒否（定員超過など）させると、エラー応答はこれまでと同じコード・ステータスで、予約は即時に「取消」になり、利用者には一度も見えない。作成者の予約枠は**即時に回復**する（拒否の直後に別の応募で予約できる）。
 - [ ] 事前検査で拒否される条件（応募の状態不正・求人が OPEN でない・定員なし・認可なし）では予約が作られない。
-- [ ] 負の AC: 同じ作成者が異なる応募を上限 + 1 件まとめて採用確定しても、未確定の予約は上限までで、超過分は予約されずエラー応答になる。既存の応募・契約・ルームには影響しない。
+- [ ] 負の AC: 同じ作成者が異なる応募を上限 + 1 件**同時に**採用確定しても、「保留」の予約は上限を超えず、超過分は予約されずエラー応答になる。既存の応募・契約・ルームには影響しない。取消・失効・有効の予約は枠として数えない。
+- [ ] 招待経路（`resolveDmCounterpart`）に保留・失効・取消のルーム ID を渡すと、存在しない ID と同じ 404・`CHAT_001` が返る（422 `CHANNEL_NOT_DM` にならない）。
 - [ ] 保留・失効のルームは、チャット一覧・既存 DM の検索・通知・参加者表示・未読数に出ない。ID を直接参照すると、存在しないルームと同じ 404・`CHAT_001` が返る（§4.3-5 の遮断箇所ごとにテスト）。
 - [ ] 掃除で失効した後に確定が来ても、**同一 ID のまま**有効化される。確定済み（有効）のルームは掃除の対象にならない。確定と掃除を同時に走らせても、「有効なのに参加者が無い」「失効なのに参加者がいる」状態にならない。
-- [ ] 物理削除は「失効から 90 日超かつ一度も確定されていない」ものだけを消し、有効なルームと期間内の失効ルームは消さない。
+- [ ] 物理削除は「取消」かつ猶予期間を過ぎたものだけを消す。失効のルームは期間に関係なく消さず、何日後に確定が来ても同一 ID で有効化される。有効なルームは消さない。
+- [ ] 確定と取消が同時に走っても、どちらか一方だけが成立する（取消が先なら確定は警告、確定が先なら取消は外れる）。
 - [ ] 同じ応募で (a) を並行に2回呼んでも部屋は1つ（`uk_channel_source`）。(c) とリスナーの確定が競合しても参加者・初期メッセージは重複しない（`uk_channel_user`、初期メッセージは状態遷移が当たったときだけ作る）。
 - [ ] 調停役の (a)(c) の開始時と、保険リスナーが chat を呼ぶ時点で tx が無い。外側 tx から調停役を呼ぶと fail する。
 - [ ] 隔離・手動再開で復旧したルームの ID は、契約に入っている ID と同一。
@@ -354,7 +365,7 @@ void on(JobContractConcludedEvent e) {
 - **`@ModuleEventListener` はトランザクションを持たない**（`@Transactional` を含めない。中身は `@Async("module-event-pool")`＋`@TransactionalEventListener(AFTER_COMMIT)`）。購読側が自モジュールの表を書く場合は、自モジュールの Service の `@Transactional` メソッドを呼び、その中で書く。他モジュールを呼ぶ場合（パターン F の保険）は、相手の公開 API が相手自身の tx を開く。こうすると、リスナー自身は tx の入口にならず、D-3T の合成アノテーション検出（L1-G0）とも矛盾しない（tx 属性を持たないので入口として数えられず、書き込みの tx は各モジュールの Service に閉じる）。
 - **Registry の完了記録**: tx を持たないリスナーで、Registry の完了記録（リスナーの正常終了を受けて完了日時を入れる処理）がどの tx で行われるかは採用版の実装に依存する。L0-S で、tx を持たない非同期リスナーでも正常終了で完了が記録され、例外で未完了のまま残ることを確認する（確認項目3に含める）。
 - **再配信の流量制御**: Modulith の「起動時に未完了を一括再投入」は使わない（起動直後に全件が専用プールへ流れ込むため）。自前の再投入バッチ（`@Scheduled`＋`@SchedulerLock`。`ScheduledBatchGuardTest` の規約に従う）が、一定時間より古い未完了を1回あたり上限件数まで再投入する。ShedLock で多重起動を防ぐ。運用値は §11.3。
-- 合成アノテーションのリスナーは、D-3 / D-3T の入口として認識されないと越境 tx が検出されない（§2.1 の穴 2）。L1-G0 で番人を改修してから使う。
+- **番人での扱い（一本化）**: **tx 属性を持つ合成アノテーション**（例 `@ApplicationModuleListener`。メタアノテーションで `@Transactional(REQUIRES_NEW)` を持つ）を付けたメソッドは、D-3 / D-3T の**入口として検出する**（§2.1 の穴 2。L1-G0 で改修）。**tx 属性を持たないリスナー**（本計画の `@ModuleEventListener`、パターン F の保険リスナー）は**入口ではない**。そのリスナーから呼ばれた先の `@Transactional` メソッド（各モジュールの Service、相手の公開 API）が、従来どおりそれぞれ入口になる。L1-G0 の改修後でなければ合成アノテーションを導入しない。
 - 既存の `@Async`（266 件、うち `event-pool` 約 168 箇所）と `@TransactionalEventListener` は**一括では移さない**。C / F に該当する連携をロットで返済するときだけ、その購読を `@ModuleEventListener` に置き換える。
 - 番人 `NotificationTransactionBoundaryGuardTest` は `@ModuleEventListener` を入口と認識しないため、L1-G で入口の判定に加える。
 
@@ -424,12 +435,12 @@ flowchart LR
 ### 5.2 Phase 1 基盤
 
 - **L1-K kernel の確定**: common と config の各クラスを付録A の表で「kernel に残す／業務へ返す／認可 interface」に仕分け、kernel に残すものだけで業務 import 0 件になる見通しを示す。`AccessControlService` の `GdprErrorCode` 依存（:5・:748）もここで仕分ける（ErrorCode を kernel の共通コードへ寄せるか、実装側へ移すか）。
-- **L1-G0 偽の返済の穴を塞ぐ番人改修**（最初に切り出す単独レーン）: (1) D-3T が「本番クラス内に実装が1つだけの interface」の呼び出しを、その実装へ展開して判定する。(2) D-3 / D-3T が、合成アノテーション（メタアノテーション）を通じて持つ tx 属性を入口として解決する（`@ApplicationModuleListener`・`@ModuleEventListener` を含む）。検体（test ソース）で、interface 経由・合成アノテーションのリスナー経由で越境 Repository へ到達するケースが red になることを固定する。改修で新たに検出された既存違反は凍結ストアに加える（改修の PR で行数が増えるのは想定どおりで、L1-F の前なら定数もその PR で上げる）。
+- **L1-G0 偽の返済の穴を塞ぐ番人改修**（最初に切り出す単独レーン）: (1) D-3T が「本番クラス内に実装が1つだけの interface」の呼び出しを、その実装へ展開して判定する。(2) D-3 / D-3T が、合成アノテーション（メタアノテーション）を通じて持つ tx 属性を解決し、**tx 属性を持つ合成アノテーション**（`@ApplicationModuleListener` 等）を入口として検出する。**tx 属性を持たない `@ModuleEventListener` は入口にしない**（§4.4 の一本化した扱い）。検体（test ソース）で、interface 経由・tx 属性を持つ合成アノテーションのリスナー経由で越境 Repository へ到達するケースが red になり、tx 属性を持たないリスナーが自身では入口として数えられない（その先の `@Transactional` が入口になる）ことを固定する。改修で新たに検出された既存違反は凍結ストアに加える（改修の PR で行数が増えるのは想定どおりで、L1-F の前なら定数もその PR で上げる）。
 - **L1-A 認可の interface 化**: `common.AccessControlService` は**同じ完全修飾名のまま interface にし、実装だけを暫定core へ移す**（実装クラスの置き場所は L1-K で決める）。呼び出し側（main 538 ファイル・test 533 ファイル）の差分はゼロにする。確認事項: (a) テストで `new AccessControlService(...)` のように直接生成している箇所が無いか（あれば実装クラスへ直す）、(b) トランザクションの属性（現状クラスに `@Transactional(readOnly = true)`）を実装クラスへそのまま移し、`ReplicaRoutingAspect`（メソッドの `@Transactional` だけを見る）の振り分けが前後で変わらないこと、(c) L1-G0 の完了後に行い、D-3T の行が interface 化だけで消えないこと。
 - **L1-R common の業務ロジック返却**: `NameResolverService`、`ActivityScheduleFacade`、`*VisibilityMapper`（21）、`StorageUsageQueryService` などの実体を持ち主の業務の `api` へ移す。呼び出し側を書き換えないため（L2 のロットと同じファイルを触らないため）、旧 FQCN には**橋渡し**（`@Deprecated`、中身は持ち主の `api` を呼ぶだけ）を残す。ただし**橋渡しは kernel に含めない**:
   - 橋渡しには `@TransitionalBridge`（理由と撤去予定のレーンを必須の属性に持つ）を付ける。kernel の出口条件「kernel 内に業務 import ゼロ・単独コンパイル可」は、`@TransitionalBridge` の付いたクラスを kernel に**数えない**ことで維持する。橋渡しの数は増やしてはならない（番人が上限方式で数える）。
   - 例: `common/NameResolverService.java:3-9` は auth / organization / team の Entity・Repository を import している。実体は持ち主（auth・organization・team の名前解決をどこが持つかは L1-K で決める）の `api` に移し、旧 FQCN `com.mannschaft.app.common.NameResolverService` は持ち主の `api` を呼ぶだけの橋渡しにする（橋渡しは業務の `api` を import するので、kernel の一部ではない）。
-  - Phase 3 で `:kernel` を切り出すとき（L3-0）、橋渡しは**ソースの置き場所を `:app` 側に移し**、FQCN は維持する（同じパッケージ名を `:kernel` と `:app` が持つ形になるが、JPMS を使っていないため成り立つ）。`:kernel` の jar には橋渡しが入らず、`:kernel` は単独でコンパイルできる。Modulith 上は橋渡しも common モジュールに属するため、common 起点の循環として verify に出るが、§9.5 のとおりロットの判定に数えず、橋渡しの撤去で消える。
+  - Phase 3 で `:kernel` を切り出すとき（L3-0）、橋渡しは**ソースの置き場所を `:app` 側に移し**、FQCN は維持する。同じパッケージ（split package）を `:kernel` と `:app` の2つの jar が持つ形になるが、次の理由で成り立つ: (i) JPMS（`module-info.java`）を使っていないため、同一パッケージが複数 jar にまたがってもクラスパス上で問題にならない、(ii) Spring はルートパッケージ `com.mannschaft.app` 配下をクラスパス全体（全 jar）からスキャンするため、どちらの jar にあっても検出される、(iii) ArchUnit と Modulith はパッケージ名でクラスを取り込むため、論理的な所属（common モジュール）は jar が分かれても変わらない。`:kernel` の jar には橋渡しが入らず、`:kernel` は単独でコンパイルできる。Modulith 上は橋渡しも common モジュールに属し、そのままでは「各モジュール → common（橋渡し）→ 持ち主の `api`」の循環が出る。この循環の扱いは §9.5 の規則（`@TransitionalBridge` を端点とする辺だけを除外）に一本化する。
   - 橋渡しの呼び出し側は、その呼び出し側ドメインの L2 ロットが持ち主の `api` へ付け替える。呼び出しが0になった橋渡しはそのロットで削除する。**橋渡しが0になることを Phase 5 の出口条件とする**。進捗は親 Issue のチェックリストで管理する。
 - **L1-B build-logic**: `build.gradle.kts` の Test 設定・shard 分割・番人タスク・依存定義を `build-logic`（included build の convention plugin）へ移す。単一プロジェクトのまま行い、挙動は変えない。**L1-M より先に行う**（同じ `build.gradle.kts` を触るため）。
 - **L1-M Modulith 導入**: L1-B の後に、依存追加（Phase 0 で確定した版）を build-logic 側で行う。`event_publication` 表の Flyway、`ReliableEvent`・`@ModuleEventListener`・専用 executor、Registry の登録対象の限定、再投入バッチ、`ApplicationModules` の verify テストを**レポートのみ（失敗させない）**で追加、`@NamedInterface` の規約（§3.4）。
@@ -689,7 +700,7 @@ flowchart LR
 - [ ] L0-M: §5.1 の記録欄がすべて埋まり、3条件それぞれ3回のばらつきが中央値の 10% 以内。
 - [ ] L0-S: §5.1 の確認項目 1〜8 のそれぞれに結論（版番号・確定 DDL・登録対象を絞る方法と最小 IT の結果・ArchUnit の版の方針・件数・取り出し手順と webhook の件数・最小構成の循環検査の結果・所要時間）が `docs/evidence/` にある。どれかが「不可」なら §14 に従う。
 - [ ] L0-C: 集計スクリプトの出力の合計が各ストアの行数と一致する（境界: 空のストアで 0 を出す）。
-- [ ] L1-G0: interface 経由（実装1つ）で越境 Repository へ到達する検体、合成アノテーションのリスナーから越境 Repository へ到達する検体で、D-3T（後者は D-3 も）が red になる。実装が2つ以上の interface の検体では従来どおり打ち切る（誤検知が増えないことの固定）。
+- [ ] L1-G0: interface 経由（実装1つ）で越境 Repository へ到達する検体、**tx 属性を持つ合成アノテーション**（`@ApplicationModuleListener` 相当）のリスナーから越境 Repository へ到達する検体で、D-3T（後者は D-3 も）が red になる。**tx 属性を持たないリスナー**（`@ModuleEventListener` 相当）の検体では、リスナー自身は入口として数えられず、呼び出し先の `@Transactional` メソッドが入口として判定される（越境が無ければ green、呼び出し先が越境すれば呼び出し先が red）。実装が2つ以上の interface の検体では従来どおり打ち切る（誤検知が増えないことの固定）。
 - [ ] L1-A: `common.AccessControlService` が interface で、呼び出し側の差分がゼロ。既存の認可 IT が無変更で緑。`ReplicaRoutingAspect` の振り分けが前後で同じ（読み取り系のメソッドを呼んだときのデータソース種別が変わらないテスト）。D-3T の行数が L1-A の前後で減っていない（interface 化だけで消えていない）。
 - [ ] L1-R: 返却した各クラスの実体が持ち主の `api` にあり、旧 FQCN は `@TransitionalBridge` の付いた橋渡しだけ（持ち主の `api` 以外を import しない）。橋渡しを除いた kernel が業務 import 0 件。
 - [ ] L1-M: `event_publication` 表が Flyway で作られ、照合順序が `utf8mb4_0900_ai_ci`（`MigrationCollationDeclarationGuardTest` が緑）。購読側が例外を投げると未完了で残り、再投入バッチで完了する IT が緑。完了した行が削除（または保持期間後に削除）される IT が緑。
@@ -716,6 +727,8 @@ flowchart LR
 - [ ] L3: 卒業の前に、Spring コンテキストの Bean 名一覧・`@Entity` の一覧・凍結ストアの各行数を `docs/evidence/<子CMP>-before.txt` に保存し、卒業後に同じ手順で取った一覧と比較して一致する（Modulith の Registry の Entity も含む）。
 - [ ] L3: 卒業した束のテストが CI のいずれか1 shard でちょうど1回実行される（`verifyShardCoverage` 相当）。
 - [ ] L3: ArchUnit 番人が卒業した束のクラスを含む全クラスパスで実行される（ストアの行数が卒業の前後で一致）。
+- [ ] L3: **同一 FQCN のクラスが複数の jar に存在しない**ことを検査する番人がある（split package は許すが、同じクラスの重複は拒否する。橋渡しを `:app` に置いたあと `:kernel` に同名クラスが残っていたら fail）。
+- [ ] L3: Spring のスキャン・ArchUnit・Modulith の解析が**全 jar**（`:kernel`・各束・`:app`）を対象にしている（各ツールが取り込んだクラス数が、全 jar のクラス数の合計と一致する）。
 - [ ] L3: `:db-migration` の migration を各束のテストが参照でき、Flyway の適用順が分割前と同じ（適用された版の一覧を比較）。
 - [ ] L3-P（必須）: OpenAPI の生成先が分割後も `docs/openapi.json` を指し（`build.gradle.kts:1161` の相対指定の付け替え）、生成した openapi.json が分割前と一致する。
 - [ ] L3-P（必須）: OWASP Dependency-Check が全束を1回で見る（集約タスク）に切り替わり、週次の `security-scan.yml:66` も新しいタスクを呼ぶ。全束の依存が報告に含まれる。
@@ -758,7 +771,8 @@ flowchart LR
 
 - L1-G で「verify 必須モジュール一覧」を定数で持つ番人を作る。一覧に載ったモジュールは違反1件で fail、載っていないモジュールはレポートのみ。一覧から外すことは禁止（番人が拒否する）。
 - **「当該モジュール違反0」の定義**: (1) 当該モジュールを**発生元**とする依存違反（他モジュールの非公開型への参照）が0、かつ (2) 当該モジュールを**含む**循環が0。循環は複数モジュールにまたがるため、循環に含まれる全モジュールが同時に一覧へ載れない。循環を解くロットは、循環を作る相手のロットと親 Issue で調整し、解いた側の PR で循環の全モジュールを一覧に載せる（相手のロットが依存違反0を満たしている場合）。
-- **common を起点とする違反**: 初回 verify で common（kernel）を発生元とする違反は、ロットの完了判定に数えない（L1-K / L1-R の出口条件で扱う）。
+- **除外してよいのは `@TransitionalBridge` を端点とする辺だけ**（規則の一本化）。判定には `ApplicationModules.of(MannschaftApplication.class, <@TransitionalBridge の付いたクラスを無視する述語>)` のように、橋渡しのクラスを解析対象から外した構成を使う（外し方は L0-S の確認項目6で確定）。橋渡し以外の common のクラスから業務モジュールへの辺は除外しない。したがって、あるモジュールを必須化リストへ載せられるのは、common の橋渡し以外のクラスからそのモジュールへの辺が無くなった（L1-R でそのモジュールに関わる返却対象が済んだ）後である。
+- 検体のテスト（L1-G）: (a) 橋渡しを端点とする辺だけで成り立っている循環は、除外で消えて verify が通る、(b) 橋渡しを除外しても別の辺で循環が残る場合は、verify が fail する、の両方を固定する。
 - **違反の取り出し方**: L0-S の確認項目6で決めた手順で、発生元モジュール名・循環に含まれるモジュール名で絞り込む。
 - ロットの完了時に、そのモジュールを一覧に追加する。
 
@@ -818,8 +832,8 @@ CREATE TABLE event_publication (
 | 隔離状態 | 試行回数の上限を超えた行は「隔離」にし、再投入の対象から外す | 永久に再投入し続けて正常な行を圧迫しないため |
 | 警告 | 隔離になった時点で**即時に** ERROR ログとアラート。未完了の最古が 30 分を超えたら警告 | 30 分は「再投入の対象 5 分＋試行上限ぶんの時間」を超えたら異常と見なすための初期値 |
 | 掃除（パターン F の相手側の保留） | 24 時間確定されない保留を「失効」にする（物理削除しない。ID は保持し、失効からも同一 ID で確定できる） | §4.3-4。失効は見えなくするだけなので、週次の隔離確認・手動再開と矛盾しない |
-| 物理削除（パターン F の失効） | 失効から 90 日超、かつ一度も確定されていないものだけ | 週次の隔離確認・手動再開（下記）が何度か回る期間より十分長く取る |
-| 予約の上限（パターン F） | 作成者ごとの未確定（保留・失効）20 件 | §4.3-3。並行な採用確定で事前検査をすり抜けた予約の蓄積を抑える |
+| 物理削除（パターン F） | **取消済みだけ**を、取消から 7 日の猶予の後に削除する。失効は削除しない（墓標として残す） | §4.3-4。失効は契約が ID を持っている可能性があり、消すと参照先が失われるため。取消は調停役が (b) の拒否を確認したものなので、どこからも参照されない |
+| 予約の上限（パターン F） | 作成者ごとの「保留」20 件（取消・失効・有効は数えない） | §4.3-3。並行な採用確定で事前検査をすり抜けた予約の蓄積を抑える。拒否時は明示取消で即時に枠が戻る |
 
 - **担当と手動再開の手順**: 隔離された行は、締めレーン（L-SHIME）の担当が週次で確認する（即時の警告は受けた者が親 Issue に記録する）。手順: (1) 隔離の原因（例外のログ）を調べる、(2) 原因を直す（コードの不具合なら修正 PR）、(3) 管理用の手動再開（隔離を解き試行回数を0に戻す操作。L1-M で `@BatchEndpoint` 等の管理入口として用意し、SYSTEM_ADMIN 限定）で再投入する。再投入は元のイベントをそのまま配信し直すもので、**作成物の ID を別の ID へ書き換えない**（パターン F では、契約に入っている同一のルーム ID を失効状態からでも有効化する）、(4) 完了したことを確認して親 Issue に記録する。業務上もう不要と判断した行は、理由を記録して削除する。
 - 観測点: 未完了の件数、最古の未完了の経過時間、再投入の件数、隔離の件数、パターン F の (c) の失敗件数。
@@ -926,3 +940,4 @@ CREATE TABLE event_publication (
 | 2026-10-21 | 精査第1パスを反映。御裁可 Q1〜Q5 を §0 に決定事項として記載。イベントの規約、専用 executor と再投入の流量制御、認可 interface 化を FQCN 不変へ、`:db-migration` の独立、`@EntityScan` を足さない方針、Registry の運用、verify 違反0の定義、流入速度を追記 |
 | 2026-10-21 | 精査第2パス（Codex）と実機E2E耐性クリティックを反映。Q6（外部 API 不変）を追加。パターン F を「予約→確定」へ改め、チャット自動作成の手本を実コード（`acceptApplication` の単一 tx・ロック）に合わせて全面改訂。Registry の登録対象の限定と負の IT、合成アノテーションと interface による偽の返済を塞ぐ L1-G0 を新設、L1-B 先行・L1-M 後続の順序、同時実行表を全組合せで整理、共有ファイルの衝突規約（§7.7）、付録A、L1-R の委譲方式、返済 PR での減少行の照合、波ごとのロット固定、Registry 運用値の根拠と隔離・手動再開手順、CI・品質ゲート（OpenAPI 出力先・OWASP 週次・jacoco 集約・テスト XML 収集）を L3-P の必須条件に、判定値の無い受け入れ条件を是正 |
 | 2026-10-21 | Codex 差分再検分を反映。予約ルームの状態機械（保留→有効、保留→失効→有効、失効→物理削除）と、掃除は失効のみ・同一 ID の復旧・確定と掃除の条件付き UPDATE による排他を追加。予約は参加者・メッセージを作らずチャンネル行だけにし、保留・失効の遮断箇所と 404・`CHAT_001` を確定。予約前の事前検査と作成者ごとの予約上限、保険リスナーの tx 無し（`@ModuleEventListener` は tx 属性を持たない）、橋渡し `@TransitionalBridge` を kernel に数えず Phase 5 で0件、L2 の入口に L1-G、L1-M の入口に L1-G0、判定値の境界と負荷試験の上限時間を明確化 |
+| 2026-10-21 | Codex 最終再検分を反映。失効は物理削除せず墓標として残し、物理削除は調停役の明示取消 `cancelReservation` を経た予約だけに限定（状態機械に「取消」を追加）。予約枠は「保留」だけで数え、拒否時の明示取消で即時回復・並行予約の原子的制御を追加。循環の判定規則を「当該モジュールを含む循環0、除外は `@TransitionalBridge` を端点とする辺だけ」に一本化し、split package の根拠と重複 FQCN・全 jar 解析の受け入れ条件を追加。招待経路（`ChatMembershipInviteCardService`）と chat 外の直接利用箇所を遮断箇所に追加。tx 属性を持つ合成アノテーションは入口、tx を持たないリスナーは入口ではない、と番人の扱いを一本化 |
