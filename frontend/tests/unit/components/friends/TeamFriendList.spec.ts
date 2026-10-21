@@ -94,7 +94,7 @@ describe('components/friends/TeamFriendList.vue — 取得失敗の表示', () =
     w.findComponent({ name: 'Paginator' }).vm.$emit('page', { page: 1 })
     await flushPromises()
     w.findComponent({ name: 'TeamFriendCard' }).vm.$emit('unfollow', friend)
-    await api.confirm.mock.calls[0][0].onAccept()
+    await api.confirm.mock.calls[0]![0].onAccept()
     await flushPromises()
     expect(api.listFriends.mock.calls.map(c => c[1].page)).toEqual([0, 1, 1, 0])
     expect(w.emitted('refresh')).toHaveLength(1)
