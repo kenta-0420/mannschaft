@@ -78,3 +78,11 @@ AC13は1001件のpending fixtureで、100件取得・total=1001を確認し、�
 |---|---|---|
 | `docs/evidence/CMP-261021-0020-red.json` | [docs/evidence/observations/CMP-261021-0020-red.json](observations/CMP-261021-0020-red.json) | `77d1f315a5d2fdaa9dc55721c248d9b5a9ecbca8ac238d849b3f396c0f7d205b` |
 | `docs/evidence/CMP-261021-0020-performance.json` | [docs/evidence/observations/CMP-261021-0020-performance.json](observations/CMP-261021-0020-performance.json) | `cbf627d96126d8210fea9cc82973d9befa570f521d689b9ec0126e87ddb3bd92` |
+
+### main追従・生成同期
+
+main `3bad46f846cd094a64bd46524aed69479b0c76bf` を取り込んだhead `4c184472990bf1db2a4202bdc980083558e9979c` で、CI run `39561958899` の生成artifactを採用した。実checkout mergeとheadのGit tree SHAはともに `d4a400d3708b12d8a06bc1e9e544abc001852ff7`。新pending URL1件とDTO2件以外は既存path/schemaに意味差分なし。名前/slugはOpenAPI3.1のtype=[string,null]、Node22.23.2/npm10.9.8による生成型でもstring | nullを確認した。既存Paginationの出力位置移動は定義の重複ではない。詳細は [生成観測](observations/CMP-261021-0020-openapi-generation.json)。
+
+初回headのnullable=true注記ではnull unionが生成されないことを実生成JSONで検出し、既存ActivityRecordResponseのtypes={string,null}へ2項目だけ揃えた。初回artifactは観測として保存し、現入力へ採用していない。ローカルOpenAPI重複生成は省略した。
+
+生成後headの最終CI・境界修正後のBE65/FE51・実機/アリシゼーションは引き続き未完了。台帳完了・最終completion証拠は追加していない。

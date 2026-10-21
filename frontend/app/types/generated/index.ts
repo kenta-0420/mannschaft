@@ -35942,6 +35942,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/friends/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * フォロー中チーム一覧取得
+         * @description MANAGE_FRIEND_TEAMS実効権限が必要。相互成立済みを除外し、公開有効相手だけ名前とslugを開示する。
+         */
+        get: operations["listPendingFollows"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/friend-feed": {
         parameters: {
             query?: never;
@@ -76905,6 +76925,33 @@ export interface components {
         ApiResponseListBadgeResponse: {
             data?: components["schemas"]["BadgeResponse"][];
         };
+        Pagination: {
+            hasNext?: boolean;
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+        };
+        PendingTeamFollowListResponse: {
+            data?: components["schemas"]["PendingTeamFollowView"][];
+            pagination?: components["schemas"]["Pagination"];
+        };
+        PendingTeamFollowView: {
+            /** Format: int64 */
+            followId?: number;
+            /** Format: date-time */
+            followedAt?: string;
+            followedBack?: boolean;
+            nameHidden?: boolean;
+            /** Format: int64 */
+            targetTeamId?: number;
+            targetTeamName?: string | null;
+            targetTeamSlug?: string | null;
+        };
         FriendFeedForwardStatus: {
             /** Format: int64 */
             forwardId?: number;
@@ -78388,17 +78435,6 @@ export interface components {
         PagedResponseMemberPaymentResponse: {
             data?: components["schemas"]["MemberPaymentResponse"][];
             meta?: components["schemas"]["PageMeta"];
-        };
-        Pagination: {
-            hasNext?: boolean;
-            /** Format: int32 */
-            page?: number;
-            /** Format: int32 */
-            size?: number;
-            /** Format: int64 */
-            totalElements?: number;
-            /** Format: int32 */
-            totalPages?: number;
         };
         TeamFriendListResponse: {
             data?: components["schemas"]["TeamFriendView"][];
@@ -159285,6 +159321,31 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListBadgeResponse"];
+                };
+            };
+        };
+    };
+    listPendingFollows: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PendingTeamFollowListResponse"];
                 };
             };
         };
