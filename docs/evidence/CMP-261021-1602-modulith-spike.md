@@ -2,7 +2,7 @@
 
 ## 状態
 
-2026-10-21。**Draft（未完了）**。台帳登録 PR #4027 は MERGED。main commit `7e9f82b3cae1` で台帳登録が実装中の状態を確認済み。試練 checkpoint `78960ac2aa` 作成済み。依存 metadata の解決・版確認は実行成功（下記ログ参照）。ただし 8 項目すべての runtime 実検証は未開始で、専用 runtime 試験は turnstile 待ち。依存 metadata の成功を runtime 合格の根拠にせず、L0-S 合格や Phase 0 完了とは扱わない。
+2026-10-21。**Draft（未完了）**。台帳登録 PR #4027 は MERGED。main commit `7e9f82b3cae1` で台帳登録が実装中の状態を確認済み。試練 checkpoint `78960ac2aa` 作成済み。依存 metadata の版確認は成功。初回 Registry runtime 実測（snapshot `0809ba747aaf9aab5bab1282ad912dde0790f52a`）は4件中成功2・失敗2・errors 0・skip 0。これは保存対象filter未適用のbaselineであり、filter後のgreen実測ではない。8項目全体の最終実測とAC-1/2/3/4等は未完了。実DDLは取得済みだが docs/architecture §11.2 は未確定。L0-S合格やPhase 0完了とは扱わない。
 
 Spring Boot 3.5.13 向けの Modulith 1.4.13 が候補。DDL の docs/architecture §11.2 は未確定。対象: `3bad46f846cd094a64bd46524aed69479b0c76bf`。ブランチ: `spike/cmp-261021-0017-modulith-261021`。worktree: `.claude/worktrees/agent-4022-modulith-spike`。コードを main へマージしない。
 
@@ -11,20 +11,20 @@ Spring Boot 3.5.13 向けの Modulith 1.4.13 が候補。DDL の docs/architectu
 | 項目 | 調査結果 | 実検証 |
 |---|---|---|
 | 1 Boot 互換版 | Spring Boot 3.5.13 向けの Modulith 1.4.13 が候補。公式互換表で 1.4 は Boot 3.5 向け。1.4 公式文書の例と API は 1.4.13 | 全Modulith artifactが1.4.13へ解決することを実確認。起動未実行 |
-| 2 JPA Registry DDL | 公式 1.4.13 Entity は id、publicationDate、listenerId、serializedEvent、eventType、completionDate。DefaultJpaEventPublication の表名は EVENT_PUBLICATION。試行回数・処理状態列と Entity の索引指定は見当たらない。completion-mode は update/delete/archive | 実 MySQL の SHOW CREATE TABLE・索引照合未実行。§11.2 の型・長さ・索引は確定不可 |
-| 3 登録対象と完了 | 標準 multicaster は AFTER_COMMIT リスナー配信全般を保存。public/nonfinal DefaultEventPublicationRegistry の store(Object, Stream<PublicationTargetIdentifier>) を差し替え、ReliableEvent と ModuleEventListener の listener ID の両方を照合する検体を予定。markCompleted は REQUIRES_NEW | 既存 UserRegisteredEvent 非保存の red/green、tx 無し async 正常完了・例外未完了とも未実行 |
+| 2 JPA Registry DDL | 実 MySQL `event_publication` は6列。`id binary(16)` が主キー、`publication_date datetime(6) NOT NULL`、`completion_date datetime(6) NULL`、`event_type/listener_id/serialized_event varchar(255) NOT NULL`。索引はPKのみ、`utf8mb4_0900_ai_ci`。attempt/state列なし | schemaとSHOW INDEXを取得済み。観測値は§11.2の確定仕様やTEXT長への変更を承認しない |
+| 3 登録対象と完了 | baselineの標準Registryでは既存認証イベント非保存assertが expected 0 / actual 1 でred。対象listener限定assertも expected `[module-success]` / actual `[module-success, ordinary-reliable]` でred。非TX非同期例外後の未完了assertはgreen | 4件のうち上記2red・schema/例外後未完了の2green。filter後の成功保存・完了処理は未実測 |
 | 4 ArchUnit | 公式 1.4 GA 発表は ArchUnit 1.4 を含む。既存は1.3.0 | spikeRuntimeClasspath本体は既定1.4.2。core/junit5-api/engine/engine-apiを1.3.0にforceした依存解決は成功。解析実行・全凍結番人は未実行 |
 | 5 全本番違反 | ApplicationModules で全トップレベルパッケージを個別に検査する | 全本番コンパイル・依存違反/循環/common発集計未実行 |
 | 6 モジュール抽出 | 依存は発生元、循環は参加モジュール全てで判定。TransitionalBridge 注釈クラスだけを ApplicationModules の ignored predicate から除外する最小陽性/陰性検体を予定 | 公開API確定・webhook件数・検体未実行 |
 | 7 jobmatching/chat | jobmatching→chat.api のみ、イベントと保険リスナーは jobmatching 自身に置く検体を予定 | 循環0の実証未実行 |
 | 8 webhook 起動 | 既存 WebhookAuthzContractIT は AbstractMySqlIntegrationTest の SpringBootTest を継承。ApplicationModuleTest を単純追加しない。webhookの4Serviceは具象 AccessControlService 依存 | 独立起動可否・時間・context増分未測定 |
 
-## 試験の進め方（未実行）
+## 残りの試験計画と未実施項目
 
 - backend の専用 spike sourceSet と専用 Test task で検体だけを実行し、既存凍結番人を走らせない。CLI `--tests` は使用しない。
 - 実 MySQL Testcontainers と実発行 commit、専用 module-event-pool、tx を持たない ModuleEventListener を使う。
-- 認証イベント保存0件のアサーションを先に作り、標準 Registry で保存されて red になることを結果 XML で確認してから保存限定実装を加える。
-- ReliableEvent に通常リスナーと対象リスナーを併設し、対象 listener のみ保存する。成功では完了日時を確認し、別ケースで delete モードの完了即削除を確認する。例外ケースは未完了行を確認する。
+- baseline実行で認証イベントの0件assertは1件保存されてred、対象listener限定assertはordinary-reliableも混入してredとなることをJUnit XMLで確認した。schema取得と非TX非同期例外後の未完了assertはgreen。
+- filter候補snapshot `599c3943330c6a57c26f349f2127c6ef4d19a634` は `@Primary` の `DefaultEventPublicationRegistry` 差し替えと公開 `store` override を使い、`ReliableEvent` と実 `@ModuleEventListener` のmerged listener IDの両方で保存対象を限定する。fixtureは `Listeners.class` 固定で、本番全beanの探索完成品ではない。filter後のgreenと完了処理はこれから実測する。
 - 構造検査は Spring context と別 JVM へ分離する。文字列だけの曖昧な分類は採用せず、採用版の公開 API と実出力を照合して発生元・循環参加集合の抽出手順を確定する。
 - 重ビルド直前に親 Issue #4022 の計測窓と最新宣言を再確認し、backend/scripts/gradle-turnstile.sh を通す。
 
@@ -34,7 +34,7 @@ Spring Boot 3.5.13 向けの Modulith 1.4.13 が候補。DDL の docs/architectu
 - backend/ と docs/architecture、docs/security、docs/evidence の cone sparse checkout を実施。再開時 `git merge origin/main` は Already up to date。
 - 親 Issue の読取時点（2026-10-21 16時台 JST）では L0-M 未着手、計測窓予約なし。これは将来の実行許可を意味しない。
 - 通常 exec shell は親から使用不能と引き継ぎ。必要最小コマンドを sandbox 外で実行。PowerShell ファイル読込と出力は UTF-8 を指定する。
-- 公式 Maven Central は HTTP 200 を返した。PowerShell Invoke-WebRequest が4KBで停止した取得は中断し、curl で core/events-jpa/test/events-core の 1.4.13 jar を取得、javap で公開 API と Entity 注釈を照合した。Gradle の正規依存解決はまだ実行待ち。キャッシュ削除は行っていない。
+- 公式 Maven Central は HTTP 200。curlでcore/events-jpa/test/events-coreの1.4.13 jarを取得し、javapで公開APIとEntity注釈を照合した。Gradle dependency metadata解決も成功済み（下記ログ参照）。依存解決の成功はruntime実測やAC全体の合格を意味しない。キャッシュ削除なし。
 
 ```powershell
 git rev-parse HEAD
@@ -64,7 +64,7 @@ gh issue view 4022 --repo kenta-0420/mannschaft --json body,comments
 - WebhookSpikeIT: 独立 ApplicationModuleTest。4ServiceとRepositoryを実ロード。失敗する場合も隠さず起動失敗として記録する。
 - 同じ専用 Test タスクが既存の archunit タグ除外を継承して空実行しないよう、専用タスク内だけタグ集合を明示解除した。既存番人タスクの設定は変更していない。
 - 保持者は MSYS PID190676、WINPID48628、CREATED20261021065352。読取の ps -ef で MSYS 子190784（別 worktree の Gradle wrapper）を確認。保持者・子・ロックを停止/解除していない。
-- 実行の red/green、DDL、依存解決、違反件数、webhook起動結果のログは未取得。待機ログだけを合格根拠にしない。
+- Registry baselineのred/green内訳と実DDLは取得済み（下記0809実測）。red 2件を既知の失敗として保持し、filter後green・構造検査・残りのACを未完了とする。
 ## 依存解決と実行環境の実測
 
 対象 SHA `90b2b55e08401233a034168d4782631ba5db0ea7`（依存設定は試練commit以来同じ）。依存解決は Windows Temurin21.0.10、Gradle8.14.4、既存 Windows user cache。実コード試験は Windows に Docker CLI/標準DockerDesktopが無いため、既存 WSL Ubuntu-24.04（JDK21.0.12.1、Docker Engine29.4.1、既存Linux Gradle cache）へ差し替えた。Engine到達性は docker info で確認。TCP公開などの環境設定変更なし。
@@ -87,6 +87,15 @@ gh issue view 4022 --repo kenta-0420/mannschaft --json body,comments
 旧Windows redはGradle未開始の待機中に自分のscriptだけを終了し、Windows turnstileの外側でWSLを呼ぶ形へ差し替えた。他者保持者には触れていない。WSLが独自のlockroot/PID namespaceでWindows保持者をstale扱いする経路は使用しない。既存cache削除なし。WSLのproject cacheだけを `/tmp/mannschaft-modulith-4022-gradle` に隔離する。gradlewのCR文字0も確認済み。
 
 ```bash
-# Windows Git Bash、backend/。実試験はまだturnstile待機
+# Windows outer turnstileからWSL Linuxの未編集git archive snapshotへ実行済み。filter後greenは未実施
 ./scripts/gradle-turnstile.sh wsl.exe -d Ubuntu-24.04 -- bash scripts/modulith-spike-wsl.sh modulithRegistrySpike
 ```
+## Registry実MySQL baseline実測（2026-10-21）
+
+- 実行snapshot SHA: `0809ba747aaf9aab5bab1282ad912dde0790f52a`（snapshot内 `EXECUTION_SHA` と一致）。Windows外側turnstileから、未編集git archive snapshotをLinux `/tmp` に配置して実行。WSL Ubuntu 24.04、JDK 21.0.12.1、Docker Engine 29.4.1。証跡はspike worktreeの `backend/build/spike-evidence/native-registry-red-0809/` にあるJUnit XML、schema、log。
+- JUnit XMLは4件中成功2・失敗2・errors 0・skip 0。XML suite timeは2.758秒、Gradle外側の壁時間は53.90秒。両者を混同しない。
+- 成功: 公式Entityから生成した実MySQL schema・索引のassert、非TX非同期リスナー例外後に未完了で残るassert。
+- 失敗: 認証イベント保存数assertはexpected 0 / actual 1。対象listener限定assertはexpected `[module-success]` / actual `[module-success, ordinary-reliable]`。baselineの実redであり、AC合格ではない。
+- DDL `event_publication` は6列: `completion_date datetime(6) NULL`、`publication_date datetime(6) NOT NULL`、`id binary(16) NOT NULL`（PRIMARY KEY）、`event_type varchar(255) NOT NULL`、`listener_id varchar(255) NOT NULL`、`serialized_event varchar(255) NOT NULL`。索引はPRIMARY KEYのみ、照合順序は `utf8mb4_0900_ai_ci`。attempt/state列なし。§11.2は今回変更せず、TEXT512等の暫定値を導入しない。
+- filter候補snapshotは `599c3943330c6a57c26f349f2127c6ef4d19a634`。`@Primary DefaultEventPublicationRegistry` と公開 `store` overrideで、`ReliableEvent` と実 `@ModuleEventListener` のmerged listener IDが一致する対象だけを保存する。fixtureは `Listeners.class` 固定で、本番全bean探索の完成品ではない。filter後greenと完了処理は未実測。
+- これはRegistryの部分実測。8項目の最終検証とAC-1/2/3/4等は未完了で、L0-S/Phase 0合格としない。Draftを維持する。
