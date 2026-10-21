@@ -23,7 +23,7 @@ const MOCK_FRIEND_TEAMS = [
     teamAId: TEAM_ID,
     teamBId: TARGET_TEAM_ID,
     establishedAt: '2026-03-01T00:00:00Z',
-    isPublic: true,
+    public: true,
     friendTeam: {
       id: TARGET_TEAM_ID,
       name: '京都サッカークラブ',
