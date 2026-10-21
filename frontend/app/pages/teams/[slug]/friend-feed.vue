@@ -24,7 +24,10 @@ const forwardPostId = ref<number | null>(null)
 const forwardSourceTeamName = ref('')
 
 /** FriendFeedPostList への ref（markAsForwarded 呼び出し用） */
-const feedListRef = ref<{ markAsForwarded: (postId: number, forwardId: number) => void } | null>(null)
+const feedListRef = ref<{
+  markAsForwarded: (postId: number, forwardId: number) => void
+  refresh: () => Promise<void>
+} | null>(null)
 
 /** 権限チェック */
 onMounted(async () => {
@@ -41,9 +44,9 @@ onMounted(async () => {
 })
 
 /** 転送ボタン押下 → モーダル表示 */
-function onForward(postId: number) {
+function onForward(postId: number, sourceTeamName: string) {
   forwardPostId.value = postId
-  forwardSourceTeamName.value = ''
+  forwardSourceTeamName.value = sourceTeamName
   forwardModalVisible.value = true
 }
 
@@ -82,7 +85,7 @@ function onForwardSuccess(forwardId: number) {
 
       <div class="mx-auto max-w-2xl">
         <!-- 投稿一覧 -->
-        <FriendsFriendFeedPostList
+        <FriendFeedPostList
           ref="feedListRef"
           :team-id="teamSlug"
           @forward="onForward"
@@ -90,12 +93,13 @@ function onForwardSuccess(forwardId: number) {
       </div>
 
       <!-- 転送モーダル -->
-      <FriendsFriendForwardModal
+      <FriendForwardModal
         v-model="forwardModalVisible"
         :team-id="teamSlug"
         :post-id="forwardPostId"
         :source-team-name="forwardSourceTeamName"
         @success="onForwardSuccess"
+        @already-forwarded="feedListRef?.refresh()"
       />
     </div>
   </div>

@@ -137,8 +137,8 @@
       "modal_title": "转发投稿",
       "target_label": "发布范围",
       "target_member": "仅成员",
-      "target_supporter": "成员+支持者（Phase 3以后）",
-      "target_supporter_tooltip": "Phase 3以后可用",
+      "target_supporter": "成员+支持者（即将推出）",
+      "target_supporter_tooltip": "该发布范围暂不可用",
       "comment_label": "管理员评论（任意）",
       "comment_placeholder": "输入转发时附加的评论（任意）",
       "submit": "转发",
@@ -147,7 +147,8 @@
       "revoke": "取消转发",
       "revoke_success": "已取消转发",
       "revoke_confirm": "取消此转发吗？",
-      "error": "转发失败"
+      "error": "转发失败",
+      "already_forwarded": "该帖子已转发。列表已刷新"
     }
   },
   "forward_exports": {

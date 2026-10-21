@@ -137,8 +137,8 @@
       "modal_title": "Forward post",
       "target_label": "Audience",
       "target_member": "Members only",
-      "target_supporter": "Members + supporters (Phase 3+)",
-      "target_supporter_tooltip": "Available from Phase 3 onwards",
+      "target_supporter": "Members + supporters (coming soon)",
+      "target_supporter_tooltip": "This audience is not available yet",
       "comment_label": "Admin comment (optional)",
       "comment_placeholder": "Add a comment to the forward (optional)",
       "submit": "Forward",
@@ -147,7 +147,8 @@
       "revoke": "Revoke forward",
       "revoke_success": "Forward revoked",
       "revoke_confirm": "Revoke this forward?",
-      "error": "Failed to forward post"
+      "error": "Failed to forward post",
+      "already_forwarded": "This post has already been forwarded. The list has been refreshed"
     }
   },
   "forward_exports": {

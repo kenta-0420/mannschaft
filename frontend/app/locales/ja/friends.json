@@ -137,8 +137,8 @@
       "modal_title": "投稿を転送する",
       "target_label": "配信範囲",
       "target_member": "メンバーのみ",
-      "target_supporter": "メンバー + サポーター（Phase 3以降）",
-      "target_supporter_tooltip": "Phase 3以降で利用可能になります",
+      "target_supporter": "メンバー + サポーター（準備中）",
+      "target_supporter_tooltip": "この配信範囲は現在ご利用いただけません",
       "comment_label": "管理者コメント（任意）",
       "comment_placeholder": "転送時に添えるコメントを入力（任意）",
       "submit": "転送する",
@@ -147,7 +147,8 @@
       "revoke": "転送を取消",
       "revoke_success": "転送を取消しました",
       "revoke_confirm": "この転送を取り消しますか？",
-      "error": "転送に失敗しました"
+      "error": "転送に失敗しました",
+      "already_forwarded": "この投稿は既に転送済みです。一覧を更新しました"
     }
   },
   "forward_exports": {
