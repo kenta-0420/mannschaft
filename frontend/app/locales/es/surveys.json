@@ -168,7 +168,7 @@
       "remindHint": "Puedes enviar un recordatorio a {count} miembros sin responder (hasta 3 veces)",
       "remindButton": "Enviar recordatorio",
       "remindAutoNotice": "Se enviará un recordatorio automático 24 horas antes del cierre",
-      "remindSuccess": "Recordatorio enviado a {count} miembro(s)",
+      "remindSuccess": "Se aceptó el envío del recordatorio a {count} miembro(s) sin responder",
       "remindRemaining": "Envíos restantes: {count}",
       "remindFailed": "No se pudo enviar el recordatorio",
       "remindFailedDetail": "Verifica el límite de envío, el tiempo de espera y los permisos",
