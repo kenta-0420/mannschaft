@@ -76,3 +76,22 @@ LINE/SNSのタイトル・副題・削除/保存/アカウント追加とSNSダ�
 本陣が16キーの語順・格変化を精読し、de `friends.guide.related.item_feed` と `friend_feed.subtitle` の「Beiträge Freundschaftsteams」に必要な前置詞が無い実findingを確認した。この2箇所だけ「Beiträge von Freundschaftsteams」へ修正し、item_feedの末尾・他言語・単数属格「des Freundschaftsteams」の2キー・相互成立の引用一致は保持した。既存番人に当該2文の完全一致期待値はなく、翻訳を複製する新規試験は本陣裁可に従い追加しない。変更入力2ファイルのcmp一致後、既存friendI18nContract.spec.tsの18件をNode限定で再実行し、18成功/0失敗/skip0・exit0を確認した。
 
 P8/P9実測と訂正後差分の依存関係: LINE/SNSのja翻訳値と復元後の文字列は一致し、PageHeaderのclass・action wrapper・ボタン属性/handlerは不変。他7移行画面とPageHeader本体にも変更が無い。除去common rootキーは他の使用箇所0件でP8の8画面には未使用。B3はde2文字列だけの変更で、jaのP8/P9には入力文字列差が無い。このため既存ja測定値を維持できるが、新headで撮影を再実行したという意味ではない。de幅測定を含む196件は最終headで未完分を検証する必要がある。
+## main追従・canonical入力・部分ブラウザの保全
+
+固定main `1ae1ee1ca526c0103b66117571447967a79a6d8a` を通常mergeしたhead `a7fb905568e0bc95440a91b6e77005fd0a010e73` をpush。merge前後のfrontend/workflow/social/advertising tree完全一致を確認した。main由来にはshift本番コード等も含むため、BE全体不変とは扱わない。対象headのCI run39609707365は成功し、実ログで671files/6602tests、対象13spec/141成功・失敗/skip0、旧3spec不収集を確認した。
+
+Windows physical SHAとGit canonical LFとの差を別観測へ分けた。Windows git archiveもautocrlfを反映するため、永続gitconfigは変えずarchiveコマンド限定core.autocrlf=falseで生成したrawソースを展開し、Git blob→WSL全4109blobとcanonical52 SHA256の一致、移設旧3path不存在を確認した。node_modules/.nuxt/env/旧画像を保持。Nuxt3002は所有PIDと実listenerを一致確認、正URLのcold待機後200を確認した。
+
+同headの全196件runはhost空きが約6.9GiBから2392MiBへ急低下し、指示の停止目安近傍となったため所有run/Nuxtのみ停止した。永続stdoutは25完了=24成功/先頭1失敗/残171未完。先頭folders ja360はloadingのままh1未出現15秒でgeometry測定前に失敗、後続24件は成功。JSON reporter完了前の中断につき正式結果JSONは未生成、stdout/失敗png/error-context/部分観測を保全した。収集専用--listが生成したexpected0/skipped196のJSONはcollection-resultsへ別保全し、以後--listはreporter=listに限定する。
+
+24固定成功＋171未完＋cold限定1=196 uniqueをfile/titleで分割し、CLI選択--list=171/2filesと1/1fileがmanifest集合へ一致することを確認した。これは準備であり未実行。旧headの22成功も別の環境中断として保持する。
+
+## 実BE query不具合の再現とC1契約を保つ修正
+
+BE8091 ready共有後、既存fixtureの通常認証とGETだけで比較した。org f3orggvkwbk/numeric632、x(user990623)はorg/me/permissionsでADMIN/scopeAdmin=true。既存広告accountは404 AD_005、campaign一覧は403 COMMON_002で所有campaignを取得できなかったため候補9000000000000を共通使用した。同一x認証・同一campaign/from/toで、organizationId=632は403 COMMON_002、orgSlugは404 COMMON_005、数値再検査も403 COMMON_002。数値側はADMIN確認後の広告account不在経路、slug側はLong bindingのScopeSlugIdConverterがURIに無いquery slugを既定TEAMで解決する経路で区別できた。成功campaign画面の検証ではない。資格/トークン/認証responseは保存せず、Stripe/DB fixture書込み/追加serverは実行していない。
+
+正本C1行48はページがexportCampaignCsv('ORGANIZATION', slug, …)を呼ぶ契約であるため、ページでnumericへ置き換える最初の案は採用しない。既存useOrganizationNumericId（getOrganization(slug).data.numericIdを正整数確認して文字列化、失敗をreject）を再利用し、useAdvertiserApiのperformance/creative comparison/breakdown/exportの4関数だけ送信queryを数値化した。ページ/戻り先/公開引数、TEAMパス・日付・CSV blob、既存billingParamsと他billing関数は保持。既存resolver本体へfastpath/cache/汎用化を追加していない。解決失敗は広告API未呼出しのまま既存画面catch/retryまたはCSV error handlerへ伝播する。
+
+既存tests/unit/composables/useOrganizationNumericId.spec.tsの6件へ、4関数×ORG query/TEAM resolver不要/解決失敗の12件を先行追加。固定196ソースを触らないNode overlayでred実測は18件=10成功/8実assert失敗/skip0、greenは18成功/失敗/skip0。CI向けmock初期化をhoistedへ揃えた最終入力も同18件全成功。red/greenのJSON/logは専有verify/org-query-nodeへ別保存。Nuxt環境ではmodule mock、Node限定では同じ依存のauto-import stand-inを用い、製品関数と既存resolverを実際に実行する。ページ既存4試験のCSV slug期待は維持し、初期3APIのslug引数assertも追加した。ページ4件の動的確認は次CIで行い、ローカルNuxt/Gradleは起動しない。
+
+影響case: 196中のorg広告詳細36case（6幅×6locale）は新query経路の対象で、旧成功24に含まれるorg5件も再検査対象となる。他19成功は対象ファイル/表示文字列不変で保持可能だが、新headで実行したとは記さない。再開案は19固定成功＋未実施171とorg再検査5の176件＋cold1=196 unique。selectorは旧head版を保全し、新head/CI確定後に対応付ける。P8のteam広告はTEAM query不変を回帰で確認、P9のDOM/日本語/属性は不変。台帳/最終evidence/実機画面/最低3住民探索/マージは未完了。

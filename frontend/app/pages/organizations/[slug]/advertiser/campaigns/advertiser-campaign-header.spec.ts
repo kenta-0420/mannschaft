@@ -33,6 +33,9 @@ describe('CMP-261014-2035 C1 組織広告詳細', () => {
   afterEach(() => { cleanup.splice(0).forEach(fn => fn()); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
   it('PageHeaderにTagとactionsを配置し組織広告一覧へ戻れる', async () => {
     const wrapper = await mountPage()
+    for (const request of [performance, creatives, breakdown]) {
+      expect(request).toHaveBeenCalledExactlyOnceWith('ORGANIZATION', 'test-org', 7, '2026-09-21', '2026-10-21')
+    }
     const header = wrapper.get('[data-testid="campaign-header"]')
     expect(header.get('h1').text()).toBe('Campaign Alpha')
     expect(header.get('a').attributes('href')).toBe('/organizations/test-org/advertiser')
