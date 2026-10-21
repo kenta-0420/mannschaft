@@ -82,6 +82,7 @@ class RegistrySpikeIT {
 
     @Test
     void 公式Entityの実MySQLスキーマと索引を保存する() throws Exception {
+        assertThat(org.springframework.boot.SpringBootVersion.getVersion()).isEqualTo("3.5.13");
         var columns = jdbc.queryForList("show columns from event_publication");
         assertThat(columns.stream().map(column -> column.get("Field").toString()))
                 .containsExactlyInAnyOrder("id", "publication_date", "listener_id", "serialized_event", "event_type", "completion_date");
