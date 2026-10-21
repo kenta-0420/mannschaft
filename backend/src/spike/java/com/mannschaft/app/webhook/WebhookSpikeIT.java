@@ -20,6 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /** 単独モジュール起動の可否を測る検体。既存SpringBootTest基底は継承しない。 */
 @ApplicationModuleTest(verifyAutomatically = false)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@org.springframework.test.context.TestExecutionListeners(listeners = com.mannschaft.spike.ContextMetricsListener.class,
+        mergeMode = org.springframework.test.context.TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 class WebhookSpikeIT {
     static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
             .withDatabaseName("webhook_spike").withUsername("test").withPassword("test")
@@ -42,5 +44,7 @@ class WebhookSpikeIT {
         assertThat(context.getBeansOfType(IncomingWebhookService.class)).hasSize(1);
         assertThat(context.getBeansOfType(WebhookDeliveryService.class)).hasSize(1);
         assertThat(context.getBeansOfType(ApiKeyRepository.class)).hasSize(1);
+        var authorization = context.getBean(com.mannschaft.app.common.AccessControlService.class);
+        assertThat(org.mockito.Mockito.mockingDetails(authorization).isMock()).isFalse();
     }
 }

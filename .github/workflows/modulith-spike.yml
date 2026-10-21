@@ -52,3 +52,79 @@ jobs:
             backend/build/spike-evidence/
             backend/build/reports/problems/
             docs/evidence/CMP-261021-1602-modulith-spike-schema.txt
+  structure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        archunit: [default, pin-1.3.0]
+    steps:
+      - name: Checkout throwaway spike
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Set up Java 21
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - name: Run structural verification
+        working-directory: backend
+        shell: bash
+        env:
+          ARCHUNIT_MODE: ${{ matrix.archunit }}
+        run: |
+          set -o pipefail
+          mkdir -p build/spike-evidence
+          args=()
+          if [[ "$ARCHUNIT_MODE" == pin-1.3.0 ]]; then args+=('-Pspike.archunitPin=true'); fi
+          git rev-parse HEAD
+          java -version
+          /usr/bin/time -f 'structureElapsedSeconds=%e' bash ./scripts/gradle-turnstile.sh bash ./gradlew modulithStructureSpike "${args[@]}" --console=plain 2>&1 | tee build/spike-evidence/structure.log
+      - name: Preserve structural results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: modulith-structure-${{ matrix.archunit }}-${{ github.sha }}
+          retention-days: 7
+          path: |
+            backend/build/test-results/modulithStructureSpike/
+            backend/build/reports/tests/modulithStructureSpike/
+            backend/build/spike-evidence/
+            docs/evidence/CMP-261021-1602-modulith-spike-structure.txt
+  webhook:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout throwaway spike
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Set up Java 21
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - name: Measure standalone webhook startup with real authorization beans
+        working-directory: backend
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p build/spike-evidence
+          git rev-parse HEAD
+          java -version
+          docker info --format '{{.ServerVersion}}'
+          /usr/bin/time -f 'webhookElapsedSeconds=%e' bash ./scripts/gradle-turnstile.sh bash ./gradlew modulithWebhookSpike --console=plain 2>&1 | tee build/spike-evidence/webhook.log
+      - name: Preserve webhook startup results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: modulith-webhook-${{ github.sha }}
+          retention-days: 7
+          path: |
+            backend/build/test-results/modulithWebhookSpike/
+            backend/build/reports/tests/modulithWebhookSpike/
+            backend/build/spike-evidence/
