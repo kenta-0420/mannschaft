@@ -113,6 +113,26 @@ public class L1G0TransactionalFixture {
         @Override
         public void forward() { DefaultPort.super.forward(); }
     }
+    /** JVM descriptorのprimitive・参照配列・多次元配列・戻り値を照合する検体。 */
+    public interface DescriptorDefaultPort {
+        default int[][] forward(boolean flag, byte b, char c, short s, int i, long l,
+                float f, double d, String[] names, int[][] values) {
+            new TransitiveProxyRepository().save();
+            return values;
+        }
+    }
+    /** primitive/array signatureでも明示superの本体を保持する。 */
+    public static class DescriptorDefaultBridge implements DescriptorDefaultPort {
+        @Override
+        public int[][] forward(boolean flag, byte b, char c, short s, int i, long l,
+                float f, double d, String[] names, int[][] values) { return values; }
+
+        @Transactional
+        public void execute(int[][] values) {
+            DescriptorDefaultPort.super.forward(true, (byte) 1, 'a', (short) 1, 1, 1L,
+                1F, 1D, new String[0], values);
+        }
+    }
     /** 同じorigin・target・行にspecialと通常呼び出しが混在する検体。 */
     public static class MixedDefaultBridge implements DefaultPort {
         private InheritedProxyRepository repository;

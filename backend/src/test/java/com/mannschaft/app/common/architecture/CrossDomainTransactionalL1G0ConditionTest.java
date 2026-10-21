@@ -1,6 +1,8 @@
 package com.mannschaft.app.common.architecture;
 
 import external.transitivetx.ExternalPortBridge;
+import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.DescriptorDefaultPort;
+import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.DescriptorDefaultBridge;
 import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.SuperDefaultBridge;
 import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.MixedDefaultBridge;
 import com.mannschaft.app.proxy.repository.InheritedProxyRepository;
@@ -165,6 +167,11 @@ class CrossDomainTransactionalL1G0ConditionTest {
             .hasSize(2)
             .anyMatch(v -> v.contains(TransitiveProxyRepository.class.getName()))
             .anyMatch(v -> v.contains(InheritedProxyRepository.class.getName()));
+    }
+
+    @Test
+    void primitiveと配列のsignatureでも明示super本体を保持する() {
+        assertThat(d3t(DescriptorDefaultBridge.class, DescriptorDefaultPort.class)).hasSize(1);
     }
 
     @ParameterizedTest(name = "D-3 合成TX [{index}] {0}")

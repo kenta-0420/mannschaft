@@ -17,12 +17,20 @@ import com.tngtech.archunit.lang.SimpleConditionEvent;
 import com.tngtech.archunit.library.freeze.FreezingArchRule;
 
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.asm.ClassReader;
+import org.springframework.asm.ClassVisitor;
+import org.springframework.asm.MethodVisitor;
+import org.springframework.asm.Opcodes;
+import org.springframework.asm.SpringAsmInfo;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -135,13 +143,10 @@ class CrossDomainTransactionalTransitiveArchTest {
                 if (!isWithinApp(targetOwner)) {
                     continue;
                 }
-                Optional<? extends JavaCodeUnit> resolved = implementations.resolve(call);
-                if (resolved.isEmpty()) {
-                    continue;
-                }
-                JavaCodeUnit callee = resolved.get();
-                if (visited.add(callee.getFullName())) {
-                    queue.addLast(new PathNode(callee, path));
+                for (JavaCodeUnit callee : implementations.resolve(call)) {
+                    if (visited.add(callee.getFullName())) {
+                        queue.addLast(new PathNode(callee, path));
+                    }
                 }
             }
         }
@@ -220,6 +225,8 @@ class CrossDomainTransactionalTransitiveArchTest {
     /** 取込集合内の単一具象実装を一度だけ索引化し、interface呼び出しだけを補完する。 */
     private static final class SingleImplementationIndex {
         private final Map<String, JavaClass> singleImplementations = new LinkedHashMap<>();
+        private final Map<String, Map<InvocationSite, EnumSet<InvocationKind>>> invocationSites =
+            new LinkedHashMap<>();
 
         private SingleImplementationIndex(Iterable<JavaClass> importedClasses) {
             Map<String, List<JavaClass>> candidates = new LinkedHashMap<>();
@@ -239,21 +246,53 @@ class CrossDomainTransactionalTransitiveArchTest {
             });
         }
 
-        private Optional<? extends JavaCodeUnit> resolve(JavaCall<?> call) {
+        private List<? extends JavaCodeUnit> resolve(JavaCall<?> call) {
             Optional<? extends JavaCodeUnit> original = call.getTarget().resolveMember();
             JavaClass owner = call.getTarget().getOwner();
             if (!(call instanceof JavaMethodCall methodCall) || !owner.isInterface()) {
-                return original;
+                return original.stream().toList();
             }
             // interfaceのstatic/private本体は実装クラスのoverride対象ではない。
             if (original.isPresent() && (original.get().getModifiers().contains(JavaModifier.STATIC)
                     || original.get().getModifiers().contains(JavaModifier.PRIVATE))) {
-                return original;
+                return original.stream().toList();
             }
             JavaClass implementation = singleImplementations.get(owner.getName());
             if (implementation == null) {
-                return original;
+                return original.stream().toList();
             }
+            Optional<? extends JavaCodeUnit> dispatched = dispatch(methodCall, implementation, original);
+            // defaultの明示superだけが通常の単一実装dispatchと異なる。必要なoriginだけ遅延解析する。
+            if (original.isEmpty() || original.get().getModifiers().contains(JavaModifier.ABSTRACT)
+                    || !call.getOriginOwner().isAssignableTo(owner.getName())) {
+                return dispatched.stream().toList();
+            }
+            // lambdaのoriginはArchUnitが外側へ正規化するため、生の命令位置と照合せず従来解決を保持する。
+            if (call.isDeclaredInLambda()) {
+                return original.stream().toList();
+            }
+            JavaCodeUnit origin = call.getOrigin();
+            InvocationSite site = new InvocationSite(origin.getName(), descriptor(origin.getRawParameterTypes(),
+                origin.getRawReturnType()), owner.getName().replace('.', '/'), methodCall.getTarget().getName(),
+                descriptor(methodCall.getTarget().getRawParameterTypes(), methodCall.getTarget().getRawReturnType()),
+                call.getLineNumber());
+            EnumSet<InvocationKind> kinds = invocationSites.computeIfAbsent(call.getOriginOwner().getName(),
+                ignored -> readInvocationSites(call.getOriginOwner())).get(site);
+            if (kinds == null) {
+                throw new IllegalStateException("D-3Tのinterface呼び出し命令を特定できない: " + call);
+            }
+            List<JavaCodeUnit> bodies = new ArrayList<>();
+            if (kinds.contains(InvocationKind.SPECIAL)) {
+                original.ifPresent(bodies::add);
+            }
+            if (kinds.contains(InvocationKind.VIRTUAL)) {
+                dispatched.filter(body -> !bodies.contains(body)).ifPresent(bodies::add);
+            }
+            return List.copyOf(bodies);
+        }
+
+        private Optional<? extends JavaCodeUnit> dispatch(JavaMethodCall methodCall, JavaClass implementation,
+                Optional<? extends JavaCodeUnit> original) {
             String[] parameterTypes = methodCall.getTarget().getRawParameterTypes().stream()
                 .map(JavaClass::getName).toArray(String[]::new);
             Optional<JavaClass> current = Optional.of(implementation);
@@ -285,6 +324,72 @@ class CrossDomainTransactionalTransitiveArchTest {
             // 解決不能・曖昧な枝を全defaultへ広げず、従来の静的解決だけを保持する。
             return original;
         }
+
+        private static Map<InvocationSite, EnumSet<InvocationKind>> readInvocationSites(JavaClass originOwner) {
+            Map<InvocationSite, EnumSet<InvocationKind>> sites = new LinkedHashMap<>();
+            var source = originOwner.getSource().orElseThrow(() ->
+                new IllegalStateException("D-3Tの命令解析元が無い: " + originOwner.getName()));
+            try (InputStream input = source.getUri().toURL().openStream()) {
+                new ClassReader(input).accept(new ClassVisitor(SpringAsmInfo.ASM_VERSION) {
+                    @Override
+                    public MethodVisitor visitMethod(int access, String name, String methodDescriptor,
+                            String signature, String[] exceptions) {
+                        return new MethodVisitor(SpringAsmInfo.ASM_VERSION) {
+                            private int line;
+
+                            @Override
+                            public void visitLineNumber(int number, org.springframework.asm.Label start) {
+                                line = number;
+                            }
+
+                            @Override
+                            public void visitMethodInsn(int opcode, String owner, String targetName,
+                                    String targetDescriptor, boolean isInterface) {
+                                if (isInterface && (opcode == Opcodes.INVOKESPECIAL
+                                        || opcode == Opcodes.INVOKEINTERFACE)) {
+                                    InvocationSite site = new InvocationSite(name, methodDescriptor, owner,
+                                        targetName, targetDescriptor, line);
+                                    sites.computeIfAbsent(site, ignored -> EnumSet.noneOf(InvocationKind.class))
+                                        .add(opcode == Opcodes.INVOKESPECIAL
+                                            ? InvocationKind.SPECIAL : InvocationKind.VIRTUAL);
+                                }
+                            }
+                        };
+                    }
+                }, ClassReader.SKIP_FRAMES);
+            } catch (IOException exception) {
+                throw new IllegalStateException("D-3Tの命令解析に失敗: " + source.getUri(), exception);
+            }
+            return sites;
+        }
+
+        private static String descriptor(List<JavaClass> parameters, JavaClass returnType) {
+            return "(" + parameters.stream().map(SingleImplementationIndex::descriptor)
+                .collect(Collectors.joining()) + ")" + descriptor(returnType);
+        }
+
+        private static String descriptor(JavaClass type) {
+            if (type.isArray()) {
+                return "[" + descriptor(type.getComponentType());
+            }
+            return switch (type.getName()) {
+                case "void" -> "V";
+                case "boolean" -> "Z";
+                case "byte" -> "B";
+                case "char" -> "C";
+                case "short" -> "S";
+                case "int" -> "I";
+                case "long" -> "J";
+                case "float" -> "F";
+                case "double" -> "D";
+                default -> "L" + type.getName().replace('.', '/') + ";";
+            };
+        }
+
+        private enum InvocationKind { SPECIAL, VIRTUAL }
+
+        private record InvocationSite(String originName, String originDescriptor, String targetOwner,
+            String targetName, String targetDescriptor, int line) { }
     }
 
     record TransitiveViolation(
