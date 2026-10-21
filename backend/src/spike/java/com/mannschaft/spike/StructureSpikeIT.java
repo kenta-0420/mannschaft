@@ -44,10 +44,12 @@ class StructureSpikeIT {
                 .noneMatch(org.springframework.modulith.core.ApplicationModule::isOpen);
         var all = modules.detectViolations().getMessages();
         Map<String, Integer> dependencies = new LinkedHashMap<>();
+        Map<String, Integer> uniqueDependencies = new LinkedHashMap<>();
         Set<String> dependencyMessages = new LinkedHashSet<>();
         for (var module : modules) {
             var messages = module.detectDependencies(modules).getMessages();
             dependencies.put(module.getIdentifier().toString(), messages.size());
+            uniqueDependencies.put(module.getIdentifier().toString(), new LinkedHashSet<>(messages).size());
             dependencyMessages.addAll(messages);
         }
         var cycles = all.stream().filter(message -> message.startsWith("Cycle detected:")).toList();
@@ -100,12 +102,16 @@ class StructureSpikeIT {
                 + "\ncyclicStrongComponentCount=" + stronglyConnected.size()
                 + "\ncommonInCyclicStrongComponent=" + stronglyConnected.stream().anyMatch(component -> component.contains("common"))
                 + "\nwebhookInCyclicStrongComponent=" + stronglyConnected.stream().anyMatch(component -> component.contains("webhook"))
+                + "\nwithinOriginDuplicateMessages=" + (dependencies.values().stream().mapToInt(Integer::intValue).sum() - uniqueDependencies.values().stream().mapToInt(Integer::intValue).sum())
+                + "\ncrossOriginDuplicateMessages=" + (uniqueDependencies.values().stream().mapToInt(Integer::intValue).sum() - dependencyMessages.size())
+                + "\ncommonOriginUniqueDependencies=" + uniqueDependencies.get("common")
+                + "\nwebhookOriginUniqueDependencies=" + uniqueDependencies.get("webhook")
                 + "\ncommonOriginDependencies=" + dependencies.get("common")
                 + "\nwebhookOriginDependencies=" + dependencies.get("webhook")
                 + "\nreportedCycles=" + cycles.size() + "\ncommonParticipatingCycles=" + commonCycles
                 + "\nwebhookParticipatingCycles=" + webhookCycles + "\nunknown=" + unknown.size();
         Files.writeString(output, summary + "\n\noriginCounts=" + dependencies
-                + "\n\ncyclicStrongComponents=" + stronglyConnected + "\n\ncycleParticipants=" + cycleMembers + "\n\n" + String.join("\n---\n", all));
+                + "\n\noriginUniqueCounts=" + uniqueDependencies + "\n\ncyclicStrongComponents=" + stronglyConnected + "\n\ncycleParticipants=" + cycleMembers + "\n\n" + String.join("\n---\n", all));
         assertThat(unknown).as("全報告を種類別に漏れなく分類できること").isEmpty();
         assertThat(dependencies).containsKeys("common", "webhook");
     }
