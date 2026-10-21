@@ -120,6 +120,14 @@
       }
     },
     "password": {
+      "generator": {
+        "generate": "Generate password",
+        "copy": "Copy",
+        "copied": "Copied",
+        "generate_error": "Could not generate a password. Enter one manually.",
+        "copy_error": "Could not copy. Show the password and copy it manually.",
+        "hint": "Generating replaces the password fields. Keep it in a password manager before saving."
+      },
       "section_title_change": "Change Password",
       "section_title_set": "Set Password",
       "no_password_description": "No password is currently set. Setting a password allows you to log in with email and password.",
