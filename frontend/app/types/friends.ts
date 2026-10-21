@@ -31,8 +31,12 @@ export interface TeamFriendView {
   friendTeamId: number
   /** 相手チーム名（非公開時は空になり得る） */
   friendTeamName: string | null
-  /** フレンド関係の公開フラグ */
-  isPublic: boolean
+  /**
+   * フレンド関係の公開フラグ。
+   * API の JSON キーは "public"（BE TeamFriendView の @JsonProperty("public")、生成型 TeamFriendView.public）。
+   * isPublic ではない点に注意（リクエスト SetVisibilityRequest は isPublic）。
+   */
+  public: boolean
   /** フレンド関係成立日時（ISO 8601） */
   establishedAt: string
 }
@@ -45,13 +49,20 @@ export interface TeamFriendListResponse {
   pagination: FriendsPagination
 }
 
-/** 他チームフォロー用リクエスト */
-export interface FollowTeamRequest {
-  /** フォロー先チーム ID */
-  targetTeamId: number
+/** 他チームフォロー用リクエストの共通部 */
+interface FollowTeamRequestBase {
   /** 挨拶コメント（任意、最大 300 文字） */
   comment?: string
 }
+
+/**
+ * 他チームフォロー用リクエスト。
+ * フォロー先は targetTeamId（数値 ID）か targetTeamSlug（URL 名）の **ちょうど一方だけ** を指定する
+ * （両方・どちらも無しは BE が 400 を返す）。UI は利用者が数値 ID を知り得ないため slug を使う。
+ */
+export type FollowTeamRequest =
+  | (FollowTeamRequestBase & { targetTeamId: number, targetTeamSlug?: never })
+  | (FollowTeamRequestBase & { targetTeamSlug: string, targetTeamId?: never })
 
 /** チーム間フォローのレスポンス */
 export interface FollowTeamResponse {

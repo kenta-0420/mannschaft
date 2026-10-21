@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { PRIVACY_POLICY_VERSION } from '~/constants/legalPolicy'
+
 const { t } = useI18n()
 
 definePageMeta({
@@ -7,7 +9,7 @@ definePageMeta({
 
 useSeoMeta({
   title: () => t('landing.legal.privacy.title') + ' - Mannschaft',
-  description: () => t('landing.legal.privacy.version_notice'),
+  description: () => t('landing.legal.privacy.version_notice', { version: PRIVACY_POLICY_VERSION }),
 })
 </script>
 

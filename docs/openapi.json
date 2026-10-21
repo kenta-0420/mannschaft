@@ -89324,7 +89324,7 @@
         "tags": [
           "2段階認証"
         ],
-        "summary": "TOTPログイン検証",
+        "summary": "2FAログイン検証（TOTP / バックアップコード / メールOTP）",
         "operationId": "validateTotp",
         "requestBody": {
           "content": {
@@ -89338,11 +89338,11 @@
         },
         "responses": {
           "200": {
-            "description": "TOTP検証成功",
+            "description": "2FA検証成功",
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseTokenResponse"
+                  "$ref": "#/components/schemas/ApiResponseMfaLoginTokenResponse"
                 }
               }
             }
@@ -89382,12 +89382,21 @@
           {
             "name": "mfaSessionToken",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "string"
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestMfaRecoveryRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "リカバリーメール送信完了",
@@ -89413,12 +89422,21 @@
           {
             "name": "token",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "string"
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmMfaRecoveryRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "リカバリー完了",
@@ -89433,6 +89451,141 @@
         }
       }
     },
+    "/api/v1/auth/2fa/reauth/email/send": {
+      "post": {
+        "tags": [
+          "2段階認証"
+        ],
+        "summary": "本人確認用メールOTP送信（無効化・再生成用）",
+        "operationId": "sendReauthEmailOtp",
+        "responses": {
+          "200": {
+            "description": "送信受付",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMfaEmailSendResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/2fa/email/setup": {
+      "post": {
+        "tags": [
+          "2段階認証"
+        ],
+        "summary": "メール2FA設定開始（設定用コード送信）",
+        "operationId": "startEmailSetup",
+        "responses": {
+          "200": {
+            "description": "送信受付",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMfaEmailSendResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/2fa/email/send": {
+      "post": {
+        "tags": [
+          "2段階認証"
+        ],
+        "summary": "2FAログイン用メールOTP送信",
+        "operationId": "sendLoginEmailOtp",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaEmailSendRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "送信受付",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMfaEmailSendResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/2fa/email/enable": {
+      "post": {
+        "tags": [
+          "2段階認証"
+        ],
+        "summary": "メール2FA有効化",
+        "operationId": "enableEmailTwoFactor",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnableEmailTwoFactorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "有効化成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBackupCodesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/2fa/disable": {
+      "post": {
+        "tags": [
+          "2段階認証"
+        ],
+        "summary": "2FA無効化",
+        "operationId": "disableTwoFactor",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisableTwoFactorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "無効化成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/2fa/backup-codes/regenerate": {
       "post": {
         "tags": [
@@ -89440,6 +89593,15 @@
         ],
         "summary": "バックアップコード再生成",
         "operationId": "regenerateBackupCodes",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegenerateBackupCodesRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "再生成成功",
@@ -149766,6 +149928,27 @@
         }
       }
     },
+    "/api/v1/auth/2fa/status": {
+      "get": {
+        "tags": [
+          "2段階認証"
+        ],
+        "summary": "2FA設定状態取得",
+        "operationId": "getTwoFactorStatus",
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTwoFactorStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/applications/{id}": {
       "get": {
         "tags": [
@@ -195450,11 +195633,11 @@
           "targetTeamId": {
             "type": "integer",
             "format": "int64"
+          },
+          "targetTeamSlug": {
+            "type": "string"
           }
-        },
-        "required": [
-          "targetTeamId"
-        ]
+        }
       },
       "ApiResponseFollowTeamResponse": {
         "type": "object",
@@ -213574,14 +213757,65 @@
       "ValidateTotpLoginRequest": {
         "type": "object",
         "properties": {
+          "code": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "TOTP",
+              "BACKUP_CODE",
+              "EMAIL"
+            ]
+          },
           "mfaSessionToken": {
             "type": "string",
             "minLength": 1
           },
           "totpCode": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseMfaLoginTokenResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MfaLoginTokenResponse"
+          }
+        }
+      },
+      "MfaLoginTokenResponse": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "backupCodesRemaining": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "expiresIn": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "method": {
             "type": "string",
-            "maxLength": 6,
-            "minLength": 6
+            "enum": [
+              "TOTP",
+              "BACKUP_CODE",
+              "EMAIL"
+            ]
+          },
+          "refreshToken": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tokenType": {
+            "type": "string"
           }
         }
       },
@@ -213601,6 +213835,107 @@
           },
           "secret": {
             "type": "string"
+          }
+        }
+      },
+      "RequestMfaRecoveryRequest": {
+        "type": "object",
+        "properties": {
+          "mfaSessionToken": {
+            "type": "string"
+          }
+        }
+      },
+      "ConfirmMfaRecoveryRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseMfaEmailSendResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MfaEmailSendResponse"
+          }
+        }
+      },
+      "MfaEmailSendResponse": {
+        "type": "object",
+        "properties": {
+          "expiresInSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "maskedEmail": {
+            "type": "string"
+          },
+          "resendAfterSeconds": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "MfaEmailSendRequest": {
+        "type": "object",
+        "properties": {
+          "mfaSessionToken": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "EnableEmailTwoFactorRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\d{6}$"
+          }
+        }
+      },
+      "DisableTwoFactorRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "currentPassword": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "TOTP",
+              "BACKUP_CODE",
+              "EMAIL"
+            ]
+          }
+        },
+        "required": [
+          "method"
+        ]
+      },
+      "RegenerateBackupCodesRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "currentPassword": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "TOTP",
+              "BACKUP_CODE",
+              "EMAIL"
+            ]
           }
         }
       },
@@ -251734,6 +252069,33 @@
             "items": {
               "$ref": "#/components/schemas/AuthSessionResponse"
             }
+          }
+        }
+      },
+      "ApiResponseTwoFactorStatusResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TwoFactorStatusResponse"
+          }
+        }
+      },
+      "TwoFactorStatusResponse": {
+        "type": "object",
+        "properties": {
+          "backupCodesRemaining": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "TOTP",
+              "EMAIL"
+            ]
           }
         }
       },

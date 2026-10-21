@@ -11,6 +11,15 @@
       "target_team_id": "대상 팀 ID",
       "comment_label": "인사 댓글（선택 사항）"
     },
+    "follow_dialog": {
+      "search_label": "팀 이름으로 검색",
+      "search_placeholder": "팀 이름을 2자 이상 입력하세요",
+      "slug_input_label": "URL 이름으로 지정",
+      "slug_input_hint": "목록에 나오지 않으면 아래 입력란에 상대 팀의 URL 이름(주소 끝의 영문·숫자)을 입력하세요",
+      "no_results": "해당하는 팀을 찾을 수 없습니다",
+      "search_error": "검색에 실패했습니다. 통신 상태를 확인하고 다시 시도해 주세요",
+      "retry": "다시 검색"
+    },
     "actions": {
       "follow": "팔로우",
       "unfollow": "팔로우 해제",
@@ -41,7 +50,7 @@
       "follow": {
         "title": "팔로우해서 프렌드 되기",
         "step1": "프렌드 팀 탭 상단의 \"팔로우\" 버튼을 누릅니다",
-        "step2": "상대 팀의 ID(숫자)를 입력합니다",
+        "step2": "팀 이름으로 검색해 팔로우할 팀을 선택합니다. 찾을 수 없으면 상대 팀의 URL 이름(주소 끝부분)을 직접 입력합니다",
         "step3": "인사 코멘트를 입력합니다(선택, 300자까지)",
         "step4": "대화상자의 \"팔로우\"를 누릅니다",
         "mutual": "상대 팀도 나를 팔로우하면 \"프렌드 팀이 되었습니다\"라고 표시되며 프렌드 팀이 성립됩니다.",
@@ -137,8 +146,8 @@
       "modal_title": "게시물 전달",
       "target_label": "배포 범위",
       "target_member": "멤버만",
-      "target_supporter": "멤버+서포터（Phase 3 이후）",
-      "target_supporter_tooltip": "Phase 3 이후에 이용 가능합니다",
+      "target_supporter": "멤버+서포터（준비 중）",
+      "target_supporter_tooltip": "이 공개 범위는 아직 이용할 수 없습니다",
       "comment_label": "관리자 댓글（선택 사항）",
       "comment_placeholder": "전달 시 첨부할 댓글 입력（선택 사항）",
       "submit": "전달",
@@ -147,7 +156,8 @@
       "revoke": "전달 취소",
       "revoke_success": "전달을 취소했습니다",
       "revoke_confirm": "이 전달을 취소하시겠습니까?",
-      "error": "전달에 실패했습니다"
+      "error": "전달에 실패했습니다",
+      "already_forwarded": "이미 전달된 게시물입니다. 목록을 새로 고쳤습니다"
     }
   },
   "forward_exports": {
