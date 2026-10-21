@@ -1,5 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
+import external.transitivetx.ExternalPortBridge;
+import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.ExcludedImplementationReference;
 import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.Port;
 import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.ChildPort;
 import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.AbstractBridge;
@@ -32,6 +34,8 @@ import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.lang.ArchCondition;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -83,11 +87,23 @@ class CrossDomainTransactionalL1G0ConditionTest {
 
     @Test
     void import集合外の具象実装は実装数を変えない() {
-        // SecondBridgeはclasspathから解決可能でも明示候補集合に含まれない。
-        assertThat(d3t(InterfaceEntry.class, SingleBridge.class))
+        JavaClasses candidates = imported(InterfaceEntry.class, SingleBridge.class);
+        assertThat(candidates.contain(SecondBridge.class.getName())).isFalse();
+        assertThat(candidates.get(ExcludedImplementationReference.class).getField("excluded").getRawType()
+            .getName()).isEqualTo(SecondBridge.class.getName());
+        assertThat(candidates.get(AbstractBridge.class).getAllSubclasses())
+            .extracting(JavaClass::getName).contains(SecondBridge.class.getName());
+
+        assertThat(detect(CrossDomainTransactionalTransitiveArchTest.class,
+            "notReachOtherDomainRepositories", candidates))
             .filteredOn(v -> v.contains(".execute(")).hasSize(1);
     }
 
+    @Test
+    void 外部packageの具象実装候補を数えない() {
+        assertThat(d3t(InterfaceEntry.class, SingleBridge.class, ExternalPortBridge.class))
+            .filteredOn(v -> v.contains(".execute(")).hasSize(1);
+    }
     @Test
     void interface再帰とdiamondは停止し入口とrepoで一件になる() {
         assertThat(d3t(InterfaceEntry.class, RecursiveBridge.class))
@@ -97,16 +113,23 @@ class CrossDomainTransactionalL1G0ConditionTest {
                 + TransitiveProxyRepository.class.getName() + " (domain 'proxy') [D-3T]");
     }
 
-    @Test
-    void 一段多段のメソッドとクラス合成TXをD3とD3Tが検出する() {
-        for (Class<?> entry : List.of(ComposedMethodEntry.class, NestedMethodEntry.class,
-                ComposedClassEntry.class, NestedClassEntry.class)) {
-            assertThat(detect(CrossDomainTransactionalArchTest.class,
-                "notDependOnOtherDomainRepositories", imported(entry))).as(entry.getSimpleName()).isNotEmpty();
-            assertThat(d3t(entry)).as(entry.getSimpleName()).hasSize(1);
-        }
+    @ParameterizedTest
+    @MethodSource("composedEntries")
+    void 合成TXをD3が検出する(Class<?> entry) {
+        assertThat(detect(CrossDomainTransactionalArchTest.class,
+            "notDependOnOtherDomainRepositories", imported(entry))).isNotEmpty();
     }
 
+    @ParameterizedTest
+    @MethodSource("composedEntries")
+    void 合成TXをD3Tが検出する(Class<?> entry) {
+        assertThat(d3t(entry)).hasSize(1);
+    }
+
+    private static List<Class<?>> composedEntries() {
+        return List.of(ComposedMethodEntry.class, NestedMethodEntry.class,
+            ComposedClassEntry.class, NestedClassEntry.class);
+    }
     @Test
     void 非TXlistener自身は入口にせず呼出先の越境TXだけを検出する() {
         JavaClasses candidates = imported(NonTransactionalListener.class,
@@ -128,7 +151,7 @@ class CrossDomainTransactionalL1G0ConditionTest {
 
     private JavaClasses imported(Class<?>... candidates) {
         List<Class<?>> types = new ArrayList<>(Arrays.asList(candidates));
-        types.addAll(List.of(Port.class, ChildPort.class, AbstractBridge.class,
+        types.addAll(List.of(Port.class, ChildPort.class, AbstractBridge.class, ExcludedImplementationReference.class,
             ComposedTx.class, NestedTx.class, PlainListener.class, CycleA.class, CycleB.class,
             TransitiveProxyRepository.class, TransitiveResidentRepository.class));
         return new ClassFileImporter().importClasses(types);

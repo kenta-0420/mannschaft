@@ -3,6 +3,10 @@ package com.mannschaft.app.resident.transitivetx;
 import com.mannschaft.app.proxy.repository.TransitiveProxyRepository;
 import com.mannschaft.app.resident.repository.TransitiveResidentRepository;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.event.TransactionPhase;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -24,6 +28,10 @@ public class L1G0TransactionalFixture {
     public static class SingleBridge extends AbstractBridge { }
     /** 二件目の候補がある場合は展開を打ち切る。 */
     public static class SecondBridge extends AbstractBridge { }
+    /** 候補へ含めずに二件目の型を解決グラフへ読み込ませる参照元。 */
+    public abstract static class ExcludedImplementationReference {
+        public SecondBridge excluded;
+    }
     /** override した安全な本体を優先する。 */
     public static class SafeOverrideBridge extends AbstractBridge {
         @Override
@@ -70,7 +78,9 @@ public class L1G0TransactionalFixture {
     /** 一段の合成TX注釈。 */
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.TYPE, ElementType.METHOD, ElementType.ANNOTATION_TYPE})
-    @Transactional
+    @Async("module-event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public @interface ComposedTx { }
     /** 二段の合成TX注釈。 */
     @Retention(RetentionPolicy.RUNTIME)
@@ -80,6 +90,8 @@ public class L1G0TransactionalFixture {
     /** tx属性を持たないlistener注釈。 */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)
+    @Async("module-event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public @interface PlainListener { }
     /** 非TXの循環メタ注釈の一端。 */
     @Retention(RetentionPolicy.RUNTIME)
