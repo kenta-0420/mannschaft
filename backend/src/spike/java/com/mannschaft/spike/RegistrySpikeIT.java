@@ -47,13 +47,13 @@ class RegistrySpikeIT {
     @Autowired Listeners listeners;
 
     @BeforeEach
-    void 清掃する() { jdbc.update("delete from event_publication"); listeners.observed.clear(); listeners.threads.clear(); listeners.failed.set(false); }
+    void 清掃する() { jdbc.update("delete from event_publication"); listeners.observed().clear(); listeners.threads().clear(); listeners.failureMarker().set(false); }
 
     @Test
     void 既存認証イベントは購読されても保存0件() {
         publish(new UserRegisteredEvent(1L, "spike@example.invalid", "検体", "synthetic-secret"));
         await().atMost(Duration.ofSeconds(15)).untilAsserted(() ->
-                assertThat(listeners.observed).containsKey("auth"));
+                assertThat(listeners.observed()).containsKey("auth"));
         assertThat(jdbc.queryForObject("select count(*) from event_publication", Long.class)).isZero();
     }
 
@@ -62,9 +62,9 @@ class RegistrySpikeIT {
         publish(new SuccessEvent(1L, 2L, Instant.now()));
         await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> {
             assertThat(jdbc.queryForObject("select count(*) from event_publication where completion_date is not null", Long.class)).isEqualTo(1L);
-            assertThat(listeners.observed).containsEntry("success", false);
-            assertThat(listeners.threads.get("success")).startsWith("module-spike-");
-            assertThat(listeners.observed).containsKey("ordinary");
+            assertThat(listeners.observed()).containsEntry("success", false);
+            assertThat(listeners.threads().get("success")).startsWith("module-spike-");
+            assertThat(listeners.observed()).containsKey("ordinary");
         });
         assertThat(jdbc.queryForList("select listener_id from event_publication", String.class))
                 .containsExactly("module-success");
@@ -74,9 +74,9 @@ class RegistrySpikeIT {
     void 非TX非同期の例外は未完了のまま残る() {
         publish(new FailureEvent(1L, 2L, Instant.now()));
         await().atMost(Duration.ofSeconds(15)).untilAsserted(() ->
-                assertThat(listeners.failed.get()).isTrue());
-        assertThat(listeners.observed).containsEntry("failure", false);
-        assertThat(listeners.threads.get("failure")).startsWith("module-spike-");
+                assertThat(listeners.failureMarker().get()).isTrue());
+        assertThat(listeners.observed()).containsEntry("failure", false);
+        assertThat(listeners.threads().get("failure")).startsWith("module-spike-");
         assertThat(jdbc.queryForObject("select count(*) from event_publication where completion_date is null", Long.class)).isEqualTo(1L);
     }
 
@@ -108,6 +108,9 @@ class RegistrySpikeIT {
         final Map<String, Boolean> observed = new ConcurrentHashMap<>();
         final Map<String, String> threads = new ConcurrentHashMap<>();
         final java.util.concurrent.atomic.AtomicBoolean failed = new java.util.concurrent.atomic.AtomicBoolean();
+        public Map<String, Boolean> observed() { return observed; }
+        public Map<String, String> threads() { return threads; }
+        public java.util.concurrent.atomic.AtomicBoolean failureMarker() { return failed; }
         @Async("module-event-pool")
         @TransactionalEventListener(id = "legacy-auth")
         public void auth(UserRegisteredEvent event) { observed.put("auth", TransactionSynchronizationManager.isActualTransactionActive()); }
@@ -135,7 +138,7 @@ class RegistrySpikeIT {
                 @Override public org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
                     return (exception, method, arguments) -> {
                         if (!method.getName().equals("failure")) { throw new IllegalStateException("予定外の非同期失敗", exception); }
-                        listeners.getObject().failed.set(true);
+                        listeners.getObject().failureMarker().set(true);
                     };
                 }
             };
