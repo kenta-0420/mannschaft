@@ -1,3 +1,4 @@
+import java.util.HashSet
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
@@ -1225,7 +1226,7 @@ listOf("Registry", "Structure", "Webhook").forEach { kind ->
     tasks.register<Test>("modulith${kind}Spike") {
         testClassesDirs = spike.output.classesDirs
         classpath = spike.runtimeClasspath
-        useJUnitPlatform { includeEngines("junit-jupiter"); setExcludeTags(emptySet()); setIncludeTags(emptySet()) }
+        useJUnitPlatform { includeEngines("junit-jupiter"); setExcludeTags(HashSet<String>()); setIncludeTags(HashSet<String>()) }
         include("**/*${kind}SpikeIT.class")
         maxHeapSize = if (kind == "Structure") "4g" else "2g"
         systemProperty("spring.config.name", "spike")
