@@ -204,7 +204,7 @@ test.describe('CMP-261012-0910 2FA 実機E2E', () => {
   test('S1 TOTP 有効化（QR→6桁→バックアップコード）→再ログインで TOTP を要求', async ({ browser }) => {
     const { ctx, page } = await newCtx(browser)
     await uiLogin(page, A)
-    await page.waitForURL(/\/(dashboard|$|\?)/, { timeout: 30_000 }).catch(() => {})
+    await page.waitForURL(/\/(dashboard|$|\?)/, { timeout: 30_000 })
     await page.goto(`${FE}/settings/security`)
     await waitForHydration(page)
     await expect(page.getByTestId('two-fa-disabled')).toBeVisible({ timeout: 20_000 })
@@ -617,10 +617,10 @@ test.describe('CMP-261012-0910 2FA 実機E2E', () => {
     await shot(page, 's7-1-D-own-disabled')
     // 画面に出ている「今の自分のセッションで 2FA 系 API を直接叩く」＝ブラウザ認証付きで他人の対象指定は不能。
     // 無効化 API は対象ユーザーを引数に取らない（本人固定）。2FA 未設定の D が叩くと「未有効」で拒否される。
-    const r = await page.evaluate(async (api) => {
+    const r = await page.evaluate(async () => {
       const tok = (JSON.parse(localStorage.getItem('auth') ?? '{}') as { accessToken?: string }).accessToken
       return { tok: !!tok }
-    }, API)
+    })
     console.log(`[S7] D のブラウザに access token 保持: ${r.tok}`)
     await ctx.close()
 

@@ -36,7 +36,6 @@ const INBOX = process.env.MAIL_INBOX_URL ?? 'http://127.0.0.1:4599/inbox'
 const EVIDENCE = process.env.EVIDENCE_DIR ?? path.resolve('test-results', 'alic-evidence')
 // 隔離環境の docker コンテナ名・DB パスワード（環境に合わせて上書き可）
 const MYSQL_CONTAINER = process.env.MFA_MYSQL_CONTAINER ?? 'mfa0910-mysql'
-const VALKEY_CONTAINER = process.env.MFA_VALKEY_CONTAINER ?? 'mfa0910-valkey'
 const MYSQL_PASSWORD = process.env.MFA_MYSQL_PASSWORD ?? 'root'
 const PASSWORD = 'Passw0rd!2026a'
 const STAMP = Date.now().toString(36)
