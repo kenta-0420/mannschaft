@@ -316,10 +316,15 @@ public class BroadcastAudienceResolver {
     }
 
     /**
-     * 内部のチーム ID を、API で返す URL 識別子（slug）へ写す（順序を保つ。論理削除済みなど slug を引けないものは除く）。
+     * 内部のチーム ID を、API で返す URL 識別子（slug）へ写す（順序を保つ）。
+     *
+     * <p>論理削除済みのチームも slug で返し、黙って落とさない。落とすと、範囲テンプレートの「チームを選ぶ」が
+     * 残りのチームだけで適用・送信できてしまう（F01.2.1 §8.6 は削除済みチームを含むテンプレートを
+     * 400 {@code BROADCAST_002} にして宛先を選び直させる）。返した slug は宛先の検証で解決できず 002 になる。</p>
      *
      * @param teamIds チーム ID（null なら null）
      * @return slug の一覧。入力が null なら null（「すべてのチーム」の意味を保つ）
+     * @throws IllegalStateException 行そのものが無いチーム ID があるとき（チームは物理削除しないため、データの破損）
      */
     public List<String> teamSlugsOf(List<Long> teamIds) {
         if (teamIds == null) {
@@ -329,17 +334,33 @@ public class BroadcastAudienceResolver {
             return List.of();
         }
         Map<Long, String> slugs = teamSlugsByIds(teamIds);
-        return teamIds.stream().map(slugs::get).filter(Objects::nonNull).toList();
+        return teamIds.stream().map(id -> requireSlug(slugs, id)).toList();
+    }
+
+    /**
+     * ID → slug の写像から slug を取り出す。無ければ黙って落とさず例外にする（宛先を失うと別の宛先で送れてしまう）。
+     *
+     * @param slugById {@link #teamSlugsByIds} の結果
+     * @param teamId   チーム ID
+     * @return slug
+     */
+    public static String requireSlug(Map<Long, String> slugById, Long teamId) {
+        String slug = slugById.get(teamId);
+        if (slug == null) {
+            throw new IllegalStateException("チームの行が見つかりません（チームは物理削除しない）: teamId=" + teamId);
+        }
+        return slug;
     }
 
     /**
      * 内部のチーム ID → URL 識別子（slug）の写像をまとめて引く（一覧の応答で N+1 にしないため）。
+     * 論理削除済みのチームも含める（{@link #teamSlugsOf} の理由と同じ）。
      *
      * @param teamIds チーム ID（null・空なら空 Map）
-     * @return ID → slug（論理削除済みなど引けないものは含まない）
+     * @return ID → slug（行が無い ID は含まない）
      */
     public Map<Long, String> teamSlugsByIds(java.util.Collection<Long> teamIds) {
-        return teamService.getSlugsByIds(teamIds);
+        return teamService.getSlugsByIdsIncludingDeleted(teamIds);
     }
 
     /**

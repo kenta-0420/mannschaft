@@ -384,6 +384,16 @@ public interface TeamRepository
     }
 
     /**
+     * 論理削除済みを含めて、指定 ID 集合の id → slug を一括取得する（[0]=id, [1]=slug）。
+     *
+     * <p>告知の範囲テンプレートが保存しているチームを API の識別子（slug）で返すために使う。保存後に論理削除された
+     * チームも slug を返し、宛先の検証（{@code BROADCAST_002}）まで失わないようにする（F01.2.1 §8.6）。
+     * slug は論理削除後も一意索引に残り、他のチームに再利用されない。</p>
+     */
+    @Query(value = "SELECT id, slug FROM teams WHERE id IN (:ids)", nativeQuery = true)
+    List<Object[]> findIdAndSlugByIdInIncludingDeleted(@Param("ids") Collection<Long> ids);
+
+    /**
      * マイページ チームプロジェクト集約用: 指定 ID 集合の id → name（チーム名）を一括取得する。
      *
      * <p>{@link #findIdAndSlugByIdIn(Collection)} の name 版。{@code @SQLRestriction("deleted_at IS NULL")}

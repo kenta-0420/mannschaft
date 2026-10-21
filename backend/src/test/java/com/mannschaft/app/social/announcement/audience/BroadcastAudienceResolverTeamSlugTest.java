@@ -149,11 +149,21 @@ class BroadcastAudienceResolverTeamSlugTest {
     }
 
     @Test
-    @DisplayName("応答用に内部 ID を slug へ写す（順序を保ち、引けないものは除く。null は null のまま）")
+    @DisplayName("応答用に内部 ID を slug へ写す（順序を保つ。論理削除済みのチームも slug で返し、黙って落とさない。null は null）")
     void teamSlugsOf() {
-        given(teamService.getSlugsByIds(List.of(8L, 7L, 5L))).willReturn(Map.of(7L, "t1-alpha", 8L, "t2-beta"));
+        // 8L は保存後に論理削除されたチーム。論理削除を含めて引く（§8.6: 落とすと残りのチームだけで送れてしまう）
+        given(teamService.getSlugsByIdsIncludingDeleted(List.of(8L, 7L)))
+                .willReturn(Map.of(7L, "t1-alpha", 8L, "t2-deleted"));
 
-        assertThat(resolver.teamSlugsOf(List.of(8L, 7L, 5L))).containsExactly("t2-beta", "t1-alpha");
+        assertThat(resolver.teamSlugsOf(List.of(8L, 7L))).containsExactly("t2-deleted", "t1-alpha");
         assertThat(resolver.teamSlugsOf(null)).isNull();
+    }
+
+    @Test
+    @DisplayName("行そのものが無いチーム ID は黙って除かず例外にする（チームは物理削除しない＝データの破損）")
+    void teamSlugsOfMissingRowFailsLoudly() {
+        given(teamService.getSlugsByIdsIncludingDeleted(List.of(7L, 5L))).willReturn(Map.of(7L, "t1-alpha"));
+
+        assertThatThrownBy(() -> resolver.teamSlugsOf(List.of(7L, 5L))).isInstanceOf(IllegalStateException.class);
     }
 }

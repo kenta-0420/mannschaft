@@ -1200,6 +1200,26 @@ public class TeamService {
     }
 
     /**
+     * 論理削除済みを含めて、指定 ID 集合の id → slug を一括取得する（N+1 回避・Entity は渡さない）。
+     *
+     * <p>告知の範囲テンプレートの応答用。保存後に論理削除されたチームも黙って落とさず slug で返し、適用時の検証で
+     * 400 {@code BROADCAST_002}（宛先の選び直し）に至らせる（F01.2.1 §8.6）。通常の slug 解決には使わない。</p>
+     *
+     * @param ids 取得対象のチーム ID 集合
+     * @return id → slug の Map（行が無い ID は含まない）。ids が空の場合は空 Map
+     */
+    public Map<Long, String> getSlugsByIdsIncludingDeleted(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, String> slugs = new HashMap<>();
+        for (Object[] row : teamRepository.findIdAndSlugByIdInIncludingDeleted(ids)) {
+            slugs.put(((Number) row[0]).longValue(), (String) row[1]);
+        }
+        return slugs;
+    }
+
+    /**
      * 指定 ID 集合に対して id → name（チーム名）のマッピングを一括取得する（N+1 回避）。
      *
      * <p>マイページ チームプロジェクト集約（{@code GET /api/v1/me/team-projects}）が、

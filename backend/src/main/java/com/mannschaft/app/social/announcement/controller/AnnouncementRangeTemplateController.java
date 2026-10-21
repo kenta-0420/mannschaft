@@ -307,8 +307,10 @@ public class AnnouncementRangeTemplateController {
                 .toList();
         Map<Long, String> slugById = allTeamIds.isEmpty() ? Map.of() : audienceResolver.teamSlugsByIds(allTeamIds);
         return entities.stream()
+                // 論理削除済みのチームも slug で返し、黙って落とさない（F01.2.1 §8.6。適用時に 400 BROADCAST_002 で
+                // 宛先を選び直させる。落とすと残りのチームだけで送れてしまう）
                 .map(entity -> TemplateResponseDto.from(entity, ids -> ids == null ? null
-                        : ids.stream().map(slugById::get).filter(Objects::nonNull).toList()))
+                        : ids.stream().map(id -> BroadcastAudienceResolver.requireSlug(slugById, id)).toList()))
                 .toList();
     }
 }
