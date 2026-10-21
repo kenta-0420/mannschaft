@@ -67,6 +67,9 @@ class StructureSpikeIT {
             if (members.contains("common")) { commonCycles++; }
             cycleMembers.add(String.join(",", members));
         }
+        var globalDependencies = all.stream().filter(message -> !message.startsWith("Cycle detected:"))
+                .collect(java.util.stream.Collectors.toSet());
+        assertThat(dependencyMessages).containsExactlyInAnyOrderElementsOf(globalDependencies);
         Map<String, Set<String>> graph = new LinkedHashMap<>();
         for (var module : modules) {
             graph.put(module.getIdentifier().toString(), module.getDirectDependencies(modules).uniqueModules()
@@ -88,6 +91,11 @@ class StructureSpikeIT {
         var output = Path.of(System.getProperty("spike.output") + "-structure.txt");
         String summary = "compiledProductionClasses=" + compiled.size() + "\nimportedProductionClasses=" + imported.size() + "\nmodules=" + modules.stream().count() + "\nall=" + all.size()
                 + "\ndependencyTotal=" + dependencies.values().stream().mapToInt(Integer::intValue).sum()
+                + "\nglobalUniqueDependencies=" + globalDependencies.size()
+                + "\noriginDuplicateMessages=" + (dependencies.values().stream().mapToInt(Integer::intValue).sum() - dependencyMessages.size())
+                + "\ncyclicStrongComponentCount=" + stronglyConnected.size()
+                + "\ncommonInCyclicStrongComponent=" + stronglyConnected.stream().anyMatch(component -> component.contains("common"))
+                + "\nwebhookInCyclicStrongComponent=" + stronglyConnected.stream().anyMatch(component -> component.contains("webhook"))
                 + "\ncommonOriginDependencies=" + dependencies.get("common")
                 + "\nwebhookOriginDependencies=" + dependencies.get("webhook")
                 + "\nreportedCycles=" + cycles.size() + "\ncommonParticipatingCycles=" + commonCycles
