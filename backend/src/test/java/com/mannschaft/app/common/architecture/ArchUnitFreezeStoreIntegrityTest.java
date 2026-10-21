@@ -740,7 +740,9 @@ class ArchUnitFreezeStoreIntegrityTest {
     //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 4）。
     // Issue #2997 G7-a: 1304 -> 1298（-6）。DigestAsyncExecutor と TeamSlotNoteNotifyListener が @Transactional を外した（各 3 行、追加 0・削除 6）。
     // Issue #3892: OrganizationService の InviteTokenRepository 直接依存解消で3行減（追加0）。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1295;
+    // CMP-261012-0315: TeamFriendsService が TeamRepository を TeamService（team ドメインの公開 Service）に置き換え、
+    //   TeamRepository への依存行が3件解消（追加 0・削除 3）。1295 -> 1292。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1292;
 
     /**
      * 推移的クロスドメイン {@code @Transactional} 番人（D-3T）の初期凍結行数。
@@ -880,7 +882,10 @@ class ArchUnitFreezeStoreIntegrityTest {
     // CMP-261016-0950: MemberCardServiceのclassTX除去でprivate3入口×2repoのみ分類対象外。
     // 旧public read6本は明示readOnlyを維持し、越境根治による減少とは扱わない。
     // Issue #3892: deleteOrganization の InviteTokenRepository 推移到達解消でさらに1行減（追加0）。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7137;
+    // Issue #2997 G3: 最新 main の 7137 -> 7115（-22）。EmergencyClosureService#sendClosure（通知系 5 行。UserRepository への到達は残る）、
+    //   ReservationReminderDispatchBatchService（dispatchDueReminders 5・sendReminder 5・resolveLocale 1 の計 11 行）、
+    //   ReservationWaitlistService#notifySlotReopened（5 行）が通知を業務TXで呼ばなくなった（追加 0・削除 22）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7115;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -973,7 +978,8 @@ class ArchUnitFreezeStoreIntegrityTest {
     // CMP-261017-0549: Collector の未使用 AuditLogRepository 依存（field・ctor）2 件を解消。
     // Issue #3892: OrganizationService の InviteTokenRepository 直接依存解消で3行減（追加0）。
     // 共通base 1858から独立した2件と3件を両方除去し、1853を維持する。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1853;
+    // CMP-261012-0315: TeamFriendsService が TeamRepository を TeamService に置き換え、TeamRepository への依存行が3件解消（追加 0・削除 3）。1853 -> 1850。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1850;
 
     /**
      * ServiceAPIの正本行数。更新は実削減の原因検分と同一コミットに限る。

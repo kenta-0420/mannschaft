@@ -43,6 +43,11 @@ public class ReservationReminderEntity {
     @Builder.Default
     private ReminderStatus status = ReminderStatus.PENDING;
 
+    /**
+     * 送信済み時刻（兼 先取り claim の照合キー）。本番 DDL（V3.065）は秒精度の {@code DATETIME} のため、
+     * 生成スキーマ（テスト）も同じ精度に揃える。小数秒を持つ値を書くと保存時に切り捨てられ、release の照合が外れる。
+     */
+    @Column(name = "sent_at", columnDefinition = "DATETIME")
     private LocalDateTime sentAt;
 
     @Column(nullable = false)

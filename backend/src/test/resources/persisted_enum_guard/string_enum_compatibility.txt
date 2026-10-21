@@ -191,6 +191,8 @@ com.mannschaft.app.auth.ParentalConsentLinkStatus#APPROVED
 com.mannschaft.app.auth.ParentalConsentLinkStatus#PENDING
 com.mannschaft.app.auth.ParentalConsentLinkStatus#REJECTED
 com.mannschaft.app.auth.ParentalConsentLinkStatus#REVOKED
+com.mannschaft.app.auth.TwoFactorMethod#EMAIL
+com.mannschaft.app.auth.TwoFactorMethod#TOTP
 com.mannschaft.app.auth.entity.OAuthAccountEntity$OAuthProvider#APPLE
 com.mannschaft.app.auth.entity.OAuthAccountEntity$OAuthProvider#GOOGLE
 com.mannschaft.app.auth.entity.OAuthAccountEntity$OAuthProvider#LINE

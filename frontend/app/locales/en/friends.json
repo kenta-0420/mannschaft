@@ -11,6 +11,15 @@
       "target_team_id": "Target team ID",
       "comment_label": "Greeting message (optional)"
     },
+    "follow_dialog": {
+      "search_label": "Search by team name",
+      "search_placeholder": "Enter at least 2 characters of the team name",
+      "slug_input_label": "Specify by URL name",
+      "slug_input_hint": "If the team does not appear in the results, enter its URL name (the last part of its address) in the field below",
+      "no_results": "No matching teams were found",
+      "search_error": "The search failed. Check your connection and try again",
+      "retry": "Search again"
+    },
     "actions": {
       "follow": "Follow",
       "unfollow": "Unfollow",
@@ -41,7 +50,7 @@
       "follow": {
         "title": "Follow a team to become friends",
         "step1": "Press the \"Follow\" button at the top of the Friend Teams tab",
-        "step2": "Enter the ID (number) of the team you want to follow",
+        "step2": "Search by team name and pick the team you want to follow. If you cannot find it, type the team's URL name (the last part of its address) directly",
         "step3": "Enter a greeting message (optional, up to 300 characters)",
         "step4": "Press \"Follow\" in the dialog",
         "mutual": "When the other team follows you back, \"you are now friend teams\" is displayed and the friend team relationship is established.",
@@ -137,8 +146,8 @@
       "modal_title": "Forward post",
       "target_label": "Audience",
       "target_member": "Members only",
-      "target_supporter": "Members + supporters (Phase 3+)",
-      "target_supporter_tooltip": "Available from Phase 3 onwards",
+      "target_supporter": "Members + supporters (coming soon)",
+      "target_supporter_tooltip": "This audience is not available yet",
       "comment_label": "Admin comment (optional)",
       "comment_placeholder": "Add a comment to the forward (optional)",
       "submit": "Forward",
@@ -147,7 +156,8 @@
       "revoke": "Revoke forward",
       "revoke_success": "Forward revoked",
       "revoke_confirm": "Revoke this forward?",
-      "error": "Failed to forward post"
+      "error": "Failed to forward post",
+      "already_forwarded": "This post has already been forwarded. The list has been refreshed"
     }
   },
   "forward_exports": {

@@ -49,6 +49,7 @@ async function stubBoundary(page: Page, authenticated = true, emptyReceipts = fa
       '/api/v1/notification-preferences': [],
       '/api/v1/notification-settings': { priorityAutoDelivery: true },
       '/api/v1/notification-type-preferences': [{ notificationType: 'URGENT', label: 'Urgent', isLocked: true, isEnabled: true, channelOverride: false, inAppEnabled: true, pushEnabled: true }],
+      '/api/v1/auth/2fa/status': { enabled: false, backupCodesRemaining: 0 },
       '/api/v1/auth/sessions': [], '/api/v1/auth/webauthn/credentials': [],
       '/api/v1/users/me/oauth': [], '/api/v1/users/me/line/status': { linked: false },
       '/api/v1/member-cards/my': [], '/api/v1/social/profiles/me': null,

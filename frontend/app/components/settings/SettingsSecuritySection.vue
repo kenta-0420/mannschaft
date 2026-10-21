@@ -3,13 +3,8 @@ import type { AuthSessionResponse, WebAuthnCredentialResponse } from '~/types/au
 
 withDefaults(
   defineProps<{
-    totpSetup: { secret: string; qrCodeUrl: string } | null
-    setting2fa: boolean
-    regenerating: boolean
     sessions: AuthSessionResponse[]
     credentials: WebAuthnCredentialResponse[]
-    backupCodes: string[]
-    showBackupCodesDialog: boolean
     renameDialog: boolean
     newDeviceName: string
     // パスキー登録 UI（利用する親画面で状態とイベントを接続する）
@@ -25,15 +20,12 @@ withDefaults(
 )
 
 defineEmits<{
-  setup2fa: []
-  regenerateBackupCodes: []
   revokeSession: [id: number]
   revokeAllSessions: []
   deleteCredential: [id: number]
   openRenameDialog: [cred: WebAuthnCredentialResponse]
   renameCredential: []
   passkeyRegister: []
-  'update:showBackupCodesDialog': [value: boolean]
   'update:renameDialog': [value: boolean]
   'update:newDeviceName': [value: string]
   'update:registerDialog': [value: boolean]
@@ -72,43 +64,6 @@ function deviceLabel(userAgent: string | null): string {
 </script>
 
 <template>
-  <SectionCard :title="$t('settings.security.two_fa_section_title')">
-    <div v-if="!totpSetup" class="space-y-4">
-      <p class="text-sm text-surface-500">
-        {{ $t('settings.security.two_fa_description') }}
-      </p>
-      <div class="flex flex-wrap gap-2">
-        <Button
-          translate="no"
-          :label="$t('settings.security.setup_2fa_button')"
-          icon="pi pi-shield"
-          :loading="setting2fa"
-          @click="$emit('setup2fa')"
-        />
-        <Button
-          translate="no"
-          :label="$t('settings.security.regenerate_backup_codes_button')"
-          icon="pi pi-refresh"
-          severity="secondary"
-          :loading="regenerating"
-          @click="$emit('regenerateBackupCodes')"
-        />
-      </div>
-    </div>
-    <div v-else class="space-y-4">
-      <p class="text-sm text-surface-500">{{ $t('settings.security.scan_qr_description') }}</p>
-      <div class="flex justify-center">
-        <img :src="totpSetup.qrCodeUrl" :alt="$t('settings.security.totp_qr_alt')" class="h-48 w-48" >
-      </div>
-      <div>
-        <label class="mb-1 block text-sm font-medium">{{ $t('settings.security.secret_key') }}</label>
-        <code class="block rounded bg-surface-100 px-3 py-2 text-sm dark:bg-surface-700">{{
-          totpSetup.secret
-        }}</code>
-      </div>
-    </div>
-  </SectionCard>
-
   <SectionCard>
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
       <h2 class="text-lg font-semibold">{{ $t('settings.security.sessions_section_title') }}</h2>
@@ -208,29 +163,6 @@ function deviceLabel(userAgent: string | null): string {
       </div>
     </div>
   </SectionCard>
-
-  <Dialog
-    :visible="showBackupCodesDialog"
-    :header="$t('settings.security.backup_codes_dialog_title')"
-    :modal="true"
-    class="w-full max-w-md"
-    @update:visible="$emit('update:showBackupCodesDialog', $event)"
-  >
-    <p class="mb-4 text-sm text-surface-500">
-      {{ $t('settings.security.backup_codes_description') }}
-    </p>
-    <div class="grid grid-cols-2 gap-2">
-      <code
-        v-for="code in backupCodes"
-        :key="code"
-        class="rounded bg-surface-100 px-3 py-2 text-center text-sm dark:bg-surface-700"
-        >{{ code }}</code
-      >
-    </div>
-    <div class="mt-4 flex justify-end">
-      <Button translate="no" :label="$t('button.close')" @click="$emit('update:showBackupCodesDialog', false)" />
-    </div>
-  </Dialog>
 
   <Dialog
     :visible="renameDialog"

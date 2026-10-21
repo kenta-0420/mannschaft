@@ -230,7 +230,8 @@ class AuditLogEventListenerTest {
 
             verify(auditLogService).record(
                     eq("MFA_ENABLED"), eq(1L), isNull(),
-                    isNull(), isNull(), isNull(), isNull(), isNull(), isNull()
+                    // CMP-261012-0910 AC-35: MFA_ENABLED は method を metadata に持つ（旧コンストラクタは TOTP）
+                    isNull(), isNull(), isNull(), isNull(), isNull(), eq("{\"method\":\"TOTP\"}")
             );
         }
     }
