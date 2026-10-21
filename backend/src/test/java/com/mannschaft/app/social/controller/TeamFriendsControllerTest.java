@@ -11,6 +11,7 @@ import com.mannschaft.app.social.dto.FollowTeamResponse;
 import com.mannschaft.app.social.dto.PastForwardHandling;
 import com.mannschaft.app.social.dto.TeamFriendListResponse;
 import com.mannschaft.app.social.dto.TeamFriendView;
+import com.mannschaft.app.social.service.TeamFriendFollowBySlugService;
 import com.mannschaft.app.social.service.TeamFriendsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -72,6 +73,9 @@ class TeamFriendsControllerTest {
 
     @MockitoBean
     private TeamFriendsService teamFriendsService;
+
+    @MockitoBean
+    private TeamFriendFollowBySlugService teamFriendFollowBySlugService;
 
     @MockitoBean
     private AccessControlService accessControlService;
