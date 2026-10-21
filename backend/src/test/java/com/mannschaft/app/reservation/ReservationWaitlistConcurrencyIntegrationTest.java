@@ -37,7 +37,7 @@ import static org.awaitility.Awaitility.await;
  *       {@code WHERE slot_status='FULL'} の行ロック直列化ガードが源で二重発火を消す。</li>
  *   <li><b>(A) lost wakeup の解消</b>: in-memory スナップショットが AVAILABLE でも、DB が FULL→AVAILABLE を
  *       起こしていれば通知が届く（発火判定を DB 事実に切替えた効果。旧 {@code wasFull} 実装では通知漏れ）。</li>
- *   <li><b>抑制の並行安全</b>: 空き通知が万一並行で複数回起動しても、{@code FOR UPDATE}＋{@code notified_at}
+ *   <li><b>抑制の並行安全</b>: 空き通知が万一並行で複数回起動しても、行ごとの条件付き claim（{@code notified_at}）
  *       抑制の原子化により同一 WAITING への push は 1 回だけ。</li>
  * </ol>
  *
@@ -59,6 +59,8 @@ class ReservationWaitlistConcurrencyIntegrationTest extends AbstractMySqlIntegra
     private NotificationRepository notificationRepository;
     @Autowired
     private PlatformTransactionManager txManager;
+    @Autowired
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     private static final LocalDate FUTURE = LocalDate.now().plusMonths(1);
 
@@ -155,11 +157,11 @@ class ReservationWaitlistConcurrencyIntegrationTest extends AbstractMySqlIntegra
     }
 
     // ────────────────────────────────────────────────────────────
-    // 抑制の並行安全 — FOR UPDATE + notified_at で二重通知しない
+    // 抑制の並行安全 — 条件付き claim（notified_at）で二重通知しない
     // ────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("抑制並行安全: notifySlotReopenedを2tx同時実行しても同一WAITINGへの通知は1回だけ")
+    @DisplayName("抑制並行安全: 空き復帰イベントを複数同時に発火しても同一WAITINGへの通知は1回だけ（条件付きclaim）")
     void 並行通知でも二重にpushしない() throws Exception {
         Long teamId = 971003L;
         Long waiter = 971103L;
@@ -177,7 +179,9 @@ class ReservationWaitlistConcurrencyIntegrationTest extends AbstractMySqlIntegra
                 ready.countDown();
                 try {
                     start.await();
-                    waitlistService.notifySlotReopened(teamId, slotId);
+                    // 空き復帰イベントが並行で複数回発火した状況を再現する（各スレッドが自分のTXをコミットする）。
+                    new TransactionTemplate(txManager).executeWithoutResult(s -> eventPublisher.publishEvent(
+                            new com.mannschaft.app.reservation.event.ReservationSlotReopenedEvent(teamId, slotId)));
                 } catch (Exception ignored) {
                     // 例外は下の検証（通知=1）で破綻として検出させる
                 }
@@ -188,9 +192,12 @@ class ReservationWaitlistConcurrencyIntegrationTest extends AbstractMySqlIntegra
         pool.shutdown();
         assertThat(pool.awaitTermination(30, TimeUnit.SECONDS)).as("全スレッド完了").isTrue();
 
-        // notifySlotReopened は同期メソッドのため join 後に確定済み。FOR UPDATE + notified_at 抑制で 1 回だけ。
-        assertThat(waitlistNotificationCount(slotId))
-                .as("並行起動でも同一 WAITING への通知は 1 回だけ").isEqualTo(1L);
+        // 通知は AFTER_COMMIT + @Async の別スレッドで届く。行ごとの条件付き claim（notified_at）で 1 回だけ。
+        await().atMost(Duration.ofSeconds(15)).untilAsserted(() ->
+                assertThat(waitlistNotificationCount(slotId)).isEqualTo(1L));
+        await().during(Duration.ofSeconds(2)).atMost(Duration.ofSeconds(6)).untilAsserted(() ->
+                assertThat(waitlistNotificationCount(slotId))
+                        .as("並行起動でも同一 WAITING への通知は 1 回だけ").isEqualTo(1L));
 
         slotRepository.deleteById(slotId);
     }

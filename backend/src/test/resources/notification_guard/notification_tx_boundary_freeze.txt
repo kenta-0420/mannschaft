@@ -55,7 +55,7 @@
 # 番人は「一度付けた分類が黙って外れること」だけを機械的に止める（# CLASSIFIED_FLOOR）。
 # 分類を増やしたら CLASSIFIED_FLOOR も同じPRで上げること。
 #
-# CLASSIFIED_FLOOR: 6
+# CLASSIFIED_FLOOR: 3
 #
 # 分類は綴りだけでなく「ソースの実際の注釈」と機械照合される（任務4）。
 # TX_NOTIFY_VIA_DELEGATE / TX_NOTIFY_BARE / TX_NOTIFY_IN_TRY について呼び先の宣言から区分を導出し、
@@ -282,6 +282,22 @@
 #     デバウンスは slotId（毎回再作成で無効だった）から コマ位置キー + UUID トークン + SET NX EX + Lua 解放へ（M8）。
 #   既知の限界（M9）: event-pool 飽和で投入が拒否された回の通知は失われる。
 # 裏取り（最新 main 基準）: 凍結エントリ 16 + REMOVED 8 = 24 -> 12 + 8 = 20、分類済み 13 -> 10（4件中 ROLLBACK_COUPLED の分類済み行は 3）。
+# Issue #2997 G3（reservation）: EmergencyClosureService#sendClosure / ReservationReminderDispatchBatchService#sendReminder /
+# ReservationWaitlistService#notifySlotReopened（いずれも ROLLBACK_COUPLED）を是正。ReservationPendingExpireService#notifyApplicant は #3721 が同ファイルを改変中のため対象外（凍結のまま）。
+#   臨時休業: 業務TX内は EmergencyClosureNotificationEvent（重複除去した受信者のスナップショット）の publish のみ（0 人なら publish しない）。
+#     配送は新設の EmergencyClosureNotificationListener（AFTER_COMMIT + @Async("event-pool") + 受信者ごとに NotificationDeliveryRunner#sendOne）。
+#   予約リマインド: dispatchDueReminders から @Transactional を外し非トランザクションのオーケストレータにした（reservation / slot の一括取得は維持）。
+#     1 件 = 1 項目TX（ReservationReminderDispatchRunner#publishOne / REQUIRES_NEW）で ReservationReminderDispatchEvent を publish（印は立てない）。
+#     配送は新設の ReservationReminderDispatchNotificationListener。配送の前に条件付き UPDATE（PENDING -> SENT）で印を先取りして重複配送を排他し、
+#     配送が例外なら sent_at 照合で PENDING に戻す（次周回で再送）。成功・deny は SENT を保持。event-pool が投入を拒否した回は claim されず PENDING のまま次周回で再送。
+#   キャンセル待ち: 既存の ReservationWaitlistNotificationEventListener（AFTER_COMMIT + @Async）の中で、通知候補の行を読み、
+#     行ごとに条件付き UPDATE（WAITING かつ notified_at が NULL または抑止期限以前）で notified_at を先取りしてから sendOne する。
+#     例外なら WHERE notified_at = claimedAt で prev に戻す（古い戻しが新しい claim を消さない）。deny は印を保持、戻しの失敗は ERROR ログのみ。
+#     1 人の失敗は行ごとに隔離され他の行に波及しない（旧実装は 1 つの REQUIRES_NEW で全員を処理し、1 人の DB 例外で通知済みの他の行の notified_at まで巻き戻っていた）。
+#   実DB検証: ReservationNotificationTransactionIT（旧実装で 25 件中 15 件 red を実測）。
+#   既知の限界: M1 claim の後でプロセスが落ちるとその回の通知は失われる（印が立ったまま配送されない）。
+#               M9 event-pool 飽和で投入が拒否された回は、臨時休業とキャンセル待ちの通知が失われる（リマインドは PENDING のまま次周回で再送される）。
+# 裏取り（最新 main 基準）: 凍結エントリ 12 + REMOVED 8 = 20 -> 9 + 8 = 17、分類済み 10 -> 7（3件とも ROLLBACK_COUPLED の分類済み行）。
 # Issue #2997 第2陣 G5（survey / role）: SurveyRemindService#remind / SurveyService#extendDeadline /
 # OwnershipTransferOfferService#createOffer / #declineOffer（いずれも TX_NOTIFY_BARE | ROLLBACK_COUPLED）を是正。
 #   survey: 業務TXは受信者を確定して SurveyReminderNotificationEvent を publish するのみ。実通知は新設の
@@ -290,8 +306,8 @@
 #   role: 業務TXは OwnershipTransferNotificationEvent を publish するのみ。実通知は新設の
 #     OwnershipTransferNotificationListener（AFTER_COMMIT + @Async("event-pool") + NotificationDeliveryRunner#sendOne）。
 #   実DB検証: SurveyReminderNotificationTransactionIT / OwnershipTransferNotificationTransactionIT。
-# 裏取り（G5・G7-a を取り込んだ最新 main 上）: 凍結エントリ 12 + REMOVED 8 = 20 -> 8 + 8 = 16、分類済み 10 -> 6（G5 の 4 件とも ROLLBACK_COUPLED の分類済み行）。
-# CENSUS_FLOOR: 16
+# 裏取り（G5・G3 を取り込んだ最新 main 上）: 凍結エントリ 9 + REMOVED 8 = 17 -> 5 + 8 = 13、分類済み 7 -> 3（G5 の 4 件とも ROLLBACK_COUPLED の分類済み行）。
+# CENSUS_FLOOR: 13
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
@@ -299,10 +315,7 @@ com.mannschaft.app.admin.batch.BatchEventListener#onCompleted -> PLAIN_EVENT_LIS
 com.mannschaft.app.admin.batch.BatchEventListener#onFailed -> PLAIN_EVENT_LISTENER
 com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationConfirmService#resendReminder -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.notification.fanout.NotificationFanoutWorker#processOne -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
-com.mannschaft.app.reservation.service.EmergencyClosureService#sendClosure -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.reservation.service.ReservationPendingExpireService#notifyApplicant -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.reservation.service.ReservationReminderDispatchBatchService#sendReminder -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.reservation.service.ReservationWaitlistService#notifySlotReopened -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 
 # --- 2026-09-01 main 取り込みで増えた既存負債（本PRの差分が生んだものではない）---
 # baseline 採取後に main へ着地した実装が持ち込んだ3件。番人が正しく検知したため既存負債として凍結し、

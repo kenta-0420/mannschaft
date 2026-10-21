@@ -128,9 +128,12 @@ public class ReservationReminderService {
     /**
      * 送信対象（{@code remind_at} 到来済みの PENDING）リマインダーを取得する。
      *
-     * <p>本メソッドは「取得のみ」を行い、送信済みマークは<b>行わない</b>。実送信と
-     * {@code SENT} マークは {@link ReservationReminderDispatchBatchService#dispatchDueReminders()}
-     * が「通知送出に成功した行のみ」担う（送信 → マークの順序を厳守し二重送信を防ぐ）。
+     * <p>本メソッドは「取得のみ」を行い、送信済みマークは<b>行わない</b>。実送信は
+     * {@link ReservationReminderDispatchBatchService#dispatchDueReminders()} が 1 件ずつ配送要求を publish し、
+     * 配送リスナー（{@code ReservationReminderDispatchNotificationListener}）が配送の<b>前</b>に条件付き UPDATE で
+     * {@code PENDING -> SENT} を先取り（claim）する。成功・deny は {@code SENT} を保持し、
+     * 全員（予約者 1 人）が例外で失敗したときだけ release で {@code PENDING} に戻して次周回で再送する。
+     * 契約の詳細は {@code ReservationReminderDispatchRunner}。
      * かつてここで通知を送らずに一括 {@code markSent()} していたのは、送信なしで SENT に
      * してしまう症状隠蔽だったため撤去した（F03.4 段階拡張 ⑥）。</p>
      *
