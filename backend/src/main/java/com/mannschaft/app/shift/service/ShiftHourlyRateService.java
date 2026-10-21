@@ -18,9 +18,11 @@ import java.util.Optional;
 /**
  * シフト時給サービス。メンバーの時給設定・履歴管理を担当する。
  *
- * <p><b>認可（認可根治 Wave6 追加戦）:</b> 時給は金銭情報のため、参照・登録とも
- * {@link ShiftHourlyRateAuthorizer#checkHourlyRateAccess} で per-scope 認可を強制する。判定は F03.5 設計書
- * {@code 01_db_design.md}（時給の閲覧権限 = 本人 + ADMIN/DEPUTY_ADMIN）に準拠する。
+ * <p><b>認可（認可根治 Wave6 追加戦）:</b> 時給は金銭情報のため、参照は
+ * {@link ShiftHourlyRateAuthorizer#checkHourlyRateAccess}、登録・訂正は
+ * {@link ShiftHourlyRateAuthorizer#checkHourlyRateWriteAccess} で per-scope 認可を強制する。
+ * F03.5 設計書 {@code 01_db_design.md} に従い、閲覧は本人 + ADMIN/DEPUTY_ADMIN、
+ * 登録・訂正は ADMIN/DEPUTY_ADMIN に限定する。
  * shift ドメインの金型 {@code ShiftScheduleService#checkScheduleAdminAccess} と同一方針
  * （SYSTEM_ADMIN 短絡許可 + {@code AccessControlService} による TEAM スコープ判定・違反は 403）。</p>
  */
@@ -132,7 +134,7 @@ public class ShiftHourlyRateService {
      */
     @Transactional
     public HourlyRateResponse createHourlyRate(Long teamId, CreateHourlyRateRequest req, Long currentUserId) {
-        hourlyRateAuthorizer.checkHourlyRateAccess(currentUserId, req.getUserId(), teamId);
+        hourlyRateAuthorizer.checkHourlyRateWriteAccess(currentUserId, req.getUserId(), teamId);
 
         // 一意制約 uq_shr_user_team_from に衝突解決させる単一文（詳細は upsertHourlyRate の Javadoc）。
         // SELECT してから INSERT/UPDATE を分岐すると読みと書きの間に窓が開き、
