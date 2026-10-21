@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.mannschaft.spike.StructureSpikeIT" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-21T12:01:48.263Z" hostname="LAPTOP-UDR09S7B" time="96.789">
+  <properties/>
+  <testcase name="全本番の発生元別依存違反と循環参加を記録する()" classname="com.mannschaft.spike.StructureSpikeIT" time="95.869"/>
+  <testcase name="橋渡しだけの循環は端点除外で消える()" classname="com.mannschaft.spike.StructureSpikeIT" time="0.539"/>
+  <testcase name="橋渡し以外のcommon辺は除外後も循環として残る()" classname="com.mannschaft.spike.StructureSpikeIT" time="0.138"/>
+  <testcase name="jobmatchingからchatのapiと自身の購読だけなら循環0()" classname="com.mannschaft.spike.StructureSpikeIT" time="0.236"/>
+  <system-out><![CDATA[21:01:50.116 [Test worker] INFO com.tngtech.archunit.core.PluginLoader -- Detected Java version 21.0.12.1
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,13 @@
+CREATE TABLE `event_publication` (
+  `completion_date` datetime(6) DEFAULT NULL,
+  `publication_date` datetime(6) NOT NULL,
+  `id` binary(16) NOT NULL,
+  `event_type` varchar(255) NOT NULL,
+  `listener_id` varchar(255) NOT NULL,
+  `serialized_event` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+
+[{Field=completion_date, Type=datetime(6), Null=YES, Key=, Default=null, Extra=}, {Field=publication_date, Type=datetime(6), Null=NO, Key=, Default=null, Extra=}, {Field=id, Type=binary(16), Null=NO, Key=PRI, Default=null, Extra=}, {Field=event_type, Type=varchar(255), Null=NO, Key=, Default=null, Extra=}, {Field=listener_id, Type=varchar(255), Null=NO, Key=, Default=null, Extra=}, {Field=serialized_event, Type=varchar(255), Null=NO, Key=, Default=null, Extra=}]
+
+[{Table=event_publication, Non_unique=0, Key_name=PRIMARY, Seq_in_index=1, Column_name=id, Collation=A, Cardinality=0, Sub_part=null, Packed=null, Null=, Index_type=BTREE, Comment=, Index_comment=, Visible=YES, Expression=null}]

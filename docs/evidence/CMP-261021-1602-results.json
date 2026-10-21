@@ -1,0 +1,134 @@
+{
+    "defaultCodeSha":  "084279db3f7de80b1ca20ba5e917fc493d29b544",
+    "pinCodeSha":  "afb850b6f7719d24d142a80f6b159b3d7786be0a",
+    "mainSourceTree":  "f20686366e68a714fcaeeeb278a38c8cabe4c075",
+    "defaultArchUnit":  "1.4.2",
+    "pinArchUnit":  "1.3.0",
+    "modulith":  "1.4.13",
+    "nonCycleMessageSetEqual":  true,
+    "uniqueNonCycleMessages":  23591,
+    "sortedNonCycleMessagesSha256":  "73d044f67af6aa2d0d205d8f4d1f0507c873209c174e1b232905d30d087c9d52",
+    "sccCompositionEqual":  true,
+    "rawOriginCountsEqual":  true,
+    "defaultCommonReportedCycles":  100,
+    "pinCommonReportedCycles":  99,
+    "withinOriginDuplicateMessages":  0,
+    "crossOriginDuplicateMessages":  12,
+    "xml":  [
+                {
+                    "file":  "CMP-261021-1602-registry-delete.xml",
+                    "sha256":  "55b0e441cf2e145bc4c0c867184fdd4e4beb6b4f740dea59df77e59bc2c01765",
+                    "tests":  1,
+                    "failures":  0,
+                    "errors":  0,
+                    "skipped":  0,
+                    "suiteSeconds":  "2.51",
+                    "testNames":  [
+                                      "delete設定では完了時に実publication行が削除される()"
+                                  ],
+                    "codeSha":  "5f8bac8a71a27cd3ecc4eb2c6f9a70fde75f64f4"
+                },
+                {
+                    "file":  "CMP-261021-1602-registry-green.xml",
+                    "sha256":  "762c4cb3e92b980f3e04f30160a014321f2e60026ca01d56ccb612d0b75cc2d5",
+                    "tests":  4,
+                    "failures":  0,
+                    "errors":  0,
+                    "skipped":  0,
+                    "suiteSeconds":  "1.752",
+                    "testNames":  [
+                                      "公式Entityの実MySQLスキーマと索引を保存する()",
+                                      "既存認証イベントは購読されても保存0件()",
+                                      "ReliableEventの対象購読だけ保存し非TX非同期の正常終了で完了する()",
+                                      "非TX非同期の例外は未完了のまま残る()"
+                                  ],
+                    "codeSha":  "2a822a4eb7878a7b3ce18ff8a44643d34ff3a6c0"
+                },
+                {
+                    "file":  "CMP-261021-1602-registry-red.xml",
+                    "sha256":  "510cf83e2ed0859e545c0bf87e64e45e6b023660f1b6fcb09c905bc2a1ffa550",
+                    "tests":  4,
+                    "failures":  2,
+                    "errors":  0,
+                    "skipped":  0,
+                    "suiteSeconds":  "2.758",
+                    "testNames":  [
+                                      "公式Entityの実MySQLスキーマと索引を保存する()",
+                                      "既存認証イベントは購読されても保存0件()",
+                                      "ReliableEventの対象購読だけ保存し非TX非同期の正常終了で完了する()",
+                                      "非TX非同期の例外は未完了のまま残る()"
+                                  ],
+                    "codeSha":  "0809ba747aaf9aab5bab1282ad912dde0790f52a"
+                },
+                {
+                    "file":  "CMP-261021-1602-structure-default.xml",
+                    "sha256":  "a73816ac14db746e95523fe22f2c4c1fd4c066e893d271d706dab796dc59b5be",
+                    "tests":  4,
+                    "failures":  0,
+                    "errors":  0,
+                    "skipped":  0,
+                    "suiteSeconds":  "108.286",
+                    "testNames":  [
+                                      "全本番の発生元別依存違反と循環参加を記録する()",
+                                      "橋渡しだけの循環は端点除外で消える()",
+                                      "橋渡し以外のcommon辺は除外後も循環として残る()",
+                                      "jobmatchingからchatのapiと自身の購読だけなら循環0()"
+                                  ],
+                    "codeSha":  "084279db3f7de80b1ca20ba5e917fc493d29b544"
+                },
+                {
+                    "file":  "CMP-261021-1602-structure-pin.xml",
+                    "sha256":  "cd1f17ba5df5c1c64c3c1f80585fa4c1d59b27168a9a79dd54a8444dbc5db36e",
+                    "tests":  4,
+                    "failures":  0,
+                    "errors":  0,
+                    "skipped":  0,
+                    "suiteSeconds":  "96.789",
+                    "testNames":  [
+                                      "全本番の発生元別依存違反と循環参加を記録する()",
+                                      "橋渡しだけの循環は端点除外で消える()",
+                                      "橋渡し以外のcommon辺は除外後も循環として残る()",
+                                      "jobmatchingからchatのapiと自身の購読だけなら循環0()"
+                                  ],
+                    "codeSha":  "afb850b6f7719d24d142a80f6b159b3d7786be0a"
+                }
+            ],
+    "webhook":  [
+                    {
+                        "mode":  "STANDALONE",
+                        "codeSha":  "084279db3f7de80b1ca20ba5e917fc493d29b544",
+                        "task":  "modulithWebhookSpike",
+                        "tests":  1,
+                        "failures":  1,
+                        "errors":  0,
+                        "skipped":  0,
+                        "suiteSeconds":  "0.008",
+                        "rootSuiteMillis":  89971,
+                        "cacheSize":  0,
+                        "cacheHits":  0,
+                        "cacheMisses":  1,
+                        "cacheFailures":  1,
+                        "rootCause":  "Caused by: org.springframework.beans.factory.NoSuchBeanDefinitionException: No qualifying bean of type \u0027org.springframework.security.crypto.password.PasswordEncoder\u0027 available: expected at least 1 bean which qualifies as autowire candidate. Dependency annotations: {}",
+                        "rawXmlLocalPath":  "backend/build/spike-evidence/native-validation-0842/backend/build/test-results/modulithWebhookSpike/TEST-com.mannschaft.app.webhook.WebhookSpikeIT.xml",
+                        "rawXmlSha256":  "361a201708290d1dd2d00f076ffd75943f1f6435049401b95d6ad67cf9ebc75f"
+                    },
+                    {
+                        "mode":  "DIRECT_DEPENDENCIES",
+                        "codeSha":  "084279db3f7de80b1ca20ba5e917fc493d29b544",
+                        "task":  "modulithWebhookDirectSpike",
+                        "tests":  1,
+                        "failures":  1,
+                        "errors":  0,
+                        "skipped":  0,
+                        "suiteSeconds":  "0.007",
+                        "rootSuiteMillis":  99141,
+                        "cacheSize":  0,
+                        "cacheHits":  0,
+                        "cacheMisses":  1,
+                        "cacheFailures":  1,
+                        "rootCause":  "Caused by: org.springframework.beans.factory.NoSuchBeanDefinitionException: No qualifying bean of type \u0027com.mannschaft.app.role.repository.UserRoleRepository\u0027 available: expected at least 1 bean which qualifies as autowire candidate. Dependency annotations: {}",
+                        "rawXmlLocalPath":  "backend/build/spike-evidence/native-validation-0842/backend/build/test-results/modulithWebhookDirectSpike/TEST-com.mannschaft.app.webhook.WebhookDirectSpikeIT.xml",
+                        "rawXmlSha256":  "4ac109e3f7b605cfd3cca3ddecbd3226609ebc5d9db7fe32bacbaf01d49e7228"
+                    }
+                ]
+}

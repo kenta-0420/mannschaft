@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.mannschaft.spike.RegistrySpikeIT" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-21T11:26:37.994Z" hostname="LAPTOP-UDR09S7B" time="1.752">
+  <properties/>
+  <testcase name="公式Entityの実MySQLスキーマと索引を保存する()" classname="com.mannschaft.spike.RegistrySpikeIT" time="0.776"/>
+  <testcase name="既存認証イベントは購読されても保存0件()" classname="com.mannschaft.spike.RegistrySpikeIT" time="0.252"/>
+  <testcase name="ReliableEventの対象購読だけ保存し非TX非同期の正常終了で完了する()" classname="com.mannschaft.spike.RegistrySpikeIT" time="0.57"/>
+  <testcase name="非TX非同期の例外は未完了のまま残る()" classname="com.mannschaft.spike.RegistrySpikeIT" time="0.145"/>
+  <system-out><![CDATA[20:26:02.765 [Test worker] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+20:26:02.790 [Test worker] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+20:26:02.825 [Test worker] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 1.21.4
+20:26:03.564 [Test worker] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Loaded org.testcontainers.dockerclient.UnixSocketClientProviderStrategy from ~/.testcontainers.properties, will try it first
+20:26:04.450 [Test worker] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Environment variables, system properties and defaults. Resolved dockerHost=tcp://127.0.0.1:2377
+20:26:04.453 [Test worker] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is 127.0.0.1
+20:26:04.508 [Test worker] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.4.1
+  API Version: 1.54
+  Operating System: Ubuntu 24.04.4 LTS
+  Total Memory: 24030 MB
+20:26:04.768 [Test worker] INFO tc.testcontainers/ryuk:0.12.0 -- Creating container for image: testcontainers/ryuk:0.12.0
+20:26:04.779 [Test worker] INFO org.testcontainers.utility.RegistryAuthLocator -- Failure when attempting to lookup auth config. Please ignore if you don't have images in an authenticated registry. Details: (dockerImageName: testcontainers/ryuk:0.12.0, configFile: /home/kenta/.docker/config.json, configEnv: DOCKER_AUTH_CONFIG). Falling back to docker-java default behaviour. Exception message: Status 404: No config supplied. Checked in order: /home/kenta/.docker/config.json (file not found), DOCKER_AUTH_CONFIG (not set)
+20:26:05.146 [Test worker] INFO tc.testcontainers/ryuk:0.12.0 -- Container testcontainers/ryuk:0.12.0 is starting: 05f4f8ea6782eb9607b7c953aa0618a31dc6425d6f9362d44d4b12a93d8da712
+20:26:06.457 [Test worker] INFO tc.testcontainers/ryuk:0.12.0 -- Container testcontainers/ryuk:0.12.0 started in PT1.689656009S
+20:26:06.464 [Test worker] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+20:26:06.464 [Test worker] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+20:26:06.469 [Test worker] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+20:26:06.473 [Test worker] INFO tc.mysql:8.0 -- Creating container for image: mysql:8.0
+20:26:06.724 [Test worker] INFO tc.mysql:8.0 -- Container mysql:8.0 is starting: d58e5a3ef7ef52c304cf45f14edea22c996bdca1737ea97f8dee9da18c1f4771
+20:26:07.819 [Test worker] INFO tc.mysql:8.0 -- Waiting for database connection to become available at jdbc:mysql://127.0.0.1:44639/modulith_spike using query 'SELECT 1'
+20:26:18.779 [Test worker] INFO tc.mysql:8.0 -- Container mysql:8.0 started in PT12.305112119S
+20:26:18.779 [Test worker] INFO tc.mysql:8.0 -- Container is started (JDBC URL: jdbc:mysql://127.0.0.1:44639/modulith_spike)
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::               (v3.5.13)
+
+]]></system-out>
+  <system-err><![CDATA[Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/home/kenta/.gradle/caches/modules-2/files-2.1/net.bytebuddy/byte-buddy-agent/1.17.8/f09415827a71be7ed621c7bd02550678f28bc81c/byte-buddy-agent-1.17.8.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+]]></system-err>
+</testsuite>
