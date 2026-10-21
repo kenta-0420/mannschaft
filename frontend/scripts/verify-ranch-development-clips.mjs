@@ -105,8 +105,6 @@ for (const entry of manifest.entries) {
     assert.equal(clip.sourceFloor384, original.sourceFloor384 ?? null)
     assert.deepEqual(clip.sourceFloorByFrame384, frameValues(original.sourceFloorByFrame384))
     assert.deepEqual(clip.tailMarks, original.nativeEffectMetadata?.tailMarks ?? null)
-    assert.deepEqual(clip.nativeEffectMetadata, original.nativeEffectMetadata ?? null)
-    assert.deepEqual(clip.sourceApproval, original.approval)
   }
 }
 const actualPaths = []

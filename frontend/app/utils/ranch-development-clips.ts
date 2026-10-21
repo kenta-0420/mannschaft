@@ -50,7 +50,9 @@ export interface RanchDevelopmentClipContext {
 export interface BoundRanchDevelopmentClip { readonly dinosaurId: string; readonly entry: RanchDevelopmentClipEntry }
 
 // 正本と480画像の完全照合はscripts/verify-ranch-development-clips.mjsが担う。
-export const developmentRanchClips = Object.freeze(clipManifest.entries) as unknown as readonly RanchDevelopmentClipEntry[]
+export const developmentRanchClips: readonly RanchDevelopmentClipEntry[] = import.meta.dev
+  ? Object.freeze(clipManifest.entries) as unknown as readonly RanchDevelopmentClipEntry[]
+  : Object.freeze([])
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 export function resolveRanchDevelopmentClip(dinosaur: DinosaurSummary, style: RenderStyle, context: RanchDevelopmentClipContext): BoundRanchDevelopmentClip | null {
   if (context.production || !context.isolatedDevelopment || !context.clipsEnabled || !UUID.test(dinosaur.id) || !dinosaur.speciesKey || !dinosaur.variantKey || dinosaur.stage === 'EGG') return null
