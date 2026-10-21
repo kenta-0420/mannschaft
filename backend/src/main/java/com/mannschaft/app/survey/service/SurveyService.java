@@ -5,19 +5,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.ResultsVisibility;
 import com.mannschaft.app.survey.SurveyErrorCode;
 import com.mannschaft.app.survey.SurveyMapper;
-import com.mannschaft.app.survey.SurveyNotificationType;
 import com.mannschaft.app.survey.SurveyStatus;
 import com.mannschaft.app.survey.UnrespondedVisibility;
 import com.mannschaft.app.survey.event.SurveyCreatedEvent;
 import com.mannschaft.app.survey.event.SurveyPublishedEvent;
+import com.mannschaft.app.survey.event.SurveyReminderNotificationEvent;
 import com.mannschaft.app.survey.event.SurveyStatusChangedEvent;
 import com.mannschaft.app.survey.dto.CreateOptionRequest;
 import com.mannschaft.app.survey.dto.CreateQuestionRequest;
@@ -71,8 +69,6 @@ public class SurveyService {
     private final SurveyMapper surveyMapper;
     private final ObjectMapper objectMapper;
     private final AccessControlService accessControlService;
-    private final NotificationHelper notificationHelper;
-    private final org.springframework.context.MessageSource messageSource;
     private final ApplicationEventPublisher eventPublisher;
     /** 母集団解決の唯一の窓口（公開時のスナップショットと結果閲覧時の分母を同一定義にする）。 */
     private final SurveyUniverseResolver universeResolver;
@@ -604,44 +600,19 @@ public class SurveyService {
                     .map(SurveyTargetEntity::getUserId)
                     .distinct()
                     .toList();
-        NotificationScopeType notifScope = "TEAM".equals(scopeType)
-                ? NotificationScopeType.TEAM
-                : NotificationScopeType.ORGANIZATION;
-        // 配信＝受信権 統一（関所(1)通知 / E: ResultsVisibility 誤用是正）:
-        // recipients は上記のとおり配信母集団として事前認可済みのため、publish/remind と同形に
-        // notifyAllPreAuthorized を用いて canView 絞り込み（SURVEY の結果閲覧 ResultsVisibility 軸を含む）を
-        // 通さない。これにより締切延長通知が直属一般メンバー・配下チームメンバーへ誤 deny で届かない
-        // (B) レグを根治する。
+        // 配信＝受信権 統一: recipients は配信母集団として事前認可済み。
+        // Issue #2997 G5: 業務TXは受信者を確定して publish するだけ。配送（事前認可バルク・locale 別文面・
+        // 日時のロケール化）は AFTER_COMMIT の SurveyReminderNotificationListener が行う。0 人なら publish しない。
         if (!recipients.isEmpty()) {
-            // Issue #2715 CMP-055 ロットC-5: 受信者 locale に応じて件名・本文・日時表記を組み立てる
-            // （notifyAllPreAuthorizedLocalized は notifyAllPreAuthorized 同様 canView 絞り込みを通さない）。
-            // AC-7: newDeadline の表記もパターンを locale 鍵に持たせてロケール化する
-            // （時刻の値自体は変えない。テナントTZ対応は別戦役 CMP-023 の範囲）。
-            notificationHelper.notifyAllPreAuthorizedLocalized(
-                    recipients,
-                    SurveyNotificationType.SURVEY_RESPONSE_REMINDER.name(),
-                    "SURVEY",
+            eventPublisher.publishEvent(new SurveyReminderNotificationEvent(
+                    SurveyReminderNotificationEvent.Kind.DEADLINE_EXTENDED,
                     surveyId,
-                    notifScope,
+                    scopeType,
                     scopeId,
-                    "/surveys/" + surveyId,
+                    saved.getTitle(),
+                    recipients,
                     currentUserId,
-                    (userId, locale) -> {
-                        String deadlinePattern = messageSource.getMessage(
-                                "notification.survey.deadlineExtended.deadlinePattern", null,
-                                "yyyy年M月d日 HH:mm", locale);
-                        String formattedDeadline = newDeadline.format(
-                                java.time.format.DateTimeFormatter.ofPattern(deadlinePattern, locale));
-                        return new NotificationHelper.LocalizedMessage(
-                                messageSource.getMessage(
-                                        "notification.survey.deadlineExtended.title", null,
-                                        "アンケート締切が延長されました", locale),
-                                messageSource.getMessage(
-                                        "notification.survey.deadlineExtended.body",
-                                        new Object[]{saved.getTitle(), formattedDeadline},
-                                        "「" + saved.getTitle() + "」の回答締切が " + formattedDeadline + " に延長されました。",
-                                        locale));
-                    });
+                    newDeadline.atZone(com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()));
         }
 
         log.info("アンケート締切延長: surveyId={}, newDeadline={}, by={}", surveyId, newDeadline, currentUserId);
