@@ -66,6 +66,19 @@ public class L1G0TransactionalFixture {
         @Transactional
         public void execute(ConcreteBridge bridge) { bridge.forward(); }
     }
+    /** 既存の静的解決で到達できるdefault本体を保持する。 */
+    public interface DefaultPort {
+        default void forward() { new TransitiveProxyRepository().save(); }
+    }
+    /** default本体を継承する一件目。 */
+    public static class FirstDefaultBridge implements DefaultPort { }
+    /** default本体を継承する二件目。 */
+    public static class SecondDefaultBridge implements DefaultPort { }
+    /** default呼び出し入口。 */
+    public static class DefaultEntry {
+        @Transactional
+        public void execute(DefaultPort port) { port.forward(); }
+    }
     /** interface を経由して再帰する検体。 */
     public static class RecursiveBridge implements Port {
         private Port next;

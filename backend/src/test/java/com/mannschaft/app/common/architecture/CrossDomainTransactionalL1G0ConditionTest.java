@@ -1,6 +1,10 @@
 package com.mannschaft.app.common.architecture;
 
 import external.transitivetx.ExternalPortBridge;
+import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.DefaultPort;
+import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.DefaultEntry;
+import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.FirstDefaultBridge;
+import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.SecondDefaultBridge;
 import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.ExcludedImplementationReference;
 import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.Port;
 import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.ChildPort;
@@ -111,6 +115,17 @@ class CrossDomainTransactionalL1G0ConditionTest {
             .isEqualTo("@Transactional entry " + InterfaceEntry.class.getName()
                 + ".diamond(" + Port.class.getName() + ") (domain 'resident') reaches other-domain repository "
                 + TransitiveProxyRepository.class.getName() + " (domain 'proxy') [D-3T]");
+    }
+
+    @Test
+    void 実装候補ゼロでも静的解決できるdefault本体を保持する() {
+        assertThat(d3t(DefaultEntry.class, DefaultPort.class)).hasSize(1);
+    }
+
+    @Test
+    void 実装候補二件でも静的解決できるdefault本体を保持する() {
+        assertThat(d3t(DefaultEntry.class, DefaultPort.class,
+            FirstDefaultBridge.class, SecondDefaultBridge.class)).hasSize(1);
     }
 
     @ParameterizedTest
