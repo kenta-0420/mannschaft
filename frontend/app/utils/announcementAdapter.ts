@@ -48,7 +48,7 @@ export function toDashboardAnnouncementItem(input: Record<string, unknown>): Ann
   const string = (key: string): string | undefined => typeof input[key] === 'string' ? input[key] as string : undefined
   // 送信時の宛先の記録（AC-H17）。BE は組織 MEMBER 以上にだけ載せる。中身は告知 API と同じ camelCase のオブジェクト
   const audience = input.target_audience
-  const targetAudience = audience !== null && typeof audience === 'object' ? audience as BroadcastTargetAudience : null
+  const targetAudience = audience !== null && typeof audience === 'object' ? audience as BroadcastTargetAudience : undefined
   return toAnnouncementItem({
     id: number('id'), scopeId: number('scope_id'), scopeType: string('scope_type'),
     sourceId: number('source_id'), sourceType: string('source_type'),
