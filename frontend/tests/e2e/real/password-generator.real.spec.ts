@@ -7,6 +7,7 @@ import { test, expect, type Page, type Locator } from '@playwright/test'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { waitForHydration } from '../helpers/wait'
+import { loginViaApi } from '../fixtures/auth'
 
 interface UserFixture {
   role: string
@@ -54,11 +55,19 @@ async function shot(page: Page, name: string): Promise<void> {
 }
 async function session(page: Page, role: string): Promise<void> {
   const account = user(role)
+  if (!role.startsWith('oauth-')) {
+    await loginViaApi(page, account, { apiBaseUrl: process.env.API_BASE_URL ?? 'http://localhost:8081' })
+    test.info().annotations.push({ type: '認証前提', description: '既存loginViaApi helperによる専用本人の直前ログイン' })
+    return
+  }
+  // OAuth初期状態はpassword_hash=NULLのため通常passwordログイン不可。専用fixtureが発行したsessionだけを使う。
+  const payload = JSON.parse(Buffer.from(account.accessToken.split('.')[1]!, 'base64url').toString()) as { exp: number }
+  expect(payload.exp * 1000 > Date.now() + 120_000, 'OAuth専用sessionに操作用の有効期限が残る').toBe(true)
+  test.info().annotations.push({ type: '認証前提', description: 'OAuth初期fixtureはパスワード未設定。発行済みsessionの有効期限を確認して利用' })
   await page.context().addCookies([
     { name: 'access_token', value: account.accessToken, domain: 'localhost', path: '/', httpOnly: true, sameSite: 'Strict' },
     { name: 'refresh_token', value: account.refreshToken, domain: 'localhost', path: '/', httpOnly: true, sameSite: 'Strict' },
   ])
-  const payload = JSON.parse(Buffer.from(account.accessToken.split('.')[1]!, 'base64url').toString()) as { exp: number }
   await page.addInitScript(({ id, email, expires }) => {
     localStorage.setItem('currentUser', JSON.stringify({ id, email, fullName: '生成実機専用' }))
     localStorage.setItem('tokenExpiresAt', String(expires * 1000))
@@ -235,11 +244,11 @@ test('PG-REGISTER AC-1/12 生成値で登録し受信メールのUI確認リン�
   const pending = page.waitForResponse(res => res.url().includes('/api/v1/auth/register') && res.request().method() === 'POST')
   await page.getByRole('button', { name: 'アカウント作成', exact: true }).click()
   expect((await pending).ok(), '既存register API成功').toBe(true)
-  await expect(page).toHaveURL(/\/verify-email/)
-  await expect(page.getByText(fixtures().registrationEmail, { exact: true })).toBeVisible()
   const data = fixtures()
   data.users.push({ role: 'registered-ui', email: data.registrationEmail, password, id: '', accessToken: '', refreshToken: '' })
   writeFileSync(fixturePath!, JSON.stringify(data, null, 2))
+  await expect(page).toHaveURL(/\/verify-email/)
+  await expect(page.getByText(data.registrationEmail, { exact: true })).toBeVisible()
   let html = ''
   await expect.poll(async () => {
     const inbox = await page.request.get('http://localhost:4599/inbox')
