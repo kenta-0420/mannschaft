@@ -1,13 +1,18 @@
 package com.mannschaft.app.auth.entity;
 
+import com.mannschaft.app.auth.TwoFactorMethod;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import lombok.Builder;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.ColumnDefault;
 import lombok.AccessLevel;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
@@ -32,11 +37,31 @@ public class TwoFactorAuthEntity {
     @Column(nullable = false, unique = true)
     private Long userId;
 
-    @Column(nullable = false, length = 500)
+    /**
+     * 2FA の主手段（CMP-261012-0910）。既存行は Flyway で TOTP が入る。
+     *
+     * <p>DB 既定値 {@code 'TOTP'} は Flyway（V251）と同じものを {@link ColumnDefault} でも宣言する。
+     * Hibernate が生成するスキーマ（test プロファイル）にも同じ既定値を持たせ、method を指定しない INSERT
+     * （既存コード・ネイティブ SQL）が本番と同じく TOTP になるようにする。</p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    @ColumnDefault("'TOTP'")
+    @Builder.Default
+    private TwoFactorMethod method = TwoFactorMethod.TOTP;
+
+    /**
+     * AES-256-GCM 暗号化済み TOTP 秘密鍵。{@link TwoFactorMethod#EMAIL} 方式では NULL。
+     */
+    @Column(length = 500)
     private String totpSecret;
 
+    /**
+     * ハッシュ済みバックアップコードの JSON 配列（NOT NULL）。未発行（設定途中の未有効行など）は空配列。
+     */
     @Column(nullable = false, columnDefinition = "JSON")
-    private String backupCodes;
+    @Builder.Default
+    private String backupCodes = "[]";
 
     @Column(nullable = false)
     private Boolean isEnabled;
@@ -74,5 +99,14 @@ public class TwoFactorAuthEntity {
      */
     public void disable() {
         this.isEnabled = false;
+    }
+
+    /**
+     * バックアップコード（ハッシュの JSON 配列）を差し替える（CMP-261012-0910: ログイン時の 1 件消費）。
+     *
+     * @param backupCodesJson ハッシュ済みバックアップコードの JSON 配列
+     */
+    public void replaceBackupCodes(String backupCodesJson) {
+        this.backupCodes = backupCodesJson;
     }
 }

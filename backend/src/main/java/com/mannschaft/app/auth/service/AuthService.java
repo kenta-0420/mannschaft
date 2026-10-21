@@ -6,6 +6,7 @@ import com.mannschaft.app.auth.dto.LoginHistoryResponse;
 import com.mannschaft.app.auth.dto.LoginRequest;
 import com.mannschaft.app.auth.dto.LoginResponse;
 import com.mannschaft.app.auth.dto.MessageResponse;
+import com.mannschaft.app.auth.TwoFactorMethod;
 import com.mannschaft.app.auth.dto.MfaRequiredResponse;
 import com.mannschaft.app.auth.dto.RegisterRequest;
 import com.mannschaft.app.auth.dto.SessionResponse;
@@ -91,10 +92,10 @@ public class AuthService {
     private static final Duration ACCOUNT_LOCK_DURATION = Duration.ofMinutes(30);
     static final String ACCOUNT_LOCK_KEY_PREFIX = "mannschaft:auth:account_lock:";
     private static final String LOGIN_FAIL_COUNT_KEY_PREFIX = "mannschaft:auth:login_fail_count:";
-    private static final String MFA_SESSION_KEY_PREFIX = "mannschaft:auth:mfa_session_token:";
+    private static final String MFA_SESSION_KEY_PREFIX = MfaSessionService.SESSION_KEY_PREFIX;
 
     // トークン有効期限
-    private static final Duration MFA_SESSION_EXPIRY = Duration.ofMinutes(5);
+    private static final Duration MFA_SESSION_EXPIRY = MfaSessionService.SESSION_TTL;
 
     // ========================================
     // 登録（AuthRegistrationService へ委譲）
@@ -244,7 +245,12 @@ public class AuthService {
             redisTemplate.opsForValue().set(mfaKey, String.valueOf(user.getId()),
                     MFA_SESSION_EXPIRY.getSeconds(), TimeUnit.SECONDS);
 
-            return ApiResponse.of(new MfaRequiredResponse(mfaSessionToken));
+            // CMP-261012-0910 AC-27: 主手段と、このログインで提示できる要素を返す（既存項目は互換維持）
+            TwoFactorMethod primaryMethod = mfaOpt.get().getMethod() != null
+                    ? mfaOpt.get().getMethod() : TwoFactorMethod.TOTP;
+            return ApiResponse.of(new MfaRequiredResponse(mfaSessionToken, primaryMethod,
+                    MfaMethodPolicy.availableMethods(primaryMethod,
+                            MfaMethodPolicy.isEmailDeliverable(user.getEmail()))));
         }
 
         // 8. トークン発行（2FA無効の場合）

@@ -126,12 +126,26 @@ async function handleLogin() {
   // 「メールアドレスまたはパスワードが不一致」という誤った文言を出してしまうため。
   let navigationTarget: string | null = null
   try {
-    const data = await api<{ data: LoginResult }>('/api/v1/auth/login', {
+    const data = await api<{
+      data: LoginResult & {
+        // MfaRequiredResponse（CMP-261012-0910 AC-27）。旧 BE 応答では欠落しうる。
+        primaryMethod?: 'TOTP' | 'EMAIL' | 'BACKUP_CODE' | null
+        availableMethods?: Array<'TOTP' | 'EMAIL' | 'BACKUP_CODE'> | null
+      }
+    }>('/api/v1/auth/login', {
       method: 'POST',
       body: { email: email.value, password: password.value },
     })
     if (data.data.mfaRequired) {
-      navigationTarget = `/2fa-verify?session=${data.data.mfaSessionToken}`
+      // 方式情報を 2fa-verify へ引き継ぐ（AC-53）。欠落時は 2fa-verify 側が TOTP にフォールバックする。
+      const mfaQuery = new URLSearchParams({ session: data.data.mfaSessionToken ?? '' })
+      if (data.data.primaryMethod) mfaQuery.set('primary', data.data.primaryMethod)
+      if (data.data.availableMethods?.length) {
+        mfaQuery.set('methods', data.data.availableMethods.join(','))
+      }
+      // ログイン後の遷移先指定（redirect）も 2FA 通過後まで保持する。
+      if (typeof route.query.redirect === 'string') mfaQuery.set('redirect', route.query.redirect)
+      navigationTarget = `/2fa-verify?${mfaQuery.toString()}`
     } else {
       navigationTarget = await completeLogin(data.data, data.data)
     }
