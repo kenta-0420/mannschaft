@@ -121,7 +121,7 @@ function applyGeneratedPassword(value: string): void {
             :input-props="{ autocomplete: 'new-password' }"
           />
           <PasswordGeneratorActions
-            :password="newPassword"
+            :password="newPassword ?? ''"
             :disabled="submitting"
             @generated="applyGeneratedPassword"
           />
