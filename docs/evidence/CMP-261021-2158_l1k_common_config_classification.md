@@ -92,7 +92,7 @@
 
 ## 再現手順
 
-リポジトリworktreeのルートで実行する。次のPythonを `%TEMP%/l1k-verify.py` にUTF-8で保存し、`python "$env:TEMP/l1k-verify.py"` でgreen、`python "$env:TEMP/l1k-verify.py" --baseline` で固定基準redを確認する。スクリプトをリポジトリへ追加しない。`git cat-file --batch` で固定SHAのblobを読み、ローカルJavaの有無やsparse checkoutには依存しない。
+本証拠を追加したPRの検証済みhead（成果ツリー）を別worktreeへcheckoutし、そのルートで実行する。後続mainの任意HEADではなく、当時の成果ツリーを対象とする。検査のscope判定は固定SHAとの差分なので、後続mainの無関係な変更も含めてfailし得る。その失敗を無視せず、main追従後の自PR差分は `git diff --name-only $(git merge-base HEAD origin/main) HEAD` でも別確認する。本検証時点の固定SHA差分には本担当2文書以外の変更はない。次のPythonを `%TEMP%/l1k-verify.py` にUTF-8で保存し、`python "$env:TEMP/l1k-verify.py"` でgreen、`python "$env:TEMP/l1k-verify.py" --baseline` で固定基準redを確認する。スクリプトをリポジトリへ追加しない。`git cat-file --batch` で固定SHAのblobを読み、ローカルJavaの有無やsparse checkoutには依存しない。
 
 ```python
 import collections, hashlib, json, pathlib, re, subprocess, sys
