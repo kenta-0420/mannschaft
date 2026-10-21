@@ -1,5 +1,6 @@
 <script setup lang="ts">
-const api = useApi()
+const { changePassword: changeUserPassword } = useUserSettingsApi()
+const { redirecting, triggerRedirect } = usePasswordChangeRedirect()
 const notification = useNotification()
 const { t } = useI18n()
 
@@ -13,13 +14,16 @@ const passwordForm = ref({
 
 const passwordError = computed(() => {
   if (passwordForm.value.newPassword && passwordForm.value.newPassword.length < 8) {
-    return t('min_length', { min: 8 })
+    return t('settings.password.length_error')
+  }
+  if (passwordForm.value.newPassword && countCharTypes(passwordForm.value.newPassword) < 3) {
+    return t('settings.password.policy_violation')
   }
   if (
     passwordForm.value.confirmPassword &&
     passwordForm.value.newPassword !== passwordForm.value.confirmPassword
   ) {
-    return t('password_mismatch')
+    return t('settings.password.mismatch_error')
   }
   return null
 })
@@ -27,7 +31,7 @@ const passwordError = computed(() => {
 const canSubmitPassword = computed(() => {
   return (
     passwordForm.value.currentPassword &&
-    passwordForm.value.newPassword.length >= 8 &&
+    meetsPasswordPolicy(passwordForm.value.newPassword) &&
     passwordForm.value.newPassword === passwordForm.value.confirmPassword
   )
 })
@@ -35,20 +39,23 @@ const canSubmitPassword = computed(() => {
 async function changePassword() {
   changingPassword.value = true
   try {
-    await api('/api/v1/auth/change-password', {
-      method: 'POST',
-      body: {
-        currentPassword: passwordForm.value.currentPassword,
-        newPassword: passwordForm.value.newPassword,
-      },
+    await changeUserPassword({
+      currentPassword: passwordForm.value.currentPassword,
+      newPassword: passwordForm.value.newPassword,
     })
     passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
     notification.success(t('settings.password.change_success'))
+    await triggerRedirect()
   } catch {
     notification.error(t('settings.password.change_error'))
   } finally {
     changingPassword.value = false
   }
+}
+
+function applyGeneratedPassword(password: string): void {
+  passwordForm.value.newPassword = password
+  passwordForm.value.confirmPassword = password
 }
 </script>
 
@@ -63,6 +70,7 @@ async function changePassword() {
           toggle-mask
           class="w-full"
           input-class="w-full"
+          :input-props="{ autocomplete: 'current-password' }"
         />
       </div>
       <div>
@@ -72,6 +80,12 @@ async function changePassword() {
           toggle-mask
           class="w-full"
           input-class="w-full"
+          :input-props="{ autocomplete: 'new-password' }"
+        />
+        <PasswordGeneratorActions
+          :password="passwordForm.newPassword"
+          :disabled="changingPassword || redirecting"
+          @generated="applyGeneratedPassword"
         />
         <small class="mt-1 block text-surface-500">{{ $t('settings.password.policy_hint') }}</small>
       </div>
@@ -83,6 +97,7 @@ async function changePassword() {
           toggle-mask
           class="w-full"
           input-class="w-full"
+          :input-props="{ autocomplete: 'new-password' }"
         />
       </div>
       <p v-if="passwordError" class="text-sm text-red-500">{{ passwordError }}</p>
@@ -92,7 +107,7 @@ async function changePassword() {
           :label="$t('settings.password.change_button')"
           icon="pi pi-lock"
           :loading="changingPassword"
-          :disabled="!canSubmitPassword"
+          :disabled="!canSubmitPassword || changingPassword || redirecting"
           @click="changePassword"
         />
       </div>
