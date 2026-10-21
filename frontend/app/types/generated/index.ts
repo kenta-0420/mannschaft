@@ -24663,7 +24663,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** TOTPログイン検証 */
+        /** 2FAログイン検証（TOTP / バックアップコード / メールOTP） */
         post: operations["validateTotp"];
         delete?: never;
         options?: never;
@@ -24716,6 +24716,91 @@ export interface paths {
         put?: never;
         /** MFAリカバリー確認 */
         post: operations["confirmMfaRecovery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/2fa/reauth/email/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 本人確認用メールOTP送信（無効化・再生成用） */
+        post: operations["sendReauthEmailOtp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/2fa/email/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** メール2FA設定開始（設定用コード送信） */
+        post: operations["startEmailSetup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/2fa/email/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 2FAログイン用メールOTP送信 */
+        post: operations["sendLoginEmailOtp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/2fa/email/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** メール2FA有効化 */
+        post: operations["enableEmailTwoFactor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/2fa/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 2FA無効化 */
+        post: operations["disableTwoFactor"];
         delete?: never;
         options?: never;
         head?: never;
@@ -46815,6 +46900,23 @@ export interface paths {
         };
         /** Google OAuth 認証URL取得 */
         get: operations["getGoogleAuthUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/2fa/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 2FA設定状態取得 */
+        get: operations["getTwoFactorStatus"];
         put?: never;
         post?: never;
         delete?: never;
@@ -70730,8 +70832,27 @@ export interface components {
             backupCodes?: string[];
         };
         ValidateTotpLoginRequest: {
+            code?: string;
+            /** @enum {string} */
+            method?: "TOTP" | "BACKUP_CODE" | "EMAIL";
             mfaSessionToken?: string;
             totpCode?: string;
+        };
+        ApiResponseMfaLoginTokenResponse: {
+            data?: components["schemas"]["MfaLoginTokenResponse"];
+        };
+        MfaLoginTokenResponse: {
+            accessToken?: string;
+            /** Format: int32 */
+            backupCodesRemaining?: number;
+            /** Format: int64 */
+            expiresIn?: number;
+            /** @enum {string} */
+            method?: "TOTP" | "BACKUP_CODE" | "EMAIL";
+            refreshToken?: string;
+            /** Format: int64 */
+            sessionId?: number;
+            tokenType?: string;
         };
         ApiResponseTotpSetupResponse: {
             data?: components["schemas"]["TotpSetupResponse"];
@@ -70739,6 +70860,40 @@ export interface components {
         TotpSetupResponse: {
             qrCodeUrl?: string;
             secret?: string;
+        };
+        RequestMfaRecoveryRequest: {
+            mfaSessionToken?: string;
+        };
+        ConfirmMfaRecoveryRequest: {
+            token?: string;
+        };
+        ApiResponseMfaEmailSendResponse: {
+            data?: components["schemas"]["MfaEmailSendResponse"];
+        };
+        MfaEmailSendResponse: {
+            /** Format: int64 */
+            expiresInSeconds?: number;
+            maskedEmail?: string;
+            /** Format: int64 */
+            resendAfterSeconds?: number;
+        };
+        MfaEmailSendRequest: {
+            mfaSessionToken?: string;
+        };
+        EnableEmailTwoFactorRequest: {
+            code?: string;
+        };
+        DisableTwoFactorRequest: {
+            code?: string;
+            currentPassword?: string;
+            /** @enum {string} */
+            method: "TOTP" | "BACKUP_CODE" | "EMAIL";
+        };
+        RegenerateBackupCodesRequest: {
+            code?: string;
+            currentPassword?: string;
+            /** @enum {string} */
+            method?: "TOTP" | "BACKUP_CODE" | "EMAIL";
         };
         ResolveEvaluationRequest: {
             resolutionNote?: string;
@@ -85150,6 +85305,16 @@ export interface components {
         };
         ApiResponseListAuthSessionResponse: {
             data?: components["schemas"]["AuthSessionResponse"][];
+        };
+        ApiResponseTwoFactorStatusResponse: {
+            data?: components["schemas"]["TwoFactorStatusResponse"];
+        };
+        TwoFactorStatusResponse: {
+            /** Format: int32 */
+            backupCodesRemaining?: number;
+            enabled?: boolean;
+            /** @enum {string} */
+            method?: "TOTP" | "EMAIL";
         };
         ApiResponseRateSimulatorResponse: {
             data?: components["schemas"]["RateSimulatorResponse"];
@@ -138709,13 +138874,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description TOTP検証成功 */
+            /** @description 2FA検証成功 */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseTokenResponse"];
+                    "*/*": components["schemas"]["ApiResponseMfaLoginTokenResponse"];
                 };
             };
         };
@@ -138742,14 +138907,18 @@ export interface operations {
     };
     requestMfaRecovery: {
         parameters: {
-            query: {
-                mfaSessionToken: string;
+            query?: {
+                mfaSessionToken?: string;
             };
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RequestMfaRecoveryRequest"];
+            };
+        };
         responses: {
             /** @description リカバリーメール送信完了 */
             200: {
@@ -138764,14 +138933,18 @@ export interface operations {
     };
     confirmMfaRecovery: {
         parameters: {
-            query: {
-                token: string;
+            query?: {
+                token?: string;
             };
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ConfirmMfaRecoveryRequest"];
+            };
+        };
         responses: {
             /** @description リカバリー完了 */
             200: {
@@ -138784,7 +138957,7 @@ export interface operations {
             };
         };
     };
-    regenerateBackupCodes: {
+    sendReauthEmailOtp: {
         parameters: {
             query?: never;
             header?: never;
@@ -138792,6 +138965,122 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description 送信受付 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMfaEmailSendResponse"];
+                };
+            };
+        };
+    };
+    startEmailSetup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 送信受付 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMfaEmailSendResponse"];
+                };
+            };
+        };
+    };
+    sendLoginEmailOtp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaEmailSendRequest"];
+            };
+        };
+        responses: {
+            /** @description 送信受付 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMfaEmailSendResponse"];
+                };
+            };
+        };
+    };
+    enableEmailTwoFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnableEmailTwoFactorRequest"];
+            };
+        };
+        responses: {
+            /** @description 有効化成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBackupCodesResponse"];
+                };
+            };
+        };
+    };
+    disableTwoFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DisableTwoFactorRequest"];
+            };
+        };
+        responses: {
+            /** @description 無効化成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMessageResponse"];
+                };
+            };
+        };
+    };
+    regenerateBackupCodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RegenerateBackupCodesRequest"];
+            };
+        };
         responses: {
             /** @description 再生成成功 */
             200: {
@@ -174151,6 +174440,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseMapStringString"];
+                };
+            };
+        };
+    };
+    getTwoFactorStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTwoFactorStatusResponse"];
                 };
             };
         };
