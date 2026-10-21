@@ -82,7 +82,7 @@
         "title": "Verwandte Bildschirme",
         "body": "Die folgenden Bildschirme zu Freundschaftsteams kannst du über das Teammenü öffnen.",
         "item_folders": "Freundesordner – Ordne Freundschaftsteams in Ordnern (bis zu 20 Ordner möglich)",
-        "item_feed": "Admin-Feed – Sieh dir Beiträge Freundschaftsteams an und leite sie an dein eigenes Team weiter",
+        "item_feed": "Admin-Feed – Sieh dir Beiträge von Freundschaftsteams an und leite sie an dein eigenes Team weiter",
         "item_exports": "Verlauf der Rückweiterleitung – Sieh nach, an welche Freunde die Beiträge deines Teams weitergeleitet wurden"
       }
     }
@@ -135,7 +135,7 @@
   },
   "friend_feed": {
     "title": "Admin-Feed",
-    "subtitle": "Beiträge Freundschaftsteams prüfen und weiterleiten",
+    "subtitle": "Beiträge von Freundschaftsteams prüfen und weiterleiten",
     "badge": "Von Freunden",
     "forwarded_badge": "Weitergeleitet",
     "permission_denied": "Sie haben keine Berechtigung, diese Seite anzuzeigen",

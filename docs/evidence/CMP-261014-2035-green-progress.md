@@ -70,3 +70,9 @@ LINE/SNSのタイトル・副題・削除/保存/アカウント追加とSNSダ�
 
 196件runの入力は実行中に変更していない。上記141件CI・P8/P9・22件は訂正前headの証拠として保全し、訂正後headのCIは別途確認する。新しいNuxt/Chromeは起動せず、軽量lintと6言語JSON構文・差分検査を行う。独立検分・モックなし実機・住民探索・台帳/最終evidence/マージは未完了のまま。
 訂正差分9入力はWSLへ同期後cmp一致。対象LINE/SNS/specのeslintはexit 0、6言語JSONは全て構文解析成功、git diff --check成功。新設root翻訳キー参照は0件。de commonの友達チーム用語統一2箇所は2035正本要件として保持した。関連6件の動的検証は次head CIで確認し、環境停止中のローカルNuxt再起動はしない。
+
+## B3精読によるドイツ語の最小訂正
+
+本陣が16キーの語順・格変化を精読し、de `friends.guide.related.item_feed` と `friend_feed.subtitle` の「Beiträge Freundschaftsteams」に必要な前置詞が無い実findingを確認した。この2箇所だけ「Beiträge von Freundschaftsteams」へ修正し、item_feedの末尾・他言語・単数属格「des Freundschaftsteams」の2キー・相互成立の引用一致は保持した。既存番人に当該2文の完全一致期待値はなく、翻訳を複製する新規試験は本陣裁可に従い追加しない。変更入力2ファイルのcmp一致後、既存friendI18nContract.spec.tsの18件をNode限定で再実行し、18成功/0失敗/skip0・exit0を確認した。
+
+P8/P9実測と訂正後差分の依存関係: LINE/SNSのja翻訳値と復元後の文字列は一致し、PageHeaderのclass・action wrapper・ボタン属性/handlerは不変。他7移行画面とPageHeader本体にも変更が無い。除去common rootキーは他の使用箇所0件でP8の8画面には未使用。B3はde2文字列だけの変更で、jaのP8/P9には入力文字列差が無い。このため既存ja測定値を維持できるが、新headで撮影を再実行したという意味ではない。de幅測定を含む196件は最終headで未完分を検証する必要がある。
