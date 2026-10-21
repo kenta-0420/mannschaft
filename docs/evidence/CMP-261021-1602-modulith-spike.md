@@ -4,7 +4,7 @@
 
 2026-10-21。これは未完了を明示した draft PR 用の保全文書であり、完了文書ではない。台帳登録 PR #4027 は MERGED。main commit `7e9f82b3cae1` で台帳登録が実装中の状態を確認済み。試練 checkpoint は `78960ac2aa`。Registry 専用タスクは turnstile 経由で他者の実ビルド終了を待機中で、Gradle 実行は未開始。8 項目の実検証は未実施のままである。L0-S 合格や Phase 0 完了とは扱わない。
 
-Boot 1.4.13 は候補、DDL の docs/architecture §11.2 は未確定。実験コードは `spike/cmp-261021-0017-modulith-261021` ブランチにのみ存在し、main へマージしない。対象: `3bad46f846cd094a64bd46524aed69479c0b76bf`。worktree: `.claude/worktrees/agent-4022-modulith-spike`。
+Spring Boot 3.5.13 向けの Modulith 1.4.13 が候補、DDL の docs/architecture §11.2 は未確定。実験コードは `spike/cmp-261021-0017-modulith-261021` ブランチにのみ存在し、main へマージしない。対象: `3bad46f846cd094a64bd46524aed69479b0c76bf`。worktree: `.claude/worktrees/agent-4022-modulith-spike`。
 
 ## 確認項目の現在地
 
