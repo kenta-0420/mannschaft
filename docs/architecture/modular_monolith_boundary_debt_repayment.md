@@ -1,0 +1,977 @@
+# モジュラーモノリス境界負債の返済と Gradle/Modulith 卒業 計画書
+
+> 起票日: 2026-10-21
+> 台帳: CMP-261021-0017（親・傘行。子 CMP は §8.3 に従い Phase・レーン単位で着手時に採番）
+> 担当: kenta
+> **ステータス**: 🟢 設計完了（2026-10-21、6観点×2パス＋実機E2E耐性クリティック＋差分再検分5回を経て未解決ゼロ）
+> 帰属: [`domain_db_design_principles.md`](domain_db_design_principles.md) 原則1・5、[`db_scalability.md`](db_scalability.md) 今後課題「イベント駆動アーキテクチャへの移行」（:107）
+
+---
+
+## §0. 決定事項（マスター御裁可・2026-10-21）
+
+| # | 論点 | 決定 |
+|---|---|---|
+| Q1 | D-2b（UuidV7Entity 未継承 569 行）の扱い | **本計画の対象外**。別戦役 CMP-261021-0115「UUIDv7 継承負債（D-2b 凍結）の返済」で扱う（ローカル開発中で既存データは考慮不要、モジュール化とは独立）。本書の「凍結ストア空」は **D-2b を除く**（D-1 / D-3 / D-3T / D-5 / ServiceAPI を指す） |
+| Q2 | notification を暫定core に入れるか | **入れない**。通常の業務モジュールとして扱う |
+| Q3 | 粒度 | **Modulith は全トップレベルパッケージを個別モジュール**、**Gradle サブプロジェクトは関連領域の束（10〜20 程度）**（§3.2） |
+| Q4 | 台帳の単位 | **子 CMP は Phase・レーン単位（10〜15 行程度）**。領域ごとのロットは親 Issue のチェックリストで管理し、台帳の「1戦役1行」を守る（§8.3） |
+| Q5 | 凍結定数の運用 | **`EXPECTED_LINES_*` を「上限」方式へ変更**し、専用の締めレーン（L-SHIME）が定期的に実測値へ引き下げる。返済 PR は定数を触らない＝並行マージ可（§7.4） |
+| Q6 | 外部 API 契約 | **変えない**。たとえば採用確定の応答の `chatRoomId` は今と同じく常に整数で返す（null を返す案は不採用） |
+
+殿判断（上記方針から導出）:
+
+- (a) イベントのペイロードは ID と scope（`organization_id` 等）のみ。自由記述・PII は禁止し番人化する。Registry に永続化するイベントは明示的に限定する。`event_publication` は完了時に削除（または短期保持）する。退会 purge との整合 IT を置き、削除済み利用者への再配信でデータが復活しないことを確かめる（§4.5・§11）。
+- (b) チャット自動作成（`JobChatService`）は目玉機能で、`chatRoomId` が API に出るため「即時に結果が要る」。ただし**同一トランザクションは要らない**ので台帳（パターン E）には入れず、パターン F「予約→確定」で解く（§4.3）。
+- (c) Gradle 卒業から撤退した場合、本計画の完了条件は「凍結ストア空（D-2b 除く）＋ Modulith verify 全体必須」と読み替える（§14）。
+- (d) CMP-260918-1406 の着手済みロットは例外としてそのまま継続を認める（§5.3）。
+
+---
+
+## §1. 背景と目的
+
+### 1.1 経緯（事実）
+
+- Mannschaft は「将来のマイクロサービス分割を見据えたモジュラーモノリス」を掲げている（CLAUDE.md「アーキテクチャ思想」）が、ビルドは**単一 Gradle プロジェクト**のままである。`backend/settings.gradle.kts` は初期セットアップ `6d58cf6a89`（2026-03-19）以来 `include` を持たず、`rootProject.name = "app"` のみ。
+- 単一 Gradle を選んだ ADR は存在しない。`backend/gradle.properties:8-9` に「現在はシングルモジュール構成のため効果は限定的だが、将来のマルチプロジェクト化に備えて有効化」とあるだけである。
+- ドメイン境界は ArchUnit の凍結（FreezingArchRule）で**悪化防止**だけを担い、既存違反は返済計画のないまま凍結ストアに積まれている（§2）。
+- 越境 `@Transactional` は原則5で「将来のイベント駆動化候補として記録する」とされ（`domain_db_design_principles.md:78-79`）、`db_scalability.md:107` の今後課題にも「イベント駆動アーキテクチャへの移行」が残っている。
+
+### 1.2 経緯（推測・未検証）
+
+- 単一 Gradle でも開発が回っていたのは、ルートパッケージの暗黙スキャン（§2.5）で全ドメインが同居でき、境界違反がコンパイルを止めなかったためと推測する。
+- ビルド時間の大半は分割と無関係な要因（fork 固定費・Flyway 再生テスト・コンテキスト数・CPU/IO 競合。§13.1）と実測されており、**分割でビルドが速くなるかは未計測**である。本計画は速度改善を目的に据えず、効果は Phase 0 / Phase 3 の計測で判断する。
+
+### 1.3 目的
+
+1. ドメイン間の越境依存（Entity・Repository の直接参照、越境トランザクション）を返済し、凍結ストア（D-2b を除く）を空にする。
+2. 越境連携を「公開 API の同期呼び出し」と「ドメインイベント（確実配信つき）」に揃え、将来の分割が機械的にできる状態にする。
+3. 境界を **Spring Modulith（論理境界）** と **Gradle サブプロジェクト（コンパイル時強制）** の二重で担保し、最終的に全領域を個別モジュールへ分離する。
+
+### 1.4 目的外（マスター御裁可済み）
+
+- 起動・デプロイ単位は**1つのまま**。マイクロサービス化はしない（将来分割できる状態を目指すだけ）。
+- 外部 HTTP API の変更（§10）。
+- ビルド時間短縮を目標値として約束すること（§13.1）。
+- D-2b の返済（CMP-261021-0115）。
+
+---
+
+## §2. 現状の数値（2026-10-21 origin/main `9530c75ddc` で再確認）
+
+### 2.1 凍結ストア（`ArchUnitFreezeStoreIntegrityTest` の `EXPECTED_LINES_*` が正）
+
+ストア: `backend/src/test/resources/archunit_store/`（対応表は同ディレクトリの `stored.rules`。`git ls-files` で実在を確認）。1違反1行で、各行に発生元 FQCN が含まれるため発生元ドメイン別に集計できる（L0-C）。
+
+| 番人 | 定数（行） | ストア UUID | 発生元ドメイン上位 |
+|---|---:|---|---|
+| D-1 越境 Entity 参照（`CrossDomainEntityImportArchTest`） | 2,037（:713） | `584c3a46-…` | publicview 176 / dashboard 176 / gdpr 153 / social 101 / contact 100 / disclosure 91 |
+| D-3 越境 `@Transactional`（`CrossDomainTransactionalArchTest`） | 1,295（:743） | `f14374b1-…` | publicview 127 / village 79 / contact 72 / tournament 55 / admin 48 / social 47 |
+| D-3T 推移的越境 tx（`CrossDomainTransactionalTransitiveArchTest`） | 7,137（:883） | `296295dd-…` | bulletin 530 / schedule 439 / shiftbudget 343 / payment 333 / tournament 323 / social 301 |
+| D-5 越境 Repository 依存（`CrossDomainRepositoryDependencyArchTest`） | 1,853（:976） | `427c445d-…` | gdpr 142 / dashboard 133 / publicview 127 / village 86 / contact 72 / social 65 |
+| ServiceAPI Entity 露出（`ServiceApiEntityBoundaryArchTest`） | 600（:989） | `93124b52-…` | timetable 62 / schedule 41 / match 38 / jobmatching 31 / payment 27 / notification 23 |
+| D-2b UuidV7Entity 未継承（`EntityUuidV7ConventionArchTest`）※対象外 | 569（:926） | `2c0ba995-…` | tournament 19 / advertising 16 / recruitment 14 / parking 14 |
+| AUTHZ_WAVE4（`AuthzControllerGuardArchTest`） | 0（:682） | `9ed4737d-…` | — |
+
+- D-3T は推移展開のため、1つの越境呼び出しが多数の tx 入口から数えられ、行数は返済量の目安にならない。
+- **偽の返済が起こりうる2つの穴**（対策は L1-G0）:
+  1. D-3T は interface 呼び出しから runtime proxy の具象実装を追わずに打ち切る（`CrossDomainTransactionalTransitiveArchTest.java:48-54`）。呼び出し先を interface にしただけで行が消える。
+  2. D-3 / D-3T は**直接付いた `@Transactional`** だけを入口にする（`CrossDomainTransactionalArchTest.java:110-111` の `isAnnotatedWith(Transactional.class)`、`CrossDomainTransactionalTransitiveArchTest.java:87-88`）。`@ApplicationModuleListener` のような合成アノテーション（メタアノテーションで tx 属性を持つ）を付けたリスナーから越境 Repository へ到達しても検出されない。
+
+### 2.2 依存グラフと流入速度
+
+| 指標 | 値 | 出典 |
+|---|---:|---|
+| main の Java ファイル | 8,407（2026-10-21）。参考: 2026-09-21 時点 7,559、2026-10-14 時点 7,945 | `git ls-tree -r <各日の origin/main 最終コミット> backend/src/main/java` |
+| `com.mannschaft.app` 直下のトップレベルパッケージ | 120 | `find -mindepth 1 -maxdepth 1 -type d` |
+| 越境 import | 9,376（偵察値・未再計測） | 偵察 |
+| 強連結成分（SCC）の最大 | 83 パッケージ（common を含む。偵察値・未再計測） | 偵察 |
+| common → 業務の import | 167 件／35 パッケージ（import 文の単純集計） | `grep '^import com.mannschaft.app.<x>' common/**` |
+| config → 業務の import | 41 件 | 同上 |
+| JPA 関連（`@ManyToOne` 等）の越境 | 5 件・すべて notification → `auth.UserEntity`（例 `notification/confirmable/entity/ConfirmableNotificationEntity.java:155`） | 偵察 |
+
+**コードは今も増え続けている。** 直近30日で main の Java ファイルは約 850 本増えた（7,559 → 8,407。日次値は増減があり単調ではないが、傾向は増加）。返済の速度が新規コードの流入に負ければ負債は減らない。このため本計画は次を前提にする。
+
+- 新規の越境は凍結で止める（既存の運用）。加えて Phase 1 で公開窓口の規約（§3.4）とイベントの規約（§4.5）を先に決め、新規コードを最初から規約どおりに書けるようにする。
+- 締めレーン（L-SHIME）の集計で、ドメイン別の行数の推移を毎回記録し、増えているドメインを親 Issue で知らせる。
+
+common の業務依存の代表（いずれも §6.1 で kernel から追い出す対象）:
+
+- `common/AccessControlService.java:3-14` — family の Repository、gdpr の `GdprErrorCode`（:5、使用は :748）、membership の Repository・enum、organization の Service、role の Entity・Repository・Service。
+- `common/NameResolverService.java:3-9` — auth / organization / team の Entity・Repository。
+- `common/activityschedule/ActivityScheduleFacade.java:3-21` — activity と schedule の Service・DTO を束ねる業務ファサード。
+- `common/visibility/mapping/*VisibilityMapper.java` — 21 ファイル。
+- `common/storage/quota/StorageUsageQueryService.java:3-10` — organization / team の Service。
+
+### 2.3 越境の代表例
+
+| 箇所 | 内容 | 想定パターン（§4） |
+|---|---|---|
+| `dashboard/controller/DashboardController.java:5` | bulletin の Repository を Controller が直接 import | A / D |
+| `billing/ScopeMemberCountService.java:4` | membership の Repository | A |
+| `gdpr/service/PersonalDataCollector.java:52` | resume の Repository（収集系。同様の import 多数） | A（SPI 化） |
+| `actionmemo/service/ActionMemoAdminService.java:74-76` | todo / role / auth をまたぐ tx。既存 TODO に「将来は TodoRevertedByAdminEvent で分離予定」 | B / C |
+| `jobmatching/service/JobChatService.java:58-92` | chat の Channel / Member / Message Repository に直接 save し channelId を返す。呼び出し元 `JobContractService#acceptApplication`（:93-173）の同じ tx 内（:154-156） | F（§4.3 手本） |
+| `role/service/BlockService.java` `blockUser`（:51） | role から他ドメインへの書き込み越境 | B / C |
+| `contact/service/ContactService.java` `addToDefaultFolder`（:157） | contact からの越境 | A / B |
+
+### 2.4 イベント資産（コメント行を除いた単純 grep）
+
+| 指標 | 値 |
+|---|---:|
+| `@TransactionalEventListener` | 263 件／170 ファイル |
+| `publishEvent(` | 260 件 |
+| `@Async`（main） | 266 件。うち `event-pool` 指定は約 168 箇所（`config/AsyncConfig.java` のコメント） |
+| 他ドメインの `*Event` 型 import | 113 件（偵察値・未再計測） |
+| Spring Modulith | 未導入 |
+
+- 既存の確実配信は通知専用の transactional outbox（[`notification_outbox.md`](notification_outbox.md)）だけである。
+- イベント基底 `common/event/BaseEvent.java` は**抽象クラス**で、コンストラクタで `occurredAt = LocalDateTime.now()` を設定する。
+- **既存のイベントには秘密情報を持つものがある**。例: `auth/event/UserRegisteredEvent.java:12-15` は `email`・`displayName`・`rawToken`（確認メール用の生トークン）を持つ。Registry がこれらを永続化すると、DB に秘密情報が残る（§4.4）。
+
+### 2.5 Spring・ビルド・テストの構成
+
+- `MannschaftApplication.java:7` に `@SpringBootApplication` のみ。`@EntityScan` / `@EnableJpaRepositories` / `@ComponentScan` は無く、ルートパッケージ `com.mannschaft.app` 配下を暗黙スキャンしている。`@Entity` を持つファイルは 815。
+- Spring Boot 3.5.13（`build.gradle.kts:7`）、Gradle 8.14.4、ArchUnit 1.3.0（`build.gradle.kts:126`）。buildSrc・version catalog 無し。`build.gradle.kts` は 1,211 行。configuration cache は無効。
+- 品質ゲート: jacoco は単一プロジェクト前提（:6・:1042）。OWASP Dependency-Check は `dependencyCheckAnalyze`（:1105-1111）で、週次の `.github/workflows/security-scan.yml:66` も `./gradlew dependencyCheckAnalyze` を呼ぶ。
+- OpenAPI 生成: 出力先は `file("${projectDir.parentFile}/docs")`（`build.gradle.kts:1161`）。`projectDir` が `backend/` であることを前提にした相対指定で、サブプロジェクトへ移すと `docs/` を指さなくなる。
+- テストの実測記録（`build.gradle.kts` のコメント）:
+  - fork 1回あたり +447 秒、shard4 の `:test` 41.96 分のうちテスト正味 7.4 分（:395-417）。
+  - Flyway 再生テストが計測時間の 72〜88%（:683-686 付近）。
+  - Spring テストコンテキスト 17 個がヒープの 59%（:561-567）。上限 10 に制限済み（`backend/.claudecode.md` §30「テストコンテキストキャッシュ上限 10」）。
+  - shard 分割（:597-642）、`archUnitTest`（:751）、`archTest`（:836）。
+- ローカルの遅延は CPU/IO 競合で、ロック待ちは 0 件。`gradle-turnstile.sh` で直列化する（`docs/development/worktree_operations.md:96-109`）。
+- CI: `.github/workflows/backend-ci.yml` の matrix 6 shard（:412-413）、テスト XML とストアの収集は `backend/build/test-results/**/*.xml` と `backend/src/test/resources/archunit_store/*`（:586-587）、jacoco レポートは `backend/build/reports/jacoco/`（:603）、`cancel-in-progress: true`（:51）。重み表は `backend/src/test/resources/shard-weights.properties`（再生成は `backend/scripts/regen-shard-weights.sh`。いずれも `git ls-files` で実在を確認）、`verifyShardCoverage`。
+- Flyway: `backend/src/main/resources/db/migration` の単一ディレクトリに 1,223 ファイル（他に `rollback/` 2）。番人 `FlywayTimestampNamingGuardTest`。
+- 非同期: `@Primary` の `event-pool` は core 2 / max 5 / queue 100、拒否は AbortPolicy（`config/AsyncConfig.java:47-60`）。executor 無指定の `@Async` は禁止（`backend/.claudecode.md:464`、Issue #2953）。
+- レプリカ振り分け: `config/ReplicaRoutingAspect.java:56` はメソッドに付いた `@Transactional`（`@annotation`）だけを見る。クラスレベルの `readOnly` は振り分けに使われない。
+
+### 2.6 番人の限界
+
+- `DomainPackages.java:24` の `SHARED_DOMAIN = "common"` は、相手先・発生元のどちらが common でも許容する。common に業務ロジックを置けば全番人をすり抜ける（§2.2 の 167 件）。
+- `--tests` で絞り込んで実行すると凍結ストアが壊れる（`backend/.claudecode.md` §30「凍結ストアは `--tests` 絞り込み実行で破壊される」）。
+- D-3 / D-3T の偽の返済の穴（§2.1）。
+- `NotificationTransactionBoundaryGuardTest.java:784-792` の `isAllowedEntryPoint` は、ソース上の `@TransactionalEventListener` の文字列だけを入口と認める。合成アノテーションのリスナーは入口と認識されない。
+
+---
+
+## §3. 目標アーキテクチャ
+
+### 3.1 モジュールの3層
+
+| 層 | 中身 | 依存してよい先 |
+|---|---|---|
+| **kernel** | 業務を知らない基盤だけ（下の列挙） | JDK・Spring・ライブラリのみ |
+| **暫定core** | auth / role / team / organization / membership | kernel、暫定core の構成領域同士（Phase 4 まで循環を許容） |
+| **業務モジュール群** | 上記以外の全トップレベルパッケージ（notification を含む） | kernel、暫定core と他業務モジュールの**公開窓口のみ** |
+
+**暫定core の構成領域は本書で固定する。** 追加にはマスターの裁可が要る。番人 `ProvisionalCoreMembershipGuardTest`（L1-G で新設）が構成領域の一覧を定数で持ち、一覧外のパッケージが暫定core 扱いの例外を受けたら fail させる。
+
+**kernel に入れてよいもの（列挙。これ以外は入れない）:**
+
+- 例外基盤（`BusinessException`・ErrorCode の interface）、`ApiResponse` 等の共通レスポンス型
+- `UuidV7Entity` / `UuidV7` など Entity 基底・ID 生成
+- `AbstractTenantAwareRepository` などテナント基盤
+- 時刻・ゾーン、ページング、JSON などの汎用ユーティリティ
+- イベントの基底型（`DomainEvent` interface、`BaseEvent`、Registry 登録対象の印 `ReliableEvent`。§4.4）、合成アノテーション `@ModuleEventListener`、移行用の印 `@TransitionalBridge`（付いたクラス自体は kernel に数えない。§5.2 L1-R）
+- ストレージ・キャッシュ・ロックなどインフラのアダプタ（業務の判断を含まないもの）
+- **認可の interface**（`common.AccessControlService`。実装は暫定core。§6.1）
+
+kernel に入れてはならないもの: 業務ドメインの型の import、業務判断（誰が見えるか・誰が操作できるか・何人いるか）、特定ドメインのファサード。番人 `KernelNoBusinessDependencyArchTest`（L1-G）が「kernel から業務パッケージへの import 0 件」を**凍結なしの0件必須**で強制する。
+
+**パッケージ名の扱い:** kernel は新しいパッケージを作らず、**`common` から業務依存を追い出した残りをそのまま kernel とする**。`BusinessException` 等は数千ファイルが import しており、改名すると全レーンと衝突する PR になるため。
+
+### 3.2 粒度（Q3）
+
+- **Modulith の論理モジュール = トップレベルパッケージ**（120。パッケージは動かさない）。全領域が個別モジュールになる。
+- **Gradle サブプロジェクト = 関連する論理モジュールの束（10〜20 程度）**。パッケージとサブプロジェクトは1対1にしない。
+
+束の決め方の基準:
+
+1. **業務のまとまり**: 同じ利用者の行為・同じ画面群を扱うもの（例: shift・shiftbudget・timetable のような勤務系、bulletin・social・village のような交流系）。
+2. **依存の向きがそろう**: 束の外への依存が同じ相手（暫定core と kernel だけ、など）になるもの。束の中の循環は許すが、束同士の循環は許さない（Gradle が循環依存を拒むため、束の境界は循環の外に引く）。
+3. **大きさ**: 1束あたりの目安は 300〜900 ファイル（main 8,407 本 ÷ 10〜20）。極端に小さい束は隣の束に合わせ、極端に大きい束は業務のまとまりで割る。
+4. **葉を先に**: 被依存 0 の葉は小さくても単独で先に卒業させてよい（パイロット）。後で束に合流させてもよい。
+5. **暫定core は Phase 4 まで1束**。Phase 4 で循環を解いたあと、必要なら複数束へ割る。
+
+束の具体的な割り当ては L0-S（verify の初回結果）と L1-K（仕分け）の後、L3-0 で決めて本書に追記する。
+
+### 3.3 依存方向
+
+```mermaid
+flowchart TB
+  subgraph App[":app（起動・全体番人・OpenAPI 生成）"]
+    direction TB
+    B1["業務の束<br/>webhook / line / promotion / signage / ..."]
+    B2["業務の束<br/>schedule / bulletin / payment / notification / jobmatching / chat / ..."]
+    CORE["暫定core<br/>auth / role / team / organization / membership"]
+    K["kernel（= 業務依存を除いた common）"]
+    DB[":db-migration（Flyway）"]
+  end
+  B1 -- 公開窓口のみ --> CORE
+  B2 -- 公開窓口のみ --> CORE
+  B1 -- 公開窓口・イベント --> B2
+  B1 --> K
+  B2 --> K
+  CORE --> K
+  CORE -. 認可 interface を実装 .-> K
+```
+
+- 矢印の逆向き（kernel → 業務、暫定core → 業務モジュール）は禁止。暫定core が業務の情報を必要とする場合は、業務側がイベントを発行し暫定core が購読するか、業務側が暫定core の SPI を実装する。
+
+### 3.4 公開窓口の規約
+
+- 他モジュールから参照してよいのは `<domain>.api` パッケージ（とその下）だけ。Modulith では `@NamedInterface("api")` を `package-info.java` に付ける。
+- `api` に置いてよいもの: 公開 Service（**final なファサードクラス**）、引数・戻り値の DTO（record 推奨）、**発行するイベント型**、他モジュールが実装する SPI interface。
+- `api` に置いてはならないもの: `@Entity`、Repository、Spring Data の型を含むシグネチャ。
+- **公開 Service を interface にしない（偽の返済の防止）**。L1-G0 で D-3T を「本番クラス内に実装が1つだけの interface は、その実装へ展開して判定する」よう改修するまでは、公開 Service は final なファサードクラスとし、interface は SPI（相手が実装するもの）に限る。例外は §6.1 の `common.AccessControlService`（呼び出し側 1,000 ファイル超の差分を避けるため interface とする。L1-G0 の完了を L1-A の入口条件にする）。
+- **イベント型の置き場所は発行側の `api`**（例: `jobmatching.api.JobContractConcludedEvent`）。購読側が発行側の `api` に依存する向きになる。
+- 公開 Service の命名: `<Domain><用途>Api`（例: `ChatRoomApi`）。実装の詳細は非公開パッケージに置く。
+- **窓口の持ち主**: 各モジュールの `api` には持ち主のレーン（そのドメインを担当するロット、暫定core は L1-A または L4）がいる。他ロットが相手の `api` に窓口を足すときは、持ち主に依頼するか、持ち主が未着手なら親 Issue で一時的に持ち主を引き受けて宣言する（§7.1）。同じ用途の窓口を別々に足して乱立させない。
+- **公開 API 化で OpenAPI が変わらないこと**: 内部の DTO を `api` へ移すと、springdoc のスキーマ名（型の単純名）の衝突や enum の並びが変わり、外部 API の形が変わらなくても `docs/openapi.json` が変わりうる。Controller の応答型は移動しないか、移動する場合は §7.7 の比較と契約スナップショットテストで不変を確かめる。
+
+---
+
+## §4. 越境の解き方カタログ
+
+### 4.1 パターンと判定基準
+
+| パターン | 中身 | 使う条件 | 挙動の変化 |
+|---|---|---|---|
+| **A 公開 API 同期** | 相手モジュールの `api` を同期で呼ぶ | 即時に結果が要る**読み取り**。または相手の業務判断を問う（認可など） | 戻り値は変わらない。相手の内部型に依存しなくなるだけ |
+| **B AFTER_COMMIT イベント** | 自分の tx 内で `publishEvent`、相手は AFTER_COMMIT で購読 | 書き込みを伴うが、**取りこぼしても業務上許容できる**連携（キャッシュ無効化・統計・補助的な通知など） | 相手側の反映は commit 後で遅れる。相手が失敗しても自分は巻き戻らない。取りこぼしうる |
+| **C Registry 確実配信** | B に加え、Spring Modulith の Event Publication Registry に記録し、未完了なら再配信 | 書き込みを伴い、**業務上必ず起きなければならない**連携 | B に加え、未完了の購読は Registry に残り再配信される。**購読側は冪等必須** |
+| **D tx 外読み取り snapshot** | 自分の tx の外（または前）で相手の API から値を読み、値として持ち込む | 書き込みの判断材料として他モジュールの状態が要るが、同一 tx の一貫性までは要らない | 読んだ値が古くなりうる（決定の根拠をログ・列に残す） |
+| **F 予約→確定** | トランザクションを持たない調停役が、(a) 相手の公開 API で「保留状態」の作成物を相手自身の tx で作って ID を得る → (b) 自モジュールの tx で本体を確定し、同じ tx で Registry にイベントを記録 → (c) コミット後に相手の API で作成物を「確定（有効化）」する。(c) が失敗したら、**自モジュールの** Registry リスナーが (c) を呼び直す。(b) が拒否されたら、調停役が相手の公開 API で予約を明示的に取り消す。取り消せなかった予約は相手が自身の掃除処理で失効させる。予約はどの状態でも物理削除せず墓標として残し、確定は保留・失効・取消のどこからでも期限なしで同一 ID のまま行える | **即時に結果（相手の作成物の ID）が要る書き込み連携**で、同一 tx までは要らないもの | 応答には (a) の ID が必ず入る（外部 API 不変）。(c) が遅れる間は作成物が保留のまま見えない。**相手側は (a)(c) の冪等性が必須** |
+| **E 同一 tx 不可欠の台帳化** | 越境のまま残し、理由つきで台帳に載せる | F でも整合が保てない**不可分な更新**（片方だけ確定した状態が一瞬でも外から見えると業務が壊れ、保留・補償でも代替できない） | 変化なし。台帳に理由・代替不能の根拠・見直し条件を書く |
+
+**判定の順序**: まず A（読み取りか）→ 書き込みで即時に結果が要らなければ C か B（取りこぼし許容か）→ **即時に結果が要る書き込みでも、まず F（予約→確定）を検討する** → 判断材料の読み取りなら D → **E は F でも整合が保てない不可分な更新に限る**。「即時に結果が要る」ことは「同一トランザクションが要る」ことではない。
+
+**依存の向き**: F では依存は「自モジュール → 相手の `api`」の一方向だけにする。相手は自モジュールのイベント型を購読しない（相手は自分の保留を自分で掃除するだけで、自モジュールを知らない）。こうすれば Modulith の循環検査を通る。
+
+**`@Transactional` を外すだけの修正は禁止**（原子性を黙って失う症状隠し。CMP-260912-1524 で自己呼び出しにより原子性が失われていた事例がある）。
+
+E の台帳は凍結ストアに入れない。D-3P と同じく**監査済み例外の一覧**（test ソースの定数、理由必須、実在しなくなった例外は fail）として `CrossDomainTransactionLedger` を L1-G で新設する。
+
+### 4.2 各パターンに必要なテスト
+
+| パターン | 必須テスト |
+|---|---|
+| A | 公開 API の契約テスト（正常・不在・権限なし）。呼び出し側の既存テストが無変更で緑 |
+| B | 発行 → 購読側反映の IT（commit 後に反映）。発行側 tx が巻き戻ったら購読されない IT |
+| C | B に加え、(1) 購読側が例外を投げたら Registry に未完了として残る、(2) 再配信で反映される、(3) 同じイベントを2回配信しても二重作成されない（冪等）、(4) 発行側 tx の巻き戻しで Registry にも残らない、(5) **配信時の再検証**: イベント発行後に §4.5 の剥奪事象を起こしてから再配信すると、購読側は作用しない、(6) **退会 purge 後の再配信**で削除済み利用者のデータが復活しない、(7) イベント型のシリアライズ往復で全項目（`occurredAt` を含む）が一致する |
+| D | 読んだ値が後で変わっても書き込みが壊れない（または判断根拠が残る）ことの単体テスト |
+| F | §4.3 の受け入れ条件。加えて C の (5)〜(7) |
+| E | 台帳の番人（理由必須・実在確認）が緑。原子性が要る根拠を示すテスト（途中失敗で両方巻き戻る） |
+
+**AFTER_COMMIT を観測するテストの注意**: `@Transactional` が効いたテストでは業務 tx がコミットされず AFTER_COMMIT が発火しないため、「0件であること」を検証するテストは必ず通る（偽の緑）。B / C / F のテストは `backend/.claudecode.md` §6.1（:293〜）の手順（クラスから `@Transactional` を外し `TransactionTemplate` で明示コミット、または `@RecordApplicationEvents` で発行を検証、直す前の本番コードで赤くなることを実測）に従う。
+
+### 4.3 手本: チャット自動作成（パターン F「予約→確定」）
+
+**現状**（`jobmatching/service/JobContractService.java`。クラスに `@Transactional(readOnly = true)`（:49）、`acceptApplication` に `@Transactional`（:93-94））: 1つの tx の中で、`GET_LOCK('job_posting_{id}')`（:104-105）＋ `SELECT ... FOR UPDATE`（:107-108）→ 応募の ACCEPT（:135）→ 契約 INSERT（:151）→ **チャット作成**（`JobChatService.createRoomForContract`、:154。chat の Channel / Member / Message Repository へ直接 save）→ `contract.assignChatRoom` → 定員充足で CLOSED → 通知イベント発行 → Entity 返却（:170）、ロット解放（:172）。
+
+**after**:
+
+```java
+// 調停役（@Transactional を持たない。tx が無いことはテストで保証する）
+public JobContractResponse acceptApplication(Long applicationId, Long requesterId) {
+    // 事前検査（読み取りのみ・ロックなし）: 認可・応募の状態・求人 OPEN・定員。通らなければ予約しない（BusinessException のまま）
+    JobApplicationSummary app = jobAcceptancePrecheck.check(applicationId, requesterId);
+    // (a) chat にルームを予約（chat 自身の tx。冪等キーは (b) より前に決まる値。参加者・メッセージはまだ作らない）
+    Long chatRoomId = chatRoomApi.reserveRoomForSource("JOB_APPLICATION", applicationId, requesterId);
+    // (b) jobmatching の tx（ロック・応募 ACCEPT・契約 INSERT・定員 CLOSED・通知イベントは現状どおり1 tx）
+    //     chat は触らない。契約に chatRoomId を入れ、同じ tx で JobContractConcludedEvent を Registry に記録
+    JobContractEntity contract;
+    try {
+        contract = jobContractCommandService.conclude(applicationId, requesterId, chatRoomId);
+    } catch (BusinessException e) {
+        // (b) が業務上の拒否で巻き戻った。同じ応募の別の要求が勝って契約を作っていないかを、
+        // (b) と同じロックを取って jobmatching 自身のデータで確かめ、契約が無い場合だけ予約を取り消す
+        // （(b) のロールバック後の新しい tx。最初の文で求人行を FOR UPDATE、契約はロック読み取りで照会。項目6）
+        try {
+            if (jobContractCommandService.noContractForApplicationUnderPostingLock(applicationId)) {
+                chatRoomApi.cancelReservation(chatRoomId);
+            }
+        } catch (TransientDataAccessException | ChatRoomTemporarilyUnavailableException cancelFailure) {
+            // 取消の失敗で応答を置き換えない。記録だけして、予約は保留のまま掃除で失効させる
+            log.warn("予約の取消に失敗: chatRoomId={}", chatRoomId, cancelFailure);
+            meter.increment("jobmatching.chat_reservation.cancel_failed");
+        }
+        throw e;   // エラー応答は従来どおり（元の BusinessException をそのまま返す）
+    }
+    // (c) コミット後に確定（chat 自身の tx。参加者と初期メッセージをここで作る。冪等）
+    try {
+        chatRoomApi.activateRoom(chatRoomId, contract.getRequesterUserId(), contract.getWorkerUserId());
+    } catch (TransientDataAccessException | ChatRoomTemporarilyUnavailableException e) {
+        // 再試行可能な障害だけ。(b) は確定済みなので応答は成功で返し、jobmatching のリスナーが後で呼び直す
+        meter.increment("jobmatching.chat_activation.deferred");
+    }
+    return JobContractResponse.from(contract);   // chatRoomId は (a) の値で常に非 null
+}
+
+// jobmatching 自身の Registry リスナー（購読は自モジュールのイベント。依存は jobmatching → chat の一方向）
+// トランザクションを持たない（@ModuleEventListener は tx 属性を持たない。§4.4）
+@ModuleEventListener
+void on(JobContractConcludedEvent e) {
+    if (!jobContractQuery.isStillConcluded(e.contractId())) return;   // 配信時の再検証（キャンセル等。§4.5）
+    chatRoomApi.activateRoom(e.chatRoomId(), e.requesterUserId(), e.workerUserId());   // 冪等・同一 ID
+}
+```
+
+1. **jobmatching の tx の範囲は変えない**。ロック（GET_LOCK＋FOR UPDATE）・応募 ACCEPT・契約 INSERT・定員 CLOSED・通知イベントは現状どおり1つの tx に残す（ロック範囲・定員の原子性は不変）。この tx の中では chat を一切触らない。
+2. **予約の冪等キー**: (b) の前に決まる値でなければならない（契約 ID は (b) まで無い）。応募 ID を使い、`sourceType = "JOB_APPLICATION"`、`sourceId = applicationId` とする案を第一とする。1応募から契約は最大1件（`V13.032__create_job_contracts.sql:32` の `uk_jc_application UNIQUE (job_application_id)`）なので、応募 ID で一意に決まる。chat 側の一意性は既存の `uk_channel_source (source_type, source_id)`（`V4.013__create_chat_channels_table.sql:22`）で担保され、同じ応募で (a) が二重に走っても1部屋だけになる。既存の `sourceType = "JOB_CONTRACT"` の行との互換（読み出し側が `JOB_CONTRACT` で引いている箇所の有無）はロット着手時に実コードで確認する。
+3. **事前検査と予約の上限**: 予約の前に、読み取りのみ・ロックなしの事前検査（呼び出し者の認可、応募の状態、求人が OPEN か、定員に空きがあるか）を行い、通らなければ予約せず従来どおりのエラー応答にする。事前検査はあくまで無駄な予約を減らすためのもので、**最終判定は従来どおり (b) の jobmatching の1 tx 内（GET_LOCK＋FOR UPDATE のロック下）で行う**（事前検査と (b) の間に状態が変わりうるため）。さらに、並行な採用確定で事前検査をすり抜けた予約が積み上がらないよう、chat の `reserveRoomForSource` は**作成者（`created_by`）ごとの「保留」状態の予約の件数に上限**を設け、超えたら予約を拒否する（上限の初期値は 20 件。1つの冪等キーにつき予約は1件なので、同じ応募の再試行では増えない）。**枠を消費するのは「保留」だけ**で、取消・失効・有効は数えない。(b) が拒否された場合は調停役が明示的に取り消すので（項目6）、枠は即時に戻る。並行な予約で上限を超えないよう、件数の確認と予約の作成は原子的に行う（作成者単位の行ロック、条件付き INSERT など。採用方式はロット着手時に実コードで確定する）。上限超過のエラーコードは既存の流量制限系を流用できるかをロット着手時に実コードで確認し、無ければその時点の最大 + 1 で予約する（§12）。
+4. **予約の中身と状態機械**: (a) の予約は**チャンネル行だけ**を作り、参加者（`chat_channel_members`）と初期メッセージは作らない。参加者と初期メッセージは (c) の確定で作る（参加者の一意性は既存の `uk_channel_user (channel_id, user_id)` が担保し、確定を繰り返しても重複しない）。チャンネル行には状態を持たせる（既存の列で表せなければ状態列を追加する。DDL の要否はロット着手時に実コードで確定）。
+
+   ```mermaid
+   stateDiagram-v2
+     [*] --> 保留: (a) 予約
+     保留 --> 有効: (c) 確定（参加者・初期メッセージを作る）
+     保留 --> 失効: 掃除（一定時間確定されない）
+     保留 --> 取消: 調停役の明示取消 cancelReservation（(b) の拒否を確認したとき）
+     失効 --> 有効: 遅れて来た (c) 確定（同一 ID のまま）
+     失効 --> 取消: 調停役の明示取消
+     取消 --> 有効: 確定（期限なし。同一 ID のまま。誤った取消からの防御）
+     有効 --> 有効: (c) の再実行（何もしない）
+   ```
+
+   - **予約は物理削除しない**。保留・失効・取消のどの予約も、墓標として恒久に残す。墓標は参加者もメッセージも持たないチャンネル行1つだけで、1行は数百バイト程度である。予約は採用確定の要求1件につき最大1件（冪等キーは応募 ID）で、作成者ごとの保留の上限もあるため、件数は採用確定の要求の数を超えない。容量への影響は軽微で、消すことで参照先を失う危険（契約が ID を持っている可能性。現状も `JobContractService.java:154-156` で契約に ID を入れている）の方が大きい。
+   - **掃除**は、一定時間（初期値 24 時間）確定されない保留を「失効」にするだけで、ID は保持する。
+   - **取消**は、発行側（調停役）が (b) の拒否で巻き戻ったことを項目6の手順で確かめたうえで、chat の公開 API `cancelReservation(id)` を呼んだ予約である（依存は jobmatching → chat の一方向のまま）。取消は予約枠を即時に戻すためのもので、行は消さない。
+   - **確定（有効化）は、保留・失効・取消のどの状態からでも、期限なしで同一 ID のまま行える**（確定は冪等。誤った取消や長期の障害の後でも、契約が持つ ID を復旧できる）。勝者の (c)、保険リスナーの再配信、§11.3 の手動再開はすべてこれを使う。
+   - **状態遷移の排他**: すべて条件付きの状態遷移 UPDATE で行う。確定は `UPDATE ... SET status = '有効' WHERE id = ? AND status IN ('保留', '失効', '取消')`（0 行なら現状を読み、有効なら何もしない＝冪等。行が無ければ ERROR）、掃除は `UPDATE ... SET status = '失効' WHERE status = '保留' AND created_at < ?`、取消は `UPDATE ... SET status = '取消' WHERE id = ? AND status IN ('保留', '失効')` とする（状態列の要否はロット着手時に確定）。確定の tx は、状態遷移の UPDATE が当たった場合にだけ参加者と初期メッセージを作る。同じ行への確定・掃除・取消が同時に走っても、InnoDB の行ロックにより1つの UPDATE が先に確定し、残りは条件で外れるため、「有効なのに参加者が無い」「失効・取消なのに参加者がいる」状態は生じない。
+5. **保留・失効・取消の秘匿（遮断する箇所）**: 以下「保留・失効」と書く箇所は取消も含む。保留・失効のルームは利用者に見えてはならない。参加者を作らないため、参加者を起点にする経路（`ChatChannelRepository.java:30-32` の `findByMemberUserId`、`:38-46` の `findExistingDm`、`ChatChannelMemberRepository.java` の未読合計 `sumUnreadCountByUserIdAndChannelIds`（:117）・未読加算 `incrementUnreadCountForOthers`（:138）、通知の宛先）には自然に出ない。参加者を起点にしない経路は状態で遮断する: (i) ID の直接参照 `ChatChannelService#findChannelOrThrow`（`channelRepository.findById`。`ChatUploadController` 等のパッケージ外からも呼ばれる）、(ii) 冪等キーの参照 `findBySourceTypeAndSourceId`（:63。予約・確定の内部用途を除く）、(iii) チーム・組織の一覧（:20・:25。求人のルームはチーム・組織に属さない見込みだが、ロット着手時に確認する）、(iv) **招待経路** `ChatMembershipInviteCardService#resolveDmCounterpart`（:57-71）。共通の `findChannelOrThrow` を通らず `channelRepository.findById` を直接呼び（:58）、DM で参加者が2名でなければ 422 `CHANNEL_NOT_DM` を返すため（:67-71）、参加者0件の保留ルームでは**422 になって存在が漏れる**。参加者数の判定より前に状態で遮断し、404・`CHAT_001` を返す。同じクラスの最終メッセージ更新（:117 の `findById`）も保留・失効を対象にしない、(v) 管理・個人データ出力（`ChatPersonalDataQueryService` 等）とアーカイブ・予約投稿などのバッチ、(vi) **chat 以外のドメインが `ChatChannelRepository` を直接使っている箇所**（偵察時点: `admin/service/AdminBusinessAlertService`、`common/storage/migration/StoragePathMigrationBatchService`、`dashboard/service/ChatHubService`・`ScopeWidgetSummaryService`、`user/service/UserBlockService`、`village/service/VillageFeedService`・`VillageLobbyService`・`VillageSearchService`、および `jobmatching/service/JobChatService` 自身）。これらは D-5 の越境で、各ロットで chat の公開 API へ付け替えるまでは保留・失効を除外できているかを個別に確認する。chat 配下で `channelRepository.findById` を直接呼ぶのは、偵察時点で `ChatChannelService.java:650`・`ChatMembershipInviteCardService.java:58`・`:117` の3箇所。ロット着手時に chat の全 Repository 呼び出しと上記の越境箇所を洗い直し、遮断箇所の一覧を確定して PR 本文に載せる。**直接参照は、存在しないルームと同じ 404・同じエラーコード `CHAT_001`（`ChatErrorCode.CHANNEL_NOT_FOUND`、`GlobalExceptionHandler.java:775` で 404）を返す**（存在オラクルを作らない）。「準備中」表示は作らない。
+6. **(b) が拒否・失敗した場合**: 定員超過・状態遷移エラー・認可拒否などの `BusinessException` は**従来どおりエラー応答**にする。この要求の (b) が `BusinessException` で巻き戻ったことは確定しているが、**同じ応募への別の要求（同じ冪等キーなので同じ予約 ID を共有する）が勝って (b) をコミットし、(c) がまだ終わっていない**ことがありうる（例: 2本目の要求は応募がもう APPLIED でないため `JOB_APPLICATION_NOT_PENDING` で拒否される。`JobContractService.java:117-120`）。そのまま取り消すと、勝者の契約が持つルームを取り消してしまう。このため二重に防ぐ:
+   - **直列化**: 調停役は取消の前に、(b) の tx がロールバックで終わった**後に、新しいトランザクション**を開いて確認する。その tx の**最初の文**で (b) と同じ求人行を `SELECT ... FOR UPDATE`（`JobPostingRepository#findByIdForUpdate`、`JobContractService.java:107-108` と同じ）で取り、続いて**その応募に契約が存在しないこと**を**ロック読み取り**（`SELECT ... FOR SHARE` または `FOR UPDATE`）で確かめる（`uk_jc_application` により契約は応募につき最大1件）。存在しない場合だけ、確認の tx を終えてから `cancelReservation(id)` を呼ぶ。勝者の (b) は求人行の行ロックをコミットまで保持するので、敗者の行ロックの取得は必ず勝者のコミットの後になり、ロック読み取りは最新のコミット済みの契約を読むため、取り消さない。
+     - **通常の SELECT で確かめてはならない**。本番の分離レベルは REPEATABLE READ で、通常の SELECT は tx の最初の読み取りで張ったスナップショットを見続ける（`schedule/repository/UserCalendarLayerSettingRepository.java:72-83` に同じ注意がある）。行ロックを取る前に通常の SELECT を1つでも実行すると、ロック待ちの後でも勝者の契約が見えない。`JobContractRepository#findByJobApplicationId`（:41）は通常の SELECT なので、この確認には使わず、ロック付きの照会を新設する。(b) の失敗した tx の中で確認しないのも同じ理由（:97 の `findById` がロック前にスナップショットを張っている）。
+     - 補足: 現行コードの `GET_LOCK('job_posting_{postingId}')`（`:59-60`・`:101-105`）はメソッド内の `finally`（`:171-172`）で解放され、コミットより先に外れる。コミット後の観測の順序を保証しているのは求人行の `FOR UPDATE` である（求人行ロックがあるため、GET_LOCK の早い解放そのものは欠陥ではない）。
+   - **防御**: 確認から取消の呼び出しまでの間に、さらに後続の要求が (b) をコミットする狭い窓は理屈の上で残る（ロックは確認の tx のコミットで外れ、取消は chat の別の tx で行うため）。そのため、取消済みからでも確定で同一 ID のまま有効化できる（項目4。期限なし）。勝者の (c) と保険リスナーの再配信はこれを使う。
+   - 取消が成立すれば、作成者の予約枠は即時に戻る。取消済みの予約は墓標として残る。
+   - **取消の呼び出し自体が失敗した場合**は、取消の失敗で応答を置き換えず、**元の `BusinessException` をそのまま返す**（同じステータス・同じエラーコード）。取消の失敗はログとメトリクスに記録し、予約は保留のまま掃除で失効して墓標になる。枠は失効した時点で解放される（枠は「保留」だけで数えるため）。(b) の結果が不明な障害（コミットの成否が分からない接続断など）の場合も取り消さない。
+   - いずれの場合も、予約には参加者もメッセージも無いので誰にも見えない。chat は jobmatching を知らない。
+7. **(a) が失敗した場合**: 契約は作らずエラー応答にする（現状も chat の insert が失敗すれば tx ごと巻き戻ってエラーになるので、利用者から見た挙動は同じ）。
+8. **(c) が失敗した場合**: 契約は確定済みで、応答には (a) の ID が入る。jobmatching の Registry リスナーが確定を呼び直す。失効・取消になっていても同一 ID のまま有効化される（予約は物理削除しないので、復旧がどれだけ遅れても ID は失われない）。§11.3 の隔離・手動再開も**同一 ID を復旧する**（別 ID へ書き換えない）。取消済みのルームに確定が来た場合は、有効化したうえで、取消が誤っていたことを警告として記録する。
+9. **例外の扱い**: 業務・認可の拒否（`BusinessException` 等）は従来どおりエラー応答にする。Registry の保険に回すのは**再試行で直りうる障害だけ**（一時的なデータアクセス障害など。対象の例外型はロットで列挙する）。`RuntimeException` の一括捕捉は禁止（握りつぶしになるため）。
+10. **調停役と保険リスナーに tx が無いこと**: コメントではなく**テストで保証する**。調停役の (a) と (c) の開始時、および保険リスナーが chat を呼ぶ時点で `TransactionSynchronizationManager.isActualTransactionActive() == false` であることを検査し、外側に tx がある状態から調停役を呼んだ場合も検査する（外側 tx に巻き込まれると (c) がコミット前に走り、予約→確定の前提が崩れるため。呼ばれたら fail させる）。保険リスナーは `@ApplicationModuleListener` の既定（`REQUIRES_NEW`）を使わず、tx 属性を持たない `@ModuleEventListener`（§4.4）で購読する。
+11. **初期メッセージの日本語直書き**: 現状 `JobChatService.java:61`（`"求人: " + posting.getTitle()`）と `:83`（契約成立の本文）は日本語の直書きで、DB に保存される。本計画では**現状の文言を維持**し、chat の公開 API の引数で文言（またはテンプレートのキー）を渡す形にするだけにとどめる。i18n 化は本計画の範囲外とし、別 CMP の候補として親 Issue に記録する。
+
+**受け入れ条件**（ロットの AC。§4.2 C の (5)〜(7) も満たす）:
+
+- [ ] 正常時、採用確定の応答の `chatRoomId` が非 null の整数で、そのルームは有効で両者が参加者として見える。
+- [ ] (c) を失敗させても契約は保存され、応答の `chatRoomId` は非 null。Registry の再配信で有効化され、部屋は1つだけ。
+- [ ] (b) を拒否（定員超過など）させると、エラー応答はこれまでと同じコード・ステータスで、予約は即時に「取消」になり、利用者には一度も見えない。作成者の予約枠は**即時に回復**する（拒否の直後に別の応募で予約できる）。
+- [ ] 事前検査で拒否される条件（応募の状態不正・求人が OPEN でない・定員なし・認可なし）では予約が作られない。
+- [ ] 負の AC: 同じ作成者が異なる応募を上限 + 1 件**同時に**採用確定しても、「保留」の予約は上限を超えず、超過分は予約されずエラー応答になる。既存の応募・契約・ルームには影響しない。取消・失効・有効の予約は枠として数えない。
+- [ ] 招待経路（`resolveDmCounterpart`）に保留・失効・取消のルーム ID を渡すと、存在しない ID と同じ 404・`CHAT_001` が返る（422 `CHANNEL_NOT_DM` にならない）。
+- [ ] 保留・失効のルームは、チャット一覧・既存 DM の検索・通知・参加者表示・未読数に出ない。ID を直接参照すると、存在しないルームと同じ 404・`CHAT_001` が返る（§4.3-5 の遮断箇所ごとにテスト）。
+- [ ] 掃除で失効した後に確定が来ても、**同一 ID のまま**有効化される。確定済み（有効）のルームは掃除の対象にならない。確定と掃除を同時に走らせても、「有効なのに参加者が無い」「失効なのに参加者がいる」状態にならない。
+- [ ] 予約の行はどの状態でも削除されない（掃除・取消の後も行が残る）。失効・取消のルームに、時刻を大きく進めた後（例: 1年後相当）で確定が来ても、同一 ID のまま有効化される。
+- [ ] 墓標（失効・取消）は、一覧・既存 DM の検索・通知・参加者表示・未読数・招待・直接参照のどこにも出ない（上の遮断の AC を失効・取消の両方で実施）。
+- [ ] 確定と取消が同時に走っても状態は一貫する（確定が先なら取消は外れる。取消が先でも、確定で同一 ID が有効化される）。
+- [ ] スナップショットの検体: 敗者の確認の tx で、行ロックの取得前に通常の SELECT でスナップショットを張った状態を作っても、確認がロック読み取りで行われるため、勝者のコミット後の契約を見て取り消さない（通常の SELECT で確認する誤った実装ではこの検体が red になることも確かめる）。
+- [ ] 勝者の (b) コミット後・(c) の有効化前に、同じ応募への敗者の要求が拒否されても、敗者は契約の存在を確認して予約を**取り消さない**。
+- [ ] 万一取り消された後でも（取消を強制的に先に実行する検体）、勝者の (c) または保険リスナーの再配信で**同一 ID のまま**有効化される。
+- [ ] 同じ応募への採用確定を並行に N 本（例 10 本）投げても、契約は1件・部屋は1つで、成功した応答の `chatRoomId` はすべて同じ ID。拒否された応答は従来どおりのエラーコード・ステータス。
+- [ ] 取消を失敗させても、利用者には元の業務エラーが同じステータス・同じエラーコードで返る。予約は保留のまま掃除で失効し、失効の後は作成者の予約枠に数えられない。
+- [ ] 同じ応募で (a) を並行に2回呼んでも部屋は1つ（`uk_channel_source`）。(c) とリスナーの確定が競合しても参加者・初期メッセージは重複しない（`uk_channel_user`、初期メッセージは状態遷移が当たったときだけ作る）。
+- [ ] 調停役の (a)(c) の開始時と、保険リスナーが chat を呼ぶ時点で tx が無い。外側 tx から調停役を呼ぶと fail する。
+- [ ] 隔離・手動再開で復旧したルームの ID は、契約に入っている ID と同一。
+- [ ] 応答 JSON の契約スナップショットテスト（項目名・型・null と省略の区別まで）が変更前後で一致する。
+- [ ] Modulith verify で jobmatching と chat の間に循環が無い（依存は jobmatching → chat の `api` のみ）。
+- [ ] 通知と部屋の順序: 契約成立の通知が部屋の有効化より先に届いた場合でも、通知から開いた画面が壊れない（保留中の扱いどおり）。通知が重複・欠落しない。
+- [ ] 全段失敗（(a) 成功・(b) 成功・(c) と再配信がすべて失敗）のとき、打ち切り後に隔離状態として警告が出て、手動再開で有効化できる（§11.3）。
+- [ ] B/C 相当の変更のため、実機E2E（権限あり／なし／他テナント）＋アリシゼーションを実施する（§8.4）。
+
+### 4.4 Registry の登録対象・購読・executor
+
+- **登録対象を明示的に限定する。** Modulith の Registry は、採用版によっては AFTER_COMMIT のトランザクショナルなリスナー全般への配信を永続化する可能性がある。そうなると既存の B のイベント（例: `UserRegisteredEvent` の `email`・`displayName`・`rawToken`）が DB に永続化される。L0-S で採用版の挙動（何が永続化されるか、対象を絞る設定や拡張点があるか）を確認し、**Registry に載るのは kernel の印 `ReliableEvent` を実装したイベントの、`@ModuleEventListener` で購読される配信だけ**になる構成にする（絞れない版なら、配信の仕組みを差し替えて絞るか、Modulith の Registry を採用しない。§14）。既存の認証イベントを発行して Registry に何も保存されない（秘密情報が残らない）**負の IT** を L1-M の受け入れ条件にする。
+- **`@ApplicationModuleListener` をそのまま使わない。** これは `@Async`（executor 無指定）＋ `@Transactional(REQUIRES_NEW)` ＋ `@TransactionalEventListener` の合成で、executor 無指定の `@Async` は `@Primary` の `event-pool`（2/5/100・AbortPolicy）に載る。これは executor 無指定の禁止（`backend/.claudecode.md:464`、Issue #2953）に抵触し、再配信で一度に大量投入すると拒否例外が起きる。
+- 代わりに自前の合成アノテーション `@ModuleEventListener` を kernel に置き、`@Async("module-event-pool")` で**専用 executor** を指定する。拒否方針はロットではなく L1-M で決める（AbortPolicy のままにして投入側で流量を抑えるのを第一案とする）。
+- **`@ModuleEventListener` はトランザクションを持たない**（`@Transactional` を含めない。中身は `@Async("module-event-pool")`＋`@TransactionalEventListener(AFTER_COMMIT)`）。購読側が自モジュールの表を書く場合は、自モジュールの Service の `@Transactional` メソッドを呼び、その中で書く。他モジュールを呼ぶ場合（パターン F の保険）は、相手の公開 API が相手自身の tx を開く。こうすると、リスナー自身は tx の入口にならず、D-3T の合成アノテーション検出（L1-G0）とも矛盾しない（tx 属性を持たないので入口として数えられず、書き込みの tx は各モジュールの Service に閉じる）。
+- **Registry の完了記録**: tx を持たないリスナーで、Registry の完了記録（リスナーの正常終了を受けて完了日時を入れる処理）がどの tx で行われるかは採用版の実装に依存する。L0-S で、tx を持たない非同期リスナーでも正常終了で完了が記録され、例外で未完了のまま残ることを確認する（確認項目3に含める）。
+- **再配信の流量制御**: Modulith の「起動時に未完了を一括再投入」は使わない（起動直後に全件が専用プールへ流れ込むため）。自前の再投入バッチ（`@Scheduled`＋`@SchedulerLock`。`ScheduledBatchGuardTest` の規約に従う）が、一定時間より古い未完了を1回あたり上限件数まで再投入する。ShedLock で多重起動を防ぐ。運用値は §11.3。
+- **番人での扱い（一本化）**: **tx 属性を持つ合成アノテーション**（例 `@ApplicationModuleListener`。メタアノテーションで `@Transactional(REQUIRES_NEW)` を持つ）を付けたメソッドは、D-3 / D-3T の**入口として検出する**（§2.1 の穴 2。L1-G0 で改修）。**tx 属性を持たないリスナー**（本計画の `@ModuleEventListener`、パターン F の保険リスナー）は**入口ではない**。そのリスナーから呼ばれた先の `@Transactional` メソッド（各モジュールの Service、相手の公開 API）が、従来どおりそれぞれ入口になる。L1-G0 の改修後でなければ合成アノテーションを導入しない。
+- 既存の `@Async`（266 件、うち `event-pool` 約 168 箇所）と `@TransactionalEventListener` は**一括では移さない**。C / F に該当する連携をロットで返済するときだけ、その購読を `@ModuleEventListener` に置き換える。
+- 番人 `NotificationTransactionBoundaryGuardTest` は `@ModuleEventListener` を入口と認識しないため、L1-G で入口の判定に加える。
+
+| | 通知 outbox（`notification_outbox.md`） | Modulith Event Publication Registry |
+|---|---|---|
+| 対象 | 通知 push の予約（送り手ドメイン → notification） | 通知以外のモジュール間イベントのうち `ReliableEvent` |
+| 表 | 送り手ドメインごと（`team_notification_outbox` 等） | ライブラリ管理の単一表（`event_publication`） |
+| 配信 | relay と予備ポーラー（5秒）、claim_token、DEAD | `@ModuleEventListener`（専用 executor）と自前の再投入バッチ |
+| 方針 | **既存の通知 outbox は置き換えない**。通知の push 予約は引き続き outbox を使う。通知以外の確実配信は Registry を使う。一本化するかは Phase 5 で判断する |
+
+### 4.5 イベントの規約（ペイロード・型・再検証）
+
+- **ペイロードは ID と scope のみ**: 対象の ID（契約 ID・利用者 ID など）と、所属の scope（`organization_id`・`team_id` など）だけを持つ。**自由記述（本文・タイトル）・PII（氏名・メール等）・秘密（トークン等）は持たない**。必要な値は購読側が配信時に公開 API で取り直す。番人 `DomainEventPayloadGuardTest`（L1-G）が、`ReliableEvent` を実装する型と `api` パッケージのイベント型の項目を「ID・scope・enum・時刻・真偽値」に限り、`String` の自由記述項目を禁止する（例外は理由つきの一覧で管理）。
+- **ID の型**: 既存表の主キーは `Long`（BIGINT）、新規表は `UUID`（UuidV7Entity）で、両方が混在する。イベントの ID 項目は**参照先の表の主キーの型をそのまま使う**（`Long` を文字列にしたり、UUID を数値にしたりしない）。D-2b の返済（CMP-261021-0115）で主キーの型が変わる表を参照するイベントは、その返済と同じ PR で型を変える。シリアライズ往復テスト（§4.2 C (7)）で両方の型を検査する。
+- **scope は必須**: テナントに属するイベントは scope の項目を必ず持つ。
+- **配信時の再検証**: 購読側は、配信時点で対象の状態と所属を**取り直して確かめてから**作用する。再配信は system の文脈で遅れて走るため、発行後に権利を失った利用者に作用してはならない。「剥奪」と見なす事象（ロットで該当するものを選び、テストで1つずつ再現する）:
+  - 退会（論理削除・匿名化・purge）
+  - 組織・チームの所属解除、ロールの剥奪・格下げ
+  - ブロック（`role` の BlockService の対象になること）
+  - 対象の業務状態の取り消し（例: 契約キャンセル、応募の取り下げ、投稿の削除・非公開化）
+  - 組織・チーム自体の削除・停止
+- これは `docs/security/README.md` の A01 アクセス制御の不備（:36。deny-by-default・テナント絞り込み）と A04 安全が考慮されない設計（:39。退会時匿名化・モジュラーモノリスのドメイン境界）に対応する。
+- **イベント型**: Registry に記録するイベントは `DomainEvent` と `ReliableEvent` を実装する **record** とし、`occurredAt` を record の項目として明示的に持つ。`BaseEvent` は抽象クラスなので record から継承できず、またコンストラクタで `occurredAt = now()` を入れるため、Registry から復元するとき発生時刻が復元時刻で上書きされる恐れがある。既存の `BaseEvent` 継承イベント（B で使うもの）はそのままでよい。
+- **退会 purge との整合**: Registry の行（`serialized_event`）には ID だけが残る。退会 purge の後に再配信されたイベントは、購読側の再検証で「利用者が削除済み」と判定して作用しない。この IT を L1-M で置く。
+
+---
+
+## §5. Phase 計画
+
+Phase は大きな区切りで、実際の作業単位は §8 のレーンである。Phase 2 と Phase 3 は並走する。
+
+```mermaid
+flowchart LR
+  P0[Phase 0 計測・スパイク] --> P1[Phase 1 基盤]
+  P1 --> P2[Phase 2 外側領域の返済ロット（並行）]
+  P1 --> P3[Phase 3 Gradle 卒業]
+  P2 --> P3
+  P2 --> P4[Phase 4 暫定core の循環解消]
+  P3 --> P4
+  P4 --> P5[Phase 5 終結]
+```
+
+### 5.1 Phase 0 計測とスパイク
+
+- **L0-M ビルド/テスト時間の基準計測**
+  - 手順: `./scripts/gradle-turnstile.sh ./gradlew <task> --profile --offline`。キャッシュを温めて**1回目は捨てる**。各条件3回。
+  - 3条件: (1) クリーンビルド（`compileJava` まで）、(2) 1ファイル変更後の増分（葉の領域・暫定core の領域それぞれ）、(3) `test`（JUnit XML の `testsuite@time` を合計し、正味テスト時間と壁時計の差＝固定費を出す）。
+  - 記録欄（`docs/evidence/` の表に必ず埋める）: 対象コミットの SHA、JDK の版、CPU とコア数・メモリ、Gradle デーモンの扱い（各回止めて新しく起動するか、温めた同じデーモンかを固定）、Testcontainers の reuse 設定、同時に動いていた heavy build の有無、3回の値と中央値。
+  - **判定値**: L3-P の計測と比べ、条件ごとの中央値の変化率 r =（L3-P − L0-M）÷ L0-M で、**r ≤ −10% を「改善」、r ≥ +10% を「悪化」、−10% < r < +10% を「差なし」**と判定する。3回の値のばらつき（最大 − 最小）が中央値の 10% **を超える**（> 10%）条件は判定不能とし、計測をやり直す（ちょうど 10% は判定可）。§14 の撤退判定はこの判定を使う。
+  - **計測窓の予約**: turnstile を長時間占有するため、親 Issue の「計測窓」欄に日時を予約し、**夜間か、他のセッションが heavy build を止めている時間**に行う。開始と終了を同じ欄に書く。
+- **L0-S Spring Modulith スパイク**
+  - 捨てるブランチ `spike/cmp-261021-0017-modulith-<YYMMDD>` で行い、main へはマージしない。成果物は `docs/evidence/CMP-<子CMP>-modulith-spike.md` に置く。
+  - 確認項目と出口の判定値:
+    1. Spring Boot 3.5.13 と互換の Modulith の版（候補は 1.4 系。2.x は Boot 4 系向けとされるため対象外。公式の互換表で確認）→ 版番号を1つに決める。
+    2. JPA Event Publication Registry の公式スキーマ（表名・列・索引）、完了時の扱い（削除・保持の設定の有無）、試行回数や状態を永続化する列の有無 → §11.2 の DDL を確定版に差し替える。
+    3. **何が Registry に永続化されるか**: 既存の `@TransactionalEventListener(AFTER_COMMIT)` のリスナーへの配信まで永続化されるか。対象を `ReliableEvent` だけに絞れるか（設定・拡張点・差し替え）→ 絞れることを、既存の認証イベントを発行して表が空のままの最小 IT で示す。あわせて、tx を持たない非同期リスナー（`@ModuleEventListener` の形）で、正常終了なら完了が記録され、例外なら未完了のまま残ることを示す。
+    4. **ArchUnit の版**: Modulith の依存で ArchUnit が 1.3.0 から上がるか。上がる場合、凍結ストアの行の文言が変わって全ストアが入れ替わる恐れがあるため、(a) 1.3.0 に固定できるか、(b) 上げる場合はストアの再生成を単独 PR で先に行うか、を決める。
+    5. `ApplicationModules.of(MannschaftApplication.class).verify()` の違反件数を、種類別（依存違反・循環）と common 起点の別に数える。
+    6. 「あるモジュールを発生元とする違反」だけを取り出す方法（§9.5 の定義に使う）→ 方法を1つに決め、その手順で webhook の件数を出してみせる。
+    7. **§4.3 の最小構成（jobmatching → chat の `api` のみの依存と、jobmatching 自身のリスナー）が Modulith の循環検査を通ること**を、捨てブランチ上の最小コードで示す。
+    8. `@ApplicationModuleTest` で webhook のテストが起動するか、所要時間と、テスト全体のコンテキスト数への影響。
+- **L0-C ドメイン別違反集計スクリプト**
+  - 凍結ストアを発生元ドメイン別・番人別に集計する小さなスクリプト（`backend/scripts/` に置く）。ロットの着手判断・完了判定・残件確認・締めレーンで毎回使う。
+- 入口条件: なし（即着手可）。
+- 出口条件: L0-M の記録欄がすべて埋まった計測表、L0-S の確認項目 1〜8 の結論、L0-C のスクリプトがそろい、§11.2 を更新済み。
+
+### 5.2 Phase 1 基盤
+
+- **L1-K kernel の確定**: common と config の各クラスを付録A の表で「kernel に残す／業務へ返す／認可 interface」に仕分け、kernel に残すものだけで業務 import 0 件になる見通しを示す。`AccessControlService` の `GdprErrorCode` 依存（:5・:748）もここで仕分ける（ErrorCode を kernel の共通コードへ寄せるか、実装側へ移すか）。
+- **L1-G0 偽の返済の穴を塞ぐ番人改修**（最初に切り出す単独レーン）: (1) D-3T が「本番クラス内に実装が1つだけの interface」の呼び出しを、その実装へ展開して判定する。(2) D-3 / D-3T が、合成アノテーション（メタアノテーション）を通じて持つ tx 属性を解決し、**tx 属性を持つ合成アノテーション**（`@ApplicationModuleListener` 等）を入口として検出する。**tx 属性を持たない `@ModuleEventListener` は入口にしない**（§4.4 の一本化した扱い）。検体（test ソース）で、interface 経由・tx 属性を持つ合成アノテーションのリスナー経由で越境 Repository へ到達するケースが red になり、tx 属性を持たないリスナーが自身では入口として数えられない（その先の `@Transactional` が入口になる）ことを固定する。改修で新たに検出された既存違反は凍結ストアに加える（改修の PR で行数が増えるのは想定どおりで、L1-F の前なら定数もその PR で上げる）。
+- **L1-A 認可の interface 化**: `common.AccessControlService` は**同じ完全修飾名のまま interface にし、実装だけを暫定core へ移す**（実装クラスの置き場所は L1-K で決める）。呼び出し側（main 538 ファイル・test 533 ファイル）の差分はゼロにする。確認事項: (a) テストで `new AccessControlService(...)` のように直接生成している箇所が無いか（あれば実装クラスへ直す）、(b) トランザクションの属性（現状クラスに `@Transactional(readOnly = true)`）を実装クラスへそのまま移し、`ReplicaRoutingAspect`（メソッドの `@Transactional` だけを見る）の振り分けが前後で変わらないこと、(c) L1-G0 の完了後に行い、D-3T の行が interface 化だけで消えないこと。
+- **L1-R common の業務ロジック返却**: `NameResolverService`、`ActivityScheduleFacade`、`*VisibilityMapper`（21）、`StorageUsageQueryService` などの実体を持ち主の業務の `api` へ移す。呼び出し側を書き換えないため（L2 のロットと同じファイルを触らないため）、旧 FQCN には**橋渡し**（`@Deprecated`、中身は持ち主の `api` を呼ぶだけ）を残す。ただし**橋渡しは kernel に含めない**:
+  - 橋渡しには `@TransitionalBridge`（理由と撤去予定のレーンを必須の属性に持つ）を付ける。kernel の出口条件「kernel 内に業務 import ゼロ・単独コンパイル可」は、`@TransitionalBridge` の付いたクラスを kernel に**数えない**ことで維持する。橋渡しの数は増やしてはならない（番人が上限方式で数える）。
+  - 例: `common/NameResolverService.java:3-9` は auth / organization / team の Entity・Repository を import している。実体は持ち主（auth・organization・team の名前解決をどこが持つかは L1-K で決める）の `api` に移し、旧 FQCN `com.mannschaft.app.common.NameResolverService` は持ち主の `api` を呼ぶだけの橋渡しにする（橋渡しは業務の `api` を import するので、kernel の一部ではない）。
+  - Phase 3 で `:kernel` を切り出すとき（L3-0）、橋渡しは**ソースの置き場所を `:app` 側に移し**、FQCN は維持する。同じパッケージ（split package）を `:kernel` と `:app` の2つの jar が持つ形になるが、次の理由で成り立つ: (i) JPMS（`module-info.java`）を使っていないため、同一パッケージが複数 jar にまたがってもクラスパス上で問題にならない、(ii) Spring はルートパッケージ `com.mannschaft.app` 配下をクラスパス全体（全 jar）からスキャンするため、どちらの jar にあっても検出される、(iii) ArchUnit と Modulith はパッケージ名でクラスを取り込むため、論理的な所属（common モジュール）は jar が分かれても変わらない。`:kernel` の jar には橋渡しが入らず、`:kernel` は単独でコンパイルできる。Modulith 上は橋渡しも common モジュールに属し、そのままでは「各モジュール → common（橋渡し）→ 持ち主の `api`」の循環が出る。この循環の扱いは §9.5 の規則（`@TransitionalBridge` を端点とする辺だけを除外）に一本化する。
+  - 橋渡しの呼び出し側は、その呼び出し側ドメインの L2 ロットが持ち主の `api` へ付け替える。呼び出しが0になった橋渡しはそのロットで削除する。**橋渡しが0になることを Phase 5 の出口条件とする**。進捗は親 Issue のチェックリストで管理する。
+- **L1-B build-logic**: `build.gradle.kts` の Test 設定・shard 分割・番人タスク・依存定義を `build-logic`（included build の convention plugin）へ移す。単一プロジェクトのまま行い、挙動は変えない。**L1-M より先に行う**（同じ `build.gradle.kts` を触るため）。
+- **L1-M Modulith 導入**: L1-B の後に、依存追加（Phase 0 で確定した版）を build-logic 側で行う。`event_publication` 表の Flyway、`ReliableEvent`・`@ModuleEventListener`・専用 executor、Registry の登録対象の限定、再投入バッチ、`ApplicationModules` の verify テストを**レポートのみ（失敗させない）**で追加、`@NamedInterface` の規約（§3.4）。
+- **L1-F 凍結番人の上限方式化**（単独オーナー。§7.4）: `ArchUnitFreezeStoreIntegrityTest` の `EXPECTED_LINES_*` を「上限」に変え、ストア形式の健全性チェックを追加し、定数横の履歴コメントを `docs/architecture/archunit_freeze_history.md`（新設）へ移す。
+- **L1-G 番人の新設・改修（L1-G0 以外）**: `KernelNoBusinessDependencyArchTest`、`ProvisionalCoreMembershipGuardTest`、`CrossDomainTransactionLedger`、`DomainEventPayloadGuardTest`、Modulith verify 必須化リスト（§9.5）を新設。`NotificationTransactionBoundaryGuardTest` の入口判定に `@ModuleEventListener` を追加。`DomainPackages`（common 例外）は L1-G の担当で、L1-R 完了までは現状維持（先に外すと全ストアが一斉に増える）。撤廃は L5。
+- 入口条件: L1-K・L1-F・L1-G0 は即可。L1-A は L1-K と L1-G0 の完了。L1-R は L1-K の完了。L1-B は L0-M の完了。L1-M は L0-S・L1-B・**L1-G0** の完了（合成アノテーションのリスナーを導入する前に、番人がそれを入口として解決できるようにするため）。L1-G は L1-K と L1-M の完了。
+- 出口条件: kernel の業務 import が 0 件で番人が0件必須として緑、認可 interface が kernel にあり、偽の返済の穴が塞がり、Modulith verify がレポートを出し、凍結番人が上限方式、build-logic 化後もタスク・shard 割当が不変。
+
+### 5.3 Phase 2 外側領域の返済ロット（並行）
+
+- 1ロット = 発生元が1ドメイン（または少数の束）。そのドメイン発の D-1 / D-3 / D-5 / ServiceAPI を**まとめて**返済し、D-3T も当該ドメイン発の行を0にするか E 台帳へ移す。
+- ロットは親 Issue のチェックリストの1項目で、子 CMP は Phase 2 の**波**（§8.3）単位で起票する。**波の子 CMP を起票するとき、その波に含むロットの一覧を親 Issue と子 CMP 行に固定する**（途中で足す場合は親 Issue でマスターの了承を得て追記する）。
+- 順序の目安: 被依存が少なく負債が多い「集約・閲覧系」から（dashboard・publicview・gdpr・contact・social・village など）。読み取りが主なので A / D で解けるものが多い。gdpr の収集は SPI（各ドメインが `PersonalDataContributor` を `api` で実装）で解く。notification は通常の業務ロットとし、JPA 関連の越境5件を ID 参照へ置き換える。
+- 既存戦役との関係:
+  - **CMP-260918-1406**（D-5 段階返済、対応中、Issue #3354。次ロット TeamRegionNormalizer）は**例外として独自に継続を認める**。重複しないよう、(1) 着手済み・予定のロットの対象ドメイン（recruitment・matching の地域マスタ窓口、TeamRegionNormalizer の対象）を親 Issue のチェックリストに「CMP-260918-1406 担当」として載せ、他ロットは取らない、(2) CMP-260918-1406 は L1-F の前なら自身の手順で定数を扱い、L1-F の後は上限方式に従い定数を触らない、(3) 新しい窓口を置くときは §3.4 の `api` 規約に合わせる（既存の窓口は無理に移さない）、(4) CMP-260918-1406 を完了にした時点で、残りの D-5 返済は本計画の Phase 2 に合流する。
+  - **CMP-260930-2126**（member の D-3T 約40行）は Phase 2 の member ロットとして扱う（行はそのまま使い、本書の完了条件雛形を満たす）。
+  - **Issue #3002**（ServiceAPI 凍結）は各ロットで当該ドメイン分を返済する。
+- 入口条件: **L1-G0・L1-F・L1-G の完了**（すべてのロットの前提。改修前の D-3T で interface 化を返済と誤認しないため、並行マージのため、ロットの完了判定に使う E 台帳 `CrossDomainTransactionLedger` と verify 必須化リストの番人が要るため）。加えて L1-K（全ロット）、L1-A（認可を使うロット）、L1-M（C / F を使うロット）。CMP-260918-1406 だけは (d) により例外。
+- 出口条件: 暫定core 以外の全ドメインについて、発生元の凍結行が0（または E 台帳）で、Modulith verify の必須化リストに載っている。
+
+### 5.4 Phase 3 Gradle 卒業（Phase 2 と並走可）
+
+- **L3-0 `:kernel` と `:db-migration` のサブプロジェクト化**: kernel（common の残り）を `:kernel` に、Flyway の migration を `:db-migration`（リソースのみ）に移す。束の割り当て（§3.2）を決めて本書に追記する。
+- **L3-P パイロット webhook**: webhook（26 ファイル、common の import 31 件、`AccessControlService` 使用 4 ファイル）を単独のサブプロジェクトにする。Spring のスキャン・Entity/Repository 検出・テスト・CI・品質ゲート（§13.4）が成り立つかを確認し、L0-M と同じ手順で計測する（§14 の撤退条件を判定）。
+- **L3 束の卒業**: 葉の候補 line（36）、promotion（49）、次点 signage（25）、service（58）、workflow（55。shiftbudget から被依存3件 `shiftbudget/service/ThresholdAlertEvaluationService.java:15-17` があるため先に workflow の公開窓口化が要る）から、§3.2 の束ごとに卒業させる。
+- 入口条件: L3-0 は L1-K・L1-B・L1-R 完了。L3-P は L3-0 完了＋ webhook ロット完了＋ L1-A 完了。L3 は L3-P の判定が「継続」かつ束の全ドメインのロット完了。
+- 出口条件: 卒業した束は、`build.gradle.kts` に宣言していない束を参照すると**コンパイルが失敗**する。
+
+### 5.5 Phase 4 暫定core の循環解消
+
+- auth / role / team / organization / membership の間の循環を、§4 のパターンで解く。順序は Phase 0 の verify 結果で決める。
+- 入口条件: 暫定core 以外の Phase 2 ロットがおおむね完了（暫定core が業務モジュールへ依存していない状態）。
+- 出口条件: 暫定core の各領域が独立したモジュールとして verify を通り、循環が0。暫定core という区分を廃止する。
+
+### 5.6 Phase 5 終結
+
+- 凍結ストアのうち D-1 / D-3 / D-3T / D-5 / ServiceAPI が空になり、ストアファイルと定数を削除する（D-2b は CMP-261021-0115 の所管で、本計画では触らない）。
+- `DomainPackages` の common 例外を撤廃する（kernel は Gradle `:kernel` と `KernelNoBusinessDependencyArchTest` で担保）。
+- L1-R の橋渡し（`@TransitionalBridge`）が0件で、番人を「0件必須」にする。
+- Modulith verify を全体で必須にする。残る番人は「凍結」から「0件必須」へ格上げする（§9.4）。
+- 通知 outbox と Registry の一本化の要否を判断する。
+- 入口条件: Phase 2〜4 の出口条件がすべて満たされる（Gradle 撤退時は §14 の読み替え）。
+- 出口条件: 上記がすべて main で緑。CMP-261021-0017 を完了にする。
+
+---
+
+## §6. Phase 1 の補足
+
+### 6.1 common の三分割
+
+| 区分 | 行き先 | 代表 |
+|---|---|---|
+| kernel | `common` に残す | `BusinessException`、`UuidV7Entity`、`AbstractTenantAwareRepository`、`DomainEvent` / `BaseEvent`、`MediaUrlResolver` 等（§3.1 の列挙に該当するもの） |
+| 認可 interface | `common.AccessControlService` を interface として残し、実装は暫定core | family・gdpr・membership・organization・role に依存する実装部分 |
+| 業務ロジック返却 | 持ち主の業務モジュールの `api`（旧 FQCN に `@TransitionalBridge` の橋渡しを残す。橋渡しは kernel に数えず、Phase 3 で `:app` 側へ置き、Phase 5 で0件） | `NameResolverService`（auth/team/organization）、`ActivityScheduleFacade`（activity/schedule）、`*VisibilityMapper`（各ドメイン）、`StorageUsageQueryService` |
+
+`AccessControlService` の実装が family（ケアリンク）を参照している点は、family が暫定core に入らないため、暫定core から業務への依存になる。family の参照は SPI（family が暫定core の interface を実装する）にする。
+
+### 6.2 config の扱い
+
+config → 業務の import 41 件は、Spring 設定が業務の Bean を直接組み立てていることを示す。設定は持ち主の業務モジュールへ移すのを基本とし、横断の設定（Security など）は `:app` に残す。
+
+---
+
+## §7. 並行作業の規律
+
+### 7.1 担当単位
+
+- 担当単位は **レーン**（§8）。Phase 2 のレーンの中の作業単位は **ロット**＝発生元ドメイン単位（または少数の束）で、親 Issue のチェックリストで管理する。同じドメインを2つのロットに分けない。
+- ロットは、自分のドメイン（発生元）の中と、相手ドメインの `api` パッケージへの**新規ファイル追加**だけを触る。相手の `api` の既存ファイルを変える必要があるときは、§3.4「窓口の持ち主」に従う。
+
+### 7.2 単独オーナーの共有資産
+
+以下はロット間で同時に触ってはならない。触るのは括弧内のレーンだけで、他レーンは変更が必要になったら親 Issue で依頼する。
+
+- kernel（`common` の残り）と認可 interface（L1-K / L1-A / L1-R）
+- 番人（`common/architecture/` 配下。L1-G0 / L1-F / L1-G。`DomainPackages` は L1-G、`NotificationTransactionBoundaryGuardTest` は L1-G、D-3 / D-3T は L1-G0）。凍結ストアの行の減少は各ロットが §7.4 の手順で行う
+- `build-logic` と `build.gradle.kts`・`settings.gradle.kts`（L1-B → L1-M の順、Phase 3 では L3-*）
+- `.github/workflows/backend-ci.yml`・`.github/workflows/security-scan.yml`（L1-B / L3-*）
+- `backend/src/test/resources/shard-weights.properties`（再生成は L1-B / L3-* と L-SHIME。§7.7）
+- Modulith の設定・`ReliableEvent`・`@ModuleEventListener`・専用 executor・`event_publication` の Flyway（L1-M）
+
+### 7.3 着手宣言・解放・引継ぎ（CLAUDE.md「横展開型の戦役における担当重複の防止」準拠）
+
+1. **親 Issue**: Phase 1 の最初のレーンに着手するセッションが、親 Issue「CMP-261021-0017 境界負債の返済（レーン管理）」を1本立て、本書へのリンク、レーン一覧の表、Phase 2 のロットのチェックリスト（ドメイン名・波・担当・状態）、L1-R の対象のチェックリスト、計測窓の予約欄、マージ後の確認欄をコメントに貼る。以後、全レーン・ロットの宣言・解放はこの Issue で行う。
+2. **着手前**: 親 Issue と `docs/task-list.md` を読み、対象のレーン・ロットが宣言済みでないか確認する。残件は**移設先も確認して**判定する（ストアの行が減っているか、相手の `api` に窓口ができているか。集計は L0-C のスクリプトで行う）。
+3. **着手時**: レーンの子 CMP が未起票なら採番して台帳末尾に起票する（§8.3）。親 Issue に「着手: <レーン/ロット> / 子 CMP / 対象ドメイン / ブランチ名」をコメントし、チェックリストの担当欄を埋める。宣言は PR を立てる前に行う。
+4. **中断時**: `/引継` で引き継ぎ書を作り、親 Issue に「中断: <レーン/ロット> / 引き継ぎ書の所在 / 担当を保持するか解放するか」をコメントする。
+5. **断念・完了時**: 親 Issue に「解放」または「完了: PR #」をコメントし、チェックリストを更新する。黙って離脱しない。
+6. **放置の扱い**: 宣言から 3 日間、親 Issue にも PR にも更新が無いロットは、他セッションが親 Issue で問い合わせ、さらに 24 時間応答が無ければ引き取ってよい（引き取った旨をコメントする）。
+
+**同一ドメインを2セッションが触らない仕組み**: (a) 親 Issue のチェックリストの担当欄、(b) ブランチ名を `feature/<issue>-boundary-<domain>` に統一し、着手前に `gh pr list --search "boundary-<domain>"` で確認する、(c) 競合が起きた場合は親 Issue で先に宣言した側を正とし、後から宣言した側が撤退する。
+
+### 7.4 凍結ストアと定数（上限方式・Q5）
+
+**L1-F 完了前**（現行方式）: 定数は実測と完全一致を要求するため、ストアを減らす PR は並行マージすると必ず衝突する。L1-F 完了前にストアを減らす PR（CMP-260918-1406 など）は、親 Issue に「マージ待ち」をコメントした順（先着順）に1本ずつマージし、マージ直前に `git merge origin/main` → 絞り込みなしの `archUnitTest` でストアを再生成 → `wc -l` で定数を更新 → 同一コミット、の手順を踏む。
+
+**L1-F 完了後**（上限方式）:
+
+- `EXPECTED_LINES_*` は**上限**とする。ストアの行数が上限を**超えたら fail**（新規違反の混入）、上限以下なら pass する。
+- **返済 PR は定数を触らない。** 返済 PR 同士は並行にマージできる。
+- **返済 PR はストアの減少行を commit し、減少行と返済内容の照合を PR 本文に必ず書く**（消えた各行について、どの変更で解消したか）。照合のない減少行は検分で差し戻す。形式は正しいが誤って消えた行（`--tests` 絞り込み等）を、締めまで待たずに PR の段階で止めるため。
+- **ストアの衝突の解き方**: 返済 PR 同士がストアの隣接行を消して衝突した場合は、ファイルを手で解かず、**main 側のストアを採って**から、マージ後のツリーで絞り込みなしの `./scripts/gradle-turnstile.sh ./gradlew archUnitTest` を実行してストアを再生成する。再生成後の減少行が自分の照合と一致することを確かめる。
+- **ストア形式の健全性チェック（常時）**: 行が整列していること、重複が無いこと、各行が対応する番人の文言の形式に合うこと、ストアの対応表（`stored.rules`）と実ファイルが一致することを、毎回の CI で検査する。
+- **締めレーン L-SHIME**（常設・単独オーナー）: 定期的に（**週1回**、または親 Issue のチェックリストでロットが3つ完了するごとの早い方）、main のストアの実測行数へ定数を引き下げる PR を出す。PR では前回の締めからストアで減った行の diff を人が確認し、各返済 PR の照合と突き合わせる（説明のつかない減少は事故として扱い、行を戻す）。あわせて L0-C の集計でドメイン別の推移を親 Issue に報告する。
+- **意図しない減少の検出が遅れるリスク**: 上限方式では、ストアの行が誤って消えても番人は fail しない。緩和策は (1) 各返済 PR での減少行の照合（上記）、(2) 締めの頻度（週1回以上）と締め時の人による確認、(3) 常時の形式健全性チェック、(4) ストアの変更を CODEOWNERS のレビュー必須のまま維持（`backend/.claudecode.md` §30）、(5) `--tests` での絞り込み実行の禁止を各 PR の手順に明記、の5つである。
+- **定数横の履歴コメント**: 現在 `EXPECTED_LINES_*` の横に積まれている減少履歴のコメントは、L1-F で `docs/architecture/archunit_freeze_history.md` へ移し、以後の締めの記録もそこへ追記する。
+
+**`--tests` での絞り込み実行は、どちらの方式でも禁止**（凍結ストアが壊れる）。
+
+### 7.5 main 追従の頻度
+
+- レーンが開いている間は、**作業を再開するたび**と **push の前**に `git merge origin/main` する（少なくとも1日1回）。rebase はしない（同一 PR への push で force push を誘発するため）。
+- 他の PR の状態は、語る直前に `gh pr view --json state,mergedAt` で取り直す。
+- main の CI は `cancel-in-progress: true` で打ち切られうるため、ストアを触る PR のマージ後は main の CI の結果を確認し、親 Issue のマージ後確認欄に記録する。
+
+### 7.6 PR の粒度
+
+- 1ロット = 1 PR を基本とする。差分が大きいロットは、「読み取り（A/D）」と「書き込み（B/C/F）」に PR を分けてよい。
+- 1 PR で触る発生元ドメインは宣言したものだけ。
+
+### 7.7 共有ファイルの衝突規約
+
+- **`docs/task-list.md`**: 子 CMP の起票は表の末尾に追記する（CLAUDE.md の台帳運用）。他セッションの末尾追記と衝突した場合は、**双方の行を残して**（自分の行を相手の行の後ろへ置き）merge して push し直す。列数は `awk -F'|'` で NF を数えて既存行と一致を確認する。
+- **`docs/openapi.json`**: 各ロットは、**自ロットの変更の前と後で** `npm run generate:types` の入力になる openapi.json を同じ手順で再生成し、両者を比較して差分ゼロを確かめる（main のドリフトや手編集との混同を避けるため、main の既存ファイルとではなく、自分で生成した前後を比べる）。比較結果を PR 本文に書く。差分が出たら原因を直し、直せなければロットを止めて上奏する。
+- **`shard-weights.properties` と `verifyShardCoverage`**: 実在パスは `backend/src/test/resources/shard-weights.properties`（`git ls-files | grep shard-weights` で確認）。新規テストを足したロットは重み表を更新しない（重み表に無いクラスはハッシュで必ず1 shard に割り当たる。`build.gradle.kts:597-610`）。重み表の再生成（`backend/scripts/regen-shard-weights.sh`）は L-SHIME が締めのついでに行い、テストタスクの構成を変える L1-B / L3-* はその PR で再生成する。
+- **凍結ストア**: 実在パスは `backend/src/test/resources/archunit_store/`（`git ls-files | grep archunit_store` で確認）。扱いは §7.4。
+
+---
+
+## §8. レーン一覧
+
+### 8.1 レーン一覧表
+
+| レーン | 内容 | 入口条件（依存レーン） | 触ってよい範囲 | 触ってはならない共有資産 | 出口条件 |
+|---|---|---|---|---|---|
+| L0-M | ビルド/テスト時間の基準計測 | なし | `docs/evidence/`、親 Issue の計測窓 | コード・設定すべて | 記録欄がすべて埋まった計測表 |
+| L0-S | Modulith スパイク | なし | 捨てブランチ `spike/cmp-261021-0017-modulith-<YYMMDD>`、`docs/evidence/CMP-<子CMP>-modulith-spike.md`、本書 §11.2 | main のコード | §5.1 の確認項目 1〜8 の結論 |
+| L0-C | ドメイン別違反集計スクリプト | なし | `backend/scripts/` の新規ファイル | 番人・凍結ストア | 全ストアを番人別・ドメイン別に集計できる |
+| L1-K | common・config の仕分け | なし | 本書の付録A、`docs/evidence/` | コード | 付録A が全クラスについて埋まる |
+| L1-G0 | D-3 / D-3T の偽の返済の穴を塞ぐ | なし | D-3 / D-3T の番人と検体、ストアの追加 | 他の番人 | §9.1 の L1-G0 条件 |
+| L1-A | 認可の interface 化 | L1-K、L1-G0 | `common/AccessControlService`、暫定core の実装 | 番人、build 設定 | FQCN 不変の interface、呼び出し側の差分ゼロ |
+| L1-R | common の業務ロジック返却（対象は親 Issue のチェックリスト） | L1-K | 対象クラス（旧 FQCN は `@TransitionalBridge` の橋渡し）と持ち主ドメインの `api` | 呼び出し側（L2 の範囲）、番人 | 対象の実体が持ち主の `api` にあり、旧 FQCN は橋渡しのみ |
+| L1-B | build-logic convention plugin 化 | L0-M | `build-logic/`、`build.gradle.kts`、`settings.gradle.kts`、CI の workflow | 番人の中身 | タスク一覧・shard 割当が前後一致 |
+| L1-M | Modulith 導入・イベント基盤・Registry の限定 | L0-S、L1-B、L1-G0 | `build-logic/` の依存定義、Flyway 新規1本、Modulith 設定、kernel の新規ファイル、verify テスト | shard 設定、凍結ストア | §9.1 の L1-M 条件 |
+| L1-F | 凍結番人の上限方式化・形式健全性・履歴の docs 移設 | なし | `ArchUnitFreezeStoreIntegrityTest` とその自己テスト、`archunit_freeze_history.md` | ストアの中身 | §9.1 の L1-F 条件 |
+| L1-G | 番人の新設・改修（L1-G0 以外） | L1-K、L1-M | `common/architecture/`（L1-G0・L1-F の対象を除く）、`DomainPackages` | 凍結ストアの中身 | §9.1 の L1-G 条件 |
+| L2 | 返済ロット（ロットは親 Issue のチェックリスト、波ごとに固定） | L1-G0・L1-F・L1-G・L1-K（全ロット）、L1-A（認可）、L1-M（C/F） | 発生元ドメイン、相手の `api` への新規ファイル、橋渡しの呼び出しの付け替えと呼び出し0の橋渡しの削除、ストアの行の減少 | kernel、番人、定数、build 設定、他ロットの発生元 | §8.4 雛形 |
+| L-SHIME | 締め（定数の引き下げ・減少行の確認・推移報告・重み表の再生成） | L1-F | `EXPECTED_LINES_*`、`archunit_freeze_history.md`、`shard-weights.properties` | ストアの中身（説明のつかない減少を戻す場合を除く） | 定数が実測と一致、突き合わせ記録 |
+| L3-0 | `:kernel`・`:db-migration` 化と束の割り当て | L1-K、L1-B、L1-R | `settings.gradle.kts`、`build-logic/`、`kernel/`、`db-migration/`、CI の workflow | 業務ドメインのコード | `:kernel` が業務に依存せずコンパイル |
+| L3-P | パイロット webhook の卒業 | L3-0、webhook ロット、L1-A | 該当サブプロジェクト、build 設定、CI | 他の業務モジュール | §9.2 の L3 条件、§14 の撤退判定 |
+| L3 | 束の卒業 | L3-P の判定「継続」、束の全ロット完了 | 対象の束と build 設定 | 他の束 | 未宣言依存でコンパイル失敗する |
+| L4 | 暫定core の循環解消 | 暫定core 以外の L2 がおおむね完了 | 暫定core の該当領域 | kernel | 当該領域が verify を通る |
+| L5 | 終結 | L2・L3・L4 全完了（Gradle 撤退時は §14） | 番人・凍結ストア削除・`DomainPackages` | — | §5.6 |
+
+### 8.2 レーン間の依存と同時実行
+
+```mermaid
+flowchart LR
+  L0M[L0-M 計測] --> L1B[L1-B build-logic]
+  L0S[L0-S Modulith スパイク] --> L1M[L1-M Modulith 導入]
+  L1B --> L1M
+  L0C[L0-C 集計スクリプト]
+  L1F[L1-F 凍結上限方式] --> SHIME[L-SHIME 締め]
+  L1G0[L1-G0 偽の返済の穴] --> L1A[L1-A 認可 interface]
+  L1K[L1-K 仕分け] --> L1A
+  L1K --> L1R[L1-R 業務返却]
+  L1K --> L1G[L1-G 番人]
+  L1M --> L1G
+  L1G0 --> L1M
+  L1G0 --> L2[L2 返済ロット]
+  L1F --> L2
+  L1K --> L2
+  L1G --> L2
+  L1A -. 認可を使うロット .-> L2
+  L1M -. C/F を使うロット .-> L2
+  L1R --> L30[L3-0 :kernel・:db-migration]
+  L1B --> L30
+  L30 --> L3P[L3-P webhook]
+  L2 --> L3P
+  L3P --> L3G[L3 束の卒業]
+  L2 --> L4[L4 暫定core]
+  L3G --> L4
+  L4 --> L5[L5 終結]
+```
+
+**同時実行の可否（○ 可、× 不可、△ 条件つき）:**
+
+| | L0-M | L0-S | L0-C | L1-K | L1-G0 | L1-A | L1-R | L1-B | L1-M | L1-F | L1-G | L2 | SHIME | L3 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| **L0-M** | — | △¹ | ○ | ○ | △¹ | △¹ | △¹ | × | × | △¹ | △¹ | △¹ | △¹ | × |
+| **L0-S** | | — | ○ | ○ | ○ | ○ | ○ | ○ | × | ○ | ○ | ○ | ○ | ○ |
+| **L0-C** | | | — | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ |
+| **L1-K** | | | | — | ○ | × | × | ○ | ○ | ○ | × | × | ○ | × |
+| **L1-G0** | | | | | — | × | ○ | ○ | × | ○ | △² | × | ○ | ○ |
+| **L1-A** | | | | | | — | △³ | ○ | ○ | ○ | ○ | △⁴ | ○ | △⁵ |
+| **L1-R** | | | | | | | △³ | ○ | ○ | ○ | ○ | ○ | ○ | × |
+| **L1-B** | | | | | | | | — | × | ○ | ○ | ○ | △⁶ | × |
+| **L1-M** | | | | | | | | | — | ○ | × | △⁴ | ○ | × |
+| **L1-F** | | | | | | | | | | — | △² | × | × | ○ |
+| **L1-G** | | | | | | | | | | | — | × | ○ | ○ |
+| **L2** | | | | | | | | | | | | △⁷ | ○ | △⁸ |
+| **SHIME** | | | | | | | | | | | | | × | △⁶ |
+| **L3** | | | | | | | | | | | | | | × |
+
+注: ¹ L0-M の計測中は同じマシンで heavy build を走らせない（計測窓の外なら可）。² 同じ番人ファイルを触らない場合のみ。³ 対象クラスが重ならない場合のみ。⁴ そのロットが L1-A / L1-M の成果を使わない場合のみ（使うなら完了待ち）。⁵ webhook 以外の束なら可。⁶ 重み表の再生成が重ならない場合のみ（L1-B / L3 がその PR で再生成するときは SHIME は再生成しない）。⁷ 発生元ドメインが重ならない場合のみ。⁸ ロットの対象ドメインが卒業中の束に含まれない場合のみ。L4・L5 は表に含めない（L4 は同一領域2本が不可で、L2 の残りと L3 とは対象が重ならなければ可。L5 は他のすべてと不可）。
+
+### 8.3 子 CMP の運用（Q4）
+
+- CMP-261021-0017 は全体を束ねる親行（傘）。**本 PR では子 CMP 行を作らない。**
+- 子 CMP は **Phase・レーン単位**で、全体で 10〜15 行程度とする。領域ごとのロットは子 CMP にせず、親 Issue のチェックリストで管理する（台帳の「1戦役1行」を守る）。予定する子 CMP:
+
+| # | 子 CMP の単位 | 含むレーン |
+|---|---|---|
+| 1 | Phase 0 計測とスパイク | L0-M・L0-S・L0-C |
+| 2 | common・config の仕分け | L1-K |
+| 3 | 偽の返済の穴を塞ぐ番人改修 | L1-G0 |
+| 4 | 認可の interface 化 | L1-A |
+| 5 | common の業務ロジック返却 | L1-R |
+| 6 | build-logic 化 | L1-B |
+| 7 | Modulith 導入とイベント基盤 | L1-M |
+| 8 | 凍結番人の上限方式化 | L1-F |
+| 9 | 番人の新設・改修 | L1-G |
+| 10 | 締め（常設） | L-SHIME |
+| 11 | 返済ロット 第1波（集約・閲覧系） | L2 |
+| 12 | 返済ロット 第2波（書き込み連携系） | L2 |
+| 13 | 返済ロット 第3波（残り） | L2 |
+| 14 | Gradle 卒業（`:kernel`・パイロット・束） | L3-0・L3-P・L3 |
+| 15 | 暫定core の循環解消と終結 | L4・L5 |
+
+- 子 CMP は、そのレーンに最初に着手するセッションが着手時に `TZ=Asia/Tokyo date '+%y%m%d-%H%M'` で採番し、`docs/task-list.md` の**表の末尾**に起票する（worktree + PR）。
+- 子 CMP 行の書き方: 戦役列は「CMP-261021-0017 子: <単位名>」、依存列に `CMP-261021-0017` と依存する子 CMP、完了条件に §8.4 の雛形（L2 の波は対象ロットの一覧を含める）、証拠列に PR 番号と親 Issue のチェックリストへのリンク。
+- 既存の CMP-260918-1406・CMP-260930-2126 は採番し直さず、親 Issue のチェックリストで対応づける。
+
+### 8.4 子 CMP の完了条件の雛形
+
+**L2（返済ロットの波）**: 波に固定した全ロットが次を満たす。
+
+- 当該ドメイン発の D-1 / D-3 / D-5 / ServiceAPI の凍結行が0（L0-C の集計で確認）。
+- 当該ドメイン発の D-3T の行が0、または E 台帳（`CrossDomainTransactionLedger`）に理由つきで移っている（L1-G0 改修後の番人で判定）。
+- 返済 PR の本文に、ストアの減少行と返済内容の照合がある。
+- Modulith verify の必須化リストに当該モジュールが載り、verify が緑（§9.5 の定義）。
+- openapi.json の前後比較で差分ゼロ（§7.7）。Controller の応答型に関わる変更がある場合は契約スナップショットテストが一致。
+- イベント化した連携ごとに §4.2 のテストがある。
+- **実機E2E**: パターン B / C / F を使うロットは、実機E2E（権限あり／なし／他テナント、URL 直打ちを含む）＋アリシゼーションを**既定で必須**とする。合否はそれぞれのスキル（`/実機`・`/アリシゼーション`）の判定基準による。加えて、イベント化した連携ごとに次を確かめる: 遅延中の体験（相手側の反映前に画面を開いた場合）、全段失敗時の見え方、通知と相手側の反映の順序が入れ替わった場合、通知の重複・欠落が無いこと。A / D だけのロットは、openapi.json の差分ゼロと既存 IT の無変更の緑をもって免除してよい（免除する場合は PR 本文にその旨と根拠を書く）。
+
+**L1 / L3 / L4 / L5**: 該当 Phase の出口条件（§5）を満たし、受け入れ条件（§9）のテストが緑。
+
+**L-SHIME**: 毎回の締めで、定数が実測と一致し、減少行の突き合わせ記録が `archunit_freeze_history.md` にある。
+
+---
+
+## §9. 受け入れ条件
+
+### 9.1 Phase 0・1
+
+- [ ] L0-M: §5.1 の記録欄がすべて埋まり、3条件それぞれ3回のばらつきが中央値の 10% 以内。
+- [ ] L0-S: §5.1 の確認項目 1〜8 のそれぞれに結論（版番号・確定 DDL・登録対象を絞る方法と最小 IT の結果・ArchUnit の版の方針・件数・取り出し手順と webhook の件数・最小構成の循環検査の結果・所要時間）が `docs/evidence/` にある。どれかが「不可」なら §14 に従う。
+- [ ] L0-C: 集計スクリプトの出力の合計が各ストアの行数と一致する（境界: 空のストアで 0 を出す）。
+- [ ] L1-G0: interface 経由（実装1つ）で越境 Repository へ到達する検体、**tx 属性を持つ合成アノテーション**（`@ApplicationModuleListener` 相当）のリスナーから越境 Repository へ到達する検体で、D-3T（後者は D-3 も）が red になる。**tx 属性を持たないリスナー**（`@ModuleEventListener` 相当）の検体では、リスナー自身は入口として数えられず、呼び出し先の `@Transactional` メソッドが入口として判定される（越境が無ければ green、呼び出し先が越境すれば呼び出し先が red）。実装が2つ以上の interface の検体では従来どおり打ち切る（誤検知が増えないことの固定）。
+- [ ] L1-A: `common.AccessControlService` が interface で、呼び出し側の差分がゼロ。既存の認可 IT が無変更で緑。`ReplicaRoutingAspect` の振り分けが前後で同じ（読み取り系のメソッドを呼んだときのデータソース種別が変わらないテスト）。D-3T の行数が L1-A の前後で減っていない（interface 化だけで消えていない）。
+- [ ] L1-R: 返却した各クラスの実体が持ち主の `api` にあり、旧 FQCN は `@TransitionalBridge` の付いた橋渡しだけ（持ち主の `api` 以外を import しない）。橋渡しを除いた kernel が業務 import 0 件。
+- [ ] L1-M: `event_publication` 表が Flyway で作られ、照合順序が `utf8mb4_0900_ai_ci`（`MigrationCollationDeclarationGuardTest` が緑）。購読側が例外を投げると未完了で残り、再投入バッチで完了する IT が緑。完了した行が削除（または保持期間後に削除）される IT が緑。
+- [ ] L1-M: **既存の認証イベント（`UserRegisteredEvent` 等）を発行しても、Registry に行が1件も保存されない負の IT** が緑。`ReliableEvent` のイベントだけが保存される。
+- [ ] L1-M: `@ModuleEventListener` の購読が専用 executor で動く（スレッド名で確認）。未完了が上限件数を超えて溜まっていても、再投入バッチ1回で投入されるのは上限件数まで。
+- [ ] L1-M: 再投入バッチを2つのスレッドから同時に起動しても、片方だけが動く（ShedLock）。再現は同じ DB に向けた2つの呼び出しを並行に起動する IT で行う（`@SchedulerLock` のロック表を実 DB で使う）。
+- [ ] L1-M: 通常の流入と再配信が重なる負荷（未完了 1,000 件を溜めた状態で、通常のイベントを毎秒 10 件・5 分間流す）で、専用 executor の投入拒否が0件で、通常のイベントの発行から購読完了までの p99 が **5 秒以下**である負荷試験がある（1,000 件・毎秒 10 件・5 秒は初期値。L1-M の子 CMP を完了にするまでに、実際の発行頻度の計測を根拠に確定し、§11.3 に記録する）。
+- [ ] L1-M: `@ModuleEventListener` の付いたメソッドの中で `isActualTransactionActive() == false`（tx を持たない）。
+- [ ] L1-G: `@TransitionalBridge` の付いたクラスは kernel の番人の集計から除かれ、その数が上限を超えると fail する。
+- [ ] L1-M: 退会 purge の後に再配信されたイベントが、削除済み利用者のデータを作らない IT が緑。
+- [ ] L1-M: §11.3 の観測点がメトリクスとして出て、隔離状態になった行で即時の警告が出る。
+- [ ] L1-M: verify テストは違反があっても fail しない（レポートのみ）ことを確認するテストがある。
+- [ ] L1-B: build-logic 化の前後で `./gradlew tasks --all` の出力が一致し、`verifyShardCoverage` が緑、各テストクラスの shard 割当が一致する（前後の割当一覧を出力して比較）。
+- [ ] L1-F: ストアの行数が上限を1行超えると fail、上限ちょうど・上限未満は pass（境界）。行の重複・整列崩れ・形式不正・`stored.rules` との不一致はそれぞれ fail する（陽性の検体テスト付き）。
+- [ ] L1-G: `KernelNoBusinessDependencyArchTest` は kernel に業務 import を1件足すと fail する。`ProvisionalCoreMembershipGuardTest` は一覧外パッケージを暫定core 扱いにすると fail する。`CrossDomainTransactionLedger` は理由の空欄・実在しない例外で fail する。`DomainEventPayloadGuardTest` は `ReliableEvent` のイベント型に自由記述の `String` 項目を足すと fail し、scope の無いテナントイベントで fail する。`NotificationTransactionBoundaryGuardTest` が `@ModuleEventListener` を入口として認める。
+
+### 9.2 Phase 2（ロットごと）・Phase 3
+
+- [ ] §8.4 の L2 雛形をすべて満たす。
+- [ ] イベント化した連携ごとに §4.2 のテスト（B: 反映・巻き戻し、C: (1)〜(7)、F: §4.3 の受け入れ条件）。
+- [ ] 異常系: 相手モジュールの公開 API が不在・権限なしを返したときの既存のエラーコード・HTTP ステータスが変わらない。
+- [ ] L3: 卒業した束から、`build.gradle.kts` に**宣言していない**束のクラスを参照すると**コンパイルが失敗**する（検体で確認）。
+- [ ] L3: 宣言済みの束の**非公開**（`api` 以外）の型を参照すると、コンパイルは通るが **Modulith verify の負のテスト**が fail する（Gradle は public な型を見せるため、非公開の判定は Modulith が担う）。
+- [ ] L3: 卒業の前に、Spring コンテキストの Bean 名一覧・`@Entity` の一覧・凍結ストアの各行数を `docs/evidence/<子CMP>-before.txt` に保存し、卒業後に同じ手順で取った一覧と比較して一致する（Modulith の Registry の Entity も含む）。
+- [ ] L3: 卒業した束のテストが CI のいずれか1 shard でちょうど1回実行される（`verifyShardCoverage` 相当）。
+- [ ] L3: ArchUnit 番人が卒業した束のクラスを含む全クラスパスで実行される（ストアの行数が卒業の前後で一致）。
+- [ ] L3: **同一 FQCN のクラスが複数の jar に存在しない**ことを検査する番人がある（split package は許すが、同じクラスの重複は拒否する。橋渡しを `:app` に置いたあと `:kernel` に同名クラスが残っていたら fail）。
+- [ ] L3: Spring のスキャン・ArchUnit・Modulith の解析が**全 jar**（`:kernel`・各束・`:app`）を対象にしている（各ツールが取り込んだクラス数が、全 jar のクラス数の合計と一致する）。
+- [ ] L3: `:db-migration` の migration を各束のテストが参照でき、Flyway の適用順が分割前と同じ（適用された版の一覧を比較）。
+- [ ] L3-P（必須）: OpenAPI の生成先が分割後も `docs/openapi.json` を指し（`build.gradle.kts:1161` の相対指定の付け替え）、生成した openapi.json が分割前と一致する。
+- [ ] L3-P（必須）: OWASP Dependency-Check が全束を1回で見る（集約タスク）に切り替わり、週次の `security-scan.yml:66` も新しいタスクを呼ぶ。全束の依存が報告に含まれる。
+- [ ] L3-P（必須）: jacoco のカバレッジが全束・全 shard を集約したレポートになり、`backend-ci.yml:603` の収集パスがそのレポートを指す。
+- [ ] L3-P（必須）: テスト XML の収集（`backend-ci.yml:586`）が全束の `build/test-results` を含む（束ごとのパスを含めた収集の件数が分割前のテスト件数と一致）。
+
+### 9.3 Phase 4・5
+
+- [ ] 暫定core の各領域が verify を通り、モジュール循環が0。
+- [ ] D-1 / D-3 / D-3T / D-5 / ServiceAPI のストアファイルと定数が削除され、各番人が凍結なしの0件必須として緑。
+- [ ] `DomainPackages` の common 例外が無く、それでも全番人が緑。
+- [ ] Modulith verify が全体で必須（違反1件で fail）。
+
+### 9.4 番人の対応表（卒業後に Modulith/Gradle で代替して廃止できるか）
+
+| 番人 | Modulith verify で代替 | Gradle で代替 | 卒業後の扱い |
+|---|---|---|---|
+| D-1 `CrossDomainEntityImportArchTest` | **大部分は可**（Entity を非公開パッケージに置けば、他モジュールからの参照は違反になる） | 束の間は不可（宣言済み依存なら public な型は全部見える） | Modulith で代替して廃止。ただし「`api` に `@Entity` を置かない」番人を小さく残す |
+| D-5 `CrossDomainRepositoryDependencyArchTest` | **大部分は可**（Repository を非公開に置く） | 同上 | 同上（「`api` に Repository を置かない」番人を残す） |
+| ServiceAPI `ServiceApiEntityBoundaryArchTest` | 不可（シグネチャに内部型を露出していること自体は見ない） | 不可 | 残す（`api` の公開シグネチャの番人として） |
+| D-3 / D-3T 越境 tx | **不可** | 不可 | 残す（L1-G0 で穴を塞ぐ）。Phase 5 で0件必須へ |
+| D-3P `CrossDomainMandatoryPropagationArchTest` | 不可 | 不可 | 残す |
+| `CrossDomainForeignKeyArchTest`（クロスドメイン FK） | 不可 | 不可 | 残す |
+| D-2b `EntityUuidV7ConventionArchTest` | 不可 | 不可 | 残す（CMP-261021-0115 の所管） |
+| 認可系（`AuthzControllerGuardArchTest`・`SelfScopedEndpointMarkerGuardTest` ほか） | 不可 | 不可 | 残す |
+| `NotificationTransactionBoundaryGuardTest` | 不可 | 不可 | 残す（入口判定を L1-G で改修） |
+| 新設 `DomainEventPayloadGuardTest` | 不可 | 不可 | 残す |
+| `ArchUnitFreezeStoreIntegrityTest` | — | — | 境界系ストアの削除後は D-2b 等の残るストアだけを見る |
+| `DomainPackages` の common 例外 | — | `:kernel` が業務に依存できないことで代替 | Phase 5 で撤廃 |
+| モジュール循環（現状、専用の番人なし） | **可** | 束の間は可（Gradle は循環依存を許さない） | Modulith verify が担う |
+| 新設 `KernelNoBusinessDependencyArchTest` | 一部可 | 可（`:kernel` 卒業後） | `:kernel` 卒業後に廃止してよい |
+
+**Modulith の限界（誇張しないための注記）:**
+
+- Modulith verify が代替できるのは、モジュール間の依存・非公開パッケージの参照・モジュール循環（D-1 / D-5 に相当する部分の大半）だけである。越境トランザクション（D-3 / D-3T）、クロスドメイン FK、UuidV7、認可系の番人は代替しない。
+- Modulith には**凍結の仕組みが無い**。移行中は ArchUnit の凍結で悪化を止め、違反0になったモジュールから verify を必須にする（§9.5）。
+- テストの高速化は断定しない。`@ApplicationModuleTest` は1つのコンテキストを小さくできるが、コンテキストの**種類**が増えるため、fork 固定費やコンテキストキャッシュ上限 10 と組み合わさって**遅くなることもありうる**。Phase 0（L0-S）と Phase 3（L3-P）で計測して採否を決める。
+
+### 9.5 Modulith verify の段階必須化と「当該モジュール違反0」の定義
+
+- L1-G で「verify 必須モジュール一覧」を定数で持つ番人を作る。一覧に載ったモジュールは違反1件で fail、載っていないモジュールはレポートのみ。一覧から外すことは禁止（番人が拒否する）。
+- **「当該モジュール違反0」の定義**: (1) 当該モジュールを**発生元**とする依存違反（他モジュールの非公開型への参照）が0、かつ (2) 当該モジュールを**含む**循環が0。循環は複数モジュールにまたがるため、循環に含まれる全モジュールが同時に一覧へ載れない。循環を解くロットは、循環を作る相手のロットと親 Issue で調整し、解いた側の PR で循環の全モジュールを一覧に載せる（相手のロットが依存違反0を満たしている場合）。
+- **除外してよいのは `@TransitionalBridge` を端点とする辺だけ**（規則の一本化）。判定には `ApplicationModules.of(MannschaftApplication.class, <@TransitionalBridge の付いたクラスを無視する述語>)` のように、橋渡しのクラスを解析対象から外した構成を使う（外し方は L0-S の確認項目6で確定）。橋渡し以外の common のクラスから業務モジュールへの辺は除外しない。したがって、あるモジュールを必須化リストへ載せられるのは、common の橋渡し以外のクラスからそのモジュールへの辺が無くなった（L1-R でそのモジュールに関わる返却対象が済んだ）後である。
+- 検体のテスト（L1-G）: (a) 橋渡しを端点とする辺だけで成り立っている循環は、除外で消えて verify が通る、(b) 橋渡しを除外しても別の辺で循環が残る場合は、verify が fail する、の両方を固定する。
+- **違反の取り出し方**: L0-S の確認項目6で決めた手順で、発生元モジュール名・循環に含まれるモジュール名で絞り込む。
+- ロットの完了時に、そのモジュールを一覧に追加する。
+
+---
+
+## §10. API 契約
+
+- **外部 HTTP API は変更しない**（Q6）。各 PR で openapi.json の前後比較の差分ゼロ（§7.7）を条件にする。差分が出たらロットを止める。
+- 応答の値の意味も変えない。たとえば採用確定の応答の `chatRoomId` は今と同じく常に整数で返す（§4.3 の予約→確定は、そのための形である）。なお openapi.json 上の `chatRoomId` は必須項目として宣言されていない（`chatRoomId?: number`、`frontend/app/types/generated/index.ts:69856`）が、実際の値が常に入ることを契約スナップショットテストで固定する。
+- エラーコード・HTTP ステータス・レスポンスの形も変えない（`ErrorCodeHttpStatusDeclarationGuardTest` 等の既存番人が緑のまま）。
+- 内部の公開 API は §3.4 の命名規約に従う。内部 API はモジュール間の契約で、外部へは出さない。
+
+---
+
+## §11. DDL / Flyway / Registry の運用
+
+### 11.1 方針
+
+- Modulith の JPA Event Publication Registry の表を **Flyway で作る**（Modulith の自動スキーマ作成は使わない）。
+- 版の採番: major はマージ時点の origin/main の最大 major + 1、minor は `date -u '+%Y%m%d%H%M%S'`（`FlywayTimestampNamingGuardTest`）。マージ直前に origin/main の最大 major を再確認し、必要なら採番し直す。
+- **Flyway の migration は Phase 3 で `:db-migration` サブプロジェクト（リソースのみ）に独立させる。** ディレクトリは1つのまま（1,223 本の適用順は全体で1列で、モジュールごとに分けると順序の保証が崩れるため）。`:app` と各束のテストが `:db-migration` に依存し、Testcontainers の Flyway が同じ migration を参照できる形にする。`FlywayTimestampNamingGuardTest`・`MigrationCollationDeclarationGuardTest` などの migration 走査番人は、走査するパスを `:db-migration` へ付け替える（L3-0）。表の持ち主は既存の `TableDomainResolver` で引ける。
+- パターン F の chat の状態列など、ロットで DDL が要る場合は、そのロットで同じ採番規則に従う。
+
+### 11.2 `event_publication` 表（暫定。L0-S で公式スキーマに差し替える）
+
+以下は Spring Modulith 1.x の JPA Registry の既知の形を元にした**暫定案**で、列名・型・索引は L0-S で確定させる。確定までこの DDL で実装してはならない。
+
+```sql
+CREATE TABLE event_publication (
+    id               BINARY(16)   NOT NULL,           -- Modulith が採番する UUID（UUIDv7 ではない）
+    listener_id      VARCHAR(512) NOT NULL,
+    event_type       VARCHAR(512) NOT NULL,
+    serialized_event TEXT         NOT NULL,           -- ID と scope のみ（§4.5）
+    publication_date DATETIME(6)  NOT NULL,
+    completion_date  DATETIME(6)  NULL,
+    PRIMARY KEY (id),
+    KEY idx_event_publication_incomplete (completion_date, publication_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+```
+
+- **原則6（UuidV7Entity）の例外**: この表はライブラリが管理し、主キーはライブラリが採番する。`UuidV7Entity` を継承させる余地が無いため、マスタ・シングルトン表と同じく例外とする。Modulith の Entity は `com.mannschaft.app` 配下でないため D-2b の番人の対象外になる見込み（L0-S で確認）。
+- 照合順序は `utf8mb4_0900_ai_ci`（`MigrationCollationDeclarationGuardTest`）。
+- **完了した行は削除する**: 版が対応していれば完了時に削除する設定を使い、無ければ短期保持のあと掃除バッチで削除する（保持期間は L1-M で決める）。完了済みの行を長く残さない（ID だけとはいえ利用者 ID が残るため）。
+- **試行回数・状態の永続化**: 採用版の表に試行回数や状態（処理中・失敗・隔離）を持つ列が無い場合は、本計画側の補助表（`event_publication_attempts` 等。新規表なので UuidV7Entity 継承）を L1-M で追加する。DDL は L0-S の結論を受けて L1-M で確定する。
+
+### 11.3 Registry の運用値
+
+運用値は**初期値**で、L1-M の完了までに根拠（負荷試験・L0-S の結果）とともに確定し、本節を更新する（期限: L1-M の子 CMP を完了にするまで）。
+
+| 項目 | 初期値 | 根拠・決め方 |
+|---|---|---|
+| 再投入の対象 | 発行から 5 分以上経って未完了の行 | 通常の配信（専用 executor の待ち行列）が終わる時間より長く取り、処理中の行を再投入しないため。L1-M の負荷試験で通常配信の最大所要時間を測り、その数倍に決める |
+| 再投入の間隔 | 1 分ごと（`@SchedulerLock` で1台だけ） | 再投入1回の上限件数と合わせ、通常の流入を圧迫しない量にする |
+| 1回の再投入の上限件数 | 100 件 | 専用 executor の待ち行列の大きさ以下にする（投入拒否を起こさない） |
+| 処理中件数の上限 | 専用 executor の最大スレッド数＋待ち行列 | これを超える投入をしない |
+| 試行回数の上限 | 10 回 | 再投入間隔×10 ≒ 10 分強で、一時的な障害（再起動・DB フェイルオーバー）を越えられる長さとして置いた初期値。L1-M で障害の実例から見直す |
+| 隔離状態 | 試行回数の上限を超えた行は「隔離」にし、再投入の対象から外す | 永久に再投入し続けて正常な行を圧迫しないため |
+| 警告 | 隔離になった時点で**即時に** ERROR ログとアラート。未完了の最古が 30 分を超えたら警告 | 30 分は「再投入の対象 5 分＋試行上限ぶんの時間」を超えたら異常と見なすための初期値 |
+| 掃除（パターン F の相手側の保留） | 24 時間確定されない保留を「失効」にする（物理削除しない。ID は保持し、失効からも同一 ID で確定できる） | §4.3-4。失効は見えなくするだけなので、週次の隔離確認・手動再開と矛盾しない |
+| 物理削除（パターン F） | **行わない**。保留・失効・取消の予約はすべて墓標として恒久に残す | §4.3-4。契約が ID を持っている可能性があり、誤った取消や長期の障害の後でも同一 ID で復旧できるようにするため。墓標はチャンネル行1つで容量への影響は軽微 |
+| 予約の上限（パターン F） | 作成者ごとの「保留」20 件（取消・失効・有効は数えない） | §4.3-3。並行な採用確定で事前検査をすり抜けた予約の蓄積を抑える。拒否時は明示取消で即時に枠が戻る |
+
+- **担当と手動再開の手順**: 隔離された行は、締めレーン（L-SHIME）の担当が週次で確認する（即時の警告は受けた者が親 Issue に記録する）。手順: (1) 隔離の原因（例外のログ）を調べる、(2) 原因を直す（コードの不具合なら修正 PR）、(3) 管理用の手動再開（隔離を解き試行回数を0に戻す操作。L1-M で `@BatchEndpoint` 等の管理入口として用意し、SYSTEM_ADMIN 限定）で再投入する。再投入は元のイベントをそのまま配信し直すもので、**作成物の ID を別の ID へ書き換えない**（パターン F では、契約に入っている同一のルーム ID を失効状態からでも有効化する）、(4) 完了したことを確認して親 Issue に記録する。業務上もう不要と判断した行は、理由を記録して削除する。
+- 観測点: 未完了の件数、最古の未完了の経過時間、再投入の件数、隔離の件数、パターン F の (c) の失敗件数。
+
+---
+
+## §12. エラーコード・i18n
+
+- **エラーコード**: 原則新規なし。保留・失効のルームの直接参照は既存の `CHAT_001`（404）を返す。新規が要りうるのはパターン F の予約上限の超過だけで（§4.3-3）、既存の流量制限系を流用できなければ、そのロットの時点の最大 + 1 で予約し、マージ時に再確認する。
+- **i18n**: 本計画の範囲では表示文字列を変えない。保留・失効のルームは存在しないルームと同じ扱い（404）とし、「準備中」表示は作らない。予約上限の超過に新規のエラーコードを足す場合は、その文言を6言語に追加する。チャットの初期メッセージ（`JobChatService.java:61`・`:83` の日本語直書き、DB に保存される）は現状維持とし、i18n 化は本計画外（別 CMP の候補）とする。
+
+---
+
+## §13. 非機能
+
+### 13.1 ビルド・テスト時間
+
+| 区分 | 中身 |
+|---|---|
+| 分割で改善しうる | 変更した束だけの再コンパイル（コンパイル回避）、変更の無い束のテスト結果の再利用（build cache）、束単位の並列化 |
+| 改善しない | fork 固定費（1回 +447 秒）、Flyway 再生テスト（計測時間の 72〜88%）、コンテキストの種類の多さ、CPU/IO 競合、キャッシュ削除直後の再生成 |
+| 悪化しうる | 束ごとのテスト JVM でコンテナ・コンテキストの起動が増える。`@ApplicationModuleTest` でコンテキストの種類が増える。ArchUnit 番人は全クラスパスで `:app` に残るため、束の変更でも `:app` の番人は走る |
+
+数値の目標は置かない。L0-M の基準と L3-P の計測を §5.1 の判定値で比べ、「悪化」なら §14 の撤退条件で判断する。
+
+### 13.2 Spring の起動・DI・検出
+
+- 別 jar（サブプロジェクト）でも、クラスが `com.mannschaft.app` 配下にあればルートパッケージの暗黙スキャンで検出される**見込み**。`@Entity`・Repository・`@Component` が検出されることを L3-P で確認する（§9.2）。
+- **`@EntityScan` は足さない。** `@EntityScan` を付けると `AutoConfigurationPackages` によるパッケージ登録が上書きされ、Modulith の Registry の Entity（ライブラリ側のパッケージ）が検出されなくなる恐れがある。検出に問題が出たら、`@EntityScan` ではなく原因（パッケージ配置・依存の向き）を直す。直せない場合は §14 に従い Gradle 卒業を保留する。
+
+### 13.3 テスト構成
+
+- `AbstractMySqlIntegrationTest`（`backend/src/test/java/com/mannschaft/app/support/test/AbstractMySqlIntegrationTest.java:66`）等の共有テスト基盤は `java-test-fixtures` で `:kernel`（または `:test-support`）から各束へ配る。
+- ArchUnit の番人と凍結ストアは `:app` に残し、全束を含むクラスパスで走らせる（番人の多くが `ProductionClasses` で全クラスを取り込むため）。
+- CMP-261004-2047（テストコンテキストの構成統一、実装中）はビルド時間の本丸で本計画の外だが、L0-M の計測時点でその進捗（SHA）を記録して比較できるようにする。
+
+### 13.4 CI・品質ゲート（L3-P の必須の受け入れ条件。§9.2）
+
+- shard 分割・`verifyShardCoverage`・`shard-weights.properties` は束ごとのテストタスクを数え直す必要がある（L3-P で作り直し、build-logic に集約）。
+- **OpenAPI の出力先**: `build.gradle.kts:1161` の `file("${projectDir.parentFile}/docs")` は `backend/` を前提にした相対指定で、OpenAPI 生成を担うプロジェクトの位置が変わると `docs/` を指さなくなる。ルートプロジェクト基準の指定へ付け替える。
+- **OWASP Dependency-Check**: 複数プロジェクトを1回で見る `dependencyCheckAggregate` へ切り替え、週次の `.github/workflows/security-scan.yml:66`（`./gradlew dependencyCheckAnalyze`）も合わせて変える。
+- **jacoco**: 束ごと・shard ごとの実行データを集約したレポートへ切り替え、`backend-ci.yml:603` の収集パスを集約レポートへ向ける。
+- **テスト XML の収集**: `backend-ci.yml:586` の `backend/build/test-results/**/*.xml` は束ごとの `build/` を含まないため、全束のパスを含める。
+- パスフィルタ（docs-only の判定）は、束のディレクトリを backend の変更として検出できることを確認する。
+- `cancel-in-progress: true` により main の CI が打ち切られうるため、ストアを触る PR のマージ後は main の CI の結果を確認する。
+
+### 13.5 シャーディング耐性・ロールバック
+
+- イベントと公開 API に揃えることで、将来 DB をドメイン単位に分けるときの障害（越境 tx・越境 FK）が減る。Registry の表は1つだが、分割時には持ち主のモジュールごとに割り直せる。
+- ロールバック: 各ロットは独立した PR で、revert で戻せる。イベント化したロットを revert する場合、Registry に未完了の行が残っていれば先に完了させるか削除してから revert する。Gradle 卒業は `settings.gradle.kts` の `include` を外しソースを `:app` に戻せば元に戻る（パッケージは動かさないため）。
+
+---
+
+## §14. リスクと撤退条件
+
+| リスク | 兆候 | 撤退・対処 |
+|---|---|---|
+| Gradle 卒業でテスト時間が悪化 | L3-P の計測が §5.1 の判定値で「悪化」 | Gradle 卒業を保留し、Modulith のみで境界を担保して Phase 2・4・5 を続ける。**このとき本計画の完了条件は「凍結ストア空（D-2b 除く）＋ Modulith verify 全体必須」と読み替える**（殿判断 (c)） |
+| 別 jar で Entity・Bean が検出されない | L3-P で Bean 名一覧が不一致 | 原因を直す（`@EntityScan` は足さない）。直せなければ Gradle 卒業を保留し、上の読み替えを適用 |
+| Modulith が Boot 3.5.13 と合わない／ArchUnit の版が衝突／Registry の登録対象を絞れない | L0-S の確認項目 1・3・4 が「不可」 | Modulith（または Registry だけ）を保留し、ArchUnit 凍結だけで Phase 2 を進める。確実配信の代わりに既存 outbox の型を一般化するかを上奏 |
+| イベント化で外部 API が変わる | openapi.json の前後比較に差分、契約スナップショットの不一致、または画面の挙動が変わる | そのロットを止める。F で解けるか再検討し、だめなら E に倒すかを上奏 |
+| 上限方式で意図しないストア減少を見逃す | 返済 PR の照合に無い減少行、締めで説明のつかない減少行 | 行を戻し、原因の PR を特定する。頻発するなら締めの頻度を上げる（§7.4） |
+| 返済が流入に負ける | 締めの集計でドメイン別の行数が増加 | 増えているドメインのロットを優先し、新規コードの規約違反を親 Issue で知らせる（§2.2） |
+| Registry の再配信で専用 executor が溢れる | 投入拒否のログ・未完了の滞留・隔離の増加 | 再投入の上限件数を下げ、executor の大きさを見直す（§11.3） |
+| 並行セッションの二重実装 | 同一ドメインの PR が2本 | 後から宣言した側が撤退。親 Issue の宣言を正とする |
+| 暫定core の肥大化 | 構成領域の追加要求が続く | 番人で拒否。追加はマスター裁可 |
+
+---
+
+## 既知課題（本計画の外で直す）
+
+- **求人受諾の定員集計が REPEATABLE READ のスナップショットを読む**（台帳 CMP-261021-0355）: 現行の `JobContractService#acceptApplication` は、求人行の `FOR UPDATE`（:107-108）より前に `applicationRepository.findById`（:97）の通常 SELECT を実行し、tx のスナップショットを張る。その後の定員集計 `countByJobPostingIdAndStatus`（:127-128）も通常 SELECT なので、ロック待ちの後でも、先に受諾をコミットした別の要求の ACCEPTED が見えない。このため並行な受諾で定員を超える恐れがある（Codex 判定。GET_LOCK のコミット前の解放そのものは、求人行のロックがあるので欠陥ではない）。是正はロック読み取りでの集計、またはスナップショットを張る前にロックを取る順序への変更など。**本計画とは独立に、先行して直してよい**（§4.3 の (b) は jobmatching の tx の範囲を変えないので、先に直した結果をそのまま引き継ぐ）。
+
+---
+
+## 未解決事項（要裁可）
+
+なし（Q1〜Q6 は §0 で決定済み）。
+
+---
+
+## 付録A. common・config の仕分け表（L1-K で埋める）
+
+| クラス（FQCN） | 区分（kernel／認可 interface／業務返却） | 行き先（パッケージ・モジュール） | 業務 import の有無と相手 | 担当レーン | 備考（委譲を残すか・依存の解き方） |
+|---|---|---|---|---|---|
+| `com.mannschaft.app.common.AccessControlService` | 認可 interface | interface は common、実装は暫定core（置き場所は L1-K で決定） | family・gdpr・membership・organization・role | L1-A | FQCN 維持。`GdprErrorCode`（:5・:748）の扱いを決める |
+| `com.mannschaft.app.common.NameResolverService` | 業務返却 | （L1-K で決定） | auth・organization・team | L1-R | 旧 FQCN に `@TransitionalBridge` の橋渡しを残す（kernel に数えない） |
+| （以下、common と config の全クラス） | | | | | |
+
+---
+
+## 関連ドキュメント
+
+- [`domain_db_design_principles.md`](domain_db_design_principles.md) — 原則1（クロスドメイン FK 禁止）・原則5（`@Transactional` はドメイン内）・原則6（UuidV7Entity）
+- [`db_scalability.md`](db_scalability.md) — 今後課題「イベント駆動アーキテクチャへの移行」（:107）
+- [`notification_outbox.md`](notification_outbox.md) — 既存の通知 outbox と番人 D-3P
+- [`account_purge_cross_domain_refactor.md`](account_purge_cross_domain_refactor.md) — 越境 DELETE をイベント化した前例
+- [`../security/README.md`](../security/README.md) — A01（:36）・A04（:39）
+- [`../development/worktree_operations.md`](../development/worktree_operations.md) — turnstile と並列ビルドの交通整理
+- `backend/.claudecode.md` §6.1（AFTER_COMMIT へ移すときの必須手順）、§15（非同期ジョブ実行規約・:464）、§30（番人テストと凍結ストアの運用）
+- 関連戦役: CMP-261021-0115（D-2b 返済・本計画の対象外）、CMP-260918-1406（D-5 段階返済、Issue #3354）、CMP-260930-2126（member の D-3T）、Issue #3002（ServiceAPI 凍結）、CMP-261004-1816（IntegrityTest の行数減少の確認）、CMP-261004-2047（テストコンテキスト統一）、CMP-260912-1524（自己呼び出しによる `@Transactional` 失効、2026-10-21 完了）
+
+---
+
+## 変更履歴
+
+| 日付 | 内容 |
+|---|---|
+| 2026-10-21 | 初版起草（CMP-261021-0017）。マスター御裁可済みの方針（起動単位1つ・全領域分離・イベント＋確実配信・Modulith と ArchUnit 凍結の併用）を反映。レーン分解・子 CMP 運用・番人の対応表を追加 |
+| 2026-10-21 | 精査第1パスを反映。御裁可 Q1〜Q5 を §0 に決定事項として記載。イベントの規約、専用 executor と再投入の流量制御、認可 interface 化を FQCN 不変へ、`:db-migration` の独立、`@EntityScan` を足さない方針、Registry の運用、verify 違反0の定義、流入速度を追記 |
+| 2026-10-21 | 精査第2パス（Codex）と実機E2E耐性クリティックを反映。Q6（外部 API 不変）を追加。パターン F を「予約→確定」へ改め、チャット自動作成の手本を実コード（`acceptApplication` の単一 tx・ロック）に合わせて全面改訂。Registry の登録対象の限定と負の IT、合成アノテーションと interface による偽の返済を塞ぐ L1-G0 を新設、L1-B 先行・L1-M 後続の順序、同時実行表を全組合せで整理、共有ファイルの衝突規約（§7.7）、付録A、L1-R の委譲方式、返済 PR での減少行の照合、波ごとのロット固定、Registry 運用値の根拠と隔離・手動再開手順、CI・品質ゲート（OpenAPI 出力先・OWASP 週次・jacoco 集約・テスト XML 収集）を L3-P の必須条件に、判定値の無い受け入れ条件を是正 |
+| 2026-10-21 | Codex 差分再検分を反映。予約ルームの状態機械（保留→有効、保留→失効→有効、失効→物理削除）と、掃除は失効のみ・同一 ID の復旧・確定と掃除の条件付き UPDATE による排他を追加。予約は参加者・メッセージを作らずチャンネル行だけにし、保留・失効の遮断箇所と 404・`CHAT_001` を確定。予約前の事前検査と作成者ごとの予約上限、保険リスナーの tx 無し（`@ModuleEventListener` は tx 属性を持たない）、橋渡し `@TransitionalBridge` を kernel に数えず Phase 5 で0件、L2 の入口に L1-G、L1-M の入口に L1-G0、判定値の境界と負荷試験の上限時間を明確化 |
+| 2026-10-21 | Codex 最終再検分を反映。失効は物理削除せず墓標として残し、物理削除は調停役の明示取消 `cancelReservation` を経た予約だけに限定（状態機械に「取消」を追加）。予約枠は「保留」だけで数え、拒否時の明示取消で即時回復・並行予約の原子的制御を追加。循環の判定規則を「当該モジュールを含む循環0、除外は `@TransitionalBridge` を端点とする辺だけ」に一本化し、split package の根拠と重複 FQCN・全 jar 解析の受け入れ条件を追加。招待経路（`ChatMembershipInviteCardService`）と chat 外の直接利用箇所を遮断箇所に追加。tx 属性を持つ合成アノテーションは入口、tx を持たないリスナーは入口ではない、と番人の扱いを一本化 |
+| 2026-10-21 | Codex 再検分を反映。同じ応募の並行要求で敗者が勝者の予約を取り消す競合に対し、(b) と同じロック（GET_LOCK と求人行の FOR UPDATE。順序保証は FOR UPDATE による）を取って契約の不在を確かめてから取り消す直列化と、取消からの確定（猶予内・同一 ID）を許す防御を追加。物理削除は確定要求が一度も来ていないものに限定。取消 API の失敗時は元の業務エラーを返し、予約は失効で枠から外れる |
+| 2026-10-21 | Codex 再検分を反映。取消前の契約確認を「(b) のロールバック後の新しい tx・最初の文で求人行を FOR UPDATE・契約はロック読み取り」に限定（REPEATABLE READ のスナップショット対策）。予約の物理削除を廃止し、全状態を墓標として恒久保持、確定はどの状態からも期限なしで同一 ID。既知課題（定員集計のスナップショット読み取り、CMP-261021-0355）を追加 |
+| 2026-10-21 | Codex 最終再検分で実質的欠陥なしと判定。ステータスを 🟢 設計完了へ更新（Phase 0 着手待ち） |

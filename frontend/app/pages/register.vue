@@ -5,6 +5,7 @@ import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
 import { resolveCountry } from '~/utils/resolveCountry'
+import { PRIVACY_POLICY_VERSION } from '~/constants/legalPolicy'
 
 definePageMeta({
   layout: 'auth',
@@ -183,7 +184,8 @@ const onSubmit = handleSubmit(async (values) => {
         locale: 'ja',
         timezone: 'Asia/Tokyo',
         privacyPolicyAccepted: true,
-        privacyPolicyVersion: '1.1.0',
+        // 同意した版は本文の版表示と同じ出どころ（~/constants/legalPolicy）から送る
+        privacyPolicyVersion: PRIVACY_POLICY_VERSION,
         ...(inviteToken.value ? { inviteToken: inviteToken.value } : {}),
       },
     })

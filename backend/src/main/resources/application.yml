@@ -141,6 +141,13 @@ mannschaft:
   # 未設定時は開発用デフォルト（localhost:3000 / localhost:8080）。本番は env で上書き。
   # 設計書: docs/security/01_authorization_baseline.md §5 / docs/security/03_security_headers_and_csp.md §6
   allowed-origins: ${MANNSCHAFT_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080}
+  # CMP-261012-0910: 永続 enum EMAIL（two_factor_auth.method='EMAIL'）の書込み門番。
+  # false の間はメール方式 2FA の設定開始・有効化を AUTH_082 で拒否する（EMAIL を書く経路はそこだけ）。
+  # 読取り側を全環境へ行き渡らせた後の第 2 段階で true にする（docs/architecture/persisted_enum_deployment.md）。
+  # ログイン時のメールOTP（TOTP 利用者の代替手段）・本人確認用メールOTP は本フラグの対象外。
+  auth:
+    mfa:
+      email-method-enabled: ${MANNSCHAFT_AUTH_MFA_EMAIL_METHOD_ENABLED:false}
   # F20.3 ベータ特典: 現在のベータ段階（1〜4）。/me の充足状況評価・自動付与バッチ（Phase 2）の対象フェーズ。
   # デプロイ設定変更で切り替える（頻度が低くマスタ表に持つ価値なし・設計書 F20.3 02 §3/§6）。
   beta:

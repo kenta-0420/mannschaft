@@ -11,6 +11,15 @@
       "target_team_id": "対象チーム ID",
       "comment_label": "挨拶コメント（任意）"
     },
+    "follow_dialog": {
+      "search_label": "チーム名で探す",
+      "search_placeholder": "チーム名を2文字以上入力",
+      "slug_input_label": "URL 名で指定する",
+      "slug_input_hint": "一覧に出ないときは、相手チームの URL 名（アドレスの末尾の英数字）を下の欄に入力してください",
+      "no_results": "該当するチームが見つかりませんでした",
+      "search_error": "検索に失敗しました。通信状況を確認してもう一度お試しください",
+      "retry": "再検索"
+    },
     "actions": {
       "follow": "フォロー",
       "unfollow": "フォロー解除",
@@ -41,7 +50,7 @@
       "follow": {
         "title": "フォローしてフレンドになる",
         "step1": "フレンドチームのタブ上部にある「フォロー」ボタンを押します",
-        "step2": "相手チームのID（数字）を入力します",
+        "step2": "チーム名で検索して、フォローしたいチームを選びます。見つからないときは、相手チームの URL 名（アドレスの末尾の部分）を直接入力します",
         "step3": "挨拶コメントを入力します（任意・300文字まで）",
         "step4": "ダイアログの「フォロー」を押します",
         "mutual": "相手チームからもフォローされると「フレンドチームになりました」と表示され、フレンドチームが成立します。",
@@ -137,8 +146,8 @@
       "modal_title": "投稿を転送する",
       "target_label": "配信範囲",
       "target_member": "メンバーのみ",
-      "target_supporter": "メンバー + サポーター（Phase 3以降）",
-      "target_supporter_tooltip": "Phase 3以降で利用可能になります",
+      "target_supporter": "メンバー + サポーター（準備中）",
+      "target_supporter_tooltip": "この配信範囲は現在ご利用いただけません",
       "comment_label": "管理者コメント（任意）",
       "comment_placeholder": "転送時に添えるコメントを入力（任意）",
       "submit": "転送する",
@@ -147,7 +156,8 @@
       "revoke": "転送を取消",
       "revoke_success": "転送を取消しました",
       "revoke_confirm": "この転送を取り消しますか？",
-      "error": "転送に失敗しました"
+      "error": "転送に失敗しました",
+      "already_forwarded": "この投稿は既に転送済みです。一覧を更新しました"
     }
   },
   "forward_exports": {

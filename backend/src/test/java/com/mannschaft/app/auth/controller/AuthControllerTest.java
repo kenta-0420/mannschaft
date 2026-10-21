@@ -1,7 +1,9 @@
 package com.mannschaft.app.auth.controller;
 
 import com.mannschaft.app.auth.dto.BackupCodesResponse;
+import com.mannschaft.app.auth.MfaVerificationMethod;
 import com.mannschaft.app.auth.dto.MessageResponse;
+import com.mannschaft.app.auth.dto.MfaLoginTokenResponse;
 import com.mannschaft.app.auth.dto.TokenResponse;
 import com.mannschaft.app.auth.dto.TotpSetupResponse;
 import com.mannschaft.app.auth.dto.UpdateWebAuthnCredentialRequest;
@@ -38,6 +40,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -129,15 +132,19 @@ class AuthControllerTest {
         @DisplayName("正常系: TOTPログイン検証が200で返る")
         void validateTotp_正常_200() {
             // Given
+            // CMP-261012-0910: validate は validateMfaLogin（TOTP/BACKUP_CODE/EMAIL 共通）へ集約。
+            // 旧形式 {mfaSessionToken, totpCode} は method=TOTP・code=totpCode に解決される。
             TokenResponse token = new TokenResponse("access-token", "refresh-token", 3600);
-            given(auth2faService.validateTotp(anyString(), anyString()))
-                    .willReturn(ApiResponse.of(token));
+            given(auth2faService.validateMfaLogin(eq("mfa-session-token"), eq(MfaVerificationMethod.TOTP),
+                    eq("123456"), any(), any()))
+                    .willReturn(ApiResponse.of(new MfaLoginTokenResponse(token, MfaVerificationMethod.TOTP, null)));
             given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
 
             ValidateTotpLoginRequest req = new ValidateTotpLoginRequest("mfa-session-token", "123456");
 
             // When
-            ResponseEntity<ApiResponse<TokenResponse>> response = auth2faController.validateTotp(req);
+            ResponseEntity<ApiResponse<MfaLoginTokenResponse>> response = auth2faController.validateTotp(
+                    req, mock(HttpServletRequest.class));
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -156,10 +163,10 @@ class AuthControllerTest {
             BackupCodesResponse backupCodes = new BackupCodesResponse(
                     List.of("11111111", "22222222", "33333333", "44444444",
                             "55555555", "66666666", "77777777", "88888888"));
-            given(auth2faService.regenerateBackupCodes(USER_ID)).willReturn(ApiResponse.of(backupCodes));
+            given(auth2faService.regenerateBackupCodes(USER_ID, null)).willReturn(ApiResponse.of(backupCodes));
 
             // When
-            ResponseEntity<ApiResponse<BackupCodesResponse>> response = auth2faController.regenerateBackupCodes();
+            ResponseEntity<ApiResponse<BackupCodesResponse>> response = auth2faController.regenerateBackupCodes(null);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -176,7 +183,7 @@ class AuthControllerTest {
 
             // When
             ResponseEntity<ApiResponse<MessageResponse>> response =
-                    auth2faController.requestMfaRecovery("mfa-session-token");
+                    auth2faController.requestMfaRecovery(null, "mfa-session-token");
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -193,7 +200,7 @@ class AuthControllerTest {
 
             // When
             ResponseEntity<ApiResponse<TokenResponse>> response =
-                    auth2faController.confirmMfaRecovery("recovery-token");
+                    auth2faController.confirmMfaRecovery(null, "recovery-token");
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
