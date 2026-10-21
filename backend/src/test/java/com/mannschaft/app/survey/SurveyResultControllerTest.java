@@ -64,7 +64,7 @@ class SurveyResultControllerTest {
                 // Given
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 RemindResponse remindResponse =
-                        new RemindResponse(SURVEY_ID, 5, 2, "5名にリマインド送信しました");
+                        new RemindResponse(SURVEY_ID, 5, 2, "5名の未回答メンバーにリマインドの送信を受け付けました。");
                 given(remindService.remind(SURVEY_ID, USER_ID)).willReturn(remindResponse);
 
                 // When
