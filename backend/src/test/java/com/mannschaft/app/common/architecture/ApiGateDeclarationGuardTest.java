@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * API の mapped method が feature gate または明示的な常時到達理由を宣言することを監査する番人。
- * HTTP は 3,722 件（管理公開設定 GET 2本・削除済みチーム一覧1本・共通本人QR1本・チームポイント24本・多要素認証の穴埋め6本追加後）、
+ * HTTP は 3,723 件（管理公開設定 GET 2本・削除済みチーム一覧1本・共通本人QR1本・チームポイント24本・多要素認証の穴埋め6本・フォロー中一覧1本追加後）、
  * STOMP は Chat の 2 件と VillageLobbyPresenceController の 3 件、計 5 件を走査する。
  */
 class ApiGateDeclarationGuardTest {
@@ -42,7 +42,8 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3722);   // main 3716 + CMP-261012-0910 多要素認証の穴埋め 6（Auth2faController の
+                .isEqualTo(3723);   // main 3722 + CMP-261021-0020 pending一覧1本。CORE宣言済みで未宣言増加0。
+                                    // main 3716 + CMP-261012-0910 多要素認証の穴埋め 6（Auth2faController の
                                     //   email/send・email/setup・email/enable・reauth/email/send・disable・status）。
                                     //   6本とも @AlwaysReachable(CORE) を宣言済みのため未宣言数は増えない（6|6 → 6|12）
                                     // 3716 = 最新main統合後の実走査: 3688 + 管理公開設定2 + 削除済みチーム一覧1 + 共通本人QR1 + チームポイント24。

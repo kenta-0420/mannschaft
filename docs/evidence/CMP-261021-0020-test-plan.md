@@ -62,7 +62,7 @@ F01.5とdocs/security/03_role_authority_model.md §3.5へ、このAPIのcheckPer
 
 ## green実装・検証経過（継続中）
 
-2026-10-21、復旧後の正式BE実行は64件（成功63・失敗1・errors0・skip0）。初期red42件は全件greenになった。唯一の失敗は追加したAC8の `page=2147483647&size=100` で、JPAの `Page offset exceeds Integer.MAX_VALUE` による500。通常範囲外99ページは成功した。失敗を受け、JPA offset上限を超える場合だけ通常ページと同一のCOUNTクエリから元のpage/sizeを保った空ページを返す修正を追加した。最大pageのsize=1/100、状態別・異種混在・正規化pair除外のCOUNT回帰を追加し、修正後の再検証は未実施。
+2026-10-21、復旧後の正式BE実行は64件（成功63・失敗1・errors0・skip0）。初期red42件は全件greenになった。唯一の失敗は追加したAC8の `page=2147483647&size=100` で、JPAの `Page offset exceeds Integer.MAX_VALUE` による500。通常範囲外99ページは成功した。失敗を受け、JPA offset上限を超える場合だけ通常ページと同一のCOUNTクエリから元のpage/sizeを保った空ページを返す修正を追加した。最大pageのsize=1/100、状態別・異種混在・正規化pair除外のCOUNT回帰を追加し、修正後は同製品入力を実checkoutしたCIで65件全成功・failure/error/skip0を確認した。詳細は [BE CI観測](observations/CMP-261021-0020-backend-ci.json)。
 
 FEは親のrefresh重複取得を実際の回帰試験が検出し、兄弟一覧だけを更新する結線へ修正した後、5スイート49件成功。追加2件を含むローカル51件はWSL接続リセットで集計を取得できず合格に数えなかった。その後、head `fd54c73af1abc2e1dc48be434905f6060a5bffad` の [Frontend CI run 39564699382](https://github.com/kenta-0420/mannschaft/actions/runs/39564699382) でNode22.23.2、Lint、typecheck、全665ファイル・6529件が成功し、対象5スイート51件も全成功・skip0を確認した。新旧一覧、Dialogのslug事前入力と409、実効権限表示、翻訳済み通知、ページ補正再取得の失敗/総数0を含む。新specのmock呼出配列4箇所の型エラーは期待値を変えず修正した。詳細は [FE CI観測](observations/CMP-261021-0020-frontend-ci.json)。同等以上のCI実証によりローカル51件の重複再実行は省略する。
 
@@ -85,4 +85,12 @@ main `3bad46f846cd094a64bd46524aed69479b0c76bf` を取り込んだhead `4c184472
 
 初回headのnullable=true注記ではnull unionが生成されないことを実生成JSONで検出し、既存ActivityRecordResponseのtypes={string,null}へ2項目だけ揃えた。初回artifactは観測として保存し、現入力へ採用していない。ローカルOpenAPI重複生成は省略した。
 
-最新main `7e9f82b3cae1ddd89b8a18add75217adcc811ce1` の追加分は文書/台帳7パスのみで、追従head `0872146200da916249f7c3575626fe09dfb5ccb6` のbackend treeは `0cada4cbd94208d6c0345af6bc9e8af727d30e6c`、frontend treeは `ceca7924e24f59cfca0badb3062a94c6b4b13ae6`。FE成功headの製品入力と等価である。生成同期後のheadではOpenAPI Drift、生成型、Harness、秘密情報scanが成功した。境界修正後のBE65はCI実行中で未検証、追従後headの最終CI・実機/アリシゼーションも未完了。台帳完了・最終completion証拠は追加していない。
+最新main `7e9f82b3cae1ddd89b8a18add75217adcc811ce1` の追加分は文書/台帳7パスのみで、追従head `0872146200da916249f7c3575626fe09dfb5ccb6` のbackend treeは `0cada4cbd94208d6c0345af6bc9e8af727d30e6c`、frontend treeは `ceca7924e24f59cfca0badb3062a94c6b4b13ae6`。FE成功headの製品入力と等価である。生成同期後のheadではOpenAPI Drift、生成型、Harness、秘密情報scanが成功した。同製品treeを実checkoutしたCI run `39564699511` のBE65件（HTTP43＋Facade2＋既存Controller20）は全成功・failure/error/skip0。MAX_INT pageのsize=1/100、認可、伏せ字、型混在、正規化pair除外のCOUNTも含む。CI実checkout merge `ef2c22ac5894a5355a06ff17871338c7ba244489` のbackend/frontend treeが上記と一致することをGitHub APIで照合した。BE65/FE51のローカル重複再実行は省略する。全体CIの番人失敗と是正の状況は次節に記す。追従・是正後headの最終CI・実機/アリシゼーションは未完了。台帳完了・最終completion証拠は追加していない。
+
+### 全体CIの番人失敗と是正（再検証待ち）
+
+先行head `fd54c73af1` の対象BE65件は全成功したが、全体CIはshard1/3で失敗した。API Gate総数は新pending1本で3723、APIクラス数は783となる一方、総数期待3722/coverage台帳782が未反映だった。また新規Row/ViewのLocalDateTime字段各1が日時凍結番人へ違反していた。対象限定のgreenをAC12達成とは扱わない。
+
+新pendingへ理由付き `AlwaysReachable(CORE)` を宣言し、API総数3723・coverage台帳へ宣言済み0|1を反映した。未宣言例外件数の増加は0で、日時等の違反凍結台帳は変更していない。新Row/Viewは `Instant`、既存JPAのLocalDateTime引数から唯一の正 `UserZoneLocalDateTimeParser.SERVER_ZONE` で同じ瞬間へ変換する。AC6/Facadeは非空に留めず固定日時からのInstant一致を検査するよう強化した。
+
+この是正後のBE65/番人・生成schema・最新JARは未検証。FE入力は成功済みtreeのままだが、最終headの全CI・実機・アリシゼーションは未完了。旧JARは是正前観測として保持し、現在の実機入力へ使用しない。

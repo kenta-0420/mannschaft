@@ -77,6 +77,8 @@ class TeamFriendPendingFollowFacadeTest {
         assertThat(response.data()).hasSize(2);
         assertThat(response.data().get(0).nameHidden()).isFalse();
         assertThat(response.data().get(0).targetTeamName()).isEqualTo("公開チーム");
+        assertThat(response.data().get(0).followedAt()).isEqualTo(FOLLOWED_AT.atZone(
+                com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant());
         assertThat(response.data().get(1).nameHidden()).isTrue();
         assertThat(response.data().get(1).targetTeamName()).isNull();
         assertThat(response.data().get(1).targetTeamSlug()).isNull();

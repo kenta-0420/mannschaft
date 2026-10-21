@@ -1,6 +1,8 @@
 package com.mannschaft.app.social.controller;
 
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.social.dto.PendingTeamFollowListResponse;
 import com.mannschaft.app.social.service.TeamFriendPendingFollowFacade;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,6 +29,8 @@ public class TeamFriendPendingFollowController {
     private final TeamFriendPendingFollowFacade pendingFollowFacade;
 
     @GetMapping
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "フレンド管理は実効権限で提供するコア機能であり、既存の一覧・取消と同じく機能フラグの対象外とする")
     @Operation(summary = "フォロー中チーム一覧取得",
             description = "MANAGE_FRIEND_TEAMS実効権限が必要。相互成立済みを除外し、公開有効相手だけ名前とslugを開示する。")
     public ResponseEntity<PendingTeamFollowListResponse> listPendingFollows(

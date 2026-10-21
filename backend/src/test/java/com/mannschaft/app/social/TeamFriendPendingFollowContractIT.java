@@ -240,12 +240,18 @@ class TeamFriendPendingFollowContractIT extends AbstractMySqlIntegrationTest {
     @Test
     void AC6_公開有効相手に限り名前とslugとフォロー日時を返す() throws Exception {
         FollowEntity row = followRow(FollowerType.TEAM, own.getId(), FollowerType.TEAM, target.getId());
+        em.flush();
+        em.createQuery("UPDATE FollowEntity f SET f.createdAt = :at WHERE f.id = :id")
+                .setParameter("at", SAME_SECOND).setParameter("id", row.getId()).executeUpdate();
+        em.clear();
         JsonNode actual = pending(admin, own, 0, 20).path("data").get(0);
         assertThat(actual.path("followId").asLong()).isEqualTo(row.getId());
         assertThat(actual.path("nameHidden").asBoolean()).isFalse();
         assertThat(actual.path("targetTeamName").asText()).isEqualTo(target.getName());
         assertThat(actual.path("targetTeamSlug").asText()).isEqualTo(target.getSlug());
-        assertThat(actual.path("followedAt").asText()).isNotBlank();
+        assertThat(java.time.Instant.parse(actual.path("followedAt").asText()))
+                .isEqualTo(SAME_SECOND.atZone(
+                        com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant());
         assertThat(actual.has("isNameHidden")).isFalse();
         assertThat(actual.has("isFollowedBack")).isFalse();
     }
