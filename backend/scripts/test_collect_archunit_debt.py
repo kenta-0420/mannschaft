@@ -128,6 +128,16 @@ class TestCollectArchunitDebt(unittest.TestCase):
                 self.assertIn(name, result.stderr)
                 self.assertNotIn("can't open file", result.stderr)
 
+    def test_ac4_rejects_orphan_store_without_partial_json(self) -> None:
+        orphan = "11111111-1111-1111-1111-111111111111"
+        (self.store / orphan).write_text(violation("D-1") + "\n", encoding="utf-8")
+
+        result = self.run_cli(self.store)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
+        self.assertTrue("stored.rules" in result.stderr or orphan in result.stderr, result.stderr)
+
     def test_ac4_rejects_unknown_missing_duplicate_and_mismatched_registration(self) -> None:
         original = (self.store / "stored.rules").read_text(encoding="utf-8")
         invalid = (
