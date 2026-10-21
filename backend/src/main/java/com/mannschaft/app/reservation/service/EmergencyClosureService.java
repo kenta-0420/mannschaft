@@ -5,9 +5,6 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.reservation.CancelledBy;
 import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.ReservationStatus;
@@ -24,6 +21,7 @@ import com.mannschaft.app.reservation.repository.EmergencyClosureRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import com.mannschaft.app.reservation.EmergencyClosureConfirmedEvent;
+import com.mannschaft.app.reservation.event.EmergencyClosureNotificationEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -50,14 +48,10 @@ public class EmergencyClosureService {
     private static final List<ReservationStatus> ACTIVE_STATUSES =
             List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED);
 
-    private static final String NOTIFICATION_TYPE = "EMERGENCY_CLOSURE";
-    private static final String SOURCE_TYPE = "EMERGENCY_CLOSURE";
-
     private final ReservationSlotRepository slotRepository;
     private final ReservationRepository reservationRepository;
     private final UserRepository userRepository;
     private final EmailOutboxService emailOutboxService;
-    private final NotificationHelper notificationHelper;
     private final EmergencyClosureRepository emergencyClosureRepository;
     private final ReservationSlotService slotService;
     private final EmergencyClosureConfirmationRepository confirmationRepository;
@@ -171,20 +165,12 @@ public class EmergencyClosureService {
             );
         }
 
-        // アプリ内通知（WebSocket + PWA Push）— メールと二重で確実に届ける
-        notificationHelper.notifyAll(
-                targetUserIds,
-                NOTIFICATION_TYPE,
-                NotificationPriority.URGENT,
-                request.getSubject(),
-                request.getReason(),
-                SOURCE_TYPE,
-                saved.getId(),
-                NotificationScopeType.TEAM,
-                teamId,
-                null,
-                operatorUserId
-        );
+        // アプリ内通知（WebSocket + PWA Push）— メールと二重で確実に届ける。
+        // 業務TX内では配送要求の publish だけを行い、実配送は EmergencyClosureNotificationListener が
+        // AFTER_COMMIT で行う（Issue #2997 G3: 通知の失敗で休業・キャンセル・確認行を巻き戻さない）。
+        if (!targetUserIds.isEmpty()) {
+            eventPublisher.publishEvent(new EmergencyClosureNotificationEvent(saved.getId(), targetUserIds));
+        }
 
         // 確認追跡レコード作成
         Map<Long, ReservationSlotEntity> slotMap2 = slotRepository
