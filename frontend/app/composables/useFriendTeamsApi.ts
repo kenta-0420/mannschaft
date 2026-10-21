@@ -35,7 +35,7 @@ export function useFriendTeamsApi() {
    * フレンド関係が同時に生成される。
    *
    * @param teamId 自チーム ID
-   * @param req    フォローリクエスト
+   * @param req    フォローリクエスト（フォロー先は targetTeamSlug か targetTeamId のちょうど一方）
    * @returns フォロー結果
    */
   async function follow(teamId: string, req: FollowTeamRequest): Promise<FollowTeamResponse> {

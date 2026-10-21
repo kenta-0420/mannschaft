@@ -11,6 +11,15 @@
       "target_team_id": "ID del equipo objetivo",
       "comment_label": "Comentario de saludo (opcional)"
     },
+    "follow_dialog": {
+      "search_label": "Buscar por nombre del equipo",
+      "search_placeholder": "Escribe al menos 2 caracteres del nombre del equipo",
+      "slug_input_label": "Indicar por nombre de URL",
+      "slug_input_hint": "Si el equipo no aparece en los resultados, escribe su nombre de URL (la parte final de su dirección) en el campo de abajo",
+      "no_results": "No se encontraron equipos coincidentes",
+      "search_error": "La búsqueda ha fallado. Comprueba tu conexión e inténtalo de nuevo",
+      "retry": "Buscar de nuevo"
+    },
     "actions": {
       "follow": "Seguir",
       "unfollow": "Dejar de seguir",
@@ -41,7 +50,7 @@
       "follow": {
         "title": "Seguir para hacerse amigo",
         "step1": "Pulsa el botón «Seguir» en la parte superior de la pestaña de equipos amigos",
-        "step2": "Introduce el ID (número) del equipo al que quieres seguir",
+        "step2": "Busca por el nombre del equipo y elige el que quieres seguir. Si no lo encuentras, escribe directamente el nombre de URL del equipo (la parte final de su dirección)",
         "step3": "Escribe un mensaje de saludo (opcional, hasta 300 caracteres)",
         "step4": "Pulsa «Seguir» en el cuadro de diálogo",
         "mutual": "Cuando el otro equipo también te siga, se mostrará «Ya sois equipos amigos» y se establecerá la relación de equipos amigos.",
