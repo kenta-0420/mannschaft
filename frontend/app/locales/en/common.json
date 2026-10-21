@@ -3182,5 +3182,14 @@
         "step3": "Your input is retained if adding fails. Check the displayed reason and your input, then select “Add” again."
       }
     }
+  },
+  "lineSettings": {
+    "title": "LINE settings",
+    "description": "Configure the LINE Messaging API integration"
+  },
+  "snsSettings": {
+    "title": "SNS settings",
+    "description": "Manage Instagram and X feed integrations",
+    "addAccount": "Add account"
   }
 }

@@ -8,6 +8,16 @@ import SnsSettings from '~/pages/admin/sns-settings.vue'
 const { getConfig, updateConfig, createConfig, deleteConfig, listFeeds } = vi.hoisted(() => ({ getConfig: vi.fn(), updateConfig: vi.fn(), createConfig: vi.fn(), deleteConfig: vi.fn(), listFeeds: vi.fn() }))
 const scope = reactive({ current: { type: 'team', id: 't' } })
 mockNuxtImport('useScopeStore', () => () => scope)
+mockNuxtImport('useI18n', () => () => ({ t: (key: string) => ({
+  'lineSettings.title': 'LINE設定',
+  'lineSettings.description': 'LINE Messaging API との連携設定',
+  'snsSettings.title': 'SNS設定',
+  'snsSettings.description': 'Instagram・X のフィード連携を管理します',
+  'snsSettings.addAccount': 'アカウントを追加',
+  'button.delete': '削除',
+  'button.save': '保存',
+} as Record<string, string>)[key] ?? key }))
+
 mockNuxtImport('useAdminScopeGuard', () => vi.fn())
 mockNuxtImport('useNotification', () => () => ({ success: vi.fn(), error: vi.fn() }))
 mockNuxtImport('useLineConfigApi', () => () => ({ getConfig, updateConfig, createConfig, deleteConfig }))

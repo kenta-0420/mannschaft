@@ -52,7 +52,9 @@ onMounted(async () => {
     <div v-else>
       <div class="mb-4 flex items-center gap-3">
         <PageHeader :title="t('forward_exports.title')">
-          <span class="text-sm text-surface-400">{{ t('forward_exports.subtitle') }}</span>
+          <template #subtitle>
+            <span class="text-sm text-surface-400">{{ t('forward_exports.subtitle') }}</span>
+          </template>
         </PageHeader>
       </div>
 

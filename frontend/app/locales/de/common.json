@@ -1299,7 +1299,7 @@
     "preset": {
       "PRESET_TRAINING_PARTNERS": {
         "name": "Trainingspartner",
-        "description": "Alle befreundeten Teams"
+        "description": "Alle Freundschaftsteams"
       },
       "PRESET_LOCAL_TEAMS": {
         "name": "Lokale Teams",
@@ -1307,7 +1307,7 @@
       },
       "PRESET_ALL_FRIENDS": {
         "name": "Alle Freunde",
-        "description": "Alle befreundeten Teammitglieder"
+        "description": "Alle Mitglieder von Freundschaftsteams"
       }
     }
   },
@@ -3182,5 +3182,14 @@
         "step3": "Ihre Eingaben bleiben bei einem Fehler erhalten. Prüfen Sie die angezeigte Ursache und Ihre Eingaben und wählen Sie erneut „Hinzufügen“."
       }
     }
+  },
+  "lineSettings": {
+    "title": "LINE-Einstellungen",
+    "description": "Integration mit der LINE Messaging API einrichten"
+  },
+  "snsSettings": {
+    "title": "SNS-Einstellungen",
+    "description": "Feed-Integrationen für Instagram und X verwalten",
+    "addAccount": "Konto hinzufügen"
   }
 }

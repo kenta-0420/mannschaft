@@ -2,6 +2,8 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { resolve, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { parse } from '@vue/compiler-sfc'
+import { parse as parseTemplate, NodeTypes, type ElementNode, type TemplateChildNode } from '@vue/compiler-dom'
 import { pageHeaderSubtitleViolations } from './pageHeaderSubtitleGuard'
 
 const sfc = (body: string) => '<template>' + body + '</template>'
@@ -48,5 +50,41 @@ describe('CMP-261014-2035 PageHeader副題AST番人', () => {
     scan(app)
     expect(checked, '対象を0件走査して合格にしない').toBeGreaterThan(0)
     expect(violations).toEqual([])
+  })
+})
+
+// P14: 画面側のバインドと既存data-testid/操作なしを検証し、描画契約はPageHeader.specで担保する。
+describe('CMP-261014-2035 P14 副題だけを移行する5画面', () => {
+  it.each([
+    ['pages/teams/[slug]/announcements.vue', "t('announcement.all_announcements')"],
+    ['pages/admin/receipt-settings.vue', "t('receipt.settings.description')"],
+    ['components/ScopeGuideContent.vue', 't(`scopeGuide.${scopeKey}.intro`)'],
+    ['pages/teams/[slug]/friend-feed.vue', "t('friend_feed.subtitle')"],
+    ['pages/teams/[slug]/friend-forward-exports.vue', "t('forward_exports.subtitle')"],
+  ])('%sは同じ翻訳式をsubtitleへ渡し、操作/data-testidを追加・移動しない', (path, expression) => {
+    const source = readFileSync(resolve(process.cwd(), 'app', path), 'utf8')
+    const { descriptor } = parse(source)
+    const ast = parseTemplate(descriptor.template!.content)
+    const headers: ElementNode[] = []
+    function collect(node: TemplateChildNode): void {
+      if (node.type !== NodeTypes.ELEMENT) return
+      if (node.tag === 'PageHeader') headers.push(node)
+      node.children.forEach(collect)
+    }
+    ast.children.forEach(collect)
+    expect(headers).toHaveLength(1)
+    const header = headers[0]!
+    const subtitle = header.props.find(prop => prop.type === NodeTypes.DIRECTIVE && prop.name === 'bind' && prop.arg?.type === NodeTypes.SIMPLE_EXPRESSION && prop.arg.content === 'subtitle')
+    const subtitleSlot = header.children.find(node => node.type === NodeTypes.ELEMENT && node.props.some(prop => prop.type === NodeTypes.DIRECTIVE && prop.name === 'slot' && prop.arg?.type === NodeTypes.SIMPLE_EXPRESSION && prop.arg.content === 'subtitle'))
+    let slotExpression: string | undefined
+    function findText(node: TemplateChildNode): void {
+      if (node.type === NodeTypes.INTERPOLATION) slotExpression = node.content.loc.source
+      if (node.type === NodeTypes.ELEMENT) node.children.forEach(findText)
+    }
+    if (subtitleSlot) findText(subtitleSlot)
+    expect(subtitle?.type === NodeTypes.DIRECTIVE ? subtitle.exp?.loc.source : slotExpression).toBe(expression)
+    expect(header.props.filter(prop => prop.type === NodeTypes.ATTRIBUTE && prop.name === 'data-testid')).toEqual([])
+    expect(header.children.filter(node => node.type === NodeTypes.ELEMENT && node !== subtitleSlot)).toEqual([])
+    expect(pageHeaderSubtitleViolations(source)).toEqual([])
   })
 })

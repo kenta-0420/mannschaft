@@ -3182,5 +3182,14 @@
         "step3": "추가에 실패해도 입력 내용은 유지됩니다. 표시된 이유와 입력 내용을 확인한 뒤 ‘추가’를 다시 누릅니다."
       }
     }
+  },
+  "lineSettings": {
+    "title": "LINE 설정",
+    "description": "LINE Messaging API 연동 설정"
+  },
+  "snsSettings": {
+    "title": "SNS 설정",
+    "description": "Instagram 및 X 피드 연동 관리",
+    "addAccount": "계정 추가"
   }
 }

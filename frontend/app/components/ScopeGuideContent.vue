@@ -69,9 +69,9 @@ onMounted(loadGuide)
 <template>
   <div class="mt-4 space-y-4" data-testid="scope-guide">
     <PageHeader :title="t(`scopeGuide.${scopeKey}.title`)">
-      <p class="text-sm text-surface-600 dark:text-surface-300">
-        {{ t(`scopeGuide.${scopeKey}.intro`) }}
-      </p>
+      <template #subtitle>
+        <span class="text-sm text-surface-600 dark:text-surface-300">{{ t(`scopeGuide.${scopeKey}.intro`) }}</span>
+      </template>
     </PageHeader>
 
     <PageLoading v-if="loading" />

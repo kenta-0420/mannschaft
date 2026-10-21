@@ -3182,5 +3182,14 @@
         "step3": "Si no se puede añadir, los datos introducidos se conservan. Revisa el motivo indicado y los datos, y vuelve a pulsar «Añadir»."
       }
     }
+  },
+  "lineSettings": {
+    "title": "Configuración de LINE",
+    "description": "Configura la integración con LINE Messaging API"
+  },
+  "snsSettings": {
+    "title": "Configuración de redes sociales",
+    "description": "Gestiona las integraciones de Instagram y X",
+    "addAccount": "Añadir cuenta"
   }
 }

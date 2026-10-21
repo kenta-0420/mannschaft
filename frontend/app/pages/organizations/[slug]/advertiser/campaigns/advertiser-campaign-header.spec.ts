@@ -10,7 +10,7 @@ mockNuxtImport('useRoute', () => () => ({ params: { slug: 'test-org', campaignId
 mockNuxtImport('useAdvertiserApi', () => () => ({ getCampaignPerformance: performance, getCreativeComparison: creatives, getBreakdown: breakdown, exportCampaignCsv: exportCsv }))
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => {
   const suffix = key.split('.').at(-1) ?? ''
-  return ({ default_title: 'Campaign detail', date_from_placeholder: 'From', date_to_placeholder: 'To', csv_button: 'CSV', load_failed: 'Campaign data could not be loaded', back_to_dashboard: 'Back to dashboard' } as Record<string, string>)[suffix] ?? key
+  return ({ default_title: 'Campaign detail', date_from_placeholder: 'From', date_to_placeholder: 'To', csv_button: 'CSV', retry: 'Retry', load_failed: 'Campaign data could not be loaded', back_to_dashboard: 'Back to dashboard' } as Record<string, string>)[suffix] ?? key
 } }))
 const HeaderStub = defineComponent({ props: { title: String, backTo: String }, setup(props, { slots }) { return () => h('header', { 'data-testid': 'campaign-header' }, [h('a', { href: props.backTo }, 'Back'), h('h1', props.title), slots.default?.(), h('div', { 'data-testid': 'campaign-actions' }, slots.actions?.())]) } })
 const result = { campaignId: 7, campaignName: 'Campaign Alpha', status: 'ACTIVE', pricingModel: 'CPM', summary: { totalImpressions: 0, totalClicks: 0, avgCtr: 0, totalCost: 0, avgCpm: null, avgCpc: null, conversions: null, conversionRate: null, costPerConversion: null }, benchmark: null, points: [] } satisfies CampaignPerformanceResponse
@@ -55,6 +55,19 @@ describe('CMP-261014-2035 C1 組織広告詳細', () => {
     expect(createUrl).toHaveBeenCalledOnce()
     expect(download).toHaveBeenCalledOnce()
     expect(revokeUrl).toHaveBeenCalledExactlyOnceWith('blob:cmp2035')
+  })
+  it('取得失敗の再試行は初回と同じ3 APIを再取得して詳細へ復帰する', async () => {
+    performance.mockRejectedValueOnce(new Error('取得失敗'))
+    const wrapper = await mountPage()
+    const retry = wrapper.findAll('button').find(button => button.text() === 'Retry')
+    expect(retry, '再試行操作を必ず表示する').toBeDefined()
+    await retry!.trigger('click')
+    await flushPromises()
+    expect(performance).toHaveBeenCalledTimes(2)
+    expect(creatives).toHaveBeenCalledTimes(2)
+    expect(breakdown).toHaveBeenCalledTimes(2)
+    expect(wrapper.get('[data-testid="campaign-header"]').get('h1').text()).toBe('Campaign Alpha')
+    expect(wrapper.text()).not.toContain('Campaign data could not be loaded')
   })
   it('取得失敗はロケール失敗文言と戻り先を表示する', async () => {
     performance.mockRejectedValue(new Error('取得失敗'))

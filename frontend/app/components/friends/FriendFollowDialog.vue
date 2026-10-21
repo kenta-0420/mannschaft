@@ -207,6 +207,9 @@ function onFollowed(response: FollowTeamResponse) {
             </div>
           </template>
         </AutoComplete>
+        <p class="mt-1 text-sm text-surface-500" data-testid="friend-follow-search-hint">
+          {{ t('friends.follow_dialog.search_hint') }}
+        </p>
         <div
           v-if="searchStatus === 'error'"
           class="mt-2 flex flex-wrap items-center gap-2 text-sm text-red-500"
