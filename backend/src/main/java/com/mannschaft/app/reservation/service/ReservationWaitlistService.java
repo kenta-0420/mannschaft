@@ -1,14 +1,10 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.ratelimit.RateLimitResult;
 import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.SlotStatus;
 import com.mannschaft.app.reservation.WaitlistStatus;
@@ -21,7 +17,6 @@ import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationWaitlistEntryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +26,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -50,12 +44,6 @@ import java.util.HashMap;
 @Transactional(readOnly = true)
 public class ReservationWaitlistService {
 
-    /** 空き通知の通知種別（HIGH・"RESERVATION" カテゴリ）。 */
-    static final String NOTIFICATION_TYPE = "RESERVATION_WAITLIST_OPENING";
-
-    /** 通知 sourceType（F00 visibility / 受信権の判定キー）。 */
-    private static final String SOURCE_TYPE = "RESERVATION";
-
     /** レートリミット zone（登録は軽量操作のため予約作成バケットとは別・§6.4）。 */
     static final String RATE_ZONE = "reservation-waitlist";
     /** 1 ユーザー 1 分 10 回（§6.4）。 */
@@ -67,17 +55,11 @@ public class ReservationWaitlistService {
     /** 1 枠あたり WAITING 上限（§6.1）。 */
     static final long MAX_WAITING_PER_SLOT = 50L;
 
-    /** 再通知抑制窓（同一エントリへ 60 分未満は再送しない・§6.1）。 */
-    static final Duration RENOTIFY_SUPPRESSION = Duration.ofMinutes(60);
-
     private final ReservationWaitlistEntryRepository waitlistRepository;
     private final ReservationSlotRepository slotRepository;
     private final ReservationRepository reservationRepository;
     private final ReservationViewAccessGuard viewAccessGuard;
     private final ValkeyRateLimiter rateLimiter;
-    private final NotificationHelper notificationHelper;
-    private final UserLocaleCache userLocaleCache;
-    private final MessageSource messageSource;
     private final Clock clock;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
@@ -265,89 +247,8 @@ public class ReservationWaitlistService {
                 });
     }
 
-    // ────────────────────────────────────────────────────────────
-    // 空き復帰時の一斉通知（AFTER_COMMIT リスナーから REQUIRES_NEW で呼ばれる）
-    // ────────────────────────────────────────────────────────────
-
-    /**
-     * 枠が空きに転じた瞬間に、当該枠の WAITING 登録者全員へ一斉通知する（§6.1）。
-     *
-     * <p>再通知抑制: 同一エントリへの通知は {@code notified_at} から 60 分未満なら送らない
-     * （キャンセル連発時の通知洪水防止）。通知した行は {@code notified_at} を更新する。</p>
-     *
-     * <p>トランザクション: AFTER_COMMIT リスナーから呼ばれるため新規 tx（REQUIRES_NEW）で書き込む
-     * （{@code feedback_transactional_event_listener_requires_new}）。枠が実際に AVAILABLE でない
-     * （まだ満席・CLOSED 等）場合は通知しない（空き復帰の実体を再確認する）。</p>
-     *
-     * @param teamId チームID
-     * @param slotId 枠ID
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void notifySlotReopened(Long teamId, Long slotId) {
-        ReservationSlotEntity slot = slotRepository.findById(slotId).orElse(null);
-        if (slot == null || slot.getSlotStatus() != SlotStatus.AVAILABLE) {
-            // 枠が消えた / まだ空いていない（CLOSED 化された等）→ 通知しない。
-            return;
-        }
-        // 追加防御: WAITING 行を悲観ロック（FOR UPDATE）で掴んでから notified_at 抑制判定＋更新を原子化する。
-        // これにより万一イベントが並行で複数回起動しても「両方が notified_at=NULL を読んで二重 push」を封じる。
-        List<ReservationWaitlistEntryEntity> waiting =
-                waitlistRepository.findBySlotIdAndStatusForUpdate(slotId, WaitlistStatus.WAITING);
-        if (waiting.isEmpty()) {
-            return;
-        }
-
-        // Issue #2526 検討済み・変更しない: ここでの比較相手は notifiedAt であり、
-        // notifiedAt 自体も本メソッド内で LocalDateTime.now(clock) から書かれる（markNotified(now)）。
-        // 業務ローカル時刻（slot_date/start_time）は一切絡まない UTC Clock 同士の自己完結した比較のため、
-        // .withZone(ZoneId.systemDefault()) に変えると逆に他の判定基準とズレて壊れる。一律置換禁止。
-        LocalDateTime now = LocalDateTime.now(clock);
-        LocalDateTime suppressBefore = now.minus(RENOTIFY_SUPPRESSION);
-        String actionUrl = "/teams/" + teamId + "/reservations";
-
-        int notified = 0;
-        for (ReservationWaitlistEntryEntity entry : waiting) {
-            // 再通知抑制: 直近 60 分以内に通知済みならスキップ。
-            if (entry.getNotifiedAt() != null && entry.getNotifiedAt().isAfter(suppressBefore)) {
-                continue;
-            }
-            try {
-                // UserLocaleCache は TTL 5分・件数上限つき LRU（D-5: 予約ドメインから auth リポジトリへ
-                // 直接依存しない・common.i18n 配下の共有サービス経由に限定する）。
-                Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(entry.getUserId()));
-                String slotTitle = slot.getTitle() != null ? slot.getTitle()
-                        : messageSource.getMessage("notification.reservation.common.defaultSlotTitle", null, "ご予約", locale);
-                String title = messageSource.getMessage(
-                        "notification.reservation.waitlistOpening.title", null, "キャンセルが出ました", locale);
-                String body = messageSource.getMessage(
-                        "notification.reservation.waitlistOpening.body",
-                        new Object[]{slotTitle},
-                        "「" + slotTitle + "」に空きが出ました。お早めにご予約ください。",
-                        locale);
-                notificationHelper.notify(
-                        entry.getUserId(),
-                        NOTIFICATION_TYPE,
-                        NotificationPriority.HIGH,
-                        title,
-                        body,
-                        SOURCE_TYPE,
-                        slotId,
-                        NotificationScopeType.TEAM,
-                        teamId,
-                        actionUrl,
-                        null);
-                entry.markNotified(now);
-                waitlistRepository.save(entry);
-                notified++;
-            } catch (Exception e) {
-                // 1 件の失敗が他の宛先を巻き込まないよう行単位で握らず記録する。
-                log.error("キャンセル待ち空き通知の送出に失敗しました: entryId={}, slotId={}, userId={}",
-                        entry.getId(), slotId, entry.getUserId(), e);
-            }
-        }
-        log.info("キャンセル待ち空き通知: teamId={}, slotId={}, 対象{}件中 {}件送出",
-                teamId, slotId, waiting.size(), notified);
-    }
+    // 空き復帰時の一斉通知は ReservationWaitlistNotificationEventListener（AFTER_COMMIT・行ごとの条件付き claim）へ
+    // 移した（Issue #2997 G3）。再通知抑制窓は ReservationWaitlistNotifyRunner#RENOTIFY_SUPPRESSION。
 
     // ────────────────────────────────────────────────────────────
     // 失効クリーンアップ（バッチから呼ばれる）

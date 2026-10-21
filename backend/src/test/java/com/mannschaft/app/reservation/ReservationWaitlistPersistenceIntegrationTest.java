@@ -20,13 +20,19 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import com.mannschaft.app.reservation.event.ReservationSlotReopenedEvent;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
 /**
  * キャンセル待ち（waitlist）の実 MySQL 永続化結合テスト（F03.4.5 §6.1・受け入れ条件 W-1/W-2 の DB 観測点）。
@@ -35,7 +41,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *   <li><b>W-1</b>: 満席枠登録で WAITING 行が 1 件・本人取消で CANCELLED</li>
  *   <li><b>W-1(IDOR)</b>: 他人が取消しても本人 WAITING が無いため 404・A のエントリは無傷</li>
  *   <li><b>W-1(count)</b>: 他チームの slot への件数取得は 404 秘匿</li>
- *   <li><b>W-2(通知)</b>: notifySlotReopened で WAITING 全員に通知行が作られ notified_at が立つ・60 分以内は再送しない</li>
+ *   <li><b>W-2(通知)</b>: 空き復帰イベント（AFTER_COMMIT・非同期）で WAITING 全員に通知行が作られ notified_at が立つ・60 分以内は再送しない</li>
  *   <li><b>W-2(枠単位重複なし)</b>: 別枠の待機者は当該枠の通知に混ざらない</li>
  *   <li><b>W-2(CONVERTED)</b>: 予約成立で同一 (slot, user) の WAITING が CONVERTED になる</li>
  *   <li><b>自動失効</b>: 枠開始を過ぎた WAITING が物理削除され、未来枠は残る</li>
@@ -59,12 +65,22 @@ class ReservationWaitlistPersistenceIntegrationTest extends AbstractMySqlIntegra
     private ReservationTeamSettingRepository teamSettingRepository;
     @Autowired
     private NotificationRepository notificationRepository;
+    @Autowired
+    private PlatformTransactionManager txManager;
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     private static final LocalDate FUTURE = LocalDate.now().plusMonths(1);
 
     private void seedPublicTeam(Long teamId) {
         teamSettingRepository.save(ReservationTeamSettingEntity.builder()
                 .teamId(teamId).allowPublicReservation(true).build());
+    }
+
+    /** 空き復帰イベントを業務TX（コミット済み）として publish する。通知の配送は AFTER_COMMIT で非同期に走る。 */
+    private void publishReopened(Long teamId, Long slotId) {
+        new TransactionTemplate(txManager).executeWithoutResult(tx ->
+                eventPublisher.publishEvent(new ReservationSlotReopenedEvent(teamId, slotId)));
     }
 
     private Long seedSlot(Long teamId, LocalDate date, LocalTime start, SlotStatus status, int capacity, int booked) {
@@ -145,15 +161,18 @@ class ReservationWaitlistPersistenceIntegrationTest extends AbstractMySqlIntegra
         waitlistRepository.save(ReservationWaitlistEntryEntity.builder()
                 .teamId(teamId).slotId(slotId).userId(u2).status(WaitlistStatus.WAITING).build());
 
-        waitlistService.notifySlotReopened(teamId, slotId);
+        publishReopened(teamId, slotId);
 
-        assertThat(notificationRepository.countBySourceTypeAndSourceId("RESERVATION", slotId)).isEqualTo(2L);
+        // 通知は AFTER_COMMIT + @Async（event-pool）の別スレッドで届くため、待機して観測する。
+        await().atMost(Duration.ofSeconds(15)).untilAsserted(() ->
+                assertThat(notificationRepository.countBySourceTypeAndSourceId("RESERVATION", slotId)).isEqualTo(2L));
         waitlistRepository.findBySlotIdAndStatus(slotId, WaitlistStatus.WAITING)
                 .forEach(e -> assertThat(e.getNotifiedAt()).isNotNull());
 
         // 直後の再通知は 60 分抑制で 0 件追加（合計 2 のまま）
-        waitlistService.notifySlotReopened(teamId, slotId);
-        assertThat(notificationRepository.countBySourceTypeAndSourceId("RESERVATION", slotId)).isEqualTo(2L);
+        publishReopened(teamId, slotId);
+        await().during(Duration.ofSeconds(2)).atMost(Duration.ofSeconds(6)).untilAsserted(() ->
+                assertThat(notificationRepository.countBySourceTypeAndSourceId("RESERVATION", slotId)).isEqualTo(2L));
     }
 
     @Test
@@ -168,9 +187,10 @@ class ReservationWaitlistPersistenceIntegrationTest extends AbstractMySqlIntegra
         waitlistRepository.save(ReservationWaitlistEntryEntity.builder()
                 .teamId(teamId).slotId(slotY).userId(970602L).status(WaitlistStatus.WAITING).build());
 
-        waitlistService.notifySlotReopened(teamId, slotX);
+        publishReopened(teamId, slotX);
 
-        assertThat(notificationRepository.countBySourceTypeAndSourceId("RESERVATION", slotX)).isEqualTo(1L);
+        await().atMost(Duration.ofSeconds(15)).untilAsserted(() ->
+                assertThat(notificationRepository.countBySourceTypeAndSourceId("RESERVATION", slotX)).isEqualTo(1L));
         assertThat(notificationRepository.countBySourceTypeAndSourceId("RESERVATION", slotY)).isZero();
     }
 
