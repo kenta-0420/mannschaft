@@ -29,7 +29,7 @@ class StructureSpikeIT {
         var compiledRoot = Path.of("build/classes/java/main");
         try (var files = Files.walk(compiledRoot)) {
             compiled = files.filter(file -> file.toString().endsWith(".class"))
-                    .map(file -> compiledRoot.relativize(file).toString().replace('\', '.').replace('/', '.'))
+                    .map(file -> compiledRoot.relativize(file).toString().replace(java.io.File.separatorChar, '.').replace('/', '.'))
                     .map(name -> name.substring(0, name.length() - 6))
                     .filter(name -> !name.endsWith("package-info") && !name.endsWith("module-info"))
                     .collect(java.util.stream.Collectors.toSet());
