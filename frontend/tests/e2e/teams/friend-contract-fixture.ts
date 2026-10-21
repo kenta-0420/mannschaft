@@ -94,7 +94,7 @@ export async function installFriendContractFixture(page: Page, locale = 'ja') {
         if (resource === 'performance') return send({ data: { campaignId: 7, campaignName: 'Baseline Campaign', status: 'ACTIVE', pricingModel: 'CPM', summary: { totalImpressions: 0, totalClicks: 0, avgCtr: 0, totalCost: 0, avgCpm: null, avgCpc: null, conversions: null, conversionRate: null, costPerConversion: null }, benchmark: null, points: [] } satisfies CampaignPerformanceResponse })
         if (resource === 'creatives') return send({ data: { campaignId: 7, creatives: [], winner: null } satisfies CreativeComparisonResponse })
         if (resource === 'breakdown') return send({ data: { campaignId: 7, breakdownBy: 'PREFECTURE', items: [] } satisfies BreakdownResponse })
-        if (resource === 'export') return route.fulfill({ status: 200, contentType: 'text/csv', body: 'date,impressions,clicks,cost\n' })
+        if (resource === 'export') return route.fulfill({ status: 200, contentType: 'text/csv', body: '\uFEFFdate,impressions,clicks,ctr,cost,conversions,conversion_rate,cost_per_conversion\n' })
       }
       state.unexpected.push(method + ' ' + path + url.search + ' ' + JSON.stringify(body))
       return send({ error: { code: 'FIXTURE_UNEXPECTED', message: 'Unexpected organization advertiser contract' } }, 500)
