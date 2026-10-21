@@ -151,14 +151,14 @@ class CrossDomainTransactionalL1G0ConditionTest {
             UnsafeDefaultChild.class, ClassDefaultOverride.class)).isEmpty();
     }
 
-    @ParameterizedTest
+    @ParameterizedTest(name = "D-3 合成TX [{index}] {0}")
     @MethodSource("composedEntries")
     void 合成TXをD3が検出する(Class<?> entry) {
         assertThat(detect(CrossDomainTransactionalArchTest.notDependOnOtherDomainRepositories(),
             imported(entry))).isNotEmpty();
     }
 
-    @ParameterizedTest
+    @ParameterizedTest(name = "D-3T 合成TX [{index}] {0}")
     @MethodSource("composedEntries")
     void 合成TXをD3Tが検出する(Class<?> entry) {
         assertThat(d3t(entry)).hasSize(1);

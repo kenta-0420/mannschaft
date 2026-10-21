@@ -266,7 +266,23 @@ class CrossDomainTransactionalTransitiveArchTest {
                 }
                 current = current.get().getRawSuperclass();
             }
-            // 継承defaultメソッドなど、従来の静的解決で得られる本体は失わない。
+            // クラスに本体が無いときは、子interfaceの再宣言も含めて最具体の宣言を選ぶ。
+            // 抽象宣言を先に除くと、子が再抽象化した親defaultを誤って採ってしまう。
+            List<JavaMethod> declarations = implementation.getAllRawInterfaces().stream()
+                .flatMap(contract -> contract.tryGetMethod(methodCall.getTarget().getName(), parameterTypes).stream())
+                .filter(method -> !method.getModifiers().contains(JavaModifier.STATIC)
+                    && !method.getModifiers().contains(JavaModifier.PRIVATE))
+                .toList();
+            List<JavaMethod> mostSpecific = declarations.stream()
+                .filter(method -> declarations.stream().noneMatch(other ->
+                    !other.getOwner().equals(method.getOwner())
+                        && other.getOwner().isAssignableTo(method.getOwner().getName())))
+                .toList();
+            if (mostSpecific.size() == 1
+                    && !mostSpecific.getFirst().getModifiers().contains(JavaModifier.ABSTRACT)) {
+                return Optional.of(mostSpecific.getFirst());
+            }
+            // 解決不能・曖昧な枝を全defaultへ広げず、従来の静的解決だけを保持する。
             return original;
         }
     }
