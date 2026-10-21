@@ -31,7 +31,8 @@ const mappings = [
 const stages = { BABY: 'baby', JUVENILE: 'juvenile', ADULT: 'adult' }
 const styles = { PIXEL: 'pixel', PAINT_2D: '2d' }
 const actions = ['idle', 'walk', 'feed', 'happy']
-const imageRoot = path.join(frontend, 'public/dev-fixtures/ranch/base16-v3')
+const imageRoot = path.join(frontend, 'dev-fixtures/ranch/base16-v3')
+assert.ok(!fs.existsSync(path.join(frontend, 'public/dev-fixtures/ranch/base16-v3')), 'v3画像は常時公開publicへ配置しない')
 const expectedPaths = new Set()
 let totalBytes = 0
 const frameValues = value => value ? ['A', 'B', 'C', 'D'].map(key => value[key] ?? value[key.toLowerCase()] ?? null) : null
