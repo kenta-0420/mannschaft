@@ -42,7 +42,7 @@
 | PUT | `/api/v1/shifts/availability` | 必要 | デフォルト可否プロファイル一括更新 |
 | DELETE | `/api/v1/shifts/availability` | 必要 | デフォルト可否プロファイルを削除（既定値に戻す） |
 | GET | `/api/v1/shifts/hourly-rate` | 必要 | 自分の時給設定取得 |
-| POST | `/api/v1/shifts/hourly-rate` | 必要 | 自分の時給設定登録・更新（旧 PUT → POST に変更、Service 側 upsert 動作） |
+| POST | `/api/v1/shifts/hourly-rate` | 必要 | 管理者によるメンバーの時給登録・訂正（Service 側 upsert 動作） |
 | GET | `/api/v1/shifts/hourly-rates` | 必要 | チームメンバーの有効時給を一括取得（ADMIN/DEPUTY_ADMIN 用・CMP-260912-1525 で実装） |
 | PUT | `/api/v1/shifts/hourly-rates/{userId}` | 必要 | メンバーの時給設定（管理者用） **【v2 計画、現状未実装】** |
 | POST | `/api/v1/shifts/schedules/{id}/auto-assign` | 必要 | **【v2】自動割当を実行（PROPOSED 状態で shift_assignments にドラフト書き込み）** |
@@ -1396,7 +1396,7 @@ status を既定の `PENDING` のままにしており、`OPEN_CALL` へ遷移�
 
 > ※ 旧設計は PUT。実装は POST に変更（`ShiftAvailabilityController#createHourlyRate`、Service 側で upsert）。
 
-自分の時給を登録・更新する。
+管理者が対象メンバーの時給を登録・訂正する。本人による閲覧は引き続き可能だが、一般メンバーの自己登録・自己訂正は許可しない（CMP-261021-0659）。
 
 **リクエストボディ**
 ```json
@@ -1413,17 +1413,19 @@ status を既定の `PENDING` のままにしており、`OPEN_CALL` へ遷移�
 
 **レスポンス（200 OK）**: 更新後の全時給履歴を返却
 
-**認可**（認可根治 Wave6 追加戦 / 実装は `ShiftHourlyRateService#checkHourlyRateAccess`）
+**認可**（CMP-261021-0659 / 実装は `ShiftHourlyRateAuthorizer#checkHourlyRateWriteAccess`）
 
-参照（`GET /api/v1/shifts/hourly-rate`）と同一の判定を書込にも適用する。
-ボディの `user_id` が本人以外を指す場合は、呼び出し元が当該チームの ADMIN / DEPUTY_ADMIN であり、
+登録・同日訂正は、対象が本人か他人かにかかわらず、呼び出し元が当該チームの ADMIN / DEPUTY_ADMIN であり、
 かつ**対象ユーザーも当該チームのメンバーである**ことを要求する（対象側 BOLA 封鎖）。
+SYSTEM_ADMIN は従来どおり所属判定を短絡して許可する。管理者の判定は既存の `checkAdminOrAbove` を使い、新しい permission 条件を加えない。
+拒否は upsert より前に行い、時給・履歴を変更しない。参照は従来の本人 + 管理者という判定を維持する。
 
 **エラーレスポンス**
 | ステータス | 条件 |
 |-----------|------|
 | 400 | バリデーションエラー |
-| 403 | チームメンバーではない / 他メンバーの時給を管理権限なしで登録した / 対象ユーザーが当該チームの非メンバー |
+| 401 | 未認証 |
+| 403 | 当該チームの管理権限がない（本人への登録・訂正を含む） / 対象ユーザーが当該チームの非メンバー |
 
 ---
 

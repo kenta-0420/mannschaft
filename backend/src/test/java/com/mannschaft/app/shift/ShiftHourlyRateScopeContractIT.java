@@ -18,7 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,12 +31,15 @@ import java.util.Map;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 認可根治戦役 Wave6 追加戦 — shift ドメイン 時給API（{@code ShiftAvailabilityController} の
  * {@code GET/POST /api/v1/shifts/hourly-rate}）の認可契約テスト（試練 / red 先行）。
  *
- * <p>敷設後の仕様（F03.5 設計書 {@code 01_db_design.md} §shift_hourly_rates
+ * <p>閲覧の仕様（F03.5 設計書 {@code 01_db_design.md} §shift_hourly_rates
  * 「時給の閲覧権限: 本人 + ADMIN / DEPUTY_ADMIN のみ。他メンバーの時給は非公開」に準拠）:</p>
  * <ul>
  *   <li>対象が<b>本人</b>の場合 — 当該チームのメンバーであることを要求</li>
@@ -47,13 +50,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *       {@code ShiftScheduleScopeContractIT} / {@code ShiftSlotScopeContractIT} に揃える）</li>
  * </ul>
  *
- * <p>金型: {@code ShiftScheduleScopeContractIT}（{@code @AutoConfigureMockMvc(addFilters=false)} +
- * 実 MySQL + 手動 SecurityContext + {@code MembershipTestHelper}）。</p>
+ * <p>CMP-261021-0659: 登録・訂正は管理者限定。実 Security フィルタと実 MySQL を通し、
+ * 認証主体はリクエストの SecurityContext に設定する。本人の履歴・有効時給閲覧は維持する。</p>
  *
  * <p><b>象限</b>: 別scope ADMIN（BOLA）/ 同一チームの非ADMINメンバー / 本人 / 正当ADMIN /
  * 正当ADMINが非メンバーを対象指定（対象側 BOLA）。</p>
  */
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
 @Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("shift ドメイン（時給）認可契約テスト（試練）")
@@ -80,6 +83,9 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long adminTeamBId;   // TEAM B の ADMIN（別 scope の越境攻撃者）
     private Long memberTeamAId;  // TEAM A の非 ADMIN メンバー（時給の持ち主）
     private Long memberTeamBId;  // TEAM B の非 ADMIN メンバー（TEAM A には非所属）
+    private Long deputyTeamAId;
+    private Long systemAdminId;
+    private Authentication currentAuthentication;
 
     @BeforeEach
     void setUp() {
@@ -90,6 +96,8 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
         adminTeamBId = insertUser("wave6-rate-admin-team-b@example.com");
         memberTeamAId = insertUser("wave6-rate-member-team-a@example.com");
         memberTeamBId = insertUser("wave6-rate-member-team-b@example.com");
+        deputyTeamAId = insertUser("cmp0659-rate-deputy@example.com");
+        systemAdminId = insertUser("cmp0659-rate-system-admin@example.com");
 
         // checkAdminOrAbove（user_roles）と checkMembership（memberships）は別系統のため
         // ADMIN ユーザーにも memberships 行を張る（ShiftScheduleScopeContractIT 踏襲）。
@@ -99,6 +107,9 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertUserRole(em, adminTeamBId, "ADMIN", teamBId, null);
         MembershipTestHelper.insertMembership(em, memberTeamAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, memberTeamBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, deputyTeamAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        MembershipTestHelper.insertUserRole(em, deputyTeamAId, "DEPUTY_ADMIN", teamAId, null);
+        MembershipTestHelper.insertUserRole(em, systemAdminId, "SYSTEM_ADMIN", null, null);
 
         hourlyRateRepository.save(ShiftHourlyRateEntity.builder()
                 .userId(memberTeamAId)
@@ -123,7 +134,7 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("別scope ADMIN（teamBのADMIN）がteamAメンバーの時給を参照すると403（BOLA）")
         void 別scopeADMINは403() throws Exception {
             setAuth(adminTeamBId);
-            mockMvc.perform(get(BASE)
+            mockMvc.perform(get(BASE).with(authentication(currentAuthentication))
                             .param("teamId", teamAId.toString())
                             .param("userId", memberTeamAId.toString()))
                     .andExpect(status().isForbidden());
@@ -133,7 +144,7 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("同一チームの非ADMINメンバーが他メンバーの時給を参照すると403")
         void 同一チーム非ADMINが他人の時給を参照すると403() throws Exception {
             setAuth(memberTeamAId);
-            mockMvc.perform(get(BASE)
+            mockMvc.perform(get(BASE).with(authentication(currentAuthentication))
                             .param("teamId", teamAId.toString())
                             .param("userId", adminTeamAId.toString()))
                     .andExpect(status().isForbidden());
@@ -143,7 +154,7 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("date指定でも別scope ADMINは403（BOLA）")
         void date指定でも別scopeADMINは403() throws Exception {
             setAuth(adminTeamBId);
-            mockMvc.perform(get(BASE)
+            mockMvc.perform(get(BASE).with(authentication(currentAuthentication))
                             .param("teamId", teamAId.toString())
                             .param("userId", memberTeamAId.toString())
                             .param("date", LocalDate.of(2026, 4, 1).toString()))
@@ -154,17 +165,38 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("正常系: 本人が自分の時給を参照すると200")
         void 本人は200() throws Exception {
             setAuth(memberTeamAId);
-            mockMvc.perform(get(BASE)
+            mockMvc.perform(get(BASE).with(authentication(currentAuthentication))
                             .param("teamId", teamAId.toString())
                             .param("userId", memberTeamAId.toString()))
                     .andExpect(status().isOk());
         }
 
         @Test
+        void 本人は有効時給の値を閲覧できる() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(get(BASE).with(authentication(currentAuthentication))
+                            .param("teamId", teamAId.toString())
+                            .param("userId", memberTeamAId.toString())
+                            .param("date", "2026-04-01"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.hourlyRate").value(1200));
+        }
+
+        @Test
+        void 本人の未設定履歴は空配列() throws Exception {
+            setAuth(memberTeamBId);
+            mockMvc.perform(get(BASE).with(authentication(currentAuthentication))
+                            .param("teamId", teamBId.toString())
+                            .param("userId", memberTeamBId.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data").isEmpty());
+        }
+
+        @Test
         @DisplayName("正常系: 正当ADMINが同一チームメンバーの時給を参照すると200")
         void 正当ADMINは200() throws Exception {
             setAuth(adminTeamAId);
-            mockMvc.perform(get(BASE)
+            mockMvc.perform(get(BASE).with(authentication(currentAuthentication))
                             .param("teamId", teamAId.toString())
                             .param("userId", memberTeamAId.toString()))
                     .andExpect(status().isOk());
@@ -174,7 +206,7 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("正常系: 正当ADMINがdate指定で同一チームメンバーの時給を参照すると200")
         void 正当ADMINはdate指定でも200() throws Exception {
             setAuth(adminTeamAId);
-            mockMvc.perform(get(BASE)
+            mockMvc.perform(get(BASE).with(authentication(currentAuthentication))
                             .param("teamId", teamAId.toString())
                             .param("userId", memberTeamAId.toString())
                             .param("date", LocalDate.of(2026, 4, 1).toString()))
@@ -194,50 +226,89 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("別scope ADMIN（teamBのADMIN）がteamAへ時給を書き込むと403（BOLA）")
         void 別scopeADMINは403() throws Exception {
             setAuth(adminTeamBId);
-            mockMvc.perform(post(BASE).param("teamId", teamAId.toString())
+            long before = hourlyRateRepository.count();
+            mockMvc.perform(post(BASE).with(authentication(currentAuthentication)).param("teamId", teamAId.toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(createBody(memberTeamAId))))
                     .andExpect(status().isForbidden());
+            assertThat(hourlyRateRepository.count()).isEqualTo(before);
         }
 
         @Test
         @DisplayName("同一チームの非ADMINメンバーが他メンバーの時給を書き込むと403")
         void 同一チーム非ADMINが他人の時給を書き込むと403() throws Exception {
             setAuth(memberTeamAId);
-            mockMvc.perform(post(BASE).param("teamId", teamAId.toString())
+            long before = hourlyRateRepository.count();
+            mockMvc.perform(post(BASE).with(authentication(currentAuthentication)).param("teamId", teamAId.toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(createBody(adminTeamAId))))
                     .andExpect(status().isForbidden());
+            assertThat(hourlyRateRepository.count()).isEqualTo(before);
         }
 
         @Test
         @DisplayName("正当ADMINでも対象が当該チーム非所属なら403（対象側BOLA）")
         void 対象が非メンバーなら403() throws Exception {
             setAuth(adminTeamAId);
-            mockMvc.perform(post(BASE).param("teamId", teamAId.toString())
+            long before = hourlyRateRepository.count();
+            mockMvc.perform(post(BASE).with(authentication(currentAuthentication)).param("teamId", teamAId.toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(createBody(memberTeamBId))))
                     .andExpect(status().isForbidden());
+            assertThat(hourlyRateRepository.count()).isEqualTo(before);
         }
 
         @Test
-        @DisplayName("正常系: 本人が自分の時給を登録すると201")
-        void 本人は201() throws Exception {
+        @DisplayName("AC2: 本人でも新規登録は403で履歴が増えない")
+        void 本人の新規登録は403でDB不変() throws Exception {
             setAuth(memberTeamAId);
-            mockMvc.perform(post(BASE).param("teamId", teamAId.toString())
+            long before = hourlyRateRepository.count();
+            mockMvc.perform(post(BASE).with(authentication(currentAuthentication)).param("teamId", teamAId.toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(createBody(memberTeamAId))))
-                    .andExpect(status().isCreated());
+                    .andExpect(status().isForbidden());
+            em.clear();
+            assertThat(hourlyRateRepository.count()).isEqualTo(before);
+            assertThat(hourlyRateRepository.findByUserIdAndTeamIdAndEffectiveFrom(
+                    memberTeamAId, teamAId, LocalDate.of(2026, 5, 1))).isEmpty();
+        }
+
+        @Test
+        @DisplayName("AC3: 本人の同日訂正は403で保存額と履歴が変わらない")
+        void 本人の同日訂正は403でDB不変() throws Exception {
+            setAuth(memberTeamAId);
+            long before = hourlyRateRepository.count();
+            Map<String, Object> body = createBody(memberTeamAId);
+            body.put("effectiveFrom", "2026-03-01");
+
+            mockMvc.perform(post(BASE).with(authentication(currentAuthentication)).param("teamId", teamAId.toString())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isForbidden());
+
+            em.clear();
+            assertThat(hourlyRateRepository.count()).isEqualTo(before);
+            assertThat(hourlyRateRepository.findByUserIdAndTeamIdAndEffectiveFrom(
+                    memberTeamAId, teamAId, LocalDate.of(2026, 3, 1)).orElseThrow().getHourlyRate())
+                    .isEqualByComparingTo("1200.00");
         }
 
         @Test
         @DisplayName("正常系: 正当ADMINが同一チームメンバーの時給を登録すると201")
         void 正当ADMINは201() throws Exception {
             setAuth(adminTeamAId);
-            mockMvc.perform(post(BASE).param("teamId", teamAId.toString())
+            long before = hourlyRateRepository.count();
+            mockMvc.perform(post(BASE).with(authentication(currentAuthentication)).param("teamId", teamAId.toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(createBody(memberTeamAId))))
-                    .andExpect(status().isCreated());
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.hourlyRate").value(1500));
+            em.clear();
+            assertThat(hourlyRateRepository.count()).isEqualTo(before + 1);
+            assertThat(hourlyRateRepository.findByUserIdAndTeamIdOrderByEffectiveFromDesc(memberTeamAId, teamAId))
+                    .extracting(ShiftHourlyRateEntity::getHourlyRate)
+                    .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+                    .containsExactly(new BigDecimal("1500.00"), new BigDecimal("1200.00"));
         }
 
         private Map<String, Object> createBody(Long targetUserId) {
@@ -246,6 +317,80 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
             body.put("hourlyRate", new BigDecimal("1500.00"));
             body.put("effectiveFrom", LocalDate.of(2026, 5, 1).toString());
             return body;
+        }
+
+        @Test
+        void 副管理者は同日訂正ができ履歴が増えない() throws Exception {
+            setAuth(deputyTeamAId);
+            long before = hourlyRateRepository.count();
+            Map<String, Object> body = createBody(memberTeamAId);
+            body.put("effectiveFrom", "2026-03-01");
+            mockMvc.perform(post(BASE).with(authentication(currentAuthentication))
+                            .param("teamId", teamAId.toString()).contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.hourlyRate").value(1500));
+            em.clear();
+            assertThat(hourlyRateRepository.count()).isEqualTo(before);
+            assertThat(hourlyRateRepository.findByUserIdAndTeamIdAndEffectiveFrom(
+                    memberTeamAId, teamAId, LocalDate.of(2026, 3, 1)).orElseThrow().getHourlyRate())
+                    .isEqualByComparingTo("1500.00");
+        }
+
+        @Test
+        void システム管理者は所属に依存せず登録できる() throws Exception {
+            setAuth(systemAdminId);
+            mockMvc.perform(post(BASE).with(authentication(currentAuthentication))
+                            .param("teamId", teamAId.toString()).contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createBody(memberTeamBId))))
+                    .andExpect(status().isCreated());
+            em.clear();
+            assertThat(hourlyRateRepository.findByUserIdAndTeamIdAndEffectiveFrom(
+                    memberTeamBId, teamAId, LocalDate.of(2026, 5, 1))).isPresent();
+        }
+
+        @Test
+        void 非所属者の自己登録は403でDB不変() throws Exception {
+            setAuth(memberTeamBId);
+            long before = hourlyRateRepository.count();
+            mockMvc.perform(post(BASE).with(authentication(currentAuthentication))
+                            .param("teamId", teamAId.toString()).contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createBody(memberTeamBId))))
+                    .andExpect(status().isForbidden());
+            em.clear();
+            assertThat(hourlyRateRepository.count()).isEqualTo(before);
+        }
+
+        @Test
+        void 未認証の登録は401() throws Exception {
+            mockMvc.perform(post(BASE).param("teamId", teamAId.toString())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createBody(memberTeamAId))))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        void 必須項目nullと非正数は400でDB不変() throws Exception {
+            setAuth(adminTeamAId);
+            long before = hourlyRateRepository.count();
+            for (String field : List.of("userId", "hourlyRate", "effectiveFrom")) {
+                Map<String, Object> body = createBody(memberTeamAId);
+                body.put(field, null);
+                assertInvalid(body);
+            }
+            for (BigDecimal rate : List.of(BigDecimal.ZERO, new BigDecimal("-1"))) {
+                Map<String, Object> body = createBody(memberTeamAId);
+                body.put("hourlyRate", rate);
+                assertInvalid(body);
+            }
+            assertThat(hourlyRateRepository.count()).isEqualTo(before);
+        }
+
+        private void assertInvalid(Map<String, Object> body) throws Exception {
+            mockMvc.perform(post(BASE).with(authentication(currentAuthentication))
+                            .param("teamId", teamAId.toString()).contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isBadRequest());
         }
     }
 
@@ -268,7 +413,7 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("別scope ADMIN（teamBのADMIN）がteamAの時給を一括取得すると403（BOLA）")
         void 別scopeADMINは403() throws Exception {
             setAuth(adminTeamBId);
-            mockMvc.perform(get(BULK)
+            mockMvc.perform(get(BULK).with(authentication(currentAuthentication))
                             .param("teamId", teamAId.toString())
                             .param("date", LocalDate.of(2026, 4, 1).toString()))
                     .andExpect(status().isForbidden());
@@ -278,7 +423,7 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("同一チームの非ADMINメンバーは403（自分の時給しか読めない経路ではないため本人性は根拠にならない）")
         void 同一チーム非ADMINは403() throws Exception {
             setAuth(memberTeamAId);
-            mockMvc.perform(get(BULK)
+            mockMvc.perform(get(BULK).with(authentication(currentAuthentication))
                             .param("teamId", teamAId.toString())
                             .param("date", LocalDate.of(2026, 4, 1).toString()))
                     .andExpect(status().isForbidden());
@@ -288,7 +433,7 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("非メンバー（teamBの一般メンバー）も403")
         void 非メンバーは403() throws Exception {
             setAuth(memberTeamBId);
-            mockMvc.perform(get(BULK)
+            mockMvc.perform(get(BULK).with(authentication(currentAuthentication))
                             .param("teamId", teamAId.toString())
                             .param("date", LocalDate.of(2026, 4, 1).toString()))
                     .andExpect(status().isForbidden());
@@ -298,7 +443,7 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("正常系: 正当ADMINは200で、基準日時点で有効な時給が返る")
         void 正当ADMINは200() throws Exception {
             setAuth(adminTeamAId);
-            mockMvc.perform(get(BULK)
+            mockMvc.perform(get(BULK).with(authentication(currentAuthentication))
                             .param("teamId", teamAId.toString())
                             .param("date", LocalDate.of(2026, 4, 1).toString()))
                     .andExpect(status().isOk())
@@ -339,7 +484,7 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
 
             // When / Then: 在籍中の memberTeamA は返り、脱退した leftUser は返らない
             setAuth(adminTeamAId);
-            mockMvc.perform(get(BULK)
+            mockMvc.perform(get(BULK).with(authentication(currentAuthentication))
                             .param("teamId", teamAId.toString())
                             .param("date", LocalDate.of(2026, 4, 1).toString()))
                     .andExpect(status().isOk())
@@ -353,7 +498,7 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("基準日が適用開始日より前なら、その時給は返らない（未設定として扱われる）")
         void 適用開始前の時給は返らない() throws Exception {
             setAuth(adminTeamAId);
-            mockMvc.perform(get(BULK)
+            mockMvc.perform(get(BULK).with(authentication(currentAuthentication))
                             .param("teamId", teamAId.toString())
                             // 時給の effectiveFrom は 2026-03-01。その前日を基準日にする。
                             .param("date", LocalDate.of(2026, 2, 28).toString()))
@@ -368,8 +513,7 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
 
     private void setAuth(Long userId) {
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
+        currentAuthentication = new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of());
     }
 
     private Long insertUser(String email) {
