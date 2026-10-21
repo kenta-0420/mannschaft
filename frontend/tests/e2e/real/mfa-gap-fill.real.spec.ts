@@ -632,7 +632,8 @@ test('S7u 未ログインで /settings/security・/2fa-verify・/2fa-recovery �
     for (const p of ['/settings/security', '/2fa-verify', '/2fa-recovery']) {
       const { ctx: c2, page: p2 } = await newCtx(browser)
       await p2.goto(`${FE}${p}`)
-      await p2.waitForTimeout(4000)
+      await expect(p2).toHaveURL((url) => url.pathname === '/login', { timeout: 30_000 })
+      await expect(p2.locator('form#login-form')).toBeVisible({ timeout: 30_000 })
       await shot(p2, `s7-unauth-${p.replace(/\//g, '_')}`)
       const body = (await p2.locator('body').innerText()).replace(/\s+/g, ' ').slice(0, 160)
       console.log(`[S7] 未ログイン直打ち ${p} → ${new URL(p2.url()).pathname}${new URL(p2.url()).search} | 画面: ${body}`)
