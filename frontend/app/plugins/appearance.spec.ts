@@ -1,13 +1,14 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { useHead as unheadUseHead } from '@unhead/vue'
 import { createHead, renderDOMHead } from '@unhead/vue/client'
 import { createHead as createServerHead, renderSSRHead } from '@unhead/vue/server'
 import type { UseHeadInput } from '@unhead/vue'
 import { useAppearanceStore } from '~/stores/useAppearanceStore'
 
 // Nuxt の request/context 境界だけ差し替え、head の解決・DOM patch は実物を使う。
+// Nuxt は静的 useHead import を下の mock 境界へ書き換えるため、実物を動的に取得する。
+const { useHead: unheadUseHead } = await vi.importActual<typeof import('@unhead/vue')>('@unhead/vue')
 const boundary = vi.hoisted(() => ({ cookie: null as string | null, useHead: vi.fn(), api: vi.fn() }))
 vi.mock('#app/composables/cookie', () => ({ useCookie: () => ({ value: boundary.cookie }) }))
 vi.mock('#app/composables/head', () => ({ useHead: (input: UseHeadInput) => boundary.useHead(input) }))
