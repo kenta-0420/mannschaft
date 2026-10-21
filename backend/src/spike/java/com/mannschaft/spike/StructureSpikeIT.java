@@ -23,8 +23,12 @@ class StructureSpikeIT {
     @Test
     void 全本番の発生元別依存違反と循環参加を記録する() throws Exception {
         var modules = ApplicationModules.of(MannschaftApplication.class, location -> location.contains("/classes/java/main/"));
-        var imported = modules.getRootPackages().stream().flatMap(root -> root.stream())
-                .map(JavaClass::getName).collect(java.util.stream.Collectors.toSet());
+        var imported = java.util.stream.Stream.concat(
+                modules.getRootPackages().stream().flatMap(root -> root.stream()),
+                modules.stream().flatMap(module -> module.getBasePackage().stream()))
+                .map(JavaClass::getName)
+                .filter(name -> !name.endsWith("package-info") && !name.endsWith("module-info"))
+                .collect(java.util.stream.Collectors.toSet());
         Set<String> compiled;
         var compiledRoot = Path.of("build/classes/java/main");
         try (var files = Files.walk(compiledRoot)) {
@@ -34,7 +38,7 @@ class StructureSpikeIT {
                     .filter(name -> !name.endsWith("package-info") && !name.endsWith("module-info"))
                     .collect(java.util.stream.Collectors.toSet());
         }
-        assertThat(imported).containsAll(compiled);
+        assertThat(imported).containsExactlyInAnyOrderElementsOf(compiled);
         assertThat(imported).noneMatch(name -> name.contains("SpikeIT") || name.startsWith("com.mannschaft.spike."));
         assertThat(modules.stream()).as("循環検査で除外されるOPENモジュールが本番に無いこと")
                 .noneMatch(org.springframework.modulith.core.ApplicationModule::isOpen);
