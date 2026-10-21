@@ -8,7 +8,6 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.role.RoleErrorCode;
@@ -16,11 +15,13 @@ import com.mannschaft.app.role.dto.TransferOwnershipAcceptResponse;
 import com.mannschaft.app.role.dto.TransferOwnershipOfferCreateRequest;
 import com.mannschaft.app.role.dto.TransferOwnershipOfferResponse;
 import com.mannschaft.app.role.entity.OwnershipTransferOfferEntity;
+import com.mannschaft.app.role.event.OwnershipTransferNotificationEvent;
 import com.mannschaft.app.role.repository.OwnershipTransferOfferRepository;
 import com.mannschaft.app.team.TeamErrorCode;
 import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,8 +71,6 @@ public class OwnershipTransferOfferService {
     /** 通知種別（{@link com.mannschaft.app.notification.NotificationType} と同値の文字列）。 */
     private static final String NOTIF_OFFERED = "OWNERSHIP_TRANSFER_OFFERED";
     private static final String NOTIF_DECLINED = "OWNERSHIP_TRANSFER_DECLINED";
-    /** 通知の sourceType（MEMBER_JOINED 等と同じく USER 起点。sourceId は UUID のため持たない）。 */
-    private static final String NOTIF_SOURCE_USER = "USER";
 
     /** オファーの有効期限（発行から7日）。 */
     private static final int OFFER_TTL_DAYS = 7;
@@ -84,7 +83,7 @@ public class OwnershipTransferOfferService {
     private final RoleService roleService;
     private final AccessControlService accessControlService;
     private final Auth2faService auth2faService;
-    private final NotificationHelper notificationHelper;
+    private final ApplicationEventPublisher eventPublisher;
     private final AuditLogService auditLogService;
     private final TeamService teamService;
     private final OrganizationService organizationService;
@@ -164,18 +163,17 @@ public class OwnershipTransferOfferService {
         // actionUrl で受信側の承諾/辞退カード（?offerId= ディープリンク）へ導線を張る。
         // これが無いと打診相手がオファーに気づけず承諾画面へ到達できない（承諾型が成立しない）。
         // sourceId は UUID のため持たない（sourceType=USER・sourceId=null で visibility ガードは対象外）。
-        notificationHelper.notify(
-                targetUserId,
+        // Issue #2997 G5: 業務TXは publish のみ。配送は AFTER_COMMIT の OwnershipTransferNotificationListener が行う。
+        eventPublisher.publishEvent(new OwnershipTransferNotificationEvent(
                 NOTIF_OFFERED,
+                targetUserId,
                 NotificationPriority.HIGH,
                 "管理者就任の打診が届きました",
                 "あなたに管理者（オーナー）就任が打診されています。承諾すると管理者になります。",
-                NOTIF_SOURCE_USER,
-                null,
                 notificationScopeType(scopeType),
                 scopeId,
                 buildMembersDeepLink(scopeType, scopeSlug, offer.getId()),
-                actorUserId);
+                actorUserId));
 
         // 表示名は FE 側のメンバー一覧で userId から解決する（role ドメインから user ドメインの
         // 表示名を跨いで引かない＝越境 Repository 依存回避。D-3）。
@@ -283,18 +281,17 @@ public class OwnershipTransferOfferService {
                 offerMetadata(offerId, offer.getIssuedBy(), actorUserId, false));
 
         // 発行者へ辞退通知（設計書 step 辞退「発行者へ通知」）。actionUrl は当該スコープのメンバー一覧。
-        notificationHelper.notify(
-                offer.getIssuedBy(),
+        // Issue #2997 G5: 業務TXは publish のみ（配送は AFTER_COMMIT リスナー）。
+        eventPublisher.publishEvent(new OwnershipTransferNotificationEvent(
                 NOTIF_DECLINED,
+                offer.getIssuedBy(),
                 NotificationPriority.NORMAL,
                 "オーナー委譲の打診が辞退されました",
                 "打診したメンバーが管理者（オーナー）就任を辞退しました。",
-                NOTIF_SOURCE_USER,
-                null,
                 notificationScopeType(scopeType),
                 scopeId,
                 buildMembersLink(scopeType, scopeSlug),
-                actorUserId);
+                actorUserId));
     }
 
     /**

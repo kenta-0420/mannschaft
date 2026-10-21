@@ -885,7 +885,12 @@ class ArchUnitFreezeStoreIntegrityTest {
     // Issue #2997 G3: 最新 main の 7137 -> 7115（-22）。EmergencyClosureService#sendClosure（通知系 5 行。UserRepository への到達は残る）、
     //   ReservationReminderDispatchBatchService（dispatchDueReminders 5・sendReminder 5・resolveLocale 1 の計 11 行）、
     //   ReservationWaitlistService#notifySlotReopened（5 行）が通知を業務TXで呼ばなくなった（追加 0・削除 22）。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7115;
+    // Issue #2997 G5(survey / role): 付随通知を業務TXから切り離し 最新 main の 7115 -> 7099（-16）。
+    //   SurveyRemindService.remind は UserRepository と通知系3の 4、SurveyService.extendDeadline は 4、
+    //   OwnershipTransferOfferService.createOffer は 4、declineOffer は 4 が、通知を業務TX内で呼ばなくなったため解消
+    //   （追加 0・削除 16。Organization / Role / UserRole への到達は母集団解決・認可という業務由来のため残る）。
+    //   G3 を取り込んだ最新 main 上で archUnitTest（--tests 絞込みなし）を実行して実測した値。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7099;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
