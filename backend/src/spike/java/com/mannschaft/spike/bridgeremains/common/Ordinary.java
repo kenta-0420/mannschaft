@@ -1,0 +1,1 @@
+package com.mannschaft.spike.bridgeremains.common; import com.mannschaft.spike.bridgeremains.account.Account; /** 除外してはならないcommon業務辺。 */ public class Ordinary { public Account account; }

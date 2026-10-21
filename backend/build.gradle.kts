@@ -1209,3 +1209,41 @@ tasks.named("generateOpenApiDocs") {
     // 最新コンパイル結果を先行保証（プラグインが内部で設定しているが明示して二重保証）
     dependsOn("classes")
 }
+
+// CMP-261021-1602: 捨てブランチ専用。通常test・凍結ストアへ接続しない。
+val spike by sourceSets.creating {
+    compileClasspath += sourceSets.main.get().output
+    runtimeClasspath += sourceSets.main.get().output
+}
+configurations[spike.implementationConfigurationName].extendsFrom(configurations.testImplementation.get())
+configurations[spike.runtimeOnlyConfigurationName].extendsFrom(configurations.testRuntimeOnly.get())
+dependencies {
+    add(spike.implementationConfigurationName, "org.springframework.modulith:spring-modulith-starter-test:1.4.13")
+    add(spike.implementationConfigurationName, "org.springframework.modulith:spring-modulith-starter-jpa:1.4.13")
+}
+listOf("Registry", "Structure", "Webhook").forEach { kind ->
+    tasks.register<Test>("modulith${kind}Spike") {
+        testClassesDirs = spike.output.classesDirs
+        classpath = spike.runtimeClasspath
+        useJUnitPlatform { includeEngines("junit-jupiter"); setExcludeTags(emptySet()); setIncludeTags(emptySet()) }
+        include("**/*${kind}SpikeIT.class")
+        maxHeapSize = if (kind == "Structure") "4g" else "2g"
+        systemProperty("spring.config.name", "spike")
+        systemProperty("spike.output", rootDir.parentFile.resolve("docs/evidence/CMP-261021-1602-modulith-spike").absolutePath)
+        systemProperty("spring.test.context.cache.maxSize", "10")
+        testLogging { events("passed", "failed", "skipped"); showStandardStreams = true }
+        outputs.upToDateWhen { false }
+    }
+}
+if (providers.gradleProperty("spike.archunitPin").isPresent) {
+    listOf(spike.compileClasspathConfigurationName, spike.runtimeClasspathConfigurationName).forEach { name ->
+        configurations.named(name) {
+            resolutionStrategy.force(
+                "com.tngtech.archunit:archunit:1.3.0",
+                "com.tngtech.archunit:archunit-junit5-api:1.3.0",
+                "com.tngtech.archunit:archunit-junit5-engine:1.3.0",
+                "com.tngtech.archunit:archunit-junit5-engine-api:1.3.0"
+            )
+        }
+    }
+}

@@ -1,0 +1,1 @@
+package com.mannschaft.spike.bridgeremains.account; import com.mannschaft.spike.bridgeremains.common.Bridge; import com.mannschaft.spike.bridgeremains.common.Ordinary; /** 橋渡し以外からも循環する検体。 */ public class Account { public Bridge bridge; public Ordinary ordinary; }

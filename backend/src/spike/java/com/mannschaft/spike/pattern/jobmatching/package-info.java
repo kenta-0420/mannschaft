@@ -1,0 +1,1 @@
+@org.springframework.modulith.ApplicationModule(allowedDependencies = "chat::api") package com.mannschaft.spike.pattern.jobmatching;

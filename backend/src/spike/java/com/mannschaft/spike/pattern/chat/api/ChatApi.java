@@ -1,0 +1,1 @@
+package com.mannschaft.spike.pattern.chat.api; /** chat公開窓口の検体。 */ public interface ChatApi { Long confirm(Long id); }

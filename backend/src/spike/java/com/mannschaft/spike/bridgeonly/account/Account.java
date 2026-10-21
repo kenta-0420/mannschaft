@@ -1,0 +1,1 @@
+package com.mannschaft.spike.bridgeonly.account; import com.mannschaft.spike.bridgeonly.common.Bridge; /** 橋渡しへ依存する検体。 */ public class Account { public Bridge bridge; }

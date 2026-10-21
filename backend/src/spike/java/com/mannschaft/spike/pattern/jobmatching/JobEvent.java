@@ -1,0 +1,1 @@
+package com.mannschaft.spike.pattern.jobmatching; /** 自モジュール発行イベント検体。 */ public record JobEvent(Long roomId) { }

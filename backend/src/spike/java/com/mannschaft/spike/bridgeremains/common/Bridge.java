@@ -1,0 +1,1 @@
+package com.mannschaft.spike.bridgeremains.common; import com.mannschaft.spike.TransitionalBridge; import com.mannschaft.spike.bridgeremains.account.Account; /** 移行用の橋渡し検体。 */ @TransitionalBridge public class Bridge { public Account account; }
