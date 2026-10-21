@@ -35,16 +35,45 @@ describe('本人用パスワード生成 AC-2/3/8', () => {
     expect(meetsPasswordPolicy(password)).toBe(true)
   })
 
+  it('シャッフルの15位置では255を棄却し254を末尾位置として受理する', () => {
+    const bytes = [0, 1, 2, ...Array.from({ length: 13 }, (_, i) => i + 3), 15, 255, 254]
+    vi.stubGlobal('crypto', {
+      getRandomValues: (array: Uint8Array) => {
+        array[0] = bytes.shift() ?? 0
+        return array
+      },
+    })
+    // Oを含む位置14が維持される。255を剰余だけで受理するとここが変わる。
+    expect(generatePassword()).toBe('b2DEFGHIJKLMNAOP')
+  })
+
   it('Web Crypto非対応では非暗号学的乱数へフォールバックしない', () => {
     vi.stubGlobal('crypto', undefined)
     expect(() => generatePassword()).toThrow()
   })
 
   it('乱数源の途中失敗を呼出元へ返し不完全な値を返さない', () => {
-    const random = vi.fn((array: Uint8Array) => array.fill(0))
+    const random = vi
+      .fn((array: Uint8Array) => array.fill(0))
       .mockImplementationOnce((array: Uint8Array) => array.fill(0))
-      .mockImplementationOnce(() => { throw new Error('unavailable') })
+      .mockImplementationOnce(() => {
+        throw new Error('unavailable')
+      })
     vi.stubGlobal('crypto', { getRandomValues: random })
     expect(() => generatePassword()).toThrow('unavailable')
+  })
+})
+
+describe('既存パスワードポリシーの境界 AC-6', () => {
+  it.each([
+    ['Abcde12', false],
+    ['Abcdef12', true],
+    ['Abcdefg12', true],
+    ['Abcdefgh', false],
+    ['abcdefgh1', false],
+    ['Abcdefg1', true],
+    ['', false],
+  ])('%sの既存ポリシー判定を維持する', (password, expected) => {
+    expect(meetsPasswordPolicy(password)).toBe(expected)
   })
 })
