@@ -1223,7 +1223,7 @@ dependencies {
     add(spike.implementationConfigurationName, "org.springframework.modulith:spring-modulith-starter-jpa:1.4.13")
     add(spike.implementationConfigurationName, "org.springframework.modulith:spring-modulith-events-core:1.4.13")
 }
-listOf("Registry", "Structure", "Webhook").forEach { kind ->
+listOf("Registry", "RegistryDelete", "Structure", "Webhook").forEach { kind ->
     tasks.register<Test>("modulith${kind}Spike") {
         testClassesDirs = spike.output.classesDirs
         classpath = spike.runtimeClasspath
