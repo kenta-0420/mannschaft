@@ -115,8 +115,9 @@ public class L1G0TransactionalFixture {
     }
     /** 同じorigin・target・行にspecialと通常呼び出しが混在する検体。 */
     public static class MixedDefaultBridge implements DefaultPort {
+        private InheritedProxyRepository repository;
         @Override
-        public void forward() { new InheritedProxyRepository().saveInherited(); }
+        public void forward() { repository.saveInherited(); }
 
         @Transactional
         public void execute(DefaultPort peer) {
