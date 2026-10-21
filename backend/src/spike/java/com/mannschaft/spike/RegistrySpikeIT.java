@@ -45,9 +45,11 @@ class RegistrySpikeIT {
     @Autowired PlatformTransactionManager transactions;
     @Autowired JdbcTemplate jdbc;
     @Autowired Listeners listeners;
+    @Autowired RestrictedRegistry registry;
+    @Autowired org.springframework.context.ApplicationContext context;
 
     @BeforeEach
-    void 清掃する() { jdbc.update("delete from event_publication"); listeners.observed().clear(); listeners.threads().clear(); listeners.failureMarker().set(false); }
+    void 清掃する() { jdbc.update("delete from event_publication"); listeners.observed().clear(); listeners.threads().clear(); listeners.failureMarker().set(false); registry.completedTargets().clear(); }
 
     @Test
     void 既存認証イベントは購読されても保存0件() {
@@ -59,10 +61,12 @@ class RegistrySpikeIT {
 
     @Test
     void ReliableEventの対象購読だけ保存し非TX非同期の正常終了で完了する() {
+        assertThat(context.getBean(org.springframework.modulith.events.core.EventPublicationRegistry.class)).isSameAs(registry);
         publish(new SuccessEvent(1L, 2L, Instant.now()));
         await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> {
             assertThat(jdbc.queryForObject("select count(*) from event_publication where completion_date is not null", Long.class)).isEqualTo(1L);
             assertThat(listeners.observed()).containsEntry("success", false);
+            assertThat(registry.completedTargets()).contains("module-success");
             assertThat(listeners.threads().get("success")).startsWith("module-spike-");
             assertThat(listeners.observed()).containsKey("ordinary");
         });
@@ -129,6 +133,8 @@ class RegistrySpikeIT {
 
     /** 公開store拡張点でイベント印と合成購読注釈の両方を満たす配信だけ登録する。 */
     static class RestrictedRegistry extends org.springframework.modulith.events.core.DefaultEventPublicationRegistry {
+        private final java.util.Set<String> completedTargets = ConcurrentHashMap.newKeySet();
+        public java.util.Set<String> completedTargets() { return completedTargets; }
         private final java.util.Set<String> moduleTargetIds = java.util.Arrays.stream(Listeners.class.getDeclaredMethods())
                 .filter(method -> method.isAnnotationPresent(ModuleEventListener.class))
                 .map(method -> org.springframework.core.annotation.AnnotatedElementUtils
@@ -137,6 +143,13 @@ class RegistrySpikeIT {
 
         RestrictedRegistry(org.springframework.modulith.events.core.EventPublicationRepository repository) {
             super(repository, java.time.Clock.systemUTC());
+        }
+
+        @Override
+        @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+        public void markCompleted(Object event, org.springframework.modulith.events.core.PublicationTargetIdentifier target) {
+            completedTargets.add(target.getValue());
+            super.markCompleted(event, target);
         }
 
         @Override
