@@ -206,7 +206,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 > 📄 詳細設計: [docs/features/F01.1_auth.md](docs/features/F01.1_auth.md) | [docs/features/F01.2_org_team_member_role.md](docs/features/F01.2_org_team_member_role.md) | [docs/features/F01.2.1_org_team_groups.md](docs/features/F01.2.1_org_team_groups.md)（チーム加盟の双方向化・チームグループ／🟢 実装済み。全部隊が main に着地済みで、実機E2E・アリシゼーションは未実施） | [docs/features/F01.5_team_friend_relationships.md](docs/features/F01.5_team_friend_relationships.md)
 
-- **2要素認証 (2FA)**: TOTP（Google Authenticator等）対応。SYSTEM_ADMIN・ADMINには必須化
+- **多要素認証 (2FA)**: TOTP（Google Authenticator等）・メールのワンタイムコード・バックアップコード・WebAuthn対応（SMSは非採用）。ログイン時の試行はセッション単位5回・ユーザー単位10回/30分で制限。SYSTEM_ADMIN・ADMINには必須化
 - **OAuth2ソーシャルログイン**: Google / LINE / Apple によるワンクリック登録・ログイン
 - **パスワードリセット**: メールによるリセットフロー。トークン有効期限は **30分**
 - **レート制限・ブルートフォース対策**: ログイン試行を IP + アカウント単位で Valkey カウンター管理。5回失敗でアカウントを **30分** ロック。パスワードリセット・2FA検証エンドポイントにも同様のレート制限を適用する
@@ -770,6 +770,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 #### 7. シフト管理
 - 管理者が週/月単位のシフト表を作成・編集・確定・公開
+- 時給の登録・同日訂正は当該チームの ADMIN / DEPUTY_ADMIN（および SYSTEM_ADMIN）に限定し、一般メンバーは本人の時給履歴・有効時給を閲覧できる
 - メンバーが希望日時を事前に提出（希望収集フェーズ）
 - 確定後はメンバーへプッシュ通知、個人ダッシュボードへ自動反映
 - スタッフ別・日付別の一覧表示
