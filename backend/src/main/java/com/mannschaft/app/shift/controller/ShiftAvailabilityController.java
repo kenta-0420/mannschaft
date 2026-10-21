@@ -95,8 +95,9 @@ public class ShiftAvailabilityController {
      *
      * <p><b>認可（認可根治 Wave6 追加戦）:</b> 呼び出し元の身元は
      * {@link SecurityUtils#getCurrentUserId()} から採り、per-scope 認可は
-     * {@code ShiftHourlyRateService} 内で強制する（本人 + 当該チーム ADMIN/DEPUTY_ADMIN のみ。
-     * 対象ユーザーも当該チームのメンバーであることを要求する）。違反時は 403。</p>
+     * {@code ShiftHourlyRateService} 内で強制する（当該チーム ADMIN/DEPUTY_ADMIN のみ。
+     * 対象ユーザーも当該チームのメンバーであることを要求し、SYSTEM_ADMIN は短絡許可する）。
+     * 本人であることによる登録・訂正の許可は行わない。違反時は 403。</p>
      */
     @PostMapping("/hourly-rate")
     @Operation(summary = "時給設定")
