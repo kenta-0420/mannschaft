@@ -86,6 +86,10 @@ abstract class ErrorReportR1TestSupport extends AbstractMySqlIntegrationTest {
         hook.reset();
         events.committed.clear();
         aggregator.drainAndClear();
+        // AI予算の外部Valkey境界。未作成キーのget=nullを予算0として扱う実サービス契約を通す。
+        org.springframework.data.redis.core.ValueOperations<String, String> values =
+                mock(org.springframework.data.redis.core.ValueOperations.class);
+        doReturn(values).when(redisTemplate).opsForValue();
         SetOperations<String, String> sets = mock(SetOperations.class);
         doReturn(sets).when(redisTemplate).opsForSet();
         when(sets.add(anyString(), any(String[].class))).thenAnswer(call -> {
