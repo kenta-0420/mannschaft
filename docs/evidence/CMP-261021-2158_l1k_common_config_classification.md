@@ -12,7 +12,7 @@
 
 ## red → greenと検査の実効性
 
-付録編集前に実在の付録2行に対する不足326型・import不一致2件を確認した。検査起動時のPowerShell文字コード不一致は検査前提のエラーとして修正し、次の文書未実装のredと区別した。現在も `--baseline` で固定SHAの未記入付録に同じredを再現できる。
+付録編集前に実在の付録2行に対する不足326型・import不一致2件を確認した。検査起動時のPowerShell文字コード不一致は検査前提のエラーとして修正し、次の文書未実装のredと区別した。`0b01123c19` までの当初検証で純粋な文書未実装のredを確認した。現在も `--baseline` で固定SHAの未記入付録による欠落326・型328を再現できる。下のred/green JSONは当初検証の実測値であり、スコープ基準追加前の出力である。
 
 ```json
 {
@@ -38,11 +38,42 @@
 }
 ```
 
-編集後の同一検査はexit 0。§0と付録A以外の前後本文は固定SHAと一致し、許可範囲外の追跡差分は0。
+当初検証（`0b01123c19` まで）の編集後の同一検査はexit 0。§0と付録A以外の前後本文は固定SHAと一致し、固定SHAとの差分は担当2文書だけだった。最新main追従後は他戦役の変更が含まれるため、自PRの範囲をmainとの共通祖先から作業木までで検査し、差分2文書とcommon/configの固定SHAからのsource blob不変を別に確認した。
 
 ```json
 {
   "sha": "cc751710b98b64dc8ed72524e72062c21d47631e",
+  "files": 294,
+  "common_files": 247,
+  "config_files": 47,
+  "types": 328,
+  "nested": 36,
+  "rows": 328,
+  "missing": 0,
+  "unknown": 0,
+  "duplicates": 0,
+  "blank_or_unresolved": 0,
+  "import_errors": 0,
+  "business_import_statements": {
+    "common": 166,
+    "config": 41
+  },
+  "appendix_only": true,
+  "out_of_scope_changes": [],
+  "blob_manifest_sha256": "8881615627a1f0e1d692396cad0dc5a615255e697b80e5ba7df0b04a171e2bfb"
+}
+```
+
+main追従後の再検証は、証拠本文から上記2つのPythonを実抽出してgreenと負例5種を再実行した。`--baseline` は欠落326によるexit 1で、範囲外変更0のまま失敗することも確認した。検証対象headは `d713380a567f711e486a86893c32f46f94ef51d3` に本証拠の未commit修正を加えた作業木。common/configの固定SHAからのblob差分は0。
+
+```json
+{
+  "sha": "cc751710b98b64dc8ed72524e72062c21d47631e",
+  "scope_base": "1ae1ee1ca526c0103b66117571447967a79a6d8a",
+  "changed_paths": [
+    "docs/architecture/modular_monolith_boundary_debt_repayment.md",
+    "docs/evidence/CMP-261021-2158_l1k_common_config_classification.md"
+  ],
   "files": 294,
   "common_files": 247,
   "config_files": 47,
@@ -92,7 +123,7 @@
 
 ## 再現手順
 
-本証拠を追加したPRの検証済みhead（成果ツリー）を別worktreeへcheckoutし、そのルートで実行する。後続mainの任意HEADではなく、当時の成果ツリーを対象とする。検査のscope判定は固定SHAとの差分なので、後続mainの無関係な変更も含めてfailし得る。その失敗を無視せず、main追従後の自PR差分は `git diff --name-only $(git merge-base HEAD origin/main) HEAD` でも別確認する。本検証時点の固定SHA差分には本担当2文書以外の変更はない。次のPythonを `%TEMP%/l1k-verify.py` にUTF-8で保存し、`python "$env:TEMP/l1k-verify.py"` でgreen、`python "$env:TEMP/l1k-verify.py" --baseline` で固定基準redを確認する。スクリプトをリポジトリへ追加しない。`git cat-file --batch` で固定SHAのblobを読み、ローカルJavaの有無やsparse checkoutには依存しない。
+本証拠を追加したPRの検証済みhead（成果ツリー）を別worktreeへcheckoutし、そのルートで実行する。後続mainの任意HEADではなく、当時の成果ツリーを対象とする。ソース列挙・blob manifest・付録外本文比較は固定SHAを基準にする。変更範囲は `git merge-base HEAD origin/main` を `scope_base` とし、`git diff --name-only <scope_base>` によりcommit済み差分と未commitの作業木差分を合わせて検査する。これによりmainから取り込んだ他戦役のREADME/shift/台帳変更を自PR変更へ混入させない。検査がfailした場合は無視せず原因を確認する。common/configのsource blob不変は `git diff --exit-code cc751710b98b64dc8ed72524e72062c21d47631e HEAD -- backend/src/main/java/com/mannschaft/app/common backend/src/main/java/com/mannschaft/app/config` で別確認する。次のPythonを `%TEMP%/l1k-verify.py` にUTF-8で保存し、`python "$env:TEMP/l1k-verify.py"` でgreen、`python "$env:TEMP/l1k-verify.py" --baseline` で固定基準redを確認する。スクリプトをリポジトリへ追加しない。`git cat-file --batch` で固定SHAのblobを読み、ローカルJavaの有無やsparse checkoutには依存しない。
 
 ```python
 import collections, hashlib, json, pathlib, re, subprocess, sys
@@ -160,9 +191,10 @@ for row in rows:
     if found!=wanted or (not wanted and 'なし' not in row[3]): import_errors.append(row[0])
 base=git('show',SHA+':'+DOC)
 scope_ok=appendix(base)[::2]==appendix(text)[::2]
-changed=git('diff','--name-only',SHA).splitlines()
+scope_base=git('merge-base','HEAD','origin/main').strip()
+changed=git('diff','--name-only',scope_base).splitlines()
 code_changes=[p for p in changed if p!=DOC and not(p.startswith('docs/evidence/') and p.endswith('.md'))]
-result={'sha':SHA,'files':len(paths),'common_files':sum('/common/' in p for p in paths),'config_files':sum('/config/' in p for p in paths),'types':len(expected),'nested':sum('$' in k for k in expected),'rows':len(rows),'missing':len(missing),'unknown':len(unknown),'duplicates':len(duplicates),'blank_or_unresolved':len(blank),'import_errors':len(import_errors),'business_import_statements':dict(import_count),'appendix_only':scope_ok,'out_of_scope_changes':code_changes,'blob_manifest_sha256':hashlib.sha256(('\n'.join(manifest)+'\n').encode()).hexdigest()}
+result={'sha':SHA,'scope_base':scope_base,'changed_paths':changed,'files':len(paths),'common_files':sum('/common/' in p for p in paths),'config_files':sum('/config/' in p for p in paths),'types':len(expected),'nested':sum('$' in k for k in expected),'rows':len(rows),'missing':len(missing),'unknown':len(unknown),'duplicates':len(duplicates),'blank_or_unresolved':len(blank),'import_errors':len(import_errors),'business_import_statements':dict(import_count),'appendix_only':scope_ok,'out_of_scope_changes':code_changes,'blob_manifest_sha256':hashlib.sha256(('\n'.join(manifest)+'\n').encode()).hexdigest()}
 print(json.dumps(result,ensure_ascii=True,indent=2))
 if '--inventory' in sys.argv:
     pathlib.Path(sys.argv[sys.argv.index('--inventory')+1]).write_text(json.dumps(expected,ensure_ascii=False,indent=2),encoding='utf-8')
