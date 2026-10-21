@@ -1,5 +1,6 @@
 package com.mannschaft.app.errorreport.service;
 
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
 import com.mannschaft.app.errorreport.SlaPolicy;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 /** 非 IGNORED 最小 id の locking read から flush までを一試行に閉じる。 */
@@ -61,7 +63,8 @@ public class ErrorReportIngestTx {
                 report.setAssigneeId(null);
                 reopened = true;
                 if (source == Source.FE) {
-                    report.setSlaDueAt(SlaPolicy.calcDueAt(report.getSeverity(), LocalDateTime.now()));
+                    report.setSlaDueAt(SlaPolicy.calcDueAt(report.getSeverity(),
+                            LocalDateTime.ofInstant(Instant.now(), UserZoneLocalDateTimeParser.SERVER_ZONE)));
                     Long id = report.getId();
                     TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                         @Override

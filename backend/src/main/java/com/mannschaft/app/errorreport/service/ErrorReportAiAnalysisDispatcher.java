@@ -1,5 +1,7 @@
 package com.mannschaft.app.errorreport.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.errorreport.ErrorReportProperties;
 import com.mannschaft.app.errorreport.event.ErrorReportAiAnalysisRequestedEvent;
 import lombok.RequiredArgsConstructor;
@@ -78,6 +80,9 @@ public class ErrorReportAiAnalysisDispatcher {
     }
 
     /** 既に commit 済みのイベントでは synchronization を再登録せず、既存 Async proxy へ渡す。 */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "停止用の gate_key を持たない運用基盤として、commit済みFE障害の即時AI分析要求を受ける。"
+                    + "要求は再生されないため入口では破棄せず、既存のAI有効設定と月次予算で実行可否を判定する")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onAnalysisRequested(ErrorReportAiAnalysisRequestedEvent event) {
         if (canAnalyze(event.reportId())) asyncRunner.analyzeAsync(event.reportId(), null);
