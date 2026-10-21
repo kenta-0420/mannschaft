@@ -112,6 +112,7 @@ onMounted(() => {
 <template>
   <div>
     <PageHeader
+      class="md:-mt-1.5"
       :title="t('folders.title')"
       :subtitle="canManage ? t('folders.list.remaining', { remaining }) : undefined"
     >

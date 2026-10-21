@@ -142,7 +142,7 @@ onMounted(load)
 
 <template>
   <div class="mx-auto max-w-3xl">
-    <PageHeader :title="t('memberPermissions.title')" :subtitle="t('memberPermissions.description')">
+    <PageHeader class="md:-mt-2" :title="t('memberPermissions.title')" :subtitle="t('memberPermissions.description')">
       <template #actions>
         <Button
           :label="t('button.save')"

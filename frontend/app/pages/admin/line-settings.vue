@@ -101,10 +101,12 @@ onMounted(() => { if (scopeId.value) load() })
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader :title="t('lineSettings.title')" :subtitle="t('lineSettings.description')">
+    <PageHeader class="md:-mt-1.5" :title="t('lineSettings.title')" :subtitle="t('lineSettings.description')">
       <template #actions>
-        <Button v-if="config && !isPersonalScope" :label="t('button.delete')" severity="danger" outlined size="small" @click="remove" />
-        <Button v-if="!isPersonalScope" :label="t('button.save')" icon="pi pi-check" :loading="saving" @click="save" />
+        <div class="flex gap-2">
+          <Button v-if="config && !isPersonalScope" :label="t('button.delete')" severity="danger" outlined size="small" @click="remove" />
+          <Button v-if="!isPersonalScope" :label="t('button.save')" icon="pi pi-check" :loading="saving" @click="save" />
+        </div>
       </template>
     </PageHeader>
 

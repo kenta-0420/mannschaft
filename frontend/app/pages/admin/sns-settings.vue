@@ -119,7 +119,7 @@ onMounted(() => { if (scopeId.value) load() })
 
 <template>
   <div class="mx-auto max-w-4xl">
-    <PageHeader :title="t('snsSettings.title')" :subtitle="t('snsSettings.description')">
+    <PageHeader class="md:-mt-1.5" :title="t('snsSettings.title')" :subtitle="t('snsSettings.description')">
       <template #actions>
         <Button v-if="!isPersonalScope" :label="t('snsSettings.addAccount')" icon="pi pi-plus" @click="openCreate" />
       </template>

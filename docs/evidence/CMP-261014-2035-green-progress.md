@@ -40,3 +40,14 @@ Node 22.23.2/npm 10.9.8、Nuxt hook/test timeout 600000、maxWorkers=1。
 移設した新設specの `get(...).exists()` を存在検査用の `find(...).exists()` へ修正し、URLのstatic overrideを明示した。型エラーを抑制せず、次CIで検証する。移行前raw観測2 JSONは、完了証拠validatorが検査する直下の `CMP-*.json` と分類を分け、`observations/CMP-261014-2035/` へ移設した。内容のSHA256一致を確認し、red文書のリンクだけを追従した。validatorと成功条件は変更していない。
 
 限定再実行後のWindows空き物理メモリは11,990MiB、VmmemWSLのworking setは9,594MiBだった。次段階は専用Nuxt1台とブラウザ1 workerで実行する。
+
+
+## P9初期実測と最小補正（ブラウザ再測定は未完了）
+
+専有証拠 `post-anchor-initial/manifest.json` と旧 `pre-final/manifest.json` を比較し、friend-folders/LINE/SNSのh1が6px、member-permissionsが8px下がったことを実測した。左右接触画像を実装担当・本陣が実見。原文のタイトル位置不変へ戻すため、当該4画面の既存attrsを使いmd以上のタイトル行のみ負marginを付与した。LINEは元 `flex gap-2` wrapperもactionsへ保持し、削除ボタンの元42px高を維持する。PageHeader全体の新optionや広いCSS補正は導入していない。
+
+ScopeGuideのh1左上xyと文字列は同一。副題を別行へ移した結果、旧h1幅289.5625/高さ72から自然幅291.5/高さ36になり、末尾1字の折返しが消えた。正本P9の禁止はタイトル位置変化であり全bbox寸法一致ではないため、本陣裁可により書体不変・overflowなしの確認後に許容する。旧新bbox生値は保全し、旧同一行DOMと書体/利用可能幅の再現観測を準備した。まだ再現観測の実行前である。
+
+補正後5画面の撮影は最初のfoldersでpage.goto 60秒timeoutとなったため、環境未実行として分離。LINE単画面は途中で撮れたがsuite合格には数えない。撮影sessionを中断しChrome残存なしを確認、自分のNuxt3002も停止してローカル実行窓を返却した。Windows空きは停止後約4.68GiB。別担当のranch Gradleや共有daemonを変更していない。P8全8画像差分ゼロ、P9全9画面、P6/P7/strict全196件は引き続き未完了。
+
+checkpoint b0d6fa2e6fの全active CIは成功（Smoke/Frontend Install/harness含む）。本節の位置補正はその後の差分であり、対応CIとブラウザ再検証は別途追跡する。台帳完了化・最終evidence JSON作成・マージは行わない。
