@@ -9,6 +9,7 @@ import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.web.servlet.MockMvc;
@@ -86,6 +88,24 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long deputyTeamAId;
     private Long systemAdminId;
     private Authentication currentAuthentication;
+
+    @BeforeAll
+    static void prepareHourlyRateUniqueKey(@Autowired JdbcTemplate jdbcTemplate) {
+        // test profile は Hibernate DDL で作成するため、V3.076 の一意制約を試験 TX 外で補う。
+        // 同日訂正を本番と同じ ON DUPLICATE KEY UPDATE の契約で検証する。
+        Integer indexColumns = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM information_schema.statistics
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'shift_hourly_rates'
+                  AND index_name = 'uq_shr_user_team_from'
+                """, Integer.class);
+        if (indexColumns == 0) {
+            jdbcTemplate.execute("""
+                    CREATE UNIQUE INDEX uq_shr_user_team_from
+                    ON shift_hourly_rates (user_id, team_id, effective_from)
+                    """);
+        }
+    }
 
     @BeforeEach
     void setUp() {
@@ -179,7 +199,7 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
                             .param("userId", memberTeamAId.toString())
                             .param("date", "2026-04-01"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.hourlyRate").value(1200));
+                    .andExpect(jsonPath("$.data[0].hourlyRate").value(1200));
         }
 
         @Test

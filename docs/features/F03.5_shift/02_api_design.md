@@ -1411,7 +1411,7 @@ status を既定の `PENDING` のままにしており、`OPEN_CALL` へ遷移�
 - `effective_from`: 必須。未来日も過去日も指定可能（過去日指定で「入社時の時給を遡って登録」に対応）
 - 同一 `effective_from` のレコードが既存の場合は上書き更新
 
-**レスポンス（200 OK）**: 更新後の全時給履歴を返却
+**レスポンス（201 Created）**: 設定した時給を単票（`HourlyRateResponse`）で返却
 
 **認可**（CMP-261021-0659 / 実装は `ShiftHourlyRateAuthorizer#checkHourlyRateWriteAccess`）
 
