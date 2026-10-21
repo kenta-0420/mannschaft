@@ -85,7 +85,7 @@ schema実ログ: `native-registry-red-0809/docs/evidence/CMP-261021-1602-modulit
 
 通常084と最終pin afb8は、全本番class集合のcompiled完全一致assert・同じmain出力のUP-TO-DATE再利用・同一main source treeを確認した。non-cycle message集合23,591件、raw origin map、完全SCC構成は機械比較で完全一致。最終pinでmodule内重複0/module間12、common raw/unique875/875・webhook4/4を確認した。比較範囲はdependency集合とSCCで、上限付きcycle報告message集合は含まない。
 
-小さなsummary2枚、試験XML5本（合計15,753bytes）、比較結果とXML SHA256を `CMP-261021-1602-results.json` に保全。dependency集合hashはOrdinal順・LF区切り・UTF-8のSHA256。全体class/module数、全origin件数、全raw違反、SCC集合は各runの `docs/evidence/CMP-261021-1602-modulith-spike-structure.txt` に保全。docs PRにはこの要約だけを載せる。
+小さなsummary2枚、試験XML5本（合計15749bytes）、比較結果とXMLコピー/原本のSHA256を `CMP-261021-1602-results.json` に保全。XML保全コピーは行末空白のみ除去し、ローカル原本は変更していない。dependency集合hashはOrdinal順・LF区切り・UTF-8のSHA256。全体class/module数、全origin件数、全raw違反、SCC集合は各runの `docs/evidence/CMP-261021-1602-modulith-spike-structure.txt` に保全。docs PRにはこの要約だけを載せる。
 
 ## Webhookの観測限界
 

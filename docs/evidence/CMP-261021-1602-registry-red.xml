@@ -3,7 +3,7 @@
   <properties/>
   <testcase name="公式Entityの実MySQLスキーマと索引を保存する()" classname="com.mannschaft.spike.RegistrySpikeIT" time="1.078"/>
   <testcase name="既存認証イベントは購読されても保存0件()" classname="com.mannschaft.spike.RegistrySpikeIT" time="0.621">
-    <failure message="org.opentest4j.AssertionFailedError: &#10;expected: 0L&#10; but was: 1L" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: 
+    <failure message="org.opentest4j.AssertionFailedError: &#10;expected: 0L&#10; but was: 1L" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError:
 expected: 0L
  but was: 1L
 	at app//com.mannschaft.spike.RegistrySpikeIT.既存認証イベントは購読されても保存0件(RegistrySpikeIT.java:57)
@@ -13,7 +13,7 @@ expected: 0L
 </failure>
   </testcase>
   <testcase name="ReliableEventの対象購読だけ保存し非TX非同期の正常終了で完了する()" classname="com.mannschaft.spike.RegistrySpikeIT" time="0.865">
-    <failure message="org.opentest4j.AssertionFailedError: &#10;Expecting actual:&#10;  [&quot;module-success&quot;, &quot;ordinary-reliable&quot;]&#10;to contain exactly (and in same order):&#10;  [&quot;module-success&quot;]&#10;but some elements were not expected:&#10;  [&quot;ordinary-reliable&quot;]&#10;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: 
+    <failure message="org.opentest4j.AssertionFailedError: &#10;Expecting actual:&#10;  [&quot;module-success&quot;, &quot;ordinary-reliable&quot;]&#10;to contain exactly (and in same order):&#10;  [&quot;module-success&quot;]&#10;but some elements were not expected:&#10;  [&quot;ordinary-reliable&quot;]&#10;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError:
 Expecting actual:
   [&quot;module-success&quot;, &quot;ordinary-reliable&quot;]
 to contain exactly (and in same order):
@@ -34,7 +34,7 @@ but some elements were not expected:
 20:18:29.928 [Test worker] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Loaded org.testcontainers.dockerclient.UnixSocketClientProviderStrategy from ~/.testcontainers.properties, will try it first
 20:18:30.997 [Test worker] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Environment variables, system properties and defaults. Resolved dockerHost=tcp://127.0.0.1:2377
 20:18:31.000 [Test worker] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is 127.0.0.1
-20:18:31.052 [Test worker] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+20:18:31.052 [Test worker] INFO org.testcontainers.DockerClientFactory -- Connected to docker:
   Server Version: 29.4.1
   API Version: 1.54
   Operating System: Ubuntu 24.04.4 LTS
