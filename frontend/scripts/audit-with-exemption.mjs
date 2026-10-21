@@ -1,6 +1,6 @@
 // 修正版のない間接依存の個別例外（方針 docs/security/04_dependency_and_supply_chain.md §4.3/§4.4）。
 // GHSA-86w9-cpqp-85rv / node-forge 1.4.0 と GHSA-vfj7-8cjw-p6xm / braces 3.0.3 のみ。
-// どちらも 2026-10-16 UTC 当日まで。
+// どちらも 2026-10-23 UTC 当日まで。
 // node-forge: listhen の証明書生成経路では当該署名検証を呼ばない。本番 .output の除外は未実測。
 // braces: アプリの限定検索では直接 glob 呼出しなし、確認した設定パターンは固定値。
 // dbaa 本番 server の2537テキストは静的token/package検出0。14リンク・4バイナリは対象外。
@@ -10,7 +10,7 @@ import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 
-const EXPIRES_AT = Date.parse('2026-10-17T00:00:00Z')
+const EXPIRES_AT = Date.parse('2026-10-24T00:00:00Z')
 const SEVERITY_RANK = { info: 0, low: 1, moderate: 2, high: 3, critical: 4 }
 // GHSA 単位の除外表。パッケージ名での包括除外はしない。
 // packages は実監査で確認した到達経路だけ。別の消費者への拡大を認めない。
@@ -29,6 +29,24 @@ const EXEMPTIONS = {
       '@nuxt/vite-builder',
       'nuxt',
     ]),
+    nodes: {
+      'node-forge': ['node_modules/node-forge'],
+      listhen: ['node_modules/listhen'],
+      nitropack: ['node_modules/nitropack'],
+      '@nuxt/cli': ['node_modules/@nuxt/cli'],
+      '@nuxt/nitro-server': ['node_modules/@nuxt/nitro-server'],
+      '@nuxt/vite-builder': ['node_modules/@nuxt/vite-builder'],
+      nuxt: ['node_modules/nuxt'],
+    },
+    edges: {
+      'node-forge': [],
+      listhen: ['node-forge'],
+      nitropack: ['listhen'],
+      '@nuxt/cli': ['listhen'],
+      '@nuxt/nitro-server': ['nitropack', 'nuxt'],
+      '@nuxt/vite-builder': ['nuxt'],
+      nuxt: ['@nuxt/cli', '@nuxt/nitro-server', '@nuxt/vite-builder'],
+    },
   },
   // braces: 実監査で確認したノードと braces に到達する参照辺だけ。
   'https://github.com/advisories/GHSA-vfj7-8cjw-p6xm': {
@@ -197,7 +215,7 @@ export function checkAudit(raw, status, lock, now = Date.now()) {
     for (const advisory of high) {
       const spec = EXEMPTIONS[advisory.url]
       const target = spec && vulnerabilities[spec.name]
-      // forge だけに到達する混在辺は braces の表で制限しない。
+      // 混在辺は、現在検証している GHSA に到達する辺だけを制限する。
       if (spec?.nodes) {
         const allowedNodes = spec.nodes[name]
         const allowedEdges = spec.edges[name]
@@ -239,7 +257,7 @@ export function checkAudit(raw, status, lock, now = Date.now()) {
         )
       }
       if (!Number.isFinite(now) || now >= EXPIRES_AT) {
-        throw new Error(`${spec.id} の除外期限切れ（2026-10-16 UTC 当日まで）`)
+        throw new Error(`${spec.id} の除外期限切れ（2026-10-23 UTC 当日まで）`)
       }
       exempt = true
     }
@@ -269,7 +287,7 @@ if (
     const exempt = checkAudit(raw, status, lock)
     console.log(
       exempt
-        ? 'npm audit: GHSA-86w9-cpqp-85rv / GHSA-vfj7-8cjw-p6xm のみ除外中（2026-10-16 UTC 当日まで）、他の high/critical は0件'
+        ? 'npm audit: GHSA-86w9-cpqp-85rv / GHSA-vfj7-8cjw-p6xm のみ除外中（2026-10-23 UTC 当日まで）、他の high/critical は0件'
         : 'npm audit: high/critical は0件',
     )
   } catch (error) {

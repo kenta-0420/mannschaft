@@ -41,6 +41,7 @@ const {
   loading: roleLoading,
   loadPermissions,
   isAdmin,
+  isScopeAdmin,
   isAdminOrDeputy,
 } = useRoleAccess('organization', orgSlug)
 
@@ -52,6 +53,8 @@ const {
 const {
   org,
   orgTeams,
+  orgTeamsError,
+  orgTeamsLoading,
   permissionGroups,
   loading,
   joinRequestStatus,
@@ -437,6 +440,7 @@ provideOrgShellContext({
   displayName,
   roleName,
   isAdmin,
+  isScopeAdmin,
   isAdminOrDeputy,
   effectiveViewerRole,
   adminLens,
@@ -450,6 +454,9 @@ provideOrgShellContext({
   permissionGroups,
   showChildrenTab,
   showTeamSearchLink,
+  orgTeamsError,
+  orgTeamsLoading,
+  refreshOrgTeams: fetchOrgTeams,
   refresh,
   mutators: orgMutators,
 })
@@ -524,7 +531,7 @@ provideOrgShellContext({
         <p class="mt-1 text-sm text-surface-500">
           {{ t('common.scopeShell.load_error_body') }}
         </p>
-        <NuxtLink to="/dashboard" class="mt-4 inline-block text-primary-600 hover:underline">
+        <NuxtLink to="/dashboard" class="mt-4 inline-flex min-h-11 items-center text-primary-600 hover:underline">
           <i class="pi pi-arrow-left mr-1" />
           {{ t('common.scopeShell.back_to_dashboard') }}
         </NuxtLink>

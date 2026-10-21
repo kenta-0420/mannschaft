@@ -14,6 +14,8 @@ import com.mannschaft.app.recruitment.RecruitmentPenaltyActiveException;
 import com.mannschaft.app.recruitment.dto.RecruitmentPenaltyActiveErrorResponse;
 import com.mannschaft.app.todo.exception.MilestoneLockedException;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -90,6 +92,44 @@ public class GlobalExceptionHandler {
      */
     // 型推論限界回避のため明示型指定（エントリ数増加に伴う javac 推論破綻を根治）
     private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.<String, HttpStatus>ofEntries(
+            // F18.1: 入力不正400と所有/認可/状態競合を区別する（設計§9）。
+            Map.entry("LOYALTY_001", HttpStatus.NOT_FOUND),
+            Map.entry("LOYALTY_002", HttpStatus.FORBIDDEN),
+            Map.entry("LOYALTY_003", HttpStatus.FORBIDDEN),
+            Map.entry("LOYALTY_005", HttpStatus.CONFLICT),
+            Map.entry("LOYALTY_006", HttpStatus.CONFLICT),
+            Map.entry("LOYALTY_007", HttpStatus.CONFLICT),
+            Map.entry("LOYALTY_011", HttpStatus.NOT_FOUND),
+            Map.entry("LOYALTY_012", HttpStatus.TOO_MANY_REQUESTS),
+            Map.entry("LOYALTY_013", HttpStatus.CONFLICT),
+            Map.entry("LOYALTY_014", HttpStatus.CONFLICT),
+            Map.entry("LOYALTY_015", HttpStatus.FORBIDDEN),
+            // 本人出生・診断の専用コード。既存authコードの意味は変更しない。
+            Map.entry("BIRTHPROFILE_001", HttpStatus.BAD_REQUEST),
+            Map.entry("BIRTHPROFILE_002", HttpStatus.CONFLICT),
+            Map.entry("BIRTHPROFILE_003", HttpStatus.NOT_FOUND),
+            Map.entry("BIRTHPROFILE_004", HttpStatus.CONFLICT),
+            Map.entry("BIRTHPROFILE_005", HttpStatus.CONFLICT),
+            Map.entry("BIRTHPROFILE_006", HttpStatus.CONFLICT),
+            Map.entry("BIRTHPROFILE_007", HttpStatus.SERVICE_UNAVAILABLE),
+            Map.entry("BIRTHPROFILE_008", HttpStatus.CONFLICT),
+            Map.entry("BIRTHPROFILE_009", HttpStatus.CONFLICT),
+            Map.entry("DIAGNOSIS_001", HttpStatus.BAD_REQUEST),
+            Map.entry("DIAGNOSIS_002", HttpStatus.NOT_FOUND),
+            Map.entry("DIAGNOSIS_003", HttpStatus.CONFLICT),
+            Map.entry("DIAGNOSIS_004", HttpStatus.CONFLICT),
+            Map.entry("DIAGNOSIS_005", HttpStatus.SERVICE_UNAVAILABLE),
+            Map.entry("DIAGNOSIS_006", HttpStatus.BAD_REQUEST),
+            // 本人操作の受付拒否と非ACTIVE拒否は既存認証エラーへ転用しない。
+            Map.entry("RECALLSESSION_001", HttpStatus.CONFLICT),
+            Map.entry("RECALLSESSION_002", HttpStatus.CONFLICT),
+            Map.entry("RECALLSESSION_003", HttpStatus.SERVICE_UNAVAILABLE),
+            Map.entry("AUTHOPERATION_001", HttpStatus.SERVICE_UNAVAILABLE),
+            Map.entry("AUTHOPERATION_002", HttpStatus.FORBIDDEN),
+            Map.entry("SOURCEOUTBOX_001", HttpStatus.SERVICE_UNAVAILABLE),
+            Map.entry("SOURCEOUTBOX_002", HttpStatus.NOT_FOUND),
+            Map.entry("SOURCEOUTBOX_003", HttpStatus.CONFLICT),
+            Map.entry("SOURCEOUTBOX_004", HttpStatus.CONFLICT),
             // Storage ACL: 不在は存在秘匿、所有境界違反は権限拒否、claim 状態競合は再試行不能として返す。
             // Storage ACL: existence is hidden; permission, and claim conflicts retain their own statuses.
             Map.entry("STORAGE_005", HttpStatus.NOT_FOUND),
@@ -289,9 +329,8 @@ public class GlobalExceptionHandler {
             // 自己スコープの「不在」は 404（IDOR ではなく単純な not-found だが、既存 EP 契約と揃える）
             Map.entry("AUTH_029", HttpStatus.NOT_FOUND),    // OAuthプロバイダー未連携（解除対象が存在しない）
             // 状態競合 → 409（AUTH_032 は上記の別ブロックで既に登録済み）
-            // AUTH_018 は Auth2faService 内で「TOTPコード不正」（verifyTotpCode 失敗）と
-            // 「TOTPコード使用済み」（リプレイ検出）の意味の異なる 2 箇所から throw されており、
-            // 定数の意味が割れているため変更を見送る（Severity.WARN 既定の 400 のまま）。
+            // AUTH_018 は「TOTPコード使用済み」（リプレイ検出）専用（CMP-261012-0910 で TOTP 設定確定の誤コードは
+            // AUTH_074 に分離した）。入力した確認コードの不備として Severity.WARN 既定の 400 のまま据え置く。
             // AUTH_021（バックアップコード全使用済み）は throw 元が存在しない未使用定数のため対象外。
             Map.entry("AUTH_025", HttpStatus.CONFLICT),     // WebAuthnデバイス重複登録
             Map.entry("AUTH_030", HttpStatus.CONFLICT),     // OAuth連携解除時ログイン手段喪失
@@ -304,6 +343,12 @@ public class GlobalExceptionHandler {
             // 「取消可能な退会申請という状態が無い」ことを理由に拒否する状態遷移違反のため、
             // 兄弟の SCHEDULE_KEEP_006 等と同じく 409 Conflict が正準（入力不備の 400 ではない）。
             Map.entry("AUTH_032", HttpStatus.CONFLICT), // 退会申請が存在しない状態での取消要求 → 409
+            // CMP-261012-0910 多要素認証(2FA)の穴埋め（AUTH_073/074/080/081 は Severity.WARN 既定の 400 のまま）
+            Map.entry("AUTH_075", HttpStatus.TOO_MANY_REQUESTS), // MFA 試行回数上限 → 429
+            Map.entry("AUTH_076", HttpStatus.TOO_MANY_REQUESTS), // メールOTP 再送待ち → 429
+            Map.entry("AUTH_077", HttpStatus.TOO_MANY_REQUESTS), // メールOTP 送信回数上限 → 429
+            Map.entry("AUTH_078", HttpStatus.CONFLICT),          // 2FA 有効化済み → 409
+            Map.entry("AUTH_079", HttpStatus.CONFLICT),          // 2FA 未有効 → 409
             // F03.3 カレンダー同期: 非メンバーの同期トグルは IDOR 対策で 403 ではなく 404（存在秘匿）
             Map.entry("GCAL_010", HttpStatus.NOT_FOUND),
             // F02.5 行動メモ: IDOR 対策で 403 ではなく 404 を返す
@@ -602,6 +647,9 @@ public class GlobalExceptionHandler {
             Map.entry("SHIFT_036", HttpStatus.TOO_MANY_REQUESTS),
             // F03.5 §11.3.5: 完全一致の重複割当（状態競合）→ 409
             Map.entry("SHIFT_042", HttpStatus.CONFLICT),                    // DUPLICATE_ASSIGNMENT
+            // CMP-261010-1432: 自己審査の禁止は明確な認可拒否 → 403、枠間移動の移動元不一致は状態競合 → 409
+            Map.entry("SHIFT_045", HttpStatus.FORBIDDEN),                   // SELF_REVIEW_FORBIDDEN
+            Map.entry("SHIFT_046", HttpStatus.CONFLICT),                    // MOVE_SOURCE_NOT_ASSIGNED
             // F08.7 シフト予算 (Phase 9-α: 逆算 API)
             Map.entry("SHIFT_BUDGET_001", HttpStatus.SERVICE_UNAVAILABLE),  // FEATURE_DISABLED
             Map.entry("SHIFT_BUDGET_002", HttpStatus.BAD_REQUEST),          // EMPTY_POSITION_LIST
@@ -2609,9 +2657,9 @@ public class GlobalExceptionHandler {
             body = new ErrorResponse(
                     new ErrorResponse.ErrorDetail(errorCode.getCode(), message, ex.getFieldErrors()));
         }
-        return ResponseEntity
-                .status(status)
-                .body(body);
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(status);
+        if (isPrivateSelfInput(request)) response.header(HttpHeaders.CACHE_CONTROL, "no-store");
+        return response.body(body);
     }
 
     /**
@@ -2706,11 +2754,27 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * CMP-261012-0910: 「しばらく待てば通る」業務例外（{@link RetryAfterBusinessException}）のハンドラ。
+     *
+     * <p>本文・ステータスは {@link #handleBusinessException} と同じ（エラーコード既定。メールOTP の
+     * 再送待ち AUTH_076 / 送信上限 AUTH_077 は 429）で、{@code Retry-After} ヘッダ（残り秒数）だけを足す。</p>
+     */
+    @ExceptionHandler(RetryAfterBusinessException.class)
+    public ResponseEntity<ErrorResponse> handleRetryAfterBusinessException(
+            RetryAfterBusinessException ex, HttpServletRequest request) {
+        ResponseEntity<ErrorResponse> base = handleBusinessException(ex, request);
+        return ResponseEntity.status(base.getStatusCode())
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(ex.getRetryAfterSeconds()))
+                .body(base.getBody());
+    }
+
+    /**
      * Bean Validation エラー（@Valid 付きリクエストボディ）。
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationException(
             MethodArgumentNotValidException ex) {
+        if (isPrivateSelfInput(null)) return privateInputRejected("BINDING");
         List<ErrorResponse.FieldError> fieldErrors = ex.getBindingResult()
                 .getFieldErrors()
                 .stream()
@@ -2729,6 +2793,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(
             HttpMessageNotReadableException ex) {
+        if (isPrivateSelfInput(null)) return privateInputRejected("JSON_PARSE");
         log.warn("Message not readable: {}", ex.getMessage());
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
@@ -2745,6 +2810,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {
+        if (isPrivateSelfInput(null)) return privateInputRejected("CONSTRAINT");
         List<ErrorResponse.FieldError> fieldErrors = ex.getConstraintViolations()
                 .stream()
                 .map(GlobalExceptionHandler::toFieldError)
@@ -2763,6 +2829,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ResponseEntity<ErrorResponse> handleHandlerMethodValidation(HandlerMethodValidationException ex) {
+        if (isPrivateSelfInput(null)) return privateInputRejected("METHOD_PARAMETER");
         List<ErrorResponse.FieldError> fieldErrors = new java.util.ArrayList<>();
         for (org.springframework.validation.method.ParameterValidationResult result
                 : ex.getParameterValidationResults()) {
@@ -2793,6 +2860,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(
             MethodArgumentTypeMismatchException ex) {
+        if (isPrivateSelfInput(null)) return privateInputRejected("TYPE_CONVERSION");
         // (1) 変換器が明示的に 404 を投げ、原因連鎖に残っているケースを honor する。
         ResponseStatusException rse = findResponseStatusExceptionCause(ex);
         boolean notFound = rse != null && rse.getStatusCode().value() == HttpStatus.NOT_FOUND.value();
@@ -3221,5 +3289,32 @@ public class GlobalExceptionHandler {
             case WARN -> HttpStatus.BAD_REQUEST;
             case INFO -> HttpStatus.OK;
         };
+    }
+
+    /** 本人機密入力とloyaltyのQR/照合コードだけを値なし拒否へ限定する。 */
+    private static boolean isPrivateSelfInput(HttpServletRequest explicitRequest) {
+        HttpServletRequest request = explicitRequest;
+        if (request == null && RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
+            request = attributes.getRequest();
+        }
+        if (request == null) return false;
+        String path = request.getRequestURI();
+        if (path == null) return false;
+        if (path.equals("/api/v1/loyalty") || path.startsWith("/api/v1/loyalty/")
+                || path.matches("/api/v1/teams/[^/]+/loyalty(?:/.*)?")) return true;
+        if (path.matches("/api/v1/me/reflections/entries/[^/]+/recall-sessions")) return true;
+        for (String prefix : List.of("/api/v1/me/birth-profile", "/api/v1/me/diagnoses", "/api/v1/me/ranch",
+                "/api/v1/me/reflections/recall-sessions")) {
+            if (path.equals(prefix) || path.startsWith(prefix + "/")) return true;
+        }
+        return false;
+    }
+
+    /** 例外message・cause・入力値・URIをログや応答へコピーしない。 */
+    private ResponseEntity<ErrorResponse> privateInputRejected(String category) {
+        log.warn("本人APIの入力を拒否: classification={}", category);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(ErrorResponse.of(CommonErrorCode.COMMON_001));
     }
 }

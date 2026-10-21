@@ -232,13 +232,35 @@ public class ParentalConsentService {
         ParentalConsentLinkEntity link = parentalConsentLinkRepository.findByTokenHash(tokenHash)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_060));
 
-        if (link.getStatus() != ParentalConsentLinkStatus.PENDING) {
-            throw new BusinessException(AuthErrorCode.AUTH_060);
-        }
-        if (link.getExpiresAt().isBefore(LocalDateTime.now())) {
+        return validateApprovalRequest(link);
+    }
+
+    private ParentalConsentLinkEntity validateApprovalRequest(ParentalConsentLinkEntity link) {
+        if (link.getStatus() != ParentalConsentLinkStatus.PENDING
+                || link.getExpiresAt().isBefore(LocalDateTime.now())) {
             throw new BusinessException(AuthErrorCode.AUTH_060);
         }
         return link;
+    }
+
+    private record LockedConsentRequest(UserEntity child, ParentalConsentLinkEntity link) {}
+
+    /** 同auth TXでusersを先lockし、PENDING子を許可してlink資格をcurrent readで再検証する。 */
+    private LockedConsentRequest lockApprovalRequest(String token) {
+        String tokenHash = authTokenService.hashToken(token);
+        Long childId = parentalConsentLinkRepository.findChildUserIdByTokenHash(tokenHash)
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_060));
+        UserEntity child = userRepository.findByIdForUpdateIncludingDeleted(childId)
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_005));
+        if (child.getDeletedAt() != null) {
+            throw new BusinessException(AuthErrorCode.AUTH_005);
+        }
+        ParentalConsentLinkEntity link = parentalConsentLinkRepository.findByTokenHashForUpdate(tokenHash)
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_060));
+        if (!childId.equals(link.getChildUserId())) {
+            throw new BusinessException(AuthErrorCode.AUTH_060);
+        }
+        return new LockedConsentRequest(child, validateApprovalRequest(link));
     }
 
     /**
@@ -258,7 +280,8 @@ public class ParentalConsentService {
         String rateLimitKey = "mannschaft:auth:parental_consent_decision:" + ipAddress;
         authTokenService.checkRateLimit(rateLimitKey, CONSENT_DECISION_MAX_ATTEMPTS, CONSENT_DECISION_WINDOW);
 
-        ParentalConsentLinkEntity link = getApprovalRequest(token);
+        LockedConsentRequest locked = lockApprovalRequest(token);
+        ParentalConsentLinkEntity link = locked.link();
 
         // 自己承認チェック
         if (link.getChildUserId().equals(parentUserId)) {
@@ -279,8 +302,7 @@ public class ParentalConsentService {
         parentalConsentLinkRepository.save(link);
 
         // 子ユーザーを ACTIVE に遷移
-        UserEntity childUser = userRepository.findById(link.getChildUserId())
-                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_005));
+        UserEntity childUser = locked.child();
         childUser.activate();
         userRepository.save(childUser);
 
@@ -318,16 +340,16 @@ public class ParentalConsentService {
         String rateLimitKey = "mannschaft:auth:parental_consent_decision:" + ipAddress;
         authTokenService.checkRateLimit(rateLimitKey, CONSENT_DECISION_MAX_ATTEMPTS, CONSENT_DECISION_WINDOW);
 
-        ParentalConsentLinkEntity link = getApprovalRequest(token);
+        LockedConsentRequest locked = lockApprovalRequest(token);
+        ParentalConsentLinkEntity link = locked.link();
 
+        Long childUserId = link.getChildUserId();
+        List<ParentalConsentLinkEntity> allLinks = parentalConsentLinkRepository
+                .findByChildUserIdForUpdate(childUserId);
         link.reject();
         parentalConsentLinkRepository.save(link);
 
-        Long childUserId = link.getChildUserId();
-
         // 子ユーザーのリンクをすべて取得し、PENDING / APPROVED が 0 件なら子アカウントを論理削除
-        List<ParentalConsentLinkEntity> allLinks = parentalConsentLinkRepository
-                .findByChildUserId(childUserId);
         boolean hasPending = allLinks.stream()
                 .anyMatch(l -> l.getStatus() == ParentalConsentLinkStatus.PENDING);
         boolean hasApproved = allLinks.stream()
@@ -335,8 +357,7 @@ public class ParentalConsentService {
 
         if (!hasPending && !hasApproved) {
             // 全保護者に拒否された場合、子アカウントを論理削除
-            UserEntity childUser = userRepository.findById(childUserId)
-                    .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_005));
+            UserEntity childUser = locked.child();
             childUser.requestDeletion();
             userRepository.save(childUser);
             log.info("保護者同意全拒否 → 子アカウント論理削除: childUserId={}", childUserId);

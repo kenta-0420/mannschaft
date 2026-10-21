@@ -150,7 +150,7 @@ class MatchScopeContractIT extends AbstractMySqlIntegrationTest {
     private StorageAclService storageAclService;
 
     @MockitoBean
-    private R2StorageService storageService;
+    private R2StorageService r2StorageService;
 
     @PersistenceContext
     private EntityManager em;
@@ -199,7 +199,7 @@ class MatchScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        given(storageService.generateDownloadUrl(any(), any()))
+        given(r2StorageService.generateDownloadUrl(any(), any()))
                 .willAnswer(invocation -> "https://storage.test.invalid/download/" + invocation.getArgument(0));
         orgAId = insertOrganization("MATCHAUTHZ 組織A");
         orgBId = insertOrganization("MATCHAUTHZ 組織B");

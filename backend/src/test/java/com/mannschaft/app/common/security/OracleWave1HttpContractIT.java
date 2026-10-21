@@ -323,10 +323,14 @@ class OracleWave1HttpContractIT extends AbstractMySqlIntegrationTest {
         @ParameterizedTest
         @ValueSource(strings = {"GET", "PUT", "DELETE", "CERTIFICATE"})
         void S3_同team一覧で既知のIDの他人詳細は403_COMMON_002(String operation) throws Exception {
-            // CMP-261010-2226: 同一チームの所属者には一覧で存在が既知のため秘匿せず 403 COMMON_002。
+            // CMP-261010-2226: 同一チームの所属者には秘匿せず 403 COMMON_002。
             // denial() は 404 固定のため、S3 専用に 403 の status・code・message を検証する。
+            // CMP-261012-0313: 資格検索は ADMIN / MANAGE_MEMBER を持つ DEPUTY_ADMIN / SYSTEM_ADMIN に絞った
+            // （F07.5 §2）。一般メンバーの検索は 403 になり、個別 ID の 403 契約はそのまま維持する。
             MemberSkillEntity own = skill(ownTeam.getId());
-            http(payer, "GET", skillPath("search"), null).andExpect(status().isOk())
+            http(payer, "GET", skillPath("search"), null).andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+            http(admin, "GET", skillPath("search"), null).andExpect(status().isOk())
                     .andExpect(jsonPath("$.data[0].memberSkillId").value(own.getId()));
             skillHttp(payer, operation, own.getId())
                     .andExpect(status().isForbidden())

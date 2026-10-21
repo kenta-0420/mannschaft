@@ -40,6 +40,61 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* mobileでは共通部品の実操作領域を確保し、md以上の既存密度は維持する。 */
+@media screen and (max-width: 767px) {
+  .p-button.p-button,
+  .p-inputtext.p-inputtext,
+  .p-paginator button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .p-button.p-button {
+    max-width: 100%;
+  }
+
+  .p-button .p-button-label {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .p-paginator .p-paginator-content,
+  .p-paginator .p-paginator-pages {
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* 透明inputはroot全体、見た目のsliderとhandleは従来の40x24内に保つ。 */
+  .p-toggleswitch.p-toggleswitch {
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .p-toggleswitch .p-toggleswitch-slider {
+    position: relative;
+    inset: auto;
+    width: var(--p-toggleswitch-width);
+    height: var(--p-toggleswitch-height);
+    flex-shrink: 0;
+  }
+
+  /* 透明inputの角も操作領域に含め、sliderの丸い見た目は維持する。 */
+  .p-toggleswitch .p-toggleswitch-input {
+    border-radius: 0;
+  }
+
+  .p-toggleswitch .p-toggleswitch-handle {
+    margin-inline-start: calc(-1 * var(--p-toggleswitch-border-width));
+  }
+}
+
 .page-fade-enter-active,
 .page-fade-leave-active {
   transition: opacity 0.2s ease;

@@ -3,16 +3,29 @@ import type {
   MemberCardListItem,
   MemberCardStatus,
   MemberCardQr,
-  CheckinRecord,
   CheckinStats,
   CheckinHistoryRecord,
   CheckinLocation,
   VerifyResponse,
   CreateCheckinLocationRequest,
 } from '~/types/member-card'
+import type { components } from '~/types/generated'
+
+type CheckinLocationResponse = Required<components['schemas']['CheckinLocationResponse']>
+
+// 既存APIの応答はactive、画面モデルと更新本文はisActiveを使う。
+function toCheckinLocation({ active, ...location }: CheckinLocationResponse): CheckinLocation {
+  return { ...location, isActive: active }
+}
 
 export function useMemberCardApi() {
   const api = useApi()
+
+  async function ensurePlatform() {
+    return (await api<{ data: { memberCardId: number; scopeType: 'PLATFORM'; status: MemberCardStatus } }>(
+      '/api/v1/member-cards/platform/me', { method: 'POST' },
+    )).data
+  }
 
   async function listMy() {
     const res = await api<{ data: MemberCard[] }>('/api/v1/member-cards/my')
@@ -38,14 +51,14 @@ export function useMemberCardApi() {
    * BE はどちらも解釈せず `meta` も送らないため、総件数は常に undefined だった（CMP-260912-1823）。
    *
    * @param id    会員カードID
-   * @param range 取得期間（ISO 8601）。未指定なら全期間
+   * @param range 取得期間（ISO 8601）。未指定ならBE既定の直近30日間
    */
   async function getCheckins(id: number, range?: { from?: string; to?: string }) {
     const query = new URLSearchParams()
     if (range?.from) query.set('from', range.from)
     if (range?.to) query.set('to', range.to)
     const qs = query.toString()
-    const res = await api<{ data: CheckinRecord[] }>(
+    const res = await api<{ data: CheckinHistoryRecord[] }>(
       `/api/v1/member-cards/${id}/checkins${qs ? `?${qs}` : ''}`,
     )
     return res
@@ -82,13 +95,13 @@ export function useMemberCardApi() {
     await api(`/api/v1/member-cards/${id}/reactivate`, { method: 'PATCH' })
   }
 
-  async function listByTeam(teamId: string) {
-    const res = await api<{ data: MemberCard[] }>(`/api/v1/teams/${teamId}/member-cards`)
+  async function listByTeam(teamId: string, status: MemberCardStatus = 'ACTIVE') {
+    const res = await api<{ data: MemberCardListItem[] }>(`/api/v1/teams/${teamId}/member-cards?status=${status}`)
     return res.data
   }
 
-  async function listByOrg(orgId: string) {
-    const res = await api<{ data: MemberCard[] }>(`/api/v1/organizations/${orgId}/member-cards`)
+  async function listByOrg(orgId: string, status: MemberCardStatus = 'ACTIVE') {
+    const res = await api<{ data: MemberCardListItem[] }>(`/api/v1/organizations/${orgId}/member-cards?status=${status}`)
     return res.data
   }
 
@@ -122,30 +135,30 @@ export function useMemberCardApi() {
     return res.data
   }
 
-  async function getTeamCheckinStats(teamId: string) {
-    const res = await api<{ data: CheckinStats }>(`/api/v1/teams/${teamId}/checkins/stats`)
+  async function getTeamCheckinStats(teamId: string, range: { from: string; to: string }) {
+    const res = await api<{ data: CheckinStats }>(`/api/v1/teams/${teamId}/checkins/stats?${new URLSearchParams(range)}`)
     return res.data
   }
 
   async function listLocations(teamId: string) {
-    const res = await api<{ data: CheckinLocation[] }>(`/api/v1/teams/${teamId}/checkin-locations`)
-    return res.data
+    const res = await api<{ data: CheckinLocationResponse[] }>(`/api/v1/teams/${teamId}/checkin-locations`)
+    return res.data.map(toCheckinLocation)
   }
 
   async function createLocation(teamId: string, body: CreateCheckinLocationRequest) {
-    const res = await api<{ data: CheckinLocation }>(`/api/v1/teams/${teamId}/checkin-locations`, {
+    const res = await api<{ data: CheckinLocationResponse }>(`/api/v1/teams/${teamId}/checkin-locations`, {
       method: 'POST',
       body,
     })
-    return res.data
+    return toCheckinLocation(res.data)
   }
 
-  async function updateLocation(teamId: string, id: number, body: CreateCheckinLocationRequest) {
-    const res = await api<{ data: CheckinLocation }>(
+  async function updateLocation(teamId: string, id: number, body: CreateCheckinLocationRequest & { isActive?: boolean }) {
+    const res = await api<{ data: CheckinLocationResponse }>(
       `/api/v1/teams/${teamId}/checkin-locations/${id}`,
       { method: 'PUT', body },
     )
-    return res.data
+    return toCheckinLocation(res.data)
   }
 
   async function deleteLocation(teamId: string, id: number) {
@@ -153,13 +166,14 @@ export function useMemberCardApi() {
   }
 
   async function getLocationQr(teamId: string, id: number) {
-    const res = await api<{ data: { qrToken: string } }>(
+    const res = await api<{ data: { locationId: number; name: string; qrToken: string; scopeName: string; printInstructions: string } }>(
       `/api/v1/teams/${teamId}/checkin-locations/${id}/qr`,
     )
     return res.data
   }
 
   return {
+    ensurePlatform,
     listMy,
     get,
     getQr,

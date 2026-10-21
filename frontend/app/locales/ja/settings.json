@@ -1,5 +1,11 @@
 {
   "data_export": {
+    "request_daily_limit": "データ出力は24時間に1回までです。既存の出力は引き続き利用できます。",
+    "request_in_progress": "データ出力はすでに処理中です。完了までお待ちください。",
+    "request_error": "データ出力を要求できませんでした。もう一度お試しください。",
+    "download_not_ready": "まだダウンロードできません。データ出力の完了後にもう一度お試しください。",
+    "download_expired": "ダウンロードの保持期限が切れています。要求可能になったら新しくデータを出力してください。",
+    "download_error": "データをダウンロードできませんでした。もう一度お試しください。",
     "section_title": "データエクスポート",
     "export_button": "個人データをエクスポート",
     "status_completed": "完了",
@@ -11,7 +17,7 @@
     "step_failed": "エクスポートに失敗しました",
     "step_processing": "エクスポート中...",
     "step_preparing": "準備中...",
-    "description": "あなたの個人データをZIPファイルとしてエクスポートできます。"
+    "description": "個人データをZIPで出力できます。新規ZIPはAES-256で保護され、パスワードは完了メールで届きます。AES対応の解凍アプリが必要です。Windows標準機能は暗号化ZIPに非対応で、macOS標準機能での展開も保証されません。変更前の作成済みZIPは暗号化されていない場合がありますが、元の形式と期限を保持します。"
   },
   "deletion_preview": {
     "dialog_title": "アカウント削除の確認",
@@ -202,6 +208,72 @@
         "delete_key_error": "セキュリティキーの削除に失敗しました",
         "rename_success": "デバイス名を更新しました",
         "rename_error": "デバイス名の更新に失敗しました"
+      },
+      "two_fa": {
+        "loading": "読み込み中...",
+        "status_disabled": "未設定",
+        "status_totp": "有効（認証アプリ）",
+        "status_email": "有効（メール）",
+        "backup_remaining": "バックアップコード 残り {count} 件",
+        "backup_low": "バックアップコードの残りが少なくなっています。新しいコードを再生成してください。",
+        "setup_email_button": "メールで有効化",
+        "disable_button": "2FAを無効化",
+        "enable_button": "有効化する",
+        "retry_button": "再読み込み",
+        "totp": {
+          "code_label": "認証アプリに表示された6桁のコード",
+          "copy_secret": "シークレットキーをコピー",
+          "secret_copied": "シークレットキーをコピーしました"
+        },
+        "email": {
+          "sent": "{email} に6桁のコードを送信しました（有効期限 約{minutes}分）。",
+          "code_label": "メールに届いた6桁のコード",
+          "resend_button": "コードを再送",
+          "resend_wait": "再送まで {seconds} 秒"
+        },
+        "backup": {
+          "copy_button": "コピー",
+          "download_button": "ダウンロード",
+          "copied": "バックアップコードをコピーしました",
+          "copy_failed": "クリップボードにコピーできませんでした",
+          "saved_check": "バックアップコードを安全な場所に保存しました"
+        },
+        "reauth": {
+          "disable_title": "2段階認証を無効化",
+          "regenerate_title": "バックアップコードを再生成",
+          "disable_description": "本人確認のため、次の情報をすべて入力してください。",
+          "regenerate_description": "本人確認のため、現在のパスワードと確認コードのどちらかを入力してください（両方入力した場合は、両方とも正しい必要があります）。再生成すると以前のコードはすべて使えなくなります。",
+          "regenerate_description_no_password": "本人確認のため、確認コードを入力してください。再生成すると以前のコードはすべて使えなくなります。",
+          "password_label": "現在のパスワード",
+          "method_label": "確認方法",
+          "method_totp": "認証アプリ",
+          "method_email": "メール",
+          "method_backup": "バックアップコード",
+          "send_email_button": "確認コードをメールで送信",
+          "code_label_otp": "6桁の確認コード",
+          "code_label_backup": "バックアップコード",
+          "disable_submit": "無効化する",
+          "regenerate_submit": "再生成する"
+        },
+        "toast": {
+          "enabled": "2段階認証を有効にしました",
+          "disabled": "2段階認証を無効にしました"
+        },
+        "error": {
+          "invalid_code": "確認コードが正しくありません",
+          "code_already_used": "この確認コードは既に使用されています。新しいコードが表示されるまでお待ちください",
+          "resend_wait": "確認コードの再送は少し時間をおいてからお試しください",
+          "send_limit": "確認コードの送信回数が上限に達しました。しばらく時間をおいてお試しください",
+          "already_enabled": "2段階認証は既に有効になっています",
+          "not_enabled": "2段階認証が有効になっていません",
+          "reauth_failed": "本人確認に失敗しました。パスワードと確認コードをご確認ください",
+          "email_missing": "メールアドレスが登録されていないため、メールは利用できません",
+          "email_unavailable": "メールでの2段階認証は現在ご利用いただけません",
+          "rate_limited": "操作が多すぎます。{seconds} 秒後にもう一度お試しください",
+          "rate_limited_unknown": "操作が多すぎます。しばらく時間をおいてお試しください",
+          "status_load": "2段階認証の状態を取得できませんでした",
+          "generic": "処理に失敗しました。時間をおいて再度お試しください"
+        }
       }
     },
     "linked_accounts": {
@@ -469,7 +541,8 @@
       },
       "security": {
         "label": "セキュリティ",
-        "description": "2FA・セッション管理・セキュリティキー"
+        "description": "2FA・セッション管理・セキュリティキー",
+        "keywords": "バックアップ バックアップコード 二要素 二要素認証 2段階 2段階認証 二段階認証 2fa 認証アプリ totp"
       },
       "email": {
         "description": "メールアドレスの変更"
@@ -511,7 +584,7 @@
         "description": "検索・DM受信・オンライン状態の公開範囲"
       },
       "contactInviteTokens": {
-        "description": "連絡先追加用の招待URLを発行・管理"
+        "description": "連絡先追加用の招待URLとQRコードを発行・表示・管理します"
       },
       "contactRequestBlocks": {
         "label": "申請事前拒否リスト",

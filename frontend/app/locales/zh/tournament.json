@@ -1,6 +1,12 @@
 {
   "tournament": {
     "detail": {
+      "backToList": "返回赛事列表",
+      "noParticipants": "暂无参赛队伍",
+      "teamName": "队伍名称",
+      "entryCount": "报名人数",
+      "actions": "操作",
+      "manageEntry": "管理参赛名单",
       "noDivisions": "尚未登记任何组别",
       "divisionsLoadError": "加载组别列表失败",
       "loadError": "加载赛事信息失败"
@@ -20,6 +26,8 @@
       }
     },
     "entry": {
+      "name": "姓名",
+      "overwriteExisting": "覆盖现有参赛名单",
       "title": "参赛名单管理",
       "memberCount": "{count}名",
       "countRange": "{min}〜{max}名",

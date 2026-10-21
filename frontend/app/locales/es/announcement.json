@@ -98,7 +98,8 @@
         "body": "Define quién verá el anuncio (primer paso).",
         "steps": {
           "step1": "Elige el destinatario: Solo miembros / Seguidores y superiores / Todos (Público)",
-          "step2": "(Solo anuncios de organización) Elige «Todos los equipos» o equipos concretos"
+          "step2": "(Solo anuncios de organización) Elige «Todos los equipos» o equipos concretos",
+          "step3": "(Solo anuncios de organización) Con \"Elegir por grupo de equipos\" puede elegir grupos o un rango (hasta / desde) de una vez. El número de equipos coincidentes se muestra en pantalla"
         }
       },
       "template": {
@@ -114,7 +115,7 @@
         "body": "Elige un destino entre Tablón, Línea de tiempo, Blog, TODO, Agenda y Encuesta.",
         "steps": {
           "step1": "Elige una de las 6 tarjetas",
-          "step2": "Pulsa «Siguiente». Nota: si la plantilla tiene un canal predeterminado, se omite esta pantalla"
+          "step2": "Revisa o cambia aquí el canal predeterminado de la plantilla y pulsa «Siguiente» para introducir el contenido"
         }
       },
       "content": {
@@ -162,6 +163,11 @@
     "dynamic_display_note": "La visualización se determina según la pertenencia actual (los grupos eliminados se determinan por los equipos de destino en el momento del envío)",
     "template_deleted_groups_removed": "Se han quitado de la plantilla los grupos de equipos eliminados",
     "template_range_invalid": "El rango de la plantilla incluye grupos de equipos eliminados. Vuelve a elegir el rango",
-    "audience_summary": "Destinatarios: {label} ({count} equipos al enviar)"
+    "audience_summary": "Destinatarios: {label} ({count} equipos al enviar)",
+    "groups_load_failed": "No se pudo cargar la lista de grupos de equipos",
+    "target_range_pick_group": "Seleccionar grupo",
+    "preview_loading": "Comprobando destinatarios…",
+    "preview_failed": "No se pudieron comprobar los destinatarios",
+    "broadcast_done_title": "Anuncio enviado"
   }
 }

@@ -82,6 +82,7 @@ function onExported() {
     </div>
 
     <template v-else-if="entry">
+      <Button class="mb-4" :label="t('reflection.arSession.start')" outlined @click="router.push('/reflections/recall-session/' + entryId)" />
       <!-- マスク中：本文非表示＋想起テスト導線（AC-92） -->
       <div v-if="entry.isMasked" class="rounded-xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-700/50 dark:bg-amber-900/20">
         <div class="mb-4 text-center">

@@ -5,7 +5,7 @@ const props = defineProps<{
   teamId: string
 }>()
 
-const categories: SidebarCategory[] = [
+const categories = computed<SidebarCategory[]>(() => [
   {
     key: 'home',
     labelKey: 'teamSidebar.category.home',
@@ -52,6 +52,9 @@ const categories: SidebarCategory[] = [
     icon: 'pi pi-users',
     items: [
       { labelKey: 'teamSidebar.item.member_profiles', icon: 'pi pi-id-card', path: 'member-profiles', moduleSlug: 'member_intro', requiredRole: 'MEMBER' },
+      // CMP-261012-0313: 資格画面（/teams/*/skills）は FEATURE_SKILL_RESUME_ENABLED のゲート対象。
+      // ゲートが閉じている間は導線を出さない（GATE_ROUTE_MAP と同じ gate_key）。
+      { labelKey: 'teamSidebar.item.skills', icon: 'pi pi-star', path: 'skills', moduleSlug: 'member_intro', requiredRole: 'MEMBER', gateKey: 'FEATURE_SKILL_RESUME_ENABLED' },
       { labelKey: 'teamSidebar.item.circulation', icon: 'pi pi-envelope', path: 'circulation', moduleSlug: 'circulation', requiredRole: 'MEMBER' },
       // クイック確認（F04.9）は日常の連絡手段として回覧板の隣に置く。
       // 既存URLと checkAdminOrAbove に合わせた権限は後方互換のため維持する。
@@ -77,6 +80,7 @@ const categories: SidebarCategory[] = [
     labelKey: 'teamSidebar.category.ops_admin',
     icon: 'pi pi-wallet',
     items: [
+      { labelKey: 'loyalty.scan.title', icon: 'pi pi-qrcode', path: 'loyalty', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN', access: 'loyalty-operate' },
       { labelKey: 'teamSidebar.item.budget', icon: 'pi pi-wallet', path: 'budget', moduleSlug: 'budget', requiredRole: 'DEPUTY_ADMIN' },
       // CMP-260907-0851: 領収書はチームスコープでも発行できる（BE ReceiptScopeType に TEAM がある）ため、
       // 組織サイドバーと同じ条件（payment モジュール有効・DEPUTY_ADMIN 以上）でチームにも導線を置く。
@@ -119,6 +123,7 @@ const categories: SidebarCategory[] = [
     labelKey: 'teamSidebar.category.settings',
     icon: 'pi pi-cog',
     items: [
+      { labelKey: 'loyalty.settings.title', icon: 'pi pi-star', path: 'settings/loyalty', moduleSlug: null, requiredRole: 'ADMIN', access: 'scope-admin' },
       { labelKey: 'teamSidebar.item.guide', icon: 'pi pi-book', path: 'guide', moduleSlug: null, requiredRole: 'MEMBER' },
       // F10.1.1 P2a: 管理コンソール（L2 ハブ）への入口。DEPUTY_ADMIN 以上に表示。
       { labelKey: 'teamSidebar.item.adminConsole', icon: 'pi pi-shield', path: 'admin', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
@@ -148,11 +153,12 @@ const categories: SidebarCategory[] = [
       { labelKey: 'teamSidebar.item.bulletinCategories', icon: 'pi pi-tags', path: '', absolutePath: '/admin/bulletin-categories', moduleSlug: 'bulletin', requiredRole: 'DEPUTY_ADMIN' },
     ],
   },
-]
+])
 </script>
 
 <template>
   <BaseSidebar
+    :key="props.teamId"
     scope-type="team"
     :scope-id="props.teamId"
     :categories="categories"

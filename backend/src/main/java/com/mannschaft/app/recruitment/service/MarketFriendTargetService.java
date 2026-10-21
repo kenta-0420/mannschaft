@@ -2,25 +2,20 @@ package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.market.MarketErrorCode;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.recruitment.RecruitmentDistributionTargetType;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.dto.FriendTargetRequest;
 import com.mannschaft.app.recruitment.dto.FriendTargetView;
 import com.mannschaft.app.recruitment.entity.RecruitmentFriendTargetEntity;
-import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentFriendTargetRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.social.repository.TeamFriendFolderRepository;
 import com.mannschaft.app.social.repository.TeamFriendRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -28,7 +23,9 @@ import java.util.stream.Collectors;
 
 /**
  * F22.1 市: フレンド宛非公開札（{@code visibility='FRIEND_TEAMS_ONLY'}）の
- * 宛先検証・保存・集合解決・配信を担当するサービス（02_api_design §4 / §7）。
+ * 宛先検証・保存・集合解決・受信者解決を担当するサービス（02_api_design §4 / §7）。
+ * 「届いた札」通知の配送は Issue #2997 で {@code RecruitmentNotificationListener}
+ * （AFTER_COMMIT）へ移設した。本クラスは通知を作らず、受信者の解決だけを行う。
  *
  * <p>札主が <strong>TEAM スコープ</strong>のときのみ成立する（{@code team_friends} は team-to-team）。
  * 組織スコープの札にフレンド宛先は許可しない。</p>
@@ -46,8 +43,6 @@ public class MarketFriendTargetService {
     private final TeamFriendRepository teamFriendRepository;
     private final TeamFriendFolderRepository folderRepository;
     private final UserRoleRepository userRoleRepository;
-    private final NotificationHelper notificationHelper;
-    private final MessageSource messageSource;
     /** 宛先集合の解決（NotificationHelper 非依存・Bean サイクル回避）。 */
     private final MarketFriendTargetResolver friendTargetResolver;
 
@@ -193,58 +188,34 @@ public class MarketFriendTargetService {
     }
 
     // =====================================================================
-    // 配信（札立て時）
+    // 受信者解決（札立て時。配送は RecruitmentNotificationListener）
     // =====================================================================
 
     /**
-     * 非公開札の宛先フレンドチーム管理者へ「届いた札」通知を配信する（02_api_design §7）。
+     * 非公開札の宛先フレンドチーム管理者（ADMIN）のユーザーID集合を解決する（02_api_design §7）。
      *
-     * @param listing 公開（OPEN 遷移）した札（FRIEND_TEAMS_ONLY・TEAM スコープ）
+     * <p>通知は作らない（Issue #2997）。呼び出し元（{@code RecruitmentListingService#publish}）が
+     * 結果を {@code RecruitmentNotificationEvent} に載せ、コミット後に配送される。</p>
+     *
+     * @param ownerTeamId 札主チームID
+     * @param listingId   札ID
+     * @return 受信者ユーザーID集合（宛先チームなし・ADMIN 不在なら空）
      */
-    @Transactional
-    public void distributeFriendListing(RecruitmentListingEntity listing) {
-        if (listing.getScopeType() != RecruitmentScopeType.TEAM) {
-            return;
-        }
-        Long ownerTeamId = listing.getScopeId();
-        Set<Long> targetTeamIds = resolveTargetTeamIds(ownerTeamId, listing.getId());
+    public Set<Long> resolveFriendListingRecipientUserIds(Long ownerTeamId, Long listingId) {
+        Set<Long> targetTeamIds = resolveTargetTeamIds(ownerTeamId, listingId);
         if (targetTeamIds.isEmpty()) {
-            log.info("F22.1 市: フレンド宛非公開札の宛先チームなし: listingId={}", listing.getId());
-            return;
+            log.info("F22.1 市: フレンド宛非公開札の宛先チームなし: listingId={}", listingId);
+            return Set.of();
         }
-
-        // 各宛先チームの管理者（ADMIN）へ通知。
+        // 各宛先チームの管理者（ADMIN）が受信者。
         Set<Long> recipientUserIds = new LinkedHashSet<>();
         for (Long teamId : targetTeamIds) {
             recipientUserIds.addAll(
                     userRoleRepository.findUserIdsByTeamIdAndRoleName(teamId, "ADMIN"));
         }
         if (recipientUserIds.isEmpty()) {
-            log.info("F22.1 市: 宛先チームに ADMIN 不在のため通知スキップ: listingId={}", listing.getId());
-            return;
+            log.info("F22.1 市: 宛先チームに ADMIN 不在のため通知対象なし: listingId={}", listingId);
         }
-
-        String actionUrl = "/market/listings/" + listing.getId();
-
-        // Issue #2715 CMP-055 ロットC-6: 受信者 locale に応じて件名・本文を組み立てる
-        // （locale 一括解決は notifyAllLocalized 内部の UserLocaleCache が担う）。
-        notificationHelper.notifyAllLocalized(
-                new ArrayList<>(recipientUserIds),
-                "MARKET_FRIEND_LISTING",
-                "MARKET_FRIEND_LISTING", listing.getId(),
-                NotificationScopeType.TEAM, ownerTeamId,
-                actionUrl, listing.getCreatedBy(),
-                (userId, locale) -> new NotificationHelper.LocalizedMessage(
-                        messageSource.getMessage(
-                                "notification.recruitment.friendListing.title",
-                                new Object[]{listing.getTitle()},
-                                "フレンドチームから届いた札: " + listing.getTitle(), locale),
-                        messageSource.getMessage(
-                                "notification.recruitment.friendListing.body",
-                                new Object[]{listing.getTitle()},
-                                listing.getTitle() + " の募集が届きました。", locale)));
-
-        log.info("F22.1 市: フレンド宛非公開札を配信: listingId={}, teams={}, recipients={}",
-                listing.getId(), targetTeamIds.size(), recipientUserIds.size());
+        return recipientUserIds;
     }
 }

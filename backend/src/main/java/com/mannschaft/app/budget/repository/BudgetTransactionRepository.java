@@ -3,6 +3,8 @@ package com.mannschaft.app.budget.repository;
 import com.mannschaft.app.budget.BudgetApprovalStatus;
 import com.mannschaft.app.budget.entity.BudgetTransactionEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -59,6 +61,10 @@ public interface BudgetTransactionRepository extends JpaRepository<BudgetTransac
      * 年度IDで取引数をカウントする。
      */
     long countByFiscalYearId(Long fiscalYearId);
+
+    /** 年度削除の監査履歴保護用。SQLRestrictionを迂回し論理削除済み取引も数える。 */
+    @Query(value = "SELECT COUNT(*) FROM budget_transactions WHERE fiscal_year_id = :fiscalYearId", nativeQuery = true)
+    long countAllHistoryByFiscalYearId(@Param("fiscalYearId") Long fiscalYearId);
 
     /**
      * 年度IDと費目IDで承認済み取引を検索する。

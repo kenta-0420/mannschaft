@@ -66,11 +66,6 @@ const {
 const {
   sessions,
   credentials,
-  totpSetup,
-  backupCodes,
-  showBackupCodesDialog,
-  setting2fa,
-  regenerating,
   renameDialog,
   newDeviceName,
   loginHistory,
@@ -79,13 +74,15 @@ const {
   loadingMoreHistory,
   loadSecurity,
   loadLoginHistory,
-  handleSetup2fa,
-  handleRegenerateBackupCodes,
   handleRevokeSession,
   handleRevokeAllSessions,
   handleDeleteCredential,
   openRenameDialog,
   handleRenameCredential,
+  isRegisteringPasskey,
+  registerDialog,
+  newPasskeyName,
+  handlePasskeyRegister,
 } = useAccountSecurity()
 
 const {
@@ -207,23 +204,22 @@ onMounted(async () => {
         <NotificationPreferences />
       </SectionCard>
 
+      <SettingsTwoFactorSection :has-password="profile.hasPassword" />
+
       <SettingsSecuritySection
-        v-model:show-backup-codes-dialog="showBackupCodesDialog"
         v-model:rename-dialog="renameDialog"
         v-model:new-device-name="newDeviceName"
-        :totp-setup="totpSetup"
-        :setting2fa="setting2fa"
-        :regenerating="regenerating"
+        v-model:register-dialog="registerDialog"
+        v-model:new-passkey-name="newPasskeyName"
+        :is-registering-passkey="isRegisteringPasskey"
         :sessions="sessions"
         :credentials="credentials"
-        :backup-codes="backupCodes"
-        @setup2fa="handleSetup2fa"
-        @regenerate-backup-codes="handleRegenerateBackupCodes"
         @revoke-session="handleRevokeSession"
         @revoke-all-sessions="handleRevokeAllSessions"
         @delete-credential="handleDeleteCredential"
         @open-rename-dialog="openRenameDialog"
         @rename-credential="handleRenameCredential"
+        @passkey-register="handlePasskeyRegister"
       />
 
       <SettingsLinkedAccountsSection

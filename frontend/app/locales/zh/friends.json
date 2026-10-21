@@ -11,6 +11,15 @@
       "target_team_id": "目标团队 ID",
       "comment_label": "问候语（任意）"
     },
+    "follow_dialog": {
+      "search_label": "按团队名称搜索",
+      "search_placeholder": "请输入至少2个字符的团队名称",
+      "slug_input_label": "按 URL 名称指定",
+      "slug_input_hint": "如果搜索结果中没有该团队，请在下方输入对方团队的 URL 名称（地址末尾的部分）",
+      "no_results": "未找到符合条件的团队",
+      "search_error": "搜索失败。请检查网络连接后重试",
+      "retry": "重新搜索"
+    },
     "actions": {
       "follow": "关注",
       "unfollow": "取消关注",
@@ -40,8 +49,8 @@
       },
       "follow": {
         "title": "关注并成为友队",
-        "step1": "点击画面右上方的“关注”按钮",
-        "step2": "输入对方团队的ID（数字）",
+        "step1": "点击友队标签页顶部的“关注”按钮",
+        "step2": "按团队名称搜索并选择要关注的团队。找不到时，请直接输入对方团队的 URL 名称（地址末尾的部分）",
         "step3": "输入问候语（可选，最多300个字符）",
         "step4": "点击对话框中的“关注”",
         "mutual": "对方团队也关注你后，会显示“成为友队了”，友队关系随即成立。",
@@ -137,8 +146,8 @@
       "modal_title": "转发投稿",
       "target_label": "发布范围",
       "target_member": "仅成员",
-      "target_supporter": "成员+支持者（Phase 3以后）",
-      "target_supporter_tooltip": "Phase 3以后可用",
+      "target_supporter": "成员+支持者（即将推出）",
+      "target_supporter_tooltip": "该发布范围暂不可用",
       "comment_label": "管理员评论（任意）",
       "comment_placeholder": "输入转发时附加的评论（任意）",
       "submit": "转发",
@@ -147,7 +156,8 @@
       "revoke": "取消转发",
       "revoke_success": "已取消转发",
       "revoke_confirm": "取消此转发吗？",
-      "error": "转发失败"
+      "error": "转发失败",
+      "already_forwarded": "该帖子已转发。列表已刷新"
     }
   },
   "forward_exports": {

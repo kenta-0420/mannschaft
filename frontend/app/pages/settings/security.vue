@@ -9,8 +9,6 @@ definePageMeta({
 const notification = useNotification()
 const authStore = useAuthStore()
 const {
-  setup2fa,
-  regenerateBackupCodes,
   getSessions,
   revokeSession,
   revokeAllSessions,
@@ -18,17 +16,14 @@ const {
   deleteWebAuthnCredential,
   updateWebAuthnCredential,
 } = useAuthApi()
+const { getProfile } = useUserSettingsApi()
 
 const loading = ref(true)
 const sessions = ref<AuthSessionResponse[]>([])
 const credentials = ref<WebAuthnCredentialResponse[]>([])
 
-// 2FA state
-const totpSetup = ref<{ secret: string; qrCodeUrl: string } | null>(null)
-const backupCodes = ref<string[]>([])
-const showBackupCodesDialog = ref(false)
-const setting2fa = ref(false)
-const regenerating = ref(false)
+// 2FA の本人確認でパスワード欄を出すかどうか（OAuth のみの利用者は false）
+const hasPassword = ref(true)
 
 // WebAuthn rename
 const renameDialog = ref(false)
@@ -52,40 +47,18 @@ onMounted(async () => {
 async function loadData() {
   loading.value = true
   try {
-    const [sessRes, credRes] = await Promise.all([getSessions(), getWebAuthnCredentials()])
+    const [sessRes, credRes, profileRes] = await Promise.all([
+      getSessions(),
+      getWebAuthnCredentials(),
+      getProfile(),
+    ])
     sessions.value = sessRes.data
     credentials.value = credRes.data
+    hasPassword.value = profileRes.data.hasPassword
   } catch {
     notification.error('セキュリティ情報の取得に失敗しました')
   } finally {
     loading.value = false
-  }
-}
-
-// === 2FA ===
-async function handleSetup2fa() {
-  setting2fa.value = true
-  try {
-    const res = await setup2fa()
-    totpSetup.value = res.data
-  } catch {
-    notification.error('2FAセットアップの開始に失敗しました')
-  } finally {
-    setting2fa.value = false
-  }
-}
-
-async function handleRegenerateBackupCodes() {
-  regenerating.value = true
-  try {
-    const res = await regenerateBackupCodes()
-    backupCodes.value = res.data.backupCodes
-    showBackupCodesDialog.value = true
-    notification.success('バックアップコードを再生成しました')
-  } catch {
-    notification.error('バックアップコードの再生成に失敗しました')
-  } finally {
-    regenerating.value = false
   }
 }
 
@@ -171,28 +144,22 @@ async function handlePasskeyRegister() {
     <PageLoading v-if="loading" />
 
     <div v-else class="fade-in space-y-8">
+      <SettingsTwoFactorSection :has-password="hasPassword" />
+
       <SettingsSecuritySection
-        :totp-setup="totpSetup"
-        :setting2fa="setting2fa"
-        :regenerating="regenerating"
         :sessions="sessions"
         :credentials="credentials"
-        :backup-codes="backupCodes"
-        :show-backup-codes-dialog="showBackupCodesDialog"
         :rename-dialog="renameDialog"
         :new-device-name="newDeviceName"
         :is-registering-passkey="isRegisteringPasskey"
         :register-dialog="registerDialog"
         :new-passkey-name="newPasskeyName"
-        @setup2fa="handleSetup2fa"
-        @regenerate-backup-codes="handleRegenerateBackupCodes"
         @revoke-session="handleRevokeSession"
         @revoke-all-sessions="handleRevokeAllSessions"
         @delete-credential="handleDeleteCredential"
         @open-rename-dialog="openRenameDialog"
         @rename-credential="handleRenameCredential"
         @passkey-register="handlePasskeyRegister"
-        @update:show-backup-codes-dialog="showBackupCodesDialog = $event"
         @update:rename-dialog="renameDialog = $event"
         @update:new-device-name="newDeviceName = $event"
         @update:register-dialog="registerDialog = $event"

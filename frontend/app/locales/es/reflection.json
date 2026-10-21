@@ -297,6 +297,34 @@
         "add_button": "Añadir",
         "added": "Añadido"
       }
+    },
+    "arSession": {
+      "title": "Práctica de recuerdo",
+      "description": "Escribe lo que recuerdas antes de ver el original guardado. Esta práctica es opcional.",
+      "start": "Iniciar práctica de recuerdo",
+      "freeRecall": "Recordar con tus propias palabras",
+      "card": "Tarjeta de recuerdo",
+      "side": {
+        "TERM": "Pista del término",
+        "MEANING": "Pista del significado"
+      },
+      "answered": "Lo recuerdo",
+      "forgot": "Ahora no lo recuerdo",
+      "answer": "Tu respuesta",
+      "selfRating": "¿Cuánto recuerdas?",
+      "rating": {
+        "REMEMBERED": "Lo recordé",
+        "PARTIAL": "Lo recordé en parte",
+        "FORGOT": "No lo recordé"
+      },
+      "ratingNeutral": "Tu valoración no cambia la cantidad de la recompensa.",
+      "save": "Guardar respuestas",
+      "complete": "Terminar y ver el original",
+      "cancel": "Cancelar práctica",
+      "cancelled": "Esta práctica se ha cancelado.",
+      "retry": "Reintentar",
+      "failed": "No se pudo cargar o guardar. Inténtalo de nuevo.",
+      "original": "Original guardado"
     }
   }
 }

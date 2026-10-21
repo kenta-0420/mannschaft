@@ -63,6 +63,8 @@
   - デスクトップの視覚密度を崩さない範囲であればブレークポイント指定なしで適用してよい。タブバーの「＋」ボタンのようにチュラム（chrome）自体の高さが変わり密度が崩れる場合のみ `max-md:` を付けてモバイル限定にする。
 - **横スクロール（横パン）禁止**: 390px 幅（iPhone SE 相当）でページ全体が横に伸びてはならない。flex の子要素には `min-w-0` を付けて縮小可能にし、本来横に伸びる要素（テーブル・タブ列・コード表示等）は自コンテナ内に `overflow-x-auto` を付けて横スクロールを閉じ込める。
 - **ブレークポイント境界**: `md`（768px）を FE のモバイル/デスクトップの正の境界とする。レイアウト切り替え（サイドバーの折りたたみ等）の判定はこれに揃える。
+  - 共通PrimeVue Button/InputText/Paginator/ToggleSwitchの操作領域は `main.css` の `screen`・767px以下で44pxを下限とし、768px以上と印刷には適用しない。ToggleSwitchは透明inputの領域を広げ、既存slider/handleの視覚サイズとchecked位置を維持する。領収書一覧の見出しと操作群は同じ境界で縦積みにし、長い翻訳と操作領域の合算による横はみ出しを防ぐ。
+  - 寸法と通常操作の回帰は `tests/e2e/mobile/common-controls.spec.ts` を既存Smoke E2Eで検証する。API境界をstubしたviewport・mouse/keyboardの試験であり、モックなしの認可・自然導線・実タッチ確認は別途行う。
 - **入力要素のフォントサイズは 16px 以上**: `<input>` / `<textarea>` 等の `font-size` が 16px 未満だと iOS Safari がフォーカス時に自動ズームする。Tailwind の `text-sm`（デフォルト14px）を入力欄に直接使わず、`text-base` 以上を使うか、`tailwind.config.ts` の `fontSize.xs` のように明示的に上書きされたスケールを使うこと。
 
 ## 4. ディレクトリ構成と責務 (Directory Structure)

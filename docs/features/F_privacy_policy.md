@@ -294,7 +294,7 @@ ALTER TABLE users
     ADD COLUMN privacy_policy_version     VARCHAR(20) NULL COMMENT '同意時のポリシーバージョン'       AFTER privacy_policy_accepted_at;
 ```
 
-> **なぜ別テーブルでなくカラムか**: 現フェーズは「登録時に最新版へ同意」のシンプルなモデル。複数バージョン履歴管理が必要になった場合は別テーブルに移行する（ポリシー文面は 1.1.1。同意記録用の識別子は事実訂正のため再同意不要として 1.1.0 のまま）。
+> **なぜ別テーブルでなくカラムか**: 現フェーズは「登録時に最新版へ同意」のシンプルなモデル。複数バージョン履歴管理が必要になった場合は別テーブルに移行する（現行バージョンは FE の `frontend/app/constants/legalPolicy.ts` の `PRIVACY_POLICY_VERSION` が唯一の正本。2026-10-13 時点 1.1.1。版表示 `landing.legal.privacy.version_notice` も `{version}` でこの値を差し込む）。
 
 ---
 
@@ -360,8 +360,10 @@ user.setPrivacyPolicyVersion(request.getPrivacyPolicyVersion());
 
 ```typescript
 privacyPolicyAccepted: true,
-privacyPolicyVersion: '1.1.0',
+privacyPolicyVersion: PRIVACY_POLICY_VERSION, // ~/constants/legalPolicy（版表示と同じ出どころ）
 ```
+
+> 版の値は直書きしない（2026-10-13、本文を 1.1.1 へ改訂した後も登録が `'1.1.0'` を送り続け、同意記録が食い違っていた）。BE は版を形式（空でない・20 文字以内）でのみ検証する。改訂時に既存利用者へ再同意は求めない（裁定）。
 
 ---
 

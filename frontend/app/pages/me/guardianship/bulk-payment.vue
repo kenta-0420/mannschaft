@@ -606,7 +606,7 @@ onMounted(async () => {
       </div>
       <template #footer>
         <Button
-          :label="$t('common.close')"
+          :label="$t('button.close')"
           severity="secondary"
           @click="showResult = false"
         />

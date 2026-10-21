@@ -1,8 +1,6 @@
 package com.mannschaft.app.skill.service;
 
 import com.mannschaft.app.common.ApiResponse;
-import com.mannschaft.app.role.entity.UserRoleEntity;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.skill.SkillStatus;
 import com.mannschaft.app.skill.entity.MemberSkillEntity;
 import com.mannschaft.app.skill.entity.SkillCategoryEntity;
@@ -33,30 +31,29 @@ public class SkillMatrixService {
 
     private final SkillCategoryRepository categoryRepository;
     private final MemberSkillRepository memberSkillRepository;
-    private final UserRoleRepository userRoleRepository;
 
     /**
      * スコープ内のスキルマトリックスを取得する。
      * <p>
      * 列定義: スコープ内のアクティブカテゴリ一覧<br>
-     * 行定義: スコープ内の全メンバー（UserRoleから取得）<br>
+     * 行定義: 呼び出し側が渡すメンバーの userId（在籍メンバーの解決は tx の外で行う。CMP-261012-0313）<br>
      * セル: ACTIVE または EXPIRED の資格（PENDING_REVIEW 除外）。
      *       同一カテゴリで複数資格ある場合は ACTIVE 優先、次に expires_at DESC で1件を代表選出。
      * </p>
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
+     * @param scopeType     スコープ種別
+     * @param scopeId       スコープID
+     * @param memberUserIds 行にするメンバーの userId（この順で行を作る）。
+     *                      他ドメイン（membership）の参照を本 tx に持ち込まないため、呼び出し側が
+     *                      {@code AccessControlService#listActiveRegularMemberIds} で解決して渡す
      * @return ピボット形式のマトリックスデータ（Map形式）
      */
-    public ApiResponse<Map<String, Object>> getMatrix(String scopeType, Long scopeId) {
+    public ApiResponse<Map<String, Object>> getMatrix(String scopeType, Long scopeId, List<Long> memberUserIds) {
 
         // 列定義: アクティブカテゴリ一覧
         List<SkillCategoryEntity> categories =
                 categoryRepository.findByScopeTypeAndScopeIdAndIsActiveTrueAndDeletedAtIsNull(
                         scopeType, scopeId);
-
-        // 行定義: スコープ内の全メンバーのユーザーID一覧
-        List<Long> memberUserIds = resolveMemberUserIds(scopeType, scopeId);
 
         // スコープ内の ACTIVE / EXPIRED スキル（deleted_at IS NULL）をDB側でフィルタして取得
         // PENDING_REVIEW はマトリクス表示対象外のためクエリで除外する
@@ -128,29 +125,6 @@ public class SkillMatrixService {
     // ========================================
     // 内部メソッド
     // ========================================
-
-    /**
-     * スコープ内のメンバーユーザーIDリストを返す。
-     */
-    private List<Long> resolveMemberUserIds(String scopeType, Long scopeId) {
-        if ("TEAM".equalsIgnoreCase(scopeType)) {
-            return userRoleRepository.findByTeamId(scopeId,
-                            org.springframework.data.domain.Pageable.unpaged())
-                    .getContent()
-                    .stream()
-                    .map(UserRoleEntity::getUserId)
-                    .distinct()
-                    .toList();
-        } else {
-            return userRoleRepository.findByOrganizationId(scopeId,
-                            org.springframework.data.domain.Pageable.unpaged())
-                    .getContent()
-                    .stream()
-                    .map(UserRoleEntity::getUserId)
-                    .distinct()
-                    .toList();
-        }
-    }
 
     /**
      * 同一カテゴリで複数資格がある場合に代表を選出する。

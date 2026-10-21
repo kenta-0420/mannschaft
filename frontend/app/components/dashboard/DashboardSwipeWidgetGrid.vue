@@ -119,7 +119,7 @@ const bulletinThreadItems = computed<ScopeBulletinThreadItem[]>(
       icon="pi pi-calendar-plus"
       :items="upcomingEvents"
       :empty-message="$t('swipeWidgets.list.upcomingEmpty')"
-      :to="`${basePath}/events`"
+      :to="`${basePath}/schedule`"
     >
       <template #item="{ item }: { item: ScopeUpcomingEventItem }">
         <div

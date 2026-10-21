@@ -9,6 +9,7 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.member.event.MemberSubtabVisibilityUpdatedEvent;
+import com.mannschaft.app.loyalty.LoyaltyCommittedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -343,7 +344,7 @@ public class AuditLogEventListener {
             null,
             null,
             SecurityUtils.getCurrentSessionHash(),
-            null
+            mfaMetadata(event.getMethod(), null)
         );
     }
 
@@ -361,8 +362,42 @@ public class AuditLogEventListener {
             null,
             null,
             SecurityUtils.getCurrentSessionHash(),
-            null
+            mfaMetadata(event.getMethod(), event.getReason())
         );
+    }
+
+    /**
+     * CMP-261012-0910 AC-12/AC-35: ログイン時のバックアップコード使用。残数を metadata に残す（平文コードは持たない）。
+     */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleMfaBackupCodeUsed(MfaBackupCodeUsedEvent event) {
+        // ログイン完了直前（セッション確立前）のため session_hash は null のまま
+        auditLogService.record(
+            AuditEventType.MFA_BACKUP_CODE_USED.name(),
+            event.getUserId(),
+            null,
+            null,
+            null,
+            event.getIpAddress(),
+            event.getUserAgent(),
+            null,
+            toJson(Map.of("backupCodesRemaining", event.getBackupCodesRemaining()))
+        );
+    }
+
+    /** MFA 監査の metadata（{@code method} / {@code reason}。null の項目は載せない。AC-35）。 */
+    private String mfaMetadata(com.mannschaft.app.auth.TwoFactorMethod method, String reason) {
+        Map<String, Object> metadata = new java.util.LinkedHashMap<>();
+        if (method != null) {
+            metadata.put("method", method.name());
+        }
+        if (reason != null) {
+            metadata.put("reason", reason);
+        }
+        return metadata.isEmpty() ? null : toJson(metadata);
     }
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
@@ -811,5 +846,19 @@ public class AuditLogEventListener {
             null,
             event.getMetadataJson()
         );
+    }
+
+    /** ポイントの初回commitだけを監査へ接続する。秘密や表示名はmetadataへ含めない。 */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると確定済みポイント操作の監査証跡が恒久的に欠落する")
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleLoyaltyCommitted(LoyaltyCommittedEvent event) {
+        var metadata = new java.util.LinkedHashMap<String, Object>();
+        metadata.put("operation", event.operation().name());
+        if (event.transactionId() != null) metadata.put("transactionId", event.transactionId());
+        if (event.requestId() != null) metadata.put("requestId", event.requestId());
+        auditLogService.recordSync(LoyaltyCommittedEvent.AUDIT_EVENT_TYPE, event.actorUserId(),
+                event.targetUserId(), event.teamId(), null, null, null, null, toJson(metadata));
     }
 }

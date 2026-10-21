@@ -190,6 +190,18 @@ test.beforeAll(async () => {
     visibility: 'PUBLIC',
   })
 
+  // 参加できるのは主催組織に ACTIVE 加盟したチームだけ（F08.7 §2）。組織から招待 → チーム側で承諾して加盟させる
+  for (const team of [participant1, participant2]) {
+    const invite = await apiCall('POST', `/api/v1/organizations/${orgSlug}/team-invites`, token, {
+      teamSlug: team.data.slug as string,
+    })
+    await apiCall(
+      'POST',
+      `/api/v1/teams/${team.data.slug as string}/org-invites/${invite.data.id as number}/accept`,
+      token,
+    )
+  }
+
   await apiCall(
     'POST',
     `/api/v1/organizations/${orgNumericId}/tournaments/${orgTournamentId}/divisions/${divisionId}/participants`,

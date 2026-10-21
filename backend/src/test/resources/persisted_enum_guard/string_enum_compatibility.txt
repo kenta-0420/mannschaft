@@ -1,6 +1,7 @@
 # STRING永続化enumの読取り互換性台帳。自動更新禁止。
 # 初期台帳: 公式CI run36959618701 / head24007c89f5 / merge5d3dd93116のfresh本番全量走査で取得。展開済みの証明ではない。
 # 作法: docs/development/persisted_enum_deployment.md
+# 本人診断6定数: 読取り互換性を全taskへ先配布し、旧task0の証跡後に別releaseで書込み開始。実展開済みの証明ではない。
 com.mannschaft.app.actionmemo.ActionMemoMood#BAD
 com.mannschaft.app.actionmemo.ActionMemoMood#GOOD
 com.mannschaft.app.actionmemo.ActionMemoMood#GREAT
@@ -190,6 +191,8 @@ com.mannschaft.app.auth.ParentalConsentLinkStatus#APPROVED
 com.mannschaft.app.auth.ParentalConsentLinkStatus#PENDING
 com.mannschaft.app.auth.ParentalConsentLinkStatus#REJECTED
 com.mannschaft.app.auth.ParentalConsentLinkStatus#REVOKED
+com.mannschaft.app.auth.TwoFactorMethod#EMAIL
+com.mannschaft.app.auth.TwoFactorMethod#TOTP
 com.mannschaft.app.auth.entity.OAuthAccountEntity$OAuthProvider#APPLE
 com.mannschaft.app.auth.entity.OAuthAccountEntity$OAuthProvider#GOOGLE
 com.mannschaft.app.auth.entity.OAuthAccountEntity$OAuthProvider#LINE
@@ -461,6 +464,12 @@ com.mannschaft.app.dashboard.TargetType#POLL
 com.mannschaft.app.dashboard.TargetType#SCHEDULE
 com.mannschaft.app.dashboard.TargetType#TIMELINE_POST
 com.mannschaft.app.dashboard.TargetType#TODO
+com.mannschaft.app.diagnosis.DiagnosisMethod#BIRTH_STYLE
+com.mannschaft.app.diagnosis.DiagnosisMethod#DIAGNOSIS
+com.mannschaft.app.diagnosis.DiagnosisStatus#CANCELLED
+com.mannschaft.app.diagnosis.DiagnosisStatus#COMPLETED
+com.mannschaft.app.diagnosis.DiagnosisStatus#STARTED
+com.mannschaft.app.diagnosis.DiagnosisStatus#TIE_BREAK_REQUIRED
 com.mannschaft.app.digest.DigestScopeType#ORGANIZATION
 com.mannschaft.app.digest.DigestScopeType#TEAM
 com.mannschaft.app.digest.DigestStatus#DISCARDED
@@ -1338,6 +1347,34 @@ com.mannschaft.app.queue.TicketStatus#COMPLETED
 com.mannschaft.app.queue.TicketStatus#NO_SHOW
 com.mannschaft.app.queue.TicketStatus#SERVING
 com.mannschaft.app.queue.TicketStatus#WAITING
+com.mannschaft.app.ranch.AssignmentMethod#BIRTH_STYLE
+com.mannschaft.app.ranch.AssignmentMethod#DIAGNOSIS
+com.mannschaft.app.ranch.AssignmentMethod#HABITAT_RANDOM
+com.mannschaft.app.ranch.DinosaurStage#ADULT
+com.mannschaft.app.ranch.DinosaurStage#BABY
+com.mannschaft.app.ranch.DinosaurStage#EGG
+com.mannschaft.app.ranch.DinosaurStage#JUVENILE
+com.mannschaft.app.ranch.Habitat#AIR
+com.mannschaft.app.ranch.Habitat#LAND
+com.mannschaft.app.ranch.Habitat#SEA
+com.mannschaft.app.ranch.MotionMode#NORMAL
+com.mannschaft.app.ranch.MotionMode#REDUCED
+com.mannschaft.app.ranch.MotionMode#STOPPED
+com.mannschaft.app.ranch.ParticipationStatus#ACTIVE
+com.mannschaft.app.ranch.ParticipationStatus#PAUSED
+com.mannschaft.app.ranch.RenderStyle#PAINT_2D
+com.mannschaft.app.ranch.RenderStyle#PIXEL
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#AWARDED
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#CAPPED
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#INELIGIBLE
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#NOT_PARTICIPATING
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#REWARDS_PAUSED
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#SOURCE_COUNT_CAPPED
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#SOURCE_DISABLED
+com.mannschaft.app.ranch.reward.RanchRewardSourceType#ATTENDANCE_RESPONSE
+com.mannschaft.app.ranch.reward.RanchRewardSourceType#BLOG_FIRST_PUBLISH
+com.mannschaft.app.ranch.reward.RanchRewardSourceType#PERSONAL_RECALL_COMPLETE
+com.mannschaft.app.ranch.reward.RanchRewardSourceType#TIMELINE_ORIGINAL
 com.mannschaft.app.receipt.ReceiptArchiveKind#ORIGINAL
 com.mannschaft.app.receipt.ReceiptArchiveKind#VOIDED
 com.mannschaft.app.receipt.ReceiptPdfStatus#FAILED
@@ -2097,3 +2134,51 @@ com.mannschaft.app.workflow.WorkflowStatus#IN_PROGRESS
 com.mannschaft.app.workflow.WorkflowStatus#PENDING
 com.mannschaft.app.workflow.WorkflowStatus#REJECTED
 com.mannschaft.app.workflow.WorkflowStatus#WITHDRAWN
+com.mannschaft.app.reflection.RecallSessionStatus#STARTED
+com.mannschaft.app.reflection.RecallSessionStatus#COMPLETED
+com.mannschaft.app.reflection.RecallSessionStatus#CANCELLED
+com.mannschaft.app.reflection.RecallSessionCommandType#START
+com.mannschaft.app.reflection.RecallSessionCommandType#ANSWERS
+com.mannschaft.app.reflection.RecallSessionCommandType#COMPLETE
+com.mannschaft.app.reflection.RecallSessionCommandType#CANCEL
+# F18.1: 新設 team_loyalty_* 6表だけへ保存する36定数（設計§10）。既存表への値追加なし。
+# programs: Audience/target_audience, SelfAwardMode/self_award_mode; rules: Frequency/frequency。
+# transactions: TransactionKind/kind, TransactionChannel/channel, RequestOperation/request_operation。
+# award_requests: RequestStatus/status, RequestReason/reason, RequestOperation/terminal_action。
+# 新表を読まない旧アプリと共存可能。書込開始は6表migration適用と新API配置の後。
+com.mannschaft.app.loyalty.Audience#ALL_AUTHENTICATED
+com.mannschaft.app.loyalty.Audience#MEMBERS_AND_ABOVE
+com.mannschaft.app.loyalty.Audience#SUPPORTERS_AND_ABOVE
+com.mannschaft.app.loyalty.SelfAwardMode#AUTO
+com.mannschaft.app.loyalty.SelfAwardMode#STAFF_APPROVAL
+com.mannschaft.app.loyalty.Frequency#EACH_STAFF_CONFIRMATION
+com.mannschaft.app.loyalty.Frequency#ONCE_PER_JST_DAY
+com.mannschaft.app.loyalty.RequestStatus#APPROVED
+com.mannschaft.app.loyalty.RequestStatus#CANCELLED
+com.mannschaft.app.loyalty.RequestStatus#EXPIRED
+com.mannschaft.app.loyalty.RequestStatus#INVALIDATED
+com.mannschaft.app.loyalty.RequestStatus#PENDING
+com.mannschaft.app.loyalty.RequestStatus#REJECTED
+com.mannschaft.app.loyalty.RequestStatus#SUPERSEDED
+com.mannschaft.app.loyalty.RequestReason#DAILY_AWARDED
+com.mannschaft.app.loyalty.RequestReason#DAY_CHANGED
+com.mannschaft.app.loyalty.RequestReason#INELIGIBLE
+com.mannschaft.app.loyalty.RequestReason#LOCATION_INACTIVE
+com.mannschaft.app.loyalty.RequestReason#POINT_LIMIT
+com.mannschaft.app.loyalty.RequestReason#STAFF_REJECTED
+com.mannschaft.app.loyalty.RequestReason#TEAM_INACTIVE
+com.mannschaft.app.loyalty.RequestReason#TTL_EXPIRED
+com.mannschaft.app.loyalty.RequestReason#USER_CANCELLED
+com.mannschaft.app.loyalty.RequestReason#USER_INACTIVE
+com.mannschaft.app.loyalty.RequestReason#VERSION_CHANGED
+com.mannschaft.app.loyalty.TransactionKind#AWARD
+com.mannschaft.app.loyalty.TransactionKind#REDEEM
+com.mannschaft.app.loyalty.TransactionChannel#SELF_APPROVED
+com.mannschaft.app.loyalty.TransactionChannel#SELF_AUTO
+com.mannschaft.app.loyalty.TransactionChannel#STAFF
+com.mannschaft.app.loyalty.RequestOperation#APPROVE
+com.mannschaft.app.loyalty.RequestOperation#CANCEL
+com.mannschaft.app.loyalty.RequestOperation#REDEEM
+com.mannschaft.app.loyalty.RequestOperation#REJECT
+com.mannschaft.app.loyalty.RequestOperation#SELF_SUBMIT
+com.mannschaft.app.loyalty.RequestOperation#STAFF_AWARD

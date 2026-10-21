@@ -34,6 +34,8 @@ repositories {
 val mapstructVersion = "1.6.3"
 
 dependencies {
+    // F12.3: 新規GDPR ZIPのWinZip AES-256保護（標準ZIP暗号は使わない）
+    implementation("net.lingala.zip4j:zip4j:2.11.6")
     implementation("com.ibm.icu:icu4j:78.3")
     // Spring Boot Starters
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")

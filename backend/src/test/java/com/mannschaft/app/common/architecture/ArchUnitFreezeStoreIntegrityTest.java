@@ -705,7 +705,12 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （{@code ./gradlew build}、{@code --tests} 絞り込みなし）で実測した値へ追随。</p>
      * <p>正式1e8の全量解析と原因検分で確認した旧原因17件の削減（2063→2046）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2046;
+    // CMP-261012-0313: SkillMatrixService がマトリクスの行を role の UserRoleRepository（UserRoleEntity）から引くのをやめ、
+    //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
+    //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 2）。
+    // CMP-260925-0905: ConfirmableNotificationReminderBatchService が UserEntity に依存しなくなり6行減。2044→2038。
+    // Issue #3892: OrganizationService の InviteTokenEntity 直接依存解消で1行減（追加0）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2037;
 
     /**
      * 越境 {@code @Transactional} 禁止ストア（D-3）の期待行数。
@@ -730,7 +735,14 @@ class ArchUnitFreezeStoreIntegrityTest {
     // Issue #2997 G8: 1317 -> 1308（-9）。ActionMemoReminderBatchService と TodoDueReminderBatch が
     //   業務TX（クラス/メソッドの @Transactional）を持たなくなり、UserRepository / NotificationRepository への
     //   依存行が各3件ずつ消えた。CI shard1・2 の実測 -9 件と一致。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1308;
+    // CMP-261012-0313: SkillMatrixService がマトリクスの行を role の UserRoleRepository（UserRoleEntity）から引くのをやめ、
+    //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
+    //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 4）。
+    // Issue #2997 G7-a: 1304 -> 1298（-6）。DigestAsyncExecutor と TeamSlotNoteNotifyListener が @Transactional を外した（各 3 行、追加 0・削除 6）。
+    // Issue #3892: OrganizationService の InviteTokenRepository 直接依存解消で3行減（追加0）。
+    // CMP-261012-0315: TeamFriendsService が TeamRepository を TeamService（team ドメインの公開 Service）に置き換え、
+    //   TeamRepository への依存行が3件解消（追加 0・削除 3）。1295 -> 1292。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1292;
 
     /**
      * 推移的クロスドメイン {@code @Transactional} 番人（D-3T）の初期凍結行数。
@@ -827,19 +839,53 @@ class ArchUnitFreezeStoreIntegrityTest {
      * loadPersonalCalendarCounts 1）。追加 0・削除 93。{@code 7375 → 7282}。</p>
      *
      * <p>6-A と 6-C の統合（merge）: 6-A 側の期待値 7357 から 6-C の返済 93 行を引いた実数 7264 に合わせた。</p>
+     *
+     * <p>F01.2.1 6-E（グループ宛て告知の push）: 公開の印を渡すため {@code SurveyService.publishSurvey} の入口を
+     * 3引数版から4引数版（{@code boolean} 付き）1本に差し替えた。既存負債 2 行（→ OrganizationRepository /
+     * UserRoleRepository）の入口名を付け替えただけで、追加 0・削除 0。増減なし。
+     * 告知の push は social ドメインの outbox（{@code social_notification_outbox}）へ書くだけで、notification の
+     * Repository へは届かない（ストア変更なし）。</p>
      */
     // CMP-260820-1018: Proxy の一覧・アップロードURL生成を非TX認可入口へ整理したため4行減。Role依存自体は残る。
     // main: BetaGrantService の通知RepositoryへのTX到達12行減も統合。独立した削除16行で7376→7360。
     // Issue #2997 jobmatching: apply / acceptApplication / reportCompletion / recordCheckIn(fireNotifications) の
     // 通知を AFTER_COMMIT リスナーへ移したため、通知系Repository(4)+UserRepository への到達25行減。7264→7239。
     // 内訳: fireNotifications 5・recordCheckIn 5・apply 5・acceptApplication 5・reportCompletion 5（CI 実測 7239 と一致）。
+    // Issue #2997 recruitment(G2): publish / confirmApplication / sendPublishedNotifications /
+    // distributeFriendListing の通知を AFTER_COMMIT リスナーへ移したため、通知系Repository+UserRepository への到達26行減。
+    // 一方、受信者解決の private 化（sendPublishedNotifications→resolvePublishedRecipients の改名）で
+    // UserRoleRepository/FollowRepository への到達2行が同債務のまま付け替わった（+2）。7239→7215（実測一致、差し引き-24）。
+    // 内訳: distributeFriendListing 9・confirmApplication 5・publish 5・sendPublishedNotifications 7（改名で+2のため実減は26-2）。
+    // D-1 API境界（93124b52）も distributeFriendListing の Entity 露出1行が消え 603→602。
     // D-3（他の6ストア）は CI の整合性テストが不一致を報告していないため変更なし。
+
     // Issue #2997 G8: 軽量バッチ群の付随通知を業務TXから切り離し 7264 -> 7238（-26。G1 と併せた最終値は 7213）。
     //   @Transactional を外した actionmemo execute 3 / repairplan execute 3 / todo 2メソッド 10 /
     //   reflection processDueReminders 5、および sendRemind が NotificationHelper を呼ばなくなり
     //   到達しなくなった 5（UserRepository と通知系4）。sendRemind の RoleRepository/UserRoleRepository は
     //   AccessControlService 経由で残る。CI shard1 の実測 -26 件と一致。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7213;
+    // CMP-261012-0313: SkillMatrixService がマトリクスの行を role の UserRoleRepository（UserRoleEntity）から引くのをやめ、
+    //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
+    //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 2）。
+    // G2(recruitment)との合算: 7213 - 24 = 7189（ストア実数と一致）。
+    // main: CMP-260821-1027 の cancel/agree が解消した role の RoleRepository/UserRoleRepository 到達4行を除外し 7185。
+    // Issue #2997 G6(shift / ticket): 付随通知を業務TXから切り離し 7185 -> 7163（-22）。
+    //   ShiftPreferenceReminderBatchService.processReminders は @Transactional を外したため 7、
+    //   triggerManualReminder は通知を AFTER_COMMIT リスナーへ移したため UserRepository と通知系4の 5
+    //   （UserRoleRepository・AuditLogRepository への到達は監査ログ・未提出者抽出という業務由来のため残す）、
+    //   TicketExpiryBatchService.expireTickets は @Transactional を外したため 5、sendExpiryNotifications は
+    //   通知を呼ばなくなったため 5。追加 0・削除 22（解消済みの main 側4行は残していない）。
+    // CMP-261012-0313: main の 7163 から SkillMatrixService を主語とする 2 行が解消し 7161（ストア実数と一致）。
+    // CMP-260925-0905: ConfirmableNotificationReminderBatchService#processAlertIfNeeded の@Transactional解消で1行減。7158→7157。
+    // Issue #2997 G7-a: 最新 main の 7157 -> 7145（-12）。DigestAsyncExecutor と TeamSlotNoteNotifyListener が @Transactional を外した（各 6 行、追加 0・削除 12）。
+    // CMP-261015-1152: 共通セッション発行へ統合し旧AuthWebAuthnService.issueTokenPairを削除。全Arch走査で旧入口1行のみ消滅（追加0）、7145 -> 7144。
+    // CMP-261016-0950: MemberCardServiceのclassTX除去でprivate3入口×2repoのみ分類対象外。
+    // 旧public read6本は明示readOnlyを維持し、越境根治による減少とは扱わない。
+    // Issue #3892: deleteOrganization の InviteTokenRepository 推移到達解消でさらに1行減（追加0）。
+    // Issue #2997 G3: 最新 main の 7137 -> 7115（-22）。EmergencyClosureService#sendClosure（通知系 5 行。UserRepository への到達は残る）、
+    //   ReservationReminderDispatchBatchService（dispatchDueReminders 5・sendReminder 5・resolveLocale 1 の計 11 行）、
+    //   ReservationWaitlistService#notifySlotReopened（5 行）が通知を業務TXで呼ばなくなった（追加 0・削除 22）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7115;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -879,7 +925,10 @@ class ArchUnitFreezeStoreIntegrityTest {
      * <p>ScheduleMediaUploadEntity が {@code UuidV7Entity} を継承済みとなり、凍結ストアから解消行 1 件が
      * 自動で縮退したため 568 → 567（PR #3387 の main 追従で反映）。</p>
      */
-    private static final int EXPECTED_LINES_UUID_V7_D2B = 567;
+    // RanchCollectibleCatalogEntity は承認済み置物の自然キーを主キーとする設計是認例外。
+    // 凍結ストアへの当該1行追加を正確に追随し、新規 Entity の検出規則は維持する。
+    // V245のid=1固定管理行は独立発番を持たないsingleton設計是認例外。追加は当該1型だけ。
+    private static final int EXPECTED_LINES_UUID_V7_D2B = 569;
 
     /**
      * 越境 Repository 依存禁止ストア（D-5）の期待行数。
@@ -923,7 +972,14 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code TeamSubscriptionEntity} は実際の継続課金を担っていない旧テーブルのガワであり、参照ごと廃止した。</p>
      * <p>正式1e8の全量解析と原因検分で確認した旧原因73件の削減（1938→1865）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1862;
+    // CMP-261012-0313: SkillMatrixService がマトリクスの行を role の UserRoleRepository（UserRoleEntity）から引くのをやめ、
+    //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
+    //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 4）。
+    // CMP-261017-0549: Collector の未使用 AuditLogRepository 依存（field・ctor）2 件を解消。
+    // Issue #3892: OrganizationService の InviteTokenRepository 直接依存解消で3行減（追加0）。
+    // 共通base 1858から独立した2件と3件を両方除去し、1853を維持する。
+    // CMP-261012-0315: TeamFriendsService が TeamRepository を TeamService に置き換え、TeamRepository への依存行が3件解消（追加 0・削除 3）。1853 -> 1850。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1850;
 
     /**
      * ServiceAPIの正本行数。更新は実削減の原因検分と同一コミットに限る。
@@ -934,7 +990,9 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 戻り値が Entity のままなので残す。</p>
      */
     // CMP-260820-1018: Proxy 一覧を Page<ProxyInputConsentResponse> に変更し、公開APIのEntity露出1件を解消。
-    private static final int EXPECTED_LINES_SERVICE_API = 603;
+    // Issue #2997 recruitment(G2): MarketFriendTargetService#distributeFriendListing の Entity 露出が消え 603→602。
+    // CMP-260925-0905: ConfirmableNotificationReminderBatchService の processAlertIfNeeded / processReminders 削除で2行減。602→600。
+    private static final int EXPECTED_LINES_SERVICE_API = 600;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(

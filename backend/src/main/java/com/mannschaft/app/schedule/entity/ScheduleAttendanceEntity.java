@@ -40,6 +40,22 @@ public class ScheduleAttendanceEntity extends BaseEntity {
 
     private LocalDateTime respondedAt;
 
+    @Column(name = "is_ranch_response_history_known", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("0")
+    @Builder.Default
+    private Boolean ranchResponseHistoryKnown = true;
+
+    @Column(name = "is_ranch_self_response_observed", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("0")
+    @Builder.Default
+    private Boolean ranchSelfResponseObserved = false;
+
+    @Column(name = "ranch_first_self_at", columnDefinition = "DATETIME(6)")
+    private java.time.Instant ranchFirstSelfAt;
+
+    @Column(name = "ranch_first_self_user_id", columnDefinition = "BIGINT UNSIGNED")
+    private Long ranchFirstSelfUserId;
+
     @Column(name = "is_proxy_input", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
     @Builder.Default
     private Boolean isProxyInput = false;
@@ -54,6 +70,25 @@ public class ScheduleAttendanceEntity extends BaseEntity {
      * @param comment   コメント（nullable）
      */
     public void respond(AttendanceStatus newStatus, String comment) {
+        if (newStatus != AttendanceStatus.UNDECIDED) ranchSelfResponseObserved = true;
+        applyResponse(newStatus, comment);
+    }
+
+    /** 代理回答は本人初回の証拠を消費しない。報酬資格も生成しない。 */
+    public void respondProxy(AttendanceStatus newStatus, String comment) {
+        applyResponse(newStatus, comment);
+    }
+
+    /** ACTIVE本人lockを保持する源writerだけが、通常回答と同じUPDATEへ資格を固定する。 */
+    public boolean freezeRanchFirstSelfResponse(java.time.Instant at, Long actor) {
+        boolean first = Boolean.TRUE.equals(ranchResponseHistoryKnown)
+                && !Boolean.TRUE.equals(ranchSelfResponseObserved) && actor.equals(userId);
+        ranchSelfResponseObserved = true;
+        if (first) { ranchFirstSelfAt = at; ranchFirstSelfUserId = actor; }
+        return first;
+    }
+
+    private void applyResponse(AttendanceStatus newStatus, String comment) {
         this.status = newStatus;
         this.comment = comment;
         if (this.respondedAt == null) {

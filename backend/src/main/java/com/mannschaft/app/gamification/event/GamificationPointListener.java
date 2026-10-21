@@ -1,9 +1,7 @@
 package com.mannschaft.app.gamification.event;
 
-import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
-import com.mannschaft.app.auth.event.LoginSuccessEvent;
 import com.mannschaft.app.gamification.ActionType;
 import com.mannschaft.app.gamification.service.GamificationPointService;
 import com.mannschaft.app.timeline.event.TimelinePostCreatedEvent;
@@ -13,8 +11,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
-
-import java.util.List;
 
 /**
  * ゲーミフィケーション・ポイント付与イベントリスナー。
@@ -26,7 +22,6 @@ import java.util.List;
 public class GamificationPointListener {
 
     private final GamificationPointService gamificationPointService;
-    private final MembershipScopeQueryService membershipScopeQueryService;
 
     /**
      * タイムライン投稿作成イベントを受信し、TIMELINE_POSTポイントを付与する。
@@ -51,43 +46,4 @@ public class GamificationPointListener {
         );
     }
 
-    /**
-     * ログイン成功イベントを受信し、デイリーログインポイントを付与する。
-     *
-     * <p>ユーザーが所属する全チーム・全組織に対してポイントを付与する。
-     * ゲーミフィケーションが無効なスコープはポイントサービス内部でスキップされる。</p>
-     *
-     * @param event ログイン成功イベント
-     */
-    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
-            reason = "上流のログインは CORE の認証であり、ゲーミフィケーションのゲートでは閉じない。よって閉栓中もイベントは飛んでくる。落とすとログインに対するポイント加算が恒久的に欠落し、再生もバックフィルも無い。付与は内部処理のみで外部送信を伴わない")
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Async("event-pool")
-    public void handleDailyLogin(LoginSuccessEvent event) {
-        Long userId = event.getUserId();
-        log.debug("デイリーログインイベント受信: userId={}", userId);
-
-        // ユーザーが所属する全チームにポイント付与（CMP-027: user_roles ∪ memberships の在籍チーム）
-        List<Long> teamIds = membershipScopeQueryService.findActiveTeamIds(userId);
-
-        for (Long teamId : teamIds) {
-            gamificationPointService.addPoint(
-                    userId, "TEAM", teamId,
-                    ActionType.DAILY_LOGIN, "DAILY_LOGIN", userId
-            );
-        }
-
-        // ユーザーが所属する全組織にポイント付与（CMP-027: user_roles ∪ memberships の在籍組織）
-        List<Long> orgIds = membershipScopeQueryService.findActiveOrganizationIds(userId);
-
-        for (Long orgId : orgIds) {
-            gamificationPointService.addPoint(
-                    userId, "ORGANIZATION", orgId,
-                    ActionType.DAILY_LOGIN, "DAILY_LOGIN", userId
-            );
-        }
-
-        log.info("デイリーログインポイント付与完了: userId={}, teams={}, orgs={}",
-                userId, teamIds.size(), orgIds.size());
-    }
 }

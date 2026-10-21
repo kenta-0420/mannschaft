@@ -51,9 +51,9 @@ function eventSeverity(eventType: string) {
         :key="item.id"
         class="rounded-lg border border-surface-100 p-3 dark:border-surface-600"
       >
-        <div class="flex items-start justify-between">
-          <div>
-            <div class="flex items-center gap-2">
+        <div class="flex flex-col items-start justify-between gap-2 sm:flex-row">
+          <div class="min-w-0 w-full flex-1">
+            <div class="flex flex-wrap items-center gap-2 [overflow-wrap:anywhere]">
               <Tag
                 :value="eventLabel(item.eventType)"
                 :severity="eventSeverity(item.eventType)"
@@ -67,7 +67,7 @@ function eventSeverity(eventType: string) {
               {{ item.userAgent || '-' }}
             </p>
           </div>
-          <span class="text-xs text-surface-400">{{ formatDate(item.createdAt) }}</span>
+          <span class="shrink-0 text-xs text-surface-400">{{ formatDate(item.createdAt) }}</span>
         </div>
       </div>
       <div v-if="loginHistoryHasNext" class="flex justify-center pt-2">

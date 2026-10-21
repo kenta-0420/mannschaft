@@ -1,0 +1,43 @@
+[
+  {
+    "phase": "red",
+    "file": "TEST-com.mannschaft.app.budget.ScopedFiscalYearCreateContractIT.xml",
+    "sha256": "053640bb7b363a065a95c66de14cc23ba691258524562b8c42005d918ce03d31",
+    "tests": 48,
+    "failures": 10,
+    "errors": 0,
+    "skipped": 0,
+    "failedTests": [
+      "[1] scope=TEAM",
+      "[2] scope=ORGANIZATION",
+      "[1] scope=TEAM",
+      "[2] scope=ORGANIZATION",
+      "[1] scope=TEAM",
+      "[2] scope=ORGANIZATION",
+      "[1] scope=TEAM, start=2027-01-01, end=2027-01-01",
+      "[2] scope=TEAM, start=2027-12-31, end=2027-01-01",
+      "[3] scope=ORGANIZATION, start=2027-01-01, end=2027-01-01",
+      "[4] scope=ORGANIZATION, start=2027-12-31, end=2027-01-01"
+    ]
+  },
+  {
+    "phase": "green",
+    "file": "TEST-com.mannschaft.app.budget.ScopedFiscalYearCreateContractIT.xml",
+    "sha256": "f356bc66e7b602bf4783c1cfed35200c821911dc21b224d333ac0fc993c7ee70",
+    "tests": 48,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "failedTests": []
+  },
+  {
+    "phase": "green",
+    "file": "TEST-com.mannschaft.app.budget.service.BudgetFiscalYearServiceTest.xml",
+    "sha256": "fafce278c0c45ed65f32e9cc68cf97ba9c0437de19690c0dd927e20ab14df192",
+    "tests": 2,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "failedTests": []
+  }
+]
