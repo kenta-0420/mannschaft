@@ -4,6 +4,7 @@ import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
 import com.mannschaft.app.errorreport.dto.ErrorReportBulkUpdateRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportUpdateRequest;
+import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
 import com.mannschaft.app.errorreport.event.ErrorReportRaisedEvent;
 import com.mannschaft.app.errorreport.event.ErrorReportRegressionDetectedEvent;
 import com.mannschaft.app.errorreport.event.ErrorReportSeverityEscalatedEvent;
