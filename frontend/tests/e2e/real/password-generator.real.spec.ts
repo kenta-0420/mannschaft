@@ -17,11 +17,22 @@ interface UserFixture {
   accessToken: string
   refreshToken: string
   resetToken?: string
+  resetRequestedAt?: string
 }
 interface Fixtures { registrationEmail: string; users: UserFixture[] }
 const fixturePath = process.env.PASSWORD_GENERATOR_FIXTURES
 if (!fixturePath) throw new Error('PASSWORD_GENERATOR_FIXTURES に専用private JSONを指定してください')
 const runtimeDir = dirname(fixturePath)
+const generatedSecrets: string[] = []
+function redacted(message: string): string {
+  let safe = message
+  const secrets = [...generatedSecrets, ...fixtures().users.flatMap(entry => [entry.password, entry.accessToken, entry.refreshToken, entry.resetToken ?? ''])]
+  for (const secret of secrets) if (secret) safe = safe.replaceAll(secret, '[秘密非表示]')
+  return safe.replace(/https?:\/\/[^\s"']+/g, value => {
+    try { const url = new URL(value); return url.origin + url.pathname }
+    catch { return '[URL非表示]' }
+  })
+}
 const fixtures = (): Fixtures => JSON.parse(readFileSync(fixturePath, 'utf8')) as Fixtures
 function user(role: string): UserFixture {
   const result = fixtures().users.find(entry => entry.role === role)
@@ -44,12 +55,12 @@ async function shot(page: Page, name: string): Promise<void> {
   if (await generateButton(page).count()) {
     const viewport = page.viewportSize()
     await page.setViewportSize({ width: 390, height: 844 })
+    await page.screenshot({ path: join(runtimeDir, `${name}-390.png`), fullPage: true, mask: [page.locator('input')] })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), '対象フォーム390pxで横パンなし').toBe(true)
     for (const button of [generateButton(page), copyButton(page)]) {
       const box = await button.boundingBox()
       expect(!!box && box.width >= 44 && box.height >= 44, '対象フォームの追加操作領域44px以上').toBe(true)
     }
-    await page.screenshot({ path: join(runtimeDir, `${name}-390.png`), fullPage: true, mask: [page.locator('input')] })
     if (viewport) await page.setViewportSize(viewport)
   }
 }
@@ -74,6 +85,7 @@ async function session(page: Page, role: string): Promise<void> {
   }, { id: account.id, email: account.email, expires: payload.exp })
 }
 async function generate(page: Page): Promise<string> {
+  await expect(generateButton(page)).toBeVisible({ timeout: 90_000 })
   await expect(generateButton(page)).toBeEnabled()
   const input = newInputs(page).first()
   const beforeUrl = page.url()
@@ -81,6 +93,7 @@ async function generate(page: Page): Promise<string> {
   await generateButton(page).focus()
   await page.keyboard.press('Enter')
   const value = await input.inputValue()
+  generatedSecrets.push(value)
   expect(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z0-9]{16}$/.test(value), '生成値が既存ポリシーを満たす').toBe(true)
   expect(page.url() === beforeUrl, '生成で遷移しない').toBe(true)
   for (const entry of await newInputs(page).all()) expect(await entry.inputValue() === value, '新規・確認が一致').toBe(true)
@@ -91,26 +104,50 @@ async function generate(page: Page): Promise<string> {
 }
 async function uiLogin(page: Page, email: string, password: string): Promise<void> {
   // 新規コンテキスト上のログインで永続化をUIから裏取りする。
-  await page.goto('/login')
+  observePage(page)
+  await page.goto('/login?redirect=/settings/password')
   await waitForHydration(page)
   await page.locator('#email').fill(email)
   await page.locator('input[type="password"]').fill(password)
   const response = page.waitForResponse(res => res.url().includes('/api/v1/auth/login') && res.request().method() === 'POST')
   await page.getByRole('button', { name: 'ログイン', exact: true }).click()
   expect((await response).ok(), '新パスワードによる実ログイン成功').toBe(true)
-  await expect(page).not.toHaveURL(/\/login/)
+  try {
+    // dev環境では遷移先chunkの初回変換がある。製品の実表示まで有限で待つ。
+    await expect(page).toHaveURL(/\/settings\/password$/, { timeout: 90_000 })
+    await expect(generateButton(page)).toBeVisible()
+  } finally {
+    test.info().annotations.push({ type: '再ログイン最終画面', description: new URL(page.url()).pathname })
+    for (const pending of pendingRequests.get(page) ?? []) test.info().annotations.push({ type: '再ログイン未完了リクエスト', description: pending })
+    await page.screenshot({ path: join(runtimeDir, 'pg-relogin-' + test.info().title.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 90) + '.png'), fullPage: true, mask: [page.locator('input')] })
+  }
 }
 
-test.beforeEach(async ({ page }) => {
+const pendingRequests = new WeakMap<Page, Set<string>>()
+function observePage(page: Page): void {
+  const pending = new Set<string>()
+  pendingRequests.set(page, pending)
+  page.on('request', request => pending.add(request.method() + ' ' + new URL(request.url()).pathname))
+  page.on('requestfinished', request => pending.delete(request.method() + ' ' + new URL(request.url()).pathname))
+  page.on('pageerror', error => test.info().annotations.push({ type: 'pageerror', description: redacted(error.message) }))
+  page.on('console', message => { if (message.type() === 'error') test.info().annotations.push({ type: 'consoleerror', description: redacted(message.text()) }) })
+  page.on('requestfailed', request => test.info().annotations.push({ type: 'requestfailed', description: request.method() + ' ' + new URL(request.url()).pathname + ': ' + (request.failure()?.errorText ?? '') }))
   page.on('response', response => {
     const path = new URL(response.url()).pathname
+    if (response.status() >= 400) test.info().annotations.push({ type: 'HTTP失敗', description: response.request().method() + ' ' + path + ': ' + response.status() })
     if (/^\/api\/v1\/(users\/me\/password|auth\/(register|verify-email|password-reset\/confirm|login))/.test(path)) {
       test.info().annotations.push({ type: '実API', description: `${response.request().method()} ${path}: ${response.status()}` })
     }
   })
-})
+}
+
+test.beforeEach(async ({ page }) => observePage(page))
 
 test.afterEach(async ({ page }, info) => {
+  for (const pending of pendingRequests.get(page) ?? []) info.annotations.push({ type: '未完了リクエスト', description: pending })
+  if (info.status !== 'passed' && !page.isClosed()) {
+    await page.screenshot({ path: join(runtimeDir, 'failure-' + info.title.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 90) + '.png'), fullPage: true, mask: [page.locator('input')] })
+  }
   // 値・メール・tokenは結果へ出さない。
   const evidencePath = join(runtimeDir, 'e2e-evidence.json')
   let previous: unknown[] = []
@@ -138,6 +175,11 @@ test('PG-01 AC-4/5/6/7/9/11/14 登録フォームの生成・手修正・実clip
   expect(await page.locator('#email').inputValue() === fixtures().registrationEmail, '他項目を保持').toBe(true)
   const edited = 'ManualEditedPass9'
   await input.fill(edited)
+  await input.locator('..').locator('.p-password-unmask-icon').click()
+  expect(await input.getAttribute('type')).toBe('text')
+  expect(await input.inputValue() === edited, '表示切替後も手修正値を保持').toBe(true)
+  await input.locator('..').locator('.p-password-mask-icon').click()
+  expect(await input.getAttribute('type')).toBe('password')
   await copyButton(page).click()
   expect(await page.evaluate(() => navigator.clipboard.readText()) === edited, 'クリック時点の手修正値をコピー').toBe(true)
   await expect(page.getByText('コピーしました', { exact: true })).toBeVisible()
@@ -157,7 +199,7 @@ for (const [role, url] of [['change-password', '/settings/password'], ['change-a
     await session(page, role)
     await page.goto(url)
     await waitForHydration(page)
-    await expect(generateButton(page)).toBeVisible()
+    await expect(generateButton(page)).toBeVisible({ timeout: 90_000 })
     const current = page.locator('input[autocomplete="current-password"]')
     await current.fill(user(role).password)
     await generate(page)
@@ -182,7 +224,7 @@ for (const [role, url] of [['change-password', '/settings/password'], ['change-a
     await expect(copyButton(page)).toBeDisabled()
     await expect(page).toHaveURL(/\/login/)
     await shot(page, `pg-${role}-final`)
-    const context = await browser.newContext({ baseURL: 'http://localhost:3001' })
+    const context = await browser.newContext({ baseURL: process.env.BASE_URL ?? 'http://localhost:3001', locale: 'ja-JP' })
     try { await uiLogin(await context.newPage(), user(role).email, password) }
     finally { await context.close() }
   })
@@ -193,7 +235,7 @@ for (const [role, url] of [['oauth-password', '/settings/password'], ['oauth-acc
     await session(page, role)
     await page.goto(url)
     await waitForHydration(page)
-    await expect(generateButton(page)).toBeVisible()
+    await expect(generateButton(page)).toBeVisible({ timeout: 90_000 })
     await expect(page.locator('input[autocomplete="current-password"]')).toHaveCount(0)
     const password = await generate(page)
     const pending = page.waitForResponse(res => new URL(res.url()).pathname === '/api/v1/users/me/password/setup' && res.request().method() === 'POST')
@@ -206,7 +248,7 @@ for (const [role, url] of [['oauth-password', '/settings/password'], ['oauth-acc
     expect(new URLSearchParams(response.request().postData() ?? '').get('password') === password, 'フォーム本文で送信').toBe(true)
     await expect(page.locator('input[autocomplete="current-password"]')).toBeVisible()
     await shot(page, `pg-${role}-final`)
-    const context = await browser.newContext({ baseURL: 'http://localhost:3001' })
+    const context = await browser.newContext({ baseURL: process.env.BASE_URL ?? 'http://localhost:3001', locale: 'ja-JP' })
     try { await uiLogin(await context.newPage(), user(role).email, password) }
     finally { await context.close() }
   })
@@ -214,8 +256,25 @@ for (const [role, url] of [['oauth-password', '/settings/password'], ['oauth-acc
 
 test('PG-RESET AC-1/4/12 有効トークンの生成値でリセット完遂', async ({ page, browser }) => {
   const account = user('reset')
-  if (!account.resetToken) throw new Error('有効な専用resetTokenがありません')
-  await page.goto(`/reset-password?token=${encodeURIComponent(account.resetToken)}`)
+  // reset申請は対象操作の前提。確認・生成・新値送信は以下の実UIで行う。
+  const requestedAt = new Date().toISOString()
+  const requested = await page.request.post(`${process.env.API_BASE_URL ?? 'http://localhost:8081'}/api/v1/auth/password-reset/request`, { data: { email: account.email } })
+  expect(requested.ok(), '有効reset tokenをケース直前に申請').toBe(true)
+  let token = ''
+  await expect.poll(async () => {
+    const response = await page.request.get('http://localhost:4599/inbox')
+    const inbox = await response.json() as { to: string[]; html: string }[]
+    const html = inbox.filter(message => message.to.includes(account.email) && message.html.includes('reset-password?token=')).at(-1)?.html ?? ''
+    token = html.match(/reset-password\?token=([^"\s<]+)/)?.[1]?.replace(/&amp;.*/, '') ?? ''
+    return !!token && token !== account.resetToken
+  }, { timeout: 30_000 }).toBe(true)
+  const data = fixtures()
+  const saved = data.users.find(entry => entry.role === 'reset')!
+  saved.resetToken = token
+  saved.resetRequestedAt = requestedAt
+  writeFileSync(fixturePath!, JSON.stringify(data, null, 2))
+  test.info().annotations.push({ type: '前提API', description: 'reset申請と受信メール読取でケース直前に有効tokenを作成' })
+  await page.goto(`/reset-password?token=${encodeURIComponent(token)}`).catch((error: Error) => { throw new Error(redacted(error.message)) })
   await waitForHydration(page)
   const password = await generate(page)
   await shot(page, 'pg-reset-form')
@@ -225,7 +284,7 @@ test('PG-RESET AC-1/4/12 有効トークンの生成値でリセット完遂', a
   keepPassword('reset', password)
   await expect(page.getByRole('button', { name: /ログイン/ })).toBeVisible()
   await shot(page, 'pg-reset-final')
-  const context = await browser.newContext({ baseURL: 'http://localhost:3001' })
+  const context = await browser.newContext({ baseURL: process.env.BASE_URL ?? 'http://localhost:3001', locale: 'ja-JP' })
   try { await uiLogin(await context.newPage(), account.email, password) }
   finally { await context.close() }
 })

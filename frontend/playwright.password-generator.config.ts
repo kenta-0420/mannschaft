@@ -6,7 +6,7 @@ export default defineConfig({
   testMatch: 'password-generator.real.spec.ts',
   workers: 1,
   retries: 0,
-  timeout: 120_000,
+  timeout: 300_000,
   expect: { timeout: 15_000 },
   reporter: [['list']],
   use: {
