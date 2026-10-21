@@ -332,6 +332,9 @@ class ErrorReportIngestR1IT extends ErrorReportR1TestSupport {
                     assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM error_report_ai_analyses WHERE error_report_id = ?",
                             Integer.class, report.getId())).isEqualTo(1));
             assertThat(events.committed.stream().filter(ErrorReportRaisedEvent.class::isInstance)).hasSize(1);
+            assertThat(events.committed.stream().filter(
+                    com.mannschaft.app.errorreport.event.ErrorReportAiAnalysisRequestedEvent.class::isInstance)).hasSize(1);
+            org.mockito.Mockito.verify(aiProvider, org.mockito.Mockito.times(1)).analyze(any());
             tx.executeWithoutResult(state -> {
                 var managed = reports.findById(report.getId()).orElseThrow(); managed.setStatus(ErrorReportStatus.RESOLVED);
             });
@@ -340,6 +343,8 @@ class ErrorReportIngestR1IT extends ErrorReportR1TestSupport {
                     assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM error_report_ai_analyses WHERE error_report_id = ?",
                             Integer.class, report.getId())).isEqualTo(2));
             org.mockito.Mockito.verify(aiProvider, org.mockito.Mockito.times(2)).analyze(any());
+            assertThat(events.committed.stream().filter(
+                    com.mannschaft.app.errorreport.event.ErrorReportAiAnalysisRequestedEvent.class::isInstance)).hasSize(2);
         } finally { properties.getAi().setEnabled(enabled); }
     }
 

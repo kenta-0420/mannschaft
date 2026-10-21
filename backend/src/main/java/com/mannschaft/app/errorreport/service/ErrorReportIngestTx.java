@@ -5,6 +5,7 @@ import com.mannschaft.app.errorreport.ErrorReportStatus;
 import com.mannschaft.app.errorreport.SlaPolicy;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
 import com.mannschaft.app.errorreport.event.ErrorReportRaisedEvent;
+import com.mannschaft.app.errorreport.event.ErrorReportAiAnalysisRequestedEvent;
 import com.mannschaft.app.errorreport.event.ErrorReportRegressionDetectedEvent;
 import com.mannschaft.app.errorreport.event.ErrorReportSeverityEscalatedEvent;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
@@ -27,13 +28,12 @@ public class ErrorReportIngestTx {
     private final ErrorReportRepository repository;
     private final ErrorReportIngestHook hook;
     private final ApplicationEventPublisher eventPublisher;
-    private final ErrorReportAiAnalysisDispatcher aiAnalysisDispatcher;
     private final ErrorReportAggregator aggregator;
     private final StringRedisTemplate redisTemplate;
 
     @Transactional
     ErrorReportEntity ingestOnce(ErrorReportEntity candidate, Source source,
-                                        int observedAffected, ErrorReportWriteAttempt attempt) {
+                                  int observedAffected, ErrorReportWriteAttempt attempt) {
         attempt.begin();
         String hash = candidate.getErrorHash();
         var existing = repository.findFirstActiveForUpdate(hash);
@@ -93,7 +93,7 @@ public class ErrorReportIngestTx {
         if (source == Source.FE && (created || reopened)
                 && report.getSeverity().ordinal() >= ErrorReportSeverity.HIGH.ordinal()) {
             if (created) eventPublisher.publishEvent(new ErrorReportRaisedEvent(report.getId(), true));
-            aiAnalysisDispatcher.analyzeAfterCommit(report.getId(), null);
+            eventPublisher.publishEvent(new ErrorReportAiAnalysisRequestedEvent(report.getId()));
         }
         repository.flush();
         hook.afterFlush(hash);

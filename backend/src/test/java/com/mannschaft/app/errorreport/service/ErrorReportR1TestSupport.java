@@ -254,6 +254,8 @@ abstract class ErrorReportR1TestSupport extends AbstractMySqlIntegrationTest {
         @TransactionalEventListener public void raised(ErrorReportRaisedEvent event) { committed.add(event); }
         @TransactionalEventListener public void regression(ErrorReportRegressionDetectedEvent event) { committed.add(event); }
         @TransactionalEventListener public void escalated(ErrorReportSeverityEscalatedEvent event) { committed.add(event); }
+        @TransactionalEventListener public void aiRequested(
+                com.mannschaft.app.errorreport.event.ErrorReportAiAnalysisRequestedEvent event) { committed.add(event); }
     }
 
     /** 全R1 ITで同一構成を共有する。 */

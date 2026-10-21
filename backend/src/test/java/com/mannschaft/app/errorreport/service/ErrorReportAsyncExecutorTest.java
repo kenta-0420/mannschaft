@@ -316,9 +316,8 @@ class ErrorReportAsyncExecutorTest {
         org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
         var retry = new ErrorReportWriteRetry(new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         var redis = org.mockito.Mockito.mock(org.springframework.data.redis.core.StringRedisTemplate.class);
-        var dispatcher = org.mockito.Mockito.mock(ErrorReportAiAnalysisDispatcher.class);
         var ingest = new ErrorReportIngestService(new ErrorReportIngestTx(errorReportRepository, ingestHook,
-                eventPublisher, dispatcher, aggregator, redis), retry, redis);
+                eventPublisher, aggregator, redis), retry, redis);
         executor = new ErrorReportAsyncExecutor(ingest);
     }
 

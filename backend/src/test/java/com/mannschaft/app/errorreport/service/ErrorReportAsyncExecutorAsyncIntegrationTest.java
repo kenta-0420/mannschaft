@@ -33,8 +33,8 @@ import static org.mockito.BDDMockito.given;
  * 「@Async self-invocation でプロキシバイパスしていた」バグの再発を防ぐ
  * リグレッションテストでもある。</p>
  *
- * <p>{@link AsyncConfig} と {@link ErrorReportAsyncExecutor} のみを Spring コンテキストに
- * 立ち上げ、Repository はモック化することで起動コストを抑える。</p>
+ * <p>AsyncConfigと実ingest境界だけを小contextに載せ、Repositoryは従来どおりモック化する。
+ * 実H2 TX managerと実no-op Hookを使い、非同期入口とREQUIRED proxyを維持する。</p>
  *
  * <p>Issue #2990 L11 — Executor は通知ではなく業務イベントを publish する形に変わった。
  * {@code ApplicationEventPublisher} は ApplicationContext 自身が満たすため個別のモックは要らない。
@@ -42,9 +42,7 @@ import static org.mockito.BDDMockito.given;
  */
 @SpringJUnitConfig
 @Import({AsyncConfig.class, ErrorReportAsyncExecutor.class, ErrorReportIngestHook.class,
-        ErrorReportIngestService.class, ErrorReportIngestTx.class, ErrorReportWriteRetry.class,
-        ErrorReportAiAnalysisDispatcher.class, ErrorReportAiBudgetService.class,
-        com.mannschaft.app.errorreport.ErrorReportProperties.class})
+        ErrorReportIngestService.class, ErrorReportIngestTx.class, ErrorReportWriteRetry.class})
 @DisplayName("ErrorReportAsyncExecutor @Async プロキシ統合テスト (F10.5/F10.6 後続-⑥ リグレッション)")
 class ErrorReportAsyncExecutorAsyncIntegrationTest {
 
@@ -77,9 +75,6 @@ class ErrorReportAsyncExecutorAsyncIntegrationTest {
     @MockitoBean
     private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
 
-    @MockitoBean
-    private ErrorReportAiAnalysisAsyncRunner aiRunner;
-
     @Test
     @DisplayName("recordBackendException は呼び出し側スレッドとは別スレッド（event-pool）で実行される")
     void recordBackendException_runsOnDifferentThread() throws Exception {
@@ -87,7 +82,7 @@ class ErrorReportAsyncExecutorAsyncIntegrationTest {
         AtomicReference<Long> runThreadId = new AtomicReference<>();
         AtomicReference<String> mdcRequestIdInsideAsync = new AtomicReference<>();
 
-        // Repository.findByErrorHash 呼び出し時点で実行スレッド情報をキャプチャする。
+        // Repository.findFirstActiveForUpdate 呼び出し時点で実行スレッド情報をキャプチャする。
         // doRecordBackendException 内の最初に行われるアクションのため、確実に Async スレッドで動いている。
         given(errorReportRepository.findFirstActiveForUpdate(anyString()))
                 .willAnswer((InvocationOnMock inv) -> {

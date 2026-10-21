@@ -60,8 +60,6 @@ class ErrorReportServiceTest {
     @Mock
     private StringRedisTemplate redisTemplate;
     @Mock
-    private ErrorReportAiAnalysisDispatcher aiAnalysisDispatcher;
-    @Mock
     private ErrorReportAsyncExecutor asyncExecutor;
 
     private ErrorReportService service;
@@ -314,7 +312,7 @@ class ErrorReportServiceTest {
         org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
         var retry = new ErrorReportWriteRetry(new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         var ingest = new ErrorReportIngestService(new ErrorReportIngestTx(errorReportRepository, ingestHook,
-                eventPublisher, aiAnalysisDispatcher, new ErrorReportAggregator(100), redisTemplate), retry, redisTemplate);
+                eventPublisher, new ErrorReportAggregator(100), redisTemplate), retry, redisTemplate);
         var management = new ErrorReportManagementService(new ErrorReportManagementTx(errorReportRepository, ingestHook), retry);
         service = new ErrorReportService(errorReportRepository, ingest, management, eventPublisher, asyncExecutor);
         org.mockito.Mockito.lenient().when(errorReportRepository.findErrorHashById(org.mockito.ArgumentMatchers.anyLong()))
