@@ -18,6 +18,7 @@ import java.util.Properties;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * 凍結ストア七本の登録閉集合・上限・行形式を読み取り専用で検査する。
