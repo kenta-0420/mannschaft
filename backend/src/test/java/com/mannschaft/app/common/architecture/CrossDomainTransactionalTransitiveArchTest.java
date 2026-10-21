@@ -5,6 +5,8 @@ import com.tngtech.archunit.junit.ArchTag;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaCodeUnit;
 import com.tngtech.archunit.core.domain.JavaMethod;
+import com.tngtech.archunit.core.domain.JavaMethodCall;
+import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashSet;
@@ -35,7 +38,8 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
  *
  * <p>既存 D-3 ({@link CrossDomainTransactionalArchTest}) は宣言クラスから Repository への
  * 直接依存だけを検査する。本番人はその判定を変更せず、{@code @Transactional} 宣言メソッド
- * （クラス宣言の場合は継承したアプリ内メソッドを含む）を入口として、アプリ内の method call と
+ * （直接注釈・合成注釈ともに対象。クラス宣言の場合は継承したアプリ内メソッドを含む）を入口として、
+ * アプリ内の method call と
  * constructor call を visited 集合つき BFS で推移的に辿る。途中のドメインや {@code common}
  * を横断しても探索を継続し、入口の所属ドメインと異なる Repository 型への到達を検出する。
  *
@@ -47,10 +51,11 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
  *
  * <h2>静的解析上の限界</h2>
  * <p>ArchUnit が {@link com.tngtech.archunit.core.domain.AccessTarget.CodeUnitAccessTarget#resolveMember()}
- * で解決できる呼び出しだけを展開する。このため interface 呼び出しから runtime proxy の具象実装、
- * reflection、動的ディスパッチ先は追跡できない。また lambda の合成メソッドはコンパイラ実装に依存し、
- * 常に展開できるとは限らない。解決不能な枝を推測で全実装へ広げると誤検知が急増するため、これらは
- * 保守的に打ち切る。ただし呼び出し先型自体が Repository パッケージなら解決前に検出する。
+ * で解決できる呼び出しと、取込済み本番集合に具象実装が一つだけあるアプリ内interface呼び出しを
+ * 展開する。具象実装は子interface・抽象基底を通じた実装も含めて数え、抽象クラス自身は数えない。
+ * 候補が0件または複数のときは全実装へ広げず、従来解決できていたdefault本体だけを保持する。
+ * reflectionやその他の動的ディスパッチ、lambdaの合成メソッドを常に追跡できるとは限らない。
+ * 呼び出し先型自体がRepositoryパッケージなら、実装解決の前に検出する。
  */
 @AnalyzeClasses(packages = "com.mannschaft.app", importOptions = ImportOption.DoNotIncludeTests.class)
 @ArchTag(ArchUnitTestTag.ARCHUNIT)
@@ -69,14 +74,19 @@ class CrossDomainTransactionalTransitiveArchTest {
                     + "既存 D-3 は直接依存の契約として維持し、D-3T は委譲による迂回を検出する")
                 .as("transactional entry should not transitively reach other-domain repositories (D-3T)"));
 
-    static List<TransitiveViolation> findViolations(JavaClass clazz) {
+    static List<TransitiveViolation> findViolations(JavaClass clazz, Iterable<JavaClass> candidates) {
+        return findViolations(clazz, new SingleImplementationIndex(candidates));
+    }
+
+    private static List<TransitiveViolation> findViolations(
+            JavaClass clazz, SingleImplementationIndex implementations) {
         String sourceDomain = DomainPackages.domainOf(clazz.getPackageName());
         if (sourceDomain == null || DomainPackages.isSharedDomain(sourceDomain)) {
             return List.of();
         }
         Map<String, TransitiveViolation> unique = new LinkedHashMap<>();
         for (TransactionalEntry entry : transactionalEntries(clazz)) {
-            collectViolations(entry, sourceDomain, unique);
+            collectViolations(entry, sourceDomain, unique, implementations);
         }
         return unique.values().stream()
             .sorted(Comparator.comparing(TransitiveViolation::freezeKey))
@@ -84,12 +94,14 @@ class CrossDomainTransactionalTransitiveArchTest {
     }
 
     private static List<TransactionalEntry> transactionalEntries(JavaClass clazz) {
-        boolean classTransactional = clazz.isAnnotatedWith(Transactional.class);
+        boolean classTransactional = clazz.isAnnotatedWith(Transactional.class)
+            || clazz.isMetaAnnotatedWith(Transactional.class);
         return clazz.getAllMethods().stream()
             .filter(method -> method.getOwner().getPackageName()
                 .startsWith(DomainPackages.ROOT_PACKAGE + "."))
             .filter(method -> classTransactional
-                || (method.getOwner().equals(clazz) && method.isAnnotatedWith(Transactional.class)))
+                || (method.getOwner().equals(clazz) && (method.isAnnotatedWith(Transactional.class)
+                    || method.isMetaAnnotatedWith(Transactional.class))))
             .sorted(Comparator.comparing(JavaMethod::getFullName))
             .map(method -> new TransactionalEntry(method, logicalEntryName(clazz, method)))
             .toList();
@@ -98,7 +110,8 @@ class CrossDomainTransactionalTransitiveArchTest {
     private static void collectViolations(
             TransactionalEntry entry,
             String sourceDomain,
-            Map<String, TransitiveViolation> unique) {
+            Map<String, TransitiveViolation> unique,
+            SingleImplementationIndex implementations) {
         Deque<PathNode> queue = new ArrayDeque<>();
         Set<String> visited = new HashSet<>();
         queue.add(new PathNode(entry.method(), List.of(displayName(entry.method()))));
@@ -122,7 +135,7 @@ class CrossDomainTransactionalTransitiveArchTest {
                 if (!isWithinApp(targetOwner)) {
                     continue;
                 }
-                Optional<? extends JavaCodeUnit> resolved = call.getTarget().resolveMember();
+                Optional<? extends JavaCodeUnit> resolved = implementations.resolve(call);
                 if (resolved.isEmpty()) {
                     continue;
                 }
@@ -182,11 +195,19 @@ class CrossDomainTransactionalTransitiveArchTest {
         return List.copyOf(result);
     }
 
-    private static ArchCondition<JavaClass> notReachOtherDomainRepositories() {
+    static ArchCondition<JavaClass> notReachOtherDomainRepositories() {
         return new ArchCondition<>("not transitively reach other-domain repositories from @Transactional entries") {
+            private SingleImplementationIndex implementations = new SingleImplementationIndex(List.of());
+
+            @Override
+            public void init(Collection<JavaClass> classes) {
+                // @AnalyzeClassesが既に取り込んだ集合だけを使い、クラスごとの全候補走査を避ける。
+                implementations = new SingleImplementationIndex(classes);
+            }
+
             @Override
             public void check(JavaClass clazz, ConditionEvents events) {
-                for (TransitiveViolation violation : findViolations(clazz)) {
+                for (TransitiveViolation violation : findViolations(clazz, implementations)) {
                     if (Boolean.getBoolean(DIAGNOSTICS_PROPERTY)) {
                         System.err.println("[D-3T] " + violation.diagnosticPath());
                     }
@@ -194,6 +215,60 @@ class CrossDomainTransactionalTransitiveArchTest {
                 }
             }
         };
+    }
+
+    /** 取込集合内の単一具象実装を一度だけ索引化し、interface呼び出しだけを補完する。 */
+    private static final class SingleImplementationIndex {
+        private final Map<String, JavaClass> singleImplementations = new LinkedHashMap<>();
+
+        private SingleImplementationIndex(Iterable<JavaClass> importedClasses) {
+            Map<String, List<JavaClass>> candidates = new LinkedHashMap<>();
+            for (JavaClass candidate : importedClasses) {
+                if (!isWithinApp(candidate) || candidate.isInterface()
+                        || candidate.getModifiers().contains(JavaModifier.ABSTRACT)) {
+                    continue;
+                }
+                for (JavaClass contract : candidate.getAllRawInterfaces()) {
+                    candidates.computeIfAbsent(contract.getName(), ignored -> new ArrayList<>()).add(candidate);
+                }
+            }
+            candidates.forEach((contract, implementations) -> {
+                if (implementations.size() == 1) {
+                    singleImplementations.put(contract, implementations.getFirst());
+                }
+            });
+        }
+
+        private Optional<? extends JavaCodeUnit> resolve(JavaCall<?> call) {
+            Optional<? extends JavaCodeUnit> original = call.getTarget().resolveMember();
+            JavaClass owner = call.getTarget().getOwner();
+            if (!(call instanceof JavaMethodCall methodCall) || !owner.isInterface()) {
+                return original;
+            }
+            // interfaceのstatic/private本体は実装クラスのoverride対象ではない。
+            if (original.isPresent() && (original.get().getModifiers().contains(JavaModifier.STATIC)
+                    || original.get().getModifiers().contains(JavaModifier.PRIVATE))) {
+                return original;
+            }
+            JavaClass implementation = singleImplementations.get(owner.getName());
+            if (implementation == null) {
+                return original;
+            }
+            String[] parameterTypes = methodCall.getTarget().getRawParameterTypes().stream()
+                .map(JavaClass::getName).toArray(String[]::new);
+            Optional<JavaClass> current = Optional.of(implementation);
+            while (current.isPresent()) {
+                Optional<JavaMethod> method = current.get()
+                    .tryGetMethod(methodCall.getTarget().getName(), parameterTypes);
+                if (method.isPresent()) {
+                    // subclass側の宣言を先に採り、未呼出overloadや隠れた基底実装へ広げない。
+                    return method;
+                }
+                current = current.get().getRawSuperclass();
+            }
+            // 継承defaultメソッドなど、従来の静的解決で得られる本体は失わない。
+            return original;
+        }
     }
 
     record TransitiveViolation(

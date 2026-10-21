@@ -41,7 +41,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -98,8 +97,7 @@ class CrossDomainTransactionalL1G0ConditionTest {
         assertThat(candidates.get(AbstractBridge.class).getAllSubclasses())
             .extracting(JavaClass::getName).contains(SecondBridge.class.getName());
 
-        assertThat(detect(CrossDomainTransactionalTransitiveArchTest.class,
-            "notReachOtherDomainRepositories", candidates))
+        assertThat(detect(CrossDomainTransactionalTransitiveArchTest.notReachOtherDomainRepositories(), candidates))
             .filteredOn(v -> v.contains(".execute(")).hasSize(1);
     }
 
@@ -131,8 +129,8 @@ class CrossDomainTransactionalL1G0ConditionTest {
     @ParameterizedTest
     @MethodSource("composedEntries")
     void 合成TXをD3が検出する(Class<?> entry) {
-        assertThat(detect(CrossDomainTransactionalArchTest.class,
-            "notDependOnOtherDomainRepositories", imported(entry))).isNotEmpty();
+        assertThat(detect(CrossDomainTransactionalArchTest.notDependOnOtherDomainRepositories(),
+            imported(entry))).isNotEmpty();
     }
 
     @ParameterizedTest
@@ -149,19 +147,19 @@ class CrossDomainTransactionalL1G0ConditionTest {
     void 非TXlistener自身は入口にせず呼出先の越境TXだけを検出する() {
         JavaClasses candidates = imported(NonTransactionalListener.class,
             SameDomainWriter.class, CrossDomainWriter.class);
-        assertThat(detect(CrossDomainTransactionalTransitiveArchTest.class,
-            "notReachOtherDomainRepositories", candidates)).singleElement()
+        assertThat(detect(CrossDomainTransactionalTransitiveArchTest.notReachOtherDomainRepositories(),
+            candidates)).singleElement()
             .satisfies(v -> assertThat(v).contains(CrossDomainWriter.class.getName() + ".execute()")
                 .doesNotContain(NonTransactionalListener.class.getName()));
-        assertThat(detect(CrossDomainTransactionalArchTest.class,
-            "notDependOnOtherDomainRepositories", imported(NonTransactionalListener.class))).isEmpty();
+        assertThat(detect(CrossDomainTransactionalArchTest.notDependOnOtherDomainRepositories(),
+            imported(NonTransactionalListener.class))).isEmpty();
     }
 
     private List<String> d3t(Class<?> entry, Class<?>... implementations) {
         List<Class<?>> candidates = new ArrayList<>(List.of(entry));
         candidates.addAll(Arrays.asList(implementations));
-        return detect(CrossDomainTransactionalTransitiveArchTest.class,
-            "notReachOtherDomainRepositories", imported(candidates.toArray(Class<?>[]::new)));
+        return detect(CrossDomainTransactionalTransitiveArchTest.notReachOtherDomainRepositories(),
+            imported(candidates.toArray(Class<?>[]::new)));
     }
 
     private JavaClasses imported(Class<?>... candidates) {
@@ -172,16 +170,7 @@ class CrossDomainTransactionalL1G0ConditionTest {
         return new ClassFileImporter().importClasses(types);
     }
 
-    @SuppressWarnings("unchecked")
-    private List<String> detect(Class<?> guard, String factoryName, JavaClasses candidates) {
-        // 試練段階は既存private factoryを使い、未改修ロジックの実assertion失敗を観測する。
-        try {
-            Method factory = guard.getDeclaredMethod(factoryName);
-            factory.setAccessible(true);
-            ArchCondition<JavaClass> condition = (ArchCondition<JavaClass>) factory.invoke(null);
-            return classes().should(condition).evaluate(candidates).getFailureReport().getDetails();
-        } catch (ReflectiveOperationException ex) {
-            throw new IllegalStateException("既存番人条件を取得できない", ex);
-        }
+    private List<String> detect(ArchCondition<JavaClass> condition, JavaClasses candidates) {
+        return classes().should(condition).evaluate(candidates).getFailureReport().getDetails();
     }
 }
