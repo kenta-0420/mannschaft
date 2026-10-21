@@ -836,11 +836,12 @@ CREATE TABLE event_publication (
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 ```
+
 - 実測SHOW CREATE TABLEでは6列、SHOW INDEXではPRIMARY KEYのみ。Modulith 1.4.13 の公式Entityには副索引の宣言がない。
 - **追加索引案（本計画側・公式スキーマ外）**: 旧暫定案の `(completion_date, publication_date)` は本計画が加える候補であり、公式DDLには無い。上記の公式基準DDLには含めない。残すかはL1-Mで未完了検索SQLと実行計画を確認して決める。
 - `ENGINE=InnoDB`、`DEFAULT CHARSET=utf8mb4`、`COLLATE=utf8mb4_0900_ai_ci` は今回のMySQL環境のSHOW CREATE出力である。ライブラリがこれらを宣言しているという意味ではない。プロジェクトmigrationの照合順序は `MigrationCollationDeclarationGuardTest` で別途担保する。
 - **原則6（UuidV7Entity）の例外**: この表はライブラリが管理し、主キーはライブラリが採番する。`UuidV7Entity` を継承させる余地が無いため、マスタ・シングルトン表と同じく例外とする。`EntityUuidV7ConventionArchTest` の対象packages (`com.mannschaft.app`) と `DoNotIncludeTests`、公式Entity FQCNをソース照合し、D-2b番人の対象外と確認した（番人自体の再実行ではない）。
-- **完了時の処理**: Registry suiteでは `spike.properties` に `spring.modulith.events.completion-mode=update` を明示し、非TX非同期listenerの正常完了後にcompletion dateが設定され、行が保持されることを確認した。別contextでは同設定を `delete` とし、公開API `markCompleted` を直接呼んで行数が1から0になることを確認した（listener flowではない）。未指定時のdefault値は公式sourceで確認した。hot切替とARCHIVE設定は未測定。
+- **完了時の処理**: 本計画では `spring.modulith.events.completion-mode=delete` を採用し、完了した行を削除する。別contextの実DB試験で、公開API `markCompleted` を直接呼び、行数が1から0になることを確認した。非TX非同期listenerの正常完了は、Registry suiteで `update` を明示し、completion dateの設定と行の保持を確認した。未指定時のdefault値は公式sourceで確認した。hot切替とARCHIVE設定は未測定。
 - **試行回数・状態の永続化**: 実測した1.4.13の表にはattempt/state（処理中・失敗・隔離）列がない。再投入回数などの永続化は本計画側の補助表（`event_publication_attempts` 等、新規表は `UuidV7Entity` 継承）をL1-Mで設計・確定する。
 - `event_type`、`listener_id`、`serialized_event` は実測上いずれも `VARCHAR(255)`。特にserialized payloadの長さをL1-Mで実イベントと測定し、必要なら拡張の要否を決める。ここで `TEXT` や512文字へ変更したDDLを確定しない。
 
