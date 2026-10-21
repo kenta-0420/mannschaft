@@ -48,6 +48,7 @@ import java.util.Optional;
 public class ErrorReportAsyncExecutor {
 
     private final ErrorReportRepository errorReportRepository;
+    private final ErrorReportIngestHook ingestHook;
     /**
      * Issue #2990 L11 — 通知は業務TX内で発火せず、ID だけを載せた業務イベントを publish する。
      * 実配送は {@link ErrorReportNotificationListener} が {@code AFTER_COMMIT} で行う。
@@ -159,6 +160,7 @@ public class ErrorReportAsyncExecutor {
         LocalDateTime now = LocalDateTime.now();
 
         Optional<ErrorReportEntity> existing = errorReportRepository.findByErrorHash(errorHash);
+        ingestHook.afterRead(errorHash, existing.isPresent());
         if (existing.isPresent()) {
             ErrorReportEntity report = existing.get();
 
@@ -211,6 +213,7 @@ public class ErrorReportAsyncExecutor {
                 .lastOccurredAt(now)
                 .build();
         ErrorReportEntity saved = errorReportRepository.save(newReport);
+        ingestHook.afterSave(errorHash);
 
         // F10.6 §5.6-③ — 新規発火を集約バッファに記録。
         // FIRST_OCCURRENCE が返るのが期待値（同一プロセス内で初回発火）。

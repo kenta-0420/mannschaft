@@ -44,6 +44,7 @@ import java.util.Optional;
 public class ErrorReportService {
 
     private final ErrorReportRepository errorReportRepository;
+    private final ErrorReportIngestHook ingestHook;
     /**
      * Issue #2990 L11 — 通知は業務TX内で発火せず、ID だけを載せた業務イベントを publish する。
      * 実配送は {@link ErrorReportNotificationListener} が {@code AFTER_COMMIT} で行う。
@@ -80,6 +81,7 @@ public class ErrorReportService {
         }
 
         Optional<ErrorReportEntity> existing = errorReportRepository.findByErrorHash(errorHash);
+        ingestHook.afterRead(errorHash, existing.isPresent());
 
         if (existing.isPresent()) {
             ErrorReportEntity report = existing.get();
@@ -169,6 +171,7 @@ public class ErrorReportService {
                 .build();
 
         ErrorReportEntity saved = errorReportRepository.save(newReport);
+        ingestHook.afterSave(errorHash);
 
         // 影響ユーザー追跡
         trackAffectedUser(errorHash, request.getUserId());
@@ -319,6 +322,8 @@ public class ErrorReportService {
         ErrorReportEntity report = errorReportRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorReportErrorCode.ERROR_REPORT_NOT_FOUND));
 
+        ingestHook.afterManagementRead(report.getErrorHash());
+
         ErrorReportStatus newStatus = request.getStatus() != null
                 ? EnumInputParser.parse(ErrorReportStatus.class, request.getStatus(), "status") : null;
         ErrorReportSeverity newSeverity = request.getSeverity() != null
@@ -363,6 +368,9 @@ public class ErrorReportService {
         }
 
         List<ErrorReportEntity> reports = errorReportRepository.findAllById(request.getIds());
+        for (ErrorReportEntity report : reports) {
+            ingestHook.afterManagementRead(report.getErrorHash());
+        }
         for (ErrorReportEntity report : reports) {
             report.setStatus(status);
             if (status == ErrorReportStatus.RESOLVED) {

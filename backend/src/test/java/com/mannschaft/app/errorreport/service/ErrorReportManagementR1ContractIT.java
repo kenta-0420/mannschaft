@@ -203,6 +203,39 @@ class ErrorReportManagementR1ContractIT extends ErrorReportR1TestSupport {
         assertThat(reload(a2.getId()).getStatus()).isEqualTo(reload(b2.getId()).getStatus());
     }
 
+    @Test
+    void AC7h_通常read中のlock例外は単票TX全体を三回試行し503で更新しない() throws Exception {
+        contentionAtRead(false);
+    }
+
+    @Test
+    void AC7h_通常read中のlock例外はbulkTX全体を三回試行し503で更新しない() throws Exception {
+        contentionAtRead(true);
+    }
+
+    /** 通常readへの失敗注入であり、hashロック取得の証明ではない。 */
+    private void contentionAtRead(boolean bulk) throws Exception {
+        String hash = sha256(UUID.randomUUID().toString());
+        var report = fixture(hash, ErrorReportStatus.IGNORED);
+        AtomicInteger attempts = new AtomicInteger();
+        hook.onManagementRead = key -> {
+            if (hash.equals(key)) { attempts.incrementAndGet(); throw new CannotAcquireLockException("R1 management read"); }
+        };
+        var request = bulk ? patch(BASE + "/bulk") : patch(BASE + "/{id}", report.getId());
+        Object body = bulk ? new ErrorReportBulkUpdateRequest(List.of(report.getId()), "RESOLVED")
+                : new ErrorReportUpdateRequest("RESOLVED", null, null);
+        AtomicInteger httpStatus = new AtomicInteger(-1);
+        Throwable requestFailure = org.assertj.core.api.Assertions.catchThrowable(() ->
+                httpStatus.set(mvc.perform(admin(request).content(mapper.writeValueAsString(body)))
+                        .andReturn().getResponse().getStatus()));
+
+        assertThat(reload(report.getId()).getStatus()).isEqualTo(ErrorReportStatus.IGNORED);
+        assertThat(reload(report.getId()).getResolvedAt()).isNull();
+        assertThat(attempts.get()).as("通常readのlock例外後はTX全体を三回まで再試行する").isEqualTo(3);
+        assertThat(requestFailure).isNull();
+        assertThat(httpStatus.get()).isEqualTo(503);
+    }
+
     private void contention(boolean bulk) throws Exception {
         String hash = sha256(UUID.randomUUID().toString());
         var report = fixture(hash, ErrorReportStatus.IGNORED);

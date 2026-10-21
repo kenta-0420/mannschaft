@@ -8,6 +8,15 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class ErrorReportIngestHook {
+    /** 既存の通常read直後。ロック取得やflush完了を意味しない。 */
+    public void afterRead(String errorHash, boolean existing) { }
+
+    /** 既存saveの戻り直後。IDENTITYのINSERT送信を観測できるがflush完了を意味しない。 */
+    public void afterSave(String errorHash) { }
+
+    /** 管理対象の通常read直後。hashロック取得を意味しない。 */
+    public void afterManagementRead(String errorHash) { }
+
     /** locking read 完了後、行の更新前に呼ぶ。 */
     public void afterLockingRead(String errorHash, boolean existing) { }
 

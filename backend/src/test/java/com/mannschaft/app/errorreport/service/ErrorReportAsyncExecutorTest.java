@@ -42,6 +42,8 @@ class ErrorReportAsyncExecutorTest {
 
     @Mock
     private ErrorReportRepository errorReportRepository;
+    @org.mockito.Spy
+    private ErrorReportIngestHook ingestHook = new ErrorReportIngestHook();
     /**
      * Issue #2990 L11 — 業務TX内で発火するのは通知ではなく業務イベントである。
      * 是正前はここが {@code ErrorReportNotifier} のモックだった。

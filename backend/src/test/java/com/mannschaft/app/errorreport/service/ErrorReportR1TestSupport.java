@@ -223,6 +223,12 @@ abstract class ErrorReportR1TestSupport extends AbstractMySqlIntegrationTest {
         final AtomicInteger reads = new AtomicInteger();
         final AtomicInteger flushes = new AtomicInteger();
         final AtomicInteger managementLocks = new AtomicInteger();
+        volatile BiConsumer<String, Boolean> onExistingRead = (hash, found) -> { };
+        volatile Consumer<String> onSaved = hash -> { };
+        volatile Consumer<String> onManagementRead = hash -> { };
+        @Override public void afterRead(String hash, boolean found) { onExistingRead.accept(hash, found); }
+        @Override public void afterSave(String hash) { onSaved.accept(hash); }
+        @Override public void afterManagementRead(String hash) { onManagementRead.accept(hash); }
         volatile BiConsumer<String, Boolean> onRead = (hash, found) -> { };
         volatile Consumer<String> onFlush = hash -> { };
         volatile Consumer<String> onManagement = hash -> { };
@@ -237,6 +243,7 @@ abstract class ErrorReportR1TestSupport extends AbstractMySqlIntegrationTest {
         }
         void reset() {
             reads.set(0); flushes.set(0); managementLocks.set(0);
+            onExistingRead = (hash, found) -> { }; onSaved = hash -> { }; onManagementRead = hash -> { };
             onRead = (hash, found) -> { }; onFlush = hash -> { }; onManagement = hash -> { };
         }
     }

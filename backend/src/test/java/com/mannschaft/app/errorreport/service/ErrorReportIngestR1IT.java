@@ -228,14 +228,14 @@ class ErrorReportIngestR1IT extends ErrorReportR1TestSupport {
     void AC5_ロック失敗の各試行は完全rollbackし五回で再送出する() {
         var request = request(); String hash = feHash(request);
         AtomicInteger attempts = new AtomicInteger();
-        hook.onFlush = key -> {
-            if (hash.equals(key)) { attempts.incrementAndGet(); throw new CannotAcquireLockException("R1 lock"); }
+        hook.onSaved = key -> {
+            if (hash.equals(key)) { assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM error_reports WHERE error_hash = ?", Integer.class, hash)).isEqualTo(1); attempts.incrementAndGet(); throw new CannotAcquireLockException("R1 lock"); }
         };
 
         assertThatThrownBy(() -> fe(request)).isInstanceOf(CannotAcquireLockException.class);
 
-        assertThat(attempts.get()).isEqualTo(5);
         assertThat(count(hash)).as("各回のINSERTが巻き戻り、再試行に残らない").isZero();
+        assertThat(attempts.get()).as("save直後のlock例外は別TXで五回まで再試行する").isEqualTo(5);
         assertThat(events.committed).isEmpty();
         assertThat(aggregator.drainAndClear()).isEmpty();
     }
@@ -244,7 +244,7 @@ class ErrorReportIngestR1IT extends ErrorReportR1TestSupport {
     void AC5_afterCommitでロック例外が起きてもcommit済みの集約を再試行しない() {
         var request = request(); String hash = feHash(request);
         AtomicInteger callbacks = new AtomicInteger();
-        hook.onRead = (key, found) -> {
+        hook.onExistingRead = (key, found) -> {
             if (hash.equals(key)) TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override public void afterCommit() {
                     callbacks.incrementAndGet(); throw new CannotAcquireLockException("R1 afterCommit失敗");
@@ -358,32 +358,35 @@ class ErrorReportIngestR1IT extends ErrorReportR1TestSupport {
     }
 
     @Test
-    void AC5_二回のflush失敗が完全rollbackしてから新TXで成功する() {
+    void AC5_二回のsave後失敗が完全rollbackしてから新TXで成功する() {
         var request = request(); String hash = feHash(request);
         var insertedIds = new java.util.ArrayList<Long>();
         var foundRows = new java.util.ArrayList<Boolean>();
-        hook.onRead = (key, found) -> { if (hash.equals(key)) foundRows.add(found); };
-        hook.onFlush = key -> {
+        hook.onExistingRead = (key, found) -> { if (hash.equals(key)) foundRows.add(found); };
+        hook.onSaved = key -> {
             if (hash.equals(key)) {
                 insertedIds.add(jdbc.queryForObject("SELECT id FROM error_reports WHERE error_hash = ?", Long.class, hash));
                 if (insertedIds.size() <= 2) throw new CannotAcquireLockException("R1 rollbackして再試行");
             }
         };
 
-        var saved = fe(request);
+        var saved = new java.util.concurrent.atomic.AtomicReference<ErrorReportEntity>();
+        Throwable failure = org.assertj.core.api.Assertions.catchThrowable(() -> saved.set(fe(request)));
+        assertThat(count(hash)).as("失敗ならINSERTはTX外に残らず、成功なら一行だけ").isEqualTo(failure == null ? 1 : 0);
+        assertThat(failure).as("二回rollback後の三回目で成功する").isNull();
 
         assertThat(foundRows).containsExactly(false, false, false);
         assertThat(insertedIds).hasSize(3).doesNotHaveDuplicates();
-        assertThat(saved.getId()).isEqualTo(insertedIds.getLast());
+        assertThat(saved.get().getId()).isEqualTo(insertedIds.getLast());
         assertThat(count(hash)).isEqualTo(1);
         assertThat(occurrences(hash)).isEqualTo(1);
         assertThat(events.committed).isEmpty();
     }
 
     @Test
-    void AC5_flush前のTX内失敗も新規行を残さない() {
+    void AC5_read直後のTX内失敗も新規行を残さない() {
         var request = request(); String hash = feHash(request);
-        hook.onRead = (key, found) -> { if (hash.equals(key)) throw new IllegalStateException("R1 flush前"); };
+        hook.onExistingRead = (key, found) -> { if (hash.equals(key)) throw new IllegalStateException("R1 flush前"); };
 
         assertThatThrownBy(() -> fe(request)).isInstanceOf(IllegalStateException.class);
 
@@ -427,8 +430,8 @@ class ErrorReportIngestR1IT extends ErrorReportR1TestSupport {
     @Test
     void AC5_ロック競合以外の整合性例外は再試行しない() {
         var request = request(); String hash = feHash(request); AtomicInteger attempts = new AtomicInteger();
-        hook.onFlush = key -> {
-            if (hash.equals(key)) { attempts.incrementAndGet(); throw new org.springframework.dao.DataIntegrityViolationException("R1 unrelated CHECK"); }
+        hook.onSaved = key -> {
+            if (hash.equals(key)) { assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM error_reports WHERE error_hash = ?", Integer.class, hash)).isEqualTo(1); attempts.incrementAndGet(); throw new org.springframework.dao.DataIntegrityViolationException("R1 unrelated CHECK"); }
         };
 
         assertThatThrownBy(() -> fe(request)).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
