@@ -79,6 +79,34 @@ public class L1G0TransactionalFixture {
         @Transactional
         public void execute(DefaultPort port) { port.forward(); }
     }
+    /** 安全な親defaultから子defaultへdispatchする検体。 */
+    public interface SafeDefaultParent {
+        default void forward() { new TransitiveResidentRepository().save(); }
+    }
+    /** 唯一の具象実装が継承する越境default。 */
+    public interface UnsafeDefaultChild extends SafeDefaultParent {
+        @Override
+        default void forward() { new TransitiveProxyRepository().save(); }
+    }
+    /** 子interfaceの越境defaultを継承する具象実装。 */
+    public static class ChildDefaultBridge implements UnsafeDefaultChild { }
+    /** 子defaultよりクラスの本体を優先する検体。 */
+    public static class ClassDefaultOverride implements UnsafeDefaultChild {
+        @Override
+        public void forward() { new TransitiveResidentRepository().save(); }
+    }
+    /** 越境する親defaultを安全な子defaultがoverrideする検体。 */
+    public interface SafeDefaultChild extends DefaultPort {
+        @Override
+        default void forward() { new TransitiveResidentRepository().save(); }
+    }
+    /** 安全な子defaultを継承する具象実装。 */
+    public static class SafeChildDefaultBridge implements SafeDefaultChild { }
+    /** 親interface型から子defaultへ到達するTX入口。 */
+    public static class ChildDefaultEntry {
+        @Transactional
+        public void execute(SafeDefaultParent port) { port.forward(); }
+    }
     /** interface を経由して再帰する検体。 */
     public static class RecursiveBridge implements Port {
         private Port next;

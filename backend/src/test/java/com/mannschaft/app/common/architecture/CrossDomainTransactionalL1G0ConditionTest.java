@@ -1,6 +1,13 @@
 package com.mannschaft.app.common.architecture;
 
 import external.transitivetx.ExternalPortBridge;
+import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.SafeDefaultParent;
+import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.UnsafeDefaultChild;
+import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.ChildDefaultBridge;
+import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.ClassDefaultOverride;
+import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.SafeDefaultChild;
+import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.SafeChildDefaultBridge;
+import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.ChildDefaultEntry;
 import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.DefaultPort;
 import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.DefaultEntry;
 import com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture.FirstDefaultBridge;
@@ -124,6 +131,24 @@ class CrossDomainTransactionalL1G0ConditionTest {
     void 実装候補二件でも静的解決できるdefault本体を保持する() {
         assertThat(d3t(DefaultEntry.class, DefaultPort.class,
             FirstDefaultBridge.class, SecondDefaultBridge.class)).hasSize(1);
+    }
+
+    @Test
+    void 単一実装が継承した子interfaceの越境default本体を辿る() {
+        assertThat(d3t(ChildDefaultEntry.class, SafeDefaultParent.class,
+            UnsafeDefaultChild.class, ChildDefaultBridge.class)).hasSize(1);
+    }
+
+    @Test
+    void 単一実装では安全な子defaultがoverrideした親の越境defaultを辿らない() {
+        assertThat(d3t(DefaultEntry.class, DefaultPort.class,
+            SafeDefaultChild.class, SafeChildDefaultBridge.class)).isEmpty();
+    }
+
+    @Test
+    void 子interfaceのdefaultより具象クラスのoverrideを優先する() {
+        assertThat(d3t(ChildDefaultEntry.class, SafeDefaultParent.class,
+            UnsafeDefaultChild.class, ClassDefaultOverride.class)).isEmpty();
     }
 
     @ParameterizedTest
