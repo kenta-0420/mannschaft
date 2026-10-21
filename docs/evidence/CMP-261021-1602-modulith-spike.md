@@ -2,7 +2,7 @@
 
 ## 状態
 
-2026-10-21。**調査のみ、実検証未開始**。台帳 main 反映通知を待つ条件により、試験コード・保存限定実装・重ビルドは開始していない。現時点を L0-S 合格や Phase 0 完了とは扱わない。
+2026-10-21。**試練作成済み、実検証は turnstile 待機**。PR #4027 の main 反映と台帳の実装中状態を確認し、main を merge した後に専用 sourceSet/Test タスクと検体を作成した。保存限定実装は red の実アサーション失敗確認まで加えない。現時点を L0-S 合格や Phase 0 完了とは扱わない。
 
 対象: `3bad46f846cd094a64bd46524aed69479b0c76bf`。ブランチ: `spike/cmp-261021-0017-modulith-261021`。worktree: `.claude/worktrees/agent-4022-modulith-spike`。コードを main へマージしない。
 
@@ -34,7 +34,7 @@
 - backend/ と docs/architecture、docs/security、docs/evidence の cone sparse checkout を実施。再開時 `git merge origin/main` は Already up to date。
 - 親 Issue の読取時点（2026-10-21 16時台 JST）では L0-M 未着手、計測窓予約なし。これは将来の実行許可を意味しない。
 - 通常 exec shell は親から使用不能と引き継ぎ。必要最小コマンドを sandbox 外で実行。PowerShell ファイル読込と出力は UTF-8 を指定する。
-- 公式 jar の一時取得を試行中。完了していない取得物は実配布物の検証根拠として使用しない。
+- 公式 Maven Central は HTTP 200 を返した。PowerShell Invoke-WebRequest が4KBで停止した取得は中断し、curl で core/events-jpa/test/events-core の 1.4.13 jar を取得、javap で公開 API と Entity 注釈を照合した。Gradle の正規依存解決はまだ実行待ち。キャッシュ削除は行っていない。
 
 ```powershell
 git rev-parse HEAD
@@ -56,3 +56,12 @@ gh issue view 4022 --repo kenta-0420/mannschaft --json body,comments
 ## §11.2 への申し送り
 
 現時点では暫定DDLを確定版へ差し替えてはならない。実 Entity の既定文字列長、MySQL dialect が Instant に割り当てる型、実索引を測り、必要なプロジェクト側の長さ拡張・未完了検索索引を公式既定と明確に分ける。試行回数/隔離状態は上記 Entity に無いため、L1-M の補助表が必要という仮説を実配布物で確定する。
+## 試練作成後のチェックポイント
+
+- 2026-10-21 18時台 JST。試練 commit `78960ac2aa`。`modulithRegistrySpike` を turnstile 経由で起動したが、他者の生存ロックにより待機している。1133秒以上の待機時点で Gradle 自体は未開始。
+- RegistrySpikeIT: 認証非保存、対象listener限定と正常完了、例外後未完了、Entityからの実DDL/索引。
+- StructureSpikeIT: 全本番class集合照合、発生元別依存違反/報告循環/別記SCC、jobmatching→chat.api、自身のlistener、橋渡し限定除外の陽性/陰性。
+- WebhookSpikeIT: 独立 ApplicationModuleTest。4ServiceとRepositoryを実ロード。失敗する場合も隠さず起動失敗として記録する。
+- 同じ専用 Test タスクが既存の archunit タグ除外を継承して空実行しないよう、専用タスク内だけタグ集合を明示解除した。既存番人タスクの設定は変更していない。
+- 保持者は MSYS PID190676、WINPID48628、CREATED20261021065352。読取の ps -ef で MSYS 子190784（別 worktree の Gradle wrapper）を確認。保持者・子・ロックを停止/解除していない。
+- 実行の red/green、DDL、依存解決、違反件数、webhook起動結果のログは未取得。待機ログだけを合格根拠にしない。

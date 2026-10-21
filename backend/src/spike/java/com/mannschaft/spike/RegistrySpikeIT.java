@@ -129,12 +129,12 @@ class RegistrySpikeIT {
     @EnableAsync
     static class App {
         @Bean Listeners listeners() { return new Listeners(); }
-        @Bean org.springframework.scheduling.annotation.AsyncConfigurer asyncConfigurer(Listeners listeners) {
+        @Bean org.springframework.scheduling.annotation.AsyncConfigurer asyncConfigurer(org.springframework.beans.factory.ObjectProvider<Listeners> listeners) {
             return new org.springframework.scheduling.annotation.AsyncConfigurer() {
                 @Override public org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
                     return (exception, method, arguments) -> {
                         if (!method.getName().equals("failure")) { throw new IllegalStateException("予定外の非同期失敗", exception); }
-                        listeners.failed.set(true);
+                        listeners.getObject().failed.set(true);
                     };
                 }
             };
