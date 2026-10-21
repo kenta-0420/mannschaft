@@ -146,8 +146,8 @@
       "modal_title": "Beitrag weiterleiten",
       "target_label": "Verbreitungsbereich",
       "target_member": "Nur Mitglieder",
-      "target_supporter": "Mitglieder + Unterstützer (ab Phase 3)",
-      "target_supporter_tooltip": "Ab Phase 3 verfügbar",
+      "target_supporter": "Mitglieder + Unterstützer (demnächst)",
+      "target_supporter_tooltip": "Diese Zielgruppe ist noch nicht verfügbar",
       "comment_label": "Admin-Kommentar (optional)",
       "comment_placeholder": "Kommentar für die Weiterleitung eingeben (optional)",
       "submit": "Weiterleiten",
@@ -156,7 +156,8 @@
       "revoke": "Weiterleitung zurückziehen",
       "revoke_success": "Weiterleitung zurückgezogen",
       "revoke_confirm": "Diese Weiterleitung zurückziehen?",
-      "error": "Weiterleitung fehlgeschlagen"
+      "error": "Weiterleitung fehlgeschlagen",
+      "already_forwarded": "Dieser Beitrag wurde bereits weitergeleitet. Die Liste wurde aktualisiert"
     }
   },
   "forward_exports": {

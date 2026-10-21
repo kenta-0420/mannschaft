@@ -31,8 +31,12 @@ export interface TeamFriendView {
   friendTeamId: number
   /** 相手チーム名（非公開時は空になり得る） */
   friendTeamName: string | null
-  /** フレンド関係の公開フラグ */
-  isPublic: boolean
+  /**
+   * フレンド関係の公開フラグ。
+   * API の JSON キーは "public"（BE TeamFriendView の @JsonProperty("public")、生成型 TeamFriendView.public）。
+   * isPublic ではない点に注意（リクエスト SetVisibilityRequest は isPublic）。
+   */
+  public: boolean
   /** フレンド関係成立日時（ISO 8601） */
   establishedAt: string
 }
