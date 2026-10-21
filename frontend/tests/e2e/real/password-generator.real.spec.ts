@@ -1,6 +1,6 @@
 /**
  * CMP-261021-2133: 実BE・専用fixtureによる本人パスワード生成の実機試験。
- * API補助は認証前提と受信メール読取だけ。対象操作をAPIで代替しない。
+ * API補助はログイン認証、有効reset tokenの前提発行、受信メール読取だけ。対象操作をAPIで代替しない。
  * 秘密を含むtrace/video/自動スクリーンショットを無効にし、入力をマスクして撮影する。
  */
 import { test, expect, type Page, type Locator } from '@playwright/test'
@@ -89,7 +89,7 @@ async function generate(page: Page): Promise<string> {
   await expect(generateButton(page)).toBeEnabled()
   const input = newInputs(page).first()
   const beforeUrl = page.url()
-  test.info().annotations.push({ type: 'UI操作', description: new URL(beforeUrl).pathname + ': 生成ボタンをキーボードEnterで操作、新規・確認欄一致、既存送信ボタンで保存' })
+  test.info().annotations.push({ type: 'UI操作', description: new URL(beforeUrl).pathname + ': 生成ボタンをキーボードEnterで操作、新規・確認欄一致' })
   await generateButton(page).focus()
   await page.keyboard.press('Enter')
   const value = await input.inputValue()
@@ -154,7 +154,7 @@ test.afterEach(async ({ page }, info) => {
   try { previous = JSON.parse(readFileSync(evidencePath, 'utf8')) as unknown[] }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error }
   previous.push({ test: info.title, status: info.status, expectedStatus: info.expectedStatus, duration: info.duration,
-    apiUse: '専用fixtureによる認証前提・受信メール読取のみ', finalScreen: new URL(page.url()).pathname, evidence: info.annotations, source: 'password-generator.real.spec.ts' })
+    apiUse: 'ログイン認証・有効reset tokenの前提発行・受信メール読取のみ', finalScreen: new URL(page.url()).pathname, evidence: info.annotations, source: 'password-generator.real.spec.ts' })
   writeFileSync(evidencePath, JSON.stringify(previous, null, 2))
 })
 
