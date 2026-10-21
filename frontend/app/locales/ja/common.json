@@ -3182,14 +3182,5 @@
         "step3": "追加に失敗しても入力は残ります。表示された理由や入力内容を確認してから、もう一度「追加」を押します。"
       }
     }
-  },
-  "lineSettings": {
-    "title": "LINE設定",
-    "description": "LINE Messaging API との連携設定"
-  },
-  "snsSettings": {
-    "title": "SNS設定",
-    "description": "Instagram・X のフィード連携を管理します",
-    "addAccount": "アカウントを追加"
   }
 }

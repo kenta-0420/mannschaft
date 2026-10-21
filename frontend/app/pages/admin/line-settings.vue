@@ -1,5 +1,4 @@
 <script setup lang="ts">
-const { t } = useI18n()
 definePageMeta({ middleware: 'auth' })
 
 const scopeStore = useScopeStore()
@@ -101,11 +100,11 @@ onMounted(() => { if (scopeId.value) load() })
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader class="md:-mt-1.5" :title="t('lineSettings.title')" :subtitle="t('lineSettings.description')">
+    <PageHeader class="md:-mt-1.5" title="LINE設定" subtitle="LINE Messaging API との連携設定">
       <template #actions>
         <div class="flex gap-2">
-          <Button v-if="config && !isPersonalScope" :label="t('button.delete')" severity="danger" outlined size="small" @click="remove" />
-          <Button v-if="!isPersonalScope" :label="t('button.save')" icon="pi pi-check" :loading="saving" @click="save" />
+          <Button v-if="config && !isPersonalScope" label="削除" severity="danger" outlined size="small" @click="remove" />
+          <Button v-if="!isPersonalScope" label="保存" icon="pi pi-check" :loading="saving" @click="save" />
         </div>
       </template>
     </PageHeader>

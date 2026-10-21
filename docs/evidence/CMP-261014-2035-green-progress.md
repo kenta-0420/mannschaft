@@ -51,3 +51,22 @@ ScopeGuideのh1左上xyと文字列は同一。副題を別行へ移した結果
 補正後5画面の撮影は最初のfoldersでpage.goto 60秒timeoutとなったため、環境未実行として分離。LINE単画面は途中で撮れたがsuite合格には数えない。撮影sessionを中断しChrome残存なしを確認、自分のNuxt3002も停止してローカル実行窓を返却した。Windows空きは停止後約4.68GiB。別担当のranch Gradleや共有daemonを変更していない。P8全8画像差分ゼロ、P9全9画面、P6/P7/strict全196件は引き続き未完了。
 
 checkpoint b0d6fa2e6fの全active CIは成功（Smoke/Frontend Install/harness含む）。本節の位置補正はその後の差分であり、対応CIとブラウザ再検証は別途追跡する。台帳完了化・最終evidence JSON作成・マージは行わない。
+
+## main追従headと画像再検査（2026-10-21）
+
+mainを通常mergeしたhead `5c94540024b9ab1ad34ee767d42faee3db6577c0` のCIは全active check成功。Frontendは671 files/6602 tests成功、対象13specの141件・skip 0を実ログから確認した。組織広告同居specは再試行1件追加後4件となっている。
+
+同head・52入力cmp一致のモック画像でP9は9/9数値条件成功。4画面のタイトルxy・ボタン幅/高さ/右端/旧新アンカーと許容縦移動を確認した。ScopeGuideは旧同一行DOMを再現し、font-family/30px/weight700/line-height36pxが一致、左上xyと文字列不変、overflowなし。本陣裁可の位置不変に従い末尾1字折返し解消を記録し、全bbox寸法一致という追加要件は課していない。
+
+P8は既存7画面の厳密RGB差0に加え、teams広告詳細を同contextで2枚再撮影。初回は原本との差26pixel（CSV丸角のみ）、300ms後の2枚目は原本との差0でPNGのSHA256まで一致した。初回は前回差26pixel画像とファイルhashが一致。h1/Tag/actions/CSV bboxは不変。原本・失敗観測・両再撮影・全差分座標/RGB・hashを専有証拠に保全し、閾値緩和/基準上書き/製品CSS変更はしない。具体的描画機構は未確定だが、同context初回fullPage後300msの安定描画条件を実測した。本陣裁可により既存7zero＋当画面再実測zeroを対応付けた。
+
+Nuxt起動のcold構築中は保護route curlが30秒/60秒000だったが、Nitro構築と初回page compile後は200/1.533秒へ回復。その後196件をworkers1で開始し22件連続成功、assert失敗なし。host空きが約10.4GiB→8.1GiB→6.9GiB→4.8GiBと低下したため、所有するrunとNuxtのみCtrlC停止した。JSON reporter最終出力前の中断につき結果JSONは未生成、196件の完了とは扱わない。成功22件はP6のja/en/zh/ko各5画面とesのfolders/exports。残174件は未完了。所有server/browser残存なしを確認し、他担当プロセスは変更していない。
+
+## 正式検分によるLINE/SNS範囲訂正
+
+本陣の正式検分で、陣立てv3行95の「line・sns の日本語直書きはそのまま subtitle へ、i18n 化は別起票」がv4/v5/末尾でも変更されていないことを確認した。従前の翻訳許容判断を本陣が訂正し、CMP1330範囲のi18nを今回から除外する。
+
+LINE/SNSのタイトル・副題・削除/保存/アカウント追加とSNSダイアログ保存を元の日本語へ最小復元した。PageHeader/subtitle/actions移行、md位置補正、LINEの元flex wrapper、v-if/disabled/loading/イベントとhandlerは保持。6言語common.jsonへ今回追加したroot `lineSettings`/`snsSettings` だけを使用箇所確認後に除去し、既存sidebar等の翻訳は保持した。関連6件specは翻訳stubを除去し、元タイトル/副題/操作文字列とSNSfooterのキャンセル/保存を確認する。
+
+196件runの入力は実行中に変更していない。上記141件CI・P8/P9・22件は訂正前headの証拠として保全し、訂正後headのCIは別途確認する。新しいNuxt/Chromeは起動せず、軽量lintと6言語JSON構文・差分検査を行う。独立検分・モックなし実機・住民探索・台帳/最終evidence/マージは未完了のまま。
+訂正差分9入力はWSLへ同期後cmp一致。対象LINE/SNS/specのeslintはexit 0、6言語JSONは全て構文解析成功、git diff --check成功。新設root翻訳キー参照は0件。de commonの友達チーム用語統一2箇所は2035正本要件として保持した。関連6件の動的検証は次head CIで確認し、環境停止中のローカルNuxt再起動はしない。

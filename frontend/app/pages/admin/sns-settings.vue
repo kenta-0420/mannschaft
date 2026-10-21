@@ -1,5 +1,4 @@
 <script setup lang="ts">
-const { t } = useI18n()
 definePageMeta({ middleware: 'auth' })
 
 const scopeStore = useScopeStore()
@@ -119,9 +118,9 @@ onMounted(() => { if (scopeId.value) load() })
 
 <template>
   <div class="mx-auto max-w-4xl">
-    <PageHeader class="md:-mt-1.5" :title="t('snsSettings.title')" :subtitle="t('snsSettings.description')">
+    <PageHeader class="md:-mt-1.5" title="SNS設定" subtitle="Instagram・X のフィード連携を管理します">
       <template #actions>
-        <Button v-if="!isPersonalScope" :label="t('snsSettings.addAccount')" icon="pi pi-plus" @click="openCreate" />
+        <Button v-if="!isPersonalScope" label="アカウントを追加" icon="pi pi-plus" @click="openCreate" />
       </template>
     </PageHeader>
 
@@ -203,7 +202,7 @@ onMounted(() => { if (scopeId.value) load() })
       </div>
       <template #footer>
         <Button label="キャンセル" severity="secondary" text @click="showDialog = false" />
-        <Button :label="t('button.save')" :loading="saving" :disabled="!form.accountUsername" @click="save" />
+        <Button label="保存" :loading="saving" :disabled="!form.accountUsername" @click="save" />
       </template>
     </Dialog>
   </div>

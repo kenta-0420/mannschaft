@@ -8,15 +8,6 @@ import SnsSettings from '~/pages/admin/sns-settings.vue'
 const { getConfig, updateConfig, createConfig, deleteConfig, listFeeds } = vi.hoisted(() => ({ getConfig: vi.fn(), updateConfig: vi.fn(), createConfig: vi.fn(), deleteConfig: vi.fn(), listFeeds: vi.fn() }))
 const scope = reactive({ current: { type: 'team', id: 't' } })
 mockNuxtImport('useScopeStore', () => () => scope)
-mockNuxtImport('useI18n', () => () => ({ t: (key: string) => ({
-  'lineSettings.title': 'LINE設定',
-  'lineSettings.description': 'LINE Messaging API との連携設定',
-  'snsSettings.title': 'SNS設定',
-  'snsSettings.description': 'Instagram・X のフィード連携を管理します',
-  'snsSettings.addAccount': 'アカウントを追加',
-  'button.delete': '削除',
-  'button.save': '保存',
-} as Record<string, string>)[key] ?? key }))
 
 mockNuxtImport('useAdminScopeGuard', () => vi.fn())
 mockNuxtImport('useNotification', () => () => ({ success: vi.fn(), error: vi.fn() }))
@@ -24,7 +15,7 @@ mockNuxtImport('useLineConfigApi', () => () => ({ getConfig, updateConfig, creat
 mockNuxtImport('useSnsFeedApi', () => () => ({ listFeeds, createFeed: vi.fn(), updateFeed: vi.fn(), deleteFeed: vi.fn(), previewFeed: vi.fn() }))
 const HeaderStub = defineComponent({ props: { title: String, subtitle: String }, setup(props, { slots }) { return () => h('header', { 'data-testid': 'settings-header' }, [h('h1', props.title), props.subtitle ? h('p', { 'data-testid': 'page-header-subtitle' }, props.subtitle) : slots.subtitle?.(), slots.actions?.()]) } })
 const ButtonStub = defineComponent({ props: { label: String, loading: Boolean, disabled: Boolean }, emits: ['click'], setup(props, { emit }) { return () => h('button', { disabled: props.loading || props.disabled, 'data-loading': String(props.loading), onClick: () => emit('click') }, props.label) } })
-const DialogStub = defineComponent({ props: { visible: Boolean }, setup(props) { return () => props.visible ? h('div', { 'data-testid': 'sns-create-dialog' }) : null } })
+const DialogStub = defineComponent({ props: { visible: Boolean }, setup(props, { slots }) { return () => props.visible ? h('div', { 'data-testid': 'sns-create-dialog' }, slots.footer?.()) : null } })
 const cleanups: Array<() => void> = []
 async function mountSettings(component: Component) {
   const wrapper = await mountSuspended(component, { global: { stubs: { PageHeader: HeaderStub, Button: ButtonStub, Dialog: DialogStub, DataTable: true, Column: true, SectionCard: { template: '<section><slot /></section>' } } } })
@@ -48,6 +39,7 @@ describe('CMP-261014-2035 P11/P12 設定ヘッダ操作', () => {
     const wrapper = await mountSettings(LineSettings)
     const header = wrapper.get('[data-testid="settings-header"]')
     expect(header.get('[data-testid="page-header-subtitle"]').text()).toBe('LINE Messaging API との連携設定')
+    expect(header.get('h1').text()).toBe('LINE設定')
     const buttons = header.findAll('button')
     expect(buttons.map(button => button.text())).toEqual(['削除', '保存'])
     await buttons[1]!.trigger('click')
@@ -86,8 +78,10 @@ describe('CMP-261014-2035 P11/P12 設定ヘッダ操作', () => {
     const wrapper = await mountSettings(SnsSettings)
     const header = wrapper.get('[data-testid="settings-header"]')
     expect(header.get('[data-testid="page-header-subtitle"]').text()).toBe('Instagram・X のフィード連携を管理します')
+    expect(header.get('h1').text()).toBe('SNS設定')
     expect(header.get('button').text()).toBe('アカウントを追加')
     await header.get('button').trigger('click')
     expect(wrapper.find('[data-testid="sns-create-dialog"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="sns-create-dialog"]').findAll('button').map(button => button.text())).toEqual(['キャンセル', '保存'])
   })
 })
