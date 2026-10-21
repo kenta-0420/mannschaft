@@ -127,12 +127,36 @@ class RegistrySpikeIT {
         }
     }
 
+    /** 公開store拡張点でイベント印と合成購読注釈の両方を満たす配信だけ登録する。 */
+    static class RestrictedRegistry extends org.springframework.modulith.events.core.DefaultEventPublicationRegistry {
+        private final java.util.Set<String> moduleTargetIds = java.util.Arrays.stream(Listeners.class.getDeclaredMethods())
+                .filter(method -> method.isAnnotationPresent(ModuleEventListener.class))
+                .map(method -> org.springframework.core.annotation.AnnotatedElementUtils
+                        .findMergedAnnotation(method, TransactionalEventListener.class).id())
+                .collect(java.util.stream.Collectors.toSet());
+
+        RestrictedRegistry(org.springframework.modulith.events.core.EventPublicationRepository repository) {
+            super(repository, java.time.Clock.systemUTC());
+        }
+
+        @Override
+        public java.util.Collection<org.springframework.modulith.events.core.TargetEventPublication> store(Object event,
+                java.util.stream.Stream<org.springframework.modulith.events.core.PublicationTargetIdentifier> targets) {
+            if (!(event instanceof ReliableEvent)) { return java.util.List.of(); }
+            return super.store(event, targets.filter(target -> moduleTargetIds.contains(target.getValue())));
+        }
+    }
+
     /** Registry自動構成だけを起動し、本番全体のcomponent scanを避ける検体。 */
     @SpringBootConfiguration
     @EnableAutoConfiguration
     @EnableAsync
     static class App {
         @Bean Listeners listeners() { return new Listeners(); }
+        @Bean @org.springframework.context.annotation.Primary
+        RestrictedRegistry restrictedRegistry(org.springframework.modulith.events.core.EventPublicationRepository repository) {
+            return new RestrictedRegistry(repository);
+        }
         @Bean org.springframework.scheduling.annotation.AsyncConfigurer asyncConfigurer(org.springframework.beans.factory.ObjectProvider<Listeners> listeners) {
             return new org.springframework.scheduling.annotation.AsyncConfigurer() {
                 @Override public org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
