@@ -25,7 +25,7 @@ Node 22.23.2/npm 10.9.8、Nuxt hook/test timeout 600000、maxWorkers=1。
 | P14追加後node契約（上の59件を含む） | 64 | 64 | 0 | 0 |
 | R5既存FriendForwardModal回帰 | 3 | 3 | 0 | 0 |
 
-重複を除く確認済み合計138件。上表は照合済み入力での成功履歴であり、その後の4画面の文字色保持slot移行・追加境界試験・再試行キー修正は再検証待ち。P14の5件は画面側の翻訳式・操作なし・data-testid不変をASTで固定し、段落の実描画はPageHeader.specの13件で検証する。AST実app違反は8→0。変更対象と追加E2Eの対象lintはexit 0。検索2/3文字の境界追加2件、組織広告の再試行追加1件は未実行。
+重複を除く確認済み合計138件。その後、文字色保持slotを含むP14/ASTの限定18件と、検索・組織広告の限定18件も全成功・skip 0を確認した。追加の検索境界2件と再試行1件を含め、重複なし合計141件。P14の5件は画面側の翻訳式・操作なし・data-testid不変をASTで固定し、段落の実描画はPageHeader.specの13件で検証する。AST実app違反は8→0。変更対象と追加E2Eの対象lintはexit 0。検索2/3文字の境界追加2件、組織広告の再試行追加1件も限定再実行で成功した。
 
 ## 未完了の検証
 
@@ -34,3 +34,9 @@ Node 22.23.2/npm 10.9.8、Nuxt hook/test timeout 600000、maxWorkers=1。
 専用3002でP8 billingの移行後撮影を完了後、blogのpage.gotoが60000msでタイムアウトした。続くWSL呼出が `Wsl/Service/CreateInstance/0x80072746` となり、Windowsの `wsl --list --verbose` でUbuntu-24.04のStoppedとVmmemWSLなしを確認した。同時刻のWindows側python.exe起動にも `System.OutOfMemoryException` があり、そのcallは比較script未作成のまま失敗していた。shutdown/terminate/他担当process killは実行していない。中断runをブラウザ成功証拠へ算入しない。
 
 旧PNG・manifest・補完フォルダ副題は `.claude/cmp2035-verify/pre-final/` と `folders-subtitle-supplement/` に保持。移行後の撮影は別領域へ保存する。台帳や最終evidence JSONは完了化していない。
+
+## CI初回指摘の修正
+
+移設した新設specの `get(...).exists()` を存在検査用の `find(...).exists()` へ修正し、URLのstatic overrideを明示した。型エラーを抑制せず、次CIで検証する。移行前raw観測2 JSONは、完了証拠validatorが検査する直下の `CMP-*.json` と分類を分け、`observations/CMP-261014-2035/` へ移設した。内容のSHA256一致を確認し、red文書のリンクだけを追従した。validatorと成功条件は変更していない。
+
+限定再実行後のWindows空き物理メモリは11,990MiB、VmmemWSLのworking setは9,594MiBだった。次段階は専用Nuxt1台とブラウザ1 workerで実行する。

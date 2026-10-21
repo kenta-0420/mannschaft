@@ -46,7 +46,7 @@ describe('CMP-261014-2035 C1 組織広告詳細', () => {
     const createUrl = vi.fn(() => 'blob:cmp2035')
     const revokeUrl = vi.fn()
     const OriginalUrl = URL
-    vi.stubGlobal('URL', class extends OriginalUrl { static createObjectURL = createUrl; static revokeObjectURL = revokeUrl })
+    vi.stubGlobal('URL', class extends OriginalUrl { static override createObjectURL = createUrl; static override revokeObjectURL = revokeUrl })
     const download = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
     const wrapper = await mountPage()
     await wrapper.get('[data-testid="campaign-actions"]').get('button').trigger('click')

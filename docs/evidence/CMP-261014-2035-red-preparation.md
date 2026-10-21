@@ -23,7 +23,7 @@
 
 ## 移行前観測
 
-[AST観測](CMP-261014-2035-pre-migration-ast.json)は9画面・8違反。friend-foldersの残数は自己終了PageHeader外なので番人の対象外。announcementsの対象はteams/[slug]/announcements.vue。
+[AST観測](observations/CMP-261014-2035/pre-migration-ast.json)は9画面・8違反。friend-foldersの残数は自己終了PageHeader外なので番人の対象外。announcementsの対象はteams/[slug]/announcements.vue。
 
 ## 検証環境
 
@@ -55,7 +55,7 @@ node専用configは試験対象4件、environment=node、maxWorkers=1、tsconfig
 
 ## 移行前画像とアンカー
 
-[数値台帳](CMP-261014-2035-baseline.json)に18画面のURL、h1・旧副題・戻る・操作のrectとlineHeight、基点・overlay hashを保存した。PNGと生JSONのWindows絶対ディレクトリは C:/Claude/mannschaft/.claude/worktrees/agent-friend-2035-20261021/.claude/cmp2035-verify/pre-final/。contact-sheet.pngは17 desktopの実見用一覧。各原寸画像も保持。すべて対象URL一致、pageerrorなし。固定時刻2026-10-21T03:00:00Z、同一API fixture、ja1280×800、C4のみde360×800、light、fonts.ready後採取。実BEの成功証拠ではない。
+[数値台帳](observations/CMP-261014-2035/baseline.json)に18画面のURL、h1・旧副題・戻る・操作のrectとlineHeight、基点・overlay hashを保存した。PNGと生JSONのWindows絶対ディレクトリは C:/Claude/mannschaft/.claude/worktrees/agent-friend-2035-20261021/.claude/cmp2035-verify/pre-final/。contact-sheet.pngは17 desktopの実見用一覧。各原寸画像も保持。すべて対象URL一致、pageerrorなし。固定時刻2026-10-21T03:00:00Z、同一API fixture、ja1280×800、C4のみde360×800、light、fonts.ready後採取。実BEの成功証拠ではない。
 
 フォルダ旧残数はPageHeader外なので初回subtitles=[]。同じfixtureで当該1画面だけ補完し、h1/actionsのrect完全一致を確認した。文字列「残り20個作成可能（最大20個）」、rect x84/y236/w234/h20、lineHeight20px。補完PNG/manifestは証跡領域folders-subtitle-supplement/。P9の文字列同一・副題1行分20pxの比較元とする。最終17画面を取り直していない。
 
@@ -66,3 +66,5 @@ P8は移行後も同じfixtureで比較する。P9のタイトル位置、操作
 ## 後続へ
 
 P6/P7の全ブラウザ行列、P14/E1–E7/R5の未設置分、移行後のP8/P9差分確認はgreen担当が継続する。続きを読む/転送取消のUI追加は禁止、K1はcomposable契約だけ。line/sns直書きi18nは別課題。今回のcommitは製品実装を含まない。
+
+観測JSONの配置補足: 上記2ファイルは完了証拠schemaのJSONではなく移行前のraw観測であるため、green実装時に `observations/CMP-261014-2035/` へ内容SHA256を維持して移設した。red commit 3452b212dbには元パスも保持されている。

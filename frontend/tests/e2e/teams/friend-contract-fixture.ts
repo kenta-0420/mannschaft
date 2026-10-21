@@ -55,19 +55,19 @@ export async function installFriendContractFixture(page: Page, locale = 'ja') {
       if (path === '/api/v1/teams/1/friends' && method === 'GET' && listQuery) return send({ data: state.friends, pagination: { ...pagination, totalElements: state.friends.length, totalPages: state.friends.length ? 1 : 0 } } satisfies TeamFriendListResponse)
       if (path === '/api/v1/teams/1/friends/follow' && method === 'POST' && isDeepStrictEqual(body, { targetTeamSlug: 'rival-fc' })) {
         state.friends = [friend]
-        return send({ data: { followId: 3, followerTeamId: 1, followedTeamId: 2, mutual: true, teamFriendId: 1, establishedAt: timestamp, isPublic: true, createdAt: timestamp } satisfies FollowTeamResponse })
+        return send({ data: { followId: 3, followerTeamId: 1, followedTeamId: 2, mutual: true, teamFriendId: 1, establishedAt: timestamp, isPublic: true, createdAt: timestamp } satisfies FollowTeamResponse }, 201)
       }
-      if (path === '/api/v1/teams/1/friends/follow/2' && method === 'DELETE' && isDeepStrictEqual(body, { pastForwardHandling: 'KEEP' })) { state.friends = []; return send({ data: null }) }
+      if (path === '/api/v1/teams/1/friends/follow/2' && method === 'DELETE' && isDeepStrictEqual(body, { pastForwardHandling: 'KEEP' })) { state.friends = []; return route.fulfill({ status: 204 }) }
       if (path === '/api/v1/teams/1/friend-folders' && method === 'GET' && !url.search) return send({ data: state.folders } satisfies { data: TeamFriendFolderView[] })
       if (path === '/api/v1/teams/1/friend-folders' && method === 'POST' && isDeepStrictEqual(body, { name: 'New folder', color: '#6B7280' })) {
-        const created = { ...folder, id: 3, name: 'New folder' }; state.folders.push(created); return send({ data: created })
+        const created = { ...folder, id: 3, name: 'New folder' }; state.folders.push(created); return send({ data: created }, 201)
       }
-      if (path === '/api/v1/teams/1/friend-folders/1' && method === 'DELETE' && body === null) { state.folders = state.folders.filter(item => item.id !== 1); return send({ data: null }) }
+      if (path === '/api/v1/teams/1/friend-folders/1' && method === 'DELETE' && body === null) { state.folders = state.folders.filter(item => item.id !== 1); return route.fulfill({ status: 204 }) }
       if (path === '/api/v1/teams/1/friend-feed' && method === 'GET' && !url.search) return send({ data: state.feed, meta: { nextCursor: null, limit: 20, hasNext: false } } satisfies FriendFeedResponse)
       if (path === '/api/v1/teams/1/friend-feed/10/forward' && method === 'POST' && isDeepStrictEqual(body, { target: 'MEMBER', comment: 'Approved' })) {
         state.feed = [{ ...post, forwardStatus: { isForwarded: true, forwardId: 7, forwardedAt: timestamp } }]
         if (state.conflict) return send({ error: { code: 'SOCIAL_121', message: 'この投稿は既に転送済みです' } }, 409)
-        return send({ data: { forwardId: 7, sourcePostId: 10, forwardedPostId: 20, target: 'MEMBER', forwardedAt: timestamp } satisfies ForwardResponse })
+        return send({ data: { forwardId: 7, sourcePostId: 10, forwardedPostId: 20, target: 'MEMBER', forwardedAt: timestamp } satisfies ForwardResponse }, 201)
       }
       if (path === '/api/v1/teams/1/friend-forward-exports' && method === 'GET' && listQuery) return send({ data: [{ forwardId: 7, sourcePostId: 20, forwardingTeamName: 'Rival FC', target: 'MEMBER', forwardedAt: timestamp, isRevoked: false }], pagination } satisfies FriendForwardExportListResponse)
       state.unexpected.push(method + ' ' + path + url.search + ' ' + JSON.stringify(body))

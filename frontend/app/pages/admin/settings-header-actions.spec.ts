@@ -88,6 +88,6 @@ describe('CMP-261014-2035 P11/P12 設定ヘッダ操作', () => {
     expect(header.get('[data-testid="page-header-subtitle"]').text()).toBe('Instagram・X のフィード連携を管理します')
     expect(header.get('button').text()).toBe('アカウントを追加')
     await header.get('button').trigger('click')
-    expect(wrapper.get('[data-testid="sns-create-dialog"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="sns-create-dialog"]').exists()).toBe(true)
   })
 })
