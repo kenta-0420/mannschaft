@@ -232,6 +232,8 @@ class TeamFriendPendingFollowContractIT extends AbstractMySqlIntegrationTest {
         assertThat(row.path("nameHidden").asBoolean()).isTrue();
         assertThat(row.has("targetTeamName") && row.get("targetTeamName").isNull()).isTrue();
         assertThat(row.has("targetTeamSlug") && row.get("targetTeamSlug").isNull()).isTrue();
+        assertThat(pending(admin, own, Integer.MAX_VALUE, 100).path("pagination").path("totalElements").asLong())
+                .isEqualTo(1);
         unfollow(admin, own, target);
     }
 
@@ -284,12 +286,16 @@ class TeamFriendPendingFollowContractIT extends AbstractMySqlIntegrationTest {
         assertThat(result.path("pagination").path("size").asInt()).isEqualTo(expectedSize);
     }
 
-    @Test
-    void AC8_範囲外ページは空配列と正しい総数を返す() throws Exception {
+    @ParameterizedTest
+    @CsvSource({"99,20", "2147483647,1", "2147483647,100"})
+    void AC8_範囲外ページは空配列と正しい総数を返す(int page, int size) throws Exception {
         followRow(FollowerType.TEAM, own.getId(), FollowerType.TEAM, target.getId());
-        JsonNode result = pending(admin, own, 99, 20);
+        JsonNode result = pending(admin, own, page, size);
         assertThat(result.path("data").isEmpty()).isTrue();
         assertThat(result.path("pagination").path("totalElements").asLong()).isEqualTo(1);
+        assertThat(result.path("pagination").path("page").asInt()).isEqualTo(page);
+        assertThat(result.path("pagination").path("size").asInt()).isEqualTo(size);
+        assertThat(result.path("pagination").path("hasNext").asBoolean()).isFalse();
     }
 
     @ParameterizedTest
@@ -321,6 +327,8 @@ class TeamFriendPendingFollowContractIT extends AbstractMySqlIntegrationTest {
         follow(firstAdmin, first, second);
         follow(reverse ? admin : actor("ADMIN", target.getId(), false), second, first);
         assertThat(pending(firstAdmin, first, 0, 20).path("pagination").path("totalElements").asLong()).isZero();
+        assertThat(pending(firstAdmin, first, Integer.MAX_VALUE, 100).path("pagination").path("totalElements").asLong())
+                .isZero();
     }
 
     @Test
@@ -348,11 +356,70 @@ class TeamFriendPendingFollowContractIT extends AbstractMySqlIntegrationTest {
         assertThat(empty.path("data").isArray()).isTrue();
         assertThat(empty.path("data").isEmpty()).isTrue();
         assertThat(empty.path("pagination").path("totalElements").asLong()).isZero();
+        assertThat(pending(admin, own, Integer.MAX_VALUE, 100).path("pagination").path("totalElements").asLong()).isZero();
         FollowEntity correct = followRow(FollowerType.TEAM, own.getId(), FollowerType.TEAM, target.getId());
         JsonNode actual = pending(admin, own, 0, 20);
         assertThat(actual.path("data").size()).isEqualTo(1);
         assertThat(actual.path("data").get(0).path("followId").asLong()).isEqualTo(correct.getId());
         assertThat(actual.path("pagination").path("totalElements").asLong()).isEqualTo(1);
+        assertThat(pending(admin, own, Integer.MAX_VALUE, 100).path("pagination").path("totalElements").asLong())
+                .isEqualTo(1);
+    }
+
+
+    @Test
+    void AC13_千一件の実SQLをEXPLAINしページ取得時間を記録する() throws Exception {
+        for (int i = 0; i < 1001; i++) {
+            followRow(FollowerType.TEAM, own.getId(), FollowerType.TEAM, SYNTHETIC_TARGET_START + i);
+        }
+        em.flush();
+        em.clear();
+        var sqlLogger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger("org.hibernate.SQL");
+        var previousLevel = sqlLogger.getLevel();
+        var appender = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        appender.start();
+        sqlLogger.addAppender(appender);
+        sqlLogger.setLevel(ch.qos.logback.classic.Level.DEBUG);
+        try {
+            long started = System.nanoTime();
+            JsonNode response = pending(admin, own, 0, 100);
+            long elapsedNanos = System.nanoTime() - started;
+            assertThat(response.path("pagination").path("totalElements").asLong()).isEqualTo(1001);
+            assertThat(response.path("data").size()).isEqualTo(100);
+            var statements = appender.list.stream()
+                    .map(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage)
+                    .filter(sql -> sql.contains(" from follows ") && sql.contains("team_friends"))
+                    .toList();
+            assertThat(statements).as("一覧とCOUNTの実SQL").hasSize(2);
+            var plans = new ArrayList<Map<String, Object>>();
+            for (String sql : statements) {
+                var explain = em.createNativeQuery("EXPLAIN " + sql);
+                int parameters = (int) sql.chars().filter(c -> c == '?').count();
+                for (int index = 1; index <= parameters; index++) {
+                    explain.setParameter(index, own.getId());
+                }
+                String compact = sql.replaceAll("\\s+", "");
+                if (compact.endsWith("limit?,?")) {
+                    explain.setParameter(parameters - 1, 0);
+                    explain.setParameter(parameters, 100);
+                } else if (compact.endsWith("limit?")) {
+                    explain.setParameter(parameters, 100);
+                }
+                @SuppressWarnings("unchecked")
+                List<Object[]> rows = explain.getResultList();
+                plans.add(Map.of("sql", sql, "explain", rows.stream()
+                        .map(java.util.Arrays::asList).toList()));
+            }
+            var report = java.nio.file.Path.of("build/reports/pending-follow/performance.json");
+            java.nio.file.Files.createDirectories(report.getParent());
+            java.nio.file.Files.writeString(report, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(
+                    Map.of("rows", 1001, "pageSize", 100, "elapsedMs", elapsedNanos / 1_000_000.0,
+                            "queries", plans)), StandardCharsets.UTF_8);
+        } finally {
+            sqlLogger.detachAppender(appender);
+            appender.stop();
+            sqlLogger.setLevel(previousLevel);
+        }
     }
 
     private JsonNode pending(Long actor, TeamEntity source, int page, int size) throws Exception {

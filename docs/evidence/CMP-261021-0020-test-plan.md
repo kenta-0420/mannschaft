@@ -1,6 +1,6 @@
 # CMP-261021-0020 試練対応表
 
-正本: 御裁可済み陣立て v4（2026-10-21）。後段差分優先。新pending APIは未実装のためHTTP契約ITでredを確認する。既存follow/unfollowの正常な認可・状態境界は初回greenでよい回帰固定として区分する。
+正本: 御裁可済み陣立て v4（2026-10-21）。後段差分優先。試練時点では新pending API未実装のHTTP契約ITでredを確認した。既存follow/unfollowの正常な認可・状態境界は初回greenでよい回帰固定として区分した。以下のred対応表は試練時点の記録を保ち、green実装の進捗は末尾に記す。
 
 ## BE 試練
 
@@ -22,13 +22,13 @@ HTTP契約: backend/src/test/java/com/mannschaft/app/social/TeamFriendPendingFol
 | 10 | TeamFriendPendingFollowFacadeTest.AC10_認可後にsocialを読みページ内ID集合を一度だけteamへ照会する | 新規red。順番/集合/1回を検証 |
 | 11 | AC11_既存数値とslug経路は無効相手を404で拒否する | 既存green回帰 |
 | 12 | 既存D-1/API境界/D-3/D-3T/D-5/認可番人の全体実行、凍結store差分0 | 実装後の品質ゲート。今回のred限定実行とは別 |
-| 13 | 1001件で実SQLのEXPLAIN・所要時間を記録 | 実装後の実測。未実施 |
+| 13 | AC13_千一件の実SQLをEXPLAINしページ取得時間を記録する | 1001件/100件取得328.65ms。テストDDLの制約あり、末尾参照 |
 | 22 | AC22_同じ数値IDの逆向き異種フォローはfollowedBackにならない: USER/ORGANIZATIONを逆行の両側に配置 | 新規red |
 | 23 | AC23_正規化ペアは自チームIDの大小によらず相互を除外する | 新規red |
 | 24 | AC24_一覧取得後に成立した相互関係の取消は自フォローとフレンドだけを消す | 新規red＋既存取消回帰 |
 | 25 | AC25_自チームの異種と別チームのフォローをdataにもCOUNTにも混ぜない: follower側USER/ORGANIZATIONも含む、0件と該当1件 | 新規red |
 
-AC9/10は設計で指定された段取り境界の単体検査であり、協力Beanの呼出順/回数/例外伝播をモックで観測する。実DB・実認可の代替にはしない。コンパイルに必要な7つの型骨格は機能を実装せず、入口はUnsupportedOperationExceptionを送出する。HTTPのpending経路は未追加。
+AC9/10は設計で指定された段取り境界の単体検査であり、協力Beanの呼出順/回数/例外伝播をモックで観測する。実DB・実認可の代替にはしない。red時点ではコンパイルに必要な7つの型骨格に機能を実装せず、入口はUnsupportedOperationExceptionを送出し、HTTPのpending経路も未追加だった。
 
 ## 出陣後に追加する FE・実機試験
 
@@ -37,7 +37,7 @@ AC9/10は設計で指定された段取り境界の単体検査であり、協�
 | AC | 検証先・必須観点 |
 |---|---|
 | 14' | nav-friend-toolbar.spec: can(MANAGE_FRIEND_TEAMS)のみ。付与MEMBER表示、無権限DEPUTY/SYSTEM単独非表示、実効権限兼任表示 |
-| 15 | 新一覧unit: 0件と403/5xx/通信断を区別、DashboardErrorStateから同じ取得処理を再試行 |
+| 15 | 新一覧unit（frontend/app/components/friends/TeamFriendPendingFollowList.spec.ts）: 0件と403/5xx/通信断を区別、DashboardErrorStateから同じ取得処理を再試行 |
 | 16' | 新旧両一覧unit: 取消/取消404/相互成立/409/ページ移動の成功空ページはtotalPages-1へ1回だけ再取得。総数0はpage=0。失敗では補正しない。Paginator first=page*size |
 | 17' | pending一覧unit: followedBack案内はnameHidden別。公開行はチームリンク。取消成功toastの「もう一度フォロー」から同slug事前入力FriendFollowDialogを開く。hidden行は再フォローを約束しない |
 | 18' | navと新旧一覧unit: 取消/フォロー成功/409後に両一覧refresh。409 SOCIAL_102はi18n情報toast＋alreadyFollowing emit。404 SOCIAL_104文言 |
@@ -56,6 +56,25 @@ F01.5とdocs/security/03_role_authority_model.md §3.5へ、このAPIのcheckPer
 
 ## red実測
 
-2026-10-21実測: 専用WSLコピー /home/kenta/verify-friend0020 で共通turnstile（/home/kenta/gradle-turnstile）を通し42件実行、成功5・失敗37・errors0・skip0、Gradle exit1。HTTP契約40件の35redは未実装pending URLの404に対する200/403期待のAssertionFailedError。起動・compile・fixture失敗なし。Facade2件は機能なし入口によるred。成功5件はAC11の4回帰とAC4の認証/slug境界。詳細は [red証拠](CMP-261021-0020-red.json)。
+2026-10-21実測: 専用WSLコピー /home/kenta/verify-friend0020 で共通turnstile（/home/kenta/gradle-turnstile）を通し42件実行、成功5・失敗37・errors0・skip0、Gradle exit1。HTTP契約40件の35redは未実装pending URLの404に対する200/403期待のAssertionFailedError。起動・compile・fixture失敗なし。Facade2件は機能なし入口によるred。成功5件はAC11の4回帰とAC4の認証/slug境界。詳細は [red証拠](observations/CMP-261021-0020-red.json)。
 
 最初の未実装redより後のアサーションはgreen化後に到達するため、このredだけを各条件の挙動確認済みとは扱わない。対象クラス限定実行では凍結番人を除外し、AC12全体検証は出陣後に別途行う。凍結ストア差分0は確認したがruntime解析成功の代わりにはしない。
+
+## green実装・検証経過（継続中）
+
+2026-10-21、復旧後の正式BE実行は64件（成功63・失敗1・errors0・skip0）。初期red42件は全件greenになった。唯一の失敗は追加したAC8の `page=2147483647&size=100` で、JPAの `Page offset exceeds Integer.MAX_VALUE` による500。通常範囲外99ページは成功した。失敗を受け、JPA offset上限を超える場合だけ通常ページと同一のCOUNTクエリから元のpage/sizeを保った空ページを返す修正を追加した。最大pageのsize=1/100、状態別・異種混在・正規化pair除外のCOUNT回帰を追加し、修正後の再検証は未実施。
+
+FEは親のrefresh重複取得を実際の回帰試験が検出し、兄弟一覧だけを更新する結線へ修正した後、5スイート49件成功。さらにページ補正の再取得失敗・再取得中の総数0を追加した51件の実行は、WSL接続リセットと同時に中断し集計未取得のため合格に数えない。新旧一覧の回帰、Dialogのslug事前入力と409、実効権限ごとの表示、翻訳済み通知を含む。最新変更のFE再実行・typecheck、OpenAPI生成、CI、実機・アリシゼーションは未完了である。
+
+AC13は1001件のpending fixtureで、100件取得・total=1001を確認し、一覧とCOUNTの実SQLにEXPLAINを実施した。MockMvcリクエスト所要時間は328.65ms。詳細と制約は [性能実測](observations/CMP-261021-0020-performance.json)。これはFlyway無効・Hibernate createのテストDBで、FollowEntityが本番のuk_follows索引を宣言していない。EXPLAINのALL/filesort・推定rows=1を本番の計画や実行行数と同一視しない。fixtureは未commitのテストTX内でrollbackし、DDL/ANALYZEを実行していない。現証拠だけではfilesort支配と断定せず、本番DDL追加は行っていない。
+
+全工程終了前のため、本節は進捗記録でありAC全件完了・台帳完了を表さない。
+
+### 観測JSONの移設（内容不変）
+
+`docs/evidence/`直下のJSONはcompletion証拠schema対象のため、raw観測は`observations/`へ移設した。検査器は変更していない。redの元コミットは`1bbcff59793adc3b45f0d96ff4b81013e456f384`。
+
+| 旧パス | 新パス | SHA-256（移設前後一致） |
+|---|---|---|
+| `docs/evidence/CMP-261021-0020-red.json` | [docs/evidence/observations/CMP-261021-0020-red.json](observations/CMP-261021-0020-red.json) | `77d1f315a5d2fdaa9dc55721c248d9b5a9ecbca8ac238d849b3f396c0f7d205b` |
+| `docs/evidence/CMP-261021-0020-performance.json` | [docs/evidence/observations/CMP-261021-0020-performance.json](observations/CMP-261021-0020-performance.json) | `cbf627d96126d8210fea9cc82973d9befa570f521d689b9ec0126e87ddb3bd92` |
