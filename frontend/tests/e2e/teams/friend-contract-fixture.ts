@@ -1,11 +1,14 @@
 import { readFileSync } from 'node:fs'
 import { isDeepStrictEqual } from 'node:util'
 import type { Page } from '@playwright/test'
+import type { OrganizationResponse } from '../../../app/types/organization'
+import type { CampaignPerformanceResponse, CreativeComparisonResponse, BreakdownResponse } from '../../../app/types/advertiser'
 import type { TeamFriendListResponse, FollowTeamResponse } from '../../../app/types/friends'
 import type { FriendFeedResponse } from '../../../app/types/friendFeed'
 import type { TeamFriendFolderView } from '../../../app/types/friendFolders'
 import type { ForwardResponse, FriendForwardExportListResponse } from '../../../app/types/friendForward'
 
+const organization = { id: 'test-org', slug: 'test-org', numericId: 12 } satisfies OrganizationResponse
 const timestamp = '2026-10-21T03:00:00Z'
 const pagination = { page: 0, size: 20, totalElements: 1, totalPages: 1, hasNext: false }
 const friend = { teamFriendId: 1, friendTeamId: 2, friendTeamName: 'Rival FC', public: true, establishedAt: timestamp }
@@ -76,7 +79,26 @@ export async function installFriendContractFixture(page: Page, locale = 'ja') {
     if (path.endsWith('/feature-flags')) return send({ data: flags })
     if (path.endsWith('/me/permissions')) return send({ data: permissions })
     if (path === '/api/v1/teams/1') return send({ data: team })
-    if (path === '/api/v1/organizations/test-org') return send({ data: { id: 'test-org', numericId: 12, slug: 'test-org', name: 'Baseline Organization', role: 'ADMIN', visibility: 'PUBLIC', memberCount: 5, template: 'SPORTS', version: 1 } })
+    if (path === '/api/v1/organizations/test-org') {
+      if (method === 'GET' && !url.search && body === null) return send({ data: { ...organization, name: 'Baseline Organization', role: 'ADMIN', visibility: 'PUBLIC', memberCount: 5, template: 'SPORTS', version: 1 } })
+      state.unexpected.push(method + ' ' + path + url.search + ' ' + JSON.stringify(body))
+      return send({ error: { code: 'FIXTURE_UNEXPECTED', message: 'Unexpected organization contract' } }, 500)
+    }
+    if (path.startsWith('/api/v1/advertiser/campaigns/')) {
+      state.calls.push({ method, path, query: url.search, body })
+      const resource = /^\/api\/v1\/advertiser\/campaigns\/7\/(performance|creatives|breakdown|export)$/.exec(path)?.[1]
+      const dateQuery = ['from', 'to'].every(key => /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get(key) ?? ''))
+      const expectedQuery = url.searchParams.get('organizationId') === String(organization.numericId)
+        && dateQuery && [...url.searchParams].length === 3
+      if (method === 'GET' && body === null && expectedQuery) {
+        if (resource === 'performance') return send({ data: { campaignId: 7, campaignName: 'Baseline Campaign', status: 'ACTIVE', pricingModel: 'CPM', summary: { totalImpressions: 0, totalClicks: 0, avgCtr: 0, totalCost: 0, avgCpm: null, avgCpc: null, conversions: null, conversionRate: null, costPerConversion: null }, benchmark: null, points: [] } satisfies CampaignPerformanceResponse })
+        if (resource === 'creatives') return send({ data: { campaignId: 7, creatives: [], winner: null } satisfies CreativeComparisonResponse })
+        if (resource === 'breakdown') return send({ data: { campaignId: 7, breakdownBy: 'PREFECTURE', items: [] } satisfies BreakdownResponse })
+        if (resource === 'export') return route.fulfill({ status: 200, contentType: 'text/csv', body: 'date,impressions,clicks,cost\n' })
+      }
+      state.unexpected.push(method + ' ' + path + url.search + ' ' + JSON.stringify(body))
+      return send({ error: { code: 'FIXTURE_UNEXPECTED', message: 'Unexpected organization advertiser contract' } }, 500)
+    }
     if (/\/(?:my|me)\/organizations$|\/organizations\/my$/.test(path)) return send({ data: [{ id: 12, slug: 'test-org', name: 'Baseline Organization', role: 'ADMIN' }] })
     if (path.endsWith('/performance')) return send({ data: { campaignId: 7, campaignName: 'Baseline Campaign', status: 'ACTIVE', pricingModel: 'CPM', summary: { totalImpressions: 0, totalClicks: 0, avgCtr: 0, totalCost: 0, avgCpm: null, avgCpc: null, conversions: null, conversionRate: null, costPerConversion: null }, benchmark: null, points: [] } })
     if (path.endsWith('/creatives/comparison')) return send({ data: { campaignId: 7, creatives: [], winner: null } })
