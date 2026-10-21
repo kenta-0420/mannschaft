@@ -20,6 +20,12 @@ public class ContextMetricsListener implements TestExecutionListener, org.spring
     }
 
     @Override
+    public void prepareTestInstance(TestContext context) {
+        if (started == 0) { started = System.nanoTime(); }
+        record(context, "prepareInstance");
+    }
+
+    @Override
     public void beforeTestMethod(TestContext context) { record(context, "beforeMethod"); }
 
     @Override

@@ -1223,7 +1223,7 @@ dependencies {
     add(spike.implementationConfigurationName, "org.springframework.modulith:spring-modulith-starter-jpa:1.4.13")
     add(spike.implementationConfigurationName, "org.springframework.modulith:spring-modulith-events-core:1.4.13")
 }
-listOf("Registry", "RegistryDelete", "Structure", "Webhook").forEach { kind ->
+listOf("Registry", "RegistryDelete", "Structure", "Webhook", "WebhookDirect").forEach { kind ->
     tasks.register<Test>("modulith${kind}Spike") {
         testClassesDirs = spike.output.classesDirs
         classpath = spike.runtimeClasspath
@@ -1234,6 +1234,16 @@ listOf("Registry", "RegistryDelete", "Structure", "Webhook").forEach { kind ->
         systemProperty("spike.output", rootDir.parentFile.resolve("docs/evidence/CMP-261021-1602-modulith-spike").absolutePath)
         systemProperty("spring.test.context.cache.maxSize", "10")
         testLogging { events("passed", "failed", "skipped"); showStandardStreams = true }
+        addTestListener(object : org.gradle.api.tasks.testing.TestListener {
+            override fun beforeSuite(suite: org.gradle.api.tasks.testing.TestDescriptor) { }
+            override fun beforeTest(test: org.gradle.api.tasks.testing.TestDescriptor) { }
+            override fun afterTest(test: org.gradle.api.tasks.testing.TestDescriptor, result: org.gradle.api.tasks.testing.TestResult) { }
+            override fun afterSuite(suite: org.gradle.api.tasks.testing.TestDescriptor, result: org.gradle.api.tasks.testing.TestResult) {
+                if (suite.parent == null) {
+                    logger.lifecycle("[spike-duration] ${name} rootSuiteMillis=${result.endTime - result.startTime}")
+                }
+            }
+        })
         outputs.upToDateWhen { false }
     }
 }
