@@ -197,6 +197,16 @@ describe('FriendFollowDialog（CMP-261012-0315）', () => {
     expect(searchCalls()).toHaveLength(0)
   })
 
+  it('C3 1文字ではAPIを呼ばず2文字以上のヒント行を表示する', async () => {
+    wrapper = await mountDialog()
+    await typeInto('friend-follow-search-input', '雷')
+    await settleSearch(1000)
+    expect(searchCalls()).toHaveLength(0)
+    const hint = q('[data-testid="friend-follow-search-hint"]')
+    expect(hint, '最小文字数は入力欄の外のヒント行に表示する').not.toBeNull()
+    expect(hint!.textContent).toContain('friends.follow_dialog.search_hint')
+  })
+
   it('AC-9: debounce が効く（300ms 以内の連続入力は最後の1回だけ検索する）', async () => {
     wrapper = await mountDialog()
 
