@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
-import { computed, defineComponent, h, ref, watch } from 'vue'
+import { flushPromises, mount } from '@vue/test-utils'
+import { computed, defineComponent, h, onUnmounted, ref, watch } from 'vue'
 import type { Ref } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDashboardWidgets } from './useDashboardWidgets'
@@ -12,8 +12,10 @@ const external = vi.hoisted(() => ({
   toast: vi.fn(),
 }))
 afterEach(() => vi.unstubAllGlobals())
-enableAutoUnmount(afterEach)
+const unmountDashboards: (() => void)[] = []
 afterEach(async () => {
+  // 共通setupの自動破棄と単独実行の双方でwrapperを一度だけ破棄する。
+  for (const unmount of unmountDashboards.splice(0)) unmount()
   // 残った外部境界のPromiseも解決し、次のcaseへ待機処理を持ち越さない。
   for (let index = 0; index < saves.length; index += 1) {
     saves[index]!.commit()
@@ -41,9 +43,13 @@ async function dashboard(initialVisible = false, scope: 'personal' | 'team' = 'p
     },
   })
   let widgets!: ReturnType<typeof useDashboardWidgets>
+  let disposed = false
   const wrapper = mount(
     defineComponent({
       setup() {
+        onUnmounted(() => {
+          disposed = true
+        })
         widgets = useDashboardWidgets(scope)
         return () =>
           widgets.visibleWidgets.value.some((widget) => widget.key === 'dinosaur-ranch')
@@ -52,6 +58,9 @@ async function dashboard(initialVisible = false, scope: 'personal' | 'team' = 'p
       },
     }),
   )
+  unmountDashboards.push(() => {
+    if (!disposed) wrapper.unmount()
+  })
   return { widgets, wrapper }
 }
 
