@@ -2,11 +2,11 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "b242623d-8142-4367-8e59-8e2ec090e47e",
+  "operation": "673209f8-7721-42e3-9d59-aaf1eb73e53c",
   "territories": {
     "foundation": {
       "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
-      "note": "REQ-L0M-261022-1756 未解決: L0-Mのみ再開調整。旧existing:L0-M holdとmeasurement予約は未移管、既存L1-F保持も変更なし。旧担当停止/引継のユーザー確認と、18:30〜翌01:00JSTのPC利用可能時間を回答待ち。親Issue6336824439/6336974742へ仮予約・heavy終了と窓内新規投入停止を依頼済。今回窓の各担当宣言は未受領。fresh実プロセス/容量/IO/gate再確認前はwarmup禁止。owner9402167b-f025-4bd7-82f1-ef460aeca244、引継1048版と既存snapshot/旧測定原本を保全。"
+      "note": "REQ-L0M-261022-1756 未解決: L0-Mのみ再開調整。旧existing:L0-M holdとmeasurement予約は未移管、既存L1-F保持も変更なし。旧担当停止/引継のユーザー確認と、18:30〜翌01:00JSTのPC利用可能時間を回答待ち。親Issue6336824439/6336974742へ仮予約・heavy終了と窓内新規投入停止を依頼済。今回窓の各担当宣言は未受領。fresh実プロセス/容量/IO/gate再確認前はwarmup禁止。owner9402167b-f025-4bd7-82f1-ef460aeca244、引継1048版と既存snapshot/旧測定原本を保全。\nREQ-L0M-261022-RESUME: ユーザー再度継続により引継準備再開。親6343533102で既存L0-M明示解放・足軽停止とcmp0647の01:00までheavy新規投入停止宣言を依頼。L1-A6339113498/L1-F6339082482/closure台帳の同窓heavy停止宣言は受領。旧holdは移管せず測定0。fresh23:38-23:41観測でGradleなし、cmp0647 Java runtimeとVite/Nuxt・別frontendサーバ生存、Windows Node活動、C空き約908MiBで減少/IO継続。静穏確認未成立。attempt4脚本の証拠準備のみ。REQ-L1F-261022-RESUMEへL0-M限定のためFを引き取らず既存保持と応答、REQ-L1A-F-01未解決を維持。01:00超の自動計測は禁止。"
     },
     "common-core": {
       "owner": "4a8a4e25-4100-45df-a5f9-55e32a3b5a98",
