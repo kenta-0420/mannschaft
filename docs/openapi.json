@@ -123566,6 +123566,59 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/friends/pending": {
+      "get": {
+        "tags": [
+          "フレンドチーム管理"
+        ],
+        "summary": "フォロー中チーム一覧取得",
+        "description": "MANAGE_FRIEND_TEAMS実効権限が必要。相互成立済みを除外し、公開有効相手だけ名前とslugを開示する。",
+        "operationId": "listPendingFollows",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingTeamFollowListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/friend-feed": {
       "get": {
         "tags": [
@@ -230512,6 +230565,79 @@
           }
         }
       },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "hasNext": {
+            "type": "boolean"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PendingTeamFollowListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PendingTeamFollowView"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        }
+      },
+      "PendingTeamFollowView": {
+        "type": "object",
+        "properties": {
+          "followId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "followedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "followedBack": {
+            "type": "boolean"
+          },
+          "nameHidden": {
+            "type": "boolean"
+          },
+          "targetTeamId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetTeamName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "targetTeamSlug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "FriendFeedForwardStatus": {
         "type": "object",
         "properties": {
@@ -234311,30 +234437,6 @@
           },
           "meta": {
             "$ref": "#/components/schemas/PageMeta"
-          }
-        }
-      },
-      "Pagination": {
-        "type": "object",
-        "properties": {
-          "hasNext": {
-            "type": "boolean"
-          },
-          "page": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "size": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
           }
         }
       },
