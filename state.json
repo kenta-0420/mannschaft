@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "3d67f684-0c14-40d5-80ce-c18712419a3a",
+  "operation": "cb06d529-4608-4ef8-83dd-46d107e62e16",
   "territories": {
     "foundation": {
       "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
@@ -30,7 +30,7 @@
     },
     "closure": {
       "owner": "3a1525fe-1e83-4f91-9003-8fdc8a9effbf",
-      "note": "境界整理継続。L5-PRE-D/V/Oの読取専用証拠準備を担当。対象コード・番人・ストア・定数・build・task-list既存行は変更しない。子CMP登録PRを先行し、PRE各別ファイルへ証拠案を保存する。REQ-L1F-261022-RESUMEはfoundation担当返答待ち、L1-F既存holdは維持。owner3a1525fe-1e83-4f91-9003-8fdc8a9effbf。ローカルheavyは翌01:00JSTまで新規投入0。\nCMP-261022-2338登録先行中。負債/橋渡しを読取調査。Sol medium担当。\nCMP-261022-2338登録先行中。verify/Gradle/残す番人を読取調査。Sol medium担当。\nCMP-261022-2338登録先行中。API/運用/計測の不足を殿が読取調査。実機やDDL変更は行わない。\n登録PR4057 main7f25e9f2着地。既存L0-C軽量実行の固定観測と将来照合手順を専用証拠文書へ記録するだけ。"
+      "note": "境界整理継続。L5-PRE-D/V/Oの読取専用証拠準備を担当。対象コード・番人・ストア・定数・build・task-list既存行は変更しない。子CMP登録PRを先行し、PRE各別ファイルへ証拠案を保存する。REQ-L1F-261022-RESUMEはfoundation担当返答待ち、L1-F既存holdは維持。owner3a1525fe-1e83-4f91-9003-8fdc8a9effbf。ローカルheavyは翌01:00JSTまで新規投入0。\nCMP-261022-2338登録先行中。負債/橋渡しを読取調査。Sol medium担当。\nCMP-261022-2338登録先行中。verify/Gradle/残す番人を読取調査。Sol medium担当。\nCMP-261022-2338登録先行中。API/運用/計測の不足を殿が読取調査。実機やDDL変更は行わない。\n登録PR4057 main7f25e9f2着地。既存L0-C軽量実行の固定観測と将来照合手順を専用証拠文書へ記録するだけ。\n登録PR4057 main着地。番人の残す/廃止対応と全verify/全jar/CIの将来証拠案を専用文書へ記録。"
     }
   },
   "lanes": {
@@ -1158,9 +1158,9 @@
       "held": []
     },
     "L5-PRE-V": {
-      "state": "planning",
+      "state": "working",
       "evidence": "",
-      "note": "CMP-261022-2338登録先行中。verify/Gradle/残す番人を読取調査。Sol medium担当。",
+      "note": "CMP-261022-2338登録先行中。verify/Gradle/残す番人を読取調査。Sol medium担当。\n登録PR4057 main着地。番人の残す/廃止対応と全verify/全jar/CIの将来証拠案を専用文書へ記録。",
       "history": [],
       "hold": null,
       "held": []
