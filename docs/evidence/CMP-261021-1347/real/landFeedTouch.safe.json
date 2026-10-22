@@ -1,0 +1,427 @@
+{
+  "runId": "clipv3-1792574010514-3a8a8367",
+  "source": {
+    "frontend": "28389c61f505e877702e5572d21476d68747aead",
+    "backend": "2bd44c9b4e6d6de9f4dfc615c200ea2253f8d538",
+    "jarSha256": "9147dcf8a62d1818c20c51501afec76392cd8e4e346d8d53977371829cfe58c3"
+  },
+  "phase": "exercise",
+  "apiAuxiliary": "このrunnerはAPI補助呼出0。login/対象操作ともUI。reload時GETとクリックが生じたACKのみ観測。",
+  "cases": {
+    "anonymous-direct": {
+      "status": "NOT_EXECUTED",
+      "reason": "Unchanged boundary already has actual PASS in referenced same-run/source proof; not re-executed in this phase"
+    },
+    "anonymous-entry": {
+      "status": "NOT_EXECUTED"
+    },
+    "owner-natural-entry": {
+      "status": "PASS",
+      "runs": [
+        {
+          "start": "/dashboard",
+          "settingsEntry": {
+            "method": "actual desktop global-sidebar settings NuxtLink click",
+            "finalPath": "/settings",
+            "ranchLinkVisible": true,
+            "elapsedMs": 2323,
+            "defaultFeatureTimeoutUnchanged": true
+          },
+          "element": "a[href=/my/ranch]",
+          "final": "/my/ranch"
+        }
+      ]
+    },
+    "no-membership-own-only": {
+      "status": "NOT_EXECUTED"
+    },
+    "other-account-direct": {
+      "status": "PASS",
+      "runs": [
+        {
+          "alias": "land-baby",
+          "ownSceneId": "synthetic-land-baby-individual",
+          "forbiddenSceneVisible": false,
+          "directPaths": [
+            "/my/ranch"
+          ]
+        },
+        {
+          "alias": "land-baby",
+          "ownSceneId": "synthetic-land-baby-individual",
+          "forbiddenSceneVisible": false,
+          "directPaths": [
+            "/my/ranch"
+          ]
+        }
+      ]
+    },
+    "other-tenant-direct": {
+      "status": "NOT_APPLICABLE",
+      "reason": "所属を要求しない本人専用機能であり、tenantロールによるアクセス差が存在しない。別利用者の本人表示でID隔離を検証する。"
+    },
+    "ui-start": {
+      "status": "NOT_EXECUTED"
+    },
+    "ui-habitat-assignment": {
+      "status": "NOT_EXECUTED"
+    },
+    "ui-hatch": {
+      "status": "NOT_EXECUTED"
+    },
+    "idle-idle-walk": {
+      "status": "PARTIAL",
+      "runs": [
+        {
+          "alias": "land-baby",
+          "actions": [
+            "idle",
+            "walk"
+          ],
+          "limit": "実ブラウザでidle→walkを観測。2idle回数・native境界時刻はunit証拠と照合が必要"
+        }
+      ]
+    },
+    "feed-ack-reload": {
+      "status": "PASS",
+      "runs": [
+        {
+          "alias": "land-baby",
+          "method": "UI click + saved ACK + exact registry native paint + same-ID reload",
+          "dinosaurId": "synthetic-land-baby-individual",
+          "action": "feed",
+          "gainedXp": "20",
+          "nativePaint": {
+            "dinosaurId": "synthetic-land-baby-individual",
+            "stageFrom": "ACK.stageAfter + saved GET",
+            "stage": "BABY",
+            "style": "PIXEL",
+            "action": "feed",
+            "assetKey": "DEV_CLIP_STEGOSAURUS:BABY:PIXEL",
+            "expectedSrc": "/dev-fixtures/ranch/base16-v3/native/stegosaurus/stegosaurus-growth-care-20261018-v3/baby-feed-pixel.png",
+            "expectedSourceSha256": "f8f7bd78cbc81ad55c76704754f91211b946e511d98ef479921e09d8380e768e",
+            "registryCommit": "28389c61f505e877702e5572d21476d68747aead",
+            "registrySha256": "fbca71d6dcbf08a2e0071da9094a7b330530aa4e3f47a9dac7955d774f00bb5d",
+            "operationStartedAt": 16416.70000000298,
+            "ackObservedAt": 16880.10000000894,
+            "paintsAfterAck": 3,
+            "sample": [
+              {
+                "source": "/dev-fixtures/ranch/base16-v3/native/stegosaurus/stegosaurus-growth-care-20261018-v3/baby-feed-pixel.png",
+                "msAfterAck": 174
+              },
+              {
+                "source": "/dev-fixtures/ranch/base16-v3/native/stegosaurus/stegosaurus-growth-care-20261018-v3/baby-feed-pixel.png",
+                "msAfterAck": 187.79999999701977
+              },
+              {
+                "source": "/dev-fixtures/ranch/base16-v3/native/stegosaurus/stegosaurus-growth-care-20261018-v3/baby-feed-pixel.png",
+                "msAfterAck": 201.20000000298023
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "zero-xp-feed": {
+      "status": "NOT_EXECUTED"
+    },
+    "touch-ack": {
+      "status": "PASS",
+      "runs": [
+        {
+          "alias": "land-baby",
+          "method": "UI click + saved ACK + exact registry native paint + same-ID reload",
+          "dinosaurId": "synthetic-land-baby-individual",
+          "action": "happy",
+          "gainedXp": null,
+          "nativePaint": {
+            "dinosaurId": "synthetic-land-baby-individual",
+            "stageFrom": "current saved GET",
+            "stage": "BABY",
+            "style": "PIXEL",
+            "action": "happy",
+            "assetKey": "DEV_CLIP_STEGOSAURUS:BABY:PIXEL",
+            "expectedSrc": "/dev-fixtures/ranch/base16-v3/native/stegosaurus/stegosaurus-growth-care-20261018-v3/baby-happy-pixel.png",
+            "expectedSourceSha256": "ead6de459e83ad84227c6c317fe740391e7f5e29b57cabda44086ce3813bdea2",
+            "registryCommit": "28389c61f505e877702e5572d21476d68747aead",
+            "registrySha256": "fbca71d6dcbf08a2e0071da9094a7b330530aa4e3f47a9dac7955d774f00bb5d",
+            "operationStartedAt": 6642.600000008941,
+            "ackObservedAt": 6861.800000011921,
+            "paintsAfterAck": 7,
+            "sample": [
+              {
+                "source": "/dev-fixtures/ranch/base16-v3/native/stegosaurus/stegosaurus-growth-care-20261018-v3/baby-happy-pixel.png",
+                "msAfterAck": 107.69999998807907
+              },
+              {
+                "source": "/dev-fixtures/ranch/base16-v3/native/stegosaurus/stegosaurus-growth-care-20261018-v3/baby-happy-pixel.png",
+                "msAfterAck": 132.29999999701977
+              },
+              {
+                "source": "/dev-fixtures/ranch/base16-v3/native/stegosaurus/stegosaurus-growth-care-20261018-v3/baby-happy-pixel.png",
+                "msAfterAck": 145.59999999403954
+              },
+              {
+                "source": "/dev-fixtures/ranch/base16-v3/native/stegosaurus/stegosaurus-growth-care-20261018-v3/baby-happy-pixel.png",
+                "msAfterAck": 158.69999998807907
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "both-styles": {
+      "status": "FAIL",
+      "errorType": "AssertionError",
+      "diagnostic": "詳細/秘密をstdoutへ転記しない。該当caseを実UIで再現して調査する"
+    },
+    "all-stages": {
+      "status": "NOT_EXECUTED"
+    },
+    "all-habitats": {
+      "status": "NOT_EXECUTED"
+    },
+    "paused-finite-touch": {
+      "status": "NOT_EXECUTED"
+    },
+    "reduced-setting": {
+      "status": "NOT_EXECUTED"
+    },
+    "os-reduced": {
+      "status": "NOT_EXECUTED"
+    },
+    "stopped-fallback": {
+      "status": "NOT_EXECUTED"
+    },
+    "visibility-toggle": {
+      "status": "NOT_EXECUTED"
+    },
+    "viewport": {
+      "status": "NOT_EXECUTED"
+    },
+    "collapse": {
+      "status": "NOT_EXECUTED"
+    },
+    "document-visibility": {
+      "status": "NOT_EXECUTED"
+    },
+    "initial-hidden-zero-load": {
+      "status": "NOT_EXECUTED"
+    },
+    "stale-action": {
+      "status": "NOT_EXECUTED"
+    },
+    "stale-image": {
+      "status": "NOT_EXECUTED"
+    },
+    "atlas-failure": {
+      "status": "NOT_EXECUTED"
+    },
+    "fallback-failure": {
+      "status": "NOT_EXECUTED"
+    },
+    "390px": {
+      "status": "NOT_EXECUTED"
+    },
+    "keyboard": {
+      "status": "NOT_EXECUTED"
+    },
+    "200pct-native-zoom": {
+      "status": "NOT_EXECUTED"
+    },
+    "dark": {
+      "status": "NOT_EXECUTED"
+    },
+    "no-old-callbacks": {
+      "status": "NOT_EXECUTED"
+    },
+    "dashboard-natural-widget": {
+      "status": "NOT_EXECUTED"
+    },
+    "dashboard-feed-ack": {
+      "status": "NOT_EXECUTED"
+    },
+    "dashboard-touch-ack": {
+      "status": "NOT_EXECUTED"
+    },
+    "dashboard-collapse": {
+      "status": "NOT_EXECUTED"
+    },
+    "dashboard-hide-reload": {
+      "status": "NOT_EXECUTED"
+    },
+    "dashboard-both-styles": {
+      "status": "NOT_EXECUTED"
+    },
+    "normal-ui-login": {
+      "status": "PASS",
+      "runs": [
+        {
+          "alias": "land-baby",
+          "method": "normal UI login after actual public boot",
+          "setup": {
+            "label": "land-baby-main",
+            "scope": "normal UI authentication and cold route setup only",
+            "status": "PASS",
+            "startedAt": "2026-10-21T12:24:06.258Z",
+            "setupBoundMs": 120000,
+            "original20SecondFailuresPreserved": true,
+            "basis": "actual diagnostic20s URL/dashboard with login DOM still present; actual60s dashboard rendered; existing source records dev navigation max56s",
+            "featureTimeoutsChanged": false,
+            "login": {
+              "method": "POST",
+              "status": 200,
+              "serverMatchesRun": true,
+              "accessTokenPresent": true,
+              "refreshTokenPresent": true,
+              "userIdMatchesExpected": true,
+              "mfaRequired": false,
+              "elapsedMs": 888
+            },
+            "profile": {
+              "status": 200,
+              "serverMatchesRun": true,
+              "userIdMatchesExpected": true,
+              "elapsedMs": 1058
+            },
+            "actual": {
+              "path": "/dashboard",
+              "authUserPresent": true,
+              "authUserEqualsExpected": true,
+              "loginInputs": 0,
+              "authenticatedHeaderVisible": true,
+              "dashboardHeadingVisible": true
+            },
+            "elapsedMs": 3027,
+            "finishedAt": "2026-10-21T12:24:09.285Z"
+          },
+          "finalPath": "/dashboard"
+        }
+      ]
+    }
+  },
+  "specimens": [
+    {
+      "alias": "land-baby",
+      "role": "owner",
+      "id": "synthetic-land-baby-individual",
+      "stage": "BABY",
+      "habitat": "LAND",
+      "speciesKey": "DEV_CLIP_STEGOSAURUS",
+      "variantKey": "DEV_BASE_16_CLIPS_V1",
+      "speciesCatalogVersion": "3",
+      "xp": "0"
+    }
+  ],
+  "authorizationScope": {
+    "source": [
+      "frontend/app/pages/my/ranch/index.vue",
+      "backend/src/main/java/com/mannschaft/app/ranch/controller/RanchSelfController.java"
+    ],
+    "rule": "認証済み本人専用の個人機能。所属なし/別利用者も自分の牧場を利用できる。匿名はloginへ。実在する診断結果の他人ID検証は別caseで記録する。"
+  },
+  "environmentPreflights": [
+    {
+      "label": "land-baby-main-context",
+      "scope": "fresh-context public login boot only; PASS does not imply care/UI case PASS",
+      "status": "PASS",
+      "startedAt": "2026-10-21T12:23:58.846Z",
+      "boundMs": 600000,
+      "sameContextUsedForSubsequentBusiness": true,
+      "businessTimeoutsChanged": false,
+      "snapshots": [],
+      "actual": {
+        "path": "/login",
+        "readyState": "complete",
+        "vueMounted": true,
+        "dclPerformanceMs": 5096.79999999702,
+        "loginHydratedPerformanceMs": 7153.20000000298
+      },
+      "finishedAt": "2026-10-21T12:24:06.223Z",
+      "elapsedMs": 7377,
+      "finalNetwork": {
+        "at": "2026-10-21T12:24:06.223Z",
+        "elapsedMs": 7377,
+        "responses": 1190,
+        "statuses": {
+          "200": 1190
+        },
+        "failedRequests": 0,
+        "pendingTotal": 2,
+        "pending": [
+          {
+            "path": "http://localhost:18724/api/v1/active-incidents",
+            "type": "fetch",
+            "ageMs": 24
+          },
+          {
+            "path": "https://fonts.gstatic.com/s/notosansjp/v57/-F62fjtqLzI2JPCgQBnw7HFow2oe2EcP5pp0erwTqsSWs9Jezazjcb4.115.woff2",
+            "type": "font",
+            "ageMs": 12
+          }
+        ]
+      }
+    }
+  ],
+  "loginSetups": [
+    {
+      "label": "land-baby-main",
+      "scope": "normal UI authentication and cold route setup only",
+      "status": "PASS",
+      "startedAt": "2026-10-21T12:24:06.258Z",
+      "setupBoundMs": 120000,
+      "original20SecondFailuresPreserved": true,
+      "basis": "actual diagnostic20s URL/dashboard with login DOM still present; actual60s dashboard rendered; existing source records dev navigation max56s",
+      "featureTimeoutsChanged": false,
+      "login": {
+        "method": "POST",
+        "status": 200,
+        "serverMatchesRun": true,
+        "accessTokenPresent": true,
+        "refreshTokenPresent": true,
+        "userIdMatchesExpected": true,
+        "mfaRequired": false,
+        "elapsedMs": 888
+      },
+      "profile": {
+        "status": 200,
+        "serverMatchesRun": true,
+        "userIdMatchesExpected": true,
+        "elapsedMs": 1058
+      },
+      "actual": {
+        "path": "/dashboard",
+        "authUserPresent": true,
+        "authUserEqualsExpected": true,
+        "loginInputs": 0,
+        "authenticatedHeaderVisible": true,
+        "dashboardHeadingVisible": true
+      },
+      "elapsedMs": 3027,
+      "finishedAt": "2026-10-21T12:24:09.285Z"
+    }
+  ],
+  "preflightRationale": "Actual separate-browser public boot required 491730ms; same-context public boot required 50890ms. Prior private-DCL30 and redirect-target-DCL30 failures remain preserved. Fresh context boots independently before unchanged business timeouts.",
+  "identity": {
+    "windowsTcpProvider": "IP_HELPER_API_DUALSTACK",
+    "backendHeaderWindows": true,
+    "backendHeaderWsl": true,
+    "backendPidAndSocket": true,
+    "frontendPidAndSocket": true
+  },
+  "reusedAnonymousEvidence": {
+    "path": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-prepare-1792583891975/safe-proof.json",
+    "actualPriorStatus": "PASS",
+    "sameRunAndFrontendCommit": true
+  },
+  "failureDiagnostic": "browser-exercise-1792585416356-failure.txt",
+  "observerDiscards": [
+    {
+      "alias": "land-baby",
+      "at": "2026-10-21T12:24:58.339Z",
+      "scope": "observational Ranch GET body unavailable after navigation; no case PASS inferred",
+      "errorType": "Error"
+    }
+  ]
+}
