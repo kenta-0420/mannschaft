@@ -112,3 +112,17 @@ c6のFE CI39619489911は671files/6614tests成功、対象14spec159成功/失敗0
 実BE CsvExportService精読により、fixtureのORG export応答body1文字列をUTF-8 BOMと8列へ追従した。196の幾何試験はCSVをクリックせず、C3は検索、strict10はfriend/folder/feed/forwardであり当branchを実行しない。差分は当literalだけ、残る全ソースbyte同一を証明し、c6で実行した事実と新head未再実行を区別して対応付ける。literal複製試験は追加しない。新headCIと実BE/最低3住民、最終証跡、台帳完了、マージは引き続き未完。
 
 直近2観測節はPowerShellからPythonへの標準入力で日本語が疑問符へ変換されたため、UTF-8直接書込で復元した。833までの既存本文はGit blobをそのまま保持した。
+
+## 2026-10-22 再開: 先行フォロー実装とのfixture統合
+
+旧ローカルHEAD `9f35c70b4f0eb4003c359419693aa1d9137524f2` を保持し、最新main `b9624f125435f40f6fd26b53b0c6c3755d23dab2` を競合なく通常mergeした（`a752b2fc639138912e65013cd75788247f9ccd1f`）。製品への追加修正はない。
+
+標準Playwright設定のC3 ja 1件で実redを確認した。placeholder幅・ヒント表示の断言を通過した後、先行フォロー実装が追加した `GET /api/v1/teams/1/friends/pending?page=0&size=20` がstrict fixtureの想定外通信として検出された。修正commit `acf6e1a9d69c6c58dd45fad5bbc171aca287da19` は生成型 `PendingTeamFollowListResponse` のimportと、GET・page/size・bodyなしを検査する空pending応答だけである。未知通信を拒否する条件は維持した。
+
+`frontend/playwright.config.ts` のchromium、workers=1、retries=0で、C3の6言語と既存フレンド契約10件を実行し、16 passed・skipped/unexpected/flaky/global errors各0（173.860秒）を確認した。redは1件の実assert失敗・skip0（13.779秒）。ESLintと今回差分の `git diff --check` は成功。殿も標準reporter原本を再集計して確認した。
+
+原本と要約は専有worktreeの `.claude/cmp2035-verify/resume-red-corrected.json`、`resume-green.json`、対応する `*-summary.json`、`resume-worker-evidence.json` に保持する。reporter原本の先頭にはdotenvの説明1行があり、JSONとして読む際はその1行だけを分離する。
+
+検証用native FEの入力は9f35と同じfixture修正である。mainから取り込んだ牧場のopt-in/devAssets、Vitest分離、package設定等は当runtimeを再起動して検証していない。最新main統合後HEADで16件すべてを実走したという主張や、今回196件・P8/P9・実機・住民探索を全再実行したという主張はしない。先行証拠は各旧HEADに対応する履歴として保持し、最新HEADのCIは別に確認する。
+
+他テナントの指定2URL負試験は自動承認レビュー拒否後も未実行で、具体的なユーザー許可を確認中。広告fixture account32・campaign28はその試験用に保持し、既存card1は後始末対象外。最終完了証拠・台帳完了・マージは未実施である。
