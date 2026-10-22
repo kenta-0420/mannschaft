@@ -1,0 +1,24 @@
+{
+  "cmpId": "CMP-261014-2035",
+  "head": "41421e5b4734e05494f24290b164b30730611929",
+  "reviewer": "殿（Codex自身）",
+  "method": "ドイツ語変更本文を全数精読。人間の母語話者による外部査読を実施したという主張はしない。",
+  "scope": [
+    "friends.json の機能名変更16キー",
+    "common.json の関連2キー",
+    "検索案内と追加エラー文言"
+  ],
+  "checks": [
+    "Freundschaftsteams を複数主語・述語名詞・目的語に使用した文の語順が整合する",
+    "des Freundschaftsteams は中性単数属格で、Karte des ... の関係に適合する",
+    "Beiträge von Freundschaftsteams は von と与格複数により投稿元を表す",
+    "Mitglieder von Freundschaftsteams と Bildschirme zu Freundschaftsteams は前置詞と複数形が整合する",
+    "相互成立の引用は成功メッセージ全文と一致し、残す befreundet 2キーは述語の動詞用法である"
+  ],
+  "correctedEarlier": [
+    "guide.related.item_feed の von 欠落",
+    "friend_feed.subtitle の von 欠落"
+  ],
+  "findingCountAfterCorrection": 0,
+  "limitation": "Sie/du の既存の呼称統一や機能名そのものの再命名は今回の裁可範囲に追加しない。"
+}
