@@ -1,0 +1,560 @@
+{
+  "cmpId": "CMP-261021-0021",
+  "phase": "R1コードのみの統合。戦役全体は実装中。",
+  "implementation": {
+    "pr": 4023,
+    "head": "836ed5ffa1dce08dc97a7b87397c54e1cf26e8cb",
+    "merged": true,
+    "mergeSha": "bdc5379ed38c2a8920f87c886da58ad2cc39da9a",
+    "mergedAt": "2026-10-22T18:01:46Z",
+    "mergeMethod": "single squash; 凱旋admin例外"
+  },
+  "ci": {
+    "runId": 39809177018,
+    "url": "https://github.com/kenta-0420/mannschaft/actions/runs/39809177018",
+    "head": "836ed5ffa1dce08dc97a7b87397c54e1cf26e8cb",
+    "conclusion": "success",
+    "shardCount": 6,
+    "finalCheckCounts": {
+      "success": 27,
+      "expectedSkipped": 2
+    },
+    "expectedSkipped": [
+      {
+        "name": "フル履歴スキャン（週次）",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/39809176411/job/119930438561"
+      },
+      {
+        "name": "Docker ビルド検証（main push のみ）",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/39809176483/job/119930439327"
+      }
+    ],
+    "timeoutScope": "migration-sensitive true: test105分/job120分で完走。通常test85分枠の完走証明ではない。定数/6分割/fork heap変更なし。"
+  },
+  "review": {
+    "reviewer": "殿（現在のCodex自身）",
+    "confirmedFindingsRemaining": 0,
+    "resolvedFindingHistory": "重み再生成scriptで上位階層付きXML配置を保持する互換性修正を836ed5へ反映。",
+    "independentParser": "stdlib ElementTree from four saved raw XML"
+  },
+  "target46": {
+    "passed": 46,
+    "failed": 0,
+    "error": 0,
+    "skipped": 0,
+    "missing": 0,
+    "unexpected": 0,
+    "duplicates": 0,
+    "expectedUnique": 46,
+    "foundUnique": 46,
+    "invocations": 46,
+    "cases": [
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIsolationGuardR1IT",
+        "name": "AC0_READ_COMMITTED接続なら起動を拒否する()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIsolationGuardR1IT",
+        "name": "AC0_REPEATABLE_READ接続なら起動できる()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportAggregatorConcurrencyTest",
+        "name": "AC4_同じhashへの同時初回はFIRSTが一件で上限を越えない()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportAggregatorConcurrencyTest",
+        "name": "AC4_computeとdrainが並行しても取り出した件数と残件の合計を失わない()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC3_BACKENDは九件でMEDIUM十件でHIGH四十九件でHIGH五十件でCRITICALになる()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC4_実Async入口の並行発生が一行に集約されバッファ件数も成功件数と一致する()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC8_集約と管理メモ更新の交差でも件数と管理メモを失わない()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC7_管理指揮役も外側TXを停止して独立commitする()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC2_FE_RESOLVEDの並行再発は工程担当を解除しSLAをUTC保存する()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC5_二回のsave後失敗が完全rollbackしてから新TXで成功する()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC5_read直後のTX内失敗も新規行を残さない()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC2_HEALTH_RESOLVEDと最新IGNOREDは同じidを返して一切変更しない()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC5_flush後のTX内失敗はDB通知AIバッファの全てをロールバックする()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC2_BACKEND_RESOLVEDの並行再発は一度だけ再開し残りを集約する()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC7_非IGNOREDがあるhashの再活性化は単票でもbulkでも409になる()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC5_afterCommitでロック例外が起きてもcommit済みの集約を再試行しない()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC5_ロック失敗の各試行は完全rollbackし五回で再送出する()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC3_FE50件でも匿名だけならHIGHに留まり昇格通知は一回だけ()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "[1] severity=LOW",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "[2] severity=MEDIUM",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "[3] severity=HIGH",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "[4] severity=CRITICAL",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC3_FEは九件でMEDIUM十件でHIGHとなり五十件でも匿名ならHIGHを保つ()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC4_HEALTH入口の並行発生が一行と正しい件数になる()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC1_空hashを二TXで同期し敗者だけ一回再試行して続く50件も集約する()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC5_ロック競合以外の整合性例外は再試行しない()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC7_Health復旧はIGNORED行も既解決行も変更しない()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC3_BACKEND_HIGH新規だけRaisedし初回Slack判定を持ちAIは起動しない()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC1_指揮役は外側TXを停止しRedisをTX外で観測して内側commitを保持する()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC1_IGNORED行だけが複数あるhashへの並行送信は新しい一行へ集約する()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC3_FE_HIGH新規と再開だけがcommit後に外部AIを一回ずつ呼ぶ()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC3_BACKEND新規でも既存バッファがあればRaisedのSlackだけ抑制する()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC2_BACKEND_RESOLVED再発は工程担当だけ解除しSLAを変えずバッファに積まない()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+        "name": "AC5_BACKENDのflush後失敗は通知とバッファを残さない()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "name": "AC7h_通常read中のlock例外はbulkTX全体を三回試行し503で更新しない()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "name": "AC9_SYSTEM_ADMIN正と通常ロール403と未認証401を維持する()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "name": "AC7_同hash二行の交差bulk再活性化は成功一件と409一件になる()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "name": "AC7_複数hashを逆順に指定した交差bulkでも一方だけ成功し他方は全件rollbackする()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "name": "AC7_単票の再活性化衝突は409でbulk全体もロールバックする()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "name": "AC8_集約とTimeline工程担当の交差で件数と各変更が失われない()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "name": "AC8_集約とHealth復旧の交差でも件数が失われない()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "name": "AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "name": "AC7h_通常read中のlock例外は単票TX全体を三回試行し503で更新しない()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "name": "AC7_同hash二行の同時単票再活性化は成功一件と409一件になる()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "name": "AC7h_全三回でロック失敗なら単票は503でDB更新なし()",
+        "status": "passed"
+      },
+      {
+        "class": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "name": "AC7h_全三回でロック失敗ならbulkは503でDB更新なし()",
+        "status": "passed"
+      }
+    ]
+  },
+  "rawXmlSha256": [
+    {
+      "class": "com.mannschaft.app.errorreport.service.ErrorReportIsolationGuardR1IT",
+      "path": "build/test-results/test/TEST-com.mannschaft.app.errorreport.service.ErrorReportIsolationGuardR1IT.xml",
+      "sha256": "d4bd3ed2d365360a2ed603088d2c26d5cd16d7e52e4aabe7751a78b2cf8eaf62"
+    },
+    {
+      "class": "com.mannschaft.app.errorreport.service.ErrorReportAggregatorConcurrencyTest",
+      "path": "build/test-results/test/TEST-com.mannschaft.app.errorreport.service.ErrorReportAggregatorConcurrencyTest.xml",
+      "sha256": "5936a9632e2883b0575784f6cd4e1e821303f4d04fd9d466a5b45f6bc7fd4c99"
+    },
+    {
+      "class": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "path": "build/test-results/test/TEST-com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT.xml",
+      "sha256": "0e59d9417779e443cf2d106e1e5d9a3c430bfe870d7056e06b78601904a14185"
+    },
+    {
+      "class": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+      "path": "build/test-results/test/TEST-com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.xml",
+      "sha256": "6a10fc408e2b14cea01c9588d569e4e215c002792198b78fac6d7cf6595ac0f5"
+    }
+  ],
+  "normalTest": {
+    "xmlEntries": 7310,
+    "invocations": 31793,
+    "passed": 31776,
+    "failed": 0,
+    "error": 0,
+    "legacySkipped": 17,
+    "otherNonTargetSkipped": 0,
+    "identity": {
+      "uniqueClassNameCases": 31268,
+      "duplicateInvocations": 525,
+      "measurement": "class#nameの文字列ペア31,268組と追加出現525回。JUnit UniqueIdの重複判定ではない。"
+    },
+    "normalXmlByShard": {
+      "0": 1138,
+      "1": 1330,
+      "2": 1162,
+      "3": 1234,
+      "4": 1197,
+      "5": 1249
+    },
+    "legacySkippedCases": [
+      {
+        "class": "com.mannschaft.app.common.visibility.guard.NotificationDispatchVisibilityGuardTest",
+        "name": "ガードテストの InOrder 検証パターン (Phase F で具体化)",
+        "status": "skipped"
+      },
+      {
+        "class": "com.mannschaft.app.membership.MembershipBasisIntegrationTest",
+        "name": "プレースホルダー: Phase 3 で実装",
+        "status": "skipped"
+      },
+      {
+        "class": "com.mannschaft.app.repairplan.controller.RepairPlanAuditLogIntegrationTest",
+        "name": "タイムラインエクスポート → TIMELINE_EXPORTED 監査ログが記録される",
+        "status": "skipped"
+      },
+      {
+        "class": "com.mannschaft.app.repairplan.controller.RepairPlanAuditLogIntegrationTest",
+        "name": "CSV インポート確定 → PLAN_ITEM_CSV_IMPORTED 監査ログが記録される",
+        "status": "skipped"
+      },
+      {
+        "class": "com.mannschaft.app.shift.ShiftRequestSlotScopedContractIT$AuthoringViewSlotPreferences",
+        "name": "AC-8-04 候補の slotPreferences[] が枠ごとに2要素で返り日付キーで潰れない",
+        "status": "skipped"
+      },
+      {
+        "class": "com.mannschaft.app.succession.repository.LegalFilingRepositoryTest",
+        "name": "CHECK制約_filing_type_不正値は例外",
+        "status": "skipped"
+      },
+      {
+        "class": "com.mannschaft.app.succession.repository.SuccessionPreRegistrationRepositoryTest",
+        "name": "UNIQUE制約_1居住者1事前登録",
+        "status": "skipped"
+      },
+      {
+        "class": "com.mannschaft.app.actionmemo.service.ActionMemoServiceProgressTest$DurationProgressValidationTest",
+        "name": "[実装ギャップ] duration_minutes = 1441 で INVALID_DURATION を投げてほしい",
+        "status": "skipped"
+      },
+      {
+        "class": "com.mannschaft.app.actionmemo.service.ActionMemoServiceProgressTest$DurationProgressValidationTest",
+        "name": "[実装ギャップ] duration_minutes = -1 で INVALID_DURATION を投げてほしい",
+        "status": "skipped"
+      },
+      {
+        "class": "com.mannschaft.app.actionmemo.service.ActionMemoServiceProgressTest$DurationProgressValidationTest",
+        "name": "[実装ギャップ] progress_rate = 100.01 で INVALID_PROGRESS_RATE を投げてほしい",
+        "status": "skipped"
+      },
+      {
+        "class": "com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepositoryTest$UniqueConstraint",
+        "name": "同一スコープ重複INSERT_例外",
+        "status": "skipped"
+      },
+      {
+        "class": "com.mannschaft.app.shiftbudget.repository.ShiftBudgetConsumptionRepositoryTest$UniqueConstraint",
+        "name": "同一slot_user_status重複INSERT_例外",
+        "status": "skipped"
+      },
+      {
+        "class": "com.mannschaft.app.succession.repository.DelinquencyEscalationRepositoryTest",
+        "name": "CHECK制約_current_stage_不正値は例外",
+        "status": "skipped"
+      },
+      {
+        "class": "com.mannschaft.app.succession.repository.DelinquencyEscalationRepositoryTest",
+        "name": "UNIQUE制約_1居住者1エスカ",
+        "status": "skipped"
+      },
+      {
+        "class": "com.mannschaft.app.succession.repository.SuccessionCovenantRepositoryTest",
+        "name": "CHECK制約_covenant_type_不正値は例外",
+        "status": "skipped"
+      },
+      {
+        "class": "com.mannschaft.app.succession.repository.UnsealRequestRepositoryTest",
+        "name": "DB_CHECK_一次承認者と二次承認者が同一なら例外",
+        "status": "skipped"
+      },
+      {
+        "class": "com.mannschaft.app.succession.repository.UnsealRequestRepositoryTest",
+        "name": "DB_CHECK_起票者と一次承認者が同一なら例外",
+        "status": "skipped"
+      }
+    ],
+    "note": "対象46件のskip0と既存17skipを区別。class#nameの文字列ペア31,268組・追加出現525回と総invocation31,793回を区別し、JUnit UniqueIdの重複判定とはしない。対象46件のduplicate0は別の期待集合照合である。"
+  },
+  "archUnitSeparateJvm": {
+    "passed": 326,
+    "failed": 0,
+    "error": 0,
+    "skipped": 0
+  },
+  "flyway": {
+    "predicateSource": "backend/build.gradle.kts ShardAssignment.isMigrationReplayClass",
+    "predicate": "fqcn contains .migration. and simple name contains Flyway",
+    "expectedWeightedTopClasses": 80,
+    "observedTopClasses": 80,
+    "xmlEntries": 80,
+    "missing": [],
+    "unexpected": [],
+    "tests": 195,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "note": "suite header nameはDisplayName。filename FQCNへ正本Gradle述語を適用。header name一致5件をFlyway試験総数としない。"
+  },
+  "boundedRawRecovery": {
+    "class": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+    "bytes": 133306011,
+    "initialRawSaveCapBytes": 104857600,
+    "additionalExtraction": "対象1XMLのみbounded取得、原本SHA一致後ElementTreeで再parse。初期入力不足を解消し製品failureとは区別。",
+    "sha256": "6a10fc408e2b14cea01c9588d569e4e215c002792198b78fac6d7cf6595ac0f5",
+    "primaryEvidenceUnchanged": true
+  },
+  "provenance": {
+    "primaryEvidenceSha256": "da7714f74bdff988e6666efc0672d3bfefb9c49b99541863e1357042971c1374",
+    "independentVerificationSha256": "a136590e4311b3e44d8af76ffc0ff4ae8276d7580cc58534362768565c21ebdc",
+    "rawIncluded": false,
+    "largeJsonIncluded": false,
+    "credentialIncluded": false,
+    "archive": {
+      "relativePath": ".claude/evidence-archive/friend-r1-20261023/assets/",
+      "status": "保全移設完了・集合と全SHA一致確認済み。既存JSONとraw内容は不変。",
+      "files": 12687,
+      "bytes": 1494269722,
+      "sourceAssetsRemaining": 0,
+      "manifestSha256": "0e4baee93898bc61d7abc8a0591e6d11567902fc122e26faced31648ec88f150",
+      "verifiedAtUtc": "2026-10-22T18:11:58.450017+00:00",
+      "relativePathMapping": "旧R1 worktree内の.r1-ci/等の相対pathは本assets/以下へ対応する。",
+      "sourceWorktreeRemoved": true,
+      "featureBranchesRemoved": "local/remoteとも836ed5一致とPR MERGED確認後に削除済み"
+    },
+    "primaryEvidenceRelativePath": ".claude/evidence-archive/friend-r1-20261023/assets/.r1-ci/run39809177018-836ed5ffa1/collection-20261022T174609Z-67253e28/r1-fixedhead-stream-evidence.json",
+    "independentVerificationRelativePath": ".claude/evidence-archive/friend-r1-20261023/assets/.r1-ci/run39809177018-836ed5ffa1/collection-20261022T174609Z-67253e28/root-independent-verification.json"
+  },
+  "history": {
+    "oldTarget46": {
+      "head": "921185b31d1237d92366e5283a36353744f42ad8",
+      "runId": 39655953150,
+      "passed": 46,
+      "skipped": 0,
+      "currentHeadEvidence": false
+    },
+    "failedRun": {
+      "runId": 39767461345,
+      "reason": "旧85分枠shard3 timeout",
+      "success": false
+    },
+    "supersededRun": {
+      "runId": 39800425650,
+      "head": "050f029ca19d5ed44d8f4e05632df5918d41a1ba",
+      "status": "superseded",
+      "successClaim": false
+    },
+    "weights": {
+      "sourceRunId": 39679237083,
+      "normalClasses": 3075,
+      "compatFixture": {
+        "windowsPassed": 3,
+        "ubuntuPassed": 3
+      }
+    },
+    "realAndExploratory": "old1d784/921のsource対応履歴。R1固有製品sourceは不変だが最新BE/FE tree全体での実機/探索再実行とはしない。"
+  },
+  "mergeGate": {
+    "ordinaryMerge": "BEHINDにより拒否",
+    "priorMainFollow": "f01でmain追従済み",
+    "newMainFiles": 65,
+    "prFiles": 62,
+    "overlap": 0,
+    "mergeable": "MERGEABLE",
+    "checksAllGreen": true,
+    "secretNamesOnlyRecheckedAt": "2026-10-22T18:01:10Z",
+    "awsAccessKeyIdPresent": false,
+    "secretValueReads": 0,
+    "productionOperations": 0
+  },
+  "r1AcceptanceCriteria": [
+    "AC0",
+    "AC1",
+    "AC1h",
+    "AC2-FE",
+    "AC2-BE",
+    "AC2-HC",
+    "AC3",
+    "AC4",
+    "AC5",
+    "AC7",
+    "AC7h",
+    "AC8",
+    "AC9"
+  ],
+  "deferredGates": {
+    "campaignState": "実装中",
+    "r2AcceptanceCriteria": [
+      "AC6",
+      "AC6f",
+      "AC6m",
+      "AC8c"
+    ],
+    "r2Status": "保留・未実施",
+    "newEnumWriterCount": 0,
+    "productionAppSessionRR": "UNKNOWN",
+    "productionFlyway": "UNKNOWN",
+    "productionReaders": "UNKNOWN",
+    "productionDeployment": "別保留",
+    "productionCleanupFirstExecution": "別保留",
+    "impactSELECT": "別保留"
+  },
+  "postMergeObservation": {
+    "mainSha": "bdc5379ed38c2a8920f87c886da58ad2cc39da9a",
+    "observedAtUtc": "2026-10-22T18:13:00Z",
+    "mainBackend": {
+      "runId": 39827796933,
+      "archUnit": "success",
+      "testShards": "全6shard進行中",
+      "status": "進行中・成功未確定"
+    },
+    "mainFrontend": {
+      "runId": 39827797162,
+      "vitest": "実行中",
+      "mainOnlyDocker": "実行中",
+      "status": "進行中・成功未確定"
+    },
+    "mainFrontendDeploy": {
+      "runId": 39827796996,
+      "allAwsDeploymentSteps": "skipped",
+      "actualDeploymentCount": 0
+    }
+  }
+}
