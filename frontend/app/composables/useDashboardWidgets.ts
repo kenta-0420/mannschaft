@@ -1,3 +1,4 @@
+import { getCurrentScope, onScopeDispose } from 'vue'
 import type { Ref } from 'vue'
 import type { MinRole, ViewerRole, WidgetVisibilitySetting } from '~/types/dashboard'
 import type { components } from '~/types/generated'
@@ -627,6 +628,8 @@ export function useDashboardWidgets(
 
   const hiddenKeys = ref<Set<string>>(new Set())
   const orderedKeys = ref<string[]>([])
+  // 恐竜の初回GETはDBの表示設定を読むため、表示の保存が確定するまでmountしない。
+  const ranchMountVisible = ref(true)
 
   // team/organization/personal はすべて DB 永続化。
   // personal は対象3-B で DB 化（scope_id=0 で BE が個人を識別）。
@@ -652,6 +655,7 @@ export function useDashboardWidgets(
   const visibleWidgets = computed(() =>
     sortedWidgets.value.filter((w) => {
       if (!isVisible(w.key)) return false
+      if (w.key === 'dinosaur-ranch' && !ranchMountVisible.value) return false
       const minRole = effectiveMinRole(w, scopeType, visibilityMap ?? [])
       return viewerRoleLevel(viewerRole) >= MIN_ROLE_LEVEL[minRole]
     }),
@@ -668,9 +672,37 @@ export function useDashboardWidgets(
     // イベントハンドラ（reorder/toggle）からも安全に使えるようにする（visibility composable と同方針）。
     const api = useApi()
     const nuxtApp = useNuxtApp()
+    const auth = apiScopeType === 'personal' ? useAuthStore() : null
+    let personalValid = true
+    let saveVersion = 0
+    let settledVersion = 0
+    let saveQueue = Promise.resolve()
+    let confirmed = { hidden: new Set<string>(), order: [] as string[] }
+    if (auth) {
+      let owner = auth.user?.id ?? null
+      const invalidate = () => {
+        personalValid = false
+        ranchMountVisible.value = false
+      }
+      watch(
+        () => auth.user?.id ?? null,
+        value => {
+          // 初回client認証復元は受理し、保存を始めた本人からの切替は無効化する。
+          if (owner === null && value !== null && saveVersion === 0 && personalValid) {
+            owner = value
+            return
+          }
+          invalidate()
+        },
+        { flush: 'sync' },
+      )
+      if (getCurrentScope()) onScopeDispose(invalidate)
+    }
 
     /** BE レスポンスを FE state（hiddenKeys / orderedKeys）へ反映する。 */
     function applyServerSettings(settings: WidgetSettingResponse[]) {
+      // 保存中のGET応答で最新の操作意図を上書きしない。
+      if (auth && (!personalValid || saveVersion !== settledVersion)) return
       const order: string[] = []
       const hidden = new Set<string>()
       // BE は sortOrder 昇順で返す（ない場合に備えソートしておく）。
@@ -684,6 +716,10 @@ export function useDashboardWidgets(
       }
       orderedKeys.value = order
       hiddenKeys.value = hidden
+      if (saveVersion === settledVersion) {
+        confirmed = { hidden: new Set(hidden), order: [...order] }
+        ranchMountVisible.value = personalValid && !hidden.has('dinosaur-ranch')
+      }
     }
 
     // 本人認証は client plugin で復元されるため、私的設定はブラウザーで取得する。
@@ -716,11 +752,8 @@ export function useDashboardWidgets(
     // SSR では idle のまま既定設定を描画せず、本人 GET の確定後に保存順で出す。
     const ready = computed(() => status.value === 'success' || status.value === 'error')
 
-    /**
-     * 現在の state（並び順・表示状態）を BE へ全量 PUT する。
-     * 楽観更新済みの state を送り、失敗時は呼び出し側で渡された prev へロールバックする。
-     */
-    async function persist(): Promise<void> {
+    /** 操作時の並び順・表示状態を全量PUT用に固定する。 */
+    function buildSaveWidgets(): WidgetSettingItem[] {
       const order = orderedKeys.value
       const indexed = new Map(order.map((key, i) => [key, i]))
       const widgets: WidgetSettingItem[] = []
@@ -733,6 +766,10 @@ export function useDashboardWidgets(
           sortOrder: indexed.get(w.key) ?? widgets.length,
         })
       }
+      return widgets
+    }
+
+    async function persist(widgets: WidgetSettingItem[]): Promise<void> {
       if (widgets.length === 0) return
       await api('/api/v1/dashboard/widgets', {
         method: 'PUT',
@@ -740,16 +777,47 @@ export function useDashboardWidgets(
       })
     }
 
-    /** 楽観更新 → PUT。失敗したら snapshot へロールバックしトーストを表示する。 */
+    /** 楽観更新 → PUT。個人設定は直列保存し、最新操作の失敗だけを戻して通知する。 */
     async function optimisticPersist(snapshot: {
       hidden: Set<string>
       order: string[]
     }): Promise<void> {
+      const personal = apiScopeType === 'personal'
+      const version = ++saveVersion
+      // 操作時の全量payloadを固定し、個人設定は操作順で保存する。
+      const widgets = buildSaveWidgets()
+      const saved = { hidden: new Set(hiddenKeys.value), order: [...orderedKeys.value] }
+      const previous = saveQueue
+      let finish!: () => void
+      if (personal) {
+        saveQueue = new Promise<void>(resolve => { finish = resolve })
+      }
       try {
-        await persist()
+        if (personal) {
+          await previous
+          if (!personalValid) return
+        }
+        await persist(widgets)
+        if (personal) {
+          if (!personalValid) return
+          confirmed = saved
+          if (version === saveVersion) {
+            settledVersion = version
+            ranchMountVisible.value = !saved.hidden.has('dinosaur-ranch')
+          }
+        }
       } catch {
-        hiddenKeys.value = new Set(snapshot.hidden)
-        orderedKeys.value = [...snapshot.order]
+        if (personal && !personalValid) return
+        if (!personal || version === saveVersion) {
+          // 古い失敗で新しい操作を巻き戻さず、個人設定は最後の保存済み状態へ戻す。
+          const rollback = personal ? confirmed : snapshot
+          hiddenKeys.value = new Set(rollback.hidden)
+          orderedKeys.value = [...rollback.order]
+          if (personal) {
+            settledVersion = version
+            ranchMountVisible.value = !rollback.hidden.has('dinosaur-ranch')
+          }
+        }
         // setup 外でも安全に呼べるよう $i18n / $toast 経由（useI18n は使わない）。
         const t = (key: string) => nuxtApp.$i18n.t(key)
         const toast = nuxtApp.$toast as { add: (opts: Record<string, unknown>) => void } | undefined
@@ -759,19 +827,24 @@ export function useDashboardWidgets(
           detail: t('dashboard.widget_settings.save_error_detail'),
           life: 5000,
         })
+      } finally {
+        if (personal) finish()
       }
     }
 
     function toggleWidget(widgetKey: string) {
+      if (apiScopeType === 'personal' && !personalValid) return
       const snapshot = { hidden: new Set(hiddenKeys.value), order: [...orderedKeys.value] }
       const next = new Set(hiddenKeys.value)
       if (next.has(widgetKey)) next.delete(widgetKey)
       else next.add(widgetKey)
       hiddenKeys.value = next
+      if (widgetKey === 'dinosaur-ranch') ranchMountVisible.value = false
       void optimisticPersist(snapshot)
     }
 
     function reorder(fromIndex: number, toIndex: number) {
+      if (apiScopeType === 'personal' && !personalValid) return
       const snapshot = { hidden: new Set(hiddenKeys.value), order: [...orderedKeys.value] }
       const list = sortedWidgets.value.map((w) => w.key)
       const removed = list.splice(fromIndex, 1)
