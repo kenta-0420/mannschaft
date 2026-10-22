@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "c4ee52b3-906e-4b3c-b30f-eca44c493c2a",
+  "operation": "b242623d-8142-4367-8e59-8e2ec090e47e",
   "territories": {
     "foundation": {
       "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
@@ -30,7 +30,7 @@
     },
     "closure": {
       "owner": "3a1525fe-1e83-4f91-9003-8fdc8a9effbf",
-      "note": "境界整理継続。L5-PRE-D/V/Oの読取専用証拠準備を担当。対象コード・番人・ストア・定数・build・task-list既存行は変更しない。子CMP登録PRを先行し、PRE各別ファイルへ証拠案を保存する。REQ-L1F-261022-RESUMEはfoundation担当返答待ち、L1-F既存holdは維持。owner3a1525fe-1e83-4f91-9003-8fdc8a9effbf。ローカルheavyは翌01:00JSTまで新規投入0。\nCMP-261022-2338登録先行中。負債/橋渡しを読取調査。Sol medium担当。\nCMP-261022-2338登録先行中。verify/Gradle/残す番人を読取調査。Sol medium担当。"
+      "note": "境界整理継続。L5-PRE-D/V/Oの読取専用証拠準備を担当。対象コード・番人・ストア・定数・build・task-list既存行は変更しない。子CMP登録PRを先行し、PRE各別ファイルへ証拠案を保存する。REQ-L1F-261022-RESUMEはfoundation担当返答待ち、L1-F既存holdは維持。owner3a1525fe-1e83-4f91-9003-8fdc8a9effbf。ローカルheavyは翌01:00JSTまで新規投入0。\nCMP-261022-2338登録先行中。負債/橋渡しを読取調査。Sol medium担当。\nCMP-261022-2338登録先行中。verify/Gradle/残す番人を読取調査。Sol medium担当。\nCMP-261022-2338登録先行中。API/運用/計測の不足を殿が読取調査。実機やDDL変更は行わない。"
     }
   },
   "lanes": {
@@ -1166,9 +1166,9 @@
       "held": []
     },
     "L5-PRE-O": {
-      "state": "todo",
+      "state": "planning",
       "evidence": "",
-      "note": "",
+      "note": "CMP-261022-2338登録先行中。API/運用/計測の不足を殿が読取調査。実機やDDL変更は行わない。",
       "history": [],
       "hold": null,
       "held": []
