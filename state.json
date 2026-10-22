@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "79fb50f0-4a0e-40c8-890e-81df833c44d9",
+  "operation": "67008d8a-ef00-43ee-94c6-b8e301d60e01",
   "territories": {
     "foundation": {
       "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
@@ -10,7 +10,7 @@
     },
     "common-core": {
       "owner": "4a8a4e25-4100-45df-a5f9-55e32a3b5a98",
-      "note": "CMP-261022-0914 / PR4049 / 同一既存担当からの移管確定。実装足軽完了、CI失敗解析を再開。共有store/上限はL1-F待ちで未編集。\nREQ-L1A-F-01 未解決: 宛先foundation/L1-F既存担当 / D3-D3T-D5 storeと対応上限履歴 / PR4049-4045 / F main着地と共有予約解放待ち。裁可済みの移設増分だけF新形式で再実測し同期、同時編集なし。L1-A以外のレーンは未着手。\nREQ-L1A-F-01 未解決: F main着地とshared予約引渡し待ち。既存IT補助2行の追加例外はユーザー裁可待ち・未編集。足軽0/共有編集中0/自所有2WT clean。引継-boundary-l1-a-20261022-2001.md、担当保持。ローカルheavy停止は2026-10-23 01:00JSTまで。\nユーザー続けてに従い提示済みIT補助2行だけの更新を再開。REQ-L1A-F-01はF main着地と共有予約引渡し待ちのまま維持。他レーン未着手、共有store編集0。\n2026-10-23 00:38JST再開。IT補助2行の裁可待ちは解消済み、f245b563をPR4049へpush済み。CI39797767196のshard5実XML待ち。main d61097a4をmergeしたlocal HEAD25c75babはclean/未push（進行中CIを中断しない）。REQ-L1A-F-01のF main着地・architecture/freeze-constants予約引渡しは未解決。共有編集0、ローカルheavy新規投入0を継続。"
+      "note": "CMP-261022-0914 / PR4049 / 同一既存担当からの移管確定。実装足軽完了、CI失敗解析を再開。共有store/上限はL1-F待ちで未編集。\nREQ-L1A-F-01 未解決: 宛先foundation/L1-F既存担当 / D3-D3T-D5 storeと対応上限履歴 / PR4049-4045 / F main着地と共有予約解放待ち。裁可済みの移設増分だけF新形式で再実測し同期、同時編集なし。L1-A以外のレーンは未着手。\nREQ-L1A-F-01 未解決: F main着地とshared予約引渡し待ち。既存IT補助2行の追加例外はユーザー裁可待ち・未編集。足軽0/共有編集中0/自所有2WT clean。引継-boundary-l1-a-20261022-2001.md、担当保持。ローカルheavy停止は2026-10-23 01:00JSTまで。\nユーザー続けてに従い提示済みIT補助2行だけの更新を再開。REQ-L1A-F-01はF main着地と共有予約引渡し待ちのまま維持。他レーン未着手、共有store編集0。\n2026-10-23 00:38JST再開。IT補助2行の裁可待ちは解消済み、f245b563をPR4049へpush済み。CI39797767196のshard5実XML待ち。main d61097a4をmergeしたlocal HEAD25c75babはclean/未push（進行中CIを中断しない）。REQ-L1A-F-01のF main着地・architecture/freeze-constants予約引渡しは未解決。共有編集0、ローカルheavy新規投入0を継続。\n2026-10-23 01:25JST最終: IT補助2行f245b563の対象12件＋関連10件＋GDPR4件は実XML26件すべてfailure/error/skip0。通常shard0/3/5成功、未知失敗なし。既知D3T30/D321/D521のみ残り、Compile & Test集約はqueued/未実行なので全CI greenではない。REQ-L1A-F-01のF main着地・architecture/freeze-constants正式引渡し待ち。追加裁可待ちなし。実装/監視足軽終了・共有編集0・ローカルheavy0、自己所有2WT clean。local25c75bab/remote f245b563、main merge分は未push。引継-boundary-l1-a-20261023-0124.md。担当と資源を保全し他レーンは触らない。"
     },
     "repayment-a": {
       "owner": null,
@@ -88,9 +88,9 @@
       "held": []
     },
     "L1-A": {
-      "state": "working",
+      "state": "blocked",
       "evidence": "https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6336894819 同一既存担当の明示解放と自己移管、足軽停止・共有編集0、引継-boundary-l1-a-20261022-0924.md",
-      "note": "CMP-261022-0914 / PR4049 / 同一既存担当からの移管確定。実装足軽完了、CI失敗解析を再開。共有store/上限はL1-F待ちで未編集。\nREQ-L1A-F-01 未解決: F main着地とshared予約引渡し待ち。既存IT補助2行の追加例外はユーザー裁可待ち・未編集。足軽0/共有編集中0/自所有2WT clean。引継-boundary-l1-a-20261022-2001.md、担当保持。ローカルheavy停止は2026-10-23 01:00JSTまで。\nユーザー続けてに従い提示済みIT補助2行だけの更新を再開。REQ-L1A-F-01はF main着地と共有予約引渡し待ちのまま維持。他レーン未着手、共有store編集0。\n2026-10-23 00:38JST再開。IT補助2行の裁可待ちは解消済み、f245b563をPR4049へpush済み。CI39797767196のshard5実XML待ち。main d61097a4をmergeしたlocal HEAD25c75babはclean/未push（進行中CIを中断しない）。REQ-L1A-F-01のF main着地・architecture/freeze-constants予約引渡しは未解決。共有編集0、ローカルheavy新規投入0を継続。",
+      "note": "CMP-261022-0914 / PR4049 / 同一既存担当からの移管確定。実装足軽完了、CI失敗解析を再開。共有store/上限はL1-F待ちで未編集。\nREQ-L1A-F-01 未解決: F main着地とshared予約引渡し待ち。既存IT補助2行の追加例外はユーザー裁可待ち・未編集。足軽0/共有編集中0/自所有2WT clean。引継-boundary-l1-a-20261022-2001.md、担当保持。ローカルheavy停止は2026-10-23 01:00JSTまで。\nユーザー続けてに従い提示済みIT補助2行だけの更新を再開。REQ-L1A-F-01はF main着地と共有予約引渡し待ちのまま維持。他レーン未着手、共有store編集0。\n2026-10-23 00:38JST再開。IT補助2行の裁可待ちは解消済み、f245b563をPR4049へpush済み。CI39797767196のshard5実XML待ち。main d61097a4をmergeしたlocal HEAD25c75babはclean/未push（進行中CIを中断しない）。REQ-L1A-F-01のF main着地・architecture/freeze-constants予約引渡しは未解決。共有編集0、ローカルheavy新規投入0を継続。\n2026-10-23 01:25JST最終: IT補助2行f245b563の対象12件＋関連10件＋GDPR4件は実XML26件すべてfailure/error/skip0。通常shard0/3/5成功、未知失敗なし。既知D3T30/D321/D521のみ残り、Compile & Test集約はqueued/未実行なので全CI greenではない。REQ-L1A-F-01のF main着地・architecture/freeze-constants正式引渡し待ち。追加裁可待ちなし。実装/監視足軽終了・共有編集0・ローカルheavy0、自己所有2WT clean。local25c75bab/remote f245b563、main merge分は未push。引継-boundary-l1-a-20261023-0124.md。担当と資源を保全し他レーンは触らない。",
       "history": [],
       "hold": null,
       "held": []
