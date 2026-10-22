@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "a155f6a2-2254-4fb5-a272-b290e5f72673",
+  "operation": "31f40c96-4c4d-4a08-b1e3-b63c926bf5c4",
   "territories": {
     "foundation": {
       "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
@@ -1170,10 +1170,12 @@
       "held": []
     },
     "L5-PRE-O": {
-      "state": "working",
-      "evidence": "",
+      "state": "done",
+      "evidence": "PRE-O証拠準備のみ: PR4059 main b9c62f5a6e87240581cc2b293938c43d959d0830、head2d3eff5af32454a51a9731befdbfca7433cc622f全11success/6予定skip、Backend39801748413 success、main39803258363 success。docs/evidence/CMP-261022-2338-l5-pre-o.md。API/DB/runtime試験未実施、L5本体未着手。",
       "note": "CMP-261022-2338登録先行中。API/運用/計測の不足を殿が読取調査。実機やDDL変更は行わない。\n登録PR4057 main着地。外部API/Registry/outbox/計測の不足を専用証拠文書へ記録。3文書以外の共有編集なし。",
-      "history": [],
+      "history": [
+        "PRE-O証拠準備のみ: PR4059 main b9c62f5a6e87240581cc2b293938c43d959d0830、head2d3eff5af32454a51a9731befdbfca7433cc622f全11success/6予定skip、Backend39801748413 success、main39803258363 success。docs/evidence/CMP-261022-2338-l5-pre-o.md。API/DB/runtime試験未実施、L5本体未着手。"
+      ],
       "hold": null,
       "held": []
     },
