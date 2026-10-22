@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "eda7b284-2f85-4c68-b495-5589424412ad",
+  "operation": "3235ddfd-e52e-4d5c-879b-2d46799331e0",
   "territories": {
     "foundation": {
       "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
@@ -10,7 +10,7 @@
     },
     "common-core": {
       "owner": "4a8a4e25-4100-45df-a5f9-55e32a3b5a98",
-      "note": "CMP-261022-0914 / PR4049 / 同一既存担当からの移管確定。実装足軽完了、CI失敗解析を再開。共有store/上限はL1-F待ちで未編集。"
+      "note": "CMP-261022-0914 / PR4049 / 同一既存担当からの移管確定。実装足軽完了、CI失敗解析を再開。共有store/上限はL1-F待ちで未編集。\nREQ-L1A-F-01 未解決: 宛先foundation/L1-F既存担当 / D3-D3T-D5 storeと対応上限履歴 / PR4049-4045 / F main着地と共有予約解放待ち。裁可済みの移設増分だけF新形式で再実測し同期、同時編集なし。L1-A以外のレーンは未着手。"
     },
     "repayment-a": {
       "owner": null,
