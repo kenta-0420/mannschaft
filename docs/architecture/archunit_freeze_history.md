@@ -945,3 +945,7 @@ Integrity 番人の七定数に添付されていた履歴を、内容を省略�
     private static final int EXPECTED_LINES_SERVICE_API = 600;
 
 ```
+
+## 2026-10-22 L1-F初回記録移行の承認補正
+
+CMP-261021-2213 / PR #4045。ユーザーの「許可。進めて」により、初回だけD-1上限2037→2156（+119）、D-3上限1292→1325（+33）、D-5上限1850→1876（+26）へ補正した。延べ178件は旧文言群内の未記録依存であり、返済ではない。削減0・新class-pair0、判定/除外不変、他4store・UUID・stored.rules・他4上限は不変。旧prefix頻度Mapの全72増分群、原本SHA、根因、CI原本は [初回移行証拠](../evidence/CMP-261021-2213-l1-f-recording-migration.md) に記録する。上の旧履歴原文は省略・変更せず維持する。この補正は今後の無断baseline追加を認めない。

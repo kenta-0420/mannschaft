@@ -543,7 +543,7 @@ config → 業務の import 41 件は、Spring 設定が業務の Bean を直接
 
 - kernel（`common` の残り）と認可 interface（L1-K / L1-A / L1-R）
 - 番人（`common/architecture/` 配下。L1-G0 / L1-F / L1-G。`DomainPackages` は L1-G、`NotificationTransactionBoundaryGuardTest` は L1-G、D-3 / D-3T は L1-G0）。凍結ストアの行の減少は各ロットが §7.4 の手順で行う
-  - L1-F（CMP-261021-2213）の記録移行例外: D-1 / D-3 / D-5 の判定・除外・Dependencyごとの件数を変えず、依存descriptionと照合群内occurrenceを付記する改修を担当する。D-3の入口判定はL1-G0の成果を保持する。
+  - L1-F（CMP-261021-2213）の記録移行例外: D-1 / D-3 / D-5 の判定・除外・Dependencyごとの検出を変えず、依存descriptionと照合群内occurrenceを付記する改修を担当する。D-3の入口判定はL1-G0の成果を保持する。初回だけ、旧記録が隠していた既存群内178件を全件説明し、§7.4の承認値へ三上限を補正する。
 - `build-logic` と `build.gradle.kts`・`settings.gradle.kts`（L1-B → L1-M の順、Phase 3 では L3-*）
 - `.github/workflows/backend-ci.yml`・`.github/workflows/security-scan.yml`（L1-B / L3-*）
 - `backend/src/test/resources/shard-weights.properties`（再生成は L1-B / L3-* と L-SHIME。§7.7）
@@ -571,7 +571,7 @@ config → 業務の import 41 件は、Spring 設定が業務の Bean を直接
 - **返済 PR はストアの減少行を commit し、減少行と返済内容の照合を PR 本文に必ず書く**（消えた各行について、どの変更で解消したか）。照合のない減少行は検分で差し戻す。形式は正しいが誤って消えた行（`--tests` 絞り込み等）を、締めまで待たずに PR の段階で止めるため。
 - **ストアの衝突の解き方**: 返済 PR 同士がストアの隣接行を消して衝突した場合は、ファイルを手で解かず、**main 側のストアを採って**から、マージ後のツリーで絞り込みなしの `./scripts/gradle-turnstile.sh ./gradlew archUnitTest` を実行してストアを再生成する。再生成後の減少行が自分の照合と一致することを確かめる。
 - **ストア形式の健全性チェック（常時）**: 行が整列していること、重複が無いこと、各行が対応する番人の文言の形式に合うこと、ストアの対応表（`stored.rules`）と実ファイルが一致することを、毎回の CI で検査する。
-- **L1-Fの一度限りの記録移行**: D-1 / D-3 / D-5の既存prefixに ` | dependency: <Dependency.getDescription()> [occurrence=N]` を付ける。同じ既定fuzzy照合群内で1から番号を振り、同一行の同callも別記録で保持する。旧prefixへ射影した頻度Mapが移行前と完全一致する実全量解析の候補だけを採用し、dedupしない。3store以外の内容、UUID、`stored.rules`、定数値は変えない。行移動・別行と同一行の整形で件数が不変なら既定freezeが通り、増加はfail、減少はchip-awayすることを実検体で固定する。全体refreezeや常時store creationは許可しない。
+- **L1-Fの一度限りの記録移行**: D-1 / D-3 / D-5の既存prefixに ` | dependency: <Dependency.getDescription()> [occurrence=N]` を付ける。同じ既定fuzzy照合群内で1から番号を振り、同一行の同callも別記録で保持する。実全量候補の旧prefix射影頻度Mapを移行前と照合し、dedupしない。初回に限り、旧文言の既知Set照合で見逃されていた既存群内のD-1+119 / D-3+33 / D-5+26（延べ178、削減0・新class-pair0）を既存負債として全件説明し、三上限を2037→2156 / 1292→1325 / 1850→1876へ補正することを2026-10-22にマスターが承認した。この承認増分を差し引いた頻度Mapはbeforeと全件一致しなければならない。根拠と全72prefix群の差分は [初回移行証拠](../evidence/CMP-261021-2213-l1-f-recording-migration.md) に記録する。以後の補正や新規負債追加を許す例外ではない。他4store、UUID、`stored.rules`、他4上限は変えない。L1-G0完了後に行い、移行中は他レーンの返済による同三store変更と同時実施しない。行移動・別行と同一行の整形で件数が不変なら既定freezeが通り、増加はfail、減少はchip-awayすることを実検体で固定する。全体refreezeや常時store creationは許可しない。
 - **締めレーン L-SHIME**（常設・単独オーナー）: 定期的に（**週1回**、または親 Issue のチェックリストでロットが3つ完了するごとの早い方）、main のストアの実測行数へ定数を引き下げる PR を出す。PR では前回の締めからストアで減った行の diff を人が確認し、各返済 PR の照合と突き合わせる（説明のつかない減少は事故として扱い、行を戻す）。あわせて L0-C の集計でドメイン別の推移を親 Issue に報告する。
 - **意図しない減少の検出が遅れるリスク**: 上限方式では、ストアの行が誤って消えても番人は fail しない。緩和策は (1) 各返済 PR での減少行の照合（上記）、(2) 締めの頻度（週1回以上）と締め時の人による確認、(3) 常時の形式健全性チェック、(4) ストアの変更を CODEOWNERS のレビュー必須のまま維持（`backend/.claudecode.md` §30）、(5) `--tests` での絞り込み実行の禁止を各 PR の手順に明記、の5つである。
 - **定数横の履歴コメント**: 現在 `EXPECTED_LINES_*` の横に積まれている減少履歴のコメントは、L1-F で `docs/architecture/archunit_freeze_history.md` へ移し、以後の締めの記録もそこへ追記する。
@@ -613,7 +613,7 @@ config → 業務の import 41 件は、Spring 設定が業務の Bean を直接
 | L1-R | common の業務ロジック返却（対象は親 Issue のチェックリスト） | L1-K | 対象クラス（旧 FQCN は `@TransitionalBridge` の橋渡し）と持ち主ドメインの `api` | 呼び出し側（L2 の範囲）、番人 | 対象の実体が持ち主の `api` にあり、旧 FQCN は橋渡しのみ |
 | L1-B | build-logic convention plugin 化 | L0-M | `build-logic/`、`build.gradle.kts`、`settings.gradle.kts`、CI の workflow | 番人の中身 | タスク一覧・shard 割当が前後一致 |
 | L1-M | Modulith 導入・イベント基盤・Registry の限定 | L0-S、L1-B、L1-G0 | `build-logic/` の依存定義、Flyway 新規1本、Modulith 設定、kernel の新規ファイル、verify テスト | shard 設定、凍結ストア | §9.1 の L1-M 条件 |
-| L1-F | 凍結番人の上限方式化・形式健全性・履歴の docs 移設 | なし | `ArchUnitFreezeStoreIntegrityTest` とその自己テスト、D-1/D-3/D-5の記録formatterと実検体、3storeの一度限りの形式移行、`archunit_freeze_history.md`、§30の旧運用同期 | 判定・除外・Dependency件数、他4store、UUID、`stored.rules`、定数値、build設定 | §9.1 の L1-F 条件 |
+| L1-F | 凍結番人の上限方式化・形式健全性・履歴の docs 移設 | なし | `ArchUnitFreezeStoreIntegrityTest` とその自己テスト、D-1/D-3/D-5の記録formatterと実検体、3storeの一度限りの形式移行と§7.4承認値への三上限補正、初回移行証拠、`archunit_freeze_history.md`、§30の旧運用同期 | 判定・除外・Dependencyごとの検出、他4store、UUID、`stored.rules`、他4上限、build設定 | §9.1 の L1-F 条件 |
 | L1-G | 番人の新設・改修（L1-G0 以外） | L1-K、L1-M | `common/architecture/`（L1-G0・L1-F の対象を除く）、`DomainPackages` | 凍結ストアの中身 | §9.1 の L1-G 条件 |
 | L2 | 返済ロット（ロットは親 Issue のチェックリスト、波ごとに固定） | L1-G0・L1-F・L1-G・L1-K（全ロット）、L1-A（認可）、L1-M（C/F） | 発生元ドメイン、相手の `api` への新規ファイル、橋渡しの呼び出しの付け替えと呼び出し0の橋渡しの削除、ストアの行の減少 | kernel、番人、定数、build 設定、他ロットの発生元 | §8.4 雛形 |
 | L-SHIME | 締め（定数の引き下げ・減少行の確認・推移報告・重み表の再生成） | L1-F | `EXPECTED_LINES_*`、`archunit_freeze_history.md`、`shard-weights.properties` | ストアの中身（説明のつかない減少を戻す場合を除く） | 定数が実測と一致、突き合わせ記録 |
@@ -742,7 +742,7 @@ flowchart LR
 - [ ] L1-M: verify テストは違反があっても fail しない（レポートのみ）ことを確認するテストがある。
 - [ ] L1-B: build-logic 化の前後で `./gradlew tasks --all` の出力が一致し、`verifyShardCoverage` が緑、各テストクラスの shard 割当が一致する（前後の割当一覧を出力して比較）。
 - [ ] L1-F: ストアの行数が上限を1行超えると fail、上限ちょうど・上限未満は pass（境界）。行の重複・整列崩れ・形式不正・`stored.rules` との不一致はそれぞれ fail する（陽性の検体テスト付き）。
-- [ ] L1-F記録移行: 全7storeでN/N-1/0と上限0を検体検証し、D-1/D-3/D-5はfield・constructor・signature・同一行の同call二回を一意に保存する。再importと走査順でmultisetが安定し、既定freezeは整形を許しN+1を拒否、N-1を縮小する。実全量候補の旧prefix射影頻度が移行前と全件一致し、他4store・UUID・`stored.rules`・定数値は不変。履歴原文を完全移設し、専用guardの既存2case経路とbuild設定を維持する。
+- [ ] L1-F記録移行: 全7storeでN/N-1/0と上限0を検体検証し、D-1/D-3/D-5はfield・constructor・signature・同一行の同call二回を一意に保存する。再importと走査順でmultisetが安定し、既定freezeは整形を許しN+1を拒否、N-1を縮小する。実全量候補の旧prefix射影頻度は§7.4承認の初回増分178だけを除き移行前と全件一致し、削減0・新class-pair0を証明する。三上限は2156/1325/1876に補正し、他4store・UUID・`stored.rules`・他4上限は不変。履歴原文を完全移設し、専用guardの既存2case経路とbuild設定を維持する。
 - [ ] L1-G: `KernelNoBusinessDependencyArchTest` は kernel に業務 import を1件足すと fail する。`ProvisionalCoreMembershipGuardTest` は一覧外パッケージを暫定core 扱いにすると fail する。`CrossDomainTransactionLedger` は理由の空欄・実在しない例外で fail する。`DomainEventPayloadGuardTest` は `ReliableEvent` のイベント型に自由記述の `String` 項目を足すと fail し、scope の無いテナントイベントで fail する。`NotificationTransactionBoundaryGuardTest` が `@ModuleEventListener` を入口として認める。
 
 ### 9.2 Phase 2（ロットごと）・Phase 3
