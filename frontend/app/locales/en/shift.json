@@ -294,7 +294,8 @@
         "placeholder": "Select members...",
         "dayShift": "Day shift members",
         "nightShift": "Night shift members",
-        "selectedCount": "{count} selected"
+        "selectedCount": "{count} selected",
+        "empty": "No members available"
       },
       "templateHint": "Send to all {period} shift members in the same schedule",
       "list": {

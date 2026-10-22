@@ -280,7 +280,8 @@
         "placeholder": "Seleccionar miembros...",
         "dayShift": "Miembros del turno de día",
         "nightShift": "Miembros del turno de noche",
-        "selectedCount": "{count} seleccionados"
+        "selectedCount": "{count} seleccionados",
+        "empty": "No hay miembros disponibles"
       },
       "templateHint": "Enviar a todos los miembros del turno {period} en el mismo horario",
       "list": {

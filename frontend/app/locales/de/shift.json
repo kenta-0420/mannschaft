@@ -280,7 +280,8 @@
         "placeholder": "Mitglieder auswählen...",
         "dayShift": "Tagschicht-Mitglieder",
         "nightShift": "Nachtschicht-Mitglieder",
-        "selectedCount": "{count} ausgewählt"
+        "selectedCount": "{count} ausgewählt",
+        "empty": "Keine Mitglieder verfügbar"
       },
       "templateHint": "An alle {period}-Schichtmitglieder im gleichen Plan senden",
       "list": {
