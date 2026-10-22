@@ -82,6 +82,9 @@ test('0647 実UIで3モードを提出し、別MEMBER承諾とADMIN承認を永�
     positions.push(position.id)
     const schedule = await data<{ id: number }>(await admin.page.request.post(`${PREFIX}/shifts/schedules?teamId=${config.team.numericId}`, { data: { title, startDate: day, endDate: day } }))
     schedules.push(schedule.id)
+    const privateTitle = `${title}_未公開`
+    const draft = await data<{ id: number }>(await admin.page.request.post(`${PREFIX}/shifts/schedules?teamId=${config.team.numericId}`, { data: { title: privateTitle, startDate: day, endDate: day } }))
+    schedules.push(draft.id)
     const slots: number[] = []
     for (const [start, end, userId] of [
       ['09:00:00', '10:00:00', config.requester.userId],
@@ -170,6 +173,24 @@ test('0647 実UIで3モードを提出し、別MEMBER承諾とADMIN承認を永�
       await expect(admin.page.getByTestId(`swap-row-${created.id}`)).toContainText('承認済み')
       await admin.page.screenshot({ path: info.outputPath(`${mode}-approved.png`), fullPage: true })
       evidence.push({ mode, start: '/my/shift', entry: '今日→交代依頼を作成', slotId: created.slotId, requestId: created.id, candidateRequests, statuses: ['PENDING', 'ACCEPTED', 'APPROVED'], persisted, apiAuxiliary: ['ログイン', '前提', '後始末'] })
+    }
+
+    // 同チームMEMBERにも未公開データを秘匿する。公開済みが見える正の比較を先に取る。
+    await requester.page.goto(`/teams/${config.team.slug}/shifts`)
+    await expect(requester.page.getByText(title, { exact: true })).toBeVisible()
+    await expect(requester.page.getByText(privateTitle, { exact: true })).toHaveCount(0)
+    for (const actor of [requester, outsider]) {
+      const detail = actor.page.waitForResponse(r => r.request().method() === 'GET'
+        && new URL(r.url()).pathname === `/api/v1/shifts/schedules/${draft.id}`)
+      const slotsResponse = actor.page.waitForResponse(r => r.request().method() === 'GET'
+        && new URL(r.url()).pathname === `/api/v1/shifts/schedules/${draft.id}/slots`)
+      await actor.page.goto(`/shift/${draft.id}`)
+      expect((await detail).status()).toBe(404)
+      expect((await slotsResponse).status()).toBe(404)
+      await expect(actor.page.locator('.p-toast-message').first()).toBeVisible()
+      await expect(actor.page.getByText(privateTitle, { exact: true })).toHaveCount(0)
+      await actor.page.screenshot({ path: info.outputPath(`private-${actor === requester ? 'member' : 'outsider'}.png`), fullPage: true })
+      evidence.push({ actor: actor === requester ? 'MEMBER' : '他テナント', directUrl: actor.page.url(), deniedStatus: 404, hiddenTitle: privateTitle, screenText: (await actor.page.locator('body').innerText()).slice(0, 2000) })
     }
 
     for (const actor of [supporter, outsider]) {
