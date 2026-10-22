@@ -27,7 +27,7 @@
       "toggle_visibility": "Sichtbarkeit umschalten"
     },
     "messages": {
-      "follow_success": "Du folgst dem Team. Sobald es zurückfolgt, seid ihr befreundet.",
+      "follow_success": "Du folgst dem Team. Sobald es zurückfolgt, entsteht eine Teamfreundschaft.",
       "follow_mutual_success": "Gegenseitiges Folgen hergestellt — Sie sind jetzt Freundschaftsteams",
       "follow_retry": "Folgen wird verarbeitet. Bitte versuchen Sie es in {seconds} Sekunden erneut",
       "unfollow_success": "Entfolgt",
