@@ -1,0 +1,1427 @@
+{
+  "schema": 1,
+  "campaign": "CMP-261021-0017",
+  "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
+  "operation": "a4577e41-661d-409c-b804-78745e27bb88",
+  "territories": {
+    "foundation": {
+      "owner": null,
+      "note": ""
+    },
+    "common-core": {
+      "owner": null,
+      "note": ""
+    },
+    "repayment-a": {
+      "owner": null,
+      "note": ""
+    },
+    "repayment-b": {
+      "owner": null,
+      "note": ""
+    },
+    "repayment-c": {
+      "owner": null,
+      "note": ""
+    },
+    "gradle": {
+      "owner": null,
+      "note": ""
+    },
+    "closure": {
+      "owner": null,
+      "note": ""
+    }
+  },
+  "lanes": {
+    "L0-M": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": {
+        "owner": "existing:L0-M",
+        "evidence": "親Issue #4022: 9-13計測予約を保持、再計測方式診断で停止中。引継-boundary-l0-m-20261022-0844.md"
+      },
+      "held": [
+        "measurement"
+      ]
+    },
+    "L0-S": {
+      "state": "done",
+      "evidence": "計画§8.5の完了済み記録と親Issue #4022。再実施しない",
+      "note": "",
+      "history": [
+        "計画§8.5の完了済み記録と親Issue #4022。再実施しない"
+      ],
+      "hold": null,
+      "held": []
+    },
+    "L0-C": {
+      "state": "done",
+      "evidence": "計画§8.5の完了済み記録と親Issue #4022。再実施しない",
+      "note": "",
+      "history": [
+        "計画§8.5の完了済み記録と親Issue #4022。再実施しない"
+      ],
+      "hold": null,
+      "held": []
+    },
+    "L1-K": {
+      "state": "done",
+      "evidence": "計画§8.5の完了済み記録と親Issue #4022。再実施しない",
+      "note": "",
+      "history": [
+        "計画§8.5の完了済み記録と親Issue #4022。再実施しない"
+      ],
+      "hold": null,
+      "held": []
+    },
+    "L1-G0": {
+      "state": "done",
+      "evidence": "計画§8.5の完了済み記録と親Issue #4022。再実施しない",
+      "note": "",
+      "history": [
+        "計画§8.5の完了済み記録と親Issue #4022。再実施しない"
+      ],
+      "hold": null,
+      "held": []
+    },
+    "L1-A": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": {
+        "owner": "existing:L1-A",
+        "evidence": "CMP-261022-0914 / feature/4022-boundary-l1-a / 親Issue #4022 既存担当再開承認済み"
+      },
+      "held": []
+    },
+    "L1-R": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L1-B": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L1-M": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L1-F": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": {
+        "owner": "existing:L1-F",
+        "evidence": "CMP-261021-2213 / PR #4045 / feature/4022-boundary-l1-f 既存担当継続"
+      },
+      "held": [
+        "architecture",
+        "freeze-constants"
+      ]
+    },
+    "L1-G": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L-SHIME": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-actionmemo": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-activity": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-admin": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-advertising": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-analytics": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-appearance": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-billing": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-budget": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-bulletin": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-chart": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-chat": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-circulation": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-cms": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-committee": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-contact": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-corkboard": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-cspreport": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-dashboard": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-devtools": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-diagnosis": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-digest": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-directmail": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-disclosure": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-equipment": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-errorreport": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-event": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-facility": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-family": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-faq": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-favorite": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-files": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-filesharing": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-forms": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-gallery": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-gamification": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-gdpr": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-health": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-inbox": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-incident": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-incidentbanner": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-jobmatching": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-joinrequest": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-knowledgebase": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-landing": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-line": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-loyalty": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-mail": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-market": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-match": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-matching": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-member": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-memberinfo": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-mention": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-moderation": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-navsettings": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-notification": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-onboarding": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-parking": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-payment": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-performance": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-pointcard": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-postal": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-profile": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-promotion": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-property": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-provisioning": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-proxy": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-proxyvote": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-publicview": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-queue": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-quickmemo": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-ranch": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-receipt": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-recruitment": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-reflection": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-repairplan": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-reservation": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-residencestatus": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-resident": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-resume": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-returnstayplan": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-safetycheck": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-schedule": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-school": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-scopefolder": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-seal": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-search": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-securityincident": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-service": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-shift": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-shiftbudget": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-signage": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-skill": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-social": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-succession": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-supporter": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-survey": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-sync": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-template": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-ticket": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-timeline": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-timetable": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-todo": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-tournament": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-translation": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-user": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-venue": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-village": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-visibility": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-weather": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-webhook": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-websocket": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L2-workflow": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L3-0A": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L3-0K": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L3-0D": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L3-I": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L3-P": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L3-Bnn": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L4-auth": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L4-role": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L4-team": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L4-organization": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L4-membership": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L4-I": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L5-PRE-D": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L5-PRE-V": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L5-PRE-O": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    },
+    "L5-I": {
+      "state": "todo",
+      "evidence": "",
+      "note": "",
+      "history": [],
+      "hold": null,
+      "held": []
+    }
+  },
+  "gates": {
+    "wave-actionmemo": "",
+    "pattern-actionmemo": "",
+    "wave-activity": "",
+    "pattern-activity": "",
+    "wave-admin": "",
+    "pattern-admin": "",
+    "wave-advertising": "",
+    "pattern-advertising": "",
+    "wave-analytics": "",
+    "pattern-analytics": "",
+    "wave-appearance": "",
+    "pattern-appearance": "",
+    "wave-billing": "",
+    "pattern-billing": "",
+    "wave-budget": "",
+    "pattern-budget": "",
+    "wave-bulletin": "",
+    "pattern-bulletin": "",
+    "wave-chart": "",
+    "pattern-chart": "",
+    "wave-chat": "",
+    "pattern-chat": "",
+    "wave-circulation": "",
+    "pattern-circulation": "",
+    "wave-cms": "",
+    "pattern-cms": "",
+    "wave-committee": "",
+    "pattern-committee": "",
+    "wave-contact": "",
+    "pattern-contact": "",
+    "wave-corkboard": "",
+    "pattern-corkboard": "",
+    "wave-cspreport": "",
+    "pattern-cspreport": "",
+    "wave-dashboard": "",
+    "pattern-dashboard": "",
+    "wave-devtools": "",
+    "pattern-devtools": "",
+    "wave-diagnosis": "",
+    "pattern-diagnosis": "",
+    "wave-digest": "",
+    "pattern-digest": "",
+    "wave-directmail": "",
+    "pattern-directmail": "",
+    "wave-disclosure": "",
+    "pattern-disclosure": "",
+    "wave-equipment": "",
+    "pattern-equipment": "",
+    "wave-errorreport": "",
+    "pattern-errorreport": "",
+    "wave-event": "",
+    "pattern-event": "",
+    "wave-facility": "",
+    "pattern-facility": "",
+    "wave-family": "",
+    "pattern-family": "",
+    "wave-faq": "",
+    "pattern-faq": "",
+    "wave-favorite": "",
+    "pattern-favorite": "",
+    "wave-files": "",
+    "pattern-files": "",
+    "wave-filesharing": "",
+    "pattern-filesharing": "",
+    "wave-forms": "",
+    "pattern-forms": "",
+    "wave-gallery": "",
+    "pattern-gallery": "",
+    "wave-gamification": "",
+    "pattern-gamification": "",
+    "wave-gdpr": "",
+    "pattern-gdpr": "",
+    "wave-health": "",
+    "pattern-health": "",
+    "wave-inbox": "",
+    "pattern-inbox": "",
+    "wave-incident": "",
+    "pattern-incident": "",
+    "wave-incidentbanner": "",
+    "pattern-incidentbanner": "",
+    "wave-jobmatching": "",
+    "pattern-jobmatching": "",
+    "wave-joinrequest": "",
+    "pattern-joinrequest": "",
+    "wave-knowledgebase": "",
+    "pattern-knowledgebase": "",
+    "wave-landing": "",
+    "pattern-landing": "",
+    "wave-line": "",
+    "pattern-line": "",
+    "wave-loyalty": "",
+    "pattern-loyalty": "",
+    "wave-mail": "",
+    "pattern-mail": "",
+    "wave-market": "",
+    "pattern-market": "",
+    "wave-match": "",
+    "pattern-match": "",
+    "wave-matching": "",
+    "pattern-matching": "",
+    "wave-member": "",
+    "pattern-member": "",
+    "wave-memberinfo": "",
+    "pattern-memberinfo": "",
+    "wave-mention": "",
+    "pattern-mention": "",
+    "wave-moderation": "",
+    "pattern-moderation": "",
+    "wave-navsettings": "",
+    "pattern-navsettings": "",
+    "wave-notification": "",
+    "pattern-notification": "",
+    "wave-onboarding": "",
+    "pattern-onboarding": "",
+    "wave-parking": "",
+    "pattern-parking": "",
+    "wave-payment": "",
+    "pattern-payment": "",
+    "wave-performance": "",
+    "pattern-performance": "",
+    "wave-pointcard": "",
+    "pattern-pointcard": "",
+    "wave-postal": "",
+    "pattern-postal": "",
+    "wave-profile": "",
+    "pattern-profile": "",
+    "wave-promotion": "",
+    "pattern-promotion": "",
+    "wave-property": "",
+    "pattern-property": "",
+    "wave-provisioning": "",
+    "pattern-provisioning": "",
+    "wave-proxy": "",
+    "pattern-proxy": "",
+    "wave-proxyvote": "",
+    "pattern-proxyvote": "",
+    "wave-publicview": "",
+    "pattern-publicview": "",
+    "wave-queue": "",
+    "pattern-queue": "",
+    "wave-quickmemo": "",
+    "pattern-quickmemo": "",
+    "wave-ranch": "",
+    "pattern-ranch": "",
+    "wave-receipt": "",
+    "pattern-receipt": "",
+    "wave-recruitment": "",
+    "pattern-recruitment": "",
+    "wave-reflection": "",
+    "pattern-reflection": "",
+    "wave-repairplan": "",
+    "pattern-repairplan": "",
+    "wave-reservation": "",
+    "pattern-reservation": "",
+    "wave-residencestatus": "",
+    "pattern-residencestatus": "",
+    "wave-resident": "",
+    "pattern-resident": "",
+    "wave-resume": "",
+    "pattern-resume": "",
+    "wave-returnstayplan": "",
+    "pattern-returnstayplan": "",
+    "wave-safetycheck": "",
+    "pattern-safetycheck": "",
+    "wave-schedule": "",
+    "pattern-schedule": "",
+    "wave-school": "",
+    "pattern-school": "",
+    "wave-scopefolder": "",
+    "pattern-scopefolder": "",
+    "wave-seal": "",
+    "pattern-seal": "",
+    "wave-search": "",
+    "pattern-search": "",
+    "wave-securityincident": "",
+    "pattern-securityincident": "",
+    "wave-service": "",
+    "pattern-service": "",
+    "wave-shift": "",
+    "pattern-shift": "",
+    "wave-shiftbudget": "",
+    "pattern-shiftbudget": "",
+    "wave-signage": "",
+    "pattern-signage": "",
+    "wave-skill": "",
+    "pattern-skill": "",
+    "wave-social": "",
+    "pattern-social": "",
+    "wave-succession": "",
+    "pattern-succession": "",
+    "wave-supporter": "",
+    "pattern-supporter": "",
+    "wave-survey": "",
+    "pattern-survey": "",
+    "wave-sync": "",
+    "pattern-sync": "",
+    "wave-template": "",
+    "pattern-template": "",
+    "wave-ticket": "",
+    "pattern-ticket": "",
+    "wave-timeline": "",
+    "pattern-timeline": "",
+    "wave-timetable": "",
+    "pattern-timetable": "",
+    "wave-todo": "",
+    "pattern-todo": "",
+    "wave-tournament": "",
+    "pattern-tournament": "",
+    "wave-translation": "",
+    "pattern-translation": "",
+    "wave-user": "",
+    "pattern-user": "",
+    "wave-venue": "",
+    "pattern-venue": "",
+    "wave-village": "",
+    "pattern-village": "",
+    "wave-visibility": "",
+    "pattern-visibility": "",
+    "wave-weather": "",
+    "pattern-weather": "",
+    "wave-webhook": "",
+    "pattern-webhook": "",
+    "wave-websocket": "",
+    "pattern-websocket": "",
+    "wave-workflow": "",
+    "pattern-workflow": "",
+    "measurement-window": "",
+    "return-targets": "",
+    "bundle-map": "",
+    "pilot-window": "",
+    "pilot-continue": "",
+    "bundle-exits": "",
+    "core-entry": "",
+    "core-contracts": "",
+    "final-evidence": "",
+    "base-integrated": "",
+    "gradle-withdrawn": ""
+  }
+}
