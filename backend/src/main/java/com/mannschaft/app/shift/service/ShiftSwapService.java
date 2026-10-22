@@ -4,16 +4,23 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.shift.ShiftAssignedUserIds;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.ShiftMapper;
+import com.mannschaft.app.shift.ShiftScheduleStatus;
 import com.mannschaft.app.shift.SwapRequestStatus;
 import com.mannschaft.app.shift.dto.CreateSwapRequestRequest;
 import com.mannschaft.app.shift.dto.ResolveSwapRequestRequest;
 import com.mannschaft.app.shift.dto.SwapRequestResponse;
 import com.mannschaft.app.shift.entity.ShiftSwapRequestEntity;
+import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
+import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.shift.repository.ShiftSwapRequestRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,12 +29,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * シフト交代リクエストの <b>トランザクション本体</b>（自ドメイン = shift の Repository だけに触れる）。
+ * シフト交代リクエストの <b>トランザクション本体</b>（自ドメイン = shift の Entity・Repository だけに触れる）。
  *
- * <p><b>認可はここに置かない（CMP-260923-0954 W2 / 認可をトランザクションの外へ）:</b>
- * 権限の確認は非トランザクションの {@link ShiftSwapFacade} が行い、通ったものだけを本クラスの
+ * <p><b>スコープ認可はここに置かない（CMP-260923-0954 W2 / 認可をトランザクションの外へ）:</b>
+ * 所属・ロールの確認は非トランザクションの {@link ShiftSwapFacade} が行い、通ったものだけを本クラスの
  * {@code @Transactional} メソッドが実行する。{@code AccessControlService} / {@code ScopeConcealingAccessGate}
- * への依存と認可用の private メソッドは本クラスに持たない（D-3T 番人と {@code ShiftTxFacadeArchTest} が固定）。</p>
+ * への依存と認可用の private メソッドは本クラスに持たない（D-3T 番人と {@code ShiftTxFacadeArchTest} が固定）。
+ * 作成資格（PUBLISHED・本人担当）は自ドメインの業務不変条件として書き込みTX内で確認する。
+ * ADMIN / DEPUTY_ADMIN / SYSTEM_ADMIN もこの資格は免除しない。</p>
  *
  * <p><b>scope の解決と読み直し:</b> Facade は認可の前に {@link #resolveSwapScope} 等（readOnly・自ドメインのみ）で
  * 「対象 → シフト枠 → スケジュール → チーム」をたどって teamId を得る。書き込み tx では必ず
@@ -51,6 +60,7 @@ public class ShiftSwapService {
     private final ShiftScheduleRepository scheduleRepository;
     private final ShiftMapper shiftMapper;
     private final ObjectMapper objectMapper;
+    private final EntityManager entityManager;
 
     /**
      * 指定チームの交代リクエスト一覧を取得する。
@@ -123,9 +133,25 @@ public class ShiftSwapService {
      */
     @Transactional
     public SwapRequestResponse createSwapRequest(CreateSwapRequestRequest req, Long userId) {
-        // 認可は Facade 済み。認可の後・tx の前にシフト枠やスケジュールが消えた競合を拾うため、
-        // 解決と同じ経路（枠→スケジュール）で読み直す（不在なら Facade の解決時と同じコードの 404・DB 不変）。
-        resolveTeamIdBySlotId(req.getSlotId());
+        // スコープ認可はFacade済み。親→子の順で既存の割当更新・親削除と直列化し、
+        // 公開取消や担当変更のcommit後の値で作成資格を確定する（親不在は従来どおりSHIFT_001）。
+        ShiftSlotEntity slot = slotRepository.findById(req.getSlotId())
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND));
+        ShiftScheduleEntity schedule = scheduleRepository.findByIdForUpdate(slot.getScheduleId())
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+        try {
+            // 親ロック待ち前の1次キャッシュ・MySQLのsnapshotを使わず、現在の割当を読み直す。
+            entityManager.refresh(slot, LockModeType.PESSIMISTIC_READ);
+        } catch (EntityNotFoundException e) {
+            // 親ロック待ち中に枠だけが消えた場合も、既存の不在応答を維持する。
+            throw new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
+        }
+        if (schedule.getStatus() != ShiftScheduleStatus.PUBLISHED) {
+            throw new BusinessException(ShiftErrorCode.INVALID_SCHEDULE_STATUS);
+        }
+        if (!ShiftAssignedUserIds.parse(slot.getAssignedUserIds()).contains(userId)) {
+            throw new BusinessException(ShiftErrorCode.ACCESS_DENIED);
+        }
 
         // 受信者モードの決定
         String recipientMode = req.isOpenCall() ? "OPEN_CALL" : "SPECIFIC";
