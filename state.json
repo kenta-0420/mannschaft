@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "1d0f34d4-9d81-49db-99d3-58b960aa57e2",
+  "operation": "df551fd9-240f-4fdb-85ca-12f614ad334e",
   "territories": {
     "foundation": {
       "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
@@ -29,7 +29,7 @@
       "note": ""
     },
     "closure": {
-      "owner": null,
+      "owner": "3a1525fe-1e83-4f91-9003-8fdc8a9effbf",
       "note": ""
     }
   },
