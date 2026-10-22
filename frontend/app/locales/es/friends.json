@@ -13,12 +13,13 @@
     },
     "follow_dialog": {
       "search_label": "Buscar por nombre del equipo",
-      "search_placeholder": "Escribe al menos 2 caracteres del nombre del equipo",
+      "search_placeholder": "Buscar equipos",
       "slug_input_label": "Indicar por nombre de URL",
       "slug_input_hint": "Si el equipo no aparece en los resultados, escribe su nombre de URL (la parte final de su dirección) en el campo de abajo",
       "no_results": "No se encontraron equipos coincidentes",
       "search_error": "La búsqueda ha fallado. Comprueba tu conexión e inténtalo de nuevo",
-      "retry": "Buscar de nuevo"
+      "retry": "Buscar de nuevo",
+      "search_hint": "Escribe al menos 2 caracteres"
     },
     "actions": {
       "follow": "Seguir",
@@ -203,5 +204,31 @@
   },
   "nav": {
     "tab": "Equipos amigos"
+  },
+  "error": {
+    "SOCIAL_101": "No puedes seguir a tu propio equipo",
+    "SOCIAL_102": "Ya sigues a este equipo",
+    "SOCIAL_103": "No se encontró la relación de seguimiento",
+    "SOCIAL_104": "No se encontró el equipo que quieres seguir",
+    "SOCIAL_105": "Se necesita permiso para gestionar equipos amigos",
+    "SOCIAL_106": "No se encontró la relación de amistad",
+    "SOCIAL_107": "Se necesitan permisos de administrador para cambiar la visibilidad",
+    "SOCIAL_108": "Hay otra operación de amistad en curso. Vuelve a intentarlo",
+    "SOCIAL_109": "Los equipos amigos están desactivados actualmente",
+    "SOCIAL_110": "No se encontró la carpeta de amigos",
+    "SOCIAL_111": "Cada equipo puede crear hasta 20 carpetas de amigos",
+    "SOCIAL_112": "Este equipo amigo ya está en la carpeta",
+    "SOCIAL_113": "Este equipo amigo no está en la carpeta",
+    "SOCIAL_120": "No se encontró el historial de reenvío",
+    "SOCIAL_121": "Esta publicación ya se ha reenviado",
+    "SOCIAL_122": "No se encontró la publicación original",
+    "SOCIAL_123": "Esta publicación no se comparte con equipos amigos",
+    "SOCIAL_124": "No existe amistad con el equipo de origen",
+    "SOCIAL_125": "El reenvío a seguidores aún no está disponible",
+    "SOCIAL_130": "Esta notificación de amigos no tiene destinatarios",
+    "SOCIAL_131": "Selecciona una carpeta de destinatarios",
+    "SOCIAL_132": "Selecciona los equipos destinatarios",
+    "SOCIAL_133": "Selecciona una carpeta o equipos como tipo de destinatario",
+    "SOCIAL_134": "El equipo seleccionado no es un equipo amigo"
   }
 }
