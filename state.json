@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "4c2e3e39-ec39-452f-816a-0a5bca9ce374",
+  "operation": "11a73eec-a788-46bf-b4de-d41e1d9e29e8",
   "territories": {
     "foundation": {
       "owner": null,
@@ -13,8 +13,8 @@
       "note": ""
     },
     "repayment-a": {
-      "owner": "0d390256-4a9e-424b-bccd-a0bbf9131115",
-      "note": "初回疎通試験のみ。足軽0・実装未着手。"
+      "owner": null,
+      "note": "初回疎通試験のみ。足軽0・実装未着手。\n解放: 0d390256-4a9e-424b-bccd-a0bbf9131115 → 未所有 / 停止・解放証拠: https://github.com/kenta-0420/mannschaft/pull/4054 / 実origin疎通、足軽0・共有編集0の停止確認"
     },
     "repayment-b": {
       "owner": null,
