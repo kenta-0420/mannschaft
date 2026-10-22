@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "b74ef75d-6ca0-4b95-81b1-3cfd167d5730",
+  "operation": "e3e84b73-4b76-4496-83af-096aaeec6334",
   "territories": {
     "foundation": {
       "owner": null,
@@ -88,14 +88,11 @@
       "held": []
     },
     "L1-A": {
-      "state": "todo",
-      "evidence": "",
+      "state": "paused",
+      "evidence": "https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6336894819 同一既存担当の明示解放と自己移管、足軽停止・共有編集0、引継-boundary-l1-a-20261022-0924.md",
       "note": "",
       "history": [],
-      "hold": {
-        "owner": "existing:L1-A",
-        "evidence": "CMP-261022-0914 / feature/4022-boundary-l1-a / 親Issue #4022 既存担当再開承認済み"
-      },
+      "hold": null,
       "held": []
     },
     "L1-R": {
