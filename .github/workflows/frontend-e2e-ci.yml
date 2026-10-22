@@ -39,7 +39,8 @@ env:
 jobs:
   e2e:
     name: Smoke E2E (F15.4 + F22.1 + 拡大予定)
-    runs-on: ubuntu-latest
+    # Playwright 1.60.0 は Ubuntu 26.04 非対応のため、対応済み OS に固定する。
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:
       run:
