@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "a4577e41-661d-409c-b804-78745e27bb88",
+  "operation": "4c2e3e39-ec39-452f-816a-0a5bca9ce374",
   "territories": {
     "foundation": {
       "owner": null,
@@ -13,8 +13,8 @@
       "note": ""
     },
     "repayment-a": {
-      "owner": null,
-      "note": ""
+      "owner": "0d390256-4a9e-424b-bccd-a0bbf9131115",
+      "note": "初回疎通試験のみ。足軽0・実装未着手。"
     },
     "repayment-b": {
       "owner": null,
