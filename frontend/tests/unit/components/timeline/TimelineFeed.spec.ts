@@ -339,17 +339,252 @@ describe('TimelineFeed.vue — 追加読み込み', () => {
       props: { scopeType: 'TEAM', scopeId: '7' },
     })
     await vi.waitFor(() => expect(observe).toHaveBeenCalledOnce())
-    onIntersection([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
+    onIntersection(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    )
     await vi.waitFor(() =>
       expect(wrapper.find('[data-testid="timeline-load-more-target"] button').exists()).toBe(true),
     )
     expect(getFeed).toHaveBeenCalledTimes(2)
 
-    onIntersection([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
+    onIntersection(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    )
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(getFeed).toHaveBeenCalledTimes(2)
 
     await wrapper.find('[data-testid="timeline-load-more-target"] button').trigger('click')
     await vi.waitFor(() => expect(getFeed).toHaveBeenCalledTimes(3))
+  })
+})
+
+describe('TimelineFeed.vue — 手動更新', () => {
+  let onIntersection: IntersectionObserverCallback
+
+  function intersect() {
+    onIntersection(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    )
+  }
+
+  function response(ids: number[], pinnedIds: number[] = [], cursor: number | null = null) {
+    return {
+      data: {
+        pinned: pinnedIds.map((id) => makePost(id, 'TEAM', '7', '一軍')),
+        posts: ids.map((id) => makePost(id, 'TEAM', '7', '一軍')),
+      },
+      meta: { nextCursor: cursor, limit: 20, hasNext: cursor !== null },
+    }
+  }
+
+  function deferredResponse() {
+    let resolve!: (value: ReturnType<typeof response>) => void
+    const promise = new Promise<ReturnType<typeof response>>((done) => {
+      resolve = done
+    })
+    return { promise, resolve }
+  }
+
+  const stubs = {
+    TimelinePostCard: {
+      props: ['post'],
+      template: '<div data-testid="refresh-post">{{ post.id }}</div>',
+    },
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    getFeed.mockReset().mockResolvedValue(response([2, 1], [10]))
+    getMyTimeline.mockReset().mockResolvedValue(response([2, 1]))
+    getMutes.mockResolvedValue({ data: [] })
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(callback: IntersectionObserverCallback) {
+          onIntersection = callback
+        }
+        observe() {}
+        disconnect() {}
+      },
+    )
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it.each([
+    { scopeType: 'TEAM' as const, scopeId: '7' },
+    { scopeType: 'ORGANIZATION' as const, scopeId: '5' },
+    { scopeType: 'VILLAGE' as const, scopeId: 'village-uuid' },
+    { scopeType: 'PUBLIC' as const, scopeId: undefined },
+  ])(
+    'AC-1/2: $scopeType の上部ボタンで同じscopeの先頭を取得し投稿とピンを置換する',
+    async (props) => {
+      const wrapper = await mountSuspended(TimelineFeed, { props, global: { stubs } })
+      const button = wrapper.get('[data-testid="timeline-refresh"]')
+      expect(button.text()).toContain('timeline.refresh')
+      expect(button.attributes('type')).toBe('button')
+      expect(button.classes()).toContain('min-h-11')
+      expect(button.classes()).toContain('min-w-11')
+      getFeed.mockResolvedValueOnce(response([4, 3], [11]))
+
+      await button.trigger('click')
+
+      await vi.waitFor(() =>
+        expect(wrapper.findAll('[data-testid="refresh-post"]').map((p) => p.text())).toEqual([
+          '11',
+          '4',
+          '3',
+        ]),
+      )
+      expect(getFeed).toHaveBeenLastCalledWith({ ...props, cursor: undefined })
+      expect(getMyTimeline).not.toHaveBeenCalled()
+    },
+  )
+
+  it('AC-2/4: 個人ウィジェットも先頭を再取得し上限を維持、空の結果でも再更新できる', async () => {
+    const wrapper = await mountSuspended(TimelineFeed, {
+      props: { myFeed: true, limit: 1 },
+      global: { stubs },
+    })
+    getMyTimeline.mockResolvedValueOnce(response([4, 3], [], 3))
+
+    await wrapper.get('[data-testid="timeline-refresh"]').trigger('click')
+
+    await vi.waitFor(() =>
+      expect(wrapper.findAll('[data-testid="refresh-post"]').map((p) => p.text())).toEqual(['4']),
+    )
+    expect(getMyTimeline).toHaveBeenLastCalledWith(undefined)
+    expect(getFeed).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="timeline-load-more-target"]').exists()).toBe(false)
+    getMyTimeline.mockResolvedValueOnce(response([]))
+    await wrapper.get('[data-testid="timeline-refresh"]').trigger('click')
+    await vi.waitFor(() => expect(wrapper.findAll('[data-testid="refresh-post"]')).toHaveLength(0))
+    expect(wrapper.get('[data-testid="timeline-refresh"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('AC-3: 初期読み込み中は手動更新を無効にする', async () => {
+    const pending = deferredResponse()
+    getFeed.mockReturnValueOnce(pending.promise)
+    const wrapper = await mountSuspended(TimelineFeed, {
+      props: { scopeType: 'TEAM', scopeId: '7' },
+      global: { stubs },
+    })
+
+    expect(wrapper.get('[data-testid="timeline-refresh"]').attributes('disabled')).toBeDefined()
+    await wrapper.get('[data-testid="timeline-refresh"]').trigger('click')
+    expect(getFeed).toHaveBeenCalledTimes(1)
+    pending.resolve(response([1]))
+    await vi.waitFor(() =>
+      expect(
+        wrapper.get('[data-testid="timeline-refresh"]').attributes('disabled'),
+      ).toBeUndefined(),
+    )
+  })
+
+  it('AC-3/4: 更新中の連打と末尾交差を抑止し、新しいカーソルから追加取得する', async () => {
+    getFeed.mockResolvedValueOnce(response([2, 1], [], 1))
+    const wrapper = await mountSuspended(TimelineFeed, {
+      props: { scopeType: 'TEAM', scopeId: '7' },
+      global: { stubs },
+    })
+    const pending = deferredResponse()
+    getFeed.mockReturnValueOnce(pending.promise)
+
+    // Vueのdisabled反映前の連打もhandlerで抑止する。
+    const button = wrapper.get('[data-testid="timeline-refresh"]')
+    const firstClick = button.trigger('click')
+    const secondClick = button.trigger('click')
+    await Promise.all([firstClick, secondClick])
+    intersect()
+    expect(getFeed).toHaveBeenCalledTimes(2)
+    expect(button.attributes('disabled')).toBeDefined()
+    pending.resolve(response([4, 3], [], 3))
+    await vi.waitFor(() => expect(button.attributes('disabled')).toBeUndefined())
+    getFeed.mockResolvedValueOnce(response([2]))
+    intersect()
+
+    await vi.waitFor(() => expect(getFeed).toHaveBeenCalledTimes(3))
+    expect(getFeed).toHaveBeenLastCalledWith({ scopeType: 'TEAM', scopeId: '7', cursor: 3 })
+    await vi.waitFor(() =>
+      expect(wrapper.findAll('[data-testid="refresh-post"]').map((p) => p.text())).toEqual([
+        '4',
+        '3',
+        '2',
+      ]),
+    )
+    expect(wrapper.find('[data-testid="timeline-load-more-target"]').exists()).toBe(false)
+  })
+
+  it('AC-3: 追加読み込み中は手動更新を並列実行しない', async () => {
+    getFeed.mockResolvedValueOnce(response([2], [], 2))
+    const wrapper = await mountSuspended(TimelineFeed, {
+      props: { scopeType: 'TEAM', scopeId: '7' },
+      global: { stubs },
+    })
+    const pending = deferredResponse()
+    getFeed.mockReturnValueOnce(pending.promise)
+    intersect()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.get('[data-testid="timeline-refresh"]').attributes('disabled')).toBeDefined()
+    await wrapper.get('[data-testid="timeline-refresh"]').trigger('click')
+    expect(getFeed).toHaveBeenCalledTimes(2)
+    pending.resolve(response([1]))
+    await vi.waitFor(() =>
+      expect(
+        wrapper.get('[data-testid="timeline-refresh"]').attributes('disabled'),
+      ).toBeUndefined(),
+    )
+  })
+
+  it('AC-5: 失敗時は投稿とピンを保持し、通知後に再試行できる', async () => {
+    const wrapper = await mountSuspended(TimelineFeed, {
+      props: { scopeType: 'TEAM', scopeId: '7' },
+      global: { stubs },
+    })
+    getFeed.mockRejectedValueOnce(new Error('offline'))
+
+    await wrapper.get('[data-testid="timeline-refresh"]').trigger('click')
+
+    await vi.waitFor(() => expect(showError).toHaveBeenCalledOnce())
+    expect(wrapper.findAll('[data-testid="refresh-post"]').map((p) => p.text())).toEqual([
+      '10',
+      '2',
+      '1',
+    ])
+    expect(wrapper.get('[data-testid="timeline-refresh"]').attributes('disabled')).toBeUndefined()
+    getFeed.mockResolvedValueOnce(response([5], [12]))
+    await wrapper.get('[data-testid="timeline-refresh"]').trigger('click')
+    await vi.waitFor(() =>
+      expect(wrapper.findAll('[data-testid="refresh-post"]').map((p) => p.text())).toEqual([
+        '12',
+        '5',
+      ]),
+    )
+  })
+
+  it('AC-6: 読み込み中でも投稿後などの公開refresh要求は捨てない', async () => {
+    const pending = deferredResponse()
+    getFeed.mockReturnValueOnce(pending.promise)
+    const wrapper = await mountSuspended(TimelineFeed, {
+      props: { scopeType: 'TEAM', scopeId: '7' },
+      global: { stubs },
+    })
+
+    ;(wrapper.vm as unknown as { refresh: () => void }).refresh()
+
+    expect(getFeed).toHaveBeenCalledTimes(2)
+    expect(getFeed).toHaveBeenLastCalledWith({ scopeType: 'TEAM', scopeId: '7', cursor: undefined })
+    pending.resolve(response([1]))
+    await vi.waitFor(() =>
+      expect(
+        wrapper.get('[data-testid="timeline-refresh"]').attributes('disabled'),
+      ).toBeUndefined(),
+    )
   })
 })
