@@ -128,9 +128,11 @@ count = 0
 # 専用タスクは各 runner でも実行されるが、通常 test の shard 配分対象ではない。
 for f in glob.glob(os.path.join(work_dir, "s*", "**", "TEST-*.xml"), recursive=True):
     parts = os.path.relpath(f, work_dir).split(os.sep)
-    if len(parts) == 3 and parts[1] in {"archTest", "archUnitTest", "archUnitFreezeStoreIntegrityTest"}:
+    # 複数 path を upload した artifact は build/test-results/ などの上位階層を保持する。
+    task = parts[-2]
+    if task in {"archTest", "archUnitTest", "archUnitFreezeStoreIntegrityTest"}:
         continue
-    if not (len(parts) == 2 or (len(parts) == 3 and parts[1] == "test")):
+    if not (len(parts) == 2 or task == "test"):
         raise ValueError(f"未知の JUnit XML 配置: {f}")
     base_name = os.path.basename(f)
     fqcn = base_name[len("TEST-"):-len(".xml")]

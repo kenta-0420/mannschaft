@@ -44,17 +44,22 @@ class RegenShardWeightsTest(unittest.TestCase):
         result, weights = self.run_generator({
             "s0/test/TEST-example.Normal.xml": 2,
             "s0/test/TEST-example.Normal$Nested.xml": 3,
+            "s1/build/test-results/test/TEST-example.Normal$BuildPrefix.xml": 5,
+            "s2/backend/build/test-results/test/TEST-example.Normal$BackendPrefix.xml": 7,
             "s0/archUnitTest/TEST-example.Dedicated.xml": 100,
             "s0/archUnitFreezeStoreIntegrityTest/TEST-example.Integrity.xml": 100,
             "s0/archTest/TEST-example.Arch.xml": 100,
+            "s1/build/test-results/archUnitTest/TEST-example.Dedicated.xml": 100,
+            "s1/build/test-results/archUnitFreezeStoreIntegrityTest/TEST-example.Integrity.xml": 100,
+            "s2/backend/build/test-results/archTest/TEST-example.Arch.xml": 100,
         })
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(weights, {"example.Normal": 5})
+        self.assertEqual(weights, {"example.Normal": 17})
 
     def test_unknown_task_layout_fails_without_writing_weights(self):
         result, weights = self.run_generator({
             "s0/test/TEST-example.Normal.xml": 3,
-            "s0/unknownTask/TEST-example.Other.xml": 2,
+            "s0/build/test-results/unknownTask/TEST-example.Other.xml": 2,
         })
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("unknownTask", result.stderr)
