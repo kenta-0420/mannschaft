@@ -240,3 +240,17 @@ v26/stage17は親がactual BE/FE所有関係とHEAD/JARを採択。新人工本�
 | 性能・運用（§4/AC23/68/72など） | QA配送一点を全range/本番SLO承認へ拡張しない。通常負荷p95/gzip等の公開前実測と、明記された二worker/基本failure matrix/0・1・100・101 keysetは必要証拠として残す。 |
 
 境界候補のAはmerge前の基盤・安全契約と明記基礎fixture、Bは後続の正式素材/原稿/mapping/運営値の制作・裁可、Cは基礎fixture成立後の追加組合せ/長時間soak/将来規模測定を分けた案である。同じACに複数区分があり、親最終判断欄は未採択。B/Cへの分類案だけでAの認可・失敗回復・基本競合・個別visibility等を免除しない。通常負荷の公開前SLOも残し、merge可否と正式公開可否を分ける。台帳close・README完成・受入条件撤回はこのcheckpointの対象外。
+
+## 隔離開発クリップ接続（2026-10-21、CMP-261021-1347）
+
+本戦役は開発 catalog v3 の16基礎種・孵化後3段階・2 style・4動作を既存の牧場／ダッシュボードに接続する範囲である。384 atlas と96 fallback は public 外の `frontend/dev-fixtures/ranch/base16-v3/` から開発時だけ配信する。BE は `mannschaft.ranch.development-clips=true` と許可 profile（dev/test/ranch-isolated）を要求し、prod/production が混在すれば拒否する。FE は非 production と `NUXT_PUBLIC_RANCH_DEVELOPMENT_CLIPS=true` を要求する。
+
+新しい v3 の選定は既存 HABITAT_RANDOM と利用可能な care rule の下だけで行う。旧 v2 の選定済み卵・孵化済み個体・保存 command ACK を保持する。診断／出生方式は承認済み正式 master がなければ引き続き利用できない。新 endpoint、DTO、DB schema の変更はない。
+
+正式64タイプ割当は UNASSIGNED、4外見と512公開ゲートは CLOSED のまま。本接続の検証は素材の新規承認や正式公開の許可を意味しない。従来の公開 coverage、正式原稿／翻訳、運営値、性能SLOの未完了条件を取り消さない。
+
+受入では、480 PNG のbytes・hash・寸法・native位相の照合、非本番opt-in／production拒否、旧v2の保存済み選定とACK、同個体の動作・資源停止・失敗fallbackを自動試験で確認する。production build は配信出力全体を走査し、v3のrasterと開発metadataが混入しないことを確認する。別コミットの結果を採択する場合は対象subtreeの一致と検証範囲を記録し、最終headの検証と区別する。
+
+実機E2Eはモックなしのアプリで、本人・別の本人・匿名の自然導線と直URL、実保存ACK後の給餌／TOUCHとreload、両style・成長段階、非表示／折畳み／viewport外／背景tab、低動作／静止を確認する。所属やtenant権限を要求しない本人専用機能なので、所属なし利用者も自分の牧場を利用でき、別本人の結果を取得できない境界を確認する。390px幅、200% zoom、keyboard、darkで利用でき、横溢れがないことも確認する。実機E2Eの後に独立3住民の探索を行い、導線欠落を含むfindingの処置と必要な再検証を記録する。未実行・失敗・検証限界を成功へ読み替えない。
+
+実装PRは [#4025](https://github.com/kenta-0420/mannschaft/pull/4025)。実行中の結果は作業領域の `outputs/clip-integration-20261021-current.json` に集約する。最終検分・実機E2E・3住民探索と最終headのCIが成立し、実装PRがmergeされるまで台帳を完了にしない。完了登録は別PRで `docs/evidence/CMP-261021-1347.json` とrepo内の検分／実機／探索記録を追加し、[完了証拠ゲート](../../development/completion-evidence.md) に従って実装PRの最終head SHA・ACごとの実テスト・CI run・各工程の証跡を対応付ける。本戦役の完了をPhase 1全73ACの合格に拡大しない。

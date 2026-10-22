@@ -19,12 +19,15 @@
  *   appearance.client.ts（localStorage から loadFromStorage を呼ぶ）は引き続き
  *   クライアント側 localStorage→store→DOM クラス更新を担う。
  *   本プラグイン（universal）は SSR 時のみ `<html>` 属性を確定させ、
- *   クライアント時は store を cookie から初期化するだけ（DOM 操作は client プラグインに委ねる）。
+ *   クライアント時は何も登録せず、localStorage→store→DOM を client プラグインに委ねる。
  *
  * @see app/plugins/appearance.client.ts — localStorage 正本からの読み込み
  * @see app/stores/useAppearanceStore.ts — persistToStorage で cookie に鏡写し
  */
 export default defineNuxtPlugin(() => {
+  // client の head に初期 cookie の値を残すと、ページ head 更新時に保存設定を巻き戻す。
+  if (!import.meta.server) return
+
   // cookie は `useCookie` で読む（SSR でも request cookie から取得される）
   const rawCookie = useCookie<string | null>('appearance', {
     // JSON 文字列をそのまま扱うため encode/decode は identity にする
@@ -64,14 +67,6 @@ export default defineNuxtPlugin(() => {
   // SSR 出力 HTML の <html> に class と --bg-color を最初から注入する。
   // これにより初回 paint 時から正しいテーマで描画され FOUC が消える。
   //
-  // 【client 側 applyTheme() との二重管理について（competing 懸念の検討結果）】
-  // ここで渡す isDark は非リアクティブな普通の const のため、unhead(@unhead/vue 2.x)
-  // はこの htmlAttrs エントリを「初回 patch のみ」で確定し、その後再評価しない。
-  // 一方クライアントではプラグイン実行順（appearance.ts → appearance.client.ts）で
-  // 後続の appearance.client.ts が loadFromStorage()→applyTheme() を呼び、
-  // <html> の class を classList で直接管理する（localStorage 正本に従う最終権威）。
-  // unhead はもう介入しないため、両者は競合しない。
-  // 通常ケースでは cookie と localStorage が一致するため値も同一。
   useHead({
     htmlAttrs: {
       // ダークモード: 'dark p-dark'、ライトモード: '' (クラス付与なし)
