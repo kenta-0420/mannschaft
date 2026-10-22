@@ -235,6 +235,9 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
+      - name: 重み表再生成の XML 集計対象を検証
+        run: python3 -m unittest scripts/test_regen_shard_weights.py
+
       - name: Set up Java ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
         with:

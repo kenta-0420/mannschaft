@@ -7,7 +7,6 @@ import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -25,27 +24,21 @@ public interface ErrorReportRepository extends JpaRepository<ErrorReportEntity, 
      */
     Optional<ErrorReportEntity> findByErrorHash(String errorHash);
 
-    /**
-     * 同一エラーの原子的更新（重複集約）。
-     * occurrence_count をインクリメントし、発生回数に応じて severity を自動昇格する。
-     */
-    @Modifying(clearAutomatically = true)
-    @Query(value = """
-        UPDATE error_reports
-        SET occurrence_count = occurrence_count + 1,
-            last_occurred_at = :occurredAt,
-            latest_user_comment = COALESCE(:userComment, latest_user_comment),
-            severity = CASE
-                WHEN occurrence_count + 1 >= 50 THEN 'CRITICAL'
-                WHEN occurrence_count + 1 >= 10 THEN 'HIGH'
-                ELSE severity
-            END,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE error_hash = :hash AND status IN ('NEW', 'INVESTIGATING', 'REOPENED')
-        """, nativeQuery = true)
-    int incrementOccurrence(@Param("hash") String hash,
-                            @Param("occurredAt") LocalDateTime occurredAt,
-                            @Param("userComment") String userComment);
+    /** RR の next-key lock により空 hash の同時 INSERT も直列化する。 */
+    @Query(value = "SELECT * FROM error_reports WHERE error_hash = :hash AND status <> 'IGNORED' ORDER BY id LIMIT 1 FOR UPDATE", nativeQuery = true)
+    Optional<ErrorReportEntity> findFirstActiveForUpdate(@Param("hash") String hash);
+
+    Optional<ErrorReportEntity> findFirstByErrorHashOrderByIdDesc(String errorHash);
+
+    @Query("SELECT e.errorHash FROM ErrorReportEntity e WHERE e.id = :id")
+    Optional<String> findErrorHashById(@Param("id") Long id);
+
+    /** 対象 entity を管理する前に、同 hash の全行を常に id 順でロックする。 */
+    @Query(value = "SELECT id FROM error_reports WHERE error_hash = :hash ORDER BY id FOR UPDATE", nativeQuery = true)
+    List<Long> lockHashRows(@Param("hash") String hash);
+
+    @Query(value = "SELECT * FROM error_reports WHERE id = :id FOR UPDATE", nativeQuery = true)
+    Optional<ErrorReportEntity> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * user_id から organization_id をルックアップする。
