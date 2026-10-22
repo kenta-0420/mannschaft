@@ -538,23 +538,74 @@
   },
   "postMergeObservation": {
     "mainSha": "bdc5379ed38c2a8920f87c886da58ad2cc39da9a",
-    "observedAtUtc": "2026-10-22T18:13:00Z",
+    "observedAtUtc": "2026-10-22T19:46:00Z",
     "mainBackend": {
       "runId": 39827796933,
+      "status": "completed",
+      "conclusion": "success",
       "archUnit": "success",
-      "testShards": "全6shard進行中",
-      "status": "進行中・成功未確定"
+      "testShards": [
+        {
+          "shard": 0,
+          "conclusion": "success"
+        },
+        {
+          "shard": 1,
+          "conclusion": "success"
+        },
+        {
+          "shard": 2,
+          "conclusion": "success"
+        },
+        {
+          "shard": 3,
+          "conclusion": "success"
+        },
+        {
+          "shard": 4,
+          "conclusion": "success"
+        },
+        {
+          "shard": 5,
+          "conclusion": "success"
+        }
+      ],
+      "buildAndDeploy": {
+        "conclusion": "success",
+        "checkAwsCredentials": "success",
+        "subsequentCheckoutJavaJarAwsConfigEcrEcsSteps": "skipped",
+        "actualProductionDeploymentCount": 0
+      }
     },
     "mainFrontend": {
       "runId": 39827797162,
-      "vitest": "実行中",
-      "mainOnlyDocker": "実行中",
-      "status": "進行中・成功未確定"
+      "status": "completed",
+      "conclusion": "success",
+      "mainOnlyDocker": "success"
     },
     "mainFrontendDeploy": {
       "runId": 39827796996,
-      "allAwsDeploymentSteps": "skipped",
-      "actualDeploymentCount": 0
+      "status": "completed",
+      "conclusion": "success",
+      "buildEcrEcsSteps": "skipped",
+      "actualProductionDeploymentCount": 0
+    },
+    "gitleaks": {
+      "runId": 39827796886,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    "backendSourceIdentity": {
+      "prHead": "836ed5ffa1dce08dc97a7b87397c54e1cf26e8cb",
+      "mainHead": "bdc5379ed38c2a8920f87c886da58ad2cc39da9a",
+      "backendTree": "52f89608d1fcf81049b06dd7d3b412d5ab057174",
+      "equal": true
+    },
+    "mainJunitReparsed": false,
+    "note": "mainのterminal workflow/job結果を記録。PR CIの31,793 invocations等をmainで再計測したとはしない。CI全体successでも配布stepはskip、本番配布0。105/120分分岐と通常85分枠の限定は維持。",
+    "backendApiEvidence": {
+      "relativePath": ".claude/evidence-archive/friend-r1-20261023/main-ci-root-verification.json",
+      "sha256": "3c10a050c684eddb42dcd6a13e6295edd76d4a212d338ab9d4fa6c56ed4b25e3"
     }
   }
 }
