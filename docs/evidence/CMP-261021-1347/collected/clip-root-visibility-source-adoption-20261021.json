@@ -1,0 +1,133 @@
+{
+  "schema": 1,
+  "kind": "ROOT_CHECKPOINT_SOURCE_ADOPTION",
+  "decision": "ADOPTED",
+  "runId": "clipv3-1792574010514-3a8a8367",
+  "at": "2026-10-21T13:25:53.402Z",
+  "oldFrontend": {
+    "commit": "28389c61f505e877702e5572d21476d68747aead",
+    "tree": "d2d9c6209a860e3e29395141a0690f780cab99ce"
+  },
+  "newFrontend": {
+    "commit": "b38efc6091c8a0108c3fd677b2f01563e977e9e2",
+    "tree": "56fc040845b6e637ca53c1cfe3277a36b9a8ddd3",
+    "source": "work/ranch-avatar-clips-runtime-20261021/frontend"
+  },
+  "backend": {
+    "commit": "2bd44c9b4e6d6de9f4dfc615c200ea2253f8d538",
+    "tree": "447a8505b76e9f9f0a4beb6fa8324d4cd8edd484",
+    "jarSha256": "9147dcf8a62d1818c20c51501afec76392cd8e4e346d8d53977371829cfe58c3"
+  },
+  "shipping": {
+    "head": "299932482757fd22b89dcfd3ed9f710cf57873d5",
+    "repairCommit": "fa17878c99"
+  },
+  "changedFrontendPaths": [
+    "frontend/app/composables/useDashboardWidgets.ranch-visibility.spec.ts",
+    "frontend/app/composables/useDashboardWidgets.ts"
+  ],
+  "repairPaths": [
+    "frontend/app/composables/useDashboardWidgets.ts"
+  ],
+  "immutableFrontendBindings": [
+    {
+      "path": "frontend/app/components/ranch",
+      "gitObject": "1858567b8d79746337a2e2320d9a26a5a8b35cff"
+    },
+    {
+      "path": "frontend/app/types/ranch.ts",
+      "gitObject": "7ec1614126f3010dcbea00e39b71e92bc7badf18"
+    },
+    {
+      "path": "frontend/app/composables/useRanchApi.ts",
+      "gitObject": "811fed9b12e71b2a94ab41d0c7574ddc6e907409"
+    },
+    {
+      "path": "frontend/app/composables/useRanchState.ts",
+      "gitObject": "234a820048f64b5c4c38f2fd074d95048cc01787"
+    },
+    {
+      "path": "frontend/app/composables/useRanchSceneActivity.ts",
+      "gitObject": "18f1fa3a23e34f2a9142b30e7f58e2e965621932"
+    },
+    {
+      "path": "frontend/app/composables/useRanchSceneClips.ts",
+      "gitObject": "cb6d0e3e10b4322384e22eb4cebde4de53b92db3"
+    },
+    {
+      "path": "frontend/app/composables/useRanchClipPlayback.ts",
+      "gitObject": "cd58a8cc1406797e4d56ce9c1579016d097bbc40"
+    },
+    {
+      "path": "frontend/app/composables/useRanchClipAtlas.ts",
+      "gitObject": "8f15e629635392e8f44a400f15c17f7f289d0fd5"
+    },
+    {
+      "path": "frontend/app/utils/ranch-development-clips.ts",
+      "gitObject": "48ac28462d74cee269ddd8c3eecbdb8408223de3"
+    },
+    {
+      "path": "frontend/app/utils/ranch-development-clips-manifest.json",
+      "gitObject": "c7aa5a73ccbe5d9f1993fe9a483d4635e06d3569"
+    },
+    {
+      "path": "frontend/dev-fixtures/ranch/base16-v3",
+      "gitObject": "b495d59202bf0288d9f24380682bc78c95dfcd8f"
+    },
+    {
+      "path": "frontend/nuxt.config.ts",
+      "gitObject": "9a79672853c2327ace7786984980392000c07d74"
+    },
+    {
+      "path": "frontend/app/components/dashboard/DashboardPersonalWidgetGrid.vue",
+      "gitObject": "272dd82abd4db86c5c2b36c6c923f06f8baad8c4"
+    },
+    {
+      "path": "frontend/app/components/dashboard/DashboardPersonalAccordion.vue",
+      "gitObject": "1e30eada0d5b0afbeb9e8925d031868e022c8a52"
+    },
+    {
+      "path": "frontend/app/components/dashboard/DashboardPersonalPanel.vue",
+      "gitObject": "cc0abee90bee38f59c552d56b7612395c764be94"
+    }
+  ],
+  "adoptedPriorCases": [
+    "anonymous-direct",
+    "anonymous-entry",
+    "owner-natural-entry",
+    "other-account-direct",
+    "feed-ack-reload",
+    "touch-ack",
+    "both-styles",
+    "stopped-fallback",
+    "reduced-setting",
+    "os-reduced",
+    "paused-finite-touch",
+    "visibility-toggle",
+    "initial-hidden-zero-load",
+    "collapse",
+    "atlas-failure",
+    "fallback-failure",
+    "390px",
+    "keyboard",
+    "dashboard-natural-widget",
+    "dashboard-feed-ack",
+    "dashboard-touch-ack",
+    "dashboard-collapse",
+    "idle-idle-walk",
+    "stale-image",
+    "no-old-callbacks",
+    "stale-action"
+  ],
+  "revalidateCases": [
+    "dashboard-hide-reload"
+  ],
+  "rootRationale": "Root reproduced widget show race twice: ranch GET visibility=false returned196ms before settings PUT200 and remainedfalse20s despite visible active props/IO. Root reviewed personal save queue, immutable operation payloads, latest rollback, initial auth restoration, disposal/owner barriers and ranch mount-after-ACK. Real regression red6assertfails/1pass, final12new+4existing=16green, limited ESLint/diffcheckPASS. Only useDashboardWidgets implementation and its new test changed in frontend. All ranch clip/care/native assets/state/API and BE/Jar bindings remain identical. Existing actually observed prior cases retain their original PASS/PARTIAL/limits and source labels; no missing case becomes PASS. Failed dashboard-hide-reload must be re-executed on new source; remaining SEA/AIR/styles/dark/zoom/resultUI/3ALICE remain unexecuted until actually run.",
+  "evidence": {
+    "finding": "docs/evidence/CMP-261021-1347/collected/clip-root-confirmed-visibility-finding-20261021.json",
+    "red": "docs/evidence/CMP-261021-1347/collected/clip-widget-visibility-red.log",
+    "green": "docs/evidence/CMP-261021-1347/collected/clip-widget-visibility-green.log",
+    "lint": "outputs/clip-widget-visibility-lint-final.log"
+  },
+  "allPriorOwnedBrowserContextsClosed": true
+}

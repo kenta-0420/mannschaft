@@ -1,0 +1,1043 @@
+{
+  "kind": "PUBLICATION_TRANSFORM_MANIFEST",
+  "rawPrivateAccountCredentialFilesRead": false,
+  "imagesCopied": true,
+  "sourceFiles": [
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/actual-e2e-composite-report.json",
+      "sourceSha256": "b5f181021b8ca11b98db58d3b29ec74772e4b977efc402d5d74814b66a011cd9",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/composite.safe.json",
+      "targetSha256": "f471ce204810a223ebcac85419ff7858c3bccfb7f40ab507c2a652d5d63b02bc",
+      "category": "FINITE_SCOPED_REAL_COMPOSITE",
+      "transformCounts": {
+        "staged_reference_rewritten": 1,
+        "uuid_replaced": 3
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/air-continuation-1792584637884/prepare-composite-proof.json",
+      "sourceSha256": "3440ef688e84d1e169803559480c6312897dc32bd1aea0b5428723d98d3b4679",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/prepareComposite.safe.json",
+      "targetSha256": "5de11f1cf2dbce42007737f04df02b944c53642a78a82dd45fc03c83d2012851",
+      "category": "ACTUAL_BROWSER_OR_SETUP",
+      "transformCounts": {
+        "uuid_replaced": 3
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-hatch-1792584941500/safe-proof.json",
+      "sourceSha256": "7704b6cf633f5c431307819512ab5d14454e0a62bb80fdc89d06958c286709dd",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/uiHatch.safe.json",
+      "targetSha256": "bca4deeab3430d1f798928bdc1154fd975c2248f071f93208ed89afb871f02d5",
+      "category": "ACTUAL_BROWSER_OR_SETUP",
+      "transformCounts": {
+        "uuid_replaced": 15
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-exercise-1792585416356/safe-proof.json",
+      "sourceSha256": "ee6c98ed4228edc3d8440499c0b7629959d93c2375873969f4763389a07c34a7",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/landFeedTouch.safe.json",
+      "targetSha256": "9b244a5c2716187d69ac8f75e45ddb929cda818028f1306f6954132093348a7a",
+      "category": "ACTUAL_BROWSER_OR_SETUP",
+      "transformCounts": {
+        "uuid_replaced": 7
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-exercise-1792585753510/safe-proof.json",
+      "sourceSha256": "463e7913ec5ea7a27be8fa221436eb244b0b1fe9f8b2762a2fa273af9900ad54",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/landBothStyles.safe.json",
+      "targetSha256": "2613b88a47109140bf8bee98799ecf5701b86e0c99e003e6595b34f95d252411",
+      "category": "ACTUAL_BROWSER_OR_SETUP",
+      "transformCounts": {
+        "staged_reference_rewritten": 1,
+        "uuid_replaced": 4
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-exercise-1792586004465/safe-proof.json",
+      "sourceSha256": "274c6e03b9acc6f651734eccd25769daea8103a0ddd098abcf0d926d334abd43",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/landMotion.safe.json",
+      "targetSha256": "c7ee9fae518e2c3b7635bb5831b77440fb15dd6736cd952f36a43159cb79af04",
+      "category": "ACTUAL_BROWSER_OR_SETUP",
+      "transformCounts": {
+        "staged_reference_rewritten": 3,
+        "uuid_replaced": 3
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-exercise-1792586305028/safe-proof.json",
+      "sourceSha256": "0e71bfaf990f9442a2b00e3b54cc1b5118e68d321db7c53fa9cebdac399371d9",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/landVisibilityAndFaults.safe.json",
+      "targetSha256": "5c4877ae9ea29cca8f5bd1d36d61dd63bd000947b7492a90ebd81d97fe61ee9d",
+      "category": "ACTUAL_BROWSER_OR_SETUP",
+      "transformCounts": {
+        "staged_reference_rewritten": 5,
+        "uuid_replaced": 8
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-exercise-1792586855947/safe-proof.json",
+      "sourceSha256": "b5782890550b3b61dd2feac153dd128896fc14547f10c5059ca075a18082cd30",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/landDashboardFeedTouch.safe.json",
+      "targetSha256": "b6132e557f9cec9344ee294a0726c4ed43baf7521bd00601495d1912a60c4728",
+      "category": "ACTUAL_BROWSER_OR_SETUP",
+      "transformCounts": {
+        "staged_reference_rewritten": 5,
+        "uuid_replaced": 10
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-exercise-1792589247387/safe-proof.json",
+      "sourceSha256": "1381a1f1af1b43146e8aecbb1758496e52830496f32989df8d2eb6a446e8ab1b",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/repairedDashboardHideAndStyles.safe.json",
+      "targetSha256": "d381d981f200f53521384d89f12a8e71e253575be4285d2cb2005a7f517943e4",
+      "category": "ACTUAL_BROWSER_OR_SETUP",
+      "transformCounts": {
+        "staged_reference_rewritten": 7,
+        "uuid_replaced": 3
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-exercise-1792590579846/safe-proof.json",
+      "sourceSha256": "3d64971b978fdc0f2decc1d4a64234c565bbf76b3e90c01e1abf4c8336abf3bf",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/landDarkNativeFunctional.safe.json",
+      "targetSha256": "a24aab88d32676608291776c29d58fc4a9e05cda7a63dbd30a4f8a7923bf38fc",
+      "category": "ACTUAL_BROWSER_OR_SETUP",
+      "transformCounts": {
+        "staged_reference_rewritten": 7,
+        "uuid_replaced": 19
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-exercise-1792591538567/safe-proof.json",
+      "sourceSha256": "d279df0cf1e7be1378b910cca6d4970bd1294f2da68f6f752669e7e6eed3f557",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/remainingSeaAir.safe.json",
+      "targetSha256": "956d022786c4910c9aedc42be687f7d5da2e0b71714dcaac9412e5abc4cc7483",
+      "category": "ACTUAL_BROWSER_OR_SETUP",
+      "transformCounts": {
+        "staged_reference_rewritten": 10,
+        "uuid_replaced": 55
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-causal-1792588415120/safe-proof.json",
+      "sourceSha256": "179cf140d9b3ebe8601e3185838ec158bd5491eacf6cf4e2abe151128a709b73",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/oldSourceCausal.safe.json",
+      "targetSha256": "ad31bb7cbce2fb67dd43625b974474b139c7dfad6747632eb970eb4f55d9946e",
+      "category": "ACTUAL_BROWSER_OR_SETUP",
+      "transformCounts": {
+        "uuid_replaced": 3
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/supplemental-authz-1792588209426.json",
+      "sourceSha256": "9cab8515cc2483e70fb67dac9c99fd5cbdd60ac1c3a85d14f1c6b72640235f5a",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/supplementalApiAuthorization.safe.json",
+      "targetSha256": "01e60741348161f4b8eb82c3d8cda62f339d8195665cf3a2e0cc572e14fda659",
+      "category": "SUPPLEMENTAL_API",
+      "transformCounts": {
+        "uuid_replaced": 2
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/native-viewport-focused-1792592215618/safe-proof.json",
+      "sourceSha256": "4e0e690cedbd89ecb83704f446080fae7d0e1ba4e803e50d7db0230365a4ab8a",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/nativeViewportVisual.safe.json",
+      "targetSha256": "04678d0d9ea775ca0e6e8d16f15d6a5b0872c900789b9201a1165a22a538eee5",
+      "category": "ACTUAL_BROWSER_OR_SETUP",
+      "transformCounts": {
+        "uuid_replaced": 8
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/result-ui-authz-1792592842051/safe-proof.json",
+      "sourceSha256": "f94fe9a522d24a6fa0db8992858724fb43b35244f2ab89ac43136bfce126fd76",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/privateResultUi.safe.json",
+      "targetSha256": "fc9dd5bbfc3566def633a6a2504edd9800e05b7e2657d0c376e94f8625cf1138",
+      "category": "ACTUAL_BROWSER_OR_SETUP",
+      "transformCounts": {
+        "uuid_replaced": 2
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/zero-xp-focused-1792593652667/safe-proof.json",
+      "sourceSha256": "d1b6d410136423d17893ee850c054a934bab7784ddecfc04dc8eaf806ec15df8",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/zeroXp.safe.json",
+      "targetSha256": "fa2512d8cb2604b45acf926b1dec731a43317056a3bed6a5372b6cd3fff82bae",
+      "category": "ACTUAL_BROWSER_OR_SETUP",
+      "transformCounts": {
+        "uuid_replaced": 2
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/native-default-visibility-1792593957409/safe-proof.json",
+      "sourceSha256": "d5446a010f6524b68ee04db9484cbb65deaea35e8aabf5d3310a93b4a8d61aad",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/documentVisibility.safe.json",
+      "targetSha256": "007bfa413813e6a352575e614f5ac0c0a65fee21ef866f74bce42b04bb834e2a",
+      "category": "ACTUAL_BROWSER_OR_SETUP",
+      "transformCounts": {
+        "uuid_replaced": 5
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/native-default-visibility-1792593957409/post-cleanup-verification.json",
+      "sourceSha256": "efd215bd1485b0382206d48d7dafba5c082650e8bfa852f0172a721a9b706c41",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/postCleanup.safe.json",
+      "targetSha256": "48d1a9161ba588865358e793101abeffafead43583f9665d98662b86c83ec348",
+      "category": "ACTUAL_BROWSER_OR_SETUP",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-desktop-20261021/report-ja.md",
+      "sourceSha256": "ed23f40637ce1602f63203cfb16b0e0cc8cb3e7d8900911f2924471b9e062650",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/desktop-initial/report-ja.md",
+      "targetSha256": "ed23f40637ce1602f63203cfb16b0e0cc8cb3e7d8900911f2924471b9e062650",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-desktop-20261021/report-safe.json",
+      "sourceSha256": "8ce0980482be43ccd630bd78efe3d6421dd1ea3ff54c3f3a531045afa76a83e0",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/desktop-initial/report-safe.json",
+      "targetSha256": "9d0c871102513e677a980bdcf9018f4b8e8067e4541dc281f76d4eaf5c2c1169",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-mobile-20261021/report.md",
+      "sourceSha256": "925d3ead58da5e6179241913b000dad8bd889531f737ea8eb056a236bab352b2",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/mobile-initial/report.md",
+      "targetSha256": "925d3ead58da5e6179241913b000dad8bd889531f737ea8eb056a236bab352b2",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-mobile-20261021/report.json",
+      "sourceSha256": "b06cb3c750fbd84ef0fce3d1e708a7a08a3f0d9cca23dd5f5508b45136d02323",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/mobile-initial/report.json",
+      "targetSha256": "3e63fcabc71ecb132ec0b8907e9469dee583b14e7df3b979df2132df79f53ddd",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {
+        "staged_reference_rewritten": 1
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-mobile-20261021/browser-close.json",
+      "sourceSha256": "9a78b6b10e7181e3419ce7bfed95527b3c2a10760b6ed5e36d58f776bf22d617",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/mobile-initial/browser-close.json",
+      "targetSha256": "2f901b4167d1dfa2a89aa91dff3151bde9e6f3dcf61379914e464f55e5f8ebd3",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-mobile-20261021/contrast-360.json",
+      "sourceSha256": "cb0db1064cad9c61a162a014f986e40f00b3603e81e6c478bfd8830f57baf13c",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/mobile-initial/contrast-360.json",
+      "targetSha256": "38e387268d659e8484541c7afba9714c2cc35474517d36ec60eedf5900b47ee3",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-interruption-20261021/report.md",
+      "sourceSha256": "97038bcf3a44226374ddc0ab0c8eecbac91b01b234a6ad331ec86e757dddeaf3",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/interruption-blocked/report.md",
+      "targetSha256": "97038bcf3a44226374ddc0ab0c8eecbac91b01b234a6ad331ec86e757dddeaf3",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-interruption-20261021/report.json",
+      "sourceSha256": "4e7c5a2723f890e829582a8edf7d4c6c17809b03c9ed785b4780c72ceeaa041f",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/interruption-blocked/report.json",
+      "targetSha256": "720eb04b2443415e625d240c6d140eecf87461714dfeb1f970b45a3da936e2dc",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-mobile-approved-20261022/report.md",
+      "sourceSha256": "d4ad6706a705da23e7c0fde209f4e6f8a0628bf40212db3d1d627d4a987b2687",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/report.md",
+      "targetSha256": "ba9b5efc3b0194a8d83112b3e6d1e6cacdf269e4b7b804130b3cc03daefad509",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {
+        "staged_reference_rewritten": 1
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-mobile-approved-20261022/report.json",
+      "sourceSha256": "42d42532dfae7096adbf46db3075674a6575dafe082ce24356d7dfb719d5bfbf",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/report.json",
+      "targetSha256": "bcdad7f20bc7cb5db023d119b8b478a7fe094b08349cbcf0ea50890cfc7d2103",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {
+        "staged_reference_rewritten": 2,
+        "removed_sensitive_field": 1
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-mobile-approved-20261022/browser-close.json",
+      "sourceSha256": "2bbc8f63795ca62323ec241e92ce027dbeb23e9fff21474a450c3744ce4b52c3",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/browser-close.json",
+      "targetSha256": "5bc4bb38ca938df1f7c0bc72a64923c8610a27b4c6e59ba749f9eea2a11fd7d9",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-mobile-approved-20261022/contrast-390.json",
+      "sourceSha256": "d59562dc1d181d68c3f918d54b26b21c57e6968278f8450a8baf8786059be654",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/contrast-390.json",
+      "targetSha256": "7cd442d4c53c399e5243975e07029106f60caee32610184ade5039da57a8aec6",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-mobile-approved-20261022/contrast-revisit-360.json",
+      "sourceSha256": "46bfb1fa5da6f08c62799f671d76677ccf366700aa587a2e3d988dc3f71f61de",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/contrast-revisit-360.json",
+      "targetSha256": "dd270aa5ddbd4add1c7feb86620fb42d8fd0c9f3a72feef785a4eae1ddf74e31",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-mobile-approved-20261022/page-errors.json",
+      "sourceSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/page-errors.json",
+      "targetSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-mobile-approved-20261022/public-run-check.json",
+      "sourceSha256": "d3044646e7edfb0cbe5a00d6e458b36c58f5c9470e7a8aeac1c2b06486f84f80",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/public-run-check.json",
+      "targetSha256": "cf34124a0d3e189c269bb42e095571dc91126ee619f10efc21ecb06539684330",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-interruption-approved-20261022/report.md",
+      "sourceSha256": "18eaba82e15be1db17132c4ded57ac2a79f6f4b5a2ed00fe68b495208d244553",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/report.md",
+      "targetSha256": "18eaba82e15be1db17132c4ded57ac2a79f6f4b5a2ed00fe68b495208d244553",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-interruption-approved-20261022/report.json",
+      "sourceSha256": "3095fce667972312a66beaf26d48bcd01a7862f19da0ea3118aecc5e8d759d58",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/report.json",
+      "targetSha256": "3b01c2f2b50c34f95a2a82dee2d8fc7a2696a05c177cdec6eec1248b7089ec08",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-interruption-approved-20261022/closed.json",
+      "sourceSha256": "106dd37741e2ace18ea3a110dfe60abee2fe01f53d6c7c0ee879d3751095f0fd",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/closed.json",
+      "targetSha256": "9bad112a6ebf9b08ba869cfcc5e8b5e20c22241e816d5c84d18538f6aac3816e",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-interruption-approved-20261022/preference-geometry.json",
+      "sourceSha256": "c57f8aa707b98f39be4c050c874bb696ca1f95bb43ba626fa7e89e304d334c8a",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/preference-geometry.json",
+      "targetSha256": "9e3d7e1bbe2aac006c01877db8a38f0bb04a540ea146a65dcf8fecffa1681e12",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-interruption-approved-20261022/control-targets.json",
+      "sourceSha256": "1080e265e116c06b921efd1491ecb6eb5c86280c0b01ca59d995e973717c4dc9",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/control-targets.json",
+      "targetSha256": "034cce9184ee861f7ef138f6502881d8b85f0e45632ce5be92de8772d1eef8e8",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-alice-interruption-approved-20261022/visual-audits.json",
+      "sourceSha256": "f316f84d3aaeccedab89add0a211138ddfc88d315afb5fdc6e32f0f55427be04",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/visual-audits.json",
+      "targetSha256": "ba0fa5182fd2449f775762a85cd60a653a83043355bf15ed3e9e4cd8998a9efb",
+      "category": "INDEPENDENT_EXPLORATION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-root-theme-dashboard-approved-20261022/safe-proof.json",
+      "sourceSha256": "93995be50053afe129f387dc31de28e66b0ad1c367be8609ff84a3a8c0b0508f",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/root-approved-first-harness-timeout.safe.json",
+      "targetSha256": "04ae10e50d36ac30b31b07dea7d59594ff25aa23edb3e692d93911744a1f3106",
+      "category": "ROOT_TARGETED_ACTUAL",
+      "transformCounts": {
+        "uuid_replaced": 3
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-root-theme-dashboard-approved-20261022-recheck/safe-proof.json",
+      "sourceSha256": "100d5b4de4176110f8285ef5ebdaaac76c103f8a157c6ae8bb86159737e02114",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/real/root-approved-recheck.safe.json",
+      "targetSha256": "66f2a957cb168ad2cf3c0f8f1207eb5ff7ee3715c4ea61f4720dc84dda8435e5",
+      "category": "ROOT_TARGETED_ACTUAL",
+      "transformCounts": {
+        "uuid_replaced": 3
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-root-final-review-addendum-20261022.json",
+      "sourceSha256": "a84a4d8d3969b96a41ccb0f5a9c85b55ac912727f61c522175d6822665f94ef3",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-root-final-review-addendum-20261022.json",
+      "targetSha256": "c6154882dfe488608d51c808405831ee1eb57ce4904a55b734780d477f092d99",
+      "category": "ROOT_FINAL_ADOPTION",
+      "transformCounts": {
+        "staged_reference_rewritten": 6
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-root-shipping-317dd3-runtime-source-delta-20261022.json",
+      "sourceSha256": "9f2dac11916faafc6c7b320ebc1786c3c1c9350107ce6453b07cee5644b6a633",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-root-shipping-317dd3-runtime-source-delta-20261022.json",
+      "targetSha256": "6ea3c264b3c5b417684f28d3bf7b44ac0d76635fb2832686cae28aa5363ab279",
+      "category": "SOURCE_ADOPTION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-root-static-review-20261021.json",
+      "sourceSha256": "4f4c310015793be4d8f0ed3268d5e7e60868dc2153a8ee4d4e2e318192f5a472",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-root-static-review-20261021.json",
+      "targetSha256": "f631475cff8da8d8abfd41cacf18f564ad3f61bccfbb0cff014cb645aea2ac1c",
+      "category": "HISTORICAL_STATIC_REVIEW",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-root-visibility-source-adoption-20261021.json",
+      "sourceSha256": "06f487d4e0ef420279e6601f4673ce4fc562bd50af9e64c06872541cc1134fba",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-root-visibility-source-adoption-20261021.json",
+      "targetSha256": "3d8d3c8324a0f8de09104faa88d9a03041f142b4bad05af644791fc05ec91702",
+      "category": "SOURCE_ADOPTION",
+      "transformCounts": {
+        "staged_reference_rewritten": 3
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-root-appearance-source-adoption-20261022.json",
+      "sourceSha256": "c9ece646349c01c1326167047e0ccf59e7dc266816b973939cbd3d445f99be03",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-root-appearance-source-adoption-20261022.json",
+      "targetSha256": "1518b7ca0b144d0e5064d9e5996375a678dc37a6e20c5682a1483c3cf266d6cc",
+      "category": "SOURCE_ADOPTION",
+      "transformCounts": {
+        "staged_reference_rewritten": 1
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-root-shipping-57368-runtime-source-delta-20261022.json",
+      "sourceSha256": "545036b56a18c78d2a29a241ba546c9bebf821f270e7f27cd5f1bd58d62c8cb8",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-root-shipping-57368-runtime-source-delta-20261022.json",
+      "targetSha256": "73f11f1e0c11f4e38c1cdbcb7e7df8125c07dac6b42078baae384a00ec7a414e",
+      "category": "SOURCE_ADOPTION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-root-confirmed-visibility-finding-20261021.json",
+      "sourceSha256": "c09d7ce47e2fcd27ec64ff30948e711e2e536233ed33f9cf9b6ea93830a244d4",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-root-confirmed-visibility-finding-20261021.json",
+      "targetSha256": "59f9422dbc23a1e8d84f0ff9aa52f5ff237ea860bf857912c6490855e0fd58a9",
+      "category": "PRODUCT_REGRESSION",
+      "transformCounts": {
+        "staged_reference_rewritten": 3
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-root-dark-background-before-20261022.json",
+      "sourceSha256": "a1b758cfdca60cebf9d84b201bd62f9a8f3c9fe67068789f7bd1e214dda6a3b1",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-root-dark-background-before-20261022.json",
+      "targetSha256": "3a9391485d327024d723ff5c76a903e83e55811410cc428b45f196d517faf3f2",
+      "category": "PRODUCT_REGRESSION",
+      "transformCounts": {
+        "removed_sensitive_field": 1
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-root-theme-real-green-20261022.json",
+      "sourceSha256": "b2f9cdcf1e90498bc442e01fc730c0aa42716ea9c103f990f68cbffb34982478",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-root-theme-real-green-20261022.json",
+      "targetSha256": "57828bad23007cde904aa4469fdc9641a7af8e379e4075cddc4ac2f5523a82f7",
+      "category": "ROOT_TARGETED_ACTUAL_HISTORICAL",
+      "transformCounts": {
+        "staged_reference_rewritten": 2
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-root-held-desktop-post-exit-verification-20261022.json",
+      "sourceSha256": "604b2d957701b8aa3c81a34aeb5d146a595e5e41d2587ff596b1f6102c5d277a",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-root-held-desktop-post-exit-verification-20261022.json",
+      "targetSha256": "9bf63a34ef0fde06e00f5aaa9d7b1d57efeb50c37a2c93adb2c2d91512bfc91d",
+      "category": "CLEANUP_OBSERVATION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-be-native-green-evidence.json",
+      "sourceSha256": "92264594c5b5323d96b0ebfbb1d96839eafa8f74425546a663ce913a064664ad",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-be-native-green-evidence.json",
+      "targetSha256": "9fcc6053f3d5605ddfdaeeb5c5f11b43468de5fb4dc0fb147461c01d978eb5d5",
+      "category": "BACKEND_UNIT_IT",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-production-output-evidence.json",
+      "sourceSha256": "f2e8280c744d8141b7f2880bcf938e7b19b17e1300c28854344ec6fcd8f5530b",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-production-output-evidence.json",
+      "targetSha256": "12e295128e71211e1653575e58fb0f8acf1014a5fc83e2ca6796013e7ba58c67",
+      "category": "PRODUCTION_OUTPUT_SCAN_OLD_SOURCE",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-production-builddir-source-evidence.json",
+      "sourceSha256": "a7002ae7c70ad3fcd4d95259c0b34de123157f49f57e816886514d34e9b7a6f4",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-production-builddir-source-evidence.json",
+      "targetSha256": "137a62dd1395dff1519e758caf469a352093a93bd56d34d6107392c335e8982a",
+      "category": "PRODUCTION_OUTPUT_SCAN_OLD_SOURCE",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-frontend-bd85-success-evidence-20261022.json",
+      "sourceSha256": "53d3029539c4bc9521fae690d90148d636a475e555ecc46034e85adde245c93e",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-frontend-bd85-success-evidence-20261022.json",
+      "targetSha256": "0759236777b5fff3d3ad4e659aec5e5c5192f88ce9c7f465ecfa6e28bb2c62ea",
+      "category": "HISTORICAL_CI_NOT_FINAL_HEAD",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-runtime-default-tests-own-final.log",
+      "sourceSha256": "159f5f026cf123493557c5d3a811fe863cb54fbf3dc579fb1835c0bc76992cbd",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-runtime-default-tests-own-final.log",
+      "targetSha256": "2908810958c75a926dca84a2f989adc75f1eeda3642a28a6ba79dd7ec42ff904",
+      "category": "FRONTEND_UNIT_OLD_SOURCE",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-runtime-dev-tests-final.log",
+      "sourceSha256": "29ec5d75d3522df317251a2a257eea38b1f02b03aad4dd036717e3aa58814860",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-runtime-dev-tests-final.log",
+      "targetSha256": "97c52c5b2e8f2a576e0edf0edb1b3b3dbf8b11f29b1c11d6b3a608f7ad52b547",
+      "category": "FRONTEND_UNIT_OLD_SOURCE",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-runtime-verifier.log",
+      "sourceSha256": "fe83aeeea0d7e7565e9f0e360f7cc8d5a3df9c8a5be84eac9243a44780b0e8c5",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-runtime-verifier.log",
+      "targetSha256": "fe83aeeea0d7e7565e9f0e360f7cc8d5a3df9c8a5be84eac9243a44780b0e8c5",
+      "category": "ASSET_VERIFIER_OLD_SOURCE",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-final-317dd3-asset-verifier-20261022.log",
+      "sourceSha256": "ec13abbc0055898c8af4d59df229f3d26009bd7fa7022f80ff0e966778a0bc95",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-final-317dd3-asset-verifier-20261022.log",
+      "targetSha256": "ec13abbc0055898c8af4d59df229f3d26009bd7fa7022f80ff0e966778a0bc95",
+      "category": "ASSET_VERIFIER_FINAL_HEAD",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-adapter-verifier.log",
+      "sourceSha256": "ea7aa8ad3a8105faf1f2ff9058bd264ce9c96801cd2fc4ee96e94b65c189f4f4",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-adapter-verifier.log",
+      "targetSha256": "ea7aa8ad3a8105faf1f2ff9058bd264ce9c96801cd2fc4ee96e94b65c189f4f4",
+      "category": "ASSET_VERIFIER_OLD_SOURCE",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-runtime-typecheck-final.log",
+      "sourceSha256": "1c7de13be0ba105a380106c2052faf88e61c0bc13787aad9455c9ac2582e0117",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-runtime-typecheck-final.log",
+      "targetSha256": "ee1fe4ac6e6e20d2d6f0f222a991325e39c2eb5e9dbda183759da2ece485ed9c",
+      "category": "TYPECHECK_OLD_SOURCE",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-runtime-dev-tests-own-final.log",
+      "sourceSha256": "82beaf6a0f6694590683f5fa1785834d7f00f556235ea6878ddd804d58764f90",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-runtime-dev-tests-own-final.log",
+      "targetSha256": "a5427f2415f8d15225deb1adae892127ef51f5ba6248aa65d1a762f9c25e1ffd",
+      "category": "FRONTEND_UNIT_OLD_SOURCE",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-runtime-clock-boundaries-final.log",
+      "sourceSha256": "cc0f838af95f969481bdb78a8083c9b42356ffd745de8176932373980dcfc78b",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-runtime-clock-boundaries-final.log",
+      "targetSha256": "7aeb670d9bf05894ddc7c5bea1c28e38b062a4a7948d8f27477e0a44d6f9f770",
+      "category": "FRONTEND_UNIT_OLD_SOURCE",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-widget-visibility-red.log",
+      "sourceSha256": "ac9a17f658f8bcf518ad0875d9e5d15b588ded8d3e8a530041b1b27d8819e1b3",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-widget-visibility-red.log",
+      "targetSha256": "626bc2e2b0e121b7e877c3c04c8611a2fcf1cd241eabe81dd284522c36442063",
+      "category": "PRODUCT_REGRESSION_RED",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-widget-visibility-green.log",
+      "sourceSha256": "c229df700314c98fcedf5a967961c9436bed26fdd9fadaa5e9bb6ea1a2e04f47",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-widget-visibility-green.log",
+      "targetSha256": "40976b75fc1e62b03bc988f06d1f99f89796aaa4bdd10058c729a66f5efaffed",
+      "category": "PRODUCT_REGRESSION_GREEN",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-production-output-scan.log",
+      "sourceSha256": "0bffeaf7019f450aac5dbd7ea6dd5f7c1ba0f2534f371f7379edd13d869bbcb2",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-production-output-scan.log",
+      "targetSha256": "6de0730ba02e84f2080b170a39213430633625df44f9eb29c6362801c1ab8aae",
+      "category": "PRODUCTION_OUTPUT_SCAN_OLD_SOURCE",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-root-dark-background-real-red-20261022.log",
+      "sourceSha256": "9ad74ec8fdf5003a991f17adc5ea036f4c78fa80d3c00bfe6ac1c12b5a365883",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-root-dark-background-real-red-20261022.log",
+      "targetSha256": "9ad74ec8fdf5003a991f17adc5ea036f4c78fa80d3c00bfe6ac1c12b5a365883",
+      "category": "PRODUCT_REGRESSION_RED",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "work/ranch-avatar-clips-finalize-20261021/outputs/clip-dark-background-repair-report-20261022.md",
+      "sourceSha256": "c0033ed96cab5f767021e2ef68ffc29b8bb20f5a58351e5a2930d096461696ac",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-dark-background-repair-report-20261022.md",
+      "targetSha256": "8a9c13544bf64ff4b90efac6190c928d56e39f20023e6e4de4d6619e4ccdfff2",
+      "category": "PRODUCT_REGRESSION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "work/ranch-avatar-clips-finalize-20261021/outputs/clip-dark-background-final-spec-baseline-red-20261022.log",
+      "sourceSha256": "06e696ed96cc5a77f39361fb5e365ff39deeda85c1ca37bb1ee4c6747a0359e7",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-dark-background-final-spec-baseline-red-20261022.log",
+      "targetSha256": "d973c47cc9ec29c8d616794e12600a84c2170d78ebaef05927a03d5cbd1ae761",
+      "category": "PRODUCT_REGRESSION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "work/ranch-avatar-clips-finalize-20261021/outputs/clip-dark-background-client-green-20261022.log",
+      "sourceSha256": "aafc831429bfe1766e81dd6c1136811cd740da77e1b5d94cbc2b071c6507df68",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-dark-background-client-green-20261022.log",
+      "targetSha256": "38da24bd900c7ee0cebdd94ce4b45de4b679bd9f0054abb7df639b4c11cd647b",
+      "category": "PRODUCT_REGRESSION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "work/ranch-avatar-clips-finalize-20261021/outputs/clip-dark-background-ssr-green-20261022.log",
+      "sourceSha256": "815c40ee1c2409ad6a2dd4e3e6772a814155e51c7564f98bf0d66e5c2ae0e33b",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-dark-background-ssr-green-20261022.log",
+      "targetSha256": "e5f3c1ad1a763599537b57b52e539f547424ea4847829120372f07d115af77de",
+      "category": "PRODUCT_REGRESSION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "work/ranch-avatar-clips-finalize-20261021/outputs/clip-dark-background-official-config-20261022.log",
+      "sourceSha256": "ee6dc4c5718b778f034ef47099a5248e916f6fab1b939b9ffd76a615b37d5676",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-dark-background-official-config-20261022.log",
+      "targetSha256": "ca0f92bc7aad379ed4d4bcc77bd40674bfba412118c2f7760a0b3736c281d35e",
+      "category": "PRODUCT_REGRESSION",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "work/ranch-avatar-clips-finalize-20261021/outputs/clip-head-mock-repair-report-20261022.md",
+      "sourceSha256": "ae057f4b0ee8ee762da2be8ab0b40e08977dd275a33739ec78e792b1e65017a3",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-repair-report-20261022.md",
+      "targetSha256": "06e5cb4d29590cd8b0c7a27f7475518b656d6c4e4576af551ba470eb30a5abc5",
+      "category": "HARNESS_REPAIR",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "work/ranch-avatar-clips-finalize-20261021/outputs/clip-head-mock-real-nuxt-red-20261022.log",
+      "sourceSha256": "4611f81cd627d638fb9f054067e5e9dae170b2a92292a45a1eabeb85b95137d0",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-real-nuxt-red-20261022.log",
+      "targetSha256": "ae5dbe7e5ab2415f27eb3e6a915047f626a5e06eadcf295f4885019459c42f09",
+      "category": "HARNESS_REPAIR",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "work/ranch-avatar-clips-finalize-20261021/outputs/clip-head-mock-real-nuxt-green-20261022.log",
+      "sourceSha256": "229258c85d15af6b053d44e03c3a013162617783cd12c13d2b079ef5887a912d",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-real-nuxt-green-20261022.log",
+      "targetSha256": "860427b19d25d9526172f70d45a5c67213d97e61a83585204f64ed901819942c",
+      "category": "HARNESS_REPAIR",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "work/ranch-avatar-clips-finalize-20261021/outputs/clip-head-mock-real-nuxt-ssr-green-20261022.log",
+      "sourceSha256": "cff0054f38cd916a81141f1a8e2aae71a2b21866b922e111c06e043eadcf0b25",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-real-nuxt-ssr-green-20261022.log",
+      "targetSha256": "6a1d66444a90510295f065a813531aa8dbc10eec5421d27964467e22464e5bce",
+      "category": "HARNESS_REPAIR",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "work/ranch-avatar-clips-finalize-20261021/outputs/clip-head-mock-original-plugin-red-20261022.log",
+      "sourceSha256": "4a7ee309d0646fd02d82ef125f73d8b4bdcb27a3543f4ee0419a9b783af137a8",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-original-plugin-red-20261022.log",
+      "targetSha256": "5b997404b8e651393a6155ac5244bb8309bf65c7d07ece3e1a131734676c2d60",
+      "category": "HARNESS_REPAIR",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "work/ranch-avatar-clips-finalize-20261021/outputs/clip-head-mock-client-green-20261022.log",
+      "sourceSha256": "22849fe5038420ec7bfe0708a78eccdd507ffb4f156cd86fd53cb6038da2f1fd",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-client-green-20261022.log",
+      "targetSha256": "c00129dca87261c50019001ad5583ce51407fe300a59492c41a4346bf0dc58dd",
+      "category": "HARNESS_REPAIR",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "work/ranch-avatar-clips-finalize-20261021/outputs/clip-head-mock-ssr-green-20261022.log",
+      "sourceSha256": "db9a7641b19260600aa5fd9fe38f73987d5edb379d9b95b1975f9e481ad5eb95",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-ssr-green-20261022.log",
+      "targetSha256": "8bc1342bf9bd1c6d7cafe2cca5cc4295a66b8fc462fedc25a33215f0fa8f7d0c",
+      "category": "HARNESS_REPAIR",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-os-pin-20261022.md",
+      "sourceSha256": "77d5f027acd5cfb324e2d4512b83dd4627bce7d98c6fc06ab58bddb2d6c926b5",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-e2e-os-pin-20261022.md",
+      "targetSha256": "3c865155141f67d9c03faa0917288c447f59d063e3db0559dd1331b78733eb82",
+      "category": "ROOT_POST_PREPARATION_SOURCE_OR_CLEANUP",
+      "transformCounts": {
+        "workspace_path_normalization": 1
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-frontend-317dd3-failure-20261022.log",
+      "sourceSha256": "766e0fe94371dba4880240ff4cfd268b1ba8b5519b78a894a03154fde1af98f0",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-frontend-317dd3-failure-20261022.log",
+      "targetSha256": "766e0fe94371dba4880240ff4cfd268b1ba8b5519b78a894a03154fde1af98f0",
+      "category": "ROOT_POST_PREPARATION_SOURCE_OR_CLEANUP",
+      "transformCounts": {
+        "workspace_path_normalization": 0
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-final-own-environment-cleanup-20261022.json",
+      "sourceSha256": "1fe804139a0a89d86bb2c55f9a3fe37a0ff3f067f6304984d4f29aaa2e928956",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-final-own-environment-cleanup-20261022.json",
+      "targetSha256": "1fe804139a0a89d86bb2c55f9a3fe37a0ff3f067f6304984d4f29aaa2e928956",
+      "category": "ROOT_POST_PREPARATION_SOURCE_OR_CLEANUP",
+      "transformCounts": {
+        "workspace_path_normalization": 0
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-final-own-backend-post-verification-20261022.json",
+      "sourceSha256": "d6496c8b70dc5927fca4efc1176c4ceecc2625e99326cad268d028daca24a21b",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-final-own-backend-post-verification-20261022.json",
+      "targetSha256": "325883c35a8a070ab0fce874ee2b1b6ec84dc8ea7dbb080c328e74d636ad59a9",
+      "category": "ROOT_POST_PREPARATION_SOURCE_OR_CLEANUP",
+      "transformCounts": {
+        "workspace_path_normalization": 1
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-final-own-frontend-cleanup-20261022.json",
+      "sourceSha256": "64b6cf19b4f3d8e9f914da69de19d3daca03efdf6f2421430c8b9e7736afe603",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-final-own-frontend-cleanup-20261022.json",
+      "targetSha256": "64b6cf19b4f3d8e9f914da69de19d3daca03efdf6f2421430c8b9e7736afe603",
+      "category": "ROOT_POST_PREPARATION_SOURCE_OR_CLEANUP",
+      "transformCounts": {
+        "workspace_path_normalization": 0
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-final-own-docker-cleanup-direct-20261022.log",
+      "sourceSha256": "05c35d72f10de1fa17d24098406928b653e0565b771ada5ab01d7f1c085d947d",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-final-own-docker-cleanup-direct-20261022.log",
+      "targetSha256": "05c35d72f10de1fa17d24098406928b653e0565b771ada5ab01d7f1c085d947d",
+      "category": "ROOT_POST_PREPARATION_SOURCE_OR_CLEANUP",
+      "transformCounts": {
+        "workspace_path_normalization": 0
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-final-source-layer-0fbc96-20261022.json",
+      "sourceSha256": "d7d93cea897ad2080a3b6bc898fad652c45d337ed526659a490daa3708400db2",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-final-source-layer-0fbc96-20261022.json",
+      "targetSha256": "d7d93cea897ad2080a3b6bc898fad652c45d337ed526659a490daa3708400db2",
+      "category": "ROOT_POST_PREPARATION_SOURCE_OR_CLEANUP",
+      "transformCounts": {
+        "workspace_path_normalization": 0
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-root-backend-source-adoption-20261022.json",
+      "sourceSha256": "4f80065497507382e7468bbcaf68a54ff0e70a90c7470039ee2b57b0d13ec2a4",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-root-backend-source-adoption-20261022.json",
+      "targetSha256": "4f80065497507382e7468bbcaf68a54ff0e70a90c7470039ee2b57b0d13ec2a4",
+      "category": "ROOT_POST_PREPARATION_SOURCE_OR_CLEANUP",
+      "transformCounts": {
+        "workspace_path_normalization": 0
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "work/ranch-avatar-clips-finalize-20261021/frontend/test-results/alicization/CMP-261021-1347/desktop/root-theme-fixed-ranch.png",
+      "sourceSha256": "adee610247a86480636eb4152bbb0ef976ff7e7af55e633850e7fb4c6a360394",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/visual/ranch-dark.png",
+      "targetSha256": "adee610247a86480636eb4152bbb0ef976ff7e7af55e633850e7fb4c6a360394",
+      "category": "ROOT_DIRECTLY_VIEWED_SYNTHETIC_SCREENSHOT",
+      "transformCounts": {},
+      "state": "UNMODIFIED_BYTE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-root-theme-dashboard-approved-20261022-recheck/dashboard-restored-dark.png",
+      "sourceSha256": "01d40a0a31b261161b1f57e2b82c2544a7fae417746e1c07caa6712e866302b2",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/visual/dashboard-restored-dark.png",
+      "targetSha256": "01d40a0a31b261161b1f57e2b82c2544a7fae417746e1c07caa6712e866302b2",
+      "category": "ROOT_DIRECTLY_VIEWED_SYNTHETIC_SCREENSHOT",
+      "transformCounts": {},
+      "state": "UNMODIFIED_BYTE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "work/ranch-avatar-clips-finalize-20261021/frontend/test-results/alicization/CMP-261021-1347/mobile-approved/30-status-revisit-360.png",
+      "sourceSha256": "496669ee205f12c0b53fd9f174e229e0a72006a2a112736a681bd72b32d11675",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/visual/mobile-status-360.png",
+      "targetSha256": "496669ee205f12c0b53fd9f174e229e0a72006a2a112736a681bd72b32d11675",
+      "category": "ROOT_DIRECTLY_VIEWED_SYNTHETIC_SCREENSHOT",
+      "transformCounts": {},
+      "state": "UNMODIFIED_BYTE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "work/ranch-avatar-clips-finalize-20261021/frontend/test-results/alicization/CMP-261021-1347/interruption-approved/18-reload-persisted.png",
+      "sourceSha256": "ce2fa28192731acba211c9b37891a3056c6b24d4a5a330dea9fd8be5b4b9341b",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/visual/air-stopped-reload.png",
+      "targetSha256": "ce2fa28192731acba211c9b37891a3056c6b24d4a5a330dea9fd8be5b4b9341b",
+      "category": "ROOT_DIRECTLY_VIEWED_SYNTHETIC_SCREENSHOT",
+      "transformCounts": {},
+      "state": "UNMODIFIED_BYTE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/native-viewport-focused-1792592215618/PIXEL-ranch-native200-viewport.png",
+      "sourceSha256": "b94c92996cd5f9fdb8d53de4beb1c631698fc26bb40e2915afbbe43b8bf254ab",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/visual/PIXEL-ranch-native200-viewport.png",
+      "targetSha256": "b94c92996cd5f9fdb8d53de4beb1c631698fc26bb40e2915afbbe43b8bf254ab",
+      "category": "ROOT_DIRECTLY_VIEWED_SYNTHETIC_SCREENSHOT",
+      "transformCounts": {},
+      "state": "UNMODIFIED_BYTE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/native-viewport-focused-1792592215618/PIXEL-dashboard-native200-viewport.png",
+      "sourceSha256": "e23ca127354e87a845ca293f7476b9fdc614d043a13ccd30d343ddd8b9893d66",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/visual/PIXEL-dashboard-native200-viewport.png",
+      "targetSha256": "e23ca127354e87a845ca293f7476b9fdc614d043a13ccd30d343ddd8b9893d66",
+      "category": "ROOT_DIRECTLY_VIEWED_SYNTHETIC_SCREENSHOT",
+      "transformCounts": {},
+      "state": "UNMODIFIED_BYTE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/native-viewport-focused-1792592215618/PAINT_2D-ranch-native200-viewport.png",
+      "sourceSha256": "29de7291453b08825861db60438843975039e5096e0b7a90c23a7e8099374646",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/visual/PAINT_2D-ranch-native200-viewport.png",
+      "targetSha256": "29de7291453b08825861db60438843975039e5096e0b7a90c23a7e8099374646",
+      "category": "ROOT_DIRECTLY_VIEWED_SYNTHETIC_SCREENSHOT",
+      "transformCounts": {},
+      "state": "UNMODIFIED_BYTE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/native-viewport-focused-1792592215618/PAINT_2D-dashboard-native200-viewport.png",
+      "sourceSha256": "09decbe2bda753564511c8c88f08dace59e3111d630c168a2206c9057372fcf7",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/visual/PAINT_2D-dashboard-native200-viewport.png",
+      "targetSha256": "09decbe2bda753564511c8c88f08dace59e3111d630c168a2206c9057372fcf7",
+      "category": "ROOT_DIRECTLY_VIEWED_SYNTHETIC_SCREENSHOT",
+      "transformCounts": {},
+      "state": "UNMODIFIED_BYTE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-final-source-layer-89925d-20261022.json",
+      "sourceSha256": "8747b59509bc21168ea9282bc87a3a6d84489a4ef5b48db6d46ae8a3255263bd",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-final-source-layer-89925d-20261022.json",
+      "targetSha256": "8747b59509bc21168ea9282bc87a3a6d84489a4ef5b48db6d46ae8a3255263bd",
+      "category": "ROOT_FINAL_SOURCE_LAYER_ADOPTION_DOCS_ONLY_MAIN_MERGE",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-pr-89925d-mergeability-refresh-20261022.json",
+      "sourceSha256": "3f2392f386bdc319b626dc378e434bbb2385afe97504569396fc883a1d0d0379",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-pr-89925d-mergeability-refresh-20261022.json",
+      "targetSha256": "3f2392f386bdc319b626dc378e434bbb2385afe97504569396fc883a1d0d0379",
+      "category": "HISTORICAL_MERGEABILITY_HYPOTHESIS_CORRECTED",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-latest-main-index-source-review-20261022.json",
+      "sourceSha256": "3d68efa7b61e69c164bbbd3a14eee432750ef75f637f27a59839f6c29dbc862c",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-latest-main-index-source-review-20261022.json",
+      "targetSha256": "3d68efa7b61e69c164bbbd3a14eee432750ef75f637f27a59839f6c29dbc862c",
+      "category": "ROOT_NARROW_38_RANCH_BLOB_REVIEW",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-evidence-staging-20261022/docs/evidence/CMP-261021-1347/collected/clip-backend-4795-narrow-adoption-20261022.json",
+      "sourceSha256": "9d6d6d43986fdf075da210779cb6db205c17bab5d9f758a48979c0abe54f97dd",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-backend-4795-narrow-adoption-20261022.json",
+      "targetSha256": "9d6d6d43986fdf075da210779cb6db205c17bab5d9f758a48979c0abe54f97dd",
+      "category": "DERIVED_READONLY_GIT_BACKEND_NARROW_ADOPTION",
+      "transformCounts": {},
+      "state": "SAFE_DERIVED_PROOF_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-final-source-layer-post4795-20261022.json",
+      "sourceSha256": "9d64c29be971c402f072978db136d88e23cb94435fb01dd21c774e4b1c5dc3c9",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-final-source-layer-post4795-20261022.json",
+      "targetSha256": "9d64c29be971c402f072978db136d88e23cb94435fb01dd21c774e4b1c5dc3c9",
+      "category": "ROOT_DOCS_TOOLING_FOLLOWUP_WHOLE_FE_BE_IDENTITY_TO_4795",
+      "transformCounts": {},
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-backend-4795da-final-20261022.json",
+      "sourceSha256": "a3b7b89dd13863ae718729198b1e9abb08c30f8969c426729445aa6e4273976e",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-backend-4795da-final-20261022.safe.json",
+      "targetSha256": "672a159cf91f1e73041cd8b16f90d93a7ac08c7be89ac2a89211c8d534d7ba23",
+      "category": "HISTORICAL_BACKEND_6_SHARDS_SUCCESS",
+      "transformCounts": {
+        "whitelistExtraction": 1
+      },
+      "state": "SAFE_COPY_STAGED"
+    },
+    {
+      "sourceWorkspaceRelative": "outputs/clip-checks-4795da-fresh-20261022.json",
+      "sourceSha256": "43cd4921f30ab0350f2727a3268b99890ff00ba9f5ac7aecd95fd28304393f33",
+      "targetRepositoryRelative": "docs/evidence/CMP-261021-1347/collected/clip-checks-4795da-fresh-20261022.safe.json",
+      "targetSha256": "1bd9f053727178e0bc43b8a98be7a029c827bc3f6817e0900061230a86e312d8",
+      "category": "HISTORICAL_4795_CHECKS_NOT_FINAL_HEAD",
+      "transformCounts": {
+        "whitelistExtraction": 1
+      },
+      "state": "SAFE_COPY_STAGED"
+    }
+  ],
+  "syntheticIdTransforms": [
+    {
+      "sourceValueSha256": "306e24fe167c2a6bddd89a34d3c71b3d1b8aa7fa11ff6180dc9434d72eb5794f",
+      "publishedAlias": "synthetic-land-baby-individual"
+    },
+    {
+      "sourceValueSha256": "d0e68805a5acbcdb18dceb4a6beb1204f4e41ce9f056374b5b467043b5c4fdb3",
+      "publishedAlias": "synthetic-sea-juvenile-individual"
+    },
+    {
+      "sourceValueSha256": "56536f216118e3ce409e548cc57a493080db6854688d5e47cf56d85672f6d3a3",
+      "publishedAlias": "synthetic-air-adult-individual"
+    },
+    {
+      "sourceValueSha256": "87d44a7a4d7ec97974bd0efb228a6504c8c36918a583f4546d220eb332b47dbb",
+      "publishedAlias": "synthetic-id-004"
+    },
+    {
+      "sourceValueSha256": "31f5434ff195208eea5ce8a243e51e9f60fb012b2ef95a3d4fd60601f857c4ab",
+      "publishedAlias": "synthetic-id-005"
+    }
+  ],
+  "rules": [
+    "explicit whitelist only",
+    "UUID to stable synthetic alias",
+    "local home removed",
+    "known references rewritten to repository paths",
+    "raw credential/cookie/storage fields removed; presence booleans retained",
+    "source SHA and result statuses preserved"
+  ],
+  "allArtifactCopiesAreHistoricalRecords": true,
+  "selectedImageCount": 8,
+  "privacyScope": "Publication preparation read no raw credential sources. Browser runners used only explicitly authorized synthetic accounts via normal UI login; no credentials or authentication material are published."
+}

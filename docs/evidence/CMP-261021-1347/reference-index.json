@@ -1,0 +1,2175 @@
+{
+  "interpretation": "Main Markdown links and completion-schema evidence fields resolve within staged docs or future product repo. Historical embedded original paths are provenance strings, not publication hyperlinks; status below makes unstaged originals explicit.",
+  "references": [
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/composite.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/prepareComposite.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/uiHatch.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/landFeedTouch.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/landBothStyles.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/landMotion.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/landVisibilityAndFaults.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/landDashboardFeedTouch.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/repairedDashboardHideAndStyles.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/landDarkNativeFunctional.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/remainingSeaAir.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/oldSourceCausal.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/supplementalApiAuthorization.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/nativeViewportVisual.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/privateResultUi.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/zeroXp.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/documentVisibility.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/postCleanup.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/desktop-initial/report-ja.md",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/desktop-initial/report-safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/mobile-initial/report.md",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/mobile-initial/report.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/mobile-initial/browser-close.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/mobile-initial/contrast-360.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/interruption-blocked/report.md",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/interruption-blocked/report.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/report.md",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/report.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/browser-close.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/contrast-390.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/contrast-revisit-360.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/page-errors.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/public-run-check.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/report.md",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/report.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/closed.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/preference-geometry.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/control-targets.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/visual-audits.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/root-approved-first-harness-timeout.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/real/root-approved-recheck.safe.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-root-final-review-addendum-20261022.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-root-shipping-317dd3-runtime-source-delta-20261022.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-root-static-review-20261021.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-root-visibility-source-adoption-20261021.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-root-appearance-source-adoption-20261022.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-root-shipping-57368-runtime-source-delta-20261022.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-root-confirmed-visibility-finding-20261021.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-root-dark-background-before-20261022.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-root-theme-real-green-20261022.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-root-held-desktop-post-exit-verification-20261022.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-be-native-green-evidence.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-production-output-evidence.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-production-builddir-source-evidence.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-frontend-bd85-success-evidence-20261022.json",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-runtime-default-tests-own-final.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-runtime-dev-tests-final.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-runtime-verifier.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-final-317dd3-asset-verifier-20261022.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-adapter-verifier.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-runtime-typecheck-final.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-runtime-dev-tests-own-final.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-runtime-clock-boundaries-final.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-widget-visibility-red.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-widget-visibility-green.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-production-output-scan.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-root-dark-background-real-red-20261022.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-dark-background-repair-report-20261022.md",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-dark-background-final-spec-baseline-red-20261022.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-dark-background-client-green-20261022.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-dark-background-ssr-green-20261022.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-dark-background-official-config-20261022.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-repair-report-20261022.md",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-real-nuxt-red-20261022.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-real-nuxt-green-20261022.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-real-nuxt-ssr-green-20261022.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-original-plugin-red-20261022.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-client-green-20261022.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-ssr-green-20261022.log",
+      "state": "STAGED_REPOSITORY_FILE"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/01-dashboard.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/01-dashboard.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/02-my.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/02-my.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/03-settings.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/03-settings.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/04-ranch-1280-125approx.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/04-ranch-1280-125approx.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/04-ranch-1280.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/04-ranch-1280.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/04-ranch-1440-125approx.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/04-ranch-1440-125approx.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/04-ranch-1440.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/04-ranch-1440.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/04-ranch-1920.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/04-ranch-1920.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/04-ranch.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/04-ranch.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/05-food-result.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/05-food-result.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/05-food.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/05-food.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/06-status-1280-125approx.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/06-status-1280-125approx.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/06-status-1280.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/06-status-1280.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/06-status-1440-125approx.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/06-status-1440-125approx.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/06-status-1440.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/06-status-1440.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/06-status-1920.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/06-status-1920.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/06-status.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/06-status.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/07-help-1280-125approx.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/07-help-1280-125approx.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/07-help-1280.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/07-help-1280.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/07-help-1440-125approx.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/07-help-1440-125approx.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/07-help-1440.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/07-help-1440.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/07-help-1920.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/07-help-1920.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/07-help.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/07-help.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/08-widgets.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/08-widgets.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/09-dashboard-pet-1280-125approx.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/09-dashboard-pet-1280-125approx.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/09-dashboard-pet-1280.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/09-dashboard-pet-1280.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/09-dashboard-pet-1440-125approx.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/09-dashboard-pet-1440-125approx.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/09-dashboard-pet-1440.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/09-dashboard-pet-1440.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/09-dashboard-pet-1920.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/09-dashboard-pet-1920.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/10-touch-result.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/10-touch-result.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/11-handoff-status-1280.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/11-handoff-status-1280.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/root-live-contrast-audit.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/root-live-contrast-audit.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/root-narrow-card-1024.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/root-narrow-card-1024.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/root-theme-fixed-after-client-navigation.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/root-theme-fixed-after-client-navigation.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/root-theme-fixed-dashboard.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/root-theme-fixed-dashboard.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/desktop/root-theme-fixed-ranch.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/desktop/root-theme-fixed-ranch.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/01-initial-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/01-initial-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/02-menu-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/02-menu-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/03-menu-stable-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/03-menu-stable-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/04-menu-settings-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/04-menu-settings-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/05-settings-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/05-settings-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/06-dinosaur-settings-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/06-dinosaur-settings-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/07-room-stable-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/07-room-stable-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/08-fed-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/08-fed-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/09-preferences-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/09-preferences-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/10-style-options-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/10-style-options-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/11-motion-options-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/11-motion-options-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/12-save-visible-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/12-save-visible-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/13-saved-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/13-saved-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/14-saved-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/14-saved-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/15-preferences-stable-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/15-preferences-stable-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/16-widget-settings-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/16-widget-settings-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/17-widget-ranch-switch-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/17-widget-ranch-switch-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/18-content-group-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/18-content-group-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/19-dashboard-ranch-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/19-dashboard-ranch-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/20-dashboard-expanded-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/20-dashboard-expanded-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/21-dashboard-avatar-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/21-dashboard-avatar-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/22-help-modal-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/22-help-modal-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/23-help-bottom-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/23-help-bottom-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/24-room-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/24-room-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/25-status-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/25-status-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/26-status-centered-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/26-status-centered-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/27-preferences-top-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/27-preferences-top-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile/28-status-centered-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile/28-status-centered-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption/00-login.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption/00-login.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/01-dashboard-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/01-dashboard-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/02-menu-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/02-menu-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/03-menu-settings-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/03-menu-settings-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/04-settings-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/04-settings-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/05-room-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/05-room-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/06-room-stable-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/06-room-stable-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/07-pet-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/07-pet-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/08-status-action-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/08-status-action-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/09-status-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/09-status-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/10-status-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/10-status-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/11-preferences-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/11-preferences-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/12-style-options-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/12-style-options-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/13-motion-options-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/13-motion-options-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/14-motion-options-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/14-motion-options-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/15-preferences-save-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/15-preferences-save-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/16-saved-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/16-saved-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/17-saved-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/17-saved-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/18-room-normal-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/18-room-normal-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/19-help-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/19-help-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/20-help-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/20-help-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/21-help-bottom-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/21-help-bottom-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/22-dashboard-return-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/22-dashboard-return-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/23-dashboard-ranch-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/23-dashboard-ranch-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/24-dashboard-avatar-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/24-dashboard-avatar-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/25-dashboard-avatar-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/25-dashboard-avatar-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/26-menu-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/26-menu-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/27-menu-settings-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/27-menu-settings-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/28-settings-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/28-settings-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/29-room-revisit-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/29-room-revisit-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/30-status-revisit-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/30-status-revisit-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/31-final-dashboard-before-expand-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/31-final-dashboard-before-expand-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/32-final-dashboard-360.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/32-final-dashboard-360.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/mobile-approved/33-final-dashboard-390.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/mobile-approved/33-final-dashboard-390.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/01-dashboard.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/01-dashboard.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/03-my.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/03-my.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/04-settings.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/04-settings.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/05-room-settings.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/05-room-settings.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/06-help-modal.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/06-help-modal.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/07-after-food.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/07-after-food.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/08-food-settled.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/08-food-settled.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/09-preferences.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/09-preferences.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/10-motion-options.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/10-motion-options.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/11-unsaved-motion.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/11-unsaved-motion.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/12-tab-return-unsaved.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/12-tab-return-unsaved.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/13-saved.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/13-saved.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/14-route-return.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/14-route-return.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/15-return-dinosaur.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/15-return-dinosaur.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/16-room-1024x576.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/16-room-1024x576.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/16-room-1152x720.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/16-room-1152x720.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/16-room-1440x900.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/16-room-1440x900.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/16-room-1920x1080.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/16-room-1920x1080.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/17-final-preferences.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/17-final-preferences.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/18-reload-persisted.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/18-reload-persisted.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/test-results/alicization/CMP-261021-1347/interruption-approved/19-status-result.png",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/interruption-approved/19-status-result.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "outputs/clip-root-theme-dashboard-approved-20261022-recheck/dashboard-restored-dark.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "01d40a0a31b261161b1f57e2b82c2544a7fae417746e1c07caa6712e866302b2"
+    },
+    {
+      "reference": "docs/evidence/CMP-261021-1347/images/root-recheck/dashboard-restored-dark.png",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/actual-e2e-composite-report.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "b5f181021b8ca11b98db58d3b29ec74772e4b977efc402d5d74814b66a011cd9"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/air-continuation-1792584637884/prepare-composite-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "3440ef688e84d1e169803559480c6312897dc32bd1aea0b5428723d98d3b4679"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-hatch-1792584941500/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "7704b6cf633f5c431307819512ab5d14454e0a62bb80fdc89d06958c286709dd"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-exercise-1792585416356/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "ee6c98ed4228edc3d8440499c0b7629959d93c2375873969f4763389a07c34a7"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-exercise-1792585753510/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "463e7913ec5ea7a27be8fa221436eb244b0b1fe9f8b2762a2fa273af9900ad54"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-exercise-1792586004465/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "274c6e03b9acc6f651734eccd25769daea8103a0ddd098abcf0d926d334abd43"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-exercise-1792586305028/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "0e71bfaf990f9442a2b00e3b54cc1b5118e68d321db7c53fa9cebdac399371d9"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-exercise-1792586855947/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "b5782890550b3b61dd2feac153dd128896fc14547f10c5059ca075a18082cd30"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-exercise-1792589247387/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "1381a1f1af1b43146e8aecbb1758496e52830496f32989df8d2eb6a446e8ab1b"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-exercise-1792590579846/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "3d64971b978fdc0f2decc1d4a64234c565bbf76b3e90c01e1abf4c8336abf3bf"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-exercise-1792591538567/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "d279df0cf1e7be1378b910cca6d4970bd1294f2da68f6f752669e7e6eed3f557"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-causal-1792588415120/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "179cf140d9b3ebe8601e3185838ec158bd5491eacf6cf4e2abe151128a709b73"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/supplemental-authz-1792588209426.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "9cab8515cc2483e70fb67dac9c99fd5cbdd60ac1c3a85d14f1c6b72640235f5a"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/native-viewport-focused-1792592215618/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "4e0e690cedbd89ecb83704f446080fae7d0e1ba4e803e50d7db0230365a4ab8a"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/result-ui-authz-1792592842051/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "f94fe9a522d24a6fa0db8992858724fb43b35244f2ab89ac43136bfce126fd76"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/zero-xp-focused-1792593652667/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "d1b6d410136423d17893ee850c054a934bab7784ddecfc04dc8eaf806ec15df8"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/native-default-visibility-1792593957409/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "d5446a010f6524b68ee04db9484cbb65deaea35e8aabf5d3310a93b4a8d61aad"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/native-default-visibility-1792593957409/post-cleanup-verification.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "efd215bd1485b0382206d48d7dafba5c082650e8bfa852f0172a721a9b706c41"
+    },
+    {
+      "reference": "outputs/clip-alice-desktop-20261021/report-ja.md",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "ed23f40637ce1602f63203cfb16b0e0cc8cb3e7d8900911f2924471b9e062650"
+    },
+    {
+      "reference": "outputs/clip-alice-desktop-20261021/report-safe.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "8ce0980482be43ccd630bd78efe3d6421dd1ea3ff54c3f3a531045afa76a83e0"
+    },
+    {
+      "reference": "outputs/clip-alice-mobile-20261021/report.md",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "925d3ead58da5e6179241913b000dad8bd889531f737ea8eb056a236bab352b2"
+    },
+    {
+      "reference": "outputs/clip-alice-mobile-20261021/report.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "b06cb3c750fbd84ef0fce3d1e708a7a08a3f0d9cca23dd5f5508b45136d02323"
+    },
+    {
+      "reference": "outputs/clip-alice-mobile-20261021/browser-close.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "9a78b6b10e7181e3419ce7bfed95527b3c2a10760b6ed5e36d58f776bf22d617"
+    },
+    {
+      "reference": "outputs/clip-alice-mobile-20261021/contrast-360.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "cb0db1064cad9c61a162a014f986e40f00b3603e81e6c478bfd8830f57baf13c"
+    },
+    {
+      "reference": "outputs/clip-alice-interruption-20261021/report.md",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "97038bcf3a44226374ddc0ab0c8eecbac91b01b234a6ad331ec86e757dddeaf3"
+    },
+    {
+      "reference": "outputs/clip-alice-interruption-20261021/report.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "4e7c5a2723f890e829582a8edf7d4c6c17809b03c9ed785b4780c72ceeaa041f"
+    },
+    {
+      "reference": "outputs/clip-alice-mobile-approved-20261022/report.md",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "d4ad6706a705da23e7c0fde209f4e6f8a0628bf40212db3d1d627d4a987b2687"
+    },
+    {
+      "reference": "outputs/clip-alice-mobile-approved-20261022/report.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "42d42532dfae7096adbf46db3075674a6575dafe082ce24356d7dfb719d5bfbf"
+    },
+    {
+      "reference": "outputs/clip-alice-mobile-approved-20261022/browser-close.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "2bbc8f63795ca62323ec241e92ce027dbeb23e9fff21474a450c3744ce4b52c3"
+    },
+    {
+      "reference": "outputs/clip-alice-mobile-approved-20261022/contrast-390.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "d59562dc1d181d68c3f918d54b26b21c57e6968278f8450a8baf8786059be654"
+    },
+    {
+      "reference": "outputs/clip-alice-mobile-approved-20261022/contrast-revisit-360.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "46bfb1fa5da6f08c62799f671d76677ccf366700aa587a2e3d988dc3f71f61de"
+    },
+    {
+      "reference": "outputs/clip-alice-mobile-approved-20261022/page-errors.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "reference": "outputs/clip-alice-mobile-approved-20261022/public-run-check.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "d3044646e7edfb0cbe5a00d6e458b36c58f5c9470e7a8aeac1c2b06486f84f80"
+    },
+    {
+      "reference": "outputs/clip-alice-interruption-approved-20261022/report.md",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "18eaba82e15be1db17132c4ded57ac2a79f6f4b5a2ed00fe68b495208d244553"
+    },
+    {
+      "reference": "outputs/clip-alice-interruption-approved-20261022/report.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "3095fce667972312a66beaf26d48bcd01a7862f19da0ea3118aecc5e8d759d58"
+    },
+    {
+      "reference": "outputs/clip-alice-interruption-approved-20261022/closed.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "106dd37741e2ace18ea3a110dfe60abee2fe01f53d6c7c0ee879d3751095f0fd"
+    },
+    {
+      "reference": "outputs/clip-alice-interruption-approved-20261022/preference-geometry.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "c57f8aa707b98f39be4c050c874bb696ca1f95bb43ba626fa7e89e304d334c8a"
+    },
+    {
+      "reference": "outputs/clip-alice-interruption-approved-20261022/control-targets.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "1080e265e116c06b921efd1491ecb6eb5c86280c0b01ca59d995e973717c4dc9"
+    },
+    {
+      "reference": "outputs/clip-alice-interruption-approved-20261022/visual-audits.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "f316f84d3aaeccedab89add0a211138ddfc88d315afb5fdc6e32f0f55427be04"
+    },
+    {
+      "reference": "outputs/clip-root-theme-dashboard-approved-20261022/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "93995be50053afe129f387dc31de28e66b0ad1c367be8609ff84a3a8c0b0508f"
+    },
+    {
+      "reference": "outputs/clip-root-theme-dashboard-approved-20261022-recheck/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "100d5b4de4176110f8285ef5ebdaaac76c103f8a157c6ae8bb86159737e02114"
+    },
+    {
+      "reference": "outputs/clip-root-final-review-addendum-20261022.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "a84a4d8d3969b96a41ccb0f5a9c85b55ac912727f61c522175d6822665f94ef3"
+    },
+    {
+      "reference": "outputs/clip-root-shipping-317dd3-runtime-source-delta-20261022.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "9f2dac11916faafc6c7b320ebc1786c3c1c9350107ce6453b07cee5644b6a633"
+    },
+    {
+      "reference": "outputs/clip-root-static-review-20261021.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "4f4c310015793be4d8f0ed3268d5e7e60868dc2153a8ee4d4e2e318192f5a472"
+    },
+    {
+      "reference": "outputs/clip-root-visibility-source-adoption-20261021.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "06f487d4e0ef420279e6601f4673ce4fc562bd50af9e64c06872541cc1134fba"
+    },
+    {
+      "reference": "outputs/clip-root-appearance-source-adoption-20261022.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "c9ece646349c01c1326167047e0ccf59e7dc266816b973939cbd3d445f99be03"
+    },
+    {
+      "reference": "outputs/clip-root-shipping-57368-runtime-source-delta-20261022.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "545036b56a18c78d2a29a241ba546c9bebf821f270e7f27cd5f1bd58d62c8cb8"
+    },
+    {
+      "reference": "outputs/clip-root-confirmed-visibility-finding-20261021.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "c09d7ce47e2fcd27ec64ff30948e711e2e536233ed33f9cf9b6ea93830a244d4"
+    },
+    {
+      "reference": "outputs/clip-root-dark-background-before-20261022.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "a1b758cfdca60cebf9d84b201bd62f9a8f3c9fe67068789f7bd1e214dda6a3b1"
+    },
+    {
+      "reference": "outputs/clip-root-theme-real-green-20261022.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "b2f9cdcf1e90498bc442e01fc730c0aa42716ea9c103f990f68cbffb34982478"
+    },
+    {
+      "reference": "outputs/clip-root-held-desktop-post-exit-verification-20261022.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "604b2d957701b8aa3c81a34aeb5d146a595e5e41d2587ff596b1f6102c5d277a"
+    },
+    {
+      "reference": "outputs/clip-be-native-green-evidence.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "92264594c5b5323d96b0ebfbb1d96839eafa8f74425546a663ce913a064664ad"
+    },
+    {
+      "reference": "outputs/clip-production-output-evidence.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "f2e8280c744d8141b7f2880bcf938e7b19b17e1300c28854344ec6fcd8f5530b"
+    },
+    {
+      "reference": "outputs/clip-production-builddir-source-evidence.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "a7002ae7c70ad3fcd4d95259c0b34de123157f49f57e816886514d34e9b7a6f4"
+    },
+    {
+      "reference": "outputs/clip-frontend-bd85-success-evidence-20261022.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "53d3029539c4bc9521fae690d90148d636a475e555ecc46034e85adde245c93e"
+    },
+    {
+      "reference": "outputs/clip-runtime-default-tests-own-final.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "159f5f026cf123493557c5d3a811fe863cb54fbf3dc579fb1835c0bc76992cbd"
+    },
+    {
+      "reference": "outputs/clip-runtime-dev-tests-own-final.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "82beaf6a0f6694590683f5fa1785834d7f00f556235ea6878ddd804d58764f90"
+    },
+    {
+      "reference": "outputs/clip-runtime-clock-boundaries-final.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "cc0f838af95f969481bdb78a8083c9b42356ffd745de8176932373980dcfc78b"
+    },
+    {
+      "reference": "outputs/clip-widget-visibility-red.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "ac9a17f658f8bcf518ad0875d9e5d15b588ded8d3e8a530041b1b27d8819e1b3"
+    },
+    {
+      "reference": "outputs/clip-widget-visibility-green.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "c229df700314c98fcedf5a967961c9436bed26fdd9fadaa5e9bb6ea1a2e04f47"
+    },
+    {
+      "reference": "outputs/clip-production-output-scan.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "0bffeaf7019f450aac5dbd7ea6dd5f7c1ba0f2534f371f7379edd13d869bbcb2"
+    },
+    {
+      "reference": "outputs/clip-root-dark-background-real-red-20261022.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "9ad74ec8fdf5003a991f17adc5ea036f4c78fa80d3c00bfe6ac1c12b5a365883"
+    },
+    {
+      "reference": "outputs/clip-dark-background-repair-report-20261022.md",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "outputs/clip-dark-background-final-spec-baseline-red-20261022.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "outputs/clip-dark-background-client-green-20261022.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "outputs/clip-dark-background-ssr-green-20261022.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "outputs/clip-dark-background-official-config-20261022.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "outputs/clip-head-mock-repair-report-20261022.md",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "outputs/clip-head-mock-real-nuxt-red-20261022.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "outputs/clip-head-mock-real-nuxt-green-20261022.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "outputs/clip-head-mock-real-nuxt-ssr-green-20261022.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "outputs/clip-head-mock-original-plugin-red-20261022.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "outputs/clip-head-mock-client-green-20261022.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "outputs/clip-head-mock-ssr-green-20261022.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "outputs/clip-be-native-green-docker-observed.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "4236f3523faa792b739df5c3d212215971d48b84364284a4c9f3d9d75da359d9"
+    },
+    {
+      "reference": "frontend/app/composables/useBroadcastAudience.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useOrgTeamMembershipApi.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useAttendancePermissions.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/utils/tournamentScoreEntry.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/node_modules/@nuxt/test-utils/dist/runtime/entry.mjs",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/plugins/appearance.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/plugins/appearance.spec.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/node_modules/vitest/vitest.mjs",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "outputs/clip-dark-background-vitest.config.ts",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/vitest.config.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "outputs/clip-dark-background-original-plugin-20261022.ts",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "frontend/node_modules/nuxt/dist/index.mjs",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "outputs/clip-dark-background-real-nuxt-transform.config.ts",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "outputs/clip-runtime-production-build.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "60903add5c890b8603eadf6767ca7ed29f6fdba2459ffed1998b1ed33fa5fae4"
+    },
+    {
+      "reference": "outputs//clip-production-output-evidence.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "f2e8280c744d8141b7f2880bcf938e7b19b17e1300c28854344ec6fcd8f5530b"
+    },
+    {
+      "reference": "frontend/app/types/ranch.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useRanchApi.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useRanchState.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useRanchSceneActivity.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useRanchSceneClips.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useRanchClipPlayback.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useRanchClipAtlas.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/utils/ranch-development-clips.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/utils/ranch-development-clips-manifest.json",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/nuxt.config.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useDashboardWidgets.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/root-dashboard-diagnostic-1792587310568/proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "2a07d5d0302032a42de3185b2b9eaea9e7357ba43f53673cf92967caccd38ca9"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/root-dashboard-diagnostic-1792587569914/proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "57cd48445a055a20a90ef772798a91c6f8a1ec5e640150cf2a530f396f330642"
+    },
+    {
+      "reference": "frontend/app/components/ranch/DinosaurScene.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/ranch/RanchAdminContent.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/ranch/RanchAdminPublications.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/ranch/RanchAxisResults.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/ranch/RanchBirthProfileContent.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/ranch/RanchDecorationsContent.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/ranch/RanchGuideModal.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/ranch/RanchNaming.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/ranch/RanchPageContent.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/ranch/RanchRecordsContent.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/ranch/RanchResultContent.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/ranch/RanchResultsContent.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/ranch/RanchSettingsPanel.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/ranch/RanchShelves.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/ranch/RanchStatusPanel.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/ranch/RanchWidgetContent.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useRanchAdminApi.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useRanchAtlas.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useRanchCommand.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useRanchCommandMemory.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useRanchFiniteReaction.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useRanchPrivateRead.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useRanchTouchSound.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useRanchVisibility.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/utils/ranch-assets.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/utils/ranch-name.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/utils/ranch-production-assets.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/PasswordGeneratorActions.spec.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/PasswordGeneratorActions.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/settings/SettingsPasswordChange.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/settings/SettingsPasswordSection.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useDashboardWidgets.ranch-visibility.spec.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useUserSettingsApi.spec.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useUserSettingsApi.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/locales/de/settings.json",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/locales/de/surveys.json",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/locales/en/settings.json",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/locales/en/surveys.json",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/locales/es/settings.json",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/locales/es/surveys.json",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/locales/ja/settings.json",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/locales/ja/surveys.json",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/locales/ko/settings.json",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/locales/ko/surveys.json",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/locales/zh/settings.json",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/locales/zh/surveys.json",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/pages/register.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/pages/reset-password.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/pages/settings/account.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/pages/settings/password.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/utils/passwordGenerator.spec.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/utils/passwordGenerator.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/playwright.config.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/playwright.mfa-real.config.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/playwright.password-generator.config.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/tests/e2e/real/mfa-alic-recheck.real.spec.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/tests/e2e/real/mfa-gap-fill.real.spec.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/tests/e2e/real/password-generator.real.spec.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/tests/e2e/real/support/fakeses.mjs",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/tests/e2e/surveys/survey-remind.spec.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/vitest.ranch-clips.config.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/vitest.ranch-clips-specs.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/package.json",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/dashboard/DashboardPersonalWidgetGrid.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/dashboard/DashboardPersonalAccordion.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/dashboard/DashboardPersonalPanel.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "outputs/clip-widget-visibility-lint-final.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "reference": "frontend/app/pages/my/ranch/index.vue",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "backend/src/main/java/com/mannschaft/app/ranch/controller/RanchSelfController.java",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-prepare-1792583891975/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "1995513cc7813d7926b0f4f4592a20f412c09d9f9731f4f93558eb9dae24458e"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-exercise-1792589999979/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "d8f5fef8259a439f613f16622617826d0a549ec9c2cded6deca4eb4d1f34fb35"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/browser-exercise-1792589678561/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "5294cca6a71910e6edc030cf9114e9cb6c73bcea5a1abfe5182498a9b83e05c6"
+    },
+    {
+      "reference": "frontend/node_modules/primevue/progressspinner/style/index.mjs",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/node_modules/@primeuix/styles/dist/dialog/index.mjs",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/node_modules/primevue/focustrap/style/index.mjs",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "outputs/clip-e2e-runs/clipv3-1792574010514-3a8a8367/air-continuation-1792584637884/safe-proof.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "52454ff4eddef45e0899181388e887f39a372136508c4f5d11ef255a93210e55"
+    },
+    {
+      "reference": "frontend/node_modules/ofetch/dist/index.mjs",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/node_modules/h3/dist/index.mjs",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "outputs/clip-alice-interruption-20261021/login-geometry.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "33d9acdd066cdf042084d57ba2fc958262f0f7ac710a0239bcf654588d93a7ea"
+    },
+    {
+      "reference": "outputs/clip-alice-mobile-approved-20261022/steps.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "c2d77c138f483a6b80bf0bc4129852af499035f9d92c1a7b3d8acf3c7157178a"
+    },
+    {
+      "reference": "outputs/clip-alice-mobile-approved-20261022/network.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "cd4725e1dfd0604eeec67d4d8f9a9fc9ae65ab41badda1fa72dce64a376faf66"
+    },
+    {
+      "reference": "outputs/clip-alice-mobile-20261021/steps.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "78530548f94889e02a1b0bfdc9a32cdc3e4a183da13d0f05aef3461160937280"
+    },
+    {
+      "reference": "outputs/clip-alice-mobile-20261021/network.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "ce33a72a19e90aaa58986b33b4af0307f164a57fd39da41cfaec6b4b34803ba2"
+    },
+    {
+      "reference": "outputs/clip-alice-mobile-20261021/targets-360.json",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "b5f9a9de0781d62ecf0dcb319c8c34f05c2a6474f028e82dad18383876be6b19"
+    },
+    {
+      "reference": "outputs/clip-root-theme-dashboard-approved-20261022/runner-original.mjs",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "07c12b86f801f1ffa8114b3b353714f7669b6a73af359ae8aa5b7b41522c4969"
+    },
+    {
+      "reference": "frontend/app/utils/ranch-development-clips.spec.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "backend/src/test/java/com/mannschaft/app/ranch/service/RanchDevelopmentClipCatalogTest.java",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "backend/src/test/java/com/mannschaft/app/ranch/RanchDevelopmentClipAssignmentIT.java",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useRanchClipPlayback.spec.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/ranch/RanchWidgetContent.clips.spec.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/composables/useRanchClipAtlas.spec.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "frontend/app/components/ranch/DinosaurScene.clips.spec.ts",
+      "state": "PRODUCT_REPOSITORY_SOURCE_REFERENCE_NOT_COPIED"
+    },
+    {
+      "reference": "outputs/clip-runtime-dev-tests-final.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "29ec5d75d3522df317251a2a257eea38b1f02b03aad4dd036717e3aa58814860"
+    },
+    {
+      "reference": "outputs/clip-runtime-verifier.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "fe83aeeea0d7e7565e9f0e360f7cc8d5a3df9c8a5be84eac9243a44780b0e8c5"
+    },
+    {
+      "reference": "outputs/clip-adapter-verifier.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "ea7aa8ad3a8105faf1f2ff9058bd264ce9c96801cd2fc4ee96e94b65c189f4f4"
+    },
+    {
+      "reference": "outputs/clip-runtime-typecheck-final.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "1c7de13be0ba105a380106c2052faf88e61c0bc13787aad9455c9ac2582e0117"
+    },
+    {
+      "reference": "scripts/verify-ranch-development-clips.mjs",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK"
+    },
+    {
+      "reference": "outputs/clip-final-317dd3-asset-verifier-20261022.log",
+      "state": "ORIGINAL_WORKSPACE_REFERENCE_ONLY_NOT_A_STAGED_LINK",
+      "sourceSha256": "ec13abbc0055898c8af4d59df229f3d26009bd7fa7022f80ff0e966778a0bc95"
+    },
+    {
+      "reference": "outputs/clip-root-theme-dashboard-approved-20261022/runner-original.mjs",
+      "state": "ORIGINAL_HARNESS_LOCATOR_FAILURE_PRESERVED_NOT_EXECUTABLE_BUNDLE",
+      "sourceSha256": "07c12b86f801f1ffa8114b3b353714f7669b6a73af359ae8aa5b7b41522c4969"
+    }
+  ]
+}

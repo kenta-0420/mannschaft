@@ -1,0 +1,40 @@
+Duplicated imports "OrgTeamGroup", the one from "frontend/app/composables/useBroadcastAudience.ts" has been ignored and "frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+Duplicated imports "isForbiddenError", the one from "frontend/app/composables/useAttendancePermissions.ts" has been ignored and "frontend/app/utils/tournamentScoreEntry.ts" is used
+Duplicated imports "OrgTeamGroup", the one from "frontend/app/composables/useBroadcastAudience.ts" has been ignored and "frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+Duplicated imports "isForbiddenError", the one from "frontend/app/composables/useAttendancePermissions.ts" has been ignored and "frontend/app/utils/tournamentScoreEntry.ts" is used
+
+ RUN  v4.1.11 work/ranch-avatar-clips-finalize-20261021/frontend
+
+[warn] [nuxt] You are importing from `@unhead/vue` in `./app/plugins/appearance.spec.ts`. Please import from `#imports` instead for full type safety.
+ ❯ app/plugins/appearance.spec.ts (8 tests | 3 failed | 5 skipped) 159ms
+     × 初期cookieが空でも保存済み 'DARK' / '#18181b' がページhead更新後に残る 104ms
+     × 初期cookieが空でも保存済み 'DARK' / '#14241c' がページhead更新後に残る 25ms
+     × 初期cookieが空でも保存済み 'LIGHT' / '#ecf7f0' がページhead更新後に残る 26ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  app/plugins/appearance.spec.ts > appearance: client の head 再描画 > 初期cookieが空でも保存済み 'DARK' / '#18181b' がページhead更新後に残る
+ FAIL  app/plugins/appearance.spec.ts > appearance: client の head 再描画 > 初期cookieが空でも保存済み 'DARK' / '#14241c' がページhead更新後に残る
+ FAIL  app/plugins/appearance.spec.ts > appearance: client の head 再描画 > 初期cookieが空でも保存済み 'LIGHT' / '#ecf7f0' がページhead更新後に残る
+RangeError: Maximum call stack size exceeded
+ ❯ Proxy.useHead app/plugins/appearance.spec.ts:13:86
+     11| const boundary = vi.hoisted(() => ({ cookie: null as string | null, us…
+     12| vi.mock('#app/composables/cookie', () => ({ useCookie: () => ({ value:…
+     13| vi.mock('#app/composables/head', () => ({ useHead: (input: UseHeadInpu…
+       |                                                                                      ^
+     14| vi.mock('~/composables/useApi', () => ({ useApi: () => boundary.api }))
+     15|
+ ❯ Object.<anonymous> app/plugins/appearance.spec.ts:47:66
+ ❯ Proxy.useHead app/plugins/appearance.spec.ts:13:86
+ ❯ Object.<anonymous> app/plugins/appearance.spec.ts:47:66
+ ❯ Proxy.useHead app/plugins/appearance.spec.ts:13:86
+ ❯ Object.<anonymous> app/plugins/appearance.spec.ts:47:66
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 5 skipped (8)
+   Start at  08:26:24
+   Duration  7.56s (transform 422ms, setup 0ms, import 1.28s, tests 159ms, environment 4.71s)
+
