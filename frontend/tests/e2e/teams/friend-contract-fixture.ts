@@ -3,7 +3,7 @@ import { isDeepStrictEqual } from 'node:util'
 import type { Page } from '@playwright/test'
 import type { OrganizationResponse } from '../../../app/types/organization'
 import type { CampaignPerformanceResponse, CreativeComparisonResponse, BreakdownResponse } from '../../../app/types/advertiser'
-import type { TeamFriendListResponse, FollowTeamResponse } from '../../../app/types/friends'
+import type { TeamFriendListResponse, FollowTeamResponse, PendingTeamFollowListResponse } from '../../../app/types/friends'
 import type { FriendFeedResponse } from '../../../app/types/friendFeed'
 import type { TeamFriendFolderView } from '../../../app/types/friendFolders'
 import type { ForwardResponse, FriendForwardExportListResponse } from '../../../app/types/friendForward'
@@ -56,6 +56,7 @@ export async function installFriendContractFixture(page: Page, locale = 'ja') {
       state.calls.push({ method, path, query: url.search, body })
       const listQuery = url.searchParams.get('page') === '0' && url.searchParams.get('size') === '20' && [...url.searchParams].length === 2
       if (path === '/api/v1/teams/1/friends' && method === 'GET' && listQuery) return send({ data: state.friends, pagination: { ...pagination, totalElements: state.friends.length, totalPages: state.friends.length ? 1 : 0 } } satisfies TeamFriendListResponse)
+      if (path === '/api/v1/teams/1/friends/pending' && method === 'GET' && listQuery && body === null) return send({ data: [], pagination: { ...pagination, totalElements: 0, totalPages: 0 } } satisfies PendingTeamFollowListResponse)
       if (path === '/api/v1/teams/1/friends/follow' && method === 'POST' && isDeepStrictEqual(body, { targetTeamSlug: 'rival-fc' })) {
         state.friends = [friend]
         return send({ data: { followId: 3, followerTeamId: 1, followedTeamId: 2, mutual: true, teamFriendId: 1, establishedAt: timestamp, isPublic: true, createdAt: timestamp } satisfies FollowTeamResponse }, 201)
