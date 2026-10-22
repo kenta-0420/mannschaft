@@ -2,10 +2,10 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "edbcdadb-ee3b-4dc2-a833-5224953af37c",
+  "operation": "995ab2f8-4cbf-49e6-8603-19f33d4c0c6b",
   "territories": {
     "foundation": {
-      "owner": null,
+      "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
       "note": ""
     },
     "common-core": {
