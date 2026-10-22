@@ -84,6 +84,7 @@ function creativesBasePath(scopeType: ScopeType, scopeId: string, campaignId: nu
 
 export function useAdvertiserApi() {
   const api = useApi()
+  const { resolveOrganizationNumericId } = useOrganizationNumericId()
 
   // ─── 広告主向け API ───
 
@@ -143,26 +144,30 @@ export function useAdvertiserApi() {
 
   // Performance
   async function getCampaignPerformance(scopeType: ScopeType, scopeId: string, campaignId: number, from: string, to: string) {
+    const queryScopeId = scopeType === 'ORGANIZATION' ? await resolveOrganizationNumericId(scopeId) : scopeId
     return api<{ data: CampaignPerformanceResponse }>(billingBasePath(scopeType, scopeId, `campaigns/${campaignId}/performance`), {
-      params: billingParams(scopeType, scopeId, { from, to }),
+      params: billingParams(scopeType, queryScopeId, { from, to }),
     })
   }
 
   async function getCreativeComparison(scopeType: ScopeType, scopeId: string, campaignId: number, from: string, to: string) {
+    const queryScopeId = scopeType === 'ORGANIZATION' ? await resolveOrganizationNumericId(scopeId) : scopeId
     return api<{ data: CreativeComparisonResponse }>(billingBasePath(scopeType, scopeId, `campaigns/${campaignId}/creatives`), {
-      params: billingParams(scopeType, scopeId, { from, to }),
+      params: billingParams(scopeType, queryScopeId, { from, to }),
     })
   }
 
   async function getBreakdown(scopeType: ScopeType, scopeId: string, campaignId: number, from: string, to: string, breakdownBy?: string) {
+    const queryScopeId = scopeType === 'ORGANIZATION' ? await resolveOrganizationNumericId(scopeId) : scopeId
     return api<{ data: BreakdownResponse }>(billingBasePath(scopeType, scopeId, `campaigns/${campaignId}/breakdown`), {
-      params: billingParams(scopeType, scopeId, { from, to, breakdownBy }),
+      params: billingParams(scopeType, queryScopeId, { from, to, breakdownBy }),
     })
   }
 
   async function exportCampaignCsv(scopeType: ScopeType, scopeId: string, campaignId: number, from: string, to: string) {
+    const queryScopeId = scopeType === 'ORGANIZATION' ? await resolveOrganizationNumericId(scopeId) : scopeId
     return api(billingBasePath(scopeType, scopeId, `campaigns/${campaignId}/export`), {
-      params: billingParams(scopeType, scopeId, { from, to }),
+      params: billingParams(scopeType, queryScopeId, { from, to }),
       responseType: 'blob' as const,
     }) as Promise<Blob>
   }
