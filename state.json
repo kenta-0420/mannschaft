@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "11e8b119-a583-4441-a2f5-127c64208370",
+  "operation": "0fea2bb5-e52e-45bb-a663-aab92dafdb48",
   "territories": {
     "foundation": {
       "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
@@ -30,7 +30,7 @@
     },
     "closure": {
       "owner": "3a1525fe-1e83-4f91-9003-8fdc8a9effbf",
-      "note": ""
+      "note": "境界整理継続。L5-PRE-D/V/Oの読取専用証拠準備を担当。対象コード・番人・ストア・定数・build・task-list既存行は変更しない。子CMP登録PRを先行し、PRE各別ファイルへ証拠案を保存する。REQ-L1F-261022-RESUMEはfoundation担当返答待ち、L1-F既存holdは維持。owner3a1525fe-1e83-4f91-9003-8fdc8a9effbf。ローカルheavyは翌01:00JSTまで新規投入0。"
     }
   },
   "lanes": {
