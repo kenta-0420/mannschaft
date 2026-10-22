@@ -17,6 +17,7 @@
  * Emits:
  *   followed        — フォロー成功時（FollowTeamResponse を渡す）
  *   retryScheduled  — NOWAIT でリトライ予約された時（残秒数）
+ *   alreadyFollowing — 409 SOCIAL_102時（情報toast後の一覧再取得要求）
  */
 import type { FollowTeamResponse } from '~/types/friends'
 
@@ -29,6 +30,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   followed: [response: FollowTeamResponse]
+  alreadyFollowing: []
   retryScheduled: [seconds: number]
 }>()
 
@@ -88,7 +90,17 @@ async function execute() {
     emit('followed', response)
   }
   catch (error) {
-    handleApiError(error)
+    const apiError = error as { statusCode?: number; data?: { error?: { code?: string } } }
+    if (apiError.statusCode === 409 && apiError.data?.error?.code === 'SOCIAL_102') {
+      notification.info(t('friends.messages.already_following'))
+      emit('alreadyFollowing')
+    }
+    else if (apiError.statusCode === 404 && apiError.data?.error?.code === 'SOCIAL_104') {
+      notification.error(t('friends.errors.target_unavailable'))
+    }
+    else {
+      handleApiError(error)
+    }
     retryCount.value = 0
     clearRetryTimer()
   }
