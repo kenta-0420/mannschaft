@@ -27,18 +27,20 @@
       "toggle_visibility": "Sichtbarkeit umschalten"
     },
     "messages": {
-      "follow_success": "Gefolgt",
+      "follow_success": "Du folgst dem Team. Sobald es zurückfolgt, seid ihr befreundet.",
       "follow_mutual_success": "Gegenseitiges Folgen hergestellt — Sie sind jetzt Freundschaftsteams",
       "follow_retry": "Folgen wird verarbeitet. Bitte versuchen Sie es in {seconds} Sekunden erneut",
       "unfollow_success": "Entfolgt",
       "unfollow_confirm": "Diesem Team entfolgen?",
-      "visibility_changed": "Sichtbarkeit geändert"
+      "visibility_changed": "Sichtbarkeit geändert",
+      "already_following": "Du folgst diesem Team bereits. Die Listen wurden aktualisiert."
     },
     "errors": {
       "self_follow": "Sie können Ihrem eigenen Team nicht folgen",
       "already_following": "Sie folgen bereits",
       "target_not_found": "Ziel-Team nicht gefunden",
-      "permission_denied": "Keine Berechtigung"
+      "permission_denied": "Keine Berechtigung",
+      "target_unavailable": "Das Team wurde nicht gefunden oder kann derzeit nicht gefolgt werden."
     },
     "guide": {
       "title": "So verwendest du Freundschaftsteams",
@@ -59,7 +61,7 @@
         "caution_self": "Dem eigenen Team kannst du nicht folgen",
         "caution_already": "Einem Team, dem du bereits folgst, kannst du nicht erneut folgen",
         "caution_busy": "Bei hoher Auslastung wird automatisch bis zu 3-mal erneut versucht. Klappt es trotzdem nicht, versuche es etwas später noch einmal",
-        "caution_role": "Die Schaltfläche „Folgen“ wird nur Administratoren und stellvertretenden Administratoren mit Berechtigung angezeigt"
+        "caution_role": "Für diese Aktion ist die Berechtigung zur Verwaltung von Teamfreundschaften erforderlich."
       },
       "visibility": {
         "title": "Zwischen öffentlich und privat wechseln",
@@ -76,7 +78,7 @@
         "step3": "Bestätige im Bestätigungsdialog",
         "caution_title": "Hinweise",
         "caution_kept": "Auch nach dem Entfolgen bleiben bereits weitergeleitete Beiträge erhalten",
-        "caution_role": "Nur Administratoren und stellvertretende Administratoren mit Berechtigung können entfolgen"
+        "caution_role": "Für diese Aktion ist die Berechtigung zur Verwaltung von Teamfreundschaften erforderlich."
       },
       "related": {
         "title": "Verwandte Bildschirme",
@@ -84,7 +86,22 @@
         "item_folders": "Freundesordner – Ordne Freundschaftsteams in Ordnern (bis zu 20 Ordner möglich)",
         "item_feed": "Admin-Feed – Sieh dir Beiträge von Freundschaftsteams an und leite sie an dein eigenes Team weiter",
         "item_exports": "Verlauf der Rückweiterleitung – Sieh nach, an welche Freunde die Beiträge deines Teams weitergeleitet wurden"
+      },
+      "pending": {
+        "title": "Gefolgte Teams",
+        "body": "Hier kannst du noch nicht gegenseitige Follows ansehen und beenden. Öffentliche Teamnamen führen zur Teamseite. Nach dem Beenden kannst du über „Erneut folgen“ dasselbe Team auswählen."
       }
+    },
+    "pending": {
+      "title": "Gefolgte Teams",
+      "empty": "Du folgst derzeit keinen Teams",
+      "hidden_team": "Team kann nicht angezeigt werden",
+      "cancel": "Folgen beenden",
+      "cancel_confirm": "Folgen beenden? Falls das andere Team inzwischen zurückgefolgt ist, wird auch die Freundschaft beendet.",
+      "cancel_success": "Folgen beendet",
+      "refollow": "Erneut folgen",
+      "recovery_public": "Die Freundschaft wurde noch nicht vollständig eingerichtet. Beende das Folgen und folge erneut, um die Freundschaft herzustellen.",
+      "recovery_hidden": "Du kannst das Folgen beenden. Je nach Status des Teams ist erneutes Folgen möglicherweise nicht möglich."
     }
   },
   "folders": {

@@ -27,18 +27,20 @@
       "toggle_visibility": "Toggle visibility"
     },
     "messages": {
-      "follow_success": "Followed",
+      "follow_success": "Following. You will become friends when the team follows back.",
       "follow_mutual_success": "Mutual follow established — you are now friend teams",
       "follow_retry": "Follow is being processed. Please try again in {seconds} seconds",
       "unfollow_success": "Unfollowed",
       "unfollow_confirm": "Unfollow this team?",
-      "visibility_changed": "Visibility updated"
+      "visibility_changed": "Visibility updated",
+      "already_following": "Already following. The lists have been refreshed."
     },
     "errors": {
       "self_follow": "You cannot follow your own team",
       "already_following": "Already following",
       "target_not_found": "Target team not found",
-      "permission_denied": "Permission denied"
+      "permission_denied": "Permission denied",
+      "target_unavailable": "The team was not found or cannot currently be followed."
     },
     "guide": {
       "title": "How to use Friend Teams",
@@ -59,7 +61,7 @@
         "caution_self": "You cannot follow your own team",
         "caution_already": "You cannot follow a team you already follow",
         "caution_busy": "When the system is busy, it automatically retries up to 3 times. If it still fails, please wait a moment and try again",
-        "caution_role": "The \"Follow\" button is shown only to admins and deputy admins with permission"
+        "caution_role": "Managing friend teams requires the corresponding permission."
       },
       "visibility": {
         "title": "Switch between public and private",
@@ -76,7 +78,7 @@
         "step3": "Confirm in the confirmation dialog",
         "caution_title": "Notes",
         "caution_kept": "Posts that were forwarded in the past remain even after you unfollow",
-        "caution_role": "Only admins and deputy admins with permission can unfollow"
+        "caution_role": "Managing friend teams requires the corresponding permission."
       },
       "related": {
         "title": "Related screens",
@@ -84,7 +86,22 @@
         "item_folders": "Friend folders — Organize friend teams into folders (you can create up to 20)",
         "item_feed": "Admin feed — Review posts from friend teams and forward them to your own team",
         "item_exports": "Reverse forwarding history — See which friends your team's posts were forwarded to"
+      },
+      "pending": {
+        "title": "Following",
+        "body": "Review and cancel follows before friendship is established. Public team names link to their pages. After canceling, choose “Follow again” to select the same team."
       }
+    },
+    "pending": {
+      "title": "Following",
+      "empty": "You are not following any teams",
+      "hidden_team": "Team unavailable for display",
+      "cancel": "Cancel follow",
+      "cancel_confirm": "Cancel this follow? If the other team has followed back since this list was loaded, the friendship will also be removed.",
+      "cancel_success": "Follow canceled",
+      "refollow": "Follow again",
+      "recovery_public": "Friendship setup is incomplete. Cancel and follow again to become friends.",
+      "recovery_hidden": "You can cancel, but you may be unable to follow again depending on the team’s status."
     }
   },
   "folders": {

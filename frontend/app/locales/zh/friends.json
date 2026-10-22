@@ -27,18 +27,20 @@
       "toggle_visibility": "切换公开设置"
     },
     "messages": {
-      "follow_success": "已关注",
+      "follow_success": "已关注。对方回关后将成为好友",
       "follow_mutual_success": "相互关注成立 — 成为友队了",
       "follow_retry": "正在处理关注。请在{seconds}秒后重试",
       "unfollow_success": "已取消关注",
       "unfollow_confirm": "取消对此团队的关注吗？",
-      "visibility_changed": "已更改公开设置"
+      "visibility_changed": "已更改公开设置",
+      "already_following": "已关注该团队，列表已更新"
     },
     "errors": {
       "self_follow": "不能关注自己的团队",
       "already_following": "已经关注了",
       "target_not_found": "找不到目标团队",
-      "permission_denied": "没有权限"
+      "permission_denied": "没有权限",
+      "target_unavailable": "未找到该团队，或目前无法关注"
     },
     "guide": {
       "title": "友队使用方法",
@@ -59,7 +61,7 @@
         "caution_self": "不能关注自己的团队",
         "caution_already": "不能关注已经关注的团队",
         "caution_busy": "繁忙时会自动重试最多3次。仍然失败时，请稍后再试",
-        "caution_role": "“关注”按钮仅对管理员和拥有权限的副管理员显示"
+        "caution_role": "操作需要管理好友团队权限"
       },
       "visibility": {
         "title": "切换公开与非公开",
@@ -76,7 +78,7 @@
         "step3": "在确认对话框中确认",
         "caution_title": "注意",
         "caution_kept": "即使取消关注，过去转发的帖子也会保留",
-        "caution_role": "只有管理员和拥有权限的副管理员可以取消关注"
+        "caution_role": "操作需要管理好友团队权限"
       },
       "related": {
         "title": "相关画面",
@@ -84,7 +86,22 @@
         "item_folders": "友队文件夹 — 将友队整理到文件夹中（最多可创建20个）",
         "item_feed": "管理员动态 — 查看友队的帖子并转发到本团队",
         "item_exports": "反向转发记录 — 查看本团队的帖子被转发给了哪些友队"
+      },
+      "pending": {
+        "title": "正在关注",
+        "body": "可在关注中列表确认和取消尚未成为好友的关注。公开团队名称可打开对方页面。取消后可通过“再次关注”选择同一团队。"
       }
+    },
+    "pending": {
+      "title": "正在关注",
+      "empty": "没有正在关注的团队",
+      "hidden_team": "无法显示的团队",
+      "cancel": "取消关注",
+      "cancel_confirm": "要取消关注吗？如果对方在此期间已回关，好友关系也将解除。",
+      "cancel_success": "已取消关注",
+      "refollow": "再次关注",
+      "recovery_public": "好友关系尚未建立完成。取消后再次关注即可成为好友。",
+      "recovery_hidden": "可以取消关注，但根据对方团队的状态，可能无法再次关注。"
     }
   },
   "folders": {

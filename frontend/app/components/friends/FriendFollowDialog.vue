@@ -14,10 +14,12 @@
  * Props:
  *   teamId       — 自チーム slug
  *   modelValue   — 表示状態（v-model）
+ *   initialSlug  — 再フォローで事前入力する相手slug（任意）
  *
  * Emits:
  *   update:modelValue — 表示状態の変更
  *   success           — フォロー成功時（一覧の再取得要求）
+ *   alreadyFollowing  — 既存フォロー409時（両一覧の再取得要求）
  */
 import type { FollowTeamResponse } from '~/types/friends'
 import { useTeamCrud } from '~/composables/team/useTeamCrud'
@@ -25,11 +27,13 @@ import { useTeamCrud } from '~/composables/team/useTeamCrud'
 const props = defineProps<{
   teamId: string
   modelValue: boolean
+  initialSlug?: string
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   'success': [response: FollowTeamResponse]
+  'alreadyFollowing': []
 }>()
 
 const { t } = useI18n()
@@ -164,7 +168,8 @@ function resetForm() {
 // 開閉に合わせてフォームをリセット（閉じた瞬間にクリア）
 watch(visible, (next) => {
   if (!next) resetForm()
-})
+  else slugInput.value = props.initialSlug ?? ''
+}, { immediate: true })
 
 function onFollowed(response: FollowTeamResponse) {
   emit('success', response)
@@ -287,6 +292,7 @@ function onFollowed(response: FollowTeamResponse) {
         :disabled="!canSubmit"
         data-testid="friend-follow-submit"
         @followed="onFollowed"
+        @already-following="emit('alreadyFollowing'); visible = false"
       />
     </template>
   </Dialog>

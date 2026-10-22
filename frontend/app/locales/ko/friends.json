@@ -27,18 +27,20 @@
       "toggle_visibility": "공개 설정 전환"
     },
     "messages": {
-      "follow_success": "팔로우했습니다",
+      "follow_success": "팔로우했습니다. 상대가 맞팔로우하면 친구가 됩니다",
       "follow_mutual_success": "상호 팔로우 성립 — 프렌드 팀이 되었습니다",
       "follow_retry": "팔로우 처리 중입니다. {seconds}초 후에 다시 시도해 주세요",
       "unfollow_success": "팔로우를 해제했습니다",
       "unfollow_confirm": "이 팀에 대한 팔로우를 해제하시겠습니까?",
-      "visibility_changed": "공개 설정을 변경했습니다"
+      "visibility_changed": "공개 설정을 변경했습니다",
+      "already_following": "이미 팔로우 중입니다. 목록을 갱신했습니다"
     },
     "errors": {
       "self_follow": "자신의 팀은 팔로우할 수 없습니다",
       "already_following": "이미 팔로우 중입니다",
       "target_not_found": "대상 팀을 찾을 수 없습니다",
-      "permission_denied": "권한이 없습니다"
+      "permission_denied": "권한이 없습니다",
+      "target_unavailable": "팀을 찾을 수 없거나 현재 팔로우할 수 없습니다"
     },
     "guide": {
       "title": "프렌드 팀 사용 방법",
@@ -59,7 +61,7 @@
         "caution_self": "자기 팀은 팔로우할 수 없습니다",
         "caution_already": "이미 팔로우한 팀은 팔로우할 수 없습니다",
         "caution_busy": "혼잡할 때는 자동으로 최대 3회까지 재시도합니다. 그래도 안 되면 잠시 후 다시 시도해 주세요",
-        "caution_role": "\"팔로우\" 버튼은 관리자와 권한이 있는 부관리자에게만 표시됩니다"
+        "caution_role": "친구 팀 관리 권한이 필요합니다"
       },
       "visibility": {
         "title": "공개·비공개 전환",
@@ -76,7 +78,7 @@
         "step3": "확인 대화상자에서 승인합니다",
         "caution_title": "주의",
         "caution_kept": "팔로우를 해제해도 과거에 전달한 게시물은 그대로 남습니다",
-        "caution_role": "해제할 수 있는 사람은 관리자와 권한이 있는 부관리자뿐입니다"
+        "caution_role": "친구 팀 관리 권한이 필요합니다"
       },
       "related": {
         "title": "관련 화면",
@@ -84,7 +86,22 @@
         "item_folders": "프렌드 폴더 — 프렌드 팀을 폴더로 정리합니다(최대 20개까지 만들 수 있습니다)",
         "item_feed": "관리자 피드 — 프렌드 팀의 게시물을 확인하고 우리 팀으로 전달합니다",
         "item_exports": "역전달 기록 — 우리 팀의 게시물이 어떤 프렌드에게 전달되었는지 확인합니다"
+      },
+      "pending": {
+        "title": "팔로우 중",
+        "body": "친구가 되기 전의 팔로우를 확인하고 취소할 수 있습니다. 공개 팀 이름을 누르면 팀 페이지가 열립니다. 취소 후 “다시 팔로우”로 같은 팀을 지정할 수 있습니다."
       }
+    },
+    "pending": {
+      "title": "팔로우 중",
+      "empty": "팔로우 중인 팀이 없습니다",
+      "hidden_team": "표시할 수 없는 팀",
+      "cancel": "팔로우 취소",
+      "cancel_confirm": "팔로우를 취소하시겠습니까? 그 사이 상대 팀이 맞팔로우했다면 친구 관계도 해제됩니다.",
+      "cancel_success": "팔로우를 취소했습니다",
+      "refollow": "다시 팔로우",
+      "recovery_public": "친구 관계 설정이 완료되지 않았습니다. 취소한 뒤 다시 팔로우하면 친구가 됩니다.",
+      "recovery_hidden": "취소할 수 있지만 상대 팀의 상태에 따라 다시 팔로우하지 못할 수 있습니다."
     }
   },
   "folders": {
