@@ -168,6 +168,14 @@ describe('交代依頼の候補者取得', () => {
         await flushPromises()
         expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(1)
         expect(wrapper.find('[data-testid="swap-members-error"]').exists()).toBe(false)
+        await selectLast(wrapper)
+        await submitButton(wrapper).trigger('click')
+        expect(mocks.create).toHaveBeenCalledWith({
+          slotId: 12,
+          reason: undefined,
+          openCall: false,
+          targetUserIds: [1],
+        })
       },
     )
   }
@@ -248,7 +256,8 @@ describe('交代依頼の候補者取得', () => {
     expect(mocks.handleError).not.toHaveBeenCalled()
   })
 
-  it('TEMPLATEの昼シフト宛先と送信内容を維持する', async () => {
+  it('候補取得失敗でもTEMPLATEの昼シフト宛先へ提出できる', async () => {
+    mocks.getAllMembers.mockRejectedValue({ statusCode: 500 })
     mocks.slots.mockResolvedValue([
       {
         time: { slotDate: '2026-10-22', startTime: '09:00' },
@@ -260,6 +269,7 @@ describe('交代依頼の候補者取得', () => {
       },
     ])
     const wrapper = await mountForm()
+    expect(wrapper.find('[data-testid="swap-members-error"]').exists()).toBe(true)
     await wrapper
       .findAll('button')
       .find((button) => button.text() === 'shift.swap.recipientMode.template')!
@@ -273,8 +283,10 @@ describe('交代依頼の候補者取得', () => {
     })
   })
 
-  it('OPEN_CALLの送信内容を維持する', async () => {
+  it('候補取得失敗でもOPEN_CALLで提出できる', async () => {
+    mocks.getAllMembers.mockRejectedValue({ statusCode: 403 })
     const wrapper = await mountForm()
+    expect(wrapper.find('[data-testid="swap-members-error"]').exists()).toBe(true)
     await wrapper
       .findAll('button')
       .find((button) => button.text() === 'shift.swap.recipientMode.openCall')!
