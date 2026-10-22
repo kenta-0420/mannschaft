@@ -548,6 +548,9 @@ config → 業務の import 41 件は、Spring 設定が業務の Bean を直接
 - `backend/src/test/resources/shard-weights.properties`（再生成は L1-B / L3-* と L-SHIME。§7.7）
 - Modulith の設定・`ReliableEvent`・`@ModuleEventListener`・専用 executor・`event_publication` の Flyway（L1-M）
 
+
+- **Phase 3 以後の細分レーン**: §8.5 の L3-I が共有 root build / settings / build-logic / CI の単独 owner。各束の module build は対応 L3-B/P だけが持ち、共有変更は I へ依頼する。L4 の共有契約・verify一覧は L4-I、L5 の終結変更は L5-I に集約する。前 owner が解放するまで同じファイルを引き取らない。
+
 ### 7.3 着手宣言・解放・引継ぎ（CLAUDE.md「横展開型の戦役における担当重複の防止」準拠）
 
 1. **親 Issue**: Phase 1 の最初のレーンに着手するセッションが、親 Issue「CMP-261021-0017 境界負債の返済（レーン管理）」を1本立て、本書へのリンク、レーン一覧の表、Phase 2 のロットのチェックリスト（ドメイン名・波・担当・状態）、L1-R の対象のチェックリスト、計測窓の予約欄、マージ後の確認欄をコメントに貼る。以後、全レーン・ロットの宣言・解放はこの Issue で行う。
@@ -673,6 +676,8 @@ flowchart LR
 
 注: ¹ L0-M の計測中は同じマシンで heavy build を走らせない（計測窓の外なら可）。² 同じ番人ファイルを触らない場合のみ。³ 対象クラスが重ならない場合のみ。⁴ そのロットが L1-A / L1-M の成果を使わない場合のみ（使うなら完了待ち）。⁵ webhook 以外の束なら可。⁶ 重み表の再生成が重ならない場合のみ（L1-B / L3 がその PR で再生成するときは SHIME は再生成しない）。⁷ 発生元ドメインが重ならない場合のみ。⁸ ロットの対象ドメインが卒業中の束に含まれない場合のみ。L4・L5 は表に含めない（L4 は同一領域2本が不可で、L2 の残りと L3 とは対象が重ならなければ可。L5 は他のすべてと不可）。
 
+**詳細分割の並行規則**: L3 のソース移設準備は §8.5.2 の所有分離時だけ並行可。共有 build の有効化は L3-I が直列に行い、上表の L3 同士×を共有編集について維持する。L4 / L5 の補足は §8.5.3 / §8.5.4 に従う。
+
 ### 8.3 子 CMP の運用（Q4）
 
 - CMP-261021-0017 は全体を束ねる親行（傘）。**本 PR では子 CMP 行を作らない。**
@@ -715,6 +720,208 @@ flowchart LR
 **L1 / L3 / L4 / L5**: 該当 Phase の出口条件（§5）を満たし、受け入れ条件（§9）のテストが緑。
 
 **L-SHIME**: 毎回の締めで、定数が実測と一致し、減少行の突き合わせ記録が `archunit_freeze_history.md` にある。
+
+---
+
+### 8.5 未完了レーンの実行地図（2026-10-22）
+
+本節は担当と統合手順の細分化であり、§0 の決定、§5 / §8.1 の入口条件、§8.3 の子 CMP 単位を変えない。細分 ID は親 Issue #4022 のチェックリスト用であり、子 CMP を追加起票する単位ではない。以後の着手時は最新 main・親 Issue 全コメント・移設先を再確認する。
+
+**未完了だけの一覧**（origin/main `6d3248d3ab` と親 Issue の 2026-10-22 確認時点）:
+
+| レーン | 残作業・現在の扱い | 次の入口 |
+|---|---|---|
+| L0-M | 計測未開始。中断・担当保持、引継書 `引継-boundary-l0-m-20261022-0844.md` を継続。完了済み L0-S / L0-C を再実施しない | 計測窓の予約と §5.1 の計測。予約中は同マシンの heavy build 禁止 |
+| L1-A | 認可 interface と暫定core 実装・family SPI | L1-K / L1-G0 は完了。§9.1 の既存認可・routing・D-3T 非減少を確認 |
+| L1-R | 付録Aの業務返却と橋渡し。対象クラス単位で排他宣言 | L1-K は完了。L1-A の対象を除く |
+| L1-B | convention plugin 化・タスク/shard 不変の検証 | L0-M 完了待ち |
+| L1-M | Modulith / Registry / executor / 再配信と観測 | L1-B 完了待ち（L0-S / L1-G0 は完了） |
+| L1-F | CMP-261021-2213 の既存担当が試練→実装を継続。登録 PR #4036 は実装完了を意味しない | §9.1 の全 AC を green にする。番人・履歴を他レーンへ重複配賦しない |
+| L1-G | 公開窓口・kernel・payload・verify 必須化等の番人 | L1-M 完了待ち（L1-K は完了） |
+| L2 | 全113ロット未着手。詳細は §8.5.1 | §8.1 の依存を維持 |
+| L-SHIME | 定数引下げ・減少行照合・推移報告・重み表再生成。未着手 | L1-F 完了待ち |
+| L3-0 | kernel / db-migration 化と束の割当。詳細は §8.5.2 | L1-K / L1-B / L1-R 完了 |
+| L3-P | webhook パイロットと継続/撤退判定。詳細は §8.5.2 | L3-0 / L2-webhook / L1-A 完了 |
+| L3 | 確定した各束の卒業。詳細は §8.5.2 | L3-P 継続判定・対象束の全ロット完了 |
+| L4 | 暫定core の循環解消。詳細は §8.5.3 | §5.5 の入口（暫定core 以外の L2 がおおむね完了） |
+| L5 | 終結。事前読取準備との区別は §8.5.4 | §5.6 の入口（L2 / L3 / L4 全完了。撤退時は §14） |
+
+L1-K / L1-G0 も完了済みとして新規配賦から除外する。台帳親行の状態は本節では更新しない。
+
+#### 8.5.1 L2：発生元ドメインの完全一覧と波の固定
+
+下表は L0-C `backend/scripts/collect_archunit_debt.py` の実測（上記コミットのストア）と、同コミットの全120トップレベルパッケージを突き合わせた排他的な所有表。列は **D-1 / D-3 / D-3T / D-5 / ServiceAPI** の物理行数。合計は **2,037 / 1,292 / 7,325 / 1,850 / 600**、違反を持つ発生元は106。D-3T は推移展開数であり、行数だけで作業量や波を決めない。D-2b は集計スクリプトに出ても本表・返済対象から除外する。
+
+- **L2 は113ロット**（負債あり100・5列すべて0が13）。`L2-<domain>` は発生元1ドメインを一意に所有する。0件でも verify・循環・公開窓口・橋渡し参照・§8.4 を点検するまで完了にしない。`common` は L1-A / L1-R、`config` は付録Aの所有先と L3-I、暫定core 5領域は L4 所有とし、L2へ重複配賦しない。
+- 第1〜3波の**ロット割当は未固定**。§5.3 の集約・閲覧系は候補にすぎない。波の子 CMP 起票時に、最新計測・依存・担当保持を確認して、この一覧の対象 ID を重複なく固定する。各波の一覧の和集合が113ロットと一致することを最終波固定時に確認する。未固定ロットは未着手のまま残す。
+- 全 L2 の入口は §8.1、出口は §8.4 と §9.2。各ロットは対象ソース・テスト・減少ストア行だけを変更し、他ドメイン既存 API の変更はその持ち主へ依頼する（新規 API 追加も FQCN を先に予約）。循環が相互依存なら契約を先に合意し、§9.5 の全関係領域を同時に必須化できる統合 PR を調整する。単に同時着手しただけでは完了にしない。
+- 既存 CMP-260918-1406 の recruitment / matching の地域マスタ窓口と TeamRegionNormalizer 対象を保持し、該当 `L2-recruitment` / `L2-matching` / `L4-team` の対象ファイルから予約範囲を除く。先行 CMP 完了後に残件だけ合流する。`L2-member` は既存 CMP-260930-2126 をそのまま使い、重複 CMP を作らない。最新の先行担当宣言を確認せず引き取らない。
+
+| 発生元 | D-1 | D-3 | D-3T | D-5 | ServiceAPI | 所有レーン |
+|---|---:|---:|---:|---:|---:|---|
+| `actionmemo` | 48 | 43 | 54 | 46 | 1 | L2-actionmemo |
+| `activity` | 0 | 0 | 55 | 0 | 10 | L2-activity |
+| `admin` | 13 | 48 | 36 | 64 | 4 | L2-admin |
+| `advertising` | 34 | 35 | 54 | 59 | 16 | L2-advertising |
+| `analytics` | 7 | 45 | 24 | 54 | 0 | L2-analytics |
+| `appearance` | 0 | 0 | 0 | 0 | 0 | L2-appearance |
+| `auth` | 11 | 6 | 85 | 6 | 6 | L4-auth |
+| `billing` | 0 | 0 | 64 | 39 | 1 | L2-billing |
+| `budget` | 0 | 0 | 73 | 0 | 0 | L2-budget |
+| `bulletin` | 2 | 0 | 530 | 6 | 2 | L2-bulletin |
+| `chart` | 2 | 4 | 58 | 4 | 0 | L2-chart |
+| `chat` | 6 | 16 | 257 | 24 | 19 | L2-chat |
+| `circulation` | 13 | 13 | 78 | 17 | 4 | L2-circulation |
+| `cms` | 2 | 6 | 126 | 6 | 1 | L2-cms |
+| `committee` | 9 | 4 | 36 | 4 | 17 | L2-committee |
+| `common` | 0 | 0 | 0 | 0 | 4 | L1-A / L1-R → L3-0K |
+| `config` | 0 | 0 | 0 | 0 | 0 | 付録Aの所有先 → L3-I |
+| `contact` | 100 | 72 | 48 | 72 | 1 | L2-contact |
+| `corkboard` | 2 | 3 | 54 | 3 | 3 | L2-corkboard |
+| `cspreport` | 0 | 0 | 0 | 0 | 0 | L2-cspreport |
+| `dashboard` | 176 | 23 | 73 | 133 | 0 | L2-dashboard |
+| `devtools` | 0 | 0 | 0 | 0 | 0 | L2-devtools |
+| `diagnosis` | 0 | 0 | 0 | 0 | 0 | L2-diagnosis |
+| `digest` | 38 | 8 | 33 | 11 | 0 | L2-digest |
+| `directmail` | 7 | 10 | 49 | 14 | 0 | L2-directmail |
+| `disclosure` | 91 | 29 | 51 | 47 | 21 | L2-disclosure |
+| `equipment` | 0 | 0 | 52 | 0 | 0 | L2-equipment |
+| `errorreport` | 16 | 10 | 12 | 33 | 9 | L2-errorreport |
+| `event` | 12 | 14 | 33 | 24 | 19 | L2-event |
+| `facility` | 0 | 0 | 11 | 0 | 3 | L2-facility |
+| `family` | 63 | 33 | 109 | 33 | 0 | L2-family |
+| `faq` | 10 | 9 | 10 | 9 | 0 | L2-faq |
+| `favorite` | 20 | 0 | 0 | 12 | 1 | L2-favorite |
+| `files` | 0 | 0 | 0 | 0 | 0 | L2-files |
+| `filesharing` | 0 | 0 | 326 | 0 | 22 | L2-filesharing |
+| `forms` | 0 | 0 | 42 | 0 | 2 | L2-forms |
+| `gallery` | 0 | 0 | 26 | 0 | 0 | L2-gallery |
+| `gamification` | 0 | 0 | 0 | 0 | 13 | L2-gamification |
+| `gdpr` | 153 | 8 | 48 | 142 | 2 | L2-gdpr |
+| `health` | 0 | 0 | 0 | 0 | 0 | L2-health |
+| `inbox` | 69 | 0 | 0 | 19 | 0 | L2-inbox |
+| `incident` | 0 | 0 | 48 | 0 | 3 | L2-incident |
+| `incidentbanner` | 0 | 0 | 0 | 0 | 8 | L2-incidentbanner |
+| `jobmatching` | 28 | 10 | 72 | 10 | 31 | L2-jobmatching |
+| `joinrequest` | 0 | 0 | 19 | 0 | 0 | L2-joinrequest |
+| `knowledgebase` | 0 | 0 | 0 | 0 | 16 | L2-knowledgebase |
+| `landing` | 1 | 9 | 3 | 9 | 0 | L2-landing |
+| `line` | 0 | 0 | 20 | 0 | 0 | L2-line |
+| `loyalty` | 0 | 0 | 0 | 0 | 0 | L2-loyalty |
+| `mail` | 0 | 0 | 2 | 0 | 0 | L2-mail |
+| `market` | 79 | 28 | 113 | 28 | 0 | L2-market |
+| `match` | 2 | 3 | 82 | 6 | 38 | L2-match |
+| `matching` | 0 | 0 | 23 | 0 | 0 | L2-matching |
+| `member` | 0 | 0 | 40 | 0 | 0 | L2-member |
+| `memberinfo` | 1 | 0 | 15 | 3 | 0 | L2-memberinfo |
+| `membership` | 11 | 26 | 87 | 26 | 0 | L4-membership |
+| `mention` | 5 | 3 | 1 | 3 | 0 | L2-mention |
+| `moderation` | 1 | 4 | 30 | 4 | 2 | L2-moderation |
+| `navsettings` | 0 | 0 | 4 | 0 | 0 | L2-navsettings |
+| `notification` | 49 | 20 | 34 | 20 | 23 | L2-notification |
+| `onboarding` | 0 | 0 | 0 | 0 | 0 | L2-onboarding |
+| `organization` | 34 | 44 | 108 | 50 | 0 | L4-organization |
+| `parking` | 13 | 4 | 53 | 4 | 0 | L2-parking |
+| `payment` | 8 | 14 | 333 | 15 | 27 | L2-payment |
+| `performance` | 4 | 3 | 35 | 3 | 3 | L2-performance |
+| `pointcard` | 6 | 8 | 63 | 8 | 0 | L2-pointcard |
+| `postal` | 0 | 0 | 0 | 0 | 0 | L2-postal |
+| `profile` | 24 | 15 | 9 | 15 | 0 | L2-profile |
+| `promotion` | 0 | 6 | 39 | 6 | 0 | L2-promotion |
+| `property` | 15 | 9 | 52 | 9 | 22 | L2-property |
+| `provisioning` | 0 | 0 | 31 | 0 | 0 | L2-provisioning |
+| `proxy` | 6 | 4 | 20 | 4 | 4 | L2-proxy |
+| `proxyvote` | 0 | 8 | 59 | 8 | 1 | L2-proxyvote |
+| `publicview` | 176 | 127 | 104 | 127 | 2 | L2-publicview |
+| `queue` | 0 | 0 | 3 | 0 | 7 | L2-queue |
+| `quickmemo` | 24 | 6 | 19 | 6 | 0 | L2-quickmemo |
+| `ranch` | 0 | 0 | 1 | 0 | 0 | L2-ranch |
+| `receipt` | 4 | 3 | 74 | 3 | 0 | L2-receipt |
+| `recruitment` | 14 | 25 | 122 | 39 | 14 | L2-recruitment |
+| `reflection` | 0 | 0 | 24 | 0 | 5 | L2-reflection |
+| `repairplan` | 10 | 6 | 70 | 13 | 2 | L2-repairplan |
+| `reservation` | 18 | 5 | 113 | 12 | 13 | L2-reservation |
+| `residencestatus` | 1 | 0 | 34 | 0 | 0 | L2-residencestatus |
+| `resident` | 0 | 0 | 56 | 0 | 0 | L2-resident |
+| `resume` | 35 | 10 | 8 | 10 | 0 | L2-resume |
+| `returnstayplan` | 0 | 0 | 0 | 0 | 0 | L2-returnstayplan |
+| `role` | 55 | 33 | 147 | 45 | 1 | L4-role |
+| `safetycheck` | 0 | 5 | 29 | 5 | 0 | L2-safetycheck |
+| `schedule` | 25 | 18 | 445 | 28 | 41 | L2-schedule |
+| `school` | 0 | 2 | 43 | 2 | 4 | L2-school |
+| `scopefolder` | 0 | 3 | 2 | 3 | 2 | L2-scopefolder |
+| `seal` | 0 | 0 | 8 | 0 | 1 | L2-seal |
+| `search` | 27 | 27 | 12 | 27 | 0 | L2-search |
+| `securityincident` | 4 | 6 | 2 | 6 | 0 | L2-securityincident |
+| `service` | 0 | 0 | 59 | 0 | 0 | L2-service |
+| `shift` | 34 | 21 | 52 | 21 | 0 | L2-shift |
+| `shiftbudget` | 50 | 23 | 343 | 32 | 2 | L2-shiftbudget |
+| `signage` | 0 | 0 | 32 | 0 | 3 | L2-signage |
+| `skill` | 0 | 0 | 2 | 0 | 9 | L2-skill |
+| `social` | 101 | 44 | 301 | 62 | 12 | L2-social |
+| `succession` | 15 | 6 | 78 | 9 | 12 | L2-succession |
+| `supporter` | 11 | 10 | 19 | 10 | 0 | L2-supporter |
+| `survey` | 29 | 11 | 63 | 15 | 1 | L2-survey |
+| `sync` | 0 | 0 | 0 | 0 | 0 | L2-sync |
+| `team` | 15 | 41 | 107 | 41 | 1 | L4-team |
+| `template` | 0 | 0 | 7 | 0 | 0 | L2-template |
+| `ticket` | 0 | 0 | 8 | 0 | 7 | L2-ticket |
+| `timeline` | 0 | 0 | 201 | 0 | 4 | L2-timeline |
+| `timetable` | 31 | 29 | 76 | 32 | 62 | L2-timetable |
+| `todo` | 36 | 7 | 117 | 13 | 12 | L2-todo |
+| `tournament` | 66 | 55 | 323 | 55 | 0 | L2-tournament |
+| `translation` | 0 | 0 | 0 | 0 | 1 | L2-translation |
+| `user` | 10 | 16 | 7 | 16 | 0 | L2-user |
+| `venue` | 0 | 0 | 0 | 0 | 0 | L2-venue |
+| `village` | 48 | 79 | 218 | 86 | 18 | L2-village |
+| `visibility` | 0 | 11 | 3 | 11 | 0 | L2-visibility |
+| `weather` | 7 | 6 | 2 | 9 | 1 | L2-weather |
+| `webhook` | 0 | 0 | 24 | 0 | 2 | L2-webhook |
+| `websocket` | 0 | 0 | 0 | 0 | 0 | L2-websocket |
+| `workflow` | 0 | 0 | 65 | 0 | 2 | L2-workflow |
+
+#### 8.5.2 L3：束割当の確定と移設準備を分ける
+
+**確定済み**は `:kernel` / `:db-migration` / `:app` の役割、webhook パイロット、束は10〜20程度という §0 Q3 の方針。**具体的な束の数・名前・所属は未確定**で、§3.2 どおり L3-0 で決める。line / promotion / signage / service / workflow は候補であり確定した束ではない。
+
+| 細分 ID | 対象・所有範囲 | 依存・並行可否 | 出口 |
+|---|---|---|---|
+| L3-0A | 割当設計。全トップレベルの所属、束間 DAG、公開 API、テスト・リソースの帰属を計画へ記録 | L3-0 の入口後。0K / 0D と読取調査を並行可。共有 build は編集しない | 全120パッケージの論理所有を漏れなく整理（config の所有先返却を含む）。物理配置は FQCN / ソース・テスト・リソースごとに移設先1か所を記録し、§5.2 / §9.2 の split package を許容、重複 FQCN は0。10〜20程度の束と依存順を確定し、差異は理由を記す |
+| L3-0K | kernel の移設元・移設先一覧、橋渡しを app に残す差分と kernel 単独コンパイルの検証準備 | 0A と整合。common は L1-R 完了後。0D と異なるファイルで並行可 | 業務 import 0、橋渡しを kernel に混ぜず、移設案・検証証拠を I に渡す |
+| L3-0D | 全 migration / rollback のリソース配置と参照方法・版一覧比較の準備 | 0K と並行可。既存 migration の内容・版・採番は変更しない | 分割前後の適用版と順序を比較でき、各束のテストから参照可能な移設案を I に渡す |
+| L3-I | 共有 build 統合の単独 owner。root build/settings/build-logic、app 配線、CI、集約品質ゲート・全jar解析、重み表と coverage の変更 | 0A 確定後、0K / 0D の移設・有効化を順に適用する。P と各 B の共有変更も I だけが統合 | L3-0 全体の出口、各移設の §9.2 と §13.4 が green。部分準備の完了だけで L3-0 完了にしない |
+| L3-P | webhook のソース・テスト・module build とパイロット検証 | L3-0 / L2-webhook / L1-A 完了後。共有変更は I へ渡す | §9.2 の P 必須品質ゲートと計測、§14 の継続/撤退判断が揃う |
+| L3-B01〜Bnn | 0A で確定した各束のソース・テスト・リソースと**その束だけの module build** | P 継続判定、束の全 L2 ロット完了。束間 DAG の前提となる公開 API / 卒業を待つ。異なる束は準備を並行可、共有有効化は I が直列適用 | §9.2 の未宣言依存/非公開参照の負例、スキャン等前後一致、CI単一実行が全て green |
+
+`L3-B01` 等の ID と所属を0A出口で固定し、以後並べ替え・再採番しない。論理所有表と物理配置表を区別する。common は kernel と app の橋渡しに分かれるため、§5.2 / §9.2 どおり split package を許す。物理配置表では FQCN / ソース / テスト / リソースごとに移設先を1か所だけ列挙し、重複 FQCN を0にして、共有の db-migration を重複移設しない。core 5領域の Gradle 配置も割当表に含め、循環解消が必要な卒業は L4 完了待ちと明記する。パイロットの webhook を後続束へ二重移設しない。束の同時準備は共有 build の同時編集を許可しない。L-SHIME の重み再生成は I と時間を分ける。
+
+#### 8.5.3 L4：5所有領域と契約統合
+
+L4 の入口は §5.5 のまま。先に L4-I が Phase 0 / 最新 verify の循環辺と公開 API 契約を整理し、必要な提供側/利用側の変更順を親 Issue に固定する。**5領域の順序は本追補では決めない**。契約が固まり所有ファイルが分離できた領域のみ並行実装し、他領域の既存 API を直接編集しない。
+
+| 細分 ID | 単独所有範囲・具体対象 | 出口 |
+|---|---|---|
+| L4-auth | auth の認証・利用者 API、auth 所有へ返す設定/フィルタ（付録A）、auth 発の5番人の残件 | §8.4 相当の返済照合・契約不変と §9.3 / §9.5 の当該領域 verify が green |
+| L4-role | role の権限/ブロック API と role 発の残件。L1-A 実装の配置は付録A/契約で先に固定 | 同上。認可回帰は §9.1 の既存 IT に加え実際の変更範囲を検証 |
+| L4-team | team API・TeamScopeId / Converter 等の返却、team 発の残件。TeamRegionNormalizer の先行担当範囲を除く | 同上。既存先行ロットの着地後、未返済部分を再計測 |
+| L4-organization | organization API・OrgScopeId / Converter 等の返却、organization 発の残件 | 同上。テナント境界のエラー/公開契約を維持 |
+| L4-membership | membership API と所属/メンバーシップの越境参照・書込、membership 発の残件 | 同上。権限あり/なし/他テナントを検証 |
+| L4-I | 契約準備と最終統合の単独 owner。core 間共有契約、verify 必須化リスト、暫定core区分の撤廃を統合。kernel は編集せず必要分をその owner へ依頼 | 5領域を含む循環0・verify全緑、5領域の5番人残件を説明して解消、暫定core区分の撤廃。L3卒業に必要な成果を I へ渡す |
+
+L4-I の契約準備 → 依存の解けた5所有領域 → L4-I の全体統合の順とする。領域別の局所 green だけで L4 完了にしない。実際の依存変更には §4 のパターン、§8.4 の契約/認可/イベント/実機検証を適用する。
+
+#### 8.5.4 L5：事前読取準備と直列終結
+
+**L5 本体は従来どおり他の全レーンと同時実行不可**。以下の PRE は L5 の入口を満たす前にもできる読取専用の証拠準備であり、削除・必須化・終結を前倒ししない。heavy build / 計測は §7 / §13 の交通整理に従う。
+
+| 細分 ID | 独立した対象・並行可能範囲 | 出口 |
+|---|---|---|
+| L5-PRE-D | 負債・橋渡しの検証準備。L0-C全5ストア、E台帳、移設先、橋渡し参照0の確認手順 | 残件/説明不能減少を列挙した証拠案。D-2bを混ぜない |
+| L5-PRE-V | 全体verify・Gradle・全jar解析・残す番人の検証準備 | §9.3 / §9.4 の残す/廃止対応と実行証拠案。Gradle撤退時は §14 に読み替え |
+| L5-PRE-O | 外部API不変・運用・計測・通知outbox/Registryの一本化要否の判断材料 | §10 / §11 / §14 と実機証拠の不足一覧。一本化を無断実装しない |
+| L5-I | L2 / L3 / L4 全完了後、他レーンを止めて最新mainで証拠を再取得。5ストア/定数削除、common例外撤廃、橋渡し0必須化、全体verify必須化、残る番人の0必須化 | §5.6 / §9.3 がmainで全緑。通知outboxとRegistryの一本化要否の判断を記録して最終押印 |
+
+PRE 3本は互いに別の証拠ファイルを所有し、対象コード・番人・台帳を編集しない。I は PRE の古い結果をそのまま採用せず、最新 main の再検証で未実行/失敗/残件が1つでもあれば親を閉じない。文書・台帳など共有ファイルの更新は I にまとめる。
 
 ---
 
@@ -800,6 +1007,19 @@ flowchart LR
 - 検体のテスト（L1-G）: (a) 橋渡しを端点とする辺だけで成り立っている循環は、除外で消えて verify が通る、(b) 橋渡しを除外しても別の辺で循環が残る場合は、verify が fail する、の両方を固定する。
 - **違反の取り出し方**: L0-S の確認項目6で決めた手順で、発生元モジュール名・循環に含まれるモジュール名で絞り込む。
 - ロットの完了時に、そのモジュールを一覧に追加する。
+
+---
+
+### 9.6 詳細分割の完全性と統合の確認（§8.5）
+
+- [ ] AC-LANE-1: 同じコミットの L0-C 出力の5列合計が表の合計と一致し、全トップレベル集合と所有表が重複・欠落なく一致する。新規パッケージが増えた場合は未配賦を残さず所有表を更新する。D-2b は返済対象に含めない。
+- [ ] AC-LANE-2: L2 の3波をすべて固定した時点で113ロット（更新時は最新集合）を各1回だけ含み、0件ロットも §8.4 / §9.5 の検証を満たす。先行CMPの予約対象・移設先を確認し、二重担当を作らない。
+- [ ] AC-LANE-3: L3-0A の論理所有表が全パッケージを網羅し、物理配置表は FQCN / ソース・テスト・リソースごとに移設先1か所を記録する。common の kernel / app 分離など §5.2 / §9.2 の split package を許容しつつ、重複 FQCN は0。束数10〜20程度・DAGと卒業順・core待ちを根拠つきで確定する。未確定の候補を着手可能な束と扱わない。パイロットを二重移設しない。
+- [ ] AC-LANE-4: 同一ファイルに同時に2 owner を置かない。共有root build/settings/build-logic/CI/全jar解析は L3-I、各module buildは対応B/P、core間契約とverify一覧の統合は L4-I、終結変更は L5-I が持つ。Phase移行時は前owner完了・解放を確認する。
+- [ ] AC-LANE-5: 本追補で §0・§5 / §8.1 の入口条件・§8.3 の子CMP単位・外部API契約を変えていない。L3具体束の確定をL3-0へ、L4の循環順の確定をverify結果へ委ね、L5本体の他レーン並行禁止を維持する。
+- [ ] AC-LANE-6: 各出口を §8.4 / §9.1〜9.5 の実装・greenテスト・PR証拠へ対応付ける。PREや局所greenだけで親を閉じず、未実行・途中失敗・循環残存・未固定ロットは未完了として扱う。L5-Iは最新mainで全証拠を再取得する。
+
+攻め口5類型: 空/0件＝AC-LANE-1/2（0件でもverify必須）、境界値＝AC-LANE-1/3（全件一致・束数方針）、途中失敗＝AC-LANE-6。認可＝実装時の §8.4 / §9.1〜9.3 とL4各出口へ引継ぐ（本追補は権限/データ/コードを変更しない）。性能＝既存 L0-M / L3-P の計測と §14 の判定を維持（分割による速度改善は約束しない）。
 
 ---
 
