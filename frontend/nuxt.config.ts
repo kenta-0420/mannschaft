@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module'
+import { fileURLToPath } from 'node:url'
 import Aura from '@primeuix/themes/aura'
 import { buildGateRouteRules } from './app/constants/featureGates'
 
@@ -11,6 +12,10 @@ import { buildGateRouteRules } from './app/constants/featureGates'
 // E2E プロキシ（NUXT_API_PROXY=true）時は API が Nuxt 同一オリジン経由になるため 'self' で足りる。
 // 本番（Cloudflare 経由 FE/BE 同一オリジン構成）では NUXT_PUBLIC_API_BASE='' (空文字) で運用する。
 const apiBase = process.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8080'
+// v3未公開素材は明示opt-inのdevelopment配信だけ。本番public出力へ含めない。
+const ranchDevelopmentClips =
+  process.env.NODE_ENV !== 'production' &&
+  process.env.NUXT_PUBLIC_RANCH_DEVELOPMENT_CLIPS === 'true'
 
 // CSP 違反レポートの送信先（report-uri）。
 // バックエンド受信エンドポイント `POST /api/v1/security/csp-reports`（permitAll・PR #1274）へ向ける。
@@ -432,6 +437,7 @@ export default defineNuxtConfig({
       // 既定 false（凍結中）。再開時は NUXT_PUBLIC_F18_BALANCE_ENABLED=true で復活可能。
       f18BalanceEnabled: process.env.NUXT_PUBLIC_F18_BALANCE_ENABLED === 'true',
       ranchDevelopmentVisuals: process.env.NUXT_PUBLIC_RANCH_DEVELOPMENT_VISUALS === 'true',
+      ranchDevelopmentClips,
       // F08.9 P5 継続課金（Stripe.js）公開可能キー。
       // クライアントで `loadStripe(publishableKey)` に渡す。公開鍵は秘匿情報ではない（pk_*）が、
       // 環境（test/live）で切り替えるため値はコミットせず環境変数から注入する。
@@ -466,6 +472,15 @@ export default defineNuxtConfig({
   // CSP 受信 EP のみに限定し、FE の通常 API 呼び出し（useApi の :8080 絶対URL）には干渉しない。
   // NUXT_API_PROXY=true（E2E 全 API プロキシ）時は routeRules 側が全 /api/v1/** を担うため二重化を避けて無効化。
   nitro: {
+    publicAssets: ranchDevelopmentClips
+      ? [
+          {
+            dir: fileURLToPath(new URL('./dev-fixtures/ranch/base16-v3', import.meta.url)),
+            baseURL: '/dev-fixtures/ranch/base16-v3',
+            maxAge: 0,
+          },
+        ]
+      : [],
     devProxy:
       process.env.NUXT_API_PROXY === 'true'
         ? {}
