@@ -235,7 +235,7 @@ NO_ARG_NOW|com.mannschaft.app.errorreport.service.ErrorReportAiHealthMonitor|2
 NO_ARG_NOW|com.mannschaft.app.errorreport.service.ErrorReportAsyncExecutor|1
 NO_ARG_NOW|com.mannschaft.app.errorreport.service.ErrorReportCleanupService|1
 NO_ARG_NOW|com.mannschaft.app.errorreport.service.ErrorReportQueryService|2
-NO_ARG_NOW|com.mannschaft.app.errorreport.service.ErrorReportService|3
+NO_ARG_NOW|com.mannschaft.app.errorreport.service.ErrorReportService|2
 NO_ARG_NOW|com.mannschaft.app.errorreport.service.ErrorReportWeeklySummaryService|3
 NO_ARG_NOW|com.mannschaft.app.event.entity.EventCareNotificationLogEntity|2
 NO_ARG_NOW|com.mannschaft.app.event.entity.EventCheckinEntity|6

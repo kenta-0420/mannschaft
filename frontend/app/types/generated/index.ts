@@ -78962,7 +78962,7 @@ export interface components {
         };
         TimelineItem: {
             /** @enum {string} */
-            activityType?: "STATUS_CHANGED" | "WORKFLOW_CHANGED" | "ASSIGNEE_CHANGED" | "SEVERITY_CHANGED" | "COMMENT_ADDED" | "AI_ANALYZED" | "GITHUB_ISSUE_CREATED" | "REOPENED" | "RESOLVED" | "HEALTH_RECOVERED";
+            activityType?: "STATUS_CHANGED" | "WORKFLOW_CHANGED" | "ASSIGNEE_CHANGED" | "SEVERITY_CHANGED" | "COMMENT_ADDED" | "AI_ANALYZED" | "GITHUB_ISSUE_CREATED" | "REOPENED" | "RESOLVED" | "HEALTH_RECOVERED" | "MERGED_DUPLICATE";
             /** Format: int64 */
             actorId?: number;
             actorName?: string;

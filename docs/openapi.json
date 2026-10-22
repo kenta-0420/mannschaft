@@ -235885,7 +235885,8 @@
               "GITHUB_ISSUE_CREATED",
               "REOPENED",
               "RESOLVED",
-              "HEALTH_RECOVERED"
+              "HEALTH_RECOVERED",
+              "MERGED_DUPLICATE"
             ]
           },
           "actorId": {

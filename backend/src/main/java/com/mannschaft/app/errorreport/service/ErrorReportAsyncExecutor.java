@@ -4,23 +4,20 @@ import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
 import com.mannschaft.app.errorreport.event.ErrorReportRaisedEvent;
-import com.mannschaft.app.errorreport.event.ErrorReportRegressionDetectedEvent;
-import com.mannschaft.app.errorreport.event.ErrorReportSeverityEscalatedEvent;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
-import java.util.Optional;
 
 /**
  * F10.5/F10.6 Phase 10-β 後続-⑥ — バックエンド由来例外を error_reports に非同期で記録する実行 Bean。
@@ -47,19 +44,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ErrorReportAsyncExecutor {
 
-    private final ErrorReportRepository errorReportRepository;
-    /**
-     * Issue #2990 L11 — 通知は業務TX内で発火せず、ID だけを載せた業務イベントを publish する。
-     * 実配送は {@link ErrorReportNotificationListener} が {@code AFTER_COMMIT} で行う。
-     */
-    private final ApplicationEventPublisher eventPublisher;
-    /**
-     * F10.6 §5.6-③ — 集約バッファ。
-     * バックエンド由来エラーの 2 通目以降は Slack 即時通知を抑制し、
-     * 5 分毎の集約サマリ（{@link com.mannschaft.app.errorreport.batch.ErrorAggregationFlushBatch}）
-     * に流す。
-     */
-    private final ErrorReportAggregator aggregator;
+    private final ErrorReportIngestService ingestService;
 
     /**
      * F10.5 Phase 10-β / F10.6 Phase 10-β-1 — バックエンド由来の例外を error_reports に非同期で記録する。
@@ -76,14 +61,8 @@ public class ErrorReportAsyncExecutor {
      * @param requestId  MDC requestId（NULL 可、@Async 伝播されない場合のフォールバック）
      * @param severity   重要度
      */
-    // @Async("event-pool") により AOP プロキシ経由で呼ばれるため @Transactional が有効に機能する。
-    // 内部の doRecordBackendException() は self-invocation（同一インスタンス呼び出し）なので
-    // AOP プロキシを経由せず @Transactional が無視される。
-    // 本メソッドにトランザクションを開始することで doRecordBackendException() が
-    // 既存トランザクションに参加し、@Modifying な incrementOccurrence() が
-    // TransactionRequiredException を発生させずに実行される。
     @Async("event-pool")
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void recordBackendException(Throwable ex,
                                         String pageUrl,
                                         String userAgent,
@@ -107,7 +86,7 @@ public class ErrorReportAsyncExecutor {
      *
      * @return 作成または更新されたエラーレポートエンティティ
      */
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public ErrorReportEntity doRecordBackendException(Throwable ex,
                                                        String pageUrl,
                                                        String userAgent,
@@ -158,40 +137,6 @@ public class ErrorReportAsyncExecutor {
 
         LocalDateTime now = LocalDateTime.now();
 
-        Optional<ErrorReportEntity> existing = errorReportRepository.findByErrorHash(errorHash);
-        if (existing.isPresent()) {
-            ErrorReportEntity report = existing.get();
-
-            if (report.getStatus() == ErrorReportStatus.RESOLVED) {
-                report.reopen(now);
-                report.setWorkflowStage(null);
-                report.setAssigneeId(null);
-                eventPublisher.publishEvent(new ErrorReportRegressionDetectedEvent(report.getId()));
-                log.info("バックエンド例外リグレッション検知: id={}, hash={}, ex={}",
-                        report.getId(), errorHash, exClassName);
-                return report;
-            }
-
-            if (report.getStatus() != ErrorReportStatus.IGNORED) {
-                ErrorReportSeverity oldSeverity = report.getSeverity();
-                errorReportRepository.incrementOccurrence(errorHash, now, null);
-                ErrorReportEntity updated = errorReportRepository.findByErrorHash(errorHash).orElseThrow();
-                ErrorReportSeverity newSeverity = updated.getSeverity();
-                if (newSeverity.ordinal() > oldSeverity.ordinal()) {
-                    eventPublisher.publishEvent(new ErrorReportSeverityEscalatedEvent(
-                            updated.getId(), oldSeverity, newSeverity));
-                }
-                // F10.6 §5.6-③ — 重複発火を集約バッファに蓄積（severity 昇格通知とは独立）。
-                // 既存レポートの 2 回目以降の発火なので必ず BUFFERED 扱いになる想定。
-                aggregator.addOccurrence(errorHash,
-                        updated.getErrorMessage(), updated.getSeverity());
-                log.info("バックエンド例外重複集約: id={}, hash={}, count={}, ex={}",
-                        updated.getId(), errorHash, updated.getOccurrenceCount(), exClassName);
-                return updated;
-            }
-        }
-
-        // 新規作成
         ErrorReportEntity newReport = ErrorReportEntity.builder()
                 .errorMessage(errorMessage)
                 .stackTrace(stackTrace)
@@ -210,27 +155,7 @@ public class ErrorReportAsyncExecutor {
                 .firstOccurredAt(now)
                 .lastOccurredAt(now)
                 .build();
-        ErrorReportEntity saved = errorReportRepository.save(newReport);
-
-        // F10.6 §5.6-③ — 新規発火を集約バッファに記録。
-        // FIRST_OCCURRENCE が返るのが期待値（同一プロセス内で初回発火）。
-        // 2 通目以降のフロー（既存レコード or バッファ entry あり）は上の重複集約ブロックで処理済み。
-        ErrorReportAggregator.AggregationResult aggResult = aggregator.addOccurrence(
-                errorHash, saved.getErrorMessage(), severity);
-
-        // HIGH 以上は Slack + SYSTEM_ADMIN 通知（フロント由来と同じ閾値）。
-        // 集約バッファが BUFFERED を返した場合（極稀: 同じ error_hash の新規 ErrorReport 行が
-        // 前の expire 内に再生成されたケース）は Slack 即時通知を抑制し、5 分毎の集約サマリ送りにする。
-        // SYSTEM_ADMIN プッシュ通知は既存仕様通り送る（重要インシデントの埋没防止）。
-        if (severity.ordinal() >= ErrorReportSeverity.HIGH.ordinal()) {
-            eventPublisher.publishEvent(new ErrorReportRaisedEvent(
-                    saved.getId(),
-                    aggResult == ErrorReportAggregator.AggregationResult.FIRST_OCCURRENCE));
-        }
-
-        log.info("バックエンド例外記録: id={}, hash={}, severity={}, aggResult={}, ex={}",
-                saved.getId(), errorHash, severity, aggResult, exClassName);
-        return saved;
+        return ingestService.ingest(newReport, ErrorReportIngestTx.Source.BACKEND);
     }
 
     /**
