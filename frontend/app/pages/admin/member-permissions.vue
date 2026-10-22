@@ -142,26 +142,25 @@ onMounted(load)
 
 <template>
   <div class="mx-auto max-w-3xl">
-    <div class="mb-6 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-      <PageHeader :title="t('memberPermissions.title')">
-        <p class="text-sm text-surface-500">{{ t('memberPermissions.description') }}</p>
-      </PageHeader>
-      <Button
-        :label="t('button.save')"
-        icon="pi pi-check"
-        class="min-h-11 shrink-0"
-        :loading="saving"
-        :disabled="
-          !hasValidScope ||
-          !matchesLoadedScope ||
-          loadFailed ||
-          accessDenied ||
-          loading ||
-          permissions.length === 0
-        "
-        @click="save"
-      />
-    </div>
+    <PageHeader class="md:-mt-2" :title="t('memberPermissions.title')" :subtitle="t('memberPermissions.description')">
+      <template #actions>
+        <Button
+          :label="t('button.save')"
+          icon="pi pi-check"
+          class="min-h-11 shrink-0"
+          :loading="saving"
+          :disabled="
+            !hasValidScope ||
+            !matchesLoadedScope ||
+            loadFailed ||
+            accessDenied ||
+            loading ||
+            permissions.length === 0
+          "
+          @click="save"
+        />
+      </template>
+    </PageHeader>
 
     <DashboardErrorState
       v-if="!hasValidScope"
