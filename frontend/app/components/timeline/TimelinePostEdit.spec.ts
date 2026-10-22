@@ -21,7 +21,7 @@ mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key, te: () => true
 mockNuxtImport('useNotification', () => () => ({ showError: errorMock, showSuccess: vi.fn() }))
 mockNuxtImport('useUndoToast', () => () => ({ showUndoToast: vi.fn() }))
 mockNuxtImport('useErrorHandler', () => () => ({ handleApiError: errorMock }))
-mockNuxtImport('useRoleAccess', () => roleAccessMock)
+mockNuxtImport('useRoleAccess', () => (scopeType: 'team' | 'organization', scopeId: string) => roleAccessMock(scopeType, scopeId))
 
 const stubs = {
   Button: {
