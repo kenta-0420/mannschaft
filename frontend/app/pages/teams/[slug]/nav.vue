@@ -2,8 +2,8 @@
 /**
  * チーム詳細「フレンドチーム」タブ（永続シェル配下の子ルート・所属者のみ）。
  * ヘッダ・タブは親 `pages/teams/[slug].vue`（ScopePageShell）が常駐描画する。
- * 本文上部のツールバーに「使い方」（所属者全員）と「フォロー」（ADMIN、または
- * MANAGE_FRIEND_TEAMS を持つ DEPUTY_ADMIN）を置く。
+ * 本文上部のツールバーに「使い方」（所属者全員）と「フォロー」（
+ * MANAGE_FRIEND_TEAMS の実効権限を持つ利用者）を置く。
  * 管理者にはフォルダ/フィード/転送履歴へのショートカットを表示する。
  * 直リンク防御: ロール解決済みで未所属（roleName null。読込中・取得失敗は別扱い）と GUEST（user_roles のみで在籍なし。BE の resolveEffectiveRole は
  * GUEST を非 null で返すため単純な falsy ガードを素通りする）には権限なし案内を出す。
@@ -12,7 +12,6 @@
  * SUPPORTER にはバックエンドが is_public=TRUE のみ返すため、その旨の注意バナーを出す。
  */
 import { useTeamShellContext } from '~/composables/useTeamShellContext'
-import type { FollowTeamResponse } from '~/types/friends'
 
 definePageMeta({
   middleware: 'auth',
@@ -22,17 +21,19 @@ definePageMeta({
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))
 
-const { isAdmin, isAdminOrDeputy, roleName, roleResolved, roleLoadFailed, refresh } = useTeamShellContext()
+const { isAdmin, roleName, roleResolved, roleLoadFailed, refresh } = useTeamShellContext()
 // シェルコンテキストは個別権限（MANAGE_FRIEND_TEAMS）を持たないため、判定のみ useRoleAccess で補う
 const { can, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const dialogOpen = ref(false)
 const showGuide = ref(false)
 const listRef = ref<{ refresh: () => Promise<void> } | null>(null)
+const pendingListRef = ref<{ refresh: () => Promise<void> } | null>(null)
+const initialFollowSlug = ref('')
 
-// 「フォロー」ボタン表示権限: ADMIN または MANAGE_FRIEND_TEAMS 保持の DEPUTY_ADMIN
+// フォロー・フォロー中一覧はBEと同じ実効権限だけで表示する。
 const canManageFriends = computed(
-  () => isAdmin.value || (isAdminOrDeputy.value && can('MANAGE_FRIEND_TEAMS')),
+  () => can('MANAGE_FRIEND_TEAMS'),
 )
 // 本文を見せてよいのは在籍ロール（GUEST は在籍なしのため除外）
 const canViewTab = computed(() => !!roleName.value && roleName.value !== 'GUEST')
@@ -45,9 +46,14 @@ const isForbiddenView = computed(
 const isRoleLoadError = computed(() => roleResolved.value && roleLoadFailed.value && !roleName.value)
 const isSupporterView = computed(() => roleName.value === 'SUPPORTER')
 
-async function onFollowSuccess(_response: FollowTeamResponse) {
+async function refreshLists() {
   // 片方向フォローでも一覧を再取得して状態を揃える。
-  await listRef.value?.refresh()
+  await Promise.all([listRef.value?.refresh(), pendingListRef.value?.refresh()])
+}
+
+function openFollow(slug = '') {
+  initialFollowSlug.value = slug
+  dialogOpen.value = true
 }
 
 onMounted(() => {
@@ -74,7 +80,7 @@ onMounted(() => {
           :label="$t('friends.actions.follow')"
           icon="pi pi-user-plus"
           class="shrink-0 whitespace-nowrap"
-          @click="dialogOpen = true"
+          @click="openFollow()"
         />
       </div>
 
@@ -103,17 +109,28 @@ onMounted(() => {
           <Button data-testid="friend-shortcut-forward-exports" :label="$t('forward_exports.title')" icon="pi pi-history" class="w-full !h-auto !whitespace-normal py-2" outlined />
         </NuxtLink>
       </div>
+      <TeamFriendPendingFollowList
+        v-if="canManageFriends"
+        ref="pendingListRef"
+        :team-id="teamSlug"
+        class="mb-6"
+        @refresh="listRef?.refresh()"
+        @refollow="openFollow"
+      />
       <TeamFriendList
         ref="listRef"
         :team-id="teamSlug"
         :can-edit="canManageFriends"
         :can-toggle-visibility="isAdmin"
+        @refresh="pendingListRef?.refresh()"
       />
 
       <FriendFollowDialog
         v-model="dialogOpen"
         :team-id="teamSlug"
-        @success="onFollowSuccess"
+        :initial-slug="initialFollowSlug"
+        @success="refreshLists"
+        @already-following="refreshLists"
       />
       <FriendTeamGuideModal v-model:visible="showGuide" />
     </template>

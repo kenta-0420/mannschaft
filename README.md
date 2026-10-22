@@ -8,6 +8,8 @@
 
 [本人の恐竜アバター Phase 1](docs/features/F04.7_dinosaur_ranch/05_acceptance_rollout.md) は製造中で、73受け入れ条件・実機・アリシゼーションの全体合格は未完了です。全64素材と対応表は未承認・未登録で、本番公開 gate は OFF を維持します。明示した非本番の隔離 fixture は実装検証専用で、素材完成や本番公開準備の証拠には数えません。
 
+隔離開発環境では、明示的な opt-in により開発専用 catalog v3 の16基礎種を牧場とダッシュボードのウィジェットで表示します。孵化後の3成長段階とドット／通常2Dの各表示に、待機・歩行・食事・喜びと同じ個体の静止 fallback を接続します。480 PNG は `frontend/dev-fixtures/ranch/base16-v3/` に置き、開発時だけ配信します。既存 catalog v2 の個体・選定済み卵・保存 ACK を保持し、正式64タイプの割当、4外見、512件公開素材ゲートの承認状態は変更しません。検証範囲と公開境界は [受入・展開計画](docs/features/F04.7_dinosaur_ranch/05_acceptance_rollout.md) を参照してください。
+
 恐竜の部屋の「遊び方」は、ページを移動せず共通ダイアログで確認できます。準備中の素材・対応表や停止中のお世話も区別して案内します。
 
 本人の64タイプ診断結果は、保存した六軸の極ラベルから本人の傾向を表示し、同点時は本人の選択を示します。旧結果は元の本人セッションに保存した定義から表示だけを補足し、保存説明を変更しません。初期草案の質問・翻訳は未承認と明示し、恐竜対応付けと公開 gate は引き続き閉じています。
@@ -936,7 +938,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 | Phase | 機能領域 | 詳細設計 |
 |-------|---------|---------|
-| 1 | 認証・権限・ユーザー基盤、プラットフォーム設定、チーム・組織・グループ階層、テンプレート・モジュール、プラン・サブスクリプション、チーム間相互フォロー・フレンドチーム | [F01.1](docs/features/F01.1_auth.md), [F01.2](docs/features/F01.2_org_team_member_role.md), [F01.2.1](docs/features/F01.2.1_org_team_groups.md), [F01.3](docs/features/F01.3_template_module.md), [F01.4](docs/features/F01.4_family_team.md), [F01.5](docs/features/F01.5_team_friend_relationships.md) |
+| 1 | 認証・権限・ユーザー基盤、プラットフォーム設定、チーム・組織・グループ階層、テンプレート・モジュール、プラン・サブスクリプション、チーム間相互フォロー・フレンドチーム（フォロー中一覧・取消/再フォロー） | [F01.1](docs/features/F01.1_auth.md), [F01.2](docs/features/F01.2_org_team_member_role.md), [F01.2.1](docs/features/F01.2.1_org_team_groups.md), [F01.3](docs/features/F01.3_template_module.md), [F01.4](docs/features/F01.4_family_team.md), [F01.5](docs/features/F01.5_team_friend_relationships.md) |
 | 2 | QR会員証（管理一覧・履歴・拠点管理の6言語対応・使い方ガイド）、ダッシュボード、帰省・滞在予定、TODO・プロジェクト、アクセス解析、外観設定、オンボーディング | [F02.1](docs/features/F02.1_qr_membership.md), [F02.2](docs/features/F02.2_dashboard.md), [F02.11](docs/features/F02.11_return_stay_plan.md), [F02.3](docs/features/F02.3_todo_project.md), [F02.4](docs/features/F02.4_onboarding.md) |
 | 3 | スケジュール・出欠、個人スケジュール、Googleカレンダー連携、予約管理、シフト管理、緊急安否確認、順番待ち、イベント管理 | [F03.1](docs/features/F03.1_schedule_shared.md), [F03.2](docs/features/F03.2_schedule_personal.md), [F03.3](docs/features/F03.3_google_calendar.md), [F03.4](docs/features/F03.4_reservation.md)（v2枝番: [F03.4.1 メニュー](docs/features/F03.4.1_reservation_menu.md), [F03.4.2 枠テンプレート](docs/features/F03.4.2_reservation_slot_template.md), [F03.4.3 予約グループ](docs/features/F03.4.3_reservation_group_booking.md), [F03.4.4 マトリックスUI](docs/features/F03.4.4_reservation_matrix_ui.md)）, [F03.5](docs/features/F03.5_shift.md), [F03.6](docs/features/F03.6_safety_check.md), [F03.7](docs/features/F03.7_queue.md), [F03.8](docs/features/F03.8_event_management.md) |
 | 4 | タイムライン、チャット（自分の連絡先QR管理への入口）、プッシュ通知、ソーシャルプロフィール・フォロー、通報・モデレーション、グローバル検索、ゲーミフィケーション | [F04.1](docs/features/F04.1_timeline.md), [F04.2](docs/features/F04.2_chat.md), [F04.3](docs/features/F04.3_push_notification.md), [F04.4](docs/features/F04.4_social_profiles.md), [F04.5](docs/features/F04.5_moderation.md), [F04.6](docs/features/F04.6_search.md), [F04.7](docs/features/F04.7_gamification.md), [F04.8](docs/features/F04.8_contact.md) |
@@ -1218,6 +1220,8 @@ Phase 9 以降で実装される機能（**広告表示 #27・コルクボード
 ---
 
 ## Git運用ルール
+
+境界返済戦役を複数セッションで進める場合は、[複数大名の領地調整手順](docs/development/boundary-coordination.md)を参照する。最新mainの同じ指令から各大名が自領を排他取得し、既存担当・依存条件・共有資産の予約と引継ぎを保持する。
 
 ### ブランチ戦略（GitHub Flow 準拠）
 - **メインブランチ (`main`)**:

@@ -125,9 +125,9 @@ async function settleSearch(ms = 300) {
   await nextTick()
 }
 
-async function mountDialog() {
+async function mountDialog(initialSlug?: string) {
   const wrapper = await mountSuspended(FriendFollowDialog, {
-    props: { teamId: OWN_SLUG, modelValue: true },
+    props: { teamId: OWN_SLUG, modelValue: true, initialSlug },
     attachTo: document.body,
     global: { stubs: { Dialog: DialogStub } },
   })
@@ -331,4 +331,23 @@ describe('FriendFollowDialog（CMP-261012-0315）', () => {
     expect(q('[data-testid="friend-follow-search-error"]')).toBeNull()
     expect(qa('[data-testid="friend-follow-candidate"]')).toHaveLength(1)
   })
+  it('AC17: 再フォロー初期slugを表示し画面操作だけで同じ相手を送信できる', async () => {
+    wrapper = await mountDialog('rival-fc')
+    expect(inputOf('friend-follow-slug-input').value).toBe('rival-fc')
+    expect(submitButton().disabled).toBe(false)
+    click(submitButton())
+    await flushPromises()
+    expect(followCalls()[0]![1]!.body!.targetTeamSlug).toBe('rival-fc')
+    expect(wrapper.emitted('success')).toHaveLength(1)
+  })
+
+  it('AC18: 409 SOCIAL_102を親へ伝播して閉じる', async () => {
+    followHandler = async () => { throw { statusCode: 409, data: { error: { code: 'SOCIAL_102' } } } }
+    wrapper = await mountDialog('rival-fc')
+    click(submitButton())
+    await flushPromises()
+    expect(wrapper.emitted('alreadyFollowing')).toHaveLength(1)
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([false])
+  })
+
 })

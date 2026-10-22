@@ -1,0 +1,22 @@
+{
+  "reviewer": "Root Sol/high",
+  "operation": "read-only existing authorized LAND context, no login/API mutation",
+  "evidence": {
+    "path": "/my/ranch",
+    "classes": "p-dark dark",
+    "cssBg": "#f3efe0",
+    "store": {
+      "theme": "DARK",
+      "bgColor": "#f3efe0",
+      "darkBgColor": "#18181b"
+    },
+    "storage": {
+      "theme": "DARK",
+      "bgColor": "#f3efe0",
+      "darkBgColor": "#18181b"
+    },
+    "cookieRemovedForPublication": true
+  },
+  "expectedContract": "DARK uses stored darkBgColor per F11.4 applyBgColor contract",
+  "state": "CONFIRMED_RENDERED_BACKGROUND_MISMATCH"
+}
