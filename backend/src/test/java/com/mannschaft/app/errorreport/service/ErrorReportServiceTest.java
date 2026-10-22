@@ -45,6 +45,8 @@ class ErrorReportServiceTest {
 
     @Mock
     private ErrorReportRepository errorReportRepository;
+    @org.mockito.Spy
+    private ErrorReportIngestHook ingestHook = new ErrorReportIngestHook();
     /**
      * Issue #2990 L11 — 業務TX内で発火するのは通知ではなく業務イベントである。
      *
@@ -58,11 +60,8 @@ class ErrorReportServiceTest {
     @Mock
     private StringRedisTemplate redisTemplate;
     @Mock
-    private ErrorReportAiAnalysisDispatcher aiAnalysisDispatcher;
-    @Mock
     private ErrorReportAsyncExecutor asyncExecutor;
 
-    @InjectMocks
     private ErrorReportService service;
 
     // ========================================
@@ -134,7 +133,7 @@ class ErrorReportServiceTest {
         @Test
         @DisplayName("新規 HIGH: ErrorReportRaisedEvent(slackEnabled=true) を publish する")
         void newHighSeverity_publishesRaisedEvent() {
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+            given(errorReportRepository.findFirstActiveForUpdate(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.empty());
             given(errorReportRepository.save(any(ErrorReportEntity.class)))
                     .willAnswer(inv -> ((ErrorReportEntity) inv.getArgument(0)).toBuilder().id(42L).build());
@@ -156,7 +155,7 @@ class ErrorReportServiceTest {
         @Test
         @DisplayName("新規 MEDIUM: 通知イベントは publish されない（閾値未満）")
         void newMediumSeverity_publishesNothing() {
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+            given(errorReportRepository.findFirstActiveForUpdate(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.empty());
             given(errorReportRepository.save(any(ErrorReportEntity.class)))
                     .willAnswer(inv -> ((ErrorReportEntity) inv.getArgument(0)).toBuilder().id(7L).build());
@@ -175,7 +174,7 @@ class ErrorReportServiceTest {
         void regression_publishesRegressionEvent() {
             ErrorReportEntity existing = report(11L, ErrorReportStatus.RESOLVED,
                     ErrorReportSeverity.MEDIUM, null);
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+            given(errorReportRepository.findFirstActiveForUpdate(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.of(existing));
             lenient().when(redisTemplate.delete(org.mockito.ArgumentMatchers.anyString()))
                     .thenReturn(true);
@@ -198,7 +197,7 @@ class ErrorReportServiceTest {
             // NEW の既存行（MEDIUM）へ同一ハッシュが再着弾し、影響ユーザー数 20 で HIGH へ昇格する経路。
             ErrorReportEntity existing = report(12L, ErrorReportStatus.NEW,
                     ErrorReportSeverity.MEDIUM, 501L);
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+            given(errorReportRepository.findFirstActiveForUpdate(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.of(existing));
 
             @SuppressWarnings("unchecked")
@@ -226,7 +225,7 @@ class ErrorReportServiceTest {
         void aggregation_withoutEscalation_publishesNothing() {
             ErrorReportEntity existing = report(13L, ErrorReportStatus.NEW,
                     ErrorReportSeverity.MEDIUM, 502L);
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+            given(errorReportRepository.findFirstActiveForUpdate(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.of(existing));
 
             @SuppressWarnings("unchecked")
@@ -308,4 +307,23 @@ class ErrorReportServiceTest {
                 .lastOccurredAt(now)
                 .build();
     }
+    @org.junit.jupiter.api.BeforeEach
+    void connectR1Boundaries() {
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        var retry = new ErrorReportWriteRetry(new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
+        var ingest = new ErrorReportIngestService(new ErrorReportIngestTx(errorReportRepository, ingestHook,
+                eventPublisher, new ErrorReportAggregator(100), redisTemplate), retry, redisTemplate);
+        var management = new ErrorReportManagementService(new ErrorReportManagementTx(errorReportRepository, ingestHook), retry);
+        service = new ErrorReportService(errorReportRepository, ingest, management, eventPublisher, asyncExecutor);
+        org.mockito.Mockito.lenient().when(errorReportRepository.findErrorHashById(org.mockito.ArgumentMatchers.anyLong()))
+                .thenAnswer(call -> errorReportRepository.findById(call.getArgument(0)).map(ErrorReportEntity::getErrorHash));
+        org.mockito.Mockito.lenient().when(errorReportRepository.findByIdForUpdate(org.mockito.ArgumentMatchers.anyLong()))
+                .thenAnswer(call -> errorReportRepository.findById(call.getArgument(0)));
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void clearR1Synchronization() {
+        org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+    }
+
 }
