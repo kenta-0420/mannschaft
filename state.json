@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "e3e84b73-4b76-4496-83af-096aaeec6334",
+  "operation": "edbcdadb-ee3b-4dc2-a833-5224953af37c",
   "territories": {
     "foundation": {
       "owner": null,
@@ -10,7 +10,7 @@
     },
     "common-core": {
       "owner": "4a8a4e25-4100-45df-a5f9-55e32a3b5a98",
-      "note": ""
+      "note": "CMP-261022-0914 / PR4049 / 同一既存担当からの移管確定。実装足軽完了、CI失敗解析を再開。共有store/上限はL1-F待ちで未編集。"
     },
     "repayment-a": {
       "owner": null,
@@ -88,9 +88,9 @@
       "held": []
     },
     "L1-A": {
-      "state": "paused",
+      "state": "working",
       "evidence": "https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6336894819 同一既存担当の明示解放と自己移管、足軽停止・共有編集0、引継-boundary-l1-a-20261022-0924.md",
-      "note": "",
+      "note": "CMP-261022-0914 / PR4049 / 同一既存担当からの移管確定。実装足軽完了、CI失敗解析を再開。共有store/上限はL1-F待ちで未編集。",
       "history": [],
       "hold": null,
       "held": []
