@@ -2,11 +2,11 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "995ab2f8-4cbf-49e6-8603-19f33d4c0c6b",
+  "operation": "eda7b284-2f85-4c68-b495-5589424412ad",
   "territories": {
     "foundation": {
       "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
-      "note": ""
+      "note": "REQ-L0M-261022-1756 未解決: L0-Mのみ再開調整。旧existing:L0-M holdとmeasurement予約は未移管、既存L1-F保持も変更なし。旧担当停止/引継のユーザー確認と、18:30〜翌01:00JSTのPC利用可能時間を回答待ち。親Issue6336824439/6336974742へ仮予約・heavy終了と窓内新規投入停止を依頼済。今回窓の各担当宣言は未受領。fresh実プロセス/容量/IO/gate再確認前はwarmup禁止。owner9402167b-f025-4bd7-82f1-ef460aeca244、引継1048版と既存snapshot/旧測定原本を保全。"
     },
     "common-core": {
       "owner": "4a8a4e25-4100-45df-a5f9-55e32a3b5a98",
