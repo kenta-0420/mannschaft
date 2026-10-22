@@ -6,6 +6,12 @@
  * （バックエンド側 {@code @JsonProperty(camelCase)} および Jackson デフォルト設定と整合）。
  */
 
+import type { components } from '~/types/generated'
+
+/** 新規APIはOpenAPI生成型を正本にする。 */
+export type PendingTeamFollowView = components['schemas']['PendingTeamFollowView']
+export type PendingTeamFollowListResponse = components['schemas']['PendingTeamFollowListResponse']
+
 /** 過去転送投稿の扱い（フォロー解除時） */
 export type PastForwardHandling = 'KEEP' | 'SOFT_DELETE' | 'ARCHIVE'
 
