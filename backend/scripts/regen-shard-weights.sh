@@ -98,7 +98,7 @@ RUN_META="$(gh run view "${RUN_ID}" -R "${REPO}" --json headBranch,createdAt,con
 HEAD_BRANCH="$(echo "${RUN_META}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["headBranch"])')"
 CREATED_AT="$(echo "${RUN_META}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["createdAt"])')"
 CONCLUSION="$(echo "${RUN_META}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["conclusion"])')"
-PR_NUMBER="$(echo "${RUN_META}" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("number",""))')"
+RUN_NUMBER="$(echo "${RUN_META}" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("number",""))')"
 
 if [ "${CONCLUSION}" != "success" ]; then
   echo "[WARN] 選択した run の conclusion は '${CONCLUSION}' であり success ではない。" >&2
@@ -117,15 +117,21 @@ for n in 0 1 2 3 4 5; do
 done
 
 echo "[INFO] JUnit XML を集計して重み表を生成する"
-python3 - "${WORK_DIR}" "${OUT_FILE}" "${RUN_ID}" "${PR_NUMBER}" "${HEAD_BRANCH}" "${CONCLUSION}" "${CREATED_AT}" "${WORKFLOW}" <<'PYEOF'
+python3 - "${WORK_DIR}" "${OUT_FILE}" "${RUN_ID}" "${RUN_NUMBER}" "${HEAD_BRANCH}" "${CONCLUSION}" "${CREATED_AT}" "${WORKFLOW}" <<'PYEOF'
 import sys, os, glob, xml.etree.ElementTree as ET, collections
 
-work_dir, out_file, run_id, pr_number, head_branch, conclusion, created_at, workflow = sys.argv[1:9]
+work_dir, out_file, run_id, run_number, head_branch, conclusion, created_at, workflow = sys.argv[1:9]
 
 weights = collections.defaultdict(float)
 count = 0
-# 旧 artifact の flat XML と、task ごとのディレクトリを保持する新 artifact の両方を拾う。
+# 旧 artifact の flat XML と通常 test タスクの XML だけを集計する。
+# 専用タスクは各 runner でも実行されるが、通常 test の shard 配分対象ではない。
 for f in glob.glob(os.path.join(work_dir, "s*", "**", "TEST-*.xml"), recursive=True):
+    parts = os.path.relpath(f, work_dir).split(os.sep)
+    if len(parts) == 3 and parts[1] in {"archTest", "archUnitTest", "archUnitFreezeStoreIntegrityTest"}:
+        continue
+    if not (len(parts) == 2 or (len(parts) == 3 and parts[1] == "test")):
+        raise ValueError(f"未知の JUnit XML 配置: {f}")
     base_name = os.path.basename(f)
     fqcn = base_name[len("TEST-"):-len(".xml")]
     top = fqcn.split("$")[0]
@@ -154,8 +160,9 @@ header = f"""# =================================================================
 # CI テストシャード 重み付け振り分け用データ（実行時間ベース）
 # =============================================================================
 # 生成元: GitHub Actions run #{run_id}（{workflow}, {head_branch}
-#   PR #{pr_number}, conclusion={conclusion}, {created_at}）
-#   の 6 shard すべての JUnit XML artifact をダウンロードし、testsuite の time
+#   実行番号 #{run_number}, conclusion={conclusion}, {created_at}）
+#   の 6 shard すべての JUnit XML artifact の通常 test（旧 flat XML を含む）から、
+#   専用 ArchUnit タスクを除外して testsuite の time
 #   属性をトップレベルクラス単位で合算した。ネストクラス（"Foo$Bar"）は
 #   "$" より前のトップレベル名に集約する（backend/build.gradle.kts の既存
 #   シャードフィルタと同じ単位）。
