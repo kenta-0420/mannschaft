@@ -269,7 +269,7 @@ public class ShiftSwapService {
     /**
      * swapId から scope を解決する（承諾・承認/却下用）。不在なら {@code SWAP_REQUEST_NOT_FOUND}、
      * 親（枠・スケジュール）が不在なら {@code SHIFT_SLOT_NOT_FOUND} / {@code SHIFT_SCHEDULE_NOT_FOUND}
-     * （是正前の応答と同一。tx 内の読み直しも同じメソッドで同じコードになる）。
+     * （是正前の応答と同一。tx内の読み直しでも同じ不在コードを適用する）。
      *
      * @param swapId 交代リクエスト ID
      * @return scope
