@@ -5,6 +5,11 @@
     </p>
 
     <SectionCard>
+      <h2 class="mb-2 text-lg font-semibold">{{ $t('friends.guide.pending.title') }}</h2>
+      <p class="text-sm leading-relaxed text-surface-600 dark:text-surface-300">{{ $t('friends.guide.pending.body') }}</p>
+    </SectionCard>
+
+    <SectionCard>
       <div class="flex items-start gap-4">
         <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
           <i class="pi pi-users text-xl" aria-hidden="true" />

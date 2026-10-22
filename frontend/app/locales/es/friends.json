@@ -26,18 +26,20 @@
       "toggle_visibility": "Cambiar visibilidad"
     },
     "messages": {
-      "follow_success": "Seguido",
+      "follow_success": "Sigues al equipo. Seréis amigos cuando te siga también.",
       "follow_mutual_success": "Seguimiento mutuo establecido — ahora son equipos amigos",
       "follow_retry": "Procesando seguimiento. Por favor intente nuevamente en {seconds} segundos",
       "unfollow_success": "Dejado de seguir",
       "unfollow_confirm": "¿Dejar de seguir a este equipo?",
-      "visibility_changed": "Visibilidad cambiada"
+      "visibility_changed": "Visibilidad cambiada",
+      "already_following": "Ya sigues a este equipo. Se actualizaron las listas."
     },
     "errors": {
       "self_follow": "No puedes seguir tu propio equipo",
       "already_following": "Ya estás siguiendo",
       "target_not_found": "No se encontró el equipo objetivo",
-      "permission_denied": "Sin permiso"
+      "permission_denied": "Sin permiso",
+      "target_unavailable": "No se encontró el equipo o no se puede seguir en este momento."
     },
     "guide": {
       "title": "Cómo usar Equipos amigos",
@@ -58,7 +60,7 @@
         "caution_self": "No puedes seguir a tu propio equipo",
         "caution_already": "No puedes seguir a un equipo al que ya sigues",
         "caution_busy": "Si hay mucha carga, se reintenta automáticamente hasta 3 veces. Si aun así falla, espera un momento e inténtalo de nuevo",
-        "caution_role": "El botón «Seguir» solo se muestra a administradores y subadministradores con permiso"
+        "caution_role": "Se necesita el permiso para administrar equipos amigos."
       },
       "visibility": {
         "title": "Cambiar entre público y privado",
@@ -75,7 +77,7 @@
         "step3": "Acepta en el cuadro de confirmación",
         "caution_title": "Aviso",
         "caution_kept": "Aunque dejes de seguir, las publicaciones reenviadas anteriormente se conservan",
-        "caution_role": "Solo pueden dejar de seguir los administradores y subadministradores con permiso"
+        "caution_role": "Se necesita el permiso para administrar equipos amigos."
       },
       "related": {
         "title": "Pantallas relacionadas",
@@ -83,7 +85,22 @@
         "item_folders": "Carpetas de amigos: organiza los equipos amigos en carpetas (hasta 20)",
         "item_feed": "Feed de administración: revisa las publicaciones de los equipos amigos y reenvíalas a tu equipo",
         "item_exports": "Historial de reenvío inverso: comprueba a qué amigos se reenviaron las publicaciones de tu equipo"
+      },
+      "pending": {
+        "title": "Equipos seguidos",
+        "body": "Consulta y cancela los seguimientos pendientes de amistad. Los nombres públicos enlazan a sus páginas. Tras cancelar, elige «Seguir de nuevo» para seleccionar el mismo equipo."
       }
+    },
+    "pending": {
+      "title": "Equipos seguidos",
+      "empty": "No sigues a ningún equipo",
+      "hidden_team": "Equipo no disponible para mostrar",
+      "cancel": "Dejar de seguir",
+      "cancel_confirm": "¿Dejar de seguir? Si el otro equipo te ha seguido desde que se cargó esta lista, también se eliminará la amistad.",
+      "cancel_success": "Seguimiento cancelado",
+      "refollow": "Seguir de nuevo",
+      "recovery_public": "La amistad no se ha completado. Cancela y vuelve a seguir al equipo para establecerla.",
+      "recovery_hidden": "Puedes cancelar, pero quizá no puedas volver a seguir al equipo según su estado."
     }
   },
   "folders": {
