@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "f19025d5-3ae9-4f7b-899b-aa15c98706b5",
+  "operation": "e3fe88ae-39e0-45e2-94f1-13ac4a65dbf0",
   "territories": {
     "foundation": {
       "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
@@ -1150,10 +1150,12 @@
       "held": []
     },
     "L5-PRE-D": {
-      "state": "working",
-      "evidence": "",
+      "state": "done",
+      "evidence": "PRE-D証拠準備のみ: PR4059 main b9c62f5a6e87240581cc2b293938c43d959d0830、head2d3eff5af32454a51a9731befdbfca7433cc622f全11success/6予定skip、Backend39801748413 success、main39803258363 success。docs/evidence/CMP-261022-2338-l5-pre-d.md。5store13104残存、L5本体未着手。",
       "note": "CMP-261022-2338登録先行中。負債/橋渡しを読取調査。Sol medium担当。\n登録PR4057 main7f25e9f2着地。既存L0-C軽量実行の固定観測と将来照合手順を専用証拠文書へ記録するだけ。",
-      "history": [],
+      "history": [
+        "PRE-D証拠準備のみ: PR4059 main b9c62f5a6e87240581cc2b293938c43d959d0830、head2d3eff5af32454a51a9731befdbfca7433cc622f全11success/6予定skip、Backend39801748413 success、main39803258363 success。docs/evidence/CMP-261022-2338-l5-pre-d.md。5store13104残存、L5本体未着手。"
+      ],
       "hold": null,
       "held": []
     },
