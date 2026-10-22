@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "e3fe88ae-39e0-45e2-94f1-13ac4a65dbf0",
+  "operation": "a155f6a2-2254-4fb5-a272-b290e5f72673",
   "territories": {
     "foundation": {
       "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
@@ -1160,10 +1160,12 @@
       "held": []
     },
     "L5-PRE-V": {
-      "state": "working",
-      "evidence": "",
+      "state": "done",
+      "evidence": "PRE-V証拠準備のみ: PR4059 main b9c62f5a6e87240581cc2b293938c43d959d0830、head2d3eff5af32454a51a9731befdbfca7433cc622f全11success/6予定skip、Backend39801748413 success、main39803258363 success。docs/evidence/CMP-261022-2338-l5-pre-v.md。全verify/全jar実検証未実施、L5本体未着手。",
       "note": "CMP-261022-2338登録先行中。verify/Gradle/残す番人を読取調査。Sol medium担当。\n登録PR4057 main着地。番人の残す/廃止対応と全verify/全jar/CIの将来証拠案を専用文書へ記録。",
-      "history": [],
+      "history": [
+        "PRE-V証拠準備のみ: PR4059 main b9c62f5a6e87240581cc2b293938c43d959d0830、head2d3eff5af32454a51a9731befdbfca7433cc622f全11success/6予定skip、Backend39801748413 success、main39803258363 success。docs/evidence/CMP-261022-2338-l5-pre-v.md。全verify/全jar実検証未実施、L5本体未着手。"
+      ],
       "hold": null,
       "held": []
     },
