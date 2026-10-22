@@ -26,7 +26,7 @@
     },
     {
       "path": "docs/evidence/CMP-261021-1347/adoption-state.json",
-      "sha256": "1ab73bd940dd36df2fc1ab5d1151fc9c7cf110f5c5b1b4923d025da4a4ed7a09"
+      "sha256": "5f2842ef51636d7b38ad41f7d9dd35892e948872c6e6f2b484a6f21fa32f5e56"
     },
     {
       "path": "docs/evidence/CMP-261021-1347/closure/ci.safe.json",
@@ -490,6 +490,16 @@
       "changes": [
         "Replace current final candidate wording with merged implementation head",
         "Preserve 4795 historical evidence; replace only obsolete current-head pending sentence with confirmed exact-head CI26success/2skipped, Root seal and PR4025 MERGED links"
+      ],
+      "historicalRawEvidenceChanged": false
+    },
+    {
+      "authorization": "Explicit Root instruction after commit0803884374; working tree correction only",
+      "path": "docs/evidence/CMP-261021-1347/adoption-state.json",
+      "beforeSha256": "1ab73bd940dd36df2fc1ab5d1151fc9c7cf110f5c5b1b4923d025da4a4ed7a09",
+      "afterSha256": "5f2842ef51636d7b38ad41f7d9dd35892e948872c6e6f2b484a6f21fa32f5e56",
+      "changes": [
+        "finalHeadCiRunIdsStatus: ACTUAL_EXACT_HEAD_IDS_CONFIRMED_NOT_SUCCESS to ACTUAL_EXACT_HEAD_IDS_CONFIRMED_SUCCESS; finalHeadCiResult remains SUCCESS"
       ],
       "historicalRawEvidenceChanged": false
     }

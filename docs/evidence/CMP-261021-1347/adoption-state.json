@@ -27,7 +27,7 @@
     "casesChanged": false,
     "officialFinalHeadCi": "SUCCESS"
   },
-  "finalHeadCiRunIdsStatus": "ACTUAL_EXACT_HEAD_IDS_CONFIRMED_NOT_SUCCESS",
+  "finalHeadCiRunIdsStatus": "ACTUAL_EXACT_HEAD_IDS_CONFIRMED_SUCCESS",
   "finalSourceLayerProof": "docs/evidence/CMP-261021-1347/collected/clip-final-source-layer-post4795-20261022.json",
   "supersededHeadCiHistory": {
     "head": "0fbc96871872fdf1773ff652c8ea5911114bca1c",
