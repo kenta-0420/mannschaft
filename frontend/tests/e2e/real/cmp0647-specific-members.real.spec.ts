@@ -176,8 +176,12 @@ test('0647 実UIで3モードを提出し、別MEMBER承諾とADMIN承認を永�
     }
 
     // 同チームMEMBERにも未公開データを秘匿する。公開済みが見える正の比較を先に取る。
+    const listed = requester.page.waitForResponse(r => r.request().method() === 'GET'
+      && new URL(r.url()).pathname === '/api/v1/shifts/schedules')
     await requester.page.goto(`/teams/${config.team.slug}/shifts`)
-    await expect(requester.page.getByText(title, { exact: true })).toBeVisible()
+    await waitForHydration(requester.page)
+    expect((await listed).status()).toBe(200)
+    await expect(requester.page.getByText(title, { exact: true })).toBeVisible({ timeout: 15_000 })
     await expect(requester.page.getByText(privateTitle, { exact: true })).toHaveCount(0)
     for (const actor of [requester, outsider]) {
       const detail = actor.page.waitForResponse(r => r.request().method() === 'GET'
@@ -194,21 +198,13 @@ test('0647 実UIで3モードを提出し、別MEMBER承諾とADMIN承認を永�
     }
 
     for (const actor of [supporter, outsider]) {
-      let deniedStatus: number
-      if (actor === supporter) {
-        const denied = swapResponse(actor.page, 'GET')
-        await exchangeTab(actor, config.team.slug)
-        deniedStatus = (await denied).status()
-        expect(deniedStatus).toBe(403)
-        await expect(actor.page.getByText('交換リクエストを取得できませんでした', { exact: true })).toBeVisible()
-      } else {
-        const denied = actor.page.waitForResponse(r => r.request().method() === 'GET'
-          && new URL(r.url()).pathname === `/api/v1/teams/${config.team.slug}`)
-        await actor.page.goto(`/teams/${config.team.slug}/shifts`)
-        deniedStatus = (await denied).status()
-        expect([403, 404]).toContain(deniedStatus)
-        await expect(actor.page.locator('body')).toContainText(/エラー|見つかりません|アクセス/)
-      }
+      // 最終MEMBERS_AND_ABOVEの実teamではSUPPORTERもチーム取得で拒否される。
+      const denied = actor.page.waitForResponse(r => r.request().method() === 'GET'
+        && new URL(r.url()).pathname === `/api/v1/teams/${config.team.slug}`)
+      await actor.page.goto(`/teams/${config.team.slug}/shifts`)
+      const deniedStatus = (await denied).status()
+      expect([403, 404]).toContain(deniedStatus)
+      await expect(actor.page.locator('body')).toContainText(/エラー|見つかりません|アクセス/)
       await expect(actor.page.getByTestId(/^swap-row-/)).toHaveCount(0)
       await expect(actor.page.getByRole('button', { name: '承認', exact: true })).toHaveCount(0)
       await actor.page.screenshot({ path: info.outputPath(`blocked-${actor === supporter ? 'supporter' : 'outsider'}.png`), fullPage: true })
