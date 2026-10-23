@@ -11,7 +11,8 @@
 timezone `Asia/Tokyo`、offline、daemon、build cache 無効、`--rerun`、
 Gradle worker 上限 2 だった。Windows QPC の経過 42170.9269301 秒
 （約11時間43分）で期限停止し、exit 143、`timed_out=true` となった。
-結果 XML は 0 件で、残りのテスト数も確定していない。未完走を成功や所要時間の上限とは扱わない。
+通常 `test` の結果 XML は 0 件で、残りのテスト数も確定していない。
+ArchUnit・Integrity の結果 XML とは分けて扱う。未完走を成功や所要時間の上限とは扱わない。
 
 ## 長時間化について分かったこと
 
