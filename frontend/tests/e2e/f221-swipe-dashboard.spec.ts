@@ -923,3 +923,40 @@ for (const width of [360, 390, 1280]) {
     }
   })
 }
+
+// happy-domではDOMPurifyの安全性を保証できないため、実ブラウザの負例をCI smokeへ置く。
+for (const kind of ['bulletin', 'blog'] as const) {
+  test(`F22.1-AC7: ${kind}本文のscript・イベント属性・危険URLを実Chromiumで除去する`, async ({ page }) => {
+    await loginAsMember(page)
+    await mockDashboardApis(page, { withSlug: true })
+    const id = kind === 'bulletin' ? 301 : 302
+    const dangerous = '<p>取得した本文</p><script>window.__scopePreviewXss=true</script><img src="x" onerror="window.__scopePreviewXss=true"><a href="javascript:window.__scopePreviewXss=true">危険リンク</a>'
+    await page.route('**/api/v1/dashboard/team/*', route => route.fulfill({ json: { data: {
+      ...MOCK_TEAM_DASHBOARD,
+      teamUnreadThreads: { bulletin_threads: kind === 'bulletin' ? [{ id, title: '安全性検査', updated_at: '2026-10-23T12:00:00+09:00', is_read: true }] : [] },
+      teamLatestBlogPosts: kind === 'blog' ? [{ id, slug: 'sanitize-post', title: '安全性検査', author: null, published_at: null }] : [],
+    } } }))
+    if (kind === 'bulletin') {
+      await page.route(`**/api/v1/teams/${TEAM_ID}/bulletin/threads/${id}`, route => route.fulfill({ json: { data: {
+        id, scopeType: 'TEAM', scopeId: TEAM_ID, title: '安全性検査', body: dangerous,
+      } } }))
+    } else {
+      await page.route('**/api/v1/blog/posts/sanitize-post?**', route => route.fulfill({ json: { data: {
+        id, content: { title: '安全性検査', slug: 'sanitize-post', body: `**Markdown本文**\n\n${dangerous}` },
+        scope: { teamId: TEAM_ID, organizationId: null, userId: null },
+      } } }))
+    }
+    await page.goto('/dashboard')
+    await waitForCarousel(page)
+    await page.getByTestId('scope-segment-TEAM').click()
+    await page.getByTestId(`scope-widget-${kind}-${id}`).click()
+    const body = page.getByTestId('scope-widget-preview-body')
+    await expect(body).toContainText('取得した本文')
+    if (kind === 'blog') await expect(body.locator('strong')).toHaveText('Markdown本文')
+    await expect(body.locator('script')).toHaveCount(0)
+    await expect(body.locator('[onerror]')).toHaveCount(0)
+    await expect(body.locator('a[href^="javascript:"]')).toHaveCount(0)
+    expect(await page.evaluate(() => Reflect.get(window, '__scopePreviewXss'))).toBeUndefined()
+    await expect(page.getByTestId('scope-widget-preview-source')).toBeVisible()
+  })
+}

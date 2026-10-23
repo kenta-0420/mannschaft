@@ -87,6 +87,7 @@ F02.2 の既存 widget_key（`TEAM_NOTICES` / `TEAM_LATEST_POSTS` 等）は**チ
 - 詳細応答の対象IDを照合し、掲示板/TODO/ブログ/チャットでは所属も照合する。予定の実DTOには所属IDがないため、所属付きAPIの認可と対象ID一致を根拠にする。内部所属IDが未解決なら不正なAPIを呼ばず、解決後に再試行できる。
 - loading・取得失敗・403/404・不一致応答では本文と遷移リンクを表示しない。通信失敗は再試行でき、403/404では取得不可の案内を表示する。連続選択・閉じる・所属切替・アンマウント後の古い成功/失敗を破棄する。
 - HTMLは既存サニタイズ、Markdownは既存renderer経由とし、TODO/チャットの説明はテキスト補間で表示する。空配列/nullから架空の項目を作らない。
+- サニタイズの実除去は、CI smoke対象の `f221-swipe-dashboard.spec.ts` で実Chromium上のHTML/Markdownにscript・イベント属性・危険URLを含めて検証する。同居unitは既存サニタイザー/rendererへの入力と出力の接続を検証する。DOMPurifyが安全性を保証しないhappy-domを実除去の証明に使わない（[DOMPurify公式のサーバー実行上の注意](https://github.com/cure53/DOMPurify#running-dompurify-on-the-server)）。
 - 項目はネイティブbutton、最小44pxの操作領域、390px幅に収まるDialogと本文内スクロールを使う。Esc・閉じる・背景操作で閉じ、残っている起点へフォーカスを戻す。
 
 ---

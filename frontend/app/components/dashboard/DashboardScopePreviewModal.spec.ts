@@ -8,6 +8,13 @@ import type {
 } from '~/composables/useScopeWidgetPreview'
 import Modal from './DashboardScopePreviewModal.vue'
 
+const renderer = vi.hoisted(() => ({ sanitize: vi.fn(), markdown: vi.fn() }))
+// happy-domはDOMPurifyの安全性検証に対応しない。実除去の負例はCI対象の
+// f221-swipe-dashboard.spec.tsで実Chromiumを使い、このspecでは接続を検査する。
+vi.mock('~/utils/sanitizeHtml', () => ({ sanitizeHtml: renderer.sanitize }))
+vi.mock('~/composables/useMarkdownRenderer', () => ({
+  useMarkdownRenderer: () => ({ renderMarkdown: renderer.markdown }),
+}))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 vi.mock('~/composables/useDatetime', () => ({
   useDatetime: () => ({
@@ -77,23 +84,27 @@ describe('DashboardScopePreviewModal', () => {
         expect(view.findComponent(ErrorState).props('showRetry')).toBe(false)
     },
   )
-  it('AC7: 掲示板HTMLのscript・イベント属性・危険URLを除去する', () => {
+  it('AC7: 掲示板HTMLを既存サニタイザーへ渡し、その結果だけを描画する', () => {
+    renderer.sanitize.mockReturnValue('<p>サニタイズ結果</p>')
     const view = render('FULL', detail)
     const body = view.get('[data-testid="scope-widget-preview-body"]')
-    expect(body.text()).toContain('取得した本文')
-    expect(body.find('script').exists()).toBe(false)
-    expect(body.find('img').attributes('onerror')).toBeUndefined()
-    expect(body.find('a').attributes('href')).toBeUndefined()
+    expect(renderer.sanitize).toHaveBeenCalledWith(detail.body)
+    expect(body.html()).toContain('<p>サニタイズ結果</p>')
+    expect(body.text()).not.toContain('取得した本文')
     expect(view.find('[data-testid="scope-widget-preview-source"]').exists()).toBe(true)
   })
-  it('AC7: ブログMarkdownも既存サニタイズを通す', () => {
+  it('AC7: ブログMarkdownを既存rendererへ渡し、その結果だけを描画する', () => {
+    renderer.markdown.mockReturnValue('<strong>レンダリング結果</strong>')
+    const markdown = '**本文**<script>alert(1)</script>'
     const view = render('FULL', {
       ...detail,
       bodyFormat: 'markdown',
-      body: '**本文**<script>alert(1)</script>',
+      body: markdown,
     })
-    expect(view.get('[data-testid="scope-widget-preview-body"] strong').text()).toBe('本文')
-    expect(view.find('script').exists()).toBe(false)
+    expect(renderer.markdown).toHaveBeenCalledWith(markdown)
+    expect(view.get('[data-testid="scope-widget-preview-body"] strong').text()).toBe(
+      'レンダリング結果',
+    )
   })
   it('AC2: TODO説明はエスケープし空本文も正常に表示する', async () => {
     const view = render('FULL', { ...detail, bodyFormat: 'text', body: '<img onerror="evil()">' })

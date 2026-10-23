@@ -87,8 +87,12 @@ async function preview(page: Page, scope: Scope, kind: 'bulletin' | 'todo', mark
       ? pathname.endsWith(`/bulletin/threads/${id}`)
       : pathname.endsWith(`/todos/${id}`))
   })
-  await row.click()
-  expect((await detail).status(), 'クリックが実BEの本文取得に成功する').toBe(200)
+  if (mobile) await row.click()
+  else {
+    await row.focus()
+    await row.press('Enter')
+  }
+  expect((await detail).status(), '行の操作が実BEの本文取得に成功する').toBe(200)
   const dialog = page.getByTestId('scope-widget-preview')
   await expect(dialog).toBeVisible()
   await expect(page).toHaveURL(/\/dashboard$/)
@@ -105,12 +109,14 @@ async function preview(page: Page, scope: Scope, kind: 'bulletin' | 'todo', mark
   await test.info().attach(`${scope.type}-${kind}-${mobile ? 'mobile' : 'desktop'}-modal`, {
     body: await page.screenshot(), contentType: 'image/png',
   })
-  await page.getByTestId('scope-widget-preview-close').click()
+  if (!mobile && kind === 'bulletin') await page.keyboard.press('Escape')
+  else await page.getByTestId('scope-widget-preview-close').click()
   await expect(dialog).not.toBeVisible()
   await expect(page).toHaveURL(/\/dashboard$/)
   await expect(row).toBeFocused()
   // 閉じたあと同じ行から再表示し、CTAで所属先の該当詳細まで進む。
-  await row.click()
+  if (mobile) await row.click()
+  else await row.press('Space')
   await expect(page.getByTestId('scope-widget-preview-body')).toContainText(body)
   await source.click()
   await expect.poll(() => new URL(page.url()).pathname + new URL(page.url()).search).toBe(sourcePath)
