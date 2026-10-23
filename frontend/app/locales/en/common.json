@@ -664,6 +664,7 @@
     }
   },
   "timeline": {
+    "refresh": "Refresh",
     "detail": {
       "back": "Back",
       "loadFailed": "Failed to load the post",

@@ -664,6 +664,7 @@
     }
   },
   "timeline": {
+    "refresh": "更新",
     "detail": {
       "back": "戻る",
       "loadFailed": "投稿を取得できませんでした",

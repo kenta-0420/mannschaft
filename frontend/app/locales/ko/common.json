@@ -664,6 +664,7 @@
     }
   },
   "timeline": {
+    "refresh": "새로고침",
     "detail": {
       "back": "뒤로",
       "loadFailed": "게시물을 불러오지 못했습니다",
