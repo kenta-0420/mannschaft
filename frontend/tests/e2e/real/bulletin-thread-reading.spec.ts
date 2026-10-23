@@ -80,6 +80,24 @@ test('掲示板の投稿本文・返信・再読込・4幅とスコープ拒否'
     await page.reload()
     await waitForHydration(page)
     await expect(page.getByTestId('bulletin-thread-card')).toHaveCount(4)
+    // ブラウザーの実通信を止め、取得失敗と空一覧を区別してUIから回復する。
+    await page.context().setOffline(true)
+    const failedRequest = page.waitForEvent('requestfailed', {
+      predicate: request => request.method() === 'GET' && request.url().includes('/bulletin/threads'),
+    })
+    await page.getByPlaceholder('検索...', { exact: true }).fill(prefix)
+    expect((await failedRequest).failure()?.errorText).toBeTruthy()
+    const networkError = page.getByTestId('load-error-state')
+    await expect(networkError).toBeVisible()
+    await expect(networkError).toContainText(/通信|接続/)
+    await expect(page.getByText('スレッドがありません', { exact: true })).toHaveCount(0)
+    await expect(page.getByTestId('bulletin-thread-grid')).toHaveCount(0)
+    await writeFile(testInfo.outputPath('offline-state.txt'), await networkError.innerText(), 'utf8')
+    await page.screenshot({ path: testInfo.outputPath('offline-state.png'), fullPage: true })
+    await page.context().setOffline(false)
+    await networkError.getByTestId('load-error-state-retry').click()
+    await expect(networkError).toBeHidden()
+    await expect(page.getByTestId('bulletin-thread-card')).toHaveCount(4)
     for (const [width, columns] of [[390, 1], [768, 2], [1280, 3], [1600, 4]]) {
       await page.setViewportSize({ width: width!, height: 1000 })
       await expect.poll(() => page.getByTestId('bulletin-thread-grid').evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(columns)
@@ -134,6 +152,7 @@ test('掲示板の投稿本文・返信・再読込・4幅とスコープ拒否'
     await expect(anonymous).toHaveURL(/\/login(?:\?|$)/)
     await expect(anonymous.locator('.article-body')).toHaveCount(0)
   } finally {
+    await page.context().setOffline(false)
     for (const id of threads) {
       const response = await page.request.delete(`${API}/api/v1/bulletin/threads/${id}`)
       expect([200, 204]).toContain(response.status())
