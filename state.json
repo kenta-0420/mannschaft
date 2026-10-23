@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "04518437-d582-4b6b-aa18-0f66fc8cc266",
+  "operation": "340c1763-b353-4300-9d79-83d387b3946a",
   "territories": {
     "foundation": {
       "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
@@ -22,7 +22,7 @@
     },
     "repayment-c": {
       "owner": "5dae09d2-9385-424c-b665-e6bd69c13586",
-      "note": "親Issue6368712240にA停止解放とC契約準備への切替を宣言、remote claim0deb5e61確定。CMP-261023-2301 knowledgebase第1波を支えるGDPR/admin契約を読取調査。gdpr AccountPurgedEvent/AccountPurgeCompletionService/SettingsPurgeRetryService/collector・purge SPI、admin BatchEndpoint/検出監査を対象。GDPR/adminの波割当・新実装・gate充足は未宣言。F/G未完了で製品変更0。家老2名Sol medium（Terra利用不可代替）。REQ-RPA-GDPR-01/ADMIN-01への準備回答を作成、他REQも未解決のまま保全。管理WT agent-4022-repayment-c-admin-20261024。"
+      "note": "親Issue6368712240にA停止解放とC契約準備への切替を宣言、remote claim0deb5e61確定。CMP-261023-2301 knowledgebase第1波を支えるGDPR/admin契約を読取調査。gdpr AccountPurgedEvent/AccountPurgeCompletionService/SettingsPurgeRetryService/collector・purge SPI、admin BatchEndpoint/検出監査を対象。GDPR/adminの波割当・新実装・gate充足は未宣言。F/G未完了で製品変更0。家老2名Sol medium（Terra利用不可代替）。REQ-RPA-GDPR-01/ADMIN-01への準備回答を作成、他REQも未解決のまま保全。管理WT agent-4022-repayment-c-admin-20261024。\nREQ-RPA-GDPR-01の読取契約準備のみ。公開event/completion/purge/collector SPIとTX原子性を調査。F/G未充足・波未割当・製品実装禁止。"
     },
     "gradle": {
       "owner": null,
@@ -427,9 +427,9 @@
       "held": []
     },
     "L2-gdpr": {
-      "state": "todo",
+      "state": "planning",
       "evidence": "",
-      "note": "",
+      "note": "REQ-RPA-GDPR-01の読取契約準備のみ。公開event/completion/purge/collector SPIとTX原子性を調査。F/G未充足・波未割当・製品実装禁止。",
       "history": [],
       "hold": null,
       "held": []
