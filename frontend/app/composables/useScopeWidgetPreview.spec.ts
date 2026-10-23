@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { effectScope, reactive, type EffectScope } from 'vue'
+import { parseBlogPostReadQuery } from '~/utils/blogPostReadQuery'
 import {
   useScopeWidgetPreview,
   type ScopeWidgetPreviewContext,
@@ -109,6 +110,20 @@ function deferred() {
 describe.each(['TEAM', 'ORGANIZATION'] as const)('%s 詳細プレビュー', (scopeType) => {
   const plural = scopeType === 'TEAM' ? 'teams' : 'organizations'
   const type = scopeType === 'TEAM' ? 'team' : 'organization'
+  it('AC3: ブログqueryの実parserへLong正準文字列を渡す', async () => {
+    const preview = create(scopeType)
+    mocks.blog.mockImplementation(
+      async (_slug: string, query: Readonly<Record<string, unknown>>) => {
+        parseBlogPostReadQuery(query)
+        return { data: payload('blog', scopeType) }
+      },
+    )
+    await preview.open(item('blog'))
+    expect(preview.state.value).toBe('FULL')
+    expect(mocks.blog).toHaveBeenCalledWith('article-name', {
+      [scopeType === 'TEAM' ? 'teamId' : 'organizationId']: '7',
+    })
+  })
   it.each(kinds)('AC2/3/9: %sは選択時だけ詳細APIを呼び正規リンクと実本文を返す', async (kind) => {
     const preview = create(scopeType)
     expect(kinds.every((key) => api(key).mock.calls.length === 0)).toBe(true)
@@ -125,7 +140,7 @@ describe.each(['TEAM', 'ORGANIZATION'] as const)('%s 詳細プレビュー', (sc
       expect(preview.detail.value?.route).toBe(`/${plural}/my-scope/bulletin?threadId=12`)
     } else if (kind === 'blog') {
       expect(mocks.blog).toHaveBeenCalledWith('article-name', {
-        [scopeType === 'TEAM' ? 'teamId' : 'organizationId']: 7,
+        [scopeType === 'TEAM' ? 'teamId' : 'organizationId']: '7',
       })
       expect(preview.detail.value?.route).toEqual({
         path: '/blog/posts/article-name',

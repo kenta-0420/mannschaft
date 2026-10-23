@@ -146,7 +146,9 @@ export function useScopeWidgetPreview(context: () => ScopeWidgetPreviewContext) 
     if (item.kind === 'blog') {
       if (!item.slug?.trim()) throw new Error('Missing blog slug')
       const blogScope =
-        scope.scopeType === 'TEAM' ? { teamId: numericId } : { organizationId: numericId }
+        scope.scopeType === 'TEAM'
+          ? { teamId: String(numericId) }
+          : { organizationId: String(numericId) }
       const { data } = await blog.getPost(item.slug, blogScope)
       const actual = data.scope
       const scopedId = scope.scopeType === 'TEAM' ? actual?.teamId : actual?.organizationId

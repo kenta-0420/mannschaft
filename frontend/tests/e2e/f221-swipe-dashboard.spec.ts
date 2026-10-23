@@ -927,9 +927,19 @@ for (const width of [360, 390, 1280]) {
 // happy-domではDOMPurifyの安全性を保証できないため、実ブラウザの負例をCI smokeへ置く。
 for (const kind of ['bulletin', 'blog'] as const) {
   test(`F22.1-AC7: ${kind}本文のscript・イベント属性・危険URLを実Chromiumで除去する`, async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('tokenExpiresAt', String(Date.now() + 3600000)))
     await loginAsMember(page)
     await mockDashboardApis(page, { withSlug: true })
     const id = kind === 'bulletin' ? 301 : 302
+    // 個人パネルも常時mountされるため、広域空配列ではなく各APIの正規空オブジェクトを返す。
+    for (const [path, data] of [
+      ['action-required', { items: [], total_count: 0 }],
+      ['admin-action-required', { items: [], total_pending: 0 }],
+      ['todos', { items: [], overdue_count: 0, total_incomplete: 0 }],
+      ['notices?**', { items: [], next_cursor: null, has_more: false }],
+    ] as const) {
+      await page.route(`**/api/v1/dashboard/${path}`, route => route.fulfill({ json: { data } }))
+    }
     const dangerous = '<p>取得した本文</p><script>window.__scopePreviewXss=true</script><img src="x" onerror="window.__scopePreviewXss=true"><a href="javascript:window.__scopePreviewXss=true">危険リンク</a>'
     await page.route('**/api/v1/dashboard/team/*', route => route.fulfill({ json: { data: {
       ...MOCK_TEAM_DASHBOARD,
@@ -946,17 +956,24 @@ for (const kind of ['bulletin', 'blog'] as const) {
         scope: { teamId: TEAM_ID, organizationId: null, userId: null },
       } } }))
     }
-    await page.goto('/dashboard')
-    await waitForCarousel(page)
-    await page.getByTestId('scope-segment-TEAM').click()
-    await page.getByTestId(`scope-widget-${kind}-${id}`).click()
-    const body = page.getByTestId('scope-widget-preview-body')
-    await expect(body).toContainText('取得した本文')
-    if (kind === 'blog') await expect(body.locator('strong')).toHaveText('Markdown本文')
-    await expect(body.locator('script')).toHaveCount(0)
-    await expect(body.locator('[onerror]')).toHaveCount(0)
-    await expect(body.locator('a[href^="javascript:"]')).toHaveCount(0)
-    expect(await page.evaluate(() => Reflect.get(window, '__scopePreviewXss'))).toBeUndefined()
-    await expect(page.getByTestId('scope-widget-preview-source')).toBeVisible()
+    await test.step('navigation', () => page.goto('/dashboard', { waitUntil: 'domcontentloaded' }))
+    await test.step('hydration', async () => {
+      await waitForHydratedShell(page)
+      await waitForCarousel(page)
+    })
+    await test.step('row click', async () => {
+      await page.getByTestId('scope-segment-TEAM').click()
+      await page.getByTestId(`scope-widget-${kind}-${id}`).click()
+    })
+    await test.step('body assertion', async () => {
+      const body = page.getByTestId('scope-widget-preview-body')
+      await expect(body).toContainText('取得した本文')
+      if (kind === 'blog') await expect(body.locator('strong')).toHaveText('Markdown本文')
+      await expect(body.locator('script')).toHaveCount(0)
+      await expect(body.locator('[onerror]')).toHaveCount(0)
+      await expect(body.locator('a[href^="javascript:"]')).toHaveCount(0)
+      expect(await page.evaluate(() => Reflect.get(window, '__scopePreviewXss'))).toBeUndefined()
+      await expect(page.getByTestId('scope-widget-preview-source')).toBeVisible()
+    })
   })
 }
