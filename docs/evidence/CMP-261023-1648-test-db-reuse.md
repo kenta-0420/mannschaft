@@ -10,7 +10,7 @@
 
 既存12件を保持した14件の実DB検証、fixture隔離のnegative controlと完全復元後のSchema群9件、両群順、並列有効時の逐次実行を確認した。同一専用runnerでの単回比較では、対象限定Gradle command wallが1072.057秒から671.706秒へ約400.350秒（37.34%）短縮した。この値はGradleと必要依存・初期化を含む対象コマンドの測定であり、全テストスイートの短縮率ではない。
 
-現在の実装scopeに出荷必須の検証残件はない。本文の最終更新は文書だけでJavaを変更しない。最終文書headのCI再確認と出荷・完了台帳更新は別途行う。
+実装PRは最終headのCI成功後にmerge済み。出荷必須の検証残件はない。完了台帳・証拠JSONは実装と分離した文書PRで記録する。
 
 ## 変更範囲と初期化構造
 
@@ -71,3 +71,9 @@ negative controlでは所有要求の `DELETE ... WHERE id IN (...)` 1箇所だ�
 司令塔による最終静的・AC検分は実害finding0。既存12件の本体・アサーション保持と表示名集合、diffcheckを確認した。全caseの個別起動は、Schema群単独green・共通cleanup経路・回帰2件のred/greenで重複するため追加しない。初期化故障の注入実験は未実施だが、catchなし・初期化済みflagなしの構造と既存不正旧データ拒否passにより評価し、追加の必須runとはしない。
 
 scopeは `test-only`。製品/API/UI/本番SQLの挙動と画面導線を変更しないため、UI実機試験とアリシゼーションは該当対象なしとする。実装PRのmerge後に完了台帳・証拠JSONを別PRで記録し、本PRには完了行や完了JSONを追加しない。
+
+## 最終headのCIと実装merge
+
+実装PR #4068の最終head `df8ee0499ed99f38ec715ea902e761f3e07e635e` に対する[CI run39949628011](https://github.com/kenta-0420/mannschaft/actions/runs/39949628011)は全6 shard・ArchUnit・timezone・shard coverage・集約を含む全jobがsuccess。対象Javaを変えない最終文書更新のため、他5 shardはFROM-CACHE、shard3は実行して成功した。cache再利用を新たな全対象実走とは扱わず、先行する14件実走と専用検証の証拠を併せて評価した。
+
+GitHub APIで実装PRのheadと成功runのhead一致を確認し、2026-10-23T13:41:29Zにsquash mergeされたことを確認した。merge commitは `cf1d10173b14f657a1ac9b4f6706491878730c83`。完了JSONのimplementation.shaにはmerge commitではなく最終PR headを記録する。今回の完了記録は製品回帰修正ではなくテスト基盤の性能改善であり、JSONのregressionsは空とする。cleanupのnegative/green証拠はAC-2と本記録に対応付ける。

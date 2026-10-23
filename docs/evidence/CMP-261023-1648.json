@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261023-1648",
+  "scope": "test-only",
+  "implementation": {
+    "pr": 4068,
+    "sha": "df8ee0499ed99f38ec715ea902e761f3e07e635e"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "既存12検証を保持し、完成schemaの初期化は1回、2件目以降にclean/migrateしない。回数削減は呼び出し構造と14件実行により評価する。",
+      "tests": [
+        {
+          "name": "MigrationTestsの旧版5件・SchemaTestsの既存7件を保持した14件passと表示名集合比較",
+          "evidence": "docs/evidence/CMP-261023-1648-test-db-reuse.md"
+        },
+        {
+          "name": "SchemaTests.initializeCompletedSchemaによる1回初期化",
+          "evidence": "backend/src/test/java/com/mannschaft/app/billing/migration/BillingPayerHandoverFoundationFlywayIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "所有fixtureだけをcleanupし、空・単独・両群順・途中失敗でも汚染せず未知fixtureを保持する。",
+      "tests": [
+        {
+          "name": "完成schemaのcleanupは所有fixtureだけを削除する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/billing/migration/BillingPayerHandoverFoundationFlywayIT.java"
+        },
+        {
+          "name": "完成schemaのcleanupは途中失敗後も再利用できる",
+          "evidence": "backend/src/test/java/com/mannschaft/app/billing/migration/BillingPayerHandoverFoundationFlywayIT.java"
+        },
+        {
+          "name": "所有要求DELETE無効化negative2件red・原bytes復元後Schema9件単独green",
+          "evidence": "docs/evidence/CMP-261023-1648-test-db-reuse.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "初期migrationの例外を握りつぶさず、初期化済み扱いにしない。",
+      "tests": [
+        {
+          "name": "backfillGuardFailsMigrationWhenNoFallbackIsResolvable",
+          "evidence": "backend/src/test/java/com/mannschaft/app/billing/migration/BillingPayerHandoverFoundationFlywayIT.java"
+        },
+        {
+          "name": "BeforeAllのcatch/初期化済みflagなしを静的確認し、不正旧データ拒否passと合わせて評価（故障注入は未実施）",
+          "evidence": "docs/evidence/CMP-261023-1648-test-db-reuse.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "同schemaは逐次実行し、両群順で初期化が自立し、workerごとにコンテナを隔離する。",
+      "tests": [
+        {
+          "name": "Schema→MigrationとMigration→Schema・parallel有効でactive最大1/最終0・Schema9件単独pass",
+          "evidence": "docs/evidence/CMP-261023-1648-test-db-reuse.md"
+        },
+        {
+          "name": "verifyShardCoverageの4プロファイルで取りこぼし/重複/migration漏れ/ネスト分断なし",
+          "evidence": "docs/evidence/CMP-261023-1648-test-db-reuse.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "旧版5件のbackfill/NULL/論理削除済/不正データ拒否を保持し、完成schemaも現行末尾への実Flywayで検証する。",
+      "tests": [
+        {
+          "name": "payerUserIdBackfilledFromCreatedBy / payerUserIdBackfilledFromOldestAdminWhenCreatedByIsNull",
+          "evidence": "backend/src/test/java/com/mannschaft/app/billing/migration/BillingPayerHandoverFoundationFlywayIT.java"
+        },
+        {
+          "name": "backfillGuardFailsMigrationWhenNoFallbackIsResolvable / userScopeCreatedByNullDoesNotFailMigration / payerUserIdSkipsSoftDeletedOldestAdmin",
+          "evidence": "backend/src/test/java/com/mannschaft/app/billing/migration/BillingPayerHandoverFoundationFlywayIT.java"
+        },
+        {
+          "name": "V206のFAILING_CLEANUPと終端化を含む完成schema既存7件pass",
+          "evidence": "docs/evidence/CMP-261023-1648-test-db-reuse.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "同条件で初期化を含む対象コマンド時間を比較し、全体半減を主張しない。初期化回数の構造根拠とログ実測を区別する。",
+      "tests": [
+        {
+          "name": "同一専用runnerの単回ペアで対象限定command wall1072.056606477秒→671.706354359秒（37.34%短縮）",
+          "evidence": "docs/evidence/CMP-261023-1648-test-db-reuse.md"
+        },
+        {
+          "name": "baseline12pass・after14pass、Gradle/必要依存/コンテナ/Flyway初期化込みのperf_counter_ns比較",
+          "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/39943173054"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 39949628011
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261023-1648-test-db-reuse.md"
+    },
+    "real": {
+      "status": "not-applicable",
+      "scope": "test-only",
+      "reason": "テストコードと検証記録のみの変更で製品/API/UI/本番SQLの挙動を変更せず、実DBによる移行・隔離検証を実施済みのためUI実機対象なし"
+    },
+    "exploratory": {
+      "status": "not-applicable",
+      "scope": "test-only",
+      "reason": "画面や製品の導線を変更しないテスト基盤の性能改善で、UI探索/アリシゼーションの対象なし"
+    }
+  },
+  "regressions": []
+}
