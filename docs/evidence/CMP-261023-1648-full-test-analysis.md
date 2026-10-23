@@ -28,6 +28,12 @@ ArchUnit・Integrity の結果 XML とは分けて扱う。未完走を成功や
   公式fixtureの改行変換によるraw SHA不一致は独立した確定不具合として修正する。
   その他の失敗の具体名・値は本記録の公開範囲に含めない。
 
+独立したfixture生成長の不備も現行sourceに残っていたため、期限切れ招待の既存ケースで
+実行前に生成するtokenを、製品と同じ36文字のUUID形式へ直す。
+既存ケース自体を回帰テストとして保持し、期限条件・期待404・認可検証・製品・DDLは変更しない。
+保存済み旧runのassert到達前の列長エラーと現行sourceの一致を修正前の根拠とし、
+修正後の既存ケースの成功は最終headの通常CIで確認する。ローカルでは未実行である。
+
 時計も分けて評価する。host UTC と QPC は 1.7864038 秒ずれ、native の
 realtime と monotonic は約2652.4秒ずれている。QPC はWSL起動を含む正本時計だが、
 `process-result.json` は時計差、daemon 照合、receipt の整合性により `valid=false` と判定した。
