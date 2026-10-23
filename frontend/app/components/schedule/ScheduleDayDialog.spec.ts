@@ -48,7 +48,8 @@ describe('ScheduleDayDialog', () => {
       global: { stubs: { Dialog: DialogStub } },
     })
 
-    expect(wrapper.text()).toContain('この日の予定はありません')
+    expect(wrapper.findComponent({ name: 'DashboardEmptyState' }).exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'DashboardEmptyState' }).props('message')).not.toBe('')
     expect(wrapper.find('[data-testid="schedule-day-create"]').exists()).toBe(false)
   })
 })
