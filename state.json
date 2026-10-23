@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "20fc86e1-eba2-4e75-ad49-52a9b0dfdae2",
+  "operation": "c056c759-6c0d-41bf-a1ba-31b1731857ed",
   "territories": {
     "foundation": {
       "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
@@ -1412,7 +1412,7 @@
     "pattern-websocket": "",
     "wave-workflow": "",
     "pattern-workflow": "",
-    "measurement-window": "",
+    "measurement-window": "親6354404196の10/23 09:40-23:00事前予約、6355206680のユーザー今から実行指示と全担当heavy投入停止周知。10:29-10:31 fresh実確認でWSL稼働distribution0、Windows他Java/Gradleなし、旧worker51516は同世代/親不在/CPU差0。活動Node28724はnpm-cache配下mulmoterminal/server/index.tsで制御系サーバと特定、重いビルドではない。共通gate不在、C空き約30GiB。attempt5時計/34負例/host検証済。各担当の新窓書面宣言は未受領と明記し、ユーザー即時実行指示と現在の実停止確認に基づき殿GO。各run前後の実観測+Windows共通gate、途中の偶発heavy連続検出は保証せず混入時不採用・停止。",
     "return-targets": "",
     "bundle-map": "",
     "pilot-window": "",
