@@ -183,7 +183,7 @@ watch(
         scope-type="ORGANIZATION"
         :slug="selectedOrgId"
       />
-      <DashboardSwipeWidgetGrid v-else scope-type="ORGANIZATION" :scope-id="selectedOrgId" :data="data" />
+      <DashboardSwipeWidgetGrid v-else scope-type="ORGANIZATION" :scope-id="selectedOrgId" :numeric-scope-id="announcementScopeId" :data="data" />
     </template>
 
     <!--

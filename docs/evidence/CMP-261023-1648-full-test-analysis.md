@@ -32,7 +32,7 @@ ArchUnit・Integrity の結果 XML とは分けて扱う。未完走を成功や
 実行前に生成するtokenを、製品と同じ36文字のUUID形式へ直す。
 既存ケース自体を回帰テストとして保持し、期限条件・期待404・認可検証・製品・DDLは変更しない。
 保存済み旧runのassert到達前の列長エラーと現行sourceの一致を修正前の根拠とし、
-修正後の既存ケースの成功は最終headの通常CIで確認する。ローカルでは未実行である。
+修正後の既存ケースは最終headの通常CIで成功した。ローカルでは未実行であり、結果の詳細は[検証記録](CMP-261023-1648-test-db-reuse.md)に示す。
 
 時計も分けて評価する。host UTC と QPC は 1.7864038 秒ずれ、native の
 realtime と monotonic は約2652.4秒ずれている。QPC はWSL起動を含む正本時計だが、
@@ -54,16 +54,11 @@ Team と Organization の可視性 Resolver は常時登録されるため、両
 `MergedContextConfiguration` の集合が1種類であることを検証する。
 ApplicationContextのloadや対象クラスのstatic初期化を伴わない方式は、既存の
 `R2MockContextConfigurationTest` に合わせる。追加のDBやmock構成は作らない。
-この変更で狙う構成keyは3種類から1種類への削減であり、秒数の改善は実測前には断定しない。
+実metadataのred/greenで構成key3種類から1種類を確認した。専用実DBペアでもEMF初期化3→1、双方16pass・skip0を確認した。対象command単回は405.597496404秒→294.490044928秒だったが、cache温度未分離等の限界と測定範囲は検証記録で区別する。
 
 ## 検証と残る限界
 
-ローカルGradle/Docker起動は行わず、先行テストのredと修正後のgreenを専用remoteで検証する。
-同じrunner・同じ実行条件・事前warm条件で初期化込みwallとSpring起動回数を単回ペア比較し、
-対象SHA、開始時の他heavy処理の有無、全16件pass・skip 0を記録する。
-metadata回帰のgreenだけで実MySQLの認可・rollback検証を代替しない。
-通常CIと専用検証は最終実装headを固定して行い、実測結果は後続の完了記録へ保存する。
-公式fixtureのLF固定は別PRで検証し、この実装PRへ混ぜない。
+ローカルGradle/Dockerは起動せず、専用remoteでmetadataのred/greenと同条件の実DB比較を行った。通常CIは最終実装headで成功し、Contact期限切れcaseとBCrypt既存2件も閾値不変の実走greenを確認した。実装PR #4075は全check完了後にmergeし、結果・原本SHA・cleanup・旧失敗/キャンセル履歴は[検証記録](CMP-261023-1648-test-db-reuse.md)へ保存した。公式fixtureのLF固定は独立PR #4074の証拠として分離する。
 
 既存のPayer改善は対象14件の成功と対象単回約37%の短縮という範囲の証拠である。
 その割合を約11時間43分の全量や今回の3ITへ外挿しない。
