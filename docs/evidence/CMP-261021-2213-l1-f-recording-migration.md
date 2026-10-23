@@ -149,3 +149,9 @@ ArchUnit 1.3.0の配布bytecodeで確認した。`FreezingArchRule$CategorizedVi
 失敗run [39964737374](https://github.com/kenta-0420/mannschaft/actions/runs/39964737374) のD-3/D-5各1件は、main PR #4023（`bdc5379ed38c2a8920f87c886da58ad2cc39da9a`）が `ErrorReportTimelineService` に同ドメインの `ErrorReportManagementService` 引数を追加したことによるconstructor descriptionの変化だった。既存 `UserRepository` 依存のconstructor記録を実XMLの新descriptionへ各1行置換する。新行からこの追加引数だけを除くと旧保存行に完全一致し、旧prefix群は両番人ともconstructor・field・resolveUserNames callの3件を維持する。
 
 D-3/D-5は各削除1・追加1の記録置換であり、追加違反0・行数1325/1876・旧prefix頻度Map・occurrence=1・上限は不変。他6ファイルの生bytesと既定freezeの判定/除外は変更しない。これは初回承認178件の追加補正ではない。失敗runを成功扱いにせず、修正後HEADの全量CI・担当runnerのafter原本・再実行不変の確認は未確定として保持する。
+
+## 2026-10-24 R3重み表の統合整合
+
+旧Backend [39967912936](https://github.com/kenta-0420/mannschaft/actions/runs/39967912936) はshard4でR3（タグ付きSelfTestの重み表混入）が失敗し、shard3は85分の総時間上限で未完了となった。main PR #4023の重み表再生成で追加された `ArchUnitFreezeStoreIntegritySelfTest=0.035` が、L1-Fのarchunitタグ移動と整合していなかったため、ユーザーの1行限定例外承認に基づき当該行だけを削除する。他の重みbytes・タグ・R3番人・8store・上限は不変。全量再生成や判定緩和は行わない。
+
+この1行修正はR3への対応であり、shard3のtimeout解消を意味しない。通常testの最終XML・最終件数は未確定で失敗0とは扱わず、修正後headの全CIは未検証として保持する。
