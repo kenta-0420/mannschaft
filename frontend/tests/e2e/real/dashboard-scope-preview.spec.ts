@@ -102,6 +102,9 @@ async function preview(page: Page, scope: Scope, kind: 'bulletin' | 'todo', mark
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(391)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   }
+  await test.info().attach(`${scope.type}-${kind}-${mobile ? 'mobile' : 'desktop'}-modal`, {
+    body: await page.screenshot(), contentType: 'image/png',
+  })
   await page.getByTestId('scope-widget-preview-close').click()
   await expect(dialog).not.toBeVisible()
   await expect(page).toHaveURL(/\/dashboard$/)
