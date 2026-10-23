@@ -8,6 +8,7 @@
 GDPR/admin/chartを第1波へ追加せず、各ドメイン全体の波も割り当てない。
 所有者側の支援契約を将来実装する前に、波と依存契約の統合範囲・編集ownerを親Issueで確定する。
 L1-F/G等の入口未充足を本書の着地で解消済みと見なさない。全体方針の正本は [境界返済計画](../architecture/modular_monolith_boundary_debt_repayment.md)。
+実装入口は全L2共通のL1-G0/K/F/G完了に加え、認可を使う範囲はL1-A、C/F採用時はL1-M完了とwave/patternの証拠を必要とする。現在GDPR/adminは波未割当である。
 
 ## 1. 固定観測と回答範囲
 
