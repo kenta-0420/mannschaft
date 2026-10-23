@@ -143,3 +143,9 @@ ArchUnit 1.3.0の配布bytecodeで確認した。`FreezingArchRule$CategorizedVi
 旧F head `2322c632a82fbf35eefcecb299364eaa3b88e1b0` へ、取得時点のmain `eccf86d3cd3661493e683ec918e77ec2c0214abd` を通常mergeした。PR #4023（`bdc5379ed38c2a8920f87c886da58ad2cc39da9a`）のR1返済によるD-3T既存3行の削減（追加0）と上限7325→7322を引き継ぐ。D-1/D-3/D-5の移行済み三store・上限2156/1325/1876、およびD-2b上限569は旧Fから変更しない。
 
 上の原本SHA・移行表・L0-C表は初回移行時点の証拠であり、今回統合後の全CI成功を意味しない。統合後HEADの全量CIと各担当runnerのafter原本照合は別途確認する。今回ローカルでは軽量な静的照合のみ実施し、Gradle・実機E2E・アリシゼーションは実行していない（本番Java/API/UIの追加変更なし）。
+
+## 2026-10-23 main統合後のconstructor記録追従
+
+失敗run [39964737374](https://github.com/kenta-0420/mannschaft/actions/runs/39964737374) のD-3/D-5各1件は、main PR #4023（`bdc5379ed38c2a8920f87c886da58ad2cc39da9a`）が `ErrorReportTimelineService` に同ドメインの `ErrorReportManagementService` 引数を追加したことによるconstructor descriptionの変化だった。既存 `UserRepository` 依存のconstructor記録を実XMLの新descriptionへ各1行置換する。新行からこの追加引数だけを除くと旧保存行に完全一致し、旧prefix群は両番人ともconstructor・field・resolveUserNames callの3件を維持する。
+
+D-3/D-5は各削除1・追加1の記録置換であり、追加違反0・行数1325/1876・旧prefix頻度Map・occurrence=1・上限は不変。他6ファイルの生bytesと既定freezeの判定/除外は変更しない。これは初回承認178件の追加補正ではない。失敗runを成功扱いにせず、修正後HEADの全量CI・担当runnerのafter原本・再実行不変の確認は未確定として保持する。
