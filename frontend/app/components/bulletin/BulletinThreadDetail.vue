@@ -32,6 +32,11 @@ const thread = ref<BulletinThreadResponse | null>(null)
 const authorDisplayName = computed(() => thread.value?.author.displayName || t('bulletin.unknownAuthor'))
 /** 返信一覧（スレッド詳細とは別APIで取得: GET /api/v1/bulletin/threads/{threadId}/replies） */
 const replies = ref<BulletinReplyResponse[]>([])
+/** APIで同梱された子返信も親の直後に表示する。 */
+const visibleReplies = computed(() => flattenReplies(replies.value))
+function flattenReplies(items: BulletinReplyResponse[]): BulletinReplyResponse[] {
+  return items.flatMap(reply => [reply, ...flattenReplies(reply.children)])
+}
 /** 添付ファイル一覧 */
 const attachments = ref<BulletinAttachment[]>([])
 const replyBody = ref('')
@@ -159,7 +164,7 @@ watch(() => props.threadId, () => loadThread())
 
     <!-- スレッド本体 -->
     <SectionCard>
-      <h2 class="mb-2 text-xl font-bold">{{ thread.title }}</h2>
+      <h2 class="mb-2 break-words text-xl font-bold [overflow-wrap:anywhere]">{{ thread.title }}</h2>
       <div class="mb-4 flex items-center gap-3 text-sm text-surface-400">
         <Avatar :label="authorDisplayName.charAt(0)" shape="circle" size="small" />
         <span>{{ authorDisplayName }}</span>
@@ -167,7 +172,7 @@ watch(() => props.threadId, () => loadThread())
         <span v-if="thread.readTrackingMode !== 'NONE'"><i class="pi pi-eye" /> {{ thread.readCount }}人既読</span>
       </div>
       <!-- eslint-disable-next-line vue/no-v-html -->
-      <div class="article-body text-sm leading-relaxed" v-html="sanitizeHtml(thread.body)" />
+      <div class="article-body whitespace-pre-wrap break-words text-sm leading-relaxed [overflow-wrap:anywhere]" v-html="sanitizeHtml(thread.body)" />
     </SectionCard>
 
     <!-- 添付ファイル一覧 -->
@@ -211,8 +216,9 @@ watch(() => props.threadId, () => loadThread())
       <h3 class="mb-3 text-sm font-semibold text-surface-500">返信 {{ thread.replyCount }}件</h3>
       <div class="flex flex-col gap-3">
         <div
-          v-for="reply in replies"
+          v-for="reply in visibleReplies"
           :key="reply.id"
+          data-testid="bulletin-reply"
           class="rounded-lg border border-surface-100 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
           :style="{ marginLeft: `${reply.depth * 24}px` }"
         >
@@ -220,7 +226,7 @@ watch(() => props.threadId, () => loadThread())
             <span class="font-medium text-surface-600">{{ reply.author.displayName }}</span>
             <span>{{ relativeTime(reply.createdAt) }}</span>
           </div>
-          <p class="whitespace-pre-wrap text-sm">{{ reply.body }}</p>
+          <p class="whitespace-pre-wrap break-words text-sm [overflow-wrap:anywhere]">{{ reply.body }}</p>
         </div>
       </div>
     </div>
