@@ -74,3 +74,13 @@ describe('CMP-261012-0315 friends.json（6言語）', () => {
     })
   })
 })
+
+// C3: 最小文字数の案内は狭い入力欄のplaceholderから独立したヒント行へ置く。
+describe.each(LOCALES)('CMP-261014-2035 検索文言 %s', (locale) => {
+  it('placeholderに2文字以上の説明を詰め込まず、ヒントキーへ分離する', () => {
+    const dialog = load(locale).friends.follow_dialog ?? {}
+    expect(dialog.search_placeholder).toBeTruthy()
+    expect(dialog.search_placeholder).not.toMatch(/2|２/)
+    expect(dialog.search_hint).toMatch(/2|２/)
+  })
+})

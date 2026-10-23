@@ -664,6 +664,7 @@
     }
   },
   "timeline": {
+    "refresh": "Aktualisieren",
     "detail": {
       "back": "Zurück",
       "loadFailed": "Beitrag konnte nicht geladen werden",
@@ -1299,7 +1300,7 @@
     "preset": {
       "PRESET_TRAINING_PARTNERS": {
         "name": "Trainingspartner",
-        "description": "Alle befreundeten Teams"
+        "description": "Alle Freundschaftsteams"
       },
       "PRESET_LOCAL_TEAMS": {
         "name": "Lokale Teams",
@@ -1307,7 +1308,7 @@
       },
       "PRESET_ALL_FRIENDS": {
         "name": "Alle Freunde",
-        "description": "Alle befreundeten Teammitglieder"
+        "description": "Alle Mitglieder von Freundschaftsteams"
       }
     }
   },

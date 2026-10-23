@@ -94,3 +94,7 @@ main `3bad46f846cd094a64bd46524aed69479b0c76bf` を取り込んだhead `4c184472
 新pendingへ理由付き `AlwaysReachable(CORE)` を宣言し、API総数3723・coverage台帳へ宣言済み0|1を反映した。未宣言例外件数の増加は0で、日時等の違反凍結台帳は変更していない。新Row/Viewは `Instant`、既存JPAのLocalDateTime引数から唯一の正 `UserZoneLocalDateTimeParser.SERVER_ZONE` で同じ瞬間へ変換する。AC6/Facadeは非空に留めず固定日時からのInstant一致を検査するよう強化した。
 
 この是正後のBE65/番人・生成schema・最新JARは未検証。FE入力は成功済みtreeのままだが、最終headの全CI・実機・アリシゼーションは未完了。旧JARは是正前観測として保持し、現在の実機入力へ使用しない。
+
+## 最終結果（2026-10-22）
+
+上記は当時の進捗履歴として保持する。最終CI・実機修正/再確認・3住民探索・復元と制約は[完了証拠](CMP-261021-0020-completion-20261022.md)、25AC対応は[正式JSON](CMP-261021-0020.json)を参照。

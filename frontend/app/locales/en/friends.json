@@ -13,12 +13,13 @@
     },
     "follow_dialog": {
       "search_label": "Search by team name",
-      "search_placeholder": "Enter at least 2 characters of the team name",
+      "search_placeholder": "Search teams",
       "slug_input_label": "Specify by URL name",
       "slug_input_hint": "If the team does not appear in the results, enter its URL name (the last part of its address) in the field below",
       "no_results": "No matching teams were found",
       "search_error": "The search failed. Check your connection and try again",
-      "retry": "Search again"
+      "retry": "Search again",
+      "search_hint": "Enter at least 2 characters"
     },
     "actions": {
       "follow": "Follow",
@@ -203,5 +204,31 @@
   },
   "nav": {
     "tab": "Friend Teams"
+  },
+  "error": {
+    "SOCIAL_101": "You cannot follow your own team",
+    "SOCIAL_102": "You already follow this team",
+    "SOCIAL_103": "Follow relationship not found",
+    "SOCIAL_104": "The team you want to follow does not exist",
+    "SOCIAL_105": "Permission to manage friendship teams is required",
+    "SOCIAL_106": "Friendship relationship not found",
+    "SOCIAL_107": "Administrator permission is required to change visibility",
+    "SOCIAL_108": "Another friendship operation is in progress. Please try again",
+    "SOCIAL_109": "Friendship teams are currently disabled",
+    "SOCIAL_110": "Friend folder not found",
+    "SOCIAL_111": "Each team can create up to 20 friend folders",
+    "SOCIAL_112": "This friendship team is already in the folder",
+    "SOCIAL_113": "This friendship team is not in the folder",
+    "SOCIAL_120": "Forwarding history not found",
+    "SOCIAL_121": "This post has already been forwarded",
+    "SOCIAL_122": "The original post was not found",
+    "SOCIAL_123": "This post is not shared with friendship teams",
+    "SOCIAL_124": "No friendship exists with the original team",
+    "SOCIAL_125": "Forwarding to supporters is not available yet",
+    "SOCIAL_130": "No recipients for this friend notification",
+    "SOCIAL_131": "Choose a recipient folder",
+    "SOCIAL_132": "Choose recipient teams",
+    "SOCIAL_133": "Choose a folder or teams as the recipient type",
+    "SOCIAL_134": "The selected team is not a friendship team"
   }
 }

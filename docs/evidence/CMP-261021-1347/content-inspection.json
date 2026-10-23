@@ -1,0 +1,3120 @@
+[
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/composite.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".status",
+        "value": "ACTUAL_CASES_COMPLETED_ALL_OWNED_BROWSER_CONTEXTS_CLOSED_ROOT_ADOPTION_PENDING"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/prepareComposite.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".status",
+        "value": "UI_CREATED_PRECONDITIONS_CONFIRMED; not an overall E2E PASS"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/uiHatch.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".cases.anonymous-direct.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.anonymous-entry.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.owner-natural-entry.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.no-membership-own-only.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.other-account-direct.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.other-tenant-direct.status",
+        "value": "NOT_APPLICABLE"
+      },
+      {
+        "field": ".cases.ui-start.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.ui-habitat-assignment.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.ui-hatch.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.idle-idle-walk.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.feed-ack-reload.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.zero-xp-feed.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.touch-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.both-styles.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.all-stages.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.all-habitats.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.paused-finite-touch.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.reduced-setting.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.os-reduced.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stopped-fallback.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.visibility-toggle.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.viewport.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.collapse.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.document-visibility.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.initial-hidden-zero-load.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stale-action.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stale-image.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.atlas-failure.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.fallback-failure.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.390px.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.keyboard.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.200pct-native-zoom.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dark.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.no-old-callbacks.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-natural-widget.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-feed-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-touch-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-collapse.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-hide-reload.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-both-styles.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.normal-ui-login.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.startedAt",
+        "value": "2026-10-21T12:17:16.657Z"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.finishedAt",
+        "value": "2026-10-21T12:17:23.721Z"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[1].setup.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[1].setup.startedAt",
+        "value": "2026-10-21T12:18:44.519Z"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[1].setup.finishedAt",
+        "value": "2026-10-21T12:18:47.878Z"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[2].setup.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[2].setup.startedAt",
+        "value": "2026-10-21T12:19:39.773Z"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[2].setup.finishedAt",
+        "value": "2026-10-21T12:19:42.318Z"
+      },
+      {
+        "field": ".environmentPreflights[0].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflights[0].startedAt",
+        "value": "2026-10-21T12:16:48.628Z"
+      },
+      {
+        "field": ".environmentPreflights[0].finishedAt",
+        "value": "2026-10-21T12:17:16.509Z"
+      },
+      {
+        "field": ".environmentPreflights[1].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflights[1].startedAt",
+        "value": "2026-10-21T12:18:20.888Z"
+      },
+      {
+        "field": ".environmentPreflights[1].finishedAt",
+        "value": "2026-10-21T12:18:44.440Z"
+      },
+      {
+        "field": ".environmentPreflights[2].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflights[2].startedAt",
+        "value": "2026-10-21T12:19:27.558Z"
+      },
+      {
+        "field": ".environmentPreflights[2].finishedAt",
+        "value": "2026-10-21T12:19:39.703Z"
+      },
+      {
+        "field": ".loginSetups[0].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".loginSetups[0].startedAt",
+        "value": "2026-10-21T12:17:16.657Z"
+      },
+      {
+        "field": ".loginSetups[0].finishedAt",
+        "value": "2026-10-21T12:17:23.721Z"
+      },
+      {
+        "field": ".loginSetups[1].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".loginSetups[1].startedAt",
+        "value": "2026-10-21T12:18:44.519Z"
+      },
+      {
+        "field": ".loginSetups[1].finishedAt",
+        "value": "2026-10-21T12:18:47.878Z"
+      },
+      {
+        "field": ".loginSetups[2].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".loginSetups[2].startedAt",
+        "value": "2026-10-21T12:19:39.773Z"
+      },
+      {
+        "field": ".loginSetups[2].finishedAt",
+        "value": "2026-10-21T12:19:42.318Z"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/landFeedTouch.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".cases.anonymous-direct.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.anonymous-entry.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.owner-natural-entry.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.no-membership-own-only.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.other-account-direct.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.other-tenant-direct.status",
+        "value": "NOT_APPLICABLE"
+      },
+      {
+        "field": ".cases.ui-start.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.ui-habitat-assignment.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.ui-hatch.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.idle-idle-walk.status",
+        "value": "PARTIAL"
+      },
+      {
+        "field": ".cases.feed-ack-reload.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.zero-xp-feed.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.touch-ack.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.both-styles.status",
+        "value": "FAIL"
+      },
+      {
+        "field": ".cases.all-stages.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.all-habitats.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.paused-finite-touch.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.reduced-setting.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.os-reduced.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stopped-fallback.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.visibility-toggle.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.viewport.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.collapse.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.document-visibility.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.initial-hidden-zero-load.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stale-action.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stale-image.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.atlas-failure.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.fallback-failure.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.390px.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.keyboard.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.200pct-native-zoom.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dark.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.no-old-callbacks.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-natural-widget.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-feed-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-touch-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-collapse.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-hide-reload.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-both-styles.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.normal-ui-login.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.startedAt",
+        "value": "2026-10-21T12:24:06.258Z"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.finishedAt",
+        "value": "2026-10-21T12:24:09.285Z"
+      },
+      {
+        "field": ".environmentPreflights[0].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflights[0].startedAt",
+        "value": "2026-10-21T12:23:58.846Z"
+      },
+      {
+        "field": ".environmentPreflights[0].finishedAt",
+        "value": "2026-10-21T12:24:06.223Z"
+      },
+      {
+        "field": ".loginSetups[0].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".loginSetups[0].startedAt",
+        "value": "2026-10-21T12:24:06.258Z"
+      },
+      {
+        "field": ".loginSetups[0].finishedAt",
+        "value": "2026-10-21T12:24:09.285Z"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/landBothStyles.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".cases.anonymous-direct.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.anonymous-entry.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.owner-natural-entry.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.no-membership-own-only.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.other-account-direct.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.other-tenant-direct.status",
+        "value": "NOT_APPLICABLE"
+      },
+      {
+        "field": ".cases.ui-start.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.ui-habitat-assignment.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.ui-hatch.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.idle-idle-walk.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.feed-ack-reload.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.zero-xp-feed.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.touch-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.both-styles.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.all-stages.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.all-habitats.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.paused-finite-touch.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.reduced-setting.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.os-reduced.status",
+        "value": "FAIL"
+      },
+      {
+        "field": ".cases.stopped-fallback.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.visibility-toggle.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.viewport.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.collapse.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.document-visibility.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.initial-hidden-zero-load.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stale-action.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stale-image.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.atlas-failure.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.fallback-failure.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.390px.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.keyboard.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.200pct-native-zoom.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dark.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.no-old-callbacks.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-natural-widget.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-feed-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-touch-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-collapse.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-hide-reload.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-both-styles.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.normal-ui-login.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.startedAt",
+        "value": "2026-10-21T12:29:54.004Z"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.finishedAt",
+        "value": "2026-10-21T12:29:57.374Z"
+      },
+      {
+        "field": ".environmentPreflights[0].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflights[0].startedAt",
+        "value": "2026-10-21T12:29:47.061Z"
+      },
+      {
+        "field": ".environmentPreflights[0].finishedAt",
+        "value": "2026-10-21T12:29:53.981Z"
+      },
+      {
+        "field": ".loginSetups[0].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".loginSetups[0].startedAt",
+        "value": "2026-10-21T12:29:54.004Z"
+      },
+      {
+        "field": ".loginSetups[0].finishedAt",
+        "value": "2026-10-21T12:29:57.374Z"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/landMotion.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".cases.anonymous-direct.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.anonymous-entry.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.owner-natural-entry.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.no-membership-own-only.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.other-account-direct.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.other-tenant-direct.status",
+        "value": "NOT_APPLICABLE"
+      },
+      {
+        "field": ".cases.ui-start.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.ui-habitat-assignment.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.ui-hatch.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.idle-idle-walk.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.feed-ack-reload.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.zero-xp-feed.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.touch-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.both-styles.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.all-stages.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.all-habitats.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.paused-finite-touch.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.reduced-setting.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.os-reduced.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.stopped-fallback.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.visibility-toggle.status",
+        "value": "FAIL"
+      },
+      {
+        "field": ".cases.viewport.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.collapse.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.document-visibility.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.initial-hidden-zero-load.status",
+        "value": "PARTIAL"
+      },
+      {
+        "field": ".cases.stale-action.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stale-image.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.atlas-failure.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.fallback-failure.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.390px.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.keyboard.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.200pct-native-zoom.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dark.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.no-old-callbacks.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-natural-widget.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-feed-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-touch-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-collapse.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-hide-reload.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-both-styles.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.normal-ui-login.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.startedAt",
+        "value": "2026-10-21T12:34:00.962Z"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.finishedAt",
+        "value": "2026-10-21T12:34:04.888Z"
+      },
+      {
+        "field": ".environmentPreflights[0].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflights[0].startedAt",
+        "value": "2026-10-21T12:33:52.680Z"
+      },
+      {
+        "field": ".environmentPreflights[0].finishedAt",
+        "value": "2026-10-21T12:34:00.885Z"
+      },
+      {
+        "field": ".loginSetups[0].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".loginSetups[0].startedAt",
+        "value": "2026-10-21T12:34:00.962Z"
+      },
+      {
+        "field": ".loginSetups[0].finishedAt",
+        "value": "2026-10-21T12:34:04.888Z"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/landVisibilityAndFaults.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".cases.anonymous-direct.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.anonymous-entry.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.owner-natural-entry.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.no-membership-own-only.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.other-account-direct.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.other-tenant-direct.status",
+        "value": "NOT_APPLICABLE"
+      },
+      {
+        "field": ".cases.ui-start.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.ui-habitat-assignment.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.ui-hatch.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.idle-idle-walk.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.feed-ack-reload.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.zero-xp-feed.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.touch-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.both-styles.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.all-stages.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.all-habitats.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.paused-finite-touch.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.reduced-setting.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.os-reduced.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stopped-fallback.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.visibility-toggle.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.viewport.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.collapse.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.document-visibility.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.initial-hidden-zero-load.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stale-action.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stale-image.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.atlas-failure.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.fallback-failure.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.390px.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.keyboard.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.200pct-native-zoom.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dark.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.no-old-callbacks.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-natural-widget.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.dashboard-feed-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-touch-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-collapse.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-hide-reload.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-both-styles.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.normal-ui-login.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.startedAt",
+        "value": "2026-10-21T12:39:16.350Z"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.finishedAt",
+        "value": "2026-10-21T12:39:19.518Z"
+      },
+      {
+        "field": ".environmentPreflights[0].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflights[0].startedAt",
+        "value": "2026-10-21T12:39:08.149Z"
+      },
+      {
+        "field": ".environmentPreflights[0].finishedAt",
+        "value": "2026-10-21T12:39:16.309Z"
+      },
+      {
+        "field": ".loginSetups[0].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".loginSetups[0].startedAt",
+        "value": "2026-10-21T12:39:16.350Z"
+      },
+      {
+        "field": ".loginSetups[0].finishedAt",
+        "value": "2026-10-21T12:39:19.518Z"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/landDashboardFeedTouch.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".cases.anonymous-direct.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.anonymous-entry.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.owner-natural-entry.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.no-membership-own-only.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.other-account-direct.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.other-tenant-direct.status",
+        "value": "NOT_APPLICABLE"
+      },
+      {
+        "field": ".cases.ui-start.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.ui-habitat-assignment.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.ui-hatch.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.idle-idle-walk.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.feed-ack-reload.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.zero-xp-feed.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.touch-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.both-styles.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.all-stages.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.all-habitats.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.paused-finite-touch.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.reduced-setting.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.os-reduced.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stopped-fallback.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.visibility-toggle.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.viewport.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.collapse.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.document-visibility.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.initial-hidden-zero-load.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stale-action.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stale-image.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.atlas-failure.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.fallback-failure.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.390px.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.keyboard.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.200pct-native-zoom.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dark.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.no-old-callbacks.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-natural-widget.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-feed-ack.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.dashboard-touch-ack.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.dashboard-collapse.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.dashboard-hide-reload.status",
+        "value": "FAIL"
+      },
+      {
+        "field": ".cases.dashboard-both-styles.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.normal-ui-login.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.startedAt",
+        "value": "2026-10-21T12:48:24.707Z"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.finishedAt",
+        "value": "2026-10-21T12:48:28.422Z"
+      },
+      {
+        "field": ".environmentPreflights[0].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflights[0].startedAt",
+        "value": "2026-10-21T12:48:13.384Z"
+      },
+      {
+        "field": ".environmentPreflights[0].finishedAt",
+        "value": "2026-10-21T12:48:24.414Z"
+      },
+      {
+        "field": ".loginSetups[0].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".loginSetups[0].startedAt",
+        "value": "2026-10-21T12:48:24.707Z"
+      },
+      {
+        "field": ".loginSetups[0].finishedAt",
+        "value": "2026-10-21T12:48:28.422Z"
+      },
+      {
+        "field": ".operationCheckpoints[0].status",
+        "value": "ACTUAL_ACK_NATIVE_FINITE_CLIP_CONFIRMED_RELOAD_PENDING"
+      },
+      {
+        "field": ".operationCheckpoints[1].status",
+        "value": "ACTUAL_ACK_NATIVE_FINITE_CLIP_CONFIRMED_RELOAD_PENDING"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/repairedDashboardHideAndStyles.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".cases.anonymous-direct.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.anonymous-entry.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.owner-natural-entry.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.no-membership-own-only.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.other-account-direct.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.other-tenant-direct.status",
+        "value": "NOT_APPLICABLE"
+      },
+      {
+        "field": ".cases.ui-start.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.ui-habitat-assignment.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.ui-hatch.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.idle-idle-walk.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.feed-ack-reload.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.zero-xp-feed.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.touch-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.both-styles.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.all-stages.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.all-habitats.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.paused-finite-touch.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.reduced-setting.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.os-reduced.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stopped-fallback.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.visibility-toggle.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.viewport.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.collapse.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.document-visibility.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.initial-hidden-zero-load.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stale-action.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stale-image.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.atlas-failure.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.fallback-failure.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.390px.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.keyboard.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.200pct-native-zoom.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dark.status",
+        "value": "FAIL"
+      },
+      {
+        "field": ".cases.no-old-callbacks.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-natural-widget.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-feed-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-touch-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-collapse.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-hide-reload.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.dashboard-both-styles.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.startedAt",
+        "value": "2026-10-21T13:30:19.237Z"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.finishedAt",
+        "value": "2026-10-21T13:30:23.760Z"
+      },
+      {
+        "field": ".environmentPreflights[0].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflights[0].startedAt",
+        "value": "2026-10-21T13:28:18.611Z"
+      },
+      {
+        "field": ".environmentPreflights[0].finishedAt",
+        "value": "2026-10-21T13:30:18.478Z"
+      },
+      {
+        "field": ".loginSetups[0].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".loginSetups[0].startedAt",
+        "value": "2026-10-21T13:30:19.237Z"
+      },
+      {
+        "field": ".loginSetups[0].finishedAt",
+        "value": "2026-10-21T13:30:23.760Z"
+      }
+    ],
+    "rootAuthorizedAdditionalPublicationTransform": {
+      "kind": "Japanese semantic translation of rootRationale for secret-scan false-positive avoidance",
+      "targetSha256": "157663376985011f406b3606280c8dadc22861c10f5daa4a88439a676a8fec40",
+      "semanticScopeVerified": "Only approved rationale string or field name changed; source hashes, statuses, failures, limits and commit value remain unchanged"
+    }
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/landDarkNativeFunctional.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".cases.anonymous-direct.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.anonymous-entry.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.owner-natural-entry.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.no-membership-own-only.status",
+        "value": "PARTIAL"
+      },
+      {
+        "field": ".cases.other-account-direct.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.other-tenant-direct.status",
+        "value": "NOT_APPLICABLE"
+      },
+      {
+        "field": ".cases.ui-start.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.ui-habitat-assignment.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.ui-hatch.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.idle-idle-walk.status",
+        "value": "PARTIAL"
+      },
+      {
+        "field": ".cases.feed-ack-reload.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.zero-xp-feed.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.touch-ack.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.both-styles.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.all-stages.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.all-habitats.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.paused-finite-touch.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.reduced-setting.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.os-reduced.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.stopped-fallback.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.visibility-toggle.status",
+        "value": "FAIL"
+      },
+      {
+        "field": ".cases.viewport.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.collapse.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.document-visibility.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.initial-hidden-zero-load.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stale-action.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stale-image.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.atlas-failure.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.fallback-failure.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.390px.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.keyboard.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.200pct-native-zoom.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.dark.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.no-old-callbacks.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-natural-widget.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-feed-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-touch-ack.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-collapse.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-hide-reload.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-both-styles.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.normal-ui-login.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.startedAt",
+        "value": "2026-10-21T13:50:45.890Z"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.finishedAt",
+        "value": "2026-10-21T13:50:50.455Z"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[1].setup.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[1].setup.startedAt",
+        "value": "2026-10-21T13:58:46.008Z"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[1].setup.finishedAt",
+        "value": "2026-10-21T13:58:50.177Z"
+      },
+      {
+        "field": ".environmentPreflights[0].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflights[0].startedAt",
+        "value": "2026-10-21T13:50:35.769Z"
+      },
+      {
+        "field": ".environmentPreflights[0].finishedAt",
+        "value": "2026-10-21T13:50:45.807Z"
+      },
+      {
+        "field": ".environmentPreflights[1].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflights[1].startedAt",
+        "value": "2026-10-21T13:54:49.829Z"
+      },
+      {
+        "field": ".environmentPreflights[1].finishedAt",
+        "value": "2026-10-21T13:56:10.205Z"
+      },
+      {
+        "field": ".environmentPreflights[2].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflights[2].startedAt",
+        "value": "2026-10-21T13:58:36.352Z"
+      },
+      {
+        "field": ".environmentPreflights[2].finishedAt",
+        "value": "2026-10-21T13:58:45.866Z"
+      },
+      {
+        "field": ".loginSetups[0].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".loginSetups[0].startedAt",
+        "value": "2026-10-21T13:50:45.890Z"
+      },
+      {
+        "field": ".loginSetups[0].finishedAt",
+        "value": "2026-10-21T13:50:50.455Z"
+      },
+      {
+        "field": ".loginSetups[1].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".loginSetups[1].startedAt",
+        "value": "2026-10-21T13:56:10.453Z"
+      },
+      {
+        "field": ".loginSetups[1].finishedAt",
+        "value": "2026-10-21T13:56:32.809Z"
+      },
+      {
+        "field": ".loginSetups[2].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".loginSetups[2].startedAt",
+        "value": "2026-10-21T13:58:46.008Z"
+      },
+      {
+        "field": ".loginSetups[2].finishedAt",
+        "value": "2026-10-21T13:58:50.177Z"
+      }
+    ],
+    "rootAuthorizedAdditionalPublicationTransform": {
+      "kind": "Japanese semantic translation of rootRationale for secret-scan false-positive avoidance",
+      "targetSha256": "e8d87f0bf83b4d10a2c008c8ba53d6961107115587c1ae672a68bc2a2f617f82",
+      "semanticScopeVerified": "Only approved rationale string or field name changed; source hashes, statuses, failures, limits and commit value remain unchanged"
+    }
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/remainingSeaAir.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".cases.anonymous-direct.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.anonymous-entry.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.owner-natural-entry.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.no-membership-own-only.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.other-account-direct.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.other-tenant-direct.status",
+        "value": "NOT_APPLICABLE"
+      },
+      {
+        "field": ".cases.ui-start.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.ui-habitat-assignment.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.ui-hatch.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.idle-idle-walk.status",
+        "value": "PARTIAL"
+      },
+      {
+        "field": ".cases.feed-ack-reload.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.zero-xp-feed.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.touch-ack.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.both-styles.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.all-stages.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.all-habitats.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.paused-finite-touch.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.reduced-setting.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.os-reduced.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.stopped-fallback.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.visibility-toggle.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.viewport.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.collapse.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.document-visibility.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.initial-hidden-zero-load.status",
+        "value": "PARTIAL"
+      },
+      {
+        "field": ".cases.stale-action.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.stale-image.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.atlas-failure.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.fallback-failure.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.390px.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.keyboard.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.200pct-native-zoom.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dark.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.no-old-callbacks.status",
+        "value": "NOT_EXECUTED"
+      },
+      {
+        "field": ".cases.dashboard-natural-widget.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.dashboard-feed-ack.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.dashboard-touch-ack.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.dashboard-collapse.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.dashboard-hide-reload.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.dashboard-both-styles.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.startedAt",
+        "value": "2026-10-21T14:07:03.066Z"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[0].setup.finishedAt",
+        "value": "2026-10-21T14:07:06.928Z"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[1].setup.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[1].setup.startedAt",
+        "value": "2026-10-21T14:10:33.260Z"
+      },
+      {
+        "field": ".cases.normal-ui-login.runs[1].setup.finishedAt",
+        "value": "2026-10-21T14:10:38.723Z"
+      },
+      {
+        "field": ".environmentPreflights[0].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflights[0].startedAt",
+        "value": "2026-10-21T14:06:52.168Z"
+      },
+      {
+        "field": ".environmentPreflights[0].finishedAt",
+        "value": "2026-10-21T14:07:02.938Z"
+      },
+      {
+        "field": ".environmentPreflights[1].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflights[1].startedAt",
+        "value": "2026-10-21T14:10:24.233Z"
+      },
+      {
+        "field": ".environmentPreflights[1].finishedAt",
+        "value": "2026-10-21T14:10:33.090Z"
+      },
+      {
+        "field": ".loginSetups[0].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".loginSetups[0].startedAt",
+        "value": "2026-10-21T14:07:03.066Z"
+      },
+      {
+        "field": ".loginSetups[0].finishedAt",
+        "value": "2026-10-21T14:07:06.928Z"
+      },
+      {
+        "field": ".loginSetups[1].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".loginSetups[1].startedAt",
+        "value": "2026-10-21T14:10:33.260Z"
+      },
+      {
+        "field": ".loginSetups[1].finishedAt",
+        "value": "2026-10-21T14:10:38.723Z"
+      },
+      {
+        "field": ".operationCheckpoints[0].status",
+        "value": "ACTUAL_ACK_NATIVE_FINITE_CLIP_CONFIRMED_RELOAD_PENDING"
+      },
+      {
+        "field": ".operationCheckpoints[1].status",
+        "value": "ACTUAL_ACK_NATIVE_FINITE_CLIP_CONFIRMED_RELOAD_PENDING"
+      },
+      {
+        "field": ".operationCheckpoints[2].status",
+        "value": "ACTUAL_ACK_NATIVE_FINITE_CLIP_CONFIRMED_RELOAD_PENDING"
+      },
+      {
+        "field": ".operationCheckpoints[3].status",
+        "value": "ACTUAL_ACK_NATIVE_FINITE_CLIP_CONFIRMED_RELOAD_PENDING"
+      }
+    ],
+    "rootAuthorizedAdditionalPublicationTransform": {
+      "kind": "Japanese semantic translation of rootRationale for secret-scan false-positive avoidance",
+      "targetSha256": "7bd01776d5341c1f5b2e5e173cfd27b8ff42c05854eb84ccde768bc207cc5a0c",
+      "semanticScopeVerified": "Only approved rationale string or field name changed; source hashes, statuses, failures, limits and commit value remain unchanged"
+    }
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/oldSourceCausal.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".cases.anonymous-entry.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.stale-image.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.no-old-callbacks.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.stale-action.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflights[0].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflights[0].startedAt",
+        "value": "2026-10-21T13:14:00.523Z"
+      },
+      {
+        "field": ".environmentPreflights[0].finishedAt",
+        "value": "2026-10-21T13:14:12.130Z"
+      },
+      {
+        "field": ".environmentPreflights[1].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflights[1].startedAt",
+        "value": "2026-10-21T13:14:29.259Z"
+      },
+      {
+        "field": ".environmentPreflights[1].finishedAt",
+        "value": "2026-10-21T13:14:43.079Z"
+      },
+      {
+        "field": ".loginSetup.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".loginSetup.startedAt",
+        "value": "2026-10-21T13:14:43.243Z"
+      },
+      {
+        "field": ".loginSetup.finishedAt",
+        "value": "2026-10-21T13:14:47.923Z"
+      },
+      {
+        "field": ".status",
+        "value": "PASS"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/supplementalApiAuthorization.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.dinosaurIdInjection.status",
+        "value": "NOT_APPLICABLE"
+      },
+      {
+        "field": ".cases.ownResult.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.otherResult.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.otherResult.result",
+        "value": "404 DIAGNOSIS_002 with no result data"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/nativeViewportVisual.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".status",
+        "value": "CAPTURED_PENDING_VISUAL_REVIEW"
+      },
+      {
+        "field": ".environmentPreflight.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflight.startedAt",
+        "value": "2026-10-21T14:22:16.872Z"
+      },
+      {
+        "field": ".environmentPreflight.finishedAt",
+        "value": "2026-10-21T14:23:16.265Z"
+      },
+      {
+        "field": ".loginSetup.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".loginSetup.startedAt",
+        "value": "2026-10-21T14:23:16.295Z"
+      },
+      {
+        "field": ".loginSetup.finishedAt",
+        "value": "2026-10-21T14:23:29.531Z"
+      },
+      {
+        "field": ".cleanup.status",
+        "value": "CLOSED"
+      },
+      {
+        "field": ".cleanup.startedAt",
+        "value": "2026-10-21T14:24:47.380Z"
+      },
+      {
+        "field": ".cleanup.finishedAt",
+        "value": "2026-10-21T14:27:02.574Z"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/privateResultUi.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".cases.own-result-ui.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.other-result-direct-url-ui.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflight.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflight.startedAt",
+        "value": "2026-10-21T14:27:34.400Z"
+      },
+      {
+        "field": ".environmentPreflight.finishedAt",
+        "value": "2026-10-21T14:27:46.636Z"
+      },
+      {
+        "field": ".loginSetup.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".loginSetup.startedAt",
+        "value": "2026-10-21T14:27:46.665Z"
+      },
+      {
+        "field": ".loginSetup.finishedAt",
+        "value": "2026-10-21T14:27:50.085Z"
+      },
+      {
+        "field": ".status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cleanup.status",
+        "value": "CLOSED"
+      },
+      {
+        "field": ".cleanup.startedAt",
+        "value": "2026-10-21T14:28:24.194Z"
+      },
+      {
+        "field": ".cleanup.finishedAt",
+        "value": "2026-10-21T14:30:20.421Z"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/zeroXp.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflight.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflight.startedAt",
+        "value": "2026-10-21T14:41:06.206Z"
+      },
+      {
+        "field": ".environmentPreflight.finishedAt",
+        "value": "2026-10-21T14:41:14.130Z"
+      },
+      {
+        "field": ".loginSetup.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".loginSetup.startedAt",
+        "value": "2026-10-21T14:41:14.155Z"
+      },
+      {
+        "field": ".loginSetup.finishedAt",
+        "value": "2026-10-21T14:41:17.311Z"
+      },
+      {
+        "field": ".cleanup.status",
+        "value": "CLOSED"
+      },
+      {
+        "field": ".cleanup.startedAt",
+        "value": "2026-10-21T14:41:32.062Z"
+      },
+      {
+        "field": ".cleanup.finishedAt",
+        "value": "2026-10-21T14:42:03.784Z"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/documentVisibility.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".status",
+        "value": "PASS"
+      },
+      {
+        "field": ".dataOnlyPreflight.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".applicationCase.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflight.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".environmentPreflight.startedAt",
+        "value": "2026-10-21T14:47:19.095Z"
+      },
+      {
+        "field": ".environmentPreflight.finishedAt",
+        "value": "2026-10-21T14:47:34.945Z"
+      },
+      {
+        "field": ".loginSetup.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".loginSetup.startedAt",
+        "value": "2026-10-21T14:47:34.958Z"
+      },
+      {
+        "field": ".loginSetup.finishedAt",
+        "value": "2026-10-21T14:47:46.362Z"
+      },
+      {
+        "field": ".cleanup.status",
+        "value": "REQUIRES_REVIEW"
+      },
+      {
+        "field": ".cleanup.startedAt",
+        "value": "2026-10-21T14:47:58.293Z"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/postCleanup.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": []
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/desktop-initial/report-ja.md",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "INDEPENDENT_EXPLORATION"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/desktop-initial/report-safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".status",
+        "value": "目的達成・未実証観測あり"
+      },
+      {
+        "field": ".journey[0].result",
+        "value": "dashboardへ到達。恐竜の文言なし"
+      },
+      {
+        "field": ".journey[1].result",
+        "value": "予約・成績等で恐竜なし。設定へ戻る"
+      },
+      {
+        "field": ".journey[2].result",
+        "value": "恐竜の部屋の設定から到達。若い恐竜/80 XPを確認"
+      },
+      {
+        "field": ".journey[3].result",
+        "value": "POST /api/v1/me/ranch/feeding 201、画面「ごはんをあげました。成長0 XP。」。今週残枠0/100XPは操作前から表示"
+      },
+      {
+        "field": ".journey[4].result",
+        "value": "自分でスクロールしてようすを読む。白文字と淡い背景が読みづらい"
+      },
+      {
+        "field": ".journey[5].result",
+        "value": "遊び方モーダルに到達。無料ケア残枠/放置しても失わない説明を読む"
+      },
+      {
+        "field": ".journey[6].result",
+        "value": "恐竜の部屋は既にon。スイッチの変更はしていない"
+      },
+      {
+        "field": ".journey[7].result",
+        "value": "7件の最後に恐竜の部屋。普段の画面でも自分の恐竜を発見"
+      },
+      {
+        "field": ".journey[8].result",
+        "value": "POST /api/v1/me/ranch/interactions 201、画面「自分の分身に触れました。 · 知り合いはじめ」"
+      },
+      {
+        "field": ".observations[0].status",
+        "value": "未実証の観測"
+      },
+      {
+        "field": ".observations[1].status",
+        "value": "未実証の観測"
+      },
+      {
+        "field": ".observations[2].status",
+        "value": "迷いの観測"
+      },
+      {
+        "field": ".observations[3].status",
+        "value": "幾何観測"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/mobile-initial/report.md",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "INDEPENDENT_EXPLORATION"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/mobile-initial/report.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".status",
+        "value": "OBSERVATIONS_ONLY_NOT_VERIFIED_BUGS"
+      },
+      {
+        "field": ".observations[0].status",
+        "value": "要Root裏取り"
+      },
+      {
+        "field": ".observations[1].status",
+        "value": "主要導線の小タップ領域候補、要Root裏取り"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/mobile-initial/browser-close.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": []
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/mobile-initial/contrast-360.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": []
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/interruption-blocked/report.md",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "INDEPENDENT_EXPLORATION"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/interruption-blocked/report.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".result",
+        "value": "BLOCKED_BEFORE_LOGIN"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/report.md",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "INDEPENDENT_EXPLORATION"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/report.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".status",
+        "value": "OBSERVATIONS_ONLY_NOT_BUG_VERDICT"
+      },
+      {
+        "field": ".chronology[0].result",
+        "value": "390幅で到達。初期の恐竜は試験sea-j成体120XP、96ドット・動きを控える。初期dashboardでは恐竜見えず"
+      },
+      {
+        "field": ".chronology[1].result",
+        "value": "POST /api/v1/me/ranch/interactions 201。自分の分身に触れました。知り合いはじめ。成長値120XPを維持"
+      },
+      {
+        "field": ".chronology[2].result",
+        "value": "両幅で黒い背景に白い状態文字を読めた。無料ケア残枠40/100XP。旧cream低視認は再現せず"
+      },
+      {
+        "field": ".chronology[3].result",
+        "value": "PUT /api/v1/me/ranch/settings 200。保存直後body採取に素材準備中message、その後18-room-normal-360では同名の通常2D恐竜を表示。音の設定は変更せず"
+      },
+      {
+        "field": ".chronology[4].result",
+        "value": "両幅で内部scrollでき、下閉じるに到達。非表示/休止は使わず"
+      },
+      {
+        "field": ".chronology[5].result",
+        "value": "同じ試験sea-j成体の通常2D恐竜を両幅で確認。widgetは初回dashboard表示時に折畳み。360幅のふれあいは2行に折返すが文字切れは目視せず"
+      },
+      {
+        "field": ".chronology[6].result",
+        "value": "部屋再訪時も黒背景。最終dashboardで同名恐竜確認。再訪後のdashboardではグループ内widgetを再度展開"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/browser-close.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": []
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/contrast-390.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": []
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/contrast-revisit-360.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": []
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/page-errors.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": []
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/public-run-check.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": []
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/report.md",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "INDEPENDENT_EXPLORATION"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/report.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".result",
+        "value": "PURPOSE_ACHIEVED_WITH_OBSERVATIONS"
+      },
+      {
+        "field": ".startedAt",
+        "value": "2026-10-21T23:23:47.851Z"
+      },
+      {
+        "field": ".observations[0].status",
+        "value": "未実証の気づき"
+      },
+      {
+        "field": ".observations[1].status",
+        "value": "一時的な文字観測・原因未確認"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/closed.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": []
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/preference-geometry.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": []
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/control-targets.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": []
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/visual-audits.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": []
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/root-approved-first-harness-timeout.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".status",
+        "value": "FAIL"
+      },
+      {
+        "field": ".setup[0].status",
+        "value": "STARTING"
+      },
+      {
+        "field": ".setup[0].startedAt",
+        "value": "2026-10-21T23:25:19.375Z"
+      },
+      {
+        "field": ".setup[1].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".setup[1].startedAt",
+        "value": "2026-10-21T23:25:19.375Z"
+      },
+      {
+        "field": ".setup[1].finishedAt",
+        "value": "2026-10-21T23:25:28.289Z"
+      },
+      {
+        "field": ".setup[2].status",
+        "value": "STARTING"
+      },
+      {
+        "field": ".setup[2].startedAt",
+        "value": "2026-10-21T23:25:28.292Z"
+      },
+      {
+        "field": ".setup[3].status",
+        "value": "STARTING"
+      },
+      {
+        "field": ".setup[3].startedAt",
+        "value": "2026-10-21T23:25:28.292Z"
+      },
+      {
+        "field": ".setup[4].status",
+        "value": "STARTING"
+      },
+      {
+        "field": ".setup[4].startedAt",
+        "value": "2026-10-21T23:25:28.292Z"
+      },
+      {
+        "field": ".setup[5].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".setup[5].startedAt",
+        "value": "2026-10-21T23:25:28.292Z"
+      },
+      {
+        "field": ".setup[5].finishedAt",
+        "value": "2026-10-21T23:25:32.426Z"
+      },
+      {
+        "field": ".cases.dashboardHideReloadShow.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".finishedAt",
+        "value": "2026-10-21T23:26:36.644Z"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/real/root-approved-recheck.safe.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".status",
+        "value": "PASS"
+      },
+      {
+        "field": ".setup[0].status",
+        "value": "STARTING"
+      },
+      {
+        "field": ".setup[0].startedAt",
+        "value": "2026-10-21T23:27:50.306Z"
+      },
+      {
+        "field": ".setup[1].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".setup[1].startedAt",
+        "value": "2026-10-21T23:27:50.306Z"
+      },
+      {
+        "field": ".setup[1].finishedAt",
+        "value": "2026-10-21T23:28:01.393Z"
+      },
+      {
+        "field": ".setup[2].status",
+        "value": "STARTING"
+      },
+      {
+        "field": ".setup[2].startedAt",
+        "value": "2026-10-21T23:28:01.396Z"
+      },
+      {
+        "field": ".setup[3].status",
+        "value": "STARTING"
+      },
+      {
+        "field": ".setup[3].startedAt",
+        "value": "2026-10-21T23:28:01.396Z"
+      },
+      {
+        "field": ".setup[4].status",
+        "value": "STARTING"
+      },
+      {
+        "field": ".setup[4].startedAt",
+        "value": "2026-10-21T23:28:01.396Z"
+      },
+      {
+        "field": ".setup[5].status",
+        "value": "PASS"
+      },
+      {
+        "field": ".setup[5].startedAt",
+        "value": "2026-10-21T23:28:01.396Z"
+      },
+      {
+        "field": ".setup[5].finishedAt",
+        "value": "2026-10-21T23:28:07.736Z"
+      },
+      {
+        "field": ".cases.dashboardHideReloadShow.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.clientReturn.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".cases.reloadColors.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".finishedAt",
+        "value": "2026-10-21T23:28:48.647Z"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-root-final-review-addendum-20261022.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": []
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-root-shipping-317dd3-runtime-source-delta-20261022.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": []
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-root-static-review-20261021.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".status",
+        "value": "STATIC_REVIEW_COMPLETE_RUNTIME_CHECKS_PENDING"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-root-visibility-source-adoption-20261021.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [],
+    "rootAuthorizedAdditionalPublicationTransform": {
+      "kind": "Japanese semantic translation of rootRationale for secret-scan false-positive avoidance",
+      "targetSha256": "b16e33a8d084db1c2dd914286307c868ce57f84c09475aec3903e7edd37d5e76",
+      "semanticScopeVerified": "Only approved rationale string or field name changed; source hashes, statuses, failures, limits and commit value remain unchanged"
+    }
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-root-appearance-source-adoption-20261022.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": []
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-root-shipping-57368-runtime-source-delta-20261022.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": []
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-root-confirmed-visibility-finding-20261021.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".actualRetest.status",
+        "value": "PASS"
+      },
+      {
+        "field": ".actualRetest.limits",
+        "value": "This resolves the targeted finding only; dark/nativezoom/SEA/AIR/privateURL/docvisibility/ALICE remain pending."
+      },
+      {
+        "field": ".regressionRed.result",
+        "value": "7 tests:6 actual assertion failures/1pass; Root read AssertionError mountReads[false] expected[] and parallel3 PUT expected1"
+      },
+      {
+        "field": ".green.result",
+        "value": "Final2spec16/16pass:12new+4existing; limitedESLintexit0 anddiffcheckPASS. Root actualred/green and source reviewed."
+      },
+      {
+        "field": ".status",
+        "value": "FIXED_REGRESSION_RETEST_PASS"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-root-dark-background-before-20261022.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": []
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-root-theme-real-green-20261022.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".status",
+        "value": "PASS_TARGETED_DARK_BACKGROUND_AND_CLIENT_NAVIGATION"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-root-held-desktop-post-exit-verification-20261022.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": []
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-be-native-green-evidence.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".integrationExecution[0].realDbAssertions[0].status",
+        "value": "PASSED"
+      },
+      {
+        "field": ".integrationExecution[0].realDbAssertions[1].status",
+        "value": "PASSED"
+      },
+      {
+        "field": ".integrationExecution[0].realDbAssertions[2].status",
+        "value": "PASSED"
+      },
+      {
+        "field": ".integrationExecution[0].realDbAssertions[3].status",
+        "value": "PASSED"
+      },
+      {
+        "field": ".integrationExecution[0].realDbAssertions[4].status",
+        "value": "PASSED"
+      },
+      {
+        "field": ".integrationExecution[1].realDbAssertions[0].status",
+        "value": "PASSED"
+      },
+      {
+        "field": ".integrationExecution[1].realDbAssertions[1].status",
+        "value": "PASSED"
+      },
+      {
+        "field": ".integrationExecution[1].realDbAssertions[2].status",
+        "value": "PASSED"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-production-output-evidence.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".status",
+        "value": "PASS"
+      },
+      {
+        "field": ".build.startedAt",
+        "value": "2026-10-21T06:12:20.342Z"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-production-builddir-source-evidence.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": []
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-frontend-bd85-success-evidence-20261022.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "preservedStatusFacts": [
+      {
+        "field": ".status",
+        "value": "PASS_FOR_BD85_BEFORE_NEW_APPEARANCE_REPAIR"
+      }
+    ]
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-runtime-default-tests-own-final.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "FRONTEND_UNIT_OLD_SOURCE"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-runtime-dev-tests-final.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "FRONTEND_UNIT_OLD_SOURCE"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-runtime-verifier.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "ASSET_VERIFIER_OLD_SOURCE"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-final-317dd3-asset-verifier-20261022.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "ASSET_VERIFIER_FINAL_HEAD"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-adapter-verifier.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "ASSET_VERIFIER_OLD_SOURCE"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-runtime-typecheck-final.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "TYPECHECK_OLD_SOURCE"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-runtime-dev-tests-own-final.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "FRONTEND_UNIT_OLD_SOURCE"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-runtime-clock-boundaries-final.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "FRONTEND_UNIT_OLD_SOURCE"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-widget-visibility-red.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "PRODUCT_REGRESSION_RED"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-widget-visibility-green.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "PRODUCT_REGRESSION_GREEN"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-production-output-scan.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "PRODUCTION_OUTPUT_SCAN_OLD_SOURCE"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-root-dark-background-real-red-20261022.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "PRODUCT_REGRESSION_RED"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-dark-background-repair-report-20261022.md",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "PRODUCT_REGRESSION"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-dark-background-final-spec-baseline-red-20261022.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "PRODUCT_REGRESSION"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-dark-background-client-green-20261022.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "PRODUCT_REGRESSION"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-dark-background-ssr-green-20261022.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "PRODUCT_REGRESSION"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-dark-background-official-config-20261022.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "PRODUCT_REGRESSION"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-repair-report-20261022.md",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "HARNESS_REPAIR"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-real-nuxt-red-20261022.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "HARNESS_REPAIR"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-real-nuxt-green-20261022.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "HARNESS_REPAIR"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-real-nuxt-ssr-green-20261022.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "HARNESS_REPAIR"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-original-plugin-red-20261022.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "HARNESS_REPAIR"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-client-green-20261022.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "HARNESS_REPAIR"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-head-mock-ssr-green-20261022.log",
+    "textRead": true,
+    "sensitiveValueScan": "applied",
+    "category": "HARNESS_REPAIR"
+  },
+  {
+    "evidence": "docs/evidence/CMP-261021-1347/collected/clip-pr-89925d-mergeability-refresh-20261022.json",
+    "jsonParsed": true,
+    "allFieldsTraversed": true,
+    "rootAuthorizedAdditionalPublicationTransform": {
+      "kind": "Rename apiReportedBase to reportedBaseCommitSha; value unchanged",
+      "targetSha256": "5f653ee698b1218d02fad68ff9465d20911811269ccb6d22c00755148b585aa9",
+      "semanticScopeVerified": "Only approved rationale string or field name changed; source hashes, statuses, failures, limits and commit value remain unchanged"
+    }
+  }
+]

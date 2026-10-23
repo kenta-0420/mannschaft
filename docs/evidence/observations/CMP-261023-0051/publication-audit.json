@@ -1,0 +1,272 @@
+{
+  "cmpId": "CMP-261023-0051",
+  "status": "implementation-merged-completion-documents-ready-for-root-review",
+  "privacy": {
+    "textPatternScanFindings": [],
+    "imagesPersonallyViewed": [
+      "mobile-360.png",
+      "german-narrow-stable.png",
+      "insight-box.png",
+      "audit-recheck-mobile.png",
+      "audit-recheck-desktop.png"
+    ],
+    "imageResult": "5画像はE2E用表示のみ。新実機2画像はrootと公開準備worker双方が実閲覧し認証情報・私的連絡内容を認めない。",
+    "excluded": [
+      "rawtrace",
+      "cookies",
+      "browser profile",
+      "credentials",
+      "full API/profile response"
+    ],
+    "note": "手動の選定と3画像実閲覧、テキストパターン検査。自動検査だけで秘密不存在を保証するものではない。",
+    "newImagesAdded": true,
+    "newImagesRootPersonallyViewed": [
+      "audit-recheck-mobile.png",
+      "audit-recheck-desktop.png"
+    ]
+  },
+  "brokenPublishedMarkdownLinks": [],
+  "files": [
+    {
+      "path": "docs/evidence/CMP-261023-0051-completion.md",
+      "bytes": 13643,
+      "sha256": "07a659a792d9abe77f95cd6526e14dadbb467dd876d2ac065d7db04908fd5159"
+    },
+    {
+      "path": "docs/evidence/CMP-261023-0051.json",
+      "bytes": 9862,
+      "sha256": "29928686cd9859280ce0333beb0ca63a739b9d21e0ce457a991f4e8fe4517280"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-ac-trace.md",
+      "bytes": 3095,
+      "sha256": "67a241fbc99ace0a309812748448396b2211d550fbb492e24d1dc632dadf490c"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-green.log",
+      "bytes": 2307,
+      "sha256": "80184a3e827d35e5fcc820f50c3db391dfacbc209b80ab2578cd08627316ac51"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-gungi-plan.md",
+      "bytes": 2814,
+      "sha256": "5932b61b6b3686eac07420df434cac57386215a42c10829b40a9221ab84c764e"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-live.log",
+      "bytes": 133,
+      "sha256": "4cc9cfaef81de87b42c468b608969a9991a041d9acd5493c63b1c97fb718128e"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-recheck-be-cleanup.json",
+      "bytes": 548,
+      "sha256": "0a3d09ef4fc35dbd7bce68ef181abaf95bdbd81e2cff84c0b53c85ec434d8f58"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-recheck-be-health-receipt.json",
+      "bytes": 235,
+      "sha256": "7f42594c7aacfbe44d96ba9fc286564f590aac298bf0a23da885cc98ed899f28"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-recheck-be-sourceidentity.json",
+      "bytes": 2640,
+      "sha256": "e3fc6aff21e6b47872c832c335830da06aef6535a1cee5fef1412747661081bd"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-recheck-cleanup-verification.json",
+      "bytes": 580,
+      "sha256": "ed61c9461d95af5fff441417b03a1cbe7cbb8376949ce72251d2cbe662d78745"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-recheck-cold-run-cleanup.json",
+      "bytes": 1013,
+      "sha256": "d6660caf9518206b31bf66038b97840397c726f8e58b13018428cd25d3a10779"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-recheck-desktop.png",
+      "bytes": 212910,
+      "sha256": "2b182ae43506eadc96fc6c908564f4a575879904b12fa919206b6d9d465cd6ca"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-recheck-fe-stop-receipt.json",
+      "bytes": 532,
+      "sha256": "16eb09bba0c9e9516e63966607813dcf6b89fe23db5bf7b8b63da0effd3f55b2"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-recheck-mobile.png",
+      "bytes": 82528,
+      "sha256": "335f4a76e872f479bb283d4efbeb0d0999c9b75da1bc100c3a52d5a7d1cf04d2"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-recheck-nuxt-prepare-receipt.json",
+      "bytes": 412,
+      "sha256": "6bc797579ee2705aa0f894e794f47e97ab5e49088708f2c05d2cdc7e75565ddb"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-recheck-real-run.log",
+      "bytes": 727,
+      "sha256": "0135876666195896797971485dba9bdde7853faebb4d693ca9cb9d765db52212"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-recheck-result.json",
+      "bytes": 1121,
+      "sha256": "957e5157ee43ed1bb49d804145c3c03b57ee57c07311c243bdc9f050bc6fc89c"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-recheck-sourceidentity.json",
+      "bytes": 563,
+      "sha256": "c16c6a0563b92b2314cb8c378c753c304bd16ac2e44ef037bcfd361d3cc4d05b"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-recheck-visual-qa.json",
+      "bytes": 858,
+      "sha256": "7086e3333e9b9c138fd9a100c17fb7fb310c19e6dd68b01ec83b8b7e641bebdb"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-red.log",
+      "bytes": 7651,
+      "sha256": "f9cd75b0351c19a4a407cfbe0353ac13752df1d4c1109d21f8749c00b4a69ec6"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-results.json",
+      "bytes": 1418,
+      "sha256": "ff256861914f97be300a7b842a24867653ab3645bb5f0f057faa6d7be25931e7"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/audit-root-review.md",
+      "bytes": 1013,
+      "sha256": "3d80aec67fe51be19488a776ecd21f317201ce19266efedc384ecfe567e5048f"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/board-validation-summary.json",
+      "bytes": 754,
+      "sha256": "fb46dcff877415381984a261a2cd78b4f5390b32bb3cc27498d32e408adf0225"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/cleanup-receipt.json",
+      "bytes": 1897,
+      "sha256": "313c2036f7bdce784355af3049283ad11532edf1c2b111afca1fd6db3609a5f2"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/dompurify-summary.json",
+      "bytes": 2472,
+      "sha256": "840b4b743f41cb20d8ce92cb8e126669681e6c6723526c9ec162df5fca06fa30"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/final-ci-excerpt.txt",
+      "bytes": 1321,
+      "sha256": "d31d835d177d300611df68348c028756107a346aeca58a26d52afe98550d4063"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/final-ci-summary.json",
+      "bytes": 1802,
+      "sha256": "ad83448b23a0f8a54e52bc976fb882e97ea6295ae4982fbc276979c547d54ff3"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/final-review.md",
+      "bytes": 2579,
+      "sha256": "2fcb4b425f4345626d3899653ef514021974e6a9e33926debfd3885f3516e84e"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/general-observations.json",
+      "bytes": 2568,
+      "sha256": "48db7f4fdc189cbf78df89d0a79efb2e32e1aa4f144dd3b800be85d1407ad02d"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/general-report.md",
+      "bytes": 1348,
+      "sha256": "60ee968bbb1c567b7b9e805bf0d7747d2b5434aabccc8520cb0fc342d9f8a0de"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/german-narrow-stable.png",
+      "bytes": 54215,
+      "sha256": "29c71b4c0f78ab4b78c310ea72d3f4fa6674f9b59f8042b1737137cdb8ccdb84"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/german-observations-summary.json",
+      "bytes": 993,
+      "sha256": "c24ed0df846b53d88e93bddf38badfc9ef482987e342a46378609066ddbc2497"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/german-report.md",
+      "bytes": 3574,
+      "sha256": "bfa96e9634eadc6affcaf55087278d1d11d4ba202675e900a47e4506c40bce9f"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/german-stable-geometry.json",
+      "bytes": 2805,
+      "sha256": "0d0de89a2c68918f6b0b21948fef314515acacd7528d1c7477fde1108e3bbe32"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/german-title-observation.json",
+      "bytes": 216,
+      "sha256": "b9a9566603763916f54f59d2e8865e9eb948c32436c6233324ee3b14476929f0"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/green-final.log",
+      "bytes": 1055,
+      "sha256": "f47adf8a9c5a5ec5d6784f47ac89e67fb42866f3c4b69e6d67a3833d15f2481d"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/insight-box-receipt.json",
+      "bytes": 166,
+      "sha256": "693e4c6b499e42c4265cc6bb9916895d73b90853b8933d6aba0a9be318ac2aa9"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/insight-box.png",
+      "bytes": 208089,
+      "sha256": "3f2805b5441b8ba00f550656bf0a7068b11fc502bdacab61efe6ab2be16bf57d"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/mobile-360.png",
+      "bytes": 48469,
+      "sha256": "841288c716af69d1a0b185bf4d69200d14211da52e2821769bc737ea74a40d54"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/mobile-observations.json",
+      "bytes": 1446,
+      "sha256": "3b6b81b96f5e2db446df52a0120d305d1347e140318e046b958a9cfa35f0eca0"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/mobile-report.md",
+      "bytes": 1851,
+      "sha256": "ca31c4dec92f85c50c825392ccc71fe51b7e97ac855c6c1a846eea03ce0be925"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/red-edit-permissions.log",
+      "bytes": 1625,
+      "sha256": "aea206c3af188f44b97815841ed6ea03347e1fdb6c94528ac4c889cc1f5419a1"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/resident-overlay.json",
+      "bytes": 5298,
+      "sha256": "8f94fa5eeb7afee825021d85279f3c0d81e67d27282a0dade664ac675e747f3a"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/runtime-cleanup-result.json",
+      "bytes": 1272,
+      "sha256": "a13d47fe837ee4549488c31b10c58bf0f6cc2381c36cdf78b7953a8cf9f6b787"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/source-identity.json",
+      "bytes": 1968,
+      "sha256": "3bb8fbce0f9c29584490de88d3baa05bb606891559e88c0a26362ea9132becb9"
+    },
+    {
+      "path": "docs/evidence/observations/CMP-261023-0051/targeted-post-edit-summary.json",
+      "bytes": 3084,
+      "sha256": "7d8e846d2425fb632556fd65aa8fb852e52351574a582b149fd3712a240c5302"
+    }
+  ],
+  "schemaPreflight": "implementation.sha/AC description/regression description+testを追加。pending reviewでvalidator未合格は想定通り。",
+  "repositoryRelativeJsonReferencesChecked": 21,
+  "remaining": [
+    "この完了証拠PRのroot検分・commit・CI・merge"
+  ],
+  "lastRevision": "会話引用を要約し、GitHubの635件の参照という件数表現へ明確化",
+  "checkedReferences": 66,
+  "implementationHead": "b1cfd1f80997434e539ee5495f29b0a0fcd1ac4b",
+  "implementationMergeSha": "59c5e88fb8048b0579a0536676ccf1f93080c2e4",
+  "note": "ハッシュ一覧は自身を除く。実装CI/実機/探索/mergeの合格と、この文書PRの完了を区別する。",
+  "hashBasis": "自身を除く各ファイルのGit commit blob bytes（textはGitのLF正規化後）"
+}

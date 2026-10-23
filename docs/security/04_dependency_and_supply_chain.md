@@ -110,7 +110,9 @@ updates:
 
 [GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv)（CVE-2026-85393）は RSA PKCS#1 v1.5 の署名検証の問題。2026-10-02 時点で影響範囲は `<=1.4.0`、公式 advisory の修正版は None。既存 lock の `node-forge` は 1.4.0、`listhen` は 1.10.0。`npm audit` の `fixAvailable` は Nuxt 3.15.1 への降格を提示するが、node-forge の公式修正版を意味しない。強制降格・未公開暗号パッチの取り込みは行わない。2026-06-13 の0件という記載は当時の記録であり、この新しい advisory の解消を意味しない。
 
-§4 の「修正不可能な transitive 依存」の管理規則に基づき、`frontend/scripts/audit-with-exemption.mjs` で **当該 URL・パッケージ・high・影響範囲・間接依存・lock の 1.4.0** が一致するものだけを一時除外する。実監査の high 7 パッケージ（`node-forge` / `listhen` / `nitropack` / `@nuxt/cli` / `@nuxt/nitro-server` / `@nuxt/vite-builder` / `nuxt`）に限定する。Nuxt の循環を含む `via` の参照先も追い、末端 advisory を全て検証する。別 high/critical、未知の high 消費者、参照欠落、末端のない high 循環、不正 JSON・集計・到達 advisory より低い依存の深刻度、取得失敗は CI を落とす。Node 標準テストを CI の必須ステップとして実行する。
+§4 の「修正不可能な transitive 依存」の管理規則に基づき、`frontend/scripts/audit-with-exemption.mjs` で **当該 URL・パッケージ・high・影響範囲・間接依存・lock の 1.4.0** が一致するものだけを一時除外する。実監査の high 7 パッケージ（`node-forge` / `listhen` / `nitropack` / `@nuxt/cli` / `@nuxt/nitro-server` / `@nuxt/vite-builder` / `nuxt`）に限定する。Nuxt の循環を含む `via` の参照先も追い、末端 advisory を全て検証する。別 high/critical、未知の high 消費者、参照欠落、末端のない high 循環、不正 JSON・集計・直接 advisory の過小報告、取得失敗は CI を落とす。Node 標準テストを CI の必須ステップとして実行する。
+
+2026-10-23、npmのmetavulnerabilityはJSONで依存名へ集約され、参照先の別advisoryも含めた最大深刻度とentryの報告値が一致するとは限らないことを確認した（[npm公式実装](https://github.com/npm/cli/blob/latest/workspaces/arborist/lib/vuln.js)）。直接advisoryの過小報告は引き続き拒否する。間接参照から到達する全high/criticalは、報告entryの深刻度によらず検証し、criticalと未知highは拒否する。既存highは従来のGHSA・許可packages/nodes/edges・末端版/range・間接依存・期限をすべて満たす場合のみ除外する。metadataとnpm終了状態は生の報告件数で照合し、深刻度を書き換えない。例外対象・経路・期限の追加や延長ではない。
 
 2026-10-17（CMP-261017-1604）にnode-forge側も上記7パッケージの既知`nodes`と当該GHSAへ到達する`via`の依存辺へ限定した。既知名でも別node・経路付替え・未知の循環辺を拒否する。末端は`node_modules/node-forge`のみでlockの1.4.0を確認する。2 GHSA混在時は各GHSAへ実際に到達する辺だけをそれぞれの表で判定し、braces側の制限は維持する。既存2例外の対象・承認済み期限・深刻度・fail-closed条件・依存関係は変更しない。Node標準試験18件で未知経路拒否と両件単独/混在の期限直前・一致・直後、非有限時刻を確認する。これは経路制限の強化であり、脆弱性の解消ではない。
 
@@ -149,6 +151,9 @@ Nuxt DevTools は `@nuxt/devtools` override で3.4.1に固定する。安定版3
 利用方針の選択により全環境で `devtools.enabled: false` とする。§4.5 の版・配布物 SHA を照合する互換パッチは保持する。Docker の依存インストール段階では製品 Nuxt 設定をまだコピーしていないため、このパッチが必要である。installed Nuxt の静的条件分岐を確認したが、修正後の実 dev 起動・CI・本番生成は別途検証が必要であり、本記録だけで合格とは扱わない。既存 node-forge / braces の期限付き個別例外と経路制限を維持し、critical の例外追加や audit 閾値緩和は行わない。
 
 2026-10-07 の追加監査では [sharp の GHSA-wq5f-xc86-pv6w](https://github.com/lovell/sharp/security/advisories/GHSA-wq5f-xc86-pv6w) と [shell-quote の GHSA-pqg4-j6r4-53mv](https://github.com/ljharb/shell-quote/security/advisories/GHSA-pqg4-j6r4-53mv) が検出された。sharp 0.35.5（対応する全プラットフォーム配布物を含む）と shell-quote 1.11.0 を通常 npm 解決による修正版候補とする。候補 lock の読み取り監査は critical 0、既存の期限付き例外のみ high 18 で、既存 checkAudit の実終了値は 0。npm ci、実開発起動、Sharp の実ロード、本番生成の検証は別途必要であり、この候補監査だけで合格とは扱わない。新しい例外や閾値緩和は行わない。
+
+
+2026-10-23、DOMPurifyの[GHSA-cg2g-xh64-v4q7](https://github.com/cure53/DOMPurify/security/advisories/GHSA-cg2g-xh64-v4q7)と[GHSA-mrv2-3pqr-j5jr](https://github.com/cure53/DOMPurify/security/advisories/GHSA-mrv2-3pqr-j5jr)に対応し、既存指定範囲内の最小修正版3.4.17へlockを更新する。critical/highの新しい例外は追加しない。
 
 ## 5. 脆弱性対応フロー
 

@@ -2123,6 +2123,8 @@ public class GlobalExceptionHandler {
             Map.entry("ERROR_REPORT_005", HttpStatus.CONFLICT),             // IGNORED時の工程更新拒否
             Map.entry("ERROR_REPORT_009", HttpStatus.CONFLICT),             // GitHub Issue作成の重複ロック
             Map.entry("ERROR_REPORT_012", HttpStatus.CONFLICT),             // GitHub Issue二重作成防止
+            Map.entry("ERROR_REPORT_013", HttpStatus.CONFLICT),             // 同hashの再活性化競合
+            Map.entry("ERROR_REPORT_014", HttpStatus.SERVICE_UNAVAILABLE),  // 管理更新のロック再試行超過
 
             // Webhook/外部API連携: エンドポイント不在は404。APIキー期限切れは認証失敗のため401。
             // WEBHOOK_005/007 は「受信・認証の失敗」と「管理系CRUDでの不在」の2意味で共用されて

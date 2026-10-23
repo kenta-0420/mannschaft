@@ -272,6 +272,12 @@ function openMutedList() {
   mutedListVisible.value = true
 }
 
+/** 手動更新だけを抑止し、投稿後など既存の内部更新要求は維持する。 */
+function refreshManually() {
+  if (loading.value) return
+  refresh()
+}
+
 function refresh() {
   loadFeed()
 }
@@ -292,9 +298,22 @@ defineExpose({ refresh })
 
 <template>
   <div class="flex flex-col gap-3" data-testid="timeline-feed" :data-loaded="initialLoaded">
-    <!-- 非表示中チップ（個人集約フィードのみ・0件のときは出さない） -->
-    <div v-if="showMutedChip" class="flex justify-end">
+    <!-- フィードだけを更新。非表示中チップは個人集約フィードのミュートがあるときだけ表示。 -->
+    <div class="flex flex-wrap items-center justify-end gap-2">
+      <Button
+        type="button"
+        :label="t('timeline.refresh')"
+        icon="pi pi-refresh"
+        severity="secondary"
+        text
+        class="min-h-11 min-w-11"
+        :loading="loading"
+        :disabled="loading"
+        data-testid="timeline-refresh"
+        @click="refreshManually"
+      />
       <button
+        v-if="showMutedChip"
         type="button"
         class="inline-flex min-h-11 items-center gap-1 rounded-full bg-surface-100 px-3 text-xs font-medium text-surface-600 hover:bg-surface-200 dark:bg-surface-700 dark:text-surface-200"
         data-testid="timeline-muted-chip"

@@ -500,6 +500,7 @@ com.mannschaft.app.errorreport.ErrorReportActivityType#ASSIGNEE_CHANGED
 com.mannschaft.app.errorreport.ErrorReportActivityType#COMMENT_ADDED
 com.mannschaft.app.errorreport.ErrorReportActivityType#GITHUB_ISSUE_CREATED
 com.mannschaft.app.errorreport.ErrorReportActivityType#HEALTH_RECOVERED
+com.mannschaft.app.errorreport.ErrorReportActivityType#MERGED_DUPLICATE
 com.mannschaft.app.errorreport.ErrorReportActivityType#REOPENED
 com.mannschaft.app.errorreport.ErrorReportActivityType#RESOLVED
 com.mannschaft.app.errorreport.ErrorReportActivityType#SEVERITY_CHANGED

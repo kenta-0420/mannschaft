@@ -1,5 +1,7 @@
 import os from 'node:os'
 import { defineVitestConfig } from '@nuxt/test-utils/config'
+import { configDefaults } from 'vitest/config'
+import { ranchClipDevelopmentSpecs } from './vitest.ranch-clips-specs'
 
 // ワーカー過剰供給の是正は多コア機のみに適用する。
 //
@@ -23,6 +25,7 @@ const maxWorkers = cpuCount >= 8 ? '25%' : undefined
 export default defineVitestConfig({
   test: {
     environment: 'nuxt',
+    exclude: [...configDefaults.exclude, ...ranchClipDevelopmentSpecs],
     include: ['tests/unit/**/*.spec.ts', 'app/**/*.spec.ts', 'tests/e2e/helpers/wait.spec.ts'],
     globals: true,
     hookTimeout: 120000,

@@ -12,15 +12,16 @@ const auth = reactive({ currentUser: { id: 7 } as { id: number } | null })
 const role = ref<'ADMIN' | 'MEMBER' | null>('MEMBER')
 const permitted = ref(false)
 const loadPermissions = vi.fn(async () => ({ ok: true as const }))
+type RoleAccess = typeof import('~/composables/useRoleAccess').useRoleAccess
+type EditorAccess = Pick<ReturnType<RoleAccess>, 'roleName' | 'can' | 'loadPermissions'>
+const roleAccessMock = vi.fn<(scopeType: 'team' | 'organization', scopeId: string) => EditorAccess>()
 mockNuxtImport('useApi', () => () => apiMock)
 mockNuxtImport('useAuthStore', () => () => auth)
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key, te: () => true, locale: ref('en') }))
 mockNuxtImport('useNotification', () => () => ({ showError: errorMock, showSuccess: vi.fn() }))
 mockNuxtImport('useUndoToast', () => () => ({ showUndoToast: vi.fn() }))
 mockNuxtImport('useErrorHandler', () => () => ({ handleApiError: errorMock }))
-mockNuxtImport('useRoleAccess', () => () => ({
-  roleName: role, can: () => permitted.value, loadPermissions,
-}))
+mockNuxtImport('useRoleAccess', () => (scopeType: 'team' | 'organization', scopeId: string) => roleAccessMock(scopeType, scopeId))
 
 const stubs = {
   Button: {
@@ -60,6 +61,10 @@ beforeEach(() => {
   role.value = 'MEMBER'
   permitted.value = false
   loadPermissions.mockClear()
+  roleAccessMock.mockReset()
+  roleAccessMock.mockImplementation(() => ({
+    roleName: role, can: () => permitted.value, loadPermissions,
+  }))
 })
 
 describe('タイムラインの通常本人投稿の本文編集', () => {
@@ -156,7 +161,7 @@ describe('タイムラインの通常本人投稿の本文編集', () => {
 
   it('スコープの本人 MEMBER は MANAGE_POSTS を必要とし、付与後に入口を出す', async () => {
     const value = post()
-    value.scope = { scopeType: 'TEAM', scopeId: '22' }
+    value.scope = { scopeType: 'TEAM', scopeId: '22', slug: 'member-team' }
     const wrapper = await mountEditor(value)
     await flushPromises()
     expect(loadPermissions).toHaveBeenCalledTimes(1)
@@ -178,5 +183,54 @@ describe('タイムラインの通常本人投稿の本文編集', () => {
     await wrapper.get('textarea').setValue('x'.repeat(281))
     expect(wrapper.get('[data-testid="timeline-edit-save"]').attributes('disabled')).toBeDefined()
     expect(apiMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('本人投稿の編集権限はスコープslugで取得する', () => {
+  beforeEach(async () => {
+    const actual = await vi.importActual<typeof import('~/composables/useRoleAccess')>(
+      '~/composables/useRoleAccess',
+    )
+    roleAccessMock.mockImplementation(actual.useRoleAccess)
+  })
+  it.each([
+    { scopeType: 'TEAM' as const, lookup: 'team', apiScope: 'teams' },
+    { scopeType: 'ORGANIZATION' as const, lookup: 'organization', apiScope: 'organizations' },
+  ])(
+    '$scopeType は数値scopeIdではなくslugを実権限APIへ渡す',
+    async ({ scopeType, lookup, apiScope }) => {
+      apiMock.mockResolvedValue({ data: { roleName: 'ADMIN', permissions: [] } })
+      const value = post()
+      value.scope = { scopeType, scopeId: '1461', slug: 'scope-slug' }
+
+      const wrapper = await mountEditor(value)
+      await flushPromises()
+
+      expect(roleAccessMock).toHaveBeenCalledWith(lookup, 'scope-slug')
+      expect(apiMock).toHaveBeenCalledTimes(1)
+      expect(apiMock).toHaveBeenCalledWith('/api/v1/' + apiScope + '/scope-slug/me/permissions')
+      expect(wrapper.find('[data-testid="timeline-post-edit"]').exists()).toBe(true)
+      expect(errorMock).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    { scopeType: 'TEAM' as const, slug: undefined },
+    { scopeType: 'TEAM' as const, slug: null },
+    { scopeType: 'TEAM' as const, slug: '' },
+    { scopeType: 'ORGANIZATION' as const, slug: undefined },
+    { scopeType: 'ORGANIZATION' as const, slug: null },
+    { scopeType: 'ORGANIZATION' as const, slug: '' },
+  ])('$scopeType のslug=$slugでは数値GETせず編集入口を閉じる', async ({ scopeType, slug }) => {
+    const value = post()
+    value.scope = { scopeType, scopeId: '1461', slug }
+
+    const wrapper = await mountEditor(value)
+    await flushPromises()
+
+    expect(roleAccessMock).toHaveBeenCalledWith(scopeType === 'TEAM' ? 'team' : 'organization', '')
+    expect(apiMock).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="timeline-post-edit"]').exists()).toBe(false)
+    expect(errorMock).not.toHaveBeenCalled()
   })
 })

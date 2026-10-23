@@ -115,14 +115,12 @@ const EXEMPTIONS = {
     },
   },
 }
-const isObject = (value) =>
-  value !== null && typeof value === 'object' && !Array.isArray(value)
+const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
 const validSeverity = (value) => Object.hasOwn(SEVERITY_RANK, value)
 
 // npm の終了状態も検証する。通信失敗の stdout が JSON でも成功扱いしない。
 export function checkAudit(raw, status, lock, now = Date.now()) {
-  if (![0, 1].includes(status))
-    throw new Error(`npm audit の取得失敗: exit ${status}`)
+  if (![0, 1].includes(status)) throw new Error(`npm audit の取得失敗: exit ${status}`)
   const report = JSON.parse(raw)
   if (
     !isObject(report) ||
@@ -159,8 +157,7 @@ export function checkAudit(raw, status, lock, now = Date.now()) {
     counts.total++
     for (const via of entry.via) {
       if (typeof via === 'string') {
-        if (!Object.hasOwn(vulnerabilities, via))
-          throw new Error(`参照先がない: ${name} → ${via}`)
+        if (!Object.hasOwn(vulnerabilities, via)) throw new Error(`参照先がない: ${name} → ${via}`)
       } else if (
         !isObject(via) ||
         !validSeverity(via.severity) ||
@@ -191,24 +188,22 @@ export function checkAudit(raw, status, lock, now = Date.now()) {
   }
   let exempt = false
   for (const [name, entry] of Object.entries(vulnerabilities)) {
+    // metavuln参照先の全severity一致はnpm JSONが保証しない。直接advisoryは過小報告を拒否する。
     const advisories = collectAdvisories(name)
     if (
-      advisories.some(
-        (via) => SEVERITY_RANK[entry.severity] < SEVERITY_RANK[via.severity],
+      entry.via.some(
+        (via) =>
+          typeof via !== 'string' && SEVERITY_RANK[entry.severity] < SEVERITY_RANK[via.severity],
       )
     ) {
-      throw new Error(
-        `npm audit の依存と到達 advisory の深刻度が不一致: ${name}`,
-      )
+      throw new Error(`npm audit の依存と到達 advisory の深刻度が不一致: ${name}`)
     }
-    const high = advisories.filter(
-      (via) => SEVERITY_RANK[via.severity] >= SEVERITY_RANK.high,
-    )
+    // 報告entryがlow/moderateでも、到達する全high/criticalを同じ例外条件で検証する。
+    const high = advisories.filter((via) => SEVERITY_RANK[via.severity] >= SEVERITY_RANK.high)
     if (
       entry.severity === 'critical' ||
-      (entry.severity === 'high' &&
-        (high.length === 0 ||
-          !high.every((via) => EXEMPTIONS[via.url]?.packages.has(name))))
+      (entry.severity === 'high' && high.length === 0) ||
+      high.some((via) => via.severity === 'critical' || !EXEMPTIONS[via.url]?.packages.has(name))
     ) {
       throw new Error(`許可されない脆弱性: ${entry.severity} ${name}`)
     }
@@ -225,9 +220,7 @@ export function checkAudit(raw, status, lock, now = Date.now()) {
           !entry.via.every(
             (via) =>
               typeof via !== 'string' ||
-              !collectAdvisories(via).some(
-                (item) => item.url === advisory.url,
-              ) ||
+              !collectAdvisories(via).some((item) => item.url === advisory.url) ||
               allowedEdges.includes(via),
           )
         ) {
@@ -247,8 +240,7 @@ export function checkAudit(raw, status, lock, now = Date.now()) {
         !target.nodes.every(
           (node) =>
             typeof node === 'string' &&
-            (node === `node_modules/${spec.name}` ||
-              node.endsWith(`/node_modules/${spec.name}`)) &&
+            (node === `node_modules/${spec.name}` || node.endsWith(`/node_modules/${spec.name}`)) &&
             lock.packages[node]?.version === spec.version,
         )
       ) {
@@ -265,10 +257,7 @@ export function checkAudit(raw, status, lock, now = Date.now()) {
   return exempt
 }
 
-if (
-  process.argv[1] &&
-  import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     let raw
     let status = 0
@@ -281,9 +270,7 @@ if (
       raw = error.stdout
       status = error.status
     }
-    const lock = JSON.parse(
-      readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'),
-    )
+    const lock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'))
     const exempt = checkAudit(raw, status, lock)
     console.log(
       exempt
