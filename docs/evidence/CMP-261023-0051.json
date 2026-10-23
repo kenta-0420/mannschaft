@@ -1,0 +1,224 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261023-0051",
+  "scope": "app",
+  "status": "passed",
+  "implementation": {
+    "pr": 4063,
+    "sha": "b1cfd1f80997434e539ee5495f29b0a0fcd1ac4b",
+    "mergeSha": "59c5e88fb8048b0579a0536676ccf1f93080c2e4",
+    "mergedAt": "2026-10-23T01:16:24Z",
+    "merged": true
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1/2",
+      "name": "上部44px・6言語・同scope先頭置換",
+      "tests": [
+        {
+          "name": "AC-1/2: $scopeType の上部ボタンで同じscopeの先頭を取得し投稿とピンを置換する",
+          "evidence": "frontend/tests/unit/components/timeline/TimelineFeed.spec.ts"
+        }
+      ],
+      "note": "TEAM/ORGANIZATION/VILLAGE/PUBLIC。6言語JSON・i18nキー/スタイル静的確認はroot検分。",
+      "description": "上部44px・6言語・同scope先頭置換。TEAM/ORGANIZATION/VILLAGE/PUBLIC。6言語JSON・i18nキー/スタイル静的確認はroot検分。"
+    },
+    {
+      "id": "AC-2",
+      "name": "URL/document/投稿草稿保持",
+      "tests": [
+        {
+          "name": "CMP-261023-0051: フィードだけ更新して新着を表示し、草稿・画面状態と越境拒否を維持する",
+          "evidence": "frontend/tests/e2e/real/timeline/timeline-manual-refresh.spec.ts"
+        },
+        {
+          "name": "実機green",
+          "evidence": "docs/evidence/observations/CMP-261023-0051/green-final.log"
+        },
+        {
+          "name": "新deps/b1cの実機でURL/document/草稿保持と越境拒否を再確認",
+          "evidence": "docs/evidence/observations/CMP-261023-0051/audit-recheck-real-run.log"
+        }
+      ],
+      "description": "URL/document/投稿草稿保持"
+    },
+    {
+      "id": "AC-3",
+      "name": "初期/追加/更新中disabled・並行抑止",
+      "tests": [
+        {
+          "name": "AC-3: 初期読み込み中は手動更新を無効にする",
+          "evidence": "frontend/tests/unit/components/timeline/TimelineFeed.spec.ts"
+        },
+        {
+          "name": "AC-3/4: 更新中の連打と末尾交差を抑止し、新しいカーソルから追加取得する",
+          "evidence": "frontend/tests/unit/components/timeline/TimelineFeed.spec.ts"
+        },
+        {
+          "name": "AC-3: 追加読み込み中は手動更新を並列実行しない",
+          "evidence": "frontend/tests/unit/components/timeline/TimelineFeed.spec.ts"
+        }
+      ],
+      "description": "初期/追加/更新中disabled・並行抑止"
+    },
+    {
+      "id": "AC-4",
+      "name": "空・上限・新cursor",
+      "tests": [
+        {
+          "name": "AC-2/4: 個人ウィジェットも先頭を再取得し上限を維持、空の結果でも再更新できる",
+          "evidence": "frontend/tests/unit/components/timeline/TimelineFeed.spec.ts"
+        },
+        {
+          "name": "AC-3/4: 更新中の連打と末尾交差を抑止し、新しいカーソルから追加取得する",
+          "evidence": "frontend/tests/unit/components/timeline/TimelineFeed.spec.ts"
+        }
+      ],
+      "description": "空・上限・新cursor"
+    },
+    {
+      "id": "AC-5",
+      "name": "失敗時投稿/pin維持・通知・再試行",
+      "tests": [
+        {
+          "name": "AC-5: 失敗時は投稿とピンを保持し、通知後に再試行できる",
+          "evidence": "frontend/tests/unit/components/timeline/TimelineFeed.spec.ts"
+        }
+      ],
+      "description": "失敗時投稿/pin維持・通知・再試行"
+    },
+    {
+      "id": "AC-6",
+      "name": "既存内部refreshと編集権限維持",
+      "tests": [
+        {
+          "name": "AC-6: 読み込み中でも投稿後などの公開refresh要求は捨てない",
+          "evidence": "frontend/tests/unit/components/timeline/TimelineFeed.spec.ts"
+        },
+        {
+          "name": "編集の実クリック後に実 Feed を再取得して GET の本文を表示する",
+          "evidence": "frontend/app/components/timeline/TimelinePostEdit.spec.ts"
+        },
+        {
+          "name": "$scopeType は数値scopeIdではなくslugを実権限APIへ渡す",
+          "evidence": "frontend/app/components/timeline/TimelinePostEdit.spec.ts"
+        },
+        {
+          "name": "$scopeType のslug=$slugでは数値GETせず編集入口を閉じる",
+          "evidence": "frontend/app/components/timeline/TimelinePostEdit.spec.ts"
+        }
+      ],
+      "description": "既存内部refreshと編集権限維持"
+    },
+    {
+      "id": "AUDIT-A1-A12",
+      "description": "直接advisory過小報告を拒否し、間接参照の全high/criticalへ既存の例外条件を適用。metadata/exitは生count保持、例外対象/期限/経路不変更。",
+      "tests": [
+        {
+          "name": "監査Node標準24試験（詳細A1-A12対応）",
+          "evidence": "docs/evidence/observations/CMP-261023-0051/audit-ac-trace.md"
+        },
+        {
+          "name": "red20pass/4fail exit1→green24pass exit0",
+          "evidence": "docs/evidence/observations/CMP-261023-0051/audit-results.json"
+        },
+        {
+          "name": "root独立24試験と差分検分finding0",
+          "evidence": "docs/evidence/observations/CMP-261023-0051/audit-root-review.md"
+        }
+      ]
+    },
+    {
+      "id": "AUDIT-A13",
+      "description": "DOMPurify実配布物7assert/mock22/独立npmciを区別。新deps/b1cで元specとtimeoutを変更せず実機再実行し1pass/exit0/skip0を観測。cold初回未合格と限定cleanupを別記。",
+      "tests": [
+        {
+          "name": "DOMPurify限定検証の実行結果と制限",
+          "evidence": "docs/evidence/observations/CMP-261023-0051/dompurify-summary.json"
+        },
+        {
+          "name": "CMP-261023-0051: フィードだけ更新して新着を表示し、草稿・画面状態と越境拒否を維持する（新depsで温再実行）",
+          "evidence": "docs/evidence/observations/CMP-261023-0051/audit-recheck-real-run.log"
+        },
+        {
+          "name": "cold失敗分のGET所有照合/削除204/不在404と成功run後始末",
+          "evidence": "docs/evidence/observations/CMP-261023-0051/audit-recheck-result.json"
+        }
+      ]
+    },
+    {
+      "id": "FINAL-CI",
+      "description": "実装PR headの最終CIが成功し、Backend対象外skipを実走成功と区別する。",
+      "tests": [
+        {
+          "name": "Frontend main Vitest680files/6723pass/5skip、ranch2files27pass、Feed20/Edit21、監査24＋patch3",
+          "evidence": "docs/evidence/observations/CMP-261023-0051/final-ci-summary.json"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 39880246188,
+      "status": "completed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/39880246188",
+      "name": "Frontend",
+      "conclusion": "success"
+    },
+    {
+      "runId": 39880246230,
+      "status": "completed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/39880246230",
+      "name": "Backend",
+      "conclusion": "success",
+      "note": "変更検出と集約処理のsuccess。backendChanged=falseでshard/lint/ArchUnit等は対象外skip、実走greenとは扱わない。"
+    },
+    {
+      "runId": 39880246208,
+      "status": "completed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/39880246208",
+      "name": "Harness",
+      "conclusion": "success"
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/observations/CMP-261023-0051/final-review.md",
+      "note": "root最終検分finding0/出荷可。同headの最終checks成功/skipのみ、実装mergedを確認。"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/observations/CMP-261023-0051/audit-recheck-real-run.log",
+      "note": "b1c/DOM3.4.17で1pass/exit0/skip0。cold初回未合格と所有照合cleanupは別証拠。Node差とBE既存JARの制限を明記。"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/observations/CMP-261023-0051/final-review.md",
+      "note": "3住民は19ceで実施。以後のVue/locale/レイアウト製品差分0とDOM7assert/新deps実機画像で差分影響をrootが確認し戦役合格。b1cで3住民再実施とは称さない。"
+    }
+  },
+  "regressions": [
+    {
+      "name": "本人投稿のTEAM/ORG編集権限slug lookup",
+      "redEvidence": "docs/evidence/observations/CMP-261023-0051/red-edit-permissions.log",
+      "greenEvidence": "docs/evidence/observations/CMP-261023-0051/green-final.log",
+      "description": "本人通常投稿の編集権限取得が数値scopeIdによる404となる回帰を、TEAM/ORGでslug lookupへ修正。slug欠落時は取得せず編集不可を維持する。",
+      "test": "CMP-261023-0051: フィードだけ更新して新着を表示し、草稿・画面状態と越境拒否を維持する / 新着本人投稿の編集権限取得: expected200、red actual404 → green200かつslug一致"
+    },
+    {
+      "description": "npmのmetavuln集約で間接entryの低severityから既存highへ到達した際の不正な拒否。直接過小報告/未知high/critical拒否は維持。",
+      "test": "A1/A2: 低severityの間接参照も混在循環の全highを既存例外で検証する",
+      "redEvidence": "docs/evidence/observations/CMP-261023-0051/audit-red.log",
+      "greenEvidence": "docs/evidence/observations/CMP-261023-0051/audit-green.log"
+    }
+  ],
+  "ciHistory": [
+    {
+      "runId": 39833031781,
+      "status": "failed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/39833031781",
+      "note": "旧daac head。Install npm auditでbuilder深刻度不一致により失敗。"
+    }
+  ]
+}

@@ -7,8 +7,8 @@ const auth = useAuthStore()
 const { t } = useI18n()
 const { updatePost } = useTimelineApi()
 const { handleApiError } = useErrorHandler()
-const team = useRoleAccess('team', props.post.scope.scopeType === 'TEAM' ? String(props.post.scope.scopeId) : '')
-const organization = useRoleAccess('organization', props.post.scope.scopeType === 'ORGANIZATION' ? String(props.post.scope.scopeId) : '')
+const team = useRoleAccess('team', props.post.scope.scopeType === 'TEAM' ? (props.post.scope.slug ?? '') : '')
+const organization = useRoleAccess('organization', props.post.scope.scopeType === 'ORGANIZATION' ? (props.post.scope.slug ?? '') : '')
 const access = props.post.scope.scopeType === 'TEAM' ? team : organization
 const restricted = computed(() => ['TEAM', 'ORGANIZATION'].includes(props.post.scope.scopeType))
 // 変身中も実効ユーザーで本人判定する。元管理者のIDは使用しない。

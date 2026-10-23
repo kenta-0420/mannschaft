@@ -99,7 +99,9 @@
         "AI_ANALYZED": "AI分析",
         "GITHUB_ISSUE_CREATED": "GitHub Issue 作成",
         "REOPENED": "再オープン",
-        "RESOLVED": "解決"
+        "RESOLVED": "解決",
+        "HEALTH_RECOVERED": "ヘルス復旧",
+        "MERGED_DUPLICATE": "重複レポートを統合"
       }
     },
     "messages": {
