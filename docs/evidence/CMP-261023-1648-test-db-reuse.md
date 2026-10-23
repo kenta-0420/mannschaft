@@ -11,6 +11,8 @@
 
 既存の共有基底クラスを変更せず、新たな共有基底も作らない。対象クラスが従来から所有するMySQLコンテナ1個の起動・停止ライフサイクルを維持する。永続キャッシュ、Gradle設定、製品コード、API、UI、本番SQL、migrationのchecksumは変更しない。
 
+限定検索ではMySQLContainerを含む110ファイル中、`BeforeEach` とclean/migrateが共存する候補は対象Payerと `BillingCenterFoundationFlywayIT` の2件だった。後者の2件は `v196FoundationContract` による旧契約維持と `orphanActiveContractPointerStopsBeforeExpand` による孤児pointerの移行途中失敗をそれぞれ検証するため旧schema再生を維持し、今回の共用対象にはしない。
+
 ## 変更内容と構造上の目標
 
 旧版データを移行する既存5件を `MigrationTests` に配置し、各検証前に `clean → V202 → 旧契約fixture` を実施する。完成schemaを検証する既存7件は `SchemaTests` に配置し、`PER_CLASS` の `BeforeAll` で `clean → V202 → 旧契約fixture → 現行末尾` を1回実施する。群が逆順でも他群の残存schemaを信用しない。
