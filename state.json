@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "9b233a3d-e171-4d85-83c5-ed27075a4c52",
+  "operation": "20fc86e1-eba2-4e75-ad49-52a9b0dfdae2",
   "territories": {
     "foundation": {
       "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
@@ -35,14 +35,11 @@
   },
   "lanes": {
     "L0-M": {
-      "state": "todo",
-      "evidence": "",
+      "state": "paused",
+      "evidence": "親Issue6355206680。ユーザー今から実行してという明示指示に基づく指定先へのL0-M引継。旧1048引継の自己所有daemon停止・共通gate解放・source復元と旧足軽完了を確認。期限経過や外部担当の無回答を解放理由とはしない。既存L1-F hold/architecture/freeze-constantsは維持。測定前fresh他heavy照合は別途行い、不成立なら開始しない。",
       "note": "",
       "history": [],
-      "hold": {
-        "owner": "existing:L0-M",
-        "evidence": "親Issue #4022: 9-13計測予約を保持、再計測方式診断で停止中。引継-boundary-l0-m-20261022-0844.md"
-      },
+      "hold": null,
       "held": [
         "measurement"
       ]
