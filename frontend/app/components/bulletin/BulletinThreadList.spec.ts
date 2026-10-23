@@ -17,7 +17,7 @@ mockNuxtImport('useRelativeTime', () => () => ({ relativeTime: (value: string) =
 const stubs = {
   SectionCard: { template: '<article v-bind="$attrs"><slot /></article>' },
   Button: { props: ['label'], emits: ['click'], template: '<button v-bind="$attrs" @click="$emit(\'click\')">{{ label }}</button>' },
-  DashboardEmptyState: { template: '<div data-testid="empty" />' },
+  DashboardEmptyState: { name: 'DashboardEmptyState', template: '<div data-testid="empty" />' },
   DashboardErrorState: { emits: ['retry'], template: '<button data-testid="retry" @click="$emit(\'retry\')">再試行</button>' },
   InputText: true, Select: true, Paginator: true, LoadingBounce: true,
 }
@@ -50,6 +50,14 @@ describe('掲示板一覧の本文とカード表示', () => {
     expect(wrapper.text()).toContain('見える本文')
     await wrapper.get('[data-testid="bulletin-thread-select"]').trigger('click')
     expect(wrapper.emitted('select')?.[0]?.[0]).toMatchObject({ id: 1 })
+  })
+  it('一覧が0件なら空状態を表示しカード一覧や取得失敗を表示しない', async () => {
+    mocks.getThreads.mockResolvedValue({ data: [], meta: { totalPages: 0, page: 0 } })
+    const wrapper = await mountList()
+    expect(wrapper.findComponent({ name: 'DashboardEmptyState' }).exists()).toBe(true)
+    expect(wrapper.find('[data-testid="empty"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="bulletin-thread-grid"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="retry"]').exists()).toBe(false)
   })
   it.each([0, 99, 100, 101])('%i字の本文を100字まで表示する', async (length) => {
     mocks.getThreads.mockResolvedValue(page('あ'.repeat(length)))

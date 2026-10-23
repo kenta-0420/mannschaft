@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { writeFile } from 'node:fs/promises'
 import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration } from '../helpers/wait'
 
@@ -79,6 +80,24 @@ test('掲示板の投稿本文・返信・再読込・4幅とスコープ拒否'
     await page.reload()
     await waitForHydration(page)
     await expect(page.getByTestId('bulletin-thread-card')).toHaveCount(4)
+    // ブラウザーの実通信を止め、取得失敗と空一覧を区別してUIから回復する。
+    await page.context().setOffline(true)
+    const failedRequest = page.waitForEvent('requestfailed', {
+      predicate: request => request.method() === 'GET' && request.url().includes('/bulletin/threads'),
+    })
+    await page.getByPlaceholder('検索...', { exact: true }).fill(prefix)
+    expect((await failedRequest).failure()?.errorText).toBeTruthy()
+    const networkError = page.getByTestId('load-error-state')
+    await expect(networkError).toBeVisible()
+    await expect(networkError).toContainText(/通信|接続/)
+    await expect(page.getByText('スレッドがありません', { exact: true })).toHaveCount(0)
+    await expect(page.getByTestId('bulletin-thread-grid')).toHaveCount(0)
+    await writeFile(testInfo.outputPath('offline-state.txt'), await networkError.innerText(), 'utf8')
+    await page.screenshot({ path: testInfo.outputPath('offline-state.png'), fullPage: true })
+    await page.context().setOffline(false)
+    await networkError.getByTestId('load-error-state-retry').click()
+    await expect(networkError).toBeHidden()
+    await expect(page.getByTestId('bulletin-thread-card')).toHaveCount(4)
     for (const [width, columns] of [[390, 1], [768, 2], [1280, 3], [1600, 4]]) {
       await page.setViewportSize({ width: width!, height: 1000 })
       await expect.poll(() => page.getByTestId('bulletin-thread-grid').evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(columns)
@@ -133,6 +152,7 @@ test('掲示板の投稿本文・返信・再読込・4幅とスコープ拒否'
     await expect(anonymous).toHaveURL(/\/login(?:\?|$)/)
     await expect(anonymous.locator('.article-body')).toHaveCount(0)
   } finally {
+    await page.context().setOffline(false)
     for (const id of threads) {
       const response = await page.request.delete(`${API}/api/v1/bulletin/threads/${id}`)
       expect([200, 204]).toContain(response.status())
@@ -148,5 +168,78 @@ test('掲示板の投稿本文・返信・再読込・4幅とスコープ拒否'
     await otherContext.close()
     await ownerContext.close()
     await anonymousContext.close()
+  }
+})
+
+/** CSSクラスではなく、ブラウザーの文字行とヒット領域を実測する。 */
+test('詳細の操作ラベルと投稿者情報を読みやすく保ち主要操作を44pxにする', async ({ page }, testInfo) => {
+  const title = `detail-touch-${Date.now()}`
+  let team: { id: number; slug: string } | undefined
+  let threadId: number | undefined
+  await login(page, ownerEmail)
+  try {
+    team = await createTeam(page, title)
+    await page.goto(`/teams/${team.slug}/bulletin`)
+    await waitForHydration(page)
+    await page.getByRole('button', { name: 'あとで決める', exact: true }).click()
+    await page.getByRole('button', { name: '新規スレッド', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: '新規スレッド' })
+    await dialog.getByPlaceholder('スレッドのタイトル').fill(title)
+    await dialog.getByPlaceholder('本文を入力...').fill('操作と投稿者表示の検証')
+    const created = page.waitForResponse(response => response.request().method() === 'POST' && /\/bulletin\/threads(?:\?|$)/.test(response.url()))
+    await dialog.getByRole('button', { name: '投稿', exact: true }).click()
+    const response = await created
+    expect(response.status()).toBe(201)
+    threadId = (await response.json()).data.id
+    await expect(dialog).toBeHidden()
+    await page.getByTestId('bulletin-thread-select').filter({ hasText: title }).click()
+    const heading = page.getByRole('heading', { name: title, level: 2, exact: true })
+    await expect(heading).toBeVisible()
+    for (const width of [360, 390, 1280]) {
+      await page.setViewportSize({ width, height: 1000 })
+      const metrics = await heading.evaluate((element) => {
+        function textLines(target: Element) {
+          const tops = new Set<number>()
+          const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT)
+          let node: Node | null
+          while ((node = walker.nextNode())) {
+            if (!node.textContent?.trim()) continue
+            const range = document.createRange()
+            range.selectNodeContents(node)
+            for (const rect of range.getClientRects()) if (rect.width > 0) tops.add(Math.round(rect.top))
+          }
+          return tops.size
+        }
+        const detail = element.parentElement!.parentElement!
+        const labels = ['一覧へ戻る', 'ピン留め', 'ロック', '削除', '返信']
+        const buttons = Array.from(detail.querySelectorAll('button')).filter(button => labels.includes(button.textContent!.trim())).map((button) => {
+          const rect = button.getBoundingClientRect()
+          const label = button.querySelector('.p-button-label')!
+          return { text: label.textContent!.trim(), lines: textLines(label), width: rect.width, height: rect.height, left: rect.left, right: rect.right }
+        })
+        const metadata = Array.from(element.nextElementSibling!.children).filter(item => item.tagName === 'SPAN' && !item.classList.contains('p-avatar')).map(item => ({ text: item.textContent!.trim(), lines: textLines(item) }))
+        return { buttons, metadata }
+      })
+      await writeFile(testInfo.outputPath(`detail-${width}.json`), JSON.stringify(metrics, null, 2), 'utf8')
+      await page.screenshot({ path: testInfo.outputPath(`detail-${width}.png`), fullPage: true })
+      expect.soft(metrics.buttons, `${width}pxの主要操作`).toHaveLength(5)
+      for (const button of metrics.buttons) {
+        expect.soft(button.lines, `${width}px ${button.text}の行数`).toBe(1)
+        expect.soft(button.width, `${width}px ${button.text}の幅`).toBeGreaterThanOrEqual(44)
+        expect.soft(button.height, `${width}px ${button.text}の高さ`).toBeGreaterThanOrEqual(44)
+        expect.soft(button.left, `${width}px ${button.text}の左端`).toBeGreaterThanOrEqual(0)
+        expect.soft(button.right, `${width}px ${button.text}の右端`).toBeLessThanOrEqual(width)
+      }
+      expect.soft(metrics.metadata).toHaveLength(3)
+      for (const item of metrics.metadata) expect.soft(item.lines, `${width}px ${item.text}の行数`).toBe(1)
+    }
+    await page.getByPlaceholder('返信を入力...').fill('操作検証の返信')
+    const replied = page.waitForResponse(response => response.request().method() === 'POST' && /\/replies$/.test(response.url()))
+    await page.getByRole('button', { name: '返信', exact: true }).click()
+    expect((await replied).status()).toBe(201)
+    await expect(page.getByTestId('bulletin-reply').filter({ hasText: '操作検証の返信' })).toBeVisible()
+  } finally {
+    if (threadId) expect([200, 204]).toContain((await page.request.delete(`${API}/api/v1/bulletin/threads/${threadId}`)).status())
+    if (team) expect([200, 204]).toContain((await page.request.delete(`${API}/api/v1/teams/${team.slug}`)).status())
   }
 })

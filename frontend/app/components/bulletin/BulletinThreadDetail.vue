@@ -153,23 +153,23 @@ watch(() => props.threadId, () => loadThread())
 <template>
   <div v-if="thread">
     <!-- 戻るボタン + アクション -->
-    <div class="mb-4 flex items-center justify-between">
-      <Button icon="pi pi-arrow-left" label="一覧へ戻る" text size="small" @click="emit('back')" />
-      <div v-if="canManage" class="flex items-center gap-1">
-        <Button :icon="thread.isPinned ? 'pi pi-thumbtack' : 'pi pi-thumbtack'" :label="thread.isPinned ? 'ピン解除' : 'ピン留め'" text size="small" @click="onPin" />
-        <Button :icon="thread.isLocked ? 'pi pi-unlock' : 'pi pi-lock'" :label="thread.isLocked ? 'ロック解除' : 'ロック'" text size="small" @click="onLock" />
-        <Button icon="pi pi-trash" label="削除" text size="small" severity="danger" @click="onDelete" />
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <Button icon="pi pi-arrow-left" label="一覧へ戻る" text size="small" class="min-h-11 min-w-11 shrink-0 whitespace-nowrap" @click="emit('back')" />
+      <div v-if="canManage" class="flex flex-wrap items-center gap-1">
+        <Button :icon="thread.isPinned ? 'pi pi-thumbtack' : 'pi pi-thumbtack'" :label="thread.isPinned ? 'ピン解除' : 'ピン留め'" text size="small" class="min-h-11 min-w-11 shrink-0 whitespace-nowrap" @click="onPin" />
+        <Button :icon="thread.isLocked ? 'pi pi-unlock' : 'pi pi-lock'" :label="thread.isLocked ? 'ロック解除' : 'ロック'" text size="small" class="min-h-11 min-w-11 shrink-0 whitespace-nowrap" @click="onLock" />
+        <Button icon="pi pi-trash" label="削除" text size="small" severity="danger" class="min-h-11 min-w-11 shrink-0 whitespace-nowrap" @click="onDelete" />
       </div>
     </div>
 
     <!-- スレッド本体 -->
     <SectionCard>
       <h2 class="mb-2 break-words text-xl font-bold [overflow-wrap:anywhere]">{{ thread.title }}</h2>
-      <div class="mb-4 flex items-center gap-3 text-sm text-surface-400">
-        <Avatar :label="authorDisplayName.charAt(0)" shape="circle" size="small" />
-        <span>{{ authorDisplayName }}</span>
-        <span>{{ relativeTime(thread.createdAt) }}</span>
-        <span v-if="thread.readTrackingMode !== 'NONE'"><i class="pi pi-eye" /> {{ thread.readCount }}人既読</span>
+      <div class="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-surface-400">
+        <Avatar :label="authorDisplayName.charAt(0)" shape="circle" size="small" class="shrink-0" />
+        <span class="min-w-0 break-words [overflow-wrap:anywhere]">{{ authorDisplayName }}</span>
+        <span class="shrink-0 whitespace-nowrap">{{ relativeTime(thread.createdAt) }}</span>
+        <span v-if="thread.readTrackingMode !== 'NONE'" class="shrink-0 whitespace-nowrap"><i class="pi pi-eye" /> {{ thread.readCount }}人既読</span>
       </div>
       <!-- eslint-disable-next-line vue/no-v-html -->
       <div class="article-body whitespace-pre-wrap break-words text-sm leading-relaxed [overflow-wrap:anywhere]" v-html="sanitizeHtml(thread.body)" />
@@ -222,7 +222,7 @@ watch(() => props.threadId, () => loadThread())
           class="rounded-lg border border-surface-100 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
           :style="{ marginLeft: `${reply.depth * 24}px` }"
         >
-          <div class="mb-2 flex items-center gap-2 text-xs text-surface-400">
+          <div class="mb-2 flex flex-wrap items-center gap-2 text-xs text-surface-400">
             <span class="font-medium text-surface-600">{{ reply.author.displayName }}</span>
             <span>{{ relativeTime(reply.createdAt) }}</span>
           </div>
@@ -235,7 +235,7 @@ watch(() => props.threadId, () => loadThread())
     <SectionCard v-if="!thread.isLocked" class="mt-4">
       <Textarea v-model="replyBody" placeholder="返信を入力..." auto-resize rows="2" class="mb-2 w-full" />
       <div class="flex justify-end">
-        <Button label="返信" size="small" :loading="submitting" :disabled="!replyBody.trim()" @click="onReply" />
+        <Button label="返信" size="small" class="min-h-11 min-w-11 whitespace-nowrap" :loading="submitting" :disabled="!replyBody.trim()" @click="onReply" />
       </div>
     </SectionCard>
     <div v-else class="mt-4 rounded-lg bg-surface-100 p-3 text-center text-sm text-surface-400">
