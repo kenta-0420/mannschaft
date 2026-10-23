@@ -664,6 +664,7 @@
     }
   },
   "timeline": {
+    "refresh": "Aktualisieren",
     "detail": {
       "back": "Zurück",
       "loadFailed": "Beitrag konnte nicht geladen werden",
