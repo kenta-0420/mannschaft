@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "c6e66d6c-034a-4204-807f-0642b3545a63",
+  "operation": "decba179-8950-4429-b92f-8b77108e0d71",
   "territories": {
     "foundation": {
       "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
@@ -13,7 +13,7 @@
       "note": "CMP-261022-0914 / PR4049 / 同一既存担当からの移管確定。実装足軽完了、CI失敗解析を再開。共有store/上限はL1-F待ちで未編集。\nREQ-L1A-F-01 未解決: 宛先foundation/L1-F既存担当 / D3-D3T-D5 storeと対応上限履歴 / PR4049-4045 / F main着地と共有予約解放待ち。裁可済みの移設増分だけF新形式で再実測し同期、同時編集なし。L1-A以外のレーンは未着手。\nREQ-L1A-F-01 未解決: F main着地とshared予約引渡し待ち。既存IT補助2行の追加例外はユーザー裁可待ち・未編集。足軽0/共有編集中0/自所有2WT clean。引継-boundary-l1-a-20261022-2001.md、担当保持。ローカルheavy停止は2026-10-23 01:00JSTまで。\nユーザー続けてに従い提示済みIT補助2行だけの更新を再開。REQ-L1A-F-01はF main着地と共有予約引渡し待ちのまま維持。他レーン未着手、共有store編集0。\n2026-10-23 00:38JST再開。IT補助2行の裁可待ちは解消済み、f245b563をPR4049へpush済み。CI39797767196のshard5実XML待ち。main d61097a4をmergeしたlocal HEAD25c75babはclean/未push（進行中CIを中断しない）。REQ-L1A-F-01のF main着地・architecture/freeze-constants予約引渡しは未解決。共有編集0、ローカルheavy新規投入0を継続。\n2026-10-23 01:25JST最終: IT補助2行f245b563の対象12件＋関連10件＋GDPR4件は実XML26件すべてfailure/error/skip0。通常shard0/3/5成功、未知失敗なし。既知D3T30/D321/D521のみ残り、Compile & Test集約はqueued/未実行なので全CI greenではない。REQ-L1A-F-01のF main着地・architecture/freeze-constants正式引渡し待ち。追加裁可待ちなし。実装/監視足軽終了・共有編集0・ローカルheavy0、自己所有2WT clean。local25c75bab/remote f245b563、main merge分は未push。引継-boundary-l1-a-20261023-0124.md。担当と資源を保全し他レーンは触らない。\nREQ-L1A-F-01 未解決 2026-10-23再開: F4045はOPEN/head2322のまま、foundationはL0-M実行中で全領地handoff保留。F旧担当6339082482/受入準備6354395745に基づき、F正式移管と最新main/remoteCI/merge/mainCI/予約引渡しの実施担当確定を親へ再依頼。こちらで無断移管・共有編集・他担当mergeなし。CI39797767196と集約はcompleted/failure確定、既知D3T30/D321/D521のみで26XML全pass。local2bdbd8f3はmain39421d90 merge済みclean/未push、remote f245b563。追加裁可待ちなし。新L0M窓23:00JSTまでlocalheavy新規投入0を宣言、繰返しの既知失敗CIは投入しない。\n2026-10-23 18時再開確認完了。CI39797767196/集約119939781225 completed/failure、既知D3T30/D321/D521のみで通常0/3/5と26XML成功、未知失敗0。待ち理由にCI集約は残らず、REQ-L1A-F-01のF4045 main着地/正式予約引渡しのみ。親6361348427でF最終化の実施担当確定を依頼、応答待ち。追加裁可待ちなし。local2bdbd8f3はmain39421d90 merge済みclean/未push、管理08629dc3 clean。足軽全終了・共有編集0・23:00JSTまでlocalheavy新規投入0。引継-boundary-l1-a-20261023-1802.mdに保全し担当保持。"
     },
     "repayment-a": {
-      "owner": null,
+      "owner": "5dae09d2-9385-424c-b665-e6bd69c13586",
       "note": "初回疎通試験のみ。足軽0・実装未着手。\n解放: 0d390256-4a9e-424b-bccd-a0bbf9131115 → 未所有 / 停止・解放証拠: https://github.com/kenta-0420/mannschaft/pull/4054 / 実origin疎通、足軽0・共有編集0の停止確認"
     },
     "repayment-b": {
