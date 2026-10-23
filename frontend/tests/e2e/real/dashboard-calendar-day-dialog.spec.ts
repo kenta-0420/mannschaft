@@ -1,5 +1,6 @@
 /** CMP-261024-0528: モックなし。API補助はログイン・前提作成・所有fixtureの削除のみ。 */
 import { test, expect, type Locator, type Page } from '@playwright/test'
+import { writeFile } from 'node:fs/promises'
 import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration } from '../helpers/wait'
 
@@ -13,12 +14,12 @@ const ORG = process.env.E2E_CALENDAR_ORG ?? 's-c6151c64'
 const MONTH = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit',
 }).format(new Date()).replace('/', '-')
-const date = (day: number) => `${MONTH}-${String(day).padStart(2, '0')}`
+const date = (day: number, month = MONTH) => `${month}-${String(day).padStart(2, '0')}`
 const RUN = `DAYDIALOG-${Date.now()}`
 
 type Owned = { path: string; id: number }
 type ScheduleBody = {
-  data: { id: number; content: { title: string }; time: { startAt: string }; reminders?: unknown[] }
+  data: { id: number; content: { title: string }; time: { startAt: string; endAt: string }; reminders?: unknown[] }
 }
 
 // setupプロジェクトの認証状態を継承せず、各caseが単一セッションを作る。
@@ -78,11 +79,11 @@ async function clickDay(widget: Locator, day: number) {
   }).locator(':scope > div.inline-flex').click()
 }
 
-async function expectInitialDate(page: Page, day: number) {
+async function expectInitialDate(page: Page, day: number, month = MONTH) {
   const dialog = page.getByRole('dialog').filter({ has: page.getByTestId('schedule-title') })
   await expect(dialog).toBeVisible()
-  await expect(dialog.locator('#schedule-start-date')).toHaveValue(date(day).replaceAll('-', '/'))
-  await expect(dialog.locator('#schedule-end-date')).toHaveValue(date(day).replaceAll('-', '/'))
+  await expect(dialog.locator('#schedule-start-date')).toHaveValue(date(day, month).replaceAll('-', '/'))
+  await expect(dialog.locator('#schedule-end-date')).toHaveValue(date(day, month).replaceAll('-', '/'))
   return dialog
 }
 
@@ -162,6 +163,93 @@ test('DAY-001: 個人の空日→日付付き保存→一覧→既存編集→�
     await expectInitialDate(page, 13)
     await expect(page.getByTestId('schedule-title')).toHaveValue('')
     await page.getByRole('dialog').getByRole('button', { name: 'キャンセル', exact: true }).click()
+  } finally { await cleanup(page, owned) }
+})
+
+test('DAY-004: 月末23:30から翌月00:30の個人予定を両月の日別一覧で見つけられる', async ({ page }, testInfo) => {
+  const owned: Owned[] = []
+  const [year, month] = MONTH.split('-').map(Number)
+  // 翌月グリッドのfromが必ず翌月1日になる、日曜始まりの月を選ぶ。
+  // 前月末も取得範囲に含まれる月では、旧startAt BETWEENでも偶然通ってしまう。
+  let offset = 0
+  let next = new Date(Date.UTC(year!, month!, 1))
+  for (let distance = 1; next.getUTCDay() !== 0; distance++) {
+    const future = new Date(Date.UTC(year!, month! + distance, 1))
+    const past = new Date(Date.UTC(year!, month! - distance, 1))
+    if (future.getUTCDay() === 0) {
+      offset = distance
+      next = future
+    }
+    else if (past.getUTCDay() === 0) {
+      offset = -distance
+      next = past
+    }
+  }
+  const target = new Date(Date.UTC(year!, month! - 1 + offset, 1))
+  const targetMonth = target.toISOString().slice(0, 7)
+  const lastDay = new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth(), 0)).getUTCDate()
+  const nextMonth = next.toISOString().slice(0, 7)
+  const nextFirst = `${nextMonth}-01`
+  const title = `${RUN} 月跨ぎ`
+  await signIn(page)
+  try {
+    const widget = await openPersonal(page)
+    const paths = ['/api/v1/me/schedules', '/api/v1/my/calendar', '/api/v1/todos/my/calendar']
+    const moveMonth = async (first: Date, direction: 1 | -1 = 1) => {
+      // UTCのDateは暦日の計算専用。ブラウザTZで前日に変換しない。
+      const gridStart = new Date(first)
+      gridStart.setUTCDate(1 - first.getUTCDay())
+      const from = gridStart.toISOString().slice(0, 10)
+      const responses = paths.map(path => page.waitForResponse(response => {
+        const url = new URL(response.url())
+        return url.pathname === path && url.searchParams.get('from')?.startsWith(from) === true
+      }))
+      const buttons = widget.locator('h2').locator('..').getByRole('button')
+      await (direction === 1 ? buttons.last() : buttons.first()).click()
+      const loaded = await Promise.all(responses)
+      await Promise.all(loaded.map(response => response.finished()))
+      await Promise.all(loaded.map(response => response.json()))
+      await expect(widget.locator('h2')).toHaveText(`${first.getUTCFullYear()}年${first.getUTCMonth() + 1}月`)
+      return loaded
+    }
+    const direction = offset < 0 ? -1 : 1
+    for (let step = 1; step <= Math.abs(offset); step++) await moveMonth(new Date(Date.UTC(year!, month! - 1 + step * direction, 1)), direction)
+    await clickDay(widget, lastDay)
+    if (await page.getByTestId('schedule-day-dialog').isVisible()) await page.getByTestId('schedule-day-create').click()
+    const form = await expectInitialDate(page, lastDay, targetMonth)
+    await form.locator('.p-select').first().click()
+    await page.getByRole('option', { name: '23:30', exact: true }).click()
+    await expect(form.locator('.p-select').nth(1)).toContainText('00:30')
+    await expect(form.locator('#schedule-end-date')).toHaveValue(nextFirst.replaceAll('-', '/'))
+    const created = await createFromDialog(page, 'me/schedules', title, owned)
+    expect(created.time).toMatchObject({ startAt: `${date(lastDay, targetMonth)}T23:30:00+09:00`, endAt: `${nextFirst}T00:30:00+09:00` })
+    await expect(widget.getByText(title, { exact: false }).filter({ visible: true }).first()).toBeVisible()
+    await clickDay(widget, lastDay)
+    await dayList(page, title)
+    await page.screenshot({ path: testInfo.outputPath('month-boundary-start-day.png') })
+    await page.keyboard.press('Escape')
+
+    // APIを直接呼ばず、月移動の実UIが発行した3応答を証跡として観測する。
+    const evidence = await Promise.all((await moveMonth(next)).map(async response => {
+      expect(response.status(), '翌月範囲の取得自体は成功する').toBe(200)
+      const body = await response.json() as { data: Array<{ id: number; time?: unknown }> }
+      return { url: response.url(), status: response.status(), count: body.data.length,
+        matching: body.data.filter(item => item.id === created.id).map(item => ({ id: item.id, time: item.time })) }
+    }))
+    const evidencePath = testInfo.outputPath('month-boundary-http.json')
+    await writeFile(evidencePath, JSON.stringify({ fixture: { currentMonth: MONTH, targetMonth, nextFirst, monthOffset: offset },
+      scheduleId: created.id, time: created.time, responses: evidence }, null, 2))
+    await testInfo.attach('month-boundary-http', { path: evidencePath, contentType: 'application/json' })
+    await expect(widget.locator('h2')).toHaveText(`${next.getUTCFullYear()}年${next.getUTCMonth() + 1}月`)
+    await page.screenshot({ path: testInfo.outputPath('month-boundary-next-calendar.png') })
+    await clickDay(widget, 1)
+    await expect(page.getByTestId('schedule-day-dialog'), '翌月1日も継続中の予定があるため、新規フォームではなく日別一覧を開く').toBeVisible()
+    await expect(page.getByRole('dialog', { name: `${nextFirst} の予定`, exact: true })).toBeVisible()
+    await dayList(page, title)
+    for (const response of evidence.slice(0, 2)) {
+      expect(response.matching.map(item => item.id), '個人一覧・統合カレンダーの両応答に継続中の予定が含まれる').toContain(created.id)
+    }
+    await page.screenshot({ path: testInfo.outputPath('month-boundary-next-day.png') })
   } finally { await cleanup(page, owned) }
 })
 
