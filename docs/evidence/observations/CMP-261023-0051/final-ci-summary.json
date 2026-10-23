@@ -1,0 +1,65 @@
+{
+  "capturedAtUtc": "2026-10-23T01:17:04Z",
+  "pullRequest": 4063,
+  "headSha": "b1cfd1f80997434e539ee5495f29b0a0fcd1ac4b",
+  "status": "merged; all checks complete",
+  "checks": {
+    "success": 16,
+    "skipped": 7,
+    "failure": 0,
+    "pending": 0
+  },
+  "frontend": {
+    "runId": 39880246188,
+    "conclusion": "success",
+    "headSha": "b1cfd1f80997434e539ee5495f29b0a0fcd1ac4b",
+    "installJob": "success",
+    "npmAudit": "success",
+    "auditGateRegression": {
+      "tests": 27,
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "breakdown": "audit-with-exemption: 24; patch-nuxt-devtools-simple-git: 3; combined workflow command: 27"
+    },
+    "vitestMain": {
+      "filesPassed": 680,
+      "testsPassed": 6723,
+      "testsSkipped": 5,
+      "total": 6728
+    },
+    "targetSuites": {
+      "TimelineFeed": {
+        "passed": 20,
+        "failed": 0
+      },
+      "TimelinePostEdit": {
+        "passed": 21,
+        "failed": 0
+      }
+    },
+    "ranchClips": {
+      "filesPassed": 2,
+      "testsPassed": 27
+    }
+  },
+  "backend": {
+    "runId": 39880246230,
+    "conclusion": "success",
+    "headSha": "b1cfd1f80997434e539ee5495f29b0a0fcd1ac4b",
+    "detectChanges": "success",
+    "backendChanged": false,
+    "compileTestAggregator": "success",
+    "executedShards": false,
+    "skippedJobs": [
+      "Backend Test (shard matrix)",
+      "Backend Lint",
+      "Shard coverage guard",
+      "Non-JST timezone",
+      "ArchUnit"
+    ],
+    "skipReason": "workflow diff filter found no backend/** or .github/workflows/backend-ci.yml changes; aggregator reports shard/lint/coverage/non-JST/architecture results skipped. Do not interpret as shards run green."
+  },
+  "mergeCommit": "59c5e88fb8048b0579a0536676ccf1f93080c2e4",
+  "mergedAt": "2026-10-23T01:16:24Z"
+}
