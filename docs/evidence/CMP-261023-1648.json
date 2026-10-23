@@ -1,367 +1,373 @@
 {
-  "schemaVersion": 1,
-  "cmpId": "CMP-261023-1648",
-  "scope": "test-only",
-  "implementation": {
-    "pr": 4075,
-    "sha": "0daa7a81c6d2135a6eb942b27aa781d0c2fbae26",
-    "mergeSha": "6ffe4fc9deba8e6271f377f4054efa6bec3c4196",
-    "mergedAt": "2026-10-23T17:02:17Z"
-  },
-  "acceptanceCriteria": [
-    {
-      "id": "AC-1",
-      "description": "既存Payer12検証を保持し、完成schemaを群内1回で初期化する。旧検証14passの証拠を保持する。",
-      "tests": [
-        {
-          "name": "BillingPayerHandoverFoundationFlywayIT Migration5/Schema9",
-          "evidence": "docs/evidence/CMP-261023-1648-test-db-reuse.md"
-        }
-      ]
-    },
-    {
-      "id": "AC-2",
-      "description": "所有fixtureだけをcleanupし、空・単独・逆順・途中失敗でも未知fixtureを保持する。",
-      "tests": [
-        {
-          "name": "完成schemaのcleanupは所有fixtureだけを削除する / 完成schemaのcleanupは途中失敗後も再利用できる",
-          "evidence": "docs/evidence/CMP-261023-1648-test-db-reuse.md"
-        }
-      ]
-    },
-    {
-      "id": "AC-3",
-      "description": "初期migration失敗を握りつぶさず失敗として扱う。故障注入未実施という検証限界も保持する。",
-      "tests": [
-        {
-          "name": "backfillGuardFailsMigrationWhenNoFallbackIsResolvable と初期化catch/flagなしの構造確認",
-          "evidence": "docs/evidence/CMP-261023-1648-test-db-reuse.md"
-        }
-      ]
-    },
-    {
-      "id": "AC-4",
-      "description": "Payer同schemaの逐次実行、両群順の自立初期化、個別コンテナ隔離を維持する。",
-      "tests": [
-        {
-          "name": "Migration→Schema / Schema→Migration / parallel active最大1・最終0",
-          "evidence": "docs/evidence/CMP-261023-1648-test-db-reuse.md"
-        }
-      ]
-    },
-    {
-      "id": "AC-5",
-      "description": "旧版5件のbackfill/NULL/削除済/不正データ拒否と完成schema実Flywayの契約を保持する。",
-      "tests": [
-        {
-          "name": "Payer旧版5件と完成schema既存7件・隔離回帰2件",
-          "evidence": "backend/src/test/java/com/mannschaft/app/billing/migration/BillingPayerHandoverFoundationFlywayIT.java"
-        }
-      ]
-    },
-    {
-      "id": "AC-6",
-      "description": "既存Payerの同条件単回command wall 1072.056606477秒→671.706354359秒、37.3441336679%短縮を対象限定値として保持し、全量へ外挿しない。",
-      "tests": [
-        {
-          "name": "Payer専用run39943173054のbaseline12/after14比較",
-          "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/39943173054"
-        }
-      ]
-    },
-    {
-      "id": "AC-7",
-      "description": "全量はQPC42170.927秒で期限停止、通常test XML0/残量不明とし、32通常worker、ArchUnit等の前段、時計差と4失敗を分離する。",
-      "tests": [
-        {
-          "name": "保存原本の未完走分析（全量成功を宣言しない）",
-          "evidence": "docs/evidence/CMP-261023-1648-full-test-analysis.md"
-        }
-      ]
-    },
-    {
-      "id": "AC-8",
-      "description": "実Spring metadataでTeam/Organization/Surveyの構成key3種類→1種類をred→green確認。after全体を固定し、baselineはTeam/Organizationの2Javaだけd4cc6d7fへ差し替える。Context load/static初期化を行わない。",
-      "tests": [
-        {
-          "name": "teamとorganizationとsurveyの構成keyは1種類になる",
-          "evidence": "backend/src/test/java/com/mannschaft/app/common/testing/VisibilityResolverContextConfigurationTest.java"
-        },
-        {
-          "name": "metadata-red1件expected failure/validated=true、metadata-green2pass/skip0/validated=true、metadataDockerEmpty=true（run全体はhelper比較不備でfailure）",
-          "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/39973755063"
-        }
-      ]
-    },
-    {
-      "id": "AC-9",
-      "description": "Team4/Organization3/Survey9の全16caseが同一fork実MySQLで双方16pass、failure/error/skip0。TX rollback/Docker条件/共通mock/base保持、FQCN付きcase名完全同一、START/END各16、active最大1/最終0。",
-      "tests": [
-        {
-          "name": "新baseline/after双方16pass・skip0、Organization→Survey→Team同順",
-          "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/39979684252"
-        }
-      ]
-    },
-    {
-      "id": "AC-10",
-      "description": "専用runnerの同条件単回ペアでwarmを除外し、Gradle起動・test・依存/後処理（常時Integrity/Jacoco込み）command wall405.597496404秒→294.490044928秒、111.107451476秒/27.3935249751%短縮、XML EMF3→1を確認。純DB初期化秒や全suite率に読み替えない。",
-      "tests": [
-        {
-          "name": "performance-only専用比較success、canonical LF init SHA一致、原bytes復元/自所有cleanup期限内",
-          "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/39979684252"
-        }
-      ]
-    },
-    {
-      "id": "AC-11",
-      "description": "公式fixtureのLF固定は独立PR4074で、raw SHAを緩めずWindows autocrlf=true実Git checkoutのred→greenを確認する。",
-      "tests": [
-        {
-          "name": "Windows autocrlf true/false/input実Git checkout、red exit1→green4pass/skip0 exit0",
-          "evidence": "docs/evidence/CMP-261023-1648-unicode-checkout.md"
-        }
-      ]
-    },
-    {
-      "id": "AC-12",
-      "description": "追加実装PR4075/head0daaの通常CI成功と本文編集後を含む全24checkのmerge前完了を確認。merged_at=2026-10-23T17:02:17Z、最新check完了16:57:17Z。旧4068時刻拒否を履歴に残し、validatorを緩めずmerge後の別記録PRで完了証拠を追加する。",
-      "tests": [
-        {
-          "name": "同head通常CI成功・merge時点check/status公式集約",
-          "evidence": "docs/evidence/CMP-261023-1648-test-db-reuse.md"
-        }
-      ]
-    },
-    {
-      "id": "CONTACT-FIXTURE",
-      "description": "期限切れ招待のfixture生成だけを製品と同じ36字UUIDへ是正。期限・期待404・認可assert・製品/DDL保持。通常CI Contact全nested11XML/51pass、AcceptInvite3件に期限切れcase実在、failure/error/skip0。",
-      "tests": [
-        {
-          "name": "期限切れトークンは404",
-          "evidence": "backend/src/test/java/com/mannschaft/app/contact/ContactScopeContractIT.java"
-        },
-        {
-          "name": "Contact期限切れcaseの同head通常CI実走green",
-          "evidence": "docs/evidence/CMP-261023-1648-test-db-reuse.md"
-        }
-      ]
-    }
-  ],
-  "ci": [
-    {
-      "runId": 39973223947,
-      "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/39973223947",
-      "conclusion": "success"
-    }
-  ],
-  "stages": {
-    "review": {
-      "status": "passed",
-      "evidence": "docs/evidence/CMP-261023-1648-test-db-reuse.md",
-      "note": "root最終検分finding0、専用実結果・通常CI対象XML照合済み。全24checkはmerge前完了、同名最新世代もsuccess/予定skip、statuses=[]を公式summarizeImplementationChecksで照合。"
-    },
-    "real": {
-      "status": "not-applicable",
-      "scope": "test-only",
-      "reason": "テスト構成・fixture生成と分析文書の変更のみで製品/API/UI挙動を変更しない"
-    },
-    "exploratory": {
-      "status": "not-applicable",
-      "scope": "test-only",
-      "reason": "画面導線を変更せず、実DB認可・fixture回帰は既存ITで検証する"
-    }
-  },
-  "regressions": [
-    {
-      "description": "metadata構成keyの不要な分裂を3種類から1種類へ是正。after全体固定＋Team/Orgの2Javaだけd4cc6d7fへ差替したbaselineでredを確認。専用run全体failureと有効なmetadata結果を区別する。",
-      "test": "teamとorganizationとsurveyの構成keyは1種類になる / static初期化しない既存metadata検証",
-      "redEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/39973755063/artifacts/12511902784",
-      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/39973755063/artifacts/12511902784"
-    },
-    {
-      "description": "公式Unicode fixtureのraw SHAを維持しWindows autocrlf=trueの実Git checkoutで改行変換のred→LF固定greenを確認。",
-      "test": "PR4074 Unicode fixture checkout red→green",
-      "redEvidence": "docs/evidence/CMP-261023-1648-unicode-checkout.md",
-      "greenEvidence": "docs/evidence/CMP-261023-1648-unicode-checkout.md"
-    },
-    {
-      "description": "Payer所有fixture cleanupの既存negative control2件と原bytes復元後Schema9件を保持する。",
-      "test": "完成schemaのcleanupは所有fixtureだけを削除する / 完成schemaのcleanupは途中失敗後も再利用できる",
-      "redEvidence": "docs/evidence/CMP-261023-1648-test-db-reuse.md",
-      "greenEvidence": "docs/evidence/CMP-261023-1648-test-db-reuse.md"
-    },
-    {
-      "description": "期限切れ招待fixtureの生成長不備を製品と同じ36字UUIDへ是正。旧失敗の具体値・生ログは公開しない。",
-      "test": "ContactScopeContractIT 期限切れトークンは404",
-      "redEvidence": "docs/evidence/CMP-261023-1648-full-test-analysis.md",
-      "greenEvidence": "docs/evidence/CMP-261023-1648-test-db-reuse.md"
-    }
-  ],
-  "history": [
-    {
-      "implementationPr": 4068,
-      "head": "df8ee0499ed99f38ec715ea902e761f3e07e635e",
-      "mergedAt": "2026-10-23T13:41:29Z",
-      "recheckRunId": 39963270169,
-      "recheckCompletedAt": "2026-10-23T13:41:32Z",
-      "closureGateRunId": 39964552315,
-      "result": "完了証拠ゲート拒否。merge前開始checkがmerge後完了。同名先行successで救済しない。旧実装の有効なPayer証拠と区別して履歴保持"
-    }
-  ],
-  "excludedCompletionScopes": [
-    "CMP-261021-1602",
-    "CMP-261004-2047"
-  ],
-  "preservedPayerEvidence": "f6ab116→0daaのbackend test外/Payer Java/backend src test resources差分なし。既存14実走/37.34%対象単回を保持、新16件27.39%とは別測定",
-  "validation": {
-    "runId": 39979684252,
-    "workflowHead": "d54df6bfc291d93517e72dd076771057b63d0af0",
-    "afterHead": "0daa7a81c6d2135a6eb942b27aa781d0c2fbae26",
-    "conclusion": "success",
-    "baselineWallSeconds": 405.597496404,
-    "afterWallSeconds": 294.490044928,
-    "baselineSpringStarts": 3,
-    "afterSpringStarts": 1,
-    "passed": 16,
-    "skipped": 0,
-    "reservationComment": "https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6368577969",
-    "reservationJst": "2026-10-24 01:00〜02:00",
-    "stopJst": "01:58",
-    "cleanupDeadlineJst": "02:00",
-    "afterWarmSeconds": 183.549323278,
-    "resultComment": "https://github.com/kenta-0420/mannschaft/pull/4075#issuecomment-6369593874",
-    "cleanupUtc": "2026-10-23T16:21:28.993883Z",
-    "activeFinal": 0,
-    "canonicalInitSha256": "b0e82834ea272ad6dcc1f8a35297c9495d30377b740dd371b9b59e9a1936c8bf",
-    "activeMax": 1,
-    "javaRemaining": 0,
-    "ends": 16,
-    "workflowGitBlobSha256": "7cc41c67290163ae38d2b62053b119f94df257d9dda95ace2b4f9d76485357f1",
-    "compileUpToDate": true,
-    "executedDependencies": "archUnit/常時Integrity/Jacoco",
-    "sameOrder": "Organization→Survey→Team",
-    "caseNamesEqual": true,
-    "artifactSha256": "dad3a6546ae338bf2129d40cf2081576b607be0ced27137cdb093ad601739bf5",
-    "pythonGitBlobSha256": "dcf053915198dc00641c68003fe04aa28ab155bb441b0925b221d0d07f6d2645",
-    "dockerEmpty": true,
-    "starts": 16,
-    "artifactBytes": 84668,
-    "restoredExactBytes": true,
-    "savedSeconds": 111.107451476,
-    "artifactId": 12514644104,
-    "beforeHeavy": 0,
-    "initShaMatches": true,
-    "warmExcluded": true,
-    "baselineWarmSeconds": 402.301895314,
-    "savedPercent": 27.3935249751,
-    "releasedReservationComment": "https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6369592116",
-    "measurementLimit": "baseline→after固定順の単回概算。warmはcompile/ArchUnit系のみ、OS/Docker image等cache温度を独立分離していない。27.39%全てを初期化削減の因果効果と断定せず、ログ実初期化3→1と区別。image pull有無は明細不足で未確定、追加反復なし。"
-  },
-  "metadataValidation": {
-    "runId": 39973755063,
-    "workflowHead": "c359dcba98bfd2c4245da5c4c69aa4600d87d2ce",
-    "overallConclusion": "failure",
-    "failedAtUtc": "2026-10-23T15:24Z",
-    "reason": "helperがsuite日本語表示名をFQCNと比較して停止。after実DB未実行",
-    "baselineMode": "after全体固定＋Team/Organizationの2Javaだけd4cc6d7fへ差替（先行commit全体checkoutではない）",
-    "red": {
-      "expectedFailureCount": 1,
-      "validated": true,
-      "wallSeconds": 496.577358035
-    },
-    "green": {
-      "passed": 2,
-      "skipped": 0,
-      "validated": true,
-      "wallSeconds": 233.988271905
-    },
-    "metadataDockerEmpty": true,
-    "baselineDatabase": {
-      "passed": 16,
-      "skipped": 0,
-      "wallSeconds": 487.615790897,
-      "jpaStarts": 3
-    },
-    "artifactId": 12511902784,
-    "artifactBytes": 58925,
-    "artifactSha256": "37b41cad010177327f140bdbf862adcde66901fb4f76a089c6a860171fe559c7",
-    "cleanupUtc": "2026-10-23T15:23:55.048681Z",
-    "exactRestore": true,
-    "ownedJavaRemaining": [],
-    "dockerEmpty": true
-  },
-  "cancelledPerformanceAttempt": {
-    "runId": 39978413208,
-    "workflowHead": "2b9d10b7bb7908af4f01d52a1c9282696068a9ad",
-    "conclusion": "cancelled",
-    "steps": [],
-    "testsExecuted": false,
-    "reason": "runner未取得のまま25分の開始予算を割りrootがcancel。実テスト結果なし"
-  },
-  "legacyBCrypt": {
-    "status": "passed: 通常CI shard3の実走",
-    "runId": 39973223947,
-    "shard": 3,
-    "shardConclusion": "success",
-    "suite": "com.mannschaft.app.auth.mfa.MfaBackupCodeLatencyIT",
-    "tests": 4,
-    "failures": 0,
-    "errors": 0,
-    "skipped": 0,
-    "timestamp": "2026-10-23T15:44:16.526Z",
-    "cases": [
-      "AC-54 旧BCrypt 8件 最後一致は3秒以内",
-      "AC-54 旧BCrypt 8件 全不一致は3秒以内"
-    ],
-    "bothCaseNamesExist": true,
-    "thresholdUnchanged": true,
-    "artifactId": 12517046574,
-    "artifactZipSha256": "530dfe5831cd8cbcbfd5288fd82e7969a34d1ac3e56649b8a9c5fd44c58b390b",
-    "limitation": "今回CIで閾値不変の実走green。旧ローカル遅延の原因究明/解消とは断定しない。XML case timeはfixture込みでassert対象計測とは異なるため閾値比較に使わない。"
-  },
-  "contactValidation": {
-    "runId": 39973223947,
-    "artifactId": 12517861399,
-    "artifactBytes": 34131690,
-    "artifactSha256": "3bd90dffaf6b65ae277c969db7ad52367e9a960823cd7fbc879f1a4c01514f87",
-    "nestedXml": 11,
-    "passed": 51,
-    "failures": 0,
-    "errors": 0,
-    "skipped": 0,
-    "acceptInviteTests": 3,
-    "timestamp": "2026-10-23T16:10:04.601Z",
-    "expiredCasePresent": true
-  },
-  "mergeCheckSummary": {
-    "totalRawChecks": 24,
-    "summarizedChecks": [
-      "success",
-      "success",
-      "success",
-      "success",
-      "success",
-      "success",
-      "success",
-      "success",
-      "success",
-      "success",
-      "success",
-      "success",
-      "success",
-      "success",
-      "success",
-      "success",
-      "success",
-      "skipped",
-      "success",
-      "success",
-      "success",
-      "success"
-    ],
-    "statuses": [],
-    "latestCompletedAt": "2026-10-23T16:57:17Z",
-    "lateChecks": 0
-  }
+    "schemaVersion":  1,
+    "cmpId":  "CMP-261023-1648",
+    "scope":  "test-only",
+    "implementation":  {
+                           "pr":  4075,
+                           "sha":  "0daa7a81c6d2135a6eb942b27aa781d0c2fbae26",
+                           "mergeSha":  "6ffe4fc9deba8e6271f377f4054efa6bec3c4196",
+                           "mergedAt":  "2026-10-23T17:02:17Z"
+                       },
+    "acceptanceCriteria":  [
+                               {
+                                   "id":  "AC-1",
+                                   "description":  "既存Payer12検証を保持し、完成schemaを群内1回で初期化する。旧検証14passの証拠を保持する。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "BillingPayerHandoverFoundationFlywayIT Migration5/Schema9",
+                                                     "evidence":  "docs/evidence/CMP-261023-1648-test-db-reuse.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-2",
+                                   "description":  "所有fixtureだけをcleanupし、空・単独・逆順・途中失敗でも未知fixtureを保持する。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "完成schemaのcleanupは所有fixtureだけを削除する / 完成schemaのcleanupは途中失敗後も再利用できる",
+                                                     "evidence":  "docs/evidence/CMP-261023-1648-test-db-reuse.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-3",
+                                   "description":  "初期migration失敗を握りつぶさず失敗として扱う。故障注入未実施という検証限界も保持する。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "backfillGuardFailsMigrationWhenNoFallbackIsResolvable と初期化catch/flagなしの構造確認",
+                                                     "evidence":  "docs/evidence/CMP-261023-1648-test-db-reuse.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-4",
+                                   "description":  "Payer同schemaの逐次実行、両群順の自立初期化、個別コンテナ隔離を維持する。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "Migration→Schema / Schema→Migration / parallel active最大1・最終0",
+                                                     "evidence":  "docs/evidence/CMP-261023-1648-test-db-reuse.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-5",
+                                   "description":  "旧版5件のbackfill/NULL/削除済/不正データ拒否と完成schema実Flywayの契約を保持する。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "Payer旧版5件と完成schema既存7件・隔離回帰2件",
+                                                     "evidence":  "backend/src/test/java/com/mannschaft/app/billing/migration/BillingPayerHandoverFoundationFlywayIT.java"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-6",
+                                   "description":  "既存Payerの同条件単回command wall 1072.056606477秒→671.706354359秒、37.3441336679%短縮を対象限定値として保持し、全量へ外挿しない。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "Payer専用run39943173054のbaseline12/after14比較",
+                                                     "evidence":  "https://github.com/kenta-0420/mannschaft/actions/runs/39943173054"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-7",
+                                   "description":  "全量はQPC42170.927秒で期限停止、通常test XML0/残量不明とし、32通常worker、ArchUnit等の前段、時計差と4失敗を分離する。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "保存原本の未完走分析（全量成功を宣言しない）",
+                                                     "evidence":  "docs/evidence/CMP-261023-1648-full-test-analysis.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-8",
+                                   "description":  "実Spring metadataでTeam/Organization/Surveyの構成key3種類→1種類をred→green確認。after全体を固定し、baselineはTeam/Organizationの2Javaだけd4cc6d7fへ差し替える。Context load/static初期化を行わない。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "teamとorganizationとsurveyの構成keyは1種類になる",
+                                                     "evidence":  "backend/src/test/java/com/mannschaft/app/common/testing/VisibilityResolverContextConfigurationTest.java"
+                                                 },
+                                                 {
+                                                     "name":  "metadata-red1件expected failure/validated=true、metadata-green2pass/skip0/validated=true、metadataDockerEmpty=true（run全体はhelper比較不備でfailure）",
+                                                     "evidence":  "https://github.com/kenta-0420/mannschaft/actions/runs/39973755063"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-9",
+                                   "description":  "Team4/Organization3/Survey9の全16caseが同一fork実MySQLで双方16pass、failure/error/skip0。TX rollback/Docker条件/共通mock/base保持、FQCN付きcase名完全同一、START/END各16、active最大1/最終0。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "新baseline/after双方16pass・skip0、Organization→Survey→Team同順",
+                                                     "evidence":  "https://github.com/kenta-0420/mannschaft/actions/runs/39979684252"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-10",
+                                   "description":  "専用runnerの同条件単回ペアでwarmを除外し、Gradle起動・test・依存/後処理（常時Integrity/Jacoco込み）command wall405.597496404秒→294.490044928秒、111.107451476秒/27.3935249751%短縮、XML EMF3→1を確認。純DB初期化秒や全suite率に読み替えない。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "performance-only専用比較success、canonical LF init SHA一致、原bytes復元/自所有cleanup期限内",
+                                                     "evidence":  "https://github.com/kenta-0420/mannschaft/actions/runs/39979684252"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-11",
+                                   "description":  "公式fixtureのLF固定は独立PR4074で、raw SHAを緩めずWindows autocrlf=true実Git checkoutのred→greenを確認する。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "Windows autocrlf true/false/input実Git checkout、red exit1→green4pass/skip0 exit0",
+                                                     "evidence":  "docs/evidence/CMP-261023-1648-unicode-checkout.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-12",
+                                   "description":  "追加実装PR4075/head0daaの通常CI成功と本文編集後を含む全24checkのmerge前完了を確認。merged_at=2026-10-23T17:02:17Z、最新check完了16:57:17Z。旧4068時刻拒否を履歴に残し、validatorを緩めずmerge後の別記録PRで完了証拠を追加する。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "同head通常CI成功・merge時点check/status公式集約",
+                                                     "evidence":  "docs/evidence/CMP-261023-1648-test-db-reuse.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "CONTACT-FIXTURE",
+                                   "description":  "期限切れ招待のfixture生成だけを製品と同じ36字UUIDへ是正。期限・期待404・認可assert・製品/DDL保持。通常CI Contact全nested11XML/51pass、AcceptInvite3件に期限切れcase実在、failure/error/skip0。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "期限切れトークンは404",
+                                                     "evidence":  "backend/src/test/java/com/mannschaft/app/contact/ContactScopeContractIT.java"
+                                                 },
+                                                 {
+                                                     "name":  "Contact期限切れcaseの同head通常CI実走green",
+                                                     "evidence":  "docs/evidence/CMP-261023-1648-test-db-reuse.md"
+                                                 }
+                                             ]
+                               }
+                           ],
+    "ci":  [
+               {
+                   "runId":  39973223947,
+                   "evidence":  "https://github.com/kenta-0420/mannschaft/actions/runs/39973223947",
+                   "conclusion":  "success"
+               }
+           ],
+    "stages":  {
+                   "review":  {
+                                  "status":  "passed",
+                                  "evidence":  "docs/evidence/CMP-261023-1648-test-db-reuse.md",
+                                  "note":  "root最終検分finding0、専用実結果・通常CI対象XML照合済み。全24checkはmerge前完了、同名最新世代もsuccess/予定skip、statuses=[]を公式summarizeImplementationChecksで照合。"
+                              },
+                   "real":  {
+                                "status":  "not-applicable",
+                                "scope":  "test-only",
+                                "reason":  "テスト構成・fixture生成と分析文書の変更のみで製品/API/UI挙動を変更しない"
+                            },
+                   "exploratory":  {
+                                       "status":  "not-applicable",
+                                       "scope":  "test-only",
+                                       "reason":  "画面導線を変更せず、実DB認可・fixture回帰は既存ITで検証する"
+                                   }
+               },
+    "regressions":  [
+                        {
+                            "description":  "metadata構成keyの不要な分裂を3種類から1種類へ是正。after全体固定＋Team/Orgの2Javaだけd4cc6d7fへ差替したbaselineでredを確認。専用run全体failureと有効なmetadata結果を区別する。",
+                            "test":  "teamとorganizationとsurveyの構成keyは1種類になる / static初期化しない既存metadata検証",
+                            "redEvidence":  "https://github.com/kenta-0420/mannschaft/actions/runs/39973755063/artifacts/12511902784",
+                            "greenEvidence":  "https://github.com/kenta-0420/mannschaft/actions/runs/39973755063/artifacts/12511902784"
+                        },
+                        {
+                            "description":  "公式Unicode fixtureのraw SHAを維持しWindows autocrlf=trueの実Git checkoutで改行変換のred→LF固定greenを確認。",
+                            "test":  "PR4074 Unicode fixture checkout red→green",
+                            "redEvidence":  "docs/evidence/CMP-261023-1648-unicode-checkout.md",
+                            "greenEvidence":  "docs/evidence/CMP-261023-1648-unicode-checkout.md"
+                        },
+                        {
+                            "description":  "Payer所有fixture cleanupの既存negative control2件と原bytes復元後Schema9件を保持する。",
+                            "test":  "完成schemaのcleanupは所有fixtureだけを削除する / 完成schemaのcleanupは途中失敗後も再利用できる",
+                            "redEvidence":  "docs/evidence/CMP-261023-1648-test-db-reuse.md",
+                            "greenEvidence":  "docs/evidence/CMP-261023-1648-test-db-reuse.md"
+                        },
+                        {
+                            "description":  "期限切れ招待fixtureの生成長不備を製品と同じ36字UUIDへ是正。旧失敗の具体値・生ログは公開しない。",
+                            "test":  "ContactScopeContractIT 期限切れトークンは404",
+                            "redEvidence":  "docs/evidence/CMP-261023-1648-full-test-analysis.md",
+                            "greenEvidence":  "docs/evidence/CMP-261023-1648-test-db-reuse.md"
+                        }
+                    ],
+    "history":  [
+                    {
+                        "implementationPr":  4068,
+                        "head":  "df8ee0499ed99f38ec715ea902e761f3e07e635e",
+                        "mergedAt":  "2026-10-23T13:41:29Z",
+                        "recheckRunId":  39963270169,
+                        "recheckCompletedAt":  "2026-10-23T13:41:32Z",
+                        "closureGateRunId":  39964552315,
+                        "result":  "完了証拠ゲート拒否。merge前開始checkがmerge後完了。同名先行successで救済しない。旧実装の有効なPayer証拠と区別して履歴保持"
+                    }
+                ],
+    "excludedCompletionScopes":  [
+                                     "CMP-261021-1602",
+                                     "CMP-261004-2047"
+                                 ],
+    "preservedPayerEvidence":  "f6ab116→0daaのbackend test外/Payer Java/backend src test resources差分なし。既存14実走/37.34%対象単回を保持、新16件27.39%とは別測定",
+    "validation":  {
+                       "runId":  39979684252,
+                       "workflowHead":  "d54df6bfc291d93517e72dd076771057b63d0af0",
+                       "afterHead":  "0daa7a81c6d2135a6eb942b27aa781d0c2fbae26",
+                       "conclusion":  "success",
+                       "baselineWallSeconds":  405.597496404,
+                       "afterWallSeconds":  294.490044928,
+                       "passed":  16,
+                       "skipped":  0,
+                       "reservationComment":  "https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6368577969",
+                       "reservationJst":  "2026-10-24 01:00〜02:00",
+                       "stopJst":  "01:58",
+                       "cleanupDeadlineJst":  "02:00",
+                       "afterWarmSeconds":  183.549323278,
+                       "resultComment":  "https://github.com/kenta-0420/mannschaft/pull/4075#issuecomment-6369593874",
+                       "cleanupUtc":  "2026-10-23T16:21:28.993883Z",
+                       "activeFinal":  0,
+                       "canonicalInitSha256":  "b0e82834ea272ad6dcc1f8a35297c9495d30377b740dd371b9b59e9a1936c8bf",
+                       "activeMax":  1,
+                       "javaRemaining":  0,
+                       "ends":  16,
+                       "workflowGitBlobSha256":  "7cc41c67290163ae38d2b62053b119f94df257d9dda95ace2b4f9d76485357f1",
+                       "compileUpToDate":  true,
+                       "executedDependencies":  "archUnit/常時Integrity/Jacoco",
+                       "sameOrder":  "Organization→Survey→Team",
+                       "caseNamesEqual":  true,
+                       "artifactSha256":  "dad3a6546ae338bf2129d40cf2081576b607be0ced27137cdb093ad601739bf5",
+                       "pythonGitBlobSha256":  "dcf053915198dc00641c68003fe04aa28ab155bb441b0925b221d0d07f6d2645",
+                       "dockerEmpty":  true,
+                       "starts":  16,
+                       "artifactBytes":  84668,
+                       "restoredExactBytes":  true,
+                       "savedSeconds":  111.107451476,
+                       "artifactId":  12514644104,
+                       "beforeHeavy":  0,
+                       "initShaMatches":  true,
+                       "warmExcluded":  true,
+                       "baselineWarmSeconds":  402.301895314,
+                       "savedPercent":  27.3935249751,
+                       "releasedReservationComment":  "https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6369592116",
+                       "measurementLimit":  "baseline→after固定順の単回概算。warmはcompile/ArchUnit系のみ、OS/Docker image等cache温度を独立分離していない。27.39%全てを初期化削減の因果効果と断定せず、ログ実初期化3→1と区別。image pull有無は明細不足で未確定、追加反復なし。",
+                       "baselineEntityManagerFactoryInitializations":  3,
+                       "afterEntityManagerFactoryInitializations":  1
+                   },
+    "metadataValidation":  {
+                               "runId":  39973755063,
+                               "workflowHead":  "c359dcba98bfd2c4245da5c4c69aa4600d87d2ce",
+                               "overallConclusion":  "failure",
+                               "failedAtUtc":  "2026-10-23T15:24Z",
+                               "reason":  "helperがsuite日本語表示名をFQCNと比較して停止。after実DB未実行",
+                               "baselineMode":  "after全体固定＋Team/Organizationの2Javaだけd4cc6d7fへ差替（先行commit全体checkoutではない）",
+                               "red":  {
+                                           "expectedFailureCount":  1,
+                                           "validated":  true,
+                                           "wallSeconds":  496.577358035
+                                       },
+                               "green":  {
+                                             "passed":  2,
+                                             "skipped":  0,
+                                             "validated":  true,
+                                             "wallSeconds":  233.988271905
+                                         },
+                               "metadataDockerEmpty":  true,
+                               "baselineDatabase":  {
+                                                        "passed":  16,
+                                                        "skipped":  0,
+                                                        "wallSeconds":  487.615790897,
+                                                        "jpaStarts":  3
+                                                    },
+                               "artifactId":  12511902784,
+                               "artifactBytes":  58925,
+                               "artifactSha256":  "37b41cad010177327f140bdbf862adcde66901fb4f76a089c6a860171fe559c7",
+                               "cleanupUtc":  "2026-10-23T15:23:55.048681Z",
+                               "exactRestore":  true,
+                               "ownedJavaRemaining":  [
+
+                                                      ],
+                               "dockerEmpty":  true
+                           },
+    "cancelledPerformanceAttempt":  {
+                                        "runId":  39978413208,
+                                        "workflowHead":  "2b9d10b7bb7908af4f01d52a1c9282696068a9ad",
+                                        "conclusion":  "cancelled",
+                                        "steps":  [
+
+                                                  ],
+                                        "testsExecuted":  false,
+                                        "reason":  "runner未取得のまま25分の開始予算を割りrootがcancel。実テスト結果なし"
+                                    },
+    "legacyBCrypt":  {
+                         "status":  "passed: 通常CI shard3の実走",
+                         "runId":  39973223947,
+                         "shard":  3,
+                         "shardConclusion":  "success",
+                         "suite":  "com.mannschaft.app.auth.mfa.MfaBackupCodeLatencyIT",
+                         "tests":  4,
+                         "failures":  0,
+                         "errors":  0,
+                         "skipped":  0,
+                         "timestamp":  "2026-10-23T15:44:16.526Z",
+                         "cases":  [
+                                       "AC-54 旧BCrypt 8件 最後一致は3秒以内",
+                                       "AC-54 旧BCrypt 8件 全不一致は3秒以内"
+                                   ],
+                         "bothCaseNamesExist":  true,
+                         "thresholdUnchanged":  true,
+                         "artifactId":  12517046574,
+                         "artifactZipSha256":  "530dfe5831cd8cbcbfd5288fd82e7969a34d1ac3e56649b8a9c5fd44c58b390b",
+                         "limitation":  "今回CIで閾値不変の実走green。旧ローカル遅延の原因究明/解消とは断定しない。XML case timeはfixture込みでassert対象計測とは異なるため閾値比較に使わない。"
+                     },
+    "contactValidation":  {
+                              "runId":  39973223947,
+                              "artifactId":  12517861399,
+                              "artifactBytes":  34131690,
+                              "artifactSha256":  "3bd90dffaf6b65ae277c969db7ad52367e9a960823cd7fbc879f1a4c01514f87",
+                              "nestedXml":  11,
+                              "passed":  51,
+                              "failures":  0,
+                              "errors":  0,
+                              "skipped":  0,
+                              "acceptInviteTests":  3,
+                              "timestamp":  "2026-10-23T16:10:04.601Z",
+                              "expiredCasePresent":  true
+                          },
+    "mergeCheckSummary":  {
+                              "totalRawChecks":  24,
+                              "summarizedChecks":  [
+                                                       "success",
+                                                       "success",
+                                                       "success",
+                                                       "success",
+                                                       "success",
+                                                       "success",
+                                                       "success",
+                                                       "success",
+                                                       "success",
+                                                       "success",
+                                                       "success",
+                                                       "success",
+                                                       "success",
+                                                       "success",
+                                                       "success",
+                                                       "success",
+                                                       "success",
+                                                       "skipped",
+                                                       "success",
+                                                       "success",
+                                                       "success",
+                                                       "success"
+                                                   ],
+                              "statuses":  [
+
+                                           ],
+                              "latestCompletedAt":  "2026-10-23T16:57:17Z",
+                              "lateChecks":  0
+                          }
 }
