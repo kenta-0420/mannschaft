@@ -47,8 +47,8 @@ on:
 
 # Cancel in-progress runs for the same PR when new commits are pushed
 concurrency:
-  group: backend-ci-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  group: ${{ github.event_name == 'workflow_dispatch' && format('mfa-ac54-diagnostic-{0}', github.ref) || format('backend-ci-{0}', github.event.pull_request.number) }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 env:
   JAVA_VERSION: "21"
@@ -61,10 +61,11 @@ jobs:
   #
   # 全 PR で起動する（paths フィルタなし）。PR の base...head 差分を見て backend/**
   # または本 workflow 自身に変更があれば backend_changed=true を出力する。
-  # workflow_dispatch（手動実行）時は PR コンテキストが無いため常に true とする。
+  # この診断branchのworkflow_dispatchは専用診断jobのみを起動する。
   # この output を shard / gate ジョブが参照して実行可否・集約判定を行う。
   # ---------------------------------------------------------------------------
   detect:
+    if: github.event_name != 'workflow_dispatch'
     name: Detect changes
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -173,7 +174,7 @@ jobs:
   lint:
     name: Lint (D-5 @Builder guard)
     needs: detect
-    if: needs.detect.outputs.backend_changed == 'true'
+    if: github.event_name != 'workflow_dispatch' && needs.detect.outputs.backend_changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -225,7 +226,7 @@ jobs:
   shard-coverage-guard:
     name: Shard coverage guard
     needs: detect
-    if: needs.detect.outputs.backend_changed == 'true'
+    if: github.event_name != 'workflow_dispatch' && needs.detect.outputs.backend_changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -273,7 +274,7 @@ jobs:
   arch-test:
     name: ArchUnit tests (separate JVM)
     needs: detect
-    if: needs.detect.outputs.backend_changed == 'true'
+    if: github.event_name != 'workflow_dispatch' && needs.detect.outputs.backend_changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -340,7 +341,7 @@ jobs:
   non-jst-timezone:
     name: Non-JST timezone contract
     needs: detect
-    if: needs.detect.outputs.backend_changed == 'true'
+    if: github.event_name != 'workflow_dispatch' && needs.detect.outputs.backend_changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -400,7 +401,7 @@ jobs:
   shard:
     name: Test (shard ${{ matrix.shard }})
     needs: detect
-    if: needs.detect.outputs.backend_changed == 'true'
+    if: github.event_name != 'workflow_dispatch' && needs.detect.outputs.backend_changed == 'true'
     runs-on: ubuntu-latest
     # 通常PRは100分、migration込みは120分を観測用上限とする（完走・根治の保証ではない）。
     # test stepは85/105分。setup＋compileが15分を超えると回収余白を保証しない。
@@ -645,7 +646,7 @@ jobs:
   gate:
     name: Compile & Test
     needs: [detect, shard, lint, shard-coverage-guard, non-jst-timezone, arch-test]
-    if: always()
+    if: always() && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -746,3 +747,220 @@ jobs:
 #   Backend API 変更後: ./gradlew generateOpenApiDocs → docs/openapi.json をコミット
 #   CI では Frontend の drift 検出（frontend-ci.yml）で乖離を検出する。
 # =============================================================================
+
+
+  # 固定製品HEADを使う追加診断。通常required suiteの結果には流用しない。
+  mfa-ac54-diagnostic:
+    name: MFA AC-54 diagnostic (A-B-A)
+    if: github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/feature/cmp0647-mfa-diagnostic-')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: backend
+        shell: bash
+    env:
+      DIAGNOSTIC_DIR: ${{ runner.temp }}/mfa-ac54
+      WORKFLOW_REF: ${{ github.workflow_ref }}
+      WORKFLOW_SHA: ${{ github.workflow_sha }}
+      RUNNER_IMAGE: ${{ runner.os }} / ${{ runner.arch }}
+    steps:
+      - name: 固定製品HEADを取得
+        uses: actions/checkout@v7
+        with:
+          ref: d8a8f0685d5e7439e35b61c462a4b03619891c3c
+          persist-credentials: false
+      - name: Java 21 Temurin
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Gradle 8.14.4
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.4'
+          cache-read-only: true
+      - name: 固定HEADと必要最小の環境数値を保存
+        run: |
+          set -euo pipefail
+          mkdir -p "$DIAGNOSTIC_DIR"
+          test "$(git rev-parse HEAD)" = d8a8f0685d5e7439e35b61c462a4b03619891c3c
+          test -z "$(git status --porcelain --untracked-files=no)"
+          {
+            printf 'workflow_ref=%s\nworkflow_sha=%s\nproduct_sha=%s\n' "$WORKFLOW_REF" "$WORKFLOW_SHA" "$(git rev-parse HEAD)"
+            printf 'runner=%s\nimage_os=%s\nimage_version=%s\n' "$RUNNER_IMAGE" "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+            java -version 2>&1
+            gradle --version
+            nproc
+            free -b
+            for f in cpu.max cpu.stat memory.max memory.current memory.swap.max; do
+              if [ -r "/sys/fs/cgroup/$f" ]; then printf '%s: ' "$f"; cat "/sys/fs/cgroup/$f"; fi
+            done
+          } > "$DIAGNOSTIC_DIR/environment.txt"
+          git ls-files -z src build.gradle.kts gradle.properties gradle | xargs -0 sha256sum > "$DIAGNOSTIC_DIR/product-files.sha256"
+      - name: 診断専用initと数値採取器を作成
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/mfa-ac54.init.gradle" <<'GROOVY'
+          import org.gradle.api.tasks.testing.Test
+          import org.gradle.api.tasks.SourceSetContainer
+          import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
+          def out = new File(System.getenv('DIAGNOSTIC_DIR'))
+          def mfa = 'com.mannschaft.app.auth.mfa.MfaBackupCodeLatencyIT'
+          def billing = 'com.mannschaft.app.billing.WithdrawalPayerHandoverAuthzIT'
+          gradle.projectsEvaluated {
+              def p = gradle.rootProject
+              def source = p.extensions.getByType(SourceSetContainer).getByName('test')
+              ['diagnosticA1': [1, [mfa]], 'diagnosticB': [2, [mfa, billing]], 'diagnosticA2': [1, [mfa]]].each { name, spec ->
+                  def task = p.tasks.create(name, Test)
+                  // 既存withType<Test>からheap4g/G1/TZ/context5/JUnit/JaCoCo等を継承。
+                  task.testClassesDirs = source.output.classesDirs
+                  task.classpath = source.runtimeClasspath
+                  task.maxParallelForks = spec[0]
+                  task.filter.setIncludePatterns(*(spec[1] as String[]))
+                  task.filter.failOnNoMatchingTests = true
+                  task.setFinalizedBy([])
+                  task.outputs.upToDateWhen { false }
+                  task.outputs.cacheIf { false }
+                  def dir = new File(out, name)
+                  dir.mkdirs()
+                  task.reports.junitXml.outputLocation.set(new File(dir, 'xml'))
+                  task.reports.junitXml.includeSystemOutLog = false
+                  task.reports.junitXml.includeSystemErrLog = false
+                  task.reports.html.required.set(false)
+                  task.extensions.getByType(JacocoTaskExtension).destinationFile = new File(dir, 'jacoco.exec')
+                  // OOM dumpには秘密が含まれ得るため採取しない。GCログは全arm同設定。
+                  task.jvmArgs = task.jvmArgs.findAll { !it.startsWith('-XX:HeapDumpPath=') && it != '-XX:+HeapDumpOnOutOfMemoryError' }
+                  task.jvmArgs('-XX:-HeapDumpOnOutOfMemoryError', "-Xlog:gc*:file=${dir}/gc-%p.log:time,uptime,level,tags")
+                  def lock = new Object()
+                  def emit = { kind, descriptor, result ->
+                      synchronized (lock) {
+                          new File(dir, 'events.tsv').append("${System.currentTimeMillis()}\t${kind}\t${descriptor.className}\t${descriptor.name}\t${result}\n", 'UTF-8')
+                      }
+                  }
+                  task.beforeTest { d -> emit('test-start', d, '') }
+                  task.afterTest { d, r -> emit('test-end', d, r.resultType) }
+                  task.beforeSuite { d -> if (d.className != null && d.parent?.className != d.className) emit('class-start', d, '') }
+                  task.afterSuite { d, r -> if (d.className != null && d.parent?.className != d.className) emit('class-end', d, r.resultType) }
+                  task.doFirst {
+                      assert task.maxHeapSize == '4g'
+                      assert task.forkEvery == 180
+                      assert task.systemProperties['spring.test.context.cache.maxSize'] == '5'
+                      assert task.systemProperties['mannschaft.test.contextCacheMaxSize.overridden'] == 'true'
+                      assert task.jvmArgs.contains('-XX:+UseG1GC')
+                      assert task.jvmArgs.contains('-Duser.timezone=Asia/Tokyo')
+                      assert task.extensions.getByType(JacocoTaskExtension).enabled
+                      assert task.filter.includePatterns == (spec[1] as Set)
+                      new File(dir, 'settings.txt').text = "heap=${task.maxHeapSize}\nforks=${task.maxParallelForks}\nforkEvery=${task.forkEvery}\ncontext=5\nG1=true\nTZ=Asia/Tokyo\nJaCoCo=true\n"
+                      task.classpath.files.findAll { it.name.startsWith('spring-security-crypto-') || it.name.startsWith('bcprov-') || it.name.startsWith('org.jacoco.agent-') }.each { file ->
+                          def hash = java.security.MessageDigest.getInstance('SHA-256').digest(file.bytes).encodeHex()
+                          new File(dir, 'jars.sha256').append("${hash}  ${file.name}\n", 'UTF-8')
+                      }
+                  }
+              }
+          }
+          GROOVY
+          cat > "$RUNNER_TEMP/mfa-sample.py" <<'PYTHON'
+          import pathlib, sys, time
+          dest = pathlib.Path(sys.argv[1])
+          with dest.open('w') as out:
+              out.write('epoch_ms\tpid\tutime_ticks\tstime_ticks\trss_pages\n')
+              while True:
+                  for p in pathlib.Path('/proc').glob('[0-9]*'):
+                      try:
+                          # コマンドラインは選別にのみ使用し、値・引数・環境を保存しない。
+                          if b'GradleWorkerMain' not in (p/'cmdline').read_bytes(): continue
+                          fields = (p/'stat').read_text().rsplit(')', 1)[1].split()
+                          out.write(f'{int(time.time()*1000)}\t{p.name}\t{fields[11]}\t{fields[12]}\t{fields[21]}\n')
+                      except (OSError, IndexError): pass
+                  out.flush()
+                  time.sleep(1)
+          PYTHON
+          sha256sum "$RUNNER_TEMP/mfa-ac54.init.gradle" "$RUNNER_TEMP/mfa-sample.py" > "$DIAGNOSTIC_DIR/diagnostic-scripts.sha256"
+          cp "$RUNNER_TEMP/mfa-ac54.init.gradle" "$RUNNER_TEMP/mfa-sample.py" "$DIAGNOSTIC_DIR/"
+      - name: dry-runで通常testとArchとstoreが依存に無いことを確認
+        run: |
+          set -euo pipefail
+          gradle -I "$RUNNER_TEMP/mfa-ac54.init.gradle" diagnosticA1 diagnosticB diagnosticA2 -Pspring.test.context.cache.maxSize=5 --no-daemon --no-configuration-cache --dry-run > "$DIAGNOSTIC_DIR/dry-run.txt" 2>&1
+          python - <<'PYTHON'
+          import os, pathlib, re
+          text = (pathlib.Path(os.environ['DIAGNOSTIC_DIR'])/'dry-run.txt').read_text()
+          tasks = re.findall(r'^:([^ ]+) SKIPPED$', text, re.M)
+          allowed = {'compileJava','processResources','classes','compileTestJava','processTestResources','testClasses','diagnosticA1','diagnosticB','diagnosticA2'}
+          assert set(tasks) <= allowed, tasks
+          assert {'diagnosticA1','diagnosticB','diagnosticA2'} <= set(tasks), tasks
+          PYTHON
+      - name: 同一runnerでA1→B→A2を各1回実行
+        id: arms
+        run: |
+          set -euo pipefail
+          for arm in diagnosticA1 diagnosticB diagnosticA2; do
+            mkdir -p "$DIAGNOSTIC_DIR/$arm"
+            python "$RUNNER_TEMP/mfa-sample.py" "$DIAGNOSTIC_DIR/$arm/worker-numbers.tsv" &
+            sampler=$!
+            set +e
+            gradle -I "$RUNNER_TEMP/mfa-ac54.init.gradle" "$arm" -Pspring.test.context.cache.maxSize=5 --no-daemon --no-configuration-cache --no-build-cache > "$DIAGNOSTIC_DIR/$arm/gradle.log" 2>&1
+            result=$?
+            set -e
+            kill "$sampler"
+            wait "$sampler" || true
+            printf '%s\n' "$result" > "$DIAGNOSTIC_DIR/$arm/exit-code.txt"
+          done
+      - name: 実行数とskipと終了値を判定
+        if: always() && steps.arms.outcome != 'skipped'
+        run: |
+          set -euo pipefail
+          python - <<'PYTHON'
+          import collections, json, os, pathlib, xml.etree.ElementTree as ET
+          root = pathlib.Path(os.environ['DIAGNOSTIC_DIR'])
+          mfa = 'com.mannschaft.app.auth.mfa.MfaBackupCodeLatencyIT'
+          billing = 'com.mannschaft.app.billing.WithdrawalPayerHandoverAuthzIT'
+          summary = {'note': 'XML case時間は内部1500/3000ms判定値ではない。Bの計測区間でbilling実処理との重なり未確定なら対照不成立。全greenでも元CI原因解決を示さない。', 'arms': {}}
+          expected_names = {
+              mfa: {'Argon2id全不一致の所要時間()', 'Argon2id最後一致の所要時間()', 'BCrypt全不一致の所要時間()', 'BCrypt最後一致の所要時間()'},
+              billing: {'欠陥再現_対話API経路は退会済みpayerでは失敗する()', '対照_退会していなければ対話API経路は成功する()', '逆順_退会取消後に届いた退会イベントは引継要求を作らない()', '是正_退会経路は退会済みpayerでも引継要求を作成する()', '越境_payer不一致は拒否される()', '退会取消_REQUESTEDが終端化して再要求できる()'},
+          }
+          valid = True
+          for arm in ['diagnosticA1','diagnosticB','diagnosticA2']:
+              counts, skipped, failed = {}, 0, 0
+              identities = collections.Counter()
+              for xml in (root/arm/'xml').glob('TEST-*.xml'):
+                  suite = ET.parse(xml).getroot()
+                  for case in suite.findall('testcase'):
+                      cls = case.get('classname')
+                      identities[(cls, case.get('name'))] += 1
+                      counts[cls] = counts.get(cls, 0) + 1
+                      skipped += len(case.findall('skipped'))
+                      failed += len(case.findall('failure')) + len(case.findall('error'))
+              expected = {mfa: 4, **({billing: 6} if arm == 'diagnosticB' else {})}
+              code = (root/arm/'exit-code.txt')
+              exit_code = int(code.read_text()) if code.exists() else None
+              expected_cases = {(cls, name) for cls in expected for name in expected_names[cls]}
+              exact_once = set(identities) == expected_cases and all(n == 1 for n in identities.values())
+              arm_valid = exact_once and counts == expected and skipped == 0 and exit_code == 0 and failed == 0
+              summary['arms'][arm] = dict(counts=counts, skipped=skipped, failures=failed, exit_code=exit_code, exact_once=exact_once, cases=[dict(classname=c, name=n, occurrences=k) for (c,n),k in sorted(identities.items())], valid=arm_valid)
+              valid &= arm_valid
+          summary['billing_measurement_overlap'] = 'unconfirmed: class/case窓はvalidate内部区間を証明しない。events.tsvを原本とし次段で評価する'
+          (root/'summary.json').write_text(json.dumps(summary, ensure_ascii=False, indent=2))
+          print(json.dumps(summary, ensure_ascii=False, indent=2))
+          raise SystemExit(0 if valid else 1)
+          PYTHON
+      - name: 失敗arm後も固定製品sourceの同一性を検証
+        if: always()
+        run: |
+          set -euo pipefail
+          {
+            test "$(git rev-parse HEAD)" = d8a8f0685d5e7439e35b61c462a4b03619891c3c
+            test -z "$(git status --porcelain --untracked-files=no)"
+            sha256sum -c "$DIAGNOSTIC_DIR/product-files.sha256"
+          } > "$DIAGNOSTIC_DIR/product-integrity.txt" 2>&1
+      - name: 診断証跡を保存
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mfa-ac54-diagnostic-${{ github.run_id }}
+          path: ${{ runner.temp }}/mfa-ac54/
+          retention-days: 7
+          if-no-files-found: error
