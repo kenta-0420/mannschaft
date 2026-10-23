@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "90e940a7-051d-4d3e-8cdc-680bb4fda28d",
+  "operation": "e08aaeba-ad5a-46de-8834-44808ff514f3",
   "territories": {
     "foundation": {
       "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
@@ -14,7 +14,7 @@
     },
     "repayment-a": {
       "owner": "5dae09d2-9385-424c-b665-e6bd69c13586",
-      "note": "初回疎通試験のみ。足軽0・実装未着手。\n解放: 0d390256-4a9e-424b-bccd-a0bbf9131115 → 未所有 / 停止・解放証拠: https://github.com/kenta-0420/mannschaft/pull/4054 / 実origin疎通、足軽0・共有編集0の停止確認"
+      "note": "初回疎通試験のみ。足軽0・実装未着手。\n解放: 0d390256-4a9e-424b-bccd-a0bbf9131115 → 未所有 / 停止・解放証拠: https://github.com/kenta-0420/mannschaft/pull/4054 / 実origin疎通、足軽0・共有編集0の停止確認\n親Issue6366287754: L2全38の読取集計とchart/knowledgebaseの設計を開始。子CMP第1波は対象固定/登録前、F/G未完了でworking禁止。同PCheavy新規投入0を2026-10-23 23:00JSTまで維持。管理WT agent-4022-repayment-a-admin-20261023、owner5dae09d2-9385-424c-b665-e6bd69c13586"
     },
     "repayment-b": {
       "owner": null,
