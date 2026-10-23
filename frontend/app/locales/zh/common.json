@@ -1651,7 +1651,9 @@
       "more": "还有{count}项",
       "today": "今天",
       "dayDetail": {
-        "title": "{date} 的日程"
+        "title": "{date} 的日程",
+        "empty": "当天暂无日程",
+        "create": "添加当天日程"
       },
       "empty": "此期间没有日程",
       "view": {

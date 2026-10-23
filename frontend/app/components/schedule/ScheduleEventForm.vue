@@ -465,7 +465,7 @@ function applyDefaultEndOneHourAfter(startDate: Date, startTime: string) {
 /**
  * 作成ダイアログを開くときの初期日時をフォームへ適用する（F03.19 §6.6.5）。
  * 優先順位: `initialStartAt`/`initialEndAt`（時刻付き）> `initialDate`（日付のみ・従来挙動）。
- * `initialDate` 経路の挙動は一切変更していない（AC-22c）。
+ * 日付のみの値はピッカー用の壁時計として組み立て、UTC解釈による前日ずれを防ぐ。
  */
 function applyInitialDateTime() {
   if (props.initialStartAt) {
@@ -491,8 +491,9 @@ function applyInitialDateTime() {
     }
   }
   if (props.initialDate) {
-    form.value.startDate = new Date(props.initialDate)
-    form.value.endDate = new Date(props.initialDate)
+    const [year, month, date] = props.initialDate.split('-').map(Number)
+    form.value.startDate = new Date(year!, month! - 1, date!)
+    form.value.endDate = new Date(year!, month! - 1, date!)
   }
 }
 

@@ -166,6 +166,19 @@ describe('ScheduleEventForm: 初期日時のプリセット（F03.19 §6.6.5）'
     expect(v.endTime).toBe('10:00')
   }, 60000)
 
+  it('日付のみの初期値は端末TZがUTC西側でも前日へずれない', async () => {
+    process.env.TZ = 'America/Los_Angeles'
+    try {
+      const v = await mountForm({ initialDate: '2026-08-06' })
+
+      expect(v.startDate).toBe('2026-08-06')
+      expect(v.endDate).toBe('2026-08-06')
+    }
+    finally {
+      process.env.TZ = 'UTC'
+    }
+  }, 60000)
+
   it('initialEndAt が無い場合、終了時刻は開始の1時間後に補完される（自動補正 watcher と同じ規則）', async () => {
     // 開始は 14:15 とする。フォーム初期値の終了（10:00）と +1時間後（15:15）が一致してしまうと
     // 「補完していない」状態でもテストが通ってしまうため、既定値と重ならない時刻を選ぶ。
