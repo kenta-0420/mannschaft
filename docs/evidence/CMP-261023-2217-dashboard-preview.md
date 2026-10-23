@@ -43,7 +43,7 @@
 
 mobileの一時timeoutは、3 browser contextsが存在するlarge DB環境で既存`GET /api/v1/dashboard/scope-tabs`を待った際の15秒RequestTimeoutErrorとして記録する。3 contexts/DB量と発生の因果、今回実装との関係は未確定。360pxモーダル画像は回復後の本文表示だけを示し、timeoutの発生証拠ではない。
 
-気づき箱の構造化登録は`CMP-261023-2217-exploration.json`。3件すべてtrusted:false/status:observed-unverified/urgency:when-free。blockerへ追加せず、既存runner/coverage合格を意味しない。
+気づき箱の構造化登録は`CMP-261023-2217/exploration.json`。3件すべてtrusted:false/status:observed-unverified/urgency:when-free。blockerへ追加せず、既存runner/coverage合格を意味しない。
 
 ## 安全な画像
 
@@ -91,3 +91,5 @@ PR #4070を2026-10-23T18:03:08Zにmerge。実装headは`3f719ee207966efcc8ed922a
 本PRは完了JSON・台帳該当行・安全画像・検証記録・未確定観測overlayだけを記録するdocs-only変更。アプリ/runtimeは変更せず再実機を行わない。完了証拠CLIは構造・参照を検査し、GitHub API上のPR/CI照合は上記読取結果とCIゲートへ分けて扱う。
 
 ローカル完了証拠CLIは`--base origin/main --head <stage tree>`で起動したが、全既存証拠の逐次Git読み取りが長期化したため所有プロセスだけを停止した（未完了、終了値-1）。ローカル合格とは扱わない。構造・参照とGitHub実装PR/CI照合を行う本完了PRのTask-List PR Gate成功を最終判定とする。validatorの変更や検証の弱体化は行っていない。
+
+完了PR #4079のHarness run40001402098は、`docs/evidence/`直下の`CMP-*.json`を完了証拠schemaとして全件検査する既存テストと、探索overlayの命名が衝突して失敗した。検査コードやschemaを変更せず、overlayを`docs/evidence/CMP-261023-2217/exploration.json`へ移動した。JSON内容と本陣localoverlayは不変。`node --test --test-name-pattern='AC-3: test-only' scripts/completion-evidence.test.mjs`は1件pass/0fail/exit0。修正後headのCIは再確認待ち。
