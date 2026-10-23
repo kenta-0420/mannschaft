@@ -262,18 +262,7 @@ watch(
           form.value.attendanceRequired = false
           form.value.allowProxyAttendance = false
           form.value.isProxyAutoAccept = false
-          if (time.startAt) {
-            const start = new Date(time.startAt as string)
-            form.value.startDate = start
-            form.value.startTime = savedTimeString(start)
-          }
-          if (time.endAt) {
-            const end = new Date(time.endAt as string)
-            form.value.endDate = savedEndDate(end, form.value.allDay)
-            form.value.endTime = savedTimeString(end)
-          } else {
-            form.value.endDate = null
-          }
+          applySavedDateTime(time)
           // 個人予定: detailedReminders からリマインダーフォーム状態を復元する
           const detailedReminders = (data.detailedReminders as Array<Record<string, unknown>> | null) ?? []
           if (detailedReminders.length > 0) {
@@ -323,18 +312,7 @@ watch(
           targetMode.value = (data.targetMode as ScheduleTargetMode) ?? 'ALL_MEMBERS'
           targetUserIds.value = ((data.targets as Array<{ userId: number }> | undefined) ?? [])
             .map(target => target.userId)
-          if (time.startAt) {
-            const start = new Date(time.startAt as string)
-            form.value.startDate = start
-            form.value.startTime = savedTimeString(start)
-          }
-          if (time.endAt) {
-            const end = new Date(time.endAt as string)
-            form.value.endDate = savedEndDate(end, form.value.allDay)
-            form.value.endTime = savedTimeString(end)
-          } else {
-            form.value.endDate = null
-          }
+          applySavedDateTime(time)
           // 共有予定: reminders からリマインダーフォーム状態を復元する
           const reminders = (data.reminders as Array<Record<string, unknown>> | null) ?? []
           form.value.reminders = reminders.map(reminderResponseToFormEntry)
@@ -404,6 +382,18 @@ function savedTimeString(date: Date): string {
   return date.toTimeString().slice(0, date.getSeconds() ? 8 : 5)
 }
 
+/** 個人・共有とも、API日時をユーザーTZの壁時計へ戻してからピッカーへ渡す。 */
+function applySavedDateTime(time: Record<string, unknown>) {
+  const start = time.startAt ? toUserZonedParts(time.startAt as string) : null
+  if (start) {
+    form.value.startDate = start.date
+    form.value.startTime = start.time
+  }
+  const end = time.endAt ? toUserZonedParts(time.endAt as string) : null
+  form.value.endDate = end ? savedEndDate(end.date, form.value.allDay) : null
+  if (end) form.value.endTime = end.time
+}
+
 // APIの終日終了は排他的、日付ピッカーの終了日は当日を含む。
 function savedEndDate(date: Date, allDay: boolean): Date {
   const end = new Date(date)
@@ -432,10 +422,13 @@ function buildScheduleDateTime(date: Date | null, time: string): string | null {
 function toUserZonedParts(iso: string): { date: Date; time: string } | null {
   const parsed = dayjs(iso)
   if (!parsed.isValid()) return null
-  const z = parsed.tz(userTimezone.value)
+  // オフセット無しの旧API値はユーザーTZの壁時計。端末TZで解釈してから変換しない。
+  const hasOffset = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(iso)
+  const z = hasOffset ? parsed.tz(userTimezone.value) : dayjs.tz(iso, userTimezone.value)
+  const date = new Date(z.year(), z.month(), z.date(), z.hour(), z.minute(), z.second(), z.millisecond())
   return {
-    date: new Date(z.year(), z.month(), z.date(), z.hour(), z.minute(), 0, 0),
-    time: z.format('HH:mm'),
+    date,
+    time: savedTimeString(date),
   }
 }
 
