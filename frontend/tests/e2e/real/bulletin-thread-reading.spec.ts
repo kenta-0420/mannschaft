@@ -65,8 +65,9 @@ test('掲示板の投稿本文・返信・再読込・4幅とスコープ拒否'
     for (let index = 0; index < 4; index++) {
       await page.getByRole('button', { name: '新規スレッド', exact: true }).click()
       const dialog = page.getByRole('dialog', { name: '新規スレッド' })
-      await dialog.getByPlaceholder('スレッドのタイトル').fill(`${prefix}-${index}`)
-      await dialog.getByPlaceholder('本文を入力...').fill(`投稿本文${index}\n二行目 ${'あ'.repeat(101)}<img src="/icons/icon-192x192.png?preview-resource-${prefix}">`)
+      const longUrl = index === 3 ? ` https://example.com/${'long'.repeat(24)}` : ''
+      await dialog.getByPlaceholder('スレッドのタイトル').fill(`${prefix}-${index}${longUrl}`)
+      await dialog.getByPlaceholder('本文を入力...').fill(`投稿本文${index}\n二行目${longUrl} ${'あ'.repeat(101)}<img src="/icons/icon-192x192.png?preview-resource-${prefix}">`)
       const saved = page.waitForResponse(response => response.request().method() === 'POST' && /\/bulletin\/threads(?:\?|$)/.test(response.url()))
       await dialog.getByRole('button', { name: '投稿', exact: true }).click()
       const response = await saved
