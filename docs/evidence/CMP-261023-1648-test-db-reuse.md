@@ -10,7 +10,7 @@
 
 既存12件を保持した14件の実DB検証、fixture隔離のnegative controlと完全復元後のSchema群9件、両群順、並列有効時の逐次実行を確認した。同一専用runnerでの単回比較では、対象限定Gradle command wallが1072.057秒から671.706秒へ約400.350秒（37.34%）短縮した。この値はGradleと必要依存・初期化を含む対象コマンドの測定であり、全テストスイートの短縮率ではない。
 
-実装PRは最終headのCI成功後にmerge済み。出荷必須の検証残件はない。完了台帳・証拠JSONは実装と分離した文書PRで記録する。
+コード改善はmerge済みで、性能・隔離検証の残件はない。ただし実装merge時点で再チェックが実行中だったため完了証拠ゲートが拒否しており、戦役は未完了として扱う。台帳の状態は実装中を維持し、完了JSONは追加しない。
 
 ## 変更範囲と初期化構造
 
@@ -70,10 +70,29 @@ negative controlでは所有要求の `DELETE ... WHERE id IN (...)` 1箇所だ�
 
 司令塔による最終静的・AC検分は実害finding0。既存12件の本体・アサーション保持と表示名集合、diffcheckを確認した。全caseの個別起動は、Schema群単独green・共通cleanup経路・回帰2件のred/greenで重複するため追加しない。初期化故障の注入実験は未実施だが、catchなし・初期化済みflagなしの構造と既存不正旧データ拒否passにより評価し、追加の必須runとはしない。
 
-scopeは `test-only`。製品/API/UI/本番SQLの挙動と画面導線を変更しないため、UI実機試験とアリシゼーションは該当対象なしとする。実装PRのmerge後に完了台帳・証拠JSONを別PRで記録し、本PRには完了行や完了JSONを追加しない。
+scopeは `test-only`。製品/API/UI/本番SQLの挙動と画面導線を変更しないため、UI実機試験とアリシゼーションは該当対象なしとする。完了遷移は以下の証拠ゲート保留のため実施せず、完了行や完了JSONを追加しない。
 
 ## 最終headのCIと実装merge
 
 実装PR #4068の最終head `df8ee0499ed99f38ec715ea902e761f3e07e635e` に対する[CI run39949628011](https://github.com/kenta-0420/mannschaft/actions/runs/39949628011)は全6 shard・ArchUnit・timezone・shard coverage・集約を含む全jobがsuccess。対象Javaを変えない最終文書更新のため、他5 shardはFROM-CACHE、shard3は実行して成功した。cache再利用を新たな全対象実走とは扱わず、先行する14件実走と専用検証の証拠を併せて評価した。
 
-GitHub APIで実装PRのheadと成功runのhead一致を確認し、2026-10-23T13:41:29Zにsquash mergeされたことを確認した。merge commitは `cf1d10173b14f657a1ac9b4f6706491878730c83`。完了JSONのimplementation.shaにはmerge commitではなく最終PR headを記録する。今回の完了記録は製品回帰修正ではなくテスト基盤の性能改善であり、JSONのregressionsは空とする。cleanupのnegative/green証拠はAC-2と本記録に対応付ける。
+GitHub APIで実装PRのheadと成功runのhead一致を確認し、2026-10-23T13:41:29Zにsquash mergeされたことを確認した。merge commitは `cf1d10173b14f657a1ac9b4f6706491878730c83`。完了証拠で使う実装headはmerge commitではなく最終PR headである。ただし次のゲート条件が未成立のため、現時点で完了JSONを登録しない。cleanupのnegative/green証拠はAC-2と本記録に対応付ける。
+
+## 完了証拠ゲートの保留（未完了）
+
+[記録PR #4071](https://github.com/kenta-0420/mannschaft/pull/4071) の[Task-List PR Gate run39964552315](https://github.com/kenta-0420/mannschaft/actions/runs/39964552315/job/120450922052)は、実装headの再チェックがマージ時点で実行中だったため完了遷移を拒否した。JSON・台帳7列・証拠参照の不整合や一過性APIエラーではない。
+
+GitHub APIの時刻は次のとおり（UTC）。
+
+| 対象 | 開始 | 完了/merge | 結果 |
+| --- | --- | --- | --- |
+| [再check run39963270169 / check120446444276](https://github.com/kenta-0420/mannschaft/actions/runs/39963270169/job/120446444276) | 2026-10-23T13:41:16Z | 2026-10-23T13:41:32Z | Task-List PR Gateは最終successだが、実装mergeより3秒後に完了 |
+| 実装PR #4068 | — | 2026-10-23T13:41:29Z | squash merge |
+| [先行check120401374560](https://github.com/kenta-0420/mannschaft/actions/runs/39949851343/job/120401374560) | 2026-10-23T11:58:17Z | 2026-10-23T11:58:34Z | success |
+| [先行check120400620903](https://github.com/kenta-0420/mannschaft/actions/runs/39949624387/job/120400620903) | 2026-10-23T11:56:21Z | 2026-10-23T11:56:35Z | success |
+
+司令塔がready後に開始した再チェックの完了を待たずmergeした経緯を確認した。完了証拠規約は「マージ前に開始し、マージ後に完了したcheck」をマージ時点の実行中として拒否し、同名の先行successでは救済しない。通常backend CI run39949628011の成功とコード改善の実測結果は有効だが、これをもって完了ゲート合格とはしない。
+
+従って台帳は実装中のまま、コード改善は反映済み・完了証拠ゲート保留として記録する。新規の未merge完了JSONは記録PRから除去した。validatorや判定閾値を緩めず、実装SHA/時刻の偽装、no-op実装PR等による迂回、同内容の無意味な再試行は行わない。
+
+今回差分の直接構造検査と実API照合・diffcheckは実施した。正式ローカルCLIは過去証拠の走査が長時間化したため、PID・開始世代・commandを照合した自所有nodeプロセスだけを停止し、未完了として記録する。元のローカル計測・他JVM・共有サービス・WSLは停止していない。変更していないvalidator unitの初回17/20と開始済み再確認18/20は疎checkout参照不足と既存性能閾値による限界をPRに記録し、unit全量greenとは扱わない。
