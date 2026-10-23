@@ -6,7 +6,6 @@ const API_BASE = process.env.API_BASE_URL ?? 'http://localhost:8081'
 const ADMIN = { email: process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.local', password: process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!' }
 // 通常USERの大量既存所属による対象外のwidget負荷を避け、所属数の少ない公開認可seedを使う。
 const MEMBER = { email: process.env.TEST_OUTSIDER_EMAIL ?? 'e2e-outsider@test.mannschaft.local', password: process.env.TEST_OUTSIDER_PASSWORD ?? 'TestPass2026!' }
-test.use({ trace: 'on' })
 type Scope = {
   type: 'TEAM' | 'ORGANIZATION'
   root: 'teams' | 'organizations'
