@@ -70,6 +70,28 @@ F02.2 の既存 widget_key（`TEAM_NOTICES` / `TEAM_LATEST_POSTS` 等）は**チ
 
 ---
 
+### 4.1 所属ウィジェットの詳細モーダル（TEAM / ORGANIZATION 共通）
+
+個人ダッシュボードの所属パネルでは、①予定・③掲示板・④ブログ・⑤チャット・⑦TODOの項目をクリック、Enter、Spaceで選ぶと詳細モーダルを開く。⑥カレンダーも概要をモーダルで確認できる。選択だけではページ遷移せず、モーダルの「所属先のページを開く」から次の正規ページへ進む。②タイムライン・⑧要対応と既存のお知らせ詳細の操作は維持する。
+
+| 項目 | 選択時の取得と表示 | 遷移先（`{base}` は所属slug付きチーム/組織パス） |
+|---|---|---|
+| 予定 | 既存の所属付き `getSchedule`。実DTOのタイトル・開始/終了・場所・出欠回答要否・対象人数（説明本文は提供されない） | `{base}/schedule?eventId={id}`。全件リンクも `{base}/schedule` |
+| 掲示板 | `getScopedThread` に内部所属IDとthread IDを指定し、本文・投稿者・更新日時を取得 | `{base}/bulletin?threadId={id}` |
+| ブログ | サマリに追加した記事slugと内部所属IDで `getPost` を呼び、本文・投稿者・公開日時を取得 | 既存 `blogPostReadRoute` の `/blog/posts/{slug}?teamId=` または `?organizationId=` |
+| チャット | 既存 `getChannel` の所属・チャンネル情報、説明・最新メッセージ・人数 | `{base}/chat` |
+| カレンダー | 認可済みサマリの今日/今週件数・次の予定。0件・次予定なしも表示し、追加APIは呼ばない | `{base}/schedule` |
+| TODO | 所属付き `getTodo` の説明・期限。空説明・期限なしも正常表示 | `{base}/todos/{id}` |
+
+- 詳細APIは選択時だけ呼ぶ。一覧描画時の追加GETや新規API・DB変更はない。ブログサマリの `slug` 追加は既存取得・認可・クエリ数を変えない。
+- 詳細応答の対象IDを照合し、掲示板/TODO/ブログ/チャットでは所属も照合する。予定の実DTOには所属IDがないため、所属付きAPIの認可と対象ID一致を根拠にする。内部所属IDが未解決なら不正なAPIを呼ばず、解決後に再試行できる。
+- loading・取得失敗・403/404・不一致応答では本文と遷移リンクを表示しない。通信失敗は再試行でき、403/404では取得不可の案内を表示する。連続選択・閉じる・所属切替・アンマウント後の古い成功/失敗を破棄する。
+- HTMLは既存サニタイズ、Markdownは既存renderer経由とし、TODO/チャットの説明はテキスト補間で表示する。空配列/nullから架空の項目を作らない。
+- サニタイズの実除去は、CI smoke対象の `f221-swipe-dashboard.spec.ts` で実Chromium上のHTML/Markdownにscript・イベント属性・危険URLを含めて検証する。同居unitは既存サニタイザー/rendererへの入力と出力の接続を検証する。DOMPurifyが安全性を保証しないhappy-domを実除去の証明に使わない（[DOMPurify公式のサーバー実行上の注意](https://github.com/cure53/DOMPurify#running-dompurify-on-the-server)）。
+- 項目はネイティブbutton、最小44pxの操作領域、390px幅に収まるDialogと本文内スクロールを使う。Esc・閉じる・背景操作で閉じ、残っている起点へフォーカスを戻す。
+
+---
+
 ## 5. 統合「要対応」ウィジェット（⑧）詳細集計仕様
 
 3 ドメイン（回覧板・アンケート・出席確認）を 1 枚に集約する本機能の中核ウィジェット。
