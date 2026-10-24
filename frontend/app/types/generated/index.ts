@@ -50331,7 +50331,14 @@ export interface components {
         ApiResponseReplyResponse: {
             data?: components["schemas"]["ReplyResponse"];
         };
+        ReplyAuthorResponse: {
+            avatarUrl?: string | null;
+            displayName?: string;
+            /** Format: int64 */
+            id?: number | null;
+        };
         ReplyResponse: {
+            author?: components["schemas"]["ReplyAuthorResponse"];
             /** Format: int64 */
             authorId?: number;
             body?: string;

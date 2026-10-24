@@ -1,0 +1,114 @@
+Duplicated imports "OrgTeamGroup", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useBroadcastAudience.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+Duplicated imports "isForbiddenError", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useAttendancePermissions.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/utils/tournamentScoreEntry.ts" is used
+Duplicated imports "OrgTeamGroup", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useBroadcastAudience.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+Duplicated imports "isForbiddenError", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useAttendancePermissions.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/utils/tournamentScoreEntry.ts" is used
+
+ RUN  v4.1.11 /tmp/dashboard-zod-261024-iAxjdA/frontend
+
+ ✓ app/utils/toTypedSchema.spec.ts (7 tests) 148ms
+ ❯ app/components/ranch/RanchNaming.spec.ts (4 tests | 1 failed) 1216ms
+     × 表示中の言語切替後も命名エラーを現在の言語で検証する 1123ms
+     ✓ 名前は空で始まり、入力→確認→確定でだけnormalized名を送る 72ms
+     ✓ IME編集中は確認へ進まず確定しない 11ms
+     ✓ 10文字上限違反は確認へ進ませない 7ms
+ ✓ app/utils/budgetFiscalYearForm.spec.ts (8 tests) 15ms
+ ✓ app/pages/teams/[slug]/budget.spec.ts (14 tests) 610ms
+stdout | app/pages/residents.pagesWiring.spec.ts
+<Suspense> is an experimental feature and its API will likely change.
+
+ ✓ app/pages/residents.pagesWiring.spec.ts (9 tests) 34181ms
+stdout | app/pages/register.spec.ts
+<Suspense> is an experimental feature and its API will likely change.
+
+stdout | app/components/resident/DwellingUnitCreateDialog.spec.ts
+<Suspense> is an experimental feature and its API will likely change.
+
+stdout | tests/unit/components/advertising/AdMessagingCampaignFormFields.spec.ts
+<Suspense> is an experimental feature and its API will likely change.
+
+ ✓ tests/unit/components/advertising/AdMessagingCampaignFormFields.spec.ts (8 tests) 32485ms
+ ✓ app/components/resident/DwellingUnitCreateDialog.spec.ts (2 tests) 30071ms
+     ✓ 入力した住戸番号をAPIへ渡し、成功時にcreatedをemitする  822ms
+ ✓ app/pages/register.spec.ts (2 tests) 29883ms
+     ✓ チーム招待をβinviteTokenにせず登録案内とログインに復帰先を渡す  933ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  app/components/ranch/RanchNaming.spec.ts > AC61 不可逆命名の画面 > 表示中の言語切替後も命名エラーを現在の言語で検証する
+AssertionError: expected 'Enter 1–10 characters. Invisible char…' to be { type: +0, start: +0, end: 96, …(2) } // Object.is equality
+
+- Expected:
+{
+  "body": {
+    "end": 96,
+    "items": [
+      {
+        "end": 96,
+        "loc": {
+          "end": {
+            "column": 97,
+            "line": 1,
+            "offset": 96,
+          },
+          "start": {
+            "column": 1,
+            "line": 1,
+            "offset": 0,
+          },
+        },
+        "start": 0,
+        "type": 3,
+      },
+    ],
+    "loc": {
+      "end": {
+        "column": 97,
+        "line": 1,
+        "offset": 96,
+      },
+      "start": {
+        "column": 1,
+        "line": 1,
+        "offset": 0,
+      },
+    },
+    "start": 0,
+    "static": "Enter 1–10 characters. Invisible characters, line breaks and control characters are not allowed.",
+    "type": 2,
+  },
+  "end": 96,
+  "loc": {
+    "end": {
+      "column": 97,
+      "line": 1,
+      "offset": 96,
+    },
+    "source": "Enter 1–10 characters. Invisible characters, line breaks and control characters are not allowed.",
+    "start": {
+      "column": 1,
+      "line": 1,
+      "offset": 0,
+    },
+  },
+  "start": 0,
+  "type": 0,
+}
+
++ Received:
+"Enter 1–10 characters. Invisible characters, line breaks and control characters are not allowed."
+
+ ❯ app/components/ranch/RanchNaming.spec.ts:22:75
+     20|   i18n.global.locale.value = 'en'
+     21|   await wrapper.find('form').trigger('submit')
+     22|   await vi.waitFor(() => expect(wrapper.find('#ranch-name-error').text…
+       |                                                                           ^
+     23|   expect(wrapper.emitted('confirm')).toBeUndefined()
+     24|   wrapper.unmount()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 7 passed (8)
+      Tests  1 failed | 53 passed (54)
+   Start at  15:22:11
+   Duration  37.19s (transform 645.03s, setup 2.08s, import 22.99s, tests 128.61s, environment 5.68s)

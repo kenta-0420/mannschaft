@@ -468,7 +468,7 @@
       "title": "Consultar los detalles del turno",
       "body": "Toca una fecha concreta para ver los detalles de ese turno, como el nombre del equipo, el puesto, el horario y el nombre del calendario.",
       "steps": {
-        "step1": "[Vista mensual] Toca una celda de fecha para abrir el panel de detalles en el lado derecho de la pantalla",
+        "step1": "[Vista mensual] Toca una celda de fecha para abrir el panel de detalles de la fecha seleccionada",
         "step2": "[Vista semanal] Toca el encabezado de una tarjeta de fecha para expandirla y mostrar la lista de turnos",
         "step3": "En la vista mensual, vuelve a tocar la misma fecha para cerrar el panel de detalles"
       }

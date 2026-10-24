@@ -157724,9 +157724,33 @@
           }
         }
       },
+      "ReplyAuthorResponse": {
+        "type": "object",
+        "properties": {
+          "avatarUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          }
+        }
+      },
       "ReplyResponse": {
         "type": "object",
         "properties": {
+          "author": {
+            "$ref": "#/components/schemas/ReplyAuthorResponse"
+          },
           "authorId": {
             "type": "integer",
             "format": "int64"

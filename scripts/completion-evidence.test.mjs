@@ -309,3 +309,19 @@ test('AC-8: files 3000件の分類が100ms未満', () => {
   const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
   assert.ok(elapsedMs < 100, `${elapsedMs}ms`);
 });
+
+test('開発規約backend/.claudecode.mdだけはtooling、テストとの混在はtest-only、類似pathや本番変更はapp', () => {
+  const convention = 'backend/.claudecode.md';
+  const testJava = 'backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitFreezeStoreIntegrityTest.java';
+  assert.equal(infer([convention]), 'tooling');
+  assert.equal(infer([convention, testJava]), 'test-only');
+  for (const appPath of [
+    'backend/.claudecode.md.js',
+    'backend/src/main/A.java',
+    'backend/build.gradle',
+    'backend/src/main/README.md',
+  ]) {
+    assert.equal(infer([appPath]), 'app', appPath);
+    assert.equal(infer([convention, testJava, appPath]), 'app', appPath);
+  }
+});

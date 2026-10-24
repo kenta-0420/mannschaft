@@ -468,7 +468,7 @@
       "title": "Schichtdetails ansehen",
       "body": "Tippen Sie auf ein bestimmtes Datum, um Details zur Schicht wie Teamname, Position, Uhrzeit und Planname anzuzeigen.",
       "steps": {
-        "step1": "[Monatsansicht] Tippen Sie auf ein Datumsfeld, um rechts auf dem Bildschirm das Detailfenster zu öffnen",
+        "step1": "[Monatsansicht] Tippen Sie auf ein Datumsfeld, um das Detailfenster für das ausgewählte Datum zu öffnen",
         "step2": "[Wochenansicht] Tippen Sie auf die Kopfzeile einer Datumskarte, um die Karte zu erweitern und die Schichtliste anzuzeigen",
         "step3": "In der Monatsansicht schließt ein erneutes Tippen auf dasselbe Datum das Detailfenster"
       }

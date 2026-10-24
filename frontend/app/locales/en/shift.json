@@ -468,7 +468,7 @@
       "title": "Check shift details",
       "body": "Tap a specific date to see details of that shift, such as the team name, position, time, and schedule name.",
       "steps": {
-        "step1": "[Month view] Tap a date cell to open the detail panel on the right side of the screen",
+        "step1": "[Month view] Tap a date cell to open the detail panel for the selected date",
         "step2": "[Week view] Tap the header of a date card to expand the card and show the list of shifts",
         "step3": "In the month view, tap the same date again to close the detail panel"
       }

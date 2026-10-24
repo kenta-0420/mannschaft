@@ -310,3 +310,7 @@ DeepSeek プロバイダでセッションを起動している場合、`/deepse
 - 本文中のモデル名が **Pro**（Opus相当）/ **Flash**（Sonnet/Haiku相当）表記に置き換わっている
 - Agent ツールの `model` パラメータは tier 識別子（`opus`/`sonnet`）のままで、MulmoTerminal の provider 機能が環境変数経由で DeepSeek の実モデルに自動解決する
 - 元の `/軍議` `/出陣` もそのまま使える（プロバイダ自動変換のため）。`deepseek:` 版は人間向けの可読性向上が目的
+
+### WSL検証資産の完了ゲート
+
+新たなLinux/WSL検証コピーは `node scripts/verification-run.mjs --source <clean Git root> --evidence-dir <新規外部dir> -- <command>` を共通入口とする。完了時は `--check` の要処置を確認し、自身のコピー・専用cache・配布物・起動プロセス・検証コンテナ/専用volumeを所有確認して撤去する。必要証跡は正本へ確定し、ローカル重複raw・全量archiveを残さない。中断保持は所有者・用途・理由・再確認期限・再開条件を記録する。SIGKILL/ホスト障害の残存、管理外の既存コピーは無差別削除しない。詳細は [worktree運用](docs/development/worktree_operations.md#wsl検証コピーの寿命管理)。

@@ -1651,7 +1651,9 @@
       "more": "+{count} more",
       "today": "Today",
       "dayDetail": {
-        "title": "Events on {date}"
+        "title": "Events on {date}",
+        "empty": "No events on this day",
+        "create": "Add event on this day"
       },
       "empty": "No events in this period",
       "view": {

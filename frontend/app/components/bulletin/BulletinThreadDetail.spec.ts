@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import { computed, onMounted, ref, watch, type Component } from 'vue'
+import { computed, onMounted, ref, shallowRef, watch, type Component } from 'vue'
 import Avatar from 'primevue/avatar'
 import SectionCard from '../SectionCard.vue'
 import BulletinThreadDetail from './BulletinThreadDetail.vue'
@@ -13,7 +13,7 @@ import { sanitizeHtml } from '~/utils/sanitizeHtml'
 const mocks = vi.hoisted(() => ({
   getThread: vi.fn(), getReplies: vi.fn(), listThreadAttachments: vi.fn(), markRead: vi.fn(),
   getThreads: vi.fn(), getCategories: vi.fn(), getArchiveThreads: vi.fn(), getArchiveFolderTree: vi.fn(),
-  showError: vi.fn(),
+  showError: vi.fn(), createReply: vi.fn(),
 }))
 vi.mock('~/composables/useBulletinApi', () => ({ useBulletinApi: () => mocks }))
 vi.mock('~/composables/useNotification', () => ({ useNotification: () => ({ showError: mocks.showError, showSuccess: vi.fn() }) }))
@@ -35,7 +35,10 @@ function thread(displayName: string | null = null, body = '<p>消えてはなら
 }
 
 const stubs = {
-  SectionCard, Avatar, Button: true, Textarea: true, LoadingBounce: true,
+  SectionCard, Avatar,
+  Button: { name: 'Button', props: ['label', 'disabled', 'loading'], emits: ['click'], template: '<button :disabled="disabled || loading" @click="$emit(\'click\')">{{ label }}</button>' },
+  Textarea: { props: ['modelValue'], emits: ['update:modelValue'], template: '<textarea :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />' },
+  LoadingBounce: true,
   InputText: true, Select: true, Paginator: true, DashboardEmptyState: true,
   BulletinArchiveFolderTree: true, BulletinArchiveFolderEditDialog: true, Dialog: true,
 }
@@ -43,7 +46,7 @@ const stubs = {
 beforeEach(() => {
   vi.clearAllMocks()
   // Nuxt起動を伴わないhappy-dom実行でも、Vueと製品サニタイズは実物を使う。
-  for (const [name, value] of Object.entries({ computed, onMounted, ref, watch, sanitizeHtml })) {
+  for (const [name, value] of Object.entries({ computed, onMounted, ref, shallowRef, watch, sanitizeHtml })) {
     vi.stubGlobal(name, value)
   }
   vi.stubGlobal('useBulletinApi', () => mocks)
@@ -158,5 +161,42 @@ describe.each(threadListCases)('掲示板%sの投稿者表示', (_name, componen
 
     expect(view.find('h3').text()).toBe('アンケートの題名')
     expect(view.text()).toContain(name || '投稿者不明')
+  })
+})
+
+const reply = { id: 1, threadId: 163, parentId: null, authorId: 1,
+  author: { id: 1, displayName: '返信者', avatarUrl: null }, body: '親返信', depth: 0,
+  isEdited: false, replyCount: 0, children: [], createdAt: '2026-10-24T12:00:00+09:00', updatedAt: '2026-10-24T12:00:00+09:00' }
+
+describe('受信した子返信と投稿結果を表示する', () => {
+  it('親返信と受信した子返信の名前と本文を表示する', async () => {
+    mocks.getReplies.mockResolvedValue({ data: [{ ...reply, children: [{ ...reply, id: 2, parentId: 1, depth: 1, body: '子返信', author: { displayName: '子返信者' } }] }] })
+    const { view, errors } = renderDetail()
+    await flushPromises()
+    expect(view.text()).toContain('親返信')
+    expect(view.text()).toContain('子返信者')
+    expect(view.text()).toContain('子返信')
+    expect(errors).toEqual([])
+  })
+  it('返信直後も名前と本文を表示し成功時だけ入力を消す', async () => {
+    mocks.createReply.mockResolvedValue({ data: { ...reply, body: '直後の返信' } })
+    const { view, errors } = renderDetail()
+    await flushPromises()
+    await view.get('textarea').setValue('直後の返信')
+    await view.findAll('button').find(button => button.text() === '返信')!.trigger('click')
+    await flushPromises()
+    expect(view.text()).toContain('直後の返信')
+    expect(view.text()).toContain('返信者')
+    expect(view.get('textarea').element.value).toBe('')
+    expect(errors).toEqual([])
+  })
+  it('返信失敗時は入力を保持する', async () => {
+    mocks.createReply.mockRejectedValue(new Error('offline'))
+    const { view } = renderDetail()
+    await flushPromises()
+    await view.get('textarea').setValue('再送する本文')
+    await view.findAll('button').find(button => button.text() === '返信')!.trigger('click')
+    await flushPromises()
+    expect(view.get('textarea').element.value).toBe('再送する本文')
   })
 })
