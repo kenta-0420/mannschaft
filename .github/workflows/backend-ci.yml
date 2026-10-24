@@ -850,7 +850,7 @@ jobs:
                       assert task.systemProperties['spring.test.context.cache.maxSize'] == '5'
                       assert task.systemProperties['mannschaft.test.contextCacheMaxSize.overridden'] == 'true'
                       assert task.jvmArgs.contains('-XX:+UseG1GC')
-                      assert task.jvmArgs.contains('-Duser.timezone=Asia/Tokyo')
+                      assert task.systemProperties['user.timezone'] == 'Asia/Tokyo'
                       assert task.extensions.getByType(JacocoTaskExtension).enabled
                       assert task.filter.includePatterns == (spec[1] as Set)
                       new File(dir, 'settings.txt').text = "heap=${task.maxHeapSize}\nforks=${task.maxParallelForks}\nforkEvery=${task.forkEvery}\ncontext=5\nG1=true\nTZ=Asia/Tokyo\nJaCoCo=true\n"
