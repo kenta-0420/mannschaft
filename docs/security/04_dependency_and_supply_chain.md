@@ -2,7 +2,7 @@
 
 > **ステータス**: 🟢 設計確定
 > **実装フェーズ**: Security Hardening Phase 1
-> **最終更新**: 2026-10-17
+> **最終更新**: 2026-10-24
 > **関連ドキュメント**: [README](README.md)
 
 ---
@@ -118,7 +118,9 @@ updates:
 
 到達経路の根拠: `listhen` 1.10.0 の `dist/shared/listhen.DmCHmEQ1.cjs` は forge を読み、`resolveCertificate` で RSA 鍵生成と証明書署名を行い、HTTPS オプション時に呼ぶ。当該署名検証の `.verify` 呼び出しはこの経路に無く、`frontend/nuxt.config.ts` の `devServer` に HTTPS 設定は無い。アプリ・サーバーに forge/RSA の直接利用も確認されなかった。Nuxt は `dependencies` にあるため「devOnly」とは扱わず、**本番 `.output` からの除外は未実測**。脆弱性そのものが直ったという判断ではない。
 
-有効期限は **2026-10-23 UTC 当日まで（2026-10-24T00:00:00Z 以降は当該例外を拒否）**。解除管理は `docs/task-list.md` の CMP-261002-1135。公式修正版を導入するか listhen から依存が撤去されたら、例外を削除して通常の `npm audit --audit-level=high` に戻す。期限以前でも、RSA 署名検証の利用追加・新しい消費者・依存の直接化があれば例外を削除し、到達可能性を再評価する。期限延長を自動では行わない。
+有効期限は **2026-10-30 UTC 当日まで（2026-10-31T00:00:00Z 以降は当該例外を拒否）**。解除管理は `docs/task-list.md` の CMP-261002-1135。公式修正版を導入するか listhen から依存が撤去されたら、例外を削除して通常の `npm audit --audit-level=high` に戻す。期限以前でも、RSA 署名検証の利用追加・新しい消費者や未知の依存経路・依存の直接化があれば例外を直ちに失効させ、到達可能性を再評価する。期限延長を自動では行わない。
+
+2026-10-24、ユーザー再承認により **node-forge の当該 GHSA だけ**を10月30日UTC当日まで再承認した。lock固定の listhen 1.10.0 / node-forge 1.4.0 の配布物はSHA512 integrityが一致し、forgeの唯一の直接消費者はlisthenである。ESM/CJS全体と鍵生成・証明書署名・PFX読込みを追い、当該RSA署名検証の呼出しは確認されず、アプリの直接利用も無かった。本番 `.output` 非包含は未実測であり、この判断は静的調査に限る。脆弱性の解消とは扱わない。期限はGHSA別に判定し、bracesは2026-10-24T00:00:00Z以降拒否のまま維持する。URL・版・range・high・間接依存・許可packages/nodes/edgesとfail-closed条件は変更しない。公式修正版の導入または依存撤去時に例外を削除し、期限の自動延長は行わない。
 
 ### 4.4. braces の期限付き個別例外（2026-10-03）
 
@@ -155,6 +157,20 @@ Nuxt DevTools は `@nuxt/devtools` override で3.4.1に固定する。安定版3
 
 2026-10-23、DOMPurifyの[GHSA-cg2g-xh64-v4q7](https://github.com/cure53/DOMPurify/security/advisories/GHSA-cg2g-xh64-v4q7)と[GHSA-mrv2-3pqr-j5jr](https://github.com/cure53/DOMPurify/security/advisories/GHSA-mrv2-3pqr-j5jr)に対応し、既存指定範囲内の最小修正版3.4.17へlockを更新する。critical/highの新しい例外は追加しない。
 
+### 4.7. Zod 4 と安定版 VeeValidate 4 の互換対応（2026-10-24）
+
+Zod の GHSA-mrhx-c7xc-m3w5（過大な制約付きコレクション検証によるメモリ枯渇、影響範囲 `<4.6.6`）に対し、Zod を 4.6.7 へ更新する。Zod 3 の peer dependency を持つ `@vee-validate/zod` 4.15.1 は撤去し、安定版 VeeValidate 4.15.1 を維持する。ベータ版への移行、peer dependency の強制無視、監査例外の追加や閾値緩和は行わない。happy-dom の GHSA-834v-8h66-3h79 も最小修正版 21.0.4 へ更新する。
+
+`frontend/app/utils/toTypedSchema.ts` は現行フォームの平坦な `ZodObject` だけを接続する。公開 API の `safeParseAsync` で非同期検証・trim 後の出力・フィールド別およびルートのエラーを VeeValidate へ渡す。同期 cast が未入力や非同期検証で成立しない初期化・reset では、公開 `shape` と `ZodDefault.parse(undefined)` で取得した default に明示入力を優先して重ねる。内部 `_def` には依存しない。配列・union・入れ子スキーマ向けの汎用 adapter は追加しない。`describe` は現行の平坦なフィールドの存在・必須判定を担う。
+
+既存スキーマの旧エラー API は Zod 4 の `error` に合わせ、required/invalid type の指定範囲、同意文言、日付 null の拒否、命名検証時の翻訳評価を保持する。実 `useForm` を使う互換試験は `toTypedSchema.spec.ts`、日付と命名は既存のフォーム試験で検証する。既存の VeeValidate を mock したフォーム試験だけを互換性の根拠にしない。
+
+Webhook の URL は Zod 4 により前後の空白と ASCII tab/CR/LF を除いた出力になる。通常の URL の受理条件とバックエンドの HTTPS・DNS/SSRF 境界は維持し、この正規化を互換試験で固定する。
+
+正規 `npm ci` / `npm ls`、全体 lint と8GBヒープの型検査、実 `useForm` 7件と監査関連の Node 回帰27件を確認した。実監査では Zod・旧 adapter・happy-dom の finding は消失したが、当初はnode-forgeの例外期限切れで監査ゲートが赤だった。個別再承認は§4.3に分けて記録する。全量 Vitest の fixture 補完再試行と既存 SSR の5件 skip を含む検証記録は `docs/task-list.md` の CMP-261024-0528 に記載する。
+
+解除条件は、公式の安定版 adapter が修正済み Zod 4 と互換であり、初期値/default/reset・非同期検証・送信出力・エラーの契約試験と実機確認を通過すること。その時にこの互換層を撤去する。版指定や単体試験だけで出荷済みとは扱わず、正規 `npm ci`、`npm ls`、実監査、lint/typecheck、既存フォームの回帰と実機試験の結果を別途記録する。既存 node-forge/braces の期限付き例外とその期限は本対応では変更しない。
+
 ## 5. 脆弱性対応フロー
 
 1. **検知**: Dependabot / Dependency-Check / npm audit / GitHub Security Advisory
@@ -176,6 +192,7 @@ Nuxt DevTools は `@nuxt/devtools` override で3.4.1に固定する。安定版3
 
 | 日付 | 変更 |
 |---|---|
+| 2026-10-24 | 静的到達性の再評価とユーザー再承認によりnode-forgeの当該GHSAだけ10月30日UTC当日まで再承認。braces期限・対象・経路・拒否条件は不変 |
 | 2026-10-17 | ユーザー再承認により§4.3/§4.4の既存2例外を10月23日UTC当日まで7日延長。対象・経路・拒否条件は不変 |
 | 2026-10-06 | §4.5 に修正版依存の指定と DevTools 3.4.1 の版・配布SHAを検証する厳格互換対応、Docker連携・解除条件を記録 |
 | 2026-10-02 | §4.3 に未修正版 node-forge の個別例外と利用経路・限界・UTC期限・解除条件を記録。取得失敗・不正レポート・別 high/critical を停止する門番と必須試験を追加 |

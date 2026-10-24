@@ -224,18 +224,40 @@ test('同じGHSAでもcritical・別package・別range・直接依存・別versi
     /許可されない advisory/,
   )
 })
-test('両GHSA単独・混在でUTC10月23日末まで通り、24日0時以降は拒否する', () => {
+test('forgeは旧期限後もUTC10月30日末まで通り、新期限一致・直後は拒否する', () => {
+  for (const timestamp of [
+    '2026-10-24T00:00:00Z',
+    '2026-10-24T00:00:00.001Z',
+    '2026-10-30T23:59:59.999Z',
+  ]) {
+    assert.equal(check(allowed(), Date.parse(timestamp)), true)
+  }
+  for (const now of [
+    Date.parse('2026-10-31T00:00:00Z'),
+    Date.parse('2026-10-31T00:00:00.001Z'),
+    NaN,
+    Infinity,
+    -Infinity,
+  ]) {
+    assert.throws(() => check(allowed(), now), /GHSA-86w9-cpqp-85rv の除外期限切れ/)
+  }
+})
+
+test('braces単独・混在は旧期限を維持し、forge延長期間でも拒否する', () => {
   for (const [value, lock] of [
-    [allowed(), LOCK],
     [report(bracesGraph()), BRACES_LOCK],
     [report(mixedGraph()), MIXED_LOCK],
   ]) {
     assert.equal(check(value, Date.parse('2026-10-23T23:59:59.999Z'), lock), true)
-    for (const timestamp of ['2026-10-24T00:00:00Z', '2026-10-24T00:00:00.001Z']) {
-      assert.throws(() => check(value, Date.parse(timestamp), lock), /期限切れ/)
-    }
-    for (const invalidTime of [NaN, Infinity, -Infinity]) {
-      assert.throws(() => check(value, invalidTime, lock), /期限切れ/)
+    for (const now of [
+      Date.parse('2026-10-24T00:00:00Z'),
+      Date.parse('2026-10-24T00:00:00.001Z'),
+      Date.parse('2026-10-30T23:59:59.999Z'),
+      NaN,
+      Infinity,
+      -Infinity,
+    ]) {
+      assert.throws(() => check(value, now, lock), /GHSA-vfj7-8cjw-p6xm の除外期限切れ/)
     }
   }
   assert.equal(check(report(), Date.parse('2026-11-01T00:00:00Z'), LOCK, 0), false)
@@ -375,16 +397,28 @@ test('A7: 低severityの間接参照でも末端range・直接化・lock版を�
   }
 })
 
-test('A8: 低severityの間接参照でも期限直前のみ通し一致・直後・非有限時刻を拒否する', () => {
-  const value = report(mixedWithLowerBuilder())
-  assert.equal(check(value, Date.parse('2026-10-23T23:59:59.999Z'), MIXED_LOCK), true)
+test('A8: 低severityのforge間接参照でも新期限直前のみ通し一致・直後・非有限時刻を拒否する', () => {
+  const mixed = mixedWithLowerBuilder()
+  const graph = Object.fromEntries([
+    'node-forge',
+    'listhen',
+    '@nuxt/cli',
+    'nitropack',
+    '@nuxt/nitro-server',
+    '@nuxt/vite-builder',
+    'nuxt',
+  ].map((name) => [name, mixed[name]]))
+  graph.nitropack.via = ['listhen']
+  const value = report(graph)
+  assert.equal(check(value, Date.parse('2026-10-24T00:00:00Z'), LOCK), true)
+  assert.equal(check(value, Date.parse('2026-10-30T23:59:59.999Z'), LOCK), true)
   for (const now of [
-    Date.parse('2026-10-24T00:00:00Z'),
-    Date.parse('2026-10-24T00:00:00.001Z'),
+    Date.parse('2026-10-31T00:00:00Z'),
+    Date.parse('2026-10-31T00:00:00.001Z'),
     NaN,
     Infinity,
     -Infinity,
   ]) {
-    assert.throws(() => check(value, now, MIXED_LOCK), /期限切れ/)
+    assert.throws(() => check(value, now, LOCK), /期限切れ/)
   }
 })
