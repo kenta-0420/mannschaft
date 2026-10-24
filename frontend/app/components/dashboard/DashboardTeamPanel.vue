@@ -173,7 +173,7 @@ watch(
         scope-type="TEAM"
         :slug="selectedTeamId"
       />
-      <DashboardSwipeWidgetGrid v-else scope-type="TEAM" :scope-id="selectedTeamId" :data="data" />
+      <DashboardSwipeWidgetGrid v-else scope-type="TEAM" :scope-id="selectedTeamId" :numeric-scope-id="announcementScopeId" :data="data" />
     </template>
 
     <!--

@@ -155,3 +155,9 @@ D-3/D-5は各削除1・追加1の記録置換であり、追加違反0・行数1
 旧Backend [39967912936](https://github.com/kenta-0420/mannschaft/actions/runs/39967912936) はshard4でR3（タグ付きSelfTestの重み表混入）が失敗し、shard3は85分の総時間上限で未完了となった。main PR #4023の重み表再生成で追加された `ArchUnitFreezeStoreIntegritySelfTest=0.035` が、L1-Fのarchunitタグ移動と整合していなかったため、ユーザーの1行限定例外承認に基づき当該行だけを削除する。他の重みbytes・タグ・R3番人・8store・上限は不変。全量再生成や判定緩和は行わない。
 
 この1行修正はR3への対応であり、shard3のtimeout解消を意味しない。通常testの最終XML・最終件数は未確定で失敗0とは扱わず、修正後headの全CIは未検証として保持する。
+
+## 2026-10-24 main PR4070のgetSlug追加1件に対する限定承認
+
+main `bf5c05d874909cf1be20fe9d4d2e5734fd50773e` のPR #4070（`28d99fcd06d61810c198ead78f830512d536fb29`）は、ブログウィジェットのslug出力のため `ScopeWidgetSummaryService.buildLatestBlogPosts` から `BlogPostEntity.getSlug()` を新たに呼ぶ。この新規依存1件を初回178件に混ぜず、別の限定例外として許容するユーザーの「承認」に基づき、D-1ストアへ1行追加し上限2156→2157とする。これはdescriptor置換や返済ではない。
+
+追加行は既存のScopeWidgetSummaryService→cms.BlogPostEntityと同じprefixに属し頻度6→7、getSlug固有群のoccurrence=1。旧2156行は生bytesで全て維持、他7storeファイル・他6上限・formatter/判定/除外・タグ・重み・timeoutは不変。SelfTestの上限境界は動的Nであり期待値固定2156の書換えは不要。descriptionは当該mainソースの106行から静的導出したものであり、統合後の実ArchUnit failure本文・全量解析greenはまだ未確認。旧head82ca2522c5bb952dd7f27a02e1bbf61d947c8f6dのBackend39992224568/Harness39992224205成功を、新headの成功へ転用しない。今回固定統合mainはe897e83c10a474cbcade854e6baa4ba0d70e8ed3。

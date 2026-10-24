@@ -37,7 +37,7 @@ class ArchUnitFreezeStoreIntegrityTest {
 
     // 更新履歴の原文は docs/architecture/archunit_freeze_history.md に移設した。
     private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 0;
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2156;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2157;
     private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1325;
     private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7322;
     private static final int EXPECTED_LINES_UUID_V7_D2B = 569;

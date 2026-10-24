@@ -959,3 +959,7 @@ main の PR #4023（`bdc5379ed38c2a8920f87c886da58ad2cc39da9a`）から、以下
 ```
 
 D-3Tストアの追加0・削除3と上限7322を引き継ぐ。L1-Fの初回補正（D-1/D-3/D-5）は維持する。
+
+## 2026-10-24 main PR4070のgetSlug追加1件に対する限定承認
+
+PR #4070（`28d99fcd06d61810c198ead78f830512d536fb29`）で `ScopeWidgetSummaryService.buildLatestBlogPosts` に追加された `BlogPostEntity.getSlug()` の1依存だけを、初回承認178件とは別の新規依存として許容することをユーザーが「承認」と明示した。この限定承認に基づきD-1ストアに当該descriptionをoccurrence=1で1行追加し、D-1上限2156→2157とする。既存prefix群の頻度は6→7で、新class-pairは追加しない。他のbaseline・上限・タグ・判定・除外・実行時間制限は変更しない。この承認は当該getSlug依存1件に限り、以後の無断baseline追加を認めない。
