@@ -1,21 +1,7 @@
 <script setup lang="ts">
-import type { MemberResponse } from '~/types/member'
 import type { CreateSwapRequestRequest, ShiftSlotResponse } from '~/types/shift'
 
-/**
- * シフト交代依頼フォームダイアログ（3モード対応）
- *
- * モード:
- * - SPECIFIC: メンバーを指定して交代依頼
- * - TEMPLATE: シフト帯（昼/夜）でまとめて送信
- * - OPEN_CALL: 全員に公開募集
- *
- * @prop visible    表示フラグ（v-model:visible でバインド）
- * @prop slotId     交代対象シフト枠 ID
- * @prop slotDate   交代対象日（YYYY-MM-DD）
- * @prop scheduleId TEMPLATEモードでスロット一覧を取得するためのスケジュール ID
- * @prop teamId     SPECIFICモードでメンバー一覧を取得するためのチーム ID
- */
+/** 個別指名・同日シフト帯・全体募集の3モードで交代依頼を送信する。 */
 
 type RecipientMode = 'SPECIFIC' | 'TEMPLATE' | 'OPEN_CALL'
 
@@ -36,12 +22,14 @@ const { t } = useI18n()
 const { error: showError, success: showSuccess } = useNotification()
 const { createSwapRequest } = useShiftSwapApi()
 const { listSlots } = useShiftSlotApi()
-const { getMembers } = useTeamApi()
 
 // ---- ダイアログ表示制御 ----
 const dialogVisible = computed({
   get: () => props.visible,
-  set: (v: boolean) => emit('update:visible', v),
+  set: (v: boolean) => {
+    if (!v) selectedUserIds.value = []
+    emit('update:visible', v)
+  },
 })
 
 // ---- フォーム状態 ----
@@ -50,8 +38,6 @@ const reason = ref('')
 const submitting = ref(false)
 
 // ---- SPECIFIC モード ----
-const members = ref<MemberResponse[]>([])
-const membersLoading = ref(false)
 const selectedUserIds = ref<number[]>([])
 
 // ---- TEMPLATE モード ----
@@ -61,29 +47,17 @@ const templatePeriod = ref<'day' | 'night'>('day')
 
 // ---- 初期化 ----
 watch(
-  () => props.visible,
-  async (visible) => {
+  () => [props.visible, props.teamId] as const,
+  async ([visible]) => {
+    selectedUserIds.value = []
     if (!visible) return
     recipientMode.value = 'SPECIFIC'
     reason.value = ''
-    selectedUserIds.value = []
     templatePeriod.value = 'day'
-    await Promise.all([loadMembers(), loadSlots()])
+    await loadSlots()
   },
+  { immediate: true, flush: 'sync' },
 )
-
-async function loadMembers() {
-  if (members.value.length > 0) return
-  membersLoading.value = true
-  try {
-    const res = await getMembers(props.teamId, { size: 100 })
-    members.value = res.data
-  } catch {
-    // メンバー取得に失敗しても SPECIFIC モードは動作させる
-  } finally {
-    membersLoading.value = false
-  }
-}
 
 async function loadSlots() {
   if (slots.value.length > 0) return
@@ -133,6 +107,7 @@ const templateTargetUserIds = computed(() =>
 
 // ---- 送信 ----
 async function submit() {
+  if (!canSubmit.value) return
   submitting.value = true
   try {
     const body: CreateSwapRequestRequest = {
@@ -214,46 +189,13 @@ const modeOptions: { value: RecipientMode; labelKey: string }[] = [
         </div>
       </div>
 
-      <!-- SPECIFIC: メンバー選択 -->
-      <div v-if="recipientMode === 'SPECIFIC'">
-        <label class="mb-2 block text-sm font-medium text-surface-700 dark:text-surface-300">
-          {{ t('shift.swap.targetUsers.label') }}
-        </label>
-        <div v-if="membersLoading" class="py-4 text-center text-sm text-surface-400">
-          <i class="pi pi-spin pi-spinner" />
-        </div>
-        <div v-else class="max-h-48 overflow-y-auto rounded-lg border border-surface-200 dark:border-surface-700">
-          <label
-            v-for="member in members"
-            :key="member.userId"
-            class="flex cursor-pointer items-center gap-3 px-3 py-2 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800"
-          >
-            <Checkbox
-              v-model="selectedUserIds"
-              :value="member.userId"
-              :input-id="`member-${member.userId}`"
-            />
-            <img
-              v-if="member.avatarUrl"
-              :src="member.avatarUrl"
-              class="h-8 w-8 rounded-full object-cover"
-              alt=""
-            >
-            <span
-              v-else
-              class="flex h-8 w-8 items-center justify-center rounded-full bg-surface-200 text-xs font-bold text-surface-600 dark:bg-surface-700 dark:text-surface-400"
-            >
-              {{ member.displayName.charAt(0) }}
-            </span>
-            <span class="text-sm text-surface-800 dark:text-surface-200">
-              {{ member.displayName }}
-            </span>
-          </label>
-        </div>
-        <p v-if="selectedUserIds.length > 0" class="mt-1.5 text-xs text-surface-500">
-          {{ t('shift.swap.targetUsers.selectedCount', { count: selectedUserIds.length }) }}
-        </p>
-      </div>
+      <!-- SPECIFIC: 候補の取得と選択を専用部品で管理 -->
+      <ShiftSwapMemberPicker
+        v-if="recipientMode === 'SPECIFIC'"
+        v-model="selectedUserIds"
+        :visible="dialogVisible"
+        :team-id="teamId"
+      />
 
       <!-- TEMPLATE: 昼/夜選択 -->
       <div v-else-if="recipientMode === 'TEMPLATE'">
