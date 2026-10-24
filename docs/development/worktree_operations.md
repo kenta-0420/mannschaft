@@ -109,3 +109,26 @@ shallow 境界では、コミットオブジェクトに親 ID があっても�
   - stale 奪取の条件は**ロック保持プロセスの PID が死んでいること**のみ（生存中は経過時間に関わらず奪取しない）。生存中の先客を待つ時間には上限180分を設け、超過時はエラー終了して人間の確認に委ねる
   - **heavy**（このスクリプト経由が必須）: `test` / `build` / `bootJar` / `check` / `compileJava` / `compileTestJava` を含む実行
   - **軽量**（対象外）: `help` / `tasks` / `properties` / `--status` / `--stop` 等
+
+## WSL検証コピーの寿命管理
+
+今後のLinux/WSL検証コピーは Node.js 22以降の共通入口を使う。手作業の `cp -r`、全量tar/zip退避、`node_modules`・build・個別cacheの丸ごとコピーを既定にしない。元のGit worktreeはcleanなrootを指定し、変更はcommitしてから実行する。dirty/untrackedとsubmoduleは作成前に拒否する。Git HEADを固定して `git archive` を直接展開するため、Git管理外の生成物・`.git` は含まれない。
+
+```bash
+node scripts/verification-run.mjs \
+  --source /mnt/c/Claude/mannschaft/.claude/worktrees/agent-example \
+  --evidence-dir /home/kenta/verification-evidence/CMP-YYMMDD-HHMM-run1 \
+  -- node scripts/example-check.mjs
+# 子コマンドは必要な結果だけ $VERIFICATION_EVIDENCE_DIR に直接保存する。
+node scripts/verification-run.mjs --check
+```
+
+証跡保存先の親は事前に作成し、保存先そのものは新規の外部ディレクトリを指定する。既存ディレクトリ、source内、管理親内への保存は拒否する。runnerは小さな `receipt.json`（source HEAD、元exit/signal、cleanup結果と保持理由）だけを保存し、stdout全量ログや全量バックアップは作らない。必要な証跡をCI等の正本へ確定したら、重複するローカルrawログ・全量archiveは所有と保存済みの範囲を確認して撤去する。
+
+一時領域は `/var/tmp/mannschaft-verification-<uid>/run-*` の自分専用領域。成功・非0終了・展開/起動失敗でも所有markerとディレクトリidentityを確認してfinallyで撤去する。SIGINT/TERMは子process groupへ転送し、停止・参照を確認してから撤去する。停止確認不能、脱走daemonの参照、証跡保存不能、所有境界変更、削除失敗は非0とし正確な保持パス・理由を出す。対象PIDのcmdline・開始時刻・用途を確認して停止し、証跡を保全してからその個別パスだけを処置する。全WSL停止や無差別なrm/pruneへ切り替えない。
+
+SIGKILL・ホスト障害ではfinallyは動かない。`--check` は自分専用管理親だけを調べ、稼働中と要処置を表示し、要処置があれば非0となる。削除は行わず、既存の管理外コピー・他人の領域を対象にしない。
+
+完了時はGit worktreeに加え、自身のWSLコピー、専用cache、配布物、起動プロセス、検証コンテナ・専用volumeを一覧と所有根拠で確認し、不要分を撤去する。共有cache・既存利用者資産は含めない。中断時に保持が必要なら、正確なパス・所有者・用途・保持理由・再確認期限・再開条件を引継書へ記録し、次回確認で解消する。無期限の全量圧縮退避にしない。
+
+参照監査は同UIDのaccessibleな既存プロセスも対象とする。ただし起動前からEACCESで検査不能だったPIDは開始時刻を確定し、同一世代だけをbaseline例外とする。例外数はreceiptと `--check` に表示する。新規プロセス・途中で検査不能になったプロセス・PID世代不明は保持する。すべてのプロセスに対する保護を保証するものではないため、scratchを既存共有daemonへ引き渡す、別セッションへ共有する、常駐背景プロセスを起こす運用は禁止する。Gradle検証では `--no-daemon` を付ける。停止待機は2秒で打ち切って保持し、無関係なプロセスを強制終了しない。
