@@ -44,6 +44,7 @@ node scripts/worktree-cleanup.mjs --days 1 --check --limit 60
 
 - **進行中の agent の worktree は絶対に削除しない**。`git worktree list` の出力で他に動いている agent がないか確認してから削除すること
 - 削除前に **当該 worktree の変更がメインリポに統合されているか** を必ず確認する。未マージの commit を消すと作業が失われる
+- 作業用ブランチの削除前に PR の `MERGED` 状態と main への採用内容、対象ブランチ名・HEAD、所有者、他 worktree／他担当での利用有無を確認する。squash merge は祖先関係だけで未反映と判定せず、PR 内容と main を照合する。条件を満たす自分の作業ブランチの削除は CLAUDE.md に記録された事前許可の範囲で実施し、それ以外は確認を求める
 - メインリポを間違って削除しないこと（`grep "agent-"` で必ず agent の worktree のみに絞る）
 - `git worktree remove --force` は `node_modules` の junction を辿って本陣の実体を巻き込み削除しうる。掃除前に `cmd rmdir` で junction リンクを先に外すこと（memory `feedback_worktree_remove_junction_deletes_honjin_node_modules`）
 
