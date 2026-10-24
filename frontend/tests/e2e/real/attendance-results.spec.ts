@@ -52,6 +52,8 @@ test.describe('出席確認状況の実機回帰', () => {
     await page.goto(`/${scope.kind}/${scope.slug}`, { waitUntil: 'domcontentloaded' })
     const button = page.locator('#scope-dashboard-section-button-schedule-activity')
     await expect(button).toBeVisible({ timeout: 60_000 })
+    const onboarding = page.getByRole('dialog').filter({ hasText: 'メンバーの権限を初期設定' })
+    if (await onboarding.isVisible()) await onboarding.getByRole('button', { name: 'あとで決める', exact: true }).click()
     if (await button.getAttribute('aria-expanded') !== 'true') await button.click()
     await expect(page.locator('[data-widget-key="attendance-results"]')).toBeVisible({ timeout: 30_000 })
   }
@@ -67,6 +69,7 @@ test.describe('出席確認状況の実機回帰', () => {
       const owner = fixture.page('owner')
       const list = `/${kind}/${scope.slug}/schedule-attendance`
       const detail = `${list}/${scope.scheduleIds[0]}`
+      const backToList = owner.locator(`a[href="${list}"]`).filter({ hasText: '出席確認一覧' })
       const network: Array<{ url: string; status: number }> = []
       const record = (response: import('@playwright/test').Response) => {
         if (response.url().includes('/schedules')) network.push({ url: response.url(), status: response.status() })
@@ -95,17 +98,18 @@ test.describe('出席確認状況の実機回帰', () => {
         await expect(owner.locator('li').filter({ hasText: undecidedName }).filter({ hasText: '勤務予定を確認中' })).toContainText('未定')
         await expect(owner.locator('li').filter({ hasText: pendingName })).toContainText('未回答')
         await expect(owner.getByTestId('attendance-reason')).toHaveCount(3)
+        await expect(backToList).toHaveAccessibleName('出席確認一覧')
 
         await owner.setViewportSize({ width: 390, height: 844 })
         expect(await owner.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-        await evidence(owner, info, `${kind}-detail-mobile`, { start: `/${kind}/${scope.slug}`, clicks: ['出席確認状況', scope.title], final: '理由・未定・未回答', network })
+        await evidence(owner, info, `${kind}-detail-mobile`, { start: `/${kind}/${scope.slug}`, clicks: ['出席確認状況', scope.title], final: '理由・未定・未回答', backlink: await backToList.ariaSnapshot(), network })
         await owner.setViewportSize({ width: 1280, height: 900 })
 
-        await owner.getByRole('link', { name: '出席確認一覧', exact: true }).click()
+        await backToList.click()
         await owner.getByRole('link').filter({ hasText: scope.emptyTitle }).click()
         await counts(owner, ['出席 0', '欠席 0', '未定 5'])
         await expect(owner.getByTestId('attendance-reason')).toHaveCount(0)
-        await owner.getByRole('link', { name: '出席確認一覧', exact: true }).click()
+        await backToList.click()
         await owner.getByRole('button', { name: '次の期間', exact: true }).click()
         await expect(owner.getByRole('link').filter({ hasText: scope.outsideTitle })).toBeVisible()
         await owner.getByRole('button', { name: '次の期間', exact: true }).click()
@@ -130,19 +134,27 @@ test.describe('出席確認状況の実機回帰', () => {
       for (const role of ['outsider', 'foreign']) {
         const page = fixture.page(role)
         await page.goto(`/${kind}/${scope.slug}`, { waitUntil: 'domcontentloaded' })
-        // 公開scope自体は閲覧可だが、出席確認ウィジェットはMEMBER限定。
+        // 既存PUBLIC既定では外枠は公開される。MEMBERS_ONLYの予定・人数・理由は公開しない。
         await expect(page.locator('body')).toContainText(`出席確認実機${fixture.stamp}`, { timeout: 60_000 })
         const section = page.locator('#scope-dashboard-section-button-schedule-activity')
         if (await section.count() && await section.getAttribute('aria-expanded') !== 'true') await section.click()
-        await expect(page.locator('[data-widget-key="attendance-results"]')).toHaveCount(0)
-        await evidence(page, info, `${kind}-${role}-dashboard`, { start: page.url(), operation: '公開dashboardを画面表示', final: '出席確認状況の入口は非表示' })
+        const widget = page.locator('[data-widget-key="attendance-results"]')
+        if (await widget.count()) {
+          await expect(widget.getByText('対象のイベントがありません', { exact: true })).toBeVisible()
+          await expect(widget.getByTestId('attendance-counts')).toHaveCount(0)
+        }
+        await expect(page.getByText(scope.title, { exact: true })).toHaveCount(0)
+        await evidence(page, info, `${kind}-${role}-dashboard`, { start: page.url(), operation: '公開dashboardを画面表示', final: 'PUBLIC既定の外枠のみ、非公開の予定・人数・理由なし' })
         for (const suffix of ['', `/${scope.scheduleIds[0]}`]) {
           await page.goto(`/${kind}/${scope.slug}/schedule-attendance${suffix}`, { waitUntil: 'domcontentloaded' })
-          await expect(page.getByTestId('load-error-state').first()).toBeVisible({ timeout: 30_000 })
-          await expect(page.getByTestId('load-error-state').first()).toContainText(/権限|見つかりません|アクセス/)
+          if (suffix) {
+            await expect(page.getByTestId('load-error-state').first()).toBeVisible({ timeout: 30_000 })
+            await expect(page.getByTestId('load-error-state').first()).toContainText('この画面をご利用いただけません')
+          } else await expect(page.getByText('対象のイベントがありません', { exact: true })).toBeVisible({ timeout: 30_000 })
           await expect(page.getByTestId('attendance-reason')).toHaveCount(0)
+          await expect(page.getByTestId('attendance-counts')).toHaveCount(0)
           await expect(page.getByText(scope.title, { exact: true })).toHaveCount(0)
-          await evidence(page, info, `${kind}-${role}-${suffix ? 'detail' : 'list'}`, { start: page.url(), operation: 'URL直接遷移', final: await page.getByTestId('load-error-state').first().innerText() })
+          await evidence(page, info, `${kind}-${role}-${suffix ? 'detail' : 'list'}`, { start: page.url(), operation: 'URL直接遷移', final: suffix ? await page.getByTestId('load-error-state').first().innerText() : '対象のイベントがありません' })
         }
       }
       const foreign = fixture.foreignScopes.find(item => item.kind === kind)!

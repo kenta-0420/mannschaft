@@ -119,18 +119,18 @@ export class AttendanceResultsFixture {
       for (const scope of scopes) {
         for (const id of scope.scheduleIds) {
           const response = await page.request.delete(`${API}/${scope.kind}/${scope.slug}/schedules/${id}?updateScope=THIS_ONLY`)
-          if (!response.ok()) errors.push(`予定${id}: ${response.status()} ${await response.text()}`)
+          if (!response.ok() && response.status() !== 404) errors.push(`予定${id}: ${response.status()} ${await response.text()}`)
         }
         for (const id of scope.inviteIds) {
           const response = await page.request.delete(`${API}/${scope.kind}/${scope.slug}/invite-tokens/${id}`)
-          if (!response.ok()) errors.push(`招待${id}: ${response.status()}`)
+          if (!response.ok() && response.status() !== 404) errors.push(`招待${id}: ${response.status()}`)
         }
         for (const id of scope.memberIds) {
           const response = await page.request.delete(`${API}/${scope.kind}/${scope.slug}/members/${id}`)
-          if (!response.ok()) errors.push(`所属${id}: ${response.status()}`)
+          if (!response.ok() && response.status() !== 404) errors.push(`所属${id}: ${response.status()}`)
         }
         const response = await page.request.delete(`${API}/${scope.kind}/${scope.slug}`)
-        if (!response.ok()) errors.push(`スコープ${scope.slug}: ${response.status()} ${await response.text()}`)
+        if (!response.ok() && response.status() !== 404) errors.push(`スコープ${scope.slug}: ${response.status()} ${await response.text()}`)
       }
     }
     for (const page of this.pages.values()) await page.context().close()
