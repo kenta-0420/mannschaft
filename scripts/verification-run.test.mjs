@@ -6,6 +6,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import test from 'node:test';
+import { Readable, Writable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 
 const exec = promisify(execFile);
 const script = fileURLToPath(new URL('./verification-run.mjs', import.meta.url));
@@ -48,6 +50,7 @@ test('clean HEADだけ展開し生成物を除外、証跡保存後に撤去す�
   assert.deepEqual({ ...proof, cwd: undefined }, { cwd: undefined, tracked: 'original', git: false, build: false });
   const r = await receipt(f);
   assert.equal(r.sourceHead, head);
+  assert.equal(r.archiveResults, undefined);
   assert.equal(r.cleanup, 'removed');
   await absent(proof.cwd);
   assert.equal(await readFile(join(f.source, 'tracked'), 'utf8'), 'original');
@@ -178,6 +181,7 @@ test('展開失敗でも作成済みscratchを撤去する', { skip: !linux }, a
   assert.notEqual(result.code, 0);
   const r = await receipt(f);
   assert.match(r.error, /展開/);
+  assert.equal(r.archiveResults.tar.code, 23);
   assert.equal(r.cleanup, 'removed');
   await absent(r.scratch);
 });
@@ -244,6 +248,50 @@ test('端末切断SIGHUPでも子を停止しreceipt保存後に撤去する', {
   assert.notEqual((await done).code, 0);
   const r = await receipt(f);
   assert.equal(r.signal, 'SIGHUP');
+  assert.equal(r.cleanup, 'removed');
+  await absent(r.scratch);
+});
+
+
+test('archive診断は正常とpipeline失敗とgit/tar非0を役割別に保存する', async () => {
+  const { archiveResultsForReceipt } = await import('./verification-run.mjs');
+  const fulfilled = value => ({ status: 'fulfilled', value });
+  const success = [fulfilled(undefined), fulfilled({ code: 0, signal: null }), fulfilled({ code: 0, signal: null })];
+  assert.deepEqual(archiveResultsForReceipt(success), {
+    pipeline: { status: 'fulfilled' },
+    git: { status: 'fulfilled', code: 0, signal: null },
+    tar: { status: 'fulfilled', code: 0, signal: null },
+  });
+  const pipe = pipeline(Readable.from(['fixture']), new Writable({
+    write(chunk, encoding, callback) { callback(Object.assign(new Error('synthetic pipe failure'), { code: 'EPIPE' })); },
+  }));
+  const actual = await Promise.allSettled([pipe, Promise.resolve({ code: 0, signal: null }), Promise.resolve({ code: 0, signal: null })]);
+  assert.deepEqual(archiveResultsForReceipt(actual).pipeline,
+    { status: 'rejected', code: 'EPIPE', message: 'synthetic pipe failure' });
+  for (const [index, role, code] of [[1, 'git', 17], [2, 'tar', 23]]) {
+    const results = [...success];
+    results[index] = fulfilled({ code, signal: null });
+    assert.deepEqual(archiveResultsForReceipt(results)[role], { status: 'fulfilled', code, signal: null });
+  }
+  const signal = [...success];
+  signal[1] = fulfilled({ code: null, signal: 'SIGTERM' });
+  assert.deepEqual(archiveResultsForReceipt(signal).git, { status: 'fulfilled', code: null, signal: 'SIGTERM' });
+  const rejected = [...success];
+  rejected[0] = { status: 'rejected', reason: new Error('x'.repeat(1000)) };
+  assert.equal(archiveResultsForReceipt(rejected).pipeline.message.length, 256);
+});
+
+
+test('git archive非0をreceiptへ識別しscratchを撤去する', { skip: !linux }, async t => {
+  const f = await fixture(t);
+  const bin = join(f.root, 'bin');
+  await mkdir(bin);
+  await writeFile(join(bin, 'git'), '#!/bin/sh\ncase " $* " in *" archive "*) exit 17;; esac\nexec /usr/bin/git "$@"\n');
+  await chmod(join(bin, 'git'), 0o755);
+  const result = await run(f, undefined, { env: { ...process.env, PATH: `${bin}:${process.env.PATH}` } });
+  assert.notEqual(result.code, 0);
+  const r = await receipt(f);
+  assert.equal(r.archiveResults.git.code, 17);
   assert.equal(r.cleanup, 'removed');
   await absent(r.scratch);
 });
