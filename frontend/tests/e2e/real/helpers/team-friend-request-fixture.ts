@@ -10,7 +10,7 @@ export async function openFriendActor(browser: Browser, role: 'SOURCE' | 'TARGET
   const email = process.env['FRIEND_' + role + '_EMAIL']
   const password = process.env.TEST_USER_PASSWORD
   if (!email || !password) throw new Error('専用実機ユーザーの環境変数が未設定: FRIEND_' + role + '_EMAIL / TEST_USER_PASSWORD')
-  const context = await browser.newContext({ storageState: { cookies: [], origins: [] }, viewport: { width: 1280, height: 900 } })
+  const context = await browser.newContext({ storageState: { cookies: [], origins: [] }, viewport: role === 'TARGET' ? { width: 390, height: 844 } : { width: 1280, height: 900 }, isMobile: role === 'TARGET', hasTouch: role === 'TARGET' })
   const page = await context.newPage()
   await loginViaApi(page, { email, password }, { apiBaseUrl: API_BASE, deferNavigation: true })
   const me = await page.request.get(API_BASE + '/api/v1/users/me')
