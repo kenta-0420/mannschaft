@@ -267,7 +267,7 @@ const modeOptions: { value: RecipientMode; labelKey: string }[] = [
       <div>
         <label class="mb-1 block text-sm font-medium text-surface-700 dark:text-surface-300">
           {{ t('shift.field.reason') }}
-          <span class="ml-1 text-xs text-surface-400">（{{ t('common.label.optional') }}）</span>
+          <span class="ml-1 text-xs text-surface-400">（{{ t('label.optional') }}）</span>
         </label>
         <Textarea
           v-model="reason"
