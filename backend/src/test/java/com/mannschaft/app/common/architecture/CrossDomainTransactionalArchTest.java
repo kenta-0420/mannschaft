@@ -83,7 +83,8 @@ class CrossDomainTransactionalArchTest {
                 if (!isTransactional(clazz)) {
                     return;
                 }
-                for (Dependency dep : clazz.getDirectDependenciesFromSelf()) {
+                DependencyFreezeMessages messages = new DependencyFreezeMessages();
+                for (Dependency dep : DependencyFreezeMessages.sorted(clazz.getDirectDependenciesFromSelf())) {
                     JavaClass target = dep.getTargetClass();
                     String targetPkg = target.getPackageName();
                     if (!isRepositoryPackage(targetPkg)) {
@@ -100,7 +101,7 @@ class CrossDomainTransactionalArchTest {
                             + "%s (domain '%s')",
                         clazz.getName(), sourceDomain,
                         target.getName(), targetDomain);
-                    events.add(SimpleConditionEvent.violated(dep, message));
+                    events.add(SimpleConditionEvent.violated(dep, messages.format(message, dep)));
                 }
             }
         };
