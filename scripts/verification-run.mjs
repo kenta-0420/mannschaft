@@ -209,7 +209,7 @@ async function run(options) {
     const tree = join(scratch, 'tree');
     await mkdir(tree);
     const archive = start('git', ['-C', source, 'archive', '--format=tar', sourceHead], { stdio: ['ignore', 'pipe', 'inherit'] });
-    const unpack = start('tar', ['-x', '-f', '-', '-C', tree], { stdio: ['pipe', 'ignore', 'inherit'] });
+    const unpack = start('tar', ['-x', '--ignore-zeros', '-f', '-', '-C', tree], { stdio: ['pipe', 'ignore', 'inherit'] });
     const results = await Promise.race([Promise.allSettled([pipeline(archive.child.stdout, unpack.child.stdin), archive.result, unpack.result]), interruption]);
     if (results.some(r => r.status === 'rejected' || (r.value && (r.value.code !== 0 || r.value.signal)))) {
       receipt.archiveResults = archiveResultsForReceipt(results);

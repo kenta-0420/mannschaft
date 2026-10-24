@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { execFile, spawn } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, writeFile, rm, stat, symlink, chmod } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -292,6 +293,24 @@ test('git archive非0をreceiptへ識別しscratchを撤去する', { skip: !lin
   assert.notEqual(result.code, 0);
   const r = await receipt(f);
   assert.equal(r.archiveResults.git.code, 17);
+  assert.equal(r.cleanup, 'removed');
+  await absent(r.scratch);
+});
+
+
+test('tarはEOAで早期終了せずgit archiveの実EOFまで読み切る', { skip: !linux }, async t => {
+  const f = await fixture(t);
+  const bin = join(f.root, 'bin');
+  await mkdir(bin);
+  // 有効な固定HEAD archiveの後にEOFだけを遅延し、本文や終了値は変更しない。
+  await writeFile(join(bin, 'git'), '#!/bin/sh\ncase " $* " in *" archive "*) /usr/bin/git "$@"; result=$?; sleep 0.1; exit "$result";; esac\nexec /usr/bin/git "$@"\n');
+  await chmod(join(bin, 'git'), 0o755);
+  const code = `const fs=require('fs'),crypto=require('crypto');fs.writeFileSync(process.env.VERIFICATION_EVIDENCE_DIR+'/payload-sha256',crypto.createHash('sha256').update(fs.readFileSync('tracked')).digest('hex'))`;
+  const result = await run(f, [process.execPath, '-e', code], { env: { ...process.env, PATH: `${bin}:${process.env.PATH}` } });
+  assert.equal(result.code, 0, result.stderr);
+  assert.equal(await readFile(join(f.evidence, 'payload-sha256'), 'utf8'), createHash('sha256').update('original').digest('hex'));
+  const r = await receipt(f);
+  assert.equal(r.error, null);
   assert.equal(r.cleanup, 'removed');
   await absent(r.scratch);
 });
