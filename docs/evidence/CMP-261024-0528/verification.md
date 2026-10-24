@@ -44,3 +44,5 @@ AC-1/2/4/5/7はcalendar-summary.mdとtimezone-summary.mdのwidget/dialog/form/co
 最終head 814d1d89a271b824add2fe5ed25b968e7602916eのFrontend40082849170、Backend40082849135、FE E2E40082849118、real API40082849085、lock40082849112、Lighthouse40082849104がsuccess。PR4083は2026-10-24T10:00:38ZにmergeSHA840a6fed82ef690f7ab7038ffb31766a3119c2c6でマージ済み。GitHub APIで実PR・変更64file・マージ時点check/status・6CIrunを取得し、正本summarizeImplementationChecksでsuccess28/skipped2を確認。validateEvidenceとvalidateCompletionChangesはいずれも成功。全runは同一repo・同一head・success。[照合結果](remote-validation.json)。台帳差分は自CMPの654行目のみ、7列を維持。
 
 Frontend全量は690/690file、6822tests passed、既存SSR5skip、810.70秒。別ranch-clipsは2file27passed、1.65秒。[CIログ抜粋](transcripts/ci-unit-summary.txt)。Backend6shard・ArchUnit・Non-JST、SSR/cookie、API、lockも成功。ローカル初回fixture不足による失敗履歴と再試行は前節へ保持した。DEP-1/6・EX-5とAC-9の最終CI条件を満たした。
+
+ログはANSI除去・LF改行・行末空白と末尾空行の除去を行った抜粋であり、本文の実測値や失敗履歴は保持した。source-manifest.jsonのsourceSha256は原本raw bytes、artifactSha256は正規化済み追跡成果物bytesの別々のhashを示す。
