@@ -1,6 +1,6 @@
 # CMP-261021-2213 L1-F 最終検証
 
-[実装PR #4045](https://github.com/kenta-0420/mannschaft/pull/4045)は2026-10-24T10:41:53ZにMERGED。検証対象headは `1487f99fbba85b10b6c1098a7e8f20109b13c296`、squash mergeは `23daf720490cdda597b4596cd03f7fd3f5ac9b81`。本記録はCMP-261021-0017の子L1-Fだけを完了とし、親戦役や他担当の完了を意味しない。
+[実装PR #4045](https://github.com/kenta-0420/mannschaft/pull/4045)は2026-10-24T10:41:53ZにMERGED。検証対象headは `1487f99fbba85b10b6c1098a7e8f20109b13c296`、squash mergeは `23daf720490cdda597b4596cd03f7fd3f5ac9b81`。実装/マージ済みだが、main統合後CI成功確認までL1-Fは未完了・完了保留とする。実装headのPR CI成功とマージだけでは完了としない。親戦役や他担当の完了を意味しない。
 
 ## 変更と承認の範囲
 
@@ -120,8 +120,8 @@ attempt1の `TEST-com.mannschaft.app.activity.ActivityAutomaticCreationPathsInte
 
 head1487の静的差分、ACと試験、選択XML/48store原本を独立照合しpassed、finding0。scope分類/許可baselineとcap差分/他不変条件を確認した。実装PRのマージ前最新checkは23 unique ID/name、22success＋週次check skip1。本文更新後の[Task-List PR Gate40086713399/job120851037946](https://github.com/kenta-0420/mannschaft/actions/runs/40086713399/job/120851037946)がsuccessであり、旧run40073311091を代用していない。更新後check世代照合cacheのSHA-256は `fd54aae768b837e2369b7dc5113470545d21afb7a9778b1ffb35bfd4ed7e98f8`。
 
-ユーザーの明示的な`--admin`指示に基づきsquash/admin mergeした。複数回main追従済み、CI全成功、MERGEABLEで、残る交差は`docs/task-list.md`の別CMP行のみ。同一行・code/store重複はなかった。merge実体とhead1487のF19pathsの比較でも、本人台帳行は一致、残18pathsの生blob差0、台帳の他CMP行のみ差がある。新mainとの統合CIを事前に実行済みという意味ではない。
+ユーザーの明示的な`--admin`指示に基づきsquash/admin mergeした。複数回main追従済み、実装headのPR CI全成功、MERGEABLEで、残る交差は`docs/task-list.md`の別CMP行のみ。同一行・code/store重複はなかった。merge実体とhead1487のF19pathsの比較でも、本人台帳行は一致、残18pathsの生blob差0、台帳の他CMP行のみ差がある。新mainとの統合CIを事前に実行済みという意味ではない。
 
-マージ後mainの[Backend Build/Test/Deploy40086938407](https://github.com/kenta-0420/mannschaft/actions/runs/40086938407)は本記録確認時点で結果未確定、[gitleaks40086938366](https://github.com/kenta-0420/mannschaft/actions/runs/40086938366)はsuccess。実装headのPR CIと別世代であり、main側成功を先取りしない。
+マージ後mainの[Backend Build/Test/Deploy40086938407](https://github.com/kenta-0420/mannschaft/actions/runs/40086938407)（exact SHA `23daf720490cdda597b4596cd03f7fd3f5ac9b81`）は未完了。全shardとworkflow最終conclusion=successの両方を確認するまで、L1-Fの完了を保留する。[gitleaks40086938366](https://github.com/kenta-0420/mannschaft/actions/runs/40086938366)はsuccessだが、この条件の代わりにはならない。既存の完了証拠JSONのci[]・stageと本報告の405選択case/48storeは実装headのpremerge検証証拠として保全する。未成功かつheadの異なるmain runをJSONのci[]へ追加しない。
 
 完了証拠CLIは台帳・JSON・参照の構造照合であり、GitHub APIのPR merge/check世代/CI成否照合とは別である。後者は公開PR/各CIとマージ時点のAPI情報で確認する。ローカルheavy/Gradle/WSL/server/container起動は行っていない。
