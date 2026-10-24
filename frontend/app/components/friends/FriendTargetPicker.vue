@@ -211,39 +211,5 @@ onBeforeUnmount(() => { searchSeq += 1 })
         </p>
       </div>
 
-      <div>
-        <label class="mb-1 block text-sm font-medium" for="friend-follow-comment">
-          {{ t('friends.list.comment_label') }}
-        </label>
-        <Textarea
-          id="friend-follow-comment"
-          v-model="comment"
-          :maxlength="COMMENT_MAX"
-          rows="3"
-          class="w-full"
-        />
-        <p class="mt-1 text-right text-xs text-surface-500">
-          {{ commentRemaining }}
-        </p>
-      </div>
-    </div>
-
-    <template #footer>
-      <Button
-        :label="t('friend_feed.forward.cancel')"
-        text
-        @click="visible = false"
-      />
-      <TeamFriendFollowButton
-        :team-id="teamId"
-        :target-team-slug="targetSlug"
-        :comment="comment || undefined"
-        :disabled="!canSubmit"
-        data-testid="friend-follow-submit"
-        @followed="onFollowed"
-        @already-following="emit('alreadyFollowing'); visible = false"
-      />
-    </template>
-  </Dialog>
-</template>  </fieldset>
+  </fieldset>
 </template>
