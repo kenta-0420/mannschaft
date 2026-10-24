@@ -5,6 +5,7 @@ import Entry from './FriendRequestEntry.vue'
 const mocks = vi.hoisted(() => ({ load: vi.fn(), navigate: vi.fn(), api: vi.fn(), auth: { isAuthenticated: false } }))
 mockNuxtImport('useAuthStore', () => () => ({ loadFromStorage: mocks.load, get isAuthenticated() { return mocks.auth.isAuthenticated } }))
 mockNuxtImport('navigateTo', () => mocks.navigate)
+mockNuxtImport('useLocalePath', () => () => (path: string) => path)
 mockNuxtImport('useApi', () => () => mocks.api)
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
 const DialogStub = defineComponent({ props: ['modelValue', 'targetTeam'], template: '<div data-testid="entry-dialog" />' })

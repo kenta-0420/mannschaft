@@ -6,10 +6,10 @@
  * - {@link useFriendTeamsApi.follow} を呼び出し、フォローリクエストを送信する。
  * - NOWAIT 競合（202 Accepted + retryAfterSeconds）を検知した場合、
  *   カウントダウン表示 → 自動再試行を最大3回まで行う。
- * - 3回失敗時はエラートーストを表示し、親にリトライスケジュール終了を通知する。
+ * - 3回の再送後も未確定なら情報を表示し、手動の一覧再取得を提供する。
  *
  * Props:
- *   teamId         — 自チーム slug
+ *   teamId         — 申請元チーム数値ID（既存slug呼出しにも互換）
  *   targetTeamSlug — フォロー先チームの slug（URL 名。数値 ID は利用者が知り得ないため使わない）
  *   comment        — 任意の挨拶コメント（最大300文字）
  *   disabled       — ボタンを無効化するか
@@ -73,7 +73,7 @@ async function execute(retrying = false) {
     })
 
     // followIdが発行済みでも、retryAfterSecondsがある応答は未確定。
-    if (response.retryAfterSeconds != null && response.retryAfterSeconds > 0) {
+    if (response.retryAfterSeconds != null) {
       emit('refresh')
       if (retryCount.value >= MAX_RETRY) {
         waiting.value = true
@@ -83,7 +83,7 @@ async function execute(retrying = false) {
         return
       }
       retryCount.value += 1
-      retryCountdown.value = response.retryAfterSeconds
+      retryCountdown.value = Math.max(1, response.retryAfterSeconds)
       emit('retryScheduled', retryCountdown.value)
       startCountdown()
       return

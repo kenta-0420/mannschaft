@@ -28,6 +28,18 @@ describe('FR-08/11 送信と未確定状態', () => {
     expect(w.emitted('refresh')).toHaveLength(5)
     w.unmount()
   })
+  it('retryAfterSeconds=0でも未確定として扱い1秒以上待機する', async () => {
+    mocks.follow.mockResolvedValue({ ...pending, retryAfterSeconds: 0 })
+    const w = await mountSuspended(FollowButton, { props: { teamId: '1', targetTeamSlug: 'target-team' } })
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    await w.get('button').trigger('click')
+    await flushPromises()
+    expect(mocks.success).not.toHaveBeenCalled()
+    expect(w.emitted('followed')).toBeUndefined()
+    await vi.advanceTimersByTimeAsync(999)
+    expect(mocks.follow).toHaveBeenCalledTimes(1)
+    w.unmount()
+  })
   it('再試行中のprops変更でも元と先のsnapshotを維持する', async () => {
     mocks.follow.mockResolvedValue(pending)
     const w = await mountSuspended(FollowButton, { props: { teamId: '1', targetTeamSlug: 'target-team' } })

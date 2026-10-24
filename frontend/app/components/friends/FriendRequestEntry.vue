@@ -3,6 +3,7 @@ import type { FriendRequestTarget } from '~/types/friends'
 const props = defineProps<{ targetTeam: FriendRequestTarget; profileKind: 'public' | 'authorized' }>()
 const { t } = useI18n()
 const auth = useAuthStore()
+const localePath = useLocalePath()
 const open = ref(false)
 async function start() {
   if (!import.meta.client) return
@@ -11,7 +12,7 @@ async function start() {
     // 既知のプロフィールパスだけを構築し、任意のfullPathや外部URLを転送しない。
     const slug = encodeURIComponent(props.targetTeam.teamSlug)
     const redirect = props.profileKind === 'public' ? '/public/teams/' + slug : '/teams/' + slug + '/info'
-    await navigateTo({ path: '/login', query: { redirect } })
+    await navigateTo({ path: localePath('/login'), query: { redirect: localePath(redirect) } })
     return
   }
   open.value = true
