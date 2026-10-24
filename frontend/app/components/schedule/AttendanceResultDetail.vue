@@ -31,7 +31,7 @@ const base = computed(
   <div class="min-w-0 space-y-4">
     <PageHeader :title="t('dashboard.attendance_results.detailTitle')" />
     <NuxtLink :to="base" class="inline-flex min-h-11 items-center gap-2 text-primary"
-      ><i class="pi pi-arrow-left" />{{ t('dashboard.attendance_results.listTitle') }}</NuxtLink
+      ><i class="pi pi-arrow-left" aria-hidden="true" />{{ t('dashboard.attendance_results.listTitle') }}</NuxtLink
     >
     <PageLoading v-if="loading" />
     <DashboardErrorState v-else-if="error" :error="error" @retry="load" />
