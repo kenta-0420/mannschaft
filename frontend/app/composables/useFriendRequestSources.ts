@@ -10,7 +10,7 @@ export function useFriendRequestSources(targetSlug: Ref<string>, opened: Ref<boo
   const { page, rows, totalRecords } = usePagination()
   let generation = 0
 
-  async function load(corrected = false): Promise<void> {
+  async function load(corrected = false, autoSelect = true): Promise<void> {
     const current = ++generation
     const slug = targetSlug.value
     const requestedPage = page.value
@@ -23,14 +23,14 @@ export function useFriendRequestSources(targetSlug: Ref<string>, opened: Ref<boo
       if (!valid()) return
       if (!result.data.length && result.pagination.totalElements > 0 && requestedPage > 0 && !corrected) {
         page.value = 0
-        await load(true)
+        await load(true, autoSelect)
         return
       }
       candidates.value = result.data
       totalRecords.value = result.pagination.totalElements
       if (totalRecords.value === 0) { page.value = 0; selected.value = null }
       // 総数が1のときだけ自動選択。ページ内の1件を全候補と誤認しない。
-      if (totalRecords.value === 1 && result.data.length === 1) selected.value = result.data[0]!
+      if (autoSelect && totalRecords.value === 1 && result.data.length === 1) selected.value = result.data[0]!
     }
     catch (cause) { if (valid()) error.value = cause }
     finally { if (current === generation) loading.value = false }

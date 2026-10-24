@@ -116,7 +116,9 @@
       "refresh": "Refresh lists",
       "incoming": "Incoming requests",
       "respond": "Review and follow back",
-      "incoming_empty": "No incoming requests"
+      "incoming_empty": "No incoming requests",
+      "status_counts": "Latest counts: friends {friends}, outgoing {pending}, incoming {incoming}",
+      "open_lists": "Open source team lists"
     }
   },
   "folders": {

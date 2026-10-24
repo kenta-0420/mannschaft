@@ -15,6 +15,10 @@ const emit = defineEmits<{
   'refresh': []
 }>()
 const { t } = useI18n()
+const friendApi = useFriendTeamsApi()
+const statusError = shallowRef<unknown>(null)
+const refreshedCounts = ref<{ friends: number; pending: number; incoming: number } | null>(null)
+let statusSequence = 0
 const visible = computed({ get: () => props.modelValue, set: value => emit('update:modelValue', value) })
 const chosenTarget = ref<FriendRequestTarget | null>(null)
 const target = computed(() => props.targetTeam ?? chosenTarget.value)
@@ -25,20 +29,37 @@ const sources = useFriendRequestSources(candidateTarget, candidateOpen)
 const { candidates, selected, loading, error, page, rows, totalRecords } = sources
 const source = computed(() => needsSource.value ? selected.value : props.sourceTeam)
 const busy = ref(false)
+const sourceRevoked = ref(false)
 const confirmed = ref(false)
 const isSelf = computed(() => source.value?.teamSlug === target.value?.teamSlug)
-const canSubmit = computed(() => !!source.value && !!target.value && !isSelf.value && !loading.value && !error.value)
+const canSubmit = computed(() => !!source.value && !!target.value && !isSelf.value && !loading.value && !error.value && !sourceRevoked.value)
 const sourceId = computed(() => source.value ? String(source.value.teamId) : props.teamId)
 
 watch([source, target], () => { if (!busy.value) confirmed.value = false })
-watch(visible, value => { if (!value) { chosenTarget.value = null; confirmed.value = false } })
+watch(visible, value => { if (!value) { sourceRevoked.value = false; refreshedCounts.value = null; statusError.value = null; statusSequence += 1; chosenTarget.value = null; confirmed.value = false } })
 async function onPage(event: { page: number }) { page.value = event.page; await sources.load() }
 async function onForbidden() {
+  busy.value = false
   confirmed.value = false
-  if (needsSource.value) { selected.value = null; await sources.load() }
+  if (needsSource.value) { selected.value = null; await sources.load(false, false) }
+  else sourceRevoked.value = true
 }
 function onFollowed(response: FollowTeamResponse) { emit('success', response); visible.value = false }
-function onAlreadyFollowing() { emit('alreadyFollowing'); confirmed.value = false }
+function onAlreadyFollowing() { busy.value = false; emit('alreadyFollowing'); confirmed.value = false; void refreshState() }
+async function refreshState() {
+  emit('refresh')
+  if (!needsSource.value || !source.value) return
+  const id = String(source.value.teamId)
+  const current = ++statusSequence
+  const valid = () => current === statusSequence && props.modelValue && sourceId.value === id
+  statusError.value = null
+  try {
+    const [friends, pending, incoming] = await Promise.all([friendApi.listFriends(id, { page: 0, size: 1 }), friendApi.listPendingFollows(id, { page: 0, size: 1 }), friendApi.listIncomingFollows(id, { page: 0, size: 1 })])
+    if (valid()) refreshedCounts.value = { friends: friends.pagination.totalElements, pending: pending.pagination?.totalElements ?? 0, incoming: incoming.pagination.totalElements }
+  }
+  catch (cause) { if (valid()) statusError.value = cause }
+}
+onBeforeUnmount(() => { statusSequence += 1 })
 </script>
 
 <template>
@@ -64,14 +85,18 @@ function onAlreadyFollowing() { emit('alreadyFollowing'); confirmed.value = fals
         <p v-if="targetTeam" class="break-words">{{ t('friends.request.target') }}: {{ targetTeam.teamName }} ({{ targetTeam.teamSlug }})</p>
         <FriendTargetPicker v-else :key="visible ? 'open' : 'closed'" v-model="chosenTarget" :team-id="sourceTeam?.teamSlug ?? teamId" :initial-slug="initialSlug" :disabled="busy" />
       </template>
+      <p v-if="sourceRevoked" role="alert">{{ t('friends.errors.permission_denied') }}</p>
       <p v-if="isSelf" role="alert">{{ t('friends.errors.self_follow') }}</p>
       <p v-if="canSubmit" class="break-words" data-testid="friend-request-direction">{{ source?.teamName }} ({{ source?.teamSlug }}) → {{ target?.teamName }} ({{ target?.teamSlug }})</p>
+      <DashboardErrorState v-if="statusError" :error="statusError" @retry="refreshState" />
+      <p v-if="refreshedCounts" role="status">{{ t('friends.request.status_counts', refreshedCounts) }}</p>
+      <NuxtLink v-if="refreshedCounts && source" :to="'/teams/' + source.teamSlug + '/nav'" class="inline-flex min-h-11 items-center text-primary">{{ t('friends.request.open_lists') }}</NuxtLink>
       <p v-if="confirmed" role="status">{{ t('friends.request.confirm') }}</p>
     </div>
     <template #footer>
       <Button :label="t('friend_feed.forward.cancel')" text :disabled="busy" class="min-h-11" @click="visible = false" />
       <Button v-if="!confirmed" :label="t('friends.request.review')" :disabled="!canSubmit || busy" class="min-h-11" data-testid="friend-request-review" @click="confirmed = true" />
-      <TeamFriendFollowButton v-else :team-id="sourceId" :target-team-slug="target?.teamSlug ?? ''" :disabled="!canSubmit" class="min-h-11" data-testid="friend-follow-submit" @busy="busy = $event" @followed="onFollowed" @forbidden="onForbidden" @refresh="emit('refresh')" @already-following="onAlreadyFollowing" />
+      <TeamFriendFollowButton v-else :team-id="sourceId" :target-team-slug="target?.teamSlug ?? ''" :disabled="!canSubmit" class="min-h-11" data-testid="friend-follow-submit" @busy="busy = $event" @followed="onFollowed" @forbidden="onForbidden" @refresh="refreshState" @already-following="onAlreadyFollowing" />
     </template>
   </Dialog>
 </template>

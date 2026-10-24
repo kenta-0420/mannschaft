@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useTeamCrud } from '~/composables/team/useTeamCrud'
 import type { FriendRequestTarget } from '~/types/friends'
-const props = defineProps<{ teamId: string; initialSlug?: string; disabled?: boolean }>()
+const props = defineProps<{ teamId: string; modelValue?: FriendRequestTarget | null; initialSlug?: string; disabled?: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [value: FriendRequestTarget | null] }>()
 const { t } = useI18n()
 const { searchTeams } = useTeamCrud()
@@ -102,6 +102,14 @@ function onCandidateSelect() {
   slugInput.value = ''
 }
 
+watch(searchModel, value => {
+  if (typeof value === 'string') {
+    searchSeq += 1
+    suggestions.value = []
+    searchStatus.value = 'idle'
+  }
+})
+
 watch(slugInput, (next) => {
   // slug を直接入力し始めたら、選択済みの候補は破棄する
   if (next.trim() !== '' && selectedTeam.value) {
@@ -131,6 +139,7 @@ onBeforeUnmount(() => { searchSeq += 1 })
         <AutoComplete
           ref="autoCompleteRef"
           v-model="searchModel"
+          :disabled="disabled"
           input-id="friend-follow-search"
           :suggestions="suggestions"
           option-label="name"
@@ -188,6 +197,7 @@ onBeforeUnmount(() => { searchSeq += 1 })
         <InputText
           id="friend-follow-slug"
           v-model="slugInput"
+          :disabled="disabled"
           autocomplete="off"
           class="w-full"
           data-testid="friend-follow-slug-input"

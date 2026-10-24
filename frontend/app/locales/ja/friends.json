@@ -116,7 +116,9 @@
       "refresh": "一覧を更新",
       "incoming": "届いた申請",
       "respond": "申請元を確認してフォロー返し",
-      "incoming_empty": "届いた申請はありません"
+      "incoming_empty": "届いた申請はありません",
+      "status_counts": "最新の件数: 成立 {friends}・送信中 {pending}・受信 {incoming}",
+      "open_lists": "申請元チームの一覧を確認"
     }
   },
   "folders": {

@@ -116,7 +116,9 @@
       "refresh": "Listen aktualisieren",
       "incoming": "Erhaltene Anfragen",
       "respond": "Prüfen und zurückfolgen",
-      "incoming_empty": "Keine erhaltenen Anfragen"
+      "incoming_empty": "Keine erhaltenen Anfragen",
+      "status_counts": "Aktuelle Anzahl: Freunde {friends}, gesendet {pending}, erhalten {incoming}",
+      "open_lists": "Listen des anfragenden Teams öffnen"
     }
   },
   "folders": {
