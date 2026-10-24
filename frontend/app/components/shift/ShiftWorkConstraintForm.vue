@@ -19,6 +19,7 @@ const { upsertConstraint, upsertTeamDefault, deleteConstraint, deleteTeamDefault
   useMemberWorkConstraintApi()
 const { handleApiError } = useErrorHandler()
 const { success } = useNotification()
+const confirm = useConfirm()
 
 const saving = ref(false)
 const deleting = ref(false)
@@ -86,7 +87,22 @@ async function save() {
   }
 }
 
+/** 削除は確認ダイアログで承認した場合だけ実行する（キャンセルでは DELETE を送らない）。 */
+function confirmRemove() {
+  if (deleting.value) return
+  confirm.require({
+    header: t('shift.workConstraint.deleteTitle'),
+    message: t('shift.workConstraint.deleteConfirm'),
+    icon: 'pi pi-exclamation-triangle',
+    rejectLabel: t('common.cancel'),
+    acceptLabel: t('button.delete'),
+    acceptClass: 'p-button-danger',
+    accept: remove,
+  })
+}
+
 async function remove() {
+  if (deleting.value) return
   deleting.value = true
   try {
     if (props.userId === null) {
@@ -184,12 +200,14 @@ async function remove() {
     <div class="flex justify-end gap-2">
       <Button
         v-if="constraint"
-        :label="t('common.delete')"
+        data-testid="work-constraint-delete"
+        class="min-h-[44px]"
+        :label="t('button.delete')"
         icon="pi pi-trash"
         severity="danger"
         text
         :loading="deleting"
-        @click="remove"
+        @click="confirmRemove"
       />
       <Button
         :label="t('common.save')"

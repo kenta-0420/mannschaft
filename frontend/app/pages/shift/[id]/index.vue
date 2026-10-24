@@ -30,6 +30,8 @@ const scheduleId = computed(() => Number(route.params.id))
 const schedule = ref<ShiftScheduleResponse | null>(null)
 const slots = ref<ShiftSlotResponse[]>([])
 const loading = ref(false)
+/** 取得失敗（空状態へ倒さず DashboardErrorState で出す。AC-E1〜E3） */
+const loadError = ref<unknown>(null)
 
 const canManage = computed(() => {
   if (!schedule.value) return false
@@ -42,12 +44,15 @@ const canManage = computed(() => {
 
 async function load() {
   loading.value = true
+  loadError.value = null
   try {
     const [s, sl] = await Promise.all([getSchedule(scheduleId.value), listSlots(scheduleId.value)])
     schedule.value = s
     slots.value = sl
   } catch (error) {
-    handleApiError(error)
+    schedule.value = null
+    slots.value = []
+    loadError.value = error
   } finally {
     loading.value = false
   }
@@ -213,43 +218,19 @@ const currentStep = computed(() =>
   schedule.value ? statusToStep(schedule.value.status.status) : 1,
 )
 
-// タブナビゲーション
-// 「希望一覧」「勤務制約」タブは BE 側が ADMIN/DEPUTY_ADMIN 限定のため、
-// 一般メンバーには表示しない（見えるのに踏むと壊れる事故を防ぐ）。
-const tabs = computed(() => {
-  const list = [
-    {
-      label: t('shift.detail.tabOverview'),
-      icon: 'pi pi-calendar',
-      to: `/shift/${scheduleId.value}`,
-    },
-    {
-      label: t('shift.detail.tabEdit'),
-      icon: 'pi pi-pencil',
-      to: `/shift/${scheduleId.value}/edit`,
-    },
-  ]
-  if (canManage.value) {
-    list.push(
-      {
-        label: t('shift.detail.tabRequests'),
-        icon: 'pi pi-list',
-        to: `/shift/${scheduleId.value}/requests`,
-      },
-      {
-        label: t('shift.detail.tabConstraints'),
-        icon: 'pi pi-shield',
-        to: `/shift/${scheduleId.value}/work-constraints`,
-      },
-    )
-  }
-  return list
-})
+// タブナビゲーションは components/shift/ShiftDetailTabs.vue に共通化（4ページ共有）。
 </script>
 
 <template>
   <div class="mx-auto max-w-7xl px-4 py-6">
-    <PageLoading v-if="loading" />
+    <DashboardErrorState
+      v-if="loadError"
+      :error="loadError"
+      testid="shift-load-error"
+      @retry="load"
+    />
+
+    <PageLoading v-else-if="loading" />
 
     <template v-else-if="schedule">
       <!-- ヘッダー -->
@@ -326,24 +307,7 @@ const tabs = computed(() => {
       </div>
 
       <!-- タブナビ -->
-      <nav
-        class="mb-6 flex gap-1 overflow-x-auto border-b border-surface-200 dark:border-surface-700"
-      >
-        <NuxtLink
-          v-for="tab in tabs"
-          :key="tab.to"
-          :to="tab.to"
-          class="flex shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors"
-          :class="
-            $route.path === tab.to
-              ? 'border-b-2 border-primary text-primary'
-              : 'text-surface-500 hover:text-surface-800 dark:hover:text-surface-200'
-          "
-        >
-          <i :class="tab.icon" />
-          {{ tab.label }}
-        </NuxtLink>
-      </nav>
+      <ShiftDetailTabs :schedule-id="scheduleId" :team-id="schedule.teamId" current="overview" />
 
       <!-- カレンダービュー -->
       <section>

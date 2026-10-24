@@ -14,6 +14,11 @@ const props = defineProps<{
    * 省略時は出さない（既存の利用箇所を壊さないため既定 false）。
    */
   canManageBoard?: boolean
+  /**
+   * 変更依頼画面への導線を出してよいか（当該チームの MEMBER 以上。SUPPORTER は出さない）。
+   * 受付外（PUBLISHED 以降）でも既存依頼の閲覧・取り下げのために導線は残す。
+   */
+  canRequestChange?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -96,6 +101,10 @@ function onRowClick(s: ShiftScheduleResponse) {
 
 function goToBulkRequest() {
   navigateTo('/my/shift-request')
+}
+
+function goToChangeRequests(scheduleId: number) {
+  navigateTo(`/teams/${props.teamSlug}/shifts/${scheduleId}/change-requests`)
 }
 
 function goToBoard(scheduleId: number) {
@@ -193,12 +202,23 @@ onMounted(load)
           </span>
           <Button
             v-if="canManageBoard"
+            :data-testid="`shift-board-${s.id}`"
             :label="t('shift.entry.board')"
             icon="pi pi-th-large"
             size="small"
             severity="secondary"
             outlined
             @click="goToBoard(s.id)"
+          />
+          <Button
+            v-if="canRequestChange"
+            :data-testid="`shift-change-request-${s.id}`"
+            :label="t('shift.entry.changeRequest')"
+            icon="pi pi-pencil"
+            size="small"
+            severity="secondary"
+            outlined
+            @click="goToChangeRequests(s.id)"
           />
           <ShiftReminderButton :schedule="s" :can-manage="canManage" />
         </div>
