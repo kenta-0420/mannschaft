@@ -1070,7 +1070,6 @@ export default defineNuxtConfig({
         'qrcode',
         'marked',
         'zod',
-        '@vee-validate/zod',
         'vee-validate',
       ],
     },

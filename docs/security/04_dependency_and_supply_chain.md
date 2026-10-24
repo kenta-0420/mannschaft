@@ -155,6 +155,20 @@ Nuxt DevTools は `@nuxt/devtools` override で3.4.1に固定する。安定版3
 
 2026-10-23、DOMPurifyの[GHSA-cg2g-xh64-v4q7](https://github.com/cure53/DOMPurify/security/advisories/GHSA-cg2g-xh64-v4q7)と[GHSA-mrv2-3pqr-j5jr](https://github.com/cure53/DOMPurify/security/advisories/GHSA-mrv2-3pqr-j5jr)に対応し、既存指定範囲内の最小修正版3.4.17へlockを更新する。critical/highの新しい例外は追加しない。
 
+### 4.7. Zod 4 と安定版 VeeValidate 4 の互換対応（2026-10-24）
+
+Zod の GHSA-mrhx-c7xc-m3w5（過大な制約付きコレクション検証によるメモリ枯渇、影響範囲 `<4.6.6`）に対し、Zod を 4.6.7 へ更新する。Zod 3 の peer dependency を持つ `@vee-validate/zod` 4.15.1 は撤去し、安定版 VeeValidate 4.15.1 を維持する。ベータ版への移行、peer dependency の強制無視、監査例外の追加や閾値緩和は行わない。happy-dom の GHSA-834v-8h66-3h79 も最小修正版 21.0.4 へ更新する。
+
+`frontend/app/utils/toTypedSchema.ts` は現行フォームの平坦な `ZodObject` だけを接続する。公開 API の `safeParseAsync` で非同期検証・trim 後の出力・フィールド別およびルートのエラーを VeeValidate へ渡す。同期 cast が未入力や非同期検証で成立しない初期化・reset では、公開 `shape` と `ZodDefault.parse(undefined)` で取得した default に明示入力を優先して重ねる。内部 `_def` には依存しない。配列・union・入れ子スキーマ向けの汎用 adapter は追加しない。`describe` は現行の平坦なフィールドの存在・必須判定を担う。
+
+既存スキーマの旧エラー API は Zod 4 の `error` に合わせ、required/invalid type の指定範囲、同意文言、日付 null の拒否、命名検証時の翻訳評価を保持する。実 `useForm` を使う互換試験は `toTypedSchema.spec.ts`、日付と命名は既存のフォーム試験で検証する。既存の VeeValidate を mock したフォーム試験だけを互換性の根拠にしない。
+
+Webhook の URL は Zod 4 により前後の空白と ASCII tab/CR/LF を除いた出力になる。通常の URL の受理条件とバックエンドの HTTPS・DNS/SSRF 境界は維持し、この正規化を互換試験で固定する。
+
+正規 `npm ci` / `npm ls`、全体 lint と8GBヒープの型検査、実 `useForm` 7件と監査関連の Node 回帰27件を確認した。実監査では Zod・旧 adapter・happy-dom の finding は消失したが、node-forge の例外期限切れで監査ゲートは赤のままである。全量 Vitest の fixture 補完再試行と既存 SSR の5件 skip を含む検証記録は `docs/task-list.md` の CMP-261024-0528 に記載する。
+
+解除条件は、公式の安定版 adapter が修正済み Zod 4 と互換であり、初期値/default/reset・非同期検証・送信出力・エラーの契約試験と実機確認を通過すること。その時にこの互換層を撤去する。版指定や単体試験だけで出荷済みとは扱わず、正規 `npm ci`、`npm ls`、実監査、lint/typecheck、既存フォームの回帰と実機試験の結果を別途記録する。既存 node-forge/braces の期限付き例外とその期限は本対応では変更しない。
+
 ## 5. 脆弱性対応フロー
 
 1. **検知**: Dependabot / Dependency-Check / npm audit / GitHub Security Advisory

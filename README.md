@@ -120,7 +120,7 @@ Scene は登録された同個体・同段階の静止 fallback を動き抑制�
 | レンダリング | SSR + SPA ハイブリッド |
 | 状態管理 | Pinia |
 | スタイリング | Tailwind CSS |
-| フォームバリデーション | Zod + VeeValidate |
+| フォームバリデーション | Zod 4 + VeeValidate 4（平坦なフォーム用の `app/utils/toTypedSchema.ts` で接続） |
 | データ可視化 | Chart.js (vue-chartjs) |
 | テスト | Vitest + Vue Test Utils |
 | SSR対象 | SEOが必要な公開ページ（ブログ、チーム紹介、活動記録等） |
