@@ -122,6 +122,25 @@ head1487の静的差分、ACと試験、選択XML/48store原本を独立照合�
 
 ユーザーの明示的な`--admin`指示に基づきsquash/admin mergeした。複数回main追従済み、実装headのPR CI全成功、MERGEABLEで、残る交差は`docs/task-list.md`の別CMP行のみ。同一行・code/store重複はなかった。merge実体とhead1487のF19pathsの比較でも、本人台帳行は一致、残18pathsの生blob差0、台帳の他CMP行のみ差がある。新mainとの統合CIを事前に実行済みという意味ではない。
 
-マージ後mainの[Backend Build/Test/Deploy40086938407](https://github.com/kenta-0420/mannschaft/actions/runs/40086938407)（exact SHA `23daf720490cdda597b4596cd03f7fd3f5ac9b81`）は未完了。全shardとworkflow最終conclusion=successの両方を確認するまで、L1-Fの完了を保留する。[gitleaks40086938366](https://github.com/kenta-0420/mannschaft/actions/runs/40086938366)はsuccessだが、この条件の代わりにはならない。既存の完了証拠JSONのci[]・stageと本報告の405選択case/48storeは実装headのpremerge検証証拠として保全する。未成功かつheadの異なるmain runをJSONのci[]へ追加しない。
+マージ後mainの[Backend Build/Test/Deploy40086938407](https://github.com/kenta-0420/mannschaft/actions/runs/40086938407)（exact SHA `23daf720490cdda597b4596cd03f7fd3f5ac9b81`）はfailure。全shardとworkflow最終conclusion=successの両方を確認するまで、L1-Fの完了を保留する。[gitleaks40086938366](https://github.com/kenta-0420/mannschaft/actions/runs/40086938366)はsuccessだが、この条件の代わりにはならない。既存の完了証拠JSONのci[]・stageと本報告の405選択case/48storeは実装headのpremerge検証証拠として保全する。未成功かつheadの異なるmain runをJSONのci[]へ追加しない。
 
 完了証拠CLIは台帳・JSON・参照の構造照合であり、GitHub APIのPR merge/check世代/CI成否照合とは別である。後者は公開PR/各CIとマージ時点のAPI情報で確認する。ローカルheavy/Gradle/WSL/server/container起動は行っていない。
+
+## main統合後shard3 timeoutの是正
+
+[main run40086938407/job120851787348](https://github.com/kenta-0420/mannschaft/actions/runs/40086938407/job/120851787348)（exact SHA `23daf720490cdda597b4596cd03f7fd3f5ac9b81`）はshard3が85分timeoutでfailure。他5shardとArchはsuccess、Build/Deployはskipであり、L1-Fの完了保留を維持する。失敗job全文ログ原本は142288 bytes、SHA-256 `3467bd6c5cd498b3b73cbc0439d26e819d08e05bd4908b0d3db663f50bc36f87`。
+
+| 観測値 | main失敗 | 実装head1487のPR attempt2成功 |
+|---|---|---|
+| test command開始→testClasses | 172.709秒 | 15.739秒 |
+| test command開始→normal test開始 | 214.312秒 | 56.946秒 |
+| normal開始→afterSuite | 最終markerなし・未確定 | 4854.999秒 |
+| afterSuite→Jacoco/BUILD最終 | 未確定 | 82.095秒 |
+| normal＋終端/Jacoco | 未確定 | 4937.094秒（82分17.094秒） |
+| normal開始→実timeoutの残り枠 | 4898.210秒（81分38.210秒） | 成功command全体4994.040秒、85分まで105.960秒の余白 |
+
+mainはnormal開始前にPR成功時より157.366秒余計に消費した。PR成功時と同じnormal＋終端/Jacoco所要を仮定しても、mainの実timeoutまでの残り枠には38.884秒収まらない。ただしこれは反実仮想の比較であり、個別テスト遅延や単独原因の証明ではない。mainログにはci-class markerとnormal最終test-countがなく、normal最終件数/失敗数・class別所要は未確定。旧PR attempt1のtimeout後にある別post処理のBUILD SUCCESSFULは、失敗test commandの成功や終端所要として扱わない。
+
+是正は `.github/workflows/backend-deploy.yml` のtest jobで、PR CIと同じ `./gradlew compileJava compileTestJava --no-daemon --build-cache` を独立stepとして先行させる。test commandにもPR同様の`--build-cache`を明記するが、`org.gradle.caching=true`は元から有効であり、cacheを新たに有効化したという意味ではない。test stepの通常85分/migration込み105分、job全体100/120分、依存・番人・store・weights・context cache5・fork設定は変更しない。
+
+この変更後の通常85分完走はまだ実証していない。105分のmigration込みfull CIが成功しても通常85分条件の改善証明とは区別し、修正後のmain統合後CIも全shardとworkflow最終successを実際に確認するまでL1-Fを完了に戻さない。実装headの既存premerge CI/405選択case/48store証拠は保持し、未成功のmain runを既存JSONのci[]へ追加しない。
