@@ -163,7 +163,7 @@ jobs:
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
         if: steps.changes.outputs.openapi_related == 'true'
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
