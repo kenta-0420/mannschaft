@@ -25,6 +25,16 @@ function parse(args) {
   if (!options['--source'] || !options['--evidence-dir']) throw new Error('source と evidence-dir は必須');
   return { source: options['--source'], evidence: options['--evidence-dir'], command: args.slice(split + 1) };
 }
+// archive本文や環境は保存せず、展開失敗の3結果だけを識別する。
+export function archiveResultsForReceipt(results) {
+  return Object.fromEntries(['pipeline', 'git', 'tar'].map((role, index) => {
+    const result = results[index];
+    const detail = result.status === 'rejected'
+      ? { status: 'rejected', code: result.reason?.code ?? null, message: String(result.reason?.message ?? result.reason).slice(0, 256) }
+      : { status: 'fulfilled', ...(role === 'pipeline' ? {} : { code: result.value?.code ?? null, signal: result.value?.signal ?? null }) };
+    return [role, detail];
+  }));
+}
 async function identity(path) {
   const s = await lstat(path);
   if (!s.isDirectory() || s.isSymbolicLink() || s.uid !== uid) throw new Error(`所有ディレクトリではない: ${path}`);
@@ -199,9 +209,12 @@ async function run(options) {
     const tree = join(scratch, 'tree');
     await mkdir(tree);
     const archive = start('git', ['-C', source, 'archive', '--format=tar', sourceHead], { stdio: ['ignore', 'pipe', 'inherit'] });
-    const unpack = start('tar', ['-x', '-f', '-', '-C', tree], { stdio: ['pipe', 'ignore', 'inherit'] });
+    const unpack = start('tar', ['-x', '--ignore-zeros', '-f', '-', '-C', tree], { stdio: ['pipe', 'ignore', 'inherit'] });
     const results = await Promise.race([Promise.allSettled([pipeline(archive.child.stdout, unpack.child.stdin), archive.result, unpack.result]), interruption]);
-    if (results.some(r => r.status === 'rejected' || (r.value && (r.value.code !== 0 || r.value.signal)))) throw new Error('git archive/tar展開失敗');
+    if (results.some(r => r.status === 'rejected' || (r.value && (r.value.code !== 0 || r.value.signal)))) {
+      receipt.archiveResults = archiveResultsForReceipt(results);
+      throw new Error('git archive/tar展開失敗');
+    }
     const child = start(options.command[0], options.command.slice(1), { cwd: tree, env: { ...process.env, VERIFICATION_EVIDENCE_DIR: evidence }, stdio: 'inherit' });
     const result = await Promise.race([child.result, interruption]);
     receipt.exitCode = result.code;
