@@ -169,13 +169,9 @@
       "greenEvidence": "docs/evidence/CMP-261024-1830/backlink-after.json"
     }
   ],
-  "draft": {
-    "status": "pending",
-    "pending": [
-      "専用WSL資産撤去の本人明示承認と実行結果"
-    ],
+  "verificationContext": {
+    "status": "final",
     "runtimeSourceHead": "af5373aa64252c615067ac965b687067e49ba09a",
-    "note": "製品PRはmerge済み、最終CI・検分・実機・探索工程は確認済み。専用資産撤去の本人承認待ちのため、完了証拠はdraft、台帳は実装中を維持する。",
     "exploratoryOutcome": {
       "stage": "passed",
       "A": "達成",
@@ -190,18 +186,19 @@
       "error": "GitHubスナップショットの参照集合が正本と不一致です"
     },
     "cleanup": {
-      "status": "pending",
+      "status": "completed",
       "productWorktree": "rootがtracked/untracked clean・origin/mainとの差分0を確認後、node_modules junctionのリンクのみを外し非force worktree removeとmerged branch -dを実行済み。本陣node_modules存続を確認。",
       "e2eWorktree": "自作一時5fileをprivate-runtime/CMP-261024-1830/e2e-reproduction-scriptsへSHA256一致で保全後に元を削除。tracked/untracked clean、committed2fileのorigin/mainとの差分0をroot確認後、非force worktree remove成功。ローカルbranchはcherry-pick/squashによる-d拒否後、全2commitの変更同一を照合してmerged-local例外の-Dで撤去済み。",
-      "wsl": "本人明示承認待ち。専用資産は未停止・未削除。",
+      "wsl": "本人の「削除許可」を受け、専用2root・2container・volumeと自隊processを撤去。共有containerのID・稼働状態は不変。2026-10-24T23:06:14.811981Z完了。",
       "baselineGate": "最終check exit2: 対象85・削除0・保持94・stale65・全77。事前exit1: 全78/stale65/保持95とは時点が異なる。既存他戦役のdirty/locked/junction等を保持し、非0を合格扱いしない。",
-      "productRemoteBranch": "rootが削除成功を確認"
+      "productRemoteBranch": "rootが削除成功を確認",
+      "evidence": "docs/evidence/CMP-261024-1830/cleanup-summary.json"
     },
     "localValidation": {
-      "targetEvidenceSchema": "passed（GitHubAPIはこのコマンドでは未照合）",
+      "officialCliMode": "--input（実Git/treeの変更証拠選択と実GitHub API metadataを使用）",
       "taskListColumns": 7,
-      "state": "実装中",
-      "fullHistoricalCli": "過去全完了証拠のgit show再走査が長時間化し未完中断。合格証拠に数えない。"
+      "state": "完了",
+      "fullHistoricalCli": "過去全完了証拠のgit show再走査は長時間化し未完中断。合格証拠に数えない。"
     }
   }
 }
