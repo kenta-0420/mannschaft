@@ -125,7 +125,7 @@ node scripts/verification-run.mjs --check
 
 証跡保存先の親は事前に作成し、保存先そのものは新規の外部ディレクトリを指定する。既存ディレクトリ、source内、管理親内への保存は拒否する。runnerは小さな `receipt.json`（source HEAD、元exit/signal、cleanup結果と保持理由）だけを保存し、stdout全量ログや全量バックアップは作らない。必要な証跡をCI等の正本へ確定したら、重複するローカルrawログ・全量archiveは所有と保存済みの範囲を確認して撤去する。
 
-一時領域は `/var/tmp/mannschaft-verification-<uid>/run-*` の自分専用領域。成功・非0終了・展開/起動失敗でも所有markerとディレクトリidentityを確認してfinallyで撤去する。SIGINT/TERMは子process groupへ転送し、停止・参照を確認してから撤去する。停止確認不能、脱走daemonの参照、証跡保存不能、所有境界変更、削除失敗は非0とし正確な保持パス・理由を出す。対象PIDのcmdline・開始時刻・用途を確認して停止し、証跡を保全してからその個別パスだけを処置する。全WSL停止や無差別なrm/pruneへ切り替えない。
+一時領域は `/var/tmp/mannschaft-verification-<uid>/run-*` の自分専用領域。成功・非0終了・展開/起動失敗でも所有markerとディレクトリidentityを確認してfinallyで撤去する。SIGINT/TERMおよび端末切断のSIGHUPは子process groupへ転送し、停止・参照を確認してから撤去する。停止確認不能、脱走daemonの参照、証跡保存不能、所有境界変更、削除失敗は非0とし正確な保持パス・理由を出す。対象PIDのcmdline・開始時刻・用途を確認して停止し、証跡を保全してからその個別パスだけを処置する。全WSL停止や無差別なrm/pruneへ切り替えない。
 
 SIGKILL・ホスト障害ではfinallyは動かない。`--check` は自分専用管理親だけを調べ、稼働中と要処置を表示し、要処置があれば非0となる。削除は行わず、既存の管理外コピー・他人の領域を対象にしない。
 

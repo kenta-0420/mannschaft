@@ -218,3 +218,32 @@ test('SIGTERM停止不能は有界待機で保持し終了、動作中checkは�
   process.kill(pid, 'SIGKILL');
   await rm(r.scratch, { recursive: true });
 });
+
+test('端末切断SIGHUPでも子を停止しreceipt保存後に撤去する', { skip: !linux }, async t => {
+  const f = await fixture(t);
+  const code = `require('fs').writeFileSync(process.env.VERIFICATION_EVIDENCE_DIR+'/ready',String(process.pid));setInterval(()=>{},1000)`;
+  const p = spawn(process.execPath, [script, '--source', f.source, '--evidence-dir', f.evidence, '--', process.execPath, '-e', code], { stdio: 'ignore' });
+  const done = new Promise(resolve => p.once('exit', (code, signal) => resolve({ code, signal })));
+  const pid = Number(await waitFile(join(f.evidence, 'ready')));
+  const initialReceipt = await receipt(f);
+  // red時にも、このfixture自身が作った子とmarker照合済みscratchだけを撤去する。
+  t.after(async () => {
+    try { process.kill(pid, 'SIGKILL'); } catch (e) { if (e.code !== 'ESRCH') throw e; }
+    const r = initialReceipt;
+    try {
+      const owner = JSON.parse(await readFile(join(r.scratch, '.verification-owner.json'), 'utf8'));
+      assert.equal(owner.evidence, f.evidence);
+      assert.equal(owner.scratch, r.scratch);
+      assert.equal(owner.pid, p.pid);
+      assert.equal(owner.uid, process.getuid());
+      assert.ok(owner.token);
+      await rm(r.scratch, { recursive: true });
+    } catch (e) { if (e.code !== 'ENOENT') throw e; }
+  });
+  p.kill('SIGHUP');
+  assert.notEqual((await done).code, 0);
+  const r = await receipt(f);
+  assert.equal(r.signal, 'SIGHUP');
+  assert.equal(r.cleanup, 'removed');
+  await absent(r.scratch);
+});

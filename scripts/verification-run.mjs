@@ -167,8 +167,8 @@ async function run(options) {
       try { signalGroup(pid, signal); } catch (e) { receipt.error = e.message; }
     }
   }
-  const onTerm = () => handleSignal('SIGTERM'), onInt = () => handleSignal('SIGINT');
-  process.on('SIGTERM', onTerm); process.on('SIGINT', onInt);
+  const onTerm = () => handleSignal('SIGTERM'), onInt = () => handleSignal('SIGINT'), onHup = () => handleSignal('SIGHUP');
+  process.on('SIGTERM', onTerm); process.on('SIGINT', onInt); process.on('SIGHUP', onHup);
   function start(command, args, settings) {
     if (interrupted) throw new Error(`中断: ${interrupted}`);
     const child = spawn(command, args, { detached: true, ...settings });
@@ -230,7 +230,7 @@ async function run(options) {
     try { await save(); }
     catch (e) { receipt.error = `${receipt.error || ''} receipt保存失敗: ${e.message}`; }
     for (const child of active.values()) { child.unref(); child.stdout?.destroy(); child.stdin?.destroy(); }
-    process.removeListener('SIGTERM', onTerm); process.removeListener('SIGINT', onInt);
+    process.removeListener('SIGTERM', onTerm); process.removeListener('SIGINT', onInt); process.removeListener('SIGHUP', onHup);
   }
   if (receipt.cleanup === 'retained') console.error(`保持: ${scratch} 理由: ${receipt.cleanupReason}`);
   if (receipt.error) console.error(receipt.error);
