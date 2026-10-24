@@ -1029,6 +1029,8 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 ## 開発環境セットアップ
 
+Linux/WSLの一時検証コピーは Node.js 22以降の scripts/verification-run.mjs を使い、終了時に撤去します。証跡の外部保存と中断時の扱いは [worktree運用](docs/development/worktree_operations.md#wsl検証コピーの寿命管理) を参照してください。
+
 ### 前提条件
 
 | ツール | 場所 | 備考 |
