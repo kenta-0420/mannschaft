@@ -27,6 +27,8 @@ generatorは44 feature・95 capability・588 campaignを生成しexit 0。`valid
 - 製品WT: rootが今回26fileのorigin/mainとの差分0とtracked/untracked cleanを確認。frontend/node_modulesは本陣へのjunctionだったためtarget一致を確認してリンクのみを非再帰で外し、本陣node_modulesの存続確認後に非force worktree remove・merge済みbranch -dを実行した。
 - E2E WT: 自作一時5fileをprivate-runtimeの専用e2e-reproduction-scriptsへSHA256一致で保全し、元を削除してcleanを確認。rootがcommitted2fileのorigin/mainとの差分0・変更2fileのみ・対象絶対path配下を確認後、非force worktree remove成功。branchはcherry-pick/squashにより-dが拒否されたため、全2commitの変更同一を照合しmerged-local例外の-Dで撤去した。製品remote branchも削除済み。
 - 専用WSL資産: 自動承認reviewに不可逆な約1.7GB削除の本人明示承認不足として拒否され、本人回答を待っている。無回答は同意とせず、未停止・未削除のままpending。自隊作成は `/home/kenta/attendance-unit-261024-1830`（専用source・依存・Nuxt生成物）だけで、共用npm/Gradle cacheは削除対象に含めない。
-- 既存資産baseline: rootの事前checkはexit 1（全worktree 78・stale 65・保持 95という報告）。dirty/locked/junction/他戦役feature/orphanは今回の削除対象ではなく、非0を合格扱いしない。最終gateで再checkする。
+- 既存資産baseline: rootの最終checkはexit 2（対象85・削除0・保持94・stale65・全77）。事前checkのexit 1（全78・stale65・保持95）とは時点が異なる。今回の製品/E2E WTは撤去済み。既存他戦役のdirty/locked/junction/feature/orphanは削除せず、非0を合格扱いしない。最終ログは本陣 `.claude/evidence/CMP-261024-1830/worktree-check-final.txt` に保全。
 
 撤去承認と結果が揃うまで台帳の状態は実装中を維持する。将来の完了更新では証拠JSONを確定版にし、既存7列・依存・受け入れ条件を保持してから完了へ変更する。
+
+今回JSONの構造・参照と台帳7列/実装中は直接検証した。ローカルcompletion-evidence CLI全走査は過去全完了証拠のgit show反復で長時間化したため未完中断し、合格証拠に数えない。このCLI/直接構造検証自体ではGitHub API上の実装PR/CI状態は照合していない。

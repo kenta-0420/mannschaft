@@ -194,8 +194,14 @@
       "productWorktree": "rootがtracked/untracked clean・origin/mainとの差分0を確認後、node_modules junctionのリンクのみを外し非force worktree removeとmerged branch -dを実行済み。本陣node_modules存続を確認。",
       "e2eWorktree": "自作一時5fileをprivate-runtime/CMP-261024-1830/e2e-reproduction-scriptsへSHA256一致で保全後に元を削除。tracked/untracked clean、committed2fileのorigin/mainとの差分0をroot確認後、非force worktree remove成功。ローカルbranchはcherry-pick/squashによる-d拒否後、全2commitの変更同一を照合してmerged-local例外の-Dで撤去済み。",
       "wsl": "本人明示承認待ち。専用資産は未停止・未削除。",
-      "baselineGate": "事前check exit1。既存dirty/locked/junction等を保持し合格扱いしない。",
+      "baselineGate": "最終check exit2: 対象85・削除0・保持94・stale65・全77。事前exit1: 全78/stale65/保持95とは時点が異なる。既存他戦役のdirty/locked/junction等を保持し、非0を合格扱いしない。",
       "productRemoteBranch": "rootが削除成功を確認"
+    },
+    "localValidation": {
+      "targetEvidenceSchema": "passed（GitHubAPIはこのコマンドでは未照合）",
+      "taskListColumns": 7,
+      "state": "実装中",
+      "fullHistoricalCli": "過去全完了証拠のgit show再走査が長時間化し未完中断。合格証拠に数えない。"
     }
   }
 }
