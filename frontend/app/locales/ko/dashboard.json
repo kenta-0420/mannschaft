@@ -276,11 +276,21 @@
       }
     },
     "attendance_results": {
+      "listTitle": "출석 확인 목록",
+      "detailTitle": "출석 확인 상세",
+      "previousRange": "이전 기간",
+      "nextRange": "다음 기간",
+      "refresh": "새로 고침",
+      "noDate": "날짜 미설정",
+      "untitled": "제목 없는 일정",
+      "countHint": "출석에는 부분 출석이, 미정에는 미응답이 포함됩니다.",
+      "unknownMember": "멤버 {number}",
       "recentRange": "최근 ±30일 이벤트",
       "empty": "대상 이벤트가 없습니다",
       "noData": "출석 데이터가 없습니다",
       "memberTotal": "/ {total}명",
       "status": {
+        "partial": "부분 출석",
         "yes": "출석",
         "no": "결석",
         "maybe": "미정",
