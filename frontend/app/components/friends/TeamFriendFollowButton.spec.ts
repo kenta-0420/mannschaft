@@ -50,6 +50,19 @@ describe('FR-08/11 送信と未確定状態', () => {
     expect(mocks.follow.mock.calls[1]).toEqual(['1', { targetTeamSlug: 'target-team', comment: undefined }])
     w.unmount()
   })
+  it('FR-11: 離脱後に遅延202が返ってもtimerを作らず追加POSTしない', async () => {
+    let resolveFollow!: (value: typeof pending) => void
+    mocks.follow.mockImplementationOnce(() => new Promise(resolve => { resolveFollow = resolve }))
+    const w = await mountSuspended(FollowButton, { props: { teamId: '1', targetTeamSlug: 'target-team' } })
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    await w.get('button').trigger('click')
+    w.unmount()
+    resolveFollow(pending)
+    await flushPromises()
+    expect(vi.getTimerCount()).toBe(0)
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(mocks.follow).toHaveBeenCalledTimes(1)
+  })
   it('disabledと同一tick連打を送信入口でも拒否する', async () => {
     mocks.follow.mockImplementation(() => new Promise(() => {}))
     const w = await mountSuspended(FollowButton, { props: { teamId: '1', targetTeamSlug: 'target-team' } })
