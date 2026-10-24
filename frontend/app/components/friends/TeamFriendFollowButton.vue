@@ -21,6 +21,8 @@
  */
 import type { FollowTeamResponse } from '~/types/friends'
 
+defineOptions({ inheritAttrs: false })
+const attrs = useAttrs()
 const props = defineProps<{
   teamId: string
   targetTeamSlug: string
@@ -29,6 +31,9 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  busy: [value: boolean]
+  forbidden: []
+  refresh: []
   followed: [response: FollowTeamResponse]
   alreadyFollowing: []
   retryScheduled: [seconds: number]
@@ -43,6 +48,8 @@ const MAX_RETRY = 3
 const submitting = ref(false)
 const retryCount = ref(0)
 const retryCountdown = ref(0)
+let lockedRequest: { teamId: string; targetTeamSlug: string; comment?: string } | null = null
+const waiting = ref(false)
 let retryTimer: ReturnType<typeof setInterval> | null = null
 
 function clearRetryTimer() {
@@ -52,20 +59,25 @@ function clearRetryTimer() {
   }
 }
 
-async function execute() {
+async function execute(retrying = false) {
   // 再入ガード: :disabled/:loading は再描画後にしか効かないため、同一 tick の連打はここで弾く
-  if (submitting.value) return
+  if (submitting.value || (!retrying && (retryCountdown.value > 0 || props.disabled))) return
+  if (!retrying) lockedRequest = { teamId: props.teamId, targetTeamSlug: props.targetTeamSlug, comment: props.comment }
+  if (!lockedRequest) return
+  waiting.value = false
   submitting.value = true
   try {
-    const response = await follow(props.teamId, {
-      targetTeamSlug: props.targetTeamSlug,
-      comment: props.comment,
+    const response = await follow(lockedRequest.teamId, {
+      targetTeamSlug: lockedRequest.targetTeamSlug,
+      comment: lockedRequest.comment,
     })
 
-    // NOWAIT 競合 (followId=null + retryAfterSeconds) の場合
-    if (response.followId === null && response.retryAfterSeconds && response.retryAfterSeconds > 0) {
+    // followIdが発行済みでも、retryAfterSecondsがある応答は未確定。
+    if (response.retryAfterSeconds != null && response.retryAfterSeconds > 0) {
+      emit('refresh')
       if (retryCount.value >= MAX_RETRY) {
-        notification.error(t('dialog.error'), t('friends.messages.follow_retry', { seconds: 0 }))
+        waiting.value = true
+        notification.info(t('friends.request.pending'))
         retryCount.value = 0
         submitting.value = false
         return
@@ -95,6 +107,10 @@ async function execute() {
       notification.info(t('friends.messages.already_following'))
       emit('alreadyFollowing')
     }
+    else if (apiError.statusCode === 403) {
+      handleApiError(error)
+      emit('forbidden')
+    }
     else if (apiError.statusCode === 404 && apiError.data?.error?.code === 'SOCIAL_104') {
       notification.error(t('friends.errors.target_unavailable'))
     }
@@ -116,7 +132,7 @@ function startCountdown() {
     if (retryCountdown.value <= 0) {
       clearRetryTimer()
       // 自動再試行
-      void execute()
+      void execute(true)
     }
   }, 1000)
 }
@@ -129,6 +145,7 @@ const buttonLabel = computed(() => {
 })
 
 const isBusy = computed(() => submitting.value || retryCountdown.value > 0)
+watch(isBusy, value => emit('busy', value), { flush: 'sync' })
 
 onBeforeUnmount(() => {
   clearRetryTimer()
@@ -136,11 +153,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <span class="inline-flex flex-wrap items-center gap-2">
   <Button
+    v-bind="attrs"
     :label="buttonLabel"
     :loading="submitting"
     :disabled="disabled || isBusy"
     icon="pi pi-user-plus"
-    @click="execute"
+    @click="execute()"
   />
+  <Button v-if="waiting" :label="t('friends.request.refresh')" icon="pi pi-refresh" class="min-h-11" data-testid="friend-request-manual-refresh" @click="emit('refresh')" />
+  </span>
 </template>

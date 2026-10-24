@@ -28,6 +28,7 @@ const shell = vi.hoisted(() => ({
 
 vi.mock('~/composables/useTeamShellContext', () => ({
   useTeamShellContext: () => ({
+    team: computed(() => ({ numericId: 10, slug: 'team-1', basicInfo: { name: '自チーム' } })),
     roleName: ref(shell.roleName),
     roleResolved: ref(shell.roleResolved),
     roleLoadFailed: ref(shell.roleLoadFailed),
@@ -49,7 +50,7 @@ vi.mock('~/composables/useRoleAccess', () => ({
 
 mockNuxtImport('useRoute', () => () => ({ params: { slug: 'team-1' } }))
 
-const stubs = { TeamFriendPendingFollowList: true, TeamFriendList: true, FriendFollowDialog: true, FriendTeamGuideModal: true }
+const stubs = { TeamFriendIncomingFollowList: true, TeamFriendPendingFollowList: true, TeamFriendList: true, FriendFollowDialog: true, FriendTeamGuideModal: true }
 
 function setRole(role: string, permissions: string[] = []) {
   shell.roleName = role

@@ -1,0 +1,50 @@
+import { flushPromises } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
+import FollowButton from './TeamFriendFollowButton.vue'
+const mocks = vi.hoisted(() => ({ follow: vi.fn(), success: vi.fn(), info: vi.fn(), error: vi.fn() }))
+mockNuxtImport('useFriendTeamsApi', () => () => ({ follow: mocks.follow }))
+mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
+mockNuxtImport('useNotification', () => () => ({ success: mocks.success, info: mocks.info, error: mocks.error }))
+mockNuxtImport('useErrorHandler', () => () => ({ handleApiError: mocks.error }))
+const pending = { followId: 55, followerTeamId: 1, followedTeamId: 2, mutual: false, createdAt: '2026-10-25T01:00:00', retryAfterSeconds: 1 }
+describe('FR-08/11 送信と未確定状態', () => {
+  beforeEach(() => { vi.clearAllMocks(); mocks.follow.mockReset() })
+  afterEach(() => vi.useRealTimers())
+  it('followId非nullの202でも成功を出さず3回まで再送し手動再取得を提供する', async () => {
+    mocks.follow.mockResolvedValue(pending)
+    const w = await mountSuspended(FollowButton, { props: { teamId: '1', targetTeamSlug: 'target-team' } })
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    await w.get('button').trigger('click')
+    await flushPromises()
+    expect(w.emitted('followed')).toBeUndefined()
+    expect(mocks.success).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(3000)
+    await flushPromises()
+    expect(mocks.follow).toHaveBeenCalledTimes(4)
+    expect(w.emitted('refresh')).toHaveLength(4)
+    expect(w.find('[data-testid="friend-request-manual-refresh"]').exists()).toBe(true)
+    await w.get('[data-testid="friend-request-manual-refresh"]').trigger('click')
+    expect(w.emitted('refresh')).toHaveLength(5)
+    w.unmount()
+  })
+  it('再試行中のprops変更でも元と先のsnapshotを維持する', async () => {
+    mocks.follow.mockResolvedValue(pending)
+    const w = await mountSuspended(FollowButton, { props: { teamId: '1', targetTeamSlug: 'target-team' } })
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    await w.get('button').trigger('click')
+    await w.setProps({ teamId: '9', targetTeamSlug: 'different-team' })
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(mocks.follow.mock.calls[1]).toEqual(['1', { targetTeamSlug: 'target-team', comment: undefined }])
+    w.unmount()
+  })
+  it('disabledと同一tick連打を送信入口でも拒否する', async () => {
+    mocks.follow.mockImplementation(() => new Promise(() => {}))
+    const w = await mountSuspended(FollowButton, { props: { teamId: '1', targetTeamSlug: 'target-team' } })
+    for (let i = 0; i < 5; i++) void w.get('button').trigger('click')
+    await flushPromises()
+    expect(mocks.follow).toHaveBeenCalledTimes(1)
+    expect(w.emitted('busy')?.[0]).toEqual([true])
+    w.unmount()
+  })
+})

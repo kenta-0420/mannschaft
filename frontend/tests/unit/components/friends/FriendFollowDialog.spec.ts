@@ -108,11 +108,16 @@ async function typeInto(testid: string, value: string) {
   await nextTick()
 }
 function submitButton(): HTMLButtonElement {
-  const el = q('[data-testid="friend-follow-submit"]')
+  const el = q('[data-testid="friend-follow-submit"]') ?? q('[data-testid="friend-request-review"]')
   expect(el, 'data-testid="friend-follow-submit" が描画されていない').not.toBeNull()
   const button = el!.tagName === 'BUTTON' ? el : el!.querySelector('button')
   expect(button).not.toBeNull()
   return button as HTMLButtonElement
+}
+async function submitRequest() {
+  const review = q('[data-testid="friend-request-review"]') as HTMLButtonElement | null
+  if (review) { if (review.disabled) return; click(review); await flushPromises() }
+  click(submitButton())
 }
 function click(el: HTMLElement) {
   el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
@@ -127,7 +132,7 @@ async function settleSearch(ms = 300) {
 
 async function mountDialog(initialSlug?: string) {
   const wrapper = await mountSuspended(FriendFollowDialog, {
-    props: { teamId: OWN_SLUG, modelValue: true, initialSlug },
+    props: { teamId: OWN_SLUG, modelValue: true, initialSlug, sourceTeam: { teamId: 10, teamSlug: OWN_SLUG, teamName: 'マイチーム' } },
     attachTo: document.body,
     global: { stubs: { Dialog: DialogStub } },
   })
@@ -176,12 +181,12 @@ describe('FriendFollowDialog（CMP-261012-0315）', () => {
     await flushPromises()
     expect(submitButton().disabled).toBe(false)
 
-    click(submitButton())
+    await submitRequest()
     await flushPromises()
 
     expect(followCalls()).toHaveLength(1)
     const [url, options] = followCalls()[0]!
-    expect(url).toBe(`/api/v1/teams/${OWN_SLUG}/friends/follow`)
+    expect(url).toBe(`/api/v1/teams/10/friends/follow`)
     expect(options?.body?.targetTeamSlug).toBe('rival-fc')
     expect(options?.body).not.toHaveProperty('targetTeamId')
     expect(wrapper.emitted('success')).toHaveLength(1)
@@ -272,7 +277,7 @@ describe('FriendFollowDialog（CMP-261012-0315）', () => {
     await flushPromises()
     expect(submitButton().disabled).toBe(false)
 
-    click(submitButton())
+    await submitRequest()
     await flushPromises()
 
     expect(followCalls()).toHaveLength(1)
@@ -308,7 +313,7 @@ describe('FriendFollowDialog（CMP-261012-0315）', () => {
 
     expect(submitButton().disabled).toBe(true)
     expect(q('[data-testid="friend-follow-self-warning"]')?.textContent).toContain('friends.errors.self_follow')
-    click(submitButton())
+    await submitRequest()
     await flushPromises()
     expect(followCalls()).toHaveLength(0)
   })
@@ -321,7 +326,7 @@ describe('FriendFollowDialog（CMP-261012-0315）', () => {
 
     await typeInto('friend-follow-slug-input', 'rival-fc')
     await flushPromises()
-    click(submitButton())
+    await submitRequest()
     await flushPromises()
 
     expect(followCalls()).toHaveLength(1)
@@ -369,19 +374,19 @@ describe('FriendFollowDialog（CMP-261012-0315）', () => {
     wrapper = await mountDialog('rival-fc')
     expect(inputOf('friend-follow-slug-input').value).toBe('rival-fc')
     expect(submitButton().disabled).toBe(false)
-    click(submitButton())
+    await submitRequest()
     await flushPromises()
     expect(followCalls()[0]![1]!.body!.targetTeamSlug).toBe('rival-fc')
     expect(wrapper.emitted('success')).toHaveLength(1)
   })
 
-  it('AC18: 409 SOCIAL_102を親へ伝播して閉じる', async () => {
+  it('AC18: 409 SOCIAL_102を親へ伝播し入力を保持する', async () => {
     followHandler = async () => { throw { statusCode: 409, data: { error: { code: 'SOCIAL_102' } } } }
     wrapper = await mountDialog('rival-fc')
-    click(submitButton())
+    await submitRequest()
     await flushPromises()
     expect(wrapper.emitted('alreadyFollowing')).toHaveLength(1)
-    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([false])
+    expect(wrapper.emitted('update:modelValue') ?? []).not.toContainEqual([false])
   })
 
 })

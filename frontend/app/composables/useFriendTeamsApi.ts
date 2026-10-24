@@ -1,3 +1,4 @@
+import type { FriendRequestSourceTeamListResponse, IncomingTeamFollowListResponse } from '~/types/friends'
 import type {
   FollowTeamRequest,
   FollowTeamResponse,
@@ -110,7 +111,17 @@ export function useFriendTeamsApi() {
     })
   }
 
+  async function listSourceTeams(targetTeamSlug: string, params: { page: number; size: number }): Promise<FriendRequestSourceTeamListResponse> {
+    return api<FriendRequestSourceTeamListResponse>('/api/v1/me/friend-request-source-teams' + buildQuery({ targetTeamSlug, ...params }))
+  }
+
+  async function listIncomingFollows(teamId: string, params: { page: number; size: number }): Promise<IncomingTeamFollowListResponse> {
+    return api<IncomingTeamFollowListResponse>(`/api/v1/teams/${teamId}/friends/incoming${buildQuery(params)}`)
+  }
+
   return {
+    listSourceTeams,
+    listIncomingFollows,
     follow,
     unfollow,
     listFriends,

@@ -52,15 +52,15 @@
       },
       "follow": {
         "title": "Seguir para hacerse amigo",
-        "step1": "Pulsa el botón «Seguir» en la parte superior de la pestaña de equipos amigos",
+        "step1": "Pulsa Seguir en tu equipo o Solicitar amistad en el perfil del otro equipo.",
         "step2": "Busca por el nombre del equipo y elige el que quieres seguir. Si no lo encuentras, escribe directamente el nombre de URL del equipo (la parte final de su dirección)",
-        "step3": "Escribe un mensaje de saludo (opcional, hasta 300 caracteres)",
-        "step4": "Pulsa «Seguir» en el cuadro de diálogo",
+        "step3": "Comprueba los equipos, sus nombres, nombres de URL y la dirección. Los comentarios no se entregan.",
+        "step4": "Pulsa Revisar solicitud y después Seguir.",
         "mutual": "Cuando el otro equipo también te siga, se mostrará «Ya sois equipos amigos» y se establecerá la relación de equipos amigos.",
         "caution_title": "Aviso",
         "caution_self": "No puedes seguir a tu propio equipo",
         "caution_already": "No puedes seguir a un equipo al que ya sigues",
-        "caution_busy": "Si hay mucha carga, se reintenta automáticamente hasta 3 veces. Si aun así falla, espera un momento e inténtalo de nuevo",
+        "caution_busy": "El proceso se reintenta hasta tres veces. Actualiza las listas para verificar el resultado.",
         "caution_role": "Se necesita el permiso para administrar equipos amigos."
       },
       "visibility": {
@@ -89,7 +89,7 @@
       },
       "pending": {
         "title": "Equipos seguidos",
-        "body": "Consulta y cancela los seguimientos pendientes de amistad. Los nombres públicos enlazan a sus páginas. Tras cancelar, elige «Seguir de nuevo» para seleccionar el mismo equipo."
+        "body": "Consulta y cancela los seguimientos pendientes de amistad. Los nombres públicos enlazan a sus páginas. Tras cancelar, elige «Seguir de nuevo» para seleccionar el mismo equipo. Las solicitudes recibidas muestran el origen. Seguir de vuelta envía una solicitud de tu equipo al origen. Ambas direcciones crean la amistad. No se envía notificación de recepción."
       }
     },
     "pending": {
@@ -102,6 +102,21 @@
       "refollow": "Seguir de nuevo",
       "recovery_public": "La amistad no se ha completado. Cancela y vuelve a seguir al equipo para establecerla.",
       "recovery_hidden": "Puedes cancelar, pero quizá no puedas volver a seguir al equipo según su estado."
+    },
+    "request": {
+      "title": "Solicitar amistad entre equipos",
+      "source": "Equipo de origen",
+      "target": "Equipo de destino",
+      "no_source": "No tienes equipos autorizados. Consulta los permisos con su administrador.",
+      "choose_source": "Elige un equipo de origen",
+      "single_source": "Se ha seleccionado tu único equipo autorizado. Revísalo antes de enviar.",
+      "review": "Revisar solicitud",
+      "confirm": "Revisa esta dirección antes de enviar la solicitud.",
+      "pending": "El resultado está pendiente. Actualiza las listas para comprobar el estado.",
+      "refresh": "Actualizar listas",
+      "incoming": "Solicitudes recibidas",
+      "respond": "Revisar y seguir de vuelta",
+      "incoming_empty": "No hay solicitudes recibidas"
     }
   },
   "folders": {

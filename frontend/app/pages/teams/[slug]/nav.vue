@@ -11,6 +11,7 @@
  *
  * SUPPORTER にはバックエンドが is_public=TRUE のみ返すため、その旨の注意バナーを出す。
  */
+import type { FriendRequestSource, FriendRequestTarget } from '~/types/friends'
 import { useTeamShellContext } from '~/composables/useTeamShellContext'
 
 definePageMeta({
@@ -21,10 +22,14 @@ definePageMeta({
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))
 
-const { isAdmin, roleName, roleResolved, roleLoadFailed, refresh } = useTeamShellContext()
+const { team, isAdmin, roleName, roleResolved, roleLoadFailed, refresh } = useTeamShellContext()
 // シェルコンテキストは個別権限（MANAGE_FRIEND_TEAMS）を持たないため、判定のみ useRoleAccess で補う
 const { can, loadPermissions } = useRoleAccess('team', teamSlug)
 
+const sourceTeam = computed<FriendRequestSource | undefined>(() => team.value?.numericId ? { teamId: team.value.numericId, teamSlug: team.value.slug ?? teamSlug.value, teamName: team.value.basicInfo?.name ?? teamSlug.value } : undefined)
+const incomingListRef = ref<{ refresh: () => Promise<void> } | null>(null)
+const selectedRequestTarget = ref<FriendRequestTarget | undefined>()
+const activeList = ref('friends')
 const dialogOpen = ref(false)
 const showGuide = ref(false)
 const listRef = ref<{ refresh: () => Promise<void> } | null>(null)
@@ -48,11 +53,18 @@ const isSupporterView = computed(() => roleName.value === 'SUPPORTER')
 
 async function refreshLists() {
   // 片方向フォローでも一覧を再取得して状態を揃える。
-  await Promise.all([listRef.value?.refresh(), pendingListRef.value?.refresh()])
+  await Promise.all([listRef.value?.refresh(), pendingListRef.value?.refresh(), incomingListRef.value?.refresh()])
 }
 
 function openFollow(slug = '') {
+  selectedRequestTarget.value = undefined
   initialFollowSlug.value = slug
+  dialogOpen.value = true
+}
+
+function respondToRequest(target: FriendRequestTarget) {
+  selectedRequestTarget.value = target
+  initialFollowSlug.value = target.teamSlug
   dialogOpen.value = true
 }
 
@@ -109,28 +121,35 @@ onMounted(() => {
           <Button data-testid="friend-shortcut-forward-exports" :label="$t('forward_exports.title')" icon="pi pi-history" class="w-full !h-auto !whitespace-normal py-2" outlined />
         </NuxtLink>
       </div>
+      <SelectButton v-if="canManageFriends" v-model="activeList" :allow-empty="false" :options="[{ value: 'friends', label: $t('friends.title') }, { value: 'pending', label: $t('friends.pending.title') }, { value: 'incoming', label: $t('friends.request.incoming') }]" option-label="label" option-value="value" class="mb-4 max-w-full overflow-x-auto" data-testid="friend-list-tabs" />
+      <TeamFriendIncomingFollowList v-if="canManageFriends && sourceTeam" v-show="activeList === 'incoming'" ref="incomingListRef" :team-id="String(sourceTeam.teamId)" :source-team="sourceTeam" class="mb-6" @respond="respondToRequest" />
       <TeamFriendPendingFollowList
         v-if="canManageFriends"
+        v-show="activeList === 'pending'"
         ref="pendingListRef"
         :team-id="teamSlug"
         class="mb-6"
-        @refresh="listRef?.refresh()"
+        @refresh="refreshLists"
         @refollow="openFollow"
       />
       <TeamFriendList
+        v-show="activeList === 'friends'"
         ref="listRef"
         :team-id="teamSlug"
         :can-edit="canManageFriends"
         :can-toggle-visibility="isAdmin"
-        @refresh="pendingListRef?.refresh()"
+        @refresh="incomingListRef?.refresh(); pendingListRef?.refresh()"
       />
 
       <FriendFollowDialog
         v-model="dialogOpen"
         :team-id="teamSlug"
+        :source-team="sourceTeam"
+        :target-team="selectedRequestTarget"
         :initial-slug="initialFollowSlug"
         @success="refreshLists"
         @already-following="refreshLists"
+        @refresh="refreshLists"
       />
       <FriendTeamGuideModal v-model:visible="showGuide" />
     </template>

@@ -103,3 +103,11 @@ export interface SetVisibilityRequest {
   /** 公開フラグ（true で公開、false で非公開） */
   isPublic: boolean
 }
+
+/** 申請ダイアログで固定するチーム情報。 */
+export interface FriendRequestSource { teamId: number; teamSlug: string; teamName: string }
+export interface FriendRequestTarget { teamSlug: string; teamName: string }
+/** BE生成型の合流時に生成aliasへ切り替える局所契約。 */
+export interface FriendRequestSourceTeamListResponse { data: FriendRequestSource[]; pagination: FriendsPagination }
+export interface IncomingTeamFollowView { followId: number; sourceTeamId: number; sourceTeamName: string | null; sourceTeamSlug: string | null; nameHidden: boolean; followedBack: boolean; followedAt: string }
+export interface IncomingTeamFollowListResponse { data: IncomingTeamFollowView[]; pagination: FriendsPagination }

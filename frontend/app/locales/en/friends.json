@@ -52,15 +52,15 @@
       },
       "follow": {
         "title": "Follow a team to become friends",
-        "step1": "Press the \"Follow\" button at the top of the Friend Teams tab",
+        "step1": "Use Follow on your team page, or Request a team friendship on the other team profile.",
         "step2": "Search by team name and pick the team you want to follow. If you cannot find it, type the team's URL name (the last part of its address) directly",
-        "step3": "Enter a greeting message (optional, up to 300 characters)",
-        "step4": "Press \"Follow\" in the dialog",
+        "step3": "Check the source, target, team names, URL names and direction. Comments are not delivered.",
+        "step4": "Choose Review request, then Follow.",
         "mutual": "When the other team follows you back, \"you are now friend teams\" is displayed and the friend team relationship is established.",
         "caution_title": "Notes",
         "caution_self": "You cannot follow your own team",
         "caution_already": "You cannot follow a team you already follow",
-        "caution_busy": "When the system is busy, it automatically retries up to 3 times. If it still fails, please wait a moment and try again",
+        "caution_busy": "Processing retries up to three times. Refresh the lists to verify the result.",
         "caution_role": "Managing friend teams requires the corresponding permission."
       },
       "visibility": {
@@ -89,7 +89,7 @@
       },
       "pending": {
         "title": "Following",
-        "body": "Review and cancel follows before friendship is established. Public team names link to their pages. After canceling, choose “Follow again” to select the same team."
+        "body": "Review and cancel follows before friendship is established. Public team names link to their pages. After canceling, choose “Follow again” to select the same team. Incoming requests show the source team. Following back sends a request from your team to that source. Both directions establish friendship. No incoming notification is sent."
       }
     },
     "pending": {
@@ -102,6 +102,21 @@
       "refollow": "Follow again",
       "recovery_public": "Friendship setup is incomplete. Cancel and follow again to become friends.",
       "recovery_hidden": "You can cancel, but you may be unable to follow again depending on the team’s status."
+    },
+    "request": {
+      "title": "Request a team friendship",
+      "source": "Source team",
+      "target": "Target team",
+      "no_source": "You have no eligible teams. Ask your team administrator about permissions.",
+      "choose_source": "Choose a source team",
+      "single_source": "Your only eligible team is selected. Review it before sending.",
+      "review": "Review request",
+      "confirm": "Review this direction before sending the request.",
+      "pending": "The result is pending. Refresh the lists to check the current state.",
+      "refresh": "Refresh lists",
+      "incoming": "Incoming requests",
+      "respond": "Review and follow back",
+      "incoming_empty": "No incoming requests"
     }
   },
   "folders": {
