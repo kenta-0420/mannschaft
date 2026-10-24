@@ -72,11 +72,11 @@ onBeforeUnmount(() => { statusSequence += 1 })
         <DashboardEmptyState v-else-if="totalRecords === 0" :message="t('friends.request.no_source')" />
         <template v-else>
           <label for="friend-request-source">{{ t('friends.request.source') }}</label>
-          <Select id="friend-request-source" v-model="selected" :options="candidates" option-label="teamName" :disabled="busy" class="w-full" data-testid="friend-request-source">
+          <Select input-id="friend-request-source" v-model="selected" :options="candidates" option-label="teamName" :disabled="busy" class="w-full" data-testid="friend-request-source">
             <template #option="{ option }"><span class="break-words">{{ option.teamName }} ({{ option.teamSlug }})</span></template>
             <template #value><span v-if="selected" class="break-words">{{ selected.teamName }} ({{ selected.teamSlug }})</span><span v-else>{{ t('friends.request.choose_source') }}</span></template>
           </Select>
-          <p v-if="totalRecords === 1" data-testid="friend-source-auto">{{ t('friends.request.single_source') }}</p>
+          <p v-if="totalRecords === 1 && selected" data-testid="friend-source-auto">{{ t('friends.request.single_source') }}</p>
           <Paginator v-if="totalRecords > rows" :first="page * rows" :rows="rows" :total-records="totalRecords" :disabled="busy" @page="onPage" />
         </template>
       </template>

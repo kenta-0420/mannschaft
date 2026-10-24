@@ -50,6 +50,7 @@ describe('FR-02/05/08 申請確認', () => {
     await w.get('[data-testid="friend-follow-submit"]').trigger('click')
     await flushPromises()
     expect(mocks.list).toHaveBeenCalledTimes(2)
+    expect(w.find('[data-testid="friend-source-auto"]').exists()).toBe(false)
     expect(w.get('[data-testid="friend-request-review"]').attributes('disabled')).toBeDefined()
     expect(w.emitted('update:modelValue')).toBeUndefined()
     w.unmount()

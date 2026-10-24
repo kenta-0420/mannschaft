@@ -50,7 +50,12 @@ vi.mock('~/composables/useRoleAccess', () => ({
 
 mockNuxtImport('useRoute', () => () => ({ params: { slug: 'team-1' } }))
 
-const stubs = { TeamFriendIncomingFollowList: true, TeamFriendPendingFollowList: true, TeamFriendList: true, FriendFollowDialog: true, FriendTeamGuideModal: true }
+const incomingRefresh = vi.fn(async () => {})
+const IncomingStub = defineComponent({
+  name: 'TeamFriendIncomingFollowList',
+  setup(_props, { expose }) { expose({ refresh: incomingRefresh }); return () => null },
+})
+const stubs = { TeamFriendIncomingFollowList: IncomingStub, TeamFriendPendingFollowList: true, TeamFriendList: true, FriendFollowDialog: true, FriendTeamGuideModal: true }
 
 function setRole(role: string, permissions: string[] = []) {
   shell.roleName = role
@@ -71,7 +76,7 @@ beforeAll(async () => {
 })
 
 describe('pages/teams/[slug]/nav.vue — フレンドチームタブのツールバー', () => {
-  beforeEach(() => setRole('ADMIN', ['MANAGE_FRIEND_TEAMS']))
+  beforeEach(() => { setRole('ADMIN', ['MANAGE_FRIEND_TEAMS']); incomingRefresh.mockClear() })
 
   it('NAVF-001: 所属者（MEMBER）にも「使い方」ボタンが出る', async () => {
     setRole('MEMBER')
@@ -242,15 +247,21 @@ describe('pages/teams/[slug]/nav.vue — フレンドチームタブのツール
     await w.findComponent(PendingStub).vm.$emit('refresh')
     expect(friendRefresh).toHaveBeenCalledTimes(1)
     expect(pendingRefresh).not.toHaveBeenCalled()
+    expect(incomingRefresh).toHaveBeenCalledTimes(1)
+    incomingRefresh.mockClear()
     friendRefresh.mockClear()
     await w.findComponent(FriendStub).vm.$emit('refresh')
     expect(pendingRefresh).toHaveBeenCalledTimes(1)
     expect(friendRefresh).not.toHaveBeenCalled()
+    expect(incomingRefresh).toHaveBeenCalledTimes(1)
+    incomingRefresh.mockClear()
     pendingRefresh.mockClear()
     for (const event of ['success', 'alreadyFollowing'] as const) {
       await w.findComponent(DialogStub).vm.$emit(event)
       expect(friendRefresh).toHaveBeenCalledTimes(1)
       expect(pendingRefresh).toHaveBeenCalledTimes(1)
+      expect(incomingRefresh).toHaveBeenCalledTimes(1)
+      incomingRefresh.mockClear()
       friendRefresh.mockClear(); pendingRefresh.mockClear()
     }
     await w.findComponent(PendingStub).vm.$emit('refollow', 'same-team')

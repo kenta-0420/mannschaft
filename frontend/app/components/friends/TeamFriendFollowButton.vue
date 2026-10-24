@@ -50,6 +50,7 @@ const retryCount = ref(0)
 const retryCountdown = ref(0)
 let lockedRequest: { teamId: string; targetTeamSlug: string; comment?: string } | null = null
 const waiting = ref(false)
+let disposed = false
 let retryTimer: ReturnType<typeof setInterval> | null = null
 
 function clearRetryTimer() {
@@ -61,7 +62,7 @@ function clearRetryTimer() {
 
 async function execute(retrying = false) {
   // 再入ガード: :disabled/:loading は再描画後にしか効かないため、同一 tick の連打はここで弾く
-  if (submitting.value || (!retrying && (retryCountdown.value > 0 || props.disabled))) return
+  if (disposed || submitting.value || (!retrying && (retryCountdown.value > 0 || props.disabled))) return
   if (!retrying) lockedRequest = { teamId: props.teamId, targetTeamSlug: props.targetTeamSlug, comment: props.comment }
   if (!lockedRequest) return
   waiting.value = false
@@ -71,6 +72,8 @@ async function execute(retrying = false) {
       targetTeamSlug: lockedRequest.targetTeamSlug,
       comment: lockedRequest.comment,
     })
+
+    if (disposed) return
 
     // followIdが発行済みでも、retryAfterSecondsがある応答は未確定。
     if (response.retryAfterSeconds != null) {
@@ -102,6 +105,7 @@ async function execute(retrying = false) {
     emit('followed', response)
   }
   catch (error) {
+    if (disposed) return
     const apiError = error as { statusCode?: number; data?: { error?: { code?: string } } }
     if (apiError.statusCode === 409 && apiError.data?.error?.code === 'SOCIAL_102') {
       notification.info(t('friends.messages.already_following'))
@@ -148,6 +152,7 @@ const isBusy = computed(() => submitting.value || retryCountdown.value > 0)
 watch(isBusy, value => emit('busy', value), { flush: 'sync' })
 
 onBeforeUnmount(() => {
+  disposed = true
   clearRetryTimer()
 })
 </script>

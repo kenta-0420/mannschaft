@@ -1,5 +1,6 @@
-import type { FriendRequestSourceTeamListResponse, IncomingTeamFollowListResponse } from '~/types/friends'
 import type {
+  FriendRequestSourceTeamListResponse,
+  IncomingTeamFollowListResponse,
   FollowTeamRequest,
   FollowTeamResponse,
   SetVisibilityRequest,

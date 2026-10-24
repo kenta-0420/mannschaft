@@ -56,6 +56,11 @@ async function refreshLists() {
   await Promise.all([listRef.value?.refresh(), pendingListRef.value?.refresh(), incomingListRef.value?.refresh()])
 }
 
+async function onPendingChanged() {
+  // 取消元一覧は自身で取得済みなので、兄弟の成立/受信一覧だけを揃える。
+  await Promise.all([listRef.value?.refresh(), incomingListRef.value?.refresh()])
+}
+
 function openFollow(slug = '') {
   selectedRequestTarget.value = undefined
   initialFollowSlug.value = slug
@@ -129,7 +134,7 @@ onMounted(() => {
         ref="pendingListRef"
         :team-id="teamSlug"
         class="mb-6"
-        @refresh="refreshLists"
+        @refresh="onPendingChanged"
         @refollow="openFollow"
       />
       <TeamFriendList
