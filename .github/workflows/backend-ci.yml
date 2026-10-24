@@ -762,10 +762,8 @@ jobs:
         working-directory: backend
         shell: bash
     env:
-      DIAGNOSTIC_DIR: ${{ runner.temp }}/mfa-ac54
       WORKFLOW_REF: ${{ github.workflow_ref }}
       WORKFLOW_SHA: ${{ github.workflow_sha }}
-      RUNNER_IMAGE: ${{ runner.os }} / ${{ runner.arch }}
     steps:
       - name: 固定製品HEADを取得
         uses: actions/checkout@v7
@@ -785,12 +783,14 @@ jobs:
       - name: 固定HEADと必要最小の環境数値を保存
         run: |
           set -euo pipefail
+          export DIAGNOSTIC_DIR="$RUNNER_TEMP/mfa-ac54"
+          printf 'DIAGNOSTIC_DIR=%s\n' "$DIAGNOSTIC_DIR" >> "$GITHUB_ENV"
           mkdir -p "$DIAGNOSTIC_DIR"
           test "$(git rev-parse HEAD)" = d8a8f0685d5e7439e35b61c462a4b03619891c3c
           test -z "$(git status --porcelain --untracked-files=no)"
           {
             printf 'workflow_ref=%s\nworkflow_sha=%s\nproduct_sha=%s\n' "$WORKFLOW_REF" "$WORKFLOW_SHA" "$(git rev-parse HEAD)"
-            printf 'runner=%s\nimage_os=%s\nimage_version=%s\n' "$RUNNER_IMAGE" "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+            printf 'runner=%s\nimage_os=%s\nimage_version=%s\n' "$RUNNER_OS / $RUNNER_ARCH" "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
             java -version 2>&1
             gradle --version
             nproc
