@@ -276,11 +276,21 @@
       }
     },
     "attendance_results": {
+      "listTitle": "Attendance requests",
+      "detailTitle": "Attendance details",
+      "previousRange": "Previous period",
+      "nextRange": "Next period",
+      "refresh": "Refresh",
+      "noDate": "Date not set",
+      "untitled": "Untitled schedule",
+      "countHint": "Attending includes partial attendance; undecided includes unanswered requests.",
+      "unknownMember": "Member {number}",
       "recentRange": "Events within ±30 days",
       "empty": "No events found",
       "noData": "No attendance data",
       "memberTotal": "/ {total}",
       "status": {
+        "partial": "Partially attending",
         "yes": "Attending",
         "no": "Absent",
         "maybe": "Maybe",

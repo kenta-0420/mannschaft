@@ -185,7 +185,7 @@ function linkTo(widgetKey: string): string | undefined {
     circulation: `${base}/circulation`,
     surveys: `${base}/surveys`,
     'survey-results': `${base}/surveys`,
-    'attendance-results': `${base}/schedule`,
+    'attendance-results': `${base}/schedule-attendance`,
     // F14.2: チームメンバー定期更新フォーム
     'member-info': `${base}/member-info`,
     // F08.7.1: 成績ウィジェットの遷移先
@@ -331,6 +331,7 @@ function onDragEnd() {
                 v-if="linkTo(w.key)"
                 :to="linkTo(w.key)"
                 class="group/title flex-1"
+                :class="w.key === 'attendance-results' ? 'flex min-h-11 min-w-0 items-center' : ''"
                 @click.stop
               >
                 <h3
@@ -365,6 +366,7 @@ function onDragEnd() {
                 v-else
                 :to="linkTo(w.key)"
                 class="shrink-0 text-xs text-surface-400 hover:text-primary"
+                :class="w.key === 'attendance-results' ? 'flex min-h-11 min-w-11 items-center justify-center' : ''"
                 @click.stop
               >
                 {{ $t('dashboard.widget_detail_link') }} <i class="pi pi-external-link text-[10px]" />

@@ -276,11 +276,21 @@
       }
     },
     "attendance_results": {
+      "listTitle": "Solicitudes de asistencia",
+      "detailTitle": "Detalles de asistencia",
+      "previousRange": "Periodo anterior",
+      "nextRange": "Periodo siguiente",
+      "refresh": "Actualizar",
+      "noDate": "Sin fecha",
+      "untitled": "Actividad sin título",
+      "countHint": "La asistencia incluye la parcial; los indecisos incluyen las solicitudes sin respuesta.",
+      "unknownMember": "Miembro {number}",
       "recentRange": "Eventos de ±30 días",
       "empty": "No hay eventos",
       "noData": "No hay datos de asistencia",
       "memberTotal": "/ {total}",
       "status": {
+        "partial": "Asistencia parcial",
         "yes": "Asiste",
         "no": "Ausente",
         "maybe": "Quizá",
