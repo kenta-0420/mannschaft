@@ -8,4 +8,4 @@
 
 自作 ALIC-MOBILE-261024-0642 は作成者表示を確認した詳細の削除UIで片付け、チップ消失と本文からのタイトル消失を確認。ID未採取だがUI削除済みでAPI cleanup不要。
 
-途中の接続失敗、hydration待機、自作locatorエラーはsummary.jsonに保持。製品不備へ昇格しない。主要状態はview_imageで実見済み。自作spec/configは本証跡へ保全し、元の一時ファイルだけ除去済み。探索runnerは1 passed。
+途中の接続失敗、hydration待機、自作locatorエラーはsummary.jsonに保持。製品不備へ昇格しない。主要状態はview_imageで実見済み。自作spec/configは本証跡へ保全し、元の一時ファイルだけ除去済み。探索runnerは1 passed。

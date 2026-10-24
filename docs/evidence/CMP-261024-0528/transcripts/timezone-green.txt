@@ -57,4 +57,3 @@ stdout | tests/unit/components/schedule/ScheduleEventForm.spec.ts
       Tests  69 passed (69)
    Start at  06:24:05
    Duration  95.46s (transform 3372.63s, setup 364ms, import 5.24s, tests 88.64s, environment 857ms)
-

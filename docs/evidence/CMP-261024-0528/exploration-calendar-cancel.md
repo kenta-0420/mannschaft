@@ -12,4 +12,4 @@ runId: CMP-261024-0528 / residentId: resident-3-cancel / sourceHead: 73d9bd8e2c 
 証跡: frontend/test-results/alicization/CMP-261024-0528/cancel/
 主な実見画像: 03-team-stable、04-calendar-card、07-team-page-stable、12-calendar-visible、14-day25-stable、16-draft-125-approx、19-day26-stable、24-member-day25-stable、27-final-stable.png
 
-最終探索ランナー: 1 passed（7.2m）。目的駆動の探索であり、assertion付き受入テストとは区別します。API 4xx/5xx・pageerrorは記録されませんでした。準備時のFE停止中接続拒否、初期load待ち、コマンドのASCII化による???待ちを別記録としてsummary.jsonに残しています。同時セッションは作っていません。作成データは0件、cleanup対象なし。
+最終探索ランナー: 1 passed（7.2m）。目的駆動の探索であり、assertion付き受入テストとは区別します。API 4xx/5xx・pageerrorは記録されませんでした。準備時のFE停止中接続拒否、初期load待ち、コマンドのASCII化による???待ちを別記録としてsummary.jsonに残しています。同時セッションは作っていません。作成データは0件、cleanup対象なし。

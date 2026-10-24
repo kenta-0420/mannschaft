@@ -34,4 +34,3 @@ Received: "1〜10文字で入力してください。不可視文字・改行・
       Tests  1 failed | 3 passed (4)
    Start at  15:46:57
    Duration  2.96s (transform 864ms, setup 202ms, import 1.01s, tests 1.20s, environment 359ms)
-

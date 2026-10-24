@@ -10,4 +10,4 @@ sourceHead: 73d9bd8e2c / runId: CMP-261024-0528 / journeyId: dashboard-day-calen
 
 実画像step-8/12/14/16をview_imageで確認。http.json、date-http-evidence.json、console.jsonを保全。consoleのCSP eval拒否とPermissions-Policy warningは別途ログに残るが、目的に沿う予定操作APIのエラー応答はなかった。
 
-後始末: 自作id23のみ実UIから削除、DELETE /api/v1/me/schedules/23=204、10月UIと取得一覧からタイトル消失を確認。DB操作なし。他者データ変更なし。探索scriptは資格情報を環境変数参照へ置換して証跡へ保全し、自作spec/configのみ除去。製品コード変更・commitなし。
+後始末: 自作id23のみ実UIから削除、DELETE /api/v1/me/schedules/23=204、10月UIと取得一覧からタイトル消失を確認。DB操作なし。他者データ変更なし。探索scriptは資格情報を環境変数参照へ置換して証跡へ保全し、自作spec/configのみ除去。製品コード変更・commitなし。

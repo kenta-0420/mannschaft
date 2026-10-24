@@ -44,4 +44,3 @@
 
 ✖ 19 problems (0 errors, 19 warnings)
   0 errors and 17 warnings potentially fixable with the `--fix` option.
-

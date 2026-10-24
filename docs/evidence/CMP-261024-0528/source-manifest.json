@@ -1,152 +1,177 @@
 [
-    {
-        "source":  "worker-calendar-88aa2695/native-unit-red.log",
-        "destination":  "transcripts/calendar-red.txt",
-        "sourceSha256":  "51005354635bd6d8f43ce6c935899a7809b232d2cd724463fdc8985b399f83b9",
-        "excerptTailLines":  120
-    },
-    {
-        "source":  "worker-calendar-88aa2695/native-unit-green.log",
-        "destination":  "transcripts/calendar-green.txt",
-        "sourceSha256":  "b594d81ef04b8d5a20c6f54165f86f17e28e57e71350b033ba4d26d1fc061dfa",
-        "excerptTailLines":  120
-    },
-    {
-        "source":  "worker-edit-timezone/red.log",
-        "destination":  "transcripts/timezone-red.txt",
-        "sourceSha256":  "f823b90d64c94d47c12084fa48fdf179446132014811b58a751fd8c237111bd5",
-        "excerptTailLines":  120
-    },
-    {
-        "source":  "worker-edit-timezone/green.log",
-        "destination":  "transcripts/timezone-green.txt",
-        "sourceSha256":  "8f33d0c64da06494fef1b7bd6ed18c20ee15dbd14a2bfc3c76b9cd05bbdd4e9a",
-        "excerptTailLines":  120
-    },
-    {
-        "source":  "worker-period-overlap/red.log",
-        "destination":  "transcripts/period-red.txt",
-        "sourceSha256":  "5ac3c75ab87239d2eadf44124f654730d445224e896cc11c851ed9198e2ccc88",
-        "excerptTailLines":  120
-    },
-    {
-        "source":  "worker-period-overlap/green.log",
-        "destination":  "transcripts/period-green.txt",
-        "sourceSha256":  "2b4baa984c41a8141e3589abfb098e96254561e4c850a55c733ab788f7a45c58",
-        "excerptTailLines":  120
-    },
-    {
-        "source":  "zod-security/regression-reset-red.log",
-        "destination":  "transcripts/reset-red.txt",
-        "sourceSha256":  "c062b26522ef49d7de356ca392a79c47b9bc07c0d5aac968e74c4eaf6ef2e871",
-        "excerptTailLines":  null
-    },
-    {
-        "source":  "zod-security/regression-reset-green.log",
-        "destination":  "transcripts/reset-green.txt",
-        "sourceSha256":  "99241ed7a92dfa2a90fe336c18180ce6224ba0374ef907138e519b30c9534a38",
-        "excerptTailLines":  null
-    },
-    {
-        "source":  "zod-security/regression-locale-red.log",
-        "destination":  "transcripts/locale-red.txt",
-        "sourceSha256":  "45306007c9683145f1575da3729d2c66cc0a6dd615aa1e7b5ba22d428fcfc0c0",
-        "excerptTailLines":  null
-    },
-    {
-        "source":  "zod-security/regression-locale-green.log",
-        "destination":  "transcripts/locale-green.txt",
-        "sourceSha256":  "ede1b39cd884eb1675d7725aaba011320e6c757c377853ce1fe83908336e061d",
-        "excerptTailLines":  null
-    },
-    {
-        "source":  "forge-exception/red.log",
-        "destination":  "transcripts/forge-red.txt",
-        "sourceSha256":  "3305b66ede01246732bf5c2ce97aad67e1b62076f8236ddf31b1544524e0c545",
-        "excerptTailLines":  null
-    },
-    {
-        "source":  "forge-exception/green.log",
-        "destination":  "transcripts/forge-green.txt",
-        "sourceSha256":  "8074b72371f6b3b1d77b5e2b6e281a2b8041ad299e8e74d2b0c43aee66fbcd5b",
-        "excerptTailLines":  null
-    },
-    {
-        "source":  "zod-security/full-unit.log",
-        "destination":  "transcripts/full-unit-initial-excerpt.txt",
-        "sourceSha256":  "efbd6c558ce1a2003783e5c711ac8e5437e6121981bea73f4d45ba29099c630f",
-        "excerptTailLines":  190
-    },
-    {
-        "source":  "zod-security/fixture-retry.log",
-        "destination":  "transcripts/fixture-retry.txt",
-        "sourceSha256":  "bc62f3b86c4f0f1568ac66eaa192540d9a47d475e128079f638c6390a63a02b4",
-        "excerptTailLines":  null
-    },
-    {
-        "source":  "zod-security/related-unit.log",
-        "destination":  "transcripts/zod-related.txt",
-        "sourceSha256":  "a8bdb98fb62a1411acdea4b74c29bd70333ad59c9c710ea0f89691e3fcf5ff36",
-        "excerptTailLines":  null
-    },
-    {
-        "source":  "zod-security/typecheck-final.log",
-        "destination":  "transcripts/typecheck.txt",
-        "sourceSha256":  "721357264e44a0ae7729081287287709dc057df2d3f804f655bca685e16672d0",
-        "excerptTailLines":  null
-    },
-    {
-        "source":  "zod-security/lint-full.log",
-        "destination":  "transcripts/lint.txt",
-        "sourceSha256":  "cee68023b276fba8628b689f7088b2f4ba2a7c814bb574d0867ae3028a630267",
-        "excerptTailLines":  null
-    },
-    {
-        "source":  "zod-security/npm-ci-final.log",
-        "destination":  "transcripts/npm-ci.txt",
-        "sourceSha256":  "b4d5d873a7876c59ab83e23c738392a951f8f6e06ed8467c63a02b737dbb9556",
-        "excerptTailLines":  null
-    },
-    {
-        "source":  "zod-security/npm-ls.log",
-        "destination":  "transcripts/npm-ls.txt",
-        "sourceSha256":  "ddfaaa5a44444a6e9e07405513d837c755017c0f5070148ce199bb6bd60903e3",
-        "excerptTailLines":  null
-    },
-    {
-        "source":  "forge-exception/audit-green.log",
-        "destination":  "transcripts/forge-audit-gate.txt",
-        "sourceSha256":  "3db164e4249b360f21f8991a410e8cebd583dd288a6a602542fcb6e029c0afc5",
-        "excerptTailLines":  null
-    },
-    {
-        "source":  "e2e-final.log",
-        "destination":  "transcripts/calendar-real-final.txt",
-        "sourceSha256":  "7ad70175f2f6cda5f1176d9f81292bcd4e665e27bfcc4786fbe47abb40d5d163",
-        "excerptTailLines":  null
-    },
-    {
-        "source":  "worker-calendar-88aa2695/summary.md",
-        "destination":  "calendar-summary.md",
-        "sourceSha256":  "1b32c8aa907125678d96754bdbc2cc2297f70fb1e9901b6d8d35697ebddf8c1d",
-        "excerptTailLines":  null
-    },
-    {
-        "source":  "worker-edit-timezone/summary.md",
-        "destination":  "timezone-summary.md",
-        "sourceSha256":  "d7c01e222715585c53629d146dfec245db2c4ece49a389f4343da5ad6e1fe1be",
-        "excerptTailLines":  null
-    },
-    {
-        "source":  "worker-period-overlap/summary.md",
-        "destination":  "period-summary.md",
-        "sourceSha256":  "92a97608582ceb3b14d9a9db6305f24690319380d0a7ad8a9893b2bdddd6e094",
-        "excerptTailLines":  null
-    },
-    {
-        "source":  "forge-reachability/report.md",
-        "destination":  "forge-reachability.md",
-        "sourceSha256":  "843de93c16913ca39e53b2978f5aa8ebbcd372ae683cf5572ccb1bd70cdfbce0",
-        "excerptTailLines":  null
-    }
+  {
+    "source": "worker-calendar-88aa2695/native-unit-red.log",
+    "destination": "transcripts/calendar-red.txt",
+    "sourceSha256": "51005354635bd6d8f43ce6c935899a7809b232d2cd724463fdc8985b399f83b9",
+    "excerptTailLines": 120,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "worker-calendar-88aa2695/native-unit-green.log",
+    "destination": "transcripts/calendar-green.txt",
+    "sourceSha256": "b594d81ef04b8d5a20c6f54165f86f17e28e57e71350b033ba4d26d1fc061dfa",
+    "excerptTailLines": 120,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "worker-edit-timezone/red.log",
+    "destination": "transcripts/timezone-red.txt",
+    "sourceSha256": "f823b90d64c94d47c12084fa48fdf179446132014811b58a751fd8c237111bd5",
+    "excerptTailLines": 120,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "worker-edit-timezone/green.log",
+    "destination": "transcripts/timezone-green.txt",
+    "sourceSha256": "8f33d0c64da06494fef1b7bd6ed18c20ee15dbd14a2bfc3c76b9cd05bbdd4e9a",
+    "excerptTailLines": 120,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "worker-period-overlap/red.log",
+    "destination": "transcripts/period-red.txt",
+    "sourceSha256": "5ac3c75ab87239d2eadf44124f654730d445224e896cc11c851ed9198e2ccc88",
+    "excerptTailLines": 120,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "worker-period-overlap/green.log",
+    "destination": "transcripts/period-green.txt",
+    "sourceSha256": "2b4baa984c41a8141e3589abfb098e96254561e4c850a55c733ab788f7a45c58",
+    "excerptTailLines": 120,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "zod-security/regression-reset-red.log",
+    "destination": "transcripts/reset-red.txt",
+    "sourceSha256": "c062b26522ef49d7de356ca392a79c47b9bc07c0d5aac968e74c4eaf6ef2e871",
+    "excerptTailLines": null,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "zod-security/regression-reset-green.log",
+    "destination": "transcripts/reset-green.txt",
+    "sourceSha256": "99241ed7a92dfa2a90fe336c18180ce6224ba0374ef907138e519b30c9534a38",
+    "excerptTailLines": null,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "zod-security/regression-locale-red.log",
+    "destination": "transcripts/locale-red.txt",
+    "sourceSha256": "45306007c9683145f1575da3729d2c66cc0a6dd615aa1e7b5ba22d428fcfc0c0",
+    "excerptTailLines": null,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "zod-security/regression-locale-green.log",
+    "destination": "transcripts/locale-green.txt",
+    "sourceSha256": "ede1b39cd884eb1675d7725aaba011320e6c757c377853ce1fe83908336e061d",
+    "excerptTailLines": null,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "forge-exception/red.log",
+    "destination": "transcripts/forge-red.txt",
+    "sourceSha256": "3305b66ede01246732bf5c2ce97aad67e1b62076f8236ddf31b1544524e0c545",
+    "excerptTailLines": null,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "forge-exception/green.log",
+    "destination": "transcripts/forge-green.txt",
+    "sourceSha256": "8074b72371f6b3b1d77b5e2b6e281a2b8041ad299e8e74d2b0c43aee66fbcd5b",
+    "excerptTailLines": null,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "zod-security/full-unit.log",
+    "destination": "transcripts/full-unit-initial-excerpt.txt",
+    "sourceSha256": "efbd6c558ce1a2003783e5c711ac8e5437e6121981bea73f4d45ba29099c630f",
+    "excerptTailLines": 190,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "zod-security/fixture-retry.log",
+    "destination": "transcripts/fixture-retry.txt",
+    "sourceSha256": "bc62f3b86c4f0f1568ac66eaa192540d9a47d475e128079f638c6390a63a02b4",
+    "excerptTailLines": null,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "zod-security/related-unit.log",
+    "destination": "transcripts/zod-related.txt",
+    "sourceSha256": "a8bdb98fb62a1411acdea4b74c29bd70333ad59c9c710ea0f89691e3fcf5ff36",
+    "excerptTailLines": null,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "zod-security/typecheck-final.log",
+    "destination": "transcripts/typecheck.txt",
+    "sourceSha256": "721357264e44a0ae7729081287287709dc057df2d3f804f655bca685e16672d0",
+    "excerptTailLines": null,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "zod-security/lint-full.log",
+    "destination": "transcripts/lint.txt",
+    "sourceSha256": "cee68023b276fba8628b689f7088b2f4ba2a7c814bb574d0867ae3028a630267",
+    "excerptTailLines": null,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "zod-security/npm-ci-final.log",
+    "destination": "transcripts/npm-ci.txt",
+    "sourceSha256": "b4d5d873a7876c59ab83e23c738392a951f8f6e06ed8467c63a02b737dbb9556",
+    "excerptTailLines": null,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "zod-security/npm-ls.log",
+    "destination": "transcripts/npm-ls.txt",
+    "sourceSha256": "ddfaaa5a44444a6e9e07405513d837c755017c0f5070148ce199bb6bd60903e3",
+    "excerptTailLines": null,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "forge-exception/audit-green.log",
+    "destination": "transcripts/forge-audit-gate.txt",
+    "sourceSha256": "3db164e4249b360f21f8991a410e8cebd583dd288a6a602542fcb6e029c0afc5",
+    "excerptTailLines": null,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "e2e-final.log",
+    "destination": "transcripts/calendar-real-final.txt",
+    "sourceSha256": "7ad70175f2f6cda5f1176d9f81292bcd4e665e27bfcc4786fbe47abb40d5d163",
+    "excerptTailLines": null,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "worker-calendar-88aa2695/summary.md",
+    "destination": "calendar-summary.md",
+    "sourceSha256": "1b32c8aa907125678d96754bdbc2cc2297f70fb1e9901b6d8d35697ebddf8c1d",
+    "excerptTailLines": null,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "worker-edit-timezone/summary.md",
+    "destination": "timezone-summary.md",
+    "sourceSha256": "d7c01e222715585c53629d146dfec245db2c4ece49a389f4343da5ad6e1fe1be",
+    "excerptTailLines": null,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "worker-period-overlap/summary.md",
+    "destination": "period-summary.md",
+    "sourceSha256": "92a97608582ceb3b14d9a9db6305f24690319380d0a7ad8a9893b2bdddd6e094",
+    "excerptTailLines": null,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  },
+  {
+    "source": "forge-reachability/report.md",
+    "destination": "forge-reachability.md",
+    "sourceSha256": "843de93c16913ca39e53b2978f5aa8ebbcd372ae683cf5572ccb1bd70cdfbce0",
+    "excerptTailLines": null,
+    "formatNormalization": "ANSI removed; LF line endings; trailing whitespace and EOF blank lines removed. Source hash refers to original unnormalized bytes."
+  }
 ]

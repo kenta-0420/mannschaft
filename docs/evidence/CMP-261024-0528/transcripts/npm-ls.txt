@@ -6,4 +6,3 @@ mannschaft-frontend@ /tmp/dashboard-zod-261024-iAxjdA/frontend
 ├─┬ vitest@4.1.11
 │ └── happy-dom@21.0.4 deduped
 └── zod@4.6.7
-

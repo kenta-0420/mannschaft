@@ -1,7 +1,7 @@
 [Source tail excerpt. Original SHA256=5ac3c75ab87239d2eadf44124f654730d445224e896cc11c851ed9198e2ccc88]
 [turnstile] ロック取得。コマンドを実行します: bash ./gradlew test --tests *ScheduleAuthzScopeContractIT$CalendarPeriod -Pfork.every=0 -Pmax.parallel.forks=1 --no-daemon
 To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.4/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
-Daemon will be stopped at the end of the build 
+Daemon will be stopped at the end of the build
 > Task :compileJava UP-TO-DATE
 > Task :processResources UP-TO-DATE
 > Task :classes UP-TO-DATE

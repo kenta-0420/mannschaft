@@ -40,4 +40,3 @@ AssertionError: expected { description: '指定値', …(3) } to deeply equal { 
       Tests  1 failed | 6 passed (7)
    Start at  15:33:37
    Duration  1.86s (transform 126ms, setup 0ms, import 502ms, tests 230ms, environment 651ms)
-

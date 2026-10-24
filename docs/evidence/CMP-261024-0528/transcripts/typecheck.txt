@@ -15,4 +15,3 @@
 
 
  WARN  Duplicated imports "isForbiddenError", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useAttendancePermissions.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/utils/tournamentScoreEntry.ts" is used
-

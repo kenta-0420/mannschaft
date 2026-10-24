@@ -101,4 +101,3 @@ AssertionError: expected { startDate: '2026-10-11', …(3) } to deeply equal { s
       Tests  6 failed | 7 skipped (13)
    Start at  06:22:03
    Duration  36.39s (transform 199.36s, setup 152ms, import 4.22s, tests 31.29s, environment 513ms)
-

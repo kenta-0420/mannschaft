@@ -78,4 +78,3 @@ stdout | tests/unit/composables/useCalendarEvents.spec.ts
       Tests  65 passed (65)
    Start at  06:06:52
    Duration  72.66s (transform 221.41s, setup 1.13s, import 7.92s, tests 57.94s, environment 3.80s)
-
