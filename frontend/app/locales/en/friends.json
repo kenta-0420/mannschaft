@@ -118,7 +118,8 @@
       "respond": "Review and follow back",
       "incoming_empty": "No incoming requests",
       "status_counts": "Latest counts: friends {friends}, outgoing {pending}, incoming {incoming}",
-      "open_lists": "Open source team lists"
+      "open_lists": "Open source team lists",
+      "entered_team": "Entered team"
     }
   },
   "folders": {

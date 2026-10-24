@@ -118,7 +118,8 @@
       "respond": "确认并回关",
       "incoming_empty": "暂无收到的申请",
       "status_counts": "最新数量：好友 {friends}、已发送 {pending}、已收到 {incoming}",
-      "open_lists": "查看申请团队的列表"
+      "open_lists": "查看申请团队的列表",
+      "entered_team": "输入的团队"
     }
   },
   "folders": {

@@ -118,7 +118,8 @@
       "respond": "확인 후 맞팔로우",
       "incoming_empty": "받은 신청이 없습니다",
       "status_counts": "최신 건수: 친구 {friends}, 보낸 신청 {pending}, 받은 신청 {incoming}",
-      "open_lists": "신청 팀 목록 확인"
+      "open_lists": "신청 팀 목록 확인",
+      "entered_team": "입력한 팀"
     }
   },
   "folders": {

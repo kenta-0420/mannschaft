@@ -118,7 +118,8 @@
       "respond": "Revisar y seguir de vuelta",
       "incoming_empty": "No hay solicitudes recibidas",
       "status_counts": "Recuento actual: amistades {friends}, enviadas {pending}, recibidas {incoming}",
-      "open_lists": "Ver las listas del equipo de origen"
+      "open_lists": "Ver las listas del equipo de origen",
+      "entered_team": "Equipo introducido"
     }
   },
   "folders": {

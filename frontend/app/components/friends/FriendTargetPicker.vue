@@ -126,7 +126,7 @@ function resetForm() {
   slugInput.value = ''
 }
 
-watch([targetSlug, selectedTeam], () => emit('update:modelValue', targetSlug.value ? { teamSlug: targetSlug.value, teamName: selectedTeam.value?.name ?? targetSlug.value } : null))
+watch([targetSlug, selectedTeam], () => emit('update:modelValue', targetSlug.value ? { teamSlug: targetSlug.value, teamName: selectedTeam.value?.name ?? t('friends.request.entered_team') } : null))
 watch(() => props.initialSlug, () => { resetForm(); slugInput.value = props.initialSlug ?? '' }, { immediate: true })
 onBeforeUnmount(() => { searchSeq += 1 })
 </script>

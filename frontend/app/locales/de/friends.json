@@ -118,7 +118,8 @@
       "respond": "Prüfen und zurückfolgen",
       "incoming_empty": "Keine erhaltenen Anfragen",
       "status_counts": "Aktuelle Anzahl: Freunde {friends}, gesendet {pending}, erhalten {incoming}",
-      "open_lists": "Listen des anfragenden Teams öffnen"
+      "open_lists": "Listen des anfragenden Teams öffnen",
+      "entered_team": "Eingegebenes Team"
     }
   },
   "folders": {
