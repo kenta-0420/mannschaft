@@ -1,0 +1,201 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261024-1830",
+  "scope": "app",
+  "implementation": {
+    "pr": 4089,
+    "sha": "1c97bfaa6d8de6e6fbb9bd4ef0d5b8fe941545b9",
+    "mergeCommit": "783a391314bc9bd42f754b872bb331684d09269e",
+    "mergedAt": "2026-10-24T11:50:16Z"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "両スコープで実タイトル・日付・出席/欠席/未定の3人数を表示する",
+      "tests": [
+        {
+          "name": "一部出席を出席人数へ加え、未定人数を保つ",
+          "evidence": "frontend/app/utils/attendanceResults.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "一部出席を集計し、詳細で一部出席・回答済み未定・未回答を区別する",
+      "tests": [
+        {
+          "name": "回答済み未定と未回答、一部出席を区別する",
+          "evidence": "frontend/app/utils/attendanceResults.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "見出し・詳細リンクからカレンダーではなく出席確認専用一覧へ遷移する",
+      "tests": [
+        {
+          "name": "チーム/組織: 管理者と一般メンバーが人数・一覧・詳細・理由を実画面から確認できる",
+          "evidence": "frontend/tests/e2e/real/attendance-results.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "予定・人数から理由付き詳細へ遷移し、コメントを安全なテキストで表示する",
+      "tests": [
+        {
+          "name": "同scopeの一覧照合後にだけ理由と人数を取得する",
+          "evidence": "frontend/app/composables/useAttendanceResultDetail.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "予定0件・全人数0・空/nullコメントでundefined/NaNを出さない",
+      "tests": [
+        {
+          "name": "0件なら成功した空状態とし統計を取得しない",
+          "evidence": "frontend/app/composables/useAttendanceResults.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "利用者TZの前後30日をオフセット付きで取得し、DST・終日境界を保つ",
+      "tests": [
+        {
+          "name": "夏時間を跨ぐ前後30日でも利用者TZのoffsetを付ける",
+          "evidence": "frontend/app/composables/useAttendanceResults.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-7",
+      "description": "ウィジェット最大10件・統計取得上限を守り、一覧と期間変更で上限外へ到達する",
+      "tests": [
+        {
+          "name": "対象を絞った後の10件だけ統計を取得し最大11リクエストとする",
+          "evidence": "frontend/app/composables/useAttendanceResults.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-8",
+      "description": "取得失敗を空状態と区別し再試行可能にし、別の成功行を維持する",
+      "tests": [
+        {
+          "name": "統計の一部失敗でも別の成功行を維持し再試行できる",
+          "evidence": "frontend/app/composables/useAttendanceResults.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-9",
+      "description": "スコープ・予定IDの切替後に古い応答を混入しない",
+      "tests": [
+        {
+          "name": "ID切替後の遅い理由応答を混入させない",
+          "evidence": "frontend/app/composables/useAttendanceResultDetail.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-10",
+      "description": "非所属・別テナント・未認証・不正IDでは理由を露出しない",
+      "tests": [
+        {
+          "name": "チーム/組織: 非所属と別テナントは一覧・詳細の直打ちでも理由を閲覧できない",
+          "evidence": "frontend/tests/e2e/real/attendance-results.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-11",
+      "description": "マウス・タッチ・キーボードで意図した遷移のみを行い外側の開閉を誤発火しない",
+      "tests": [
+        {
+          "name": "チーム/組織: 管理者と一般メンバーが人数・一覧・詳細・理由を実画面から確認できる",
+          "evidence": "frontend/tests/e2e/real/attendance-results.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-12",
+      "description": "390px長文タイトル/理由で横パンせず操作領域44pxを確保する",
+      "tests": [
+        {
+          "name": "チーム/組織: 管理者と一般メンバーが人数・一覧・詳細・理由を実画面から確認できる",
+          "evidence": "frontend/tests/e2e/real/attendance-results.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40089719847
+    },
+    {
+      "runId": 40089719830
+    },
+    {
+      "runId": 40089719840
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4089"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261024-1830/verification.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261024-1830/verification.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "DST跨ぎの30日加算で旧offsetが残る演算を最小再現し、TZ再解釈で修正。製品の先行redテストではない。",
+      "test": "夏時間を跨ぐ前後30日でも利用者TZのoffsetを付ける",
+      "redEvidence": "docs/evidence/CMP-261024-1830/verification.md",
+      "greenEvidence": "docs/evidence/CMP-261024-1830/verification.md"
+    },
+    {
+      "description": "装飾アイコンの疑似要素文字が戻りリンクのaccessible名へ混入する実測beforeを、aria-hiddenで除外した。",
+      "test": "チーム/組織: 管理者と一般メンバーが人数・一覧・詳細・理由を実画面から確認できる",
+      "redEvidence": "docs/evidence/CMP-261024-1830/backlink-before.json",
+      "greenEvidence": "docs/evidence/CMP-261024-1830/backlink-after.json"
+    }
+  ],
+  "draft": {
+    "status": "pending",
+    "pending": [
+      "専用WSL資産撤去の本人明示承認と実行結果"
+    ],
+    "runtimeSourceHead": "af5373aa64252c615067ac965b687067e49ba09a",
+    "note": "製品PRはmerge済み、最終CI・検分・実機・探索工程は確認済み。専用資産撤去の本人承認待ちのため、完了証拠はdraft、台帳は実装中を維持する。",
+    "exploratoryOutcome": {
+      "stage": "passed",
+      "A": "達成",
+      "B": "未達",
+      "C": "達成",
+      "confirmedNewDefects": 0
+    },
+    "b0Validation": {
+      "generatorExit": 0,
+      "validatorExit": 1,
+      "overlaySelfTestReached": false,
+      "error": "GitHubスナップショットの参照集合が正本と不一致です"
+    },
+    "cleanup": {
+      "status": "pending",
+      "productWorktree": "rootがtracked/untracked clean・origin/mainとの差分0を確認後、node_modules junctionのリンクのみを外し非force worktree removeとmerged branch -dを実行済み。本陣node_modules存続を確認。",
+      "e2eWorktree": "自作一時5fileをprivate-runtime/CMP-261024-1830/e2e-reproduction-scriptsへSHA256一致で保全後に元を削除。tracked/untracked clean、committed2fileのorigin/mainとの差分0をroot確認後、非force worktree remove成功。ローカルbranchはcherry-pick/squashによる-d拒否後、全2commitの変更同一を照合してmerged-local例外の-Dで撤去済み。",
+      "wsl": "本人明示承認待ち。専用資産は未停止・未削除。",
+      "baselineGate": "事前check exit1。既存dirty/locked/junction等を保持し合格扱いしない。",
+      "productRemoteBranch": "rootが削除成功を確認"
+    }
+  }
+}
