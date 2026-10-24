@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import { toTypedSchema } from '@vee-validate/zod'
+import { toTypedSchema } from '~/utils/toTypedSchema'
 import { useForm } from 'vee-validate'
 import type { FiscalYearResponse, BudgetSummary } from '~/types/budget'
 import { fiscalYearDatePickerPt } from '~/constants/budgetFiscalYearUi'

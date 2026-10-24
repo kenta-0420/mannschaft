@@ -1651,7 +1651,9 @@
       "more": "외 {count}건",
       "today": "오늘",
       "dayDetail": {
-        "title": "{date}의 일정"
+        "title": "{date}의 일정",
+        "empty": "이 날짜에는 일정이 없습니다",
+        "create": "이 날짜에 일정 추가"
       },
       "empty": "이 기간에 일정이 없습니다",
       "view": {

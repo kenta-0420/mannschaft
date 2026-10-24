@@ -171,7 +171,7 @@ public class PersonalScheduleService {
                                                                  String eventType, String cursor,
                                                                  int size) {
         List<ScheduleEntity> schedules = scheduleRepository
-                .findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, from, to);
+                .findCalendarByUserId(userId, from, to);
 
         // キーワード検索（title/location の部分一致）
         if (q != null && !q.isBlank()) {
