@@ -91,14 +91,33 @@ jobs:
       # jobとの差15分はcompile・結果アップロード等の余裕とする。
       # setup/compileが15分を超える場合、test105分と後処理の余裕は保証しない。
       - name: Run tests (shard ${{ matrix.shard }} / ${{ env.SHARD_TOTAL }}, 除外なし)
+        id: run-tests
         timeout-minutes: 105
         run: >-
-          ./gradlew test --rerun --no-daemon --continue --build-cache
+          bash scripts/run-ci-tests-with-observability.sh ./gradlew test --rerun --no-daemon --continue --build-cache
           -Pshard.total=${{ env.SHARD_TOTAL }}
           -Pshard.index=${{ matrix.shard }}
           -Pspring.test.context.cache.maxSize=5
         env:
           TESTCONTAINERS_RYUK_DISABLED: "false"
+          CI_SHARD_INDEX: ${{ matrix.shard }}
+          CI_JOB_TIMEOUT_MINUTES: "120"
+          CI_TEST_TIMEOUT_MINUTES: "105"
+
+      - name: 計測結果にテストstepの実結果を記録
+        if: always()
+        run: bash scripts/run-ci-tests-with-observability.sh --finalize "$TEST_STEP_OUTCOME"
+        env:
+          TEST_STEP_OUTCOME: ${{ steps.run-tests.outcome }}
+
+      - name: 全shardのクラス進捗をアップロード
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-runtime-diag-shard-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
+          path: backend/build/ci-diagnostics/
+          retention-days: 7
+          if-no-files-found: warn
 
       - name: テスト結果XML（JUnit）をアップロード
         if: always()
