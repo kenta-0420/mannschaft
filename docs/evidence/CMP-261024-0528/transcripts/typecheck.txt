@@ -1,0 +1,18 @@
+
+> typecheck
+> nuxt typecheck
+
+[nuxt:tailwindcss] ℹ Using default Tailwind CSS file
+
+ WARN  Duplicated imports "OrgTeamGroup", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useBroadcastAudience.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+
+
+ WARN  Duplicated imports "isForbiddenError", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useAttendancePermissions.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/utils/tournamentScoreEntry.ts" is used
+
+[nuxt] ℹ Running with compatibility version 4
+
+ WARN  Duplicated imports "OrgTeamGroup", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useBroadcastAudience.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+
+
+ WARN  Duplicated imports "isForbiddenError", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useAttendancePermissions.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/utils/tournamentScoreEntry.ts" is used
+

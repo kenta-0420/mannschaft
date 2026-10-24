@@ -1,0 +1,29 @@
+Duplicated imports "OrgTeamGroup", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useBroadcastAudience.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+Duplicated imports "isForbiddenError", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useAttendancePermissions.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/utils/tournamentScoreEntry.ts" is used
+Duplicated imports "OrgTeamGroup", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useBroadcastAudience.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+Duplicated imports "isForbiddenError", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useAttendancePermissions.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/utils/tournamentScoreEntry.ts" is used
+
+ RUN  v4.1.11 /tmp/dashboard-zod-261024-iAxjdA/frontend
+
+ ✓ app/utils/ranch-name.spec.ts (799 tests) 166ms
+ ✓ tests/unit/composables/requestBodySchemaConformance.spec.ts (26 tests) 56ms
+ ✓ app/types/pageMeta.contract.spec.ts (7 tests) 2646ms
+     ✓ BE の正本（openapi.json の PageMeta）とフィールド名が完全一致する  665ms
+     ✓ 総件数のフィールド名は total であり totalElements ではない  1972ms
+stdout | app/composables/useDiagnosisApi.spec.ts
+<Suspense> is an experimental feature and its API will likely change.
+
+stdout | app/composables/useRanchApi.spec.ts
+<Suspense> is an experimental feature and its API will likely change.
+
+ ✓ app/composables/useDiagnosisApi.spec.ts (2 tests) 31127ms
+     ✓ controller・OpenAPI・生成pathsが一覧と詳細のGET契約で一致する  697ms
+ ✓ app/composables/useRanchApi.spec.ts (2 tests) 32072ms
+     ✓ controller・DTO・OpenAPIはRanchStateではなく平坦なAssignmentResultを返す  625ms
+     ✓ 実commandはPUT結果を保持し、actは別GETで本人stateを再取得する  1503ms
+
+ Test Files  5 passed (5)
+      Tests  836 passed (836)
+   Start at  15:41:43
+   Duration  36.11s (transform 248.45s, setup 1.11s, import 8.97s, tests 66.07s, environment 1.61s)
+

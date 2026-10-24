@@ -1,0 +1,14 @@
+Duplicated imports "OrgTeamGroup", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useBroadcastAudience.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+Duplicated imports "isForbiddenError", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useAttendancePermissions.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/utils/tournamentScoreEntry.ts" is used
+Duplicated imports "OrgTeamGroup", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useBroadcastAudience.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+Duplicated imports "isForbiddenError", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useAttendancePermissions.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/utils/tournamentScoreEntry.ts" is used
+
+ RUN  v4.1.11 /tmp/dashboard-zod-261024-iAxjdA/frontend
+
+ ✓ app/components/ranch/RanchNaming.spec.ts (4 tests) 247ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  15:47:05
+   Duration  1.86s (transform 814ms, setup 200ms, import 948ms, tests 247ms, environment 292ms)
+

@@ -1,0 +1,60 @@
+[Source tail excerpt. Original SHA256=8f33d0c64da06494fef1b7bd6ed18c20ee15dbd14a2bfc3c76b9cd05bbdd4e9a]
+Duplicated imports "OrgTeamGroup", the one from "/tmp/dashboard-fe-unit-261024/frontend/app/composables/useBroadcastAudience.ts" has been ignored and "/tmp/dashboard-fe-unit-261024/frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+Duplicated imports "isForbiddenError", the one from "/tmp/dashboard-fe-unit-261024/frontend/app/composables/useAttendancePermissions.ts" has been ignored and "/tmp/dashboard-fe-unit-261024/frontend/app/utils/tournamentScoreEntry.ts" is used
+Duplicated imports "OrgTeamGroup", the one from "/tmp/dashboard-fe-unit-261024/frontend/app/composables/useBroadcastAudience.ts" has been ignored and "/tmp/dashboard-fe-unit-261024/frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+Duplicated imports "isForbiddenError", the one from "/tmp/dashboard-fe-unit-261024/frontend/app/composables/useAttendancePermissions.ts" has been ignored and "/tmp/dashboard-fe-unit-261024/frontend/app/utils/tournamentScoreEntry.ts" is used
+
+ RUN  v4.1.11 /tmp/dashboard-fe-unit-261024/frontend
+
+stderr | tests/unit/components/schedule/ScheduleEventFormInitialDateTime.spec.ts
+[nuxt] error caught during app initialization TypeError: authStore.loadFromStorage is not a function
+    at /tmp/dashboard-fe-unit-261024/frontend/app/plugins/auth.client.ts:4:13
+    at /tmp/dashboard-fe-unit-261024/frontend/node_modules/nuxt/dist/app/nuxt.js:139:60
+    at fn (/tmp/dashboard-fe-unit-261024/frontend/node_modules/nuxt/dist/app/nuxt.js:221:44)
+    at Object.runWithContext (/tmp/dashboard-fe-unit-261024/frontend/node_modules/@vue/runtime-core/dist/runtime-core.cjs.js:4398:18)
+    at callWithNuxt (/tmp/dashboard-fe-unit-261024/frontend/node_modules/nuxt/dist/app/nuxt.js:227:24)
+    at /tmp/dashboard-fe-unit-261024/frontend/node_modules/nuxt/dist/app/nuxt.js:38:41
+    at EffectScope.run (/tmp/dashboard-fe-unit-261024/frontend/node_modules/@vue/reactivity/dist/reactivity.cjs.js:96:16)
+    at Object.runWithContext (/tmp/dashboard-fe-unit-261024/frontend/node_modules/nuxt/dist/app/nuxt.js:38:31)
+    at applyPlugin (/tmp/dashboard-fe-unit-261024/frontend/node_modules/nuxt/dist/app/nuxt.js:139:39)
+    at executePlugin (/tmp/dashboard-fe-unit-261024/frontend/node_modules/nuxt/dist/app/nuxt.js:158:23)
+
+stdout | tests/unit/components/schedule/ScheduleEventFormInitialDateTime.spec.ts
+<Suspense> is an experimental feature and its API will likely change.
+
+ ✓ tests/unit/components/schedule/ScheduleEventFormInitialDateTime.spec.ts (15 tests) 34249ms
+     ✓ personal の編集は端末LA・ユーザー東京でもAPIの09:00を前日17:00へずらさない  609ms
+stdout | tests/unit/components/schedule/ScheduleEventForm.spec.ts
+<Suspense> is an experimental feature and its API will likely change.
+
+ ✓ tests/unit/components/schedule/ScheduleEventForm.spec.ts (54 tests) 54394ms
+     ✓ 'createEvent'/'ja'が表示中切替する  1538ms
+     ✓ 'createEvent'/'en'が表示中切替する  1435ms
+     ✓ 'createEvent'/'zh'が表示中切替する  1486ms
+     ✓ 'createEvent'/'ko'が表示中切替する  1439ms
+     ✓ 'createEvent'/'es'が表示中切替する  1338ms
+     ✓ 'createEvent'/'de'が表示中切替する  1290ms
+     ✓ 'editEvent'/'ja'が表示中切替する  1503ms
+     ✓ 'editEvent'/'en'が表示中切替する  1439ms
+     ✓ 'editEvent'/'zh'が表示中切替する  1417ms
+     ✓ 'editEvent'/'ko'が表示中切替する  1516ms
+     ✓ 'editEvent'/'es'が表示中切替する  1386ms
+     ✓ 'editEvent'/'de'が表示中切替する  1584ms
+     ✓ 'addPersonal'/'ja'が表示中切替する  1526ms
+     ✓ 'addPersonal'/'en'が表示中切替する  1258ms
+     ✓ 'addPersonal'/'zh'が表示中切替する  1151ms
+     ✓ 'addPersonal'/'ko'が表示中切替する  1277ms
+     ✓ 'addPersonal'/'es'が表示中切替する  1245ms
+     ✓ 'addPersonal'/'de'が表示中切替する  1360ms
+     ✓ 'editPersonal'/'ja'が表示中切替する  1320ms
+     ✓ 'editPersonal'/'en'が表示中切替する  1275ms
+     ✓ 'editPersonal'/'zh'が表示中切替する  1253ms
+     ✓ 'editPersonal'/'ko'が表示中切替する  1180ms
+     ✓ 'editPersonal'/'es'が表示中切替する  1257ms
+     ✓ 'editPersonal'/'de'が表示中切替する  1496ms
+
+ Test Files  2 passed (2)
+      Tests  69 passed (69)
+   Start at  06:24:05
+   Duration  95.46s (transform 3372.63s, setup 364ms, import 5.24s, tests 88.64s, environment 857ms)
+
