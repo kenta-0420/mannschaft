@@ -20042,7 +20042,7 @@ export interface paths {
         put?: never;
         /**
          * 組織への告知ウィザード実行
-         * @description F02.8 告知ウィザード。組織スコープでコンテンツ作成 + お知らせフィード登録を一括実行する。targetTeamIds を指定した場合は組織配下チームであることを検証する。
+         * @description F02.8 告知ウィザード。組織スコープでコンテンツ作成 + お知らせフィード登録を一括実行する。targetTeamIds はチームの slug（組織所属チーム一覧の id）で指定し、組織に ACTIVE で加盟しているチームであることを検証する（存在しない・他組織・未加盟は区別せず 400 BROADCAST_002）。
          */
         post: operations["broadcastToOrg"];
         delete?: never;
@@ -53635,8 +53635,8 @@ export interface components {
             targetGroupRange?: components["schemas"]["TargetGroupRange"];
             targetGroupRangeJson?: string;
             targetRole?: string;
-            targetTeamIds?: number[];
-            targetTeamIdsJson?: string;
+            /** @description 組織告知でのチーム絞り込み（チームの slug。組織所属チーム一覧の id と同じ値）。null・空は全チーム */
+            targetTeamIds?: string[];
         };
         TargetGroupRange: {
             /** Format: uuid */
@@ -53664,7 +53664,7 @@ export interface components {
             targetGroupIds?: string[];
             targetGroupRange?: components["schemas"]["TargetGroupRange"];
             targetRole?: string;
-            targetTeamIds?: number[];
+            targetTeamIds?: string[];
         };
         AnniversaryRequest: {
             /** Format: date */
@@ -63476,7 +63476,8 @@ export interface components {
             targetGroupIds?: string[];
             targetGroupRange?: components["schemas"]["TargetGroupRange"];
             targetRole: string;
-            targetTeamIds?: number[];
+            /** @description 組織告知でのチーム絞り込み（チームの slug。組織所属チーム一覧の id と同じ値）。null は全チーム */
+            targetTeamIds?: string[];
             /** Format: int64 */
             templateId?: number;
         };
@@ -63498,7 +63499,7 @@ export interface components {
             targetAudience?: components["schemas"]["TargetAudience"];
             targetGroupIds?: string[];
             targetRole?: string;
-            targetTeamIds?: number[];
+            targetTeamIds?: string[];
             warnings?: string[];
         };
         GroupRef: {
@@ -68054,7 +68055,8 @@ export interface components {
             targetGroupIds?: string[];
             targetGroupRange?: components["schemas"]["TargetGroupRange"];
             targetRole?: string;
-            targetTeamIds?: number[];
+            /** @description 「チームを選ぶ」のチーム（チームの slug。組織所属チーム一覧の id と同じ値） */
+            targetTeamIds?: string[];
             /** Format: int64 */
             templateId?: number;
         };
