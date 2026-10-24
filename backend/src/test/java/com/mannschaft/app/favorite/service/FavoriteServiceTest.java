@@ -137,7 +137,7 @@ class FavoriteServiceTest {
             given(userFavoriteRepository.findByUserIdOrderByDisplayOrderAsc(USER_ID))
                     .willReturn(List.of(entity));
             given(favoriteResolverService.resolveAll(eq(List.of(entity)), eq(USER_ID)))
-                    .willReturn(Map.of("1", meta));
+                    .willReturn(Map.of(new FavoriteResolverService.EntityKey(FavoriteEntityType.TEAM, "1"), meta));
 
             List<FavoriteItemDto> result = favoriteService.getFavorites(USER_ID);
 
@@ -156,7 +156,7 @@ class FavoriteServiceTest {
             given(userFavoriteRepository.findByUserIdOrderByDisplayOrderAsc(USER_ID))
                     .willReturn(List.of(entity));
             given(favoriteResolverService.resolveAll(eq(List.of(entity)), eq(USER_ID)))
-                    .willReturn(Map.of("999", unavailableMeta));
+                    .willReturn(Map.of(new FavoriteResolverService.EntityKey(FavoriteEntityType.TEAM, "999"), unavailableMeta));
 
             List<FavoriteItemDto> result = favoriteService.getFavorites(USER_ID);
 
@@ -169,6 +169,55 @@ class FavoriteServiceTest {
     // ─────────────────────────────────────────────────────────────────
     // addFavorite
     // ─────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("同一IDを持つ異種お気に入り（実ディスパッチャー）")
+    class MixedEntityTypes {
+        @Test
+        void 同一IDでも名前URL編集権限と入力順を保持する() {
+            FavoriteEntityMetaDto team = new FavoriteEntityMetaDto("1", FavoriteEntityType.TEAM,
+                    "チーム", "/team-icon", "/teams/team-slug", true, FavoriteEntityStatus.AVAILABLE);
+            FavoriteEntityMetaDto organization = new FavoriteEntityMetaDto("1", FavoriteEntityType.ORGANIZATION,
+                    "組織", "/org-icon", "/organizations/org-slug", false, FavoriteEntityStatus.AVAILABLE);
+            List<FavoriteItemDto> result = mixedService(team, organization).getFavorites(USER_ID);
+            assertThat(result).extracting(FavoriteItemDto::entityType)
+                    .containsExactly(FavoriteEntityType.ORGANIZATION, FavoriteEntityType.TEAM);
+            assertThat(result).extracting(FavoriteItemDto::entityId).containsExactly("1", "1");
+            assertThat(result).extracting(FavoriteItemDto::displayName).containsExactly("組織", "チーム");
+            assertThat(result).extracting(FavoriteItemDto::pageUrl)
+                    .containsExactly("/organizations/org-slug", "/teams/team-slug");
+            assertThat(result).extracting(FavoriteItemDto::canEdit).containsExactly(false, true);
+            assertThat(result).extracting(FavoriteItemDto::displayOrder).containsExactly(0, 1);
+        }
+
+        @Test
+        void 閲覧不可の組織に同一IDチームのメタデータを流用しない() {
+            FavoriteEntityMetaDto team = new FavoriteEntityMetaDto("1", FavoriteEntityType.TEAM,
+                    "公開チーム", "/team-icon", "/teams/team-slug", true, FavoriteEntityStatus.AVAILABLE);
+            List<FavoriteItemDto> result = mixedService(team,
+                    FavoriteEntityMetaDto.unavailable("1", FavoriteEntityType.ORGANIZATION)).getFavorites(USER_ID);
+            assertThat(result.get(0).available()).isFalse();
+            assertThat(result.get(0).displayName()).isNull();
+            assertThat(result.get(0).iconUrl()).isNull();
+            assertThat(result.get(0).pageUrl()).isNull();
+            assertThat(result.get(0).canEdit()).isFalse();
+            assertThat(result.get(1).available()).isTrue();
+            assertThat(result.get(1).displayName()).isEqualTo("公開チーム");
+        }
+
+        private FavoriteService mixedService(FavoriteEntityMetaDto team, FavoriteEntityMetaDto organization) {
+            FavoriteEntityResolver orgResolver = org.mockito.Mockito.mock(FavoriteEntityResolver.class);
+            given(orgResolver.entityType()).willReturn(FavoriteEntityType.ORGANIZATION);
+            given(teamResolver.resolveAll(List.of("1"), USER_ID)).willReturn(Map.of("1", team));
+            given(orgResolver.resolveAll(List.of("1"), USER_ID)).willReturn(Map.of("1", organization));
+            List<FavoriteEntityResolver> resolvers = List.of(teamResolver, orgResolver);
+            given(userFavoriteRepository.findByUserIdOrderByDisplayOrderAsc(USER_ID)).willReturn(List.of(
+                    createEntity(FavoriteEntityType.ORGANIZATION, "1", 0),
+                    createEntity(FavoriteEntityType.TEAM, "1", 1)));
+            return new FavoriteService(userFavoriteRepository, new FavoriteResolverService(resolvers), resolvers,
+                    new FavoriteAccessGuard(userFavoriteRepository, contentVisibilityChecker));
+        }
+    }
 
     @Nested
     @DisplayName("addFavorite")
@@ -434,7 +483,7 @@ class FavoriteServiceTest {
             given(userFavoriteRepository.findById(FAVORITE_ID))
                     .willReturn(Optional.of(entity));
             given(favoriteResolverService.resolveAll(eq(List.of(entity)), eq(USER_ID)))
-                    .willReturn(Map.of("1", meta));
+                    .willReturn(Map.of(new FavoriteResolverService.EntityKey(FavoriteEntityType.TEAM, "1"), meta));
 
             FavoriteItemDto result = favoriteService.getFavoriteById(USER_ID, FAVORITE_ID);
 

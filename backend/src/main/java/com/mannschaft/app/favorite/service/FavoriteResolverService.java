@@ -22,6 +22,10 @@ import java.util.stream.Collectors;
 @Service
 public class FavoriteResolverService {
 
+    /** 異なる種別の同一IDを区別するメタデータ集約キー。 */
+    record EntityKey(FavoriteEntityType entityType, String entityId) {
+    }
+
     /** entityType → Resolver のマップ（起動時に構築、イミュータブル） */
     private final Map<FavoriteEntityType, FavoriteEntityResolver> resolverMap;
 
@@ -41,10 +45,10 @@ public class FavoriteResolverService {
      *
      * @param favorites  お気に入りエンティティリスト
      * @param userId     現在のユーザーID
-     * @return entityId → FavoriteEntityMetaDto のマップ
+     * @return (entityType, entityId) → FavoriteEntityMetaDto のマップ
      */
-    public Map<String, FavoriteEntityMetaDto> resolveAll(List<UserFavoriteEntity> favorites, Long userId) {
-        Map<String, FavoriteEntityMetaDto> result = new HashMap<>();
+    public Map<EntityKey, FavoriteEntityMetaDto> resolveAll(List<UserFavoriteEntity> favorites, Long userId) {
+        Map<EntityKey, FavoriteEntityMetaDto> result = new HashMap<>();
 
         // entityType別にグループ化（N+1防止）
         Map<FavoriteEntityType, List<UserFavoriteEntity>> groupedByType = favorites.stream()
@@ -64,7 +68,7 @@ public class FavoriteResolverService {
             }
 
             Map<String, FavoriteEntityMetaDto> resolved = resolver.resolveAll(entityIds, userId);
-            result.putAll(resolved);
+            resolved.forEach((entityId, meta) -> result.put(new EntityKey(type, entityId), meta));
         }
 
         return result;
