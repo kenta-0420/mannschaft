@@ -276,11 +276,21 @@
       }
     },
     "attendance_results": {
+      "listTitle": "Teilnahmeanfragen",
+      "detailTitle": "Teilnahmedetails",
+      "previousRange": "Vorheriger Zeitraum",
+      "nextRange": "Nächster Zeitraum",
+      "refresh": "Aktualisieren",
+      "noDate": "Kein Datum",
+      "untitled": "Termin ohne Titel",
+      "countHint": "Teilnahme umfasst teilweise Teilnahme; unentschieden umfasst unbeantwortete Anfragen.",
+      "unknownMember": "Mitglied {number}",
       "recentRange": "Termine innerhalb von ±30 Tagen",
       "empty": "Keine Termine vorhanden",
       "noData": "Keine Anwesenheitsdaten",
       "memberTotal": "/ {total}",
       "status": {
+        "partial": "Teilweise Teilnahme",
         "yes": "Anwesend",
         "no": "Abwesend",
         "maybe": "Vielleicht",
