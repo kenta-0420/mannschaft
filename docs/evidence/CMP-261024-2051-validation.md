@@ -49,7 +49,9 @@
 
 [最終cleanup選別receipt](CMP-261024-2051/cleanup-final-receipt.json)はexact2aacのCLI0/cleanup=removed、新旧所有scratchなし、8081/3001/3307空、所有container/volumeなし、旧canonical receipt不変を確認する。殿が原本を直接確認し合格判断済み。[私有4ファイル廃棄選別receipt](CMP-261024-2051/private-secret-disposal-receipt.json)はUTF-8 BOMを正規化し、basename/hashと削除後不存在だけを保存した。原本の秘密値は読取・保存せず、他copy検査hit0。transcript消去は主張しない。
 
-[Redis選別receipt](CMP-261024-2051/redis-cleanup-receipt.json)のDB13は18keysの厳密ownership不明のため保持し、key hashのみ記録。FLUSH/ワイルドカード削除なし、reservationも保持。font/cache/npm toolsは追加unit用hold、worktree/branchはmerge後までhold。旧共有3306 failed schemaは過去のauto-review拒否により未変更・今回対象外。最終片付けの成功と残置資産を分けて記録する。
+[Redis選別receipt](CMP-261024-2051/redis-cleanup-receipt.json)のDB13は18keysの厳密ownership不明のため保持し、key hashのみ記録。FLUSH/ワイルドカード削除なし、reservationも保持。font/cache/npm toolsは追加unit用hold後、unit終了と殿のhold解除を受けて片付け済み（次段の補足receipt）。worktree/branchはmerge後までhold。旧共有3306 failed schemaは過去のauto-review拒否により未変更・今回対象外。最終片付けの成功と残置資産を分けて記録する。
+
+[font/tools片付け補足receipt](CMP-261024-2051/cleanup-font-tools-supplement-receipt.json)ではFR-06 unit CLI0/cleanup=removed/scratch不存在を確認後、所有UID1000の専用font/cache/npm tools計4dirを削除しafterAbsent=true。参照/未解決項目はいずれも空、旧receiptとWindows font targets不変。DB13未知18keys/reservation、共有資産、証拠、worktree/branchは対象外として保持した。
 
 実装PR merge/最終CI成功は引き続き待ち。FR-06追加unitはsource78b6643cd7で18/18、npm-ci/nuxt-prepare/target-vitest/assertion-gate全0、DB起動/secretEnv読込なし、receipt CLI0/cleanup=removed。単独採用commit d831d3ccd6555c58396f02050a3a8e664cb6d838は実装PRのCIgreen・merge後にmainを取り込んでから完成証拠branchへcherry-pickする予定で、今は未採用。後続PRはtest＋docs（純docsとは記さない）。実機44件/28PNGはexact2aacの実績として維持。git diffで検証headが2aacに対して対象unit1file75行だけであることを直接確認し、production byte不変の範囲で補完試験を対応付ける。
 
