@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { expect, test, type Page, type Response, type TestInfo } from '@playwright/test'
 import { waitForHydration, waitForSpinnerGone } from '../helpers/wait'
 import { FriendRequestFixture, openFriendActor, type FriendActor, type FriendTeam } from './helpers/team-friend-request-fixture'
@@ -35,19 +35,30 @@ async function open(page: Page, path: string): Promise<void> {
   await waitForHydration(page)
   await waitForSpinnerGone(page)
 }
+async function jsonProof(info: TestInfo, name: string, value: unknown): Promise<void> {
+  const file = info.outputPath(name + '.json')
+  writeFileSync(file, JSON.stringify(value, null, 2), 'utf8')
+  await info.attach(name, { path: file, contentType: 'application/json' })
+}
 async function proof(page: Page, info: TestInfo, name: string): Promise<void> {
-  await info.attach(name, { body: await page.screenshot(), contentType: 'image/png' })
-  await info.attach(name + '-url', { body: page.url(), contentType: 'text/plain' })
+  // list reporterでもrunner回収可能な実ファイルとして残す。
+  const screenshot = info.outputPath(name + '.png')
+  await page.screenshot({ path: screenshot })
+  await info.attach(name, { path: screenshot, contentType: 'image/png' })
+  const url = info.outputPath(name + '-url.txt')
+  writeFileSync(url, page.url(), 'utf8')
+  await info.attach(name + '-url', { path: url, contentType: 'text/plain' })
 }
 async function expectStableReviewSize(page: Page, info: TestInfo, name: string): Promise<void> {
   const review = page.getByTestId('friend-request-review')
   await page.evaluate(async () => { await document.fonts.ready })
   // Dialog enterは祖先をscaleする。boundingBox自体にはstable待機が無いため実animation完了を待つ。
-  await review.evaluate(async element => {
+  // enter class除去でcancelし得るため、finished Promiseの成否ではなく実行状態を観測する。
+  await expect.poll(() => review.evaluate(element => {
     const animations: Animation[] = []
     for (let ancestor: Element | null = element; ancestor; ancestor = ancestor.parentElement) animations.push(...ancestor.getAnimations({ subtree: false }))
-    await Promise.all(animations.map(animation => animation.finished))
-  })
+    return animations.filter(animation => animation.pending || animation.playState === 'running').length
+  }), { message: '確認ボタンと祖先のanimationが実行中・待機中でないこと' }).toBe(0)
   await expect.poll(() => review.evaluate(async element => {
     const rect = () => { const box = element.getBoundingClientRect(); return [box.x, box.y, box.width, box.height] }
     const first = rect()
@@ -67,7 +78,7 @@ async function expectStableReviewSize(page: Page, info: TestInfo, name: string):
     }
     return { rootFontSize: getComputedStyle(document.documentElement).fontSize, minHeight: style.minHeight, offsetHeight: (element as HTMLElement).offsetHeight, bbox: { x: box.x, y: box.y, width: box.width, height: box.height }, ancestors }
   })
-  await info.attach(name + '-stable-metrics', { body: JSON.stringify(metrics), contentType: 'application/json' })
+  await jsonProof(info, name + '-stable-metrics', metrics)
   await proof(page, info, name + '-before-size-assertion')
   expect(metrics.bbox.height).toBeGreaterThanOrEqual(44)
   expect(metrics.bbox.width).toBeGreaterThanOrEqual(44)
@@ -93,7 +104,7 @@ async function confirmAndSend(page: Page, from: FriendTeam, to: FriendTeam, info
   const body = (await result.json()).data as { followerTeamId: number; followedTeamId: number; mutual: boolean }
   expect(body.followerTeamId).toBe(from.id)
   expect(body.followedTeamId).toBe(to.id)
-  await info.attach('follow-result', { body: JSON.stringify(body), contentType: 'application/json' })
+  await jsonProof(info, 'follow-result-' + from.slug + '-to-' + to.slug, body)
   await expect(dialog).toHaveCount(0)
   return body.mutual
 }
@@ -119,7 +130,7 @@ test.beforeAll(async ({ browser }) => {
   a = candidates[0]!
   b = await fixture.team(target, '受信先')
   await fixture.join(source, member, a)
-  await test.info().attach('owned-team-ids', { body: JSON.stringify(fixture.ownedTeams()), contentType: 'application/json' })
+  await jsonProof(test.info(), 'owned-team-ids', fixture.ownedTeams())
 })
 
 test.afterAll(async () => {
@@ -371,7 +382,7 @@ test('FR-07: PRIVATEプロフィールの入口は非表示でも既知slugか�
   test.setTimeout(180_000)
   const privateTarget = await fixture.team(target, '既知slug非公開申請先', 'MEMBERS_AND_ABOVE')
   const from = candidates[18]!
-  await info.attach('private-owned-team-id', { body: JSON.stringify(privateTarget), contentType: 'application/json' })
+  await jsonProof(info, 'private-owned-team-id', privateTarget)
   for (const path of ['/public/teams/' + privateTarget.slug, '/teams/' + privateTarget.slug + '/info']) {
     const denied: { path: string; status: number }[] = []
     const observe = (response: Response) => {
@@ -383,10 +394,14 @@ test('FR-07: PRIVATEプロフィールの入口は非表示でも既知slugか�
       const document = await source.page.goto(path, { waitUntil: 'domcontentloaded' })
       await waitForHydration(source.page)
       await waitForSpinnerGone(source.page)
+      // loading中のentry不在を拒否成功と誤認せず、実HTTPの到着と最終エラー画面を待つ。
+      await expect.poll(() => denied.length > 0 || [403, 404].includes(document?.status() ?? 0), { timeout: 30_000, message: '閲覧拒否の実HTTPを確認する' }).toBe(true)
+      const profileKind = path.startsWith('/public') ? 'public' : 'info'
+      await jsonProof(info, 'private-profile-denied-http-' + profileKind, { path, documentStatus: document?.status(), denied })
+      if (profileKind === 'public') await expect(source.page.getByTestId('error-page')).toBeVisible()
+      else await expect(source.page.getByText('情報を取得できませんでした', { exact: true })).toBeVisible()
       await expect(source.page.getByTestId('friend-request-entry')).toHaveCount(0)
       await expect(source.page.locator('body')).not.toContainText(privateTarget.name)
-      expect(denied.length > 0 || [403, 404].includes(document?.status() ?? 0), '閲覧拒否の実HTTPを確認する').toBe(true)
-      await info.attach('private-profile-denied-http', { body: JSON.stringify({ documentStatus: document?.status(), denied }), contentType: 'application/json' })
       await proof(source.page, info, path.startsWith('/public') ? 'private-public-profile-denied' : 'private-info-profile-denied')
     }
     finally { source.page.off('response', observe) }
