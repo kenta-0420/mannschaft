@@ -112,7 +112,7 @@ describe.each(['TEAM', 'ORGANIZATION'] as const)('%s グリッドの導線', (sc
     expect(view.find('button').exists()).toBe(false)
     expect(view.findComponent({ name: 'TimelineFeed' }).exists()).toBe(false)
     expect(view.findComponent({ name: 'ScopeActionRequiredWidget' }).exists()).toBe(false)
-    await view.setProps({ isFeatureVisible: key => key === 'surveys' })
+    await view.setProps({ isFeatureVisible: (key: string) => key === 'surveys' })
     const actions = view.findComponent({ name: 'ScopeActionRequiredWidget' })
     expect(actions.exists()).toBe(true)
     expect(actions.attributes('sections')).toBeDefined()
