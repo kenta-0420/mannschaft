@@ -539,5 +539,23 @@
     },
     "basis": "private gate-green-proof summary/receipt直接読取",
     "limitation": "新2GET宣言登録の番人green。最終CI全体/受信索引findingの解消は未証明。"
+  },
+  "runtimeInfrastructureCorrection": {
+    "basis": "殿の文書レビューによる訂正報告",
+    "rejected": {
+      "action": "旧共有MySQL3306のfailed DBをDROP/再作成し既存root資格情報を注入する案",
+      "result": "auto-review拒否、未実行、旧DB残置"
+    },
+    "run2": {
+      "infrastructure": "新task-owned Docker MySQL3307・新volume・新task credential",
+      "setting": "log-bin-trust-function-creatorsは新専用serverだけに設定",
+      "result": "BE UP/FE200"
+    },
+    "unchanged": [
+      "共有server global設定",
+      "共有server SUPER権限",
+      "既存root資格情報"
+    ],
+    "limitation": "環境実績の訂正。実機/性能finding/最終CIの合格を意味しない。"
   }
 }

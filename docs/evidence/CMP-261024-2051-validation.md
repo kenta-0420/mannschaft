@@ -52,7 +52,7 @@ BEの表記はbackend/src/test/java/com/mannschaft/app/social/配下、FEはfron
 
 ## runtime・実機・実性能の後続履歴
 
-runtime run1はbootJar後のcold Flyway V13.045 CREATE TRIGGERでMySQL1419（binlog/SUPER不足）となりexit1/cleanup=removed。seed/FE/実機/住民は0。所有controller一時SIGSTOP/Java継続・同世代CONTはインフラ対応履歴であり合格証拠ではない。専用DBを所有照合して再作成し、共有global設定/SUPER権限を変えずFlyway専用接続を私有注入したrun2でBE UP/FE200まで進んだ（殿報告、接続情報は保存しない）。
+runtime run1はbootJar後のcold Flyway V13.045 CREATE TRIGGERでMySQL1419（binlog/SUPER不足）となりexit1/cleanup=removed。seed/FE/実機/住民は0。所有controller一時SIGSTOP/Java継続・同世代CONTはインフラ対応履歴であり合格証拠ではない。旧共有MySQL3306のfailed DBをDROP/再作成し既存root資格情報を注入する案はauto-reviewに拒否され、未実行のまま旧DBを残置した。その拒否を迂回せず、新たにtask-owned Docker MySQL3307・新volume・新task credentialを作成し、log-bin-trust-function-creatorsはこの専用serverだけに設定した。run2はこの専用MySQLでBE UP/FE200まで進んだ。共有serverのglobal設定・SUPER権限・既存root資格情報は変更していない（殿の訂正報告、接続情報は保存しない）。
 
 migration旧報告1226は私有progress helper固定値の誤表示であり、「SQLファイル総数1226」という中間説明も訂正する。app46の実SQLfiles・正本validated/applied・historyはすべて1224との殿訂正。直接採取historyも1224成功（versioned1223+repeatable1）。runtime直下のmigration-count-definition-proof原本で実SQL数・seed前/性能history一致・validated/applied1224を確認し選別保存済み。1226適用済とは記さない。
 
