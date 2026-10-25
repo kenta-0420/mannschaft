@@ -15,11 +15,8 @@
   "finalTraceVerified": {
     "approvedBy": "root",
     "conditions": "FR-01 through FR-15",
-    "completionGatePassed": false,
-    "pending": [
-      "final implementation head CI success",
-      "implementation PR4106 merge"
-    ]
+    "completionGatePassed": true,
+    "pending": []
   },
   "status": {
     "sourceHead": "78b6643cd7aaf1039117775cdc0acff747c6d597",
@@ -199,5 +196,17 @@
       "POST exactly once"
     ],
     "classification": "initial-green characterization"
+  },
+  "campaignFinalization": {
+    "implementationPr": 4106,
+    "implementationHead": "4fd2c79aaf9ecc66267ba1556b03d226db15f857",
+    "mergedAt": "2026-10-25T08:07:52Z",
+    "mergeSha": "38d234363531593850493ff48259db33bdcc4bcf",
+    "finalCiStatus": "success",
+    "finalCiEvidence": "docs/evidence/CMP-261024-2051/final-ci-merge-metadata.json",
+    "review": "passed",
+    "real": "passed",
+    "exploratory": "passed",
+    "historicalFields": "Original source SHA, failures, pending statements and receipt snapshots retain their acquisition-time meaning; final campaign state is this metadata and validation opening."
   }
 }

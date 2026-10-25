@@ -1,33 +1,31 @@
-# CMP-261024-2051 フレンド申請 検証準備記録
+# CMP-261024-2051 フレンド申請 完了検証記録
 
-## 現況（main同期・FR06統合後の再CIとmerge待ち）
+## 最終結果（2026-10-25）
 
-実装PR #4106は従前候補2aac15e6e020d03cc9d26ee17d94922ab08ed8a4の後、strict main要件のためmain36f9356d同期merge 0cec0cebとFR06補完unit 4fd2c79aafを統合した。新HEADは4fd2c79aaf9ecc66267ba1556b03d226db15f857。新HEADの再CI成功・mergeは未確定。以下の2aac実機・CI表は従前候補の取得済み実績であり、新HEADのCI成功とは扱わない。完了JSON・台帳完了化・merge/pushをこの証拠担当からは行わない。F01.5の未実装見出しも最終green/merge後に同期する。
+実装[PR #4106](https://github.com/kenta-0420/mannschaft/pull/4106)は2026-10-25T08:07:52Zにmerge済み。最終headは4fd2c79aaf9ecc66267ba1556b03d226db15f857、merge commitは38d234363531593850493ff48259db33bdcc4bcf。[最終CI・mergeメタ情報](CMP-261024-2051/final-ci-merge-metadata.json)へexact headの13成功runと全6BE shards、条件付きskip2件を保存した。Backend40173813800、FE40173813806、E2E40173813778、TaskListGate40173954489を含み、殿がGitHub原本を直接再読確認した。証拠担当もPRのhead/merge時刻/commitを直接再読した。旧2aac Backend40164501249も成功したが、最終headのCIとは区別する。
 
-| ゲート | 現在の根拠と残り |
+| 検証 | 最終判断・範囲 |
 |---|---|
-| 実装・検分 | 索引是正と3layout CSS修正55ab0adc3d（3files/5insert/3delete）、殿review finding0。新runtime自動44/44・殿28PNG/全60寸法視認・最終検分finding0。review/real/exploratoryは殿の合格判断済み |
-| CI | exact2aac FE40164501261はlint/型/fullunit成功。Backend40164501249は進行中、最終CI全体成功は未取得 |
-| 実機 | old app543/testU2は8/8成功。新UI/main統合2aacはflow8/8とlayout36/36がCLI0/skip0、desktop追加もCLI0。runtimeは正常releaseしcanonical receipt exit0/cleanup=removedを直接確認。U/U2は実装branchに同blobで収録済み、docs側追加cherry-pickは禁止 |
-| 探索・B0 | 3住民主目的達成/全active0、unverified6観測保存。確定3layoutは修正後の44件/画像視認で検証。B0既存targetoverlay/独立UI・IDB統合成功。fullvalidatorの既存snapshot140参照不足は不合格のままscope外制限 |
-| 未解明 | old543 Backend40157405430のMFA latency4件中1失敗2297ms>1500ms。他5shards成功でも総合失敗。観測付きmainを新CIへ取り込み、原因解消とは未判定 |
+| FR-01〜15/検分 | 全条件の実装・green対応を殿が承認。最終検分finding0、FR06追加75行もfinding0 |
+| 実機/視覚 | 製品byte同一の2aacでflow8/8＋layout36/36、CLI0/skip0。desktop追加、殿28PNG/全60寸法確認。6言語の字形/方向/折返し/スクロール各タブ正常 |
+| 探索 | 3住民主目的達成/全active0。原観測はunverified保持、確定3layoutを修正後検証。B0はtargeted正規overlay＋独立origin既存UI/IDB統合成功 |
+| cleanup | runtime0/removed、所有DB/container/volume/scratch/秘密4ファイル、専用font/tools片付け済み。未知Redis18keys/reservation・旧共有3306・共有資産は保持 |
+| 残る限界 | B0 fullvalidatorの既存snapshot140参照不足は未解決。FR12並列TXstress/FR15 10M負荷は未実施、sourceplan偏りを保持。旧MFA latency失敗の原因解消とは断定しない。本番公開は対象外 |
 
-[新layout回帰](CMP-261024-2051/layout-regression-summary.json)は旧app543への3body assertion redを保存し、55ab修正後のexact2aac自動44件と最終画像視認はgreen、BE/merge待ち。[MFA履歴と方針](CMP-261024-2051/mfa-history-and-next-ci.json)は旧main成功/既往失敗を保ち、閾値・測定区間・認証処理を変えず新CIで判断する。old543性能v2は関連BE/social/role/schemaとproduction blob不変の範囲で維持し、全環境同一/10M規模実証へ拡張しない。
+[完了証拠JSON](CMP-261024-2051.json)はscope app、review/real/exploratory passed、FR-01〜15、schema/受信索引/3layoutの計5回帰を対応付ける。後続完了記録PRはdocs-only。FR06 unitは実装PRに収録済みのため再cherry-pickしない。
 
-以下は取得時点の状態を残した履歴。先行節の「未実行」「候補SHA」「次の一手」は現在の最終状態ではなく、上表と後続証拠を優先する。
+[最終HEAD製品同一性](CMP-261024-2051/final-head-product-identity.json): 2aac→4fdはBE/FE本番コード・runtime/build/dependency変更0。差分は他戦役の狭い秘密scan設定/文書台帳とFR06 unit75行のみ。取得時点の原本headを変えず、44件/28PNGの実績を最終製品へ対応付ける。以下の旧候補・pending/不合格・予定の記載は取得時点の履歴であり、この最終結果と混同しない。
 
-[最終HEAD製品同一性](CMP-261024-2051/final-head-product-identity.json): 2aac→4fd2c79aafは殿と証拠担当がgit diffを直接確認し、本番BE/FE・runtime/build/dependency変更0。差分は既存の他戦役秘密scan設定/文書台帳とFR06 unit75行のみ。実機44件/28PNGを製品同一性の範囲で対応付けるが、新HEADのCI成功・mergeとは分ける。
+## FR-01〜15 最終候補トレーサ表（全15条件の対応承認済み）
 
-## FR-01〜15 最終候補トレーサ表（全15条件の対応承認済み・CIとmerge待ち）
-
-対象は実装候補 `2aac15e6e020d03cc9d26ee17d94922ab08ed8a4`。以下は現在の実装・取得済みgreenの対応表であり、BE最終CI成功・実装PR merge・完了証拠ゲートの通過を宣言しない。殿が14条件を先に精査し、FR-06追加unitの原本green・追加検分finding0も直接確認したため、FR-01〜15全条件のfinalTraceVerifiedを承認済み。これは実装PR merge/最終CIの完了ゲート通過とは別。FR-06は初回greenのcharacterizationでありred回帰とは扱わない。過去のredやfixture失敗は後続履歴にそのまま残す。
+対象は最終実装head `4fd2c79aaf9ecc66267ba1556b03d226db15f857`。実機の原本head2aacとの製品同一性は上記証拠により対応付ける。以下は実装・取得済みgreenの対応表。殿が14条件を先に精査し、FR-06追加unitの原本green・追加検分finding0も直接確認したため、FR-01〜15全条件のfinalTraceVerifiedを承認済み。これは実装PR merge/最終CIの完了ゲート通過とは別。FR-06は初回greenのcharacterizationでありred回帰とは扱わない。過去のredやfixture失敗は後続履歴にそのまま残す。
 
 パス表記: BE-S = backend/src/main/java/com/mannschaft/app/social/、BE-R = 同role/、BE-T = 同team/、BE-IT = backend/src/test/java/com/mannschaft/app/social/。FE-A = frontend/app/、FE-U = frontend/tests/unit/。各クラス名は表内のpackage相対ファイル名（.java）、FE名は表内の相対パスを指す。候補source APIと名前検索APIは別経路である。
 
 
 表内の試験略記の正式パス: Sources.spec.ts = frontend/app/composables/useFriendRequestSources.spec.ts、FE-A Dialog.spec.ts = frontend/app/components/friends/FriendFollowDialog.spec.ts、FE-U Dialog.spec.ts = frontend/tests/unit/components/friends/FriendFollowDialog.spec.ts、FE-A Button.spec.ts = frontend/app/components/friends/TeamFriendFollowButton.spec.ts、FE-U Button.spec.ts = frontend/tests/unit/components/friends/TeamFriendFollowButton.spec.ts、Incoming.spec.ts = frontend/app/components/friends/TeamFriendIncomingFollowList.spec.ts、PendingList.spec.ts = frontend/app/components/friends/TeamFriendPendingFollowList.spec.ts。prefixのないDialog.spec.tsは同セルに明示したFE-A/FE-Uの正式パスを指す。
 
-証拠略号: [BE](CMP-261024-2051/backend-red-green-summary.json)は実JWT/MockMvc/MySQLの212件とcomment境界69件、[FE](CMP-261024-2051/frontend-red-green-summary.json)は131件と後続個別回帰・types-green2、[実機](CMP-261024-2051/new2aac/green44-desktop-selected.json)はexact2aac flow8＋layout36、[殿QA](CMP-261024-2051/new2aac/coordinator-final-qa.json)は28PNG/60寸法・最終検分。ローカルBE greenのsource SHAは各要約のもの。新候補のFE fullunit CIは成功、BE exact CIは現在進行中として区別する。flow番号は frontend/tests/e2e/real/team-friend-request-flow.spec.ts の下記各ケースを指す。
+証拠略号: [BE](CMP-261024-2051/backend-red-green-summary.json)は実JWT/MockMvc/MySQLの212件とcomment境界69件、[FE](CMP-261024-2051/frontend-red-green-summary.json)は131件と後続個別回帰・types-green2、[実機](CMP-261024-2051/new2aac/green44-desktop-selected.json)はexact2aac flow8＋layout36、[殿QA](CMP-261024-2051/new2aac/coordinator-final-qa.json)は28PNG/60寸法・最終検分。ローカルBE greenのsource SHAは各要約のもの。最終4fdのFE/BE exact CIは成功（最終メタ情報参照）。ローカル試験の個別source SHAは原本どおり残す。flow番号は frontend/tests/e2e/real/team-friend-request-flow.spec.ts の下記各ケースを指す。
 
 | 条件 | 正確な実装経路 | greenテスト・観測の対応 | 証拠・範囲 |
 |---|---|---|---|
@@ -47,7 +45,7 @@
 | FR-14 SSR/認証復帰/6言語/操作領域 | FE-A FriendRequestEntry.vue の start（クリック時のみloadFromStorage/useLocalePath）、両プロフィール入口、FriendFollowDialog/FriendTargetPickerのlabel/disabled/エラー、nav.vueのスクロールtabs、6locale friends.json（今回のフレンド表示正本。common.jsonは言語Save確認用で今回未変更）。UI fix55abは3filesの局所CSS | FE-A FriendRequestEntry.spec.ts「初期描画では認証復元・本人候補API・ダイアログを実行しない」「未認証%s入口は既知プロフィールパスだけでログイン復帰先を作る」「認証済みクリックだけで先固定の選択ダイアログを開く」。FE-U i18n/locale-no-japanese-residue.spec.ts。flow6「FR-14: 未認証プロフィール→安全なログイン復帰→再選択→キーボード送信、SSR候補0・自動POST0」、flow7の6locale×360/390px。layout specのFR-LAYOUT-TABS/CANDIDATE/SOURCE計36 | [実機]8＋36、[殿QA]28PNG/60寸法: tabs36 minHeight44/clip0、candidate12 clip0、source12 minHeight44。desktop2PNGも正常。原観測のdesktop42/Close40は規約のmobile44対象外として棄却、KO方向疑いは安定後非再現。SSR本人所属埋込0/再認可/自動POST0をflow6で確認 |
 | FR-15 SQL計数/安定順/自然索引 | BE-R repository/FriendRequestSourceTeamRepository.findEligibleSources/countEligibleSources のDB絞込。BE-S repository/FollowRepository.findIncomingTeamFollows/countIncomingTeamFollows＋service/TeamFriendIncomingFollowFacade.getIncomingFollowsの一括概要。migration V252.20261025024939__add_follows_incoming_page_index.sql（followed_type,followed_id,follower_type,created_at DESC,id DESC,follower_id） | BE-IT FriendRequestQueryPerformanceContractIT.FR15_候補百件の実SQLは一覧COUNT二本で全所属ロードをしない、FR15_受信百件も一覧COUNTと公開概要一括の三本で取得する。TeamFriendIncomingFollowContractIT.FR15_同時刻二十一件をID降順で欠落せず返し巨大offsetでも総数を返す。BE-IT migration/FriendIncomingIndexMigrationIT.前方三列と降順二列と申請元の被覆を実DDLで保持する・他宛一万行でも受信百件の一覧COUNTを自然索引で絞り同時刻ID降順を保つ | [索引red/green](CMP-261024-2051/incoming-index-regression-summary.json): 主56/独立Arch347成功、自然plan rows4999→100、一覧/COUNTともidx/keyprefix3/using_index=true、一覧filesort=false。[性能v2](CMP-261024-2051/u2-real-performance-v2-intermediate.json): 各100×20、p95候補27.93/受信69.96ms。本人scopeはSQLで拘束するがsourceplanは小表/本人履歴434/503の偏り（COUNT ALL456、list range455＋temporary/filesort）。本人所属先行plan/10M実負荷は未実証。既存名前検索の行別件数取得は本FRの本人候補API性能測定と別 |
 
-## 最終runtime片付け（実装merge・最終CIは待ち）
+## 最終runtime片付け
 
 [最終cleanup選別receipt](CMP-261024-2051/cleanup-final-receipt.json)はexact2aacのCLI0/cleanup=removed、新旧所有scratchなし、8081/3001/3307空、所有container/volumeなし、旧canonical receipt不変を確認する。殿が原本を直接確認し合格判断済み。[私有4ファイル廃棄選別receipt](CMP-261024-2051/private-secret-disposal-receipt.json)はUTF-8 BOMを正規化し、basename/hashと削除後不存在だけを保存した。原本の秘密値は読取・保存せず、他copy検査hit0。transcript消去は主張しない。
 
@@ -55,7 +53,7 @@
 
 [font/tools片付け補足receipt](CMP-261024-2051/cleanup-font-tools-supplement-receipt.json)ではFR-06 unit CLI0/cleanup=removed/scratch不存在を確認後、所有UID1000の専用font/cache/npm tools計4dirを削除しafterAbsent=true。参照/未解決項目はいずれも空、旧receiptとWindows font targets不変。DB13未知18keys/reservation、共有資産、証拠、worktree/branchは対象外として保持した。
 
-実装PR merge/最終CI成功は引き続き待ち。FR-06追加unitはsource78b6643cd7で18/18、npm-ci/nuxt-prepare/target-vitest/assertion-gate全0、DB起動/secretEnv読込なし、receipt CLI0/cleanup=removed。当初は単独commit d831d3ccd6555c58396f02050a3a8e664cb6d838を後続test＋docs PRへ採用する計画だったが、strict main要件により方針変更。実装PR #4106へmain36f9356d同期merge 0cec0cebと同unitのcherry-pick 4fd2c79aafを収録し、新HEADで再CIする。新HEADのCI成功・mergeは未確定。後続完了記録PRはdocs-onlyとし、このunitを再cherry-pickしない。実機44件/28PNGはexact2aacの実績として維持。git diffで検証headが2aacに対して対象unit1file75行だけであることを直接確認し、production byte不変の範囲で補完試験を対応付ける。
+以下の同期方針は当時の経緯。現在は実装PR merge/最終CI成功済み（先頭参照）。FR-06追加unitはsource78b6643cd7で18/18、npm-ci/nuxt-prepare/target-vitest/assertion-gate全0、DB起動/secretEnv読込なし、receipt CLI0/cleanup=removed。当初は単独commit d831d3ccd6555c58396f02050a3a8e664cb6d838を後続test＋docs PRへ採用する計画だったが、strict main要件により方針変更。実装PR #4106へmain36f9356d同期merge 0cec0cebと同unitのcherry-pick 4fd2c79aafを収録し、新HEADで再CIする。新HEADのCI成功・mergeは未確定。後続完了記録PRはdocs-onlyとし、このunitを再cherry-pickしない。実機44件/28PNGはexact2aacの実績として維持。git diffで検証headが2aacに対して対象unit1file75行だけであることを直接確認し、production byte不変の範囲で補完試験を対応付ける。
 
 ## 検証履歴
 

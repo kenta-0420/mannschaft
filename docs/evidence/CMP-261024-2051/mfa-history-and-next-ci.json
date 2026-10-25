@@ -186,5 +186,22 @@
   },
   "newHead": "2aac15e6e020d03cc9d26ee17d94922ab08ed8a4",
   "newBackendCi": 40164501249,
-  "newCiStatus": "pending-success-not-recorded"
+  "newCiStatus": "success",
+  "campaignFinalization": {
+    "implementationPr": 4106,
+    "implementationHead": "4fd2c79aaf9ecc66267ba1556b03d226db15f857",
+    "mergedAt": "2026-10-25T08:07:52Z",
+    "mergeSha": "38d234363531593850493ff48259db33bdcc4bcf",
+    "finalCiStatus": "success",
+    "finalCiEvidence": "docs/evidence/CMP-261024-2051/final-ci-merge-metadata.json",
+    "review": "passed",
+    "real": "passed",
+    "exploratory": "passed",
+    "historicalFields": "Original source SHA, failures, pending statements and receipt snapshots retain their acquisition-time meaning; final campaign state is this metadata and validation opening."
+  },
+  "newCiStatusAtAcquisition": "pending-success-not-recorded",
+  "finalHead": "4fd2c79aaf9ecc66267ba1556b03d226db15f857",
+  "finalBackendCi": 40173813800,
+  "finalBackendCiStatus": "success",
+  "causeResolutionClaimed": false
 }

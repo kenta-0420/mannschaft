@@ -297,18 +297,32 @@
       "rootVisualStatus": "viewed and accepted per coordinator final report"
     }
   ],
-  "pending": [
-    "Backend40164501249 success",
-    "implementation merge",
-    "task-owned final DB/secret cleanup receipt"
-  ],
+  "pending": [],
   "finalStagesPassed": true,
-  "completionGatePassed": false,
+  "completionGatePassed": true,
   "coordinatorStageDecision": {
     "review": "passed",
     "real": "passed",
     "exploratory": "passed",
     "basis": "殿の最終画像視認28PNG・全60寸法自読・最終コード検分finding0の報告",
-    "ciAndMergeStillPending": true
-  }
+    "ciAndMergeStillPending": false
+  },
+  "campaignFinalization": {
+    "implementationPr": 4106,
+    "implementationHead": "4fd2c79aaf9ecc66267ba1556b03d226db15f857",
+    "mergedAt": "2026-10-25T08:07:52Z",
+    "mergeSha": "38d234363531593850493ff48259db33bdcc4bcf",
+    "finalCiStatus": "success",
+    "finalCiEvidence": "docs/evidence/CMP-261024-2051/final-ci-merge-metadata.json",
+    "review": "passed",
+    "real": "passed",
+    "exploratory": "passed",
+    "historicalFields": "Original source SHA, failures, pending statements and receipt snapshots retain their acquisition-time meaning; final campaign state is this metadata and validation opening."
+  },
+  "acquisitionTimePending": [
+    "Backend40164501249 success",
+    "implementation merge",
+    "task-owned final DB/secret cleanup receipt"
+  ],
+  "finalCleanupEvidence": "docs/evidence/CMP-261024-2051/cleanup-final-receipt.json"
 }
