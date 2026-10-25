@@ -15,6 +15,7 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.template.repository.ScopeFeatureDisplayPolicyRepository;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -53,6 +54,7 @@ class ScopeFeatureDisplayPolicyContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private RoleRepository roles;
     @Autowired private UserRoleRepository userRoles;
     @Autowired private ScopeFeatureDisplayPolicyRepository policies;
+    @Autowired private EntityManager entityManager;
     private Long admin;
     private Long member;
     private Long supporter;
@@ -114,6 +116,8 @@ class ScopeFeatureDisplayPolicyContractIT extends AbstractMySqlIntegrationTest {
         mvc.perform(put(path(organization)).with(user(admin.toString())).contentType("application/json")
                         .content(body(memberVisible, supporterVisible)))
                 .andExpect(status().isOk());
+        entityManager.flush();
+        entityManager.clear();
         mvc.perform(get(path(organization)).with(user(supporter.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.features[?(@.featureKey == 'schedule')].memberVisible").value(memberVisible))
@@ -164,15 +168,23 @@ class ScopeFeatureDisplayPolicyContractIT extends AbstractMySqlIntegrationTest {
     void AC3_空は全列不変と全カタログちょうどは成功する(boolean organization) throws Exception {
         mvc.perform(put(path(organization)).with(user(admin.toString())).contentType("application/json")
                 .content(body(false, true))).andExpect(status().isOk());
-        var before = policies.findByScopeTypeAndScopeId(scope(organization), id(organization)).getFirst();
+        entityManager.flush();
+        entityManager.clear();
+        String before = json.writeValueAsString(policies.findByScopeTypeAndScopeId(scope(organization), id(organization)).getFirst());
         mvc.perform(put(path(organization)).with(user(admin.toString())).contentType("application/json")
                 .content("{\"features\":[]}")).andExpect(status().isOk());
-        var after = policies.findByScopeTypeAndScopeId(scope(organization), id(organization)).getFirst();
-        assertThat(after).usingRecursiveComparison().isEqualTo(before);
+        entityManager.flush();
+        entityManager.clear();
+        String after = json.writeValueAsString(policies.findByScopeTypeAndScopeId(scope(organization), id(organization)).getFirst());
+        assertThat(after).isEqualTo(before);
         String response = mvc.perform(get(path(organization)).with(user(member.toString()))).andReturn().getResponse().getContentAsString();
         JsonNode data = json.readTree(response).get("data");
         mvc.perform(put(path(organization)).with(user(admin.toString())).contentType("application/json")
                 .content(data.toString())).andExpect(status().isOk());
+        var features = (com.fasterxml.jackson.databind.node.ArrayNode) data.get("features");
+        features.add(features.get(0).deepCopy());
+        mvc.perform(put(path(organization)).with(user(admin.toString())).contentType("application/json")
+                .content(data.toString())).andExpect(status().isBadRequest());
     }
 
     @ParameterizedTest
@@ -201,6 +213,67 @@ class ScopeFeatureDisplayPolicyContractIT extends AbstractMySqlIntegrationTest {
                 .content(body(false, false))).andExpect(status().isForbidden());
         mvc.perform(get("/api/v1/teams/does-not-exist/feature-display-policies").with(user(admin.toString())))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void AC7_親子組織の設定と所属は継承しない() throws Exception {
+        var child = organizations.saveAndFlush(FeatureDisplayPolicyTestFixture.organization().toBuilder()
+                .parentOrganizationId(orgId).build());
+        String childPath = "/api/v1/organizations/" + child.getSlug() + "/feature-display-policies";
+        mvc.perform(put(orgPath).with(user(admin.toString())).contentType("application/json")
+                .content(body(false, false))).andExpect(status().isOk());
+        mvc.perform(get(childPath).with(user(admin.toString()))).andExpect(status().isForbidden());
+        mvc.perform(put(childPath).with(user(admin.toString())).contentType("application/json")
+                .content(body(false, false))).andExpect(status().isForbidden());
+        membership(admin, ScopeType.ORGANIZATION, child.getId(), RoleKind.MEMBER);
+        role(admin, ScopeType.ORGANIZATION, child.getId(), "ADMIN");
+        mvc.perform(get(childPath).with(user(admin.toString()))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.features[?(@.featureKey == 'schedule')].memberVisible").value(true));
+        mvc.perform(put(childPath).with(user(admin.toString())).contentType("application/json")
+                .content(body(true, false))).andExpect(status().isOk());
+        mvc.perform(get(orgPath).with(user(admin.toString()))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.features[?(@.featureKey == 'schedule')].memberVisible").value(false));
+        mvc.perform(get(childPath).with(user(outsider.toString()))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/organizations/does-not-exist/feature-display-policies").with(user(admin.toString())))
+                .andExpect(status().isNotFound());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void AC7_削除scopeは運営にも読取更新を許可しない(boolean organization) throws Exception {
+        if (organization) {
+            organizations.findById(orgId).orElseThrow().softDelete();
+        } else {
+            teams.findById(teamId).orElseThrow().softDelete();
+        }
+        entityManager.flush();
+        entityManager.clear();
+        mvc.perform(get(path(organization)).with(user(systemAdmin.toString()))).andExpect(status().isNotFound());
+        mvc.perform(put(path(organization)).with(user(systemAdmin.toString())).contentType("application/json")
+                .content(body(false, false))).andExpect(status().isNotFound());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void AC11_保存キーが増えてもscope全設定の取得は一回(boolean organization) throws Exception {
+        String response = mvc.perform(get(path(organization)).with(user(admin.toString())))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        JsonNode data = json.readTree(response).get("data");
+        mvc.perform(put(path(organization)).with(user(admin.toString())).contentType("application/json")
+                .content(data.toString())).andExpect(status().isOk());
+        entityManager.flush();
+        entityManager.clear();
+        var statistics = entityManager.getEntityManagerFactory().unwrap(org.hibernate.SessionFactory.class).getStatistics();
+        boolean enabled = statistics.isStatisticsEnabled();
+        try {
+            statistics.setStatisticsEnabled(true);
+            statistics.clear();
+            var rows = policies.findByScopeTypeAndScopeId(scope(organization), id(organization));
+            assertThat(rows).hasSize(data.get("features").size());
+            assertThat(statistics.getPrepareStatementCount()).isEqualTo(1);
+        } finally {
+            statistics.setStatisticsEnabled(enabled);
+        }
     }
 
     private String body(boolean memberVisible, boolean supporterVisible) {
