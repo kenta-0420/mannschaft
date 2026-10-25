@@ -183,6 +183,18 @@ async function createScope(kind: Scope['kind']): Promise<Scope> {
       },
     })
     expect(schedule.status(), '出席未回答の前提作成').toBe(201)
+    const actionSummary = await actors.member.page.request.get(
+      API +
+        '/api/v1/dashboard/' +
+        (kind === 'teams' ? 'team/' : 'organization/') +
+        slug +
+        '/action-required',
+    )
+    expect(actionSummary.status(), '要対応の実集計前提').toBe(200)
+    const summary = (await actionSummary.json()).data
+    expect(summary.circulation.unconfirmed_count, '未確認回覧の正の前提').toBeGreaterThanOrEqual(1)
+    expect(summary.survey.unanswered_count, '未回答surveyの正の前提').toBeGreaterThanOrEqual(1)
+    expect(summary.attendance.unanswered_count, '未回答出席の正の前提').toBeGreaterThanOrEqual(1)
     return scope
   } catch (error) {
     await removeScope(scope)
@@ -262,6 +274,11 @@ async function openSwipe(page: Page, scope: Scope) {
   await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
   await page.getByTestId('scope-segment-' + type).click()
+  const bar = page.getByTestId('scope-tab-bar-' + type)
+  await expect(bar).toBeVisible({ timeout: 60_000 })
+  await expect(bar.locator('[data-testid^="scope-tab-chip-"]').first()).toBeVisible({
+    timeout: 60_000,
+  })
   const chip = page.getByTestId('scope-tab-chip-' + type + '-' + scope.slug)
   const previous = page.getByTestId('scope-tab-prevpage-' + type)
   const next = page.getByTestId('scope-tab-nextpage-' + type)
@@ -297,8 +314,9 @@ async function openSwipe(page: Page, scope: Scope) {
     await turn(next)
   }
   await expect(chip).toBeVisible()
-  await chip.click()
+  if ((await chip.getAttribute('aria-pressed')) !== 'true') await chip.click()
   await expect(chip).toHaveAttribute('aria-pressed', 'true')
+  await expect(page).toHaveURL(BASE + '/dashboard')
   const grid = page.getByTestId('swipe-widget-grid-' + type)
   await expect(grid).toBeVisible({ timeout: 60_000 })
   return grid
@@ -335,6 +353,15 @@ for (const kind of ['teams', 'organizations'] as const) {
       await openSettings(scope, true)
       await expect(actors.admin.page.locator('#feature-display-info-member')).toBeChecked()
       await expect(actors.admin.page.locator('#feature-display-info-supporter')).toBeChecked()
+      const baselineGrid = await openSwipe(actors.member.page, scope)
+      await baselineGrid
+        .getByRole('heading', { name: '要対応', exact: true })
+        .scrollIntoViewIfNeeded()
+      for (const label of ['回覧板', 'アンケート', '出席確認'])
+        await expect(
+          baselineGrid.getByRole('button', { name: new RegExp(label + ' [0-9]+件') }).first(),
+        ).toBeVisible({ timeout: 30_000 })
+      console.info(kind + ': 要対応3区分の正のbaseline完了')
 
       // 相反する2列と両OFF/両ONの全組合せを、同じ保存データの更新として踏む。
       for (const [member, supporter] of [
@@ -373,7 +400,7 @@ for (const kind of ['teams', 'organizations'] as const) {
         const grid = await openSwipe(actors.member.page, scope)
         if (key !== 'schedule')
           await expect(grid.getByRole('heading', { name: '要対応', exact: true })).toBeVisible()
-        await expect(grid.getByRole('button', { name: new RegExp('^' + label) })).toHaveCount(0)
+        await expect(grid.getByRole('button', { name: new RegExp(label + ' [0-9]+件') })).toHaveCount(0)
         console.info(kind + ': 要対応非表示完了 ' + key)
       }
       const hiddenActionGrid = await openSwipe(actors.member.page, scope)
@@ -390,7 +417,7 @@ for (const kind of ['teams', 'organizations'] as const) {
         .scrollIntoViewIfNeeded()
       for (const label of ['回覧板', 'アンケート', '出席確認'])
         await expect(
-          actionGrid.getByRole('button', { name: new RegExp('^' + label) }).first(),
+          actionGrid.getByRole('button', { name: new RegExp(label + ' [0-9]+件') }).first(),
         ).toBeVisible({ timeout: 30_000 })
       console.info(kind + ': 要対応復元完了')
 
