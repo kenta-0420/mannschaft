@@ -1,10 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
-import { enableAutoUnmount, mount } from '@vue/test-utils'
+import { mount } from '@vue/test-utils'
 import { nextTick, ref } from 'vue'
 import TeamModulesPage from '~/pages/teams/[slug]/modules.vue'
-
-enableAutoUnmount(afterEach)
 
 const { navigate } = vi.hoisted(() => ({ navigate: vi.fn() }))
 const shell = {
