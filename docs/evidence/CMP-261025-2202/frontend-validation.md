@@ -22,3 +22,20 @@
 Windows FEは検証worktreeから `NUXT_PUBLIC_API_BASE=http://localhost:8081 npm run dev -- --port 3001` で起動。Vite client/server生成まで到達、記録時点でHTTP応答はまだ未確認。ホスト計測は空きRAM約20GiB/63GiB、CPU全体18%。メモリ枯渇の証拠はない。
 
 実機本試験は未実施。対象specは `tests/e2e/real/cmp-261025-2202-feature-display.real.spec.ts`。BE8081とFE3001の応答、専用DBのテストユーザーを実測してから開始する。
+
+## 追加検証・起動確定
+
+- 親の静的照合: FE/BEカタログはTEAM38件・ORG40件で完全一致。ラベル51キー×6言語の欠落0、一般Sidebarの全pathに対応（固定homeは設定対象外）。
+- CI `151dafb2bd` の型エラーは `DashboardSwipeWidgetGrid.spec.ts` のコールバック引数に `string` を明示して `6b0a1d9b26` で修正。親確認では同SHAのlint/typecheckが成功、Vitestは記録時点で進行中。
+- Windows実環境はNode `v24.15.0` / npm `11.12.1`。規定Node `22.23.2` / npm `10.9.8` との不一致を記録し、正式環境の検証はCIで確認する。
+- 初回Nitro bundleは407,950ms、dev全体初期化は589,605msで完了。起動中CPU/読取カウンタは増加し、3秒CPU profileではoxc-parserのAST解析、acorn、picomatch等を観測した。停止・メモリ枯渇として扱わない。
+- その後 `/login` はHTTP200（3.364秒）、静的 `/robots.txt` はHTTP200（0.150秒）を確認。ブラウザ用とSSR用APIベースはともに専用BE `http://localhost:8081` を明示した。診断inspectorは停止済み、新規WSLコピーは作成していない。
+- 専用MySQL13316へのWindows接続を確認。seedはFlyway・BE health成功後に限定する。実機と住民探索は引き続き未実施である。
+
+## 生成契約の同期
+
+CI artifact `6b0a1d9b26` の `FeatureDisplayPolicyItem` は `featureKey/memberVisible/supporterVisible` の3項目requiredを確認した。OpenAPIから型を再生成し、FEの手書きinterfaceを生成schemaのtype aliasへ置き換える。生成ファイルは直接編集しない。
+
+同artifactでGET/PUTの成功200応答が欠落している点を検出し、ControllerのOpenAPI宣言修正をBEへ差し戻した。修正後CI artifact `b145b660af` ではTEAM/ORGのGET/PUT全4operationについて、200応答・content・`data.features[]`・要素の3項目requiredを辿って確認し、同artifactからOpenAPIと生成型を再同期した。
+
+再生成成功後、TypeScript compilerで生成schemaを参照するalias単体を検査し、`featureKey: string` と独立bool2項目がすべて必須であること、型エラー0を確認した。aliasファイルのESLintも成功。

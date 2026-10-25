@@ -1,8 +1,6 @@
-export interface FeatureDisplayPolicy {
-  featureKey: string
-  memberVisible: boolean
-  supporterVisible: boolean
-}
+import type { components } from './generated'
+
+export type FeatureDisplayPolicy = components['schemas']['FeatureDisplayPolicyItem']
 export type FeatureDisplayRole =
   | 'SYSTEM_ADMIN'
   | 'ADMIN'
