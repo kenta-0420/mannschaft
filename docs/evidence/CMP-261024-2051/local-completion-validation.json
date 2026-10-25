@@ -34,7 +34,9 @@
   },
   "fullCli": {
     "command": "node scripts/completion-evidence.mjs --base origin/main --head HEAD",
-    "status": "既存全完了証拠の大量git show参照収集で実行継続中。未成功として区別。"
+    "status": "成功",
+    "exitCode": 0,
+    "output": "完了証拠の構造を確認しました。GitHub API上のPR/CI状態を検証していません。"
   },
   "notes": [
     "ローカル正規構造照合はGitHub APIでのmerge/CI照合をしない。実装のmerge/CIは殿の直接GitHub再読と最終メタ情報へ別記。",

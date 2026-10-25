@@ -388,3 +388,13 @@ paths = [
 regexes = [
   '''^useApi/ofetch$''',
 ]
+
+[[rules.allowlists]]
+description = "CMP-261024-2051: schema検証証拠の公開OpenAPI生成commit参照。実在Git commitと生成物hashを照合済みで秘密値ではない。当該pathと実値の完全一致だけをAND除外する"
+condition = "AND"
+paths = [
+  '''^docs/evidence/CMP-261024-2051/schema-regression-red-green-summary\.json$''',
+]
+regexes = [
+  '''^5fe9c33d1af8c869c3b1154b3bfd60f3ef86d5b7$''',
+]

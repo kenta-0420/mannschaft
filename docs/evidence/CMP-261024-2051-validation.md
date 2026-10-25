@@ -47,7 +47,7 @@
 
 ## 完了文書のローカル検証
 
-[検証要約](CMP-261024-2051/local-completion-validation.json): 正規validator self-test21/21、正規validateCompletionChangesによる15条件/5回帰/参照照合成功、他593CMP台帳行保持、44JSON parseと秘密値の限定パターンhit0、docs-only差分とgit diff --check成功。全台帳CLIは大量の既存証拠参照収集中で未成功として区別し、GitHub API照合/正規秘密scanはPRの正規ゲートと分ける。
+[検証要約](CMP-261024-2051/local-completion-validation.json): 正規validator self-test21/21、正規validateCompletionChangesによる15条件/5回帰/参照照合成功、他593CMP台帳行保持、44JSON parseと秘密値の限定パターンhit0、docs-only差分とgit diff --check成功。全台帳CLIもexit0で完了（GitHub API照合なし）。GitHub API照合/正規秘密scanはPRの正規ゲートと分ける。
 
 ## 全体陣払い事前checkの制限
 
@@ -197,3 +197,7 @@ desktop追加は1280×720/en、CLI0、1login/friendPOST0、所有2teamのexact c
 [最終QA判断](CMP-261024-2051/new2aac/coordinator-final-qa.json)へ、殿の選別26PNG（6locale390長候補6、EN/DE×360/390×tab0/1/2の12、en/ko申請元2、zh/koのpublic/auth/navconfirmed6）＋desktop2=28画像実視認を保存。glyph正常、元/先slug全文、100文字候補の画面内折返し、タブはコンテナ内scroll後に各全文を読める。全60canonical metricsを当方も再集計し、tab36は最小高さ44/clip0、候補12clip0/right−viewport最大−26、source12は最小44で殿の自読結果と一致。既存44px閾値を下げていない。
 
 殿の最終コード検分はsourceDB再認可・非公開名保護・応答世代破棄を含め追加finding0で、review/real/exploratoryは合格判断済み。runtime90507正常release後の原本receiptはsourceHead exact2aac/exit0/signalnull/cleanup=removedを直接確認・選別保存。アプリ/DBの最終専用cleanupは別作業として待つ。BE CI40164501249成功とimpl mergeは未取得のため完了JSON・台帳完了化はまだ行わない。本番公開成功は主張しない。fullB0validatorの既知snapshot不一致と独立origin限定は残存制限として維持する。
+
+## 完了記録PRの秘密scan初回失敗と限定是正
+
+PR #4112のGitleaks run40176107718/job121117020565はgeneric-api-keyで失敗した。[誤検知裏取りと限定是正](CMP-261024-2051/gitleaks-false-positive-proof.json)に、元履歴commit/対象path/行と照合手順を保存。指摘項目は実在する公開OpenAPI生成commitへの40桁Git参照で、git cat-file/showと生成物hashにより秘密値ではないことを確認した。値やMatchはログへ再表示せず、既存generic-api-keyルールのAND完全一致path＋完全一致値1個だけを追加した。履歴rewrite/元証拠renameや削除/一般的なhex許可は行わない。ローカルGitleaksは未配置で実判定未実行、新CI成功はまだ未確認。今回の追加差分はscan設定と証拠のみでアプリ本体変更なし。
