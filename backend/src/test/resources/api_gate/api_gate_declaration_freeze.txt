@@ -636,7 +636,9 @@ HTTP|com.mannschaft.app.social.controller.FriendContentForwardController|3|3
 HTTP|com.mannschaft.app.social.controller.FriendFeedController|1|1
 HTTP|com.mannschaft.app.social.controller.FriendFolderController|6|6
 HTTP|com.mannschaft.app.social.controller.FriendNotificationController|2|2
+HTTP|com.mannschaft.app.social.controller.FriendRequestSourceTeamController|0|1
 HTTP|com.mannschaft.app.social.controller.SocialProfileController|6|6
+HTTP|com.mannschaft.app.social.controller.TeamFriendIncomingFollowController|0|1
 HTTP|com.mannschaft.app.social.controller.TeamFriendPendingFollowController|0|1
 HTTP|com.mannschaft.app.social.controller.TeamFriendsController|4|4
 HTTP|com.mannschaft.app.social.controller.UserFollowController|5|5

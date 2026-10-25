@@ -378,3 +378,23 @@ paths = [
 regexes = [
   '''^fc49ebf119fccc2ab1172370ab37e74e9090c63982182ed2c2359f9096de9677$''',
 ]
+
+[[allowlists]]
+description = "CMP0647の検証説明に記載したAPIヘルパー識別子（秘密値ではない）。対象証拠pathと抽出値の完全一致だけを許可"
+condition = "AND"
+paths = [
+  '''^docs/evidence/CMP-261021-0647/root-historical-roundtrip-applicability\.json$''',
+]
+regexes = [
+  '''^useApi/ofetch$''',
+]
+
+[[rules.allowlists]]
+description = "CMP-261024-2051: schema検証証拠の公開OpenAPI生成commit参照。実在Git commitと生成物hashを照合済みで秘密値ではない。当該pathと実値の完全一致だけをAND除外する"
+condition = "AND"
+paths = [
+  '''^docs/evidence/CMP-261024-2051/schema-regression-red-green-summary\.json$''',
+]
+regexes = [
+  '''^5fe9c33d1af8c869c3b1154b3bfd60f3ef86d5b7$''',
+]

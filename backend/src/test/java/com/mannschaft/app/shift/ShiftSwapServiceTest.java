@@ -15,6 +15,7 @@ import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.shift.repository.ShiftSwapRequestRepository;
 import com.mannschaft.app.shift.service.ShiftSwapFacade;
 import com.mannschaft.app.shift.service.ShiftSwapService;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -63,6 +64,9 @@ class ShiftSwapServiceTest {
     @Mock
     private ShiftMapper shiftMapper;
 
+    @Mock
+    private EntityManager entityManager;
+
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -78,7 +82,7 @@ class ShiftSwapServiceTest {
     @org.junit.jupiter.api.BeforeEach
     void setUpService() {
         shiftSwapService = new ShiftSwapService(swapRepository, slotRepository, scheduleRepository,
-                shiftMapper, objectMapper);
+                shiftMapper, objectMapper, entityManager);
         // 認可は Facade（tx の外）が行う。応答の契約は Facade→tx 本体の合成で検証する。
         swapFacade = new ShiftSwapFacade(shiftSwapService, new ScopeConcealingAccessGate(accessControlService),
                 accessControlService);
@@ -103,6 +107,7 @@ class ShiftSwapServiceTest {
                 .slotDate(LocalDate.of(2026, 3, 1))
                 .startTime(LocalTime.of(9, 0))
                 .endTime(LocalTime.of(18, 0))
+                .assignedUserIds("[" + REQUESTER_ID + "]")
                 .build()));
         given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(ShiftScheduleEntity.builder()
                 .teamId(TEAM_ID)
@@ -406,6 +411,14 @@ class ShiftSwapServiceTest {
     @Nested
     @DisplayName("createSwapRequest")
     class CreateSwapRequest {
+
+        @org.junit.jupiter.api.BeforeEach
+        void 作成対象は公開済み本人担当() {
+            given(scheduleRepository.findByIdForUpdate(SCHEDULE_ID)).willReturn(Optional.of(
+                    ShiftScheduleEntity.builder().teamId(TEAM_ID).title("公開済みの作成対象")
+                            .periodType(ShiftPeriodType.WEEKLY).startDate(LocalDate.of(2026, 3, 1))
+                            .endDate(LocalDate.of(2026, 3, 7)).status(ShiftScheduleStatus.PUBLISHED).build()));
+        }
 
         @Test
         @DisplayName("交代リクエスト作成_正常_レスポンス返却")

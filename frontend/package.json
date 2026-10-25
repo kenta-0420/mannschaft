@@ -43,7 +43,6 @@
     "@stomp/stompjs": "^7.3.0",
     "@stripe/stripe-js": "^9.7.0",
     "@types/dompurify": "^3.0.5",
-    "@vee-validate/zod": "^4.15.1",
     "@vite-pwa/nuxt": "^1.1.1",
     "@vueuse/nuxt": "^14.2.1",
     "@zxing/browser": "^0.1.5",
@@ -69,7 +68,7 @@
     "vue": "^3.5.43",
     "vue-virtual-scroller": "^3.0.4",
     "vuedraggable": "^4.1.0",
-    "zod": "^3.25.76"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.15.2",
@@ -83,7 +82,7 @@
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
     "fake-indexeddb": "^6.2.5",
-    "happy-dom": "^20.8.9",
+    "happy-dom": "21.0.4",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.7",
     "nuxt-security": "^1.4.3",

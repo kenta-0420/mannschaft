@@ -1651,7 +1651,9 @@
       "more": "+{count} weitere",
       "today": "Heute",
       "dayDetail": {
-        "title": "Termine am {date}"
+        "title": "Termine am {date}",
+        "empty": "Keine Termine an diesem Tag",
+        "create": "Termin für diesen Tag hinzufügen"
       },
       "empty": "Keine Termine in diesem Zeitraum",
       "view": {

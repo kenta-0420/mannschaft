@@ -79,6 +79,27 @@ public interface ScheduleRepository extends AbstractTenantAwareRepository<Schedu
             Long userId, LocalDateTime from, LocalDateTime to);
 
     /**
+     * カレンダー表示期間に交差する本人所有の予定を取得する。
+     * 終了は排他、検索上端は既存一覧同様に包含し、終了なしは開始の単一点として扱う。
+     */
+    @Query("SELECT s FROM ScheduleEntity s WHERE s.userId = :userId AND s.startAt <= :to "
+            + "AND (s.endAt > :from OR (s.endAt IS NULL AND s.startAt >= :from)) ORDER BY s.startAt ASC")
+    List<ScheduleEntity> findCalendarByUserId(
+            @Param("userId") Long userId, @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /** 開始が表示期間より前の継続予定も含め、当該チームのカレンダー予定を取得する。 */
+    @Query("SELECT s FROM ScheduleEntity s WHERE s.teamId = :teamId AND s.startAt <= :to "
+            + "AND (s.endAt > :from OR (s.endAt IS NULL AND s.startAt >= :from)) ORDER BY s.startAt ASC")
+    List<ScheduleEntity> findCalendarByTeamId(
+            @Param("teamId") Long teamId, @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /** 開始が表示期間より前の継続予定も含め、当該組織のカレンダー予定を取得する。 */
+    @Query("SELECT s FROM ScheduleEntity s WHERE s.organizationId = :orgId AND s.startAt <= :to "
+            + "AND (s.endAt > :from OR (s.endAt IS NULL AND s.startAt >= :from)) ORDER BY s.startAt ASC")
+    List<ScheduleEntity> findCalendarByOrganizationId(
+            @Param("orgId") Long orgId, @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /**
      * チーム・組織に紐付かない純粋な個人スケジュールを期間指定で取得する。
      */
     List<ScheduleEntity> findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(
