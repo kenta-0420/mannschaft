@@ -35962,6 +35962,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/friends/incoming": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 受信申請チーム一覧取得
+         * @description MANAGE_FRIEND_TEAMS実効権限が必要。相互成立済みを除外し、公開有効申請元だけ名前とslugを開示する。
+         */
+        get: operations["listIncomingFollows"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/friend-feed": {
         parameters: {
             query?: never;
@@ -44425,6 +44445,26 @@ export interface paths {
         };
         /** Google Calendar連携状態取得 */
         get: operations["getConnectionStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/friend-request-source-teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 本人のフレンド申請元候補取得
+         * @description 現在の有効所属とMANAGE_FRIEND_TEAMS実効権限で絞り込んだ候補を返す。相手のlookupは行わない。
+         */
+        get: operations["listSourceTeams"];
         put?: never;
         post?: never;
         delete?: never;
@@ -76933,15 +76973,15 @@ export interface components {
             data?: components["schemas"]["BadgeResponse"][];
         };
         Pagination: {
-            hasNext?: boolean;
+            hasNext: boolean;
             /** Format: int32 */
-            page?: number;
+            page: number;
             /** Format: int32 */
-            size?: number;
+            size: number;
             /** Format: int64 */
-            totalElements?: number;
+            totalElements: number;
             /** Format: int32 */
-            totalPages?: number;
+            totalPages: number;
         };
         PendingTeamFollowListResponse: {
             data?: components["schemas"]["PendingTeamFollowView"][];
@@ -76958,6 +76998,30 @@ export interface components {
             targetTeamId?: number;
             targetTeamName?: string | null;
             targetTeamSlug?: string | null;
+        };
+        IncomingTeamFollowListResponse: {
+            data: components["schemas"]["IncomingTeamFollowView"][];
+            pagination: components["schemas"]["Pagination"];
+        };
+        IncomingTeamFollowView: {
+            /** Format: int64 */
+            followId: number;
+            /** Format: date-time */
+            followedAt: string;
+            followedBack: boolean;
+            nameHidden: boolean;
+            /** Format: int64 */
+            sourceTeamId: number;
+            sourceTeamName: string | null;
+            sourceTeamSlug: string | null;
+        };
+        CommonErrorDetail: {
+            code?: string;
+            fieldErrors?: components["schemas"]["FieldError"][];
+            message?: string;
+        };
+        ErrorResponse: {
+            error?: components["schemas"]["CommonErrorDetail"];
         };
         FriendFeedForwardStatus: {
             /** Format: int64 */
@@ -83495,6 +83559,16 @@ export interface components {
             googleAccountEmail?: string;
             lastSyncError?: components["schemas"]["SyncErrorDetail"];
             personalSyncEnabled?: boolean;
+        };
+        FriendRequestSourceTeam: {
+            /** Format: int64 */
+            teamId: number;
+            teamName: string;
+            teamSlug: string;
+        };
+        FriendRequestSourceTeamListResponse: {
+            data: components["schemas"]["FriendRequestSourceTeam"][];
+            pagination: components["schemas"]["Pagination"];
         };
         ApiResponseListFavoriteResponse: {
             data?: components["schemas"]["FavoriteResponse"][];
@@ -159357,6 +159431,74 @@ export interface operations {
             };
         };
     };
+    listIncomingFollows: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 一覧と絞込み後の総数 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncomingTeamFollowListResponse"];
+                };
+            };
+            /** @description 入力形式が不正（COMMON_001） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "COMMON_001",
+                     *         "message": "入力内容に不備があります",
+                     *         "fieldErrors": []
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 認証が必要（レスポンスbodyなし） */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 受信チームの実効権限がない（COMMON_002） */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "COMMON_002",
+                     *         "message": "この操作を行う権限がありません",
+                     *         "fieldErrors": []
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getFeed_1: {
         parameters: {
             query?: {
@@ -171023,6 +171165,55 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["ApiResponseGoogleCalendarStatusResponse"];
                 };
+            };
+        };
+    };
+    listSourceTeams: {
+        parameters: {
+            query: {
+                targetTeamSlug: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 一覧と絞込み後の総数 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FriendRequestSourceTeamListResponse"];
+                };
+            };
+            /** @description 入力形式が不正（COMMON_001） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "COMMON_001",
+                     *         "message": "入力内容に不備があります",
+                     *         "fieldErrors": []
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 認証が必要（レスポンスbodyなし） */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -72,7 +72,7 @@ export type FollowTeamRequest =
 
 /** チーム間フォローのレスポンス */
 export interface FollowTeamResponse {
-  /** 新規に生成された follows.id（NOWAIT 競合時は null） */
+  /** 新規に生成された follows.id（未確定時は null の場合もある。retryAfterSeconds で判定） */
   followId: number | null
   /** フォロー元チーム ID（自チーム） */
   followerTeamId: number
@@ -103,3 +103,11 @@ export interface SetVisibilityRequest {
   /** 公開フラグ（true で公開、false で非公開） */
   isPublic: boolean
 }
+
+/** 申請ダイアログで固定するチーム情報。 */
+export type FriendRequestSource = components['schemas']['FriendRequestSourceTeam']
+export interface FriendRequestTarget { teamSlug: string; teamName: string }
+/** 申請APIのレスポンスはOpenAPI生成型を正本にする。 */
+export type FriendRequestSourceTeamListResponse = components['schemas']['FriendRequestSourceTeamListResponse']
+export type IncomingTeamFollowView = components['schemas']['IncomingTeamFollowView']
+export type IncomingTeamFollowListResponse = components['schemas']['IncomingTeamFollowListResponse']
