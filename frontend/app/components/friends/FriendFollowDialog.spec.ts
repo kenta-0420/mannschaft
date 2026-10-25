@@ -94,6 +94,15 @@ describe('FR-02/05/08 申請確認', () => {
     expect(w.findComponent({ name: 'Select' }).props('modelValue')).toEqual(source(1))
     w.unmount()
   })
+  it('FR-08: 送信中は実Paginatorのpage2 buttonもnative disabledまたはinert配下に置く', async () => {
+    const w = await mountBusyDialog()
+    try {
+      const page2 = w.findComponent({ name: 'Paginator' }).findAll('button').find(button => button.text() === '2')
+      expect(page2).toBeDefined()
+      const physicallyDisabled = page2!.attributes('disabled') !== undefined || page2!.element.closest('fieldset[disabled], [inert]') !== null
+      expect(physicallyDisabled).toBe(true)
+    } finally { w.unmount() }
+  })
   it('FR-08: 送信中のSelect更新イベントでも確認した申請元を変えない', async () => {
     const w = await mountBusyDialog()
     w.findComponent({ name: 'Select' }).vm.$emit('update:modelValue', source(2))
