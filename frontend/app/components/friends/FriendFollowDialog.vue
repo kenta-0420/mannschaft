@@ -57,7 +57,13 @@ async function onForbidden() {
   else sourceRevoked.value = true
 }
 function onFollowed(response: FollowTeamResponse) { emit('success', response); visible.value = false }
-function onAlreadyFollowing() { busy.value = false; emit('alreadyFollowing'); confirmed.value = false; void refreshState() }
+function onAlreadyFollowing() {
+  busy.value = false
+  emit('alreadyFollowing')
+  confirmed.value = false
+  // 固定元の一覧更新は親のalreadyFollowingに任せ、二重取得を避ける。
+  if (needsSource.value) void refreshState()
+}
 async function refreshState() {
   emit('refresh')
   if (!needsSource.value || !source.value) return
