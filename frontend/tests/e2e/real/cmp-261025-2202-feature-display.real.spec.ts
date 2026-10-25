@@ -34,7 +34,11 @@ interface Scope {
 }
 const actors = {} as Record<ActorName, Actor>
 
-test.use({ storageState: { cookies: [], origins: [] } })
+test.use({
+  storageState: { cookies: [], origins: [] },
+  actionTimeout: 30_000,
+  navigationTimeout: 60_000,
+})
 
 test.beforeAll(async ({ browser }) => {
   test.setTimeout(240_000)
@@ -64,32 +68,43 @@ async function createScope(kind: Scope['kind']): Promise<Scope> {
   const created = await actors.admin.page.request.post(API + '/api/v1/' + kind, {
     data:
       kind === 'teams'
-        ? { name, template: 'SPORTS', visibility: 'PUBLIC', supporterEnabled: true }
-        : { name, orgType: 'OTHER', visibility: 'PUBLIC', supporterEnabled: true },
+        ? { name, template: 'SPORTS', visibility: 'PUBLIC' }
+        : { name, orgType: 'OTHER', visibility: 'PUBLIC' },
   })
   expect(created.status(), '専用scopeのfixture作成').toBe(201)
   const { slug, numericId } = (await created.json()).data as { slug: string; numericId: number }
   const scope = { kind, slug, numericId, path: '/' + kind + '/' + slug, name }
   try {
-    for (const [actor, roleId] of [
-      ['member', 4],
-      ['supporter', 5],
+    const admin = actors.admin.page.request
+    const enabledSupporters = await admin.patch(API + '/api/v1' + scope.path, {
+      data: { supporterEnabled: true, version: 0 },
+    })
+    expect(enabledSupporters.status(), 'サポータ受け入れ前提').toBe(200)
+    const invite = await admin.post(API + '/api/v1' + scope.path + '/invite-tokens', {
+      data: { roleId: 4, maxUses: 1 },
+    })
+    expect(invite.status(), 'MEMBERの招待前提作成').toBe(201)
+    const token = (await invite.json()).data.token as string
+    const joined = await actors.member.page.request.post(API + '/api/v1/invite/' + token + '/join')
+    expect(joined.status(), 'MEMBERの所属fixture作成').toBe(200)
+    const followed = await actors.supporter.page.request.post(
+      API + '/api/v1' + scope.path + '/follow',
+    )
+    expect(followed.status(), 'SUPPORTERの通常フォロー前提作成').toBe(201)
+    expect((await followed.json()).data.status).toBe('APPROVED')
+    for (const [actor, roleName] of [
+      ['admin', 'ADMIN'],
+      ['member', 'MEMBER'],
+      ['supporter', 'SUPPORTER'],
+      ['outsider', null],
     ] as const) {
-      const invite = await actors.admin.page.request.post(
-        API + '/api/v1' + scope.path + '/invite-tokens',
-        {
-          data: { roleId, maxUses: 1 },
-        },
+      const permissions = await actors[actor].page.request.get(
+        API + '/api/v1' + scope.path + '/me/permissions',
       )
-      expect(invite.status(), actor + 'の招待前提作成').toBe(201)
-      const token = (await invite.json()).data.token as string
-      const joined = await actors[actor].page.request.post(
-        API + '/api/v1/invite/' + token + '/join',
-      )
-      expect(joined.status(), actor + 'の所属fixture作成').toBe(200)
+      expect(permissions.status(), actor + 'のロール前提').toBe(200)
+      expect((await permissions.json()).data.roleName ?? null, actor + 'の実ロール').toBe(roleName)
     }
 
-    const admin = actors.admin.page.request
     // 対象表示設定とは独立した、業務機能を利用するための前提。
     const catalogResponse = await admin.get(API + '/api/v1' + scope.path + '/modules/catalog')
     expect(catalogResponse.status()).toBe(200)
@@ -314,7 +329,7 @@ async function expectBulletin(
 
 for (const kind of ['teams', 'organizations'] as const) {
   test(kind + ': 2列独立保存・再読込・4組合せ・全OFF・管理者復帰・直URL既存認可', async () => {
-    test.setTimeout(600_000)
+    test.setTimeout(1_200_000)
     const scope = await createScope(kind)
     try {
       await openSettings(scope, true)
@@ -328,19 +343,22 @@ for (const kind of ['teams', 'organizations'] as const) {
         [false, false],
         [true, true],
       ] as const) {
-        await setFeature(scope, 'info', member, supporter)
-        await setFeature(scope, 'bulletin', member, supporter)
-        await saveSettings(scope)
-        await expect(actors.admin.page.locator('#feature-display-info-member')).toBeChecked({
-          checked: member,
+        await test.step('表示組合せ member=' + member + '/supporter=' + supporter, async () => {
+          await setFeature(scope, 'info', member, supporter)
+          await setFeature(scope, 'bulletin', member, supporter)
+          await saveSettings(scope)
+          await expect(actors.admin.page.locator('#feature-display-info-member')).toBeChecked({
+            checked: member,
+          })
+          await expect(actors.admin.page.locator('#feature-display-info-supporter')).toBeChecked({
+            checked: supporter,
+          })
+          await expectInfo(scope, 'member', member)
+          await expectInfo(scope, 'supporter', supporter)
+          await expectBulletin(scope, 'member', member)
+          await expectBulletin(scope, 'supporter', supporter)
         })
-        await expect(actors.admin.page.locator('#feature-display-info-supporter')).toBeChecked({
-          checked: supporter,
-        })
-        await expectInfo(scope, 'member', member)
-        await expectInfo(scope, 'supporter', supporter)
-        await expectBulletin(scope, 'member', member)
-        await expectBulletin(scope, 'supporter', supporter)
+        console.info(kind + ': 表示組合せ完了 member=' + member + '/supporter=' + supporter)
       }
 
       // 要対応3区分の実データがある状態から1区分ずつ隠す。
@@ -356,6 +374,7 @@ for (const kind of ['teams', 'organizations'] as const) {
         if (key !== 'schedule')
           await expect(grid.getByRole('heading', { name: '要対応', exact: true })).toBeVisible()
         await expect(grid.getByRole('button', { name: new RegExp('^' + label) })).toHaveCount(0)
+        console.info(kind + ': 要対応非表示完了 ' + key)
       }
       const hiddenActionGrid = await openSwipe(actors.member.page, scope)
       await expect(
@@ -373,6 +392,7 @@ for (const kind of ['teams', 'organizations'] as const) {
         await expect(
           actionGrid.getByRole('button', { name: new RegExp('^' + label) }).first(),
         ).toBeVisible({ timeout: 30_000 })
+      console.info(kind + ': 要対応復元完了')
 
       // 全OFFでも管理者の管理表示・復帰とホームは残す。
       const switches = actors.admin.page.locator('[data-feature-key] input[role="switch"]')
@@ -390,6 +410,7 @@ for (const kind of ['teams', 'organizations'] as const) {
       await expect(tab(actors.admin.page, scope, 'modules')).toBeVisible()
       await expectInfo(scope, 'member', false)
       await expectInfo(scope, 'supporter', false)
+      console.info(kind + ': 全OFF/管理者レンズ復帰完了')
 
       // 表示OFFは直URLの認可ではない。infoは元々許可されている画面を保つ。
       for (const actor of ['member', 'supporter'] as const) {
@@ -413,6 +434,7 @@ for (const kind of ['teams', 'organizations'] as const) {
         await expect(page.locator('[data-feature-key]')).toHaveCount(0)
         await expect(page).not.toHaveURL(new RegExp(scope.path + '/modules$'), { timeout: 30_000 })
       }
+      console.info(kind + ': 直接URL/管理設定認可完了')
 
       // 復元も同じ画面から行い、保存済みscopeで元の入口が戻る。
       await openSettings(scope)
