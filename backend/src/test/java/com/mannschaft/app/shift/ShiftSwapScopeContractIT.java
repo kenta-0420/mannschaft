@@ -281,8 +281,11 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("正当メンバーは201（正常系）")
+        @DisplayName("公開済みの本人担当枠は201（正常系）")
         void 正当メンバーは201() throws Exception {
+            slotRepository.findById(slotAId).orElseThrow().updateAssignedUserIds("[" + member2TeamAId + "]");
+            em.flush();
+            em.clear();
             setAuth(member2TeamAId);
             mockMvc.perform(post("/api/v1/shifts/swap-requests")
                             .contentType(MediaType.APPLICATION_JSON)
