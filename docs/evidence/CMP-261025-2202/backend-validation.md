@@ -10,7 +10,7 @@
 | red再開初回 | `c7f7a733a7` | 25実行・25失敗・skip 0 | `users.is_searchable`必須値のfixture漏れ。ACアサーション未到達のためred証拠にしない |
 | AC-2 red | `e336cdb663` | TEAM/ORGの2実行・2失敗・skip 0 | `ScopeFeatureDisplayPolicyContractIT:104`で期待200に対し未実装404。実MySQL・Security経由のACアサーションへ到達 |
 | green初回 | `d0a3593955` | 38実行・37成功・1失敗・skip 0 | ContractIT 30件、ServiceTest 5件、CommitITのrollback/初回並行保存2件は成功。残る成功commit試験はGETで403となり未合格 |
-| CommitIT再検証 | `2029fa3197` | 実行中・結果未確定 | 独立fixtureへ読取閾値の`SUPPORTER`ロールを追加。既存Gradleのturnstileを尊重して待機後、compileJavaへ到達 |
+| CommitIT再検証 | `2029fa31979131001091f8b61853289d37534655` | 3実行・3成功・失敗/error/skip 0 | 独立fixtureへ読取閾値の`SUPPORTER`ロールを追加。XMLとreceiptを照合。BUILD SUCCESSFUL、6分49秒、exit 0、cleanup=removed |
 
 初回greenの403は、本試験だけの空DBにADMINしかseedしておらず、`AccessControlService.hasRoleOrAbove`が閾値ロールを解決できなかったため。
 実DBではFlywayが基準ロールを用意する。補正はfixtureにpriority 5のSUPPORTERを用意するだけで、本番の認可を変更していない。
@@ -22,7 +22,7 @@
 ## 実装と検証の対応
 
 - AC-1/2/3/6/7: ContractITでTEAM/ORGの独立4bool、既定true、入力/件数境界、実ロール、運営例外、削除/不存在scope、親子組織の独立性を検証。
-- AC-8: CommitITで2件目の実DB例外による全rollback、commit前の監査0、commit後の監査を観測。全メソッドgreenは再検証結果で確定する。
+- AC-8: CommitITで2件目の実DB例外による全rollback、commit前の監査0、commit後の監査を観測。補正後3メソッドすべて成功。green初回のContractIT30件・ServiceTest5件と合わせ対象38件が成功した。
 - AC-9: 再表示でもpolicyのID/createdAtを維持する。Writerの書込先はpolicy表だけで、元業務データや個人widget表へアクセスしない。個人設定/順序の復元はFE/実機の証跡と合わせる。
 - AC-11: ContractITのHibernate統計でscope一括Repository読取1クエリ、ServiceTestで全カタログ合成時のRepository呼出1回を固定。
 - AC-4/5/10/12/13/14: 主にFE/実機の範囲。表示設定は業務APIの認可条件へ追加していない。BEの全量回帰・アーキテクチャ番人はCIと親検分で照合する。
