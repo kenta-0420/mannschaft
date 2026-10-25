@@ -3,9 +3,9 @@ import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import Dialog from './FriendFollowDialog.vue'
-const mocks = vi.hoisted(() => ({ list: vi.fn(), follow: vi.fn(), error: vi.fn() }))
-mockNuxtImport('useFriendTeamsApi', () => () => ({ listSourceTeams: mocks.list, follow: mocks.follow }))
-mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
+const mocks = vi.hoisted(() => ({ list: vi.fn(), follow: vi.fn(), error: vi.fn(), friends: vi.fn(), pending: vi.fn(), incoming: vi.fn() }))
+mockNuxtImport('useFriendTeamsApi', () => () => ({ listSourceTeams: mocks.list, follow: mocks.follow, listFriends: mocks.friends, listPendingFollows: mocks.pending, listIncomingFollows: mocks.incoming }))
+mockNuxtImport('useI18n', () => () => ({ t: (key: string, counts?: Record<string, number>) => key === 'friends.request.status_counts' ? JSON.stringify(counts) : key }))
 mockNuxtImport('useNotification', () => () => ({ success: vi.fn(), info: vi.fn(), error: mocks.error }))
 mockNuxtImport('useErrorHandler', () => () => ({ handleApiError: mocks.error }))
 const source = (id: number) => ({ teamId: id, teamSlug: 'source-' + id, teamName: 'Source ' + id })
@@ -27,8 +27,22 @@ async function mountBusyDialog() {
   await flushPromises()
   return w
 }
+const countsResult = (total: number) => ({ data: [], pagination: { totalElements: total } })
+async function requestSourceAStatus() {
+  mocks.list.mockResolvedValue(result([1, 2]))
+  mocks.follow.mockRejectedValueOnce({ statusCode: 409, data: { error: { code: 'SOCIAL_102' } } })
+  mocks.pending.mockResolvedValue(countsResult(2))
+  mocks.incoming.mockResolvedValue(countsResult(3))
+  const w = await mountDialog()
+  w.findComponent({ name: 'Select' }).vm.$emit('update:modelValue', source(1))
+  await flushPromises()
+  await w.get('[data-testid="friend-request-review"]').trigger('click')
+  await w.get('[data-testid="friend-follow-submit"]').trigger('click')
+  await flushPromises()
+  return w
+}
 describe('FR-02/05/08 申請確認', () => {
-  beforeEach(() => { vi.clearAllMocks(); mocks.list.mockReset(); mocks.follow.mockReset() })
+  beforeEach(() => { vi.clearAllMocks(); mocks.list.mockReset(); mocks.follow.mockReset(); mocks.friends.mockReset(); mocks.pending.mockReset(); mocks.incoming.mockReset() })
   it('0/1/複数の候補を総数で分岐し、1件は選択済みと明示する', async () => {
     for (const ids of [[], [1], [1, 2]]) {
       mocks.list.mockResolvedValueOnce(result(ids))
@@ -87,6 +101,41 @@ describe('FR-02/05/08 申請確認', () => {
     expect(w.findComponent({ name: 'Select' }).props('modelValue')).toEqual(source(1))
     expect(w.get('[data-testid="friend-request-direction"]').text()).toContain('Source 1 (source-1)')
     w.unmount()
+  })
+  it('申請元Aの件数取得後にBへ選び直すとAの件数を表示しない', async () => {
+    mocks.friends.mockResolvedValue(countsResult(7))
+    const w = await requestSourceAStatus()
+    try {
+      expect(w.get('p[role="status"]').text()).toBe('{"friends":7,"pending":2,"incoming":3}')
+      expect(mocks.friends).toHaveBeenCalledWith('1', { page: 0, size: 1 })
+      w.findComponent({ name: 'Select' }).vm.$emit('update:modelValue', source(2))
+      await flushPromises()
+      expect(w.find('p[role="status"]').exists()).toBe(false)
+    } finally { w.unmount() }
+  })
+  it('申請元Aの状態取得エラーはBへ選び直した時に表示しない', async () => {
+    mocks.friends.mockRejectedValueOnce(new Error('source A unavailable'))
+    const w = await requestSourceAStatus()
+    try {
+      expect(w.findComponent({ name: 'DashboardErrorState' }).exists()).toBe(true)
+      w.findComponent({ name: 'Select' }).vm.$emit('update:modelValue', source(2))
+      await flushPromises()
+      expect(w.findComponent({ name: 'DashboardErrorState' }).exists()).toBe(false)
+    } finally { w.unmount() }
+  })
+  it('AからBを経てAへ戻っても古い状態取得世代の遅延件数を適用しない', async () => {
+    let resolveOld!: (value: ReturnType<typeof countsResult>) => void
+    mocks.friends.mockImplementationOnce(() => new Promise(resolve => { resolveOld = resolve }))
+    const w = await requestSourceAStatus()
+    try {
+      w.findComponent({ name: 'Select' }).vm.$emit('update:modelValue', source(2))
+      await flushPromises()
+      w.findComponent({ name: 'Select' }).vm.$emit('update:modelValue', source(1))
+      await flushPromises()
+      resolveOld(countsResult(7))
+      await flushPromises()
+      expect(w.find('p[role="status"]').exists()).toBe(false)
+    } finally { w.unmount() }
   })
   it('受信の返しは元・先を固定し候補APIを取得しない', async () => {
     const w = await mountDialog({ teamId: '1', sourceTeam: source(1) })
