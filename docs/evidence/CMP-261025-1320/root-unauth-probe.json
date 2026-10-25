@@ -1,0 +1,9 @@
+{
+  "checkedAt": "2026-10-25T15:03:49.941755+00:00",
+  "method": "GET",
+  "url": "http://localhost:18032/api/v1/shifts/my/confirmed-slots",
+  "cookies": false,
+  "status": 401,
+  "apiMock": false,
+  "earlierCurl": "shell quoting error before HTTP, not an application result"
+}
