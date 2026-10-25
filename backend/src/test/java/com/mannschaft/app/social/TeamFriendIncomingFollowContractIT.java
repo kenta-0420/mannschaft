@@ -78,7 +78,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @AutoConfigureMockMvc(addFilters = true)
 @Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@DisplayName("CMP-261021-0020 フォロー中一覧のHTTP契約")
+@DisplayName("CMP-261024-2051 受信申請一覧のHTTP契約")
 class TeamFriendIncomingFollowContractIT extends AbstractMySqlIntegrationTest {
 
     private static final String PERMISSION = "MANAGE_FRIEND_TEAMS";
@@ -256,7 +256,7 @@ class TeamFriendIncomingFollowContractIT extends AbstractMySqlIntegrationTest {
 
     private JsonNode ok(MockHttpServletRequestBuilder request) throws Exception {
         MvcResult result = mvc.perform(request).andReturn();
-        assertThat(result.getResponse().getStatus()).as("未実装pending URLはここで404になりred").isEqualTo(200);
+        assertThat(result.getResponse().getStatus()).as("受信申請APIのHTTP 200契約").isEqualTo(200);
         return json(result);
     }
 

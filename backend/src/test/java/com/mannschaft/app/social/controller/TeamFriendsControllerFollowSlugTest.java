@@ -1,5 +1,9 @@
 package com.mannschaft.app.social.controller;
 
+import com.mannschaft.app.role.service.FriendRequestSourceTeamQueryService;
+import com.mannschaft.app.social.service.TeamFriendRequestFacade;
+import org.springframework.context.annotation.Import;
+
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
@@ -58,6 +62,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * </ul>
  */
 @WebMvcTest(TeamFriendsController.class)
+@Import(TeamFriendRequestFacade.class)
 @AutoConfigureMockMvc(addFilters = false)
 @DisplayName("CMP-261012-0315 TeamFriendsController slug 指定フォロー（試練）")
 class TeamFriendsControllerFollowSlugTest {
@@ -70,6 +75,9 @@ class TeamFriendsControllerFollowSlugTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private FriendRequestSourceTeamQueryService sourceQueryService;
 
     @MockitoBean
     private TeamFriendsService teamFriendsService;
@@ -90,6 +98,7 @@ class TeamFriendsControllerFollowSlugTest {
 
     @BeforeEach
     void setUpSecurityContext() {
+        given(sourceQueryService.isEligibleSource(USER_ID, TEAM_ID)).willReturn(true);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));
     }

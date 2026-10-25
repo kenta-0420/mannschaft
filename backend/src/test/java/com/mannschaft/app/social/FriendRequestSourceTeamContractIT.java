@@ -15,7 +15,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
-/** CMP-261024-2051: 本人のフレンド申請元候補を実HTTPで固定する。 */
+/** CMP-261024-2051: FriendRequestSourceTeamController の listSourceTeams を実HTTPで固定する。 */
+@org.junit.jupiter.api.condition.EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class FriendRequestSourceTeamContractIT extends FriendRequestContractFixture {
     private static final String URL = "/api/v1/me/friend-request-source-teams";
 

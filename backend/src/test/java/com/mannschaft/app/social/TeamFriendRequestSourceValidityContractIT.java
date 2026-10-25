@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 /** CMP-261024-2051: 選択後に失効した申請元をPOST前の実DB判定で拒否する。 */
+@org.junit.jupiter.api.condition.EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class TeamFriendRequestSourceValidityContractIT extends FriendRequestContractFixture {
     @Autowired private RoleService roleService;
 

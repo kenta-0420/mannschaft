@@ -159,7 +159,7 @@ abstract class FriendRequestContractFixture extends AbstractMySqlIntegrationTest
 
     protected JsonNode ok(MockHttpServletRequestBuilder request) throws Exception {
         MvcResult result = mvc.perform(request).andReturn();
-        assertThat(result.getResponse().getStatus()).as("未実装pending URLはここで404になりred").isEqualTo(200);
+        assertThat(result.getResponse().getStatus()).as("申請APIのHTTP 200契約").isEqualTo(200);
         return json(result);
     }
 

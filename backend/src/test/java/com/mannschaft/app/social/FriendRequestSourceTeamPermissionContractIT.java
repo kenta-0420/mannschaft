@@ -18,8 +18,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 /** CMP-261024-2051: 専用SQLと既存実効権限resolverの同値をfixture変更ごとに比較する。 */
+@org.junit.jupiter.api.condition.EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class FriendRequestSourceTeamPermissionContractIT extends FriendRequestContractFixture {
     @Autowired private RoleService roleService;
+    @Autowired private com.mannschaft.app.role.service.FriendRequestSourceTeamQueryService sourceQueries;
     @Autowired private RolePermissionCacheGenerationService generations;
 
     @ParameterizedTest
@@ -69,6 +71,7 @@ class FriendRequestSourceTeamPermissionContractIT extends FriendRequestContractF
         em.flush(); em.clear(); generations.incrementGeneration("TEAM", own.getId());
         boolean expected = roleService.hasPermission(user, own.getId(), "TEAM", PERMISSION);
         assertThat(expected).as("resolver自身の仕様: " + scenario).isEqualTo(List.of("ADMIN_DEFAULT", "DEPUTY_GROUP", "MEMBERSHIP_MEMBER_GROUP", "MEMBER_DEFAULT", "MEMBER_MULTI_GROUP", "MEMBER_OVERRIDE_ENABLE", "SCOPED_ADMIN_STRONGER", "SCOPED_DEPUTY_STRONGER", "SCOPED_GUEST_WEAKER", "GLOBAL_SYSTEM_WITH_ADMIN").contains(scenario));
+        assertThat(sourceQueries.isEligibleSource(user, own.getId())).as("単票元ゲート: " + scenario).isEqualTo(expected);
         var response = ok(auth(get("/api/v1/me/friend-request-source-teams").param("targetTeamSlug", target.getSlug()), user));
         assertThat(response.path("data").size()).as(scenario + " resolver=" + expected).isEqualTo(expected ? 1 : 0);
         assertThat(response.path("pagination").path("totalElements").asLong()).isEqualTo(expected ? 1 : 0);
