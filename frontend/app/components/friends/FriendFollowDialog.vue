@@ -95,7 +95,9 @@ onBeforeUnmount(() => { statusSequence += 1 })
             <template #value><span v-if="selected" class="break-words">{{ selected.teamName }} ({{ selected.teamSlug }})</span><span v-else>{{ t('friends.request.choose_source') }}</span></template>
           </Select>
           <p v-if="totalRecords === 1 && selected" data-testid="friend-source-auto">{{ t('friends.request.single_source') }}</p>
-          <Paginator v-if="totalRecords > rows" :first="page * rows" :rows="rows" :total-records="totalRecords" @page="onPage" />
+          <fieldset v-if="totalRecords > rows" :disabled="busy" class="min-w-0">
+            <Paginator :first="page * rows" :rows="rows" :total-records="totalRecords" @page="onPage" />
+          </fieldset>
         </template>
       </template>
       <template v-else>
