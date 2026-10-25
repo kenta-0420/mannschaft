@@ -23,8 +23,12 @@ const props = defineProps<{
   scopeId: string
   /** 掲示板・ブログ・応答scope照合用の内部ID。slugと混同しない。 */
   numericScopeId?: string
+  isFeatureVisible?: (featureKey: string) => boolean
   data: TeamDashboardResponse | OrgDashboardResponse
 }>()
+const featureVisible = (key: string) => props.isFeatureVisible?.(key) ?? true
+const actionSections = computed(() => ({ circulation: featureVisible('circulation'), survey: featureVisible('surveys'), attendance: featureVisible('schedule') }))
+const showActionRequired = computed(() => Object.values(actionSections.value).some(Boolean))
 const preview = useScopeWidgetPreview(() => ({
   scopeType: props.scopeType,
   scopeSlug: props.scopeId,
@@ -72,6 +76,7 @@ const bulletinThreadItems = computed<ScopeBulletinThreadItem[]>(
     :data-testid="`swipe-widget-grid-${scopeType}`"
   >
     <DashboardScopeListWidget
+      v-if="featureVisible('schedule')"
       :title="$t('swipeWidgets.upcoming')"
       icon="pi pi-calendar-plus"
       :items="upcomingEvents"
@@ -82,10 +87,11 @@ const bulletinThreadItems = computed<ScopeBulletinThreadItem[]>(
         <DashboardScopeWidgetItem kind="schedule" :item="item" @select="preview.open" />
       </template>
     </DashboardScopeListWidget>
-    <DashboardWidgetCard :title="$t('swipeWidgets.timeline')" icon="pi pi-comments">
+    <DashboardWidgetCard v-if="featureVisible('timeline')" :title="$t('swipeWidgets.timeline')" icon="pi pi-comments">
       <TimelineFeed :scope-type="scopeType" :scope-id="scopeId" :limit="3" />
     </DashboardWidgetCard>
     <DashboardScopeListWidget
+      v-if="featureVisible('bulletin')"
       :title="$t('swipeWidgets.bulletin')"
       icon="pi pi-megaphone"
       :items="bulletinThreadItems"
@@ -96,6 +102,7 @@ const bulletinThreadItems = computed<ScopeBulletinThreadItem[]>(
       </template>
     </DashboardScopeListWidget>
     <DashboardScopeListWidget
+      v-if="featureVisible('blog')"
       :title="$t('swipeWidgets.blog')"
       icon="pi pi-book"
       :items="blogPosts"
@@ -106,6 +113,7 @@ const bulletinThreadItems = computed<ScopeBulletinThreadItem[]>(
       </template>
     </DashboardScopeListWidget>
     <DashboardScopeListWidget
+      v-if="featureVisible('chat')"
       :title="$t('swipeWidgets.chat')"
       icon="pi pi-send"
       :items="chatChannels"
@@ -115,7 +123,7 @@ const bulletinThreadItems = computed<ScopeBulletinThreadItem[]>(
         <DashboardScopeWidgetItem kind="chat" :item="item" @select="preview.open" />
       </template>
     </DashboardScopeListWidget>
-    <DashboardWidgetCard :title="$t('swipeWidgets.calendar')" icon="pi pi-calendar">
+    <DashboardWidgetCard v-if="featureVisible('schedule')" :title="$t('swipeWidgets.calendar')" icon="pi pi-calendar">
       <DashboardScopeWidgetItem
         v-if="calendarSummary"
         kind="calendar"
@@ -129,6 +137,7 @@ const bulletinThreadItems = computed<ScopeBulletinThreadItem[]>(
       />
     </DashboardWidgetCard>
     <DashboardScopeListWidget
+      v-if="featureVisible('todos')"
       :title="$t('swipeWidgets.todo')"
       icon="pi pi-check-circle"
       :items="todoItems"
@@ -139,7 +148,7 @@ const bulletinThreadItems = computed<ScopeBulletinThreadItem[]>(
         <DashboardScopeWidgetItem kind="todo" :item="item" @select="preview.open" />
       </template>
     </DashboardScopeListWidget>
-    <ScopeActionRequiredWidget :scope-type="scopeType" :scope-id="scopeId" />
+    <ScopeActionRequiredWidget v-if="showActionRequired" :key="scopeType + scopeId" :sections="actionSections" :scope-type="scopeType" :scope-id="scopeId" />
   </div>
   <DashboardScopePreviewModal
     :state="state"

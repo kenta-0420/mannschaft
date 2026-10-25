@@ -23,6 +23,7 @@ export function useRoleAccess(
   options: { watchScope?: boolean } = {},
 ) {
   const api = useApi()
+  const auth = useAuthStore()
   const permissions = ref<string[]>([])
   const roleName = ref<RoleName | null>(null)
   const scopeAdminFromApi = ref<boolean | null>(null)
@@ -144,15 +145,28 @@ export function useRoleAccess(
     isAdminOrDeputy.value || roleName.value === 'MEMBER',
   )
 
-  // scopeIdがリアクティブな場合、変更時に自動リロード
+  // scope/本人切替の瞬間に旧権限を破棄し、旧応答も反映させない。
+  function invalidatePermissions() {
+    ++requestSeq
+    latestRequest = null
+    roleName.value = null
+    permissions.value = []
+    scopeAdminFromApi.value = null
+    canGrantFromApi.value = null
+    roleResolved.value = false
+    roleLoadFailed.value = false
+    loading.value = false
+  }
   if (isRef(scopeId) && options.watchScope !== false) {
     watch(scopeId, (newId) => {
-      // 別スコープへ遷移したら前スコープの解決結果は無効（読込中へ戻す）
-      roleResolved.value = false
-      roleLoadFailed.value = false
-      if (newId) loadPermissions()
-    })
+      invalidatePermissions()
+      if (newId) void loadPermissions()
+    }, { flush: 'sync' })
   }
+  watch(() => auth.user?.id, (userId) => {
+    invalidatePermissions()
+    if (userId && resolvedId.value) void loadPermissions()
+  }, { flush: 'sync' })
 
   return {
     permissions,

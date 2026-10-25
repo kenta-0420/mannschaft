@@ -106,6 +106,18 @@ describe.each(['TEAM', 'ORGANIZATION'] as const)('%s グリッドの導線', (sc
     expect(view.findComponent({ name: 'TimelineFeed' }).exists()).toBe(true)
     expect(view.findComponent({ name: 'ScopeActionRequiredWidget' }).exists()).toBe(true)
   })
+  it('表示OFFの機能は子widgetをmountせず全要対応OFFでは追加取得入口も消す', async () => {
+    const view = render(scopeType)
+    await view.setProps({ isFeatureVisible: () => false })
+    expect(view.find('button').exists()).toBe(false)
+    expect(view.findComponent({ name: 'TimelineFeed' }).exists()).toBe(false)
+    expect(view.findComponent({ name: 'ScopeActionRequiredWidget' }).exists()).toBe(false)
+    await view.setProps({ isFeatureVisible: key => key === 'surveys' })
+    const actions = view.findComponent({ name: 'ScopeActionRequiredWidget' })
+    expect(actions.exists()).toBe(true)
+    expect(actions.attributes('sections')).toBeDefined()
+  })
+
   it('AC4: カレンダー0件も概要を開き、null時は架空項目を出さない', async () => {
     const view = render(scopeType)
     await view.get('[data-testid="scope-widget-calendar"]').trigger('click')

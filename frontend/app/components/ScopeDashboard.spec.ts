@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
@@ -12,12 +13,16 @@ import ko from '~/locales/ko/dashboard.json'
 import es from '~/locales/es/dashboard.json'
 import de from '~/locales/de/dashboard.json'
 
+const { featureVisible, reorderAll } = vi.hoisted(() => ({ featureVisible: vi.fn((_key?: string) => true), reorderAll: vi.fn() }))
+mockNuxtImport('useScopeFeatureVisibility', () => () => ({
+  isVisible: featureVisible, ready: ref(true), loading: ref(false), error: ref(null), refresh: vi.fn(),
+}))
 mockNuxtImport('useDashboardWidgets', () => () => ({
-  sortedWidgets: ref([]),
+  sortedWidgets: ref(['timeline', 'chat', 'blog'].map(key => ({ key, labelKey: key, descriptionKey: key, icon: '', scope: ['team', 'organization'] }))),
   visibleWidgets: ref([]),
   isVisible: vi.fn(),
   toggleWidget: vi.fn(),
-  reorder: vi.fn(),
+  reorder: reorderAll,
   ready: ref(true),
 }))
 mockNuxtImport('useSpotlightApi', () => () => ({ fetchContent: vi.fn() }))
@@ -75,7 +80,7 @@ function mountDashboard(
 }
 
 describe('ScopeDashboard 公開閲覧者案内', () => {
-  beforeEach(() => localStorage.clear())
+  beforeEach(() => { localStorage.clear(); featureVisible.mockReset().mockReturnValue(true); reorderAll.mockReset() })
 
   it.each(Object.keys(locales) as (keyof typeof locales)[])(
     '%s: 組織の案内を実翻訳で表示する',
@@ -94,6 +99,16 @@ describe('ScopeDashboard 公開閲覧者案内', () => {
       expect(wrapper.get('[data-testid="public-hint"]').text()).toBe(teamHints[locale])
     },
   )
+
+  it('設定dialogだけを絞り並べ替え時も非表示機能の元順序を保持する', async () => {
+    featureVisible.mockImplementation(key => key !== 'chat')
+    const wrapper = mountDashboard('team', { viewerRole: 'MEMBER' })
+    const dialog = wrapper.findComponent({ name: 'DashboardConfigDialog' })
+    expect(dialog.props('widgets').map((widget: { key: string }) => widget.key)).toEqual(['timeline', 'blog'])
+    dialog.vm.$emit('reorder', 1, 0)
+    await nextTick()
+    expect(reorderAll).toHaveBeenCalledWith(2, 0)
+  })
 
   it('個人ダッシュボードには案内を表示しない', () => {
     const wrapper = mountDashboard('personal')
