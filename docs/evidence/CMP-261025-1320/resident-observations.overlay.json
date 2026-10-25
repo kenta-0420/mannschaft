@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 2,
+  "runId": "CMP1320-observations-recovered-20261026",
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "environment": {
+    "sourceHead": "35801c64f0a2aff9123a4bdcbd8b931776fc3a37",
+    "physicalDevice": false
+  },
+  "personas": [
+    {
+      "id": "CMP1320-mobile-visual",
+      "personaArchetype": "スマホ片手操作×表示崩れ",
+      "runId": "cmp1320-recovered-20261026",
+      "sourceHead": "35801c64f0a2aff9123a4bdcbd8b931776fc3a37",
+      "evidencePath": "docs/evidence/CMP-261025-1320/exploratory-summary.json"
+    }
+  ],
+  "journeys": [
+    {
+      "id": "CMP1320-mobile-onehand-attempt2",
+      "personaId": "CMP1320-mobile-visual",
+      "purpose": "複数チームの確定勤務を理解し、スマホで詳細確認して帰る",
+      "runId": "cmp1320-recovered-20261026",
+      "sourceHead": "35801c64f0a2aff9123a4bdcbd8b931776fc3a37",
+      "evidencePath": "docs/evidence/CMP-261025-1320/exploratory-summary.json"
+    }
+  ],
+  "insights": [
+    {
+      "id": "CMP1320-DETAIL-SCROLL-20261026",
+      "featureKey": "shift",
+      "featureDetail": "マイシフトのモバイル閲覧",
+      "title": "勤務の詳細は下部に追加され、確認に追加スクロールが必要だった",
+      "detail": "360でカード時刻tapは変化なし。カレンダー27日tapで詳細を追加したがcloseは直後y833で画面外。scroll後44x44のcloseを実tapできた。操作不能とは断定せず、導線の気づきとして保存。",
+      "page": "/my/shift",
+      "urgency": "when-free",
+      "priority": "could",
+      "source": "アリシゼーションテスト",
+      "status": "observed-unverified",
+      "personaId": "CMP1320-mobile-visual",
+      "journeyId": "CMP1320-mobile-onehand-attempt2",
+      "personaArchetype": "スマホ片手操作×表示崩れ",
+      "originalRunId": "cmp1320-recovered-20261026",
+      "evidencePath": "docs/evidence/CMP-261025-1320/exploratory-summary.json",
+      "screenshotPath": "docs/evidence/CMP-261025-1320/images/08-detailvisible360.png"
+    },
+    {
+      "id": "CMP1320-BACK-ACCESSIBLE-NAME-20261026",
+      "featureKey": "shift",
+      "featureDetail": "マイシフトのモバイル閲覧",
+      "title": "共通の戻るリンクのアクセシブル名にアイコン文字が含まれた",
+      "detail": "mobile exact戻るlocatorはtimeout。root裏取りでaccnameはU+E91A+空白+戻る、exact0/partial1。a[href=/my]をforceなしtapするとURL/myへ遷移。/my安定描画は未確認。今回3native修正外であり、不具合や新CMPへ昇格しない。",
+      "page": "/my/shift",
+      "urgency": "when-free",
+      "priority": "could",
+      "source": "アリシゼーションテスト",
+      "status": "observed-unverified",
+      "personaId": "CMP1320-mobile-visual",
+      "journeyId": "CMP1320-mobile-onehand-attempt2",
+      "personaArchetype": "スマホ片手操作×表示崩れ",
+      "originalRunId": "cmp1320-recovered-20261026",
+      "evidencePath": "docs/evidence/CMP-261025-1320/exploratory-summary.json",
+      "screenshotPath": "docs/evidence/CMP-261025-1320/images/01-before-tap390.png"
+    }
+  ],
+  "limits": "import-ready payloadのみ。既存board-data/overlay/IndexedDBへ未反映。runner/coverage合格や不具合確定、新CMP/blocker登録を意味しない。",
+  "idAssignment": "原本のpersona/journey/runを保持し、登録用一意IDにCMP1320 prefixを付与。固定P01〜P20に変換しない。"
+}
