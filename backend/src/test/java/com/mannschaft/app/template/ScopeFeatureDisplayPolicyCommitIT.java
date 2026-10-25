@@ -71,6 +71,11 @@ class ScopeFeatureDisplayPolicyCommitIT extends AbstractMySqlIntegrationTest {
             path = "/api/v1/teams/" + team.getSlug() + "/feature-display-policies";
             RoleEntity admin = roles.findByName("ADMIN").orElseGet(() -> roles.saveAndFlush(RoleEntity.builder()
                     .name("ADMIN").displayName("ADMIN").priority(2).isSystem(true).build()));
+            // GETの閾値解決に必要な基準ロールも、本試験単独の空DBに用意する。
+            if (roles.findByName("SUPPORTER").isEmpty()) {
+                roles.saveAndFlush(RoleEntity.builder().name("SUPPORTER").displayName("SUPPORTER")
+                        .priority(5).isSystem(true).build());
+            }
             membershipId = memberships.saveAndFlush(MembershipEntity.builder().userId(actor)
                     .scopeType(ScopeType.TEAM).scopeId(teamId).roleKind(RoleKind.MEMBER).build()).getId();
             userRoleId = userRoles.saveAndFlush(UserRoleEntity.builder().userId(actor).roleId(admin.getId())
