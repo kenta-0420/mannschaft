@@ -378,3 +378,13 @@ paths = [
 regexes = [
   '''^fc49ebf119fccc2ab1172370ab37e74e9090c63982182ed2c2359f9096de9677$''',
 ]
+
+[[allowlists]]
+description = "CMP0647の検証説明に記載したAPIヘルパー識別子（秘密値ではない）。対象証拠pathと抽出値の完全一致だけを許可"
+condition = "AND"
+paths = [
+  '''^docs/evidence/CMP-261021-0647/root-historical-roundtrip-applicability\.json$''',
+]
+regexes = [
+  '''^useApi/ofetch$''',
+]
