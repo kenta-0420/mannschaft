@@ -1,6 +1,6 @@
 # CMP-261024-2051 フレンド申請 検証準備記録
 
-2026-10-25時点の途中記録。scopeはapp。最終検分・実機・探索・CIの合格記録ではなく、台帳を完了へ変える根拠には使わない。実装ドラフトPRは#4106、最終head SHAと成功CI run IDは未確定。
+2026-10-25時点の途中記録。scopeはapp。最終検分・実機・探索・CIの合格記録ではなく、台帳を完了へ変える根拠には使わない。実装ドラフトPRは#4106、runtime開始時の統合HEADは46deae93b5591fcb9bd4aae59bd68aa7157b0918。最終head SHAと成功CI run IDは未確定。
 
 正本は[F01.5 §7.1](../features/F01.5_team_friend_relationships.md)のFR-01〜15。[完了証拠ゲート](../development/completion-evidence.md)に従い、実装PRのmerge済head SHA、同SHAの成功CI、review/real/exploratory各passedが揃ってから完了JSONを作る。この準備では完了JSONもtask-listの状態変更も追加しない。
 
@@ -23,7 +23,7 @@ FR-15の100行×20回は候補SQL40本（2/page）、受信SQL60本（3/page、�
 
 FE green1（91092f544bbc881f676f9ed4ad449221fe2ed925）は10files/131tests成功、unhandled=0、heap8192のtypecheck exit0。後続のbusy、旧件数/エラー/世代、日時、409二重更新、Paginator物理無効化を個別red→affected greenで確認した。pager-greenは15/15成功。詳細runとSHAは保存JSONにある。DOMやcomponentイベントの注入を実ブラウザ再現とは扱わない。
 
-生成型合流後types-green（0c8444c0d534f3d1a31f429cae67c6d67f47cd0e）は22/22成功・対象ESLint成功だが、typecheckはEntityCreateDialogの生成schema欠落3件でexit2。このschema衝突は下記BE契約修正で是正済みだが、最新FEの型再生成・typecheck成功はまだpending。PR #4106初回CI run40149069435/job121036557968も新E2E specのno-empty-pattern 7件で失敗した。E2E修正9eec97be14では2filesのlintがmax-warnings=0でexit0（private結果直接確認）。最終統合SHAの再CIは未確認であり、lint成功をCI全体成功とは扱わない。
+生成型合流後types-green（0c8444c0d534f3d1a31f429cae67c6d67f47cd0e）は22/22成功・対象ESLint成功だが、typecheckはEntityCreateDialogの生成schema欠落3件でexit2。このschema衝突は下記BE契約修正で是正済み。後続FE types-green2（e2545f9d8bf5100791d820043ccfeb84138b1ba1）は3files/22tests green、heap8192のtypecheck exit0、ESLint max-warnings=0 exit0、runner exit0/cleanup=removedを確認した。receipt/JUnitおよび必要なログ集計・hashは選別保存済み。typecheckの既存Duplicated imports警告は残るがTS error行は0、eslint.logは0bytes。個別コマンドexit0は殿の正式報告、全runner exit0はreceipt直接読取による根拠として区別する。PR #4106初回CI run40149069435/job121036557968も新E2E specのno-empty-pattern 7件で失敗した。E2E修正9eec97be14では2filesのlintがmax-warnings=0でexit0（private結果直接確認）。最終統合SHAの再CIは未確認であり、lint成功をCI全体成功とは扱わない。
 
 OpenAPI schema是正は先行red834a71df8395f49897593dd0e035051a90cf7af4で契約2 assertion失敗・error/skip=0、ArchUnit37とfreeze2は成功。fix e1836e16b4後、正規生成元5880333e21fa0570f2c7b4b354de73c11f61b881のschema-green1は契約2+ArchUnit37+freeze2の41/41成功（error/skip=0）、両receipt cleanup=removed。一般エラーをCommonErrorDetailへ分離し、既存同名確認4schema、フレンド5schema/2pathsの不変をcomparisonで確認。正規OA commit5fe9c33d1af8c869c3b1154b3bfd60f3ef86d5b7、原本SHA256はb773146251944012149159a56011c4da966b83edc57329d69eb85368b256a20d（6367683bytes）。原本/WT/gitblob一致は殿確認報告として記録した。
 
@@ -49,9 +49,11 @@ BEの表記はbackend/src/test/java/com/mannschaft/app/social/配下、FEはfron
 | 14 | Entry初期候補/認証復元0・クリック復元/安全復帰・自動送信0、locale番人 | SSR HTTP本人埋込0、360/390px、6言語、keyboard、再認可 |
 | 15 | FriendRequestQueryPerformanceContractIT 2ケース、100行SQL定数2/3・p95、FE単一候補API | Flyway実索引/EXPLAIN/HTTP性能と最終実装N+1確認 |
 
+runtimeは専用DBの初回migration1226本の適用で準備中（殿報告）。初期health待ち7分が足りず、殿承認の所有controllerのみSIGSTOP・Java継続・health UP後SIGCONTというインフラ対応中であり、本記録時点ではruntime readyを確認していない。実機8シナリオ・Flyway性能実測・3住民探索は未実行のまま。
+
 ## 完了前に埋める証拠
 
-1. 最終統合PRのhead SHA、merge結果、同SHAの成功CI run ID、殿の検分結果。生成型typecheckと初回lint失敗の修正後結果を含む。
+1. 最終統合PRのhead SHA、merge結果、同SHAの成功CI run ID、殿の検分結果。生成型typecheckとE2E lintの修正後ローカル結果は取得済みだが、統合CI全体の成功は未確認。
 2. 固定clean SHAの実API/実DBで8シナリオの実機結果。権限横断/直URL、private既知slug、匿名復帰、SSR、mobileを実績に対応付ける。
 3. 同じ専用Flyway適用DBで索引/EXPLAIN/HTTP性能。所有データのcleanup完了も記録する。
 4. 実機の後に独立3住民（一般、中断、多言語/スマホ）の探索。各runId/persona/journey/source SHA/目的/証拠、殿裏取り、確定不具合のred/green。

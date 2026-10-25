@@ -462,6 +462,60 @@
           "skipped": "0"
         }
       ]
+    },
+    {
+      "runId": "friend-fe-2051-261025-types-green2",
+      "receipt": {
+        "sourceHead": "e2545f9d8bf5100791d820043ccfeb84138b1ba1",
+        "exitCode": 0,
+        "signal": null,
+        "cleanup": "removed",
+        "cleanupReason": null,
+        "error": null
+      },
+      "suites": [
+        {
+          "name": "app/composables/useFriendRequestSources.spec.ts",
+          "tests": "7",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "app/components/friends/FriendFollowDialog.spec.ts",
+          "tests": "11",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "app/components/friends/TeamFriendIncomingFollowList.spec.ts",
+          "tests": "4",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        }
+      ],
+      "logs": {
+        "typecheck.log": {
+          "sha256": "2a17cd73a3626a013056f10b1b57fd9cc756698796567de7670c0df80c39309e",
+          "bytes": 1328,
+          "invocation": "nuxt typecheck",
+          "typescriptErrorLines": 0,
+          "knownWarnings": [
+            "Duplicated imports OrgTeamGroup",
+            "Duplicated imports isForbiddenError"
+          ]
+        },
+        "vitest.log": {
+          "sha256": "23fac550951b66ad1994ae904400695f7fff54bb5b27f953413e92d32e15d85b",
+          "bytes": 2881
+        },
+        "eslint.log": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        }
+      }
     }
   ]
 }

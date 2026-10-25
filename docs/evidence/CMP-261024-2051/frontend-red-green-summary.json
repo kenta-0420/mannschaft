@@ -64,22 +64,42 @@
   ],
   "regressionRunPrefix": "friend-fe-2051-261025-",
   "latestGeneratedTypes": {
-    "sourceHead": "0c8444c0d534f3d1a31f429cae67c6d67f47cd0e",
-    "runId": "friend-fe-2051-261025-types-green",
+    "sourceHead": "e2545f9d8bf5100791d820043ccfeb84138b1ba1",
+    "runId": "friend-fe-2051-261025-types-green2",
     "tests": 22,
     "failures": 0,
+    "errors": 0,
+    "skipped": 0,
     "typecheck": {
-      "exitCode": 2,
-      "errors": 3,
-      "description": "EntityCreateDialog: DuplicateNameCandidateView欠落とerror.details欠落。OpenAPI schema衝突の追加対応待ち。",
-      "followup": {
-        "status": "pending",
-        "backendSchemaRegression": "schema-regression-red-green-summary.json",
-        "description": "BE schema是正green・再生成済み。最新FE typecheckは結果待ち。"
-      }
+      "exitCode": 0,
+      "heapMiB": 8192,
+      "basis": "殿の正式green報告、全runner receipt exit0、原本nuxt typecheck/TS error行0を確認"
     },
     "eslint": {
-      "exitCode": 0
+      "exitCode": 0,
+      "maxWarnings": 0,
+      "basis": "殿の正式green報告、全runner receipt exit0、原本eslint.logは0bytes"
+    },
+    "cleanup": "removed",
+    "logs": {
+      "typecheck.log": {
+        "sha256": "2a17cd73a3626a013056f10b1b57fd9cc756698796567de7670c0df80c39309e",
+        "bytes": 1328,
+        "invocation": "nuxt typecheck",
+        "typescriptErrorLines": 0,
+        "knownWarnings": [
+          "Duplicated imports OrgTeamGroup",
+          "Duplicated imports isForbiddenError"
+        ]
+      },
+      "vitest.log": {
+        "sha256": "23fac550951b66ad1994ae904400695f7fff54bb5b27f953413e92d32e15d85b",
+        "bytes": 2881
+      },
+      "eslint.log": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
     }
   },
   "initialCi": {
@@ -93,8 +113,8 @@
   },
   "limits": [
     "component/DOMイベント契約であり実ブラウザ到達を証明しない",
-    "green1以降の型変更について最終統合HEADの型/CI確認待ち",
-    "実機8シナリオ、Flyway実測、3住民探索は未実行"
+    "実機8シナリオ、Flyway実測、3住民探索は未実行",
+    "最新FE型検査成功はe2545f9d8bf5100791d820043ccfeb84138b1ba1時点。統合HEADのCI成功とは区別する。"
   ],
   "e2eLintFix": {
     "sourceHead": "9eec97be14",
@@ -113,5 +133,25 @@
     ],
     "basis": "private e2e-lint-results.json直接読取、commitは殿報告",
     "limitation": "lint成功。実機試験実行や最終CI成功を意味しない。"
-  }
+  },
+  "generatedTypesFailureHistory": {
+    "sourceHead": "0c8444c0d534f3d1a31f429cae67c6d67f47cd0e",
+    "runId": "friend-fe-2051-261025-types-green",
+    "tests": 22,
+    "failures": 0,
+    "typecheck": {
+      "exitCode": 2,
+      "errors": 3,
+      "description": "EntityCreateDialog: DuplicateNameCandidateView欠落とerror.details欠落。OpenAPI schema衝突の追加対応待ち。",
+      "followup": {
+        "status": "resolved",
+        "runId": "friend-fe-2051-261025-types-green2",
+        "description": "schema是正後の正規生成型でtypecheck0、関連22件green。"
+      }
+    },
+    "eslint": {
+      "exitCode": 0
+    }
+  },
+  "implementationHeadAtRuntimeStart": "46deae93b5591fcb9bd4aae59bd68aa7157b0918"
 }
