@@ -172,6 +172,10 @@ Facadeのスコープ認可（越境は不在と同じ404、SUPPORTER等は403�
    b. 依頼者と引き受け者に通知
 ```
 
+**承認時の担当差替（CMP-261021-0648）**: 実API `POST /swap-requests/{id}/resolve` の `APPROVE` は、ACCEPTEDの申請者Aを現在担当の同じ位置で受諾者Bへ置換し、他担当の順序・人数・枠の日時等を保持する。非PUBLISHEDは409 `SHIFT_012`、不正状態・Bがnull/自己交代は409 `SHIFT_013`、現在担当にAがちょうど1回含まれない場合・Bの脱退/非ACTIVE/論理削除/SUPPORTER化・資格確認後のB変更は409 `SHIFT_018`、Bが既担当または同一表の完全同時刻別枠に担当済みなら409 `SHIFT_042`。部分重なりは許可し、別表を探索しない。
+
+非TXのFacadeで管理者認可とBの現在資格を確認し、業務TXでは親→枠を現在読取してから差替する。swap・担当JSON・割当履歴は同一TXでcommit/rollbackする。Aの全非REVOKED履歴をREVOKEDにし、Bへ手動CONFIRMED（runId=null、割当者=承認管理者）を記録する。Bの既存CONFIRMEDは重複させず、古いPROPOSEDだけなら元行を保持して新CONFIRMEDを作る。Aの脱退/削除は現在担当から外す交代を妨げない。`REJECT`は既存どおりACCEPTEDから状態・処理情報だけを更新し、担当・履歴を変えない。管理者自身がA/Bでも承認可能。membershipの同時変更の厳密直列化と、上記設計の通知/監査イベント新設は本対応に含めない。
+
 #### A-3: オープンコール（全体募集）【v2.1 新規】
 
 ```
