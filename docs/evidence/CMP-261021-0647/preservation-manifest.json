@@ -87,15 +87,23 @@
     },
     {
       "file": "historical-a38-be-normalization.json",
-      "bytes": 6890,
-      "sha256": "c727e5747ded3dfa96f5ffe67796b4f878f2812a12a6ac81732e9bd1763e9dcb",
-      "origin": "root-reviewed aggregate; identical bytes"
+      "bytes": 6792,
+      "sha256": "9a6bbe8578ba557f5526536a326e1f18f1063e621811c1f0bd78adcaa25bd74d",
+      "origin": "root-reviewed aggregate; line-ending-normalized CRLF to LF; JSON values identical; private original unchanged",
+      "originalSourceBytes": 6890,
+      "originalSourceSha256": "c727e5747ded3dfa96f5ffe67796b4f878f2812a12a6ac81732e9bd1763e9dcb",
+      "originalSourceLineEndings": "CRLF",
+      "trackedLineEndings": "LF"
     },
     {
       "file": "current-82d-be-cache-assessment.json",
-      "bytes": 5582,
-      "sha256": "06b766cc3f91a6ab94912b51e47750ef54f53248e3720e0844206ce1df45fe94",
-      "origin": "root-reviewed aggregate; identical bytes"
+      "bytes": 5472,
+      "sha256": "96ef3c64d293fd02af6526885d846f6c9cf3ebb1d9c0b9c7cb6ea9805802c4b5",
+      "origin": "root-reviewed aggregate; line-ending-normalized CRLF to LF; JSON values identical; private original unchanged",
+      "originalSourceBytes": 5582,
+      "originalSourceSha256": "06b766cc3f91a6ab94912b51e47750ef54f53248e3720e0844206ce1df45fe94",
+      "originalSourceLineEndings": "CRLF",
+      "trackedLineEndings": "LF"
     },
     {
       "file": "historical-ui-roundtrip-proof.json",
@@ -168,5 +176,6 @@
       "sha256": "479e8648800ca515304b80895e91e7388bf0ec809fd80946a35290643ab2dbbe"
     }
   ],
-  "finalQualityPassed": true
+  "finalQualityPassed": true,
+  "hashScope": "Git committed blob bytes; canonical LF text, PNG bytes unchanged"
 }

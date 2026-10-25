@@ -66,3 +66,7 @@ rootが2026-10-25 04:06 UTCにPR head82d/CLEAN、全checks成功または許容S
 ## 正式完了ゲート照合
 
 [公式API照合](CMP-261021-0647/completion-api-validation.json)：PR4053 merged/head82d/merge bfd/mergedAt04:26:23Z、changed_files29と取得件数一致。正本summarizeImplementationChecksでマージ時点の世代を選びsuccess/許容skipだけ、同head4CIは全completed/success。正本validateEvidence/validateCompletionChangesへ実API値を渡し、構造/全参照/app全stageを照合した。APIだけで実機内容の真偽やbranch protection必須名完全一致を証明するものではない。
+
+## 追跡blobの改行と保全hash
+
+保全manifestは追跡Git blob23件のbytes/SHA256を示す。うちBE集約2JSONは既存Git属性によりCRLF→LFへ正規化されるため、元CRLFのbytes/SHA256をoriginalSource欄へ別記し、追跡LFのbytes/SHA256と区別した。JSON値の変更0、private原本不変。代表PNG6枚は元と同bytes/SHAを維持する。共有Git設定・属性は変更しない。
