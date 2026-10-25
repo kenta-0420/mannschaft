@@ -24,6 +24,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -78,9 +80,9 @@ class ScopeFeatureDisplayPolicyCommitIT extends AbstractMySqlIntegrationTest {
     }
 
     @AfterEach
-    void 所有fixtureだけを片付ける() {
+    void 所有fixtureだけを片付ける() throws SQLException {
         if (trigger != null) {
-            jdbc.execute("DROP TRIGGER IF EXISTS " + trigger);
+            triggerDdl("DROP TRIGGER IF EXISTS " + trigger);
         }
         if (teamId == null) {
             return;
@@ -98,7 +100,7 @@ class ScopeFeatureDisplayPolicyCommitIT extends AbstractMySqlIntegrationTest {
     @Test
     void AC8_二件目の実DB失敗は先行書込もrollbackし監査を確定しない() throws Exception {
         // TRIGGERの識別子は試験が生成した固定形式だけで、利用者入力をSQLへ連結しない。
-        jdbc.execute("CREATE TRIGGER " + trigger + " BEFORE INSERT ON scope_feature_display_policies FOR EACH ROW "
+        triggerDdl("CREATE TRIGGER " + trigger + " BEFORE INSERT ON scope_feature_display_policies FOR EACH ROW "
                 + "BEGIN IF NEW.scope_type = 'TEAM' AND NEW.scope_id = " + teamId
                 + " AND NEW.feature_key = 'schedule' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'sfdp-injected'; END IF; END");
         var result = mvc.perform(put(path).with(user(actor.toString())).contentType("application/json")
@@ -162,5 +164,13 @@ class ScopeFeatureDisplayPolicyCommitIT extends AbstractMySqlIntegrationTest {
 
     private long auditCount() {
         return jdbc.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE event_type = ? AND team_id = ?", Long.class, EVENT, teamId);
+    }
+
+    /** binary log有効時のTRIGGER作成だけは共有Testcontainerのroot接続を使う。対象は所有scopeに限定する。 */
+    private void triggerDdl(String sql) throws SQLException {
+        try (var connection = DriverManager.getConnection(MYSQL.getJdbcUrl(), "root", MYSQL.getPassword());
+             var statement = connection.createStatement()) {
+            statement.execute(sql);
+        }
     }
 }
