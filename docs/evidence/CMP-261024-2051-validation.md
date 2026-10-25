@@ -1,6 +1,6 @@
 # CMP-261024-2051 フレンド申請 検証準備記録
 
-2026-10-25時点の途中記録。scopeはapp。最終検分・実機・探索・CIの合格記録ではなく、台帳を完了へ変える根拠には使わない。実装ドラフトPRは#4106、runtime開始時の統合HEADは46deae93b5591fcb9bd4aae59bd68aa7157b0918。最終head SHAと成功CI run IDは未確定。
+2026-10-25時点の途中記録。scopeはapp。実機に不合格履歴があり、性能findingも未解決。最終検分・実機・探索・CIの合格記録ではなく、台帳を完了へ変える根拠には使わない。実装ドラフトPRは#4106、runtime開始時の統合HEADは46deae93b5591fcb9bd4aae59bd68aa7157b0918。最終head SHAと成功CI run IDは未確定。
 
 正本は[F01.5 §7.1](../features/F01.5_team_friend_relationships.md)のFR-01〜15。[完了証拠ゲート](../development/completion-evidence.md)に従い、実装PRのmerge済head SHA、同SHAの成功CI、review/real/exploratory各passedが揃ってから完了JSONを作る。この準備では完了JSONもtask-listの状態変更も追加しない。
 
@@ -9,6 +9,7 @@
 - [BE red/green要約](CMP-261024-2051/backend-red-green-summary.json): source SHA、実測件数、suite名、SQL本数/p95、comment境界、限界を保存。
 - [FE red/green要約](CMP-261024-2051/frontend-red-green-summary.json): 回帰のred/green対応、型検査の未合格、初回CI失敗を保存。
 - [schema衝突回帰のred/green](CMP-261024-2051/schema-regression-red-green-summary.json): 契約2 assertion失敗から41/41成功、既存契約比較と正規原本hashを保存。
+- [runtime性能・実機再試験要約](CMP-261024-2051/runtime-performance-retest-summary.json): app46のFlyway実測、受信索引finding、cleanup後履歴、失敗再試験と修正を保存。
 - [実行receipt・JUnit件数](CMP-261024-2051/selected-run-receipts.json): 原本から許可キーを選別して直接取得。全runのcleanup=removed。本文ログ、認証入力、JWT、cookie、環境ファイル、OpenAPI全文は含めない。
 
 原本は私有実行領域と各担当campaignにあり、ここには永続的な最小要約を保存した。BEのsuite件数はprivate要約とcampaignの記載、FEのsuite件数とsource SHA/exit/cleanupは原本receipt/JUnitを直接確認した。テストコードへの参照は実装PRの最終SHAへ対応付け直す必要がある。
@@ -19,7 +20,7 @@ BE red4（fe7316ab1808e258e7aae36e92a455b67d7216ca）は81件中80 assertion失�
 
 BE green1（daa8a1a7a586200b59ff0bb2d42ff2b0b41431e8）は212/212成功、ArchUnit37、freeze integrity2、standalone architecture347成功（各error/skip=0）。comment1（3688afb716e58c4d214b26bf647e0858b9d7a39c）は69/69成功で、slug/数値のcomment省略/null/空/300/301境界10追加ケースを含む。HTTP契約は実JWT/Security/MockMvc/Testcontainers MySQLであり、実ブラウザ検証とは区別する。
 
-FR-15の100行×20回は候補SQL40本（2/page）、受信SQL60本（3/page、一括概要を含む）。HTTP/JWT込みp95は候補69.069666ms、受信78.619749ms。EXPLAINはddl-auto=create、Flyway無効のEntity生成schemaであり、本番migrationの索引証明ではない。Flyway適用専用DBのSHOW INDEX/EXPLAIN/HTTP性能は準備済み・未実行。
+FR-15の100行×20回は候補SQL40本（2/page）、受信SQL60本（3/page、一括概要を含む）。HTTP/JWT込みp95は候補69.069666ms、受信78.619749ms。EXPLAINはddl-auto=create、Flyway無効のEntity生成schemaであり、本番migrationの索引証明ではない。後続のFlyway適用専用DBでSHOW INDEX/EXPLAIN/HTTP性能を取得したが、下記の受信索引findingによりFR-15は不合格。
 
 FE green1（91092f544bbc881f676f9ed4ad449221fe2ed925）は10files/131tests成功、unhandled=0、heap8192のtypecheck exit0。後続のbusy、旧件数/エラー/世代、日時、409二重更新、Paginator物理無効化を個別red→affected greenで確認した。pager-greenは15/15成功。詳細runとSHAは保存JSONにある。DOMやcomponentイベントの注入を実ブラウザ再現とは扱わない。
 
@@ -49,13 +50,26 @@ BEの表記はbackend/src/test/java/com/mannschaft/app/social/配下、FEはfron
 | 14 | Entry初期候補/認証復元0・クリック復元/安全復帰・自動送信0、locale番人 | SSR HTTP本人埋込0、360/390px、6言語、keyboard、再認可 |
 | 15 | FriendRequestQueryPerformanceContractIT 2ケース、100行SQL定数2/3・p95、FE単一候補API | Flyway実索引/EXPLAIN/HTTP性能と最終実装N+1確認 |
 
-runtimeは専用DBの初回migration1226本の適用で準備中（殿報告）。初期health待ち7分が足りず、殿承認の所有controllerのみSIGSTOP・Java継続・health UP後SIGCONTというインフラ対応中であり、本記録時点ではruntime readyを確認していない。実機8シナリオ・Flyway性能実測・3住民探索は未実行のまま。
+## runtime・実機・実性能の後続履歴
+
+runtime run1はbootJar後のcold Flyway V13.045 CREATE TRIGGERでMySQL1419（binlog/SUPER不足）となりexit1/cleanup=removed。seed/FE/実機/住民は0。所有controller一時SIGSTOP/Java継続・同世代CONTはインフラ対応履歴であり合格証拠ではない。専用DBを所有照合して再作成し、共有global設定/SUPER権限を変えずFlyway専用接続を私有注入したrun2でBE UP/FE200まで進んだ（殿報告、接続情報は保存しない）。
+
+migration旧報告1226は私有progress helper固定値の誤表示であり、「SQLファイル総数1226」という中間説明も訂正する。app46の実SQLfiles・正本validated/applied・historyはすべて1224との殿訂正。直接採取historyも1224成功（versioned1223+repeatable1）。runtime直下のmigration-count-definition-proof原本で実SQL数・seed前/性能history一致・validated/applied1224を確認し選別保存済み。1226適用済とは記さない。
+
+app46の実機run2は2pass/2fail/1interrupted/3notrun、Playwright CLI exit130。初回メンバー権限案内maskのテスト前提漏れで、実UIの「あとで決める」を6言語で扱うtest-only修正5c1cf7503fを追加。終了後は所有fr-% active0/browser children0、app46のBE/FEを維持した（殿報告）。次の独立immutable再試験H=8faf1a1644507bb9905320a6cca5d767f8a7463bはapp46へ接続し5pass/3fail・exit1/cleanup=removed。過去不合格を上書きしない。
+
+Hのcase5/8は存在しないvisibility enum PRIVATEをAPIへ送ったテスト前提誤り（期待200/201に対し400）。PRIVATEは非公開という概念名で、実APIではMEMBERS_AND_ABOVEを使用する。case7は44px閾値に対し43.74755859375px。Dialog enterのscale中計測が疑われるが元のtransform/stable値がなくappbugとは未確定。b35bac63b7は実enum、animation完了後の連続stable計測、当該pageの失敗前PNGを追加し、44px閾値を維持。root差分レビューはfinding0。新2GETのAPI台帳登録b9e123be84は番人52/52（error/skip=0）・receipt exit0/cleanup=removed。app46とfixのmain tree hashは一致しておりtest-onlyだが、CI全体成功の根拠にはしない。7a9a2fd0940c3dafb1d6ae16455c3de067d87fd1までのapp46差分はBE番人/freeze/E2E specの3filesだけとの殿確認だが、下記BE index migration追加予定により7aは最終HEADではない。
+
+app46の専用Flyway適用DBで100行・各20回（warmup1回除外、HTTP/JSON decode込み）を実測し、候補p95=46.419706ms、受信p95=95.398035ms。incoming mainはALL/key=null/推定105行、COUNTはuk_followsの先頭follower_type部分だけで推定105行。既存uk_followsはfollower_type/follower_id/followed_type/followed_id順で受信先team/type先頭の索引がない。全TEAM followsに比例する計画のため、p95の小ささだけでFR-15を合格にしない。新findingとしてBE担当が最小index migrationと小型実MySQL red/greenへ着手し、新HEAD/新runtimeで再検証する。
+
+性能用所有team101/101のAPI softdeleteは成功、activeTeams0/activeFollows0、候補baseline0に戻った。一方物理follow履歴100は残り、削除targetの元管理者によるincoming取得が200・100行/総数100となる現行履歴挙動も観測した。cleanup成功を物理履歴0と記さない。専用DBを最終廃棄する方針で追加DMLは行わない。実機全8合格・3独立住民探索・最終CI/レビュー・完了JSONは未取得。
+
 
 ## 完了前に埋める証拠
 
 1. 最終統合PRのhead SHA、merge結果、同SHAの成功CI run ID、殿の検分結果。生成型typecheckとE2E lintの修正後ローカル結果は取得済みだが、統合CI全体の成功は未確認。
 2. 固定clean SHAの実API/実DBで8シナリオの実機結果。権限横断/直URL、private既知slug、匿名復帰、SSR、mobileを実績に対応付ける。
-3. 同じ専用Flyway適用DBで索引/EXPLAIN/HTTP性能。所有データのcleanup完了も記録する。
+3. 受信索引finding修正後の新HEAD/新runtimeでhistory・索引/EXPLAIN/HTTP性能を再取得。旧1224件のversion/checksum/success一致と新migration追加分も確認し、所有データのcleanupを記録する。
 4. 実機の後に独立3住民（一般、中断、多言語/スマホ）の探索。各runId/persona/journey/source SHA/目的/証拠、殿裏取り、確定不具合のred/green。
 5. 上記成立後だけdocs/evidence/CMP-261024-2051.jsonと台帳完了PRを作る。実装変更を含むappのreal/exploratoryにnot-applicableは使わない。
 
@@ -66,3 +80,5 @@ runtimeは専用DBの初回migration1226本の適用で準備中（殿報告）�
 登録にはregistrationSource=actual-resident-artifacts、trusted=false、status=observed-unverified、runId、environment.sourceHeadが必要。personasは一意id/personaArchetype/runId/sourceHead/evidencePath、journeysは一意id/personaId/purpose/runId/sourceHead/evidencePathを持つ。insightsはid/featureKey/title/detailに加え対応personaId/journeyId/personaArchetype/originalRunId/evidencePath/status=observed-unverifiedを保持する。urgencyはurgent/normal/when-free。原本にIDがない場合は登録時付与と明記し、固定P01〜P20へ変換しない。気づき0件でも探索を行った宣言と原本証拠を保持する。
 
 専用worktreeでB0_INCLUDE_LOCAL_OVERLAY=trueを指定してgenerate-beta-inventory-board-data.pyを実行し、validate-beta-inventory-board.mjs --self-test-overlayで整合を確認する。生成ボードを開くとb0RunOverlay.insightsが既存IndexedDBへ重複なしで入る。runner/dynamic runner実行やcoverage合格を意味しない。本陣の既存dirty beta-inventory-board-data.jsは上書きしない。現在は住民未実行のため観測登録も未実施。
+
+専用ボード用の既存serverスクリプトは見つからない。空きport確認後、専用WTでPython標準http.serverを使い127.0.0.1へ限定公開できる（例: python -m http.server 8767 --bind 127.0.0.1 --directory docs/prototypes）。同じブラウザプロファイルでhttp://127.0.0.1:8767/beta-inventory-board.htmlを開くと既存初期化readInsights→syncAlicizationInsightsがoverlayを取込む。手順特定のみで、server起動・生成・疑似登録は未実施。DB名はmannschaft-beta-inventory-boardだが独立portは別originなので、既存ユーザーの他originの箱と同一とは扱わない。JSON取込UIはなく、既存ユーザーと同じ箱へ追加するには元boardタブで検証済overlayをメモリ上へ渡して既存同期関数を呼ぶ経路の実確認が必要。生成board-data.jsはcommitせず、観測原本と検証済overlayを永続保存する。

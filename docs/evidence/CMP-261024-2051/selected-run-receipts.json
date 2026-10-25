@@ -516,6 +516,29 @@
           "bytes": 0
         }
       }
+    },
+    {
+      "runId": "CMP-261024-2051-runtime-46deae93-run1",
+      "receipt": {
+        "sourceHead": "46deae93b5591fcb9bd4aae59bd68aa7157b0918",
+        "exitCode": 1,
+        "signal": null,
+        "cleanup": "removed",
+        "cleanupReason": null,
+        "error": null
+      }
+    },
+    {
+      "runId": "CMP-261024-2051-retest-8faf1a16-run1",
+      "receipt": {
+        "sourceHead": "8faf1a1644507bb9905320a6cca5d767f8a7463b",
+        "exitCode": 1,
+        "signal": null,
+        "cleanup": "removed",
+        "cleanupReason": null,
+        "error": null
+      },
+      "e2eExitCode": 1
     }
   ]
 }
