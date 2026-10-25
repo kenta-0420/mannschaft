@@ -183382,6 +183382,39 @@
           }
         }
       },
+      "DuplicateNameCandidateView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "DuplicateNameConfirmationDetails": {
+        "type": "object",
+        "properties": {
+          "expiresAtEpochSecond": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "hiddenCandidateCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "visibleCandidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DuplicateNameCandidateView"
+            }
+          }
+        }
+      },
       "DuplicateNameConfirmationErrorResponse": {
         "type": "object",
         "description": "柱③-A 409 応答（候補一覧・fingerprint 付き）",
@@ -183395,16 +183428,24 @@
         "type": "object",
         "properties": {
           "code": {
-            "type": "string"
+            "type": "string",
+            "description": "エラーコード",
+            "example": "DUPNAME_001"
+          },
+          "details": {
+            "$ref": "#/components/schemas/DuplicateNameConfirmationDetails",
+            "description": "同名確認フローの詳細（候補一覧・fingerprint）"
           },
           "fieldErrors": {
             "type": "array",
+            "description": "フィールドエラー一覧（本エラーでは常に空）",
             "items": {
               "$ref": "#/components/schemas/FieldError"
             }
           },
           "message": {
-            "type": "string"
+            "type": "string",
+            "description": "エラーメッセージ"
           }
         }
       },
@@ -230853,11 +230894,28 @@
           "sourceTeamSlug"
         ]
       },
+      "CommonErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "fieldErrors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
           "error": {
-            "$ref": "#/components/schemas/ErrorDetail"
+            "$ref": "#/components/schemas/CommonErrorDetail"
           }
         }
       },

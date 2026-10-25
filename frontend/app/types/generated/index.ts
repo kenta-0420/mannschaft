@@ -59873,13 +59873,33 @@ export interface components {
             template?: string;
             visibility?: string;
         };
+        DuplicateNameCandidateView: {
+            id?: string;
+            name?: string;
+        };
+        DuplicateNameConfirmationDetails: {
+            /** Format: int64 */
+            expiresAtEpochSecond?: number;
+            fingerprint?: string;
+            /** Format: int32 */
+            hiddenCandidateCount?: number;
+            visibleCandidates?: components["schemas"]["DuplicateNameCandidateView"][];
+        };
         /** @description 柱③-A 409 応答（候補一覧・fingerprint 付き） */
         DuplicateNameConfirmationErrorResponse: {
             error?: components["schemas"]["ErrorDetail"];
         };
         ErrorDetail: {
+            /**
+             * @description エラーコード
+             * @example DUPNAME_001
+             */
             code?: string;
+            /** @description 同名確認フローの詳細（候補一覧・fingerprint） */
+            details?: components["schemas"]["DuplicateNameConfirmationDetails"];
+            /** @description フィールドエラー一覧（本エラーでは常に空） */
             fieldErrors?: components["schemas"]["FieldError"][];
+            /** @description エラーメッセージ */
             message?: string;
         };
         FieldError: {
@@ -76995,8 +77015,13 @@ export interface components {
             sourceTeamName: string | null;
             sourceTeamSlug: string | null;
         };
+        CommonErrorDetail: {
+            code?: string;
+            fieldErrors?: components["schemas"]["FieldError"][];
+            message?: string;
+        };
         ErrorResponse: {
-            error?: components["schemas"]["ErrorDetail"];
+            error?: components["schemas"]["CommonErrorDetail"];
         };
         FriendFeedForwardStatus: {
             /** Format: int64 */

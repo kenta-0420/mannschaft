@@ -1,3 +1,4 @@
+import { readFileSync, writeFileSync } from 'node:fs'
 import { expect, test, type Page, type Response, type TestInfo } from '@playwright/test'
 import { waitForHydration, waitForSpinnerGone } from '../helpers/wait'
 import { FriendRequestFixture, openFriendActor, type FriendActor, type FriendTeam } from './helpers/team-friend-request-fixture'
@@ -12,15 +13,75 @@ let fixture: FriendRequestFixture
 let a: FriendTeam
 let b: FriendTeam
 let candidates: FriendTeam[]
+const permissionSetupHandlers = new WeakSet<Page>()
+const permissionSetupLaterLabels = ['ja', 'en', 'zh', 'ko', 'es', 'de'].map(locale => {
+  const messages = JSON.parse(readFileSync(new URL('../../../app/locales/' + locale + '/scope_guide.json', import.meta.url), 'utf8')) as { scopeGuide: { setup: { later: string } } }
+  return messages.scopeGuide.setup.later
+})
 
 async function open(page: Page, path: string): Promise<void> {
+  if (!permissionSetupHandlers.has(page)) {
+    // 新規チーム管理者の初回案内は実UIで延期する。権限の設定・API迂回は行わない。
+    await page.addLocatorHandler(page.getByTestId('member-permission-setup'), async dialog => {
+      const mask = page.locator('.p-dialog-mask').filter({ has: dialog })
+      const postpone = permissionSetupLaterLabels.map(label => dialog.getByRole('button', { name: label, exact: true })).reduce((union, button) => union.or(button))
+      await postpone.click()
+      await expect(dialog).not.toBeVisible()
+      await expect(mask).not.toBeVisible()
+    })
+    permissionSetupHandlers.add(page)
+  }
   await page.goto(path, { waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
   await waitForSpinnerGone(page)
 }
+async function jsonProof(info: TestInfo, name: string, value: unknown): Promise<void> {
+  const file = info.outputPath(name + '.json')
+  writeFileSync(file, JSON.stringify(value, null, 2), 'utf8')
+  await info.attach(name, { path: file, contentType: 'application/json' })
+}
 async function proof(page: Page, info: TestInfo, name: string): Promise<void> {
-  await info.attach(name, { body: await page.screenshot(), contentType: 'image/png' })
-  await info.attach(name + '-url', { body: page.url(), contentType: 'text/plain' })
+  // list reporterでもrunner回収可能な実ファイルとして残す。
+  const screenshot = info.outputPath(name + '.png')
+  await page.screenshot({ path: screenshot })
+  await info.attach(name, { path: screenshot, contentType: 'image/png' })
+  const url = info.outputPath(name + '-url.txt')
+  writeFileSync(url, page.url(), 'utf8')
+  await info.attach(name + '-url', { path: url, contentType: 'text/plain' })
+}
+async function expectStableReviewSize(page: Page, info: TestInfo, name: string): Promise<void> {
+  const review = page.getByTestId('friend-request-review')
+  await page.evaluate(async () => { await document.fonts.ready })
+  // Dialog enterは祖先をscaleする。boundingBox自体にはstable待機が無いため実animation完了を待つ。
+  // enter class除去でcancelし得るため、finished Promiseの成否ではなく実行状態を観測する。
+  await expect.poll(() => review.evaluate(element => {
+    const animations: Animation[] = []
+    for (let ancestor: Element | null = element; ancestor; ancestor = ancestor.parentElement) animations.push(...ancestor.getAnimations({ subtree: false }))
+    return animations.filter(animation => animation.pending || animation.playState === 'running').length
+  }), { message: '確認ボタンと祖先のanimationが実行中・待機中でないこと' }).toBe(0)
+  await expect.poll(() => review.evaluate(async element => {
+    const rect = () => { const box = element.getBoundingClientRect(); return [box.x, box.y, box.width, box.height] }
+    const first = rect()
+    for (let frame = 0; frame < 3; frame++) {
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+      if (JSON.stringify(rect()) !== JSON.stringify(first)) return false
+    }
+    return true
+  }), { message: '確認ボタンの実描画領域が連続frameで安定すること' }).toBe(true)
+  const metrics = await review.evaluate(element => {
+    const box = element.getBoundingClientRect()
+    const style = getComputedStyle(element)
+    const ancestors: { tag: string; className: string; transform: string; animationName: string }[] = []
+    for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+      const computed = getComputedStyle(ancestor)
+      ancestors.push({ tag: ancestor.tagName, className: ancestor.className, transform: computed.transform, animationName: computed.animationName })
+    }
+    return { rootFontSize: getComputedStyle(document.documentElement).fontSize, minHeight: style.minHeight, offsetHeight: (element as HTMLElement).offsetHeight, bbox: { x: box.x, y: box.y, width: box.width, height: box.height }, ancestors }
+  })
+  await jsonProof(info, name + '-stable-metrics', metrics)
+  await proof(page, info, name + '-before-size-assertion')
+  expect(metrics.bbox.height).toBeGreaterThanOrEqual(44)
+  expect(metrics.bbox.width).toBeGreaterThanOrEqual(44)
 }
 function followResponse(page: Page): Promise<Response> {
   return page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname.endsWith('/friends/follow'))
@@ -43,7 +104,7 @@ async function confirmAndSend(page: Page, from: FriendTeam, to: FriendTeam, info
   const body = (await result.json()).data as { followerTeamId: number; followedTeamId: number; mutual: boolean }
   expect(body.followerTeamId).toBe(from.id)
   expect(body.followedTeamId).toBe(to.id)
-  await info.attach('follow-result', { body: JSON.stringify(body), contentType: 'application/json' })
+  await jsonProof(info, 'follow-result-' + from.slug + '-to-' + to.slug, body)
   await expect(dialog).toHaveCount(0)
   return body.mutual
 }
@@ -69,7 +130,7 @@ test.beforeAll(async ({ browser }) => {
   a = candidates[0]!
   b = await fixture.team(target, '受信先')
   await fixture.join(source, member, a)
-  await test.info().attach('owned-team-ids', { body: JSON.stringify(fixture.ownedTeams()), contentType: 'application/json' })
+  await jsonProof(test.info(), 'owned-team-ids', fixture.ownedTeams())
 })
 
 test.afterAll(async () => {
@@ -77,9 +138,9 @@ test.afterAll(async () => {
   finally { for (const actor of [source, target, member]) if (actor) await actor.context.close() }
 })
 
-test('FR-01/08/09/12: 管理入口から申請→受信元を確認して返し→相互成立→UI解除が再読込後も残る', async ({}, info) => {
+test('FR-01/08/09/12: 管理入口から申請→受信元を確認して返し→相互成立→UI解除が再読込後も残る', async ({ baseURL }, info) => {
   test.setTimeout(180_000)
-  await open(source.page, '/teams/' + a.slug + '/nav')
+  await open(source.page, new URL('/teams/' + a.slug + '/nav', baseURL).href)
   await source.page.getByTestId('friend-follow-button').click()
   await expect(source.page.getByTestId('friend-request-fixed-source')).toContainText(a.name)
   await source.page.getByLabel('チーム名で探す').fill(b.name)
@@ -112,10 +173,10 @@ test('FR-01/08/09/12: 管理入口から申請→受信元を確認して返し�
   await proof(source.page, info, 'dissolved-after-reload')
 })
 
-test('FR-02/03/08: 公開プロフィールで21候補・2ページ目の選択保持・キャンセルPOST0・選択元だけへ送信', async ({}, info) => {
+test('FR-02/03/08: 公開プロフィールで21候補・2ページ目の選択保持・キャンセルPOST0・選択元だけへ送信', async ({ baseURL }, info) => {
   test.setTimeout(120_000)
   const page = source.page
-  await open(page, '/public/teams/' + b.slug)
+  await open(page, new URL('/public/teams/' + b.slug, baseURL).href)
   const candidateResponse = page.waitForResponse(r => new URL(r.url()).pathname === '/api/v1/me/friend-request-source-teams')
   await page.getByTestId('friend-request-entry').click()
   const response = await candidateResponse
@@ -147,9 +208,9 @@ test('FR-02/03/08: 公開プロフィールで21候補・2ページ目の選択�
   await proof(page, info, 'page2-source-persisted')
 })
 
-test('FR-02/04/07: 認可プロフィール1候補、MEMBERは0候補・管理操作なし、他チーム直URL拒否', async ({}, info) => {
+test('FR-02/04/07: 認可プロフィール1候補、MEMBERは0候補・管理操作なし、他チーム直URL拒否', async ({ baseURL }, info) => {
   test.setTimeout(120_000)
-  await open(target.page, '/teams/' + a.slug + '/info')
+  await open(target.page, new URL('/teams/' + a.slug + '/info', baseURL).href)
   await target.page.getByTestId('friend-request-entry').click()
   await expect(target.page.getByTestId('friend-source-auto')).toBeVisible()
   await expect(target.page.getByTestId('friend-request-source')).toContainText(b.slug)
@@ -173,11 +234,11 @@ test('FR-02/04/07: 認可プロフィール1候補、MEMBERは0候補・管理�
 })
 
 
-test('FR-04/05: 委任MEMBERは操作可能、確認後の権限剥奪は実POST403・再選択を要求し自動送信しない', async ({}, info) => {
+test('FR-04/05: 委任MEMBERは操作可能、確認後の権限剥奪は実POST403・再選択を要求し自動送信しない', async ({ baseURL }, info) => {
   test.setTimeout(120_000)
   await fixture.delegate(source, member, a)
   try {
-    await open(member.page, '/public/teams/' + b.slug)
+    await open(member.page, new URL('/public/teams/' + b.slug, baseURL).href)
     await member.page.getByTestId('friend-request-entry').click()
     await expect(member.page.getByTestId('friend-source-auto')).toBeVisible()
     await expect(member.page.getByTestId('friend-request-direction')).toContainText(a.slug)
@@ -193,15 +254,15 @@ test('FR-04/05: 委任MEMBERは操作可能、確認後の権限剥奪は実POST
   finally { await fixture.revoke(source, member, a) }
 })
 
-test('FR-07/10: 申請後に非公開になった元は受信一覧の行を保持し、名前・slug・リンク・フォロー返しを伏せる', async ({}, info) => {
+test('FR-07/10: 申請後に非公開になった元は受信一覧の行を保持し、名前・slug・リンク・フォロー返しを伏せる', async ({ baseURL }, info) => {
   test.setTimeout(120_000)
   const hidden = candidates[19]!
-  await open(source.page, '/teams/' + hidden.slug + '/nav')
+  await open(source.page, new URL('/teams/' + hidden.slug + '/nav', baseURL).href)
   await source.page.getByTestId('friend-follow-button').click()
   await source.page.getByLabel('URL 名で指定する').fill(b.slug)
   expect(await confirmAndSend(source.page, hidden, b, info)).toBe(false)
   // 受信元の状態変更だけを前提APIで行う。申請そのものは上の実UIから発行する。
-  const changed = await source.page.request.patch((process.env.API_BASE_URL ?? 'http://localhost:8081') + '/api/v1/teams/' + hidden.slug, { data: { visibility: 'PRIVATE', version: 0 } })
+  const changed = await source.page.request.patch((process.env.API_BASE_URL ?? 'http://localhost:8081') + '/api/v1/teams/' + hidden.slug, { data: { visibility: 'MEMBERS_AND_ABOVE', version: 0 } })
   expect(changed.status()).toBe(200)
   await open(target.page, '/teams/' + b.slug + '/nav')
   await tab(target.page, '届いた申請')
@@ -261,12 +322,13 @@ test('FR-14: 未認証プロフィール→安全なログイン復帰→再選�
 })
 
 
-test('FR-14: 6言語・360/390pxで両プロフィール入口と管理画面の方向確認・横パンなし・操作領域44px', async ({}, info) => {
+test('FR-14: 6言語・360/390pxで両プロフィール入口と管理画面の方向確認・横パンなし・操作領域44px', async ({ baseURL }, info) => {
   test.setTimeout(600_000)
   const names = { ja: '日本語', en: 'English', zh: '中文（简体）', ko: '한국어', es: 'Español', de: 'Deutsch' }
   // 設定を実UIで保存し、同じcontextの新規pageへ引き継ぐ。追加ログインやauthの上書きは行わない。
   for (const locale of ['en', 'zh', 'ko', 'es', 'de', 'ja'] as const) {
-    await open(target.page, '/settings/language')
+    const messages = JSON.parse(readFileSync(new URL('../../../app/locales/' + locale + '/friends.json', import.meta.url), 'utf8')) as { friends: { request: { title: string; review: string } } }
+    await open(target.page, new URL('/settings/language', baseURL).href)
     await target.page.getByRole('combobox').first().click()
     await target.page.getByRole('option', { name: names[locale], exact: true }).click()
     const saved = target.page.waitForResponse(r => r.request().method() === 'PUT' && new URL(r.url()).pathname === '/api/v1/users/me')
@@ -278,18 +340,22 @@ test('FR-14: 6言語・360/390pxで両プロフィール入口と管理画面の
         await page.setViewportSize({ width, height: 844 })
         for (const path of ['/public/teams/' + a.slug, '/teams/' + a.slug + '/info']) {
           await open(page, path)
+          await expect(page.getByTestId('friend-request-entry')).toHaveText(messages.friends.request.title)
           await page.getByTestId('friend-request-entry').click()
+          await expect(page.getByRole('dialog', { name: messages.friends.request.title, exact: true })).toBeVisible()
+          await expect(page.getByTestId('friend-request-review')).toHaveText(messages.friends.request.review)
           await expect(page.getByTestId('friend-request-source')).toContainText(b.slug)
           await expect(page.getByTestId('friend-request-direction')).toContainText(b.slug)
           await expect(page.getByTestId('friend-request-direction')).toContainText(a.slug)
           await expect(page.getByRole('dialog')).not.toContainText('friends.request.')
-          const box = await page.getByTestId('friend-request-review').boundingBox()
-          expect(box!.height).toBeGreaterThanOrEqual(44)
-          expect(box!.width).toBeGreaterThanOrEqual(44)
+          await expectStableReviewSize(page, info, locale + '-' + width + (path.startsWith('/public') ? '-public' : '-authorized'))
           expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
           await page.getByTestId('friend-request-review').focus()
           await page.keyboard.press('Enter')
           await expect(page.getByTestId('friend-follow-submit')).toBeVisible()
+          await expect(page.getByTestId('friend-request-direction')).toBeVisible()
+          await expect(page.getByTestId('friend-request-direction')).toContainText(b.slug)
+          await expect(page.getByTestId('friend-request-direction')).toContainText(a.slug)
           await proof(page, info, locale + '-' + width + (path.startsWith('/public') ? '-public' : '-authorized'))
           await page.keyboard.press('Escape')
           await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -297,23 +363,36 @@ test('FR-14: 6言語・360/390pxで両プロフィール入口と管理画面の
       }
       await open(page, '/teams/' + b.slug + '/nav')
       await page.getByTestId('friend-follow-button').click()
+      await expect(page.getByRole('dialog', { name: messages.friends.request.title, exact: true })).toBeVisible()
+      await expect(page.getByTestId('friend-request-review')).toHaveText(messages.friends.request.review)
       await page.getByTestId('friend-follow-slug-input').fill(a.slug)
       await expect(page.getByTestId('friend-request-fixed-source')).toContainText(b.slug)
       await expect(page.getByTestId('friend-request-direction')).toContainText(a.slug)
-      await proof(page, info, locale + '-nav-fixed-source')
+      await expect(page.getByTestId('friend-request-direction')).toContainText(b.slug)
+      await expectStableReviewSize(page, info, locale + '-nav-fixed-source')
+      await page.getByTestId('friend-request-review').click()
+      await expect(page.getByTestId('friend-follow-submit')).toBeVisible()
+      await expect(page.getByTestId('friend-request-direction')).toBeVisible()
+      await expect(page.getByTestId('friend-request-direction')).toContainText(b.slug)
+      await expect(page.getByTestId('friend-request-direction')).toContainText(a.slug)
+      await proof(page, info, locale + '-nav-fixed-source-confirmed')
       await page.keyboard.press('Escape')
     }
-    finally { await page.close() }
+    finally {
+      // 子pageのfinally closeより前に残し、失敗時に無関係な親pageだけが撮影されるのを防ぐ。
+      if (!page.isClosed()) await proof(page, info, locale + '-locale-page-before-close')
+      await page.close()
+    }
   }
 })
 
 
 // PRIVATE target作成は最後に限定する。先行するTARGET候補1件の前提を変えない。
-test('FR-07: PRIVATEプロフィールの入口は非表示でも既知slugから実UI申請でき、受信元を本人が確認できる', async ({}, info) => {
+test('FR-07: PRIVATEプロフィールの入口は非表示でも既知slugから実UI申請でき、受信元を本人が確認できる', async ({ baseURL }, info) => {
   test.setTimeout(180_000)
-  const privateTarget = await fixture.team(target, '既知slug非公開申請先', 'PRIVATE')
+  const privateTarget = await fixture.team(target, '既知slug非公開申請先', 'MEMBERS_AND_ABOVE')
   const from = candidates[18]!
-  await info.attach('private-owned-team-id', { body: JSON.stringify(privateTarget), contentType: 'application/json' })
+  await jsonProof(info, 'private-owned-team-id', privateTarget)
   for (const path of ['/public/teams/' + privateTarget.slug, '/teams/' + privateTarget.slug + '/info']) {
     const denied: { path: string; status: number }[] = []
     const observe = (response: Response) => {
@@ -325,15 +404,19 @@ test('FR-07: PRIVATEプロフィールの入口は非表示でも既知slugか�
       const document = await source.page.goto(path, { waitUntil: 'domcontentloaded' })
       await waitForHydration(source.page)
       await waitForSpinnerGone(source.page)
+      // loading中のentry不在を拒否成功と誤認せず、実HTTPの到着と最終エラー画面を待つ。
+      await expect.poll(() => denied.length > 0 || [403, 404].includes(document?.status() ?? 0), { timeout: 30_000, message: '閲覧拒否の実HTTPを確認する' }).toBe(true)
+      const profileKind = path.startsWith('/public') ? 'public' : 'info'
+      await jsonProof(info, 'private-profile-denied-http-' + profileKind, { path, documentStatus: document?.status(), denied })
+      if (profileKind === 'public') await expect(source.page.getByTestId('error-page')).toBeVisible()
+      else await expect(source.page.getByText('情報を取得できませんでした', { exact: true })).toBeVisible()
       await expect(source.page.getByTestId('friend-request-entry')).toHaveCount(0)
       await expect(source.page.locator('body')).not.toContainText(privateTarget.name)
-      expect(denied.length > 0 || [403, 404].includes(document?.status() ?? 0), '閲覧拒否の実HTTPを確認する').toBe(true)
-      await info.attach('private-profile-denied-http', { body: JSON.stringify({ documentStatus: document?.status(), denied }), contentType: 'application/json' })
       await proof(source.page, info, path.startsWith('/public') ? 'private-public-profile-denied' : 'private-info-profile-denied')
     }
     finally { source.page.off('response', observe) }
   }
-  await open(source.page, '/teams/' + from.slug + '/nav')
+  await open(source.page, new URL('/teams/' + from.slug + '/nav', baseURL).href)
   await source.page.getByTestId('friend-follow-button').click()
   const lookups: string[] = []
   const observeLookup = (request: import('@playwright/test').Request) => {

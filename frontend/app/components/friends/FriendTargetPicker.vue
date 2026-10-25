@@ -136,6 +136,7 @@ onBeforeUnmount(() => { searchSeq += 1 })
         <label class="mb-1 block text-sm font-medium" for="friend-follow-search">
           {{ t('friends.follow_dialog.search_label') }}
         </label>
+        <!-- 入力幅を下限とするPrimeVueのmin-widthを使い、長い候補でパネルを押し広げない。 -->
         <AutoComplete
           ref="autoCompleteRef"
           v-model="searchModel"
@@ -147,6 +148,7 @@ onBeforeUnmount(() => { searchSeq += 1 })
           :delay="SEARCH_DEBOUNCE_MS"
           :min-length="1"
           :show-empty-message="false"
+          overlay-class="w-min max-w-[calc(100vw-2rem)]"
           class="w-full"
           fluid
           data-testid="friend-follow-search-input"
@@ -154,7 +156,7 @@ onBeforeUnmount(() => { searchSeq += 1 })
           @item-select="onCandidateSelect"
         >
           <template #option="{ option }">
-            <div class="flex flex-col" data-testid="friend-follow-candidate">
+            <div class="flex min-w-0 flex-col whitespace-normal [overflow-wrap:anywhere]" data-testid="friend-follow-candidate">
               <span class="font-medium">{{ option.name }}</span>
               <span class="text-xs text-surface-500">{{ option.slug }}</span>
             </div>
