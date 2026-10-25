@@ -287,7 +287,7 @@
         "label": "Recipients",
         "specific": "Specify Members",
         "template": "By Shift Period",
-        "openCall": "Open to All"
+        "openCall": "Open Call within Team"
       },
       "targetUsers": {
         "label": "Swap Candidates",
@@ -297,7 +297,7 @@
         "selectedCount": "{count} selected",
         "empty": "No members available"
       },
-      "templateHint": "Send to all {period} shift members in the same schedule",
+      "templateHint": "Send to all {period} in the same schedule",
       "list": {
         "title": "Shift swap requests",
         "requester": "Requester #{id}",
@@ -478,7 +478,7 @@
       "body": "If you want to swap a confirmed shift with another member, you can send a request in one of three ways. After sending, the shift list is updated automatically.",
       "steps": {
         "step1": "Click the \"Create swap request\" button in the shift details",
-        "step2": "Choose how to send it: \"Specify members\" (select one or more) / \"By shift period\" (everyone working the day or night shift on the same day) / \"Open to everyone\" (anyone can volunteer)",
+        "step2": "Choose how to send it: \"Specify members\" (select one or more) / \"By shift period\" (everyone working the day or night shift on the same day) / \"Open Call within Team\" (team members can volunteer)",
         "step3": "Enter a reason if needed (optional)",
         "step4": "Click the \"Submit\" button to send"
       },

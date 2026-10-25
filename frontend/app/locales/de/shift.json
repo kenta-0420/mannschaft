@@ -273,7 +273,7 @@
         "label": "Empfänger",
         "specific": "Mitglieder angeben",
         "template": "Nach Schichtzeit",
-        "openCall": "Für alle öffnen"
+        "openCall": "Offene Anfrage im Team"
       },
       "targetUsers": {
         "label": "Tauschkandidaten",
@@ -283,7 +283,7 @@
         "selectedCount": "{count} ausgewählt",
         "empty": "Keine Mitglieder verfügbar"
       },
-      "templateHint": "An alle {period}-Schichtmitglieder im gleichen Plan senden",
+      "templateHint": "An alle {period} im gleichen Plan senden",
       "list": {
         "title": "Schichttausch-Anfragen",
         "requester": "Antragsteller #{id}",
@@ -478,7 +478,7 @@
       "body": "Wenn Sie eine bestätigte Schicht mit einem anderen Mitglied tauschen möchten, können Sie die Anfrage auf drei Arten senden. Nach dem Senden wird die Schichtliste automatisch aktualisiert.",
       "steps": {
         "step1": "Klicken Sie in den Schichtdetails auf die Schaltfläche „Tauschanfrage erstellen“",
-        "step2": "Wählen Sie die Sendeart: „Mitglieder festlegen“ (mindestens ein Mitglied auswählen) / „Nach Schichtzeit“ (alle, die am selben Tag in der Tag- oder Nachtschicht arbeiten) / „Für alle öffnen“ (jeder kann sich melden)",
+        "step2": "Wählen Sie die Sendeart: „Mitglieder festlegen“ (mindestens ein Mitglied auswählen) / „Nach Schichtzeit“ (alle, die am selben Tag in der Tag- oder Nachtschicht arbeiten) / „Offene Anfrage im Team“ (Teammitglieder können sich melden)",
         "step3": "Geben Sie bei Bedarf einen Grund an (optional)",
         "step4": "Klicken Sie zum Senden auf die Schaltfläche „Einreichen“"
       },

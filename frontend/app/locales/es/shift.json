@@ -273,7 +273,7 @@
         "label": "Destinatarios",
         "specific": "Especificar Miembros",
         "template": "Por Período de Turno",
-        "openCall": "Abierto a Todos"
+        "openCall": "Convocatoria abierta en el equipo"
       },
       "targetUsers": {
         "label": "Candidatos al Cambio",
@@ -283,7 +283,7 @@
         "selectedCount": "{count} seleccionados",
         "empty": "No hay miembros disponibles"
       },
-      "templateHint": "Enviar a todos los miembros del turno {period} en el mismo horario",
+      "templateHint": "Enviar a todos los {period} del mismo horario",
       "list": {
         "title": "Solicitudes de cambio de turno",
         "requester": "Solicitante n.º {id}",
@@ -478,7 +478,7 @@
       "body": "Si quieres cambiar un turno confirmado con otro miembro, puedes enviar la solicitud de tres maneras. Tras enviarla, la lista de turnos se actualiza automáticamente.",
       "steps": {
         "step1": "Haz clic en el botón «Crear solicitud de cambio» en los detalles del turno",
-        "step2": "Elige el método de envío: «Indicar miembros» (selecciona uno o más) / «Por franja de turno» (todas las personas del turno de día o de noche del mismo día) / «Abierto a todos» (cualquiera puede ofrecerse)",
+        "step2": "Elige el método de envío: «Indicar miembros» (selecciona uno o más) / «Por franja de turno» (todas las personas del turno de día o de noche del mismo día) / «Convocatoria abierta en el equipo» (los miembros del equipo pueden ofrecerse)",
         "step3": "Si lo necesitas, escribe un motivo (opcional)",
         "step4": "Haz clic en el botón «Enviar» para enviar la solicitud"
       },
