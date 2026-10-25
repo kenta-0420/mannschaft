@@ -1,0 +1,186 @@
+{
+  "scope": "FR-06 name-search characterization; not real HTTP or browser E2E; initial green, not red/green regression",
+  "sourceHead": "78b6643cd7aaf1039117775cdc0acff747c6d597",
+  "applicationBaseline": "2aac15e6e020d03cc9d26ee17d94922ab08ed8a4",
+  "adoptTestCommit": "d831d3ccd6555c58396f02050a3a8e664cb6d838",
+  "target": "frontend/tests/unit/components/friends/FriendFollowDialog.spec.ts",
+  "productionChanged": false,
+  "sourceComparison": {
+    "directGitDiffChecked": true,
+    "changedFiles": 1,
+    "insertions": 75,
+    "deletions": 0,
+    "onlyFile": "frontend/tests/unit/components/friends/FriendFollowDialog.spec.ts"
+  },
+  "finalTraceVerified": {
+    "approvedBy": "root",
+    "conditions": "FR-01 through FR-15",
+    "completionGatePassed": false,
+    "pending": [
+      "Backend40164501249 final success",
+      "implementation PR4106 merge",
+      "test commit adoption after merged main"
+    ]
+  },
+  "status": {
+    "sourceHead": "78b6643cd7aaf1039117775cdc0acff747c6d597",
+    "applicationBaseline": "2aac15e6e020d03cc9d26ee17d94922ab08ed8a4",
+    "applicationChanged": false,
+    "secretEnvLoaded": false,
+    "databaseStarted": false,
+    "target": "frontend/tests/unit/components/friends/FriendFollowDialog.spec.ts",
+    "controllerExitCode": 0,
+    "stages": {
+      "npm-ci": 0,
+      "nuxt-prepare": 0,
+      "target-vitest": 0,
+      "assertion-gate": 0
+    },
+    "status": "passed"
+  },
+  "totals": {
+    "total": 18,
+    "passed": 18,
+    "failed": 0,
+    "pending": 0,
+    "todo": 0,
+    "success": true
+  },
+  "receipt": {
+    "sourceHead": "78b6643cd7aaf1039117775cdc0acff747c6d597",
+    "exitCode": 0,
+    "signal": null,
+    "cleanup": "removed",
+    "cleanupReason": null,
+    "error": null,
+    "baselineInaccessibleCount": 2
+  },
+  "tests": [
+    {
+      "name": "AC-8: 名前を入力すると候補（名前＋slug）が出て、選んで送信すると body に targetTeamSlug が入る",
+      "status": "passed",
+      "durationMs": 927.4337989999985,
+      "failureCount": 0
+    },
+    {
+      "name": "AC-9: 1文字では検索 API を呼ばない",
+      "status": "passed",
+      "durationMs": 55.37477499999659,
+      "failureCount": 0
+    },
+    {
+      "name": "C3 1文字ではAPIを呼ばず2文字以上のヒント行を表示する",
+      "status": "passed",
+      "durationMs": 53.46632900000259,
+      "failureCount": 0
+    },
+    {
+      "name": "C3 2文字は299msでは0回、300msで検索APIを1回呼ぶ",
+      "status": "passed",
+      "durationMs": 33.45599899999797,
+      "failureCount": 0
+    },
+    {
+      "name": "C3 1→2→3文字の連続入力は最後の3文字だけを300ms後に1回検索する",
+      "status": "passed",
+      "durationMs": 40.790869999997085,
+      "failureCount": 0
+    },
+    {
+      "name": "AC-9: debounce が効く（300ms 以内の連続入力は最後の1回だけ検索する）",
+      "status": "passed",
+      "durationMs": 56.72081099999923,
+      "failureCount": 0
+    },
+    {
+      "name": "FR06: 旧検索の成功応答が後着しても最新候補・選択方向・POST先を維持する",
+      "status": "passed",
+      "durationMs": 139.49132600000303,
+      "failureCount": 0
+    },
+    {
+      "name": "FR06: 旧検索の失敗応答が後着しても最新候補・選択方向・POST先を維持する",
+      "status": "passed",
+      "durationMs": 113.17042200000287,
+      "failureCount": 0
+    },
+    {
+      "name": "AC-9: 候補0件のとき「見つからない」案内と slug 直接入力の案内が出る",
+      "status": "passed",
+      "durationMs": 55.111007999999856,
+      "failureCount": 0
+    },
+    {
+      "name": "AC-19: 候補に出ない slug を直接入力して送信できる",
+      "status": "passed",
+      "durationMs": 61.32009700000344,
+      "failureCount": 0
+    },
+    {
+      "name": "入力が無い間は送信ボタンが無効",
+      "status": "passed",
+      "durationMs": 21.735360999999102,
+      "failureCount": 0
+    },
+    {
+      "name": "AC-10: 候補から自チームを選ぶと送信ボタンが無効になり、案内が出る",
+      "status": "passed",
+      "durationMs": 54.088550000000396,
+      "failureCount": 0
+    },
+    {
+      "name": "AC-10: slug 直接入力で自チームを指定すると送信ボタンが無効になり、案内が出る",
+      "status": "passed",
+      "durationMs": 18.756283999995503,
+      "failureCount": 0
+    },
+    {
+      "name": "AC-11: 送信に失敗してもダイアログは閉じず、入力は保持される",
+      "status": "passed",
+      "durationMs": 54.03848899999866,
+      "failureCount": 0
+    },
+    {
+      "name": "AC-20: 検索の 5xx は0件と区別したエラー表示になり、再検索で復旧する",
+      "status": "passed",
+      "durationMs": 63.847248999998556,
+      "failureCount": 0
+    },
+    {
+      "name": "AC-20: 検索の 通信断 は0件と区別したエラー表示になり、再検索で復旧する",
+      "status": "passed",
+      "durationMs": 64.75727199999528,
+      "failureCount": 0
+    },
+    {
+      "name": "AC17: 再フォロー初期slugを表示し画面操作だけで同じ相手を送信できる",
+      "status": "passed",
+      "durationMs": 61.748011000003316,
+      "failureCount": 0
+    },
+    {
+      "name": "AC18: 409 SOCIAL_102を親へ伝播し入力を保持する",
+      "status": "passed",
+      "durationMs": 57.207562000003236,
+      "failureCount": 0
+    }
+  ],
+  "originals": {
+    "fr06-assertion-summary.json": {
+      "sha256": "712c0076be99860dc5f37a391fafcadd5c3e88e12a162c04e8036e70b1a28b1c",
+      "bytes": 490
+    },
+    "unit-status.json": {
+      "sha256": "d82271242b74426c4db68aa71dfed8617bd00a95f8a271d4d97bef29942edccf",
+      "bytes": 538
+    },
+    "receipt.json": {
+      "sha256": "8e038dae3824cd1239f41817c3ee47bb237bbd0f435836bfd18c4222120a92f8",
+      "bytes": 453
+    },
+    "vitest-results.json": {
+      "sha256": "91b4598ebff4099de3589b2dd7e63e24ac089753bedcc8cca506ea41feba6c27",
+      "bytes": 7667
+    }
+  }
+}
