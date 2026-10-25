@@ -108,6 +108,9 @@ describe('FR-02/05/08 申請確認', () => {
     try {
       expect(w.get('p[role="status"]').text()).toBe('{"friends":7,"pending":2,"incoming":3}')
       expect(mocks.friends).toHaveBeenCalledWith('1', { page: 0, size: 1 })
+      expect(mocks.friends).toHaveBeenCalledTimes(1)
+      expect(mocks.pending).toHaveBeenCalledTimes(1)
+      expect(mocks.incoming).toHaveBeenCalledTimes(1)
       w.findComponent({ name: 'Select' }).vm.$emit('update:modelValue', source(2))
       await flushPromises()
       expect(w.find('p[role="status"]').exists()).toBe(false)
@@ -135,6 +138,18 @@ describe('FR-02/05/08 申請確認', () => {
       resolveOld(countsResult(7))
       await flushPromises()
       expect(w.find('p[role="status"]').exists()).toBe(false)
+    } finally { w.unmount() }
+  })
+  it('固定元409はalreadyFollowingだけで親へ一度の更新を要求する', async () => {
+    mocks.follow.mockRejectedValueOnce({ statusCode: 409, data: { error: { code: 'SOCIAL_102' } } })
+    const w = await mountDialog({ teamId: '1', sourceTeam: source(1) })
+    try {
+      await w.get('[data-testid="friend-request-review"]').trigger('click')
+      await w.get('[data-testid="friend-follow-submit"]').trigger('click')
+      await flushPromises()
+      expect(w.emitted('alreadyFollowing')).toHaveLength(1)
+      expect(w.emitted('refresh')).toBeUndefined()
+      expect(mocks.friends).not.toHaveBeenCalled()
     } finally { w.unmount() }
   })
   it('受信の返しは元・先を固定し候補APIを取得しない', async () => {
