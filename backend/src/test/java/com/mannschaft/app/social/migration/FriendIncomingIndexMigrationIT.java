@@ -52,6 +52,7 @@ class FriendIncomingIndexMigrationIT {
             var migration = new ClassPathResource(MIGRATION);
             // redでは旧DDLで起動成功し、索引の実assertionを失敗させる。SQL不在をsetup失敗にしない。
             if (migration.exists()) ScriptUtils.executeSqlScript(connection, migration);
+            connection.setAutoCommit(false);
             try (var insert = connection.prepareStatement("INSERT INTO follows(follower_type,follower_id,followed_type,followed_id,created_at) VALUES('TEAM',?,'TEAM',?,'2026-10-25 00:00:00')")) {
                 for (int i = 1; i <= 100; i++) {
                     insert.setLong(1, 100 + i); insert.setLong(2, TARGET); insert.addBatch();
@@ -61,6 +62,7 @@ class FriendIncomingIndexMigrationIT {
                 }
                 insert.setLong(1, TARGET); insert.setLong(2, 101); insert.addBatch();
                 insert.executeBatch();
+                connection.commit();
             }
             statement.execute("ANALYZE TABLE follows, team_friends");
         }
