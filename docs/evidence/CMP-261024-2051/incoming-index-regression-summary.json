@@ -1,0 +1,212 @@
+{
+  "schemaVersion": 1,
+  "kind": "incoming-index-regression-red-green",
+  "campaign": "CMP-261024-2051",
+  "rootFinding": "FR15 incoming receiver index",
+  "redCommit": "c33fb3e807e562ccdd25ef9399dd6b7ad8123f0e",
+  "greenSourceCommit": "91543867bcc666a7f32a3312e8e7436cf1bbe9bc",
+  "finalDocsOnlyCommit": "543d63324e2756931d1b72591bdf4ae347198552",
+  "red": {
+    "tests": 2,
+    "failures": 2,
+    "errors": 0,
+    "skipped": 0,
+    "assertions": [
+      {
+        "name": "他宛一万行でも受信百件の一覧COUNTを自然索引で絞り同時刻ID降順を保つ()",
+        "failure": {
+          "message": "org.opentest4j.AssertionFailedError: [FORCE INDEXなしで受信先索引を選ぶ] \nexpected: \"idx_follows_incoming_page\"\n but was: \"uk_follows\"",
+          "type": "org.opentest4j.AssertionFailedError"
+        },
+        "error": null,
+        "skipped": false
+      },
+      {
+        "name": "前方三列と降順二列と申請元の被覆を実DDLで保持する()",
+        "failure": {
+          "message": "org.opentest4j.AssertionFailedError: [受信先等値prefix・ページ順・申請元coveringが実スキーマに必要] \nExpecting actual:\n  []\nto contain exactly (and in same order):\n  [\"followed_type\",\n    \"followed_id\",\n    \"follower_type\",\n    \"created_at\",\n    \"id\",\n    \"follower_id\"]\nbut could not find the following elements:\n  [\"followed_type\",\n    \"followed_id\",\n    \"follower_type\",\n    \"created_at\",\n    \"id\",\n    \"follower_id\"]\n",
+          "type": "org.opentest4j.AssertionFailedError"
+        },
+        "error": null,
+        "skipped": false
+      }
+    ],
+    "cleanup": "removed"
+  },
+  "green": {
+    "indexTests": [
+      {
+        "name": "他宛一万行でも受信百件の一覧COUNTを自然索引で絞り同時刻ID降順を保つ()",
+        "failure": null,
+        "error": null,
+        "skipped": false
+      },
+      {
+        "name": "前方三列と降順二列と申請元の被覆を実DDLで保持する()",
+        "failure": null,
+        "error": null,
+        "skipped": false
+      }
+    ],
+    "mainCounts": {
+      "tests": 56,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "standaloneArch": {
+      "tests": 347,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "exitCode": 0,
+    "cleanup": "removed"
+  },
+  "data": {
+    "targetRows": 100,
+    "decoyRows": 10000,
+    "totalFollows": 10101,
+    "sameTimestampIdDescending": "asserted",
+    "reverseFollow": "asserted",
+    "resultAndCount": 100
+  },
+  "before": [
+    {
+      "key": "uk_follows",
+      "access_type": "ref",
+      "used_key_parts": [
+        "follower_type"
+      ],
+      "estimatedRows": 4999,
+      "using_index": false,
+      "using_filesort": true
+    },
+    {
+      "key": "uk_follows",
+      "access_type": "ref",
+      "used_key_parts": [
+        "follower_type"
+      ],
+      "estimatedRows": 4999,
+      "using_index": true,
+      "using_filesort": false
+    }
+  ],
+  "after": [
+    {
+      "key": "idx_follows_incoming_page",
+      "access_type": "ref",
+      "used_key_parts": [
+        "followed_type",
+        "followed_id",
+        "follower_type"
+      ],
+      "estimatedRows": 100,
+      "using_index": true,
+      "using_filesort": false
+    },
+    {
+      "key": "idx_follows_incoming_page",
+      "access_type": "ref",
+      "used_key_parts": [
+        "followed_type",
+        "followed_id",
+        "follower_type"
+      ],
+      "estimatedRows": 100,
+      "using_index": true,
+      "using_filesort": false
+    }
+  ],
+  "resourceHashes": {
+    "db/migration/V4.006__create_follows_table.sql": {
+      "exists": true,
+      "sha256": "0f8a722f2edc44ee0679fe039784cd6beb7e2ef917fa947c9edc3907f24a67ea"
+    },
+    "db/migration/V9.072__create_team_friends_table.sql": {
+      "exists": true,
+      "sha256": "38823b0848b0b377dc6e45a9611a769cfa5a7f7c8a48f588ce386bb5b47bc46f"
+    },
+    "db/migration/V252.20261025024939__add_follows_incoming_page_index.sql": {
+      "exists": true,
+      "sha256": "8daea4249e80033f208088e29cd960944ae3a5d69d1d0ca26530d23416b8658f"
+    }
+  },
+  "appliedMatchesGitBlob": {
+    "db/migration/V4.006__create_follows_table.sql": true,
+    "db/migration/V9.072__create_team_friends_table.sql": true,
+    "db/migration/V252.20261025024939__add_follows_incoming_page_index.sql": true
+  },
+  "fixtureChange": "red c33はautocommit。green915は同じseedをsetAutoCommit(false)/commitの2行でtransaction化、SQL/全assertion/10101行は不変。",
+  "openApiRegeneration": "不要。業務Java/API/DTO/注釈/OA不変、secondary index SQL1本のみ。",
+  "fullFlyway": "ローカルはcanonical V4.006/V9.072＋実追加SQL。最終CIはmigrations_changed=true/excludeMigrationTests=falseで全from-scratchを検証予定。runtimeは既存fromscratch1224本＋新SQLのincremental適用。",
+  "canonicalIndex": [
+    "followed_type",
+    "followed_id",
+    "follower_type",
+    "created_at DESC",
+    "id DESC",
+    "follower_id"
+  ],
+  "testFile": "backend/src/test/java/com/mannschaft/app/social/migration/FriendIncomingIndexMigrationIT.java",
+  "receiptAndSummary": {
+    "red": {
+      "head": "c33fb3e807e562ccdd25ef9399dd6b7ad8123f0e",
+      "counts": {
+        "tests": 41,
+        "failures": 2,
+        "errors": 0,
+        "skipped": 0
+      },
+      "standaloneArch": {
+        "tests": 0,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "receipt": {
+        "sourceHead": "c33fb3e807e562ccdd25ef9399dd6b7ad8123f0e",
+        "exitCode": 1,
+        "signal": null,
+        "cleanup": "removed",
+        "cleanupReason": null,
+        "error": null
+      },
+      "remainingTestcontainers": [],
+      "note": "docker監査は読取のみ、停止削除操作なし。"
+    },
+    "green": {
+      "head": "91543867bcc666a7f32a3312e8e7436cf1bbe9bc",
+      "counts": {
+        "tests": 56,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "standaloneArch": {
+        "tests": 347,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "receipt": {
+        "sourceHead": "91543867bcc666a7f32a3312e8e7436cf1bbe9bc",
+        "exitCode": 0,
+        "signal": null,
+        "cleanup": "removed",
+        "cleanupReason": null,
+        "error": null
+      },
+      "remainingTestcontainers": [],
+      "note": "docker監査は読取のみ、停止削除操作なし。"
+    }
+  },
+  "status": "local-contract-passed-runtime-and-ci-pending",
+  "limits": [
+    "ローカル契約はcanonical V4.006/V9.072と新DDLを実MySQLへ適用。全Flyway from-scratch成功を意味しない。",
+    "runtimeは旧1224本from-scratch済みDBへ新1本をincremental適用する別検証。",
+    "最終CI Backend40157405430でmigrations_changed=true/excludeMigrationTests=falseの全Flyway再生が予定されるが成功結果は未取得。",
+    "最終実機8シナリオと実機後3住民探索は未合格。"
+  ]
+}

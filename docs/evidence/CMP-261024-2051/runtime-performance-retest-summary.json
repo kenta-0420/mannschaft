@@ -237,10 +237,10 @@
   ],
   "migrationCountCorrection": "1226は私有progress helper固定値の誤表示。SQL総数という中間説明も誤り。",
   "finding": {
-    "status": "open",
+    "status": "locally-fixed-runtime-verification-pending",
     "description": "受信先team/type起点の索引なし。incoming一覧がALL/key null/推定105行、COUNTはuk_followsのfollower_type先頭部分で推定105行。全TEAM followsへ比例するためFR-15を合格にしない。",
     "evaluationBasis": "実SHOW INDEX/EXPLAINと殿の評価",
-    "next": "BE担当へ最小index migrationと小型実MySQL red/greenの実装GO済み。新HEAD/新runtimeでhistory/実索引/EXPLAIN/HTTP性能を再取得。"
+    "next": "索引回帰はc33 red→915 green（主56+独立347、receipt0/cleanupremoved）。新runtime543で旧1224履歴不変+新1、性能/EXPLAIN/実機8の再検証待ち。"
   },
   "cleanupInterpretation": "API所有team101/101 softdelete成功、activeTeams/activeFollows0。一方物理follow履歴100残存、削除targetの元管理者incoming GETは200/100件。現行履歴挙動を保持したまま専用DBを最終廃棄する方針。追加DMLは行わない。",
   "retests": [
@@ -338,11 +338,11 @@
     "nextRealTest": "app46/test7aの新runは予定履歴。追加BE索引migration後は新HEAD/新runtimeで全体検証する。過去不合格を上書きしない。"
   },
   "pending": [
-    "incoming索引finding修正とred/green",
+    "新runtime543で旧1224履歴不変+追加1検証",
     "修正後Flyway性能/EXPLAIN",
     "新runで8シナリオ実機合格",
     "実機後の3独立住民探索",
-    "最終CIとレビュー",
+    "全Flyway再生を含む最終CIとレビュー",
     "完了JSONと台帳完了"
   ],
   "migrationCountProof": {
@@ -368,7 +368,7 @@
     "basis": "Linux migration-count-definition-proof.json直接読取。ログ全文を除き数値/一致結果のみ保存。"
   },
   "integrationHeadAtTestCorrection": "7a9a2fd0940c3dafb1d6ae16455c3de067d87fd1",
-  "integrationStatus": "7aは最終ではない。BE索引migration追加後の新HEAD/新runtimeで再検証予定。",
+  "integrationStatus": "543d63324eは915 greenとの差docs-only。runtime run3開始、実機・住民は未合格。",
   "apiGateGreen": {
     "head": "b9e123be84fca9d373102fd80d9ea4c2c203771a",
     "counts": {
@@ -557,5 +557,55 @@
       "既存root資格情報"
     ],
     "limitation": "環境実績の訂正。実機/性能finding/最終CIの合格を意味しない。"
+  },
+  "indexRegressionEvidence": "incoming-index-regression-summary.json",
+  "integrationHeadAtRuntime3Start": "543d63324e2756931d1b72591bdf4ae347198552",
+  "finalCi": {
+    "head": "543d63324e2756931d1b72591bdf4ae347198552",
+    "backendRunId": 40157405430,
+    "frontendRunId": 40157405464,
+    "realSmokeRunId": 40157405425,
+    "openApiRunId": 40157405387,
+    "typesRunId": 40157405442,
+    "status": "in-progress-as-reported",
+    "basis": "殿報告、最終成功照合はまだ未実施",
+    "backendMigrationStrategy": {
+      "migrationsChanged": true,
+      "excludeMigrationTests": false
+    }
+  },
+  "previousCiMfaFailure": {
+    "runId": 40150260637,
+    "testClass": "com.mannschaft.app.auth.mfa.MfaBackupCodeLatencyIT",
+    "tests": 4,
+    "failures": 2,
+    "errors": 0,
+    "skipped": 0,
+    "observedMs": {
+      "allMismatch": 1675,
+      "lastMatch": 2558
+    },
+    "thresholdMs": 1500,
+    "authChangesSinceMain": [],
+    "buildSettings": {
+      "parallelForks": 2,
+      "forkEvery": 180
+    },
+    "measurement": "warmup後validateMfaLogin単発、MockMvc無し。Argon2id8件全不一致/最後一致",
+    "loadLimitation": "同時workerに集計試験あり。ただしCPU/IO直接サンプルがなく負荷原因と断定不可。",
+    "mainLatest": {
+      "runId": 40148629302,
+      "head": "d4f8b6ece263fb0ea7f6e7d367e6fefb364cea12",
+      "allShards": "success",
+      "mfaAssignedShard": 5,
+      "result": {
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "timeSeconds": 19.34
+      }
+    },
+    "basis": "private shard3-failure-summary.json直接読取。過去不合格は維持、新CIで再確認する。"
   }
 }

@@ -539,6 +539,28 @@
         "error": null
       },
       "e2eExitCode": 1
+    },
+    {
+      "runId": "CMP-261024-2051-index-red1",
+      "receipt": {
+        "sourceHead": "c33fb3e807e562ccdd25ef9399dd6b7ad8123f0e",
+        "exitCode": 1,
+        "signal": null,
+        "cleanup": "removed",
+        "cleanupReason": null,
+        "error": null
+      }
+    },
+    {
+      "runId": "CMP-261024-2051-index-green1",
+      "receipt": {
+        "sourceHead": "91543867bcc666a7f32a3312e8e7436cf1bbe9bc",
+        "exitCode": 0,
+        "signal": null,
+        "cleanup": "removed",
+        "cleanupReason": null,
+        "error": null
+      }
     }
   ]
 }

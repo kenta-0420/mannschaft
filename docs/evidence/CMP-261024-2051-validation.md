@@ -1,6 +1,6 @@
 # CMP-261024-2051 フレンド申請 検証準備記録
 
-2026-10-25時点の途中記録。scopeはapp。実機に不合格履歴があり、性能findingも未解決。最終検分・実機・探索・CIの合格記録ではなく、台帳を完了へ変える根拠には使わない。実装ドラフトPRは#4106、runtime開始時の統合HEADは46deae93b5591fcb9bd4aae59bd68aa7157b0918。最終head SHAと成功CI run IDは未確定。
+2026-10-25時点の途中記録。scopeはapp。実機に不合格履歴があり、性能findingはローカル是正済み・新runtime検証待ち。最終検分・実機・探索・CIの合格記録ではなく、台帳を完了へ変える根拠には使わない。実装ドラフトPRは#4106、runtime開始時の統合HEADは46deae93b5591fcb9bd4aae59bd68aa7157b0918。最終head SHAと成功CI run IDは未確定。
 
 正本は[F01.5 §7.1](../features/F01.5_team_friend_relationships.md)のFR-01〜15。[完了証拠ゲート](../development/completion-evidence.md)に従い、実装PRのmerge済head SHA、同SHAの成功CI、review/real/exploratory各passedが揃ってから完了JSONを作る。この準備では完了JSONもtask-listの状態変更も追加しない。
 
@@ -10,6 +10,7 @@
 - [FE red/green要約](CMP-261024-2051/frontend-red-green-summary.json): 回帰のred/green対応、型検査の未合格、初回CI失敗を保存。
 - [schema衝突回帰のred/green](CMP-261024-2051/schema-regression-red-green-summary.json): 契約2 assertion失敗から41/41成功、既存契約比較と正規原本hashを保存。
 - [runtime性能・実機再試験要約](CMP-261024-2051/runtime-performance-retest-summary.json): app46のFlyway実測、受信索引finding、cleanup後履歴、失敗再試験と修正を保存。
+- [受信索引回帰のred/green](CMP-261024-2051/incoming-index-regression-summary.json): 自然planの4999→100、canonical DDL hash、主56+独立347、receipt/残Testcontainers0を保存。
 - [実行receipt・JUnit件数](CMP-261024-2051/selected-run-receipts.json): 原本から許可キーを選別して直接取得。全runのcleanup=removed。本文ログ、認証入力、JWT、cookie、環境ファイル、OpenAPI全文は含めない。
 
 原本は私有実行領域と各担当campaignにあり、ここには永続的な最小要約を保存した。BEのsuite件数はprivate要約とcampaignの記載、FEのsuite件数とsource SHA/exit/cleanupは原本receipt/JUnitを直接確認した。テストコードへの参照は実装PRの最終SHAへ対応付け直す必要がある。
@@ -60,10 +61,22 @@ app46の実機run2は2pass/2fail/1interrupted/3notrun、Playwright CLI exit130�
 
 Hのcase5/8は存在しないvisibility enum PRIVATEをAPIへ送ったテスト前提誤り（期待200/201に対し400）。PRIVATEは非公開という概念名で、実APIではMEMBERS_AND_ABOVEを使用する。case7は44px閾値に対し43.74755859375px。Dialog enterのscale中計測が疑われるが元のtransform/stable値がなくappbugとは未確定。b35bac63b7は実enum、animation完了後の連続stable計測、当該pageの失敗前PNGを追加し、44px閾値を維持。root差分レビューはfinding0。新2GETのAPI台帳登録b9e123be84は番人52/52（error/skip=0）・receipt exit0/cleanup=removed。app46とfixのmain tree hashは一致しておりtest-onlyだが、CI全体成功の根拠にはしない。7a9a2fd0940c3dafb1d6ae16455c3de067d87fd1までのapp46差分はBE番人/freeze/E2E specの3filesだけとの殿確認だが、下記BE index migration追加予定により7aは最終HEADではない。
 
-app46の専用Flyway適用DBで100行・各20回（warmup1回除外、HTTP/JSON decode込み）を実測し、候補p95=46.419706ms、受信p95=95.398035ms。incoming mainはALL/key=null/推定105行、COUNTはuk_followsの先頭follower_type部分だけで推定105行。既存uk_followsはfollower_type/follower_id/followed_type/followed_id順で受信先team/type先頭の索引がない。全TEAM followsに比例する計画のため、p95の小ささだけでFR-15を合格にしない。新findingとしてBE担当が最小index migrationと小型実MySQL red/greenへ着手し、新HEAD/新runtimeで再検証する。
+app46の専用Flyway適用DBで100行・各20回（warmup1回除外、HTTP/JSON decode込み）を実測し、候補p95=46.419706ms、受信p95=95.398035ms。incoming mainはALL/key=null/推定105行、COUNTはuk_followsの先頭follower_type部分だけで推定105行。既存uk_followsはfollower_type/follower_id/followed_type/followed_id順で受信先team/type先頭の索引がない。全TEAM followsに比例する計画のため、p95の小ささだけでFR-15を合格にしない。新findingは下記index回帰でローカル是正済みだが、旧app46実測の不合格は保持し、新HEAD/新runtimeで再検証する。
 
 性能用所有team101/101のAPI softdeleteは成功、activeTeams0/activeFollows0、候補baseline0に戻った。一方物理follow履歴100は残り、削除targetの元管理者によるincoming取得が200・100行/総数100となる現行履歴挙動も観測した。cleanup成功を物理履歴0と記さない。専用DBを最終廃棄する方針で追加DMLは行わない。実機全8合格・3独立住民探索・最終CI/レビュー・完了JSONは未取得。
 
+
+## 受信索引の是正と残る検証
+
+試練c33fb3e807e562ccdd25ef9399dd6b7ad8123f0eは対象100・他宛10000・全follow10101の実MySQLで、結果100/COUNT・同時刻ID降順・reverseを通した後、自然選択keyが期待idx_follows_incoming_pageに対しuk_follows、期待索引列に対し空で2 assertion red（org.opentest4j.AssertionFailedError、error/skip=0）。全主検査では41件中2失敗。fixtureや起動失敗はredに数えない。
+
+修正91543867bcc666a7f32a3312e8e7436cf1bbe9bcはV252.20261025024939__add_follows_incoming_page_index.sqlを追加。canonical列は(followed_type,followed_id,follower_type,created_at DESC,id DESC,follower_id)、SQL SHA256=8daea4249e80033f208088e29cd960944ae3a5d69d1d0ca26530d23416b8658f。既存schema2本と新SQLは実適用resourceとgit blobが一致。seedは同じ10101行/SQL/全assertionを維持し、setAutoCommit(false)/commitの2行だけtransaction化した。
+
+一覧/COUNTの自然planは旧uk_follows/follower_typeだけ・推定4999行から、新idx_follows_incoming_page/ref・前方3列followed_type/followed_id/follower_type・推定100行へ変わり、両using_index=true、一覧filesort=false。主56/56と独立Arch347/347はすべてerror/skip=0、receipt exit0/cleanup=removed、読取docker監査の残Testcontainers0。API/OA/業務Javaは変更せずsecondary index1本の是正で、OA再生成は不要。
+
+543d63324e2756931d1b72591bdf4ae347198552は915との差docs-only。rootレビューで見つかった「DDL追加なし/Flywayなし」の古い2bullet矛盾も設計書側で同期した。runtime run3は543でbootJar進行中との殿報告。runtimeは旧1224本from-scratch済みDBへ新1本をincremental適用し旧version/checksum/successを照合する。ローカル小型試験はcanonical2本+新DDLであり、全Flyway再生の代用ではない。最終Backend CI40157405430はmigrations_changed=true/excludeMigrationTests=falseで全from-scratchを検証予定だが、最終成功は未取得。FE40157405464/real-smoke40157405425/OpenAPI40157405387/types40157405442も進行中との報告で、合格扱いにしない。
+
+旧Backend CI40150260637のshard3は既存MfaBackupCodeLatencyITが4件中2失敗（error/skip=0）。全不一致1675ms・最後一致2558msで閾値1500msを超えた。main最新run40148629302/head d4f8b6ece263fb0ea7f6e7d367e6fefb364cea12の同4件は4/4成功、全shard成功。auth差分なしと裏取ったが、同時workerの集計試験を負荷原因と断定するCPU/IOサンプルはない。過去不合格の原本を保持し、新最終CIの再結果で確認する。
 
 ## 完了前に埋める証拠
 
