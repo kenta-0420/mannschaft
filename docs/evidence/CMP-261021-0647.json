@@ -1,0 +1,155 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261021-0647",
+  "scope": "app",
+  "implementation": {
+    "pr": 4053,
+    "sha": "82d8682768de515d72827e868eac65c11d2d1324",
+    "mergeSha": "bfd83ff311b15602085f8a4003c080cb0d564ca4",
+    "mergedAt": "2026-10-25T04:26:23Z"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "既定SPECIFICで正slugの全件候補を取得し、空/境界/選択/提出可否を扱う",
+      "tests": [
+        {
+          "name": "候補0/1/100/101・失敗/再試行/再表示のcomponent契約",
+          "evidence": "frontend/app/components/shift/ShiftSwapRequestFormDialog.spec.ts"
+        },
+        {
+          "name": "strict slug/allの歴史caller green（API route mock）",
+          "evidence": "docs/evidence/CMP-261021-0647/slug-caller-green-proof.json"
+        },
+        {
+          "name": "82d実BEの正slug GET1回・候補6・選択UI",
+          "evidence": "docs/evidence/CMP-261021-0647/root-ui-review-82d-0334.json"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "既定モードの依頼→承諾→承認を完結する。旧7f実UI/DBと主要不変経路への限定対応であり82d新規往復ではない",
+      "tests": [
+        {
+          "name": "7fの実UI3mode PENDING→ACCEPTED→APPROVED/独立DB照合",
+          "evidence": "docs/evidence/CMP-261021-0647/historical-ui-roundtrip-proof.json"
+        },
+        {
+          "name": "不変主要経路への限定適用をroot最終承認（旧原本のpending欄は当時状態）",
+          "evidence": "docs/evidence/CMP-261021-0647/root-final-quality-82d8682.json"
+        },
+        {
+          "name": "作成本人/PUBLISHED/対象指定のBE契約",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationEligibilityContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "取得失敗理由と再試行を示し、実offline GET失敗からonline再試行200/6候補へ復帰する",
+      "tests": [
+        {
+          "name": "genuine offline/理由/送信disabled/実UI retry200",
+          "evidence": "docs/evidence/CMP-261021-0647/root-ui-review-82d-0334.json"
+        },
+        {
+          "name": "失敗/復帰の同bytes代表画像",
+          "evidence": "docs/evidence/CMP-261021-0647/preservation-manifest.json"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "権限あり/なし/他組織を実ログイン/独立Contextで確認し、画面/直URL拒否と非露出を守る",
+      "tests": [
+        {
+          "name": "82d権限あり/SUPPORTER/他組織/未認証の拒否・DRAFT直URL",
+          "evidence": "docs/evidence/CMP-261021-0647/root-ui-review-82d-0334.json"
+        },
+        {
+          "name": "既存scope契約",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapScopeContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "360/390・header/help/モードを表示し、既存3キー×6localeの文言重複とチーム募集範囲を修正する",
+      "tests": [
+        {
+          "name": "6locale key/placeholder/翻訳構文のroot検分",
+          "evidence": "docs/evidence/CMP-261021-0647/root-copy-0671633-review.json"
+        },
+        {
+          "name": "82d actualUI exact文言/overflow0/18画像root実視認",
+          "evidence": "docs/evidence/CMP-261021-0647/root-ui-review-82d-0334.json"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "対象CMP0647の検分/正式CI/実機/独立3住民/最終正常停止をroot確認",
+      "tests": [
+        {
+          "name": "正式CIとfresh/cacheを分離した記録",
+          "evidence": "docs/evidence/CMP-261021-0647-validation.md"
+        },
+        {
+          "name": "3住民と手段限界/最終cleanupのroot最終判断",
+          "evidence": "docs/evidence/CMP-261021-0647/root-final-quality-82d8682.json"
+        },
+        {
+          "name": "merged PR/head/merge時点check世代と同head4CIの公式API照合",
+          "evidence": "docs/evidence/CMP-261021-0647/completion-api-validation.json"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40158601318
+    },
+    {
+      "runId": 40158601304
+    },
+    {
+      "runId": 40158601308
+    },
+    {
+      "runId": 40158601261
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261021-0647/root-final-quality-82d8682.json"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261021-0647-validation.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261021-0647/exploratory-evidence.json"
+    }
+  },
+  "regressions": [
+    {
+      "description": "数値teamIdをslug APIへ送る既定候補取得不具合",
+      "test": "SWAP-001 strict slug/all caller回帰（API route mock、実BEではない）",
+      "redEvidence": "docs/evidence/CMP-261021-0647/slug-caller-red-proof.json",
+      "greenEvidence": "docs/evidence/CMP-261021-0647/slug-caller-green-proof.json"
+    }
+  ],
+  "completionApproved": true,
+  "implementationMerged": true,
+  "productionCreated": false,
+  "limits": [
+    "82dでcreate/accept/approve/cancelは未許可・未再実行。旧7f成功を現在head実行と称しない",
+    "82d BE6shard FROM-CACHE。fresh実測は同backend treeのa38で別記",
+    "旧MFA遅延2failの直接原因は未解明。閾値/暗号caps/試験集合変更0",
+    "forge既知Highは期限付き例外であり脆弱性修正ではない",
+    "実装PR4053は2026-10-25T04:26:23Z通常squash merge済み。対象CMP0647全stageはroot承認済み。"
+  ]
+}
