@@ -130,6 +130,8 @@
     "原本ログ/環境入力/REPL戻り値はコピーせず、選別JSON/画像/hashのみ永続化。",
     "全locale最終視覚QA/新不具合修正/最終CImergeは別ゲート。"
   ],
-  "coordinatorConfirmedOpenFindings": 2,
-  "coordinatorEvidence": "coordinator-confirmations.json"
+  "coordinatorConfirmedOpenFindings": 3,
+  "coordinatorEvidence": "coordinator-confirmations.json",
+  "responsiveNormalRejectedObservations": 2,
+  "currentImplementationState": "55abで3layout CSS修正済み、2aac新runtime44casesgreen未取得。原観測unverifiedは保持。"
 }

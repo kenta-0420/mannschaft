@@ -1,5 +1,24 @@
 # CMP-261024-2051 フレンド申請 検証準備記録
 
+## 現況（候補2aac・最終合格待ち）
+
+実装PR #4106の最新候補headは2aac15e6e020d03cc9d26ee17d94922ab08ed8a4。完了JSON・台帳完了化・merge/pushをこの証拠担当からは行わない。F01.5の未実装見出しも最終green/merge後に同期する。
+
+| ゲート | 現在の根拠と残り |
+|---|---|
+| 実装・検分 | 索引是正と3layout CSS修正55ab0adc3d（3files/5insert/3delete）、殿review finding0。新runtime44cases greenは未取得 |
+| CI | 新Backend40164501249/FE40164501261/smoke40164501199/OA40164501303/types40164501280/TaskGate40164498628は開始済み、成功未取得 |
+| 実機 | old app543/testU2は8/8成功。新UI/main統合2aacの44case結果はまだない。U/U2は実装branchに同blobで収録済み、docs側追加cherry-pickは禁止 |
+| 探索・B0 | 3住民主目的達成/全active0、unverified6観測を保存。既存targetoverlay validator/独立UI・IndexedDB統合は成功。full validatorは既存snapshot140参照不足で不合格のままscope外制限 |
+| 未解明 | old543 Backend40157405430のMFA latency4件中1失敗2297ms>1500ms。他5shards成功でも総合失敗。観測付きmainを新CIへ取り込み、原因解消とは未判定 |
+
+[新layout回帰](CMP-261024-2051/layout-regression-summary.json)は旧app543への3body assertion redを保存し、55ab修正後のgreen待ち。[MFA履歴と方針](CMP-261024-2051/mfa-history-and-next-ci.json)は旧main成功/既往失敗を保ち、閾値・測定区間・認証処理を変えず新CIで判断する。old543性能v2は関連BE/social/role/schemaとproduction blob不変の範囲で維持し、全環境同一/10M規模実証へ拡張しない。
+
+以下は取得時点の状態を残した履歴。先行節の「未実行」「候補SHA」「次の一手」は現在の最終状態ではなく、上表と後続証拠を優先する。
+
+## 検証履歴
+
+
 2026-10-25時点の途中記録。scopeはapp。実機に不合格履歴があり、性能findingはローカル是正済み・新runtime検証待ち。最終検分・実機・探索・CIの合格記録ではなく、台帳を完了へ変える根拠には使わない。実装ドラフトPRは#4106、runtime開始時の統合HEADは46deae93b5591fcb9bd4aae59bd68aa7157b0918。最終head SHAと成功CI run IDは未確定。
 
 正本は[F01.5 §7.1](../features/F01.5_team_friend_relationships.md)のFR-01〜15。[完了証拠ゲート](../development/completion-evidence.md)に従い、実装PRのmerge済head SHA、同SHAの成功CI、review/real/exploratory各passedが揃ってから完了JSONを作る。この準備では完了JSONもtask-listの状態変更も追加しない。
@@ -113,3 +132,9 @@ source新planはCOUNTでteams ALL推定456、一覧range455とtemporary/filesort
 [既存UI/IndexedDB統合試験](CMP-261024-2051/residents/b0-indexeddb-integration.json)は127.0.0.1:8767の独立origin/fresh contextで、実overlay6件自動同期・既存手入力フォーム1件との同store共存・再読込後7件/unique7（重複なし）を確認。登録元/persona/journey/runId/evidencePathを照合、正規UI「すべて」で7カードを表示した。元ユーザーの気づき箱へ書いたことは意味しない。cross-cuttingは既存fallback未設定stageのため初期B0ではフィルタ外となり、手入力保存で未設定へ移る既存UI制約を記録。既存取込はstatus=inbox/registrationSource=alicizationへ正規化し、trusted/sourceHead/originalRunIdはoverlay原本で保持する。画像はscreenshotPathのみでBlob自動取込なし。試験手入力は住民観測に混ぜずfresh context内だけに置き、所有browser/HTTPserverは終了した。
 
 統括の後続裏取りではEN390の長名候補viewport外はみ出しとタブラベルclipの2件を確定し、FE別WTでbrowser red先行の修正準備中。[統括補足](CMP-261024-2051/residents/coordinator-confirmations.json)へ分離し元住民観測のunverifiedは保持した。KO方向行は安定後DOM/元→先全文/opacity1を確認し再現せず、元frame欠落原因は断定しない。glyph判読は確認済み。2件未修正のため実装完了とは扱わない。full validatorの140参照版ずれは殿が本戦役外と判断し、targeted既存overlayvalidatorと実UI/IDB経路でB0登録を評価するが、full validatorの不合格自体は残す。
+
+## 3layout redと統括判定の追補
+
+旧red9f9cb259f3はfixture PUT405で1fail/2notrunとなり本体red不成立。正規PATCH/version0へ訂正した7a320c5c1e892af7b97064e3284e9f228c1274fdでtabs clip、長名候補viewport外、sourceSelect42<44の3body assertion red（CLI1/cleanupremoved）。SOURCE末尾Escapeのfocus前提failureは寸法assertと別であり、後続1b520734ddはlocale保存/html.lang、overlay消滅待、通常Cancel、候補左visibleclickを補強して44/境界assertを維持した。殿は新fixture6/全fr active0、DEBUGlogin3/429=0を確認。原本metrics3種類/PNG3とreceiptを選別保存。
+
+統括は3件目のsourceSelectKO390stable outer348x42/computed42/minHeightauto/animations0を確定。tabsKO390の42pxもtabsfinding内に含む。反対にdesktop toolbar42/Close40は規約の768px以上44下限対象外で、mobile5controls44/Close44x44を根拠に不備棄却した。元住民観測のunverifiedは保持し、[統括補足](CMP-261024-2051/residents/coordinator-confirmations.json)だけを更新。KO方向行はstable public/固定元で正常、初回hydration待ち不足は試験前提でありappbug認定なし。

@@ -607,5 +607,13 @@
       }
     },
     "basis": "private shard3-failure-summary.json直接読取。過去不合格は維持、新CIで再確認する。"
+  },
+  "currentCandidate": {
+    "head": "2aac15e6e020d03cc9d26ee17d94922ab08ed8a4",
+    "layoutFix": "55ab0adc3d",
+    "mainMerge": "bfd83ff311",
+    "ci": "新Backend40164501249ほか成功未取得",
+    "runtime44Cases": "未取得",
+    "pastRunCiFields": "以下finalCiなど旧543時点の履歴は現在の最終成功ではない。"
   }
 }

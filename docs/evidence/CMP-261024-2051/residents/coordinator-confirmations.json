@@ -14,7 +14,8 @@
       "documentScrollWidth": 390,
       "causeObservation": "portal nowrap",
       "image": "coordinator-en390-long-candidate.png",
-      "basis": "殿の実再現/画像視認。保存画像を当方も視認。"
+      "basis": "殿の実再現/画像視認。保存画像を当方も視認。",
+      "fixStatus": "55ab0adc3dへ局所CSS修正済み、候補2aac新runtimegreen待ち"
     },
     {
       "topic": "モバイルタブラベルが途中で切れる",
@@ -27,7 +28,22 @@
       "parentClientWidth": 310,
       "parentScrollWidth": 310,
       "image": "coordinator-en390-tabs-stable.png",
-      "basis": "殿の実再現/画像視認。住民R3のDE観測とは別。"
+      "basis": "殿の実再現/画像視認。住民R3のDE観測とは別。",
+      "fixStatus": "55ab0adc3dへ局所CSS修正済み、候補2aac新runtimegreen待ち"
+    },
+    {
+      "topic": "KO390の申請元Select高さが44px未満",
+      "locale": "ko",
+      "viewport": 390,
+      "outerWidth": 348,
+      "outerHeight": 42,
+      "computedHeight": "42px",
+      "minHeight": "auto",
+      "animations": 0,
+      "basis": "殿の安定後実測とlayout-red2 source42 assertion",
+      "rawSelectedMetric": "../layout/source-select.json",
+      "fix": "55ab0adc3d CSS修正済み、newruntime44casegreen未取得",
+      "fixStatus": "55ab0adc3dへ局所CSS修正済み、候補2aac新runtimegreen待ち"
     }
   ],
   "notReproduced": [
@@ -42,8 +58,81 @@
     }
   ],
   "otherPending": [
-    "Close40の統括裏取り",
-    "R1 toolbar42/reload観測の要件判定"
+    "R1 reload観測の要件判定"
   ],
-  "implementationStatus": "長名候補とtabsの2件は修正前の実装blocker、FE担当が別WTでbrowser red先行準備中。"
+  "implementationStatus": "確定3layoutは55abで修正、2aac新runtime44casegreen/CIは未取得。KO方向正常再現せず、元frame原因未確定。",
+  "rejectedAsResponsiveNormal": {
+    "topics": [
+      "R1 desktop42toolbar/shortcuts",
+      "R2 desktopClose40"
+    ],
+    "rule": "767px以下44px、768px以上は44下限適用外（規約line66、殿照合）",
+    "controls": {
+      "desktop": [
+        {
+          "testid": "friend-guide-button",
+          "width": 98,
+          "height": 42
+        },
+        {
+          "testid": "friend-follow-button",
+          "width": 98,
+          "height": 42
+        },
+        {
+          "testid": "friend-shortcut-folders",
+          "width": 640,
+          "height": 42
+        },
+        {
+          "testid": "friend-shortcut-feed",
+          "width": 640,
+          "height": 42
+        },
+        {
+          "testid": "friend-shortcut-forward-exports",
+          "width": 640,
+          "height": 42
+        }
+      ],
+      "mobile": [
+        {
+          "testid": "friend-guide-button",
+          "width": 98,
+          "height": 44
+        },
+        {
+          "testid": "friend-follow-button",
+          "width": 98,
+          "height": 44
+        },
+        {
+          "testid": "friend-shortcut-folders",
+          "width": 310,
+          "height": 44
+        },
+        {
+          "testid": "friend-shortcut-feed",
+          "width": 310,
+          "height": 44
+        },
+        {
+          "testid": "friend-shortcut-forward-exports",
+          "width": 310,
+          "height": 44
+        }
+      ]
+    },
+    "closeMobile": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "locale": "ko",
+      "width": 44,
+      "height": 44
+    },
+    "decision": "rootmobile390の5操作は44px、Close44x44。正常レスポンシブとして不備棄却。原住民観測は保持。",
+    "exception": "tabsKO390height42は別の確定tabs finding内で44下限修正対象。"
+  }
 }

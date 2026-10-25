@@ -297,15 +297,25 @@
       "basis": "殿報告+receipt直読"
     }
   ],
-  "testOnlyCommitsForLaterDocsPr": [
+  "remaining": [
+    "新2aacの44casegreenと最終画像QA",
+    "新2aac最終CI成功とmerge",
+    "3住民原観測後の3layout修正検証。desktop42/Close40はresponsive正常判定",
+    "完了JSON/台帳完了化は禁止"
+  ],
+  "basis": "approved-real-e2e-proof/receipt/perf/cleanup/reuse/source-planの選別読取。最終画像QAは殿確認待ち。",
+  "historicalTestOnlyCommitsPlannedForDocsPr": [
     "70a61f6554f862d98c5bcc090c59d06fe51d1041",
     "4d43a77464cfa53319b93f420562a2a36f45198f"
   ],
-  "remaining": [
-    "zh/ko tofuの私有font補正と再撮影前、全locale視覚合格は保留",
-    "独立3住民探索は未実施",
-    "最終CI成功とmerge未記録",
-    "完了JSON/台帳完了化禁止"
-  ],
-  "basis": "approved-real-e2e-proof/receipt/perf/cleanup/reuse/source-planの選別読取。最終画像QAは殿確認待ち。"
+  "currentIntegrationPlan": {
+    "candidateHead": "2aac15e6e020d03cc9d26ee17d94922ab08ed8a4",
+    "uAndU2AlreadyInImplementationAs": [
+      "4321894e70",
+      "b5f9b2605c"
+    ],
+    "sameBlobConfirmedBy": "殿の差分確認報告",
+    "docsCherryPick": "不要・禁止。旧70a/4dを重複適用しない。",
+    "newRuntime44Cases": "pending"
+  }
 }
