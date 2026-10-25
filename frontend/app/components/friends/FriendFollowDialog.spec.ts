@@ -16,6 +16,17 @@ async function mountDialog(props = {}) {
   await flushPromises()
   return w
 }
+async function mountBusyDialog() {
+  mocks.list.mockResolvedValue({ ...result([1, 2]), pagination: { ...result([1, 2]).pagination, totalElements: 21, totalPages: 2, hasNext: true } })
+  mocks.follow.mockImplementation(() => new Promise(() => {}))
+  const w = await mountDialog()
+  w.findComponent({ name: 'Select' }).vm.$emit('update:modelValue', source(1))
+  await flushPromises()
+  await w.get('[data-testid="friend-request-review"]').trigger('click')
+  await w.get('[data-testid="friend-follow-submit"]').trigger('click')
+  await flushPromises()
+  return w
+}
 describe('FR-02/05/08 申請確認', () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.list.mockReset(); mocks.follow.mockReset() })
   it('0/1/複数の候補を総数で分岐し、1件は選択済みと明示する', async () => {
@@ -60,6 +71,22 @@ describe('FR-02/05/08 申請確認', () => {
     expect(mocks.follow).not.toHaveBeenCalled()
     expect(cancel.emitted('update:modelValue')).toEqual([[false]])
     cancel.unmount()
+  })
+  it('FR-08: 送信中のpageイベントは候補GETを増やさず選択元を維持する', async () => {
+    const w = await mountBusyDialog()
+    w.findComponent({ name: 'Paginator' }).vm.$emit('page', { page: 1 })
+    await flushPromises()
+    expect(mocks.list).toHaveBeenCalledTimes(1)
+    expect(w.findComponent({ name: 'Select' }).props('modelValue')).toEqual(source(1))
+    w.unmount()
+  })
+  it('FR-08: 送信中のSelect更新イベントでも確認した申請元を変えない', async () => {
+    const w = await mountBusyDialog()
+    w.findComponent({ name: 'Select' }).vm.$emit('update:modelValue', source(2))
+    await flushPromises()
+    expect(w.findComponent({ name: 'Select' }).props('modelValue')).toEqual(source(1))
+    expect(w.get('[data-testid="friend-request-direction"]').text()).toContain('Source 1 (source-1)')
+    w.unmount()
   })
   it('受信の返しは元・先を固定し候補APIを取得しない', async () => {
     const w = await mountDialog({ teamId: '1', sourceTeam: source(1) })
