@@ -105,7 +105,7 @@ test.beforeAll(async ({ browser }) => {
   target = await fixture.team(actor, '長名候補')
   const longName = ('Internationale ' + target.slug + ' Freundschaft und Zusammenarbeit Gemeinschaft für gemeinsame Sportveranstaltungen ').slice(0, 100).padEnd(100, 'x')
   expect(longName).toHaveLength(100)
-  const renamed = await actor.page.request.put(API_BASE + '/api/v1/teams/' + target.slug, { data: { name: longName } })
+  const renamed = await actor.page.request.patch(API_BASE + '/api/v1/teams/' + target.slug, { data: { name: longName, version: 0 } })
   expect(renamed.status(), '上限100文字の前提チーム名を保存').toBe(200)
   target.name = longName
 })
