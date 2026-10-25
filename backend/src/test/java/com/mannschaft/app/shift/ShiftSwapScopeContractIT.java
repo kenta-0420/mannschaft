@@ -133,6 +133,9 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
 
         slotAId = insertSlot(insertSchedule(teamAId, "WAVE6SWAP A シフト"));
         slotBId = insertSlot(insertSchedule(teamBId, "WAVE6SWAP B シフト"));
+        // 承認成功のfixtureは、交代元が現在の担当者である業務条件も満たす。
+        slotRepository.findById(slotAId).orElseThrow()
+                .updateAssignedUserIds("[" + memberTeamAId + "]");
 
         pendingSwapAId = insertSwap(slotAId, memberTeamAId, SwapRequestStatus.PENDING, false);
         pendingSwapBId = insertSwap(slotBId, adminTeamBId, SwapRequestStatus.PENDING, false);
