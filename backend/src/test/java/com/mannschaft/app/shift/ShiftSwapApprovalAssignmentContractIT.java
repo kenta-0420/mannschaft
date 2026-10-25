@@ -57,6 +57,7 @@ import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -121,6 +122,29 @@ class ShiftSwapApprovalAssignmentContractIT extends ShiftSwapApprovalTestSupport
         expect(resolve(admin, accepted(slot, a, b), "APPROVE"), 200, null);
         assertThat(assigned(slot)).containsExactly(c, b, d);
         assertThat(slotBusiness(slot)).isEqualTo(original);
+    }
+
+    @Test
+    void AC06_通常更新で申請者が二重担当になった交代は409で全列不変() throws Exception {
+        Long slot = slot(List.of(a), ShiftScheduleStatus.PUBLISHED);
+        // 重複は正規の枠更新APIから保存できる。交代承認で一部だけを差替して成立させない。
+        var updated = mockMvc.perform(patch("/api/v1/shifts/slots/{id}", slot)
+                .header("Authorization", bearer(admin)).contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(Map.of("assignedUserIds", List.of(a, a, c)))))
+                .andReturn().getResponse();
+        expect(updated, 200, null);
+        assertThat(assigned(slot)).containsExactly(a, a, c);
+        var created = mockMvc.perform(post("/api/v1/shifts/swap-requests")
+                .header("Authorization", bearer(a)).contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(Map.of("slotId", slot, "reason", "重複担当の交代", "openCall", true))))
+                .andReturn().getResponse();
+        expect(created, 201, null);
+        Long swap = json(created).at("/data/id").longValue();
+        expect(mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", swap)
+                .header("Authorization", bearer(b))).andReturn().getResponse(), 200, null);
+
+        denied(admin, swap, "APPROVE", 409, "SHIFT_018");
+        assertThat(assigned(slot)).containsExactly(a, a, c);
     }
 
     @ParameterizedTest(name = "AC03_ACCEPTED以外 [{index}] {arguments}")

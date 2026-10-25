@@ -339,7 +339,7 @@ public class ShiftSlotService {
         ShiftSlotEntity slot = findSlotOrThrow(slotId);
         List<Long> before = deserializeUserIds(slot.getAssignedUserIds());
         int requesterIndex = before.indexOf(requesterId);
-        if (requesterIndex < 0) {
+        if (requesterIndex < 0 || requesterIndex != before.lastIndexOf(requesterId)) {
             throw new BusinessException(ShiftErrorCode.OPTIMISTIC_LOCK_CONFLICT);
         }
         if (before.contains(accepterId)) {
