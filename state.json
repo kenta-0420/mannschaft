@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "20569f6f-2739-44bf-a9dd-c163f204c59b",
+  "operation": "b23062e1-141c-4b7a-a869-6a94261aa788",
   "territories": {
     "foundation": {
       "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
@@ -117,15 +117,14 @@
       "held": []
     },
     "L1-F": {
-      "state": "paused",
-      "evidence": "https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6392616616 : L1-F existing holder explicitly confirms all workers ended, shared editing stopped, and hold plus architecture/freeze-constants release consent. PR4045/4104/4107 MERGED; main40148629302 attempt1 success.",
+      "state": "done",
+      "evidence": "https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6392616616 ; PR4045 implementation, PR4104 fix, PR4107 final evidence MERGED (eeebae7ec30518e56ba84ff541e62c35ac349572). main40148629302 attempt1 d4f8b6ece263fb0ea7f6e7d367e6fefb364cea12 completed/success: 6 shards plus ArchUnit, 9 jobs success, dedicated guards 12 success. PR4107 checks 11 success/6 expected skips; Task-List40155565604 success. Legacy failed main and unproven normal 85-minute performance remain documented. Existing holder confirms all workers ended/shared editing stopped and resource release consent.",
       "note": "",
-      "history": [],
+      "history": [
+        "https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6392616616 ; PR4045 implementation, PR4104 fix, PR4107 final evidence MERGED (eeebae7ec30518e56ba84ff541e62c35ac349572). main40148629302 attempt1 d4f8b6ece263fb0ea7f6e7d367e6fefb364cea12 completed/success: 6 shards plus ArchUnit, 9 jobs success, dedicated guards 12 success. PR4107 checks 11 success/6 expected skips; Task-List40155565604 success. Legacy failed main and unproven normal 85-minute performance remain documented. Existing holder confirms all workers ended/shared editing stopped and resource release consent."
+      ],
       "hold": null,
-      "held": [
-        "architecture",
-        "freeze-constants"
-      ]
+      "held": []
     },
     "L1-G": {
       "state": "todo",
