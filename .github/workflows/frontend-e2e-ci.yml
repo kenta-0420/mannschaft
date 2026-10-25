@@ -115,7 +115,7 @@ jobs:
             })
           })().catch(error => { console.error(error); process.exitCode = 1 })
           NODE
-          npx playwright test F15.4-org-team-search f221-swipe-dashboard F15.4-slug-navigation mobile/insight-ui-regressions mobile/common-controls mobile/calendar-layout --project=chromium --workers=1 --timeout=120000 --trace=retain-on-failure --output=test-results/smoke
+          npx playwright test F15.4-org-team-search f221-swipe-dashboard F15.4-slug-navigation mobile/insight-ui-regressions mobile/common-controls mobile/calendar-layout mobile/my-shift-touch-targets --project=chromium --workers=1 --timeout=120000 --trace=retain-on-failure --output=test-results/smoke
 
       - name: smoke E2Eの失敗時証跡を保存
         if: always()
