@@ -37,6 +37,9 @@ async function language(page: Page, name: string, code: string): Promise<void> {
     expect(response.status()).toBe(200)
     return (await response.json()).data.locale as string
   }).toBe(code)
+  const messages = JSON.parse(readFileSync(new URL('../../../app/locales/' + code + '/common.json', import.meta.url), 'utf8')) as { button: { save: string } }
+  await expect(page.locator('button[translate="no"]')).toHaveText(messages.button.save)
+  await expect(page.locator('html')).toHaveAttribute('lang', code)
 }
 async function stable(locator: Locator): Promise<void> {
   await locator.page().evaluate(async () => { await document.fonts.ready })
@@ -122,6 +125,7 @@ for (const locale of locales) {
       await page.setViewportSize({ width, height: 844 })
       await language(page, locale.name, locale.code)
       await open(page, '/teams/' + source.slug + '/nav')
+      await expect(page.locator('html')).toHaveAttribute('lang', locale.code)
       const tabs = page.getByTestId('friend-list-tabs')
       await expect(tabs).toBeVisible()
       await stable(tabs)
@@ -145,6 +149,7 @@ for (const locale of locales) {
       await page.setViewportSize({ width, height: 844 })
       await language(page, locale.name, locale.code)
       await open(page, '/teams/' + source.slug + '/nav')
+      await expect(page.locator('html')).toHaveAttribute('lang', locale.code)
       await page.getByTestId('friend-follow-button').click()
       const dialog = page.getByRole('dialog')
       await expect(dialog).toBeVisible()
@@ -170,9 +175,9 @@ for (const locale of locales) {
         expect.soft(fragment.left).toBeGreaterThanOrEqual(0)
         expect.soft(fragment.right, '折り返された文字列が画面内にある').toBeLessThanOrEqual(width)
       }
-      await candidate.click()
+      await candidate.click({ position: { x: 4, y: 4 } })
       await expect(dialog.getByTestId('friend-request-direction')).toContainText(target.slug)
-      await page.keyboard.press('Escape')
+      await dialog.locator('.p-dialog-footer').getByRole('button').first().click()
       await expect(dialog).not.toBeVisible()
     })
     test('FR-LAYOUT-SOURCE: ' + locale.code + ' ' + width + 'pxで申請元の選択領域が44px以上ある', async ({ browserName: _browserName }, info) => {
@@ -181,6 +186,7 @@ for (const locale of locales) {
       await page.setViewportSize({ width, height: 844 })
       await language(page, locale.name, locale.code)
       await open(page, '/public/teams/' + target.slug)
+      await expect(page.locator('html')).toHaveAttribute('lang', locale.code)
       await page.getByTestId('friend-request-entry').click()
       const dialog = page.getByRole('dialog')
       await expect(dialog).toBeVisible()
@@ -188,6 +194,7 @@ for (const locale of locales) {
       await expect(sourceSelect).toBeVisible()
       await sourceSelect.click()
       await page.getByRole('option').filter({ hasText: source.slug }).click()
+      await expect(page.locator('[role="listbox"]')).toHaveCount(0)
       await expect(sourceSelect).toContainText(source.slug)
       await stable(sourceSelect)
       const metrics = await sourceSelect.evaluate(element => {
@@ -197,7 +204,7 @@ for (const locale of locales) {
       await evidence(page, info, 'source-select', metrics)
       expect.soft(metrics.height, 'モバイルの申請元選択領域は44px以上').toBeGreaterThanOrEqual(44)
       expect.soft(metrics.width, 'モバイルの申請元選択領域は44px以上').toBeGreaterThanOrEqual(44)
-      await page.keyboard.press('Escape')
+      await dialog.locator('.p-dialog-footer').getByRole('button').first().click()
       await expect(dialog).not.toBeVisible()
     })
   }
