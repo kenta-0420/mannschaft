@@ -37,7 +37,14 @@ const sourceId = computed(() => source.value ? String(source.value.teamId) : pro
 
 watch([source, target], () => { if (!busy.value) confirmed.value = false })
 watch(visible, value => { if (!value) { sourceRevoked.value = false; refreshedCounts.value = null; statusError.value = null; statusSequence += 1; chosenTarget.value = null; confirmed.value = false } })
-async function onPage(event: { page: number }) { page.value = event.page; await sources.load() }
+async function onPage(event: { page: number }) {
+  if (busy.value) return
+  page.value = event.page
+  await sources.load()
+}
+function onSourceChange(value: FriendRequestSource | null) {
+  if (!busy.value) selected.value = value
+}
 async function onForbidden() {
   busy.value = false
   confirmed.value = false
@@ -72,12 +79,12 @@ onBeforeUnmount(() => { statusSequence += 1 })
         <DashboardEmptyState v-else-if="totalRecords === 0" :message="t('friends.request.no_source')" />
         <template v-else>
           <label for="friend-request-source">{{ t('friends.request.source') }}</label>
-          <Select input-id="friend-request-source" v-model="selected" :options="candidates" option-label="teamName" :disabled="busy" class="w-full" data-testid="friend-request-source">
+          <Select input-id="friend-request-source" :model-value="selected" :options="candidates" option-label="teamName" :disabled="busy" class="w-full" data-testid="friend-request-source" @update:model-value="onSourceChange">
             <template #option="{ option }"><span class="break-words">{{ option.teamName }} ({{ option.teamSlug }})</span></template>
             <template #value><span v-if="selected" class="break-words">{{ selected.teamName }} ({{ selected.teamSlug }})</span><span v-else>{{ t('friends.request.choose_source') }}</span></template>
           </Select>
           <p v-if="totalRecords === 1 && selected" data-testid="friend-source-auto">{{ t('friends.request.single_source') }}</p>
-          <Paginator v-if="totalRecords > rows" :first="page * rows" :rows="rows" :total-records="totalRecords" :disabled="busy" @page="onPage" />
+          <Paginator v-if="totalRecords > rows" :first="page * rows" :rows="rows" :total-records="totalRecords" @page="onPage" />
         </template>
       </template>
       <template v-else>
