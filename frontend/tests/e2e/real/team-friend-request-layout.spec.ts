@@ -186,6 +186,8 @@ for (const locale of locales) {
       await expect(dialog).toBeVisible()
       const sourceSelect = page.getByTestId('friend-request-source')
       await expect(sourceSelect).toBeVisible()
+      await sourceSelect.click()
+      await page.getByRole('option').filter({ hasText: source.slug }).click()
       await expect(sourceSelect).toContainText(source.slug)
       await stable(sourceSelect)
       const metrics = await sourceSelect.evaluate(element => {
