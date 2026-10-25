@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("isAuthenticated()")
 @RequestMapping("/api/v1/teams/{slug}/feature-display-policies")
 @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "表示設定全件", useReturnTypeSchema = true),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "入力不正・未知または重複キー"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "認証が必要"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "対象scopeの権限不足"),
