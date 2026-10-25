@@ -267,6 +267,10 @@ jobs:
       - name: Grant Gradle wrapper execute permission
         run: chmod +x gradlew
 
+      # PR CIと同じくコンパイルを先行し、85/105分のtest stepでのコンパイル時間消費を避ける。
+      - name: Compile
+        run: ./gradlew compileJava compileTestJava --no-daemon --build-cache
+
       # このシャードに割り当てられたテストクラスのみ実行する（backend-ci.yml と同じ方式）。
       # Testcontainers pulls docker images on first run; the Docker daemon is
       # already running on ubuntu-latest so no additional setup is needed.
@@ -279,7 +283,7 @@ jobs:
       - name: Run tests (shard ${{ matrix.shard }} / ${{ env.SHARD_TOTAL }})
         timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 105 || 85 }}
         run: >-
-          ./gradlew test --no-daemon --continue
+          ./gradlew test --no-daemon --continue --build-cache
           -Pshard.total=${{ env.SHARD_TOTAL }}
           -Pshard.index=${{ matrix.shard }}
           -PexcludeMigrationTests=${{ needs.detect.outputs.migrations_changed == 'true' && 'false' || 'true' }}
