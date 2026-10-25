@@ -13,8 +13,24 @@ let fixture: FriendRequestFixture
 let a: FriendTeam
 let b: FriendTeam
 let candidates: FriendTeam[]
+const permissionSetupHandlers = new WeakSet<Page>()
+const permissionSetupLaterLabels = ['ja', 'en', 'zh', 'ko', 'es', 'de'].map(locale => {
+  const messages = JSON.parse(readFileSync(new URL('../../../app/locales/' + locale + '/scope_guide.json', import.meta.url), 'utf8')) as { scopeGuide: { setup: { later: string } } }
+  return messages.scopeGuide.setup.later
+})
 
 async function open(page: Page, path: string): Promise<void> {
+  if (!permissionSetupHandlers.has(page)) {
+    // 新規チーム管理者の初回案内は実UIで延期する。権限の設定・API迂回は行わない。
+    await page.addLocatorHandler(page.getByTestId('member-permission-setup'), async dialog => {
+      const mask = page.locator('.p-dialog-mask').filter({ has: dialog })
+      const postpone = permissionSetupLaterLabels.map(label => dialog.getByRole('button', { name: label, exact: true })).reduce((union, button) => union.or(button))
+      await postpone.click()
+      await expect(dialog).not.toBeVisible()
+      await expect(mask).not.toBeVisible()
+    })
+    permissionSetupHandlers.add(page)
+  }
   await page.goto(path, { waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
   await waitForSpinnerGone(page)
