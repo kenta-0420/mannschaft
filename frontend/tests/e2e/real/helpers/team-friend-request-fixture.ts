@@ -1,5 +1,6 @@
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test'
 import { loginViaApi } from '../../fixtures/auth'
+import { waitForHydration } from '../../helpers/wait'
 
 export interface FriendTeam { id: number; slug: string; name: string }
 export interface FriendActor { page: Page; context: BrowserContext; userId: number }
@@ -12,10 +13,26 @@ export async function openFriendActor(browser: Browser, role: 'SOURCE' | 'TARGET
   if (!email || !password) throw new Error('専用実機ユーザーの環境変数が未設定: FRIEND_' + role + '_EMAIL / TEST_USER_PASSWORD')
   const context = await browser.newContext({ storageState: { cookies: [], origins: [] }, viewport: role === 'TARGET' ? { width: 390, height: 844 } : { width: 1280, height: 900 }, isMobile: role === 'TARGET', hasTouch: role === 'TARGET' })
   const page = await context.newPage()
-  await loginViaApi(page, { email, password }, { apiBaseUrl: API_BASE, deferNavigation: true })
+  // 静的robots経路で認証を復元し、gotoのたびに古いlocaleを戻すinit scriptを残さない。
+  await loginViaApi(page, { email, password }, { apiBaseUrl: API_BASE, deferNavigation: false })
   const me = await page.request.get(API_BASE + '/api/v1/users/me')
   expect(me.status()).toBe(200)
-  return { page, context, userId: (await me.json()).data.id as number }
+  const profile = (await me.json()).data as { id: number; locale?: string | null }
+  if (profile.locale !== 'ja') {
+    // 保存済みlocaleの基準化も実UIで行う。追加ログインやAPIによるlocale更新はしない。
+    await page.goto('/settings/language', { waitUntil: 'domcontentloaded' })
+    await waitForHydration(page)
+    await page.getByRole('combobox').first().click()
+    await page.getByRole('option', { name: '日本語', exact: true }).click()
+    const saved = page.waitForResponse(response => response.request().method() === 'PUT' && new URL(response.url()).pathname === '/api/v1/users/me')
+    await page.locator('button[translate="no"]').click()
+    expect((await saved).status(), '日本語baselineを実UIで保存').toBe(200)
+    await expect(page.getByRole('button', { name: '保存', exact: true })).toBeVisible()
+    const actual = await page.request.get(API_BASE + '/api/v1/users/me')
+    expect(actual.status()).toBe(200)
+    expect((await actual.json()).data.locale, '保存後の本人localeがjaであること').toBe('ja')
+  }
+  return { page, context, userId: profile.id }
 }
 
 /** 所有チームのIDだけを保持し、失敗時も作成済み分を後始末する。 */
