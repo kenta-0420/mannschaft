@@ -313,6 +313,8 @@ public class ShiftSwapService {
     /** 認可後に承認対象の受諾者を返す。資格確認は非TXのFacadeで行う。 */
     public Long resolveApprovalAccepterId(Long swapId) {
         ShiftSwapRequestEntity entity = findSwapOrThrow(swapId);
+        // 認可後に親が消えた場合は、状態・受諾者の不整合より既存の404を優先する。
+        resolveTeamIdBySwap(entity);
         validateAcceptedStatus(entity);
         validateApprovalAccepter(entity);
         return entity.getAccepterId();
