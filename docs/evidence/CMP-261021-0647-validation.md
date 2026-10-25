@@ -73,6 +73,6 @@ rootが2026-10-25 04:06 UTCにPR head82d/CLEAN、全checks成功または許容S
 
 ## 文書mainの秘密scan偽陽性（修正中）
 
-main762の[秘密scan40168272040](https://github.com/kenta-0420/mannschaft/actions/runs/40168272040)はgeneric-api-keyで検証説明文を1件検出した。この赤は履歴として保持し、再実行で消さない。固定gitleaks8.28.0で同実範囲bfd..762を旧config red1→限定候補green0と実証。対象path完全一致 AND 非秘密の抽出識別子完全一致のみを許可し、同値別path/同path別dummy高entropy値は各1件検出した。既定rule・他allowlist・原証拠23blob・PNG6枚は不変。正確なbytes/hashは既存manifestのGit committed blob基準を維持する。[safe検証記録](CMP-261021-0647-gitleaks-fix.json)。
+main762の[秘密scan40168272040](https://github.com/kenta-0420/mannschaft/actions/runs/40168272040)はgeneric-api-keyで検証説明文を1件検出した。この赤は履歴として保持し、再実行で消さない。固定gitleaks8.28.0で同実範囲bfd..762を旧config red1→限定候補green0と実証。対象path完全一致 AND 非秘密の抽出識別子完全一致のみを許可し、同値別path/同path別dummy高entropy値は各1件検出した。既定rule・他allowlist・原証拠23blob・PNG6枚は不変。正確なbytes/hashは既存manifestのGit committed blob基準を維持する。[safe検証記録](CMP-261021-0647/gitleaks-fix.json)。
 
 旧文書PR範囲は既定0、first-parentのmerge差分を含む走査で1件を検出し、独立合成mergeでも同じ0→1を確認した。これは別件CMP-261025-1534（JST UTC+9採番）の未着手・修正未裁可として登録し、今回workflowは変更しない。実秘密漏えいは未確認。実装main CIと過去実機/探索の成功は維持し、対象台帳は今回修正中の実装中状態を保つ。
