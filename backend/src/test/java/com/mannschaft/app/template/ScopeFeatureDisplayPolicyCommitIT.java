@@ -24,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.UUID;
@@ -130,12 +131,18 @@ class ScopeFeatureDisplayPolicyCommitIT extends AbstractMySqlIntegrationTest {
         });
         Awaitility.await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> assertThat(auditCount()).isEqualTo(1));
         var original = policies.findByScopeTypeAndScopeId(FeatureDisplayScope.TEAM, teamId).getFirst();
+        assertThat(original.getCreatedAt()).isEqualTo(Instant.parse(jdbc.queryForObject(
+                "SELECT DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s.%fZ') FROM scope_feature_display_policies "
+                        + "WHERE scope_type = 'TEAM' AND scope_id = ? AND feature_key = 'schedule'", String.class, teamId)));
         mvc.perform(put(path).with(user(actor.toString())).contentType("application/json")
                 .content("{\"features\":[" + item("schedule", true) + "]}"))
                 .andExpect(status().isOk());
         var after = policies.findByScopeTypeAndScopeId(FeatureDisplayScope.TEAM, teamId).getFirst();
         assertThat(after.getId()).isEqualTo(original.getId());
         assertThat(after.getCreatedAt()).isEqualTo(original.getCreatedAt());
+        assertThat(after.getUpdatedAt()).isEqualTo(Instant.parse(jdbc.queryForObject(
+                "SELECT DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s.%fZ') FROM scope_feature_display_policies "
+                        + "WHERE scope_type = 'TEAM' AND scope_id = ? AND feature_key = 'schedule'", String.class, teamId)));
         assertThat(after.isMemberVisible()).isTrue();
         mvc.perform(get(path).with(user(actor.toString()))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.features[?(@.featureKey == 'schedule')].memberVisible").value(true));

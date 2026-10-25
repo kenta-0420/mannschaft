@@ -663,9 +663,11 @@ HTTP|com.mannschaft.app.team.controller.TeamOrgInviteController|0|3
 HTTP|com.mannschaft.app.team.controller.TeamOrgMembershipLeaveController|0|1
 HTTP|com.mannschaft.app.team.controller.TeamShiftSettingsController|2|2
 HTTP|com.mannschaft.app.template.controller.ModuleController|2|2
+HTTP|com.mannschaft.app.template.controller.OrganizationFeatureDisplayPolicyController|0|2
 HTTP|com.mannschaft.app.template.controller.OrganizationModuleController|3|3
 HTTP|com.mannschaft.app.template.controller.SystemAdminModuleController|5|5
 HTTP|com.mannschaft.app.template.controller.SystemAdminTemplateController|3|3
+HTTP|com.mannschaft.app.template.controller.TeamFeatureDisplayPolicyController|0|2
 HTTP|com.mannschaft.app.template.controller.TeamModuleController|4|4
 HTTP|com.mannschaft.app.template.controller.TemplateController|3|3
 HTTP|com.mannschaft.app.ticket.controller.MyTicketController|5|5

@@ -16,7 +16,7 @@ import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /** スコープと一般機能ごとの独立したMEMBER/SUPPORTER表示設定。認可には使用しない。 */
 @Entity
@@ -43,8 +43,8 @@ public class ScopeFeatureDisplayPolicyEntity extends UuidV7Entity {
     private Long updatedBy;
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 }

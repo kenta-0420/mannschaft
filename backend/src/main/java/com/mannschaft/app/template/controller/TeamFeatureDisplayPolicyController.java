@@ -2,6 +2,8 @@ package com.mannschaft.app.template.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.template.FeatureDisplayScope;
 import com.mannschaft.app.template.dto.FeatureDisplayPoliciesResponse;
@@ -36,6 +38,8 @@ public class TeamFeatureDisplayPolicyController {
     private final ScopeFeatureDisplayPolicyService policies;
 
     @GetMapping
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "一般機能の表示判定に必要な設定を、対象機能の停止中も所属ロール認可の下で取得するため")
     @Operation(summary = "チームの一般機能表示設定取得", description = "所属SUPPORTER以上。未保存キーはtrue/true。認可には影響しない。")
     public ApiResponse<FeatureDisplayPoliciesResponse> getSettings(@PathVariable String slug) {
         Long scopeId = teams.resolveTeamId(slug);
@@ -43,6 +47,8 @@ public class TeamFeatureDisplayPolicyController {
     }
 
     @PutMapping
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "全機能を非表示にした状態からも管理者が表示設定を復帰できる制御面を維持するため")
     @Operation(summary = "チームの一般機能表示設定更新", description = "当該ADMINまたはSYSTEM_ADMIN専用。指定キーのみ更新し全件を返す。")
     public ApiResponse<FeatureDisplayPoliciesResponse> updateSettings(@PathVariable String slug,
             @Valid @RequestBody UpdateFeatureDisplayPoliciesRequest request) {
