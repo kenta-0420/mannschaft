@@ -328,14 +328,15 @@ public class ShiftSlotService {
      * <p>呼出元は認可・受諾者資格確認後、親→枠を排他ロック付きでrefresh済みであること。
      * 交代依頼の更新と同一TXに参加し、人数・他担当・枠の業務値を保持する。</p>
      *
-     * @param slot 現在値を取得済みの対象枠
+     * @param slotId 現在値を取得・ロック済みの対象枠ID
      * @param requesterId 申請者ID
      * @param accepterId 受諾者ID
      * @param operatorId 承認管理者ID
      */
     @Transactional
     public void replaceAssignmentForSwap(
-            ShiftSlotEntity slot, Long requesterId, Long accepterId, Long operatorId) {
+            Long slotId, Long requesterId, Long accepterId, Long operatorId) {
+        ShiftSlotEntity slot = findSlotOrThrow(slotId);
         List<Long> before = deserializeUserIds(slot.getAssignedUserIds());
         int requesterIndex = before.indexOf(requesterId);
         if (requesterIndex < 0) {

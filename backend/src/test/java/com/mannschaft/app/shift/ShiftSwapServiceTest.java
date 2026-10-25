@@ -113,6 +113,7 @@ class ShiftSwapServiceTest {
     /** slotId → scheduleId → teamId の scope 解決経路をモックする。 */
     private void givenScopeResolvable() {
         given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(ShiftSlotEntity.builder()
+                .id(SLOT_ID)
                 .scheduleId(SCHEDULE_ID)
                 .slotDate(LocalDate.of(2026, 3, 1))
                 .startTime(LocalTime.of(9, 0))
@@ -592,7 +593,7 @@ class ShiftSwapServiceTest {
             assertThat(entity.getResolvedBy()).isEqualTo(ADMIN_ID);
             assertThat(entity.getAdminNote()).isEqualTo("承認します");
             verify(slotService).replaceAssignmentForSwap(
-                    any(ShiftSlotEntity.class), eq(REQUESTER_ID), eq(ACCEPTER_ID), eq(ADMIN_ID));
+                    eq(SLOT_ID), eq(REQUESTER_ID), eq(ACCEPTER_ID), eq(ADMIN_ID));
         }
 
         @Test

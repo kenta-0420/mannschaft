@@ -263,7 +263,7 @@ public class ShiftSwapService {
                     throw new BusinessException(ShiftErrorCode.INVALID_SCHEDULE_STATUS);
                 }
                 slotService.replaceAssignmentForSwap(
-                        approvalSlot, entity.getRequesterId(), entity.getAccepterId(), adminId);
+                        approvalSlot.getId(), entity.getRequesterId(), entity.getAccepterId(), adminId);
                 entity.approve(adminId, req.getAdminNote());
             }
             case ACTION_REJECT -> entity.reject(adminId, req.getAdminNote());
