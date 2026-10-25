@@ -209,6 +209,8 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 ### セキュリティ・認証
 
+フレンドチーム申請は管理画面の申請元固定と両プロフィールの申請元選択、受信/フォロー返しを実装済み（PR #4106）。実機44件・3住民探索・最終CIを確認。[完了証拠](docs/evidence/CMP-261024-2051.json)に検証範囲と制限を記録しています。
+
 > 📄 詳細設計: [docs/features/F01.1_auth.md](docs/features/F01.1_auth.md) | [docs/features/F01.2_org_team_member_role.md](docs/features/F01.2_org_team_member_role.md) | [docs/features/F01.2.1_org_team_groups.md](docs/features/F01.2.1_org_team_groups.md)（チーム加盟の双方向化・チームグループ／🟢 実装済み。全部隊が main に着地済みで、実機E2E・アリシゼーションは未実施） | [docs/features/F01.5_team_friend_relationships.md](docs/features/F01.5_team_friend_relationships.md)
 
 - **多要素認証 (2FA)**: TOTP（Google Authenticator等）・メールのワンタイムコード・バックアップコード・WebAuthn対応（SMSは非採用）。ログイン時の試行はセッション単位5回・ユーザー単位10回/30分で制限。SYSTEM_ADMIN・ADMINには必須化
