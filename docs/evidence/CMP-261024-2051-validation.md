@@ -95,3 +95,11 @@ app46の専用Flyway適用DBで100行・各20回（warmup1回除外、HTTP/JSON 
 専用worktreeでB0_INCLUDE_LOCAL_OVERLAY=trueを指定してgenerate-beta-inventory-board-data.pyを実行し、validate-beta-inventory-board.mjs --self-test-overlayで整合を確認する。生成ボードを開くとb0RunOverlay.insightsが既存IndexedDBへ重複なしで入る。runner/dynamic runner実行やcoverage合格を意味しない。本陣の既存dirty beta-inventory-board-data.jsは上書きしない。現在は住民未実行のため観測登録も未実施。
 
 専用ボード用の既存serverスクリプトは見つからない。空きport確認後、専用WTでPython標準http.serverを使い127.0.0.1へ限定公開できる（例: python -m http.server 8767 --bind 127.0.0.1 --directory docs/prototypes）。同じブラウザプロファイルでhttp://127.0.0.1:8767/beta-inventory-board.htmlを開くと既存初期化readInsights→syncAlicizationInsightsがoverlayを取込む。手順特定のみで、server起動・生成・疑似登録は未実施。DB名はmannschaft-beta-inventory-boardだが独立portは別originなので、既存ユーザーの他originの箱と同一とは扱わない。JSON取込UIはなく、既存ユーザーと同じ箱へ追加するには元boardタブで検証済overlayをメモリ上へ渡して既存同期関数を呼ぶ経路の実確認が必要。生成board-data.jsはcommitせず、観測原本と検証済overlayを永続保存する。
+
+## U2実機成功・性能v2の中間追記
+
+[選別中間証拠](CMP-261024-2051/u2-real-performance-v2-intermediate.json)を保存。app543/testU2=4d43a774の独立再試験は8/8pass・CLI0・receipt0/cleanupremoved・contextsclosed/fractive0。app543との差はtest2filesだけ。locale前提のrun3（130）とU（6pass/2fail）の失敗を保持し、70a61f65/4d43a774はfixture・観測訂正として扱いappbug redgreenに数えない。158PNG・24metrics（最小122×44px）・79URLが実file保存されたが、zh/ko画像tofuを殿が確認しており私有font補正/再撮影前。全locale視覚合格は保留。
+
+新runtimeは旧1224履歴/checksum/success不変と指定新1成功=1225、同owned container/seed record・seed hash不変を確認。性能v2は100行×20回、p95候補27.930907ms/受信69.956305ms。自然incomingはidx_follows_incoming_page/ref/推定100・filesortなし。所有100followをAPI unlinkして物理残0、101team softdelete後active0。旧v1履歴100を削除した意味ではない。
+
+source新planはCOUNTでteams ALL推定456、一覧range455とtemporary/filesort。本人userId束縛、SQL/索引は新旧不変だが、本人TEAM履歴434/503=86.28%（現在active team紐付1）の小表偏りであり、本人所属先行や10M規模の性能を実証したとは記さない。住民探索・最終CI/mergeは未記録、完了JSONと台帳完了化は行わない。先行節の待ち状態は各当時の履歴として残す。
