@@ -47,7 +47,12 @@ function reorder(from: number, to: number) {
   const source = sortedWidgets.value[from]
   const target = sortedWidgets.value[to]
   if (!source || !target) return
-  reorderAll(allSortedWidgets.value.findIndex(widget => widget.key === source.key), allSortedWidgets.value.findIndex(widget => widget.key === target.key))
+  reorderByKey(source.key, target.key)
+}
+function reorderByKey(sourceKey: string, targetKey: string) {
+  const from = allSortedWidgets.value.findIndex(widget => widget.key === sourceKey)
+  const to = allSortedWidgets.value.findIndex(widget => widget.key === targetKey)
+  if (from >= 0 && to >= 0) reorderAll(from, to)
 }
 
 const publicHintDismissed = ref(false)
@@ -243,7 +248,8 @@ function onDragLeave(e: DragEvent) {
 function onDrop(key: string) {
   const index = widgetIndex(key)
   if (dragIndex.value !== null && dragIndex.value !== index) {
-    reorder(dragIndex.value, index)
+    const source = visibleWidgets.value[dragIndex.value]
+    if (source) reorderByKey(source.key, key)
   }
   dragIndex.value = null
   dropTargetIndex.value = null
