@@ -1,6 +1,6 @@
 # CMP-261021-2213 L1-F 最終検証
 
-[実装PR #4045](https://github.com/kenta-0420/mannschaft/pull/4045)は2026-10-24T10:41:53ZにMERGED。検証対象headは `1487f99fbba85b10b6c1098a7e8f20109b13c296`、squash mergeは `23daf720490cdda597b4596cd03f7fd3f5ac9b81`。実装/マージ済みだが、main統合後CI成功確認までL1-Fは未完了・完了保留とする。実装headのPR CI成功とマージだけでは完了としない。親戦役や他担当の完了を意味しない。
+[実装PR #4045](https://github.com/kenta-0420/mannschaft/pull/4045)は2026-10-24T10:41:53ZにMERGED。検証対象headは `1487f99fbba85b10b6c1098a7e8f20109b13c296`、squash mergeは `23daf720490cdda597b4596cd03f7fd3f5ac9b81`。PR4104の修正merge後main run40148629302（exact `d4f8b6ece263fb0ea7f6e7d367e6fefb364cea12`）の全6shard・Arch・workflow最終successを確認し、L1-Fの完了保留を解除する。実装headのpremerge CI成功だけを完了根拠にせず、統合後検証を別途確認した。親戦役や他担当の完了を意味しない。
 
 ## 変更と承認の範囲
 
@@ -34,6 +34,7 @@ D1/D3/D5の依存descriptionとoccurrenceを安定して記録し、全7storeを
 | AC-SCOPE | backend/.claudecode.md厳密一致のみtooling、テスト混在test-only。類似path・本番・buildはapp | `scripts/completion-evidence.test.mjs` — 開発規約backend/.claudecode.mdだけはtooling、テストとの混在はtest-only、類似pathや本番変更はapp | Harness分類回帰green |
 | AC-R3 | archTestタグを維持しSelfTestの通常shard重み1行だけ削除。他weights bytes・guard・8store・上限不変、全量再生成なし | `backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitTestTagGuardTest.java` — ArchUnitTestTagGuardTest.テストツリー全体に違反が無い | shard4のR3 XML 9case green |
 | AC-GETSLUG | 初回178とは別のユーザー承認1件。D1旧2156行の生bytes保持＋getSlug1行、最終上限2157/prefix6→7。他7store/他6cap/判定/guard/tag/weights/timeouts不変 | `docs/evidence/CMP-261021-2213-l1-f-recording-migration.md` — getSlug実106行からoccurrence1を導出し自然順436行へ追加。旧2156行完全保持・頻度Map承認1以外差0の生blob照合<br>`backend/src/test/java/com/mannschaft/app/common/architecture/CrossDomainEntityImportArchTest.java` — no_cross_domain_entity_dependency<br>`backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitFreezeStoreIntegrityTest.java` — 凍結ストアの行数が期待値と一致する | 承認1件の静的照合＋D1/専用Integrity green、after8SHA一致 |
+| AC-MAIN-CI | PR4104のcompile分離後、修正headのmanual全量CIと修正merge SHAを含むmain統合後CIの全6shard・Arch・workflow最終successを確認する。BuildDeployの条件skipと実デプロイを区別し、通常85分改善を先取りしない | [manual40141590669](https://github.com/kenta-0420/mannschaft/actions/runs/40141590669) / [main40148629302](https://github.com/kenta-0420/mannschaft/actions/runs/40148629302) | 実API照合：全9job success、6shardのGradle最終成功・専用guard計12件成功 |
 
 ## CIと原本の確認
 
@@ -122,13 +123,13 @@ head1487の静的差分、ACと試験、選択XML/48store原本を独立照合�
 
 ユーザーの明示的な`--admin`指示に基づきsquash/admin mergeした。複数回main追従済み、実装headのPR CI全成功、MERGEABLEで、残る交差は`docs/task-list.md`の別CMP行のみ。同一行・code/store重複はなかった。merge実体とhead1487のF19pathsの比較でも、本人台帳行は一致、残18pathsの生blob差0、台帳の他CMP行のみ差がある。新mainとの統合CIを事前に実行済みという意味ではない。
 
-マージ後mainの[Backend Build/Test/Deploy40086938407](https://github.com/kenta-0420/mannschaft/actions/runs/40086938407)（exact SHA `23daf720490cdda597b4596cd03f7fd3f5ac9b81`）はfailure。全shardとworkflow最終conclusion=successの両方を確認するまで、L1-Fの完了を保留する。[gitleaks40086938366](https://github.com/kenta-0420/mannschaft/actions/runs/40086938366)はsuccessだが、この条件の代わりにはならない。既存の完了証拠JSONのci[]・stageと本報告の405選択case/48storeは実装headのpremerge検証証拠として保全する。未成功かつheadの異なるmain runをJSONのci[]へ追加しない。
+マージ後mainの[Backend Build/Test/Deploy40086938407](https://github.com/kenta-0420/mannschaft/actions/runs/40086938407)（exact SHA `23daf720490cdda597b4596cd03f7fd3f5ac9b81`）はfailure。このfailure確認時点では、全shardとworkflow最終successの確認までL1-Fを完了保留とした。後述のPR4104修正後main成功により、この保留を解除した。[gitleaks40086938366](https://github.com/kenta-0420/mannschaft/actions/runs/40086938366)はsuccessだが、この条件の代わりにはならない。既存の完了証拠JSONのci[]・stageと本報告の405選択case/48storeは実装headのpremerge検証証拠として保全する。未成功かつheadの異なるmain runをJSONのci[]へ追加しない。
 
 完了証拠CLIは台帳・JSON・参照の構造照合であり、GitHub APIのPR merge/check世代/CI成否照合とは別である。後者は公開PR/各CIとマージ時点のAPI情報で確認する。ローカルheavy/Gradle/WSL/server/container起動は行っていない。
 
 ## main統合後shard3 timeoutの是正
 
-[main run40086938407/job120851787348](https://github.com/kenta-0420/mannschaft/actions/runs/40086938407/job/120851787348)（exact SHA `23daf720490cdda597b4596cd03f7fd3f5ac9b81`）はshard3が85分timeoutでfailure。他5shardとArchはsuccess、Build/Deployはskipであり、L1-Fの完了保留を維持する。失敗job全文ログ原本は142288 bytes、SHA-256 `3467bd6c5cd498b3b73cbc0439d26e819d08e05bd4908b0d3db663f50bc36f87`。
+[main run40086938407/job120851787348](https://github.com/kenta-0420/mannschaft/actions/runs/40086938407/job/120851787348)（exact SHA `23daf720490cdda597b4596cd03f7fd3f5ac9b81`）はshard3が85分timeoutでfailure。他5shardとArchはsuccess、Build/Deployはskipであり、この時点ではL1-Fの完了保留を維持した。失敗job全文ログ原本は142288 bytes、SHA-256 `3467bd6c5cd498b3b73cbc0439d26e819d08e05bd4908b0d3db663f50bc36f87`。
 
 | 観測値 | main失敗 | 実装head1487のPR attempt2成功 |
 |---|---|---|
@@ -143,4 +144,36 @@ mainはnormal開始前にPR成功時より157.366秒余計に消費した。PR�
 
 是正は `.github/workflows/backend-deploy.yml` のtest jobで、PR CIと同じ `./gradlew compileJava compileTestJava --no-daemon --build-cache` を独立stepとして先行させる。test commandにもPR同様の`--build-cache`を明記するが、`org.gradle.caching=true`は元から有効であり、cacheを新たに有効化したという意味ではない。test stepの通常85分/migration込み105分、job全体100/120分、依存・番人・store・weights・context cache5・fork設定は変更しない。
 
-この変更後の通常85分完走はまだ実証していない。105分のmigration込みfull CIが成功しても通常85分条件の改善証明とは区別し、修正後のmain統合後CIも全shardとworkflow最終successを実際に確認するまでL1-Fを完了に戻さない。実装headの既存premerge CI/405選択case/48store証拠は保持し、未成功のmain runを既存JSONのci[]へ追加しない。
+この変更後の通常85分完走はまだ実証していない。後述のmanual/mainはmigration込みfull CIの成功であり、通常85分条件の改善証明とは区別する。compile分離は時間枠内の作業配分を変えるもので、総job時間の短縮や遅延原因の解消を証明していない。実装headの既存premerge CI/405選択case/48store証拠は保持し、未成功のmain runを既存JSONのci[]へ追加しない。
+
+## PR4104修正後のmain統合後検証と完了確認
+
+[PR4104](https://github.com/kenta-0420/mannschaft/pull/4104)は2026-10-25T00:56:08Zにmerge SHA `d4f8b6ece263fb0ea7f6e7d367e6fefb364cea12` として着地した。ユーザーの明示admin指示に基づき、先行mainとの差は他docsのみ・対象2ファイルの重複0を確認してmergeした。修正headの[manual40141590669](https://github.com/kenta-0420/mannschaft/actions/runs/40141590669)はexact `0b24f38a4fe9160c99841ad930051fba0a25af32`、全12job successをAPIで照合済み。
+
+[main40148629302](https://github.com/kenta-0420/mannschaft/actions/runs/40148629302)はattempt1、exact headが同じ修正merge SHA `d4f8b6ece263fb0ea7f6e7d367e6fefb364cea12`、status=completed/conclusion=success。全9jobがsuccessであり、6shardのCompile/Run tests各step、ArchのGradle最終成功を確認した。以下は実API metadataと公開jobログに基づくUTC時刻である。
+
+| shard / job | job開始→終了 UTC | Compile開始→終了 UTC | Run tests開始→終了 UTC | Gradle所要 | 専用Integrity |
+|---|---|---|---|---|---|
+| [0 / 121035329602](https://github.com/kenta-0420/mannschaft/actions/runs/40148629302/job/121035329602) | 2026-10-25T00:56:37Z → 2026-10-25T02:22:38Z | 2026-10-25T00:56:59Z → 2026-10-25T01:00:04Z | 2026-10-25T01:00:04Z → 2026-10-25T02:22:22Z | 1h 22m 17s | 2/2 success |
+| [1 / 121035329587](https://github.com/kenta-0420/mannschaft/actions/runs/40148629302/job/121035329587) | 2026-10-25T00:56:36Z → 2026-10-25T02:25:54Z | 2026-10-25T00:57:00Z → 2026-10-25T00:59:59Z | 2026-10-25T00:59:59Z → 2026-10-25T02:25:32Z | 1h 25m 32s | 2/2 success |
+| [2 / 121035329612](https://github.com/kenta-0420/mannschaft/actions/runs/40148629302/job/121035329612) | 2026-10-25T00:56:37Z → 2026-10-25T02:31:55Z | 2026-10-25T00:56:59Z → 2026-10-25T00:59:59Z | 2026-10-25T00:59:59Z → 2026-10-25T02:31:29Z | 1h 31m 29s | 2/2 success |
+| [3 / 121035329637](https://github.com/kenta-0420/mannschaft/actions/runs/40148629302/job/121035329637) | 2026-10-25T00:56:36Z → 2026-10-25T02:33:31Z | 2026-10-25T00:56:53Z → 2026-10-25T00:59:42Z | 2026-10-25T00:59:42Z → 2026-10-25T02:33:18Z | 1h 33m 35s | 2/2 success |
+| [4 / 121035329574](https://github.com/kenta-0420/mannschaft/actions/runs/40148629302/job/121035329574) | 2026-10-25T00:56:36Z → 2026-10-25T02:30:03Z | 2026-10-25T00:56:53Z → 2026-10-25T00:59:59Z | 2026-10-25T00:59:59Z → 2026-10-25T02:29:55Z | 1h 29m 55s | 2/2 success |
+| [5 / 121035329596](https://github.com/kenta-0420/mannschaft/actions/runs/40148629302/job/121035329596) | 2026-10-25T00:56:36Z → 2026-10-25T02:13:32Z | 2026-10-25T00:56:57Z → 2026-10-25T00:59:04Z | 2026-10-25T00:59:04Z → 2026-10-25T02:13:23Z | 1h 14m 18s | 2/2 success |
+
+| job | 開始 UTC | 終了 UTC | 結果 |
+|---|---|---|---|
+| [ArchUnit tests (separate JVM)](https://github.com/kenta-0420/mannschaft/actions/runs/40148629302/job/121035260865) | 2026-10-25T00:56:13Z | 2026-10-25T00:59:25Z | success |
+| [Build & Deploy](https://github.com/kenta-0420/mannschaft/actions/runs/40148629302/job/121054071170) | 2026-10-25T02:33:34Z | 2026-10-25T02:33:39Z | success |
+
+全6shardのRun testsでGradle最終`BUILD SUCCESSFUL`、専用Integrityは各2件実行/2成功・failure0/skip0、計12件を公開ログで確認した。これはmainのguard実行証拠であり、mainの48store raw原本を新規に取得・照合したという意味ではない。405選択case・48store/8SHAは実装head1487のpremerge証拠として上記のまま保持する。
+
+mainのfullMigration=true、今回はmigration込み105分test/120分job側で成功した。通常85分条件の完走・compile分離による総時間短縮・過去timeoutの性能原因解明は未実証のまま。修正で番人・freeze上限/store・weights・fork/context cache・時間制限を緩めていない。
+
+Build & Deploy jobはsuccessだが、`Check AWS credentials`成功後、checkout/JAR build/AWS認証/ECR/ECS等の実ビルド・デプロイstepは全て条件skip。これは正常な条件分岐の完了であり、実デプロイ済みとは扱わない。同SHAのchecksは14件（13success/週次1skip/fail0）、gitleaksのPR差分スキャンはsuccess、週次全履歴はskip。
+
+独立API照合terminal metadataのSHA-256は `f67791ce44295bc4f45ef742660e33d2ee8dd5c355b0cf66215328bdbf3c1646`。native run metadataは `7b71a3d32fa09b95f29dd93f7180cc4c76685f988abf51d1b8b21ed062cce16c`、native jobsは `5b73cd6a3392ce0bbd80812b5facd3c94434fadc37ee0aee083b834e96f29942`、6jobログ/guard/最終checksを照合したsummaryは `019ec03416e71c5c8535825af52d73cc2834eff81cd2cfdeee190bed8fdf71f0`。公開run/job URLとhashで出所を追跡する。headの異なるmanual/mainrunは既存JSONのci[]へ追加せず、追加AC-MAIN-CIの証拠として記録する。
+
+### 誤完了報告と訂正の履歴
+
+実装PR4045のマージとpremerge CI成功だけで一度L1-F完了と報告したが、main統合後CIが未完了であるとのユーザー指摘を受け撤回した。親Issueコメントを「実装/マージ済み・統合後検証中」に訂正し、共有資産解放依頼を取り下げ、PR4093で台帳を実装中・完了保留へ戻した。その後、元main23dafのshard3 failureを確認しPR4104でcompileを独立stepへ分離した。今回の修正後main実成功を確認して初めて保留を解除する。旧失敗、巨大normal XML未読、Windows AC8赤、通常85分未実証という限界は消さない。親CMP・他担当の状態や調整台帳のhold解放を、この完了記録だけで変更したとは扱わない。
