@@ -55,6 +55,42 @@ public interface FollowRepository extends JpaRepository<FollowEntity, Long> {
     @Query(COUNT_PENDING_TEAM_FOLLOWS)
     long countPendingTeamFollows(@Param("teamId") Long teamId);
 
+    String COUNT_INCOMING_TEAM_FOLLOWS = """
+            SELECT COUNT(f) FROM FollowEntity f
+            WHERE f.followerType = com.mannschaft.app.social.FollowerType.TEAM
+              AND f.followedType = com.mannschaft.app.social.FollowerType.TEAM
+              AND f.followedId = :teamId
+              AND NOT EXISTS (SELECT tf.id FROM TeamFriendEntity tf
+                  WHERE tf.teamAId = CASE WHEN :teamId < f.followerId THEN :teamId ELSE f.followerId END
+                    AND tf.teamBId = CASE WHEN :teamId < f.followerId THEN f.followerId ELSE :teamId END)
+            """;
+
+    /** 相互成立ペアを除いた自チーム宛TEAMフォロー。申請元の公開状態では件数を変えない。 */
+    @Query(value = """
+            SELECT new com.mannschaft.app.social.service.IncomingTeamFollowRow(
+                f.id, f.followerId,
+                CASE WHEN EXISTS (SELECT r.id FROM FollowEntity r
+                    WHERE r.followerType = com.mannschaft.app.social.FollowerType.TEAM
+                      AND r.followedType = com.mannschaft.app.social.FollowerType.TEAM
+                      AND r.followedId = f.followerId AND r.followerId = :teamId)
+                    THEN true ELSE false END,
+                f.createdAt)
+            FROM FollowEntity f
+            WHERE f.followerType = com.mannschaft.app.social.FollowerType.TEAM
+              AND f.followedType = com.mannschaft.app.social.FollowerType.TEAM
+              AND f.followedId = :teamId
+              AND NOT EXISTS (SELECT tf.id FROM TeamFriendEntity tf
+                  WHERE tf.teamAId = CASE WHEN :teamId < f.followerId THEN :teamId ELSE f.followerId END
+                    AND tf.teamBId = CASE WHEN :teamId < f.followerId THEN f.followerId ELSE :teamId END)
+            ORDER BY f.createdAt DESC, f.id DESC
+            """, countQuery = COUNT_INCOMING_TEAM_FOLLOWS)
+    org.springframework.data.domain.Page<com.mannschaft.app.social.service.IncomingTeamFollowRow>
+            findIncomingTeamFollows(@Param("teamId") Long teamId, Pageable pageable);
+
+    /** JPAのoffset上限を超える空ページでも、通常一覧と同じ総数を返す。 */
+    @Query(COUNT_INCOMING_TEAM_FOLLOWS)
+    long countIncomingTeamFollows(@Param("teamId") Long teamId);
+
     /**
      * フォロー関係を取得する。
      */
