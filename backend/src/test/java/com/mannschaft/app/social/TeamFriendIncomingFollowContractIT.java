@@ -69,11 +69,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
- * CMP-261021-0020: 片方向フォロー一覧の実HTTP契約を検証する試練。
- *
- * <p>実JWT・Securityフィルタ・ScopeSlugIdConverter・業務Bean・Testcontainers MySQLを通す。
- * pendingは未実装のため期待200に対する404がred。既存follow/unfollowの認可・状態境界は
- * 初回からgreenでよい回帰固定である。通知配送は観測せず、所有fixtureをテストTXでrollbackする。</p>
+ * CMP-261024-2051: 受信未成立申請を実JWT・Security・MockMvcとTestcontainers MySQLで検証する。
+ * 先行redで期待200/403に対する404を確認し、型・伏せ字・双方向成立・日時・ページ境界を固定する。
+ * 通知配送は観測せず、所有fixtureをテストTXでrollbackする。
  */
 @AutoConfigureMockMvc(addFilters = true)
 @Transactional

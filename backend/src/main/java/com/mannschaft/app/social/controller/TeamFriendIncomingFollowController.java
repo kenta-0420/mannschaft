@@ -1,5 +1,12 @@
 package com.mannschaft.app.social.controller;
 
+import com.mannschaft.app.common.ErrorResponse;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.featuregate.AlwaysReachable;
 import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
@@ -33,6 +40,17 @@ public class TeamFriendIncomingFollowController {
             reason = "フレンド管理は実効権限で提供するコア機能であり、既存の一覧・取消と同じく機能フラグの対象外とする")
     @Operation(summary = "受信申請チーム一覧取得",
             description = "MANAGE_FRIEND_TEAMS実効権限が必要。相互成立済みを除外し、公開有効申請元だけ名前とslugを開示する。")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "一覧と絞込み後の総数",
+                content = @Content(mediaType = "application/json", schema = @Schema(implementation = IncomingTeamFollowListResponse.class))),
+        @ApiResponse(responseCode = "400", description = "入力形式が不正（COMMON_001）",
+                content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class),
+                        examples = @ExampleObject(value = "{\"error\":{\"code\":\"COMMON_001\",\"message\":\"入力内容に不備があります\",\"fieldErrors\":[]}}"))),
+        @ApiResponse(responseCode = "401", description = "認証が必要（レスポンスbodyなし）", content = @Content),
+        @ApiResponse(responseCode = "403", description = "受信チームの実効権限がない（COMMON_002）",
+                content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class),
+                        examples = @ExampleObject(value = "{\"error\":{\"code\":\"COMMON_002\",\"message\":\"この操作を行う権限がありません\",\"fieldErrors\":[]}}")))
+    })
     public ResponseEntity<IncomingTeamFollowListResponse> listIncomingFollows(
             @PathVariable("teamId") Long teamId,
             @RequestParam(value = "page", defaultValue = "0") int page,

@@ -8,7 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 /**
  * 申請元の現在状態を単一のrole所有SQLで読む専用境界。
- * 他ドメインのEntity/Repositoryを参照せず、承認済みの物理read JOINからscalarだけ返す。
+ * 他ドメインのEntity/Repositoryを参照せず、本人所属とチーム状態を絞る物理read JOINからscalarだけ返す。
  * 実効ロールと権限はRoleService.resolveEffectivePermissionsと同じ規則を用いる。
  */
 public interface FriendRequestSourceTeamRepository extends Repository<UserRoleEntity, Long> {

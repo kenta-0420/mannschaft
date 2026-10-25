@@ -1,5 +1,13 @@
 package com.mannschaft.app.social.controller;
 
+import com.mannschaft.app.common.ErrorResponse;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
@@ -22,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** 本人だけのフレンド申請元候補を返す自己スコープ入口。 */
 @RestController
+@Tag(name = "フレンドチーム管理")
 @Validated
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/me/friend-request-source-teams")
@@ -36,6 +45,14 @@ public class FriendRequestSourceTeamController {
     @AlwaysReachable(category = AlwaysReachableCategory.CORE,
             reason = "フレンド管理は実効権限で提供するコア機能であり、既存の一覧・取消と同じく機能フラグの対象外とする")
     @Operation(summary = "本人のフレンド申請元候補取得", description = "現在の有効所属とMANAGE_FRIEND_TEAMS実効権限で絞り込んだ候補を返す。相手のlookupは行わない。")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "一覧と絞込み後の総数",
+                content = @Content(mediaType = "application/json", schema = @Schema(implementation = FriendRequestSourceTeamListResponse.class))),
+        @ApiResponse(responseCode = "400", description = "入力形式が不正（COMMON_001）",
+                content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class),
+                        examples = @ExampleObject(value = "{\"error\":{\"code\":\"COMMON_001\",\"message\":\"入力内容に不備があります\",\"fieldErrors\":[]}}"))),
+        @ApiResponse(responseCode = "401", description = "認証が必要（レスポンスbodyなし）", content = @Content)
+    })
     public ResponseEntity<FriendRequestSourceTeamListResponse> listSourceTeams(
             @NotBlank @RequestParam("targetTeamSlug") String targetTeamSlug,
             @RequestParam(value = "page", defaultValue = "0") int page,
