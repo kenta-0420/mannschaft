@@ -13,7 +13,7 @@ final class FeatureDisplayPolicyTestFixture {
     static UserEntity user() {
         return UserEntity.builder().email("display-" + UUID.randomUUID() + "@example.test")
                 .lastName("表示設定").firstName("試験").displayName("表示設定試験")
-                .locale("ja").timezone("Asia/Tokyo").status(UserEntity.UserStatus.ACTIVE).build();
+                .locale("ja").timezone("Asia/Tokyo").isSearchable(false).status(UserEntity.UserStatus.ACTIVE).build();
     }
 
     static TeamEntity team() {
