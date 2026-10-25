@@ -95,5 +95,8 @@
     "browserClosed": true,
     "ownedHttpServerClosed": true
   },
-  "finishedAt": "2026-10-25T04:44:25.870Z"
+  "finishedAt": "2026-10-25T04:44:25.870Z",
+  "fullValidatorStatus": "failed outside campaign scope: tracked snapshot missing140",
+  "targetedOverlayValidator": "accepted with8invalidrejected",
+  "screenshotVisuallyInspected": true
 }
