@@ -71,7 +71,12 @@
     "typecheck": {
       "exitCode": 2,
       "errors": 3,
-      "description": "EntityCreateDialog: DuplicateNameCandidateView欠落とerror.details欠落。OpenAPI schema衝突の追加対応待ち。"
+      "description": "EntityCreateDialog: DuplicateNameCandidateView欠落とerror.details欠落。OpenAPI schema衝突の追加対応待ち。",
+      "followup": {
+        "status": "pending",
+        "backendSchemaRegression": "schema-regression-red-green-summary.json",
+        "description": "BE schema是正green・再生成済み。最新FE typecheckは結果待ち。"
+      }
     },
     "eslint": {
       "exitCode": 0
@@ -84,11 +89,29 @@
     "status": "failure",
     "basis": "殿からの報告",
     "reason": "新E2E spec async ({}, info) の no-empty-pattern 7件",
-    "followup": "専用E2E担当が修正中。修正後CIは未確認。"
+    "followup": "E2E lint 7件は9eec97be14で修正、2files max-warnings=0 exit0。最終統合SHAの再CIは未確認。"
   },
   "limits": [
     "component/DOMイベント契約であり実ブラウザ到達を証明しない",
     "green1以降の型変更について最終統合HEADの型/CI確認待ち",
     "実機8シナリオ、Flyway実測、3住民探索は未実行"
-  ]
+  ],
+  "e2eLintFix": {
+    "sourceHead": "9eec97be14",
+    "command": "node eslint/bin/eslint.js --stdin --stdin-filename <target> --max-warnings=0",
+    "results": [
+      {
+        "file": "tests/e2e/real/team-friend-request-flow.spec.ts",
+        "exitCode": 0,
+        "output": ""
+      },
+      {
+        "file": "tests/e2e/real/helpers/team-friend-request-fixture.ts",
+        "exitCode": 0,
+        "output": ""
+      }
+    ],
+    "basis": "private e2e-lint-results.json直接読取、commitは殿報告",
+    "limitation": "lint成功。実機試験実行や最終CI成功を意味しない。"
+  }
 }

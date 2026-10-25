@@ -8,6 +8,7 @@
 
 - [BE red/green要約](CMP-261024-2051/backend-red-green-summary.json): source SHA、実測件数、suite名、SQL本数/p95、comment境界、限界を保存。
 - [FE red/green要約](CMP-261024-2051/frontend-red-green-summary.json): 回帰のred/green対応、型検査の未合格、初回CI失敗を保存。
+- [schema衝突回帰のred/green](CMP-261024-2051/schema-regression-red-green-summary.json): 契約2 assertion失敗から41/41成功、既存契約比較と正規原本hashを保存。
 - [実行receipt・JUnit件数](CMP-261024-2051/selected-run-receipts.json): 原本から許可キーを選別して直接取得。全runのcleanup=removed。本文ログ、認証入力、JWT、cookie、環境ファイル、OpenAPI全文は含めない。
 
 原本は私有実行領域と各担当campaignにあり、ここには永続的な最小要約を保存した。BEのsuite件数はprivate要約とcampaignの記載、FEのsuite件数とsource SHA/exit/cleanupは原本receipt/JUnitを直接確認した。テストコードへの参照は実装PRの最終SHAへ対応付け直す必要がある。
@@ -22,7 +23,9 @@ FR-15の100行×20回は候補SQL40本（2/page）、受信SQL60本（3/page、�
 
 FE green1（91092f544bbc881f676f9ed4ad449221fe2ed925）は10files/131tests成功、unhandled=0、heap8192のtypecheck exit0。後続のbusy、旧件数/エラー/世代、日時、409二重更新、Paginator物理無効化を個別red→affected greenで確認した。pager-greenは15/15成功。詳細runとSHAは保存JSONにある。DOMやcomponentイベントの注入を実ブラウザ再現とは扱わない。
 
-生成型合流後types-green（0c8444c0d534f3d1a31f429cae67c6d67f47cd0e）は22/22成功・対象ESLint成功だが、typecheckはEntityCreateDialogの生成schema欠落3件でexit2。後続修正の成功証拠は未取得。PR #4106初回CI run40149069435/job121036557968も新E2E specのno-empty-pattern 7件で失敗し、担当修正・再CI待ち（殿報告）。これらを過去のgreenで上書きしない。
+生成型合流後types-green（0c8444c0d534f3d1a31f429cae67c6d67f47cd0e）は22/22成功・対象ESLint成功だが、typecheckはEntityCreateDialogの生成schema欠落3件でexit2。このschema衝突は下記BE契約修正で是正済みだが、最新FEの型再生成・typecheck成功はまだpending。PR #4106初回CI run40149069435/job121036557968も新E2E specのno-empty-pattern 7件で失敗した。E2E修正9eec97be14では2filesのlintがmax-warnings=0でexit0（private結果直接確認）。最終統合SHAの再CIは未確認であり、lint成功をCI全体成功とは扱わない。
+
+OpenAPI schema是正は先行red834a71df8395f49897593dd0e035051a90cf7af4で契約2 assertion失敗・error/skip=0、ArchUnit37とfreeze2は成功。fix e1836e16b4後、正規生成元5880333e21fa0570f2c7b4b354de73c11f61b881のschema-green1は契約2+ArchUnit37+freeze2の41/41成功（error/skip=0）、両receipt cleanup=removed。一般エラーをCommonErrorDetailへ分離し、既存同名確認4schema、フレンド5schema/2pathsの不変をcomparisonで確認。正規OA commit5fe9c33d1af8c869c3b1154b3bfd60f3ef86d5b7、原本SHA256はb773146251944012149159a56011c4da966b83edc57329d69eb85368b256a20d（6367683bytes）。原本/WT/gitblob一致は殿確認報告として記録した。
 
 ## FRと現時点の根拠
 
