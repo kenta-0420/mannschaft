@@ -71,8 +71,10 @@ rootが2026-10-25 04:06 UTCにPR head82d/CLEAN、全checks成功または許容S
 
 保全manifestは追跡Git blob23件のbytes/SHA256を示す。うちBE集約2JSONは既存Git属性によりCRLF→LFへ正規化されるため、元CRLFのbytes/SHA256をoriginalSource欄へ別記し、追跡LFのbytes/SHA256と区別した。JSON値の変更0、private原本不変。代表PNG6枚は元と同bytes/SHAを維持する。共有Git設定・属性は変更しない。
 
-## 文書mainの秘密scan偽陽性（修正中）
+## 文書mainの秘密scan偽陽性（限定修正・main実scan成功）
 
 main762の[秘密scan40168272040](https://github.com/kenta-0420/mannschaft/actions/runs/40168272040)はgeneric-api-keyで検証説明文を1件検出した。この赤は履歴として保持し、再実行で消さない。固定gitleaks8.28.0で同実範囲bfd..762を旧config red1→限定候補green0と実証。対象path完全一致 AND 非秘密の抽出識別子完全一致のみを許可し、同値別path/同path別dummy高entropy値は各1件検出した。既定rule・他allowlist・原証拠23blob・PNG6枚は不変。正確なbytes/hashは既存manifestのGit committed blob基準を維持する。[safe検証記録](CMP-261021-0647/gitleaks-fix.json)。
 
-旧文書PR範囲は既定0、first-parentのmerge差分を含む走査で1件を検出し、独立合成mergeでも同じ0→1を確認した。これは別件CMP-261025-1534（JST UTC+9採番）の未着手・修正未裁可として登録し、今回workflowは変更しない。実秘密漏えいは未確認。実装main CIと過去実機/探索の成功は維持し、対象台帳は今回修正中の実装中状態を保つ。
+旧文書PR範囲は既定0、first-parentのmerge差分を含む走査で1件を検出し、独立合成mergeでも同じ0→1を確認した。これは別件CMP-261025-1534（JST UTC+9採番）の未着手・修正未裁可として登録し、今回workflowは変更しない。実秘密漏えいは未確認。実装main CIと過去実機/探索の成功は維持する。限定修正[PR #4110](https://github.com/kenta-0420/mannschaft/pull/4110)はhead5b14b91a41beda55f0f23219bb9cbd90fbbf29beの17checksが許容結論となり、2026-10-25T06:55:55Zに通常merge（0c95ab274d30b3f5b69c164543d9cfd259b71af3）。修正main0c95ab274d30b3f5b69c164543d9cfd259b71af3の正式[gitleaks40170876911](https://github.com/kenta-0420/mannschaft/actions/runs/40170876911)はcompleted/success、差分scan job121101267654の全steps successを確認した。exactheadのrunは1件、週次フル履歴はskip。当該docs/config headのBE/FE CI起動なしを、旧実装mainのBE/FE成功と区別する。クラウドstepなし・本番0。
+
+補助記録を直下canonical形式のファイル名へ置いたため、旧head4e39002629554ff3064e802d9250c17527222e80の初回Harness run40170038110はschemaVersion欠落で失敗した。この赤も履歴として保持し成功へ書き換えない。補助配下への同bytes renameと参照2箇所を修正し、Node24の実Harness同6fileコマンド71件（失敗/skip0）・merge-aware ace..5b14実範囲scan0件/exit0を確認した。validator/workflow/既存23証拠を変更せず、元の失敗を履歴へ残す。app BE/FE treeは元の実機対象から不変で、新規業務操作や本番操作0。
