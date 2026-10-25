@@ -1,0 +1,99 @@
+{
+  "head": "22844f91b189ab22596e41ee0a5d767418b8e3b2",
+  "status": "passed",
+  "runId": 40221390332,
+  "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40221390332",
+  "verification": "rootがGitHub実APIで最終headの全6shardsとaggregate成功を確認。",
+  "aggregate": {
+    "name": "Compile & Test",
+    "status": "passed",
+    "jobId": 121273719263
+  },
+  "shards": [
+    {
+      "shard": 0,
+      "status": "passed",
+      "jobId": 121253993253,
+      "reportedTests": 5066,
+      "passed": 5062,
+      "failures": 0,
+      "skipped": 4,
+      "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40221390332/job/121253993253"
+    },
+    {
+      "shard": 1,
+      "status": "passed",
+      "jobId": 121253993273,
+      "reportedTests": 5106,
+      "passed": 5103,
+      "failures": 0,
+      "skipped": 3,
+      "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40221390332/job/121253993273"
+    },
+    {
+      "shard": 2,
+      "status": "passed",
+      "jobId": 121253993300,
+      "reportedTests": 5271,
+      "passed": 5265,
+      "failures": 0,
+      "skipped": 6,
+      "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40221390332/job/121253993300"
+    },
+    {
+      "shard": 3,
+      "status": "passed",
+      "jobId": 121253993271,
+      "reportedTests": 5645,
+      "passed": 5643,
+      "failures": 0,
+      "skipped": 2,
+      "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40221390332/job/121253993271"
+    },
+    {
+      "shard": 4,
+      "status": "passed",
+      "jobId": 121253993490,
+      "reportedTests": 5096,
+      "passed": 5094,
+      "failures": 0,
+      "skipped": 2,
+      "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40221390332/job/121253993490"
+    },
+    {
+      "shard": 5,
+      "status": "passed",
+      "jobId": 121253993409,
+      "reportedTests": 5602,
+      "passed": 5602,
+      "failures": 0,
+      "skipped": 0,
+      "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40221390332/job/121253993409"
+    }
+  ],
+  "skipAccounting": "広域shard内skipは上記実数のまま記録し、成功件数へ加算しない。ローカル95/153のskip0とは別集計。CIとローカルの件数を独立合計しない。",
+  "headChecksSnapshot": {
+    "passed": 22,
+    "skipped": 1,
+    "skippedCheck": "フル履歴スキャン（週次）",
+    "diffSecretScan": "passed",
+    "note": "週次full-history scanは未実行。PR差分scan成功と区別する。"
+  },
+  "implementationPrSnapshot": {
+    "pr": 4122,
+    "head": "22844f91b189ab22596e41ee0a5d767418b8e3b2",
+    "state": "MERGED",
+    "mergeCommit": "15366b4200bc77513a7d36ff41d88fd4bd49f655",
+    "mergedAt": "2026-10-25T22:10:43Z",
+    "metadataSource": "GitHub API live read",
+    "note": "マージ時点check世代はtrusted completion validatorで照合。"
+  },
+  "mainCi": {
+    "sha": "15366b4200bc77513a7d36ff41d88fd4bd49f655",
+    "status": "PENDING",
+    "note": "root監視ではArch成功・6shards実行中。全main成功と記載しない。",
+    "runId": 40238964218,
+    "archStatus": "passed",
+    "fullShardStatus": "in-progress"
+  }
+}
