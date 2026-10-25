@@ -306,3 +306,58 @@ test('FR-14: 6言語・360/390pxで両プロフィール入口と管理画面の
     finally { await page.close() }
   }
 })
+
+
+// PRIVATE target作成は最後に限定する。先行するTARGET候補1件の前提を変えない。
+test('FR-07: PRIVATEプロフィールの入口は非表示でも既知slugから実UI申請でき、受信元を本人が確認できる', async ({}, info) => {
+  test.setTimeout(180_000)
+  const privateTarget = await fixture.team(target, '既知slug非公開申請先', 'PRIVATE')
+  const from = candidates[18]!
+  await info.attach('private-owned-team-id', { body: JSON.stringify(privateTarget), contentType: 'application/json' })
+  for (const path of ['/public/teams/' + privateTarget.slug, '/teams/' + privateTarget.slug + '/info']) {
+    const denied: { path: string; status: number }[] = []
+    const observe = (response: Response) => {
+      const pathname = new URL(response.url()).pathname
+      if (pathname.includes('/teams/' + privateTarget.slug) && [403, 404].includes(response.status())) denied.push({ path: pathname, status: response.status() })
+    }
+    source.page.on('response', observe)
+    try {
+      const document = await source.page.goto(path, { waitUntil: 'domcontentloaded' })
+      await waitForHydration(source.page)
+      await waitForSpinnerGone(source.page)
+      await expect(source.page.getByTestId('friend-request-entry')).toHaveCount(0)
+      await expect(source.page.locator('body')).not.toContainText(privateTarget.name)
+      expect(denied.length > 0 || [403, 404].includes(document?.status() ?? 0), '閲覧拒否の実HTTPを確認する').toBe(true)
+      await info.attach('private-profile-denied-http', { body: JSON.stringify({ documentStatus: document?.status(), denied }), contentType: 'application/json' })
+      await proof(source.page, info, path.startsWith('/public') ? 'private-public-profile-denied' : 'private-info-profile-denied')
+    }
+    finally { source.page.off('response', observe) }
+  }
+  await open(source.page, '/teams/' + from.slug + '/nav')
+  await source.page.getByTestId('friend-follow-button').click()
+  const lookups: string[] = []
+  const observeLookup = (request: import('@playwright/test').Request) => {
+    const pathname = new URL(request.url()).pathname
+    if (request.method() === 'GET' && pathname.includes('/teams/' + privateTarget.slug)) lookups.push(pathname)
+  }
+  source.page.on('request', observeLookup)
+  try {
+    await source.page.getByTestId('friend-follow-slug-input').fill(privateTarget.slug)
+    const dialog = source.page.getByRole('dialog')
+    await expect(dialog.getByTestId('friend-request-direction')).toContainText('入力したチーム (' + privateTarget.slug + ')')
+    await expect(dialog).not.toContainText(privateTarget.name)
+    expect(lookups, 'slug入力からPRIVATE名を新規解決しない').toEqual([])
+    expect(await confirmAndSend(source.page, from, privateTarget, info)).toBe(false)
+  }
+  finally { source.page.off('request', observeLookup) }
+  await open(target.page, '/teams/' + privateTarget.slug + '/nav')
+  await tab(target.page, '届いた申請')
+  const incoming = target.page.getByTestId('incoming-follow-row').filter({ hasText: from.slug })
+  await expect(incoming).toContainText(from.name + ' → ' + privateTarget.name)
+  await expect(incoming.getByTestId('incoming-follow-respond')).toBeVisible()
+  await proof(target.page, info, 'private-target-owner-incoming')
+  await target.page.reload({ waitUntil: 'domcontentloaded' })
+  await waitForHydration(target.page)
+  await tab(target.page, '届いた申請')
+  await expect(target.page.getByTestId('incoming-follow-row').filter({ hasText: from.slug })).toBeVisible()
+})
