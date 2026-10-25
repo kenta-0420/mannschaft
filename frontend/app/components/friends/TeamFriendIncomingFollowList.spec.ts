@@ -4,6 +4,7 @@ import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import IncomingList from './TeamFriendIncomingFollowList.vue'
 const mocks = vi.hoisted(() => ({ list: vi.fn() }))
 mockNuxtImport('useFriendTeamsApi', () => () => ({ listIncomingFollows: mocks.list }))
+mockNuxtImport('useAuthStore', () => () => ({ user: { timezone: 'Asia/Tokyo' } }))
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
 const row = { followId: 1, sourceTeamId: 2, sourceTeamName: 'Sender', sourceTeamSlug: 'sender-team', followedBack: false, nameHidden: false, followedAt: '2026-10-25T01:00:00Z' }
 const result = (data: unknown[]) => ({ data, pagination: { totalElements: data.length, totalPages: data.length ? 1 : 0 } })
@@ -18,6 +19,14 @@ describe('FR-09/10 受信申請', () => {
     await w.get('[data-testid="incoming-follow-respond"]').trigger('click')
     expect(w.emitted('respond')).toEqual([[{ teamSlug: 'sender-team', teamName: 'Sender' }]])
     w.unmount()
+  })
+  it('UTCの受信Instantはdatetimeに保持し本文は本人timezoneのTokyo10時に表示する', async () => {
+    mocks.list.mockResolvedValue(result([row]))
+    const w = await mountList()
+    try {
+      expect(w.get('time').attributes('datetime')).toBe('2026-10-25T01:00:00Z')
+      expect(w.get('time').text()).toBe('2026/10/25 10:00')
+    } finally { w.unmount() }
   })
   it('伏せ字行は維持しプロフィールリンクと返し操作を出さない', async () => {
     mocks.list.mockResolvedValue(result([{ ...row, nameHidden: true, sourceTeamName: null, sourceTeamSlug: null }]))
