@@ -35,7 +35,12 @@ const isSelf = computed(() => source.value?.teamSlug === target.value?.teamSlug)
 const canSubmit = computed(() => !!source.value && !!target.value && !isSelf.value && !loading.value && !error.value && !sourceRevoked.value)
 const sourceId = computed(() => source.value ? String(source.value.teamId) : props.teamId)
 
-watch([source, target], () => { if (!busy.value) confirmed.value = false })
+watch([() => source.value?.teamId, () => target.value?.teamSlug], () => {
+  refreshedCounts.value = null
+  statusError.value = null
+  statusSequence += 1
+  if (!busy.value) confirmed.value = false
+}, { flush: 'sync' })
 watch(visible, value => { if (!value) { sourceRevoked.value = false; refreshedCounts.value = null; statusError.value = null; statusSequence += 1; chosenTarget.value = null; confirmed.value = false } })
 async function onPage(event: { page: number }) {
   if (busy.value) return
