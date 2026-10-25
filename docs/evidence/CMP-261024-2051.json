@@ -211,7 +211,7 @@
     },
     {
       "id": "FR-12",
-      "description": "A取消とBフォロー返しが競合、または一覧表示後に成立する → 次回取得は実状態と一致。既存DELETEが成立関係も解消し得る確認を維持し、二重ペア/孤立表示を成功扱いしない（既存同時実行IT＋実機）",
+      "description": "A取消とBフォロー返しが競合、または一覧表示後に成立する場合、次回取得が実状態と一致する。既存DELETEが成立関係も解消し得る確認を維持する。今回の実証はOR後者を既存ITのHTTP interleavingと実機flow1で検証した範囲で、並列TXストレスは未実施。",
       "tests": [
         {
           "name": "AC24_一覧取得後に成立した相互関係の取消は自フォローとフレンドだけを消す",
@@ -371,10 +371,11 @@
   ],
   "finalTraceVerified": true,
   "limitations": [
-    "B0 full validator preexisting snapshot140 references missing; targeted overlay and independent origin existing UI/IndexedDB succeeded",
-    "No true parallel TX stress; FR12 OR latter verified through HTTP interleaving",
-    "No 10M load proof; biased small source plan documented",
-    "No production deployment claim",
-    "Unknown Redis18 keys/reservation and old shared3306 schema retained"
+    "B0 fullvalidatorは既存snapshotの140参照不足により不合格のまま。正規targetoverlayと独立originの既存UI/IndexedDB統合は成功。元ユーザーの箱へ書き込んだとはしない。",
+    "FR12の真の並列TXストレスは未実施。OR条件の後者（一覧取得後に成立）を既存ITのHTTP interleavingと実機flow1で検証。",
+    "10M実負荷と本人所属先行planは未実証。小表で本人履歴が多いsourceplanの偏りを記録。",
+    "本番公開・本番AWSデプロイは対象外。",
+    "Redis DB13の所有不明18keys/reservationと旧共有3306のfailed schemaは保持。",
+    "全体の陣払い事前checkは既存75WT中stale68、dirty/locked/protected/index.lock/junction等によりexit1。本戦役所有5WTはrecentで、他資産を保全して削除していない。所有5WTの最終片付けは別receiptで追記予定。"
   ]
 }

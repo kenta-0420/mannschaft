@@ -10,7 +10,7 @@
 | 実機/視覚 | 製品byte同一の2aacでflow8/8＋layout36/36、CLI0/skip0。desktop追加、殿28PNG/全60寸法確認。6言語の字形/方向/折返し/スクロール各タブ正常 |
 | 探索 | 3住民主目的達成/全active0。原観測はunverified保持、確定3layoutを修正後検証。B0はtargeted正規overlay＋独立origin既存UI/IDB統合成功 |
 | cleanup | runtime0/removed、所有DB/container/volume/scratch/秘密4ファイル、専用font/tools片付け済み。未知Redis18keys/reservation・旧共有3306・共有資産は保持 |
-| 残る限界 | B0 fullvalidatorの既存snapshot140参照不足は未解決。FR12並列TXstress/FR15 10M負荷は未実施、sourceplan偏りを保持。旧MFA latency失敗の原因解消とは断定しない。本番公開は対象外 |
+| 残る限界 | B0 fullvalidatorの既存snapshot140参照不足は未解決。FR12並列TXstress/FR15 10M負荷は未実施、sourceplan偏りを保持。旧MFA latency失敗の原因解消とは断定しない。本番公開は対象外。全体陣払い事前checkも既存資産のdirty/locked等によりexit1（75WT/stale68、本戦役5はrecent） |
 
 [完了証拠JSON](CMP-261024-2051.json)はscope app、review/real/exploratory passed、FR-01〜15、schema/受信索引/3layoutの計5回帰を対応付ける。後続完了記録PRはdocs-only。FR06 unitは実装PRに収録済みのため再cherry-pickしない。
 
@@ -44,6 +44,14 @@
 | FR-13 body/コメント互換とガイド | BE-S dto/FollowTeamRequest の @Size(max=300)/isExactlyOneTargetSpecified/isTargetTeamSlugFormatValid、controller/TeamFriendsController.follow。FEはcommentを送らず6locale guideを参照 | BE-IT controller/TeamFriendsControllerFollowSlugTest.コメントの既存HTTP境界を保つ（省略/null/空/300/301×slug/数値=10、301は400 COMMON_001かつquery/service前）、ac4_両方指定は400・両方なしは400、ac18_不正slugは400・境界の正しいslugは受け付ける。FE-U components/friends/friendFollowLocale.spec.ts 「AC-12: guide.follow.step2 に『ID（数字）』相当の記述が無い」「friends.follow_dialog の必須キーが空でない文字列で揃っている」（6言語）、FE Dialog.spec.ts comment未送信 | [BE] comment1の69/69、[FE]。0〜300を維持し301/不正組合せ400。受理は配送保証ではなく、ガイドもコメント入力を案内しない |
 | FR-14 SSR/認証復帰/6言語/操作領域 | FE-A FriendRequestEntry.vue の start（クリック時のみloadFromStorage/useLocalePath）、両プロフィール入口、FriendFollowDialog/FriendTargetPickerのlabel/disabled/エラー、nav.vueのスクロールtabs、6locale friends.json（今回のフレンド表示正本。common.jsonは言語Save確認用で今回未変更）。UI fix55abは3filesの局所CSS | FE-A FriendRequestEntry.spec.ts「初期描画では認証復元・本人候補API・ダイアログを実行しない」「未認証%s入口は既知プロフィールパスだけでログイン復帰先を作る」「認証済みクリックだけで先固定の選択ダイアログを開く」。FE-U i18n/locale-no-japanese-residue.spec.ts。flow6「FR-14: 未認証プロフィール→安全なログイン復帰→再選択→キーボード送信、SSR候補0・自動POST0」、flow7の6locale×360/390px。layout specのFR-LAYOUT-TABS/CANDIDATE/SOURCE計36 | [実機]8＋36、[殿QA]28PNG/60寸法: tabs36 minHeight44/clip0、candidate12 clip0、source12 minHeight44。desktop2PNGも正常。原観測のdesktop42/Close40は規約のmobile44対象外として棄却、KO方向疑いは安定後非再現。SSR本人所属埋込0/再認可/自動POST0をflow6で確認 |
 | FR-15 SQL計数/安定順/自然索引 | BE-R repository/FriendRequestSourceTeamRepository.findEligibleSources/countEligibleSources のDB絞込。BE-S repository/FollowRepository.findIncomingTeamFollows/countIncomingTeamFollows＋service/TeamFriendIncomingFollowFacade.getIncomingFollowsの一括概要。migration V252.20261025024939__add_follows_incoming_page_index.sql（followed_type,followed_id,follower_type,created_at DESC,id DESC,follower_id） | BE-IT FriendRequestQueryPerformanceContractIT.FR15_候補百件の実SQLは一覧COUNT二本で全所属ロードをしない、FR15_受信百件も一覧COUNTと公開概要一括の三本で取得する。TeamFriendIncomingFollowContractIT.FR15_同時刻二十一件をID降順で欠落せず返し巨大offsetでも総数を返す。BE-IT migration/FriendIncomingIndexMigrationIT.前方三列と降順二列と申請元の被覆を実DDLで保持する・他宛一万行でも受信百件の一覧COUNTを自然索引で絞り同時刻ID降順を保つ | [索引red/green](CMP-261024-2051/incoming-index-regression-summary.json): 主56/独立Arch347成功、自然plan rows4999→100、一覧/COUNTともidx/keyprefix3/using_index=true、一覧filesort=false。[性能v2](CMP-261024-2051/u2-real-performance-v2-intermediate.json): 各100×20、p95候補27.93/受信69.96ms。本人scopeはSQLで拘束するがsourceplanは小表/本人履歴434/503の偏り（COUNT ALL456、list range455＋temporary/filesort）。本人所属先行plan/10M実負荷は未実証。既存名前検索の行別件数取得は本FRの本人候補API性能測定と別 |
+
+## 完了文書のローカル検証
+
+[検証要約](CMP-261024-2051/local-completion-validation.json): 正規validator self-test21/21、正規validateCompletionChangesによる15条件/5回帰/参照照合成功、他593CMP台帳行保持、44JSON parseと秘密値の限定パターンhit0、docs-only差分とgit diff --check成功。全台帳CLIは大量の既存証拠参照収集中で未成功として区別し、GitHub API照合/正規秘密scanはPRの正規ゲートと分ける。
+
+## 全体陣払い事前checkの制限
+
+殿の陣払い事前checkはexit1。全75WT中stale68、既存の他戦役dirty/locked/protected/index.lock/junction等があり、他資産保全のため未削除。本戦役の所有5WTはrecentとして対象を区別した。runtime/秘密片付けの成功を全体gate成功へ置換しない。所有5WTの最終片付けは最後に別receiptで記録する。
 
 ## 最終runtime片付け
 

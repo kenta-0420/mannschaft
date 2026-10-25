@@ -28,7 +28,7 @@
     "baselineFlow": 8,
     "baselineLayout": 36,
     "rootViewedPng": 28,
-    "reason": "Production/runtime/build/dependency bytes unchanged; final implementation head CI remains separate and pending"
+    "reason": "本番コード・runtime/build/dependencyのbytes不変により原本2aacの実機証拠を最終4fdへ対応付ける。CIは別に同最終headのsuccessを確認済み。"
   },
   "finalImplementationCI": "success",
   "implementationMerge": "MERGED",

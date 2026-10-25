@@ -94,10 +94,22 @@
     "basis": "root finalization instruction: old2aac CI also succeeded; kept distinct from final4fd checks"
   },
   "limitations": [
-    "B0 full validator preexisting snapshot140 references missing; targeted overlay and independent origin existing UI/IndexedDB succeeded",
-    "No true parallel TX stress; FR12 OR latter verified through HTTP interleaving",
-    "No 10M load proof; biased small source plan documented",
-    "No production deployment claim",
-    "Unknown Redis18 keys/reservation and old shared3306 schema retained"
-  ]
+    "B0 fullvalidatorは既存snapshotの140参照不足により不合格のまま。正規targetoverlayと独立originの既存UI/IndexedDB統合は成功。元ユーザーの箱へ書き込んだとはしない。",
+    "FR12の真の並列TXストレスは未実施。OR条件の後者（一覧取得後に成立）を既存ITのHTTP interleavingと実機flow1で検証。",
+    "10M実負荷と本人所属先行planは未実証。小表で本人履歴が多いsourceplanの偏りを記録。",
+    "本番公開・本番AWSデプロイは対象外。",
+    "Redis DB13の所有不明18keys/reservationと旧共有3306のfailed schemaは保持。",
+    "全体の陣払い事前checkは既存75WT中stale68、dirty/locked/protected/index.lock/junction等によりexit1。本戦役所有5WTはrecentで、他資産を保全して削除していない。所有5WTの最終片付けは別receiptで追記予定。"
+  ],
+  "cleanupPreflight": {
+    "status": "failed",
+    "exitCode": 1,
+    "totalWorktrees": 75,
+    "staleWorktrees": 68,
+    "ownCampaignWorktrees": 5,
+    "ownCampaignWorktreesRecent": true,
+    "removedOtherAssets": false,
+    "reason": "既存の他戦役dirty/locked/protected/index.lock/junction等を保全。本戦役所有5WTの片付けは後段の別receipt。",
+    "basis": "殿の全体陣払い事前check直接確認報告"
+  }
 }
