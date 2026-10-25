@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuthTokenService;
+import com.mannschaft.app.auth.service.UserStatusLookupService;
 import com.mannschaft.app.common.visibility.perf.SqlIntentCounter;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -69,6 +70,22 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("CMP-261021-0648 承認による担当差替の実フィルタ契約")
 class ShiftSwapApprovalAssignmentContractIT extends ShiftSwapApprovalTestSupport {
+
+    @Autowired private UserStatusLookupService userStatusLookupService;
+
+    @Test
+    void AC16_ユーザー有効状態の実DB照会は有効だけtrueで凍結削除不在はfalse() {
+        inTx(() -> {
+            users.findById(b).orElseThrow().freeze();
+            users.findById(c).orElseThrow().softDelete();
+            return null;
+        });
+
+        assertThat(userStatusLookupService.isActive(a)).isTrue();
+        assertThat(userStatusLookupService.isActive(b)).isFalse();
+        assertThat(userStatusLookupService.isActive(c)).isFalse();
+        assertThat(userStatusLookupService.isActive(Long.MAX_VALUE)).isFalse();
+    }
 
     @Test
     void AC01_依頼作成と受諾後の承認は担当差替と処理情報をcommitする() throws Exception {
@@ -369,6 +386,9 @@ class ShiftSwapApprovalAssignmentContractIT extends ShiftSwapApprovalTestSupport
 
     @Test
     void AC18_担当人数で照会を増やさず枠更新と同表現在読取と履歴読取を一回に保つ() throws Exception {
+        // 初回だけの認証・timezone等のcache読込を担当人数の差として数えない。
+        // 実フィルタを通す読取で前提を揃え、計測するresolve自体とSQL上限は変えない。
+        confirmedSlots(admin);
         List<List<Long>> shapes = List.of(List.of(a), List.of(c, a, d));
         List<Map<String, Long>> counts = new ArrayList<>();
         for (List<Long> shape : shapes) {

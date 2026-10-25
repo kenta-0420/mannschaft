@@ -323,6 +323,45 @@ public class ShiftSlotService {
     }
 
     /**
+     * 承認された交代の申請者だけを同じ位置で受諾者へ置換する。
+     *
+     * <p>呼出元は認可・受諾者資格確認後、親→枠を排他ロック付きでrefresh済みであること。
+     * 交代依頼の更新と同一TXに参加し、人数・他担当・枠の業務値を保持する。</p>
+     *
+     * @param slot 現在値を取得済みの対象枠
+     * @param requesterId 申請者ID
+     * @param accepterId 受諾者ID
+     * @param operatorId 承認管理者ID
+     */
+    @Transactional
+    public void replaceAssignmentForSwap(
+            ShiftSlotEntity slot, Long requesterId, Long accepterId, Long operatorId) {
+        List<Long> before = deserializeUserIds(slot.getAssignedUserIds());
+        int requesterIndex = before.indexOf(requesterId);
+        if (requesterIndex < 0) {
+            throw new BusinessException(ShiftErrorCode.OPTIMISTIC_LOCK_CONFLICT);
+        }
+        if (before.contains(accepterId)) {
+            throw new BusinessException(ShiftErrorCode.DUPLICATE_ASSIGNMENT);
+        }
+        // 同一表の完全一致だけを拒否する。部分重なりを許す既存方針は交代でも維持する。
+        detectOverlapWarnings(slot, List.of(accepterId));
+
+        List<Long> after = new ArrayList<>(before);
+        after.set(requesterIndex, accepterId);
+        slot.updateAssignedUserIds(serializeUserIds(after));
+        slotRepository.save(slot);
+        slotRepository.flush();
+
+        // 交代承認だけはBの古い提案を成立済みとみなさず、新しい手動CONFIRMEDを残す。
+        // snapshotからBのPROPOSEDだけを除き、元のmanaged提案行自体は変更しない。
+        List<ShiftAssignmentEntity> existing = assignmentRepository.findAllBySlotId(slot.getId()).stream()
+                .filter(a -> !accepterId.equals(a.getUserId()) || a.getStatus() != ShiftAssignmentStatus.PROPOSED)
+                .toList();
+        recordAssignmentHistory(slot, before, after, operatorId, existing);
+    }
+
+    /**
      * {@link #detectOverlapWarnings(ShiftSlotEntity, List)} の本体。{@code excludedSlotId} の枠は突き合わせない
      * （枠間移動では移動元から外す当人を、移動元の枠との重なりで誤って弾かないため）。
      */
@@ -582,6 +621,15 @@ public class ShiftSlotService {
         }
 
         List<ShiftAssignmentEntity> existing = assignmentRepository.findAllBySlotId(slot.getId());
+        recordAssignmentHistory(slot, before, after, operatorId, existing);
+    }
+
+    /** 取得済み履歴を使って記録する。交代でも履歴SELECTを単票1回に保つための共通処理。 */
+    private void recordAssignmentHistory(
+            ShiftSlotEntity slot, List<Long> before, List<Long> after, Long operatorId,
+            List<ShiftAssignmentEntity> existing) {
+        List<Long> added = after.stream().filter(id -> !before.contains(id)).distinct().toList();
+        List<Long> removed = before.stream().filter(id -> !after.contains(id)).distinct().toList();
 
         List<ShiftAssignmentEntity> toSave = new ArrayList<>();
         for (Long addedUserId : added) {
