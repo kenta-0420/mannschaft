@@ -6,13 +6,13 @@
 
 | ゲート | 現在の根拠と残り |
 |---|---|
-| 実装・検分 | 索引是正と3layout CSS修正55ab0adc3d（3files/5insert/3delete）、殿review finding0。新runtime44cases greenは未取得 |
-| CI | 新Backend40164501249/FE40164501261/smoke40164501199/OA40164501303/types40164501280/TaskGate40164498628は開始済み、成功未取得 |
-| 実機 | old app543/testU2は8/8成功。新UI/main統合2aacの44case結果はまだない。U/U2は実装branchに同blobで収録済み、docs側追加cherry-pickは禁止 |
+| 実装・検分 | 索引是正と3layout CSS修正55ab0adc3d（3files/5insert/3delete）、殿review finding0。新runtime自動flow8+layout36は44/44成功。残るmobile画像の殿視認待ち |
+| CI | exact2aac FE40164501261はlint/型/fullunit成功。Backend40164501249は進行中、最終CI全体成功は未取得 |
+| 実機 | old app543/testU2は8/8成功。新UI/main統合2aacはflow8/8とlayout36/36がCLI0/skip0、desktop追加もCLI0。runtimeはholdでrelease後receipt待ち。U/U2は実装branchに同blobで収録済み、docs側追加cherry-pickは禁止 |
 | 探索・B0 | 3住民主目的達成/全active0、unverified6観測を保存。既存targetoverlay validator/独立UI・IndexedDB統合は成功。full validatorは既存snapshot140参照不足で不合格のままscope外制限 |
 | 未解明 | old543 Backend40157405430のMFA latency4件中1失敗2297ms>1500ms。他5shards成功でも総合失敗。観測付きmainを新CIへ取り込み、原因解消とは未判定 |
 
-[新layout回帰](CMP-261024-2051/layout-regression-summary.json)は旧app543への3body assertion redを保存し、55ab修正後のgreen待ち。[MFA履歴と方針](CMP-261024-2051/mfa-history-and-next-ci.json)は旧main成功/既往失敗を保ち、閾値・測定区間・認証処理を変えず新CIで判断する。old543性能v2は関連BE/social/role/schemaとproduction blob不変の範囲で維持し、全環境同一/10M規模実証へ拡張しない。
+[新layout回帰](CMP-261024-2051/layout-regression-summary.json)は旧app543への3body assertion redを保存し、55ab修正後のexact2aac自動44件はgreen、残画像視認/BE/merge待ち。[MFA履歴と方針](CMP-261024-2051/mfa-history-and-next-ci.json)は旧main成功/既往失敗を保ち、閾値・測定区間・認証処理を変えず新CIで判断する。old543性能v2は関連BE/social/role/schemaとproduction blob不変の範囲で維持し、全環境同一/10M規模実証へ拡張しない。
 
 以下は取得時点の状態を残した履歴。先行節の「未実行」「候補SHA」「次の一手」は現在の最終状態ではなく、上表と後続証拠を優先する。
 
@@ -138,3 +138,9 @@ source新planはCOUNTでteams ALL推定456、一覧range455とtemporary/filesort
 旧red9f9cb259f3はfixture PUT405で1fail/2notrunとなり本体red不成立。正規PATCH/version0へ訂正した7a320c5c1e892af7b97064e3284e9f228c1274fdでtabs clip、長名候補viewport外、sourceSelect42<44の3body assertion red（CLI1/cleanupremoved）。SOURCE末尾Escapeのfocus前提failureは寸法assertと別であり、後続1b520734ddはlocale保存/html.lang、overlay消滅待、通常Cancel、候補左visibleclickを補強して44/境界assertを維持した。殿は新fixture6/全fr active0、DEBUGlogin3/429=0を確認。原本metrics3種類/PNG3とreceiptを選別保存。
 
 統括は3件目のsourceSelectKO390stable outer348x42/computed42/minHeightauto/animations0を確定。tabsKO390の42pxもtabsfinding内に含む。反対にdesktop toolbar42/Close40は規約の768px以上44下限対象外で、mobile5controls44/Close44x44を根拠に不備棄却した。元住民観測のunverifiedは保持し、[統括補足](CMP-261024-2051/residents/coordinator-confirmations.json)だけを更新。KO方向行はstable public/固定元で正常、初回hydration待ち不足は試験前提でありappbug認定なし。
+
+## exact2aac 新44件とdesktop追加確認
+
+[選別正式proof](CMP-261024-2051/new2aac/green44-desktop-selected.json)はapp/testとも2aac15e6e020d03cc9d26ee17d94922ab08ed8a4。flow8/8（5.8分）とlayout36/36（7.1分）は各CLI0/skip0、all44Passed=true。afterAll context終了/所有Playwright process0、flow新23teamとlayout新2teamのactive0/allfractive0を確認。これはsuiteの自動合格であり、hold中runtime90507のcanonical最終receipt cleanupremovedを意味しない。
+
+desktop追加は1280×720/en、CLI0、1login/friendPOST0、所有2teamのexact cleanup/context/browser終了を確認。option460pxをdialog512px内へ折り返し、clipなし/document panなし。殿はdesktop2PNGとzh/ko390 public/navconfirmed4PNGを視認し、字体・方向表示・長名折返しが正常と報告。選定18PNGとlayout metrics12をdurable保存したが、mobile layout画像の殿視認は未完のため、最終review/real/exploratory stageのpassedはまだ付けない。Backend40164501249成功・impl merge・runtime release後receipt待ち。

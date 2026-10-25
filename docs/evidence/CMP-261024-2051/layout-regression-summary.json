@@ -56,7 +56,7 @@
     "deletions": 3,
     "scope": "局所CSSのみ",
     "rootReview": "finding0",
-    "green": "新runtime44casesは未取得"
+    "green": "exact2aac automatedflow8+layout36 allpass/CLI0/skip0; root残画像視認待ち"
   },
   "candidate": {
     "head": "2aac15e6e020d03cc9d26ee17d94922ab08ed8a4",
@@ -131,5 +131,6 @@
       "file": "layout/source-select.png",
       "visuallyInspected": true
     }
-  ]
+  ],
+  "greenEvidence": "new2aac/green44-desktop-selected.json"
 }

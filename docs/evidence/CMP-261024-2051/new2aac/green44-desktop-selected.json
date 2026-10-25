@@ -1,0 +1,229 @@
+{
+  "schemaVersion": 1,
+  "kind": "exact2aac-automated44-desktop-proof",
+  "appHead": "2aac15e6e020d03cc9d26ee17d94922ab08ed8a4",
+  "testHead": "2aac15e6e020d03cc9d26ee17d94922ab08ed8a4",
+  "flow": {
+    "expected": 8,
+    "passed": 8,
+    "cliExit": 0,
+    "skipped": 0,
+    "duration": "5.8min per coordinator",
+    "cleanup": {
+      "newTeamCount": 23,
+      "newActiveCount": 0,
+      "allFrActiveCount": 0
+    }
+  },
+  "layout": {
+    "expected": 36,
+    "passed": 36,
+    "cliExit": 0,
+    "skipped": 0,
+    "duration": "7.1min per coordinator",
+    "cleanup": {
+      "newTeamCount": 2,
+      "newActiveCount": 0,
+      "allFrActiveCount": 0
+    }
+  },
+  "all44Passed": true,
+  "ownedPlaywrightBrowserProcessCount": 0,
+  "contextsClosedByAfterAllAndNoBrowserProcesses": true,
+  "runtime": {
+    "foregroundSession": 90507,
+    "status": "hold",
+    "canonicalFinalReceipt": "pending release; no cleanupremoved claim yet"
+  },
+  "desktop": {
+    "head": "2aac15e6e020d03cc9d26ee17d94922ab08ed8a4",
+    "cliExit": 0,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "locale": "en",
+    "loginRequests": 1,
+    "friendPostCount": 0,
+    "ownedTeams": 2,
+    "ownedTeamsDeleted": 2,
+    "checks": {
+      "english": true,
+      "legal100CharacterName": true,
+      "dialogWidth512": true,
+      "optionWithinViewport": true,
+      "optionWithinDialog": true,
+      "textWithinViewport": true,
+      "textWithinDialog": true,
+      "noClippedText": true,
+      "noDocumentPan": true,
+      "oneLogin": true,
+      "noFriendPost": true
+    },
+    "cleanup": {
+      "completed": true,
+      "errors": []
+    },
+    "contextClosed": true,
+    "browserClosed": true,
+    "geometry": {
+      "option": {
+        "x": 410,
+        "y": 377,
+        "left": 410,
+        "right": 870,
+        "top": 377,
+        "bottom": 461,
+        "width": 460,
+        "height": 84
+      },
+      "dialog": {
+        "x": 384,
+        "y": 159,
+        "width": 512,
+        "height": 402
+      },
+      "clipped": [],
+      "documentWidth": {
+        "client": 1280,
+        "scroll": 1280
+      },
+      "htmlLang": "en"
+    }
+  },
+  "selectedImages": [
+    {
+      "group": "flow-confirmed-ko-390-public",
+      "path": "docs/evidence/CMP-261024-2051/new2aac/flow-confirmed-ko-390-public.png",
+      "sha256": "8d44c227b0ddc17b0cf10f53fa23f45a4a157a4b38f0cc83f378be2b86c75a83",
+      "bytes": 47581,
+      "rootVisualStatus": "viewed per coordinator report"
+    },
+    {
+      "group": "flow-confirmed-ko-nav",
+      "path": "docs/evidence/CMP-261024-2051/new2aac/flow-confirmed-ko-nav.png",
+      "sha256": "30f258d33f42d8499fd0c360ae382fa4b2cf63fe6914d13df18dd362b5a1b20e",
+      "bytes": 54695,
+      "rootVisualStatus": "viewed per coordinator report"
+    },
+    {
+      "group": "flow-confirmed-zh-390-public",
+      "path": "docs/evidence/CMP-261024-2051/new2aac/flow-confirmed-zh-390-public.png",
+      "sha256": "c5e1043b9f73965f001fd6c3b689e6cb37a2bd79bfd658230a7e4313aff091b9",
+      "bytes": 53860,
+      "rootVisualStatus": "viewed per coordinator report"
+    },
+    {
+      "group": "flow-confirmed-zh-nav",
+      "path": "docs/evidence/CMP-261024-2051/new2aac/flow-confirmed-zh-nav.png",
+      "sha256": "d38e539bc835b10e60854ae5a90c3e8fc9641d49817fe0dd7f45758883dd6a20",
+      "bytes": 70135,
+      "rootVisualStatus": "viewed per coordinator report"
+    },
+    {
+      "group": "layout-tabs-de-360-tab-2",
+      "path": "docs/evidence/CMP-261024-2051/new2aac/layout-tabs-de-360-tab-2.png",
+      "sha256": "2b4ecbfe8c27e79e5d184df3fb0c4d37552a25fd97aefaeefb84399aaef1431e",
+      "bytes": 55007,
+      "rootVisualStatus": "pending root mobile visual QA"
+    },
+    {
+      "group": "layout-long-candidate-390-en",
+      "path": "docs/evidence/CMP-261024-2051/new2aac/layout-long-candidate-390-en.png",
+      "sha256": "7c96eb1c60d88c157a19d691b5baec27e714e95a2a10e07db19db7d6b74e6170",
+      "bytes": 61797,
+      "rootVisualStatus": "pending root mobile visual QA"
+    },
+    {
+      "group": "layout-long-candidate-390-ja",
+      "path": "docs/evidence/CMP-261024-2051/new2aac/layout-long-candidate-390-ja.png",
+      "sha256": "74700b2af6477e23072cf17027ed9d18360b1ffaebe1906639a9fee60f7d8a8d",
+      "bytes": 63123,
+      "rootVisualStatus": "pending root mobile visual QA"
+    },
+    {
+      "group": "layout-long-candidate-390-es",
+      "path": "docs/evidence/CMP-261024-2051/new2aac/layout-long-candidate-390-es.png",
+      "sha256": "c0005c0a26b966dea7bfc6c875bfd2ba257ad2e9816e201dfafbf0c6360c9c35",
+      "bytes": 62532,
+      "rootVisualStatus": "pending root mobile visual QA"
+    },
+    {
+      "group": "layout-long-candidate-390-ko",
+      "path": "docs/evidence/CMP-261024-2051/new2aac/layout-long-candidate-390-ko.png",
+      "sha256": "143fb0af2690b84b245a242d26e6071c8bca8a5f701e7f63e759c2e94c34d1a2",
+      "bytes": 54378,
+      "rootVisualStatus": "pending root mobile visual QA"
+    },
+    {
+      "group": "layout-source-390-ko",
+      "path": "docs/evidence/CMP-261024-2051/new2aac/layout-source-390-ko.png",
+      "sha256": "2605003b7e3b040c02f45a8ff0f3520352bb731c5efa220030f03880e7d6a2ff",
+      "bytes": 46880,
+      "rootVisualStatus": "pending root mobile visual QA"
+    },
+    {
+      "group": "layout-long-candidate-390-zh",
+      "path": "docs/evidence/CMP-261024-2051/new2aac/layout-long-candidate-390-zh.png",
+      "sha256": "b9a8f302696c2012d3894a4bfc79c563ce2ec5898f77215f0a412c397ff72ce4",
+      "bytes": 64080,
+      "rootVisualStatus": "pending root mobile visual QA"
+    },
+    {
+      "group": "layout-tabs-en-360-tab-2",
+      "path": "docs/evidence/CMP-261024-2051/new2aac/layout-tabs-en-360-tab-2.png",
+      "sha256": "d56600bffde235f83dca09e75500a479925bfbb744af388ddc51089a2b60afaa",
+      "bytes": 53120,
+      "rootVisualStatus": "pending root mobile visual QA"
+    },
+    {
+      "group": "layout-long-candidate-390-de",
+      "path": "docs/evidence/CMP-261024-2051/new2aac/layout-long-candidate-390-de.png",
+      "sha256": "1adf819269d81259ec93d5c0200737b4dad906dfd484deef806922a4f20f885a",
+      "bytes": 62726,
+      "rootVisualStatus": "pending root mobile visual QA"
+    },
+    {
+      "group": "layout-tabs-de-390-tab-2",
+      "path": "docs/evidence/CMP-261024-2051/new2aac/layout-tabs-de-390-tab-2.png",
+      "sha256": "25df81823992d8247de55127bae05d46ff800225a37972808989ab6eb8aea3eb",
+      "bytes": 57691,
+      "rootVisualStatus": "pending root mobile visual QA"
+    },
+    {
+      "group": "layout-tabs-en-390-tab-2",
+      "path": "docs/evidence/CMP-261024-2051/new2aac/layout-tabs-en-390-tab-2.png",
+      "sha256": "87a8b9abfbf987fbb3865f303b6b089e4bf4a5091829f8041f0dc8c4ab010253",
+      "bytes": 56009,
+      "rootVisualStatus": "pending root mobile visual QA"
+    },
+    {
+      "group": "layout-source-390-en",
+      "path": "docs/evidence/CMP-261024-2051/new2aac/layout-source-390-en.png",
+      "sha256": "e427608d3267756c1809dbb8450663235203fa98ead12c181f3235ec1448060e",
+      "bytes": 52387,
+      "rootVisualStatus": "pending root mobile visual QA"
+    },
+    {
+      "group": "desktop",
+      "path": "docs/evidence/CMP-261024-2051/new2aac/desktop-1280x720-long-candidate.png",
+      "sha256": "b5b0c471f65aaab25de62960ca0ff67cdb750d64f6e9ceca700cddb5b8772707",
+      "bytes": 159285,
+      "rootVisualStatus": "viewed per coordinator report"
+    },
+    {
+      "group": "desktop",
+      "path": "docs/evidence/CMP-261024-2051/new2aac/desktop-1280x720-selected-direction.png",
+      "sha256": "e5049e578f9f2d2388e31ee223db4b2bb36af7a6ca13a4412ec2ffb5807e48f3",
+      "bytes": 160848,
+      "rootVisualStatus": "viewed per coordinator report"
+    }
+  ],
+  "pending": [
+    "root mobile layout visual QA",
+    "Backend40164501249 success",
+    "implementation merge",
+    "runtime release canonical receipt"
+  ],
+  "finalStagesPassed": false
+}
