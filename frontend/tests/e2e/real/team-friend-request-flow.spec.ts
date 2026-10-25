@@ -13,8 +13,24 @@ let fixture: FriendRequestFixture
 let a: FriendTeam
 let b: FriendTeam
 let candidates: FriendTeam[]
+const permissionSetupHandlers = new WeakSet<Page>()
+const permissionSetupLaterLabels = ['ja', 'en', 'zh', 'ko', 'es', 'de'].map(locale => {
+  const messages = JSON.parse(readFileSync(new URL('../../../app/locales/' + locale + '/scope_guide.json', import.meta.url), 'utf8')) as { scopeGuide: { setup: { later: string } } }
+  return messages.scopeGuide.setup.later
+})
 
 async function open(page: Page, path: string): Promise<void> {
+  if (!permissionSetupHandlers.has(page)) {
+    // 新規チーム管理者の初回案内は実UIで延期する。権限の設定・API迂回は行わない。
+    await page.addLocatorHandler(page.getByTestId('member-permission-setup'), async dialog => {
+      const mask = page.locator('.p-dialog-mask').filter({ has: dialog })
+      const postpone = permissionSetupLaterLabels.map(label => dialog.getByRole('button', { name: label, exact: true })).reduce((union, button) => union.or(button))
+      await postpone.click()
+      await expect(dialog).not.toBeVisible()
+      await expect(mask).not.toBeVisible()
+    })
+    permissionSetupHandlers.add(page)
+  }
   await page.goto(path, { waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
   await waitForSpinnerGone(page)
@@ -22,6 +38,39 @@ async function open(page: Page, path: string): Promise<void> {
 async function proof(page: Page, info: TestInfo, name: string): Promise<void> {
   await info.attach(name, { body: await page.screenshot(), contentType: 'image/png' })
   await info.attach(name + '-url', { body: page.url(), contentType: 'text/plain' })
+}
+async function expectStableReviewSize(page: Page, info: TestInfo, name: string): Promise<void> {
+  const review = page.getByTestId('friend-request-review')
+  await page.evaluate(async () => { await document.fonts.ready })
+  // Dialog enterは祖先をscaleする。boundingBox自体にはstable待機が無いため実animation完了を待つ。
+  await review.evaluate(async element => {
+    const animations: Animation[] = []
+    for (let ancestor: Element | null = element; ancestor; ancestor = ancestor.parentElement) animations.push(...ancestor.getAnimations({ subtree: false }))
+    await Promise.all(animations.map(animation => animation.finished))
+  })
+  await expect.poll(() => review.evaluate(async element => {
+    const rect = () => { const box = element.getBoundingClientRect(); return [box.x, box.y, box.width, box.height] }
+    const first = rect()
+    for (let frame = 0; frame < 3; frame++) {
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+      if (JSON.stringify(rect()) !== JSON.stringify(first)) return false
+    }
+    return true
+  }), { message: '確認ボタンの実描画領域が連続frameで安定すること' }).toBe(true)
+  const metrics = await review.evaluate(element => {
+    const box = element.getBoundingClientRect()
+    const style = getComputedStyle(element)
+    const ancestors: { tag: string; className: string; transform: string; animationName: string }[] = []
+    for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+      const computed = getComputedStyle(ancestor)
+      ancestors.push({ tag: ancestor.tagName, className: ancestor.className, transform: computed.transform, animationName: computed.animationName })
+    }
+    return { rootFontSize: getComputedStyle(document.documentElement).fontSize, minHeight: style.minHeight, offsetHeight: (element as HTMLElement).offsetHeight, bbox: { x: box.x, y: box.y, width: box.width, height: box.height }, ancestors }
+  })
+  await info.attach(name + '-stable-metrics', { body: JSON.stringify(metrics), contentType: 'application/json' })
+  await proof(page, info, name + '-before-size-assertion')
+  expect(metrics.bbox.height).toBeGreaterThanOrEqual(44)
+  expect(metrics.bbox.width).toBeGreaterThanOrEqual(44)
 }
 function followResponse(page: Page): Promise<Response> {
   return page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname.endsWith('/friends/follow'))
@@ -202,7 +251,7 @@ test('FR-07/10: 申請後に非公開になった元は受信一覧の行を保�
   await source.page.getByLabel('URL 名で指定する').fill(b.slug)
   expect(await confirmAndSend(source.page, hidden, b, info)).toBe(false)
   // 受信元の状態変更だけを前提APIで行う。申請そのものは上の実UIから発行する。
-  const changed = await source.page.request.patch((process.env.API_BASE_URL ?? 'http://localhost:8081') + '/api/v1/teams/' + hidden.slug, { data: { visibility: 'PRIVATE', version: 0 } })
+  const changed = await source.page.request.patch((process.env.API_BASE_URL ?? 'http://localhost:8081') + '/api/v1/teams/' + hidden.slug, { data: { visibility: 'MEMBERS_AND_ABOVE', version: 0 } })
   expect(changed.status()).toBe(200)
   await open(target.page, '/teams/' + b.slug + '/nav')
   await tab(target.page, '届いた申請')
@@ -288,9 +337,7 @@ test('FR-14: 6言語・360/390pxで両プロフィール入口と管理画面の
           await expect(page.getByTestId('friend-request-direction')).toContainText(b.slug)
           await expect(page.getByTestId('friend-request-direction')).toContainText(a.slug)
           await expect(page.getByRole('dialog')).not.toContainText('friends.request.')
-          const box = await page.getByTestId('friend-request-review').boundingBox()
-          expect(box!.height).toBeGreaterThanOrEqual(44)
-          expect(box!.width).toBeGreaterThanOrEqual(44)
+          await expectStableReviewSize(page, info, locale + '-' + width + (path.startsWith('/public') ? '-public' : '-authorized'))
           expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
           await page.getByTestId('friend-request-review').focus()
           await page.keyboard.press('Enter')
@@ -310,7 +357,11 @@ test('FR-14: 6言語・360/390pxで両プロフィール入口と管理画面の
       await proof(page, info, locale + '-nav-fixed-source')
       await page.keyboard.press('Escape')
     }
-    finally { await page.close() }
+    finally {
+      // 子pageのfinally closeより前に残し、失敗時に無関係な親pageだけが撮影されるのを防ぐ。
+      if (!page.isClosed()) await proof(page, info, locale + '-locale-page-before-close')
+      await page.close()
+    }
   }
 })
 
@@ -318,7 +369,7 @@ test('FR-14: 6言語・360/390pxで両プロフィール入口と管理画面の
 // PRIVATE target作成は最後に限定する。先行するTARGET候補1件の前提を変えない。
 test('FR-07: PRIVATEプロフィールの入口は非表示でも既知slugから実UI申請でき、受信元を本人が確認できる', async ({ baseURL }, info) => {
   test.setTimeout(180_000)
-  const privateTarget = await fixture.team(target, '既知slug非公開申請先', 'PRIVATE')
+  const privateTarget = await fixture.team(target, '既知slug非公開申請先', 'MEMBERS_AND_ABOVE')
   const from = candidates[18]!
   await info.attach('private-owned-team-id', { body: JSON.stringify(privateTarget), contentType: 'application/json' })
   for (const path of ['/public/teams/' + privateTarget.slug, '/teams/' + privateTarget.slug + '/info']) {
