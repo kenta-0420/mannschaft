@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "cmpId": "CMP-261021-0648",
   "scope": "app",
-  "completionStatus": "PENDING-main-CI-and-completion-registration",
+  "completionStatus": "PENDING-cleanup-approval-and-registration",
   "implementation": {
     "pr": 4122,
     "sha": "22844f91b189ab22596e41ee0a5d767418b8e3b2",
@@ -388,7 +388,7 @@
     "実機SQL-before7枠全件未採取。API/SQL格納基準差と全件不変を混同しない。",
     "旧BE/FE停止契機未確定。",
     "週次full-history secret scan未実行（差分scan成功）。",
-    "main CIおよび完了証拠/台帳登録PRの終結前で、台帳は実装中。cleanup未実施。"
+    "main CI成功。cleanupは具体的対象へのユーザー承認待ちで停止/削除未実行。完了登録PRはdraft、台帳は実装中。"
   ],
   "ciSnapshot": {
     "success": 22,
@@ -397,12 +397,89 @@
   },
   "mainCi": {
     "sha": "15366b4200bc77513a7d36ff41d88fd4bd49f655",
-    "status": "PENDING",
-    "evidence": "docs/evidence/CMP-261021-0648/ci-summary.json",
+    "status": "passed",
     "runId": 40238964218,
-    "archStatus": "passed",
-    "fullShardStatus": "in-progress",
-    "note": "Arch成功、6shards実行中。main全体の成功は未確認。"
+    "evidence": "docs/evidence/CMP-261021-0648/ci-summary.json",
+    "metadataSource": "root独立GitHub API確認と6shard安全集約の実行marker照合",
+    "allSixActualTestStepsSuccess": true,
+    "allSixTestTasksExecutedNonCache": true,
+    "shards": [
+      {
+        "shard": 0,
+        "jobId": 121306567257,
+        "reportedTests": 5066,
+        "passed": 5062,
+        "failures": 0,
+        "skipped": 4,
+        "actualTestTask": true
+      },
+      {
+        "shard": 1,
+        "jobId": 121306567211,
+        "reportedTests": 5106,
+        "passed": 5103,
+        "failures": 0,
+        "skipped": 3,
+        "actualTestTask": true
+      },
+      {
+        "shard": 2,
+        "jobId": 121306567244,
+        "reportedTests": 5271,
+        "passed": 5265,
+        "failures": 0,
+        "skipped": 6,
+        "actualTestTask": true
+      },
+      {
+        "shard": 3,
+        "jobId": 121306567240,
+        "reportedTests": 5645,
+        "passed": 5643,
+        "failures": 0,
+        "skipped": 2,
+        "actualTestTask": true
+      },
+      {
+        "shard": 4,
+        "jobId": 121306567296,
+        "reportedTests": 5096,
+        "passed": 5094,
+        "failures": 0,
+        "skipped": 2,
+        "actualTestTask": true
+      },
+      {
+        "shard": 5,
+        "jobId": 121306567262,
+        "reportedTests": 5602,
+        "passed": 5602,
+        "failures": 0,
+        "skipped": 0,
+        "actualTestTask": true
+      }
+    ],
+    "skipReasons": "未分類。skipを成功件数へ加算せず、理由を推測しない。",
+    "architectureSeparateJvm": {
+      "actualStepStatus": "success",
+      "caseCount": null,
+      "note": "main separate JVMの件数は未抽出。PRのArch37件を転記しない。"
+    },
+    "awsCredentialCheck": "success",
+    "subsequentCheckoutBuildEcrEcsCloudSteps": "skipped",
+    "productionChanged": false,
+    "gitleaks": {
+      "runId": 40238964223,
+      "status": "passed",
+      "sameHead": true,
+      "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40238964223"
+    },
+    "realSmoke": {
+      "runId": 40239293867,
+      "status": "passed",
+      "sameHead": true,
+      "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40239293867"
+    }
   },
   "completionGatePreparation": {
     "status": "passed",

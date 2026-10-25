@@ -24,9 +24,8 @@
     "mergedAt": "2026-10-25T22:10:43Z"
   },
   "remaining": [
-    "main CI全終結とcloud実stepのskip確認",
-    "完了証拠/台帳PRとCI/merge",
-    "専有runtime撤去は審査拒否で未実行。具体的対象のユーザー承認照会中、環境を保持。"
+    "専有runtime撤去は審査拒否で未実行。具体的対象のユーザー承認照会中、保全114件root全SHA一致・環境保持。",
+    "証拠登録draft PR #4123の更新CI/検分、後続GO後の完了遷移/merge"
   ],
   "cleanupBoundary": {
     "status": "not-executed-auto-review-rejected",
@@ -47,5 +46,17 @@
     },
     "distinctFromResidentRefusals": "A/Bの公開募集提出・受諾の業務状態変更拒否とは別のcleanup操作の審査。",
     "note": "安全証拠の保全成功は環境撤去の成功を意味しない。専用環境を保持し、停止・削除は未実行。"
+  },
+  "mainCiConfirmed": {
+    "head": "15366b4200bc77513a7d36ff41d88fd4bd49f655",
+    "backendRun": 40238964218,
+    "status": "passed",
+    "sixActualTestTasks": true,
+    "architectureSeparateJvmActualStep": "success",
+    "mainSeparateJvmCaseCountExtracted": false,
+    "productionChanged": false,
+    "gitleaksRun": 40238964223,
+    "realSmokeRun": 40239293867,
+    "evidence": "docs/evidence/CMP-261021-0648/ci-summary.json"
   }
 }

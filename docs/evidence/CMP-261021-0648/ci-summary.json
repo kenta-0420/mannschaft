@@ -90,10 +90,88 @@
   },
   "mainCi": {
     "sha": "15366b4200bc77513a7d36ff41d88fd4bd49f655",
-    "status": "PENDING",
-    "note": "root監視ではArch成功・6shards実行中。全main成功と記載しない。",
+    "status": "passed",
     "runId": 40238964218,
-    "archStatus": "passed",
-    "fullShardStatus": "in-progress"
+    "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40238964218",
+    "metadataSource": "root独立GitHub API確認と6shard安全集約の実行marker照合",
+    "allSixActualTestStepsSuccess": true,
+    "allSixTestTasksExecutedNonCache": true,
+    "shards": [
+      {
+        "shard": 0,
+        "jobId": 121306567257,
+        "reportedTests": 5066,
+        "passed": 5062,
+        "failures": 0,
+        "skipped": 4,
+        "actualTestTask": true
+      },
+      {
+        "shard": 1,
+        "jobId": 121306567211,
+        "reportedTests": 5106,
+        "passed": 5103,
+        "failures": 0,
+        "skipped": 3,
+        "actualTestTask": true
+      },
+      {
+        "shard": 2,
+        "jobId": 121306567244,
+        "reportedTests": 5271,
+        "passed": 5265,
+        "failures": 0,
+        "skipped": 6,
+        "actualTestTask": true
+      },
+      {
+        "shard": 3,
+        "jobId": 121306567240,
+        "reportedTests": 5645,
+        "passed": 5643,
+        "failures": 0,
+        "skipped": 2,
+        "actualTestTask": true
+      },
+      {
+        "shard": 4,
+        "jobId": 121306567296,
+        "reportedTests": 5096,
+        "passed": 5094,
+        "failures": 0,
+        "skipped": 2,
+        "actualTestTask": true
+      },
+      {
+        "shard": 5,
+        "jobId": 121306567262,
+        "reportedTests": 5602,
+        "passed": 5602,
+        "failures": 0,
+        "skipped": 0,
+        "actualTestTask": true
+      }
+    ],
+    "skipReasons": "未分類。skipを成功件数へ加算せず、理由を推測しない。",
+    "architectureSeparateJvm": {
+      "actualStepStatus": "success",
+      "caseCount": null,
+      "note": "main separate JVMの件数は未抽出。PRのArch37件を転記しない。"
+    },
+    "awsCredentialCheck": "success",
+    "subsequentCheckoutBuildEcrEcsCloudSteps": "skipped",
+    "productionChanged": false,
+    "gitleaks": {
+      "runId": 40238964223,
+      "status": "passed",
+      "sameHead": true,
+      "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40238964223"
+    },
+    "realSmoke": {
+      "runId": 40239293867,
+      "status": "passed",
+      "sameHead": true,
+      "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40239293867"
+    }
   }
 }

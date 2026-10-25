@@ -20,6 +20,6 @@
   "prospectiveCompletionTransitionPassed": true,
   "actualTaskState": "実装中",
   "actualCompletionTransitionPerformed": false,
-  "mainCi": "PENDING",
-  "limitation": "ローカルreview準備。仮の完了遷移データだけをtrusted validatorへ渡した。実台帳の完了遷移/登録PR/main CI成功を意味しない。"
+  "mainCi": "passed",
+  "limitation": "ローカルreview準備。仮の完了遷移データだけをtrusted validatorへ渡した。実台帳の完了遷移/登録PRのmergeを意味しない。main CI結果は別root実API確認に基づく。"
 }
