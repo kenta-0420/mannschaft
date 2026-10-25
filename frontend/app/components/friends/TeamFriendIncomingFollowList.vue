@@ -3,6 +3,7 @@ import type { FriendRequestSource, FriendRequestTarget, IncomingTeamFollowView }
 const props = defineProps<{ teamId: string; sourceTeam: FriendRequestSource }>()
 const emit = defineEmits<{ refresh: []; respond: [target: FriendRequestTarget] }>()
 const { t } = useI18n()
+const { formatDateTime } = useDatetime()
 const { listIncomingFollows } = useFriendTeamsApi()
 const follows = ref<IncomingTeamFollowView[]>([])
 const loading = ref(false)
@@ -51,7 +52,7 @@ defineExpose({ refresh: load })
               <p>{{ follow.sourceTeamName }} → {{ sourceTeam.teamName }}</p>
             </template>
             <p v-else data-testid="incoming-follow-hidden">{{ t('friends.pending.hidden_team') }} → {{ sourceTeam.teamName }}</p>
-            <time :datetime="follow.followedAt" class="text-sm text-surface-500">{{ follow.followedAt }}</time>
+            <time :datetime="follow.followedAt" class="text-sm text-surface-500">{{ formatDateTime(follow.followedAt) }}</time>
           </div>
           <Button v-if="!follow.nameHidden && follow.sourceTeamSlug && follow.sourceTeamName" :label="t('friends.request.respond')" class="min-h-11 !h-auto !whitespace-normal" data-testid="incoming-follow-respond" @click="emit('respond', { teamSlug: follow.sourceTeamSlug, teamName: follow.sourceTeamName })" />
         </div>

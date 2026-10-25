@@ -4,7 +4,7 @@ import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import IncomingList from './TeamFriendIncomingFollowList.vue'
 const mocks = vi.hoisted(() => ({ list: vi.fn() }))
 mockNuxtImport('useFriendTeamsApi', () => () => ({ listIncomingFollows: mocks.list }))
-mockNuxtImport('useAuthStore', () => () => ({ user: { timezone: 'Asia/Tokyo' } }))
+mockNuxtImport('useAuthStore', () => () => ({ user: { timezone: 'Asia/Tokyo' }, loadFromStorage: vi.fn(), isAuthenticated: false }))
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
 const row = { followId: 1, sourceTeamId: 2, sourceTeamName: 'Sender', sourceTeamSlug: 'sender-team', followedBack: false, nameHidden: false, followedAt: '2026-10-25T01:00:00Z' }
 const result = (data: unknown[]) => ({ data, pagination: { totalElements: data.length, totalPages: data.length ? 1 : 0 } })
