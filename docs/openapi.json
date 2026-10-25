@@ -123619,6 +123619,96 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/friends/incoming": {
+      "get": {
+        "tags": [
+          "フレンドチーム管理"
+        ],
+        "summary": "受信申請チーム一覧取得",
+        "description": "MANAGE_FRIEND_TEAMS実効権限が必要。相互成立済みを除外し、公開有効申請元だけ名前とslugを開示する。",
+        "operationId": "listIncomingFollows",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "一覧と絞込み後の総数",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncomingTeamFollowListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力形式が不正（COMMON_001）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "COMMON_001",
+                    "message": "入力内容に不備があります",
+                    "fieldErrors": []
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "認証が必要（レスポンスbodyなし）"
+          },
+          "403": {
+            "description": "受信チームの実効権限がない（COMMON_002）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "COMMON_002",
+                    "message": "この操作を行う権限がありません",
+                    "fieldErrors": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/friend-feed": {
       "get": {
         "tags": [
@@ -144516,6 +144606,79 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/me/friend-request-source-teams": {
+      "get": {
+        "tags": [
+          "フレンドチーム管理"
+        ],
+        "summary": "本人のフレンド申請元候補取得",
+        "description": "現在の有効所属とMANAGE_FRIEND_TEAMS実効権限で絞り込んだ候補を返す。相手のlookupは行わない。",
+        "operationId": "listSourceTeams",
+        "parameters": [
+          {
+            "name": "targetTeamSlug",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "一覧と絞込み後の総数",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FriendRequestSourceTeamListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力形式が不正（COMMON_001）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "COMMON_001",
+                    "message": "入力内容に不備があります",
+                    "fieldErrors": []
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "認証が必要（レスポンスbodyなし）"
           }
         }
       }
@@ -183219,39 +183382,6 @@
           }
         }
       },
-      "DuplicateNameCandidateView": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          }
-        }
-      },
-      "DuplicateNameConfirmationDetails": {
-        "type": "object",
-        "properties": {
-          "expiresAtEpochSecond": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "fingerprint": {
-            "type": "string"
-          },
-          "hiddenCandidateCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "visibleCandidates": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DuplicateNameCandidateView"
-            }
-          }
-        }
-      },
       "DuplicateNameConfirmationErrorResponse": {
         "type": "object",
         "description": "柱③-A 409 応答（候補一覧・fingerprint 付き）",
@@ -183265,24 +183395,16 @@
         "type": "object",
         "properties": {
           "code": {
-            "type": "string",
-            "description": "エラーコード",
-            "example": "DUPNAME_001"
-          },
-          "details": {
-            "$ref": "#/components/schemas/DuplicateNameConfirmationDetails",
-            "description": "同名確認フローの詳細（候補一覧・fingerprint）"
+            "type": "string"
           },
           "fieldErrors": {
             "type": "array",
-            "description": "フィールドエラー一覧（本エラーでは常に空）",
             "items": {
               "$ref": "#/components/schemas/FieldError"
             }
           },
           "message": {
-            "type": "string",
-            "description": "エラーメッセージ"
+            "type": "string"
           }
         }
       },
@@ -230611,7 +230733,14 @@
             "type": "integer",
             "format": "int32"
           }
-        }
+        },
+        "required": [
+          "hasNext",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ]
       },
       "PendingTeamFollowListResponse": {
         "type": "object",
@@ -230659,6 +230788,76 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "IncomingTeamFollowListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncomingTeamFollowView"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "required": [
+          "data",
+          "pagination"
+        ]
+      },
+      "IncomingTeamFollowView": {
+        "type": "object",
+        "properties": {
+          "followId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "followedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "followedBack": {
+            "type": "boolean"
+          },
+          "nameHidden": {
+            "type": "boolean"
+          },
+          "sourceTeamId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sourceTeamName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceTeamSlug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "followId",
+          "followedAt",
+          "followedBack",
+          "nameHidden",
+          "sourceTeamId",
+          "sourceTeamName",
+          "sourceTeamSlug"
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
           }
         }
       },
@@ -247763,6 +247962,44 @@
             "type": "boolean"
           }
         }
+      },
+      "FriendRequestSourceTeam": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "teamName": {
+            "type": "string"
+          },
+          "teamSlug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "teamId",
+          "teamName",
+          "teamSlug"
+        ]
+      },
+      "FriendRequestSourceTeamListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FriendRequestSourceTeam"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "required": [
+          "data",
+          "pagination"
+        ]
       },
       "ApiResponseListFavoriteResponse": {
         "type": "object",
