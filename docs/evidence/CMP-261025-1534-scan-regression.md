@@ -1,6 +1,6 @@
 # CMP-261025-1534 秘密情報スキャンのmerge差分回帰
 
-対象は `.github/workflows/secret-scan.yml` の検出漏れ修正と回帰試験である。実秘密の漏えいを確認した記録ではない。2026-10-25に修正着手裁可を受け、着手PR #4115で台帳を実装中へ変更した。完了判定と正式CIの結果は別途記録する。
+対象は `.github/workflows/secret-scan.yml` の検出漏れ修正と回帰試験である。実秘密の漏えいを確認した記録ではない。2026-10-25に修正着手裁可を受け、着手PR #4115で台帳を実装中へ変更した。実装は[PR #4117](https://github.com/kenta-0420/mannschaft/pull/4117)で同日13:33:31Zに通常squash mergeされた。
 
 ## 原因と修正
 
@@ -37,7 +37,16 @@ python3 scripts/test-secret-scan.py ./gitleaks
 
 修正前workflowで10件を137.683秒で実行し、失敗は4件だった。PR/push相当range・全履歴・octopus mergeの各専用追加、および不正revisionがいずれもexit 0で、必要な非0終了を返さなかった。残る6件の対照は成功し、環境準備エラーではないことを確認した。不正revisionの修正後期待値はGit preflightのexit 128とした。
 
-修正後の同試験は10件すべて成功し、146.365秒で終了した。不正revisionはGit preflightのexit 128、merge専用追加・通常commit・削除済みside branch履歴は各exit 1と1件検出、除外対象と安全なrangeはexit 0だった。未マスク値の検査もすべて成功した。正式CI・検分・完了証拠は未確定。
+修正後の同試験は10件すべて成功し、146.365秒で終了した。不正revisionはGit preflightのexit 128、merge専用追加・通常commit・削除済みside branch履歴は各exit 1と1件検出、除外対象と安全なrangeはexit 0だった。未マスク値の検査もすべて成功した。
+
+## 正式CI・検分
+
+- 実装PR headは `7606534ed3be06ede166c54fe5dd1ac02db53d45`。マージ前に全17 checkのSUCCESS 11件・SKIPPED 6件、失敗・未完了0件を確認した。
+- 同headの[秘密情報スキャン run 40197838580](https://github.com/kenta-0420/mannschaft/actions/runs/40197838580)は成功。実ログで10試験が3.381秒ですべて成功したことを確認した。
+- rootが実差分、AC対応、red/green原本、正式head CIを検分し、指摘0件で最終承認した。
+- マージcommit `3e4629bbebb5a1ce6cbd8c1b8e92082b09853ad8` の[main push run 40198158903](https://github.com/kenta-0420/mannschaft/actions/runs/40198158903)も成功。新回帰stepの実ログは10試験4.212秒で成功し、mainの実差分スキャンも成功した。
+- このpushでは週次全履歴jobはSKIPPED。実リポジトリの週次全履歴scanを今回実行したとは扱わない。合成Git repositoryのfull-history試験と区別する。
+- 正式なAC・実装head・同head CI・scopeは[完了証拠JSON](CMP-261025-1534.json)に記録する。
 
 ## 適用範囲
 
