@@ -561,6 +561,17 @@
         "cleanupReason": null,
         "error": null
       }
+    },
+    {
+      "runId": "CMP-261024-2051-runtime-2aac15e6-green1",
+      "receipt": {
+        "sourceHead": "2aac15e6e020d03cc9d26ee17d94922ab08ed8a4",
+        "exitCode": 0,
+        "signal": null,
+        "cleanup": "removed",
+        "cleanupReason": null,
+        "error": null
+      }
     }
   ]
 }

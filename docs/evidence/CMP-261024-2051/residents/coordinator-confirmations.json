@@ -3,49 +3,6 @@
   "classification": "coordinator-confirmations-not-persona-observations",
   "sourceHead": "543d63324e2756931d1b72591bdf4ae347198552",
   "originalObservationsStatusUnchanged": "observed-unverified",
-  "confirmedOpen": [
-    {
-      "topic": "長名候補はviewport外にはみ出す",
-      "locale": "en",
-      "viewport": 390,
-      "optionWidth": 857,
-      "optionRight": 862,
-      "documentClientWidth": 390,
-      "documentScrollWidth": 390,
-      "causeObservation": "portal nowrap",
-      "image": "coordinator-en390-long-candidate.png",
-      "basis": "殿の実再現/画像視認。保存画像を当方も視認。",
-      "fixStatus": "55ab0adc3dへ局所CSS修正済み、候補2aac新runtimegreen待ち"
-    },
-    {
-      "topic": "モバイルタブラベルが途中で切れる",
-      "locale": "en",
-      "viewport": 390,
-      "buttonClientWidth": 79,
-      "buttonScrollWidth": 108,
-      "overflow": "hidden",
-      "flexShrink": 1,
-      "parentClientWidth": 310,
-      "parentScrollWidth": 310,
-      "image": "coordinator-en390-tabs-stable.png",
-      "basis": "殿の実再現/画像視認。住民R3のDE観測とは別。",
-      "fixStatus": "55ab0adc3dへ局所CSS修正済み、候補2aac新runtimegreen待ち"
-    },
-    {
-      "topic": "KO390の申請元Select高さが44px未満",
-      "locale": "ko",
-      "viewport": 390,
-      "outerWidth": 348,
-      "outerHeight": 42,
-      "computedHeight": "42px",
-      "minHeight": "auto",
-      "animations": 0,
-      "basis": "殿の安定後実測とlayout-red2 source42 assertion",
-      "rawSelectedMetric": "../layout/source-select.json",
-      "fix": "55ab0adc3d CSS修正済み、newruntime44casegreen未取得",
-      "fixStatus": "55ab0adc3dへ局所CSS修正済み、候補2aac新runtimegreen待ち"
-    }
-  ],
   "notReproduced": [
     {
       "topic": "KO確認後の方向行が消える疑い",
@@ -60,7 +17,7 @@
   "otherPending": [
     "R1 reload観測の要件判定"
   ],
-  "implementationStatus": "確定3layoutは55abで修正、2aac新runtime44casegreen/CIは未取得。KO方向正常再現せず、元frame原因未確定。",
+  "implementationStatus": "確定3layoutはexact2aacで修正検証済み。review/real/exploratory rootpassed、CI/mergeは未完了。",
   "rejectedAsResponsiveNormal": {
     "topics": [
       "R1 desktop42toolbar/shortcuts",
@@ -134,5 +91,49 @@
     },
     "decision": "rootmobile390の5操作は44px、Close44x44。正常レスポンシブとして不備棄却。原住民観測は保持。",
     "exception": "tabsKO390height42は別の確定tabs finding内で44下限修正対象。"
-  }
+  },
+  "confirmedOnOld543": [
+    {
+      "topic": "長名候補はviewport外にはみ出す",
+      "locale": "en",
+      "viewport": 390,
+      "optionWidth": 857,
+      "optionRight": 862,
+      "documentClientWidth": 390,
+      "documentScrollWidth": 390,
+      "causeObservation": "portal nowrap",
+      "image": "coordinator-en390-long-candidate.png",
+      "basis": "殿の実再現/画像視認。保存画像を当方も視認。",
+      "fixStatus": "2aacで修正後44casesgreen・root最終画像視認合格"
+    },
+    {
+      "topic": "モバイルタブラベルが途中で切れる",
+      "locale": "en",
+      "viewport": 390,
+      "buttonClientWidth": 79,
+      "buttonScrollWidth": 108,
+      "overflow": "hidden",
+      "flexShrink": 1,
+      "parentClientWidth": 310,
+      "parentScrollWidth": 310,
+      "image": "coordinator-en390-tabs-stable.png",
+      "basis": "殿の実再現/画像視認。住民R3のDE観測とは別。",
+      "fixStatus": "2aacで修正後44casesgreen・root最終画像視認合格"
+    },
+    {
+      "topic": "KO390の申請元Select高さが44px未満",
+      "locale": "ko",
+      "viewport": 390,
+      "outerWidth": 348,
+      "outerHeight": 42,
+      "computedHeight": "42px",
+      "minHeight": "auto",
+      "animations": 0,
+      "basis": "殿の安定後実測とlayout-red2 source42 assertion",
+      "rawSelectedMetric": "../layout/source-select.json",
+      "fix": "55ab0adc3d CSS修正済み、newruntime44casegreen未取得",
+      "fixStatus": "2aacで修正後44casesgreen・root最終画像視認合格"
+    }
+  ],
+  "openLayoutFindings": 0
 }

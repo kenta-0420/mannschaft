@@ -56,7 +56,8 @@
     "deletions": 3,
     "scope": "局所CSSのみ",
     "rootReview": "finding0",
-    "green": "exact2aac automatedflow8+layout36 allpass/CLI0/skip0; root残画像視認待ち"
+    "green": "exact2aac automated44/44、CLI0skip0、root最終28PNG/全60寸法視認合格、canonicalreceipt0/cleanupremoved",
+    "finalReview": "root finding0"
   },
   "candidate": {
     "head": "2aac15e6e020d03cc9d26ee17d94922ab08ed8a4",
