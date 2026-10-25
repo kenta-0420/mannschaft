@@ -46,7 +46,7 @@ watch(
   () => {
     generation++
     saving.value = false
-    draft.value = []
+    draft.value = policy.features.value.map((feature) => ({ ...feature }))
     loadError.value = undefined
     saveError.value = undefined
     if (auth.user?.id) void load()

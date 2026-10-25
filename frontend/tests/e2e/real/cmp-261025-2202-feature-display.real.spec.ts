@@ -190,9 +190,15 @@ async function openHome(page: Page, scope: Scope): Promise<void> {
   await expect(tab(page, scope, ''), '固定ホームアンカー').toBeVisible({ timeout: 60_000 })
 }
 
-async function openSettings(scope: Scope): Promise<void> {
+async function openSettings(scope: Scope, initialVisit = false): Promise<void> {
   const page = actors.admin.page
   await openHome(page, scope)
+  if (initialVisit) {
+    const setup = page.getByTestId('member-permission-setup')
+    await expect(setup).toBeVisible({ timeout: 30_000 })
+    await setup.getByRole('button', { name: 'あとで決める', exact: true }).click()
+    await expect(setup).toHaveCount(0)
+  }
   await expect(tab(page, scope, 'modules'), '管理者の機能設定入口').toBeVisible()
   await tab(page, scope, 'modules').click()
   await expect(page.locator('[data-feature-key="info"]')).toBeVisible({ timeout: 60_000 })
@@ -311,7 +317,7 @@ for (const kind of ['teams', 'organizations'] as const) {
     test.setTimeout(600_000)
     const scope = await createScope(kind)
     try {
-      await openSettings(scope)
+      await openSettings(scope, true)
       await expect(actors.admin.page.locator('#feature-display-info-member')).toBeChecked()
       await expect(actors.admin.page.locator('#feature-display-info-supporter')).toBeChecked()
 

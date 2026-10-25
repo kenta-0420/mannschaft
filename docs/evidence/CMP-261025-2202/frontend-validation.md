@@ -39,3 +39,13 @@ CI artifact `6b0a1d9b26` の `FeatureDisplayPolicyItem` は `featureKey/memberVi
 同artifactでGET/PUTの成功200応答が欠落している点を検出し、ControllerのOpenAPI宣言修正をBEへ差し戻した。修正後CI artifact `b145b660af` ではTEAM/ORGのGET/PUT全4operationについて、200応答・content・`data.features[]`・要素の3項目requiredを辿って確認し、同artifactからOpenAPIと生成型を再同期した。
 
 再生成成功後、TypeScript compilerで生成schemaを参照するalias単体を検査し、`featureKey: string` と独立bool2項目がすべて必須であること、型エラー0を確認した。aliasファイルのESLintも成功。
+
+## 実機で検出した初回cache表示の不具合
+
+初回実機は新規scopeの既存「メンバーの権限を初期設定」Dialogが機能設定タブを遮ったため中断した。試験前提の不足であり本機能のredと区別する。Dialogの「あとで決める」を通常UIで選ぶ初回手順をspecへ追加した。中断時にfinallyが閉鎖済みcontextでcleanupできなかったTEAM fixture（numericId11）は、作成時のslug・名前を照合してDELETE204→GET404を確認した。
+
+その補正後、TEAM/ORGとも設定画面の見出し・2列header・保存ボタンは表示されるが設定行0件で失敗した。policy.featuresの即時watchでコピーしたdraftを、後続のscope/user即時watchが空に戻し、共有cache成功時のrefreshがno-opのため復旧しない実装不具合だった。
+
+`FeatureDisplaySettingsPanel.spec.ts` にrefreshがfeaturesを変更しないcache-hit回帰を追加し、実SFCをmountして行exists期待true/実falseのassertion redを確認（他7件成功）。scope/user切替時はcurrent policy.featuresからdraftを初期化する1行修正後、8件全成功。refresh mockも実cache-hit同様のno-opへ合わせた。
+
+このred/greenはdevの.nuxtと競合しない一時Vitest+Vue構成で、NuxtのmockNuxtImportをstubGlobalへ、Vue auto-importをglobal供給へ読み替えた。同じ提出specと実SFCを使用したが正規Nuxt経路の代替合格にはせず、CIの正規実行成功を別途必要とする。一時config/spec/setupの自分の3ファイルは撤去済み。実機の再走と住民探索は継続中であり合格扱いにしない。

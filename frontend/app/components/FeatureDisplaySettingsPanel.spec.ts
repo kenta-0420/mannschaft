@@ -68,9 +68,7 @@ describe('FeatureDisplaySettingsPanel', () => {
     role.value = 'ADMIN'
     features.value = [{ featureKey: 'chat', memberVisible: true, supporterVisible: false }]
     save.mockReset().mockResolvedValue(undefined)
-    refresh.mockReset().mockImplementation(async () => {
-      features.value = features.value.map((feature) => ({ ...feature }))
-    })
+    refresh.mockReset().mockResolvedValue(undefined)
     loadPermissions.mockReset().mockResolvedValue({ ok: true })
     success.mockReset()
   })
@@ -86,6 +84,16 @@ describe('FeatureDisplaySettingsPanel', () => {
       { featureKey: 'chat', memberVisible: false, supporterVisible: true },
     ])
     expect(success).toHaveBeenCalledOnce()
+  })
+
+  it('共有cacheが取得済みでrefreshが変更しなくても初回の設定行を表示する', async () => {
+    refresh.mockResolvedValue(undefined)
+    const wrapper = render()
+    await flushPromises()
+    expect(wrapper.find('#feature-display-chat-member').exists()).toBe(true)
+    expect((wrapper.get('#feature-display-chat-member').element as HTMLInputElement).checked).toBe(
+      true,
+    )
   })
 
   it('保存失敗では編集中の値を保持し再試行できる', async () => {
