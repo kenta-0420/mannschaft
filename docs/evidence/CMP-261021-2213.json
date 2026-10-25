@@ -146,6 +146,20 @@
                                                      "evidence":  "backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitFreezeStoreIntegrityTest.java"
                                                  }
                                              ]
+                               },
+                               {
+                                   "tests": [
+                                       {
+                                           "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40141590669",
+                                           "name": "manual40141590669、exact0b24f38a4fe9160c99841ad930051fba0a25af32、全12job successのAPI照合"
+                                       },
+                                       {
+                                           "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40148629302",
+                                           "name": "main40148629302 attempt1、exactd4f8b6ece263fb0ea7f6e7d367e6fefb364cea12、全9job/6Compile/6Run tests/Arch success・全6guard2件成功、BuildDeploy条件skipの照合"
+                                       }
+                                   ],
+                                   "description": "PR4104のcompile分離後、修正headのmanual全量CIと修正merge SHAを含むmain統合後CIの全6shard・Arch・workflow最終successを確認する。BuildDeployの条件skipと実デプロイを区別し、通常85分改善を先取りしない",
+                                   "id": "AC-MAIN-CI"
                                }
                            ],
     "ci":  [
