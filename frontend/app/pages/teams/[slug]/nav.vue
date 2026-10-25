@@ -126,7 +126,7 @@ onMounted(() => {
           <Button data-testid="friend-shortcut-forward-exports" :label="$t('forward_exports.title')" icon="pi pi-history" class="w-full !h-auto !whitespace-normal py-2" outlined />
         </NuxtLink>
       </div>
-      <SelectButton v-if="canManageFriends" v-model="activeList" :allow-empty="false" :options="[{ value: 'friends', label: $t('friends.title') }, { value: 'pending', label: $t('friends.pending.title') }, { value: 'incoming', label: $t('friends.request.incoming') }]" option-label="label" option-value="value" class="mb-4 max-w-full overflow-x-auto" data-testid="friend-list-tabs" />
+      <SelectButton v-if="canManageFriends" v-model="activeList" :allow-empty="false" :options="[{ value: 'friends', label: $t('friends.title') }, { value: 'pending', label: $t('friends.pending.title') }, { value: 'incoming', label: $t('friends.request.incoming') }]" option-label="label" option-value="value" class="mb-4 max-w-full overflow-x-auto" :pt="{ pcToggleButton: { root: { class: 'shrink-0 whitespace-nowrap max-md:min-h-11 max-md:min-w-11' } } }" data-testid="friend-list-tabs" />
       <TeamFriendIncomingFollowList v-if="canManageFriends && sourceTeam" v-show="activeList === 'incoming'" ref="incomingListRef" :team-id="String(sourceTeam.teamId)" :source-team="sourceTeam" class="mb-6" @respond="respondToRequest" />
       <TeamFriendPendingFollowList
         v-if="canManageFriends"
