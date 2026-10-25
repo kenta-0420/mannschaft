@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "classification": "coordinator-confirmations-not-persona-observations",
+  "sourceHead": "543d63324e2756931d1b72591bdf4ae347198552",
+  "originalObservationsStatusUnchanged": "observed-unverified",
+  "confirmedOpen": [
+    {
+      "topic": "長名候補はviewport外にはみ出す",
+      "locale": "en",
+      "viewport": 390,
+      "optionWidth": 857,
+      "optionRight": 862,
+      "documentClientWidth": 390,
+      "documentScrollWidth": 390,
+      "causeObservation": "portal nowrap",
+      "image": "coordinator-en390-long-candidate.png",
+      "basis": "殿の実再現/画像視認。保存画像を当方も視認。"
+    },
+    {
+      "topic": "モバイルタブラベルが途中で切れる",
+      "locale": "en",
+      "viewport": 390,
+      "buttonClientWidth": 79,
+      "buttonScrollWidth": 108,
+      "overflow": "hidden",
+      "flexShrink": 1,
+      "parentClientWidth": 310,
+      "parentScrollWidth": 310,
+      "image": "coordinator-en390-tabs-stable.png",
+      "basis": "殿の実再現/画像視認。住民R3のDE観測とは別。"
+    }
+  ],
+  "notReproduced": [
+    {
+      "topic": "KO確認後の方向行が消える疑い",
+      "locale": "ko",
+      "viewport": 390,
+      "rootStableObservation": "固定元/公開先双方で1秒安定後direction DOM1、元slug→先slug全文、opacity1",
+      "image": "coordinator-ko390-confirm-stable.png",
+      "causeLimitation": "元frame情報がなく初期欠落原因は断定しない。public最初の無反応はhydration待ち不足、waitForHydration後正常。",
+      "glyphsReadable": true
+    }
+  ],
+  "otherPending": [
+    "Close40の統括裏取り",
+    "R1 toolbar42/reload観測の要件判定"
+  ],
+  "implementationStatus": "長名候補とtabsの2件は修正前の実装blocker、FE担当が別WTでbrowser red先行準備中。"
+}

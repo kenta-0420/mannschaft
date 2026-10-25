@@ -251,7 +251,135 @@
     "住民観測であり不具合確定ではない。殿の裏取り待ち。",
     "送信直後toast有無はタイミングのため不明。",
     "厳密context開始時刻は未採取。記録時刻の精度を原本どおり保持。",
-    "原本log・準備環境・tool戻り値は選別対象外。認証値を保存しない。",
-    "R1/R3未完の中間保存。bundle生成・既存IndexedDB登録はまだ実行しない。"
+    "原本log・準備環境・tool戻り値は選別対象外。認証値を保存しない。"
+  ],
+  "partial": false,
+  "operationTimes": [
+    {
+      "time": "2026-10-25T04:21:30.041Z",
+      "name": "01-dashboard-loading",
+      "url": "http://localhost:3001/dashboard",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "time": "2026-10-25T04:22:31.415Z",
+      "name": "02-own21-friend",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r9-21/nav",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "time": "2026-10-25T04:23:11.231Z",
+      "name": "03-review-before-interruption",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r9-21/nav",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "time": "2026-10-25T04:23:40.077Z",
+      "name": "review-1280x720",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r9-21/nav",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      }
+    },
+    {
+      "time": "2026-10-25T04:23:40.329Z",
+      "name": "review-1920x1080",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r9-21/nav",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      }
+    },
+    {
+      "time": "2026-10-25T04:23:40.484Z",
+      "name": "review-1024x576",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r9-21/nav",
+      "viewport": {
+        "width": 1024,
+        "height": 576
+      }
+    },
+    {
+      "time": "2026-10-25T04:23:40.973Z",
+      "name": "review-1152x720",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r9-21/nav",
+      "viewport": {
+        "width": 1152,
+        "height": 720
+      }
+    },
+    {
+      "time": "2026-10-25T04:23:41.228Z",
+      "name": "review-1440x900",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r9-21/nav",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "time": "2026-10-25T04:24:03.249Z"
+    },
+    {
+      "time": "2026-10-25T04:24:18.373Z",
+      "name": "04-after-send",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r9-21/nav",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "time": "2026-10-25T04:24:51.181Z",
+      "name": "05-following-confirm",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r9-21/nav",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "time": "2026-10-25T04:24:51.187Z"
+    },
+    {
+      "time": "2026-10-25T04:25:30.710Z",
+      "name": "06-return-following",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r9-21/nav",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "time": "2026-10-25T04:26:16.552Z",
+      "name": "07-reopen-existing",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r9-21/nav",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "time": "2026-10-25T04:27:04.170Z"
+    },
+    {
+      "time": "2026-10-25T04:27:40.968Z",
+      "name": "08-close40-observation",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r9-21/nav",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    }
   ]
 }

@@ -103,3 +103,13 @@ app46の専用Flyway適用DBで100行・各20回（warmup1回除外、HTTP/JSON 
 新runtimeは旧1224履歴/checksum/success不変と指定新1成功=1225、同owned container/seed record・seed hash不変を確認。性能v2は100行×20回、p95候補27.930907ms/受信69.956305ms。自然incomingはidx_follows_incoming_page/ref/推定100・filesortなし。所有100followをAPI unlinkして物理残0、101team softdelete後active0。旧v1履歴100を削除した意味ではない。
 
 source新planはCOUNTでteams ALL推定456、一覧range455とtemporary/filesort。本人userId束縛、SQL/索引は新旧不変だが、本人TEAM履歴434/503=86.28%（現在active team紐付1）の小表偏りであり、本人所属先行や10M規模の性能を実証したとは記さない。住民探索・最終CI/mergeは未記録、完了JSONと台帳完了化は行わない。先行節の待ち状態は各当時の履歴として残す。
+
+## 3住民の探索とB0独立統合確認
+
+3住民がapp543で主目的を達成し、全context/browser active0まで終了した。[探索概要](CMP-261024-2051/residents/exploration-registration-summary.json)と3選別原本・選定PNG8を保存。R1 jaの長名候補はみ出し/42px操作/R3返し後reload成立、R2 enの送信直後空一覧で迷い/Close40、R3 deの360/390タブclipを計6件のobserved-unverifiedとして[単一actual overlay](CMP-261024-2051/residents/actual-resident-overlay.json)へ登録した。統括EN390再現は別coordinatorSupplementで分離。バグ確定やcoverage昇格とは扱わない。R2厳密context開始未採取は原本どおり維持し、R1/R3のcontext区間にあるR2操作時刻を同時探索の区間根拠にした。R3補助入口の成立後再操作はauto-review拒否で未実行のまま。
+
+自dwtだけで既存generatorは検算成功。full validatorはtracked GitHub snapshot515参照に対しtask-list655参照（missing140/extra0、snapshotはHEAD blobと一致）の既存版ずれでline46停止。[exact差分](CMP-261024-2051/residents/b0-full-validator-discrepancy.json)を保存し未解決として扱う。補助の既存validateRunOverlay/self-testブロック無変更実行は宣言/空insights受入・8不正入力拒否に成功したがfull合格へ置換しない。生成board-data.jsはcommitしない。
+
+[既存UI/IndexedDB統合試験](CMP-261024-2051/residents/b0-indexeddb-integration.json)は127.0.0.1:8767の独立origin/fresh contextで、実overlay6件自動同期・既存手入力フォーム1件との同store共存・再読込後7件/unique7（重複なし）を確認。登録元/persona/journey/runId/evidencePathを照合、正規UI「すべて」で7カードを表示した。元ユーザーの気づき箱へ書いたことは意味しない。cross-cuttingは既存fallback未設定stageのため初期B0ではフィルタ外となり、手入力保存で未設定へ移る既存UI制約を記録。既存取込はstatus=inbox/registrationSource=alicizationへ正規化し、trusted/sourceHead/originalRunIdはoverlay原本で保持する。画像はscreenshotPathのみでBlob自動取込なし。試験手入力は住民観測に混ぜずfresh context内だけに置き、所有browser/HTTPserverは終了した。
+
+統括の後続裏取りではEN390の長名候補viewport外はみ出しとタブラベルclipの2件を確定し、FE別WTでbrowser red先行の修正準備中。[統括補足](CMP-261024-2051/residents/coordinator-confirmations.json)へ分離し元住民観測のunverifiedは保持した。KO方向行は安定後DOM/元→先全文/opacity1を確認し再現せず、元frame欠落原因は断定しない。glyph判読は確認済み。2件未修正のため実装完了とは扱わない。full validatorの140参照版ずれは殿が本戦役外と判断し、targeted既存overlayvalidatorと実UI/IDB経路でB0登録を評価するが、full validatorの不合格自体は残す。
