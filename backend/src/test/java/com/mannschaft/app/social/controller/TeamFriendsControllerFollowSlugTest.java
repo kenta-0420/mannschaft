@@ -21,6 +21,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -261,4 +262,31 @@ class TeamFriendsControllerFollowSlugTest {
             postFollow("{\"targetTeamSlug\":\"" + thirty + "\"}").andExpect(status().isCreated());
         }
     }
+    @ParameterizedTest(name = "FR-13: slug指定={0}, comment長={1}")
+    @CsvSource({
+            "true, -2", "true, -1", "true, 0", "true, 300", "true, 301",
+            "false, -2", "false, -1", "false, 0", "false, 300", "false, 301"
+    })
+    @DisplayName("FR-13: コメントは省略・null・0〜300文字を許可し301文字は委譲前に拒否する")
+    void コメントの既存HTTP境界を保つ(boolean slug指定, int length) throws Exception {
+        String target = slug指定 ? "\"targetTeamSlug\":\"rival-fc\"" : "\"targetTeamId\":20";
+        String comment = length == -2 ? "" : length == -1 ? ",\"comment\":null"
+                : ",\"comment\":\"" + "あ".repeat(length) + "\"";
+
+        if (length == 301) {
+            postFollow("{" + target + comment + "}")
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_001"));
+            verifyNoInteractions(sourceQueryService, teamFriendsService, followBySlugService);
+        } else if (slug指定) {
+            given(followBySlugService.followBySlug(TEAM_ID, TARGET_SLUG, USER_ID)).willReturn(oneWay());
+            postFollow("{" + target + comment + "}").andExpect(status().isCreated());
+            verify(followBySlugService).followBySlug(TEAM_ID, TARGET_SLUG, USER_ID);
+        } else {
+            given(teamFriendsService.follow(TEAM_ID, TARGET_TEAM_ID, USER_ID)).willReturn(oneWay());
+            postFollow("{" + target + comment + "}").andExpect(status().isCreated());
+            verify(teamFriendsService).follow(TEAM_ID, TARGET_TEAM_ID, USER_ID);
+        }
+    }
+
 }
