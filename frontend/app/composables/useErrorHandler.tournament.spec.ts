@@ -61,7 +61,7 @@ describe('CMP-261002-0743 handleApiErrorの大会ロケール契約', () => {
     )
   })
 
-  it.each(['COMMON_001', 'TOUR_018', 'TOUR_029', 'TOUR_999', 'UNKNOWN'])(
+  it.each(['COMMON_001', 'TOUR_018', 'TOUR_029', 'TOUR_999', 'UNKNOWN', 'toString', '__proto__'])(
     'T3 対象外%sの具体的な理由を保持する',
     (code) => {
       useErrorHandler().handleApiError({ data: { error: { code, message: '具体的なBE理由' } } })

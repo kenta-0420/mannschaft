@@ -64,7 +64,9 @@ export const useErrorHandler = () => {
   // BE message を最優先し、無ければ従来どおり i18n キー→汎用文言にフォールバックする。
   const resolveMessage = (code: string, fallback?: string, context?: string): string => {
     const key = `error.${code}`
-    const tournamentKey = TOURNAMENT_ENTRY_I18N_KEYS[code]
+    const tournamentKey = Object.hasOwn(TOURNAMENT_ENTRY_I18N_KEYS, code)
+      ? TOURNAMENT_ENTRY_I18N_KEYS[code]
+      : undefined
     if (tournamentKey && te(tournamentKey)) return t(tournamentKey)
     if (code === 'COMMON_003' && context === 'team-loyalty') return t('loyalty.error.changed')
     if (code === 'MEMBERSHIP_003' && context === 'team-loyalty')
