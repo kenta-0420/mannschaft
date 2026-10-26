@@ -199,12 +199,13 @@
     }
   ],
   "completionPreparation": {
-    "status": "pending_main_integration_ci",
-    "backendRunId": 40283924552,
+    "status": "pending_main_integration_failed_attempt_rerun",
+    "backendRunId": 40295398433,
     "ciEvidence": "docs/evidence/CMP-261022-0914/ci-summary.json",
     "sourceBridge": "docs/evidence/CMP-261022-0914/source-bridge.json",
     "remaining": [
-      "exact mergeSHA 092ca37のmain統合CI",
+      "main統合CI attempt2結果確認・未解明原因の扱いを最終判定",
+      "exact mergeSHA main統合CI成功の確定",
       "自CMP台帳完了更新PR"
     ],
     "tableUnchanged": true,
@@ -236,7 +237,7 @@
       "changedFilesMatch": true,
       "evidence": "docs/evidence/CMP-261022-0914/ci-summary.json"
     },
-    "integrationStatus": "main merge092ca37 Backend40298405982/attempt1継続中、ArchUnit/Gitleaksのみ成功確認",
+    "integrationStatus": "main092ca37/40298405982 attempt1failure・Build & Deploy skipped保持。root同head/コード試験条件変更0の--failed再実行、attempt2 shard3 job121528289673進行中/結果pending。",
     "implementationMergeTreeIdentical": {
       "tree": "d7c96296a9c09a2ca8424f3979e746d9bcb36742",
       "evidence": "docs/evidence/CMP-261022-0914/source-bridge.json"

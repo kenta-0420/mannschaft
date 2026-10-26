@@ -62,3 +62,5 @@ source追加照合：r8runtime33a / FE実装14d0 / merge17cabのfrontend全tree�
 2026-10-26T07:51:20ZにPR4130の実装head14d0/mergedAt07:02:49Z/merge17cabをAPI照合。checksはfilter=all＋paginateで24件、commit statusesはpaginateで0件。origin/main0ab1e7d01333798c97d29f42d5ed9894123e41caのtrusted summarizeImplementationChecksをそのまま使用し、マージ時世代22件＝success15/skipped7、失敗・未完了なし、成功最低1件を確認。changed_files4とlistFiles全4件が一致。validateEvidenceへ同repo merged/完全一致head/判定済みcheck/file metadataを渡して合格。raw API原本は永続証跡へ複製せず、小結果のみ[CI・回帰集計](ci-regression-summary.json)へ保存。
 
 旧r6 copy run-55fg9Vの保持：owner4a8a4e25-4100-45df-a5f9-55e32a3b5a98、用途は旧実機失敗検証。EACCES process参照の安全確認不能のため無差別削除しない。再確認期限2026-10-27 12:00 JST。既存権限内でcopy/生存processの所有と参照消滅を確認できた時のみ撤去する。sudo/WSL停止/新たな権限回避は行わない。
+
+Windowsの自己専有CI ZIP/XML展開28件（583,128,688 bytes）は2026-10-26T10:12:07.0979654Zに整理完了。rootが全28件不存在と独立照合JSON・finald689検分JSON・小検証結果の残存を確認した。旧r6 copyの保留パス・理由・期限・解除条件は変更しておらず、全資産片付け完了とはしない。

@@ -1,6 +1,6 @@
 # CMP-261022-0914 検証記録
 
-実装headはd6896776ade4e90283dcc77426c7b60034887039。root本人12AC検分passed/finding0。PR4049は2026-10-26T09:17:29Zに通常merge（admin未使用）され、mergeSHAは092ca37a587f6b589df9234126d6f43916c036cc。main統合CIは監視中であり、台帳完了更新は未実施。
+実装headはd6896776ade4e90283dcc77426c7b60034887039。root本人12AC検分passed/finding0。PR4049は2026-10-26T09:17:29Zに通常merge（admin未使用）され、mergeSHAは092ca37a587f6b589df9234126d6f43916c036cc。main統合Backend40298405982はattempt1failure履歴を保持し、attempt2再実行の結果pendingで未完了。台帳完了更新は未実施。
 
 ## CI・復元成果物の独立照合
 
@@ -38,4 +38,14 @@ origin/main092ca37のtrusted summarizeImplementationChecksを使用。filter=all
 
 ![Cの他tenant拒否](resident-c.png)
 
-実装d689とmerge092ca37の全repo treeはd7c96296a9c09a2ca8424f3979e746d9bcb36742で完全一致（root独立確認/準備担当再照合）。main push Backend40298405982/attempt1は6shard actual Run tests継続中、ArchUnit成功。Gitleaks40298406051成功。他mainCI・統合Backendの最終成功は未確定として保持する。
+実装d689とmerge092ca37の全repo treeはd7c96296a9c09a2ca8424f3979e746d9bcb36742で完全一致（root独立確認/準備担当再照合）。中間観測ではmain push Backend40298405982/attempt1の6shard actual Run testsが継続中でArchUnit成功、Gitleaks40298406051成功だった。最終結果は後記のfailureへ確定した。
+
+Windowsの自己専有CI ZIP/XML展開28件（583,128,688 bytes）は2026-10-26T10:12:07.0979654Zに整理完了。rootが全28件不存在と独立照合JSON・finald689検分JSON・小検証結果の残存を確認した。旧r6 copyの保留パス・理由・期限・解除条件は変更しておらず、全資産片付け完了とはしない。
+
+main統合CI最終結果（root gh独立確認）：exact092ca37/Backend40298405982/attempt1はcompleted/failure。Test shard3 job121490202537のRun tests step6がfailure、他5shard/ArchUnit/Detectはsuccess。後続Build & Deployはskippedで成功扱いしない。限定read-only調査は終了しroot検分済み。TX開始時接続取得timeoutまで確定し、active接続保持の根因は未解明。実装headのgreenと混同せず、両台帳行は実装中のまま、完了/ready/mergeを進めない。
+
+main再実行を区別：attempt1 shard3の失敗はLoyaltyPointsWriterITのAC19（470行）でtransaction/JDBC接続取得例外、Hikari3047ms timeout（total33/active31/idle2/waiting45）。5650完了/1failed/2skipped。assertion expected/actual不一致ではなくプール待機集中は確定だが、active接続保持理由は未解明。限定read-only調査は終了しroot検分済み。
+
+rootが同head092ca37でgh run rerun --failedを実行。コード/試験条件変更0、attempt2 shard3 job121528289673は2026-10-26T10:45:57Z開始、結果pending。attempt1failure/Build & Deploy skippedを消さず、再実行成功でも根治済み/全初回成功とは書かない。台帳2行は実装中、Draft維持・完了未確定。
+
+限定調査の結論：TX開始時の接続取得timeoutまで確定。pool total33を上限50の枯渇と断定できず、max50は実既定値で実効最大値は未観測。リーク/deadlock/flake/間接影響皆無も断定不可。確認sourceblob範囲は一致、warmupなし、program/rule共有lock→本人排他→初回insertを1TXで行い、外部call/REQUIRES_NEWなし。規約min=max/connectionTimeout30000msと実既定10/50/3000msの既存不整合はユーザーへ報告済み・未解消。再実行成功だけを根治と扱わない。

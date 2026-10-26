@@ -177,7 +177,22 @@
         "sudo",
         "WSL停止",
         "新たな権限回避"
-      ]
+      ],
+      "scratchFullPath": "/var/tmp/mannschaft-verification-1000/run-55fg9V",
+      "ownershipEvidenceRoot": "/home/kenta/verification-evidence/l1a-a363c8d-20261026-r6",
+      "locationUsage": "保留対象と所有証跡の所在地。passed stageのevidence参照ではない。"
+    },
+    "windowsCiRawRetirement": {
+      "status": "passed",
+      "removedCount": 28,
+      "completedUtc": "2026-10-26T10:12:07.0979654Z",
+      "removedBytes": 583128688,
+      "scope": "自己専有のWindows CI ZIP/XML展開28件のみ",
+      "all28AbsentConfirmedByRoot": true,
+      "rootIndependentXmlResultsRetained": true,
+      "finalD689RootReviewRetained": true,
+      "rootJsonAndValidationResultsRetained": true,
+      "oldR6RetentionUnchanged": true
     }
   }
 }

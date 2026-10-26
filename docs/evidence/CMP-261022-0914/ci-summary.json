@@ -547,20 +547,124 @@
     "head": "092ca37a587f6b589df9234126d6f43916c036cc",
     "event": "push",
     "runId": 40298405982,
-    "attempt": 1,
+    "attempt": 2,
     "status": "in_progress",
     "conclusion": null,
-    "shards": {
-      "count": 6,
-      "observed": "actual Run tests継続中、成功未確定"
+    "rerun": {
+      "command": "gh run rerun --failed",
+      "executedBy": "root",
+      "sameHead": true,
+      "codeChanges": 0,
+      "testConditionChanges": 0,
+      "shard": 3,
+      "jobId": 121528289673,
+      "startedAt": "2026-10-26T10:45:57Z",
+      "result": "pending"
     },
-    "archUnit": "success",
-    "gitleaks": {
-      "runId": 40298406051,
-      "conclusion": "success"
+    "attemptHistory": [
+      {
+        "head": "092ca37a587f6b589df9234126d6f43916c036cc",
+        "event": "push",
+        "runId": 40298405982,
+        "attempt": 1,
+        "status": "completed",
+        "conclusion": "failure",
+        "shards": {
+          "count": 6,
+          "success": [
+            0,
+            1,
+            2,
+            4,
+            5
+          ],
+          "failure": [
+            3
+          ],
+          "failedJob": 121490202537,
+          "failedStep": {
+            "number": 6,
+            "name": "Run tests",
+            "conclusion": "failure"
+          }
+        },
+        "archUnit": "success",
+        "gitleaks": {
+          "runId": 40298406051,
+          "conclusion": "success"
+        },
+        "owner": "Luna CI担当監視中",
+        "note": "main統合CIは失敗で未完了。実装head d689 CI成功と区別し、後続Build & Deploy skippedを成功扱いしない。",
+        "confirmedBy": "root gh独立最終確認",
+        "detect": "success",
+        "buildAndDeploy": {
+          "conclusion": "skipped",
+          "successClaimed": false
+        },
+        "cause": "限定read-only調査終了・root検分済み。TX開始時の接続取得timeoutまで確定、active接続保持の根因は未解明。",
+        "failureDetail": {
+          "test": "LoyaltyPointsWriterIT.AC19_別人初回200並列はprogram共有lock下で全員一回だけ作成する",
+          "sourceLine": 470,
+          "type": "transaction/JDBC connection acquisition exception",
+          "assertionMismatchReported": false,
+          "timeoutMs": 3047,
+          "pool": {
+            "total": 33,
+            "active": 31,
+            "idle": 2,
+            "waiting": 45
+          },
+          "testResults": {
+            "completed": 5650,
+            "failed": 1,
+            "skipped": 2
+          },
+          "evidenceLimit": "プール待機集中は確定。active接続保持の理由は失敗ログから未解明。"
+        }
+      }
+    ],
+    "investigation": {
+      "poolWaiterBacklog": "confirmed",
+      "activeConnectionRetentionCause": "unresolved",
+      "writerCauseReadonlyInvestigation": "限定read-only調査終了・root検分済み",
+      "successWouldProveRootCauseFixed": false,
+      "confirmedFailureBoundary": "TX開始時のJDBC接続取得timeout",
+      "notEstablished": [
+        "プール上限枯渇",
+        "接続リーク",
+        "deadlock",
+        "flake",
+        "間接影響皆無"
+      ],
+      "poolLimit": {
+        "configuredDefaultMax": 50,
+        "effectiveMaxObserved": false,
+        "note": "pool total33だけでmax50到達/上限枯渇と断定しない。"
+      },
+      "configurationMismatch": {
+        "convention": {
+          "minimumEqualsMaximum": true,
+          "connectionTimeoutMs": 30000
+        },
+        "actualDefaults": {
+          "minimumIdle": 10,
+          "maximumPoolSize": 50,
+          "connectionTimeoutMs": 3000
+        },
+        "reportedToUser": true,
+        "resolved": false
+      },
+      "sourceScope": {
+        "matchingSourceBlobsInCheckedScope": true,
+        "warmup": false,
+        "transactionCount": 1,
+        "externalCalls": false,
+        "requiresNew": false,
+        "flow": "program/rule共有lock→本人排他→初回insert",
+        "indirectEffectsExcluded": false
+      }
     },
-    "owner": "Luna CI担当監視中",
-    "note": "ArchUnit/Gitleaksの成功だけで統合Backend/他mainCIを合格扱いしない。"
+    "note": "attempt1 failure/後続Build & Deploy skippedを履歴保持。attempt2成功でも根治済み/全初回成功とは称さない。main統合CI未完了。"
   },
   "history": {
     "a363": "docs/evidence/CMP-261022-0914/historical-a363-ci-summary.json",
