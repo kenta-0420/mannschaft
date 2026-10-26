@@ -43,6 +43,8 @@ test.info().annotations.push({
 
 既存runnerを使わない住民の逐次探索も、実証跡の構造化登録として既存overlayへ取り込めます。この場合は`registrationSource: actual-resident-artifacts`、`trusted: false`、`status: observed-unverified`を明示し、`personas`と`journeys`に一意の実ID・personaArchetype・元runId・sourceHead・evidencePath・目的を宣言します。気づきはその宣言に対応するpersonaId/journeyId・originalRunId・証拠を保持します。原本にIDが無い場合は登録時付与と明記し、固定P01〜P20へ偽って変換しません。既存runner/dynamic runnerの実行やcoverage合格を意味しません。`node docs/prototypes/validate-beta-inventory-board.mjs --self-test-overlay`で宣言整合と不正なID・証拠欠落の拒否を確認できます。
 
+累積overlayの`environment.sourceHead`は登録時の環境基準です。個々の実行headとrunIdは各persona/journey宣言に保持し、異なるhead・runの観測を同じ値へ書き換えません。各journeyのsourceHead/runIdは対応するpersonaと一致し、insightのoriginalRunIdは対応journeyのrunIdと一致する必要があります。自己検証は異なる2head・2runの正規受理と、persona/journey間のhead不一致・insightの元run不一致の拒否も確認します。
+
 実行後、ローカル結果をダッシュボードデータへ含めて再生成します。
 
 ```powershell
