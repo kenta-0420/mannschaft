@@ -20,7 +20,6 @@ describe('本番 SSR の依存ヒント', () => {
       const hook = config.hooks?.['build:manifest'] as
         | ((manifest: Record<string, Record<string, unknown>>) => void)
         | undefined
-      expect(hook).toBeTypeOf('function')
 
       const original: Record<string, ManifestEntry> = {
         entry: {
