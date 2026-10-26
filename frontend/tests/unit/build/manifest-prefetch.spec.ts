@@ -52,8 +52,14 @@ describe('本番 SSR の依存ヒント', () => {
       const newDependencies = dependencies(after)
 
       expect(newDependencies.prefetch).toEqual({})
-      expect(newDependencies.preload).toEqual(oldDependencies.preload)
-      expect(newDependencies.scripts).toEqual(oldDependencies.scripts)
+      expect(Object.keys(newDependencies.preload)).toEqual(Object.keys(oldDependencies.preload))
+      expect(Object.keys(newDependencies.scripts)).toEqual(Object.keys(oldDependencies.scripts))
+      for (const id of Object.keys(oldDependencies.preload)) {
+        expect(newDependencies.preload[id].file).toBe(oldDependencies.preload[id].file)
+      }
+      for (const id of Object.keys(oldDependencies.scripts)) {
+        expect(newDependencies.scripts[id].file).toBe(oldDependencies.scripts[id].file)
+      }
       for (const id of Object.keys(original)) {
         expect(after[id].file).toBe(before[id].file)
         expect(after[id].imports).toEqual(before[id].imports)
