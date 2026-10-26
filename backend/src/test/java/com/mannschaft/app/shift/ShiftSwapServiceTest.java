@@ -1,6 +1,7 @@
 package com.mannschaft.app.shift;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.auth.service.UserStatusLookupService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.common.BusinessException;
@@ -14,6 +15,7 @@ import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.shift.repository.ShiftSwapRequestRepository;
 import com.mannschaft.app.shift.service.ShiftSwapFacade;
+import com.mannschaft.app.shift.service.ShiftSlotService;
 import com.mannschaft.app.shift.service.ShiftSwapService;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
@@ -34,8 +36,10 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * {@link ShiftSwapFacade}（認可）＋{@link ShiftSwapService}（tx 本体）の単体テスト。
@@ -67,6 +71,12 @@ class ShiftSwapServiceTest {
     @Mock
     private EntityManager entityManager;
 
+    @Mock
+    private ShiftSlotService slotService;
+
+    @Mock
+    private UserStatusLookupService userStatusLookupService;
+
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -82,10 +92,10 @@ class ShiftSwapServiceTest {
     @org.junit.jupiter.api.BeforeEach
     void setUpService() {
         shiftSwapService = new ShiftSwapService(swapRepository, slotRepository, scheduleRepository,
-                shiftMapper, objectMapper, entityManager);
+                shiftMapper, objectMapper, entityManager, slotService);
         // 認可は Facade（tx の外）が行う。応答の契約は Facade→tx 本体の合成で検証する。
         swapFacade = new ShiftSwapFacade(shiftSwapService, new ScopeConcealingAccessGate(accessControlService),
-                accessControlService);
+                accessControlService, userStatusLookupService);
     }
 
     // ========================================
@@ -103,6 +113,7 @@ class ShiftSwapServiceTest {
     /** slotId → scheduleId → teamId の scope 解決経路をモックする。 */
     private void givenScopeResolvable() {
         given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(ShiftSlotEntity.builder()
+                .id(SLOT_ID)
                 .scheduleId(SCHEDULE_ID)
                 .slotDate(LocalDate.of(2026, 3, 1))
                 .startTime(LocalTime.of(9, 0))
@@ -567,6 +578,10 @@ class ShiftSwapServiceTest {
             SwapRequestResponse response = createSwapResponse();
             given(swapRepository.findById(SWAP_ID)).willReturn(Optional.of(entity));
             givenTeamAdmin(ADMIN_ID);
+            given(accessControlService.isMember(ACCEPTER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(userStatusLookupService.isActive(ACCEPTER_ID)).willReturn(true);
+            given(scheduleRepository.findByIdForUpdate(SCHEDULE_ID)).willReturn(Optional.of(
+                    ShiftScheduleEntity.builder().status(ShiftScheduleStatus.PUBLISHED).build()));
             given(swapRepository.save(entity)).willReturn(entity);
             given(shiftMapper.toSwapResponse(entity)).willReturn(response);
 
@@ -577,6 +592,8 @@ class ShiftSwapServiceTest {
             assertThat(entity.getStatus()).isEqualTo(SwapRequestStatus.APPROVED);
             assertThat(entity.getResolvedBy()).isEqualTo(ADMIN_ID);
             assertThat(entity.getAdminNote()).isEqualTo("承認します");
+            verify(slotService).replaceAssignmentForSwap(
+                    eq(SLOT_ID), eq(REQUESTER_ID), eq(ACCEPTER_ID), eq(ADMIN_ID));
         }
 
         @Test
@@ -596,6 +613,7 @@ class ShiftSwapServiceTest {
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(SwapRequestStatus.REJECTED);
+            verifyNoInteractions(slotService, userStatusLookupService);
         }
 
         @Test

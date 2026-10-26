@@ -220,8 +220,10 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     Optional<UserStatus> findStatusById(@Param("userId") Long userId);
 
     /** 他ドメインから Entity 内 enum を参照せず、有効な本人宛先を判定する。 */
-    @Query(value = "SELECT EXISTS(SELECT 1 FROM users WHERE id = :userId AND status = 'ACTIVE' AND deleted_at IS NULL)",
-            nativeQuery = true)
+    // native EXISTSはMySQLでLongになるため、JPQLのboolean射影で型を保証する。
+    @Query("SELECT COUNT(u) > 0 FROM UserEntity u WHERE u.id = :userId "
+            + "AND u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE "
+            + "AND u.deletedAt IS NULL")
     boolean existsActiveById(@Param("userId") Long userId);
 
     long countByLastLoginAtAfterAndStatusAndDeletedAtIsNull(LocalDateTime since, UserEntity.UserStatus status);

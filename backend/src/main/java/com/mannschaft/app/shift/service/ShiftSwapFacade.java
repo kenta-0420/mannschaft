@@ -1,5 +1,6 @@
 package com.mannschaft.app.shift.service;
 
+import com.mannschaft.app.auth.service.UserStatusLookupService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
@@ -36,7 +37,7 @@ import java.util.List;
  * user_roles のみの ADMIN       200(全件)      403 COMMON_002   403 COMMON_002    200(状態次第)     204(状態次第)
  * 対象不在(swap/slot)           (n/a)          404 SHIFT_002    404 SHIFT_005     404 SHIFT_005     404 SHIFT_005
  * 親だけ不在(枠→スケジュール)   (n/a)          404 SHIFT_001    404 SHIFT_001     404 SHIFT_001     404 SHIFT_001(本人以外)
- * DB 変更: 拒否・不在はすべて変更なし。成功のみ swap 行の insert/update。
+ * DB 変更: 拒否・不在はすべて変更なし。承認はswap・枠の担当・割当履歴を同時更新する。
  * </pre>
  * <p>※作成資格はPUBLISHEDかつ現在のassigned_user_idsに本人を含むこと。スコープ認可通過後の業務TXで
  * 状態を先に確認し、非PUBLISHEDは409 SHIFT_012、本人外・未割当は403 SHIFT_019とする。
@@ -53,6 +54,7 @@ public class ShiftSwapFacade {
     private final ShiftSwapService swapService;
     private final ScopeConcealingAccessGate accessGate;
     private final AccessControlService accessControlService;
+    private final UserStatusLookupService userStatusLookupService;
 
     /**
      * 指定チームの交代リクエスト一覧を取得する。
@@ -112,7 +114,17 @@ public class ShiftSwapFacade {
         ShiftSwapService.SwapScope scope = swapService.resolveSwapScope(swapId);
         accessGate.requireAdminOrConceal(
                 adminId, scope.teamId(), TEAM, ShiftErrorCode.SWAP_REQUEST_NOT_FOUND);
-        return swapService.resolveSwapRequest(swapId, req, adminId);
+        Long expectedAccepterId = null;
+        if ("APPROVE".equals(req.getAction())) {
+            expectedAccepterId = swapService.resolveApprovalAccepterId(swapId);
+            // 承諾後の脱退・資格変更を再検査する。却下は受諾者の現在資格に依存しない。
+            if (!accessControlService.isMember(expectedAccepterId, scope.teamId(), TEAM)
+                    || accessControlService.isSupporter(expectedAccepterId, scope.teamId(), TEAM)
+                    || !userStatusLookupService.isActive(expectedAccepterId)) {
+                throw new BusinessException(ShiftErrorCode.OPTIMISTIC_LOCK_CONFLICT);
+            }
+        }
+        return swapService.resolveSwapRequest(swapId, req, adminId, expectedAccepterId);
     }
 
     /**
