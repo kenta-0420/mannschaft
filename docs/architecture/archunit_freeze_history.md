@@ -963,3 +963,9 @@ D-3Tストアの追加0・削除3と上限7322を引き継ぐ。L1-Fの初回補
 ## 2026-10-24 main PR4070のgetSlug追加1件に対する限定承認
 
 PR #4070（`28d99fcd06d61810c198ead78f830512d536fb29`）で `ScopeWidgetSummaryService.buildLatestBlogPosts` に追加された `BlogPostEntity.getSlug()` の1依存だけを、初回承認178件とは別の新規依存として許容することをユーザーが「承認」と明示した。この限定承認に基づきD-1ストアに当該descriptionをoccurrence=1で1行追加し、D-1上限2156→2157とする。既存prefix群の頻度は6→7で、新class-pairは追加しない。他のbaseline・上限・タグ・判定・除外・実行時間制限は変更しない。この承認は当該getSlug依存1件に限り、以後の無断baseline追加を認めない。
+
+## 2026-10-25 L1-A移設由来の限定同期
+
+CMP-261022-0914 / PR #4049。L1-A再開時のユーザー裁可（移設由来の実測追加に限り、旧全キー・多重度を維持してストア・対応上限・履歴を同期）に基づく。全量Backend CI [run 40194647331](https://github.com/kenta-0420/mannschaft/actions/runs/40194647331)、測定HEAD `a9676a432eadf0cea7063d8292b45958c8d9f4ba` のowner解析XML本文から、D-3はshard2の21件（1325→1346）、D-3Tはshard1の30件（7322→7352）、D-5はshard4の21件（1876→1897）を採取した。各suiteは1case・1failure・error/skip 0で、ヘッダ件数と本文の追加行数は一致する。追加はすべて `role.service.DefaultAccessControlService` の移設由来であり、返済とは扱わない。
+
+旧全キー・occurrenceを含む多重度は全件保持し、削減0。各ownerの解析後8ストア原本は測定前と全行一致し、候補への追加以外の4ストア・UUID・`stored.rules`・他4上限・判定・除外は変更しない。PR #4023の既返済3件とD-3T基準7322を維持する。原本ZIPのdigest・XML・8ストア・追加候補・照合結果は測定用Tempに保存した。Non-JSTジョブの失敗も同じ3番人の21/30/21件であり、通常のtimezone試験には未到達。測定runと同期後HEADの全量CI最終greenは未確定で、未完了・未実行を合格扱いしない。
