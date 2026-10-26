@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -23,7 +23,7 @@ public class TeamQueryService {
 
     /** 他ドメインへ渡すチーム一覧情報。公開範囲はEntityのenumに依存しない文字列とする。 */
     public record TeamListItem(Long id, String slug, String name, String visibility,
-                               LocalDateTime archivedAt, String template) {
+                               Instant archivedAt, String template) {
     }
 
     /** チームID群を1 SQLで取得する。不存在・論理削除済みは除外し、空入力はSQLを発行しない。 */

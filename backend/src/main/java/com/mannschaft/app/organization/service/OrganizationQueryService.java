@@ -2,7 +2,7 @@ package com.mannschaft.app.organization.service;
 
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.OrganizationQueryMapper;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -31,7 +31,7 @@ public class OrganizationQueryService {
 
     /** 他ドメイン向けの一覧用情報。Entityやそのenumを境界外へ公開しない。 */
     public record OrganizationListItem(Long id, String slug, String name, String visibility,
-                                       LocalDateTime archivedAt) {
+                                       Instant archivedAt) {
     }
 
     /**
