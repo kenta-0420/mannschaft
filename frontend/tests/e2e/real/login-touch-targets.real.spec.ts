@@ -56,9 +56,13 @@ async function assertTargets(page: Page): Promise<void> {
       const rect = element.getBoundingClientRect()
       const range = document.createRange()
       range.selectNodeContents(element)
-      const textFits = Array.from(range.getClientRects()).every(text =>
-        text.left >= rect.left - 1 && text.right <= rect.right + 1
-        && text.top >= rect.top - 1 && text.bottom <= rect.bottom + 1)
+      const textFits = Array.from(range.getClientRects()).every(
+        (text) =>
+          text.left >= rect.left - 1 &&
+          text.right <= rect.right + 1 &&
+          text.top >= rect.top - 1 &&
+          text.bottom <= rect.bottom + 1,
+      )
       const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
       return {
         x: rect.left + window.scrollX,
@@ -77,19 +81,28 @@ async function assertTargets(page: Page): Promise<void> {
     for (let j = i + 1; j < boxes.length; j++) {
       const a = boxes[i]!
       const b = boxes[j]!
-      const overlap = Math.min(a.x + a.width, b.x + b.width) > Math.max(a.x, b.x)
-        && Math.min(a.y + a.height, b.y + b.height) > Math.max(a.y, b.y)
+      const overlap =
+        Math.min(a.x + a.width, b.x + b.width) > Math.max(a.x, b.x) &&
+        Math.min(a.y + a.height, b.y + b.height) > Math.max(a.y, b.y)
       expect(overlap, `${controls[i]} と ${controls[j]} の重なり`).toBe(false)
     }
   }
 }
 
-for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }]) {
+for (const viewport of [
+  { width: 360, height: 800 },
+  { width: 390, height: 844 },
+]) {
   for (const locale of ['ja', 'en', 'de']) {
     for (const notice of [false, true]) {
-      test(`${viewport.width}px ${locale} 案内${notice}: 実入力と補助リンク44px・文字切れなし`, async ({ page, context }, testInfo) => {
+      test(`${viewport.width}px ${locale} 案内${notice}: 実入力と補助リンク44px・文字切れなし`, async ({
+        page,
+        context,
+      }, testInfo) => {
         await page.setViewportSize(viewport)
-        await context.addCookies([{ name: 'i18n_locale', value: locale, url: 'http://localhost:3001' }])
+        await context.addCookies([
+          { name: 'i18n_locale', value: locale, url: 'http://localhost:3001' },
+        ])
         await openLogin(page, notice)
         await expect(page.locator('html')).toHaveAttribute('lang', new RegExp(`^${locale}`))
         await assertTargets(page)
@@ -98,8 +111,16 @@ for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }
           contentType: 'image/png',
         })
         await testInfo.attach('login-targets', {
-          body: JSON.stringify(await page.locator(controls.join(',')).evaluateAll(elements =>
-            elements.map(element => ({ id: element.id, href: element.getAttribute('href'), width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height })))),
+          body: JSON.stringify(
+            await page.locator(controls.join(',')).evaluateAll((elements) =>
+              elements.map((element) => ({
+                id: element.id,
+                href: element.getAttribute('href'),
+                width: element.getBoundingClientRect().width,
+                height: element.getBoundingClientRect().height,
+              })),
+            ),
+          ),
           contentType: 'application/json',
         })
       })
@@ -107,13 +128,18 @@ for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }
   }
 }
 
-for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }]) {
-  test(`${viewport.width}px: 補助3リンクはタッチ操作でトップ・再設定・登録へ遷移する`, async ({ page }) => {
+for (const viewport of [
+  { width: 360, height: 800 },
+  { width: 390, height: 844 },
+]) {
+  test(`${viewport.width}px: 補助3リンクはタッチ操作でトップ・再設定・登録へ遷移する`, async ({
+    page,
+  }) => {
     await page.setViewportSize(viewport)
     for (const destination of ['/', '/forgot-password', '/register']) {
       await openLogin(page)
       await page.locator(`#login-form a[href="${destination}"]`).tap()
-      await expect(page).toHaveURL(url => url.pathname === destination)
+      await expect(page).toHaveURL((url) => url.pathname === destination)
       await waitForHydration(page)
     }
   })
@@ -122,16 +148,25 @@ for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }
 test('空入力・不正emailはHTML検証でログイン送信を抑止する', async ({ page }) => {
   await openLogin(page)
   let loginRequests = 0
-  page.on('request', request => {
-    if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/v1/auth/login') loginRequests++
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/v1/auth/login')
+      loginRequests++
   })
   const email = page.locator('#email')
   const password = page.locator('input#password')
-  for (const values of [ ['', ''], ['invalid', 'InvalidPassword1!'], ['valid@example.invalid', ''] ]) {
+  for (const values of [
+    ['', ''],
+    ['invalid', 'InvalidPassword1!'],
+    ['valid@example.invalid', ''],
+  ]) {
     await clearAndFillInput(email, values[0]!)
     await clearAndFillInput(password, values[1]!)
     await page.locator('[data-login-submit]').tap()
-    expect(await page.locator('#login-form').evaluate(form => (form as HTMLFormElement).checkValidity())).toBe(false)
+    expect(
+      await page
+        .locator('#login-form')
+        .evaluate((form) => (form as HTMLFormElement).checkValidity()),
+    ).toBe(false)
     await expect(page).toHaveURL(/\/login$/)
     expect(loginRequests).toBe(0)
   }
@@ -150,33 +185,53 @@ for (const role of ['MEMBER', 'ADMIN', 'OTHER_TENANT']) {
     await clearAndFillInput(password, passwordValue)
     await page.locator('[data-pc-section="unmaskicon"]').tap()
     await expect(password).toHaveAttribute('type', 'text')
-    expect(await password.inputValue() === passwordValue, '表示切替後もパスワード入力を保持する').toBe(true)
+    expect(
+      (await password.inputValue()) === passwordValue,
+      '表示切替後もパスワード入力を保持する',
+    ).toBe(true)
     await page.locator('[data-pc-section="maskicon"]').tap()
     await expect(password).toHaveAttribute('type', 'password')
 
     if (role === 'MEMBER') {
       const wrongPassword = `${passwordValue}-wrong`
       await clearAndFillInput(password, wrongPassword)
-      const failed = page.waitForResponse(response =>
-        response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/v1/auth/login')
+      const failed = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'POST' &&
+          new URL(response.url()).pathname === '/api/v1/auth/login',
+      )
       await page.locator('[data-login-submit]').tap()
       expect((await failed).status()).toBe(401)
       await expect(page.getByText('ログインに失敗しました', { exact: true })).toBeVisible()
       await expect(page.locator('[data-login-submit]')).toBeEnabled()
       await expect(page).toHaveURL(/\/login$/)
-      expect(await email.inputValue() === emailValue, '不正認証後もメール入力を保持する').toBe(true)
-      expect(await password.inputValue() === wrongPassword, '不正認証後もパスワード入力を保持する').toBe(true)
+      expect((await email.inputValue()) === emailValue, '不正認証後もメール入力を保持する').toBe(
+        true,
+      )
+      expect(
+        (await password.inputValue()) === wrongPassword,
+        '不正認証後もパスワード入力を保持する',
+      ).toBe(true)
       await clearAndFillInput(password, passwordValue)
     }
 
-    const success = page.waitForResponse(response =>
-      response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/v1/auth/login')
+    const success = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname === '/api/v1/auth/login',
+    )
     await page.locator('[data-login-submit]').tap()
     expect((await success).status()).toBe(200)
-    await expect(page).toHaveURL(url => /^\/(dashboard|my|system-admin)(\/|$)/.test(url.pathname), { timeout: 90_000 })
+    await expect(page).toHaveURL(
+      (url) => /^\/(dashboard|my|system-admin)(\/|$)/.test(url.pathname),
+      { timeout: 90_000 },
+    )
     await assertAuthenticatedScreen(page)
     await page.goto('/login')
-    await expect(page).toHaveURL(url => /^\/(dashboard|my|system-admin)(\/|$)/.test(url.pathname), { timeout: 90_000 })
+    await expect(page).toHaveURL(
+      (url) => /^\/(dashboard|my|system-admin)(\/|$)/.test(url.pathname),
+      { timeout: 90_000 },
+    )
     await assertAuthenticatedScreen(page)
   })
 }
