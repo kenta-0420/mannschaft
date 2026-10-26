@@ -160,12 +160,10 @@ test.afterAll(async ({ request }, info) => {
 })
 async function open(page: Page, path: string) {
   const response = await page.goto(path)
-  await test
-    .info()
-    .attach('document-status', {
-      body: JSON.stringify({ path, status: response?.status() }),
-      contentType: 'application/json',
-    })
+  await test.info().attach('document-status', {
+    body: JSON.stringify({ path, status: response?.status() }),
+    contentType: 'application/json',
+  })
   await waitForHydration(page)
 }
 test.afterEach(async ({ page }, info) => {
@@ -209,7 +207,13 @@ for (const scope of ['organizations', 'teams'] as const) {
     await expect(page.getByRole('heading', { name: f.name, exact: true }).first()).toBeVisible()
     await open(page, `/${scope}/${f.slug}/settings/public-settings`)
     await expect(page.getByTestId('slug-rename-field')).toHaveCount(0)
-    await expect(page.getByRole('button', { name: '再試行', exact: true }).first()).toBeVisible()
+    await expect(
+      page.getByTestId(
+        scope === 'teams' ? 'team-public-settings-form' : 'org-public-settings-form',
+      ),
+    ).toHaveCount(0)
+    // DashboardErrorStateは403を再試行不可のアクセス拒否として表示する。
+    await expect(page.getByText('この画面をご利用いただけません', { exact: true })).toBeVisible()
   })
   test(`M5 ${scope}: 他テナント管理者の旧URL直打ちで非公開詳細を漏らさない`, async ({ page }) => {
     const f = fixtures.find((f) => f.scope === scope && f.owner === admin)!
