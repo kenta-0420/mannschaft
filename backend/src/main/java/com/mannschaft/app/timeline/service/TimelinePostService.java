@@ -323,7 +323,9 @@ public class TimelinePostService {
         log.info("村行事システム投稿作成: id={}, villageId={}, type={}, sourceEventUuid={}",
                 post.getId(), villageId, systemPostType, sourceEventUuid);
 
-        return attachMitayo(List.of(timelineMapper.toPostResponse(post)), null).get(0);
+        // 新規保存した未コミットの投稿にはリアクションが存在せず、作成時の状態は false/0 で確定する。
+        // 既存投稿を読むときの実集計とは分け、他ドメインの作成TXから不要な反応照会へ到達させない。
+        return timelineMapper.toPostResponse(post);
     }
 
     /**
@@ -652,7 +654,8 @@ public class TimelinePostService {
         }
 
         if (ranchCaptureFactory != null) ranchCaptureFactory.finish(post, req, userId, ranchFingerprint, ranchAttachmentIdentities);
-        return attachMitayo(List.of(timelineMapper.toPostResponse(post)), userId).get(0);
+        // 新規投稿自身にはまだ反応がなく、Mapperの false/0 が作成時の確定結果になる。
+        return timelineMapper.toPostResponse(post);
     }
 
     /**
@@ -793,8 +796,8 @@ public class TimelinePostService {
         // リプライのプレビュー（会話の古い順＝createdAt 昇順・先頭最大 RECENT_REPLIES_LIMIT 件）を enrich して同梱する。
         // リプライ一覧 API の ID 昇順キーセットページングと一貫させ「古い順・先頭N件」で統一する（最新N件ではない）。
         // enrichPosts を通すことで一覧と同じく著者名/アバター・投稿元名/slug・代理主体が付与される。
-        List<PostResponse> recentReplies = enrichPosts(timelineMapper.toPostResponseList(
-                postRepository.findRepliesByParentId(postId, PageRequest.of(0, RECENT_REPLIES_LIMIT))), userId);
+        List<PostResponse> recentReplies = attachMitayo(enrichPosts(timelineMapper.toPostResponseList(
+                postRepository.findRepliesByParentId(postId, PageRequest.of(0, RECENT_REPLIES_LIMIT)))), userId);
 
         return PostDetailResponse.builder()
                 .id(post.getId())
@@ -871,7 +874,7 @@ public class TimelinePostService {
         }
         // スコープ別フィードにも著者名/アバター・投稿元名/slug・代理主体を enrich する
         // （マイフィードと同じ enrichPosts を通す）。
-        return enrichPosts(timelineMapper.toPostResponseList(posts), userId);
+        return attachMitayo(enrichPosts(timelineMapper.toPostResponseList(posts)), userId);
     }
 
     /** スコープ別フィードの通常投稿をカーソル方式で取得する（判定用に limit + 1 件）。 */
@@ -893,7 +896,7 @@ public class TimelinePostService {
             posts = postRepository.findFeedPageByScopeType(
                     scopeTypeEnum, scopeId, cursor, PageRequest.of(0, pageSize + 1));
         }
-        return enrichPosts(timelineMapper.toPostResponseList(posts), userId);
+        return attachMitayo(enrichPosts(timelineMapper.toPostResponseList(posts)), userId);
     }
 
     /**
@@ -1003,7 +1006,7 @@ public class TimelinePostService {
                 .toList();
         Map<UUID, VillageAccessGate.VisibleVillage> villagesById = activeVisibleVillages.stream()
                 .collect(Collectors.toMap(VillageAccessGate.VisibleVillage::id, village -> village));
-        return enrichPosts(timelineMapper.toPostResponseList(posts), villagesById, userId);
+        return attachMitayo(enrichPosts(timelineMapper.toPostResponseList(posts), villagesById), userId);
     }
 
     /**
@@ -1026,16 +1029,15 @@ public class TimelinePostService {
      * プリミティブのみを受け取り、Entity を跨いで持ち込まない（新規クロスドメイン FK は作らない）。</p>
      *
      * @param posts マッパー変換済みの投稿レスポンス（生 ID のみ）
-     * @param userId 閲覧者ユーザーID（みたよ状態の一括集計用）
      * @return enrich 済みの投稿レスポンス（順序保持）
      */
-    private List<PostResponse> enrichPosts(List<PostResponse> posts, Long userId) {
-        return enrichPosts(posts, Map.of(), userId);
+    private List<PostResponse> enrichPosts(List<PostResponse> posts) {
+        return enrichPosts(posts, Map.of());
     }
 
     /** 個人集約フィードの一括解決済み村を投稿元表示に利用する。 */
     private List<PostResponse> enrichPosts(
-            List<PostResponse> posts, Map<UUID, VillageAccessGate.VisibleVillage> villagesById, Long userId) {
+            List<PostResponse> posts, Map<UUID, VillageAccessGate.VisibleVillage> villagesById) {
         if (posts == null || posts.isEmpty()) {
             return posts;
         }
@@ -1101,7 +1103,7 @@ public class TimelinePostService {
                         .build())
                 .toList();
         // issue #2424: 一覧（feed）にも添付配列を付与し、画像は署名付き URL で返す。
-        return attachMitayo(attachFeedAttachments(enriched), userId);
+        return attachFeedAttachments(enriched);
     }
 
     /**
@@ -1361,7 +1363,7 @@ public class TimelinePostService {
         int feedSize = size > 0 ? size : DEFAULT_FEED_SIZE;
         List<TimelinePostEntity> replies = postRepository.findRepliesByParentIdAfterCursor(
                 postId, cursor, PageRequest.of(0, feedSize + 1));
-        return enrichPosts(timelineMapper.toPostResponseList(replies), userId);
+        return attachMitayo(enrichPosts(timelineMapper.toPostResponseList(replies)), userId);
     }
 
     /**
@@ -1411,7 +1413,7 @@ public class TimelinePostService {
             posts = postRepository.findPinnedPosts(scopeTypeEnum, scopeId);
         }
         // ピン留め一覧にも著者名/アバター・投稿元名/slug・代理主体を enrich する。
-        return enrichPosts(timelineMapper.toPostResponseList(posts), userId);
+        return attachMitayo(enrichPosts(timelineMapper.toPostResponseList(posts)), userId);
     }
 
     /**
