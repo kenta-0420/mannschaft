@@ -359,6 +359,9 @@ class TimelinePostServiceTest {
 
             // then
             assertThat(result).usingRecursiveComparison().isEqualTo(expected);
+            assertThat(result.isMitayo()).isFalse();
+            assertThat(result.getMitayoCount()).isZero();
+            then(reactionRepository).shouldHaveNoInteractions();
             verify(postRepository).save(any(TimelinePostEntity.class));
         }
 
@@ -1182,6 +1185,9 @@ class TimelinePostServiceTest {
 
             // then: 正常に投稿が作成される
             assertThat(result).isNotNull();
+            assertThat(result.isMitayo()).isFalse();
+            assertThat(result.getMitayoCount()).isZero();
+            then(reactionRepository).shouldHaveNoInteractions();
             verify(postRepository).save(any(TimelinePostEntity.class));
             // メンバーシップチェックは呼ばれないこと
             then(accessControlService).shouldHaveNoInteractions();
@@ -1205,10 +1211,29 @@ class TimelinePostServiceTest {
 
             // then: 正常に投稿が作成される
             assertThat(result).isNotNull();
+            assertThat(result.isMitayo()).isFalse();
+            assertThat(result.getMitayoCount()).isZero();
+            then(reactionRepository).shouldHaveNoInteractions();
             verify(postRepository).save(any(TimelinePostEntity.class));
             // メンバーシップチェックは呼ばれないこと
             then(accessControlService).shouldHaveNoInteractions();
         }
+    }
+
+    @Test
+    @DisplayName("新規の村行事投稿は未反応0件を返しリアクションを集計しない")
+    void newVillagePostDoesNotQueryReactions() {
+        UUID villageId = UUID.randomUUID();
+        given(postRepository.save(any(TimelinePostEntity.class))).willReturn(createPost());
+        given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(createPostResponse());
+
+        PostResponse result = timelinePostService.createSystemVillagePost(villageId,
+                com.mannschaft.app.village.entity.enums.VillageEventNotificationType.EVENT_UPCOMING,
+                UUID.randomUUID(), "村行事投稿");
+
+        assertThat(result.isMitayo()).isFalse();
+        assertThat(result.getMitayoCount()).isZero();
+        then(reactionRepository).shouldHaveNoInteractions();
     }
 
     // ========================================
