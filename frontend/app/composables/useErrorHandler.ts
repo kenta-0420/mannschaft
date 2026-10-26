@@ -26,6 +26,20 @@ const FRIEND_I18N_CODES = new Set([
   'SOCIAL_134',
 ])
 
+// 大会エントリーは既存の領域別キーを使い、BEの日本語messageより利用言語を優先する。
+const TOURNAMENT_ENTRY_I18N_KEYS: Record<string, string> = {
+  TOUR_019: 'tournament.entry.error.TOUR_019',
+  TOUR_020: 'tournament.entry.error.TOUR_020',
+  TOUR_021: 'tournament.entry.error.TOUR_021',
+  TOUR_022: 'tournament.entry.error.TOUR_022',
+  TOUR_023: 'tournament.entry.error.TOUR_023',
+  TOUR_024: 'tournament.entry.error.TOUR_024',
+  TOUR_025: 'tournament.entry.error.TOUR_025',
+  TOUR_026: 'tournament.entry.template.error.TOUR_026',
+  TOUR_027: 'tournament.entry.template.error.TOUR_027',
+  TOUR_028: 'tournament.entry.template.error.TOUR_028',
+}
+
 // サーバーのフィールドエラーメッセージ（英語）→ i18n バリデーションキーのマッピング
 const FIELD_ERROR_PATTERNS: Array<{ pattern: RegExp; key: string }> = [
   { pattern: /required|must not be (blank|empty|null)/i, key: 'required' },
@@ -50,6 +64,8 @@ export const useErrorHandler = () => {
   // BE message を最優先し、無ければ従来どおり i18n キー→汎用文言にフォールバックする。
   const resolveMessage = (code: string, fallback?: string, context?: string): string => {
     const key = `error.${code}`
+    const tournamentKey = TOURNAMENT_ENTRY_I18N_KEYS[code]
+    if (tournamentKey && te(tournamentKey)) return t(tournamentKey)
     if (code === 'COMMON_003' && context === 'team-loyalty') return t('loyalty.error.changed')
     if (code === 'MEMBERSHIP_003' && context === 'team-loyalty')
       return t('loyalty.memberQr.disabled')
