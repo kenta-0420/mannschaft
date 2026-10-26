@@ -1,0 +1,135 @@
+{
+  "campaign": "CMP-261022-0338",
+  "pr": 4125,
+  "mergeHead": "e202bb96c03fc1b9197bfad8d27217dc7b4e8687",
+  "parents": [
+    "03be10c6d87ceeec29d4b09f0bac4db0d391c514",
+    "cd14cf155f90e78d8709135bb08765f9bb450478"
+  ],
+  "worktreeClean": true,
+  "oldRealExecutionHead": "03be10c6d87ceeec29d4b09f0bac4db0d391c514",
+  "oldRealResult": "実機4件passed・3住民探索は03be上の記録。新head実行とは扱わない",
+  "oldRealReportUrl": "http://localhost:3001/system-admin/error-reports/10",
+  "blobs": [
+    {
+      "path": "frontend/app/components/systemAdmin/errorReport/ErrorReportTimelineView.vue",
+      "before": "b56b8c2729e0d2231b54c96385bd692a1117acd1",
+      "after": "b56b8c2729e0d2231b54c96385bd692a1117acd1",
+      "unchanged": true
+    },
+    {
+      "path": "frontend/app/components/systemAdmin/errorReport/ErrorReportCommentForm.vue",
+      "before": "c19637dfaba442ce63e0d1de42c6dbadf3778558",
+      "after": "c19637dfaba442ce63e0d1de42c6dbadf3778558",
+      "unchanged": true
+    },
+    {
+      "path": "frontend/app/pages/system-admin/error-reports",
+      "before": "98cb7e99f057c1a9a0f08d6317e0bb54454eae66",
+      "after": "98cb7e99f057c1a9a0f08d6317e0bb54454eae66",
+      "unchanged": true
+    },
+    {
+      "path": "frontend/app/composables/useErrorReportAdmin.ts",
+      "before": "509edebac6d8a55e98cc3f5643e9d047eab201b5",
+      "after": "509edebac6d8a55e98cc3f5643e9d047eab201b5",
+      "unchanged": true
+    },
+    {
+      "path": "frontend/app/middleware/system-admin.ts",
+      "before": "3de1bea56de0f5ff98e24d3495b110459b67220b",
+      "after": "3de1bea56de0f5ff98e24d3495b110459b67220b",
+      "unchanged": true
+    },
+    {
+      "path": "frontend/app/middleware/auth.ts",
+      "before": "47b06719c8f67d9222c8ce1cccf565692fc7a660",
+      "after": "47b06719c8f67d9222c8ce1cccf565692fc7a660",
+      "unchanged": true
+    },
+    {
+      "path": "frontend/app/stores/useAuthStore.ts",
+      "before": "7f4ee5d3127489133e9b4da59e39d51c43fa2423",
+      "after": "7f4ee5d3127489133e9b4da59e39d51c43fa2423",
+      "unchanged": true
+    },
+    {
+      "path": "frontend/app/layouts/default.vue",
+      "before": "768548e458c4da1850f5e6df76833d5117281886",
+      "after": "768548e458c4da1850f5e6df76833d5117281886",
+      "unchanged": true
+    },
+    {
+      "path": "frontend/app/components/system-admin",
+      "before": "c4799616b1dd221077a83a02eb5ba1aa06a29d8b",
+      "after": "c4799616b1dd221077a83a02eb5ba1aa06a29d8b",
+      "unchanged": true
+    },
+    {
+      "path": "frontend/nuxt.config.ts",
+      "before": "3410e49e6be77b7c54b1be3878e44c4d36dd63f9",
+      "after": "3410e49e6be77b7c54b1be3878e44c4d36dd63f9",
+      "unchanged": true
+    },
+    {
+      "path": "frontend/tailwind.config.ts",
+      "before": "c775cd7c746fc5fa5b7f8ec81cbe5b35a85f4bae",
+      "after": "c775cd7c746fc5fa5b7f8ec81cbe5b35a85f4bae",
+      "unchanged": true
+    },
+    {
+      "path": "frontend/package-lock.json",
+      "before": "01d6dfb363d9b14d0be109f666fbd9abc5e2b856",
+      "after": "01d6dfb363d9b14d0be109f666fbd9abc5e2b856",
+      "unchanged": true
+    },
+    {
+      "path": "frontend/tests/e2e/real/admin/error-report-timeline-wrap.real.spec.ts",
+      "before": "3bc469e28fc5276bc84e87c58b092c2621ce99ea",
+      "after": "3bc469e28fc5276bc84e87c58b092c2621ce99ea",
+      "unchanged": true
+    },
+    {
+      "path": "frontend/scripts/verify-error-report-timeline-wrap.mjs",
+      "before": "a1ff4b39c72757b94055d9071e7e1b2fc5f8b1be",
+      "after": "a1ff4b39c72757b94055d9071e7e1b2fc5f8b1be",
+      "unchanged": true
+    },
+    {
+      "path": "backend/src/main/java/com/mannschaft/app/errorreport",
+      "before": "c4232b05406896017fc87b806f282acac7d84906",
+      "after": "c4232b05406896017fc87b806f282acac7d84906",
+      "unchanged": true
+    },
+    {
+      "path": "backend/src/main/java/com/mannschaft/app/config/SecurityConfig.java",
+      "before": "d5851f1a1e74b54c9e05c6f46c2559994f1f6e2b",
+      "after": "d5851f1a1e74b54c9e05c6f46c2559994f1f6e2b",
+      "unchanged": true
+    }
+  ],
+  "mainDelta": {
+    "commits": [
+      "cfe79e0fa8:機能表示設定",
+      "cd14cf155f:完了文書・台帳"
+    ],
+    "relevantChanges": [
+      "scope feature-policy API/entity/serviceとmigration追加",
+      "BaseSidebar/TeamSidebar/ScopeDashboard/Dashboard群/useRoleAccess更新",
+      "6言語commonとgenerated型・README更新"
+    ],
+    "sharedShellAndGuards": "frontend/app/components/shell・plugins・middleware・layouts・stores・useApi.ts・useScopeRouteSync.tsの差分なし",
+    "scope": "今回の製品CSS・コメント画面・SYSTEM_ADMIN導線と認証/BEerrorreportは不変。追加製品修正なし"
+  },
+  "ci": {
+    "head": "e202bb96c03fc1b9197bfad8d27217dc7b4e8687",
+    "started": true,
+    "result": "確認待ち。03beのCIgreenを新head合格へ流用しない"
+  },
+  "nextVerification": {
+    "environment": "殿方針: 最新CSP d969 jarとFE e202を専有runtimeへ揃えたready後に実行",
+    "tests": "既存real spec4件を1回実行。新規試験機能は追加しない",
+    "reason": "targetとガードは不変だがmainのfeature-policy API/migration/共有Dashboard更新との最終統合を確認する",
+    "residentReuse": "03beの3住民記録はtarget/guard/shell blob不変とmain既存独立証跡を明記して再利用。3住民の重複再起動はしない"
+  }
+}

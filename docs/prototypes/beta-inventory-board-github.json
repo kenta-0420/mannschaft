@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "repository": "kenta-0420/mannschaft",
-  "synchronizedAt": "2026-10-26T01:46:00+00:00",
+  "synchronizedAt": "2026-10-26T04:18:35+00:00",
   "status": "synced",
   "error": null,
   "references": {
@@ -1804,7 +1804,9 @@
     ],
     "CMP-261022-0234": [],
     "CMP-261022-0235": [],
-    "CMP-261022-0338": [],
+    "CMP-261022-0338": [
+      4125
+    ],
     "CMP-261021-2213": [
       4045
     ],
@@ -10304,7 +10306,7 @@
       "state": "open",
       "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
       "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-      "updatedAt": "2026-10-26T00:17:58Z",
+      "updatedAt": "2026-10-26T02:59:48Z",
       "ci": null
     },
     "4023": {
@@ -10681,7 +10683,7 @@
       "state": "merged",
       "title": "機能追加: チーム・組織の一般機能をロール別に表示設定",
       "url": "https://github.com/kenta-0420/mannschaft/pull/4116",
-      "updatedAt": "2026-10-26T01:40:43Z",
+      "updatedAt": "2026-10-26T01:56:26Z",
       "ci": {
         "status": "unavailable",
         "reason": "終了済みPRのCIは同期対象外",
@@ -10710,6 +10712,20 @@
       "title": "修正: CMP-261025-1320 マイシフトのモバイル操作領域を44pxへ拡大",
       "url": "https://github.com/kenta-0420/mannschaft/pull/4119",
       "updatedAt": "2026-10-25T15:21:21Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "4125": {
+      "number": 4125,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "修正: エラーレポートの長いコメントの折返しを改善",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4125",
+      "updatedAt": "2026-10-26T04:09:48Z",
       "ci": {
         "status": "unavailable",
         "reason": "終了済みPRのCIは同期対象外",
