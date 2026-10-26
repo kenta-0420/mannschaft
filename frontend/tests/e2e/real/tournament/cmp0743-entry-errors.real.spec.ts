@@ -21,10 +21,12 @@ const adminEmail = process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.lo
 const password = process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!'
 const messages = { ja, en, zh, ko, es, de }
 type Locale = keyof typeof messages
-type Scope = { id: number; name: string; role?: string }
 let api: APIRequestContext
 let orgId: number
 let teamId: number
+let orgSlug: string | undefined
+let teamSlug: string | undefined
+let affiliationActive = false
 let tournamentId: number | undefined
 let divisionId: number
 let participantId: number
@@ -40,21 +42,42 @@ test.beforeAll(async () => {
   api = await request.newContext({ baseURL: API })
   const login = await api.post('/api/v1/auth/login', { data: { email: adminEmail, password } })
   expect(login.status(), 'fixture管理者ログイン').toBe(200)
-  const organizations = await api.get('/api/v1/me/organizations?size=100')
-  expect(organizations.status()).toBe(200)
-  const orgs = (await organizations.json()).data as Scope[]
-  const organization = process.env.WAVE3_ORG_ID
-    ? orgs.find((org) => org.id === Number(process.env.WAVE3_ORG_ID))
-    : orgs.find((org) => org.name.includes('日本サッカー'))
-  expect(organization, 'canonical seedのJFA組織').toBeTruthy()
-  orgId = organization!.id
-  const teams = await api.get('/api/v1/me/teams')
-  expect(teams.status()).toBe(200)
-  const team = ((await teams.json()).data as Scope[]).find((item) =>
-    item.name.includes('FC東京U-18'),
-  )
-  expect(team, 'canonical seedの管理対象チーム').toBeTruthy()
-  teamId = team!.id
+  // seedの親組織と直接加盟先は異なるため、所有fixtureだけを正規APIで作成する。
+  const organization = await api.post('/api/v1/organizations', {
+    data: {
+      name: `${prefix}-org`,
+      slug: `cmp0743-o-${Date.now()}`,
+      orgType: 'OTHER',
+      visibility: 'PUBLIC',
+    },
+  })
+  expect(organization.status()).toBe(201)
+  const org = (await organization.json()).data as { numericId: number; slug: string }
+  orgId = org.numericId
+  orgSlug = org.slug
+  expect(orgId).toBeGreaterThan(0)
+  const team = await api.post('/api/v1/teams', {
+    data: {
+      name: `${prefix}-team`,
+      slug: `cmp0743-t-${Date.now()}`,
+      template: 'SPORTS',
+      visibility: 'PUBLIC',
+    },
+  })
+  expect(team.status()).toBe(201)
+  const teamData = (await team.json()).data as { numericId: number; slug: string }
+  teamId = teamData.numericId
+  teamSlug = teamData.slug
+  expect(teamId).toBeGreaterThan(0)
+  const invite = await api.post(`/api/v1/organizations/${orgSlug}/team-invites`, {
+    data: { teamSlug },
+  })
+  expect(invite.status()).toBe(201)
+  const membershipId = (await invite.json()).data.id as number
+  const accept = await api.post(`/api/v1/teams/${teamSlug}/org-invites/${membershipId}/accept`)
+  expect(accept.status()).toBe(200)
+  expect((await accept.json()).data.status).toBe('ACTIVE')
+  affiliationActive = true
 
   const tournament = await api.post(`/api/v1/organizations/${orgId}/tournaments`, {
     data: { name: prefix, format: 'LEAGUE', visibility: 'PUBLIC', sport: 'SOCCER' },
@@ -71,22 +94,73 @@ test.beforeAll(async () => {
   })
   expect(participant.status()).toBe(201)
   participantId = (await participant.json()).data.id as number
+  console.log(
+    'CMP0743 owned fixture',
+    JSON.stringify({
+      prefix,
+      orgId,
+      orgSlug,
+      teamId,
+      teamSlug,
+      tournamentId,
+      divisionId,
+      participantId,
+    }),
+  )
 })
 
 test.afterAll(async () => {
   if (!api) return
+  const failures: string[] = []
+  const clean = async (name: string, run: () => Promise<void>) => {
+    try {
+      await run()
+    } catch (error) {
+      failures.push(`${name}: ${String(error)}`)
+    }
+  }
   try {
     for (const id of templateIds) {
-      const response = await api.delete(`${templateApi()}/${id}`)
-      expect(response.status(), '所有テンプレートcleanup').toBe(204)
+      await clean(`template ${id}`, async () => {
+        const response = await api.delete(`${templateApi()}/${id}`)
+        expect(response.status(), '所有テンプレートcleanup').toBe(204)
+        expect((await api.get(`${templateApi()}/${id}`)).status()).toBe(404)
+        console.log('CMP0743 cleanup template', id, '204->404')
+      })
     }
     if (tournamentId) {
-      const response = await api.delete(tournamentApi())
-      expect(response.status(), '所有大会cleanup').toBe(204)
+      await clean('tournament', async () => {
+        const response = await api.delete(tournamentApi())
+        expect(response.status(), '所有大会cleanup').toBe(204)
+        expect((await api.get(tournamentApi())).status()).toBe(404)
+        console.log('CMP0743 cleanup tournament', tournamentId, '204->404')
+      })
     }
+    if (affiliationActive)
+      await clean('affiliation', async () => {
+        const path = `/api/v1/teams/${teamSlug}/organizations/${orgSlug}`
+        expect((await api.delete(path)).status()).toBe(204)
+        expect((await api.delete(path)).status()).toBe(404)
+        console.log('CMP0743 cleanup affiliation', teamId, orgId, '204->404')
+      })
+    if (teamSlug)
+      await clean('team', async () => {
+        const path = `/api/v1/teams/${teamSlug}`
+        expect((await api.delete(path)).status()).toBe(204)
+        expect((await api.get(path)).status()).toBe(404)
+        console.log('CMP0743 cleanup team', teamId, '204->404')
+      })
+    if (orgSlug)
+      await clean('organization', async () => {
+        const path = `/api/v1/organizations/${orgSlug}`
+        expect((await api.delete(path)).status()).toBe(204)
+        expect((await api.get(path)).status()).toBe(404)
+        console.log('CMP0743 cleanup organization', orgId, '204->404')
+      })
   } finally {
     await api.dispose()
   }
+  expect(failures, '所有fixtureの後始末を全件確認').toEqual([])
 })
 
 async function open(page: Page, locale: Locale, email = adminEmail) {
@@ -142,6 +216,8 @@ for (const locale of Object.keys(messages) as Locale[]) {
     await page.getByRole('option', { name: `${prefix}-${locale}`, exact: true }).click()
     const removed = await api.delete(`${templateApi()}/${templateId}`)
     expect(removed.status()).toBe(204)
+    expect((await api.get(`${templateApi()}/${templateId}`)).status()).toBe(404)
+    console.log('CMP0743 cleanup template', templateId, '204->404')
     templateIds.delete(templateId)
     const apply = page.waitForResponse(
       (response) =>
