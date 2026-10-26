@@ -533,6 +533,30 @@ class InboxScopeContractIT extends AbstractMySqlIntegrationTest {
         }
     }
 
+    @Test
+    @DisplayName("有界overlay取得は本人・ソース種別・出現IDをすべてSQLで限定する")
+    void boundedOverlayKeepsUserAndSourceBoundary() {
+        itemStateRepository.save(overlay(attackerId, triagedNotificationId));
+        InboxItemStateEntity anotherType = overlay(ownerId, triagedNotificationId);
+        anotherType.setSourceType(InboxSourceType.ANNOUNCEMENT);
+        itemStateRepository.save(anotherType);
+        itemStateRepository.save(overlay(ownerId, ownerNotificationId));
+        em.flush();
+        em.clear();
+
+        try (var capture = SqlIntentCounter.captureCurrentThread()) {
+            var rows = itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(
+                    ownerId, InboxSourceType.NOTIFICATION, List.of(triagedNotificationId));
+            assertThat(rows).singleElement().satisfies(row -> {
+                assertThat(row.getUserId()).isEqualTo(ownerId);
+                assertThat(row.getSourceType()).isEqualTo(InboxSourceType.NOTIFICATION);
+                assertThat(row.getSourceId()).isEqualTo(triagedNotificationId);
+                assertThat(row.getArchivedAt()).isNotNull();
+            });
+            assertThat(capture.capturedSqls()).hasSize(1);
+        }
+    }
+
     @ParameterizedTest
     @ValueSource(ints = {499, 500, 501})
     @DisplayName("通知windowの前後でも本人の優先度順500件だけを読みCOUNTを発行しない")
