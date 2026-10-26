@@ -4,7 +4,6 @@ import json
 import os
 from pathlib import Path
 import re
-import secrets
 import shlex
 import subprocess
 import sys
@@ -87,7 +86,7 @@ class SecretScanRegression(unittest.TestCase):
         path.write_text(contents, encoding='utf-8')
 
     def token(self):
-        value = secrets.token_hex(24)
+        value = ''.join(f'{digit:x}' for digit in range(16)) * 3
         self.values.append(value)
         return value
 
