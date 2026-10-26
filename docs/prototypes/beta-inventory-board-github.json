@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "repository": "kenta-0420/mannschaft",
-  "synchronizedAt": "2026-10-26T07:31:33+00:00",
+  "synchronizedAt": "2026-10-26T11:04:52+00:00",
   "status": "synced",
   "error": null,
   "references": {
@@ -1615,7 +1615,9 @@
     "CMP-261015-1421": [
       3888
     ],
-    "CMP-261015-1510": [],
+    "CMP-261015-1510": [
+      4133
+    ],
     "CMP-261015-1718": [
       3922,
       3932
@@ -1868,7 +1870,8 @@
     "CMP-261026-1344": [
       4022,
       4049
-    ]
+    ],
+    "CMP-261026-1912": []
   },
   "items": {
     "261": {
@@ -10312,7 +10315,7 @@
       "state": "open",
       "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
       "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-      "updatedAt": "2026-10-26T07:11:49Z",
+      "updatedAt": "2026-10-26T10:45:15Z",
       "ci": null
     },
     "4023": {
@@ -10458,12 +10461,13 @@
     "4049": {
       "number": 4049,
       "kind": "pull_request",
-      "state": "open",
+      "state": "merged",
       "title": "CMP-261022-0914: L1-A 認可サービスのinterface化とroleへの移設",
       "url": "https://github.com/kenta-0420/mannschaft/pull/4049",
-      "updatedAt": "2026-10-26T07:08:04Z",
+      "updatedAt": "2026-10-26T09:17:29Z",
       "ci": {
-        "status": "pending",
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
         "checks": [],
         "source": "GraphQL statusCheckRollup"
       }
@@ -10773,6 +10777,20 @@
       "title": "修正(CMP-261001-0839): CSPレポートのreports+jsonを受理しHTTP契約を固定",
       "url": "https://github.com/kenta-0420/mannschaft/pull/4127",
       "updatedAt": "2026-10-26T05:26:43Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "4133": {
+      "number": 4133,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "CMP-261015-1510 ログイン画面の入力欄・補助リンクを44px以上にする",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4133",
+      "updatedAt": "2026-10-26T11:01:44Z",
       "ci": {
         "status": "unavailable",
         "reason": "終了済みPRのCIは同期対象外",

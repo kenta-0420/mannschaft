@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-10-26T07:33:07+00:00",
+  "generatedAt": "2026-10-26T11:07:42+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,19 +8,19 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "4fc71c9001bf4096cfbe339708c189597c80e9a4",
+    "taskListCommit": "063060ac4c9e85d66e6506cb55fffe478483aacc",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "469514d12c61aa8a1406af0077528020db9a7a5baa21d9d665e88a8b2f6c4659",
+    "taskListSha256": "d8e6bb4676de70ab27d9fc7d2eaae59f786b3e693c5800f777a087f69983d88f",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "e92b08141ed43e24e61e86fcdb2c5544cf257c38bd7e5959264ebb93373057c0"
+    "githubSnapshotSha256": "f0c881d07ec69a1edf0d0d35474b7601b167b2372a628967832b719391ef628c"
   },
   "sourceCounts": {
     "features": 44,
     "capabilities": 95,
     "splitParents": 33,
-    "campaigns": 596,
+    "campaigns": 597,
     "layer": {
       "能力": 26,
       "ドメイン": 18
@@ -37,11 +37,11 @@ window.BETA_INVENTORY_DATA = {
   "verification": {
     "raw": {
       "features": 44,
-      "campaigns": 596
+      "campaigns": 597
     },
     "parsed": {
       "features": 44,
-      "campaigns": 596,
+      "campaigns": 597,
       "core": 25,
       "noncore": 19,
       "blockers": 23,
@@ -8390,15 +8390,19 @@ window.BETA_INVENTORY_DATA = {
     "registrationSource": "actual-resident-artifacts",
     "trusted": false,
     "status": "observed-unverified",
-    "runId": "october-first-wave-20261026",
+    "runId": "october-wave2-login-resident-overlay-20261026",
     "environment": {
-      "sourceHead": "03be10c6d87ceeec29d4b09f0bac4db0d391c514",
-      "purpose": "Timeline長語折返しの3住民モバイル探索。実装AC外の観測候補も未実証で記録し、既存B0 coverageやrunner成功を主張しない。",
+      "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+      "purpose": "既存5件の出所を保持し、c717で実施した独立3住民の未実証観測8件を累積する。実装PR最終0042のCI成功とマージを確認済み。",
       "viewport": [
-        "390x844",
-        "360x800"
+        "360x800",
+        "390x844"
       ],
-      "idAssignment": "personaIdは原residentIdを保持。A/BのjourneyIdと各insightIdは登録時付与。固定P01-P20への変換なし。testAccountIdと原runId/sourceHeadを保持。"
+      "idAssignment": "personaIdは原residentIdを保持。A/BのjourneyIdと各insightIdは登録時付与。固定P01-P20への変換なし。testAccountIdと原runId/sourceHeadを保持。",
+      "sourceImplementationHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+      "finalProductHead": "0042f17ea50daf539e1c16ddfc0d123ecbc0726b",
+      "sourceEvidencePath": "docs/evidence/CMP-261015-1510/verification.md",
+      "imageProvenance": "匿名layout PNGは正式results.jsonのbase64添付から復元。代表3枚だけ公開し、住民画像はprivate runtime原本への参照のみ。"
     },
     "personas": [
       {
@@ -8431,6 +8435,36 @@ window.BETA_INVENTORY_DATA = {
         "testAccountId": "MEMBER8",
         "sourceJourneyId": "member-shared-report-interrupt-resume",
         "sourceEvidencePath": "frontend/test-results/alicization/october-first-wave-20261026/resident-member-interrupt/observation.json"
+      },
+      {
+        "id": "LOGIN-R1",
+        "personaArchetype": "スマホ片手操作×表示崩れ",
+        "runId": "october-login-residents-20261026",
+        "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+        "evidencePath": "docs/evidence/CMP-261015-1510/verification.md",
+        "originalResidentId": "LOGIN-R1",
+        "testAccountId": "[private runtime evidence]",
+        "sourceEvidencePath": ".claude/runtime/october-login-1510-20261026/residents/R1/summary.json"
+      },
+      {
+        "id": "LOGIN-R2",
+        "personaArchetype": "ADHD傾向×中断・放棄 / SYSTEM_ADMIN",
+        "runId": "october-login-residents-20261026",
+        "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+        "evidencePath": "docs/evidence/CMP-261015-1510/verification.md",
+        "originalResidentId": "LOGIN-R2",
+        "testAccountId": "[private runtime evidence]",
+        "sourceEvidencePath": ".claude/runtime/october-login-1510-20261026/residents/R2/report.md"
+      },
+      {
+        "id": "LOGIN-R3",
+        "personaArchetype": "多言語ユーザー×素直",
+        "runId": "october-login-residents-20261026",
+        "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+        "evidencePath": "docs/evidence/CMP-261015-1510/verification.md",
+        "originalResidentId": "LOGIN-R3",
+        "testAccountId": "[private runtime evidence]",
+        "sourceEvidencePath": ".claude/runtime/october-login-1510-20261026/residents/R3/report.json"
       }
     ],
     "journeys": [
@@ -8460,6 +8494,33 @@ window.BETA_INVENTORY_DATA = {
         "sourceHead": "03be10c6d87ceeec29d4b09f0bac4db0d391c514",
         "evidencePath": "docs/evidence/CMP-261022-0338/residents/member.md",
         "sourceJourneyId": "member-shared-report-interrupt-resume"
+      },
+      {
+        "id": "LOGIN-J1",
+        "personaId": "LOGIN-R1",
+        "purpose": "スマホでログイン手段と迷った時の行き先を探し、自分のアカウントでサービスに入る",
+        "runId": "october-login-residents-20261026",
+        "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+        "evidencePath": "docs/evidence/CMP-261015-1510/verification.md",
+        "journeyIdSource": "runtime resident artifact R1/summary.json"
+      },
+      {
+        "id": "LOGIN-J2",
+        "personaId": "LOGIN-R2",
+        "purpose": "気が逸れながらスマホで管理アカウントへ入り、ログイン済みの場所へ戻る",
+        "runId": "october-login-residents-20261026",
+        "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+        "evidencePath": "docs/evidence/CMP-261015-1510/verification.md",
+        "journeyIdSource": "runtime resident artifact R2/report.md"
+      },
+      {
+        "id": "LOGIN-J3",
+        "personaId": "LOGIN-R3",
+        "purpose": "ドイツ語表示でログインと復旧案内を理解し、サービスに入る",
+        "runId": "october-login-residents-20261026",
+        "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+        "evidencePath": "docs/evidence/CMP-261015-1510/verification.md",
+        "journeyIdSource": "runtime resident artifact R3/report.json"
       }
     ],
     "insights": [
@@ -8559,6 +8620,168 @@ window.BETA_INVENTORY_DATA = {
         "evidencePath": "docs/evidence/CMP-261022-0338/residents/organization-admin.md",
         "sourceEvidencePath": "frontend/test-results/alicization/october-first-wave-20261026/resident-org-literacy/observations.json",
         "screenshotPath": "docs/evidence/CMP-261022-0338/residents/screenshots/org-08-org-360.png",
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-261015-1510-OBS-R1-OBS-1",
+        "featureKey": "auth",
+        "featureDetail": "login 操作領域・周辺導線（未実証）",
+        "title": "復旧画面の戻るリンク高さ20px",
+        "detail": "復旧画面の「ログインに戻る」は98x20px。360x800/390x844・jaで自然tap遷移は成功。ログイン画面外の未実証候補。",
+        "page": "/forgot-password",
+        "personaId": "LOGIN-R1",
+        "personaArchetype": "スマホ片手操作×表示崩れ",
+        "journeyId": "LOGIN-J1",
+        "originalRunId": "october-login-residents-20261026",
+        "runId": "october-login-residents-20261026",
+        "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+        "evidencePath": "docs/evidence/CMP-261015-1510/verification.md",
+        "sourceEvidencePath": ".claude/runtime/october-login-1510-20261026/residents/R1/summary.json",
+        "screenshotPath": ".claude/runtime/october-login-1510-20261026/residents/R1/04-recovery-360.png;05-recovery-390.png",
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-261015-1510-OBS-R1-OBS-2",
+        "featureKey": "auth",
+        "featureDetail": "login 操作領域・周辺導線（未実証）",
+        "title": "トップ画面のログインリンク高さ20px",
+        "detail": "トップ画面のログイン導線は56x20px。360x800・jaで自然tap遷移は成功。ログイン画面のトップへ戻るリンクとは別要素。",
+        "page": "/",
+        "personaId": "LOGIN-R1",
+        "personaArchetype": "スマホ片手操作×表示崩れ",
+        "journeyId": "LOGIN-J1",
+        "originalRunId": "october-login-residents-20261026",
+        "runId": "october-login-residents-20261026",
+        "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+        "evidencePath": "docs/evidence/CMP-261015-1510/verification.md",
+        "sourceEvidencePath": ".claude/runtime/october-login-1510-20261026/residents/R1/summary.json",
+        "screenshotPath": ".claude/runtime/october-login-1510-20261026/residents/R1/01-initial-360.png",
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-261015-1510-OBS-R2-OBS-1",
+        "featureKey": "auth",
+        "featureDetail": "login 操作領域・周辺導線（未実証）",
+        "title": "トップへ離脱して戻るとメール再入力になった",
+        "detail": "390x844・ja。別タブを開閉して復帰した試行ではメール保持を確認。トップへ離脱してブラウザー戻るとメールは空だった。仕様違反とは断定しない。原観測R2-N1。",
+        "page": "/login",
+        "personaId": "LOGIN-R2",
+        "personaArchetype": "ADHD傾向×中断・放棄 / SYSTEM_ADMIN",
+        "journeyId": "LOGIN-J2",
+        "originalRunId": "october-login-residents-20261026",
+        "runId": "october-login-residents-20261026",
+        "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+        "evidencePath": "docs/evidence/CMP-261015-1510/verification.md",
+        "sourceEvidencePath": ".claude/runtime/october-login-1510-20261026/residents/R2/report.md",
+        "screenshotPath": ".claude/runtime/october-login-1510-20261026/residents/R2/02-email-before-interruption.png;.claude/runtime/october-login-1510-20261026/residents/R2/04-top-interruption.png;.claude/runtime/october-login-1510-20261026/residents/R2/05-browser-back-login.png",
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could",
+        "originalObservationId": "R2-N1"
+      },
+      {
+        "id": "CMP-261015-1510-OBS-R2-OBS-2",
+        "featureKey": "auth",
+        "featureDetail": "login 操作領域・周辺導線（未実証）",
+        "title": "管理画面の外部リンク高さ32px（対象外参考）",
+        "detail": "390x844・ja。安定管理画面のGitHub詳細リンクは112x32px。リンク未操作。ログイン画面外の未実証参考。原観測R2-N2。",
+        "page": "/system-admin",
+        "personaId": "LOGIN-R2",
+        "personaArchetype": "ADHD傾向×中断・放棄 / SYSTEM_ADMIN",
+        "journeyId": "LOGIN-J2",
+        "originalRunId": "october-login-residents-20261026",
+        "runId": "october-login-residents-20261026",
+        "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+        "evidencePath": "docs/evidence/CMP-261015-1510/verification.md",
+        "sourceEvidencePath": ".claude/runtime/october-login-1510-20261026/residents/R2/report.md",
+        "screenshotPath": ".claude/runtime/october-login-1510-20261026/residents/R2/14-achieved-stable.png",
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could",
+        "originalObservationId": "R2-N2"
+      },
+      {
+        "id": "CMP-261015-1510-OBS-R3-O1",
+        "featureKey": "auth",
+        "featureDetail": "login 操作領域・周辺導線（未実証）",
+        "title": "de指定の復旧画面が日本語だった",
+        "detail": "360x800/390x844・de。復旧先はlang=deだが本文・入力ラベル・送信・戻るリンクが日本語で、説明理解は未達。原因未調査。",
+        "page": "/forgot-password",
+        "personaId": "LOGIN-R3",
+        "personaArchetype": "多言語ユーザー×素直",
+        "journeyId": "LOGIN-J3",
+        "originalRunId": "october-login-residents-20261026",
+        "runId": "october-login-residents-20261026",
+        "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+        "evidencePath": "docs/evidence/CMP-261015-1510/verification.md",
+        "sourceEvidencePath": ".claude/runtime/october-login-1510-20261026/residents/R3/report.json",
+        "screenshotPath": ".claude/runtime/october-login-1510-20261026/residents/R3/02-recovery-360-de.png;03-recovery-390-de.png",
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-261015-1510-OBS-R3-O2",
+        "featureKey": "auth",
+        "featureDetail": "login 操作領域・周辺導線（未実証）",
+        "title": "de導線の復旧戻りリンク高さ20px",
+        "detail": "360x800/390x844・de。復旧画面の戻るリンクは98x20px。横パン・文字切れなし。ログイン画面外の未実証候補。",
+        "page": "/forgot-password",
+        "personaId": "LOGIN-R3",
+        "personaArchetype": "多言語ユーザー×素直",
+        "journeyId": "LOGIN-J3",
+        "originalRunId": "october-login-residents-20261026",
+        "runId": "october-login-residents-20261026",
+        "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+        "evidencePath": "docs/evidence/CMP-261015-1510/verification.md",
+        "sourceEvidencePath": ".claude/runtime/october-login-1510-20261026/residents/R3/report.json",
+        "screenshotPath": ".claude/runtime/october-login-1510-20261026/residents/R3/02-recovery-360-de.png;03-recovery-390-de.png",
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-261015-1510-OBS-R3-O3",
+        "featureKey": "auth",
+        "featureDetail": "login 操作領域・周辺導線（未実証）",
+        "title": "deトップ本文ログインリンク高さ20px",
+        "detail": "390x844・de。トップ本文のログインリンクは69x20px、menu内は279x44px。menuからログイン画面へ遷移成功。",
+        "page": "/",
+        "personaId": "LOGIN-R3",
+        "personaArchetype": "多言語ユーザー×素直",
+        "journeyId": "LOGIN-J3",
+        "originalRunId": "october-login-residents-20261026",
+        "runId": "october-login-residents-20261026",
+        "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+        "evidencePath": "docs/evidence/CMP-261015-1510/verification.md",
+        "sourceEvidencePath": ".claude/runtime/october-login-1510-20261026/residents/R3/report.json",
+        "screenshotPath": ".claude/runtime/october-login-1510-20261026/residents/R3/05-home-390-de.png;06-home-menu-390-de.png",
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-261015-1510-OBS-R3-O4",
+        "featureKey": "auth",
+        "featureDetail": "login 操作領域・周辺導線（未実証）",
+        "title": "ログイン後の言語がjaだった（設定未調査）",
+        "detail": "deで入力した後、到達dashboardはlang=jaと日本語UIだった。個人設定との関係は未調査で不備と断定しない。",
+        "page": "/dashboard",
+        "personaId": "LOGIN-R3",
+        "personaArchetype": "多言語ユーザー×素直",
+        "journeyId": "LOGIN-J3",
+        "originalRunId": "october-login-residents-20261026",
+        "runId": "october-login-residents-20261026",
+        "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+        "evidencePath": "docs/evidence/CMP-261015-1510/verification.md",
+        "sourceEvidencePath": ".claude/runtime/october-login-1510-20261026/residents/R3/report.json",
+        "screenshotPath": ".claude/runtime/october-login-1510-20261026/residents/R3/08-filled-login-390-de.png;10-arrival-settled-390.png",
         "status": "observed-unverified",
         "urgency": "when-free",
         "priority": "could"
@@ -45654,8 +45877,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261015-1510",
       "title": "ログイン画面の既存入力欄・補助リンクのタップ領域不足",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了（2026-10-26）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -45669,16 +45892,16 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "2026-10-15の既存観測を殿が再確認: 390px DOMでinput各42px、補助3リンク各20px。今回実装・寸法RED/GREEN・実機検証は未実施。",
+          "label": "実装[PR #4133](https://github.com/kenta-0420/mannschaft/pull/4133) MERGED。[完了証拠](evidence/CMP-261015-1510.json)、[検分・実機・探索](evidence/CMP-261015-1510/verification.md)。mobile12条件5操作44px以上、desktop2条件input42/submit44維持、自然tap2・HTML送信抑止1・3role認証の正式20件成功。独立3住民は各UIログイン200、未実証8件は気づきのみ保持。最終head CI成功（BE shard等diff-skipと実機BE旧sourceを区別）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "2026-10-15の既存観測を殿が再確認: 390px DOMでinput各42px、補助3リンク各20px。今回実装・寸法RED/GREEN・実機検証は未実施。"
+        "実装[PR #4133](https://github.com/kenta-0420/mannschaft/pull/4133) MERGED。[完了証拠](evidence/CMP-261015-1510.json)、[検分・実機・探索](evidence/CMP-261015-1510/verification.md)。mobile12条件5操作44px以上、desktop2条件input42/submit44維持、自然tap2・HTML送信抑止1・3role認証の正式20件成功。独立3住民は各UIログイン200、未実証8件は気づきのみ保持。最終head CI成功（BE shard等diff-skipと実機BE旧sourceを区別）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        ".claude/campaigns/2026-10-26-october-login-second-wave.md"
+        "2026-10-15 認証探索で発見。完了登録は検分・実機・独立住民探索と実装マージを照合。"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -45689,10 +45912,27 @@ window.BETA_INVENTORY_DATA = {
         "x44px"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4133
+      ],
+      "github": [
+        {
+          "number": 4133,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "CMP-261015-1510 ログイン画面の入力欄・補助リンクを44px以上にする",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4133",
+          "updatedAt": "2026-10-26T11:01:44Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-261015-1718",
@@ -48425,27 +48665,27 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261021-0649",
       "title": "交代依頼の「提出」を連打すると同一枠の重複依頼が作られる",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "実装中",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "FE の二重送信ガードと、BE の同一枠・同一申請者の未決依頼の重複拒否の両方を入れること。連打しても依頼が1件だけ作られることを実機で確認すること",
+      "nextAction": "同一枠・同一申請者につき PENDING/ACCEPTED の依頼は宛先・modeにかかわらず最大1件とし、別担当者の依頼は共存できること。FEの二重送信ガードとBEの重複拒否を実装し、連打および宛先/mode差による回避ができず、別担当者なら作成できることを実機で確認する",
       "acceptance": [
-        "FE の二重送信ガードと、BE の同一枠・同一申請者の未決依頼の重複拒否の両方を入れること。連打しても依頼が1件だけ作られることを実機で確認すること"
+        "同一枠・同一申請者につき PENDING/ACCEPTED の依頼は宛先・modeにかかわらず最大1件とし、別担当者の依頼は共存できること。FEの二重送信ガードとBEの重複拒否を実装し、連打および宛先/mode差による回避ができず、別担当者なら作成できることを実機で確認する"
       ],
       "blocker": "CMP-260908-2116",
       "issues": [
         {
-          "label": "—",
+          "label": "登録PR準備中",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "登録PR準備中"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -48453,11 +48693,15 @@ window.BETA_INVENTORY_DATA = {
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
+        "PENDING",
+        "ACCEPTED",
+        "mode",
         "FE",
-        "BE"
+        "BE",
+        "mode"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -50292,7 +50536,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T07:11:49Z",
+          "updatedAt": "2026-10-26T10:45:15Z",
           "ci": null
         },
         {
@@ -50423,7 +50667,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T07:11:49Z",
+          "updatedAt": "2026-10-26T10:45:15Z",
           "ci": null
         },
         {
@@ -50789,7 +51033,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T07:11:49Z",
+          "updatedAt": "2026-10-26T10:45:15Z",
           "ci": null
         }
       ]
@@ -50890,7 +51134,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T07:11:49Z",
+          "updatedAt": "2026-10-26T10:45:15Z",
           "ci": null
         }
       ]
@@ -51198,7 +51442,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T07:11:49Z",
+          "updatedAt": "2026-10-26T10:45:15Z",
           "ci": null
         }
       ]
@@ -51901,29 +52145,94 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T07:11:49Z",
+          "updatedAt": "2026-10-26T10:45:15Z",
           "ci": null
         },
         {
           "number": 4049,
           "kind": "pull_request",
-          "state": "open",
+          "state": "merged",
           "title": "CMP-261022-0914: L1-A 認可サービスのinterface化とroleへの移設",
           "url": "https://github.com/kenta-0420/mannschaft/pull/4049",
-          "updatedAt": "2026-10-26T07:08:04Z",
+          "updatedAt": "2026-10-26T09:17:29Z",
           "ci": {
-            "status": "pending",
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
         }
       ]
+    },
+    {
+      "id": "CMP-261026-1912",
+      "title": "ログイン後の組織一覧・要対応集計・タイムライン初期表示の性能改善",
+      "status": "working",
+      "statusLabel": "実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "組織一覧の既存DTO・並び順・size/metaとinactive・非system-roleの挙動を維持し、所属scope数に比例するSQL発行を固定回数へ改める。inboxは対象IDだけのoverlay取得とsummary labels用SQL0を実現し、全map集計を同値に保つ。FEの初期timeline limit=3、組織一覧single-flightとlogout後の旧応答破棄、みたよDTOの全経路整合と6言語表示を検証する。空・0・null・上限/カーソル境界・途中失敗・権限なし/他scopeを網羅し、local Zod4依存整合を復旧する。実API/実画面で改善前後のSQL回数・応答時間を再計測し、検分・実機・実機後探索の証拠を残す",
+      "acceptance": [
+        "組織一覧の既存DTO・並び順・size/metaとinactive・非system-roleの挙動を維持し、所属scope数に比例するSQL発行を固定回数へ改める。inboxは対象IDだけのoverlay取得とsummary labels用SQL0を実現し、全map集計を同値に保つ。FEの初期timeline limit=3、組織一覧single-flightとlogout後の旧応答破棄、みたよDTOの全経路整合と6言語表示を検証する。空・0・null・上限/カーソル境界・途中失敗・権限なし/他scopeを網羅し、local Zod4依存整合を復旧する。実API/実画面で改善前後のSQL回数・応答時間を再計測し、検分・実機・実機後探索の証拠を残す"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "2026-10-26 マスター「突き止めた原因、修正できる？SQLを改善したら早くなったりしないの？」に基づく修正承認。scope: app。出陣前の台帳登録のみ、実装・性能再測定・検分/実機/探索は未完了。既存InboxSummary生成型optional（CMP-261012-2342）とは別目的",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "2026-10-26 マスター「突き止めた原因、修正できる？SQLを改善したら早くなったりしないの？」に基づく修正承認。scope: app。出陣前の台帳登録のみ、実装・性能再測定・検分/実機/探索は未完了。既存InboxSummary生成型optional（CMP-261012-2342）とは別目的"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "DTO",
+        "size",
+        "meta",
+        "inactive",
+        "system-role",
+        "scope",
+        "SQL",
+        "inbox",
+        "ID",
+        "overlay",
+        "summary",
+        "labels",
+        "SQL0",
+        "map",
+        "FE",
+        "timeline",
+        "limit",
+        "single-flight",
+        "logout",
+        "DTO",
+        "null",
+        "scope",
+        "local",
+        "Zod4",
+        "API",
+        "SQL"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [],
+      "github": []
     }
   ],
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-10-26T07:31:33+00:00",
+    "synchronizedAt": "2026-10-26T11:04:52+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -53537,7 +53846,9 @@ window.BETA_INVENTORY_DATA = {
       "CMP-261015-1421": [
         3888
       ],
-      "CMP-261015-1510": [],
+      "CMP-261015-1510": [
+        4133
+      ],
       "CMP-261015-1718": [
         3922,
         3932
@@ -53790,7 +54101,8 @@ window.BETA_INVENTORY_DATA = {
       "CMP-261026-1344": [
         4022,
         4049
-      ]
+      ],
+      "CMP-261026-1912": []
     },
     "items": {
       "261": {
@@ -62234,7 +62546,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
         "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-        "updatedAt": "2026-10-26T07:11:49Z",
+        "updatedAt": "2026-10-26T10:45:15Z",
         "ci": null
       },
       "4023": {
@@ -62380,12 +62692,13 @@ window.BETA_INVENTORY_DATA = {
       "4049": {
         "number": 4049,
         "kind": "pull_request",
-        "state": "open",
+        "state": "merged",
         "title": "CMP-261022-0914: L1-A 認可サービスのinterface化とroleへの移設",
         "url": "https://github.com/kenta-0420/mannschaft/pull/4049",
-        "updatedAt": "2026-10-26T07:08:04Z",
+        "updatedAt": "2026-10-26T09:17:29Z",
         "ci": {
-          "status": "pending",
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
@@ -62701,13 +63014,27 @@ window.BETA_INVENTORY_DATA = {
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
+      },
+      "4133": {
+        "number": 4133,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "CMP-261015-1510 ログイン画面の入力欄・補助リンクを44px以上にする",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4133",
+        "updatedAt": "2026-10-26T11:01:44Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
       }
     },
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-10-26T07:31:33+00:00",
-      "referenceCount": 664
+      "synchronizedAt": "2026-10-26T11:04:52+00:00",
+      "referenceCount": 665
     }
   }
 };
