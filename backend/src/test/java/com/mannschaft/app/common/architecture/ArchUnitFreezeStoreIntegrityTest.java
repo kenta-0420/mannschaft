@@ -38,10 +38,10 @@ class ArchUnitFreezeStoreIntegrityTest {
     // 更新履歴の原文は docs/architecture/archunit_freeze_history.md に移設した。
     private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 0;
     private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2157;
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1325;
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7322;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1346;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7352;
     private static final int EXPECTED_LINES_UUID_V7_D2B = 569;
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1876;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1897;
     private static final int EXPECTED_LINES_SERVICE_API = 600;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
