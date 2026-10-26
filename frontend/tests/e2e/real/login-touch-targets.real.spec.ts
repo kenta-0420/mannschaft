@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { clearAndFillInput } from '../helpers/form'
 import { waitForHydration } from '../helpers/wait'
+import desktopBaselines from '../mobile/fixtures/common-controls-desktop.json' with { type: 'json' }
 
 // 専有fixtureは実機環境の正規seedで作成し、所有者が終了時にcleanupする。
 // このspecはアカウント作成・メール送信・共有DBの変更を行わない。
@@ -87,6 +88,21 @@ async function assertTargets(page: Page): Promise<void> {
       expect(overlap, `${controls[i]} と ${controls[j]} の重なり`).toBe(false)
     }
   }
+}
+
+for (const width of [768, 1280]) {
+  test(`${width}px: デスクトップ入力と送信ボタンの既存密度を維持する`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await openLogin(page)
+    const baseline = desktopBaselines.find((item) => item.viewport === width)!
+    expect((await page.locator('#email').boundingBox())?.height).toBe(baseline.targets.input.height)
+    expect((await page.locator('input#password').boundingBox())?.height).toBe(
+      baseline.targets.input.height,
+    )
+    expect((await page.locator('[data-login-submit]').boundingBox())?.height).toBe(
+      baseline.targets.submit.height,
+    )
+  })
 }
 
 for (const viewport of [
@@ -201,7 +217,9 @@ for (const role of ['MEMBER', 'ADMIN', 'OTHER_TENANT']) {
           new URL(response.url()).pathname === '/api/v1/auth/login',
       )
       await page.locator('[data-login-submit]').tap()
-      expect((await failed).status()).toBe(401)
+      const failedResponse = await failed
+      expect(failedResponse.status()).toBe(400)
+      expect((await failedResponse.json()).error.code).toBe('AUTH_001')
       await expect(page.getByText('ログインに失敗しました', { exact: true })).toBeVisible()
       await expect(page.locator('[data-login-submit]')).toBeEnabled()
       await expect(page).toHaveURL(/\/login$/)

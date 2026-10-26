@@ -206,7 +206,7 @@ async function handleLogin() {
       <!-- 戻るリンク -->
       <NuxtLink
         to="/"
-        class="inline-flex min-h-11 min-w-11 items-center gap-2 text-sm text-surface-500 transition-colors hover:text-primary"
+        class="inline-flex items-center gap-2 text-sm text-surface-500 transition-colors hover:text-primary max-md:min-h-11 max-md:min-w-11"
       >
         {{ $t('landing.features_detail.back_to_top') }}
       </NuxtLink>
@@ -239,7 +239,6 @@ async function handleLogin() {
           id="email"
           v-model="email"
           type="email"
-          class="min-h-11"
           placeholder="example@mannschaft.app"
           required
           data-allow-mismatch
@@ -250,7 +249,6 @@ async function handleLogin() {
         <Password
           v-model="password"
           input-id="password"
-          input-class="min-h-11"
           :feedback="false"
           toggle-mask
           fluid
@@ -273,13 +271,13 @@ async function handleLogin() {
       <div class="flex flex-col items-center gap-2">
         <NuxtLink
           to="/forgot-password"
-          class="inline-flex min-h-11 min-w-11 items-center justify-center text-center text-sm text-primary hover:underline"
+          class="text-sm text-primary hover:underline max-md:inline-flex max-md:min-h-11 max-md:min-w-11 max-md:items-center max-md:justify-center max-md:text-center"
         >
           {{ t('auth.login.forgot_password') }}
         </NuxtLink>
         <NuxtLink
           to="/register"
-          class="inline-flex min-h-11 min-w-11 items-center justify-center text-center text-sm text-primary hover:underline"
+          class="text-sm text-primary hover:underline max-md:inline-flex max-md:min-h-11 max-md:min-w-11 max-md:items-center max-md:justify-center max-md:text-center"
         >
           {{ t('auth.register.title') }}
         </NuxtLink>
