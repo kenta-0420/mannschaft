@@ -4,7 +4,8 @@ import json
 import os
 from pathlib import Path
 import re
-import secrets
+import random
+import string
 import shlex
 import subprocess
 import sys
@@ -87,7 +88,10 @@ class SecretScanRegression(unittest.TestCase):
         path.write_text(contents, encoding='utf-8')
 
     def token(self):
-        value = secrets.token_hex(24)
+        # 検出閾値を偶然下回らないよう、全英数字を各1回含む固定の合成値にする。
+        # shuffleは既知alphabetの連続列を避けるためだけに使い、秘密の生成には使わない。
+        alphabet = string.ascii_letters + string.digits
+        value = ''.join(random.Random(0).sample(alphabet, len(alphabet)))
         self.values.append(value)
         return value
 
