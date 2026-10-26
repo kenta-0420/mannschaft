@@ -36,7 +36,9 @@ const tournamentApi = () => `/api/v1/organizations/${orgId}/tournaments/${tourna
 const entryApi = () =>
   `${tournamentApi()}/divisions/${divisionId}/participants/${participantId}/entry-members`
 const templateApi = () => `/api/v1/organizations/${orgId}/teams/${teamId}/entry-templates`
-const detailPath = () => `/organizations/${orgId}/tournaments/${tournamentId}`
+const detailPath = () => `/organizations/${orgSlug}/tournaments/${tournamentId}`
+const uiEntryApi = () =>
+  entryApi().replace(`/organizations/${orgId}/`, `/organizations/${orgSlug}/`)
 
 test.beforeAll(async () => {
   api = await request.newContext({ baseURL: API })
@@ -94,6 +96,9 @@ test.beforeAll(async () => {
   })
   expect(participant.status()).toBe(201)
   participantId = (await participant.json()).data.id as number
+  expect(
+    (await api.patch(`${tournamentApi()}/status`, { data: { status: 'OPEN' } })).status(),
+  ).toBe(200)
   console.log(
     'CMP0743 owned fixture',
     JSON.stringify({
@@ -164,6 +169,16 @@ test.afterAll(async () => {
 })
 
 async function open(page: Page, locale: Locale, email = adminEmail) {
+  const apiFailures: Array<{ path: string; status: number; code?: string }> = []
+  page.on('response', async (response) => {
+    if (!response.url().startsWith(API + '/api/v1/') || response.status() < 400) return
+    const body = (await response.json().catch(() => null)) as { error?: { code?: string } } | null
+    apiFailures.push({
+      path: new URL(response.url()).pathname,
+      status: response.status(),
+      code: body?.error?.code,
+    })
+  })
   await loginViaApi(page, { email, password }, { apiBaseUrl: API, deferNavigation: true })
   // 当該テストブラウザだけの表示言語fixture。共有ユーザーの設定/権限は変更しない。
   await page.addInitScript((language) => {
@@ -176,7 +191,21 @@ async function open(page: Page, locale: Locale, email = adminEmail) {
   }, locale)
   await page.context().addCookies([{ name: 'i18n_locale', value: locale, url: BASE }])
   await page.goto(`${BASE}${detailPath()}`, { waitUntil: 'domcontentloaded' })
-  await expect(page.getByTestId('tournament-detail-title')).toHaveText(prefix, { timeout: 60_000 })
+  try {
+    await expect(page.getByTestId('tournament-detail-title')).toHaveText(prefix, {
+      timeout: 60_000,
+    })
+  } catch (error) {
+    console.log(
+      'CMP0743 route failure',
+      JSON.stringify({
+        requestedPath: detailPath(),
+        finalPath: new URL(page.url()).pathname,
+        apiFailures,
+      }),
+    )
+    throw error
+  }
 }
 
 for (const locale of Object.keys(messages) as Locale[]) {
@@ -199,7 +228,7 @@ for (const locale of Object.keys(messages) as Locale[]) {
     ).toBeVisible()
 
     const save = page.waitForResponse(
-      (response) => response.url().endsWith(entryApi()) && response.request().method() === 'PUT',
+      (response) => response.url().endsWith(uiEntryApi()) && response.request().method() === 'PUT',
     )
     await dialog.getByRole('button', { name: text.entry.saveMembers, exact: true }).click()
     const saveResponse = await save
@@ -221,7 +250,7 @@ for (const locale of Object.keys(messages) as Locale[]) {
     templateIds.delete(templateId)
     const apply = page.waitForResponse(
       (response) =>
-        response.url().endsWith(`${entryApi()}/apply-template`) &&
+        response.url().endsWith(`${uiEntryApi()}/apply-template`) &&
         response.request().method() === 'POST',
     )
     await dialog.getByRole('button', { name: text.entry.template.apply, exact: true }).click()
