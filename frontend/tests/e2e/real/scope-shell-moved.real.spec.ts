@@ -39,7 +39,7 @@ async function create(
     data: {
       name,
       slug,
-      visibility: 'PRIVATE',
+      visibility: scope === 'teams' ? 'MEMBERS_AND_ABOVE' : 'PRIVATE',
       ...(scope === 'organizations' ? { orgType: 'OTHER' } : {}),
     },
   })
@@ -101,11 +101,33 @@ test.afterAll(async ({ request }, info) => {
     contentType: 'application/json',
   })
   const failures: string[] = []
+  const cleanupResults: Array<{
+    scope: Scope
+    numericId: number
+    ownerVerified: boolean
+    deleted: number
+    absent: number
+  }> = []
   for (const f of [...fixtures].reverse()) {
     try {
       const headers = { Authorization: `Bearer ${await tokenFor(request, f.owner)}` }
-      // slug変更後の失敗も所有numericIdから正準slugを取得して回収する。
-      const response = await request.get(`${API}/api/v1/${f.scope}/${f.numericId}`, { headers })
+      // entity詳細はslug契約。リネーム成功後に画面検証が失敗した場合も履歴から回収する。
+      let response = await request.get(`${API}/api/v1/${f.scope}/${f.slug}`, { headers })
+      if (response.status() === 404) {
+        const resolved = await request.get(`${API}/api/v1/public/${f.scope}/slug-resolve`, {
+          params: { slug: f.oldSlug },
+        })
+        expect(resolved.status()).toBe(200)
+        const resolution = (await resolved.json()).data as {
+          status: string
+          canonicalSlug?: string
+        }
+        expect(resolution.status).toBe('MOVED')
+        expect(resolution.canonicalSlug).toBeTruthy()
+        response = await request.get(`${API}/api/v1/${f.scope}/${resolution.canonicalSlug}`, {
+          headers,
+        })
+      }
       expect(response.status()).toBe(200)
       const actual = (await response.json()).data as {
         numericId: number
@@ -115,18 +137,40 @@ test.afterAll(async ({ request }, info) => {
       expect(actual.numericId).toBe(f.numericId)
       expect(actual.basicInfo.name).toBe(f.name)
       const path = `${API}/api/v1/${f.scope}/${actual.slug}`
-      expect((await request.delete(path, { headers })).status()).toBe(204)
-      expect((await request.get(path, { headers })).status()).toBe(404)
+      const deleted = (await request.delete(path, { headers })).status()
+      expect(deleted).toBe(204)
+      const absent = (await request.get(path, { headers })).status()
+      expect(absent).toBe(404)
+      cleanupResults.push({
+        scope: f.scope,
+        numericId: f.numericId,
+        ownerVerified: true,
+        deleted,
+        absent,
+      })
     } catch (error) {
       failures.push(`${f.scope}/${f.numericId}: ${String(error)}`)
     }
   }
+  await info.attach('所有照合と削除結果', {
+    body: JSON.stringify(cleanupResults),
+    contentType: 'application/json',
+  })
   expect(failures, '所有fixture後始末').toEqual([])
 })
 async function open(page: Page, path: string) {
-  await page.goto(path)
+  const response = await page.goto(path)
+  await test
+    .info()
+    .attach('document-status', {
+      body: JSON.stringify({ path, status: response?.status() }),
+      contentType: 'application/json',
+    })
   await waitForHydration(page)
 }
+test.afterEach(async ({ page }, info) => {
+  await info.attach('最終URL', { body: page.url(), contentType: 'text/plain' })
+})
 for (const scope of ['organizations', 'teams'] as const) {
   test(`M5 ${scope}: 管理者が画面でslug変更し旧URLのsubpath/query/hashと往復を維持`, async ({
     page,
