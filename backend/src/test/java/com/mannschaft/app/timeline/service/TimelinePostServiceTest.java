@@ -358,7 +358,7 @@ class TimelinePostServiceTest {
             PostResponse result = timelinePostService.createPost(req, USER_ID);
 
             // then
-            assertThat(result).isEqualTo(expected);
+            assertThat(result).usingRecursiveComparison().isEqualTo(expected);
             verify(postRepository).save(any(TimelinePostEntity.class));
         }
 
@@ -1236,7 +1236,7 @@ class TimelinePostServiceTest {
             PostResponse result = timelinePostService.updatePost(POST_ID, req, USER_ID);
 
             // then
-            assertThat(result).isEqualTo(expected);
+            assertThat(result).usingRecursiveComparison().isEqualTo(expected);
             verify(editRepository).save(any(TimelinePostEditEntity.class));
         }
 
@@ -1825,7 +1825,7 @@ class TimelinePostServiceTest {
             PostResponse result = timelinePostService.togglePin(POST_ID, true, USER_ID);
 
             // then
-            assertThat(result).isEqualTo(expected);
+            assertThat(result).usingRecursiveComparison().isEqualTo(expected);
         }
     }
 
@@ -3016,5 +3016,57 @@ class TimelinePostServiceTest {
         assertThat(json.get(0).has("mitayoCount")).isTrue();
         assertThat(json.get(0).get("mitayoCount").isIntegralNumber()).isTrue();
         assertThat(json.get(0).get("mitayoCount").intValue()).isZero();
+    }
+    @Test
+    @DisplayName("CMP-261026-1912: 混在500投稿のみたよ集計は1回で著者と閲覧者を区別する")
+    void mitayoBatchHandlesFiveHundredPosts() {
+        List<PostResponse> posts = java.util.stream.LongStream.rangeClosed(1, 500)
+                .mapToObj(id -> createPostResponse().toBuilder().id(id).build()).toList();
+        given(postRepository.findPinnedPosts(PostScopeType.PUBLIC, 0L)).willReturn(List.of());
+        given(timelineMapper.toPostResponseList(List.of())).willReturn(posts);
+        given(reactionRepository.summarizeByPostIds(any(), eq(OTHER_USER_ID))).willReturn(List.of(
+                reactionSummary(1L, 3, 1), reactionSummary(2L, 2, 0), reactionSummary(500L, 1, 1)));
+
+        List<PostResponse> result = timelinePostService.getPinnedPosts("PUBLIC", 0L, OTHER_USER_ID);
+
+        assertThat(result).hasSize(500);
+        assertThat(result.get(0).isMitayo()).isTrue();
+        assertThat(result.get(0).getMitayoCount()).isEqualTo(3);
+        assertThat(result.get(1).isMitayo()).isFalse();
+        assertThat(result.get(1).getMitayoCount()).isEqualTo(2);
+        assertThat(result.get(2).isMitayo()).isFalse();
+        assertThat(result.get(2).getMitayoCount()).isZero();
+        assertThat(result.get(499).isMitayo()).isTrue();
+        verify(reactionRepository).summarizeByPostIds(posts.stream().map(PostResponse::getId).toList(), OTHER_USER_ID);
+        verify(reactionRepository, never()).existsByTimelinePostIdAndUserId(any(), any());
+        verify(reactionRepository, never()).countByTimelinePostId(any());
+    }
+
+    @Test
+    @DisplayName("CMP-261026-1912: 空フィードではみたよ集計を呼ばない")
+    void emptyFeedDoesNotQueryMitayo() {
+        given(postRepository.findPinnedPosts(PostScopeType.PUBLIC, 0L)).willReturn(List.of());
+        given(timelineMapper.toPostResponseList(List.of())).willReturn(List.of());
+        assertThat(timelinePostService.getPinnedPosts("PUBLIC", 0L, USER_ID)).isEmpty();
+        org.mockito.Mockito.verifyNoInteractions(reactionRepository);
+    }
+
+    @Test
+    @DisplayName("CMP-261026-1912: みたよ集計の失敗を未反応0件として隠さない")
+    void mitayoQueryFailurePropagates() {
+        given(postRepository.findPinnedPosts(PostScopeType.PUBLIC, 0L)).willReturn(List.of());
+        given(timelineMapper.toPostResponseList(List.of())).willReturn(List.of(createPostResponse()));
+        given(reactionRepository.summarizeByPostIds(List.of(POST_ID), USER_ID))
+                .willThrow(new IllegalStateException("集計失敗"));
+        assertThatThrownBy(() -> timelinePostService.getPinnedPosts("PUBLIC", 0L, USER_ID))
+                .isInstanceOf(IllegalStateException.class).hasMessage("集計失敗");
+    }
+
+    private TimelinePostReactionRepository.PostReactionSummary reactionSummary(Long postId, long count, long viewerCount) {
+        return new TimelinePostReactionRepository.PostReactionSummary() {
+            public Long getPostId() { return postId; }
+            public long getReactionCount() { return count; }
+            public long getViewerReactionCount() { return viewerCount; }
+        };
     }
 }
