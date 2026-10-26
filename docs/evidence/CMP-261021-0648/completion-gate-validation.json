@@ -17,9 +17,9 @@
   "implementationFilesVerified": 11,
   "implementationCiRun": 40221390332,
   "evidenceStructureAndReferencesPassed": true,
-  "prospectiveCompletionTransitionPassed": true,
-  "actualTaskState": "実装中",
-  "actualCompletionTransitionPerformed": false,
+  "actualTaskState": "完了",
+  "actualCompletionTransitionPerformed": true,
   "mainCi": "passed",
-  "limitation": "ローカルreview準備。仮の完了遷移データだけをtrusted validatorへ渡した。実台帳の完了遷移/登録PRのmergeを意味しない。main CI結果は別root実API確認に基づく。"
+  "actualCompletionTransitionPassed": true,
+  "limitation": "実GitHubメタデータと実台帳の完了遷移をtrusted validatorで照合。証拠登録PRのmerge・本番出荷を意味しない。main CIと専有撤去は別root独立確認。標準全体checkは別所有run保全で非0。"
 }
