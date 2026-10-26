@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "implementationHead": "22844f91b189ab22596e41ee0a5d767418b8e3b2",
+  "implementationPr": 4122,
+  "implementationMerged": true,
+  "mergeCommit": "15366b4200bc77513a7d36ff41d88fd4bd49f655",
+  "mergedAt": "2026-10-25T22:10:43Z",
+  "githubMetadataSource": "GitHub API live read",
+  "trustedValidatorBase": "15366b4200bc77513a7d36ff41d88fd4bd49f655",
+  "implementationChecksAtMerge": {
+    "total": 23,
+    "success": 22,
+    "skipped": 1,
+    "neutral": 0
+  },
+  "implementationFilesVerified": 11,
+  "implementationCiRun": 40221390332,
+  "evidenceStructureAndReferencesPassed": true,
+  "actualTaskState": "完了",
+  "actualCompletionTransitionPerformed": true,
+  "mainCi": "passed",
+  "actualCompletionTransitionPassed": true,
+  "limitation": "実GitHubメタデータと実台帳の完了遷移をtrusted validatorで照合。証拠登録PRのmerge・本番出荷を意味しない。main CIと専有撤去は別root独立確認。標準全体checkは別所有run保全で非0。"
+}
