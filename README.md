@@ -209,7 +209,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 ### セキュリティ・認証
 
-- **CSP違反レポート受信**: `POST /api/v1/security/csp-reports` は未認証で `application/csp-report`・`application/reports+json`・`application/json` を受理し、受信処理は204を返す。Reporting API配列の保存は未対応。公開APIレート制限は維持する（[受信契約](docs/security/03_security_headers_and_csp.md#41-csp-違反レポート収集report-uri)）。
+- **CSP違反レポート受信**: `POST /api/v1/security/csp-reports` は未認証で `application/csp-report`・`application/reports+json`・`application/json` を受理し、受信処理は204を返す。Reporting API配列の保存は未対応。公開APIレート制限は維持する（[受信契約](docs/security/03_security_headers_and_csp.md)）。
 
 フレンドチーム申請は管理画面の申請元固定と両プロフィールの申請元選択、受信/フォロー返しを実装済み（PR #4106）。実機44件・3住民探索・最終CIを確認。[完了証拠](docs/evidence/CMP-261024-2051.json)に検証範囲と制限を記録しています。
 
