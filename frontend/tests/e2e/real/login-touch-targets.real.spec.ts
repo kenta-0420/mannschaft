@@ -4,7 +4,12 @@ import { waitForHydration } from '../helpers/wait'
 
 // 専有fixtureは実機環境の正規seedで作成し、所有者が終了時にcleanupする。
 // このspecはアカウント作成・メール送信・共有DBの変更を行わない。
-test.use({ storageState: { cookies: [], origins: [] }, isMobile: true, hasTouch: true })
+test.use({
+  storageState: { cookies: [], origins: [] },
+  viewport: { width: 390, height: 844 },
+  isMobile: true,
+  hasTouch: true,
+})
 test.describe.configure({ mode: 'serial' })
 test.setTimeout(120_000)
 
@@ -82,6 +87,10 @@ for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }
         await openLogin(page, notice)
         await expect(page.locator('html')).toHaveAttribute('lang', new RegExp(`^${locale}`))
         await assertTargets(page)
+        await testInfo.attach('anonymous-login-layout', {
+          body: await page.screenshot({ fullPage: true }),
+          contentType: 'image/png',
+        })
         await testInfo.attach('login-targets', {
           body: JSON.stringify(await page.locator(controls.join(',')).evaluateAll(elements =>
             elements.map(element => ({ id: element.id, href: element.getAttribute('href'), width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height })))),
@@ -92,14 +101,17 @@ for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }
   }
 }
 
-test('補助3リンクはタッチ操作でトップ・再設定・登録へ遷移する', async ({ page }) => {
-  for (const destination of ['/', '/forgot-password', '/register']) {
-    await openLogin(page)
-    await page.locator(`#login-form a[href="${destination}"]`).tap()
-    await expect(page).toHaveURL(url => url.pathname === destination)
-    await waitForHydration(page)
-  }
-})
+for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }]) {
+  test(`${viewport.width}px: 補助3リンクはタッチ操作でトップ・再設定・登録へ遷移する`, async ({ page }) => {
+    await page.setViewportSize(viewport)
+    for (const destination of ['/', '/forgot-password', '/register']) {
+      await openLogin(page)
+      await page.locator(`#login-form a[href="${destination}"]`).tap()
+      await expect(page).toHaveURL(url => url.pathname === destination)
+      await waitForHydration(page)
+    }
+  })
+}
 
 test('空入力・不正emailはHTML検証でログイン送信を抑止する', async ({ page }) => {
   await openLogin(page)
@@ -132,7 +144,7 @@ for (const role of ['MEMBER', 'ADMIN', 'OTHER_TENANT']) {
     await clearAndFillInput(password, passwordValue)
     await page.locator('[data-pc-section="unmaskicon"]').tap()
     await expect(password).toHaveAttribute('type', 'text')
-    await expect(password).toHaveValue(passwordValue)
+    expect(await password.inputValue() === passwordValue, '表示切替後もパスワード入力を保持する').toBe(true)
     await page.locator('[data-pc-section="maskicon"]').tap()
     await expect(password).toHaveAttribute('type', 'password')
 
@@ -145,8 +157,8 @@ for (const role of ['MEMBER', 'ADMIN', 'OTHER_TENANT']) {
       expect((await failed).status()).toBe(401)
       await expect(page.locator('[data-login-submit]')).toBeEnabled()
       await expect(page).toHaveURL(/\/login$/)
-      await expect(email).toHaveValue(emailValue)
-      await expect(password).toHaveValue(wrongPassword)
+      expect(await email.inputValue() === emailValue, '不正認証後もメール入力を保持する').toBe(true)
+      expect(await password.inputValue() === wrongPassword, '不正認証後もパスワード入力を保持する').toBe(true)
       await clearAndFillInput(password, passwordValue)
     }
 
