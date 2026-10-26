@@ -1,0 +1,85 @@
+{
+  "runId": "clipv3-1792574010514-3a8a8367",
+  "category": "FINITE_ACTUAL_APP_E2E_COMPOSITE_NOT_UNIT_OR_PIXEL_MATRIX",
+  "status": "ACTUAL_CASES_COMPLETED_ALL_OWNED_BROWSER_CONTEXTS_CLOSED_ROOT_ADOPTION_PENDING",
+  "source": {
+    "currentFrontend": "b38efc6091c8a0108c3fd677b2f01563e977e9e2",
+    "backend": "2bd44c9b4e6d6de9f4dfc615c200ea2253f8d538",
+    "oldFrontend": "28389c61f505e877702e5572d21476d68747aead",
+    "sourceAdoption": "docs/evidence/CMP-261021-1347/collected/clip-root-visibility-source-adoption-20261021.json",
+    "sourceAdoptionSha256": "06f487d4e0ef420279e6601f4673ce4fc562bd50af9e64c06872541cc1134fba",
+    "shippingComparison": "Root protected product blob comparison; not full frontend equality"
+  },
+  "accountStates": [
+    {
+      "alias": "land-baby",
+      "dinosaurId": "synthetic-land-baby-individual",
+      "stage": "JUVENILE",
+      "evidence": "zero-xp-focused-1792593652667/safe-proof.json: actual ACK/native feed + same ID/stage/style reload"
+    },
+    {
+      "alias": "sea-juvenile",
+      "dinosaurId": "synthetic-sea-juvenile-individual",
+      "stage": "ADULT",
+      "evidence": "browser-exercise-1792591538567/safe-proof.json: actual saved dashboard feed ACK + UI reload/refresh GET"
+    },
+    {
+      "alias": "air-adult",
+      "dinosaurId": "synthetic-air-adult-individual",
+      "stage": "ADULT",
+      "evidence": "browser-exercise-1792591538567/safe-proof.json: actual saved dashboard feed ACK + UI reload/refresh GET"
+    }
+  ],
+  "evidence": {
+    "prepareComposite": "docs/evidence/CMP-261021-1347/real/prepareComposite.safe.json",
+    "uiHatch": "docs/evidence/CMP-261021-1347/real/uiHatch.safe.json",
+    "landFeedTouch": "docs/evidence/CMP-261021-1347/real/landFeedTouch.safe.json",
+    "landBothStyles": "docs/evidence/CMP-261021-1347/real/landBothStyles.safe.json",
+    "landMotion": "docs/evidence/CMP-261021-1347/real/landMotion.safe.json",
+    "landVisibilityAndFaults": "docs/evidence/CMP-261021-1347/real/landVisibilityAndFaults.safe.json",
+    "landDashboardFeedTouch": "docs/evidence/CMP-261021-1347/real/landDashboardFeedTouch.safe.json",
+    "repairedDashboardHideAndStyles": "docs/evidence/CMP-261021-1347/real/repairedDashboardHideAndStyles.safe.json",
+    "landDarkNativeFunctional": "docs/evidence/CMP-261021-1347/real/landDarkNativeFunctional.safe.json",
+    "remainingSeaAir": "docs/evidence/CMP-261021-1347/real/remainingSeaAir.safe.json",
+    "oldSourceCausal": "docs/evidence/CMP-261021-1347/real/oldSourceCausal.safe.json",
+    "supplementalApiAuthorization": "docs/evidence/CMP-261021-1347/real/supplementalApiAuthorization.safe.json",
+    "nativeViewportVisual": "docs/evidence/CMP-261021-1347/real/nativeViewportVisual.safe.json",
+    "privateResultUi": "docs/evidence/CMP-261021-1347/real/privateResultUi.safe.json",
+    "zeroXp": "docs/evidence/CMP-261021-1347/real/zeroXp.safe.json",
+    "documentVisibility": "docs/evidence/CMP-261021-1347/real/documentVisibility.safe.json",
+    "postCleanup": "docs/evidence/CMP-261021-1347/real/postCleanup.safe.json"
+  },
+  "authorizationScope": {
+    "personalRanch": "owner/no-membership/other artificial account each sees own individual; nonexistent dinosaurId query/API attack not invented",
+    "otherTenant": "NOT_APPLICABLE: personal /me feature requires no tenant membership",
+    "anonymous": "actual direct Ranch redirect and actual public authentication entry; no visible anonymous Ranch entry exists",
+    "privateResults": "actual own natural list/link and foreign direct result URL, own200/foreign404 with generic error UI; supplemental API evidence kept separate"
+  },
+  "limits": [
+    "Exact two-idle cadence, phase duration boundaries, timer counts, cancel callback counts and native effect coordinates rely on unit/native adapter evidence; browser observed actual idle/walk/action/paint outcomes only.",
+    "Initial hidden browser proof observes zero image requests and zero paints; exact timer allocation was not instrumented.",
+    "Held stale native image requests were client-canceled; old source never painted after unchanged continuation attempt. This is not proof that an obsolete onload callback actually executed.",
+    "No synthetic API ACK/clock/Image replacement. Target operations used real UI; supplemental draft-result API creation/ownership probe is a separate category.",
+    "All 384 image pixel comparisons and production/dev gating, legacy catalog/egg compatibility are separately owned unit/asset/BE evidence, not this representative browser matrix.",
+    "Old fullPage/element native-zoom images were unsuitable for visual assessment; actual clip-free viewport CDP images were reviewed separately by Root.",
+    "Private result foreign404 UI displays a generic loading error, not an explicit 404 message.",
+    "Two prior document visibility attempts did not establish actual hidden; failures retained. New own Chrome default context/noDefaults data-only preflight and actual app scope are distinct.",
+    "Original native-default cleanup REQUIRES_REVIEW is preserved. Post-cleanup actual CIM/listener verification is a separate Root adoption artifact.",
+    "Root observed possible dark heading contrast issue after doc screenshot; no additional context or product edit performed by this runner.",
+    "Pending/rejected care ACK, stale account generation and obsolete-stage response permutations were not induced in the browser. Actual saved ACK/native paint outcomes are browser evidence; remaining contract permutations require unit/source evidence.",
+    "Browser failure cases used real native-network atlas/fallback failures. Wrong dimensions/decode and missing-action permutations were not separately induced in the app browser.",
+    "Exact scheduler/RAF allocation counts, per-frame DB/query/polling counts and global acquisition bounds were not profiled in this browser run; rely on the separately reviewed unit/source/adapter evidence."
+  ],
+  "originalFailuresPreserved": true,
+  "servicesStopped": 0,
+  "unknownProcessesStopped": 0,
+  "finalClosure": {
+    "allOwnedBrowserContextsClosed": true,
+    "evidence": "native-default-visibility-1792593957409/post-cleanup-verification.json",
+    "originalCleanupRequiresReviewPreserved": true,
+    "servicesRetained": true,
+    "unknownProcessesStopped": 0,
+    "servicesStopped": 0
+  },
+  "publicationNote": "Historical finite-scope composite preserved. Later Root and approved exploration evidence are separate; no original status promoted."
+}

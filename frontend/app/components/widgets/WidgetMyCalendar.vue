@@ -1,33 +1,10 @@
 <script setup lang="ts">
 import { useMyCalendarData, FILTER_OVERFLOW } from '~/composables/useMyCalendarData'
-import { toCalendarPanelEvent, type NestedScheduleResponse } from '~/utils/scheduleCalendar'
+import { toCalendarPanelEvent, type NestedScheduleResponse, type CalendarPanelEvent } from '~/utils/scheduleCalendar'
+import type { CalendarEventItem } from '~/composables/useCalendarEvents'
+import { eventOccupiesDate } from '~/utils/calendarWeek'
 
 const { t } = useI18n()
-interface EventDetail {
-  id: number
-  title: string
-  description: string | null
-  location: string | null
-  startAt: string
-  endAt: string
-  allDay: boolean
-  color?: string | null
-  scopeType?: string
-  scopeId?: string
-  scopeName?: string | null
-  scopeIconUrl?: string | null
-  attendanceRequired?: boolean
-  myAttendance?: string | null
-  attendanceStats?: { yes: number; no: number; maybe: number; pending: number; total: number } | null
-  createdBy?: { displayName: string }
-  status?: string
-  categoryName?: string | null
-  categoryColor?: string | null
-  targetMode?: 'ALL_MEMBERS' | 'SELECTED_MEMBERS'
-  targetCount?: number
-  targets?: Array<{ userId: number; displayName: string; avatarUrl: string | null; calendarColor: string | null }>
-}
-
 interface PersonalScheduleRaw {
   id: number
   content: { title: string; description: string | null; eventType: string; color: string | null; location: string | null }
@@ -40,29 +17,59 @@ interface PersonalScheduleRaw {
 const scheduleApi = useScheduleApi()
 
 const {
-  currentYear, currentMonth, loading, loadEvents, refresh,
+  currentYear, currentMonth, loading, calendarLoading, loadError, loadEvents, refresh,
   onPrevMonth, onNextMonth,
   extendedEvents, allScopeOptions, selectedScopes, filteredEvents,
   toggleScope, multiSelectScopes, initStorage,
 } = useMyCalendarData()
 
 const selectedEventId = ref<number | null>(null)
-const selectedEvent = ref<EventDetail | null>(null)
+const selectedEvent = ref<CalendarPanelEvent | null>(null)
 const selectedEventIsPersonal = ref(false)
 const showEventDialog = ref(false)
 const showEditDialog = ref(false)
+const selectedDate = ref('')
+const showDayDialog = ref(false)
+const showCreateDialog = ref(false)
 
 function onDateClick(date: string) {
-  navigateTo(`/calendar?date=${date}`)
+  if (loading.value || calendarLoading.value || loadError.value) return
+  selectedDate.value = date
+  if (filteredEvents.value.some(event => eventOccupiesDate(event, date))) {
+    showDayDialog.value = true
+  }
+  else {
+    onCreateEvent()
+  }
 }
 
-/**
- * reflection 印クリック（§6.2/AC-21）。
- * - REFLECTION_RECALL（SPACED 間隔反復）: recall 画面（entry_id 指定）へ遷移。
- * - REFLECTION_PRE_EXAM（考査前総まとめ）: テーマ詳細画面（theme_id 指定）へ遷移。
- * - それ以外（REFLECTION_ENTRY 等）: エントリ詳細へ遷移。
- * referenceUuid は SPACED/エントリ＝entry UUID、PRE_EXAM＝theme UUID。
- */
+function moveMonth(delta: number) {
+  if (loading.value || calendarLoading.value) return
+  if (delta < 0) onPrevMonth()
+  else onNextMonth()
+}
+
+function onCreateEvent() {
+  showDayDialog.value = false
+  showCreateDialog.value = true
+}
+
+function onDayEventOpen(event: CalendarEventItem) {
+  showDayDialog.value = false
+  if (event.isReflection && event.referenceUuid) {
+    onReflectionClick(event.referenceUuid, event.referenceKind ?? '')
+  }
+  else {
+    void onEventClick(event.id, event.isPersonal)
+  }
+}
+
+async function onCreated() {
+  showCreateDialog.value = false
+  await refresh()
+}
+
+/** reflection の参照種別に応じて既存の想起・テーマ・エントリ画面へ移動する。 */
 function onReflectionClick(referenceUuid: string, referenceKind: string) {
   if (referenceKind === 'REFLECTION_RECALL') {
     navigateTo(`/reflections/recall?entry=${referenceUuid}`)
@@ -87,18 +94,10 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
       const res = await scheduleApi.getMyScheduleDetail(eventId)
       const d = res.data as PersonalScheduleRaw
       selectedEvent.value = {
-        id: d.id,
-        title: d.content?.title ?? '',
+        ...toCalendarPanelEvent(d),
         description: d.content?.description ?? null,
-        location: d.content?.location ?? null,
-        startAt: d.time?.startAt ?? '',
-        endAt: d.time?.endAt ?? '',
-        allDay: d.time?.allDay ?? false,
         color: d.content?.color ?? null,
-        status: d.status?.status ?? undefined,
-        createdBy: d.audit?.createdByDisplayName
-          ? { displayName: d.audit.createdByDisplayName }
-          : undefined,
+        status: d.status?.status ?? 'PUBLISHED',
       }
     }
     else {
@@ -157,9 +156,9 @@ async function onSaved() {
   await refresh()
 }
 
-onMounted(() => {
-  initStorage()
-  loadEvents()
+onMounted(async () => {
+  await initStorage()
+  await loadEvents()
 })
 </script>
 
@@ -176,6 +175,7 @@ onMounted(() => {
       <Skeleton height="1.5rem" />
       <Skeleton height="12rem" />
     </div>
+    <DashboardErrorState v-else-if="loadError" @retry="loadEvents" />
     <template v-else>
       <CalendarGrid
         :year="currentYear"
@@ -184,8 +184,8 @@ onMounted(() => {
         @date-click="onDateClick"
         @event-click="onEventClick"
         @reflection-click="onReflectionClick"
-        @prev-month="onPrevMonth"
-        @next-month="onNextMonth"
+        @prev-month="moveMonth(-1)"
+        @next-month="moveMonth(1)"
       />
 
       <!-- スコープフィルター -->
@@ -226,6 +226,24 @@ onMounted(() => {
         <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-indigo-500" />{{ t('dashboard.widgets.myCalendar.legendTeamOrg') }}</span>
       </div>
     </template>
+
+    <ScheduleDayDialog
+      v-model:visible="showDayDialog"
+      :date="selectedDate"
+      :events="filteredEvents"
+      :can-create="true"
+      @create="onCreateEvent"
+      @row-open="onDayEventOpen"
+    />
+
+    <ScheduleEventForm
+      v-model:visible="showCreateDialog"
+      scope-type="team"
+      scope-id=""
+      is-personal
+      :initial-date="selectedDate"
+      @saved="onCreated"
+    />
 
     <Dialog
       v-model:visible="showEventDialog"

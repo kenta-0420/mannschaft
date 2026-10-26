@@ -111,21 +111,21 @@ onMounted(() => {
 
 <template>
   <div>
-    <div class="mb-6 flex items-start justify-between gap-3">
-      <div>
-        <PageHeader :title="t('folders.title')" />
-        <p v-if="canManage" class="text-sm text-surface-500">
-          {{ t('folders.list.remaining', { remaining }) }}
-        </p>
-      </div>
-      <Button
-        v-if="canManage"
-        :label="t('folders.create')"
-        icon="pi pi-plus"
-        :disabled="atLimit"
-        @click="openCreateDialog"
-      />
-    </div>
+    <PageHeader
+      class="md:-mt-1.5"
+      :title="t('folders.title')"
+      :subtitle="canManage ? t('folders.list.remaining', { remaining }) : undefined"
+    >
+      <template #actions>
+        <Button
+          v-if="canManage"
+          :label="t('folders.create')"
+          icon="pi pi-plus"
+          :disabled="atLimit"
+          @click="openCreateDialog"
+        />
+      </template>
+    </PageHeader>
 
     <!-- 権限なし -->
     <div

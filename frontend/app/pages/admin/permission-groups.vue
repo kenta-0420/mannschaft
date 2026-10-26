@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { z } from 'zod'
 import { useForm } from 'vee-validate'
-import { toTypedSchema } from '@vee-validate/zod'
+import { toTypedSchema } from '~/utils/toTypedSchema'
 
 definePageMeta({ middleware: 'auth' })
 

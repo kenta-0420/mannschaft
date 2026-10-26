@@ -1,0 +1,52 @@
+{
+  "sourceFile": "cleanup-final-receipt.json",
+  "sourceSha256": "8388d966f1b08d02de833f97bea79b07beaba7516e3d01d700b2fe81e440b8f5",
+  "selection": "Reviewed metadata only; no settings content, credentials, JWT, cookies, logs or environment values",
+  "receipt": {
+    "at": "2026-10-25T05:59:48.965871+00:00",
+    "finalReadOnlyAuditPassed": true,
+    "runtimeSource": "2aac15e6e020d03cc9d26ee17d94922ab08ed8a4",
+    "runtimeExitCode": 0,
+    "canonicalCleanup": "removed",
+    "newScratchAbsent": true,
+    "ports8081And3001And3307Empty": true,
+    "sameGenerationRunnerControllerAbsent": true,
+    "containerAbsent": true,
+    "volumeAbsent": true,
+    "oldRetainedScratchAbsent": true,
+    "oldCanonicalReceiptUnchanged": true,
+    "privateSettingsExact4Absent": true,
+    "secretScanOtherPrivateCopyHits": 0,
+    "removed": [
+      "exact-owned-container",
+      "exact-owned-volume",
+      "exact-owned-old-retained-copy",
+      "four-private-settings-files"
+    ],
+    "retained": [
+      {
+        "asset": "Redis DB13 18 keys and task reservation",
+        "reason": "No exact per-key ownership proof; no FLUSH or wildcard deletion"
+      },
+      {
+        "asset": "task fonts/cache/npm tools",
+        "reason": "Explicit parent hold for possible unit verification"
+      },
+      {
+        "asset": "owned worktrees and branches",
+        "reason": "Separate later cleanup GO required"
+      }
+    ],
+    "excludedUntouched": [
+      "shared3306 and failed original schema",
+      "all verification-evidence and original canonical receipts",
+      "selected Windows proof artifacts",
+      "global Playwright cache",
+      "Windows/shared fonts",
+      "shared Valkey",
+      "source code and Git assets"
+    ],
+    "taskSecretDisposition": "Fresh task DB credentials invalidated by exact container/volume deletion; JWT/internal/private copies disposed; transcript erasure not claimed; shared baseline secrets unchanged",
+    "autoReviewRejectionDuringThisFinalCleanup": false
+  }
+}

@@ -1,6 +1,6 @@
 // 修正版のない間接依存の個別例外（方針 docs/security/04_dependency_and_supply_chain.md §4.3/§4.4）。
 // GHSA-86w9-cpqp-85rv / node-forge 1.4.0 と GHSA-vfj7-8cjw-p6xm / braces 3.0.3 のみ。
-// どちらも 2026-10-23 UTC 当日まで。
+// node-forge は 2026-10-30 UTC 当日まで、braces は 2026-10-23 UTC 当日まで。
 // node-forge: listhen の証明書生成経路では当該署名検証を呼ばない。本番 .output の除外は未実測。
 // braces: アプリの限定検索では直接 glob 呼出しなし、確認した設定パターンは固定値。
 // dbaa 本番 server の2537テキストは静的token/package検出0。14リンク・4バイナリは対象外。
@@ -10,7 +10,6 @@ import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 
-const EXPIRES_AT = Date.parse('2026-10-24T00:00:00Z')
 const SEVERITY_RANK = { info: 0, low: 1, moderate: 2, high: 3, critical: 4 }
 // GHSA 単位の除外表。パッケージ名での包括除外はしない。
 // packages は実監査で確認した到達経路だけ。別の消費者への拡大を認めない。
@@ -18,6 +17,7 @@ const EXEMPTIONS = {
   'https://github.com/advisories/GHSA-86w9-cpqp-85rv': {
     id: 'GHSA-86w9-cpqp-85rv',
     name: 'node-forge',
+    expiresAt: Date.parse('2026-10-31T00:00:00Z'),
     range: '<=1.4.0',
     version: '1.4.0',
     packages: new Set([
@@ -52,6 +52,7 @@ const EXEMPTIONS = {
   'https://github.com/advisories/GHSA-vfj7-8cjw-p6xm': {
     id: 'GHSA-vfj7-8cjw-p6xm',
     name: 'braces',
+    expiresAt: Date.parse('2026-10-24T00:00:00Z'),
     range: '<=3.0.3',
     version: '3.0.3',
     packages: new Set([
@@ -115,14 +116,12 @@ const EXEMPTIONS = {
     },
   },
 }
-const isObject = (value) =>
-  value !== null && typeof value === 'object' && !Array.isArray(value)
+const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
 const validSeverity = (value) => Object.hasOwn(SEVERITY_RANK, value)
 
 // npm の終了状態も検証する。通信失敗の stdout が JSON でも成功扱いしない。
 export function checkAudit(raw, status, lock, now = Date.now()) {
-  if (![0, 1].includes(status))
-    throw new Error(`npm audit の取得失敗: exit ${status}`)
+  if (![0, 1].includes(status)) throw new Error(`npm audit の取得失敗: exit ${status}`)
   const report = JSON.parse(raw)
   if (
     !isObject(report) ||
@@ -159,8 +158,7 @@ export function checkAudit(raw, status, lock, now = Date.now()) {
     counts.total++
     for (const via of entry.via) {
       if (typeof via === 'string') {
-        if (!Object.hasOwn(vulnerabilities, via))
-          throw new Error(`参照先がない: ${name} → ${via}`)
+        if (!Object.hasOwn(vulnerabilities, via)) throw new Error(`参照先がない: ${name} → ${via}`)
       } else if (
         !isObject(via) ||
         !validSeverity(via.severity) ||
@@ -191,24 +189,22 @@ export function checkAudit(raw, status, lock, now = Date.now()) {
   }
   let exempt = false
   for (const [name, entry] of Object.entries(vulnerabilities)) {
+    // metavuln参照先の全severity一致はnpm JSONが保証しない。直接advisoryは過小報告を拒否する。
     const advisories = collectAdvisories(name)
     if (
-      advisories.some(
-        (via) => SEVERITY_RANK[entry.severity] < SEVERITY_RANK[via.severity],
+      entry.via.some(
+        (via) =>
+          typeof via !== 'string' && SEVERITY_RANK[entry.severity] < SEVERITY_RANK[via.severity],
       )
     ) {
-      throw new Error(
-        `npm audit の依存と到達 advisory の深刻度が不一致: ${name}`,
-      )
+      throw new Error(`npm audit の依存と到達 advisory の深刻度が不一致: ${name}`)
     }
-    const high = advisories.filter(
-      (via) => SEVERITY_RANK[via.severity] >= SEVERITY_RANK.high,
-    )
+    // 報告entryがlow/moderateでも、到達する全high/criticalを同じ例外条件で検証する。
+    const high = advisories.filter((via) => SEVERITY_RANK[via.severity] >= SEVERITY_RANK.high)
     if (
       entry.severity === 'critical' ||
-      (entry.severity === 'high' &&
-        (high.length === 0 ||
-          !high.every((via) => EXEMPTIONS[via.url]?.packages.has(name))))
+      (entry.severity === 'high' && high.length === 0) ||
+      high.some((via) => via.severity === 'critical' || !EXEMPTIONS[via.url]?.packages.has(name))
     ) {
       throw new Error(`許可されない脆弱性: ${entry.severity} ${name}`)
     }
@@ -225,9 +221,7 @@ export function checkAudit(raw, status, lock, now = Date.now()) {
           !entry.via.every(
             (via) =>
               typeof via !== 'string' ||
-              !collectAdvisories(via).some(
-                (item) => item.url === advisory.url,
-              ) ||
+              !collectAdvisories(via).some((item) => item.url === advisory.url) ||
               allowedEdges.includes(via),
           )
         ) {
@@ -247,8 +241,7 @@ export function checkAudit(raw, status, lock, now = Date.now()) {
         !target.nodes.every(
           (node) =>
             typeof node === 'string' &&
-            (node === `node_modules/${spec.name}` ||
-              node.endsWith(`/node_modules/${spec.name}`)) &&
+            (node === `node_modules/${spec.name}` || node.endsWith(`/node_modules/${spec.name}`)) &&
             lock.packages[node]?.version === spec.version,
         )
       ) {
@@ -256,8 +249,10 @@ export function checkAudit(raw, status, lock, now = Date.now()) {
           `許可されない advisory: ${advisory.severity} ${advisory.name} ${advisory.url}`,
         )
       }
-      if (!Number.isFinite(now) || now >= EXPIRES_AT) {
-        throw new Error(`${spec.id} の除外期限切れ（2026-10-23 UTC 当日まで）`)
+      if (!Number.isFinite(now) || now >= spec.expiresAt) {
+        throw new Error(
+          `${spec.id} の除外期限切れ（${new Date(spec.expiresAt - 1).toISOString().slice(0, 10)} UTC 当日まで）`,
+        )
       }
       exempt = true
     }
@@ -265,10 +260,7 @@ export function checkAudit(raw, status, lock, now = Date.now()) {
   return exempt
 }
 
-if (
-  process.argv[1] &&
-  import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     let raw
     let status = 0
@@ -281,13 +273,11 @@ if (
       raw = error.stdout
       status = error.status
     }
-    const lock = JSON.parse(
-      readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'),
-    )
+    const lock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'))
     const exempt = checkAudit(raw, status, lock)
     console.log(
       exempt
-        ? 'npm audit: GHSA-86w9-cpqp-85rv / GHSA-vfj7-8cjw-p6xm のみ除外中（2026-10-23 UTC 当日まで）、他の high/critical は0件'
+        ? 'npm audit: 承認済みGHSAの個別例外を適用、他の high/critical は0件（期限は各例外定義を参照）'
         : 'npm audit: high/critical は0件',
     )
   } catch (error) {

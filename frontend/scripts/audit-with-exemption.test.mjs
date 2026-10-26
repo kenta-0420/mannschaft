@@ -39,27 +39,19 @@ function report(vulnerabilities = {}) {
     metadata: { vulnerabilities: counts },
   }
 }
-const allowed = () =>
-  report({ 'node-forge': entry('node-forge', [advisory()]) })
+const allowed = () => report({ 'node-forge': entry('node-forge', [advisory()]) })
 const check = (
   value,
   now = NOW,
   lock = LOCK,
-  status = value?.metadata?.vulnerabilities.high +
-    value?.metadata?.vulnerabilities.critical >
-  0
+  status = value?.metadata?.vulnerabilities.high + value?.metadata?.vulnerabilities.critical > 0
     ? 1
     : 0,
 ) => checkAudit(JSON.stringify(value), status, lock, now)
 
 test('指摘0件と閾値未満の指摘は例外を使わず通る', () => {
   assert.equal(check(report(), NOW, LOCK, 0), false)
-  assert.equal(
-    check(
-      report({ small: entry('small', [advisory('moderate')], 'moderate') }),
-    ),
-    false,
-  )
+  assert.equal(check(report({ small: entry('small', [advisory('moderate')], 'moderate') })), false)
 })
 test('許可GHSAだけを通し、実npmレポートのNuxt循環参照を解決する', () => {
   const value = allowed()
@@ -74,11 +66,7 @@ test('許可GHSAだけを通し、実npmレポートのNuxt循環参照を解決
     '@nuxt/cli': entry('@nuxt/cli', ['listhen']),
     '@nuxt/nitro-server': entry('@nuxt/nitro-server', ['nitropack', 'nuxt']),
     '@nuxt/vite-builder': entry('@nuxt/vite-builder', ['nuxt']),
-    nuxt: entry('nuxt', [
-      '@nuxt/cli',
-      '@nuxt/nitro-server',
-      '@nuxt/vite-builder',
-    ]),
+    nuxt: entry('nuxt', ['@nuxt/cli', '@nuxt/nitro-server', '@nuxt/vite-builder']),
   }
   assert.equal(check(report(graph)), true)
 })
@@ -88,10 +76,7 @@ for (const severity of ['high', 'critical']) {
     value.vulnerabilities['node-forge'].via.push(
       advisory(severity, 'https://github.com/advisories/GHSA-other'),
     )
-    assert.throws(
-      () => check(value),
-      /許可されない(advisory|脆弱性)|深刻度が不一致/,
-    )
+    assert.throws(() => check(value), /許可されない(advisory|脆弱性)|深刻度が不一致/)
   })
 }
 
@@ -120,12 +105,7 @@ const bracesGraph = () => ({
 test('braces GHSA は名指しで通り、期限・lock版・範囲・消費者を検証する', () => {
   assert.equal(check(report(bracesGraph()), NOW, BRACES_LOCK), true)
   assert.throws(
-    () =>
-      check(
-        report(bracesGraph()),
-        Date.parse('2026-10-24T00:00:00Z'),
-        BRACES_LOCK,
-      ),
+    () => check(report(bracesGraph()), Date.parse('2026-10-24T00:00:00Z'), BRACES_LOCK),
     /GHSA-vfj7-8cjw-p6xm の除外期限切れ/,
   )
   assert.throws(
@@ -137,16 +117,10 @@ test('braces GHSA は名指しで通り、期限・lock版・範囲・消費者�
   )
   const ranged = bracesGraph()
   ranged.braces.via[0].range = '<=9.0.0'
-  assert.throws(
-    () => check(report(ranged), NOW, BRACES_LOCK),
-    /許可されない advisory/,
-  )
+  assert.throws(() => check(report(ranged), NOW, BRACES_LOCK), /許可されない advisory/)
   const unknown = bracesGraph()
   unknown.other = entry('other', ['braces'])
-  assert.throws(
-    () => check(report(unknown), NOW, BRACES_LOCK),
-    /許可されない脆弱性/,
-  )
+  assert.throws(() => check(report(unknown), NOW, BRACES_LOCK), /許可されない脆弱性/)
 })
 test('braces 除外は node-forge の消費者名を流用できず、逆も拒否する', () => {
   const g = report({
@@ -170,43 +144,22 @@ const mixedGraph = () => {
     tailwindcss: entry('tailwindcss', ['chokidar', 'fast-glob', 'micromatch']),
     'unplugin-vue-components': {
       ...entry('unplugin-vue-components', ['chokidar']),
-      nodes: [
-        'node_modules/@primevue/nuxt-module/node_modules/unplugin-vue-components',
-      ],
+      nodes: ['node_modules/@primevue/nuxt-module/node_modules/unplugin-vue-components'],
     },
-    'unplugin-vue-router': entry('unplugin-vue-router', [
-      'fast-glob',
-      'micromatch',
-    ]),
-    '@intlify/unplugin-vue-i18n': entry('@intlify/unplugin-vue-i18n', [
-      'fast-glob',
-    ]),
-    '@nuxtjs/i18n': entry('@nuxtjs/i18n', [
-      '@intlify/unplugin-vue-i18n',
-      'unplugin-vue-router',
-    ]),
+    'unplugin-vue-router': entry('unplugin-vue-router', ['fast-glob', 'micromatch']),
+    '@intlify/unplugin-vue-i18n': entry('@intlify/unplugin-vue-i18n', ['fast-glob']),
+    '@nuxtjs/i18n': entry('@nuxtjs/i18n', ['@intlify/unplugin-vue-i18n', 'unplugin-vue-router']),
     '@nuxtjs/tailwindcss': entry('@nuxtjs/tailwindcss', ['tailwindcss']),
-    '@primevue/nuxt-module': entry('@primevue/nuxt-module', [
-      'unplugin-vue-components',
-    ]),
+    '@primevue/nuxt-module': entry('@primevue/nuxt-module', ['unplugin-vue-components']),
     'node-forge': entry('node-forge', [advisory()]),
     listhen: entry('listhen', ['node-forge']),
     '@nuxt/cli': entry('@nuxt/cli', ['listhen']),
     nitropack: entry('nitropack', ['globby', 'listhen']),
     '@nuxt/nitro-server': entry('@nuxt/nitro-server', ['nitropack', 'nuxt']),
     '@nuxt/vite-builder': entry('@nuxt/vite-builder', ['nuxt']),
-    nuxt: entry('nuxt', [
-      '@nuxt/cli',
-      '@nuxt/nitro-server',
-      '@nuxt/vite-builder',
-    ]),
+    nuxt: entry('nuxt', ['@nuxt/cli', '@nuxt/nitro-server', '@nuxt/vite-builder']),
   }
-  for (const name of [
-    '@nuxtjs/i18n',
-    '@nuxtjs/tailwindcss',
-    '@primevue/nuxt-module',
-    'nuxt',
-  ]) {
+  for (const name of ['@nuxtjs/i18n', '@nuxtjs/tailwindcss', '@primevue/nuxt-module', 'nuxt']) {
     graph[name].isDirect = true
   }
   return graph
@@ -216,14 +169,8 @@ test('実監査の2advisory混在19件は循環とforge専用辺を含めて通�
   const value = report(mixedGraph())
   assert.equal(value.metadata.vulnerabilities.high, 19)
   assert.equal(check(value, NOW, MIXED_LOCK), true)
-  assert.equal(
-    check(value, Date.parse('2026-10-23T23:59:59.999Z'), MIXED_LOCK),
-    true,
-  )
-  assert.throws(
-    () => check(value, Date.parse('2026-10-24T00:00:00Z'), MIXED_LOCK),
-    /期限切れ/,
-  )
+  assert.equal(check(value, Date.parse('2026-10-23T23:59:59.999Z'), MIXED_LOCK), true)
+  assert.throws(() => check(value, Date.parse('2026-10-24T00:00:00Z'), MIXED_LOCK), /期限切れ/)
 })
 test('braces既知消費者名でも未知node・末端の別nodeは拒否する', () => {
   for (const name of ['braces', 'micromatch', 'chokidar', 'nuxt']) {
@@ -245,10 +192,7 @@ test('既知名間のbraces経路付替え・未知の循環辺は拒否する',
   ]) {
     const graph = mixedGraph()
     graph[name].via.push(via)
-    assert.throws(
-      () => check(report(graph), NOW, MIXED_LOCK),
-      /許可されない依存経路/,
-    )
+    assert.throws(() => check(report(graph), NOW, MIXED_LOCK), /許可されない依存経路/)
   }
 })
 test('同じGHSAでもcritical・別package・別range・直接依存・別versionは拒否する', () => {
@@ -271,10 +215,7 @@ test('同じGHSAでもcritical・別package・別range・直接依存・別versi
     mutate(value)
     assert.throws(() => check(value), /許可されない advisory|深刻度が不一致/)
   }
-  assert.throws(
-    () => check(allowed(), NOW, { packages: {} }),
-    /許可されない advisory/,
-  )
+  assert.throws(() => check(allowed(), NOW, { packages: {} }), /許可されない advisory/)
   assert.throws(
     () =>
       check(allowed(), NOW, {
@@ -283,30 +224,43 @@ test('同じGHSAでもcritical・別package・別range・直接依存・別versi
     /許可されない advisory/,
   )
 })
-test('両GHSA単独・混在でUTC10月23日末まで通り、24日0時以降は拒否する', () => {
+test('forgeは旧期限後もUTC10月30日末まで通り、新期限一致・直後は拒否する', () => {
+  for (const timestamp of [
+    '2026-10-24T00:00:00Z',
+    '2026-10-24T00:00:00.001Z',
+    '2026-10-30T23:59:59.999Z',
+  ]) {
+    assert.equal(check(allowed(), Date.parse(timestamp)), true)
+  }
+  for (const now of [
+    Date.parse('2026-10-31T00:00:00Z'),
+    Date.parse('2026-10-31T00:00:00.001Z'),
+    NaN,
+    Infinity,
+    -Infinity,
+  ]) {
+    assert.throws(() => check(allowed(), now), /GHSA-86w9-cpqp-85rv の除外期限切れ/)
+  }
+})
+
+test('braces単独・混在は旧期限を維持し、forge延長期間でも拒否する', () => {
   for (const [value, lock] of [
-    [allowed(), LOCK],
     [report(bracesGraph()), BRACES_LOCK],
     [report(mixedGraph()), MIXED_LOCK],
   ]) {
-    assert.equal(
-      check(value, Date.parse('2026-10-23T23:59:59.999Z'), lock),
-      true,
-    )
-    for (const timestamp of [
-      '2026-10-24T00:00:00Z',
-      '2026-10-24T00:00:00.001Z',
+    assert.equal(check(value, Date.parse('2026-10-23T23:59:59.999Z'), lock), true)
+    for (const now of [
+      Date.parse('2026-10-24T00:00:00Z'),
+      Date.parse('2026-10-24T00:00:00.001Z'),
+      Date.parse('2026-10-30T23:59:59.999Z'),
+      NaN,
+      Infinity,
+      -Infinity,
     ]) {
-      assert.throws(() => check(value, Date.parse(timestamp), lock), /期限切れ/)
-    }
-    for (const invalidTime of [NaN, Infinity, -Infinity]) {
-      assert.throws(() => check(value, invalidTime, lock), /期限切れ/)
+      assert.throws(() => check(value, now, lock), /GHSA-vfj7-8cjw-p6xm の除外期限切れ/)
     }
   }
-  assert.equal(
-    check(report(), Date.parse('2026-11-01T00:00:00Z'), LOCK, 0),
-    false,
-  )
+  assert.equal(check(report(), Date.parse('2026-11-01T00:00:00Z'), LOCK, 0), false)
 })
 
 test('forge既知消費者名でも未知node・末端の別nodeは拒否する', () => {
@@ -339,10 +293,7 @@ test('forge既知名間の経路付替え・未知の循環辺は拒否する', 
     // forgeだけの未知循環を検証し、bracesの消費者制限による先行拒否と区別する。
     graph.nitropack.via = ['listhen']
     graph[name].via.push(via)
-    assert.throws(
-      () => check(report(graph), NOW, MIXED_LOCK),
-      /許可されない依存経路/,
-    )
+    assert.throws(() => check(report(graph), NOW, MIXED_LOCK), /許可されない依存経路/)
   }
 })
 test('不正JSON・構造欠落・error・npm異常終了は拒否する', () => {
@@ -381,18 +332,93 @@ test('レポート集計と依存情報の不一致を拒否する', () => {
 test('同じ許可GHSAへの参照でも新しいhigh消費者は拒否する', () => {
   const value = allowed()
   value.vulnerabilities['node-jose'] = entry('node-jose', ['node-forge'])
-  assert.throws(
-    () => check(report(value.vulnerabilities)),
-    /許可されない脆弱性/,
-  )
+  assert.throws(() => check(report(value.vulnerabilities)), /許可されない脆弱性/)
 })
 
 test('high advisoryへの未知消費者をmoderateと報告しても拒否する', () => {
   const value = allowed()
-  value.vulnerabilities['node-jose'] = entry(
-    'node-jose',
-    ['node-forge'],
-    'moderate',
-  )
-  assert.throws(() => check(report(value.vulnerabilities)), /深刻度が不一致/)
+  value.vulnerabilities['node-jose'] = entry('node-jose', ['node-forge'], 'moderate')
+  assert.throws(() => check(report(value.vulnerabilities)), /許可されない脆弱性/)
+})
+
+// npmのmetavuln参照は依存名へ集約され、参照先全体とseverityが一致するとは限らない。
+const mixedWithLowerBuilder = (severity = 'moderate') => {
+  const graph = mixedGraph()
+  graph['@nuxt/vite-builder'].severity = severity
+  graph.nuxt.via.push({
+    name: 'nuxt',
+    dependency: 'nuxt',
+    severity: 'moderate',
+    url: 'https://github.com/advisories/GHSA-moderate-fixture',
+    range: '<4.6.2',
+  })
+  // 新しい分岐の検証を、他のhigh entryの先行拒否で代替させない。
+  return { '@nuxt/vite-builder': graph['@nuxt/vite-builder'], ...graph }
+}
+
+test('A1/A2: 低severityの間接参照も混在循環の全highを既存例外で検証する', () => {
+  for (const severity of ['info', 'low', 'moderate']) {
+    assert.equal(check(report(mixedWithLowerBuilder(severity)), NOW, MIXED_LOCK), true)
+  }
+})
+
+test('A3: 許可packageでも直接advisoryの深刻度を過小報告すると拒否する', () => {
+  const graph = { 'node-forge': entry('node-forge', [advisory()], 'moderate') }
+  assert.throws(() => check(report(graph)), /深刻度が不一致/)
+})
+
+test('A4/A6: 低severityの間接参照でも未知highとcriticalを拒否する', () => {
+  for (const severity of ['high', 'critical']) {
+    const graph = mixedWithLowerBuilder()
+    graph['node-forge'].via.push(advisory(severity, 'https://github.com/advisories/GHSA-unknown'))
+    assert.throws(() => check(report(graph), NOW, MIXED_LOCK), /許可されない|深刻度が不一致/)
+  }
+})
+
+test('A5: 低severityの既知消費者も未知node・依存辺・循環辺を拒否する', () => {
+  for (const mutation of ['node', 'edge', 'cycle']) {
+    const graph = mixedWithLowerBuilder()
+    if (mutation === 'node')
+      graph['@nuxt/vite-builder'].nodes.push('node_modules/unknown/node_modules/@nuxt/vite-builder')
+    if (mutation === 'edge') graph['@nuxt/vite-builder'].via.push('listhen')
+    if (mutation === 'cycle') graph['@nuxt/vite-builder'].via.push('@nuxt/nitro-server')
+    assert.throws(() => check(report(graph), NOW, MIXED_LOCK), /許可されない依存経路/)
+  }
+})
+
+test('A7: 低severityの間接参照でも末端range・直接化・lock版を検証する', () => {
+  for (const mutation of ['range', 'direct', 'lock']) {
+    const graph = mixedWithLowerBuilder()
+    const lock = structuredClone(MIXED_LOCK)
+    if (mutation === 'range') graph['node-forge'].via[0].range = '<=9.0.0'
+    if (mutation === 'direct') graph['node-forge'].isDirect = true
+    if (mutation === 'lock') lock.packages['node_modules/node-forge'].version = '1.3.0'
+    assert.throws(() => check(report(graph), NOW, lock), /許可されない advisory/)
+  }
+})
+
+test('A8: 低severityのforge間接参照でも新期限直前のみ通し一致・直後・非有限時刻を拒否する', () => {
+  const mixed = mixedWithLowerBuilder()
+  const graph = Object.fromEntries([
+    'node-forge',
+    'listhen',
+    '@nuxt/cli',
+    'nitropack',
+    '@nuxt/nitro-server',
+    '@nuxt/vite-builder',
+    'nuxt',
+  ].map((name) => [name, mixed[name]]))
+  graph.nitropack.via = ['listhen']
+  const value = report(graph)
+  assert.equal(check(value, Date.parse('2026-10-24T00:00:00Z'), LOCK), true)
+  assert.equal(check(value, Date.parse('2026-10-30T23:59:59.999Z'), LOCK), true)
+  for (const now of [
+    Date.parse('2026-10-31T00:00:00Z'),
+    Date.parse('2026-10-31T00:00:00.001Z'),
+    NaN,
+    Infinity,
+    -Infinity,
+  ]) {
+    assert.throws(() => check(value, now, LOCK), /期限切れ/)
+  }
 })

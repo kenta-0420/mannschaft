@@ -49,7 +49,7 @@ check runとcommit statusはhead SHA単位でしか取得できず、`check_run.
 scopeは `app` / `tooling` / `test-only` の3値。実装PRの変更ファイルを1件ずつ次の順（先勝ち）で分類する。改名ファイルは `previous_filename` も同じ規則で分類する。
 
 1. 不正path（文字列でない、filename欠落、`..` セグメント、`/` か `\` で始まる、`\` を含む、`path.posix.normalize` で変わる）→ app
-2. `scripts/`、`.github/`、`.claude/`、`docs/` または既知の開発規約ファイル → tooling
+2. `scripts/`、`.github/`、`.claude/`、`docs/` または既知の開発規約ファイル（`backend/.claudecode.md` を含む） → tooling
 3. 次のいずれか（大文字小文字を区別）→ test
    - `backend/src/test/` 配下
    - `frontend/tests/` 配下

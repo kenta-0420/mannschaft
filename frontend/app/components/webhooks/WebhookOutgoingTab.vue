@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { z } from 'zod'
 import { useForm } from 'vee-validate'
-import { toTypedSchema } from '@vee-validate/zod'
+import { toTypedSchema } from '~/utils/toTypedSchema'
 import type { WebhookDelivery } from '~/types/webhook'
 import type { WebhookEndpointResponse } from '~/composables/useWebhookApi'
 
@@ -40,7 +40,7 @@ const endpointSchema = z.object({
   url: z.string().url('有効なURLを入力してください'),
   description: z.string().max(500, '500文字以内').optional(),
   timeoutMs: z
-    .number({ invalid_type_error: 'タイムアウトを入力してください' })
+    .number({ error: (issue) => issue.input === undefined ? undefined : 'タイムアウトを入力してください' })
     .int()
     .min(1000, '1000ms以上を指定してください')
     .max(30000, '30000ms以下を指定してください')

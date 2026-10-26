@@ -664,6 +664,7 @@
     }
   },
   "timeline": {
+    "refresh": "更新",
     "detail": {
       "back": "戻る",
       "loadFailed": "投稿を取得できませんでした",
@@ -1650,7 +1651,9 @@
       "more": "他{count}件",
       "today": "今日",
       "dayDetail": {
-        "title": "{date} の予定"
+        "title": "{date} の予定",
+        "empty": "この日の予定はありません",
+        "create": "この日に予定を追加"
       },
       "empty": "この期間に予定はありません",
       "view": {

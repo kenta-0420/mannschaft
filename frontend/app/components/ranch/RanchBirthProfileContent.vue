@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { BirthConfirmation, BirthProfile, DiagnosisResult } from '~/types/ranch'
-import { toTypedSchema } from '@vee-validate/zod'
+import { toTypedSchema } from '~/utils/toTypedSchema'
 import { useForm } from 'vee-validate'
 import { z } from 'zod'
 const { t } = useI18n(); useHead({ title: t('ranch.diagnosisResults.birthStyle') })
@@ -21,7 +21,7 @@ async function reloadProfile() {
  await load()
 }
 const assignmentAvailable = computed(() => ranch.state.value?.assignment?.availableMethods.includes('BIRTH_STYLE') ?? false)
-const { defineField, handleSubmit, resetForm, errors } = useForm({ validationSchema: toTypedSchema(z.object({ lastName: z.string().trim().min(1, t('ranch.birth.required')), firstName: z.string().trim().min(1, t('ranch.birth.required')), lastNameKana: z.string().trim().min(1, t('ranch.birth.required')), firstNameKana: z.string().trim().min(1, t('ranch.birth.required')), birthDate: z.date({ required_error: t('ranch.birth.required'), invalid_type_error: t('ranch.birth.required') }) })) })
+const { defineField, handleSubmit, resetForm, errors } = useForm({ validationSchema: toTypedSchema(z.object({ lastName: z.string().trim().min(1, t('ranch.birth.required')), firstName: z.string().trim().min(1, t('ranch.birth.required')), lastNameKana: z.string().trim().min(1, t('ranch.birth.required')), firstNameKana: z.string().trim().min(1, t('ranch.birth.required')), birthDate: z.date({ error: t('ranch.birth.required') }) })) })
 const [lastName] = defineField('lastName'); const [firstName] = defineField('firstName'); const [lastNameKana] = defineField('lastNameKana'); const [firstNameKana] = defineField('firstNameKana'); const [birthDate] = defineField('birthDate')
 function apply(value: BirthProfile) { profile.value = value; result.value = null; resetForm({ values: { lastName: value.lastName ?? '', firstName: value.firstName ?? '', lastNameKana: value.lastNameKana ?? '', firstNameKana: value.firstNameKana ?? '', birthDate: value.birthDate ? new Date(`${value.birthDate}T12:00:00`) : undefined } }); confirmation.value = null; confirmed.value = false }
 async function load() {

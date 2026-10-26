@@ -13,12 +13,13 @@
     },
     "follow_dialog": {
       "search_label": "Buscar por nombre del equipo",
-      "search_placeholder": "Escribe al menos 2 caracteres del nombre del equipo",
+      "search_placeholder": "Buscar equipos",
       "slug_input_label": "Indicar por nombre de URL",
       "slug_input_hint": "Si el equipo no aparece en los resultados, escribe su nombre de URL (la parte final de su dirección) en el campo de abajo",
       "no_results": "No se encontraron equipos coincidentes",
       "search_error": "La búsqueda ha fallado. Comprueba tu conexión e inténtalo de nuevo",
-      "retry": "Buscar de nuevo"
+      "retry": "Buscar de nuevo",
+      "search_hint": "Escribe al menos 2 caracteres"
     },
     "actions": {
       "follow": "Seguir",
@@ -51,15 +52,15 @@
       },
       "follow": {
         "title": "Seguir para hacerse amigo",
-        "step1": "Pulsa el botón «Seguir» en la parte superior de la pestaña de equipos amigos",
+        "step1": "Pulsa Seguir en tu equipo o Solicitar amistad en el perfil del otro equipo.",
         "step2": "Busca por el nombre del equipo y elige el que quieres seguir. Si no lo encuentras, escribe directamente el nombre de URL del equipo (la parte final de su dirección)",
-        "step3": "Escribe un mensaje de saludo (opcional, hasta 300 caracteres)",
-        "step4": "Pulsa «Seguir» en el cuadro de diálogo",
+        "step3": "Comprueba los equipos, sus nombres, nombres de URL y la dirección. Los comentarios no se entregan.",
+        "step4": "Pulsa Revisar solicitud y después Seguir.",
         "mutual": "Cuando el otro equipo también te siga, se mostrará «Ya sois equipos amigos» y se establecerá la relación de equipos amigos.",
         "caution_title": "Aviso",
         "caution_self": "No puedes seguir a tu propio equipo",
         "caution_already": "No puedes seguir a un equipo al que ya sigues",
-        "caution_busy": "Si hay mucha carga, se reintenta automáticamente hasta 3 veces. Si aun así falla, espera un momento e inténtalo de nuevo",
+        "caution_busy": "El proceso se reintenta hasta tres veces. Actualiza las listas para verificar el resultado.",
         "caution_role": "Se necesita el permiso para administrar equipos amigos."
       },
       "visibility": {
@@ -88,7 +89,7 @@
       },
       "pending": {
         "title": "Equipos seguidos",
-        "body": "Consulta y cancela los seguimientos pendientes de amistad. Los nombres públicos enlazan a sus páginas. Tras cancelar, elige «Seguir de nuevo» para seleccionar el mismo equipo."
+        "body": "Consulta y cancela los seguimientos pendientes de amistad. Los nombres públicos enlazan a sus páginas. Tras cancelar, elige «Seguir de nuevo» para seleccionar el mismo equipo. Las solicitudes recibidas muestran el origen. Seguir de vuelta envía una solicitud de tu equipo al origen. Ambas direcciones crean la amistad. No se envía notificación de recepción."
       }
     },
     "pending": {
@@ -101,6 +102,24 @@
       "refollow": "Seguir de nuevo",
       "recovery_public": "La amistad no se ha completado. Cancela y vuelve a seguir al equipo para establecerla.",
       "recovery_hidden": "Puedes cancelar, pero quizá no puedas volver a seguir al equipo según su estado."
+    },
+    "request": {
+      "title": "Solicitar amistad entre equipos",
+      "source": "Equipo de origen",
+      "target": "Equipo de destino",
+      "no_source": "No tienes equipos autorizados. Consulta los permisos con su administrador.",
+      "choose_source": "Elige un equipo de origen",
+      "single_source": "Se ha seleccionado tu único equipo autorizado. Revísalo antes de enviar.",
+      "review": "Revisar solicitud",
+      "confirm": "Revisa esta dirección antes de enviar la solicitud.",
+      "pending": "El resultado está pendiente. Actualiza las listas para comprobar el estado.",
+      "refresh": "Actualizar listas",
+      "incoming": "Solicitudes recibidas",
+      "respond": "Revisar y seguir de vuelta",
+      "incoming_empty": "No hay solicitudes recibidas",
+      "status_counts": "Recuento actual: amistades {friends}, enviadas {pending}, recibidas {incoming}",
+      "open_lists": "Ver las listas del equipo de origen",
+      "entered_team": "Equipo introducido"
     }
   },
   "folders": {
@@ -203,5 +222,31 @@
   },
   "nav": {
     "tab": "Equipos amigos"
+  },
+  "error": {
+    "SOCIAL_101": "No puedes seguir a tu propio equipo",
+    "SOCIAL_102": "Ya sigues a este equipo",
+    "SOCIAL_103": "No se encontró la relación de seguimiento",
+    "SOCIAL_104": "No se encontró el equipo que quieres seguir",
+    "SOCIAL_105": "Se necesita permiso para gestionar equipos amigos",
+    "SOCIAL_106": "No se encontró la relación de amistad",
+    "SOCIAL_107": "Se necesitan permisos de administrador para cambiar la visibilidad",
+    "SOCIAL_108": "Hay otra operación de amistad en curso. Vuelve a intentarlo",
+    "SOCIAL_109": "Los equipos amigos están desactivados actualmente",
+    "SOCIAL_110": "No se encontró la carpeta de amigos",
+    "SOCIAL_111": "Cada equipo puede crear hasta 20 carpetas de amigos",
+    "SOCIAL_112": "Este equipo amigo ya está en la carpeta",
+    "SOCIAL_113": "Este equipo amigo no está en la carpeta",
+    "SOCIAL_120": "No se encontró el historial de reenvío",
+    "SOCIAL_121": "Esta publicación ya se ha reenviado",
+    "SOCIAL_122": "No se encontró la publicación original",
+    "SOCIAL_123": "Esta publicación no se comparte con equipos amigos",
+    "SOCIAL_124": "No existe amistad con el equipo de origen",
+    "SOCIAL_125": "El reenvío a seguidores aún no está disponible",
+    "SOCIAL_130": "Esta notificación de amigos no tiene destinatarios",
+    "SOCIAL_131": "Selecciona una carpeta de destinatarios",
+    "SOCIAL_132": "Selecciona los equipos destinatarios",
+    "SOCIAL_133": "Selecciona una carpeta o equipos como tipo de destinatario",
+    "SOCIAL_134": "El equipo seleccionado no es un equipo amigo"
   }
 }

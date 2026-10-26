@@ -106,15 +106,15 @@ class ScheduleQueryServiceTest {
             ScheduleEntity orgVisible = schedule(20L, null, ORG_ID, null);
             ScheduleEntity orgHidden = schedule(21L, null, ORG_ID, null);
 
-            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(USER_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByUserId(USER_ID, FROM, TO))
                     .willReturn(List.of(personal));
             given(membershipService.getActiveTeamIdsIncludingRoleAssignments(USER_ID))
                     .willReturn(List.of(TEAM_ID));
             given(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER_ID))
                     .willReturn(List.of(ORG_ID));
-            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByTeamId(TEAM_ID, FROM, TO))
                     .willReturn(List.of(teamVisible, teamHidden));
-            given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(ORG_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByOrganizationId(ORG_ID, FROM, TO))
                     .willReturn(List.of(orgVisible, orgHidden));
 
             // team バッチ(10,11) → 10 のみ可視 / org バッチ(20,21) → 20 のみ可視
@@ -145,9 +145,9 @@ class ScheduleQueryServiceTest {
                     .willReturn(List.of(TEAM_ID));
             given(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER_ID))
                     .willReturn(List.of(ORG_ID));
-            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByTeamId(TEAM_ID, FROM, TO))
                     .willReturn(List.of(team));
-            given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(ORG_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByOrganizationId(ORG_ID, FROM, TO))
                     .willReturn(List.of(org));
             given(contentVisibilityChecker.filterAccessible(
                     eq(ReferenceType.SCHEDULE), eq(List.of(30L)), eq(USER_ID))).willReturn(Set.of(30L));
@@ -170,7 +170,7 @@ class ScheduleQueryServiceTest {
                     .willReturn(List.of(TEAM_ID));
             given(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER_ID))
                     .willReturn(List.of());
-            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByTeamId(TEAM_ID, FROM, TO))
                     .willReturn(List.of(team));
             given(contentVisibilityChecker.filterAccessible(
                     eq(ReferenceType.SCHEDULE), eq(List.of(31L)), eq(USER_ID))).willReturn(Set.of(31L));
@@ -189,7 +189,7 @@ class ScheduleQueryServiceTest {
         void getMyCalendar_個人予定はフィルタ対象外() {
             // Given: チーム/組織所属なし、個人予定のみ
             ScheduleEntity personal = schedule(1L, null, null, USER_ID);
-            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(USER_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByUserId(USER_ID, FROM, TO))
                     .willReturn(List.of(personal));
             given(membershipService.getActiveTeamIdsIncludingRoleAssignments(USER_ID))
                     .willReturn(List.of());
@@ -210,7 +210,7 @@ class ScheduleQueryServiceTest {
         void getMyCalendar_scheduleIdはidと同値で常に入る() {
             // Given: 個人予定のみ（schedules 由来のエントリを1件用意すれば十分）
             ScheduleEntity personal = schedule(1L, null, null, USER_ID);
-            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(USER_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByUserId(USER_ID, FROM, TO))
                     .willReturn(List.of(personal));
             // When
             List<CalendarEntryResponse> entries = scheduleQueryService.getMyCalendar(USER_ID, FROM, TO);
@@ -236,7 +236,7 @@ class ScheduleQueryServiceTest {
             // Given
             ScheduleEntity visible = schedule(10L, TEAM_ID, null, null);
             ScheduleEntity hidden = schedule(11L, TEAM_ID, null, null);
-            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByTeamId(TEAM_ID, FROM, TO))
                     .willReturn(List.of(visible, hidden));
             given(contentVisibilityChecker.filterAccessible(
                     eq(ReferenceType.SCHEDULE), eq(List.of(10L, 11L)), eq(USER_ID)))
@@ -264,7 +264,7 @@ class ScheduleQueryServiceTest {
             // Given
             ScheduleEntity visible = schedule(20L, null, ORG_ID, null);
             ScheduleEntity hidden = schedule(21L, null, ORG_ID, null);
-            given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(ORG_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByOrganizationId(ORG_ID, FROM, TO))
                     .willReturn(List.of(visible, hidden));
             given(contentVisibilityChecker.filterAccessible(
                     eq(ReferenceType.SCHEDULE), eq(List.of(20L, 21L)), eq(USER_ID)))
@@ -298,7 +298,7 @@ class ScheduleQueryServiceTest {
         @DisplayName("出欠回答済みのスケジュールは一覧でも実値のmyAttendanceStatusを返す")
         void listTeamSchedules_出欠回答済みは実値を返す() {
             ScheduleEntity s1 = schedule(30L, TEAM_ID, null, null);
-            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByTeamId(TEAM_ID, FROM, TO))
                     .willReturn(List.of(s1));
             given(contentVisibilityChecker.filterAccessible(
                     eq(ReferenceType.SCHEDULE), eq(List.of(30L)), eq(USER_ID)))
@@ -321,7 +321,7 @@ class ScheduleQueryServiceTest {
         @DisplayName("出欠レコードが存在しないスケジュールはmyAttendanceStatus=null（未回答/募集対象外）")
         void listTeamSchedules_出欠レコード無しはnull() {
             ScheduleEntity s1 = schedule(31L, TEAM_ID, null, null);
-            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByTeamId(TEAM_ID, FROM, TO))
                     .willReturn(List.of(s1));
             given(contentVisibilityChecker.filterAccessible(
                     eq(ReferenceType.SCHEDULE), eq(List.of(31L)), eq(USER_ID)))
@@ -339,7 +339,7 @@ class ScheduleQueryServiceTest {
         void listTeamSchedules_複数件でも取り違えない() {
             ScheduleEntity s1 = schedule(32L, TEAM_ID, null, null);
             ScheduleEntity s2 = schedule(33L, TEAM_ID, null, null);
-            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByTeamId(TEAM_ID, FROM, TO))
                     .willReturn(List.of(s1, s2));
             given(contentVisibilityChecker.filterAccessible(
                     eq(ReferenceType.SCHEDULE), eq(List.of(32L, 33L)), eq(USER_ID)))
@@ -363,7 +363,7 @@ class ScheduleQueryServiceTest {
         @DisplayName("認可(fail-closed): 出欠バッチ取得は常にviewerUserId固定で1回だけ呼ばれる")
         void listTeamSchedules_出欠バッチはviewerUserId固定で1回() {
             ScheduleEntity s1 = schedule(34L, TEAM_ID, null, null);
-            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByTeamId(TEAM_ID, FROM, TO))
                     .willReturn(List.of(s1));
             given(contentVisibilityChecker.filterAccessible(
                     eq(ReferenceType.SCHEDULE), eq(List.of(34L)), eq(USER_ID)))
@@ -378,7 +378,7 @@ class ScheduleQueryServiceTest {
         @Test
         @DisplayName("スケジュールが0件なら出欠バッチクエリは呼ばれない")
         void listTeamSchedules_空なら出欠バッチは呼ばれない() {
-            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByTeamId(TEAM_ID, FROM, TO))
                     .willReturn(List.of());
 
             List<ScheduleResponse> result = scheduleQueryService.listTeamSchedules(TEAM_ID, FROM, TO, USER_ID);

@@ -30,3 +30,4 @@ jobs:
           scripts/completion-evidence.test.mjs
           scripts/guard-coverage.test.mjs
           scripts/boundary-coordination.test.mjs
+          scripts/unicode-checkout.test.mjs

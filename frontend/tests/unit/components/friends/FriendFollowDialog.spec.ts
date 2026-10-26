@@ -108,11 +108,16 @@ async function typeInto(testid: string, value: string) {
   await nextTick()
 }
 function submitButton(): HTMLButtonElement {
-  const el = q('[data-testid="friend-follow-submit"]')
+  const el = q('[data-testid="friend-follow-submit"]') ?? q('[data-testid="friend-request-review"]')
   expect(el, 'data-testid="friend-follow-submit" が描画されていない').not.toBeNull()
   const button = el!.tagName === 'BUTTON' ? el : el!.querySelector('button')
   expect(button).not.toBeNull()
   return button as HTMLButtonElement
+}
+async function submitRequest() {
+  const review = q('[data-testid="friend-request-review"]') as HTMLButtonElement | null
+  if (review) { if (review.disabled) return; click(review); await flushPromises() }
+  click(submitButton())
 }
 function click(el: HTMLElement) {
   el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
@@ -127,7 +132,7 @@ async function settleSearch(ms = 300) {
 
 async function mountDialog(initialSlug?: string) {
   const wrapper = await mountSuspended(FriendFollowDialog, {
-    props: { teamId: OWN_SLUG, modelValue: true, initialSlug },
+    props: { teamId: OWN_SLUG, modelValue: true, initialSlug, sourceTeam: { teamId: 10, teamSlug: OWN_SLUG, teamName: 'マイチーム' } },
     attachTo: document.body,
     global: { stubs: { Dialog: DialogStub } },
   })
@@ -176,12 +181,12 @@ describe('FriendFollowDialog（CMP-261012-0315）', () => {
     await flushPromises()
     expect(submitButton().disabled).toBe(false)
 
-    click(submitButton())
+    await submitRequest()
     await flushPromises()
 
     expect(followCalls()).toHaveLength(1)
     const [url, options] = followCalls()[0]!
-    expect(url).toBe(`/api/v1/teams/${OWN_SLUG}/friends/follow`)
+    expect(url).toBe(`/api/v1/teams/10/friends/follow`)
     expect(options?.body?.targetTeamSlug).toBe('rival-fc')
     expect(options?.body).not.toHaveProperty('targetTeamId')
     expect(wrapper.emitted('success')).toHaveLength(1)
@@ -195,6 +200,40 @@ describe('FriendFollowDialog（CMP-261012-0315）', () => {
     await settleSearch(1000)
 
     expect(searchCalls()).toHaveLength(0)
+  })
+
+  it('C3 1文字ではAPIを呼ばず2文字以上のヒント行を表示する', async () => {
+    wrapper = await mountDialog()
+    await typeInto('friend-follow-search-input', '雷')
+    await settleSearch(1000)
+    expect(searchCalls()).toHaveLength(0)
+    const hint = q('[data-testid="friend-follow-search-hint"]')
+    expect(hint, '最小文字数は入力欄の外のヒント行に表示する').not.toBeNull()
+    expect(hint!.textContent).toContain('friends.follow_dialog.search_hint')
+  })
+
+  it('C3 2文字は299msでは0回、300msで検索APIを1回呼ぶ', async () => {
+    wrapper = await mountDialog()
+    await typeInto('friend-follow-search-input', 'ra')
+    await settleSearch(299)
+    expect(searchCalls()).toHaveLength(0)
+    await settleSearch(1)
+    expect(searchCalls()).toHaveLength(1)
+    expect(new URL(searchCalls()[0]![0], 'http://localhost').searchParams.get('keyword')).toBe('ra')
+  })
+
+  it('C3 1→2→3文字の連続入力は最後の3文字だけを300ms後に1回検索する', async () => {
+    wrapper = await mountDialog()
+    await typeInto('friend-follow-search-input', 'r')
+    await settleSearch(100)
+    await typeInto('friend-follow-search-input', 'ra')
+    await settleSearch(100)
+    await typeInto('friend-follow-search-input', 'rai')
+    await settleSearch(299)
+    expect(searchCalls()).toHaveLength(0)
+    await settleSearch(1)
+    expect(searchCalls()).toHaveLength(1)
+    expect(new URL(searchCalls()[0]![0], 'http://localhost').searchParams.get('keyword')).toBe('rai')
   })
 
   it('AC-9: debounce が効く（300ms 以内の連続入力は最後の1回だけ検索する）', async () => {
@@ -211,6 +250,81 @@ describe('FriendFollowDialog（CMP-261012-0315）', () => {
     await settleSearch(1)
     expect(searchCalls()).toHaveLength(1)
     expect(new URL(searchCalls()[0]![0], 'http://localhost').searchParams.get('keyword')).toBe('raim')
+  })
+
+  /** FR06: 既存動作を固定するcharacterization coverage。初回greenを想定し、red回帰とは扱わない。 */
+  it.each(['成功', '失敗'] as const)('FR06: 旧検索の%s応答が後着しても最新候補・選択方向・POST先を維持する', async (outcome) => {
+    const oldTeam = team('old-query-fc', '旧検索のチーム', 30)
+    const newTeam = team('new-query-fc', '新しく選ぶチーム', 40)
+    let resolveOld!: (value: unknown) => void
+    let rejectOld!: (reason: Error) => void
+    const oldResponse = new Promise<unknown>((resolve, reject) => {
+      resolveOld = resolve
+      rejectOld = reject
+    })
+    searchHandler = (url) => {
+      const keyword = new URL(url, 'http://localhost').searchParams.get('keyword')
+      if (keyword === 'old-query') return oldResponse
+      if (keyword === 'new-query') return Promise.resolve(paged([newTeam]))
+      throw new Error('予期しない検索キーワード: ' + keyword)
+    }
+    followHandler = async () => ({ data: { ...FOLLOW_RESPONSE, followedTeamId: newTeam.id } })
+    wrapper = await mountDialog()
+
+    await typeInto('friend-follow-search-input', 'old-query')
+    await settleSearch()
+    expect(searchCalls()).toHaveLength(1)
+    expect(qa('[data-testid="friend-follow-candidate"]')).toHaveLength(0)
+
+    await typeInto('friend-follow-search-input', 'new-query')
+    await settleSearch(299)
+    expect(searchCalls()).toHaveLength(1)
+    await settleSearch(1)
+    expect(searchCalls().map(([url]) => new URL(url, 'http://localhost').searchParams.get('keyword'))).toEqual(['old-query', 'new-query'])
+    expect(qa('[data-testid="friend-follow-candidate"]')).toHaveLength(1)
+    expect(qa('[data-testid="friend-follow-candidate"]')[0]!.textContent).toContain(newTeam.slug)
+
+    if (outcome === '成功') {
+      // 候補が開いている間に旧成功を後着させ、古い配列への置換も実表示で検出する。
+      resolveOld(paged([oldTeam]))
+      await flushPromises()
+      await nextTick()
+      const candidates = qa('[data-testid="friend-follow-candidate"]')
+      expect(candidates).toHaveLength(1)
+      expect(candidates[0]!.textContent).toContain(newTeam.name)
+      expect(candidates[0]!.textContent).toContain(newTeam.slug)
+      expect(candidates.some(candidate => candidate.textContent?.includes(oldTeam.slug))).toBe(false)
+    }
+
+    click(qa('[data-testid="friend-follow-candidate"]')[0]!)
+    await flushPromises()
+    expect(q('[data-testid="friend-request-direction"]')?.textContent).toContain(newTeam.slug)
+
+    if (outcome === '失敗') {
+      // こちらは選択後に旧失敗を後着させ、誤ったエラー表示や選択解除を検出する。
+      rejectOld(Object.assign(new Error('旧検索の遅い失敗'), { statusCode: 500 }))
+      await flushPromises()
+      await nextTick()
+    }
+    await settleSearch(10)
+    expect(inputOf('friend-follow-search-input').value).toBe(newTeam.name)
+    expect(q('[data-testid="friend-follow-search-error"]')).toBeNull()
+    expect(q('[data-testid="friend-follow-no-results"]')).toBeNull()
+    expect(qa('[data-testid="friend-follow-candidate"]').some(candidate => candidate.textContent?.includes(oldTeam.slug))).toBe(false)
+    const direction = q('[data-testid="friend-request-direction"]')
+    expect(direction?.textContent).toContain(OWN_SLUG)
+    expect(direction?.textContent).toContain(newTeam.name)
+    expect(direction?.textContent).toContain(newTeam.slug)
+    expect(direction?.textContent).not.toContain(oldTeam.slug)
+    expect(submitButton().disabled).toBe(false)
+    expect(followCalls()).toHaveLength(0)
+
+    await submitRequest()
+    await flushPromises()
+    expect(followCalls()).toHaveLength(1)
+    expect(followCalls()[0]![0]).toBe('/api/v1/teams/10/friends/follow')
+    expect(followCalls()[0]![1]?.body).toEqual({ targetTeamSlug: newTeam.slug })
+    expect(wrapper.emitted('success')).toHaveLength(1)
   })
 
   it('AC-9: 候補0件のとき「見つからない」案内と slug 直接入力の案内が出る', async () => {
@@ -238,7 +352,7 @@ describe('FriendFollowDialog（CMP-261012-0315）', () => {
     await flushPromises()
     expect(submitButton().disabled).toBe(false)
 
-    click(submitButton())
+    await submitRequest()
     await flushPromises()
 
     expect(followCalls()).toHaveLength(1)
@@ -274,7 +388,7 @@ describe('FriendFollowDialog（CMP-261012-0315）', () => {
 
     expect(submitButton().disabled).toBe(true)
     expect(q('[data-testid="friend-follow-self-warning"]')?.textContent).toContain('friends.errors.self_follow')
-    click(submitButton())
+    await submitRequest()
     await flushPromises()
     expect(followCalls()).toHaveLength(0)
   })
@@ -287,7 +401,7 @@ describe('FriendFollowDialog（CMP-261012-0315）', () => {
 
     await typeInto('friend-follow-slug-input', 'rival-fc')
     await flushPromises()
-    click(submitButton())
+    await submitRequest()
     await flushPromises()
 
     expect(followCalls()).toHaveLength(1)
@@ -335,19 +449,19 @@ describe('FriendFollowDialog（CMP-261012-0315）', () => {
     wrapper = await mountDialog('rival-fc')
     expect(inputOf('friend-follow-slug-input').value).toBe('rival-fc')
     expect(submitButton().disabled).toBe(false)
-    click(submitButton())
+    await submitRequest()
     await flushPromises()
     expect(followCalls()[0]![1]!.body!.targetTeamSlug).toBe('rival-fc')
     expect(wrapper.emitted('success')).toHaveLength(1)
   })
 
-  it('AC18: 409 SOCIAL_102を親へ伝播して閉じる', async () => {
+  it('AC18: 409 SOCIAL_102を親へ伝播し入力を保持する', async () => {
     followHandler = async () => { throw { statusCode: 409, data: { error: { code: 'SOCIAL_102' } } } }
     wrapper = await mountDialog('rival-fc')
-    click(submitButton())
+    await submitRequest()
     await flushPromises()
     expect(wrapper.emitted('alreadyFollowing')).toHaveLength(1)
-    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([false])
+    expect(wrapper.emitted('update:modelValue') ?? []).not.toContainEqual([false])
   })
 
 })

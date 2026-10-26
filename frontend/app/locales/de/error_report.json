@@ -99,7 +99,9 @@
         "AI_ANALYZED": "KI analysiert",
         "GITHUB_ISSUE_CREATED": "GitHub Issue erstellt",
         "REOPENED": "Wiedereröffnet",
-        "RESOLVED": "Gelöst"
+        "RESOLVED": "Gelöst",
+        "HEALTH_RECOVERED": "Dienst wiederhergestellt",
+        "MERGED_DUPLICATE": "Doppelten Bericht zusammengeführt"
       }
     },
     "messages": {
