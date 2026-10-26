@@ -89,11 +89,12 @@ test('SYSTEM_ADMINが自然導線からコメントを送り、長文を360/390p
 
   const comments: [string, string][] = [
     ['ASCII2000', 'A'.repeat(2000)],
-    ['URL2000', 'https://example.test/' + 'path'.repeat(495)],
+    ['URL2000', ('https://example.test/' + 'path'.repeat(500)).slice(0, 2000)],
     ['混在2000', ('日本語ABChttps://example.test/' + 'x'.repeat(80)).repeat(20).slice(0, 2000)],
     ['改行空行', '先頭行\n\n末尾行'],
   ]
   for (const [label, content] of comments) {
+    if (label !== '改行空行') expect(content).toHaveLength(2000)
     await submitComment(page, content)
     // タイムラインは取得済み配列を保持するため、再読込で保存後の実データを取得する。
     await page.reload()
@@ -111,6 +112,7 @@ test('SYSTEM_ADMINが自然導線からコメントを送り、長文を360/390p
         )
         .toBe(true)
       console.log(label, width, await measure(page, content))
+      await page.locator('.vue-recycle-scroller').scrollIntoViewIfNeeded()
       const tailVisible = await page.evaluate(async (content) => {
         const scroller = document.querySelector<HTMLElement>('.vue-recycle-scroller')!
         const el = [
@@ -131,7 +133,14 @@ test('SYSTEM_ADMINが自然導線からコメントを送り、長文を360/390p
           .map((el) => el.querySelector('.rounded-lg')!.getBoundingClientRect())
           .sort((a, b) => a.top - b.top)
         return {
-          visible: tail.top >= viewport.top - 1 && tail.bottom <= viewport.bottom + 1,
+          visible:
+            tail.top >=
+              Math.max(
+                viewport.top,
+                0,
+                document.querySelector('header')?.getBoundingClientRect().bottom ?? 0,
+              ) -
+                1 && tail.bottom <= Math.min(viewport.bottom, window.innerHeight) + 1,
           overlap: cards.some((box, i) => {
             const previous = cards[i - 1]
             return previous !== undefined && box.top < previous.bottom - 1

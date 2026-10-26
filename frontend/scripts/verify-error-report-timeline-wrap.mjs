@@ -142,10 +142,11 @@ try {
   })
   const comments = [
     ['ASCII2000', 'A'.repeat(2000)],
-    ['URL2000', 'https://example.test/' + 'path'.repeat(495)],
+    ['URL2000', ('https://example.test/' + 'path'.repeat(500)).slice(0, 2000)],
     ['混在2000', ('日本語ABChttps://example.test/' + 'x'.repeat(80)).repeat(20).slice(0, 2000)],
   ]
   for (const [label, content] of comments) {
+    assert.equal(content.length, 2000, label + ': 上限ちょうどのfixture')
     await mount([item(content), { ...item('追加取得'), occurredAt: '2026-10-26T09:01:00' }])
     for (const width of [390, 360, 390]) {
       await page.setViewportSize({ width, height: 844 })
