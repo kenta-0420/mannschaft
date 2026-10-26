@@ -28,7 +28,7 @@ test.beforeAll(async ({ request }) => {
   const response = await request.post(`${api()}/api/v1/error-reports`, {
     data: {
       errorMessage: marker,
-      pageUrl: 'https://example.test/timeline-wrap',
+      pageUrl: `https://example.test/timeline-wrap/${marker}`,
       occurredAt: '2026-10-26T12:00:00',
     },
   })
