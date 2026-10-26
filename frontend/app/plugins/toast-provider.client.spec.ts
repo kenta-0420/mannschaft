@@ -6,16 +6,13 @@ import PrimeVue from 'primevue/config'
 import Toast from 'primevue/toast'
 import type { ToastMessageOptions } from 'primevue/toast'
 import ToastService, { type ToastServiceMethods } from 'primevue/toastservice'
-import ToastEventBus from 'primevue/toasteventbus'
 import toastProvider from './toast-provider.client'
 
 const GROUP = 'initial-notification-regression'
 const apps: App[] = []
 const containers: HTMLElement[] = []
-const cleanupListeners: (() => void)[] = []
 
 afterEach(() => {
-  cleanupListeners.splice(0).forEach(cleanup => cleanup())
   apps.splice(0).forEach(app => app.unmount())
   containers.splice(0).forEach(container => container.remove())
 })
@@ -87,8 +84,8 @@ describe('初期遷移のトースト通知', () => {
     await fixture.mount()
     await fixture.finishMount()
     // 実 Toast が同じメッセージオブジェクトへ ID を付けていることも確認する。
-    expect(first.id).toBeDefined()
-    expect(second.id).toBeDefined()
+    expect(first).toHaveProperty('id')
+    expect(second).toHaveProperty('id')
     await fixture.finishMount()
 
     expect(fixture.summaries()).toEqual(['一番目', '二番目'])
@@ -181,19 +178,19 @@ describe('初期遷移のトースト通知', () => {
   it('(AC-4) 配信先の例外を握りつぶさず既送通知を再送しない', async () => {
     const fixture = await prepare()
     const error = new Error('配信先の失敗')
-    const fail = () => { throw error }
-    fixture.toast.add(message('失敗する通知'))
+    // 実 Toast の購読処理が group を参照した瞬間に例外を発生させる。
+    const failing: ToastMessageOptions = {
+      get group(): string { throw error },
+    }
+    fixture.toast.add(message('先行通知'))
+    fixture.toast.add(failing)
     await fixture.mount()
-    ToastEventBus.on('add', fail)
-    cleanupListeners.push(() => ToastEventBus.off('add', fail))
 
     await expect(fixture.finishMount()).rejects.toBe(error)
-    ToastEventBus.off('add', fail)
     await fixture.finishMount()
 
-    expect(fixture.summaries()).toEqual(['失敗する通知'])
+    expect(fixture.summaries()).toEqual(['先行通知'])
     // 元サービスも同じエラーを伝播する（provider がエラー契約を変更しない）。
-    ToastEventBus.on('add', fail)
-    expect(() => fixture.rawToast.add(message('元サービス'))).toThrow(error)
+    expect(() => fixture.rawToast.add(failing)).toThrow(error)
   })
 })

@@ -412,10 +412,9 @@ test.describe('F10.1.1 管理コンソール — アクセスガード', () => {
     const toastVisible = deniedToast.waitFor({ state: 'visible', timeout: 20_000 })
 
     // アプリを事前に開かず、未購読の初回ミドルウェアで拒否通知を発生させる。
-    await page.goto(`/teams/${teamSlug}/admin`)
+    await Promise.all([toastVisible, page.goto(`/teams/${teamSlug}/admin`)])
 
     await page.waitForURL(new RegExp(`/teams/${teamSlug}(\\?|/?$)`), { timeout: 20_000 })
-    await toastVisible
     await expect(deniedToast).toHaveCount(1)
     expect(page.url(), '404・エラーページではない').not.toMatch(/\/404|error/)
   })
@@ -464,9 +463,8 @@ test.describe('F10.1.1 管理コンソール — アクセスガード', () => {
     await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
     const deniedToast = page.getByText('管理者権限が必要です', { exact: true })
     const toastVisible = deniedToast.waitFor({ state: 'visible', timeout: 20_000 })
-    await page.goto(`/organizations/${foreignOrgSlug}/admin`)
+    await Promise.all([toastVisible, page.goto(`/organizations/${foreignOrgSlug}/admin`)])
     await page.waitForURL(new RegExp(`/organizations/${foreignOrgSlug}(\\?|/?$)`), { timeout: 20_000 })
-    await toastVisible
     await expect(deniedToast).toHaveCount(1)
     expect(new URL(page.url()).pathname, '/admin ハブに留まっていない').not.toMatch(/\/admin\/?$/)
     expect(page.url(), '404 ページではない').not.toMatch(/\/404/)
