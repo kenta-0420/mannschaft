@@ -190,11 +190,11 @@ class MeOrganizationsBatchQueryIT extends AbstractMySqlIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data", hasSize(2)))
                 .andExpect(jsonPath("$.data[0].id").value(earlier.getId()))
                 .andExpect(jsonPath("$.data[0].role").value("SUPPORTER"))
-                .andExpect(jsonPath("$.data[0].joinedAt").value(base.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))))
+                .andExpect(jsonPath("$.data[0].joinedAt").value(base.atZone(java.time.ZoneId.of("Asia/Tokyo")).toInstant().toString()))
                 .andExpect(jsonPath("$.data[1].id").value(later.getId()))
                 .andExpect(jsonPath("$.data[1].role").value("ADMIN"))
                 .andExpect(jsonPath("$.data[1].memberCount").value(3))
-                .andExpect(jsonPath("$.data[1].joinedAt").value(base.plusDays(1).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))))
+                .andExpect(jsonPath("$.data[1].joinedAt").value(base.plusDays(1).atZone(java.time.ZoneId.of("Asia/Tokyo")).toInstant().toString()))
                 .andExpect(jsonPath("$.meta.limit").value(1))
                 .andExpect(jsonPath("$.meta.hasNext").value(false));
     }
