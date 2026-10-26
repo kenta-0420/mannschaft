@@ -135,6 +135,7 @@ for (const locale of Object.keys(messages) as Locale[]) {
       page.getByText(tournamentErrorTranslations[locale][3], { exact: true }).first(),
     ).toBeVisible()
     await expect(page.getByText(text.entry.saveSuccess, { exact: true })).toHaveCount(0)
+    await expect(page.locator('.p-toast-message-success')).toHaveCount(0)
     await expect(dialog).toBeVisible()
 
     await dialog.getByRole('combobox').click()
@@ -156,6 +157,8 @@ for (const locale of Object.keys(messages) as Locale[]) {
     ).toBeVisible()
     await expect(dialog).toBeVisible()
     await expect(page.getByText(text.entry.saveSuccess, { exact: true })).toHaveCount(0)
+    await expect(page.locator('.p-toast-message-success')).toHaveCount(0)
+    await expect(dialog.locator('input[type="checkbox"]:checked')).toHaveCount(0)
   })
 }
 
