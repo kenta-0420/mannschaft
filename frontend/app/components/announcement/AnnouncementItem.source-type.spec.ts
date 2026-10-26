@@ -15,7 +15,7 @@ describe('お知らせの配信元表示', () => {
     expect(sourceTypes).toContain('TODO')
     expect(sourceTypes).toContain('ADVERTISER_CAMPAIGN')
     const typeSource = readFileSync(resolve(process.cwd(), 'app/types/announcement.ts'), 'utf8')
-    const declaration = typeSource.match(/export type AnnouncementSourceType =([\s\S]*?)\n\n/)?.[1] ?? ''
+    const declaration = typeSource.match(/export type AnnouncementSourceType =([\s\S]*?)\r?\n\r?\n/)?.[1] ?? ''
     const declaredTypes = [...declaration.matchAll(/'([A-Z_]+)'/g)].map((match) => match[1])
     expect(declaredTypes.sort()).toEqual([...sourceTypes, 'CIRCULATION'].sort())
   })
