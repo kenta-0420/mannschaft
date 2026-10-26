@@ -1,5 +1,6 @@
 import { useToast } from 'primevue/usetoast'
 import type { ToastServiceMethods } from 'primevue/toastservice'
+import { nextTick } from 'vue'
 
 export default defineNuxtPlugin((nuxtApp) => {
   // useToast は setup コンテキスト外では動かないため、
@@ -13,9 +14,11 @@ export default defineNuxtPlugin((nuxtApp) => {
     else pending.push(operation)
   }
 
-  // 初回ミドルウェアは <Toast> の購読開始より先に動く。
+  // 初回ミドルウェアと app:mounted は、親 Suspense 内の <Toast> 購読開始より先に動きうる。
+  // Suspense 解決後の mounted 効果が実行されるまで待って配信する。
   // 取消も同じ順序で配信し、保留中に取り消した通知を復活させない。
-  nuxtApp.hook('app:mounted', () => {
+  nuxtApp.hook('app:suspense:resolve', async () => {
+    await nextTick()
     if (mounted) return
     mounted = true
     const operations = pending

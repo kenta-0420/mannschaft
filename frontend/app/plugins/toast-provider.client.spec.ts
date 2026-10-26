@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from 'vitest'
-import { createApp, defineComponent, h, nextTick, type App } from 'vue'
+import { createApp, defineComponent, h, nextTick, Suspense, type App } from 'vue'
 import type { NuxtApp } from '#app'
 import PrimeVue from 'primevue/config'
 import Toast from 'primevue/toast'
@@ -23,7 +23,7 @@ function message(summary: string, group = GROUP): ToastMessageOptions {
 
 /** Nuxt の mount hook だけを制御し、通知サービス・購読・描画は実 PrimeVue を通す。 */
 async function prepare() {
-  let mounted: (() => void) | undefined
+  const hooks = new Map<string, () => void | Promise<void>>()
   const app = createApp(defineComponent({
     setup: () => () => h('div', [
       h(Toast, { group: GROUP, 'data-testid': 'initial-toast' }),
@@ -33,8 +33,8 @@ async function prepare() {
   app.use(PrimeVue, { unstyled: true })
   app.use(ToastService)
   const nuxtApp = {
-    hook(name: string, callback: () => void) {
-      if (name === 'app:mounted') mounted = callback
+    hook(name: string, callback: () => void | Promise<void>) {
+      hooks.set(name, callback)
     },
   } as unknown as NuxtApp
   const provided = await app.runWithContext(() => toastProvider(nuxtApp))
@@ -53,7 +53,8 @@ async function prepare() {
       await nextTick()
     },
     async finishMount() {
-      mounted?.()
+      await hooks.get('app:mounted')?.()
+      await hooks.get('app:suspense:resolve')?.()
       await nextTick()
     },
     summaries() {
@@ -63,7 +64,97 @@ async function prepare() {
   }
 }
 
+/** Nuxt root と同じ親 Suspense 内で、実 Toast の mounted 効果を保留させる。 */
+async function prepareRootSuspense(deferred: boolean) {
+  const hooks = new Map<string, () => void | Promise<void>>()
+  const events: string[] = []
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let resolveSuspense!: () => void
+  const suspenseResolved = new Promise<void>(resolve => { resolveSuspense = resolve })
+  let delivery: void | Promise<void>
+  const AsyncContent = defineComponent({
+    async setup() {
+      await gate
+      return () => h('div', '初期ページ')
+    },
+  })
+  const app = createApp(defineComponent({
+    setup: () => () => h(Suspense, {
+      onResolve() {
+        events.push('suspense:resolve')
+        delivery = hooks.get('app:suspense:resolve')?.()
+        resolveSuspense()
+      },
+    }, {
+      default: () => h('div', [
+        deferred ? h(AsyncContent) : null,
+        h(Toast, {
+          group: GROUP,
+          'data-testid': 'initial-toast',
+          onVnodeMounted: () => { events.push('toast:mounted') },
+        }),
+      ]),
+    }),
+  }))
+  app.use(PrimeVue, { unstyled: true })
+  app.use(ToastService)
+  const nuxtApp = {
+    hook(name: string, callback: () => void | Promise<void>) { hooks.set(name, callback) },
+  } as unknown as NuxtApp
+  const provided = await app.runWithContext(() => toastProvider(nuxtApp))
+  const toast = provided?.provide?.toast as ToastServiceMethods
+  const container = document.createElement('div')
+  document.body.append(container)
+  containers.push(container)
+  return {
+    toast,
+    events,
+    async mount() {
+      app.mount(container)
+      apps.push(app)
+      events.push('app:mounted')
+      await hooks.get('app:mounted')?.()
+    },
+    async resolve() {
+      release()
+      await suspenseResolved
+      await delivery
+      await nextTick()
+    },
+    summaries: () => [...document.querySelectorAll('[data-testid="initial-toast"] [data-pc-section="summary"]')]
+      .map(element => element.textContent),
+  }
+}
+
 describe('初期遷移のトースト通知', () => {
+  it('(AC-1 回帰) 親 Suspense の解決前に app:mounted が発火しても通知を失わない', async () => {
+    const fixture = await prepareRootSuspense(true)
+    fixture.toast.add(message('初期拒否通知'))
+    await fixture.mount()
+    expect(fixture.events).toEqual(['app:mounted'])
+    fixture.toast.add(message('解決待ち中の通知'))
+
+    await fixture.resolve()
+
+    expect(fixture.events).toEqual(['app:mounted', 'suspense:resolve', 'toast:mounted'])
+    expect(fixture.summaries()).toEqual(['初期拒否通知', '解決待ち中の通知'])
+  })
+
+  it('(AC-1 境界) 同期 root が app:mounted より先に resolve しても保留通知を配信する', async () => {
+    const fixture = await prepareRootSuspense(false)
+    fixture.toast.add(message('同期 root の通知'))
+
+    await fixture.mount()
+    await fixture.resolve()
+
+    expect(fixture.events).toEqual(['suspense:resolve', 'toast:mounted', 'app:mounted'])
+    expect(fixture.summaries()).toEqual(['同期 root の通知'])
+    fixture.toast.add(message('解決後の通常通知'))
+    await nextTick()
+    expect(fixture.summaries()).toEqual(['同期 root の通知', '解決後の通常通知'])
+  })
+
   it('(AC-1) 初期購読前の通知を実 Toast の mount 後に表示する', async () => {
     const fixture = await prepare()
     fixture.toast.add(message('管理者権限が必要です'))
@@ -82,7 +173,8 @@ describe('初期遷移のトースト通知', () => {
     fixture.toast.add(first)
     fixture.toast.add(second)
     await fixture.mount()
-    await fixture.finishMount()
+    // await 中に resolve が重なっても同じ保留通知を二度配信しない。
+    await Promise.all([fixture.finishMount(), fixture.finishMount()])
     // 実 Toast が同じメッセージオブジェクトへ ID を付けていることも確認する。
     expect(first).toHaveProperty('id')
     expect(second).toHaveProperty('id')
