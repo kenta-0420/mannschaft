@@ -34,6 +34,12 @@ async function openLogin(page: Page, notice = false): Promise<void> {
   if (notice) await expect(page.locator('#login-form [role="status"]')).toBeVisible()
 }
 
+async function assertAuthenticatedScreen(page: Page): Promise<void> {
+  await waitForHydration(page)
+  await expect(page.locator('header').getByText('Mannschaft', { exact: true })).toBeVisible()
+  await expect(page.locator('#login-form')).toHaveCount(0)
+}
+
 async function assertTargets(page: Page): Promise<void> {
   const boxes: Array<{ x: number; y: number; width: number; height: number }> = []
   for (const selector of controls) {
@@ -155,6 +161,7 @@ for (const role of ['MEMBER', 'ADMIN', 'OTHER_TENANT']) {
         response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/v1/auth/login')
       await page.locator('[data-login-submit]').tap()
       expect((await failed).status()).toBe(401)
+      await expect(page.getByText('ログインに失敗しました', { exact: true })).toBeVisible()
       await expect(page.locator('[data-login-submit]')).toBeEnabled()
       await expect(page).toHaveURL(/\/login$/)
       expect(await email.inputValue() === emailValue, '不正認証後もメール入力を保持する').toBe(true)
@@ -167,7 +174,9 @@ for (const role of ['MEMBER', 'ADMIN', 'OTHER_TENANT']) {
     await page.locator('[data-login-submit]').tap()
     expect((await success).status()).toBe(200)
     await expect(page).toHaveURL(url => /^\/(dashboard|my|system-admin)(\/|$)/.test(url.pathname), { timeout: 90_000 })
+    await assertAuthenticatedScreen(page)
     await page.goto('/login')
     await expect(page).toHaveURL(url => /^\/(dashboard|my|system-admin)(\/|$)/.test(url.pathname), { timeout: 90_000 })
+    await assertAuthenticatedScreen(page)
   })
 }
