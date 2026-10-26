@@ -70,7 +70,14 @@
       "reject": "Ablehnen",
       "reviewComment": "Prüfungskommentar",
       "openCallLimit": "Offene Ausschreibungen sind auf 3 pro Monat begrenzt",
-      "fetchError": "Fehler beim Abrufen der Änderungsanträge"
+      "fetchError": "Fehler beim Abrufen der Änderungsanträge",
+      "requester": "Antragsteller",
+      "unknownRequester": "Unbekannter Benutzer",
+      "createSuccess": "Änderungsantrag gesendet",
+      "approveSuccess": "Änderungsantrag genehmigt",
+      "rejectSuccess": "Änderungsantrag abgelehnt",
+      "withdrawSuccess": "Änderungsantrag zurückgezogen",
+      "closedForNew": "Dieser Schichtplan ist bereits veröffentlicht, daher werden keine neuen Änderungsanträge mehr angenommen."
     },
     "pdf": {
       "teamLayout": "Team-Schichtplan PDF",
@@ -143,7 +150,9 @@
       "colDate": "Datum",
       "colSlots": "Slots",
       "editDialogTitle": "Schicht bearbeiten",
-      "accessDeniedRedirect": "Sie haben keine Berechtigung, diese Seite anzuzeigen"
+      "accessDeniedRedirect": "Sie haben keine Berechtigung, diese Seite anzuzeigen",
+      "tabBoard": "Schichtboard",
+      "tabChangeRequests": "Änderungsanträge"
     },
     "slot": {
       "createTitle": "Slot anlegen",
@@ -241,7 +250,14 @@
       "userId": "Benutzer-ID",
       "userIdPlaceholder": "Benutzer-ID eingeben",
       "saveSuccess": "Arbeitsbeschränkungen gespeichert",
-      "deleteSuccess": "Arbeitsbeschränkungen gelöscht"
+      "deleteSuccess": "Arbeitsbeschränkungen gelöscht",
+      "unknownMember": "Unbekannter Benutzer",
+      "selectMember": "Mitglied auswählen",
+      "searchMember": "Nach Name suchen",
+      "noSelectableMembers": "Keine Mitglieder zum Hinzufügen verfügbar",
+      "membersLoadError": "Mitgliederliste konnte nicht geladen werden",
+      "deleteTitle": "Arbeitsbeschränkung löschen",
+      "deleteConfirm": "Diese Arbeitsbeschränkung löschen?"
     },
     "validation": {
       "atLeastOneConstraint": "Bitte geben Sie mindestens eine Beschränkung an"
@@ -393,7 +409,8 @@
       "bulkRequest": "Wünsche gesammelt einreichen",
       "board": "Schichtboard",
       "weeklyDefault": "Wochentags-Standard festlegen",
-      "closed": "Die Wunschabgabe ist beendet"
+      "closed": "Die Wunschabgabe ist beendet",
+      "changeRequest": "Änderungsantrag"
     },
     "submitConfirm": {
       "title": "Mit diesem Inhalt senden?",

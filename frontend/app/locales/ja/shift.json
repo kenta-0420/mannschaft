@@ -67,7 +67,9 @@
       "colDate": "日付",
       "colSlots": "スロット",
       "editDialogTitle": "シフトを編集",
-      "accessDeniedRedirect": "このページを表示する権限がありません"
+      "accessDeniedRedirect": "このページを表示する権限がありません",
+      "tabBoard": "シフトボード",
+      "tabChangeRequests": "変更依頼"
     },
     "slot": {
       "createTitle": "スロットを作成",
@@ -165,7 +167,14 @@
       "userId": "ユーザーID",
       "userIdPlaceholder": "ユーザーIDを入力",
       "saveSuccess": "勤務制約を保存しました",
-      "deleteSuccess": "勤務制約を削除しました"
+      "deleteSuccess": "勤務制約を削除しました",
+      "unknownMember": "不明なユーザー",
+      "selectMember": "メンバーを選ぶ",
+      "searchMember": "名前で検索",
+      "noSelectableMembers": "追加できるメンバーがいません",
+      "membersLoadError": "メンバー一覧を取得できませんでした",
+      "deleteTitle": "勤務制約を削除",
+      "deleteConfirm": "この勤務制約を削除しますか？"
     },
     "validation": {
       "atLeastOneConstraint": "少なくとも1つの項目を指定してください"
@@ -359,7 +368,14 @@
       "reject": "却下",
       "reviewComment": "審査コメント",
       "openCallLimit": "オープンコールは月3件まで",
-      "fetchError": "変更依頼の取得に失敗しました"
+      "fetchError": "変更依頼の取得に失敗しました",
+      "requester": "依頼者",
+      "unknownRequester": "不明なユーザー",
+      "createSuccess": "変更依頼を送信しました",
+      "approveSuccess": "変更依頼を承認しました",
+      "rejectSuccess": "変更依頼を却下しました",
+      "withdrawSuccess": "変更依頼を取り下げました",
+      "closedForNew": "このシフト表は公開済みのため、新しい変更依頼は受け付けていません"
     },
     "pdf": {
       "teamLayout": "チーム全体表 PDF",
@@ -393,7 +409,8 @@
       "bulkRequest": "まとめて希望を出す",
       "board": "シフトボード",
       "weeklyDefault": "曜日ごとの既定を設定",
-      "closed": "希望の受付は終了しました"
+      "closed": "希望の受付は終了しました",
+      "changeRequest": "変更依頼"
     },
     "submitConfirm": {
       "title": "この内容で送信しますか？",
