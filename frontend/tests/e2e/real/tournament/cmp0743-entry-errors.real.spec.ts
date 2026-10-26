@@ -172,7 +172,9 @@ async function open(page: Page, locale: Locale, email = adminEmail) {
   const apiFailures: Array<{ path: string; status: number; code?: string }> = []
   page.on('response', async (response) => {
     if (!response.url().startsWith(API + '/api/v1/') || response.status() < 400) return
-    const body = (await response.json().catch(() => null)) as { error?: { code?: string } } | null
+    const body = response.headers()['content-type']?.includes('application/json')
+      ? ((await response.json()) as { error?: { code?: string } })
+      : null
     apiFailures.push({
       path: new URL(response.url()).pathname,
       status: response.status(),
