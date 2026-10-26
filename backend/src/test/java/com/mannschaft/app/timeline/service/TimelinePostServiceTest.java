@@ -2999,4 +2999,22 @@ class TimelinePostServiceTest {
             assertThat(result.getAttachments()).isEmpty();
         }
     }
+    @Test
+    @DisplayName("CMP-261026-1912: feedの実JSONがみたよ状態と件数を必ず持つ")
+    void feedJsonContainsMitayoContract() {
+        given(postRepository.findFeedByScopeType(eq(PostScopeType.PUBLIC), eq(0L), any(PageRequest.class)))
+                .willReturn(List.of(createPost()));
+        given(timelineMapper.toPostResponseList(any())).willReturn(List.of(createPostResponse()));
+
+        List<PostResponse> result = timelinePostService.getFeed("PUBLIC", 0L, null, 10, USER_ID);
+        com.fasterxml.jackson.databind.JsonNode json = new com.fasterxml.jackson.databind.ObjectMapper()
+                .findAndRegisterModules().valueToTree(result);
+
+        assertThat(json.get(0).has("mitayo")).isTrue();
+        assertThat(json.get(0).get("mitayo").isBoolean()).isTrue();
+        assertThat(json.get(0).get("mitayo").booleanValue()).isFalse();
+        assertThat(json.get(0).has("mitayoCount")).isTrue();
+        assertThat(json.get(0).get("mitayoCount").isIntegralNumber()).isTrue();
+        assertThat(json.get(0).get("mitayoCount").intValue()).isZero();
+    }
 }
