@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-10-26T01:47:54+00:00",
+  "generatedAt": "2026-10-26T04:23:11+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,13 +8,13 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "7ce9038bd0ab722bcb63ee9540e6c95fc4362558",
+    "taskListCommit": "cd14cf155f90e78d8709135bb08765f9bb450478",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "d9150a2b635bd7716337eb0d645cfc383948ef2360b094bd67f35874429dd30d",
+    "taskListSha256": "22f6471c81d2edf55ac43c9af9ac1de9987e6c0f8375aaa13c440eaa0a3a2eae",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "99ea1ebae4f6c978cab9e5b7d3a637dd6a7ccf66e2212adec91cd0dc6447deb9"
+    "githubSnapshotSha256": "f1321d9189775116f057a9a1d7412b308528a5c66c4c568fc47141adb48c2f08"
   },
   "sourceCounts": {
     "features": 44,
@@ -8386,142 +8386,179 @@ window.BETA_INVENTORY_DATA = {
     }
   },
   "b0RunOverlay": {
+    "schemaVersion": 1,
     "registrationSource": "actual-resident-artifacts",
     "trusted": false,
     "status": "observed-unverified",
-    "runId": "cmp261025-2202",
+    "runId": "october-first-wave-20261026",
     "environment": {
-      "sourceHead": "c6431d71d8bb8371b9f68fada63b4a3f7fbc5c22",
-      "baseUrl": "http://localhost:3001",
-      "apiBaseUrl": "http://localhost:8081",
-      "purpose": "実機2件成功後の3住民による独立探索。固定B0計画やcoverage合格を示さない。"
+      "sourceHead": "03be10c6d87ceeec29d4b09f0bac4db0d391c514",
+      "purpose": "Timeline長語折返しの3住民モバイル探索。実装AC外の観測候補も未実証で記録し、既存B0 coverageやrunner成功を主張しない。",
+      "viewport": [
+        "390x844",
+        "360x800"
+      ],
+      "idAssignment": "personaIdは原residentIdを保持。A/BのjourneyIdと各insightIdは登録時付与。固定P01-P20への変換なし。testAccountIdと原runId/sourceHeadを保持。"
     },
     "personas": [
       {
-        "id": "cmp261025-admin",
-        "personaArchetype": "高齢・低リテラシー × 中断・放棄",
-        "runId": "cmp261025-2202",
-        "sourceHead": "c6431d71d8bb8371b9f68fada63b4a3f7fbc5c22",
-        "evidencePath": "docs/evidence/CMP-261025-2202/resident-admin.md"
+        "id": "resident-mobile-admin",
+        "personaArchetype": "スマホ片手操作×表示崩れ",
+        "runId": "october-first-wave-20261026",
+        "sourceHead": "03be10c6d87ceeec29d4b09f0bac4db0d391c514",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/admin.md",
+        "originalResidentId": "resident-mobile-admin",
+        "testAccountId": "ADMIN4",
+        "sourceEvidencePath": "frontend/test-results/alicization/october-first-wave-20261026/resident-mobile-admin/observations.json"
       },
       {
-        "id": "cmp261025-member",
-        "personaArchetype": "スマホ片手操作 × 表示崩れ",
-        "runId": "cmp261025-2202",
-        "sourceHead": "c6431d71d8bb8371b9f68fada63b4a3f7fbc5c22",
-        "evidencePath": "docs/evidence/CMP-261025-2202/resident-member.md"
+        "id": "resident-org-literacy",
+        "personaArchetype": "高齢・低リテラシー×素直",
+        "runId": "october-first-wave-20261026",
+        "sourceHead": "03be10c6d87ceeec29d4b09f0bac4db0d391c514",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/organization-admin.md",
+        "originalResidentId": "resident-org-literacy",
+        "testAccountId": "ORG_ADMIN7",
+        "sourceEvidencePath": "frontend/test-results/alicization/october-first-wave-20261026/resident-org-literacy/observations.json"
       },
       {
-        "id": "cmp261025-supporter",
-        "personaArchetype": "一般 × 隙間狙い",
-        "runId": "cmp261025-2202",
-        "sourceHead": "c6431d71d8bb8371b9f68fada63b4a3f7fbc5c22",
-        "evidencePath": "docs/evidence/CMP-261025-2202/resident-supporter.md"
+        "id": "resident-member-interrupt",
+        "personaArchetype": "ADHD傾向×中断・放棄 / 一般会員",
+        "runId": "october-first-wave-20261026",
+        "sourceHead": "03be10c6d87ceeec29d4b09f0bac4db0d391c514",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/member.md",
+        "originalResidentId": "resident-member-interrupt",
+        "testAccountId": "MEMBER8",
+        "sourceJourneyId": "member-shared-report-interrupt-resume",
+        "sourceEvidencePath": "frontend/test-results/alicization/october-first-wave-20261026/resident-member-interrupt/observation.json"
       }
     ],
     "journeys": [
       {
-        "id": "team-feature-display-admin-abandon",
-        "personaId": "cmp261025-admin",
-        "purpose": "メンバーとサポータの表示設定を保存し、離脱後に管理者表示へ復帰する",
-        "runId": "cmp261025-2202",
-        "sourceHead": "c6431d71d8bb8371b9f68fada63b4a3f7fbc5c22",
-        "evidencePath": "docs/evidence/CMP-261025-2202/resident-admin.md"
+        "id": "CMP2610220338-admin-timeline-wrap",
+        "personaId": "resident-mobile-admin",
+        "purpose": "共有された不具合報告Timelineの長文を末尾まで読み、調査コメントを残して再読する",
+        "runId": "october-first-wave-20261026",
+        "sourceHead": "03be10c6d87ceeec29d4b09f0bac4db0d391c514",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/admin.md",
+        "journeyIdSource": "登録時付与。原観測にjourneyIdなし。"
       },
       {
-        "id": "member-org-schedule-bulletin",
-        "personaId": "cmp261025-member",
-        "purpose": "組織の予定と掲示板を390/360幅で探して読む",
-        "runId": "cmp261025-2202",
-        "sourceHead": "c6431d71d8bb8371b9f68fada63b4a3f7fbc5c22",
-        "evidencePath": "docs/evidence/CMP-261025-2202/resident-member.md"
+        "id": "CMP2610220338-org-shared-report-return",
+        "personaId": "resident-org-literacy",
+        "purpose": "共有障害報告URLの理解と通常組織業務への復帰",
+        "runId": "october-first-wave-20261026",
+        "sourceHead": "03be10c6d87ceeec29d4b09f0bac4db0d391c514",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/organization-admin.md",
+        "journeyIdSource": "登録時付与。原観測にjourneyIdなし。"
       },
       {
-        "id": "resident-supporter",
-        "personaId": "cmp261025-supporter",
-        "purpose": "スコープ往復と管理設定URLの制限を確かめる",
-        "runId": "cmp261025-2202",
-        "sourceHead": "c6431d71d8bb8371b9f68fada63b4a3f7fbc5c22",
-        "evidencePath": "docs/evidence/CMP-261025-2202/resident-supporter.md"
+        "id": "member-shared-report-interrupt-resume",
+        "personaId": "resident-member-interrupt",
+        "purpose": "共有不具合報告の確認可能範囲を探し、中断後も通常利用へ復帰する",
+        "runId": "october-first-wave-20261026",
+        "sourceHead": "03be10c6d87ceeec29d4b09f0bac4db0d391c514",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/member.md",
+        "sourceJourneyId": "member-shared-report-interrupt-resume"
       }
     ],
     "insights": [
       {
-        "id": "CMP-261025-2202-OBS-01",
-        "featureKey": "team-modules",
-        "featureDetail": "一般機能の表示",
-        "title": "表示設定の配置で一度迷った",
-        "detail": "管理コンソールの設定へ進んだ後、機能設定一覧下部scrollY約4825で一般機能の表示を発見した。最終的に保存・再入場・管理者復帰を達成。導線不能ではなく発見しやすさの改善候補。",
-        "page": "/teams/teams-1792955080937/modules",
-        "screenshotPath": "docs/evidence/CMP-261025-2202/screenshots/admin/390-04-settings.png",
-        "personaId": "cmp261025-admin",
-        "personaArchetype": "高齢・低リテラシー × 中断・放棄",
-        "journeyId": "team-feature-display-admin-abandon",
-        "originalRunId": "cmp261025-2202",
-        "runId": "cmp261025-2202",
-        "sourceHead": "c6431d71d8bb8371b9f68fada63b4a3f7fbc5c22",
-        "evidencePath": "docs/evidence/CMP-261025-2202/resident-admin.md",
-        "registrationSource": "アリシゼーションテスト",
+        "id": "CMP-261022-0338-OBS-A1",
+        "featureKey": "moderation-incident",
+        "featureDetail": "system-admin error report #10 のコメント保存後Timeline再読",
+        "title": "保存後のコメント再読を確認できなかった",
+        "detail": "コメントPOSTはHTTP 200で入力欄は空に戻ったが、Timelineへ戻った画面で新コメントを確認できず、保存後のTimeline再取得も観測ログにない。保存失敗とは断定せず、再読・表示状態の確認候補として扱う。今回の長語折返しACからは範囲外。",
+        "page": "/system-admin/error-reports/10",
+        "personaId": "resident-mobile-admin",
+        "personaArchetype": "スマホ片手操作×表示崩れ",
+        "journeyId": "CMP2610220338-admin-timeline-wrap",
+        "originalRunId": "october-first-wave-20261026",
+        "runId": "october-first-wave-20261026",
+        "sourceHead": "03be10c6d87ceeec29d4b09f0bac4db0d391c514",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/admin.md",
+        "sourceEvidencePath": "frontend/test-results/alicization/october-first-wave-20261026/resident-mobile-admin/observations.json",
+        "screenshotPath": "docs/evidence/CMP-261022-0338/residents/screenshots/admin-11-memo-history-360.png",
         "status": "observed-unverified",
         "urgency": "when-free",
         "priority": "could"
       },
       {
-        "id": "CMP-261025-2202-OBS-02",
-        "featureKey": "team-modules",
-        "featureDetail": "遷移先の既存掲示板",
-        "title": "掲示板タブの高さが38px",
-        "detail": "390/360幅で一覧72x38、保管庫86x38。親も同寸法を再現し画像とDOMを照合。既存bulletin.vueのpy-2/font14由来で今回差分なし。操作不能は観測せず、本機能のblockerへ昇格しない。",
-        "page": "/organizations/organizations-1792955082319/bulletin",
-        "screenshotPath": "docs/evidence/CMP-261025-2202/screenshots/parent/360-bulletin.png",
-        "personaId": "cmp261025-member",
-        "personaArchetype": "スマホ片手操作 × 表示崩れ",
-        "journeyId": "member-org-schedule-bulletin",
-        "originalRunId": "cmp261025-2202",
-        "runId": "cmp261025-2202",
-        "sourceHead": "c6431d71d8bb8371b9f68fada63b4a3f7fbc5c22",
-        "evidencePath": "docs/evidence/CMP-261025-2202/resident-member.md",
-        "registrationSource": "アリシゼーションテスト",
+        "id": "CMP-261022-0338-OBS-A2",
+        "featureKey": "moderation-incident",
+        "featureDetail": "system-admin error report #10 概要の担当者操作",
+        "title": "担当者ボタンの縦折返しとカード右端越え",
+        "detail": "360px画面で担当者選択/解除buttonが44×140pxに折返し、解除button右端x=337がcard右端約x=309を越えた観測。操作不能や発生条件は未確認で、今回のTimeline修正範囲外。",
+        "page": "/system-admin/error-reports/10",
+        "personaId": "resident-mobile-admin",
+        "personaArchetype": "スマホ片手操作×表示崩れ",
+        "journeyId": "CMP2610220338-admin-timeline-wrap",
+        "originalRunId": "october-first-wave-20261026",
+        "runId": "october-first-wave-20261026",
+        "sourceHead": "03be10c6d87ceeec29d4b09f0bac4db0d391c514",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/admin.md",
+        "sourceEvidencePath": "frontend/test-results/alicization/october-first-wave-20261026/resident-mobile-admin/observations.json",
+        "screenshotPath": "docs/evidence/CMP-261022-0338/residents/screenshots/admin-08-memo-form-360.png",
         "status": "observed-unverified",
         "urgency": "when-free",
         "priority": "could"
       },
       {
-        "id": "CMP-261025-2202-OBS-03",
-        "featureKey": "dashboard",
-        "featureDetail": "遷移先の既存月カレンダー",
-        "title": "月表示の予定名省略と狭い日セル",
-        "detail": "360幅でイベント名span幅0、日セル34x60、イベント親25x24。日セルをtapすれば名称と日時を読め、目的を達成。既存CalendarGrid.vueは今回差分なし。月表示の省略仕様との切分けを要する未確定の改善候補。",
-        "page": "/organizations/organizations-1792955082319/schedule",
-        "screenshotPath": "docs/evidence/CMP-261025-2202/screenshots/member/360-event-readable.png",
-        "personaId": "cmp261025-member",
-        "personaArchetype": "スマホ片手操作 × 表示崩れ",
-        "journeyId": "member-org-schedule-bulletin",
-        "originalRunId": "cmp261025-2202",
-        "runId": "cmp261025-2202",
-        "sourceHead": "c6431d71d8bb8371b9f68fada63b4a3f7fbc5c22",
-        "evidencePath": "docs/evidence/CMP-261025-2202/resident-member.md",
-        "registrationSource": "アリシゼーションテスト",
+        "id": "CMP-261022-0338-OBS-A3",
+        "featureKey": "moderation-incident",
+        "featureDetail": "system-admin error report #10 mobile tab navigation",
+        "title": "タブ送りボタン幅が40px",
+        "detail": "360px画面の「次へ」buttonは40×57px。幅44px未満の観測候補。操作不能や実害は確認していない。今回のTimeline修正範囲外。",
+        "page": "/system-admin/error-reports/10",
+        "personaId": "resident-mobile-admin",
+        "personaArchetype": "スマホ片手操作×表示崩れ",
+        "journeyId": "CMP2610220338-admin-timeline-wrap",
+        "originalRunId": "october-first-wave-20261026",
+        "runId": "october-first-wave-20261026",
+        "sourceHead": "03be10c6d87ceeec29d4b09f0bac4db0d391c514",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/admin.md",
+        "sourceEvidencePath": "frontend/test-results/alicization/october-first-wave-20261026/resident-mobile-admin/observations.json",
+        "screenshotPath": "docs/evidence/CMP-261022-0338/residents/screenshots/admin-08-memo-form-360.png",
         "status": "observed-unverified",
         "urgency": "when-free",
         "priority": "could"
       },
       {
-        "id": "CMP-261025-2202-OBS-04",
-        "featureKey": "notification-inbox",
-        "featureDetail": "既存共通toast",
-        "title": "保存通知の閉じる領域が28px",
-        "detail": "390/360幅の保存成功toast閉じるbuttonは28x28。補助操作であり保存や復帰を阻害しない。共通Toastは今回差分なし。主要な設定switch/関連label/保存buttonは44px以上。",
-        "page": "/teams/teams-1792955080937/modules",
-        "screenshotPath": "docs/evidence/CMP-261025-2202/screenshots/admin/360-05-saved.png",
-        "personaId": "cmp261025-admin",
-        "personaArchetype": "高齢・低リテラシー × 中断・放棄",
-        "journeyId": "team-feature-display-admin-abandon",
-        "originalRunId": "cmp261025-2202",
-        "runId": "cmp261025-2202",
-        "sourceHead": "c6431d71d8bb8371b9f68fada63b4a3f7fbc5c22",
-        "evidencePath": "docs/evidence/CMP-261025-2202/resident-admin.md",
-        "registrationSource": "アリシゼーションテスト",
+        "id": "CMP-261022-0338-OBS-B1",
+        "featureKey": "organization-manage",
+        "featureDetail": "組織スコープ切替の組織名表示（360px）",
+        "title": "組織名buttonの幅と表示切れ候補",
+        "detail": "組織名buttonはDOMで170×38px、360px画像では組織名が短くしか見えない。追加確認が必要な表示候補で、操作不能や原因は未確認。今回の長語折返しACから範囲外。",
+        "page": "/dashboard",
+        "personaId": "resident-org-literacy",
+        "personaArchetype": "高齢・低リテラシー×素直",
+        "journeyId": "CMP2610220338-org-shared-report-return",
+        "originalRunId": "october-first-wave-20261026",
+        "runId": "october-first-wave-20261026",
+        "sourceHead": "03be10c6d87ceeec29d4b09f0bac4db0d391c514",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/organization-admin.md",
+        "sourceEvidencePath": "frontend/test-results/alicization/october-first-wave-20261026/resident-org-literacy/observations.json",
+        "screenshotPath": "docs/evidence/CMP-261022-0338/residents/screenshots/org-08-org-360.png",
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-261022-0338-OBS-B2",
+        "featureKey": "auth",
+        "featureDetail": "共有error report URLからdashboardへ戻る権限案内",
+        "title": "共有URL後の遷移先で必要権限を理解しにくかった",
+        "detail": "この住民はdashboard上で共有URLとの関係や理由を見つけられず迷った。一方、別住民Cは遷移前に『アクセスできません / 管理者権限が必要です』を実見しているため、説明不存在とは結論しない。遷移時点と案内の理解に関する未実証候補で、今回の長語折返しACから範囲外。",
+        "page": "/system-admin/error-reports/10",
+        "personaId": "resident-org-literacy",
+        "personaArchetype": "高齢・低リテラシー×素直",
+        "journeyId": "CMP2610220338-org-shared-report-return",
+        "originalRunId": "october-first-wave-20261026",
+        "runId": "october-first-wave-20261026",
+        "sourceHead": "03be10c6d87ceeec29d4b09f0bac4db0d391c514",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/organization-admin.md",
+        "sourceEvidencePath": "frontend/test-results/alicization/october-first-wave-20261026/resident-org-literacy/observations.json",
+        "screenshotPath": "docs/evidence/CMP-261022-0338/residents/screenshots/org-08-org-360.png",
         "status": "observed-unverified",
         "urgency": "when-free",
         "priority": "could"
@@ -50237,7 +50274,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T00:17:58Z",
+          "updatedAt": "2026-10-26T02:59:48Z",
           "ci": null
         },
         {
@@ -50368,7 +50405,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T00:17:58Z",
+          "updatedAt": "2026-10-26T02:59:48Z",
           "ci": null
         },
         {
@@ -50561,8 +50598,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261022-0338",
       "title": "システム管理エラー報告タイムラインの長いコメントが360pxで切れる",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -50576,12 +50613,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "殿が通常UIで独立再現。360pxでコメントsw241/cw206、親282/260・overflow:hidden、pre-wrap/長語wrapなし、ページ横パン0。390pxは画像全文を読めるため欠陥を主張しない。ErrorReportTimelineView.vue:141前後はR1 HEAD/最新main d86/作業前c7cd45baでblob `dd50a36fd87296d576721dd9276452a1abb1fd3a` 同一。証跡: `.claude/worktrees/agent-friend-0021-r1-20261021/.r1-ci/private-1d784e22-runtime-20261022/root-comment-independent-v2-observation.json` と同prefixの360/390画像。R1集約変更とは独立した既存UI不備、修正未着手。2026-10-26 着手。担当: Timelineコメント長語折返し修正、回帰red→green、実機確認",
+          "label": "初期独立再現（旧source）: 360pxでTimeline本文sw241/cw206、親282/260・overflow:hidden、pre-wrap/長語wrapなし、ページ横パン0。390pxは全文表示のため欠陥扱いせず。2026-10-26着手・PR #4125完了: main追従後e202で回帰red→green、実機4件passed、3住民探索（source 03beを別記録）。対象/guard16 blobは追従前後不変。CIは実装headでsuccess。詳細: [完了証拠](evidence/CMP-261022-0338.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "殿が通常UIで独立再現。360pxでコメントsw241/cw206、親282/260・overflow:hidden、pre-wrap/長語wrapなし、ページ横パン0。390pxは画像全文を読めるため欠陥を主張しない。ErrorReportTimelineView.vue:141前後はR1 HEAD/最新main d86/作業前c7cd45baでblob `dd50a36fd87296d576721dd9276452a1abb1fd3a` 同一。証跡: `.claude/worktrees/agent-friend-0021-r1-20261021/.r1-ci/private-1d784e22-runtime-20261022/root-comment-independent-v2-observation.json` と同prefixの360/390画像。R1集約変更とは独立した既存UI不備、修正未着手。2026-10-26 着手。担当: Timelineコメント長語折返し修正、回帰red→green、実機確認"
+        "初期独立再現（旧source）: 360pxでTimeline本文sw241/cw206、親282/260・overflow:hidden、pre-wrap/長語wrapなし、ページ横パン0。390pxは全文表示のため欠陥扱いせず。2026-10-26着手・PR #4125完了: main追従後e202で回帰red→green、実機4件passed、3住民探索（source 03beを別記録）。対象/guard16 blobは追従前後不変。CIは実装headでsuccess。詳細: [完了証拠](evidence/CMP-261022-0338.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -50596,10 +50633,27 @@ window.BETA_INVENTORY_DATA = {
         "green"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4125
+      ],
+      "github": [
+        {
+          "number": 4125,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: エラーレポートの長いコメントの折返しを改善",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4125",
+          "updatedAt": "2026-10-26T04:09:48Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-261021-2213",
@@ -50717,7 +50771,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T00:17:58Z",
+          "updatedAt": "2026-10-26T02:59:48Z",
           "ci": null
         }
       ]
@@ -50818,7 +50872,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T00:17:58Z",
+          "updatedAt": "2026-10-26T02:59:48Z",
           "ci": null
         }
       ]
@@ -51126,7 +51180,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T00:17:58Z",
+          "updatedAt": "2026-10-26T02:59:48Z",
           "ci": null
         }
       ]
@@ -51762,7 +51816,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "merged",
           "title": "機能追加: チーム・組織の一般機能をロール別に表示設定",
           "url": "https://github.com/kenta-0420/mannschaft/pull/4116",
-          "updatedAt": "2026-10-26T01:40:43Z",
+          "updatedAt": "2026-10-26T01:56:26Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -51776,7 +51830,7 @@ window.BETA_INVENTORY_DATA = {
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-10-26T01:46:00+00:00",
+    "synchronizedAt": "2026-10-26T04:18:35+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -53579,7 +53633,9 @@ window.BETA_INVENTORY_DATA = {
       ],
       "CMP-261022-0234": [],
       "CMP-261022-0235": [],
-      "CMP-261022-0338": [],
+      "CMP-261022-0338": [
+        4125
+      ],
       "CMP-261021-2213": [
         4045
       ],
@@ -62079,7 +62135,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
         "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-        "updatedAt": "2026-10-26T00:17:58Z",
+        "updatedAt": "2026-10-26T02:59:48Z",
         "ci": null
       },
       "4023": {
@@ -62456,7 +62512,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "merged",
         "title": "機能追加: チーム・組織の一般機能をロール別に表示設定",
         "url": "https://github.com/kenta-0420/mannschaft/pull/4116",
-        "updatedAt": "2026-10-26T01:40:43Z",
+        "updatedAt": "2026-10-26T01:56:26Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -62491,13 +62547,27 @@ window.BETA_INVENTORY_DATA = {
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
+      },
+      "4125": {
+        "number": 4125,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: エラーレポートの長いコメントの折返しを改善",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4125",
+        "updatedAt": "2026-10-26T04:09:48Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
       }
     },
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-10-26T01:46:00+00:00",
-      "referenceCount": 660
+      "synchronizedAt": "2026-10-26T04:18:35+00:00",
+      "referenceCount": 661
     }
   }
 };
