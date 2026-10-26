@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-10-26T04:23:11+00:00",
+  "generatedAt": "2026-10-26T05:33:23+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,19 +8,19 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "cd14cf155f90e78d8709135bb08765f9bb450478",
+    "taskListCommit": "d65e6e0b69b564df010732fc750ef34ab270a9fe",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "22f6471c81d2edf55ac43c9af9ac1de9987e6c0f8375aaa13c440eaa0a3a2eae",
+    "taskListSha256": "f668bce993f3d40633dfa55cc19ee2c830d6f0ee942a24ca025bcf5a1db9208a",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "f1321d9189775116f057a9a1d7412b308528a5c66c4c568fc47141adb48c2f08"
+    "githubSnapshotSha256": "73c202b9cba047f30c8e2d2882ec497a3a68a3663fd8cfa7c7b031ad16e2aedf"
   },
   "sourceCounts": {
     "features": 44,
     "capabilities": 95,
     "splitParents": 33,
-    "campaigns": 595,
+    "campaigns": 596,
     "layer": {
       "能力": 26,
       "ドメイン": 18
@@ -37,11 +37,11 @@ window.BETA_INVENTORY_DATA = {
   "verification": {
     "raw": {
       "features": 44,
-      "campaigns": 595
+      "campaigns": 596
     },
     "parsed": {
       "features": 44,
-      "campaigns": 595,
+      "campaigns": 596,
       "core": 25,
       "noncore": 19,
       "blockers": 23,
@@ -36109,8 +36109,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261001-0839",
       "title": "`POST /api/v1/security/csp-reports` が application/csp-report・application/reports+json で 500 になり Javadoc の保証と矛盾する",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -36133,7 +36133,7 @@ window.BETA_INVENTORY_DATA = {
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "`CspReportController.java:65-66` の Javadoc は「必ず204を返す」と保証しているが、Content-Type `application/csp-report` と `application/reports+json` で 500（COMMON_999）を返す。application/json では 204 が返る"
+        "[実装PR #4127](https://github.com/kenta-0420/mannschaft/pull/4127) head `819bfcdbeadcc0d13d3c246f7de5fea60c796a56` をmerge `1a1220d8fec79d984d64829de4805080e794e197` で通常merge。head CI Backend run 40272198959・Frontend 40272198978・Smoke 40272198960成功（Smoke 100 passed、INSIGHT-INVITE-EN flaky 1件retry success）。実DB IT 33組はred 24/9 failureからgreen 33/33、旧CSP-Report 500はred未再現。[d969実機](evidence/CMP-261001-0839/real.md) 1 passedは別source。住民Cのsource03be探索は自動POST 204とUI継続を観測。main-follow 12 object不変bridgeでsourceを区別。raw XMLは現存せず、red/green SHA・件数と殿の当時独立XML照合を記録。[完了証拠](evidence/CMP-261001-0839.json)、[回帰](evidence/CMP-261001-0839/regressions.md)、[実機・探索](evidence/CMP-261001-0839/real.md)"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -36151,10 +36151,27 @@ window.BETA_INVENTORY_DATA = {
         "Content-Type"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4127
+      ],
+      "github": [
+        {
+          "number": 4127,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正(CMP-261001-0839): CSPレポートのreports+jsonを受理しHTTP契約を固定",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4127",
+          "updatedAt": "2026-10-26T05:26:43Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-261001-1032",
@@ -48366,8 +48383,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261021-0648",
       "title": "交代依頼の承認時に枠担当が申請者から受諾者へ自動差替されない",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -48381,12 +48398,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260908-2116",
       "issues": [
         {
-          "label": "設計照合済・実装/検証中",
+          "label": "[証拠](evidence/CMP-261021-0648.json)・[集約](evidence/CMP-261021-0648.md)（実装PR #4122 merge済、main CI成功・専有環境撤去完了、独立224件・実機readback補完・3住民探索を記録）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "設計照合済・実装/検証中"
+        "[証拠](evidence/CMP-261021-0648.json)・[集約](evidence/CMP-261021-0648.md)（実装PR #4122 merge済、main CI成功・専有環境撤去完了、独立224件・実機readback補完・3住民探索を記録）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -48399,10 +48416,27 @@ window.BETA_INVENTORY_DATA = {
         "API"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4122
+      ],
+      "github": [
+        {
+          "number": 4122,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 交代承認時に担当と割当履歴を同時に差し替える",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4122",
+          "updatedAt": "2026-10-26T04:55:16Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-261021-0649",
@@ -50274,7 +50308,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T02:59:48Z",
+          "updatedAt": "2026-10-26T05:22:22Z",
           "ci": null
         },
         {
@@ -50405,7 +50439,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T02:59:48Z",
+          "updatedAt": "2026-10-26T05:22:22Z",
           "ci": null
         },
         {
@@ -50645,7 +50679,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "merged",
           "title": "修正: エラーレポートの長いコメントの折返しを改善",
           "url": "https://github.com/kenta-0420/mannschaft/pull/4125",
-          "updatedAt": "2026-10-26T04:09:48Z",
+          "updatedAt": "2026-10-26T04:46:05Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -50771,7 +50805,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T02:59:48Z",
+          "updatedAt": "2026-10-26T05:22:22Z",
           "ci": null
         }
       ]
@@ -50872,7 +50906,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T02:59:48Z",
+          "updatedAt": "2026-10-26T05:22:22Z",
           "ci": null
         }
       ]
@@ -51180,7 +51214,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T02:59:48Z",
+          "updatedAt": "2026-10-26T05:22:22Z",
           "ci": null
         }
       ]
@@ -51825,12 +51859,87 @@ window.BETA_INVENTORY_DATA = {
           }
         }
       ]
+    },
+    {
+      "id": "CMP-261026-1344",
+      "title": "初期遷移時の拒否通知保持",
+      "status": "working",
+      "statusLabel": "実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "初期遷移で通知表示・通常通知互換・回帰試験・実機探索。mount前通知を実Toastのmount後にFIFOで1回表示し、空queue・mount後即時・4通知APIと取消の互換、直URLのMEMBER/他tenant拒否通知・ADMIN正常通知を確認する。",
+      "acceptance": [
+        "初期遷移で通知表示・通常通知互換・回帰試験・実機探索。mount前通知を実Toastのmount後にFIFOで1回表示し、空queue・mount後即時・4通知APIと取消の互換、直URLのMEMBER/他tenant拒否通知・ADMIN正常通知を確認する。"
+      ],
+      "blocker": "#4022 / L1-A補助（範囲外のため別戦役）",
+      "issues": [
+        {
+          "label": "L1-A実機で発見した既存FE不具合。関連PR #4049。事前登録のみで修正・回帰試験・実機E2E・探索は未実施。",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "L1-A実機で発見した既存FE不具合。関連PR #4049。事前登録のみで修正・回帰試験・実機E2E・探索は未実施。"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "L1-Aの受入範囲へ含めず、L1-A自体を完了にしない。"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "mount",
+        "Toast",
+        "mount",
+        "FIFO",
+        "queue",
+        "mount",
+        "API",
+        "URL",
+        "MEMBER",
+        "tenant",
+        "ADMIN"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        4022,
+        4049
+      ],
+      "github": [
+        {
+          "number": 4022,
+          "kind": "issue",
+          "state": "open",
+          "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
+          "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
+          "updatedAt": "2026-10-26T05:22:22Z",
+          "ci": null
+        },
+        {
+          "number": 4049,
+          "kind": "pull_request",
+          "state": "open",
+          "title": "CMP-261022-0914: L1-A 認可サービスのinterface化とroleへの移設",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4049",
+          "updatedAt": "2026-10-26T03:00:46Z",
+          "ci": {
+            "status": "success",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     }
   ],
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-10-26T04:18:35+00:00",
+    "synchronizedAt": "2026-10-26T05:31:25+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -53047,7 +53156,9 @@ window.BETA_INVENTORY_DATA = {
       "CMP-261001-0836": [],
       "CMP-261001-0837": [],
       "CMP-261001-0838": [],
-      "CMP-261001-0839": [],
+      "CMP-261001-0839": [
+        4127
+      ],
       "CMP-261001-1032": [],
       "CMP-260930-2346": [
         3542
@@ -53559,7 +53670,9 @@ window.BETA_INVENTORY_DATA = {
         4053,
         4110
       ],
-      "CMP-261021-0648": [],
+      "CMP-261021-0648": [
+        4122
+      ],
       "CMP-261021-0649": [],
       "CMP-261021-0650": [],
       "CMP-261021-0651": [],
@@ -53691,6 +53804,10 @@ window.BETA_INVENTORY_DATA = {
       ],
       "CMP-261025-2202": [
         4116
+      ],
+      "CMP-261026-1344": [
+        4022,
+        4049
       ]
     },
     "items": {
@@ -62135,7 +62252,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
         "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-        "updatedAt": "2026-10-26T02:59:48Z",
+        "updatedAt": "2026-10-26T05:22:22Z",
         "ci": null
       },
       "4023": {
@@ -62274,6 +62391,19 @@ window.BETA_INVENTORY_DATA = {
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4049": {
+        "number": 4049,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "CMP-261022-0914: L1-A 認可サービスのinterface化とroleへの移設",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4049",
+        "updatedAt": "2026-10-26T03:00:46Z",
+        "ci": {
+          "status": "success",
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
@@ -62548,13 +62678,41 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "4122": {
+        "number": 4122,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 交代承認時に担当と割当履歴を同時に差し替える",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4122",
+        "updatedAt": "2026-10-26T04:55:16Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "4125": {
         "number": 4125,
         "kind": "pull_request",
         "state": "merged",
         "title": "修正: エラーレポートの長いコメントの折返しを改善",
         "url": "https://github.com/kenta-0420/mannschaft/pull/4125",
-        "updatedAt": "2026-10-26T04:09:48Z",
+        "updatedAt": "2026-10-26T04:46:05Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4127": {
+        "number": 4127,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正(CMP-261001-0839): CSPレポートのreports+jsonを受理しHTTP契約を固定",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4127",
+        "updatedAt": "2026-10-26T05:26:43Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -62566,8 +62724,8 @@ window.BETA_INVENTORY_DATA = {
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-10-26T04:18:35+00:00",
-      "referenceCount": 661
+      "synchronizedAt": "2026-10-26T05:31:25+00:00",
+      "referenceCount": 664
     }
   }
 };
