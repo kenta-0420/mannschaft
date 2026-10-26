@@ -9,6 +9,7 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.member.event.MemberSubtabVisibilityUpdatedEvent;
+import com.mannschaft.app.template.event.ScopeFeatureDisplayPolicyUpdatedEvent;
 import com.mannschaft.app.loyalty.LoyaltyCommittedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -846,6 +847,17 @@ public class AuditLogEventListener {
             null,
             event.getMetadataJson()
         );
+    }
+
+    /** 一般機能の表示設定保存に成功したcommitだけを既存監査基盤へ記録する。 */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると確定済み表示設定変更の監査証跡が恒久的に欠落する")
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleScopeFeatureDisplayPolicyUpdated(ScopeFeatureDisplayPolicyUpdatedEvent event) {
+        auditLogService.recordSync(ScopeFeatureDisplayPolicyUpdatedEvent.AUDIT_EVENT_TYPE,
+                event.getActorUserId(), null, event.getTeamId(), event.getOrganizationId(),
+                null, null, null, event.getMetadataJson());
     }
 
     /** ポイントの初回commitだけを監査へ接続する。秘密や表示名はmetadataへ含めない。 */

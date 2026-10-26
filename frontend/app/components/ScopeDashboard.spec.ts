@@ -1,8 +1,9 @@
+// @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { createI18n } from 'vue-i18n'
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import ScopeDashboard from './ScopeDashboard.vue'
 import type { ViewerRole } from '~/types/dashboard'
 import ja from '~/locales/ja/dashboard.json'
@@ -12,12 +13,19 @@ import ko from '~/locales/ko/dashboard.json'
 import es from '~/locales/es/dashboard.json'
 import de from '~/locales/de/dashboard.json'
 
+const { featureVisible, reorderAll } = vi.hoisted(() => ({ featureVisible: vi.fn((_key?: string) => true), reorderAll: vi.fn() }))
+const widgetKeys = ref(['timeline', 'chat', 'blog'])
+const individuallyHidden = ref<string[]>([])
+const displayGrid = ref(false)
+mockNuxtImport('useScopeFeatureVisibility', () => () => ({
+  isVisible: featureVisible, ready: ref(true), loading: ref(false), error: ref(null), refresh: vi.fn(),
+}))
 mockNuxtImport('useDashboardWidgets', () => () => ({
-  sortedWidgets: ref([]),
-  visibleWidgets: ref([]),
+  sortedWidgets: computed(() => widgetKeys.value.map(key => ({ key, labelKey: key, descriptionKey: key, icon: '', scope: ['team', 'organization'] }))),
+  visibleWidgets: computed(() => (displayGrid.value ? widgetKeys.value.filter(key => !individuallyHidden.value.includes(key)) : []).map(key => ({ key, labelKey: key, descriptionKey: key, icon: '', scope: ['team', 'organization'] }))),
   isVisible: vi.fn(),
   toggleWidget: vi.fn(),
-  reorder: vi.fn(),
+  reorder: reorderAll,
   ready: ref(true),
 }))
 mockNuxtImport('useSpotlightApi', () => () => ({ fetchContent: vi.fn() }))
@@ -46,6 +54,7 @@ function mountDashboard(
   options: { locale?: keyof typeof locales; scopeId?: string; viewerRole?: ViewerRole } = {},
 ) {
   return mount(ScopeDashboard, {
+    shallow: true,
     props: {
       scopeType,
       scopeId: options.scopeId ?? 'public-scope',
@@ -67,7 +76,8 @@ function mountDashboard(
             '<aside data-testid="public-hint"><slot /><button data-testid="dismiss" @click="$emit(\'close\')" /></aside>',
         },
         Button: true,
-        DashboardScopeAccordion: true,
+        DashboardScopeAccordion: { props: ['widgets'], template: '<div><slot :widgets="widgets" /></div>' },
+        DashboardWidgetCard: { template: '<article><slot /></article>' },
         DashboardConfigDialog: true,
       },
     },
@@ -75,7 +85,7 @@ function mountDashboard(
 }
 
 describe('ScopeDashboard 公開閲覧者案内', () => {
-  beforeEach(() => localStorage.clear())
+  beforeEach(() => { localStorage.clear(); featureVisible.mockReset().mockReturnValue(true); reorderAll.mockReset(); widgetKeys.value = ['timeline', 'chat', 'blog']; individuallyHidden.value = []; displayGrid.value = false })
 
   it.each(Object.keys(locales) as (keyof typeof locales)[])(
     '%s: 組織の案内を実翻訳で表示する',
@@ -95,10 +105,31 @@ describe('ScopeDashboard 公開閲覧者案内', () => {
     },
   )
 
+  it('設定dialogだけを絞り並べ替え時も非表示機能の元順序を保持する', async () => {
+    featureVisible.mockImplementation(key => key !== 'chat')
+    const wrapper = mountDashboard('team', { viewerRole: 'MEMBER' })
+    const dialog = wrapper.findComponent({ name: 'DashboardConfigDialog' })
+    expect(dialog.props('widgets').map((widget: { key: string }) => widget.key)).toEqual(['timeline', 'blog'])
+    dialog.vm.$emit('reorder', 1, 0)
+    await nextTick()
+    expect(reorderAll).toHaveBeenCalledWith(2, 0)
+  })
+
   it('個人ダッシュボードには案内を表示しない', () => {
     const wrapper = mountDashboard('personal')
 
     expect(wrapper.find('[data-testid="public-hint"]').exists()).toBe(false)
+  })
+
+  it('通常グリッドの並べ替えは個人非表示と機能非表示が混在しても対象キーを維持する', async () => {
+    displayGrid.value = true
+    widgetKeys.value = ['timeline', 'chat', 'blog', 'bulletin']
+    individuallyHidden.value = ['timeline']
+    featureVisible.mockImplementation(key => key !== 'chat')
+    const wrapper = mountDashboard('team', { viewerRole: 'MEMBER' })
+    await wrapper.get('[data-widget-key="bulletin"]').trigger('dragstart')
+    await wrapper.get('[data-widget-key="blog"]').trigger('drop')
+    expect(reorderAll).toHaveBeenCalledWith(3, 2)
   })
 
   it.each<ViewerRole>(['SYSTEM_ADMIN', 'ADMIN', 'DEPUTY_ADMIN', 'MEMBER', 'SUPPORTER'])(

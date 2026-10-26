@@ -13,6 +13,7 @@ definePageMeta({
 })
 
 const route = useRoute()
+const auth = useAuthStore()
 const orgSlug = computed(() => String(route.params.slug))
 
 const {
@@ -34,7 +35,7 @@ const orgScopeNumericId = computed(() =>
 <template>
   <div class="mt-4">
     <ScopeDashboard
-      :key="orgSlug"
+      :key="[orgSlug, auth.user?.id].join(':')"
       scope-type="organization"
       :scope-id="orgSlug"
       :scope-numeric-id="orgScopeNumericId"

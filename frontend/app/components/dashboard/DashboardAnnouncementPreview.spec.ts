@@ -1,11 +1,20 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
-import { defineComponent, reactive } from 'vue'
+import { defineComponent, reactive, ref } from 'vue'
 import TeamPanel from './DashboardTeamPanel.vue'
 import OrgPanel from './DashboardOrgPanel.vue'
 
 const mocks = vi.hoisted(() => ({ dashboard: vi.fn(), store: null as unknown }))
+mockNuxtImport('useAuthStore', () => () => ({ user: { id: 1 } }))
+// 配信設定・取得世代の検証では、表示方針を取得済みの全表示として固定する。
+mockNuxtImport('useScopeFeatureVisibility', () => () => ({
+  ready: ref(true),
+  error: ref(undefined),
+  refresh: vi.fn(),
+  isVisible: () => true,
+}))
 vi.mock('~/stores/useScopeDashboardStore', () => ({ useScopeDashboardStore: () => mocks.store }))
 vi.mock('~/composables/useDashboardApi', () => ({ useDashboardApi: () => ({ getTeamDashboard: mocks.dashboard, getOrganizationDashboard: mocks.dashboard }) }))
 const Announcements = defineComponent({ name: 'DashboardAnnouncements', props: ['items', 'scopeId'], emits: ['refresh', 'unavailable'], template: '<div />' })

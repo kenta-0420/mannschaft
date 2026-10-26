@@ -1,5 +1,5 @@
 import { getCurrentScope, onScopeDispose } from 'vue'
-import type { Ref } from 'vue'
+import type { MaybeRefOrGetter, Ref } from 'vue'
 import type { MinRole, ViewerRole, WidgetVisibilitySetting } from '~/types/dashboard'
 import type { components } from '~/types/generated'
 
@@ -619,8 +619,8 @@ function buildReverseKeyMap(scopeType: 'personal' | 'team' | 'organization'): Ma
 export function useDashboardWidgets(
   scopeType: 'personal' | 'team' | 'organization',
   scopeId?: Ref<string> | string,
-  viewerRole?: ViewerRole,
-  visibilityMap?: WidgetVisibilitySetting[],
+  viewerRole?: MaybeRefOrGetter<ViewerRole | undefined>,
+  visibilityMap?: MaybeRefOrGetter<WidgetVisibilitySetting[]>,
 ) {
   const resolvedId = typeof scopeId === 'string' ? scopeId : scopeId?.value
 
@@ -656,8 +656,8 @@ export function useDashboardWidgets(
     sortedWidgets.value.filter((w) => {
       if (!isVisible(w.key)) return false
       if (w.key === 'dinosaur-ranch' && !ranchMountVisible.value) return false
-      const minRole = effectiveMinRole(w, scopeType, visibilityMap ?? [])
-      return viewerRoleLevel(viewerRole) >= MIN_ROLE_LEVEL[minRole]
+      const minRole = effectiveMinRole(w, scopeType, toValue(visibilityMap) ?? [])
+      return viewerRoleLevel(toValue(viewerRole)) >= MIN_ROLE_LEVEL[minRole]
     }),
   )
 
@@ -672,7 +672,8 @@ export function useDashboardWidgets(
     // イベントハンドラ（reorder/toggle）からも安全に使えるようにする（visibility composable と同方針）。
     const api = useApi()
     const nuxtApp = useNuxtApp()
-    const auth = apiScopeType === 'personal' ? useAuthStore() : null
+    const settingsAuth = useAuthStore()
+    const auth = apiScopeType === 'personal' ? settingsAuth : null
     let personalValid = true
     let saveVersion = 0
     let settledVersion = 0
@@ -726,7 +727,7 @@ export function useDashboardWidgets(
     // SSR の認証なし応答を payload に固定すると、reload 後に保存済み非表示が失われる。
     // personal スコープの場合は scopeId=undefined（scope_id=0 相当として BE が識別）。
     const effectiveScopeId = apiScopeType === 'personal' ? undefined : resolvedId
-    const dataKey = `dashboard-widgets:${apiScopeType}:${effectiveScopeId ?? '0'}`
+    const dataKey = `dashboard-widgets:${settingsAuth.user?.id ?? 'anonymous'}:${apiScopeType}:${effectiveScopeId ?? '0'}`
     const { data: serverSettings, status } = useAsyncData(
       dataKey,
       async () => {
