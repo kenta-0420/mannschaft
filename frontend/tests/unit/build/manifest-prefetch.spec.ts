@@ -1,6 +1,17 @@
 import { createRendererContext, getRequestDependencies } from 'vue-bundle-renderer/runtime'
 import { describe, expect, it, vi } from 'vitest'
 
+type ManifestEntry = {
+  file: string
+  isEntry?: boolean
+  module?: boolean
+  preload?: boolean
+  prefetch?: boolean
+  sideEffects?: boolean
+  imports?: string[]
+  dynamicImports?: string[]
+}
+
 describe('本番 SSR の依存ヒント', () => {
   it('遅延資産の prefetch だけを抑え、必須資産と依存関係を保つ', async () => {
     vi.stubGlobal('defineNuxtConfig', (config: unknown) => config)
@@ -11,7 +22,7 @@ describe('本番 SSR の依存ヒント', () => {
         | undefined
       expect(hook).toBeTypeOf('function')
 
-      const original = {
+      const original: Record<string, ManifestEntry> = {
         entry: {
           file: 'entry.js',
           isEntry: true,
@@ -32,7 +43,7 @@ describe('本番 SSR の依存ヒント', () => {
       }
       const before = structuredClone(original)
       const after = structuredClone(original)
-      const dependencies = (manifest: typeof original) =>
+      const dependencies = (manifest: Record<string, ManifestEntry>) =>
         getRequestDependencies({}, createRendererContext({ manifest }))
 
       const oldDependencies = dependencies(before)
@@ -43,7 +54,7 @@ describe('本番 SSR の依存ヒント', () => {
       expect(newDependencies.prefetch).toEqual({})
       expect(newDependencies.preload).toEqual(oldDependencies.preload)
       expect(newDependencies.scripts).toEqual(oldDependencies.scripts)
-      for (const id of Object.keys(original) as Array<keyof typeof original>) {
+      for (const id of Object.keys(original)) {
         expect(after[id].file).toBe(before[id].file)
         expect(after[id].imports).toEqual(before[id].imports)
         expect(after[id].dynamicImports).toEqual(before[id].dynamicImports)
