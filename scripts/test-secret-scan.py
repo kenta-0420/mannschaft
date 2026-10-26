@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """固定版gitleaksと実Gitでworkflowのmerge差分・履歴・除外境界を検証する。"""
+from collections import Counter
 import json
+import math
 import os
 from pathlib import Path
 import re
+import secrets
 import shlex
 import subprocess
 import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 BINARY = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else ROOT / 'gitleaks'
@@ -86,7 +90,10 @@ class SecretScanRegression(unittest.TestCase):
         path.write_text(contents, encoding='utf-8')
 
     def token(self):
-        value = ''.join(f'{digit:x}' for digit in range(16)) * 3
+        # 16進各文字を3個ずつ含め、検出閾値3.5を超えるentropy 4を保証する。
+        characters = list('0123456789abcdef' * 3)
+        secrets.SystemRandom().shuffle(characters)
+        value = ''.join(characters)
         self.values.append(value)
         return value
 
@@ -128,6 +135,14 @@ class SecretScanRegression(unittest.TestCase):
         count = sum(len(run.get('results', [])) for run in json.loads(raw_report).get('runs', [])) if raw_report else 0
         self.assertEqual(result.returncode, expected_exit, 'scanner exit must match gate contract')
         self.assertEqual(count, expected_count, 'scanner finding count must match fixture contract')
+
+    def test_generated_token_always_exceeds_detection_entropy_threshold(self):
+        with patch('secrets.token_hex', return_value='0' * 48):
+            value = self.token()
+
+        entropy = -sum((count / len(value)) * math.log2(count / len(value))
+                       for count in Counter(value).values())
+        self.assertGreater(entropy, 3.5, 'synthetic detection value must exceed scanner entropy threshold')
 
     def test_merge_only_addition_in_pr_and_push_range(self):
         self.make_merge()

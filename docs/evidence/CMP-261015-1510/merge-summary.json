@@ -1,0 +1,12 @@
+{
+  "repository": "kenta-0420/mannschaft",
+  "pullRequest": 4133,
+  "headSha": "0042f17ea50daf539e1c16ddfc0d123ecbc0726b",
+  "state": "MERGED",
+  "mergeCommit": "bd573ee5c26c341d5d55cd11ad500b74977b945d",
+  "mergedAt": "2026-10-26T11:01:44Z",
+  "admin": true,
+  "authorization": "user explicit --admin permission limited to PR4133/head0042",
+  "verifiedBy": "root",
+  "originMainVerified": true
+}
