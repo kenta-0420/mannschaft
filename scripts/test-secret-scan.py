@@ -142,7 +142,7 @@ class SecretScanRegression(unittest.TestCase):
 
         entropy = -sum((count / len(value)) * math.log2(count / len(value))
                        for count in Counter(value).values())
-        self.assertGreaterEqual(entropy, 3.5, 'synthetic detection value must exceed scanner entropy threshold')
+        self.assertGreater(entropy, 3.5, 'synthetic detection value must exceed scanner entropy threshold')
 
     def test_merge_only_addition_in_pr_and_push_range(self):
         self.make_merge()
