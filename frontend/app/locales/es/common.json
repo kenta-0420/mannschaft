@@ -3185,5 +3185,16 @@
         "step3": "Si no se puede añadir, los datos introducidos se conservan. Revisa el motivo indicado y los datos, y vuelve a pulsar «Añadir»."
       }
     }
+  },
+  "feature_display": {
+    "title": "Visibilidad de funciones generales",
+    "description": "Organiza los accesos y la página de inicio. Los permisos de las URL directas y las API no cambian. Los administradores conservan su vista habitual.",
+    "feature": "Función",
+    "member": "Mostrar a miembros",
+    "supporter": "Mostrar a seguidores",
+    "member_label": "Mostrar {feature} a miembros",
+    "supporter_label": "Mostrar {feature} a seguidores",
+    "save_success": "Visibilidad guardada",
+    "nav": "Navegación"
   }
 }

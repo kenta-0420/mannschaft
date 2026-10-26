@@ -3,8 +3,8 @@ import { flushPromises } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 
-const apiMock = vi.hoisted(() => vi.fn())
-vi.mock('~/composables/useApi', () => ({ useApi: () => apiMock }))
+const { apiMock, policyMock } = vi.hoisted(() => ({ apiMock: vi.fn(), policyMock: vi.fn() }))
+vi.mock('~/composables/useApi', () => ({ useApi: () => (url: string, ...args: unknown[]) => url.endsWith('/feature-display-policies') ? policyMock(url, ...args) : apiMock(url, ...args) }))
 const BaseSidebar = (await import('./BaseSidebar.vue')).default
 const TeamSidebar = (await import('./TeamSidebar.vue')).default
 const OrganizationSidebar = (await import('./OrganizationSidebar.vue')).default
@@ -27,10 +27,20 @@ async function mountSidebar() {
 describe('BaseSidebar の取得状態', () => {
   beforeEach(() => {
     localStorage.clear()
+    clearNuxtState('scope-feature-display-policies')
+    policyMock.mockReset().mockResolvedValue({ data: { features: [] } })
     apiMock.mockReset()
     apiMock.mockImplementation((url: string) => Promise.resolve(
       url.endsWith('/me/permissions') ? permissions() : { data: [] },
     ))
+  })
+
+  it.each(['MEMBER', 'SUPPORTER', 'ADMIN'])('%sの一般項目は既存権限と表示policyのANDを維持する', async role => {
+    apiMock.mockImplementation((url: string) => Promise.resolve(url.endsWith('/me/permissions') ? permissions(role) : { data: [] }))
+    policyMock.mockResolvedValue({ data: { features: [{ featureKey: 'duties', memberVisible: false, supporterVisible: true }] } })
+    const wrapper = await mountSuspended(BaseSidebar, { props: { scopeType: 'team', scopeId: 'team-policy', categories: [{ key: 'home', labelKey: 'common.menu', icon: '', items: [{ labelKey: 'common.menu', icon: '', path: 'duties', moduleSlug: null, requiredRole: 'MEMBER' }] }] } })
+    await flushPromises()
+    expect(wrapper.find('a[href="/teams/team-policy/duties"]').exists()).toBe(role === 'ADMIN')
   })
 
   it('実際の権限composableでADMIN応答を受けるとメニューリンクを描画する', async () => {

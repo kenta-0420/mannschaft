@@ -3185,5 +3185,16 @@
         "step3": "Your input is retained if adding fails. Check the displayed reason and your input, then select “Add” again."
       }
     }
+  },
+  "feature_display": {
+    "title": "General feature visibility",
+    "description": "Organize navigation and home displays. Direct URLs and API permissions stay the same. Administrators retain their normal view.",
+    "feature": "Feature",
+    "member": "Show to members",
+    "supporter": "Show to supporters",
+    "member_label": "Show {feature} to members",
+    "supporter_label": "Show {feature} to supporters",
+    "save_success": "Visibility settings saved",
+    "nav": "Navigation"
   }
 }

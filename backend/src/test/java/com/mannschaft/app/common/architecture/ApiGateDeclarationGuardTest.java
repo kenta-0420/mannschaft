@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * API の mapped method が feature gate または明示的な常時到達理由を宣言することを監査する番人。
- * HTTP は 3,725 件（管理公開設定 GET 2本・削除済みチーム一覧1本・共通本人QR1本・チームポイント24本・多要素認証の穴埋め6本・フォロー中一覧1本・申請元候補と受信申請各1本追加後）、
+ * HTTP は 3,729 件（既存3,725件＋TEAM/ORGの一般機能表示設定GET/PUT各2本）、
  * STOMP は Chat の 2 件と VillageLobbyPresenceController の 3 件、計 5 件を走査する。
  */
 class ApiGateDeclarationGuardTest {
@@ -42,7 +42,9 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3725);   // 3723 + CMP-261024-2051 申請元候補・受信申請の2GET。CORE宣言済みで未宣言増加0。
+                .isEqualTo(3729);   // 3725 + CMP-261025-2202 TEAM/ORG表示設定GET/PUT各2本。未宣言増加0。
+                                    // ネストSwagger注釈へのclass mapping誤帰属2件は自己試験で防ぐ。
+                                    // 3725 = 3723 + CMP-261024-2051 申請元候補・受信申請の2GET。CORE宣言済みで未宣言増加0。
                                     // 3723 = main 3722 + CMP-261021-0020 pending一覧1本。CORE宣言済みで未宣言増加0。
                                     // main 3716 + CMP-261012-0910 多要素認証の穴埋め 6（Auth2faController の
                                     //   email/send・email/setup・email/enable・reauth/email/send・disable・status）。
@@ -150,6 +152,21 @@ class ApiGateDeclarationGuardTest {
     }
 
     @Test
+    @org.junit.jupiter.api.DisplayName("合成対照: ネストしたSwagger応答注釈をHTTP methodとして数えない")
+    void nestedSwaggerAnnotationsDoNotCreateMappedMethods() {
+        assertThat(analyze("sample.SwaggerResponses", """
+                @RequestMapping("/base")
+                @ApiResponses({
+                  @ApiResponse(responseCode = "200", useReturnTypeSchema = true),
+                  @ApiResponse(responseCode = "403")
+                })
+                public class SwaggerResponses {
+                  @GetMapping public void get() {}
+                  @PutMapping public void put() {}
+                }""")).extracting(Entry::type).containsExactly(Type.HTTP, Type.HTTP);
+    }
+
+    @Test
     @org.junit.jupiter.api.DisplayName("合成対照: 可視性・複数行・他annotation・入れ子括弧を越えて mapping と method を結ぶ")
     void mappingAnnotationAndMethodAreBoundPrecisely() {
         assertThat(analyze("sample.Multiline", """
@@ -253,7 +270,7 @@ class ApiGateDeclarationGuardTest {
             Matcher annotation = ANNOTATION.matcher(masked);
             if (!annotation.find(cursor) || annotation.start() != cursor) break;
             names.add(simpleName(annotation.group(1)));
-            cursor = skipAnnotationArguments(annotation.end(), masked);
+            cursor = skipAnnotationArguments(annotation.start() + 1 + annotation.group(1).length(), masked);
         }
         int wordStart = cursor;
         for (int i = cursor; i < masked.length(); i++) {
@@ -316,7 +333,7 @@ class ApiGateDeclarationGuardTest {
         Map<Integer, Set<Integer>> offsets = new TreeMap<>();
         Matcher annotations = ANNOTATION.matcher(masked);
         while (annotations.find()) {
-            MethodAnnotations method = methodAfter(annotations.end(), masked);
+            MethodAnnotations method = methodAfter(annotations.start() + 1 + annotations.group(1).length(), masked);
             if (method == null) continue;
             names.computeIfAbsent(method.openParen(), ignored -> new ArrayList<>()).add(simpleName(annotations.group(1)));
             offsets.computeIfAbsent(method.openParen(), ignored -> new HashSet<>()).add(annotations.start());

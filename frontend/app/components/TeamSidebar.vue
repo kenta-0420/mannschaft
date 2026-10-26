@@ -3,6 +3,7 @@ import type { SidebarCategory } from '~/types/sidebar'
 
 const props = defineProps<{
   teamId: string
+  memberLensActive?: boolean
 }>()
 
 const categories = computed<SidebarCategory[]>(() => [
@@ -162,5 +163,6 @@ const categories = computed<SidebarCategory[]>(() => [
     scope-type="team"
     :scope-id="props.teamId"
     :categories="categories"
+    :member-lens-active="props.memberLensActive"
   />
 </template>
