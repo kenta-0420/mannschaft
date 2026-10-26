@@ -1,8 +1,15 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { ref, computed } from 'vue'
+import type { Ref } from 'vue'
+import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { useHolidays } from './useHolidays'
 
-const { constructorSpy } = vi.hoisted(() => ({ constructorSpy: vi.fn() }))
+const { constructorSpy, refOverride } = vi.hoisted(() => ({
+  constructorSpy: vi.fn(),
+  refOverride: { current: null as Ref<string | null | undefined> | null },
+}))
+mockNuxtImport('ref', () => (value: unknown) =>
+  refOverride.current && value === undefined ? refOverride.current : ref(value))
 vi.mock('date-holidays', async (importOriginal) => {
   const { default: RealHolidays } = await importOriginal<typeof import('date-holidays')>()
   return {
@@ -78,7 +85,7 @@ describe('useHolidays.getHoliday', () => {
   it('国コードが変わった後は新しい国の祝日で判定する', () => {
     // Vitest の import.meta.client は false なので、API 確定後の ref 更新を再現する。
     const selectedCountry = ref<string | null | undefined>(undefined)
-    vi.stubGlobal('ref', () => selectedCountry)
+    refOverride.current = selectedCountry
     try {
       const { getHoliday, countryCode } = useHolidays()
       expect(getHoliday('2026-04-29', 'en')).toBe('Showa Day')
@@ -87,7 +94,7 @@ describe('useHolidays.getHoliday', () => {
       expect(getHoliday('2026-04-29', 'en')).toBeNull()
       expect(constructorSpy).toHaveBeenCalledTimes(2)
     } finally {
-      vi.stubGlobal('ref', ref)
+      refOverride.current = null
     }
   })
 })
