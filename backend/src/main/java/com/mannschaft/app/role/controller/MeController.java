@@ -228,20 +228,36 @@ public class MeController {
             joinedAtByOrgId.put(e.getKey(), e.getValue());
         }
 
+        // 組織実体・実効ロール・人数は所属全体で一括取得し、組織数に比例するSQLを避ける。
+        Map<Long, OrganizationEntity> orgById = new LinkedHashMap<>();
+        for (OrganizationEntity org : organizationRepository.findAllById(orgIds)) {
+            orgById.put(org.getId(), org);
+        }
+        Set<ScopeKey> orgScopes = new LinkedHashSet<>();
+        for (Long orgId : orgIds) {
+            orgScopes.add(new ScopeKey("ORGANIZATION", orgId));
+        }
+        var roleSnapshot = membershipBatchQueryService.snapshotForUser(userId, orgScopes, Set.of());
+        // snapshotの直接割当は利用者状態を遮断しないため、従来の単件解決と同じ条件を一度だけ判定する。
+        boolean canResolveRole = roleSnapshot.isSystemAdmin() || userRoleRepository.isActiveUser(userId);
+        Map<Long, Integer> memberCountByOrgId =
+                accessControlService.countActiveDistinctMembersByScopes("ORGANIZATION", orgIds);
+
         List<MyOrganizationResponse> orgs = new ArrayList<>();
         for (Long orgId : orgIds) {
-            OrganizationEntity org = organizationRepository.findById(orgId).orElse(null);
+            OrganizationEntity org = orgById.get(orgId);
             if (org == null) {
                 continue;
             }
             if (!includeArchived && org.getArchivedAt() != null) {
                 continue;
             }
-            String roleName = accessControlService.resolveEffectiveRoleName(userId, orgId, "ORGANIZATION");
+            String roleName = roleSnapshot.isSystemAdmin() ? "SYSTEM_ADMIN"
+                    : canResolveRole ? roleSnapshot.roleByScope().get(new ScopeKey("ORGANIZATION", orgId)) : null;
             if (roleName == null) {
                 roleName = "MEMBER";
             }
-            int memberCount = accessControlService.countActiveDistinctMembers("ORGANIZATION", orgId);
+            int memberCount = memberCountByOrgId.getOrDefault(orgId, 0);
             orgs.add(new MyOrganizationResponse(
                     org.getId(),
                     org.getSlug(),
