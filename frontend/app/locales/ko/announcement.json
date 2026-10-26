@@ -28,7 +28,9 @@
       "BULLETIN_THREAD": "게시판",
       "TIMELINE_POST": "타임라인",
       "CIRCULATION": "회람 문서",
-      "SURVEY": "설문"
+      "SURVEY": "설문",
+      "TODO": "할 일",
+      "SCHEDULE": "일정"
     },
     "mark_all_read": "모두 읽음 처리",
     "remove_from_announcements": "공지에서 제거",

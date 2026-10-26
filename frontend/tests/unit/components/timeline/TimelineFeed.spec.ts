@@ -442,7 +442,7 @@ describe('TimelineFeed.vue — 手動更新', () => {
           '3',
         ]),
       )
-      expect(getFeed).toHaveBeenLastCalledWith({ ...props, cursor: undefined, limit: undefined })
+      expect(getFeed).toHaveBeenLastCalledWith({ ...props, cursor: undefined })
       expect(getMyTimeline).not.toHaveBeenCalled()
     },
   )

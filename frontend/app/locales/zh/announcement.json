@@ -28,7 +28,9 @@
       "BULLETIN_THREAD": "公告板",
       "TIMELINE_POST": "时间线",
       "CIRCULATION": "传阅文件",
-      "SURVEY": "问卷"
+      "SURVEY": "问卷",
+      "TODO": "任务",
+      "SCHEDULE": "日程"
     },
     "mark_all_read": "全部标为已读",
     "remove_from_announcements": "从公告中移除",

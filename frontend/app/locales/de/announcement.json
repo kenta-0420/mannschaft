@@ -28,7 +28,9 @@
       "BULLETIN_THREAD": "Pinnwand",
       "TIMELINE_POST": "Zeitleiste",
       "CIRCULATION": "Rundschreiben",
-      "SURVEY": "Umfrage"
+      "SURVEY": "Umfrage",
+      "TODO": "Aufgabe",
+      "SCHEDULE": "Termin"
     },
     "mark_all_read": "Alle als gelesen markieren",
     "remove_from_announcements": "Aus Ankündigungen entfernen",

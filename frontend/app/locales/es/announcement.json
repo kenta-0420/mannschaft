@@ -28,7 +28,9 @@
       "BULLETIN_THREAD": "Tablón",
       "TIMELINE_POST": "Línea de tiempo",
       "CIRCULATION": "Circular",
-      "SURVEY": "Encuesta"
+      "SURVEY": "Encuesta",
+      "TODO": "Tarea",
+      "SCHEDULE": "Calendario"
     },
     "mark_all_read": "Marcar todo como leído",
     "remove_from_announcements": "Eliminar de anuncios",

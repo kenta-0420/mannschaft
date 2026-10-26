@@ -28,7 +28,9 @@
       "BULLETIN_THREAD": "掲示板",
       "TIMELINE_POST": "タイムライン",
       "CIRCULATION": "回覧板",
-      "SURVEY": "アンケート"
+      "SURVEY": "アンケート",
+      "TODO": "タスク",
+      "SCHEDULE": "予定"
     },
     "mark_all_read": "すべて既読にする",
     "remove_from_announcements": "お知らせから外す",
