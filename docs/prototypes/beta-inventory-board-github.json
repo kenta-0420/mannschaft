@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "repository": "kenta-0420/mannschaft",
-  "synchronizedAt": "2026-10-26T05:31:25+00:00",
+  "synchronizedAt": "2026-10-26T07:31:33+00:00",
   "status": "synced",
   "error": null,
   "references": {
@@ -1331,9 +1331,7 @@
       3786
     ],
     "CMP-261004-1945": [],
-    "CMP-261004-1946": [
-      3627
-    ],
+    "CMP-261004-1946": [],
     "CMP-261005-1055": [],
     "CMP-261004-2047": [
       3620
@@ -10314,7 +10312,7 @@
       "state": "open",
       "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
       "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-      "updatedAt": "2026-10-26T05:22:22Z",
+      "updatedAt": "2026-10-26T07:11:49Z",
       "ci": null
     },
     "4023": {
@@ -10463,9 +10461,9 @@
       "state": "open",
       "title": "CMP-261022-0914: L1-A 認可サービスのinterface化とroleへの移設",
       "url": "https://github.com/kenta-0420/mannschaft/pull/4049",
-      "updatedAt": "2026-10-26T03:00:46Z",
+      "updatedAt": "2026-10-26T07:08:04Z",
       "ci": {
-        "status": "success",
+        "status": "pending",
         "checks": [],
         "source": "GraphQL statusCheckRollup"
       }
