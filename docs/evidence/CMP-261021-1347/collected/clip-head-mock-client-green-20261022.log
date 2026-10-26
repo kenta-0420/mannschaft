@@ -1,9 +1,0 @@
-
- RUN  v4.1.11 work/ranch-avatar-clips-finalize-20261021/frontend
-
-
- Test Files  2 passed (2)
-      Tests  15 passed | 5 skipped (20)
-   Start at  08:27:14
-   Duration  11.54s (transform 686ms, setup 0ms, import 2.16s, tests 216ms, environment 7.13s)
-

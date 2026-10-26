@@ -1,6 +1,0 @@
-dist/
-.nuxt/
-.output/
-node_modules/
-types/generated/
-scripts/fixtures/ranch-development-clips-export-manifest.json

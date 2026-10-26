@@ -1,6 +1,0 @@
-Install	Unit test (vitest)	2026-10-24T09:58:48.3143375Z ^[[2m Test Files ^[[22m ^[[1m^[[32m690 passed^[[39m^[[22m^[[90m (690)^[[39m
-Install	Unit test (vitest)	2026-10-24T09:58:48.3195678Z ^[[2m      Tests ^[[22m ^[[1m^[[32m6822 passed^[[39m^[[22m^[[2m | ^[[22m^[[33m5 skipped^[[39m^[[90m (6827)^[[39m
-Install	Unit test (vitest)	2026-10-24T09:58:48.3205263Z ^[[2m   Duration ^[[22m 810.70s^[[2m (transform 3241.16s, setup 70.80s, import 169.44s, tests 1804.68s, environment 256.98s)^[[22m
-Install	Unit test (vitest)	2026-10-24T09:58:53.1026264Z ^[[2m Test Files ^[[22m ^[[1m^[[32m2 passed^[[39m^[[22m^[[90m (2)^[[39m
-Install	Unit test (vitest)	2026-10-24T09:58:53.1027164Z ^[[2m      Tests ^[[22m ^[[1m^[[32m27 passed^[[39m^[[22m^[[90m (27)^[[39m
-Install	Unit test (vitest)	2026-10-24T09:58:53.1028878Z ^[[2m   Duration ^[[22m 1.65s^[[2m (transform 1.20s, setup 346ms, import 1.19s, tests 80ms, environment 251ms)^[[22m

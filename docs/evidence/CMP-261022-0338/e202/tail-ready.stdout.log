@@ -1,8 +1,0 @@
-
-Running 1 test using 1 worker
-
-{"windowWidth":390,"windowHeight":844,"headerBottom":64,"scrollerTop":253,"scrollerBottom":843.796875,"tailTop":811,"tailBottom":831,"tailLeft":183.171875,"tailRight":191.703125,"clientWidth":236,"scrollWidth":236}
-{"windowWidth":360,"windowHeight":844,"headerBottom":64,"scrollerTop":253,"scrollerBottom":843.796875,"tailTop":811,"tailBottom":831,"tailLeft":149.65625,"tailRight":158.171875,"clientWidth":206,"scrollWidth":206}
-  ok 1 test-results\timeline-wrap-real\final-tail-metrics.spec.ts:6:1 › 成功report11の末尾座標を読み取り補足 (18.3s)
-
-  1 passed (20.2s)

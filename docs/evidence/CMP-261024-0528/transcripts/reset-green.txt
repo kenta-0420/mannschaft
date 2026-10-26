@@ -1,9 +1,0 @@
-
- RUN  v4.1.11 /tmp/dashboard-zod-261024-iAxjdA/reset-regression
-
- ✓ toTypedSchema.spec.ts (7 tests) 194ms
-
- Test Files  1 passed (1)
-      Tests  7 passed (7)
-   Start at  15:33:40
-   Duration  1.88s (transform 138ms, setup 0ms, import 602ms, tests 194ms, environment 703ms)

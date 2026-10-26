@@ -1,9 +1,0 @@
-{
-  "recordedAt": "2026-10-21T16:20:06.6883365+09:00",
-  "devLoader": "@nuxt/cli/dist/dev-DHhrJk9w.mjs:432 loadOptions.dev=true",
-  "productionRedirect": "nuxt/node_modules/@nuxt/kit/dist/index.mjs:2929-2930 redirect requires !nuxtConfig.dev and !_prepare, no explicit buildDir, compatibilityVersion4, existing root/.nuxt",
-  "schemaDefault": "nuxt/node_modules/@nuxt/schema/dist/index.mjs:948-952 resolve(rootDir,.nuxt)",
-  "devBuildDir": "work/ranch-avatar-clips-20261021/frontend/.nuxt",
-  "productionBuildDir": "frontend/node_modules/.cache/nuxt/.nuxt",
-  "conclusion": "ROOT dev true does not enter production redirect. Existing root prepare tsconfig and own build lock/tsconfig observation agree. Distinct build directories permit ROOT dev in parallel; concurrent production builds sharing node_modules remain unsafe."
-}

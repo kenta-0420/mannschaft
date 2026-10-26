@@ -1,5 +1,0 @@
-mode: completion-evidence --input
-selection: actual Git index tree; selectEvidencePaths selected one changed evidence
-metadata: actual GitHub API implementation PR 4089 and successful CI runs
-exitCode: 0
-完了証拠の遷移・JSON・提供されたGitHub実装PR/CIメタデータを照合しました
