@@ -41,10 +41,9 @@ import java.util.stream.Collectors;
  * priority は {@code titleCache} の元コンテンツ優先度（URGENT/IMPORTANT/NORMAL）を写像する。
  * 設計書: 03_business_logic.md §2・01_data_model.md §3.2・04_security_operations.md §1.2。</p>
  *
- * <p><b>スコープ解決の踏襲元</b>: {@code DashboardService} は
- * {@code userRoleRepository.findByUserIdAndTeamIdIsNotNull}（チーム）/{@code findByUserIdAndOrganizationIdIsNotNull}
- * （組織）で所属を列挙し、{@code RoleResolver.resolveViewerRolesFresh} で最新ロールを一括解決する。
- * 本アダプタはこれを踏襲し、閲覧者ロール → 可視 visibility 集合の変換は
+ * <p><b>スコープ解決</b>: 本人のACTIVEな所属スコープの列挙を踏襲し、Inboxでは
+ * {@code RoleResolver.resolveViewerRolesFresh} で最新ロールを一括解決する。
+ * Dashboardの単件ロール解決と60秒キャッシュは維持する。閲覧者ロール → 可視 visibility 集合の変換は
  * {@link AnnouncementVisibility} の正準マッピングに委譲する（写経複製を排除し漏洩を根治）。</p>
  */
 @Component
