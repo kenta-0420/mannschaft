@@ -4,7 +4,7 @@
  * 認証/APIは対象外。モックなし実機E2Eとは別の限定レンダリング試験。
  */
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { readFile, mkdir } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { build } from 'esbuild'
 import { parse, compileScript } from '@vue/compiler-sfc'
@@ -64,6 +64,7 @@ const bundled = await build({
     },
   ],
 })
+await mkdir('test-results/timeline-wrap-limited', { recursive: true })
 const browser = await chromium.launch({ headless: true })
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
 const errors = []
@@ -150,7 +151,7 @@ try {
       await page.setViewportSize({ width, height: 844 })
       await readable(content, label + '/' + width)
       if (label === 'ASCII2000')
-        await page.screenshot({ path: 'timeline-wrap-limited-' + width + '.png' })
+        await page.screenshot({ path: 'test-results/timeline-wrap-limited/' + width + '.png' })
       await page.evaluate(() => {
         const scroller = document.querySelector('.vue-recycle-scroller')
         scroller.scrollTop = scroller.scrollHeight
