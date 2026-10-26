@@ -17,6 +17,7 @@
 実DB障害注入のTRIGGERは所有TEAM/scope IDに限定し、MySQLのbinary log権限に合わせて作成・撤去DDLだけをTestcontainerのroot接続で実施する。
 
 実行receipt/結果XMLは`/home/kenta/verification-evidence/`配下の`CMP-261025-2202-be-red-assert`、`CMP-261025-2202-be-green1`、`CMP-261025-2202-be-green2`へ保存する。
+永続証拠として、これらのXMLからsuite集計・testcase名・失敗assertionだけを[backend-target-results.json](backend-target-results.json)へ抽出した。生のstdout・runtime環境・認証値は含めない。元の外部作業ファイルは終了時cleanupの対象であり、上記の絶対pathは実行時の保存先を示す。
 終了済みred/green1の寿命管理runnerは`cleanup=removed`。redのメソッドwildcardは候補全classの走査で空JVMを増やしたため、greenでは完全修飾class指定、`fork.every=0`、`max.parallel.forks=1`へ是正した。
 
 ## 実装と検証の対応
@@ -45,3 +46,13 @@ QR署名鍵の必須設定漏れによる一度の起動停止を確認し、run
 PID世代・SHA・用途・port・終了手順・runtime鍵の設定名だけを記載し、実機中は親が監視を引き継ぐ。
 Java PID18562/session20794でWindowsの`http://localhost:8081/actuator/health`にHTTP200を確認し、FE担当へ専用DBのseed開始を依頼済み。
 seedと4actorログイン成功の確認はFEの証跡へ記録する。
+
+## 実機後の終了確認
+
+TEAM/ORG実機2件は成功。旧担当終了後に旧PIDが消失したため、住民探索前に親sessionで同SHA jarを同専用DBへ再起動した（PID57857、startTicks1108444）。health200を確認して3名の探索を実施した。探索専用scopeは名前・slug・numericIdを照合してDELETE204→GET404。全context終了後に親所有FE/APIのPID世代を照合して停止、専用コンテナ2件も所有名とportを確認して撤去した。
+
+途中のSIGHUPで保持されていたred3 scratch1件は、旧PID消失と同UID全生存processのcwd/fd/maps参照0を確認して限定撤去し、`verification-run.mjs --check`が成功した。red3を機能のred証拠には数えない。
+
+## 最新統合headの正式成功
+
+実装head `609ee90bf65af64b17d95e9ee31d27953c5abdaa` の [Backend CI 40246540422](https://github.com/kenta-0420/mannschaft/actions/runs/40246540422) は全6shardと集約gateがsuccess。親がjob APIと6分割の原本ログを照合した。[最新対象クラス・性能値](backend-final-ci-results.json)を参照。Contract/Commit/Service、API宣言・日時・AC145メタの6クラスはいずれもSUCCESS。旧失敗・途中cancelledは履歴として保持し、最新成功と区別する。
