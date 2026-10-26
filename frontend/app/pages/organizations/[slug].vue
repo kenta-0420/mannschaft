@@ -105,7 +105,7 @@ const {
 const adminLens = ref(true)
 
 const effectiveViewerRole = computed<ViewerRole>(() =>
-  adminLens.value ? ((roleName.value as ViewerRole | null) ?? 'PUBLIC') : 'MEMBER',
+  !adminLens.value && isAdminOrDeputy.value ? 'MEMBER' : ((roleName.value as ViewerRole | null) ?? 'PUBLIC'),
 )
 
 // SUPPORTER/GUEST/未所属は OrganizationSidebar が項目を表示しないため、
@@ -354,6 +354,8 @@ watch([adminLens, isAdmin, isAdminOrDeputy, () => route.path], () => {
 // =============================================================================
 // タブ定義（権限出し分けは visible に移植）
 // =============================================================================
+const featureVisibility = useScopeFeatureVisibility('organization', orgSlug, roleName, () => !adminLens.value)
+
 const tabs = computed<ScopeTab[]>(() => {
   const base = `/organizations/${orgSlug.value}`
   return [
@@ -368,25 +370,28 @@ const tabs = computed<ScopeTab[]>(() => {
       to: `${base}/info`,
       icon: 'pi pi-info-circle',
       labelKey: 'orgShell.tab.info',
+      visible: featureVisibility.isVisible('info'),
     },
     {
       key: 'members',
       to: `${base}/members`,
       icon: 'pi pi-users',
       labelKey: 'orgShell.tab.members',
+      visible: featureVisibility.isVisible('members'),
     },
     {
       key: 'member-teams',
       to: `${base}/member-teams`,
       icon: 'pi pi-sitemap',
       labelKey: 'orgShell.tab.member_teams',
+      visible: featureVisibility.isVisible('member-teams'),
     },
     {
       key: 'children',
       to: `${base}/children`,
       icon: 'pi pi-share-alt',
       labelKey: 'organization.children_tab',
-      visible: showChildrenTab.value,
+      visible: (showChildrenTab.value) && featureVisibility.isVisible('children'),
     },
     {
       key: 'invites',
@@ -516,6 +521,7 @@ provideOrgShellContext({
         </template>
 
         <!-- タブ本体（子）— 永続シェル下で差し替え -->
+        <DashboardErrorState v-if="featureVisibility.error.value" :error="featureVisibility.error.value" @retry="featureVisibility.refresh(true)" />
         <NuxtPage />
       </ScopePageShell>
 

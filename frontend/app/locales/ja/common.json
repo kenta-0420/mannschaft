@@ -3185,5 +3185,16 @@
         "step3": "追加に失敗しても入力は残ります。表示された理由や入力内容を確認してから、もう一度「追加」を押します。"
       }
     }
+  },
+  "feature_display": {
+    "title": "一般機能の表示",
+    "description": "画面の入口・ホーム表示を整理する設定です。直URLや機能APIの権限は変わりません。管理者の通常表示には影響しません。",
+    "feature": "機能",
+    "member": "メンバーに表示",
+    "supporter": "サポータに表示",
+    "member_label": "{feature}をメンバーに表示",
+    "supporter_label": "{feature}をサポータに表示",
+    "save_success": "表示設定を保存しました",
+    "nav": "ナビ"
   }
 }
