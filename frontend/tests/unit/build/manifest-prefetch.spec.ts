@@ -53,16 +53,16 @@ describe('本番 SSR の依存ヒント', () => {
       expect(newDependencies.prefetch).toEqual({})
       expect(Object.keys(newDependencies.preload)).toEqual(Object.keys(oldDependencies.preload))
       expect(Object.keys(newDependencies.scripts)).toEqual(Object.keys(oldDependencies.scripts))
-      for (const id of Object.keys(oldDependencies.preload)) {
-        expect(newDependencies.preload[id].file).toBe(oldDependencies.preload[id].file)
+      for (const [id, beforeEntry] of Object.entries(oldDependencies.preload)) {
+        expect(newDependencies.preload[id]?.file).toBe(beforeEntry.file)
       }
-      for (const id of Object.keys(oldDependencies.scripts)) {
-        expect(newDependencies.scripts[id].file).toBe(oldDependencies.scripts[id].file)
+      for (const [id, beforeEntry] of Object.entries(oldDependencies.scripts)) {
+        expect(newDependencies.scripts[id]?.file).toBe(beforeEntry.file)
       }
-      for (const id of Object.keys(original)) {
-        expect(after[id].file).toBe(before[id].file)
-        expect(after[id].imports).toEqual(before[id].imports)
-        expect(after[id].dynamicImports).toEqual(before[id].dynamicImports)
+      for (const [id, beforeEntry] of Object.entries(before)) {
+        expect(after[id]?.file).toBe(beforeEntry.file)
+        expect(after[id]?.imports).toEqual(beforeEntry.imports)
+        expect(after[id]?.dynamicImports).toEqual(beforeEntry.dynamicImports)
       }
     } finally {
       vi.unstubAllGlobals()
