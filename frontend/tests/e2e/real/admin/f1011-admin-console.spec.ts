@@ -35,6 +35,7 @@
  *   ACL-GUARD-001: MEMBER で /teams/{slug}/admin → スコープトップへリダイレクト＋エラートースト（404 でない）
  *   ACL-GUARD-002: ADMIN で /teams/{slug}/admin → 管理コンソールハブ表示（チーム）
  *   ACL-GUARD-003: ADMIN で /organizations/{slug}/admin → 管理コンソールハブ表示（組織）
+ *   ACL-GUARD-004: MEMBER が管理URLを初回直打ち → スコープトップ＋拒否トースト1回
  *   ACL-IDOR-001 : ADMIN だが非所属 org の /organizations/{other}/admin → BE 403・FE スコープトップへ
  *   LENS-TEAM-001: ダッシュボードで admin-lens-toggle-TEAM → 管理者グリッド出現・各ウィジェット描画（実データ件数）
  *   LENS-ORG-001 : ダッシュボードで admin-lens-toggle-ORGANIZATION → 同上（組織版・支払ウィジェット含む）
@@ -94,8 +95,8 @@ async function installApiBridge(page: Page, token: string): Promise<void> {
   await page.route(/\/api\/v1\//, async (route) => {
     const req = route.request()
     const url = new URL(req.url())
-    // 中継先は 127.0.0.1 明示（IPv6 ::1 解決ブレで間欠 ECONNREFUSED を避ける）
-    const target = `http://127.0.0.1:8080${url.pathname}${url.search}`
+    // 既定の IPv4 宛先を保ちつつ、隔離 BE 用の BE_ORIGIN を尊重する。
+    const target = `${BE}${url.pathname}${url.search}`
     const headers: Record<string, string> = {
       ...req.headers(),
       origin: 'http://localhost:3000',
@@ -386,10 +387,7 @@ test.describe('F10.1.1 管理コンソール — アクセスガード', () => {
       timeout: 20_000,
     })
 
-    // page.goto はフルリロードで Nuxt アプリを再マウントするため、ミドルウェアの toast.add 時点で
-    // <Toast> が未マウントとなりトーストが描画されない。クライアントサイド遷移（router.push）なら
-    // <Toast> が載ったまま遷移するため、ミドルウェアのアクセス拒否トーストが実際に表示される
-    // （実運用のユーザー操作と同じ経路）。
+    // マウント済みシェルでの通常遷移も回帰確認する。初回直打ちは ACL-GUARD-004 で別に検証する。
     await page.evaluate((url) => {
       const w = window as unknown as { useNuxtApp?: () => { $router?: { push: (u: string) => Promise<unknown> } } }
       // navigateTo によるリダイレクトで push が reject されることがあるため握る。
@@ -406,6 +404,19 @@ test.describe('F10.1.1 管理コンソール — アクセスガード', () => {
 
     // エラートースト「管理者権限が必要です」が表示されること（life: 5000ms のため goto 前からリスナー設定済み）
     await toastVisible
+  })
+
+  test('ACL-GUARD-004: MEMBER が管理URLを直打ちしてもリダイレクト後に拒否通知が1回表示される', async ({ page }) => {
+    await loginViaApiBridge(page, MEMBER_EMAIL, MEMBER_PASSWORD)
+    const deniedToast = page.getByText('管理者権限が必要です', { exact: true })
+    const toastVisible = deniedToast.waitFor({ state: 'visible', timeout: 20_000 })
+
+    // アプリを事前に開かず、未購読の初回ミドルウェアで拒否通知を発生させる。
+    await Promise.all([toastVisible, page.goto(`/teams/${teamSlug}/admin`)])
+
+    await page.waitForURL(new RegExp(`/teams/${teamSlug}(\\?|/?$)`), { timeout: 20_000 })
+    await expect(deniedToast).toHaveCount(1)
+    expect(page.url(), '404・エラーページではない').not.toMatch(/\/404|error/)
   })
 
   test('ACL-GUARD-002: ADMIN で /teams/{slug}/admin → チーム管理コンソールハブ表示', async ({ page }) => {
@@ -450,8 +461,11 @@ test.describe('F10.1.1 管理コンソール — アクセスガード', () => {
 
     // FE 層: ミドルウェアが isAdminOrDeputy=false を検知しスコープトップへ戻す（404 にしない）
     await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
-    await page.goto(`/organizations/${foreignOrgSlug}/admin`)
+    const deniedToast = page.getByText('管理者権限が必要です', { exact: true })
+    const toastVisible = deniedToast.waitFor({ state: 'visible', timeout: 20_000 })
+    await Promise.all([toastVisible, page.goto(`/organizations/${foreignOrgSlug}/admin`)])
     await page.waitForURL(new RegExp(`/organizations/${foreignOrgSlug}(\\?|/?$)`), { timeout: 20_000 })
+    await expect(deniedToast).toHaveCount(1)
     expect(new URL(page.url()).pathname, '/admin ハブに留まっていない').not.toMatch(/\/admin\/?$/)
     expect(page.url(), '404 ページではない').not.toMatch(/\/404/)
   })
