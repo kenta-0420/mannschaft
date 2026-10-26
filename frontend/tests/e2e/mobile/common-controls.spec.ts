@@ -1,10 +1,19 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { FEATURE_DISPLAY_CATALOG } from '../../../app/constants/featureDisplay'
 import { waitForHydration as waitForNuxtHydration } from '../helpers/wait'
 import desktopBaselines from './fixtures/common-controls-desktop.json' with { type: 'json' }
 
 // 実Nuxt/PrimeVue/CSSを使い、外部API境界だけをstubする。実ログインは行わない。
 test.use({ storageState: { cookies: [], origins: [] } })
 const actor = { id: 1, email: 'ui-fixture@example.invalid', fullName: 'UI Fixture', profileImageUrl: null, systemRole: null, timezone: 'Asia/Tokyo' }
+
+function defaultFeatureDisplayPolicies(scope: 'T' | 'O') {
+  return {
+    features: FEATURE_DISPLAY_CATALOG
+      .filter(item => (item.scopes as readonly string[]).includes(scope))
+      .map(item => ({ featureKey: item.key, memberVisible: true, supporterVisible: true })),
+  }
+}
 
 async function restoreStoredActor(page: Page) {
   await page.addInitScript((user) => {
@@ -60,6 +69,8 @@ async function stubBoundary(page: Page, authenticated = true, emptyReceipts = fa
       '/api/v1/organizations/ui-fixture': { id: 'ui-fixture', slug: 'ui-fixture', numericId: 1, basicInfo: { name: 'UI Organization Fixture' }, visibility: { visibility: 'PRIVATE', supporterEnabled: false }, metadata: { memberCount: 1 }, social: { supporterCount: 0 } },
       '/api/v1/teams/ui-fixture/me/permissions': { roleName: 'ADMIN', permissions: [], scopeAdmin: true },
       '/api/v1/organizations/ui-fixture/me/permissions': { roleName: 'ADMIN', permissions: [], scopeAdmin: true },
+      '/api/v1/teams/ui-fixture/feature-display-policies': defaultFeatureDisplayPolicies('T'),
+      '/api/v1/organizations/ui-fixture/feature-display-policies': defaultFeatureDisplayPolicies('O'),
       '/api/v1/dashboard/team/ui-fixture/widget-visibility': { widgets: [] },
       '/api/v1/dashboard/organization/ui-fixture/widget-visibility': { widgets: [] },
       '/api/v1/teams/ui-fixture/modules': [],

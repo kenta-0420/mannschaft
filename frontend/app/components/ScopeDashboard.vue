@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { featureForWidget } from '~/constants/featureDisplay'
 import type { ViewerRole, WidgetVisibilitySetting } from '~/types/dashboard'
 import type { SpotlightItem, SpotlightScopeType } from '~/composables/useSpotlightApi'
 
@@ -31,8 +32,28 @@ const props = withDefaults(
   },
 )
 
-const { sortedWidgets, visibleWidgets, isVisible, toggleWidget, reorder, ready } =
-  useDashboardWidgets(props.scopeType, props.scopeId, props.viewerRole, props.visibilityMap)
+const { sortedWidgets: allSortedWidgets, visibleWidgets: allVisibleWidgets, isVisible, toggleWidget, reorder: reorderAll, ready: widgetsReady } =
+  useDashboardWidgets(props.scopeType, props.scopeId, () => props.viewerRole, () => props.visibilityMap)
+
+const featureVisibility = useScopeFeatureVisibility(
+  () => props.scopeType === 'organization' ? 'organization' : 'team',
+  () => props.scopeType === 'personal' ? undefined : props.scopeId,
+  () => props.viewerRole,
+)
+const sortedWidgets = computed(() => allSortedWidgets.value.filter(widget => featureVisibility.isVisible(featureForWidget(widget.key))))
+const visibleWidgets = computed(() => allVisibleWidgets.value.filter(widget => featureVisibility.isVisible(featureForWidget(widget.key))))
+const ready = computed(() => widgetsReady.value && featureVisibility.ready.value)
+function reorder(from: number, to: number) {
+  const source = sortedWidgets.value[from]
+  const target = sortedWidgets.value[to]
+  if (!source || !target) return
+  reorderByKey(source.key, target.key)
+}
+function reorderByKey(sourceKey: string, targetKey: string) {
+  const from = allSortedWidgets.value.findIndex(widget => widget.key === sourceKey)
+  const to = allSortedWidgets.value.findIndex(widget => widget.key === targetKey)
+  if (from >= 0 && to >= 0) reorderAll(from, to)
+}
 
 const publicHintDismissed = ref(false)
 const publicHintStorageKey = computed(
@@ -227,7 +248,8 @@ function onDragLeave(e: DragEvent) {
 function onDrop(key: string) {
   const index = widgetIndex(key)
   if (dragIndex.value !== null && dragIndex.value !== index) {
-    reorder(dragIndex.value, index)
+    const source = visibleWidgets.value[dragIndex.value]
+    if (source) reorderByKey(source.key, key)
   }
   dragIndex.value = null
   dropTargetIndex.value = null
@@ -271,7 +293,7 @@ function onDragEnd() {
 
     <!-- 並び順確定前: スケルトン（位置ジャンプ防止のためウィジェット本体は描画しない） -->
     <div
-      v-if="!ready"
+      v-if="!ready && !featureVisibility.error.value"
       class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
       aria-hidden="true"
       data-testid="dashboard-widgets-skeleton"
@@ -285,6 +307,7 @@ function onDragEnd() {
 
     <!-- 並び順確定後: 保存順で初描画（ここで初めてマウントするためジャンプしない） -->
     <!-- ウィジェットグリッド -->
+    <DashboardErrorState v-else-if="featureVisibility.error.value" :error="featureVisibility.error.value" @retry="featureVisibility.refresh(true)" />
     <DashboardScopeAccordion v-else :widgets="visibleWidgets" @configure="showConfig = true">
       <template #default="{ widgets }">
         <TransitionGroup
