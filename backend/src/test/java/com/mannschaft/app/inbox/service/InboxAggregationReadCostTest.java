@@ -105,6 +105,8 @@ class InboxAggregationReadCostTest {
         archived.setArchivedAt(LocalDateTime.now().minusDays(1));
         given(states.findByUserIdAndSourceTypeAndSourceIdIn(USER_ID,
                 InboxSourceType.ANNOUNCEMENT, List.of(1L))).willReturn(List.of(archived));
+        given(states.findByUserIdAndSourceTypeAndSourceIdIn(USER_ID,
+                InboxSourceType.NOTIFICATION, List.of(1L))).willReturn(List.of());
 
         var summary = service.getSummary(USER_ID);
 
@@ -127,6 +129,8 @@ class InboxAggregationReadCostTest {
         expired.setSnoozedUntil(LocalDateTime.now().minusDays(1));
         given(states.findByUserIdAndSourceTypeAndSourceIdIn(eq(USER_ID),
                 eq(InboxSourceType.ANNOUNCEMENT), any())).willReturn(List.of(archived, future, expired));
+        given(states.findByUserIdAndSourceTypeAndSourceIdIn(USER_ID,
+                InboxSourceType.NOTIFICATION, List.of(1L))).willReturn(List.of());
 
         var summary = service.getSummary(USER_ID);
 
