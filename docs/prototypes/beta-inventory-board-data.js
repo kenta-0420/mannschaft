@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-10-26T05:41:49+00:00",
+  "generatedAt": "2026-10-26T07:33:07+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,13 +8,13 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "5a0ddecfa7269f10a9e580427e5811a920c54d01",
+    "taskListCommit": "4fc71c9001bf4096cfbe339708c189597c80e9a4",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "10c096f4a5a9ef018daebd50102cec612b337c9e72b5281c147e73365c626abe",
+    "taskListSha256": "469514d12c61aa8a1406af0077528020db9a7a5baa21d9d665e88a8b2f6c4659",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "73c202b9cba047f30c8e2d2882ec497a3a68a3663fd8cfa7c7b031ad16e2aedf"
+    "githubSnapshotSha256": "e92b08141ed43e24e61e86fcdb2c5544cf257c38bd7e5959264ebb93373057c0"
   },
   "sourceCounts": {
     "features": 44,
@@ -38875,8 +38875,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261004-1945",
       "title": "組織ページにも「this team」という文言が出る（public_viewer_hint）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了（2026-10-26）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -38890,12 +38890,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "ALIC-4。`frontend/app/components/ScopeDashboard.vue:252` が `dashboard.widget_visibility.public_viewer_hint`（チーム文言）を組織にも使う",
+          "label": "[完了証拠](evidence/CMP-261004-1945.json)、[重複同期記録](evidence/october-wave2-existing-completion-sync-20261026.md)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "ALIC-4。`frontend/app/components/ScopeDashboard.vue:252` が `dashboard.widget_visibility.public_viewer_hint`（チーム文言）を組織にも使う"
+        "[完了証拠](evidence/CMP-261004-1945.json)、[重複同期記録](evidence/october-wave2-existing-completion-sync-20261026.md)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -38908,7 +38908,7 @@ window.BETA_INVENTORY_DATA = {
         "public_viewer_hint"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
       "githubRefs": [],
       "github": []
@@ -38916,27 +38916,27 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261004-1946",
       "title": "組織・チームヘッダのボタンが 44px 未満（高さ35px）でモバイルで押しにくい",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了（2026-10-26）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "主要ボタンのタップ領域が 44x44px 以上（390px 幅の実測）",
+      "nextAction": "360/390pxで両Headerの主要操作のタップ領域を44x44px以上にする",
       "acceptance": [
-        "主要ボタンのタップ領域が 44x44px 以上（390px 幅の実測）"
+        "360/390pxで両Headerの主要操作のタップ領域を44x44px以上にする"
       ],
       "blocker": "—",
       "issues": [
         {
-          "label": "ALIC-5。PR #3627 のアリシゼーション（390x844・360x800）で実測。以前からの広範な傾向",
+          "label": "[完了証拠](evidence/CMP-261004-1946.json)、[重複同期記録](evidence/october-wave2-existing-completion-sync-20261026.md)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "ALIC-5。PR #3627 のアリシゼーション（390x844・360x800）で実測。以前からの広範な傾向"
+        "[完了証拠](evidence/CMP-261004-1946.json)、[重複同期記録](evidence/october-wave2-existing-completion-sync-20261026.md)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -38946,31 +38946,15 @@ window.BETA_INVENTORY_DATA = {
       "sourceTokens": [
         "px",
         "px",
-        "x44px",
-        "px"
+        "px",
+        "Header",
+        "x44px"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
-      "githubRefs": [
-        3627
-      ],
-      "github": [
-        {
-          "number": 3627,
-          "kind": "pull_request",
-          "state": "merged",
-          "title": "修正: 応援者がフォロー解除できない・フォロー解除APIが所属を誤って終了させる（CMP-261001-0835）",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/3627",
-          "updatedAt": "2026-10-05T02:24:43Z",
-          "ci": {
-            "status": "unavailable",
-            "reason": "終了済みPRのCIは同期対象外",
-            "checks": [],
-            "source": "GraphQL statusCheckRollup"
-          }
-        }
-      ]
+      "githubRefs": [],
+      "github": []
     },
     {
       "id": "CMP-261005-1055",
@@ -45670,8 +45654,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261015-1510",
       "title": "ログイン画面の既存入力欄・補助リンクのタップ領域不足",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "実装中",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -45685,16 +45669,16 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "住民R2/R3の観測を殿が390pxで再撮影・DOM実証。input各42px、補助リンク20px。今回diffで当該属性変更なし。root-login-390-metrics.jsonと画像を保存",
+          "label": "2026-10-15の既存観測を殿が再確認: 390px DOMでinput各42px、補助3リンク各20px。今回実装・寸法RED/GREEN・実機検証は未実施。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "住民R2/R3の観測を殿が390pxで再撮影・DOM実証。input各42px、補助リンク20px。今回diffで当該属性変更なし。root-login-390-metrics.jsonと画像を保存"
+        "2026-10-15の既存観測を殿が再確認: 390px DOMでinput各42px、補助3リンク各20px。今回実装・寸法RED/GREEN・実機検証は未実施。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "2026-10-15 既存箇所のためパスキーログイン実装へ拡大せず別課題化"
+        ".claude/campaigns/2026-10-26-october-login-second-wave.md"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -45705,7 +45689,7 @@ window.BETA_INVENTORY_DATA = {
         "x44px"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -50308,7 +50292,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T05:22:22Z",
+          "updatedAt": "2026-10-26T07:11:49Z",
           "ci": null
         },
         {
@@ -50439,7 +50423,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T05:22:22Z",
+          "updatedAt": "2026-10-26T07:11:49Z",
           "ci": null
         },
         {
@@ -50805,7 +50789,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T05:22:22Z",
+          "updatedAt": "2026-10-26T07:11:49Z",
           "ci": null
         }
       ]
@@ -50906,7 +50890,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T05:22:22Z",
+          "updatedAt": "2026-10-26T07:11:49Z",
           "ci": null
         }
       ]
@@ -51214,7 +51198,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T05:22:22Z",
+          "updatedAt": "2026-10-26T07:11:49Z",
           "ci": null
         }
       ]
@@ -51917,7 +51901,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T05:22:22Z",
+          "updatedAt": "2026-10-26T07:11:49Z",
           "ci": null
         },
         {
@@ -51926,9 +51910,9 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261022-0914: L1-A 認可サービスのinterface化とroleへの移設",
           "url": "https://github.com/kenta-0420/mannschaft/pull/4049",
-          "updatedAt": "2026-10-26T03:00:46Z",
+          "updatedAt": "2026-10-26T07:08:04Z",
           "ci": {
-            "status": "success",
+            "status": "pending",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -51939,7 +51923,7 @@ window.BETA_INVENTORY_DATA = {
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-10-26T05:31:25+00:00",
+    "synchronizedAt": "2026-10-26T07:31:33+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -53269,9 +53253,7 @@ window.BETA_INVENTORY_DATA = {
         3786
       ],
       "CMP-261004-1945": [],
-      "CMP-261004-1946": [
-        3627
-      ],
+      "CMP-261004-1946": [],
       "CMP-261005-1055": [],
       "CMP-261004-2047": [
         3620
@@ -62252,7 +62234,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
         "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-        "updatedAt": "2026-10-26T05:22:22Z",
+        "updatedAt": "2026-10-26T07:11:49Z",
         "ci": null
       },
       "4023": {
@@ -62401,9 +62383,9 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "CMP-261022-0914: L1-A 認可サービスのinterface化とroleへの移設",
         "url": "https://github.com/kenta-0420/mannschaft/pull/4049",
-        "updatedAt": "2026-10-26T03:00:46Z",
+        "updatedAt": "2026-10-26T07:08:04Z",
         "ci": {
-          "status": "success",
+          "status": "pending",
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
@@ -62724,7 +62706,7 @@ window.BETA_INVENTORY_DATA = {
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-10-26T05:31:25+00:00",
+      "synchronizedAt": "2026-10-26T07:31:33+00:00",
       "referenceCount": 664
     }
   }
