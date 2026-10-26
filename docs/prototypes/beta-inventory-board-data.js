@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-10-26T05:33:23+00:00",
+  "generatedAt": "2026-10-26T05:41:49+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,9 +8,9 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "d65e6e0b69b564df010732fc750ef34ab270a9fe",
+    "taskListCommit": "5a0ddecfa7269f10a9e580427e5811a920c54d01",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "f668bce993f3d40633dfa55cc19ee2c830d6f0ee942a24ca025bcf5a1db9208a",
+    "taskListSha256": "10c096f4a5a9ef018daebd50102cec612b337c9e72b5281c147e73365c626abe",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
@@ -36124,16 +36124,16 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "2026-10-26 着手。担当: `CspReportController` の修正、両Content-TypeのHTTP回帰、関連文書の更新",
+          "label": "2026-10-26 着手。担当: `CspReportController` の修正、両Content-TypeのHTTP回帰、関連文書の更新。[完了証拠](evidence/CMP-261001-0839.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "2026-10-26 着手。担当: `CspReportController` の修正、両Content-TypeのHTTP回帰、関連文書の更新"
+        "2026-10-26 着手。担当: `CspReportController` の修正、両Content-TypeのHTTP回帰、関連文書の更新。[完了証拠](evidence/CMP-261001-0839.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "[実装PR #4127](https://github.com/kenta-0420/mannschaft/pull/4127) head `819bfcdbeadcc0d13d3c246f7de5fea60c796a56` をmerge `1a1220d8fec79d984d64829de4805080e794e197` で通常merge。head CI Backend run 40272198959・Frontend 40272198978・Smoke 40272198960成功（Smoke 100 passed、INSIGHT-INVITE-EN flaky 1件retry success）。実DB IT 33組はred 24/9 failureからgreen 33/33、旧CSP-Report 500はred未再現。[d969実機](evidence/CMP-261001-0839/real.md) 1 passedは別source。住民Cのsource03be探索は自動POST 204とUI継続を観測。main-follow 12 object不変bridgeでsourceを区別。raw XMLは現存せず、red/green SHA・件数と殿の当時独立XML照合を記録。[完了証拠](evidence/CMP-261001-0839.json)、[回帰](evidence/CMP-261001-0839/regressions.md)、[実機・探索](evidence/CMP-261001-0839/real.md)"
+        "[実装PR #4127](https://github.com/kenta-0420/mannschaft/pull/4127) head `819bfcdbeadcc0d13d3c246f7de5fea60c796a56` をmerge `1a1220d8fec79d984d64829de4805080e794e197` で通常merge。head CI Backend run 40272198959・Frontend 40272198978・Smoke 40272198960成功（Smoke 100 passed、INSIGHT-INVITE-EN flaky 1件retry success）。実DB IT 33組はred 24/9 failureからgreen 33/33、旧CSP-Report 500はred未再現。[d969実機](evidence/CMP-261001-0839/real.md) 1 passedは別source。住民Cのsource03be探索は自動POST 204とUI継続を観測。main-follow 12 object不変bridgeでsourceを区別。raw XMLは現存せず、red/green SHA・件数と殿の当時独立XML照合を記録。[回帰](evidence/CMP-261001-0839/regressions.md)、[実機・探索](evidence/CMP-261001-0839/real.md)"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
