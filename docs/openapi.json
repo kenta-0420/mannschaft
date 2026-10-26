@@ -61303,6 +61303,11 @@
               "schema": {
                 "type": "string"
               }
+            },
+            "application/reports+json": {
+              "schema": {
+                "type": "string"
+              }
             }
           }
         },
