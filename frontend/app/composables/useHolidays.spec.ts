@@ -81,10 +81,10 @@ describe('useHolidays.getHoliday', () => {
     vi.stubGlobal('ref', () => selectedCountry)
     try {
       const { getHoliday, countryCode } = useHolidays()
-      expect(getHoliday('2026-10-12', 'en')).toBe('Sports Day')
+      expect(getHoliday('2026-04-29', 'en')).toBe('Showa Day')
       selectedCountry.value = 'US'
       expect(countryCode.value).toBe('US')
-      expect(getHoliday('2026-10-12', 'en')).toBeNull()
+      expect(getHoliday('2026-04-29', 'en')).toBeNull()
       expect(constructorSpy).toHaveBeenCalledTimes(2)
     } finally {
       vi.stubGlobal('ref', ref)
