@@ -121582,6 +121582,7 @@ export interface operations {
             content: {
                 "application/json": string;
                 "application/csp-report": string;
+                "application/reports+json": string;
             };
         };
         responses: {
