@@ -63,6 +63,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code InboxController#getInbox}・{@code InboxController#getSummary}・
  * {@code InboxController#getLabels}・{@code InboxController#createLabel}・
  * {@code InboxController#unarchive}・{@code InboxController#unsnooze}。</p>
+ *
+ * <p>通知は本試験のfixtureとして直接保存する。SQL観測は保存済み通知/overlayの読み取り条件と
+ * 上限を検証し、AFTER_COMMITによる通知配送は検証しないため、rollbackするTX内で成立する。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
