@@ -1026,6 +1026,7 @@ public class TimelinePostService {
      * プリミティブのみを受け取り、Entity を跨いで持ち込まない（新規クロスドメイン FK は作らない）。</p>
      *
      * @param posts マッパー変換済みの投稿レスポンス（生 ID のみ）
+     * @param userId 閲覧者ユーザーID（みたよ状態の一括集計用）
      * @return enrich 済みの投稿レスポンス（順序保持）
      */
     private List<PostResponse> enrichPosts(List<PostResponse> posts, Long userId) {
@@ -1488,6 +1489,7 @@ public class TimelinePostService {
                     .build();
         }).toList();
     }
+
     // --- プライベートメソッド ---
 
     /**

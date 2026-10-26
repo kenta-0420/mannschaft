@@ -7,7 +7,6 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
-
 import java.util.Optional;
 
 /**
@@ -30,6 +29,7 @@ public interface TimelinePostReactionRepository extends JpaRepository<TimelinePo
      * 投稿のリアクション数を取得する。
      */
     long countByTimelinePostId(Long timelinePostId);
+
     /** 認可済み投稿群の実件数と閲覧者の反応を1クエリで集計する。反応0件の投稿は行を返さない。 */
     @Query("""
             SELECT r.timelinePostId AS postId, COUNT(r) AS reactionCount,
@@ -46,4 +46,5 @@ public interface TimelinePostReactionRepository extends JpaRepository<TimelinePo
         Long getPostId();
         long getReactionCount();
         long getViewerReactionCount();
-    }}
+    }
+}
