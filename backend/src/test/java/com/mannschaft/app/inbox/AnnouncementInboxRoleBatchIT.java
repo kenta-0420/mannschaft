@@ -83,7 +83,7 @@ class AnnouncementInboxRoleBatchIT extends AbstractMySqlIntegrationTest {
 
     private void addTeams(long userId, int count) {
         for (int i = 0; i < count; i++) {
-            String slug = "inbox-batch-" + UUID.randomUUID();
+            String slug = "ib-" + UUID.randomUUID().toString().substring(0, 16);
             em.createNativeQuery("""
                     INSERT INTO teams (name, visibility, supporter_enabled, version, member_count,
                         slug, created_at, updated_at)
