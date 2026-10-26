@@ -183176,6 +183176,15 @@
             "type": "integer",
             "format": "int64"
           },
+          "mitayo": {
+            "type": "boolean",
+            "description": "閲覧者がみたよ済みか"
+          },
+          "mitayoCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "みたよ実件数"
+          },
           "postedAs": {
             "$ref": "#/components/schemas/PostPostedAsDto"
           },
@@ -183198,7 +183207,11 @@
           "user": {
             "$ref": "#/components/schemas/PostUserDto"
           }
-        }
+        },
+        "required": [
+          "mitayo",
+          "mitayoCount"
+        ]
       },
       "PostScopeDto": {
         "type": "object",

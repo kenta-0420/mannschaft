@@ -64,7 +64,8 @@ interface InboxSourceAdapter {
 0. 取得ウィンドウを算出: window = (page+1)*size + SAFETY_MARGIN（= 20）
 1. 各アダプタを window 件で呼び InboxItemRaw を集める（境界付きウィンドウ・各アダプタは Pageable で window 件まで）
 2. オーバーレイをまとめ取り:
-     inbox_item_states を user_id で1クエリ取得 → Map<(sourceType,sourceId), state>
+     inbox_item_states を user_id + source_type + 出現source_idで取得 → Map<(sourceType,sourceId), state>
+       source_type別にsource_idを重複排除し、1000件ずつIN句へ渡す（空ならSQLなし）
      inbox_label_links（+ notification_labels 現役）を user_id で1クエリ取得 → Map<(sourceType,sourceId), List<label>>
    （★N+1回避の肝。item毎には引かない）
 3. 各 InboxItemRaw に state/labels を被せて InboxItem を確定:
@@ -113,6 +114,10 @@ interface InboxSourceAdapter {
 > **CONFIRMABLE / TODO_DUE の従来「無制限 fetch」を根絶**: 以前は MENTION/CONFIRMABLE/TODO_DUE が全件取得していた。Phase 3 ③ で全ソースを `Pageable`（または DB 側絞り込み＋ Pageable）に統一し、メモリに載る件数を `window` で境界付けた。TODO_DUE は従来 `findMyTodos` の全件取得＋Java フィルタだったが、DB 側で「未完了∧近接/超過」に絞ってから上限を掛ける `findMyDueTodos` に置換した。
 
 > **サマリ（タブ/バッジ）**: `getSummary` は概算で十分なため `SUMMARY_WINDOW`（500）の広めウィンドウで集計する。
+
+> **読込量の制限（CMP-261026-1912）**: 状態オーバーレイは出現した通知だけを本人・ソース種別・IDで検索し、1000件単位に分割する。SQL回数は出現IDのチャンク数に比例し、無関係なtriage履歴数には依存しない。サマリはラベルリンク・ラベル本体・自動提案を取得せず、ソース固有の既読、アーカイブ、スヌーズ、名寄せと代表選択は一覧と同じ規則を通す。ANNOUNCEMENTの上限は従来どおり**所属スコープごとに500件**であり、その和集合を全体500件に切り詰めない。
+
+> NOTIFICATIONの有界取得は`List`と`Pageable`を使い、取得条件・priority第一の順序・window上限を保つ。集約に総件数は不要なので、`Page`のページメタデータを作るためのCOUNT SQLは発行しない。
 
 - **孤児の除外**: アダプタが返すのは生存ソースのみ。オーバーレイにあってソースが消えた `(sourceType,sourceId)` はマージで自然に脱落（表示されない）。物理掃除は任意（Phase 3）。
 
