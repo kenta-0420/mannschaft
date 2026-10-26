@@ -1,5 +1,19 @@
 # FE検証記録（2026-10-26）
 
+## 現在の判定
+
+最終head `609ee90bf65af64b17d95e9ee31d27953c5abdaa` の [Frontend CI](https://github.com/kenta-0420/mannschaft/actions/runs/40246540366) は成功。親も実ログを照合し、正式Node 22.23.2/npm 10.9.8でlint・型チェック・705ファイル6,941件成功（既存skip5件）、後続2ファイル27件成功を確認した。設定Panel8件、wire変換2件、TEAM直URLガード5件も通常Nuxt経路で成功した。以前のガードsuite初期化失敗は、共通setupとの二重unmount登録だけを除去し、5件のassertionを変えず解消した。
+
+実機はsource `48d6fc7349` 固定で **TEAM/ORGの2件成功、失敗0・skip0・flaky0**（exit 0）。TEAM 888,962ms（14.8分）、ORG 786,269ms（13.1分）、runner全体1,694,546ms（28.2分）。実行時の一時結果は `.claude/runtime/cmp261025-feature-fe/real-e2e-wire-guard-fixed-20261026/results.json`（永続JSON保存と照合後に撤去済み）。
+
+完走結果の最小コピーは [real-e2e-result.json](real-e2e-result.json) に保存した。最終headまでFE製品コード差分はなく、FEの後続差分は上記の試験初期化だけである。BEの表示設定に対する後続修正は日時型・API宣言に限り、実MySQLの追加assertionと既存38件を含む50件および正式CIで成功を確認した。その後、先行main #4122の交代承認修正を取り込み、最新全量CIで統合確認する。範囲と再検証判断は[宣言・日時型の検証記録](architecture-validation.md)を参照する。
+
+両scopeで実ADMIN/MEMBER/SUPPORTER/非所属を確認し、要対応3区分のAPI count>=1と実UIの正baseline、独立2列の4組合せ保存/再読込、通常Sidebar/スワイプ掲示板の表示制御、要対応3区分OFF/ON復元、全OFF/管理者レンズ復帰、info直URLの既存許可、非管理者の管理設定UI非表示/URL離脱、最後の全ON復元を通常UIで検証した。設定PUTは全てswitchと保存buttonから送信した。
+
+実機TEAM24（teams-1792953236787）/ORG21（organizations-1792954125834）はfinallyの限定削除が成功し、専用DBでdeleted_at設定済み、adminの再GETで双方404を確認。afterAllで全4browser contextを閉鎖した。住民探索用の別TEAM25/ORG22を準備して親へ引継ぎ済み。assertion不変のtest初期化補正`c6431d71d8`後に正式Frontend CIが成功。残る全量BE CIと探索の統合判定は別記録で確認する。
+
+## 実行履歴（以下は各記録時点の結果）
+
 対象: FE実装 `52ad5a5bc9`、追加修正は `ScopeDashboard` の並べ替え。
 
 - 対象8ファイルのVitest: 7ファイル59件成功。`BaseSidebar.spec.ts` の23件は `@nuxt/test-utils/runtime/entry.mjs` の `setupNuxt` beforeAllが120秒timeoutとなり未実行（全体exit 1）。合格扱いにしない。
@@ -79,3 +93,15 @@ helperとheader selector補正後、TEAM/ORGとも要対応3区分の正のbasel
 修正直後はFE HMR後のHTTP待機でpreflight navigation60秒timeoutしたため、合格扱いにしなかった。FE全体/loginも一時10秒timeoutし、その後robots200/6.95秒・login200/1.12秒へ復帰、BE health200/0.248秒を確認した。サーバー再起動はせず、温まった同サーバーで再走したTEAM23（guard-1792953167806）はrole=nullからhomeへ遷移し保存button0/row0を確認、DELETE204→GET404で後始末した。
 
 API role正規化commit `88dcdaf8df` と未commitのTEAM guard/回帰・実機helper補正を固定し、`real-e2e-wire-guard-fixed-20261026`で2scope本走を再開した。以後本走中のfrontend source/spec/一時configは編集しない。未commit分は最終まとめcommit対象であり、HEAD単体の結果とは区別する。
+
+同一内容を本走中にcommit `48d6fc7349` として確定した（内容編集なし）。TEAMは14.8分でPASS、正baseline・4組合せ・要対応3区分OFF/復元・全OFF/管理者レンズ復帰・info直URL既存許可・非管理者設定UI非表示/URL離脱・最終全ON復元・finally cleanupまで完走した。ORGは記録時点で正baselineを通過して実行中であり、まだ2scope合格とは扱わない。
+
+## 最終実機結果
+
+source `48d6fc7349` の同一ソースでTEAM/ORG両件PASS（2 passed、28.2分）、unexpected/skipped/flakyはいずれも0。上記途中runの未実施/未完走は履歴として残し、現在判定は冒頭の確定結果とする。テスト前提の訂正は機能redには数えず、初回cache表示・スワイプロールwire不一致・TEAM resolved-null guardはそれぞれ実装修正と回帰red/greenの対象として区別した。最終CIと住民探索は親が継続管理する。
+
+## 現在の引継ぎ状態
+
+実機scopeは削除済み。探索用の別TEAM25（`teams-1792955080937`、表示名「表示設定住民探索-teams-1792955080937」）はM/S全ON。別ORG22（`organizations-1792955082319`、表示名「表示設定住民探索-organizations-1792955082319」）はinfo=M OFF/S ON・bulletin=M ON/S OFF・他ONを通常管理UIで保存し、GETで実測した。各scopeでADMIN/MEMBER/SUPPORTER/非所属の実ロールもassert済み。
+
+TEAMへADMIN user3、ORGへMEMBER user12・SUPPORTER user5を割り当てる。ログイン値を出力せず既存specのEMAILS/PASSWORDを参照する。準備用の全4contextは閉鎖済みであり、以後同ユーザーへ追加ログインせず親の3名並行探索へ渡した。URL/数値ID/表示名/固定policy/正確なDELETE URLと204→GET404の後始末手順は、秘密値なしの`.claude/runtime/cmp261025-feature-fe/resident-receipt.json`に記録した。FE3001は住民探索のため保持し、runtime receiptは05:00+09再確認期限。結果文書は未commitで親へ引継ぎ、完了台帳の正式ゲートと最終CIは親が担う。

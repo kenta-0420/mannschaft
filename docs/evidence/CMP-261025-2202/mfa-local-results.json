@@ -1,0 +1,62 @@
+{
+  "campaign": "CMP-261025-2202",
+  "sourceHead": "371fcc7150ccdae8c76a2fb4886762649e6222af",
+  "exitCode": 0,
+  "cleanup": "removed",
+  "notes": "親が原本XMLとreceiptを独立照合。局所単独4件でありCI成功の代用やCPU競合原因の断定には用いない。stdout全体や環境変数は含めない。",
+  "totals": {
+    "tests": 4,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "measurements": [
+    {
+      "pathKind": "all-mismatch",
+      "elapsedMillis": 1954,
+      "limitMillis": 3000
+    },
+    {
+      "pathKind": "all-mismatch",
+      "elapsedMillis": 247,
+      "limitMillis": 1500
+    },
+    {
+      "pathKind": "last-match",
+      "elapsedMillis": 2247,
+      "limitMillis": 3000
+    },
+    {
+      "pathKind": "last-match",
+      "elapsedMillis": 259,
+      "limitMillis": 1500
+    }
+  ],
+  "results": [
+    {
+      "file": "TEST-com.mannschaft.app.auth.mfa.MfaBackupCodeLatencyIT.xml",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "cases": [
+        {
+          "name": "AC-54 旧BCrypt 8件 最後一致は3秒以内",
+          "class": "com.mannschaft.app.auth.mfa.MfaBackupCodeLatencyIT"
+        },
+        {
+          "name": "AC-54 Argon2id 8件 全不一致は1.5秒以内",
+          "class": "com.mannschaft.app.auth.mfa.MfaBackupCodeLatencyIT"
+        },
+        {
+          "name": "AC-54 Argon2id 8件 最後一致は1.5秒以内",
+          "class": "com.mannschaft.app.auth.mfa.MfaBackupCodeLatencyIT"
+        },
+        {
+          "name": "AC-54 旧BCrypt 8件 全不一致は3秒以内",
+          "class": "com.mannschaft.app.auth.mfa.MfaBackupCodeLatencyIT"
+        }
+      ]
+    }
+  ]
+}
