@@ -87,7 +87,7 @@ test('SYSTEM_ADMINが自然導線からコメントを送り、長文を360/390p
   await row.getByRole('button', { name: '詳細を開く' }).click()
   await expect(page).toHaveURL(new RegExp(`/system-admin/error-reports/${reportId}$`))
 
-  const comments = [
+  const comments: [string, string][] = [
     ['ASCII2000', 'A'.repeat(2000)],
     ['URL2000', 'https://example.test/' + 'path'.repeat(495)],
     ['混在2000', ('日本語ABChttps://example.test/' + 'x'.repeat(80)).repeat(20).slice(0, 2000)],
@@ -132,7 +132,10 @@ test('SYSTEM_ADMINが自然導線からコメントを送り、長文を360/390p
           .sort((a, b) => a.top - b.top)
         return {
           visible: tail.top >= viewport.top - 1 && tail.bottom <= viewport.bottom + 1,
-          overlap: cards.some((box, i) => i > 0 && box.top < cards[i - 1].bottom - 1),
+          overlap: cards.some((box, i) => {
+            const previous = cards[i - 1]
+            return previous !== undefined && box.top < previous.bottom - 1
+          }),
         }
       }, content)
       expect(tailVisible).toEqual({ visible: true, overlap: false })
@@ -144,11 +147,12 @@ test('SYSTEM_ADMINが自然導線からコメントを送り、長文を360/390p
   }
 })
 
-for (const [role, label] of [
+const deniedRoles: [string, string][] = [
   ['MEMBER', '一般会員'],
   ['ORG_ADMIN', '組織管理者'],
   ['OTHER_ORG_MEMBER', '別組織会員'],
-]) {
+]
+for (const [role, label] of deniedRoles) {
   test(`${label}は詳細URLと実APIへアクセスできない`, async ({ page }) => {
     await loginViaApi(page, credentials(role), { apiBaseUrl: api(), deferNavigation: true })
     for (const suffix of ['', '/timeline']) {
