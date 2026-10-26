@@ -40,7 +40,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 /**
  * CMP-261021-0649: ShiftSwapController#createSwapRequest の未決重複を実JWT・実Security・実MySQLで検査する。
  *
- * <p>同slot/requesterのPENDING・ACCEPTED拒否と古いRR snapshotでの並行作成が試練のred対象。
+ * <p>同slot/requesterのPENDING・ACCEPTED拒否と、親ロック待機前に枠を読んだ並行作成が試練のred対象。
  * terminal後の再提出・既存資格・DTO境界・rollbackは既存契約の回帰固定である。
  * 0648の所有fixtureと全列snapshotを再利用し、実BeanやDBをmock/spyへ置換しない。
  * テスト全体を自動rollbackせず、親ロック到達を観測したlatchで実TXの順序を固定する。</p>
@@ -143,11 +143,11 @@ class ShiftSwapCreationDuplicateContractIT extends ShiftSwapApprovalTestSupport 
     }
 
     @Test
-    void AC08_両作成TXが古snapshotを持って親lock待ちしても201と409が各一回() throws Exception {
+    void AC08_親lock待機前に枠を読取済みでも201と409が各一回() throws Exception {
         Long slot = slot(List.of(a), ShiftScheduleStatus.PUBLISHED);
         var request = body(slot, false, "同時送信", List.of(b));
 
-        var responses = behindParent(slot, () -> create(a, request), () -> create(a, request));
+        var responses = behindParents(List.of(scheduleOf(slot)), () -> create(a, request), () -> create(a, request));
 
         assertThat(responses.stream().map(MockHttpServletResponse::getStatus).toList())
                 .containsExactlyInAnyOrder(201, 409);
@@ -165,11 +165,29 @@ class ShiftSwapCreationDuplicateContractIT extends ShiftSwapApprovalTestSupport 
     void AC09_同枠別担当者の同時依頼は両方201() throws Exception {
         Long slot = slot(List.of(a, c), ShiftScheduleStatus.PUBLISHED);
 
-        var responses = behindParent(slot, () -> create(a, body(slot, true, null, null)),
+        var responses = behindParents(List.of(scheduleOf(slot)), () -> create(a, body(slot, true, null, null)),
                 () -> create(c, body(slot, false, null, List.of(b))));
 
         assertThat(responses.stream().map(MockHttpServletResponse::getStatus).toList()).containsOnly(201).hasSize(2);
         assertThat(pendingCount(slot)).isEqualTo(2L);
+    }
+
+    @Test
+    void AC09_別scheduleの同時新規依頼は両方201で各一行commitする() throws Exception {
+        Long one = slot(List.of(a), ShiftScheduleStatus.PUBLISHED);
+        Long two = slot(List.of(a), ShiftScheduleStatus.PUBLISHED);
+
+        // 実Serviceがそれぞれの親ロックで待機した後に同時解放する。候補SQLのgap probeとは別のHTTP回帰。
+        var responses = behindParents(List.of(scheduleOf(one), scheduleOf(two)),
+                () -> create(a, body(one, true, null, null)),
+                () -> create(a, body(two, false, null, List.of(b))));
+
+        assertThat(responses.stream().map(MockHttpServletResponse::getStatus).toList()).containsOnly(201).hasSize(2);
+        assertThat(pendingCount(one)).isEqualTo(1L);
+        assertThat(pendingCount(two)).isEqualTo(1L);
+        assertThat(assigned(one)).containsExactly(a);
+        assertThat(assigned(two)).containsExactly(a);
+        assertThat(historyRows()).isEqualTo("[]");
     }
 
     @Test
@@ -341,7 +359,7 @@ class ShiftSwapCreationDuplicateContractIT extends ShiftSwapApprovalTestSupport 
     }
 
     @Test
-    void AC18_履歴が多くても重複判定は現在読取の上限一行一SQL() throws Exception {
+    void AC18_履歴が多くても重複判定は非lockingで上限一行一SQL() throws Exception {
         Long slot = slot(List.of(a), ShiftScheduleStatus.PUBLISHED);
         inTx(() -> {
             for (int i = 0; i < 40; i++) {
@@ -357,7 +375,7 @@ class ShiftSwapCreationDuplicateContractIT extends ShiftSwapApprovalTestSupport 
             assertThat(duplicateReads).hasSize(1);
             String read = duplicateReads.getFirst();
             assertThat(read).contains("slot_id", "requester_id", "status");
-            assertThat(isLocking(read)).as("RR snapshotでなく現在読取").isTrue();
+            assertThat(isLocking(read)).as("親ロック取得後のRC照会で余分なswap gap lockを取得しない").isFalse();
             assertThat(read).as("全履歴を読み込まずSQLで最大1行に制限").containsPattern("limit\\s+\\?|fetch first\\s+\\?\\s+rows");
             int parent = firstIndex(sqls, "from shift_schedules ", "for update");
             int currentSlot = firstIndex(sqls, "from shift_slots ", "for share", "lock in share mode");
@@ -368,14 +386,16 @@ class ShiftSwapCreationDuplicateContractIT extends ShiftSwapApprovalTestSupport 
         }
     }
 
-    private List<MockHttpServletResponse> behindParent(Long slot, Callable<MockHttpServletResponse> first,
-                                                      Callable<MockHttpServletResponse> second) throws Exception {
-        Long parent = scheduleOf(slot);
+    private List<MockHttpServletResponse> behindParents(List<Long> parentIds, Callable<MockHttpServletResponse> first,
+                                                       Callable<MockHttpServletResponse> second) throws Exception {
+        List<Long> parents = parentIds.stream().distinct().sorted().toList();
         CountDownLatch locked = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         try (var executor = Executors.newFixedThreadPool(3)) {
             var holder = executor.submit(() -> inTx(() -> {
-                schedules.findByIdForUpdate(parent).orElseThrow();
+                for (Long parent : parents) {
+                    schedules.findByIdForUpdate(parent).orElseThrow();
+                }
                 locked.countDown();
                 await(release);
                 return null;
@@ -387,7 +407,7 @@ class ShiftSwapCreationDuplicateContractIT extends ShiftSwapApprovalTestSupport 
                 AtomicReference<Thread> twoThread = new AtomicReference<>();
                 var one = executor.submit(() -> { oneThread.set(Thread.currentThread()); return first.call(); });
                 var two = executor.submit(() -> { twoThread.set(Thread.currentThread()); return second.call(); });
-                // Serviceはslotのplain read後に親lockを取る。両stackの到達を確認してRR snapshotを先に形成させる。
+                // Serviceはslotのplain read後に親lockを取る。両要求が初回読取済みで待機していることを確認する。
                 awaitParent(one, oneThread);
                 awaitParent(two, twoThread);
                 assertThat(SqlIntentCounter.capturedSqls().stream().filter(sql -> sql.contains("from shift_slots ")).count())
