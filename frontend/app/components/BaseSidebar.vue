@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { featureForSidebar } from '~/constants/featureDisplay'
 import type { SidebarCategory, SidebarItem } from '~/types/sidebar'
 
 const props = defineProps<{
@@ -24,6 +25,8 @@ const emit = defineEmits<{
 // ロールアクセス
 const { roleName, isAdmin, isScopeAdmin, can, isAdminOrDeputy, loadPermissions } = useRoleAccess(props.scopeType, toRef(props, 'scopeId'))
 
+const featureVisibility = useScopeFeatureVisibility(() => props.scopeType, () => props.scopeId, roleName, () => !!props.memberLensActive)
+
 const loyaltyAccess = useLoyaltyStaffAccess(toRef(props, 'scopeId'), computed(() => props.scopeType === 'team' ? roleName.value : null), isScopeAdmin, can)
 
 // MEMBER以上判定（SUPPORTER/GUEST/未加入は除外）
@@ -46,6 +49,8 @@ const featureFlagStore = useFeatureFlagStore()
 
 // 項目表示判定
 function isItemVisible(item: SidebarItem): boolean {
+  const feature = item.requiredRole === 'MEMBER' && !item.absolutePath ? featureForSidebar(item.path, props.scopeType) : undefined
+  if (!featureVisibility.isVisible(feature)) return false
   if (item.access === 'scope-admin') return !props.memberLensActive && isScopeAdmin.value
   if (item.access === 'loyalty-operate') return !props.memberLensActive && loyaltyAccess.allowed.value
   // 機能ゲートが閉じている（OFF・未取得）項目は SYSTEM_ADMIN にも出さない（fail-closed）。
@@ -164,6 +169,8 @@ function isItemActive(item: SidebarItem): boolean {
     @retry="loadSidebar"
   />
   <nav v-else-if="isMember" class="flex flex-col gap-0.5 py-2 px-1">
+    <PageLoading v-if="featureVisibility.loading.value" class="!min-h-0 py-4" />
+    <DashboardErrorState v-if="featureVisibility.error.value" :error="featureVisibility.error.value" @retry="featureVisibility.refresh(true)" />
     <DashboardErrorState v-if="loyaltyAccess.error.value && scopeType === 'team'" :error="loyaltyAccess.error.value" @retry="loyaltyAccess.refresh" />
     <template v-for="category in categories" :key="category.key">
       <div v-if="isCategoryVisible(category)">

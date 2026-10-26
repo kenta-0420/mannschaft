@@ -1,0 +1,125 @@
+{
+  "url": "http://localhost:3001/organizations/organizations-1792955082319/schedule",
+  "viewport": {
+    "width": 360,
+    "height": 800
+  },
+  "text": "Mannschaft\n41\n表示\n表示設定住民探索-organizations-1792955082319\nメンバー\nメンバー 2人\nサポーター 1人\nお気に入り\nダッシュボード\nメンバー\n所属チーム\n戻る\nスケジュール\n2026年10月\n日\n月\n火\n水\n木\n金\n土\n27\n28\n29\n30\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\nスポーツの日\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n1\n2\n04:04表示設定住民探索-organizations-1792955082319-出席確認\n全員\n3\n文化の日\n4\n5\n6\n7\n表示設定住民探索-organizations-1792955082319-出席確認\n予定\n2026/11/02 04:04 〜 2026/11/02 05:04\n作成: E2E一般ユーザー\n活動記録\n予定\n未公開\n表示設定住民探索-organizations-1792955082319-出席確認\nこの予定の活動記録を作成\n出欠回答\n出席\n欠席\n未定\nコメント\nまだコメントはありません\nメンバーをメンションできます\n投稿",
+  "geometry": {
+    "locale": "ja",
+    "width": 360,
+    "client": 360,
+    "scroll": 360,
+    "controls": [
+      {
+        "tag": "BUTTON",
+        "text": "メニューを開く",
+        "selector": "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 md:hidden dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-100",
+        "href": null,
+        "bounds": {
+          "x": 8,
+          "y": 9.5,
+          "width": 44,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "通知",
+        "selector": "p-button p-component p-button-icon-only p-button-secondary p-button-rounded p-button-text min-h-11 min-w-11",
+        "href": null,
+        "bounds": {
+          "x": 308,
+          "y": 9.5,
+          "width": 44,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "メニュー",
+        "selector": "p-button p-component p-button-icon-only p-button-rounded p-button-text p-button-sm min-h-11 min-w-11",
+        "href": null,
+        "bounds": {
+          "x": 20,
+          "y": -1,
+          "width": 44,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "14px",
+          "whiteSpace": "normal",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "戻る",
+        "selector": "inline-flex min-h-11 -ml-2 -mt-2 mb-2 items-center gap-1.5 pl-2 pt-2 pb-2 text-base font-medium text-primary hover:underline",
+        "href": null,
+        "bounds": {
+          "x": 32,
+          "y": 36,
+          "width": 60,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": null,
+        "selector": "p-button p-component p-button-icon-only p-button-rounded p-button-text min-h-11 min-w-11",
+        "href": null,
+        "bounds": {
+          "x": 61,
+          "y": 181,
+          "width": 44,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": null,
+        "selector": "p-button p-component p-button-icon-only p-button-rounded p-button-text min-h-11 min-w-11",
+        "href": null,
+        "bounds": {
+          "x": 212.734375,
+          "y": 181,
+          "width": 44,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      }
+    ]
+  },
+  "events": []
+}

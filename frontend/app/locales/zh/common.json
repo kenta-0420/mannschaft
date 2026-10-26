@@ -3185,5 +3185,16 @@
         "step3": "添加失败时，输入内容仍会保留。请检查显示的原因和输入内容，然后再次点击“添加”。"
       }
     }
+  },
+  "feature_display": {
+    "title": "常规功能显示",
+    "description": "整理导航入口和主页显示。直接链接和功能API的权限保持不变。管理员的常规视图不受影响。",
+    "feature": "功能",
+    "member": "向成员显示",
+    "supporter": "向支持者显示",
+    "member_label": "向成员显示{feature}",
+    "supporter_label": "向支持者显示{feature}",
+    "save_success": "显示设置已保存",
+    "nav": "导航"
   }
 }
