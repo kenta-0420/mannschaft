@@ -1,0 +1,183 @@
+{
+  "head": "33a49406f8064ba60f199a3df860492c10329cae",
+  "sourceFilesVerified": 14,
+  "status": "passed",
+  "start": "2026-10-26T06:30:46.841Z",
+  "end": "2026-10-26T06:31:58.126Z",
+  "steps": [
+    {
+      "name": "ADMIN空contextログインと本人・org11ロール実測",
+      "status": "passed",
+      "start": "2026-10-26T06:30:47.136Z"
+    },
+    {
+      "name": "ADMINで実在管理URL成功",
+      "status": "passed",
+      "start": "2026-10-26T06:30:49.459Z"
+    },
+    {
+      "name": "ADMIN MEMBERS_ONLYページUI作成",
+      "status": "passed",
+      "start": "2026-10-26T06:31:07.638Z"
+    },
+    {
+      "name": "ADMIN optional値付きメンバーUI追加",
+      "status": "passed",
+      "start": "2026-10-26T06:31:20.297Z"
+    },
+    {
+      "name": "ADMIN optional値保持でdisplayNameのみUI更新",
+      "status": "passed",
+      "start": "2026-10-26T06:31:21.324Z"
+    },
+    {
+      "name": "ADMIN reload→同ページ再選択でoptional永続化UI確認",
+      "status": "passed",
+      "start": "2026-10-26T06:31:22.458Z"
+    },
+    {
+      "name": "MEMBER一覧・詳細閲覧可/管理ボタンなし",
+      "status": "passed",
+      "start": "2026-10-26T06:31:27.007Z"
+    },
+    {
+      "name": "member実在管理URL直アクセス拒否",
+      "status": "passed",
+      "start": "2026-10-26T06:31:36.273Z"
+    },
+    {
+      "name": "outsider実在管理URL直アクセス拒否",
+      "status": "passed",
+      "start": "2026-10-26T06:31:44.370Z"
+    },
+    {
+      "name": "OUTSIDER一覧および同URL直アクセスで秘密データ非表示",
+      "status": "passed",
+      "start": "2026-10-26T06:31:51.148Z"
+    },
+    {
+      "name": "ADMINメンバーUI削除",
+      "status": "passed",
+      "start": "2026-10-26T06:31:55.617Z"
+    },
+    {
+      "name": "ADMINページUI削除",
+      "status": "passed",
+      "start": "2026-10-26T06:31:56.974Z"
+    }
+  ],
+  "contextsCreated": 3,
+  "contextsClosed": 3,
+  "authContextsRemaining": 0,
+  "limitations": [
+    "メンバー詳細は同URL内状態切替で詳細固有URLが存在しない。直アクセス認可は実在する組織admin/settingsで検証し、プロフィール詳細URLの検証と同一視しない。"
+  ],
+  "rootVisualReview": "rootが拒否toastと保存後profileのPNGを実読。",
+  "priorRuntime": {
+    "r7": {
+      "passed": 10,
+      "failed": 2,
+      "reason": "app:mounted flushが親Vue SuspenseのToast mountedより先。初期拒否toast DOM0。"
+    }
+  },
+  "exploratory": {
+    "complete": true,
+    "mode": "初回3住民並列、Bだけ中断後に再開",
+    "A": {
+      "result": "ADMINが紹介閲覧/管理場所発見/保存せず帰還、紹介200",
+      "contextsRemainingAfterClose": 0,
+      "rootImagesReviewed": true
+    },
+    "B": {
+      "result": "MEMBERがキャプテンname/58/position/bio閲覧、calendarへ逸れbackで紹介一覧へ戻り再読、GET team/members200",
+      "contextsRemainingAfterClose": 0,
+      "browserRemaining": false,
+      "exit": 0,
+      "rootImagesReviewed": true
+    },
+    "C": {
+      "result": "非所属が紹介403/管理拒否toast/秘密0を独立探索",
+      "contextsRemainingAfterClose": 0,
+      "rootImagesReviewed": true
+    },
+    "history": [
+      "初回Bはcapacity/namespace中断。rootが全Bownedprocess0確認後、1担当だけ別証跡で再開。",
+      "旧B内部close値は回収不能。最終3担当それぞれのcontextclose成功とは分けて保持。"
+    ],
+    "method": "各agentが実DOMで手順選択。fixed journeyではない。",
+    "observations": [
+      "A/C helper拒否でも実URL遷移したものはhelper limitation。製品bug断定0。",
+      "Cのmembers3人header/403後「まだいません」は既存UI観測。認可漏洩0。"
+    ],
+    "noUnrequestedFix": true
+  },
+  "cleanup": {
+    "fixture": {
+      "status": "passed",
+      "confirmedBy": "root原本全文読取",
+      "checks": [
+        "private DB/role0およびexact GET二度確認",
+        "member4 DELETE204→GET404",
+        "page6空確認→DELETE204→GET404"
+      ],
+      "apiContextsCreated": 1,
+      "apiContextClosed": true,
+      "initialAttempt": "offline SQL shell引用失敗で認証0/削除0停止。同条件でstdin2行最小修正後に成功。"
+    },
+    "runtime": {
+      "status": "removed",
+      "confirmedBy": "root最終原本読取",
+      "checkedAt": "2026-10-26T07:33:26Z",
+      "wrapper": {
+        "exit": 0,
+        "signal": null,
+        "error": null,
+        "cleanup": "removed",
+        "scratchExists": false
+      },
+      "driver": {
+        "exit": 0,
+        "remainingOwnedServers": [],
+        "dbRetainedStopped": true,
+        "startedCount": 2,
+        "cleanupFailures": [],
+        "observationScope": "2026-10-26T07:33:26Z wrapper終了時。当時DB停止保持、後続撤去前。"
+      },
+      "supervisor": {
+        "exit": 0,
+        "deadline": false
+      },
+      "retainedAssets": [
+        "旧r6 scratch run-55fg9V/EACCESは別資産として保持"
+      ]
+    },
+    "databaseRetirement": {
+      "status": "passed",
+      "confirmedBy": "root apply-proof原本確認",
+      "startedAt": "2026-10-26T07:45:20Z",
+      "completedAt": "2026-10-26T07:46:26Z",
+      "knownContainersAbsent": 2,
+      "knownVolumesAbsent": 2,
+      "actions": {
+        "count": 4,
+        "scope": "所有照合済み専用MySQL/Valkey各containerと各専用volumeのみ"
+      },
+      "historicInputsUnchanged": true,
+      "oldR6ScratchUntouched": true,
+      "imagesUntouched": true
+    },
+    "retainedOldR6": {
+      "scratch": "run-55fg9V",
+      "owner": "4a8a4e25-4100-45df-a5f9-55e32a3b5a98",
+      "purpose": "旧実機失敗検証copy",
+      "reason": "EACCES process参照の安全確認不能。障害残存を無差別削除しない。",
+      "recheckBy": "2026-10-27T12:00:00+09:00",
+      "removalCondition": "既存権限内で当該copyと生存processの所有・参照消滅を確認できた時のみ撤去。",
+      "prohibited": [
+        "sudo",
+        "WSL停止",
+        "新たな権限回避"
+      ]
+    }
+  }
+}

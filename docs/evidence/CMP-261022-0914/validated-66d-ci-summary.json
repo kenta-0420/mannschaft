@@ -1,0 +1,346 @@
+{
+  "status": "validated_66d_history_not_d689_success",
+  "run": {
+    "id": 40283924552,
+    "head": "66d07b0ed9f6d0196a42287d3b3ad4208931686d",
+    "attempt": 1,
+    "status": "completed",
+    "conclusion": "success",
+    "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40283924552"
+  },
+  "backend": {
+    "runId": 40283924552,
+    "head": "66d07b0ed9f6d0196a42287d3b3ad4208931686d",
+    "attempt": 1,
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": 12,
+    "allJobsSuccess": true
+  },
+  "artifacts": [
+    {
+      "id": 12633815191,
+      "name": "archtest-results-xml-pr-4049",
+      "digest": "sha256:da677e5c8bc8ec260f7f18b3e9d697caf72079274addaf3d55aa03f064cdb868",
+      "size": 68692
+    },
+    {
+      "id": 12636663068,
+      "name": "test-results-xml-pr-4049-shard-0",
+      "digest": "sha256:579f8e8ca09dff395c52b4d152cf61cf3d75ba4946b0a67fcd26d881054cbe1a",
+      "size": 65117156
+    },
+    {
+      "id": 12635309517,
+      "name": "test-results-xml-pr-4049-shard-1",
+      "digest": "sha256:905e525c122ea8217a0e6e451727dee7d25cb6aacc0216999b04a126306b6698",
+      "size": 59422609
+    },
+    {
+      "id": 12636835172,
+      "name": "test-results-xml-pr-4049-shard-2",
+      "digest": "sha256:9b17337e3cb37faa01379f6c47835834282e4384dd25799220d9e9f6ad726afe",
+      "size": 29989940
+    },
+    {
+      "id": 12635279508,
+      "name": "test-results-xml-pr-4049-shard-3",
+      "digest": "sha256:51071975cc81719c00500aad15c63aa2de39bf90793dfc269a9d1153af6d5e2b",
+      "size": 18053332
+    },
+    {
+      "id": 12636677402,
+      "name": "test-results-xml-pr-4049-shard-4",
+      "digest": "sha256:c92a5d15b3f3a6c70a0ff39dfcdb9c4a2ff7eab53874f31657e19216f2cc9176",
+      "size": 8628820
+    },
+    {
+      "id": 12636083877,
+      "name": "test-results-xml-pr-4049-shard-5",
+      "digest": "sha256:2a0dae99e7ff938fc3d946790070e72440327126bc9e391e22d4478199ccc29a",
+      "size": 36116870
+    }
+  ],
+  "selectedGroups": {
+    "com.mannschaft.app.common.AccessControlServiceTest": 58,
+    "com.mannschaft.app.membership.TeamMembershipStateContractTest": 9,
+    "com.mannschaft.app.common.AccessControlServiceRoutingContractIT": 6,
+    "com.mannschaft.app.common.AccessControlServiceSpiContractTest": 4,
+    "com.mannschaft.app.common.AccessControlServiceSpiIntegrationTest": 14,
+    "com.mannschaft.app.common.AccessControlLastAdminWithdrawalIntegrationTest": 4,
+    "com.mannschaft.app.common.AccessControlServiceInterfaceContractTest": 3,
+    "com.mannschaft.app.member.MemberSubtabVisibilityTxBoundaryIT": 19
+  },
+  "newFiveClassTests": 31,
+  "scopes": {
+    "sourceTopLevelClasses": 159,
+    "representedTopLevelClasses": 159,
+    "xmlCount": 980,
+    "declaredTests": 4384,
+    "testcaseElements": 4384,
+    "allSuiteAttributesMatchElements": true,
+    "countingNote": "Each XML testcase element is counted once in its own testsuite. Empty parent suites contribute zero; no source class subtotal is added. Display-name collisions are not deduplicated."
+  },
+  "engine": {
+    "sourceClasses": 18,
+    "tests": 37,
+    "perShard": [
+      {
+        "shard": 0,
+        "tests": 6
+      },
+      {
+        "shard": 1,
+        "tests": 1
+      },
+      {
+        "shard": 2,
+        "tests": 5
+      },
+      {
+        "shard": 3,
+        "tests": 1
+      },
+      {
+        "shard": 4,
+        "tests": 13
+      },
+      {
+        "shard": 5,
+        "tests": 11
+      }
+    ]
+  },
+  "integrity": {
+    "total": 12,
+    "perShard": [
+      {
+        "shard": 0,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "shard": 1,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "shard": 2,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "shard": 3,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "shard": 4,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "shard": 5,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    ]
+  },
+  "selectedXmlHeaders": 47,
+  "allSelectedSuiteAttributesMatchElements": true,
+  "selectedFailures": 0,
+  "selectedErrors": 0,
+  "selectedSkipped": 0,
+  "independentRootXml": {
+    "checkedAt": "2026-10-26T08:42:58.8637136+00:00",
+    "xmlCount": 1073,
+    "scopeSources": 159,
+    "scopeXml": 980,
+    "scopeCases": 4384,
+    "all159HaveActualCases": true,
+    "archXml": 46,
+    "archCases": 347,
+    "selectedNonScopeHeaders": 47,
+    "selectedFailureErrorSkipped": 0,
+    "childMismatch": 0
+  },
+  "arch": {
+    "xmlCount": 46,
+    "tests": 347,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "stores": {
+    "count": 48,
+    "all48MatchCommit": true,
+    "canonical": {
+      "296295dd-06cf-4f7b-bf82-315ba12ff501": {
+        "path": "backend/src/test/resources/archunit_store/296295dd-06cf-4f7b-bf82-315ba12ff501",
+        "bytes": 2197949,
+        "sha256": "c9deb0b6a9ff2868d2d8e86f98dff254a3a1fd802477f05fd8fbf3905adcf25d",
+        "lines": 7352
+      },
+      "2c0ba995-682e-4f80-a5a5-f68c835b720d": {
+        "path": "backend/src/test/resources/archunit_store/2c0ba995-682e-4f80-a5a5-f68c835b720d",
+        "bytes": 96754,
+        "sha256": "e18798e22df8611e3d7cbd45c28a823b13e1b935a1ab596352a308d6a7bd7ee8",
+        "lines": 569
+      },
+      "427c445d-37ce-4d6e-b095-a1733efe209f": {
+        "path": "backend/src/test/resources/archunit_store/427c445d-37ce-4d6e-b095-a1733efe209f",
+        "bytes": 1156298,
+        "sha256": "25d856de4396028f11d0616eeaf6d5fba7a08efcd7334ffeb2f25f85375701eb",
+        "lines": 1897
+      },
+      "584c3a46-b9c1-4cc2-bf74-e0a18eab1bef": {
+        "path": "backend/src/test/resources/archunit_store/584c3a46-b9c1-4cc2-bf74-e0a18eab1bef",
+        "bytes": 1050977,
+        "sha256": "28845447b0077a31c8d1716e4d0016d91bfb3bfc92c43f61e0aa7b27800e84d7",
+        "lines": 2157
+      },
+      "93124b52-f328-4f09-8c4f-6d022519fae2": {
+        "path": "backend/src/test/resources/archunit_store/93124b52-f328-4f09-8c4f-6d022519fae2",
+        "bytes": 170083,
+        "sha256": "19022a1dbb002081981235151f3e732937d9a3f4473225f9ffca9b5dbc6760d7",
+        "lines": 600
+      },
+      "9ed4737d-c74f-4374-923e-4663d3c9e256": {
+        "path": "backend/src/test/resources/archunit_store/9ed4737d-c74f-4374-923e-4663d3c9e256",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lines": 0
+      },
+      "f14374b1-655e-4df2-8e82-2d79c8df9174": {
+        "path": "backend/src/test/resources/archunit_store/f14374b1-655e-4df2-8e82-2d79c8df9174",
+        "bytes": 802244,
+        "sha256": "af293e4f78cfa7761d75f04198966a2a87ae001bc672bee4a42c3f3edfe13fd6",
+        "lines": 1346
+      },
+      "stored.rules": {
+        "path": "backend/src/test/resources/archunit_store/stored.rules",
+        "bytes": 746,
+        "sha256": "af7cef906e9abf2bb093f875872c05083898fb81243ee9f3397e1ef3c7ddb4c9",
+        "lines": 9
+      }
+    },
+    "allHistoricalKeysPreserved": true,
+    "allHistoricalMultiplicityPreserved": true,
+    "rootCanonical": {
+      "checkedAt": "2026-10-26T08:43:35.200Z",
+      "allCanonicalMatch": true,
+      "count": 48,
+      "historicalRemovedOccurrences": 0
+    },
+    "preL1Baseline": "17cab5899b86216190b2c13d31c19812d88593d5",
+    "preL1MultisetComparisons": [
+      {
+        "path": "backend/src/test/resources/archunit_store/296295dd-06cf-4f7b-bf82-315ba12ff501",
+        "oldOccurrences": 7322,
+        "currentOccurrences": 7352,
+        "added": 30,
+        "removed": 0,
+        "allAddedFromMovedImplementation": true
+      },
+      {
+        "path": "backend/src/test/resources/archunit_store/2c0ba995-682e-4f80-a5a5-f68c835b720d",
+        "oldOccurrences": 569,
+        "currentOccurrences": 569,
+        "added": 0,
+        "removed": 0,
+        "allAddedFromMovedImplementation": true
+      },
+      {
+        "path": "backend/src/test/resources/archunit_store/427c445d-37ce-4d6e-b095-a1733efe209f",
+        "oldOccurrences": 1876,
+        "currentOccurrences": 1897,
+        "added": 21,
+        "removed": 0,
+        "allAddedFromMovedImplementation": true
+      },
+      {
+        "path": "backend/src/test/resources/archunit_store/584c3a46-b9c1-4cc2-bf74-e0a18eab1bef",
+        "oldOccurrences": 2157,
+        "currentOccurrences": 2157,
+        "added": 0,
+        "removed": 0,
+        "allAddedFromMovedImplementation": true
+      },
+      {
+        "path": "backend/src/test/resources/archunit_store/93124b52-f328-4f09-8c4f-6d022519fae2",
+        "oldOccurrences": 600,
+        "currentOccurrences": 600,
+        "added": 0,
+        "removed": 0,
+        "allAddedFromMovedImplementation": true
+      },
+      {
+        "path": "backend/src/test/resources/archunit_store/9ed4737d-c74f-4374-923e-4663d3c9e256",
+        "oldOccurrences": 0,
+        "currentOccurrences": 0,
+        "added": 0,
+        "removed": 0,
+        "allAddedFromMovedImplementation": true
+      },
+      {
+        "path": "backend/src/test/resources/archunit_store/f14374b1-655e-4df2-8e82-2d79c8df9174",
+        "oldOccurrences": 1325,
+        "currentOccurrences": 1346,
+        "added": 21,
+        "removed": 0,
+        "allAddedFromMovedImplementation": true
+      },
+      {
+        "path": "backend/src/test/resources/archunit_store/stored.rules",
+        "oldOccurrences": 9,
+        "currentOccurrences": 9,
+        "added": 0,
+        "removed": 0,
+        "allAddedFromMovedImplementation": true
+      }
+    ],
+    "totalAdded": 72,
+    "totalRemoved": 0
+  },
+  "openapi": {
+    "runId": 40284220727,
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head": "66d07b0ed9f6d0196a42287d3b3ad4208931686d",
+    "generate": "success",
+    "drift": "success",
+    "blob": "fb9efcd20f9d9823ead06730eb4deca3d8a9df7b",
+    "bytes": 6378305,
+    "excludedAutomaticRun": 40283924560,
+    "reason": "自動runは生成skip、実生成の代替にしない。"
+  },
+  "baseline": {
+    "head": "2d17eff087ad59e5b354caf2808f81ec4f52b1d6",
+    "run": 40276718599,
+    "currentMain": "17cab5899b86216190b2c13d31c19812d88593d5",
+    "baselineBackendTree": "7040e7e33604c171831ffb4932ead6952fae88a0",
+    "currentMainBackendTree": "7040e7e33604c171831ffb4932ead6952fae88a0",
+    "identical": true,
+    "openapiBlob": "fb9efcd20f9d9823ead06730eb4deca3d8a9df7b"
+  },
+  "rootReview": {
+    "status": "passed",
+    "findings": 0,
+    "acceptanceCriteria": 12,
+    "evidence": "docs/evidence/CMP-261022-0914/validated-66d-root-review.json"
+  },
+  "historicalNote": "旧a363のScope978XMLはhistorical-a363-ci-summary.jsonへ分離。final66dは980XML/4384case。"
+}

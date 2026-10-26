@@ -1,0 +1,576 @@
+{
+  "status": "passed_cached_result_root_independent_review",
+  "run": {
+    "id": 40295398433,
+    "head": "d6896776ade4e90283dcc77426c7b60034887039",
+    "attempt": 1,
+    "status": "completed",
+    "conclusion": "success",
+    "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40295398433"
+  },
+  "backend": {
+    "runId": 40295398433,
+    "head": "d6896776ade4e90283dcc77426c7b60034887039",
+    "attempt": 1,
+    "status": "completed",
+    "conclusion": "success",
+    "confirmedBy": "rootAPI最終確認",
+    "testResultMode": "Gradle cacheからの結果復元。新規全量実行と称さない。"
+  },
+  "openapi": {
+    "runId": 40295516566,
+    "head": "d6896776ade4e90283dcc77426c7b60034887039",
+    "status": "completed",
+    "conclusion": "success",
+    "actualGenerate": "success",
+    "drift": "success",
+    "confirmedBy": "rootAPI確認"
+  },
+  "gradleCache": {
+    "shards": [
+      {
+        "shard": 0,
+        "task": ":test",
+        "outcome": "FROM-CACHE"
+      },
+      {
+        "shard": 1,
+        "task": ":test",
+        "outcome": "FROM-CACHE"
+      },
+      {
+        "shard": 2,
+        "task": ":test",
+        "outcome": "FROM-CACHE"
+      },
+      {
+        "shard": 3,
+        "task": ":test",
+        "outcome": "FROM-CACHE"
+      },
+      {
+        "shard": 4,
+        "task": ":test",
+        "outcome": "FROM-CACHE"
+      },
+      {
+        "shard": 5,
+        "task": ":test",
+        "outcome": "FROM-CACHE"
+      }
+    ],
+    "arch": {
+      "task": ":archTest",
+      "outcome": "FROM-CACHE"
+    },
+    "nonJst": {
+      "task": ":test",
+      "outcome": "FROM-CACHE"
+    },
+    "source": "Luna採取ログの8task結果を準備担当も読取確認"
+  },
+  "artifacts": [
+    {
+      "id": 12638046412,
+      "name": "archtest-results-xml-pr-4049",
+      "digest": "sha256:6612ce2cc49c2a73c4d475589c37a7b0e85c3d0500cb5c2b1fcf9b890d96e0e9",
+      "size": 68692
+    },
+    {
+      "id": 12637903321,
+      "name": "test-results-xml-pr-4049-shard-0",
+      "digest": "sha256:706dc98ec3282c96578118f5b0be64574c39b00b8dac87a9b845c63cfeb39072",
+      "size": 65117154
+    },
+    {
+      "id": 12638041750,
+      "name": "test-results-xml-pr-4049-shard-1",
+      "digest": "sha256:693a82466944a5cdb77e53245904c64a671426c59fab51209043e8f925e315c4",
+      "size": 59422609
+    },
+    {
+      "id": 12638230835,
+      "name": "test-results-xml-pr-4049-shard-2",
+      "digest": "sha256:898e30575ec28589eb871818cc39f1cb86d33c3b94ebfb13716b99c40372398c",
+      "size": 29989940
+    },
+    {
+      "id": 12638615056,
+      "name": "test-results-xml-pr-4049-shard-3",
+      "digest": "sha256:b6aab4e804028363973490963a4a890d24c3e462b4d17930eb18a592b0d4f6cc",
+      "size": 18053335
+    },
+    {
+      "id": 12638470390,
+      "name": "test-results-xml-pr-4049-shard-4",
+      "digest": "sha256:c7b02a78a05532d20279ca0265f7ec80fd0d523af8ba15d16c40e9cebbaa4b64",
+      "size": 8628823
+    },
+    {
+      "id": 12637703650,
+      "name": "test-results-xml-pr-4049-shard-5",
+      "digest": "sha256:d2744752bd7dfb00fd48ce18515c3a4d8574e0f4409e08ebde28dc2d4d12cc83",
+      "size": 36116862
+    }
+  ],
+  "selectedGroups": {
+    "com.mannschaft.app.common.AccessControlServiceTest": 58,
+    "com.mannschaft.app.membership.TeamMembershipStateContractTest": 9,
+    "com.mannschaft.app.common.AccessControlServiceRoutingContractIT": 6,
+    "com.mannschaft.app.common.AccessControlServiceSpiContractTest": 4,
+    "com.mannschaft.app.common.AccessControlServiceSpiIntegrationTest": 14,
+    "com.mannschaft.app.common.AccessControlLastAdminWithdrawalIntegrationTest": 4,
+    "com.mannschaft.app.common.AccessControlServiceInterfaceContractTest": 3,
+    "com.mannschaft.app.member.MemberSubtabVisibilityTxBoundaryIT": 19
+  },
+  "newFiveClassTests": 31,
+  "scopes": {
+    "sourceTopLevelClasses": 159,
+    "representedTopLevelClasses": 159,
+    "xmlCount": 980,
+    "declaredTests": 4384,
+    "testcaseElements": 4384,
+    "allSuiteAttributesMatchElements": true,
+    "countingNote": "Each XML testcase element is counted once in its own testsuite. Empty parent suites contribute zero; no source class subtotal is added. Display-name collisions are not deduplicated."
+  },
+  "engine": {
+    "sourceClasses": 18,
+    "tests": 37,
+    "perShard": [
+      {
+        "shard": 0,
+        "tests": 6
+      },
+      {
+        "shard": 1,
+        "tests": 1
+      },
+      {
+        "shard": 2,
+        "tests": 5
+      },
+      {
+        "shard": 3,
+        "tests": 1
+      },
+      {
+        "shard": 4,
+        "tests": 13
+      },
+      {
+        "shard": 5,
+        "tests": 11
+      }
+    ]
+  },
+  "integrity": {
+    "total": 12,
+    "perShard": [
+      {
+        "shard": 0,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "shard": 1,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "shard": 2,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "shard": 3,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "shard": 4,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "shard": 5,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    ]
+  },
+  "selectedXmlHeaders": 47,
+  "allSelectedSuiteAttributesMatchElements": true,
+  "selectedFailures": 0,
+  "selectedErrors": 0,
+  "selectedSkipped": 0,
+  "independentRootXml": {
+    "checkedAt": "2026-10-26T09:15:38.0674860+00:00",
+    "xmlCount": 1073,
+    "scopeSources": 159,
+    "scopeXml": 980,
+    "scopeCases": 4384,
+    "all159HaveActualCases": true,
+    "archXml": 46,
+    "archCases": 347,
+    "selectedNonScopeHeaders": 47,
+    "selectedFailureErrorSkipped": 0,
+    "childMismatch": 0
+  },
+  "arch": {
+    "xmlCount": 46,
+    "tests": 347,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "stores": {
+    "count": 48,
+    "all48MatchCommit": true,
+    "canonical": {
+      "296295dd-06cf-4f7b-bf82-315ba12ff501": {
+        "path": "backend/src/test/resources/archunit_store/296295dd-06cf-4f7b-bf82-315ba12ff501",
+        "bytes": 2197949,
+        "sha256": "c9deb0b6a9ff2868d2d8e86f98dff254a3a1fd802477f05fd8fbf3905adcf25d",
+        "lines": 7352
+      },
+      "2c0ba995-682e-4f80-a5a5-f68c835b720d": {
+        "path": "backend/src/test/resources/archunit_store/2c0ba995-682e-4f80-a5a5-f68c835b720d",
+        "bytes": 96754,
+        "sha256": "e18798e22df8611e3d7cbd45c28a823b13e1b935a1ab596352a308d6a7bd7ee8",
+        "lines": 569
+      },
+      "427c445d-37ce-4d6e-b095-a1733efe209f": {
+        "path": "backend/src/test/resources/archunit_store/427c445d-37ce-4d6e-b095-a1733efe209f",
+        "bytes": 1156298,
+        "sha256": "25d856de4396028f11d0616eeaf6d5fba7a08efcd7334ffeb2f25f85375701eb",
+        "lines": 1897
+      },
+      "584c3a46-b9c1-4cc2-bf74-e0a18eab1bef": {
+        "path": "backend/src/test/resources/archunit_store/584c3a46-b9c1-4cc2-bf74-e0a18eab1bef",
+        "bytes": 1050977,
+        "sha256": "28845447b0077a31c8d1716e4d0016d91bfb3bfc92c43f61e0aa7b27800e84d7",
+        "lines": 2157
+      },
+      "93124b52-f328-4f09-8c4f-6d022519fae2": {
+        "path": "backend/src/test/resources/archunit_store/93124b52-f328-4f09-8c4f-6d022519fae2",
+        "bytes": 170083,
+        "sha256": "19022a1dbb002081981235151f3e732937d9a3f4473225f9ffca9b5dbc6760d7",
+        "lines": 600
+      },
+      "9ed4737d-c74f-4374-923e-4663d3c9e256": {
+        "path": "backend/src/test/resources/archunit_store/9ed4737d-c74f-4374-923e-4663d3c9e256",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lines": 0
+      },
+      "f14374b1-655e-4df2-8e82-2d79c8df9174": {
+        "path": "backend/src/test/resources/archunit_store/f14374b1-655e-4df2-8e82-2d79c8df9174",
+        "bytes": 802244,
+        "sha256": "af293e4f78cfa7761d75f04198966a2a87ae001bc672bee4a42c3f3edfe13fd6",
+        "lines": 1346
+      },
+      "stored.rules": {
+        "path": "backend/src/test/resources/archunit_store/stored.rules",
+        "bytes": 746,
+        "sha256": "af7cef906e9abf2bb093f875872c05083898fb81243ee9f3397e1ef3c7ddb4c9",
+        "lines": 9
+      }
+    },
+    "allHistoricalKeysPreserved": true,
+    "allHistoricalMultiplicityPreserved": true,
+    "rootIndependentStatus": "independent_stores_verified",
+    "rootCheckedAt": "2026-10-26T09:16:14.622Z",
+    "matched": 48,
+    "baselineComparisons": [
+      {
+        "baseline": "a363c8d011c265f80ec618a6d64e4ad0912f8eec",
+        "path": "backend/src/test/resources/archunit_store/296295dd-06cf-4f7b-bf82-315ba12ff501",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "17cab5899b86216190b2c13d31c19812d88593d5",
+        "path": "backend/src/test/resources/archunit_store/296295dd-06cf-4f7b-bf82-315ba12ff501",
+        "added": 30,
+        "removed": 0
+      },
+      {
+        "baseline": "a363c8d011c265f80ec618a6d64e4ad0912f8eec",
+        "path": "backend/src/test/resources/archunit_store/2c0ba995-682e-4f80-a5a5-f68c835b720d",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "17cab5899b86216190b2c13d31c19812d88593d5",
+        "path": "backend/src/test/resources/archunit_store/2c0ba995-682e-4f80-a5a5-f68c835b720d",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "a363c8d011c265f80ec618a6d64e4ad0912f8eec",
+        "path": "backend/src/test/resources/archunit_store/427c445d-37ce-4d6e-b095-a1733efe209f",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "17cab5899b86216190b2c13d31c19812d88593d5",
+        "path": "backend/src/test/resources/archunit_store/427c445d-37ce-4d6e-b095-a1733efe209f",
+        "added": 21,
+        "removed": 0
+      },
+      {
+        "baseline": "a363c8d011c265f80ec618a6d64e4ad0912f8eec",
+        "path": "backend/src/test/resources/archunit_store/584c3a46-b9c1-4cc2-bf74-e0a18eab1bef",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "17cab5899b86216190b2c13d31c19812d88593d5",
+        "path": "backend/src/test/resources/archunit_store/584c3a46-b9c1-4cc2-bf74-e0a18eab1bef",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "a363c8d011c265f80ec618a6d64e4ad0912f8eec",
+        "path": "backend/src/test/resources/archunit_store/93124b52-f328-4f09-8c4f-6d022519fae2",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "17cab5899b86216190b2c13d31c19812d88593d5",
+        "path": "backend/src/test/resources/archunit_store/93124b52-f328-4f09-8c4f-6d022519fae2",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "a363c8d011c265f80ec618a6d64e4ad0912f8eec",
+        "path": "backend/src/test/resources/archunit_store/9ed4737d-c74f-4374-923e-4663d3c9e256",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "17cab5899b86216190b2c13d31c19812d88593d5",
+        "path": "backend/src/test/resources/archunit_store/9ed4737d-c74f-4374-923e-4663d3c9e256",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "a363c8d011c265f80ec618a6d64e4ad0912f8eec",
+        "path": "backend/src/test/resources/archunit_store/f14374b1-655e-4df2-8e82-2d79c8df9174",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "17cab5899b86216190b2c13d31c19812d88593d5",
+        "path": "backend/src/test/resources/archunit_store/f14374b1-655e-4df2-8e82-2d79c8df9174",
+        "added": 21,
+        "removed": 0
+      },
+      {
+        "baseline": "a363c8d011c265f80ec618a6d64e4ad0912f8eec",
+        "path": "backend/src/test/resources/archunit_store/stored.rules",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "17cab5899b86216190b2c13d31c19812d88593d5",
+        "path": "backend/src/test/resources/archunit_store/stored.rules",
+        "added": 0,
+        "removed": 0
+      }
+    ],
+    "preL1TotalAdded": 72,
+    "preL1TotalRemoved": 0
+  },
+  "rootReview": {
+    "status": "passed",
+    "findings": 0,
+    "acceptanceCriteria": 12,
+    "evidence": "docs/evidence/CMP-261022-0914/root-final-review.json"
+  },
+  "mergeGate": {
+    "status": "passed",
+    "checkedAt": "2026-10-26T09:20:07.996Z",
+    "repository": "kenta-0420/mannschaft",
+    "pr": 4049,
+    "implementationHead": "d6896776ade4e90283dcc77426c7b60034887039",
+    "merged": true,
+    "mergedAt": "2026-10-26T09:17:29Z",
+    "mergeSha": "092ca37a587f6b589df9234126d6f43916c036cc",
+    "changedFiles": {
+      "pullChangedFiles": 21,
+      "listFilesCount": 21,
+      "match": true
+    },
+    "api": {
+      "checksFilter": "all",
+      "checksPagination": true,
+      "checkPages": 1,
+      "checkRunsFetched": 25,
+      "statusesPagination": true,
+      "statusPages": 1,
+      "statusesFetched": 0,
+      "filesPagination": true,
+      "filePages": 1
+    },
+    "trustedFunction": {
+      "source": "scripts/completion-evidence.mjs",
+      "authority": "origin/main",
+      "authoritySha": "092ca37a587f6b589df9234126d6f43916c036cc",
+      "name": "summarizeImplementationChecks"
+    },
+    "mergeGeneration": {
+      "counts": {
+        "success": 22,
+        "skipped": 1
+      },
+      "selectedCount": 23,
+      "hasSuccess": true,
+      "allAcceptable": true
+    },
+    "files": [
+      {
+        "filename": "backend/src/main/java/com/mannschaft/app/common/AccessControlService.java",
+        "status": "modified"
+      },
+      {
+        "filename": "backend/src/main/java/com/mannschaft/app/family/service/FamilyCareLinkQuery.java",
+        "status": "added"
+      },
+      {
+        "filename": "backend/src/main/java/com/mannschaft/app/gdpr/service/GdprLastAdminWithdrawalErrorProvider.java",
+        "status": "added"
+      },
+      {
+        "filename": "backend/src/main/java/com/mannschaft/app/role/api/CareLinkQuery.java",
+        "status": "added"
+      },
+      {
+        "filename": "backend/src/main/java/com/mannschaft/app/role/api/LastAdminWithdrawalErrorProvider.java",
+        "status": "added"
+      },
+      {
+        "filename": "backend/src/main/java/com/mannschaft/app/role/authorization/RolePriority.java",
+        "status": "added"
+      },
+      {
+        "filename": "backend/src/main/java/com/mannschaft/app/role/authorization/RoleScopeRoleQuery.java",
+        "status": "added"
+      },
+      {
+        "filename": "backend/src/main/java/com/mannschaft/app/role/service/DefaultAccessControlService.java",
+        "status": "added"
+      },
+      {
+        "filename": "backend/src/test/java/com/mannschaft/app/common/AccessControlLastAdminWithdrawalIntegrationTest.java",
+        "status": "added"
+      },
+      {
+        "filename": "backend/src/test/java/com/mannschaft/app/common/AccessControlServiceInterfaceContractTest.java",
+        "status": "added"
+      },
+      {
+        "filename": "backend/src/test/java/com/mannschaft/app/common/AccessControlServiceRoutingContractIT.java",
+        "status": "added"
+      },
+      {
+        "filename": "backend/src/test/java/com/mannschaft/app/common/AccessControlServiceSpiContractTest.java",
+        "status": "added"
+      },
+      {
+        "filename": "backend/src/test/java/com/mannschaft/app/common/AccessControlServiceSpiIntegrationTest.java",
+        "status": "added"
+      },
+      {
+        "filename": "backend/src/test/java/com/mannschaft/app/common/AccessControlServiceTest.java",
+        "status": "modified"
+      },
+      {
+        "filename": "backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitFreezeStoreIntegrityTest.java",
+        "status": "modified"
+      },
+      {
+        "filename": "backend/src/test/java/com/mannschaft/app/member/MemberTxBoundaryITSupport.java",
+        "status": "modified"
+      },
+      {
+        "filename": "backend/src/test/java/com/mannschaft/app/membership/TeamMembershipStateContractTest.java",
+        "status": "modified"
+      },
+      {
+        "filename": "backend/src/test/resources/archunit_store/296295dd-06cf-4f7b-bf82-315ba12ff501",
+        "status": "modified"
+      },
+      {
+        "filename": "backend/src/test/resources/archunit_store/427c445d-37ce-4d6e-b095-a1733efe209f",
+        "status": "modified"
+      },
+      {
+        "filename": "backend/src/test/resources/archunit_store/f14374b1-655e-4df2-8e82-2d79c8df9174",
+        "status": "modified"
+      },
+      {
+        "filename": "docs/architecture/archunit_freeze_history.md",
+        "status": "modified"
+      }
+    ],
+    "note": "マージ時点世代はtrusted正本関数に全API check/statusとmergedAtを渡して判定。",
+    "evidenceStructureImplementationAndCiRuns": "passed",
+    "ciRunsVerified": [
+      {
+        "runId": 40295398433,
+        "repository": "kenta-0420/mannschaft",
+        "sha": "d6896776ade4e90283dcc77426c7b60034887039",
+        "conclusion": "success"
+      },
+      {
+        "runId": 40295516566,
+        "repository": "kenta-0420/mannschaft",
+        "sha": "d6896776ade4e90283dcc77426c7b60034887039",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "integration": {
+    "head": "092ca37a587f6b589df9234126d6f43916c036cc",
+    "event": "push",
+    "runId": 40298405982,
+    "attempt": 1,
+    "status": "in_progress",
+    "conclusion": null,
+    "shards": {
+      "count": 6,
+      "observed": "actual Run tests継続中、成功未確定"
+    },
+    "archUnit": "success",
+    "gitleaks": {
+      "runId": 40298406051,
+      "conclusion": "success"
+    },
+    "owner": "Luna CI担当監視中",
+    "note": "ArchUnit/Gitleaksの成功だけで統合Backend/他mainCIを合格扱いしない。"
+  },
+  "history": {
+    "a363": "docs/evidence/CMP-261022-0914/historical-a363-ci-summary.json",
+    "validated66d": "docs/evidence/CMP-261022-0914/validated-66d-ci-summary.json",
+    "validated66dRootReview": "docs/evidence/CMP-261022-0914/validated-66d-root-review.json"
+  },
+  "notes": [
+    "d689テスト結果はGradle cacheから復元。新規全量実行と称さない。",
+    "復元された新head成果物をrootが独立再読し実数を照合済み。",
+    "製品コード・テストソース・ビルド設定は同一、docs7差分。全テスト/build入力同一とは断言しない。",
+    "旧a363978XML、66d980XMLは別履歴。d689980XMLは新成果物の実測。"
+  ]
+}
