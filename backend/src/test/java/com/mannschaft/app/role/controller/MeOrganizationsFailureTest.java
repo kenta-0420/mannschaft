@@ -2,11 +2,11 @@ package com.mannschaft.app.role.controller;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.visibility.MembershipBatchQueryService;
-import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.service.OrganizationQueryService;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
-import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
-import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
+import com.mannschaft.app.team.service.TeamQueryService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessResourceFailureException;
@@ -33,8 +33,8 @@ class MeOrganizationsFailureTest {
     void 所属照会が失敗したら障害を伝播する() {
         var userRoles = mock(UserRoleRepository.class);
         var access = mock(AccessControlService.class);
-        var controller = new MeController(userRoles, mock(RoleRepository.class), mock(TeamRepository.class),
-                mock(TeamOrgMembershipRepository.class), mock(OrganizationRepository.class), access,
+        var controller = new MeController(userRoles, mock(RoleRepository.class), mock(TeamQueryService.class),
+                mock(TeamOrgMembershipQueryService.class), mock(OrganizationQueryService.class), access,
                 mock(MembershipBatchQueryService.class));
         var mvc = MockMvcBuilders.standaloneSetup(controller).build();
         SecurityContextHolder.getContext().setAuthentication(
