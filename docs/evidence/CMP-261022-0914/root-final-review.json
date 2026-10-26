@@ -1,0 +1,161 @@
+{
+  "status": "passed",
+  "reviewer": "root本人",
+  "head": "d6896776ade4e90283dcc77426c7b60034887039",
+  "run": 40295398433,
+  "attempt": 1,
+  "checkedAt": "2026-10-26T09:17:16.155Z",
+  "findings": [],
+  "acceptanceCriteria": 12,
+  "rootXml": {
+    "files": 1073,
+    "scopeClasses": 159,
+    "scopeXml": 980,
+    "scopeCases": 4384,
+    "archXml": 46,
+    "archCases": 347,
+    "all159HaveActualCases": true,
+    "selectedHeaders": 47,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "stores": {
+    "matched": 48,
+    "baselineComparisons": [
+      {
+        "baseline": "a363c8d011c265f80ec618a6d64e4ad0912f8eec",
+        "path": "backend/src/test/resources/archunit_store/296295dd-06cf-4f7b-bf82-315ba12ff501",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "17cab5899b86216190b2c13d31c19812d88593d5",
+        "path": "backend/src/test/resources/archunit_store/296295dd-06cf-4f7b-bf82-315ba12ff501",
+        "added": 30,
+        "removed": 0
+      },
+      {
+        "baseline": "a363c8d011c265f80ec618a6d64e4ad0912f8eec",
+        "path": "backend/src/test/resources/archunit_store/2c0ba995-682e-4f80-a5a5-f68c835b720d",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "17cab5899b86216190b2c13d31c19812d88593d5",
+        "path": "backend/src/test/resources/archunit_store/2c0ba995-682e-4f80-a5a5-f68c835b720d",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "a363c8d011c265f80ec618a6d64e4ad0912f8eec",
+        "path": "backend/src/test/resources/archunit_store/427c445d-37ce-4d6e-b095-a1733efe209f",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "17cab5899b86216190b2c13d31c19812d88593d5",
+        "path": "backend/src/test/resources/archunit_store/427c445d-37ce-4d6e-b095-a1733efe209f",
+        "added": 21,
+        "removed": 0
+      },
+      {
+        "baseline": "a363c8d011c265f80ec618a6d64e4ad0912f8eec",
+        "path": "backend/src/test/resources/archunit_store/584c3a46-b9c1-4cc2-bf74-e0a18eab1bef",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "17cab5899b86216190b2c13d31c19812d88593d5",
+        "path": "backend/src/test/resources/archunit_store/584c3a46-b9c1-4cc2-bf74-e0a18eab1bef",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "a363c8d011c265f80ec618a6d64e4ad0912f8eec",
+        "path": "backend/src/test/resources/archunit_store/93124b52-f328-4f09-8c4f-6d022519fae2",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "17cab5899b86216190b2c13d31c19812d88593d5",
+        "path": "backend/src/test/resources/archunit_store/93124b52-f328-4f09-8c4f-6d022519fae2",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "a363c8d011c265f80ec618a6d64e4ad0912f8eec",
+        "path": "backend/src/test/resources/archunit_store/9ed4737d-c74f-4374-923e-4663d3c9e256",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "17cab5899b86216190b2c13d31c19812d88593d5",
+        "path": "backend/src/test/resources/archunit_store/9ed4737d-c74f-4374-923e-4663d3c9e256",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "a363c8d011c265f80ec618a6d64e4ad0912f8eec",
+        "path": "backend/src/test/resources/archunit_store/f14374b1-655e-4df2-8e82-2d79c8df9174",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "17cab5899b86216190b2c13d31c19812d88593d5",
+        "path": "backend/src/test/resources/archunit_store/f14374b1-655e-4df2-8e82-2d79c8df9174",
+        "added": 21,
+        "removed": 0
+      },
+      {
+        "baseline": "a363c8d011c265f80ec618a6d64e4ad0912f8eec",
+        "path": "backend/src/test/resources/archunit_store/stored.rules",
+        "added": 0,
+        "removed": 0
+      },
+      {
+        "baseline": "17cab5899b86216190b2c13d31c19812d88593d5",
+        "path": "backend/src/test/resources/archunit_store/stored.rules",
+        "added": 0,
+        "removed": 0
+      }
+    ]
+  },
+  "runtime": {
+    "uiPassed": 12,
+    "exploratoryResidents": 3,
+    "sourceBridge": "33a→66dはdocs/task-list.mdのみ"
+  },
+  "limits": [
+    "physical replication対象外、Spring AOP datasource route契約を検証",
+    "repo admin-console実機specはtypecheck/list、custom actualUI12件で実機検証",
+    "旧r6copy保持条件は別記"
+  ],
+  "cache": {
+    "sixShards": "test FROM-CACHE",
+    "arch": "archTest FROM-CACHE",
+    "nonJst": "test FROM-CACHE",
+    "newExecutionClaimed": false,
+    "validated66dRun": 40283924552
+  },
+  "sourceBridge": {
+    "from": "66d07b0ed9f6d0196a42287d3b3ad4208931686d",
+    "to": "d6896776ade4e90283dcc77426c7b60034887039",
+    "differingFiles": [
+      "docs/evidence/CMP-261004-1945.json",
+      "docs/evidence/CMP-261004-1946.json",
+      "docs/evidence/october-wave2-existing-completion-sync-20261026.md",
+      "docs/prototypes/beta-inventory-board-data.js",
+      "docs/prototypes/beta-inventory-board-github-status.json",
+      "docs/prototypes/beta-inventory-board-github.json",
+      "docs/task-list.md"
+    ],
+    "productCodeTestSourcesBuildSettingsUnchanged": true
+  },
+  "shipping": {
+    "mergeable": "MERGEABLE",
+    "state": "CLEAN",
+    "checks": 23,
+    "bad": 0
+  }
+}
