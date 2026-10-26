@@ -1,0 +1,213 @@
+# =============================================================================
+# Frontend CI/CD — push to main
+# =============================================================================
+# Required GitHub Secrets (set in kenta-0420/mannschaft):
+#
+#   AWS_ACCESS_KEY_ID          — IAM access key  (see OIDC note below to avoid
+#   AWS_SECRET_ACCESS_KEY        long-lived keys entirely)
+#   AWS_ACCOUNT_ID             — 12-digit AWS account number (e.g. 123456789012)
+#   ECR_REPOSITORY             — ECR repo name (e.g. mannschaft-frontend)
+#   ECS_CLUSTER                — ECS cluster name (e.g. mannschaft-cluster)
+#   ECS_SERVICE                — ECS service name (e.g. mannschaft-frontend-service)
+#   ECS_TASK_DEFINITION        — ECS task definition family name
+#                                (e.g. mannschaft-frontend-task)
+#   ECS_CONTAINER_NAME         — Container name inside the task def
+#                                (e.g. mannschaft-frontend)
+#
+# ---------------------------------------------------------------------------
+# OIDC alternative (recommended for production — removes long-lived keys):
+#
+#   1. Create an IAM OIDC provider for token.actions.githubusercontent.com
+#   2. Create an IAM role with the following trust policy condition:
+#        "token.actions.githubusercontent.com:sub":
+#          "repo:kenta-0420/mannschaft:ref:refs/heads/main"
+#   3. Replace the "Configure AWS credentials" step below with:
+#
+#        - name: Configure AWS credentials (OIDC)
+#          uses: aws-actions/configure-aws-credentials@v4
+#          with:
+#            role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-deploy
+#            aws-region: ap-northeast-1
+#
+#   4. Delete the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY secrets.
+#
+#   注意: 下の "Check AWS credentials" ステップ（門番）は、実際にワークフロー内で
+#   参照している secret（AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / ECR_REPOSITORY /
+#   ECS_CLUSTER / ECS_SERVICE / ECS_TASK_DEFINITION / ECS_CONTAINER_NAME の7つ。
+#   AWS_ACCOUNT_ID はこの OIDC 手順内でのみ使う想定で、現行ステップでは未参照）が
+#   「全て未設定→skip」「全て設定済み→デプロイ」「一部だけ設定済み→ジョブ失敗」の
+#   3通りで判定する。上記手順どおり AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY を削除して
+#   OIDC へ移行すると、この2つが欠けた「一部だけ設定済み」状態になりジョブが失敗する。
+#   OIDC へ移行する場合は、この門番の判定対象・実行ステップの両方を OIDC 向けに
+#   合わせて変更すること（本ファイルの門番の実装自体は今回 OIDC 対応はしていない）。
+# =============================================================================
+
+name: Frontend — Build & Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-deploy.yml"
+
+# Prevent concurrent deploys; cancel in-progress runs on the same branch
+concurrency:
+  group: frontend-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ap-northeast-1
+  NODE_VERSION: "22.23.2"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Build Docker image, push to ECR, deploy to ECS
+  # ---------------------------------------------------------------------------
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      # AWS Secrets 未設定時はデプロイをスキップする。設定されれば自動的に実行される。
+      # このステップは checkout より前に走るため、job の defaults.run.working-directory
+      # である ./frontend はまだ存在しない。ここだけ working-directory を明示的にリポジトリ
+      # 直下（.）へ戻す。
+      # デプロイに必要な secret が「全て未設定」なら意図的な無効化とみなしスキップ、
+      # 「全て設定済み」ならデプロイへ進む。「一部だけ設定済み」は設定ミスであり、
+      # 対処療法（黙ってスキップ）で症状を隠さず、ジョブを失敗させて気付けるようにする
+      # （本プロジェクトの禁止事項「対処療法でバグを切り抜けること」に該当するため）。
+      # 対象は本ワークフロー内で実際に参照している secret のみ（AWS_ACCOUNT_ID は
+      # 冒頭コメントの OIDC 移行手順にのみ登場し、現行の実行ステップでは参照していない
+      # ため対象外）。値そのものはログに出さず、secret 名と設定済み／未設定の別だけを出す。
+      - name: Check AWS credentials
+        id: aws-check
+        working-directory: .
+        run: |
+          missing=()
+          present=()
+          for name in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY ECR_REPOSITORY ECS_CLUSTER ECS_SERVICE ECS_TASK_DEFINITION ECS_CONTAINER_NAME; do
+            value_var="SECRET_${name}"
+            if [ -z "${!value_var}" ]; then
+              missing+=("$name")
+            else
+              present+=("$name")
+            fi
+          done
+
+          if [ "${#present[@]}" -eq 0 ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::AWS credentials not configured — skipping deploy"
+          elif [ "${#missing[@]}" -eq 0 ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::error::デプロイ用 secret が一部だけ設定されています（設定ミスの疑い）。未設定: ${missing[*]}"
+            exit 1
+          fi
+        env:
+          SECRET_AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          SECRET_AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          SECRET_ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          SECRET_ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
+          SECRET_ECS_SERVICE: ${{ secrets.ECS_SERVICE }}
+          SECRET_ECS_TASK_DEFINITION: ${{ secrets.ECS_TASK_DEFINITION }}
+          SECRET_ECS_CONTAINER_NAME: ${{ secrets.ECS_CONTAINER_NAME }}
+
+      - name: Checkout source
+        if: steps.aws-check.outputs.skip != 'true'
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        if: steps.aws-check.outputs.skip != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          # Cache npm dependencies keyed on package-lock.json
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # Install dependencies to validate the lockfile and run any type checks
+      # before building the Docker image. Fail fast without spending time on
+      # a full Docker build if node_modules can't be resolved.
+      - name: Install dependencies
+        if: steps.aws-check.outputs.skip != 'true'
+        run: npm ci
+
+      # Optional: add lint / type-check steps here, e.g.:
+      # - name: Lint
+      #   run: npm run lint
+      # - name: Type check
+      #   run: npx nuxi typecheck
+
+      # ---- AWS / ECR / ECS --------------------------------------------------
+
+      - name: Configure AWS credentials
+        if: steps.aws-check.outputs.skip != 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        if: steps.aws-check.outputs.skip != 'true'
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push Docker image to ECR
+        if: steps.aws-check.outputs.skip != 'true'
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+
+          docker build \
+            --tag "${IMAGE_URI}" \
+            --tag "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest" \
+            --label "git-commit=${GITHUB_SHA}" \
+            --label "build-date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            .
+
+          docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+          docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
+
+          echo "image=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
+
+      - name: Download current ECS task definition
+        if: steps.aws-check.outputs.skip != 'true'
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ secrets.ECS_TASK_DEFINITION }} \
+            --query taskDefinition \
+            > task-definition.json
+
+      # 直前のステップは run: なので defaults.run.working-directory（./frontend）が効き、
+      # frontend/task-definition.json に書き込まれる。しかし本ステップは uses: であり、
+      # defaults.run.working-directory は run: ステップにしか適用されない（GitHub の仕様）ため、
+      # ここでのパス基準はリポジトリ直下のまま。書き込み先と読み取り先を一致させるため、
+      # frontend/ を明示したパスを指定する。
+      - name: Update ECS task definition with new image
+        if: steps.aws-check.outputs.skip != 'true'
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: frontend/task-definition.json
+          container-name: ${{ secrets.ECS_CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy to Amazon ECS
+        if: steps.aws-check.outputs.skip != 'true'
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ secrets.ECS_SERVICE }}
+          cluster: ${{ secrets.ECS_CLUSTER }}
+          wait-for-service-stability: true

@@ -1,0 +1,214 @@
+<script setup lang="ts">
+/**
+ * F22.1 組織パネル。
+ *
+ * 設計書: docs/features/F22.1_swipe_scope_dashboard/03_security_ux.md §2.7
+ * - タグ行（組織）+ 検索フォーム（組織）+ 厳選 8 ウィジェット。
+ * - store.selectedOrgId のダッシュボードを getOrganizationDashboard で取得し表示。
+ */
+import type { OrgDashboardResponse } from '~/types/dashboard-scope'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useScopeDashboardStore } from '~/stores/useScopeDashboardStore'
+import { useDashboardApi } from '~/composables/useDashboardApi'
+
+const store = useScopeDashboardStore()
+const { getOrganizationDashboard } = useDashboardApi()
+
+const data = ref<OrgDashboardResponse | null>(null)
+const loading = ref(false)
+const errorKey = ref<string | null>(null)
+// 親refreshで子Widgetが再生成されても、不可視と確定したfeedを復活させない。
+const hiddenAnnouncementIds = ref(new Set<number>())
+const visibleAnnouncements = computed(() => data.value?.orgNotices?.filter(item => !hiddenAnnouncementIds.value.has(Number(item.id))) ?? [])
+
+const selectedOrgId = computed(() => store.selectedOrgId)
+const announcementScopeId = computed(() => store.tabPages.ORGANIZATION?.items.find(item => item.slug === selectedOrgId.value)?.scopeId)
+
+/**
+ * 選択中 ID が「まだ slug へ移行されていない内部 BIGINT」かどうかを判定する。
+ *
+ * <p>slug 移行（PR #1413〜）以降、ダッシュボード API の pathVariable は slug（例 `team-000017`）。
+ * ただし localStorage 復元直後など、store.loadTabs が走る前は selectedOrgId に旧来の
+ * 内部 BIGINT（scopeId）が残っていることがある。BIGINT を pathVariable に渡すと 400 になるため、
+ * loadTabs が slug へ張り替えるまでスピナーで待機する必要がある。</p>
+ *
+ * <p>判定方式: ロード済みタグ一覧の scopeId（内部 BIGINT）に一致する値は「移行前」とみなす。
+ * 純数値 slug（組織名が "12345" 等）でも scopeId と値が異なるため誤判定しない。
+ * UUID 正規表現に依存しないため、人間可読 slug（team-000017 等）が永久スピナーになる不具合を根治する。</p>
+ */
+function isUnmigratedScopeId(id: string): boolean {
+  const items = store.tabPages.ORGANIZATION?.items
+  if (!items) {
+    // タグ未ロード（loadTabs 前）。BIGINT 文字列なら移行待ち、slug なら即ロード。
+    return /^\d+$/.test(id)
+  }
+  return items.some(item => item.scopeId === id && item.slug !== id)
+}
+
+/**
+ * 管理者レンズ（トグル / 管理者グリッド）を描画してよい「実 slug 確定」状態か（検分🟠）。
+ *
+ * <p>修正前は `v-if="selectedOrgId"`（非 null）だけで判定していたため、slug 未解決スコープ
+ * （slug=null / 移行前 BIGINT）でも selectedOrgId に入った内部 BIGINT が
+ * `DashboardScopeLensToggle` / `DashboardAdminWidgetGrid` の `:slug` prop に混入していた。
+ * BIGINT を slug として渡すと getAdminActionRequired(404) / useRoleAccess(誤 ID) を招き、
+ * さらに slug 解決後に adminLens の scopeKey が変わってレンズ状態が引き継がれない。</p>
+ *
+ * <p>そこで「実 slug が確定しているとき（= 移行前 BIGINT でない）」のみ管理者レンズを描画する。
+ * 未確定の間はメンバー向け表示に留める（実害は slug 未確定スコープに限るが、命名と実体の不整合を断つ）。</p>
+ */
+const hasResolvedSlug = computed(() =>
+  selectedOrgId.value !== null && !isUnmigratedScopeId(selectedOrgId.value),
+)
+
+/**
+ * 直近に load() を発火した orgId（slug）。同一 slug の二重 fetch を防ぐガード。
+ * tabPages.ORGANIZATION の張り替えで watcher が再評価されても、既にロード済みなら再 fetch しない。
+ */
+const lastLoadedId = ref<string | null>(null)
+
+const loadedScopeId = ref<string | null>(null)
+const auth = useAuthStore()
+const featureVisibility = useScopeFeatureVisibility(
+  "organization", selectedOrgId,
+  () => loadedScopeId.value === selectedOrgId.value ? data.value?.viewerRole : null,
+  () => !store.isAdminLensOn("ORGANIZATION", selectedOrgId.value ?? ""),
+)
+
+let loadSequence = 0
+
+async function load(orgId: string) {
+  loadedScopeId.value = null
+  data.value = null
+  const request = ++loadSequence
+  lastLoadedId.value = orgId
+  loading.value = true
+  errorKey.value = null
+  try {
+    const res = await getOrganizationDashboard(orgId)
+    if (request !== loadSequence) return
+    data.value = res.data
+    loadedScopeId.value = orgId
+  } catch (e) {
+    if (request !== loadSequence) return
+    // 握り潰さない。i18n キーを保持して UI に表示する。
+    console.error('[DashboardOrgPanel] getOrganizationDashboard failed', e)
+    errorKey.value = 'swipeWidgets.actionRequired.loadError'
+    data.value = null
+  } finally {
+    if (request === loadSequence) loading.value = false
+  }
+}
+
+// 組織パネルが初めてアクティブになるまで組織タグは未ロードのことがあるため、
+// 選択中組織が未確定なら ORGANIZATION タグをロードする。
+// ※ DashboardScopeCarousel.onMounted で TEAM/ORGANIZATION 両方をロードするため、
+//   このガードは補助的な役割（Carousel 経由以外でマウントされた場合に備える）。
+onMounted(async () => {
+  if (!store.tabPages.ORGANIZATION) {
+    await store.loadTabs('ORGANIZATION', store.orgTabPage)
+  }
+})
+
+/**
+ * 選択スコープ解決のメインロジック（不変条件）:
+ *   - id===null            → data=null, loading=false（空状態）
+ *   - 移行前 BIGINT（slug 未確定）→ loading=true（スピナー。load は呼ばない）
+ *   - slug 確定           → load(id) を必ず 1 回呼ぶ（lastLoadedId で二重 fetch を防ぐ）
+ *
+ * selectedOrgId だけでなく store.tabPages.ORGANIZATION も監視するのが要点。
+ * 旧実装は selectedOrgId のみ監視していたため、loadTabs が tabPages を埋めても
+ * 値が変わらない（slug がそのまま BIGINT 文字列だった等）と watcher が再発火せず、
+ * load() が永久に呼ばれず空白に落ちるレースがあった。tabPages の変化も監視することで、
+ * slug が確定（isUnmigratedScopeId が false へ転じる）した時点で確実に load() が走る。
+ */
+function resolveSelectedOrg() {
+  const id = selectedOrgId.value
+  if (id === null) {
+    ++loadSequence
+    data.value = null
+    loading.value = false
+    lastLoadedId.value = null
+    return
+  }
+  if (isUnmigratedScopeId(id)) {
+    ++loadSequence
+    // 内部 BIGINT（移行前）: onMounted の loadTabs が slug に張り替えるまでスピナーを
+    // 表示し、空白状態（loading=false/data=null/errorKey=null かつ非 null id）を防ぐ。
+    loading.value = true
+    return
+  }
+  // slug（team-000017 等）が確定。既に同一 slug をロード済みなら二重 fetch しない。
+  if (lastLoadedId.value === id) return
+  // 404 時は errorKey で顕在化させ握り潰さない。
+  load(id)
+}
+
+watch(
+  [selectedOrgId, () => store.tabPages.ORGANIZATION],
+  () => resolveSelectedOrg(),
+  { immediate: true, flush: 'sync' },
+)
+watch(() => auth.user?.id, () => {
+  lastLoadedId.value = null
+  resolveSelectedOrg()
+}, { flush: 'sync' })
+</script>
+
+<template>
+  <div class="flex flex-col gap-4">
+    <ScopeSearchForm scope-type="ORGANIZATION" />
+
+    <!-- タグ行右端に管理者レンズトグル（ADMIN/DEPUTY のみ描画・§1.2/§1.3）。 -->
+    <div class="flex items-center justify-between gap-2">
+      <ScopeTabBar scope-type="ORGANIZATION" class="min-w-0 flex-1" />
+      <!-- 実 slug 確定時のみ描画（slug=null / 移行前 BIGINT を slug prop に混入させない・検分🟠）。 -->
+      <DashboardScopeLensToggle
+        v-if="hasResolvedSlug && selectedOrgId"
+        scope-type="ORGANIZATION"
+        :slug="selectedOrgId"
+      />
+    </div>
+
+    <PageLoading v-if="loading" />
+
+    <Message v-else-if="errorKey" severity="error" :closable="false">
+      {{ $t(errorKey) }}
+    </Message>
+
+    <DashboardEmptyState
+      v-else-if="selectedOrgId === null"
+      icon="pi pi-building"
+      :message="$t('scopeDashboard.tagBar.empty')"
+    />
+
+    <template v-else-if="data">
+      <DashboardAnnouncements
+        v-if="featureVisibility.ready.value && featureVisibility.isVisible('announcements') && data.orgNotices != null && announcementScopeId && selectedOrgId"
+        :key="selectedOrgId"
+        scope-type="ORGANIZATION"
+        :scope-id="announcementScopeId"
+        :scope-slug="selectedOrgId"
+        :items="visibleAnnouncements"
+        @refresh="load(selectedOrgId)"
+        @unavailable="hiddenAnnouncementIds.add($event)"
+      />
+      <DashboardAdminWidgetGrid
+        v-if="hasResolvedSlug && selectedOrgId && store.isAdminLensOn('ORGANIZATION', selectedOrgId)"
+        scope-type="ORGANIZATION"
+        :slug="selectedOrgId"
+      />
+      <DashboardErrorState v-else-if="featureVisibility.error.value" :error="featureVisibility.error.value" @retry="featureVisibility.refresh(true)" />
+      <PageLoading v-else-if="!featureVisibility.ready.value" />
+      <DashboardSwipeWidgetGrid v-else :is-feature-visible="featureVisibility.isVisible" scope-type="ORGANIZATION" :scope-id="selectedOrgId" :numeric-scope-id="announcementScopeId" :data="data" />
+    </template>
+
+    <!--
+      最終フォールバック（解決待ち）。
+      いずれの分岐にも当たらない状態（selectedOrgId 非 null / loading=false /
+      errorKey=null / data=null＝slug 確定直前のレース等）でも完全空白に落ちないよう、
+      解決待ちとして PageLoading を出す。新規 i18n キーは追加しない。
+    -->
+    <PageLoading v-else />
+  </div>
+</template>

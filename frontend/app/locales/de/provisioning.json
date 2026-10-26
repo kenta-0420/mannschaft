@@ -1,0 +1,88 @@
+{
+  "provisioning": {
+    "admin": {
+      "title": "Promotions-Provisionierung",
+      "quickLinkLabel": "Promotions-Provisionierung",
+      "noPermission": "Sie haben keine Berechtigung für diese Aktion",
+      "createOrgBtn": "Organisation erstellen",
+      "createTeamBtn": "Team erstellen",
+      "createOrgDialogTitle": "Organisation vorab anlegen",
+      "createTeamDialogTitle": "Team vorab anlegen",
+      "form": {
+        "nameLabel": "Name",
+        "namePlaceholder": "z. B. Musterdorf",
+        "inviteEmailLabel": "E-Mail-Adresse der eingeladenen Person",
+        "inviteEmailPlaceholder": "admin{'@'}example.com",
+        "nameRequired": "Bitte geben Sie einen Namen ein",
+        "emailRequired": "Bitte geben Sie die E-Mail-Adresse der eingeladenen Person ein",
+        "emailInvalid": "Das Format der E-Mail-Adresse ist ungültig"
+      },
+      "createOrgSuccess": "Organisation erstellt und Einladungs-E-Mail gesendet",
+      "createTeamSuccess": "Team erstellt und Einladungs-E-Mail gesendet",
+      "createFailed": "Erstellen fehlgeschlagen",
+      "saveBtn": "Erstellen",
+      "cancelBtn": "Abbrechen",
+      "invitationsTitle": "Einladungen",
+      "loadFailed": "Einladungen konnten nicht geladen werden",
+      "noData": "Noch keine Einladungen",
+      "table": {
+        "target": "Ziel",
+        "inviteEmail": "E-Mail der eingeladenen Person",
+        "status": "Status",
+        "expiresAt": "Gültig bis",
+        "issuedBy": "Ausgestellt von",
+        "actions": "Aktionen"
+      },
+      "targetOrganization": "Organisation",
+      "targetTeam": "Team",
+      "status": {
+        "PENDING": "Ausstehend",
+        "ACCEPTED": "Angenommen",
+        "CANCELLED": "Widerrufen",
+        "EXPIRED": "Abgelaufen"
+      },
+      "resendBtn": "Erneut senden",
+      "cancelInviteBtn": "Widerrufen",
+      "cancelConfirm": "Diese Einladung widerrufen?",
+      "resendSuccess": "Einladung erneut gesendet",
+      "resendFailed": "Einladung konnte nicht erneut gesendet werden",
+      "cancelSuccess": "Einladung widerrufen",
+      "cancelFailed": "Einladung konnte nicht widerrufen werden",
+      "badge": "SYSTEM ADMIN",
+      "reloadTooltip": "Neu laden"
+    },
+    "accept": {
+      "title": "Admin-Einladung annehmen",
+      "loading": "Einladung wird geprüft…",
+      "loginPrompt": "Zum Anzeigen dieser Einladung müssen Sie sich anmelden",
+      "loginBtn": "Anmelden und fortfahren",
+      "targetOrganization": "Organisation",
+      "targetTeam": "Team",
+      "expiresAtLabel": "Gültig bis",
+      "inviteEmailLabel": "E-Mail-Adresse der eingeladenen Person",
+      "acceptBtn": "Einladung annehmen",
+      "accepting": "Wird angenommen…",
+      "acceptSuccess": "Einladung angenommen",
+      "acceptedTitle": "Einladung angenommen",
+      "acceptedMessage": "Die Einladung wurde angenommen. Sie können in der Verwaltung fortfahren.",
+      "previewError": {
+        "title": "Einladung konnte nicht geprüft werden",
+        "message": "Die Einladung konnte aufgrund der Verbindung nicht geprüft werden. Bitte laden Sie die Seite neu.",
+        "retryBtn": "Neu laden"
+      },
+      "backToDashboard": "Zurück zum Dashboard",
+      "errors": {
+        "notFoundTitle": "Einladung nicht gefunden",
+        "notFoundMessage": "Der Einladungslink ist ungültig. Bitte prüfen Sie die URL.",
+        "expiredTitle": "Einladung ist abgelaufen",
+        "expiredMessage": "Die Gültigkeit dieser Einladung ist bereits abgelaufen. Bitten Sie die einladende Person, sie erneut zu senden.",
+        "cancelledTitle": "Einladung wurde widerrufen",
+        "cancelledMessage": "Diese Einladung wurde widerrufen oder ist ungültig geworden. Bitte wenden Sie sich an die einladende Person.",
+        "emailMismatchTitle": "E-Mail-Adresse stimmt nicht überein",
+        "emailMismatchMessage": "Diese Einladung ist an eine andere E-Mail-Adresse gerichtet. Bitte melden Sie sich erneut mit der eingeladenen E-Mail-Adresse an.",
+        "genericTitle": "Einladung konnte nicht geprüft werden",
+        "genericMessage": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später erneut."
+      }
+    }
+  }
+}

@@ -1,0 +1,535 @@
+package com.mannschaft.app.cms.service;
+
+import com.mannschaft.app.cms.CmsErrorCode;
+import com.mannschaft.app.cms.dto.BlogMediaUploadUrlRequest;
+import com.mannschaft.app.cms.dto.BlogMediaUploadUrlResponse;
+import com.mannschaft.app.cms.entity.BlogMediaUploadEntity;
+import com.mannschaft.app.cms.repository.BlogMediaUploadRepository;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.quota.StorageFeatureType;
+import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
+import com.mannschaft.app.common.storage.quota.StorageQuotaService;
+import com.mannschaft.app.common.storage.quota.StorageScopeType;
+import com.mannschaft.app.files.dto.StartMultipartUploadRequest;
+import com.mannschaft.app.files.dto.StartMultipartUploadResponse;
+import com.mannschaft.app.files.service.MultipartUploadService;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+
+/**
+ * {@link BlogMediaService} の単体テスト。
+ * Mockito で R2StorageService / MultipartUploadService / Repository / StorageQuotaService を
+ * モックしてビジネスロジックを検証する。
+ *
+ * <p>F13 Phase 4-δ: クォータ超過テスト・recordUpload / recordDeletion 呼び出し検証を追加。</p>
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("BlogMediaService 単体テスト")
+class BlogMediaServiceTest {
+
+    @Mock
+    private R2StorageService r2StorageService;
+
+    @Mock
+    private MultipartUploadService multipartUploadService;
+
+    @Mock
+    private BlogMediaUploadRepository blogMediaUploadRepository;
+
+    @Mock
+    private StorageQuotaService storageQuotaService;
+
+    @Mock
+    private BlogMediaOrphanCleanupRunner orphanCleanupRunner;
+
+    @Mock private BlogMediaAclService mediaAclService;
+    @Mock private com.mannschaft.app.common.storage.acl.StorageAclService storageAclService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUpAclScope() {
+        org.mockito.Mockito.lenient().when(mediaAclService.resolveUploadScope(anyLong(), any()))
+                .thenAnswer(inv -> {
+                    BlogMediaUploadUrlRequest request = inv.getArgument(1);
+                    return new com.mannschaft.app.cms.media.BlogMediaScope(
+                            StorageScopeType.valueOf(request.getScopeType()), request.getScopeId());
+                });
+    }
+
+    @InjectMocks
+    private BlogMediaService blogMediaService;
+
+    /** テスト用固定ユーザー ID */
+    private static final Long UPLOADER_ID = 1L;
+
+    /** テスト用記事 ID */
+    private static final Long BLOG_POST_ID = 100L;
+
+    // ==================== generateUploadUrl (IMAGE) ====================
+
+    @Nested
+    @DisplayName("generateUploadUrl IMAGE")
+    class GenerateUploadUrlImage {
+
+        @Test
+        @DisplayName("正常系_IMAGE_Presigned URL発行成功")
+        void 正常系_IMAGE_Presigned_URL発行成功() {
+            // given
+            BlogMediaUploadUrlRequest req = new BlogMediaUploadUrlRequest(
+                    "IMAGE", "image/jpeg", 1024L * 1024, "TEAM", 10L, BLOG_POST_ID);
+
+            given(blogMediaUploadRepository.countByBlogPostIdAndMediaType(BLOG_POST_ID, "IMAGE"))
+                    .willReturn(0);
+            given(r2StorageService.generateUploadUrl(anyString(), eq("image/jpeg"), any(Duration.class)))
+                    .willReturn(new PresignedUploadResult(
+                            "https://r2.example.com/presigned-put-url", "blog/TEAM/10/uuid.jpg", 600L));
+            given(blogMediaUploadRepository.save(any(BlogMediaUploadEntity.class)))
+                    .willAnswer(inv -> {
+                        BlogMediaUploadEntity entity = inv.getArgument(0);
+                        // ID 付きエンティティを再構築して返す
+                        return BlogMediaUploadEntity.builder().id(7L)
+                                .scopeType(entity.getScopeType()).scopeId(entity.getScopeId())
+                                .blogPostId(entity.getBlogPostId())
+                                .uploaderId(entity.getUploaderId())
+                                .mediaType(entity.getMediaType())
+                                .s3Key(entity.getS3Key())
+                                .fileSize(entity.getFileSize())
+                                .contentType(entity.getContentType())
+                                .processingStatus(entity.getProcessingStatus())
+                                .build();
+                    });
+
+            // when
+            BlogMediaUploadUrlResponse result = blogMediaService.generateUploadUrl(UPLOADER_ID, req);
+
+            // then
+            assertThat(result.getMediaType()).isEqualTo("IMAGE");
+            assertThat(result.getUploadUrl()).isEqualTo("https://r2.example.com/presigned-put-url");
+            assertThat(result.getExpiresIn()).isEqualTo(600);
+            assertThat(result.getFileKey()).contains("blog/TEAM/10/");
+            assertThat(result.getUploadId()).isNull();
+            assertThat(result.getPartSize()).isNull();
+            then(r2StorageService).should().generateUploadUrl(anyString(), eq("image/jpeg"), any(Duration.class));
+            then(blogMediaUploadRepository).should().save(any(BlogMediaUploadEntity.class));
+        }
+
+        @Test
+        @DisplayName("異常系_IMAGE_contentType不正_BAD_REQUEST")
+        void 異常系_IMAGE_contentType不正_BAD_REQUEST() {
+            // given
+            BlogMediaUploadUrlRequest req = new BlogMediaUploadUrlRequest(
+                    "IMAGE", "image/bmp", 1024L, "TEAM", 10L, null);
+
+            // when / then
+            assertThatThrownBy(() -> blogMediaService.generateUploadUrl(UPLOADER_ID, req))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.BAD_REQUEST));
+            then(r2StorageService).should(never()).generateUploadUrl(anyString(), anyString(), any());
+            then(blogMediaUploadRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("異常系_IMAGE_サイズ超過100MB_BAD_REQUEST")
+        void 異常系_IMAGE_サイズ超過100MB_BAD_REQUEST() {
+            // given: 100MB + 1バイト
+            long oversizedFileSize = 100L * 1024 * 1024 + 1;
+            BlogMediaUploadUrlRequest req = new BlogMediaUploadUrlRequest(
+                    "IMAGE", "image/jpeg", oversizedFileSize, "TEAM", 10L, null);
+
+            // when / then
+            assertThatThrownBy(() -> blogMediaService.generateUploadUrl(UPLOADER_ID, req))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.BAD_REQUEST));
+            then(r2StorageService).should(never()).generateUploadUrl(anyString(), anyString(), any());
+        }
+
+        @Test
+        @DisplayName("異常系_IMAGE_記事あたり上限超過_UNPROCESSABLE_ENTITY")
+        void 異常系_IMAGE_記事あたり上限超過_UNPROCESSABLE_ENTITY() {
+            // given: 既に30枚アップロード済み（上限）
+            BlogMediaUploadUrlRequest req = new BlogMediaUploadUrlRequest(
+                    "IMAGE", "image/jpeg", 1024L, "TEAM", 10L, BLOG_POST_ID);
+            given(blogMediaUploadRepository.countByBlogPostIdAndMediaType(BLOG_POST_ID, "IMAGE"))
+                    .willReturn(30);
+
+            // when / then
+            assertThatThrownBy(() -> blogMediaService.generateUploadUrl(UPLOADER_ID, req))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY));
+            then(r2StorageService).should(never()).generateUploadUrl(anyString(), anyString(), any());
+        }
+    }
+
+    // ==================== generateUploadUrl (VIDEO) ====================
+
+    @Nested
+    @DisplayName("generateUploadUrl VIDEO")
+    class GenerateUploadUrlVideo {
+
+        @Test
+        @DisplayName("正常系_VIDEO_Multipart開始成功")
+        void 正常系_VIDEO_Multipart開始成功() {
+            // given
+            BlogMediaUploadUrlRequest req = new BlogMediaUploadUrlRequest(
+                    "VIDEO", "video/mp4", 200L * 1024 * 1024, "ORGANIZATION", 5L, BLOG_POST_ID);
+
+            given(blogMediaUploadRepository.countByBlogPostIdAndMediaType(BLOG_POST_ID, "VIDEO"))
+                    .willReturn(0);
+            given(multipartUploadService.startContentUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class), anyString()))
+                    .willReturn(new StartMultipartUploadResponse(
+                            "test-multipart-upload-id", "blog/ORGANIZATION/5/uuid.mp4", 1, 10L * 1024 * 1024));
+            given(blogMediaUploadRepository.save(any(BlogMediaUploadEntity.class)))
+                    .willAnswer(inv -> {
+                        BlogMediaUploadEntity entity = inv.getArgument(0);
+                        return BlogMediaUploadEntity.builder().id(7L)
+                                .scopeType(entity.getScopeType()).scopeId(entity.getScopeId())
+                                .blogPostId(entity.getBlogPostId())
+                                .uploaderId(entity.getUploaderId())
+                                .mediaType(entity.getMediaType())
+                                .s3Key(entity.getS3Key())
+                                .fileSize(entity.getFileSize())
+                                .contentType(entity.getContentType())
+                                .processingStatus(entity.getProcessingStatus())
+                                .build();
+                    });
+
+            // when
+            BlogMediaUploadUrlResponse result = blogMediaService.generateUploadUrl(UPLOADER_ID, req);
+
+            // then
+            assertThat(result.getMediaType()).isEqualTo("VIDEO");
+            assertThat(result.getUploadId()).isEqualTo("test-multipart-upload-id");
+            assertThat(result.getPartSize()).isEqualTo(10L * 1024 * 1024);
+            assertThat(result.getFileKey()).isEqualTo("blog/ORGANIZATION/5/uuid.mp4");
+            assertThat(result.getUploadUrl()).isNull();
+            assertThat(result.getExpiresIn()).isNull();
+            then(multipartUploadService).should().startContentUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class), anyString());
+            then(blogMediaUploadRepository).should().save(any(BlogMediaUploadEntity.class));
+        }
+
+        @Test
+        @DisplayName("異常系_VIDEO_contentType不正_BAD_REQUEST")
+        void 異常系_VIDEO_contentType不正_BAD_REQUEST() {
+            // given
+            BlogMediaUploadUrlRequest req = new BlogMediaUploadUrlRequest(
+                    "VIDEO", "video/avi", 1024L, "PERSONAL", 1L, null);
+
+            // when / then
+            assertThatThrownBy(() -> blogMediaService.generateUploadUrl(UPLOADER_ID, req))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.BAD_REQUEST));
+            then(multipartUploadService).should(never()).startContentUpload(anyLong(), any(), anyString());
+        }
+
+        @Test
+        @DisplayName("異常系_VIDEO_サイズ超過1GB_BAD_REQUEST")
+        void 異常系_VIDEO_サイズ超過1GB_BAD_REQUEST() {
+            // given: 1GB + 1バイト
+            long oversizedFileSize = 1024L * 1024 * 1024 + 1;
+            BlogMediaUploadUrlRequest req = new BlogMediaUploadUrlRequest(
+                    "VIDEO", "video/mp4", oversizedFileSize, "TEAM", 10L, null);
+
+            // when / then
+            assertThatThrownBy(() -> blogMediaService.generateUploadUrl(UPLOADER_ID, req))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.BAD_REQUEST));
+            then(multipartUploadService).should(never()).startContentUpload(anyLong(), any(), anyString());
+        }
+    }
+
+    // ==================== cleanupOrphanMedia ====================
+
+    @Nested
+    @DisplayName("cleanupOrphanMedia")
+    class CleanupOrphanMedia {
+
+        @Test
+        @DisplayName("正常系_72時間超過の孤立メディアを1件ずつRunnerへ委譲する")
+        void 正常系_72時間超過の孤立メディアを1件ずつRunnerへ委譲する() {
+            // given: 孤立した IMAGE と VIDEO が各1件
+            BlogMediaUploadEntity orphanImage = BlogMediaUploadEntity.builder()
+                    .uploaderId(UPLOADER_ID)
+                    .mediaType("IMAGE")
+                    .s3Key("blog/TEAM/10/orphan-image.jpg")
+                    .fileSize(1024L)
+                    .contentType("image/jpeg")
+                    .processingStatus("READY")
+                    .build();
+
+            BlogMediaUploadEntity orphanVideo = BlogMediaUploadEntity.builder()
+                    .uploaderId(UPLOADER_ID)
+                    .mediaType("VIDEO")
+                    .s3Key("blog/TEAM/10/orphan-video.mp4")
+                    .fileSize(1024L * 1024)
+                    .contentType("video/mp4")
+                    .processingStatus("PENDING")
+                    .thumbnailR2Key("blog/TEAM/10/orphan-video-thumb.jpg")
+                    .build();
+
+            given(blogMediaUploadRepository.findByBlogPostIdIsNullAndCreatedAtBefore(any(LocalDateTime.class)))
+                    .willReturn(List.of(orphanImage, orphanVideo));
+            // Issue #2601: 1 件処理は REQUIRES_NEW の Runner Bean に委譲される（この実行が確保できたケース）
+            given(orphanCleanupRunner.cleanupOne(any(), any()))
+                    .willReturn(new BlogMediaOrphanCleanupRunner.OrphanCleanupResult(true, false));
+
+            // when
+            blogMediaService.cleanupOrphanMedia();
+
+            // then: 対象の各件が Runner に個別委譲される（一括処理ではない）
+            then(orphanCleanupRunner).should(times(2)).cleanupOne(any(), any());
+            then(orphanCleanupRunner).should().cleanupOne(eq(orphanImage), any());
+            then(orphanCleanupRunner).should().cleanupOne(eq(orphanVideo), any());
+        }
+
+        @Test
+        @DisplayName("競合_Runnerが確保できなかった件はデバッグログのみでスキップされる")
+        void 競合_Runnerが確保できなかった件はデバッグログのみでスキップされる() {
+            // given: 別実行が既に処理済みで、Runner が claimed=false を返す
+            BlogMediaUploadEntity orphanImage = BlogMediaUploadEntity.builder()
+                    .uploaderId(UPLOADER_ID)
+                    .mediaType("IMAGE")
+                    .s3Key("blog/TEAM/10/orphan-image.jpg")
+                    .fileSize(1024L)
+                    .contentType("image/jpeg")
+                    .processingStatus("READY")
+                    .build();
+            given(blogMediaUploadRepository.findByBlogPostIdIsNullAndCreatedAtBefore(any(LocalDateTime.class)))
+                    .willReturn(List.of(orphanImage));
+            given(orphanCleanupRunner.cleanupOne(any(), any()))
+                    .willReturn(new BlogMediaOrphanCleanupRunner.OrphanCleanupResult(false, false));
+
+            // when / then: 例外を投げずに完走する
+            blogMediaService.cleanupOrphanMedia();
+            then(orphanCleanupRunner).should().cleanupOne(eq(orphanImage), any());
+        }
+
+        @Test
+        @DisplayName("異常系_1件がRunnerで想定外例外を投げても他の件の処理とバッチ完走に影響しない")
+        void 異常系_1件がRunnerで想定外例外を投げても他の件の処理とバッチ完走に影響しない() {
+            // given: 1件目の Runner 呼び出しで想定外例外、2件目は正常
+            BlogMediaUploadEntity broken = BlogMediaUploadEntity.builder()
+                    .uploaderId(UPLOADER_ID)
+                    .mediaType("IMAGE")
+                    .s3Key("blog/TEAM/10/broken.jpg")
+                    .fileSize(1024L)
+                    .contentType("image/jpeg")
+                    .processingStatus("READY")
+                    .build();
+            BlogMediaUploadEntity ok = BlogMediaUploadEntity.builder()
+                    .uploaderId(UPLOADER_ID)
+                    .mediaType("IMAGE")
+                    .s3Key("blog/TEAM/10/ok.jpg")
+                    .fileSize(1024L)
+                    .contentType("image/jpeg")
+                    .processingStatus("READY")
+                    .build();
+            given(blogMediaUploadRepository.findByBlogPostIdIsNullAndCreatedAtBefore(any(LocalDateTime.class)))
+                    .willReturn(List.of(broken, ok));
+            given(orphanCleanupRunner.cleanupOne(eq(broken), any()))
+                    .willThrow(new RuntimeException("想定外エラー"));
+            given(orphanCleanupRunner.cleanupOne(eq(ok), any()))
+                    .willReturn(new BlogMediaOrphanCleanupRunner.OrphanCleanupResult(true, false));
+
+            // when / then: バッチ全体は例外を外に投げずに完走し、2件目は処理される
+            blogMediaService.cleanupOrphanMedia();
+            then(orphanCleanupRunner).should().cleanupOne(eq(broken), any());
+            then(orphanCleanupRunner).should().cleanupOne(eq(ok), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("confirmImageUpload")
+    class ConfirmImageUpload {
+
+        private BlogMediaUploadEntity uploadingImage(Long ownerId) {
+            return BlogMediaUploadEntity.builder().id(7L).uploaderId(ownerId)
+                    .scopeType("TEAM").scopeId(10L).mediaType("IMAGE")
+                    .s3Key("blog/TEAM/10/image.jpg").fileSize(1024L)
+                    .contentType("image/jpeg").processingStatus("UPLOADING").build();
+        }
+
+        private com.mannschaft.app.common.storage.acl.MultipartContentTarget target() {
+            return new com.mannschaft.app.common.storage.acl.MultipartContentTarget(
+                    com.mannschaft.app.common.storage.acl.StorageAclScope.team(10L),
+                    new com.mannschaft.app.common.storage.acl.StorageAclContentReference("BLOG_POST", "draft:7"),
+                    new com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding("BLOG_MEDIA_UPLOAD", "7"));
+        }
+
+        @Test
+        @DisplayName("HEADで実体とサイズを確認後にACL・使用量を一度だけ確定する")
+        void 実体確認後に確定する() {
+            BlogMediaUploadEntity media = uploadingImage(UPLOADER_ID);
+            given(blogMediaUploadRepository.findByIdForUploadCompletion(7L))
+                    .willReturn(java.util.Optional.of(media));
+            given(mediaAclService.resolveMultipartTarget(media.getS3Key(), UPLOADER_ID))
+                    .willReturn(java.util.Optional.of(target()));
+            given(r2StorageService.objectExists(media.getS3Key())).willReturn(true);
+            given(r2StorageService.getObjectSize(media.getS3Key())).willReturn(1024L);
+
+            blogMediaService.confirmImageUpload(7L, UPLOADER_ID);
+
+            assertThat(media.getProcessingStatus()).isEqualTo("READY");
+            then(storageAclService).should().claimPending(
+                    eq(media.getS3Key()), eq(UPLOADER_ID), eq(target().scope()), eq(target().parent()), eq(target().binding()));
+            then(storageQuotaService).should().recordUpload(
+                    StorageScopeType.TEAM, 10L, 1024L, StorageFeatureType.CMS,
+                    "blog_media_uploads", 7L, UPLOADER_ID);
+        }
+
+        @Test
+        @DisplayName("R2に実体がなければACL・使用量を確定しない")
+        void 実体なしは確定しない() {
+            BlogMediaUploadEntity media = uploadingImage(UPLOADER_ID);
+            given(blogMediaUploadRepository.findByIdForUploadCompletion(7L))
+                    .willReturn(java.util.Optional.of(media));
+            given(mediaAclService.resolveMultipartTarget(media.getS3Key(), UPLOADER_ID))
+                    .willReturn(java.util.Optional.of(target()));
+
+            assertThatThrownBy(() -> blogMediaService.confirmImageUpload(7L, UPLOADER_ID))
+                    .isInstanceOf(ResponseStatusException.class);
+
+            then(storageAclService).should(never()).claimPending(anyString(), anyLong(), any(), any(), any());
+            then(storageQuotaService).should(never()).recordUpload(any(), anyLong(), anyLong(), any(), anyString(), anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("別ユーザーはHEAD前に存在秘匿で拒否する")
+        void 別ユーザーは拒否する() {
+            given(blogMediaUploadRepository.findByIdForUploadCompletion(7L))
+                    .willReturn(java.util.Optional.of(uploadingImage(99L)));
+
+            assertThatThrownBy(() -> blogMediaService.confirmImageUpload(7L, UPLOADER_ID))
+                    .isInstanceOf(BusinessException.class);
+
+            then(r2StorageService).should(never()).objectExists(anyString());
+            then(storageQuotaService).shouldHaveNoInteractions();
+        }
+    }
+
+    // ==================== F13 Phase 4-δ クォータ統合テスト ====================
+
+    @Nested
+    @DisplayName("F13 Phase 4-δ: StorageQuotaService 統合テスト")
+    class StorageQuotaIntegration {
+
+        @Test
+        @DisplayName("正常系_IMAGE_presign時点ではrecordUploadしない")
+        void 正常系_IMAGE_presign時点では未計上() {
+            // given
+            BlogMediaUploadUrlRequest req = new BlogMediaUploadUrlRequest(
+                    "IMAGE", "image/jpeg", 512L * 1024, "TEAM", 10L, null);
+
+            given(r2StorageService.generateUploadUrl(anyString(), eq("image/jpeg"), any(Duration.class)))
+                    .willReturn(new PresignedUploadResult(
+                            "https://r2.example.com/presigned-put-url", "blog/TEAM/10/uuid.jpg", 600L));
+            given(blogMediaUploadRepository.save(any(BlogMediaUploadEntity.class)))
+                    .willAnswer(inv -> {
+                        BlogMediaUploadEntity entity = inv.getArgument(0);
+                        return BlogMediaUploadEntity.builder().id(7L)
+                                .scopeType(entity.getScopeType()).scopeId(entity.getScopeId())
+                                .blogPostId(entity.getBlogPostId())
+                                .uploaderId(entity.getUploaderId())
+                                .mediaType(entity.getMediaType())
+                                .s3Key(entity.getS3Key())
+                                .fileSize(entity.getFileSize())
+                                .contentType(entity.getContentType())
+                                .processingStatus(entity.getProcessingStatus())
+                                .build();
+                    });
+
+            // when
+            blogMediaService.generateUploadUrl(UPLOADER_ID, req);
+
+            // then: 事前チェックのみ行い、実体確認前は使用量を計上しない
+            then(storageQuotaService).should().checkQuota(
+                    eq(StorageScopeType.TEAM), eq(10L), eq(512L * 1024));
+            then(storageQuotaService).should(never()).recordUpload(
+                    any(), anyLong(), anyLong(), any(), anyString(), any(), anyLong());
+        }
+
+        @Test
+        @DisplayName("正常系_VIDEO_presign後にrecordUploadが呼ばれる")
+        void 正常系_VIDEO_recordUpload呼び出し確認() {
+            // given
+            BlogMediaUploadUrlRequest req = new BlogMediaUploadUrlRequest(
+                    "VIDEO", "video/mp4", 100L * 1024 * 1024, "ORGANIZATION", 5L, null);
+
+            given(multipartUploadService.startContentUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class), anyString()))
+                    .willReturn(new StartMultipartUploadResponse(
+                            "test-upload-id", "blog/ORGANIZATION/5/uuid.mp4", 1, 10L * 1024 * 1024));
+            given(blogMediaUploadRepository.save(any(BlogMediaUploadEntity.class)))
+                    .willAnswer(inv -> {
+                        BlogMediaUploadEntity entity = inv.getArgument(0);
+                        return BlogMediaUploadEntity.builder().id(7L)
+                                .scopeType(entity.getScopeType()).scopeId(entity.getScopeId())
+                                .blogPostId(entity.getBlogPostId())
+                                .uploaderId(entity.getUploaderId())
+                                .mediaType(entity.getMediaType())
+                                .s3Key(entity.getS3Key())
+                                .fileSize(entity.getFileSize())
+                                .contentType(entity.getContentType())
+                                .processingStatus(entity.getProcessingStatus())
+                                .build();
+                    });
+
+            // when
+            blogMediaService.generateUploadUrl(UPLOADER_ID, req);
+
+            // then: checkQuota → recordUpload の順に呼ばれる
+            then(storageQuotaService).should().checkQuota(
+                    eq(StorageScopeType.ORGANIZATION), eq(5L), eq(100L * 1024 * 1024));
+            then(storageQuotaService).should().recordUpload(
+                    eq(StorageScopeType.ORGANIZATION), eq(5L), eq(100L * 1024 * 1024),
+                    eq(StorageFeatureType.CMS), anyString(), any(), eq(UPLOADER_ID));
+        }
+
+        @Test
+        @DisplayName("異常系_クォータ超過_CMS_023例外スロー")
+        void 異常系_クォータ超過_例外スロー() {
+            // given
+            BlogMediaUploadUrlRequest req = new BlogMediaUploadUrlRequest(
+                    "IMAGE", "image/jpeg", 1024L * 1024, "TEAM", 10L, null);
+
+            willThrow(new StorageQuotaExceededException(StorageScopeType.TEAM, 10L, 1024L * 1024, 9L * 1024 * 1024 * 1024, 10L * 1024 * 1024 * 1024))
+                    .given(storageQuotaService).checkQuota(any(), anyLong(), anyLong());
+
+            // when / then
+            assertThatThrownBy(() -> blogMediaService.generateUploadUrl(UPLOADER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("CMS_023"));
+            then(r2StorageService).should(never()).generateUploadUrl(anyString(), anyString(), any());
+            then(blogMediaUploadRepository).should(never()).save(any());
+            then(storageQuotaService).should(never()).recordUpload(any(), anyLong(), anyLong(), any(), anyString(), any(), anyLong());
+        }
+    }
+}

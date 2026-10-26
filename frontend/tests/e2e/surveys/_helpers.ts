@@ -1,0 +1,831 @@
+import type { Page, Route } from '@playwright/test'
+import type {
+  ResultsVisibility,
+  UnrespondedVisibility,
+  SurveyStatus,
+  SurveyResultSummary,
+  RespondentItem,
+  SurveyQuestionWire,
+  SurveyResponseWire,
+  SurveyResponseRowWire,
+  SurveyDetailWire,
+} from '../../../app/types/survey'
+
+/**
+ * FE ResultsVisibility → BE wire 値（mapResultsVisibilityToBe と同等のローカル写像）。
+ * テスト専用に _helpers 内で複製しておく（プロダクション composable への結合を避ける）。
+ *
+ * spec 側は従来どおり FE 値（'ALL_MEMBERS' 等）で書けるが、モックが返す body は
+ * 実 BE と同じ enum 値になるため、翻訳層（useSurveyApi）が実走する。
+ */
+function feResultsVisibilityToWire(
+  fe: ResultsVisibility,
+): SurveyResponseWire['policy']['resultsVisibility'] {
+  switch (fe) {
+    case 'RESPONDENTS':
+      return 'AFTER_RESPONSE'
+    case 'AFTER_CLOSE':
+      return 'AFTER_CLOSE'
+    case 'ALL_MEMBERS':
+      return 'ALWAYS'
+    case 'VIEWERS_ONLY':
+      return 'VIEWERS_ONLY'
+    case 'CREATOR_ONLY':
+      return 'ADMINS_ONLY'
+  }
+}
+
+/**
+ * FE QuestionType → BE wire 値（mapQuestionTypeToBe と同等のローカル写像）。
+ * テスト専用に _helpers 内で複製しておく（プロダクション composable への結合を避ける）。
+ */
+function feQuestionTypeToWire(fe: 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'TEXT' | 'RATING' | 'DATE'): SurveyQuestionWire['questionType'] {
+  switch (fe) {
+    case 'TEXT':
+      return 'FREE_TEXT'
+    case 'RATING':
+      return 'SCALE'
+    case 'SINGLE_CHOICE':
+      return 'SINGLE_CHOICE'
+    case 'MULTIPLE_CHOICE':
+      return 'MULTIPLE_CHOICE'
+    // 'DATE' は BE に対応 enum が無いが、FE 詳細アダプタ側で恒等扱いされるため
+    // 便宜上 FREE_TEXT に寄せて wire 型（BeQuestionType）の制約を満たす。
+    case 'DATE':
+      return 'FREE_TEXT'
+  }
+}
+
+/**
+ * F05.4 アンケート画面 E2E テスト 共通ヘルパー。
+ *
+ * <p>方針:</p>
+ * <ul>
+ *   <li>API モック方式（page.route で `**\/api/v1/...` をモック）</li>
+ *   <li>shifts/_helpers.ts および recruitment/recruitment.spec.ts のパターンを踏襲</li>
+ *   <li>Backend DTO（SurveyResponse / SurveyDetailResponse / SurveyResultSummary / RespondentItem）に準拠</li>
+ *   <li>fixture は関数で生成（overrides で一部上書き可能）</li>
+ *   <li>後着優先のため、テスト個別の page.route は本ヘルパー呼び出し後に上書き可能</li>
+ * </ul>
+ *
+ * <p>認証は spec の {@code beforeEach} で {@link setupAuth} を呼び、localStorage に
+ * accessToken / currentUser を注入する方式。confirmable/recruitment と同じ流儀。</p>
+ */
+
+// ---------------------------------------------------------------------------
+// 認証セットアップ
+// ---------------------------------------------------------------------------
+
+/** 認証注入オプション。role / scope は backend の RoleAccess に合わせる。 */
+export interface AuthOptions {
+  /** ログイン中ユーザーの ID */
+  userId: number
+  /** displayName（UI 表示用） */
+  displayName: string
+  /** ロール（バックエンド AccessRole 準拠） */
+  role: 'SYSTEM_ADMIN' | 'ADMIN' | 'DEPUTY_ADMIN' | 'MEMBER' | 'GUEST'
+  /** scope 種別。currentScope を localStorage に書く場合に使用 */
+  scopeType?: 'TEAM' | 'ORGANIZATION'
+  /** scope ID。currentScope を localStorage に書く場合に使用 */
+  scopeId?: number
+}
+
+/**
+ * ログイン済み状態をシミュレートする。
+ * accessToken / refreshToken / currentUser を localStorage に注入し、
+ * scopeType / scopeId が指定されていれば currentScope も併せて注入する。
+ */
+export async function setupAuth(page: Page, opts: AuthOptions): Promise<void> {
+  await page.addInitScript((args) => {
+    localStorage.setItem(
+      'accessToken',
+      'eyJhbGciOiJIUzM4NCJ9.e2UyZV90ZXN0X3VzZXJ9.placeholder_for_e2e',
+    )
+    localStorage.setItem('refreshToken', 'e2e-refresh-token-placeholder')
+    localStorage.setItem(
+      'currentUser',
+      JSON.stringify({
+        id: args.userId,
+        email: `e2e-${args.role.toLowerCase()}@example.com`,
+        displayName: args.displayName,
+        profileImageUrl: null,
+        role: args.role,
+      }),
+    )
+    if (args.scopeType && args.scopeId !== undefined) {
+      localStorage.setItem(
+        'currentScope',
+        JSON.stringify({
+          type: args.scopeType.toLowerCase(),
+          id: args.scopeId,
+          name: `e2e-${args.scopeType.toLowerCase()}-${args.scopeId}`,
+        }),
+      )
+    }
+  }, opts)
+}
+
+// ---------------------------------------------------------------------------
+// ロケール切替
+// ---------------------------------------------------------------------------
+
+/** i18n が対応するロケールコード。 */
+export type Locale = 'ja' | 'en' | 'zh' | 'ko' | 'es' | 'de'
+
+/**
+ * @nuxtjs/i18n v9 のロケールを切り替える。
+ *
+ * <p>nuxt.config.ts の現行設定:</p>
+ * <ul>
+ *   <li>{@code strategy: 'no_prefix'} — URL に locale prefix を含めない</li>
+ *   <li>{@code detectBrowserLanguage.useCookie: false} — cookie 検出を無効化</li>
+ * </ul>
+ *
+ * <p>そのため、addInitScript で localStorage / cookie を入れても i18n は
+ * 検出に使わず、初期 locale は常に {@code defaultLocale = 'ja'} で固定される。
+ * よって本ヘルパーは、{@link page.goto} 後にハイドレーションを待ってから
+ * Vue App の {@code $i18n} composer 経由で
+ * {@code setLocale(locale)} を呼ぶ方式に切り替える。</p>
+ *
+ * <p>呼び出し位置: {@link gotoTeamSurveys} 等のページ遷移ヘルパーの後。
+ * page.goto より前に呼ばれた場合でも安全になるよう addInitScript も保持し、
+ * 旧来のロジック互換性を維持する（テスト spec は事前/事後どちらでも呼べる）。</p>
+ */
+export async function setLocale(page: Page, locale: Locale): Promise<void> {
+  // (1) addInitScript: 一部の自前検出ロジック向けに localStorage/cookie も入れておく。
+  //     これだけでは @nuxtjs/i18n は切り替わらないため、(2) の page.evaluate で実際に切替を実行する。
+  await page.addInitScript((loc) => {
+    try {
+      localStorage.setItem('i18n_redirected', loc)
+      localStorage.setItem('i18n_locale', loc)
+      document.cookie = `i18n_redirected=${loc}; path=/`
+    } catch {
+      // localStorage / document.cookie が使えない環境では黙ってスキップ
+    }
+  }, locale)
+
+  // (2) ページが既にロード済みであれば、Vue App の i18n composer を直接操作して切替を実行する。
+  //     ja の場合はデフォルトロケールと同一のため不要だが、明示的に呼んで lazy load も完了させる。
+  //     未ロード時（goto 前に呼ばれた場合）は Page の url が about:blank なのでスキップする。
+  const currentUrl = page.url()
+  if (currentUrl === 'about:blank' || currentUrl === '') {
+    return
+  }
+  await applyLocaleViaVueApp(page, locale)
+}
+
+/**
+ * Vue App の i18n composer 経由で locale を切り替える。
+ *
+ * <p>Nuxt 3 + @nuxtjs/i18n v9 の場合、
+ * {@code document.querySelector('#__nuxt').__vue_app__.config.globalProperties.$i18n}
+ * で {@code Composer} インスタンスにアクセスでき、{@code setLocale} を呼べる。</p>
+ *
+ * <p>{@link waitForHydration} 相当の待機を内部で行うため、外側で改めて待つ必要はない。</p>
+ */
+export async function applyLocaleViaVueApp(page: Page, locale: Locale): Promise<void> {
+  // ハイドレーション完了 + $i18n が globalProperties に注入されるまで待つ
+  await page.waitForFunction(() => {
+    const el = document.querySelector('#__nuxt') as (HTMLElement & { __vue_app__?: unknown }) | null
+    if (!el || !('__vue_app__' in el)) return false
+    const app = el.__vue_app__ as
+      | { config?: { globalProperties?: { $i18n?: unknown } } }
+      | undefined
+    return Boolean(app?.config?.globalProperties?.$i18n)
+  })
+
+  // setLocale を呼ぶ。lazy load されたメッセージファイルの取得完了まで await する。
+  await page.evaluate(async (loc) => {
+    const el = document.querySelector('#__nuxt') as (HTMLElement & { __vue_app__?: unknown }) | null
+    if (!el) throw new Error('Nuxt root element not found')
+    const app = el.__vue_app__ as
+      | { config: { globalProperties: { $i18n: { setLocale?: (l: string) => Promise<void>; locale: { value: string } } } } }
+      | undefined
+    if (!app) throw new Error('Vue app instance not found on #__nuxt')
+    const i18n = app.config.globalProperties.$i18n
+    if (typeof i18n.setLocale === 'function') {
+      await i18n.setLocale(loc)
+    } else {
+      // 旧バージョン互換のフォールバック（v9 では setLocale 必須なので通常通らない）
+      i18n.locale.value = loc
+    }
+  }, locale)
+}
+
+// ---------------------------------------------------------------------------
+// fixture ビルダ（BE DTO 準拠）
+// ---------------------------------------------------------------------------
+
+/**
+ * {@link buildSurvey} の overrides 引数。旧フラット設計の利便性を保持したヘルパー専用型。
+ * ネスト化後の SurveyResponse には存在しないフラットフィールドを使ってテストデータを
+ * 組み立てられるよう、E2E テスト内部でのみ使用する。
+ */
+export interface BuildSurveyOptions {
+  id?: number
+  status?: SurveyStatus
+  // scope
+  scopeType?: string
+  scopeId?: string
+  // content
+  title?: string
+  description?: string | null
+  // policy
+  isAnonymous?: boolean
+  allowMultipleSubmissions?: boolean
+  /** FE ドメイン値で指定する（wire 形へは buildSurvey 内で写す）。 */
+  resultsVisibility?: ResultsVisibility
+  unrespondedVisibility?: UnrespondedVisibility
+  // schedule
+  expiresAt?: string | null
+  deadline?: string | null
+  // stats
+  responseCount?: number
+  targetCount?: number | null
+  // audit
+  version?: number
+  createdBy?: number | { id: number; displayName?: string }
+  createdAt?: string
+  updatedAt?: string
+  // top-level enrichment
+  hasResponded?: boolean
+}
+
+/**
+ * SurveyResponse の雛形を生成する。
+ * 全フィールドにデフォルト値を持たせ、opts でフィールド単位に上書き可能。
+ * E2E テストの利便性のため、旧フラット設計の opts を受け取り内部でネスト構造に変換する。
+ */
+export function buildSurvey(opts: BuildSurveyOptions = {}): SurveyResponseWire {
+  const createdById =
+    opts.createdBy != null && typeof opts.createdBy === 'object'
+      ? opts.createdBy.id
+      : (opts.createdBy ?? 1)
+  const expiresAt =
+    opts.deadline !== undefined ? opts.deadline : (opts.expiresAt !== undefined ? opts.expiresAt : '2026-05-31T23:59:59Z')
+  return {
+    id: opts.id ?? 1,
+    status: opts.status ?? 'PUBLISHED',
+    scope: {
+      scopeType: opts.scopeType ?? 'TEAM',
+      scopeId: opts.scopeId ?? '1',
+    },
+    content: {
+      title: opts.title ?? 'E2Eテスト用アンケート',
+      description: opts.description !== undefined ? opts.description : 'これは E2E テスト用のアンケートです。',
+    },
+    policy: {
+      isAnonymous: opts.isAnonymous ?? false,
+      allowMultipleSubmissions: opts.allowMultipleSubmissions ?? false,
+      resultsVisibility: feResultsVisibilityToWire(opts.resultsVisibility ?? 'ALL_MEMBERS'),
+      unrespondedVisibility: opts.unrespondedVisibility ?? 'CREATOR_AND_ADMIN',
+    },
+    distribution: {
+      distributionMode: null,
+      autoPostToTimeline: null,
+      seriesId: null,
+      remindBeforeHours: null,
+      manualRemindCount: null,
+    },
+    schedule: {
+      startsAt: null,
+      expiresAt,
+      publishedAt: null,
+      closedAt: null,
+    },
+    stats: {
+      responseCount: opts.responseCount ?? 0,
+      targetCount: opts.targetCount !== undefined ? opts.targetCount : 10,
+    },
+    audit: {
+      version: opts.version ?? 1,
+      createdBy: createdById,
+      createdAt: opts.createdAt ?? '2026-04-20T00:00:00Z',
+      updatedAt: opts.updatedAt ?? '2026-04-20T00:00:00Z',
+    },
+    hasResponded: opts.hasResponded ?? false,
+  }
+}
+
+/** {@link buildQuestion} の引数。 */
+export interface BuildQuestionOptions {
+  id: number
+  questionText: string
+  questionType: 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'TEXT' | 'RATING' | 'DATE'
+  isRequired?: boolean
+  sortOrder?: number
+  options?: Array<{ id: number; optionText: string; sortOrder: number }>
+}
+
+/**
+ * 設問の wire（実 BE 入れ子）形雛形を生成する。
+ * 引数は従来どおり FE 風（questionType に 'RATING'/'TEXT' 等 FE 値が渡る）を受けつつ、
+ * 戻り値を {@link SurveyQuestionWire} 形（content/scaleConfig 入れ子・options に questionId/displayOrder）
+ * に変換する。これにより getSurvey の翻訳層アダプタが実走し、実 BE と同じ経路を踏める。
+ */
+export function buildQuestion(opts: BuildQuestionOptions): SurveyQuestionWire {
+  return {
+    id: opts.id,
+    surveyId: opts.id,
+    questionType: feQuestionTypeToWire(opts.questionType),
+    content: {
+      questionText: opts.questionText,
+      isRequired: opts.isRequired ?? false,
+      displayOrder: opts.sortOrder ?? 1,
+      maxSelections: null,
+    },
+    scaleConfig: {
+      scaleMin: null,
+      scaleMax: null,
+      scaleMinLabel: null,
+      scaleMaxLabel: null,
+    },
+    options: (opts.options ?? []).map((o) => ({
+      id: o.id,
+      questionId: opts.id,
+      optionText: o.optionText,
+      displayOrder: o.sortOrder,
+    })),
+  }
+}
+
+/**
+ * 詳細レスポンスの wire（実 BE）形を生成する。
+ *
+ * Issue #2635 で BE の `SurveyDetailResponse` がフラット化され、`data.survey` の入れ子が消えて
+ * `SurveyResponse` の 9 フィールドが `data` 直下に並び `questions` が加わった。
+ * fulfill 用 body もその形に組み立てる（旧・入れ子のままだと翻訳層が `wire.survey` を読めず
+ * 詳細画面が TypeError で落ちる、という本番と同じ壊れ方をテストが再現できない）。
+ *
+ * Issue #2779: `viewerCanViewResults` は**省略可能にしていない**。既定値を持たせると
+ * 「テストが何を意図していたのか」が読めなくなるうえ、新しいモックが黙って値を落としても
+ * 気付けなくなる。**閲覧可なら `true`、配信対象外なら `false` を各テストが明示すること。**
+ *
+ * CMP-041: `viewerCanManage` / `viewerCanViewTeamBreakdown` も BE が必ず設定する項目である。
+ * ただし既存の大半のテストは「一般メンバー視点」の結果表示を検べるものであり、そこでは両方 `false`
+ * が実在する正しい状態なので、**既定を fail-closed の `false`** としたうえで、管理操作の出し分けを
+ * 検べるテストだけが明示的に `true` を渡す形にしている。
+ *
+ * @param viewerCanViewResults この閲覧者が結果を閲覧できるか（BE が必ず設定する項目）
+ * @param viewer               管理操作可否（省略時は非管理者 = 両方 false）
+ */
+export function buildSurveyDetail(
+  survey: SurveyResponseWire,
+  questions: SurveyQuestionWire[],
+  viewerCanViewResults: boolean,
+  viewer: { canManage: boolean; canViewTeamBreakdown: boolean } = {
+    canManage: false,
+    canViewTeamBreakdown: false,
+  },
+): SurveyDetailWire {
+  return {
+    data: {
+      ...survey,
+      questions,
+      viewerCanViewResults,
+      viewerCanManage: viewer.canManage,
+      viewerCanViewTeamBreakdown: viewer.canViewTeamBreakdown,
+    },
+  }
+}
+
+/** {@link buildResultSummary} の引数。 */
+export interface BuildResultOptions {
+  questionId: number
+  questionText: string
+  questionType: 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'TEXT' | 'RATING' | 'DATE'
+  totalResponses: number
+  optionResults?: Array<{
+    optionId: number
+    optionText: string
+    count: number
+    percentage: number
+  }>
+  textResponses?: string[]
+}
+
+/** SurveyResultSummary（質問単位の集計）の雛形を生成する。 */
+export function buildResultSummary(opts: BuildResultOptions): SurveyResultSummary {
+  return {
+    questionId: opts.questionId,
+    questionText: opts.questionText,
+    questionType: opts.questionType,
+    totalResponses: opts.totalResponses,
+    optionResults: opts.optionResults ?? [],
+    textResponses: opts.textResponses,
+  }
+}
+
+function resultQuestionTypeToWire(questionType: SurveyResultSummary['questionType']) {
+  switch (questionType) {
+    case 'TEXT':
+      return 'FREE_TEXT'
+    case 'RATING':
+      return 'SCALE'
+    default:
+      return questionType
+  }
+}
+
+function resultSummaryToWire(result: SurveyResultSummary) {
+  return {
+    questionId: result.questionId,
+    questionText: result.questionText,
+    questionType: resultQuestionTypeToWire(result.questionType),
+    optionResults: result.optionResults,
+    textResponses: result.textResponses,
+  }
+}
+
+/** RespondentItem の雛形を生成する。 */
+export function buildRespondent(
+  opts: Partial<RespondentItem> & { userId: number; fullName: string },
+): RespondentItem {
+  return {
+    userId: opts.userId,
+    fullName: opts.fullName,
+    avatarUrl: opts.avatarUrl ?? null,
+    hasResponded: opts.hasResponded ?? false,
+    respondedAt: opts.respondedAt ?? null,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// API モック
+// ---------------------------------------------------------------------------
+
+/** {@link mockSurveyApi} のオプション。 */
+export interface MockSurveyApiOptions {
+  /** 一覧 API（GET /surveys）で返すアンケート群（実 BE と同じ wire 形） */
+  surveys?: SurveyResponseWire[]
+  /** 詳細 API（GET /surveys/{id}）で返すレスポンス（id をキーに分岐・実 BE のフラット wire 形） */
+  detailById?: Record<number, SurveyDetailWire>
+  /** 集計 API（GET /surveys/{id}/results）で返すレスポンス（id をキー） */
+  resultsById?: Record<number, SurveyResultSummary[]>
+  /**
+   * 集計 API（GET /surveys/{id}/results）を 403 で返す（id をキー）。
+   *
+   * BE は `ALWAYS` の閲覧範囲を配信母集団に限定しているため、`TARGETED` の名簿外や
+   * `includeSupporters=false` で除外された SUPPORTER はここで 403 になる。
+   * 詳細ページはこの応答をサーバーの判定として扱い、結果パネルも回答導線も出さない。
+   */
+  resultsForbiddenIds?: number[]
+  /** 回答者 API（GET .../respondents）で返すレスポンス（id をキー） */
+  respondentsById?: Record<number, RespondentItem[]>
+  /**
+   * 「自分の回答」API（GET /api/v1/surveys/{id}/responses/me）で返す行配列（id をキー）。
+   *
+   * ⚠️ 詳細画面の `hasResponded` は **この API の結果から導出される**（実 BE が
+   * hasResponded を返さないため useSurveyApi が補っている）。
+   * したがって {@link buildSurvey} の `hasResponded` は詳細経路では上書きされて効かない。
+   * E2E で「回答済み」の状態を作るには、ここに 1 行以上を渡すこと。
+   * 未指定なら空配列（＝未回答）を 200 で返す。
+   */
+  myResponseById?: Record<number, SurveyResponseRowWire[]>
+  /** 督促 API（POST /surveys/{id}/remind）のレスポンス制御 */
+  remindResponse?: { ok: boolean; status?: number; body?: unknown }
+  /** 作成 API（POST /surveys）のレスポンスを動的に決めたい場合のフック */
+  onCreate?: (body: unknown) => SurveyResponseWire
+}
+
+/**
+ * F05.4 Survey 関連 API を一括モックする。
+ *
+ * <p>登録順序の都合で「未マッチを 200 で空返し」する catch-all は登録しない
+ * （recruitment.spec.ts 側で必要なら spec で追加すること）。本関数は
+ * Survey 系エンドポイントのみピンポイントでハンドルする。</p>
+ *
+ * <p>後着優先のため、本関数の呼び出し後に spec 個別の page.route で
+ * 振る舞いを上書きできる。</p>
+ *
+ * <p>layouts/default.vue 配下の {@code NotificationBell} が叩く
+ * 通知/チャット/メンション関連 API も合わせて 200 で空返ししておく。
+ * これらをモックしないと未認証扱いの 401 → useApi.refreshAccessToken 失敗 →
+ * authStore.logout → /login へリダイレクトされてアンケート画面が消失する
+ * （SPA navigation 経由の SURVEY-002 / SURVEY-004 で観測された根本原因）。</p>
+ */
+export async function mockSurveyApi(page: Page, opts: MockSurveyApiOptions): Promise<void> {
+  // ----- layout 共通の周辺 API（NotificationBell が叩く 3 種 + auth refresh）-----
+  // これらが 401 を返すと useApi の onResponseError が refresh → logout を起こし、
+  // /login にリダイレクトされてアンケート画面が消える。空配列で 200 返しに固定する。
+  await page.route('**/api/v1/notifications/unread-count', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { total: 0 } }),
+    })
+  })
+  await page.route('**/api/v1/chat/channels**', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
+    })
+  })
+  await page.route('**/api/v1/mentions', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
+    })
+  })
+  // 念のため auth refresh も止める（万一 401 が抜けてきても logout を起こさない）
+  await page.route('**/api/v1/auth/refresh', async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.continue()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          accessToken: 'eyJhbGciOiJIUzM4NCJ9.e2UyZV90ZXN0X3VzZXJ9.placeholder_for_e2e',
+          refreshToken: 'e2e-refresh-token-placeholder',
+        },
+      }),
+    })
+  })
+
+  // ----- 一覧（チーム / 組織）-----
+  const listHandler = async (route: Route): Promise<void> => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    const data = opts.surveys ?? []
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data,
+        meta: {
+          page: 0,
+          size: 50,
+          total: data.length,
+          totalPages: data.length === 0 ? 0 : 1,
+        },
+      }),
+    })
+  }
+  await page.route('**/api/v1/teams/*/surveys', listHandler)
+  await page.route('**/api/v1/teams/*/surveys?*', listHandler)
+  await page.route('**/api/v1/organizations/*/surveys', listHandler)
+  await page.route('**/api/v1/organizations/*/surveys?*', listHandler)
+
+  // ----- 詳細（チーム / 組織）-----
+  // path: /api/v1/{scope}/{scopeId}/surveys/{surveyId}（GET のみ）
+  const detailHandler = async (route: Route): Promise<void> => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    const url = new URL(route.request().url())
+    const match = url.pathname.match(/\/surveys\/(\d+)$/)
+    if (!match) {
+      await route.continue()
+      return
+    }
+    const id = Number(match[1])
+    const detail = opts.detailById?.[id]
+    if (!detail) {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: { code: 'SURVEY_NOT_FOUND', message: 'survey not found' },
+        }),
+      })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(detail),
+    })
+  }
+  await page.route('**/api/v1/teams/*/surveys/*', detailHandler)
+  await page.route('**/api/v1/organizations/*/surveys/*', detailHandler)
+
+  // ----- 作成（POST /{scope}/{id}/surveys）-----
+  if (opts.onCreate) {
+    const createHandler = async (route: Route): Promise<void> => {
+      if (route.request().method() !== 'POST') {
+        await route.continue()
+        return
+      }
+      let body: unknown = null
+      try {
+        body = route.request().postDataJSON() as unknown
+      } catch {
+        body = null
+      }
+      const created = opts.onCreate!(body)
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: created }),
+      })
+    }
+    // 一覧 GET と作成 POST は同一 path のため、handler 内で method 分岐する形で
+    // listHandler を上書きするには「同じ path に新たに route を被せる」必要がある。
+    // Playwright は後勝ちなので、listHandler 後にこちらを登録すれば POST はこちらが拾う。
+    await page.route('**/api/v1/teams/*/surveys', async (route) => {
+      if (route.request().method() === 'POST') {
+        await createHandler(route)
+        return
+      }
+      await listHandler(route)
+    })
+    await page.route('**/api/v1/organizations/*/surveys', async (route) => {
+      if (route.request().method() === 'POST') {
+        await createHandler(route)
+        return
+      }
+      await listHandler(route)
+    })
+  }
+
+  // ----- 集計（GET /api/v1/surveys/{id}/results）-----
+  await page.route('**/api/v1/surveys/*/results', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    const url = new URL(route.request().url())
+    const match = url.pathname.match(/\/surveys\/(\d+)\/results$/)
+    const id = match ? Number(match[1]) : NaN
+    if (opts.resultsForbiddenIds?.includes(id)) {
+      await route.fulfill({
+        status: 403,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: { code: 'SURVEY_RESULTS_FORBIDDEN', message: 'not a distribution target' },
+        }),
+      })
+      return
+    }
+    const results = opts.resultsById?.[id] ?? []
+    const survey = opts.surveys?.find((item) => item.id === id)
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          surveyId: id,
+          title: survey?.content?.title ?? '',
+          responseCount: survey?.stats?.responseCount ?? results[0]?.totalResponses ?? 0,
+          targetCount: survey?.stats?.targetCount ?? 0,
+          questionResults: results.map(resultSummaryToWire),
+        },
+      }),
+    })
+  })
+
+  // ----- 自分の回答（GET /api/v1/surveys/{id}/responses/me）-----
+  // 詳細画面の hasResponded はこの API の結果から導出される。未モックだとリクエストが
+  // 失敗し、useSurveyApi の catch で常に未回答扱いになる（＝「回答済み」の状態を
+  // E2E で作れない）ため、常に 200 で明示的に返して決定的にする。
+  await page.route('**/api/v1/surveys/*/responses/me', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    const url = new URL(route.request().url())
+    const match = url.pathname.match(/\/surveys\/(\d+)\/responses\/me$/)
+    const id = match ? Number(match[1]) : NaN
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: opts.myResponseById?.[id] ?? [] }),
+    })
+  })
+
+  // ----- 回答者一覧（GET /{scope}/{id}/surveys/{surveyId}/respondents）-----
+  const respondentsHandler = async (route: Route): Promise<void> => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    const url = new URL(route.request().url())
+    const match = url.pathname.match(/\/surveys\/(\d+)\/respondents$/)
+    const id = match ? Number(match[1]) : NaN
+    const respondents = opts.respondentsById?.[id] ?? []
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: respondents }),
+    })
+  }
+  await page.route('**/api/v1/teams/*/surveys/*/respondents', respondentsHandler)
+  await page.route('**/api/v1/organizations/*/surveys/*/respondents', respondentsHandler)
+
+  // ----- 督促（POST /api/v1/surveys/{id}/remind）-----
+  if (opts.remindResponse) {
+    const remind = opts.remindResponse
+    await page.route('**/api/v1/surveys/*/remind', async (route) => {
+      if (route.request().method() !== 'POST') {
+        await route.continue()
+        return
+      }
+      if (remind.ok) {
+        await route.fulfill({
+          status: remind.status ?? 200,
+          contentType: 'application/json',
+          body: JSON.stringify(
+            remind.body ?? {
+              data: {
+                survey_id: 1,
+                reminded_count: 1,
+                remaining_remind_quota: 2,
+                message: 'reminded',
+              },
+            },
+          ),
+        })
+      } else {
+        await route.fulfill({
+          status: remind.status ?? 400,
+          contentType: 'application/json',
+          body: JSON.stringify(
+            remind.body ?? {
+              error: { code: 'SURVEY_REMIND_FAILED', message: 'failed' },
+            },
+          ),
+        })
+      }
+    })
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 待機ヘルパー
+// ---------------------------------------------------------------------------
+
+/**
+ * Nuxt SSR ページで Vue のクライアントサイドハイドレーション完了を待つ。
+ * helpers/wait.ts の waitForHydration と同等。survey 系から直接呼ぶための再 export。
+ */
+export async function waitForHydration(page: Page): Promise<void> {
+  await page.waitForFunction(() => {
+    const el = document.querySelector('#__nuxt')
+    return el !== null && '__vue_app__' in el
+  })
+}
+
+/**
+ * SurveyList のレンダリング完了を待つ。
+ * data-testid="survey-list-container" を持つコンテナの出現と hydration を待機する。
+ */
+export async function waitForSurveyList(page: Page): Promise<void> {
+  await waitForHydration(page)
+  await page.waitForSelector('[data-testid="survey-list-container"]', { timeout: 10_000 })
+}
+
+/**
+ * Survey 詳細ページのレンダリング完了を待つ。
+ * data-testid="survey-detail-page" を持つコンテナの出現と hydration を待機する。
+ */
+export async function waitForSurveyDetail(page: Page, _surveyId: number): Promise<void> {
+  await waitForHydration(page)
+  await page.waitForSelector('[data-testid="survey-detail-page"]', { timeout: 10_000 })
+}
+
+// ---------------------------------------------------------------------------
+// ナビゲーションヘルパー
+// ---------------------------------------------------------------------------
+
+/** チームのアンケート一覧ページへ遷移する（`/teams/{teamId}/surveys`）。 */
+export async function gotoTeamSurveys(page: Page, teamId: number): Promise<void> {
+  await page.goto(`/teams/${teamId}/surveys`)
+}
+
+/** 組織のアンケート一覧ページへ遷移する（`/organizations/{orgId}/surveys`）。 */
+export async function gotoOrgSurveys(page: Page, orgId: number): Promise<void> {
+  await page.goto(`/organizations/${orgId}/surveys`)
+}
+
+/**
+ * アンケート詳細ページへ遷移する。
+ * `/surveys/{surveyId}?scope={team|organization}&scopeId={scopeId}` 形式。
+ */
+export async function gotoSurveyDetail(
+  page: Page,
+  surveyId: number,
+  scopeType: 'team' | 'organization',
+  scopeId: number,
+): Promise<void> {
+  await page.goto(`/surveys/${surveyId}?scope=${scopeType}&scopeId=${scopeId}`)
+}

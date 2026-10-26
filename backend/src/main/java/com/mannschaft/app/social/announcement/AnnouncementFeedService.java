@@ -1,0 +1,580 @@
+package com.mannschaft.app.social.announcement;
+
+import com.mannschaft.app.committee.repository.CommitteeMemberRepository;
+import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.service.RecentMembershipScopeQueryService;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.service.TeamService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Set;
+import java.util.Map;
+import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.service.ContentAccessState;
+import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
+
+/**
+ * お知らせウィジェットフィードサービス（F02.6）。
+ *
+ * <p>
+ * チーム・組織ダッシュボードの「お知らせウィジェット」に表示するフィードの
+ * 取得・削除・ピン留めを担う。
+ * </p>
+ *
+ * <p>
+ * <b>IDOR 対策</b>:
+ * {@code createAnnouncement} 時に {@code source_id} の実スコープと
+ * パス変数の {@code scopeId} を照合し、他スコープのコンテンツのお知らせ化を防ぐ。
+ * 詳細は設計書 §6.1 を参照。
+ * </p>
+ *
+ * <p>
+ * <b>権限モデル</b>:
+ * <ul>
+ *   <li>一覧取得: 閲覧者ロールに応じた可視性集合で絞り込み（SUPPORTER は MEMBERS_AND_ABOVE を除外、MEMBER 以上は全種）</li>
+ *   <li>お知らせ化: 著者本人または ADMIN/DEPUTY_ADMIN</li>
+ *   <li>お知らせ解除: 著者本人または ADMIN/DEPUTY_ADMIN</li>
+ *   <li>ピン留め: ADMIN/DEPUTY_ADMIN のみ</li>
+ *   <li>既読マーク: <b>その閲覧者に一覧で見えているお知らせ</b>（＝可視性ベース。冪等）。
+ *       一覧は非メンバーにも PUBLIC を返すため、既読も同じ集合に揃える
+ *       （{@link AnnouncementReadService} のクラス Javadoc 参照）</li>
+ * </ul>
+ * </p>
+ *
+ * <p>
+ * お知らせ作成は {@link AnnouncementCreationService}、
+ * 既読管理は {@link AnnouncementReadService} に委譲している。
+ * </p>
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class AnnouncementFeedService {
+
+    /** デフォルト取得件数 */
+    private static final int DEFAULT_LIMIT = 20;
+
+    /** 最大取得件数 */
+    private static final int MAX_LIMIT = 50;
+
+    /** ピン留め最大件数（スコープごと） */
+    private static final int MAX_PIN_COUNT = 5;
+
+    private final AnnouncementFeedRepository feedRepository;
+    private final AnnouncementFeedQueryRepository feedQueryRepository;
+    private final AnnouncementReadService readService;
+    private final AnnouncementCreationService creationService;
+    private final AccessControlService accessControlService;
+    private final PaymentGateService paymentGateService;
+
+    // ── 委員会関連リポジトリ（COMMITTEE スコープサポート用） ──
+    private final CommitteeMemberRepository committeeMemberRepository;
+    private final RecentMembershipScopeQueryService recentMembershipScopeQueryService;
+    private final TeamService teamService;
+    private final OrganizationService organizationService;
+
+    /** 個人横断で対象にする所属スコープの上限。 */
+    private static final int PERSONAL_SCOPE_LIMIT = 20;
+
+    /** 課金ゲートで非表示になる行を補充取得する際の最大走査件数。 */
+    private static final int PERSONAL_FEED_SCAN_LIMIT = 200;
+
+    /** 個人横断フィードを取得する。 */
+    public AnnouncementFeedResult getPersonalFeed(Long userId, int limit, boolean includeRead) {
+        int effectiveLimit = Math.max(1, Math.min(limit <= 0 ? 15 : limit, MAX_LIMIT));
+        List<RecentMembershipScopeQueryService.RecentScope> memberships = recentMembershipScopeQueryService
+                .findRecentTeamAndOrganizationScopes(userId, PERSONAL_SCOPE_LIMIT);
+        if (memberships.isEmpty()) {
+            return new AnnouncementFeedResult(List.of(), null, false, 0);
+        }
+
+        List<AnnouncementFeedQueryRepository.PersonalScopeAccess> scopes = memberships.stream()
+                .map(membership -> new AnnouncementFeedQueryRepository.PersonalScopeAccess(
+                        AnnouncementScopeType.valueOf(membership.scopeType().name()),
+                        membership.scopeId(),
+                        AnnouncementVisibility.allowedFor(
+                                membership.roleKind() == RoleKind.SUPPORTER ? "SUPPORTER" : "MEMBER")))
+                .toList();
+        List<AnnouncementFeedEntity> visibleRows = new ArrayList<>();
+        int offset = 0;
+        boolean sourceHasNext = true;
+        while (visibleRows.size() < effectiveLimit + 1
+                && offset < PERSONAL_FEED_SCAN_LIMIT && sourceHasNext) {
+            int fetchSize = Math.min(effectiveLimit + 1, PERSONAL_FEED_SCAN_LIMIT - offset);
+            List<AnnouncementFeedEntity> batch = feedQueryRepository.findPersonalFeed(
+                    scopes, userId, includeRead, offset, fetchSize);
+            sourceHasNext = batch.size() == fetchSize;
+            offset += batch.size();
+            if (batch.isEmpty()) {
+                break;
+            }
+            Map<Long, GateCheckResponse> gates = paymentGateService.checkAccessBatch(
+                    ContentGateType.ANNOUNCEMENT,
+                    batch.stream().map(AnnouncementFeedEntity::getId).toList(), userId,
+                    batch.stream().filter(feed -> targetOf(feed) != null)
+                            .collect(java.util.stream.Collectors.toMap(
+                                    AnnouncementFeedEntity::getId, AnnouncementFeedService::targetOf)));
+            if (gates == null) {
+                continue;
+            }
+            batch.stream()
+                    .filter(feed -> {
+                        GateCheckResponse gate = gates.get(feed.getId());
+                        return gate != null && !gate.isTitleHidden();
+                    })
+                    .forEach(visibleRows::add);
+        }
+        List<AnnouncementFeedEntity> page = visibleRows.stream().limit(effectiveLimit).toList();
+
+        Set<Long> readIds = readService.fetchReadFeedIds(
+                userId, page.stream().map(AnnouncementFeedEntity::getId).toList());
+        Set<Long> teamIds = memberships.stream()
+                .filter(m -> m.scopeType() == ScopeType.TEAM)
+                .map(RecentMembershipScopeQueryService.RecentScope::scopeId)
+                .collect(java.util.stream.Collectors.toSet());
+        Set<Long> organizationIds = memberships.stream()
+                .filter(m -> m.scopeType() == ScopeType.ORGANIZATION)
+                .map(RecentMembershipScopeQueryService.RecentScope::scopeId)
+                .collect(java.util.stream.Collectors.toSet());
+        Map<Long, String> teamNames = teamService.getNamesByIds(teamIds);
+        Map<Long, String> organizationNames = organizationService.getNamesByIds(organizationIds);
+
+        List<AnnouncementFeedItem> items = page.stream().map(feed -> {
+            String scopeName = feed.getScopeType() == AnnouncementScopeType.TEAM
+                    ? teamNames.get(feed.getScopeId()) : organizationNames.get(feed.getScopeId());
+            return new AnnouncementFeedItem(feed, readIds.contains(feed.getId()),
+                    ContentAccessState.FULL.name(), scopeName);
+        }).toList();
+        long unreadCount = includeRead ? items.stream().filter(item -> !item.isRead()).count() : items.size();
+        // F02.6 の個人横断 API は cursor 入力を持たない。継続不能なページ情報を返さない。
+        return new AnnouncementFeedResult(items, null, false, unreadCount);
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // 委譲: お知らせ作成（AnnouncementCreationService へ委譲）
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * コンテンツをお知らせウィジェットに登録する。
+     *
+     * @see AnnouncementCreationService#createAnnouncement
+     */
+    @Transactional
+    public AnnouncementFeedEntity createAnnouncement(
+            AnnouncementScopeType scopeType,
+            Long scopeId,
+            AnnouncementSourceType sourceType,
+            Long sourceId,
+            Long requestUserId) {
+        return creationService.createAnnouncement(scopeType, scopeId, sourceType, sourceId, requestUserId);
+    }
+
+    /**
+     * アンケート・回覧板の公開時に自動お知らせ化する（Service 層内部から呼ぶ）。
+     *
+     * @see AnnouncementCreationService#createFromSource
+     */
+    @Transactional
+    public AnnouncementFeedEntity createFromSource(
+            AnnouncementSourceType sourceType,
+            Long sourceId,
+            AnnouncementScopeType scopeType,
+            Long scopeId,
+            Long authorId) {
+        return creationService.createFromSource(sourceType, sourceId, scopeType, scopeId, authorId);
+    }
+
+    /**
+     * F09.17 Phase 11-b ε-B 広告主キャンペーン由来お知らせを登録する。
+     *
+     * <p>{@link AnnouncementCreationService#createFromBroadcast} とは異なり以下の特徴を持つ:</p>
+     * <ul>
+     *   <li>{@code scopeType = ADVERTISER_AD}, {@code scopeId = advertiser_accounts.id}</li>
+     *   <li>{@code sourceType = ADVERTISER_CAMPAIGN}, {@code sourceId} は採番後の自フィード ID と
+     *       一致させるため、まず仮 ID で保存して取得後に再代入する（自己参照）</li>
+     *   <li>{@code authorId = null}（広告主由来のためユーザー所属を持たない）</li>
+     *   <li>{@code isAdvertisement = true}（景品表示法対応の「広告」ラベル必須化）</li>
+     *   <li>IDOR / 権限チェックは呼び出し元（{@code AdAnnouncementChannelService}）に委譲</li>
+     * </ul>
+     *
+     * <p>戻り値は保存済み {@link AnnouncementFeedEntity}。呼び出し元はこの ID を
+     * {@code ad_announcement_deliveries.announcement_feed_id} に転記する。</p>
+     *
+     * @param advertiserAccountId 広告主アカウント ID（scope_id）
+     * @param campaignId          キャンペーン ID（ログ用、source_id へは入れない）
+     * @param userId              受信者ユーザー ID（フィードは 1 ユーザー 1 行）
+     * @param titleCache          タイトル（最大 200 文字、超過時は切り詰め）
+     * @param excerptCache        本文抜粋（最大 300 文字、超過時は切り詰め）
+     * @return 保存済みのお知らせフィードエンティティ
+     */
+    @Transactional
+    public AnnouncementFeedEntity createAdvertiserFeed(
+            Long advertiserAccountId,
+            java.util.UUID campaignId,
+            Long userId,
+            String titleCache,
+            String excerptCache) {
+
+        // タイトル・本文の長さ補正（カラム制約に合わせる）
+        String safeTitle = truncate(titleCache != null ? titleCache : "(広告)", 200);
+        String safeExcerpt = excerptCache == null ? null : truncate(excerptCache, 300);
+
+        // 仮の sourceId として広告主 ID + キャンペーン UUID の MSB を用いる。
+        // 詳細: source_id 列は NOT NULL (BIGINT) のため一時値が必要。
+        // 採番後の自己参照では UNIQUE 制約があるとぶつかるが、本テーブルに UNIQUE はない設計。
+        long sourceIdSeed = campaignId.getLeastSignificantBits() & Long.MAX_VALUE;
+
+        AnnouncementFeedEntity entity = AnnouncementFeedEntity.builder()
+                .scopeType(AnnouncementScopeType.ADVERTISER_AD)
+                .scopeId(advertiserAccountId)
+                .sourceType(AnnouncementSourceType.ADVERTISER_CAMPAIGN)
+                .sourceId(sourceIdSeed)
+                .authorId(null)
+                .titleCache(safeTitle)
+                .excerptCache(safeExcerpt)
+                .priority("NORMAL")
+                .visibility("MEMBERS_AND_ABOVE")
+                .isAdvertisement(true)
+                .build();
+
+        AnnouncementFeedEntity saved = feedRepository.save(entity);
+        log.info("広告お知らせフィード登録 feedId={} userId={} advertiserId={} campaignId={}",
+                saved.getId(), userId, advertiserAccountId, campaignId);
+        return saved;
+    }
+
+    /**
+     * 指定長を超える文字列を切り詰める。null セーフ。
+     */
+    private static ContentGateTarget targetOf(AnnouncementFeedEntity feed) {
+        if (feed == null || feed.getId() == null || feed.getScopeType() == null || feed.getScopeId() == null) {
+            return null;
+        }
+        return feed.getScopeType() == AnnouncementScopeType.TEAM
+                ? new ContentGateTarget(feed.getId(), feed.getScopeId(), null)
+                : feed.getScopeType() == AnnouncementScopeType.ORGANIZATION
+                    ? new ContentGateTarget(feed.getId(), null, feed.getScopeId()) : null;
+    }
+
+    private static String truncate(String text, int maxLen) {
+        if (text == null) {
+            return null;
+        }
+        return text.length() > maxLen ? text.substring(0, maxLen) : text;
+    }
+
+    /**
+     * 告知ウィザード（F02.8）経由でお知らせフィードを登録する。
+     *
+     * @see AnnouncementCreationService#createFromBroadcast
+     */
+    @Transactional
+    public AnnouncementFeedEntity createFromBroadcast(
+            AnnouncementSourceType sourceType,
+            Long sourceId,
+            AnnouncementScopeType scopeType,
+            Long scopeId,
+            Long authorId,
+            String priority,
+            java.time.LocalDateTime expiresAt,
+            String targetTeamIds,
+            String titleCache,
+            String visibility) {
+        return creationService.createFromBroadcast(
+                sourceType, sourceId, scopeType, scopeId, authorId,
+                priority, expiresAt, targetTeamIds, titleCache, visibility);
+    }
+
+    /**
+     * 告知ウィザードで作ったフィードに宛先の記録を書き込む（F01.2.1 §5.6・§8.2。{@link AnnouncementCreationService} へ委譲）。
+     *
+     * @see AnnouncementCreationService#recordBroadcastAudience
+     */
+    @Transactional
+    public void recordBroadcastAudience(Long feedId, String targetGroupIds, boolean includeUnassigned,
+                                        String targetAudience,
+                                        java.util.Map<java.util.UUID, List<Long>> groupTeams) {
+        creationService.recordBroadcastAudience(feedId, targetGroupIds, includeUnassigned, targetAudience, groupTeams);
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // 委譲: 既読管理（AnnouncementReadService へ委譲）
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * お知らせを既読にする（冪等）。
+     *
+     * <p>スコープ（URL のパス変数由来）を下流へ通し、スコープ帰属検証と可視性検証を
+     * {@link AnnouncementReadService} に行わせる（規則は「見える＝既読にできる」）。</p>
+     *
+     * @see AnnouncementReadService#markAsRead
+     */
+    @Transactional
+    public void markAsRead(AnnouncementScopeType scopeType, Long scopeId, Long announcementId, Long userId) {
+        readService.markAsRead(scopeType, scopeId, announcementId, userId);
+    }
+
+    /**
+     * スコープ内の全お知らせを既読にする。
+     *
+     * <p>下流は「可視かつ未読」を DB 側で絞り、{@link AnnouncementReadService#MARK_ALL_BATCH_SIZE}
+     * 件ずつのチャンクで処理する（#2494）。実行コストは<b>未読件数</b>にのみ比例し、
+     * カーソル（{@code lastSeenId}）により総インデックスプローブ数も線形である（#2530 ②）。</p>
+     *
+     * <p><b>応答契約（#2530 ① で決着）</b>: 下流の結果をそのまま返し、Controller は
+     * {@code markedCount}（実際に既読化した件数）と {@code hasMoreUnread}
+     * （防御上限で打ち切り、未読が残っているか）を応答する。キー名は
+     * <b>camelCase</b> を正とし（他 EP の応答および {@code @RequestBody} と揃える）、
+     * 設計書 F02.6 §4 の {@code marked_count} 表記を実装側に合わせて改めた。
+     * 応答型を {@code Map<String, Object>} から DTO に変えたので、以後キー名の食い違いは
+     * OpenAPI スキーマ（{@code docs/openapi.json}）と生成型に現れる。</p>
+     *
+     * @param scopeType スコープ種別
+     * @param scopeId   スコープ ID
+     * @param userId    ユーザー ID
+     * @return 既読化件数と残余の有無
+     * @see AnnouncementReadService#markAllAsRead
+     */
+    @Transactional
+    public AnnouncementReadService.MarkAllReadOutcome markAllAsRead(
+            AnnouncementScopeType scopeType, Long scopeId, Long userId) {
+        return readService.markAllAsRead(scopeType, scopeId, userId);
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // 2.1 一覧取得
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * お知らせフィード一覧をカーソルページングで取得する。
+     *
+     * <p>
+     * 閲覧者ロールに応じた「閲覧できる visibility 集合」での絞り込みを
+     * {@link AnnouncementFeedQueryRepository#findByScope} の WHERE 句で実施する（Service 層の if 文に依存しない）。
+     * 集合は {@link AnnouncementVisibility#allowedFor(String)} が正準算出する:
+     * SUPPORTER は {@code {PUBLIC, SUPPORTERS_AND_ABOVE}}（MEMBERS_AND_ABOVE を露出させない）、
+     * MEMBER 以上は 3 種全部（PUBLIC/SUPPORTERS_AND_ABOVE を取りこぼさない）。
+     * </p>
+     *
+     * @param scopeType      スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId        スコープ ID
+     * @param requestUserId  リクエストユーザー ID
+     * @param viewerRoleName 閲覧者の実ロール名（SYSTEM_ADMIN/ADMIN/DEPUTY_ADMIN/MEMBER/SUPPORTER/PUBLIC）
+     * @param cursor         カーソル（null の場合は先頭から）
+     * @param limit          取得件数（0以下は DEFAULT_LIMIT、MAX_LIMIT 超は補正）
+     * @return フィード取得結果（data / nextCursor / hasNext / unreadCount）
+     */
+    public AnnouncementFeedResult getAnnouncementFeed(
+            AnnouncementScopeType scopeType,
+            Long scopeId,
+            Long requestUserId,
+            String viewerRoleName,
+            Long cursor,
+            int limit) {
+
+        int effectiveLimit = Math.max(1, Math.min(limit <= 0 ? DEFAULT_LIMIT : limit, MAX_LIMIT));
+
+        // 閲覧者ロール → 閲覧できる visibility 集合（正準）。
+        Set<String> allowedVisibilities = AnnouncementVisibility.allowedFor(viewerRoleName);
+
+        // limit + 1 件取得して hasNext を判定
+        List<AnnouncementFeedEntity> dataRows = feedQueryRepository.findByScope(
+                scopeType, scopeId, allowedVisibilities, cursor, effectiveLimit + 1);
+
+        // 既読状態をバッチ取得（N+1 防止）
+        Map<Long, GateCheckResponse> gates = new LinkedHashMap<>();
+        boolean adminBypass = "ADMIN".equalsIgnoreCase(viewerRoleName)
+                || "SYSTEM_ADMIN".equalsIgnoreCase(viewerRoleName);
+        List<AnnouncementFeedEntity> gatedRows = new ArrayList<>();
+        Set<Long> seenIds = new HashSet<>();
+        Long fetchCursor = cursor;
+        boolean sourceHasNext = true;
+        int fetchCount = 0;
+        while (fetchCount++ < 1000 && gatedRows.size() < effectiveLimit + 1) {
+            List<AnnouncementFeedEntity> rows = fetchCount == 1 ? dataRows : feedQueryRepository.findByScope(
+                    scopeType, scopeId, allowedVisibilities, fetchCursor, effectiveLimit + 1);
+            if (rows == null || rows.isEmpty()) {
+                sourceHasNext = false;
+                break;
+            }
+            sourceHasNext = rows.size() > effectiveLimit;
+            List<AnnouncementFeedEntity> uniqueRows = rows.stream()
+                    .filter(row -> row.getId() != null && seenIds.add(row.getId())).toList();
+            Map<Long, GateCheckResponse> fetchedGates = paymentGateService == null ? Map.of()
+                    : paymentGateService.checkAccessBatch(ContentGateType.ANNOUNCEMENT,
+                            uniqueRows.stream().map(AnnouncementFeedEntity::getId).toList(), requestUserId,
+                            uniqueRows.stream()
+                                    .filter(row -> AnnouncementFeedService.targetOf(row) != null)
+                                    .collect(java.util.stream.Collectors.toMap(
+                                            AnnouncementFeedEntity::getId,
+                                            AnnouncementFeedService::targetOf)));
+            if (fetchedGates != null) {
+                gates.putAll(fetchedGates);
+            }
+            uniqueRows.stream().filter(feed -> {
+                GateCheckResponse gate = gates.get(feed.getId());
+                return gate != null && (adminBypass || !gate.isTitleHidden());
+            }).forEach(gatedRows::add);
+            Long lastId = rows.get(rows.size() - 1).getId();
+            if (!sourceHasNext || lastId == null || lastId.equals(fetchCursor)) {
+                break;
+            }
+            fetchCursor = lastId;
+        }
+        boolean hasNext = gatedRows.size() > effectiveLimit || (sourceHasNext && fetchCount >= 1000);
+        gatedRows = gatedRows.stream().limit(effectiveLimit).toList();
+        List<Long> feedIds = gatedRows.stream().map(AnnouncementFeedEntity::getId).toList();
+        Set<Long> readFeedIds = readService.fetchReadFeedIds(requestUserId, feedIds);
+
+        // 未読数: スコープ内の全フィード件数 - 既読件数
+        long totalCount = (long) feedIds.size();
+        long readCount = readFeedIds.size();
+        long unreadCount = totalCount - readCount;
+
+        List<AnnouncementFeedItem> items = gatedRows.stream()
+                .map(feed -> new AnnouncementFeedItem(feed, readFeedIds.contains(feed.getId()),
+                        adminBypass || !isLocked(gates.get(feed.getId()))
+                                ? ContentAccessState.FULL.name() : ContentAccessState.LOCKED.name()))
+                .toList();
+
+        Long nextCursor = null;
+        if (hasNext && !gatedRows.isEmpty()) {
+            nextCursor = gatedRows.get(gatedRows.size() - 1).getId();
+        }
+
+        return new AnnouncementFeedResult(items, nextCursor, hasNext, unreadCount);
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // 2.3 お知らせ解除（削除）
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * お知らせウィジェットからコンテンツを解除（物理削除）する。
+     *
+     * @param announcementId お知らせフィード ID
+     * @param requestUserId  リクエストユーザー ID
+     */
+    @Transactional
+    public void deleteAnnouncement(Long announcementId, Long requestUserId) {
+        AnnouncementFeedEntity entity = feedRepository.findById(announcementId)
+                .orElseThrow(() -> new BusinessException(AnnouncementErrorCode.ANNOUNCE_001));
+
+        // 著者本人または ADMIN+（COMMITTEE スコープはメンバーチェック） のみ削除可
+        boolean isAuthor = requestUserId.equals(entity.getAuthorId());
+        boolean isAdmin = AnnouncementScopeType.COMMITTEE.equals(entity.getScopeType())
+                ? committeeMemberRepository.existsByCommitteeIdAndUserIdAndLeftAtIsNull(
+                        entity.getScopeId(), requestUserId)
+                : accessControlService.isAdminOrAbove(
+                        requestUserId, entity.getScopeId(), entity.getScopeType().name());
+        if (!isAuthor && !isAdmin) {
+            throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_002);
+        }
+
+        feedRepository.delete(entity);
+        log.debug("お知らせ解除完了 announcementId={}, requestUserId={}", announcementId, requestUserId);
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // 2.4 ピン留めトグル
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * お知らせのピン留め状態を切り替える。
+     *
+     * <p>
+     * ピン留め ON への変更時にスコープ内の現在のピン留め数が上限（5件）に達していないことを確認する。
+     * </p>
+     *
+     * @param announcementId お知らせフィード ID
+     * @param requestUserId  リクエストユーザー ID（ADMIN+ のみ可）
+     * @return 更新後のお知らせフィードエンティティ
+     */
+    @Transactional
+    public AnnouncementFeedEntity togglePin(Long announcementId, Long requestUserId) {
+        AnnouncementFeedEntity entity = feedRepository.findById(announcementId)
+                .orElseThrow(() -> new BusinessException(AnnouncementErrorCode.ANNOUNCE_001));
+
+        // ADMIN+（COMMITTEE スコープはメンバーチェック） のみピン留め操作可能
+        boolean canPin = AnnouncementScopeType.COMMITTEE.equals(entity.getScopeType())
+                ? committeeMemberRepository.existsByCommitteeIdAndUserIdAndLeftAtIsNull(
+                        entity.getScopeId(), requestUserId)
+                : accessControlService.isAdminOrAbove(
+                        requestUserId, entity.getScopeId(), entity.getScopeType().name());
+        if (!canPin) {
+            throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_002);
+        }
+
+        if (Boolean.TRUE.equals(entity.getIsPinned())) {
+            // ピン留め → 解除
+            entity.unpin();
+            log.debug("ピン留め解除 announcementId={}, requestUserId={}", announcementId, requestUserId);
+        } else {
+            // 未ピン → ピン留め: 上限チェック
+            long currentPinCount = feedRepository.countByScopeTypeAndScopeIdAndIsPinnedTrueAndSourceDeletedAtIsNull(
+                    entity.getScopeType(), entity.getScopeId());
+            if (currentPinCount >= MAX_PIN_COUNT) {
+                throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_004);
+            }
+            entity.markPinned(requestUserId);
+            log.debug("ピン留め設定 announcementId={}, requestUserId={}", announcementId, requestUserId);
+        }
+
+        return feedRepository.save(entity);
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // 返却型
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * お知らせフィード取得結果。
+     *
+     * @param data        お知らせフィードアイテムリスト
+     * @param nextCursor  次ページカーソル（null = 次ページなし）
+     * @param hasNext     次ページがあるか
+     * @param unreadCount 未読件数
+     */
+    public record AnnouncementFeedResult(
+            List<AnnouncementFeedItem> data,
+            Long nextCursor,
+            boolean hasNext,
+            long unreadCount) {
+    }
+
+    /**
+     * お知らせフィード 1 件分のアイテム（既読状態付き）。
+     *
+     * @param feed   お知らせフィードエンティティ
+     * @param isRead 既読済みかどうか
+     */
+    public record AnnouncementFeedItem(
+            AnnouncementFeedEntity feed,
+            boolean isRead,
+            String accessState,
+            String scopeName) {
+        public AnnouncementFeedItem(AnnouncementFeedEntity feed, boolean isRead) {
+            this(feed, isRead, ContentAccessState.FULL.name(), null);
+        }
+        public AnnouncementFeedItem(AnnouncementFeedEntity feed, boolean isRead, String accessState) {
+            this(feed, isRead, accessState, null);
+        }
+    }
+
+    private static boolean isLocked(GateCheckResponse gate) {
+        return gate != null && !gate.isAccessible() && !gate.isTitleHidden();
+    }
+}

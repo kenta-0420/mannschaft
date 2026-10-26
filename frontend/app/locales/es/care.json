@@ -1,0 +1,110 @@
+{
+  "care": {
+    "page": {
+      "title": "Gestión de vínculos de cuidado",
+      "inviteWatcher": "Invitar a supervisor",
+      "inviteRecipient": "Invitar a persona bajo cuidado",
+      "invitationAccept": "Confirmación de invitación",
+      "teamOverride": "Configuración de notificaciones del equipo"
+    },
+    "tab": {
+      "watchers": "Supervisores",
+      "recipients": "Personas bajo cuidado",
+      "pending": "Invitaciones pendientes"
+    },
+    "label": {
+      "watcher": "Supervisor",
+      "recipient": "Persona bajo cuidado",
+      "careCategory": "Categoría de cuidado",
+      "relationship": "Relación",
+      "isPrimary": "Principal",
+      "status": "Estado",
+      "notifySettings": "Configuración de notificaciones",
+      "notifyOnRsvp": "Notificar al confirmar asistencia",
+      "notifyOnCheckin": "Notificar al registrar entrada",
+      "notifyOnCheckout": "Notificar al registrar salida",
+      "notifyOnAbsentAlert": "Notificar en alerta de ausencia",
+      "notifyOnDismissal": "Notificar al finalizar",
+      "confirmedAt": "Confirmado el",
+      "invitedBy": "Invitado por",
+      "createdAt": "Fecha de creación",
+      "noWatchers": "Aún no hay supervisores",
+      "noRecipients": "Aún no hay personas bajo cuidado",
+      "noPendingInvitations": "No hay invitaciones pendientes",
+      "userId": "ID de usuario",
+      "inviterName": "Invitador",
+      "expiresAt": "Vence el",
+      "disabled": "Desactivado",
+      "overrideNote": "Sobreescribir configuración de notificaciones para este equipo"
+    },
+    "category": {
+      "MINOR": "Menor de edad",
+      "ELDERLY": "Adulto mayor",
+      "DISABILITY_SUPPORT": "Apoyo a discapacidad",
+      "GENERAL_FAMILY": "Familia general"
+    },
+    "relationship": {
+      "PARENT": "Padre/Madre",
+      "CHILD": "Hijo/Hija",
+      "SPOUSE": "Cónyuge",
+      "GRANDPARENT": "Abuelo/Abuela",
+      "GRANDCHILD": "Nieto/Nieta",
+      "SIBLING": "Hermano/Hermana",
+      "LEGAL_GUARDIAN": "Tutor legal",
+      "CARETAKER": "Cuidador",
+      "OTHER": "Otro"
+    },
+    "status": {
+      "PENDING": "Pendiente",
+      "ACTIVE": "Activo",
+      "REJECTED": "Rechazado",
+      "REVOKED": "Revocado"
+    },
+    "invitedBy": {
+      "CARE_RECIPIENT": "Persona bajo cuidado",
+      "WATCHER": "Supervisor",
+      "ADMIN": "Administrador",
+      "SYSTEM": "Sistema"
+    },
+    "button": {
+      "inviteWatcher": "Invitar supervisor",
+      "inviteRecipient": "Invitar persona bajo cuidado",
+      "updateNotify": "Guardar notificaciones",
+      "deleteLink": "Eliminar vínculo",
+      "acceptInvitation": "Aceptar invitación",
+      "rejectInvitation": "Rechazar invitación",
+      "saveOverride": "Guardar configuración",
+      "deleteOverride": "Eliminar configuración"
+    },
+    "dialog": {
+      "deleteLinkTitle": "Eliminar vínculo de cuidado",
+      "deleteLinkConfirm": "¿Está seguro de que desea eliminar este vínculo? Esta acción no se puede deshacer.",
+      "deleteOverrideTitle": "Eliminar configuración de anulación",
+      "deleteOverrideConfirm": "¿Está seguro de que desea eliminar la configuración de notificaciones del equipo?"
+    },
+    "message": {
+      "inviteWatcherSuccess": "Invitación al supervisor enviada",
+      "inviteRecipientSuccess": "Invitación a persona bajo cuidado enviada",
+      "inviteError": "Error al enviar la invitación",
+      "updateNotifySuccess": "Configuración de notificaciones actualizada",
+      "updateNotifyError": "Error al actualizar la configuración de notificaciones",
+      "deleteLinkSuccess": "Vínculo de cuidado eliminado",
+      "deleteLinkError": "Error al eliminar el vínculo de cuidado",
+      "acceptSuccess": "Invitación aceptada",
+      "acceptError": "Error al aceptar la invitación",
+      "rejectSuccess": "Invitación rechazada",
+      "rejectError": "Error al rechazar la invitación",
+      "saveOverrideSuccess": "Configuración guardada",
+      "saveOverrideError": "Error al guardar la configuración",
+      "deleteOverrideSuccess": "Configuración eliminada",
+      "deleteOverrideError": "Error al eliminar la configuración",
+      "loadError": "Error al cargar los datos",
+      "invalidToken": "Enlace de invitación inválido o expirado"
+    },
+    "validation": {
+      "userIdRequired": "Por favor ingrese un ID de usuario",
+      "careCategoryRequired": "Por favor seleccione una categoría de cuidado",
+      "relationshipRequired": "Por favor seleccione una relación"
+    }
+  }
+}

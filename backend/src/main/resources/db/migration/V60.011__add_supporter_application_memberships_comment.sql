@@ -1,0 +1,13 @@
+-- F00.5 Phase 5: SupporterApplicationService 承認フロー変更の記録
+--
+-- Phase 5 以降、サポーター申請承認時の SUPPORTER ロール付与先が変更された:
+--   旧: user_roles テーブルに role='SUPPORTER' 行を INSERT
+--   新: memberships テーブルに role_kind='SUPPORTER' 行を INSERT
+--       (MembershipService.join(roleKind=SUPPORTER) 経由)
+--
+-- 影響テーブル:
+--   - memberships: SUPPORTER 申請承認時に INSERT される
+--   - user_roles: SUPPORTER 行は V60.010 にて既に DELETE 済み (Phase 4)
+--
+-- このマイグレーションは DDL/DML 変更なし。移行ドキュメントの記録のみ。
+SELECT 1; -- no-op

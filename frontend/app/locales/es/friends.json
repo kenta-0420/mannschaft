@@ -1,0 +1,252 @@
+{
+  "friends": {
+    "title": "Equipos amigos",
+    "subtitle": "Gestión de relaciones de amistad entre equipos",
+    "list": {
+      "empty": "No hay equipos amigos",
+      "established_at": "Fecha de establecimiento",
+      "visibility_public": "Público",
+      "visibility_private": "Privado",
+      "supporter_notice": "Solo se muestran los equipos amigos públicos",
+      "target_team_id": "ID del equipo objetivo",
+      "comment_label": "Comentario de saludo (opcional)"
+    },
+    "follow_dialog": {
+      "search_label": "Buscar por nombre del equipo",
+      "search_placeholder": "Buscar equipos",
+      "slug_input_label": "Indicar por nombre de URL",
+      "slug_input_hint": "Si el equipo no aparece en los resultados, escribe su nombre de URL (la parte final de su dirección) en el campo de abajo",
+      "no_results": "No se encontraron equipos coincidentes",
+      "search_error": "La búsqueda ha fallado. Comprueba tu conexión e inténtalo de nuevo",
+      "retry": "Buscar de nuevo",
+      "search_hint": "Escribe al menos 2 caracteres"
+    },
+    "actions": {
+      "follow": "Seguir",
+      "unfollow": "Dejar de seguir",
+      "toggle_visibility": "Cambiar visibilidad"
+    },
+    "messages": {
+      "follow_success": "Sigues al equipo. Seréis amigos cuando te siga también.",
+      "follow_mutual_success": "Seguimiento mutuo establecido — ahora son equipos amigos",
+      "follow_retry": "Procesando seguimiento. Por favor intente nuevamente en {seconds} segundos",
+      "unfollow_success": "Dejado de seguir",
+      "unfollow_confirm": "¿Dejar de seguir a este equipo?",
+      "visibility_changed": "Visibilidad cambiada",
+      "already_following": "Ya sigues a este equipo. Se actualizaron las listas."
+    },
+    "errors": {
+      "self_follow": "No puedes seguir tu propio equipo",
+      "already_following": "Ya estás siguiendo",
+      "target_not_found": "No se encontró el equipo objetivo",
+      "permission_denied": "Sin permiso",
+      "target_unavailable": "No se encontró el equipo o no se puede seguir en este momento."
+    },
+    "guide": {
+      "title": "Cómo usar Equipos amigos",
+      "description": "En esta pantalla puedes seguir a otros equipos para hacerte amigo de ellos y gestionar esas relaciones.",
+      "what": {
+        "title": "Qué son los equipos amigos",
+        "body": "Cuando dos equipos se siguen mutuamente, pasan a ser equipos amigos. La lista muestra la fecha de establecimiento de cada equipo y si es público o privado. A partir de 20 elementos, la lista se divide en páginas.",
+        "note": "A los seguidores y otros usuarios solo se les muestran los equipos amigos públicos."
+      },
+      "follow": {
+        "title": "Seguir para hacerse amigo",
+        "step1": "Pulsa Seguir en tu equipo o Solicitar amistad en el perfil del otro equipo.",
+        "step2": "Busca por el nombre del equipo y elige el que quieres seguir. Si no lo encuentras, escribe directamente el nombre de URL del equipo (la parte final de su dirección)",
+        "step3": "Comprueba los equipos, sus nombres, nombres de URL y la dirección. Los comentarios no se entregan.",
+        "step4": "Pulsa Revisar solicitud y después Seguir.",
+        "mutual": "Cuando el otro equipo también te siga, se mostrará «Ya sois equipos amigos» y se establecerá la relación de equipos amigos.",
+        "caution_title": "Aviso",
+        "caution_self": "No puedes seguir a tu propio equipo",
+        "caution_already": "No puedes seguir a un equipo al que ya sigues",
+        "caution_busy": "El proceso se reintenta hasta tres veces. Actualiza las listas para verificar el resultado.",
+        "caution_role": "Se necesita el permiso para administrar equipos amigos."
+      },
+      "visibility": {
+        "title": "Cambiar entre público y privado",
+        "step1": "Activa o desactiva el interruptor de la tarjeta del equipo amigo",
+        "step2": "Comprueba que aparece «Se ha cambiado la configuración de visibilidad»",
+        "caution_title": "Aviso",
+        "caution_admin": "Solo pueden hacerlo los administradores. Para los demás, el interruptor aparece desactivado",
+        "caution_revert": "Si el cambio falla, el interruptor vuelve a su estado anterior"
+      },
+      "unfollow": {
+        "title": "Dejar de seguir",
+        "step1": "Pulsa «︙» a la derecha de la tarjeta del equipo amigo",
+        "step2": "Elige «Dejar de seguir» en el menú",
+        "step3": "Acepta en el cuadro de confirmación",
+        "caution_title": "Aviso",
+        "caution_kept": "Aunque dejes de seguir, las publicaciones reenviadas anteriormente se conservan",
+        "caution_role": "Se necesita el permiso para administrar equipos amigos."
+      },
+      "related": {
+        "title": "Pantallas relacionadas",
+        "body": "Las siguientes pantallas relacionadas con los equipos amigos se abren desde el menú del equipo.",
+        "item_folders": "Carpetas de amigos: organiza los equipos amigos en carpetas (hasta 20)",
+        "item_feed": "Feed de administración: revisa las publicaciones de los equipos amigos y reenvíalas a tu equipo",
+        "item_exports": "Historial de reenvío inverso: comprueba a qué amigos se reenviaron las publicaciones de tu equipo"
+      },
+      "pending": {
+        "title": "Equipos seguidos",
+        "body": "Consulta y cancela los seguimientos pendientes de amistad. Los nombres públicos enlazan a sus páginas. Tras cancelar, elige «Seguir de nuevo» para seleccionar el mismo equipo. Las solicitudes recibidas muestran el origen. Seguir de vuelta envía una solicitud de tu equipo al origen. Ambas direcciones crean la amistad. No se envía notificación de recepción."
+      }
+    },
+    "pending": {
+      "title": "Equipos seguidos",
+      "empty": "No sigues a ningún equipo",
+      "hidden_team": "Equipo no disponible para mostrar",
+      "cancel": "Dejar de seguir",
+      "cancel_confirm": "¿Dejar de seguir? Si el otro equipo te ha seguido desde que se cargó esta lista, también se eliminará la amistad.",
+      "cancel_success": "Seguimiento cancelado",
+      "refollow": "Seguir de nuevo",
+      "recovery_public": "La amistad no se ha completado. Cancela y vuelve a seguir al equipo para establecerla.",
+      "recovery_hidden": "Puedes cancelar, pero quizá no puedas volver a seguir al equipo según su estado."
+    },
+    "request": {
+      "title": "Solicitar amistad entre equipos",
+      "source": "Equipo de origen",
+      "target": "Equipo de destino",
+      "no_source": "No tienes equipos autorizados. Consulta los permisos con su administrador.",
+      "choose_source": "Elige un equipo de origen",
+      "single_source": "Se ha seleccionado tu único equipo autorizado. Revísalo antes de enviar.",
+      "review": "Revisar solicitud",
+      "confirm": "Revisa esta dirección antes de enviar la solicitud.",
+      "pending": "El resultado está pendiente. Actualiza las listas para comprobar el estado.",
+      "refresh": "Actualizar listas",
+      "incoming": "Solicitudes recibidas",
+      "respond": "Revisar y seguir de vuelta",
+      "incoming_empty": "No hay solicitudes recibidas",
+      "status_counts": "Recuento actual: amistades {friends}, enviadas {pending}, recibidas {incoming}",
+      "open_lists": "Ver las listas del equipo de origen",
+      "entered_team": "Equipo introducido"
+    }
+  },
+  "folders": {
+    "title": "Carpetas de amigos",
+    "create": "Crear carpeta",
+    "list": {
+      "empty": "No hay carpetas",
+      "member_count": "{count} equipos",
+      "remaining": "Puede crear {remaining} más (máximo 20)"
+    },
+    "fields": {
+      "name": "Nombre de carpeta",
+      "description": "Descripción (opcional)",
+      "color": "Color"
+    },
+    "actions": {
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "manage_members": "Gestionar miembros",
+      "add_member": "Añadir amigo",
+      "remove_member": "Eliminar"
+    },
+    "placeholders": {
+      "name": "Ej.: Escuelas afiliadas",
+      "description": "Uso o nota para esta carpeta (opcional)"
+    },
+    "members": {
+      "title": "Gestión de miembros",
+      "current": "Amigos registrados",
+      "available": "Amigos disponibles para añadir",
+      "empty": "No hay amigos registrados en esta carpeta",
+      "no_friends": "No hay amigos disponibles para añadir"
+    },
+    "messages": {
+      "created": "Carpeta creada",
+      "updated": "Carpeta actualizada",
+      "deleted": "Carpeta eliminada",
+      "delete_confirm": "¿Eliminar esta carpeta?",
+      "max_exceeded": "Se pueden crear hasta 20 carpetas",
+      "name_required": "Por favor ingrese el nombre de la carpeta",
+      "name_too_long": "El nombre de la carpeta no debe superar 50 caracteres",
+      "description_too_long": "La descripción no debe superar 300 caracteres",
+      "name_conflict": "Ya existe una carpeta con ese nombre",
+      "member_added": "Amigo añadido a la carpeta",
+      "member_removed": "Amigo eliminado de la carpeta",
+      "duplicate_member": "Este amigo ya está registrado en la carpeta"
+    }
+  },
+  "friend_feed": {
+    "title": "Feed del administrador",
+    "subtitle": "Verificar y reenviar publicaciones de equipos amigos",
+    "badge": "De un amigo",
+    "forwarded_badge": "Reenviado",
+    "permission_denied": "No tiene permiso para ver esta pantalla",
+    "list": {
+      "empty": "No hay publicaciones de amigos"
+    },
+    "forward": {
+      "button": "Reenviar a mi equipo",
+      "modal_title": "Reenviar publicación",
+      "target_label": "Alcance de distribución",
+      "target_member": "Solo miembros",
+      "target_supporter": "Miembros + Seguidores (próximamente)",
+      "target_supporter_tooltip": "Este público aún no está disponible",
+      "comment_label": "Comentario del administrador (opcional)",
+      "comment_placeholder": "Ingrese un comentario para adjuntar al reenvío (opcional)",
+      "submit": "Reenviar",
+      "cancel": "Cancelar",
+      "success": "Publicación reenviada",
+      "revoke": "Cancelar reenvío",
+      "revoke_success": "Reenvío cancelado",
+      "revoke_confirm": "¿Cancelar este reenvío?",
+      "error": "Error al reenviar",
+      "already_forwarded": "Esta publicación ya fue reenviada. Se actualizó la lista"
+    }
+  },
+  "forward_exports": {
+    "title": "Historial de reenvíos salientes",
+    "subtitle": "Qué amigos reenviaron las publicaciones de tu equipo",
+    "permission_denied": "No tiene permiso para ver esta pantalla",
+    "list": {
+      "empty": "Aún no hay historial de reenvíos",
+      "anonymous_team": "Equipo anónimo",
+      "revoked": "Cancelado",
+      "target_member": "Miembros",
+      "target_supporter": "Miembros+Seguidores"
+    },
+    "columns": {
+      "source_post": "Publicación original",
+      "forwarding_team": "Equipo receptor",
+      "forwarded_at": "Fecha de reenvío",
+      "target": "Alcance",
+      "status": "Estado"
+    },
+    "pagination": {
+      "showing": "Mostrando {from}–{to} de {total}",
+      "prev": "Anterior",
+      "next": "Siguiente"
+    }
+  },
+  "nav": {
+    "tab": "Equipos amigos"
+  },
+  "error": {
+    "SOCIAL_101": "No puedes seguir a tu propio equipo",
+    "SOCIAL_102": "Ya sigues a este equipo",
+    "SOCIAL_103": "No se encontró la relación de seguimiento",
+    "SOCIAL_104": "No se encontró el equipo que quieres seguir",
+    "SOCIAL_105": "Se necesita permiso para gestionar equipos amigos",
+    "SOCIAL_106": "No se encontró la relación de amistad",
+    "SOCIAL_107": "Se necesitan permisos de administrador para cambiar la visibilidad",
+    "SOCIAL_108": "Hay otra operación de amistad en curso. Vuelve a intentarlo",
+    "SOCIAL_109": "Los equipos amigos están desactivados actualmente",
+    "SOCIAL_110": "No se encontró la carpeta de amigos",
+    "SOCIAL_111": "Cada equipo puede crear hasta 20 carpetas de amigos",
+    "SOCIAL_112": "Este equipo amigo ya está en la carpeta",
+    "SOCIAL_113": "Este equipo amigo no está en la carpeta",
+    "SOCIAL_120": "No se encontró el historial de reenvío",
+    "SOCIAL_121": "Esta publicación ya se ha reenviado",
+    "SOCIAL_122": "No se encontró la publicación original",
+    "SOCIAL_123": "Esta publicación no se comparte con equipos amigos",
+    "SOCIAL_124": "No existe amistad con el equipo de origen",
+    "SOCIAL_125": "El reenvío a seguidores aún no está disponible",
+    "SOCIAL_130": "Esta notificación de amigos no tiene destinatarios",
+    "SOCIAL_131": "Selecciona una carpeta de destinatarios",
+    "SOCIAL_132": "Selecciona los equipos destinatarios",
+    "SOCIAL_133": "Selecciona una carpeta o equipos como tipo de destinatario",
+    "SOCIAL_134": "El equipo seleccionado no es un equipo amigo"
+  }
+}

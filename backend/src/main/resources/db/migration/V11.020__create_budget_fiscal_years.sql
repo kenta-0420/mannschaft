@@ -1,0 +1,22 @@
+CREATE TABLE budget_fiscal_years (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    scope_type VARCHAR(20) NOT NULL,
+    scope_id BIGINT UNSIGNED NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
+    created_by BIGINT UNSIGNED NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at DATETIME DEFAULT NULL,
+    PRIMARY KEY (id),
+    INDEX idx_bfy_scope (scope_type, scope_id, status),
+    INDEX idx_bfy_dates (start_date, end_date),
+    CONSTRAINT uq_bfy_scope_name UNIQUE (scope_type, scope_id, name),
+    CONSTRAINT chk_bfy_scope_type CHECK (scope_type IN ('TEAM', 'ORGANIZATION')),
+    CONSTRAINT chk_bfy_status CHECK (status IN ('OPEN', 'CLOSED')),
+    CONSTRAINT chk_bfy_dates CHECK (start_date < end_date),
+    CONSTRAINT fk_bfy_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

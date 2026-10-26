@@ -1,0 +1,658 @@
+spring:
+  application:
+    name: mannschaft
+
+  # デフォルトプロファイル（明示指定がない場合は local）
+  profiles:
+    default: local
+
+  # マルチパート（ファイルアップロード）の枠
+  # Spring Boot 既定は 1MB。F08.4 領収書ロゴの業務上限 1MB を「サービス層で」判定させるため、
+  # 境界ちょうどのファイルがコンテナで先に弾かれない（MaxUploadSizeExceededException で
+  # 設計外の応答になる）よう、枠は業務上限より広い 2MB を明示する。
+  # 注意: この 2MB は F08.4 のための最小限の値であり「全体の正しい値」ではない。
+  # 既存機能はカルテ写真 10MB / 掲示板添付 10MB / DM 画像 5MB を業務上限として宣言しているが、
+  # コンテナ既定 1MB のため宣言どおりには動いていない。これは本設定とは別の既知の問題であり、
+  # ここで 10MB へ引き上げると無関係な機能の挙動を変えてしまうため行わない（枠の全体見直しは別戦役）。
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
+
+  # Virtual Threads（Java 21）
+  threads:
+    virtual:
+      enabled: true
+
+  # グレースフルシャットダウン猶予時間（Spot 終了通知から最大 30 秒でリクエストを完了させる）
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  # HikariCP 接続プール（AWS 本番チューニング）
+  # maximum-pool-size: 環境変数で上書き可（t4g.large=50、r6g.xlarge=100 など）
+  # Virtual Threads 採用のため CPU コア数ではなく RDS の接続上限を基準に設定する
+  datasource:
+    hikari:
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:50}
+      minimum-idle: ${HIKARI_MIN_IDLE:10}
+      connection-timeout: 3000    # 3 秒以内に接続取得できなければ例外（デフォルト 30 秒は長すぎる）
+      idle-timeout: 600000        # 10 分アイドルで接続を返却
+      max-lifetime: 1800000       # 30 分で接続を強制リフレッシュ（RDS のタイムアウトより短く設定）
+      # MySQL Connector/J のバッチ書き換えを有効化する。addBatch/executeBatch を多値 INSERT/複文へ
+      # まとめ直し、Hibernate バッチ（order_inserts + batch_size）や JDBC バッチ全般の DB round-trip を削減する。
+      # 注: 通知一斉配信（NotificationBulkFanoutService）が発行する「手組みの多値 INSERT」自体はこの設定に
+      # 依存しない（既に 1 文＝複数行のため）。本設定はドライバのバッチ書き換え全般に効く一般的な最適化であり、
+      # fan-out 改修に固有の前提ではない。
+      # URL ではなく data-source-properties に置くことで、URL を環境変数で与える本番/検証を含む全プロファイルに効かせる。
+      data-source-properties:
+        rewriteBatchedStatements: true
+
+  # JPA / Hibernate（共通設定。環境依存は各プロファイルで上書き）
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        # 規模対応 Tier2（(B) 組織→参加チーム配信 案C フェーズA）:
+        # saveAll() を 1 ステートメントあたり複数行の INSERT にまとめ、組織配下展開で
+        # 出欠レコードが数千〜数万件に膨らんでも DB round-trip を抑制する。
+        jdbc:
+          batch_size: 50
+          # DB へ書き込む時刻の基準タイムゾーン（Issue #2486）。全プロファイル共通で UTC に統一する。
+          #
+          # なぜ必要か:
+          #   JVM 既定 TZ は TimeZoneConfig が Asia/Tokyo に強制しており、Entity の @PrePersist は
+          #   素の LocalDateTime.now()（= JST 壁時計）で時刻を採る。この LocalDateTime が DB に
+          #   「どの壁時計として」書かれるかを決めるのがこの設定である。指定があると Hibernate は
+          #   setTimestamp(i, ts, Calendar.getInstance(UTC)) を使い、格納値は UTC 壁時計になる
+          #   （アプリ側の LocalDateTime は JST 壁時計のままで、Hibernate 経由の往復は無損失）。
+          #   未指定だと接続既定（= JST）で書かれ、格納値が JST 壁時計になる。
+          #
+          # なぜ共有側に置くか:
+          #   是正前はこの指定が test プロファイル（src/test/resources/application-test.yml）にしか
+          #   存在せず、test=UTC / local・ci=JST / prod=UTC（terraform の serverTimezone=UTC ＋
+          #   RDS time_zone=UTC）と基準が三者三様に割れていた。DB を直接読む生 SQL
+          #   （CONVERT_TZ / DATE() / 手動 INSERT のフィクスチャ）は必ずどこかの環境で 9 時間ずれる。
+          #   プロファイル個別に置くと新プロファイル追加時に再び取りこぼすため、共有側で一元宣言する。
+          #
+          # なぜ UTC を選び、なぜ今やるか:
+          #   prod 想定と test が既に UTC であり多数派かつ将来の正。加えて下の
+          #   mannschaft.audit.stored-zone-offset の既定 "+00:00" が UTC 格納を前提に置かれている。
+          #   格納基準の変更は既存全行の意味を変える侵襲的操作だが、本番環境が未構築で
+          #   再解釈すべき既存データがゼロの今なら変換マイグレーションなしで実施できる。
+          time_zone: UTC
+        order_inserts: true
+        order_updates: true
+
+  # Flyway
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    out-of-order: true
+
+  # spring-cloud-aws（F09.6 Phase 8a: SES 通知 SQS リスナー）
+  # SQS 自動構成はデフォルト無効。実 SQS を持つ prod / staging でのみ有効化する
+  # （local / test / openapi-gen で SqsAsyncClient の AWS 認証解決を起動時に試みないため）。
+  # region は SES と同一の ap-northeast-1 を既定とし、本番は環境変数で上書き可能。
+  cloud:
+    aws:
+      sqs:
+        enabled: ${MANNSCHAFT_SQS_ENABLED:false}
+      region:
+        static: ${AWS_REGION:ap-northeast-1}
+
+  # Jackson — ISO 8601 文字列で出力（.claudecode.md §20）
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+  # Pageable — ページサイズ上限設定（F19.1 Phase 4: 公開検索APIの巨大リクエスト防止）
+  # size=100000 などのリクエストを自動的に max-page-size の 100 件に丸める
+  data:
+    # Valkey 障害時はキャッシュ例外ハンドラへ速やかに移り、DB を正本として業務処理を継続する。
+    # 環境固有のネットワーク遅延がある場合は環境変数で上書きする。
+    redis:
+      connect-timeout: ${SPRING_DATA_REDIS_CONNECT_TIMEOUT:2s}
+      timeout: ${SPRING_DATA_REDIS_TIMEOUT:2s}
+    web:
+      pageable:
+        max-page-size: 100
+        default-page-size: 20
+
+  # i18n メッセージソース（F11.3）
+  messages:
+    basename: messages,ValidationMessages
+    encoding: UTF-8
+    fallback-to-system-locale: false
+    use-code-as-default-message: false
+
+# Server
+server:
+  port: 8080
+  # Spot インスタンス終了時・ローリングデプロイ時に処理中リクエストを完了させてから停止する
+  shutdown: graceful
+
+# JWT（アプリ固有設定。本番は環境変数で上書き）
+mannschaft:
+  # CORS / WebSocket ハンドシェイクで許可するオリジン（カンマ区切り）。
+  # CorsConfig / WebSocketConfig が ${mannschaft.allowed-origins} を参照する正準宣言。
+  # 未設定時は開発用デフォルト（localhost:3000 / localhost:8080）。本番は env で上書き。
+  # 設計書: docs/security/01_authorization_baseline.md §5 / docs/security/03_security_headers_and_csp.md §6
+  allowed-origins: ${MANNSCHAFT_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080}
+  # CMP-261012-0910: 永続 enum EMAIL（two_factor_auth.method='EMAIL'）の書込み門番。
+  # false の間はメール方式 2FA の設定開始・有効化を AUTH_082 で拒否する（EMAIL を書く経路はそこだけ）。
+  # 読取り側を全環境へ行き渡らせた後の第 2 段階で true にする（docs/architecture/persisted_enum_deployment.md）。
+  # ログイン時のメールOTP（TOTP 利用者の代替手段）・本人確認用メールOTP は本フラグの対象外。
+  auth:
+    mfa:
+      email-method-enabled: ${MANNSCHAFT_AUTH_MFA_EMAIL_METHOD_ENABLED:false}
+  # F20.3 ベータ特典: 現在のベータ段階（1〜4）。/me の充足状況評価・自動付与バッチ（Phase 2）の対象フェーズ。
+  # デプロイ設定変更で切り替える（頻度が低くマスタ表に持つ価値なし・設計書 F20.3 02 §3/§6）。
+  beta:
+    current-phase: ${MANNSCHAFT_BETA_CURRENT_PHASE:1}
+    # F20.3 Phase2: 活動実績ゲートによる個人特典の自動付与バッチの有効化フラグ（設計書 F20.3 03 §6）。
+    # 既定 false = バッチは no-op（本番はマスター御裁可を経るまで false 不変）。有効化は本番環境変数
+    # MANNSCHAFT_BETA_AUTO_GRANT_ENABLED=true（relaxed binding）で明示切替する。
+    auto-grant:
+      enabled: ${MANNSCHAFT_BETA_AUTO_GRANT_ENABLED:false}
+  # F01.2.1 チーム加盟（docs/features/F01.2.1_org_team_groups.md §4.1・§6.8）。
+  # pending-ttl-days: 申請・招待（PENDING）に応答が無いまま、この日数を過ぎると夜間バッチ team-org-pending-expiry（03:10 JST）が
+  # 消して起こした側へ通知する（チームの同時申請枠を埋め続けないため）。申請画面の期限表示（expiresAt）も同じ値を使う。
+  affiliation:
+    pending-ttl-days: ${MANNSCHAFT_AFFILIATION_PENDING_TTL_DAYS:60}
+  # F20.3 activeDays 集計（LoginActivityQueryService / AuditLogRepository）専用。
+  # audit_logs.created_at が「どの TZ の壁時計として格納されているか」を表す前提値（CONVERT_TZ の変換元）。
+  # 格納基準は spring.jpa.properties.hibernate.jdbc.time_zone と JVM 既定 TZ に依存する。
+  # Issue #2486 でこの指定を共有 application.yml へ引き上げ、全プロファイルで UTC に統一済み
+  # （以前は test プロファイルにのみ指定があり、local / ci は JST 格納で基準が割れていた）。
+  # したがって既定 "+00:00"（UTC）が全環境で正しい前提値となる。UTC 統一は番人テスト
+  # TimeZoneStorageBasisGuardTest が機械的に固定しているため、この既定を動かす場合は
+  # 格納基準そのものを変える意思決定とセットで行うこと（片方だけ動かすと activeDays 集計が日単位でずれる）。
+  audit:
+    stored-zone-offset: ${MANNSCHAFT_AUDIT_STORED_ZONE_OFFSET:+00:00}
+  # インメモリキャッシュ（UserTimezoneCache / UserLocaleCache）の常駐エントリ数の上限。
+  # Issue #2487 項目 1: 旧実装は素の ConcurrentHashMap で件数上限も期限切れ回収も無く、
+  # 「これまでに一度でも見た全ユーザー数」に常駐メモリが単調増加していた。現在は
+  # BoundedTtlCache（件数上限つき LRU ＋ 参照時の期限切れ回収）で頭打ちにしている。
+  # 既定 50,000 の根拠: 1 エントリ約 200B（Long キー＋短い文字列＋失効時刻＋LinkedHashMap ノード）で
+  # 約 10MB。ベータ第 4 段階の想定規模（1 万人）とリクエスト駆動の hot set を丸ごと収容できる。
+  # ベータ特典 自動付与バッチ（500 件 × 最大 200 ページ = 10 万人）は同一ユーザーを再訪しない
+  # ストリーミング走査のため、上限超過分が押し出されても再クエリは発生しない。
+  # 2 つのキャッシュは同一方式・同一既定値で揃える（片方だけ別挙動にしない）。
+  cache:
+    user-timezone:
+      max-entries: ${MANNSCHAFT_CACHE_USER_TIMEZONE_MAX_ENTRIES:50000}
+    user-locale:
+      max-entries: ${MANNSCHAFT_CACHE_USER_LOCALE_MAX_ENTRIES:50000}
+  # WebSocket 外部ブローカー化（Valkey Pub/Sub 中継）の feature flag（既定 OFF = 現行 SimpleBroker と完全同一挙動）。
+  # ON にすると relay 部品（Publisher/Subscriber/購読コンテナ）が Bean 生成され、ノード間でメッセージが fan-out される。
+  # 本番供給は terraform task definition の環境変数 MANNSCHAFT_WEBSOCKET_RELAY_ENABLED（relaxed binding）。
+  # 設計書: docs/architecture/websocket_external_broker_valkey.md §1.3
+  websocket:
+    relay:
+      enabled: ${MANNSCHAFT_WEBSOCKET_RELAY_ENABLED:false}
+  jwt:
+    secret: ${MANNSCHAFT_JWT_SECRET:dev-secret-key-change-in-production-minimum-256-bits-long}
+    access-token-expiration: ${MANNSCHAFT_JWT_ACCESS_EXPIRATION:900}
+    refresh-token-expiration: ${MANNSCHAFT_JWT_REFRESH_EXPIRATION:3456000}
+    # リフレッシュトークン ローテーションの grace window（秒）。
+    # 並行 refresh（2 タブ同時など）で旧トークンが revoke された直後の再提示を、
+    # この秒数以内なら「並行更新の負け側」として正規化し（リプレイ扱いにせず新トークンを発行）、
+    # 超過した後継有りトークンの再提示のみを真リプレイとして全セッション無効化する。
+    # 設計: docs/security/06_business_logic_and_abuse_prevention.md §7
+    refresh-rotation-grace-seconds: ${MANNSCHAFT_JWT_REFRESH_ROTATION_GRACE:60}
+  # 認証 Cookie の Secure 属性（HTTPS 通信時のみ送信）。
+  # ローカル開発（HTTP）はデフォルト false、本番は application-prod.yml で true。
+  # 設計書: docs/security/02_cookie_and_session.md §2 / §2.1
+  cookie:
+    secure: ${MANNSCHAFT_COOKIE_SECURE:false}
+  # F09.17 Phase 11-b 広告 unsubscribe / 開封ピクセル用 JWT 鍵。
+  # 未設定時は mannschaft.jwt.secret から HMAC-SHA256 派生鍵を生成する（dev / test 用）。
+  # 本番は専用の 256bit 以上のキーを必ず明示すること。
+  ad:
+    jwt:
+      unsubscribe-secret: ${MANNSCHAFT_AD_UNSUBSCRIBE_SECRET:}
+      open-pixel-secret: ${MANNSCHAFT_AD_OPEN_PIXEL_SECRET:}
+  # CMP-260901-1538 柱③-A: 組織・チーム名称の同名確認フロー用 fingerprint 署名鍵。
+  # 未設定時は mannschaft.jwt.secret をそのまま使う（DuplicateNameFingerprintServiceImpl）。
+  # 本番は専用の 256bit 以上のキーを必ず明示すること。
+  duplicate-name:
+    fingerprint-secret: ${MANNSCHAFT_DUPLICATE_NAME_FINGERPRINT_SECRET:}
+  encryption:
+    key: ${MANNSCHAFT_ENCRYPTION_KEY:}
+    hmac-key: ${MANNSCHAFT_HMAC_KEY:}
+  # F12.1 §5.14 / F09.15 §9.4 — 内部 PDF 署名トークン用秘密鍵（v1 簡易方式 HMAC-SHA256）
+  # 本番は MANNSCHAFT_INTERNAL_SIGNING_KEY を必ず設定（256bit 以上推奨）。
+  # 未設定でも起動自体は成功するが、誓約 PDF 生成 / 検証時に PDF_007 例外で fail-fast する。
+  security:
+    internal-signing-key: ${MANNSCHAFT_INTERNAL_SIGNING_KEY:}
+  storage:
+    bucket: ${MANNSCHAFT_R2_BUCKET:mannschaft-storage}
+    endpoint: ${MANNSCHAFT_R2_ENDPOINT:}        # https://{accountId}.r2.cloudflarestorage.com
+    access-key: ${MANNSCHAFT_R2_ACCESS_KEY:}
+    secret-key: ${MANNSCHAFT_R2_SECRET_KEY:}
+    presigned-upload-ttl: ${MANNSCHAFT_R2_UPLOAD_TTL:600}
+    presigned-download-ttl: ${MANNSCHAFT_R2_DOWNLOAD_TTL:3600}
+    # F08.12 §9.3: 領収書 PDF 原本の不変性担保手段。receipt_pdf_archives.retention_backend に写る。
+    # local: ローカル/CI（保持ルールなし。§9.4 御裁可済み） / r2-bucket-lock: 本番（§9.3.1 手動設定後）
+    # / s3-object-lock: storage.provider=s3 を使う場合
+    archive:
+      backend: ${MANNSCHAFT_STORAGE_ARCHIVE_BACKEND:local}
+  cdn:
+    workers-domain: ${MANNSCHAFT_CDN_WORKERS_DOMAIN:}  # 例: cdn.example.workers.dev
+    enabled: ${MANNSCHAFT_CDN_ENABLED:false}
+  ses:
+    region: ${MANNSCHAFT_SES_REGION:ap-northeast-1}
+    endpoint: ${MANNSCHAFT_SES_ENDPOINT:}
+    # F09.6 Phase 8a: SES バウンス/苦情/開封通知の SQS 受信キュー名。
+    # SES → SNS Topic → SQS Queue → SesNotificationSqsListener の入口（HTTP webhook 廃止）。
+    # 設定時のみ @ConditionalOnProperty でリスナー Bean を登録する。
+    # local / test / openapi-gen は未設定（空）のためリスナーは起動しない（実 SQS への接続を試みない）。
+    # prod / staging は環境変数 SES_NOTIFICATION_QUEUE_NAME を必ず供給すること（terraform が出力する SQS 名）。
+    sqs:
+      queue-name: ${SES_NOTIFICATION_QUEUE_NAME:}
+  email:
+    from-address: ${MANNSCHAFT_EMAIL_FROM:noreply@mannschaft.app}
+    # F09.18: メール送信 simulate モード。true のとき実 SES を呼ばずログ出力のみ行う。
+    # - test / CI は application-test.yml / application-ci.yml で true に設定済み。
+    # - local 開発者は application-local.yml（gitignore 対象）に simulate: true を追記すること。
+    # - SQS リスナー側の @ConditionalOnProperty(queue-name) と対称的な設計。
+    # - 本番（prod/staging）は false のまま（環境変数 MANNSCHAFT_EMAIL_SIMULATE=false）。
+    simulate: ${MANNSCHAFT_EMAIL_SIMULATE:false}
+  # F09.18 メール配信基盤 (Phase 18-a で導入)
+  # 設計書: docs/features/F09.18_email_delivery_infrastructure.md §4 / §10 / §14
+  # - worker.enabled: EmailOutboxWorker の @Scheduled 起動フラグ（test/openapi-gen で false 推奨）
+  # - worker.poll-interval-ms: ポーリング間隔（既定 10s）
+  # - worker.batch-size: 1 ティックあたりの processable 行取得上限
+  # - worker.lock-at-most-for: ShedLock の最大保持時間（emailOutboxWorker ロック名）
+  # - worker.lock-at-least-for: ShedLock の最小保持時間（短いタスクの過剰再取得を防ぐ）
+  # - backoff.max-retry: SES 一時失敗時の最大リトライ回数（5 = 計 6 回試行）
+  # - backoff.delays-seconds: retry_count=0..5 の遅延秒数（10s / 30s / 2m / 10m / 30m / 2h）
+  # - stuck-recovery.cron: SENDING 残骸（pod 落ち等）を SENT_PENDING 戻しする復旧バッチ cron
+  # - stuck-recovery.threshold-minutes: SENDING 状態がこの分数を超えたら復旧対象
+  email-outbox:
+    worker:
+      enabled: ${MANNSCHAFT_EMAIL_OUTBOX_WORKER_ENABLED:true}
+      poll-interval-ms: 10000
+      batch-size: 50
+      lock-at-most-for: PT2M
+      lock-at-least-for: PT5S
+    backoff:
+      max-retry: 5
+      delays-seconds: "10,30,120,600,1800,7200"  # retry_count=0..5 の遅延
+    stuck-recovery:
+      cron: "0 0 * * * *"  # 毎時
+      threshold-minutes: 5
+  webauthn:
+    rp-id: ${MANNSCHAFT_WEBAUTHN_RP_ID:mannschaft.app}
+    origin: ${MANNSCHAFT_WEBAUTHN_ORIGIN:https://mannschaft.app}
+  google:
+    client-id: ${MANNSCHAFT_GOOGLE_CLIENT_ID:}
+    client-secret: ${MANNSCHAFT_GOOGLE_CLIENT_SECRET:}
+    token-uri: https://oauth2.googleapis.com/token
+    revoke-uri: https://oauth2.googleapis.com/revoke
+    calendar-api-base: https://www.googleapis.com/calendar/v3
+    userinfo-uri: https://www.googleapis.com/oauth2/v3/userinfo
+    redirect-uri: ${MANNSCHAFT_GOOGLE_REDIRECT_URI:https://app.mannschaft.com/auth/oauth/callback/google}
+    link-redirect-uri: ${MANNSCHAFT_GOOGLE_LINK_REDIRECT_URI:http://localhost:8080/api/v1/auth/oauth/link/GOOGLE/callback}
+    places-api-key: ${MANNSCHAFT_GOOGLE_PLACES_API_KEY:}
+    places-api-base: https://places.googleapis.com/v1
+  line:
+    client-id: ${MANNSCHAFT_LINE_CLIENT_ID:}
+    client-secret: ${MANNSCHAFT_LINE_CLIENT_SECRET:}
+    token-uri: https://api.line.me/oauth2/v2.1/token
+    profile-uri: https://api.line.me/v2/profile
+    redirect-uri: ${MANNSCHAFT_LINE_REDIRECT_URI:https://app.mannschaft.com/auth/oauth/callback/line}
+    # F09.4 §6: Webhook 署名検証（X-Line-Signature / channel secret の HMAC-SHA256）の段階導入フラグ。
+    # off=検証なし / log-only=不一致でも処理継続しWARNログのみ / enforce=不一致なら処理スキップ（200返却）。
+    # 移行期間中の既定は log-only。本番で失敗率を観測してから enforce へ昇格する。
+    signature-verify:
+      mode: ${MANNSCHAFT_LINE_SIGNATURE_VERIFY_MODE:log-only}
+  apple:
+    client-id: ${MANNSCHAFT_APPLE_CLIENT_ID:}
+    client-secret: ${MANNSCHAFT_APPLE_CLIENT_SECRET:}
+    token-uri: https://appleid.apple.com/auth/token
+    redirect-uri: ${MANNSCHAFT_APPLE_REDIRECT_URI:https://app.mannschaft.com/auth/oauth/callback/apple}
+  stripe:
+    secret-key: ${MANNSCHAFT_STRIPE_SECRET_KEY:}
+    # F08.2 platform Webhook 署名シークレット
+    webhook-secret: ${MANNSCHAFT_STRIPE_WEBHOOK_SECRET:}
+    # F22.1 Connect Webhook 署名シークレット（platform 用と分離・設計書 03 §2）
+    connect-webhook-secret: ${STRIPE_CONNECT_WEBHOOK_SECRET:}
+    connect:
+      return-url: ${MANNSCHAFT_STRIPE_CONNECT_RETURN_URL:https://app.mannschaft.com/settings/stripe/return}
+      refresh-url: ${MANNSCHAFT_STRIPE_CONNECT_REFRESH_URL:https://app.mannschaft.com/settings/stripe/refresh}
+  # PR4 Billing Center: Stripe からの復帰 state（HMAC 署名）の鍵。
+  # 本番は MANNSCHAFT_BILLING_RETURN_SIGNING_SECRET を必ず設定（UTF-8 で 32 bytes 以上）。
+  # 未設定なら起動時 ERROR ログを出し、復帰 URL 発行は fail-closed で拒否される
+  # （鍵が無いまま署名してしまうことは無い）。鍵ローテーション時は新鍵を末尾に足し、
+  # 旧鍵は active: false のまま残して検証だけ継続させる。
+  billing:
+    return-state:
+      signing-keys:
+        - kid: ${MANNSCHAFT_BILLING_RETURN_SIGNING_KID:v1}
+          secret: ${MANNSCHAFT_BILLING_RETURN_SIGNING_SECRET:}
+          active: true
+  # F04.3: VAPID鍵ペア（PWA Push VAPID署名）
+  vapid:
+    public-key: ${VAPID_PUBLIC_KEY:}
+    private-key: ${VAPID_PRIVATE_KEY:}
+  # F13.1 Phase 13.1.2: QR チェックイン／アウト トークン署名設定（設計書 §2.3.1 / §10.10）
+  # 本番は JOB_QR_SIGNING_SECRET を必ず設定（256bit 以上）。未設定だと起動失敗。
+  jobs:
+    qr:
+      ttl-seconds: 60
+      ttl-seconds-max: 300
+      rotation-advance-seconds: 5
+      short-code-length: 6
+      signing-keys:
+        - kid: ${JOB_QR_SIGNING_KID:v1}
+          secret: ${JOB_QR_SIGNING_SECRET:}
+          active: true
+
+# F10.5 Phase 10-α: Spring Boot Actuator + Micrometer 計測軸の整備
+# - 共通プロファイルでは健診系 + メトリクス系を広めに公開する
+# - prod では application-prod.yml で `health` のみに絞り、内部 NW 経由で別途有効化する運用
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,caches,threaddump,loggers
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: mannschaft
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5,0.95,0.99
+      slo:
+        http.server.requests: 100ms,500ms,1s,2s
+  # F10.5 Phase 10-α 検分指摘 ④ 根治: PrometheusMeterRegistry の登録を全環境で明示する。
+  # 既定で true だが Spring Boot バージョン違いの auto-config 挙動に依存しないよう明示化。
+  # ※ registry を有効にしても endpoint 公開は management.endpoints.web.exposure.include で
+  #   別途制御する（prod では `health` のみに絞る運用を維持）。
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  # F10.5 Phase 10-β: 分散トレーシング（Micrometer Tracing + OpenTelemetry OTLP）
+  # - sampling.probability: 本番は 10% サンプリング（全件取得はコスト高）
+  # - otlp.tracing.endpoint: OTEL_EXPORTER_OTLP_ENDPOINT 環境変数で上書き可能。
+  #   ローカルは application-local.yml で Jaeger に送信（docker-compose --profile observability）
+  #   本番は OTEL_EXPORTER_OTLP_ENDPOINT を設定した Collector/Tempo エンドポイントに差し替え。
+  tracing:
+    sampling:
+      probability: 0.1
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+
+# 備品ランキング集計バッチ設定（F09.12）
+equipment:
+  ranking:
+    cron: "0 0 3 * * *"
+    min-team-count: 5
+    score-weight-team: 3.0
+    score-weight-consume: 1.0
+    top-n-per-category: 20
+
+# F08.7 シフト予算機能フィーチャーフラグ (Phase 9-α / 9-δ / 10-β)
+# default false（本番含むすべての環境で OFF）。
+# 有効化したい環境では application-{profile}.yml で feature.shift-budget.enabled=true を設定。
+# 設計書 §13: 三値論理（グローバル × 組織別）は Phase 9-δ で完成済。
+# monthly-close-cron-enabled: 月次締めバッチの自動起動有無 (Phase 9-δ / 御裁可 Q4)。
+#   デフォルト false。手動 API #11 でのみ運用したい環境では false 維持。
+# retry-batch-enabled: 失敗イベントリトライバッチ (Phase 10-β) の自動起動有無。
+#   デフォルト false。15分毎に PENDING/RETRYING を再実行。3回失敗で EXHAUSTED 化。
+feature:
+  shift-budget:
+    enabled: false
+    monthly-close-cron-enabled: false
+    retry-batch-enabled: false
+  # F00 Phase D-γ/D-δ: Visibility Resolver 段階展開フラグ
+  # false = 無効（Bean 未登録、ContentVisibilityChecker は fail-closed で処理）
+  # true  = 有効（各 Resolver が登録され可視性評価が機能する）
+  # 有効化したい環境では application-{profile}.yml で true を設定すること。
+  visibility-resolver:
+    team: true   # F00 Phase E-6: ContentVisibilityChecker 経由化で有効化
+    organization: true   # F00 Phase E-7: ContentVisibilityChecker 経由化で有効化
+  # F00.5 メンバーシップ基盤再設計
+  # dualWrite.enabled: Phase 4 完了で false に変更済み（二重書き込みコード自体は Phase 4 で物理削除）
+  # shadowComparison.enabled: GET /teams/{id}/members の旧実装と新実装を Shadow 比較する
+  #   default false。Phase 2 リリース後、Staging で true に切り替えて diff 観測する
+  # 設計書: docs/features/F00.5_membership_basis.md §13.4 / §14.6
+  f005:
+    dualWrite:
+      enabled: false   # Phase 4 完了
+    shadowComparison:
+      enabled: false
+
+# F03.12 ケア対象者2段階不在アラートバッチ設定
+care:
+  absent-alert:
+    enabled: true
+  # F03.12 §16 イベント終了後解散通知リマインドバッチ設定
+  dismissal-reminder:
+    enabled: true
+
+# F12.5 Phase 2-C/D エラーレポート AI 分析 / GitHub 連携設定
+# 設計書: docs/features/F12.5_frontend_error_tracking.md §12-§13
+mannschaft.error-report:
+  ai:
+    enabled: ${ERROR_REPORT_AI_ENABLED:true}
+    model: ${ERROR_REPORT_AI_MODEL:claude-haiku-4-5}
+    max-tokens: 1500
+    temperature: 0.2
+    monthly-budget-jpy: ${ERROR_REPORT_AI_BUDGET_JPY:5000}
+    auto-batch-delay-minutes: 30
+    # コスト青天井ガード（AC-11/12/13）— Claude API 呼び出しのタイムアウト/リトライ
+    # timeout-ms 既定 5 秒。5xx/タイムアウトは最大 retry-max-attempts 回・指数バックオフでリトライし、
+    # 4xx（400/401/403）は即時非リトライ。
+    timeout-ms: ${ERROR_REPORT_AI_TIMEOUT_MS:5000}
+    retry-max-attempts: ${ERROR_REPORT_AI_RETRY_MAX_ATTEMPTS:3}
+    retry-backoff-delay-ms: ${ERROR_REPORT_AI_RETRY_BACKOFF_MS:200}
+  github:
+    # GH_TOKEN / GH_OWNER / GH_REPO は環境変数から直接 @Value で注入される
+    enabled: ${ERROR_REPORT_GITHUB_ENABLED:false}
+
+# タイムラインダイジェスト AI 生成 — Claude API コスト青天井ガード（AC-11/12/13）
+# 月次上限 monthly-limit-per-scope（既定30回/スコープ）でコストは守られているため、
+# ここでは timeout/retry のみ追加（既存の AI モデル設定は DigestProperties 既定値を踏襲）。
+mannschaft.digest:
+  timeout-ms: ${DIGEST_AI_TIMEOUT_MS:5000}
+  retry-max-attempts: ${DIGEST_AI_RETRY_MAX_ATTEMPTS:3}
+  retry-backoff-delay-ms: ${DIGEST_AI_RETRY_BACKOFF_MS:200}
+
+# 障害告知バナー 自動翻訳 — Claude API コスト青天井ガード（AC-11/12/13）
+# 翻訳はシスアド手動公開時のみの低頻度・短文のため、タイムアウトを設ける
+# （リトライは @Retryable で 5xx/timeout 最大3回、4xx 非リトライ。失敗時は原文フォールバック）。
+mannschaft.incident-banner:
+  translation:
+    timeout-ms: ${INCIDENT_BANNER_TRANSLATION_TIMEOUT_MS:5000}
+
+# F12.5 Phase 2-D — GitHub Issue 本文の「内部管理画面」リンクの基底 URL
+# ※ mannschaft.app-base-url は廃止。app.base-url に統一済み（2026-06-11）。
+
+# F10.5 Phase 10-β — パフォーマンス監視のアラート閾値
+# 設計書: docs/features/F10.5_performance_monitoring.md §5.2.3
+# - request.error-ms 超過時に RequestLoggingFilter から
+#   ErrorReportNotifier.notifySlowRequest + ErrorReportService.recordBackendException(HIGH) を呼ぶ
+# - slow-query / cache-hit-rate は Phase 10-β 段階では値の保持のみ（集計バッチは Phase 10-γ）
+mannschaft.performance-monitoring:
+  request:
+    warn-ms: ${MANNSCHAFT_PERF_REQUEST_WARN_MS:2000}
+    error-ms: ${MANNSCHAFT_PERF_REQUEST_ERROR_MS:10000}
+  slow-query:
+    warn-per-minute: ${MANNSCHAFT_PERF_SLOW_QUERY_WARN_PER_MIN:5}
+    error-per-minute: ${MANNSCHAFT_PERF_SLOW_QUERY_ERROR_PER_MIN:30}
+  cache-hit-rate:
+    warn-threshold: ${MANNSCHAFT_PERF_CACHE_HIT_WARN:0.80}
+    error-threshold: ${MANNSCHAFT_PERF_CACHE_HIT_ERROR:0.50}
+
+# F10.5 Phase 10-β-2 / F10.6 §5.4 / §5.6 — エラー監視のヘルスポーリングと集約バッファ
+# 設計書: docs/features/F10.5_performance_monitoring.md §5.4 / docs/features/F10.6_error_monitoring.md §5.4 / §5.6
+# - aggregation: 同一 error_hash の 2 通目以降を 5 分間蓄積し、まとめて 1 通の Slack サマリで送信する
+# - aggregation.max-occurrences-per-hash: 1 entry あたりの上限（OOM 防止、殿様御裁可で 100）
+# - health-polling: Spring Boot Actuator HealthEndpoint を 30 秒毎にポーリングし、UP→DOWN 遷移を検知して通知
+mannschaft.error-monitoring:
+  aggregation:
+    enabled: ${MANNSCHAFT_ERROR_AGG_ENABLED:true}
+    flush-interval-ms: ${MANNSCHAFT_ERROR_AGG_FLUSH_MS:300000}
+    max-occurrences-per-hash: ${MANNSCHAFT_ERROR_AGG_MAX_PER_HASH:100}
+  health-polling:
+    enabled: ${MANNSCHAFT_HEALTH_POLL_ENABLED:true}
+    interval-ms: ${MANNSCHAFT_HEALTH_POLL_INTERVAL_MS:30000}
+
+# F10.6 Phase 10-γ-③-a — システムログ（スロークエリ・SSR エラー）R2 保存設定
+# - slow-query-log-path: Spring Boot コンテナからスロークエリログを読むパス
+# - slow-query-cron: スロークエリログアップロードバッチの cron スケジュール（デフォルト: 毎日 1:00 AM）
+# - ssr-flush-interval-ms: SSR エラーバッファのフラッシュ間隔（デフォルト: 5 分）
+# - internal-token: /api/internal/ssr-logs エンドポイントの内部認証トークン（本番は必ず変更）
+mannschaft.system-log:
+  slow-query-log-path: ${SLOW_QUERY_LOG_PATH:./logs/mysql-slow/mannschaft-slow.log}
+  slow-query-cron: "0 0 1 * * *"
+  ssr-flush-interval-ms: 300000
+  internal-token: ${INTERNAL_LOG_TOKEN:dev-internal-token}
+
+# Phase 4-D — リードレプリカ自動ルーティング設定
+# app.datasource.replica.enabled=true のとき DataSourceConfig が有効化される。
+# デフォルト false のため既存テストへの影響はゼロ。
+# 本番でリードレプリカを有効化する場合は環境変数 DB_REPLICA_URL / DB_REPLICA_USER / DB_REPLICA_PASSWORD を設定し、
+# application-prod.yml（または環境変数）で app.datasource.replica.enabled=true に変更すること。
+app:
+  # 全サービスで共通利用するベース URL（正準プロパティ: app.base-url / 環境変数: APP_BASE_URL）。
+  # sitemap.xml・各種メールリンク・webcal URL 等、フロントエンド / iCal 系の URL 組み立てに使用する。
+  # 本番環境では環境変数 APP_BASE_URL を必ず設定すること（設定なしは起動失敗: application-prod.yml 参照）。
+  # ⚠️ APP_BASE_URL は末尾スラッシュなしで設定すること（例: https://app.mannschaft.com）。
+  #    URL 連結側が "/" を先頭に付加するため、末尾スラッシュがあると "//" の二重スラッシュになる。
+  # 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §9.2 / §9.3
+  # 以前は mannschaft.email.frontend-url / mannschaft.app-base-url / app.frontend-url と
+  # 分散していたものをこの 1 プロパティに統一した（2026-06-11 本番移行前修正）。
+  base-url: ${APP_BASE_URL:http://localhost:3000}
+  datasource:
+    replica:
+      enabled: false
+      # jdbc-url: ${DB_REPLICA_URL:${spring.datasource.url}}
+      # username: ${DB_REPLICA_USER:${spring.datasource.username}}
+      # password: ${DB_REPLICA_PASSWORD:${spring.datasource.password}}
+  archive:
+    db:
+      enabled: false  # 本番で ARCHIVE_DB_URL 設定時に true にする
+      # jdbc-url: ${ARCHIVE_DB_URL:}
+      # username: ${ARCHIVE_DB_USER:}
+      # password: ${ARCHIVE_DB_PASSWORD:}
+      # hikari:
+      #   maximum-pool-size: 5
+      #   read-only: true
+  # セキュリティスキャン状態ウィジェット — GitHub Actions API プロキシ設定
+  # OWASP Dependency-Check の週次スキャン（security-scan.yml）の最新実行状態を
+  # システム管理画面に表示するために使用する。
+  # - owner: GitHub リポジトリのオーナー
+  # - repo: GitHub リポジトリ名
+  # - token: GitHub Personal Access Token（空文字で公開リポジトリは匿名アクセス可）
+  #   ※ public リポジトリでも API rate limit（60 req/h 未認証）に注意。
+  #   ※ 本番では GitHub PAT を環境変数 GITHUB_API_TOKEN で設定すること。
+  github:
+    owner: ${GITHUB_REPO_OWNER:kenta-0420}
+    repo: ${GITHUB_REPO_NAME:mannschaft}
+    token: ${GITHUB_API_TOKEN:}
+
+# F02.10 天気ウィジェット — WeatherAPI.com クライアント + 座標導出・GeoNames 取り込み設定
+# 設計書: docs/features/F02.10_weather_widget.md §3 / §7.3 / §7.3.1 / §8 / §10.3
+# - base-url は SSRF 対策のためここで固定値として記述する（環境変数で上書きしない）
+# - api-key は環境変数 WEATHER_API_KEY から注入する（リポジトリにコミットしない）
+# - timeout-ms は WeatherAPI.com 応答タイムアウト（既定 3 秒、超過時はリトライ対象）
+# - cache-ttl-seconds は通常 TTL（1 時間）、stale-ttl-seconds は障害時延命 TTL（6 時間）
+# - geonames.download-url: allCountries.zip の取得 URL（テスト環境では WireMock URL に差し替え）
+# - geonames.cron: 月次取り込みの cron 式（デフォルト: 毎月 5 日 02:00 UTC）
+# - bootstrap.chunk-size: 既存ユーザー初回導出ジョブの 1 ページあたり件数
+weather:
+  api:
+    base-url: https://api.weatherapi.com/v1
+    api-key: ${WEATHER_API_KEY:}
+    timeout-ms: 3000
+    cache-ttl-seconds: 3600
+    stale-ttl-seconds: 21600
+  location:
+    geonames:
+      download-url: ${GEONAMES_DOWNLOAD_URL:https://download.geonames.org/export/zip/allCountries.zip}
+      cron: ${GEONAMES_IMPORT_CRON:0 0 2 5 * ?}
+    bootstrap:
+      chunk-size: ${WEATHER_BOOTSTRAP_CHUNK_SIZE:1000}
+
+# F10.6 Phase 10-γ-② — MySQL DB サイズ監視設定
+# 設計書: docs/features/F10.6_error_monitoring.md §5.7
+# - MySQL データディレクトリは Docker 名前付きボリューム (mysql-data) でマウントされており
+#   ホスト側から java.io.File で参照できないため、JDBC 経由で information_schema から
+#   DB データサイズを取得する方式（方式 B）を採用する
+# - max-gb: MySQL DB の上限容量 (GB)。環境変数 MYSQL_MAX_SIZE_GB で上書き可能
+# - warn-threshold: 使用率がこの値以上で Health.unknown() (WARN) を返す
+# - error-threshold: 使用率がこの値以上で Health.down() (CRITICAL) を返す
+# - HealthStatusListener が 30 秒毎にポーリングし DOWN 遷移を Slack 通知する（追加設定不要）
+mannschaft.disk-monitor:
+  max-gb: ${MYSQL_MAX_SIZE_GB:10.0}
+  warn-threshold: 0.75
+  error-threshold: 0.90
+
+# F18 Phase 5 — fuzzy match Levenshtein 拡張設定
+# 設計書: docs/features/F18_point_card_wallet.md §16
+# - enabled: Levenshtein 距離による fuzzy match の有効化フラグ
+#   true  = synonym 完全一致で見つからなかった場合に Levenshtein マッチを追加で試行
+#   false = 従来通り synonym 完全一致のみで判定
+# - max-distance: 編集距離の上限。1 = タイポ吸収のみ、2 以上で誤マッチ増加（既定 1）
+# - min-input-length: この文字数未満の入力は Levenshtein 対象外（誤マッチ防止、既定 5）
+#
+# F18 SELF_ISSUED_BALANCE 凍結フラグ（2026-05-17 マスター御裁可）
+# 資金決済法（前払式支払手段＝自家型）に該当するため、法務整備が整うまで一時凍結する。
+# 設計書 §1.4 / §16 / §17 参照。
+# - balance.enabled=false（既定 false）: 残高型 CHARGE/SPENT/REFUND API を入口で 503 拒否
+#     し、フロントの 3 タブ（チャージ・利用・返金）も非表示にする。
+#     残高型カードの既存履歴閲覧（listOrgEvents / listCardEvents）は維持する。
+#     SELF_ISSUED_STAMP（押印型）と EXTERNAL（他社カード再描画）は凍結対象外で無傷。
+# - 再開判断基準（§16 / §17 参照）:
+#     1) 利用 organization 数の規模顕在化（全国 1 万件超等）
+#     2) 法律事務所（西村あさひ・森・濱田松本・TMI・GVA 等の金融規制チーム）意見書取得
+#     3) 6 ヶ月有効期限ガード / 1000 万円アラート / 基準日集計 / REFUND 限定ロジック実装
+#     4) 規約改訂（発行体明示・払戻しポリシー・有効期限）+ 弁護士レビュー
+#     5) 利用 organization への届出義務 onboarding 教育コンテンツ整備
+# 既存テストが残高 API を呼ぶケースに備え、Service の @Value 既定値は true としつつ
+# 本番 application.yml では false 固定で凍結状態を保証する。
+f18:
+  fuzzy-match:
+    levenshtein:
+      enabled: true
+      max-distance: 1
+      min-input-length: 5
+  balance:
+    enabled: false
+
+# F18 Phase 5 P5-S4 — provider_id IS NULL カードの夜間再マッチバッチ設定。
+# 設計書: docs/features/F18_point_card_wallet.md §15 Phase 5 / §16
+# - enabled: バッチ Bean 登録フラグ（local 環境では false 推奨、本番は true）
+# - cron: 起動時刻（Asia/Tokyo タイムゾーン）。F15.4 teams.member_count 集計（02:00）と
+#   被らない 03:00 を採用
+# - chunk-size: 1 チャンクで処理するカード数（メモリ圧迫回避 + REQUIRES_NEW 1 トランザクション粒度）
+pointcard:
+  rematch-batch:
+    enabled: true
+    cron: "0 0 3 * * *"
+    chunk-size: 1000
+
+# F08.8 Phase 2: シミュレーション計算 Bulkhead 設定
+# simulation-pool: 同時 4 スレッドまで。超過リクエストは即座に 429 を返す（waitDuration=0）。
+# シミュレーション計算は CPU バウンドで重いため、デフォルト値より低く設定する。
+resilience4j:
+  bulkhead:
+    instances:
+      simulation-pool:
+        maxConcurrentCalls: 4
+        maxWaitDuration: 0
+

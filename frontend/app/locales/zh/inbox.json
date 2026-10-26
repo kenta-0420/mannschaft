@@ -1,0 +1,141 @@
+{
+  "inbox": {
+    "title": "收件箱",
+    "tab": {
+      "inbox": "收件箱",
+      "snoozed": "稍后处理",
+      "archived": "归档"
+    },
+    "priority": {
+      "urgent": "紧急",
+      "high": "重要",
+      "normal": "普通",
+      "low": "低"
+    },
+    "source": {
+      "notification": "通知",
+      "announcement": "公告",
+      "mention": "提及",
+      "confirmable": "待确认",
+      "todoDue": "待办到期"
+    },
+    "action": {
+      "snooze": "稍后处理",
+      "archive": "归档",
+      "unarchive": "移至收件箱",
+      "unsnooze": "取消延后",
+      "label": "标签",
+      "snoozed": "已延后处理",
+      "archived": "已移至归档",
+      "unarchived": "已移至收件箱",
+      "unsnoozed": "已取消延后",
+      "snoozeFailed": "延后处理失败",
+      "readFailed": "无法将通知标记为已读"
+    },
+    "snoozePreset": {
+      "in3h": "3小时后",
+      "tonight": "今晚（21:00）",
+      "tomorrowMorning": "明天早上（09:00）",
+      "nextWeek": "下周一（09:00）"
+    },
+    "empty": "没有消息",
+    "loadMore": "加载更多",
+    "filter": {
+      "priority": "优先级",
+      "source": "类型"
+    },
+    "snoozeTitle": "延后设置",
+    "summary": {
+      "inbox": "收件箱",
+      "snoozed": "稍后处理",
+      "archived": "归档"
+    },
+    "label": {
+      "title": "标签",
+      "create": "创建标签",
+      "edit": "编辑标签",
+      "delete": "删除标签",
+      "manage": "管理标签",
+      "nameLabel": "名称",
+      "namePlaceholder": "标签名称",
+      "colorLabel": "颜色",
+      "iconLabel": "图标（可选）",
+      "limitReached": "最多可创建20个标签",
+      "duplicate": "同名标签已存在",
+      "perItemLimit": "每条通知最多可附加10个标签",
+      "empty": "没有标签",
+      "filterTitle": "按标签筛选",
+      "assigned": "标签已附加",
+      "removed": "移除标签",
+      "created": "标签已创建",
+      "updated": "标签已更新",
+      "deleted": "标签已删除"
+    },
+    "bulk": {
+      "selectMode": "多选",
+      "exit": "退出选择",
+      "selected": "已选 {count} 条",
+      "archive": "归档",
+      "snooze": "稍后处理",
+      "addLabel": "添加标签",
+      "apply": "执行",
+      "result": "已处理 {processed} 条（跳过 {skipped} 条）",
+      "cancel": "取消"
+    },
+    "group": {
+      "badge": "+{n}条",
+      "badgeTitle": "此处聚合了 {n} 条通知"
+    },
+    "suggestion": {
+      "replyNeeded": "需要回复",
+      "actionNeeded": "需要处理",
+      "urgent": "紧急",
+      "readLater": "稍后阅读",
+      "apply": "添加",
+      "applyAria": "添加 {name} 标签"
+    },
+    "guide": {
+      "title": "收件箱使用指南",
+      "tabs": {
+        "title": "用标签页整理通知",
+        "body": "通过收件箱、已延后和归档三个标签页管理通知状态。每个标签页都会显示数量徽章。",
+        "step1": "在页面顶部的三个标签页中点击需要的标签页",
+        "step2": "“收件箱”显示未读和未处理的通知，“已延后”显示稍后查看的通知，“归档”显示已处理的通知",
+        "step3": "只需点击标签页即可切换显示"
+      },
+      "filter": {
+        "title": "按优先级和类型筛选",
+        "body": "可以按通知的优先级（紧急、高、普通、低）和类型（通知、公告、提及、必须确认、TODO截止）进行筛选，支持同时多选。",
+        "step1": "在“紧急度”部分点击需要的优先级（可多选）",
+        "step2": "在“类型”部分点击需要的类型（可多选）",
+        "step3": "筛选生效，仅显示符合条件的通知",
+        "step4": "再次点击同一个标签即可取消筛选"
+      },
+      "snooze": {
+        "title": "延后通知，稍后处理",
+        "body": "可以暂时隐藏无需立即处理的通知。只需从常用选项（3小时后、今晚、明早、下周）中选择即可完成设置。",
+        "step1": "点击通知项右侧的时钟图标（延后按钮）",
+        "step2": "选择显示的候选时间（3小时后、今晚21:00、明早9:00、下周一9:00）",
+        "step3": "通知会移至“已延后”标签页，并在指定时间自动返回收件箱",
+        "step4": "点击已延后通知的铃铛图标，可随时取消延后"
+      },
+      "label": {
+        "title": "用标签分类管理",
+        "body": "可以给通知添加标签来整理。也可以自己创建标签，并用颜色和图标自定义。最多可创建20个。",
+        "step1": "点击页面右上角的齿轮图标，打开标签管理面板",
+        "step2": "通过“创建标签”新建标签（设置名称、颜色和图标）",
+        "step3": "通过通知项右侧的标签图标添加已创建的标签",
+        "step4": "点击标签筛选按钮，即可只显示带有该标签的通知",
+        "step5": "每条通知最多可添加10个标签"
+      },
+      "bulk": {
+        "title": "批量处理多条通知",
+        "body": "可以选择多条通知，一次性延后、归档或添加标签。需要高效处理大量通知时非常方便。",
+        "step1": "点击页面右上角的复选框图标，开启选择模式",
+        "step2": "点击要处理的通知的复选框进行选择",
+        "step3": "在顶部显示的栏中选择操作（归档、延后、添加标签）",
+        "step4": "点击“取消”按钮或复选框图标，退出选择模式"
+      }
+    }
+  }
+}

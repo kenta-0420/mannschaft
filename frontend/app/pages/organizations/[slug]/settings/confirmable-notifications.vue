@@ -1,0 +1,65 @@
+<script setup lang="ts">
+/**
+ * F04.9 §CMP-260909-1141: 組織確認通知設定ページ。
+ *
+ * teams/[slug]/settings/confirmable-notifications.vue の組織版。
+ * 背景・移設理由はそちらの Javadoc コメントを参照。
+ */
+definePageMeta({ layout: 'organization', middleware: ['auth', 'confirmable-notification-guard'] })
+
+const { org } = useOrgShellContext()
+const scopeId = computed(() => org.value?.numericId ? String(org.value.numericId) : '')
+const groupsVersion = ref(0)
+const templatesVersion = ref(0)
+const route = useRoute()
+const circulationPath = computed(() => `/organizations/${String(route.params.slug)}/circulation`)
+
+const historyRef = ref<{ refresh: () => void } | null>(null)
+function onNotificationSent() {
+  historyRef.value?.refresh()
+}
+</script>
+
+<template>
+  <div class="mx-auto max-w-4xl p-4">
+    <PageHeader :title="$t('confirmable.page.settings_title')" />
+    <p class="-mt-3 mb-5 text-sm text-surface-500">
+      {{ $t('confirmable.page.settings_subtitle') }}
+    </p>
+    <ConfirmableCirculationGuide current-feature="quickConfirm" :target-path="circulationPath" />
+
+    <!-- 日常操作を先に、低頻度の設定を最後に表示する。 -->
+    <section class="mt-8">
+      <h2 class="mb-4 text-lg font-semibold">{{ $t('confirmable.send') }}</h2>
+      <ConfirmableNotificationSender
+        scope-type="ORGANIZATION"
+        :scope-id="scopeId"
+        :groups-version="groupsVersion + templatesVersion"
+        @sent="onNotificationSent"
+      />
+    </section>
+
+    <section class="mt-8">
+      <h2 class="mb-4 text-lg font-semibold">{{ $t('confirmable.history') }}</h2>
+      <ConfirmableNotificationHistory
+        ref="historyRef"
+        scope-type="ORGANIZATION"
+        :scope-id="scopeId"
+      />
+    </section>
+
+    <section class="mt-8">
+      <h2 class="mb-4 text-lg font-semibold">{{ $t('confirmable.recipient_groups') }}</h2>
+      <ConfirmableRecipientGroupManager scope-type="ORGANIZATION" :scope-id="scopeId" @changed="groupsVersion++" />
+    </section>
+
+    <section class="mt-8">
+      <ConfirmableTemplateManager scope-type="ORGANIZATION" :scope-id="scopeId" :groups-version="groupsVersion" @changed="templatesVersion++" />
+    </section>
+
+    <section class="mt-8">
+      <h2 class="mb-4 text-lg font-semibold">{{ $t('confirmable.settings') }}</h2>
+      <ConfirmableNotificationSettings scope-type="ORGANIZATION" :scope-id="scopeId" />
+    </section>
+  </div>
+</template>

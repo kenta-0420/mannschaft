@@ -1,0 +1,15 @@
+{
+  "userId": 990521,
+  "targetNotificationId": 3255966,
+  "listStatus": 200,
+  "targetInList": false,
+  "directStatus": 404,
+  "directBody": "{\"error\":{\"code\":\"COMMON_005\",\"message\":\"リソースが見つかりません\",\"fieldErrors\":[]}}",
+  "markReadStatus": 404,
+  "markReadBody": "{\"error\":{\"code\":\"NOTIFICATION_001\",\"message\":\"通知が見つかりません\",\"fieldErrors\":[]}}",
+  "listUi": "l\no\na\nd\ni\nn\ng",
+  "directUi": {
+    "url": "http://localhost:3003/notifications/3255966",
+    "body": "404\n\nPage not found: /notifications/3255966\n\nGo back home"
+  }
+}

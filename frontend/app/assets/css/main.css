@@ -1,0 +1,269 @@
+@import 'primeicons/primeicons.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * サイドバー化 Phase3: AppShell/AppHeader のヘッダー高さトークン。
+ * team.vue/organization.vue の sticky位置・calc(100vh - ...) 計算もこの値を参照する
+ * （Tailwind の任意値記法 `h-[var(--app-header-h)]` 経由）。値そのものは旧固定値 4rem(64px)
+ * のまま据え置き、見た目は1pxも変えない。
+ */
+:root {
+  --app-header-h: 4rem;
+
+  /*
+   * サイドバー化 Phase4: 意匠統一 — カード共通の柔らかい二重影トークン。
+   * デザイン正本（サイドバー移行プロトタイプ）の --shadow / --shadow-pop を
+   * ブランドの surface トークンに合わせて色相中立（黒基調の輝度差）に移植。
+   * SectionCard / DashboardWidgetCard など共通コンポーネントから
+   * shadow-[var(--shadow-card)] のように参照する。値そのものをここで変えるだけで
+   * 全画面のカードに波及する（個別ページのスタイル直書きは禁止）。
+   */
+  --shadow-card: 0 1px 2px rgb(30 41 36 / 0.05), 0 8px 20px -10px rgb(30 41 36 / 0.14);
+  --shadow-card-hover: 0 2px 6px rgb(30 41 36 / 0.07), 0 14px 28px -10px rgb(30 41 36 / 0.18);
+}
+
+.dark {
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35), 0 10px 24px -10px rgb(0 0 0 / 0.55);
+  --shadow-card-hover: 0 2px 6px rgb(0 0 0 / 0.4), 0 16px 32px -10px rgb(0 0 0 / 0.6);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Noto Sans JP', 'Yu Gothic UI', 'Meiryo UI', 'Hiragino Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* mobileでは共通部品の実操作領域を確保し、md以上の既存密度は維持する。 */
+@media screen and (max-width: 767px) {
+  .p-button.p-button,
+  .p-inputtext.p-inputtext,
+  .p-paginator button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .p-button.p-button {
+    max-width: 100%;
+  }
+
+  .p-button .p-button-label {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .p-paginator .p-paginator-content,
+  .p-paginator .p-paginator-pages {
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* 透明inputはroot全体、見た目のsliderとhandleは従来の40x24内に保つ。 */
+  .p-toggleswitch.p-toggleswitch {
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .p-toggleswitch .p-toggleswitch-slider {
+    position: relative;
+    inset: auto;
+    width: var(--p-toggleswitch-width);
+    height: var(--p-toggleswitch-height);
+    flex-shrink: 0;
+  }
+
+  /* 透明inputの角も操作領域に含め、sliderの丸い見た目は維持する。 */
+  .p-toggleswitch .p-toggleswitch-input {
+    border-radius: 0;
+  }
+
+  .p-toggleswitch .p-toggleswitch-handle {
+    margin-inline-start: calc(-1 * var(--p-toggleswitch-border-width));
+  }
+}
+
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.page-fade-enter-from,
+.page-fade-leave-to {
+  opacity: 0;
+}
+
+.fade-enter-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from {
+  opacity: 0;
+}
+
+.fade-in {
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@layer components {
+  /*
+   * アプリ共通の枠線スタイル「field-bordered」。
+   * - 既定で 2px の外枠（色は surface-400 = 旧ホバー時の色に統一。薄さを解消）
+   * - ホバー時に影を付けて浮き上がらせる
+   * フォーム入力・タブ・カードなどの既定の外枠として再利用する。
+   * クラス名を二重指定して PrimeVue コンポーネント（.p-inputtext 等）の
+   * 単一クラスセレクタより詳細度を高め、確実に上書きする。
+   */
+  .field-bordered.field-bordered {
+    border-width: 2px;
+    border-color: var(--p-surface-400, #9ca3af);
+    transition:
+      box-shadow 0.15s ease,
+      border-color 0.15s ease;
+  }
+  .field-bordered.field-bordered:hover {
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-thin-nav {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(var(--p-surface-300)) transparent;
+  }
+  .scrollbar-thin-nav::-webkit-scrollbar {
+    height: 4px;
+  }
+  .scrollbar-thin-nav::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin-nav::-webkit-scrollbar-thumb {
+    background-color: var(--p-surface-300, #d1d5db);
+    border-radius: 2px;
+  }
+
+  /*
+   * サイドバー化 Phase4: グローバルサイドバー縦スクロール用の極細スクロールバー（幅4px）。
+   * つまみは surface トーン（ライト: surface-300 / ダーク: surface-600）・角丸、track は透明。
+   * hover でわずかに濃くする（ライト: surface-400 / ダーク: surface-500）。
+   * Firefox は 4px 指定ができないため scrollbar-width: thin + scrollbar-color で近似する。
+   * 適用先は GlobalSidebar のナビ項目リストのみ（scrollbar-thin-nav は横用・変更しない）。
+   */
+  .scrollbar-thin-sidebar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--p-surface-300, #d1d5db) transparent;
+  }
+  .scrollbar-thin-sidebar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .scrollbar-thin-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin-sidebar::-webkit-scrollbar-thumb {
+    background-color: var(--p-surface-300, #d1d5db);
+    border-radius: 9999px;
+  }
+  .scrollbar-thin-sidebar::-webkit-scrollbar-thumb:hover {
+    background-color: var(--p-surface-400, #9ca3af);
+  }
+  .dark .scrollbar-thin-sidebar {
+    scrollbar-color: var(--p-surface-600, #52525b) transparent;
+  }
+  .dark .scrollbar-thin-sidebar::-webkit-scrollbar-thumb {
+    background-color: var(--p-surface-600, #52525b);
+  }
+  .dark .scrollbar-thin-sidebar::-webkit-scrollbar-thumb:hover {
+    background-color: var(--p-surface-500, #71717a);
+  }
+}
+
+/*
+ * 記事本文（markdown 由来の v-html）用の最低限の階層スタイル。
+ * @tailwindcss/typography は未導入のため `prose` は効かない。依存を増やさず共通クラスで補う。
+ * 使い方: 本文コンテナに class="article-body" を付ける（色は surface トークンを継承し .dark で反転）。
+ */
+.article-body {
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.article-body > * + * {
+  margin-top: 1em;
+}
+.article-body h1,
+.article-body h2,
+.article-body h3,
+.article-body h4 {
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--p-surface-900, #18181b);
+  margin-top: 2em;
+  margin-bottom: 0.6em;
+}
+.article-body h1 { font-size: 2rem; }
+.article-body h2 {
+  font-size: 1.625rem;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--p-surface-200, #e4e4e7);
+}
+.article-body h3 { font-size: 1.375rem; }
+.article-body h4 { font-size: 1.125rem; }
+.article-body ul { list-style: disc; padding-left: 1.6em; }
+.article-body ol { list-style: decimal; padding-left: 1.6em; }
+.article-body li + li { margin-top: 0.35em; }
+.article-body blockquote {
+  padding: 0.25em 1em;
+  border-left: 4px solid var(--p-surface-300, #d4d4d8);
+  color: var(--p-surface-600, #52525b);
+}
+.article-body code {
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+  font-size: 0.9em;
+  background: var(--p-surface-100, #f4f4f5);
+}
+.article-body pre {
+  padding: 1em;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  background: var(--p-surface-100, #f4f4f5);
+}
+.article-body pre code { padding: 0; background: transparent; }
+.article-body a { color: var(--p-primary-600, #2563eb); text-decoration: underline; }
+.article-body hr { border: 0; border-top: 1px solid var(--p-surface-200, #e4e4e7); margin: 2em 0; }
+.article-body img { max-width: 100%; height: auto; border-radius: 0.5rem; }
+.dark .article-body h1,
+.dark .article-body h2,
+.dark .article-body h3,
+.dark .article-body h4 { color: var(--p-surface-0, #fff); }
+.dark .article-body h2,
+.dark .article-body hr { border-color: var(--p-surface-700, #3f3f46); }
+.dark .article-body blockquote { border-left-color: var(--p-surface-600, #52525b); color: var(--p-surface-300, #d4d4d8); }
+.dark .article-body code,
+.dark .article-body pre { background: var(--p-surface-800, #27272a); }
+.dark .article-body a { color: var(--p-primary-400, #60a5fa); }

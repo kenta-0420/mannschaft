@@ -1,0 +1,510 @@
+package com.mannschaft.app.common.visibility;
+
+import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.timeline.service.TimelinePostVisibilityAccessGuard;
+import io.micrometer.core.instrument.Timer;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Collection;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+/**
+ * F00 共通可視性判定ファサード。
+ *
+ * <p>各 {@link ContentVisibilityResolver} を {@link ReferenceType} 単位でディスパッチし、
+ * 単発・バッチ・複数 type ミックスの判定を一元提供する。
+ *
+ * <p>設計書: {@code docs/features/F00_content_visibility_resolver.md} §4.4 完全一致。
+ *
+ * <p><strong>重要 (§15 D-13)</strong>: SystemAdmin 高速パスは <strong>本ファサードでは
+ * 持たない</strong>。各 Resolver が実存確認込みの取得を行った後に SystemAdmin 判定を
+ * 行うことで、「実在する ID だけを返す」セマンティクスを保ち IDOR 矛盾を回避する。
+ *
+ * <p><strong>fail-closed の原則 (§11.2)</strong>: 未対応 {@link ReferenceType} に対しては
+ * {@link #canView} は false、{@link #filterAccessible} は空 Set を返す。
+ * {@link #decide} は {@link DenyReason#UNSUPPORTED_REFERENCE_TYPE}、
+ * {@link #assertCanView} は {@link BusinessException} をスローする。
+ *
+ * <p><strong>メトリクス (§9.4)</strong>: 全 5 メソッドの入口・出口で {@link VisibilityMetrics}
+ * に記録する (latency / batch_size / access_ratio / denied / unsupported)。
+ *
+ * <p><strong>監査ログ連携 (§11.4 / マスター裁可 C-1)</strong>:
+ * deny 時に {@link ResolverAuditPolicy#shouldAuditDeny} を満たすセンシティブな
+ * 可視性レベル (PRIVATE / CUSTOM_TEMPLATE / ADMINS_ONLY) に対しては
+ * {@link AuditLogService} へ {@code VISIBILITY_DENIED} を非同期記録する。
+ * allow 時の {@code VISIBILITY_GRANTED_SENSITIVE} 記録は、Resolver 側で status 評価が
+ * 完成する Phase A-1c の責務とし、本クラスでは扱わない。
+ */
+@Service
+@Transactional(readOnly = true)
+@Slf4j
+public class ContentVisibilityChecker {
+
+    /** §9.4 op タグの値 — 単発判定. */
+    private static final String OP_CAN_VIEW = "canView";
+    /** §9.4 op タグの値 — バッチ判定. */
+    private static final String OP_FILTER_ACCESSIBLE = "filterAccessible";
+    /** §9.4 op タグの値 — 複数 type 混在判定. */
+    private static final String OP_FILTER_ACCESSIBLE_BY_TYPE = "filterAccessibleByType";
+    /** §9.4 op タグの値 — 詳細判定. */
+    private static final String OP_DECIDE = "decide";
+    /** §9.4 op タグの値 — 例外スロー版判定. */
+    private static final String OP_ASSERT_CAN_VIEW = "assertCanView";
+
+    private final Map<ReferenceType, ContentVisibilityResolver<?>> resolverMap;
+    private final VisibilityMetrics visibilityMetrics;
+    private final AuditLogService auditLogService;
+    private final TimelinePostVisibilityAccessGuard timelineAccess;
+
+    /**
+     * Spring が {@link ContentVisibilityResolver} の全 Bean を List で渡す。
+     * Constructor で {@link ContentVisibilityResolver#referenceType()} をキーとする
+     * 不変 Map に変換する。同一 {@link ReferenceType} に対して複数の Resolver が
+     * 登録された場合は {@link IllegalStateException} で起動失敗させる。
+     *
+     * <p>{@code AuditLogService} は任意依存。テスト時など Bean が存在しない
+     * 構成でも本ファサードが動作するよう、{@code required = false} で受ける。
+     *
+     * @param resolvers         Spring が収集した Resolver Bean の List (空でもよい)
+     * @param visibilityMetrics メトリクス記録用 (必須 DI)
+     * @param auditLogService   監査ログサービス ({@code null} 可)
+     * @param timelineAccess    TL単件リンク用の既正準認可ゲート ({@code null} 可、欠落時は拒否)
+     * @throws IllegalStateException referenceType が重複した場合
+     */
+    @Autowired
+    public ContentVisibilityChecker(
+            List<ContentVisibilityResolver<?>> resolvers,
+            VisibilityMetrics visibilityMetrics,
+            @Autowired(required = false) AuditLogService auditLogService,
+            @Autowired(required = false) TimelinePostVisibilityAccessGuard timelineAccess) {
+        Map<ReferenceType, ContentVisibilityResolver<?>> map = new EnumMap<>(ReferenceType.class);
+        for (ContentVisibilityResolver<?> resolver : resolvers) {
+            ReferenceType type = resolver.referenceType();
+            ContentVisibilityResolver<?> previous = map.putIfAbsent(type, resolver);
+            if (previous != null) {
+                throw new IllegalStateException(
+                    "duplicate ContentVisibilityResolver for referenceType=" + type
+                        + " (existing=" + previous.getClass().getName()
+                        + ", duplicate=" + resolver.getClass().getName() + ")");
+            }
+        }
+        this.resolverMap = Map.copyOf(map);
+        this.visibilityMetrics = visibilityMetrics;
+        this.auditLogService = auditLogService;
+        this.timelineAccess = timelineAccess;
+        log.info("ContentVisibilityChecker initialized with {} resolver(s): {} (auditLogService={})",
+            this.resolverMap.size(), this.resolverMap.keySet(),
+            auditLogService != null ? "wired" : "absent");
+    }
+
+    /** 既存UTの構築互換。TL正準guard未配線時に独自認可へ置き換えない。 */
+    public ContentVisibilityChecker(List<ContentVisibilityResolver<?>> resolvers,
+            VisibilityMetrics visibilityMetrics, AuditLogService auditLogService) {
+        this(resolvers, visibilityMetrics, auditLogService, null);
+    }
+
+    /**
+     * テスト互換用コンストラクタ ({@code AuditLogService} なし)。
+     *
+     * @param resolvers         Spring が収集した Resolver Bean の List (空でもよい)
+     * @param visibilityMetrics メトリクス記録用 (必須)
+     */
+    public ContentVisibilityChecker(
+            List<ContentVisibilityResolver<?>> resolvers,
+            VisibilityMetrics visibilityMetrics) {
+        this(resolvers, visibilityMetrics, null);
+    }
+
+    /**
+     * 呼出元ドメインの読取終了後に、独立した PRIMARY トランザクションで閲覧権限を再評価する。
+     * Spring プロキシ経由で呼び出し、源トランザクションを保持したまま、または源のコールバックで使用しない。
+     * readOnly=false で PRIMARY を明示し、既存 Resolver の全判定条件をそのまま適用する。
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
+    public boolean canViewIsolated(ReferenceType type, Long contentId, Long userId) {
+        return canView(type, contentId, userId);
+    }
+
+    /** {@link #canViewIsolated(ReferenceType, Long, Long)} と同じ境界を持つ UUID 主キー用の入口。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
+    public boolean canViewUuidIsolated(ReferenceType type, UUID contentId, Long userId) {
+        return canViewUuid(type, contentId, userId);
+    }
+
+    /**
+     * 源metadata TXの終了後、本人記録リンク用にTLの既正準guardを独立PRIMARYで呼ぶ。
+     * PUBLIC/PERSONAL/所属/組織配信/村/転送の判定をここへ複製しない。
+     * 単件専用であり、未登録のgeneric TL resolverやbatch SQL契約を実装済みと扱わない。
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
+    public boolean canViewTimelineIsolated(Long postId, Long userId) {
+        Timer.Sample sample = visibilityMetrics.startCheckTimer();
+        try {
+            if (postId == null || userId == null || timelineAccess == null) return false;
+            return timelineAccess.canViewPost(postId, userId);
+        } finally {
+            visibilityMetrics.stopCheckTimer(sample, ReferenceType.TIMELINE_POST, OP_CAN_VIEW);
+        }
+    }
+
+    /**
+     * 単発判定。
+     *
+     * @param type      対象の reference_type
+     * @param contentId 対象 contentId
+     * @param userId    閲覧者 userId ({@code null} 可)
+     * @return 閲覧可能なら true。未対応 type は fail-closed で false
+     */
+    public boolean canView(ReferenceType type, Long contentId, Long userId) {
+        Timer.Sample sample = visibilityMetrics.startCheckTimer();
+        try {
+            ContentVisibilityResolver<?> resolver = resolverMap.get(type);
+            if (resolver == null) {
+                recordUnsupported(type);
+                return false;
+            }
+            return resolver.canView(contentId, userId);
+        } finally {
+            visibilityMetrics.stopCheckTimer(sample, type, OP_CAN_VIEW);
+        }
+    }
+
+    /**
+     * 同一 reference_type のバッチ判定。
+     *
+     * @param type   対象の reference_type
+     * @param ids    判定対象の contentId 集合
+     * @param userId 閲覧者 userId ({@code null} 可)
+     * @return アクセス可能な contentId の Set。未対応 type は fail-closed で空 Set
+     */
+    public Set<Long> filterAccessible(
+            ReferenceType type, Collection<Long> ids, Long userId) {
+        Timer.Sample sample = visibilityMetrics.startCheckTimer();
+        int inputSize = ids == null ? 0 : ids.size();
+        try {
+            visibilityMetrics.recordBatchSize(type, inputSize);
+            ContentVisibilityResolver<?> resolver = resolverMap.get(type);
+            if (resolver == null) {
+                recordUnsupported(type);
+                if (inputSize > 0) {
+                    visibilityMetrics.recordAccessRatio(type, 0.0);
+                }
+                return Set.of();
+            }
+            Set<Long> result = resolver.filterAccessible(ids, userId);
+            if (inputSize > 0) {
+                double ratio = (double) result.size() / (double) inputSize;
+                visibilityMetrics.recordAccessRatio(type, ratio);
+            }
+            return result;
+        } finally {
+            visibilityMetrics.stopCheckTimer(sample, type, OP_FILTER_ACCESSIBLE);
+        }
+    }
+
+    /**
+     * 複数 reference_type の混在バッチ判定。
+     *
+     * <p>コルクボード等で複数種別の参照を一画面で表示する際に用いる。
+     * 戻り値は入力で渡した type をすべてキーとして含み、未対応 type は空 Set にマップする。
+     *
+     * @param idsByType type ごとの contentId 集合
+     * @param userId    閲覧者 userId ({@code null} 可)
+     * @return type ごとのアクセス可能 Set
+     */
+    public Map<ReferenceType, Set<Long>> filterAccessibleByType(
+            Map<ReferenceType, ? extends Collection<Long>> idsByType,
+            Long userId) {
+        Timer.Sample sample = visibilityMetrics.startCheckTimer();
+        try {
+            Map<ReferenceType, Set<Long>> result = new EnumMap<>(ReferenceType.class);
+            idsByType.forEach((type, ids) ->
+                result.put(type, filterAccessible(type, ids, userId)));
+            return result;
+        } finally {
+            // 集約 op の latency は「合計時間」として記録 (内訳は各 filterAccessible に出る)。
+            // type タグは混在のため null (UNKNOWN) を渡す。
+            visibilityMetrics.stopCheckTimer(sample, null, OP_FILTER_ACCESSIBLE_BY_TYPE);
+        }
+    }
+
+    /**
+     * 詳細判定 (監査・デバッグ用)。
+     *
+     * <p>未対応 type は {@link DenyReason#UNSUPPORTED_REFERENCE_TYPE} を返す。
+     *
+     * @param type      対象の reference_type
+     * @param contentId 対象 contentId
+     * @param userId    閲覧者 userId
+     * @return 判定結果
+     */
+    public VisibilityDecision decide(ReferenceType type, Long contentId, Long userId) {
+        Timer.Sample sample = visibilityMetrics.startCheckTimer();
+        try {
+            ContentVisibilityResolver<?> resolver = resolverMap.get(type);
+            if (resolver == null) {
+                recordUnsupported(type);
+                VisibilityDecision denied = VisibilityDecision.deny(
+                    type, contentId, DenyReason.UNSUPPORTED_REFERENCE_TYPE,
+                    "no resolver registered for referenceType=" + type);
+                visibilityMetrics.recordDenied(type, DenyReason.UNSUPPORTED_REFERENCE_TYPE);
+                return denied;
+            }
+            VisibilityDecision decision = resolver.decide(contentId, userId);
+            if (!decision.allowed()) {
+                visibilityMetrics.recordDenied(type, decision.denyReason());
+            }
+            return decision;
+        } finally {
+            visibilityMetrics.stopCheckTimer(sample, type, OP_DECIDE);
+        }
+    }
+
+    /**
+     * 例外スロー版判定 (Controller 入口など)。
+     *
+     * <p>{@link #decide} の結果を見て:
+     * <ul>
+     *   <li>{@code allowed=true} → 何もしない (return)
+     *   <li>{@link DenyReason#NOT_FOUND} → {@link VisibilityErrorCode#VISIBILITY_004} (404 相当) でスロー
+     *   <li>その他 deny → {@link VisibilityErrorCode#VISIBILITY_001} (403 相当) でスロー
+     * </ul>
+     *
+     * <p>センシティブな可視性レベル ({@link ResolverAuditPolicy#shouldAuditDeny} 該当) で
+     * deny した場合は、例外を投げる前に {@link AuditLogService#record} で
+     * {@code VISIBILITY_DENIED} を非同期記録する (§11.4 / マスター裁可 C-1)。
+     *
+     * @param type      対象の reference_type
+     * @param contentId 対象 contentId
+     * @param userId    閲覧者 userId
+     * @throws BusinessException 閲覧不可の場合
+     */
+    public void assertCanView(ReferenceType type, Long contentId, Long userId) {
+        Timer.Sample sample = visibilityMetrics.startCheckTimer();
+        try {
+            VisibilityDecision decision = decide(type, contentId, userId);
+            if (decision.allowed()) {
+                // TODO (Phase A-1c): allow かつ shouldAuditAllow なら
+                //   VISIBILITY_GRANTED_SENSITIVE を記録する。decide の戻り値に
+                //   resolvedLevel を載せる責務は AbstractContentVisibilityResolver 側で
+                //   完成させる予定 (本タスク A-6 では deny のみ扱う)。
+                return;
+            }
+            recordDenyAudit(decision, userId);
+            if (decision.denyReason() == DenyReason.NOT_FOUND) {
+                throw new BusinessException(VisibilityErrorCode.VISIBILITY_004);
+            }
+            throw new BusinessException(VisibilityErrorCode.VISIBILITY_001);
+        } finally {
+            visibilityMetrics.stopCheckTimer(sample, type, OP_ASSERT_CAN_VIEW);
+        }
+    }
+
+    /**
+     * deny 判定をセンシティブ条件下で {@link AuditLogService} に永続化する。
+     *
+     * <p>マスター裁可 C-1 (2026-05-04): {@link ResolverAuditPolicy#shouldAuditDeny}
+     * を満たすレベル (PRIVATE / CUSTOM_TEMPLATE / ADMINS_ONLY) のみが対象。
+     * 全 deny は別途 {@code log.warn} と Counter で観測されるため、本メソッドは
+     * 永続化が必要なときのみ {@code auditLogService.record} を呼ぶ。
+     *
+     * <p>{@code AuditLogService} 未配線のテスト構成では何もしない。
+     *
+     * @param decision deny の判定結果
+     * @param userId   閲覧者 userId ({@code null} 可)
+     */
+    private void recordDenyAudit(VisibilityDecision decision, Long userId) {
+        if (auditLogService == null) {
+            return;
+        }
+        if (!ResolverAuditPolicy.shouldAuditDeny(decision.resolvedLevel())) {
+            return;
+        }
+        String metadata = String.format(
+            "{\"source\":\"VISIBILITY\",\"referenceType\":\"%s\",\"contentId\":%s,"
+                + "\"denyReason\":\"%s\",\"resolvedLevel\":\"%s\"}",
+            decision.referenceType().name(),
+            decision.contentId() != null ? decision.contentId().toString() : "null",
+            decision.denyReason().name(),
+            decision.resolvedLevel().name());
+        try {
+            auditLogService.record(
+                "VISIBILITY_DENIED",
+                userId,
+                null,   // targetUserId
+                null,   // teamId
+                null,   // organizationId
+                null,   // ipAddress
+                null,   // userAgent
+                null,   // sessionHash
+                metadata);
+        } catch (RuntimeException e) {
+            // 監査ログ記録失敗で本処理を止めない (auditLogService 自身も内部で握り潰しているが二重防御)
+            log.warn("VISIBILITY_DENIED 監査ログ記録失敗: referenceType={}, contentId={}",
+                decision.referenceType(), decision.contentId(), e);
+        }
+    }
+
+    // ----------------------------------------------------------------------
+    // F09.15/16 S0 (2026-05-12): UUIDv7 reference 系 API。
+    //
+    // 設計書: docs/features/F00_content_visibility_resolver.md §3.4 (F00-A 案)
+    // - {@link ReferenceType#idKind()} == UUID_V7 の reference_type 用
+    // - {@link ReferenceType#idKind()} == BIGINT の type に対して UUID API が呼ばれた
+    //   場合は fail-closed (false / 空 Set / UNSUPPORTED_REFERENCE_TYPE) で返す
+    // - Resolver が UUID 経路を未実装の場合は UnsupportedOperationException が
+    //   伝播するため、メトリクス上に発火元を残せるよう本ファサードでログのみ拾う
+    // ----------------------------------------------------------------------
+
+    /**
+     * 単発判定 (UUIDv7 reference 系).
+     *
+     * <p><strong>命名規約</strong>: Long 版の {@link #canView(ReferenceType, Long, Long)}
+     * と同名にすると Mockito {@code any()} 等でオーバーロード解決があいまいになるため、
+     * 別名 {@code canViewUuid} とした (F09.15/16 S0)。</p>
+     *
+     * @param type      対象の reference_type ({@code idKind() == UUID_V7} 必須)
+     * @param contentId 対象 UUIDv7 contentId
+     * @param userId    閲覧者 userId ({@code null} 可)
+     * @return 閲覧可能なら true。未対応 type / 経路不一致は fail-closed で false
+     */
+    public boolean canViewUuid(ReferenceType type, UUID contentId, Long userId) {
+        Timer.Sample sample = visibilityMetrics.startCheckTimer();
+        try {
+            if (type.idKind() != ReferenceType.IdKind.UUID_V7) {
+                // 経路不一致: BIGINT 系 type に UUID API が呼ばれた → fail-closed
+                log.warn("canViewUuid called for BIGINT-keyed referenceType={} (fail-closed)", type);
+                recordUnsupported(type);
+                return false;
+            }
+            ContentVisibilityResolver<?> resolver = resolverMap.get(type);
+            if (resolver == null) {
+                recordUnsupported(type);
+                return false;
+            }
+            return resolver.canViewUuid(contentId, userId);
+        } finally {
+            visibilityMetrics.stopCheckTimer(sample, type, OP_CAN_VIEW);
+        }
+    }
+
+    /**
+     * 同一 reference_type のバッチ判定 (UUIDv7 reference 系).
+     *
+     * @param type   対象の reference_type ({@code idKind() == UUID_V7} 必須)
+     * @param ids    判定対象の UUIDv7 contentId 集合
+     * @param userId 閲覧者 userId ({@code null} 可)
+     * @return アクセス可能な contentId の Set。未対応 type / 経路不一致は fail-closed で空 Set
+     */
+    public Set<UUID> filterAccessibleUuid(
+            ReferenceType type, Collection<UUID> ids, Long userId) {
+        Timer.Sample sample = visibilityMetrics.startCheckTimer();
+        int inputSize = ids == null ? 0 : ids.size();
+        try {
+            visibilityMetrics.recordBatchSize(type, inputSize);
+            if (type.idKind() != ReferenceType.IdKind.UUID_V7) {
+                log.warn("filterAccessibleUuid called for BIGINT-keyed referenceType={} (fail-closed)", type);
+                recordUnsupported(type);
+                if (inputSize > 0) {
+                    visibilityMetrics.recordAccessRatio(type, 0.0);
+                }
+                return Set.of();
+            }
+            ContentVisibilityResolver<?> resolver = resolverMap.get(type);
+            if (resolver == null) {
+                recordUnsupported(type);
+                if (inputSize > 0) {
+                    visibilityMetrics.recordAccessRatio(type, 0.0);
+                }
+                return Set.of();
+            }
+            @SuppressWarnings("unchecked")
+            Set<UUID> result = ((ContentVisibilityResolver<?>) resolver).filterAccessibleUuid(ids, userId);
+            if (inputSize > 0) {
+                double ratio = (double) result.size() / (double) inputSize;
+                visibilityMetrics.recordAccessRatio(type, ratio);
+            }
+            return result;
+        } finally {
+            visibilityMetrics.stopCheckTimer(sample, type, OP_FILTER_ACCESSIBLE);
+        }
+    }
+
+    /**
+     * 詳細判定 (UUIDv7 reference 系).
+     *
+     * <p>未対応 / 経路不一致 type は
+     * {@link DenyReason#UNSUPPORTED_REFERENCE_TYPE} を返す。</p>
+     *
+     * <p><strong>命名規約</strong>: Long 版の {@link #decide(ReferenceType, Long, Long)} と
+     * 同名にするとオーバーロード解決があいまいになるため別名 {@code decideUuid} にした
+     * (F09.15/16 S0)。</p>
+     *
+     * @param type      対象の reference_type ({@code idKind() == UUID_V7} 必須)
+     * @param contentId 対象 UUIDv7 contentId
+     * @param userId    閲覧者 userId
+     * @return 判定結果
+     */
+    public VisibilityDecision decideUuid(ReferenceType type, UUID contentId, Long userId) {
+        Timer.Sample sample = visibilityMetrics.startCheckTimer();
+        try {
+            if (type.idKind() != ReferenceType.IdKind.UUID_V7) {
+                log.warn("decideUuid called for BIGINT-keyed referenceType={} (fail-closed)", type);
+                recordUnsupported(type);
+                VisibilityDecision denied = VisibilityDecision.deny(
+                    type, null, DenyReason.UNSUPPORTED_REFERENCE_TYPE,
+                    "UUID path called for BIGINT-keyed referenceType=" + type);
+                visibilityMetrics.recordDenied(type, DenyReason.UNSUPPORTED_REFERENCE_TYPE);
+                return denied;
+            }
+            ContentVisibilityResolver<?> resolver = resolverMap.get(type);
+            if (resolver == null) {
+                recordUnsupported(type);
+                VisibilityDecision denied = VisibilityDecision.deny(
+                    type, null, DenyReason.UNSUPPORTED_REFERENCE_TYPE,
+                    "no resolver registered for referenceType=" + type);
+                visibilityMetrics.recordDenied(type, DenyReason.UNSUPPORTED_REFERENCE_TYPE);
+                return denied;
+            }
+            VisibilityDecision decision = resolver.decideUuid(contentId, userId);
+            if (!decision.allowed()) {
+                visibilityMetrics.recordDenied(type, decision.denyReason());
+            }
+            return decision;
+        } finally {
+            visibilityMetrics.stopCheckTimer(sample, type, OP_DECIDE);
+        }
+    }
+
+    /**
+     * 未対応 {@link ReferenceType} の検出を記録する。
+     *
+     * <p>tag cardinality 爆発防止のため、Micrometer メトリクス
+     * (§9.4 {@code content_visibility.unsupported_reference_type}) に集約する。
+     *
+     * @param type 未対応として検出された reference_type
+     */
+    private void recordUnsupported(ReferenceType type) {
+        // §15 D-12 に基づく fail-closed の WARN ログ。Phase 2 予約 type
+        // (PERSONAL_TIMETABLE / FOLLOW_LIST) への到達はここで観測される。
+        log.warn("Unsupported referenceType={}: no resolver registered (fail-closed)", type);
+        if (log.isDebugEnabled()) {
+            StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+            // 0:getStackTrace 1:recordUnsupported 2:caller (canView 等) 3:外部呼び出し元
+            if (stack.length > 3) {
+                log.debug("Unsupported referenceType={} caller={}", type, stack[3]);
+            }
+        }
+        visibilityMetrics.recordUnsupported(type);
+    }
+
+}

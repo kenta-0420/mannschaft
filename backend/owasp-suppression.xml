@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!--
+        OWASP Dependency-Check 誤検知抑制リスト
+
+        追加方法:
+        1. ./gradlew dependencyCheckAnalyze を実行
+        2. build/reports/dependency-check-report.html を開く
+        3. 誤検知（false positive）と判断した CVE を以下の形式で追加
+
+        <suppress>
+            <notes>理由を記載する</notes>
+            <packageUrl regex="true">^pkg:maven/com\.example/library@.*$</packageUrl>
+            <cve>CVE-XXXX-XXXXX</cve>
+        </suppress>
+    -->
+</suppressions>

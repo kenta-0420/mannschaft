@@ -1,0 +1,354 @@
+{
+  "schedule": {
+    "form": {
+      "createEvent": "Crear evento",
+      "editEvent": "Editar evento",
+      "addPersonal": "Añadir evento personal",
+      "editPersonal": "Editar evento personal",
+      "title": "Título",
+      "attendanceRequired": "Solicitar asistencia",
+      "allDay": "Todo el día",
+      "history": "Horas recientes:",
+      "startDate": "Fecha de inicio",
+      "startTime": "Hora de inicio",
+      "endDate": "Fecha de fin",
+      "endTime": "Hora de fin",
+      "location": "Lugar",
+      "locationPlaceholder": "Lugar (opcional)",
+      "scope": "Crear en",
+      "color": "Color",
+      "personalScope": "Eventos personales"
+    },
+    "status": {
+      "draft": "Borrador",
+      "published": "Publicado",
+      "scheduled": "Programado",
+      "cancelled": "Cancelado",
+      "completed": "Completado"
+    },
+    "detail": {
+      "delegationError": "No se pudo cargar el número de asistencias delegadas"
+    },
+    "selectDateOrEvent": "Selecciona una fecha o un evento",
+    "confirmDelete": "¿Eliminar este evento?",
+    "selectEvent": "Selecciona un evento",
+    "page_title": "Agenda",
+    "created_by": "Creado por: {name}",
+    "attendance": {
+      "yes": "Asistir",
+      "no": "Ausente",
+      "maybe": "Quizás",
+      "respondSuccess": "Respuesta de asistencia guardada",
+      "respondError": "Error al guardar la asistencia"
+    },
+    "list": {
+      "allDay": "Todo el día",
+      "empty": "No hay eventos para este período",
+      "prevMonth": "Mes anterior",
+      "nextMonth": "Mes siguiente"
+    },
+    "common_delete": "Eliminar",
+    "description_label": "Descripción",
+    "error_title_required": "El título es obligatorio",
+    "success_create": "Evento creado",
+    "success_update": "Evento actualizado",
+    "success_create_personal": "Horario agregado",
+    "success_update_personal": "Horario actualizado",
+    "error_load_event": "No se pudo cargar la información del evento",
+    "reminder": {
+      "label": "Recordatorios",
+      "add": "Agregar recordatorio",
+      "max_reached": "Puedes configurar hasta 5 recordatorios",
+      "kind_label": "Tipo",
+      "kind_relative": "Antes del evento",
+      "kind_absolute": "Fecha/hora específica",
+      "relative_value_label": "Valor",
+      "absolute_at_label": "Notificar el",
+      "error_absolute_required": "Introduce la fecha y hora del recordatorio absoluto",
+      "error_past": "No se puede indicar una fecha y hora pasada",
+      "preset_minutes_before": "{n} min antes",
+      "preset_hours_before": "{n} h antes",
+      "preset_days_before": "{n} día antes",
+      "preset_weeks_before": "{n} semana antes"
+    },
+    "scheduled_survey": {
+      "label": "Programar una encuesta",
+      "scheduled_at": "Hora de creación",
+      "title_label": "Título de la encuesta",
+      "title_placeholder": "Introduce el título de la encuesta",
+      "anonymous": "Permitir respuestas anónimas",
+      "results_visibility": "Visibilidad de resultados",
+      "visibility_public": "Visible para todos",
+      "visibility_owner": "Solo el creador",
+      "visibility_respondents": "Solo los encuestados",
+      "question_placeholder": "Introduce una pregunta",
+      "qtype_single": "Selección única",
+      "qtype_multiple": "Selección múltiple",
+      "required": "Obligatorio",
+      "option_placeholder": "Introduce una opción",
+      "add_option": "Agregar opción",
+      "add_question": "Agregar pregunta",
+      "error_scheduled_at_required": "Introduce la hora de creación de la encuesta",
+      "error_past": "La hora de creación de la encuesta debe ser futura"
+    },
+    "scheduled_attendance": {
+      "label": "Programar una solicitud de asistencia",
+      "scheduled_at": "Hora de creación",
+      "deadline": "Fecha límite de respuesta",
+      "comment_option": "Comentarios",
+      "comment_none": "Sin comentarios",
+      "comment_optional": "Comentarios opcionales",
+      "comment_required": "Comentarios obligatorios",
+      "error_scheduled_at_required": "Introduce la hora de creación de la solicitud de asistencia",
+      "error_past": "La hora de creación de la solicitud de asistencia debe ser futura"
+    },
+    "scheduled_task": {
+      "label": "Tareas programadas",
+      "type_survey": "Encuesta programada",
+      "type_attendance": "Solicitud de asistencia programada",
+      "status_pending": "Pendiente",
+      "status_created": "Creada",
+      "status_cancelled": "Cancelada",
+      "status_failed": "Fallida",
+      "cancel": "Cancelar",
+      "cancel_success": "La tarea programada se ha cancelado",
+      "cancel_failed": "No se pudo cancelar la tarea programada"
+    },
+    "attendanceTeamBreakdown": {
+      "toggleLabel": "Agrupar por equipo",
+      "toggleHint": "Agrupa la asistencia por equipo subordinado (solo distribución de la organización).",
+      "title": "Asistencia por equipo",
+      "team": "Equipo",
+      "attending": "Asiste",
+      "partial": "Parcial",
+      "absent": "Ausente",
+      "undecided": "Sin responder",
+      "total": "Total",
+      "totalNote": "El total cuenta personas unicas; el conteo por equipo puede solaparse (los miembros en varios equipos se cuentan en cada uno).",
+      "directMembers": "Miembros directos de la organización",
+      "reload": "Recargar",
+      "retry": "Reintentar",
+      "exportCsv": "Exportar CSV",
+      "exportFailed": "No se pudo exportar el CSV.",
+      "fetchFailed": "No se pudo cargar el desglose de asistencia por equipo.",
+      "forbidden": "No tienes permiso para ver este desglose.",
+      "empty": "No hay datos de desglose de asistencia por equipo."
+    },
+    "recurrence": {
+      "label": "Repetir",
+      "interval": {
+        "DAILY": "Diario",
+        "WEEKLY": "Semanal",
+        "MONTHLY": "Mensual",
+        "YEARLY": "Anual"
+      },
+      "days": {
+        "SUNDAY": "Do",
+        "MONDAY": "Lu",
+        "TUESDAY": "Ma",
+        "WEDNESDAY": "Mi",
+        "THURSDAY": "Ju",
+        "FRIDAY": "Vi",
+        "SATURDAY": "Sa"
+      },
+      "end_label": "Fin",
+      "end_never": "Nunca",
+      "end_date": "En fecha",
+      "end_count": "Después de",
+      "end_count_suffix": "veces",
+      "update_scope": { "title": "Actualizar evento recurrente", "description": "Elige los eventos que quieres actualizar.", "this_only": "Solo este evento", "this_and_following": "Este y los eventos siguientes" }
+    },
+    "event_add": "Agregar evento",
+    "calendar_guide": {
+      "page_title": "Mi Calendario",
+      "description": "Mi Calendario te permite ver tus eventos personales junto con los eventos de tus equipos y organizaciones, todo en una sola pantalla.",
+      "what": {
+        "title": "¿Qué es Mi Calendario?",
+        "body": "Muestra todos los eventos de tus equipos, organizaciones y agenda personal en un solo calendario. Puedes alternar entre la vista de calendario y la vista Gantt (lista de TODOs)."
+      },
+      "add": {
+        "title": "Agregar un evento",
+        "body": "Haz clic en el botón 'Agregar evento' o en una fecha del calendario para crear un evento. Puedes agregar eventos personales así como eventos de equipo u organización.",
+        "step1": "Haz clic en 'Agregar evento' en la parte superior derecha, o en una celda de fecha",
+        "step2": "Ingresa un título, fecha/hora y lugar",
+        "step3": "Selecciona personal, equipo u organización en 'Alcance'",
+        "step4": "Haz clic en 'Guardar' para finalizar"
+      },
+      "filter": {
+        "title": "Filtrar la vista",
+        "body": "Usa los botones en la parte inferior del calendario para alternar la visualización de cada alcance (personal, equipo, organización). Si hay 6 o más, usa el menú desplegable para seleccionar.",
+        "personal": "Punto verde: eventos personales",
+        "team_org": "Punto índigo: eventos de equipo/organización"
+      },
+      "gantt": {
+        "title": "Vista Gantt (lista de TODOs)",
+        "body": "Presiona la pestaña 'Gantt' para mostrar los TODOs con fecha límite como un diagrama de Gantt. Se sincroniza con el selector de alcance en la parte superior derecha."
+      },
+      "detail": {
+        "title": "Detalles del evento y asistencia",
+        "body": "Haz clic en un evento en el calendario para abrir el panel de detalles a la derecha.",
+        "item_edit": "Usa el icono de lápiz para editar, o el icono de papelera para eliminar",
+        "item_attendance": "Para eventos con seguimiento de asistencia, selecciona 'Asistir', 'No asistir' o 'Tal vez'",
+        "item_match": "Usa el botón 'Registrar este partido' desde un evento de equipo para iniciar un registro de partido"
+      },
+      "google_sync": {
+        "title": "Integración con Google Calendar",
+        "body": "Conecta tu cuenta de Google para sincronizar tus eventos personales con Google Calendar en ambas direcciones. Los eventos que añadas o edites en Mannschaft aparecen en Google Calendar, y los cambios hechos en Google Calendar se importan de vuelta.",
+        "step1": "Abre 'Ajustes' → 'Integración con Google Calendar'",
+        "step2": "Pulsa 'Conectar cuenta de Google' y autoriza la conexión",
+        "step3": "Activa 'Calendario personal' para habilitar la sincronización",
+        "step4": "Ejecuta 'Sincronización manual' cuando quieras que los cambios se reflejen al instante"
+      }
+    },
+    "google_sync_notice": "Conectado a Google Calendar. Los cambios realizados en Google serán reemplazados por los datos de Mannschaft la próxima vez que guardes aquí.",
+    "comment": {
+      "title": "Comentarios",
+      "placeholder": "Comenta sobre este evento…",
+      "submit": "Publicar",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "reply": "Responder",
+      "replyTo": "Responder a {name}",
+      "showReplies": "Ver {count} respuestas más",
+      "empty": "Aún no hay comentarios",
+      "loadMore": "Cargar más",
+      "edit": "Editar",
+      "edited": "(editado)",
+      "delete": "Eliminar",
+      "deleteConfirm": "¿Eliminar este comentario?",
+      "deleted": "Este comentario fue eliminado",
+      "deletedAuthor": "Usuario eliminado",
+      "closed": "Los comentarios de este evento están cerrados",
+      "cancelled": "No puedes comentar en un evento cancelado",
+      "updateSuccess": "Comentario actualizado",
+      "deleteSuccess": "Comentario eliminado",
+      "postSuccess": "Comentario publicado",
+      "settings": {
+        "enable": "Permitir comentarios",
+        "disable": "Cerrar comentarios",
+        "updateSuccess": "Configuración de comentarios actualizada"
+      },
+      "mention": {
+        "hint": "Puedes mencionar a un miembro",
+        "empty": "No hay miembros coincidentes"
+      },
+      "count": "{count} comentarios",
+      "error": {
+        "bodyRequired": "Introduce un comentario",
+        "bodyTooLong": "El comentario no puede superar los 2000 caracteres",
+        "maxDepth": "No puedes responder a esta respuesta",
+        "closed": "Los comentarios están cerrados",
+        "forbidden": "No tienes permiso para esta acción",
+        "tooManyMentions": "Puedes mencionar hasta 20 personas",
+        "rateLimited": "Demasiadas publicaciones. Inténtalo más tarde",
+        "generic": "La operación falló",
+        "notFound": "No se encontró el comentario"
+      }
+    },
+    "targetAudience": { "label": "Destinatarios del evento", "allMembers": "Todos", "selectMembers": "Seleccionar miembros", "memberPlaceholder": "Selecciona miembros destinatarios", "more": "y {count} más", "selectedCount": "{count} seleccionados", "invalidSelection": "Selecciona entre 1 y 500 miembros" },
+    "memberColor": { "column": "Color del evento", "auto": "Automático", "reset": "Restablecer color automático", "updated": "Se actualizó el color del evento del miembro", "resetDone": "Se restableció el color automático del miembro", "updateFailed": "No se pudo actualizar el color del miembro", "colorLabel": "Color del evento de {name}" },
+    "todo_load_error": {
+      "summary": "No se pudieron cargar las tareas (TODO)",
+      "detail": "No se pudieron mostrar las tareas en el calendario. Los eventos siguen visibles. Vuelve a cargar más tarde."
+    }
+  },
+  "scheduleKeep": {
+    "title": "Planes en espera",
+    "subtitle": "Un lugar para planes que aún no tienen fecha",
+    "empty": "Todavía no hay nada. Anota lo que se te ocurra.",
+    "form": {
+      "titleLabel": "¿Qué quieres hacer?",
+      "titlePlaceholder": "p. ej., Campamento de verano",
+      "memoLabel": "Nota (opcional)",
+      "candidateDatesLabel": "Fechas candidatas (opcional)",
+      "submit": "Guardar en espera"
+    },
+    "action": {
+      "convert": "Añadir al calendario",
+      "convertFromCandidate": "Elegir este día",
+      "pickDate": "Elegir una fecha",
+      "specifyTime": "Indicar una hora",
+      "archive": "Descartar por ahora",
+      "restore": "Restaurar",
+      "revert": "Deshacer la programación",
+      "reorder": "Reordenar"
+    },
+    "status": {
+      "kept": "En espera",
+      "scheduled": "Programado",
+      "archived": "Descartado"
+    },
+    "filter": {
+      "kept": "En espera",
+      "scheduled": "Programados",
+      "archived": "Descartados",
+      "all": "Todos"
+    },
+    "badge": {
+      "candidateCount": "{count} fechas candidatas"
+    },
+    "origin": {
+      "label": "Creado a partir de un plan en espera",
+      "cancelled": "El evento fue cancelado",
+      "deleted": "El evento original fue eliminado"
+    },
+    "lockedHint": {
+      "scheduled": "Como ya es un evento, haz los cambios en el evento",
+      "archived": "Los elementos descartados no se pueden editar. Con «Restaurar» vuelven a ser editables"
+    },
+    "notification": {
+      "converted": "Se ha fijado la fecha de «{title}»",
+      "created": "Se ha guardado «{title}» en espera"
+    },
+    "confirm": {
+      "archive": "¿Descartar por ahora? Podrás restaurarlo más tarde"
+    },
+    "limit": {
+      "hint": "Al descartar un elemento se libera espacio"
+    },
+    "help": {
+      "title": "Cómo usar los planes en espera",
+      "body": "Es un lugar donde dejar por ahora los planes que aún no tienen fecha. Se pueden crear solo con un título y añadir fechas candidatas o notas más tarde. Cuando se decide una fecha, con un toque se convierte en un evento del calendario.",
+      "create": {
+        "title": "Guardar en espera",
+        "body": "Basta con escribir un título. Las fechas candidatas y las notas se pueden añadir después.",
+        "steps": {
+          "step1": "Escribe como título lo que quieres hacer",
+          "step2": "Si lo necesitas, añade fechas candidatas o notas",
+          "step3": "Pulsa «Guardar en espera»"
+        }
+      },
+      "convert": {
+        "title": "Convertir en evento",
+        "body": "Si hay una fecha candidata, basta un toque; si no, solo hay que elegir una fecha: como máximo dos toques para tener el evento.",
+        "steps": {
+          "step1": "Toca la insignia de una fecha candidata o «Añadir al calendario»",
+          "step2": "Si aún no hay fecha candidata, elige una fecha",
+          "step3": "Aparece en el calendario como un evento"
+        }
+      },
+      "organize": {
+        "title": "Organizar",
+        "body": "Los elementos descartados desaparecen de la lista, pero puedes recuperarlos en cualquier momento con «Restaurar». También se pueden reordenar.",
+        "steps": {
+          "step1": "Cuando ya no lo necesites, pulsa «Descartar por ahora»",
+          "step2": "Recupéralo con «Restaurar» desde el filtro «Descartados»",
+          "step3": "Reordena arrastrando"
+        }
+      }
+    },
+    "error": {
+      "notFound": "No se encontró el plan en espera",
+      "titleRequired": "Introduce un título",
+      "tooManyCandidateDates": "Máximo 10 fechas candidatas",
+      "invalidCandidateDate": "El formato de la fecha candidata no es válido",
+      "forbidden": "No tienes permiso para operar este plan en espera",
+      "notConvertible": "Este plan en espera no se puede convertir en evento",
+      "notEditable": "No se puede editar en este estado",
+      "revertBlockedByAttendance": "No se puede deshacer la conversión porque hay respuestas de asistencia",
+      "invalidStateTransition": "Esta acción no es posible",
+      "limitExceeded": "Se alcanzó el límite de planes en espera",
+      "invalidReorder": "La indicación de reordenación no es válida"
+    }
+  }
+}

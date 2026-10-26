@@ -1,0 +1,24 @@
+{
+  "trending": {
+    "title": "Trending in Similar Teams",
+    "disclaimer": "Anonymous ranking based on usage data from {count} teams in the same category. You can opt out in settings.",
+    "last_updated": "Last updated: {date}",
+    "settings": "Data sharing settings",
+    "all_categories": "All",
+    "team_count": "Used by {count} teams",
+    "consume_count": "{count} replenishments in 90 days",
+    "amazon_link_label": "Buy on Amazon (Ad)",
+    "amazon_associate_footer": "This page participates in the Amazon Associates Program.",
+    "no_data": "Not enough teams in the same category to show rankings yet.",
+    "preparing": "Rankings are being prepared. Please check back tomorrow.",
+    "opt_out_title": "Stop Data Sharing",
+    "opt_out_message": "Your team's equipment data will no longer be included in anonymous rankings. You can still view rankings. Changes take effect from the next daily calculation.",
+    "opt_out_confirm": "Stop Data Sharing",
+    "opt_out_success": "Data sharing stopped.",
+    "opt_in_title": "Resume Data Sharing",
+    "opt_in_message": "Your team's equipment data will be included in rankings again. Changes take effect from the next daily calculation.",
+    "opt_in_confirm": "Resume Data Sharing",
+    "opt_in_success": "Data sharing resumed.",
+    "opt_out_error": "Failed to update settings."
+  }
+}

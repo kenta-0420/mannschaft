@@ -1,0 +1,24 @@
+{
+  "trending": {
+    "title": "Trends in ähnlichen Teams",
+    "disclaimer": "Anonymes Ranking basierend auf Nutzungsdaten von {count} Teams der gleichen Kategorie. Du kannst dies in den Einstellungen deaktivieren.",
+    "last_updated": "Zuletzt aktualisiert: {date}",
+    "settings": "Datenweitergabe-Einstellungen",
+    "all_categories": "Alle",
+    "team_count": "Von {count} Teams genutzt",
+    "consume_count": "{count} Auffüllungen in 90 Tagen",
+    "amazon_link_label": "Bei Amazon kaufen (Werbung)",
+    "amazon_associate_footer": "Diese Seite nimmt am Amazon-Partnerprogramm teil.",
+    "no_data": "Zu wenige Teams in dieser Kategorie für ein Ranking.",
+    "preparing": "Das Ranking wird vorbereitet. Bitte morgen wieder prüfen.",
+    "opt_out_title": "Datenweitergabe stoppen",
+    "opt_out_message": "Die Gerätedaten dieses Teams werden nicht mehr in anonymen Rankings einbezogen. Änderungen gelten ab der nächsten täglichen Berechnung.",
+    "opt_out_confirm": "Datenweitergabe stoppen",
+    "opt_out_success": "Datenweitergabe gestoppt.",
+    "opt_in_title": "Datenweitergabe fortsetzen",
+    "opt_in_message": "Die Gerätedaten dieses Teams werden wieder in Rankings einbezogen. Änderungen gelten ab der nächsten täglichen Berechnung.",
+    "opt_in_confirm": "Datenweitergabe fortsetzen",
+    "opt_in_success": "Datenweitergabe fortgesetzt.",
+    "opt_out_error": "Einstellungen konnten nicht aktualisiert werden."
+  }
+}

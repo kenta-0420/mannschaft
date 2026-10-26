@@ -1,0 +1,21 @@
+CREATE TABLE system_onboarding_presets (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    description VARCHAR(500) DEFAULT NULL,
+    category VARCHAR(30) NOT NULL,
+    welcome_message VARCHAR(1000) DEFAULT NULL,
+    is_order_enforced BOOLEAN NOT NULL DEFAULT FALSE,
+    deadline_days SMALLINT DEFAULT NULL,
+    steps_json JSON NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_by BIGINT UNSIGNED NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at DATETIME DEFAULT NULL,
+    PRIMARY KEY (id),
+    INDEX idx_sop_category (category, is_active, sort_order),
+    CONSTRAINT chk_sop_category CHECK (category IN ('SPORTS', 'RESIDENTIAL', 'BUSINESS', 'MEDICAL', 'EDUCATION', 'OTHER')),
+    CONSTRAINT fk_sop_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

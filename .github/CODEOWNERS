@@ -1,0 +1,9 @@
+# CODEOWNERS
+#
+# ArchUnit FreezingArchRule の凍結ストア（免責済み違反の記録）は、
+# `./gradlew test --tests "..."` のようなテスト絞り込み実行によって
+# 意図せず書き換えられ、解消されていない認可の穴等が監視対象から
+# 静かに脱落する事故が過去に複数回発生している
+# （backend/.claudecode.md の ArchUnit 番人テスト節 / ArchUnitFreezeStoreIntegrityTest 参照）。
+# このディレクトリへの変更は必ずオーナーレビューを経ること。
+backend/src/test/resources/archunit_store/ @kenta-0420

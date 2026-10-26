@@ -1,0 +1,249 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261004-1942",
+  "scope": "app",
+  "implementation": {
+    "pr": 3670,
+    "sha": "34ec5426e0aee1a1e80537a82106df768a399335"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "チーム応援/解除で描画 0→1→0（再読込なし）",
+      "tests": [
+        {
+          "name": "AC-1: チーム。応援でサポーター表示が 0→1、解除で 1→0 になる",
+          "evidence": "frontend/app/composables/useScopeFollowWiring.headcountRender.spec.ts"
+        },
+        {
+          "name": "AC-1: 応援が成功したら詳細（人数）の取り直しを1回呼ぶ / 解除が成功したら詳細（人数）の取り直しを1回呼ぶ",
+          "evidence": "frontend/app/composables/useScopeFollowWiring.headcount.spec.ts"
+        },
+        {
+          "name": "実機E2E: チームで応援→ヘッダ「サポーター」0→1、解除→0（再読込なし）",
+          "evidence": "docs/evidence/CMP-261004-1942-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "組織でも同じ",
+      "tests": [
+        {
+          "name": "AC-2: 組織。応援で org.social.supporterCount の表示が 0→1、解除で 1→0 になる（fetchOrg 経由）",
+          "evidence": "frontend/app/composables/useScopeFollowWiring.headcountRender.spec.ts"
+        },
+        {
+          "name": "実機E2E: 組織でも同じ",
+          "evidence": "docs/evidence/CMP-261004-1942-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "変更API失敗時は再取得しない",
+      "tests": [
+        {
+          "name": "AC-3: follow API が失敗したら人数の取り直しを呼ばない / unfollow API が失敗したら人数の取り直しを呼ばない",
+          "evidence": "frontend/app/composables/useScopeFollowWiring.headcount.spec.ts"
+        },
+        {
+          "name": "AC-3: 組織。follow API が失敗したら詳細を取り直さず表示も変えない",
+          "evidence": "frontend/app/composables/useScopeFollowWiring.headcountRender.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "follow成功・status GET失敗でも再取得、人数GET失敗は変更失敗扱いしない",
+      "tests": [
+        {
+          "name": "AC-4: follow 成功・その後の status GET 失敗でも、人数の取り直しは呼ぶ",
+          "evidence": "frontend/app/composables/useScopeFollowWiring.headcount.spec.ts"
+        },
+        {
+          "name": "AC-4: 応援成功後の人数取り直しが失敗しても、応援の失敗として扱わない / 解除成功後の人数取り直しが失敗しても、解除の失敗として扱わずダイアログを閉じる",
+          "evidence": "frontend/app/composables/useScopeFollowWiring.headcount.spec.ts"
+        },
+        {
+          "name": "applySupporter / cancelSupporter は変更APIの成否を呼び出し側へ返す",
+          "evidence": "frontend/app/composables/useScopeFollowWiring.headcount.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "A→B 遷移時に A の遅延応答で B を上書きしない",
+      "tests": [
+        {
+          "name": "AC-5: A で応援中に B へ切り替わったら、A の follow 遅延完了で人数の取り直しを呼ばない（ほか2件）",
+          "evidence": "frontend/app/composables/useScopeFollowWiring.headcount.spec.ts"
+        },
+        {
+          "name": "AC-5: 組織。A の取り直し中に B へ切り替わり B を表示した後、A の遅延応答で B の表示を上書きしない",
+          "evidence": "frontend/app/composables/useScopeFollowWiring.headcountRender.spec.ts"
+        },
+        {
+          "name": "同一スコープで取り直しが逆順に返っても、最後の要求の人数が残る / A→B→A と切り替えたとき、最初の A の遅延応答が新しい A の表示を上書きしない",
+          "evidence": "frontend/app/composables/useOrgDetail.requestOrder.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "PENDING中・取消・却下は不変、承認時のみ+1",
+      "tests": [
+        {
+          "name": "AC-6: 申請（PENDING）中はサポーター数が変わらない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/supporter/SupporterHeadcountCacheContractIT.java"
+        },
+        {
+          "name": "AC-6: 申請取消（DELETE follow で PENDING 削除）でもサポーター数が変わらない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/supporter/SupporterHeadcountCacheContractIT.java"
+        },
+        {
+          "name": "AC-6: 却下でもサポーター数が変わらない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/supporter/SupporterHeadcountCacheContractIT.java"
+        },
+        {
+          "name": "AC-6: 承認したときだけサポーター数が +1 される（温めたキャッシュが残っていても反映される）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/supporter/SupporterHeadcountCacheContractIT.java"
+        },
+        {
+          "name": "実機E2E: 承認制。申請中は不変、管理者が承認した時点で +1",
+          "evidence": "docs/evidence/CMP-261004-1942-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-7",
+      "description": "キャッシュ温め後の応援/解除/承認で次GETが新値",
+      "tests": [
+        {
+          "name": "AC-7: 温める → follow で +1 → unfollow で -1",
+          "evidence": "backend/src/test/java/com/mannschaft/app/supporter/SupporterHeadcountCacheContractIT.java"
+        },
+        {
+          "name": "AC-7: 一括承認（全件成功）でも温めたキャッシュを越えて人数が反映される",
+          "evidence": "backend/src/test/java/com/mannschaft/app/supporter/SupporterHeadcountCacheContractIT.java"
+        },
+        {
+          "name": "AC-7: 無効化は対象スコープの slug 1 件だけ（無関係スコープの温めたキャッシュは残る）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/supporter/SupporterHeadcountCacheContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-8",
+      "description": "一括承認の途中失敗で全ロールバック・人数とキャッシュ不変",
+      "tests": [
+        {
+          "name": "AC-8: 2件目が存在しない申請IDなら 404・人数不変・キャッシュは温めた値のまま DB 実数と一致",
+          "evidence": "backend/src/test/java/com/mannschaft/app/supporter/SupporterHeadcountCacheContractIT.java"
+        },
+        {
+          "name": "AC-8: 2件目が別スコープの申請IDなら 404・人数不変・キャッシュは温めた値のまま DB 実数と一致",
+          "evidence": "backend/src/test/java/com/mannschaft/app/supporter/SupporterHeadcountCacheContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-9",
+      "description": "evict 失敗でも本処理成功",
+      "tests": [
+        {
+          "name": "AC-9: Valkey の DEL が例外でも follow は 201 で SUPPORTER 所属がコミットされている（evict は試みられる）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/supporter/SupporterHeadcountCacheContractIT.java"
+        },
+        {
+          "name": "AC-9: Valkey の DEL が例外でも unfollow は 204 で SUPPORTER 所属の終了がコミットされている",
+          "evidence": "backend/src/test/java/com/mannschaft/app/supporter/SupporterHeadcountCacheContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-10",
+      "description": "組織 social.supporterCount＝退会済み除くSUPPORTER数、0は0",
+      "tests": [
+        {
+          "name": "AC-10: 退会済み（left_at あり）と MEMBER を除いたアクティブ SUPPORTER 数と一致する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/supporter/SupporterHeadcountCacheContractIT.java"
+        },
+        {
+          "name": "AC-10: サポーター 0 人の組織では 0 を返す（null・欠落ではない）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/supporter/SupporterHeadcountCacheContractIT.java"
+        },
+        {
+          "name": "実機E2E: 組織で実数（退会済みを除く SUPPORTER 数）を表示",
+          "evidence": "docs/evidence/CMP-261004-1942-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-11",
+      "description": "限定公開で唯一所属を解除→解除成功・再取得403・保護画面を閉じる",
+      "tests": [
+        {
+          "name": "AC-11: 唯一の所属がサポーターの人は解除 204 の後、キャッシュが温まっていても詳細 GET が 403・人数を返さない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/supporter/SupporterHeadcountCacheContractIT.java"
+        },
+        {
+          "name": "AC-11: 解除成功後の人数取り直しが 403 で失敗しても、操作中表示を解いてダイアログを閉じる",
+          "evidence": "frontend/app/composables/useScopeFollowWiring.headcount.spec.ts"
+        },
+        {
+          "name": "AC-11: fetchTeam の取得失敗が 403 のとき team を null にして保護された詳細を閉じる",
+          "evidence": "frontend/app/composables/useScopeFollowWiring.headcount.spec.ts"
+        },
+        {
+          "name": "AC-11: 組織。解除成功後の取り直しが 403 なら保護された詳細表示を閉じ、読み込み中で詰まらない",
+          "evidence": "frontend/app/composables/useScopeFollowWiring.headcountRender.spec.ts"
+        },
+        {
+          "name": "実機E2E: 画面から解除→権限なしの表示とダッシュボードへ戻る導線（チーム・組織とも）",
+          "evidence": "docs/evidence/CMP-261004-1942-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-12",
+      "description": "別テナント非所属者はキャッシュ温め済みでも403・人数を返さない",
+      "tests": [
+        {
+          "name": "AC-12: 管理者がキャッシュを温めた後でも、別組織の管理者（非所属）の詳細 GET は 403 で人数を返さない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/supporter/SupporterHeadcountCacheContractIT.java"
+        },
+        {
+          "name": "実機E2E: 他テナントのユーザーが PRIVATE 組織を直打ちしても 403 VISIBILITY_001・本文に name/social なし",
+          "evidence": "docs/evidence/CMP-261004-1942-real.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 37385896900
+    },
+    {
+      "runId": 37385897050
+    },
+    {
+      "runId": 37385896958
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3670"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261004-1942-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261004-1942-alicization.md"
+    }
+  },
+  "regressions": []
+}

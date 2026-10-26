@@ -1,0 +1,125 @@
+{
+  "repair_plan": {
+    "dashboard": {
+      "title": "Long-Term Repair Plan",
+      "tab": {
+        "handover": "Handover"
+      }
+    },
+    "timeline": {
+      "title": "Repair history & planning timeline",
+      "layer": {
+        "amount": "Repair cost",
+        "chairperson": "Chairperson",
+        "cpi": "CPI (Price Index)",
+        "minutes": "Meeting minutes"
+      },
+      "year_from": "Start fiscal year",
+      "year_to": "End fiscal year",
+      "no_data": "No repair plan data available",
+      "total": "Total",
+      "cpi_note": "CPI: 2024=100, MLIT FY2023 guideline 1.5%/year"
+    },
+    "category": {
+      "EXTERIOR": "Exterior / Paint",
+      "ROOF": "Roof / Waterproof",
+      "PLUMBING": "Plumbing",
+      "ELECTRICAL": "Electrical",
+      "ELEVATOR": "Elevator",
+      "COMMON_AREA": "Common Area",
+      "FOUNDATION": "Foundation / Structure",
+      "PARKING": "Parking",
+      "LANDSCAPING": "Landscaping",
+      "OTHER": "Other"
+    },
+    "kanban": {
+      "title": "Vendor Quote Kanban",
+      "create": "Create Kanban",
+      "created": "Kanban created",
+      "no_kanbans": "No kanbans found",
+      "no_organization": "This team does not belong to an organization. Vendor Quote Kanban is unavailable.",
+      "card_count": "{count} vendor(s)",
+      "stage": {
+        "requested": "Requested",
+        "received": "Received",
+        "under_review": "Under Review",
+        "shortlisted": "Shortlisted",
+        "selected": "Selected",
+        "rejected": "Rejected"
+      },
+      "status": {
+        "open": "Open",
+        "closed": "Closed",
+        "awarded": "Awarded",
+        "canceled": "Canceled"
+      },
+      "visibility": {
+        "label": "Visibility to Members",
+        "hidden": "Hidden",
+        "anonymized": "Anonymized",
+        "full": "Full Disclosure"
+      },
+      "anonymized": {
+        "vendor_label": "Vendor {index}"
+      },
+      "deadline": {
+        "label": "Bid Deadline",
+        "past": "Bidding Closed"
+      },
+      "card": {
+        "amount": "Quote Amount",
+        "vendor": "Vendor",
+        "vendor_hidden": "(Hidden)",
+        "amount_hidden": "(Hidden)",
+        "compliance_expired": "Compliance Check Expired"
+      },
+      "add_card": "Add Vendor",
+      "no_cards": "No vendors added yet",
+      "form": {
+        "title": "Kanban Title",
+        "title_placeholder": "e.g. Exterior Painting 2026 Quote"
+      }
+    },
+    "error": {
+      "compliance_expired": "This vendor's compliance check has expired. Please contact an administrator."
+    },
+    "handover": {
+      "builder": {
+        "title": "Generate Handover Pack",
+        "select_term": "Select Target Term",
+        "pii_level": "Personal Information Level",
+        "pii_standard": "Standard",
+        "pii_anonymized": "Anonymized (GDPR compliant)",
+        "memo": "Memo (optional)",
+        "generate_button": "Generate PDF",
+        "generating": "Generating...",
+        "download_button": "Download",
+        "regenerate_button": "Regenerate"
+      },
+      "history": {
+        "title": "Generation History",
+        "col_generated_at": "Generated At",
+        "col_status": "Status",
+        "col_pii_level": "PII Level",
+        "col_file_size": "File Size",
+        "col_actions": "Actions"
+      },
+      "status": {
+        "generating": "Generating",
+        "ready": "Ready",
+        "failed": "Failed"
+      },
+      "term": {
+        "manager_title": "Board Member Terms",
+        "col_name": "Name",
+        "col_role": "Role",
+        "col_period": "Term Period",
+        "col_active": "Active",
+        "add_term": "Add Term",
+        "role_placeholder": "e.g. Chairperson, Director"
+      },
+      "pdf_password_required": "This PDF is password protected",
+      "watermark_notice": "This PDF contains viewer information as a watermark"
+    }
+  }
+}

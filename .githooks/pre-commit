@@ -1,0 +1,33 @@
+#!/bin/sh
+# ============================================================================
+# 本陣（メイン作業ディレクトリ）での commit を禁止し worktree 隔離を強制する。
+# CLAUDE.md 大名システム / memory feedback_branch_isolation の機械的強制。
+#
+# 判定: linked worktree では git-dir(.../.git/worktrees/xxx) と
+#       git-common-dir(.../.git) が異なる。本陣では一致する。
+#       → 一致したら本陣とみなし commit を拒否する。
+#
+# インストール（本陣で1回だけ実行。.git/hooks は共通ディレクトリなので
+# 全 worktree で共有され、どのブランチに居ても常に有効になる）:
+#   PowerShell: Copy-Item .githooks\pre-commit .git\hooks\pre-commit -Force
+#   bash      : cp .githooks/pre-commit .git/hooks/pre-commit
+# ============================================================================
+# git 同士で絶対パス形式を統一する（bash の pwd は /c/... 形式になり不一致を起こすため使わない）
+git_dir=$(git rev-parse --absolute-git-dir 2>/dev/null)
+common_dir=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+
+if [ -n "$git_dir" ] && [ "$git_dir" = "$common_dir" ]; then
+  echo "==============================================================" >&2
+  echo " X honjin commit BLOCKED -- use a git worktree" >&2
+  echo "   本陣（${common_dir}）での commit は禁止です。" >&2
+  echo "" >&2
+  echo "   正しい手順:" >&2
+  echo "     git worktree add .claude/worktrees/<name> -b feature/<desc> origin/main" >&2
+  echo "     cd .claude/worktrees/<name>    # この中で作業・コミットする" >&2
+  echo "" >&2
+  echo "   別セッションとの HEAD 衝突・作業消失を防ぐための強制ガードです。" >&2
+  echo "   (CLAUDE.md / feedback_branch_isolation)" >&2
+  echo "==============================================================" >&2
+  exit 1
+fi
+exit 0

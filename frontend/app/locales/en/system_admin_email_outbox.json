@@ -1,0 +1,62 @@
+{
+  "email_outbox": {
+    "title": "Email Delivery Queue",
+    "metrics": {
+      "pending": "Pending",
+      "dead_letter": "Dead Letter",
+      "success_rate": "24h Success Rate",
+      "oldest_pending": "Oldest Pending (sec)"
+    },
+    "filter": {
+      "status": "Status",
+      "source_domain": "Source Domain",
+      "from_date": "From Date",
+      "to_date": "To Date",
+      "all_statuses": "All Statuses",
+      "apply": "Apply",
+      "clear": "Clear"
+    },
+    "table": {
+      "id": "ID",
+      "status": "Status",
+      "template": "Template",
+      "source": "Source",
+      "retry_count": "Retry Count",
+      "created_at": "Created At",
+      "actions": "Actions"
+    },
+    "detail": {
+      "title": "Details",
+      "to_address": "Recipient",
+      "payload_vars": "Template Variables",
+      "ses_message_id": "SES Message ID",
+      "body_purged": "Body has been purged per GDPR policy",
+      "next_attempt_at": "Next Attempt Scheduled",
+      "sent_at": "Sent At",
+      "last_error": "Last Error",
+      "locale": "Locale",
+      "source_domain": "Source Domain",
+      "source_event_id": "Source Event ID"
+    },
+    "action": {
+      "retry": "Retry",
+      "cancel": "Cancel",
+      "back": "Back to List"
+    },
+    "status": {
+      "PENDING": "Pending",
+      "SENDING": "Sending",
+      "SENT": "Sent",
+      "FAILED": "Failed",
+      "DEAD_LETTER": "Dead Letter",
+      "CANCELLED": "Cancelled"
+    },
+    "retry_success": "Added to retry queue",
+    "cancel_success": "Cancelled successfully",
+    "retry_conflict": "Cannot retry in this state",
+    "cancel_conflict": "Cannot cancel in this state",
+    "load_failed": "Failed to load data",
+    "no_data": "No data available",
+    "na": "N/A"
+  }
+}

@@ -1,0 +1,75 @@
+# ============================================================
+# Stage 1: Install dependencies
+# ============================================================
+FROM node:22.23.2-alpine AS deps
+
+WORKDIR /app
+
+# Install only production + build-time deps via ci for reproducibility
+COPY package.json package-lock.json ./
+COPY scripts/patch-nuxt-devtools-simple-git.mjs ./scripts/patch-nuxt-devtools-simple-git.mjs
+RUN npm ci
+
+# ============================================================
+# Stage 2: Build
+# ============================================================
+FROM node:22.23.2-alpine AS builder
+
+WORKDIR /app
+
+# Copy installed node_modules from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy source
+COPY . .
+
+# Build Nuxt 3 (outputs to .output/)
+# NUXT_PUBLIC_API_BASE can be overridden at runtime via env var;
+# set a placeholder here so the build succeeds in CI without a live backend.
+ARG NUXT_PUBLIC_API_BASE=http://localhost:8080
+ENV NUXT_PUBLIC_API_BASE=${NUXT_PUBLIC_API_BASE}
+# NUXT_INTERNAL_API_BASE: Nitro サーバー（SSR）側がバックエンドを叩く際の絶対 URL。
+# ブラウザ用 NUXT_PUBLIC_API_BASE は本番で '' (同一オリジン相対) にできるが、
+# サーバーサイドは相対パスでは届かないため別途設定する。
+# 本番コンテナ起動時に -e NUXT_INTERNAL_API_BASE=http://backend:8080 等で上書きすること。
+ARG NUXT_INTERNAL_API_BASE=http://localhost:8080
+ENV NUXT_INTERNAL_API_BASE=${NUXT_INTERNAL_API_BASE}
+
+# CMP-260821-2130: nuxt build はデフォルトのヒープ上限では OOM で完走しない
+# （実測: サーバー側ソースマップ無効化と組み合わせても 4096MB では死亡、8192MB で完走・
+#   完走時ピーク使用量 9,482MB / swap 0）。builder ステージ限定で置く
+# （ホスト側 workflow の環境変数は RUN へ自動継承されず、runtime ステージ（別 FROM）へも
+#   引き継がれないため実行時メモリには影響しない）。
+ENV NODE_OPTIONS=--max-old-space-size=8192
+
+RUN npm run build
+
+# ============================================================
+# Stage 3: Runtime
+# ============================================================
+FROM node:22.23.2-alpine AS runtime
+
+# Security: add non-root user
+RUN addgroup --system --gid 1001 nuxtgroup \
+ && adduser  --system --uid 1001 --ingroup nuxtgroup nuxtuser
+
+WORKDIR /app
+
+# Nuxt 3 standalone output is self-contained — no node_modules needed
+COPY --from=builder --chown=nuxtuser:nuxtgroup /app/.output ./
+
+USER nuxtuser
+
+# Nuxt 3 default port
+ENV PORT=3000
+ENV HOST=0.0.0.0
+ENV NODE_ENV=production
+
+EXPOSE 3000
+
+# HOST=0.0.0.0 のIPv4待受に合わせ、localhostのIPv6解決に依存しない。
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3000/ || exit 1
+
+# Nuxt 3 standalone entry point
+CMD ["node", "server/index.mjs"]

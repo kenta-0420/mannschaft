@@ -1,0 +1,51 @@
+{
+  "memberInfo": {
+    "title": "Mitgliederinformationen",
+    "settings": {
+      "title": "Mitgliederinformationsfelder konfigurieren",
+      "fieldList": "Feldliste",
+      "addField": "Feld hinzufügen",
+      "editField": "Feld bearbeiten",
+      "deleteField": "Feld löschen",
+      "deleteConfirm": "Dieses Feld löschen?",
+      "statusTable": "Antwortstatus",
+      "sendRemind": "Erinnerung senden",
+      "remindSent": "Erinnerung gesendet",
+      "remindTooSoon": "Bereits innerhalb der letzten 24 Stunden gesendet"
+    },
+    "field": {
+      "name": "Feldname",
+      "type": "Eingabetyp",
+      "required": "Pflichtfeld",
+      "sensitive": "Vertrauliche Information",
+      "sensitiveHint": "Verschlüsselt gespeichert",
+      "refreshInterval": "Aktualisierungsintervall",
+      "intervalNone": "Kein Limit",
+      "interval12": "1 Jahr (12 Monate)",
+      "interval36": "3 Jahre (36 Monate)",
+      "interval60": "5 Jahre (60 Monate)",
+      "typeText": "Text",
+      "typePhone": "Telefonnummer",
+      "typeEmail": "E-Mail-Adresse",
+      "typeDate": "Datum"
+    },
+    "response": {
+      "title": "Informationen eingeben",
+      "myInfo": "Meine Informationen",
+      "saveAll": "Alle speichern",
+      "saved": "Gespeichert",
+      "overdue": "Überfällig",
+      "notAnswered": "Nicht beantwortet",
+      "nextDue": "Nächstes Fälligkeitsdatum",
+      "confirmedAt": "Zuletzt bestätigt"
+    },
+    "status": {
+      "completed": "Abgeschlossen",
+      "incomplete": "Unvollständig",
+      "overdue": "Überfällig",
+      "totalMembers": "Mitglieder gesamt",
+      "completedCount": "Abgeschlossen",
+      "overdueCount": "Überfällig"
+    }
+  }
+}

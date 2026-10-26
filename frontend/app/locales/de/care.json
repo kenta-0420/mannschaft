@@ -1,0 +1,110 @@
+{
+  "care": {
+    "page": {
+      "title": "Pflegeverknüpfung verwalten",
+      "inviteWatcher": "Betreuer einladen",
+      "inviteRecipient": "Pflegebedürftigen einladen",
+      "invitationAccept": "Einladung bestätigen",
+      "teamOverride": "Team-Benachrichtigungseinstellungen überschreiben"
+    },
+    "tab": {
+      "watchers": "Betreuer",
+      "recipients": "Pflegebedürftige",
+      "pending": "Ausstehende Einladungen"
+    },
+    "label": {
+      "watcher": "Betreuer",
+      "recipient": "Pflegebedürftiger",
+      "careCategory": "Pflegekategorie",
+      "relationship": "Beziehung",
+      "isPrimary": "Hauptverantwortlicher",
+      "status": "Status",
+      "notifySettings": "Benachrichtigungseinstellungen",
+      "notifyOnRsvp": "Bei Anmeldung benachrichtigen",
+      "notifyOnCheckin": "Bei Check-in benachrichtigen",
+      "notifyOnCheckout": "Bei Check-out benachrichtigen",
+      "notifyOnAbsentAlert": "Bei Abwesenheitsalarm benachrichtigen",
+      "notifyOnDismissal": "Bei Entlassung benachrichtigen",
+      "confirmedAt": "Bestätigt am",
+      "invitedBy": "Eingeladen von",
+      "createdAt": "Erstellt am",
+      "noWatchers": "Noch keine Betreuer vorhanden",
+      "noRecipients": "Noch keine Pflegebedürftigen vorhanden",
+      "noPendingInvitations": "Keine ausstehenden Einladungen",
+      "userId": "Benutzer-ID",
+      "inviterName": "Einlader",
+      "expiresAt": "Gültig bis",
+      "disabled": "Deaktiviert",
+      "overrideNote": "Benachrichtigungseinstellungen für dieses Team individuell überschreiben"
+    },
+    "category": {
+      "MINOR": "Minderjähriger",
+      "ELDERLY": "Ältere Person",
+      "DISABILITY_SUPPORT": "Behindertenunterstützung",
+      "GENERAL_FAMILY": "Allgemeine Familie"
+    },
+    "relationship": {
+      "PARENT": "Elternteil",
+      "CHILD": "Kind",
+      "SPOUSE": "Ehepartner",
+      "GRANDPARENT": "Großelternteil",
+      "GRANDCHILD": "Enkelkind",
+      "SIBLING": "Geschwister",
+      "LEGAL_GUARDIAN": "Gesetzlicher Vormund",
+      "CARETAKER": "Pflegeperson",
+      "OTHER": "Sonstiges"
+    },
+    "status": {
+      "PENDING": "Ausstehend",
+      "ACTIVE": "Aktiv",
+      "REJECTED": "Abgelehnt",
+      "REVOKED": "Widerrufen"
+    },
+    "invitedBy": {
+      "CARE_RECIPIENT": "Pflegebedürftiger",
+      "WATCHER": "Betreuer",
+      "ADMIN": "Administrator",
+      "SYSTEM": "System"
+    },
+    "button": {
+      "inviteWatcher": "Betreuer einladen",
+      "inviteRecipient": "Pflegebedürftigen einladen",
+      "updateNotify": "Benachrichtigungen speichern",
+      "deleteLink": "Verknüpfung entfernen",
+      "acceptInvitation": "Einladung annehmen",
+      "rejectInvitation": "Einladung ablehnen",
+      "saveOverride": "Einstellungen speichern",
+      "deleteOverride": "Einstellungen löschen"
+    },
+    "dialog": {
+      "deleteLinkTitle": "Pflegeverknüpfung entfernen",
+      "deleteLinkConfirm": "Möchten Sie diese Pflegeverknüpfung wirklich entfernen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "deleteOverrideTitle": "Überschreibungseinstellungen löschen",
+      "deleteOverrideConfirm": "Möchten Sie die Team-Benachrichtigungseinstellungen wirklich löschen?"
+    },
+    "message": {
+      "inviteWatcherSuccess": "Betreuereinladung wurde gesendet",
+      "inviteRecipientSuccess": "Einladung für Pflegebedürftigen wurde gesendet",
+      "inviteError": "Einladung konnte nicht gesendet werden",
+      "updateNotifySuccess": "Benachrichtigungseinstellungen aktualisiert",
+      "updateNotifyError": "Benachrichtigungseinstellungen konnten nicht aktualisiert werden",
+      "deleteLinkSuccess": "Pflegeverknüpfung entfernt",
+      "deleteLinkError": "Pflegeverknüpfung konnte nicht entfernt werden",
+      "acceptSuccess": "Einladung angenommen",
+      "acceptError": "Einladung konnte nicht angenommen werden",
+      "rejectSuccess": "Einladung abgelehnt",
+      "rejectError": "Einladung konnte nicht abgelehnt werden",
+      "saveOverrideSuccess": "Einstellungen gespeichert",
+      "saveOverrideError": "Einstellungen konnten nicht gespeichert werden",
+      "deleteOverrideSuccess": "Einstellungen gelöscht",
+      "deleteOverrideError": "Einstellungen konnten nicht gelöscht werden",
+      "loadError": "Daten konnten nicht geladen werden",
+      "invalidToken": "Ungültiger oder abgelaufener Einladungslink"
+    },
+    "validation": {
+      "userIdRequired": "Bitte geben Sie eine Benutzer-ID ein",
+      "careCategoryRequired": "Bitte wählen Sie eine Pflegekategorie",
+      "relationshipRequired": "Bitte wählen Sie eine Beziehung"
+    }
+  }
+}

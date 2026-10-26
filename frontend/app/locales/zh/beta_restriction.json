@@ -1,0 +1,17 @@
+{
+  "beta_restriction": {
+    "title": "Beta注册限制",
+    "description": "在Beta测试期间，仅允许受邀用户注册。",
+    "enabled_label": "启用Beta限制",
+    "max_team_id_label": "可邀请团队ID上限",
+    "max_org_id_label": "可邀请组织ID上限",
+    "null_hint": "留空表示无限制",
+    "save": "保存",
+    "save_success": "设置已保存",
+    "current_settings": "当前设置",
+    "status_on": "已限制",
+    "status_off": "无限制",
+    "no_limit": "无",
+    "last_updated": "最后更新"
+  }
+}

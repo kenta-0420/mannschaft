@@ -1,0 +1,194 @@
+{
+  "acceptanceCriteriaCount": 15,
+  "evidenceReferences": [
+    {
+      "ac": "CLIP01",
+      "evidence": "frontend/app/utils/ranch-development-clips.spec.ts",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP01",
+      "evidence": "docs/evidence/CMP-261021-1347/collected/clip-final-317dd3-asset-verifier-20261022.log",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP01",
+      "evidence": "docs/evidence/CMP-261021-1347/collected/clip-production-output-evidence.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP02",
+      "evidence": "backend/src/test/java/com/mannschaft/app/ranch/service/RanchDevelopmentClipCatalogTest.java",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP02",
+      "evidence": "docs/evidence/CMP-261021-1347/collected/clip-production-output-evidence.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP02",
+      "evidence": "docs/evidence/CMP-261021-1347/collected/clip-be-native-green-evidence.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP03",
+      "evidence": "backend/src/test/java/com/mannschaft/app/ranch/RanchDevelopmentClipAssignmentIT.java",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP03",
+      "evidence": "frontend/app/utils/ranch-development-clips.spec.ts",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP03",
+      "evidence": "docs/evidence/CMP-261021-1347/collected/clip-be-native-green-evidence.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP04",
+      "evidence": "backend/src/test/java/com/mannschaft/app/ranch/RanchDevelopmentClipAssignmentIT.java",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP04",
+      "evidence": "docs/evidence/CMP-261021-1347/collected/clip-be-native-green-evidence.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP05",
+      "evidence": "frontend/app/composables/useRanchClipPlayback.spec.ts",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP05",
+      "evidence": "docs/evidence/CMP-261021-1347/real/landMotion.safe.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP06",
+      "evidence": "frontend/app/components/ranch/RanchWidgetContent.clips.spec.ts",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP06",
+      "evidence": "docs/evidence/CMP-261021-1347/real/zeroXp.safe.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP07",
+      "evidence": "frontend/app/components/ranch/RanchWidgetContent.clips.spec.ts",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP07",
+      "evidence": "docs/evidence/CMP-261021-1347/real/remainingSeaAir.safe.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP08",
+      "evidence": "frontend/app/composables/useRanchClipAtlas.spec.ts",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP08",
+      "evidence": "docs/evidence/CMP-261021-1347/collected/clip-root-static-review-20261021.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP09",
+      "evidence": "frontend/app/composables/useRanchClipAtlas.spec.ts",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP09",
+      "evidence": "frontend/app/composables/useRanchClipPlayback.spec.ts",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP09",
+      "evidence": "docs/evidence/CMP-261021-1347/real/documentVisibility.safe.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP10",
+      "evidence": "frontend/app/components/ranch/DinosaurScene.clips.spec.ts",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP10",
+      "evidence": "docs/evidence/CMP-261021-1347/real/documentVisibility.safe.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP10",
+      "evidence": "docs/evidence/CMP-261021-1347/real/landVisibilityAndFaults.safe.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP11",
+      "evidence": "frontend/app/components/ranch/DinosaurScene.clips.spec.ts",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP11",
+      "evidence": "docs/evidence/CMP-261021-1347/real/remainingSeaAir.safe.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP11",
+      "evidence": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/report.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP12",
+      "evidence": "frontend/app/composables/useRanchClipAtlas.spec.ts",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP12",
+      "evidence": "docs/evidence/CMP-261021-1347/real/landVisibilityAndFaults.safe.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP13",
+      "evidence": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/report.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP13",
+      "evidence": "docs/evidence/CMP-261021-1347/real/nativeViewportVisual.safe.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP13",
+      "evidence": "docs/evidence/CMP-261021-1347/real/root-approved-recheck.safe.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP14",
+      "evidence": "frontend/app/composables/useRanchClipAtlas.spec.ts",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP14",
+      "evidence": "docs/evidence/CMP-261021-1347/collected/clip-root-static-review-20261021.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP15",
+      "evidence": "docs/evidence/CMP-261021-1347/real/composite.safe.json",
+      "existsInStagingOrProductRepository": true
+    },
+    {
+      "ac": "CLIP15",
+      "evidence": "docs/evidence/CMP-261021-1347/collected/clip-root-final-review-addendum-20261022.json",
+      "existsInStagingOrProductRepository": true
+    }
+  ],
+  "allResolved": true,
+  "ciApiValidationExecuted": false,
+  "completionValidatorExecuted": false,
+  "reason": "CI/head sync/merge incomplete; this is staging only"
+}

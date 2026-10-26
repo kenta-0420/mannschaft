@@ -1,0 +1,20 @@
+CREATE TABLE team_member_info_responses (
+  id                    BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  team_id               BIGINT UNSIGNED NOT NULL,
+  user_id               BIGINT UNSIGNED NOT NULL,
+  field_id              BIGINT UNSIGNED NOT NULL,
+  value_plain           TEXT            NULL COMMENT 'is_sensitive=FALSE の場合のみ使用',
+  value_encrypted       TEXT            NULL COMMENT 'is_sensitive=TRUE: AES-256-GCM Base64',
+  encryption_key_version INT            NULL COMMENT 'is_sensitive=TRUE 時のみ設定',
+  confirmed_at          DATETIME        NULL COMMENT '最終確認日時',
+  last_reminder_sent_at DATETIME        NULL,
+  created_at            DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at            DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_tmir_user_field (user_id, field_id),
+  KEY idx_tmir_team_user (team_id, user_id),
+  KEY idx_tmir_field (field_id),
+  CONSTRAINT fk_tmir_team  FOREIGN KEY (team_id)  REFERENCES teams(id)  ON DELETE CASCADE,
+  CONSTRAINT fk_tmir_user  FOREIGN KEY (user_id)  REFERENCES users(id)  ON DELETE CASCADE,
+  CONSTRAINT fk_tmir_field FOREIGN KEY (field_id) REFERENCES team_member_info_fields(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -1,0 +1,40 @@
+{
+  "systemAdmin": {
+    "feePolicy": {
+      "title": "수수료 정책 관리",
+      "description": "통합 결제의 수수료 정책(요율＋고정액)과 적용 대상을 관리합니다",
+      "policyKey": "정책 키",
+      "displayName": "표시 이름",
+      "percentRate": "요율(%)",
+      "flatFee": "고정액(엔)",
+      "enabled": "활성",
+      "assignmentCount": "할당 수",
+      "totalFeeHint": "총 수수료 = 요율 × 액면가 ＋ 고정액 (결제자와 수령자가 분담)",
+      "create": "정책 추가",
+      "update": "업데이트",
+      "disable": "비활성화",
+      "defaultImmutable": "표준(DEFAULT) 정책은 비활성화할 수 없습니다",
+      "feeExceedsHint": "소액 결제 시 이 고정액이 액면가를 초과할 수 있습니다",
+      "validation": {
+        "policyKeyFormat": "정책 키는 대문자, 숫자, 밑줄만 사용할 수 있습니다",
+        "displayNameRequired": "표시 이름을 입력하세요",
+        "percentRateRange": "요율은 0 이상 1 미만이어야 합니다",
+        "flatFeeNonNegative": "고정액은 0 이상이어야 합니다",
+        "feeZeroNotAllowed": "요율과 고정액을 모두 0으로 설정할 수 없습니다",
+        "alreadyExists": "같은 키의 정책이 이미 존재합니다(업데이트하세요)",
+        "notFound": "해당 수수료 정책을 찾을 수 없습니다"
+      },
+      "assignment": {
+        "title": "수수료 할당",
+        "sourceKind": "대상 종류",
+        "subKey": "세부 키(선택, 예: 헬퍼 카테고리)",
+        "policy": "적용 정책",
+        "add": "할당 추가",
+        "remove": "할당 해제",
+        "applyNote": "할당 변경은 신규 청구에만 적용됩니다(기존 거래는 변경되지 않습니다)",
+        "duplicate": "같은 조건의 할당이 이미 존재합니다",
+        "policyDisabled": "할당된 수수료 정책이 비활성 상태입니다"
+      }
+    }
+  }
+}

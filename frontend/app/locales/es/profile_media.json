@@ -1,0 +1,25 @@
+{
+  "profile_media": {
+    "icon": "Ícono",
+    "banner": "Banner",
+    "upload_icon": "Cambiar ícono",
+    "upload_banner": "Cambiar banner",
+    "delete_icon": "Eliminar ícono",
+    "delete_banner": "Eliminar banner",
+    "upload_success": "Imagen subida correctamente",
+    "delete_success": "Imagen eliminada",
+    "upload_error": "Error al subir imagen",
+    "delete_error": "Error al eliminar imagen",
+    "crop_title": "Recortar ícono",
+    "crop_hint": "Arrastra para reposicionar",
+    "confirm_delete_icon": "¿Eliminar imagen de ícono?",
+    "confirm_delete_banner": "¿Eliminar imagen de banner?",
+    "file_too_large_icon": "El ícono debe pesar 5MB o menos",
+    "file_too_large_banner": "El banner debe pesar 10MB o menos",
+    "unsupported_type": "Formato de archivo no compatible (JPEG, PNG, WebP, GIF)",
+    "banner_no_gif": "No se permite GIF para banners",
+    "select_file": "Seleccionar archivo",
+    "confirm_crop": "Confirmar recorte",
+    "uploading": "Subiendo..."
+  }
+}

@@ -1,0 +1,138 @@
+package com.mannschaft.app.proxy.repository;
+
+import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * 代理入力同意書リポジトリ（F14.1）。
+ * @SQLRestriction により deleted_at IS NULL が自動適用される。
+ */
+public interface ProxyInputConsentRepository extends JpaRepository<ProxyInputConsentEntity, Long> {
+
+    /**
+     * 代理者が保有する有効な同意書一覧を取得する（ProxyInputDeskView起動時に使用）。
+     */
+    @Query("SELECT c FROM ProxyInputConsentEntity c WHERE c.proxyUserId = :proxyUserId " +
+           "AND c.approvedAt IS NOT NULL AND c.revokedAt IS NULL " +
+           "AND c.effectiveFrom <= CURRENT_DATE AND c.effectiveUntil >= CURRENT_DATE")
+    List<ProxyInputConsentEntity> findActiveByProxyUserId(@Param("proxyUserId") Long proxyUserId);
+
+    /**
+     * ProxyInputContextFilterで同意書の有効性を検証する。
+     * consentIdとproxyUserIdの両方が一致する有効な同意書のみ返す。
+     * トランザクション外のFilterで参照する許可スコープも取得する。
+     */
+    @EntityGraph(attributePaths = "scopes")
+    @Query("SELECT c FROM ProxyInputConsentEntity c WHERE c.id = :consentId " +
+           "AND c.proxyUserId = :proxyUserId " +
+           "AND c.approvedAt IS NOT NULL AND c.revokedAt IS NULL " +
+           "AND c.effectiveFrom <= CURRENT_DATE AND c.effectiveUntil >= CURRENT_DATE")
+    Optional<ProxyInputConsentEntity> findValidConsent(
+            @Param("consentId") Long consentId,
+            @Param("proxyUserId") Long proxyUserId);
+
+    /**
+     * 同一組み合わせの有効同意書が存在するかチェックする（二重登録防止）。
+     * DB側のUNIQUE制約ではなくService層でチェックする方式（MySQL NULL制約の回避）。
+     */
+    @Query("SELECT CASE WHEN COUNT(c) > 0 THEN true ELSE false END FROM ProxyInputConsentEntity c " +
+           "WHERE c.subjectUserId = :subjectUserId AND c.proxyUserId = :proxyUserId " +
+           "AND c.organizationId = :organizationId AND c.effectiveFrom = :effectiveFrom " +
+           "AND c.revokedAt IS NULL AND c.approvedAt IS NOT NULL")
+    boolean existsActiveConsent(
+            @Param("subjectUserId") Long subjectUserId,
+            @Param("proxyUserId") Long proxyUserId,
+            @Param("organizationId") Long organizationId,
+            @Param("effectiveFrom") LocalDate effectiveFrom);
+
+    /**
+     * 組合単位の同意書一覧を取得する（ADMIN向け管理画面）。
+     */
+    Page<ProxyInputConsentEntity> findByOrganizationIdOrderByCreatedAtDescIdDesc(
+            Long organizationId, Pageable pageable);
+
+    /**
+     * 承認・撤回の競合を直列化するため、同意書を行ロック付きで取得する。
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT c FROM ProxyInputConsentEntity c WHERE c.id = :consentId")
+    Optional<ProxyInputConsentEntity> findByIdForUpdate(@Param("consentId") Long consentId);
+
+    /**
+     * 承認待ちの同意書一覧を取得する。
+     */
+    @Query("SELECT c FROM ProxyInputConsentEntity c WHERE c.organizationId = :organizationId " +
+           "AND c.approvedAt IS NULL AND c.revokedAt IS NULL")
+    List<ProxyInputConsentEntity> findPendingApproval(@Param("organizationId") Long organizationId);
+
+    /**
+     * 本人ユーザーIDで有効な同意書一覧を取得する（ライフイベント失効処理用）。
+     */
+    @Query("SELECT c FROM ProxyInputConsentEntity c WHERE c.subjectUserId = :userId " +
+           "AND c.revokedAt IS NULL")
+    List<ProxyInputConsentEntity> findActiveBySubjectUserId(@Param("userId") Long userId);
+
+    /**
+     * 指定ユーザーが本人または代理者として関与する全未失効同意書を取得する
+     * （ライフイベント一括失効処理用: ProxyConsentLifecycleService で使用）。
+     */
+    @Query("SELECT c FROM ProxyInputConsentEntity c WHERE " +
+           "(c.subjectUserId = :userId OR c.proxyUserId = :userId) " +
+           "AND c.revokedAt IS NULL")
+    List<ProxyInputConsentEntity> findActiveBySubjectOrProxyUserId(@Param("userId") Long userId);
+
+    /**
+     * 有効期限切れの同意書を取得する（ProxyConsentExpiryJobで使用）。
+     */
+    @Query("SELECT c FROM ProxyInputConsentEntity c WHERE c.effectiveUntil < CURRENT_DATE " +
+           "AND c.revokedAt IS NULL")
+    List<ProxyInputConsentEntity> findExpired();
+
+    /**
+     * GDPRエクスポート用: 指定ユーザーが本人（subject）として関与する全同意書を取得する。
+     * 論理削除済みを含む全件（@SQLRestriction を回避するため nativeQuery 使用）。
+     */
+    @Query(value = "SELECT * FROM proxy_input_consents WHERE subject_user_id = :userId",
+           nativeQuery = true)
+    List<ProxyInputConsentEntity> findAllBySubjectUserIdForExport(@Param("userId") Long userId);
+
+    /**
+     * 退会時論理削除用: 指定ユーザーが本人（subject）の同意書を全件論理削除する。
+     * 監査証跡として同意書の記録は保持するため、物理削除ではなく論理削除を行う。
+     */
+    @Modifying
+    @Query("UPDATE ProxyInputConsentEntity c SET c.deletedAt = CURRENT_TIMESTAMP WHERE c.subjectUserId = :userId AND c.deletedAt IS NULL")
+    void logicalDeleteAllBySubjectUserId(@Param("userId") Long userId);
+
+    /**
+     * 孤児補正バッチ用: 退会済みユーザー（{@code users} テーブルに行が存在しない）が
+     * {@code subject_user_id} として参照されており、かつ論理削除されていない同意書を全件論理削除する。
+     *
+     * <p>{@link com.mannschaft.app.proxy.event.ProxyPurgeEventListener} の処理漏れを
+     * 夜次補正バッチ（Phase D-6）で回収するためのクエリ。
+     * {@link org.hibernate.annotations.SQLRestriction} ({@code deleted_at IS NULL}) が
+     * エンティティに付与されているため nativeQuery を使用する。</p>
+     *
+     * @return 論理削除した件数
+     */
+    @Modifying
+    @Query(value = """
+            UPDATE proxy_input_consents pic
+            LEFT JOIN users u ON pic.subject_user_id = u.id
+            SET pic.deleted_at = NOW()
+            WHERE pic.deleted_at IS NULL AND u.id IS NULL
+            """, nativeQuery = true)
+    int logicalDeleteOrphanBySubjectUserId();
+}

@@ -1,0 +1,517 @@
+package com.mannschaft.app.circulation;
+
+import com.mannschaft.app.circulation.CirculationMode;
+import com.mannschaft.app.circulation.CirculationStatus;
+import com.mannschaft.app.circulation.dto.DocumentResponse;
+import com.mannschaft.app.circulation.dto.DocumentStatsResponse;
+import com.mannschaft.app.circulation.dto.CreateAttachmentRequest;
+import com.mannschaft.app.circulation.dto.UpdateDocumentRequest;
+import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
+import com.mannschaft.app.circulation.entity.CirculationAttachmentEntity;
+import com.mannschaft.app.circulation.event.CirculationDocumentDeletedEvent;
+import com.mannschaft.app.circulation.repository.CirculationAttachmentRepository;
+import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
+import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
+import com.mannschaft.app.circulation.service.CirculationService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+
+/**
+ * {@link CirculationService} の単体テスト。
+ * 文書CRUD・受信者管理・添付ファイル管理を検証する。
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("CirculationService 単体テスト")
+class CirculationServiceTest {
+
+    @Mock
+    private CirculationDocumentRepository documentRepository;
+
+    @Mock
+    private CirculationRecipientRepository recipientRepository;
+
+    @Mock
+    private CirculationAttachmentRepository attachmentRepository;
+
+    @Mock
+    private CirculationMapper circulationMapper;
+
+    /** F13 Phase 5-a: presignAttachmentUpload メソッド追加に伴い @Mock 追加（他テストへの影響なし）。 */
+    @Mock
+    private R2StorageService r2StorageService;
+
+    @Mock
+    private StorageAclService storageAclService;
+
+    @Mock private StorageAccessService storageAccessService;
+    @Mock private AccessControlService accessControlService;
+    @Mock private ContentVisibilityChecker contentVisibilityChecker;
+
+    /** F09.14 Phase 4-C: deleteDocument 時のイベント発行検証用。 */
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
+
+    @Mock
+    private com.mannschaft.app.common.DomainEventPublisher domainEventPublisher;
+
+    /** Issue #2715 CMP-055 lot C-5/C-6: newly added i18n dependencies. */
+    @Mock private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
+    @Mock private MessageSource messageSource;
+
+    @InjectMocks
+    private CirculationService circulationService;
+
+    /**
+     * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
+     * title/body. Return the supplied default message so existing assertions keep working.
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void stubI18nMessageSource() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));
+        org.mockito.Mockito.lenient().when(userLocaleCache.getLocales(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(java.util.Map.of());
+        org.mockito.Mockito.lenient().when(messageSource.getMessage(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> inv.getArgument(2));
+        org.mockito.Mockito.lenient().when(accessControlService.isMember(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(true);
+        org.mockito.Mockito.lenient().doNothing().when(accessControlService).checkMembership(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString());
+        org.mockito.Mockito.lenient().doNothing().when(accessControlService).checkMembershipOrDescendant(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyBoolean());
+        org.mockito.Mockito.lenient().doNothing().when(contentVisibilityChecker).assertCanView(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.lenient().when(storageAccessService.generateDownloadUrlsForList(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(java.util.Map.of());
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private static final Long DOCUMENT_ID = 100L;
+    private static final Long SCOPE_ID = 1L;
+    private static final Long USER_ID = 10L;
+    private static final String SCOPE_TYPE = "TEAM";
+
+    private CirculationDocumentEntity createDraftDocument() {
+        return CirculationDocumentEntity.builder()
+                .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).createdBy(USER_ID)
+                .title("回覧テスト").body("回覧本文").build();
+    }
+
+    private CirculationDocumentEntity createActiveDocument() {
+        CirculationDocumentEntity entity = createDraftDocument();
+        entity.activate();
+        entity.updateRecipientCount(3);
+        return entity;
+    }
+
+    private DocumentResponse createDocumentResponse() {
+        return DocumentResponse.builder()
+                .id(DOCUMENT_ID).scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).createdBy(USER_ID)
+                .title("回覧テスト").body("回覧本文").circulationMode("SIMULTANEOUS").sequentialCount(0)
+                .status("DRAFT").priority("NORMAL").stampDisplayStyle("STANDARD")
+                .totalRecipientCount(0).stampedCount(0).attachmentCount(0).commentCount(0)
+                .build();
+    }
+
+    @Nested
+    @DisplayName("getDocument")
+    class GetDocument {
+
+        @Test
+        @DisplayName("文書詳細取得_正常_レスポンス返却")
+        void 文書詳細取得_正常_レスポンス返却() {
+            // Given
+            CirculationDocumentEntity entity = createDraftDocument();
+            DocumentResponse response = createDocumentResponse();
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(circulationMapper.toDocumentResponse(entity)).willReturn(response);
+
+            // When
+            DocumentResponse result = circulationService.getDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID);
+
+            // Then
+            assertThat(result.getTitle()).isEqualTo("回覧テスト");
+        }
+
+        @Test
+        @DisplayName("文書詳細取得_存在しない_BusinessException")
+        void 文書詳細取得_存在しない_BusinessException() {
+            // Given
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> circulationService.getDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CirculationErrorCode.DOCUMENT_NOT_FOUND));
+        }
+    }
+
+    @Nested
+    @DisplayName("updateDocument")
+    class UpdateDocument {
+
+        @Test
+        @DisplayName("文書更新_DRAFT状態_正常に更新")
+        void 文書更新_DRAFT状態_正常に更新() {
+            // Given
+            UpdateDocumentRequest request = new UpdateDocumentRequest("更新タイトル", null, null, null, null, null, null);
+
+            CirculationDocumentEntity entity = createDraftDocument();
+            DocumentResponse response = createDocumentResponse();
+
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(documentRepository.save(entity)).willReturn(entity);
+            given(circulationMapper.toDocumentResponse(entity)).willReturn(response);
+
+            // When
+            DocumentResponse result = circulationService.updateDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID, request);
+
+            // Then
+            assertThat(result).isNotNull();
+        }
+
+        @Test
+        @DisplayName("文書更新_ACTIVE状態_BusinessException")
+        void 文書更新_ACTIVE状態_BusinessException() {
+            // Given
+            UpdateDocumentRequest request = new UpdateDocumentRequest("更新タイトル", null, null, null, null, null, null);
+
+            CirculationDocumentEntity entity = createActiveDocument();
+
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+
+            // When & Then
+            assertThatThrownBy(() -> circulationService.updateDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CirculationErrorCode.INVALID_DOCUMENT_STATUS));
+        }
+    }
+
+    @Nested
+    @DisplayName("activateDocument")
+    class ActivateDocument {
+
+        @Test
+        @DisplayName("文書公開_正常_ACTIVE状態に遷移")
+        void 文書公開_正常_ACTIVE状態に遷移() {
+            // Given
+            CirculationDocumentEntity entity = createDraftDocument();
+            DocumentResponse response = createDocumentResponse();
+
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(recipientRepository.countByDocumentId(DOCUMENT_ID)).willReturn(3L);
+            given(documentRepository.save(any(CirculationDocumentEntity.class))).willReturn(entity);
+            given(circulationMapper.toDocumentResponse(any(CirculationDocumentEntity.class))).willReturn(response);
+
+            // When
+            circulationService.activateDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID);
+
+            // Then
+            assertThat(entity.getStatus()).isEqualTo(CirculationStatus.ACTIVE);
+        }
+
+        @Test
+        @DisplayName("文書公開_受信者なし_BusinessException")
+        void 文書公開_受信者なし_BusinessException() {
+            // Given
+            CirculationDocumentEntity entity = createDraftDocument();
+
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(recipientRepository.countByDocumentId(DOCUMENT_ID)).willReturn(0L);
+
+            // When & Then
+            assertThatThrownBy(() -> circulationService.activateDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CirculationErrorCode.EMPTY_RECIPIENTS));
+        }
+    }
+
+    @Nested
+    @DisplayName("cancelDocument")
+    class CancelDocument {
+
+        @Test
+        @DisplayName("文書キャンセル_正常_CANCELLED状態に遷移")
+        void 文書キャンセル_正常_CANCELLED状態に遷移() {
+            // Given
+            CirculationDocumentEntity entity = createActiveDocument();
+            DocumentResponse response = createDocumentResponse();
+
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(documentRepository.save(entity)).willReturn(entity);
+            given(circulationMapper.toDocumentResponse(entity)).willReturn(response);
+
+            // When
+            circulationService.cancelDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID);
+
+            // Then
+            assertThat(entity.getStatus()).isEqualTo(CirculationStatus.CANCELLED);
+        }
+    }
+
+    @Nested
+    @DisplayName("deleteDocument")
+    class DeleteDocument {
+
+        @Test
+        @DisplayName("文書削除_正常_論理削除実行")
+        void 文書削除_正常_論理削除実行() {
+            // Given
+            CirculationDocumentEntity entity = createDraftDocument();
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+
+            // When
+            circulationService.deleteDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID);
+
+            // Then
+            assertThat(entity.getDeletedAt()).isNotNull();
+            verify(documentRepository).save(entity);
+        }
+
+        @Test
+        @DisplayName("生成済みエクスポートを削除すると ACL を正しい binding で解放する")
+        void 文書削除_生成済みエクスポートのAclを解放する() {
+            CirculationDocumentEntity entity = createDraftDocument();
+            ReflectionTestUtils.setField(entity, "id", DOCUMENT_ID);
+            entity.markExportCompleted("circulation/exports/100/export.pdf");
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+
+            circulationService.deleteDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID);
+
+            verify(storageAclService).releaseClaimed("circulation/exports/100/export.pdf",
+                    new StorageAclAttachmentBinding("CIRCULATION_EXPORT", DOCUMENT_ID.toString()));
+        }
+
+        @Test
+        @DisplayName("文書削除は添付と生成済みエクスポートをコミット後削除へ渡す")
+        void 文書削除_添付と生成済みエクスポートの実体削除を予約する() {
+            CirculationDocumentEntity entity = createDraftDocument();
+            ReflectionTestUtils.setField(entity, "id", DOCUMENT_ID);
+            entity.markExportCompleted("circulation/exports/100/export.pdf");
+            CirculationAttachmentEntity attachment = org.mockito.Mockito.mock(CirculationAttachmentEntity.class);
+            given(attachment.getId()).willReturn(501L);
+            given(attachment.getFileKey()).willReturn("circulation/attachments/100/minutes.pdf");
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(attachmentRepository.findByDocumentIdOrderByCreatedAtAsc(DOCUMENT_ID))
+                    .willReturn(List.of(attachment));
+
+            circulationService.deleteDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID);
+
+            ArgumentCaptor<com.mannschaft.app.common.storage.S3ObjectDeleteEvent> deleteEventCaptor =
+                    ArgumentCaptor.forClass(com.mannschaft.app.common.storage.S3ObjectDeleteEvent.class);
+            verify(domainEventPublisher).publish(deleteEventCaptor.capture());
+            assertThat(deleteEventCaptor.getValue().s3Keys()).containsExactly(
+                    "circulation/attachments/100/minutes.pdf", "circulation/exports/100/export.pdf");
+        }
+
+        @Test
+        @DisplayName("文書削除_正常_CirculationDocumentDeletedEvent発行")
+        void 文書削除_正常_イベント発行() {
+            // Given
+            CirculationDocumentEntity entity = createDraftDocument();
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+
+            // When
+            circulationService.deleteDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID);
+
+            // Then: F09.14 Phase 4-C — DisclosureCirculationCleanupHandler 等の購読側のために
+            // CirculationDocumentDeletedEvent(documentId) が発行されること
+            ArgumentCaptor<CirculationDocumentDeletedEvent> captor =
+                    ArgumentCaptor.forClass(CirculationDocumentDeletedEvent.class);
+            verify(applicationEventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue().documentId()).isEqualTo(DOCUMENT_ID);
+        }
+    }
+
+    @Nested
+    @DisplayName("getStats")
+    class GetStats {
+
+        @Test
+        @DisplayName("統計取得_正常_カウント集計")
+        void 統計取得_正常_カウント集計() {
+            // Given
+            given(documentRepository.countByScopeTypeAndScopeIdAndStatus(SCOPE_TYPE, SCOPE_ID, CirculationStatus.DRAFT)).willReturn(2L);
+            given(documentRepository.countByScopeTypeAndScopeIdAndStatus(SCOPE_TYPE, SCOPE_ID, CirculationStatus.ACTIVE)).willReturn(3L);
+            given(documentRepository.countByScopeTypeAndScopeIdAndStatus(SCOPE_TYPE, SCOPE_ID, CirculationStatus.COMPLETED)).willReturn(5L);
+            given(documentRepository.countByScopeTypeAndScopeIdAndStatus(SCOPE_TYPE, SCOPE_ID, CirculationStatus.CANCELLED)).willReturn(1L);
+
+            // When
+            DocumentStatsResponse result = circulationService.getStats(SCOPE_TYPE, SCOPE_ID);
+
+            // Then
+            assertThat(result.getTotal()).isEqualTo(11L);
+            assertThat(result.getDraft()).isEqualTo(2L);
+            assertThat(result.getActive()).isEqualTo(3L);
+        }
+    }
+
+    @Nested
+    @DisplayName("activateDocument - toBuilder 廃止・id 保持回帰テスト")
+    class ActivateDocumentToBuilderRegression {
+
+        @Test
+        @DisplayName("activateDocument_SEQUENTIAL → save に渡るのが findById の同一インスタンスかつ id 保持")
+        void activateDocument_sequential_savesOriginalInstanceWithIdPreserved() throws Exception {
+            // Given: SEQUENTIAL モードの DRAFT 文書（id をリフレクションでセット）
+            CirculationDocumentEntity entity = CirculationDocumentEntity.builder()
+                    .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).createdBy(USER_ID)
+                    .title("回覧テスト").body("回覧本文")
+                    .circulationMode(CirculationMode.SEQUENTIAL)
+                    .build();
+            java.lang.reflect.Field idField = findField(entity.getClass(), "id");
+            idField.setAccessible(true);
+            idField.set(entity, DOCUMENT_ID);
+
+            DocumentResponse response = createDocumentResponse();
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(recipientRepository.countByDocumentId(DOCUMENT_ID)).willReturn(3L);
+            given(documentRepository.save(any())).willReturn(entity);
+            given(circulationMapper.toDocumentResponse(entity)).willReturn(response);
+
+            // When
+            circulationService.activateDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID);
+
+            // Then: save に渡るのが findById の同一インスタンスかつ id を保持していることを検証
+            ArgumentCaptor<CirculationDocumentEntity> captor =
+                    ArgumentCaptor.forClass(CirculationDocumentEntity.class);
+            verify(documentRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(entity);
+            assertThat(captor.getValue().getId()).isEqualTo(DOCUMENT_ID);
+            assertThat(captor.getValue().getStatus()).isEqualTo(CirculationStatus.ACTIVE);
+            assertThat(captor.getValue().getSequentialCount()).isEqualTo(3);
+        }
+
+        private java.lang.reflect.Field findField(Class<?> clazz, String name) throws NoSuchFieldException {
+            while (clazz != null) {
+                try {
+                    return clazz.getDeclaredField(name);
+                } catch (NoSuchFieldException e) {
+                    clazz = clazz.getSuperclass();
+                }
+            }
+            throw new NoSuchFieldException(name);
+        }
+    }
+
+    @Nested
+    @DisplayName("addAttachment ACL")
+    class AddAttachmentAcl {
+
+        @Test
+        @DisplayName("正常系: 文書スコープと添付バインディングで保留 ACL を claim する")
+        void 添付追加時に正準scope_parent_bindingでACLをclaimする() {
+            CirculationDocumentEntity document = CirculationDocumentEntity.builder()
+                    .id(DOCUMENT_ID)
+                    .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).createdBy(USER_ID)
+                    .title("文書").body("本文").build();
+            CirculationAttachmentEntity saved = CirculationAttachmentEntity.builder()
+                    .id(501L).documentId(DOCUMENT_ID)
+                    .fileKey("circulation/TEAM/1/100/file.pdf")
+                    .originalFilename("file.pdf").fileSize(1024L).mimeType("application/pdf")
+                    .build();
+            CreateAttachmentRequest request = new CreateAttachmentRequest(
+                    saved.getFileKey(), "file.pdf", 1024L, "application/pdf");
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(document));
+            given(attachmentRepository.save(any(CirculationAttachmentEntity.class))).willReturn(saved);
+
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+
+                circulationService.addAttachment(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID, request);
+            }
+
+            verify(storageAclService).claimPending(
+                    saved.getFileKey(), USER_ID, StorageAclScope.team(SCOPE_ID),
+                    new StorageAclContentReference("CIRCULATION_DOCUMENT", DOCUMENT_ID.toString()),
+                    new StorageAclAttachmentBinding("CIRCULATION_ATTACHMENT", saved.getId().toString()));
+        }
+    }
+    @Nested
+    @DisplayName("添付削除のストレージライフサイクル")
+    class AttachmentDeletionStorageLifecycle {
+
+        @Test
+        @DisplayName("DRAFT添付を削除すると正確なキーのコミット後R2削除イベントを発行する")
+        void removeAttachmentPublishesDeleteEvent() {
+            // given
+            CirculationDocumentEntity document = CirculationDocumentEntity.builder()
+                    .id(DOCUMENT_ID).scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).createdBy(USER_ID)
+                    .title("回覧テスト").body("本文").build();
+            CirculationAttachmentEntity attachment = CirculationAttachmentEntity.builder()
+                    .id(501L).documentId(DOCUMENT_ID).fileKey("circulation/TEAM/1/100/file.pdf")
+                    .originalFilename("file.pdf").fileSize(1024L).mimeType("application/pdf").build();
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(document));
+            given(attachmentRepository.findByIdAndDocumentId(501L, DOCUMENT_ID)).willReturn(Optional.of(attachment));
+
+            // when
+            circulationService.removeAttachment(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID, 501L, USER_ID);
+
+            // then
+            ArgumentCaptor<com.mannschaft.app.common.storage.S3ObjectDeleteEvent> deleteEventCaptor =
+                    ArgumentCaptor.forClass(com.mannschaft.app.common.storage.S3ObjectDeleteEvent.class);
+            verify(domainEventPublisher).publish(deleteEventCaptor.capture());
+            assertThat(deleteEventCaptor.getValue().s3Keys()).containsExactly("circulation/TEAM/1/100/file.pdf");
+            verify(r2StorageService, org.mockito.Mockito.never()).delete(org.mockito.ArgumentMatchers.anyString());
+        }
+    }
+
+}

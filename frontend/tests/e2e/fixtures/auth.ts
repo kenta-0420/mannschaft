@@ -1,0 +1,143 @@
+import { test as base, type Page } from '@playwright/test'
+import { waitForHydration } from '../helpers/wait'
+
+/**
+ * API ログインユーティリティ（storageState 生成用）。
+ *
+ * UI フォームを駆動せず、バックエンドの POST /api/v1/auth/login を直接叩いて認証する。
+ * page.request は page のブラウザコンテキストと Cookie ジャーを共有するため、
+ * 発行された access_token / refresh_token の HttpOnly Cookie がそのまま context に入る。
+ * さらに /api/v1/users/me でプロフィールを取得し、アプリが認証状態判定に使う
+ * localStorage['currentUser']（useAuthStore.loadFromStorage 参照）を書き込む。
+ *
+ * これによりログインページのハイドレーション完了に依存せず、確実に認証済み状態を作れる。
+ */
+export async function loginViaApi(
+  page: Page,
+  credentials: { email: string; password: string },
+  options: { apiBaseUrl?: string; deferNavigation?: boolean } = {},
+): Promise<void> {
+  // FE dev server が /api/v1/** をプロキシしていない場合 (NUXT_API_PROXY=true 未設定)、
+  // バックエンドへ完全 URL で直接リクエストする。
+  // Cookie の domain は 'localhost' で統一されているため、
+  // :8080 に送った Set-Cookie も :3000 起源のブラウザコンテキストで有効になる。
+  const apiBase = options.apiBaseUrl ?? process.env.API_BASE_URL ?? ''
+
+  if (!options.deferNavigation) {
+    // storageState を生成する既存呼び出しでは、localStorage のオリジンを先に確立する。
+    // SSR が重い画面を開く必要はなく、同一オリジンの静的ファイルで localStorage を確立する。
+    await page.goto('/robots.txt', { waitUntil: 'domcontentloaded' })
+  }
+
+  const loginRes = await page.request.post(`${apiBase}/api/v1/auth/login`, {
+    data: { email: credentials.email, password: credentials.password },
+  })
+  if (!loginRes.ok()) {
+    throw new Error(
+      `API ログイン失敗 (${credentials.email}): ${loginRes.status()} ${await loginRes.text()}`,
+    )
+  }
+
+  // フルプロフィール取得（access_token Cookie は page.request が自動送信する）
+  const meRes = await page.request.get(`${apiBase}/api/v1/users/me`)
+  if (!meRes.ok()) {
+    throw new Error(`/api/v1/users/me 取得失敗: ${meRes.status()} ${await meRes.text()}`)
+  }
+  const me = (await meRes.json()).data as {
+    id: number
+    email: string
+    lastName: string
+    firstName: string
+    avatarUrl: string | null
+    systemRole: string | null
+    timezone: string | null
+    locale?: string | null
+  }
+  const accessTokenCookie = (await page.context().cookies()).find(
+    (cookie) => cookie.name === 'access_token',
+  )
+  if (!accessTokenCookie || accessTokenCookie.expires <= 0) {
+    throw new Error('API ログイン成功後の access_token Cookie に有効期限がありません')
+  }
+  const tokenExpiresAt = accessTokenCookie.expires * 1000
+
+  const authState = {
+    user: {
+      id: me.id,
+      email: me.email,
+      fullName: `${me.lastName} ${me.firstName}`,
+      profileImageUrl: me.avatarUrl,
+      systemRole: me.systemRole ?? undefined,
+      timezone: me.timezone ?? undefined,
+      locale: me.locale ?? undefined,
+    },
+    expiresAt: tokenExpiresAt,
+  }
+  const restoreAuth = ({ user, expiresAt }: typeof authState) => {
+      localStorage.setItem('currentUser', JSON.stringify(user))
+      localStorage.setItem('tokenExpiresAt', String(expiresAt))
+  }
+
+  if (options.deferNavigation) {
+    // 重い SSR を避ける実機テストでは、初回 document のアプリコードより先に復元する。
+    await page.addInitScript(restoreAuth, authState)
+  } else {
+    await page.evaluate(restoreAuth, authState)
+  }
+}
+
+export type AuthFixtures = {
+  authenticatedPage: Page
+  adminPage: Page
+}
+
+/**
+ * 認証済みページフィクスチャ
+ *
+ * playwright.config.ts の storageState で事前保存した認証情報を使うため、
+ * このフィクスチャは既にログイン済みの Page を提供する。
+ * setup/auth.setup.ts で storageState を生成すること。
+ */
+export const test = base.extend<AuthFixtures>({
+  authenticatedPage: async ({ page }, use) => {
+    await use(page)
+  },
+  adminPage: async ({ page }, use) => {
+    await use(page)
+  },
+})
+
+export { expect } from '@playwright/test'
+
+/**
+ * ログインユーティリティ（setup ファイルから呼び出す）
+ */
+export async function loginAs(
+  page: Page,
+  credentials: { email: string; password: string },
+): Promise<void> {
+  await page.goto('/login')
+  await waitForHydration(page)
+
+  // PrimeVue コンポーネントは fill() だと v-model に値が反映されない場合がある
+  // click() でフォーカスしてから type() でキー入力する
+  const emailInput = page.locator('input#email')
+  await emailInput.click()
+  await emailInput.pressSequentially(credentials.email, { delay: 10 })
+
+  const passwordInput = page.locator('input[type="password"]')
+  await passwordInput.click()
+  await passwordInput.pressSequentially(credentials.password, { delay: 10 })
+
+  // exact: true が必須。login.vue には「Googleでログイン」ボタンも存在し、
+  // exact 指定なしだと部分一致で2要素にマッチして strict mode violation になる
+  // （2026-07-14 F09.19 実機E2E作成時に発見。module-settings-catalog.spec.ts は
+  // 独自ログイン関数で exact: true 済みだったが、共有ヘルパーの本箇所は未修正だった）。
+  await page.getByRole('button', { name: 'ログイン', exact: true }).click()
+  // ログイン成功後は '/' にリダイレクトされる（login.vue の navigateTo(redirect) デフォルト値）
+  // dev サーバーはダッシュボード SSR が重いため commit まで待ち、タイムアウトを 30s に延ばす
+  await page.waitForURL((url) => !url.pathname.includes('/login'), {
+    timeout: 30_000,
+    waitUntil: 'commit',
+  })
+}

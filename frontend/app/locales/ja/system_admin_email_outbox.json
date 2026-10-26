@@ -1,0 +1,62 @@
+{
+  "email_outbox": {
+    "title": "メール送信キュー",
+    "metrics": {
+      "pending": "待機中",
+      "dead_letter": "デッドレター",
+      "success_rate": "24h 成功率",
+      "oldest_pending": "最古待機（秒）"
+    },
+    "filter": {
+      "status": "ステータス",
+      "source_domain": "送信元ドメイン",
+      "from_date": "開始日",
+      "to_date": "終了日",
+      "all_statuses": "全ステータス",
+      "apply": "適用",
+      "clear": "クリア"
+    },
+    "table": {
+      "id": "ID",
+      "status": "ステータス",
+      "template": "テンプレート",
+      "source": "送信元",
+      "retry_count": "リトライ回数",
+      "created_at": "作成日時",
+      "actions": "操作"
+    },
+    "detail": {
+      "title": "詳細",
+      "to_address": "宛先",
+      "payload_vars": "テンプレート変数",
+      "ses_message_id": "SES メッセージ ID",
+      "body_purged": "本文は GDPR ポリシーにより消去済みです",
+      "next_attempt_at": "次回試行予定",
+      "sent_at": "送信日時",
+      "last_error": "最後のエラー",
+      "locale": "ロケール",
+      "source_domain": "送信元ドメイン",
+      "source_event_id": "送信元イベント ID"
+    },
+    "action": {
+      "retry": "再試行",
+      "cancel": "キャンセル",
+      "back": "一覧へ戻る"
+    },
+    "status": {
+      "PENDING": "待機中",
+      "SENDING": "送信中",
+      "SENT": "送信済み",
+      "FAILED": "失敗",
+      "DEAD_LETTER": "デッドレター",
+      "CANCELLED": "キャンセル済み"
+    },
+    "retry_success": "再試行キューに登録しました",
+    "cancel_success": "キャンセルしました",
+    "retry_conflict": "この状態では再試行できません",
+    "cancel_conflict": "この状態ではキャンセルできません",
+    "load_failed": "データの取得に失敗しました",
+    "no_data": "データがありません",
+    "na": "N/A"
+  }
+}

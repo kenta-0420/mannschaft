@@ -1,0 +1,254 @@
+{
+  "proxy": {
+    "title": "Proxy Input Desk",
+    "description": "Enter paper applications on behalf of non-digital residents",
+    "consent": {
+      "title": "Proxy Input Consent",
+      "subjectUserId": "Subject Resident ID",
+      "method": {
+        "label": "Consent Method",
+        "paper_signed": "Paper Signature",
+        "witnessed_oral": "Witnessed Oral",
+        "digital_signature": "Digital Signature",
+        "guardian_by_court": "Court-appointed Guardian"
+      },
+      "status": {
+        "pending": "Pending Approval",
+        "active": "Active",
+        "expired": "Expired",
+        "revoked": "Revoked",
+        "scheduled": "Not yet effective"
+      },
+      "effectiveFrom": "Effective From",
+      "effectiveUntil": "Effective Until",
+      "scopes": "Feature Scopes",
+      "approvedAt": "Approved At",
+      "revokedAt": "Revoked At",
+      "noActive": "No active consents found"
+    },
+    "scope": {
+      "survey": "Survey",
+      "schedule_attendance": "Attendance",
+      "shift_request": "Shift Request",
+      "announcement_read": "Announcements",
+      "parking_application": "Parking Application",
+      "circular": "Circular",
+      "supporter_view": "Watch View",
+      "payment": "Proxy Payment"
+    },
+    "desk": {
+      "pinSubject": "Pin Resident",
+      "pinConsent": "Select Consent",
+      "unpin": "Unpin",
+      "pinned": "Entering as {name}",
+      "inputSource": {
+        "label": "Input Source",
+        "paper_form": "Paper Form",
+        "phone_interview": "Phone Interview",
+        "in_person": "In-person",
+        "guardianship_switch": "Guardianship Switch"
+      },
+      "originalStorage": {
+        "label": "Original Storage Location",
+        "placeholder": "e.g. proxy-records/2026/scan_001.pdf"
+      },
+      "active": "Proxy input mode active",
+      "inactive": "Proxy input mode inactive"
+    },
+    "record": {
+      "title": "Proxy Input History",
+      "createdAt": "Created At",
+      "featureScope": "Feature Scope",
+      "targetEntity": "Target Record"
+    },
+    "revoke": {
+      "title": "Revoke Consent",
+      "method": {
+        "api": "Online Application by Subject",
+        "paper": "Paper Application",
+        "life_event": "Life Event (relocation etc.)",
+        "tenure_end": "End of Tenure"
+      },
+      "reason": "Revoke Reason",
+      "confirm": "Are you sure you want to revoke this consent?"
+    },
+    "audit": {
+      "byPerson": "Self Input",
+      "byProxy": "Proxy Input",
+      "total": "Total"
+    },
+    "guardianship": {
+      "switch": {
+        "title": "Guardianship Switch",
+        "startAs": "Act as {name}",
+        "actingAs": "Acting as {name}",
+        "end": "End switch",
+        "confirm": "Are you sure you want to start guardianship switch?",
+        "empty": "No switchable children available",
+        "blocked": "Age restriction — switch not allowed",
+        "success": "Guardianship switch started",
+        "endSuccess": "Guardianship switch ended",
+        "cancelButton": "Cancel",
+        "startButton": "Start",
+        "otherChildren": "Others"
+      },
+      "independence": {
+        "title": "Independence Transition",
+        "sealDate": "Switch seal date",
+        "stage": "Current stage",
+        "passwordSet": "Password set",
+        "passwordNotSet": "Password not set",
+        "handover": "Start handover",
+        "handoverConfirm": "A password setup link will be sent to the child's email address",
+        "handoverSuccess": "Handover email sent",
+        "alreadyIndependent": "This child has already reached independence stage",
+        "childEmail": "Child's email address (optional)",
+        "passwordStatus": "Password status"
+      },
+      "stage": {
+        "elementary": "Elementary school",
+        "junior_high": "Junior high school",
+        "high_school": "High school",
+        "adult": "Adult"
+      },
+      "watch": {
+        "title": "Watch",
+        "linkLabel": "Watch",
+        "linkTooltip": "Open the watch screen (view only)",
+        "readonlyNotice": "This screen is view-only. You cannot take actions or respond here.",
+        "loadError": "Failed to load watch data",
+        "retryButton": "Retry",
+        "sections": {
+          "schedules": {
+            "title": "Upcoming schedules",
+            "empty": "No upcoming schedules"
+          },
+          "attendance": {
+            "title": "Attendance",
+            "attended": "Attended",
+            "partial": "Partial",
+            "absent": "Absent",
+            "total": "Total",
+            "rate": "Attendance rate",
+            "empty": "No attendance data"
+          },
+          "memberships": {
+            "title": "Teams / Organizations",
+            "teams": "Teams",
+            "organizations": "Organizations",
+            "empty": "Not a member of any team or organization"
+          },
+          "announcements": {
+            "title": "Announcements",
+            "empty": "No announcements"
+          }
+        },
+        "attendanceStatus": {
+          "ATTENDING": "Attending",
+          "PARTIAL": "Partial",
+          "ABSENT": "Absent",
+          "UNDECIDED": "Undecided"
+        },
+        "proxyActions": {
+          "title": "Proxy action history",
+          "badge": "Proxy (Guardian)",
+          "empty": "No proxy action records"
+        },
+        "forbidden": {
+          "ageLocked": {
+            "title": "This child is not eligible for watch",
+            "body": "Children aged 12 or older have reached the independence stage and are not eligible for view-only watch."
+          },
+          "linkNotFound": {
+            "title": "Cannot watch this child",
+            "body": "Your guardian link could not be confirmed. Please check your linkage settings."
+          }
+        },
+        "guide": {
+          "title": "How to use Watch",
+          "readonly": {
+            "title": "This is view-only",
+            "body": "This screen only lets you view the child's schedules, attendance, memberships, and announcements — you cannot take actions or respond. Use \"Guardianship Switch\" if you need to act on the child's behalf."
+          },
+          "ageLimit": {
+            "title": "Only for children under 12",
+            "body": "Children aged 12 or older have reached the independence stage and are excluded from watch (to protect their privacy)."
+          },
+          "proxyBadge": {
+            "title": "What the \"Proxy\" mark means",
+            "body": "Actions taken on the child's behalf by the guardian (e.g. via guardianship switch) are marked \"Proxy (Guardian)\". The proxy action history section shows when and for which feature a proxy action took place."
+          }
+        }
+      }
+    },
+    "delegation": {
+      "title": "Proxy Attendance",
+      "description": "If you cannot respond to attendance, you can delegate to another member in the same scope",
+      "specify": "Specify a delegate (optional)",
+      "delegate_label": "Delegate",
+      "delegate_placeholder": "Select a member",
+      "reason_label": "Reason for delegation (optional)",
+      "reason_placeholder": "Shared with administrators (max 500 characters)",
+      "proxy_vote_label": "Also delegate voting",
+      "proxy_vote_session": "Voting session",
+      "proxy_vote_session_placeholder": "Select session to delegate",
+      "cancel": "Cancel delegation",
+      "status": {
+        "pending": "Pending",
+        "accepted": "Accepted",
+        "rejected": "Rejected",
+        "cancelled": "Cancelled"
+      },
+      "my_requests": {
+        "title": "Delegation Requests",
+        "description": "List of pending proxy attendance requests",
+        "empty": "No delegation requests",
+        "accept": "Accept",
+        "reject": "Reject",
+        "as_delegator": "Requested (awaiting delegate)",
+        "as_delegate": "You have a delegation request",
+        "how_to_check": "Please check and approve from the detail page of each schedule or event"
+      },
+      "admin": {
+        "tab": "Proxy Attendance",
+        "empty": "No proxy attendance settings",
+        "delegator": "Delegator",
+        "delegate": "Delegate",
+        "count_suffix": " proxy setting(s)",
+        "checkin": "Proxy Check-in",
+        "checkin_done": "Checked in"
+      },
+      "roll_call_proxy_label": "Proxy for {name}",
+      "auto_accept_note": "Auto-accept is enabled. Delegation becomes effective without delegate confirmation",
+      "grandfathering_note": "Existing delegations are retained even if this setting is turned off",
+      "allow_proxy": "Allow proxy attendance",
+      "auto_accept": "Auto-accept (no delegate confirmation required)",
+      "errors": {
+        "self": "You cannot delegate to yourself",
+        "already_exists": "A delegate has already been assigned",
+        "not_member": "The specified member does not belong to this scope",
+        "not_allowed": "Proxy attendance is not allowed for this schedule/event",
+        "rate_limit": "Too many requests. Please try again in 1 minute"
+      }
+    },
+    "admin": {
+      "consentsTitle": "Proxy input consent management",
+      "description": "Review and approve or revoke proxy input consents and view proxy input history for your organization.",
+      "organization": "Managed organization",
+      "proxyUserId": "Proxy user ID",
+      "status": "Status",
+      "actions": "Actions",
+      "approve": "Approve",
+      "revoke": "Revoke",
+      "approveConfirm": "Approve consent #{id}. Confirm to continue.",
+      "approved": "Consent approved.",
+      "revoked": "Consent revoked.",
+      "selfApprovalDenied": "You cannot approve a consent that names you as the proxy.",
+      "noConsents": "No consents found.",
+      "noRecords": "No proxy input records found.",
+      "none": "None",
+      "recordId": "Record ID",
+      "targetType": "Target type"
+    }
+  }
+}

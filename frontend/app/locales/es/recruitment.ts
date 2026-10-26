@@ -1,0 +1,365 @@
+export default {
+  "recruitment": {
+    "category": {
+      "futsal_open": "Fútbol sala individual",
+      "soccer_open": "Fútbol individual",
+      "basketball_open": "Baloncesto individual",
+      "yoga_class": "Clase de yoga",
+      "swimming_class": "Clase de natación",
+      "dance_class": "Clase de baile",
+      "fitness_class": "Fitness y entrenamiento",
+      "match_opponent": "Buscar rival",
+      "practice_match": "Buscar partido amistoso",
+      "tournament": "Torneo",
+      "referee": "Buscar árbitro",
+      "staff": "Buscar personal/entrenador",
+      "event_meeting": "Evento/encuentro",
+      "workshop": "Taller/prueba",
+      "other": "Otro"
+    },
+    "status": {
+      "draft": "Borrador",
+      "open": "Abierto",
+      "full": "Completo",
+      "closed": "Cerrado",
+      "cancelled": "Cancelado",
+      "auto_cancelled": "Cancelado automáticamente",
+      "completed": "Completado"
+    },
+    "participantStatus": {
+      "applied": "Solicitado",
+      "confirmed": "Confirmado",
+      "waitlisted": "Lista de espera",
+      "cancelled": "Cancelado",
+      "attended": "Asistido"
+    },
+    "participationType": {
+      "individual": "Individual",
+      "team": "Equipo"
+    },
+    "visibility": {
+      "public": "Público",
+      "scopeOnly": "Solo en el ámbito",
+      "supportersOnly": "Solo seguidores"
+    },
+    "field": {
+      "title": "Título",
+      "description": "Descripción",
+      "category": "Categoría",
+      "subcategory": "Subcategoría",
+      "startAt": "Inicio",
+      "endAt": "Fin",
+      "applicationDeadline": "Fecha límite de inscripción",
+      "autoCancelAt": "Hora de cancelación automática",
+      "capacity": "Capacidad",
+      "minCapacity": "Capacidad mínima",
+      "location": "Lugar",
+      "price": "Precio",
+      "paymentEnabled": "Pago habilitado",
+      "payeeKind": "Tipo de destinatario",
+      "payeeKindUser": "Individual (usuario)",
+      "payeeKindTeam": "Equipo",
+      "payeeKindOrg": "Organización",
+      "payeeUser": "Destinatario",
+      "payeeUserPlaceholder": "Seleccionar destinatario",
+      "cancellationPolicy": "Política de cancelación",
+      "imageUrl": "URL de imagen",
+      "note": "Nota",
+      "participationType": "Tipo de participación",
+      "visibility": "Visibilidad"
+    },
+    "action": {
+      "create": "Crear",
+      "publish": "Publicar",
+      "edit": "Editar",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "archive": "Archivar",
+      "apply": "Inscribirse",
+      "cancelMyApplication": "Cancelar mi inscripción",
+      "joinWaitlist": "Unirse a la lista de espera",
+      "viewDetails": "Ver detalles",
+      "confirmApplication": "Confirmar",
+      "cancelListing": "Retirar convocatoria",
+      "cancelledListing": "Convocatoria retirada",
+      "createPolicy": "Crear política"
+    },
+    "confirmModal": {
+      "cancellationFee": {
+        "title": "Confirmación de tarifa de cancelación",
+        "message": "Esta cancelación tendrá una tarifa. ¿Está seguro?",
+        "feeAmountLabel": "Tarifa de cancelación",
+        "freeMessage": "Puede cancelar gratis.",
+        "agreeButton": "Acepto y cancelo",
+        "disagreeButton": "Volver"
+      },
+      "publish": {
+        "title": "Publicar convocatoria",
+        "message": "¿Publicar esta convocatoria? Se notificará al ámbito de distribución."
+      },
+      "cancel": {
+        "title": "Cancelar convocatoria",
+        "message": "¿Cancelar esta convocatoria? Se notificará a todos los participantes."
+      }
+    },
+    "policy": {
+      "freeUntilHoursBefore": "Gratis hasta N horas antes del inicio",
+      "freeUntilHoursBeforeHelp": "Ejemplo: 168 = gratis hasta 7 días antes",
+      "addTier": "Añadir nivel",
+      "removeTier": "Eliminar nivel",
+      "tierOrder": "Nivel",
+      "noPolicyMessage": "Sin política configurada"
+    },
+    "tier": {
+      "percentage": "Porcentaje (%)",
+      "fixed": "Cantidad fija (yenes)",
+      "appliesAtOrBeforeHours": "Se aplica si quedan N horas o menos",
+      "feeValue": "Valor de la tarifa",
+      "feeType": "Tipo de tarifa"
+    },
+    "nav": {
+      "recruitmentListings": "Convocatorias",
+      "myRecruitmentListings": "Mis inscripciones",
+      "createListing": "Crear convocatoria",
+      "cancellationPolicies": "Políticas de cancelación"
+    },
+    "page": {
+      "myRecruitmentListings": "Mis próximas participaciones",
+      "teamRecruitmentListings": "Gestión de convocatorias",
+      "newListing": "Crear convocatoria",
+      "editListing": "Editar convocatoria",
+      "listingDetail": "Detalle de la convocatoria",
+      "cancellationPolicies": "Gestión de políticas de cancelación",
+      "myFeed": "Feed de convocatorias"
+    },
+    "label": {
+      "participants": "Participantes",
+      "remainingCapacity": "Plazas restantes",
+      "waitlistCount": "Lista de espera",
+      "noListings": "No hay convocatorias",
+      "noParticipants": "No hay participantes",
+      "myApplication": "Tu inscripción",
+      "freeOfCharge": "Gratis",
+      "feedDescription": "Nuevas convocatorias de equipos seguidos/apoyados",
+      "noFeedItems": "No hay nuevas convocatorias",
+      "listing": "Convocatoria",
+      "waitlistPosition": "Lista de espera #{n}",
+      "postedAt": "Publicado",
+      "loadError": "No se pudieron cargar los datos",
+      "listingLabel": "Convocatoria #{id}"
+    },
+    "guide": {
+      "feed": {
+        "title": "Cómo usar Nuevas convocatorias",
+        "what": {
+          "title": "¿Qué es el feed de convocatorias?",
+          "body": "Un feed de solo lectura que muestra las nuevas convocatorias de los equipos que sigues o apoyas, ordenadas de más recientes a más antiguas. Úsalo para descubrir convocatorias que te interesen."
+        },
+        "apply": {
+          "title": "Ver e inscribirse",
+          "body": "Toca una tarjeta para abrir la página de detalle de la convocatoria. La inscripción o el registro en lista de espera se hacen desde esa página de detalle."
+        },
+        "read": {
+          "title": "Cómo leer las tarjetas",
+          "body": "Las etiquetas como \"Abierta\" o \"Completa\" indican el estado. Los números se muestran como \"confirmados / cupo\" y los precios con \"¥\"."
+        }
+      },
+      "listings": {
+        "title": "Cómo usar Mis participaciones",
+        "what": {
+          "title": "¿Qué son mis participaciones?",
+          "body": "Aquí aparecen las convocatorias en las que te has inscrito o has sido confirmado. Solo se muestran las participaciones activas; las canceladas o finalizadas no aparecen."
+        },
+        "status": {
+          "title": "Cómo leer el estado",
+          "body": "Las etiquetas como \"Confirmada\", \"Inscrito\" o \"En lista de espera\" indican tu estado actual. En lista de espera, \"#posición\" muestra tu lugar en la cola."
+        },
+        "detail": {
+          "title": "Detalles y cancelación",
+          "body": "Abre la página de la convocatoria con \"Ver detalles\". Acciones como cancelar tu inscripción se realizan desde esa página de detalle."
+        }
+      }
+    },
+    "distribution": {
+      "title": "Destinatarios",
+      "members": "Miembros",
+      "membersDesc": "Notificar a todos los miembros del ámbito",
+      "supporters": "Patrocinadores",
+      "supportersDesc": "Notificar a patrocinadores aprobados",
+      "followers": "Seguidores",
+      "followersDesc": "Notificar a seguidores",
+      "publicFeed": "Feed público",
+      "publicFeedDesc": "Publicar en el feed público",
+      "warnPublicNeedsFeed": "La visibilidad pública requiere el destinatario 'Feed público'",
+      "warnSupportersOnlyNeedsSupporter": "La visibilidad solo para patrocinadores requiere el destinatario 'Patrocinadores'"
+    },
+    "widget": {
+      "feedTitle": "Nuevas convocatorias",
+      "feedEmpty": "No hay nuevas convocatorias",
+      "myRecruitmentsTitle": "Mis participaciones",
+      "myRecruitmentsEmpty": "No hay participaciones próximas",
+      "viewAll": "Ver todo"
+    },
+    "search": {
+      "pageTitle": "Buscar Convocatorias",
+      "keyword": "Palabras clave",
+      "keywordPlaceholder": "Buscar por título o descripción",
+      "location": "Ubicación",
+      "locationPlaceholder": "Filtrar por ubicación",
+      "participationType": "Tipo de participación",
+      "allTypes": "Todos los tipos",
+      "startFrom": "Fecha de inicio (Desde)",
+      "startTo": "Fecha de inicio (Hasta)",
+      "searchButton": "Buscar",
+      "resetButton": "Restablecer",
+      "allCategories": "Todas las categorías",
+      "noResults": "No se encontraron convocatorias con esos criterios",
+      "loadError": "Error al obtener las convocatorias",
+      "resultsCount": "{count} convocatorias",
+      "capacity": "Capacidad",
+      "remaining": "Quedan {count} plazas",
+      "free": "Gratis",
+      "priceLabel": "¥{price}",
+      "applying": "Solicitando",
+      "individual": "Individual",
+      "team": "Equipo"
+    },
+    "validation": {
+      "eventTimeRange": "La hora de fin debe ser posterior a la de inicio",
+      "applicationDeadline": "La fecha límite debe ser anterior al inicio",
+      "autoCancelAt": "La cancelación automática debe ser anterior o igual a la fecha límite",
+      "capacity": "La capacidad mínima no puede superar la capacidad"
+    },
+    "payee": {
+      "required": "Por favor seleccione un tipo de destinatario",
+      "userRequired": "Por favor seleccione un usuario destinatario",
+      "PAYMENT_C011": "No se ha especificado el tipo de destinatario (payeeKind)",
+      "PAYMENT_C012": "No se ha especificado el usuario destinatario",
+      "PAYMENT_C013": "El destinatario especificado no es miembro de este ámbito"
+    },
+    "error": {
+      "RECRUITMENT_001": "Convocatoria no encontrada",
+      "RECRUITMENT_002": "Sin permiso para crear convocatorias",
+      "RECRUITMENT_005": "Capacidad alcanzada",
+      "RECRUITMENT_007": "Tipo de participación no coincide",
+      "RECRUITMENT_008": "La capacidad mínima excede la capacidad",
+      "RECRUITMENT_009": "El horario entra en conflicto con otra reserva o convocatoria",
+      "RECRUITMENT_012": "Categoría no especificada",
+      "RECRUITMENT_015": "El precio es obligatorio si el pago está habilitado",
+      "RECRUITMENT_020": "Sin permiso para ver convocatorias en borrador",
+      "RECRUITMENT_100": "Transición de estado inválida",
+      "RECRUITMENT_101": "Fecha límite de inscripción superada",
+      "RECRUITMENT_102": "Ya cancelado",
+      "RECRUITMENT_103": "No se puede inscribir mientras esté en borrador",
+      "RECRUITMENT_104": "Las convocatorias finalizadas no se pueden editar",
+      "RECRUITMENT_105": "Ya inscrito",
+      "RECRUITMENT_106": "Límite de lista de espera alcanzado",
+      "RECRUITMENT_204": "No se puede publicar con cero objetivos de distribución",
+      "RECRUITMENT_205": "URL de imagen no autorizada",
+      "RECRUITMENT_206": "No se puede reducir la capacidad por debajo de los confirmados",
+      "RECRUITMENT_207": "Visibilidad y objetivos de distribución incoherentes",
+      "RECRUITMENT_216": "La hora de finalización debe ser posterior a la hora de inicio",
+      "RECRUITMENT_217": "La fecha límite de solicitud debe ser anterior al inicio",
+      "RECRUITMENT_218": "La cancelación automática no puede ser posterior a la fecha límite de solicitud",
+      "RECRUITMENT_301": "Pago de la tarifa de cancelación fallido",
+      "RECRUITMENT_302": "Política de cancelación inválida",
+      "RECRUITMENT_303": "La política de cancelación tiene más de 4 niveles",
+      "RECRUITMENT_304": "Es necesario confirmar la tarifa de cancelación",
+      "RECRUITMENT_307": "Los rangos de tiempo de los niveles se solapan",
+      "RECRUITMENT_308": "La tarifa mostrada difiere de la real. Vuelva a calcular",
+      "RECRUITMENT_305": "El plazo para disputar ha expirado",
+      "RECRUITMENT_309": "Registro NO_SHOW no encontrado",
+      "RECRUITMENT_310": "Penalización no encontrada",
+      "RECRUITMENT_311": "Disputa ya presentada",
+      "RECRUITMENT_312": "Configuración de penalización no encontrada"
+    },
+    "noShow": {
+      "pageTitle": "Historial NO_SHOW",
+      "adminPageTitle": "Gestión NO_SHOW",
+      "status": {
+        "pending": "Pendiente",
+        "confirmed": "Confirmado",
+        "expired": "Plazo de disputa vencido",
+        "disputed": "En disputa",
+        "revoked": "Revocado",
+        "upheld": "Mantenido"
+      },
+      "reason": {
+        "adminMarked": "Marcado por admin",
+        "autoDetected": "Detectado automáticamente"
+      },
+      "disputeButton": "Disputar",
+      "disputeDialog": {
+        "title": "Presentar disputa",
+        "reasonLabel": "Razón",
+        "reasonPlaceholder": "Ingrese razón específica",
+        "submit": "Enviar"
+      },
+      "resolveDialog": {
+        "title": "Resolver disputa",
+        "revoke": "Revocar (REVOKED)",
+        "uphold": "Mantener (UPHELD)",
+        "adminNote": "Nota del admin",
+        "submit": "Resolver"
+      }
+    },
+    "penalty": {
+      "pageTitle": "Configuración de penalización",
+      "penaltiesPageTitle": "Lista de penalizaciones",
+      "enabled": "Habilitado",
+      "disabled": "Deshabilitado",
+      "thresholdCount": "Umbral de incidencias",
+      "thresholdPeriodDays": "Período (días)",
+      "penaltyDurationDays": "Duración (días)",
+      "autoDetection": "Detección automática",
+      "disputeAllowedDays": "Plazo de disputa (días)",
+      "liftButton": "Levantar penalización",
+      "saveButton": "Guardar configuración",
+      "liftDialog": {
+        "title": "Levantar penalización",
+        "adminManual": "Levantamiento manual por admin"
+      },
+      "status": {
+        "active": "Activo",
+        "expired": "Expirado",
+        "lifted": "Levantado"
+      }
+    },
+    "cancellationFeeWaive": {
+      "pageTitle": "Exención de tarifa de cancelación",
+      "pageDescription": "Exime las tarifas de cancelación que te corresponde cobrar",
+      "unknownUser": "Usuario desconocido",
+      "loadMore": "Ver más",
+      "reasonTooLong": "El motivo debe tener como máximo {max} caracteres",
+      "columns": {
+        "listing": "Convocatoria",
+        "user": "Usuario objetivo",
+        "feeAmount": "Tarifa de cancelación",
+        "status": "Estado",
+        "cancelledAt": "Fecha de cancelación"
+      },
+      "status": {
+        "pending": "Pendiente de pago",
+        "failed": "Pago fallido",
+        "uncollectible": "Incobrable",
+        "paid": "Pagado",
+        "waived": "Exonerado",
+        "notRequired": "No aplicable"
+      },
+      "waiveButton": "Exonerar",
+      "reasonLabel": "Motivo de la exención",
+      "reasonPlaceholder": "Introduzca el motivo de la exención (obligatorio)",
+      "reasonRequired": "El motivo es obligatorio",
+      "confirmDialog": {
+        "title": "Exención de tarifa de cancelación",
+        "message": "Se cancelará el cobro de la tarifa de cancelación de {amount} yenes. Esta acción no se puede deshacer.\nSi este usuario tiene otras tarifas de cancelación pendientes de pago, la restricción de inscripción no se levantará.",
+        "confirmButton": "Exonerar",
+        "cancelButton": "Volver"
+      },
+      "emptyMessage": "No hay registros de tarifas de cancelación exonerables",
+      "loadError": "No se pudo cargar la lista",
+      "waiveSuccess": "Tarifa de cancelación exonerada",
+      "waiveError": "No se pudo exonerar la tarifa"
+    }
+  }
+}

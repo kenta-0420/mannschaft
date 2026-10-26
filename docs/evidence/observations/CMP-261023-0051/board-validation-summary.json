@@ -1,0 +1,22 @@
+{
+  "source": "root実行結果の伝令",
+  "rerunByWorker": false,
+  "generationSucceeded": true,
+  "originalValidatorSelfTestSucceeded": true,
+  "invalidOverlayRejected": 8,
+  "insightsImportedAndDisplayed": 2,
+  "mainBoardUntouched": true,
+  "evidence": [
+    "./resident-overlay.json",
+    "./insight-box-receipt.json",
+    "./insight-box.png"
+  ],
+  "note": "実住民観測はtrusted=false/observed-unverifiedのまま。製品blocker判定へ昇格しない。",
+  "validationTarget": {
+    "logicChanged": false,
+    "input": "専用生成物のdata.js",
+    "mainGeneratedDataJsDirectlyValidated": false,
+    "githubReferenceCount": 635,
+    "githubReferenceSync": "GitHubの635件の参照を専用出力へ読み取り同期後にpass"
+  }
+}

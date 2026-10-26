@@ -1,0 +1,125 @@
+{
+  "repair_plan": {
+    "dashboard": {
+      "title": "长期修缮计划",
+      "tab": {
+        "handover": "工作交接"
+      }
+    },
+    "timeline": {
+      "title": "修缮历史・计划时间线",
+      "layer": {
+        "amount": "修缮费",
+        "chairperson": "理事长",
+        "cpi": "物价指数（CPI）",
+        "minutes": "会议记录"
+      },
+      "year_from": "开始年度",
+      "year_to": "结束年度",
+      "no_data": "没有修缮计划数据",
+      "total": "合计",
+      "cpi_note": "CPI: 2024年=100，国土交通省R5指南 1.5%/年"
+    },
+    "category": {
+      "EXTERIOR": "外墙・涂装",
+      "ROOF": "屋顶・防水",
+      "PLUMBING": "给排水设备",
+      "ELECTRICAL": "电气设备",
+      "ELEVATOR": "电梯",
+      "COMMON_AREA": "公共区域",
+      "FOUNDATION": "基础・结构",
+      "PARKING": "停车场",
+      "LANDSCAPING": "植栽・外构",
+      "OTHER": "其他"
+    },
+    "kanban": {
+      "title": "比价看板",
+      "create": "创建看板",
+      "created": "看板已创建",
+      "no_kanbans": "暂无看板",
+      "no_organization": "该团队不属于任何组织，无法使用比价看板",
+      "card_count": "{count}家供应商",
+      "stage": {
+        "requested": "已请报价",
+        "received": "已收到",
+        "under_review": "审核中",
+        "shortlisted": "入围",
+        "selected": "已选定",
+        "rejected": "已拒绝"
+      },
+      "status": {
+        "open": "开放中",
+        "closed": "已关闭",
+        "awarded": "已中标",
+        "canceled": "已取消"
+      },
+      "visibility": {
+        "label": "成员可见性",
+        "hidden": "隐藏",
+        "anonymized": "匿名化",
+        "full": "完全公开"
+      },
+      "anonymized": {
+        "vendor_label": "供应商{index}"
+      },
+      "deadline": {
+        "label": "投标截止",
+        "past": "已截止"
+      },
+      "card": {
+        "amount": "报价金额",
+        "vendor": "供应商名称",
+        "vendor_hidden": "（隐藏）",
+        "amount_hidden": "（隐藏）",
+        "compliance_expired": "合规检查已过期"
+      },
+      "add_card": "添加供应商",
+      "no_cards": "尚未添加供应商",
+      "form": {
+        "title": "看板标题",
+        "title_placeholder": "例：2026年外墙涂装工程比价"
+      }
+    },
+    "error": {
+      "compliance_expired": "该供应商的合规检查已过期，请联系管理员。"
+    },
+    "handover": {
+      "builder": {
+        "title": "生成交接文件包",
+        "select_term": "选择目标任期",
+        "pii_level": "个人信息级别",
+        "pii_standard": "标准",
+        "pii_anonymized": "匿名化（符合GDPR）",
+        "memo": "备注（可选）",
+        "generate_button": "生成 PDF",
+        "generating": "生成中...",
+        "download_button": "下载",
+        "regenerate_button": "重新生成"
+      },
+      "history": {
+        "title": "生成历史",
+        "col_generated_at": "生成时间",
+        "col_status": "状态",
+        "col_pii_level": "PII 级别",
+        "col_file_size": "文件大小",
+        "col_actions": "操作"
+      },
+      "status": {
+        "generating": "生成中",
+        "ready": "完成",
+        "failed": "失败"
+      },
+      "term": {
+        "manager_title": "理事任期管理",
+        "col_name": "姓名",
+        "col_role": "职务",
+        "col_period": "任期",
+        "col_active": "在任",
+        "add_term": "添加任期",
+        "role_placeholder": "例：理事长、理事等"
+      },
+      "pdf_password_required": "此 PDF 已设置密码",
+      "watermark_notice": "此 PDF 包含查看者信息作为水印"
+    }
+  }
+}

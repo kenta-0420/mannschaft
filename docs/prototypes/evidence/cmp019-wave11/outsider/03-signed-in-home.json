@@ -1,0 +1,103 @@
+{
+  "url": "http://localhost:3003/login",
+  "title": "",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "dimensions": {
+    "clientWidth": 390,
+    "scrollWidth": 390,
+    "clientHeight": 844,
+    "scrollHeight": 844
+  },
+  "bodyText": "Mannschaft\n← トップページへ\nGoogleでログイン\nまたは\nメールアドレス\nパスワード\nログイン\nパスワードを忘れた方はこちら\nアカウント登録",
+  "controls": [
+    {
+      "tag": "A",
+      "text": "← トップページへ",
+      "type": null,
+      "href": "/",
+      "box": {
+        "x": 44,
+        "y": 250,
+        "width": 302,
+        "height": 20
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "Googleでログイン",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 44,
+        "y": 286,
+        "width": 302,
+        "height": 42
+      }
+    },
+    {
+      "tag": "INPUT",
+      "text": "example@mannschaft.app",
+      "type": "email",
+      "href": null,
+      "box": {
+        "x": 44,
+        "y": 412,
+        "width": 302,
+        "height": 42
+      }
+    },
+    {
+      "tag": "INPUT",
+      "text": "",
+      "type": "password",
+      "href": null,
+      "box": {
+        "x": 44,
+        "y": 502,
+        "width": 302,
+        "height": 42
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "ログイン",
+      "type": "submit",
+      "href": null,
+      "box": {
+        "x": 44,
+        "y": 568,
+        "width": 302,
+        "height": 42
+      }
+    },
+    {
+      "tag": "A",
+      "text": "パスワードを忘れた方はこちら",
+      "type": null,
+      "href": "/forgot-password",
+      "box": {
+        "x": 97,
+        "y": 626,
+        "width": 196,
+        "height": 20
+      }
+    },
+    {
+      "tag": "A",
+      "text": "アカウント登録",
+      "type": null,
+      "href": "/register",
+      "box": {
+        "x": 146,
+        "y": 654,
+        "width": 98,
+        "height": 20
+      }
+    }
+  ],
+  "errors": [],
+  "badResponses": []
+}

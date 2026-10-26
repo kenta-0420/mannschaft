@@ -1,0 +1,389 @@
+<template>
+  <div class="flex flex-col h-screen overflow-hidden">
+    <!-- ヘッダー -->
+    <div class="flex items-center justify-between px-4 py-3 border-b border-surface-200 bg-white flex-shrink-0">
+      <div class="flex items-center gap-3">
+        <NuxtLink
+          :to="`/teams/${teamSlug}/shifts`"
+          class="text-surface-500 hover:text-surface-700"
+        >
+          <i class="pi pi-arrow-left" />
+        </NuxtLink>
+        <div>
+          <h1 class="font-bold text-surface-800 text-lg">{{ $t('shift.board.title') }}</h1>
+          <p v-if="schedule" class="text-xs text-surface-500">{{ schedule.content.title }}</p>
+        </div>
+        <Tag v-if="schedule" :value="schedule.status.status" severity="info" class="text-xs" />
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- PDF エクスポートボタン（SUPPORTER ロールは非表示） -->
+        <ShiftPdfExportButton
+          v-if="!isSupporter"
+          :schedule-id="scheduleId"
+        />
+
+        <!-- 変更依頼ページへのリンク -->
+        <NuxtLink :to="`/teams/${teamSlug}/shifts/${scheduleId}/change-requests`">
+          <Button
+            :label="$t('shift.changeRequest.title')"
+            icon="pi pi-list"
+            severity="secondary"
+            outlined
+            size="small"
+          />
+        </NuxtLink>
+
+        <!-- 自動割当は管理者専用（BE が per-scope 認可で 403 を返す）。
+             フラグ FEATURE_SHIFT_AUTO_ASSIGN_ENABLED が OFF のときは
+             DOM から消さず disabled ＋ 理由ツールチップで「停止中」と示す
+             （docs/features/F03.5_shift/06_manual_authoring.md §11.1.2-4）。 -->
+        <span
+          v-if="isScopeAdmin"
+          v-tooltip.bottom="autoAssignEnabled ? '' : t('shift.autoAssign.disabledReason')"
+          :title="autoAssignEnabled ? '' : t('shift.autoAssign.disabledReason')"
+          :data-testid="autoAssignEnabled ? undefined : 'auto-assign-disabled-reason'"
+          class="flex items-center gap-2"
+        >
+          <Tag
+            v-if="!autoAssignEnabled"
+            :value="t('shift.autoAssign.disabledBadge')"
+            severity="secondary"
+            class="text-xs"
+            data-testid="auto-assign-disabled-badge"
+          />
+          <Button
+            :label="$t('shift.autoAssign.history')"
+            icon="pi pi-history"
+            severity="secondary"
+            outlined
+            size="small"
+            :disabled="!autoAssignEnabled"
+            data-testid="auto-assign-history-button"
+            @click="historyVisible = true"
+          />
+          <Button
+            :label="$t('shift.autoAssign.button')"
+            icon="pi pi-bolt"
+            size="small"
+            :disabled="!autoAssignEnabled"
+            data-testid="auto-assign-button"
+            @click="autoAssignVisible = true"
+          />
+        </span>
+      </div>
+    </div>
+
+    <!-- メインコンテンツ -->
+    <div class="flex flex-1 overflow-hidden">
+      <!-- シフトボード -->
+      <div class="flex-1 overflow-hidden">
+        <ShiftBoardMatrix
+          :slots="slots"
+          :positions="positions"
+          :local-assignments="localAssignments"
+          :member-map="memberMap"
+          :pending-run="pendingRun"
+          :schedule-version="scheduleVersion"
+          @drop-user="onDropUser"
+          @remove-user="onRemoveUser"
+          @add-user="addUserSlotId = $event; poolVisible = true"
+          @confirm-auto-assign="onConfirmAutoAssignWithNote"
+          @revoke-auto-assign="onRevokeAutoAssign"
+        />
+      </div>
+
+      <!-- 未割当メンバープール -->
+      <div class="w-60 flex-shrink-0">
+        <ShiftMemberPool
+          :members="unassignedMembers"
+          @drag-start="draggingUserId = $event"
+        />
+      </div>
+    </div>
+
+    <!-- モーダル群 -->
+    <ShiftAutoAssignModal
+      v-model:visible="autoAssignVisible"
+      :is-running="isRunning"
+      @run="onRunAutoAssign"
+    />
+
+    <ShiftAutoAssignRunHistory
+      v-if="historyVisible"
+      :runs="runs"
+    />
+
+    <!-- メンバー追加ダイアログ（addUser 用） -->
+    <Dialog
+      v-model:visible="poolVisible"
+      header="メンバーを追加"
+      modal
+      :style="{ width: '360px' }"
+    >
+      <div class="space-y-2">
+        <div
+          v-for="member in allMembers"
+          :key="member.userId"
+          class="flex items-center gap-3 p-2 rounded hover:bg-surface-50 cursor-pointer"
+          @click="onAddUserFromDialog(member.userId)"
+        >
+          <Avatar
+            v-if="member.avatarUrl"
+            :image="member.avatarUrl"
+            size="small"
+            shape="circle"
+          />
+          <Avatar v-else :label="member.displayName.charAt(0)" size="small" shape="circle" />
+          <span class="text-sm">{{ member.displayName }}</span>
+        </div>
+      </div>
+    </Dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type {
+  ShiftSlotResponse,
+  ShiftPositionResponse,
+  ShiftScheduleResponse,
+  AssignmentRun,
+  AssignmentParameters,
+  AssignmentStrategyType,
+} from '~/types/shift'
+
+const route = useRoute()
+const teamSlug = computed(() => String(route.params.slug))
+const scheduleId = computed(() => Number(route.params.scheduleId))
+
+// F00.5 Phase 5: チームレベルの SUPPORTER 判定を useRoleAccess 経由に切替
+// 旧実装: authStore.currentUser?.systemRole === 'SUPPORTER'
+//   → systemRole はプラットフォームロール（SYSTEM_ADMIN など）であり、
+//     チームの SUPPORTER を判定するのは誤りだった。
+// 新実装: /api/v1/teams/{id}/me/permissions から取得した roleName で判定する。
+const { roleName, loadPermissions } = useRoleAccess('team', teamSlug)
+const isSupporter = computed(() => roleName.value === 'SUPPORTER')
+// 認可根治 Wave7: 自動割当（実行・確定・破棄・履歴）は BE 側で当該チームの ADMIN/DEPUTY_ADMIN 限定に
+// なった。一般メンバーには導線を出さない（出すと必ず 403 になる死んだボタンになる）。
+//
+// 【意図的に SYSTEM_ADMIN を含めない等値比較】(CMP-260909-1509)
+// resolveEffectiveRoleName は SYSTEM_ADMIN > ADMIN > DEPUTY_ADMIN > ... の優先度で
+// 最強ロール 1 値を返すため、プラットフォーム SYSTEM_ADMIN が同時にチームの ADMIN でも
+// roleName は 'SYSTEM_ADMIN' になり ADMIN は返らない。これはバグではなく、
+// 「運営専用アカウントである SYSTEM_ADMIN には一般業務導線（このボタン）を出さない」という
+// マスター確定の設計判断（docs/security/03_role_authority_model.md §3.5）。
+// BE（ShiftAutoAssignService）は SYSTEM_ADMIN を別途常に許可しており、この UI 非表示は
+// 認可の代替ではない。`hasRoleOrAbove` 的な包含判定に書き換えて SYSTEM_ADMIN を含めないこと。
+const isScopeAdmin = computed(() => roleName.value === 'ADMIN' || roleName.value === 'DEPUTY_ADMIN')
+
+// 自動割当は 2026-09-09 の方針転換で既定 OFF（BE も ShiftAutoAssignController の
+// クラスレベル @RequireFeature で 6 経路すべてを FEATURE_GATE_001 で拒否する）。
+// FE は導線を消さず「停止中」として残す。GATE_ROUTE_MAP には足さない
+// （足すと /teams/*/shifts 全体が巻き添えで遮断されるため。設計書 §11.1.2-5）。
+const { enabled: autoAssignEnabled } = useFeatureFlag('FEATURE_SHIFT_AUTO_ASSIGN_ENABLED')
+
+const shiftApi = useShiftApi()
+const teamApi = useTeamApi()
+const { t } = useI18n()
+const { handleApiError } = useErrorHandler()
+const { showError } = useNotification()
+const { localAssignments, initSlot, moveUser, addUser, removeUser } = useShiftBoard(scheduleId)
+const { runs, isRunning, runAutoAssign, confirmAutoAssign, revokeAutoAssign, fetchRuns } =
+  useAutoAssign(scheduleId)
+
+// データ
+const schedule = ref<ShiftScheduleResponse | null>(null)
+const slots = ref<ShiftSlotResponse[]>([])
+const positions = ref<ShiftPositionResponse[]>([])
+const allMembers = ref<Array<{ userId: number; displayName: string; avatarUrl: string | null }>>([])
+const scheduleVersion = ref(0)
+
+// UI 状態
+const autoAssignVisible = ref(false)
+const historyVisible = ref(false)
+const poolVisible = ref(false)
+const addUserSlotId = ref<number | null>(null)
+const draggingUserId = ref<number | null>(null)
+
+// 未確認の自動割当結果
+const pendingRun = computed((): AssignmentRun | null => {
+  const succeeded = runs.value.find((r) => r.status === 'SUCCEEDED')
+  return succeeded ?? null
+})
+
+// メンバーマップ（userId -> メンバー情報）
+const memberMap = computed(() => {
+  const map: Record<number, { userId: number; displayName: string; avatarUrl: string | null }> = {}
+  allMembers.value.forEach((m) => {
+    map[m.userId] = m
+  })
+  return map
+})
+
+// 未割当メンバー（全スロットに割り当て済みでないメンバー）
+const assignedUserIds = computed(() => {
+  const ids = new Set<number>()
+  Object.values(localAssignments.value).forEach((userIds) => {
+    userIds.forEach((id) => ids.add(id))
+  })
+  slots.value.forEach((slot) => {
+    const local = localAssignments.value[slot.id]
+    if (local === undefined) {
+      // assignedUserIds は number[] 型
+      ;(slot.assignedUserIds ?? []).forEach((userId) => ids.add(userId))
+    }
+  })
+  return ids
+})
+
+const unassignedMembers = computed(() =>
+  allMembers.value.filter((m) => !assignedUserIds.value.has(m.userId)),
+)
+
+// 初期データ取得
+onMounted(async () => {
+  // ⑤ ポジション取得は BE の @RequestParam teamId が必須で、schedule.teamId（数値）が
+  // 判明してから叩く必要があるため、loadSchedule だけ先行させてから残りを並行取得する。
+  await loadSchedule()
+  await Promise.all([loadSlots(), loadPositions(), loadMembers(), loadPermissions()])
+  // 認可根治 Wave7: 実行履歴 API は管理者専用になったため、権限解決後に管理者のときだけ取得する。
+  // 従来どおり Promise.all に混ぜたままだと、一般メンバーでは 403 で Promise.all ごと失敗し
+  // ボード画面全体が描画されなくなる（エラーを握りつぶさず、そもそも呼ばない形で解消する）。
+  // フラグ OFF のときは実行履歴 API もゲートで 403（FEATURE_GATE_001）になるため呼ばない。
+  // 例外を握りつぶすのではなく、停止中の機能には最初から到達しない形で解消する。
+  if (isScopeAdmin.value && autoAssignEnabled.value) {
+    await fetchRuns()
+  }
+})
+
+async function loadSchedule(): Promise<void> {
+  const res = await shiftApi.getShiftSchedule(scheduleId.value)
+  schedule.value = (res as { data: ShiftScheduleResponse }).data
+}
+
+async function loadSlots(): Promise<void> {
+  const res = await shiftApi.getShiftSlots(scheduleId.value)
+  const data = (res as { data: ShiftSlotResponse[] }).data
+  slots.value = data
+  // ローカル状態を初期化（assignedUserIds は number[] 型）
+  data.forEach((slot) => {
+    initSlot(slot.id, slot.assignedUserIds ?? [])
+  })
+}
+
+async function loadPositions(): Promise<void> {
+  // BE の ShiftPositionController#listPositions は teamId (Long) が必須。
+  // teamSlug はスラッグであり teamId ではないため、schedule.teamId（数値）を使う
+  // （isSupporter の判定 [schedule.value!.teamId] と同じ既存パターンに倣う）。
+  if (!schedule.value) return
+  const res = await shiftApi.getPositions(String(schedule.value.teamId))
+  positions.value = (res as { data: ShiftPositionResponse[] }).data
+}
+
+async function loadMembers(): Promise<void> {
+  try {
+    const res = await teamApi.getMembers(teamSlug.value, { size: 200 })
+    allMembers.value = res.data.map((m) => ({
+      userId: m.userId,
+      displayName: m.displayName || String(m.userId),
+      avatarUrl: m.avatarUrl,
+    }))
+  } catch {
+    // メンバー取得失敗時は空のまま続行（ボード表示は可能）
+    allMembers.value = []
+  }
+}
+
+/**
+ * 割当 API の失敗を利用者に伝える。
+ *
+ * BE のエラーコード（例: SHIFT_017「シフト枠の必要人数を超過しています」）があれば
+ * その文言を優先表示し、無ければシフト共通の汎用文言にフォールバックする
+ * （金型: components/survey/SurveyCreateDialog.vue）。
+ *
+ * catch せず放置すると unhandledrejection になり、localAssignments が静かに
+ * ロールバックされるだけで画面には何も出ない（errorReport には載るが UI 表示は無い）。
+ */
+function notifyAssignmentError(e: unknown, context: string): void {
+  const apiError = e as { data?: { error?: { code?: string } } }
+  if (apiError?.data?.error?.code) {
+    handleApiError(e, context)
+  } else {
+    showError(t('shift.notification.errorUpdate'))
+  }
+}
+
+// D&D でドロップ
+async function onDropUser(payload: {
+  fromSlotId: number | null
+  toSlotId: number
+  userId: number
+}): Promise<void> {
+  const { fromSlotId, toSlotId, userId } = payload
+  const toSlot = slots.value.find((s) => s.id === toSlotId)
+  const toVersion = toSlot ? 0 : 0 // バックエンドの楽観ロックバージョン（実際はAPIレスポンスで更新）
+
+  try {
+    if (fromSlotId !== null) {
+      await moveUser(fromSlotId, toSlotId, userId, toVersion)
+    } else {
+      await addUser(toSlotId, userId, toVersion)
+    }
+  } catch (e) {
+    notifyAssignmentError(e, 'shift-board:drop')
+  }
+}
+
+// メンバー削除
+async function onRemoveUser(payload: { slotId: number; userId: number }): Promise<void> {
+  try {
+    await removeUser(payload.slotId, payload.userId, 0)
+  } catch (e) {
+    notifyAssignmentError(e, 'shift-board:remove')
+  }
+}
+
+// ダイアログからメンバー追加
+async function onAddUserFromDialog(userId: number): Promise<void> {
+  if (addUserSlotId.value !== null) {
+    try {
+      await addUser(addUserSlotId.value, userId, 0)
+    } catch (e) {
+      notifyAssignmentError(e, 'shift-board:add')
+      return
+    }
+    poolVisible.value = false
+  }
+}
+
+// 自動割当実行
+async function onRunAutoAssign(
+  strategy: AssignmentStrategyType,
+  params: AssignmentParameters,
+): Promise<void> {
+  await runAutoAssign(strategy, params)
+  autoAssignVisible.value = false
+}
+
+// 自動割当確定（目視確認後）
+async function onConfirmAutoAssignWithNote(_note: string | undefined): Promise<void> {
+  const run = pendingRun.value
+  if (!run) return
+  const assignmentIds = (run.assignments ?? []).map((a) => a.id)
+  await confirmAutoAssign(run.id, assignmentIds, scheduleVersion.value)
+  // スロット情報を再取得
+  await loadSlots()
+}
+
+// 自動割当破棄
+async function onRevokeAutoAssign(): Promise<void> {
+  const run = pendingRun.value
+  if (!run) return
+  try {
+    await revokeAutoAssign(run.id)
+  } catch (e) {
+    // 403・404・通信エラーを握りつぶさず、割当操作と同じ作法で利用者に通知する
+    notifyAssignmentError(e, 'shift-board:revoke-auto-assign')
+  }
+}
+</script>

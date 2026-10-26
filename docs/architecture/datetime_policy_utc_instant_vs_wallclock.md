@@ -1,0 +1,305 @@
+# 時刻の扱い方針: 瞬間は UTC・土地の約束は壁時計＋TZ・型で区別する
+
+> **本文書は方針（ポリシー）であり、実装計画・移行スケジュールではない。** 実装・リファクタリング・DDL・Flyway ファイルの作成は一切含まない。
+>
+> - 策定日: **2026-08-09**
+> - 策定経緯: マスターが示した「基準時刻は東京ではなく UTC にする」という大方針に、殿が「UTC にしてよいのは "起きた瞬間" を記録する値だけであり、"土地の約束"（壁時計）は UTC 化してはならない」という補足を加えた上で採用が決定した。本文書はその方針の正確な形を文書化するものであり、方針そのものの変更・骨抜きは行わない。
+> - 対象範囲: `backend/` の日時（date/time）の扱い方に関する設計方針。フロントエンドは既存実装（`frontend/app/composables/useDatetime.ts`）の事実確認に留め、再設計は含まない。
+> - 前提文書: [`docs/architecture/timezone_business_local_inventory.md`](./timezone_business_local_inventory.md)（既存の棚卸し。判定基準・ドメイン別仕分け・固定JST直書き48ファイル51箇所・未解決論点はそちらを参照し、本文書では重複させない）
+
+---
+
+## 1. 方針
+
+マスターの裁可を得た方針は次の3点である。
+
+1. **起きた瞬間を記録する値は UTC で持つ。** 例: `created_at` / `updated_at` / 予約した時刻 / 通知した時刻。これらは「世界のどこで見ても同じ1点」に定まる値であり、表示するときだけ閲覧者のタイムゾーン（TZ）へ変換すればよい。
+2. **土地の約束（壁時計）は UTC にしてはならない。** その土地の壁時計の値と「誰の時計か」（店・チームの TZ）をセットで持つ。該当例: 営業時間「9:00〜18:00」、「毎週月曜9:00から枠を作る」、予約枠の日付と時刻、締切。
+3. **型で意味を区別する。** 瞬間には `Instant` / `OffsetDateTime`（ゾーン情報を持つ型）を使い、土地の約束には `LocalDate` / `LocalTime` ＋ TZ の組を使う。結果として **`LocalDateTime`（ゾーン情報を持たない日時）は原則として新規に使わなくなる**。
+
+この3点が方針の全てであり、以降の章はこの方針の理由・判定方法・型対応・移行の考え方を補足するものである。方針そのものを変更する記述はどこにもない。
+
+---
+
+## 2. なぜこの方針か
+
+### 2.1 「全部 UTC」ではダメな理由
+
+一見、時刻を全部 UTC に統一すれば頭を使わずに済みそうに見える。しかし「土地の約束」（＝人間が決めた壁時計のルール）まで UTC に変換して保存すると、次の3つの壊れ方をする。
+
+**理由1: サマータイム（DST）で壊れる。**
+「毎週月曜9:00に開店する」というルールを「月曜9:00 JST → UTC の月曜0:00」のように変換して保存すると、その拠点がサマータイム（夏の間だけ時計を1時間進める制度）を採用している国に切り替わった瞬間、開店時刻が現地の8:00にずれる。日本にはサマータイムがないので今は気づかないが、**海外拠点を扱えるようにすることがこの方針転換そもそもの動機**であり、いずれ確実にぶつかる問題である。
+
+**理由2: TZ を後から修正すると過去の変換が全部狂う。**
+「この店の所在地登録を間違えていた、実はハワイだった」と後から訂正した場合、壁時計＋TZ（「9:00・ハワイ時間」）で持っていれば訂正後も9:00のままで正しい。ところが「9:00をハワイ時間だと思ってUTCに変換して焼き付けた値」だけを持っていたら、訂正後にその過去の変換をやり直す手段がない。将来分の予約枠がすべて9:00からずれた時刻で残る。
+
+**理由3: 国が時差ルールを変えると狂う。**
+国家が標準時のオフセットやサマータイム制度自体を変更することは実際に起きる（過去に複数の国で例がある）。遠い将来の予約を「今のオフセットで計算したUTC値」として焼き付けてしまうと、実際にその日が来たときに現地の時計とずれる。壁時計＋TZ（「地名としてのタイムゾーン」、例: `Asia/Tokyo`）で持っていれば、その時点の正しいルールに従って解釈し直されるため、この問題が起きない。
+
+これら3つはいずれも「後から変換し直せる余地を残しているか」が本質であり、UTC化は変換し直す余地を最初に潰してしまう操作である。
+
+### 2.2 混乱の真因（本方針の中核）
+
+現状のコードベースを混乱させている本当の原因は、UTCかJSTかという以前に、**`LocalDateTime`（タイムゾーン情報を一切持たない「ただの文字盤の数字」）を「瞬間」と「壁時計」の両方の意味で使い続けていること**である。
+
+`LocalDateTime` の値を見ても、それが「ある瞬間を記録したものか」「ある土地の約束を記録したものか」は型からは一切分からない。読む人は毎回、そのフィールドがどちらの意味で使われているかをコードの文脈や比較相手から推測しなければならない。これが「東京時間基準はUTC計算に比べて頭を使う」の実体であり、バグの温床になっている。
+
+そして **`TimeZoneConfig`（`backend/src/main/java/com/mannschaft/app/config/TimeZoneConfig.java`）が `@PostConstruct` で JVM 既定タイムゾーンを `Asia/Tokyo` に強制しているのは、まさにこの曖昧さを塗り潰すための処置である**（事実。同ファイル9行目のコメント「JVM のデフォルトタイムゾーンを Asia/Tokyo に設定（.claudecode.md §20）」）。`LocalDateTime.now()` は本来「今」という1つの瞬間を表せない（ゾーンが無いと壁時計の値に変換できない）が、JVM既定ゾーンをJSTに固定することで、コード中のあらゆる `LocalDateTime.now()` を暗黙に「東京の壁時計としての今」に統一し、辻褄を合わせている。
+
+**この1行（`TimeZoneConfig`）は型の曖昧さを消しているのではなく、「全部JSTだと決め打つことで曖昧さの問題自体を発生させない」という力業である。** 型で「瞬間」と「壁時計」を区別すれば、`LocalDateTime.now()` がJVM既定ゾーンで何になるかに依存する必要がなくなり、この強制の存在理由が失われる。これが根治であり、単なる「JSTをUTCに置き換える」だけの表面的な対処と本方針が違う点である。
+
+---
+
+## 3. 判定フロー
+
+ある値が「瞬間」か「壁時計（土地の約束）」かを判断する手順を示す。既存の棚卸し文書（[`timezone_business_local_inventory.md`](./timezone_business_local_inventory.md) A章）が定めた4つの判定基準をそのまま踏襲し、本文書では「型として何を選ぶか」の判断に絞って言い換える。
+
+1. **その値は、世界のどこで観測しても同じ1点に定まるか？** 定まるなら瞬間（`Instant`/`OffsetDateTime`）。例: 「ユーザーがボタンを押した瞬間」「予約が確定した瞬間」。
+2. **その値は、ある場所の壁掛け時計を指す約束事か？** 「9:00に始める」のように、時計を指す文字盤の数字そのものに意味があり、それを解釈する主体（店・チーム）のTZが決まって初めて瞬間に変換できるなら壁時計（`LocalDate`/`LocalTime` ＋ TZ）。例: 「営業開始9:00」「予約枠は8月10日の14:00」。
+3. **暦日の境界そのものが結果を左右するか？**（「今日」「明日」で判定が変わる）左右するなら壁時計寄り。相対経過時間（「3時間以内」）で済むなら瞬間同士の差分でよい。
+4. **比較相手は何か？** DATE/TIME型カラムや業務ローカル値と比較するなら壁時計、DATETIME（瞬間）同士の自己完結した比較なら瞬間。
+
+以下、実コードから両方の分類の具体例を示す（事実。ファイル:行番号を付す）。
+
+### 3.1 「瞬間」に分類される実例
+
+| # | 例 | ファイル:行 | 根拠 |
+|---|---|---|---|
+| 1 | 予約が作られた時刻 `bookedAt` | `backend/src/main/java/com/mannschaft/app/reservation/entity/ReservationEntity.java:93` | `private LocalDateTime bookedAt = LocalDateTime.now();`。予約という行為が発生した1点であり、世界のどこで見ても同じ瞬間。現状は `LocalDateTime` で持たれているが、方針上は瞬間の型（`Instant`/`OffsetDateTime`）が適切な例。 |
+| 2 | 予約が確定した時刻 `confirmedAt` | `backend/src/main/java/com/mannschaft/app/reservation/entity/ReservationEntity.java:95,121` | 同上。確定操作が発生した1点。 |
+| 3 | 空き通知の再通知抑制判定 `notifiedAt` 同士の比較 | `backend/src/main/java/com/mannschaft/app/reservation/service/ReservationWaitlistService.java:275-280`（`notifySlotReopened`。棚卸し文書 A-2 に引用あり） | 比較の両辺がいずれも「通知した瞬間」の記録であり、業務ローカル値が一切絡まない瞬間同士の自己完結した比較。既に「対象外（=瞬間として扱ってよい）」と明示判断済み。 |
+| 4 | 失効対象抽出の基準時刻 | `backend/src/main/java/com/mannschaft/app/reservation/service/ReservationPendingExpireService.java:116` | `bookedAt`（瞬間）からの経過時間で判定しており、比較の基準も瞬間系。 |
+| 5 | 出欠回答の応答時刻 `respondedAt` | `backend/src/main/java/com/mannschaft/app/schedule/entity/ScheduleAttendanceEntity.java`（棚卸し文書 B-2 に列挙、監査タイムスタンプと判定済み） | 「回答した」という行為が発生した1点。 |
+
+### 3.2 「壁時計（土地の約束）」に分類される実例
+
+| # | 例 | ファイル:行 | 根拠 |
+|---|---|---|---|
+| 1 | 予約枠の日付 `slotDate` | `backend/src/main/java/com/mannschaft/app/reservation/entity/ReservationSlotEntity.java:64` | `private LocalDate slotDate;`。DB上も `slot_date DATE NOT NULL`（`backend/src/main/resources/db/migration/V3.061__create_reservation_slots_table.sql:7`）。「その店の8月10日という日」という土地の約束そのものであり、瞬間ではない。 |
+| 2 | 予約枠の開始時刻 `startTime` | `backend/src/main/java/com/mannschaft/app/reservation/entity/ReservationSlotEntity.java:67` | `private LocalTime startTime;`。DB上も `start_time TIME NOT NULL`（同migration:8）。「14:00という文字盤の数字」であり、店のTZが決まって初めて瞬間に変換できる。 |
+| 3 | 予約枠テンプレートの開始時刻（毎週の繰り返しルール） | `backend/src/main/java/com/mannschaft/app/reservation/entity/ReservationSlotTemplateEntity.java:66` | `private LocalTime startTime;`。「毎週月曜9:00から枠を作る」という繰り返しルール自体が方針が名指しした典型例（サマータイム越境で崩れる代表）。 |
+| 4 | 臨時休業の部分休業時間帯 `startTime`/`endTime` | `backend/src/main/java/com/mannschaft/app/reservation/entity/EmergencyClosureEntity.java:43` | `private LocalTime startTime;`。DB上も `TIME` 型（`V3.069__add_time_range_to_emergency_closures.sql:6-7`）。営業時間の一部を休むという土地の約束。 |
+| 5 | シフト希望締切 `requestDeadline` の判定 | `backend/src/main/java/com/mannschaft/app/shift/service/ShiftRequestService.java:330`（棚卸し文書 B-4 に引用） | `LocalDateTime.now().isAfter(schedule.getRequestDeadline())`。方針が名指しした「締切」の典型例。締切は「その拠点の壁時計で何月何日何時まで」という約束であり、UTCの1点として固定すると理由2.1で述べたTZ変更・DST越境で壊れる。 |
+
+（判定に迷う中間例が存在すること自体は棚卸し文書 B-2・D-4 に記載済みであり、本文書では重複させない。特に「保存側は絶対時刻を固定JSTに変換して壁時計として保持し、読み出し側は素の `now()` と比較する」構造（`ScheduleAttendanceService.java:913` の出欠回答締切等）は、性質としては「締切」＝壁時計寄りだが、現状の実装は瞬間の型（`OffsetDateTime`）で入力を受けた後にJST固定で壁時計化しており、どちらの型を最終的に選ぶべきかは D 章の未解決論点として引き継ぐ。）
+
+---
+
+## 4. 型の使い分け表
+
+| 意味 | Java型 | 使うか | 対応するDBカラム型 | 備考 |
+|---|---|---|---|---|
+| 瞬間（起きた1点） | `Instant` | ○ 推奨 | `DATETIME`（UTC格納） | タイムゾーンの概念を持たず、UTCエポックからの経過時間そのもの。最も曖昧さが少ない。 |
+| 瞬間（クライアントとの境界でオフセットを明示したい場合） | `OffsetDateTime` | ○ 用途による | `DATETIME`（UTC格納） | API入出力で「+09:00」のようにクライアントが明示したオフセットを保持したい場合に使う。DB格納は結局UTCの瞬間に正規化する。 |
+| 土地の約束（日付） | `LocalDate` ＋ TZ（別カラムまたは参照先で保持） | ○ 推奨 | `DATE` | 「TZ」はそのレコード単体には型として現れず、店・チームのTZカラムを別途参照する形になる。 |
+| 土地の約束（時刻） | `LocalTime` ＋ TZ | ○ 推奨 | `TIME` | 同上。 |
+| 瞬間と壁時計の両方に使われてしまう「ただの文字盤の数字」 | `LocalDateTime` | **× 原則使わない** | `DATETIME` | ゾーン情報がないため、読む側が文脈で「どちらの意味か」を推測せざるを得ない。本方針の混乱の真因（2.2節）。 |
+
+**「原則使わない」の意味**: 既存コードに1932箇所（推定、棚卸し文書 A-3）ある `LocalDateTime` 系の呼び出しを即座に全廃するという意味ではない（7章参照）。**新規に書くコードでは `LocalDateTime` を選ばない**、という原則である。既存コードのどこまでを本方針に合わせて直すかは移行計画（本文書の範囲外、7章に選択肢のみ提示）で決める。
+
+`TIMESTAMP` 型は既存規約（§20）が明記する通り2038年問題とMySQLの暗黙タイムゾーン変換の問題があるため、本方針でも引き続き使わない。
+
+---
+
+### 4.1 JPA を迂回する書き込みは、時刻列を Java から束縛しない **【規約】**
+
+DB 格納基準は `spring.jpa.properties.hibernate.jdbc.time_zone: UTC` により **UTC 壁時計**である。JPA 経路は `@PrePersist` の `LocalDateTime.now()`（JST 壁時計）を Hibernate が UTC へ変換して格納するが、**`JdbcTemplate` の生 SQL・`nativeQuery` はこの変換を通らない**。したがって、JPA を迂回する経路で時刻列（`*_at`）を扱うときは次を守ること。
+
+| 書き方 | 可否 | 理由 |
+|---|---|---|
+| SQL に `UTC_TIMESTAMP()` と書く | ✅ **正解** | セッションのタイムゾーン設定に依らず UTC 壁時計を返すため、JPA 経路と格納基準が一致する |
+| SQL に `NOW()` / `CURRENT_TIMESTAMP` / `SYSDATE()` と書く | ❌ 禁止 | DB 接続セッションのタイムゾーン依存。JPA 経路と基準が食い違う |
+| Java の `LocalDateTime` をプレースホルダで束縛する（`created_at = ?` / `created_at < ?`） | ❌ 禁止 | JST 壁時計がそのまま入る／比較されるため、UTC 格納値と 9 時間ずれる |
+| Java 側で `LocalDateTime.now(ZoneOffset.UTC)` を作って束縛する | ❌ 採らない | 値としては正しくなるが、「Java 側で壁時計を作って束縛する」流儀が残り、誤った実装と機械的に見分けられなくなる（番人で検出できない） |
+
+正解の前例: `AnnouncementReadStatusRepository#markAllAsReadByFeedIds`（`read_at` に `UTC_TIMESTAMP()`）、`NotificationBulkFanoutService`（`created_at` に `UTC_TIMESTAMP()`）。
+
+なお、**DB へ入る値（UTC 壁時計）と、in-memory のエンティティが持ち API・WebSocket 配信ペイロードに載る値（サーバ既定ゾーン＝JST の壁時計）は別物**である。後者は JPA 経路の in-memory 値と同じ意味であり、UTC へ寄せてはならない（寄せると FE が受け取る時刻だけが 9 時間ずれる）。
+
+この規約は番人 `RawSqlTimeColumnGuardTest`（`backend/src/test/java/com/mannschaft/app/common/architecture/`）が CI で機械的に強制する。既存の未是正箇所はクラス単位の凍結台帳（`backend/src/test/resources/raw_sql_time_guard/*.txt`）で凍結してあり、**新規追加は禁止・既存は返済対象**である。
+
+（実例: CMP-260909-1446。通知の一括 fan-out が生 JDBC バルク INSERT で `created_at` に JST 壁時計を束縛しており、bulk 経路の通知だけが未来日時として一覧の先頭に居座り、JPA 経路の通知が 110〜138 行下に埋もれていた）
+
+---
+
+### 4.2 Flyway migration の DML も同じ規約に従う **【規約】**（CMP-260912-2258）
+
+§4.1 は `JdbcTemplate` / `nativeQuery` を対象に書かれているが、**Flyway migration の DML も JPA を迂回する経路である**ことに変わりはない。したがって **新規 migration で「今」を書くときは `UTC_TIMESTAMP()` を使う**。
+
+禁じるのは特定の関数名ではなく、**「セッションの `time_zone` に従って現在時刻を返す MySQL 組み込み関数」全部**である。日時型だけでなく**日付型・時刻型の別名も同じセッション TZ に従う**ので、`WHERE target_date < CURDATE()` のような書き方は日単位でずれうる。
+
+| 区分 | ❌ 禁止（セッション TZ 依存） | ✅ 正解（TZ に依らない） |
+|---|---|---|
+| 日時 | `NOW()` / `SYSDATE()` / `CURRENT_TIMESTAMP` / `LOCALTIMESTAMP` | `UTC_TIMESTAMP()` |
+| 日付 | `CURDATE()` / `CURRENT_DATE` | `UTC_DATE()` |
+| 時刻 | `CURTIME()` / `CURRENT_TIME` / `LOCALTIME` | `UTC_TIME()` |
+
+```sql
+-- ❌ 禁止（セッション TZ 依存）
+UPDATE teams SET updated_at = NOW() WHERE id = 1;
+INSERT INTO permissions (name, created_at, updated_at) VALUES ('X', NOW(), NOW());
+
+-- ✅ 正解（設定に依らず UTC 壁時計）
+UPDATE teams SET updated_at = UTC_TIMESTAMP() WHERE id = 1;
+INSERT INTO permissions (name, created_at, updated_at) VALUES ('X', UTC_TIMESTAMP(), UTC_TIMESTAMP());
+```
+
+#### 既存の 746 箇所は「ずれていない」— それでも新規を禁じる理由
+
+調査時点で migration の DML には `NOW()` 系が **65 ファイル・746 箇所**あり、`UTC_TIMESTAMP()` は **0 箇所**だった。既存の番人 `RawSqlTimeColumnGuardTest` / `DateTimeAndZoneGuardTest` はいずれも `src/main/java` の `.java` だけを走査するため、**migration 経由なら同型の欠陥が無検出で入り続ける**状態だった。
+
+ただし調査の結論として、**それら 746 箇所は実際にはずれていない**。MySQL の `NOW()` は**セッションの `time_zone`** に従い、本プロジェクトは全環境でそれを UTC に固定しているためである。
+
+| 環境 | セッション `time_zone` の決まり方 |
+|---|---|
+| local | `docker-compose.yml` の `--default-time-zone=+00:00` |
+| CI | MySQL サービスコンテナは `SYSTEM`、ランナーが UTC |
+| test | Testcontainers の `mysql:8.0` が `SYSTEM`＝UTC |
+| prod | RDS パラメータ `time_zone=UTC`（`infra/terraform/modules/data/main.tf`） |
+
+JDBC の `serverTimezone=UTC` はドライバ側の `Timestamp` 解釈を決めるだけで、セッション TZ を書き換えない（Connector/J の `forceConnectionTimeZoneToSession` は既定 `false`）。実測: dev MySQL（`mannschaft-mysql`）で `SELECT TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), NOW())` = **0**、`@@global.time_zone` / `@@session.time_zone` はいずれも `+00:00`。
+
+それでも新規を禁じるのは、**746 箇所の正しさが「セッション TZ が UTC」という単一の外部設定にぶら下がっている**からである。設定が 1 つ崩れれば 746 箇所が同時に 9 時間ずれる。`UTC_TIMESTAMP()` はその依存ごと消す。
+
+#### 既存 migration は書き換えない
+
+適用済み migration の書き換えは **Flyway のチェックサム不一致**を起こし、全環境の起動を止める。実測でずれが 0 である以上、是正用の新 migration も不要である（直すべきデータが無い）。よって既存は**凍結**する。
+
+#### 番人（2つで対になる）
+
+| 番人 | 守るもの |
+|---|---|
+| `FlywayMigrationTimeFunctionGuardTest`（`common/architecture`） | 新規 migration が `NOW()` 系を増やさないこと。既存はファイル単位の件数で凍結（`backend/src/test/resources/flyway_migration_time_guard/session_tz_time_function_freeze.txt`）。**台帳への追記は禁止** |
+| `FlywayMigrationTimeFunctionGuardScanningLogicTest` | 上の番人の**走査ロジック自体**。検出／非検出の両側を検体で固定し、偽陰性化・偽陽性化を防ぐ |
+| `FlywayMigrationSessionTimeZoneUtcIT`（`config`） | 実 MySQL 接続のセッション TZ が UTC であり `NOW() == UTC_TIMESTAMP()` であること＝既存 746 箇所が今もずれていないこと |
+
+#### 番人が使う「判定の軸」（検出器を後から触る人向け）
+
+検出対象を関数名の羅列として持つと、別名が増えるたびに穴が空く。番人は次の2軸で判定している。
+
+1. **関数呼び出しであるとは何か** — 名前の直後に（任意長の空白を挟んで）`(` があり、中身が精度指定の数字だけなら呼び出し。`CURRENT_TIMESTAMP` 系の SQL 標準キーワードは括弧なしでも呼び出し、`NOW` / `SYSDATE` / `CURDATE` / `CURTIME` は括弧が無ければ単なる識別子。
+2. **識別子の一部であるとは何か** — MySQL の引用なし識別子は `0-9 a-z A-Z $ _` と U+0080 以上を許す。前後がこれらなら関数ではない。加えて**バッククォート**（引用識別子 `` `current_date` ``）と**ドット**（修飾名 `t.current_date`）が直前にあれば関数ではない。
+
+**走査の時間制限はプリエンプティブで、かつ割り込みに応答する。** ここは二段構えで、片方だけでは効かない。
+
+1. 「走査が終わってから経過時間を測って閾値と比べる」形は、**ハングしたときにだけ働かない番人**になる（制御が戻らないので比較に到達せず、CI のジョブ上限まで居座る）。そこで `assertTimeoutPreemptively` で別スレッド実行し上限で**打ち切る**。
+2. ただし `assertTimeoutPreemptively` は**割り込みを送るだけ**で強制終了はせず、**Java の正規表現走査は割り込み状態を一切見ない**。したがって上記だけでは、退行時にテストが赤くなっても**走査スレッドが生き残って CPU を焼き続ける**。そこで入力を `InterruptibleCharSequence`（`charAt` で割り込みを検査して例外を投げる）で包み、走査自体を割り込み可能にしている。フラグを消さないよう `Thread.interrupted()` ではなく `isInterrupted()` を使う。
+
+走査は引数と局所変数しか触らず `ThreadLocal`・Spring コンテキストを使わないので、別スレッド実行で不安定にならない。
+
+回帰テストの検体は、打ち切られることに加えて**走査スレッドが実際に停止すること**まで確認する（`Thread.sleep` は割り込みに応答してしまうので検体にならない）。検体の入力は `length()` が `Integer.MAX_VALUE` の合成 `CharSequence`（実体を持たずメモリ不使用）で、**決して一致しないので走査が終わらない**。これは意図的な設計で、次の2つを同時に満たす。
+
+- **実行速度に依存しない** — 速いホストでも遅いホストでも走査は完了しないので、期限超過が必ず起きる。実物の migration を短い期限で打ち切る形は、速いホストで走査が先に終わると偽陽性で落ちるため採らない
+- **ラッパを外すと落ちる** — 入力は本番と同じ生成入口 `sessionTzNowMatcher` へ流す。1ファイル内の `find()` が終わらないので `collectViolations` の**ファイル境界にある割り込み検査には到達せず**、matcher のラッパだけを分離して検証できる
+
+実測（検体と同じ形で再現）: ラッパありは期限超過後にスレッドが停止（検体 PASS）、ラッパなしは期限超過後も**20秒後までスレッドが生存**（検体 FAIL）。
+
+> 「この正規表現は爆発するはずだ」という前提の検体は採らない。`(a+)+$` などの古典的な形は**この JDK では一切爆発しない**ことを実測しており（Java 9 以降の最適化）、その種の検体は JDK が変われば黙って無検査になる——番人が防ごうとしている失敗の形そのものになる。
+
+> **既知の穴（本戦役の射程外・別戦役で扱う）**: 既存の `RawSqlTimeColumnGuardTest` と `DateTimeAndZoneGuardTest` は非プリエンプティブな `assertTimeout` を使っており、**同じ穴を持つ**。さらに開発機での実測では前者が 25.4 秒（上限 30 秒の 85%）、後者は **59.7 秒で上限超過により失敗**しており、判定本体に到達していない。閾値かアルゴリズムのどちらかに手当てが要る。
+
+**正規表現には量指定子を1つも置いていない。** 可変長（名前と括弧の間の空白、`DEFAULT` までの空白）はすべて Java 側の前方向・後方向それぞれ1度きりの線形走査で扱う。上限付き `\s{0,4}` では `CURDATE     ()` やコメントを潰した跡の長い空白を取りこぼし、かといって `\s*` へ広げると本リポジトリで実績のある破滅的バックトラック（55分ハング）を招くためである。実測: migration 1156 ファイルの走査が 1 秒未満（番人自身が所要時間を検査する `scanFinishesQuickly` を持つ）。
+
+#### 射程外にした範囲と、その理由（「見落とし」ではない）
+
+**列定義の `DEFAULT CURRENT_TIMESTAMP` / `ON UPDATE CURRENT_TIMESTAMP` / `DEFAULT NOW()`（598 ファイル・1558 箇所）は射程外**とする。これだけの量がありながら番人が見ていない状態は後から「走査漏れ」と誤解されやすいので、判断の因果をここに残す。
+
+1. **そもそもずれていない**。列既定の `CURRENT_TIMESTAMP` も DML の `NOW()` とまったく同じ理屈でセッションの `time_zone` に従い、本プロジェクトはそれを全環境で UTC に固定している（上表・実測済み）。よって 1558 箇所も UTC 壁時計を書く。**実害のある課題ではなく、今後どう書かせるかという規約だけの話である。**
+2. **その前提は放置されていない**。「セッション `time_zone` が UTC」であることは `FlywayMigrationSessionTimeZoneUtcIT` が実 MySQL 接続で実測し CI の不変条件として守る。1558 箇所の正しさは**あちらの番人が担保しており**、`FlywayMigrationTimeFunctionGuardTest` が重ねて見る必要がない。
+3. **塞ごうとすると代償が釣り合わない**。式 DEFAULT（`DEFAULT (UTC_TIMESTAMP())`）へ一括で倒すには**適用済み migration の書き換え**が必須で、Flyway のチェックサム不一致により全環境の起動が止まる。実害ゼロの案件でその代償は払えない。
+
+加えて実運用上、列既定は「その列を省いた INSERT が来たときだけ」効く保険であり、実際の INSERT は JPA 経路（`@PrePersist`）か明示列指定のどちらかで必ず値を与えるため、発火機会自体が乏しい。
+
+この線引きを将来動かす（列既定も禁じる）場合は、**対象を新規 migration だけに限ること**。既存への遡及は上記 3. の理由で採ってはならない。
+
+**`src/test` 配下の SQL も同じ理由で射程外**とする（テストのフィクスチャは Testcontainers 上の使い捨てデータであり、本番データの格納基準を汚さない。別戦役の扱い）。
+
+---
+
+## 5. `TimeZoneConfig` の位置づけと撤去条件
+
+- **なぜ今存在するのか**: 2.2節で述べた通り、`LocalDateTime` を瞬間・壁時計の両方の意味で使っている現状において、`LocalDateTime.now()` の意味を「東京の壁時計としての今」に統一するための力業である。これを外すと、JVM既定ゾーンがOS依存（多くの場合UTC）に戻り、`LocalDateTime.now()` の意味がすべての呼び出し箇所で変わってしまう。
+- **撤去できる条件**: 「瞬間」を意味する箇所がすべて `Instant`/`OffsetDateTime`（JVM既定ゾーンに依存しない型）に置き換わり、かつ「壁時計」を意味する箇所がすべて `LocalDate`/`LocalTime` ＋ 明示的なTZ参照（`ZoneId.systemDefault()` のような暗黙のJVM既定ゾーン依存ではなく）に置き換わっていること。つまり **コードベースのどこにも `ZoneId.systemDefault()` や無引数の `LocalDateTime.now()` / `LocalDate.now()` に依存する箇所が残っていない状態**が撤去条件である。
+- 棚卸し文書（A-3）によれば `ZoneId.systemDefault()` / `LocalDateTime.now()` / `LocalDate.now()`（引数なし直書き）は約1932箇所に及ぶため、**撤去は本方針の最終段階であり、当面は残す**（撤去時期そのものはマスター判断事項であり本文書では断定しない）。
+
+---
+
+## 6. 現行規約（`backend/.claudecode.md` §20）との差分
+
+現行 §20 は2026-07-29（Issue #2486）に「DB格納値をJSTからUTCへ」変更した際に定められた規約であり、次の「二層モデル」を採用している（事実、§20:642-660より）。
+
+| 層 | §20 の現行規約 |
+|---|---|
+| アプリ層（`LocalDateTime`） | JST（Asia/Tokyo）固定。`TimeZoneConfig` がJVM既定TZをJSTに固定することで実現 |
+| DB格納値（`DATETIME`カラム） | UTC（`hibernate.jdbc.time_zone: UTC`） |
+| API入出力 | JST前提のISO 8601文字列（`LocalDateTimeTimezoneSerializer`/`Deserializer` がJVM既定TZ＝JSTを介して変換） |
+
+本方針との食い違いは以下の通り。
+
+1. **「瞬間」と「壁時計」を型で区別する発想が §20 にはない。** §20 は用途を問わず一律 `LocalDateTime` を使い、DB格納だけをUTCにする設計であり、本方針が求める「型で意味を区別する」（方針3点目）と真っ向から異なる。§20 の下では `ReservationEntity.bookedAt`（瞬間）も `ReservationSlotEntity` の関連ロジックで扱う締切判定（壁時計）も、コード上は同じ `LocalDateTime` 型で表現され、区別がつかない。
+2. **§20 はアプリ層をJST固定とし、本方針は「瞬間はUTC、壁時計は土地のTZ（必ずしもJSTではない）」とする。** §20 の「アプリ層＝JST」という前提は、単一TZ（日本国内）運用を暗黙の前提にしており、海外拠点（本方針転換の動機そのもの）を想定していない。本方針では「壁時計」は店・チームごとに異なるTZを持ちうる。
+3. **§20 の `TimeZoneConfig` 撤去条件が §20 には存在しない。** §20 はむしろ `TimeZoneConfig` を規約の中核として位置づけている（`backend/.claudecode.md:16` のディレクトリ構成表にも明記）。本方針は5章で示した通り、これを最終的に撤去する方向を示しており、方向性が逆である。
+4. **§20 の「受信側の解釈規則」（未解決時はAsia/Tokyoとみなす）は、個人TZの入力解釈としては本方針と両立しうるが、「壁時計＝土地のTZ」という概念（店・チームのTZ）を扱っていない。** 既存の `common/timezone/` 基盤（`UserTimezoneFilter`/`UserZoneLocalDateTimeParser`）は個人TZの解決に特化しており、棚卸し文書 D-0 が指摘する通り「テナント（チーム・組織）TZ」は一切扱っていない。本方針の「壁時計は店の時計」を実現するには、この基盤とは別に店・チームTZの解決経路が必要になる。
+
+**規約側への提案（提案のみ・実際には直さない）**:
+
+- §20 に「瞬間の値」と「壁時計の値」を型で区別する節を新設し、新規コードでの型選択規則（本文書4章の表）を明記する案が考えられる。
+- ただし、これは §20 の全面書き換えに相当し、既存の「二層モデル」（アプリ層JST・DB層UTC・API層JST変換）の説明を丸ごと置き換えるか併記するかの判断が要る。二層モデルの説明自体は「Hibernateがどう変換するか」という実装事実の記述として引き続き有用な部分もあるため、単純な削除ではなく再構成が必要になる可能性がある。
+- この提案の採否・改訂の範囲・タイミングはマスター判断事項であり、本文書では断定しない。
+
+---
+
+## 7. 移行の考え方
+
+`LocalDateTime.now()` / `ZoneId.systemDefault()` / `LocalDate.now()` の直書きは棚卸し文書（A-3）によれば **約1932箇所・924ファイル・107ドメイン**に及ぶ。一括改修は現実的ではない。段階の切り方として考えられる選択肢を列挙する（**どの段階から始めるべきかは断定しない**。マスターの判断事項）。
+
+### 選択肢A: ドメイン単位で区切る
+
+reservation・schedule のように棚卸しが完了しているドメインから、瞬間/壁時計の型分離を進める。
+- 得: 棚卸し済みの正確な情報があるため着手しやすい。1ドメインの変更が他ドメインに波及しにくい（モジュラーモノリスの原則とも整合）。
+- 失: ドメイン間で共通に使われる基盤（`common/timezone/`、`ClockConfig`）を先に変えないと、ドメインごとに変更してもTZ解決の一貫性が保てない可能性がある。
+
+### 選択肢B: レイヤー単位で区切る（新規コードのみ先行適用）
+
+既存コードには一切手を入れず、新規に書くコード・新規エンティティ・新規APIから本方針の型を強制する（Lint/ArchUnit等の番人で強制する案も考えられる）。
+- 得: 既存の安定動作を壊すリスクがゼロ。着手障壁が最も低い。
+- 失: 既存1932箇所の負債は残り続け、`TimeZoneConfig` の撤去（5章）には到達しない。新規コードと既存コードで2つの流儀が長期間併存し、かえって混乱を招く可能性がある。
+
+### 選択肢C: 基盤（共通コンポーネント）を先に作ってから展開する
+
+「店・チームTZ解決」の共通基盤（`common/timezone/` の店舗TZ版、または `ClockConfig` の拡張）を先に設計・実装し、その後に各ドメインを基盤へ移行させる。
+- 得: ドメインごとに車輪の再発明が起きない。棚卸し文書 D-0 が指摘する「既存の個人TZ基盤の隣に店舗TZ基盤を作る」設計判断（D-1）とも接続する。
+- 失: 基盤設計そのものが軍議・設計レビューを要する規模になりやすく、着手までの準備期間が長くなる。基盤が固まるまで各ドメインの移行が止まる。
+
+### 実装済みの部分適用: 壁時計 Clock Bean（`ClockConfig#wallClock`）
+
+選択肢Cの最小の一歩として、業務ローカル時刻（壁時計）の `Clock` Bean `wallClock` を導入した（issue #2616 のブログ予約公開で先行適用）。
+
+- 基準ゾーンは**既存の唯一の正である `UserZoneLocalDateTimeParser.SERVER_ZONE`** を参照する。`TimeZoneConfig`（JVM 既定ゾーンの設定）・`ClockConfig#wallClock`（判定に使う基準時刻）・`UserZoneLocalDateTimeParser`（API 入力の解釈）の**三者が同一のソース**を見るため、食い違いは構造的に起こらない。
+- **ゾーンは環境変数で可変にしていない。** 実行時に差し替えられるようにしても、DB に既に書かれた `LocalDateTime` 列は旧ゾーンの壁時計のままであり、変えた瞬間に既存データの解釈が壊れる（「設定できるように見えて変えると壊れるつまみ」）。テナント別 TZ の導入は格納形式・入力変換・判定基準を一体で設計し直す必要があるため、**CMP-023「時刻設計の全域是正＋テナントTZ導入」**が受け皿である。
+- 既定の `Clock`（`utcClock`・`@Primary`）は UTC 固定のまま。`LocalDateTime` 列と突き合わせる処理だけが `@Qualifier("wallClock")` で明示的に壁時計を選ぶ（取り違えは 9 時間ずれとして表面化するため、暗黙の既定に混ぜない）。`@Qualifier` をコンストラクタ引数へ伝えるため `backend/lombok.config` に `lombok.copyableAnnotations` を追加している。
+- 呼び出し側が基準時刻を取り、**エンティティは現在時刻を自ら取得しない**（`BlogPostEntity#publish/unpublish/changeStatus` は基準時刻を引数で受け取る）。これにより状態遷移の判定が決定的になり、`Clock.fixed` でテスト可能になる。
+- `ZoneId.systemDefault()` を一切呼ばないため、番人 `DateTimeAndZoneGuardTest` の凍結台帳を増やさずに是正できる。将来テナントTZを導入する際は、この 1 箇所が差し替え地点になる。
+
+### 選択肢D: リスクの高い箇所から優先的に着手する
+
+棚卸し文書が「含む」と確定判定した箇所（reservation 8件、schedule 1件、ticket/parking/timetable/shift のサンプル5件、計約14件、B-5参照）など、既に構造的リスクが実測されている箇所を最優先で直す。
+- 得: 実害（JVM既定ゾーンが本番でJSTと一致しない場合に締切判定がずれる、等）の防止という即効性がある。
+- 失: 対象が少数のため、これだけでは「型で区別する」という方針全体の実現には程遠い。局所対処に留まり、真因（2.2節）は残ったままになる。
+
+いずれの選択肢も併用可能であり、排他ではない（例: 選択肢B＋Dの組み合わせなど）。優先順位の決定は本文書の範囲外とする。
+
+---
+
+## 8. 未解決の論点
+
+棚卸し文書（[`timezone_business_local_inventory.md`](./timezone_business_local_inventory.md) D章・付録）に記載済みの論点（個人TZと店舗TZの並立、`ClockConfig`の扱い、TZをteams/organizationsどちらに持たせるか、既存データのバックフィル方針、本番JVM既定TZの未実測、等）は本文書では重複記載せず、同文書を参照する。
+
+本文書で新たに生じた、または明確化が必要な論点を以下に追記する。
+
+1. **「締切」の型選択**: 3.2節末尾で触れた通り、`ScheduleAttendanceService.java:913` 等の「保存側は絶対時刻入力を固定JST壁時計に変換して保持し、読み出し側は素の `now()` と比較する」構造は、方針上「締切＝壁時計」と位置づけたが、現行実装は入力を `OffsetDateTime`（瞬間の型）で受けている。締切を最終的に「壁時計＋TZ」の型で持ち直すのか、「瞬間（利用者が指定した絶対時刻）」のまま `Instant`/`OffsetDateTime` に統一するのかは、本文書では判断していない。両者は「利用者が個別に指定する締切」と「業務が定める暦日の約束」で性質が異なる可能性があり、A-1基準への当てはめ自体が棚卸し文書側でも保留（B-2、付録8番）になっている。
+2. **`Instant` と `OffsetDateTime` のどちらを瞬間の標準型とするか**: 本文書4章では両方を「使う」としたが、どちらをアプリ層のデフォルトとするか（多くの場合 `Instant` が単純だが、API入出力でクライアントのオフセットを保持したい場面では `OffsetDateTime` が必要）の使い分け基準は詳細化していない。
+3. **既存の `LocalDateTimeTimezoneSerializer`/`Deserializer`（§20が定めるAPI境界のJST変換ロジック）を本方針にどう接続するか**は未検討。瞬間の型（`Instant`/`OffsetDateTime`）と壁時計の型（`LocalDate`/`LocalTime`）それぞれについて、API入出力のシリアライズ規則を新たに定める必要が生じる可能性があるが、設計はしていない。
+4. 上記いずれも、棚卸し文書D章の論点（D-1〜D-4）と組み合わせて初めて全体像が定まるものであり、本文書単体では解決しない。
+
+以上。

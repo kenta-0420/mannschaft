@@ -1,0 +1,302 @@
+package com.mannschaft.app.social.announcement.controller;
+
+import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.EnumInputParser;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.dashboard.ViewerRole;
+import com.mannschaft.app.dashboard.service.RoleResolver;
+import com.mannschaft.app.social.announcement.AnnouncementFeedService;
+import com.mannschaft.app.social.announcement.AnnouncementReadService;
+import com.mannschaft.app.social.announcement.AnnouncementScopeType;
+import com.mannschaft.app.social.announcement.AnnouncementSourceType;
+import com.mannschaft.app.social.announcement.dto.AnnouncementFeedItemDto;
+import com.mannschaft.app.social.announcement.dto.AnnouncementFeedMetaDto;
+import com.mannschaft.app.social.announcement.dto.AnnouncementFeedResponseDto;
+import com.mannschaft.app.social.announcement.dto.AnnouncementMarkAllReadResultDto;
+import com.mannschaft.app.social.announcement.dto.CreateAnnouncementRequestDto;
+import com.mannschaft.app.social.announcement.dto.PinAnnouncementRequestDto;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.net.URI;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 組織スコープ お知らせウィジェット REST コントローラ（F02.6）。
+ *
+ * <p>
+ * 組織ダッシュボードのお知らせウィジェットに関する CRUD / 既読管理 / ピン留め操作を提供する。
+ * チームスコープ ({@link AnnouncementFeedController}) と同形で {@code scopeType = ORGANIZATION}。
+ * 全エンドポイントで認証を必須とする（{@code @PreAuthorize("isAuthenticated()")}）。
+ * </p>
+ *
+ * <p>
+ * エンドポイント一覧:
+ * <ul>
+ *   <li>{@code GET    /api/v1/organizations/{orgId}/announcements} — 一覧取得</li>
+ *   <li>{@code POST   /api/v1/organizations/{orgId}/announcements} — お知らせ化</li>
+ *   <li>{@code DELETE /api/v1/organizations/{orgId}/announcements/{id}} — お知らせ解除</li>
+ *   <li>{@code PATCH  /api/v1/organizations/{orgId}/announcements/{id}/pin} — ピン留めトグル</li>
+ *   <li>{@code POST   /api/v1/organizations/{orgId}/announcements/{id}/read} — 既読マーク</li>
+ *   <li>{@code POST   /api/v1/organizations/{orgId}/announcements/read-all} — 全件既読</li>
+ * </ul>
+ * </p>
+ */
+@Slf4j
+@RestController
+@RequestMapping("/api/v1/organizations/{orgId}/announcements")
+@Tag(name = "組織お知らせウィジェット", description = "F02.6 組織スコープ お知らせウィジェット API")
+@RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
+public class AnnouncementFeedOrgController {
+
+    private final AnnouncementFeedService announcementFeedService;
+    private final RoleResolver roleResolver;
+    private final AccessControlService accessControlService;
+
+    // ═════════════════════════════════════════════════════════════
+    // GET /api/v1/organizations/{orgId}/announcements — 一覧取得
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * 組織のお知らせフィード一覧をカーソルページングで取得する。
+     *
+     * @param orgId  組織 ID
+     * @param cursor カーソル（省略時は先頭から）
+     * @param limit  取得件数（省略時 10、最大 50）
+     * @return お知らせフィード一覧レスポンス（200 OK）
+     */
+    @GetMapping
+    @Operation(
+            summary = "組織お知らせ一覧取得",
+            description = "組織ダッシュボードのお知らせウィジェット用フィードをカーソルページングで返す。"
+                    + "ピン留め優先 → 優先度（URGENT → IMPORTANT → NORMAL）→ 新着順で並ぶ。")
+    public ResponseEntity<AnnouncementFeedResponseDto> getAnnouncementFeed(
+            @PathVariable Long orgId,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "10") int limit) {
+
+        Long userId = SecurityUtils.getCurrentUserId();
+        // 固定 "MEMBER" ではなく、当該組織に対する閲覧者の実ロールを解決して渡す（可視性漏洩根治）。
+        ViewerRole viewerRole = roleResolver.resolveViewerRole(userId, "ORGANIZATION", orgId);
+        AnnouncementFeedService.AnnouncementFeedResult result = announcementFeedService.getAnnouncementFeed(
+                AnnouncementScopeType.ORGANIZATION, orgId, userId, viewerRole.name(), cursor, limit);
+
+        // 宛先の記録（グループ名・チーム数）は、グループを閲覧してよい者にだけ返す（F01.2.1 §3.1・§10.1）
+        boolean includeTargetAudience = canViewTargetAudience(userId, orgId);
+        List<AnnouncementFeedItemDto> items = result.data().stream()
+                .map(item -> AnnouncementFeedItemDto.from(item, includeTargetAudience))
+                .toList();
+
+        AnnouncementFeedResponseDto response = AnnouncementFeedResponseDto.builder()
+                .data(items)
+                .meta(AnnouncementFeedMetaDto.builder()
+                        .nextCursor(result.nextCursor())
+                        .hasNext(result.hasNext())
+                        .unreadCount(result.unreadCount())
+                        .build())
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // POST /api/v1/organizations/{orgId}/announcements — お知らせ化
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * コンテンツを組織のお知らせウィジェットに登録する。
+     *
+     * @param orgId   組織 ID
+     * @param request お知らせ化リクエスト（sourceType + sourceId）
+     * @return 作成されたお知らせフィードアイテム（201 Created）
+     */
+    @PostMapping
+    @Operation(
+            summary = "コンテンツをお知らせ化（組織）",
+            description = "指定した source_type + source_id のコンテンツを組織のお知らせウィジェットに登録する。"
+                    + "著者本人または ADMIN/DEPUTY_ADMIN のみ可。重複登録は 409 を返す。")
+    public ResponseEntity<ApiResponse<AnnouncementFeedItemDto>> createAnnouncement(
+            @PathVariable Long orgId,
+            @Valid @RequestBody CreateAnnouncementRequestDto request) {
+
+        Long userId = SecurityUtils.getCurrentUserId();
+        AnnouncementSourceType sourceType = EnumInputParser.parse(AnnouncementSourceType.class, request.getSourceType(), "sourceType");
+
+        var entity = announcementFeedService.createAnnouncement(
+                AnnouncementScopeType.ORGANIZATION, orgId, sourceType, request.getSourceId(), userId);
+
+        var item = new AnnouncementFeedService.AnnouncementFeedItem(entity, false);
+        AnnouncementFeedItemDto dto = AnnouncementFeedItemDto.from(item);
+
+        return ResponseEntity
+                .created(URI.create("/api/v1/organizations/" + orgId + "/announcements/" + entity.getId()))
+                .body(ApiResponse.of(dto));
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // DELETE /api/v1/organizations/{orgId}/announcements/{id} — お知らせ解除
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * 組織のお知らせウィジェットからコンテンツを解除（物理削除）する。
+     *
+     * @param orgId          組織 ID（パス整合性確認用）
+     * @param announcementId お知らせフィード ID
+     * @return 204 No Content
+     */
+    @DeleteMapping("/{id}")
+    @Operation(
+            summary = "お知らせ解除（組織）",
+            description = "お知らせウィジェットからコンテンツを解除する（元コンテンツは残る）。"
+                    + "著者本人または ADMIN/DEPUTY_ADMIN のみ可。")
+    public ResponseEntity<Void> deleteAnnouncement(
+            @PathVariable Long orgId,
+            @PathVariable("id") Long announcementId) {
+
+        Long userId = SecurityUtils.getCurrentUserId();
+        announcementFeedService.deleteAnnouncement(announcementId, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // PATCH /api/v1/organizations/{orgId}/announcements/{id}/pin — ピン留めトグル
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * お知らせのピン留め状態をトグルする（ON ↔ OFF）。
+     *
+     * <p>
+     * ADMIN / DEPUTY_ADMIN のみ操作可能。ピン留め ON 時は上限 5 件を超えると 409。
+     * </p>
+     *
+     * @param orgId          組織 ID（パス整合性確認用）
+     * @param announcementId お知らせフィード ID
+     * @param request        ピン留めリクエスト（Service はトグルのため pinned 値は参照のみ）
+     * @return 更新後のお知らせフィードアイテム（200 OK）
+     */
+    @PatchMapping("/{id}/pin")
+    @Operation(
+            summary = "ピン留めトグル（組織）",
+            description = "お知らせのピン留め ON/OFF を切り替える。"
+                    + "ADMIN/DEPUTY_ADMIN のみ可。ピン留め上限（5件）を超える場合は 409。")
+    public ResponseEntity<ApiResponse<AnnouncementFeedItemDto>> togglePin(
+            @PathVariable Long orgId,
+            @PathVariable("id") Long announcementId,
+            @RequestBody(required = false) PinAnnouncementRequestDto request) {
+
+        Long userId = SecurityUtils.getCurrentUserId();
+        var entity = announcementFeedService.togglePin(announcementId, userId);
+
+        var item = new AnnouncementFeedService.AnnouncementFeedItem(entity, false);
+        AnnouncementFeedItemDto dto = AnnouncementFeedItemDto.from(item);
+
+        return ResponseEntity.ok(ApiResponse.of(dto));
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // POST /api/v1/organizations/{orgId}/announcements/{id}/read — 既読マーク（冪等）
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * お知らせを既読にする（冪等）。
+     *
+     * <p>
+     * 既に既読の場合はノーオペレーション（200 OK を返す）。
+     * </p>
+     *
+     * <p>
+     * <b>認可は可視性ベース（「見える＝既読にできる」・設計書 F02.6 §6.2.1）</b>。
+     * {@code orgId} は Service まで通し、(1) {@code announcementId} が当該組織に帰属すること、
+     * (2) そのお知らせが<b>当該組織の一覧でその閲覧者に見えること</b>の検証に用いる。
+     * 在籍（メンバーシップ）では判定しない — 一覧は非メンバーにも {@code PUBLIC} を返すため、
+     * 在籍で絞ると「見えているのに既読にできない」不整合が生じる。逆に在籍だけを見ると
+     * 応援者が一覧に出ない内輪限定を既読化できてしまう。配下チームのみ所属者は
+     * 組織スコープでは {@code PUBLIC} 可視となり、一覧・既読の集合が一致する。
+     * </p>
+     *
+     * @param orgId          組織 ID（スコープ帰属検証・可視性検証に使用。捨ててはならない）
+     * @param announcementId お知らせフィード ID
+     * @return 200 OK（既読結果）
+     */
+    @PostMapping("/{id}/read")
+    @Operation(
+            summary = "既読マーク（組織）",
+            description = "指定したお知らせを既読にする。冪等。既に既読の場合はノーオペレーション。")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> markAsRead(
+            @PathVariable Long orgId,
+            @PathVariable("id") Long announcementId) {
+
+        Long userId = SecurityUtils.getCurrentUserId();
+        announcementFeedService.markAsRead(AnnouncementScopeType.ORGANIZATION, orgId, announcementId, userId);
+
+        return ResponseEntity.ok(ApiResponse.of(Map.of(
+                "id", announcementId,
+                "isRead", true)));
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // POST /api/v1/organizations/{orgId}/announcements/read-all — 全件既読
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * 組織スコープの全未読お知らせを一括既読にする。
+     *
+     * <p><b>応答（#2530 ①）</b>: {@code markedCount} は<b>実際に既読化した件数</b>である
+     * （以前はハードコードの {@code 0} を返していた）。1 リクエストの防御上限
+     * （{@code 500 × 20 = 10,000 件}）で打ち切った場合は {@code hasMoreUnread=true} を返す。
+     * チームスコープ版（{@code AnnouncementFeedController}）と同一契約。</p>
+     *
+     * @param orgId 組織 ID
+     * @return 200 OK（既読マーク件数と残余の有無）
+     */
+    @PostMapping("/read-all")
+    @Operation(
+            summary = "全件既読（組織）",
+            description = "組織スコープの全未読お知らせを一括既読にする。"
+                    + "1 リクエストの上限（500 件 × 20 チャンク）で打ち切った場合は hasMoreUnread=true を返す。")
+    public ResponseEntity<ApiResponse<AnnouncementMarkAllReadResultDto>> markAllAsRead(
+            @PathVariable Long orgId) {
+
+        Long userId = SecurityUtils.getCurrentUserId();
+        AnnouncementReadService.MarkAllReadOutcome outcome =
+                announcementFeedService.markAllAsRead(AnnouncementScopeType.ORGANIZATION, orgId, userId);
+
+        return ResponseEntity.ok(ApiResponse.of(AnnouncementMarkAllReadResultDto.builder()
+                .markedCount(outcome.markedCount())
+                .hasMoreUnread(outcome.hasMoreUnread())
+                .build()));
+    }
+
+    /**
+     * 閲覧者が、お知らせの宛先の記録（チームグループ名・チーム数）を見てよいか。
+     *
+     * <p>チームグループの閲覧 API（{@code GET /organizations/{slug}/team-groups}）と同じ判定:
+     * 組織の MEMBER 以上または SYSTEM_ADMIN（F01.2.1 §3.1・§10.1）。組織お知らせ一覧は非メンバーにも
+     * PUBLIC 告知を返すが、グループ構成までは渡さない。
+     * Service の {@code @Transactional} 内に置くと他ドメイン Repository へ到達する（D-3T）ため、入口の Controller で判定する。</p>
+     */
+    private boolean canViewTargetAudience(Long userId, Long orgId) {
+        if (userId == null) {
+            return false;
+        }
+        return accessControlService.isSystemAdmin(userId)
+                || accessControlService.hasRoleOrAbove(userId, orgId, "ORGANIZATION", "MEMBER");
+    }
+}

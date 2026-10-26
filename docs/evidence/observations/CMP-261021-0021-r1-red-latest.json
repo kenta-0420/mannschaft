@@ -1,0 +1,662 @@
+{
+  "recorded_at_utc": "2026-10-21T13:28:09.894037+00:00",
+  "head": "a3436898e61bdc7023bf4f0341a6a1a3ea5aa619",
+  "input_sha256": {
+    "backend/src/main/java/com/mannschaft/app/errorreport/service/ErrorReportIngestHook.java": "01210453ecf40c211e5efa7c453a74981bc74566c151ff8b24ec82e723d7c6d4",
+    "backend/src/main/java/com/mannschaft/app/errorreport/service/ErrorReportIsolationGuard.java": "6f222ddf677f89378a23c6253dfc38459b2dc6045ef6b73736154a4e4e5d18f7",
+    "backend/src/test/java/com/mannschaft/app/errorreport/service/ErrorReportR1TestSupport.java": "cb16bf24c70f7db3b50cfe58a33dda85dfa1093f98deb2ac7b07479f49c2b993",
+    "backend/src/test/java/com/mannschaft/app/errorreport/service/ErrorReportIngestR1IT.java": "c790ed0554972b410bc7d40b2c9a957bc44585e61f1e451dcd8581c8be7c1e35",
+    "backend/src/test/java/com/mannschaft/app/errorreport/service/ErrorReportManagementR1ContractIT.java": "62df13e1e4f62aec9a737f064be49447ae049ae47b57fff08b28f3c23339ad28",
+    "backend/src/test/java/com/mannschaft/app/errorreport/service/ErrorReportAggregatorConcurrencyTest.java": "0b009f6b0f18acf69c1c7ef908a0119632990e9e9da43226851add34938210f6",
+    "backend/src/test/java/com/mannschaft/app/errorreport/service/ErrorReportIsolationGuardR1IT.java": "c69239199ba6228e028c009121557b58fca55ce0fe479d373809a1cf82952c56",
+    "backend/src/main/java/com/mannschaft/app/errorreport/service/ErrorReportService.java": "0a7e92082295b9484b9814740fa0247afd008c0ec0e95eb6ccd661b85e32a69b",
+    "backend/src/main/java/com/mannschaft/app/errorreport/service/ErrorReportAsyncExecutor.java": "0ed96ac73f56004813ee33f3cc36c8ec5569afb00438bd8329ed9075545f3430",
+    "backend/src/test/java/com/mannschaft/app/errorreport/service/ErrorReportServiceTest.java": "6ba4e2bac6c44c02a0b097bec29de4414c5b84ffa02114c8f7ef378e08d07b1e",
+    "backend/src/test/java/com/mannschaft/app/errorreport/service/ErrorReportAsyncExecutorTest.java": "4ed46facb327b048a56be80f656e5be5a34525ba8e34dd5f3ec121767072f5e8"
+  },
+  "local_management": {
+    "xml": "/mnt/c/Claude/mannschaft/.claude/worktrees/agent-friend-0021-r1-20261021/.r1-ci/run39563380564-a3436898/local-management/TEST-com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.xml",
+    "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1",
+    "log_sha256": "2f4e32ce5b7bc61edc911cedb4104c6416c37169d686a5356e286993dc8c1808",
+    "attributes": {
+      "name": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+      "tests": "12",
+      "skipped": "0",
+      "failures": "11",
+      "errors": "0",
+      "timestamp": "2026-10-21T13:25:07.381Z",
+      "hostname": "LAPTOP-UDR09S7B",
+      "time": "21.676"
+    },
+    "cases": [
+      {
+        "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "source": "local-management",
+        "name": "AC7h_通常read中のlock例外はbulkTX全体を三回試行し503で更新しない()",
+        "ac": "AC7h",
+        "classification": "functional_red",
+        "failure_type": "org.opentest4j.AssertionFailedError",
+        "failure_message": "org.opentest4j.AssertionFailedError: [通常readのlock例外後はTX全体を三回まで再試行する] \nexpected: 3\n but was: 1",
+        "failure_trace": "org.opentest4j.AssertionFailedError: [通常readのlock例外後はTX全体を三回まで再試行する] \nexpected: 3\n but was: 1\n\tat app//com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.contentionAtRead(ErrorReportManagementR1ContractIT.java:234)\n\tat app//com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC7h_通常read中のlock例外はbulkTX全体を三回試行し503で更新しない(ErrorReportManagementR1ContractIT.java:213)\n\tat java.base@21.0.12.1/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base@21.0.12.1/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base@21.0.12.1/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+        "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+      },
+      {
+        "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "source": "local-management",
+        "name": "AC9_SYSTEM_ADMIN正と通常ロール403と未認証401を維持する()",
+        "ac": "AC9",
+        "classification": "green",
+        "failure_type": null,
+        "failure_message": null,
+        "failure_trace": null,
+        "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+      },
+      {
+        "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "source": "local-management",
+        "name": "AC7_同hash二行の交差bulk再活性化は成功一件と409一件になる()",
+        "ac": "AC7",
+        "classification": "functional_red",
+        "failure_type": "java.lang.AssertionError",
+        "failure_message": "java.lang.AssertionError: \nExpecting actual:\n  [200, 200]\nto contain exactly in any order:\n  [200, 409]\nelements not found:\n  [409]\nand elements not expected:\n  [200]\n",
+        "failure_trace": "java.lang.AssertionError: \nExpecting actual:\n  [200, 200]\nto contain exactly in any order:\n  [200, 409]\nelements not found:\n  [409]\nand elements not expected:\n  [200]\n\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.concurrentReactivation(ErrorReportManagementR1ContractIT.java:272)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC7_同hash二行の交差bulk再活性化は成功一件と409一件になる(ErrorReportManagementR1ContractIT.java:136)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+        "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+      },
+      {
+        "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "source": "local-management",
+        "name": "AC7_複数hashを逆順に指定した交差bulkでも一方だけ成功し他方は全件rollbackする()",
+        "ac": "AC7",
+        "classification": "functional_red",
+        "failure_type": "java.lang.AssertionError",
+        "failure_message": "java.lang.AssertionError: \nExpecting actual:\n  [200, 200]\nto contain exactly in any order:\n  [200, 409]\nelements not found:\n  [409]\nand elements not expected:\n  [200]\n",
+        "failure_trace": "java.lang.AssertionError: \nExpecting actual:\n  [200, 200]\nto contain exactly in any order:\n  [200, 409]\nelements not found:\n  [409]\nand elements not expected:\n  [200]\n\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC7_複数hashを逆順に指定した交差bulkでも一方だけ成功し他方は全件rollbackする(ErrorReportManagementR1ContractIT.java:200)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+        "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+      },
+      {
+        "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "source": "local-management",
+        "name": "AC7_単票の再活性化衝突は409でbulk全体もロールバックする()",
+        "ac": "AC7",
+        "classification": "functional_red",
+        "failure_type": "java.lang.AssertionError",
+        "failure_message": "java.lang.AssertionError: Status expected:<409> but was:<200>",
+        "failure_trace": "java.lang.AssertionError: Status expected:<409> but was:<200>\n\tat org.springframework.test.util.AssertionErrors.fail(AssertionErrors.java:61)\n\tat org.springframework.test.util.AssertionErrors.assertEquals(AssertionErrors.java:128)\n\tat org.springframework.test.web.servlet.result.StatusResultMatchers.lambda$matcher$9(StatusResultMatchers.java:640)\n\tat org.springframework.test.web.servlet.MockMvc$1.andExpect(MockMvc.java:214)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC7_単票の再活性化衝突は409でbulk全体もロールバックする(ErrorReportManagementR1ContractIT.java:119)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+        "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+      },
+      {
+        "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "source": "local-management",
+        "name": "AC8_集約とTimeline工程担当の交差で件数と各変更が失われない()",
+        "ac": "AC8",
+        "classification": "functional_red",
+        "failure_type": "org.opentest4j.AssertionFailedError",
+        "failure_message": "org.opentest4j.AssertionFailedError: \nexpected: 13\n but was: 7",
+        "failure_trace": "org.opentest4j.AssertionFailedError: \nexpected: 13\n but was: 7\n\tat app//com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC8_集約とTimeline工程担当の交差で件数と各変更が失われない(ErrorReportManagementR1ContractIT.java:169)\n\tat java.base@21.0.12.1/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base@21.0.12.1/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base@21.0.12.1/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+        "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+      },
+      {
+        "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "source": "local-management",
+        "name": "AC8_集約とHealth復旧の交差でも件数が失われない()",
+        "ac": "AC8",
+        "classification": "functional_red",
+        "failure_type": "org.opentest4j.AssertionFailedError",
+        "failure_message": "org.opentest4j.AssertionFailedError: \nexpected: 13\n but was: 3",
+        "failure_trace": "org.opentest4j.AssertionFailedError: \nexpected: 13\n but was: 3\n\tat app//com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC8_集約とHealth復旧の交差でも件数が失われない(ErrorReportManagementR1ContractIT.java:181)\n\tat java.base@21.0.12.1/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base@21.0.12.1/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base@21.0.12.1/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+        "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+      },
+      {
+        "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "source": "local-management",
+        "name": "AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる()",
+        "ac": "AC1h",
+        "classification": "functional_red",
+        "failure_type": "java.lang.AssertionError",
+        "failure_message": "java.lang.AssertionError: \nExpecting all elements of:\n  [Outcome[value=201, failure=null],\n    Outcome[value=201, failure=null],\n    Outcome[value=500, failure=null],\n    Outcome[value=500, failure=null],\n    Outcome[value=500, failure=null],\n    Outcome[value=201, failure=null],\n    Outcome[value=500, failure=null],\n    Outcome[value=201, failure=null],\n    Outcome[value=201, failure=null],\n    Outcome[value=201, failure=null]]\nto satisfy given requirements, but these elements did not:\n\nOutcome[value=500, failure=null]\nerror: org.opentest4j.AssertionFailedError: \nexpected: 201\n but was: 500\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.lambda$AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる$2(ErrorReportManagementR1ContractIT.java:100)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる(ErrorReportManagementR1ContractIT.java:99)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\t...(85 remaining lines not displayed - this can be changed with Assertions.setMaxStackTraceElementsDisplayed)\n\nOutcome[value=500, failure=null]\nerror: org.opentest4j.AssertionFailedError: \nexpected: 201\n but was: 500\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.lambda$AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる$2(ErrorReportManagementR1ContractIT.java:100)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる(ErrorReportManagementR1ContractIT.java:99)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\t...(85 remaining lines not displayed - this can be changed with Assertions.setMaxStackTraceElementsDisplayed)\n\nOutcome[value=500, failure=null]\nerror: org.opentest4j.AssertionFailedError: \nexpected: 201\n but was: 500\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.lambda$AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる$2(ErrorReportManagementR1ContractIT.java:100)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる(ErrorReportManagementR1ContractIT.java:99)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\t...(85 remaining lines not displayed - this can be changed with Assertions.setMaxStackTraceElementsDisplayed)\n\nOutcome[value=500, failure=null]\nerror: org.opentest4j.AssertionFailedError: \nexpected: 201\n but was: 500\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.lambda$AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる$2(ErrorReportManagementR1ContractIT.java:100)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる(ErrorReportManagementR1ContractIT.java:99)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\t...(85 remaining lines not displayed - this can be changed with Assertions.setMaxStackTraceElementsDisplayed)",
+        "failure_trace": "java.lang.AssertionError: \nExpecting all elements of:\n  [Outcome[value=201, failure=null],\n    Outcome[value=201, failure=null],\n    Outcome[value=500, failure=null],\n    Outcome[value=500, failure=null],\n    Outcome[value=500, failure=null],\n    Outcome[value=201, failure=null],\n    Outcome[value=500, failure=null],\n    Outcome[value=201, failure=null],\n    Outcome[value=201, failure=null],\n    Outcome[value=201, failure=null]]\nto satisfy given requirements, but these elements did not:\n\nOutcome[value=500, failure=null]\nerror: org.opentest4j.AssertionFailedError: \nexpected: 201\n but was: 500\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.lambda$AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる$2(ErrorReportManagementR1ContractIT.java:100)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる(ErrorReportManagementR1ContractIT.java:99)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\t...(85 remaining lines not displayed - this can be changed with Assertions.setMaxStackTraceElementsDisplayed)\n\nOutcome[value=500, failure=null]\nerror: org.opentest4j.AssertionFailedError: \nexpected: 201\n but was: 500\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.lambda$AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる$2(ErrorReportManagementR1ContractIT.java:100)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる(ErrorReportManagementR1ContractIT.java:99)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\t...(85 remaining lines not displayed - this can be changed with Assertions.setMaxStackTraceElementsDisplayed)\n\nOutcome[value=500, failure=null]\nerror: org.opentest4j.AssertionFailedError: \nexpected: 201\n but was: 500\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.lambda$AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる$2(ErrorReportManagementR1ContractIT.java:100)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる(ErrorReportManagementR1ContractIT.java:99)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\t...(85 remaining lines not displayed - this can be changed with Assertions.setMaxStackTraceElementsDisplayed)\n\nOutcome[value=500, failure=null]\nerror: org.opentest4j.AssertionFailedError: \nexpected: 201\n but was: 500\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.lambda$AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる$2(ErrorReportManagementR1ContractIT.java:100)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる(ErrorReportManagementR1ContractIT.java:99)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\t...(85 remaining lines not displayed - this can be changed with Assertions.setMaxStackTraceElementsDisplayed)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる(ErrorReportManagementR1ContractIT.java:99)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+        "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+      },
+      {
+        "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "source": "local-management",
+        "name": "AC7h_通常read中のlock例外は単票TX全体を三回試行し503で更新しない()",
+        "ac": "AC7h",
+        "classification": "functional_red",
+        "failure_type": "org.opentest4j.AssertionFailedError",
+        "failure_message": "org.opentest4j.AssertionFailedError: [通常readのlock例外後はTX全体を三回まで再試行する] \nexpected: 3\n but was: 1",
+        "failure_trace": "org.opentest4j.AssertionFailedError: [通常readのlock例外後はTX全体を三回まで再試行する] \nexpected: 3\n but was: 1\n\tat app//com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.contentionAtRead(ErrorReportManagementR1ContractIT.java:234)\n\tat app//com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC7h_通常read中のlock例外は単票TX全体を三回試行し503で更新しない(ErrorReportManagementR1ContractIT.java:208)\n\tat java.base@21.0.12.1/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base@21.0.12.1/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base@21.0.12.1/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+        "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+      },
+      {
+        "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "source": "local-management",
+        "name": "AC7_同hash二行の同時単票再活性化は成功一件と409一件になる()",
+        "ac": "AC7",
+        "classification": "functional_red",
+        "failure_type": "java.lang.AssertionError",
+        "failure_message": "java.lang.AssertionError: \nExpecting actual:\n  [200, 200]\nto contain exactly in any order:\n  [200, 409]\nelements not found:\n  [409]\nand elements not expected:\n  [200]\n",
+        "failure_trace": "java.lang.AssertionError: \nExpecting actual:\n  [200, 200]\nto contain exactly in any order:\n  [200, 409]\nelements not found:\n  [409]\nand elements not expected:\n  [200]\n\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.concurrentReactivation(ErrorReportManagementR1ContractIT.java:272)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC7_同hash二行の同時単票再活性化は成功一件と409一件になる(ErrorReportManagementR1ContractIT.java:131)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+        "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+      },
+      {
+        "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "source": "local-management",
+        "name": "AC7h_全三回でロック失敗なら単票は503でDB更新なし()",
+        "ac": "AC7h",
+        "classification": "strict_hook_unreached",
+        "failure_type": "java.lang.AssertionError",
+        "failure_message": "java.lang.AssertionError: Status expected:<503> but was:<200>",
+        "failure_trace": "java.lang.AssertionError: Status expected:<503> but was:<200>\n\tat org.springframework.test.util.AssertionErrors.fail(AssertionErrors.java:61)\n\tat org.springframework.test.util.AssertionErrors.assertEquals(AssertionErrors.java:128)\n\tat org.springframework.test.web.servlet.result.StatusResultMatchers.lambda$matcher$9(StatusResultMatchers.java:640)\n\tat org.springframework.test.web.servlet.MockMvc$1.andExpect(MockMvc.java:214)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.contention(ErrorReportManagementR1ContractIT.java:250)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC7h_全三回でロック失敗なら単票は503でDB更新なし(ErrorReportManagementR1ContractIT.java:140)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+        "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+      },
+      {
+        "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+        "source": "local-management",
+        "name": "AC7h_全三回でロック失敗ならbulkは503でDB更新なし()",
+        "ac": "AC7h",
+        "classification": "strict_hook_unreached",
+        "failure_type": "java.lang.AssertionError",
+        "failure_message": "java.lang.AssertionError: Status expected:<503> but was:<200>",
+        "failure_trace": "java.lang.AssertionError: Status expected:<503> but was:<200>\n\tat org.springframework.test.util.AssertionErrors.fail(AssertionErrors.java:61)\n\tat org.springframework.test.util.AssertionErrors.assertEquals(AssertionErrors.java:128)\n\tat org.springframework.test.web.servlet.result.StatusResultMatchers.lambda$matcher$9(StatusResultMatchers.java:640)\n\tat org.springframework.test.web.servlet.MockMvc$1.andExpect(MockMvc.java:214)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.contention(ErrorReportManagementR1ContractIT.java:250)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC7h_全三回でロック失敗ならbulkは503でDB更新なし(ErrorReportManagementR1ContractIT.java:143)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+        "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+      }
+    ],
+    "relevant_system_output": [
+      "org.springframework.dao.IncorrectResultSizeDataAccessException: Query did not return a unique result: 4 results were returned",
+      "Caused by: org.hibernate.NonUniqueResultException: Query did not return a unique result: 4 results were returned",
+      "org.springframework.dao.IncorrectResultSizeDataAccessException: Query did not return a unique result: 4 results were returned",
+      "Caused by: org.hibernate.NonUniqueResultException: Query did not return a unique result: 4 results were returned",
+      "org.springframework.dao.IncorrectResultSizeDataAccessException: Query did not return a unique result: 3 results were returned",
+      "Caused by: org.hibernate.NonUniqueResultException: Query did not return a unique result: 3 results were returned",
+      "org.springframework.dao.IncorrectResultSizeDataAccessException: Query did not return a unique result: 3 results were returned",
+      "Caused by: org.hibernate.NonUniqueResultException: Query did not return a unique result: 3 results were returned",
+      "22:25:24.288 [event-2] WARN  c.m.a.e.s.ErrorReportAsyncExecutor - 非同期 recordBackendException 失敗: severity=HIGH, ex=org.springframework.dao.IncorrectResultSizeDataAccessException",
+      "org.springframework.dao.IncorrectResultSizeDataAccessException: Query did not return a unique result: 2 results were returned",
+      "Caused by: org.hibernate.NonUniqueResultException: Query did not return a unique result: 2 results were returned",
+      "22:25:24.333 [event-1] WARN  c.m.a.e.s.ErrorReportAsyncExecutor - 非同期 recordBackendException 失敗: severity=HIGH, ex=org.springframework.dao.IncorrectResultSizeDataAccessException",
+      "org.springframework.dao.IncorrectResultSizeDataAccessException: Query did not return a unique result: 2 results were returned",
+      "Caused by: org.hibernate.NonUniqueResultException: Query did not return a unique result: 2 results were returned"
+    ]
+  },
+  "source_partition": {
+    "ci": 34,
+    "local_management": 12,
+    "duplicate_cases": 0
+  },
+  "counts": {
+    "green": 13,
+    "functional_red": 29,
+    "strict_hook_unreached": 4,
+    "fixture": 0,
+    "environment": 0,
+    "skipped": 0
+  },
+  "errors": 0,
+  "skips": 0,
+  "cases": [
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIsolationGuardR1IT",
+      "shard": "1",
+      "name": "AC0_READ_COMMITTED接続なら起動を拒否する()",
+      "ac": "AC0",
+      "classification": "functional_red",
+      "failure_message": "java.lang.AssertionError: \nExpecting code to raise a throwable.",
+      "xml_sha256": "126ce9fea3062f8619234725451f2fbc1fef6ae66164449099916aa9200c194a"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIsolationGuardR1IT",
+      "shard": "1",
+      "name": "AC0_REPEATABLE_READ接続なら起動できる()",
+      "ac": "AC0",
+      "classification": "green",
+      "failure_message": null,
+      "xml_sha256": "126ce9fea3062f8619234725451f2fbc1fef6ae66164449099916aa9200c194a"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportAggregatorConcurrencyTest",
+      "shard": "2",
+      "name": "AC4_同じhashへの同時初回はFIRSTが一件で上限を越えない()",
+      "ac": "AC4",
+      "classification": "functional_red",
+      "failure_message": "java.lang.AssertionError: [初回は一回だけ] \nExpected size: 1 but was: 5 in:\n[FIRST_OCCURRENCE,\n    FIRST_OCCURRENCE,\n    FIRST_OCCURRENCE,\n    FIRST_OCCURRENCE,\n    FIRST_OCCURRENCE]",
+      "xml_sha256": "0a57f06531625321833e096fae3f7543cab9eb03660e219b79a4e5a35e2ea9f5"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportAggregatorConcurrencyTest",
+      "shard": "2",
+      "name": "AC4_computeとdrainが並行しても取り出した件数と残件の合計を失わない()",
+      "ac": "AC4",
+      "classification": "functional_red",
+      "failure_message": "org.opentest4j.AssertionFailedError: [上限100・64keys・最大63件/keyなので捨てる理由はない] \nexpected: 4000L\n but was: 3982L",
+      "xml_sha256": "0a57f06531625321833e096fae3f7543cab9eb03660e219b79a4e5a35e2ea9f5"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC3_BACKENDは九件でMEDIUM十件でHIGH四十九件でHIGH五十件でCRITICALになる()",
+      "ac": "AC3",
+      "classification": "functional_red",
+      "failure_message": "org.opentest4j.AssertionFailedError: \nexpected: MEDIUM\n but was: HIGH",
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC4_実Async入口の並行発生が一行に集約されバッファ件数も成功件数と一致する()",
+      "ac": "AC4",
+      "classification": "functional_red",
+      "failure_message": "org.awaitility.core.ConditionTimeoutException: Assertion condition defined as a Lambda expression in com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT \nexpected: 30\n but was: 2 within 30 seconds.",
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC8_集約と管理メモ更新の交差でも件数と管理メモを失わない()",
+      "ac": "AC8",
+      "classification": "functional_red",
+      "failure_message": "org.opentest4j.AssertionFailedError: \nexpected: 21\n but was: 17",
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC7_管理指揮役も外側TXを停止して独立commitする()",
+      "ac": "AC7",
+      "classification": "functional_red",
+      "failure_message": "org.opentest4j.AssertionFailedError: \nexpected: RESOLVED\n but was: IGNORED",
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC2_FE_RESOLVEDの並行再発は工程担当を解除しSLAをUTC保存する()",
+      "ac": "AC2",
+      "classification": "functional_red",
+      "failure_message": "org.opentest4j.AssertionFailedError: \nexpected: 9\n but was: 2",
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC5_二回のsave後失敗が完全rollbackしてから新TXで成功する()",
+      "ac": "AC5",
+      "classification": "functional_red",
+      "failure_message": "org.opentest4j.AssertionFailedError: [二回rollback後の三回目で成功する] \nexpected: \n  null\n but was: \n  org.springframework.dao.CannotAcquireLockException: R1 rollbackして再試行\n  \tat com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT.lambda$AC5_二回のsave後失敗が完全rollbackしてから新TXで成功する$36(ErrorReportIngestR1IT.java:370)\n  \tat com.mannschaft.app.errorreport.service.ErrorReportR1TestSupport$Control.afterSave(ErrorReportR1TestSupport.java:230)\n  \tat com.mannschaft.app.errorreport.service.ErrorReportService.createOrAggregate(ErrorReportService.java:174)\n  \t...(104 remaining lines not displayed - this can be changed with Assertions.setMaxStackTraceElementsDisplayed)",
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC5_read直後のTX内失敗も新規行を残さない()",
+      "ac": "AC5",
+      "classification": "green",
+      "failure_message": null,
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC2_HEALTH_RESOLVEDと最新IGNOREDは同じidを返して一切変更しない()",
+      "ac": "AC2",
+      "classification": "functional_red",
+      "failure_message": "java.lang.AssertionError: \nExpecting code not to raise a throwable but caught\n  \"org.springframework.dao.IncorrectResultSizeDataAccessException: Query did not return a unique result: 2 results were returned\n\tat org.springframework.orm.jpa.vendor.HibernateJpaDialect.convertHibernateAccessException(HibernateJpaDialect.java:305)\n\tat org.springframework.orm.jpa.vendor.HibernateJpaDialect.convertHibernateAccessException(HibernateJpaDialect.java:256)\n\tat org.springframework.orm.jpa.vendor.HibernateJpaDialect.translateExceptionIfPossible(HibernateJpaDialect.java:244)\n\tat org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.translateExceptionIfPossible(AbstractEntityManagerFactoryBean.java:560)\n\tat org.springframework.dao.support.ChainedPersistenceExceptionTranslator.translateExceptionIfPossible(ChainedPersistenceExceptionTranslator.java:61)\n\tat org.springframework.dao.support.DataAccessUtils.translateIfNecessary(DataAccessUtils.java:343)\n\tat org.springframework.dao.support.PersistenceExceptionTranslationInterceptor.invoke(PersistenceExceptionTranslationInterceptor.java:160)\n\tat org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184",
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC5_flush後のTX内失敗はDB通知AIバッファの全てをロールバックする()",
+      "ac": "AC5",
+      "classification": "strict_hook_unreached",
+      "failure_message": "java.lang.AssertionError: \nExpecting code to raise a throwable.",
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC2_BACKEND_RESOLVEDの並行再発は一度だけ再開し残りを集約する()",
+      "ac": "AC2",
+      "classification": "functional_red",
+      "failure_message": "org.opentest4j.AssertionFailedError: \nexpected: 13\n but was: 3",
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC7_非IGNOREDがあるhashの再活性化は単票でもbulkでも409になる()",
+      "ac": "AC7",
+      "classification": "functional_red",
+      "failure_message": "java.lang.AssertionError: \nExpecting code to raise a throwable.",
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC5_afterCommitでロック例外が起きてもcommit済みの集約を再試行しない()",
+      "ac": "AC5",
+      "classification": "green",
+      "failure_message": null,
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC5_ロック失敗の各試行は完全rollbackし五回で再送出する()",
+      "ac": "AC5",
+      "classification": "functional_red",
+      "failure_message": "org.opentest4j.AssertionFailedError: [save直後のlock例外は別TXで五回まで再試行する] \nexpected: 5\n but was: 1",
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC3_FE50件でも匿名だけならHIGHに留まり昇格通知は一回だけ()",
+      "ac": "AC3",
+      "classification": "functional_red",
+      "failure_message": "java.lang.AssertionError: \nExpected size: 1 but was: 2 in:\n[ErrorReportSeverityEscalatedEvent[reportId=17, oldSeverity=MEDIUM, newSeverity=HIGH],\n    ErrorReportSeverityEscalatedEvent[reportId=17, oldSeverity=HIGH, newSeverity=CRITICAL]]",
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "[1] severity=LOW",
+      "ac": "AC2",
+      "classification": "green",
+      "failure_message": null,
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "[2] severity=MEDIUM",
+      "ac": "AC2",
+      "classification": "green",
+      "failure_message": null,
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "[3] severity=HIGH",
+      "ac": "AC2",
+      "classification": "green",
+      "failure_message": null,
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "[4] severity=CRITICAL",
+      "ac": "AC2",
+      "classification": "green",
+      "failure_message": null,
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC3_FEは九件でMEDIUM十件でHIGHとなり五十件でも匿名ならHIGHを保つ()",
+      "ac": "AC3",
+      "classification": "functional_red",
+      "failure_message": "org.opentest4j.AssertionFailedError: \nexpected: MEDIUM\n but was: HIGH",
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC4_HEALTH入口の並行発生が一行と正しい件数になる()",
+      "ac": "AC4",
+      "classification": "functional_red",
+      "failure_message": "org.opentest4j.AssertionFailedError: \nexpected: 1\n but was: 11",
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC1_空hashを二TXで同期し敗者だけ一回再試行して続く50件も集約する()",
+      "ac": "AC1",
+      "classification": "functional_red",
+      "failure_message": "org.opentest4j.AssertionFailedError: [同じ空hashに非IGNOREDは一行だけ] \nexpected: 1\n but was: 2",
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC5_ロック競合以外の整合性例外は再試行しない()",
+      "ac": "AC5",
+      "classification": "green",
+      "failure_message": null,
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC7_Health復旧はIGNORED行も既解決行も変更しない()",
+      "ac": "AC7",
+      "classification": "functional_red",
+      "failure_message": "org.opentest4j.AssertionFailedError: \nexpected: IGNORED\n but was: RESOLVED",
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC3_BACKEND_HIGH新規だけRaisedし初回Slack判定を持ちAIは起動しない()",
+      "ac": "AC3",
+      "classification": "green",
+      "failure_message": null,
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC1_指揮役は外側TXを停止しRedisをTX外で観測して内側commitを保持する()",
+      "ac": "AC1",
+      "classification": "functional_red",
+      "failure_message": "org.opentest4j.AssertionFailedError: [NOT_SUPPORTED指揮役の内側TXは外側rollbackに参加しない] \nexpected: 1\n but was: 0",
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC1_IGNORED行だけが複数あるhashへの並行送信は新しい一行へ集約する()",
+      "ac": "AC1",
+      "classification": "functional_red",
+      "failure_message": "java.lang.AssertionError: \nExpecting all elements of:\n  [Outcome[value=null, failure=org.springframework.dao.IncorrectResultSizeDataAccessException: Query did not return a unique result: 2 results were returned],\n    Outcome[value=null, failure=org.springframework.dao.IncorrectResultSizeDataAccessException: Query did not return a unique result: 2 results were returned],\n    Outcome[value=null, failure=org.springframework.dao.IncorrectResultSizeDataAccessException: Query did not return a unique result: 2 results were returned],\n    Outcome[value=null, failure=org.springframework.dao.IncorrectResultSizeDataAccessException: Query did not return a unique result: 2 results were returned],\n    Outcome[value=null, failure=org.springframework.dao.IncorrectResultSizeDataAccessException: Query did not return a unique result: 2 results were returned],\n    Outcome[value=null, failure=org.springframework.dao.IncorrectResultSizeDataAccessException: Query did not return a unique result: 2 results were returned],\n    Outcome[value=null, failure=org.springframework.dao.IncorrectResultSizeDataAccessException: Query did not return a unique result: 2 results were returned],\n    Outcome[value=null, fai",
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC3_FE_HIGH新規と再開だけがcommit後に外部AIを一回ずつ呼ぶ()",
+      "ac": "AC3",
+      "classification": "green",
+      "failure_message": null,
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC3_BACKEND新規でも既存バッファがあればRaisedのSlackだけ抑制する()",
+      "ac": "AC3",
+      "classification": "green",
+      "failure_message": null,
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC2_BACKEND_RESOLVED再発は工程担当だけ解除しSLAを変えずバッファに積まない()",
+      "ac": "AC2",
+      "classification": "green",
+      "failure_message": null,
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportIngestR1IT",
+      "shard": "2",
+      "name": "AC5_BACKENDのflush後失敗は通知とバッファを残さない()",
+      "ac": "AC5",
+      "classification": "strict_hook_unreached",
+      "failure_message": "java.lang.AssertionError: \nExpecting code to raise a throwable.",
+      "xml_sha256": "60b37c567a2d95b593717231d7f3056dd6ae183f8b4683c3c70798e77b0f59d7"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+      "source": "local-management",
+      "name": "AC7h_通常read中のlock例外はbulkTX全体を三回試行し503で更新しない()",
+      "ac": "AC7h",
+      "classification": "functional_red",
+      "failure_type": "org.opentest4j.AssertionFailedError",
+      "failure_message": "org.opentest4j.AssertionFailedError: [通常readのlock例外後はTX全体を三回まで再試行する] \nexpected: 3\n but was: 1",
+      "failure_trace": "org.opentest4j.AssertionFailedError: [通常readのlock例外後はTX全体を三回まで再試行する] \nexpected: 3\n but was: 1\n\tat app//com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.contentionAtRead(ErrorReportManagementR1ContractIT.java:234)\n\tat app//com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC7h_通常read中のlock例外はbulkTX全体を三回試行し503で更新しない(ErrorReportManagementR1ContractIT.java:213)\n\tat java.base@21.0.12.1/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base@21.0.12.1/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base@21.0.12.1/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+      "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+      "source": "local-management",
+      "name": "AC9_SYSTEM_ADMIN正と通常ロール403と未認証401を維持する()",
+      "ac": "AC9",
+      "classification": "green",
+      "failure_type": null,
+      "failure_message": null,
+      "failure_trace": null,
+      "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+      "source": "local-management",
+      "name": "AC7_同hash二行の交差bulk再活性化は成功一件と409一件になる()",
+      "ac": "AC7",
+      "classification": "functional_red",
+      "failure_type": "java.lang.AssertionError",
+      "failure_message": "java.lang.AssertionError: \nExpecting actual:\n  [200, 200]\nto contain exactly in any order:\n  [200, 409]\nelements not found:\n  [409]\nand elements not expected:\n  [200]\n",
+      "failure_trace": "java.lang.AssertionError: \nExpecting actual:\n  [200, 200]\nto contain exactly in any order:\n  [200, 409]\nelements not found:\n  [409]\nand elements not expected:\n  [200]\n\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.concurrentReactivation(ErrorReportManagementR1ContractIT.java:272)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC7_同hash二行の交差bulk再活性化は成功一件と409一件になる(ErrorReportManagementR1ContractIT.java:136)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+      "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+      "source": "local-management",
+      "name": "AC7_複数hashを逆順に指定した交差bulkでも一方だけ成功し他方は全件rollbackする()",
+      "ac": "AC7",
+      "classification": "functional_red",
+      "failure_type": "java.lang.AssertionError",
+      "failure_message": "java.lang.AssertionError: \nExpecting actual:\n  [200, 200]\nto contain exactly in any order:\n  [200, 409]\nelements not found:\n  [409]\nand elements not expected:\n  [200]\n",
+      "failure_trace": "java.lang.AssertionError: \nExpecting actual:\n  [200, 200]\nto contain exactly in any order:\n  [200, 409]\nelements not found:\n  [409]\nand elements not expected:\n  [200]\n\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC7_複数hashを逆順に指定した交差bulkでも一方だけ成功し他方は全件rollbackする(ErrorReportManagementR1ContractIT.java:200)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+      "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+      "source": "local-management",
+      "name": "AC7_単票の再活性化衝突は409でbulk全体もロールバックする()",
+      "ac": "AC7",
+      "classification": "functional_red",
+      "failure_type": "java.lang.AssertionError",
+      "failure_message": "java.lang.AssertionError: Status expected:<409> but was:<200>",
+      "failure_trace": "java.lang.AssertionError: Status expected:<409> but was:<200>\n\tat org.springframework.test.util.AssertionErrors.fail(AssertionErrors.java:61)\n\tat org.springframework.test.util.AssertionErrors.assertEquals(AssertionErrors.java:128)\n\tat org.springframework.test.web.servlet.result.StatusResultMatchers.lambda$matcher$9(StatusResultMatchers.java:640)\n\tat org.springframework.test.web.servlet.MockMvc$1.andExpect(MockMvc.java:214)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC7_単票の再活性化衝突は409でbulk全体もロールバックする(ErrorReportManagementR1ContractIT.java:119)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+      "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+      "source": "local-management",
+      "name": "AC8_集約とTimeline工程担当の交差で件数と各変更が失われない()",
+      "ac": "AC8",
+      "classification": "functional_red",
+      "failure_type": "org.opentest4j.AssertionFailedError",
+      "failure_message": "org.opentest4j.AssertionFailedError: \nexpected: 13\n but was: 7",
+      "failure_trace": "org.opentest4j.AssertionFailedError: \nexpected: 13\n but was: 7\n\tat app//com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC8_集約とTimeline工程担当の交差で件数と各変更が失われない(ErrorReportManagementR1ContractIT.java:169)\n\tat java.base@21.0.12.1/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base@21.0.12.1/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base@21.0.12.1/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+      "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+      "source": "local-management",
+      "name": "AC8_集約とHealth復旧の交差でも件数が失われない()",
+      "ac": "AC8",
+      "classification": "functional_red",
+      "failure_type": "org.opentest4j.AssertionFailedError",
+      "failure_message": "org.opentest4j.AssertionFailedError: \nexpected: 13\n but was: 3",
+      "failure_trace": "org.opentest4j.AssertionFailedError: \nexpected: 13\n but was: 3\n\tat app//com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC8_集約とHealth復旧の交差でも件数が失われない(ErrorReportManagementR1ContractIT.java:181)\n\tat java.base@21.0.12.1/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base@21.0.12.1/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base@21.0.12.1/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+      "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+      "source": "local-management",
+      "name": "AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる()",
+      "ac": "AC1h",
+      "classification": "functional_red",
+      "failure_type": "java.lang.AssertionError",
+      "failure_message": "java.lang.AssertionError: \nExpecting all elements of:\n  [Outcome[value=201, failure=null],\n    Outcome[value=201, failure=null],\n    Outcome[value=500, failure=null],\n    Outcome[value=500, failure=null],\n    Outcome[value=500, failure=null],\n    Outcome[value=201, failure=null],\n    Outcome[value=500, failure=null],\n    Outcome[value=201, failure=null],\n    Outcome[value=201, failure=null],\n    Outcome[value=201, failure=null]]\nto satisfy given requirements, but these elements did not:\n\nOutcome[value=500, failure=null]\nerror: org.opentest4j.AssertionFailedError: \nexpected: 201\n but was: 500\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.lambda$AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる$2(ErrorReportManagementR1ContractIT.java:100)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる(ErrorReportManagementR1ContractIT.java:99)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\t...(85 remaining lines not displayed - this can be changed with Assertions.setMaxStackTraceElementsDisplayed)\n\nOutcome[value=500, failure=null]\nerror: org.opentest4j.AssertionFailedError: \nexpected: 201\n but was: 500\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.lambda$AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる$2(ErrorReportManagementR1ContractIT.java:100)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる(ErrorReportManagementR1ContractIT.java:99)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\t...(85 remaining lines not displayed - this can be changed with Assertions.setMaxStackTraceElementsDisplayed)\n\nOutcome[value=500, failure=null]\nerror: org.opentest4j.AssertionFailedError: \nexpected: 201\n but was: 500\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.lambda$AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる$2(ErrorReportManagementR1ContractIT.java:100)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる(ErrorReportManagementR1ContractIT.java:99)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\t...(85 remaining lines not displayed - this can be changed with Assertions.setMaxStackTraceElementsDisplayed)\n\nOutcome[value=500, failure=null]\nerror: org.opentest4j.AssertionFailedError: \nexpected: 201\n but was: 500\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.lambda$AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる$2(ErrorReportManagementR1ContractIT.java:100)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる(ErrorReportManagementR1ContractIT.java:99)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\t...(85 remaining lines not displayed - this can be changed with Assertions.setMaxStackTraceElementsDisplayed)",
+      "failure_trace": "java.lang.AssertionError: \nExpecting all elements of:\n  [Outcome[value=201, failure=null],\n    Outcome[value=201, failure=null],\n    Outcome[value=500, failure=null],\n    Outcome[value=500, failure=null],\n    Outcome[value=500, failure=null],\n    Outcome[value=201, failure=null],\n    Outcome[value=500, failure=null],\n    Outcome[value=201, failure=null],\n    Outcome[value=201, failure=null],\n    Outcome[value=201, failure=null]]\nto satisfy given requirements, but these elements did not:\n\nOutcome[value=500, failure=null]\nerror: org.opentest4j.AssertionFailedError: \nexpected: 201\n but was: 500\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.lambda$AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる$2(ErrorReportManagementR1ContractIT.java:100)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる(ErrorReportManagementR1ContractIT.java:99)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\t...(85 remaining lines not displayed - this can be changed with Assertions.setMaxStackTraceElementsDisplayed)\n\nOutcome[value=500, failure=null]\nerror: org.opentest4j.AssertionFailedError: \nexpected: 201\n but was: 500\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.lambda$AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる$2(ErrorReportManagementR1ContractIT.java:100)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる(ErrorReportManagementR1ContractIT.java:99)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\t...(85 remaining lines not displayed - this can be changed with Assertions.setMaxStackTraceElementsDisplayed)\n\nOutcome[value=500, failure=null]\nerror: org.opentest4j.AssertionFailedError: \nexpected: 201\n but was: 500\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.lambda$AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる$2(ErrorReportManagementR1ContractIT.java:100)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる(ErrorReportManagementR1ContractIT.java:99)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\t...(85 remaining lines not displayed - this can be changed with Assertions.setMaxStackTraceElementsDisplayed)\n\nOutcome[value=500, failure=null]\nerror: org.opentest4j.AssertionFailedError: \nexpected: 201\n but was: 500\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.lambda$AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる$2(ErrorReportManagementR1ContractIT.java:100)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる(ErrorReportManagementR1ContractIT.java:99)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\t...(85 remaining lines not displayed - this can be changed with Assertions.setMaxStackTraceElementsDisplayed)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC1h_同一IP十件の並行POSTは全201で十一件目だけ429になる(ErrorReportManagementR1ContractIT.java:99)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+      "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+      "source": "local-management",
+      "name": "AC7h_通常read中のlock例外は単票TX全体を三回試行し503で更新しない()",
+      "ac": "AC7h",
+      "classification": "functional_red",
+      "failure_type": "org.opentest4j.AssertionFailedError",
+      "failure_message": "org.opentest4j.AssertionFailedError: [通常readのlock例外後はTX全体を三回まで再試行する] \nexpected: 3\n but was: 1",
+      "failure_trace": "org.opentest4j.AssertionFailedError: [通常readのlock例外後はTX全体を三回まで再試行する] \nexpected: 3\n but was: 1\n\tat app//com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.contentionAtRead(ErrorReportManagementR1ContractIT.java:234)\n\tat app//com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC7h_通常read中のlock例外は単票TX全体を三回試行し503で更新しない(ErrorReportManagementR1ContractIT.java:208)\n\tat java.base@21.0.12.1/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base@21.0.12.1/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base@21.0.12.1/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+      "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+      "source": "local-management",
+      "name": "AC7_同hash二行の同時単票再活性化は成功一件と409一件になる()",
+      "ac": "AC7",
+      "classification": "functional_red",
+      "failure_type": "java.lang.AssertionError",
+      "failure_message": "java.lang.AssertionError: \nExpecting actual:\n  [200, 200]\nto contain exactly in any order:\n  [200, 409]\nelements not found:\n  [409]\nand elements not expected:\n  [200]\n",
+      "failure_trace": "java.lang.AssertionError: \nExpecting actual:\n  [200, 200]\nto contain exactly in any order:\n  [200, 409]\nelements not found:\n  [409]\nand elements not expected:\n  [200]\n\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.concurrentReactivation(ErrorReportManagementR1ContractIT.java:272)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC7_同hash二行の同時単票再活性化は成功一件と409一件になる(ErrorReportManagementR1ContractIT.java:131)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+      "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+      "source": "local-management",
+      "name": "AC7h_全三回でロック失敗なら単票は503でDB更新なし()",
+      "ac": "AC7h",
+      "classification": "strict_hook_unreached",
+      "failure_type": "java.lang.AssertionError",
+      "failure_message": "java.lang.AssertionError: Status expected:<503> but was:<200>",
+      "failure_trace": "java.lang.AssertionError: Status expected:<503> but was:<200>\n\tat org.springframework.test.util.AssertionErrors.fail(AssertionErrors.java:61)\n\tat org.springframework.test.util.AssertionErrors.assertEquals(AssertionErrors.java:128)\n\tat org.springframework.test.web.servlet.result.StatusResultMatchers.lambda$matcher$9(StatusResultMatchers.java:640)\n\tat org.springframework.test.web.servlet.MockMvc$1.andExpect(MockMvc.java:214)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.contention(ErrorReportManagementR1ContractIT.java:250)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC7h_全三回でロック失敗なら単票は503でDB更新なし(ErrorReportManagementR1ContractIT.java:140)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+      "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+    },
+    {
+      "suite": "com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT",
+      "source": "local-management",
+      "name": "AC7h_全三回でロック失敗ならbulkは503でDB更新なし()",
+      "ac": "AC7h",
+      "classification": "strict_hook_unreached",
+      "failure_type": "java.lang.AssertionError",
+      "failure_message": "java.lang.AssertionError: Status expected:<503> but was:<200>",
+      "failure_trace": "java.lang.AssertionError: Status expected:<503> but was:<200>\n\tat org.springframework.test.util.AssertionErrors.fail(AssertionErrors.java:61)\n\tat org.springframework.test.util.AssertionErrors.assertEquals(AssertionErrors.java:128)\n\tat org.springframework.test.web.servlet.result.StatusResultMatchers.lambda$matcher$9(StatusResultMatchers.java:640)\n\tat org.springframework.test.web.servlet.MockMvc$1.andExpect(MockMvc.java:214)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.contention(ErrorReportManagementR1ContractIT.java:250)\n\tat com.mannschaft.app.errorreport.service.ErrorReportManagementR1ContractIT.AC7h_全三回でロック失敗ならbulkは503でDB更新なし(ErrorReportManagementR1ContractIT.java:143)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n",
+      "xml_sha256": "2eb0f689ca562cdb37a0d50201e6b30bfdee0204dca6a1d384f6ec434d3ddda1"
+    }
+  ],
+  "owned_run_processes": [
+    {
+      "pid": 440718,
+      "exists": false,
+      "cwd": null
+    },
+    {
+      "pid": 440854,
+      "exists": false,
+      "cwd": null
+    },
+    {
+      "pid": 442126,
+      "exists": false,
+      "cwd": null
+    }
+  ],
+  "ci_basis": "red-limited-validation-basis.json",
+  "limitations": [
+    "strict flush2 and management lock2 unreached; excluded from functional red",
+    "shard3 business XML absent; local management replaces only missing12",
+    "AC7h ordinary read2 DB unchanged assertions passed before attempts3 actual1; later503 assertion unreached",
+    "AC1h 500 caused by existing nonunique hash read; realLua validation remains existing ValkeyRateLimiterIntegrationTest"
+  ],
+  "classification_correction": "First draft strict matcher containing Japanese did not match under shell stdin encoding; corrected using AC7h prefix and exclusion of ordinary read. Source XML unchanged; first draft preserved."
+}

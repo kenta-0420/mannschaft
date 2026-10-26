@@ -1,0 +1,173 @@
+{
+  "public": {
+    "admin": {
+      "publicVisible": {
+        "label": "Mostrar público",
+        "enabledLabel": "Público",
+        "disabledLabel": "No público",
+        "toggleAriaLabel": "Cambiar visibilidad de la publicación",
+        "enableConfirm": "¿Publicar esta entrada?",
+        "disableConfirm": "¿Hacer privada esta entrada?",
+        "saveFailed": "Error al cambiar. Por favor intente nuevamente"
+      },
+      "nameDisclosure": {
+        "title": "Modo de identificación del autor",
+        "displayName": "Mostrar nombre para mostrar",
+        "realName": "Mostrar nombre real",
+        "warningTitle": "Acerca del cambio a nombre real",
+        "warningBody": "Al activar esta configuración, el nombre real del autor se mostrará en publicaciones futuras. Una vez que el nombre real se ha publicado, puede difundirse externamente y no puede revertirse completamente.",
+        "warningCheckbox": "Cambiar confirmando que entiendo lo anterior",
+        "confirmButton": "Confirmar y cambiar",
+        "cancelButton": "Cancelar",
+        "historyTitle": "Historial de cambios",
+        "changedAt": "Fecha de cambio",
+        "changedBy": "Cambiado por",
+        "fromMode": "Antes del cambio",
+        "toMode": "Después del cambio"
+      }
+    },
+    "layout": {
+      "skipToContent": "Saltar al contenido",
+      "login": "Iniciar sesión",
+      "register": "Registrarse",
+      "siteName": "Mannschaft",
+      "openMenu": "Abrir menú"
+    },
+    "breadcrumb": {
+      "home": "Inicio",
+      "discoverTeams": "Buscar equipos",
+      "discoverOrganizations": "Buscar organizaciones"
+    },
+    "team": {
+      "title": "{name} - Página pública",
+      "memberCount": "{n} miembros",
+      "memberCountLabel": "Número de miembros",
+      "philosophyTitle": "Filosofía",
+      "mapTitle": "Mapa",
+      "homepageLabel": "Sitio oficial",
+      "establishedAt": "Establecido: {date}",
+      "geoDescription": "Esta es la página pública de {name}, con sede en {prefecture}{city}.",
+      "geoDescriptionNoLocation": "Esta es la página pública de {name}."
+    },
+    "organization": {
+      "title": "{name} - Página pública",
+      "philosophyTitle": "Filosofía",
+      "mapTitle": "Mapa",
+      "homepageLabel": "Sitio oficial",
+      "establishedAt": "Establecido: {date}",
+      "geoDescription": "Esta es la página pública de {name}, con sede en {prefecture}{city}.",
+      "geoDescriptionNoLocation": "Esta es la página pública de {name}."
+    },
+    "posts": {
+      "sectionTitle": "Publicaciones públicas",
+      "empty": "Aún no hay publicaciones públicas",
+      "loading": "Cargando...",
+      "readMore": "Leer más",
+      "publishedAt": "Publicado: {date}",
+      "backToList": "Volver a la lista",
+      "totalCount": "Total: {n}",
+      "page": "{page} / {total}",
+      "next": "Siguiente",
+      "prev": "Anterior"
+    },
+    "author": {
+      "anonymous": "Autor",
+      "member": "Miembro",
+      "organizer": "Organizador",
+      "anonymousAvatarAlt": "Autor (mostrado anónimamente)"
+    },
+    "cta": {
+      "join": "Unirse a este equipo",
+      "joinOrganization": "Unirse a esta organización",
+      "login": "Iniciar sesión para ver más",
+      "register": "Registrarse",
+      "ctaHeading": "¿Quieres unirte a Mannschaft?",
+      "ctaDescription": "Al convertirte en miembro, puedes ver todos los miembros del equipo y sus actividades."
+    },
+    "error": {
+      "notFound": "La página especificada no existe o no está publicada",
+      "notFoundTitle": "Página no encontrada",
+      "loadFailed": "Error al obtener información",
+      "rateLimit": "Demasiadas solicitudes. Por favor intente nuevamente más tarde",
+      "backToHome": "Volver al inicio"
+    },
+    "discover": {
+      "teams": {
+        "title": "Buscar equipos públicos",
+        "searchPlaceholder": "Buscar por nombre de equipo",
+        "noResults": "No se encontraron equipos"
+      },
+      "organizations": {
+        "title": "Buscar organizaciones públicas",
+        "searchPlaceholder": "Buscar por nombre de organización",
+        "noResults": "No se encontraron organizaciones"
+      },
+      "filter": {
+        "keyword": "Palabra clave",
+        "prefecture": "Prefectura",
+        "all": "Todos",
+        "search": "Buscar"
+      },
+      "card": {
+        "memberCount": "{count} personas",
+        "lastPost": "Última publicación: {date}",
+        "noPost": "Sin publicaciones",
+        "viewDetail": "Ver detalles"
+      }
+    },
+    "meta": {
+      "ogDescriptionDefault": "Página pública de Mannschaft",
+      "ogSiteName": "Mannschaft"
+    },
+    "userProfile": {
+      "title": "Perfil de {name}",
+      "memberSince": "Miembro desde {date}",
+      "posts": "Publicaciones públicas",
+      "noPosts": "No hay publicaciones públicas"
+    },
+    "profileVisibility": {
+      "title": "Configuración de visibilidad del perfil",
+      "description": "Al activar el perfil público, los usuarios no conectados también pueden ver su perfil",
+      "enable": "Activar perfil público",
+      "saved": "Configuración de visibilidad del perfil guardada",
+      "saveError": "Error al guardar la configuración de visibilidad del perfil"
+    },
+    "comments": {
+      "title": "Comentarios",
+      "empty": "Aún no hay comentarios",
+      "placeholder": "Ingrese un comentario (máx. 1000 caracteres)",
+      "submit": "Publicar",
+      "delete": "Eliminar",
+      "loginToComment": "Inicia sesión para comentar",
+      "loginLink": "Iniciar sesión",
+      "deleteConfirm": "¿Eliminar este comentario?"
+    },
+    "publicSettings": {
+      "title": "Configuración pública",
+      "timelinePostsPublic": "Publicar entradas de la línea de tiempo",
+      "timelinePostsPublicDescription": "Al activar, los usuarios no conectados también pueden ver las entradas de la línea de tiempo",
+      "publicEventsEnabled": "Publicar eventos",
+      "publicEventsEnabledDescription": "Al activar, los usuarios no conectados también pueden ver la información de eventos",
+      "saved": "Guardado",
+      "saveError": "Error al guardar"
+    },
+    "timeline": {
+      "title": "Publicaciones de la línea de tiempo",
+      "empty": "No hay publicaciones en la línea de tiempo"
+    },
+    "events": {
+      "title": "Eventos",
+      "empty": "No hay eventos"
+    },
+    "tabs": {
+      "posts": "Publicaciones",
+      "timeline": "Línea de tiempo",
+      "events": "Eventos",
+      "activities": "Registros de actividad"
+    },
+    "activities": {
+      "sectionTitle": "Registros de actividad",
+      "empty": "Aún no hay registros de actividad públicos"
+    }
+  }
+}

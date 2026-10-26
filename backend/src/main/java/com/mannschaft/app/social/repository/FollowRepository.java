@@ -1,0 +1,210 @@
+package com.mannschaft.app.social.repository;
+
+import com.mannschaft.app.social.FollowerType;
+import com.mannschaft.app.social.entity.FollowEntity;
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.QueryHint;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * フォローリポジトリ。
+ */
+public interface FollowRepository extends JpaRepository<FollowEntity, Long> {
+
+    String COUNT_PENDING_TEAM_FOLLOWS = """
+            SELECT COUNT(f) FROM FollowEntity f
+            WHERE f.followerType = com.mannschaft.app.social.FollowerType.TEAM
+              AND f.followedType = com.mannschaft.app.social.FollowerType.TEAM
+              AND f.followerId = :teamId
+              AND NOT EXISTS (SELECT tf.id FROM TeamFriendEntity tf
+                  WHERE tf.teamAId = CASE WHEN :teamId < f.followedId THEN :teamId ELSE f.followedId END
+                    AND tf.teamBId = CASE WHEN :teamId < f.followedId THEN f.followedId ELSE :teamId END)
+            """;
+
+    /** 相互成立ペアを除いた自チームのTEAMフォロー。相手の公開状態では件数を変えない。 */
+    @Query(value = """
+            SELECT new com.mannschaft.app.social.service.PendingTeamFollowRow(
+                f.id, f.followedId,
+                CASE WHEN EXISTS (SELECT r.id FROM FollowEntity r
+                    WHERE r.followerType = com.mannschaft.app.social.FollowerType.TEAM
+                      AND r.followedType = com.mannschaft.app.social.FollowerType.TEAM
+                      AND r.followerId = f.followedId AND r.followedId = :teamId)
+                    THEN true ELSE false END,
+                f.createdAt)
+            FROM FollowEntity f
+            WHERE f.followerType = com.mannschaft.app.social.FollowerType.TEAM
+              AND f.followedType = com.mannschaft.app.social.FollowerType.TEAM
+              AND f.followerId = :teamId
+              AND NOT EXISTS (SELECT tf.id FROM TeamFriendEntity tf
+                  WHERE tf.teamAId = CASE WHEN :teamId < f.followedId THEN :teamId ELSE f.followedId END
+                    AND tf.teamBId = CASE WHEN :teamId < f.followedId THEN f.followedId ELSE :teamId END)
+            ORDER BY f.createdAt DESC, f.id DESC
+            """, countQuery = COUNT_PENDING_TEAM_FOLLOWS)
+    org.springframework.data.domain.Page<com.mannschaft.app.social.service.PendingTeamFollowRow>
+            findPendingTeamFollows(@Param("teamId") Long teamId, Pageable pageable);
+
+    /** JPAのoffset上限を超える空ページでも、通常一覧と同じ総数を返す。 */
+    @Query(COUNT_PENDING_TEAM_FOLLOWS)
+    long countPendingTeamFollows(@Param("teamId") Long teamId);
+
+    String COUNT_INCOMING_TEAM_FOLLOWS = """
+            SELECT COUNT(f) FROM FollowEntity f
+            WHERE f.followerType = com.mannschaft.app.social.FollowerType.TEAM
+              AND f.followedType = com.mannschaft.app.social.FollowerType.TEAM
+              AND f.followedId = :teamId
+              AND NOT EXISTS (SELECT tf.id FROM TeamFriendEntity tf
+                  WHERE tf.teamAId = CASE WHEN :teamId < f.followerId THEN :teamId ELSE f.followerId END
+                    AND tf.teamBId = CASE WHEN :teamId < f.followerId THEN f.followerId ELSE :teamId END)
+            """;
+
+    /** 相互成立ペアを除いた自チーム宛TEAMフォロー。申請元の公開状態では件数を変えない。 */
+    @Query(value = """
+            SELECT new com.mannschaft.app.social.service.IncomingTeamFollowRow(
+                f.id, f.followerId,
+                CASE WHEN EXISTS (SELECT r.id FROM FollowEntity r
+                    WHERE r.followerType = com.mannschaft.app.social.FollowerType.TEAM
+                      AND r.followedType = com.mannschaft.app.social.FollowerType.TEAM
+                      AND r.followedId = f.followerId AND r.followerId = :teamId)
+                    THEN true ELSE false END,
+                f.createdAt)
+            FROM FollowEntity f
+            WHERE f.followerType = com.mannschaft.app.social.FollowerType.TEAM
+              AND f.followedType = com.mannschaft.app.social.FollowerType.TEAM
+              AND f.followedId = :teamId
+              AND NOT EXISTS (SELECT tf.id FROM TeamFriendEntity tf
+                  WHERE tf.teamAId = CASE WHEN :teamId < f.followerId THEN :teamId ELSE f.followerId END
+                    AND tf.teamBId = CASE WHEN :teamId < f.followerId THEN f.followerId ELSE :teamId END)
+            ORDER BY f.createdAt DESC, f.id DESC
+            """, countQuery = COUNT_INCOMING_TEAM_FOLLOWS)
+    org.springframework.data.domain.Page<com.mannschaft.app.social.service.IncomingTeamFollowRow>
+            findIncomingTeamFollows(@Param("teamId") Long teamId, Pageable pageable);
+
+    /** JPAのoffset上限を超える空ページでも、通常一覧と同じ総数を返す。 */
+    @Query(COUNT_INCOMING_TEAM_FOLLOWS)
+    long countIncomingTeamFollows(@Param("teamId") Long teamId);
+
+    /**
+     * フォロー関係を取得する。
+     */
+    Optional<FollowEntity> findByFollowerTypeAndFollowerIdAndFollowedTypeAndFollowedId(
+            FollowerType followerType, Long followerId, FollowerType followedType, Long followedId);
+
+    /**
+     * フォロー関係の存在チェックを行う。
+     * 相互フォロー確認（FRIENDS_ONLY アクセス制御）にも使用する。
+     */
+    boolean existsByFollowerTypeAndFollowerIdAndFollowedTypeAndFollowedId(
+            FollowerType followerType, Long followerId, FollowerType followedType, Long followedId);
+
+    /**
+     * フォロー一覧（自分がフォローしている対象）を取得する。
+     */
+    List<FollowEntity> findByFollowerTypeAndFollowerIdOrderByCreatedAtDesc(
+            FollowerType followerType, Long followerId, Pageable pageable);
+
+    /**
+     * フォロワー一覧（自分をフォローしている対象）を取得する。
+     */
+    List<FollowEntity> findByFollowedTypeAndFollowedIdOrderByCreatedAtDesc(
+            FollowerType followedType, Long followedId, Pageable pageable);
+
+    /**
+     * ユーザーがフォローしている対象を FollowedType・FollowedId で絞り込んで取得する。
+     * Phase 2 getMyFeed: ユーザーがフォローしているチーム/組織の ID を取得するために使用する。
+     *
+     * @param followerType フォロワー種別 (USER)
+     * @param followerId   ユーザーID
+     * @param followedType フォロー対象種別 (TEAM / ORGANIZATION)
+     * @return フォロー対象の ID リスト
+     */
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT f.followedId FROM FollowEntity f
+            WHERE f.followerType = :followerType
+              AND f.followerId = :followerId
+              AND f.followedType = :followedType
+            """)
+    java.util.List<Long> findFollowedIdsByFollowerAndType(
+            @org.springframework.data.repository.query.Param("followerType") FollowerType followerType,
+            @org.springframework.data.repository.query.Param("followerId") Long followerId,
+            @org.springframework.data.repository.query.Param("followedType") FollowerType followedType);
+
+    /**
+     * followerType・followerId・followedType で絞り込んだフォロー一覧を取得する。
+     * チームフォロー一覧など followedType による絞り込みに使用する。
+     */
+    List<FollowEntity> findByFollowerTypeAndFollowerIdAndFollowedTypeOrderByCreatedAtDesc(
+            FollowerType followerType, Long followerId, FollowerType followedType, Pageable pageable);
+
+    /**
+     * ユーザーが絡む全フォロー関係を削除する（退会匿名化用）。
+     * フォロワー側・フォロー対象側の両方を削除する。
+     */
+    @org.springframework.data.jpa.repository.Query("""
+            DELETE FROM FollowEntity f
+            WHERE (f.followerType = :userType AND f.followerId = :userId)
+               OR (f.followedType = :userType AND f.followedId = :userId)
+            """)
+    @org.springframework.data.jpa.repository.Modifying
+    void deleteAllByUserId(
+            @org.springframework.data.repository.query.Param("userId") Long userId,
+            @org.springframework.data.repository.query.Param("userType") FollowerType userType);
+
+    /**
+     * フォロー数を取得する。
+     */
+    long countByFollowerTypeAndFollowerId(FollowerType followerType, Long followerId);
+
+    /**
+     * フォロワー数を取得する。
+     */
+    long countByFollowedTypeAndFollowedId(FollowerType followedType, Long followedId);
+
+    /**
+     * 対称フォロー関係（A→B に対する B→A）を {@code SELECT ... FOR UPDATE NOWAIT} で取得する。
+     *
+     * <p>
+     * F01.5 相互フォロー検知クリティカルセクションで使用する。同時並行で A→B と B→A が
+     * 到達した場合に、対称側のレコードへ排他ロックを掛けて両スレッドが同時に {@code team_friends}
+     * を INSERT しようとする二重成立レースを防止する。
+     * </p>
+     *
+     * <p>
+     * MySQL の {@code NOWAIT} オプションは JPA 層では
+     * {@code jakarta.persistence.lock.timeout = -2} ヒントで表現する
+     * （{@link TeamFriendRepository} と同方針）。他トランザクションが既にロックを
+     * 保持していた場合は即座に {@code PessimisticLockException} /
+     * {@code CannotAcquireLockException} がスローされ、Service 層は 202 Accepted で
+     * 再試行を指示する。
+     * </p>
+     *
+     * @param followerType フォロワー種別
+     * @param followerId   フォロワー ID
+     * @param followedType フォロー対象種別
+     * @param followedId   フォロー対象 ID
+     * @return 対称フォロー関係（存在しなければ空）
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints({
+            @QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2")
+    })
+    @Query("""
+            SELECT f FROM FollowEntity f
+            WHERE f.followerType = :followerType
+              AND f.followerId = :followerId
+              AND f.followedType = :followedType
+              AND f.followedId = :followedId
+            """)
+    Optional<FollowEntity> findByFollowerAndFollowedForUpdateNoWait(
+            @Param("followerType") FollowerType followerType,
+            @Param("followerId") Long followerId,
+            @Param("followedType") FollowerType followedType,
+            @Param("followedId") Long followedId);
+}

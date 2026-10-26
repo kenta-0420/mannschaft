@@ -1,0 +1,153 @@
+{
+  "contact_invite": {
+    "page_title": "Einladungslinks und Kontakt-QR-Codes",
+    "page_description": "Erstellen und verwalten Sie Einladungslinks zum Hinzufügen von Kontakten. Wer den Link erhält, kann Sie als Kontakt hinzufügen.",
+    "create_button": "Neuen Link erstellen",
+    "form": {
+      "label": "Bezeichnung (optional)",
+      "label_placeholder": "z. B. Für soziale Medien",
+      "max_uses": "Verwendungsanzahl",
+      "expires_in": "Ablaufzeit",
+      "submit": "Erstellen",
+      "cancel": "Abbrechen"
+    },
+    "max_uses_options": {
+      "once": "1-mal",
+      "five": "5-mal",
+      "ten": "10-mal",
+      "fifty": "50-mal",
+      "unlimited": "Unbegrenzt"
+    },
+    "expires_options": {
+      "one_day": "1 Tag",
+      "seven_days": "7 Tage",
+      "thirty_days": "30 Tage",
+      "never": "Kein Ablauf"
+    },
+    "list": {
+      "empty": "Noch keine Einladungslinks erstellt",
+      "no_label": "(Keine Bezeichnung)",
+      "revoke_tooltip": "Widerrufen",
+      "uses_unit": "x",
+      "qr_alt": "QR-Code",
+      "qr_hint": "QR-Code scannen zum Hinzufügen"
+    },
+    "expiry": {
+      "never": "Kein Ablauf",
+      "expired": "Abgelaufen",
+      "until": "Bis {date}"
+    },
+    "messages": {
+      "create_success": "Einladungslink erfolgreich erstellt",
+      "create_error": "Fehler beim Erstellen",
+      "revoke_success": "Einladungslink widerrufen",
+      "revoke_error": "Fehler beim Widerrufen",
+      "copy_success": "Link kopiert",
+      "copy_error": "Fehler beim Kopieren"
+    },
+    "my_qr": "Mein Kontakt-QR-Code"
+  },
+  "contact_invite_guide": {
+    "title": "So verwenden Sie die Einladungslink-Verwaltung",
+    "description": "Mit Einladungslinks können andere Sie als Kontakt hinzufügen, indem sie einfach einen Link oder QR-Code erhalten. Ideal für Social-Media-Profile oder als digitale Visitenkarte.",
+    "what": {
+      "title": "Was ist ein Einladungslink?",
+      "body": "Ein dedizierter Link, damit andere Sie als Kontakt hinzufügen können. Wenn Sie den Link teilen, kann die andere Person Sie mit einem Tipp hinzufügen – ohne dass Sie Ihre ID oder E-Mail-Adresse direkt mitteilen müssen."
+    },
+    "create": {
+      "title": "Einen Link erstellen",
+      "body": "Tippen Sie oben rechts auf «Neuen Link erstellen», um einen Link nach Ihren Bedürfnissen zu erstellen.",
+      "step1": "Tippen Sie oben rechts auf «Neuen Link erstellen».",
+      "step2": "Wählen Sie eine Bezeichnung (optionaler Hinweis), die Anzahl der erlaubten Verwendungen und die Ablaufzeit. Durch Festlegen von Limits können Sie Missbrauch verhindern.",
+      "step3": "Tippen Sie auf «Erstellen» und der neue Einladungslink sowie der QR-Code erscheinen in der Liste."
+    },
+    "share": {
+      "title": "Mit anderen teilen",
+      "body": "Sie können den Link teilen, indem Sie ihn kopieren und senden, oder indem jemand den QR-Code scannt.",
+      "step1": "Tippen Sie auf die Schaltfläche «Kopieren» neben dem Link.",
+      "step2": "Fügen Sie ihn in eine Nachricht, E-Mail oder Ihr Social-Media-Profil ein, um ihn zu teilen.",
+      "step3": "Persönlich können Sie den QR-Code zeigen und die andere Person bittet, ihn mit der Kamera zu scannen."
+    },
+    "manage": {
+      "title": "Nutzung verfolgen und widerrufen",
+      "body": "Alle erstellten Links sind in der Liste aufgeführt. Jeder Eintrag zeigt die Anzahl der Verwendungen, das Limit und das Ablaufdatum an.",
+      "note": "Sie können jeden Link jederzeit durch Tippen auf das Papierkorb-Symbol widerrufen. Nach dem Widerruf kann niemand mehr diesen Link verwenden, um Sie als Kontakt hinzuzufügen."
+    }
+  },
+  "contact_privacy": {
+    "title": "Datenschutz für Kontakte",
+    "description": "Lege Datenschutzeinstellungen für Kontaktanfragen, DMs und den Online-Status fest",
+    "handle_searchable": {
+      "label": "Suche über {'@'}Handle erlauben",
+      "help": "Personen, die dein {'@'}Handle kennen, können dich über die Suche finden"
+    },
+    "contact_approval": {
+      "label": "Genehmigung für Kontaktanfragen erforderlich",
+      "help": "Bei AUS werden Personen sofort ohne Anfrage hinzugefügt (empfohlen: EIN)"
+    },
+    "dm_section": {
+      "label": "Wer dir DMs senden darf"
+    },
+    "dm_option": {
+      "anyone": "Jeder",
+      "team_members_only": "Nur Teammitglieder",
+      "contacts_only": "Nur Kontakte"
+    },
+    "online_section": {
+      "label": "Wer deinen Online-Status sehen darf",
+      "help": "Lege fest, wer deine letzte Online-Zeit und deinen aktuellen Online-Status sehen darf"
+    },
+    "online_option": {
+      "nobody": "Niemand",
+      "contacts_only": "Nur Kontakte",
+      "everyone": "Alle"
+    },
+    "save": "Speichern",
+    "saved": "Datenschutzeinstellungen gespeichert",
+    "save_failed": "Speichern fehlgeschlagen",
+    "guide": {
+      "page_title": "So nutzt du den Datenschutz für Kontakte",
+      "description": "Hier legst du an einer Stelle fest, wer dich finden kann, von wem du DMs erhältst und wem dein Online-Status angezeigt wird. Wenn du neu hier bist, gehe die Punkte einfach von oben nach unten durch. Im Zweifel lass die empfohlenen Einstellungen (Genehmigung EIN, enger Sichtbarkeitsbereich) unverändert.",
+      "search": {
+        "title": "Suche über {'@'}Handle erlauben",
+        "body": "Diese Einstellung bestimmt, ob Personen, die dein {'@'}Handle (Benutzername) kennen, dich über die Suche finden können. Bei AUS erscheinst du nicht in den Suchergebnissen, selbst wenn jemand dein {'@'}Handle kennt.",
+        "steps": {
+          "step1": "Suche den Schalter „Suche über {'@'}Handle erlauben“",
+          "step2": "Stelle auf EIN, wenn du gefunden werden möchtest, oder auf AUS, wenn nicht",
+          "step3": "Klicke zum Schluss auf „Speichern“"
+        }
+      },
+      "approval": {
+        "title": "Genehmigung für Kontaktanfragen",
+        "body": "Diese Einstellung bestimmt, ob deine Genehmigung nötig ist, wenn jemand dich als Kontakt hinzufügen möchte. Bei EIN erhältst du zuerst eine Anfrage, und nur Personen, die du genehmigst, werden zu Kontakten (empfohlen). Bei AUS werden Personen ohne Anfrage direkt als Kontakt hinzugefügt.",
+        "steps": {
+          "step1": "Suche den Schalter „Genehmigung für Kontaktanfragen erforderlich“",
+          "step2": "Lass ihn auf EIN (empfohlen), damit Unbekannte dich nicht ohne Erlaubnis hinzufügen können, und speichere"
+        }
+      },
+      "dm": {
+        "title": "Wer dir DMs senden darf",
+        "body": "Wähle, von wem du Direktnachrichten (DMs) erhalten möchtest. Wähle eine der drei Optionen.",
+        "options_intro": "Es stehen die folgenden drei Optionen zur Wahl.",
+        "anyone": "Jeder … Alle in der App können dir DMs senden",
+        "team_members_only": "Nur Teammitglieder … Nur Personen aus deinem Team können dir DMs senden",
+        "contacts_only": "Nur Kontakte … Nur Personen in deinen Kontakten können dir DMs senden (engster Bereich)"
+      },
+      "online": {
+        "title": "Wer deinen Online-Status sehen darf",
+        "body": "Wähle, wem „gerade online“ und „zuletzt online“ angezeigt werden. Wenn du nicht gesehen werden möchtest, wähle „Niemand“.",
+        "nobody": "Niemand … Dein Online-Status wird überhaupt nicht angezeigt",
+        "contacts_only": "Nur Kontakte … Nur Personen in deinen Kontakten sehen ihn",
+        "everyone": "Alle … Alle in der App sehen ihn"
+      },
+      "save": {
+        "title": "Einstellungen speichern",
+        "body": "Wenn du eine Einstellung änderst, speichere unbedingt zum Schluss. Ohne Speichern werden Änderungen nicht übernommen.",
+        "steps": {
+          "step1": "Stelle die obigen Punkte nach Wunsch ein",
+          "step2": "Klicke unten auf der Seite auf die Schaltfläche „Speichern“"
+        }
+      }
+    }
+  }
+}

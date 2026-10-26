@@ -1,0 +1,77 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "timezone": "Asia/Tokyo",
+  "schedule": ["before 10am on Monday"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "labels": ["dependencies"],
+  "commitMessagePrefix": "deps:",
+  "packageRules": [
+    {
+      "description": "Spring Boot BOM 管理の依存はまとめて更新",
+      "matchManagers": ["gradle"],
+      "matchPackagePatterns": ["^org\\.springframework"],
+      "groupName": "Spring ecosystem",
+      "schedule": ["before 10am on first day of month"]
+    },
+    {
+      "description": "Nuxt / Vue エコシステムはまとめて更新",
+      "matchManagers": ["npm"],
+      "matchPackagePatterns": ["^nuxt", "^@nuxt", "^vue", "^@vue"],
+      "groupName": "Nuxt/Vue ecosystem",
+      "schedule": ["before 10am on first day of month"]
+    },
+    {
+      "description": "セキュリティ更新は即時 PR（スケジュール無視）",
+      "matchUpdateTypes": ["patch"],
+      "matchCategories": ["security"],
+      "schedule": ["at any time"],
+      "prPriority": 10
+    },
+    {
+      "description": "メジャーバージョンアップは自動マージしない",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["dependencies", "major-update"]
+    },
+    {
+      "description": "マイナー・パッチはテスト通過で自動マージ",
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "Flyway のマイグレーションバージョンは慎重に扱う",
+      "matchManagers": ["gradle"],
+      "matchPackagePatterns": ["^org\\.flywaydb"],
+      "automerge": false,
+      "labels": ["dependencies", "requires-migration-review"]
+    },
+    {
+      "description": "AWS SDK はまとめて更新（BOM 連動）",
+      "matchManagers": ["gradle"],
+      "matchPackagePatterns": ["^software\\.amazon\\.awssdk"],
+      "groupName": "AWS SDK"
+    },
+    {
+      "description": "テスト専用の依存はまとめて更新",
+      "matchManagers": ["gradle", "npm"],
+      "matchDepTypes": ["testImplementation", "devDependencies"],
+      "groupName": "test dependencies",
+      "automerge": true
+    }
+  ],
+  "ignoreDeps": [
+    "com.h2database:h2"
+  ],
+  "gradle": {
+    "enabled": true
+  },
+  "npm": {
+    "enabled": true
+  }
+}

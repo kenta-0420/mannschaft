@@ -1,0 +1,5 @@
+-- F04.10: announcement_feeds.source_type に委員会 4 種を追加（VARCHAR なのでコメント更新のみ）
+-- scope_type は既に VARCHAR(20) なので変換不要
+ALTER TABLE announcement_feeds
+    MODIFY COLUMN source_type VARCHAR(30) NOT NULL
+        COMMENT '元コンテンツ種別: BLOG_POST / BULLETIN_THREAD / TIMELINE_POST / CIRCULATION_DOCUMENT / SURVEY / COMMITTEE_DECISION / COMMITTEE_MINUTES / COMMITTEE_CIRCULATION / COMMITTEE_MESSAGE';

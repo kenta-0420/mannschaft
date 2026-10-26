@@ -1,0 +1,221 @@
+package com.mannschaft.app.team.service;
+
+import com.mannschaft.app.notification.NotificationType;
+import com.mannschaft.app.notification.fanout.FanoutMessageKind;
+
+import java.util.List;
+
+/**
+ * チーム加盟の通知1件分の内容（F01.2.1 §6.7）。
+ *
+ * <p>状態を変える操作と同じトランザクションで fan-out ジョブを enqueue するための入力。
+ * 受信者は Worker の処理時点で解決する（{@link RecipientScope} の対象を引く）。</p>
+ *
+ * @param notificationType 通知種別（{@code source_type} は種別から決まる）
+ * @param messageKind      文面の種別（6言語の文面を enqueue 時に描画する）
+ * @param messageArgs      文面の引数（利用者が書いた中身。組織名・チーム名など）
+ * @param recipientScope   受信者の解決方式
+ * @param recipientScopeId 受信者を引く対象の ID（組織 ID またはチーム ID）
+ * @param organizationId   テナントとしての組織 ID
+ * @param membershipId     加盟の ID（冪等キー・{@code source_id}）
+ * @param actorUserId      操作者
+ * @param actionUrl        通知から開く画面（slug を使う。数値 ID の URL は踏襲しない）
+ */
+public record TeamAffiliationNotice(NotificationType notificationType,
+                                    FanoutMessageKind messageKind,
+                                    List<String> messageArgs,
+                                    RecipientScope recipientScope,
+                                    Long recipientScopeId,
+                                    Long organizationId,
+                                    Long membershipId,
+                                    Long actorUserId,
+                                    String actionUrl) {
+
+    /** 受信者の解決方式（§6.7）。 */
+    public enum RecipientScope {
+        /** 組織の ADMIN 全員。 */
+        ORGANIZATION_ADMINS,
+        /** チームの加盟操作者（チーム ADMIN と {@code MANAGE_ORG_AFFILIATION} を付与されたメンバー）。 */
+        TEAM_AFFILIATION_OPERATORS
+    }
+
+    /**
+     * 加盟申請が届いた通知（{@code TEAM_ORG_APPLICATION_RECEIVED}。受信者は組織 ADMIN。§6.1 step 12）。
+     */
+    public static TeamAffiliationNotice applicationReceived(Long organizationId, String organizationSlug,
+                                                            String teamName, String organizationName,
+                                                            Long membershipId, Long actorUserId) {
+        return new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_APPLICATION_RECEIVED,
+                FanoutMessageKind.TEAM_ORG_APPLICATION_RECEIVED,
+                List.of(teamName, organizationName),
+                RecipientScope.ORGANIZATION_ADMINS,
+                organizationId,
+                organizationId,
+                membershipId,
+                actorUserId,
+                "/organizations/" + organizationSlug + "/member-teams?view=applications");
+    }
+
+    /**
+     * 加盟申請が承認された通知（{@code TEAM_ORG_APPLICATION_APPROVED}。受信者はチームの加盟操作者。§6.2 step 6）。
+     *
+     * @param groupLabel 確定したグループ名（未分類なら既定の文言）
+     */
+    public static TeamAffiliationNotice applicationApproved(Long teamId, String teamSlug, Long organizationId,
+                                                            String organizationName, String groupLabel,
+                                                            Long membershipId, Long actorUserId) {
+        return new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_APPLICATION_APPROVED,
+                FanoutMessageKind.TEAM_ORG_APPLICATION_APPROVED,
+                List.of(organizationName, groupLabel),
+                RecipientScope.TEAM_AFFILIATION_OPERATORS,
+                teamId,
+                organizationId,
+                membershipId,
+                actorUserId,
+                "/teams/" + teamSlug + "/affiliations");
+    }
+
+    /**
+     * 加盟申請が拒否された通知（{@code TEAM_ORG_APPLICATION_REJECTED}。受信者はチームの加盟操作者。§6.3 step 5）。
+     * 理由があれば理由入りの本文にする。
+     *
+     * @param reason 拒否の理由（任意。null なら理由なしの本文）
+     */
+    public static TeamAffiliationNotice applicationRejected(Long teamId, String teamSlug, Long organizationId,
+                                                            String organizationName, String reason,
+                                                            Long membershipId, Long actorUserId) {
+        boolean withReason = reason != null;
+        return new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_APPLICATION_REJECTED,
+                withReason ? FanoutMessageKind.TEAM_ORG_APPLICATION_REJECTED_WITH_REASON
+                        : FanoutMessageKind.TEAM_ORG_APPLICATION_REJECTED,
+                withReason ? List.of(organizationName, reason) : List.of(organizationName),
+                RecipientScope.TEAM_AFFILIATION_OPERATORS,
+                teamId,
+                organizationId,
+                membershipId,
+                actorUserId,
+                "/teams/" + teamSlug + "/affiliations?view=applications");
+    }
+
+    /**
+     * チームが組織から離脱した通知（{@code TEAM_ORG_MEMBERSHIP_LEFT}。受信者は組織 ADMIN 全員。§6.6）。
+     */
+    public static TeamAffiliationNotice membershipLeft(Long organizationId, String organizationSlug,
+                                                       String teamName, String organizationName,
+                                                       Long membershipId, Long actorUserId) {
+        return new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_MEMBERSHIP_LEFT,
+                FanoutMessageKind.TEAM_ORG_MEMBERSHIP_LEFT,
+                List.of(teamName, organizationName),
+                RecipientScope.ORGANIZATION_ADMINS,
+                organizationId,
+                organizationId,
+                membershipId,
+                actorUserId,
+                "/organizations/" + organizationSlug + "/member-teams");
+    }
+
+    /**
+     * チームが組織から除名された通知（{@code TEAM_ORG_MEMBERSHIP_REMOVED}。受信者はチームの加盟操作者。§6.6）。理由欄は無い。
+     */
+    public static TeamAffiliationNotice membershipRemoved(Long teamId, String teamSlug, Long organizationId,
+                                                          String teamName, String organizationName,
+                                                          Long membershipId, Long actorUserId) {
+        return new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_MEMBERSHIP_REMOVED,
+                FanoutMessageKind.TEAM_ORG_MEMBERSHIP_REMOVED,
+                List.of(teamName, organizationName),
+                RecipientScope.TEAM_AFFILIATION_OPERATORS,
+                teamId,
+                organizationId,
+                membershipId,
+                actorUserId,
+                "/teams/" + teamSlug + "/affiliations");
+    }
+
+    /**
+     * チームが起こした申請が期限切れで消えた通知（{@code TEAM_ORG_PENDING_EXPIRED}。受信者は起こした側＝チームの加盟操作者。
+     * §6.7・§6.8）。期限切れはシステムの遷移なので操作者は無い。
+     */
+    public static TeamAffiliationNotice applicationExpired(Long teamId, String teamSlug, Long organizationId,
+                                                           String teamName, String organizationName,
+                                                           Long membershipId) {
+        return new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_PENDING_EXPIRED,
+                FanoutMessageKind.TEAM_ORG_PENDING_EXPIRED,
+                List.of(teamName, organizationName),
+                RecipientScope.TEAM_AFFILIATION_OPERATORS,
+                teamId,
+                organizationId,
+                membershipId,
+                null,
+                "/teams/" + teamSlug + "/affiliations?view=applications");
+    }
+
+    /**
+     * 組織が起こした招待が期限切れで消えた通知（{@code TEAM_ORG_PENDING_EXPIRED}。受信者は起こした側＝組織 ADMIN 全員。
+     * §6.7・§6.8）。開く画面は組織の所属チーム画面の招待一覧（{@code member-teams?view=invites}）。
+     */
+    public static TeamAffiliationNotice inviteExpired(Long organizationId, String organizationSlug,
+                                                      String teamName, String organizationName,
+                                                      Long membershipId) {
+        return new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_PENDING_EXPIRED,
+                FanoutMessageKind.TEAM_ORG_PENDING_EXPIRED,
+                List.of(teamName, organizationName),
+                RecipientScope.ORGANIZATION_ADMINS,
+                organizationId,
+                organizationId,
+                membershipId,
+                null,
+                "/organizations/" + organizationSlug + "/member-teams?view=invites");
+    }
+
+    /**
+     * 組織側のアーカイブ・論理削除で PENDING が取り消された通知（{@code TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM}。§4.5・§6.7）。
+     * 受信者は残った側＝チームの加盟操作者。開く画面は申請なら {@code ?view=applications}、招待なら {@code ?view=invites}。
+     *
+     * @param invite 取り消された PENDING が招待（ORG_INVITE）か
+     */
+    public static TeamAffiliationNotice pendingCancelledByOrganizationClosure(Long teamId, String teamSlug,
+                                                                              Long organizationId,
+                                                                              String organizationName,
+                                                                              boolean invite,
+                                                                              Long membershipId,
+                                                                              Long actorUserId) {
+        return new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM,
+                FanoutMessageKind.TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM,
+                List.of(organizationName),
+                RecipientScope.TEAM_AFFILIATION_OPERATORS,
+                teamId,
+                organizationId,
+                membershipId,
+                actorUserId,
+                "/teams/" + teamSlug + "/affiliations?view=" + (invite ? "invites" : "applications"));
+    }
+
+    /**
+     * チーム側のアーカイブ・論理削除で PENDING が取り消された通知（{@code TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM}。§4.5・§6.7）。
+     * 受信者は残った側＝組織 ADMIN 全員。開く画面は申請なら {@code ?view=applications}、招待なら {@code ?view=invites}。
+     *
+     * @param invite 取り消された PENDING が招待（ORG_INVITE）か
+     */
+    public static TeamAffiliationNotice pendingCancelledByTeamClosure(Long organizationId, String organizationSlug,
+                                                                      String teamName, boolean invite,
+                                                                      Long membershipId, Long actorUserId) {
+        return new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM,
+                FanoutMessageKind.TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM,
+                List.of(teamName),
+                RecipientScope.ORGANIZATION_ADMINS,
+                organizationId,
+                organizationId,
+                membershipId,
+                actorUserId,
+                "/organizations/" + organizationSlug + "/member-teams?view=" + (invite ? "invites" : "applications"));
+    }
+}

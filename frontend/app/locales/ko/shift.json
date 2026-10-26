@@ -1,0 +1,542 @@
+{
+  "shift": {
+    "availability": {
+      "allDay": "종일",
+      "startTime": "시작 시각",
+      "endTime": "종료 시각",
+      "timeRangeInvalid": "시작 시각은 종료 시각보다 빨라야 합니다",
+      "notConfigured": "아직 설정되지 않았습니다. 요일별 희망과 시간대를 입력한 후 저장하세요.",
+      "loadError": "기본 가능 여부를 불러오지 못했습니다",
+      "retry": "다시 시도"
+    },
+    "board": {
+      "title": "시프트 보드",
+      "memberPool": "미배정 멤버",
+      "dragHint": "멤버를 드래그하여 배정",
+      "unassignedSlots": "{count}건 미배정"
+    },
+    "autoAssign": {
+      "button": "자동 배정",
+      "strategy": "배정 전략",
+      "greedyV1": "탐욕 알고리즘 (MVP)",
+      "preferenceWeight": "희망 우선도",
+      "fairnessWeight": "공평성",
+      "consecutivePenalty": "연속 억제",
+      "run": "배정 실행",
+      "running": "배정 중...",
+      "resultBanner": "자동 배정이 완료되었습니다. 목시 확인 후 확정하세요.",
+      "confirm": "확정",
+      "revoke": "파기",
+      "history": "실행 이력",
+      "slotsFilled": "{filled}/{total} 슬롯 충족",
+      "warnings": "{count}건의 경고",
+      "disabledBadge": "중지 중",
+      "disabledReason": "자동 배정은 현재 중지되어 있습니다. 수동으로 편성해 주세요."
+    },
+    "visualReview": {
+      "title": "목시 확인",
+      "check1": "모든 슬롯에 담당자가 배정되어 있음",
+      "check2": "절대 휴무 멤버가 배정되지 않음",
+      "check3": "연속 근무일수 제약을 위반하지 않음",
+      "check4": "월간 근무 시간 상한을 초과하지 않음",
+      "check5": "멤버의 희망이 가능한 한 반영됨",
+      "note": "확인 메모 (선택)",
+      "submit": "목시 확인 완료"
+    },
+    "constraint": {
+      "warning": "근무 제약에 주의가 필요합니다",
+      "consecutiveDaysExceeded": "연속 근무일수 초과 위험",
+      "absoluteRest": "휴무일에 배정됨"
+    },
+    "changeRequest": {
+      "title": "변경 요청",
+      "type": {
+        "PRE_CONFIRM_EDIT": "확정 전 변경",
+        "INDIVIDUAL_SWAP": "개별 교대",
+        "OPEN_CALL": "오픈 콜"
+      },
+      "status": {
+        "OPEN": "신청 중",
+        "ACCEPTED": "승인",
+        "REJECTED": "거절",
+        "WITHDRAWN": "취하",
+        "EXPIRED": "만료"
+      },
+      "reason": "이유（선택）",
+      "submit": "변경 요청",
+      "review": "심사",
+      "withdraw": "취하",
+      "approve": "승인",
+      "reject": "거절",
+      "reviewComment": "심사 코멘트",
+      "openCallLimit": "오픈 콜은 월 3건까지",
+      "fetchError": "변경 요청 조회에 실패했습니다"
+    },
+    "pdf": {
+      "teamLayout": "팀 전체 표 PDF",
+      "personalLayout": "개인 타임라인 PDF",
+      "downloading": "PDF 생성 중...",
+      "error": "PDF 생성에 실패했습니다"
+    },
+    "myShifts": {
+      "title": "내 근무 희망 신청",
+      "empty": "근무가 없습니다",
+      "fetchError": "근무 정보 조회에 실패했습니다",
+      "description": "제출한 희망과 심사 상태 확인",
+      "scheduleDeleted": "근무표가 삭제되었습니다"
+    },
+    "page": {
+      "title": "근무",
+      "myShift": "내 근무",
+      "submitRequest": "희망 제출",
+      "availability": "요일별 기본 근무 희망",
+      "schedules": "스케줄 목록",
+      "detail": "상세",
+      "edit": "편집",
+      "requests": "신청 목록",
+      "workConstraints": "근무 제약",
+      "teamLoadFailed": "팀 정보를 불러오지 못했습니다"
+    },
+    "status": {
+      "all": "전체",
+      "draft": "초안",
+      "collecting": "수집 중",
+      "adjusting": "조정 중",
+      "published": "확정",
+      "archived": "보관됨"
+    },
+    "index": {
+      "title": "근무 관리",
+      "createNew": "새로 만들기",
+      "createDialog": "근무 새로 만들기",
+      "createSuccess": "근무를 생성했습니다",
+      "selectTeam": "팀 선택",
+      "fromDate": "시작일",
+      "toDate": "종료일",
+      "noSchedule": "근무가 없습니다",
+      "submissionRate": "제출률 {rate}%",
+      "deadline": "마감",
+      "formTitle": "제목",
+      "formTitlePlaceholder": "예: 2026년 5월 근무",
+      "formStart": "시작일",
+      "formEnd": "종료일",
+      "formDeadline": "신청 마감",
+      "formNote": "메모",
+      "formNotePlaceholder": "선택 사항"
+    },
+    "detail": {
+      "tabOverview": "개요",
+      "tabEdit": "편집",
+      "tabRequests": "신청 목록",
+      "tabConstraints": "근무 제약",
+      "startCollecting": "신청 수집 시작",
+      "startAdjusting": "조정 시작",
+      "publish": "확정 공개",
+      "archive": "보관",
+      "transitionSuccess": "상태를 변경했습니다",
+      "saveSuccess": "저장했습니다",
+      "deleteTitle": "근무표 삭제",
+      "deleteConfirm": "이 근무표를 삭제하시겠습니까? 제출된 희망은 각 구성원의 이력에 유지됩니다.",
+      "deleteSuccess": "근무표를 삭제했습니다",
+      "calendarView": "달력 보기",
+      "noDate": "날짜 없음",
+      "colDate": "날짜",
+      "colSlots": "슬롯",
+      "editDialogTitle": "근무 편집",
+      "accessDeniedRedirect": "이 페이지를 볼 권한이 없습니다"
+    },
+    "slot": {
+      "createTitle": "슬롯 생성",
+      "editTitle": "슬롯 편집",
+      "bulkCreate": "일괄 생성",
+      "bulkCreateSuccess": "{count}개의 슬롯을 생성했습니다",
+      "noSlot": "슬롯이 없습니다",
+      "noPosition": "포지션 없음",
+      "assigned": "배정됨",
+      "date": "날짜",
+      "startTime": "시작 시간",
+      "endTime": "종료 시간",
+      "position": "포지션",
+      "requiredCount": "필요 인원",
+      "note": "메모",
+      "notePlaceholder": "선택 사항",
+      "dayOfWeek": "요일",
+      "dayOfWeekHint": "선택한 요일에만 슬롯을 생성합니다",
+      "saveSuccess": "슬롯을 저장했습니다",
+      "deleteSuccess": "슬롯을 삭제했습니다",
+      "assignmentMasked": "조정 중",
+      "assignmentMaskedHint": "공개 전이므로 배정은 표시되지 않습니다"
+    },
+    "requests": {
+      "submissionRate": "제출률",
+      "pending": "미제출",
+      "matrixTitle": "희망 매트릭스",
+      "noRequests": "신청이 없습니다",
+      "colUser": "멤버",
+      "legend": "범례"
+    },
+    "preference": {
+      "preferred": "출근 희망",
+      "available": "지정 없음",
+      "weakRest": "출근 가능",
+      "strongRest": "가능하면 휴식",
+      "absoluteRest": "반드시 휴식"
+    },
+    "action": {
+      "create": "생성",
+      "edit": "편집",
+      "delete": "삭제",
+      "publish": "공개",
+      "copy": "복사",
+      "submit": "제출",
+      "withdraw": "취소",
+      "assign": "배정",
+      "unassign": "배정 해제",
+      "reminder": "리마인더 전송",
+      "export": "내보내기",
+      "reset": "초기화"
+    },
+    "field": {
+      "title": "제목",
+      "period": "기간",
+      "startDate": "시작일",
+      "endDate": "종료일",
+      "slotDate": "날짜",
+      "startTime": "시작 시간",
+      "endTime": "종료 시간",
+      "position": "포지션",
+      "requiredHeadcount": "필요 인원",
+      "assignedMembers": "배정 멤버",
+      "note": "메모",
+      "preference": "희망",
+      "preferenceNote": "희망 메모",
+      "deadline": "신청 마감",
+      "reason": "이유"
+    },
+    "workConstraint": {
+      "title": "근무 제약",
+      "maxMonthlyHours": "월 최대 근무 시간",
+      "maxMonthlyDays": "월 최대 근무 일수",
+      "maxConsecutiveDays": "최대 연속 근무 일수",
+      "maxNightShiftsPerMonth": "월 최대 야간 근무 횟수",
+      "maxNightShifts": "월 최대 야간 근무 횟수",
+      "minRestHoursBetweenShifts": "근무 간 최소 휴식 시간",
+      "minRestHours": "근무 간 최소 휴식 시간",
+      "note": "비고",
+      "notePlaceholder": "선택 사항",
+      "teamDefault": "팀 기본값",
+      "teamDefaultDescription": "팀 전체의 기본값으로 적용됩니다. 개별 재정의가 없는 한 모든 멤버에게 적용됩니다.",
+      "appliedToAll": "전원에게 적용",
+      "individual": "개인 설정",
+      "memberOverrides": "멤버별 예외 설정",
+      "memberOverridesDescription": "특정 멤버에게 다른 제약을 적용하려면 여기에 추가하세요.",
+      "addMember": "멤버 추가",
+      "noDefault": "팀 기본값이 설정되지 않았습니다",
+      "noOverrides": "개별 설정된 멤버가 없습니다",
+      "noLimit": "제한 없음",
+      "days": "일",
+      "times": "회",
+      "memberLabel": "사용자 #{userId}",
+      "readOnly": "읽기 전용",
+      "userId": "사용자 ID",
+      "userIdPlaceholder": "사용자 ID 입력",
+      "saveSuccess": "근무 제약을 저장했습니다",
+      "deleteSuccess": "근무 제약을 삭제했습니다"
+    },
+    "validation": {
+      "atLeastOneConstraint": "최소 하나의 항목을 지정해 주세요"
+    },
+    "summary": {
+      "totalMembers": "전체 멤버 수",
+      "submitted": "제출 완료",
+      "pending": "미제출",
+      "preferred": "출근 희망",
+      "available": "지정 없음",
+      "weakRest": "출근 가능",
+      "strongRest": "가능하면 휴식",
+      "absoluteRest": "반드시 휴식"
+    },
+    "payment": {
+      "hourlyRate": "시급",
+      "estimatedPay": "예상 급여",
+      "paySummary": "급여 요약"
+    },
+    "swap": {
+      "create": "교대 신청 생성",
+      "accept": "수락",
+      "reject": "거절",
+      "approve": "승인",
+      "pending": "승인 대기",
+      "openCall": "공개 모집",
+      "claimed": "신청됨",
+      "recipientMode": {
+        "label": "수신 대상",
+        "specific": "멤버 지정",
+        "template": "근무 시간대별",
+        "openCall": "팀 내 공개 모집"
+      },
+      "targetUsers": {
+        "label": "교대 후보자",
+        "placeholder": "멤버를 선택...",
+        "dayShift": "주간 근무자",
+        "nightShift": "야간 근무자",
+        "selectedCount": "{count}명 선택됨",
+        "empty": "선택할 수 있는 멤버가 없습니다"
+      },
+      "templateHint": "같은 스케줄의 {period}에게 일괄 전송합니다",
+      "list": {
+        "title": "시프트 교대 요청",
+        "requester": "신청자 #{id}",
+        "accepter": "교대 상대 #{id}",
+        "accepterUndecided": "교대 상대 미정",
+        "slot": "슬롯 #{id}",
+        "reason": "사유: {reason}",
+        "cancel": "철회",
+        "reload": "다시 불러오기",
+        "empty": "교대 요청이 없습니다",
+        "loadFailed": "교대 요청을 불러오지 못했습니다",
+        "loadFailedBody": "교대 요청을 가져올 수 없습니다",
+        "actionFailed": "처리에 실패했습니다",
+        "acceptSucceeded": "교대를 수락했습니다",
+        "approveSucceeded": "교대를 승인했습니다",
+        "rejectSucceeded": "교대를 반려했습니다",
+        "cancelSucceeded": "신청을 철회했습니다",
+        "statusPending": "수락 대기",
+        "statusAccepted": "승인 대기",
+        "statusApproved": "승인됨",
+        "statusRejected": "반려됨",
+        "statusCancelled": "철회됨"
+      }
+    },
+    "reminder": {
+      "send": "리마인더 전송",
+      "sent": "리마인더 전송됨",
+      "confirmTitle": "미제출 멤버에게 알림",
+      "confirmMessage": "'{title}' 희망을 아직 제출하지 않은 멤버에게 알림을 보낼까요?",
+      "confirmAccept": "알림 전송",
+      "confirmReject": "취소",
+      "sentTitle": "알림을 전송했습니다",
+      "sentDetail": "{count}명에게 희망 제출을 요청했습니다.",
+      "noRecipientsTitle": "미제출 멤버가 없습니다",
+      "noRecipientsDetail": "알림 대상이 없습니다.",
+      "failedTitle": "알림을 전송하지 못했습니다",
+      "failedDetail": "잠시 후 다시 시도해 주세요.",
+      "targetUnavailable": "이 스케줄을 볼 수 없거나 희망 접수가 종료되었습니다."
+    },
+    "empty": {
+      "noSchedules": "스케줄이 없습니다",
+      "noShifts": "근무가 없습니다",
+      "noRequests": "신청이 없습니다",
+      "noConstraints": "근무 제약이 설정되지 않았습니다"
+    },
+    "teamLoad": {
+      "timeout": "팀 정보를 불러오는 데 시간이 오래 걸립니다. 연결 상태를 확인하고 다시 시도해 주세요.",
+      "error": "팀 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "retry": "다시 시도"
+    },
+    "notification": {
+      "publishSuccess": "근무를 공개했습니다",
+      "submitSuccess": "희망을 제출했습니다",
+      "deleteSuccess": "삭제했습니다",
+      "updateSuccess": "업데이트했습니다",
+      "errorLoad": "데이터 로드에 실패했습니다",
+      "errorSubmit": "제출에 실패했습니다",
+      "errorDelete": "삭제에 실패했습니다",
+      "errorUpdate": "업데이트에 실패했습니다"
+    },
+    "view": {
+      "monthly": "월 보기",
+      "weekly": "주 보기",
+      "daily": "일 보기",
+      "today": "오늘",
+      "prev": "이전 기간",
+      "next": "다음 기간"
+    },
+    "legend": "범례",
+    "availabilityDescription": "요일별 기본 희망을 설정합니다. 희망 제출 시 초기값으로 사용됩니다.",
+    "bulkSet": {
+      "title": "일괄 설정",
+      "selectAll": "모두 선택",
+      "clearAll": "모두 지우기",
+      "applyToAll": "전체 슬롯에 적용",
+      "applyToWeekday": "평일에 적용",
+      "applyToWeekend": "휴일에 적용",
+      "confirm": "적용"
+    },
+    "preview": {
+      "title": "제출 전 확인",
+      "preferredCount": "출근 희망: {count} 건",
+      "availableCount": "지정 없음: {count} 건",
+      "weakRestCount": "출근 가능: {count} 건",
+      "strongRestCount": "가능하면 휴식: {count} 건",
+      "absoluteRestCount": "반드시 휴식: {count} 건",
+      "totalCount": "합계: {count} 건",
+      "totalLabel": "합계",
+      "confirmSubmit": "이 내용으로 제출하시겠습니까？"
+    },
+    "myShift": {
+      "confirmedTitle": "확정 근무",
+      "upcomingTitle": "다가오는 확정 근무",
+      "teamFilter": {
+        "all": "모든 팀",
+        "label": "팀으로 필터"
+      },
+      "slot": {
+        "time": "{start}〜{end}",
+        "position": "포지션",
+        "schedule": "스케줄",
+        "noSlot": "이 날의 근무가 없습니다"
+      }
+    },
+    "entry": {
+      "sectionTitle": "희망 제출 / 시프트 보드",
+      "bulkRequest": "한꺼번에 희망 제출",
+      "board": "시프트 보드",
+      "weeklyDefault": "요일별 기본값 설정",
+      "closed": "희망 접수가 종료되었습니다"
+    },
+    "submitConfirm": {
+      "title": "이 내용으로 제출할까요?",
+      "filledLabel": "입력한 날",
+      "defaultAppliedLabel": "기본값에서 자동 입력된 날",
+      "untouchedLabel": "입력하지 않은 날",
+      "dayCount": "{count}일",
+      "untouchedNotice": "입력하지 않은 날은 \"가급적 쉬고 싶음\"으로 제출됩니다. 다만 인력이 부족하면 근무 요청이 올 수 있습니다.",
+      "submit": "제출",
+      "back": "돌아가서 수정"
+    },
+    "hourlyRate": {
+      "title": "시급 설정",
+      "description": "멤버별 시급을 등록합니다. 시급이 설정되지 않은 멤버의 근무는 근무 예산 소진액에 반영되지 않습니다.",
+      "missingWarning": "시급이 설정되지 않은 멤버가 {count}명 있습니다. 이 상태로는 근무표를 공개해도 예산 소진액에 반영되지 않습니다.",
+      "unset": "미설정",
+      "setButton": "설정",
+      "perHour": "{amount}엔/h",
+      "saved": "시급을 저장했습니다",
+      "saveFailed": "시급 저장에 실패했습니다",
+      "loadFailed": "시급을 불러오지 못했습니다",
+      "historyLoadFailed": "시급 이력을 불러오지 못했습니다",
+      "permissionLoadFailed": "권한을 불러오지 못했습니다",
+      "forbidden": "이 화면을 볼 권한이 없습니다",
+      "noMembers": "멤버가 없습니다",
+      "dialogTitle": "{name}의 시급 설정",
+      "effectiveFromHint": "지정한 날짜부터 적용됩니다. 이전 설정은 이력으로 남습니다. 같은 날짜로 다시 등록하면 해당 날짜의 설정이 정정됩니다.",
+      "historyTitle": "시급 이력",
+      "noHistory": "등록된 시급 이력이 없습니다",
+      "column": {
+        "member": "멤버",
+        "rate": "시급",
+        "effectiveFrom": "적용 시작일"
+      },
+      "validation": {
+        "rateRequired": "시급을 입력해 주세요",
+        "ratePositive": "시급은 1엔 이상으로 입력해 주세요"
+      }
+    }
+  },
+  "my_shift_guide": {
+    "title": "근무표 페이지 사용법",
+    "description": "이 페이지에서는 내게 배정된 확정 근무를 확인하고 교대 요청을 신청할 수 있습니다.",
+    "view_shifts": {
+      "title": "확정 근무 확인하기",
+      "body": "로그인한 사용자에게 배정된 확정 근무를 월간 캘린더 또는 주간 목록으로 표시합니다. 근무가 없는 날짜는 빈칸으로 표시됩니다.",
+      "steps": {
+        "step1": "\"/my/shift\" 페이지를 엽니다",
+        "step2": "페이지가 확정 근무를 자동으로 불러와 캘린더 또는 목록에 표시합니다",
+        "step3": "근무가 없으면 \"근무가 없습니다\"라고 표시됩니다"
+      }
+    },
+    "switch_view": {
+      "title": "보기 전환하기",
+      "body": "월간 캘린더(전체 파악에 적합)와 주간 목록(자세히 확인하기에 적합) 두 가지 보기를 전환할 수 있습니다. 화살표 버튼으로 이전/다음 달 또는 주로 이동할 수 있습니다.",
+      "steps": {
+        "step1": "화면 위쪽의 \"월 보기\"와 \"주 보기\" 버튼으로 표시 형식을 전환합니다",
+        "step2": "◀ ▶ 버튼으로 이전 달/다음 달(또는 이전 주/다음 주)로 이동합니다",
+        "step3": "\"오늘\" 버튼으로 오늘이 포함된 달/주로 돌아옵니다"
+      }
+    },
+    "filter_team": {
+      "title": "팀으로 필터링하기",
+      "body": "여러 팀에 소속되어 있는 경우 특정 팀의 근무만 표시할 수 있습니다. \"전체\" 버튼을 선택하면 모든 팀의 근무가 표시됩니다.",
+      "steps": {
+        "step1": "화면 위쪽 \"팀:\" 항목에서 \"전체\" 또는 팀 이름 버튼을 탭합니다",
+        "step2": "선택한 팀의 근무만 표시됩니다",
+        "step3": "\"전체\"를 다시 탭하면 필터가 해제됩니다"
+      }
+    },
+    "view_detail": {
+      "title": "근무 상세 확인하기",
+      "body": "특정 날짜를 탭하면 해당 근무의 팀 이름, 포지션, 시간, 스케줄 이름 등의 상세 정보를 확인할 수 있습니다.",
+      "steps": {
+        "step1": "[월 보기] 날짜 칸을 탭하면 선택한 날짜의 상세 패널이 열립니다",
+        "step2": "[주 보기] 날짜 카드의 헤더를 탭하면 카드가 펼쳐지며 근무 목록이 표시됩니다",
+        "step3": "월 보기에서는 같은 날짜를 다시 탭하면 상세 패널이 닫힙니다"
+      }
+    },
+    "swap_request": {
+      "title": "교대 요청 신청하기",
+      "body": "확정 근무를 다른 멤버와 교대하고 싶을 때는 세 가지 방식으로 요청을 보낼 수 있습니다. 전송 후에는 근무 목록이 자동으로 갱신됩니다.",
+      "steps": {
+        "step1": "근무 상세에서 \"교대 요청 작성\" 버튼을 클릭합니다",
+        "step2": "전송 방식을 선택합니다: \"멤버 지정\"(1명 이상 선택) / \"근무 시간대별 일괄\"(같은 날 주간 또는 야간 근무 담당자 전원) / \"팀 내 공개 모집\"(팀 멤버가 지원 가능)",
+        "step3": "필요하면 사유를 입력합니다(선택 사항)",
+        "step4": "\"제출\" 버튼을 클릭하여 전송합니다"
+      },
+      "note": "제출 후에는 확정 근무 목록이 자동으로 갱신됩니다. 전송 중에는 버튼이 비활성화되므로 완료될 때까지 그대로 기다려 주세요."
+    }
+  },
+  "shift_guide": {
+    "title": "근무표 관리 사용법",
+    "description": "근무표 관리에서는 팀의 근무 일정을 작성·공개하고, 멤버의 희망을 수집해 조정할 수 있습니다.",
+    "overview": {
+      "title": "근무 일정 목록 확인하기",
+      "body": "이 페이지에서는 팀의 근무 일정 목록을 관리합니다. 상태 배지로 진행 상황을 한눈에 알 수 있습니다.",
+      "steps": {
+        "step1": "상태 필터(초안·수집 중·조정 중·공개됨 등)로 필터링합니다",
+        "step2": "각 카드의 제출률 막대로 멤버의 희망 제출 현황을 확인합니다",
+        "step3": "카드를 클릭하여 상세 페이지로 이동합니다"
+      }
+    },
+    "create": {
+      "title": "새 근무 일정 만들기",
+      "body": "팀 관리자는 새 근무 일정을 만들 수 있습니다. 제목과 기간을 설정해 시작해 보세요.",
+      "steps": {
+        "step1": "오른쪽 위의 \"새로 만들기\" 버튼을 클릭합니다",
+        "step2": "제목·시작일·종료일을 입력합니다(필수)",
+        "step3": "필요에 따라 희망 마감일과 메모를 입력합니다",
+        "step4": "\"만들기\" 버튼으로 확정합니다(상태: 초안으로 생성됨)"
+      }
+    },
+    "status": {
+      "title": "상태를 진행해 근무를 확정하기",
+      "body": "근무는 5단계 상태로 관리됩니다. 상세 페이지의 스테퍼에서 현재 단계를 확인하고 순서대로 진행하세요.",
+      "steps": {
+        "step1": "\"초안\": 슬롯과 제약을 설정하는 준비 단계",
+        "step2": "\"수집 중\": 멤버에게 근무 희망 제출을 요청합니다",
+        "step3": "\"조정 중\": 희망을 바탕으로 근무를 조정·작성합니다",
+        "step4": "\"공개됨\": 확정된 근무를 멤버에게 공개합니다",
+        "step5": "\"완료\": 종료된 근무를 보관합니다"
+      }
+    },
+    "requests": {
+      "title": "멤버의 근무 희망 수집·확인하기",
+      "body": "\"수집 중\" 상태가 되면 멤버가 희망을 제출할 수 있습니다. 상세 페이지의 \"희망 목록\" 탭에서 모든 멤버의 현황을 매트릭스로 확인할 수 있습니다.",
+      "steps": {
+        "step1": "상세 페이지의 \"희망 목록\" 탭을 클릭합니다",
+        "step2": "요약 카드에서 제출률과 미제출 인원을 확인합니다",
+        "step3": "매트릭스 표에서 멤버별·날짜별 희망 강도를 확인합니다",
+        "step4": "\"근무 희망·지정 없음·근무 가능하지만 희망하지 않음·가능하면 휴무·절대 휴무\"의 5단계로 표시됩니다"
+      }
+    },
+    "slots": {
+      "title": "슬롯과 근무 제약 설정하기",
+      "body": "근무 시간대(슬롯)를 등록하고 팀·멤버별 근무 제약을 설정합니다.",
+      "steps": {
+        "step1": "\"편집\" 탭에서 슬롯(날짜·시작~종료 시각·포지션·필요 인원)을 만듭니다",
+        "step2": "\"일괄 생성\" 버튼으로 날짜 범위와 요일을 지정해 여러 슬롯을 한 번에 등록할 수도 있습니다",
+        "step3": "\"제약\" 탭에서 팀 기본 근무 제약(월 최대 시간·연속 근무 일수 등)을 설정합니다",
+        "step4": "특정 멤버에게는 \"멤버별 예외 설정\"으로 개별 제약을 덮어써서 설정할 수 있습니다"
+      }
+    }
+  }
+}

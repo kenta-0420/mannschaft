@@ -1,0 +1,67 @@
+{
+    "schemaVersion":  1,
+    "cmpId":  "CMP-261022-2338",
+    "scope":  "tooling",
+    "implementation":  {
+                           "pr":  4059,
+                           "sha":  "2d3eff5af32454a51a9731befdbfca7433cc622f"
+                       },
+    "acceptanceCriteria":  [
+                               {
+                                   "id":  "PRE-D",
+                                   "description":  "負債/橋渡しの読取根拠を整理したPRE-D証拠文書を準備する。L5本体の負債返済・コード変更は未着手であり、実施済みと主張しない。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "固定SHA・根拠・未実施表示の文書検分",
+                                                     "evidence":  "docs/evidence/CMP-261022-2338-l5-pre-d.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "PRE-V",
+                                   "description":  "verify/Gradleの読取根拠を整理したPRE-V証拠文書を準備する。Gradle verify実行・L5本体実装は未実施であり、greenと主張しない。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "固定SHA・根拠・未実施表示の文書検分",
+                                                     "evidence":  "docs/evidence/CMP-261022-2338-l5-pre-v.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "PRE-O",
+                                   "description":  "API/運用の読取根拠を整理したPRE-O証拠文書を準備する。API/DB/運用runtimeの実検証は未実施であり、合格と主張しない。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "固定SHA・根拠・未実施表示の文書検分",
+                                                     "evidence":  "docs/evidence/CMP-261022-2338-l5-pre-o.md"
+                                                 }
+                                             ]
+                               }
+                           ],
+    "ci":  [
+               {
+                   "runId":  39801748413
+               }
+           ],
+    "stages":  {
+                   "review":  {
+                                  "status":  "passed",
+                                  "evidence":  "https://github.com/kenta-0420/mannschaft/pull/4059"
+                              },
+                   "real":  {
+                                "status":  "not-applicable",
+                                "scope":  "tooling",
+                                "reason":  "本変更はPRE証拠3文書のみ。製品UI/API/DB/実行経路を変更しない。将来必要な実機・探索は未実施として各文書に記録。"
+                            },
+                   "exploratory":  {
+                                       "status":  "not-applicable",
+                                       "scope":  "tooling",
+                                       "reason":  "本変更はPRE証拠3文書のみ。製品UI/API/DB/実行経路を変更しない。将来必要な実機・探索は未実施として各文書に記録。"
+                                   }
+               },
+    "regressions":  [
+
+                    ],
+    "preparedOnly":  true,
+    "parentNotCompleted":  true
+}

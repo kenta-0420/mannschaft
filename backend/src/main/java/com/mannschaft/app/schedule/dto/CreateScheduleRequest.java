@@ -1,0 +1,160 @@
+package com.mannschaft.app.schedule.dto;
+
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+
+/**
+ * スケジュール作成リクエストDTO。
+ */
+@Getter
+@RequiredArgsConstructor(onConstructor_ = @JsonCreator)
+public class CreateScheduleRequest {
+
+    @NotBlank
+    @Size(max = 200)
+    private final String title;
+
+    @Size(max = 5000)
+    private final String description;
+
+    @Size(max = 300)
+    private final String location;
+
+    /**
+     * 開始日時。クライアントのタイムゾーン情報付きで受け取る（例: 2026-06-04T10:00:00+09:00）。
+     * BE は {@code OffsetDateTime.atZoneSameInstant(Asia/Tokyo).toLocalDateTime()} で JST に変換して保存する。
+     */
+    @NotNull
+    private final OffsetDateTime startAt;
+
+    /**
+     * 終了日時。startAt と同様にクライアントTZ付きで受け取り、JST に変換して保存する。
+     */
+    private final OffsetDateTime endAt;
+
+    @NotNull
+    private final Boolean allDay;
+
+    @NotNull
+    private final String eventType;
+
+    private final String visibility;
+
+    private final String minViewRole;
+
+    private final String minResponseRole;
+
+    /** null は後方互換のため ALL_MEMBERS として扱う。 */
+    private final String targetMode;
+
+    /** SELECTED_MEMBERS 時だけ指定する、スコープ内の対象ユーザーID。 */
+    @Size(max = 500)
+    private final List<Long> targetUserIds;
+
+    @NotNull
+    private final Boolean attendanceRequired;
+
+    /**
+     * 出欠締切日時。クライアントTZ付きで受け取り、JST に変換して保存する。
+     */
+    private final OffsetDateTime attendanceDeadline;
+
+    private final String commentOption;
+
+    /** 行事カテゴリID（任意。F03.10 拡張フィールド）。 */
+    private final Long eventCategoryId;
+
+    /** 年度（任意。F03.10 拡張フィールド。例: 2026）。 */
+    private final Integer academicYear;
+
+    private final RecurrenceRuleDto recurrenceRule;
+
+    @Size(max = 10)
+    private final List<CreateSurveyRequest> surveys;
+
+    @Size(max = 5)
+    private final List<CreateReminderRequest> reminders;
+
+    // --- 機能55 第二陣: 予約作成（予約アンケート / 予約出欠募集） ---
+
+    /**
+     * 予約アンケート（任意・最大10件）。指定時刻に集計可能な本格アンケートを自動生成・公開する。
+     * materialize は後続バッチ（{@code ScheduleScheduledTaskBatchService}）が担う。
+     */
+    @Size(max = 10)
+    @Valid
+    private final List<ScheduledSurveyRequest> scheduledSurveys;
+
+    /**
+     * 予約出欠募集（任意・単一）。指定時刻に出欠レコードを生成し対象メンバーへ募集通知を配信する。
+     * materialize は後続バッチ（{@code ScheduleScheduledTaskBatchService}）が担う。
+     */
+    @Valid
+    private final ScheduledAttendanceRequest scheduledAttendance;
+
+    /**
+     * 出欠確認の配信母集団にサポーター（応援者）を含めるか。省略時 false（組織配信時はサポーター除外）。
+     * (B) 組織→参加チーム配信 案C フェーズA 隊A で追加。値を使った母集団絞り込みは後続隊。
+     */
+    private final Boolean includeSupporters;
+
+    /**
+     * 出欠確認の集計を「チームごとの内訳（by_team）」でも収集・表示するか。省略時 false（従来挙動＝全体集計のみ）。
+     * (B) 組織→参加チーム配信 案C フェーズB（出欠のチーム別内訳）で追加。TRUE のときのみ
+     * 組織出欠集計が by_team を算出して返す。
+     */
+    private final Boolean teamBreakdownEnabled;
+
+    /** 代理出席を許可するか。省略・null は false。個人予定では使用しない。 */
+    @JsonAlias("allow_proxy_attendance")
+    private final Boolean allowProxyAttendance;
+
+    /** 新規の代理依頼を自動受諾するか。省略・null は false。 */
+    @JsonAlias("is_proxy_auto_accept")
+    private final Boolean isProxyAutoAccept;
+
+    /** 代理設定追加以前のJava呼び出し元との互換性を保つ。 */
+    public CreateScheduleRequest(
+            String title, String description, String location,
+            OffsetDateTime startAt, OffsetDateTime endAt, Boolean allDay,
+            String eventType, String visibility, String minViewRole, String minResponseRole,
+            String targetMode, List<Long> targetUserIds,
+            Boolean attendanceRequired, OffsetDateTime attendanceDeadline, String commentOption,
+            Long eventCategoryId, Integer academicYear, RecurrenceRuleDto recurrenceRule,
+            List<CreateSurveyRequest> surveys, List<CreateReminderRequest> reminders,
+            List<ScheduledSurveyRequest> scheduledSurveys,
+            ScheduledAttendanceRequest scheduledAttendance,
+            Boolean includeSupporters, Boolean teamBreakdownEnabled) {
+        this(title, description, location, startAt, endAt, allDay, eventType, visibility,
+                minViewRole, minResponseRole, targetMode, targetUserIds, attendanceRequired,
+                attendanceDeadline, commentOption, eventCategoryId, academicYear, recurrenceRule,
+                surveys, reminders, scheduledSurveys, scheduledAttendance, includeSupporters,
+                teamBreakdownEnabled, null, null);
+    }
+
+    /** 対象者機能追加以前のJava呼び出し元向け。JSON契約では省略時ALL_MEMBERSとして扱う。 */
+    public CreateScheduleRequest(
+            String title, String description, String location,
+            OffsetDateTime startAt, OffsetDateTime endAt, Boolean allDay,
+            String eventType, String visibility, String minViewRole, String minResponseRole,
+            Boolean attendanceRequired, OffsetDateTime attendanceDeadline, String commentOption,
+            Long eventCategoryId, Integer academicYear, RecurrenceRuleDto recurrenceRule,
+            List<CreateSurveyRequest> surveys, List<CreateReminderRequest> reminders,
+            List<ScheduledSurveyRequest> scheduledSurveys,
+            ScheduledAttendanceRequest scheduledAttendance,
+            Boolean includeSupporters, Boolean teamBreakdownEnabled) {
+        this(title, description, location, startAt, endAt, allDay, eventType, visibility,
+                minViewRole, minResponseRole, null, null, attendanceRequired, attendanceDeadline,
+                commentOption, eventCategoryId, academicYear, recurrenceRule, surveys, reminders,
+                scheduledSurveys, scheduledAttendance, includeSupporters, teamBreakdownEnabled);
+    }
+}

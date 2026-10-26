@@ -1,0 +1,38 @@
+<script setup lang="ts">
+const props = defineProps<{
+  to?: string
+  label?: string
+}>()
+
+const { t } = useI18n()
+const router = useRouter()
+
+// label 未指定なら i18n の共通「戻る」キーにフォールバックする
+// （キーは common.json ルートの button.back。プレフィックス無しが正しい解決パス）
+const displayLabel = computed(() => props.label ?? t('button.back'))
+
+function goBack() {
+  if (props.to) {
+    navigateTo(props.to)
+  } else {
+    router.back()
+  }
+}
+</script>
+
+<template>
+  <NuxtLink
+    v-if="to"
+    :to="to"
+    class="inline-flex min-h-11 -ml-2 -mt-2 mb-2 items-center gap-1.5 pl-2 pt-2 pb-2 text-base font-medium text-primary hover:underline"
+  >
+    <i class="pi pi-arrow-left text-sm" />{{ displayLabel }}
+  </NuxtLink>
+  <button
+    v-else
+    class="inline-flex min-h-11 -ml-2 -mt-2 mb-2 items-center gap-1.5 pl-2 pt-2 pb-2 text-base font-medium text-primary hover:underline"
+    @click="goBack"
+  >
+    <i class="pi pi-arrow-left text-sm" />{{ displayLabel }}
+  </button>
+</template>

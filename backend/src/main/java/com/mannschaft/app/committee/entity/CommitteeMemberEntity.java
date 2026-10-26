@@ -1,0 +1,72 @@
+package com.mannschaft.app.committee.entity;
+
+import com.mannschaft.app.common.BaseEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
+
+import java.time.LocalDateTime;
+
+/**
+ * 委員会メンバーエンティティ。委員会への参加履歴を管理する。
+ */
+@Entity
+@Table(name = "committee_members")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@SuperBuilder(toBuilder = true)
+public class CommitteeMemberEntity extends BaseEntity {
+
+    /** 委員会ID */
+    @Column(nullable = false)
+    private Long committeeId;
+
+    /** ユーザーID */
+    @Column(nullable = false)
+    private Long userId;
+
+    /** 委員会ロール */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private CommitteeRole role;
+
+    /** 参加日時 */
+    @Column(nullable = false)
+    private LocalDateTime joinedAt;
+
+    /** 離脱日時（null = 現役） */
+    private LocalDateTime leftAt;
+
+    /** 招待者ユーザーID */
+    private Long invitedBy;
+
+    /**
+     * ロールを変更する。
+     */
+    public void updateRole(CommitteeRole newRole) {
+        this.role = newRole;
+    }
+
+    /**
+     * 離脱処理を行う。
+     */
+    public void leave() {
+        this.leftAt = LocalDateTime.now();
+    }
+
+    /**
+     * 指定日時で離脱処理を行う。
+     *
+     * <p>組織脱退に伴う一括クリーンアップでは、同一イベントで終了する全メンバーシップに
+     * 同じ日時を記録し、処理結果を決定的にするために使用する。</p>
+     */
+    public void leaveAt(LocalDateTime leftAt) {
+        this.leftAt = leftAt;
+    }
+}

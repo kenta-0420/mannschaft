@@ -1,0 +1,72 @@
+{
+  "committee": {
+    "label": "委員会",
+    "list": {
+      "title": "委員会一覧",
+      "empty": "委員会はまだありません",
+      "create": "委員会を設立する"
+    },
+    "status": {
+      "DRAFT": "準備中",
+      "ACTIVE": "活動中",
+      "CLOSED": "活動終了",
+      "ARCHIVED": "アーカイブ",
+      "CANCELLED_DRAFT": "設立キャンセル"
+    },
+    "role": {
+      "CHAIR": "委員長",
+      "VICE_CHAIR": "副委員長",
+      "SECRETARY": "書記",
+      "MEMBER": "委員"
+    },
+    "field": {
+      "name": "委員会名",
+      "description": "説明",
+      "purpose_tag": "目的タグ",
+      "visibility_to_org": "組織への公開設定",
+      "start_date": "開始日",
+      "end_date": "終了日",
+      "member_count": "メンバー数"
+    },
+    "visibility": {
+      "HIDDEN": "非公開",
+      "NAME_ONLY": "名前のみ公開",
+      "NAME_AND_PURPOSE": "名前と目的を公開"
+    },
+    "detail": {
+      "members": "メンバー",
+      "invite": "メンバーを招集する",
+      "distributions": "伝達履歴",
+      "activate": "活動を開始する",
+      "close": "活動を終了する",
+      "archive": "アーカイブする",
+      "leave": "委員会を離脱する",
+      "remove_member": "メンバーを解任する",
+      "remove_member_confirm": "{name} を解任しますか？"
+    },
+    "distributions": {
+      "title": "伝達履歴",
+      "empty": "伝達履歴はありません",
+      "content_type": "コンテンツ種別",
+      "target_scope": "対象範囲",
+      "created_at": "作成日時",
+      "confirmation_mode": "確認モード",
+      "announced": "告知済み"
+    },
+    "invitation": {
+      "accept": "参加する",
+      "decline": "辞退する",
+      "accepted": "委員会に参加しました",
+      "declined": "招集を辞退しました",
+      "expired": "この招集状は有効期限切れです",
+      "invalid": "無効な招集状です",
+      "send": "招集状を送る",
+      "cancel": "招集を取り下げる",
+      "proposed_role": "招集ロール",
+      "invitee": "招集対象"
+    },
+    "create_dialog": {
+      "title": "委員会を設立する"
+    }
+  }
+}

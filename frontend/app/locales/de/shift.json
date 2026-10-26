@@ -1,0 +1,542 @@
+{
+  "shift": {
+    "availability": {
+      "allDay": "Ganztägig",
+      "startTime": "Startzeit",
+      "endTime": "Endzeit",
+      "timeRangeInvalid": "Die Startzeit muss vor der Endzeit liegen",
+      "notConfigured": "Noch nicht konfiguriert. Lege Präferenz und Zeitraum je Wochentag fest und speichere.",
+      "loadError": "Standardverfügbarkeit konnte nicht geladen werden",
+      "retry": "Erneut versuchen"
+    },
+    "board": {
+      "title": "Schichtplan-Board",
+      "memberPool": "Nicht zugewiesene Mitglieder",
+      "dragHint": "Mitglieder per Drag & Drop zuweisen",
+      "unassignedSlots": "{count} nicht zugewiesene Schichten"
+    },
+    "autoAssign": {
+      "button": "Automatisch zuweisen",
+      "strategy": "Zuweisungsstrategie",
+      "greedyV1": "Greedy-Algorithmus (MVP)",
+      "preferenceWeight": "Präferenzpriorität",
+      "fairnessWeight": "Fairness",
+      "consecutivePenalty": "Aufeinanderfolge-Strafe",
+      "run": "Zuweisung ausführen",
+      "running": "Wird zugewiesen...",
+      "resultBanner": "Automatische Zuweisung abgeschlossen. Bitte überprüfen und bestätigen.",
+      "confirm": "Bestätigen",
+      "revoke": "Verwerfen",
+      "history": "Ausführungshistorie",
+      "slotsFilled": "{filled}/{total} Schichten besetzt",
+      "warnings": "{count} Warnungen",
+      "disabledBadge": "Ausgesetzt",
+      "disabledReason": "Die automatische Zuweisung ist derzeit ausgesetzt. Bitte manuell planen."
+    },
+    "visualReview": {
+      "title": "Sichtprüfung",
+      "check1": "Alle Schichten haben einen zugewiesenen Verantwortlichen",
+      "check2": "Keine Mitglieder an absoluten Ruhetagen zugewiesen",
+      "check3": "Keine Verletzung der Aufeinanderfolge-Beschränkungen",
+      "check4": "Monatliches Arbeitsstundenlimit nicht überschritten",
+      "check5": "Mitgliederwünsche so weit wie möglich berücksichtigt",
+      "note": "Prüfnotiz (optional)",
+      "submit": "Sichtprüfung abschließen"
+    },
+    "constraint": {
+      "warning": "Arbeitsbeschränkungswarnung",
+      "consecutiveDaysExceeded": "Risiko der Überschreitung aufeinanderfolgender Tage",
+      "absoluteRest": "An absolutem Ruhetag zugewiesen"
+    },
+    "changeRequest": {
+      "title": "Änderungsantrag",
+      "type": {
+        "PRE_CONFIRM_EDIT": "Vorbestätigungs-Bearbeitung",
+        "INDIVIDUAL_SWAP": "Individueller Tausch",
+        "OPEN_CALL": "Offene Ausschreibung"
+      },
+      "status": {
+        "OPEN": "Offen",
+        "ACCEPTED": "Akzeptiert",
+        "REJECTED": "Abgelehnt",
+        "WITHDRAWN": "Zurückgezogen",
+        "EXPIRED": "Abgelaufen"
+      },
+      "reason": "Grund (optional)",
+      "submit": "Änderung beantragen",
+      "review": "Überprüfen",
+      "withdraw": "Zurückziehen",
+      "approve": "Genehmigen",
+      "reject": "Ablehnen",
+      "reviewComment": "Prüfungskommentar",
+      "openCallLimit": "Offene Ausschreibungen sind auf 3 pro Monat begrenzt",
+      "fetchError": "Fehler beim Abrufen der Änderungsanträge"
+    },
+    "pdf": {
+      "teamLayout": "Team-Schichtplan PDF",
+      "personalLayout": "Persönliche Zeitleiste PDF",
+      "downloading": "PDF wird erstellt...",
+      "error": "PDF-Erstellung fehlgeschlagen"
+    },
+    "myShifts": {
+      "title": "Meine Schichtanfragen",
+      "empty": "Keine Schichten gefunden",
+      "fetchError": "Schichtinformationen konnten nicht abgerufen werden",
+      "description": "Eingereichte Anfragen und ihr Genehmigungsstatus",
+      "scheduleDeleted": "Schichtplan wurde gelöscht"
+    },
+    "page": {
+      "title": "Schicht",
+      "myShift": "Meine Schicht",
+      "submitRequest": "Wunsch einreichen",
+      "availability": "Standard-Wochenverfügbarkeit",
+      "schedules": "Schichtplan-Liste",
+      "detail": "Detail",
+      "edit": "Bearbeiten",
+      "requests": "Anfragen",
+      "workConstraints": "Arbeitsbeschränkungen",
+      "teamLoadFailed": "Teaminformationen konnten nicht geladen werden"
+    },
+    "status": {
+      "all": "Alle",
+      "draft": "Entwurf",
+      "collecting": "Sammlung läuft",
+      "adjusting": "Anpassung",
+      "published": "Veröffentlicht",
+      "archived": "Archiviert"
+    },
+    "index": {
+      "title": "Schichtverwaltung",
+      "createNew": "Neu anlegen",
+      "createDialog": "Neue Schicht anlegen",
+      "createSuccess": "Schicht erfolgreich angelegt",
+      "selectTeam": "Team auswählen",
+      "fromDate": "Von",
+      "toDate": "Bis",
+      "noSchedule": "Keine Schichten vorhanden",
+      "submissionRate": "Einreichungsquote {rate}%",
+      "deadline": "Frist",
+      "formTitle": "Titel",
+      "formTitlePlaceholder": "z.B. Schicht Mai 2026",
+      "formStart": "Startdatum",
+      "formEnd": "Enddatum",
+      "formDeadline": "Einsendeschluss",
+      "formNote": "Notiz",
+      "formNotePlaceholder": "Optional"
+    },
+    "detail": {
+      "tabOverview": "Übersicht",
+      "tabEdit": "Bearbeiten",
+      "tabRequests": "Anfragen",
+      "tabConstraints": "Beschränkungen",
+      "startCollecting": "Sammlung starten",
+      "startAdjusting": "Anpassung starten",
+      "publish": "Veröffentlichen",
+      "archive": "Archivieren",
+      "transitionSuccess": "Status geändert",
+      "saveSuccess": "Gespeichert",
+      "deleteTitle": "Schichtplan löschen",
+      "deleteConfirm": "Diesen Schichtplan löschen? Eingereichte Wünsche bleiben im Verlauf der Mitglieder erhalten.",
+      "deleteSuccess": "Schichtplan gelöscht",
+      "calendarView": "Kalenderansicht",
+      "noDate": "Kein Datum",
+      "colDate": "Datum",
+      "colSlots": "Slots",
+      "editDialogTitle": "Schicht bearbeiten",
+      "accessDeniedRedirect": "Sie haben keine Berechtigung, diese Seite anzuzeigen"
+    },
+    "slot": {
+      "createTitle": "Slot anlegen",
+      "editTitle": "Slot bearbeiten",
+      "bulkCreate": "Massenanlage",
+      "bulkCreateSuccess": "{count} Slots angelegt",
+      "noSlot": "Keine Slots",
+      "noPosition": "Keine Position",
+      "assigned": "Zugewiesen",
+      "date": "Datum",
+      "startTime": "Startzeit",
+      "endTime": "Endzeit",
+      "position": "Position",
+      "requiredCount": "Benötigte Personen",
+      "note": "Notiz",
+      "notePlaceholder": "Optional",
+      "dayOfWeek": "Wochentag",
+      "dayOfWeekHint": "Slots werden nur an den gewählten Wochentagen angelegt",
+      "saveSuccess": "Slot gespeichert",
+      "deleteSuccess": "Slot gelöscht",
+      "assignmentMasked": "In Abstimmung",
+      "assignmentMaskedHint": "Zuweisungen werden bis zur Veröffentlichung ausgeblendet"
+    },
+    "requests": {
+      "submissionRate": "Einreichungsquote",
+      "pending": "Ausstehend",
+      "matrixTitle": "Präferenzmatrix",
+      "noRequests": "Keine Anfragen eingereicht",
+      "colUser": "Mitglied",
+      "legend": "Legende"
+    },
+    "preference": {
+      "preferred": "Arbeit bevorzugt",
+      "available": "Keine Präferenz",
+      "weakRest": "Kann arbeiten wenn nötig",
+      "strongRest": "Ruhe bevorzugt",
+      "absoluteRest": "Freier Tag erforderlich"
+    },
+    "action": {
+      "create": "Erstellen",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "publish": "Veröffentlichen",
+      "copy": "Kopieren",
+      "submit": "Einreichen",
+      "withdraw": "Zurückziehen",
+      "assign": "Zuweisen",
+      "unassign": "Zuweisung aufheben",
+      "reminder": "Erinnerung senden",
+      "export": "Exportieren",
+      "reset": "Zurücksetzen"
+    },
+    "field": {
+      "title": "Titel",
+      "period": "Zeitraum",
+      "startDate": "Startdatum",
+      "endDate": "Enddatum",
+      "slotDate": "Datum",
+      "startTime": "Startzeit",
+      "endTime": "Endzeit",
+      "position": "Position",
+      "requiredHeadcount": "Benötigte Mitarbeiterzahl",
+      "assignedMembers": "Zugewiesene Mitglieder",
+      "note": "Notiz",
+      "preference": "Präferenz",
+      "preferenceNote": "Präferenznotiz",
+      "deadline": "Einsendeschluss",
+      "reason": "Grund"
+    },
+    "workConstraint": {
+      "title": "Arbeitsbeschränkungen",
+      "maxMonthlyHours": "Max. monatliche Arbeitsstunden",
+      "maxMonthlyDays": "Max. monatliche Arbeitstage",
+      "maxConsecutiveDays": "Max. aufeinanderfolgende Arbeitstage",
+      "maxNightShiftsPerMonth": "Max. Nachtschichten pro Monat",
+      "maxNightShifts": "Max. Nachtschichten pro Monat",
+      "minRestHoursBetweenShifts": "Min. Ruhezeit zwischen Schichten",
+      "minRestHours": "Min. Ruhezeit zwischen Schichten",
+      "note": "Anmerkung",
+      "notePlaceholder": "Optional",
+      "teamDefault": "Team-Standard",
+      "teamDefaultDescription": "Gilt als Standard für das gesamte Team. Gilt für alle Mitglieder, sofern nicht individuell überschrieben.",
+      "appliedToAll": "Auf alle angewendet",
+      "individual": "Individuelle Einstellung",
+      "memberOverrides": "Individuelle Ausnahmen",
+      "memberOverridesDescription": "Fügen Sie hier eine Ausnahme hinzu, wenn ein bestimmtes Mitglied andere Beschränkungen benötigt.",
+      "addMember": "Mitglied hinzufügen",
+      "noDefault": "Kein Team-Standard festgelegt",
+      "noOverrides": "Keine Mitglieder mit individueller Einstellung",
+      "noLimit": "Keine Begrenzung",
+      "days": "Tage",
+      "times": "Mal",
+      "memberLabel": "Benutzer #{userId}",
+      "readOnly": "Nur lesen",
+      "userId": "Benutzer-ID",
+      "userIdPlaceholder": "Benutzer-ID eingeben",
+      "saveSuccess": "Arbeitsbeschränkungen gespeichert",
+      "deleteSuccess": "Arbeitsbeschränkungen gelöscht"
+    },
+    "validation": {
+      "atLeastOneConstraint": "Bitte geben Sie mindestens eine Beschränkung an"
+    },
+    "summary": {
+      "totalMembers": "Gesamtmitglieder",
+      "submitted": "Eingereicht",
+      "pending": "Ausstehend",
+      "preferred": "Arbeit bevorzugt",
+      "available": "Keine Präferenz",
+      "weakRest": "Kann arbeiten wenn nötig",
+      "strongRest": "Ruhe bevorzugt",
+      "absoluteRest": "Freier Tag erforderlich"
+    },
+    "payment": {
+      "hourlyRate": "Stundenlohn",
+      "estimatedPay": "Geschätzter Verdienst",
+      "paySummary": "Gehaltsübersicht"
+    },
+    "swap": {
+      "create": "Schichttausch beantragen",
+      "accept": "Annehmen",
+      "reject": "Ablehnen",
+      "approve": "Genehmigen",
+      "pending": "Genehmigung ausstehend",
+      "openCall": "Offene Anfrage",
+      "claimed": "Beansprucht",
+      "recipientMode": {
+        "label": "Empfänger",
+        "specific": "Mitglieder angeben",
+        "template": "Nach Schichtzeit",
+        "openCall": "Offene Anfrage im Team"
+      },
+      "targetUsers": {
+        "label": "Tauschkandidaten",
+        "placeholder": "Mitglieder auswählen...",
+        "dayShift": "Tagschicht-Mitglieder",
+        "nightShift": "Nachtschicht-Mitglieder",
+        "selectedCount": "{count} ausgewählt",
+        "empty": "Keine Mitglieder verfügbar"
+      },
+      "templateHint": "An alle {period} im gleichen Plan senden",
+      "list": {
+        "title": "Schichttausch-Anfragen",
+        "requester": "Antragsteller #{id}",
+        "accepter": "Tauschpartner #{id}",
+        "accepterUndecided": "Tauschpartner offen",
+        "slot": "Schicht #{id}",
+        "reason": "Grund: {reason}",
+        "cancel": "Zurückziehen",
+        "reload": "Neu laden",
+        "empty": "Keine Tauschanfragen",
+        "loadFailed": "Tauschanfragen konnten nicht geladen werden",
+        "loadFailedBody": "Tauschanfragen konnten nicht abgerufen werden",
+        "actionFailed": "Die Aktion ist fehlgeschlagen",
+        "acceptSucceeded": "Tausch angenommen",
+        "approveSucceeded": "Tausch genehmigt",
+        "rejectSucceeded": "Tausch abgelehnt",
+        "cancelSucceeded": "Anfrage zurückgezogen",
+        "statusPending": "Wartet auf Annahme",
+        "statusAccepted": "Wartet auf Genehmigung",
+        "statusApproved": "Genehmigt",
+        "statusRejected": "Abgelehnt",
+        "statusCancelled": "Zurückgezogen"
+      }
+    },
+    "reminder": {
+      "send": "Erinnerung senden",
+      "sent": "Erinnerung gesendet",
+      "confirmTitle": "Mitglieder ohne Abgabe erinnern",
+      "confirmMessage": "Eine Erinnerung an Mitglieder senden, die ihre Wünsche für „{title}“ noch nicht abgegeben haben?",
+      "confirmAccept": "Erinnerung senden",
+      "confirmReject": "Abbrechen",
+      "sentTitle": "Erinnerung gesendet",
+      "sentDetail": "{count} Mitglieder wurden zur Abgabe ihrer Wünsche aufgefordert.",
+      "noRecipientsTitle": "Keine offenen Abgaben",
+      "noRecipientsDetail": "Es gibt niemanden zu erinnern.",
+      "failedTitle": "Erinnerung konnte nicht gesendet werden",
+      "failedDetail": "Bitte versuchen Sie es später erneut.",
+      "targetUnavailable": "Dieser Dienstplan ist nicht verfügbar oder nimmt keine Wünsche mehr an."
+    },
+    "empty": {
+      "noSchedules": "Keine Schichtpläne vorhanden",
+      "noShifts": "Keine Schichten vorhanden",
+      "noRequests": "Keine Anfragen vorhanden",
+      "noConstraints": "Keine Arbeitsbeschränkungen festgelegt"
+    },
+    "teamLoad": {
+      "timeout": "Das Laden der Teaminformationen dauert zu lange. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+      "error": "Die Teaminformationen konnten nicht geladen werden. Bitte versuchen Sie es später erneut.",
+      "retry": "Erneut versuchen"
+    },
+    "notification": {
+      "publishSuccess": "Schicht erfolgreich veröffentlicht",
+      "submitSuccess": "Anfrage erfolgreich eingereicht",
+      "deleteSuccess": "Erfolgreich gelöscht",
+      "updateSuccess": "Erfolgreich aktualisiert",
+      "errorLoad": "Daten konnten nicht geladen werden",
+      "errorSubmit": "Einreichung fehlgeschlagen",
+      "errorDelete": "Löschen fehlgeschlagen",
+      "errorUpdate": "Aktualisierung fehlgeschlagen"
+    },
+    "view": {
+      "monthly": "Monatsansicht",
+      "weekly": "Wochenansicht",
+      "daily": "Tagesansicht",
+      "today": "Heute",
+      "prev": "Vorheriger Zeitraum",
+      "next": "Nächster Zeitraum"
+    },
+    "legend": "Legende",
+    "availabilityDescription": "Legen Sie Ihre Standardpräferenzen nach Wochentag fest. Diese werden als Anfangswerte beim Einreichen von Schichtanfragen verwendet.",
+    "bulkSet": {
+      "title": "Masseneinstellung",
+      "selectAll": "Alle auswählen",
+      "clearAll": "Alle löschen",
+      "applyToAll": "Auf alle Slots anwenden",
+      "applyToWeekday": "Auf Wochentage anwenden",
+      "applyToWeekend": "Auf Wochenenden anwenden",
+      "confirm": "Anwenden"
+    },
+    "preview": {
+      "title": "Einreichung bestätigen",
+      "preferredCount": "Arbeit bevorzugt: {count}",
+      "availableCount": "Keine Präferenz: {count}",
+      "weakRestCount": "Kann arbeiten wenn nötig: {count}",
+      "strongRestCount": "Ruhe bevorzugt: {count}",
+      "absoluteRestCount": "Freier Tag erforderlich: {count}",
+      "totalCount": "Gesamt: {count}",
+      "totalLabel": "Gesamt",
+      "confirmSubmit": "Mit diesen Einstellungen einreichen?"
+    },
+    "myShift": {
+      "confirmedTitle": "Bestätigte Schicht",
+      "upcomingTitle": "Bevorstehende bestätigte Schichten",
+      "teamFilter": {
+        "all": "Alle Teams",
+        "label": "Nach Team filtern"
+      },
+      "slot": {
+        "time": "{start} – {end}",
+        "position": "Position",
+        "schedule": "Schichtplan",
+        "noSlot": "Keine Schichten an diesem Tag"
+      }
+    },
+    "entry": {
+      "sectionTitle": "Wünsche einreichen / Schichtboard",
+      "bulkRequest": "Wünsche gesammelt einreichen",
+      "board": "Schichtboard",
+      "weeklyDefault": "Wochentags-Standard festlegen",
+      "closed": "Die Wunschabgabe ist beendet"
+    },
+    "submitConfirm": {
+      "title": "Mit diesem Inhalt senden?",
+      "filledLabel": "Ausgefüllte Tage",
+      "defaultAppliedLabel": "Aus Standardwerten übernommene Tage",
+      "untouchedLabel": "Nicht ausgefüllte Tage",
+      "dayCount": "{count} Tag(e)",
+      "untouchedNotice": "Nicht ausgefüllte Tage werden als „möglichst frei\" eingereicht. Bei Personalmangel kann dennoch eine Schichtanfrage kommen.",
+      "submit": "Senden",
+      "back": "Zurück zum Bearbeiten"
+    },
+    "hourlyRate": {
+      "title": "Stundensatz-Einstellungen",
+      "description": "Hinterlegen Sie den Stundensatz für jedes Mitglied. Schichten von Mitgliedern ohne Stundensatz werden im verbrauchten Schichtbudget nicht berücksichtigt.",
+      "missingWarning": "{count} Mitglied(er) haben keinen Stundensatz. Ihre Schichten werden bei Veröffentlichung des Schichtplans nicht im verbrauchten Budget berücksichtigt.",
+      "unset": "Nicht festgelegt",
+      "setButton": "Festlegen",
+      "perHour": "{amount} JPY/Std.",
+      "saved": "Stundensatz gespeichert",
+      "saveFailed": "Der Stundensatz konnte nicht gespeichert werden",
+      "loadFailed": "Die Stundensätze konnten nicht geladen werden",
+      "historyLoadFailed": "Der Stundensatz-Verlauf konnte nicht geladen werden",
+      "permissionLoadFailed": "Die Berechtigungen konnten nicht geladen werden",
+      "forbidden": "Sie haben keine Berechtigung, diese Seite anzuzeigen",
+      "noMembers": "Keine Mitglieder",
+      "dialogTitle": "Stundensatz für {name}",
+      "effectiveFromHint": "Gilt ab dem angegebenen Datum. Frühere Einstellungen bleiben als Verlauf erhalten. Wird erneut mit demselben Datum gespeichert, wird die Einstellung dieses Tages korrigiert.",
+      "historyTitle": "Stundensatz-Verlauf",
+      "noHistory": "Es wurde noch kein Stundensatz erfasst",
+      "column": {
+        "member": "Mitglied",
+        "rate": "Stundensatz",
+        "effectiveFrom": "Gültig ab"
+      },
+      "validation": {
+        "rateRequired": "Bitte geben Sie einen Stundensatz ein",
+        "ratePositive": "Bitte geben Sie einen Stundensatz von mindestens 1 JPY ein"
+      }
+    }
+  },
+  "my_shift_guide": {
+    "title": "So verwenden Sie die Schichtseite",
+    "description": "Auf dieser Seite können Sie Ihre zugewiesenen bestätigten Schichten einsehen und Tauschanfragen stellen.",
+    "view_shifts": {
+      "title": "Bestätigte Schichten ansehen",
+      "body": "Zeigt die dem angemeldeten Benutzer zugewiesenen bestätigten Schichten in einem Monatskalender oder einer Wochenliste an. Tage ohne Schicht bleiben leer.",
+      "steps": {
+        "step1": "Öffnen Sie die Seite „/my/shift“",
+        "step2": "Die Seite lädt Ihre bestätigten Schichten automatisch und zeigt sie im Kalender oder in der Liste an",
+        "step3": "Gibt es keine Schichten, wird „Keine Schichten“ angezeigt"
+      }
+    },
+    "switch_view": {
+      "title": "Ansicht wechseln",
+      "body": "Sie können zwischen zwei Ansichten wechseln: dem Monatskalender (für den Überblick) und der Wochenliste (für Details). Mit den Pfeiltasten gelangen Sie zum vorherigen oder nächsten Monat bzw. zur vorherigen oder nächsten Woche.",
+      "steps": {
+        "step1": "Wechseln Sie die Darstellung mit den Schaltflächen „Monatsansicht“ und „Wochenansicht“ oben auf dem Bildschirm",
+        "step2": "Mit den Schaltflächen ◀ ▶ wechseln Sie zum vorherigen oder nächsten Monat (bzw. zur vorherigen oder nächsten Woche)",
+        "step3": "Mit der Schaltfläche „Heute“ kehren Sie zu dem Monat bzw. der Woche mit dem heutigen Tag zurück"
+      }
+    },
+    "filter_team": {
+      "title": "Nach Team filtern",
+      "body": "Wenn Sie mehreren Teams angehören, können Sie nur die Schichten eines bestimmten Teams anzeigen. Mit der Schaltfläche „Alle“ werden die Schichten aller Teams angezeigt.",
+      "steps": {
+        "step1": "Tippen Sie im Feld „Team:“ oben auf dem Bildschirm auf „Alle“ oder auf eine Team-Schaltfläche",
+        "step2": "Es werden nur die Schichten des ausgewählten Teams angezeigt",
+        "step3": "Tippen Sie erneut auf „Alle“, um den Filter aufzuheben"
+      }
+    },
+    "view_detail": {
+      "title": "Schichtdetails ansehen",
+      "body": "Tippen Sie auf ein bestimmtes Datum, um Details zur Schicht wie Teamname, Position, Uhrzeit und Planname anzuzeigen.",
+      "steps": {
+        "step1": "[Monatsansicht] Tippen Sie auf ein Datumsfeld, um das Detailfenster für das ausgewählte Datum zu öffnen",
+        "step2": "[Wochenansicht] Tippen Sie auf die Kopfzeile einer Datumskarte, um die Karte zu erweitern und die Schichtliste anzuzeigen",
+        "step3": "In der Monatsansicht schließt ein erneutes Tippen auf dasselbe Datum das Detailfenster"
+      }
+    },
+    "swap_request": {
+      "title": "Tauschanfrage stellen",
+      "body": "Wenn Sie eine bestätigte Schicht mit einem anderen Mitglied tauschen möchten, können Sie die Anfrage auf drei Arten senden. Nach dem Senden wird die Schichtliste automatisch aktualisiert.",
+      "steps": {
+        "step1": "Klicken Sie in den Schichtdetails auf die Schaltfläche „Tauschanfrage erstellen“",
+        "step2": "Wählen Sie die Sendeart: „Mitglieder festlegen“ (mindestens ein Mitglied auswählen) / „Nach Schichtzeit“ (alle, die am selben Tag in der Tag- oder Nachtschicht arbeiten) / „Offene Anfrage im Team“ (Teammitglieder können sich melden)",
+        "step3": "Geben Sie bei Bedarf einen Grund an (optional)",
+        "step4": "Klicken Sie zum Senden auf die Schaltfläche „Einreichen“"
+      },
+      "note": "Nach dem Einreichen wird die Liste der bestätigten Schichten automatisch aktualisiert. Während des Sendens ist die Schaltfläche deaktiviert; bitte warten Sie, bis der Vorgang abgeschlossen ist."
+    }
+  },
+  "shift_guide": {
+    "title": "So funktioniert die Schichtverwaltung",
+    "description": "In der Schichtverwaltung können Sie die Schichtpläne Ihres Teams erstellen und veröffentlichen sowie die Wünsche der Mitglieder einholen und abstimmen.",
+    "overview": {
+      "title": "Liste der Schichtpläne ansehen",
+      "body": "Auf dieser Seite verwalten Sie die Liste der Schichtpläne Ihres Teams. Statusabzeichen zeigen den Fortschritt auf einen Blick.",
+      "steps": {
+        "step1": "Nach Status filtern (Entwurf, Wird gesammelt, In Abstimmung, Veröffentlicht usw.)",
+        "step2": "Anhand des Einreichungsbalkens auf jeder Karte sehen Sie, wie viele Wünsche die Mitglieder eingereicht haben",
+        "step3": "Klicken Sie auf eine Karte, um zur Detailseite zu gelangen"
+      }
+    },
+    "create": {
+      "title": "Neuen Schichtplan erstellen",
+      "body": "Team-Administratoren können einen neuen Schichtplan erstellen. Legen Sie zum Start einen Titel und einen Zeitraum fest.",
+      "steps": {
+        "step1": "Klicken Sie oben rechts auf die Schaltfläche „Neu erstellen“",
+        "step2": "Geben Sie Titel, Startdatum und Enddatum ein (Pflichtfelder)",
+        "step3": "Geben Sie bei Bedarf die Frist für Wünsche und eine Notiz ein",
+        "step4": "Bestätigen Sie mit der Schaltfläche „Erstellen“ (der Plan wird mit dem Status „Entwurf“ angelegt)"
+      }
+    },
+    "status": {
+      "title": "Status weiterschalten, um Schichten festzulegen",
+      "body": "Schichten werden über fünf Status verwaltet. Prüfen Sie die aktuelle Phase im Stepper auf der Detailseite und schalten Sie der Reihe nach weiter.",
+      "steps": {
+        "step1": "„Entwurf“: die Vorbereitungsphase, in der Sie Slots und Einschränkungen festlegen",
+        "step2": "„Wird gesammelt“: Mitglieder bitten, ihre Schichtwünsche einzureichen",
+        "step3": "„In Abstimmung“: Schichten anhand der Wünsche anpassen und erstellen",
+        "step4": "„Veröffentlicht“: die festgelegten Schichten für die Mitglieder freigeben",
+        "step5": "„Abgeschlossen“: beendete Schichten archivieren"
+      }
+    },
+    "requests": {
+      "title": "Schichtwünsche der Mitglieder einholen und prüfen",
+      "body": "Sobald der Status „Wird gesammelt“ erreicht ist, können Mitglieder ihre Wünsche einreichen. Im Tab „Wunschliste“ auf der Detailseite sehen Sie den Stand aller in einer Matrix.",
+      "steps": {
+        "step1": "Klicken Sie auf der Detailseite auf den Tab „Wunschliste“",
+        "step2": "Prüfen Sie auf den Übersichtskarten die Einreichungsquote und die Zahl der Mitglieder ohne Einreichung",
+        "step3": "Prüfen Sie in der Matrixtabelle die Wunschstärke jedes Mitglieds je Datum",
+        "step4": "Angezeigt in fünf Stufen: „Möchte arbeiten / Keine Angabe / Notfalls möglich / Lieber frei / Unbedingt frei“"
+      }
+    },
+    "slots": {
+      "title": "Slots und Arbeitseinschränkungen festlegen",
+      "body": "Legen Sie die Zeitfenster (Slots) der Schichten an und definieren Sie Arbeitseinschränkungen für das Team und einzelne Mitglieder.",
+      "steps": {
+        "step1": "Erstellen Sie im Tab „Bearbeiten“ Slots (Datum, Beginn bis Ende, Position, benötigte Personenzahl)",
+        "step2": "Mit der Schaltfläche „Massenerstellung“ können Sie auch mehrere Slots nach Datumsbereich und Wochentagen auf einmal anlegen",
+        "step3": "Legen Sie im Tab „Einschränkungen“ die Standard-Arbeitseinschränkungen des Teams fest (maximale Monatsstunden, aufeinanderfolgende Arbeitstage usw.)",
+        "step4": "Für bestimmte Mitglieder können Sie über „Ausnahmen pro Mitglied“ individuelle Einschränkungen überschreiben"
+      }
+    }
+  }
+}

@@ -1,0 +1,254 @@
+{
+  "proxy": {
+    "title": "代理输入台",
+    "description": "代表非数字化居民录入纸质申请",
+    "consent": {
+      "title": "代理输入同意书",
+      "subjectUserId": "被代理住民ID",
+      "method": {
+        "label": "同意方式",
+        "paper_signed": "纸质签名",
+        "witnessed_oral": "见证口头",
+        "digital_signature": "电子签名",
+        "guardian_by_court": "法院指定监护人"
+      },
+      "status": {
+        "pending": "待审批",
+        "active": "有效",
+        "expired": "已过期",
+        "revoked": "已撤销",
+        "scheduled": "尚未生效"
+      },
+      "effectiveFrom": "有效期（开始）",
+      "effectiveUntil": "有效期（结束）",
+      "scopes": "功能范围",
+      "approvedAt": "审批时间",
+      "revokedAt": "撤销时间",
+      "noActive": "没有有效的同意书"
+    },
+    "scope": {
+      "survey": "问卷调查",
+      "schedule_attendance": "出勤确认",
+      "shift_request": "班次申请",
+      "announcement_read": "公告已读",
+      "parking_application": "停车申请",
+      "circular": "传阅通知",
+      "supporter_view": "守护浏览",
+      "payment": "代理支付"
+    },
+    "desk": {
+      "pinSubject": "锁定居民",
+      "pinConsent": "选择同意书",
+      "unpin": "取消锁定",
+      "pinned": "正在以 {name} 的身份输入",
+      "inputSource": {
+        "label": "输入来源",
+        "paper_form": "纸质表格",
+        "phone_interview": "电话问询",
+        "in_person": "现场面谈",
+        "guardianship_switch": "监护切换"
+      },
+      "originalStorage": {
+        "label": "原件存放位置",
+        "placeholder": "例：proxy-records/2026/scan_001.pdf"
+      },
+      "active": "代理输入模式已启动",
+      "inactive": "代理输入模式已停止"
+    },
+    "record": {
+      "title": "代理输入记录",
+      "createdAt": "输入时间",
+      "featureScope": "功能范围",
+      "targetEntity": "目标记录"
+    },
+    "revoke": {
+      "title": "撤销同意书",
+      "method": {
+        "api": "本人在线申请",
+        "paper": "纸质申请",
+        "life_event": "生活事件（搬迁等）",
+        "tenure_end": "任期届满"
+      },
+      "reason": "撤销原因",
+      "confirm": "确定要撤销此同意书吗？"
+    },
+    "audit": {
+      "byPerson": "本人输入",
+      "byProxy": "代理输入",
+      "total": "合计"
+    },
+    "guardianship": {
+      "switch": {
+        "title": "监护切换",
+        "startAs": "以{name}身份操作",
+        "actingAs": "正在以{name}身份操作",
+        "end": "结束切换",
+        "confirm": "确定要开始监护切换吗？",
+        "empty": "没有可切换的孩子",
+        "blocked": "因年龄限制无法切换",
+        "success": "监护切换已开始",
+        "endSuccess": "监护切换已结束",
+        "cancelButton": "取消",
+        "startButton": "开始",
+        "otherChildren": "其他"
+      },
+      "independence": {
+        "title": "独立过渡",
+        "sealDate": "切换封印日",
+        "stage": "当前阶段",
+        "passwordSet": "已设置密码",
+        "passwordNotSet": "未设置密码",
+        "handover": "开始交接",
+        "handoverConfirm": "将向孩子的电子邮件地址发送密码设置链接",
+        "handoverSuccess": "交接邮件已发送",
+        "alreadyIndependent": "该孩子已达到独立阶段",
+        "childEmail": "孩子的电子邮件地址（可选）",
+        "passwordStatus": "密码状态"
+      },
+      "stage": {
+        "elementary": "小学生",
+        "junior_high": "初中生",
+        "high_school": "高中生",
+        "adult": "成人"
+      },
+      "watch": {
+        "title": "守护",
+        "linkLabel": "守护",
+        "linkTooltip": "打开守护画面（仅供浏览）",
+        "readonlyNotice": "本画面仅供浏览，无法进行操作或回复。",
+        "loadError": "获取守护数据失败",
+        "retryButton": "重试",
+        "sections": {
+          "schedules": {
+            "title": "近期日程",
+            "empty": "暂无近期日程"
+          },
+          "attendance": {
+            "title": "出勤情况",
+            "attended": "出席",
+            "partial": "部分参加",
+            "absent": "缺席",
+            "total": "总件数",
+            "rate": "出勤率",
+            "empty": "暂无出勤数据"
+          },
+          "memberships": {
+            "title": "所属团队/组织",
+            "teams": "团队",
+            "organizations": "组织",
+            "empty": "未加入任何团队或组织"
+          },
+          "announcements": {
+            "title": "公告",
+            "empty": "暂无公告"
+          }
+        },
+        "attendanceStatus": {
+          "ATTENDING": "出席",
+          "PARTIAL": "部分参加",
+          "ABSENT": "缺席",
+          "UNDECIDED": "未定"
+        },
+        "proxyActions": {
+          "title": "代理操作记录",
+          "badge": "代理(监护人)",
+          "empty": "没有代理操作记录"
+        },
+        "forbidden": {
+          "ageLocked": {
+            "title": "该孩子不在守护范围内",
+            "body": "12岁及以上的孩子已进入独立阶段，不在浏览守护的对象范围内。"
+          },
+          "linkNotFound": {
+            "title": "无法守护该孩子",
+            "body": "未能确认您的监护关系，请检查关联设置。"
+          }
+        },
+        "guide": {
+          "title": "守护功能使用说明",
+          "readonly": {
+            "title": "仅供浏览",
+            "body": "本画面仅可查看孩子的日程、出勤情况、所属团队/组织和公告，无法进行操作或回复。如需代为操作，请使用「监护切换」。"
+          },
+          "ageLimit": {
+            "title": "仅适用于12岁以下的孩子",
+            "body": "12岁及以上的孩子已进入独立阶段，出于隐私保护将不再是守护对象。"
+          },
+          "proxyBadge": {
+            "title": "「代理」标记的含义",
+            "body": "监护人通过监护切换等方式代替孩子进行的操作会标记为「代理(监护人)」。可在代理操作记录区块中查看操作发生的时间及功能。"
+          }
+        }
+      }
+    },
+    "delegation": {
+      "title": "代理出席",
+      "description": "如果无法回复出席情况，可以委托同一范围内的成员代为出席",
+      "specify": "指定代理人（可选）",
+      "delegate_label": "代理人",
+      "delegate_placeholder": "选择成员",
+      "reason_label": "委托原因（可选）",
+      "reason_placeholder": "将与管理员共享（最多500个字符）",
+      "proxy_vote_label": "同时委托投票",
+      "proxy_vote_session": "投票会话",
+      "proxy_vote_session_placeholder": "选择要委托的会话",
+      "cancel": "取消委托",
+      "status": {
+        "pending": "待审批",
+        "accepted": "已接受",
+        "rejected": "已拒绝",
+        "cancelled": "已取消"
+      },
+      "my_requests": {
+        "title": "委托申请",
+        "description": "待审批的代理出席申请列表",
+        "empty": "没有委托申请",
+        "accept": "接受",
+        "reject": "拒绝",
+        "as_delegator": "申请中（等待代理人）",
+        "as_delegate": "您有委托申请",
+        "how_to_check": "请从各日程或活动的详情页面进行确认和批准"
+      },
+      "admin": {
+        "tab": "代理出席",
+        "empty": "没有代理出席的设置",
+        "delegator": "委托人",
+        "delegate": "代理人",
+        "count_suffix": "件代理设置",
+        "checkin": "代理签到",
+        "checkin_done": "已签到"
+      },
+      "roll_call_proxy_label": "{name}的代理",
+      "auto_accept_note": "已设置自动接受。无需代理人确认即可生效",
+      "grandfathering_note": "即使关闭此设置，现有委托仍将保留",
+      "allow_proxy": "允许代理出席",
+      "auto_accept": "自动接受（无需代理人确认）",
+      "errors": {
+        "self": "不能将自己指定为代理人",
+        "already_exists": "已经指定了代理人",
+        "not_member": "指定的成员不属于此范围",
+        "not_allowed": "此日程/活动不允许代理出席",
+        "rate_limit": "操作太频繁，请1分钟后重试"
+      }
+    },
+    "admin": {
+      "consentsTitle": "代理输入同意书管理",
+      "description": "查看本组织的代理输入同意书，进行批准或撤销，并查看代理输入记录。",
+      "organization": "管理的组织",
+      "proxyUserId": "代理人ID",
+      "status": "状态",
+      "actions": "操作",
+      "approve": "批准",
+      "revoke": "撤销",
+      "approveConfirm": "将批准同意书 #{id}。请确认后继续。",
+      "approved": "同意书已批准。",
+      "revoked": "同意书已撤销。",
+      "selfApprovalDenied": "您不能批准指定自己为代理人的同意书。",
+      "noConsents": "暂无同意书。",
+      "noRecords": "暂无代理输入记录。",
+      "none": "无",
+      "recordId": "记录ID",
+      "targetType": "对象类型"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "systemAdmin": {
+    "securityScan": {
+      "title": "Escaneo de Seguridad",
+      "status": {
+        "SUCCESS": "Normal",
+        "FAILURE": "Vulnerabilidad Detectada",
+        "IN_PROGRESS": "Escaneando",
+        "UNKNOWN": "No Disponible"
+      },
+      "viewDetails": "Ver Detalles",
+      "lastScanned": "Último Escaneo"
+    }
+  }
+}

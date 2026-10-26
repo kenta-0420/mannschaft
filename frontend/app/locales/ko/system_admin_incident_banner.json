@@ -1,0 +1,82 @@
+{
+  "incident_banner": {
+    "title": "장애 공지 배너 관리",
+    "quick_link_label": "장애 공지 배너",
+    "create_btn": "배너 만들기",
+    "edit_dialog_title": "배너 편집",
+    "create_dialog_title": "배너 만들기",
+    "save_btn": "저장",
+    "cancel_btn": "취소",
+    "delete_confirm": "이 배너를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+    "delete_btn": "삭제",
+    "publish_btn": "게시",
+    "unpublish_btn": "게시 취소",
+    "load_failed": "데이터를 불러오지 못했습니다",
+    "create_success": "배너를 만들었습니다",
+    "update_success": "배너를 업데이트했습니다",
+    "delete_success": "배너를 삭제했습니다",
+    "publish_success": "배너를 게시했습니다",
+    "unpublish_success": "배너를 게시 취소했습니다",
+    "save_failed": "저장에 실패했습니다",
+    "delete_failed": "삭제에 실패했습니다",
+    "publish_failed": "게시에 실패했습니다",
+    "unpublish_failed": "게시 취소에 실패했습니다",
+    "suggestions_load_failed": "후보 목록을 불러오지 못했습니다",
+    "no_data": "등록된 배너가 없습니다",
+    "translation_pending": "번역이 자동 생성 중입니다（저장 후 잠시 기다려 주세요）",
+    "form": {
+      "message_label": "메시지（일본어 원문）",
+      "message_placeholder": "장애 내용을 입력하세요（최대 500자）",
+      "message_required": "메시지는 필수입니다",
+      "message_too_long": "메시지는 500자 이내로 입력하세요",
+      "level_label": "수준",
+      "page_pattern_label": "대상 페이지 패턴",
+      "page_pattern_placeholder": "예: /teams/*（생략 시 모든 페이지에 표시）",
+      "starts_at_label": "게시 시작 일시",
+      "starts_at_placeholder": "생략 시: 즉시",
+      "ends_at_label": "게시 종료 일시",
+      "ends_at_placeholder": "생략 시: 수동으로 게시 취소할 때까지",
+      "publish_toggle_label": "만든 후 즉시 게시하기",
+      "preview_label": "미리보기"
+    },
+    "level": {
+      "INFO": "정보",
+      "WARNING": "경고",
+      "CRITICAL": "긴급"
+    },
+    "table": {
+      "level": "수준",
+      "message": "메시지",
+      "page_pattern": "대상 페이지",
+      "status": "상태",
+      "period": "게시 기간",
+      "updated_at": "업데이트 일시",
+      "actions": "작업"
+    },
+    "status": {
+      "published": "게시 중",
+      "draft": "초안"
+    },
+    "period_from": "부터",
+    "period_to": "까지",
+    "period_immediate": "즉시",
+    "period_manual": "수동 중지까지",
+    "suggestions": {
+      "title": "감지 후보（자동 감지）",
+      "page_pattern": "페이지 패턴",
+      "severity": "심각도",
+      "occurrence_count": "발생 횟수",
+      "affected_users": "영향받은 사용자 수",
+      "since": "감지 시작",
+      "create_banner_btn": "배너 만들기",
+      "no_data": "현재 감지된 후보가 없습니다",
+      "severity_critical": "긴급",
+      "severity_high": "높음"
+    },
+    "translations": {
+      "title": "번역 목록",
+      "language": "언어",
+      "message": "번역 내용"
+    }
+  }
+}

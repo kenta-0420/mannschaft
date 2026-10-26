@@ -1,0 +1,27 @@
+CREATE TABLE chat_messages (
+    id                BIGINT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    channel_id        BIGINT UNSIGNED  NOT NULL,
+    sender_id         BIGINT UNSIGNED,
+    parent_id         BIGINT UNSIGNED,
+    body              TEXT             NOT NULL,
+    forwarded_from_id BIGINT UNSIGNED,
+    is_edited         BOOLEAN          NOT NULL DEFAULT FALSE,
+    is_system         BOOLEAN          NOT NULL DEFAULT FALSE,
+    scheduled_at      DATETIME,
+    reply_count       INT              NOT NULL DEFAULT 0,
+    reaction_count    INT              NOT NULL DEFAULT 0,
+    is_pinned         BOOLEAN          NOT NULL DEFAULT FALSE,
+    created_at        DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at        DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at        DATETIME,
+
+    PRIMARY KEY (id),
+    INDEX idx_msg_channel_created (channel_id, created_at DESC),
+    INDEX idx_msg_parent_created (parent_id, created_at ASC),
+    INDEX idx_msg_sender_created (sender_id, created_at DESC),
+    INDEX idx_msg_channel_pinned (channel_id, is_pinned, created_at DESC),
+    FULLTEXT INDEX ft_msg_body (body) WITH PARSER ngram,
+    CONSTRAINT fk_msg_channel FOREIGN KEY (channel_id) REFERENCES chat_channels(id) ON DELETE CASCADE,
+    CONSTRAINT fk_msg_sender FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_msg_parent FOREIGN KEY (parent_id) REFERENCES chat_messages(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='チャットメッセージ';

@@ -1,0 +1,88 @@
+# ⚠️ このファイルは `./gradlew test` では読まれない（Issue #2486 で実測確認）。
+#    application-test.yml は src/main/resources と src/test/resources の両方に存在し、
+#    Gradle の test ランタイムクラスパスは build/resources/test が build/resources/main より前に来る。
+#    Spring Boot の classpath: 解決は先頭 1 件しか採用しないため、src/test/resources 側が
+#    本ファイルを完全に隠蔽する（実測: spring.datasource.url=null＝下記 URL は読まれていない、
+#    ddl-auto=create＝test 側の値、flyway.enabled=false＝test 側の値）。
+#    gradle test の DataSource は AbstractMySqlIntegrationTest の @DynamicPropertySource が供給する。
+#    本ファイルが生きるのは `bootRun --spring.profiles.active=test` のように
+#    テストリソースがクラスパスに乗らない起動経路のみ。値の同期漏れに注意すること。
+spring:
+  # Testcontainers が自動で MySQL を起動するため DataSource は不要
+  datasource:
+    # TC_TMPFS=/var/lib/mysql:rw: WSL2環境でMySQL初期化がVHD I/O待ちで2分超になる問題を回避するため
+    # /var/lib/mysql をtmpfs(RAM)に置き、初期化を数秒に短縮する。
+    # serverTimezone=UTC: DB 格納基準の UTC 統一に合わせる（Issue #2486）。
+    url: jdbc:tc:mysql:8.0:///mannschaft?serverTimezone=UTC&TC_TMPFS=/var/lib/mysql:rw
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        # F00 §13.4: 性能テスト用 SQL 意図カウンタ。テーブル名ベースで発行 SQL 数を集計する
+        session_factory:
+          statement_inspector: com.mannschaft.app.common.visibility.perf.SqlIntentCounter
+
+  flyway:
+    enabled: true
+
+# F08.7 Phase 9-α / 9-δ / 10-β: テスト環境ではシフト予算機能を有効化
+# monthly-close-cron-enabled: テスト環境でも cron 自動起動は OFF（バッチは手動 API #11 から呼ぶ）
+# retry-batch-enabled: テスト環境でも 15分毎の自動再実行は OFF（明示的に Job 単体テストで起動する）
+feature:
+  shift-budget:
+    enabled: true
+    monthly-close-cron-enabled: false
+    retry-batch-enabled: false
+
+mannschaft:
+  # F09.18: テスト環境では実 SES を叩かない（simulate=true でログのみ送信）
+  email:
+    simulate: true
+  # CMP-261012-0910: メール方式 2FA（永続 enum EMAIL の書込み）を試験では解禁する（本番・既定は false）
+  auth:
+    mfa:
+      email-method-enabled: true
+  # F09.4 §6 — テスト環境では LINE Webhook 署名検証を無効化（実署名を持たないため）
+  line:
+    signature-verify:
+      mode: "off"
+  # F12.1 §5.14 / F09.15 §9.4 — テスト環境では内部 PDF 署名鍵を固定値で設定
+  security:
+    internal-signing-key: test-internal-pdf-signing-key-fixed-32bytes-xxxxx
+  # F10.5 Phase 10-β-2 / F10.6 §5.6 — テスト環境ではヘルスポーリングと集約バッチの自動起動を無効化
+  # （SpringBootTest 中に @Scheduled が走ると Health 取得 / Slack 送信が試行されて副作用が出るため）
+  # 個別テストでは enabled=true を明示するか、Bean を直接呼んで検証する。
+  error-monitoring:
+    aggregation:
+      enabled: false
+    health-polling:
+      enabled: false
+  # F13.1 Phase 13.1.2: QR 署名 — テスト決定性のために固定 secret を使用
+  # PR4 Billing Center: return state 署名 — テスト決定性のために固定 secret を使用
+  billing:
+    return-state:
+      signing-keys:
+        - kid: v1
+          secret: test-billing-return-signing-key-32bytes-xxxx
+          active: true
+  jobs:
+    qr:
+      ttl-seconds: 60
+      ttl-seconds-max: 300
+      rotation-advance-seconds: 5
+      short-code-length: 6
+      signing-keys:
+        - kid: v1
+          secret: test-qr-signing-key-fixed-32bytes-testingxxxx
+          active: true
+
+# F18 Phase 5 P5-S4 — テスト環境では再マッチバッチ Bean を登録しない
+# （@Scheduled cron が SpringBootTest 中に走らないよう enabled=false）
+# 個別のサービステストは @SpringBootTest を使わず @ExtendWith(MockitoExtension.class) で
+# Service を直接呼ぶため、Bean 登録不要。
+pointcard:
+  rematch-batch:
+    enabled: false

@@ -1,0 +1,82 @@
+-- Phase 2-C: クロスドメインFK撤廃 第二陣C — pointcard ドメインの user 親 CASCADE を撤廃
+--
+-- 1000万ユーザー耐久DB再構築 クロスドメインFK撤廃キャンペーン Phase 2-C。
+-- CLAUDE.md §1「クロスドメインFKは作らない」/ §2「CASCADE DELETE は同一ドメイン内のみ」原則に従い撤廃。
+--
+-- ━━━ 対象一覧（3件・すべて user 親 ON DELETE CASCADE のクロスドメインFK・pointcard ドメイン）━━━
+--  1. user_point_cards         / fk_upc_user  (user_id → users CASCADE)
+--  2. point_card_groups        / fk_pcg_user  (user_id → users CASCADE)
+--  3. point_card_user_settings / fk_pcus_user (user_id → users CASCADE・PK=user_id)
+--
+-- ※ fk_upc_provider（user_point_cards.provider_id → point_card_providers SET NULL）は
+--   pointcard ドメイン内の同一ドメインFKであり対象外（触らない）。
+--
+-- ━━━ なぜ安全か（退会フローでリスナーが先行削除＝CASCADE 冗長化）━━━
+--
+-- 退会フローは2段階モデル（CLAUDE.md「PII 消去のタイミング §13.12」）:
+--   ・退会受付直後: UserAnonymizedEvent 発火（即時匿名化）。
+--   ・退会受付から最大30日後: AccountPurgeService.purgeUser → users 物理削除 → AccountPurgedEvent 発火。
+--
+-- 本 migration と同時に投入する PointCardAnonymizationEventListener が、退会のたびに当該行を
+-- 「users 本体削除より前に」先行削除する。よって ON DELETE CASCADE が発火しうる
+-- 「30日後の users 物理削除」の時点では既に子行は存在せず、CASCADE は完全に冗長になる。
+-- この「リスナー先行削除 → CASCADE 冗長化 → FK 撤廃」は第一陣 notification と同一の論法。
+-- 参照整合性はアプリ層（リスナー）で保証する（CLAUDE.md §1）。
+--
+-- ━━━ なぜ即時/30日で削除タイミングを分けるか（§13.12 二層削除）━━━
+--
+--  ・user_point_cards（保有カード）= 退会時【即時削除】（UserAnonymizedEvent 購読）:
+--      display_name / nickname / barcode_value / memo が VARBINARY(1024〜2048) の
+--      AES-256-GCM 暗号化 PII（@PersonalData category="point_cards"）。
+--      「ユーザーが何のカードを所有しているか／カード番号本体」を表す高機微 PII であり、
+--      再設定で復旧する性質でもないため、GDPR Art.17 に照らし退会受付直後に即時消去する。
+--  ・point_card_groups（カード整理グループ）= 30日後の物理削除時【削除】（AccountPurgedEvent 購読）:
+--      グループ名・絵文字はシーン名であり PII ではない。カードを束ねる個人「設定」であり、
+--      退会撤回時に復元価値がある。30日撤回ウィンドウを保持してから削除する。
+--  ・point_card_user_settings（1:1 設定）= 30日後の物理削除時【削除】（AccountPurgedEvent 購読）:
+--      オプトイン状態・規約同意・WebAuthn 要求の個人設定で、退会撤回時に復元価値がある。
+--      PK=user_id の 1:1 設定であり、30日ウィンドウ保持後に削除する。
+--
+-- ━━━ 同一ドメイン内 FK の削除順（即時削除の整合性）━━━
+--
+-- user_point_cards を親とする pointcard ドメイン内の子テーブルは「すべて ON DELETE CASCADE」:
+--   ・point_card_group_items.fk_pcgi_card  (card_id → user_point_cards CASCADE)  ※ fk_pcgi_group も groups CASCADE
+--   ・point_card_balance_events.fk_pcbe_card (card_id → user_point_cards CASCADE)
+--   ・point_card_stamp_events.fk_pcse_card  (card_id → user_point_cards CASCADE)
+-- いずれも同一ドメイン内 CASCADE のため、リスナーが user_point_cards を deleteByUserId した時点で
+-- 上記 3 子テーブルは DB の in-domain CASCADE により自動削除される（子→親の手動順序削除は不要）。
+-- これらのカード側 FK は本 migration の対象外（撤廃しない＝同一ドメイン内 CASCADE は CLAUDE.md §2 で許可）。
+--
+-- 即時(user_point_cards) と 30日(point_card_groups) で削除タイミングが分かれる点の整合:
+--   point_card_group_items は card_id(CASCADE) と group_id(CASCADE) の両方を持つが、
+--   即時削除で user_point_cards が消えた時点で card_id 経由 CASCADE により group_items は全消去される。
+--   30日後に point_card_groups を消す時点では group_items は既に空なので、group_id 経由 CASCADE は冗長。
+--   よって即時/30日の分割によるダングリング中間行は発生しない。
+--
+-- ━━━ index 状況（FK 撤廃後もバッキングインデックスが独立 index として残るか確認）━━━
+--
+-- 3件とも user_id を先頭に含む既存 index / PK が存在するため、撤廃後も index は残る → CREATE INDEX 追加不要。
+--   user_point_cards.user_id         : INDEX idx_upc_user_favorite (user_id, is_favorite, display_order) 既存（先頭=user_id）
+--                                      ＋ INDEX idx_upc_user_last_used (user_id, last_used_at DESC) 既存（先頭=user_id）
+--   point_card_groups.user_id        : INDEX idx_pcg_user (user_id, display_order) 既存（先頭=user_id）
+--   point_card_user_settings.user_id : PRIMARY KEY (user_id)（PK でカバー）
+
+-- ===== user_point_cards（pointcard ドメイン）=====
+-- fk_upc_user: user_id → users (CASCADE) クロスドメイン
+-- → 撤廃。保有カードは退会即時（UserAnonymizedEvent）でリスナーが先行削除済み＝CASCADE 冗長。
+--   暗号化 PII（display_name / barcode_value 等）の即時消去は GDPR Art.17 上の要請。
+--   provider_id → point_card_providers (SET NULL / fk_upc_provider) は同一ドメインFK → 対象外（残す）。
+-- INDEX idx_upc_user_favorite / idx_upc_user_last_used (先頭=user_id) 既存 → index 追加不要
+ALTER TABLE user_point_cards DROP FOREIGN KEY fk_upc_user;
+
+-- ===== point_card_groups（pointcard ドメイン）=====
+-- fk_pcg_user: user_id → users (CASCADE) クロスドメイン
+-- → 撤廃。カード整理グループは退会30日後（AccountPurgedEvent）でリスナーが先行削除済み＝CASCADE 冗長。
+-- INDEX idx_pcg_user (user_id, display_order) 既存（先頭=user_id）→ index 追加不要
+ALTER TABLE point_card_groups DROP FOREIGN KEY fk_pcg_user;
+
+-- ===== point_card_user_settings（pointcard ドメイン）=====
+-- fk_pcus_user: user_id → users (CASCADE) クロスドメイン・user_id は PK 兼 FK
+-- → 撤廃。1:1 設定は退会30日後（AccountPurgedEvent）でリスナーが先行削除済み＝CASCADE 冗長。
+-- PRIMARY KEY (user_id) が backing index を兼ねる → index 追加不要
+ALTER TABLE point_card_user_settings DROP FOREIGN KEY fk_pcus_user;

@@ -1,0 +1,13 @@
+CREATE TABLE gamification_user_settings (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id BIGINT UNSIGNED NOT NULL,
+    scope_type VARCHAR(50) NOT NULL,
+    scope_id BIGINT UNSIGNED NOT NULL,
+    show_in_ranking TINYINT(1) NOT NULL DEFAULT 1,
+    show_badges TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_gus_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT uq_gus_user_scope UNIQUE (user_id, scope_type, scope_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

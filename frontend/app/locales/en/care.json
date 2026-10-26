@@ -1,0 +1,110 @@
+{
+  "care": {
+    "page": {
+      "title": "Care Link Management",
+      "inviteWatcher": "Invite Watcher",
+      "inviteRecipient": "Invite Care Recipient",
+      "invitationAccept": "Invitation Confirmation",
+      "teamOverride": "Team Notification Override Settings"
+    },
+    "tab": {
+      "watchers": "Watchers",
+      "recipients": "Care Recipients",
+      "pending": "Pending Invitations"
+    },
+    "label": {
+      "watcher": "Watcher",
+      "recipient": "Care Recipient",
+      "careCategory": "Care Category",
+      "relationship": "Relationship",
+      "isPrimary": "Primary",
+      "status": "Status",
+      "notifySettings": "Notification Settings",
+      "notifyOnRsvp": "Notify on RSVP",
+      "notifyOnCheckin": "Notify on Check-in",
+      "notifyOnCheckout": "Notify on Check-out",
+      "notifyOnAbsentAlert": "Notify on Absent Alert",
+      "notifyOnDismissal": "Notify on Dismissal",
+      "confirmedAt": "Confirmed At",
+      "invitedBy": "Invited By",
+      "createdAt": "Created At",
+      "noWatchers": "No watchers yet",
+      "noRecipients": "No care recipients yet",
+      "noPendingInvitations": "No pending invitations",
+      "userId": "User ID",
+      "inviterName": "Inviter",
+      "expiresAt": "Expires At",
+      "disabled": "Disabled",
+      "overrideNote": "Override notification settings for this team individually"
+    },
+    "category": {
+      "MINOR": "Minor",
+      "ELDERLY": "Elderly",
+      "DISABILITY_SUPPORT": "Disability Support",
+      "GENERAL_FAMILY": "General Family"
+    },
+    "relationship": {
+      "PARENT": "Parent",
+      "CHILD": "Child",
+      "SPOUSE": "Spouse",
+      "GRANDPARENT": "Grandparent",
+      "GRANDCHILD": "Grandchild",
+      "SIBLING": "Sibling",
+      "LEGAL_GUARDIAN": "Legal Guardian",
+      "CARETAKER": "Caretaker",
+      "OTHER": "Other"
+    },
+    "status": {
+      "PENDING": "Pending",
+      "ACTIVE": "Active",
+      "REJECTED": "Rejected",
+      "REVOKED": "Revoked"
+    },
+    "invitedBy": {
+      "CARE_RECIPIENT": "Care Recipient",
+      "WATCHER": "Watcher",
+      "ADMIN": "Admin",
+      "SYSTEM": "System"
+    },
+    "button": {
+      "inviteWatcher": "Invite Watcher",
+      "inviteRecipient": "Invite Care Recipient",
+      "updateNotify": "Save Notification Settings",
+      "deleteLink": "Remove Link",
+      "acceptInvitation": "Accept Invitation",
+      "rejectInvitation": "Reject Invitation",
+      "saveOverride": "Save Override Settings",
+      "deleteOverride": "Delete Override Settings"
+    },
+    "dialog": {
+      "deleteLinkTitle": "Remove Care Link",
+      "deleteLinkConfirm": "Are you sure you want to remove this care link? This action cannot be undone.",
+      "deleteOverrideTitle": "Delete Override Settings",
+      "deleteOverrideConfirm": "Are you sure you want to delete the team notification override settings?"
+    },
+    "message": {
+      "inviteWatcherSuccess": "Watcher invitation sent",
+      "inviteRecipientSuccess": "Care recipient invitation sent",
+      "inviteError": "Failed to send invitation",
+      "updateNotifySuccess": "Notification settings updated",
+      "updateNotifyError": "Failed to update notification settings",
+      "deleteLinkSuccess": "Care link removed",
+      "deleteLinkError": "Failed to remove care link",
+      "acceptSuccess": "Invitation accepted",
+      "acceptError": "Failed to accept invitation",
+      "rejectSuccess": "Invitation rejected",
+      "rejectError": "Failed to reject invitation",
+      "saveOverrideSuccess": "Override settings saved",
+      "saveOverrideError": "Failed to save override settings",
+      "deleteOverrideSuccess": "Override settings deleted",
+      "deleteOverrideError": "Failed to delete override settings",
+      "loadError": "Failed to load data",
+      "invalidToken": "Invalid or expired invitation link"
+    },
+    "validation": {
+      "userIdRequired": "Please enter a user ID",
+      "careCategoryRequired": "Please select a care category",
+      "relationshipRequired": "Please select a relationship"
+    }
+  }
+}

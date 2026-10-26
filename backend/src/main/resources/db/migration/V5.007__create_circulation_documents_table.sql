@@ -1,0 +1,27 @@
+-- F05.2 回覧板: circulation_documents テーブル
+CREATE TABLE circulation_documents (
+    id                      BIGINT UNSIGNED        NOT NULL AUTO_INCREMENT,
+    scope_type              VARCHAR(20)   NOT NULL,
+    scope_id                BIGINT UNSIGNED        NOT NULL,
+    created_by              BIGINT UNSIGNED NOT NULL,
+    title                   VARCHAR(200)  NOT NULL,
+    body                    TEXT          NOT NULL,
+    circulation_mode        VARCHAR(20)   NOT NULL DEFAULT 'SIMULTANEOUS',
+    sequential_count        INT           NOT NULL DEFAULT 0,
+    status                  VARCHAR(20)   NOT NULL DEFAULT 'DRAFT',
+    priority                VARCHAR(10)   NOT NULL DEFAULT 'NORMAL',
+    due_date                DATE          NULL,
+    reminder_enabled        BOOLEAN       NOT NULL DEFAULT FALSE,
+    reminder_interval_hours SMALLINT      NOT NULL DEFAULT 24,
+    stamp_display_style     VARCHAR(20)   NOT NULL DEFAULT 'STANDARD',
+    total_recipient_count   INT           NOT NULL DEFAULT 0,
+    stamped_count           INT           NOT NULL DEFAULT 0,
+    completed_at            DATETIME      NULL,
+    attachment_count        INT           NOT NULL DEFAULT 0,
+    comment_count           INT           NOT NULL DEFAULT 0,
+    created_at              DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at              DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at              DATETIME      NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_circulation_documents_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

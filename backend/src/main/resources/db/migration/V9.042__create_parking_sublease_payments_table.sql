@@ -1,0 +1,25 @@
+-- F09.3 サブリース決済
+CREATE TABLE parking_sublease_payments (
+    id                        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    sublease_id               BIGINT UNSIGNED NOT NULL,
+    payer_user_id             BIGINT UNSIGNED NOT NULL,
+    payee_user_id             BIGINT UNSIGNED NOT NULL,
+    amount                    DECIMAL(10,0)   NOT NULL,
+    stripe_fee                DECIMAL(10,0)   NOT NULL,
+    platform_fee              DECIMAL(10,0)   NOT NULL,
+    platform_fee_rate         DECIMAL(5,4)    NOT NULL,
+    net_amount                DECIMAL(10,0)   NOT NULL,
+    billing_month             CHAR(7)         NOT NULL,
+    stripe_payment_intent_id  VARCHAR(100)    NULL,
+    stripe_transfer_id        VARCHAR(100)    NULL,
+    status                    ENUM('PENDING','SUCCEEDED','FAILED','REFUNDED') NOT NULL DEFAULT 'PENDING',
+    failed_reason             VARCHAR(500)    NULL,
+    paid_at                   DATETIME        NULL,
+    created_at                DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_pslp_sublease_month (sublease_id, billing_month),
+    INDEX idx_pslp_sublease (sublease_id),
+    INDEX idx_pslp_payer (payer_user_id),
+    INDEX idx_pslp_payee (payee_user_id),
+    INDEX idx_pslp_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

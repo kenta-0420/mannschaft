@@ -1,0 +1,245 @@
+{
+  "title": "Aktionsnotizen",
+  "page": {
+    "today_memos": "Heutige Notizen",
+    "empty": "Noch keine Notizen. Schreibe deine erste.",
+    "settings_link": "Einstellungen",
+    "back_to_memo": "Zurück zu Aktionsnotizen",
+    "closing_link": "Tag abschließen",
+    "weekly_link": "Wochenübersicht",
+    "tags_link": "Tag-Verwaltung",
+    "date_picker_label": "Datum auswählen",
+    "back_to_today": "Zurück zu heute",
+    "selected_date_memos": "Notizen vom {date}"
+  },
+  "guide": {
+    "title": "So verwendest du Aktionsnotizen",
+    "description": "Zeichne auf, was du gerade tust, und überprüfe deine täglichen Aktivitäten. Mit minimaler Reibung für ADHS konzipiert.",
+    "record": {
+      "title": "Eine Notiz aufzeichnen",
+      "body": "Ein kurzer Satz reicht. Du kannst später Details hinzufügen.",
+      "steps": {
+        "step1": "Gib ein, was du gerade gemacht hast",
+        "step2": "Drücke Enter oder klicke auf 'Aufzeichnen' zum Speichern",
+        "step3": "Nutze erweiterte Felder für Zeit, Fortschritt oder Teamfreigabe"
+      }
+    },
+    "past": {
+      "title": "Frühere Notizen anzeigen",
+      "body": "Verwende die Datumsauswahl zum Überprüfen vergangener Einträge. 'Zurück zu heute' bringt dich sofort zurück.",
+      "steps": {
+        "step1": "Wähle ein Datum mit der Datumsauswahl",
+        "step2": "Zeige alle Notizen des Tages an",
+        "step3": "Klicke auf 'Zurück zu heute', um zu den heutigen Notizen zurückzukehren"
+      }
+    },
+    "review": {
+      "title": "Überprüfen & Reflektieren",
+      "body": "Nutze Wochenzusammenfassungen und Tagesabschluss-Überprüfungen für Aktivitäten, Stimmung und Aufgaben.",
+      "steps": {
+        "step1": "Öffne 'Wochenübersicht' für Diagramme der letzten 7 Tage",
+        "step2": "Nutze 'Tag abschließen' zur Reflexion und für morgige Aufgaben",
+        "step3": "Organisiere häufig genutzte Kategorien mit der Tag-Verwaltung"
+      }
+    }
+  },
+  "mood": {
+    "great": "Großartig",
+    "good": "Gut",
+    "ok": "Okay",
+    "tired": "Müde",
+    "bad": "Hart",
+    "none": "Keine Auswahl",
+    "label": "Stimmung"
+  },
+  "input": {
+    "placeholder": "Was machst du gerade?",
+    "submit": "Speichern",
+    "draft_saved": "Entwurf gespeichert",
+    "char_count": "{count} / 5000",
+    "shift_enter_hint": "Enter zum Senden / Shift+Enter für Zeilenumbruch"
+  },
+  "card": {
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "linked_todo": "Zugehöriges TODO"
+  },
+  "weekly": {
+    "title": "Wochenrückblick",
+    "summary": "Wochenzusammenfassung",
+    "memo_count": "Notizen",
+    "posted_days": "Aktive Tage",
+    "avg_mood": "Durchschnittsstimmung",
+    "mood_trend": "Stimmungsverlauf",
+    "top_tags": "Häufige Tags",
+    "featured_memos": "Wichtige Notizen",
+    "featured_random_note": "(zufällige Auswahl)",
+    "related_todos": "Zugehörige TODOs",
+    "todos_completed": "Erledigt",
+    "todos_pending": "Offen → nächste Woche",
+    "page_title": "Wochenübersicht",
+    "empty_state": "Noch keine Wochenzusammenfassungen. Sie werden automatisch am Sonntagabend erstellt.",
+    "view_detail": "Details ansehen",
+    "loading": "Laden...",
+    "error": "Wochenzusammenfassungen konnten nicht geladen werden",
+    "retry": "Erneut versuchen",
+    "next_summary": "Die nächste Wochenzusammenfassung wird am Sonntagabend erstellt",
+    "body_preview_more": "...weiterlesen",
+    "period_label": "Zeitraum",
+    "load_more": "Mehr laden"
+  },
+  "settings": {
+    "title": "Aktionsnotizen-Einstellungen",
+    "mood_enabled": {
+      "label": "Stimmungseingabe aktivieren",
+      "description": "Wähle beim Hinzufügen einer Notiz deine Stimmung aus 5 Stufen. Standardmäßig deaktiviert."
+    },
+    "reminder": {
+      "label": "Tägliche Erinnerung",
+      "description": "Erhalte zur eingestellten Zeit eine Benachrichtigung zum Aufzeichnen deiner Aktionsnotiz (wird nach Batch-Implementierung aktiviert)",
+      "time_label": "Benachrichtigungszeit"
+    }
+  },
+  "dashboard": {
+    "title": "Mitglieder-Aktionsnotizen-Verwaltung",
+    "select_team": "Team auswählen",
+    "select_member": "Mitglied auswählen",
+    "no_work_memos": "Keine WORK-Notizen",
+    "forbidden": "Managerrechte erforderlich",
+    "error_load": "Notizen konnten nicht geladen werden",
+    "load_more": "Mehr laden"
+  },
+  "todo_revert": {
+    "button": "TODO zurücksetzen",
+    "confirm": "TODO-Abschluss für diese Notiz zurücksetzen?",
+    "success": "TODO wurde zurückgesetzt",
+    "error": "Zurücksetzen fehlgeschlagen"
+  },
+  "error": {
+    "rate_limit": "Zu viele Aktionen. Bitte warte einen Moment und versuche es erneut.",
+    "daily_limit": "Heutiges Limit (200 Notizen) erreicht. Bitte morgen fortfahren.",
+    "future_date": "Zukünftige Daten sind nicht erlaubt.",
+    "todo_not_found": "Das verknüpfte TODO wurde nicht gefunden.",
+    "load_failed": "Notizen konnten nicht geladen werden.",
+    "save_failed": "Notiz konnte nicht gespeichert werden."
+  },
+  "dialog": {
+    "title": "Notiz bearbeiten",
+    "save": "Speichern",
+    "cancel": "Abbrechen"
+  },
+  "closing": {
+    "title": "Tagesabschluss-Reflexion",
+    "today_memos": "Heutige Notizen",
+    "todos_completed": "Erledigte TODOs",
+    "todos_pending": "Offene TODOs",
+    "no_completed_todos": "Heute noch keine erledigten TODOs.",
+    "no_pending_todos": "Heute keine offenen TODOs.",
+    "tomorrow_todos": "TODOs für morgen",
+    "tomorrow_input_placeholder": "Etwas für morgen eintragen",
+    "tomorrow_added": "Zu morgens TODOs hinzugefügt",
+    "tomorrow_add_failed": "TODO konnte nicht hinzugefügt werden",
+    "extra_comment_label": "Schlussbemerkung",
+    "extra_comment_placeholder": "Ein paar Worte zum Tag (optional)",
+    "publish_button": "Tag abschließen",
+    "publish_success": "Tageszusammenfassung veröffentlicht ({count} Notizen)",
+    "publish_error": "Veröffentlichung fehlgeschlagen",
+    "move_to_tomorrow": "Auf morgen verschieben",
+    "moved_to_tomorrow": "Auf morgen verschoben",
+    "move_failed": "Verschieben fehlgeschlagen",
+    "no_memos_hint": "Heute gibt es keine Notizen zum Veröffentlichen."
+  },
+  "offline": {
+    "banner": "Du bist offline. Synchronisierung erfolgt bei Wiederverbindung.",
+    "sync_button": "Jetzt synchronisieren",
+    "queued": "{count} in Warteschlange"
+  },
+  "tag": {
+    "list_title": "Tag-Verwaltung",
+    "create_button": "Neuen Tag erstellen",
+    "name_placeholder": "Tagname",
+    "color_label": "Farbe",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "delete_confirm": "Diesen Tag löschen? Dies kann nicht rückgängig gemacht werden.",
+    "search_placeholder": "Tags durchsuchen...",
+    "max_reached": "Maximal 10 Tags pro Notiz",
+    "limit_reached": "Sie können bis zu 100 Tags erstellen",
+    "no_tags": "Noch keine Tags vorhanden",
+    "save": "Speichern",
+    "cancel": "Abbrechen"
+  },
+  "mood_stats": {
+    "title": "Stimmungsverteilung",
+    "total": "Gesamt"
+  },
+  "phase3": {
+    "advanced_fields": "Erweiterte Felder (optional)",
+    "category": {
+      "label": "Kategorie",
+      "work": "Arbeit",
+      "private": "Privat",
+      "other": "Sonstiges"
+    },
+    "duration": {
+      "label": "Dauer (Minuten)",
+      "placeholder": "z.B. 30",
+      "unit": "Min.",
+      "quick_15": "15 Min.",
+      "quick_30": "30 Min.",
+      "quick_60": "1 Std.",
+      "quick_120": "2 Std."
+    },
+    "progress_rate": {
+      "label": "Fortschritt",
+      "requires_todo": "Zum Eingeben des Fortschritts muss ein TODO verknüpft sein"
+    },
+    "completes_todo": {
+      "label": "Dieses TODO als erledigt markieren",
+      "tooltip": "Bei Aktivierung wird das verknüpfte TODO beim Speichern der Notiz abgeschlossen"
+    },
+    "post_to_team": {
+      "button": "Im Team veröffentlichen",
+      "select_team": "Team auswählen",
+      "only_work": "Nur Arbeitsnotizen können im Team veröffentlicht werden",
+      "already_posted": "Diese Notiz wurde bereits veröffentlicht",
+      "no_teams": "Keine Teams verfügbar",
+      "publish_daily": "Heutige Arbeitsnotizen im Team veröffentlichen",
+      "no_work_memos_hint": "Keine Arbeitsnotizen heute, nichts zum Veröffentlichen.",
+      "publish_daily_success": "Heutige Arbeitsnotizen wurden im Team veröffentlicht",
+      "publish_daily_error": "Veröffentlichung im Team fehlgeschlagen"
+    },
+    "settings": {
+      "default_team": "Standard-Team",
+      "default_category": "Standardkategorie",
+      "default_team_help": "Team, das beim Erstellen einer Arbeitsnotiz automatisch ausgewählt wird"
+    },
+    "team_timeline": {
+      "empty": "Noch keine Arbeitsnotizen in diesem Team veröffentlicht",
+      "load_more": "Mehr laden"
+    }
+  },
+  "phase4": {
+    "org_scope": {
+      "label": "Mit Organisation teilen",
+      "select_org": "Zielorganisation auswählen",
+      "visibility_label": "Sichtbarkeit",
+      "team_only": "Nur Teammitglieder",
+      "org_wide": "Für die gesamte Organisation sichtbar",
+      "no_orgs": "Keine Organisation vorhanden",
+      "already_set": "Organisationsbereich bereits gesetzt",
+      "clear": "Organisationsfreigabe aufheben"
+    },
+    "audit": {
+      "toggle": "Änderungsverlauf",
+      "empty": "Kein Änderungsverlauf",
+      "loading": "Wird geladen...",
+      "error": "Verlauf konnte nicht geladen werden",
+      "event_todo_completed": "Verknüpftes TODO als erledigt markiert",
+      "event_created": "Memo erstellt",
+      "event_updated": "Memo aktualisiert",
+      "event_deleted": "Memo gelöscht",
+      "event_todo_reverted": "TODO zurückgesetzt"
+    }
+  }
+}

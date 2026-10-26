@@ -1,0 +1,36 @@
+package com.mannschaft.app.corkboard.dto;
+
+import lombok.Builder;
+import lombok.Getter;
+
+import java.time.LocalDateTime;
+
+/**
+ * F09.8.1 Phase 3 ピン止めカード横断取得レスポンス（1 件分）。
+ *
+ * <p>{@code GET /api/v1/users/me/corkboards/pinned-cards} のレスポンスフィールド。
+ * 設計書 §4.3 と完全に一致するフィールド構造を持つ。</p>
+ *
+ * <p>JSON は camelCase（プロジェクト規約）。</p>
+ */
+@Builder(toBuilder = true)
+@Getter
+public class PinnedCardResponse {
+
+    private final Long cardId;
+    private final Long corkboardId;
+    private final String corkboardName;
+    private final String cardType;
+    private final PinnedCardContentDto cardContent;
+    private final LocalDateTime pinnedAt;
+
+    /** 参照先メタ。MEMO / SECTION_HEADER 等の純メモカードでは null。 */
+    private final PinnedCardReferenceResponse reference;
+
+    public record PinnedCardContentDto(String colorLabel, String title, String body, String userNote,
+                                       /**
+                                        * F09.8 件3' (V9.098): ピン止め時付箋メモの専用色。
+                                        * {@code null} はカラーラベルと同色とみなす。
+                                        */
+                                       String noteColor) {}
+}
