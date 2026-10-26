@@ -18,7 +18,7 @@ vi.mock('~/composables/useScheduleApi', () => ({ useScheduleApi: () => api }))
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
 mockNuxtImport('navigateTo', () => navigateMock)
 
-const stubs = { CalendarGrid: true, ScheduleDayDialog: true, ScheduleEventForm: true, Dialog: true }
+const stubs = { LazyCalendarGrid: true, ScheduleDayDialog: true, ScheduleEventForm: true, Dialog: true }
 const event: CalendarEventItem = {
   id: 10, uniqueKey: 'personal:10', title: '当日予定', startAt: '2026-08-06T10:00:00',
   endAt: '2026-08-06T11:00:00', allDay: false, isPersonal: true, color: null,
@@ -50,14 +50,14 @@ describe('個人ダッシュボードの日付操作', () => {
     dialog.vm.$emit('rowOpen', { ...event, isReflection: true, referenceUuid: 'theme-uuid', referenceKind: 'REFLECTION_PRE_EXAM' })
     await flushPromises()
     expect(navigateMock).toHaveBeenLastCalledWith('/reflections/themes/theme-uuid')
-    wrapper.findComponent({ name: 'CalendarGrid' }).vm.$emit('eventClick', -12, false)
+    wrapper.findComponent({ name: 'LazyCalendarGrid' }).vm.$emit('eventClick', -12, false)
     await flushPromises()
     expect(navigateMock).toHaveBeenLastCalledWith('/todos/11')
   })
 
   it('0件の日付は個人新規フォームを開き、保存後更新して別日にも新規として開く', async () => {
     const wrapper = await mountWidget()
-    const grid = wrapper.findComponent({ name: 'CalendarGrid' })
+    const grid = wrapper.findComponent({ name: 'LazyCalendarGrid' })
 
     grid.vm.$emit('dateClick', '2026-08-06')
     await flushPromises()
@@ -95,7 +95,7 @@ describe('個人ダッシュボードの日付操作', () => {
     state.loading.value = false
     state.calendarLoading.value = true
     await wrapper.vm.$nextTick()
-    const grid = wrapper.findComponent({ name: 'CalendarGrid' })
+    const grid = wrapper.findComponent({ name: 'LazyCalendarGrid' })
     grid.vm.$emit('dateClick', '2026-08-06')
     grid.vm.$emit('nextMonth')
     grid.vm.$emit('prevMonth')
@@ -110,7 +110,7 @@ describe('個人ダッシュボードの日付操作', () => {
     const wrapper = await mountWidget()
     const errorState = wrapper.findComponent({ name: 'DashboardErrorState' })
     expect(errorState.exists()).toBe(true)
-    expect(wrapper.findComponent({ name: 'CalendarGrid' }).exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'LazyCalendarGrid' }).exists()).toBe(false)
     state.loadEvents.mockClear()
     errorState.vm.$emit('retry')
     await flushPromises()
