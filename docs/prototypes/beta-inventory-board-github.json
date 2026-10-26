@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "repository": "kenta-0420/mannschaft",
-  "synchronizedAt": "2026-10-26T04:18:35+00:00",
+  "synchronizedAt": "2026-10-26T05:31:25+00:00",
   "status": "synced",
   "error": null,
   "references": {
@@ -1218,7 +1218,9 @@
     "CMP-261001-0836": [],
     "CMP-261001-0837": [],
     "CMP-261001-0838": [],
-    "CMP-261001-0839": [],
+    "CMP-261001-0839": [
+      4127
+    ],
     "CMP-261001-1032": [],
     "CMP-260930-2346": [
       3542
@@ -1730,7 +1732,9 @@
       4053,
       4110
     ],
-    "CMP-261021-0648": [],
+    "CMP-261021-0648": [
+      4122
+    ],
     "CMP-261021-0649": [],
     "CMP-261021-0650": [],
     "CMP-261021-0651": [],
@@ -1862,6 +1866,10 @@
     ],
     "CMP-261025-2202": [
       4116
+    ],
+    "CMP-261026-1344": [
+      4022,
+      4049
     ]
   },
   "items": {
@@ -10306,7 +10314,7 @@
       "state": "open",
       "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
       "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-      "updatedAt": "2026-10-26T02:59:48Z",
+      "updatedAt": "2026-10-26T05:22:22Z",
       "ci": null
     },
     "4023": {
@@ -10445,6 +10453,19 @@
       "ci": {
         "status": "unavailable",
         "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "4049": {
+      "number": 4049,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "CMP-261022-0914: L1-A 認可サービスのinterface化とroleへの移設",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4049",
+      "updatedAt": "2026-10-26T03:00:46Z",
+      "ci": {
+        "status": "success",
         "checks": [],
         "source": "GraphQL statusCheckRollup"
       }
@@ -10719,13 +10740,41 @@
         "source": "GraphQL statusCheckRollup"
       }
     },
+    "4122": {
+      "number": 4122,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "修正: 交代承認時に担当と割当履歴を同時に差し替える",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4122",
+      "updatedAt": "2026-10-26T04:55:16Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
     "4125": {
       "number": 4125,
       "kind": "pull_request",
       "state": "merged",
       "title": "修正: エラーレポートの長いコメントの折返しを改善",
       "url": "https://github.com/kenta-0420/mannschaft/pull/4125",
-      "updatedAt": "2026-10-26T04:09:48Z",
+      "updatedAt": "2026-10-26T04:46:05Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "4127": {
+      "number": 4127,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "修正(CMP-261001-0839): CSPレポートのreports+jsonを受理しHTTP契約を固定",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4127",
+      "updatedAt": "2026-10-26T05:26:43Z",
       "ci": {
         "status": "unavailable",
         "reason": "終了済みPRのCIは同期対象外",
