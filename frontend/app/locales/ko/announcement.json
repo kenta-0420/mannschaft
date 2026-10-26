@@ -28,9 +28,13 @@
       "BULLETIN_THREAD": "게시판",
       "TIMELINE_POST": "타임라인",
       "CIRCULATION": "회람 문서",
+      "CIRCULATION_DOCUMENT": "회람 문서",
       "SURVEY": "설문",
       "TODO": "할 일",
-      "SCHEDULE": "일정"
+      "SCHEDULE": "일정",
+      "COMMITTEE_DECISION": "위원회 의결",
+      "COMMITTEE_MINUTES": "위원회 회의록",
+      "ADVERTISER_CAMPAIGN": "광고주 캠페인"
     },
     "mark_all_read": "모두 읽음 처리",
     "remove_from_announcements": "공지에서 제거",

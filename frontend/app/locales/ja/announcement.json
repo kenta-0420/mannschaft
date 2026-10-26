@@ -28,9 +28,13 @@
       "BULLETIN_THREAD": "掲示板",
       "TIMELINE_POST": "タイムライン",
       "CIRCULATION": "回覧板",
+      "CIRCULATION_DOCUMENT": "回覧板",
       "SURVEY": "アンケート",
       "TODO": "タスク",
-      "SCHEDULE": "予定"
+      "SCHEDULE": "予定",
+      "COMMITTEE_DECISION": "委員会決議",
+      "COMMITTEE_MINUTES": "委員会議事録",
+      "ADVERTISER_CAMPAIGN": "広告主キャンペーン"
     },
     "mark_all_read": "すべて既読にする",
     "remove_from_announcements": "お知らせから外す",

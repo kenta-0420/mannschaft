@@ -28,9 +28,13 @@
       "BULLETIN_THREAD": "公告板",
       "TIMELINE_POST": "时间线",
       "CIRCULATION": "传阅文件",
+      "CIRCULATION_DOCUMENT": "传阅文件",
       "SURVEY": "问卷",
       "TODO": "任务",
-      "SCHEDULE": "日程"
+      "SCHEDULE": "日程",
+      "COMMITTEE_DECISION": "委员会决议",
+      "COMMITTEE_MINUTES": "委员会会议记录",
+      "ADVERTISER_CAMPAIGN": "广告主活动"
     },
     "mark_all_read": "全部标为已读",
     "remove_from_announcements": "从公告中移除",
