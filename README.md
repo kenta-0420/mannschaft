@@ -1148,8 +1148,6 @@ wsl -d Ubuntu-24.04 -- bash -c "
 curl -s http://localhost:8080/actuator/health
 ```
 
-バックエンドは単一Gradleプロジェクト `app` を維持し、`backend/build.gradle.kts` から included build `backend/build-logic` の `mannschaft.backend-conventions` を適用する。依存定義と共通Test・shard・番人・JaCoCo設定は同conventionへ、shard述語は `ShardAssignment.kt` へ集約する。アプリ固有のBoot・OpenAPI・OWASP設定はroot buildに置く。
-
 ### フロントエンド開発サーバーの起動
 
 ```bash
