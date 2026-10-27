@@ -1,0 +1,39 @@
+{
+  "base": "54923edd410412cb371e46b49a505918f3171b37",
+  "method": "task-list/生成boardを基準blobへ一時復元し、同じnode validator commandを実行後finallyで作業内容のbytesを復元。他依存は基準と同内容（Windows checkout CRLFは改行正規化して比較）。",
+  "runs": [
+    {
+      "scope": "baseline",
+      "command": "node docs/prototypes/validate-beta-inventory-board.mjs",
+      "exitCode": 1,
+      "errorMessage": "GitHubスナップショットの参照集合が正本と不一致です",
+      "validatorFile": "docs/prototypes/validate-beta-inventory-board.mjs",
+      "line": 46
+    },
+    {
+      "scope": "baseline",
+      "command": "node docs/prototypes/validate-beta-inventory-board.mjs --self-test-overlay",
+      "exitCode": 1,
+      "errorMessage": "GitHubスナップショットの参照集合が正本と不一致です",
+      "validatorFile": "docs/prototypes/validate-beta-inventory-board.mjs",
+      "line": 46
+    },
+    {
+      "scope": "registered",
+      "command": "node docs/prototypes/validate-beta-inventory-board.mjs",
+      "exitCode": 1,
+      "errorMessage": "GitHubスナップショットの参照集合が正本と不一致です",
+      "validatorFile": "docs/prototypes/validate-beta-inventory-board.mjs",
+      "line": 46
+    },
+    {
+      "scope": "registered",
+      "command": "node docs/prototypes/validate-beta-inventory-board.mjs --self-test-overlay",
+      "exitCode": 1,
+      "errorMessage": "GitHubスナップショットの参照集合が正本と不一致です",
+      "validatorFile": "docs/prototypes/validate-beta-inventory-board.mjs",
+      "line": 46
+    }
+  ],
+  "dependenciesEqualAfterCheckoutEolNormalization": true
+}

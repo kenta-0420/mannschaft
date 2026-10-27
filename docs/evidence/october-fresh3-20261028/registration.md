@@ -25,4 +25,4 @@ NAME_ONLY詳細は別のroot制御再現で詳細200＋members403、再試行表
 
 再生成はB0_RUNNER記載の正本を `docs/prototypes/.b0-local/run-october-fresh3-20261028.json` にcopyし、同dirでこれが最新mtimeであることを確認して `B0_INCLUDE_LOCAL_OVERLAY=true python docs/prototypes/generate-beta-inventory-board-data.py`。sparse worktreeでは生成器が参照する `frontend/tests/e2e` も展開する。generatedAtは生成時刻、sources.taskListCommitは実行時HEADにおける台帳の最終commitであり、commit後の再実行ではこの来歴フィールドも変化しうる。
 
-基準HEADでの同command実行も同じ既存failureを再現した。[基準/登録後validator証拠](validator-baseline-proof.json)は通常・自己検証の計4実行exit1と同メッセージを保存する。validatorとsnapshot/statusは基準blobとのbyte一致も確認した。
+基準HEADでの同command実行も同じ既存failureを再現した。[基準/登録後validator証拠](validator-baseline-proof.json)は通常・自己検証の計4実行exit1と同メッセージを保存する。validatorとsnapshot/statusは基準blobとの内容一致（Windows checkoutのCRLF/LFを正規化）も確認した。
