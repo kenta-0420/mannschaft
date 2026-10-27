@@ -14,7 +14,7 @@ import { waitForHydration, waitForSpinnerGone } from '../helpers/wait'
 /**
  * CMP-261002-1343: 既存ユーザーの権限を変えず、自所有の組織で全5件を検証する。
  * 前提・本人確認・永続化確認・後始末は正規API、③のCRUDは実UIを通す。
- * 初期設定のdismissは遮蔽red取得後に追加する（この段階はfixture修復のみ）。
+ * 初期設定は表示と画面証跡を確認後、ダイアログ内の「あとで決める」で閉じる。
  */
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:8080'
 const uniqueSuffix = Date.now().toString(36)
@@ -422,12 +422,17 @@ test('③ ADMIN: ページ作成→メンバー追加→編集→削除→ペー
   await waitForSpinnerGone(page)
   await waitForBodyText(page, 'メンバー紹介')
 
-  // fixture修復段階: 正規dismissは追加せず、実際の遮蔽redをこの同じ操作から取得する。
+  // 初期設定の表示と画面証跡を確認し、通常のUI操作で閉じてからCRUDへ進む。
   await expect(page.getByTestId('member-permission-setup')).toBeVisible()
   await info.attach('initial-permission-dialog', {
     body: await page.screenshot(),
     contentType: 'image/png',
   })
+  await page
+    .getByTestId('member-permission-setup')
+    .getByRole('button', { name: 'あとで決める', exact: true })
+    .click()
+  await expect(page.getByTestId('member-permission-setup')).toBeHidden()
 
   // --- ページ作成 ---
   await page.getByRole('button', { name: '新規ページ作成' }).click()
