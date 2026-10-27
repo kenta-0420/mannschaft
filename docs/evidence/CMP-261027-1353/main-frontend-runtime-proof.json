@@ -1,0 +1,24 @@
+{
+  "kind": "new-main-frontend-source-runtime-proof",
+  "sourceHead": "7610007cd8301e6f293db80e6902f3991c0e4c70",
+  "nuxiNode22": true,
+  "nuxiFrontendPath": true,
+  "ownerCurrentUser": true,
+  "port3000Owned": true,
+  "configThemeFiles": [
+    {
+      "file": "frontend/nuxt.config.ts",
+      "blobMatchesMergedSource": true,
+      "blob": "7f1aaf715002a2ecc6a3ae80134b112f4fa1a0fd"
+    },
+    {
+      "file": "frontend/app/themes/mannschaft.ts",
+      "blobMatchesMergedSource": true,
+      "blob": "ae2a818bfd58939df258073b9b9758e46505734e"
+    }
+  ],
+  "previewChanged": false,
+  "apiChangedByFrontend": false,
+  "processIdentityVerifiedByOwnerAndRoot": true,
+  "rawProcessPathsOrArgumentsIncluded": false
+}

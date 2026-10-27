@@ -1,0 +1,260 @@
+{
+    "campaign":  "CMP-261027-1353",
+    "pr":  4166,
+    "head":  "3db393c2e4e5608e0e168d59baba85e68342ae78",
+    "observedAtUtc":  "2026-10-27T16:21:05.7046063Z",
+    "isDraft":  false,
+    "mergeable":  "MERGEABLE",
+    "checks":  [
+                   {
+                       "name":  "Task-List PR Gate",
+                       "status":  "COMPLETED",
+                       "conclusion":  "CANCELLED",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40539660037/job/122314295638"
+                   },
+                   {
+                       "name":  "Scan \u0026 Comment",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523312951/job/122255987828"
+                   },
+                   {
+                       "name":  "Detect changes",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313140/job/122255989856"
+                   },
+                   {
+                       "name":  "Seed + API Smoke Check",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313098/job/122255987715"
+                   },
+                   {
+                       "name":  "lockfile 変更の有無",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523312919/job/122255987409"
+                   },
+                   {
+                       "name":  "Install",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523312994/job/122255987282"
+                   },
+                   {
+                       "name":  "Smoke E2E (F15.4 + F22.1 + 拡大予定)",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313078/job/122255987630"
+                   },
+                   {
+                       "name":  "harness-tests",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523312806/job/122255986751"
+                   },
+                   {
+                       "name":  "Lighthouse パフォーマンスチェック",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313035/job/122255986746"
+                   },
+                   {
+                       "name":  "OpenAPI Drift Check",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313065/job/122255987127"
+                   },
+                   {
+                       "name":  "validate",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523312930/job/122255987415"
+                   },
+                   {
+                       "name":  "Task-List PR Gate",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523304233/job/122255960629"
+                   },
+                   {
+                       "name":  "Task-List PR Gate",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523628793/job/122257116347"
+                   },
+                   {
+                       "name":  "Task-List PR Gate",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40539694586/job/122314496182"
+                   },
+                   {
+                       "name":  "Worktree cleanup guard",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313064/job/122255990299"
+                   },
+                   {
+                       "name":  "PR差分スキャン",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313022/job/122255988299"
+                   },
+                   {
+                       "name":  "Docker ビルド検証（main push のみ）",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SKIPPED",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523312994/job/122255989793"
+                   },
+                   {
+                       "name":  "フル履歴スキャン（週次）",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SKIPPED",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313022/job/122255990834"
+                   },
+                   {
+                       "name":  "Lint (D-5 @Builder guard)",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313140/job/122256391982"
+                   },
+                   {
+                       "name":  "lockfile の内容検査（base 比較）",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523312919/job/122256168899"
+                   },
+                   {
+                       "name":  "Shard coverage guard",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313140/job/122256392022"
+                   },
+                   {
+                       "name":  "npm ci（Ubuntu / glibc）",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523312919/job/122256169462"
+                   },
+                   {
+                       "name":  "ArchUnit tests (separate JVM)",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313140/job/122256392205"
+                   },
+                   {
+                       "name":  "npm ci（Alpine / musl）",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523312919/job/122256170791"
+                   },
+                   {
+                       "name":  "Non-JST timezone contract",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313140/job/122256392157"
+                   },
+                   {
+                       "name":  "Test (shard 0)",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313140/job/122256392464"
+                   },
+                   {
+                       "name":  "Test (shard 1)",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313140/job/122256392675"
+                   },
+                   {
+                       "name":  "Test (shard 2)",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313140/job/122256392179"
+                   },
+                   {
+                       "name":  "Test (shard 3)",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313140/job/122256392276"
+                   },
+                   {
+                       "name":  "Test (shard 4)",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313140/job/122256392317"
+                   },
+                   {
+                       "name":  "Test (shard 5)",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313140/job/122256392542"
+                   },
+                   {
+                       "name":  "Compile \u0026 Test",
+                       "status":  "COMPLETED",
+                       "conclusion":  "SUCCESS",
+                       "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313140/job/122305424498"
+                   }
+               ],
+    "requiredChecks":  [
+                           {
+                               "link":  "https://github.com/kenta-0420/mannschaft/actions/runs/40539694586/job/122314496182",
+                               "name":  "Task-List PR Gate",
+                               "state":  "SUCCESS"
+                           },
+                           {
+                               "link":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313140/job/122305424498",
+                               "name":  "Compile \u0026 Test",
+                               "state":  "SUCCESS"
+                           },
+                           {
+                               "link":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313065/job/122255987127",
+                               "name":  "OpenAPI Drift Check",
+                               "state":  "SUCCESS"
+                           }
+                       ],
+    "activeCount":  0,
+    "failureCount":  0,
+    "conditionalSkips":  [
+                             {
+                                 "name":  "Docker ビルド検証（main push のみ）",
+                                 "reason":  "main push only",
+                                 "link":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523312994/job/122255989793"
+                             },
+                             {
+                                 "name":  "フル履歴スキャン（週次）",
+                                 "reason":  "weekly scheduled full history only",
+                                 "link":  "https://github.com/kenta-0420/mannschaft/actions/runs/40523313022/job/122255990834"
+                             }
+                         ],
+    "cancelledHistory":  [
+                             {
+                                 "name":  "Task-List PR Gate",
+                                 "status":  "COMPLETED",
+                                 "conclusion":  "CANCELLED",
+                                 "detailsUrl":  "https://github.com/kenta-0420/mannschaft/actions/runs/40539660037/job/122314295638"
+                             }
+                         ],
+    "supersededTaskGateCancelledCount":  1,
+    "effectiveTaskGate":  [
+                              {
+                                  "link":  "https://github.com/kenta-0420/mannschaft/actions/runs/40539694586/job/122314496182",
+                                  "name":  "Task-List PR Gate",
+                                  "state":  "SUCCESS"
+                              }
+                          ],
+    "wholeConclusionsAllSuccessClaimed":  false,
+    "latestReadyGateRun":  {
+                               "conclusion":  "success",
+                               "createdAt":  "2026-10-27T16:18:59Z",
+                               "databaseId":  40539694586,
+                               "event":  "pull_request_target",
+                               "headSha":  "3db393c2e4e5608e0e168d59baba85e68342ae78",
+                               "status":  "completed",
+                               "updatedAt":  "2026-10-27T16:19:29Z",
+                               "url":  "https://github.com/kenta-0420/mannschaft/actions/runs/40539694586"
+                           }
+}
