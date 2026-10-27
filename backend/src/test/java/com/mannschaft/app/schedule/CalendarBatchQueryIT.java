@@ -87,12 +87,12 @@ class CalendarBatchQueryIT extends AbstractMySqlIntegrationTest {
     private void addScopes(int teams, int organizations) {
         for (int i = 0; i < teams; i++) {
             TeamEntity team = teamRepository.save(TeamEntity.builder()
-                    .slug("calendar-batch-" + UUID.randomUUID()).name("計数チーム").build());
+                    .slug("calendar-batch-" + UUID.randomUUID().toString().substring(0, 12)).name("計数チーム").build());
             MembershipTestHelper.insertMembership(em, USER_ID, ScopeType.TEAM, team.getId(), RoleKind.MEMBER);
         }
         for (int i = 0; i < organizations; i++) {
             OrganizationEntity organization = organizationRepository.save(OrganizationEntity.builder()
-                    .slug("calendar-batch-" + UUID.randomUUID()).name("計数組織")
+                    .slug("calendar-batch-" + UUID.randomUUID().toString().substring(0, 12)).name("計数組織")
                     .orgType(OrganizationEntity.OrgType.OTHER)
                     .visibility(OrganizationEntity.Visibility.PUBLIC)
                     .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE).build());
