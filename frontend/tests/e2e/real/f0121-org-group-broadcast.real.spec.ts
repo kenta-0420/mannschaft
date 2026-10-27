@@ -430,7 +430,7 @@ test.describe('F01.2.1 グループ宛てお知らせの実機E2E', () => {
     await archiveScope('teams', w.XM, loose.slug)
   })
 
-  test('BC-09 [AC-H11/H18/H28] 「すべてのチーム」のアンケートは ORGANIZATION ジョブ1件、「チームを選ぶ」T1 のアンケートは ORGANIZATION_TEAMS（宛先 T1 のみ）、「チームを選ぶ」の掲示板はジョブなし', async ({ browser }) => {
+  test('BC-09 [AC-H11/H18/H28] 「すべてのチーム」のアンケートは ORGANIZATION ジョブ1件、「チームを選ぶ」T1 のアンケートは ORGANIZATION_TEAMS（宛先 T1 のみ・push は T1 と XO だけ・表示は T1 だけ）、「チームを選ぶ」の掲示板はジョブなし', async ({ browser }) => {
     test.setTimeout(900_000)
     const send = async (mode: 'all' | 'teams', channel: '掲示板' | 'アンケート', title: string) => {
       // 告知送信のレート制限（5 件/5 分/利用者）は本 AC の対象外のため、前提としてカウンタを戻す
@@ -471,7 +471,14 @@ test.describe('F01.2.1 グループ宛てお知らせの実機E2E', () => {
     await expect.poll(() => received(w.A['1']), { timeout: 60_000 }).toBe(1)
     expect(await received(w.XO), 'AC-H18 XO').toBe(1)
     expect(await received(w.A['2']), 'AC-H18 T2').toBe(0)
+    // AC-H18: T3（A3 は T3 だけに属する ADMIN）・T4 のメンバーにも push は届かない
+    expect(await received(w.A['3']), 'AC-H18 T3').toBe(0)
+    expect(await received(w.A['4']), 'AC-H18 T4').toBe(0)
     expect(await received(w.A['0']), 'AC-H18 T0').toBe(0)
+    // AC-H18: 表示は T1 のダッシュボードにだけ出る（T2・T3・T4・T0 には出ない）
+    const shownH18: Record<string, boolean> = {}
+    for (const k of KEYS) shownH18[k] = await teamDashboardShows(browser, w.A[k], w.T[k], t1Title)
+    expect(shownH18, 'AC-H18 表示は T1 のダッシュボードにだけ').toEqual({ '1': true, '2': false, '3': false, '4': false, '0': false })
     const bulletin = await send('teams', '掲示板', `T1宛て掲示板 ${RUN}`)
     expect(bulletin, 'AC-H28 掲示板').toEqual([])
   })
