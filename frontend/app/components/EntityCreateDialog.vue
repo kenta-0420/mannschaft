@@ -143,25 +143,6 @@ const { clear: clearEntityDraft, restore: restoreEntityDraft } = useFormDraft<En
   { source: entityFormSnapshot, debounceMs: 1000, autoRestore: false },
 )
 
-// ダイアログが開いたときに下書きを復元する
-watch(
-  () => props.visible,
-  (nowVisible) => {
-    if (!nowVisible) return
-    const saved = restoreEntityDraft()
-    if (saved) {
-      form.value.name = saved.name ?? ''
-      form.value.nameKana = saved.nameKana ?? ''
-      form.value.nickname1 = saved.nickname1 ?? ''
-      form.value.description = saved.description ?? ''
-      form.value.visibility = requestVisibility(saved.visibility ?? 'PUBLIC')
-      form.value.supporterEnabled = saved.supporterEnabled ?? false
-      form.value.template = saved.template ?? 'OTHER'
-      form.value.orgType = saved.orgType ?? 'OTHER'
-    }
-  },
-)
-
 // === slug（村方式: ユーザーが任意入力。空欄なら BE が名前から自動生成） ===
 const slug = ref('')
 // ユーザーが slug 欄を手動編集したら、名前変更による自動提案の上書きを止める。
@@ -475,6 +456,26 @@ function close() {
   emit('update:visible', false)
   resetForm()
 }
+// 初回の遅延mountでも開く処理を実行する。状態・watchの定義後に登録する。
+// ダイアログが開いたときに下書きを復元する
+watch(
+  () => props.visible,
+  (nowVisible) => {
+    if (!nowVisible) return
+    const saved = restoreEntityDraft()
+    if (saved) {
+      form.value.name = saved.name ?? ''
+      form.value.nameKana = saved.nameKana ?? ''
+      form.value.nickname1 = saved.nickname1 ?? ''
+      form.value.description = saved.description ?? ''
+      form.value.visibility = requestVisibility(saved.visibility ?? 'PUBLIC')
+      form.value.supporterEnabled = saved.supporterEnabled ?? false
+      form.value.template = saved.template ?? 'OTHER'
+      form.value.orgType = saved.orgType ?? 'OTHER'
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>

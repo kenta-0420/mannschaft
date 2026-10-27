@@ -10,6 +10,16 @@ const { t } = useI18n()
 const iosInstallModalVisible = ref(false)
 const quickMemoModalVisible = ref(false)
 const feedbackModalVisible = ref(false)
+// 初回の操作で読み込み、閉じた後も既存のフォーム状態を保持する。
+const mountedDialogs = reactive({ iosInstall: false, quickMemo: false, feedback: false })
+watch(
+  [iosInstallModalVisible, quickMemoModalVisible, feedbackModalVisible],
+  ([iosInstall, quickMemo, feedback]) => {
+    mountedDialogs.iosInstall ||= iosInstall
+    mountedDialogs.quickMemo ||= quickMemo
+    mountedDialogs.feedback ||= feedback
+  },
+)
 
 const inboxStore = useInboxStore()
 
@@ -132,9 +142,18 @@ async function handleEndSwitch() {
 
     <!-- モーダル群・バナー群は AppShell の外（単一インスタンス） -->
     <ClientOnly>
-      <IosInstallGuideModal v-model:visible="iosInstallModalVisible" />
-      <QuickMemoCaptureModal v-model:visible="quickMemoModalVisible" />
-      <FeedbackSubmitModal v-model:visible="feedbackModalVisible" />
+      <LazyIosInstallGuideModal
+        v-if="mountedDialogs.iosInstall"
+        v-model:visible="iosInstallModalVisible"
+      />
+      <LazyQuickMemoCaptureModal
+        v-if="mountedDialogs.quickMemo"
+        v-model:visible="quickMemoModalVisible"
+      />
+      <LazyFeedbackSubmitModal
+        v-if="mountedDialogs.feedback"
+        v-model:visible="feedbackModalVisible"
+      />
       <!-- F10.1: 管理者変身中バナー -->
       <AdminImpersonationBanner />
     </ClientOnly>
