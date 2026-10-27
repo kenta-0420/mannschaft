@@ -22,6 +22,8 @@ import org.mockito.InjectMocks;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.Optional;
 
@@ -34,6 +36,7 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * CommitteeService の toBuilder 廃止・id 保持を固定する回帰テスト。
@@ -65,6 +68,34 @@ class CommitteeServiceToBuilderTest {
     private static final Long USER_ID = 10L;
     private static final Long ORG_ID = 100L;
     private static final Long INITIAL_CHAIR_USER_ID = 11L;
+
+    @Test
+    void 一覧の組織所属拒否は管理者判定と全Repository参照より先に行う() {
+        willThrow(new BusinessException(CommonErrorCode.COMMON_002)).given(accessControlService)
+                .checkMembership(USER_ID, ORG_ID, "ORGANIZATION");
+
+        assertThatThrownBy(() -> committeeService.listCommittees(ORG_ID, null, USER_ID, PageRequest.of(0, 20)))
+                .isInstanceOf(BusinessException.class);
+
+        verify(accessControlService, never()).isAdminOrAbove(any(), any(), any());
+        verifyNoInteractions(committeeRepository, committeeMemberRepository);
+    }
+
+    @Test
+    void 管理者一覧は既存status検索を使い本人委員会IDをロードしない() {
+        var pageable = PageRequest.of(0, 20);
+        given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
+        given(committeeRepository.findByOrganizationIdAndStatus(ORG_ID, CommitteeStatus.ARCHIVED, pageable))
+                .willReturn(Page.empty(pageable));
+
+        committeeService.listCommittees(ORG_ID, CommitteeStatus.ARCHIVED, USER_ID, pageable);
+
+        InOrder order = inOrder(accessControlService, committeeRepository);
+        order.verify(accessControlService).checkMembership(USER_ID, ORG_ID, "ORGANIZATION");
+        order.verify(accessControlService).isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+        order.verify(committeeRepository).findByOrganizationIdAndStatus(ORG_ID, CommitteeStatus.ARCHIVED, pageable);
+        verifyNoInteractions(committeeMemberRepository);
+    }
 
     private CommitteeCreateRequest createRequest() throws Exception {
         CommitteeCreateRequest request = new CommitteeCreateRequest();
