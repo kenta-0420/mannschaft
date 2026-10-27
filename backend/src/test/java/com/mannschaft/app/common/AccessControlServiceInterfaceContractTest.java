@@ -8,7 +8,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** L1-A: 呼出側が利用する認可の公開契約を移設前の39メソッドに固定する。 */
+/**
+ * L1-A移設前の39メソッドと、Inbox最新ロール解決用の利用者活性照会1件を含む公開40契約を固定する。
+ * 既存契約を保持し、Inboxのfresh batchで利用者活性を一度だけ確認する追加読取も明示的に検証する。
+ */
 class AccessControlServiceInterfaceContractTest {
 
     @Test
@@ -20,7 +23,7 @@ class AccessControlServiceInterfaceContractTest {
     }
 
     @Test
-    void 公開39メソッドの引数と戻り値の型を維持する() {
+    void 既存39件とInbox最新解決用活性照会を含む公開40メソッドの引数と戻り値の型を維持する() {
         assertThat(Arrays.stream(AccessControlService.class.getDeclaredMethods())
                 .filter(method -> Modifier.isPublic(method.getModifiers()))
                 .filter(method -> !method.isSynthetic())
@@ -55,6 +58,7 @@ class AccessControlServiceInterfaceContractTest {
                         "boolean hasAdminOrPermissionInScope(Long,Long,String,String)",
                         "void checkAdminOrHasPermissionInScope(Long,Long,String,String)",
                         "boolean isSystemAdmin(Long)",
+                        "boolean isActiveUser(Long)",
                         "void checkSystemAdmin(Long)",
                         "void checkAdminOrAboveIncludingPlatform(Long,Long,String)",
                         "void checkNotLastSystemAdmin(Long)",

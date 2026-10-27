@@ -177,7 +177,7 @@ onMounted(async () => {
     </div>
     <DashboardErrorState v-else-if="loadError" @retry="loadEvents" />
     <template v-else>
-      <CalendarGrid
+        <LazyCalendarGrid
         :year="currentYear"
         :month="currentMonth"
         :events="filteredEvents"

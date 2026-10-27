@@ -172,7 +172,7 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
      * @param userId       ユーザー ID
      * @param excludedType 除外する通知種別（{@code INBOX_SNOOZE_REVIVAL}）
      * @param pageable     ページング
-     * @return 優先度第一順（priority 降順 → created_at 降順）の通知ページ
+     * @return 優先度第一順（priority 降順 → created_at 降順）の有界通知一覧。総件数COUNTは発行しない。
      */
     @Query("""
             SELECT n FROM NotificationEntity n
@@ -186,7 +186,7 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
               END ASC,
               n.createdAt DESC
             """)
-    Page<NotificationEntity> findInboxByUserIdOrderByPriorityThenCreatedAtDesc(
+    List<NotificationEntity> findInboxByUserIdOrderByPriorityThenCreatedAtDesc(
             @Param("userId") Long userId, @Param("excludedType") String excludedType, Pageable pageable);
 
     /**
