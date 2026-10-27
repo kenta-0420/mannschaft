@@ -1,0 +1,32 @@
+{
+  "kind": "main-normal-feed-complement-not-performance",
+  "sourceHead": "7610007cd8301e6f293db80e6902f3991c0e4c70",
+  "observerPlatform": "win32",
+  "observerNode": "v22.23.2",
+  "startedAt": "2026-10-27T17:42:45.117Z",
+  "intentionalWrites": 0,
+  "pageErrors": 0,
+  "feedStatuses": [
+    200
+  ],
+  "steps": [
+    {
+      "action": "normal-menu-to-timeline",
+      "routeTemplate": "/timeline",
+      "apiCategory": "personal-aggregated-feed",
+      "status": 200,
+      "loadedFeedVisible": true
+    }
+  ],
+  "images": [
+    "main-feed-masked.png"
+  ],
+  "helperDifference": "canonical timeline/my replaces timeline/feed; use existing timeline-feed[data-loaded=true]; omit already-passed calendar/theme checks; separate evidence filenames",
+  "phase": "normal-timeline-menu",
+  "loginPageStatus": 200,
+  "authCookiePresent": true,
+  "status": "completed",
+  "logoutStatus": 200,
+  "closed": true,
+  "endedAt": "2026-10-27T17:43:17.446Z"
+}
