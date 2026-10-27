@@ -20,11 +20,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -40,6 +43,7 @@ import java.util.stream.Collectors;
 public class ScheduleQueryService {
 
     private static final String SCOPE_TYPE_PERSONAL = "PERSONAL";
+    private static final int CALENDAR_SCOPE_CHUNK_SIZE = 1000;
 
     private final ScheduleRepository scheduleRepository;
     private final NameResolverService nameResolverService;
@@ -209,25 +213,17 @@ public class ScheduleQueryService {
         // 所属チームのスケジュールを取得（スコープ別の集約に scopeId を保持する）。
         // CMP-027: user_roles ∪ memberships の在籍チーム ID。素メンバー/応援者（memberships 専属）の
         // 所属チームを取りこぼすと、その min_view 対象予定が一覧に一切現れない退行（AC-03）が起きる。
-        List<ScopedSchedule> teamScoped = new ArrayList<>();
         Set<Long> teamIds = new LinkedHashSet<>(
                 membershipService.getActiveTeamIdsIncludingRoleAssignments(userId));
-        for (Long teamId : teamIds) {
-            scheduleRepository
-                    .findCalendarByTeamId(teamId, from, to)
-                    .forEach(s -> teamScoped.add(new ScopedSchedule(s, "TEAM", teamId)));
-        }
+        List<ScopedSchedule> teamScoped = collectCalendarScopes(teamIds, "TEAM",
+                ids -> scheduleRepository.findCalendarByTeamIdIn(ids, from, to), ScheduleEntity::getTeamId);
 
         // 所属組織のスケジュールを取得（CMP-027: user_roles ∪ memberships の在籍組織 ID）。
-        List<ScopedSchedule> orgScoped = new ArrayList<>();
         Set<Long> orgIds = new LinkedHashSet<>(
                 membershipService.getActiveOrgIdsIncludingRoleAssignments(userId));
-        for (Long orgId : orgIds) {
-            scheduleRepository
-                    .findCalendarByOrganizationId(orgId, from, to)
-                    .forEach(s -> orgScoped.add(new ScopedSchedule(s, "ORGANIZATION", orgId)));
-        }
-
+        List<ScopedSchedule> orgScoped = collectCalendarScopes(orgIds, "ORGANIZATION",
+                ids -> scheduleRepository.findCalendarByOrganizationIdIn(ids, from, to),
+                ScheduleEntity::getOrganizationId);
         // F00 認可基盤連携（2026-05-29）: team/org のチーム横断スケジュールは
         // visibility を必ず反映させるため、ID 群を
         // filterAccessible に通して可視なものだけを採用する（team で 1 回・org で 1 回、
@@ -262,6 +258,32 @@ public class ScheduleQueryService {
         }
 
         return entries;
+    }
+
+    /**
+     * 所属IDを1000件単位で読み、既存の所属順・同一scope内の開始日時順へ戻す。
+     * 同じ予定が個人・チーム・組織に現れる場合の多重度は変更しない。
+     */
+    private List<ScopedSchedule> collectCalendarScopes(Set<Long> scopeIds, String scopeType,
+            Function<Collection<Long>, List<ScheduleEntity>> query,
+            Function<ScheduleEntity, Long> scopeIdOf) {
+        List<Long> orderedIds = new ArrayList<>(scopeIds);
+        Map<Long, List<ScheduleEntity>> byScope = new HashMap<>();
+        for (int offset = 0; offset < orderedIds.size(); offset += CALENDAR_SCOPE_CHUNK_SIZE) {
+            List<Long> chunk = orderedIds.subList(offset,
+                    Math.min(offset + CALENDAR_SCOPE_CHUNK_SIZE, orderedIds.size()));
+            // 各scopeは1chunkだけに属する。queryの開始日時順はscopeごとに保たれる。
+            for (ScheduleEntity schedule : query.apply(chunk)) {
+                byScope.computeIfAbsent(scopeIdOf.apply(schedule), ignored -> new ArrayList<>()).add(schedule);
+            }
+        }
+        List<ScopedSchedule> scoped = new ArrayList<>();
+        for (Long scopeId : orderedIds) {
+            for (ScheduleEntity schedule : byScope.getOrDefault(scopeId, List.of())) {
+                scoped.add(new ScopedSchedule(schedule, scopeType, scopeId));
+            }
+        }
+        return scoped;
     }
 
     /**

@@ -23,17 +23,6 @@ const titleInput = ref<{ $el?: HTMLInputElement } | null>(null)
 const personalTags = ref<TagResponse[]>([])
 const creatingTag = ref(false)
 
-// モーダル表示時に autofocus
-watch(visible, async (val) => {
-  if (val) {
-    await nextTick()
-    titleInput.value?.$el?.focus()
-    if (personalTags.value.length === 0) {
-      loadTags()
-    }
-  }
-})
-
 async function loadTags() {
   try {
     const res = await tagApi.listTags('personal')
@@ -108,6 +97,21 @@ function resetForm() {
   }
   submitting.value = false
 }
+// 初回の遅延mountでも開く処理を実行する。状態・watchの定義後に登録する。
+// モーダル表示時に autofocus
+watch(
+  visible,
+  async (val) => {
+    if (val) {
+      await nextTick()
+      titleInput.value?.$el?.focus()
+      if (personalTags.value.length === 0) {
+        loadTags()
+      }
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
