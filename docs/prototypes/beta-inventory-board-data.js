@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-10-27T10:13:29+00:00",
+  "generatedAt": "2026-10-27T19:33:18+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,9 +8,9 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "2ef196da04864a75163ef9e6aa282b565f79bcee",
+    "taskListCommit": "7dd793916526111903964e11e86d24b47dced84e",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "68c8cd0c5683b627f346649b59f7b180955e0412c65cc007971b3ce7da145421",
+    "taskListSha256": "d77b768d7bbb885991c014a72b000fd1563ba2935e226a60c2b444b9055871a7",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
@@ -8612,6 +8612,18 @@ window.BETA_INVENTORY_DATA = {
         "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-D-safe.json",
         "personaIdSource": "resident-finish-root.jsonでrootが登録時付与。",
         "personaArchetypeSource": "resident-purpose-contract.jsonのpersonas.axisA/axisBを保持。"
+      },
+      {
+        "id": "CMP0649-84C8-03-D",
+        "personaArchetype": "純チーム管理者（新D独立補足）",
+        "runId": "evidence-standard-fixed-84c8-03",
+        "sourceHead": "84c8c2fa422bab8dec5fe01e81a695e92db9911d",
+        "evidencePath": "docs/evidence/CMP-261021-0649/proofs/third-D-observations.json",
+        "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-standard-fixed-84c8-03/independent-D-resident-safe.json",
+        "owner": "cmp1432f-e48ca45535",
+        "originalPersonaId": "D",
+        "idAssignment": "原personaIdはD。累積登録用の一意personaIdは登録時付与。runIdは実evidenceディレクトリ名を保持。固定P01-P20へ変換しない。",
+        "personaArchetypeSource": "原役割の純チーム管理者を記述。原本にない人格軸は追加しない。"
       }
     ],
     "journeys": [
@@ -8944,6 +8956,24 @@ window.BETA_INVENTORY_DATA = {
             "余裕時S3/X境界"
           ]
         }
+      },
+      {
+        "id": "CMP0649-84C8-03-D-journey",
+        "personaId": "CMP0649-84C8-03-D",
+        "purpose": "純team管理者として交代相談の状況を自分で確認し、権限のない利用者と別チーム利用者へ切り替えて、相談内容や管理操作が見えないことを独立に確認する。",
+        "runId": "evidence-standard-fixed-84c8-03",
+        "sourceHead": "84c8c2fa422bab8dec5fe01e81a695e92db9911d",
+        "evidencePath": "docs/evidence/CMP-261021-0649/proofs/third-D-observations.json",
+        "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-standard-fixed-84c8-03/independent-D-resident-safe.json",
+        "owner": "cmp1432f-e48ca45535",
+        "idAssignment": "原本にjourneyIdなし。登録時付与。",
+        "executionCompleted": true,
+        "goalsReached": false,
+        "requiredSwitchGoalsReached": {
+          "unauthorized": false,
+          "crossTenant": false
+        },
+        "coveragePassed": false
       }
     ],
     "insights": [
@@ -10056,6 +10086,33 @@ window.BETA_INVENTORY_DATA = {
         "priority": "should",
         "pageLabel": "シフト交換リクエスト（dashboard承認カードから遷移）",
         "pageProvenance": "D原報告に実pathnameなし。未採取。固定追試routeで補完しない。"
+      },
+      {
+        "id": "CMP0649-84C8-03-D-01",
+        "featureKey": "shift",
+        "featureDetail": "交代相談の独立補足・未実証観測",
+        "title": "予定へ再訪できても相談状態と担当者名へ到達できなかった",
+        "detail": "Dは予定の日時・2/2・割当済みを確認して再訪したが、相談の現在statusと担当者名へ自力到達できなかった。S3/Xは予定と編集への直打ちでAPI404・管理操作非表示を観測したが、相談個別の非露出は未達。原因・不具合確定・新CMP/blocker化は行わない。",
+        "page": "/shift/1/edit",
+        "personaId": "CMP0649-84C8-03-D",
+        "personaArchetype": "純チーム管理者（新D独立補足）",
+        "journeyId": "CMP0649-84C8-03-D-journey",
+        "originalRunId": "evidence-standard-fixed-84c8-03",
+        "runId": "evidence-standard-fixed-84c8-03",
+        "sourceHead": "84c8c2fa422bab8dec5fe01e81a695e92db9911d",
+        "owner": "cmp1432f-e48ca45535",
+        "evidencePath": "docs/evidence/CMP-261021-0649/proofs/third-D-observations.json",
+        "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-standard-fixed-84c8-03/independent-D-resident-safe.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "should",
+        "rawObservationIndices": [
+          1,
+          2,
+          7
+        ],
+        "rawUnmet": "相談の現在statusと担当者名へ自力到達できず"
       }
     ],
     "runEnvironments": {
@@ -10163,6 +10220,19 @@ window.BETA_INVENTORY_DATA = {
         "idAssignment": "personaIdはresident-finish-root.jsonのroot付与値を保持。runIdはresident-purpose-contract.jsonの原値を保持。journeyIdは原住民報告にないため登録時付与。固定P01-P20へ変換しない。",
         "independentExploration": true,
         "fixedFollowupSeparate": true
+      },
+      "evidence-standard-fixed-84c8-03": {
+        "runId": "evidence-standard-fixed-84c8-03",
+        "owner": "cmp1432f-e48ca45535",
+        "sourceHead": "84c8c2fa422bab8dec5fe01e81a695e92db9911d",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "executionCompleted": true,
+        "goalsReached": false,
+        "coveragePassed": false,
+        "sourceEvidencePath": "docs/evidence/CMP-261021-0649/proofs/third-D-observations.json",
+        "processRegisterLimitation": "初期の短命Node補助CLIはPID/start未記録。登録14世代は全終了、同UIDのD/browser参照は前後とも0、未知の読取不能0。"
       }
     }
   },
@@ -38390,8 +38460,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261002-1343",
       "title": "実機 spec `cmp260918-4-member-profiles-two-tier.real.spec.ts` の③が、初期設定ダイアログに阻まれて失敗する",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "実装中",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -38426,7 +38496,7 @@ window.BETA_INVENTORY_DATA = {
         "spec"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3387,
@@ -39757,8 +39827,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261004-1818",
       "title": "AuthzTxFacadeRegistryArchTest のジェネリクスのブリッジメソッド遮蔽判定の誤り（偽陽性側）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "実装中",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -39788,7 +39858,7 @@ window.BETA_INVENTORY_DATA = {
         "AuthzTxFacadeRegistryArchTest"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3623
@@ -42735,8 +42805,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261009-0616",
       "title": "管理者ダッシュボードのシフト依頼リンクを実在画面へ結ぶ",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -42750,12 +42820,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "8月戦役の実機後アリシゼーションでダッシュボード変更依頼クリック404を再現。既存変更依頼一覧への直接遷移は正常。BE単体・FEタブ回帰をred先行し、実機・住民観測を実施する",
+          "label": "実装[PR #3741](https://github.com/kenta-0420/mannschaft/pull/3741)は最終head f972720 の正式CI成功後MERGED。変更依頼/交換dashboard card実クリック、純ADMIN審査入口、ロール横断、読取4表不変を確認。独立3住民探索は実施済み（全3名の目的全体は未達）。list_routeはAPI契約のみで実UI consumer未発見・一覧click未実施。[完了証拠](evidence/CMP-261009-0616.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "8月戦役の実機後アリシゼーションでダッシュボード変更依頼クリック404を再現。既存変更依頼一覧への直接遷移は正常。BE単体・FEタブ回帰をred先行し、実機・住民観測を実施する"
+        "実装[PR #3741](https://github.com/kenta-0420/mannschaft/pull/3741)は最終head f972720 の正式CI成功後MERGED。変更依頼/交換dashboard card実クリック、純ADMIN審査入口、ロール横断、読取4表不変を確認。独立3住民探索は実施済み（全3名の目的全体は未達）。list_routeはAPI契約のみで実UI consumer未発見・一覧click未実施。[完了証拠](evidence/CMP-261009-0616.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -42771,10 +42841,22 @@ window.BETA_INVENTORY_DATA = {
         "DB"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        3741
+      ],
+      "github": [
+        {
+          "number": 3741,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     },
     {
       "id": "CMP-261010-0006",
@@ -43799,12 +43881,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "CMP-261005-2154 の実機確認（2026-10-10）で発見。証跡: C:/Users/kenta/AppData/Local/Temp/claude/C--Claude-mannschaft/a2445c06-7f09-4001-b301-8bc639a3e292/scratchpad/shots/ H〜O と E の補強は 2026-10-11 のアリシゼーション（runId alic-20261011、住民4体）で発見。証跡: C:/Users/kenta/AppData/Local/Temp/claude/C--Claude-mannschaft/a2445c06-7f09-4001-b301-8bc639a3e292/scratchpad/alic-1011/ 2026-10-12 御裁可・出陣。決裁: B 自己審査は禁止（BE 403 SHIFT_045）、J 変更依頼の導線は MEMBER まで、P 枠間移動は1トランザクションの API を新設。F の原因は DB で確定（スロット 458 は position_id が NULL で、ボードの表が担当位置の無い枠を描画しない）。追加の欠陥 P: ボードが枠の version を 0 固定で送り、枠間移動は削除と追加の2回に分かれ途中失敗で割当が消える。",
+          "label": "CMP-261005-2154 の実機確認（2026-10-10）で発見。証跡: C:/Users/kenta/AppData/Local/Temp/claude/C--Claude-mannschaft/a2445c06-7f09-4001-b301-8bc639a3e292/scratchpad/shots/ H〜O と E の補強は 2026-10-11 のアリシゼーション（runId alic-20261011、住民4体）で発見。証跡: C:/Users/kenta/AppData/Local/Temp/claude/C--Claude-mannschaft/a2445c06-7f09-4001-b301-8bc639a3e292/scratchpad/alic-1011/ 2026-10-12 御裁可・出陣。決裁: B 自己審査は禁止（BE 403 SHIFT_045）、J 変更依頼の導線は MEMBER まで、P 枠間移動は1トランザクションの API を新設。F の原因は DB で確定（スロット 458 は position_id が NULL で、ボードの表が担当位置の無い枠を描画しない）。追加の欠陥 P: ボードが枠の version を 0 固定で送り、枠間移動は削除と追加の2回に分かれ途中失敗で割当が消える。   2026-10-27: Aのみ[PR #4164](https://github.com/kenta-0420/mannschaft/pull/4164)で修正・採用済み。純team ADMIN/system MEMBERが別申請者の新規OPEN/version0変更依頼を画面から承認・却下しHTTP200/UI/DBを確認。B〜P等の全体完了は未判定、状態は実装中を維持。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "CMP-261005-2154 の実機確認（2026-10-10）で発見。証跡: C:/Users/kenta/AppData/Local/Temp/claude/C--Claude-mannschaft/a2445c06-7f09-4001-b301-8bc639a3e292/scratchpad/shots/ H〜O と E の補強は 2026-10-11 のアリシゼーション（runId alic-20261011、住民4体）で発見。証跡: C:/Users/kenta/AppData/Local/Temp/claude/C--Claude-mannschaft/a2445c06-7f09-4001-b301-8bc639a3e292/scratchpad/alic-1011/ 2026-10-12 御裁可・出陣。決裁: B 自己審査は禁止（BE 403 SHIFT_045）、J 変更依頼の導線は MEMBER まで、P 枠間移動は1トランザクションの API を新設。F の原因は DB で確定（スロット 458 は position_id が NULL で、ボードの表が担当位置の無い枠を描画しない）。追加の欠陥 P: ボードが枠の version を 0 固定で送り、枠間移動は削除と追加の2回に分かれ途中失敗で割当が消える。"
+        "CMP-261005-2154 の実機確認（2026-10-10）で発見。証跡: C:/Users/kenta/AppData/Local/Temp/claude/C--Claude-mannschaft/a2445c06-7f09-4001-b301-8bc639a3e292/scratchpad/shots/ H〜O と E の補強は 2026-10-11 のアリシゼーション（runId alic-20261011、住民4体）で発見。証跡: C:/Users/kenta/AppData/Local/Temp/claude/C--Claude-mannschaft/a2445c06-7f09-4001-b301-8bc639a3e292/scratchpad/alic-1011/ 2026-10-12 御裁可・出陣。決裁: B 自己審査は禁止（BE 403 SHIFT_045）、J 変更依頼の導線は MEMBER まで、P 枠間移動は1トランザクションの API を新設。F の原因は DB で確定（スロット 458 は position_id が NULL で、ボードの表が担当位置の無い枠を描画しない）。追加の欠陥 P: ボードが枠の version を 0 固定で送り、枠間移動は削除と追加の2回に分かれ途中失敗で割当が消える。   2026-10-27: Aのみ[PR #4164](https://github.com/kenta-0420/mannschaft/pull/4164)で修正・採用済み。純team ADMIN/system MEMBERが別申請者の新規OPEN/version0変更依頼を画面から承認・却下しHTTP200/UI/DBを確認。B〜P等の全体完了は未判定、状態は実装中を維持。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -43905,7 +43987,8 @@ window.BETA_INVENTORY_DATA = {
         "進行中"
       ],
       "githubRefs": [
-        3663
+        3663,
+        4164
       ],
       "github": [
         {
@@ -43921,6 +44004,15 @@ window.BETA_INVENTORY_DATA = {
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
+        },
+        {
+          "number": 4164,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
         }
       ]
     },
@@ -50077,8 +50169,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261021-0649",
       "title": "交代依頼の「提出」を連打すると同一枠の重複依頼が作られる",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -50092,12 +50184,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260908-2116",
       "issues": [
         {
-          "label": "登録PR準備中",
+          "label": "実装[PR #4137](https://github.com/kenta-0420/mannschaft/pull/4137)を最終head1eaafc2・同head11CI成功/27checks25SUCCESS2SKIP後に通常squash MERGED。[完了証拠](evidence/CMP-261021-0649.json)・[検分](evidence/CMP-261021-0649-review.md)・[実機](evidence/CMP-261021-0649-real.md)・[探索](evidence/CMP-261021-0649-exploratory.md)。旧fresh25/FE集計と元sourceの実機、新84固定A→B→D/B+C保持/readonly境界を確認。独立旧3名+新Dは実施完了・全目的未達を保持し探索protocol/欠落記録としてpassed。第三run exit1・相談個別切替未達・coverage不昇格を維持。本番0。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "登録PR準備中"
+        "実装[PR #4137](https://github.com/kenta-0420/mannschaft/pull/4137)を最終head1eaafc2・同head11CI成功/27checks25SUCCESS2SKIP後に通常squash MERGED。[完了証拠](evidence/CMP-261021-0649.json)・[検分](evidence/CMP-261021-0649-review.md)・[実機](evidence/CMP-261021-0649-real.md)・[探索](evidence/CMP-261021-0649-exploratory.md)。旧fresh25/FE集計と元sourceの実機、新84固定A→B→D/B+C保持/readonly境界を確認。独立旧3名+新Dは実施完了・全目的未達を保持し探索protocol/欠落記録としてpassed。第三run exit1・相談個別切替未達・coverage不昇格を維持。本番0。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -50113,10 +50205,22 @@ window.BETA_INVENTORY_DATA = {
         "mode"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4137
+      ],
+      "github": [
+        {
+          "number": 4137,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     },
     {
       "id": "CMP-261021-0650",
@@ -53922,8 +54026,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261027-1353",
       "title": "ログイン後の残存描画待ち・個人カレンダーN+1・合法feed403解消",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -53937,16 +54041,16 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-261026-1912",
       "issues": [
         {
-          "label": "調査・先行試験準備中",
+          "label": "[完了証拠](evidence/CMP-261027-1353.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "調査・先行試験準備中"
+        "[完了証拠](evidence/CMP-261027-1353.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "本陣資産と常駐API/FEを保持し、隔離worktreeで実装・検証する。"
+        "PR #4166・同head CI・認可実機・3目的探索・本陣反映を確認。初回dev起動待ち約21分の原因未確定を証拠に保持。"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -53967,10 +54071,22 @@ window.BETA_INVENTORY_DATA = {
         "CI"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4166
+      ],
+      "github": [
+        {
+          "number": 4166,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     }
   ],
   "githubSync": {

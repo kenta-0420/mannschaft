@@ -1,0 +1,116 @@
+{
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "owner": "cmp1432f-e48ca45535",
+  "sourceHead": "84c8c2fa422bab8dec5fe01e81a695e92db9911d",
+  "runId": "evidence-standard-fixed-84c8-03",
+  "executionCompleted": true,
+  "goalsReached": false,
+  "requiredSwitchGoalsReached": {
+    "unauthorized": false,
+    "crossTenant": false
+  },
+  "observations": [
+    {
+      "at": "2026-10-27T17:33:05.228Z",
+      "actor": "D",
+      "event": "D login",
+      "page": "/dashboard",
+      "rawDomObservation": "合成 D / 合成0649primary / 管理者"
+    },
+    {
+      "at": "2026-10-27T17:36:35.414Z",
+      "actor": "D",
+      "event": "D schedule reached",
+      "page": "/shift/1",
+      "rawDomObservation": "確定済み / 2026-10-29 / 18:00〜19:00 / 2/2; editor showed 割当済み; assignee names and consultation status not yet reached"
+    },
+    {
+      "at": "2026-10-27T17:37:58.977Z",
+      "actor": "D",
+      "event": "D revisit",
+      "page": "/shift/1/edit",
+      "rawDomObservation": "18:00 〜 19:00 / 2 / 2 / 割当済み",
+      "rawUnmet": "相談の現在statusと担当者名へ自力到達できず"
+    },
+    {
+      "at": "2026-10-27T17:38:45.207Z",
+      "actor": "S3",
+      "event": "S3 direct D schedule revisit",
+      "page": "/shift/1",
+      "httpStatuses": [
+        404,
+        404
+      ],
+      "managementButtonsVisible": false
+    },
+    {
+      "at": "2026-10-27T17:39:05.858Z",
+      "actor": "S3",
+      "event": "S3 editor direct revisit",
+      "page": "/shift/1/edit",
+      "httpStatuses": [
+        404,
+        404,
+        404
+      ],
+      "createVisible": false
+    },
+    {
+      "at": "2026-10-27T17:39:45.211Z",
+      "actor": "X",
+      "event": "X authenticated and direct D schedule revisit",
+      "page": "/shift/1",
+      "httpStatuses": [
+        404,
+        404
+      ],
+      "managementButtonsVisible": false
+    },
+    {
+      "at": "2026-10-27T17:40:14.317Z",
+      "actor": "X",
+      "event": "X editor direct revisit",
+      "page": "/shift/1/edit",
+      "httpStatuses": [
+        404,
+        404,
+        404
+      ],
+      "createVisible": false
+    },
+    {
+      "at": "2026-10-27T17:40:14.356Z",
+      "actor": "X",
+      "event": "scope completion",
+      "page": null,
+      "rawUnmet": "D consultation route, current consultation status and named assignees not reached. S3 and X login plus discovered schedule/editor direct visits completed; schedule APIs returned 404 and management controls absent. Consultation-specific nondisclosure remains unverified."
+    }
+  ],
+  "rootReason": "Dは予定へ到達・再訪したが相談状態と担当者名は未達。S3/Xの予定API404と管理操作非表示は観測済み、相談個別画面の漏洩確認は未達。",
+  "processRegisterLimitation": "初期の短命Node補助CLIはPID/start未記録。登録14世代は全終了、同UIDのD/browser参照は前後とも0、未知の読取不能0。",
+  "provenance": [
+    {
+      "id": "third-D-resident",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-standard-fixed-84c8-03/independent-D-resident-safe.json",
+      "sha256": "cd7077fcf5e055b1c29618726709226a06e5004f29dd859f43932d37d7252927"
+    },
+    {
+      "id": "third-D-register",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-standard-fixed-84c8-03/independent-D-process-register.json",
+      "sha256": "426a52dfb2466123b5c29dec0aa32ae85caf47a6487060f95d885baff5176b62"
+    },
+    {
+      "id": "third-D-root-adjudication",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/third-D-root-adjudication.json",
+      "sha256": "0dd5316d9fccbcf090dfa9c2dc02c13ce2c231cbe72b77c9857ea8007634ab78"
+    },
+    {
+      "id": "third-D-external-audit",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/third-D-external-audit-root.json",
+      "sha256": "0929d40dbc5caaebc53d6ed5fc40063e5575c120f9d5eba717f0c44d9415ef86"
+    }
+  ],
+  "coveragePassed": false
+}
