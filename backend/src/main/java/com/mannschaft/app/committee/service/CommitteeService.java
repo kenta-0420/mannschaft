@@ -20,7 +20,9 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -121,17 +123,28 @@ public class CommitteeService {
         accessControlService.checkMembership(currentUserId, organizationId, "ORGANIZATION");
 
         boolean isAdmin = accessControlService.isAdminOrAbove(currentUserId, organizationId, "ORGANIZATION");
+        Pageable stablePageable = withStableCommitteeSort(pageable);
 
         // ADMIN は従来どおり、委員会への所属を問わず全件表示する。
         if (isAdmin) {
             return statusFilter != null
-                    ? committeeRepository.findByOrganizationIdAndStatus(organizationId, statusFilter, pageable)
-                    : committeeRepository.findByOrganizationId(organizationId, pageable);
+                    ? committeeRepository.findByOrganizationIdAndStatus(organizationId, statusFilter, stablePageable)
+                    : committeeRepository.findByOrganizationId(organizationId, stablePageable);
         }
 
         // 非ADMINのHIDDEN可視性はDB内で絞り、ページ内容と総件数を同じ母集団にする。
         return committeeRepository.findVisibleByOrganizationId(
-                organizationId, statusFilter, currentUserId, CommitteeVisibility.HIDDEN, pageable);
+                organizationId, statusFilter, currentUserId, CommitteeVisibility.HIDDEN, stablePageable);
+    }
+
+    private Pageable withStableCommitteeSort(Pageable pageable) {
+        if (pageable.getSort().getOrderFor("id") != null) {
+            return pageable;
+        }
+        Sort stableSort = pageable.getSort().and(Sort.by("id"));
+        return pageable.isPaged()
+                ? PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), stableSort)
+                : Pageable.unpaged(stableSort);
     }
 
     /**
