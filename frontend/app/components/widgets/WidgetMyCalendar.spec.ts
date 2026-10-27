@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
-import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
+import { mockComponent, mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import { ref } from 'vue'
 import WidgetMyCalendar from './WidgetMyCalendar.vue'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
@@ -18,6 +18,13 @@ vi.mock('~/composables/useScheduleApi', () => ({ useScheduleApi: () => api }))
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
 mockNuxtImport('navigateTo', () => navigateMock)
 
+// 親の開閉契約を検証するため、Nuxtのasync import先を同じprops/emitsのstubへ固定する。
+mockComponent('ScheduleEventForm', {
+  name: 'ScheduleEventForm',
+  props: ['visible', 'initialDate', 'isPersonal', 'scheduleId'],
+  emits: ['update:visible', 'saved'],
+  template: '<div />',
+})
 const stubs = {
   CalendarGrid: true,
   ScheduleDayDialog: true,
