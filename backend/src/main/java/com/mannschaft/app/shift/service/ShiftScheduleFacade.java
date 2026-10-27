@@ -10,6 +10,7 @@ import com.mannschaft.app.shift.dto.ManualRemindResponse;
 import com.mannschaft.app.shift.dto.ShiftScheduleResponse;
 import com.mannschaft.app.shift.dto.ShiftScheduleSummaryResponse;
 import com.mannschaft.app.shift.dto.UpdateShiftScheduleRequest;
+import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -35,7 +36,7 @@ import java.util.List;
  * チーム ADMIN/DEPUTY_ADMIN 200(全件)      200              201             200/204/201
  * user_roles のみの ADMIN   403 COMMON_002 200              201             200/204/201（一覧は是正前から在籍を要求。広げない）
  * SYSTEM_ADMIN(非/メンバー) 200(全件)      200              201             200/204/201
- * 対象不在・親削除済み      (n/a)          404 SHIFT_001    (n/a)           404 SHIFT_001
+ * 対象不在・親削除済み      (n/a)          404 SHIFT_001    403 COMMON_002  404 SHIFT_001
  * </pre>
  * <p>未公開（DRAFT・ARCHIVED で publishedAt なし）の詳細は、管理者側以外へは認可結果より先に 404 SHIFT_001 へ
  * 寄せる（存在オラクル対策）。一覧・作成は {@code ?teamId=} 直接指定なので越境も不在も 403 のまま（隠さない）。</p>
@@ -50,6 +51,7 @@ public class ShiftScheduleFacade {
     private final ShiftPreferenceReminderBatchService reminderService;
     private final ScopeConcealingAccessGate accessGate;
     private final AccessControlService accessControlService;
+    private final TeamService teamService;
 
     /**
      * チームのシフトスケジュール一覧を取得する（期間指定は {@code from}・{@code to} が両方あるとき）。
@@ -118,6 +120,9 @@ public class ShiftScheduleFacade {
     public ShiftScheduleResponse createSchedule(Long teamId, CreateShiftScheduleRequest req, Long userId) {
         if (!accessControlService.isSystemAdmin(userId)) {
             accessControlService.checkAdminOrAbove(userId, teamId, TEAM);
+        }
+        if (teamService.findTeamSummary(teamId).isEmpty()) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
         }
         return scheduleService.createSchedule(teamId, req, userId);
     }

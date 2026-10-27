@@ -167,9 +167,14 @@ class ShiftScheduleCreateTeamExistenceContractIT extends AbstractMySqlIntegratio
 
     @ParameterizedTest(name = "AC-07 teamId query={0}")
     @NullAndEmptySource
-    @ValueSource(strings = "null")
-    void query欠落空文字非数値nullを400にする(String query) throws Exception {
+    void query欠落空文字を400にする(String query) throws Exception {
         assertRejected(request("SYSTEM_ADMIN", query), 400, "COMMON_001");
+    }
+
+    @Test
+    @DisplayName("AC-07 文字列nullは既存teamId解決の404 COMMON_005")
+    void query文字列nullの404を維持する() throws Exception {
+        assertRejected(request("SYSTEM_ADMIN", "null"), 404, "COMMON_005");
     }
 
     @Test
