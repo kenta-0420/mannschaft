@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TimelineScopeType } from '~/types/timeline'
 import { useOrgShellContext } from '~/composables/useOrgShellContext'
 
 definePageMeta({
@@ -17,6 +18,14 @@ const numericScopeId = computed(() => {
 })
 
 const feedRef = ref<{ refresh: () => void } | null>(null)
+const feedReadable = ref(false)
+
+// 読取成立は投稿権限の新設ではなく、既存フォームを見せる前提。
+watch([orgSlug, numericScopeId], () => { feedReadable.value = false }, { flush: 'sync' })
+
+function onReadAccess(allowed: boolean, scopeType: TimelineScopeType | undefined, scopeId: string | number | undefined) {
+  if (scopeType === 'ORGANIZATION' && scopeId === numericScopeId.value) feedReadable.value = allowed
+}
 
 function onPosted() {
   feedRef.value?.refresh()
@@ -35,6 +44,7 @@ function onPosted() {
 
     <div class="mx-auto max-w-2xl">
       <TimelinePostForm
+        v-if="feedReadable"
         :key="`${orgSlug}:${numericScopeId}`"
         scope-type="ORGANIZATION"
         :scope-id="numericScopeId"
@@ -50,6 +60,7 @@ function onPosted() {
         :scope-id="numericScopeId"
         :can-pin="isAdminOrDeputy"
         :can-delete-others="isAdmin"
+        @read-access="onReadAccess"
       />
     </div>
   </div>

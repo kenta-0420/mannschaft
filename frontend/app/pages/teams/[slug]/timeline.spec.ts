@@ -16,8 +16,12 @@ vi.mock('~/composables/useTeamShellContext', () => ({ useTeamShellContext: () =>
 const Feed = defineComponent({
   name: 'TimelineFeed',
   props: ['scopeType', 'scopeId', 'canPin', 'canDeleteOthers'],
-  setup(props) {
-    onMounted(() => { void useTimelineApi().getFeed({ scopeType: props.scopeType, scopeId: props.scopeId }) })
+  emits: ['read-access'],
+  setup(props, { emit }) {
+    onMounted(async () => {
+      await useTimelineApi().getFeed({ scopeType: props.scopeType, scopeId: props.scopeId })
+      emit('read-access', true, props.scopeType, props.scopeId)
+    })
     return () => null
   },
 })
