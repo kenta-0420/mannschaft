@@ -105,9 +105,9 @@ class CalendarColorResolutionTest {
         when(calendarLayerService.findUserLayerColors(anyLong())).thenReturn(Map.of());
         when(scheduleRepository.findCalendarByUserId(anyLong(), any(), any()))
                 .thenReturn(List.of());
-        when(scheduleRepository.findCalendarByTeamId(anyLong(), any(), any()))
+        when(scheduleRepository.findCalendarByTeamIdIn(any(), any(), any()))
                 .thenReturn(List.of());
-        when(scheduleRepository.findCalendarByOrganizationId(anyLong(), any(), any()))
+        when(scheduleRepository.findCalendarByOrganizationIdIn(any(), any(), any()))
                 .thenReturn(List.of());
         when(nameResolverService.resolveScopeName(anyString(), anyLong())).thenReturn("スコープ名");
         when(nameResolverService.resolveIconUrl(anyString(), anyLong())).thenReturn(null);
@@ -388,7 +388,7 @@ class CalendarColorResolutionTest {
 
     private void givenTeamSchedules(List<ScheduleEntity> schedules) {
         when(membershipService.getActiveTeamIdsIncludingRoleAssignments(ME)).thenReturn(List.of(TEAM_ID));
-        when(scheduleRepository.findCalendarByTeamId(eq(TEAM_ID), any(), any()))
+        when(scheduleRepository.findCalendarByTeamIdIn(eq(List.of(TEAM_ID)), any(), any()))
                 .thenReturn(schedules);
         Set<Long> ids = new java.util.LinkedHashSet<>(schedules.stream().map(ScheduleEntity::getId).toList());
         when(contentVisibilityChecker.filterAccessible(eq(ReferenceType.SCHEDULE), any(), eq(ME)))
@@ -411,8 +411,8 @@ class CalendarColorResolutionTest {
                 .isException(false)
                 .createdBy(ME)
                 .build();
-        when(scheduleRepository.findCalendarByOrganizationId(
-                eq(ORG_ID), any(), any())).thenReturn(List.of(org));
+        when(scheduleRepository.findCalendarByOrganizationIdIn(
+                eq(List.of(ORG_ID)), any(), any())).thenReturn(List.of(org));
         // 可視性・割当は team/org 両方の呼び出しに効くよう「渡された ID をそのまま可視」とする。
         when(contentVisibilityChecker.filterAccessible(eq(ReferenceType.SCHEDULE), any(), eq(ME)))
                 .thenAnswer(inv -> new java.util.LinkedHashSet<>(inv.getArgument(1, List.class)));

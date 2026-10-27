@@ -112,9 +112,9 @@ class ScheduleQueryServiceTest {
                     .willReturn(List.of(TEAM_ID));
             given(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER_ID))
                     .willReturn(List.of(ORG_ID));
-            given(scheduleRepository.findCalendarByTeamId(TEAM_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByTeamIdIn(List.of(TEAM_ID), FROM, TO))
                     .willReturn(List.of(teamVisible, teamHidden));
-            given(scheduleRepository.findCalendarByOrganizationId(ORG_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByOrganizationIdIn(List.of(ORG_ID), FROM, TO))
                     .willReturn(List.of(orgVisible, orgHidden));
 
             // team バッチ(10,11) → 10 のみ可視 / org バッチ(20,21) → 20 のみ可視
@@ -145,9 +145,9 @@ class ScheduleQueryServiceTest {
                     .willReturn(List.of(TEAM_ID));
             given(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER_ID))
                     .willReturn(List.of(ORG_ID));
-            given(scheduleRepository.findCalendarByTeamId(TEAM_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByTeamIdIn(List.of(TEAM_ID), FROM, TO))
                     .willReturn(List.of(team));
-            given(scheduleRepository.findCalendarByOrganizationId(ORG_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByOrganizationIdIn(List.of(ORG_ID), FROM, TO))
                     .willReturn(List.of(org));
             given(contentVisibilityChecker.filterAccessible(
                     eq(ReferenceType.SCHEDULE), eq(List.of(30L)), eq(USER_ID))).willReturn(Set.of(30L));
@@ -170,7 +170,7 @@ class ScheduleQueryServiceTest {
                     .willReturn(List.of(TEAM_ID));
             given(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER_ID))
                     .willReturn(List.of());
-            given(scheduleRepository.findCalendarByTeamId(TEAM_ID, FROM, TO))
+            given(scheduleRepository.findCalendarByTeamIdIn(List.of(TEAM_ID), FROM, TO))
                     .willReturn(List.of(team));
             given(contentVisibilityChecker.filterAccessible(
                     eq(ReferenceType.SCHEDULE), eq(List.of(31L)), eq(USER_ID))).willReturn(Set.of(31L));

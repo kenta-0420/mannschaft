@@ -227,157 +227,6 @@ watch(
   },
 )
 
-// ダイアログが開くたびに Google 連携ステータスを取得する
-watch(
-  () => props.visible,
-  (v) => {
-    if (v) fetchPersonalSyncStatus()
-  },
-)
-
-watch(
-  () => [props.visible, props.scheduleId],
-  async ([visible, scheduleId]) => {
-    const generation = ++editLoadGeneration
-    editLoaded.value = false
-    editLoading.value = false
-    suppressEndTimeAutoAdjust = false
-    if (visible && scheduleId) {
-      editLoading.value = true
-      let restored = false
-      try {
-        const res = effectiveScope.value.isPersonal
-          ? await scheduleApi.getMyScheduleDetail(scheduleId as number)
-          : await scheduleApi.getSchedule(effectiveScope.value.scopeType, effectiveScope.value.scopeId, scheduleId as number)
-        if (generation !== editLoadGeneration) return
-        const data = (res as { data: Record<string, unknown> }).data as Record<string, unknown>
-        suppressEndTimeAutoAdjust = true
-        if (effectiveScope.value.isPersonal) {
-          const content = (data.content as Record<string, unknown>) ?? {}
-          const time = (data.time as Record<string, unknown>) ?? {}
-          form.value.title = (content.title as string) ?? ''
-          form.value.description = (content.description as string) ?? ''
-          form.value.location = (content.location as string) ?? ''
-          form.value.allDay = (time.allDay as boolean) ?? false
-          form.value.attendanceRequired = false
-          form.value.allowProxyAttendance = false
-          form.value.isProxyAutoAccept = false
-          applySavedDateTime(time)
-          // 個人予定: detailedReminders からリマインダーフォーム状態を復元する
-          const detailedReminders = (data.detailedReminders as Array<Record<string, unknown>> | null) ?? []
-          if (detailedReminders.length > 0) {
-            form.value.reminders = detailedReminders.map(reminderResponseToFormEntry)
-          } else {
-            // detailedReminders が未 populate の場合は後方互換の reminders(number[]) から相対リマインダーを復元
-            const legacyReminders = (data.reminders as number[] | null) ?? []
-            form.value.reminders = legacyReminders.map((minutes) => ({
-              key: `rem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-              kind: 'RELATIVE' as const,
-              relativeValue: minutes,
-              relativeUnit: 'MINUTES' as const,
-              absoluteAt: null,
-            }))
-          }
-          // 個人予定: status.recurrenceRule から繰り返し設定をフォームに復元する
-          const status = (data.status as Record<string, unknown>) ?? {}
-          const recurrenceRule = status.recurrenceRule as Record<string, unknown> | null
-          loadedRecurringEvent.value = recurrenceRule != null || status.parentScheduleId != null
-          if (recurrenceRule && typeof recurrenceRule === 'object') {
-            form.value.recurrence = true
-            form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
-            form.value.recurrenceInterval = (recurrenceRule.interval as number) ?? 1
-            form.value.recurrenceDaysOfWeek = (recurrenceRule.daysOfWeek as string[]) ?? []
-            form.value.recurrenceEndType = ((recurrenceRule.endType as string) ?? 'NEVER') as RecurrenceEndType
-            if (recurrenceRule.endDate) {
-              form.value.recurrenceEndDate = new Date(recurrenceRule.endDate as string)
-            }
-            if (recurrenceRule.count != null) {
-              form.value.recurrenceCount = recurrenceRule.count as number
-            }
-          } else {
-            form.value.recurrence = false
-          }
-        }
-        else {
-          const content = (data.content as Record<string, unknown>) ?? {}
-          const time = (data.time as Record<string, unknown>) ?? {}
-          form.value.title = (content.title as string) ?? ''
-          form.value.description = (content.description as string) ?? ''
-          form.value.location = (content.location as string) ?? ''
-          form.value.allDay = (time.allDay as boolean) ?? false
-          form.value.attendanceRequired = (content.attendanceRequired as boolean) ?? false
-          form.value.allowProxyAttendance = (data.allowProxyAttendance as boolean) ?? false
-          form.value.isProxyAutoAccept = (data.isProxyAutoAccept as boolean) ?? false
-          form.value.teamBreakdownEnabled = (data.teamBreakdownEnabled as boolean) ?? false
-          targetMode.value = (data.targetMode as ScheduleTargetMode) ?? 'ALL_MEMBERS'
-          targetUserIds.value = ((data.targets as Array<{ userId: number }> | undefined) ?? [])
-            .map(target => target.userId)
-          applySavedDateTime(time)
-          // 共有予定: reminders からリマインダーフォーム状態を復元する
-          const reminders = (data.reminders as Array<Record<string, unknown>> | null) ?? []
-          form.value.reminders = reminders.map(reminderResponseToFormEntry)
-          // 共有予定: scheduledTasks の PENDING タスクを scheduledSurvey / scheduledAttendance に変換する
-          const scheduledTasks = (data.scheduledTasks as Array<Record<string, unknown>> | null) ?? []
-          const recurrence = (data.recurrenceInfo as Record<string, unknown>) ?? {}
-          loadedRecurringEvent.value = recurrence.recurrenceRule != null || recurrence.parentScheduleId != null
-          let recurrenceRule: Record<string, unknown> | null = null
-          if (typeof recurrence.recurrenceRule === 'string') {
-            try {
-              const parsed: unknown = JSON.parse(recurrence.recurrenceRule)
-              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-                recurrenceRule = parsed as Record<string, unknown>
-              }
-            } catch {
-              // 旧データに不正なルールがあっても詳細画面の表示は継続する。
-            }
-          } else if (recurrence.recurrenceRule && typeof recurrence.recurrenceRule === 'object') {
-            recurrenceRule = recurrence.recurrenceRule as Record<string, unknown>
-          }
-          form.value.recurrence = recurrenceRule != null
-          if (recurrenceRule) {
-            form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
-            form.value.recurrenceInterval = (recurrenceRule.interval as number) ?? 1
-            form.value.recurrenceDaysOfWeek = (recurrenceRule.daysOfWeek as string[]) ?? []
-            form.value.recurrenceEndType = ((recurrenceRule.endType as string) ?? 'NEVER') as RecurrenceEndType
-            if (recurrenceRule.endDate) form.value.recurrenceEndDate = new Date(recurrenceRule.endDate as string)
-            if (recurrenceRule.count != null) form.value.recurrenceCount = recurrenceRule.count as number
-          }
-          for (const task of scheduledTasks) {
-            if (task.status !== 'PENDING') continue
-            if (task.taskType === 'SURVEY') {
-              form.value.scheduledSurvey = {
-                ...form.value.scheduledSurvey,
-                enabled: true,
-                scheduledAt: task.scheduledAt ? new Date(task.scheduledAt as string) : null,
-              }
-            } else if (task.taskType === 'ATTENDANCE') {
-              form.value.scheduledAttendance = {
-                ...form.value.scheduledAttendance,
-                enabled: true,
-                scheduledAt: task.scheduledAt ? new Date(task.scheduledAt as string) : null,
-              }
-            }
-          }
-        }
-        restored = true
-      } catch {
-        if (generation === editLoadGeneration) notification.error(t('schedule.error_load_event'))
-      } finally {
-        await nextTick()
-        if (generation === editLoadGeneration) {
-          suppressEndTimeAutoAdjust = false
-          editLoaded.value = restored
-          editLoading.value = false
-        }
-      }
-    } else if (visible && !scheduleId) {
-      loadedRecurringEvent.value = false
-      resetForm()
-      applyInitialDateTime()
-    }
-  },
-)
-
 function savedTimeString(date: Date): string {
   return date.toTimeString().slice(0, date.getSeconds() ? 8 : 5)
 }
@@ -811,6 +660,159 @@ function close() {
   recurrenceUpdateScopeDialogVisible.value = false
   emit('update:visible', false)
 }
+// 初回の遅延mountでも開く処理を実行する。状態・watchの定義後に登録する。
+// ダイアログが開くたびに Google 連携ステータスを取得する
+watch(
+  () => props.visible,
+  (v) => {
+    if (v) fetchPersonalSyncStatus()
+  },
+  { immediate: true },
+)
+// 初回の遅延mountでも開く処理を実行する。状態・watchの定義後に登録する。
+watch(
+  () => [props.visible, props.scheduleId],
+  async ([visible, scheduleId]) => {
+    const generation = ++editLoadGeneration
+    editLoaded.value = false
+    editLoading.value = false
+    suppressEndTimeAutoAdjust = false
+    if (visible && scheduleId) {
+      editLoading.value = true
+      let restored = false
+      try {
+        const res = effectiveScope.value.isPersonal
+          ? await scheduleApi.getMyScheduleDetail(scheduleId as number)
+          : await scheduleApi.getSchedule(effectiveScope.value.scopeType, effectiveScope.value.scopeId, scheduleId as number)
+        if (generation !== editLoadGeneration) return
+        const data = (res as { data: Record<string, unknown> }).data as Record<string, unknown>
+        suppressEndTimeAutoAdjust = true
+        if (effectiveScope.value.isPersonal) {
+          const content = (data.content as Record<string, unknown>) ?? {}
+          const time = (data.time as Record<string, unknown>) ?? {}
+          form.value.title = (content.title as string) ?? ''
+          form.value.description = (content.description as string) ?? ''
+          form.value.location = (content.location as string) ?? ''
+          form.value.allDay = (time.allDay as boolean) ?? false
+          form.value.attendanceRequired = false
+          form.value.allowProxyAttendance = false
+          form.value.isProxyAutoAccept = false
+          applySavedDateTime(time)
+          // 個人予定: detailedReminders からリマインダーフォーム状態を復元する
+          const detailedReminders = (data.detailedReminders as Array<Record<string, unknown>> | null) ?? []
+          if (detailedReminders.length > 0) {
+            form.value.reminders = detailedReminders.map(reminderResponseToFormEntry)
+          } else {
+            // detailedReminders が未 populate の場合は後方互換の reminders(number[]) から相対リマインダーを復元
+            const legacyReminders = (data.reminders as number[] | null) ?? []
+            form.value.reminders = legacyReminders.map((minutes) => ({
+              key: `rem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              kind: 'RELATIVE' as const,
+              relativeValue: minutes,
+              relativeUnit: 'MINUTES' as const,
+              absoluteAt: null,
+            }))
+          }
+          // 個人予定: status.recurrenceRule から繰り返し設定をフォームに復元する
+          const status = (data.status as Record<string, unknown>) ?? {}
+          const recurrenceRule = status.recurrenceRule as Record<string, unknown> | null
+          loadedRecurringEvent.value = recurrenceRule != null || status.parentScheduleId != null
+          if (recurrenceRule && typeof recurrenceRule === 'object') {
+            form.value.recurrence = true
+            form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
+            form.value.recurrenceInterval = (recurrenceRule.interval as number) ?? 1
+            form.value.recurrenceDaysOfWeek = (recurrenceRule.daysOfWeek as string[]) ?? []
+            form.value.recurrenceEndType = ((recurrenceRule.endType as string) ?? 'NEVER') as RecurrenceEndType
+            if (recurrenceRule.endDate) {
+              form.value.recurrenceEndDate = new Date(recurrenceRule.endDate as string)
+            }
+            if (recurrenceRule.count != null) {
+              form.value.recurrenceCount = recurrenceRule.count as number
+            }
+          } else {
+            form.value.recurrence = false
+          }
+        }
+        else {
+          const content = (data.content as Record<string, unknown>) ?? {}
+          const time = (data.time as Record<string, unknown>) ?? {}
+          form.value.title = (content.title as string) ?? ''
+          form.value.description = (content.description as string) ?? ''
+          form.value.location = (content.location as string) ?? ''
+          form.value.allDay = (time.allDay as boolean) ?? false
+          form.value.attendanceRequired = (content.attendanceRequired as boolean) ?? false
+          form.value.allowProxyAttendance = (data.allowProxyAttendance as boolean) ?? false
+          form.value.isProxyAutoAccept = (data.isProxyAutoAccept as boolean) ?? false
+          form.value.teamBreakdownEnabled = (data.teamBreakdownEnabled as boolean) ?? false
+          targetMode.value = (data.targetMode as ScheduleTargetMode) ?? 'ALL_MEMBERS'
+          targetUserIds.value = ((data.targets as Array<{ userId: number }> | undefined) ?? [])
+            .map(target => target.userId)
+          applySavedDateTime(time)
+          // 共有予定: reminders からリマインダーフォーム状態を復元する
+          const reminders = (data.reminders as Array<Record<string, unknown>> | null) ?? []
+          form.value.reminders = reminders.map(reminderResponseToFormEntry)
+          // 共有予定: scheduledTasks の PENDING タスクを scheduledSurvey / scheduledAttendance に変換する
+          const scheduledTasks = (data.scheduledTasks as Array<Record<string, unknown>> | null) ?? []
+          const recurrence = (data.recurrenceInfo as Record<string, unknown>) ?? {}
+          loadedRecurringEvent.value = recurrence.recurrenceRule != null || recurrence.parentScheduleId != null
+          let recurrenceRule: Record<string, unknown> | null = null
+          if (typeof recurrence.recurrenceRule === 'string') {
+            try {
+              const parsed: unknown = JSON.parse(recurrence.recurrenceRule)
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                recurrenceRule = parsed as Record<string, unknown>
+              }
+            } catch {
+              // 旧データに不正なルールがあっても詳細画面の表示は継続する。
+            }
+          } else if (recurrence.recurrenceRule && typeof recurrence.recurrenceRule === 'object') {
+            recurrenceRule = recurrence.recurrenceRule as Record<string, unknown>
+          }
+          form.value.recurrence = recurrenceRule != null
+          if (recurrenceRule) {
+            form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
+            form.value.recurrenceInterval = (recurrenceRule.interval as number) ?? 1
+            form.value.recurrenceDaysOfWeek = (recurrenceRule.daysOfWeek as string[]) ?? []
+            form.value.recurrenceEndType = ((recurrenceRule.endType as string) ?? 'NEVER') as RecurrenceEndType
+            if (recurrenceRule.endDate) form.value.recurrenceEndDate = new Date(recurrenceRule.endDate as string)
+            if (recurrenceRule.count != null) form.value.recurrenceCount = recurrenceRule.count as number
+          }
+          for (const task of scheduledTasks) {
+            if (task.status !== 'PENDING') continue
+            if (task.taskType === 'SURVEY') {
+              form.value.scheduledSurvey = {
+                ...form.value.scheduledSurvey,
+                enabled: true,
+                scheduledAt: task.scheduledAt ? new Date(task.scheduledAt as string) : null,
+              }
+            } else if (task.taskType === 'ATTENDANCE') {
+              form.value.scheduledAttendance = {
+                ...form.value.scheduledAttendance,
+                enabled: true,
+                scheduledAt: task.scheduledAt ? new Date(task.scheduledAt as string) : null,
+              }
+            }
+          }
+        }
+        restored = true
+      } catch {
+        if (generation === editLoadGeneration) notification.error(t('schedule.error_load_event'))
+      } finally {
+        await nextTick()
+        if (generation === editLoadGeneration) {
+          suppressEndTimeAutoAdjust = false
+          editLoaded.value = restored
+          editLoading.value = false
+        }
+      }
+    } else if (visible && !scheduleId) {
+      loadedRecurringEvent.value = false
+      resetForm()
+      applyInitialDateTime()
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>

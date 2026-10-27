@@ -19,6 +19,7 @@ import com.mannschaft.app.payment.dto.GateCheckResponse;
 import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.payment.spi.ContentGateTarget;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -69,11 +70,19 @@ class AnnouncementInboxAdapterTest {
             mock(AnnouncementReadStatusRepository.class);
     private final InboxPriorityNormalizer normalizer = new InboxPriorityNormalizer();
     private final PaymentGateService paymentGateService = mock(PaymentGateService.class);
+    @org.mockito.Captor
+    private org.mockito.ArgumentCaptor<List<Long>> historyChunks;
 
     private final AnnouncementInboxAdapter adapter = new AnnouncementInboxAdapter(
             membershipScopeQueryService, roleResolver, feedQueryRepository, feedRepository,
             readStatusRepository, normalizer,
             new com.mannschaft.app.inbox.service.InboxDedupeKeyResolver(), paymentGateService);
+
+    @BeforeEach
+    void 既存表示認可契約は履歴候補を元scope全件として通す() {
+        given(feedQueryRepository.findScopeIdsWithHistory(any(), any()))
+                .willAnswer(invocation -> invocation.getArgument(1));
+    }
 
 
     private final Map<com.mannschaft.app.common.visibility.ScopeKey, ViewerRole> freshRoles =
@@ -133,6 +142,43 @@ class AnnouncementInboxAdapterTest {
         given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
         given(readStatusRepository.findByUserIdAndAnnouncementFeedIdIn(eq(USER_ID), any()))
                 .willReturn(List.of());
+    }
+
+    @Test
+    void 非空履歴の型付きscopeだけ従来のwindowと可視性取得へ渡す() {
+        List<Long> teams = java.util.stream.LongStream.rangeClosed(1, 21).boxed().toList();
+        given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(teams);
+        given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of(10L));
+        givenFreshRole("TEAM", 10L, ViewerRole.MEMBER);
+        givenFreshRole("ORGANIZATION", 10L, ViewerRole.MEMBER);
+        given(feedQueryRepository.findScopeIdsWithHistory(eq(AnnouncementScopeType.TEAM), any())).willReturn(List.of(10L));
+        given(feedQueryRepository.findScopeIdsWithHistory(eq(AnnouncementScopeType.ORGANIZATION), any())).willReturn(List.of(10L));
+        var teamFeed = feed(801L, AnnouncementScopeType.TEAM, 10L, "NORMAL", "MEMBERS_AND_ABOVE", "チーム", null,
+                LocalDateTime.now(), null, null);
+        var orgFeed = feed(802L, AnnouncementScopeType.ORGANIZATION, 10L, "NORMAL", "MEMBERS_AND_ABOVE", "組織", null,
+                LocalDateTime.now(), null, null);
+        given(feedQueryRepository.findByScope(eq(AnnouncementScopeType.TEAM), eq(10L), any(), any(), eq(500)))
+                .willReturn(List.of(teamFeed));
+        given(feedQueryRepository.findByScope(eq(AnnouncementScopeType.ORGANIZATION), eq(10L), any(), any(), eq(500)))
+                .willReturn(List.of(orgFeed));
+        givenFullGateBatch(801L, 802L);
+        assertThat(adapter.fetch(USER_ID, 500)).extracting(InboxItemDto::sourceId).containsExactly(801L, 802L);
+        verify(feedQueryRepository, org.mockito.Mockito.times(2)).findByScope(any(), any(), any(), any(), eq(500));
+    }
+
+    @Test
+    void 履歴候補の後続chunk失敗は組織も含む元scope全件へ戻す() {
+        List<Long> teams = java.util.stream.LongStream.rangeClosed(1, 1001).boxed().toList();
+        given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(teams);
+        given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of(1L));
+        given(feedQueryRepository.findScopeIdsWithHistory(eq(AnnouncementScopeType.TEAM), any()))
+                .willReturn(List.of(1L)).willThrow(new IllegalStateException("履歴候補DB障害"));
+        assertThat(adapter.fetch(USER_ID, 500)).isEmpty();
+        verify(feedQueryRepository, org.mockito.Mockito.times(2))
+                .findScopeIdsWithHistory(eq(AnnouncementScopeType.TEAM), historyChunks.capture());
+        assertThat(historyChunks.getAllValues()).extracting(List::size).containsExactly(1000, 1);
+        assertThat(historyChunks.getAllValues().stream().flatMap(List::stream).toList()).containsExactlyElementsOf(teams);
+        verify(feedQueryRepository, org.mockito.Mockito.times(1002)).findByScope(any(), any(), any(), any(), eq(500));
     }
 
     @Test
