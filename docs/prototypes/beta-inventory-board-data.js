@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-10-27T21:19:28+00:00",
+  "generatedAt": "2026-10-27T21:26:14+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,9 +8,9 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "01e3efc59fdf69b10583f9a0a13b50bf4d91c95d",
+    "taskListCommit": "1c69b0d8d5dbd605e388759db436ffb49039eaf8",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "94a73c55a8d9e73b6b58f9a643211303058ce6824788d76665af9a621f35e21a",
+    "taskListSha256": "2fd31e416d1795d9ae95e8e2b569533d7f3c471d2ccb9e5a334b45801250d079",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
@@ -39982,8 +39982,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261004-1816",
       "title": "backend CI の Test shard 5 で ArchUnitFreezeStoreIntegrityTest が赤（D-3 1407→1404、D-5 1938→1865）。専用 JVM へ分離した番人で違反検出数が減っている疑い",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -39997,12 +39997,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "main の #3607（ArchUnit 番人を専用 JVM の archUnitTest へ分離）以降、全 PR で発生。関連: CMP-261002-1606（shard 5 の OOM 再発。#3607 は同件の原因対照）。台帳に #3607 起因の行は未起票だったため新規起票",
+          "label": "[完了証拠](evidence/CMP-261004-1816.json)、[選択証拠](evidence/CMP-261004-1816-selected-proof.md)。先行修復 #3635、最終試験方式 #4045。同head CI40073246043成功、選択Integrity2件＋Self17件F/E/S0。定数一致は現在の観測事実、将来は裁可済Q5上限方式",
           "state": "unknown"
         }
       ],
       "prs": [
-        "main の #3607（ArchUnit 番人を専用 JVM の archUnitTest へ分離）以降、全 PR で発生。関連: CMP-261002-1606（shard 5 の OOM 再発。#3607 は同件の原因対照）。台帳に #3607 起因の行は未起票だったため新規起票"
+        "[完了証拠](evidence/CMP-261004-1816.json)、[選択証拠](evidence/CMP-261004-1816-selected-proof.md)。先行修復 #3635、最終試験方式 #4045。同head CI40073246043成功、選択Integrity2件＋Self17件F/E/S0。定数一致は現在の観測事実、将来は裁可済Q5上限方式"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -40023,19 +40023,29 @@ window.BETA_INVENTORY_DATA = {
         "shard"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
       "githubRefs": [
-        3607
+        3635,
+        4045
       ],
       "github": [
         {
-          "number": 3607,
+          "number": 3635,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4045,
           "kind": "pull_request",
           "state": "merged",
-          "title": "検証改善: 全ArchUnit番人を専用JVMへ分離してOOMを対照する",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/3607",
-          "updatedAt": "2026-10-03T15:38:34Z",
+          "title": "改善: L1-F 凍結上限と一意な依存記録へ移行",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4045",
+          "updatedAt": "2026-10-24T10:41:53Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
