@@ -66,8 +66,18 @@ import javax.sql.DataSource;
 @Configuration
 @Profile("!test & !openapi-gen & !e2e")
 @EnableScheduling
-@EnableSchedulerLock(defaultLockAtMostFor = "30m")
+@EnableSchedulerLock(defaultLockAtMostFor = "30m", order = ShedLockConfig.ADVISOR_ORDER)
 public class ShedLockConfig {
+
+    /**
+     * ShedLock advisor の order（Issue #2997 G7-b / CMP-260827-1152）。
+     *
+     * <p>既定（LOWEST_PRECEDENCE）だと {@code @Order(20)} の {@code BatchExecutionAspect} が ShedLock の外側に出て、
+     * ロックを取れなかった pod でも batch_job_logs に完了が記録され完了通知が飛ぶ。ロックの内側に留めるため
+     * BackgroundFeaturePolicy(5) → FeatureGate(10) → ShedLock(15) → BatchExecutionAspect(20) → TX の並びにする。
+     * 順序は {@code BatchAdvisorOrderTest} が固定する。</p>
+     */
+    public static final int ADVISOR_ORDER = 15;
 
     @Bean
     public LockProvider lockProvider(DataSource dataSource) {

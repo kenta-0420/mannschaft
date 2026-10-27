@@ -298,12 +298,19 @@
 #   既知の限界: M1 claim の後でプロセスが落ちるとその回の通知は失われる（印が立ったまま配送されない）。
 #               M9 event-pool 飽和で投入が拒否された回は、臨時休業とキャンセル待ちの通知が失われる（リマインドは PENDING のまま次周回で再送される）。
 # 裏取り（最新 main 基準）: 凍結エントリ 12 + REMOVED 8 = 20 -> 9 + 8 = 17、分類済み 10 -> 7（3件とも ROLLBACK_COUPLED の分類済み行）。
-# CENSUS_FLOOR: 17
+# Issue #2997 G7-b（管理バッチ）: BatchEventListener#onCompleted / #onFailed（いずれも PLAIN_EVENT_LISTENER・未分類）を是正。
+#   リスナーを AFTER_COMMIT(fallbackExecution=true) + @Async("event-pool") に変更し、管理者ごとに NotificationDeliveryRunner#sendOne で配送
+#   （1 人の失敗が他に波及しない）。BatchExecutionAspect を @Order(20) にして BackgroundFeaturePolicy(5) → FeatureGate(10) →
+#   ShedLock(15) → BatchExecutionAspect(20) → TX の順にし、完了・失敗イベントが本体 TX の確定（commit 失敗を含む）後に publish されるようにした。
+#   旧実装の実測順序は Policy(5) / FeatureGate(10) / TX(LOWEST) / ShedLock(LOWEST) / BatchExecution(LOWEST) で、BatchExecutionAspect は TX の内側だった。
+#   ShedLock を 15 に寄せたのは、Aspect だけを 20 にすると ShedLock の外側に出て、ロックを取れない pod でも完了が記録・通知されるため。
+#   保証範囲（M7）: エンドポイント自身の TX が確定した後に必ず通知する。外側 TX から呼ばれた場合は対象外（現行の呼出元は外側 TX を持たない）。
+#   実DB検証: BatchNotificationTransactionIT。順序の固定: BatchAdvisorOrderTest。
+# 裏取り（最新 main 基準）: 凍結エントリ 9 + REMOVED 8 = 17 -> 7 + 8 = 15、分類済み 7 -> 7（2件とも未分類行のため変化なし）。
+# CENSUS_FLOOR: 15
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
-com.mannschaft.app.admin.batch.BatchEventListener#onCompleted -> PLAIN_EVENT_LISTENER
-com.mannschaft.app.admin.batch.BatchEventListener#onFailed -> PLAIN_EVENT_LISTENER
 com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationConfirmService#resendReminder -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.notification.fanout.NotificationFanoutWorker#processOne -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 com.mannschaft.app.reservation.service.ReservationPendingExpireService#notifyApplicant -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
