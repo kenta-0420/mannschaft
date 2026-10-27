@@ -8,6 +8,13 @@ import { fileURLToPath } from 'node:url';
 
 export const REF = 'refs/heads/campaign/cmp-261021-0017-coordination';
 export const MANIFEST = 'docs/development/boundary-coordination.json';
+// この裁可の依存edgeだけを免除し、計測レーンや台帳の状態は変更しない。
+export const L0_M_DEPENDENCY_WAIVER = Object.freeze({
+  lane: 'L1-B', dependency: 'L0-M',
+  approval: 'https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6430453220',
+  reason: 'L0-Mは計測に時間がかかりすぎるためスキップ',
+  measurement: 'L0-M基準計測未完了・性能未実証。L3-Pの比較baselineは未実証。',
+});
 const SCRIPT = 'scripts/boundary-coordination.mjs';
 const TERRITORIES = ['foundation', 'common-core', 'repayment-a', 'repayment-b', 'repayment-c', 'gradle', 'closure'];
 const STATES = ['todo', 'planning', 'working', 'paused', 'blocked', 'done'];
@@ -87,7 +94,7 @@ function blockers(s, m, id) {
     ...(id === 'L5-I' && Object.entries(s.lanes).some(([other, lane]) => other !== id && (lane.state === 'working' || lane.held.length > 0)) ? ['他レーン停止・解放待ち'] : []),
     ...declaration.resources.filter(resource => Object.entries(s.lanes).some(([other, lane]) => other !== id && lane.held.includes(resource))).map(resource => '共有resource:' + resource),
     ...(s.lanes[id].hold ? ['既存担当保持'] : []),
-    ...dependencies.filter(dep => s.lanes[dep].state !== 'done').map(dep => `依存:${dep}`),
+    ...dependencies.filter(dep => !(id === L0_M_DEPENDENCY_WAIVER.lane && dep === L0_M_DEPENDENCY_WAIVER.dependency) && s.lanes[dep].state !== 'done').map(dep => `依存:${dep}`),
     ...declaration.gates.filter(gate => !text(s.gates[gate])).map(gate => `gate:${gate}`),
   ];
 }
@@ -207,7 +214,7 @@ export class Coordinator {
   }
   async status() {
     const result = await this.read();
-    return { ...result, meaning: '領地取得はレーン入口の充足ではない。planningは読取準備のみ。', readiness: Object.fromEntries(Object.keys(this.manifest.lanes).map(id => [id, blockers(result.state, this.manifest, id)])) };
+    return { ...result, dependencyWaivers: [L0_M_DEPENDENCY_WAIVER], meaning: '領地取得はレーン入口の充足ではない。planningは読取準備のみ。', readiness: Object.fromEntries(Object.keys(this.manifest.lanes).map(id => [id, blockers(result.state, this.manifest, id)])) };
   }
   async commit(state, parent) {
     const blob = await this.git(['hash-object', '-w', '--stdin'], JSON.stringify(state, null, 2) + '\n');
@@ -252,7 +259,7 @@ function summary(result, m, territory) {
       done: lanes.filter(lane => state.lanes[lane].state === 'done').length, total: lanes.length,
       note: state.territories[id].note, requests: lanes.filter(lane => state.lanes[lane].note).map(lane => ({ lane, note: state.lanes[lane].note })) }];
   }));
-  const output = { head, closed: state.lanes['L5-I'].state === 'done', meaning: '領地取得はレーン入口の充足ではない。planningは読取準備のみ。', territories,
+  const output = { head, dependencyWaivers: [L0_M_DEPENDENCY_WAIVER], closed: state.lanes['L5-I'].state === 'done', meaning: '領地取得はレーン入口の充足ではない。planningは読取準備のみ。', territories,
     holds: Object.fromEntries(Object.entries(state.lanes).filter(([, lane]) => lane.hold).map(([id, lane]) => [id, lane.hold])),
     next: 'status --territory <自領> でレーン入口・依頼・共有予約を確認' };
   if (territory) {
