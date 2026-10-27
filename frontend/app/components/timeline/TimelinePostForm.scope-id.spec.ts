@@ -5,7 +5,7 @@ import Form from './TimelinePostForm.vue'
 
 const mocks = vi.hoisted(() => ({ api: vi.fn() }))
 mockNuxtImport('useApi', () => () => mocks.api)
-mockNuxtImport('useAuthStore', () => () => ({ user: { id: 1 } }))
+mockNuxtImport('useAuthStore', () => () => ({ user: { id: 1 }, loadFromStorage: vi.fn() }))
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key, te: () => true }))
 mockNuxtImport('useNotification', () => () => ({ showSuccess: vi.fn(), showError: vi.fn() }))
 const stubs = { VideoUploadInput: true, TimelinePollForm: true, AnnouncementToggle: true }
