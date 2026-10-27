@@ -5,15 +5,16 @@ import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.visibility.MembershipBatchQueryService;
 import com.mannschaft.app.common.visibility.ScopeKey;
-import com.mannschaft.app.organization.entity.OrganizationEntity;
-import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.service.OrganizationQueryService;
+import com.mannschaft.app.organization.service.OrganizationQueryService.OrganizationListItem;
 import com.mannschaft.app.role.dto.MyOrganizationResponse;
 import com.mannschaft.app.role.dto.MyTeamResponse;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
-import com.mannschaft.app.team.entity.TeamEntity;
-import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
-import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.role.repository.RoleRepository;
+import com.mannschaft.app.team.service.TeamQueryService;
+import com.mannschaft.app.team.service.TeamQueryService.TeamListItem;
+import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -49,9 +50,10 @@ import java.util.Set;
 public class MeController {
 
     private final UserRoleRepository userRoleRepository;
-    private final TeamRepository teamRepository;
-    private final TeamOrgMembershipRepository teamOrgMembershipRepository;
-    private final OrganizationRepository organizationRepository;
+    private final RoleRepository roleRepository;
+    private final TeamQueryService teamQueryService;
+    private final TeamOrgMembershipQueryService teamOrgMembershipQueryService;
+    private final OrganizationQueryService organizationQueryService;
     private final AccessControlService accessControlService;
     private final MembershipBatchQueryService membershipBatchQueryService;
 
@@ -98,35 +100,51 @@ public class MeController {
         // 各チームの先頭が代表親組織で、互換フィールド organization_id にはそれを固定して返す。
         // memberships 由来で増えたチームも含めて解決するため、和集合後の teamIds で問い合わせる（SQL は 1 本）。
         Map<Long, List<Long>> parentOrgIdsByTeamId =
-                teamOrgMembershipRepository.findOrganizationIdsInPrimaryOrderByTeamIdIn(teamIds);
+                teamOrgMembershipQueryService.findOrganizationIdsInPrimaryOrderByTeamIds(teamIds);
         Set<Long> parentOrgIds = new LinkedHashSet<>();
         parentOrgIdsByTeamId.values().forEach(parentOrgIds::addAll);
-        Map<Long, OrganizationEntity> parentOrgById = new LinkedHashMap<>();
-        if (!parentOrgIds.isEmpty()) {
-            for (OrganizationEntity org : organizationRepository.findAllById(parentOrgIds)) {
-                parentOrgById.put(org.getId(), org);
-            }
-        }
-
-        Map<Long, TeamEntity> teamById = new LinkedHashMap<>();
-        for (TeamEntity team : teamRepository.findAllById(teamIds)) {
-            teamById.put(team.getId(), team);
-        }
+        Map<Long, OrganizationListItem> parentOrgById = organizationQueryService.findListItemsByIds(parentOrgIds);
+        Map<Long, TeamListItem> teamById = teamQueryService.findListItemsByIds(teamIds);
         Set<ScopeKey> teamScopes = new LinkedHashSet<>();
         for (Long teamId : teamIds) {
             teamScopes.add(new ScopeKey("TEAM", teamId));
         }
         var roleSnapshot = membershipBatchQueryService.snapshotForUser(userId, teamScopes, Set.of());
+        // SYSTEM_ADMIN の snapshot はスコープロールを持たないため、既に取得した本人の
+        // user_roles を使う。checkAdminOrAbove と同じ ACTIVE 利用者・対象割当・ADMIN/DEPUTY 判定。
+        // ロールマスタと利用者状態は一覧全体で最大1回ずつ解決し、チームごとのSQLを増やさない。
+        Set<Long> archiveManageableTeamIds = new LinkedHashSet<>();
+        if (!teamRoles.isEmpty() && userRoleRepository.isActiveUser(userId)) {
+            Set<Long> roleIds = new LinkedHashSet<>();
+            for (UserRoleEntity assignment : teamRoles) {
+                if (assignment.getRoleId() != null) {
+                    roleIds.add(assignment.getRoleId());
+                }
+            }
+            Set<Long> archiveRoleIds = new LinkedHashSet<>();
+            if (!roleIds.isEmpty()) {
+                for (var role : roleRepository.findAllById(roleIds)) {
+                    if ("ADMIN".equals(role.getName()) || "DEPUTY_ADMIN".equals(role.getName())) {
+                        archiveRoleIds.add(role.getId());
+                    }
+                }
+            }
+            for (UserRoleEntity assignment : teamRoles) {
+                if (archiveRoleIds.contains(assignment.getRoleId())) {
+                    archiveManageableTeamIds.add(assignment.getTeamId());
+                }
+            }
+        }
         Map<Long, Integer> memberCountByTeamId =
                 accessControlService.countActiveDistinctMembersByScopes("TEAM", teamIds);
 
         List<MyTeamResponse> teams = new ArrayList<>();
         for (Long teamId : teamIds) {
-            TeamEntity team = teamById.get(teamId);
+            TeamListItem team = teamById.get(teamId);
             if (team == null) {
                 continue;
             }
-            if (!includeArchived && team.getArchivedAt() != null) {
+            if (!includeArchived && team.archivedAt() != null) {
                 continue;
             }
             String roleName = roleSnapshot.isSystemAdmin()
@@ -139,26 +157,27 @@ public class MeController {
             List<Long> parentIds = parentOrgIdsByTeamId.getOrDefault(teamId, List.of());
             List<MyTeamResponse.ParentOrganization> organizations = new ArrayList<>();
             for (Long parentId : parentIds) {
-                OrganizationEntity parent = parentOrgById.get(parentId);
+                OrganizationListItem parent = parentOrgById.get(parentId);
                 // 論理削除済みの組織は一覧に出さない（@SQLRestriction により findAllById から除外される）。
                 if (parent != null) {
                     organizations.add(new MyTeamResponse.ParentOrganization(
-                            parent.getId(), parent.getSlug(), parent.getName()));
+                            parent.id(), parent.slug(), parent.name()));
                 }
             }
             teams.add(new MyTeamResponse(
-                    team.getId(),
-                    team.getSlug(),
+                    team.id(),
+                    team.slug(),
                     parentIds.isEmpty() ? null : parentIds.get(0),
                     organizations,
-                    team.getName(),
+                    team.name(),
                     null,
-                    team.getVisibility().name(),
+                    team.visibility(),
                     memberCount,
                     roleName,
                     joinedAtByTeamId.get(teamId),
-                    team.getArchivedAt() != null,
-                    team.getTemplate()));
+                    team.archivedAt() != null,
+                    archiveManageableTeamIds.contains(teamId),
+                    team.template()));
         }
         teams.sort(Comparator.comparing(MyTeamResponse::getJoinedAt));
 
@@ -200,30 +219,43 @@ public class MeController {
             joinedAtByOrgId.put(e.getKey(), e.getValue());
         }
 
+        // 組織実体・実効ロール・人数は所属全体で一括取得し、組織数に比例するSQLを避ける。
+        Map<Long, OrganizationListItem> orgById = organizationQueryService.findListItemsByIds(orgIds);
+        Set<ScopeKey> orgScopes = new LinkedHashSet<>();
+        for (Long orgId : orgIds) {
+            orgScopes.add(new ScopeKey("ORGANIZATION", orgId));
+        }
+        var roleSnapshot = membershipBatchQueryService.snapshotForUser(userId, orgScopes, Set.of());
+        // snapshotの直接割当は利用者状態を遮断しないため、従来の単件解決と同じ条件を一度だけ判定する。
+        boolean canResolveRole = roleSnapshot.isSystemAdmin() || userRoleRepository.isActiveUser(userId);
+        Map<Long, Integer> memberCountByOrgId =
+                accessControlService.countActiveDistinctMembersByScopes("ORGANIZATION", orgIds);
+
         List<MyOrganizationResponse> orgs = new ArrayList<>();
         for (Long orgId : orgIds) {
-            OrganizationEntity org = organizationRepository.findById(orgId).orElse(null);
+            OrganizationListItem org = orgById.get(orgId);
             if (org == null) {
                 continue;
             }
-            if (!includeArchived && org.getArchivedAt() != null) {
+            if (!includeArchived && org.archivedAt() != null) {
                 continue;
             }
-            String roleName = accessControlService.resolveEffectiveRoleName(userId, orgId, "ORGANIZATION");
+            String roleName = roleSnapshot.isSystemAdmin() ? "SYSTEM_ADMIN"
+                    : canResolveRole ? roleSnapshot.roleByScope().get(new ScopeKey("ORGANIZATION", orgId)) : null;
             if (roleName == null) {
                 roleName = "MEMBER";
             }
-            int memberCount = accessControlService.countActiveDistinctMembers("ORGANIZATION", orgId);
+            int memberCount = memberCountByOrgId.getOrDefault(orgId, 0);
             orgs.add(new MyOrganizationResponse(
-                    org.getId(),
-                    org.getSlug(),
-                    org.getName(),
+                    org.id(),
+                    org.slug(),
+                    org.name(),
                     null,
-                    org.getVisibility().name(),
+                    org.visibility(),
                     memberCount,
                     roleName,
                     joinedAtByOrgId.get(orgId),
-                    org.getArchivedAt() != null));
+                    org.archivedAt() != null));
         }
         orgs.sort(Comparator.comparing(MyOrganizationResponse::getJoinedAt));
 

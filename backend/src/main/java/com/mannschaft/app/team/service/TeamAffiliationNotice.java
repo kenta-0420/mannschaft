@@ -99,4 +99,123 @@ public record TeamAffiliationNotice(NotificationType notificationType,
                 actorUserId,
                 "/teams/" + teamSlug + "/affiliations?view=applications");
     }
+
+    /**
+     * チームが組織から離脱した通知（{@code TEAM_ORG_MEMBERSHIP_LEFT}。受信者は組織 ADMIN 全員。§6.6）。
+     */
+    public static TeamAffiliationNotice membershipLeft(Long organizationId, String organizationSlug,
+                                                       String teamName, String organizationName,
+                                                       Long membershipId, Long actorUserId) {
+        return new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_MEMBERSHIP_LEFT,
+                FanoutMessageKind.TEAM_ORG_MEMBERSHIP_LEFT,
+                List.of(teamName, organizationName),
+                RecipientScope.ORGANIZATION_ADMINS,
+                organizationId,
+                organizationId,
+                membershipId,
+                actorUserId,
+                "/organizations/" + organizationSlug + "/member-teams");
+    }
+
+    /**
+     * チームが組織から除名された通知（{@code TEAM_ORG_MEMBERSHIP_REMOVED}。受信者はチームの加盟操作者。§6.6）。理由欄は無い。
+     */
+    public static TeamAffiliationNotice membershipRemoved(Long teamId, String teamSlug, Long organizationId,
+                                                          String teamName, String organizationName,
+                                                          Long membershipId, Long actorUserId) {
+        return new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_MEMBERSHIP_REMOVED,
+                FanoutMessageKind.TEAM_ORG_MEMBERSHIP_REMOVED,
+                List.of(teamName, organizationName),
+                RecipientScope.TEAM_AFFILIATION_OPERATORS,
+                teamId,
+                organizationId,
+                membershipId,
+                actorUserId,
+                "/teams/" + teamSlug + "/affiliations");
+    }
+
+    /**
+     * チームが起こした申請が期限切れで消えた通知（{@code TEAM_ORG_PENDING_EXPIRED}。受信者は起こした側＝チームの加盟操作者。
+     * §6.7・§6.8）。期限切れはシステムの遷移なので操作者は無い。
+     */
+    public static TeamAffiliationNotice applicationExpired(Long teamId, String teamSlug, Long organizationId,
+                                                           String teamName, String organizationName,
+                                                           Long membershipId) {
+        return new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_PENDING_EXPIRED,
+                FanoutMessageKind.TEAM_ORG_PENDING_EXPIRED,
+                List.of(teamName, organizationName),
+                RecipientScope.TEAM_AFFILIATION_OPERATORS,
+                teamId,
+                organizationId,
+                membershipId,
+                null,
+                "/teams/" + teamSlug + "/affiliations?view=applications");
+    }
+
+    /**
+     * 組織が起こした招待が期限切れで消えた通知（{@code TEAM_ORG_PENDING_EXPIRED}。受信者は起こした側＝組織 ADMIN 全員。
+     * §6.7・§6.8）。開く画面は組織の所属チーム画面の招待一覧（{@code member-teams?view=invites}）。
+     */
+    public static TeamAffiliationNotice inviteExpired(Long organizationId, String organizationSlug,
+                                                      String teamName, String organizationName,
+                                                      Long membershipId) {
+        return new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_PENDING_EXPIRED,
+                FanoutMessageKind.TEAM_ORG_PENDING_EXPIRED,
+                List.of(teamName, organizationName),
+                RecipientScope.ORGANIZATION_ADMINS,
+                organizationId,
+                organizationId,
+                membershipId,
+                null,
+                "/organizations/" + organizationSlug + "/member-teams?view=invites");
+    }
+
+    /**
+     * 組織側のアーカイブ・論理削除で PENDING が取り消された通知（{@code TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM}。§4.5・§6.7）。
+     * 受信者は残った側＝チームの加盟操作者。開く画面は申請なら {@code ?view=applications}、招待なら {@code ?view=invites}。
+     *
+     * @param invite 取り消された PENDING が招待（ORG_INVITE）か
+     */
+    public static TeamAffiliationNotice pendingCancelledByOrganizationClosure(Long teamId, String teamSlug,
+                                                                              Long organizationId,
+                                                                              String organizationName,
+                                                                              boolean invite,
+                                                                              Long membershipId,
+                                                                              Long actorUserId) {
+        return new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM,
+                FanoutMessageKind.TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM,
+                List.of(organizationName),
+                RecipientScope.TEAM_AFFILIATION_OPERATORS,
+                teamId,
+                organizationId,
+                membershipId,
+                actorUserId,
+                "/teams/" + teamSlug + "/affiliations?view=" + (invite ? "invites" : "applications"));
+    }
+
+    /**
+     * チーム側のアーカイブ・論理削除で PENDING が取り消された通知（{@code TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM}。§4.5・§6.7）。
+     * 受信者は残った側＝組織 ADMIN 全員。開く画面は申請なら {@code ?view=applications}、招待なら {@code ?view=invites}。
+     *
+     * @param invite 取り消された PENDING が招待（ORG_INVITE）か
+     */
+    public static TeamAffiliationNotice pendingCancelledByTeamClosure(Long organizationId, String organizationSlug,
+                                                                      String teamName, boolean invite,
+                                                                      Long membershipId, Long actorUserId) {
+        return new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM,
+                FanoutMessageKind.TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM,
+                List.of(teamName),
+                RecipientScope.ORGANIZATION_ADMINS,
+                organizationId,
+                organizationId,
+                membershipId,
+                actorUserId,
+                "/organizations/" + organizationSlug + "/member-teams?view=" + (invite ? "invites" : "applications"));
+    }
 }

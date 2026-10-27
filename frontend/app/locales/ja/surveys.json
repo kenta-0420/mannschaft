@@ -168,7 +168,7 @@
       "remindHint": "未回答の {count} 名にリマインド通知を送信できます（最大3回まで）",
       "remindButton": "督促送信",
       "remindAutoNotice": "督促通知は回答期限の 24 時間前に自動送信されます",
-      "remindSuccess": "{count}名にリマインドを送信しました",
+      "remindSuccess": "{count}名の未回答メンバーにリマインドの送信を受け付けました",
       "remindRemaining": "残り送信可能: {count}回",
       "remindFailed": "督促の送信に失敗しました",
       "remindFailedDetail": "送信上限・クールダウン・権限をご確認ください",

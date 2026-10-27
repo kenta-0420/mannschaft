@@ -2,8 +2,9 @@ import { test, expect, type APIRequestContext, type Browser, type Page } from '@
 import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration } from '../helpers/wait'
 /**
- * 注記: 2026-10-02 時点で未実走。FE dev サーバがビルド後に HTTP 応答しなくなる環境不具合で画面を開けなかった。
- * API の AC は curl で確認済み。
+ * 注記: 2026-10-02 時点では FE dev サーバの環境不具合で画面を開けず未実走だった（API の AC は curl で確認）。
+ * 2026-10-10 に検証環境で実走した（9件中 AC4 系は全通過）。画面のエントリー管理モーダルは、
+ * 取得不発・応答の { data } 包み・チーム名空欄を直した修正（PR #3759）の後に再走する。
  */
 
 /**
@@ -14,8 +15,8 @@ import { waitForHydration } from '../helpers/wait'
  * 以前は `Incorrect string value ... for column 'id'` で PUT entry-members / POST entry-templates が 500 だった。
  *
  * 前提（開発DB・実 BE/FE。CI 対象外・殿が手動実走）:
- *   - USER  = e2e-user(23): org 9 ADMIN（主催組織の ADMIN）／ team 1・2 は MEMBER ／ org 1・4 は MEMBER ／ team 4 は MEMBER
- *   - ADMIN = e2e-admin(24): SYSTEM_ADMIN（組織・チームの実 ADMIN ではない。大会作成と参加チーム追加に使う）
+ *   - USER  = e2e-user(23): org 9 ADMIN／team 1・2 と org 4・team 4 は MEMBER。専用の新組織・新チームにも MEMBER として参加する。
+ *   - ADMIN = e2e-admin(24): SYSTEM_ADMIN。専用の新組織・新チームでは作成者として実 ADMIN を持つ。
  *   - 資格情報は .env.test（TEST_USER_* / TEST_ADMIN_*）から読む。値は spec に書かない。
  *   - 前提データ（大会・ディビジョン・参加チーム）は本 spec が API で作る（これは「前提データ作成」）。
  *
@@ -24,9 +25,9 @@ import { waitForHydration } from '../helpers/wait'
  *   - API : テンプレートの作成・更新・削除・文字数上限・ロール横断・他テナント 404。
  *          （テンプレート作成・メンバー番号入力の UI が無いことは既知 = CMP-260930-0228）
  *
- * 実行: BASE_URL=http://localhost:3003 API_BASE_URL=http://localhost:8080 npx playwright test cmp-260929-0654 --project=chromium-real --no-deps --reporter=list
+ * 実行: BASE_URL=http://127.0.0.1:3002 API_BASE_URL=http://127.0.0.1:8082 npx playwright test cmp-260929-0654 --project=chromium-real --no-deps --reporter=list
  *
- * ブラウザは既定の localhost→127.0.0.1 マップ（playwright-real.config.ts）を外す。検証 FE は ::1 のみで待ち受けるため。
+ * ブラウザ・API とも 127.0.0.1 を明示し、同じホストの Cookie と CSRF を正規 fixture で検証する。
  */
 test.use({ launchOptions: { args: [] }, storageState: { cookies: [], origins: [] } })
 test.setTimeout(240_000)
@@ -39,11 +40,18 @@ const ORG_A = 9
 const ORG_A_SLUG = 'org-000009'
 const TEAM_A1 = 1
 const TEAM_A2 = 2
-// 権限なし側: org 4 / team 4（USER は両方 MEMBER）。entry-members 側は org 1（USER は MEMBER）の大会に team 4 を参加させて使う
+// 権限なし側: org 4 / team 4（USER は両方 MEMBER）。entry-members 側は専用の新組織・新チームを使う
 const ORG_B = 4
 const TEAM_B = 4
-const ORG_C = 1
-const ORG_C_SLUG = 'org-000001'
+let ORG_C = 0
+let TEAM_C = 0
+let ORG_C_SLUG = ''
+let teamCSlug = ''
+let orgCTokenId = 0
+let teamCTokenId = 0
+let userJoinedOrgC = false
+let userJoinedTeamC = false
+let affiliationC: 'none' | 'invited' | 'active' = 'none'
 
 const USER_ID = 23
 const ADMIN_USER_ID = 24
@@ -105,16 +113,96 @@ let pA1 = 0
 let pA2 = 0
 let tIdC = 0
 let divC = 0
-let pC4 = 0
-const createdTemplates: { org: number; team: number; id: string }[] = []
+let pC1 = 0
+const createdTemplates: { org: number; team: number; id: string; actor: 'user' | 'admin' }[] = []
+const mobileTemplates: Record<number, { id: string; name: string }> = {}
+const createdParticipants: { org: number; tournament: number; division: number; id: number; actor: 'user' | 'admin' }[] = []
 
-async function ensureParticipant(req: APIRequestContext, orgId: number, tId: number, divId: number, teamId: number): Promise<number> {
+async function ensureParticipant(req: APIRequestContext, orgId: number, tId: number, divId: number, teamId: number, actor: 'user' | 'admin'): Promise<number> {
   const list = await api(req, 'get', `/organizations/${orgId}/tournaments/${tId}/divisions/${divId}/participants`)
   const found = (list.body.data as { id: number; teamId: number }[] | undefined)?.find((p) => p.teamId === teamId)
   if (found) return found.id
   const add = await api(req, 'post', `/organizations/${orgId}/tournaments/${tId}/divisions/${divId}/participants`, { teamId, seed: 1 })
   expect(add.status, add.text).toBe(201)
-  return Number(add.body.data?.id)
+  const id = Number(add.body.data?.id)
+  createdParticipants.push({ org: orgId, tournament: tId, division: divId, id, actor })
+  console.info('[entry-real-created-participant]', JSON.stringify({ org: orgId, tournament: tId, division: divId, teamId, id, actor }))
+  return id
+}
+
+async function ensureMemberScopeFixture(admin: Page, user: Page): Promise<void> {
+  if (pC1 > 0) return
+  // 既存組織の所属・通知先を変えず、seed 2名だけの専用スコープで MEMBER 境界を検証する。
+  const org = await api(admin.request, 'post', '/organizations', {
+    name: `PKB16-member-org-${SUFFIX}`, orgType: 'COMMUNITY', visibility: 'PRIVATE', parentOrganizationId: null,
+  })
+  expect(org.status, org.text).toBe(201)
+  ORG_C = Number(org.body.data.numericId)
+  ORG_C_SLUG = String(org.body.data.slug)
+  console.info('[entry-real-created-organization]', JSON.stringify({ id: ORG_C, slug: ORG_C_SLUG }))
+  const team = await api(admin.request, 'post', '/teams', {
+    name: `PKB16-member-team-${SUFFIX}`, template: 'SPORTS', visibility: 'MEMBERS_AND_ABOVE',
+  })
+  expect(team.status, team.text).toBe(201)
+  TEAM_C = Number(team.body.data.numericId)
+  teamCSlug = String(team.body.data.slug)
+  console.info('[entry-real-created-team]', JSON.stringify({ id: TEAM_C, slug: teamCSlug }))
+
+  // 招待リンクはメモリ内だけで受諾し、トークン値を出力しない。
+  const orgToken = await api(admin.request, 'post', `/organizations/${ORG_C_SLUG}/invite-tokens`, { roleId: 4, expiresIn: '1d', maxUses: 1 })
+  expect(orgToken.status).toBe(201)
+  orgCTokenId = Number(orgToken.body.data.id)
+  const joinOrg = await api(user.request, 'post', `/invite/${String(orgToken.body.data.token)}/join`, {}).catch(() => {
+    // 通信エラーの URL に含まれる招待トークンを失敗ログへ残さない。
+    throw new Error('専用組織の招待リンク受諾への通信に失敗しました')
+  })
+  expect(joinOrg.status, '専用組織の招待リンク受諾').toBe(200)
+  userJoinedOrgC = true
+  const teamToken = await api(admin.request, 'post', `/teams/${teamCSlug}/invite-tokens`, { roleId: 4, expiresIn: '1d', maxUses: 1 })
+  expect(teamToken.status).toBe(201)
+  teamCTokenId = Number(teamToken.body.data.id)
+  const joinTeam = await api(user.request, 'post', `/invite/${String(teamToken.body.data.token)}/join`, {}).catch(() => {
+    // 通信エラーの URL に含まれる招待トークンを失敗ログへ残さない。
+    throw new Error('専用チームの招待リンク受諾への通信に失敗しました')
+  })
+  expect(joinTeam.status, '専用チームの招待リンク受諾').toBe(200)
+  userJoinedTeamC = true
+  for (const scope of [`organizations/${ORG_C_SLUG}`, `teams/${teamCSlug}`]) {
+    const member = await api(user.request, 'get', `/${scope}/me/permissions`)
+    expect(member.status, member.text).toBe(200)
+    expect(member.body.data).toMatchObject({ roleName: 'MEMBER', scopeAdmin: false })
+    const owner = await api(admin.request, 'get', `/${scope}/me/permissions`)
+    expect(owner.status, owner.text).toBe(200)
+    expect(owner.body.data.scopeAdmin).toBe(true)
+  }
+
+  const invite = await api(admin.request, 'post', `/organizations/${ORG_C_SLUG}/team-invites`, { teamSlug: teamCSlug, groupId: null, message: null })
+  expect(invite.status, invite.text).toBe(201)
+  affiliationC = 'invited'
+  const accept = await api(admin.request, 'post', `/teams/${teamCSlug}/org-invites/${Number(invite.body.data.id)}/accept`, {})
+  expect(accept.status, accept.text).toBe(200)
+  affiliationC = 'active'
+  expect(accept.body.data.status).toBe('ACTIVE')
+  // 権限なし側も自分専用の大会・部門・参加行を作り、既存エントリー表を全置換しない。
+  const tc = await api(admin.request, 'post', `/organizations/${ORG_C}/tournaments`, {
+    name: `PKB16-member-${SUFFIX}`, format: 'LEAGUE', season: '2026', startDate: '2026-10-10', endDate: '2026-12-30',
+    winPoints: 3, drawPoints: 1, lossPoints: 0, hasDraw: true, hasSets: false, visibility: 'MEMBERS_AND_ABOVE',
+  })
+  expect(tc.status, tc.text).toBe(201)
+  tIdC = Number(tc.body.data?.id)
+  console.info('[entry-real-created-tournament]', JSON.stringify({ org: ORG_C, id: tIdC, name: `PKB16-member-${SUFFIX}` }))
+  const dc = await api(admin.request, 'post', `/organizations/${ORG_C}/tournaments/${tIdC}/divisions`, {
+    name: 'D-member', level: 1, promotionSlots: 0, relegationSlots: 0, maxParticipants: 12, sortOrder: 1,
+  })
+  expect(dc.status, dc.text).toBe(201)
+  divC = Number(dc.body.data?.id)
+  console.info('[entry-real-created-division]', JSON.stringify({ org: ORG_C, tournament: tIdC, id: divC }))
+  pC1 = await ensureParticipant(admin.request, ORG_C, tIdC, divC, TEAM_C, 'admin')
+  // DRAFT は MEMBER に見えないため、正規の状態遷移後に画面・閲覧 AC の前提を確認する。
+  const opened = await api(admin.request, 'patch', `/organizations/${ORG_C}/tournaments/${tIdC}/status`, { status: 'OPEN' })
+  expect(opened.status, opened.text).toBe(200)
+  expect((await api(user.request, 'get', `/organizations/${ORG_C}/tournaments/${tIdC}`)).status).toBe(200)
+  expect((await api(user.request, 'get', base(ORG_C, tIdC, divC, pC1))).status).toBe(200)
 }
 
 test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', () => {
@@ -129,25 +217,15 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     })
     expect(t.status, t.text).toBe(201)
     tIdA = Number(t.body.data?.id)
+    console.info('[entry-real-created-tournament]', JSON.stringify({ org: ORG_A, id: tIdA, name: `PKB16-${SUFFIX}` }))
     const d = await api(user.request, 'post', `/organizations/${ORG_A}/tournaments/${tIdA}/divisions`, {
       name: 'D1', level: 1, promotionSlots: 0, relegationSlots: 0, maxParticipants: 12, sortOrder: 1,
     })
     expect(d.status, d.text).toBe(201)
     divA = Number(d.body.data?.id)
-    pA1 = await ensureParticipant(user.request, ORG_A, tIdA, divA, TEAM_A1)
-    pA2 = await ensureParticipant(user.request, ORG_A, tIdA, divA, TEAM_A2)
-
-    // 権限なし側: org 1 の既存 DRAFT/OPEN 大会のディビジョンに team 4 を参加させる（参加追加は SYSTEM_ADMIN）
-    const list = await api(admin.request, 'get', `/organizations/${ORG_C}/tournaments?size=50`)
-    expect(list.status, list.text).toBe(200)
-    const cands = (list.body.data as { id: number; structure?: { status?: string } }[]).filter((x) => ['DRAFT', 'OPEN'].includes(x.structure?.status ?? ''))
-    for (const c of cands) {
-      const divs = await api(admin.request, 'get', `/organizations/${ORG_C}/tournaments/${c.id}/divisions`)
-      const first = (divs.body.data as { id: number }[] | undefined)?.[0]
-      if (first) { tIdC = c.id; divC = first.id; break }
-    }
-    expect(tIdC, 'org 1 に DRAFT/OPEN でディビジョンを持つ大会が必要').toBeGreaterThan(0)
-    pC4 = await ensureParticipant(admin.request, ORG_C, tIdC, divC, TEAM_B)
+    console.info('[entry-real-created-division]', JSON.stringify({ org: ORG_A, tournament: tIdA, id: divA }))
+    pA1 = await ensureParticipant(user.request, ORG_A, tIdA, divA, TEAM_A1, 'user')
+    pA2 = await ensureParticipant(user.request, ORG_A, tIdA, divA, TEAM_A2, 'user')
 
     await admin.context().close()
     await user.context().close()
@@ -210,7 +288,8 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     })
     expect(create.status, create.text).toBe(201) // 以前は 500
     const tplId = String(create.body.data.id)
-    createdTemplates.push({ org: ORG_A, team: TEAM_A1, id: tplId })
+    createdTemplates.push({ org: ORG_A, team: TEAM_A1, id: tplId, actor: 'user' })
+    console.info('[entry-real-created-template]', JSON.stringify({ org: ORG_A, team: TEAM_A1, id: tplId }))
     expect(tplId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
     expect(create.body.data.members[0]).toMatchObject({ userId: USER_ID, jerseyNumber: 7, position: POS30 })
 
@@ -261,7 +340,8 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
       name: `PKB16-ui-${SUFFIX}`, members: [{ userId: USER_ID, jerseyNumber: 5, position: 'DF', sortOrder: 1 }],
     })
     expect(tpl.status, tpl.text).toBe(201)
-    createdTemplates.push({ org: ORG_A, team: TEAM_A1, id: String(tpl.body.data.id) })
+    createdTemplates.push({ org: ORG_A, team: TEAM_A1, id: String(tpl.body.data.id), actor: 'user' })
+    console.info('[entry-real-created-template]', JSON.stringify({ org: ORG_A, team: TEAM_A1, id: String(tpl.body.data.id) }))
 
     await user.goto(`/organizations/${ORG_A_SLUG}/tournaments/${tIdA}`)
     await waitForHydration(user)
@@ -278,23 +358,25 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     // 既存エントリー（API で入れた participant pA1 の内容）が画面に出る。先に 1 行目の participant が pA1 とは限らないので、
     // どちらの participant でも「保存」が通ることを確かめる。
     // テンプレート一覧に API 作成分が出る（BE の BINARY(16) 読み出し → UUID 文字列）
-    await expect(dialog.getByText('エントリーテンプレート')).toBeVisible()
+    await expect(dialog.getByText('エントリーテンプレート')).toBeVisible({ timeout: 20_000 })
     await dialog.locator('.p-select').click()
     await expect(user.getByRole('option', { name: `PKB16-ui-${SUFFIX}` })).toBeVisible({ timeout: 20_000 })
     await user.getByRole('option', { name: `PKB16-ui-${SUFFIX}` }).click()
     await dialog.getByRole('button', { name: '一括適用' }).click()
-    await expect(user.getByText('件追加しました').first()).toBeVisible({ timeout: 20_000 })
+    await expect(user.getByText('名を追加しました').first()).toBeVisible({ timeout: 20_000 })
 
     // 手動編集: 先頭の候補を選択し position・notes を入れて保存
     const firstCheck = dialog.locator('[id^="member-"]').first()
     const boxes = dialog.locator('.p-checkbox')
     await expect(boxes.first()).toBeVisible({ timeout: 20_000 })
     expect(await firstCheck.count()).toBeGreaterThan(0)
-    const row = dialog.locator('div.rounded.border').filter({ has: dialog.locator('[id^="member-"]') }).first()
+    // filter の has は「行を起点」に解決される。dialog.locator を渡すと「行の中の dialog」を探して 0 件になるため、ページ起点で渡す
+    const row = dialog.locator('div.rounded.border').filter({ has: user.locator('[id^="member-"]') }).first()
     const rowCheckbox = row.locator('.p-checkbox').first()
     if (!(await row.locator('input[type="checkbox"]').first().isChecked())) await rowCheckbox.click()
     await row.getByPlaceholder('ポジション').fill('MF')
-    await row.getByPlaceholder('備考').fill(`ui-notes-${SUFFIX}`)
+    await row.getByPlaceholder('備考').fill(NOTES200)
+    await expect(row.getByPlaceholder('備考')).toHaveValue(NOTES200)
     await dialog.getByRole('button', { name: 'エントリーを保存' }).last().click()
     await expect(user.getByText('エントリーを保存しました')).toBeVisible({ timeout: 20_000 })
 
@@ -302,15 +384,193 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const a1 = await api(user.request, 'get', base(ORG_A, tIdA, divA, pA1))
     const a2 = await api(user.request, 'get', base(ORG_A, tIdA, divA, pA2))
     const all = [...(a1.body.data.entryMembers as { notes: string | null; position: string | null }[]), ...(a2.body.data.entryMembers as { notes: string | null; position: string | null }[])]
-    expect(all.some((m) => m.notes === `ui-notes-${SUFFIX}` && m.position === 'MF'), JSON.stringify(all)).toBe(true)
+    expect(all.some((m) => m.notes === NOTES200 && m.position === 'MF'), JSON.stringify(all)).toBe(true)
 
     // 一覧に反映され、エラートーストが無い
-    await expect(dialog.getByText(`ui-notes-${SUFFIX}`)).toBeVisible({ timeout: 20_000 })
+    // 今回保存した MF の登録済み行で、位置と備考200文字の同時反映を確認する。
+    const savedRow = dialog.getByRole('row').filter({ has: user.getByRole('cell', { name: 'MF', exact: true }) })
+    const savedNotes = savedRow.getByRole('cell', { name: NOTES200, exact: true })
+    await expect(savedNotes).toBeVisible({ timeout: 20_000 })
+    await savedNotes.scrollIntoViewIfNeeded()
+    await test.info().attach('entry-notes200-saved', { body: await user.screenshot(), contentType: 'image/png' })
     await expect(user.locator('.p-toast-message-error')).toHaveCount(0)
     expect(errs.server, errs.server.join('\n')).toHaveLength(0)
     expect(errs.consoleErrors, errs.consoleErrors.join('\n')).toHaveLength(0)
     await user.context().close()
   })
+
+  // ---------------------------------------------------------------- アリシゼーション確定不備 ALIC-1〜3
+  for (const viewportWidth of [360, 390]) {
+    test(`ALIC-1/2/3 [画面] ${viewportWidth}px 幅: ページが横にはみ出さず、既存メンバーは選択済みで何も触らず保存しても消えず、ポジション欄を押せる`, async ({ browser }) => {
+      const user = await newPage(browser, userCred)
+      const errs = watchErrors(user)
+      // 短い合法名の自作テンプレートを2幅で共有し、選択後の操作領域も確認する（適用しない）。
+      for (const teamId of [TEAM_A1, TEAM_A2]) {
+        const templatePath = `/organizations/${ORG_A}/teams/${teamId}/entry-templates`
+        const existing = await api(user.request, 'get', templatePath)
+        expect(existing.status, existing.text).toBe(200)
+        if (mobileTemplates[teamId]) {
+          expect((existing.body.data as { id: string }[]).some(template => template.id === mobileTemplates[teamId]!.id)).toBe(true)
+          continue
+        }
+        expect((existing.body.data as { id: string }[]).length).toBeLessThan(5)
+        const name = `M44-${teamId}-${SUFFIX.slice(-4)}`
+        const template = await api(user.request, 'post', templatePath, {
+          name,
+          members: [{ userId: USER_ID, jerseyNumber: 9, position: 'ALIC', sortOrder: 1 }],
+        })
+        expect(template.status, template.text).toBe(201)
+        const id = String(template.body.data.id)
+        createdTemplates.push({ org: ORG_A, team: teamId, id, actor: 'user' })
+        mobileTemplates[teamId] = { id, name }
+        console.info('[entry-real-created-template]', JSON.stringify({ org: ORG_A, team: teamId, id }))
+      }
+      // 前提データ作成（API）: 両 participant に USER を既存エントリーとして入れる（画面で先に開くのがどちらでも検証できるように）
+      for (const pId of [pA1, pA2]) {
+        const put = await api(user.request, 'put', base(ORG_A, tIdA, divA, pId), {
+          members: [{ userId: USER_ID, jerseyNumber: 9, position: 'ALIC', notes: 'alic', sortOrder: 1 }],
+        })
+        expect(put.status, put.text).toBe(200)
+      }
+
+      await user.setViewportSize({ width: viewportWidth, height: 844 })
+      await user.goto(`/organizations/${ORG_A_SLUG}/tournaments/${tIdA}`)
+      await waitForHydration(user)
+      await dismissPermissionSetup(user)
+      await expect(user.getByTestId(`tournament-division-tab-${divA}`)).toBeVisible({ timeout: 60_000 })
+      // ALIC-3: 上部リンク行が折り返し、ページ横はみ出しが無い
+      const overflow = () => user.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+      expect(await overflow()).toBeLessThanOrEqual(0)
+
+      await user.getByRole('button', { name: 'エントリー管理' }).first().click()
+      const dialog = user.getByRole('dialog')
+      await expect(dialog).toBeVisible({ timeout: 20_000 })
+      await expect(dialog.locator('[id^="member-"]').first()).toBeVisible({ timeout: 20_000 })
+      await expect(dialog.locator('.p-select')).toBeVisible({ timeout: 20_000 })
+      const templatePlaceholderBox = await dialog.locator('.p-select').boundingBox()
+      await dialog.locator('.p-select').click()
+      const shortTemplate = user.getByRole('option', { name: new RegExp(`^M44-[12]-${SUFFIX.slice(-4)}$`) })
+      await expect(shortTemplate).toHaveCount(1)
+      await shortTemplate.click()
+      await expect(dialog.getByRole('button', { name: '一括適用', exact: true })).toBeEnabled()
+      // ALIC-1: 既存メンバー（USER）の行は選択済みになっている。
+      const selectedRows = dialog.locator('div.rounded.border input[type="checkbox"]:checked')
+      expect(await selectedRows.count()).toBeGreaterThanOrEqual(1)
+      expect(await overflow()).toBeLessThanOrEqual(0)
+
+      // ALIC-3: モーダル自体と、保存・閉じるが viewport 内にある（保存ボタンは必要ならスクロールして到達できる）
+      const vw = viewportWidth
+      const box = await dialog.boundingBox()
+      expect(box!.x).toBeGreaterThanOrEqual(0)
+      expect(box!.x + box!.width).toBeLessThanOrEqual(vw)
+      const closeBtn = dialog.locator('.p-dialog-footer button').last()
+      await closeBtn.scrollIntoViewIfNeeded()
+      const closeBox = await closeBtn.boundingBox()
+      expect(closeBox!.x).toBeGreaterThanOrEqual(0)
+      expect(closeBox!.x + closeBox!.width).toBeLessThanOrEqual(vw)
+      const saveBtn = dialog.getByRole('button', { name: 'エントリーを保存' }).last()
+      await saveBtn.scrollIntoViewIfNeeded()
+      const saveBox = await saveBtn.boundingBox()
+      expect(saveBox!.x).toBeGreaterThanOrEqual(0)
+      expect(saveBox!.x + saveBox!.width).toBeLessThanOrEqual(vw)
+
+      // ALIC-2: 選択済み行のポジション欄が、背番号欄に覆われずクリックできる（trial は他要素に遮られると失敗する）
+      const selectedRow = dialog.locator('div.rounded.border').filter({ has: user.locator('input[type="checkbox"]:checked') }).first()
+      const pos = selectedRow.getByPlaceholder('ポジション')
+      const jersey = selectedRow.getByPlaceholder('背番号')
+      console.info('[entry-mobile-geometry]', JSON.stringify({
+        viewport: viewportWidth, dialog: await dialog.boundingBox(), row: await selectedRow.boundingBox(),
+        jersey: await jersey.boundingBox(), position: await pos.boundingBox(),
+        inputNumber: await jersey.evaluate((input) => {
+          const measure = (element: Element) => {
+            const style = getComputedStyle(element)
+            const { x, y, width, height } = element.getBoundingClientRect()
+            return { x, y, width, height, cssWidth: style.width, minWidth: style.minWidth, flex: style.flex, display: style.display }
+          }
+          return { root: measure(input.closest('.p-inputnumber')!), input: measure(input) }
+        }),
+      }))
+      await pos.click({ trial: true, timeout: 10_000 })
+      await pos.click()
+      await pos.focus()
+      const jb = await jersey.boundingBox()
+      const pb = await pos.boundingBox()
+      expect(jb!.x + jb!.width).toBeLessThanOrEqual(pb!.x + 1) // 背番号欄がポジション欄に重ならない
+      await test.info().attach('entry-mobile-layout', { body: await user.screenshot(), contentType: 'image/png' })
+      const touchTargets = [
+        { name: 'テンプレート選択（未選択）', box: templatePlaceholderBox },
+        { name: '背番号', box: jb },
+        { name: 'ポジション', box: pb },
+        { name: '備考', box: await selectedRow.getByPlaceholder('備考').boundingBox() },
+        { name: '保存', box: await saveBtn.boundingBox() },
+        { name: '閉じる', box: await closeBtn.boundingBox() },
+        { name: 'ヘッダー閉じる', box: await dialog.locator('.p-dialog-close-button').boundingBox() },
+      ]
+      for (const button of await dialog.getByRole('button').all()) {
+        if (!(await button.isVisible()) || !(await button.isEnabled())) continue
+        if (await button.evaluate(element => element.matches('.p-dialog-close-button') || element.closest('.p-select') !== null)) continue
+        const name = (await button.innerText()).trim()
+        if (name === 'エントリーを保存' || name === '閉じる') continue
+        touchTargets.push({ name: `ボタン:${name}`, box: await button.boundingBox() })
+      }
+      for (const combo of await dialog.locator('.p-select').all()) {
+        if (await combo.isVisible() && !(await combo.evaluate(element => element.classList.contains('p-disabled')))) {
+          touchTargets.push({ name: 'テンプレート選択（選択後）', box: await combo.boundingBox() })
+        }
+      }
+      const checkboxBox = await selectedRow.locator('.p-checkbox').boundingBox()
+      const checkboxLabelBox = await selectedRow.locator('label[for^="member-"]').boundingBox()
+      const overwriteCheckboxBox = await dialog.locator('.p-checkbox').filter({ has: user.locator('#overwrite') }).boundingBox()
+      const overwriteLabelBox = await dialog.locator('label[for="overwrite"]').boundingBox()
+      console.info('[entry-mobile-touch-targets]', JSON.stringify({
+        viewport: viewportWidth, targets: touchTargets,
+        checkbox: checkboxBox, checkboxLabel: checkboxLabelBox,
+        overwriteCheckbox: overwriteCheckboxBox, overwriteLabel: overwriteLabelBox,
+      }))
+      const hasMinimumTouchTarget = (box: { width: number; height: number } | null) =>
+        box !== null && box.width >= 44 && box.height >= 44
+      const insufficientTargets = touchTargets.filter(target => !hasMinimumTouchTarget(target.box)).map(target => target.name)
+      if (!hasMinimumTouchTarget(checkboxBox) && !hasMinimumTouchTarget(checkboxLabelBox)) {
+        insufficientTargets.push('選択チェックボックスまたは関連ラベル')
+      }
+      if (!hasMinimumTouchTarget(overwriteCheckboxBox) && !hasMinimumTouchTarget(overwriteLabelBox)) {
+        insufficientTargets.push('上書きチェックボックスまたは関連ラベル')
+      }
+      await dialog.locator('.p-select').scrollIntoViewIfNeeded()
+      await test.info().attach('entry-mobile-top-controls', { body: await user.screenshot(), contentType: 'image/png' })
+      const inputFonts = await Promise.all([
+        { name: '背番号', input: jersey }, { name: 'ポジション', input: pos }, { name: '備考', input: selectedRow.getByPlaceholder('備考') },
+      ].map(async ({ name, input }) => ({ name, fontSize: await input.evaluate(element => getComputedStyle(element).fontSize) })))
+      console.info('[entry-mobile-input-fonts]', JSON.stringify({ viewport: viewportWidth, inputs: inputFonts }))
+      await user.setViewportSize({ width: 1280, height: 900 })
+      const desktopTargets = []
+      for (const control of await dialog.locator('button, input:not([type="checkbox"]), .p-select, label[for]').all()) {
+        if (!(await control.isVisible()) || !(await control.isEnabled())) continue
+        desktopTargets.push({
+          name: await control.evaluate(element => element.classList.contains('p-dialog-close-button') ? 'ヘッダー閉じる' : element.getAttribute('placeholder') ?? element.textContent?.trim() ?? element.tagName),
+          box: await control.boundingBox(),
+          fontSize: await control.evaluate(element => getComputedStyle(element).fontSize),
+        })
+      }
+      console.info('[entry-desktop-touch-targets]', JSON.stringify({ viewport: 1280, targets: desktopTargets }))
+      await dialog.locator('.p-select').scrollIntoViewIfNeeded()
+      await test.info().attach('entry-desktop-top-controls', { body: await user.screenshot(), contentType: 'image/png' })
+      await user.setViewportSize({ width: viewportWidth, height: 844 })
+      expect(inputFonts.filter(input => Number.parseFloat(input.fontSize) < 16), '入力文字は16px以上').toEqual([])
+      expect(insufficientTargets, '各操作領域は関連ラベルを含め44×44px以上').toEqual([])
+
+      // ALIC-1: 何も変えずに保存しても、既存エントリーは全消しにならない
+      await saveBtn.click()
+      await expect(user.getByText('エントリーを保存しました')).toBeVisible({ timeout: 20_000 })
+      const a1 = await api(user.request, 'get', base(ORG_A, tIdA, divA, pA1))
+      const a2 = await api(user.request, 'get', base(ORG_A, tIdA, divA, pA2))
+      const counts = [a1.body.data.entryCount, a2.body.data.entryCount]
+      expect(counts.sort(), JSON.stringify(counts)).toEqual([1, 1])
+      expect(await overflow()).toBeLessThanOrEqual(0)
+      expect(errs.server, errs.server.join('\n')).toHaveLength(0)
+      await user.context().close()
+    })
+  }
 
   test('AC2/AC5 [画面] チームの roster.vue がエントリーテンプレートを読みに行き、500 を出さない', async ({ browser }) => {
     const user = await newPage(browser, userCred)
@@ -335,13 +595,15 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
   test('AC4 [API+画面] 権限なし（org/team とも MEMBER の USER）は作成・更新・削除・登録が 403、閲覧は 200。画面に管理ボタンが出ない', async ({ browser }) => {
     const admin = await newPage(browser, adminCred)
     const user = await newPage(browser, userCred)
+    await ensureMemberScopeFixture(admin, user)
     const tplBaseB = `/organizations/${ORG_B}/teams/${TEAM_B}/entry-templates`
 
     // 権限あり（SYSTEM_ADMIN）が org 4 / team 4 にテンプレートを作る → 201
     const create = await api(admin.request, 'post', tplBaseB, { name: `PKB16-b-${SUFFIX}`, members: [{ userId: USER_ID, position: 'FW', sortOrder: 1 }] })
     expect(create.status, create.text).toBe(201)
     const tid = String(create.body.data.id)
-    createdTemplates.push({ org: ORG_B, team: TEAM_B, id: tid })
+    createdTemplates.push({ org: ORG_B, team: TEAM_B, id: tid, actor: 'admin' })
+    console.info('[entry-real-created-template]', JSON.stringify({ org: ORG_B, team: TEAM_B, id: tid }))
 
     // 権限なし（MEMBER）: 作成・更新・削除は 403、閲覧（一覧・詳細）は 200
     const memberCreate = await api(user.request, 'post', tplBaseB, { name: 'x', members: [{ userId: USER_ID }] })
@@ -354,8 +616,8 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const still = await api(admin.request, 'get', `${tplBaseB}/${tid}`)
     expect(still.body.data.name).toBe(`PKB16-b-${SUFFIX}`)
 
-    // エントリー表: 権限なし（org 1 MEMBER / team 4 MEMBER）は登録・全削除・一括ロード・テンプレ適用が 403、閲覧は 200
-    const eb = base(ORG_C, tIdC, divC, pC4)
+    // エントリー表: 権限なし（専用組織 MEMBER / 専用チーム MEMBER）は登録・全削除・一括ロード・テンプレ適用が 403、閲覧は 200
+    const eb = base(ORG_C, tIdC, divC, pC1)
     const memberPut = await api(user.request, 'put', eb, { members: [{ userId: USER_ID, position: 'FW' }] })
     expect(memberPut.status).toBe(403)
     expect((await api(user.request, 'post', `${eb}/load-from-team`, { overwriteExisting: false })).status).toBe(403)
@@ -387,16 +649,20 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
   test('AC4 [API] 他チーム・他組織のテンプレート ID／エントリーメンバー ID を指定すると 404', async ({ browser }) => {
     const user = await newPage(browser, userCred)
     const admin = await newPage(browser, adminCred)
+    await ensureMemberScopeFixture(admin, user)
     const tplA1 = `/organizations/${ORG_A}/teams/${TEAM_A1}/entry-templates`
     const tplA2 = `/organizations/${ORG_A}/teams/${TEAM_A2}/entry-templates`
 
     const t1 = await api(user.request, 'post', tplA1, { name: `PKB16-x1-${SUFFIX}`, members: [{ userId: USER_ID, position: 'A' }] })
-    const t2 = await api(user.request, 'post', tplA2, { name: `PKB16-x2-${SUFFIX}`, members: [{ userId: USER_ID, position: 'B' }] })
     expect(t1.status, t1.text).toBe(201)
-    expect(t2.status, t2.text).toBe(201)
     const id1 = String(t1.body.data.id)
+    createdTemplates.push({ org: ORG_A, team: TEAM_A1, id: id1, actor: 'user' })
+    console.info('[entry-real-created-template]', JSON.stringify({ org: ORG_A, team: TEAM_A1, id: id1 }))
+    const t2 = await api(user.request, 'post', tplA2, { name: `PKB16-x2-${SUFFIX}`, members: [{ userId: USER_ID, position: 'B' }] })
+    expect(t2.status, t2.text).toBe(201)
     const id2 = String(t2.body.data.id)
-    createdTemplates.push({ org: ORG_A, team: TEAM_A1, id: id1 }, { org: ORG_A, team: TEAM_A2, id: id2 })
+    createdTemplates.push({ org: ORG_A, team: TEAM_A2, id: id2, actor: 'user' })
+    console.info('[entry-real-created-template]', JSON.stringify({ org: ORG_A, team: TEAM_A2, id: id2 }))
 
     // 他チーム（同一組織）のテンプレート ID: 取得・更新・削除・適用すべて 404、相手のテンプレートは無傷
     expect((await api(user.request, 'get', `${tplA1}/${id2}`)).status).toBe(404)
@@ -412,7 +678,8 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const other = await api(admin.request, 'post', `/organizations/${ORG_B}/teams/${TEAM_B}/entry-templates`, { name: `PKB16-o-${SUFFIX}`, members: [{ userId: USER_ID, position: 'C' }] })
     expect(other.status, other.text).toBe(201)
     const idO = String(other.body.data.id)
-    createdTemplates.push({ org: ORG_B, team: TEAM_B, id: idO })
+    createdTemplates.push({ org: ORG_B, team: TEAM_B, id: idO, actor: 'admin' })
+    console.info('[entry-real-created-template]', JSON.stringify({ org: ORG_B, team: TEAM_B, id: idO }))
     expect((await api(user.request, 'get', `${tplA1}/${idO}`)).status).toBe(404)
     expect((await api(admin.request, 'get', `${tplA1}/${idO}`)).status).toBe(404)
     // 組織に属さないチームのパス（team 4 は org 9 に属さない）: 404
@@ -423,10 +690,10 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     expect(seed.status, seed.text).toBe(200)
     const emId = String((seed.body.data.entryMembers as { id: string }[])[0]!.id)
     expect((await api(user.request, 'delete', `${base(ORG_A, tIdA, divA, pA2)}/${emId}`)).status).toBe(404)
-    // 他組織の大会・participant 経由（org 1 の participant を org 9 のパスで指定）: 404
-    expect((await api(user.request, 'delete', `${base(ORG_A, tIdC, divC, pC4)}/${emId}`)).status).toBe(404)
-    expect((await api(user.request, 'get', base(ORG_A, tIdC, divC, pC4))).status).toBe(404)
-    expect((await api(user.request, 'put', base(ORG_A, tIdC, divC, pC4), { members: [{ userId: USER_ID }] })).status).toBe(404)
+    // 他組織の大会・participant 経由（専用組織の participant を org 9 のパスで指定）: 404
+    expect((await api(user.request, 'delete', `${base(ORG_A, tIdC, divC, pC1)}/${emId}`)).status).toBe(404)
+    expect((await api(user.request, 'get', base(ORG_A, tIdC, divC, pC1))).status).toBe(404)
+    expect((await api(user.request, 'put', base(ORG_A, tIdC, divC, pC1), { members: [{ userId: USER_ID }] })).status).toBe(404)
     expect(((await api(user.request, 'get', base(ORG_A, tIdA, divA, pA1))).body.data.entryMembers as unknown[]).length).toBe(1)
 
     // 正しい経路での個別削除は 204
@@ -436,11 +703,16 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
   })
 
   // ---------------------------------------------------------------- AC4（他テナントの URL 直打ち）
-  test('AC4 [画面] 他テナント（org 1 の大会・ディビジョン・participant）を org 9 の URL で直打ちしても弾かれ、エントリーが見えない', async ({ browser }) => {
+  test('AC4 [画面] 他テナント（専用組織の大会・ディビジョン・participant）を org 9 の URL で直打ちしても弾かれ、エントリーが見えない', async ({ browser }) => {
     const user = await newPage(browser, userCred)
     const errs = watchErrors(user)
-    // org 9 の ADMIN である USER が、org 1 の大会 ID を org 9 の slug 配下で開く（ID は API で引いた実在のもの）
-    const ids = `tIdC=${tIdC} divC=${divC} pC4=${pC4}`
+    // org 9 の ADMIN である USER が、専用組織の大会 ID を org 9 の slug 配下で開く（ID は API で引いた実在のもの）
+    if (pC1 === 0) {
+      const admin = await newPage(browser, adminCred)
+      await ensureMemberScopeFixture(admin, user)
+      await admin.context().close()
+    }
+    const ids = `tIdC=${tIdC} divC=${divC} pC1=${pC1}`
     await user.goto(`/organizations/${ORG_A_SLUG}/tournaments/${tIdC}`)
     await waitForHydration(user)
     await dismissPermissionSetup(user)
@@ -457,7 +729,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const summary = await api(user.request, 'get', `/organizations/${ORG_A}/tournaments/${tIdC}/divisions/${divC}/entry-summary`)
     expect(summary.status, summary.text).toBe(404)
     expect(summary.body.error?.code).toBe('TOUR_001')
-    const em = await api(user.request, 'get', base(ORG_A, tIdC, divC, pC4))
+    const em = await api(user.request, 'get', base(ORG_A, tIdC, divC, pC1))
     expect(em.status, em.text).toBe(404)
     expect(em.body.error?.code).toBe('TOUR_018')
     // 5xx は出ない（4xx は想定どおり）
@@ -466,9 +738,9 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
   })
 
   // 既知の欠陥（範囲外・台帳起票待ち）: 部門・参加チームの GET は path の orgId を Service へ渡さず、
-  // 越境パス（org 9 の配下で org 1 の大会）でも 200 になる。この spec は現状の挙動を正としない。
+  // 越境パス（org 9 の配下で 専用組織の大会）でも 200 になる。この spec は現状の挙動を正としない。
   // 修正されたら fixme を外し、404 + TOUR_001 を期待値とする。
-  test.fixme('AC4 [API] 既知の欠陥: 部門一覧・参加チーム一覧が越境パス（org 9 配下の org 1 の大会）で 404 にならない', async ({ browser }) => {
+  test.fixme('AC4 [API] 既知の欠陥: 部門一覧・参加チーム一覧が越境パス（org 9 配下の 専用組織の大会）で 404 にならない', async ({ browser }) => {
     const user = await newPage(browser, userCred)
     const divs = await api(user.request, 'get', `/organizations/${ORG_A}/tournaments/${tIdC}/divisions`)
     expect(divs.status, divs.text).toBe(404)
@@ -487,7 +759,8 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     })
     expect(tplOther.status, tplOther.text).toBe(201)
     const otherId = String(tplOther.body.data.id)
-    createdTemplates.push({ org: ORG_A, team: TEAM_A2, id: otherId })
+    createdTemplates.push({ org: ORG_A, team: TEAM_A2, id: otherId, actor: 'user' })
+    console.info('[entry-real-created-template]', JSON.stringify({ org: ORG_A, team: TEAM_A2, id: otherId }))
 
     const url = `${base(ORG_A, tIdA, divA, pA1)}/apply-template`
     const crossTeam = await api(user.request, 'post', url, { templateId: otherId, overwriteExisting: false })
@@ -504,10 +777,56 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
   test.afterAll(async ({ browser }) => {
     const admin = await newPage(browser, adminCred)
     const user = await newPage(browser, userCred)
-    for (const t of createdTemplates) {
-      await api(admin.request, 'delete', `/organizations/${t.org}/teams/${t.team}/entry-templates/${t.id}`)
+    // 本 spec が新規作成した参加チームだけを、各作成主体で後始末する。
+    for (const p of createdParticipants) {
+      const creatorRequest = p.actor === 'user' ? user.request : admin.request
+      const removed = await api(creatorRequest, 'delete', `/organizations/${p.org}/tournaments/${p.tournament}/divisions/${p.division}/participants/${p.id}`)
+      expect(removed.status, removed.text).toBe(204)
     }
-    await api(user.request, 'delete', `/organizations/${ORG_A}/tournaments/${tIdA}`)
+    for (const t of createdTemplates) {
+      const creatorRequest = t.actor === 'user' ? user.request : admin.request
+      const removed = await api(creatorRequest, 'delete', `/organizations/${t.org}/teams/${t.team}/entry-templates/${t.id}`)
+      expect(removed.status, removed.text).toBe(204)
+    }
+    if (tIdA > 0) {
+      const removed = await api(user.request, 'delete', `/organizations/${ORG_A}/tournaments/${tIdA}`)
+      expect(removed.status, removed.text).toBe(204)
+    }
+    if (tIdC > 0) {
+      const removed = await api(admin.request, 'delete', `/organizations/${ORG_C}/tournaments/${tIdC}`)
+      expect(removed.status, removed.text).toBe(204)
+    }
+    if (orgCTokenId > 0) {
+      const removed = await api(admin.request, 'delete', `/organizations/${ORG_C_SLUG}/invite-tokens/${orgCTokenId}`)
+      expect(removed.status, removed.text).toBe(204)
+    }
+    if (teamCTokenId > 0) {
+      const removed = await api(admin.request, 'delete', `/teams/${teamCSlug}/invite-tokens/${teamCTokenId}`)
+      expect(removed.status, removed.text).toBe(204)
+    }
+    if (userJoinedTeamC) {
+      const removed = await api(user.request, 'delete', `/teams/${teamCSlug}/me`)
+      expect(removed.status, removed.text).toBe(204)
+    }
+    if (userJoinedOrgC) {
+      const removed = await api(user.request, 'delete', `/organizations/${ORG_C_SLUG}/me`)
+      expect(removed.status, removed.text).toBe(204)
+    }
+    if (affiliationC === 'active') {
+      const removed = await api(admin.request, 'delete', `/teams/${teamCSlug}/organizations/${ORG_C_SLUG}`)
+      expect(removed.status, removed.text).toBe(204)
+    } else if (affiliationC === 'invited') {
+      const removed = await api(admin.request, 'delete', `/organizations/${ORG_C_SLUG}/team-invites/${teamCSlug}`)
+      expect(removed.status, removed.text).toBe(204)
+    }
+    if (TEAM_C > 0) {
+      const removed = await api(admin.request, 'delete', `/teams/${teamCSlug}`)
+      expect(removed.status, removed.text).toBe(204)
+    }
+    if (ORG_C > 0) {
+      const removed = await api(admin.request, 'delete', `/organizations/${ORG_C_SLUG}`)
+      expect(removed.status, removed.text).toBe(204)
+    }
     await admin.context().close()
     await user.context().close()
   })

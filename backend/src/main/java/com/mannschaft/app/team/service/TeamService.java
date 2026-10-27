@@ -5,10 +5,14 @@ import com.mannschaft.app.common.duplicatename.DuplicateNameGuardService;
 import com.mannschaft.app.common.duplicatename.DuplicateNameNormalizer;
 import com.mannschaft.app.common.duplicatename.DuplicateNameScopeKind;
 import com.mannschaft.app.common.EnumInputParser;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.event.TeamArchivedEvent;
 import com.mannschaft.app.team.event.TeamCreatedEvent;
 import com.mannschaft.app.team.event.TeamDeletedEvent;
+import com.mannschaft.app.team.event.TeamRestoredEvent;
 import com.mannschaft.app.team.event.TeamMemberRemovedEvent;
+import com.mannschaft.app.team.event.TeamUnarchivedEvent;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.repository.TeamBlockRepository;
 import com.mannschaft.app.team.repository.TeamSlugHistoryRepository;
@@ -16,8 +20,10 @@ import com.mannschaft.app.team.entity.TeamSlugHistoryEntity;
 import com.mannschaft.app.common.dto.SlugAvailabilityResponse;
 import com.mannschaft.app.common.dto.SlugResolveResponse;
 import com.mannschaft.app.team.TeamErrorCode;
+import com.mannschaft.app.team.SystemAdminTeamSummaryMapper;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.event.PersonalInviteScopeClosedEvent;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
@@ -42,6 +48,7 @@ import com.mannschaft.app.common.util.SlugValidator;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.team.dto.CreateTeamRequest;
+import com.mannschaft.app.team.dto.DeletedTeamSummaryResponse;
 import com.mannschaft.app.team.dto.TeamPublicDetailResponse;
 import com.mannschaft.app.team.dto.TeamResponse;
 import com.mannschaft.app.team.dto.TeamSummaryResponse;
@@ -65,6 +72,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -78,7 +86,28 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class TeamService {
 
+    /** 受付申請投影用の現在のチーム状態。 */
+    public record ActiveState(boolean active, String displayName) { }
+
+    /** 候補ページのチーム状態を集合照会する。 */
+    public Map<Long, ActiveState> getActiveStates(Collection<Long> teamIds) {
+        if (teamIds == null || teamIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> ids = teamIds.stream().filter(java.util.Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, ActiveState> states = new java.util.LinkedHashMap<>();
+        for (TeamRepository.ActiveStateRow row : teamRepository.findActiveStateRows(ids)) {
+            boolean active = Boolean.TRUE.equals(row.getActive());
+            states.put(row.getId(), new ActiveState(active, active ? row.getName() : null));
+        }
+        return Map.copyOf(states);
+    }
+
     private final TeamRepository teamRepository;
+    private final SystemAdminTeamSummaryMapper systemAdminTeamSummaryMapper;
     private final TeamSlugHistoryRepository teamSlugHistoryRepository;
     private final TeamBlockRepository teamBlockRepository;
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
@@ -98,6 +127,17 @@ public class TeamService {
     private final MediaUrlResolver mediaUrlResolver;
     private final AdminRoleMutationLockService adminRoleMutationLockService;
     private final DuplicateNameGuardService duplicateNameGuardService;
+    private final TeamOrgLifecycleCleanupService teamOrgLifecycleCleanupService;
+
+    /** SYSパス認可後の復元対象一覧。外部sortは破棄し、削除日時・IDの固定順だけを使う。 */
+    public PagedResponse<DeletedTeamSummaryResponse> getDeletedTeamsForSystemAdmin(Pageable pageable) {
+        var fixedPage = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+        var result = teamRepository.findDeletedTeamsForSystemAdmin(fixedPage)
+                .map(systemAdminTeamSummaryMapper::toDeletedSummary);
+        var meta = new PagedResponse.PageMeta(result.getTotalElements(), result.getNumber(),
+                result.getSize(), result.getTotalPages());
+        return PagedResponse.of(result.getContent(), meta);
+    }
 
     /**
      * チームを作成し、作成者をADMINロールで紐付ける。
@@ -752,8 +792,12 @@ public class TeamService {
             @CacheEvict(value = "teamFriendList", allEntries = true)
     })
     public void deleteTeam(Long teamId, Long userId) {
-        TeamEntity team = findTeamOrThrow(teamId);
+        // F01.2.1 §4.5: 閉鎖の世代番号（closure_generation）をチーム行のロックの下で進める。申請・招待の作成（どちらも最初に
+        // チーム行を取る）と直列化され、削除より前に作られた PENDING は必ず古い世代を持つ
+        TeamEntity team = teamRepository.findByIdForUpdate(teamId)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
         team.softDelete();
+        eventPublisher.publishEvent(new PersonalInviteScopeClosedEvent("TEAM", teamId, team.getClosureGeneration()));
 
         // 監査ログ用イベント発行
         eventPublisher.publishEvent(new TeamDeletedEvent(userId, teamId));
@@ -770,12 +814,47 @@ public class TeamService {
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public void archiveTeam(Long teamId) {
-        TeamEntity team = findTeamOrThrow(teamId);
+        TeamEntity team = lockAndArchive(teamId);
+        // 当該チームの PENDING（申請・招待の両方向）を同じトランザクションで削除し、相手側（組織 ADMIN）へ取消を予約する。
+        // ACTIVE は残す（既存のアーカイブ規則どおり）
+        teamOrgLifecycleCleanupService.cancelPendingOfArchivedTeam(team.getId(), team.getName());
+        log.info("チームアーカイブ完了: teamId={}", teamId);
+    }
+
+    /**
+     * 他ドメインのトランザクション（後継者不在の自動アーカイブ {@code RoleSuccessionService} など）からチームをアーカイブする
+     * （F01.2.1 2-D）。
+     *
+     * <p>アーカイブそのものは {@link #archiveTeam} と同じ（チーム行のロック・未アーカイブの再確認）だが、加盟（PENDING）の
+     * 片付けを呼び出し元のトランザクションに持ち込まない（CLAUDE.md 原則5・D-3T）。代わりに {@link TeamArchivedEvent} を発行し、
+     * team ドメインがコミット後に自分のトランザクションで状態に基づいて片付ける（{@code TeamOrgLifecycleListener}。
+     * 取りこぼしは {@code TeamOrgLifecycleCleanupBatch} が拾う）。コミットから片付けまでの短い間は PENDING が残るが、
+     * 承認・承諾は状態の再確認でアーカイブ済みとして拒否する（§4.5）。</p>
+     */
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "team-detail", allEntries = true),
+            @CacheEvict(value = "team-search", allEntries = true)
+    })
+    public void archiveTeamDeferringAffiliationCleanup(Long teamId) {
+        lockAndArchive(teamId);
+        eventPublisher.publishEvent(new TeamArchivedEvent(teamId));
+        log.info("チームアーカイブ完了（加盟の片付けはコミット後）: teamId={}", teamId);
+    }
+
+    /**
+     * F01.2.1 §4.5・§6.9: 最初にチーム行を PESSIMISTIC_WRITE で取り、ロック取得後に未アーカイブを再確認してアーカイブする。
+     * 申請・招待の作成（どちらも最初にチーム行を取る）と直列化される。
+     */
+    private TeamEntity lockAndArchive(Long teamId) {
+        TeamEntity team = teamRepository.findByIdForUpdate(teamId)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
         if (team.getArchivedAt() != null) {
             throw new BusinessException(TeamErrorCode.TEAM_002);
         }
         team.archive();
-        log.info("チームアーカイブ完了: teamId={}", teamId);
+        eventPublisher.publishEvent(new PersonalInviteScopeClosedEvent("TEAM", teamId, team.getClosureGeneration()));
+        return team;
     }
 
     /**
@@ -787,9 +866,45 @@ public class TeamService {
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public void unarchiveTeam(Long teamId) {
-        TeamEntity team = findTeamOrThrow(teamId);
+        // F01.2.1 §4.5・§6.9: チーム行を PESSIMISTIC_WRITE で取り、解除の時点で残っている PENDING を同じ tx で片付ける。
+        // アーカイブ中のチームへの申請・招待はチーム行のロックの下で拒否されるので、ここで残っている PENDING は
+        // アーカイブより前のもの（他ドメインの tx からのアーカイブの片付けがまだ済んでいない）。解除で復元しない
+        TeamEntity team = teamRepository.findByIdForUpdate(teamId)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
+        boolean wasArchived = team.getArchivedAt() != null;
+        Long id = team.getId();
+        String name = team.getName();
+        // 解除を片付けより前に行う。片付けの削除は永続化コンテキストをクリアする（@Modifying(clearAutomatically)）ので、
+        // 片付けの後に Entity を変更しても保存されない（2-D 検分3巡目 High 1）。片付けは最初に flush して解除を書き出す
         team.unarchive();
+        if (wasArchived) {
+            teamOrgLifecycleCleanupService.cancelPendingOfArchivedTeam(id, name);
+        }
         log.info("チームアーカイブ解除完了: teamId={}", teamId);
+    }
+
+    /**
+     * 他ドメインのトランザクション（システム管理者の強制解除 {@code SystemAdminScopeForceUnarchiveController} など）から
+     * チームのアーカイブを解除する（F01.2.1 2-D）。
+     *
+     * <p>解除そのものは {@link #unarchiveTeam} と同じ（チーム行のロック）だが、加盟（PENDING）の片付けを呼び出し元の
+     * トランザクションに持ち込まない（CLAUDE.md 原則5・D-3T）。代わりに {@link TeamUnarchivedEvent} を発行し、team ドメインが
+     * コミット後に自分のトランザクションで、チームの閉鎖より前に作られた PENDING（記録したチームの世代が
+     * {@code teams.closure_generation} より古い行。世代は解除しても戻らない）を片付ける
+     * （{@code TeamOrgLifecycleListener}。取りこぼしは {@code TeamOrgLifecycleCleanupBatch} が拾う）。
+     * 片付けまでの間に閉鎖前の PENDING を承認・承諾しようとしても、同じ規則で無効として拒む（ACTIVE にしない。§4.5）。</p>
+     */
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "team-detail", allEntries = true),
+            @CacheEvict(value = "team-search", allEntries = true)
+    })
+    public void unarchiveTeamDeferringAffiliationCleanup(Long teamId) {
+        TeamEntity team = teamRepository.findByIdForUpdate(teamId)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
+        team.unarchive();
+        eventPublisher.publishEvent(new TeamUnarchivedEvent(teamId));
+        log.info("チームアーカイブ解除完了（加盟の片付けはコミット後）: teamId={}", teamId);
     }
 
     /**
@@ -1038,15 +1153,30 @@ public class TeamService {
             // 復元後もフレンド名が空欄のまま最大 30 分表示され続ける。
             @CacheEvict(value = "teamFriendList", allEntries = true)
     })
-    public void restoreTeam(Long teamId) {
-        if (teamRepository.countByIdIncludingDeleted(teamId) == 0) {
-            throw new BusinessException(TeamErrorCode.TEAM_001);
+    public void restoreTeam(Long teamId, Long userId) {
+        TeamEntity team = teamRepository.findByIdIncludingDeletedForUpdate(teamId)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
+        // ロッキングリードで同時復元を直列化する。片付けは永続化コンテキストをクリアするため旧値を先に捕捉する。
+        java.time.LocalDateTime originallyDeletedAt = team.getDeletedAt();
+        if (originallyDeletedAt == null) {
+            throw new BusinessException(TeamErrorCode.TEAM_006);
         }
+        // F01.2.1 §4.5: 論理削除の片付け（加盟の PENDING・ACTIVE と制限）がまだ済んでいなければ、復元の前に同じ tx で済ませる
+        // （チーム行のロックの下で状態を確かめる。復元で削除前の加盟を戻さない。済んでいれば何もしない）
+        teamOrgLifecycleCleanupService.cleanUpTeam(teamId);
         int updated = teamRepository.restoreById(teamId);
         if (updated == 0) {
             throw new BusinessException(TeamErrorCode.TEAM_006);
         }
+        eventPublisher.publishEvent(new TeamRestoredEvent(userId, teamId,
+                originallyDeletedAt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()));
         log.info("チーム復元完了: teamId={}", teamId);
+    }
+
+    /** SYSTEM_ADMIN認可後の復元経路専用。通常のresolveTeamIdの生存・ACTIVE条件は変えない。 */
+    public Long resolveTeamIdForRestore(String slug) {
+        return teamRepository.findIdBySlugIncludingDeleted(slug)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
     }
 
     // ========================================
@@ -1161,5 +1291,47 @@ public class TeamService {
                 .timestamps(new TeamResponse.TeamTimestampsDto(
                         team.getArchivedAt(), team.getCreatedAt()))
                 .build();
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // フレンドチームのフォロー先判定（CMP-261012-0315）
+    // 他ドメイン（social）に TeamEntity を渡さず、ID と真偽値だけを返す。
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * slug からフォロー可能なチームの ID を解決する。
+     *
+     * <p>不在・論理削除済み・アーカイブ済み・ACTIVE 以外（PROVISIONED）は空を返す。
+     * 呼び出し側（social）は空を一律に「フォロー対象が存在しない」として扱う。</p>
+     *
+     * @param slug チームの slug
+     * @return フォロー可能なチームの ID。該当なしは空
+     */
+    public Optional<Long> resolveFollowableTeamId(String slug) {
+        if (slug == null) {
+            return Optional.empty();
+        }
+        return teamRepository.findBySlugAndDeletedAtIsNull(slug)
+                .filter(TeamService::isFollowable)
+                .map(TeamEntity::getId);
+    }
+
+    /**
+     * 指定 ID のチームがフォロー可能か判定する。
+     * 不在・論理削除済み・アーカイブ済み・ACTIVE 以外（PROVISIONED）は false。
+     *
+     * @param teamId チーム ID
+     * @return フォロー可能なら true
+     */
+    public boolean isFollowableTeam(Long teamId) {
+        if (teamId == null) {
+            return false;
+        }
+        return teamRepository.findById(teamId).filter(TeamService::isFollowable).isPresent();
+    }
+
+    private static boolean isFollowable(TeamEntity team) {
+        return team.getArchivedAt() == null
+                && team.getLifecycleStatus() == TeamEntity.LifecycleStatus.ACTIVE;
     }
 }

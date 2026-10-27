@@ -183,6 +183,11 @@
         "advanced": { "title": "Advanced settings", "description": "Set visibility and notifications" }
       }
     },
+    "history": {
+      "date_unavailable": "Date unavailable",
+      "time_unavailable": "Time unavailable",
+      "line_unavailable": "Bookable item unavailable"
+    },
     "column": {
       "datetime": "Date & Time",
       "line": "Bookable Item",

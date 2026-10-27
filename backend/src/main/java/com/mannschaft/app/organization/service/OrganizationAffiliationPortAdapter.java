@@ -54,6 +54,76 @@ public class OrganizationAffiliationPortAdapter implements TeamAffiliationOrgani
         OrganizationEntity org = organizationRepository.findByIdForUpdate(organizationId)
                 .filter(o -> o.getLifecycleStatus() == OrganizationEntity.LifecycleStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
+        return toState(org);
+    }
+
+    @Override
+    @Transactional
+    public Optional<OrganizationAffiliationState> findAffiliationState(Long organizationId) {
+        // プライマリ固定（F01.2.1 §4.5・2-D 検分5巡目）: 判定に使う読み取りなので readOnly にしない。readOnly = true は
+        // ReplicaRoutingAspect がレプリカへ振り、複製遅延で古い閉鎖の状態・世代を読むと、閉鎖前の招待を ACTIVE にしたり
+        // 解除後の PENDING を消したりしうる。書き込みはしない（ロックも取らない）
+        // チームの書き込みトランザクションの外から呼ばれ、組織ドメインの読み取りトランザクションで閉じる。
+        // 論理削除済みは Entity の @SQLRestriction が除外する。承諾前（PROVISIONED）は不在と同じ扱い
+        return organizationRepository.findById(organizationId)
+                .filter(o -> o.getLifecycleStatus() == OrganizationEntity.LifecycleStatus.ACTIVE)
+                .map(OrganizationAffiliationPortAdapter::toState);
+    }
+
+    @Override
+    @Transactional
+    public Optional<OrganizationAffiliationState> recheckAffiliationStateLocked(Long organizationId) {
+        // 組織ドメインの短いトランザクションで共有ロックを取って読む（アーカイブの PESSIMISTIC_WRITE と直列化する。§6.9）
+        return organizationRepository.findByIdForShare(organizationId)
+                .filter(o -> o.getLifecycleStatus() == OrganizationEntity.LifecycleStatus.ACTIVE)
+                .map(OrganizationAffiliationPortAdapter::toState);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<OrganizationRef> findOrganizationRefBySlug(String slug) {
+        if (slug == null || slug.isBlank()) {
+            return Optional.empty();
+        }
+        return organizationRepository
+                .findBySlugAndDeletedAtIsNullAndLifecycleStatus(slug, OrganizationEntity.LifecycleStatus.ACTIVE)
+                .map(OrganizationAffiliationPortAdapter::toRef);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Optional<OrganizationClosureState> findClosureStateIncludingDeleted(Long organizationId) {
+        // プライマリ固定（F01.2.1 §4.5・2-D 検分5巡目）: 判定に使う読み取りなので readOnly にしない。readOnly = true は
+        // ReplicaRoutingAspect がレプリカへ振り、複製遅延で古い閉鎖の状態・世代を読むと、閉鎖前の招待を ACTIVE にしたり
+        // 解除後の PENDING を消したりしうる。書き込みはしない（ロックも取らない）
+        // 呼び出し側（team ドメインの片付け）の tx には参加せず、組織ドメインの新しい読み取り tx で最新のコミット済みの
+        // 状態を読む。論理削除済みも読む（ネイティブ）
+        return organizationRepository.findByIdIncludingDeleted(organizationId)
+                .map(OrganizationAffiliationPortAdapter::toClosureState);
+    }
+
+    @Override
+    @Transactional
+    public Map<Long, OrganizationClosureState> findClosureStatesIncludingDeleted(Collection<Long> organizationIds) {
+        // プライマリ固定（F01.2.1 §4.5・2-D 検分5巡目）: 判定に使う読み取りなので readOnly にしない。readOnly = true は
+        // ReplicaRoutingAspect がレプリカへ振り、複製遅延で古い閉鎖の状態・世代を読むと、閉鎖前の招待を ACTIVE にしたり
+        // 解除後の PENDING を消したりしうる。書き込みはしない（ロックも取らない）
+        if (organizationIds == null || organizationIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, OrganizationClosureState> result = new HashMap<>();
+        for (OrganizationEntity org : organizationRepository.findAllByIdInIncludingDeleted(organizationIds)) {
+            result.put(org.getId(), toClosureState(org));
+        }
+        return result;
+    }
+
+    private static OrganizationClosureState toClosureState(OrganizationEntity org) {
+        return new OrganizationClosureState(org.getId(), org.getSlug(), org.getName(),
+                org.getArchivedAt() != null, org.getDeletedAt() != null, org.getClosureGeneration());
+    }
+
+    private static OrganizationAffiliationState toState(OrganizationEntity org) {
         return new OrganizationAffiliationState(
                 org.getId(),
                 org.getSlug(),
@@ -61,29 +131,21 @@ public class OrganizationAffiliationPortAdapter implements TeamAffiliationOrgani
                 org.getArchivedAt() != null,
                 Boolean.TRUE.equals(org.getTeamApplicationEnabled()),
                 Boolean.TRUE.equals(org.getTeamGroupsEnabled()),
-                org.getTeamApplicationGroupMode());
+                org.getTeamApplicationGroupMode(),
+                org.getClosureGeneration());
+    }
+
+    private static OrganizationRef toRef(OrganizationEntity org) {
+        return new OrganizationRef(org.getId(), org.getSlug(), org.getName(),
+                org.getIconUrl(), Boolean.TRUE.equals(org.getTeamGroupsEnabled()));
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public Optional<OrganizationAffiliationState> findAffiliationState(Long organizationId) {
-        // チームの書き込みトランザクションの外から呼ばれ、組織ドメインの読み取りトランザクションで閉じる。
-        // 論理削除済みは Entity の @SQLRestriction が除外する。承諾前（PROVISIONED）は不在と同じ扱い
-        return organizationRepository.findById(organizationId)
-                .filter(o -> o.getLifecycleStatus() == OrganizationEntity.LifecycleStatus.ACTIVE)
-                .map(org -> new OrganizationAffiliationState(
-                        org.getId(),
-                        org.getSlug(),
-                        org.getName(),
-                        org.getArchivedAt() != null,
-                        Boolean.TRUE.equals(org.getTeamApplicationEnabled()),
-                        Boolean.TRUE.equals(org.getTeamGroupsEnabled()),
-                        org.getTeamApplicationGroupMode()));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public boolean isAliveGroupOfOrganization(Long organizationId, UUID groupId) {
+        // プライマリ固定（F01.2.1 §4.5・2-D 検分5巡目）: 判定に使う読み取りなので readOnly にしない。readOnly = true は
+        // ReplicaRoutingAspect がレプリカへ振り、複製遅延で古い閉鎖の状態・世代を読むと、閉鎖前の招待を ACTIVE にしたり
+        // 解除後の PENDING を消したりしうる。書き込みはしない（ロックも取らない）
         return orgTeamGroupRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(groupId, organizationId)
                 .isPresent();
     }
@@ -98,6 +160,24 @@ public class OrganizationAffiliationPortAdapter implements TeamAffiliationOrgani
         for (OrganizationEntity org : organizationRepository.findAllById(organizationIds)) {
             result.put(org.getId(), new OrganizationRef(org.getId(), org.getSlug(), org.getName(),
                     org.getIconUrl(), Boolean.TRUE.equals(org.getTeamGroupsEnabled())));
+        }
+        return result;
+    }
+
+    @Override
+    @Transactional
+    public Map<UUID, Long> findAliveGroupOrganizationIds(Collection<UUID> groupIds) {
+        // プライマリ固定（F01.2.1 7-A・孤児 group_id の修復）: 判定に使う読み取りなので readOnly にしない。readOnly = true は
+        // ReplicaRoutingAspect がレプリカへ振り、複製遅延で作ったばかりのグループが見えないと、削除済みと見誤って割当を
+        // 未分類へ戻してしまう。書き込みはしない（ロックも取らない）
+        if (groupIds == null || groupIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, Long> result = new HashMap<>();
+        for (OrgTeamGroupEntity group : orgTeamGroupRepository.findAllById(groupIds)) {
+            if (group.getDeletedAt() == null) {
+                result.put(group.getId(), group.getOrganizationId());
+            }
         }
         return result;
     }

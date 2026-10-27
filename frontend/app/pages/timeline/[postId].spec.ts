@@ -19,7 +19,7 @@ const options = {
   global: {
     stubs: {
       PageLoading: { template: '<div data-testid="page-loading" />' },
-      TimelinePostCard: { props: ['post'], template: '<article data-testid="post-card">{{ post.body }}</article>' },
+      TimelinePostCard: { props: ['post'], template: '<article data-testid="post-card">{{ post.body }}<span data-testid="post-mitayo">{{ post.mitayo }}:{{ post.mitayoCount }}</span></article>' },
       Button: { props: ['label'], template: '<button data-testid="btn">{{ label }}</button>' },
       Textarea: true,
     },
@@ -47,11 +47,12 @@ describe('投稿詳細ページの取得結果', () => {
   })
 
   it('正常取得時は投稿を描画する', async () => {
-    mocks.getPost.mockResolvedValue({ data: { id: 99, body: 'hello post', recentReplies: [], stats: { replyCount: 0 } } })
+    mocks.getPost.mockResolvedValue({ data: { id: 99, body: 'hello post', recentReplies: [], stats: { replyCount: 0, mitayo: true, mitayoCount: 1 } } })
     const wrapper = await mountSuspended(TimelinePostDetailPage, options)
     await flushPromises()
     expect(wrapper.find('[data-testid="page-loading"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="post-card"]').text()).toContain('hello post')
+    expect(wrapper.find('[data-testid="post-mitayo"]').text()).toBe('true:1')
     expect(wrapper.find('[data-testid="timeline-post-not-found"]').exists()).toBe(false)
   })
 

@@ -1,5 +1,9 @@
 package com.mannschaft.app.social.controller;
 
+import com.mannschaft.app.role.service.FriendRequestSourceTeamQueryService;
+import com.mannschaft.app.social.service.TeamFriendRequestFacade;
+import org.springframework.context.annotation.Import;
+
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
@@ -11,6 +15,7 @@ import com.mannschaft.app.social.dto.FollowTeamResponse;
 import com.mannschaft.app.social.dto.PastForwardHandling;
 import com.mannschaft.app.social.dto.TeamFriendListResponse;
 import com.mannschaft.app.social.dto.TeamFriendView;
+import com.mannschaft.app.social.service.TeamFriendFollowBySlugService;
 import com.mannschaft.app.social.service.TeamFriendsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -59,6 +64,7 @@ import com.mannschaft.app.common.security.AccessGuard;
  * </p>
  */
 @WebMvcTest(TeamFriendsController.class)
+@Import(TeamFriendRequestFacade.class)
 @AutoConfigureMockMvc(addFilters = false)
 @DisplayName("TeamFriendsController 結合テスト")
 class TeamFriendsControllerTest {
@@ -71,7 +77,13 @@ class TeamFriendsControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
+    private FriendRequestSourceTeamQueryService sourceQueryService;
+
+    @MockitoBean
     private TeamFriendsService teamFriendsService;
+
+    @MockitoBean
+    private TeamFriendFollowBySlugService teamFriendFollowBySlugService;
 
     @MockitoBean
     private AccessControlService accessControlService;
@@ -96,6 +108,7 @@ class TeamFriendsControllerTest {
 
     @BeforeEach
     void setUpSecurityContext() {
+        given(sourceQueryService.isEligibleSource(USER_ID, TEAM_ID)).willReturn(true);
         UsernamePasswordAuthenticationToken auth =
                 new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of());
         SecurityContextHolder.getContext().setAuthentication(auth);

@@ -561,7 +561,7 @@ records:
       beta: コア
       deploy_safety: 不明
       gate_key: null
-    blockers: []
+    blockers: ["CMP-261018-2237: null投稿者の掲示板詳細でcharAt例外により題名が非表示（殿独立再現、未修正）"]
     notes: "COREへ昇格（2026-08-19、マスター裁可）。掲示板とコルクボードを別能力カードとして表示。両方の画面/API/DBを確認し、コルクボードの整合batchも確認。掲示板の実環境E2Eはあるが、コルクボードの実環境E2Eは未作成。"
 
   - feature_key: pointcard
@@ -709,6 +709,7 @@ records:
     blockers:
       - "β公開前に FEATURE_PROMOTION_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
       - "バッチ・リスナーの停止判定未確認"
+      - "CMP-261022-0234: 登録済み組織広告dashboardがslugをaccount/overviewへ送り登録案内となる既存不備（独立再現済み、修正未着手）"
     notes: null
 
   - feature_key: market

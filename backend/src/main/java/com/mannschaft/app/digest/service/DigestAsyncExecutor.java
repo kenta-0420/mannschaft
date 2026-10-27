@@ -1,11 +1,7 @@
 package com.mannschaft.app.digest.service;
 
 import com.mannschaft.app.common.NameResolverService;
-import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.digest.DigestProperties;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.digest.entity.TimelineDigestEntity;
 import com.mannschaft.app.digest.repository.TimelineDigestRepository;
 import com.mannschaft.app.timeline.PostScopeType;
@@ -13,16 +9,13 @@ import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.MessageSource;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -30,6 +23,12 @@ import java.util.stream.Collectors;
 /**
  * ダイジェスト非同期生成の実行サービス。
  * {@link DigestGenerationService} から分離し、Spring の @Async プロキシが正しく動作するようにする。
+ *
+ * <p>Issue #2997 / CMP-260827-1152 G7-a: 本クラスは<b>トランザクションを持たない</b>。是正前はメソッド全体
+ * （AI プロバイダへのネットワーク呼び出しを含む）を 1 つの {@code @Transactional} で包み、その内側で完了／失敗通知を
+ * 同一TXで作っていたため、通知の DB 例外が生成成功の GENERATED ごと巻き戻して FAILED に落としていた。
+ * 現在は GENERATED／FAILED の確定と通知配送要求の publish を {@link DigestGenerationRunner}
+ * （{@code REQUIRES_NEW}）に任せ、通知は commit 後に {@code DigestGenerationNotificationListener} が配送する。</p>
  */
 @Service
 @Slf4j
@@ -39,11 +38,9 @@ public class DigestAsyncExecutor {
     private final TimelineDigestRepository digestRepository;
     private final TimelinePostRepository timelinePostRepository;
     private final DigestAiProvider aiProvider;
-    private final NotificationHelper notificationHelper;
     private final NameResolverService nameResolverService;
-    private final MessageSource messageSource;
-    private final UserLocaleCache userLocaleCache;
     private final DigestProperties digestProperties;
+    private final DigestGenerationRunner generationRunner;
 
     /**
      * AI スタイルのダイジェストを非同期生成する。
@@ -57,7 +54,6 @@ public class DigestAsyncExecutor {
      * 通知配送と実行資源を分離できる。</p>
      */
     @Async("job-pool")
-    @Transactional
     public void generateAiDigestAsync(Long digestId, String scopeType, Long scopeId,
                                        String digestStyle, String customPrompt,
                                        Boolean includeReactions, Boolean includePolls,
@@ -112,66 +108,25 @@ public class DigestAsyncExecutor {
                 }
             }
 
+            // AI 呼び出しはトランザクションの外で行う（長時間のネットワーク呼び出しで接続を握らない）。
             DigestAiProvider.AiDigestResult result = aiProvider.generate(
                     posts, digest.getDigestStyle(), lang, customPrompt,
                     previousBody, reactions, polls);
 
-            digest.markGenerated(result.title(), result.body(), result.excerpt(),
-                    result.aiModel(), result.inputTokens(), result.outputTokens(), posts.size());
-            // ソース投稿 ID を JSON 文字列として保存
-            try {
-                com.fasterxml.jackson.databind.ObjectMapper om = new com.fasterxml.jackson.databind.ObjectMapper();
-                digest.setSourcePostIds(om.writeValueAsString(sourcePostIds));
-            } catch (Exception e) {
-                log.warn("sourcePostIds のシリアライズに失敗: {}", e.getMessage());
-            }
-            digestRepository.save(digest);
-
-            // ダイジェスト生成完了通知（作成者に送信）
-            NotificationScopeType notifScope = "TEAM".equals(scopeType)
-                    ? NotificationScopeType.TEAM : NotificationScopeType.ORGANIZATION;
-            Locale completedLocale = Locale.forLanguageTag(userLocaleCache.getLocale(digest.getTriggeredBy()));
-            notificationHelper.notify(digest.getTriggeredBy(), "DIGEST_COMPLETED",
-                    messageSource.getMessage(
-                            "notification.digest.completed.title", null,
-                            "ダイジェスト生成完了", completedLocale),
-                    messageSource.getMessage(
-                            "notification.digest.completed.body", null,
-                            "AIダイジェストの生成が完了しました。", completedLocale),
-                    "DIGEST", digestId, notifScope, scopeId,
-                    "/digests/" + digestId, null);
+            // GENERATED の確定と完了通知の配送要求は別Bean（REQUIRES_NEW）で行う。
+            generationRunner.complete(digestId, result, sourcePostIds, posts.size(), scopeType, scopeId);
 
             log.info("AI ダイジェスト生成完了: id={}, model={}", digestId, result.aiModel());
 
         } catch (Exception e) {
-            log.error("AI ダイジェスト生成失敗: id={}", digestId, e);
+            log.error("AI ダイジェスト生成処理が失敗: id={}", digestId, e);
             try {
-                TimelineDigestEntity digest = digestRepository.findById(digestId).orElse(null);
-                if (digest != null) {
-                    digest.markFailed(e.getMessage());
-                    digestRepository.save(digest);
-                }
+                // GENERATING のときだけ FAILED に確定する（確定済みの結果は上書きしない）。
+                generationRunner.fail(digestId, e.getMessage(), scopeType, scopeId);
             } catch (Exception saveEx) {
+                // 握りつぶさず ERROR で観測可能にする。GENERATING のまま残り、
+                // generating_timeout_at 経過後の既存タイムアウト回収経路が拾う。
                 log.error("ダイジェスト失敗ステータスの保存にも失敗: id={}", digestId, saveEx);
-            }
-
-            // ダイジェスト生成失敗を作成者に通知
-            TimelineDigestEntity failedDigest = digestRepository.findById(digestId).orElse(null);
-            if (failedDigest != null && failedDigest.getTriggeredBy() != null) {
-                NotificationScopeType notifScope = "TEAM".equals(scopeType)
-                        ? NotificationScopeType.TEAM : NotificationScopeType.ORGANIZATION;
-                Locale failedLocale = Locale.forLanguageTag(
-                        userLocaleCache.getLocale(failedDigest.getTriggeredBy()));
-                notificationHelper.notify(failedDigest.getTriggeredBy(), "DIGEST_FAILED",
-                        NotificationPriority.HIGH,
-                        messageSource.getMessage(
-                                "notification.digest.failed.title", null,
-                                "ダイジェスト生成失敗", failedLocale),
-                        messageSource.getMessage(
-                                "notification.digest.failed.body", null,
-                                "AIダイジェストの生成に失敗しました。再試行してください。", failedLocale),
-                        "DIGEST", digestId, notifScope, scopeId,
-                        "/digests/" + digestId, null);
             }
         }
     }

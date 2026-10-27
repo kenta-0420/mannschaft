@@ -7,7 +7,11 @@ const props = defineProps<{
   teamId: string
   skill?: MemberSkillResponse | null
   categories: SkillCategoryResponse[]
+  /** カテゴリ管理（カテゴリ管理タブ）ができるか。有効カテゴリが0件のときの案内文を出し分ける。 */
+  canManageCategories?: boolean
 }>()
+
+const { t } = useI18n()
 
 const emit = defineEmits<{
   saved: []
@@ -159,6 +163,14 @@ async function submit() {
           class="w-full"
           :disabled="isEdit"
         />
+        <!-- 有効カテゴリが0件だと BE（skillCategoryId は必須）へ登録できないため、次の一手を案内する -->
+        <p
+          v-if="activeCategoryOptions.length === 0"
+          class="mt-1 text-xs text-amber-600 dark:text-amber-400"
+          data-testid="skill-form-no-category"
+        >
+          {{ canManageCategories ? t('skill.form.noCategoryAdmin') : t('skill.form.noCategoryMember') }}
+        </p>
       </div>
 
       <div>

@@ -345,3 +345,56 @@ commits = [
 paths = [
   '''^backend/\.claude/settings\.local\.json$''',
 ]
+
+[[allowlists]]
+description = "CMP-261016-0950: LoyaltyIdempotencyKeyTestのテスト用Idempotency-Key固定UUID。実秘密ではないため当該pathと値だけに限定"
+condition = "AND"
+paths = [
+  '''^backend/src/test/java/com/mannschaft/app/loyalty/LoyaltyIdempotencyKeyTest\.java$''',
+]
+regexes = [
+  '''^c6972335-c091-42fd-aa47-341d6b408d57$''',
+]
+
+[[allowlists]]
+description = "CMP-261016-0950: LoyaltyControllerRoutingTestのテスト用Idempotency-Key固定UUID。実秘密ではないため当該pathと値だけに限定"
+condition = "AND"
+paths = [
+  '''^backend/src/test/java/com/mannschaft/app/loyalty/LoyaltyControllerRoutingTest\.java$''',
+]
+regexes = [
+  '''^5e24b0b0-73e9-4efa-92fa-52a4b28da03d$''',
+]
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "CMP-261021-0021 R1: CI 39639197702 が履歴コミット33aff347b0ceb3f34961b63e920af5963db14551の証跡で誤検知した、公開docs/openapi.jsonの実bytesと一致するSHA256。秘密ではない公開ファイルhashのため、当該pathと完全一致値のANDだけを除外する"
+condition = "AND"
+paths = [
+  '''^docs/evidence/CMP-261021-0021-r1-green\.md$''',
+]
+regexes = [
+  '''^fc49ebf119fccc2ab1172370ab37e74e9090c63982182ed2c2359f9096de9677$''',
+]
+
+[[allowlists]]
+description = "CMP0647の検証説明に記載したAPIヘルパー識別子（秘密値ではない）。対象証拠pathと抽出値の完全一致だけを許可"
+condition = "AND"
+paths = [
+  '''^docs/evidence/CMP-261021-0647/root-historical-roundtrip-applicability\.json$''',
+]
+regexes = [
+  '''^useApi/ofetch$''',
+]
+
+[[rules.allowlists]]
+description = "CMP-261024-2051: schema検証証拠の公開OpenAPI生成commit参照。実在Git commitと生成物hashを照合済みで秘密値ではない。当該pathと実値の完全一致だけをAND除外する"
+condition = "AND"
+paths = [
+  '''^docs/evidence/CMP-261024-2051/schema-regression-red-green-summary\.json$''',
+]
+regexes = [
+  '''^5fe9c33d1af8c869c3b1154b3bfd60f3ef86d5b7$''',
+]

@@ -16,6 +16,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.time.LocalDateTime;
 
@@ -25,6 +26,7 @@ import java.time.LocalDateTime;
  */
 @PersonalData(category = "error_reports")
 @Entity
+@DynamicUpdate
 @Table(name = "error_reports")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -142,6 +144,13 @@ public class ErrorReportEntity extends BaseEntity {
         this.status = ErrorReportStatus.REOPENED;
         this.lastOccurredAt = occurredAt;
         this.occurrenceCount = this.occurrenceCount + 1;
+    }
+
+    /** ロック済みの選択行だけに発生を加算する。 */
+    public void recordOccurrence(LocalDateTime occurredAt, String userComment) {
+        this.occurrenceCount++;
+        this.lastOccurredAt = occurredAt;
+        if (userComment != null) this.latestUserComment = userComment;
     }
 
     /**

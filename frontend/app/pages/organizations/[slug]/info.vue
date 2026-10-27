@@ -14,5 +14,14 @@ const { org, isAdmin, ancestors, refresh } = useOrgShellContext()
 </script>
 
 <template>
-  <OrgInfoTab v-if="org" :org="org" :is-admin="isAdmin" :ancestors="ancestors" @updated="refresh" />
+  <div>
+    <!-- out-in 遷移は単一要素を必要とする。Fragment を返す OrgInfoTab と org 未取得時も包む。 -->
+    <OrgInfoTab
+      v-if="org"
+      :org="org"
+      :is-admin="isAdmin"
+      :ancestors="ancestors"
+      @updated="refresh"
+    />
+  </div>
 </template>

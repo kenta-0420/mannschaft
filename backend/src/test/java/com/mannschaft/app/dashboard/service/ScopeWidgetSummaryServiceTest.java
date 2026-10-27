@@ -82,7 +82,7 @@ class ScopeWidgetSummaryServiceTest {
         @DisplayName("TEAM: 直近公開記事を author 名解決つきで返す")
         void team_blog() {
             BlogPostEntity post = BlogPostEntity.builder()
-                    .teamId(10L).authorId(99L).title("お知らせ")
+                    .teamId(10L).authorId(99L).title("お知らせ").slug("team-news")
                     .status(PostStatus.PUBLISHED).publishedAt(LocalDateTime.now()).build();
             Page<BlogPostEntity> page = new PageImpl<>(List.of(post));
             given(blogPostRepository.findByTeamIdAndStatusOrderByPinnedDescPublishedAtDesc(
@@ -94,6 +94,7 @@ class ScopeWidgetSummaryServiceTest {
 
             assertThat(result).hasSize(1);
             assertThat(result.get(0).get("title")).isEqualTo("お知らせ");
+            assertThat(result.get(0).get("slug")).isEqualTo("team-news");
             assertThat(result.get(0).get("author")).isEqualTo("山田太郎");
             assertThat(result.get(0)).containsKey("published_at");
         }

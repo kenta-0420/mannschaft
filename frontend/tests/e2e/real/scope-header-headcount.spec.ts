@@ -9,7 +9,7 @@
  * 実行: BASE_URL=http://localhost:3001 API_BASE_URL=http://localhost:8081 TEST_USER_PASSWORD=... \
  *   npx playwright test -c playwright-real.config.ts --project=chromium-real --no-deps scope-header-headcount
  */
-import { expect, test, type APIRequestContext, type Browser, type Page } from '@playwright/test'
+import { expect, test, type APIRequestContext, type APIResponse, type Browser, type Locator, type Page } from '@playwright/test'
 import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration, waitForSpinnerGone } from '../helpers/wait'
 
@@ -32,9 +32,34 @@ let EMPTY_TEAM_SLUG = ''
 let NO_SUPPORTER_TEAM_SLUG = ''
 let adminToken = ''
 
+type FixtureScope = 'teams' | 'organizations'
+interface OwnedFixture {
+  scope: FixtureScope
+  numericId: number
+  slug: string
+  name: string
+}
+interface ScopeResponse {
+  numericId: number
+  slug: string
+  basicInfo: { name: string }
+}
+const ownedFixtures: OwnedFixture[] = []
+
+/** POST成功直後に記録し、後続の前提作成が失敗しても所有分だけ回収できるようにする。 */
+async function trackFixture(scope: FixtureScope, response: APIResponse, name: string): Promise<string> {
+  expect(response.status()).toBe(201)
+  const created = (await response.json()).data as ScopeResponse
+  ownedFixtures.push({ scope, numericId: created.numericId, slug: created.slug, name })
+  expect(Number.isSafeInteger(created.numericId) && created.numericId > 0).toBe(true)
+  expect(typeof created.slug === 'string' && created.slug.length > 0).toBe(true)
+  expect(created.basicInfo.name === name).toBe(true)
+  return created.slug
+}
+
 async function bearerFor(request: APIRequestContext, credentials: { email: string, password: string }): Promise<string> {
   const res = await request.post(`${API_BASE_URL}/api/v1/auth/login`, { data: credentials })
-  expect(res.status(), await res.text()).toBe(200)
+  expect(res.status()).toBe(200)
   return ((await res.json()).data as { accessToken: string }).accessToken
 }
 
@@ -51,8 +76,7 @@ test.beforeAll(async ({ request }) => {
   const orgRes = await authed('post', '/api/v1/organizations', {
     name: `e2e-1942-org-${suffix}`, orgType: 'OTHER', visibility: 'PUBLIC', slug: `e2e-1942-o-${suffix}`.slice(0, 30),
   })
-  expect(orgRes.status(), await orgRes.text()).toBe(201)
-  ORG_SLUG = ((await orgRes.json()).data as { slug: string }).slug
+  ORG_SLUG = await trackFixture('organizations', orgRes, `e2e-1942-org-${suffix}`)
   expect((await authed('patch', `/api/v1/organizations/${ORG_SLUG}`, { supporterEnabled: true, version: 0 })).status()).toBe(200)
   expect((await authed('put', `/api/v1/organizations/${ORG_SLUG}/supporter-settings`, { autoApprove: true })).status()).toBe(200)
 
@@ -60,15 +84,14 @@ test.beforeAll(async ({ request }) => {
   const orgBRes = await authed('post', '/api/v1/organizations', {
     name: `e2e-1942-orgB-${suffix}`, orgType: 'OTHER', visibility: 'PUBLIC', slug: `e2e-1942-ob-${suffix}`.slice(0, 30),
   })
-  expect(orgBRes.status(), await orgBRes.text()).toBe(201)
-  OTHER_ORG_SLUG = ((await orgBRes.json()).data as { slug: string }).slug
+  OTHER_ORG_SLUG = await trackFixture('organizations', orgBRes, `e2e-1942-orgB-${suffix}`)
+  expect((await authed('patch', `/api/v1/organizations/${OTHER_ORG_SLUG}`, { supporterEnabled: true, version: 0 })).status()).toBe(200)
 
   // 組織C: PRIVATE + supporterEnabled（AC-11/クロステナント負検証用）
   const orgCRes = await authed('post', '/api/v1/organizations', {
-    name: `e2e-1942-orgC-${suffix}`, orgType: 'OTHER', visibility: 'PRIVATE', slug: `e2e-1942-oc-${suffix}`.slice(0, 30),
+    name: `e2e-1942-orgC-${suffix}-ヘッダー表示の確認用組織`, orgType: 'OTHER', visibility: 'PRIVATE', slug: `e2e-1942-oc-${suffix}`.slice(0, 30),
   })
-  expect(orgCRes.status(), await orgCRes.text()).toBe(201)
-  PRIVATE_ORG_SLUG = ((await orgCRes.json()).data as { slug: string }).slug
+  PRIVATE_ORG_SLUG = await trackFixture('organizations', orgCRes, `e2e-1942-orgC-${suffix}-ヘッダー表示の確認用組織`)
   expect((await authed('patch', `/api/v1/organizations/${PRIVATE_ORG_SLUG}`, { supporterEnabled: true, version: 0 })).status()).toBe(200)
   expect((await authed('put', `/api/v1/organizations/${PRIVATE_ORG_SLUG}/supporter-settings`, { autoApprove: true })).status()).toBe(200)
 
@@ -76,8 +99,7 @@ test.beforeAll(async ({ request }) => {
   const teamRes = await authed('post', '/api/v1/teams', {
     name: `e2e-1942-team-${suffix}`, visibility: 'PUBLIC', slug: `e2e-1942-t-${suffix}`.slice(0, 30),
   })
-  expect(teamRes.status(), await teamRes.text()).toBe(201)
-  TEAM_SLUG = ((await teamRes.json()).data as { slug: string }).slug
+  TEAM_SLUG = await trackFixture('teams', teamRes, `e2e-1942-team-${suffix}`)
   expect((await authed('patch', `/api/v1/teams/${TEAM_SLUG}`, { supporterEnabled: true, version: 0 })).status()).toBe(200)
   expect((await authed('put', `/api/v1/teams/${TEAM_SLUG}/supporter-settings`, { autoApprove: true })).status()).toBe(200)
 
@@ -85,25 +107,22 @@ test.beforeAll(async ({ request }) => {
   const teamSupRes = await authed('post', '/api/v1/teams', {
     name: `e2e-1942-teamSup-${suffix}`, visibility: 'SUPPORTERS_AND_ABOVE', slug: `e2e-1942-ts-${suffix}`.slice(0, 30),
   })
-  expect(teamSupRes.status(), await teamSupRes.text()).toBe(201)
-  SUPPORTERS_TEAM_SLUG = ((await teamSupRes.json()).data as { slug: string }).slug
+  SUPPORTERS_TEAM_SLUG = await trackFixture('teams', teamSupRes, `e2e-1942-teamSup-${suffix}`)
   expect((await authed('patch', `/api/v1/teams/${SUPPORTERS_TEAM_SLUG}`, { supporterEnabled: true, version: 0 })).status()).toBe(200)
   expect((await authed('put', `/api/v1/teams/${SUPPORTERS_TEAM_SLUG}/supporter-settings`, { autoApprove: true })).status()).toBe(200)
 
   // サポーター0人チーム（AC-13: 0表示）
   const teamEmptyRes = await authed('post', '/api/v1/teams', {
-    name: `e2e-1942-teamEmpty-${suffix}`, visibility: 'PUBLIC', slug: `e2e-1942-te-${suffix}`.slice(0, 30),
+    name: `e2e-1942-teamEmpty-${suffix}-ヘッダー表示の確認用チーム`, visibility: 'PUBLIC', slug: `e2e-1942-te-${suffix}`.slice(0, 30),
   })
-  expect(teamEmptyRes.status(), await teamEmptyRes.text()).toBe(201)
-  EMPTY_TEAM_SLUG = ((await teamEmptyRes.json()).data as { slug: string }).slug
+  EMPTY_TEAM_SLUG = await trackFixture('teams', teamEmptyRes, `e2e-1942-teamEmpty-${suffix}-ヘッダー表示の確認用チーム`)
   expect((await authed('patch', `/api/v1/teams/${EMPTY_TEAM_SLUG}`, { supporterEnabled: true, version: 0 })).status()).toBe(200)
 
   // supporterEnabled=false チーム（AC-13: サポーター欄非表示）
   const teamNoSupRes = await authed('post', '/api/v1/teams', {
     name: `e2e-1942-teamNoSup-${suffix}`, visibility: 'PUBLIC', slug: `e2e-1942-tn-${suffix}`.slice(0, 30),
   })
-  expect(teamNoSupRes.status(), await teamNoSupRes.text()).toBe(201)
-  NO_SUPPORTER_TEAM_SLUG = ((await teamNoSupRes.json()).data as { slug: string }).slug
+  NO_SUPPORTER_TEAM_SLUG = await trackFixture('teams', teamNoSupRes, `e2e-1942-teamNoSup-${suffix}`)
 
   // MEMBER（e2e-user）を組織A・チームへ招待トークンでMEMBER化
   const memberToken = await bearerFor(request, MEMBER)
@@ -115,9 +134,34 @@ test.beforeAll(async ({ request }) => {
     expect(join.status(), await join.text()).toBe(200)
   }
 
-  console.log('FIXTURE SLUGS:', JSON.stringify({
-    ORG_SLUG, OTHER_ORG_SLUG, PRIVATE_ORG_SLUG, TEAM_SLUG, SUPPORTERS_TEAM_SLUG, EMPTY_TEAM_SLUG, NO_SUPPORTER_TEAM_SLUG,
-  }))
+  console.log('FIXTURE IDS:', JSON.stringify(ownedFixtures.map(({ scope, numericId }) => ({ scope, numericId }))))
+})
+
+test.afterAll(async ({ request }) => {
+  test.setTimeout(120_000)
+  if (ownedFixtures.length === 0) return
+  const cleanupToken = await bearerFor(request, ADMIN)
+  const headers = { Authorization: `Bearer ${cleanupToken}` }
+  const failures: unknown[] = []
+  // チームを先に削除する。照合不一致・削除失敗は報告しつつ、残りの所有分も回収を試みる。
+  for (const scope of ['teams', 'organizations'] as const) {
+    for (const fixture of ownedFixtures.filter(owned => owned.scope === scope)) {
+      try {
+        const path = `${API_BASE_URL}/api/v1/${scope}/${fixture.slug}`
+        const existing = await request.get(path, { headers })
+        expect(existing.status(), `cleanup GET ${scope}/${fixture.numericId}`).toBe(200)
+        const actual = (await existing.json()).data as ScopeResponse
+        expect(actual.numericId === fixture.numericId && actual.slug === fixture.slug
+          && actual.basicInfo.name === fixture.name, `cleanup owner ${scope}/${fixture.numericId}`).toBe(true)
+        expect((await request.delete(path, { headers })).status(), `cleanup DELETE ${scope}/${fixture.numericId}`).toBe(204)
+        expect((await request.get(path, { headers })).status(), `cleanup absence ${scope}/${fixture.numericId}`).toBe(404)
+      }
+      catch (error) {
+        failures.push(error)
+      }
+    }
+  }
+  expect(failures, '所有fixtureのcleanupが全件完了する').toEqual([])
 })
 
 async function openAs(browser: Browser, credentials: { email: string, password: string }, viewport = { width: 1280, height: 900 }): Promise<Page> {
@@ -151,6 +195,48 @@ async function ensureUnfollowed(page: Page, apiPath: string): Promise<void> {
 }
 
 // serial固定はしない: 1件の失敗が後続全件のskipを招くため、各テストは独立に前提を確認して進める。
+
+/** アイコンを除く実テキストの行数。ラベル同士の自然な折り返しは許容する。 */
+async function expectSingleTextLine(locator: Locator): Promise<void> {
+  await expect(locator).toBeVisible()
+  const lines = await locator.evaluate((element) => {
+    const tops = new Set<number>()
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+    while (walker.nextNode()) {
+      const node = walker.currentNode
+      if (!node.textContent?.trim()) continue
+      const range = document.createRange()
+      range.selectNodeContents(node)
+      for (const rect of range.getClientRects()) {
+        if (rect.width > 0 && rect.height > 0) tops.add(Math.round(rect.top))
+      }
+    }
+    return tops.size
+  })
+  expect(lines, `${await locator.innerText()} は縦に折り返されない`).toBe(1)
+}
+
+test('HEADER-TABLET: 768px幅の管理者ヘッダーで名前・ロール・人数が読める', async ({ browser }) => {
+  test.setTimeout(180_000)
+  const page = await openAs(browser, ADMIN, { width: 768, height: 1024 })
+  try {
+    for (const path of [`/organizations/${PRIVATE_ORG_SLUG}`, `/teams/${EMPTY_TEAM_SLUG}`]) {
+      await openScope(page, path)
+      const member = page.getByTestId('scope-header-member-count')
+      await expect(member).toBeVisible({ timeout: 60_000 })
+      await expectSingleTextLine(member)
+      await expectSingleTextLine(page.getByTestId('scope-header-supporter-count'))
+      const title = page.getByRole('heading', { level: 1 })
+      await expectSingleTextLine(title.locator('..').locator('.p-tag').last())
+      // 長い名前の省略は許容し、数文字しか見えないほどのアクション群による圧迫を検出する。
+      expect((await title.boundingBox())?.width).toBeGreaterThanOrEqual(200)
+      await page.screenshot({ path: test.info().outputPath(`${path.split('/')[1]}-768.png`), fullPage: true })
+    }
+  }
+  finally {
+    await page.context().close()
+  }
+})
 
 // ============================================================
 // AC-1: チーム — 一般ユーザーが応援ボタンでサポーター化・解除
@@ -319,8 +405,7 @@ test('AC11-TEAM: 応援後に公開範囲をサポーター以上へ変更→画
     headers: { Authorization: `Bearer ${adminToken}` },
     data: { name: `e2e-1942-${suffix}`, visibility: 'PUBLIC', slug: `e2e-1942-${suffix}`.slice(0, 30) },
   })
-  expect(teamRes.status(), await teamRes.text()).toBe(201)
-  const slug = ((await teamRes.json()).data as { slug: string }).slug
+  const slug = await trackFixture('teams', teamRes, `e2e-1942-${suffix}`)
   const patchRes = await request.patch(`${API_BASE_URL}/api/v1/teams/${slug}`, {
     headers: { Authorization: `Bearer ${adminToken}` },
     data: { supporterEnabled: true, version: 0 },
@@ -386,8 +471,7 @@ test('AC11-ORG: 応援後に公開範囲をPRIVATEへ変更→画面から解除
     headers: { Authorization: `Bearer ${adminToken}` },
     data: { name: `e2e-1942-${suffix}`, orgType: 'OTHER', visibility: 'PUBLIC', slug: `e2e-1942-${suffix}`.slice(0, 30) },
   })
-  expect(orgRes.status(), await orgRes.text()).toBe(201)
-  const slug = ((await orgRes.json()).data as { slug: string }).slug
+  const slug = await trackFixture('organizations', orgRes, `e2e-1942-${suffix}`)
   expect((await request.patch(`${API_BASE_URL}/api/v1/organizations/${slug}`, {
     headers: { Authorization: `Bearer ${adminToken}` }, data: { supporterEnabled: true, version: 0 },
   })).status()).toBe(200)
@@ -533,4 +617,69 @@ test('ROLE-MATRIX: ADMINは人数が見える／未所属は限定公開を直�
   await expect(memberPage.getByTestId('scope-header-member-count')).toHaveCount(0)
   await expect(memberPage.getByTestId('scope-header-supporter-count')).toHaveCount(0)
   await memberPage.context().close()
+})
+
+// CMP-261010-1131: 作成者1人・サポーター0人の実データを言語設定UIから確認する。
+// 0/1/2/null/undefined全組合せはコンポーネント試験で固定し、ここでは実画面の単数形を担保する。
+test('CMP1131: en/es/deのモバイルヘッダーで単複形と44pxの操作領域を保つ', async ({ browser }) => {
+  test.setTimeout(360_000)
+  const page = await openAs(browser, OUTSIDER, { width: 390, height: 844 })
+  try {
+    for (const [option, member, supporter] of [
+      ['English', '1 member', '0 supporters'],
+      ['Español', '1 miembro', '0 seguidores'],
+      ['Deutsch', '1 Mitglied', '0 Unterstützer'],
+    ] as const) {
+      await openScope(page, '/settings/language')
+      await page.locator('.p-select').first().click()
+      await page.getByRole('option', { name: option, exact: true }).click()
+      const saved = page.waitForResponse(response => response.url().includes('/api/v1/users/me')
+        && response.request().method() === 'PUT' && response.ok())
+      await page.getByRole('button', { name: /^(保存|Save|Guardar|Speichern)$/ }).click()
+      await saved
+      for (const width of [390, 360]) {
+        await page.setViewportSize({ width, height: 844 })
+        for (const path of [`/teams/${EMPTY_TEAM_SLUG}`, `/organizations/${OTHER_ORG_SLUG}`]) {
+          await openScope(page, path)
+          const memberCount = page.getByTestId('scope-header-member-count')
+          await expect(memberCount).toHaveText(member, { timeout: 60_000 })
+          await expect(page.getByTestId('scope-header-supporter-count')).toHaveText(supporter)
+          await expectSingleTextLine(memberCount)
+          await expectSingleTextLine(page.getByTestId('scope-header-supporter-count'))
+          await expect(page.getByTestId('follow-apply-button')).toBeVisible()
+          await expect(page.getByTestId('join-request-apply-button')).toBeVisible()
+          const header = memberCount.locator('..').locator('..').locator('..')
+          await header.screenshot({ path: test.info().outputPath(`${option}-${path.split('/')[1]}-${width}-header.png`), animations: 'disabled' })
+          const buttons = header.locator('button:visible')
+          expect(await buttons.count()).toBeGreaterThanOrEqual(4)
+          for (const button of await buttons.all()) {
+            const box = await button.boundingBox()
+            const label = await button.getAttribute('aria-label') ?? await button.innerText()
+            expect(box?.width, `${option} ${width}px ${label} の操作領域幅`).toBeGreaterThanOrEqual(44)
+            expect(box?.height, `${option} ${width}px ${label} の操作領域高`).toBeGreaterThanOrEqual(44)
+          }
+          const bounds = await header.boundingBox()
+          expect(bounds).not.toBeNull()
+          expect(bounds!.x).toBeGreaterThanOrEqual(0)
+          expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
+          await page.screenshot({ path: test.info().outputPath(`${option}-${path.split('/')[1]}-${width}.png`), fullPage: true })
+        }
+      }
+    }
+  }
+  finally {
+    try {
+      await openScope(page, '/settings/language')
+      await page.locator('.p-select').first().click()
+      await page.getByRole('option', { name: '日本語', exact: true }).click()
+      const restored = page.waitForResponse(response => response.url().includes('/api/v1/users/me')
+        && response.request().method() === 'PUT' && response.ok())
+      await page.getByRole('button', { name: /^(保存|Save|Guardar|Speichern)$/ }).click()
+      await restored
+      await expect(page.getByRole('button', { name: '保存', exact: true })).toBeVisible()
+    }
+    finally {
+      await page.context().close()
+    }
+  }
 })

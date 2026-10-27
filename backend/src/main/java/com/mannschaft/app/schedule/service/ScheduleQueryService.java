@@ -79,7 +79,7 @@ public class ScheduleQueryService {
     public List<ScheduleResponse> listTeamSchedules(
             Long teamId, LocalDateTime from, LocalDateTime to, Long viewerUserId) {
         List<ScheduleEntity> schedules = scheduleRepository
-                .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, from, to);
+                .findCalendarByTeamId(teamId, from, to);
         Set<Long> visibleIds = contentVisibilityChecker.filterAccessible(
                 ReferenceType.SCHEDULE, idsOf(schedules), viewerUserId);
         return toVisibleScheduleResponses(schedules, visibleIds, viewerUserId);
@@ -100,7 +100,7 @@ public class ScheduleQueryService {
     public List<ScheduleResponse> listOrgSchedules(
             Long orgId, LocalDateTime from, LocalDateTime to, Long viewerUserId) {
         List<ScheduleEntity> schedules = scheduleRepository
-                .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, from, to);
+                .findCalendarByOrganizationId(orgId, from, to);
         Set<Long> visibleIds = contentVisibilityChecker.filterAccessible(
                 ReferenceType.SCHEDULE, idsOf(schedules), viewerUserId);
         return toVisibleScheduleResponses(schedules, visibleIds, viewerUserId);
@@ -203,7 +203,7 @@ public class ScheduleQueryService {
 
         // 個人スケジュールは所有者本人（userId）でのみ取得するため可視性フィルタ対象外。
         List<ScheduleEntity> personalSchedules = scheduleRepository
-                .findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, from, to);
+                .findCalendarByUserId(userId, from, to);
         personalSchedules.forEach(s -> pending.add(new PendingEntry(s, SCOPE_TYPE_PERSONAL, userId, null)));
 
         // 所属チームのスケジュールを取得（スコープ別の集約に scopeId を保持する）。
@@ -214,7 +214,7 @@ public class ScheduleQueryService {
                 membershipService.getActiveTeamIdsIncludingRoleAssignments(userId));
         for (Long teamId : teamIds) {
             scheduleRepository
-                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, from, to)
+                    .findCalendarByTeamId(teamId, from, to)
                     .forEach(s -> teamScoped.add(new ScopedSchedule(s, "TEAM", teamId)));
         }
 
@@ -224,7 +224,7 @@ public class ScheduleQueryService {
                 membershipService.getActiveOrgIdsIncludingRoleAssignments(userId));
         for (Long orgId : orgIds) {
             scheduleRepository
-                    .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, from, to)
+                    .findCalendarByOrganizationId(orgId, from, to)
                     .forEach(s -> orgScoped.add(new ScopedSchedule(s, "ORGANIZATION", orgId)));
         }
 
@@ -370,6 +370,8 @@ public class ScheduleQueryService {
         EventCategoryResponse categoryResponse = resolveEventCategoryResponse(entity.getEventCategoryId());
         return ScheduleResponse.builder()
                 .id(entity.getId())
+                .allowProxyAttendance(entity.getAllowProxyAttendance())
+                .isProxyAutoAccept(entity.getIsProxyAutoAccept())
                 .content(new ScheduleResponse.ScheduleContentDto(
                         entity.getTitle(),
                         entity.getStatus().name(),

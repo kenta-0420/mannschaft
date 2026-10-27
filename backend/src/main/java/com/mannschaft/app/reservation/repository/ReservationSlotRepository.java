@@ -16,6 +16,15 @@ import java.util.Optional;
  */
 public interface ReservationSlotRepository extends JpaRepository<ReservationSlotEntity, Long> {
 
+    /**
+     * 本人予約履歴の保管中の枠を一括解決する。通常検索の論理削除除外は維持するため、
+     * 履歴に限り native SQL で @SQLRestriction を迂回する。ID は本人予約から導出し、
+     * 呼出側で予約と枠のチーム帰属を照合する。
+     */
+    @Query(value = "SELECT * FROM reservation_slots WHERE id IN (:ids)", nativeQuery = true)
+    List<ReservationSlotEntity> findAllByIdIncludingDeletedForHistory(
+            @Param("ids") java.util.Collection<Long> ids);
+
     /** endDate を含む業務日範囲検索（日跨ぎ枠を slotDate だけで落とさない）。 */
     @Query("SELECT s FROM ReservationSlotEntity s WHERE s.teamId = :teamId "
             + "AND s.slotDate <= :to AND s.endDate >= :from AND s.deletedAt IS NULL")

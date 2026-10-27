@@ -28,7 +28,13 @@
       "BULLETIN_THREAD": "掲示板",
       "TIMELINE_POST": "タイムライン",
       "CIRCULATION": "回覧板",
-      "SURVEY": "アンケート"
+      "CIRCULATION_DOCUMENT": "回覧板",
+      "SURVEY": "アンケート",
+      "TODO": "タスク",
+      "SCHEDULE": "予定",
+      "COMMITTEE_DECISION": "委員会決議",
+      "COMMITTEE_MINUTES": "委員会議事録",
+      "ADVERTISER_CAMPAIGN": "広告主キャンペーン"
     },
     "mark_all_read": "すべて既読にする",
     "remove_from_announcements": "お知らせから外す",
@@ -98,7 +104,8 @@
         "body": "告知を見せる相手の範囲を決めます（最初のステップ）。",
         "steps": {
           "step1": "届け先をメンバーのみ／サポーター以上／全員（公開）から選ぶ",
-          "step2": "（組織告知のみ）対象チームを『すべて』または個別に選ぶ"
+          "step2": "（組織告知のみ）対象チームを『すべて』または個別に選ぶ",
+          "step3": "（組織告知のみ）『チームグループで選ぶ』で、グループや範囲（〜以前／〜以降）をまとめて宛先にする。該当チーム数は画面で確認できる"
         }
       },
       "template": {
@@ -114,7 +121,7 @@
         "body": "掲示板・タイムライン・ブログ・TODO・スケジュール・アンケートから配信先を1つ選びます。",
         "steps": {
           "step1": "6つのカードから1つ選ぶ",
-          "step2": "『次へ』。※テンプレに既定チャネルがあるとこの画面は省略されます"
+          "step2": "テンプレートの既定チャネルもこの画面で確認・変更し、『次へ』で内容入力へ進む"
         }
       },
       "content": {
@@ -162,6 +169,11 @@
     "dynamic_display_note": "表示は現在の所属で判定されます（削除されたグループは送信時点の対象チームで判定）",
     "template_deleted_groups_removed": "削除されたチームグループがテンプレートから除外されました",
     "template_range_invalid": "テンプレートの範囲に削除されたチームグループが含まれています。範囲を選び直してください",
-    "audience_summary": "宛先: {label}（送信時 {count} チーム）"
+    "audience_summary": "宛先: {label}（送信時 {count} チーム）",
+    "groups_load_failed": "チームグループの一覧を取得できませんでした",
+    "target_range_pick_group": "グループを選択",
+    "preview_loading": "宛先を確認中…",
+    "preview_failed": "宛先を確認できませんでした",
+    "broadcast_done_title": "告知を送信しました"
   }
 }

@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Set;
 
 /**
  * チーム−組織所属ドメインの読み取り公開クエリサービス（他ドメインへ ID 一覧のみを提供する境界）。
@@ -31,6 +32,11 @@ public class TeamOrgMembershipQueryService {
 
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
 
+    /** 対象チームのACTIVEな親組織IDを代表親順で一括取得する。空入力はSQLを発行しない。 */
+    public Map<Long, List<Long>> findOrganizationIdsInPrimaryOrderByTeamIds(Set<Long> teamIds) {
+        return teamOrgMembershipRepository.findOrganizationIdsInPrimaryOrderByTeamIdIn(teamIds);
+    }
+
     /** 配信対象の最新判定用。Entity を外へ渡さず ACTIVE 加盟の ID とグループだけ返す。 */
     public List<ActiveGroupMembership> findActiveMembershipsInOrganization(
             Long organizationId, java.util.Collection<Long> teamIds) {
@@ -41,6 +47,32 @@ public class TeamOrgMembershipQueryService {
     }
 
     public record ActiveGroupMembership(Long teamId, UUID groupId) {
+    }
+
+    /**
+     * GDPR の個人データ収集（F01.2.1 §15・AC-G127）: そのユーザーが起こした（{@code invited_by}）か応答した
+     * （{@code responded_by}）加盟を、Entity を外へ渡さず値だけで返す（ID 昇順）。添え書き（{@code message}）は
+     * 申請・招待した側の入力なので、起こした本人の行にだけ含める。
+     */
+    public List<Map<String, Object>> collectPersonalData(Long userId) {
+        if (userId == null) {
+            return List.of();
+        }
+        return teamOrgMembershipRepository.findByOperatorUserId(userId).stream().map(m -> {
+            Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("membershipId", m.getId());
+            row.put("teamId", m.getTeamId());
+            row.put("organizationId", m.getOrganizationId());
+            row.put("status", m.getStatus().name());
+            row.put("direction", m.getDirection().name());
+            row.put("involvement", userId.equals(m.getInvitedBy())
+                    ? (userId.equals(m.getRespondedBy()) ? "INVITED_AND_RESPONDED" : "INVITED")
+                    : "RESPONDED");
+            row.put("invitedAt", m.getInvitedAt() == null ? null : m.getInvitedAt().toString());
+            row.put("respondedAt", m.getRespondedAt() == null ? null : m.getRespondedAt().toString());
+            row.put("message", userId.equals(m.getInvitedBy()) ? m.getMessage() : null);
+            return row;
+        }).toList();
     }
 
     /**

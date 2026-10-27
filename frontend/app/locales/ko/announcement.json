@@ -28,7 +28,13 @@
       "BULLETIN_THREAD": "게시판",
       "TIMELINE_POST": "타임라인",
       "CIRCULATION": "회람 문서",
-      "SURVEY": "설문"
+      "CIRCULATION_DOCUMENT": "회람 문서",
+      "SURVEY": "설문",
+      "TODO": "할 일",
+      "SCHEDULE": "일정",
+      "COMMITTEE_DECISION": "위원회 의결",
+      "COMMITTEE_MINUTES": "위원회 회의록",
+      "ADVERTISER_CAMPAIGN": "광고주 캠페인"
     },
     "mark_all_read": "모두 읽음 처리",
     "remove_from_announcements": "공지에서 제거",
@@ -98,7 +104,8 @@
         "body": "공지를 보여줄 상대의 범위를 정합니다 (첫 번째 단계).",
         "steps": {
           "step1": "수신 대상을 회원만 / 서포터 이상 / 전체 (공개) 중에서 선택한다",
-          "step2": "(조직 공지만) 대상 팀을 「모든 팀」 또는 개별로 선택한다"
+          "step2": "(조직 공지만) 대상 팀을 「모든 팀」 또는 개별로 선택한다",
+          "step3": "(조직 공지만) \"팀 그룹으로 선택\"에서 그룹이나 범위(이전/이후)로 한꺼번에 수신 대상을 정합니다. 해당 팀 수는 화면에서 확인할 수 있습니다"
         }
       },
       "template": {
@@ -114,7 +121,7 @@
         "body": "게시판·타임라인·블로그·TODO·일정·설문 중에서 전달할 곳을 하나 고릅니다.",
         "steps": {
           "step1": "6개의 카드 중 하나를 고른다",
-          "step2": "「다음」을 누른다. ※템플릿에 기본 채널이 있으면 이 화면은 건너뜁니다"
+          "step2": "이 화면에서 템플릿의 기본 채널을 확인하거나 변경한 후 「다음」을 눌러 내용을 입력합니다"
         }
       },
       "content": {
@@ -162,6 +169,11 @@
     "dynamic_display_note": "표시는 현재 소속을 기준으로 판정됩니다(삭제된 그룹은 발송 시점의 대상 팀으로 판정)",
     "template_deleted_groups_removed": "삭제된 팀 그룹이 템플릿에서 제외되었습니다",
     "template_range_invalid": "템플릿의 범위에 삭제된 팀 그룹이 포함되어 있습니다. 범위를 다시 선택해 주세요",
-    "audience_summary": "수신 대상: {label} (발송 시 {count}개 팀)"
+    "audience_summary": "수신 대상: {label} (발송 시 {count}개 팀)",
+    "groups_load_failed": "팀 그룹 목록을 가져오지 못했습니다",
+    "target_range_pick_group": "그룹 선택",
+    "preview_loading": "수신 대상 확인 중…",
+    "preview_failed": "수신 대상을 확인하지 못했습니다",
+    "broadcast_done_title": "공지를 보냈습니다"
   }
 }

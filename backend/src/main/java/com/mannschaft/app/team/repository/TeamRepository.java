@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,35 @@ import java.util.stream.Collectors;
  */
 public interface TeamRepository
         extends JpaRepository<TeamEntity, Long>, JpaSpecificationExecutor<TeamEntity> {
+
+    /** フォロー先として公開できる概要を、閲覧者に依存せず一括取得する。 */
+    @Query("""
+            SELECT new com.mannschaft.app.team.service.TeamFollowTargetSummary(t.id, t.name, t.slug)
+            FROM TeamEntity t WHERE t.id IN :ids
+              AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE
+              AND t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.deletedAt IS NULL AND t.archivedAt IS NULL
+            """)
+    List<com.mannschaft.app.team.service.TeamFollowTargetSummary> findDisclosableFollowTargetSummaries(
+            @Param("ids") Collection<Long> ids);
+
+    /** 受付投影に必要なteam scalar状態だけを読む。 */
+    interface ActiveStateRow {
+        Long getId();
+        String getName();
+        Boolean getActive();
+    }
+
+    @Query("SELECT t.id AS id, t.name AS name, "
+            + "CASE WHEN t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE "
+            + "AND t.archivedAt IS NULL AND t.deletedAt IS NULL THEN true ELSE false END AS active "
+            + "FROM TeamEntity t WHERE t.id IN :ids")
+    List<ActiveStateRow> findActiveStateRows(@Param("ids") Collection<Long> ids);
+
+    /** SYS認可済み復元一覧専用。論理削除を含むnative Entity変換とDBページングを使う。 */
+    @Query(value = "SELECT * FROM teams WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC, id DESC",
+            countQuery = "SELECT COUNT(*) FROM teams WHERE deleted_at IS NOT NULL", nativeQuery = true)
+    Page<TeamEntity> findDeletedTeamsForSystemAdmin(Pageable pageable);
 
     /**
      * カスタムスラッグでチームを取得する（URL識別子）。
@@ -68,6 +98,11 @@ public interface TeamRepository
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT t FROM TeamEntity t WHERE t.id = :id")
     Optional<TeamEntity> findByIdForUpdate(@Param("id") Long id);
+
+    /** 個人招待のrole発行commit後だけ、短いteam専属TXで休止と直列化して再確認する。 */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_READ)
+    @Query("SELECT t FROM TeamEntity t WHERE t.id = :id")
+    Optional<TeamEntity> findByIdForShare(@Param("id") Long id);
 
     /**
      * CMP-260901-1538 柱③-A: 同名確認フロー用の候補検索。
@@ -159,6 +194,22 @@ public interface TeamRepository
      */
     @Query(value = "SELECT * FROM teams WHERE id = :id", nativeQuery = true)
     Optional<TeamEntity> findByIdIncludingDeleted(@Param("id") Long id);
+
+    /**
+     * 復元専用: 削除済み・PROVISIONEDを含め、現行slugの一意索引でIDだけを取得する。
+     * SYSTEM_ADMIN認可を済ませた復元経路だけで使い、通常のslug解決には流用しない。
+     */
+    @Query(value = "SELECT id FROM teams WHERE slug = :slug", nativeQuery = true)
+    Optional<Long> findIdBySlugIncludingDeleted(@Param("slug") String slug);
+
+    /**
+     * 論理削除済みを含めてチーム行を {@code SELECT ... FOR UPDATE} で取る（F01.2.1 2-D・加盟の片付け）。
+     *
+     * <p>片付けは、ロックの下でチームの<b>現在の</b>状態（アーカイブ・論理削除）を確かめてから行を消す。
+     * 申請・招待の作成（最初にチーム行を取る）・アーカイブ解除と直列化される。</p>
+     */
+    @Query(value = "SELECT * FROM teams WHERE id = :id FOR UPDATE", nativeQuery = true)
+    Optional<TeamEntity> findByIdIncludingDeletedForUpdate(@Param("id") Long id);
 
     /**
      * 論理削除済みチームを復元する。deleted_at を NULL に戻す。

@@ -104,6 +104,11 @@ async function handleSubmit() {
     submitting.value = false
   }
 }
+
+function applyGeneratedPassword(password: string): void {
+  form.value.newPassword = password
+  form.value.confirmPassword = password
+}
 </script>
 
 <template>
@@ -141,6 +146,7 @@ async function handleSubmit() {
             toggle-mask
             class="w-full"
             input-class="w-full"
+            :input-props="{ autocomplete: 'current-password' }"
           />
         </div>
 
@@ -154,7 +160,18 @@ async function handleSubmit() {
           <label class="mb-1 block text-sm font-medium">{{
             t('settings.password.new_password')
           }}</label>
-          <Password v-model="form.newPassword" toggle-mask class="w-full" input-class="w-full" />
+          <Password
+            v-model="form.newPassword"
+            toggle-mask
+            class="w-full"
+            input-class="w-full"
+            :input-props="{ autocomplete: 'new-password' }"
+          />
+          <PasswordGeneratorActions
+            :password="form.newPassword"
+            :disabled="submitting || redirecting"
+            @generated="applyGeneratedPassword"
+          />
           <p class="mt-1 text-xs text-surface-500">{{ t('settings.password.policy_hint') }}</p>
         </div>
 
@@ -168,6 +185,7 @@ async function handleSubmit() {
             toggle-mask
             class="w-full"
             input-class="w-full"
+            :input-props="{ autocomplete: 'new-password' }"
           />
         </div>
 

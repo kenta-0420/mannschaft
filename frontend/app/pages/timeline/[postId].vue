@@ -35,7 +35,11 @@ async function loadPost() {
   loadFailed.value = false
   try {
     const res = await getPost(postId)
-    post.value = res.data
+    post.value = {
+      ...res.data,
+      mitayo: res.data.stats.mitayo,
+      mitayoCount: res.data.stats.mitayoCount,
+    }
     const recent = res.data.recentReplies || []
     replies.value = recent
     // recentReplies は会話の古い順・先頭最大 N 件のプレビュー。返信総数がプレビュー件数を超えるなら続きがある。
@@ -133,6 +137,7 @@ onMounted(() => loadPost())
         :replies-accordion="false"
         @mitayo-toggled="onMitayoToggled"
         @bookmark="onBookmark"
+        @edited="loadPost"
         @click-post="() => {}"
       />
 

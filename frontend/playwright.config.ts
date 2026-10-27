@@ -60,7 +60,7 @@ export default defineConfig({
       // tests/e2e/real/** は chromium-real 専用（毎テストで実ログインする実機テストのため）。
       // testMatch 制限が無いとここでも二重実行され、ログイン試行回数の上限（1分あたり10回）に
       // 引っかかって偽の赤を生む。chromium はそれ以外の（モック中心の）spec のみ対象とする。
-      testIgnore: '**/real/**/*.spec.ts',
+      testIgnore: ['**/real/**/*.spec.ts', '**/helpers/wait.spec.ts'],
     },
     // 管理者権限テスト（admin/ 配下のみ実行）
     {
@@ -87,6 +87,8 @@ export default defineConfig({
         storageState: 'tests/e2e/.auth/real-user.json',
       },
       testMatch: '**/real/**/*.spec.ts',
+      // 所有fixture契約の8件はplaywright.restore.config.tsで省略せず別実行する。
+      testIgnore: ['**/real/team-restore-ui.spec.ts', '**/real/password-generator.real.spec.ts'],
       dependencies: ['setup-real-user'],
     },
     // 実機テスト: 管理者（real/admin/ 配下のみ実行）

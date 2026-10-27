@@ -28,7 +28,13 @@
       "BULLETIN_THREAD": "Pinnwand",
       "TIMELINE_POST": "Zeitleiste",
       "CIRCULATION": "Rundschreiben",
-      "SURVEY": "Umfrage"
+      "CIRCULATION_DOCUMENT": "Rundschreiben",
+      "SURVEY": "Umfrage",
+      "TODO": "Aufgabe",
+      "SCHEDULE": "Termin",
+      "COMMITTEE_DECISION": "Ausschussbeschluss",
+      "COMMITTEE_MINUTES": "Ausschussprotokoll",
+      "ADVERTISER_CAMPAIGN": "Werbekampagne"
     },
     "mark_all_read": "Alle als gelesen markieren",
     "remove_from_announcements": "Aus Ankündigungen entfernen",
@@ -98,7 +104,8 @@
         "body": "Lege fest, wer die Ankündigung sehen soll (erster Schritt).",
         "steps": {
           "step1": "Wähle den Empfängerkreis: Nur Mitglieder / Unterstützer und höher / Alle (Öffentlich)",
-          "step2": "(Nur Organisationsankündigungen) Wähle als Zielteams „Alle Teams“ oder einzelne Teams"
+          "step2": "(Nur Organisationsankündigungen) Wähle als Zielteams „Alle Teams“ oder einzelne Teams",
+          "step3": "(Nur Organisationsmitteilungen) Mit „Nach Teamgruppe auswählen“ lassen sich Gruppen oder ein Bereich (bis / ab) auf einmal wählen. Die Zahl der passenden Teams wird auf dem Bildschirm angezeigt"
         }
       },
       "template": {
@@ -114,7 +121,7 @@
         "body": "Wähle einen Zielkanal aus Pinnwand, Zeitleiste, Blog, TODO, Kalender und Umfrage.",
         "steps": {
           "step1": "Wähle eine der 6 Karten",
-          "step2": "Klicke auf „Weiter“. Hinweis: Hat die Vorlage einen Standardkanal, wird dieser Bildschirm übersprungen"
+          "step2": "Prüfe oder ändere hier den Standardkanal der Vorlage und klicke auf „Weiter“, um den Inhalt einzugeben"
         }
       },
       "content": {
@@ -162,6 +169,11 @@
     "dynamic_display_note": "Die Anzeige richtet sich nach der aktuellen Zugehörigkeit (bei gelöschten Gruppen nach den Zielteams zum Zeitpunkt des Versands)",
     "template_deleted_groups_removed": "Gelöschte Teamgruppen wurden aus der Vorlage entfernt",
     "template_range_invalid": "Der Bereich der Vorlage enthält gelöschte Teamgruppen. Bitte wähle den Bereich neu aus",
-    "audience_summary": "Empfänger: {label} ({count} Teams beim Versand)"
+    "audience_summary": "Empfänger: {label} ({count} Teams beim Versand)",
+    "groups_load_failed": "Die Teamgruppen konnten nicht geladen werden",
+    "target_range_pick_group": "Gruppe auswählen",
+    "preview_loading": "Empfänger werden geprüft…",
+    "preview_failed": "Die Empfänger konnten nicht geprüft werden",
+    "broadcast_done_title": "Mitteilung gesendet"
   }
 }

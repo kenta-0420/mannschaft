@@ -67,9 +67,19 @@ const hasResolvedSlug = computed(() =>
  */
 const lastLoadedId = ref<string | null>(null)
 
+const loadedScopeId = ref<string | null>(null)
+const auth = useAuthStore()
+const featureVisibility = useScopeFeatureVisibility(
+  "organization", selectedOrgId,
+  () => loadedScopeId.value === selectedOrgId.value ? data.value?.viewerRole : null,
+  () => !store.isAdminLensOn("ORGANIZATION", selectedOrgId.value ?? ""),
+)
+
 let loadSequence = 0
 
 async function load(orgId: string) {
+  loadedScopeId.value = null
+  data.value = null
   const request = ++loadSequence
   lastLoadedId.value = orgId
   loading.value = true
@@ -78,6 +88,7 @@ async function load(orgId: string) {
     const res = await getOrganizationDashboard(orgId)
     if (request !== loadSequence) return
     data.value = res.data
+    loadedScopeId.value = orgId
   } catch (e) {
     if (request !== loadSequence) return
     // 握り潰さない。i18n キーを保持して UI に表示する。
@@ -136,8 +147,12 @@ function resolveSelectedOrg() {
 watch(
   [selectedOrgId, () => store.tabPages.ORGANIZATION],
   () => resolveSelectedOrg(),
-  { immediate: true },
+  { immediate: true, flush: 'sync' },
 )
+watch(() => auth.user?.id, () => {
+  lastLoadedId.value = null
+  resolveSelectedOrg()
+}, { flush: 'sync' })
 </script>
 
 <template>
@@ -169,7 +184,7 @@ watch(
 
     <template v-else-if="data">
       <DashboardAnnouncements
-        v-if="data.orgNotices != null && announcementScopeId && selectedOrgId"
+        v-if="featureVisibility.ready.value && featureVisibility.isVisible('announcements') && data.orgNotices != null && announcementScopeId && selectedOrgId"
         :key="selectedOrgId"
         scope-type="ORGANIZATION"
         :scope-id="announcementScopeId"
@@ -183,7 +198,9 @@ watch(
         scope-type="ORGANIZATION"
         :slug="selectedOrgId"
       />
-      <DashboardSwipeWidgetGrid v-else scope-type="ORGANIZATION" :scope-id="selectedOrgId" :data="data" />
+      <DashboardErrorState v-else-if="featureVisibility.error.value" :error="featureVisibility.error.value" @retry="featureVisibility.refresh(true)" />
+      <PageLoading v-else-if="!featureVisibility.ready.value" />
+      <DashboardSwipeWidgetGrid v-else :is-feature-visible="featureVisibility.isVisible" scope-type="ORGANIZATION" :scope-id="selectedOrgId" :numeric-scope-id="announcementScopeId" :data="data" />
     </template>
 
     <!--

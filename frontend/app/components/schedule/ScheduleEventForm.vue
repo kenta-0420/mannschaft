@@ -262,18 +262,7 @@ watch(
           form.value.attendanceRequired = false
           form.value.allowProxyAttendance = false
           form.value.isProxyAutoAccept = false
-          if (time.startAt) {
-            const start = new Date(time.startAt as string)
-            form.value.startDate = start
-            form.value.startTime = savedTimeString(start)
-          }
-          if (time.endAt) {
-            const end = new Date(time.endAt as string)
-            form.value.endDate = savedEndDate(end, form.value.allDay)
-            form.value.endTime = savedTimeString(end)
-          } else {
-            form.value.endDate = null
-          }
+          applySavedDateTime(time)
           // 個人予定: detailedReminders からリマインダーフォーム状態を復元する
           const detailedReminders = (data.detailedReminders as Array<Record<string, unknown>> | null) ?? []
           if (detailedReminders.length > 0) {
@@ -323,18 +312,7 @@ watch(
           targetMode.value = (data.targetMode as ScheduleTargetMode) ?? 'ALL_MEMBERS'
           targetUserIds.value = ((data.targets as Array<{ userId: number }> | undefined) ?? [])
             .map(target => target.userId)
-          if (time.startAt) {
-            const start = new Date(time.startAt as string)
-            form.value.startDate = start
-            form.value.startTime = savedTimeString(start)
-          }
-          if (time.endAt) {
-            const end = new Date(time.endAt as string)
-            form.value.endDate = savedEndDate(end, form.value.allDay)
-            form.value.endTime = savedTimeString(end)
-          } else {
-            form.value.endDate = null
-          }
+          applySavedDateTime(time)
           // 共有予定: reminders からリマインダーフォーム状態を復元する
           const reminders = (data.reminders as Array<Record<string, unknown>> | null) ?? []
           form.value.reminders = reminders.map(reminderResponseToFormEntry)
@@ -404,6 +382,18 @@ function savedTimeString(date: Date): string {
   return date.toTimeString().slice(0, date.getSeconds() ? 8 : 5)
 }
 
+/** 個人・共有とも、API日時をユーザーTZの壁時計へ戻してからピッカーへ渡す。 */
+function applySavedDateTime(time: Record<string, unknown>) {
+  const start = time.startAt ? toUserZonedParts(time.startAt as string) : null
+  if (start) {
+    form.value.startDate = start.date
+    form.value.startTime = start.time
+  }
+  const end = time.endAt ? toUserZonedParts(time.endAt as string) : null
+  form.value.endDate = end ? savedEndDate(end.date, form.value.allDay) : null
+  if (end) form.value.endTime = end.time
+}
+
 // APIの終日終了は排他的、日付ピッカーの終了日は当日を含む。
 function savedEndDate(date: Date, allDay: boolean): Date {
   const end = new Date(date)
@@ -432,10 +422,13 @@ function buildScheduleDateTime(date: Date | null, time: string): string | null {
 function toUserZonedParts(iso: string): { date: Date; time: string } | null {
   const parsed = dayjs(iso)
   if (!parsed.isValid()) return null
-  const z = parsed.tz(userTimezone.value)
+  // オフセット無しの旧API値はユーザーTZの壁時計。端末TZで解釈してから変換しない。
+  const hasOffset = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(iso)
+  const z = hasOffset ? parsed.tz(userTimezone.value) : dayjs.tz(iso, userTimezone.value)
+  const date = new Date(z.year(), z.month(), z.date(), z.hour(), z.minute(), z.second(), z.millisecond())
   return {
-    date: new Date(z.year(), z.month(), z.date(), z.hour(), z.minute(), 0, 0),
-    time: z.format('HH:mm'),
+    date,
+    time: savedTimeString(date),
   }
 }
 
@@ -465,7 +458,7 @@ function applyDefaultEndOneHourAfter(startDate: Date, startTime: string) {
 /**
  * 作成ダイアログを開くときの初期日時をフォームへ適用する（F03.19 §6.6.5）。
  * 優先順位: `initialStartAt`/`initialEndAt`（時刻付き）> `initialDate`（日付のみ・従来挙動）。
- * `initialDate` 経路の挙動は一切変更していない（AC-22c）。
+ * 日付のみの値はピッカー用の壁時計として組み立て、UTC解釈による前日ずれを防ぐ。
  */
 function applyInitialDateTime() {
   if (props.initialStartAt) {
@@ -491,8 +484,9 @@ function applyInitialDateTime() {
     }
   }
   if (props.initialDate) {
-    form.value.startDate = new Date(props.initialDate)
-    form.value.endDate = new Date(props.initialDate)
+    const [year, month, date] = props.initialDate.split('-').map(Number)
+    form.value.startDate = new Date(year!, month! - 1, date!)
+    form.value.endDate = new Date(year!, month! - 1, date!)
   }
 }
 
@@ -631,10 +625,8 @@ async function submit(updateScope?: 'THIS_ONLY' | 'THIS_AND_FOLLOWING') {
   } else {
     if (!isEdit.value) body.eventType = 'OTHER'
     body.attendanceRequired = form.value.attendanceRequired
-    if (!isEdit.value) {
-      body.allow_proxy_attendance = form.value.allowProxyAttendance
-      body.is_proxy_auto_accept = form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false
-    }
+    body.allow_proxy_attendance = form.value.allowProxyAttendance
+    body.is_proxy_auto_accept = form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false
     body.targetMode = targetMode.value
     body.targetUserIds = targetMode.value === 'SELECTED_MEMBERS' ? targetUserIds.value : []
     // F03.1 (B) チーム別内訳トグルは組織スコープ + 出欠ありのときのみ送る
@@ -834,11 +826,11 @@ function close() {
     :header="
       effectiveScope.isPersonal
         ? isEdit
-          ? '予定を編集'
-          : '予定を追加'
+          ? t('schedule.form.editPersonal')
+          : t('schedule.form.addPersonal')
         : isEdit
-          ? 'イベントを編集'
-          : 'イベントを作成'
+          ? t('schedule.form.editEvent')
+          : t('schedule.form.createEvent')
     "
     :style="{ width: '500px' }"
     class="[&_.p-dialog-close-button]:min-h-11 [&_.p-dialog-close-button]:min-w-11"
@@ -949,9 +941,9 @@ function close() {
       </div>
     </div>
     <template #footer>
-      <Button label="キャンセル" class="min-h-11" text @click="close" />
+      <Button :label="$t('button.cancel')" class="min-h-11" text @click="close" />
       <Button
-        :label="isEdit ? '更新' : '作成'"
+        :label="isEdit ? $t('button.update') : $t('button.create')"
         icon="pi pi-check"
         class="min-h-11"
         :loading="submitting || editLoading"

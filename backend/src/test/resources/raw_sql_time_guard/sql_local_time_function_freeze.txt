@@ -7,7 +7,6 @@
 SQL_LOCAL_TIME_FUNCTION_IN_SQL|com.mannschaft.app.advertising.repository.AdDailyStatsRepository|3
 SQL_LOCAL_TIME_FUNCTION_IN_SQL|com.mannschaft.app.auth.repository.UserRepository|1
 SQL_LOCAL_TIME_FUNCTION_IN_SQL|com.mannschaft.app.common.duplicatename.DuplicateNameLockEntity|1
-SQL_LOCAL_TIME_FUNCTION_IN_SQL|com.mannschaft.app.errorreport.repository.ErrorReportRepository|1
 SQL_LOCAL_TIME_FUNCTION_IN_SQL|com.mannschaft.app.membership.repository.MemberCardRepository|1
 SQL_LOCAL_TIME_FUNCTION_IN_SQL|com.mannschaft.app.notification.fanout.NotificationFanoutJobRepository|1
 SQL_LOCAL_TIME_FUNCTION_IN_SQL|com.mannschaft.app.notification.repository.NotificationRepository|1

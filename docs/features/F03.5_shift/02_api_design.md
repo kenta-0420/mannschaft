@@ -20,6 +20,7 @@
 | PATCH | `/api/v1/shifts/slots/{id}` | 必要 | スロット更新（部分更新、PUT から PATCH へ変更） |
 | DELETE | `/api/v1/shifts/slots/{id}` | 必要 | スロット削除（物理削除） |
 | PATCH | `/api/v1/shifts/slots/{id}/assignments` | 必要 | **【v2】D&D UI 用の差分割当 API（個別ユーザー追加・削除）** |
+| POST | `/api/v1/shifts/slots/{id}/assignments/move` | 必要 | **【CMP-261010-1432】枠間移動（1 トランザクションで移動元から外し移動先へ入れる）** |
 | GET | `/api/v1/shifts/requests` | 必要 | 希望一覧取得（管理者用、クエリパラメータ `scheduleId` でスケジュール絞り込み。旧 `GET /shifts/schedules/{id}/requests` を統合） |
 | GET | `/api/v1/shifts/requests/summary` | 必要 | 希望集計サマリー取得（管理者用） |
 | POST | `/api/v1/shifts/requests` | 必要 | 希望提出 |
@@ -41,7 +42,7 @@
 | PUT | `/api/v1/shifts/availability` | 必要 | デフォルト可否プロファイル一括更新 |
 | DELETE | `/api/v1/shifts/availability` | 必要 | デフォルト可否プロファイルを削除（既定値に戻す） |
 | GET | `/api/v1/shifts/hourly-rate` | 必要 | 自分の時給設定取得 |
-| POST | `/api/v1/shifts/hourly-rate` | 必要 | 自分の時給設定登録・更新（旧 PUT → POST に変更、Service 側 upsert 動作） |
+| POST | `/api/v1/shifts/hourly-rate` | 必要 | 管理者によるメンバーの時給登録・訂正（Service 側 upsert 動作） |
 | GET | `/api/v1/shifts/hourly-rates` | 必要 | チームメンバーの有効時給を一括取得（ADMIN/DEPUTY_ADMIN 用・CMP-260912-1525 で実装） |
 | PUT | `/api/v1/shifts/hourly-rates/{userId}` | 必要 | メンバーの時給設定（管理者用） **【v2 計画、現状未実装】** |
 | POST | `/api/v1/shifts/schedules/{id}/auto-assign` | 必要 | **【v2】自動割当を実行（PROPOSED 状態で shift_assignments にドラフト書き込み）** |
@@ -50,6 +51,7 @@
 | GET | `/api/v1/shifts/schedules/{id}/assignment-runs` | 必要 | **【v2】自動割当の実行履歴一覧** |
 | GET | `/api/v1/shifts/assignment-runs/{runId}` | 必要 | **【v2】自動割当実行の詳細（スコアリング内訳・警告）** |
 | PATCH | `/api/v1/shifts/slots/{id}/assignments` | 必要 | **【v2】D&D UI 用の差分割当 API（個別ユーザー追加・削除）** |
+| POST | `/api/v1/shifts/slots/{id}/assignments/move` | 必要 | **【CMP-261010-1432】枠間移動（1 トランザクションで移動元から外し移動先へ入れる）** |
 | GET | `/api/v1/shifts/teams/{teamId}/work-constraints` | 必要 | **【v2】チームの勤務制約一覧（デフォルト + 個別、チームスコープ化）** |
 | GET | `/api/v1/shifts/teams/{teamId}/work-constraints/default` | 必要 | **【v2】チームデフォルト勤務制約を取得** |
 | PUT | `/api/v1/shifts/teams/{teamId}/work-constraints/default` | 必要 | **【v2】チームデフォルト勤務制約を作成・更新（upsert）** |
@@ -1088,6 +1090,8 @@ scope は**パス変数でなくスケジュール実体の `team_id` から解�
 
 メンバーがシフト交代リクエストを作成する。`PUBLISHED` 状態のスケジュールに属する、自分がアサインされているスロットのみ対象。**v2.1 より 2 つのモードをサポート**: (A-2) 特定メンバー指名、(A-3) オープンコール（全体募集）。
 
+**受付資格（CMP-261021-0647）**: 現在の`assigned_user_ids`に本人を含むことを、スコープ認可後の業務TXで状態・割当変更と直列化して確認する。ADMIN / DEPUTY_ADMIN / SYSTEM_ADMINにも同じ資格を適用する。未割当は拒否し、公開履歴があってもARCHIVEDは受け付けない。
+
 **リクエストボディ（A-2 個別指名）**
 ```json
 {
@@ -1121,11 +1125,13 @@ scope は**パス変数でなくスケジュール実体の `team_id` から解�
 **エラーレスポンス**
 | ステータス | 条件 |
 |-----------|------|
-| 400 | 自分がアサインされていないスロット / 同一スロットに未解決の交代リクエストが既存 / `is_open_call=true` かつ `target_user_id` 指定（排他違反） |
-| 403 | チームメンバーではない |
-| 404 | スロットが存在しない / 指名した `target_user_id` がチームメンバーではない |
-| 409 | `PUBLISHED` 以外のステータス |
+| 400 | 同一スロットに未解決の交代リクエストが既存 / `is_open_call=true` かつ `target_user_id` 指定（排他違反） |
+| 403 | スコープ認可で拒否（SUPPORTER等は`COMMON_002`）/ 本人外・未割当（`SHIFT_019`） |
+| 404 | スロットが存在しない・越境（`SHIFT_002`）/ 親スケジュールが存在しない（`SHIFT_001`）/ 指名した `target_user_id` がチームメンバーではない（既存設計条件、本件では未変更・未検証） |
+| 409 | `PUBLISHED` 以外のステータス（`SHIFT_012`） |
 | 429 | **【v2.1】** オープンコール月間上限（3件/月/ユーザー）超過 |
+
+**検証範囲（CMP-261021-0647）**: 本件は作成者の状態・担当資格とスコープ境界を検証した。指名対象のチーム所属条件、400の既存条件、429の月間上限は変更・検証していない別条件として保持する。上記ボディの `target_user_id` / `is_open_call` は既存設計の記述であり、現DTOの `targetUserIds` / `openCall` との乖離も本件では変更しない。
 
 ---
 
@@ -1394,7 +1400,7 @@ status を既定の `PENDING` のままにしており、`OPEN_CALL` へ遷移�
 
 > ※ 旧設計は PUT。実装は POST に変更（`ShiftAvailabilityController#createHourlyRate`、Service 側で upsert）。
 
-自分の時給を登録・更新する。
+管理者が対象メンバーの時給を登録・訂正する。本人による閲覧は引き続き可能だが、一般メンバーの自己登録・自己訂正は許可しない（CMP-261021-0659）。
 
 **リクエストボディ**
 ```json
@@ -1409,19 +1415,21 @@ status を既定の `PENDING` のままにしており、`OPEN_CALL` へ遷移�
 - `effective_from`: 必須。未来日も過去日も指定可能（過去日指定で「入社時の時給を遡って登録」に対応）
 - 同一 `effective_from` のレコードが既存の場合は上書き更新
 
-**レスポンス（200 OK）**: 更新後の全時給履歴を返却
+**レスポンス（201 Created）**: 設定した時給を単票（`HourlyRateResponse`）で返却
 
-**認可**（認可根治 Wave6 追加戦 / 実装は `ShiftHourlyRateService#checkHourlyRateAccess`）
+**認可**（CMP-261021-0659 / 実装は `ShiftHourlyRateAuthorizer#checkHourlyRateWriteAccess`）
 
-参照（`GET /api/v1/shifts/hourly-rate`）と同一の判定を書込にも適用する。
-ボディの `user_id` が本人以外を指す場合は、呼び出し元が当該チームの ADMIN / DEPUTY_ADMIN であり、
+登録・同日訂正は、対象が本人か他人かにかかわらず、呼び出し元が当該チームの ADMIN / DEPUTY_ADMIN であり、
 かつ**対象ユーザーも当該チームのメンバーである**ことを要求する（対象側 BOLA 封鎖）。
+SYSTEM_ADMIN は従来どおり所属判定を短絡して許可する。管理者の判定は既存の `checkAdminOrAbove` を使い、新しい permission 条件を加えない。
+拒否は upsert より前に行い、時給・履歴を変更しない。参照は従来の本人 + 管理者という判定を維持する。
 
 **エラーレスポンス**
 | ステータス | 条件 |
 |-----------|------|
 | 400 | バリデーションエラー |
-| 403 | チームメンバーではない / 他メンバーの時給を管理権限なしで登録した / 対象ユーザーが当該チームの非メンバー |
+| 401 | 未認証 |
+| 403 | 当該チームの管理権限がない（本人への登録・訂正を含む） / 対象ユーザーが当該チームの非メンバー |
 
 ---
 
@@ -1798,6 +1806,37 @@ D&D UI 用の差分割当 API。個別ユーザーの追加・削除を `shift_s
 | 400 | バリデーションエラー（add/remove 両方空、無効な user_id 等） |
 | 403 | ADMIN / DEPUTY_ADMIN（MANAGE_SHIFTS）ではない |
 | 404 | スロットが存在しない |
+
+**【CMP-261010-1432】version の返却**: 枠の応答（`GET /schedules/{id}/slots` の各要素・`PATCH /slots/{id}`・本 API）はトップレベルに `version`（`shift_slots.version` の更新後の値）を返す。クライアントは次の操作でその値を `slotVersion` に送る（`0` 固定送信は 2 回目以降の操作で 409 `SHIFT_018` になる）。
+
+#### `POST /api/v1/shifts/slots/{id}/assignments/move`【CMP-261010-1432 新規】
+
+ボードの D&D で「枠 X の割当メンバーを枠 Y へ移す」操作を **1 トランザクション** で行う。削除と追加を 2 回の `PATCH /assignments` に分けると、追加が拒否されたときに移動元の割当だけが失われるため、本 API を使う。
+
+**リクエストボディ**
+```json
+{
+  "targetSlotId": 102,
+  "userId": 12,
+  "sourceSlotVersion": 3,
+  "targetSlotVersion": 5
+}
+```
+
+- パスの `{id}` が移動元の枠。`targetSlotId` は**同じシフト表**の別の枠であること
+- `sourceSlotVersion` / `targetSlotVersion`: 必須。両枠の楽観的ロック（現行値と一致しなければ 409）
+
+**レスポンス（200 OK）**: `{ "source": <ShiftSlotResponse>, "target": <ShiftSlotResponse> }`。両枠とも更新後の `version` を含む。移動先の時間帯が同じメンバーの他の枠と重なる場合は `target.warnings` に警告を入れる（`PATCH /assignments` と同じ規則）
+
+**認可・存在秘匿**: `PATCH /slots/{id}/assignments` と同じ（SYSTEM_ADMIN、または当該チームの ADMIN/DEPUTY_ADMIN）。移動先の検査は認可の後に行い、別シフト表（同チーム）・別チームの枠・不在の枠は**いずれも不在と同一の 404 `SHIFT_002`**（status・code・message まで一致）
+
+**エラーレスポンス**（いずれの拒否でも両枠とも変更しない）
+| ステータス | 条件 |
+|-----------|------|
+| 400 | バリデーションエラー / 移動元と移動先が同じ枠（`COMMON_001`）/ 移動先が満員（`SHIFT_017`） |
+| 403 | 同チームの一般メンバー・SUPPORTER（`COMMON_002`） |
+| 404 | 移動元・移動先の枠が不在、越境、移動先が別シフト表（`SHIFT_002`） |
+| 409 | version 不一致（`SHIFT_018`）/ 移動元に当該メンバーが割り当てられていない（`SHIFT_046`）/ 移動先に既に割り当て済み・同一時間帯の別枠に割当済み（`SHIFT_042`） |
 | 409 | 楽観的ロック競合 / 追加対象ユーザーが ABSOLUTE_REST を提出している / PUBLISHED 状態で時間帯・必要人数変更に該当する操作 |
 
 ---
@@ -1969,7 +2008,7 @@ D&D UI 用の差分割当 API。個別ユーザーの追加・削除を `shift_s
 | 400 | バリデーションエラー（reason 空、request_type 不正、target_slot_id が他スケジュール等） |
 | 403 | チームメンバーではない / 他人の割当に対する依頼 / SUPPORTER・GUEST |
 | 404 | schedule_id / slot_id が存在しない |
-| 409 | `status` が `PUBLISHED / ARCHIVED`（shift_swap_requests の管轄に案内） |
+| 409 | `status` が `PUBLISHED / ARCHIVED`（shift_swap_requests の管轄に案内）。`SHIFT_012`（INVALID_SCHEDULE_STATUS）。**【CMP-261010-1432】で実装**（それまで状態を見ずに作成していた）。認可（非メンバーは不在と同一の 404）の後に判定し、行は作らない |
 | 429 | 同一スケジュールに対する自分の `OPEN` 状態の依頼数が 5 件を超過 |
 
 ---
@@ -2013,6 +2052,7 @@ D&D UI 用の差分割当 API。個別ユーザーの追加・削除を `shift_s
 }
 ```
 
+- **【CMP-261010-1432】実装上の応答形**: 各要素のトップレベルに `requesterName`（依頼者の表示名。退会者など解決できない場合は `null`）を持つ。名前解決は一覧 1 回のバッチ（`NameResolverService#resolveUserDisplayNames`）で行い、件数に依らずクエリ数は一定。`requestInfo.requestedBy`（userId）は従来どおり残す
 - **権限フィルタ**: MEMBER は自分の依頼のみ返却（バックエンドで強制適用。URL 直打ちで他人の一覧は取得不可）。ADMIN / DEPUTY_ADMIN（MANAGE_SHIFTS）はスケジュール全体を閲覧可能
 - **管理画面ソート**: `status = OPEN` を先頭に、続いて `created_at DESC` の複合ソート（未処理を優先表示）
 
@@ -2069,6 +2109,7 @@ D&D UI 用の差分割当 API。個別ユーザーの追加・削除を `shift_s
 |-----------|------|
 | 400 | `action` が ACCEPTED / REJECTED 以外 |
 | 403 | ADMIN / DEPUTY_ADMIN（MANAGE_SHIFTS）ではない |
+| 403 | **【CMP-261010-1432】** `SHIFT_045`: 依頼者本人による審査（自己審査）。SYSTEM_ADMIN も例外なし。自分の依頼は取下げ（`DELETE`）で代替する。判定は `status`・`version` の照合より先に行う（version が古い自己審査も 403 `SHIFT_045`） |
 | 404 | 依頼が存在しない |
 | 409 | `status != 'OPEN'`（二重審査防止）/ 楽観的ロック競合 |
 

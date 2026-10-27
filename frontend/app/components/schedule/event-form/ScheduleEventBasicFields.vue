@@ -14,7 +14,7 @@ const form = defineModel<ScheduleEventFormState>('form', { required: true })
 <template>
   <div>
     <label class="mb-1 block text-sm font-medium"
-      >タイトル <span class="text-red-500">*</span></label
+      >{{ $t('schedule.form.title') }} <span class="text-red-500">*</span></label
     >
     <InputText
       v-model="form.title"
@@ -27,16 +27,16 @@ const form = defineModel<ScheduleEventFormState>('form', { required: true })
   <div class="flex items-center gap-4">
     <div v-if="!isPersonalScope" class="flex items-center gap-2">
       <Checkbox v-model="form.attendanceRequired" input-id="attendance-required" :binary="true" />
-      <label for="attendance-required" class="text-sm cursor-pointer">出欠確認する</label>
+      <label for="attendance-required" class="text-sm cursor-pointer">{{ $t('schedule.form.attendanceRequired') }}</label>
     </div>
     <div class="flex items-center gap-2">
       <ToggleSwitch v-model="form.allDay" />
-      <label class="text-sm">終日</label>
+      <label class="text-sm">{{ $t('schedule.form.allDay') }}</label>
     </div>
   </div>
   <!-- よく使う時間（履歴クイック選択） -->
   <div v-if="timeHistory.length > 0 && !form.allDay" class="flex flex-wrap gap-1.5 mb-1">
-    <span class="text-xs text-surface-400 self-center">履歴:</span>
+    <span class="text-xs text-surface-400 self-center">{{ $t('schedule.form.history') }}</span>
     <button
       v-for="h in timeHistory"
       :key="`${h.startTime}-${h.endTime}`"
@@ -47,9 +47,9 @@ const form = defineModel<ScheduleEventFormState>('form', { required: true })
       {{ h.startTime }}〜{{ h.endTime }}
     </button>
   </div>
-  <div class="grid grid-cols-2 gap-3">
+  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
     <div>
-      <label for="schedule-start-date" class="mb-1 block text-sm font-medium">開始日</label>
+      <label for="schedule-start-date" class="mb-1 block text-sm font-medium">{{ $t('schedule.form.startDate') }}</label>
       <DatePicker
         v-model="form.startDate"
         input-id="schedule-start-date"
@@ -59,7 +59,7 @@ const form = defineModel<ScheduleEventFormState>('form', { required: true })
       />
     </div>
     <div v-if="!form.allDay">
-      <label class="mb-1 block text-sm font-medium">開始時刻</label>
+      <label class="mb-1 block text-sm font-medium">{{ $t('schedule.form.startTime') }}</label>
       <Select
         v-model="form.startTime"
         :options="timeOptions"
@@ -70,9 +70,9 @@ const form = defineModel<ScheduleEventFormState>('form', { required: true })
       />
     </div>
   </div>
-  <div class="grid grid-cols-2 gap-3">
+  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
     <div>
-      <label for="schedule-end-date" class="mb-1 block text-sm font-medium">終了日</label>
+      <label for="schedule-end-date" class="mb-1 block text-sm font-medium">{{ $t('schedule.form.endDate') }}</label>
       <DatePicker
         v-model="form.endDate"
         input-id="schedule-end-date"
@@ -82,7 +82,7 @@ const form = defineModel<ScheduleEventFormState>('form', { required: true })
       />
     </div>
     <div v-if="!form.allDay">
-      <label class="mb-1 block text-sm font-medium">終了時刻</label>
+      <label class="mb-1 block text-sm font-medium">{{ $t('schedule.form.endTime') }}</label>
       <Select
         v-model="form.endTime"
         :options="timeOptions"
@@ -94,7 +94,7 @@ const form = defineModel<ScheduleEventFormState>('form', { required: true })
     </div>
   </div>
   <div>
-    <label class="mb-1 block text-sm font-medium">場所</label>
-    <InputText v-model="form.location" class="w-full" placeholder="場所（任意）" />
+    <label class="mb-1 block text-sm font-medium">{{ $t('schedule.form.location') }}</label>
+    <InputText v-model="form.location" class="w-full" :placeholder="$t('schedule.form.locationPlaceholder')" />
   </div>
 </template>

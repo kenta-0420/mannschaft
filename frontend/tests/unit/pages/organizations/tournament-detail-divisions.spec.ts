@@ -57,7 +57,8 @@ describe('organizations/[slug]/tournaments/[tId]/index.vue 部門タブ', () => 
     notifyError.mockReset()
     getTournament.mockResolvedValue(tournamentRes)
     getParticipants.mockResolvedValue({ data: [] })
-    getEntrySummary.mockResolvedValue({ summary: [] })
+    // BE は ApiResponse（{ data: ... }）で包んで返す
+    getEntrySummary.mockResolvedValue({ data: { divisionId: 5, summary: [] } })
   })
 
   it('DIV-001: 部門一覧を取得し、先頭部門を初期選択して参加チームを読み込む', async () => {
@@ -91,7 +92,22 @@ describe('organizations/[slug]/tournaments/[tId]/index.vue 部門タブ', () => 
     expect(getParticipants).toHaveBeenLastCalledWith('org-000009', 12, 6)
   })
 
-  it('DIV-003: 部門が 0 件なら「部門が登録されていません」を出す', async () => {
+  it('DIV-006: 参加チーム表にチーム名とエントリー数（{data} 包みのサマリー）が出る', async () => {
+    getDivisions.mockResolvedValue({ data: [{ id: 5, name: 'D1' }] })
+    getParticipants.mockResolvedValue({
+      data: [{ id: 31, divisionId: 5, teamId: 7, teamName: 'レッドFC', status: 'ACTIVE' }],
+    })
+    getEntrySummary.mockResolvedValue({
+      data: { divisionId: 5, summary: [{ participantId: 31, teamId: 7, entryCount: 7 }] },
+    })
+    const wrapper = await mountPage()
+
+    expect(getEntrySummary).toHaveBeenCalledWith('org-000009', 12, 5)
+    expect(wrapper.text()).toContain('レッドFC')
+    expect(wrapper.text()).toContain('7名')
+  })
+
+  it('DIV-003:部門が 0 件なら「部門が登録されていません」を出す', async () => {
     getDivisions.mockResolvedValue({ data: [] })
     const wrapper = await mountPage()
 

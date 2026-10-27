@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { marked } from 'marked'
+import { sanitizeHtml } from '~/utils/sanitizeHtml'
 import type { BulletinThreadResponse, BulletinCategory, BulletinScopeType } from '~/types/bulletin'
 
 const props = defineProps<{
@@ -22,6 +24,7 @@ const { showError, showSuccess } = useNotification()
 const threads = ref<BulletinThreadResponse[]>([])
 const categories = ref<BulletinCategory[]>([])
 const loading = ref(false)
+const loadError = shallowRef<unknown>(null)
 const selectedCategoryId = ref<number | undefined>(undefined)
 const searchQuery = ref('')
 const totalPages = ref(0)
@@ -38,6 +41,8 @@ async function loadCategories() {
 
 async function loadThreads(page = 0) {
   loading.value = true
+  loadError.value = null
+  currentPage.value = page
   try {
     const res = await getThreads({
       scopeType: props.scopeType,
@@ -49,7 +54,8 @@ async function loadThreads(page = 0) {
     threads.value = res.data
     totalPages.value = res.meta.totalPages
     currentPage.value = res.meta.page
-  } catch {
+  } catch (error) {
+    loadError.value = error
     showError(t('bulletin.list.loadFailed'))
   } finally {
     loading.value = false
@@ -77,6 +83,18 @@ async function onArchive(threadId: number) {
   }
 }
 
+/** HTML/Markdownの装飾を除去し、文字参照を復元して先頭100文字だけを表示する。 */
+function bodyPreview(body: string): string {
+  const html = marked.parse(body, { async: false })
+    .replace(/<\/(?:p|li|h[1-6]|blockquote|pre|tr)>|<br\s*\/?\s*>/gi, '$& ')
+  // template内は非活性なので、プレビュー用の画像等を取得せずテキストだけ取り出す。
+  const template = document.createElement('template')
+  template.innerHTML = sanitizeHtml(html)
+  template.content.querySelectorAll('script, style').forEach(element => element.remove())
+  const plainText = (template.content.textContent ?? '').replace(/\s+/g, ' ').trim()
+  return Array.from(plainText).slice(0, 100).join('')
+}
+
 function getPriorityClass(priority: string): string {
   switch (priority) {
     case 'CRITICAL': return 'bg-red-100 text-red-700'
@@ -101,18 +119,18 @@ defineExpose({ refresh: () => loadThreads() })
   <div>
     <!-- ヘッダー -->
     <div class="mb-4 flex flex-wrap items-center gap-3">
-      <InputText v-model="searchQuery" :placeholder="t('bulletin.list.searchPlaceholder')" class="w-48" />
+      <InputText v-model="searchQuery" :placeholder="t('bulletin.list.searchPlaceholder')" class="w-full min-w-0 text-base sm:w-48" />
       <Select
         v-model="selectedCategoryId"
         :options="[{ id: undefined, name: t('bulletin.list.allCategories') }, ...categories]"
         option-label="name"
         option-value="id"
         :placeholder="t('bulletin.list.category')"
-        class="w-40"
+        class="w-full min-w-0 sm:w-40"
       />
-      <div class="ml-auto flex items-center gap-2">
-        <Button :label="t('bulletin.list.readAll')" text size="small" @click="onReadAll" />
-        <Button v-if="props.canCreate !== false" :label="t('bulletin.list.newThread')" icon="pi pi-plus" @click="emit('create')" />
+      <div class="ml-auto flex flex-wrap items-center gap-2">
+        <Button :label="t('bulletin.list.readAll')" text size="small" class="min-h-11" @click="onReadAll" />
+        <Button v-if="props.canCreate !== false" :label="t('bulletin.list.newThread')" icon="pi pi-plus" class="min-h-11" @click="emit('create')" />
       </div>
     </div>
 
@@ -121,11 +139,14 @@ defineExpose({ refresh: () => loadThreads() })
       <LoadingBounce />
     </div>
 
-    <div v-else class="flex flex-col gap-2">
-      <div
+    <DashboardErrorState v-else-if="loadError" :error="loadError" @retry="loadThreads(currentPage)" />
+    <DashboardEmptyState v-else-if="threads.length === 0" icon="pi pi-clipboard" :message="t('bulletin.list.empty')" />
+    <div v-else data-testid="bulletin-thread-grid" class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      <SectionCard
         v-for="thread in threads"
         :key="thread.id"
-        class="group flex items-start gap-3 rounded-xl border border-surface-300 bg-surface-0 p-4 transition-shadow hover:shadow-sm dark:border-surface-700 dark:bg-surface-800"
+        data-testid="bulletin-thread-card"
+        class="group flex min-w-0 flex-col gap-3 hover:shadow-md"
         :class="!thread.isRead ? 'border-l-4 border-l-primary' : ''"
       >
         <!-- ピン -->
@@ -133,7 +154,8 @@ defineExpose({ refresh: () => loadThreads() })
 
         <button
           type="button"
-          class="min-w-0 flex-1 text-left"
+          data-testid="bulletin-thread-select"
+          class="min-h-11 min-w-11 flex-1 text-left"
           @click="emit('select', thread)"
         >
           <div class="mb-1 flex flex-wrap items-center gap-2">
@@ -146,12 +168,13 @@ defineExpose({ refresh: () => loadThreads() })
             <span v-if="thread.isLocked" class="text-xs text-surface-400"><i class="pi pi-lock" /> {{ t('bulletin.list.locked') }}</span>
           </div>
 
-          <h3 class="text-sm font-semibold" :class="!thread.isRead ? 'font-bold' : ''">
+          <h3 class="break-words text-base font-semibold [overflow-wrap:anywhere]" :class="!thread.isRead ? 'font-bold' : ''">
             {{ thread.title }}
           </h3>
 
-          <div class="mt-1 flex items-center gap-3 text-xs text-surface-400">
-            <span>{{ thread.author.displayName }}</span>
+          <p data-testid="bulletin-thread-preview" class="mt-2 break-words text-sm leading-relaxed text-surface-600 [overflow-wrap:anywhere] dark:text-surface-300">{{ bodyPreview(thread.body) }}</p>
+          <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-surface-400">
+            <span>{{ thread.author.displayName || t('bulletin.unknownAuthor') }}</span>
             <span>{{ relativeTime(thread.createdAt) }}</span>
             <span v-if="thread.replyCount"><i class="pi pi-comment" /> {{ thread.replyCount }}</span>
             <span v-if="thread.readTrackingMode !== 'NONE'"><i class="pi pi-eye" /> {{ thread.readCount }}</span>
@@ -166,16 +189,14 @@ defineExpose({ refresh: () => loadThreads() })
           text
           size="small"
           severity="secondary"
-          class="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+          class="min-h-11 min-w-11 self-end"
           @click.stop="onArchive(thread.id)"
         />
-      </div>
-
-      <DashboardEmptyState v-if="threads.length === 0" icon="pi pi-clipboard" :message="t('bulletin.list.empty')" />
+      </SectionCard>
     </div>
 
     <!-- ページネーション -->
-    <div v-if="totalPages > 1" class="mt-4 flex justify-center">
+    <div v-if="!loadError && totalPages > 1" class="mt-4 flex justify-center">
       <Paginator :rows="20" :total-records="totalPages * 20" :first="currentPage * 20" @page="(e: { page: number }) => loadThreads(e.page)" />
     </div>
   </div>

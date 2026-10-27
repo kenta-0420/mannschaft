@@ -24,6 +24,11 @@ import type { ScopeTab } from '~/types/scopeShell'
 import type { TeamResponse } from '~/types/team'
 import TeamSidebar from '~/components/TeamSidebar.vue'
 import { provideTeamShellContext } from '~/composables/useTeamShellContext'
+import {
+  canManageOrgAffiliation as resolveCanManageOrgAffiliation,
+  canManagePermissionGroups as resolveCanManagePermissionGroups,
+  shouldLeaveGuardedTeamTab,
+} from '~/utils/teamAffiliationAccess'
 import { resolveSlugRedirectPath } from '~/utils/slugRedirect'
 
 definePageMeta({
@@ -45,9 +50,14 @@ const teamSlug = computed(() => String(route.params.slug))
 
 const {
   roleName,
+  roleResolved,
+  roleLoadFailed,
+  permissions,
   loading: roleLoading,
   loadPermissions,
   isAdmin,
+  isScopeAdmin,
+  canGrantAdminOnlyPermissions,
   isAdminOrDeputy,
 } = useRoleAccess('team', teamSlug)
 
@@ -137,7 +147,7 @@ const showLeaveConfirm = ref(false)
 const adminLens = ref(true)
 
 const effectiveViewerRole = computed<ViewerRole>(() =>
-  adminLens.value ? ((roleName.value as ViewerRole | null) ?? 'PUBLIC') : 'MEMBER',
+  !adminLens.value && isAdminOrDeputy.value ? 'MEMBER' : ((roleName.value as ViewerRole | null) ?? 'PUBLIC'),
 )
 
 // SUPPORTER/GUEST/未所属は TeamSidebar が項目を表示しないため、
@@ -244,6 +254,8 @@ async function refresh() {
 const SEGMENT_TO_TAB: Record<string, string> = {
   info: 'info',
   members: 'members',
+  affiliations: 'affiliations',
+  'permission-groups': 'permission-groups',
   invites: 'invites',
   supporters: 'supporters',
   'join-requests': 'join-requests',
@@ -277,6 +289,8 @@ const SHELL_SEGMENTS = new Set([
   'supporters',
   'join-requests',
   'modules',
+  'affiliations',
+  'permission-groups',
   'reservations',
   'nav',
   'guide',
@@ -314,6 +328,8 @@ const pathSegments = computed<string[]>(() =>
  *  slug セグメントがヒットして activeTab が誤る。slice(2) で slug を照合から外す。
  */
 const matchedShellSegment = computed<string | null>(() => {
+  // 管理コンソールは独立ページ。末尾に予約などのタブ名があってもshellで包まない。
+  if (pathSegments.value[2] === 'admin') return null
   for (const seg of pathSegments.value.slice(2)) {
     if (SHELL_SEGMENTS.has(seg)) return seg
   }
@@ -420,6 +436,22 @@ watch(teamSlug, () => {
   if (isShellRoute.value) void loadShellData()
 })
 
+/**
+ * チームの加盟操作者か（F01.2.1 8-D）。ADMIN 割当（scopeAdmin。SYSTEM_ADMIN 単独は不可）か、
+ * MANAGE_ORG_AFFILIATION を付与された者で、管理者レンズ ON のとき。
+ */
+const canManageOrgAffiliation = computed(() => resolveCanManageOrgAffiliation({
+  adminLens: adminLens.value,
+  isScopeAdmin: isScopeAdmin.value,
+  permissions: permissions.value,
+}))
+
+/** 権限グループの画面・メンバー一覧の割当を出してよいか（チーム ADMIN 割当・管理者レンズ ON。SYSTEM_ADMIN のみは不可）。 */
+const canManagePermissionGroups = computed(() => resolveCanManagePermissionGroups({
+  adminLens: adminLens.value,
+  isScopeAdmin: isScopeAdmin.value,
+}))
+
 /** 管理系タブ key（レンズ OFF・非管理者では滞在させない）。 */
 const ADMIN_ONLY_SEGMENTS = new Set(['invites', 'supporters', 'join-requests', 'modules'])
 
@@ -433,9 +465,31 @@ watch([adminLens, isAdminOrDeputy, () => route.path], () => {
   }
 })
 
+/**
+ * 「所属組織」「権限グループ」タブ（F01.2.1 8-D）の滞在ガード。
+ * 権限の取得が終わってから、レンズ OFF・権限なし・権限剥奪（AC-P05）のときダッシュボードへ戻す。
+ * 取得前は戻さない（管理者を取得前に誤って追い返さない）。権限が無いまま子ページが管理 API を呼ばないよう、
+ * 子ページ側も canManage* が false の間は描画しない。
+ */
+watch(
+  [adminLens, canManageOrgAffiliation, canManagePermissionGroups, roleLoading, teamLoaded, () => route.path],
+  () => {
+    if (shouldLeaveGuardedTeamTab({
+      tab: activeTab.value,
+      ready: teamLoaded.value && !roleLoading.value,
+      canAffiliate: canManageOrgAffiliation.value,
+      canGroups: canManagePermissionGroups.value,
+    })) {
+      navigateTo(`/teams/${teamSlug.value}`)
+    }
+  },
+)
+
 // =============================================================================
 // タブ定義（権限出し分けは visible に移植）
 // =============================================================================
+const featureVisibility = useScopeFeatureVisibility('team', teamSlug, roleName, () => !adminLens.value)
+
 const tabs = computed<ScopeTab[]>(() => {
   const base = `/teams/${teamSlug.value}`
   return [
@@ -450,12 +504,14 @@ const tabs = computed<ScopeTab[]>(() => {
       to: `${base}/info`,
       icon: 'pi pi-info-circle',
       labelKey: 'teamShell.tab.info',
+      visible: featureVisibility.isVisible('info'),
     },
     {
       key: 'members',
       to: `${base}/members`,
       icon: 'pi pi-users',
       labelKey: 'teamShell.tab.members',
+      visible: featureVisibility.isVisible('members'),
     },
     {
       key: 'invites',
@@ -486,18 +542,32 @@ const tabs = computed<ScopeTab[]>(() => {
       visible: isAdmin.value && adminLens.value,
     },
     {
+      key: 'affiliations',
+      to: `${base}/affiliations`,
+      icon: 'pi pi-sitemap',
+      labelKey: 'teamShell.tab.affiliations',
+      visible: canManageOrgAffiliation.value,
+    },
+    {
+      key: 'permission-groups',
+      to: `${base}/permission-groups`,
+      icon: 'pi pi-shield',
+      labelKey: 'teamShell.tab.permissionGroups',
+      visible: canManagePermissionGroups.value,
+    },
+    {
       key: 'reservations',
       to: `${base}/reservations`,
       icon: 'pi pi-calendar-clock',
       labelKey: 'reservation.tab.team_page',
-      visible: !!roleName.value && reservationEnabled.value,
+      visible: (!!roleName.value && reservationEnabled.value) && featureVisibility.isVisible('reservations'),
     },
     {
       key: 'nav',
       to: `${base}/nav`,
       icon: 'pi pi-compass',
       labelKey: 'nav.tab',
-      visible: !!roleName.value,
+      visible: (!!roleName.value) && featureVisibility.isVisible('nav'),
     },
   ]
 })
@@ -529,8 +599,13 @@ provideTeamShellContext({
   team: computed(() => team.value),
   displayName,
   roleName,
+  roleResolved,
+  roleLoadFailed,
   isAdmin,
   isAdminOrDeputy,
+  canManageOrgAffiliation,
+  canManagePermissionGroups,
+  canGrantAdminOnlyPermissions,
   effectiveViewerRole,
   adminLens,
   widgetVisibilitySettings,
@@ -575,7 +650,7 @@ provideTeamShellContext({
         :tabs="tabs"
         :active-tab="activeTab"
         :sidebar="TeamSidebar"
-        :sidebar-props="{ teamId: teamSlug }"
+        :sidebar-props="{ teamId: teamSlug, memberLensActive: !adminLens }"
         :show-sidebar="showSidebar"
         :show-lens="isAdminOrDeputy"
         :lens="adminLens"
@@ -609,6 +684,7 @@ provideTeamShellContext({
         </template>
 
         <!-- タブ本体（子）— 永続シェル下で差し替え -->
+        <DashboardErrorState v-if="featureVisibility.error.value" :error="featureVisibility.error.value" @retry="featureVisibility.refresh(true)" />
         <NuxtPage />
       </ScopePageShell>
 
@@ -628,9 +704,10 @@ provideTeamShellContext({
           <Button
             :label="t('common.scopeShell.retry')"
             icon="pi pi-refresh"
+            class="min-h-11 min-w-11"
             @click="retryShellData"
           />
-          <NuxtLink to="/dashboard" class="inline-block text-primary-600 hover:underline">
+          <NuxtLink to="/dashboard" class="inline-flex min-h-11 items-center text-primary-600 hover:underline">
             <i class="pi pi-arrow-left mr-1" />
             {{ t('common.scopeShell.back_to_dashboard') }}
           </NuxtLink>

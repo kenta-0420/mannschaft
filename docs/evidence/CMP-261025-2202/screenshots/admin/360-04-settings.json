@@ -1,0 +1,411 @@
+{
+  "url": "http://localhost:3001/teams/teams-1792955080937/modules",
+  "locale": "ja",
+  "viewport": {
+    "width": 360,
+    "height": 800
+  },
+  "scrollWidth": 360,
+  "clientWidth": 360,
+  "controls": [
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "メニューを開く",
+      "box": {
+        "x": 8,
+        "y": 9.5,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "通知",
+      "box": {
+        "x": 308,
+        "y": 9.5,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "hidden",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "inline-flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 259,
+        "y": -6,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "false"
+    },
+    {
+      "tag": "INPUT",
+      "id": "",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 259,
+        "y": 118,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "false"
+    },
+    {
+      "tag": "INPUT",
+      "id": "",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 259,
+        "y": 242,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "false"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "お知らせをメンバーに表示",
+      "box": {
+        "x": 115,
+        "y": 579,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-announcements-member",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 137,
+        "y": 579,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "お知らせをサポータに表示",
+      "box": {
+        "x": 211,
+        "y": 579,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-announcements-supporter",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 233,
+        "y": 579,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "チャットをメンバーに表示",
+      "box": {
+        "x": 115,
+        "y": 640,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-chat-member",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 137,
+        "y": 640,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "チャットをサポータに表示",
+      "box": {
+        "x": 211,
+        "y": 640,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-chat-supporter",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 233,
+        "y": 640,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "掲示板をメンバーに表示",
+      "box": {
+        "x": 115,
+        "y": 701,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-bulletin-member",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 137,
+        "y": 701,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "false"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "掲示板をサポータに表示",
+      "box": {
+        "x": 211,
+        "y": 701,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-bulletin-supporter",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 233,
+        "y": 701,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "タイムラインをメンバーに表示",
+      "box": {
+        "x": 115,
+        "y": 762,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-timeline-member",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 137,
+        "y": 762,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "タイムラインをサポータに表示",
+      "box": {
+        "x": 211,
+        "y": 762,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-timeline-supporter",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 233,
+        "y": 762,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    }
+  ]
+}

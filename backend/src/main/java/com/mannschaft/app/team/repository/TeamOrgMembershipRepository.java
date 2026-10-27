@@ -345,6 +345,9 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
      * {@code TIMESTAMPADD} で UTC 壁時計へ戻す（2-B2 の承認・{@code TeamOrgAffiliationRestrictionRepository} と同じ作法）。
      * 作成した行の ID は {@link #lastInsertId()} で読む。</p>
      *
+     * <p>作成時点の組織・チームの閉鎖の世代（{@code org_closure_generation}・{@code team_closure_generation}）を記録する
+     * （F01.2.1 §4.5・{@code TeamOrgClosureGeneration}）。</p>
+     *
      * @param groupId 加盟後に所属させるグループ（未分類なら {@link #insertPendingInviteUnassigned} を使う）
      * @return 挿入した行数（1）
      */
@@ -352,19 +355,22 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     @Query(value = """
             INSERT INTO team_org_memberships
                 (team_id, organization_id, status, direction, group_id, message, invited_by,
-                 invited_at, created_at, updated_at)
+                 invited_at, created_at, updated_at, org_closure_generation, team_closure_generation)
             VALUES
                 (:teamId, :organizationId, 'PENDING', 'ORG_INVITE', :groupId, :message, :invitedBy,
                  TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'),
                  TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'),
-                 TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'))
+                 TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'),
+                 :orgClosureGeneration, :teamClosureGeneration)
             """, nativeQuery = true)
     int insertPendingInvite(@Param("teamId") Long teamId,
                             @Param("organizationId") Long organizationId,
                             @Param("groupId") java.util.UUID groupId,
                             @Param("message") String message,
                             @Param("invitedBy") Long invitedBy,
-                            @Param("invitedAtEpochSecond") long invitedAtEpochSecond);
+                            @Param("invitedAtEpochSecond") long invitedAtEpochSecond,
+                            @Param("orgClosureGeneration") long orgClosureGeneration,
+                            @Param("teamClosureGeneration") long teamClosureGeneration);
 
     /**
      * {@link #insertPendingInvite} の未分類（{@code group_id = NULL}）版。型のない null のバインドを避けるため分けている。
@@ -375,18 +381,21 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     @Query(value = """
             INSERT INTO team_org_memberships
                 (team_id, organization_id, status, direction, group_id, message, invited_by,
-                 invited_at, created_at, updated_at)
+                 invited_at, created_at, updated_at, org_closure_generation, team_closure_generation)
             VALUES
                 (:teamId, :organizationId, 'PENDING', 'ORG_INVITE', NULL, :message, :invitedBy,
                  TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'),
                  TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'),
-                 TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'))
+                 TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'),
+                 :orgClosureGeneration, :teamClosureGeneration)
             """, nativeQuery = true)
     int insertPendingInviteUnassigned(@Param("teamId") Long teamId,
                                       @Param("organizationId") Long organizationId,
                                       @Param("message") String message,
                                       @Param("invitedBy") Long invitedBy,
-                                      @Param("invitedAtEpochSecond") long invitedAtEpochSecond);
+                                      @Param("invitedAtEpochSecond") long invitedAtEpochSecond,
+                                      @Param("orgClosureGeneration") long orgClosureGeneration,
+                                      @Param("teamClosureGeneration") long teamClosureGeneration);
 
     /**
      * 同じ接続で直前に INSERT した行の AUTO_INCREMENT 値（{@link #insertPendingInvite} の直後に同じトランザクションで呼ぶ）。
@@ -603,4 +612,132 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
         + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.PENDING "
         + "AND m.direction = com.mannschaft.app.team.entity.TeamOrgAffiliationDirection.TEAM_APPLY")
     int deletePendingApplicationOfOrganization(@Param("id") Long id, @Param("organizationId") Long organizationId);
+
+    // ========================================================================
+    // F01.2.1 2-D: 離脱・除名（§6.6）と、アーカイブ・削除の片付け（§4.5・§6.9）
+    // ========================================================================
+
+    /**
+     * 離脱・除名: 条件付き DELETE（{@code id, team_id, organization_id, ACTIVE}。§4.1・§6.6）。
+     *
+     * @return 削除した行数（0 または 1）
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM TeamOrgMembershipEntity m WHERE m.id = :id AND m.teamId = :teamId "
+        + "AND m.organizationId = :organizationId "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE")
+    int deleteActiveMembership(@Param("id") Long id, @Param("teamId") Long teamId,
+                               @Param("organizationId") Long organizationId);
+
+    /**
+     * 組織の PENDING（申請・招待の両方向）を {@code SELECT ... FOR UPDATE} で ID 昇順に引く
+     * （組織のアーカイブ・論理削除の片付け。消す行と通知する行を一致させるため、ロックしてから消す）。
+     */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM TeamOrgMembershipEntity m WHERE m.organizationId = :organizationId "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.PENDING "
+        + "ORDER BY m.id ASC")
+    List<TeamOrgMembershipEntity> findPendingByOrganizationIdForUpdate(@Param("organizationId") Long organizationId);
+
+    /**
+     * チームの加盟（{@code status} 指定なしなら PENDING・ACTIVE とも）を {@code SELECT ... FOR UPDATE} で ID 昇順に引く
+     * （チームのアーカイブ・論理削除の片付け）。
+     */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM TeamOrgMembershipEntity m WHERE m.teamId = :teamId ORDER BY m.id ASC")
+    List<TeamOrgMembershipEntity> findAllByTeamIdForUpdate(@Param("teamId") Long teamId);
+
+    /**
+     * 片付けで、ロック済みの行を ID 集合で物理削除する（呼び出し側が先に {@code FOR UPDATE} で引いた行だけを渡す）。
+     *
+     * @return 削除した行数
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM TeamOrgMembershipEntity m WHERE m.id IN :ids")
+    int deleteByIdIn(@Param("ids") java.util.Collection<Long> ids);
+
+    /**
+     * 招待の受信通知を outbox に予約した瞬間を記録する（F01.2.1 2-D・§4.5）。呼び出し側が同じ tx で
+     * 行を {@code FOR UPDATE} で確かめ、通知を予約するときだけ呼ぶ。時刻はエポック秒で渡し UTC 壁時計へ戻す（§4.6）。
+     *
+     * @return 更新した行数（0 または 1）
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "UPDATE team_org_memberships SET invite_notified_at = "
+            + "TIMESTAMPADD(SECOND, :epochSecond, '1970-01-01 00:00:00') "
+            + "WHERE id = :id AND status = 'PENDING' AND direction = 'ORG_INVITE'", nativeQuery = true)
+    int markInviteNotified(@Param("id") Long id, @Param("epochSecond") long epochSecond);
+
+    /**
+     * 片付けの回復バッチ（{@code TeamOrgLifecycleCleanupBatch}）: PENDING の行がある組織ごとに、PENDING が記録した組織の
+     * 閉鎖の世代の最小値を組織 ID の昇順に返す（組織の状態は organization ドメインのポートで確かめる。組織の表は team ドメインから
+     * JOIN しない）。「閉鎖より前に作られた PENDING が残っている」組織（最小値 &lt; 組織のいまの世代）を、アーカイブ解除済みでも
+     * 拾うのに使う（§4.5）。
+     */
+    @Query("SELECT m.organizationId AS organizationId, MIN(m.orgClosureGeneration) AS oldestOrgClosureGeneration "
+        + "FROM TeamOrgMembershipEntity m "
+        + "WHERE m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.PENDING "
+        + "GROUP BY m.organizationId ORDER BY m.organizationId")
+    List<PendingClosureGenerationByOrganizationRow> findOldestPendingOrgClosureGenerationByOrganization();
+
+    /**
+     * 片付けの回復バッチ: 片付けが残っているチームの ID を昇順に返す。アーカイブ済みのチームの PENDING と、
+     * 論理削除済み（または行の無い）チームの加盟（PENDING・ACTIVE とも）と、アーカイブ解除・復元済みのチームに残った
+     * 閉鎖より前に作られた PENDING（記録したチームの世代 &lt; {@code teams.closure_generation}）が対象（チームの表は同じ
+     * team ドメイン。{@code @SQLRestriction} を通さず削除済みを見るためネイティブで読む）。
+     */
+    @Query(value = "SELECT DISTINCT m.team_id FROM team_org_memberships m "
+            + "LEFT JOIN teams t ON t.id = m.team_id "
+            + "WHERE t.id IS NULL OR t.deleted_at IS NOT NULL "
+            + "OR (t.archived_at IS NOT NULL AND m.status = 'PENDING') "
+            + "OR (m.status = 'PENDING' AND m.team_closure_generation < t.closure_generation) ORDER BY m.team_id",
+            nativeQuery = true)
+    List<Number> findTeamIdsNeedingLifecycleCleanup();
+
+    // ========================================================================
+    // F01.2.1 7-A: PENDING の期限切れバッチ（§6.8）と孤児 group_id の修復バッチ（§7.3）
+    // ========================================================================
+
+    /**
+     * 期限切れバッチの候補: 作成日時（{@code invited_at}。UTC の壁時計）が期限より前の PENDING（申請・招待の両方向）の ID を
+     * 昇順に返す（ロックしない。最終の判定は {@link #findExpiredPendingByIdForUpdate} がロックの下で行う）。
+     * 期限はエポック秒で渡し、{@code TIMESTAMPADD} で UTC の壁時計へ戻す（§4.6。JDBC のタイムゾーン変換に依存しない）。
+     * 索引 {@code (status, invited_at)} を使う。
+     */
+    @Query(value = "SELECT m.id FROM team_org_memberships m WHERE m.status = 'PENDING' "
+            + "AND m.invited_at < TIMESTAMPADD(SECOND, :thresholdEpochSecond, '1970-01-01 00:00:00') ORDER BY m.id",
+            nativeQuery = true)
+    List<Number> findExpiredPendingIds(@Param("thresholdEpochSecond") long thresholdEpochSecond);
+
+    /**
+     * 加盟行のチーム ID だけを読む（期限切れでチーム行 → 加盟行の順にロックするため。Entity を永続化コンテキストに載せない）。
+     */
+    @Query("SELECT m.teamId FROM TeamOrgMembershipEntity m WHERE m.id = :id")
+    Optional<Long> findTeamIdById(@Param("id") Long id);
+
+    /**
+     * 期限切れの再確認: 加盟行を {@code SELECT ... FOR UPDATE} で取り、ロックの下でまだ PENDING で作成日時が期限より前のときだけ
+     * 返す（承認・承諾・拒否・取下げ・片付けが先に確定していれば空。§6.8）。
+     */
+    @Query(value = "SELECT * FROM team_org_memberships WHERE id = :id AND status = 'PENDING' "
+            + "AND invited_at < TIMESTAMPADD(SECOND, :thresholdEpochSecond, '1970-01-01 00:00:00') FOR UPDATE",
+            nativeQuery = true)
+    Optional<TeamOrgMembershipEntity> findExpiredPendingByIdForUpdate(
+            @Param("id") Long id, @Param("thresholdEpochSecond") long thresholdEpochSecond);
+
+    /**
+     * 孤児修復バッチの候補: グループが割り当てられている (組織, グループ) の組を重複なく返す（ACTIVE・PENDING とも。ロックしない）。
+     * グループの生存は organization ドメインのポートで確かめる（グループの表は team ドメインから JOIN しない）。
+     */
+    @Query("SELECT DISTINCT m.organizationId AS organizationId, m.groupId AS groupId FROM TeamOrgMembershipEntity m "
+        + "WHERE m.groupId IS NOT NULL")
+    List<TeamOrgGroupProjection> findDistinctOrganizationGroupPairs();
+
+    /**
+     * GDPR の個人データ収集（F01.2.1 §15・AC-G127）: そのユーザーが起こした（{@code invited_by}）か応答した
+     * （{@code responded_by}）加盟を ID 昇順に返す。
+     */
+    @Query("SELECT m FROM TeamOrgMembershipEntity m WHERE m.invitedBy = :userId OR m.respondedBy = :userId "
+        + "ORDER BY m.id ASC")
+    List<TeamOrgMembershipEntity> findByOperatorUserId(@Param("userId") Long userId);
 }

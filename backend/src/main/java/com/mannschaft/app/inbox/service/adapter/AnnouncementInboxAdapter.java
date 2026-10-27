@@ -41,10 +41,9 @@ import java.util.stream.Collectors;
  * priority は {@code titleCache} の元コンテンツ優先度（URGENT/IMPORTANT/NORMAL）を写像する。
  * 設計書: 03_business_logic.md §2・01_data_model.md §3.2・04_security_operations.md §1.2。</p>
  *
- * <p><b>スコープ解決の踏襲元</b>: {@code DashboardService} は
- * {@code userRoleRepository.findByUserIdAndTeamIdIsNotNull}（チーム）/{@code findByUserIdAndOrganizationIdIsNotNull}
- * （組織）で所属を列挙し、{@code RoleResolver.resolveViewerRole} で閲覧者ロールを解決している。
- * 本アダプタはこれを踏襲し、閲覧者ロール → 可視 visibility 集合の変換は
+ * <p><b>スコープ解決</b>: 本人のACTIVEな所属スコープの列挙を踏襲し、Inboxでは
+ * {@code RoleResolver.resolveViewerRolesFresh} で最新ロールを一括解決する。
+ * Dashboardの単件ロール解決と60秒キャッシュは維持する。閲覧者ロール → 可視 visibility 集合の変換は
  * {@link AnnouncementVisibility} の正準マッピングに委譲する（写経複製を排除し漏洩を根治）。</p>
  */
 @Component
@@ -70,7 +69,7 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
         if (window <= 0) {
             return List.of();
         }
-        // 1. 本人の所属スコープを列挙し、各スコープでの閲覧者ロール名を解決する（DashboardService 踏襲）。
+        // 1. 本人の所属スコープを列挙し、最新の閲覧者ロールを一括解決する。
         Map<ScopeKey, String> scopeRole = resolveAccessibleScopes(userId);
         if (scopeRole.isEmpty()) {
             return List.of();
@@ -166,8 +165,8 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
      * 可視性集合への変換は {@link AnnouncementVisibility#allowedFor(String)} に集約しているため、
      * 本メソッドは「どのスコープを、どのロールで見ているか」だけを返す（写経複製の排除）。</p>
      *
-     * <p>{@code RoleResolver.resolveViewerRole} の引数 scopeType は {@code "TEAM"}/{@code "ORGANIZATION"}
-     * 文字列を取り、{@link AnnouncementScopeType} とは別物である点に注意。</p>
+     * <p>batch入口のスコープ種別は {@code "TEAM"}/{@code "ORGANIZATION"} 文字列であり、
+     * {@link AnnouncementScopeType} から境界で変換する。</p>
      */
     private static ContentGateTarget targetOf(AnnouncementFeedEntity feed) {
         if (feed == null || feed.getId() == null || feed.getScopeType() == null || feed.getScopeId() == null) {
@@ -188,8 +187,7 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
             if (result.containsKey(key)) {
                 continue;
             }
-            ViewerRole viewerRole = roleResolver.resolveViewerRole(userId, "TEAM", teamId);
-            result.put(key, viewerRole == null ? null : viewerRole.name());
+            result.put(key, null);
         }
 
         // 組織スコープ（CMP-027: user_roles ∪ memberships の在籍組織）
@@ -198,8 +196,19 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
             if (result.containsKey(key)) {
                 continue;
             }
-            ViewerRole viewerRole = roleResolver.resolveViewerRole(userId, "ORGANIZATION", orgId);
-            result.put(key, viewerRole == null ? null : viewerRole.name());
+            result.put(key, null);
+        }
+        if (!result.isEmpty()) {
+            var viewerScopes = result.keySet().stream()
+                    .map(scope -> new com.mannschaft.app.common.visibility.ScopeKey(
+                            scope.scopeType().name(), scope.scopeId()))
+                    .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+            var viewerRoles = roleResolver.resolveViewerRolesFresh(userId, viewerScopes);
+            result.replaceAll((scope, ignored) -> {
+                ViewerRole role = viewerRoles.get(new com.mannschaft.app.common.visibility.ScopeKey(
+                        scope.scopeType().name(), scope.scopeId()));
+                return role == null ? null : role.name();
+            });
         }
         return result;
     }

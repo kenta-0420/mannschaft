@@ -20,7 +20,7 @@ export interface BulletinThreadResponse {
   categoryColor: string | null
   scopeType: BulletinScopeType
   scopeId: string
-  author: { id: number; displayName: string; avatarUrl: string | null }
+  author: { id: number | null; displayName: string | null; avatarUrl: string | null }
   title: string
   body: string
   priority: BulletinPriority
@@ -46,12 +46,13 @@ export interface BulletinThreadResponse {
 export interface BulletinReplyResponse {
   id: number
   threadId: number
-  parentReplyId: number | null
-  author: { id: number; displayName: string; avatarUrl: string | null }
+  parentId: number | null
+  authorId: number | null
+  author: { id: number | null; displayName: string; avatarUrl: string | null }
   body: string
   depth: number
-  reactionSummary: Record<string, number>
-  myReactions: string[]
+  isEdited: boolean
+  replyCount: number
   children: BulletinReplyResponse[]
   createdAt: string
   updatedAt: string

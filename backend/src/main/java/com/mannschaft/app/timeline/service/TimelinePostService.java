@@ -102,9 +102,11 @@ public class TimelinePostService {
     private final TimelinePostReactionRepository reactionRepository;
     private final TimelinePollService pollService;
     private final TimelineMapper timelineMapper;
+    private final TimelineRanchPostCaptureFactory ranchCaptureFactory;
     private final DomainEventPublisher domainEventPublisher;
     private final R2StorageService r2StorageService;
     private final StorageAclService storageAclService;
+    private final com.mannschaft.app.common.storage.acl.StorageClaimedIdentityReader storageClaimedIdentities;
     /** F13 Phase 4-γ: 統合ストレージクォータサービス。 */
     private final StorageQuotaService storageQuotaService;
     /** F17.1 Phase 3: scope=VILLAGE 投稿の主体検証。 */
@@ -187,7 +189,7 @@ public class TimelinePostService {
      * @param userId          ユーザーID
      * @return 作成された投稿
      */
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public PostResponse createPost(CreatePostRequest req, Long resolvedScopeId, Long userId) {
         // VILLAGE への投稿権限は doCreatePost の validatePostingIdentity が
         // 投稿主体（USER / TEAM / ORGANIZATION）単位で検証する。ここで呼び出し元 userId 単位の
@@ -321,6 +323,8 @@ public class TimelinePostService {
         log.info("村行事システム投稿作成: id={}, villageId={}, type={}, sourceEventUuid={}",
                 post.getId(), villageId, systemPostType, sourceEventUuid);
 
+        // 新規保存した未コミットの投稿にはリアクションが存在せず、作成時の状態は false/0 で確定する。
+        // 既存投稿を読むときの実集計とは分け、他ドメインの作成TXから不要な反応照会へ到達させない。
         return timelineMapper.toPostResponse(post);
     }
 
@@ -606,6 +610,8 @@ public class TimelinePostService {
                 .scheduledAt(req.getScheduledAt())
                 .build();
 
+        com.mannschaft.app.timeline.dto.TimelineContentFingerprint ranchFingerprint =
+                ranchCaptureFactory == null ? null : ranchCaptureFactory.prepare(post, req, userId);
         post = postRepository.save(post);
 
         // リプライの場合、親投稿のリプライ数をインクリメント
@@ -622,11 +628,13 @@ public class TimelinePostService {
             postRepository.save(repostOriginal);
         }
 
+        java.util.List<com.mannschaft.app.timeline.dto.TimelineContentFingerprint.AttachmentRef> ranchAttachmentIdentities = java.util.List.of();
         // 添付ファイルの保存
         // リプライ時は継承済みの scopeTypeEnum/effectiveScopeId を使う（req の値は使わない）
         if (req.getAttachments() != null && !req.getAttachments().isEmpty()) {
             ScopeResolution scope = resolveScope(scopeTypeEnum.name(), effectiveScopeId, userId);
-            saveAttachments(post.getId(), req.getAttachments(), scope, userId);
+            ranchAttachmentIdentities = saveAttachments(post.getId(), req.getAttachments(), scope, userId,
+                    ranchFingerprint != null && req.isRanchCaptureArmed());
         }
 
         // 投票の保存
@@ -645,6 +653,8 @@ public class TimelinePostService {
             ));
         }
 
+        if (ranchCaptureFactory != null) ranchCaptureFactory.finish(post, req, userId, ranchFingerprint, ranchAttachmentIdentities);
+        // 新規投稿自身にはまだ反応がなく、Mapperの false/0 が作成時の確定結果になる。
         return timelineMapper.toPostResponse(post);
     }
 
@@ -680,7 +690,7 @@ public class TimelinePostService {
         post = postRepository.save(post);
 
         log.info("タイムライン投稿更新: id={}, editCount={}", postId, post.getEditCount());
-        return timelineMapper.toPostResponse(post);
+        return attachMitayo(List.of(timelineMapper.toPostResponse(post)), userId).get(0);
     }
 
     /**
@@ -786,8 +796,8 @@ public class TimelinePostService {
         // リプライのプレビュー（会話の古い順＝createdAt 昇順・先頭最大 RECENT_REPLIES_LIMIT 件）を enrich して同梱する。
         // リプライ一覧 API の ID 昇順キーセットページングと一貫させ「古い順・先頭N件」で統一する（最新N件ではない）。
         // enrichPosts を通すことで一覧と同じく著者名/アバター・投稿元名/slug・代理主体が付与される。
-        List<PostResponse> recentReplies = enrichPosts(timelineMapper.toPostResponseList(
-                postRepository.findRepliesByParentId(postId, PageRequest.of(0, RECENT_REPLIES_LIMIT))));
+        List<PostResponse> recentReplies = attachMitayo(enrichPosts(timelineMapper.toPostResponseList(
+                postRepository.findRepliesByParentId(postId, PageRequest.of(0, RECENT_REPLIES_LIMIT)))), userId);
 
         return PostDetailResponse.builder()
                 .id(post.getId())
@@ -864,7 +874,7 @@ public class TimelinePostService {
         }
         // スコープ別フィードにも著者名/アバター・投稿元名/slug・代理主体を enrich する
         // （マイフィードと同じ enrichPosts を通す）。
-        return enrichPosts(timelineMapper.toPostResponseList(posts));
+        return attachMitayo(enrichPosts(timelineMapper.toPostResponseList(posts)), userId);
     }
 
     /** スコープ別フィードの通常投稿をカーソル方式で取得する（判定用に limit + 1 件）。 */
@@ -886,7 +896,7 @@ public class TimelinePostService {
             posts = postRepository.findFeedPageByScopeType(
                     scopeTypeEnum, scopeId, cursor, PageRequest.of(0, pageSize + 1));
         }
-        return enrichPosts(timelineMapper.toPostResponseList(posts));
+        return attachMitayo(enrichPosts(timelineMapper.toPostResponseList(posts)), userId);
     }
 
     /**
@@ -996,7 +1006,7 @@ public class TimelinePostService {
                 .toList();
         Map<UUID, VillageAccessGate.VisibleVillage> villagesById = activeVisibleVillages.stream()
                 .collect(Collectors.toMap(VillageAccessGate.VisibleVillage::id, village -> village));
-        return enrichPosts(timelineMapper.toPostResponseList(posts), villagesById);
+        return attachMitayo(enrichPosts(timelineMapper.toPostResponseList(posts), villagesById), userId);
     }
 
     /**
@@ -1326,7 +1336,7 @@ public class TimelinePostService {
                 reach.safeNearOrgIds(), reach.safeFarOrgIds(), safeVillageIds,
                 PageRequest.of(0, feedSize));
         // issue #2424: プロフィール投稿一覧にも添付配列（画像は署名 URL）を付与する。
-        return attachFeedAttachments(timelineMapper.toPostResponseList(posts));
+        return attachMitayo(attachFeedAttachments(timelineMapper.toPostResponseList(posts)), callerUserId);
     }
 
     /**
@@ -1353,7 +1363,7 @@ public class TimelinePostService {
         int feedSize = size > 0 ? size : DEFAULT_FEED_SIZE;
         List<TimelinePostEntity> replies = postRepository.findRepliesByParentIdAfterCursor(
                 postId, cursor, PageRequest.of(0, feedSize + 1));
-        return enrichPosts(timelineMapper.toPostResponseList(replies));
+        return attachMitayo(enrichPosts(timelineMapper.toPostResponseList(replies)), userId);
     }
 
     /**
@@ -1403,7 +1413,7 @@ public class TimelinePostService {
             posts = postRepository.findPinnedPosts(scopeTypeEnum, scopeId);
         }
         // ピン留め一覧にも著者名/アバター・投稿元名/slug・代理主体を enrich する。
-        return enrichPosts(timelineMapper.toPostResponseList(posts));
+        return attachMitayo(enrichPosts(timelineMapper.toPostResponseList(posts)), userId);
     }
 
     /**
@@ -1434,7 +1444,7 @@ public class TimelinePostService {
                 keyword, safeTeamIds, safeOrgIds,
                 reach.safeNearOrgIds(), reach.safeFarOrgIds(), userId, searchLimit);
         // issue #2424: 検索結果一覧にも添付配列（画像は署名 URL）を付与する。
-        return attachFeedAttachments(timelineMapper.toPostResponseList(posts));
+        return attachMitayo(attachFeedAttachments(timelineMapper.toPostResponseList(posts)), userId);
     }
 
     /**
@@ -1457,7 +1467,29 @@ public class TimelinePostService {
         post = postRepository.save(post);
 
         log.info("タイムライン投稿ピン留め切替: id={}, pinned={}", postId, pinned);
-        return timelineMapper.toPostResponse(post);
+        return attachMitayo(List.of(timelineMapper.toPostResponse(post)), userId).get(0);
+    }
+
+    /**
+     * 認可済み投稿のみを対象に、実リアクション件数と閲覧者のみたよ状態を一括付与する。
+     * 集計行が無い投稿は実際に反応0件。空フィードではDBへ問い合わせない。
+     */
+    private List<PostResponse> attachMitayo(List<PostResponse> posts, Long userId) {
+        if (posts == null || posts.isEmpty()) {
+            return posts;
+        }
+        List<Long> postIds = posts.stream().map(PostResponse::getId).filter(Objects::nonNull).distinct().toList();
+        Map<Long, TimelinePostReactionRepository.PostReactionSummary> summaries = postIds.isEmpty()
+                ? Map.of() : reactionRepository.summarizeByPostIds(postIds, userId).stream()
+                        .collect(Collectors.toMap(TimelinePostReactionRepository.PostReactionSummary::getPostId,
+                                summary -> summary));
+        return posts.stream().map(post -> {
+            TimelinePostReactionRepository.PostReactionSummary summary = summaries.get(post.getId());
+            return post.toBuilder()
+                    .mitayo(summary != null && summary.getViewerReactionCount() > 0)
+                    .mitayoCount(summary == null ? 0 : Math.toIntExact(summary.getReactionCount()))
+                    .build();
+        }).toList();
     }
 
     // --- プライベートメソッド ---
@@ -1483,8 +1515,10 @@ public class TimelinePostService {
      * @param scope       解決済みストレージスコープ
      * @param userId      操作者ユーザー ID
      */
-    private void saveAttachments(Long postId, List<CreateAttachmentRequest> attachments,
-                                  ScopeResolution scope, Long userId) {
+    private java.util.List<com.mannschaft.app.timeline.dto.TimelineContentFingerprint.AttachmentRef> saveAttachments(
+            Long postId, List<CreateAttachmentRequest> attachments, ScopeResolution scope, Long userId, boolean captureIdentity) {
+        var capturedIdentities = new java.util.ArrayList<com.mannschaft.app.timeline.dto.TimelineContentFingerprint.AttachmentRef>();
+        boolean identitiesKnown = captureIdentity && attachments.size() <= 10;
         short order = 0;
         for (CreateAttachmentRequest att : attachments) {
             AttachmentType attachmentType = AttachmentType.valueOf(att.getAttachmentType());
@@ -1554,6 +1588,26 @@ public class TimelinePostService {
                         new StorageAclAttachmentBinding("TIMELINE_POST_ATTACHMENT", saved.getId().toString()));
             }
 
+            // 元claimの認可・失敗は上段で維持する。成功後の永続upload UUIDだけを補助捕捉する。
+            if (identitiesKnown) {
+                if (attachmentType != AttachmentType.IMAGE || storageClaimedIdentities == null) {
+                    identitiesKnown = false;
+                } else {
+                    try {
+                    var identity = storageClaimedIdentities.currentClaimedIdentity(att.getFileKey(), userId,
+                            toAclScope(scope, userId), new StorageAclContentReference("TIMELINE_SCOPE",
+                                    scope.scopeType().name() + ":" + scope.scopeId()),
+                            new StorageAclAttachmentBinding("TIMELINE_POST_ATTACHMENT", saved.getId().toString()));
+                    if (identity.isEmpty()) identitiesKnown = false;
+                    else capturedIdentities.add(new com.mannschaft.app.timeline.dto.TimelineContentFingerprint.AttachmentRef(
+                            "UUID", identity.get().toString()));
+                    } catch (RuntimeException ignored) {
+                        identitiesKnown = false;
+                        if (ranchCaptureFactory != null) ranchCaptureFactory.identityUnavailable();
+                    }
+                }
+            }
+
             // F13 Phase 4-γ: ファイル系添付のクォータ使用量加算
             if ((attachmentType == AttachmentType.IMAGE || attachmentType == AttachmentType.VIDEO_FILE)
                     && att.getFileSize() != null && att.getFileSize() > 0) {
@@ -1565,6 +1619,7 @@ public class TimelinePostService {
 
             order++;
         }
+        return identitiesKnown ? java.util.List.copyOf(capturedIdentities) : null;
     }
 
     private StorageAclScope toAclScope(ScopeResolution scope, Long userId) {
