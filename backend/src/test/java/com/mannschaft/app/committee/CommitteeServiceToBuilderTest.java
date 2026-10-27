@@ -6,6 +6,7 @@ import com.mannschaft.app.committee.dto.CommitteeStatusTransitionRequest;
 import com.mannschaft.app.committee.dto.CommitteeUpdateRequest;
 import com.mannschaft.app.committee.entity.CommitteeEntity;
 import com.mannschaft.app.committee.entity.CommitteeStatus;
+import com.mannschaft.app.committee.entity.CommitteeVisibility;
 import com.mannschaft.app.committee.repository.CommitteeMemberRepository;
 import com.mannschaft.app.committee.repository.CommitteeRepository;
 import com.mannschaft.app.committee.service.CommitteeAccessGuard;
@@ -94,6 +95,22 @@ class CommitteeServiceToBuilderTest {
         order.verify(accessControlService).checkMembership(USER_ID, ORG_ID, "ORGANIZATION");
         order.verify(accessControlService).isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
         order.verify(committeeRepository).findByOrganizationIdAndStatus(ORG_ID, CommitteeStatus.ARCHIVED, pageable);
+        verifyNoInteractions(committeeMemberRepository);
+    }
+
+    @Test
+    void 非管理者一覧は可視Page検索だけを使い本人委員会IDをロードしない() {
+        var pageable = PageRequest.of(1, 20);
+        Page<CommitteeEntity> expected = Page.empty(pageable);
+        given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+        given(committeeRepository.findVisibleByOrganizationId(
+                ORG_ID, CommitteeStatus.ACTIVE, USER_ID, CommitteeVisibility.HIDDEN, pageable)).willReturn(expected);
+
+        assertThat(committeeService.listCommittees(ORG_ID, CommitteeStatus.ACTIVE, USER_ID, pageable))
+                .isSameAs(expected);
+
+        verify(committeeRepository).findVisibleByOrganizationId(
+                ORG_ID, CommitteeStatus.ACTIVE, USER_ID, CommitteeVisibility.HIDDEN, pageable);
         verifyNoInteractions(committeeMemberRepository);
     }
 
