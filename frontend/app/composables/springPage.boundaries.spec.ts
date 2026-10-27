@@ -11,7 +11,10 @@ mockNuxtImport('useApi', () => () => rawApi)
 
 /** BEのWをraw HTTPへ渡し、本物のcomposableの返却を観測する。 */
 describe('Spring Pageの6実API境界', () => {
-  beforeEach(() => rawApi.mockReset())
+  beforeEach(() => {
+    // mock関数自体をcleanupとして返さない。
+    rawApi.mockReset()
+  })
 
   const adapted = [
     ['outbox', () => useEmailOutboxAdminApi().fetchList({ page: 2, size: 20 }), '/api/v1/system-admin/email-outbox?page=2&size=20'],
@@ -38,13 +41,8 @@ describe('Spring Pageの6実API境界', () => {
   it.each(adapted)('%sはHTTP失敗を空成功に置き換えない', async (_name, call, url) => {
     const error = new Error('network')
     rawApi.mockRejectedValue(error)
-    const result = await call().then(
-      value => ({ succeeded: true as const, value }),
-      cause => ({ succeeded: false as const, cause }),
-    )
+    await expect(call()).rejects.toBe(error)
     expect(rawApi).toHaveBeenCalledExactlyOnceWith(url)
-    expect(result.succeeded).toBe(false)
-    expect('cause' in result ? result.cause : undefined).toBe(error)
   })
 
   it('現在未使用のdashboard teamsはWを維持する（現契約固定）', async () => {
