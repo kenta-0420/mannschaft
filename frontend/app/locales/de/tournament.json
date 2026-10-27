@@ -56,19 +56,19 @@
         "description": "Beschreibung",
         "members": "Spieler",
         "error": {
-          "TOUR_026": "Vorlage nicht gefunden",
-          "TOUR_027": "Bis zu 5 Vorlagen können erstellt werden",
-          "TOUR_028": "Diese Vorlage gehört einem anderen Team"
+          "TOUR_026": "Das Team gehört nicht zu dieser Organisation",
+          "TOUR_027": "Dieser Benutzer ist bereits gemeldet",
+          "TOUR_028": "Das Team der Vorlage stimmt nicht mit dem teilnehmenden Team überein"
         }
       },
       "error": {
-        "TOUR_019": "Meldung kann aufgrund des Turnierstatus nicht geändert werden",
-        "TOUR_020": "Maximale Teilnehmerzahl überschritten",
-        "TOUR_021": "Kein Mitglied des Teams",
-        "TOUR_022": "Gemeldetes Mitglied nicht gefunden",
-        "TOUR_023": "Unter der Mindestanzahl der Gemeldeten",
-        "TOUR_024": "Dieser Spieler ist bereits gemeldet",
-        "TOUR_025": "Keine Mitglieder zum Laden vorhanden",
+        "TOUR_019": "Mitglied der Meldeliste nicht gefunden",
+        "TOUR_020": "Der Turnierstatus erlaubt keine Änderung der Meldung",
+        "TOUR_021": "Der ausgewählte Benutzer ist kein Teammitglied",
+        "TOUR_022": "Die Mindestanzahl der gemeldeten Mitglieder ist nicht erreicht",
+        "TOUR_023": "Die Höchstanzahl der gemeldeten Mitglieder wurde überschritten",
+        "TOUR_024": "Meldevorlage nicht gefunden",
+        "TOUR_025": "Es können höchstens 5 Meldevorlagen registriert werden",
         "TOUR_029": "Kontaktbereich nicht gefunden",
         "TOUR_030": "Sie haben keine Berechtigung, diesen Kontaktbereich anzuzeigen",
         "TOUR_031": "Sie haben keine Berechtigung, in diesem Kontaktbereich zu posten",

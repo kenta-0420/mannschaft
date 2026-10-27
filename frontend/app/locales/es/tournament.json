@@ -56,19 +56,19 @@
         "description": "Descripción",
         "members": "Jugadores",
         "error": {
-          "TOUR_026": "Plantilla no encontrada",
-          "TOUR_027": "Se pueden crear hasta 5 plantillas",
-          "TOUR_028": "Esta plantilla pertenece a otro equipo"
+          "TOUR_026": "El equipo no pertenece a esta organización",
+          "TOUR_027": "Este usuario ya está inscrito",
+          "TOUR_028": "El equipo de la plantilla no coincide con el equipo participante"
         }
       },
       "error": {
-        "TOUR_019": "No se puede cambiar la inscripción debido al estado del torneo",
-        "TOUR_020": "Se excede el número máximo de inscritos",
-        "TOUR_021": "No es miembro del equipo",
-        "TOUR_022": "Miembro inscrito no encontrado",
-        "TOUR_023": "Por debajo del número mínimo de inscritos",
-        "TOUR_024": "Este jugador ya está inscrito",
-        "TOUR_025": "No hay miembros para cargar",
+        "TOUR_019": "No se encontró al miembro de la lista de inscripción",
+        "TOUR_020": "El estado del torneo no permite modificar la inscripción",
+        "TOUR_021": "El usuario seleccionado no es miembro del equipo",
+        "TOUR_022": "No se ha alcanzado el número mínimo de inscritos",
+        "TOUR_023": "Se ha superado el número máximo de inscritos",
+        "TOUR_024": "No se encontró la plantilla de inscripción",
+        "TOUR_025": "Se pueden registrar hasta 5 plantillas de inscripción",
         "TOUR_029": "Espacio de contacto no encontrado",
         "TOUR_030": "No tienes permiso para ver este espacio de contacto",
         "TOUR_031": "No tienes permiso para publicar en este espacio de contacto",
