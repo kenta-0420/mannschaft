@@ -91,11 +91,12 @@ async function loadFeed(cursor?: number) {
     // myFeed モード: 所属 TEAM/ORGANIZATION/VILLAGE 横断の個人集約タイムライン（pinned は常に空）。
     // 単一スコープモード: 従来通り scopeType/scopeId でフィード取得。
     const res = props.myFeed
-      ? await getMyTimeline(cursor)
+      ? await getMyTimeline(cursor, props.limit)
       : await getFeed({
           scopeType: props.scopeType ?? 'PUBLIC',
           scopeId: props.scopeId,
           cursor,
+          ...(props.limit != null ? { limit: props.limit } : {}),
         })
     if (!cursor) {
       pinnedPosts.value = res.data.pinned

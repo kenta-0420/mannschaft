@@ -110,7 +110,7 @@ public class AdminActionRequiredFacade {
                             "/teams/" + scopeSlug + "/admin/reservations?status=PENDING",
                             () -> reservationAdminQueryService.pendingForTeam(scopeId, scopeSlug, previewSize)),
                     new DomainTask("SHIFT_REQUEST",
-                            "/teams/" + scopeSlug + "/admin/shifts?tab=requests",
+                            "/teams/" + scopeSlug + "/shifts",
                             () -> shiftRequestAdminQueryService.pendingForTeam(scopeId, scopeSlug, previewSize)),
                     new DomainTask("MATCHING",
                             "/teams/" + scopeSlug + "/admin/matching?tab=received",

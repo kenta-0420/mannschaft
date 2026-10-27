@@ -719,6 +719,11 @@ public class DefaultAccessControlService implements AccessControlService {
         return userRoleRepository.existsSystemAdminByUserId(userId) > 0;
     }
 
+    @Override
+    public boolean isActiveUser(Long userId) {
+        return userRoleRepository.isActiveUser(userId);
+    }
+
     /**
      * SYSTEM_ADMIN であることを要求する。違反時は403。
      */

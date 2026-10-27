@@ -80,7 +80,8 @@ class TeamOrgSingleParentAssumptionGuardTest {
             MEMBERSHIP_REPOSITORY_FQN + "#findOrganizationIdsInPrimaryOrderByTeamIdIn",
             MEMBERSHIP_REPOSITORY_FQN + "#findDistinctOrganizationIdsByTeamIdIn",
             "com.mannschaft.app.team.service.TeamOrgMembershipQueryService#findActiveOrganizationIds",
-            "com.mannschaft.app.team.service.TeamOrgMembershipQueryService#findActiveOrganizationIdsInPrimaryOrder");
+            "com.mannschaft.app.team.service.TeamOrgMembershipQueryService#findActiveOrganizationIdsInPrimaryOrder",
+            "com.mannschaft.app.team.service.TeamOrgMembershipQueryService#findOrganizationIdsInPrimaryOrderByTeamIds");
 
     /** 集合を1件へ縮約する呼び出し（所有クラス#メソッド名）。 */
     private static final Set<String> REDUCTION_CALLS = Set.of(
@@ -116,7 +117,8 @@ class TeamOrgSingleParentAssumptionGuardTest {
     private static final Set<String> ORDERED_READERS = Set.of(
             MEMBERSHIP_REPOSITORY_FQN + "#findActiveByTeamIdOrderByRespondedAtAndOrganizationId",
             MEMBERSHIP_REPOSITORY_FQN + "#findOrganizationIdsInPrimaryOrderByTeamIdIn",
-            "com.mannschaft.app.team.service.TeamOrgMembershipQueryService#findActiveOrganizationIdsInPrimaryOrder");
+            "com.mannschaft.app.team.service.TeamOrgMembershipQueryService#findActiveOrganizationIdsInPrimaryOrder",
+            "com.mannschaft.app.team.service.TeamOrgMembershipQueryService#findOrganizationIdsInPrimaryOrderByTeamIds");
 
     /**
      * 代表親組織（§9.3: 最初に成立した加盟 → organization_id 昇順）を採る正当な縮約。順序を DB で固定した取得結果の

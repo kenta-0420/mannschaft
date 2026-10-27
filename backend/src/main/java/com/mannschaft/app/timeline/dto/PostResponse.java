@@ -28,6 +28,14 @@ public class PostResponse {
     private final PostStatsDto stats;
     private final PostAuditDto audit;
 
+    /** 呼び出し元ユーザーのみたよ済み状態。認可済み投稿のリアクションから一括集計する。 */
+    @Schema(description = "閲覧者がみたよ済みか", requiredMode = Schema.RequiredMode.REQUIRED)
+    private final boolean mitayo;
+
+    /** 投稿のみたよ実件数（閲覧者以外のリアクションも含む）。 */
+    @Schema(description = "みたよ実件数", requiredMode = Schema.RequiredMode.REQUIRED)
+    private final int mitayoCount;
+
     /**
      * 著者ユーザー（表示名・アバター）。個人集約タイムラインで enrich される。
      * 代理投稿（{@code postedAs} が非 null）でない場合に FE がヘッダー表示に使う。
