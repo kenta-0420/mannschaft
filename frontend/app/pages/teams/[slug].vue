@@ -411,7 +411,11 @@ function retryShellData() {
   void loadShellData()
 }
 
-onBeforeUnmount(clearShellWatchdog)
+onBeforeUnmount(() => {
+  // 破棄されたインスタンスの解決待ち応答を失効させる。
+  ++fetchTeamSeq
+  clearShellWatchdog()
+})
 
 // シェル対象ルート（8 タブ）に居るときだけデータをロードする。
 // 非シェルルート（schedule / chat 等 約 100 ページ）ではロードしない＝従来と同じ挙動。
