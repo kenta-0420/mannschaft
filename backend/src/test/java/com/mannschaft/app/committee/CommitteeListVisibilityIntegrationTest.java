@@ -143,11 +143,17 @@ class CommitteeListVisibilityIntegrationTest extends AbstractMySqlIntegrationTes
         CommitteeEntity own = committee(organizationId, CommitteeVisibility.HIDDEN, CommitteeStatus.ACTIVE);
         member(own.getId(), userId, true);
         member(own.getId(), userId, false);
-        member(own.getId(), userId, false);
         Long otherOrg = organization();
         CommitteeEntity foreign = committee(otherOrg, CommitteeVisibility.HIDDEN, CommitteeStatus.ACTIVE);
         member(foreign.getId(), userId, false);
         assertPage(page(userId, organizationId, 0, null), List.of(own.getId()), 1);
+        // 重複現役でもEXISTSの可視母集団は1委員会1件。DTOの単一ロール取得とは別に検査する。
+        member(own.getId(), userId, false);
+        em.flush();
+        var result = committeeService.listCommittees(organizationId, null, userId,
+                PageRequest.of(0, 1, Sort.by("id")));
+        assertThat(result.getContent()).extracting(CommitteeEntity::getId).containsExactly(own.getId());
+        assertThat(result.getTotalElements()).isEqualTo(1);
     }
 
     @ParameterizedTest
