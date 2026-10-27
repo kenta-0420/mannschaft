@@ -43,11 +43,58 @@
   "mail": "simulate専用。本物メール送信は行っていない。",
   "adoption": "accepted-by-root-after-implementation-merge",
   "anonymousEvidenceScope": {
-    "finalSourceReal": "未確認。root補足証拠待ち。",
+    "finalSourceReal": "原51caseとは別に、同FE8f/BE1a runtimeで匿名3画面を補足実施しPASS。",
     "finalMatrixAnonymousCases": 0,
     "finalMatrixHTTP401Cases": 0,
     "historicalF7": "旧f7での匿名実機は歴史証拠であり、最終FE8f/BE1aでの匿名実機へ転用しない。",
     "backend1aCI": "BE1aの未認証401自動試験はCI証拠であり、最終sourceの匿名実機とは別。",
-    "publicationCorrection": "過去の実装PR本文にある最終sourceで匿名を実機確認したとの記述は原51caseからは証明できず、訂正が必要。"
+    "publicationCorrection": "過去の実装PR本文の匿名実機確認という記述は原51caseからは証明できなかったため訂正する。今回の別補足で委員会一覧・詳細・outbox一覧の匿名拒否を確認した。"
+  },
+  "anonymousSupplement": {
+    "sourceHeads": {
+      "frontend": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+      "backend": "1a10ca038ffb4a215d4b1b44242ff4ef68275607"
+    },
+    "startedAt": "2026-10-27T21:02:58.062Z",
+    "finishedAt": "2026-10-27T21:03:14.883Z",
+    "contextsCreated": 1,
+    "contextsClosed": 1,
+    "browserClosed": true,
+    "authPOSTs": 0,
+    "nonReadRequests": 0,
+    "pageErrors": 0,
+    "cases": [
+      {
+        "id": "committee-list",
+        "redirectLogin": true,
+        "loginFormVisible": true,
+        "protectedRows": 0,
+        "apiStatus": 401
+      },
+      {
+        "id": "committee-detail",
+        "redirectLogin": true,
+        "loginFormVisible": true,
+        "protectedRows": 0,
+        "apiStatus": 401
+      },
+      {
+        "id": "outbox-list",
+        "redirectLogin": true,
+        "loginFormVisible": true,
+        "protectedRows": 0,
+        "apiStatus": 401
+      }
+    ],
+    "scriptSHA256": "3292304f9bf218a2fdd509144090b1f3f2b55b6a9085655d98f9f99bbed01c87",
+    "manifestSHA256": "47c02df1fe24d27c8d2b0102d4d1f93d2e09c8428885cc664b99358986cc024f",
+    "approvalSHA256": "5ae11d3d1259aa600e5cf92fc7d2761f8f6e205dfdb6441bb2da0ab07b1ca4cb",
+    "original51Modified": false,
+    "status": "passed",
+    "sourceReference": {
+      "path": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/anonymous-supplement-8f671-1a10-v1-observations.json",
+      "sha256": "123c0068e9f2801bb5f938dd1b8ae64efdf288534ab7d89e4af8dadb28277d16"
+    },
+    "scope": "原51caseに合算・上書きしない独立補足3case。"
   }
 }
