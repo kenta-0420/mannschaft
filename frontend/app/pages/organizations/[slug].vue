@@ -314,11 +314,6 @@ async function loadShellData() {
   })
 }
 
-// 破棄されたインスタンスの解決待ち応答を失効させる。
-onBeforeUnmount(() => {
-  ++loadShellDataSeq
-})
-
 // シェル対象ルートに居るときだけデータをロードする。
 // 非シェルルート（budget / analytics 等）ではロードしない＝従来と同じ挙動。
 onMounted(() => {
