@@ -239,11 +239,72 @@ class CommitteeListVisibilityIntegrationTest extends AbstractMySqlIntegrationTes
         assertThat(result.getTotalElements()).isEqualTo(1);
     }
 
+    @ParameterizedTest
+    @CsvSource({"false,false", "true,false", "false,true", "true,true"})
+    void 通常queryと同値createdAt指定でも全ページの集合を欠落させない(boolean admin, boolean createdAtSort)
+            throws Exception {
+        if (admin) {
+            MembershipTestHelper.insertUserRole(em, userId, "ADMIN", null, organizationId);
+        }
+        List<Long> expectedIds = new ArrayList<>();
+        for (int i = 0; i < 41; i++) {
+            boolean hidden = i < 20;
+            Long id = committee(organizationId, hidden ? CommitteeVisibility.HIDDEN : CommitteeVisibility.NAME_ONLY,
+                    CommitteeStatus.ACTIVE).getId();
+            if (admin || !hidden) {
+                expectedIds.add(id);
+            }
+        }
+        em.flush();
+        LocalDateTime sameTime = LocalDateTime.of(2026, 10, 1, 12, 0);
+        // @PrePersist後に専用MySQL上へ直接設定し、clear後の実読値で同値を証明する。
+        assertThat(em.createNativeQuery("UPDATE committees SET created_at = :createdAt WHERE organization_id = :orgId")
+                .setParameter("createdAt", sameTime).setParameter("orgId", organizationId).executeUpdate()).isEqualTo(41);
+        em.clear();
+        assertThat(em.createQuery("SELECT c.createdAt FROM CommitteeEntity c WHERE c.organizationId = :orgId",
+                        LocalDateTime.class).setParameter("orgId", organizationId).getResultList())
+                .hasSize(41).containsOnly(sameTime);
+
+        int pages = (expectedIds.size() + PAGE_SIZE - 1) / PAGE_SIZE;
+        List<Long> actualIds = new ArrayList<>();
+        String[] sorts = createdAtSort ? new String[]{"createdAt,desc"} : new String[0];
+        for (int index = 0; index < pages; index++) {
+            int start = index * PAGE_SIZE;
+            JsonNode result = page(userId, organizationId, index, null, sorts);
+            assertPage(result, expectedIds.subList(start, Math.min(start + PAGE_SIZE, expectedIds.size())), expectedIds.size());
+            result.path("content").forEach(item -> actualIds.add(item.path("id").asLong()));
+        }
+        assertThat(actualIds).doesNotHaveDuplicates().containsExactlyElementsOf(expectedIds);
+        assertPage(page(userId, organizationId, 0, null, sorts), expectedIds.subList(0, PAGE_SIZE), expectedIds.size());
+        assertPage(page(userId, organizationId, pages, null, sorts), List.of(), expectedIds.size());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"false", "true"})
+    void 実Serviceはsort未指定の空Pageにも一意ID順序を持たせる(boolean admin) {
+        if (admin) {
+            MembershipTestHelper.insertUserRole(em, userId, "ADMIN", null, organizationId);
+        }
+        em.flush();
+        var result = committeeService.listCommittees(organizationId, null, userId, PageRequest.of(0, PAGE_SIZE));
+        assertThat(result.getSort()).as("SQLの偶然の順序ではなくIDによる安定順序を持つ")
+                .isEqualTo(Sort.by("id"));
+        assertThat(result.getContent()).isEmpty();
+        assertThat(result.getTotalElements()).isZero();
+    }
+
     private JsonNode page(Long actor, Long orgId, int index, CommitteeStatus filter) throws Exception {
+        return page(actor, orgId, index, filter, "id,asc");
+    }
+
+    private JsonNode page(Long actor, Long orgId, int index, CommitteeStatus filter, String... sorts) throws Exception {
         em.flush();
         var request = get("/api/v1/organizations/{orgId}/committees", orgId)
                 .with(authentication(new UsernamePasswordAuthenticationToken(actor, null, List.of())))
-                .param("page", Integer.toString(index)).param("size", Integer.toString(PAGE_SIZE)).param("sort", "id,asc");
+                .param("page", Integer.toString(index)).param("size", Integer.toString(PAGE_SIZE));
+        if (sorts.length > 0) {
+            request.param("sort", sorts);
+        }
         if (filter != null) {
             request.param("status", filter.name());
         }
