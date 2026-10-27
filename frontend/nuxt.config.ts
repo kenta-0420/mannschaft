@@ -1032,6 +1032,16 @@ export default defineNuxtConfig({
     transpile: ['frappe-gantt'],
   },
 
+  hooks: {
+    // SSR が未訪問ページの JS をログイン画面でも大量に prefetch しないようにする。
+    // import 関係と必須資産の preload は変更せず、クライアント遷移時に取得する。
+    'build:manifest'(manifest) {
+      for (const resource of Object.values(manifest)) {
+        resource.prefetch = false
+      }
+    },
+  },
+
   // Lighthouse CI（nuxt generate）では SSR バンドルロード自体が 4GB OOM を引き起こすため
   // SPA モード（ssr: false）で Nitro SSR バンドルをスキップし、index.html + クライアント資産
   // のみ生成して計測可能にする。専用フラグ NUXT_GENERATE_SPA=true（lighthouse-ci.yml が付与）
