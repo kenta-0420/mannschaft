@@ -1,6 +1,6 @@
 # 境界返済戦役の複数大名運用
 
-親Issueは [#4022](https://github.com/kenta-0420/mannschaft/issues/4022)、仕様は[境界負債返済計画](../architecture/modular_monolith_boundary_debt_repayment.md)を正本とする。これは担当調整基盤の手順であり、Phase入口・子CMP起票・既存の品質ゲートを変更しない。
+親Issueは [#4022](https://github.com/kenta-0420/mannschaft/issues/4022)、仕様は[境界負債返済計画](../architecture/modular_monolith_boundary_debt_repayment.md)を正本とする。これは担当調整基盤の手順である。下記の裁可済みL0-M依存免除以外のPhase入口・子CMP起票・品質ゲートを維持する。
 
 ## 同じ文面を各セッションへ貼る指令正本
 
@@ -41,6 +41,14 @@ CMP-261021-0017 の複数大名として自領を運用してください。
 L2のA/B/Cは所有を分けるだけで、波やGradle束ではない。負債件数・D-3T件数を工数とみなさない。具体的L3-B01〜BnnはL3-0Aで固定し、個々の進捗は親Issueの既存チェックリストへ記録する。CLIのL3-Bnnは全束出口の予約枠で、planning→全束出口証拠後doneだけを受け付ける。束未確定の実装許可ではない。具体束を確定した後は、各Bの対象L2完了・依存DAG・パイロット継続判定を親Issueで確認して足軽へ渡し、個々Bの実装状態を同Issueへ記録する。aggregateのplanningは、個々Bを実装してよいという許可にも、入口充足後の個々Bを読取だけに制限する理由にも使わない。各Bのmodule内を実装し、共有buildへの反映時だけL3-Iをworkingへ進めて予約し、統合green後doneで解放する。全B出口が揃った時点でaggregateをdoneにする。
 
 初期状態はL0-S/C・L1-K/G0だけを計画の完了記録としてseedする。L0-Mは9〜13計測予約・診断停止を含め担当保持、L1-Aは既存再開承認、L1-FはPR #4045の既存担当継続をlane単位のholdとする。common-core取得でもL1-Aを奪わず、L1-Rは付録Aの対象クラスと先行範囲を別途確認する。完了PRを観測したことと、担当が明示解放されたことを同一視しない。
+
+## 裁可済みL0-M依存免除
+
+[2026-10-27の御裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6430453220)「L0-Mは計測に時間がかかりすぎるためスキップ」により、L1-B→L0-Mの依存edgeだけを免除する。L0-Mは基準計測未完了・性能未実証のままで、既存の計測試行・rawを保持し、正式な基準計測成功やdoneへ読み替えない。L3-Pの比較baselineも未実証であり、後続の性能greenや§14のGradle全体撤退の裁可ではない。計画§5.1.1を参照する。
+
+CLIのstatus APIと実CLIの全体status / `status --territory gradle` は `dependencyWaivers` に対象edge・裁可URL・理由・基準計測未完了情報を表示する。manifest/stateのschema・keys・digestは変えず、L0-Mのstate/hold/held/history/evidenceとfoundation所有者を変更しない。L1-Bのbuild/weights予約、owner境界、他依存・gate・L5終結排他を維持する。
+
+再開前に最新origin/mainを取得し、この変更を含む新版CLIを管理worktreeへ配置する。旧CLIはL1-Bを保守的に拒否するが、他操作は可能なので、全mutationが拒否されるとは扱わない。L0-Mのmeasurement予約とholdはこの裁可で解放されない。実際の計測中の同マシンheavy禁止と、L5終結前の停止・解放は別途既存ownerと調整する。
 
 ## 台帳の所在と初回だけの初期化
 
@@ -85,7 +93,7 @@ node scripts/boundary-coordination.mjs update --territory repayment-a --owner <U
 node scripts/boundary-coordination.mjs update --territory common-core --owner <UUID> --note 'REQ-01 応答: PR #...で提供 / 呼出側着手可 / 契約...'
 ```
 
-statusの標準出力は7領地の概要・依頼note・holdだけを表示する。status --territory <自領> で自領レーン・gate条件/証拠・共有予約の詳細を確認する。claim/updateはowner・対象・新状態・commitの要点だけを表示する。各大名は作業選択・再開前に全領地のstatusを読む。自領内でもL1-R対象クラス・L2発生元・L3移設先をnoteへ記録し、他大名が確認できるようにする。通知daemonは持たない。親Issueの着手・中断・解放コメントも計画§7.3どおり続け、Git CAS台帳を排他確定の正本とする。食い違いがあれば着手せず、両方を確認して既存担当を保護する。
+statusの標準出力は7領地の概要・依頼note・hold・裁可済み依存免除を表示する。status --territory <自領> で自領レーン・gate条件/証拠・共有予約の詳細を確認する。claim/updateはowner・対象・新状態・commitの要点だけを表示する。各大名は作業選択・再開前に全領地のstatusを読む。自領内でもL1-R対象クラス・L2発生元・L3移設先をnoteへ記録し、他大名が確認できるようにする。通知daemonは持たない。親Issueの着手・中断・解放コメントも計画§7.3どおり続け、Git CAS台帳を排他確定の正本とする。食い違いがあれば着手せず、両方を確認して既存担当を保護する。
 
 ## 共有資産と待機・引継ぎ
 
@@ -126,6 +134,8 @@ node scripts/boundary-coordination.mjs handoff --lane L1-A --owner <自UUID> --f
 ## 検証と受け入れ条件
 
 `node --test scripts/boundary-coordination.test.mjs` がAC1〜9の根拠である。ローカルbareを使う実Git競合、異なる領地の再試行、応答喪失/送信失敗、担当保持、UUID/移管、入口/gate、共有resource、L2並行、L5終結排他、依頼追記、dirty作業木/index/調整用追跡ref以外のref不変を検証する。Harness CIでも同じ試験を実行する。
+
+L0-M依存免除の追加試験は `計測免除AC1/2`（L1-B着手・完了、L0-Mと他lane不変、schema/keys/digest不変）、`計測免除AC3` の2本（build/weights・owner・L5排他、L1-G/L2入口・measurement停止条件）、`計測免除AC4`（status APIと実CLI全体/gradleの裁可表示）の4本。既存のL1-M未解消依存試験も維持し、CAS・通信失敗・dirty資産保全試験を削除しない。
 
 実行結果・AC対応・5類型・実origin未実施の範囲は[検証記録](../evidence/CMP-261022-1026-coordination.md)を参照する。
 
