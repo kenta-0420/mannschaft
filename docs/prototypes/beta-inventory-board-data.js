@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-10-27T19:41:54+00:00",
+  "generatedAt": "2026-10-27T20:21:15+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,9 +8,9 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "80bbf0e45cc6d9de23c86f504f7c19885c6bf79a",
+    "taskListCommit": "92cacad4d5723a224e879dcf034213b074012e1f",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "47309da34a0982d5f39716a612493f59d691c632def62e74fda8b2159db2a31e",
+    "taskListSha256": "c4e310ff400c3c9f920b825551e1c9714c5f69a399bc3d0b9adcebd29436ec3c",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
@@ -20,7 +20,7 @@ window.BETA_INVENTORY_DATA = {
     "features": 44,
     "capabilities": 95,
     "splitParents": 33,
-    "campaigns": 601,
+    "campaigns": 602,
     "layer": {
       "能力": 26,
       "ドメイン": 18
@@ -37,11 +37,11 @@ window.BETA_INVENTORY_DATA = {
   "verification": {
     "raw": {
       "features": 44,
-      "campaigns": 601
+      "campaigns": 602
     },
     "parsed": {
       "features": 44,
-      "campaigns": 601,
+      "campaigns": 602,
       "core": 25,
       "noncore": 19,
       "blockers": 23,
@@ -8624,6 +8624,39 @@ window.BETA_INVENTORY_DATA = {
         "originalPersonaId": "D",
         "idAssignment": "原personaIdはD。累積登録用の一意personaIdは登録時付与。runIdは実evidenceディレクトリ名を保持。固定P01-P20へ変換しない。",
         "personaArchetypeSource": "原役割の純チーム管理者を記述。原本にない人格軸は追加しない。"
+      },
+      {
+        "id": "OCT-FRESH3-20261028-R3",
+        "originalPersonaId": 1,
+        "personaArchetype": "一般×素直",
+        "runId": "fresh3-resident-3-20261028-final",
+        "sourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backendSourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+        "evidencePath": "docs/evidence/october-fresh3-20261028/resident-observations.json",
+        "sourceEvidencePath": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/fresh3-resident-3-observations.json",
+        "idAssignment": "原personaId 1をoriginalPersonaIdへ保持。累積一意IDのみ登録時付与。固定P01-P20へ変換しない。"
+      },
+      {
+        "id": "OCT-FRESH3-20261028-R4",
+        "originalPersonaId": 2,
+        "personaArchetype": "高齢低リテラシー×素直",
+        "runId": "fresh3-resident-4-20261028-final",
+        "sourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backendSourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+        "evidencePath": "docs/evidence/october-fresh3-20261028/resident-observations.json",
+        "sourceEvidencePath": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/fresh3-resident-4-observations.json",
+        "idAssignment": "原personaId 2をoriginalPersonaIdへ保持。累積一意IDのみ登録時付与。固定P01-P20へ変換しない。"
+      },
+      {
+        "id": "OCT-FRESH3-20261028-R5",
+        "originalPersonaId": 3,
+        "personaArchetype": "ADHD傾向×中断放棄",
+        "runId": "fresh3-resident-5-20261028-final",
+        "sourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backendSourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+        "evidencePath": "docs/evidence/october-fresh3-20261028/resident-observations.json",
+        "sourceEvidencePath": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/fresh3-resident-5-observations.json",
+        "idAssignment": "原personaId 3をoriginalPersonaIdへ保持。累積一意IDのみ登録時付与。固定P01-P20へ変換しない。"
       }
     ],
     "journeys": [
@@ -8974,6 +9007,45 @@ window.BETA_INVENTORY_DATA = {
           "crossTenant": false
         },
         "coveragePassed": false
+      },
+      {
+        "id": "fresh3-resident-3-20261028-final",
+        "personaId": "OCT-FRESH3-20261028-R3",
+        "purpose": "組織の委員会と伝達履歴を探し、確認して一覧へ戻り探索を続ける",
+        "runId": "fresh3-resident-3-20261028-final",
+        "sourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backendSourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+        "evidencePath": "docs/evidence/october-fresh3-20261028/resident-observations.json",
+        "executionCompleted": true,
+        "goalsReached": false,
+        "coveragePassed": false,
+        "purposeProvenance": "原住民観測の目的・達成/未達項目から登録時に要約。達成済みへの書換えなし。"
+      },
+      {
+        "id": "fresh3-resident-4-20261028-final",
+        "personaId": "OCT-FRESH3-20261028-R4",
+        "purpose": "利用者一覧とメール送信キューを探し、必要情報を確認し状態を変えず戻る",
+        "runId": "fresh3-resident-4-20261028-final",
+        "sourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backendSourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+        "evidencePath": "docs/evidence/october-fresh3-20261028/resident-observations.json",
+        "executionCompleted": true,
+        "goalsReached": false,
+        "coveragePassed": false,
+        "purposeProvenance": "原住民観測の目的・達成/未達項目から登録時に要約。達成済みへの書換えなし。"
+      },
+      {
+        "id": "fresh3-resident-5-20261028-final",
+        "personaId": "OCT-FRESH3-20261028-R5",
+        "purpose": "所属組織の委員会と伝達履歴を探し、寄り道後に探索を再開する",
+        "runId": "fresh3-resident-5-20261028-final",
+        "sourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backendSourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+        "evidencePath": "docs/evidence/october-fresh3-20261028/resident-observations.json",
+        "executionCompleted": true,
+        "goalsReached": false,
+        "coveragePassed": false,
+        "purposeProvenance": "原住民観測の目的・達成/未達項目から登録時に要約。達成済みへの書換えなし。"
       }
     ],
     "insights": [
@@ -10113,6 +10185,118 @@ window.BETA_INVENTORY_DATA = {
           7
         ],
         "rawUnmet": "相談の現在statusと担当者名へ自力到達できず"
+      },
+      {
+        "id": "OCT-FRESH3-20261028-R3-01",
+        "featureKey": "organization-manage",
+        "featureDetail": "10月第五陣fresh3独立住民探索",
+        "title": "委員会の入口を自力で発見できなかった",
+        "detail": "住民3は組織メニュー・機能設定を探したが委員会へ到達できなかった。住民5はメニュー→業務・運用→委員会で到達しており、導線欠落は未証明。",
+        "page": "/organizations/:test-organization",
+        "personaId": "OCT-FRESH3-20261028-R3",
+        "personaArchetype": "一般×素直",
+        "journeyId": "fresh3-resident-3-20261028-final",
+        "originalRunId": "fresh3-resident-3-20261028-final",
+        "runId": "fresh3-resident-3-20261028-final",
+        "sourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backendSourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+        "evidencePath": "docs/evidence/october-fresh3-20261028/resident-observations.json",
+        "sourceEvidencePath": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/fresh3-resident-3-observations.json",
+        "registrationSource": "アリシゼーションテスト",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "normal",
+        "priority": "should"
+      },
+      {
+        "id": "OCT-FRESH3-20261028-R4-01",
+        "featureKey": "moderation-incident",
+        "featureDetail": "10月第五陣fresh3独立住民探索",
+        "title": "管理画面の名前完全一致操作にタイムアウトがあった",
+        "detail": "利用者一覧とメール送信キューへ別操作では到達。名前完全一致locatorのTimeoutは自動操作の制約であり、人のpointer操作不能や製品欠陥を証明しない。",
+        "page": "/system-admin",
+        "personaId": "OCT-FRESH3-20261028-R4",
+        "personaArchetype": "高齢低リテラシー×素直",
+        "journeyId": "fresh3-resident-4-20261028-final",
+        "originalRunId": "fresh3-resident-4-20261028-final",
+        "runId": "fresh3-resident-4-20261028-final",
+        "sourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backendSourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+        "evidencePath": "docs/evidence/october-fresh3-20261028/resident-observations.json",
+        "sourceEvidencePath": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/fresh3-resident-4-observations.json",
+        "registrationSource": "アリシゼーションテスト",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "normal",
+        "priority": "should"
+      },
+      {
+        "id": "OCT-FRESH3-20261028-R4-02",
+        "featureKey": "moderation-incident",
+        "featureDetail": "10月第五陣fresh3独立住民探索",
+        "title": "メール送信キューの「一覧へ戻る」の用途が分からなかった",
+        "detail": "初頁で無効な「一覧へ戻る」に戸惑った住民観測。rootのコード照合ではprevPageを呼びcurrentPage===0で無効化するため状態は正当。文言の分かりづらさだけを未実証の改善観測として保持。",
+        "page": "/system-admin/email-outbox",
+        "personaId": "OCT-FRESH3-20261028-R4",
+        "personaArchetype": "高齢低リテラシー×素直",
+        "journeyId": "fresh3-resident-4-20261028-final",
+        "originalRunId": "fresh3-resident-4-20261028-final",
+        "runId": "fresh3-resident-4-20261028-final",
+        "sourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backendSourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+        "evidencePath": "docs/evidence/october-fresh3-20261028/resident-observations.json",
+        "sourceEvidencePath": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/fresh3-resident-4-observations.json",
+        "registrationSource": "アリシゼーションテスト",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "normal",
+        "priority": "should"
+      },
+      {
+        "id": "OCT-FRESH3-20261028-R5-01",
+        "featureKey": "organization-manage",
+        "featureDetail": "10月第五陣fresh3独立住民探索",
+        "title": "寄り道から戻ると直前の展開箇所が閉じていた",
+        "detail": "基本情報から戻った時に連絡・共有が閉じ、探索箇所を選び直した。状態保持の仕様・回帰因果は未実証。",
+        "page": "/organizations/:test-organization",
+        "personaId": "OCT-FRESH3-20261028-R5",
+        "personaArchetype": "ADHD傾向×中断放棄",
+        "journeyId": "fresh3-resident-5-20261028-final",
+        "originalRunId": "fresh3-resident-5-20261028-final",
+        "runId": "fresh3-resident-5-20261028-final",
+        "sourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backendSourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+        "evidencePath": "docs/evidence/october-fresh3-20261028/resident-observations.json",
+        "sourceEvidencePath": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/fresh3-resident-5-observations.json",
+        "registrationSource": "アリシゼーションテスト",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "normal",
+        "priority": "should"
+      },
+      {
+        "id": "OCT-FRESH3-20261028-R5-02",
+        "featureKey": "organization-manage",
+        "featureDetail": "10月第五陣fresh3独立住民探索",
+        "title": "NAME_ONLY委員会詳細で再試行だけが見えた",
+        "detail": "名称から詳細へ進んだが見出し・伝達履歴リンクがなく再試行のみ。住民自身は原因を断定しない。別のroot制御再現で詳細200＋members403と全体loadFailedを確認しCMP-261028-0513へ分離登録。認可拡張は行わない。",
+        "page": "/committees/1",
+        "personaId": "OCT-FRESH3-20261028-R5",
+        "personaArchetype": "ADHD傾向×中断放棄",
+        "journeyId": "fresh3-resident-5-20261028-final",
+        "originalRunId": "fresh3-resident-5-20261028-final",
+        "runId": "fresh3-resident-5-20261028-final",
+        "sourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backendSourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+        "evidencePath": "docs/evidence/october-fresh3-20261028/resident-observations.json",
+        "sourceEvidencePath": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/fresh3-resident-5-observations.json",
+        "registrationSource": "アリシゼーションテスト",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "normal",
+        "priority": "should",
+        "rootProofPath": "docs/evidence/october-fresh3-20261028/root-name-only-proof.json",
+        "separateCampaign": "CMP-261028-0513"
       }
     ],
     "runEnvironments": {
@@ -10233,6 +10417,24 @@ window.BETA_INVENTORY_DATA = {
         "coveragePassed": false,
         "sourceEvidencePath": "docs/evidence/CMP-261021-0649/proofs/third-D-observations.json",
         "processRegisterLimitation": "初期の短命Node補助CLIはPID/start未記録。登録14世代は全終了、同UIDのD/browser参照は前後とも0、未知の読取不能0。"
+      },
+      "october-fresh3-20261028": {
+        "runId": "october-fresh3-20261028",
+        "sourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backendSourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "sourceEvidencePath": "docs/evidence/october-fresh3-20261028/resident-observations.json",
+        "executionCompleted": true,
+        "goalsReached": false,
+        "coveragePassed": false,
+        "actualRuntime": "recovery-build5 production; source heads exact, output byte equivalence not claimed",
+        "excludedRuns": [
+          "fresh1",
+          "fresh2"
+        ],
+        "rootProofPath": "docs/evidence/october-fresh3-20261028/root-name-only-proof.json"
       }
     }
   },
@@ -39827,8 +40029,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261004-1818",
       "title": "AuthzTxFacadeRegistryArchTest のジェネリクスのブリッジメソッド遮蔽判定の誤り（偽陽性側）",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -39842,41 +40044,36 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260923-0954",
       "issues": [
         {
-          "label": "ブリッジメソッドを遮蔽判定の前に除外しているため、親の消去後シグネチャが残って誤って赤になる。現状該当なし（W6b #3623 の番人で判明）",
+          "label": "[完了証拠](evidence/CMP-261004-1818.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "ブリッジメソッドを遮蔽判定の前に除外しているため、親の消去後シグネチャが残って誤って赤になる。現状該当なし（W6b #3623 の番人で判明）"
+        "[完了証拠](evidence/CMP-261004-1818.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "—"
+        "PR #4182・head6315。[新26件green/既存23件保持](https://github.com/kenta-0420/mannschaft/actions/runs/40551206185/job/122367022115)、[先行red](https://github.com/kenta-0420/mannschaft/actions/runs/40530916480/job/122283408100)。検分finding0、test-onlyで実機/住民N/A。"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
         "AuthzTxFacadeRegistryArchTest"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
-        3623
+        4182
       ],
       "github": [
         {
-          "number": 3623,
-          "kind": "pull_request",
-          "state": "merged",
-          "title": "番人: 認可ファサード型の横断登録表（CMP-260923-0954 W6b）",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/3623",
-          "updatedAt": "2026-10-03T11:11:27Z",
-          "ci": {
-            "status": "unavailable",
-            "reason": "終了済みPRのCIは同期対象外",
-            "checks": [],
-            "source": "GraphQL statusCheckRollup"
-          }
+          "number": 4182,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
         }
       ]
     },
@@ -54087,6 +54284,50 @@ window.BETA_INVENTORY_DATA = {
           "ci": null
         }
       ]
+    },
+    {
+      "id": "CMP-261028-0513",
+      "title": "可視NAME_ONLY委員会詳細がメンバー限定APIの403で全体失敗する",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "認可を拡張せず、可視性が許す組織メンバーへ可視詳細を描画し、委員会メンバー限定情報は非表示・呼出抑止する。所属/非所属・他tenant・匿名境界、空/0/null・途中失敗を先行red→green、認可実機、実機後の独立探索で確認する",
+      "acceptance": [
+        "認可を拡張せず、可視性が許す組織メンバーへ可視詳細を描画し、委員会メンバー限定情報は非表示・呼出抑止する。所属/非所属・他tenant・匿名境界、空/0/null・途中失敗を先行red→green、認可実機、実機後の独立探索で確認する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "[root再現](evidence/october-fresh3-20261028/root-name-only-proof.json)でactor5（組織所属・委員会非所属）の詳細200＋members403、再試行表示・詳細見出しなしを確認。loadDataのPromise.allによる全体loadFailed。実装・red/green・修正後実機/探索は未実施",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "[root再現](evidence/october-fresh3-20261028/root-name-only-proof.json)でactor5（組織所属・委員会非所属）の詳細200＋members403、再試行表示・詳細見出しなしを確認。loadDataのPromise.allによる全体loadFailed。実装・red/green・修正後実機/探索は未実施"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "F04.10の詳細可視性とmembers限定を維持。組織非所属API200のCMP-260930-0234、0660 shape、1311 list可視集合とは別原因。住民観測は別途B0へ未実証登録し、各既存戦役の完了を偽らない"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "NAME_ONLY",
+        "API",
+        "tenant",
+        "null",
+        "red",
+        "green"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
     }
   ],
   "githubSync": {
