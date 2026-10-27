@@ -31,6 +31,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +39,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -73,9 +75,20 @@ class BatchNotificationTransactionIT extends AbstractMySqlIntegrationTest {
         // 検体は CGLIB プロキシ越しに使うため、インスタンスフィールドはプロキシ側から見えない（null）。static に置く。
         static final AtomicInteger BODY_CALLS = new AtomicInteger();
         private final ApplicationEventPublisher publisher;
+        private final JdbcTemplate jdbcTemplate;
 
-        BatchProbe(ApplicationEventPublisher publisher) {
+        BatchProbe(ApplicationEventPublisher publisher, JdbcTemplate jdbcTemplate) {
             this.publisher = publisher;
+            this.jdbcTemplate = jdbcTemplate;
+        }
+
+        /** 業務行を書き込む TX 付きの検体（共通 AC-B/B2: 通知の失敗に業務更新が巻き込まれないこと）。 */
+        @BatchEndpoint(name = "g7b-it-biz-write")
+        @Transactional
+        public int writeBusinessRow(Long userId, String marker) {
+            BODY_CALLS.incrementAndGet();
+            jdbcTemplate.update("UPDATE users SET display_name = ? WHERE id = ?", marker, userId);
+            return 1;
         }
 
         @BatchEndpoint(name = "g7b-it-no-tx")
@@ -137,8 +150,8 @@ class BatchNotificationTransactionIT extends AbstractMySqlIntegrationTest {
     @TestConfiguration
     static class ProbeConfig {
         @Bean
-        BatchProbe batchProbe(ApplicationEventPublisher publisher) {
-            return new BatchProbe(publisher);
+        BatchProbe batchProbe(ApplicationEventPublisher publisher, JdbcTemplate jdbcTemplate) {
+            return new BatchProbe(publisher, jdbcTemplate);
         }
     }
 
@@ -147,6 +160,7 @@ class BatchNotificationTransactionIT extends AbstractMySqlIntegrationTest {
     @Autowired private NotificationRepository notificationRepository;
     @Autowired private TransactionTemplate transactionTemplate;
     @Autowired private CommitSaboteur saboteur;
+    @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired @Qualifier("event-pool") private java.util.concurrent.Executor eventPool;
 
     @MockitoSpyBean private NotificationService notificationService;
@@ -304,6 +318,35 @@ class BatchNotificationTransactionIT extends AbstractMySqlIntegrationTest {
                 assertThat(createNotificationCallsFor(bad)).as("失敗対象への配送到達").isPositive());
         drainEventPool();
         assertThat(notificationsOf(bad, "BATCH_COMPLETED", "g7b-it-per-admin")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("TX 付きの本体が業務行を更新し、通知の配送が失敗しても、業務更新はコミットされて残る（他の管理者には届く）")
+    void 通知の配送失敗に業務更新が巻き込まれない() {
+        Long bad = systemAdmin("bw-bad");
+        Long good = systemAdmin("bw-good");
+        Long target = transactionTemplate.execute(tx -> insertUser("g7b-bw-target-" + System.nanoTime() + "@example.com"));
+        String marker = "g7b-biz-" + System.nanoTime();
+        willThrow(new DataIntegrityViolationException("配送失敗（検証用）"))
+                .given(notificationService).createNotification(
+                        eq(bad), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+
+        AtomicInteger result = new AtomicInteger(-1);
+        Throwable thrown = catchThrowable(() -> result.set(probe.writeBusinessRow(target, marker)));
+
+        await().atMost(15, TimeUnit.SECONDS).untilAsserted(() ->
+                assertThat(createNotificationCallsFor(bad)).as("失敗を注入した配送への到達").isPositive());
+        drainEventPool();
+        // 業務 TX とは別の接続（JdbcTemplate の自動コミット読み取り）で、業務更新がコミット済みで残っていることを見る。
+        // 通知の失敗で業務 TX が rollback される実装では、ここが赤になる。
+        assertThat(jdbcTemplate.queryForObject("SELECT display_name FROM users WHERE id = ?", String.class, target))
+                .as("通知の失敗後も業務更新は残る").isEqualTo(marker);
+        assertThat(thrown).as("通知の失敗はバッチ呼出に伝播しない").isNull();
+        assertThat(result.get()).as("バッチ呼出は正常に返る").isEqualTo(1);
+        awaitNotification(good, "BATCH_COMPLETED", "g7b-it-biz-write");
+        drainEventPool();
+        assertThat(notificationsOf(bad, "BATCH_COMPLETED", "g7b-it-biz-write")).as("失敗させた管理者には無い").isEmpty();
+        assertThat(notificationsOf(good, "BATCH_COMPLETED", "g7b-it-biz-write")).as("他の管理者には1件").hasSize(1);
     }
 
     // ═════════════════════════════════════════════════════════════════════
