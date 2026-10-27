@@ -12,7 +12,8 @@ describe('PrimeVue テーマのモジュール設定', () => {
       })
       expect(config.primevue?.autoImport).toBe(true)
       expect(config.primevue?.components?.prefix).toBe('')
-      const { default: theme } = await import('../../../app/themes/mannschaft')
+      const themeModule = '../../../app/themes/mannschaft.ts'
+      const { default: theme } = await import(/* @vite-ignore */ themeModule)
       expect(theme.preset).toBe(Aura)
       expect(theme.options).toEqual({ prefix: 'p', darkModeSelector: '.p-dark', cssLayer: false })
     } finally {
