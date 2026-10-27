@@ -1,0 +1,210 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261026-1344",
+  "scope": "app",
+  "implementation": {
+    "pr": 4130,
+    "sha": "14d0a37f6455b89eed2da596977750e25ecf7044"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "親Suspense解決を待ちmount前の拒否通知を1回表示",
+      "tests": [
+        {
+          "name": "実Toast/実VueSuspense最終spec12件",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/14d0a37f6455b89eed2da596977750e25ecf7044/frontend/app/plugins/toast-provider.client.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "複数addのFIFO/オプション維持、mount後即時、hook再実行で再送0",
+      "tests": [
+        {
+          "name": "実Toast/実VueSuspense最終spec12件",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/14d0a37f6455b89eed2da596977750e25ecf7044/frontend/app/plugins/toast-provider.client.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "空queueは副作用0",
+      "tests": [
+        {
+          "name": "実Toast/実VueSuspense最終spec12件",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/14d0a37f6455b89eed2da596977750e25ecf7044/frontend/app/plugins/toast-provider.client.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "add/remove/removeGroup/removeAllGroupsの呼順・取消・既存API/例外透過維持",
+      "tests": [
+        {
+          "name": "実Toast/実VueSuspense最終spec12件",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/14d0a37f6455b89eed2da596977750e25ecf7044/frontend/app/plugins/toast-provider.client.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "MEMBER/他tenant実在管理URL拒否と通知可視、ADMIN正常CRUD/既存通知維持",
+      "tests": [
+        {
+          "name": "custom actualUI r8 12/12：new org/実在管理URL直アクセス拒否・通知可視",
+          "evidence": "docs/evidence/CMP-261026-1344/validation.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40278560396
+    },
+    {
+      "runId": 40278560641
+    },
+    {
+      "runId": 40278560419
+    },
+    {
+      "runId": 40278560313
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261026-1344/validation.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261026-1344/validation.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261026-1344/validation.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "r7は初期拒否toast2件失敗。実VueSuspenseを使う最終red11pass/1failからresolve+nextTickでgreen12passへ。",
+      "test": "toast-provider.client.spec.ts 親Suspense regression",
+      "redEvidence": "docs/evidence/CMP-261026-1344/validation.md",
+      "greenEvidence": "docs/evidence/CMP-261026-1344/validation.md"
+    }
+  ],
+  "completionPreparation": {
+    "status": "recording_flow_snapshot",
+    "merge": {
+      "sha": "17cab5899b86216190b2c13d31c19812d88593d5",
+      "mergedAt": "2026-10-26T07:02:49Z"
+    },
+    "integrationEvidence": "docs/evidence/CMP-261026-1344/ci-regression-summary.json",
+    "remaining": [
+      "台帳変更後の新HEADで正本CLI exit0・root最終確認",
+      "完了記録PRのCI成功・通常merge",
+      "親完了報告・CLI done/owner解放・自己merged資産片付け（旧r6保留除く）"
+    ],
+    "tableUnchanged": false,
+    "integrationStatus": "mainFrontend exact mergeSHA completed/successをrootAPI確認済み",
+    "mergeGate": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261026-1344/ci-regression-summary.json",
+      "changedFilesMatch": true,
+      "selectedChecks": 22,
+      "success": 15,
+      "skipped": 7
+    },
+    "localWorktreeCleanup": {
+      "status": "passed",
+      "confirmedBy": "root撤去直前・直後照合",
+      "reportedAround": "2026-10-26 08:23 UTC",
+      "preconditions": {
+        "pr4130Merged": true,
+        "implementationHead": "14d0a37f6455b89eed2da596977750e25ecf7044",
+        "allFourChangedBlobsMatchMain": "6a739",
+        "worktreeClean": true,
+        "noOtherWorktreeUse": true,
+        "ownerAgentComplete": true,
+        "processReferences": 0
+      },
+      "actions": [
+        "git worktree remove（非force）",
+        "merge済みlocal branch削除（-D）"
+      ],
+      "targetWorktreeAbsent": true,
+      "targetFrontendNodeModulesAbsent": true,
+      "remoteBranchRetained": false,
+      "remoteBranchRetainedAtLocalCleanup": true
+    },
+    "remoteBranchCleanup": {
+      "status": "passed",
+      "confirmedBy": "root通常git push --delete実行・事前照合",
+      "branches": [
+        {
+          "name": "feature/4022-toast-initial-registration",
+          "headPrefix": "ae39"
+        },
+        {
+          "name": "feature/4022-toast-initial-notification",
+          "head": "14d0a37f6455b89eed2da596977750e25ecf7044"
+        }
+      ],
+      "preconditions": [
+        "main反映済み",
+        "unused",
+        "削除直前のremote head一致"
+      ],
+      "result": "2 remote branches deleted",
+      "priorDeferralResolved": true
+    },
+    "remainingScope": "製品AC・実装CI・検分・実機・探索の未達一覧ではなく、完了記録PRのCI/merge・親完了/owner解放・最終片付けの記録フローsnapshot",
+    "preUpdateCli": {
+      "status": "passed",
+      "stage": "ledger_update前のbaseline構造検証",
+      "mode": "canonical-cli-native-objectstore",
+      "base": "a6ce007d24d918048ee611fbf0acce8eb810cfae",
+      "head": "d89fc197a636be2c68f277e11f18b4d36ee9c7ae",
+      "sourceBlob": "52e1e567bc6bb7fe799880f003991ef95ac1d994",
+      "cliSourceSha256": "6cf2ec4e7eb2f4671655c7a7c42dfb3fcb2b3ecfb1d7b599b7284535c33e558a",
+      "packSha256": "929b80abd80742ee34be2af062bd318d4e69eb5488a3f94b051add3ca4818c74",
+      "packBytes": 143611492,
+      "importPackSha256": "929b80abd80742ee34be2af062bd318d4e69eb5488a3f94b051add3ca4818c74",
+      "objectCount": 22142,
+      "treeProof": [
+        {
+          "commit": "a6ce007d24d918048ee611fbf0acce8eb810cfae",
+          "tree": "e4d3c173070a21e4cdfe20c42c179ba8fa7de7fb",
+          "listingSha256": "22e70ca0eb9c3984dd24efed36dcd57c4a3e4c1e6fe96b5757070f499cb34325",
+          "entries": 22167
+        },
+        {
+          "commit": "d89fc197a636be2c68f277e11f18b4d36ee9c7ae",
+          "tree": "c619efe000c88e8aae59db88666405731db30f44",
+          "listingSha256": "367a45be734544671da349432402cb0974eb9e82ea6ecd9d7a57a01c99aa25db",
+          "entries": 22189
+        }
+      ],
+      "sampleCount": 6,
+      "snapshotProjection": true,
+      "parentHistoryImported": false,
+      "cliExit": 0,
+      "elapsedSeconds": 53.377,
+      "stderrBytes": 0,
+      "childRemaining": 0,
+      "sourceEdited": false,
+      "cleanup": {
+        "receiptExit": 0,
+        "removed": true,
+        "scratchAbsentRootConfirmed": true
+      },
+      "limitation": "正本CLIは全台帳/証跡の構造・参照を検証。GitHub APIのPR/CI状態は検証しない。台帳変更後の新HEADを検証した結果ではない。"
+    },
+    "finalCli": {
+      "status": "post_update_head_not_yet_validated",
+      "preUpdateCliPassed": true,
+      "finalTableChangeRequiresSeparateCli": true
+    }
+  }
+}

@@ -12,15 +12,13 @@ export function budgetFiscalYearSchema(t: (key: string) => string) {
         .max(100, t('budget_accounting.validation.name_max')),
       startDate: z
         .date({
-          required_error: t('budget_accounting.validation.date_required'),
-          invalid_type_error: t('budget_accounting.validation.date_required'),
+          error: t('budget_accounting.validation.date_required'),
         })
         .nullable()
         .refine((value) => value !== null, t('budget_accounting.validation.date_required')),
       endDate: z
         .date({
-          required_error: t('budget_accounting.validation.date_required'),
-          invalid_type_error: t('budget_accounting.validation.date_required'),
+          error: t('budget_accounting.validation.date_required'),
         })
         .nullable()
         .refine((value) => value !== null, t('budget_accounting.validation.date_required')),

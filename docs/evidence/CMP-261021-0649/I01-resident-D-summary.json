@@ -1,0 +1,45 @@
+{
+  "runId": "CMP0616-I01-cmp0649-a875668f1796",
+  "sourceHead": "d383c4494d5e6debb5cdb833f654fa5e5ae0430b",
+  "personaId": "CMP0616-I01-D-boundary",
+  "journeyId": "CMP0616-I01-D-boundary-journey",
+  "personaArchetype": "高齢・低リテラシー×隙間狙い",
+  "purpose": "18時相談を処理し旧新担当予定を確認。後半S3の権限不足とXの他チーム境界を観測する",
+  "registrationSource": "actual-resident-artifacts",
+  "status": "observed-unverified",
+  "trusted": false,
+  "result": {
+    "status": "partial",
+    "existingChangeRequestsReached": true,
+    "existingSwapsReached": true,
+    "current18HourAssignmentObserved": true,
+    "returnedToNormalScreen": true,
+    "acceptedOrApproved": false,
+    "changedAssignmentsCompared": false,
+    "dependsOnUnsentAConsultation": true,
+    "primaryBoundary": {
+      "S3": {
+        "team": 403,
+        "schedule": 404,
+        "changeRequests": 404
+      },
+      "X": {
+        "team": 403,
+        "schedule": 404,
+        "changeRequests": 404
+      }
+    },
+    "auxPublicViewIsSeparate": true
+  },
+  "observation": "dashboardから既存変更依頼と交換一覧へ到達し、18時の現在割当と通常画面への復帰を確認した。新18時相談はA未送信のため、受諾・承認と変更後の旧新担当予定照合は未実施。S3/Xのprimaryチーム403・シフト/変更依頼404を観測し、情報は得られなかった。S3のaux PUBLICチーム閲覧は別の正常閲覧で、primary越境と扱わない。 原runId: CMP0616-I01-cmp0649-a875668f1796。sourceHead: d383c4494d5e6debb5cdb833f654fa5e5ae0430b。未実証の住民観測。DOM探索のみ、画像視覚確認なし。",
+  "observedAt": "2026-10-27T02:40:03.012Z",
+  "page": "/dashboard",
+  "visualConfirmation": false,
+  "coveragePassed": false,
+  "goalsReached": false,
+  "originalRunPassed": false,
+  "separateContinuation": true,
+  "privateEvidencePath": ".claude/campaigns/cmp0616-takeover-20261027/resident-D-safe.json",
+  "privateEvidenceSha256": "6e430821b472e5fc0a56b1e8c893f3e913fb23a26e858fbe296122a7aa55b431",
+  "note": "原報告の巨大DOM・資格情報・全rawは公開しない。実施3人と目的達成を区別し、製品不具合や正式探索合格に昇格しない。"
+}

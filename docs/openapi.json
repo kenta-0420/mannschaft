@@ -13980,6 +13980,158 @@
         }
       }
     },
+    "/api/v1/teams/{slug}/feature-display-policies": {
+      "get": {
+        "tags": [
+          "team-feature-display-policy-controller"
+        ],
+        "summary": "チームの一般機能表示設定取得",
+        "description": "所属SUPPORTER以上。未保存キーはtrue/true。認可には影響しない。",
+        "operationId": "getSettings_6",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "表示設定全件",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力不正・未知または重複キー",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "対象scopeの権限不足",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象scopeが存在しない・削除済み",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "team-feature-display-policy-controller"
+        ],
+        "summary": "チームの一般機能表示設定更新",
+        "description": "当該ADMINまたはSYSTEM_ADMIN専用。指定キーのみ更新し全件を返す。",
+        "operationId": "updateSettings_6",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFeatureDisplayPoliciesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "表示設定全件",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力不正・未知または重複キー",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "対象scopeの権限不足",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象scopeが存在しない・削除済み",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{slug}/custom-fields/reorder": {
       "put": {
         "tags": [
@@ -14734,7 +14886,7 @@
           "運営領収書"
         ],
         "summary": "運営の発行者設定取得",
-        "operationId": "getSettings_6",
+        "operationId": "getSettings_7",
         "responses": {
           "200": {
             "description": "取得成功",
@@ -14753,7 +14905,7 @@
           "運営領収書"
         ],
         "summary": "運営の発行者設定更新",
-        "operationId": "updateSettings_6",
+        "operationId": "updateSettings_7",
         "requestBody": {
           "content": {
             "application/json": {
@@ -17309,7 +17461,7 @@
           "ポイっとメモ設定"
         ],
         "summary": "リマインド設定取得",
-        "operationId": "getSettings_7",
+        "operationId": "getSettings_8",
         "responses": {
           "200": {
             "description": "OK",
@@ -17329,7 +17481,7 @@
         ],
         "summary": "リマインド設定更新",
         "description": "apply_to: NEW_ONLY（新規メモのみ）/ UNSENT（未送信枠を再計算）/ ALL（全未整理メモを再計算）",
-        "operationId": "updateSettings_7",
+        "operationId": "updateSettings_8",
         "parameters": [
           {
             "name": "apply_to",
@@ -17614,7 +17766,7 @@
         ],
         "summary": "ウォレット設定取得",
         "description": "自分の設定を返す。レコードが無ければデフォルト（オプトアウト状態）で作成して返却",
-        "operationId": "getSettings_8",
+        "operationId": "getSettings_9",
         "responses": {
           "200": {
             "description": "OK",
@@ -17634,7 +17786,7 @@
         ],
         "summary": "ウォレット設定更新",
         "description": "オプトイン・規約同意・WebAuthn 要求設定を差分適用で更新",
-        "operationId": "updateSettings_8",
+        "operationId": "updateSettings_9",
         "requestBody": {
           "content": {
             "application/json": {
@@ -17896,7 +18048,7 @@
           "チーム加盟（F01.2.1）"
         ],
         "summary": "チーム加盟の申請受付・グループ設定の取得（組織 ADMIN。SYSTEM_ADMIN は閲覧のみ）",
-        "operationId": "getSettings_9",
+        "operationId": "getSettings_10",
         "parameters": [
           {
             "name": "slug",
@@ -17945,7 +18097,7 @@
           "チーム加盟（F01.2.1）"
         ],
         "summary": "チーム加盟の申請受付・グループ設定の更新（組織 ADMIN のみ。全項目の置き換え）",
-        "operationId": "updateSettings_9",
+        "operationId": "updateSettings_10",
         "parameters": [
           {
             "name": "slug",
@@ -18433,7 +18585,7 @@
         ],
         "summary": "メンバーサブタブ可視性設定一覧",
         "description": "指定組織の一覧／紹介サブタブの最低必要ロール一覧を取得する。非メンバーでもデフォルト値で 200。",
-        "operationId": "getSettings_10",
+        "operationId": "getSettings_11",
         "parameters": [
           {
             "name": "slug",
@@ -18463,7 +18615,7 @@
         ],
         "summary": "メンバーサブタブ可視性設定更新",
         "description": "指定組織の一覧／紹介サブタブの最低必要ロールを一括更新する。ADMIN は無条件、DEPUTY_ADMIN は MEMBER_SUBTAB_VISIBILITY_MANAGE 権限保有時のみ可。一覧タブに PUBLIC を指定すると 422。",
-        "operationId": "updateSettings_10",
+        "operationId": "updateSettings_11",
         "parameters": [
           {
             "name": "slug",
@@ -18491,6 +18643,158 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseMemberSubtabVisibilityResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{slug}/feature-display-policies": {
+      "get": {
+        "tags": [
+          "organization-feature-display-policy-controller"
+        ],
+        "summary": "組織の一般機能表示設定取得",
+        "description": "所属SUPPORTER以上。未保存キーはtrue/true。認可には影響しない。",
+        "operationId": "getSettings_12",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "表示設定全件",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力不正・未知または重複キー",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "対象scopeの権限不足",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象scopeが存在しない・削除済み",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "organization-feature-display-policy-controller"
+        ],
+        "summary": "組織の一般機能表示設定更新",
+        "description": "当該ADMINまたはSYSTEM_ADMIN専用。指定キーのみ更新し全件を返す。",
+        "operationId": "updateSettings_12",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFeatureDisplayPoliciesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "表示設定全件",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力不正・未知または重複キー",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "認証が必要",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "対象scopeの権限不足",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "対象scopeが存在しない・削除済み",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeatureDisplayPoliciesResponse"
                 }
               }
             }
@@ -18865,7 +19169,7 @@
           "組織駐車区画管理"
         ],
         "summary": "組織駐車場設定取得",
-        "operationId": "getSettings_11",
+        "operationId": "getSettings_13",
         "parameters": [
           {
             "name": "organizationId",
@@ -18895,7 +19199,7 @@
           "組織駐車区画管理"
         ],
         "summary": "組織駐車場設定更新",
-        "operationId": "updateSettings_11",
+        "operationId": "updateSettings_13",
         "parameters": [
           {
             "name": "organizationId",
@@ -19462,7 +19766,7 @@
           "組織施設設定"
         ],
         "summary": "施設予約設定取得",
-        "operationId": "getSettings_12",
+        "operationId": "getSettings_14",
         "parameters": [
           {
             "name": "organizationId",
@@ -19492,7 +19796,7 @@
           "組織施設設定"
         ],
         "summary": "施設予約設定更新",
-        "operationId": "updateSettings_12",
+        "operationId": "updateSettings_14",
         "parameters": [
           {
             "name": "organizationId",
@@ -23408,7 +23712,7 @@
           "確認通知設定（組織）"
         ],
         "summary": "確認通知設定取得（組織）",
-        "operationId": "getSettings_13",
+        "operationId": "getSettings_15",
         "parameters": [
           {
             "name": "orgId",
@@ -23438,7 +23742,7 @@
           "確認通知設定（組織）"
         ],
         "summary": "確認通知設定更新（組織）",
-        "operationId": "updateSettings_13",
+        "operationId": "updateSettings_15",
         "parameters": [
           {
             "name": "orgId",
@@ -24043,7 +24347,7 @@
           "通知設定"
         ],
         "summary": "グローバル通知設定取得",
-        "operationId": "getSettings_14",
+        "operationId": "getSettings_16",
         "responses": {
           "200": {
             "description": "取得成功",
@@ -24062,7 +24366,7 @@
           "通知設定"
         ],
         "summary": "グローバル通知設定更新",
-        "operationId": "updateSettings_14",
+        "operationId": "updateSettings_16",
         "requestBody": {
           "content": {
             "application/json": {
@@ -24608,7 +24912,7 @@
           "振り返り通知設定"
         ],
         "summary": "想起通知設定取得",
-        "operationId": "getSettings_15",
+        "operationId": "getSettings_17",
         "responses": {
           "200": {
             "description": "OK",
@@ -24627,7 +24931,7 @@
           "振り返り通知設定"
         ],
         "summary": "想起通知設定更新",
-        "operationId": "updateSettings_15",
+        "operationId": "updateSettings_17",
         "requestBody": {
           "content": {
             "application/json": {
@@ -60999,6 +61303,11 @@
               "schema": {
                 "type": "string"
               }
+            },
+            "application/reports+json": {
+              "schema": {
+                "type": "string"
+              }
             }
           }
         },
@@ -76901,7 +77210,7 @@
           "告知ウィザード"
         ],
         "summary": "組織への告知ウィザード実行",
-        "description": "F02.8 告知ウィザード。組織スコープでコンテンツ作成 + お知らせフィード登録を一括実行する。targetTeamIds を指定した場合は組織配下チームであることを検証する。",
+        "description": "F02.8 告知ウィザード。組織スコープでコンテンツ作成 + お知らせフィード登録を一括実行する。targetTeamIds はチームの slug（組織所属チーム一覧の id）で指定し、組織に ACTIVE で加盟しているチームであることを検証する（存在しない・他組織・未加盟は区別せず 400 BROADCAST_002）。",
         "operationId": "broadcastToOrg",
         "parameters": [
           {
@@ -89324,7 +89633,7 @@
         "tags": [
           "2段階認証"
         ],
-        "summary": "TOTPログイン検証",
+        "summary": "2FAログイン検証（TOTP / バックアップコード / メールOTP）",
         "operationId": "validateTotp",
         "requestBody": {
           "content": {
@@ -89338,11 +89647,11 @@
         },
         "responses": {
           "200": {
-            "description": "TOTP検証成功",
+            "description": "2FA検証成功",
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseTokenResponse"
+                  "$ref": "#/components/schemas/ApiResponseMfaLoginTokenResponse"
                 }
               }
             }
@@ -89382,12 +89691,21 @@
           {
             "name": "mfaSessionToken",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "string"
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestMfaRecoveryRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "リカバリーメール送信完了",
@@ -89413,12 +89731,21 @@
           {
             "name": "token",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "string"
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmMfaRecoveryRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "リカバリー完了",
@@ -89433,6 +89760,141 @@
         }
       }
     },
+    "/api/v1/auth/2fa/reauth/email/send": {
+      "post": {
+        "tags": [
+          "2段階認証"
+        ],
+        "summary": "本人確認用メールOTP送信（無効化・再生成用）",
+        "operationId": "sendReauthEmailOtp",
+        "responses": {
+          "200": {
+            "description": "送信受付",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMfaEmailSendResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/2fa/email/setup": {
+      "post": {
+        "tags": [
+          "2段階認証"
+        ],
+        "summary": "メール2FA設定開始（設定用コード送信）",
+        "operationId": "startEmailSetup",
+        "responses": {
+          "200": {
+            "description": "送信受付",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMfaEmailSendResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/2fa/email/send": {
+      "post": {
+        "tags": [
+          "2段階認証"
+        ],
+        "summary": "2FAログイン用メールOTP送信",
+        "operationId": "sendLoginEmailOtp",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaEmailSendRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "送信受付",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMfaEmailSendResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/2fa/email/enable": {
+      "post": {
+        "tags": [
+          "2段階認証"
+        ],
+        "summary": "メール2FA有効化",
+        "operationId": "enableEmailTwoFactor",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnableEmailTwoFactorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "有効化成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBackupCodesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/2fa/disable": {
+      "post": {
+        "tags": [
+          "2段階認証"
+        ],
+        "summary": "2FA無効化",
+        "operationId": "disableTwoFactor",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisableTwoFactorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "無効化成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/2fa/backup-codes/regenerate": {
       "post": {
         "tags": [
@@ -89440,6 +89902,15 @@
         ],
         "summary": "バックアップコード再生成",
         "operationId": "regenerateBackupCodes",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegenerateBackupCodesRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "再生成成功",
@@ -96500,7 +96971,7 @@
           "予約設定管理"
         ],
         "summary": "予約設定（チームポリシー）取得",
-        "operationId": "getSettings_16",
+        "operationId": "getSettings_18",
         "parameters": [
           {
             "name": "teamId",
@@ -97045,7 +97516,7 @@
           "順番待ち設定管理"
         ],
         "summary": "設定取得",
-        "operationId": "getSettings_17",
+        "operationId": "getSettings_19",
         "parameters": [
           {
             "name": "teamId",
@@ -97075,7 +97546,7 @@
           "順番待ち設定管理"
         ],
         "summary": "設定更新",
-        "operationId": "updateSettings_16",
+        "operationId": "updateSettings_18",
         "parameters": [
           {
             "name": "teamId",
@@ -100645,7 +101116,7 @@
           "チームシフト設定"
         ],
         "summary": "チームシフト設定取得（メンバー限定）",
-        "operationId": "getSettings_18",
+        "operationId": "getSettings_20",
         "parameters": [
           {
             "name": "slug",
@@ -100684,7 +101155,7 @@
           "チームシフト設定"
         ],
         "summary": "チームシフト設定更新（ADMIN/DEPUTY のみ）",
-        "operationId": "updateSettings_17",
+        "operationId": "updateSettings_19",
         "parameters": [
           {
             "name": "slug",
@@ -103749,7 +104220,7 @@
           "予定コメント"
         ],
         "summary": "スレッド開閉",
-        "operationId": "updateSettings_18",
+        "operationId": "updateSettings_20",
         "parameters": [
           {
             "name": "scheduleId",
@@ -111391,7 +111862,7 @@
           "チャットチャンネル"
         ],
         "summary": "チャンネル個人設定",
-        "operationId": "updateSettings_19",
+        "operationId": "updateSettings_21",
         "parameters": [
           {
             "name": "channelId",
@@ -113070,7 +113541,7 @@
           "領収書発行者設定"
         ],
         "summary": "発行者設定取得",
-        "operationId": "getSettings_19",
+        "operationId": "getSettings_21",
         "parameters": [
           {
             "name": "scopeType",
@@ -113849,7 +114320,7 @@
           "行動メモ設定"
         ],
         "summary": "行動メモ設定取得",
-        "operationId": "getSettings_20",
+        "operationId": "getSettings_22",
         "responses": {
           "200": {
             "description": "OK",
@@ -113868,7 +114339,7 @@
           "行動メモ設定"
         ],
         "summary": "行動メモ設定更新",
-        "operationId": "updateSettings_20",
+        "operationId": "updateSettings_22",
         "requestBody": {
           "content": {
             "application/json": {
@@ -123404,6 +123875,149 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/friends/pending": {
+      "get": {
+        "tags": [
+          "フレンドチーム管理"
+        ],
+        "summary": "フォロー中チーム一覧取得",
+        "description": "MANAGE_FRIEND_TEAMS実効権限が必要。相互成立済みを除外し、公開有効相手だけ名前とslugを開示する。",
+        "operationId": "listPendingFollows",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingTeamFollowListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/friends/incoming": {
+      "get": {
+        "tags": [
+          "フレンドチーム管理"
+        ],
+        "summary": "受信申請チーム一覧取得",
+        "description": "MANAGE_FRIEND_TEAMS実効権限が必要。相互成立済みを除外し、公開有効申請元だけ名前とslugを開示する。",
+        "operationId": "listIncomingFollows",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "一覧と絞込み後の総数",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncomingTeamFollowListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力形式が不正（COMMON_001）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "COMMON_001",
+                    "message": "入力内容に不備があります",
+                    "fieldErrors": []
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "認証が必要（レスポンスbodyなし）"
+          },
+          "403": {
+            "description": "受信チームの実効権限がない（COMMON_002）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "COMMON_002",
+                    "message": "この操作を行う権限がありません",
+                    "fieldErrors": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/friend-feed": {
       "get": {
         "tags": [
@@ -128011,7 +128625,7 @@
           "SYSTEM_ADMINモデレーション"
         ],
         "summary": "モデレーション設定一覧取得",
-        "operationId": "getSettings_21",
+        "operationId": "getSettings_23",
         "responses": {
           "200": {
             "description": "取得成功",
@@ -144305,6 +144919,79 @@
         }
       }
     },
+    "/api/v1/me/friend-request-source-teams": {
+      "get": {
+        "tags": [
+          "フレンドチーム管理"
+        ],
+        "summary": "本人のフレンド申請元候補取得",
+        "description": "現在の有効所属とMANAGE_FRIEND_TEAMS実効権限で絞り込んだ候補を返す。相手のlookupは行わない。",
+        "operationId": "listSourceTeams",
+        "parameters": [
+          {
+            "name": "targetTeamSlug",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "一覧と絞込み後の総数",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FriendRequestSourceTeamListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力形式が不正（COMMON_001）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "COMMON_001",
+                    "message": "入力内容に不備があります",
+                    "fieldErrors": []
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "認証が必要（レスポンスbodyなし）"
+          }
+        }
+      }
+    },
     "/api/v1/me/form-submissions": {
       "get": {
         "tags": [
@@ -149759,6 +150446,27 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseMapStringString"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/2fa/status": {
+      "get": {
+        "tags": [
+          "2段階認証"
+        ],
+        "summary": "2FA設定状態取得",
+        "operationId": "getTwoFactorStatus",
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTwoFactorStatusResponse"
                 }
               }
             }
@@ -157488,9 +158196,33 @@
           }
         }
       },
+      "ReplyAuthorResponse": {
+        "type": "object",
+        "properties": {
+          "avatarUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          }
+        }
+      },
       "ReplyResponse": {
         "type": "object",
         "properties": {
+          "author": {
+            "$ref": "#/components/schemas/ReplyAuthorResponse"
+          },
           "authorId": {
             "type": "integer",
             "format": "int64"
@@ -166184,13 +166916,10 @@
           },
           "targetTeamIds": {
             "type": "array",
+            "description": "組織告知でのチーム絞り込み（チームの slug。組織所属チーム一覧の id と同じ値）。null・空は全チーム",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
-          },
-          "targetTeamIdsJson": {
-            "type": "string"
           }
         }
       },
@@ -166265,8 +166994,7 @@
           "targetTeamIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         }
@@ -167070,6 +167798,63 @@
         },
         "required": [
           "groupIds"
+        ]
+      },
+      "FeatureDisplayPolicyItem": {
+        "type": "object",
+        "properties": {
+          "featureKey": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 0
+          },
+          "memberVisible": {
+            "type": "boolean"
+          },
+          "supporterVisible": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "featureKey",
+          "memberVisible",
+          "supporterVisible"
+        ]
+      },
+      "UpdateFeatureDisplayPoliciesRequest": {
+        "type": "object",
+        "properties": {
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeatureDisplayPolicyItem"
+            }
+          }
+        },
+        "required": [
+          "features"
+        ]
+      },
+      "ApiResponseFeatureDisplayPoliciesResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/FeatureDisplayPoliciesResponse"
+          }
+        }
+      },
+      "FeatureDisplayPoliciesResponse": {
+        "type": "object",
+        "properties": {
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeatureDisplayPolicyItem"
+            }
+          }
+        },
+        "required": [
+          "features"
         ]
       },
       "UpdatePaymentBeneficiarySettingRequest": {
@@ -182387,6 +183172,15 @@
             "type": "integer",
             "format": "int64"
           },
+          "mitayo": {
+            "type": "boolean",
+            "description": "閲覧者がみたよ済みか"
+          },
+          "mitayoCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "みたよ実件数"
+          },
           "postedAs": {
             "$ref": "#/components/schemas/PostPostedAsDto"
           },
@@ -182409,7 +183203,11 @@
           "user": {
             "$ref": "#/components/schemas/PostUserDto"
           }
-        }
+        },
+        "required": [
+          "mitayo",
+          "mitayoCount"
+        ]
       },
       "PostScopeDto": {
         "type": "object",
@@ -193117,9 +193915,9 @@
           },
           "targetTeamIds": {
             "type": "array",
+            "description": "組織告知でのチーム絞り込み（チームの slug。組織所属チーム一覧の id と同じ値）。null は全チーム",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           "templateId": {
@@ -193192,8 +193990,7 @@
           "targetTeamIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           "warnings": {
@@ -195450,11 +196247,11 @@
           "targetTeamId": {
             "type": "integer",
             "format": "int64"
+          },
+          "targetTeamSlug": {
+            "type": "string"
           }
-        },
-        "required": [
-          "targetTeamId"
-        ]
+        }
       },
       "ApiResponseFollowTeamResponse": {
         "type": "object",
@@ -205552,9 +206349,9 @@
           },
           "targetTeamIds": {
             "type": "array",
+            "description": "「チームを選ぶ」のチーム（チームの slug。組織所属チーム一覧の id と同じ値）",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           "templateId": {
@@ -213574,14 +214371,65 @@
       "ValidateTotpLoginRequest": {
         "type": "object",
         "properties": {
+          "code": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "TOTP",
+              "BACKUP_CODE",
+              "EMAIL"
+            ]
+          },
           "mfaSessionToken": {
             "type": "string",
             "minLength": 1
           },
           "totpCode": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseMfaLoginTokenResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MfaLoginTokenResponse"
+          }
+        }
+      },
+      "MfaLoginTokenResponse": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "backupCodesRemaining": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "expiresIn": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "method": {
             "type": "string",
-            "maxLength": 6,
-            "minLength": 6
+            "enum": [
+              "TOTP",
+              "BACKUP_CODE",
+              "EMAIL"
+            ]
+          },
+          "refreshToken": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tokenType": {
+            "type": "string"
           }
         }
       },
@@ -213601,6 +214449,107 @@
           },
           "secret": {
             "type": "string"
+          }
+        }
+      },
+      "RequestMfaRecoveryRequest": {
+        "type": "object",
+        "properties": {
+          "mfaSessionToken": {
+            "type": "string"
+          }
+        }
+      },
+      "ConfirmMfaRecoveryRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseMfaEmailSendResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MfaEmailSendResponse"
+          }
+        }
+      },
+      "MfaEmailSendResponse": {
+        "type": "object",
+        "properties": {
+          "expiresInSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "maskedEmail": {
+            "type": "string"
+          },
+          "resendAfterSeconds": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "MfaEmailSendRequest": {
+        "type": "object",
+        "properties": {
+          "mfaSessionToken": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "EnableEmailTwoFactorRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\d{6}$"
+          }
+        }
+      },
+      "DisableTwoFactorRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "currentPassword": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "TOTP",
+              "BACKUP_CODE",
+              "EMAIL"
+            ]
+          }
+        },
+        "required": [
+          "method"
+        ]
+      },
+      "RegenerateBackupCodesRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "currentPassword": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "TOTP",
+              "BACKUP_CODE",
+              "EMAIL"
+            ]
           }
         }
       },
@@ -230177,6 +231126,173 @@
           }
         }
       },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "hasNext": {
+            "type": "boolean"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "hasNext",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ]
+      },
+      "PendingTeamFollowListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PendingTeamFollowView"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        }
+      },
+      "PendingTeamFollowView": {
+        "type": "object",
+        "properties": {
+          "followId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "followedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "followedBack": {
+            "type": "boolean"
+          },
+          "nameHidden": {
+            "type": "boolean"
+          },
+          "targetTeamId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetTeamName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "targetTeamSlug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "IncomingTeamFollowListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncomingTeamFollowView"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "required": [
+          "data",
+          "pagination"
+        ]
+      },
+      "IncomingTeamFollowView": {
+        "type": "object",
+        "properties": {
+          "followId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "followedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "followedBack": {
+            "type": "boolean"
+          },
+          "nameHidden": {
+            "type": "boolean"
+          },
+          "sourceTeamId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sourceTeamName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceTeamSlug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "followId",
+          "followedAt",
+          "followedBack",
+          "nameHidden",
+          "sourceTeamId",
+          "sourceTeamName",
+          "sourceTeamSlug"
+        ]
+      },
+      "CommonErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "fieldErrors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/CommonErrorDetail"
+          }
+        }
+      },
       "FriendFeedForwardStatus": {
         "type": "object",
         "properties": {
@@ -233979,30 +235095,6 @@
           }
         }
       },
-      "Pagination": {
-        "type": "object",
-        "properties": {
-          "hasNext": {
-            "type": "boolean"
-          },
-          "page": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "size": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          }
-        }
-      },
       "TeamFriendListResponse": {
         "type": "object",
         "properties": {
@@ -235448,7 +236540,8 @@
               "GITHUB_ISSUE_CREATED",
               "REOPENED",
               "RESOLVED",
-              "HEALTH_RECOVERED"
+              "HEALTH_RECOVERED",
+              "MERGED_DUPLICATE"
             ]
           },
           "actorId": {
@@ -247302,6 +248395,44 @@
           }
         }
       },
+      "FriendRequestSourceTeam": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "teamName": {
+            "type": "string"
+          },
+          "teamSlug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "teamId",
+          "teamName",
+          "teamSlug"
+        ]
+      },
+      "FriendRequestSourceTeamListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FriendRequestSourceTeam"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "required": [
+          "data",
+          "pagination"
+        ]
+      },
       "ApiResponseListFavoriteResponse": {
         "type": "object",
         "properties": {
@@ -251734,6 +252865,33 @@
             "items": {
               "$ref": "#/components/schemas/AuthSessionResponse"
             }
+          }
+        }
+      },
+      "ApiResponseTwoFactorStatusResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TwoFactorStatusResponse"
+          }
+        }
+      },
+      "TwoFactorStatusResponse": {
+        "type": "object",
+        "properties": {
+          "backupCodesRemaining": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "TOTP",
+              "EMAIL"
+            ]
           }
         }
       },

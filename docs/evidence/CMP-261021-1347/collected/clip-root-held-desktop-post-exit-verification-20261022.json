@@ -1,0 +1,10 @@
+{
+  "desktopDrivers": [],
+  "pendingDashboardRetestExecuted": false,
+  "driverCount": 0,
+  "scope": "Read-only exact desktop driver stem and Playwright test-profile Chrome; no processes stopped",
+  "normalCloseObserved": false,
+  "playwrightProfileBrowsers": [],
+  "browserCount": 0,
+  "at": "2026-10-21T15:42:13.1308764Z"
+}

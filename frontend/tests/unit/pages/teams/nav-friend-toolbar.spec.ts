@@ -20,7 +20,7 @@ const shell = vi.hoisted(() => ({
   roleName: 'ADMIN' as string | null,
   isAdmin: true,
   isAdminOrDeputy: true,
-  permissions: [] as string[],
+  permissions: ['MANAGE_FRIEND_TEAMS'] as string[],
   roleResolved: true,
   roleLoadFailed: false,
   refresh: vi.fn(async () => {}),
@@ -28,6 +28,7 @@ const shell = vi.hoisted(() => ({
 
 vi.mock('~/composables/useTeamShellContext', () => ({
   useTeamShellContext: () => ({
+    team: computed(() => ({ numericId: 10, slug: 'team-1', basicInfo: { name: '自チーム' } })),
     roleName: ref(shell.roleName),
     roleResolved: ref(shell.roleResolved),
     roleLoadFailed: ref(shell.roleLoadFailed),
@@ -49,7 +50,12 @@ vi.mock('~/composables/useRoleAccess', () => ({
 
 mockNuxtImport('useRoute', () => () => ({ params: { slug: 'team-1' } }))
 
-const stubs = { TeamFriendList: true, FriendFollowDialog: true, FriendTeamGuideModal: true }
+const incomingRefresh = vi.fn(async () => {})
+const IncomingStub = defineComponent({
+  name: 'TeamFriendIncomingFollowList',
+  setup(_props, { expose }) { expose({ refresh: incomingRefresh }); return () => null },
+})
+const stubs = { TeamFriendIncomingFollowList: IncomingStub, TeamFriendPendingFollowList: true, TeamFriendList: true, FriendFollowDialog: true, FriendTeamGuideModal: true }
 
 function setRole(role: string, permissions: string[] = []) {
   shell.roleName = role
@@ -70,7 +76,7 @@ beforeAll(async () => {
 })
 
 describe('pages/teams/[slug]/nav.vue — フレンドチームタブのツールバー', () => {
-  beforeEach(() => setRole('ADMIN'))
+  beforeEach(() => { setRole('ADMIN', ['MANAGE_FRIEND_TEAMS']); incomingRefresh.mockClear() })
 
   it('NAVF-001: 所属者（MEMBER）にも「使い方」ボタンが出る', async () => {
     setRole('MEMBER')
@@ -94,6 +100,23 @@ describe('pages/teams/[slug]/nav.vue — フレンドチームタブのツール
     expect((await mountNav()).find('[data-testid="friend-follow-button"]').exists()).toBe(false)
     setRole('MEMBER')
     expect((await mountNav()).find('[data-testid="friend-follow-button"]').exists()).toBe(false)
+  })
+
+  it('AC14: 実効権限を持つMEMBERにはフォローとpending、SYSTEM_ADMIN単独には操作を表示しない', async () => {
+    setRole('MEMBER', ['MANAGE_FRIEND_TEAMS'])
+    const member = await mountNav()
+    expect(member.find('[data-testid="friend-follow-button"]').exists()).toBe(true)
+    expect(member.findComponent({ name: 'TeamFriendPendingFollowList' }).exists()).toBe(true)
+    member.unmount()
+    setRole('SYSTEM_ADMIN')
+    shell.isAdmin = true
+    const system = await mountNav()
+    expect(system.find('[data-testid="friend-follow-button"]').exists()).toBe(false)
+    expect(system.findComponent({ name: 'TeamFriendPendingFollowList' }).exists()).toBe(false)
+    system.unmount()
+    setRole('MEMBER', ['MANAGE_FRIEND_TEAMS'])
+    shell.isAdmin = true
+    expect((await mountNav()).find('[data-testid="friend-follow-button"]').exists()).toBe(true)
   })
 
   it('NAVF-005: SUPPORTER には注意バナーが出る', async () => {
@@ -201,4 +224,49 @@ describe('pages/teams/[slug]/nav.vue — フレンドチームタブのツール
       expect(shell.refresh).toHaveBeenCalled()
     })
   })
+  it('AC18/24: 取消は兄弟だけ、成功と409は双方を1回ずつ取得し、再フォローにslugを渡す', async () => {
+    const friendRefresh = vi.fn(async () => {})
+    const pendingRefresh = vi.fn(async () => {})
+    const FriendStub = defineComponent({
+      name: 'TeamFriendList', emits: ['refresh'],
+      setup(_, { expose }) { expose({ refresh: friendRefresh }); return {} },
+      template: '<div />',
+    })
+    const PendingStub = defineComponent({
+      name: 'TeamFriendPendingFollowList', emits: ['refresh', 'refollow'],
+      setup(_, { expose }) { expose({ refresh: pendingRefresh }); return {} },
+      template: '<div />',
+    })
+    const DialogStub = defineComponent({
+      name: 'FriendFollowDialog', props: { initialSlug: String, modelValue: Boolean },
+      emits: ['success', 'alreadyFollowing'], template: '<div />',
+    })
+    const w = await mountSuspended(TeamNavPage, { global: { stubs: {
+      ...stubs, TeamFriendList: FriendStub, TeamFriendPendingFollowList: PendingStub, FriendFollowDialog: DialogStub,
+    } } })
+    await w.findComponent(PendingStub).vm.$emit('refresh')
+    expect(friendRefresh).toHaveBeenCalledTimes(1)
+    expect(pendingRefresh).not.toHaveBeenCalled()
+    expect(incomingRefresh).toHaveBeenCalledTimes(1)
+    incomingRefresh.mockClear()
+    friendRefresh.mockClear()
+    await w.findComponent(FriendStub).vm.$emit('refresh')
+    expect(pendingRefresh).toHaveBeenCalledTimes(1)
+    expect(friendRefresh).not.toHaveBeenCalled()
+    expect(incomingRefresh).toHaveBeenCalledTimes(1)
+    incomingRefresh.mockClear()
+    pendingRefresh.mockClear()
+    for (const event of ['success', 'alreadyFollowing'] as const) {
+      await w.findComponent(DialogStub).vm.$emit(event)
+      expect(friendRefresh).toHaveBeenCalledTimes(1)
+      expect(pendingRefresh).toHaveBeenCalledTimes(1)
+      expect(incomingRefresh).toHaveBeenCalledTimes(1)
+      incomingRefresh.mockClear()
+      friendRefresh.mockClear(); pendingRefresh.mockClear()
+    }
+    await w.findComponent(PendingStub).vm.$emit('refollow', 'same-team')
+    expect(w.findComponent(DialogStub).props('initialSlug')).toBe('same-team')
+    expect(w.findComponent(DialogStub).props('modelValue')).toBe(true)
+  })
+
 })

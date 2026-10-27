@@ -1,0 +1,13 @@
+{
+  "started": "2026-10-23T00:49:42.775Z",
+  "exitCode": 0,
+  "signal": null,
+  "independentDependencyPrep": {
+    "dompurify": "3.4.17",
+    "devtools": "3.4.1",
+    "strictPatchSha256": "e42d96ee5d9a85f68785341fcac20b161da70336c5a10a11da5ea703d6c7406e",
+    "patchSucceeded": true,
+    "sharedDependenciesChanged": false
+  },
+  "limitations": "Node24.15実行。指定Node22との差異は別CIと区別。"
+}

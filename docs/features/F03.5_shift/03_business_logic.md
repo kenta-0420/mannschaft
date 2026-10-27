@@ -143,6 +143,14 @@
 
 #### A-2: 個別交代依頼（特定メンバー指名）
 
+**作成資格（CMP-261021-0647）**: 個別指名・全体募集とも、`status == PUBLISHED` かつ現在の割当正本 `shift_slots.assigned_user_ids` に申請者本人を含む枠だけを受け付ける。ADMIN / DEPUTY_ADMIN / SYSTEM_ADMINも同じ業務資格を満たす必要がある。複数人の担当枠は本人を含めば対象、未割当（SQL NULL / `[]` / JSON `null`）は対象外である。公開履歴のあるARCHIVEDも作成不可、PUBLISHEDの判定には`publishedAt`を要求しない。
+
+Facadeのスコープ認可（越境は不在と同じ404、SUPPORTER等は403）の後、業務TXで親スケジュール行をロックし、枠を現在読取して資格を確認する。非PUBLISHEDは409 `SHIFT_012`、本人外・未割当は403 `SHIFT_019`。親ロック待ち中の枠削除も404 `SHIFT_002`とし、拒否時は申請を保存しない。状態・割当の変更と作成を直列化し、古いsnapshotの資格で申請を作らない。
+
+マイシフトの既定モードでは、確定枠の `teamId` を所属チームストアの `id` と照合して `slug` を解決し、`GET /api/v1/teams/{slug}/members/all` を1回呼んで全候補を表示する。ストアに対象がない場合は `/api/v1/me/teams` を取得し直し、取得失敗と成功後の対象不在を区別する。数値IDをslugとして送らない。
+
+候補0件は空状態、所属・候補取得の失敗は再試行付きエラー状態とし、再試行も同じ取得処理を通す。再表示・チーム切替・再試行時は候補と選択をリセットし、古い応答の成功・失敗・終了処理を反映しない。未選択では提出できず、個別依頼は選択した `targetUserIds` と `openCall: false` を送る。候補取得には既存のチーム可視性・認可を適用し、シフト帯指定と全体募集の送信契約は維持する。
+
 ```
 1. メンバーが交代リクエスト作成（POST /swap-requests, is_open_call=false, target_user_id=相手ID）
    a. PUBLISHED スケジュールの自分がアサインされたスロットのみ対象
@@ -163,6 +171,10 @@
    a. PENDING / ACCEPTED → REJECTED に遷移
    b. 依頼者と引き受け者に通知
 ```
+
+**承認時の担当差替（CMP-261021-0648）**: 実API `POST /swap-requests/{id}/resolve` の `APPROVE` は、ACCEPTEDの申請者Aを現在担当の同じ位置で受諾者Bへ置換し、他担当の順序・人数・枠の日時等を保持する。非PUBLISHEDは409 `SHIFT_012`、不正状態・Bがnull/自己交代は409 `SHIFT_013`、現在担当にAがちょうど1回含まれない場合・Bの脱退/非ACTIVE/論理削除/SUPPORTER化・資格確認後のB変更は409 `SHIFT_018`、Bが既担当または同一表の完全同時刻別枠に担当済みなら409 `SHIFT_042`。部分重なりは許可し、別表を探索しない。
+
+非TXのFacadeで管理者認可とBの現在資格を確認し、業務TXでは親→枠を現在読取してから差替する。swap・担当JSON・割当履歴は同一TXでcommit/rollbackする。Aの全非REVOKED履歴をREVOKEDにし、Bへ手動CONFIRMED（runId=null、割当者=承認管理者）を記録する。Bの既存CONFIRMEDは重複させず、古いPROPOSEDだけなら元行を保持して新CONFIRMEDを作る。Aの脱退/削除は現在担当から外す交代を妨げない。`REJECT`は既存どおりACCEPTEDから状態・処理情報だけを更新し、担当・履歴を変えない。管理者自身がA/Bでも承認可能。membershipの同時変更の厳密直列化と、上記設計の通知/監査イベント新設は本対応に含めない。
 
 #### A-3: オープンコール（全体募集）【v2.1 新規】
 
@@ -201,6 +213,8 @@
 ```
 
 ### シフト変更依頼ワークフロー（A-1 確定前の依頼）【v2.1 新規】
+
+変更依頼画面の承認・却下は、対象チームの実効ロールが ADMIN / DEPUTY_ADMIN の場合に表示する。SYSTEM_ADMIN（チーム管理者との兼任を含む）は運営専用のため業務導線を表示しない（[ロール・権限モデル §3.5](../../security/03_role_authority_model.md#35-system_admin-の-ui-表示方針--beの許可経路とfeのスコープ管理者導線cmp-260909-1509)）。API 側の認可と自己審査禁止は別途強制する。
 
 **対象**: `DRAFT / COLLECTING / ADJUSTING` 状態のスケジュール。`PUBLISHED` 以降は A-2/A-3 の交代依頼フロー（`shift_swap_requests`）に案内する。
 

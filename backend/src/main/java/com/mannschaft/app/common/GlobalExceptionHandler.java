@@ -329,9 +329,8 @@ public class GlobalExceptionHandler {
             // 自己スコープの「不在」は 404（IDOR ではなく単純な not-found だが、既存 EP 契約と揃える）
             Map.entry("AUTH_029", HttpStatus.NOT_FOUND),    // OAuthプロバイダー未連携（解除対象が存在しない）
             // 状態競合 → 409（AUTH_032 は上記の別ブロックで既に登録済み）
-            // AUTH_018 は Auth2faService 内で「TOTPコード不正」（verifyTotpCode 失敗）と
-            // 「TOTPコード使用済み」（リプレイ検出）の意味の異なる 2 箇所から throw されており、
-            // 定数の意味が割れているため変更を見送る（Severity.WARN 既定の 400 のまま）。
+            // AUTH_018 は「TOTPコード使用済み」（リプレイ検出）専用（CMP-261012-0910 で TOTP 設定確定の誤コードは
+            // AUTH_074 に分離した）。入力した確認コードの不備として Severity.WARN 既定の 400 のまま据え置く。
             // AUTH_021（バックアップコード全使用済み）は throw 元が存在しない未使用定数のため対象外。
             Map.entry("AUTH_025", HttpStatus.CONFLICT),     // WebAuthnデバイス重複登録
             Map.entry("AUTH_030", HttpStatus.CONFLICT),     // OAuth連携解除時ログイン手段喪失
@@ -344,6 +343,12 @@ public class GlobalExceptionHandler {
             // 「取消可能な退会申請という状態が無い」ことを理由に拒否する状態遷移違反のため、
             // 兄弟の SCHEDULE_KEEP_006 等と同じく 409 Conflict が正準（入力不備の 400 ではない）。
             Map.entry("AUTH_032", HttpStatus.CONFLICT), // 退会申請が存在しない状態での取消要求 → 409
+            // CMP-261012-0910 多要素認証(2FA)の穴埋め（AUTH_073/074/080/081 は Severity.WARN 既定の 400 のまま）
+            Map.entry("AUTH_075", HttpStatus.TOO_MANY_REQUESTS), // MFA 試行回数上限 → 429
+            Map.entry("AUTH_076", HttpStatus.TOO_MANY_REQUESTS), // メールOTP 再送待ち → 429
+            Map.entry("AUTH_077", HttpStatus.TOO_MANY_REQUESTS), // メールOTP 送信回数上限 → 429
+            Map.entry("AUTH_078", HttpStatus.CONFLICT),          // 2FA 有効化済み → 409
+            Map.entry("AUTH_079", HttpStatus.CONFLICT),          // 2FA 未有効 → 409
             // F03.3 カレンダー同期: 非メンバーの同期トグルは IDOR 対策で 403 ではなく 404（存在秘匿）
             Map.entry("GCAL_010", HttpStatus.NOT_FOUND),
             // F02.5 行動メモ: IDOR 対策で 403 ではなく 404 を返す
@@ -2118,6 +2123,8 @@ public class GlobalExceptionHandler {
             Map.entry("ERROR_REPORT_005", HttpStatus.CONFLICT),             // IGNORED時の工程更新拒否
             Map.entry("ERROR_REPORT_009", HttpStatus.CONFLICT),             // GitHub Issue作成の重複ロック
             Map.entry("ERROR_REPORT_012", HttpStatus.CONFLICT),             // GitHub Issue二重作成防止
+            Map.entry("ERROR_REPORT_013", HttpStatus.CONFLICT),             // 同hashの再活性化競合
+            Map.entry("ERROR_REPORT_014", HttpStatus.SERVICE_UNAVAILABLE),  // 管理更新のロック再試行超過
 
             // Webhook/外部API連携: エンドポイント不在は404。APIキー期限切れは認証失敗のため401。
             // WEBHOOK_005/007 は「受信・認証の失敗」と「管理系CRUDでの不在」の2意味で共用されて
@@ -2746,6 +2753,21 @@ public class GlobalExceptionHandler {
                 .header(HttpHeaders.RETRY_AFTER, Long.toString(ex.getRetryAfterSeconds()))
                 .body(new ErrorResponse(
                         new ErrorResponse.ErrorDetail(ex.getErrorCode().getCode(), message, List.of())));
+    }
+
+    /**
+     * CMP-261012-0910: 「しばらく待てば通る」業務例外（{@link RetryAfterBusinessException}）のハンドラ。
+     *
+     * <p>本文・ステータスは {@link #handleBusinessException} と同じ（エラーコード既定。メールOTP の
+     * 再送待ち AUTH_076 / 送信上限 AUTH_077 は 429）で、{@code Retry-After} ヘッダ（残り秒数）だけを足す。</p>
+     */
+    @ExceptionHandler(RetryAfterBusinessException.class)
+    public ResponseEntity<ErrorResponse> handleRetryAfterBusinessException(
+            RetryAfterBusinessException ex, HttpServletRequest request) {
+        ResponseEntity<ErrorResponse> base = handleBusinessException(ex, request);
+        return ResponseEntity.status(base.getStatusCode())
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(ex.getRetryAfterSeconds()))
+                .body(base.getBody());
     }
 
     /**

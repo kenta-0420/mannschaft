@@ -95,7 +95,7 @@ class Auth2faControllerTest {
         @Test
         @DisplayName("POST /backup-codes/regenerate — 本人操作なら 200")
         void regenerateBackupCodes_self_returns200() throws Exception {
-            given(auth2faService.regenerateBackupCodes(anyLong()))
+            given(auth2faService.regenerateBackupCodes(anyLong(), org.mockito.ArgumentMatchers.any()))
                     .willReturn(ApiResponse.of(new BackupCodesResponse(List.of("a", "b"))));
 
             mockMvc.perform(post("/api/v1/auth/2fa/backup-codes/regenerate"))

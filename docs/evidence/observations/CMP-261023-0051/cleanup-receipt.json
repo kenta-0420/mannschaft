@@ -1,0 +1,99 @@
+{
+  "campaign": "CMP-261023-0051",
+  "marker": "TL-EXPLORE-1792692643071",
+  "teamSlug": "tl-explore-1792692643071",
+  "teamNumericId": 1467,
+  "invitationId": 437,
+  "postIds": [
+    765,
+    766,
+    767
+  ],
+  "checks": [
+    {
+      "name": "削除前TEAM確認",
+      "status": 200,
+      "expected": 200
+    },
+    {
+      "name": "削除前投稿765確認",
+      "status": 200,
+      "expected": 200
+    },
+    {
+      "name": "削除前投稿766確認",
+      "status": 200,
+      "expected": 200
+    },
+    {
+      "name": "削除前投稿767確認",
+      "status": 200,
+      "expected": 200
+    },
+    {
+      "name": "削除前招待一覧確認",
+      "status": 200,
+      "expected": 200
+    },
+    {
+      "name": "投稿765削除",
+      "status": 204,
+      "expected": 204
+    },
+    {
+      "name": "投稿765消失確認",
+      "status": 404,
+      "expected": 404
+    },
+    {
+      "name": "投稿766削除",
+      "status": 204,
+      "expected": 204
+    },
+    {
+      "name": "投稿766消失確認",
+      "status": 404,
+      "expected": 404
+    },
+    {
+      "name": "投稿767削除",
+      "status": 204,
+      "expected": 204
+    },
+    {
+      "name": "投稿767消失確認",
+      "status": 404,
+      "expected": 404
+    },
+    {
+      "name": "招待437削除",
+      "status": 204,
+      "expected": 204
+    },
+    {
+      "name": "削除後招待一覧確認",
+      "status": 200,
+      "expected": 200
+    },
+    {
+      "name": "TEAM1467削除",
+      "status": 204,
+      "expected": 204
+    },
+    {
+      "name": "TEAM1467消失確認",
+      "status": 404,
+      "expected": 404
+    }
+  ],
+  "completed": true,
+  "ownershipVerified": {
+    "teamMarker": true,
+    "postMarkers": true,
+    "postScopes": true,
+    "postAuthors": true,
+    "invitationInOwnedTeam": true
+  },
+  "invitationAbsent": true,
+  "finishedAt": "2026-10-22T18:29:23.071Z"
+}

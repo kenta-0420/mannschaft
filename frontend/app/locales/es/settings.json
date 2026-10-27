@@ -120,6 +120,14 @@
       }
     },
     "password": {
+      "generator": {
+        "generate": "Generar contraseña",
+        "copy": "Copiar",
+        "copied": "Copiado",
+        "generate_error": "No se pudo generar una contraseña. Introdúcela manualmente.",
+        "copy_error": "No se pudo copiar. Muestra la contraseña y cópiala manualmente.",
+        "hint": "Al generar se reemplazan los campos de contraseña. Guárdala en un gestor antes de continuar."
+      },
       "section_title_change": "Cambiar contraseña",
       "section_title_set": "Establecer contraseña",
       "no_password_description": "Actualmente no hay contraseña configurada. Establecer una contraseña le permitirá iniciar sesión con correo y contraseña.",
@@ -208,6 +216,72 @@
         "delete_key_error": "Error al eliminar la clave de seguridad",
         "rename_success": "Nombre del dispositivo actualizado",
         "rename_error": "Error al actualizar el nombre del dispositivo"
+      },
+      "two_fa": {
+        "loading": "Cargando...",
+        "status_disabled": "Sin configurar",
+        "status_totp": "Activada (app de autenticación)",
+        "status_email": "Activada (correo)",
+        "backup_remaining": "Quedan {count} códigos de respaldo",
+        "backup_low": "Quedan pocos códigos de respaldo. Genere códigos nuevos.",
+        "setup_email_button": "Activar por correo",
+        "disable_button": "Desactivar 2FA",
+        "enable_button": "Activar",
+        "retry_button": "Recargar",
+        "totp": {
+          "code_label": "Código de 6 dígitos de su app de autenticación",
+          "copy_secret": "Copiar clave secreta",
+          "secret_copied": "Clave secreta copiada"
+        },
+        "email": {
+          "sent": "Enviamos un código de 6 dígitos a {email} (válido unos {minutes} min).",
+          "code_label": "Código de 6 dígitos del correo",
+          "resend_button": "Reenviar código",
+          "resend_wait": "Reenviar en {seconds} s"
+        },
+        "backup": {
+          "copy_button": "Copiar",
+          "download_button": "Descargar",
+          "copied": "Códigos de respaldo copiados",
+          "copy_failed": "No se pudo copiar al portapapeles",
+          "saved_check": "He guardado los códigos de respaldo en un lugar seguro"
+        },
+        "reauth": {
+          "disable_title": "Desactivar la autenticación de dos factores",
+          "regenerate_title": "Regenerar códigos de respaldo",
+          "disable_description": "Para verificar tu identidad, introduce toda la información siguiente.",
+          "regenerate_description": "Para verificar tu identidad, introduce tu contraseña actual o un código de verificación (si introduces ambos, los dos deben ser correctos). Al regenerar, todos los códigos de respaldo anteriores dejarán de funcionar.",
+          "regenerate_description_no_password": "Para verificar tu identidad, introduce un código de verificación. Al regenerar, todos los códigos de respaldo anteriores dejarán de funcionar.",
+          "password_label": "Contraseña actual",
+          "method_label": "Método de verificación",
+          "method_totp": "App de autenticación",
+          "method_email": "Correo",
+          "method_backup": "Código de respaldo",
+          "send_email_button": "Enviar código por correo",
+          "code_label_otp": "Código de verificación de 6 dígitos",
+          "code_label_backup": "Código de respaldo",
+          "disable_submit": "Desactivar",
+          "regenerate_submit": "Regenerar"
+        },
+        "toast": {
+          "enabled": "Autenticación de dos factores activada",
+          "disabled": "Autenticación de dos factores desactivada"
+        },
+        "error": {
+          "invalid_code": "El código de verificación es incorrecto",
+          "code_already_used": "Este código de verificación ya se ha utilizado. Espera a que aparezca un código nuevo",
+          "resend_wait": "Espere un momento antes de solicitar otro código",
+          "send_limit": "Se alcanzó el límite de envíos de códigos. Inténtelo más tarde",
+          "already_enabled": "La autenticación de dos factores ya está activada",
+          "not_enabled": "La autenticación de dos factores no está activada",
+          "reauth_failed": "Error de verificación. Compruebe su contraseña y el código",
+          "email_missing": "No hay un correo registrado, por lo que no se pueden usar códigos por correo",
+          "email_unavailable": "La autenticación de dos factores por correo no está disponible por ahora",
+          "rate_limited": "Demasiados intentos. Inténtelo de nuevo en {seconds} segundos",
+          "rate_limited_unknown": "Demasiados intentos. Inténtelo más tarde",
+          "status_load": "No se pudo obtener el estado de la autenticación de dos factores",
+          "generic": "Algo salió mal. Inténtelo de nuevo más tarde"
+        }
       }
     },
     "linked_accounts": {
@@ -475,7 +549,8 @@
       },
       "security": {
         "label": "Seguridad",
-        "description": "2FA, gestión de sesiones, claves de seguridad"
+        "description": "2FA, gestión de sesiones, claves de seguridad",
+        "keywords": "respaldo copia de seguridad código de respaldo dos factores dos pasos verificación en dos pasos 2fa autenticador totp"
       },
       "email": {
         "description": "Cambiar tu dirección de correo electrónico"

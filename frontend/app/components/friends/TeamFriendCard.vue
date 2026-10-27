@@ -75,10 +75,10 @@ function onVisibilityToggled(isPublic: boolean) {
         <div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-surface-500">
           <span>{{ t('friends.list.established_at') }}: {{ establishedLabel }}</span>
           <Tag
-            :value="friend.isPublic
+            :value="friend.public
               ? t('friends.list.visibility_public')
               : t('friends.list.visibility_private')"
-            :severity="friend.isPublic ? 'success' : 'secondary'"
+            :severity="friend.public ? 'success' : 'secondary'"
             class="text-xs"
           />
         </div>
@@ -88,7 +88,7 @@ function onVisibilityToggled(isPublic: boolean) {
         <FriendVisibilityToggle
           :team-friend-id="friend.teamFriendId"
           :team-id="teamId"
-          :is-public="friend.isPublic"
+          :is-public="friend.public"
           :disabled="!canToggleVisibility"
           @toggled="onVisibilityToggled"
         />

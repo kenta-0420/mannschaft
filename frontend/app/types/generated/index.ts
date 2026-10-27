@@ -2357,6 +2357,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{slug}/feature-display-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * チームの一般機能表示設定取得
+         * @description 所属SUPPORTER以上。未保存キーはtrue/true。認可には影響しない。
+         */
+        get: operations["getSettings_6"];
+        /**
+         * チームの一般機能表示設定更新
+         * @description 当該ADMINまたはSYSTEM_ADMIN専用。指定キーのみ更新し全件を返す。
+         */
+        put: operations["updateSettings_6"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{slug}/custom-fields/reorder": {
         parameters: {
             query?: never;
@@ -2552,9 +2576,9 @@ export interface paths {
             cookie?: never;
         };
         /** 運営の発行者設定取得 */
-        get: operations["getSettings_6"];
+        get: operations["getSettings_7"];
         /** 運営の発行者設定更新 */
-        put: operations["updateSettings_6"];
+        put: operations["updateSettings_7"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3228,12 +3252,12 @@ export interface paths {
             cookie?: never;
         };
         /** リマインド設定取得 */
-        get: operations["getSettings_7"];
+        get: operations["getSettings_8"];
         /**
          * リマインド設定更新
          * @description apply_to: NEW_ONLY（新規メモのみ）/ UNSENT（未送信枠を再計算）/ ALL（全未整理メモを再計算）
          */
-        put: operations["updateSettings_7"];
+        put: operations["updateSettings_8"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3307,12 +3331,12 @@ export interface paths {
          * ウォレット設定取得
          * @description 自分の設定を返す。レコードが無ければデフォルト（オプトアウト状態）で作成して返却
          */
-        get: operations["getSettings_8"];
+        get: operations["getSettings_9"];
         /**
          * ウォレット設定更新
          * @description オプトイン・規約同意・WebAuthn 要求設定を差分適用で更新
          */
-        put: operations["updateSettings_8"];
+        put: operations["updateSettings_9"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3379,9 +3403,9 @@ export interface paths {
             cookie?: never;
         };
         /** チーム加盟の申請受付・グループ設定の取得（組織 ADMIN。SYSTEM_ADMIN は閲覧のみ） */
-        get: operations["getSettings_9"];
+        get: operations["getSettings_10"];
         /** チーム加盟の申請受付・グループ設定の更新（組織 ADMIN のみ。全項目の置き換え） */
-        put: operations["updateSettings_9"];
+        put: operations["updateSettings_10"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3506,12 +3530,36 @@ export interface paths {
          * メンバーサブタブ可視性設定一覧
          * @description 指定組織の一覧／紹介サブタブの最低必要ロール一覧を取得する。非メンバーでもデフォルト値で 200。
          */
-        get: operations["getSettings_10"];
+        get: operations["getSettings_11"];
         /**
          * メンバーサブタブ可視性設定更新
          * @description 指定組織の一覧／紹介サブタブの最低必要ロールを一括更新する。ADMIN は無条件、DEPUTY_ADMIN は MEMBER_SUBTAB_VISIBILITY_MANAGE 権限保有時のみ可。一覧タブに PUBLIC を指定すると 422。
          */
-        put: operations["updateSettings_10"];
+        put: operations["updateSettings_11"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{slug}/feature-display-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織の一般機能表示設定取得
+         * @description 所属SUPPORTER以上。未保存キーはtrue/true。認可には影響しない。
+         */
+        get: operations["getSettings_12"];
+        /**
+         * 組織の一般機能表示設定更新
+         * @description 当該ADMINまたはSYSTEM_ADMIN専用。指定キーのみ更新し全件を返す。
+         */
+        put: operations["updateSettings_12"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3600,9 +3648,9 @@ export interface paths {
             cookie?: never;
         };
         /** 組織駐車場設定取得 */
-        get: operations["getSettings_11"];
+        get: operations["getSettings_13"];
         /** 組織駐車場設定更新 */
-        put: operations["updateSettings_11"];
+        put: operations["updateSettings_13"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3710,9 +3758,9 @@ export interface paths {
             cookie?: never;
         };
         /** 施設予約設定取得 */
-        get: operations["getSettings_12"];
+        get: operations["getSettings_14"];
         /** 施設予約設定更新 */
-        put: operations["updateSettings_12"];
+        put: operations["updateSettings_14"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4449,9 +4497,9 @@ export interface paths {
             cookie?: never;
         };
         /** 確認通知設定取得（組織） */
-        get: operations["getSettings_13"];
+        get: operations["getSettings_15"];
         /** 確認通知設定更新（組織） */
-        put: operations["updateSettings_13"];
+        put: operations["updateSettings_15"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4603,9 +4651,9 @@ export interface paths {
             cookie?: never;
         };
         /** グローバル通知設定取得 */
-        get: operations["getSettings_14"];
+        get: operations["getSettings_16"];
         /** グローバル通知設定更新 */
-        put: operations["updateSettings_14"];
+        put: operations["updateSettings_16"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4770,9 +4818,9 @@ export interface paths {
             cookie?: never;
         };
         /** 想起通知設定取得 */
-        get: operations["getSettings_15"];
+        get: operations["getSettings_17"];
         /** 想起通知設定更新 */
-        put: operations["updateSettings_15"];
+        put: operations["updateSettings_17"];
         post?: never;
         delete?: never;
         options?: never;
@@ -20042,7 +20090,7 @@ export interface paths {
         put?: never;
         /**
          * 組織への告知ウィザード実行
-         * @description F02.8 告知ウィザード。組織スコープでコンテンツ作成 + お知らせフィード登録を一括実行する。targetTeamIds を指定した場合は組織配下チームであることを検証する。
+         * @description F02.8 告知ウィザード。組織スコープでコンテンツ作成 + お知らせフィード登録を一括実行する。targetTeamIds はチームの slug（組織所属チーム一覧の id）で指定し、組織に ACTIVE で加盟しているチームであることを検証する（存在しない・他組織・未加盟は区別せず 400 BROADCAST_002）。
          */
         post: operations["broadcastToOrg"];
         delete?: never;
@@ -24663,7 +24711,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** TOTPログイン検証 */
+        /** 2FAログイン検証（TOTP / バックアップコード / メールOTP） */
         post: operations["validateTotp"];
         delete?: never;
         options?: never;
@@ -24716,6 +24764,91 @@ export interface paths {
         put?: never;
         /** MFAリカバリー確認 */
         post: operations["confirmMfaRecovery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/2fa/reauth/email/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 本人確認用メールOTP送信（無効化・再生成用） */
+        post: operations["sendReauthEmailOtp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/2fa/email/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** メール2FA設定開始（設定用コード送信） */
+        post: operations["startEmailSetup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/2fa/email/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 2FAログイン用メールOTP送信 */
+        post: operations["sendLoginEmailOtp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/2fa/email/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** メール2FA有効化 */
+        post: operations["enableEmailTwoFactor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/2fa/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 2FA無効化 */
+        post: operations["disableTwoFactor"];
         delete?: never;
         options?: never;
         head?: never;
@@ -26913,7 +27046,7 @@ export interface paths {
             cookie?: never;
         };
         /** 予約設定（チームポリシー）取得 */
-        get: operations["getSettings_16"];
+        get: operations["getSettings_18"];
         put?: never;
         post?: never;
         delete?: never;
@@ -27038,14 +27171,14 @@ export interface paths {
             cookie?: never;
         };
         /** 設定取得 */
-        get: operations["getSettings_17"];
+        get: operations["getSettings_19"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 設定更新 */
-        patch: operations["updateSettings_16"];
+        patch: operations["updateSettings_18"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/queue/counters/{counterId}": {
@@ -28060,14 +28193,14 @@ export interface paths {
             cookie?: never;
         };
         /** チームシフト設定取得（メンバー限定） */
-        get: operations["getSettings_18"];
+        get: operations["getSettings_20"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** チームシフト設定更新（ADMIN/DEPUTY のみ） */
-        patch: operations["updateSettings_17"];
+        patch: operations["updateSettings_19"];
         trace?: never;
     };
     "/api/v1/teams/{slug}/restore": {
@@ -29149,7 +29282,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** スレッド開閉 */
-        patch: operations["updateSettings_18"];
+        patch: operations["updateSettings_20"];
         trace?: never;
     };
     "/api/v1/schedule-delegations/{delegationId}/reject": {
@@ -31386,7 +31519,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** チャンネル個人設定 */
-        patch: operations["updateSettings_19"];
+        patch: operations["updateSettings_21"];
         trace?: never;
     };
     "/api/v1/chat/channels/{channelId}/members/{userId}/role": {
@@ -31951,7 +32084,7 @@ export interface paths {
             cookie?: never;
         };
         /** 発行者設定取得 */
-        get: operations["getSettings_19"];
+        get: operations["getSettings_21"];
         put?: never;
         post?: never;
         delete?: never;
@@ -32193,14 +32326,14 @@ export interface paths {
             cookie?: never;
         };
         /** 行動メモ設定取得 */
-        get: operations["getSettings_20"];
+        get: operations["getSettings_22"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 行動メモ設定更新 */
-        patch: operations["updateSettings_20"];
+        patch: operations["updateSettings_22"];
         trace?: never;
     };
     "/sitemap.xml": {
@@ -35857,6 +35990,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/friends/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * フォロー中チーム一覧取得
+         * @description MANAGE_FRIEND_TEAMS実効権限が必要。相互成立済みを除外し、公開有効相手だけ名前とslugを開示する。
+         */
+        get: operations["listPendingFollows"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/friends/incoming": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 受信申請チーム一覧取得
+         * @description MANAGE_FRIEND_TEAMS実効権限が必要。相互成立済みを除外し、公開有効申請元だけ名前とslugを開示する。
+         */
+        get: operations["listIncomingFollows"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/friend-feed": {
         parameters: {
             query?: never;
@@ -37670,7 +37843,7 @@ export interface paths {
             cookie?: never;
         };
         /** モデレーション設定一覧取得 */
-        get: operations["getSettings_21"];
+        get: operations["getSettings_23"];
         put?: never;
         post?: never;
         delete?: never;
@@ -44328,6 +44501,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/friend-request-source-teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 本人のフレンド申請元候補取得
+         * @description 現在の有効所属とMANAGE_FRIEND_TEAMS実効権限で絞り込んだ候補を返す。相手のlookupは行わない。
+         */
+        get: operations["listSourceTeams"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/form-submissions": {
         parameters: {
             query?: never;
@@ -46815,6 +47008,23 @@ export interface paths {
         };
         /** Google OAuth 認証URL取得 */
         get: operations["getGoogleAuthUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/2fa/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 2FA設定状態取得 */
+        get: operations["getTwoFactorStatus"];
         put?: never;
         post?: never;
         delete?: never;
@@ -50209,7 +50419,14 @@ export interface components {
         ApiResponseReplyResponse: {
             data?: components["schemas"]["ReplyResponse"];
         };
+        ReplyAuthorResponse: {
+            avatarUrl?: string | null;
+            displayName?: string;
+            /** Format: int64 */
+            id?: number | null;
+        };
         ReplyResponse: {
+            author?: components["schemas"]["ReplyAuthorResponse"];
             /** Format: int64 */
             authorId?: number;
             body?: string;
@@ -53506,8 +53723,8 @@ export interface components {
             targetGroupRange?: components["schemas"]["TargetGroupRange"];
             targetGroupRangeJson?: string;
             targetRole?: string;
-            targetTeamIds?: number[];
-            targetTeamIdsJson?: string;
+            /** @description 組織告知でのチーム絞り込み（チームの slug。組織所属チーム一覧の id と同じ値）。null・空は全チーム */
+            targetTeamIds?: string[];
         };
         TargetGroupRange: {
             /** Format: uuid */
@@ -53535,7 +53752,7 @@ export interface components {
             targetGroupIds?: string[];
             targetGroupRange?: components["schemas"]["TargetGroupRange"];
             targetRole?: string;
-            targetTeamIds?: number[];
+            targetTeamIds?: string[];
         };
         AnniversaryRequest: {
             /** Format: date */
@@ -53816,6 +54033,20 @@ export interface components {
         };
         UserPermissionGroupAssignRequest: {
             groupIds: number[];
+        };
+        FeatureDisplayPolicyItem: {
+            featureKey: string;
+            memberVisible: boolean;
+            supporterVisible: boolean;
+        };
+        UpdateFeatureDisplayPoliciesRequest: {
+            features: components["schemas"]["FeatureDisplayPolicyItem"][];
+        };
+        ApiResponseFeatureDisplayPoliciesResponse: {
+            data?: components["schemas"]["FeatureDisplayPoliciesResponse"];
+        };
+        FeatureDisplayPoliciesResponse: {
+            features: components["schemas"]["FeatureDisplayPolicyItem"][];
         };
         /** @description 会費受益者制限設定の更新リクエスト */
         UpdatePaymentBeneficiarySettingRequest: {
@@ -59481,6 +59712,13 @@ export interface components {
             content?: components["schemas"]["PostContentDto"];
             /** Format: int64 */
             id?: number;
+            /** @description 閲覧者がみたよ済みか */
+            mitayo: boolean;
+            /**
+             * Format: int32
+             * @description みたよ実件数
+             */
+            mitayoCount: number;
             postedAs?: components["schemas"]["PostPostedAsDto"];
             scope?: components["schemas"]["PostScopeDto"];
             stats?: components["schemas"]["PostStatsDto"];
@@ -63347,7 +63585,8 @@ export interface components {
             targetGroupIds?: string[];
             targetGroupRange?: components["schemas"]["TargetGroupRange"];
             targetRole: string;
-            targetTeamIds?: number[];
+            /** @description 組織告知でのチーム絞り込み（チームの slug。組織所属チーム一覧の id と同じ値）。null は全チーム */
+            targetTeamIds?: string[];
             /** Format: int64 */
             templateId?: number;
         };
@@ -63369,7 +63608,7 @@ export interface components {
             targetAudience?: components["schemas"]["TargetAudience"];
             targetGroupIds?: string[];
             targetRole?: string;
-            targetTeamIds?: number[];
+            targetTeamIds?: string[];
             warnings?: string[];
         };
         GroupRef: {
@@ -64197,7 +64436,8 @@ export interface components {
         FollowTeamRequest: {
             comment?: string;
             /** Format: int64 */
-            targetTeamId: number;
+            targetTeamId?: number;
+            targetTeamSlug?: string;
         };
         ApiResponseFollowTeamResponse: {
             data?: components["schemas"]["FollowTeamResponse"];
@@ -67924,7 +68164,8 @@ export interface components {
             targetGroupIds?: string[];
             targetGroupRange?: components["schemas"]["TargetGroupRange"];
             targetRole?: string;
-            targetTeamIds?: number[];
+            /** @description 「チームを選ぶ」のチーム（チームの slug。組織所属チーム一覧の id と同じ値） */
+            targetTeamIds?: string[];
             /** Format: int64 */
             templateId?: number;
         };
@@ -70729,8 +70970,27 @@ export interface components {
             backupCodes?: string[];
         };
         ValidateTotpLoginRequest: {
+            code?: string;
+            /** @enum {string} */
+            method?: "TOTP" | "BACKUP_CODE" | "EMAIL";
             mfaSessionToken?: string;
             totpCode?: string;
+        };
+        ApiResponseMfaLoginTokenResponse: {
+            data?: components["schemas"]["MfaLoginTokenResponse"];
+        };
+        MfaLoginTokenResponse: {
+            accessToken?: string;
+            /** Format: int32 */
+            backupCodesRemaining?: number;
+            /** Format: int64 */
+            expiresIn?: number;
+            /** @enum {string} */
+            method?: "TOTP" | "BACKUP_CODE" | "EMAIL";
+            refreshToken?: string;
+            /** Format: int64 */
+            sessionId?: number;
+            tokenType?: string;
         };
         ApiResponseTotpSetupResponse: {
             data?: components["schemas"]["TotpSetupResponse"];
@@ -70738,6 +70998,40 @@ export interface components {
         TotpSetupResponse: {
             qrCodeUrl?: string;
             secret?: string;
+        };
+        RequestMfaRecoveryRequest: {
+            mfaSessionToken?: string;
+        };
+        ConfirmMfaRecoveryRequest: {
+            token?: string;
+        };
+        ApiResponseMfaEmailSendResponse: {
+            data?: components["schemas"]["MfaEmailSendResponse"];
+        };
+        MfaEmailSendResponse: {
+            /** Format: int64 */
+            expiresInSeconds?: number;
+            maskedEmail?: string;
+            /** Format: int64 */
+            resendAfterSeconds?: number;
+        };
+        MfaEmailSendRequest: {
+            mfaSessionToken?: string;
+        };
+        EnableEmailTwoFactorRequest: {
+            code?: string;
+        };
+        DisableTwoFactorRequest: {
+            code?: string;
+            currentPassword?: string;
+            /** @enum {string} */
+            method: "TOTP" | "BACKUP_CODE" | "EMAIL";
+        };
+        RegenerateBackupCodesRequest: {
+            code?: string;
+            currentPassword?: string;
+            /** @enum {string} */
+            method?: "TOTP" | "BACKUP_CODE" | "EMAIL";
         };
         ResolveEvaluationRequest: {
             resolutionNote?: string;
@@ -76749,6 +77043,57 @@ export interface components {
         ApiResponseListBadgeResponse: {
             data?: components["schemas"]["BadgeResponse"][];
         };
+        Pagination: {
+            hasNext: boolean;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            /** Format: int64 */
+            totalElements: number;
+            /** Format: int32 */
+            totalPages: number;
+        };
+        PendingTeamFollowListResponse: {
+            data?: components["schemas"]["PendingTeamFollowView"][];
+            pagination?: components["schemas"]["Pagination"];
+        };
+        PendingTeamFollowView: {
+            /** Format: int64 */
+            followId?: number;
+            /** Format: date-time */
+            followedAt?: string;
+            followedBack?: boolean;
+            nameHidden?: boolean;
+            /** Format: int64 */
+            targetTeamId?: number;
+            targetTeamName?: string | null;
+            targetTeamSlug?: string | null;
+        };
+        IncomingTeamFollowListResponse: {
+            data: components["schemas"]["IncomingTeamFollowView"][];
+            pagination: components["schemas"]["Pagination"];
+        };
+        IncomingTeamFollowView: {
+            /** Format: int64 */
+            followId: number;
+            /** Format: date-time */
+            followedAt: string;
+            followedBack: boolean;
+            nameHidden: boolean;
+            /** Format: int64 */
+            sourceTeamId: number;
+            sourceTeamName: string | null;
+            sourceTeamSlug: string | null;
+        };
+        CommonErrorDetail: {
+            code?: string;
+            fieldErrors?: components["schemas"]["FieldError"][];
+            message?: string;
+        };
+        ErrorResponse: {
+            error?: components["schemas"]["CommonErrorDetail"];
+        };
         FriendFeedForwardStatus: {
             /** Format: int64 */
             forwardId?: number;
@@ -78233,17 +78578,6 @@ export interface components {
             data?: components["schemas"]["MemberPaymentResponse"][];
             meta?: components["schemas"]["PageMeta"];
         };
-        Pagination: {
-            hasNext?: boolean;
-            /** Format: int32 */
-            page?: number;
-            /** Format: int32 */
-            size?: number;
-            /** Format: int64 */
-            totalElements?: number;
-            /** Format: int32 */
-            totalPages?: number;
-        };
         TeamFriendListResponse: {
             data?: components["schemas"]["TeamFriendView"][];
             pagination?: components["schemas"]["Pagination"];
@@ -78770,7 +79104,7 @@ export interface components {
         };
         TimelineItem: {
             /** @enum {string} */
-            activityType?: "STATUS_CHANGED" | "WORKFLOW_CHANGED" | "ASSIGNEE_CHANGED" | "SEVERITY_CHANGED" | "COMMENT_ADDED" | "AI_ANALYZED" | "GITHUB_ISSUE_CREATED" | "REOPENED" | "RESOLVED" | "HEALTH_RECOVERED";
+            activityType?: "STATUS_CHANGED" | "WORKFLOW_CHANGED" | "ASSIGNEE_CHANGED" | "SEVERITY_CHANGED" | "COMMENT_ADDED" | "AI_ANALYZED" | "GITHUB_ISSUE_CREATED" | "REOPENED" | "RESOLVED" | "HEALTH_RECOVERED" | "MERGED_DUPLICATE";
             /** Format: int64 */
             actorId?: number;
             actorName?: string;
@@ -83297,6 +83631,16 @@ export interface components {
             lastSyncError?: components["schemas"]["SyncErrorDetail"];
             personalSyncEnabled?: boolean;
         };
+        FriendRequestSourceTeam: {
+            /** Format: int64 */
+            teamId: number;
+            teamName: string;
+            teamSlug: string;
+        };
+        FriendRequestSourceTeamListResponse: {
+            data: components["schemas"]["FriendRequestSourceTeam"][];
+            pagination: components["schemas"]["Pagination"];
+        };
         ApiResponseListFavoriteResponse: {
             data?: components["schemas"]["FavoriteResponse"][];
         };
@@ -85149,6 +85493,16 @@ export interface components {
         };
         ApiResponseListAuthSessionResponse: {
             data?: components["schemas"]["AuthSessionResponse"][];
+        };
+        ApiResponseTwoFactorStatusResponse: {
+            data?: components["schemas"]["TwoFactorStatusResponse"];
+        };
+        TwoFactorStatusResponse: {
+            /** Format: int32 */
+            backupCodesRemaining?: number;
+            enabled?: boolean;
+            /** @enum {string} */
+            method?: "TOTP" | "EMAIL";
         };
         ApiResponseRateSimulatorResponse: {
             data?: components["schemas"]["RateSimulatorResponse"];
@@ -92807,6 +93161,126 @@ export interface operations {
             };
         };
     };
+    getSettings_6: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 表示設定全件 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
+                };
+            };
+            /** @description 入力不正・未知または重複キー */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
+                };
+            };
+            /** @description 認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
+                };
+            };
+            /** @description 対象scopeの権限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
+                };
+            };
+            /** @description 対象scopeが存在しない・削除済み */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
+                };
+            };
+        };
+    };
+    updateSettings_6: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFeatureDisplayPoliciesRequest"];
+            };
+        };
+        responses: {
+            /** @description 表示設定全件 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
+                };
+            };
+            /** @description 入力不正・未知または重複キー */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
+                };
+            };
+            /** @description 認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
+                };
+            };
+            /** @description 対象scopeの権限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
+                };
+            };
+            /** @description 対象scopeが存在しない・削除済み */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
+                };
+            };
+        };
+    };
     reorderCustomFields: {
         parameters: {
             query?: never;
@@ -93301,7 +93775,7 @@ export interface operations {
             };
         };
     };
-    getSettings_6: {
+    getSettings_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -93321,7 +93795,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_6: {
+    updateSettings_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -95072,7 +95546,7 @@ export interface operations {
             };
         };
     };
-    getSettings_7: {
+    getSettings_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -95092,7 +95566,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_7: {
+    updateSettings_8: {
         parameters: {
             query?: {
                 apply_to?: string;
@@ -95284,7 +95758,7 @@ export interface operations {
             };
         };
     };
-    getSettings_8: {
+    getSettings_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -95304,7 +95778,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_8: {
+    updateSettings_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -95497,7 +95971,7 @@ export interface operations {
             };
         };
     };
-    getSettings_9: {
+    getSettings_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -95537,7 +96011,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_9: {
+    updateSettings_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -95843,7 +96317,7 @@ export interface operations {
             };
         };
     };
-    getSettings_10: {
+    getSettings_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -95865,7 +96339,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_10: {
+    updateSettings_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -95887,6 +96361,126 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseMemberSubtabVisibilityResponse"];
+                };
+            };
+        };
+    };
+    getSettings_12: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 表示設定全件 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
+                };
+            };
+            /** @description 入力不正・未知または重複キー */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
+                };
+            };
+            /** @description 認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
+                };
+            };
+            /** @description 対象scopeの権限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
+                };
+            };
+            /** @description 対象scopeが存在しない・削除済み */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
+                };
+            };
+        };
+    };
+    updateSettings_12: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFeatureDisplayPoliciesRequest"];
+            };
+        };
+        responses: {
+            /** @description 表示設定全件 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
+                };
+            };
+            /** @description 入力不正・未知または重複キー */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
+                };
+            };
+            /** @description 認証が必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
+                };
+            };
+            /** @description 対象scopeの権限不足 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
+                };
+            };
+            /** @description 対象scopeが存在しない・削除済み */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeatureDisplayPoliciesResponse"];
                 };
             };
         };
@@ -96105,7 +96699,7 @@ export interface operations {
             };
         };
     };
-    getSettings_11: {
+    getSettings_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -96127,7 +96721,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_11: {
+    updateSettings_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -96445,7 +97039,7 @@ export interface operations {
             };
         };
     };
-    getSettings_12: {
+    getSettings_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -96467,7 +97061,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_12: {
+    updateSettings_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -98688,7 +99282,7 @@ export interface operations {
             };
         };
     };
-    getSettings_13: {
+    getSettings_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -98710,7 +99304,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_13: {
+    updateSettings_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -99094,7 +99688,7 @@ export interface operations {
             };
         };
     };
-    getSettings_14: {
+    getSettings_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -99114,7 +99708,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_14: {
+    updateSettings_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -99489,7 +100083,7 @@ export interface operations {
             };
         };
     };
-    getSettings_15: {
+    getSettings_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -99509,7 +100103,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_15: {
+    updateSettings_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -121299,6 +121893,7 @@ export interface operations {
             content: {
                 "application/json": string;
                 "application/csp-report": string;
+                "application/reports+json": string;
             };
         };
         responses: {
@@ -138708,13 +139303,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description TOTP検証成功 */
+            /** @description 2FA検証成功 */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseTokenResponse"];
+                    "*/*": components["schemas"]["ApiResponseMfaLoginTokenResponse"];
                 };
             };
         };
@@ -138741,14 +139336,18 @@ export interface operations {
     };
     requestMfaRecovery: {
         parameters: {
-            query: {
-                mfaSessionToken: string;
+            query?: {
+                mfaSessionToken?: string;
             };
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RequestMfaRecoveryRequest"];
+            };
+        };
         responses: {
             /** @description リカバリーメール送信完了 */
             200: {
@@ -138763,14 +139362,18 @@ export interface operations {
     };
     confirmMfaRecovery: {
         parameters: {
-            query: {
-                token: string;
+            query?: {
+                token?: string;
             };
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ConfirmMfaRecoveryRequest"];
+            };
+        };
         responses: {
             /** @description リカバリー完了 */
             200: {
@@ -138783,7 +139386,7 @@ export interface operations {
             };
         };
     };
-    regenerateBackupCodes: {
+    sendReauthEmailOtp: {
         parameters: {
             query?: never;
             header?: never;
@@ -138791,6 +139394,122 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description 送信受付 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMfaEmailSendResponse"];
+                };
+            };
+        };
+    };
+    startEmailSetup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 送信受付 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMfaEmailSendResponse"];
+                };
+            };
+        };
+    };
+    sendLoginEmailOtp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaEmailSendRequest"];
+            };
+        };
+        responses: {
+            /** @description 送信受付 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMfaEmailSendResponse"];
+                };
+            };
+        };
+    };
+    enableEmailTwoFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnableEmailTwoFactorRequest"];
+            };
+        };
+        responses: {
+            /** @description 有効化成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBackupCodesResponse"];
+                };
+            };
+        };
+    };
+    disableTwoFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DisableTwoFactorRequest"];
+            };
+        };
+        responses: {
+            /** @description 無効化成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMessageResponse"];
+                };
+            };
+        };
+    };
+    regenerateBackupCodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RegenerateBackupCodesRequest"];
+            };
+        };
         responses: {
             /** @description 再生成成功 */
             200: {
@@ -143018,7 +143737,7 @@ export interface operations {
             };
         };
     };
-    getSettings_16: {
+    getSettings_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -143335,7 +144054,7 @@ export interface operations {
             };
         };
     };
-    getSettings_17: {
+    getSettings_19: {
         parameters: {
             query?: never;
             header?: never;
@@ -143357,7 +144076,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_16: {
+    updateSettings_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -145376,7 +146095,7 @@ export interface operations {
             };
         };
     };
-    getSettings_18: {
+    getSettings_20: {
         parameters: {
             query?: never;
             header?: never;
@@ -145407,7 +146126,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_17: {
+    updateSettings_19: {
         parameters: {
             query?: never;
             header?: never;
@@ -147418,7 +148137,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_18: {
+    updateSettings_20: {
         parameters: {
             query?: never;
             header?: never;
@@ -152093,7 +152812,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_19: {
+    updateSettings_21: {
         parameters: {
             query?: never;
             header?: never;
@@ -153164,7 +153883,7 @@ export interface operations {
             };
         };
     };
-    getSettings_19: {
+    getSettings_21: {
         parameters: {
             query: {
                 scopeType: string;
@@ -153646,7 +154365,7 @@ export interface operations {
             };
         };
     };
-    getSettings_20: {
+    getSettings_22: {
         parameters: {
             query?: never;
             header?: never;
@@ -153666,7 +154385,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_20: {
+    updateSettings_22: {
         parameters: {
             query?: never;
             header?: never;
@@ -158999,6 +159718,99 @@ export interface operations {
             };
         };
     };
+    listPendingFollows: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PendingTeamFollowListResponse"];
+                };
+            };
+        };
+    };
+    listIncomingFollows: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 一覧と絞込み後の総数 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncomingTeamFollowListResponse"];
+                };
+            };
+            /** @description 入力形式が不正（COMMON_001） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "COMMON_001",
+                     *         "message": "入力内容に不備があります",
+                     *         "fieldErrors": []
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 認証が必要（レスポンスbodyなし） */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 受信チームの実効権限がない（COMMON_002） */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "COMMON_002",
+                     *         "message": "この操作を行う権限がありません",
+                     *         "fieldErrors": []
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getFeed_1: {
         parameters: {
             query?: {
@@ -161508,7 +162320,7 @@ export interface operations {
             };
         };
     };
-    getSettings_21: {
+    getSettings_23: {
         parameters: {
             query?: never;
             header?: never;
@@ -170668,6 +171480,55 @@ export interface operations {
             };
         };
     };
+    listSourceTeams: {
+        parameters: {
+            query: {
+                targetTeamSlug: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 一覧と絞込み後の総数 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FriendRequestSourceTeamListResponse"];
+                };
+            };
+            /** @description 入力形式が不正（COMMON_001） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "COMMON_001",
+                     *         "message": "入力内容に不備があります",
+                     *         "fieldErrors": []
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 認証が必要（レスポンスbodyなし） */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listMySubmissions_1: {
         parameters: {
             query?: {
@@ -174150,6 +175011,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseMapStringString"];
+                };
+            };
+        };
+    };
+    getTwoFactorStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTwoFactorStatusResponse"];
                 };
             };
         };

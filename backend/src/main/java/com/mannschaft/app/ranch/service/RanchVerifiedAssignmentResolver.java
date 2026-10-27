@@ -25,11 +25,12 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
 
-/** 承認済み候補のみ選ぶ。開発候補は明示fixtureのLAND一組に限定する。 */
+/** 正式masterを優先し、未登録時のランダム選定だけを明示開発fixtureへ分離する。 */
 @Service
 @RequiredArgsConstructor
 public class RanchVerifiedAssignmentResolver implements RanchAssignmentResolver {
     private final RanchDevelopmentVisualCatalog development;
+    private final RanchDevelopmentClipCatalog clips;
     private final RanchProductionMasterRegistry production;
     private final DiagnosisPublicationReadiness diagnosisPublication;
     private final RanchRuleProvider rules;
@@ -43,6 +44,21 @@ public class RanchVerifiedAssignmentResolver implements RanchAssignmentResolver 
         if (master.isPresent()) {
             return resolveApproved(request, savedResult, confirmedBirth,
                     master.orElseThrow());
+        }
+        // 正式診断・出生対応がない16基礎種を、承認済みmasterの代わりには使わない。
+        if (request.method() != AssignmentMethod.HABITAT_RANDOM || request.habitat() == null) {
+            throw unavailable();
+        }
+        var candidates = clips.candidates(request.habitat());
+        if (!candidates.isEmpty()) {
+            var careRule = rules.currentCareRule(Instant.now(clock)).orElseThrow(this::unavailable);
+            var candidate = candidates.get(random.nextInt(candidates.size()));
+            String basis = "HABITAT_RANDOM|" + candidate.habitat()
+                    + "|" + RanchDevelopmentClipCatalog.CATALOG_VERSION
+                    + "|" + candidate.speciesKey() + "|" + RanchDevelopmentClipCatalog.VARIANT_KEY;
+            return new Selection(AssignmentMethod.HABITAT_RANDOM, candidate.habitat(),
+                    candidate.speciesKey(), RanchDevelopmentClipCatalog.VARIANT_KEY,
+                    RanchDevelopmentClipCatalog.CATALOG_VERSION, careRule.ruleVersion(), null, sha256(basis));
         }
         if (request.method() != AssignmentMethod.HABITAT_RANDOM
                 || request.habitat() != Habitat.LAND) throw unavailable();
@@ -71,6 +87,7 @@ public class RanchVerifiedAssignmentResolver implements RanchAssignmentResolver 
                             AssignmentMethod.DIAGNOSIS, AssignmentMethod.BIRTH_STYLE)
                     : List.of(AssignmentMethod.HABITAT_RANDOM, AssignmentMethod.BIRTH_STYLE);
         }
+        if (!clips.candidates(Habitat.LAND).isEmpty()) return List.of(AssignmentMethod.HABITAT_RANDOM);
         return development.find(RanchDevelopmentVisualCatalog.CATALOG_VERSION,
                 RanchDevelopmentVisualCatalog.SPECIES_KEY,
                 RanchDevelopmentVisualCatalog.VARIANT_KEY, DinosaurStage.BABY,

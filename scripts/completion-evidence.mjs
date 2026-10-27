@@ -67,7 +67,7 @@ function evidenceJsonLink(cell, cmpId) {
   return matches[0]?.path ?? null;
 }
 
-const TOOLING_PATH = /^(?:scripts\/|\.github\/|\.claude\/|docs\/|CLAUDE\.md$|AGENTS\.md$|README\.md$|TEST_CONVENTION\.md$)/;
+const TOOLING_PATH = /^(?:scripts\/|\.github\/|\.claude\/|docs\/|CLAUDE\.md$|AGENTS\.md$|README\.md$|TEST_CONVENTION\.md$|backend\/\.claudecode\.md$)/;
 
 /** テストコードだけの変更と認めるpath。大文字小文字を区別し、テスト設定（vitest/playwright設定・package.json・build.gradle）は含めない。 */
 const TEST_PATH = /^(?:backend\/src\/test\/|frontend\/tests\/|frontend\/(?:app|server|scripts|eslint-rules)\/.+\.(?:spec|test)\.(?:ts|mjs)$)/;

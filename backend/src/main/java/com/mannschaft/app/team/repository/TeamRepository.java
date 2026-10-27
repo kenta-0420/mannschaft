@@ -23,6 +23,17 @@ import java.util.stream.Collectors;
 public interface TeamRepository
         extends JpaRepository<TeamEntity, Long>, JpaSpecificationExecutor<TeamEntity> {
 
+    /** フォロー先として公開できる概要を、閲覧者に依存せず一括取得する。 */
+    @Query("""
+            SELECT new com.mannschaft.app.team.service.TeamFollowTargetSummary(t.id, t.name, t.slug)
+            FROM TeamEntity t WHERE t.id IN :ids
+              AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE
+              AND t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.deletedAt IS NULL AND t.archivedAt IS NULL
+            """)
+    List<com.mannschaft.app.team.service.TeamFollowTargetSummary> findDisclosableFollowTargetSummaries(
+            @Param("ids") Collection<Long> ids);
+
     /** 受付投影に必要なteam scalar状態だけを読む。 */
     interface ActiveStateRow {
         Long getId();
@@ -382,6 +393,16 @@ public interface TeamRepository
                         row -> (String) row[1]
                 ));
     }
+
+    /**
+     * 論理削除済みを含めて、指定 ID 集合の id → slug を一括取得する（[0]=id, [1]=slug）。
+     *
+     * <p>告知の範囲テンプレートが保存しているチームを API の識別子（slug）で返すために使う。保存後に論理削除された
+     * チームも slug を返し、宛先の検証（{@code BROADCAST_002}）まで失わないようにする（F01.2.1 §8.6）。
+     * slug は論理削除後も一意索引に残り、他のチームに再利用されない。</p>
+     */
+    @Query(value = "SELECT id, slug FROM teams WHERE id IN (:ids)", nativeQuery = true)
+    List<Object[]> findIdAndSlugByIdInIncludingDeleted(@Param("ids") Collection<Long> ids);
 
     /**
      * マイページ チームプロジェクト集約用: 指定 ID 集合の id → name（チーム名）を一括取得する。

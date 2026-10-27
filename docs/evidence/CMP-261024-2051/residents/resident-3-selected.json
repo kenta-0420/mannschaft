@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "residentId": "resident-3",
+  "sourceHead": "543d63324e2756931d1b72591bdf4ae347198552",
+  "start": "2026-10-25T04:20:28.544Z",
+  "end": "2026-10-25T04:31:44.454Z",
+  "locale": "de",
+  "goal": "受信→keyboard返し→相互成立を達成",
+  "auxiliaryGoal": "自発入口は一度Enterで開いた。成立後の再操作は自動review拒否で未実施。成立カードから既存関係を理解",
+  "loginCount": 1,
+  "browserCount": 1,
+  "contextCount": 1,
+  "active": 0,
+  "events": [
+    {
+      "time": "2026-10-25T04:22:32.066Z",
+      "action": "UI settings language Deutsch save",
+      "url": "http://localhost:3001/settings/account"
+    },
+    {
+      "time": "2026-10-25T04:26:34.055Z",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r12-1/nav",
+      "shot": "03-received-empty-390",
+      "metrics": {
+        "vw": 390,
+        "sw": 390,
+        "buttonCount": 17,
+        "buttons": {
+          "count": 17,
+          "minimumWidth": 44,
+          "minimumHeight": 44,
+          "below44": []
+        }
+      }
+    },
+    {
+      "time": "2026-10-25T04:27:03.915Z",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r12-1/nav",
+      "shot": "04-received-empty-360",
+      "metrics": {
+        "vw": 360,
+        "sw": 360,
+        "buttonCount": 18,
+        "buttons": {
+          "count": 18,
+          "minimumWidth": 44,
+          "minimumHeight": 44,
+          "below44": []
+        }
+      }
+    },
+    {
+      "time": "2026-10-25T04:27:38.872Z",
+      "action": "authorization evidence: UI Anleitung confirms Folgen sends from owned team to another team; previous auto-review denial retained",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r12-1/nav"
+    },
+    {
+      "time": "2026-10-25T04:29:26.575Z",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r12-1/nav",
+      "shot": "05-received-360",
+      "metrics": {
+        "vw": 360,
+        "sw": 360,
+        "buttonCount": 18,
+        "buttons": {
+          "count": 18,
+          "minimumWidth": 44,
+          "minimumHeight": 44,
+          "below44": []
+        }
+      }
+    },
+    {
+      "time": "2026-10-25T04:29:39.857Z",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r12-1/nav",
+      "shot": "06-confirm-360",
+      "metrics": {
+        "vw": 360,
+        "sw": 360,
+        "buttonCount": 21,
+        "buttons": {
+          "count": 21,
+          "minimumWidth": 44,
+          "minimumHeight": 44,
+          "below44": []
+        }
+      }
+    },
+    {
+      "time": "2026-10-25T04:29:48.044Z",
+      "action": "Keyboard Enter sent authorized ownedTEAM to assignedTEAM reciprocal friendship response",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r12-1/nav"
+    },
+    {
+      "time": "2026-10-25T04:29:58.912Z",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r12-1/nav",
+      "shot": "07-mutual-360",
+      "metrics": {
+        "vw": 360,
+        "sw": 360,
+        "buttonCount": 18,
+        "buttons": {
+          "count": 18,
+          "minimumWidth": 44,
+          "minimumHeight": 44,
+          "below44": []
+        }
+      }
+    },
+    {
+      "time": "2026-10-25T04:30:14.660Z",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r12-1/nav",
+      "shot": "08-mutual-card-360",
+      "metrics": {
+        "vw": 360,
+        "sw": 360,
+        "buttonCount": 18,
+        "buttons": {
+          "count": 18,
+          "minimumWidth": 44,
+          "minimumHeight": 44,
+          "below44": []
+        }
+      }
+    },
+    {
+      "time": "2026-10-25T04:31:09.647Z",
+      "url": "http://localhost:3001/teams/ar-d337400f5c8c-r12-1/nav",
+      "shot": "09-mutual-card-390",
+      "metrics": {
+        "vw": 390,
+        "sw": 390,
+        "buttonCount": 18,
+        "buttons": {
+          "count": 18,
+          "minimumWidth": 44,
+          "minimumHeight": 44,
+          "below44": []
+        }
+      }
+    }
+  ],
+  "observations": [
+    {
+      "severity": "未確定",
+      "topic": "DeutschのFreundschaftsteamsタブラベルが360/390幅で途中クリップ",
+      "metrics": {
+        "rect": {
+          "x": 40,
+          "y": 528,
+          "width": 101.953125,
+          "height": 66,
+          "top": 528,
+          "right": 141.953125,
+          "bottom": 594,
+          "left": 40
+        },
+        "scrollWidth": 189,
+        "clientWidth": 100
+      }
+    }
+  ],
+  "automaticReviewRejections": [
+    {
+      "action": "Folgen Enter",
+      "reason": "TEAM間入口と未確認のため範囲外判断",
+      "resolution": "実UI AnleitungとDOMでTEAM間と確認し最小入口操作は再審査可決"
+    },
+    {
+      "action": "相互成立後に自発入口再オープン＋相手検索",
+      "reason": "不要な重複申請/状態変更の可能性",
+      "resolution": "未実行、迂回なし、root報告"
+    }
+  ],
+  "status": "observed-unverified",
+  "trusted": false,
+  "selectionNote": "原本UI text/html・button全DOMは複製せず、時刻/URL/viewport/必要寸法だけを選別。"
+}

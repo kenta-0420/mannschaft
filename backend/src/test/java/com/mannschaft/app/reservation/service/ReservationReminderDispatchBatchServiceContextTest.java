@@ -1,14 +1,10 @@
 package com.mannschaft.app.reservation.service;
 
-import com.mannschaft.app.common.i18n.UserLocaleCache;
-import com.mannschaft.app.notification.service.NotificationHelper;
-import com.mannschaft.app.reservation.repository.ReservationReminderRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 /**
  * {@link ReservationReminderDispatchBatchService} の ApplicationContext ロード検証（軽量・スライス）。
  *
- * <p>本バッチは {@code @Scheduled(fixedDelay)} ＋ {@code @Transactional} を付与している。
+ * <p>本バッチは {@code @Scheduled(fixedDelay)} を付与した非 TX オーケストレータ（Issue #2997 G3）。
  * {@code @Scheduled} メソッドはパラメータ無し・戻り値 {@code void} でなければ
  * {@link ScheduledAnnotationBeanPostProcessor} の登録時バリデーションで起動が失敗する。
  * 純 Mockito 単体テストでは見えず CI シャードで初めて出る「起動時バリデーション失敗で全
@@ -42,11 +38,6 @@ class ReservationReminderDispatchBatchServiceContextTest {
         }
 
         @Bean
-        ReservationReminderRepository reservationReminderRepository() {
-            return Mockito.mock(ReservationReminderRepository.class);
-        }
-
-        @Bean
         ReservationRepository reservationRepository() {
             return Mockito.mock(ReservationRepository.class);
         }
@@ -57,37 +48,23 @@ class ReservationReminderDispatchBatchServiceContextTest {
         }
 
         @Bean
-        NotificationHelper notificationHelper() {
-            return Mockito.mock(NotificationHelper.class);
-        }
-
-        @Bean
-        UserLocaleCache userLocaleCache() {
-            return Mockito.mock(UserLocaleCache.class);
-        }
-
-        @Bean
-        MessageSource messageSource() {
-            return Mockito.mock(MessageSource.class);
+        ReservationReminderDispatchRunner reservationReminderDispatchRunner() {
+            return Mockito.mock(ReservationReminderDispatchRunner.class);
         }
 
         @Bean
         ReservationReminderDispatchBatchService reservationReminderDispatchBatchService(
                 ReservationReminderService reminderService,
-                ReservationReminderRepository reminderRepository,
                 ReservationRepository reservationRepository,
                 ReservationSlotRepository slotRepository,
-                NotificationHelper notificationHelper,
-                UserLocaleCache userLocaleCache,
-                MessageSource messageSource) {
+                ReservationReminderDispatchRunner reminderRunner) {
             return new ReservationReminderDispatchBatchService(
-                    reminderService, reminderRepository, reservationRepository,
-                    slotRepository, notificationHelper, userLocaleCache, messageSource);
+                    reminderService, reservationRepository, slotRepository, reminderRunner);
         }
     }
 
     @Test
-    @DisplayName("@Scheduled(fixedDelay)+@Transactional バッチで context が起動する")
+    @DisplayName("@Scheduled(fixedDelay) 非 TX オーケストレータで context が起動する")
     void contextロード成功() {
         assertThatCode(() -> {
             try (AnnotationConfigApplicationContext ctx =

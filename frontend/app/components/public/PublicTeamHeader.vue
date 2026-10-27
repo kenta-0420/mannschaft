@@ -10,6 +10,7 @@ import type { PublicTeamResponse } from '~/types/public'
  * 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §4.1 / §4.5 / §8.2
  */
 const props = defineProps<{
+  teamSlug?: string
   team: PublicTeamResponse
 }>()
 
@@ -77,6 +78,8 @@ const formattedMemberCount = computed(() => {
         </div>
       </div>
     </header>
+
+    <FriendRequestEntry v-if="teamSlug" :target-team="{ teamSlug, teamName: team.name }" profile-kind="public" />
 
     <!-- 理念 -->
     <section v-if="team.philosophy" aria-labelledby="philosophy-heading">

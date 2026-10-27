@@ -1,0 +1,14 @@
+
+Running 1 test using 1 worker
+
+[TL-REAL] 認証完了（所有者・別アカウント）
+[TL-REAL] 使い捨てTEAM作成完了
+[TL-REAL] 初期0件フィード・更新ボタン確認完了
+[TL-REAL] 更新feed200・本人編集権限200/slug確認完了
+[TL-REAL] 別アカウントの一覧・詳細拒否確認完了
+[TL-REAL] 匿名の一覧・詳細拒否確認完了
+[TL-REAL] MEMBERの更新feed200・別セッション新着表示確認完了
+[TL-REAL] 所有fixture後始末・context終了完了
+  ok 1 tests/e2e/real/timeline/timeline-manual-refresh.spec.ts:33:1 › CMP-261023-0051: フィードだけ更新して新着を表示し、草稿・画面状態と越境拒否を維持する (3.0m)
+
+  1 passed (3.3m)

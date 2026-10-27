@@ -126,12 +126,26 @@ async function handleLogin() {
   // 「メールアドレスまたはパスワードが不一致」という誤った文言を出してしまうため。
   let navigationTarget: string | null = null
   try {
-    const data = await api<{ data: LoginResult }>('/api/v1/auth/login', {
+    const data = await api<{
+      data: LoginResult & {
+        // MfaRequiredResponse（CMP-261012-0910 AC-27）。旧 BE 応答では欠落しうる。
+        primaryMethod?: 'TOTP' | 'EMAIL' | 'BACKUP_CODE' | null
+        availableMethods?: Array<'TOTP' | 'EMAIL' | 'BACKUP_CODE'> | null
+      }
+    }>('/api/v1/auth/login', {
       method: 'POST',
       body: { email: email.value, password: password.value },
     })
     if (data.data.mfaRequired) {
-      navigationTarget = `/2fa-verify?session=${data.data.mfaSessionToken}`
+      // 方式情報を 2fa-verify へ引き継ぐ（AC-53）。欠落時は 2fa-verify 側が TOTP にフォールバックする。
+      const mfaQuery = new URLSearchParams({ session: data.data.mfaSessionToken ?? '' })
+      if (data.data.primaryMethod) mfaQuery.set('primary', data.data.primaryMethod)
+      if (data.data.availableMethods?.length) {
+        mfaQuery.set('methods', data.data.availableMethods.join(','))
+      }
+      // ログイン後の遷移先指定（redirect）も 2FA 通過後まで保持する。
+      if (typeof route.query.redirect === 'string') mfaQuery.set('redirect', route.query.redirect)
+      navigationTarget = `/2fa-verify?${mfaQuery.toString()}`
     } else {
       navigationTarget = await completeLogin(data.data, data.data)
     }
@@ -192,7 +206,7 @@ async function handleLogin() {
       <!-- 戻るリンク -->
       <NuxtLink
         to="/"
-        class="inline-flex items-center gap-2 text-sm text-surface-500 transition-colors hover:text-primary"
+        class="inline-flex items-center gap-2 text-sm text-surface-500 transition-colors hover:text-primary max-md:min-h-11 max-md:min-w-11"
       >
         {{ $t('landing.features_detail.back_to_top') }}
       </NuxtLink>
@@ -255,10 +269,16 @@ async function handleLogin() {
         class="mt-2 min-h-11"
       />
       <div class="flex flex-col items-center gap-2">
-        <NuxtLink to="/forgot-password" class="text-sm text-primary hover:underline">
+        <NuxtLink
+          to="/forgot-password"
+          class="text-sm text-primary hover:underline max-md:inline-flex max-md:min-h-11 max-md:min-w-11 max-md:items-center max-md:justify-center max-md:text-center"
+        >
           {{ t('auth.login.forgot_password') }}
         </NuxtLink>
-        <NuxtLink to="/register" class="text-sm text-primary hover:underline">
+        <NuxtLink
+          to="/register"
+          class="text-sm text-primary hover:underline max-md:inline-flex max-md:min-h-11 max-md:min-w-11 max-md:items-center max-md:justify-center max-md:text-center"
+        >
           {{ t('auth.register.title') }}
         </NuxtLink>
       </div>

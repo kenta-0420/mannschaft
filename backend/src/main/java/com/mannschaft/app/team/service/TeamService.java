@@ -1200,6 +1200,26 @@ public class TeamService {
     }
 
     /**
+     * 論理削除済みを含めて、指定 ID 集合の id → slug を一括取得する（N+1 回避・Entity は渡さない）。
+     *
+     * <p>告知の範囲テンプレートの応答用。保存後に論理削除されたチームも黙って落とさず slug で返し、適用時の検証で
+     * 400 {@code BROADCAST_002}（宛先の選び直し）に至らせる（F01.2.1 §8.6）。通常の slug 解決には使わない。</p>
+     *
+     * @param ids 取得対象のチーム ID 集合
+     * @return id → slug の Map（行が無い ID は含まない）。ids が空の場合は空 Map
+     */
+    public Map<Long, String> getSlugsByIdsIncludingDeleted(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, String> slugs = new HashMap<>();
+        for (Object[] row : teamRepository.findIdAndSlugByIdInIncludingDeleted(ids)) {
+            slugs.put(((Number) row[0]).longValue(), (String) row[1]);
+        }
+        return slugs;
+    }
+
+    /**
      * 指定 ID 集合に対して id → name（チーム名）のマッピングを一括取得する（N+1 回避）。
      *
      * <p>マイページ チームプロジェクト集約（{@code GET /api/v1/me/team-projects}）が、
@@ -1217,6 +1237,29 @@ public class TeamService {
             return Collections.emptyMap();
         }
         return teamRepository.findNameMapByIdIn(ids);
+    }
+
+    /**
+     * slug の集合を、承諾済み（ACTIVE）で論理削除されていないチームの ID へまとめて解決する（SQL 1 本）。
+     *
+     * <p>告知の「チームを選ぶ」は URL 識別子（slug）で受け取るため（slug 一本化）、宛先の検証の前に内部 ID へ写す。
+     * 存在しない slug・論理削除済み・承諾前（PROVISIONED）のチームは結果に含まれない。どの組織に加盟しているかは
+     * ここでは見ない（呼び出し側が {@link TeamOrgMembershipQueryService#findActiveTeamIdsIn} で確かめる）。
+     * Entity は外へ渡さず、slug → ID の Map だけを返す。</p>
+     *
+     * @param slugs 解決する slug（null・空なら空 Map）
+     * @return slug → チーム ID（見つかったものだけ。キーは DB に保存された slug）
+     */
+    public Map<String, Long> findActiveTeamIdsBySlugs(Collection<String> slugs) {
+        if (slugs == null || slugs.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<String, Long> ids = new HashMap<>();
+        for (TeamEntity team : teamRepository.findBySlugInAndDeletedAtIsNullAndLifecycleStatus(
+                slugs, TeamEntity.LifecycleStatus.ACTIVE)) {
+            ids.put(team.getSlug(), team.getId());
+        }
+        return ids;
     }
 
     /**
@@ -1291,5 +1334,47 @@ public class TeamService {
                 .timestamps(new TeamResponse.TeamTimestampsDto(
                         team.getArchivedAt(), team.getCreatedAt()))
                 .build();
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // フレンドチームのフォロー先判定（CMP-261012-0315）
+    // 他ドメイン（social）に TeamEntity を渡さず、ID と真偽値だけを返す。
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * slug からフォロー可能なチームの ID を解決する。
+     *
+     * <p>不在・論理削除済み・アーカイブ済み・ACTIVE 以外（PROVISIONED）は空を返す。
+     * 呼び出し側（social）は空を一律に「フォロー対象が存在しない」として扱う。</p>
+     *
+     * @param slug チームの slug
+     * @return フォロー可能なチームの ID。該当なしは空
+     */
+    public Optional<Long> resolveFollowableTeamId(String slug) {
+        if (slug == null) {
+            return Optional.empty();
+        }
+        return teamRepository.findBySlugAndDeletedAtIsNull(slug)
+                .filter(TeamService::isFollowable)
+                .map(TeamEntity::getId);
+    }
+
+    /**
+     * 指定 ID のチームがフォロー可能か判定する。
+     * 不在・論理削除済み・アーカイブ済み・ACTIVE 以外（PROVISIONED）は false。
+     *
+     * @param teamId チーム ID
+     * @return フォロー可能なら true
+     */
+    public boolean isFollowableTeam(Long teamId) {
+        if (teamId == null) {
+            return false;
+        }
+        return teamRepository.findById(teamId).filter(TeamService::isFollowable).isPresent();
+    }
+
+    private static boolean isFollowable(TeamEntity team) {
+        return team.getArchivedAt() == null
+                && team.getLifecycleStatus() == TeamEntity.LifecycleStatus.ACTIVE;
     }
 }

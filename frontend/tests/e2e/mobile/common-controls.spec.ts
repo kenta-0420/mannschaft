@@ -1,10 +1,19 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { FEATURE_DISPLAY_CATALOG } from '../../../app/constants/featureDisplay'
 import { waitForHydration as waitForNuxtHydration } from '../helpers/wait'
 import desktopBaselines from './fixtures/common-controls-desktop.json' with { type: 'json' }
 
 // 実Nuxt/PrimeVue/CSSを使い、外部API境界だけをstubする。実ログインは行わない。
 test.use({ storageState: { cookies: [], origins: [] } })
 const actor = { id: 1, email: 'ui-fixture@example.invalid', fullName: 'UI Fixture', profileImageUrl: null, systemRole: null, timezone: 'Asia/Tokyo' }
+
+function defaultFeatureDisplayPolicies(scope: 'T' | 'O') {
+  return {
+    features: FEATURE_DISPLAY_CATALOG
+      .filter(item => (item.scopes as readonly string[]).includes(scope))
+      .map(item => ({ featureKey: item.key, memberVisible: true, supporterVisible: true })),
+  }
+}
 
 async function restoreStoredActor(page: Page) {
   await page.addInitScript((user) => {
@@ -49,6 +58,7 @@ async function stubBoundary(page: Page, authenticated = true, emptyReceipts = fa
       '/api/v1/notification-preferences': [],
       '/api/v1/notification-settings': { priorityAutoDelivery: true },
       '/api/v1/notification-type-preferences': [{ notificationType: 'URGENT', label: 'Urgent', isLocked: true, isEnabled: true, channelOverride: false, inAppEnabled: true, pushEnabled: true }],
+      '/api/v1/auth/2fa/status': { enabled: false, backupCodesRemaining: 0 },
       '/api/v1/auth/sessions': [], '/api/v1/auth/webauthn/credentials': [],
       '/api/v1/users/me/oauth': [], '/api/v1/users/me/line/status': { linked: false },
       '/api/v1/member-cards/my': [], '/api/v1/social/profiles/me': null,
@@ -59,6 +69,8 @@ async function stubBoundary(page: Page, authenticated = true, emptyReceipts = fa
       '/api/v1/organizations/ui-fixture': { id: 'ui-fixture', slug: 'ui-fixture', numericId: 1, basicInfo: { name: 'UI Organization Fixture' }, visibility: { visibility: 'PRIVATE', supporterEnabled: false }, metadata: { memberCount: 1 }, social: { supporterCount: 0 } },
       '/api/v1/teams/ui-fixture/me/permissions': { roleName: 'ADMIN', permissions: [], scopeAdmin: true },
       '/api/v1/organizations/ui-fixture/me/permissions': { roleName: 'ADMIN', permissions: [], scopeAdmin: true },
+      '/api/v1/teams/ui-fixture/feature-display-policies': defaultFeatureDisplayPolicies('T'),
+      '/api/v1/organizations/ui-fixture/feature-display-policies': defaultFeatureDisplayPolicies('O'),
       '/api/v1/dashboard/team/ui-fixture/widget-visibility': { widgets: [] },
       '/api/v1/dashboard/organization/ui-fixture/widget-visibility': { widgets: [] },
       '/api/v1/teams/ui-fixture/modules': [],

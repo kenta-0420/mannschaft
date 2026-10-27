@@ -1,0 +1,50 @@
+{
+    "cmp":  "CMP-261001-0839",
+    "pr":  4127,
+    "testedSpecCommit":  "d969c21a5ef184112bdd50957e20d6e7f73f4b1a",
+    "specSha256":  "48864ccea6b776504a852e1c7f6af34155f674ed302ce365390cfe0cbe162c41",
+    "playwrightStats":  {
+                            "startTime":  "2026-10-26T03:56:54.544Z",
+                            "duration":  23884.85,
+                            "expected":  1,
+                            "skipped":  0,
+                            "unexpected":  0,
+                            "flaky":  0
+                        },
+    "frontend":  {
+                     "copy":  "/var/tmp/mannschaft-verification-1000/run-yi61UP/tree/frontend",
+                     "url":  "http://localhost:3001",
+                     "source":  "e202bb96c03fc1b9197bfad8d27217dc7b4e8687",
+                     "receipt":  ".claude/runtime/october-first-wave-20261026/fe-verification-r6/receipt.json"
+                 },
+    "backend":  {
+                    "handoffJar":  ".claude/runtime/october-first-wave-20261026/cmp2610010839-latestmain-backend.jar",
+                    "url":  "http://localhost:8083",
+                    "productSource":  "d969c21a5ef184112bdd50957e20d6e7f73f4b1a",
+                    "sha256":  "906d0e6a8a6bf758d5544972b60bb005c8f0e2b03e85e698cef36243dfae498d"
+                },
+    "database":  {
+                     "port":  13339,
+                     "name":  "october_first_wave",
+                     "owner":  "october0839-0338-20261026",
+                     "container":  "october0839-0338-20261026-mysql",
+                     "ownershipEvidence":  ".claude/runtime/october-first-wave-20261026/csp-container-ownership.txt",
+                     "cleanup":  "実行UUID付きdocument_uri行だけをbefore/afterAllで削除"
+                 },
+    "browser":  {
+                    "cache":  "/var/tmp/october0839-0338-20261026-tools/browsers",
+                    "revision":  "1223",
+                    "version":  "148.0.7778.96"
+                },
+    "coverage":  {
+                     "invalidNoSave":  "33case HTTP実DB ITで確認。実機specの異常payload検査は204のみ。",
+                     "exploration":  "住民3名はsource03beで完了、target/guard blob不変の根拠は殿/Tが記録。CSP実機件数へ算入しない",
+                     "naturalBrowser":  "login実ページのCSP header→禁止iframeによる自動送信→同一origin相対report-uri→204→実DB保存",
+                     "roles":  "ブラウザ自動送信の公開書込専用endpointで閲覧UI/ロール差なし。匿名実ブラウザで確認。",
+                     "manualHttp":  "3MIMEで204/空応答と各1行保存、空/null/不正/配列は204"
+                 },
+    "rawResult":  "C:/Claude/mannschaft/.claude/runtime/october-first-wave-20261026/csp-playwright-latestmain-result.json",
+    "inputEvidence":  "csp-latestmain-input.json",
+    "migrationEvidence":  "latestmain-migration-fixture-proof.txt",
+    "cleanupResult":  "afterAll succeeded; current run UUID document_uri prefix only"
+}

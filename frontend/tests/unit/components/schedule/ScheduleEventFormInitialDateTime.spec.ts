@@ -125,6 +125,62 @@ describe('ScheduleEventForm: 初期日時のプリセット（F03.19 §6.6.5）'
     notificationMock.error.mockReset()
   })
 
+  it.each(['personal', 'team', 'organization'] as const)('%s の編集は端末LA・ユーザー東京でもAPIの09:00を前日17:00へずらさない', async (scope) => {
+    process.env.TZ = 'America/Los_Angeles'
+    const response = { data: {
+      content: { title: '日別モーダルからの編集' },
+      time: { startAt: '2026-10-12T09:00:00+09:00', endAt: '2026-10-12T10:00:00+09:00', allDay: false },
+    } }
+    scheduleApiMock.getMyScheduleDetail.mockResolvedValue(response)
+    scheduleApiMock.getSchedule.mockResolvedValue(response)
+    try {
+      const v = await mountForm({
+        scheduleId: 14, isPersonal: scope === 'personal', scopeType: scope === 'personal' ? 'team' : scope,
+      })
+
+      expect(v).toEqual({ startDate: '2026-10-12', endDate: '2026-10-12', startTime: '09:00', endTime: '10:00' })
+    }
+    finally {
+      process.env.TZ = 'UTC'
+    }
+  }, 60000)
+
+  it.each(['personal', 'team', 'organization'] as const)('%s の終日編集はユーザーTZで排他的終了を日付ピッカーへ戻す', async (scope) => {
+    process.env.TZ = 'America/Los_Angeles'
+    const response = { data: {
+      content: { title: '終日の編集' },
+      time: { startAt: '2026-10-12T00:00:00+09:00', endAt: '2026-10-13T00:00:00+09:00', allDay: true },
+    } }
+    scheduleApiMock.getMyScheduleDetail.mockResolvedValue(response)
+    scheduleApiMock.getSchedule.mockResolvedValue(response)
+    try {
+      const v = await mountForm({
+        scheduleId: 14, isPersonal: scope === 'personal', scopeType: scope === 'personal' ? 'team' : scope,
+      })
+
+      expect(v).toEqual({ startDate: '2026-10-12', endDate: '2026-10-12', startTime: '00:00', endTime: '00:00' })
+    }
+    finally {
+      process.env.TZ = 'UTC'
+    }
+  }, 60000)
+
+  it.each(['+09:00', ''])('編集日時の秒とオフセット無し旧APIの壁時計を保持する（offset=%s）', async (offset) => {
+    process.env.TZ = 'America/Los_Angeles'
+    scheduleApiMock.getMyScheduleDetail.mockResolvedValue({ data: {
+      content: { title: '秒を含む編集' },
+      time: { startAt: `2026-10-12T09:07:30${offset}`, endAt: `2026-10-12T10:08:45${offset}`, allDay: false },
+    } })
+    try {
+      const v = await mountForm({ scheduleId: 14, isPersonal: true })
+
+      expect(v).toEqual({ startDate: '2026-10-12', endDate: '2026-10-12', startTime: '09:07:30', endTime: '10:08:45' })
+    }
+    finally {
+      process.env.TZ = 'UTC'
+    }
+  }, 60000)
+
   it('端末 TZ が UTC・ユーザー設定 TZ が Asia/Tokyo でも、initialStartAt の壁時計時刻がそのまま入る（AC-21h・R16）', async () => {
     expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe('UTC')
 
@@ -164,6 +220,19 @@ describe('ScheduleEventForm: 初期日時のプリセット（F03.19 §6.6.5）'
     // resetForm の既定値のまま（時刻は載らない）
     expect(v.startTime).toBe('09:00')
     expect(v.endTime).toBe('10:00')
+  }, 60000)
+
+  it('日付のみの初期値は端末TZがUTC西側でも前日へずれない', async () => {
+    process.env.TZ = 'America/Los_Angeles'
+    try {
+      const v = await mountForm({ initialDate: '2026-08-06' })
+
+      expect(v.startDate).toBe('2026-08-06')
+      expect(v.endDate).toBe('2026-08-06')
+    }
+    finally {
+      process.env.TZ = 'UTC'
+    }
   }, 60000)
 
   it('initialEndAt が無い場合、終了時刻は開始の1時間後に補完される（自動補正 watcher と同じ規則）', async () => {

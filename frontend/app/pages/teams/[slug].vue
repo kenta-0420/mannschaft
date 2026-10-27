@@ -147,7 +147,7 @@ const showLeaveConfirm = ref(false)
 const adminLens = ref(true)
 
 const effectiveViewerRole = computed<ViewerRole>(() =>
-  adminLens.value ? ((roleName.value as ViewerRole | null) ?? 'PUBLIC') : 'MEMBER',
+  !adminLens.value && isAdminOrDeputy.value ? 'MEMBER' : ((roleName.value as ViewerRole | null) ?? 'PUBLIC'),
 )
 
 // SUPPORTER/GUEST/未所属は TeamSidebar が項目を表示しないため、
@@ -411,7 +411,11 @@ function retryShellData() {
   void loadShellData()
 }
 
-onBeforeUnmount(clearShellWatchdog)
+onBeforeUnmount(() => {
+  // 破棄されたインスタンスの解決待ち応答を失効させる。
+  ++fetchTeamSeq
+  clearShellWatchdog()
+})
 
 // シェル対象ルート（8 タブ）に居るときだけデータをロードする。
 // 非シェルルート（schedule / chat 等 約 100 ページ）ではロードしない＝従来と同じ挙動。
@@ -488,6 +492,8 @@ watch(
 // =============================================================================
 // タブ定義（権限出し分けは visible に移植）
 // =============================================================================
+const featureVisibility = useScopeFeatureVisibility('team', teamSlug, roleName, () => !adminLens.value)
+
 const tabs = computed<ScopeTab[]>(() => {
   const base = `/teams/${teamSlug.value}`
   return [
@@ -502,12 +508,14 @@ const tabs = computed<ScopeTab[]>(() => {
       to: `${base}/info`,
       icon: 'pi pi-info-circle',
       labelKey: 'teamShell.tab.info',
+      visible: featureVisibility.isVisible('info'),
     },
     {
       key: 'members',
       to: `${base}/members`,
       icon: 'pi pi-users',
       labelKey: 'teamShell.tab.members',
+      visible: featureVisibility.isVisible('members'),
     },
     {
       key: 'invites',
@@ -556,14 +564,14 @@ const tabs = computed<ScopeTab[]>(() => {
       to: `${base}/reservations`,
       icon: 'pi pi-calendar-clock',
       labelKey: 'reservation.tab.team_page',
-      visible: !!roleName.value && reservationEnabled.value,
+      visible: (!!roleName.value && reservationEnabled.value) && featureVisibility.isVisible('reservations'),
     },
     {
       key: 'nav',
       to: `${base}/nav`,
       icon: 'pi pi-compass',
       labelKey: 'nav.tab',
-      visible: !!roleName.value,
+      visible: (!!roleName.value) && featureVisibility.isVisible('nav'),
     },
   ]
 })
@@ -646,7 +654,7 @@ provideTeamShellContext({
         :tabs="tabs"
         :active-tab="activeTab"
         :sidebar="TeamSidebar"
-        :sidebar-props="{ teamId: teamSlug }"
+        :sidebar-props="{ teamId: teamSlug, memberLensActive: !adminLens }"
         :show-sidebar="showSidebar"
         :show-lens="isAdminOrDeputy"
         :lens="adminLens"
@@ -680,6 +688,7 @@ provideTeamShellContext({
         </template>
 
         <!-- タブ本体（子）— 永続シェル下で差し替え -->
+        <DashboardErrorState v-if="featureVisibility.error.value" :error="featureVisibility.error.value" @retry="featureVisibility.refresh(true)" />
         <NuxtPage />
       </ScopePageShell>
 

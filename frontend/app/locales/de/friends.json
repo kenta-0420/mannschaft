@@ -1,9 +1,9 @@
 {
   "friends": {
-    "title": "Befreundete Teams",
+    "title": "Freundschaftsteams",
     "subtitle": "Verwaltung von Freundschaftsbeziehungen zwischen Teams",
     "list": {
-      "empty": "Keine befreundeten Teams",
+      "empty": "Keine Freundschaftsteams",
       "established_at": "Gründungsdatum",
       "visibility_public": "Öffentlich",
       "visibility_private": "Privat",
@@ -11,49 +11,61 @@
       "target_team_id": "Ziel-Team-ID",
       "comment_label": "Grußkommentar (optional)"
     },
+    "follow_dialog": {
+      "search_label": "Nach Teamnamen suchen",
+      "search_placeholder": "Teams suchen",
+      "slug_input_label": "Per URL-Namen angeben",
+      "slug_input_hint": "Wenn das Team nicht in den Ergebnissen erscheint, gib seinen URL-Namen (den letzten Teil seiner Adresse) im Feld darunter ein",
+      "no_results": "Es wurden keine passenden Teams gefunden",
+      "search_error": "Die Suche ist fehlgeschlagen. Prüfe deine Verbindung und versuche es erneut",
+      "retry": "Erneut suchen",
+      "search_hint": "Gib mindestens 2 Zeichen ein"
+    },
     "actions": {
       "follow": "Folgen",
       "unfollow": "Entfolgen",
       "toggle_visibility": "Sichtbarkeit umschalten"
     },
     "messages": {
-      "follow_success": "Gefolgt",
-      "follow_mutual_success": "Gegenseitiges Folgen hergestellt — Sie sind jetzt befreundete Teams",
+      "follow_success": "Du folgst dem Team. Sobald es zurückfolgt, entsteht eine Teamfreundschaft.",
+      "follow_mutual_success": "Gegenseitiges Folgen hergestellt — Sie sind jetzt Freundschaftsteams",
       "follow_retry": "Folgen wird verarbeitet. Bitte versuchen Sie es in {seconds} Sekunden erneut",
       "unfollow_success": "Entfolgt",
       "unfollow_confirm": "Diesem Team entfolgen?",
-      "visibility_changed": "Sichtbarkeit geändert"
+      "visibility_changed": "Sichtbarkeit geändert",
+      "already_following": "Du folgst diesem Team bereits. Die Listen wurden aktualisiert."
     },
     "errors": {
       "self_follow": "Sie können Ihrem eigenen Team nicht folgen",
       "already_following": "Sie folgen bereits",
       "target_not_found": "Ziel-Team nicht gefunden",
-      "permission_denied": "Keine Berechtigung"
+      "permission_denied": "Keine Berechtigung",
+      "target_unavailable": "Das Team wurde nicht gefunden oder kann derzeit nicht gefolgt werden."
     },
     "guide": {
-      "title": "So verwendest du Befreundete Teams",
+      "title": "So verwendest du Freundschaftsteams",
       "description": "Auf diesem Bildschirm folgst du anderen Teams, wirst mit ihnen befreundet und verwaltest diese Beziehungen.",
       "what": {
-        "title": "Was sind befreundete Teams?",
-        "body": "Wenn sich zwei Teams gegenseitig folgen, werden sie befreundete Teams. Die Liste zeigt für jedes Team das Gründungsdatum sowie den Status Öffentlich oder Privat. Ab 20 Einträgen wird die Liste in Seiten aufgeteilt.",
-        "note": "Supportern und anderen werden nur öffentliche befreundete Teams angezeigt."
+        "title": "Was sind Freundschaftsteams?",
+        "body": "Wenn sich zwei Teams gegenseitig folgen, werden sie Freundschaftsteams. Die Liste zeigt für jedes Team das Gründungsdatum sowie den Status Öffentlich oder Privat. Ab 20 Einträgen wird die Liste in Seiten aufgeteilt.",
+        "note": "Supportern und anderen werden nur öffentliche Freundschaftsteams angezeigt."
       },
       "follow": {
         "title": "Folgen und befreundet werden",
-        "step1": "Tippe oben im Tab „Befreundete Teams“ auf die Schaltfläche „Folgen“",
-        "step2": "Gib die ID (Zahl) des Teams ein, dem du folgen möchtest",
-        "step3": "Gib einen Begrüßungskommentar ein (optional, bis zu 300 Zeichen)",
-        "step4": "Tippe im Dialog auf „Folgen“",
-        "mutual": "Sobald das andere Team dir ebenfalls folgt, erscheint „Ihr seid jetzt befreundete Teams“ und die Freundschaft ist hergestellt.",
+        "step1": "Nutze Folgen auf deiner Teamseite oder die Freundschaftsanfrage im anderen Teamprofil.",
+        "step2": "Suche nach dem Teamnamen und wähle das Team aus, dem du folgen möchtest. Falls du es nicht findest, gib den URL-Namen des Teams (den letzten Teil seiner Adresse) direkt ein",
+        "step3": "Prüfe die Teams, ihre Namen, URL-Namen und die Richtung. Kommentare werden nicht zugestellt.",
+        "step4": "Wähle Anfrage prüfen und danach Folgen.",
+        "mutual": "Sobald das andere Team dir ebenfalls folgt, erscheint „Gegenseitiges Folgen hergestellt — Sie sind jetzt Freundschaftsteams“ und die Freundschaft ist hergestellt.",
         "caution_title": "Hinweise",
         "caution_self": "Dem eigenen Team kannst du nicht folgen",
         "caution_already": "Einem Team, dem du bereits folgst, kannst du nicht erneut folgen",
-        "caution_busy": "Bei hoher Auslastung wird automatisch bis zu 3-mal erneut versucht. Klappt es trotzdem nicht, versuche es etwas später noch einmal",
-        "caution_role": "Die Schaltfläche „Folgen“ wird nur Administratoren und stellvertretenden Administratoren mit Berechtigung angezeigt"
+        "caution_busy": "Der Vorgang wird höchstens dreimal wiederholt. Aktualisiere die Listen zur Ergebniskontrolle.",
+        "caution_role": "Für diese Aktion ist die Berechtigung zur Verwaltung von Teamfreundschaften erforderlich."
       },
       "visibility": {
         "title": "Zwischen öffentlich und privat wechseln",
-        "step1": "Betätige den Schalter auf der Karte des befreundeten Teams",
+        "step1": "Betätige den Schalter auf der Karte des Freundschaftsteams",
         "step2": "Prüfe, dass „Sichtbarkeit wurde geändert“ angezeigt wird",
         "caution_title": "Hinweise",
         "caution_admin": "Nur Administratoren können das tun. Für alle anderen wird der Schalter deaktiviert angezeigt",
@@ -61,20 +73,53 @@
       },
       "unfollow": {
         "title": "Nicht mehr folgen",
-        "step1": "Tippe rechts auf der Karte des befreundeten Teams auf „︙“",
+        "step1": "Tippe rechts auf der Karte des Freundschaftsteams auf „︙“",
         "step2": "Wähle im Menü „Entfolgen“",
         "step3": "Bestätige im Bestätigungsdialog",
         "caution_title": "Hinweise",
         "caution_kept": "Auch nach dem Entfolgen bleiben bereits weitergeleitete Beiträge erhalten",
-        "caution_role": "Nur Administratoren und stellvertretende Administratoren mit Berechtigung können entfolgen"
+        "caution_role": "Für diese Aktion ist die Berechtigung zur Verwaltung von Teamfreundschaften erforderlich."
       },
       "related": {
         "title": "Verwandte Bildschirme",
-        "body": "Die folgenden Bildschirme zu befreundeten Teams kannst du über das Teammenü öffnen.",
-        "item_folders": "Freundesordner – Ordne befreundete Teams in Ordnern (bis zu 20 Ordner möglich)",
-        "item_feed": "Admin-Feed – Sieh dir Beiträge befreundeter Teams an und leite sie an dein eigenes Team weiter",
+        "body": "Die folgenden Bildschirme zu Freundschaftsteams kannst du über das Teammenü öffnen.",
+        "item_folders": "Freundesordner – Ordne Freundschaftsteams in Ordnern (bis zu 20 Ordner möglich)",
+        "item_feed": "Admin-Feed – Sieh dir Beiträge von Freundschaftsteams an und leite sie an dein eigenes Team weiter",
         "item_exports": "Verlauf der Rückweiterleitung – Sieh nach, an welche Freunde die Beiträge deines Teams weitergeleitet wurden"
+      },
+      "pending": {
+        "title": "Gefolgte Teams",
+        "body": "Hier kannst du noch nicht gegenseitige Follows ansehen und beenden. Öffentliche Teamnamen führen zur Teamseite. Nach dem Beenden kannst du über „Erneut folgen“ dasselbe Team auswählen. Erhaltene Anfragen zeigen das anfragende Team. Zurückfolgen sendet von deinem Team an dieses Team. Beide Richtungen bilden eine Freundschaft. Es gibt keine Empfangsbenachrichtigung."
       }
+    },
+    "pending": {
+      "title": "Gefolgte Teams",
+      "empty": "Du folgst derzeit keinen Teams",
+      "hidden_team": "Team kann nicht angezeigt werden",
+      "cancel": "Folgen beenden",
+      "cancel_confirm": "Folgen beenden? Falls das andere Team inzwischen zurückgefolgt ist, wird auch die Freundschaft beendet.",
+      "cancel_success": "Folgen beendet",
+      "refollow": "Erneut folgen",
+      "recovery_public": "Die Freundschaft wurde noch nicht vollständig eingerichtet. Beende das Folgen und folge erneut, um die Freundschaft herzustellen.",
+      "recovery_hidden": "Du kannst das Folgen beenden. Je nach Status des Teams ist erneutes Folgen möglicherweise nicht möglich."
+    },
+    "request": {
+      "title": "Teamfreundschaft anfragen",
+      "source": "Anfragendes Team",
+      "target": "Zielteam",
+      "no_source": "Du hast keine berechtigten Teams. Frage die Teamverwaltung nach den Berechtigungen.",
+      "choose_source": "Anfragendes Team auswählen",
+      "single_source": "Dein einziges berechtigtes Team ist ausgewählt. Prüfe es vor dem Senden.",
+      "review": "Anfrage prüfen",
+      "confirm": "Prüfe diese Richtung, bevor du die Anfrage sendest.",
+      "pending": "Das Ergebnis steht noch aus. Aktualisiere die Listen, um den Status zu prüfen.",
+      "refresh": "Listen aktualisieren",
+      "incoming": "Erhaltene Anfragen",
+      "respond": "Prüfen und zurückfolgen",
+      "incoming_empty": "Keine erhaltenen Anfragen",
+      "status_counts": "Aktuelle Anzahl: Freunde {friends}, gesendet {pending}, erhalten {incoming}",
+      "open_lists": "Listen des anfragenden Teams öffnen",
+      "entered_team": "Eingegebenes Team"
     }
   },
   "folders": {
@@ -125,7 +170,7 @@
   },
   "friend_feed": {
     "title": "Admin-Feed",
-    "subtitle": "Beiträge befreundeter Teams prüfen und weiterleiten",
+    "subtitle": "Beiträge von Freundschaftsteams prüfen und weiterleiten",
     "badge": "Von Freunden",
     "forwarded_badge": "Weitergeleitet",
     "permission_denied": "Sie haben keine Berechtigung, diese Seite anzuzeigen",
@@ -137,8 +182,8 @@
       "modal_title": "Beitrag weiterleiten",
       "target_label": "Verbreitungsbereich",
       "target_member": "Nur Mitglieder",
-      "target_supporter": "Mitglieder + Unterstützer (ab Phase 3)",
-      "target_supporter_tooltip": "Ab Phase 3 verfügbar",
+      "target_supporter": "Mitglieder + Unterstützer (demnächst)",
+      "target_supporter_tooltip": "Diese Zielgruppe ist noch nicht verfügbar",
       "comment_label": "Admin-Kommentar (optional)",
       "comment_placeholder": "Kommentar für die Weiterleitung eingeben (optional)",
       "submit": "Weiterleiten",
@@ -147,12 +192,13 @@
       "revoke": "Weiterleitung zurückziehen",
       "revoke_success": "Weiterleitung zurückgezogen",
       "revoke_confirm": "Diese Weiterleitung zurückziehen?",
-      "error": "Weiterleitung fehlgeschlagen"
+      "error": "Weiterleitung fehlgeschlagen",
+      "already_forwarded": "Dieser Beitrag wurde bereits weitergeleitet. Die Liste wurde aktualisiert"
     }
   },
   "forward_exports": {
     "title": "Ausgehende Weiterleitungen",
-    "subtitle": "Welche befreundeten Teams Beiträge Ihres Teams weitergeleitet haben",
+    "subtitle": "Welche Freundschaftsteams Beiträge Ihres Teams weitergeleitet haben",
     "permission_denied": "Sie haben keine Berechtigung, diese Seite anzuzeigen",
     "list": {
       "empty": "Noch kein Weiterleitungsverlauf",
@@ -176,5 +222,31 @@
   },
   "nav": {
     "tab": "Freundschaftsteams"
+  },
+  "error": {
+    "SOCIAL_101": "Du kannst deinem eigenen Team nicht folgen",
+    "SOCIAL_102": "Du folgst diesem Team bereits",
+    "SOCIAL_103": "Die Folgebeziehung wurde nicht gefunden",
+    "SOCIAL_104": "Das Team, dem du folgen möchtest, wurde nicht gefunden",
+    "SOCIAL_105": "Die Berechtigung zur Verwaltung von Freundschaftsteams ist erforderlich",
+    "SOCIAL_106": "Die Freundschaftsbeziehung wurde nicht gefunden",
+    "SOCIAL_107": "Zum Ändern der Sichtbarkeit sind Administratorrechte erforderlich",
+    "SOCIAL_108": "Eine andere Freundschaftsaktion läuft gerade. Bitte versuche es erneut",
+    "SOCIAL_109": "Freundschaftsteams sind derzeit deaktiviert",
+    "SOCIAL_110": "Der Freundesordner wurde nicht gefunden",
+    "SOCIAL_111": "Jedes Team kann höchstens 20 Freundesordner erstellen",
+    "SOCIAL_112": "Dieses Freundschaftsteam ist bereits im Ordner",
+    "SOCIAL_113": "Dieses Freundschaftsteam ist nicht im Ordner",
+    "SOCIAL_120": "Der Weiterleitungsverlauf wurde nicht gefunden",
+    "SOCIAL_121": "Dieser Beitrag wurde bereits weitergeleitet",
+    "SOCIAL_122": "Der ursprüngliche Beitrag wurde nicht gefunden",
+    "SOCIAL_123": "Dieser Beitrag ist nicht mit Freundschaftsteams geteilt",
+    "SOCIAL_124": "Es besteht keine Freundschaft mit dem ursprünglichen Team",
+    "SOCIAL_125": "Die Weiterleitung an Unterstützer ist noch nicht verfügbar",
+    "SOCIAL_130": "Für diese Freundesbenachrichtigung gibt es keine Empfänger",
+    "SOCIAL_131": "Wähle einen Empfängerordner aus",
+    "SOCIAL_132": "Wähle Empfängerteams aus",
+    "SOCIAL_133": "Wähle einen Ordner oder Teams als Empfängertyp",
+    "SOCIAL_134": "Das ausgewählte Team ist kein Freundschaftsteam"
   }
 }

@@ -85,6 +85,12 @@ const teamAffiliationKeys = [
   'teamAffiliation.restriction.kind_COOLDOWN',
   'teamAffiliation.restriction.kind_BLOCK',
   'teamAffiliation.restriction.lift',
+  // 制限の理由（列挙値）の表示ラベル。未知の値は reason_UNKNOWN（実機E2E #4009 D-1）
+  'teamAffiliation.restriction.reason_REJECTED',
+  'teamAffiliation.restriction.reason_DECLINED',
+  'teamAffiliation.restriction.reason_WITHDRAWN',
+  'teamAffiliation.restriction.reason_CANCELLED',
+  'teamAffiliation.restriction.reason_UNKNOWN',
   'teamAffiliation.leave.button',
   'teamAffiliation.leave.confirm',
   'teamAffiliation.remove.button',

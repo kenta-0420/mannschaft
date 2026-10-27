@@ -19,10 +19,17 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.mannschaft.app.social.announcement.dto.AudiencePreviewRequestDto;
+import com.mannschaft.app.social.announcement.dto.AudiencePreviewResponseDto;
+import org.mockito.ArgumentCaptor;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -41,6 +48,7 @@ class AnnouncementBroadcastControllerTest {
 
     private static final Long USER_ID = 1L;
     private static final Long TEAM_ID = 10L;
+    private static final Long ORG_ID = 20L;
 
     @Autowired
     private MockMvc mockMvc;
@@ -94,7 +102,6 @@ class AnnouncementBroadcastControllerTest {
                 {
                   "channel": "SCHEDULE",
                   "targetRole": "MEMBERS_AND_ABOVE",
-                  "targetTeamIds": [1, 2],
                   "templateId": null,
                   "priority": "NORMAL",
                   "expiresAt": null,
@@ -166,5 +173,68 @@ class AnnouncementBroadcastControllerTest {
                         .content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("COMMON_001"));
+    }
+
+    @Test
+    @DisplayName("D-3（実機E2E #4009）: 宛先プレビューは「チームを選ぶ」のチームを slug（組織チーム一覧の id）で受け付ける")
+    void previewAcceptsTeamSlugs() throws Exception {
+        given(audienceResolver.preview(eq(USER_ID), eq(ORG_ID), any(AudiencePreviewRequestDto.class)))
+                .willReturn(new AudiencePreviewResponseDto(1, 0, List.of(), List.of(), false, List.of()));
+
+        // FE（BroadcastStep1Audience）は GET /organizations/{slug}/teams の id（= チーム slug）をそのまま送る
+        String body = """
+                {"targetRole":"MEMBERS_AND_ABOVE","targetTeamIds":["t1-alpha"]}
+                """;
+
+        mockMvc.perform(post("/api/v1/organizations/{orgId}/broadcast/audience-preview", ORG_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<AudiencePreviewRequestDto> captor = ArgumentCaptor.forClass(AudiencePreviewRequestDto.class);
+        verify(audienceResolver).preview(eq(USER_ID), eq(ORG_ID), captor.capture());
+        assertThat(String.valueOf(captor.getValue().getTargetTeamIds())).isEqualTo("[t1-alpha]");
+    }
+
+    @Test
+    @DisplayName("D-3（実機E2E #4009）: 組織告知の送信も slug で受け付け、応答の targetTeamIds も slug で返す")
+    void broadcastToOrgAcceptsTeamSlugsAndReturnsSlugs() throws Exception {
+        BroadcastResult result = BroadcastResult.builder()
+                .announcementFeedId(101L)
+                .channel(AnnouncementChannel.SCHEDULE)
+                .contentId(501L)
+                .contentUrl("/organizations/20/schedules/501")
+                .targetRole("MEMBERS_AND_ABOVE")
+                .targetTeamIds(List.of(7L))
+                .priority("NORMAL")
+                .createdAt(LocalDateTime.of(2026, 10, 21, 10, 0))
+                .build();
+        given(broadcastService.broadcast(any(BroadcastRequest.class))).willReturn(result);
+        given(audienceResolver.teamSlugsOf(List.of(7L))).willReturn(List.of("t1-alpha"));
+
+        String body = """
+                {
+                  "channel": "SCHEDULE",
+                  "targetRole": "MEMBERS_AND_ABOVE",
+                  "targetTeamIds": ["t1-alpha"],
+                  "content": {
+                    "title": "テスト告知",
+                    "startAt": "2026-11-01T10:00:00+09:00",
+                    "endAt": "2026-11-01T12:00:00+09:00",
+                    "allDay": false
+                  }
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/organizations/{orgId}/broadcast", ORG_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.targetTeamIds[0]").value("t1-alpha"));
+
+        ArgumentCaptor<com.mannschaft.app.social.announcement.audience.BroadcastAudienceSpec> spec =
+                ArgumentCaptor.forClass(com.mannschaft.app.social.announcement.audience.BroadcastAudienceSpec.class);
+        verify(audienceResolver).resolveForBroadcast(eq(USER_ID), eq("ORGANIZATION"), eq(ORG_ID), spec.capture(), any());
+        assertThat(spec.getValue().targetTeamSlugs()).containsExactly("t1-alpha");
     }
 }

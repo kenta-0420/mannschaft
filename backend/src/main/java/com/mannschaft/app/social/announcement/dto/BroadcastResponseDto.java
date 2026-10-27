@@ -39,8 +39,8 @@ public class BroadcastResponseDto {
     /** 告知対象ロール（MEMBERS_AND_ABOVE / SUPPORTERS_AND_ABOVE / PUBLIC）。 */
     private String targetRole;
 
-    /** 組織告知でのチーム絞り込み（null = 全チーム対象）。 */
-    private List<Long> targetTeamIds;
+    /** 組織告知でのチーム絞り込み（チームの slug。null = 全チーム対象）。 */
+    private List<String> targetTeamIds;
 
     /** グループ宛て: 範囲を展開したチームグループ ID（並び順。グループ宛てでなければ null）。 */
     private List<UUID> targetGroupIds;
@@ -64,17 +64,18 @@ public class BroadcastResponseDto {
     /**
      * {@link BroadcastResult} からこの DTO を生成するファクトリメソッド。
      *
-     * @param result サービス層が返す告知実行結果
+     * @param result          サービス層が返す告知実行結果
+     * @param targetTeamSlugs 絞り込んだチームの slug（{@code result.getTargetTeamIds()} を写したもの。null = 全チーム）
      * @return レスポンス DTO
      */
-    public static BroadcastResponseDto from(BroadcastResult result) {
+    public static BroadcastResponseDto from(BroadcastResult result, List<String> targetTeamSlugs) {
         return BroadcastResponseDto.builder()
                 .announcementFeedId(result.getAnnouncementFeedId())
                 .channel(result.getChannel())
                 .contentId(result.getContentId())
                 .contentUrl(result.getContentUrl())
                 .targetRole(result.getTargetRole())
-                .targetTeamIds(result.getTargetTeamIds())
+                .targetTeamIds(targetTeamSlugs)
                 .targetGroupIds(result.getTargetGroupIds())
                 .includeUnassigned(result.isIncludeUnassigned())
                 .targetAudience(result.getTargetAudience())

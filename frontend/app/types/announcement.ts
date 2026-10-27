@@ -12,10 +12,15 @@ export type AnnouncementSourceType =
   | 'BLOG_POST'
   | 'BULLETIN_THREAD'
   | 'TIMELINE_POST'
+  | 'CIRCULATION_DOCUMENT'
+  /** 旧クライアント表示との互換用。BEの返却値はCIRCULATION_DOCUMENT。 */
   | 'CIRCULATION'
   | 'SURVEY'
   | 'TODO'
   | 'SCHEDULE'
+  | 'COMMITTEE_DECISION'
+  | 'COMMITTEE_MINUTES'
+  | 'ADVERTISER_CAMPAIGN'
 
 export type AnnouncementPriority = 'URGENT' | 'IMPORTANT' | 'NORMAL'
 
