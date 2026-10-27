@@ -1,6 +1,6 @@
 import type { SpringPage } from '~/types/api'
 
-/** HTTP?????Spring Data Page?data/meta????????? */
+/** HTTP境界で返るSpring Data Page。data/metaへ事前変換しない。 */
 export function springPage<T>(content: T[], totalElements = content.length, number = 0, size = 20): SpringPage<T> {
   const sort = { empty: true, sorted: false, unsorted: true }
   return {
