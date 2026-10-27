@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261026-2253",
+  "scope": "tooling",
+  "implementation": { "pr": 4147, "sha": "0f3e181a0ade3c04ed08a87b0aa42e7216918b63" },
+  "acceptanceCriteria": [
+    { "id": "AC-1", "description": "合成検出値が固定版8.28.0のentropy閾値3.5を必ず超える", "tests": [{ "name": "test_generated_token_always_exceeds_detection_entropy_threshold", "evidence": "scripts/test-secret-scan.py" }] },
+    { "id": "AC-2", "description": "sidebranch追加後削除の検出と既存10試験を維持する", "tests": [{ "name": "test_side_branch_added_then_removed_value_remains_detectable", "evidence": "scripts/test-secret-scan.py" }, { "name": "既存10件と新規1件の全成功", "evidence": "docs/evidence/CMP-261026-2253-summary.md" }] },
+    { "id": "AC-3", "description": "workflow・走査範囲・allowlist・検出閾値を弱めない", "tests": [{ "name": "PR全体の1ファイル限定差分と既存契約試験の照合", "evidence": "docs/evidence/CMP-261026-2253-summary.md" }] }
+  ],
+  "ci": [{ "runId": 40338933044 }],
+  "stages": {
+    "review": { "status": "passed", "evidence": "https://github.com/kenta-0420/mannschaft/pull/4147" },
+    "real": { "status": "not-applicable", "scope": "tooling", "reason": "変更は自己試験の合成値生成のみで、アプリの画面・API・認可挙動を変更しない" },
+    "exploratory": { "status": "not-applicable", "scope": "tooling", "reason": "自己試験のみの変更で画面・API・利用者導線を変更しない。実Git上のスキャン挙動は別途再現確認した" }
+  },
+  "regressions": [{ "description": "旧ランダム生成ではentropyが閾値を下回り自己試験が不安定に失敗する", "test": "test_generated_token_always_exceeds_detection_entropy_threshold", "redEvidence": "docs/evidence/CMP-261026-2253-summary.md", "greenEvidence": "docs/evidence/CMP-261026-2253-summary.md" }]
+}
