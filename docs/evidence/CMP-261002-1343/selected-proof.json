@@ -1,0 +1,200 @@
+{
+  "cmpId": "CMP-261002-1343",
+  "status": "実装中。実機全5件green確認済み、PR #4178採用・最終出荷判定は別途。",
+  "scope": "初期設定の表示・添付を保持し、③のダイアログ内で「あとで決める」を通常クリックして非表示を待つ。既存権限変更・force click・DOM削除・timeout緩和なし。",
+  "source": {
+    "testedHead": "9888c3d3b382faafa48dbecf10bbfa3c47f9bda6",
+    "testedTree": "a881c91a4e549c6edb628bbc10c548717293734e",
+    "specBlob": "36e84bfbd26ebc6e1e10f628e4e836d186679ade",
+    "specSHA256": "38d1df569133dc76bc2a7d86d24bfcd42c623ebfdccdac56c14bf5caf24c2cfb",
+    "mergedMain": "b0262b7b62eca70b1490983333f7d8c53e46900e",
+    "integrationHeadBeforeEvidenceCommit": "2acb9c4724340cc38c18ceddf5c0814d8f9eb7db",
+    "correspondence": [
+      {
+        "path": "frontend/tests/e2e/real/cmp260918-4-member-profiles-two-tier.real.spec.ts",
+        "testedBlob": "36e84bfbd26ebc6e1e10f628e4e836d186679ade",
+        "integratedBlob": "36e84bfbd26ebc6e1e10f628e4e836d186679ade",
+        "testedSHA256": "38d1df569133dc76bc2a7d86d24bfcd42c623ebfdccdac56c14bf5caf24c2cfb",
+        "integratedSHA256": "38d1df569133dc76bc2a7d86d24bfcd42c623ebfdccdac56c14bf5caf24c2cfb",
+        "identical": true
+      },
+      {
+        "path": "frontend/tests/e2e/fixtures/auth.ts",
+        "testedBlob": "74427397384307abf067467de1812d20b5baf06d",
+        "integratedBlob": "74427397384307abf067467de1812d20b5baf06d",
+        "testedSHA256": "e75b9920d0e11567a144f46e2c142ed651f7e12db2222156e11bfed2fb7a3d8e",
+        "integratedSHA256": "e75b9920d0e11567a144f46e2c142ed651f7e12db2222156e11bfed2fb7a3d8e",
+        "identical": true
+      },
+      {
+        "path": "frontend/tests/e2e/helpers/wait.ts",
+        "testedBlob": "078a1e8884d6b5c6cb22fe989bcd011d4cde2fb3",
+        "integratedBlob": "078a1e8884d6b5c6cb22fe989bcd011d4cde2fb3",
+        "testedSHA256": "90bbcbeed800ef4d486688522d6ea831817ea5ef2380ef86697f551572e7bf4b",
+        "integratedSHA256": "90bbcbeed800ef4d486688522d6ea831817ea5ef2380ef86697f551572e7bf4b",
+        "identical": true
+      },
+      {
+        "path": "frontend/tests/e2e/global.setup.ts",
+        "testedBlob": "2ef719a50a5ee99eebedfae74c6a10ecc787a8f6",
+        "integratedBlob": "2ef719a50a5ee99eebedfae74c6a10ecc787a8f6",
+        "testedSHA256": "fb2d35abbde9326f9e96d7e49644133bc4fb0a3d427a45d4d4f72f06a551277f",
+        "integratedSHA256": "fb2d35abbde9326f9e96d7e49644133bc4fb0a3d427a45d4d4f72f06a551277f",
+        "identical": true
+      },
+      {
+        "path": "frontend/playwright.config.ts",
+        "testedBlob": "0844f9a86cad09f286cc2d8c2b755e23cdf25c85",
+        "integratedBlob": "0844f9a86cad09f286cc2d8c2b755e23cdf25c85",
+        "testedSHA256": "ff680e30c241d70d674a92d130a9d2e174004b51b42c1560062c4f6e5445cf30",
+        "integratedSHA256": "ff680e30c241d70d674a92d130a9d2e174004b51b42c1560062c4f6e5445cf30",
+        "identical": true
+      },
+      {
+        "path": "frontend/package.json",
+        "testedBlob": "51ce19ab6534054c8441e60c0e109e5dd6161bbe",
+        "integratedBlob": "51ce19ab6534054c8441e60c0e109e5dd6161bbe",
+        "testedSHA256": "2b817cc58a0c0670413af4ae064f7be2c9356fdaff9aad52e4931478e22ac9fb",
+        "integratedSHA256": "2b817cc58a0c0670413af4ae064f7be2c9356fdaff9aad52e4931478e22ac9fb",
+        "identical": true
+      },
+      {
+        "path": "frontend/package-lock.json",
+        "testedBlob": "01d6dfb363d9b14d0be109f666fbd9abc5e2b856",
+        "integratedBlob": "01d6dfb363d9b14d0be109f666fbd9abc5e2b856",
+        "testedSHA256": "7384f7f465f56cae36394cf4e65b108fab668ff5401ea766e2918fd3308eaa55",
+        "integratedSHA256": "7384f7f465f56cae36394cf4e65b108fab668ff5401ea766e2918fd3308eaa55",
+        "identical": true
+      },
+      {
+        "path": "frontend/nuxt.config.ts",
+        "testedBlob": "7f1aaf715002a2ecc6a3ae80134b112f4fa1a0fd",
+        "integratedBlob": "21c1824cb240acad152f839502c05106d9db99d2",
+        "testedSHA256": "23d3d2f95c06518f81e09802eed964541242ed84a94c8d27829d68e31cbd2e76",
+        "integratedSHA256": "cafb6a2aafaccefc4c3965069e7cb8419d73dbc9ed573358bfd0ac219ee84aae",
+        "identical": false
+      }
+    ],
+    "limitation": "実機greenはtestedHeadのspecを既存固定runtimeで実行した結果。統合後HEAD全体の同一実行やruntime全体のbyte同一性は主張しない。追従後のNuxt設定は実機FEソースとblob・checkpoint SHA256が一致。試験依存blob不変を照合し、root判断で追加実機の重複実行を省略。",
+    "runtimeConfigBridge": {
+      "runtimeSourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+      "runtimeGitBlob": "21c1824cb240acad152f839502c05106d9db99d2",
+      "integratedGitBlob": "21c1824cb240acad152f839502c05106d9db99d2",
+      "runtimeCheckpointSHA256": "cafb6a2aafaccefc4c3965069e7cb8419d73dbc9ed573358bfd0ac219ee84aae",
+      "integratedSHA256": "cafb6a2aafaccefc4c3965069e7cb8419d73dbc9ed573358bfd0ac219ee84aae",
+      "identical": true,
+      "rootDecision": "試験関連blob不変かつ追従後Nuxt設定blobが実機FEソースと同一のため、追加実機の重複実行不要。"
+    }
+  },
+  "runtime": {
+    "frontendSourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+    "backendSourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+    "wholeRuntimeByteEquivalentToTestedHead": false,
+    "binding": "実行直前のFE/BE世代・固定配布物/JAR・health確認を実施。製品全体のtestedHeadとのbyte同一性は主張しない。"
+  },
+  "blockingRed": {
+    "sourceHead": "b20a218ea01e65689204e9009d9c5f6ca1dc3545",
+    "originalRunnerActualBlockingRed": false,
+    "originalResultUnchanged": true,
+    "rootBlockingRedProven": true,
+    "actualStatus": "timedOut",
+    "unexpected": 1,
+    "skipped": 0,
+    "basis": "③で初期設定が表示され、新規ページ作成クリックをp-dialog-maskが遮断。rootが実エラーと画面を独立確認。",
+    "classificationLimitation": "元classifierはfailed状態と全errorのpointer文言を必須にし、timedOutと一般timeoutを不一致扱いした。元判定を上書きせずroot判定を分離。",
+    "initialPermissionCount": 3,
+    "allInherited": true,
+    "cleanupFailures": 0
+  },
+  "green": {
+    "startedAt": "2026-10-27T21:35:54.107Z",
+    "durationMs": 19625.018,
+    "expected": 5,
+    "unexpected": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "errors": 0,
+    "cases": [
+      {
+        "name": "① 組織メンバー紹介ページが404/エラーにならず開く（ADMIN）",
+        "status": "passed"
+      },
+      {
+        "name": "② MEMBERにはページ作成ボタンが見えない（操作ボタンの権限差）",
+        "status": "passed"
+      },
+      {
+        "name": "③ ADMIN: ページ作成→メンバー追加→編集→削除→ページ削除（画面操作）",
+        "status": "passed"
+      },
+      {
+        "name": "④ URL直打ちでもMEMBERはページ作成APIに書き込めない（権限横断）",
+        "status": "passed"
+      },
+      {
+        "name": "⑤ 他テナント(非所属)は組織メンバー紹介ページのAPIにアクセスできない",
+        "status": "passed"
+      }
+    ],
+    "initialPermissionCount": 3,
+    "allInherited": true,
+    "ownedFixtureCounts": {
+      "organizations": 1,
+      "invites": 1,
+      "pages": 2,
+      "profiles": 1
+    },
+    "cleanupFailures": 0,
+    "canonicalExit": 0,
+    "canonicalCleanup": "removed",
+    "scratchRemoved": true
+  },
+  "healthHistory": {
+    "greenV2": {
+      "accepted": false,
+      "failedStage": "pre-browser-runtime-health",
+      "frontendHTTP": 408,
+      "browserExecutions": 0,
+      "fixturesCreated": 0
+    },
+    "synthetic": {
+      "cancelHTTP": 408,
+      "unsentSocketRequests": 0,
+      "fullDrainHTTP": 200
+    },
+    "v3Change": "FE health本文を完全drainして破棄するharness変更のみ。retry・timeout・guard緩和なし。",
+    "actualProductionSocketTelemetryCaptured": false,
+    "causalLimitation": "syntheticで機序を再現したが、実環境408のsocket telemetryは未取得のため実障害の原因を断定しない。"
+  },
+  "originalRefs": [
+    {
+      "ref": ".claude/runtime/october-fifth-wave-20261027/1343-plan/root-green-source-manifest-v2.json",
+      "sha256": "b1a738bc62958271f6498e738e3b928c159eb47dbcd4b8f94a61c11dbbccfdf3"
+    },
+    {
+      "ref": ".claude/runtime/october-fifth-wave-20261027/1343-plan/root-v9-actual-blocking-red-adjudication.json",
+      "sha256": "56bee492bba64012d765eda39788aa304924ad8fcaf53687064cbb05ddadcccf"
+    },
+    {
+      "ref": ".claude/runtime/october-fifth-wave-20261027/1343-plan/root-actual-green-v3-approval.json",
+      "sha256": "6936656e4c7f905c7c0f243b71369334967ffa40fed800de23cfe45e8b72eab6"
+    },
+    {
+      "ref": ".claude/runtime/october-fifth-wave-20261027/1343-plan/root-undici408-synthetic-observations.json",
+      "sha256": "eb4ba450f9e0cc558b460a80e6fac7bc4dbe374052a48a7a36ecf50ada9d0ca5"
+    },
+    {
+      "ref": "verification-evidence/CMP-261002-1343-actual-green-v3-20261028/actual-green-safe-result.json",
+      "sha256": "e545e1b623b34f9b383dc006f9883b37c09b6208496e299c4ba2458b1662f4ca"
+    },
+    {
+      "ref": "verification-evidence/CMP-261002-1343-actual-green-v3-20261028/receipt.json",
+      "sha256": "a86c0b03946a4a0c5bfa6eba6642813417e6678e1dcb545916bf88f5c7e1d907"
+    },
+    {
+      "ref": "verification-evidence/october-fifth-wave-20261027-0660-recovery-build5-8f671cba/recovery-build-checkpoint.json",
+      "sha256": "8e43df8d8a7b940b04b3abed151756394966076cf790cb655dcc129b7c4a4b7f"
+    }
+  ],
+  "privacy": "公開選択証拠のみ。raw DOM・画像・メール・token・ローカル絶対pathを含めない。原本refは各証跡保管ルートからの相対名とSHA256。"
+}
