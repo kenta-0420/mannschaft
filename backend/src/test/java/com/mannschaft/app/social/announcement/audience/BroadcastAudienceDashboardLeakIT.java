@@ -68,7 +68,7 @@ class BroadcastAudienceDashboardLeakIT extends AbstractBroadcastAudienceIT {
     void groupTargetedFeedsAreHiddenFromTeams() throws Exception {
         long all = feedIdOf(broadcastToOrg(XA, orgX.getId(), bulletinBody(Map.of())).andExpect(status().isCreated()));
         long toT1 = feedIdOf(broadcastToOrg(XA, orgX.getId(),
-                bulletinBody(Map.of("targetTeamIds", List.of(t1.getId())))).andExpect(status().isCreated()));
+                bulletinBody(Map.of("targetTeamIds", List.of(t1.getSlug())))).andExpect(status().isCreated()));
         long toG1 = feedIdOf(broadcastToOrg(XA, orgX.getId(),
                 bulletinBody(Map.of("targetGroupIds", ids(g1.getId())))).andExpect(status().isCreated()));
         long rangeG1 = feedIdOf(broadcastToOrg(XA, orgX.getId(),

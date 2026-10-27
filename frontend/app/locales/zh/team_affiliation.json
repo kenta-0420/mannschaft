@@ -77,7 +77,12 @@
     "restriction": {
       "kind_COOLDOWN": "冷却期中（至 {until}）",
       "kind_BLOCK": "已屏蔽",
-      "lift": "解除"
+      "lift": "解除",
+      "reason_REJECTED": "已拒绝申请",
+      "reason_DECLINED": "邀请被谢绝",
+      "reason_WITHDRAWN": "申请已撤回",
+      "reason_CANCELLED": "邀请已取消",
+      "reason_UNKNOWN": "其他原因"
     },
     "leave": {
       "button": "退出该组织",
