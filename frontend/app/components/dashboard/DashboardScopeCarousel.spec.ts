@@ -136,9 +136,8 @@ describe('スコープbodyの初回選択と常設カルーセル', () => {
     fakeAnimationClock()
     for (const panel of ['TEAM', 'ORGANIZATION', 'PERSONAL'] as const) {
       await view.get('[data-testid="scope-next"]').trigger('click')
-      await flushPromises()
       expect(state.store.activePanel).toBe(panel)
-      expect(view.find(`[data-testid="body-${panel}"]`).exists()).toBe(true)
+      await vi.waitFor(() => expect(view.find(`[data-testid="body-${panel}"]`).exists()).toBe(true))
     }
     await vi.advanceTimersByTimeAsync(2000)
     expectMountedOnce(panels)
@@ -186,8 +185,8 @@ describe('スコープbodyの初回選択と常設カルーセル', () => {
     const viewport = await beginDrag(view, dx)
     await vi.advanceTimersByTimeAsync(elapsed)
     await viewport.trigger('touchend')
-    await flushPromises()
     expect(state.store.activePanel).toBe('TEAM')
+    await vi.waitFor(() => expect(view.find('[data-testid="body-TEAM"]').exists()).toBe(true))
     expectMountedOnce(['PERSONAL', 'TEAM'])
   })
 
