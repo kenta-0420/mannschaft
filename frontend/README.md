@@ -16,3 +16,7 @@
 
 チーム・組織予定の作成と編集で、代理出席の許可・自動受諾を保存し、詳細取得後の編集にも引き継ぐ。
 API の省略/null の扱いと既存代理を維持する OFF 時の契約は [F03.10 代理出席仕様](../docs/features/F03.10_proxy_attendance.md) §7.1 を参照。
+
+## 本番 SSR の資産ヒント
+
+ビルド manifest では未訪問ページの機会的な `prefetch` を無効にし、ログイン画面で大量の JS を事前取得しない。必須資産の `preload`、スクリプトと import 関係、クライアント側の NuxtLink prefetch は維持する。

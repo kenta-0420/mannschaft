@@ -1,7 +1,12 @@
 package com.mannschaft.app.dashboard.service;
 
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.visibility.MembershipBatchQueryService;
+import com.mannschaft.app.common.visibility.ScopeKey;
 import com.mannschaft.app.dashboard.ViewerRole;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -35,6 +40,7 @@ import org.springframework.stereotype.Component;
 public class RoleResolver {
 
     private final AccessControlService accessControlService;
+    private final MembershipBatchQueryService membershipBatchQueryService;
 
     /**
      * 閲覧者の有効ロールを解決する。
@@ -64,6 +70,31 @@ public class RoleResolver {
         return resolveCurrentRole(userId, scopeType, scopeId);
     }
 
+    /**
+     * Inboxの横断取得用に、直接所属スコープの最新ロールを一括解決する。
+     * Dashboardの60秒キャッシュは変更せず、役割解除を次のInbox取得へ即反映する。
+     * 所属列挙は呼び出し側のACTIVE利用者・user_rolesとcurrent membershipsのunionを維持する。
+     * 親組織・配下組織の所属を暗黙に加えない。
+     */
+    public Map<ScopeKey, ViewerRole> resolveViewerRolesFresh(Long userId, Set<ScopeKey> scopes) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
+        }
+        if (scopes == null || scopes.isEmpty()) {
+            return Map.of();
+        }
+        var snapshot = membershipBatchQueryService.snapshotForUser(userId, scopes, Set.of());
+        boolean canResolve = snapshot.isSystemAdmin() || accessControlService.isActiveUser(userId);
+        Map<ScopeKey, ViewerRole> result = new LinkedHashMap<>();
+        for (ScopeKey scope : scopes) {
+            ViewerRole role = snapshot.isSystemAdmin() ? ViewerRole.SYSTEM_ADMIN
+                    : canResolve ? normalizeRoleName(snapshot.roleByScope().get(scope),
+                            userId, scope.scopeType(), scope.scopeId()) : ViewerRole.PUBLIC;
+            result.put(scope, role);
+        }
+        return result;
+    }
+
     private ViewerRole resolveCurrentRole(Long userId, String scopeType, Long scopeId) {
         if (userId == null) {
             throw new IllegalArgumentException("userId must not be null");
@@ -83,6 +114,10 @@ public class RoleResolver {
         // AccessControlService.getRoleName(userId, scopeId, scopeType) の引数順に注意
         String roleName = accessControlService.getRoleName(userId, scopeId, scopeType);
 
+        return normalizeRoleName(roleName, userId, scopeType, scopeId);
+    }
+
+    private ViewerRole normalizeRoleName(String roleName, Long userId, String scopeType, Long scopeId) {
         if (roleName == null) {
             // メンバーシップなし → PUBLIC
             return ViewerRole.PUBLIC;
