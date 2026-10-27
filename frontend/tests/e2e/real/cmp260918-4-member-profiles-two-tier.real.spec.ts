@@ -3,106 +3,327 @@ import {
   request as pwRequest,
   test,
   type APIRequestContext,
+  type APIResponse,
   type Browser,
+  type BrowserContext,
   type Page,
 } from '@playwright/test'
 import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration, waitForSpinnerGone } from '../helpers/wait'
 
 /**
- * 実機検証: PR #3357 メンバー紹介の年度別ページ二段構え化
- * (CMP-260918-1357 検証戦役)
- *
- * 確認内容:
- * 1. /organizations/org-000009/member-profiles が404/エラーにならず開く
- * 2. ADMIN操作でページ作成→メンバー追加→編集→削除ができる（画面操作）
- * 3. ADMINには操作ボタンが見え、MEMBERには見えない
- * 4. URL直打ちでもMEMBERが書き込めない（API直叩きで検証）
- * 5. 後始末: 作成したページ・メンバーは削除する
- *
- * 罠(殿が実測): このファイルは ADMIN(e2e-user) と MEMBER(e2e-dummy-6) を
- * 同一ファイル内で切り替える。`chromium-real` プロジェクトの既定 storageState
- * (`tests/e2e/.auth/real-user.json`) を引き継いだまま `browser.newContext({...})` の
- * storageState を明示しないと、別アカウントでログインしたつもりが実は前のアカウントの
- * ままになる（`/api/v1/users/me` の id が変わらない、という形で実測済み）。
- * このため各アカウント切替は必ず `browser.newContext({ storageState: { cookies: [], origins: [] } })`
- * を明示し、ログイン直後に `/api/v1/users/me` で本人確認する。
- *
- * また `networkidle` 待ちや単純な文字列比較でのローディング判定は不十分
- * （「loading」表示は1文字ずつ別要素になり得るため）。目的の文言が本文に現れることを
- * `expect.poll` で直接待ち、dev サーバー初回コンパイルを見込みタイムアウトは240秒とする。
+ * CMP-261002-1343: 既存ユーザーの権限を変えず、自所有の組織で全5件を検証する。
+ * 前提・本人確認・永続化確認・後始末は正規API、③のCRUDは実UIを通す。
+ * 初期設定のdismissは遮蔽red取得後に追加する（この段階はfixture修復のみ）。
  */
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:8080'
-const ORG_SLUG = 'org-000009'
-const uniqueSuffix = Date.now()
-const PAGE_SLUG = `cmp260918-verify-${uniqueSuffix}`
+const uniqueSuffix = Date.now().toString(36)
+const PAGE_SLUG = `cmp1343-ui-${uniqueSuffix}`
 const PAGE_TITLE = `検証用ページ${uniqueSuffix}`
 const MEMBER_NAME = `検証太郎${uniqueSuffix}`
-const MEMBER_NAME_EDITED = `検証太郎${uniqueSuffix}編集済`
+const MEMBER_NAME_EDITED = `${MEMBER_NAME}編集済`
+const accounts = {
+  admin: { email: 'e2e-user@test.mannschaft.local', id: 3 },
+  member: { email: 'e2e-dummy-6@test.mannschaft.local', id: 12 },
+  outsider: { email: 'e2e-supporter@test.mannschaft.local', id: 5 },
+}
+type ActorName = keyof typeof accounts
+type OwnPage = {
+  id: number
+  slug: string
+  organizationId: number
+  createdBy: number
+  visibility: string
+  status: string
+}
+let actors: Partial<Record<ActorName, APIRequestContext>> = {}
+let organization: { numericId: number; slug: string } | undefined
+let inviteId: number | undefined
+const ownedPages = new Map<number, OwnPage>()
+const ownedSlugs = new Set<string>()
+const contexts = new Set<BrowserContext>()
 
-let api: APIRequestContext
-let adminToken: string
-let memberToken: string
-let createdPageId: number | null = null
+// 同一ファイル内は順番に実行するが、先行testの失敗で後続をskipしない。
+test.describe.configure({ mode: 'default' })
+// 認証・招待のpayloadをtraceへ保存しない。失敗の画面は通常のscreenshotで確認する。
+test.use({ trace: 'off', video: 'off', storageState: { cookies: [], origins: [] } })
+
+function password(): string {
+  const value = process.env.TEST_USER_PASSWORD
+  if (!value) throw new Error('TEST_USER_PASSWORD が未設定')
+  return value
+}
+
+function adminApi(): APIRequestContext {
+  if (!actors.admin) throw new Error('ADMIN fixtureが未作成')
+  return actors.admin
+}
+
+function ownOrganization(): { numericId: number; slug: string } {
+  if (!organization) throw new Error('専用組織fixtureが未作成')
+  return organization
+}
+
+async function assertIdentity(api: APIRequestContext, name: ActorName): Promise<void> {
+  const me = await api.get(`${API_BASE_URL}/api/v1/users/me`)
+  expect(me.status(), `${name}の本人確認`).toBe(200)
+  const identity = (await me.json()).data as {
+    id: number
+    email: string
+    systemRole: string | null
+  }
+  expect(identity.id).toBe(accounts[name].id)
+  expect(identity.email).toBe(accounts[name].email)
+  expect(identity.systemRole).not.toBe('SYSTEM_ADMIN')
+}
+
+async function loginActor(name: ActorName): Promise<void> {
+  const loginApi = await pwRequest.newContext({ baseURL: API_BASE_URL })
+  try {
+    const response = await loginApi.post('/api/v1/auth/login', {
+      data: { email: accounts[name].email, password: password() },
+    })
+    expect(response.status(), `${name}のfixtureログイン`).toBe(200)
+    const token = ((await response.json()).data as { accessToken: string }).accessToken
+    expect(typeof token, 'ログイン応答のtoken型').toBe('string')
+    actors[name] = await pwRequest.newContext({
+      baseURL: API_BASE_URL,
+      extraHTTPHeaders: { Authorization: `Bearer ${token}` },
+    })
+    await assertIdentity(actors[name]!, name)
+  } finally {
+    await loginApi.dispose()
+  }
+}
+
+function rememberPage(data: OwnPage, slug: string): void {
+  // 返却IDは表示assertより前に回収し、所有スコープを確認してからcleanup対象にする。
+  expect(data.organizationId).toBe(ownOrganization().numericId)
+  expect(data.createdBy).toBe(accounts.admin.id)
+  expect(data.slug).toBe(slug)
+  expect(Number.isSafeInteger(data.id)).toBe(true)
+  ownedPages.set(data.id, data)
+}
+
+async function pageList(): Promise<OwnPage[]> {
+  const response = await adminApi().get('/api/v1/team/pages', {
+    params: { organizationId: ownOrganization().numericId, size: 100 },
+  })
+  expect(response.status(), '所有組織のページ一覧').toBe(200)
+  return (await response.json()).data as OwnPage[]
+}
+
+/** 失敗時もexact own scope/slugからだけIDを回収する。未知データは削除しない。 */
+async function cleanupFixture(): Promise<string[]> {
+  const failures: string[] = []
+  async function clean(label: string, action: () => Promise<void>): Promise<void> {
+    try {
+      await action()
+    } catch {
+      failures.push(label)
+    }
+  }
+  if (organization && actors.admin) {
+    await clean('所有ページIDの再照合', async () => {
+      const pages = await pageList()
+      for (const slug of ownedSlugs) {
+        const matches = pages.filter((item) => item.slug === slug)
+        expect(matches.length, '所有slugの一意性').toBeLessThanOrEqual(1)
+        if (matches[0]) rememberPage(matches[0], slug)
+      }
+    })
+    for (const ownPage of ownedPages.values()) {
+      await clean(`所有ページ:${ownPage.id}`, async () => {
+        const detail = await adminApi().get(`/api/v1/team/pages/${ownPage.id}`)
+        if (detail.status() === 404) return // 自身のUIで既に削除したページ
+        expect(detail.status()).toBe(200)
+        rememberPage((await detail.json()).data as OwnPage, ownPage.slug)
+        const members = await adminApi().get('/api/v1/team/members', {
+          params: { teamPageId: ownPage.id, size: 100 },
+        })
+        expect(members.status()).toBe(200)
+        for (const member of (await members.json()).data as { id: number; teamPageId: number }[]) {
+          expect(member.teamPageId).toBe(ownPage.id)
+          const deletion = await adminApi().delete(`/api/v1/team/members/${member.id}`)
+          expect([204, 404]).toContain(deletion.status())
+        }
+        const deletion = await adminApi().delete(`/api/v1/team/pages/${ownPage.id}`)
+        expect([204, 404]).toContain(deletion.status())
+      })
+    }
+    await clean('所有ページの残存確認', async () => {
+      expect((await pageList()).filter((item) => ownedSlugs.has(item.slug))).toHaveLength(0)
+    })
+    if (inviteId !== undefined)
+      await clean(`所有招待:${inviteId}`, async () => {
+        const deletion = await adminApi().delete(
+          `/api/v1/organizations/${organization!.slug}/invite-tokens/${inviteId}`,
+        )
+        expect([204, 404]).toContain(deletion.status())
+      })
+    // ページcleanupに失敗した場合は先に組織を消さず、所有者が再回収できる状態を保つ。
+    if (failures.length === 0)
+      await clean(`所有組織:${organization.numericId}`, async () => {
+        const deletion = await adminApi().delete(`/api/v1/organizations/${organization!.slug}`)
+        expect(deletion.status()).toBe(204)
+        const detail = await adminApi().get(`/api/v1/organizations/${organization!.slug}`)
+        expect(detail.status()).toBe(404)
+        organization = undefined
+      })
+  }
+  for (const [name, api] of Object.entries(actors)) {
+    await clean(`API context:${name}`, () => api.dispose())
+  }
+  actors = {}
+  return failures
+}
 
 test.beforeAll(async () => {
-  api = await pwRequest.newContext({ baseURL: API_BASE_URL })
-  async function login(email: string): Promise<string> {
-    const res = await api.post('/api/v1/auth/login', {
-      data: { email, password: 'TestPass2026!' },
+  const info = test.info()
+  test.setTimeout(240_000)
+  try {
+    for (const name of Object.keys(accounts) as ActorName[]) await loginActor(name)
+    const created = await adminApi().post('/api/v1/organizations', {
+      data: {
+        name: `CMP1343 実機 ${uniqueSuffix}`,
+        slug: `cmp1343-${uniqueSuffix}`,
+        orgType: 'OTHER',
+        visibility: 'PRIVATE',
+      },
     })
-    expect(res.status(), `${email} のログインに失敗`).toBe(200)
-    return ((await res.json()).data as { accessToken: string }).accessToken
+    expect(created.status(), '専用組織作成').toBe(201)
+    const createdOrganization = (await created.json()).data as { numericId: number; slug: string }
+    expect(createdOrganization.slug).toBe(`cmp1343-${uniqueSuffix}`)
+    expect(Number.isSafeInteger(createdOrganization.numericId)).toBe(true)
+    expect(createdOrganization.numericId).toBeGreaterThan(0)
+    // 要求したexact slugと有効なIDを確認できた応答だけをcleanupの所有対象へ登録する。
+    organization = { numericId: createdOrganization.numericId, slug: createdOrganization.slug }
+    const detail = await adminApi().get(`/api/v1/organizations/${organization.slug}`)
+    expect(detail.status()).toBe(200)
+    expect((await detail.json()).data.numericId).toBe(organization.numericId)
+    const permissions = await adminApi().get(
+      `/api/v1/organizations/${organization.slug}/me/permissions`,
+    )
+    expect(permissions.status()).toBe(200)
+    expect((await permissions.json()).data.roleName).toBe('ADMIN')
+    const initial = await adminApi().get('/api/v1/admin/member-permissions', {
+      params: { scopeType: 'ORGANIZATION', scopeId: organization.numericId },
+    })
+    expect(initial.status()).toBe(200)
+    const settings = (await initial.json()).data.permissions as { inherited: boolean }[]
+    expect(settings).toHaveLength(3)
+    expect(settings.every((setting) => setting.inherited)).toBe(true)
+    await info.attach('initial-permissions', {
+      body: Buffer.from(
+        JSON.stringify({
+          organization,
+          count: settings.length,
+          inherited: settings.map((setting) => setting.inherited),
+        }),
+      ),
+      contentType: 'application/json',
+    })
+    const invite = await adminApi().post(
+      `/api/v1/organizations/${organization.slug}/invite-tokens`,
+      {
+        data: { roleId: 4, expiresIn: '1d', maxUses: 1 },
+      },
+    )
+    expect(invite.status()).toBe(201)
+    const invitation = (await invite.json()).data as { id: number; token: string; roleName: string }
+    inviteId = invitation.id
+    expect(invitation.roleName).toBe('MEMBER')
+    // tokenを含むURLをtransport例外/traceへ出力しない。
+    let joined: APIResponse
+    try {
+      joined = await actors.member!.post(`/api/v1/invite/${invitation.token}/join`)
+    } catch {
+      throw new Error('専用組織へのMEMBER参加で通信失敗')
+    }
+    expect(joined.status(), '専用組織へのMEMBER参加').toBe(200)
+    const member = await actors.member!.get(
+      `/api/v1/organizations/${organization.slug}/me/permissions`,
+    )
+    expect(member.status()).toBe(200)
+    expect((await member.json()).data.roleName).toBe('MEMBER')
+    const outsider = await actors.outsider!.get(
+      `/api/v1/organizations/${organization.slug}/me/permissions`,
+    )
+    if (outsider.status() === 200) expect((await outsider.json()).data.roleName).toBeNull()
+    else expect([403, 404]).toContain(outsider.status())
+  } catch (error) {
+    const failures = await cleanupFixture()
+    throw new AggregateError(
+      [error, ...failures.map((label) => new Error(label))],
+      'CMP1343 fixture準備失敗',
+    )
   }
-  adminToken = await login('e2e-user@test.mannschaft.local')
-  memberToken = await login('e2e-dummy-6@test.mannschaft.local')
-
-  async function assertIdentity(token: string, expectedEmail: string): Promise<void> {
-    const me = await api.get('/api/v1/users/me', { headers: { Authorization: `Bearer ${token}` } })
-    expect(me.status()).toBe(200)
-    const body = (await me.json()).data as { email: string }
-    expect(body.email).toBe(expectedEmail)
-  }
-  await assertIdentity(adminToken, 'e2e-user@test.mannschaft.local')
-  await assertIdentity(memberToken, 'e2e-dummy-6@test.mannschaft.local')
 })
 
 test.afterAll(async () => {
-  // 後始末: 作成したページが残っていれば削除する（メンバーはページのCASCADE DELETEに委ねず明示削除は不要 - ページ削除で足りる想定だが、
-  // 念のためページが取れなければ何もしない）。
-  if (createdPageId != null) {
-    // 画面操作(③)で既に削除済みのはずの保険的な後始末。既に無い(404)ことは正常なので
-    // 握りつぶさず、想定外の失敗だけログに残して表面化させる。
-    try {
-      await api.delete(`/api/v1/team/pages/${createdPageId}`, {
-        headers: { Authorization: `Bearer ${adminToken}` },
-      })
-    } catch (error) {
-      console.error('CMP-260918-1357: 後始末のページ削除に失敗', error)
-    }
-  }
-  await api.dispose()
+  const info = test.info()
+  const owned = { organization, pageIds: [...ownedPages.keys()], inviteId }
+  const failures = await cleanupFixture()
+  await info.attach('fixture-cleanup', {
+    body: Buffer.from(JSON.stringify({ owned, failures })),
+    contentType: 'application/json',
+  })
+  expect(failures, '自所有fixtureの後始末').toEqual([])
 })
 
-/** 空の storageState を明示した新規コンテキストで API ログインし、本人確認まで行う。 */
-async function openAs(
-  browser: Browser,
-  credentials: { email: string; password: string },
-): Promise<Page> {
-  const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
-  const page = await context.newPage()
-  await loginViaApi(page, credentials, { apiBaseUrl: API_BASE_URL })
+test.afterEach(async () => {
+  const info = test.info()
+  const failures: string[] = []
+  for (const context of contexts) {
+    if (info.status !== info.expectedStatus) {
+      for (const page of context.pages()) {
+        try {
+          await info.attach('failure-screen', {
+            body: await page.screenshot(),
+            contentType: 'image/png',
+          })
+        } catch {
+          failures.push('failure screenshot')
+        }
+      }
+    }
+    try {
+      await context.close()
+    } catch {
+      failures.push('browser context close')
+    }
+  }
+  contexts.clear()
+  expect(failures, '全browser contextの回収').toEqual([])
+})
 
-  const me = await page.request.get(`${API_BASE_URL}/api/v1/users/me`)
-  expect(me.status()).toBe(200)
-  const meBody = (await me.json()).data as { email: string }
-  expect(meBody.email, 'ログイン後の本人確認に失敗（別アカウントのまま走っている疑い）').toBe(
-    credentials.email,
-  )
-  return page
+/** 空のcontextと実ログイン結果のみで切り替える。失敗時もcontextを回収する。 */
+async function openAs(browser: Browser, name: ActorName): Promise<Page> {
+  const context = await browser.newContext({
+    baseURL: test.info().project.use.baseURL,
+    storageState: { cookies: [], origins: [] },
+  })
+  contexts.add(context)
+  try {
+    const page = await context.newPage()
+    await loginViaApi(
+      page,
+      { email: accounts[name].email, password: password() },
+      { apiBaseUrl: API_BASE_URL },
+    )
+    await assertIdentity(page.request, name)
+    return page
+  } catch {
+    try {
+      await context.close()
+    } finally {
+      contexts.delete(context)
+    }
+    throw new Error(`${name}のブラウザ認証・本人確認に失敗`)
+  }
 }
 
-/** 本文に目的の文言が現れるまで直接待つ（loading表示の1文字ずつ分割・HMRの揺れに強い）。 */
+/** 本文に目的の文言が現れるまで直接待つ。 */
 async function waitForBodyText(page: Page, text: string, timeout = 240_000): Promise<void> {
   await expect
     .poll(async () => (await page.locator('body').innerText()).includes(text), {
@@ -112,16 +333,11 @@ async function waitForBodyText(page: Page, text: string, timeout = 240_000): Pro
     .toBe(true)
 }
 
-test.describe.configure({ mode: 'serial' })
-
 test('① 組織メンバー紹介ページが404/エラーにならず開く（ADMIN）', async ({ browser }) => {
   test.setTimeout(240_000)
-  const page = await openAs(browser, {
-    email: 'e2e-user@test.mannschaft.local',
-    password: 'TestPass2026!',
-  })
+  const page = await openAs(browser, 'admin')
 
-  const res = await page.goto(`/organizations/${ORG_SLUG}/member-profiles`, {
+  const res = await page.goto(`/organizations/${ownOrganization().slug}/member-profiles`, {
     waitUntil: 'domcontentloaded',
   })
   await waitForHydration(page)
@@ -134,38 +350,41 @@ test('① 組織メンバー紹介ページが404/エラーにならず開く（
   await expect(page.getByRole('button', { name: '新規ページ作成' })).toBeVisible({
     timeout: 240_000,
   })
-
-  await page.context().close()
 })
 
 test('② MEMBERにはページ作成ボタンが見えない（操作ボタンの権限差）', async ({ browser }) => {
   test.setTimeout(240_000)
-  const page = await openAs(browser, {
-    email: 'e2e-dummy-6@test.mannschaft.local',
-    password: 'TestPass2026!',
-  })
+  const page = await openAs(browser, 'member')
 
-  await page.goto(`/organizations/${ORG_SLUG}/member-profiles`, { waitUntil: 'domcontentloaded' })
+  await page.goto(`/organizations/${ownOrganization().slug}/member-profiles`, {
+    waitUntil: 'domcontentloaded',
+  })
   await waitForHydration(page)
   await waitForSpinnerGone(page)
 
   await waitForBodyText(page, 'メンバー紹介')
   await expect(page.getByRole('button', { name: '新規ページ作成' })).toHaveCount(0)
-
-  await page.context().close()
 })
 
-test('③ ADMIN: ページ作成→メンバー追加→編集→削除→ページ削除（画面操作）', async ({ browser }) => {
+test('③ ADMIN: ページ作成→メンバー追加→編集→削除→ページ削除（画面操作）', async ({
+  browser,
+}, info) => {
   test.setTimeout(240_000)
-  const page = await openAs(browser, {
-    email: 'e2e-user@test.mannschaft.local',
-    password: 'TestPass2026!',
-  })
+  const page = await openAs(browser, 'admin')
 
-  await page.goto(`/organizations/${ORG_SLUG}/member-profiles`, { waitUntil: 'domcontentloaded' })
+  await page.goto(`/organizations/${ownOrganization().slug}/member-profiles`, {
+    waitUntil: 'domcontentloaded',
+  })
   await waitForHydration(page)
   await waitForSpinnerGone(page)
   await waitForBodyText(page, 'メンバー紹介')
+
+  // fixture修復段階: 正規dismissは追加せず、実際の遮蔽redをこの同じ操作から取得する。
+  await expect(page.getByTestId('member-permission-setup')).toBeVisible()
+  await info.attach('initial-permission-dialog', {
+    body: await page.screenshot(),
+    contentType: 'image/png',
+  })
 
   // --- ページ作成 ---
   await page.getByRole('button', { name: '新規ページ作成' }).click()
@@ -173,23 +392,27 @@ test('③ ADMIN: ページ作成→メンバー追加→編集→削除→ペー
   await dialog.locator('input').first().fill(PAGE_TITLE) // タイトル
   const slugInput = dialog.locator('input[placeholder="members-2026"]')
   await slugInput.fill(PAGE_SLUG)
-  await dialog.getByRole('button', { name: /作成|保存|OK/ }).last().click()
+  ownedSlugs.add(PAGE_SLUG)
+  await Promise.all([
+    page
+      .waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === '/api/v1/team/pages' &&
+          response.request().method() === 'POST',
+      )
+      .then(async (response) => {
+        expect(response.status()).toBe(201)
+        rememberPage((await response.json()).data as OwnPage, PAGE_SLUG)
+      }),
+    dialog
+      .getByRole('button', { name: /作成|保存|OK/ })
+      .last()
+      .click(),
+  ])
 
   // 作成成功のトースト待ち兼ねてページ一覧に戻ってカードが出るのを待つ
   const pageCard = page.locator('.p-card', { hasText: PAGE_TITLE })
   await expect(pageCard).toBeVisible({ timeout: 30_000 })
-
-  // 作成されたページのIDを後始末用に取得
-  const listRes = await api.get(`/api/v1/team/pages?organizationId=9&size=100`, {
-    headers: { Authorization: `Bearer ${adminToken}` },
-  })
-  const created = ((await listRes.json()).data as Array<{ id: number; slug: string }>).find(
-    (p) => p.slug === PAGE_SLUG,
-  )
-  if (!created) {
-    throw new Error('作成したページがAPI一覧から見つからない')
-  }
-  createdPageId = created.id
 
   // --- ページを開いてメンバー追加 ---
   await pageCard.getByRole('button', { name: 'メンバーを見る' }).click()
@@ -198,7 +421,26 @@ test('③ ADMIN: ページ作成→メンバー追加→編集→削除→ペー
   await page.getByRole('button', { name: 'メンバー追加' }).click()
   const memberDialog = page.getByRole('dialog')
   await memberDialog.locator('input').first().fill(MEMBER_NAME)
-  await memberDialog.getByRole('button', { name: /追加|保存|OK/ }).last().click()
+  await Promise.all([
+    page
+      .waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === '/api/v1/team/members' &&
+          response.request().method() === 'POST',
+      )
+      .then(async (response) => {
+        expect(response.status()).toBe(201)
+        const addedMember = (await response.json()).data as { id: number; teamPageId: number }
+        expect(addedMember.teamPageId).toBe(
+          [...ownedPages.values()].find((item) => item.slug === PAGE_SLUG)?.id,
+        )
+        expect(Number.isSafeInteger(addedMember.id)).toBe(true)
+      }),
+    memberDialog
+      .getByRole('button', { name: /追加|保存|OK/ })
+      .last()
+      .click(),
+  ])
 
   const memberCard = page.getByText(MEMBER_NAME, { exact: false })
   await expect(memberCard.first()).toBeVisible({ timeout: 30_000 })
@@ -209,7 +451,10 @@ test('③ ADMIN: ページ作成→メンバー追加→編集→削除→ペー
   const editDialog = page.getByRole('dialog')
   const nameInput = editDialog.locator('input').first()
   await nameInput.fill(MEMBER_NAME_EDITED)
-  await editDialog.getByRole('button', { name: /保存|更新|OK/ }).last().click()
+  await editDialog
+    .getByRole('button', { name: /保存|更新|OK/ })
+    .last()
+    .click()
   await expect(page.getByText(MEMBER_NAME_EDITED, { exact: false }).first()).toBeVisible({
     timeout: 30_000,
   })
@@ -228,53 +473,70 @@ test('③ ADMIN: ページ作成→メンバー追加→編集→削除→ペー
 
   // --- ページ削除（後始末を画面操作でも行う） ---
   await page.getByRole('button', { name: 'ページ一覧に戻る' }).click()
-  const deletePageButton = page.locator('.p-card', { hasText: PAGE_TITLE }).locator('button:has(.pi-trash)')
+  const deletePageButton = page
+    .locator('.p-card', { hasText: PAGE_TITLE })
+    .locator('button:has(.pi-trash)')
   await deletePageButton.click()
   const deletePageConfirm = page.getByRole('button', { name: /削除|OK|はい/ }).last()
   if (await deletePageConfirm.isVisible({ timeout: 5_000 }).catch(() => false)) {
     await deletePageConfirm.click()
   }
   await expect(page.locator('.p-card', { hasText: PAGE_TITLE })).toHaveCount(0, { timeout: 30_000 })
-
-  // 画面から削除できたので、afterAll の後始末APIコールは不要（保険として残すが404は許容）
-
-  await page.context().close()
 })
 
 test('④ URL直打ちでもMEMBERはページ作成APIに書き込めない（権限横断）', async () => {
   test.setTimeout(60_000)
-  const res = await api.post('/api/v1/team/pages', {
-    headers: { Authorization: `Bearer ${memberToken}` },
+  const slug = `cmp1343-denied-${uniqueSuffix}`
+  // 認可に回帰があって作成されても、この試行のexact slugだけをcleanup対象にする。
+  ownedSlugs.add(slug)
+  const response = await actors.member!.post('/api/v1/team/pages', {
     data: {
-      organizationId: 9,
+      organizationId: ownOrganization().numericId,
       title: `不正作成試行${uniqueSuffix}`,
-      slug: `cmp260918-illegal-${uniqueSuffix}`,
+      slug,
       pageType: 'YEARLY',
       year: new Date().getFullYear(),
       visibility: 'MEMBERS_ONLY',
     },
   })
-  expect([403, 404]).toContain(res.status())
+  expect([403, 404]).toContain(response.status())
+  expect((await pageList()).filter((item) => item.slug === slug)).toHaveLength(0)
 })
 
 test('⑤ 他テナント(非所属)は組織メンバー紹介ページのAPIにアクセスできない', async () => {
   test.setTimeout(60_000)
-  const outsiderLogin = await api.post('/api/v1/auth/login', {
-    data: { email: 'e2e-supporter@test.mannschaft.local', password: 'TestPass2026!' },
+  const slug = `cmp1343-private-${uniqueSuffix}`
+  ownedSlugs.add(slug)
+  // MAIN検体にして③のYEARLY/current yearと衝突させない。対象操作ではなく認可APIの前提。
+  const response = await adminApi().post('/api/v1/team/pages', {
+    data: {
+      organizationId: ownOrganization().numericId,
+      title: `非所属確認用${uniqueSuffix}`,
+      slug,
+      pageType: 'MAIN',
+      visibility: 'MEMBERS_ONLY',
+    },
   })
-  expect(outsiderLogin.status()).toBe(200)
-  const { accessToken } = (await outsiderLogin.json()).data as { accessToken: string }
+  expect(response.status()).toBe(201)
+  const created = (await response.json()).data as OwnPage
+  rememberPage(created, slug)
+  const published = await adminApi().patch(`/api/v1/team/pages/${created.id}/publish`, {
+    data: { status: 'PUBLISHED' },
+  })
+  expect(published.status()).toBe(200)
+  const actual = await adminApi().get(`/api/v1/team/pages/${created.id}`)
+  expect(actual.status()).toBe(200)
+  const protectedPage = (await actual.json()).data as OwnPage
+  rememberPage(protectedPage, slug)
+  expect(protectedPage.visibility).toBe('MEMBERS_ONLY')
+  expect(protectedPage.status).toBe('PUBLISHED')
 
-  const res = await api.get('/api/v1/team/pages?organizationId=9&size=100', {
-    headers: { Authorization: `Bearer ${accessToken}` },
+  const list = await actors.outsider!.get('/api/v1/team/pages', {
+    params: { organizationId: ownOrganization().numericId, size: 100 },
   })
-  // 組織非所属者は403/404、あるいは可視性がPUBLICなページのみ0件で200になる設計もあり得るため、
-  // 「所属者専用ページの内容が漏れていない」ことを主眼に確認する。
-  expect([200, 403, 404]).toContain(res.status())
-  if (res.status() === 200) {
-    const body = (await res.json()) as { data: unknown[] }
-    // MEMBERS_ONLY可視性のページが非所属者に見えてはならない
-    const leaked = JSON.stringify(body).includes('MEMBERS_ONLY')
-    expect(leaked, '非所属者にMEMBERS_ONLYページの内容が漏洩している').toBe(false)
-  }
+  expect([403, 404], '既定MEMBER門は非所属の一覧を拒否').toContain(list.status())
+  const detail = await actors.outsider!.get(`/api/v1/team/pages/${created.id}`)
+  expect([403, 404], '保護対象IDの直アクセスも拒否').toContain(detail.status())
+  const deletion = await adminApi().delete(`/api/v1/team/pages/${created.id}`)
+  expect(deletion.status()).toBe(204)
 })
