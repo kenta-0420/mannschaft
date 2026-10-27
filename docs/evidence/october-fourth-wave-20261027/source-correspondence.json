@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "status": "draft-awaiting-implementation-adoption",
+  "runtimeSourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+  "implementationPr": 4156,
+  "candidateHead": "d980728ce2bc5ccce4ec91d172995dbacc3047ed",
+  "implementationSha": null,
+  "ci": [],
+  "wholeRuntimeIdentity": false,
+  "method": "read-only Git blob comparison; absent deleted spec is null on both sides",
+  "files": [
+    {
+      "path": "frontend/app/composables/useModuleApi.ts",
+      "runtimeBlob": "f6f86c6c8df7dea3c918c8b04c9b1116a373fe44",
+      "implementationBlob": "f6f86c6c8df7dea3c918c8b04c9b1116a373fe44",
+      "equal": true
+    },
+    {
+      "path": "frontend/tests/unit/composables/useModuleApi.spec.ts",
+      "runtimeBlob": null,
+      "implementationBlob": null,
+      "equal": true
+    },
+    {
+      "path": "frontend/app/composables/useAdminDashboardApi.ts",
+      "runtimeBlob": "bb93180d0386aeb60e9adbf3a391882a4bf41acb",
+      "implementationBlob": "bb93180d0386aeb60e9adbf3a391882a4bf41acb",
+      "equal": true
+    },
+    {
+      "path": "frontend/tests/e2e/real/module-settings-catalog.spec.ts",
+      "runtimeBlob": "d85662f47539d75dfe69ba7adcae781ced37b84d",
+      "implementationBlob": "d85662f47539d75dfe69ba7adcae781ced37b84d",
+      "equal": true
+    },
+    {
+      "path": "frontend/tests/e2e/helpers/wait.ts",
+      "runtimeBlob": "078a1e8884d6b5c6cb22fe989bcd011d4cde2fb3",
+      "implementationBlob": "078a1e8884d6b5c6cb22fe989bcd011d4cde2fb3",
+      "equal": true
+    }
+  ],
+  "frontendAppTree": "612e8b6be3bae434591357bbebb825b098d55e58",
+  "productionOutput": {
+    "fileCount": 4409,
+    "digestSHA256": "3bb0b12eabdb2a3f356179de5a07983915c863ca68b6eeddb0bebe0cba462abe"
+  },
+  "limitations": [
+    "対象wrapperと直接関連pathの対応のみ。最新mainのdashboard/store等を含む全環境同一性や再実機成功を主張しない。",
+    "実装PR未MERGED。candidateHeadは採用SHAに代用しない。",
+    "歴史証拠JSONの固定URL修復は実機sourceより後。製品blob対応とは別に検査。"
+  ],
+  "adoption": {
+    "pr": 4156,
+    "head": "0ac4c26439bbc837ca3214017d95ad0c323400b5",
+    "mergeCommit": "09854466d335cd5e99b9dc6b80d69e683d761644",
+    "mergedAt": "2026-10-27T05:49:03Z",
+    "ci": [
+      {
+        "runId": 40454793387
+      },
+      {
+        "runId": 40454793400
+      },
+      {
+        "runId": 40454934952
+      }
+    ],
+    "net": {
+      "files": 3,
+      "additions": 2,
+      "deletions": 49
+    },
+    "atMerge": {
+      "eligible": true,
+      "rawChecks": 22,
+      "rawSuccess": 15,
+      "rawSkipped": 7,
+      "aggregatedConclusions": 21
+    },
+    "wrapper": {
+      "path": "frontend/app/composables/useModuleApi.ts",
+      "runtimeBlob": "f6f86c6c8df7dea3c918c8b04c9b1116a373fe44",
+      "implementationBlob": "f6f86c6c8df7dea3c918c8b04c9b1116a373fe44",
+      "equal": true
+    },
+    "limitation": "Formal source849 and original observations remain unchanged; historical candidate values are not rewritten into execution-time provenance."
+  }
+}
