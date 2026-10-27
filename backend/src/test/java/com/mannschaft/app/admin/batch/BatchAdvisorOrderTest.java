@@ -52,7 +52,11 @@ class BatchAdvisorOrderTest {
         @Bean PlatformTransactionManager transactionManager() { return new NoopTm(); }
         @Bean BatchJobLogService batchJobLogService() { return mock(BatchJobLogService.class); }
         @Bean ApplicationEventPublisher unused() { return mock(ApplicationEventPublisher.class); }
-        @Bean FeatureFlagService featureFlagService() { return mock(FeatureFlagService.class); }
+        @Bean FeatureFlagService featureFlagService() {
+            FeatureFlagService f = mock(FeatureFlagService.class);
+            org.mockito.Mockito.when(f.isEnabled(org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
+            return f;
+        }
         @Bean BackgroundFeatureSkipRecorder skipRecorder() { return mock(BackgroundFeatureSkipRecorder.class); }
         @Bean BackgroundFeaturePolicyAspect policyAspect(FeatureFlagService f, BackgroundFeatureSkipRecorder r) {
             return new BackgroundFeaturePolicyAspect(f, r);
@@ -80,7 +84,8 @@ class BatchAdvisorOrderTest {
         @com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy(
                 mode = com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode.ALWAYS, reason = "order probe")
         @Transactional
-        public int run() { return 0; }
+        // ShedLock の PROXY_METHOD はプリミティブ戻り値をロックできない（LockingNotSupportedException）ため参照型にする。
+        public Integer run() { return 0; }
     }
 
     @Test
@@ -121,6 +126,134 @@ class BatchAdvisorOrderTest {
             proxy.run();
 
             org.mockito.Mockito.verify(logService, org.mockito.Mockito.never()).startJob(org.mockito.ArgumentMatchers.anyString());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 呼出順の実測（advisor の並びではなく、実際に走った順番で確かめる）
+    // ═════════════════════════════════════════════════════════════════════
+
+    /** 呼出順の記録。 */
+    static final List<String> TRACE = java.util.Collections.synchronizedList(new ArrayList<>());
+    /** 次の commit を失敗させるスイッチ。 */
+    static final java.util.concurrent.atomic.AtomicBoolean FAIL_NEXT_COMMIT =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    @Configuration
+    @EnableAspectJAutoProxy(proxyTargetClass = true)
+    @EnableTransactionManagement(proxyTargetClass = true)
+    @EnableSchedulerLock(defaultLockAtMostFor = "30m", order = com.mannschaft.app.config.ShedLockConfig.ADVISOR_ORDER)
+    static class TraceConfig {
+        @Bean LockProvider lockProvider() {
+            return cfg -> {
+                TRACE.add("lock");
+                return java.util.Optional.of((net.javacrumbs.shedlock.core.SimpleLock) () -> TRACE.add("unlock"));
+            };
+        }
+        @Bean PlatformTransactionManager transactionManager() {
+            return new AbstractPlatformTransactionManager() {
+                // FeatureFlagService はクラスに @Transactional(readOnly) を持ち、mock も TX プロキシで包まれる。
+                // isEnabled の TX を記録・失敗注入の対象から外すため、検体（TraceTarget）の TX だけを数える。
+                @Override protected Object doGetTransaction() {
+                    return new boolean[]{false};
+                }
+                @Override protected void doBegin(Object t, org.springframework.transaction.TransactionDefinition d) {
+                    boolean target = d.getName() != null && d.getName().contains("TraceTarget");
+                    ((boolean[]) t)[0] = target;
+                    if (target) {
+                        TRACE.add("tx-begin");
+                    }
+                }
+                @Override protected void doCommit(DefaultTransactionStatus s) {
+                    if (!((boolean[]) s.getTransaction())[0]) {
+                        return;
+                    }
+                    TRACE.add("tx-commit");
+                    if (FAIL_NEXT_COMMIT.get()) {
+                        throw new IllegalStateException("模擬 commit 失敗");
+                    }
+                }
+                @Override protected void doRollback(DefaultTransactionStatus s) {
+                    if (((boolean[]) s.getTransaction())[0]) {
+                        TRACE.add("tx-rollback");
+                    }
+                }
+            };
+        }
+        @Bean BatchJobLogService batchJobLogService() {
+            BatchJobLogService s = mock(BatchJobLogService.class);
+            org.mockito.Mockito.when(s.startJob(org.mockito.ArgumentMatchers.anyString())).thenAnswer(inv -> {
+                TRACE.add("batch-start");
+                return com.mannschaft.app.admin.entity.BatchJobLogEntity.builder().build();
+            });
+            return s;
+        }
+        @Bean FeatureFlagService featureFlagService() {
+            FeatureFlagService f = mock(FeatureFlagService.class);
+            org.mockito.Mockito.when(f.isEnabled(org.mockito.ArgumentMatchers.anyString())).thenAnswer(inv -> {
+                // Policy が先に、FeatureGate が次に評価する。
+                TRACE.add(TRACE.contains("policy") ? "gate" : "policy");
+                return true;
+            });
+            return f;
+        }
+        @Bean BackgroundFeatureSkipRecorder skipRecorder() { return mock(BackgroundFeatureSkipRecorder.class); }
+        @Bean BackgroundFeaturePolicyAspect policyAspect(FeatureFlagService f, BackgroundFeatureSkipRecorder r) {
+            return new BackgroundFeaturePolicyAspect(f, r);
+        }
+        @Bean FeatureGateAspect featureGateAspect(FeatureFlagService f) { return new FeatureGateAspect(f); }
+        @Bean BatchExecutionAspect batchExecutionAspect(BatchJobLogService s) {
+            return new BatchExecutionAspect(s, event -> TRACE.add("publish:" + event.getClass().getSimpleName()));
+        }
+        @Bean TraceTarget traceTarget() { return new TraceTarget(); }
+    }
+
+    static class TraceTarget {
+        @org.springframework.scheduling.annotation.Scheduled(cron = "-")
+        @SchedulerLock(name = "trace-probe", lockAtMostFor = "PT1M")
+        @BatchEndpoint(name = "trace-probe")
+        @com.mannschaft.app.common.featuregate.RequireFeature("probe")
+        @com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy(
+                mode = com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+                gateKeys = "probe", reason = "trace probe")
+        @Transactional
+        public Integer run() {
+            TRACE.add("body");
+            return 1;
+        }
+    }
+
+    @Test
+    @DisplayName("実際の呼出順: policy → gate → lock → batch-start → tx-begin → body → tx-commit → 完了イベント → unlock")
+    void 実際の呼出順で完了イベントはcommit後かつロック内() {
+        TRACE.clear();
+        try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(TraceConfig.class)) {
+            TRACE.clear();
+            ctx.getBean(TraceTarget.class).run();
+            System.out.println("ADVISOR_TRACE(success)=" + TRACE);
+            assertThat(TRACE).containsExactly("policy", "gate", "lock", "batch-start", "tx-begin", "body",
+                    "tx-commit", "publish:BatchCompletedEvent", "unlock");
+        }
+    }
+
+    @Test
+    @DisplayName("本体成功後に commit が失敗したら、commit の後に失敗イベントだけが出て完了イベントは出ない")
+    void commit失敗は失敗イベント側へ落ちる() {
+        TRACE.clear();
+        try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(TraceConfig.class)) {
+            TRACE.clear();
+            FAIL_NEXT_COMMIT.set(true);
+            TraceTarget target = ctx.getBean(TraceTarget.class);
+            org.assertj.core.api.Assertions.assertThatThrownBy(target::run)
+                    .isInstanceOf(IllegalStateException.class).hasMessage("模擬 commit 失敗");
+            System.out.println("ADVISOR_TRACE(commitFails)=" + TRACE);
+            assertThat(TRACE).doesNotContain("publish:BatchCompletedEvent");
+            assertThat(TRACE.indexOf("publish:BatchFailedEvent"))
+                    .as("失敗イベントは commit の後 trace=%s", TRACE).isGreaterThan(TRACE.indexOf("tx-commit"));
+            assertThat(TRACE.indexOf("publish:BatchFailedEvent"))
+                    .as("失敗イベントもロックの内側 trace=%s", TRACE).isLessThan(TRACE.indexOf("unlock"));
+        } finally {
+            FAIL_NEXT_COMMIT.set(false);
         }
     }
 
