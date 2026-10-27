@@ -56,19 +56,19 @@
         "description": "Description",
         "members": "Players",
         "error": {
-          "TOUR_026": "Template not found",
-          "TOUR_027": "Up to 5 templates can be created",
-          "TOUR_028": "This template belongs to another team"
+          "TOUR_026": "The team does not belong to this organization",
+          "TOUR_027": "This user is already entered",
+          "TOUR_028": "The template team does not match the participating team"
         }
       },
       "error": {
-        "TOUR_019": "Cannot change entry due to tournament status",
-        "TOUR_020": "Exceeds maximum entry count",
-        "TOUR_021": "Not a member of the team",
-        "TOUR_022": "Entry member not found",
-        "TOUR_023": "Below minimum entry count",
-        "TOUR_024": "This player is already entered",
-        "TOUR_025": "No members to load",
+        "TOUR_019": "Entry sheet member not found",
+        "TOUR_020": "Cannot change entry due to tournament status",
+        "TOUR_021": "The selected user is not a team member",
+        "TOUR_022": "The minimum number of entry members has not been reached",
+        "TOUR_023": "The maximum number of entry members has been exceeded",
+        "TOUR_024": "Entry template not found",
+        "TOUR_025": "Up to 5 entry templates can be registered",
         "TOUR_029": "Contact space not found",
         "TOUR_030": "You do not have permission to view this contact space",
         "TOUR_031": "You do not have permission to post to this contact space",

@@ -21,6 +21,7 @@ on:
     paths:
       - "frontend/**"
       - "backend/src/main/java/com/mannschaft/app/social/SocialErrorCode.java"
+      - "backend/src/main/java/com/mannschaft/app/tournament/TournamentErrorCode.java"
       - "docs/openapi.json"
       # BE の欠席理由 enum 変更で FE の契約テスト（absenceReason.spec.ts）を起動するため
       - "backend/src/main/java/com/mannschaft/app/school/**/AbsenceReason.java"
@@ -31,6 +32,7 @@ on:
     paths:
       - "frontend/**"
       - "backend/src/main/java/com/mannschaft/app/social/SocialErrorCode.java"
+      - "backend/src/main/java/com/mannschaft/app/tournament/TournamentErrorCode.java"
       - "docs/openapi.json"
       # BE の欠席理由 enum 変更で FE の契約テスト（absenceReason.spec.ts）を起動するため
       - "backend/src/main/java/com/mannschaft/app/school/**/AbsenceReason.java"
