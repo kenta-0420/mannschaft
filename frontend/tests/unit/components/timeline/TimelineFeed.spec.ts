@@ -321,6 +321,7 @@ describe('TimelineFeed.vue — 追加読み込み', () => {
     expect(wrapper.find('[data-testid="timeline-load-more-target"]').exists()).toBe(false)
     expect(observe).not.toHaveBeenCalled()
     expect(getFeed).toHaveBeenCalledTimes(1)
+    expect(getFeed).toHaveBeenCalledWith({ scopeType: 'TEAM', scopeId: '7', cursor: undefined, limit: 1 })
   })
 
   it('追加取得に失敗したら自動再試行せず、ボタンで再試行できる', async () => {
@@ -458,7 +459,8 @@ describe('TimelineFeed.vue — 手動更新', () => {
     await vi.waitFor(() =>
       expect(wrapper.findAll('[data-testid="refresh-post"]').map((p) => p.text())).toEqual(['4']),
     )
-    expect(getMyTimeline).toHaveBeenLastCalledWith(undefined)
+    expect(getMyTimeline).toHaveBeenNthCalledWith(1, undefined, 1)
+    expect(getMyTimeline).toHaveBeenLastCalledWith(undefined, 1)
     expect(getFeed).not.toHaveBeenCalled()
     expect(wrapper.find('[data-testid="timeline-load-more-target"]').exists()).toBe(false)
     getMyTimeline.mockResolvedValueOnce(response([]))

@@ -57,7 +57,6 @@ public class NotificationInboxAdapter implements InboxSourceAdapter {
                 .findInboxByUserIdOrderByPriorityThenCreatedAtDesc(
                         userId, InboxNotificationTypes.INBOX_SNOOZE_REVIVAL,
                         PageRequest.of(0, window))
-                .getContent()
                 .stream()
                 .map(this::toDto)
                 .toList();

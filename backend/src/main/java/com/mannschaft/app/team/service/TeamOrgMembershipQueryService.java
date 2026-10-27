@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Set;
 
 /**
  * チーム−組織所属ドメインの読み取り公開クエリサービス（他ドメインへ ID 一覧のみを提供する境界）。
@@ -30,6 +31,11 @@ import java.util.UUID;
 public class TeamOrgMembershipQueryService {
 
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
+
+    /** 対象チームのACTIVEな親組織IDを代表親順で一括取得する。空入力はSQLを発行しない。 */
+    public Map<Long, List<Long>> findOrganizationIdsInPrimaryOrderByTeamIds(Set<Long> teamIds) {
+        return teamOrgMembershipRepository.findOrganizationIdsInPrimaryOrderByTeamIdIn(teamIds);
+    }
 
     /** 配信対象の最新判定用。Entity を外へ渡さず ACTIVE 加盟の ID とグループだけ返す。 */
     public List<ActiveGroupMembership> findActiveMembershipsInOrganization(

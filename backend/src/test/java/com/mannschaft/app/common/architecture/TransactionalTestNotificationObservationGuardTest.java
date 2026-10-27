@@ -95,8 +95,12 @@ class TransactionalTestNotificationObservationGuardTest {
      * {@code @Transactional} でコミットが起きなくても検証は自明に成立しない
      * （＝壊せば赤くなる）。</p>
      */
+    // InboxScopeContractITは自ら保存した通知/overlayを読むAPI・有界SQLの契約を検証する。
+    // 配送イベント/AFTER_COMMITは関与せず、SQL条件や取得上限を壊せばassertionが失敗する。
+    // 既存の検体テストが、許容前のscanSourceで検出されることも各エントリについて確認する。
     static final Set<String> ALLOWED = Set.of(
-            "com.mannschaft.app.notification.NotificationSelfScopeContractIT");
+            "com.mannschaft.app.notification.NotificationSelfScopeContractIT",
+            "com.mannschaft.app.inbox.InboxScopeContractIT");
 
     /** 走査対象外パッケージ（番人自身と検体）。 */
     private static final String ARCHITECTURE_PACKAGE = "com.mannschaft.app.common.architecture.";
