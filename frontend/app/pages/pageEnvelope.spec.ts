@@ -41,7 +41,7 @@ function setupRaw(entry: typeof cases[number], total: number, fail = false) {
 }
 
 function listCalls(entry: typeof cases[number]) {
-  return rawApi.mock.calls.filter(([url]) => String(url).startsWith(entry.endpoint) && !String(url).includes('/metrics'))
+  return rawApi.mock.calls.filter(([url]) => String(url).split('?')[0] === entry.endpoint)
 }
 
 for (const entry of cases) {
@@ -95,3 +95,53 @@ for (const entry of cases) {
     })
   })
 }
+
+
+describe('outboxの既存操作をraw HTTPで回帰する', () => {
+  const entry = cases[0]
+  it('末尾からstatus/sourceDomainの適用・解除でpage0へ戻り、余分なmetricsを取らない', async () => {
+    setupRaw(entry, 41)
+    const wrapper = await mountSuspended(Outbox)
+    await flushPromises()
+    const next = () => wrapper.findAll('button').find(b => b.find('.pi-chevron-right').exists())!
+    await next().trigger('click'); await flushPromises()
+    await next().trigger('click'); await flushPromises()
+    wrapper.findComponent({ name: 'Select' }).vm.$emit('update:modelValue', 'DEAD_LETTER')
+    await wrapper.find('input[placeholder="送信元ドメイン"]').setValue('auth')
+    await wrapper.findAll('button').find(b => b.text() === '適用')!.trigger('click')
+    await flushPromises()
+    let query = new URL(String(listCalls(entry).at(-1)![0]), 'http://localhost').searchParams
+    expect(Object.fromEntries(query)).toMatchObject({ page: '0', size: '20', status: 'DEAD_LETTER', sourceDomain: 'auth' })
+    await wrapper.findAll('button').find(b => b.text() === 'クリア')!.trigger('click')
+    await flushPromises()
+    query = new URL(String(listCalls(entry).at(-1)![0]), 'http://localhost').searchParams
+    expect(Object.fromEntries(query)).toEqual({ page: '0', size: '20' })
+    expect(listCalls(entry)).toHaveLength(5)
+    expect(rawApi.mock.calls.filter(([url]) => String(url).includes('/metrics'))).toHaveLength(1)
+  })
+
+  for (const action of ['retry', 'cancel'] as const) {
+    for (const status of [204, 409]) {
+      it(action + ' ' + status + 'で既存の再取得または競合通知を維持する', async () => {
+        setupRaw(entry, 1)
+        const list = rawApi.getMockImplementation()!
+        rawApi.mockImplementation(async (url: string) => {
+          if (url.endsWith('/' + action)) {
+            if (status === 409) throw { statusCode: 409 }
+            return undefined
+          }
+          const result = await list(url)
+          if (url.split('?')[0] === entry.endpoint && action === 'retry') result.data.content[0].status = 'DEAD_LETTER'
+          return result
+        })
+        const wrapper = await mountSuspended(Outbox)
+        await flushPromises()
+        await wrapper.findAll('button').find(b => b.text() === (action === 'retry' ? '再試行' : 'キャンセル'))!.trigger('click')
+        await flushPromises()
+        expect(rawApi.mock.calls.filter(([url]) => String(url).endsWith('/' + action))).toHaveLength(1)
+        expect(listCalls(entry)).toHaveLength(status === 204 ? 2 : 1)
+        if (status === 409) expect(showError).toHaveBeenCalledWith(action === 'retry' ? 'この状態では再試行できません' : 'この状態ではキャンセルできません')
+      })
+    }
+  }
+})

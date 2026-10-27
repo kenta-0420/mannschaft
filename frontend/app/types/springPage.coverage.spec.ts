@@ -46,7 +46,8 @@ const PAGE_KEYS = Object.keys(springPage([])).sort()
 function pageEndpoints(input: Spec): string[] {
   const deref = (s: Schema | undefined): Schema | undefined => s?.$ref ? input.components.schemas[s.$ref.split('/').at(-1)!] : s
   return Object.entries(input.paths).flatMap(([path, operations]) => {
-    const outer = deref(operations.get?.responses?.['200']?.content?.['application/json']?.schema)
+    const response = operations.get?.responses?.['200']?.content
+    const outer = deref((response?.['application/json'] ?? response?.['*/*'])?.schema)
     const page = deref(outer?.properties?.data) ?? outer
     return JSON.stringify(Object.keys(page?.properties ?? {}).sort()) === JSON.stringify(PAGE_KEYS) ? [path] : []
   }).sort()
