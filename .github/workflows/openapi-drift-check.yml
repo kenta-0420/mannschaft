@@ -144,15 +144,16 @@ jobs:
           echo "----- changed files -----"
           echo "${CHANGED}"
           echo "-------------------------"
-          # 旧 on.pull_request.paths の 6 パターンを正規表現へ落としたもの（増減させないこと）:
+          # 旧 on.pull_request.paths の6パターンと、L1-Bで移設したbuild設定の検知:
           #   1. backend/src/main/java/**/controller/**
           #   2. backend/src/main/java/**/dto/**
           #   3. backend/src/main/java/**/config/OpenApiConfig.java
           #   4. backend/src/main/resources/application-openapi-gen.yml
           #   5. backend/build.gradle.kts
           #   6. .github/workflows/openapi-drift-check.yml
+          #   7. backend/build-logic/** および backend/settings.gradle.kts
           # glob の `**` は「0 個以上のパスセグメント」なので `(.*/)?` に対応させる。
-          PATTERN='^(backend/src/main/java/(.*/)?(controller|dto)/|backend/src/main/java/(.*/)?config/OpenApiConfig\.java$|backend/src/main/resources/application-openapi-gen\.yml$|backend/build\.gradle\.kts$|\.github/workflows/openapi-drift-check\.yml$)'
+          PATTERN='^(backend/src/main/java/(.*/)?(controller|dto)/|backend/src/main/java/(.*/)?config/OpenApiConfig\.java$|backend/src/main/resources/application-openapi-gen\.yml$|backend/build\.gradle\.kts$|backend/build-logic/|backend/settings\.gradle\.kts$|\.github/workflows/openapi-drift-check\.yml$)'
           if echo "${CHANGED}" | grep -E "${PATTERN}" > /dev/null; then
             echo "[INFO] OpenAPI 関連の変更を検出 → openapi_related=true（ドリフト検査を実行）"
             echo "openapi_related=true" >> "$GITHUB_OUTPUT"

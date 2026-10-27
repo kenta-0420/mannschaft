@@ -455,6 +455,8 @@ src/test/java/com/mannschaft/app/
 
 ## 7. Gradle タスク定義
 
+現行の共通Test・番人・perf・shard・JaCoCo設定は `backend/build-logic/src/main/kotlin/mannschaft.backend-conventions.gradle.kts` に置き、rootの `backend/build.gradle.kts` から適用する。shard実行フィルタとcoverage検証は `ShardAssignment.kt` の同一述語を直接使う。以下の分離例は方針の例であり、新しい恒久タスクの追加指示ではない。
+
 単体テストと結合テストを分離実行できるようにする。
 
 ```kotlin
