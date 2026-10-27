@@ -255,8 +255,9 @@ class NotificationTransactionBoundaryGuardConditionTest {
             assertThat(keysOfMutated("SuspendedEntryFixture",
                     "@Transactional(propagation = Propagation.NEVER) public void pollWithNever()",
                     "@Transactional public void pollWithNever()"))
+                    // processOneJob は Fanout#processOne と同型で通知を try で包むため区分は TX_NOTIFY_IN_TRY（是正前の Fanout のキーと同じ）。
                     .contains(key("SuspendedEntryFixture", "processOneJob",
-                            NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_BARE));
+                            NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_IN_TRY));
         }
 
         @Test

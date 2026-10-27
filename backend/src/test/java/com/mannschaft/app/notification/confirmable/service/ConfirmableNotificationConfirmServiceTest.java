@@ -368,9 +368,11 @@ class ConfirmableNotificationConfirmServiceTest {
             ConfirmableNotificationEntity notification =
                     createActiveNotification(2, 2, ConfirmableNotificationDeliveryStatus.DELIVERED);
             given(notificationRepository.findById(NOTIFICATION_ID)).willReturn(Optional.of(notification));
-            given(recipientRepository.findActiveUnconfirmedByNotificationId(NOTIFICATION_ID)).willReturn(List.of(
+            // createRecipient は内部で mock をスタブするため、given(...) の引数内で呼ぶと未完了スタブになる。先に組み立てる。
+            List<ConfirmableNotificationRecipientEntity> unconfirmed = List.of(
                     createRecipient(notification, USER_ID_1, false),
-                    createRecipient(notification, USER_ID_2, false)));
+                    createRecipient(notification, USER_ID_2, false));
+            given(recipientRepository.findActiveUnconfirmedByNotificationId(NOTIFICATION_ID)).willReturn(unconfirmed);
 
             confirmService.resendReminder(NOTIFICATION_ID);
 
