@@ -685,13 +685,13 @@ class AuthzTxFacadeRegistryArchTest {
     /**
      * Facade が外へ公開する public メソッドのうち、シグネチャ（名前＋引数型）ごとに継承階層で最も子側の
      * 有効な実装だけを返す。子がオーバーライド済みの親クラス・interface の宣言は呼ばれないので除外する。
-     * Object 由来・合成は除き、選んだ結果が抽象のものも除く。
+     * Object 由来と、選んだ結果が抽象・合成のものは除く。総称 override の bridge は親の消去後シグネチャを
+     * 隠すため、合成メソッドも遮蔽判定には残し、返す結果からだけ除く。
      */
     static List<JavaMethod> effectivePublicMethods(JavaClass facade) {
         Map<String, List<JavaMethod>> bySignature = new LinkedHashMap<>();
         for (JavaMethod m : facade.getAllMethods()) {
             if (!m.getModifiers().contains(JavaModifier.PUBLIC)
-                    || m.getModifiers().contains(JavaModifier.SYNTHETIC)
                     || m.getOwner().isEquivalentTo(Object.class)) {
                 continue;
             }
@@ -711,7 +711,8 @@ class AuthzTxFacadeRegistryArchTest {
                 boolean hidden = pool.stream().anyMatch(o -> o != m
                         && !o.getOwner().equals(m.getOwner())
                         && o.getOwner().isAssignableTo(m.getOwner().getName()));
-                if (!hidden && !m.getModifiers().contains(JavaModifier.ABSTRACT)) {
+                if (!hidden && !m.getModifiers().contains(JavaModifier.ABSTRACT)
+                        && !m.getModifiers().contains(JavaModifier.SYNTHETIC)) {
                     result.add(m);
                 }
             }
