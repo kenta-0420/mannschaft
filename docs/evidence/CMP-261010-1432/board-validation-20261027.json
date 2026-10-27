@@ -84,5 +84,56 @@
       }
     ]
   },
-  "overlaySha256": "db618d92b24c7d31b25ffd5bc89bda00371aff298eaa9bcd7dfd0db2f6bc9bbf"
+  "overlaySha256": "db618d92b24c7d31b25ffd5bc89bda00371aff298eaa9bcd7dfd0db2f6bc9bbf",
+  "mainFollowup": {
+    "checkedAt": "2026-10-27T10:15:10.744Z",
+    "mainHead": "dea78c8e4b2a868fc0124d3bc7a424a1af4f8fbf",
+    "mergeCommit": "f6b7836ea61b5c7855b55d271ecf5c91dc6e91b1",
+    "previousObservationHead": "74f181205af26b03b86b3d72f67b159eab5ccc11",
+    "bothSidesObservationValuesDeepPreserved": true,
+    "threeCopiesEqual": true,
+    "counts": [
+      21,
+      21,
+      48
+    ],
+    "generation": {
+      "features": 44,
+      "capabilities": 95,
+      "splitParents": 33,
+      "campaigns": 601,
+      "layer": {
+        "能力": 26,
+        "ドメイン": 18
+      },
+      "blockers": 23,
+      "coreStatus": {
+        "blocked": 5,
+        "unknown": 0,
+        "incomplete": 0,
+        "verifying": 19,
+        "ready": 1
+      }
+    },
+    "originalValidatorOverlayChecks": {
+      "residentOverlayAccepted": true,
+      "emptyInsightsAccepted": true,
+      "syntheticBaselineAccepted": true,
+      "multipleSourceHeadsAndRunsAccepted": true,
+      "invalidOverlaysRejected": 10
+    },
+    "wholeBoardValidation": [
+      {
+        "command": "node docs/prototypes/validate-beta-inventory-board.mjs",
+        "exitCode": 1,
+        "error": "Error: GitHubスナップショットの参照集合が正本と不一致です"
+      },
+      {
+        "command": "node docs/prototypes/validate-beta-inventory-board.mjs --self-test-overlay",
+        "exitCode": 1,
+        "error": "Error: GitHubスナップショットの参照集合が正本と不一致です"
+      }
+    ],
+    "browserRelaunched": false
+  }
 }
