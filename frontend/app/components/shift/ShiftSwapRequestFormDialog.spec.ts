@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   slots: vi.fn(),
   handleError: vi.fn(),
+  notifySuccess: vi.fn(),
+  notifyError: vi.fn(),
   fetchTeams: vi.fn(),
   teams: [] as { id: number; slug: string }[],
 }))
@@ -26,7 +28,10 @@ mockNuxtImport('useTeamStore', () => () => ({
 mockNuxtImport('useShiftSwapApi', () => () => ({ createSwapRequest: mocks.create }))
 mockNuxtImport('useShiftSlotApi', () => () => ({ listSlots: mocks.slots }))
 mockNuxtImport('useErrorHandler', () => () => ({ handleApiError: mocks.handleError }))
-mockNuxtImport('useNotification', () => () => ({ success: vi.fn(), error: vi.fn() }))
+mockNuxtImport('useNotification', () => () => ({
+  success: mocks.notifySuccess,
+  error: mocks.notifyError,
+}))
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
 
 function member(userId: number): MemberResponse {
@@ -41,7 +46,7 @@ function deferred<T>() {
   })
   return { promise, resolve, reject }
 }
-async function mountForm() {
+async function mountForm(ignoreButtonDisabled = false) {
   const wrapper = await mountSuspended(ShiftSwapRequestFormDialog, {
     props: { visible: false, slotId: 12, slotDate: '2026-10-22', scheduleId: 4, teamId: '7' },
     global: {
@@ -51,8 +56,10 @@ async function mountForm() {
           template: '<section v-if="visible"><slot/><slot name="footer"/></section>',
         },
         Button: {
-          props: ['label', 'disabled'],
-          template: '<button :disabled="disabled">{{ label }}</button>',
+          props: ['label', 'disabled', 'loading'],
+          template: ignoreButtonDisabled
+            ? '<button :data-disabled="disabled" :data-loading="loading">{{ label }}</button>'
+            : '<button :disabled="disabled" :data-loading="loading">{{ label }}</button>',
         },
         Checkbox: {
           props: ['modelValue', 'value'],
@@ -78,6 +85,15 @@ async function mountForm() {
 type Form = Awaited<ReturnType<typeof mountForm>>
 function submitButton(wrapper: Form) {
   return wrapper.findAll('button').find((button) => button.text() === 'shift.action.submit')!
+}
+async function selectMode(wrapper: Form, mode: 'TEMPLATE' | 'OPEN_CALL') {
+  await wrapper
+    .findAll('button')
+    .find(
+      (button) =>
+        button.text() === `shift.swap.recipientMode.${mode === 'TEMPLATE' ? 'template' : 'openCall'}`,
+    )!
+    .trigger('click')
 }
 async function selectLast(wrapper: Form) {
   const inputs = wrapper.findAll('input[type="checkbox"]')
@@ -293,5 +309,107 @@ describe('交代依頼の候補者取得', () => {
       .trigger('click')
     await submitButton(wrapper).trigger('click')
     expect(mocks.create).toHaveBeenCalledWith({ slotId: 12, reason: undefined, openCall: true })
+  })
+})
+
+describe('交代依頼の二重送信防止', () => {
+  it('disabledを無視するイベント経路でも送信中の再入を拒否する', async () => {
+    const pending = deferred<unknown>()
+    mocks.create.mockReturnValue(pending.promise)
+    const wrapper = await mountForm(true)
+    await selectMode(wrapper, 'OPEN_CALL')
+
+    await submitButton(wrapper).trigger('click')
+    expect(submitButton(wrapper).attributes('data-disabled')).toBe('true')
+    await submitButton(wrapper).trigger('click')
+    expect(mocks.create).toHaveBeenCalledOnce()
+
+    pending.resolve({})
+    await flushPromises()
+  })
+
+  it.each(['SPECIFIC', 'TEMPLATE', 'OPEN_CALL'] as const)(
+    '%sで同一tickの複数clickを1回の送信にし完了までボタンを無効にする',
+    async (mode) => {
+      mocks.slots.mockResolvedValue([
+        { time: { slotDate: '2026-10-22', startTime: '09:00' }, assignedUserIds: [31] },
+      ])
+      const pending = deferred<unknown>()
+      mocks.create.mockReturnValue(pending.promise)
+      const wrapper = await mountForm()
+      if (mode === 'SPECIFIC') await selectLast(wrapper)
+      else await selectMode(wrapper, mode)
+
+      const button = submitButton(wrapper)
+      await Promise.all([button.trigger('click'), button.trigger('click'), button.trigger('click')])
+
+      expect(mocks.create).toHaveBeenCalledOnce()
+      expect(submitButton(wrapper).attributes('disabled')).toBeDefined()
+      expect(submitButton(wrapper).attributes('data-loading')).toBe('true')
+      expect(wrapper.emitted('submitted')).toBeUndefined()
+
+      pending.resolve({})
+      await flushPromises()
+      expect(mocks.notifySuccess).toHaveBeenCalledExactlyOnceWith(
+        'shift.notification.submitSuccess',
+      )
+      expect(wrapper.emitted('submitted')).toHaveLength(1)
+      expect(wrapper.emitted('update:visible')).toEqual([[false]])
+      expect(submitButton(wrapper).attributes('data-loading')).toBe('false')
+    },
+  )
+
+  it('送信中に閉じて再表示しても未完了の依頼を増やさない', async () => {
+    const pending = deferred<unknown>()
+    mocks.create.mockReturnValue(pending.promise)
+    const wrapper = await mountForm()
+    await selectMode(wrapper, 'OPEN_CALL')
+    await submitButton(wrapper).trigger('click')
+
+    await wrapper.setProps({ visible: false })
+    await wrapper.setProps({ visible: true })
+    await selectMode(wrapper, 'OPEN_CALL')
+    expect(submitButton(wrapper).attributes('disabled')).toBeDefined()
+    await submitButton(wrapper).trigger('click')
+    expect(mocks.create).toHaveBeenCalledOnce()
+
+    pending.resolve({})
+    await flushPromises()
+    expect(mocks.notifySuccess).toHaveBeenCalledOnce()
+    expect(wrapper.emitted('submitted')).toHaveLength(1)
+  })
+
+  it.each([409, 403, 500, 'network'])(
+    '送信失敗%sの後は開いたまま明示的に再試行できる',
+    async (status) => {
+      const error = status === 'network' ? new TypeError('Failed to fetch') : { statusCode: status }
+      mocks.create.mockRejectedValueOnce(error).mockResolvedValueOnce({})
+      const wrapper = await mountForm()
+      await selectMode(wrapper, 'OPEN_CALL')
+
+      await submitButton(wrapper).trigger('click')
+      await flushPromises()
+      expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith('shift.notification.errorSubmit')
+      expect(mocks.notifySuccess).not.toHaveBeenCalled()
+      expect(wrapper.emitted('submitted')).toBeUndefined()
+      expect(wrapper.emitted('update:visible')).toBeUndefined()
+      expect(submitButton(wrapper).attributes('disabled')).toBeUndefined()
+      expect(submitButton(wrapper).attributes('data-loading')).toBe('false')
+
+      await submitButton(wrapper).trigger('click')
+      await flushPromises()
+      expect(mocks.create).toHaveBeenCalledTimes(2)
+      expect(mocks.notifySuccess).toHaveBeenCalledOnce()
+      expect(wrapper.emitted('submitted')).toHaveLength(1)
+    },
+  )
+
+  it('TEMPLATEに同日昼の対象が0人なら送信しない', async () => {
+    const wrapper = await mountForm()
+    await selectMode(wrapper, 'TEMPLATE')
+
+    expect(submitButton(wrapper).attributes('disabled')).toBeDefined()
+    await submitButton(wrapper).trigger('click')
+    expect(mocks.create).not.toHaveBeenCalled()
   })
 })

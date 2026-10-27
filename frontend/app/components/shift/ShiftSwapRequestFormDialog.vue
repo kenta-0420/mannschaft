@@ -107,7 +107,7 @@ const templateTargetUserIds = computed(() =>
 
 // ---- 送信 ----
 async function submit() {
-  if (!canSubmit.value) return
+  if (submitting.value || !canSubmit.value) return
   submitting.value = true
   try {
     const body: CreateSwapRequestRequest = {
@@ -289,7 +289,7 @@ const modeOptions: { value: RecipientMode; labelKey: string }[] = [
         <Button
           :label="t('shift.action.submit')"
           :loading="submitting"
-          :disabled="!canSubmit"
+          :disabled="submitting || !canSubmit"
           @click="submit"
         />
       </div>
