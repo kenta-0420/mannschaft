@@ -977,5 +977,63 @@ class DashboardServiceTest {
             // Then
             assertThat(result.getOrgNotices()).hasSize(1);
         }
+
+        /** 宛先の記録（チームグループ宛て）を持つ組織告知を 1 件返すようにスタブする。 */
+        private void stubOrgFeedWithAudience(String accessible) {
+            given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            given(widgetService.getWidgetSettings(eq(USER_ID), eq(ScopeType.ORGANIZATION), eq(ORG_ID), eq(false)))
+                    .willReturn(List.of());
+            given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(any(), eq(ORG_ID), any(PageRequest.class)))
+                    .willReturn(new PageImpl<>(List.of()));
+            given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(10L);
+            AnnouncementFeedEntity feed = AnnouncementFeedEntity.builder()
+                    .id(1L)
+                    .scopeType(AnnouncementScopeType.ORGANIZATION)
+                    .scopeId(ORG_ID)
+                    .sourceType(AnnouncementSourceType.BULLETIN_THREAD)
+                    .sourceId(1L)
+                    .titleCache("組織告知")
+                    .targetAudience("{\"mode\":\"GROUPS\",\"groups\":[{\"id\":\"018f0000-0000-7000-8000-000000000001\","
+                            + "\"name\":\"平成18年度\"}],\"range\":null,\"includeUnassigned\":false,"
+                            + "\"teamCount\":3,\"directMemberCount\":2}")
+                    .build();
+            given(announcementFeedQueryRepository.findByScope(
+                    eq(AnnouncementScopeType.ORGANIZATION), eq(ORG_ID), any(), isNull(), anyInt()))
+                    .willReturn(List.of(feed));
+            boolean ok = "FULL".equals(accessible);
+            given(paymentGateService.checkAccessBatch(
+                    eq(ContentGateType.ANNOUNCEMENT), any(), eq(USER_ID), any(Map.class)))
+                    .willReturn(Map.of(1L, new GateCheckResponse(ok, false, List.of())));
+            given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
+        }
+
+        @Test
+        @DisplayName("AC-H17（実機E2E #4009 D-2）: 組織 MEMBER 以上には orgNotices に送信時の宛先の記録（target_audience）を載せる")
+        void getOrgDashboard_告知の宛先の記録_メンバーには載せる() {
+            stubOrgFeedWithAudience("FULL");
+            given(accessControlService.hasRoleOrAbove(USER_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(true);
+
+            OrgDashboardResponse result = dashboardService.getOrgDashboard(USER_ID, ORG_ID, "WEEK");
+
+            assertThat(result.getOrgNotices()).hasSize(1);
+            Object audience = result.getOrgNotices().get(0).get("target_audience");
+            assertThat(audience).isInstanceOf(com.mannschaft.app.social.announcement.audience.TargetAudience.class);
+            var ta = (com.mannschaft.app.social.announcement.audience.TargetAudience) audience;
+            assertThat(ta.mode()).isEqualTo("GROUPS");
+            assertThat(ta.teamCount()).isEqualTo(3);
+            assertThat(ta.groups()).extracting(com.mannschaft.app.social.announcement.audience.TargetAudience.GroupRef::name)
+                    .containsExactly("平成18年度");
+        }
+
+        @Test
+        @DisplayName("AC-H17: 組織 MEMBER 未満（SUPPORTER 等）にはグループ構成を渡さない（組織お知らせ一覧と同じ判定）")
+        void getOrgDashboard_告知の宛先の記録_メンバー未満には載せない() {
+            stubOrgFeedWithAudience("FULL");
+
+            OrgDashboardResponse result = dashboardService.getOrgDashboard(USER_ID, ORG_ID, "WEEK");
+
+            assertThat(result.getOrgNotices()).hasSize(1);
+            assertThat(result.getOrgNotices().get(0).get("target_audience")).isNull();
+        }
     }
 }

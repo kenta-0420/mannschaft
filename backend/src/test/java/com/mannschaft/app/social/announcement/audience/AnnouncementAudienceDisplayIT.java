@@ -154,7 +154,7 @@ class AnnouncementAudienceDisplayIT extends AbstractAudienceDisplayIT {
     @Test
     @DisplayName("AC-H29: 「チームを選ぶ」の表示判定は従来どおり。選んだ T1 にだけ出て、T1 がグループを移っても出続ける")
     void h29_teamSelectionRegression() throws Exception {
-        long feed = send(Map.of("targetTeamIds", List.of(t1.getId())));
+        long feed = send(Map.of("targetTeamIds", List.of(t1.getSlug())));
         assertThat(teamsShowing(feed)).containsExactly("T1");
 
         moveTeamToGroup(t1.getId(), orgX.getId(), g3.getId());
