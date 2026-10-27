@@ -28,19 +28,10 @@ export function useModuleApi() {
     return api(`/api/v1/teams/${teamId}/modules/template`, { method: 'PUT', body })
   }
 
-  async function toggleTeamModule(teamId: string, moduleId: number, enabled: boolean) {
-    // BE の ToggleModuleRequest（moduleId / enabled）は必須。本文なしだと 400 になる
-    return api(`/api/v1/teams/${teamId}/modules/${moduleId}/toggle`, {
-      method: 'PATCH',
-      body: { moduleId, enabled },
-    })
-  }
-
   return {
     getModuleCatalog,
     getModule,
     getTeamModules,
     applyTemplate,
-    toggleTeamModule,
   }
 }

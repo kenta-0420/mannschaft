@@ -161,11 +161,11 @@ test('AC6: 初期化を繰り返して保持・履歴を上書きしない', asy
   const { c } = await fixture(t); const head = (await c.read()).head;
   await assert.rejects(c.init(), /再初期化禁止/); assert.equal((await c.read()).head, head);
 });
-test('AC7: 未解消依存ではworking・done拒否、読取準備は区別する', () => {
-  const s = claim(initialState(manifest), 'gradle');
-  assert.throws(() => update(s, 'L1-B', { state: 'working' }), /依存:L0-M/);
-  assert.throws(() => update(s, 'L1-B', { state: 'done', evidence }), /依存:L0-M/);
-  assert.equal(update(s, 'L1-B', { state: 'planning', note: '読取のみ' }).lanes['L1-B'].state, 'planning');
+test('AC7: L1-Mの未解消依存ではworking・done拒否、読取準備は区別する', () => {
+  const s = claim(initialState(manifest), 'foundation');
+  assert.throws(() => update(s, 'L1-M', { state: 'working' }), /依存:L1-B/);
+  assert.throws(() => update(s, 'L1-M', { state: 'done', evidence }), /依存:L1-B/);
+  assert.equal(update(s, 'L1-M', { state: 'planning', note: '読取のみ' }).lanes['L1-M'].state, 'planning');
 });
 test('AC7: 波gateは自ロットのみ、後続波未確定でも着手できる', () => {
   let s = readyState(['L2-actionmemo', 'L2-activity']); s.gates['wave-actionmemo'] = ''; s.gates['wave-activity'] = '';
@@ -295,4 +295,59 @@ test('AC7: 通常の束未完了は拒否し裁可済みGradle撤退だけ終結
   assert.equal(update(s, 'L5-I', { state: 'working' }).lanes['L5-I'].state, 'working');
   s.lanes['L2-actionmemo'].state = 'todo';
   assert.throws(() => update(s, 'L5-I', { state: 'working' }), /依存:L2-actionmemo/);
+});
+
+const approval = 'https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6430453220';
+test('計測免除AC1/2: 基準計測未完了holdのL0-Mとfoundation全体を変えずL1-Bだけworking・doneへ進む', () => {
+  const before = initialState(manifest); const manifestBefore = structuredClone(manifest);
+  let s = claim(before, 'gradle');
+  s = update(s, 'L1-B', { state: 'working' });
+  assert.deepEqual(s.lanes['L1-B'].held, manifest.lanes['L1-B'].resources);
+  s = update(s, 'L1-B', { state: 'done', evidence });
+  for (const [id, lane] of Object.entries(before.lanes)) if (id !== 'L1-B') assert.deepEqual(s.lanes[id], lane, id);
+  assert.deepEqual(s.territories.foundation, before.territories.foundation);
+  assert.deepEqual(s.lanes['L0-M'], before.lanes['L0-M']);
+  assert.deepEqual(manifest, manifestBefore);
+  assert.deepEqual(Object.keys(s).sort(), Object.keys(before).sort());
+  assert.equal(s.schema, before.schema); assert.equal(s.manifest, before.manifest);
+  validateState(s, manifest);
+});
+
+test('計測免除AC3: build・weights保持と非owner・L5終結排他を維持する', () => {
+  for (const [lane, territory, resource] of [['L1-M', 'foundation', 'build'], ['L-SHIME', 'closure', 'weights']]) {
+    let s = claim(readyState([lane]), territory, other); s = claim(s, 'gradle');
+    s = transition(s, manifest, 'update', { owner: other, lane, state: 'working' });
+    s.lanes['L1-B'].state = 'todo';
+    assert.throws(() => update(s, 'L1-B', { state: 'working' }), new RegExp('共有resource:' + resource));
+  }
+  const s = claim(initialState(manifest), 'gradle');
+  assert.throws(() => transition(s, manifest, 'update', { owner: other, lane: 'L1-B', state: 'working' }), /ownerではない/);
+  let closing = claim(readyState(['L5-I', 'L1-B']), 'closure', other); closing = claim(closing, 'gradle');
+  closing.lanes['L1-B'] = { ...closing.lanes['L1-B'], state: 'done', evidence };
+  closing = transition(closing, manifest, 'update', { owner: other, lane: 'L5-I', state: 'working' });
+  closing.lanes['L1-B'].state = 'todo';
+  assert.throws(() => update(closing, 'L1-B', { state: 'working' }), /終結中/);
+});
+
+test('計測免除AC3: L1-G依存・L2 gate・measurementの終結停止条件を維持する', () => {
+  let s = claim(initialState(manifest), 'foundation');
+  assert.throws(() => update(s, 'L1-G', { state: 'working' }), /依存:L1-M/);
+  s = claim(initialState(manifest), 'repayment-a');
+  assert.throws(() => update(s, 'L2-actionmemo', { state: 'working' }), /gate:wave-actionmemo/);
+  s = readyState(['L5-I', 'L0-M']); s.lanes['L0-M'] = initialState(manifest).lanes['L0-M']; s = claim(s, 'closure');
+  assert.throws(() => update(s, 'L5-I', { state: 'working' }), /他レーン停止・解放待ち/);
+});
+
+test('計測免除AC4: status APIと実CLI全体・gradleに裁可と基準計測未完了を表示する', async t => {
+  const { c, repo } = await fixture(t);
+  const api = await c.status();
+  assert.deepEqual(api.readiness['L1-B'], []);
+  assert.equal(api.state.lanes['L0-M'].state, 'todo');
+  for (const status of [api, ...await Promise.all([[], ['--territory', 'gradle']].map(async args => JSON.parse((await exec(process.execPath, [join(repo, script), 'status', ...args], { cwd: repo, maxBuffer: 2000000 })).stdout)))]) {
+    assert.equal(status.dependencyWaivers.length, 1);
+    assert.equal(status.dependencyWaivers[0].lane, 'L1-B');
+    assert.equal(status.dependencyWaivers[0].dependency, 'L0-M');
+    assert.equal(status.dependencyWaivers[0].approval, approval);
+    assert.match(status.dependencyWaivers[0].measurement, /基準計測未完了.*性能未実証/);
+  }
 });
