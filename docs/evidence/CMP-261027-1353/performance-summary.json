@@ -1,0 +1,118 @@
+{
+    "campaign":  "CMP-261027-1353",
+    "implementationSource":  "f157e033bb650205dc4ba94d0772f9b1a0be7d15",
+    "artifactSource":  "3db393c2e4e5608e0e168d59baba85e68342ae78",
+    "sourceBridge":  "f157-docs-only-source-bridge-safe.json",
+    "windowsProductionV2":  {
+                                "baseline":  "e355fd722ffe6792118825b73e39f6a1d6b797f6",
+                                "after":  "47288ee201da43af31e19a9aa9a3a187004cfdfb",
+                                "protocol":  "HTTP1",
+                                "originsSeparate":  true,
+                                "nFreshPerServiceWorkerCondition":  2,
+                                "mainDefinition":  "main container; not all content",
+                                "calendarDomDefinition":  "calendar DOM ready",
+                                "personalReadyDefinition":  "calendar DOM and four calendar APIs successful",
+                                "firstVisitOnly":  true,
+                                "revisitIndependentClock":  true,
+                                "block":  {
+                                              "routeMedianSeconds":  [
+                                                                         9.131585,
+                                                                         2.223845
+                                                                     ],
+                                              "mainMedianSeconds":  [
+                                                                        10.239485,
+                                                                        3.05674
+                                                                    ],
+                                              "calendarDomMedianSeconds":  [
+                                                                               20.44944,
+                                                                               11.711075
+                                                                           ],
+                                              "personalReadyMedianSeconds":  [
+                                                                                 20.709285,
+                                                                                 11.93603
+                                                                             ]
+                                          },
+                                "allow":  {
+                                              "routeMedianSeconds":  [
+                                                                         10.633825,
+                                                                         1.91328
+                                                                     ],
+                                              "mainMedianSeconds":  [
+                                                                        11.98317,
+                                                                        3.0405
+                                                                    ],
+                                              "calendarDomMedianSeconds":  [
+                                                                               26.0507,
+                                                                               12.61834
+                                                                           ],
+                                              "personalReadyMedianSeconds":  [
+                                                                                 26.35878,
+                                                                                 12.61852
+                                                                             ]
+                                          }
+                            },
+    "linuxHistoricalMinimal":  {
+                                   "beforeSource":  "c63da6152d0c415e60aed1cbd42d816282bfd574",
+                                   "afterSource":  "47288ee201da43af31e19a9aa9a3a187004cfdfb",
+                                   "mainSeconds":  [
+                                                       1.955747,
+                                                       0.553517
+                                                   ],
+                                   "calendarDomSeconds":  [
+                                                              7.20372,
+                                                              2.556092
+                                                          ],
+                                   "mergedWithWindowsPopulation":  false
+                               },
+    "linux70ffColdWarm":  {
+                              "source":  "70ffb29c0433273746db72d8c784cceaac613d6f",
+                              "nEach":  1,
+                              "afterStartup":  {
+                                                   "mainSeconds":  2.675257,
+                                                   "calendarDomSeconds":  7.041573
+                                               },
+                              "warmAfterOtherActors":  {
+                                                           "mainSeconds":  0.521441,
+                                                           "calendarDomSeconds":  2.532807
+                                                       },
+                              "cacheJitHostContributionsNotIndividuallyControlled":  true
+                          },
+    "linuxFinal3dbWarm":  {
+                              "source":  "3db393c2e4e5608e0e168d59baba85e68342ae78",
+                              "n":  1,
+                              "serviceWorkers":  "block",
+                              "routeMs":  589.96,
+                              "mainContainerMs":  767.05,
+                              "calendarDomMs":  2808.88,
+                              "nodeLagMedianMs":  0.128,
+                              "nodeLagMaxMs":  1.633,
+                              "nodeLagOver100Ms":  0,
+                              "logoutStatus":  200,
+                              "closed":  true,
+                              "nodeStartupReadWait":  "outside submit interval; exact phase unknown",
+                              "coldOrEveryLoginSlaProven":  false
+                          },
+    "nativeHistorical":  {
+                             "beforeSource":  "c63da6152d0c415e60aed1cbd42d816282bfd574",
+                             "afterSource":  "47288ee201da43af31e19a9aa9a3a187004cfdfb",
+                             "keepalive":  true,
+                             "sequentialEachApi":  3,
+                             "actionRequiredMedianMs":  [
+                                                            2739.0911,
+                                                            126.2584
+                                                        ],
+                             "inboxMedianMs":  [
+                                                   1914.8969,
+                                                   159.073
+                                               ],
+                             "all200":  true,
+                             "logoutStatus":  200,
+                             "agentDestroyed":  true,
+                             "browserTimingEquivalentClaimed":  false
+                         },
+    "limits":  [
+                   "historical source performance is not new-head CI",
+                   "Windows HTTP1 separate-origin queue/host conditions affect remaining seconds",
+                   "n1 final warm does not prove startup/cold or every-login SLA"
+               ]
+}

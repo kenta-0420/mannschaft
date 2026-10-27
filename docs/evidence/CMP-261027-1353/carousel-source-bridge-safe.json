@@ -1,0 +1,38 @@
+{
+  "base": "014ecd93b5b39382d700570b9b95e810a20a1d1e",
+  "redHead": "5c71df4a36db642e6c6919053496dbe1901943e1",
+  "greenHead": "2c8c49403ad2024fab593e04eec9381803e740a9",
+  "branch": "feature/cmp-261027-1353-carousel-once",
+  "blobs": {
+    "frontend/app/components/dashboard/DashboardScopeCarousel.vue": {
+      "red": "50f17720aa032104b92683120947b8c066ec518b",
+      "green": "be4b170f70c98e46147cfad15598bc108c73bb34"
+    },
+    "frontend/app/components/dashboard/DashboardScopeCarousel.spec.ts": {
+      "red": "48ff6711ab65618de8e1ba7ef7fe8167d8e2b5de",
+      "green": "cbc635f23b4c803b31ac4343396878d60b7e249f"
+    },
+    "frontend/tests/e2e/f221-swipe-dashboard.spec.ts": {
+      "red": "e3483477bf5f810f9ddca6f8fcb015409f3f7f87",
+      "green": "e3483477bf5f810f9ddca6f8fcb015409f3f7f87"
+    }
+  },
+  "red": {
+    "tests": 11,
+    "pass": 2,
+    "assertionFailures": 9,
+    "exitCode": 1,
+    "cleanup": "removed"
+  },
+  "green": {
+    "tests": 11,
+    "pass": 11,
+    "fail": 0,
+    "lintFiles": 3,
+    "lintErrors": 0,
+    "lintWarnings": 0,
+    "exitCode": 0,
+    "cleanup": "removed"
+  },
+  "unitDelta": "Lazy body existence uses vi.waitFor; immediate selected-panel assertion and mount/state/identity requirements retained. Product red contains real inactive-mount and touchcancel assertion failures."
+}
