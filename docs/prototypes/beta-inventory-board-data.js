@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-10-27T20:21:15+00:00",
+  "generatedAt": "2026-10-27T21:19:28+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,9 +8,9 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "92cacad4d5723a224e879dcf034213b074012e1f",
+    "taskListCommit": "01e3efc59fdf69b10583f9a0a13b50bf4d91c95d",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "c4e310ff400c3c9f920b825551e1c9714c5f69a399bc3d0b9adcebd29436ec3c",
+    "taskListSha256": "94a73c55a8d9e73b6b58f9a643211303058ce6824788d76665af9a621f35e21a",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
@@ -8657,6 +8657,17 @@ window.BETA_INVENTORY_DATA = {
         "evidencePath": "docs/evidence/october-fresh3-20261028/resident-observations.json",
         "sourceEvidencePath": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/fresh3-resident-5-observations.json",
         "idAssignment": "原personaId 3をoriginalPersonaIdへ保持。累積一意IDのみ登録時付与。固定P01-P20へ変換しない。"
+      },
+      {
+        "id": "OCT-COMMITTEE-SUPPLEMENT-20261028-R3",
+        "originalPersonaId": 2,
+        "personaArchetype": "高齢低リテラシー×素直",
+        "runId": "committee-third-resident-3-20261028-supplement",
+        "sourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backendSourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+        "evidencePath": "docs/evidence/CMP-261027-1311/additional-observations.json",
+        "sourceEvidencePath": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/committee-third-resident-observations.json",
+        "idAssignment": "原personaId 2を保持し、累積一意personaIdのみ登録時付与。旧fresh3-R4の原ID2とは別の委員会目的探索。固定P01-P20へ変換しない。"
       }
     ],
     "journeys": [
@@ -9046,6 +9057,19 @@ window.BETA_INVENTORY_DATA = {
         "goalsReached": false,
         "coveragePassed": false,
         "purposeProvenance": "原住民観測の目的・達成/未達項目から登録時に要約。達成済みへの書換えなし。"
+      },
+      {
+        "id": "committee-third-resident-3-20261028-supplement",
+        "personaId": "OCT-COMMITTEE-SUPPLEMENT-20261028-R3",
+        "purpose": "所属組織の委員会を探し、活動の様子や伝達履歴を確かめ、一覧へ戻って他の委員会も探す",
+        "runId": "committee-third-resident-3-20261028-supplement",
+        "sourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backendSourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+        "evidencePath": "docs/evidence/CMP-261027-1311/additional-observations.json",
+        "executionCompleted": true,
+        "goalsReached": false,
+        "coveragePassed": false,
+        "purposeSupplement": "途中で目的組織名のみ補足。操作手順・URLの指示なし。"
       }
     ],
     "insights": [
@@ -10297,6 +10321,28 @@ window.BETA_INVENTORY_DATA = {
         "priority": "should",
         "rootProofPath": "docs/evidence/october-fresh3-20261028/root-name-only-proof.json",
         "separateCampaign": "CMP-261028-0513"
+      },
+      {
+        "id": "OCT-COMMITTEE-SUPPLEMENT-20261028-R3-01",
+        "featureKey": "organization-manage",
+        "featureDetail": "委員会目的・高齢住民の追加独立探索",
+        "title": "委員会入口の探索に迷い、詳細から一覧への帰還を確認できなかった",
+        "detail": "複数組織・機能設定・下位組織を探索し、途中で対象組織名だけ補足を受けた後、対象組織メニューの業務・運用から委員会一覧と詳細へ到達。活動・伝達履歴と一覧への帰還は時間上限内に確認できなかった。一時不可視項目の混在を可視状態で確認し直し、locator TimeoutをUI障害・導線欠落へ断定しない。",
+        "page": "/committees/1",
+        "personaId": "OCT-COMMITTEE-SUPPLEMENT-20261028-R3",
+        "personaArchetype": "高齢低リテラシー×素直",
+        "journeyId": "committee-third-resident-3-20261028-supplement",
+        "originalRunId": "committee-third-resident-3-20261028-supplement",
+        "runId": "committee-third-resident-3-20261028-supplement",
+        "sourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backendSourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+        "evidencePath": "docs/evidence/CMP-261027-1311/additional-observations.json",
+        "sourceEvidencePath": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/committee-third-resident-observations.json",
+        "registrationSource": "アリシゼーションテスト",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "normal",
+        "priority": "should"
       }
     ],
     "runEnvironments": {
@@ -10435,6 +10481,23 @@ window.BETA_INVENTORY_DATA = {
           "fresh2"
         ],
         "rootProofPath": "docs/evidence/october-fresh3-20261028/root-name-only-proof.json"
+      },
+      "committee-third-resident-3-20261028-supplement": {
+        "runId": "committee-third-resident-3-20261028-supplement",
+        "sourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backendSourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "sourceEvidencePath": "docs/evidence/CMP-261027-1311/additional-observations.json",
+        "executionCompleted": true,
+        "goalsReached": false,
+        "coveragePassed": false,
+        "actualRuntime": "same exact source heads; recovery-build5; whole output byte equivalence not claimed",
+        "wholeOutputByteEquivalence": false,
+        "independentExploration": true,
+        "purposeSupplement": "目的組織名だけ途中補足。手順/URL指示なし。",
+        "residentPurposePopulation": "B04住民内の委員会目的3住民の補足1住民。メールキュー目的1住民は区別。"
       }
     }
   },
@@ -50827,8 +50890,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261021-0660",
       "title": "`/system-admin/email-outbox` が描画されず、画面が空白になる（BE の Page 形式と FE の型の取り違え）",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -50842,12 +50905,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260912-1823",
       "issues": [
         {
-          "label": "2026-10-27 着手（Codex 足軽）: SpringPage 全27経路の監査・6型境界の是正・契約番人の拡張を開始。実装・実機・アリシゼーションは未実施（本PRは着手登録のみ）",
+          "label": "[実装PR #4167](https://github.com/kenta-0420/mannschaft/pull/4167)・[完了証拠](evidence/CMP-261021-0660.json)。8spec76件（対象7spec75＋theme1）・型/lint/build成功、root検分0件。実機50PASS/初期overlay1FAIL原本＋別通常入口PASS、cancel204/409。独立3名探索実施・閉鎖/B0登録済み（[観測PR #4188](https://github.com/kenta-0420/mannschaft/pull/4188)）、全目的達成false・coverage未合格を保持。別詳細不具合CMP-261028-0513は未解決、mocked E2E2spec未実走、B0全体validator既存46行FAILを保持。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "2026-10-27 着手（Codex 足軽）: SpringPage 全27経路の監査・6型境界の是正・契約番人の拡張を開始。実装・実機・アリシゼーションは未実施（本PRは着手登録のみ）"
+        "[実装PR #4167](https://github.com/kenta-0420/mannschaft/pull/4167)・[完了証拠](evidence/CMP-261021-0660.json)。8spec76件（対象7spec75＋theme1）・型/lint/build成功、root検分0件。実機50PASS/初期overlay1FAIL原本＋別通常入口PASS、cancel204/409。独立3名探索実施・閉鎖/B0登録済み（[観測PR #4188](https://github.com/kenta-0420/mannschaft/pull/4188)）、全目的達成false・coverage未合格を保持。別詳細不具合CMP-261028-0513は未解決、mocked E2E2spec未実走、B0全体validator既存46行FAILを保持。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -50868,10 +50931,12 @@ window.BETA_INVENTORY_DATA = {
         "PagedResponse"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
-        3285
+        3285,
+        4167,
+        4188
       ],
       "github": [
         {
@@ -50887,6 +50952,24 @@ window.BETA_INVENTORY_DATA = {
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
+        },
+        {
+          "number": 4167,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4188,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
         }
       ]
     },
@@ -54031,8 +54114,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261027-1311",
       "title": "委員会一覧のHIDDEN除外がnull項目と不可視分の総件数を残す（コード確認・実機未）",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -54046,16 +54129,16 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "2026-10-27 計画着手（Codex 足軽）。コード上の原因を確認、実API再現・実装・試験・実機・探索は未実施。CMP-261021-0660のcommittee実機より先に独立PRで根本修復する",
+          "label": "[完了証拠](evidence/CMP-261027-1311.json)・[実装PR #4163](https://github.com/kenta-0420/mannschaft/pull/4163)。head1a10同CI40552419310の実XML48件0fail/error/skip。正式visibility red25中13失敗、local sort red48中10失敗（Gitadapter経路違反と独立CI red未取得を保持）。権限横断consumer原51件50PASS/1FAIL・匿名0と通常dialog後追補、別匿名3case401/FE非露出を分離。委員会目的3住民の探索実施・triage・正常閉鎖をroot裁定",
           "state": "unknown"
         }
       ],
       "prs": [
-        "2026-10-27 計画着手（Codex 足軽）。コード上の原因を確認、実API再現・実装・試験・実機・探索は未実施。CMP-261021-0660のcommittee実機より先に独立PRで根本修復する"
+        "[完了証拠](evidence/CMP-261027-1311.json)・[実装PR #4163](https://github.com/kenta-0420/mannschaft/pull/4163)。head1a10同CI40552419310の実XML48件0fail/error/skip。正式visibility red25中13失敗、local sort red48中10失敗（Gitadapter経路違反と独立CI red未取得を保持）。権限横断consumer原51件50PASS/1FAIL・匿名0と通常dialog後追補、別匿名3case401/FE非露出を分離。委員会目的3住民の探索実施・triage・正常閉鎖をroot裁定"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "CommitteeService#listCommitteesのPage.mapが非所属HIDDENをnull化し、CommitteeControllerもnullを保持するためcontent/countに不可視分が残る。[F04.10正本](features/F04.10_committee.md)の一覧可視性・HIDDEN非掲載の既存契約に反する。0660のshape不一致とは別原因"
+        "元ACを維持。FE0660完了PR4189採用後に文書確定。探索の全目的達成false・B0coveragefalseを保持、SYSメール目的は別枠。NAME_ONLY詳細は別件CMP-261028-0513へ未着手登録済みで認可拡張せず。B0累積26/26/55。原51の初回失敗は改変せず、実装PR4167本文の匿名主張を訂正して別補足を採用"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -54085,10 +54168,22 @@ window.BETA_INVENTORY_DATA = {
         "total"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4163
+      ],
+      "github": [
+        {
+          "number": 4163,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     },
     {
       "id": "CMP-261027-1646",
