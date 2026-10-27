@@ -733,8 +733,34 @@ class NotificationTransactionBoundaryGuardTest {
      */
     static Set<String> transactionalClosure(List<MethodBlock> methods, String classAnnotations) {
         return sameClassClosure(methods, methods.stream()
-                .filter(m -> hasTransactional(m.annotations()) || hasTransactional(classAnnotations))
+                .filter(m -> startsTransactionContext(m.annotations(), classAnnotations))
                 .collect(Collectors.toList()));
+    }
+
+    /**
+     * そのメソッドが「業務TXの文脈の起点」か（Issue #2997 G4-b / M5）。
+     *
+     * <p>{@code @Transactional} を持つメソッド（またはクラス）が起点だが、メソッド自身が
+     * {@code propagation = NEVER / NOT_SUPPORTED} を宣言している場合は<b>起点にしない</b>。
+     * {@code NEVER} は「TX が無いこと」を要求し、{@code NOT_SUPPORTED} は TX を中断する宣言なので、
+     * そこから同一クラス内で到達する先は業務TXの内側ではない
+     * （例: {@code NotificationFanoutWorker#poll} は {@code @Transactional(propagation = NEVER)} の入口で、
+     * そこから到達する {@code processOne} を TX 内と誤検知していた）。</p>
+     *
+     * <p>外すのは<b>起点</b>だけである。REQUIRED な入口から自己呼出で到達した先に付いた
+     * {@code NEVER} / {@code NOT_SUPPORTED} は、プロキシを経ないため効かず入口のTXが生きている。
+     * 閉包の伝播（{@link #sameClassClosure}）はそのまま通すので、
+     * 「REQUIRED の入口 -> 自己呼出の NEVER/NOT_SUPPORTED -> 通知」は引き続き違反として挙がる。
+     * 自己呼出で効かない宣言を免除の根拠にはしない。</p>
+     */
+    static boolean startsTransactionContext(String methodAnnotations, String classAnnotations) {
+        if (hasTransactional(methodAnnotations)) {
+            return !TX_SUSPENDING_PROPAGATION.matcher(methodAnnotations).find();
+        }
+        if (hasTransactional(classAnnotations)) {
+            return !TX_SUSPENDING_PROPAGATION.matcher(classAnnotations).find();
+        }
+        return false;
     }
 
     /** {@code seeds} から同一クラス内の無修飾呼び出しで到達できるメソッド名の推移閉包。 */

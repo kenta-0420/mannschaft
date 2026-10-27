@@ -220,11 +220,44 @@ class NotificationTransactionBoundaryGuardConditionTest {
                     .contains(key("AsyncSelfInvocationFixture", "sendFreeQuotaAlertAsync",
                             NotificationTransactionBoundaryGuardTest.ViolationKind.ASYNC_WITHOUT_EXECUTOR));
         }
+
+        @Test
+        @DisplayName("REQUIRED の入口 -> 自己呼出の NEVER/NOT_SUPPORTED -> 通知 は引き続き挙げる（陽性対照・Issue #2997 G4-b / M5）")
+        void 自己呼出のNEVERは免除の根拠にならない() {
+            Set<String> keys = keysOf("SuspendedEntryFixture");
+            assertThat(keys)
+                    .as("自己呼出ではプロキシを経ないため、途中の NEVER は効かず入口のTXが生きている。"
+                            + "TX 文脈の起点から NEVER/NOT_SUPPORTED を外した変更が、この形まで見逃してはならない")
+                    .contains(key("SuspendedEntryFixture", "fireAfterSelfCalledNever",
+                            NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_BARE))
+                    .contains(key("SuspendedEntryFixture", "fireAfterSelfCalledNotSupported",
+                            NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_BARE));
+        }
     }
 
     @Nested
     @DisplayName("正例: 違反として挙げてはならない")
     class 正例 {
+
+        @Test
+        @DisplayName("NEVER/NOT_SUPPORTED の入口だけから到達する通知は業務TXの内側ではない（陰性・Issue #2997 G4-b / M5）")
+        void NEVERの入口から到達する通知は違反にしない() {
+            assertThat(keysOf("SuspendedEntryFixture"))
+                    .as("NotificationFanoutWorker#poll（@Transactional(NEVER)）から到達する processOne を"
+                            + "TX 内と誤検知してはならない")
+                    .noneMatch(k -> k.contains("#processOneJob "))
+                    .noneMatch(k -> k.contains("#processOneSuspendedJob "));
+        }
+
+        @Test
+        @DisplayName("変異: 起点の NEVER を REQUIRED に戻すと、到達先の通知が違反として挙がる（陰性が空振りでない証明）")
+        void NEVERをREQUIREDに戻すと検出される() {
+            assertThat(keysOfMutated("SuspendedEntryFixture",
+                    "@Transactional(propagation = Propagation.NEVER) public void pollWithNever()",
+                    "@Transactional public void pollWithNever()"))
+                    .contains(key("SuspendedEntryFixture", "processOneJob",
+                            NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_BARE));
+        }
 
         @Test
         @DisplayName("AFTER_COMMIT リスナー（phase 明示・省略の両方）は違反にしない")

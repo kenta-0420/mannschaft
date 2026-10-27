@@ -13,11 +13,12 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmedVia;
 import com.mannschaft.app.notification.confirmable.error.ConfirmableNotificationErrorCode;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
-import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.notification.confirmable.event.ConfirmableReminderResendEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -25,6 +26,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -59,9 +61,6 @@ class ConfirmableNotificationConfirmServiceTest {
 
     @Mock
     private UserRepository userRepository;
-
-    @Mock
-    private NotificationHelper notificationHelper;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -352,6 +351,60 @@ class ConfirmableNotificationConfirmServiceTest {
                             .isEqualTo(ConfirmableNotificationErrorCode.ALREADY_CANCELLED.getCode()));
 
             verify(notificationRepository, never()).save(any());
+        }
+    }
+
+    // ========================================
+    // resendReminder（Issue #2997 G4-b）
+    // ========================================
+
+    @Nested
+    @DisplayName("resendReminder")
+    class ResendReminder {
+
+        @Test
+        @DisplayName("resendReminder_未確認者のIDスナップショットを載せた配送要求を publish するだけで、通知は直接作らない")
+        void publishesSnapshotOfUnconfirmedRecipients() {
+            ConfirmableNotificationEntity notification =
+                    createActiveNotification(2, 2, ConfirmableNotificationDeliveryStatus.DELIVERED);
+            given(notificationRepository.findById(NOTIFICATION_ID)).willReturn(Optional.of(notification));
+            given(recipientRepository.findActiveUnconfirmedByNotificationId(NOTIFICATION_ID)).willReturn(List.of(
+                    createRecipient(notification, USER_ID_1, false),
+                    createRecipient(notification, USER_ID_2, false)));
+
+            confirmService.resendReminder(NOTIFICATION_ID);
+
+            ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue()).isEqualTo(
+                    new ConfirmableReminderResendEvent(NOTIFICATION_ID, List.of(USER_ID_1, USER_ID_2)));
+        }
+
+        @Test
+        @DisplayName("resendReminder_未確認者が0人なら publish しない")
+        void noRecipientsPublishesNothing() {
+            ConfirmableNotificationEntity notification =
+                    createActiveNotification(1, 0, ConfirmableNotificationDeliveryStatus.DELIVERED);
+            given(notificationRepository.findById(NOTIFICATION_ID)).willReturn(Optional.of(notification));
+            given(recipientRepository.findActiveUnconfirmedByNotificationId(NOTIFICATION_ID)).willReturn(List.of());
+
+            confirmService.resendReminder(NOTIFICATION_ID);
+
+            verify(eventPublisher, never()).publishEvent(any(Object.class));
+        }
+
+        @Test
+        @DisplayName("resendReminder_ACTIVE でなければ ALREADY_CANCELLED で拒否し publish しない")
+        void cancelledNotificationIsRejected() {
+            given(notificationRepository.findById(NOTIFICATION_ID))
+                    .willReturn(Optional.of(createCancelledNotification()));
+
+            assertThatThrownBy(() -> confirmService.resendReminder(NOTIFICATION_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo(ConfirmableNotificationErrorCode.ALREADY_CANCELLED.getCode()));
+
+            verify(eventPublisher, never()).publishEvent(any(Object.class));
         }
     }
 }
