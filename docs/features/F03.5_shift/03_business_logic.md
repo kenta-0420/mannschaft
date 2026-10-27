@@ -214,6 +214,8 @@ Facadeのスコープ認可（越境は不在と同じ404、SUPPORTER等は403�
 
 ### シフト変更依頼ワークフロー（A-1 確定前の依頼）【v2.1 新規】
 
+変更依頼画面の承認・却下は、対象チームの実効ロールが ADMIN / DEPUTY_ADMIN の場合に表示する。SYSTEM_ADMIN（チーム管理者との兼任を含む）は運営専用のため業務導線を表示しない（[ロール・権限モデル §3.5](../../security/03_role_authority_model.md#35-system_admin-の-ui-表示方針--beの許可経路とfeのスコープ管理者導線cmp-260909-1509)）。API 側の認可と自己審査禁止は別途強制する。
+
 **対象**: `DRAFT / COLLECTING / ADJUSTING` 状態のスケジュール。`PUBLISHED` 以降は A-2/A-3 の交代依頼フロー（`shift_swap_requests`）に案内する。
 
 **スコープ境界（shift_swap_requests との使い分け）**:
