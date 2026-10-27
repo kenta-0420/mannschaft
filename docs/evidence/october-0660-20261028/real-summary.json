@@ -1,0 +1,36 @@
+{
+  "sourceHeads": {
+    "frontend": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+    "backend": "1a10ca038ffb4a215d4b1b44242ff4ef68275607"
+  },
+  "initialMatrix": {
+    "total": 51,
+    "pass": 50,
+    "fail": 1,
+    "failure": "初期設定overlayによる遮断を原本に保持"
+  },
+  "separateNormalEntry": {
+    "pass": true,
+    "path": "通常あとで決める→Drawer→outbox一覧"
+  },
+  "consumerCounts": {
+    "outbox": 22,
+    "adminUsers": 36,
+    "adminCommittees": 41,
+    "memberVisibleCommittees": 21,
+    "distributions": 21,
+    "emptyDistributionVerified": true
+  },
+  "authorization": "権限あり/なし・非所属・他tenant・匿名と直URLの拒否を確認。全27経路の認可合格は主張しない。",
+  "oneCancel": {
+    "runs": 1,
+    "cancelHTTP": 204,
+    "staleHTTP": 409,
+    "pendingAfter": 20,
+    "cancelledAfter": 2,
+    "totalAfter": 22,
+    "extraFixtureRestore": false
+  },
+  "mail": "simulate専用。本物メール送信は行っていない。",
+  "adoption": "accepted-by-root-after-implementation-merge"
+}
