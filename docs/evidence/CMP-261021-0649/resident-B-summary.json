@@ -1,0 +1,26 @@
+{
+  "runId": "CMP0649-R02-cmp0649-79445b4f6a17",
+  "personaId": "CMP0649-B-discover",
+  "journeyId": "CMP0649-R02-B-discover",
+  "personaArchetype": "一般×素直",
+  "sourceHead": "dd41b081219c1e8bb127b07f4086e2d104903a11",
+  "registrationSource": "actual-resident-artifacts",
+  "status": "observed-unverified",
+  "trusted": false,
+  "purpose": "2026-10-29の18時の交代相談を普段の画面から探し、受諾後に状況と自分の予定を確認する",
+  "result": {
+    "discovered": false,
+    "accepted": false,
+    "confirmed": false,
+    "returnedOwnSchedule": true,
+    "goalAchieved": false
+  },
+  "visualConfirmation": false,
+  "coveragePassed": false,
+  "observation": "AのUI提出後にホームは「対応が必要な項目はありません」。インボックス再読はログイン通知のみ。マイシフトの10/29には08時と14時が表示され、18時の相談を発見できず受諾・成立確認は未達。自分の予定へ戻ることは達成。受信データ消失や認可不備とは断定しない。 原runId: CMP0649-R02-cmp0649-79445b4f6a17。sourceHead: dd41b081219c1e8bb127b07f4086e2d104903a11。未実証の住民観測。DOM探索のみで画像視覚確認なし。",
+  "observedAt": "2026-10-26T16:45:34.661Z",
+  "page": "/my/shift",
+  "privateEvidenceSha256": "c643d2420992c34715f9ebc1e520361f4a24bba24da486c200fa9136a801256f",
+  "privateEvidencePath": ".claude/campaigns/cmp0649-next-20261026/resident-B-safe.json",
+  "note": "住民が独立UI探索で得た未実証観測。裏取り・製品修正・coverage合格を表さない。元private証跡全量は公開しない。"
+}
