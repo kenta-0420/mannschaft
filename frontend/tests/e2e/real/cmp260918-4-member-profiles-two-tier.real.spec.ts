@@ -40,7 +40,9 @@ let actors: Partial<Record<ActorName, APIRequestContext>> = {}
 let organization: { numericId: number; slug: string } | undefined
 let inviteId: number | undefined
 const ownedPages = new Map<number, OwnPage>()
-const ownedSlugs = new Set<string>()
+const ownedSlugs = new Map<string, number>()
+const ownedProfiles = new Map<number, number>()
+const deletedProfileIds = new Set<number>()
 const contexts = new Set<BrowserContext>()
 
 // 同一ファイル内は順番に実行するが、先行testの失敗で後続をskipしない。
@@ -99,7 +101,8 @@ async function loginActor(name: ActorName): Promise<void> {
 function rememberPage(data: OwnPage, slug: string): void {
   // 返却IDは表示assertより前に回収し、所有スコープを確認してからcleanup対象にする。
   expect(data.organizationId).toBe(ownOrganization().numericId)
-  expect(data.createdBy).toBe(accounts.admin.id)
+  expect(ownedSlugs.has(slug), '作成を試みたexact slugだけを回収する').toBe(true)
+  expect(data.createdBy).toBe(ownedSlugs.get(slug))
   expect(data.slug).toBe(slug)
   expect(Number.isSafeInteger(data.id)).toBe(true)
   ownedPages.set(data.id, data)
@@ -126,16 +129,16 @@ async function cleanupFixture(): Promise<string[]> {
   if (organization && actors.admin) {
     await clean('所有ページIDの再照合', async () => {
       const pages = await pageList()
-      for (const slug of ownedSlugs) {
+      for (const slug of ownedSlugs.keys()) {
         const matches = pages.filter((item) => item.slug === slug)
         expect(matches.length, '所有slugの一意性').toBeLessThanOrEqual(1)
         if (matches[0]) rememberPage(matches[0], slug)
       }
     })
     for (const ownPage of ownedPages.values()) {
-      await clean(`所有ページ:${ownPage.id}`, async () => {
+      await clean(`所有プロフィールID回収:${ownPage.id}`, async () => {
         const detail = await adminApi().get(`/api/v1/team/pages/${ownPage.id}`)
-        if (detail.status() === 404) return // 自身のUIで既に削除したページ
+        if (detail.status() === 404) return // 既知profile IDの回収はページ有無と独立に後続で行う。
         expect(detail.status()).toBe(200)
         rememberPage((await detail.json()).data as OwnPage, ownPage.slug)
         const members = await adminApi().get('/api/v1/team/members', {
@@ -144,11 +147,43 @@ async function cleanupFixture(): Promise<string[]> {
         expect(members.status()).toBe(200)
         for (const member of (await members.json()).data as { id: number; teamPageId: number }[]) {
           expect(member.teamPageId).toBe(ownPage.id)
-          const deletion = await adminApi().delete(`/api/v1/team/members/${member.id}`)
-          expect([204, 404]).toContain(deletion.status())
+          expect(Number.isSafeInteger(member.id)).toBe(true)
+          ownedProfiles.set(member.id, member.teamPageId)
         }
+      })
+    }
+    for (const [profileId, pageId] of ownedProfiles) {
+      await clean(`所有プロフィール:${profileId}/親:${pageId}`, async () => {
+        expect(ownedPages.has(pageId), '所有確認済みページのプロフィールだけを回収する').toBe(true)
+        const detail = await adminApi().get(`/api/v1/team/members/${profileId}`)
+        if (detail.status() === 404) {
+          // 親ページ削除による404もあるため、成功DELETEを観測していないIDを回収済みにしない。
+          expect(deletedProfileIds.has(profileId), 'プロフィールの削除成功を確認できない').toBe(
+            true,
+          )
+          return
+        }
+        expect(detail.status()).toBe(200)
+        expect((await detail.json()).data.teamPageId).toBe(pageId)
+        const deletion = await adminApi().delete(`/api/v1/team/members/${profileId}`)
+        expect(deletion.status()).toBe(204)
+        deletedProfileIds.add(profileId)
+      })
+    }
+    for (const ownPage of ownedPages.values()) {
+      await clean(`所有ページ:${ownPage.id}`, async () => {
+        expect(
+          [...ownedProfiles].filter(
+            ([id, parent]) => parent === ownPage.id && !deletedProfileIds.has(id),
+          ),
+          '未回収プロフィールの親ページは先に消さない',
+        ).toHaveLength(0)
+        const detail = await adminApi().get(`/api/v1/team/pages/${ownPage.id}`)
+        if (detail.status() === 404) return
+        expect(detail.status()).toBe(200)
+        rememberPage((await detail.json()).data as OwnPage, ownPage.slug)
         const deletion = await adminApi().delete(`/api/v1/team/pages/${ownPage.id}`)
-        expect([204, 404]).toContain(deletion.status())
+        expect(deletion.status()).toBe(204)
       })
     }
     await clean('所有ページの残存確認', async () => {
@@ -262,10 +297,16 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   const info = test.info()
-  const owned = { organization, pageIds: [...ownedPages.keys()], inviteId }
+  const ownedOrganization = organization
   const failures = await cleanupFixture()
+  const owned = {
+    organization: ownedOrganization,
+    pageIds: [...ownedPages.keys()],
+    profiles: [...ownedProfiles].map(([id, teamPageId]) => ({ id, teamPageId })),
+    inviteId,
+  }
   await info.attach('fixture-cleanup', {
-    body: Buffer.from(JSON.stringify({ owned, failures })),
+    body: Buffer.from(JSON.stringify({ owned, deletedProfileIds: [...deletedProfileIds], failures })),
     contentType: 'application/json',
   })
   expect(failures, '自所有fixtureの後始末').toEqual([])
@@ -392,7 +433,7 @@ test('③ ADMIN: ページ作成→メンバー追加→編集→削除→ペー
   await dialog.locator('input').first().fill(PAGE_TITLE) // タイトル
   const slugInput = dialog.locator('input[placeholder="members-2026"]')
   await slugInput.fill(PAGE_SLUG)
-  ownedSlugs.add(PAGE_SLUG)
+  ownedSlugs.set(PAGE_SLUG, accounts.admin.id)
   await Promise.all([
     page
       .waitForResponse(
@@ -421,6 +462,7 @@ test('③ ADMIN: ページ作成→メンバー追加→編集→削除→ペー
   await page.getByRole('button', { name: 'メンバー追加' }).click()
   const memberDialog = page.getByRole('dialog')
   await memberDialog.locator('input').first().fill(MEMBER_NAME)
+  let createdProfileId = 0
   await Promise.all([
     page
       .waitForResponse(
@@ -435,6 +477,9 @@ test('③ ADMIN: ページ作成→メンバー追加→編集→削除→ペー
           [...ownedPages.values()].find((item) => item.slug === PAGE_SLUG)?.id,
         )
         expect(Number.isSafeInteger(addedMember.id)).toBe(true)
+        expect(addedMember.id).toBeGreaterThan(0)
+        ownedProfiles.set(addedMember.id, addedMember.teamPageId)
+        createdProfileId = addedMember.id
       }),
     memberDialog
       .getByRole('button', { name: /追加|保存|OK/ })
@@ -462,11 +507,21 @@ test('③ ADMIN: ページ作成→メンバー追加→編集→削除→ペー
   // --- 削除 ---
   const deleteButton = page.locator('button:has(.pi-trash)').first()
   await deleteButton.click()
-  // 確認ダイアログが出る場合は確定する
-  const confirmButton = page.getByRole('button', { name: /削除|OK|はい/ }).last()
-  if (await confirmButton.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await confirmButton.click()
-  }
+  const memberDeleteDialog = page.getByTestId('member-delete-confirm-dialog')
+  await expect(memberDeleteDialog).toBeVisible()
+  await Promise.all([
+    page
+      .waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === `/api/v1/team/members/${createdProfileId}` &&
+          response.request().method() === 'DELETE',
+      )
+      .then((response) => {
+        expect(response.status()).toBe(204)
+        deletedProfileIds.add(createdProfileId)
+      }),
+    memberDeleteDialog.getByRole('button', { name: '削除', exact: true }).click(),
+  ])
   await expect(page.getByText(MEMBER_NAME_EDITED, { exact: false })).toHaveCount(0, {
     timeout: 30_000,
   })
@@ -477,10 +532,9 @@ test('③ ADMIN: ページ作成→メンバー追加→編集→削除→ペー
     .locator('.p-card', { hasText: PAGE_TITLE })
     .locator('button:has(.pi-trash)')
   await deletePageButton.click()
-  const deletePageConfirm = page.getByRole('button', { name: /削除|OK|はい/ }).last()
-  if (await deletePageConfirm.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await deletePageConfirm.click()
-  }
+  const deletePageConfirm = page.getByRole('dialog')
+  await expect(deletePageConfirm).toBeVisible()
+  await deletePageConfirm.getByRole('button', { name: '削除', exact: true }).click()
   await expect(page.locator('.p-card', { hasText: PAGE_TITLE })).toHaveCount(0, { timeout: 30_000 })
 })
 
@@ -488,7 +542,7 @@ test('④ URL直打ちでもMEMBERはページ作成APIに書き込めない（�
   test.setTimeout(60_000)
   const slug = `cmp1343-denied-${uniqueSuffix}`
   // 認可に回帰があって作成されても、この試行のexact slugだけをcleanup対象にする。
-  ownedSlugs.add(slug)
+  ownedSlugs.set(slug, accounts.member.id)
   const response = await actors.member!.post('/api/v1/team/pages', {
     data: {
       organizationId: ownOrganization().numericId,
@@ -506,7 +560,7 @@ test('④ URL直打ちでもMEMBERはページ作成APIに書き込めない（�
 test('⑤ 他テナント(非所属)は組織メンバー紹介ページのAPIにアクセスできない', async () => {
   test.setTimeout(60_000)
   const slug = `cmp1343-private-${uniqueSuffix}`
-  ownedSlugs.add(slug)
+  ownedSlugs.set(slug, accounts.admin.id)
   // MAIN検体にして③のYEARLY/current yearと衝突させない。対象操作ではなく認可APIの前提。
   const response = await adminApi().post('/api/v1/team/pages', {
     data: {
