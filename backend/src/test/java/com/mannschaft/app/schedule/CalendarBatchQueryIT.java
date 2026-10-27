@@ -5,6 +5,8 @@ import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.schedule.service.ScheduleQueryService;
+import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import com.mannschaft.app.team.entity.TeamEntity;
@@ -29,6 +31,7 @@ class CalendarBatchQueryIT extends AbstractMySqlIntegrationTest {
 
     @PersistenceContext private EntityManager em;
     @Autowired private ScheduleQueryService service;
+    @Autowired private ScheduleRepository scheduleRepository;
     @Autowired private TeamRepository teamRepository;
     @Autowired private OrganizationRepository organizationRepository;
 
@@ -51,6 +54,36 @@ class CalendarBatchQueryIT extends AbstractMySqlIntegrationTest {
                 .isLessThanOrEqualTo(one);
     }
 
+    @Test
+    void 継続予定と日時境界と取消状態と論理削除の既存抽出契約を維持する() {
+        long team = 9_135_301L;
+        long organization = 9_135_302L;
+        ScheduleEntity spanning = saveSchedule(team, organization, FROM.minusDays(1), FROM.plusHours(1));
+        saveSchedule(team, organization, FROM.minusHours(1), FROM);
+        ScheduleEntity atFrom = saveSchedule(team, organization, FROM, null);
+        saveSchedule(team, organization, FROM.minusHours(1), null);
+        ScheduleEntity cancelled = saveSchedule(team, organization, FROM.plusDays(1), FROM.plusDays(2));
+        cancelled.cancel();
+        ScheduleEntity atTo = saveSchedule(team, organization, TO, null);
+        saveSchedule(team, organization, TO.plusSeconds(1), TO.plusHours(1));
+        ScheduleEntity deleted = saveSchedule(team, organization, FROM.plusHours(1), FROM.plusHours(2));
+        deleted.softDelete();
+        em.flush();
+        em.clear();
+        assertThat(scheduleRepository.findCalendarByTeamId(team, FROM, TO))
+                .extracting(ScheduleEntity::getId)
+                .containsExactly(spanning.getId(), atFrom.getId(), cancelled.getId(), atTo.getId());
+        assertThat(scheduleRepository.findCalendarByOrganizationId(organization, FROM, TO))
+                .extracting(ScheduleEntity::getId)
+                .containsExactly(spanning.getId(), atFrom.getId(), cancelled.getId(), atTo.getId());
+    }
+
+    private ScheduleEntity saveSchedule(long team, long organization, LocalDateTime start, LocalDateTime end) {
+        return scheduleRepository.save(ScheduleEntity.builder().teamId(team).organizationId(organization)
+                .title("日時境界").startAt(start).endAt(end).eventType(EventType.EVENT)
+                .visibility(ScheduleVisibility.MEMBERS_ONLY).minViewRole(MinViewRole.MEMBER_PLUS)
+                .status(ScheduleStatus.SCHEDULED).createdBy(USER_ID).build());
+    }
     private void addScopes(int teams, int organizations) {
         for (int i = 0; i < teams; i++) {
             TeamEntity team = teamRepository.save(TeamEntity.builder()
