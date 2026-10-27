@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -48,6 +49,7 @@ class CalendarBatchQueryIT extends AbstractMySqlIntegrationTest {
         long twentyOne = measureEmptyCalendar();
         addScopes(267, 108);
         long actualSize = measureEmptyCalendar();
+        System.out.printf("calendar SQL scopes=2,42,417 statements=%d,%d,%d%n", one, twentyOne, actualSize);
         assertThat(twentyOne).as("1+1 → 21+21 scope のSQL: %s → %s", one, twentyOne)
                 .isLessThanOrEqualTo(one);
         assertThat(actualSize).as("1+1 → 288+129 scope のSQL: %s → %s", one, actualSize)
@@ -68,12 +70,19 @@ class CalendarBatchQueryIT extends AbstractMySqlIntegrationTest {
         saveSchedule(team, organization, TO.plusSeconds(1), TO.plusHours(1));
         ScheduleEntity deleted = saveSchedule(team, organization, FROM.plusHours(1), FROM.plusHours(2));
         deleted.softDelete();
+        saveSchedule(team + 1, organization + 1, FROM, FROM.plusHours(1));
         em.flush();
         em.clear();
         assertThat(scheduleRepository.findCalendarByTeamId(team, FROM, TO))
                 .extracting(ScheduleEntity::getId)
                 .containsExactly(spanning.getId(), atFrom.getId(), cancelled.getId(), atTo.getId());
         assertThat(scheduleRepository.findCalendarByOrganizationId(organization, FROM, TO))
+                .extracting(ScheduleEntity::getId)
+                .containsExactly(spanning.getId(), atFrom.getId(), cancelled.getId(), atTo.getId());
+        assertThat(scheduleRepository.findCalendarByTeamIdIn(List.of(team), FROM, TO))
+                .extracting(ScheduleEntity::getId)
+                .containsExactly(spanning.getId(), atFrom.getId(), cancelled.getId(), atTo.getId());
+        assertThat(scheduleRepository.findCalendarByOrganizationIdIn(List.of(organization), FROM, TO))
                 .extracting(ScheduleEntity::getId)
                 .containsExactly(spanning.getId(), atFrom.getId(), cancelled.getId(), atTo.getId());
     }
@@ -84,6 +93,7 @@ class CalendarBatchQueryIT extends AbstractMySqlIntegrationTest {
                 .visibility(ScheduleVisibility.MEMBERS_ONLY).minViewRole(MinViewRole.MEMBER_PLUS)
                 .status(ScheduleStatus.SCHEDULED).createdBy(USER_ID).build());
     }
+
     private void addScopes(int teams, int organizations) {
         for (int i = 0; i < teams; i++) {
             TeamEntity team = teamRepository.save(TeamEntity.builder()

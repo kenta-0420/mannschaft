@@ -13,6 +13,10 @@ import com.mannschaft.app.schedule.repository.ScheduleEventCategoryRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -22,11 +26,16 @@ import org.mockito.quality.Strictness;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Collection;
+import java.util.stream.LongStream;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
@@ -44,6 +53,8 @@ class CalendarBatchOrderTest {
     @Mock private ScheduleTargetService scheduleTargetService;
     @Mock private CalendarLayerService calendarLayerService;
     @InjectMocks private ScheduleQueryService service;
+    @Captor private ArgumentCaptor<Collection<Long>> teamChunks;
+    @Captor private ArgumentCaptor<Collection<Long>> organizationChunks;
 
     private static final Long USER = 81353L;
     private static final LocalDateTime FROM = LocalDateTime.of(2026, 10, 1, 0, 0);
@@ -68,10 +79,10 @@ class CalendarBatchOrderTest {
         when(scheduleRepository.findCalendarByUserId(USER, FROM, TO)).thenReturn(List.of(shared));
         when(membershipService.getActiveTeamIdsIncludingRoleAssignments(USER)).thenReturn(List.of(20L, 10L, 20L));
         when(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER)).thenReturn(List.of(40L, 30L, 40L));
-        when(scheduleRepository.findCalendarByTeamId(20L, FROM, TO)).thenReturn(List.of(shared, teamLater));
-        when(scheduleRepository.findCalendarByTeamId(10L, FROM, TO)).thenReturn(List.of(secondTeam));
-        when(scheduleRepository.findCalendarByOrganizationId(40L, FROM, TO)).thenReturn(List.of(organization));
-        when(scheduleRepository.findCalendarByOrganizationId(30L, FROM, TO)).thenReturn(List.of(shared));
+        when(scheduleRepository.findCalendarByTeamIdIn(List.of(20L, 10L), FROM, TO))
+                .thenReturn(List.of(secondTeam, shared, teamLater));
+        when(scheduleRepository.findCalendarByOrganizationIdIn(List.of(40L, 30L), FROM, TO))
+                .thenReturn(List.of(organization, shared));
 
         List<CalendarEntryResponse> entries = service.getMyCalendar(USER, FROM, TO);
 
@@ -85,12 +96,46 @@ class CalendarBatchOrderTest {
     @Test
     void 途中の取得失敗を空カレンダー成功へ変換しない() {
         when(membershipService.getActiveTeamIdsIncludingRoleAssignments(USER)).thenReturn(List.of(20L));
-        when(scheduleRepository.findCalendarByTeamId(20L, FROM, TO))
+        when(scheduleRepository.findCalendarByTeamIdIn(List.of(20L), FROM, TO))
                 .thenThrow(new IllegalStateException("calendar read failed"));
         assertThatThrownBy(() -> service.getMyCalendar(USER, FROM, TO))
                 .isInstanceOf(IllegalStateException.class).hasMessage("calendar read failed");
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, 21, 1000, 1001})
+    void 空と1000件境界で所属IDを欠落重複なく照会する(int count) {
+        List<Long> ids = LongStream.rangeClosed(1, count).boxed().toList();
+        when(membershipService.getActiveTeamIdsIncludingRoleAssignments(USER)).thenReturn(ids);
+        when(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER)).thenReturn(ids);
+        assertThat(service.getMyCalendar(USER, FROM, TO)).isEmpty();
+        int queries = (count + 999) / 1000;
+        verify(scheduleRepository, times(queries)).findCalendarByTeamIdIn(teamChunks.capture(), eq(FROM), eq(TO));
+        verify(scheduleRepository, times(queries)).findCalendarByOrganizationIdIn(
+                organizationChunks.capture(), eq(FROM), eq(TO));
+        assertThat(teamChunks.getAllValues().stream().flatMap(Collection::stream).toList()).containsExactlyElementsOf(ids);
+        assertThat(organizationChunks.getAllValues().stream().flatMap(Collection::stream).toList())
+                .containsExactlyElementsOf(ids);
+        assertThat(teamChunks.getAllValues()).allSatisfy(chunk -> assertThat(chunk).hasSizeLessThanOrEqualTo(1000));
+        assertThat(organizationChunks.getAllValues())
+                .allSatisfy(chunk -> assertThat(chunk).hasSizeLessThanOrEqualTo(1000));
+    }
+
+    @Test
+    void 後続chunkの取得失敗でも先行chunkだけの部分成功を返さない() {
+        when(membershipService.getActiveTeamIdsIncludingRoleAssignments(USER))
+                .thenReturn(LongStream.rangeClosed(1, 1001).boxed().toList());
+        when(scheduleRepository.findCalendarByTeamIdIn(anyCollection(), eq(FROM), eq(TO)))
+                .thenAnswer(inv -> {
+                    Collection<Long> ids = inv.getArgument(0);
+                    if (ids.contains(1001L)) {
+                        throw new IllegalStateException("later calendar chunk failed");
+                    }
+                    return List.of(schedule(1L, 1L, null, null, 1));
+                });
+        assertThatThrownBy(() -> service.getMyCalendar(USER, FROM, TO))
+                .isInstanceOf(IllegalStateException.class).hasMessage("later calendar chunk failed");
+    }
     private ScheduleEntity schedule(Long id, Long team, Long organization, Long user, int day) {
         return ScheduleEntity.builder().id(id).teamId(team).organizationId(organization).userId(user)
                 .title("順序確認").startAt(FROM.plusDays(day)).endAt(FROM.plusDays(day).plusHours(1))
