@@ -21,3 +21,7 @@ API の省略/null の扱いと既存代理を維持する OFF 時の契約は [
 
 ビルド manifest では未訪問ページの機会的な `prefetch` を無効にし、ログイン画面で大量の JS を事前取得しない。必須資産の `preload`、スクリプトと import 関係、クライアント側の NuxtLink prefetch は維持する。
 個人ダッシュボードでは「今すぐ」のカレンダーとお知らせを通常読み込みし、折りたたみセクションのウィジェットは初回表示時に読み込む。
+
+## チーム一覧の同時取得
+
+`useTeamStore.fetchMyTeams()` は同じ Pinia store から同時に始まった signal なしの閲覧用取得を1回の HTTP 要求で共有する。更新後の同期に使う `fetchMyTeamsWithResult()` は毎回新しい要求を開始し、成否を呼び出し元へ返す。signal 付き取得も独立し、`clear()` 後や失敗後の新しい閲覧用取得は旧要求に接続しない。
