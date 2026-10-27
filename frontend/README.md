@@ -25,3 +25,9 @@ API の省略/null の扱いと既存代理を維持する OFF 時の契約は [
 ## チーム一覧の同時取得
 
 `useTeamStore.fetchMyTeams()` は同じ Pinia store から同時に始まった signal なしの閲覧用取得を1回の HTTP 要求で共有する。更新後の同期に使う `fetchMyTeamsWithResult()` は毎回新しい要求を開始し、成否を呼び出し元へ返す。signal 付き取得も独立し、`clear()` 後や失敗後の新しい閲覧用取得は旧要求に接続しない。
+
+## Spring Pageを受け取る一覧
+
+`ApiResponse<SpringPage<T>>` の `data` は配列ではなく、`content` と `totalElements` を持つPageです。outbox、委員会一覧・配布履歴、運営ユーザー一覧は、受信型を明示して `toPagedResponse` で既存の `{ data: T[], meta }` へ変換します。総件数には `meta.total` を使い、現在ページの行数で代用しません。委員会2画面は20件の標準Paginatorで次ページへ進めます。取得失敗は空状態と区別し、古い行と総件数を消して再試行を表示します。
+
+公開APIの直接Page、認証済みAPIのcontent直接参照、BE独自PagedResponse、Cursorは、それぞれの既存契約を維持します。`app/types/springPage.contract.ts` が6境界の型を、`springPage.coverage.spec.ts` がOpenAPIの27経路集合を照合します。

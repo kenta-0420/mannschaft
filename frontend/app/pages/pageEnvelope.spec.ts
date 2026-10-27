@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
 import { ref } from 'vue'
+import { useNuxtApp } from '#imports'
 import Outbox from './system-admin/email-outbox/index.vue'
 import Committees from './organizations/[slug]/committees.vue'
 import Distributions from './committees/[id]/distributions.vue'
@@ -26,7 +27,11 @@ const cases = [
     row: (id: number) => ({ id, displayName: '利用者' + id, createdAt: '2026-10-20T03:00:00' }) },
 ] as const
 
-beforeEach(() => { rawApi.mockReset(); showError.mockReset() })
+beforeEach(async () => {
+  rawApi.mockReset()
+  showError.mockReset()
+  await useNuxtApp().$i18n.setLocale('ja')
+})
 
 function setupRaw(entry: typeof cases[number], total: number, fail = false) {
   let failed = fail
@@ -46,7 +51,7 @@ function listCalls(entry: typeof cases[number]) {
 
 for (const entry of cases) {
   describe(entry.name + ' 実ページとrawHTTPの契約', () => {
-    it.each([0, 1, 20, 21, 40, 41])('%i件をPageのプロパティではなく実行として表示する', async (total) => {
+    it.each([0, 1, 20, 21, 40, 41])('%i件をPageのプロパティではなく実際の行として表示する', async (total) => {
       setupRaw(entry, total)
       const wrapper = await mountSuspended(entry.component)
       await flushPromises()

@@ -45,6 +45,7 @@ const statusOptions = computed(() => [
 const items = ref<EmailOutboxSummary[]>([])
 const meta = ref<PageMeta | null>(null)
 const loading = ref(false)
+const loadFailed = ref(false)
 const currentPage = ref(0)
 const pageSize = ref(20)
 
@@ -61,6 +62,7 @@ const actionLoading = ref<string | null>(null)
 
 async function load() {
   loading.value = true
+  loadFailed.value = false
   try {
     const res = await fetchList({
       status: filters.value.status,
@@ -73,6 +75,9 @@ async function load() {
     items.value = res.data
     meta.value = res.meta
   } catch (e) {
+    items.value = []
+    meta.value = null
+    loadFailed.value = true
     console.error(e)
     showError(t('email_outbox.load_failed'))
   } finally {
@@ -301,6 +306,7 @@ onMounted(() => {
         <i class="pi pi-spin pi-spinner mr-2" aria-hidden="true" />
         {{ t('email_outbox.load_failed') }}
       </div>
+      <DashboardErrorState v-else-if="loadFailed" testid="email-outbox-error-state" @retry="load" />
       <div v-else-if="items.length === 0" class="py-12 text-center text-sm text-surface-500">
         {{ t('email_outbox.no_data') }}
       </div>

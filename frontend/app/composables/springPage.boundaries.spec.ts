@@ -35,10 +35,16 @@ describe('Spring Pageの6実API境界', () => {
     expect(await call()).toEqual({ data: [], meta: { page: 0, size: 20, total: 0, totalPages: 0 } })
   })
 
-  it.each(adapted)('%sはHTTP失敗を空成功に置き換えない', async (_name, call) => {
+  it.each(adapted)('%sはHTTP失敗を空成功に置き換えない', async (_name, call, url) => {
     const error = new Error('network')
     rawApi.mockRejectedValue(error)
-    await expect(call()).rejects.toBe(error)
+    const result = await call().then(
+      value => ({ succeeded: true as const, value }),
+      cause => ({ succeeded: false as const, cause }),
+    )
+    expect(rawApi).toHaveBeenCalledExactlyOnceWith(url)
+    expect(result.succeeded).toBe(false)
+    expect('cause' in result ? result.cause : undefined).toBe(error)
   })
 
   it('現在未使用のdashboard teamsはWを維持する（現契約固定）', async () => {
