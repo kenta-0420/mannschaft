@@ -21,7 +21,7 @@ mockNuxtImport('navigateTo', () => navigateMock)
 // 親の開閉契約を検証するため、Nuxtのasync import先を同じprops/emitsのstubへ固定する。
 mockComponent('ScheduleEventForm', {
   name: 'ScheduleEventForm',
-  props: ['visible', 'initialDate', 'isPersonal', 'scheduleId'],
+  props: { visible: Boolean, initialDate: String, isPersonal: Boolean, scheduleId: Number },
   emits: ['update:visible', 'saved'],
   template: '<div />',
 })
@@ -37,7 +37,7 @@ const stubs = {
   ScheduleEventForm: true,
   LazyScheduleEventForm: {
     name: 'ScheduleEventForm',
-    props: ['visible', 'initialDate', 'isPersonal', 'scheduleId'],
+    props: { visible: Boolean, initialDate: String, isPersonal: Boolean, scheduleId: Number },
     emits: ['update:visible', 'saved'],
     template: '<div />',
   },
