@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { mountSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import { ref, computed } from 'vue'
 
 /**
@@ -24,6 +24,14 @@ import { ref, computed } from 'vue'
  */
 
 vi.setConfig({ testTimeout: 30000 })
+
+// 表示方針は既定の全表示。ここでは既存の機能ゲート・ロール・module境界を検証する。
+mockNuxtImport('useScopeFeatureVisibility', () => () => ({
+  loading: ref(false),
+  error: ref(undefined),
+  refresh: vi.fn(),
+  isVisible: () => true,
+}))
 
 const roleName = ref<string | null>('MEMBER')
 vi.mock('~/composables/useRoleAccess', () => ({

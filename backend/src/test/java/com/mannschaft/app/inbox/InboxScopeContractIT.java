@@ -5,6 +5,9 @@ import com.mannschaft.app.inbox.entity.NotificationLabelEntity;
 import com.mannschaft.app.inbox.repository.InboxItemStateRepository;
 import com.mannschaft.app.inbox.repository.InboxLabelLinkRepository;
 import com.mannschaft.app.inbox.repository.NotificationLabelRepository;
+import com.mannschaft.app.inbox.service.adapter.NotificationInboxAdapter;
+import com.mannschaft.app.common.visibility.perf.SqlIntentCounter;
+import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.repository.NotificationRepository;
@@ -17,6 +20,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
@@ -58,6 +63,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code InboxController#getInbox}・{@code InboxController#getSummary}・
  * {@code InboxController#getLabels}・{@code InboxController#createLabel}・
  * {@code InboxController#unarchive}・{@code InboxController#unsnooze}。</p>
+ *
+ * <p>通知は本試験のfixtureとして直接保存する。SQL観測は保存済み通知/overlayの読み取り条件と
+ * 上限を検証し、AFTER_COMMITによる通知配送は検証しないため、rollbackするTX内で成立する。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
@@ -79,6 +87,9 @@ class InboxScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private NotificationRepository notificationRepository;
+
+    @Autowired
+    private NotificationInboxAdapter notificationInboxAdapter;
 
     @PersistenceContext
     private EntityManager em;
@@ -522,6 +533,64 @@ class InboxScopeContractIT extends AbstractMySqlIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(triageTargetBody(ownerNotificationId)))
                     .andExpect(status().isOk());
+        }
+    }
+
+    @Test
+    @DisplayName("有界overlay取得は本人・ソース種別・出現IDをすべてSQLで限定する")
+    void boundedOverlayKeepsUserAndSourceBoundary() {
+        itemStateRepository.save(overlay(attackerId, triagedNotificationId));
+        InboxItemStateEntity anotherType = overlay(ownerId, triagedNotificationId);
+        anotherType.setSourceType(InboxSourceType.ANNOUNCEMENT);
+        itemStateRepository.save(anotherType);
+        itemStateRepository.save(overlay(ownerId, ownerNotificationId));
+        em.flush();
+        em.clear();
+
+        try (var capture = SqlIntentCounter.captureCurrentThread()) {
+            var rows = itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(
+                    ownerId, InboxSourceType.NOTIFICATION, List.of(triagedNotificationId));
+            assertThat(rows).singleElement().satisfies(row -> {
+                assertThat(row.getUserId()).isEqualTo(ownerId);
+                assertThat(row.getSourceType()).isEqualTo(InboxSourceType.NOTIFICATION);
+                assertThat(row.getSourceId()).isEqualTo(triagedNotificationId);
+                assertThat(row.getArchivedAt()).isNotNull();
+            });
+            assertThat(capture.capturedSqls()).hasSize(1);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {499, 500, 501})
+    @DisplayName("通知windowの前後でも本人の優先度順500件だけを読みCOUNTを発行しない")
+    void notificationWindowDoesNotCountAllRows(int count) {
+        // setupが作る本人の通知2件に加え、古い緊急通知と通常通知で境界を作る。
+        Long urgentId = notificationRepository.save(NotificationEntity.builder()
+                .userId(ownerId).notificationType("INBOX_PERF")
+                .priority(NotificationPriority.URGENT).title("古い緊急通知")
+                .sourceType("SYSTEM").scopeType(NotificationScopeType.PERSONAL)
+                .createdAt(LocalDateTime.now().minusDays(3)).build()).getId();
+        for (int i = 3; i < count; i++) {
+            saveNotification(ownerId, "INBOXPERF 通常通知 " + i);
+        }
+        Long excludedId = notificationRepository.save(NotificationEntity.builder()
+                .userId(ownerId).notificationType("INBOX_SNOOZE_REVIVAL")
+                .priority(NotificationPriority.URGENT).title("復帰push")
+                .sourceType("SYSTEM").scopeType(NotificationScopeType.PERSONAL).build()).getId();
+        Long otherUserId = saveNotification(attackerId, "他利用者の通知");
+        em.flush();
+        em.clear();
+
+        try (var capture = SqlIntentCounter.captureCurrentThread()) {
+            var items = notificationInboxAdapter.fetch(ownerId, 500);
+
+            assertThat(items).hasSize(Math.min(count, 500));
+            assertThat(items.get(0).sourceId()).isEqualTo(urgentId);
+            assertThat(items).extracting(com.mannschaft.app.inbox.dto.InboxItemDto::sourceId)
+                    .doesNotContain(excludedId, otherUserId);
+            assertThat(capture.capturedSqls().stream()
+                    .filter(sql -> sql.toLowerCase(java.util.Locale.ROOT).contains("from notifications "))
+                    .toList()).hasSize(1).noneMatch(sql -> sql.toLowerCase(java.util.Locale.ROOT).contains("count("));
         }
     }
 

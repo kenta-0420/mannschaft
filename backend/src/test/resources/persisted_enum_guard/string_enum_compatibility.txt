@@ -1,6 +1,7 @@
 # STRING永続化enumの読取り互換性台帳。自動更新禁止。
 # 初期台帳: 公式CI run36959618701 / head24007c89f5 / merge5d3dd93116のfresh本番全量走査で取得。展開済みの証明ではない。
 # 作法: docs/development/persisted_enum_deployment.md
+# FeatureDisplayScope初回2定数: 新設表のみ、旧mainに読取経路なしの親検分承認。F01.3.1 §5参照。配布済みの証明ではない。
 # 本人診断6定数: 読取り互換性を全taskへ先配布し、旧task0の証跡後に別releaseで書込み開始。実展開済みの証明ではない。
 com.mannschaft.app.actionmemo.ActionMemoMood#BAD
 com.mannschaft.app.actionmemo.ActionMemoMood#GOOD
@@ -500,6 +501,7 @@ com.mannschaft.app.errorreport.ErrorReportActivityType#ASSIGNEE_CHANGED
 com.mannschaft.app.errorreport.ErrorReportActivityType#COMMENT_ADDED
 com.mannschaft.app.errorreport.ErrorReportActivityType#GITHUB_ISSUE_CREATED
 com.mannschaft.app.errorreport.ErrorReportActivityType#HEALTH_RECOVERED
+com.mannschaft.app.errorreport.ErrorReportActivityType#MERGED_DUPLICATE
 com.mannschaft.app.errorreport.ErrorReportActivityType#REOPENED
 com.mannschaft.app.errorreport.ErrorReportActivityType#RESOLVED
 com.mannschaft.app.errorreport.ErrorReportActivityType#SEVERITY_CHANGED
@@ -2182,3 +2184,5 @@ com.mannschaft.app.loyalty.RequestOperation#REDEEM
 com.mannschaft.app.loyalty.RequestOperation#REJECT
 com.mannschaft.app.loyalty.RequestOperation#SELF_SUBMIT
 com.mannschaft.app.loyalty.RequestOperation#STAFF_AWARD
+com.mannschaft.app.template.FeatureDisplayScope#TEAM
+com.mannschaft.app.template.FeatureDisplayScope#ORGANIZATION

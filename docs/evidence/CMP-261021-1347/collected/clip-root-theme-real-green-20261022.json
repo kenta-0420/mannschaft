@@ -1,0 +1,120 @@
+{
+  "status": "PASS_TARGETED_DARK_BACKGROUND_AND_CLIENT_NAVIGATION",
+  "at": "2026-10-21T15:42:12.339684+00:00",
+  "runtimeCommit": "40437bf7fdd35b43866348b7a082e8998d69210f",
+  "shippingHead": "57368a965b961c36c3d8c9278cfcd9a6ee3ebde0",
+  "accountAlias": "land-baby",
+  "login": "Existing authorized desktop ALICE context only; no new login",
+  "before": "docs/evidence/CMP-261021-1347/collected/clip-root-dark-background-before-20261022.json",
+  "realRed": "docs/evidence/CMP-261021-1347/collected/clip-root-dark-background-real-red-20261022.log",
+  "ranch": {
+    "url": "/my/ranch",
+    "classes": "dark p-dark",
+    "bg": "#18181b",
+    "appearance": {
+      "theme": "DARK",
+      "bgColor": "#f3efe0",
+      "darkBgColor": "#18181b",
+      "seasonalThemeId": null,
+      "hideChatPreview": false
+    },
+    "headings": [
+      {
+        "text": "恐竜の部屋",
+        "color": "color(srgb 0.894118 0.894118 0.905882)"
+      },
+      {
+        "text": "恐竜の部屋",
+        "color": "color(srgb 0.831373 0.831373 0.847059)"
+      },
+      {
+        "text": "ようす",
+        "color": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "恐竜の部屋の設定",
+        "color": "rgb(255, 255, 255)"
+      }
+    ],
+    "scenes": [
+      {
+        "width": 448,
+        "height": 448,
+        "attrs": [
+          [
+            "data-v-e7519801",
+            ""
+          ],
+          [
+            "width",
+            "448"
+          ],
+          [
+            "height",
+            "448"
+          ],
+          [
+            "role",
+            "img"
+          ],
+          [
+            "aria-label",
+            "試験land-"
+          ],
+          [
+            "class",
+            "w-56 max-w-full h-auto aspect-square"
+          ],
+          [
+            "style",
+            "image-rendering: auto;"
+          ]
+        ]
+      }
+    ],
+    "body": "Mannschaft\nチーム\n組織\n2\nホーム\nダッシュボード\nカレンダー\nインボックス\nつながり\n村\nタイムライン\nブログ\nチャット\nくらし\n市\n求人\nマッチング\n予約確認\nポイントカード\nしごと\nTODO\nシフト管理\nマイファイル\nマイシフト\nアカウント\n会員QR\n受付申請\nマイページ\nQ&A\n設定\n戻る\n恐竜の部屋\n遊び方\n自分の診断結果\n恐竜の部屋\n試験land- · 若い恐竜\n\n枠 1\n\n空き\n\n枠 2\n\n空き\n\n枠 3\n\n空き\n\nごはん\nふれあい\nようす\n\nようす\n成長\n80 XP\n装飾ポイント残高\n0\n親密さ\n知り合いはじめ\n無料ケア規則\n公開中\n\n今週の無料ケア残枠: 0 / 100 XP\n\n使用済み: 100 XP / 一回の量: 20 XP\n\n活動ポイントは未登録・無効です。\n\nポイント配送は一時停止中です。無料ケアの停止とは別です。\n\n再取得\n恐竜の部屋の設定\n\n恐竜は自分自身の分身です。自分の好みや個性を映した姿を、ゆっくり育てます。\n\n任意で始められます。無料のお世話だけで成体まで育ち、放置しても失いません。親しさは時間で減りません。\n\n描画スタイル\n通常2D\n動き\n通常\n音を使う\n音量\n\n今は部屋表示です。自由歩行は後のPhaseで利用できます。\n\n保存する\n非表示にする\n休止する\n置物と交換育成と交換の記録想起をする"
+  },
+  "navigation": {
+    "before": {
+      "path": "/my/ranch",
+      "bg": "#18181b"
+    },
+    "dashboard": {
+      "path": "/dashboard",
+      "bg": "#18181b",
+      "title": ""
+    },
+    "returned": {
+      "path": "/my/ranch",
+      "bg": "#18181b",
+      "title": "恐竜の部屋",
+      "appearance": {
+        "theme": "DARK",
+        "bgColor": "#f3efe0",
+        "darkBgColor": "#18181b",
+        "seasonalThemeId": null,
+        "hideChatPreview": false
+      }
+    }
+  },
+  "screenshots": [
+    {
+      "path": "frontend/test-results/alicization/CMP-261021-1347/desktop/root-theme-fixed-ranch.png",
+      "sha256": "adee610247a86480636eb4152bbb0ef976ff7e7af55e633850e7fb4c6a360394",
+      "rootDirectImageInspection": true
+    },
+    {
+      "path": "frontend/test-results/alicization/CMP-261021-1347/desktop/root-theme-fixed-after-client-navigation.png",
+      "sha256": "0d2e078b1fe42d1e34f2e5978f12d015da788dec223575d9bd7c25ee2612bae9",
+      "rootDirectImageInspection": true
+    }
+  ],
+  "assertion": "DARK resolved CSS equals saved darkBgColor on actual ranch, dashboard client navigation and back; Root viewed both actual viewport PNGs, white status text now readable. Existing individual still shows same synthetic name, JUVENILE and80XP. No art/style/DB mutation.",
+  "limits": [
+    "Only existing LAND default DARK was actual-browser-retested. LIGHT/custom colors and SSR conditions are separate real-Unhead unit coverage.",
+    "Initial reload timed out during HMR and next evaluate lost navigation context; both retained as environment errors, not green tests.",
+    "Additional dashboard hide/show revalidation was queued but did not produce a driver result; NOT_EXECUTED on repaired appearance source. Previous B38 hide/show actual proof retained under scoped unchanged-widget source adoption.",
+    "Driver63831 later absent; normal close was not observed and will not be claimed. Separate process verification is required.",
+    "Third ALICE resident login remains blocked pending exact human approval."
+  ]
+}

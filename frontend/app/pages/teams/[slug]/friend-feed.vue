@@ -79,7 +79,9 @@ function onForwardSuccess(forwardId: number) {
     <div v-else>
       <div class="mb-4 flex items-center gap-3">
         <PageHeader :title="t('friend_feed.title')">
-          <span class="text-sm text-surface-400">{{ t('friend_feed.subtitle') }}</span>
+          <template #subtitle>
+            <span class="text-sm text-surface-400">{{ t('friend_feed.subtitle') }}</span>
+          </template>
         </PageHeader>
       </div>
 

@@ -53,7 +53,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
  * <b>新規違反のみ</b> fail させる。凍結ストアの中身は git 管理対象であり、
  * これが「凍結の本体」である（{@code archunit.properties} 参照）。
  *
- * <p>既存違反を 1 件解消すると {@code freeze.refreeze=true} によりストアが自動縮小
+ * <p>既存違反を 1 件解消すると {@code freeze.refreeze=false} の既定挙動でストアが自動縮小
  * される（chip-away 運用）。新たにクロスドメイン Entity 参照を追加した瞬間に
  * 本テストが fail し、境界侵犯を機械的に検知する。
  */
@@ -99,7 +99,8 @@ class CrossDomainEntityImportArchTest {
                     // ドメイン外（com.mannschaft.app 直下等）や共有基盤は対象外
                     return;
                 }
-                for (Dependency dep : clazz.getDirectDependenciesFromSelf()) {
+                DependencyFreezeMessages messages = new DependencyFreezeMessages();
+                for (Dependency dep : DependencyFreezeMessages.sorted(clazz.getDirectDependenciesFromSelf())) {
                     JavaClass target = dep.getTargetClass();
                     String targetPkg = target.getPackageName();
                     if (!DomainPackages.isEntityPackage(targetPkg)) {
@@ -120,7 +121,7 @@ class CrossDomainEntityImportArchTest {
                         "%s (domain '%s') depends on other-domain entity %s (domain '%s')",
                         clazz.getName(), sourceDomain,
                         target.getName(), targetDomain);
-                    events.add(SimpleConditionEvent.violated(dep, message));
+                    events.add(SimpleConditionEvent.violated(dep, messages.format(message, dep)));
                 }
             }
         };

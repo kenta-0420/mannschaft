@@ -120,6 +120,14 @@
       }
     },
     "password": {
+      "generator": {
+        "generate": "生成密码",
+        "copy": "复制",
+        "copied": "已复制",
+        "generate_error": "无法生成密码，请手动输入。",
+        "copy_error": "无法复制，请显示密码后手动复制。",
+        "hint": "生成后将替换密码输入框。保存前请将密码存入密码管理器。"
+      },
       "section_title_change": "更改密码",
       "section_title_set": "设置密码",
       "no_password_description": "当前未设置密码。设置密码后可使用邮箱和密码登录。",

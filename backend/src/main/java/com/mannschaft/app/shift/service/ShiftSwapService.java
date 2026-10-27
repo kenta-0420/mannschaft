@@ -4,16 +4,23 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.shift.ShiftAssignedUserIds;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.ShiftMapper;
+import com.mannschaft.app.shift.ShiftScheduleStatus;
 import com.mannschaft.app.shift.SwapRequestStatus;
 import com.mannschaft.app.shift.dto.CreateSwapRequestRequest;
 import com.mannschaft.app.shift.dto.ResolveSwapRequestRequest;
 import com.mannschaft.app.shift.dto.SwapRequestResponse;
 import com.mannschaft.app.shift.entity.ShiftSwapRequestEntity;
+import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
+import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.shift.repository.ShiftSwapRequestRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,12 +29,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * シフト交代リクエストの <b>トランザクション本体</b>（自ドメイン = shift の Repository だけに触れる）。
+ * シフト交代リクエストの <b>トランザクション本体</b>（自ドメイン = shift の Entity・Repository だけに触れる）。
  *
- * <p><b>認可はここに置かない（CMP-260923-0954 W2 / 認可をトランザクションの外へ）:</b>
- * 権限の確認は非トランザクションの {@link ShiftSwapFacade} が行い、通ったものだけを本クラスの
+ * <p><b>スコープ認可はここに置かない（CMP-260923-0954 W2 / 認可をトランザクションの外へ）:</b>
+ * 所属・ロールの確認は非トランザクションの {@link ShiftSwapFacade} が行い、通ったものだけを本クラスの
  * {@code @Transactional} メソッドが実行する。{@code AccessControlService} / {@code ScopeConcealingAccessGate}
- * への依存と認可用の private メソッドは本クラスに持たない（D-3T 番人と {@code ShiftTxFacadeArchTest} が固定）。</p>
+ * への依存と認可用の private メソッドは本クラスに持たない（D-3T 番人と {@code ShiftTxFacadeArchTest} が固定）。
+ * 作成資格（PUBLISHED・本人担当）は自ドメインの業務不変条件として書き込みTX内で確認する。
+ * ADMIN / DEPUTY_ADMIN / SYSTEM_ADMIN もこの資格は免除しない。</p>
  *
  * <p><b>scope の解決と読み直し:</b> Facade は認可の前に {@link #resolveSwapScope} 等（readOnly・自ドメインのみ）で
  * 「対象 → シフト枠 → スケジュール → チーム」をたどって teamId を得る。書き込み tx では必ず
@@ -51,6 +60,8 @@ public class ShiftSwapService {
     private final ShiftScheduleRepository scheduleRepository;
     private final ShiftMapper shiftMapper;
     private final ObjectMapper objectMapper;
+    private final EntityManager entityManager;
+    private final ShiftSlotService slotService;
 
     /**
      * 指定チームの交代リクエスト一覧を取得する。
@@ -123,9 +134,25 @@ public class ShiftSwapService {
      */
     @Transactional
     public SwapRequestResponse createSwapRequest(CreateSwapRequestRequest req, Long userId) {
-        // 認可は Facade 済み。認可の後・tx の前にシフト枠やスケジュールが消えた競合を拾うため、
-        // 解決と同じ経路（枠→スケジュール）で読み直す（不在なら Facade の解決時と同じコードの 404・DB 不変）。
-        resolveTeamIdBySlotId(req.getSlotId());
+        // スコープ認可はFacade済み。親→子の順で既存の割当更新・親削除と直列化し、
+        // 公開取消や担当変更のcommit後の値で作成資格を確定する（親不在は従来どおりSHIFT_001）。
+        ShiftSlotEntity slot = slotRepository.findById(req.getSlotId())
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND));
+        ShiftScheduleEntity schedule = scheduleRepository.findByIdForUpdate(slot.getScheduleId())
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+        try {
+            // 親ロック待ち前の1次キャッシュ・MySQLのsnapshotを使わず、現在の割当を読み直す。
+            entityManager.refresh(slot, LockModeType.PESSIMISTIC_READ);
+        } catch (EntityNotFoundException e) {
+            // 親ロック待ち中に枠だけが消えた場合も、既存の不在応答を維持する。
+            throw new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
+        }
+        if (schedule.getStatus() != ShiftScheduleStatus.PUBLISHED) {
+            throw new BusinessException(ShiftErrorCode.INVALID_SCHEDULE_STATUS);
+        }
+        if (!ShiftAssignedUserIds.parse(slot.getAssignedUserIds()).contains(userId)) {
+            throw new BusinessException(ShiftErrorCode.ACCESS_DENIED);
+        }
 
         // 受信者モードの決定
         String recipientMode = req.isOpenCall() ? "OPEN_CALL" : "SPECIFIC";
@@ -184,25 +211,68 @@ public class ShiftSwapService {
      * @param swapId  交代リクエストID
      * @param req     承認・却下リクエスト
      * @param adminId 管理者ID
+     * @param expectedAccepterId Facadeが現在資格を確認した受諾者（却下時はnull）
      * @return 更新された交代リクエスト
      */
     @Transactional
-    public SwapRequestResponse resolveSwapRequest(Long swapId, ResolveSwapRequestRequest req, Long adminId) {
+    public SwapRequestResponse resolveSwapRequest(
+            Long swapId, ResolveSwapRequestRequest req, Long adminId, Long expectedAccepterId) {
         ShiftSwapRequestEntity entity = findSwapOrThrow(swapId);
         // 認可は Facade 済み。認可の後に親（枠・スケジュール）が消えた競合を 404 にするため読み直す。
         resolveTeamIdBySwap(entity);
 
-        if (entity.getStatus() != SwapRequestStatus.ACCEPTED) {
-            throw new BusinessException(ShiftErrorCode.INVALID_SWAP_STATUS);
+        ShiftSlotEntity approvalSlot = null;
+        ShiftScheduleEntity approvalSchedule = null;
+        if (ACTION_APPROVE.equals(req.getAction())) {
+            approvalSlot = slotRepository.findById(entity.getSlotId())
+                    .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND));
+            approvalSchedule = scheduleRepository.findById(approvalSlot.getScheduleId())
+                    .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+            // ここまで親はscope読取だけ。古いmanaged親へロックを追加するとHibernateが先に
+            // version不一致を投げるため、未編集の親だけを外して現在値をロック取得する。
+            entityManager.detach(approvalSchedule);
+            approvalSchedule = scheduleRepository.findByIdForUpdate(approvalSlot.getScheduleId())
+                    .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+            // scope解決で親・枠が既にPCへ載るため、ロック取得だけでは古い状態が残る。
+            // 親→枠の順に現在読み取りし、先行commitの公開取消・手動編集・削除を反映する。
+            try {
+                entityManager.refresh(approvalSchedule, LockModeType.PESSIMISTIC_WRITE);
+            } catch (EntityNotFoundException e) {
+                throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+            }
+            try {
+                entityManager.refresh(approvalSlot, LockModeType.PESSIMISTIC_WRITE);
+            } catch (EntityNotFoundException e) {
+                throw new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
+            }
+            try {
+                entityManager.refresh(entity, LockModeType.PESSIMISTIC_WRITE);
+            } catch (EntityNotFoundException e) {
+                throw new BusinessException(ShiftErrorCode.SWAP_REQUEST_NOT_FOUND);
+            }
         }
+        validateAcceptedStatus(entity);
 
         switch (req.getAction()) {
-            case ACTION_APPROVE -> entity.approve(adminId, req.getAdminNote());
+            case ACTION_APPROVE -> {
+                validateApprovalAccepter(entity);
+                if (!entity.getAccepterId().equals(expectedAccepterId)) {
+                    throw new BusinessException(ShiftErrorCode.OPTIMISTIC_LOCK_CONFLICT);
+                }
+                if (approvalSchedule.getStatus() != ShiftScheduleStatus.PUBLISHED) {
+                    throw new BusinessException(ShiftErrorCode.INVALID_SCHEDULE_STATUS);
+                }
+                slotService.replaceAssignmentForSwap(
+                        approvalSlot.getId(), entity.getRequesterId(), entity.getAccepterId(), adminId);
+                entity.approve(adminId, req.getAdminNote());
+            }
             case ACTION_REJECT -> entity.reject(adminId, req.getAdminNote());
             default -> throw new BusinessException(ShiftErrorCode.INVALID_SWAP_STATUS);
         }
 
         entity = swapRepository.save(entity);
+        // swapの競合も同じTX中に検出し、枠と割当履歴をまとめてrollbackする。
+        swapRepository.flush();
         log.info("交代リクエスト処理: id={}, action={}", swapId, req.getAction());
         return shiftMapper.toSwapResponse(entity);
     }
@@ -240,10 +310,32 @@ public class ShiftSwapService {
      */
     public record SwapScope(Long teamId, Long requesterId) { }
 
+    /** 認可後に承認対象の受諾者を返す。資格確認は非TXのFacadeで行う。 */
+    public Long resolveApprovalAccepterId(Long swapId) {
+        ShiftSwapRequestEntity entity = findSwapOrThrow(swapId);
+        // 認可後に親が消えた場合は、状態・受諾者の不整合より既存の404を優先する。
+        resolveTeamIdBySwap(entity);
+        validateAcceptedStatus(entity);
+        validateApprovalAccepter(entity);
+        return entity.getAccepterId();
+    }
+
+    private void validateAcceptedStatus(ShiftSwapRequestEntity entity) {
+        if (entity.getStatus() != SwapRequestStatus.ACCEPTED) {
+            throw new BusinessException(ShiftErrorCode.INVALID_SWAP_STATUS);
+        }
+    }
+
+    private void validateApprovalAccepter(ShiftSwapRequestEntity entity) {
+        if (entity.getAccepterId() == null || entity.getAccepterId().equals(entity.getRequesterId())) {
+            throw new BusinessException(ShiftErrorCode.INVALID_SWAP_STATUS);
+        }
+    }
+
     /**
      * swapId から scope を解決する（承諾・承認/却下用）。不在なら {@code SWAP_REQUEST_NOT_FOUND}、
      * 親（枠・スケジュール）が不在なら {@code SHIFT_SLOT_NOT_FOUND} / {@code SHIFT_SCHEDULE_NOT_FOUND}
-     * （是正前の応答と同一。tx 内の読み直しも同じメソッドで同じコードになる）。
+     * （是正前の応答と同一。tx内の読み直しでも同じ不在コードを適用する）。
      *
      * @param swapId 交代リクエスト ID
      * @return scope

@@ -28,7 +28,13 @@
       "BULLETIN_THREAD": "Pinnwand",
       "TIMELINE_POST": "Zeitleiste",
       "CIRCULATION": "Rundschreiben",
-      "SURVEY": "Umfrage"
+      "CIRCULATION_DOCUMENT": "Rundschreiben",
+      "SURVEY": "Umfrage",
+      "TODO": "Aufgabe",
+      "SCHEDULE": "Termin",
+      "COMMITTEE_DECISION": "Ausschussbeschluss",
+      "COMMITTEE_MINUTES": "Ausschussprotokoll",
+      "ADVERTISER_CAMPAIGN": "Werbekampagne"
     },
     "mark_all_read": "Alle als gelesen markieren",
     "remove_from_announcements": "Aus Ankündigungen entfernen",

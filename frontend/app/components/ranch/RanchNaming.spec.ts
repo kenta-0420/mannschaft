@@ -13,6 +13,19 @@ const InputText = { props:['modelValue'], emits:['update:modelValue'], template:
 const Button = { props:['label','disabled','type'], template:'<button :type="type || \'button\'" :disabled="disabled">{{label}}</button>' }
 function render(props = {}) { return mount(RanchNaming,{props,global:{plugins:[createI18n({legacy:false,locale:'ja',messages:{ja:jaMessages,en:enMessages,zh:zhMessages,ko:koMessages,es:esMessages,de:deMessages}})],stubs:{InputText,Button,SectionCard:{template:'<section><slot /></section>'}}}}) }
 describe('AC61 不可逆命名の画面', () => {
+ it('表示中の言語切替後も命名エラーを現在の言語で検証する', async () => {
+  const i18n = createI18n({ legacy: false, locale: 'ja', messages: { ja: jaMessages, en: enMessages, zh: zhMessages, ko: koMessages, es: esMessages, de: deMessages } })
+  const originalMessage = i18n.global.t('ranch.naming.invalid')
+  const wrapper = mount(RanchNaming, { global: { plugins: [i18n], stubs: { InputText, Button, SectionCard: { template: '<section><slot /></section>' } } } })
+  await wrapper.find('input').setValue('🦕'.repeat(11))
+  i18n.global.locale.value = 'en'
+  await wrapper.find('form').trigger('submit')
+  const expectedMessage = i18n.global.t('ranch.naming.invalid')
+  expect(expectedMessage).not.toBe(originalMessage)
+  await vi.waitFor(() => expect(wrapper.find('#ranch-name-error').text()).toBe(expectedMessage))
+  expect(wrapper.emitted('confirm')).toBeUndefined()
+  wrapper.unmount()
+ })
  it('名前は空で始まり、入力→確認→確定でだけnormalized名を送る', async () => {
   const wrapper=render(); const input=wrapper.find('input'); expect(input.element.value).toBe('')
   await input.setValue(' e\u0301 '); await wrapper.find('form').trigger('submit'); await flushPromises()

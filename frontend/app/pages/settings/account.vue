@@ -186,7 +186,7 @@ onMounted(async () => {
       <SettingsPasswordSection
         v-model:password-form="passwordForm"
         :has-password="profile.hasPassword"
-        :submitting-password="submittingPassword"
+        :submitting-password="submittingPassword || redirecting"
         :can-submit-password="canSubmitPassword"
         :password-error="passwordError"
         @submit="handlePasswordChange"

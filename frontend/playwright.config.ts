@@ -88,7 +88,7 @@ export default defineConfig({
       },
       testMatch: '**/real/**/*.spec.ts',
       // 所有fixture契約の8件はplaywright.restore.config.tsで省略せず別実行する。
-      testIgnore: '**/real/team-restore-ui.spec.ts',
+      testIgnore: ['**/real/team-restore-ui.spec.ts', '**/real/password-generator.real.spec.ts'],
       dependencies: ['setup-real-user'],
     },
     // 実機テスト: 管理者（real/admin/ 配下のみ実行）

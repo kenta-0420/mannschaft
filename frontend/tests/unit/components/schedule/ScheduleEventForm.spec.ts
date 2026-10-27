@@ -139,6 +139,28 @@ describe('ScheduleEventForm: saved イベントのスコープ', () => {
     errorHandlerMock.handleApiError.mockReset()
   })
 
+  it('日付指定の新規作成が保存失敗しても入力を保持し、savedや閉じるイベントを発火しない', async () => {
+    scheduleApiMock.createPersonalSchedule.mockRejectedValueOnce(new Error('保存失敗'))
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType: 'team', scopeId: '', isPersonal: true, initialDate: '2026-08-06' },
+      global: { stubs: globalStubs },
+    })
+    await wrapper.setProps({ visible: true })
+    await wrapper.get('[data-testid="title-input"]').setValue('入力を保持する予定')
+
+    const submit = wrapper.findAll('button').find(button => button.text() === wrapper.vm.$t('button.create'))!
+    await submit.trigger('click')
+    await flushPromises()
+
+    expect(scheduleApiMock.createPersonalSchedule).toHaveBeenCalledOnce()
+    expect((wrapper.get('[data-testid="title-input"]').element as HTMLInputElement).value).toBe('入力を保持する予定')
+    const form = wrapper.findComponent(BasicFieldsStub).props('form') as { startDate: Date }
+    expect([form.startDate.getFullYear(), form.startDate.getMonth() + 1, form.startDate.getDate()]).toEqual([2026, 8, 6])
+    expect(wrapper.emitted('saved')).toBeUndefined()
+    expect(wrapper.emitted('update:visible')).toBeUndefined()
+    expect(errorHandlerMock.handleApiError).toHaveBeenCalledOnce()
+  })
+
   it('[P2回帰] 保存API応答待ち中にスコープを変更しても、saved には変更前（実際に保存した）スコープが渡る', async () => {
     // createSchedule の解決を自分で制御できるようにする（応答待ちを再現するため）
     let resolveCreate: (value: unknown) => void = () => {}

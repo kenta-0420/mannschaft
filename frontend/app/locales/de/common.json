@@ -664,6 +664,7 @@
     }
   },
   "timeline": {
+    "refresh": "Aktualisieren",
     "detail": {
       "back": "Zurück",
       "loadFailed": "Beitrag konnte nicht geladen werden",
@@ -1299,7 +1300,7 @@
     "preset": {
       "PRESET_TRAINING_PARTNERS": {
         "name": "Trainingspartner",
-        "description": "Alle befreundeten Teams"
+        "description": "Alle Freundschaftsteams"
       },
       "PRESET_LOCAL_TEAMS": {
         "name": "Lokale Teams",
@@ -1307,7 +1308,7 @@
       },
       "PRESET_ALL_FRIENDS": {
         "name": "Alle Freunde",
-        "description": "Alle befreundeten Teammitglieder"
+        "description": "Alle Mitglieder von Freundschaftsteams"
       }
     }
   },
@@ -1650,7 +1651,9 @@
       "more": "+{count} weitere",
       "today": "Heute",
       "dayDetail": {
-        "title": "Termine am {date}"
+        "title": "Termine am {date}",
+        "empty": "Keine Termine an diesem Tag",
+        "create": "Termin für diesen Tag hinzufügen"
       },
       "empty": "Keine Termine in diesem Zeitraum",
       "view": {
@@ -3182,5 +3185,16 @@
         "step3": "Ihre Eingaben bleiben bei einem Fehler erhalten. Prüfen Sie die angezeigte Ursache und Ihre Eingaben und wählen Sie erneut „Hinzufügen“."
       }
     }
+  },
+  "feature_display": {
+    "title": "Sichtbarkeit allgemeiner Funktionen",
+    "description": "Ordnet Navigation und Startseite. Berechtigungen für direkte URLs und APIs bleiben unverändert. Die gewohnte Administratoransicht bleibt erhalten.",
+    "feature": "Funktion",
+    "member": "Für Mitglieder",
+    "supporter": "Für Unterstützer",
+    "member_label": "{feature} für Mitglieder anzeigen",
+    "supporter_label": "{feature} für Unterstützer anzeigen",
+    "save_success": "Sichtbarkeit gespeichert",
+    "nav": "Navigation"
   }
 }

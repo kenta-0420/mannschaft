@@ -23,6 +23,17 @@ import java.util.stream.Collectors;
 public interface TeamRepository
         extends JpaRepository<TeamEntity, Long>, JpaSpecificationExecutor<TeamEntity> {
 
+    /** フォロー先として公開できる概要を、閲覧者に依存せず一括取得する。 */
+    @Query("""
+            SELECT new com.mannschaft.app.team.service.TeamFollowTargetSummary(t.id, t.name, t.slug)
+            FROM TeamEntity t WHERE t.id IN :ids
+              AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE
+              AND t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.deletedAt IS NULL AND t.archivedAt IS NULL
+            """)
+    List<com.mannschaft.app.team.service.TeamFollowTargetSummary> findDisclosableFollowTargetSummaries(
+            @Param("ids") Collection<Long> ids);
+
     /** 受付投影に必要なteam scalar状態だけを読む。 */
     interface ActiveStateRow {
         Long getId();

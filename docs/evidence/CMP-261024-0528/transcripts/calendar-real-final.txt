@@ -1,0 +1,41 @@
+◇ injected env (0) from .env.test // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+
+
+Running 4 tests using 1 worker
+
+
+
+node : (node:47612) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+
+発生場所 行:2 文字:277
+
++ ... host:8081'; node node_modules/@playwright/test/cli.js test tests/e2e/ ...
+
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    + CategoryInfo          : NotSpecified: ((node:47612) Wa... env being set.:String) [], RemoteException
+
+    + FullyQualifiedErrorId : NativeCommandError
+
+
+
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+(node:47612) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+◇ injected env (0) from .env.test // tip: ⌁ auth for agents [www.vestauth.com]
+
+  ok 1 [chromium-real] › tests\e2e\real\dashboard-calendar-day-dialog.spec.ts:116:1 › DAY-001: 個人の空日→日付付き保存→一覧→既存編集→同日新規と別日再表示（390px） (1.4m)
+
+  ok 2 [chromium-real] › tests\e2e\real\dashboard-calendar-day-dialog.spec.ts:169:3 › DAY-002-teams: 管理者が空日から作成し、日別一覧の新規導線と詳細導線を使える (48.6s)
+
+  ok 3 [chromium-real] › tests\e2e\real\dashboard-calendar-day-dialog.spec.ts:169:3 › DAY-002-organizations: 管理者が空日から作成し、日別一覧の新規導線と詳細導線を使える (25.7s)
+
+  ok 4 [chromium-real] › tests\e2e\real\dashboard-calendar-day-dialog.spec.ts:197:1 › DAY-003: 閲覧メンバーは新規導線なし、非所属者は日別一覧と詳細へ他テナント予定を出さない (45.1s)
+
+
+
+  4 passed (3.5m)
