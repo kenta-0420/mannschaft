@@ -3,6 +3,7 @@ package com.mannschaft.app.social.announcement.dto;
 import com.mannschaft.app.social.announcement.AnnouncementChannel;
 import com.mannschaft.app.social.announcement.audience.BroadcastAudienceSpec;
 import com.mannschaft.app.social.announcement.audience.TargetGroupRange;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,8 +31,12 @@ public class AudiencePreviewRequestDto {
     @Size(max = 30)
     private String targetRole;
 
-    /** 「チームを選ぶ」のチーム ID。 */
-    private List<Long> targetTeamIds;
+    /**
+     * 「チームを選ぶ」のチーム。チームの URL 識別子（slug。{@code GET /organizations/{slug}/teams} の {@code id} と同じ値）。
+     * 存在しない・他組織・未加盟のチームは区別せず 400 {@code BROADCAST_002}。
+     */
+    @Schema(description = "「チームを選ぶ」のチーム（チームの slug。組織所属チーム一覧の id と同じ値）")
+    private List<String> targetTeamIds;
 
     /** 「チームグループで選ぶ」の個別チェック。 */
     private List<UUID> targetGroupIds;

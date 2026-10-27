@@ -534,7 +534,8 @@ public class DashboardService {
                         java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
                 .limit(DASHBOARD_ITEM_LIMIT)
                 .toList();
-        List<Map<String, Object>> teamNoticeItems = toAnnouncementFeedMaps(teamNoticeFeeds, userId);
+        // チームのダッシュボードには組織のグループ構成（宛先の記録）を出さない（チーム告知一覧の API と同じ）
+        List<Map<String, Object>> teamNoticeItems = toAnnouncementFeedMaps(teamNoticeFeeds, userId, false);
 
         // F02.2.1: 各ウィジェットを viewerRole.isAtLeast(min_role) で判定し、不可視は null にする
         // 管理者（DEPUTY_ADMIN/ADMIN/SYSTEM_ADMIN）は全ウィジェットをバイパスして閲覧可
@@ -648,7 +649,9 @@ public class DashboardService {
         List<GatedAnnouncement> orgNoticeFeeds = filterAnnouncementGated(orgAnnouncementFeeds, userId, viewerRole).stream()
                 .limit(DASHBOARD_ITEM_LIMIT)
                 .toList();
-        List<Map<String, Object>> orgNoticeItems = toAnnouncementFeedMaps(orgNoticeFeeds, userId);
+        // F01.2.1 AC-H17: 送信時の宛先の記録（「宛先: …（送信時 N チーム）」）を組織お知らせ一覧と同じ判定で載せる
+        List<Map<String, Object>> orgNoticeItems = toAnnouncementFeedMaps(
+                orgNoticeFeeds, userId, canViewTargetAudience(userId, orgId));
 
         // platform_announcements
         List<PlatformAnnouncementEntity> announcements = platformAnnouncementRepository
@@ -959,10 +962,16 @@ public class DashboardService {
      * F02.8: AnnouncementFeedEntity をダッシュボード表示用 Map に変換する。
      */
     private Map<String, Object> toAnnouncementFeedMap(AnnouncementFeedEntity feed) {
-        return toAnnouncementFeedMap(feed, false);
+        return toAnnouncementFeedMap(feed, false, false);
     }
 
-    private Map<String, Object> toAnnouncementFeedMap(AnnouncementFeedEntity feed, boolean locked) {
+    /**
+     * @param locked                課金ゲートで本文を見られない告知か（宛先の記録・要約などを伏せる）
+     * @param includeTargetAudience 送信時の宛先の記録（{@code target_audience}）を載せるか。
+     *                              呼び出し側が閲覧者ごとに判定する（{@link #canViewTargetAudience}）
+     */
+    private Map<String, Object> toAnnouncementFeedMap(
+            AnnouncementFeedEntity feed, boolean locked, boolean includeTargetAudience) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", feed.getId());
         map.put("scope_type", feed.getScopeType().name());
@@ -980,16 +989,36 @@ public class DashboardService {
             map.put("source_id", feed.getSourceId());
             map.put("excerpt_cache", feed.getExcerptCache());
             map.put("target_team_ids", feed.getTargetTeamIds());
+            // 値は告知 API（AnnouncementFeedItemDto#targetAudience）と同じ型・同じ読み方
+            map.put("target_audience", includeTargetAudience
+                    ? com.mannschaft.app.social.announcement.audience.TargetAudience.fromJson(feed.getTargetAudience())
+                    : null);
         }
         return map;
     }
 
-    private List<Map<String, Object>> toAnnouncementFeedMaps(List<GatedAnnouncement> feeds, Long userId) {
+    /**
+     * 閲覧者が、組織のお知らせの宛先の記録（チームグループ名・チーム数）を見てよいか。
+     *
+     * <p>組織お知らせ一覧（{@code AnnouncementFeedOrgController#canViewTargetAudience}）・チームグループの閲覧 API と
+     * 同じ判定: 組織の MEMBER 以上または SYSTEM_ADMIN（F01.2.1 §3.1・§10.1）。ダッシュボードの組織タブだけ
+     * 宛先が出ない食い違い（実機E2E #4009 D-2）を起こさないため、判定もそろえる。</p>
+     */
+    private boolean canViewTargetAudience(Long userId, Long orgId) {
+        if (userId == null) {
+            return false;
+        }
+        return accessControlService.isSystemAdmin(userId)
+                || accessControlService.hasRoleOrAbove(userId, orgId, "ORGANIZATION", "MEMBER");
+    }
+
+    private List<Map<String, Object>> toAnnouncementFeedMaps(
+            List<GatedAnnouncement> feeds, Long userId, boolean includeTargetAudience) {
         if (feeds.isEmpty()) return List.of();
         Set<Long> readIds = announcementReadService.fetchReadFeedIds(userId,
                 feeds.stream().map(item -> item.feed().getId()).toList());
         return feeds.stream().map(item -> {
-            Map<String, Object> map = toAnnouncementFeedMap(item.feed(), item.locked());
+            Map<String, Object> map = toAnnouncementFeedMap(item.feed(), item.locked(), includeTargetAudience);
             map.put("is_read", readIds.contains(item.feed().getId()));
             return map;
         }).toList();

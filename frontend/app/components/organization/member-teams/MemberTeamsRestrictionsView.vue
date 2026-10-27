@@ -73,6 +73,19 @@ function kindLabel(restriction: TeamOrgAffiliationRestriction): string {
     : t('teamAffiliation.restriction.kind_BLOCK')
 }
 
+/** BE の再送制限の理由（F01.2.1 §5.4 の列挙値）。表示はこの値ごとのラベルに写す */
+const KNOWN_REASONS = ['REJECTED', 'DECLINED', 'WITHDRAWN', 'CANCELLED'] as const
+
+/**
+ * 理由の表示ラベル。reason は自由文ではなく列挙値なので、生値（REJECTED 等）は出さない。
+ * 列挙に無い値（BE に理由が足されて FE が追いついていない等）は、生値を見せずに「その他の理由」へまとめる。
+ */
+function reasonLabel(reason: string): string {
+  return (KNOWN_REASONS as readonly string[]).includes(reason)
+    ? t(`teamAffiliation.restriction.reason_${reason}`)
+    : t('teamAffiliation.restriction.reason_UNKNOWN')
+}
+
 onMounted(() => void load())
 </script>
 
@@ -116,8 +129,13 @@ onMounted(() => void load())
           >
             {{ kindLabel(restriction) }}
           </p>
-          <p v-if="restriction.reason" class="whitespace-pre-line text-sm text-surface-700 dark:text-surface-200">
-            {{ restriction.reason }}
+          <p
+            v-if="restriction.reason"
+            class="text-sm text-surface-700 dark:text-surface-200"
+            :data-reason="restriction.reason"
+            :data-testid="`restriction-reason-${restriction.id}`"
+          >
+            {{ reasonLabel(restriction.reason) }}
           </p>
         </div>
         <Button
