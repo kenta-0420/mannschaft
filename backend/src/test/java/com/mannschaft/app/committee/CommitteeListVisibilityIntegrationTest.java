@@ -129,6 +129,11 @@ class CommitteeListVisibilityIntegrationTest extends AbstractMySqlIntegrationTes
         }
         assertPage(page(userId, organizationId, 0, selected), List.of(selectedId), 1);
         assertPage(page(userId, organizationId, 0, null), allIds, allIds.size());
+        // 満杯の1件ページでcount経路も実行し、status述語の漏れを検出する。
+        var filtered = committeeService.listCommittees(organizationId, selected, userId,
+                PageRequest.of(0, 1, Sort.by("id")));
+        assertThat(filtered.getContent()).extracting(CommitteeEntity::getId).containsExactly(selectedId);
+        assertThat(filtered.getTotalElements()).isEqualTo(1);
         Long emptyOrg = organization();
         MembershipTestHelper.insertMembership(em, userId, ScopeType.ORGANIZATION, emptyOrg, RoleKind.MEMBER);
         assertPage(page(userId, emptyOrg, 0, selected), List.of(), 0);
