@@ -13,7 +13,7 @@
       "tests": [
         {
           "name": "有効化: PATCH で { moduleId, enabled: true } を本文に送る",
-          "evidence": "frontend/tests/unit/composables/useModuleApi.spec.ts"
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/300b19cc081a8c067a28afe25c05cb8f896f31da/frontend/tests/unit/composables/useModuleApi.spec.ts"
         }
       ]
     },
@@ -23,7 +23,7 @@
       "tests": [
         {
           "name": "無効化: PATCH で { moduleId, enabled: false } を本文に送る",
-          "evidence": "frontend/tests/unit/composables/useModuleApi.spec.ts"
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/300b19cc081a8c067a28afe25c05cb8f896f31da/frontend/tests/unit/composables/useModuleApi.spec.ts"
         }
       ]
     }
