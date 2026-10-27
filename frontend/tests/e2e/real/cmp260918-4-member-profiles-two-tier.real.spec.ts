@@ -306,7 +306,9 @@ test.afterAll(async () => {
     inviteId,
   }
   await info.attach('fixture-cleanup', {
-    body: Buffer.from(JSON.stringify({ owned, deletedProfileIds: [...deletedProfileIds], failures })),
+    body: Buffer.from(
+      JSON.stringify({ owned, deletedProfileIds: [...deletedProfileIds], failures }),
+    ),
     contentType: 'application/json',
   })
   expect(failures, '自所有fixtureの後始末').toEqual([])
@@ -434,6 +436,7 @@ test('③ ADMIN: ページ作成→メンバー追加→編集→削除→ペー
   const slugInput = dialog.locator('input[placeholder="members-2026"]')
   await slugInput.fill(PAGE_SLUG)
   ownedSlugs.set(PAGE_SLUG, accounts.admin.id)
+  let createdPageId = 0
   await Promise.all([
     page
       .waitForResponse(
@@ -443,7 +446,9 @@ test('③ ADMIN: ページ作成→メンバー追加→編集→削除→ペー
       )
       .then(async (response) => {
         expect(response.status()).toBe(201)
-        rememberPage((await response.json()).data as OwnPage, PAGE_SLUG)
+        const createdPage = (await response.json()).data as OwnPage
+        rememberPage(createdPage, PAGE_SLUG)
+        createdPageId = createdPage.id
       }),
     dialog
       .getByRole('button', { name: /作成|保存|OK/ })
@@ -534,7 +539,18 @@ test('③ ADMIN: ページ作成→メンバー追加→編集→削除→ペー
   await deletePageButton.click()
   const deletePageConfirm = page.getByRole('dialog')
   await expect(deletePageConfirm).toBeVisible()
-  await deletePageConfirm.getByRole('button', { name: '削除', exact: true }).click()
+  await Promise.all([
+    page
+      .waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === `/api/v1/team/pages/${createdPageId}` &&
+          response.request().method() === 'DELETE',
+      )
+      .then((response) => {
+        expect(response.status()).toBe(204)
+      }),
+    deletePageConfirm.getByRole('button', { name: '削除', exact: true }).click(),
+  ])
   await expect(page.locator('.p-card', { hasText: PAGE_TITLE })).toHaveCount(0, { timeout: 30_000 })
 })
 
