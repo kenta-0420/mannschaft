@@ -87,7 +87,8 @@ class CalendarBatchQueryIT extends AbstractMySqlIntegrationTest {
     private void addScopes(int teams, int organizations) {
         for (int i = 0; i < teams; i++) {
             TeamEntity team = teamRepository.save(TeamEntity.builder()
-                    .slug("calendar-batch-" + UUID.randomUUID().toString().substring(0, 12)).name("計数チーム").build());
+                    .slug("calendar-batch-" + UUID.randomUUID().toString().substring(0, 12)).name("計数チーム")
+                    .visibility(TeamEntity.Visibility.PUBLIC).supporterEnabled(false).build());
             MembershipTestHelper.insertMembership(em, USER_ID, ScopeType.TEAM, team.getId(), RoleKind.MEMBER);
         }
         for (int i = 0; i < organizations; i++) {
@@ -95,7 +96,7 @@ class CalendarBatchQueryIT extends AbstractMySqlIntegrationTest {
                     .slug("calendar-batch-" + UUID.randomUUID().toString().substring(0, 12)).name("計数組織")
                     .orgType(OrganizationEntity.OrgType.OTHER)
                     .visibility(OrganizationEntity.Visibility.PUBLIC)
-                    .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE).build());
+                    .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE).supporterEnabled(false).build());
             MembershipTestHelper.insertMembership(em, USER_ID, ScopeType.ORGANIZATION,
                     organization.getId(), RoleKind.MEMBER);
         }
