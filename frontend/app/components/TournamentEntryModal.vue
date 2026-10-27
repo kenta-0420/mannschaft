@@ -34,7 +34,15 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const { t } = useI18n()
+const { handleApiError } = useErrorHandler()
 const toast = useNuxtApp().$toast as { add: (opts: Record<string, unknown>) => void } | undefined
+
+function reportEntryError(error: unknown) {
+  const status = (error as { statusCode?: number } | null)?.statusCode
+  // 429と5xxはuseApiが通知済み。通常の4xxと通信失敗はここで操作結果を伝える。
+  if (status === 429 || (status !== undefined && status >= 500)) return
+  handleApiError(error)
+}
 
 const {
   getEntryMembers,
@@ -121,8 +129,8 @@ async function fetchEntryMembers() {
       buildMemberForms(res.teamMemberCandidates)
     }
   }
-  catch {
-    // エラーは useApi の onResponseError で処理される
+  catch (error) {
+    reportEntryError(error)
   }
   finally {
     loading.value = false
@@ -135,8 +143,8 @@ async function fetchTemplates() {
     const { data } = await getEntryTemplates(props.orgId, props.teamId)
     templates.value = data
   }
-  catch {
-    // エラーは useApi の onResponseError で処理される
+  catch (error) {
+    reportEntryError(error)
   }
 }
 
@@ -195,8 +203,8 @@ async function onApplyTemplate() {
     // フォームを再構築
     buildMemberForms(teamCandidates.value)
   }
-  catch {
-    // エラーは useApi の onResponseError で処理される
+  catch (error) {
+    reportEntryError(error)
   }
   finally {
     applyingTemplate.value = false
@@ -233,8 +241,8 @@ async function onSaveMembers() {
     })
     emit('saved')
   }
-  catch {
-    // エラーは useApi の onResponseError で処理される
+  catch (error) {
+    reportEntryError(error)
   }
   finally {
     saving.value = false
@@ -262,8 +270,8 @@ async function onLoadFromTeam() {
     emit('saved')
     buildMemberForms(teamCandidates.value)
   }
-  catch {
-    // エラーは useApi の onResponseError で処理される
+  catch (error) {
+    reportEntryError(error)
   }
   finally {
     saving.value = false
@@ -286,8 +294,8 @@ async function onDownloadPdf() {
     a.click()
     URL.revokeObjectURL(url)
   }
-  catch {
-    // エラーは useApi の onResponseError で処理される
+  catch (error) {
+    reportEntryError(error)
   }
   finally {
     downloadingPdf.value = false
