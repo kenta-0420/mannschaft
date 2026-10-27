@@ -12,5 +12,6 @@ describe('システム管理メニューの通常導線', () => {
 
     expect(links).toHaveLength(1)
     expect(links[0]!.text()).toBe($i18n.t('email_outbox.title'))
+    expect(links[0]!.text()).toBe('メール送信キュー')
   })
 })

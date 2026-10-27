@@ -33,3 +33,5 @@ API の省略/null の扱いと既存代理を維持する OFF 時の契約は [
 公開APIの直接Page、認証済みAPIのcontent直接参照、BE独自PagedResponse、Cursorは、それぞれの既存契約を維持します。`app/types/springPage.contract.ts` が6境界の型を、`springPage.coverage.spec.ts` がOpenAPIの27経路集合を照合します。
 
 outboxの既存文言は各localeのsystem_admin_email_outbox.jsonをnuxt.configのfilesへ登録して読み込みます。試験だけで辞書を補完せず、実i18nを通して空状態・filter・既存操作を検証します。
+
+システム管理ダッシュボードの既存管理メニューからメール送信管理へ進めます。再取得したmetaで現在pageが範囲外なら有効な末尾pageへ補正して再取得し、正規0件や総数が縮まないALL表示では余分な再取得やpage0への移動を行いません。

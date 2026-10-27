@@ -72,6 +72,12 @@ async function load() {
       page: currentPage.value,
       size: pageSize.value,
     })
+    const lastPage = Math.max(0, res.meta.totalPages - 1)
+    if (currentPage.value > lastPage) {
+      currentPage.value = lastPage
+      await load()
+      return
+    }
     items.value = res.data
     meta.value = res.meta
   } catch (e) {
