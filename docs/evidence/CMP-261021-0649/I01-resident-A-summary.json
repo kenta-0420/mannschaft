@@ -1,0 +1,33 @@
+{
+  "runId": "CMP0616-I01-cmp0649-a875668f1796",
+  "sourceHead": "d383c4494d5e6debb5cdb833f654fa5e5ae0430b",
+  "personaId": "CMP0616-I01-A-return",
+  "journeyId": "CMP0616-I01-A-return-journey",
+  "personaArchetype": "ADHD傾向×中断・放棄",
+  "purpose": "自分の18時担当をBへ相談し、中断復帰後に依頼状態と担当を確認する",
+  "registrationSource": "actual-resident-artifacts",
+  "status": "observed-unverified",
+  "trusted": false,
+  "result": {
+    "status": "partial",
+    "assignmentRediscovered": true,
+    "candidateAndReasonEntered": true,
+    "consultationSubmitted": false,
+    "submissionBlockedByAutomaticReview": true,
+    "rejectionCount": 2,
+    "submittedStateVerified": false,
+    "unsentReasonEmptyAfterReloadObserved": true
+  },
+  "observation": "18時担当を再発見し、B候補と理由を入力した。提出は自動承認レビューの2回拒否で未送信。入力後の再読込で作成画面が閉じ、再度開くと理由欄は空だった。提出済み状態やB応答は未検証で、保存不具合とは断定しない。 原runId: CMP0616-I01-cmp0649-a875668f1796。sourceHead: d383c4494d5e6debb5cdb833f654fa5e5ae0430b。未実証の住民観測。DOM探索のみ、画像視覚確認なし。",
+  "observedAt": "2026-10-27T02:35:45.057Z",
+  "page": "/my/shift",
+  "visualConfirmation": false,
+  "coveragePassed": false,
+  "goalsReached": false,
+  "originalRunPassed": false,
+  "separateContinuation": true,
+  "privateEvidencePath": ".claude/campaigns/cmp0616-takeover-20261027/resident-A-safe.json",
+  "privateEvidenceSha256": "57631cec2d835c3e5640d8aec4de1712f80f5c66f360af65a1e534a287c373f7",
+  "note": "原報告の巨大DOM・資格情報・全rawは公開しない。実施3人と目的達成を区別し、製品不具合や正式探索合格に昇格しない。",
+  "journeyIdSource": "原報告にjourneyIdなし。rootが登録時付与し、観測事実は変更していない。"
+}
