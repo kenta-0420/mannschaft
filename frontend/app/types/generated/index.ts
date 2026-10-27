@@ -59712,6 +59712,13 @@ export interface components {
             content?: components["schemas"]["PostContentDto"];
             /** Format: int64 */
             id?: number;
+            /** @description 閲覧者がみたよ済みか */
+            mitayo: boolean;
+            /**
+             * Format: int32
+             * @description みたよ実件数
+             */
+            mitayoCount: number;
             postedAs?: components["schemas"]["PostPostedAsDto"];
             scope?: components["schemas"]["PostScopeDto"];
             stats?: components["schemas"]["PostStatsDto"];

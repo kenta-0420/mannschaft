@@ -103,6 +103,9 @@ public interface AccessControlService {
     /** SYSTEM_ADMINか判定する。 */
     boolean isSystemAdmin(Long userId);
 
+    /** 未削除かつACTIVEの利用者か判定する。複数スコープの最新ロール解決で一度だけ使う。 */
+    boolean isActiveUser(Long userId);
+
     /** SYSTEM_ADMINでなければ403で拒否する。 */
     void checkSystemAdmin(Long userId);
 

@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
  * <b>まとめ取り</b>してマージする（手本: {@code DashboardService.getPersonalDashboard}）。
  * 設計書: 03_business_logic.md §1・§4。MVP は NOTIFICATION + TODO_DUE の 2 アダプタ前提。</p>
  *
- * <p><b>N+1 回避の肝</b>: オーバーレイ状態は {@code findByUserIdAndSourceTypeIn} で 1 回、ラベルは
+ * <p><b>N+1 回避の肝</b>: オーバーレイ状態は出現した sourceType・sourceId だけを1000件単位で取得し、ラベルは
  * 出現した sourceType ごとに {@code findByUserIdAndSourceTypeAndSourceIdIn} で 1 回ずつ取得する
  * （item 件数に依らず定数回＝最大ソース種別数）。</p>
  */
@@ -69,7 +69,7 @@ public class InboxAggregationService {
         // 境界付きウィンドウ（Phase3 ③）: 当該ページまでに必要な上位件数 + 安全マージン。
         // 各アダプタはこのウィンドウ件数までしか取得しない（無制限 fetch を根絶）。
         int window = requiredWindow(page, size);
-        List<InboxItemDto> merged = collectMergedItems(userId, window);
+        List<InboxItemDto> merged = collectMergedItems(userId, window, true);
 
         // フィルタ（state → sourceType → priority → label）
         List<InboxItemDto> filtered = merged.stream()
@@ -96,7 +96,7 @@ public class InboxAggregationService {
      */
     public InboxSummaryResponse getSummary(Long userId) {
         // サマリは概算（タブ/バッジ用）。件数の上ぶれを抑えるためサマリ専用の広めウィンドウで取得する。
-        List<InboxItemDto> merged = collectMergedItems(userId, SUMMARY_WINDOW);
+        List<InboxItemDto> merged = collectMergedItems(userId, SUMMARY_WINDOW, false);
 
         Map<String, Long> byState = new LinkedHashMap<>();
         Map<String, Long> byPriority = new LinkedHashMap<>();
@@ -122,6 +122,9 @@ public class InboxAggregationService {
 
     /** サマリ集計用の広めウィンドウ（件数バッジは概算で十分・暴走防止に上限を設ける）。 */
     private static final int SUMMARY_WINDOW = 500;
+
+    /** 所属スコープ数により増える通知IDを、一度のIN句へ無制限に渡さない。 */
+    private static final int STATE_ID_CHUNK_SIZE = 1000;
 
     /**
      * ソート規則（<b>完全な全順序</b>・Phase3 ③）: priority DESC（URGENT が先頭）→ occurredAt DESC（新しい順）
@@ -155,30 +158,23 @@ public class InboxAggregationService {
      *
      * @param window 各アダプタの取得上限件数（境界付きウィンドウ・Phase3 ③）
      */
-    private List<InboxItemDto> collectMergedItems(Long userId, int window) {
+    private List<InboxItemDto> collectMergedItems(Long userId, int window, boolean includeLabels) {
         // 1. 各アダプタを境界付きウィンドウで呼び生項目を集約（無制限 fetch を根絶）
         List<InboxItemDto> raw = new ArrayList<>();
         for (InboxSourceAdapter adapter : sourceAdapters) {
             raw.addAll(adapter.fetch(userId, window));
         }
 
-        // 2-a. オーバーレイ状態を user_id でまとめ取り（item 件数に依らず 1 回）
+        // 2-a. 出現した通知だけの状態を取得し、無関係な過去のtriage履歴を読まない。
         Set<InboxSourceType> presentTypes = raw.stream()
                 .map(InboxItemDto::sourceType)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
-        Map<String, InboxItemStateEntity> stateByKey = new HashMap<>();
-        if (!presentTypes.isEmpty()) {
-            List<InboxItemStateEntity> states =
-                    itemStateRepository.findByUserIdAndSourceTypeIn(userId, presentTypes);
-            for (InboxItemStateEntity s : states) {
-                stateByKey.put(key(s.getSourceType(), s.getSourceId()), s);
-            }
-        }
+        Map<String, InboxItemStateEntity> stateByKey = fetchStatesBounded(userId, raw);
 
         // 2-b. ラベルを sourceType ごとにまとめ取り（item 毎には引かない＝最大ソース種別数回）
         Map<String, List<LabelDto>> labelsByKey =
-                fetchLabelsBounded(userId, raw, presentTypes);
+                includeLabels ? fetchLabelsBounded(userId, raw, presentTypes) : Map.of();
 
         // 3. 各生項目に state/labels を被せて確定
         List<InboxItemDto> merged = new ArrayList<>(raw.size());
@@ -201,7 +197,27 @@ public class InboxAggregationService {
         List<InboxItemDto> folded = foldByCanonicalRef(merged);
 
         // 5. 自動ラベリング提案（案C・Phase 4・非永続）：静的ルールで各カードへ提案を被せる。
-        return applySuggestions(userId, folded);
+        return includeLabels ? applySuggestions(userId, folded) : folded;
+    }
+
+    /** ソース別にIDを重複排除し、引数数を制限して本人の状態だけを取得する。 */
+    private Map<String, InboxItemStateEntity> fetchStatesBounded(Long userId, List<InboxItemDto> raw) {
+        Map<InboxSourceType, Set<Long>> idsByType = new EnumMap<>(InboxSourceType.class);
+        for (InboxItemDto item : raw) {
+            idsByType.computeIfAbsent(item.sourceType(), type -> new LinkedHashSet<>()).add(item.sourceId());
+        }
+        Map<String, InboxItemStateEntity> result = new HashMap<>();
+        for (var entry : idsByType.entrySet()) {
+            List<Long> ids = new ArrayList<>(entry.getValue());
+            for (int from = 0; from < ids.size(); from += STATE_ID_CHUNK_SIZE) {
+                List<Long> chunk = ids.subList(from, Math.min(from + STATE_ID_CHUNK_SIZE, ids.size()));
+                for (InboxItemStateEntity state : itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(
+                        userId, entry.getKey(), chunk)) {
+                    result.put(key(state.getSourceType(), state.getSourceId()), state);
+                }
+            }
+        }
+        return result;
     }
 
     /**
