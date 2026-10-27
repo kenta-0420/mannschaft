@@ -46,6 +46,12 @@ interface InboxSourceAdapter {
 
 > **announcement の注意**: `PersonalAnnouncementController.getPersonalFeed` は未実装（空返却）のため依存しない。`AnnouncementFeedQueryRepository.findByScope`（`DashboardService` が使用中）を直接利用する。
 >
+> **Inboxの最新ロール一括解決（CMP-261026-1912）**: ACTIVE・非削除利用者の `user_roles ∪ current memberships` によるTEAM/ORGANIZATION列挙を維持し、`RoleResolver.resolveViewerRolesFresh` から既存 `MembershipBatchQueryService.snapshotForUser` をdirectスコープだけで1回呼ぶ。親組織・配下組織の所属を暗黙に継承しない。SYSTEM_ADMINを最優先とし、それ以外は利用者の活性を一度確認して既存ViewerRole正規化（GUEST・null・未知値はPUBLIC）を共有する。
+>
+> Inboxは毎回最新値で判定し、役割解除・降格を次の取得からタイトル・本文の可視性へ反映する。既存Dashboardの単件解決・60秒キャッシュ・失効処理は変更しない。スコープ順序、スコープ毎のwindow、feed取得、visibility・payment gate・既読・重複排除は従来どおりであり、feedのスコープ毎照会はrole照会の定数予算と分けて検証する。
+>
+> 同値性の前提は固定6ロールの正準priorityと、[F01.2 DB設計のuser_rolesスコープ規則](../F01.2_org_team_member_role/01_db_design.md)（team_idとorganization_idの同時非NULLを禁止）。既存snapshot全体の意味やDB制約は本対応で変更しない。
+>
 > **既読の取得**: 各アダプタはソース固有の既読（`is_read` / `announcement_read_status` の有無 / `is_confirmed`）を `InboxItemRaw.sourceRead` に載せる。TODO は既読概念がないため「完了=対象外」で表現。
 
 ---
