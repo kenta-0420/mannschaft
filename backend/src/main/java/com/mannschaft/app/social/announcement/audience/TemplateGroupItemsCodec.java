@@ -68,6 +68,14 @@ public final class TemplateGroupItemsCodec {
         }
     }
 
+    /** 「チームを選ぶ」のチーム ID を target_team_ids の JSON 配列にする。null・空配列は「全チーム」として null。 */
+    public static String teamIdsToJson(List<Long> teamIds) {
+        if (teamIds == null || teamIds.isEmpty()) {
+            return null;
+        }
+        return write(teamIds);
+    }
+
     /** 「チームを選ぶ」の target_team_ids（JSON 配列）を読む。null・空は null。 */
     public static List<Long> parseTeamIds(String json) {
         if (json == null || json.isBlank()) {

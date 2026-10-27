@@ -1,9 +1,6 @@
 package com.mannschaft.app.social.announcement.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.social.announcement.audience.TargetAudience;
 import com.mannschaft.app.social.announcement.AnnouncementFeedService;
 import lombok.Builder;
@@ -105,10 +102,6 @@ public class AnnouncementFeedItemDto {
     /** レコード更新日時（ISO 8601） */
     private final String updatedAt;
 
-    /** 宛先の記録の読み取り用（書き込み側が保存した JSON をそのまま読む） */
-    private static final ObjectMapper AUDIENCE_MAPPER = new ObjectMapper()
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
     /** ISO 8601 フォーマッタ */
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
@@ -152,24 +145,10 @@ public class AnnouncementFeedItemDto {
                 .expiresAt(formatDateTime(feed.getExpiresAt()))
                 .isRead(item.isRead())
                 .accessState(item.accessState())
-                .targetAudience(locked || !includeTargetAudience ? null : parseTargetAudience(feed.getTargetAudience()))
+                .targetAudience(locked || !includeTargetAudience ? null : TargetAudience.fromJson(feed.getTargetAudience()))
                 .createdAt(formatDateTime(feed.getCreatedAt()))
                 .updatedAt(formatDateTime(feed.getUpdatedAt()))
                 .build();
-    }
-
-    /**
-     * 保存された宛先の記録（JSON）を読む。無ければ null。壊れていれば黙って捨てず例外にする。
-     */
-    private static TargetAudience parseTargetAudience(String json) {
-        if (json == null || json.isBlank()) {
-            return null;
-        }
-        try {
-            return AUDIENCE_MAPPER.readValue(json, TargetAudience.class);
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException("announcement_feeds.target_audience の JSON を読めません", e);
-        }
     }
 
     /**

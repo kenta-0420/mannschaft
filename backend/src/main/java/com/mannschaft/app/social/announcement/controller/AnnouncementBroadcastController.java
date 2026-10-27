@@ -81,7 +81,8 @@ public class AnnouncementBroadcastController {
                 teamId, req.getChannel(), userId);
 
         return ResponseEntity.status(201)
-                .body(ApiResponse.of(BroadcastResponseDto.from(result)));
+                .body(ApiResponse.of(BroadcastResponseDto.from(
+                        result, audienceResolver.teamSlugsOf(result.getTargetTeamIds()))));
     }
 
     // ═════════════════════════════════════════════════════════════
@@ -92,7 +93,8 @@ public class AnnouncementBroadcastController {
      * 組織への告知ウィザードを実行する。
      *
      * <p>指定チャネルでコンテンツを作成し、組織のお知らせフィードに登録する。
-     * targetTeamIds を指定した場合、組織配下チームであることを検証する（IDOR 対策）。</p>
+     * targetTeamIds（チームの slug）を指定した場合、組織に ACTIVE で加盟しているチームであることを検証する
+     * （IDOR 対策。存在しない・他組織・未加盟は区別せず 400 BROADCAST_002）。</p>
      *
      * @param orgId 組織 ID
      * @param req   告知ウィザードリクエスト
@@ -102,7 +104,8 @@ public class AnnouncementBroadcastController {
     @Operation(
             summary = "組織への告知ウィザード実行",
             description = "F02.8 告知ウィザード。組織スコープでコンテンツ作成 + お知らせフィード登録を一括実行する。"
-                    + "targetTeamIds を指定した場合は組織配下チームであることを検証する。")
+                    + "targetTeamIds はチームの slug（組織所属チーム一覧の id）で指定し、組織に ACTIVE で加盟している"
+                    + "チームであることを検証する（存在しない・他組織・未加盟は区別せず 400 BROADCAST_002）。")
     public ResponseEntity<ApiResponse<BroadcastResponseDto>> broadcastToOrg(
             @PathVariable Long orgId,
             @Valid @RequestBody BroadcastRequestDto req) {
@@ -119,7 +122,8 @@ public class AnnouncementBroadcastController {
                 orgId, req.getChannel(), userId);
 
         return ResponseEntity.status(201)
-                .body(ApiResponse.of(BroadcastResponseDto.from(result)));
+                .body(ApiResponse.of(BroadcastResponseDto.from(
+                        result, audienceResolver.teamSlugsOf(result.getTargetTeamIds()))));
     }
 
     // ═════════════════════════════════════════════════════════════
@@ -170,7 +174,8 @@ public class AnnouncementBroadcastController {
         return BroadcastRequest.builder()
                 .channel(dto.getChannel())
                 .targetRole(dto.getTargetRole())
-                .targetTeamIds(dto.getTargetTeamIds())
+                // 「チームを選ぶ」は slug で受け取る。内部 ID への解決と検証は BroadcastAudienceResolver が行い、
+                // 解決結果（ResolvedBroadcastAudience）だけを告知のトランザクションへ渡す
                 .templateId(dto.getTemplateId())
                 .priority(dto.getPriority() != null ? dto.getPriority() : "NORMAL")
                 .expiresAt(dto.getExpiresAt())

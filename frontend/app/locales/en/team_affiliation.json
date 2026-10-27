@@ -77,7 +77,12 @@
     "restriction": {
       "kind_COOLDOWN": "In cooldown (until {until})",
       "kind_BLOCK": "Blocked",
-      "lift": "Lift"
+      "lift": "Lift",
+      "reason_REJECTED": "Application rejected",
+      "reason_DECLINED": "Invitation declined",
+      "reason_WITHDRAWN": "Application withdrawn",
+      "reason_CANCELLED": "Invitation cancelled",
+      "reason_UNKNOWN": "Other reason"
     },
     "leave": {
       "button": "Leave this organization",

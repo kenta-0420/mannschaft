@@ -77,7 +77,12 @@
     "restriction": {
       "kind_COOLDOWN": "대기 기간 중({until}까지)",
       "kind_BLOCK": "차단 중",
-      "lift": "해제"
+      "lift": "해제",
+      "reason_REJECTED": "신청을 거절함",
+      "reason_DECLINED": "초대가 거절됨",
+      "reason_WITHDRAWN": "신청이 철회됨",
+      "reason_CANCELLED": "초대가 취소됨",
+      "reason_UNKNOWN": "기타 사유"
     },
     "leave": {
       "button": "이 조직에서 탈퇴",
