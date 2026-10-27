@@ -21,12 +21,16 @@ const props = defineProps<{
   scopeType: ScopeTabType
   /** 遷移先とslug対応APIに使う所属slug。 */
   scopeId: string
-  /** 掲示板・ブログ・応答scope照合用の内部ID。slugと混同しない。 */
+  /** タイムライン・掲示板・ブログ・応答scope照合用の内部ID。slugと混同しない。 */
   numericScopeId?: string
   isFeatureVisible?: (featureKey: string) => boolean
   data: TeamDashboardResponse | OrgDashboardResponse
 }>()
 const featureVisible = (key: string) => props.isFeatureVisible?.(key) ?? true
+// 数字だけの公開slugも有効なので、タイムラインには所属一覧の内部IDだけを渡す。
+const timelineScopeId = computed(() =>
+  props.numericScopeId && /^[1-9]\d*$/.test(props.numericScopeId) ? props.numericScopeId : undefined,
+)
 const actionSections = computed(() => ({ circulation: featureVisible('circulation'), survey: featureVisible('surveys'), attendance: featureVisible('schedule') }))
 const showActionRequired = computed(() => Object.values(actionSections.value).some(Boolean))
 const preview = useScopeWidgetPreview(() => ({
@@ -88,7 +92,14 @@ const bulletinThreadItems = computed<ScopeBulletinThreadItem[]>(
       </template>
     </DashboardScopeListWidget>
     <DashboardWidgetCard v-if="featureVisible('timeline')" :title="$t('swipeWidgets.timeline')" icon="pi pi-comments">
-      <TimelineFeed :scope-type="scopeType" :scope-id="scopeId" :limit="3" />
+      <TimelineFeed
+        v-if="timelineScopeId"
+        :key="`${scopeType}:${timelineScopeId}`"
+        :scope-type="scopeType"
+        :scope-id="timelineScopeId"
+        :limit="3"
+      />
+      <PageLoading v-else />
     </DashboardWidgetCard>
     <DashboardScopeListWidget
       v-if="featureVisible('bulletin')"

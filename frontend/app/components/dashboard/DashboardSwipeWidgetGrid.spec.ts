@@ -118,6 +118,33 @@ describe.each(['TEAM', 'ORGANIZATION'] as const)('%s グリッドの導線', (sc
     expect(actions.attributes('sections')).toBeDefined()
   })
 
+  it.each(['12345', '00012345', '9223372036854775808', 'scope-a'])(
+    'FEED-SCOPE-1: slug=%sでもフィードへ選択対象の内部IDを渡す',
+    async (slug) => {
+      const view = render(scopeType)
+      await view.setProps({ scopeId: slug, numericScopeId: '7' })
+      expect(view.findComponent({ name: 'TimelineFeed' }).props('scopeId')).toBe('7')
+      expect(view.findAll('a').map(link => link.attributes('href'))).toContain(
+        `/${scopeType === 'TEAM' ? 'teams' : 'organizations'}/${slug}/schedule`,
+      )
+    },
+  )
+
+  it('FEED-SCOPE-2: 内部ID未取得ではslugや0でフィードを取得しない', async () => {
+    const view = render(scopeType)
+    await view.setProps({ scopeId: '12345', numericScopeId: undefined })
+    expect(view.findComponent({ name: 'TimelineFeed' }).exists()).toBe(false)
+  })
+
+  it('FEED-SCOPE-3: 別scopeの内部IDと同値のslugでも新フィードを作り直す', async () => {
+    const view = render(scopeType)
+    const first = view.findComponent({ name: 'TimelineFeed' }).vm
+    await view.setProps({ scopeId: '7', numericScopeId: '21' })
+    const next = view.findComponent({ name: 'TimelineFeed' })
+    expect(next.props('scopeId')).toBe('21')
+    expect(next.vm).not.toBe(first)
+  })
+
   it('AC4: カレンダー0件も概要を開き、null時は架空項目を出さない', async () => {
     const view = render(scopeType)
     await view.get('[data-testid="scope-widget-calendar"]').trigger('click')

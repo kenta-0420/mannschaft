@@ -42,6 +42,8 @@ function isUnmigratedScopeId(id: string): boolean {
     // タグ未ロード（loadTabs 前）。BIGINT 文字列なら移行待ち、slug なら即ロード。
     return /^\d+$/.test(id)
   }
+  // 正規の公開slugが別組織の内部IDと同値でも、公開slugの一致を優先する。
+  if (items.some(item => item.slug === id)) return false
   return items.some(item => item.scopeId === id && item.slug !== id)
 }
 
