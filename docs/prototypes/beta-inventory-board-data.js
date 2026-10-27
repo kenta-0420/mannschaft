@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-10-27T19:33:18+00:00",
+  "generatedAt": "2026-10-27T19:41:54+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,9 +8,9 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "7dd793916526111903964e11e86d24b47dced84e",
+    "taskListCommit": "80bbf0e45cc6d9de23c86f504f7c19885c6bf79a",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "d77b768d7bbb885991c014a72b000fd1563ba2935e226a60c2b444b9055871a7",
+    "taskListSha256": "47309da34a0982d5f39716a612493f59d691c632def62e74fda8b2159db2a31e",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
@@ -38960,8 +38960,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261002-1135",
       "title": "node-forge 脆弱性 GHSA-86w9-cpqp-85rv の CI audit 期限付き除外を解除する（期限 2026-10-30。node-forge の修正版が出たら override で上げる／listhen が node-forge を使わなくなるまで）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "実装中",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -39015,7 +39015,7 @@ window.BETA_INVENTORY_DATA = {
         "CI"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
