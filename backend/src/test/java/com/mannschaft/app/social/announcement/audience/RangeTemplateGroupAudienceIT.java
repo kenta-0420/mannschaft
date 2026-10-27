@@ -3,6 +3,7 @@ package com.mannschaft.app.social.announcement.audience;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.teamgroup.entity.OrgTeamGroupEntity;
+import com.mannschaft.app.team.entity.TeamEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -14,6 +15,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -527,6 +529,63 @@ class RangeTemplateGroupAudienceIT extends AbstractBroadcastAudienceIT {
 
             broadcastToOrg(XA, orgX.getId(), bulletinBody(Map.of("templateId", id, "targetGroupIds", ids(g3.getId()))))
                     .andExpect(status().isCreated());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // §8.6 「チームを選ぶ」テンプレートの削除済みチーム（PR #4014 検分 中-1）
+    // ═════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("§8.6 「チームを選ぶ」テンプレートに削除済みチームが含まれる")
+    class DeletedTeamInTeamTemplate {
+
+        @Test
+        @DisplayName("2チームで保存→片方を論理削除→一覧は2チームとも返し→その宛先で適用したプレビュー・送信は 400 BROADCAST_002")
+        void deletedTeamIsNotSilentlyDropped() throws Exception {
+            TeamEntity ta = activeTeam(orgX.getId(), null, "TA");
+            TeamEntity tb = activeTeam(orgX.getId(), null, "TB");
+            flushAndClear();
+            Map<String, Object> items = new LinkedHashMap<>();
+            items.put("targetTeamIds", List.of(ta.getSlug(), tb.getSlug()));
+            long id = saveTemplate("2チーム", items);
+
+            TeamEntity deleted = teamRepository.findById(tb.getId()).orElseThrow();
+            deleted.softDelete();
+            teamRepository.saveAndFlush(deleted);
+            flushAndClear();
+
+            // 一覧: 削除済みのチームを黙って落とさない（落とすと残りのチームだけで適用・送信できてしまう）
+            JsonNode list = objectMapper.readTree(listTemplates(XA, orgX.getId())
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+            JsonNode saved = null;
+            for (JsonNode t : list.path("data")) {
+                if (t.path("id").asLong() == id) {
+                    saved = t;
+                }
+            }
+            assertThat(saved).as("保存したテンプレートが一覧にある").isNotNull();
+            List<String> teams = new java.util.ArrayList<>();
+            saved.path("targetTeamIds").forEach(n -> teams.add(n.asText()));
+            assertThat(teams).containsExactly(ta.getSlug(), tb.getSlug());
+
+            // 適用: FE はテンプレートの targetTeamIds と templateId をそのまま送る → 宛先を選び直させる 400 BROADCAST_002
+            Map<String, Object> applied = new LinkedHashMap<>();
+            applied.put("templateId", id);
+            applied.put("targetTeamIds", teams);
+            preview(XA, orgX.getId(), bulletinBody(applied))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("BROADCAST_002"));
+            long before = feedCount(orgX.getId());
+            broadcastToOrg(XA, orgX.getId(), bulletinBody(applied))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("BROADCAST_002"));
+            assertThat(feedCount(orgX.getId())).isEqualTo(before);
+
+            // templateId だけで送っても同じ（保存済みの内部 ID で照合する）
+            broadcastToOrg(XA, orgX.getId(), templateOnlyBody(id))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("BROADCAST_002"));
         }
     }
 }

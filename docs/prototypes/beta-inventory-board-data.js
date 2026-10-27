@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-10-26T16:58:40+00:00",
+  "generatedAt": "2026-10-27T10:13:29+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,19 +8,19 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "f96febf4694141039ae14e71cf5fdc9694d5b8b3",
+    "taskListCommit": "2ef196da04864a75163ef9e6aa282b565f79bcee",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "0688d49bad50eb5a0a3a98ecb7e50c07971cc281ba427086a1bda7efc6b20f62",
+    "taskListSha256": "68c8cd0c5683b627f346649b59f7b180955e0412c65cc007971b3ce7da145421",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "f0c881d07ec69a1edf0d0d35474b7601b167b2372a628967832b719391ef628c"
+    "githubSnapshotSha256": "d1f8c98920a0ffb28039184907dee2dbf3e973ba74fe2ff1dbe76fa6971b710e"
   },
   "sourceCounts": {
     "features": 44,
     "capabilities": 95,
     "splitParents": 33,
-    "campaigns": 598,
+    "campaigns": 601,
     "layer": {
       "能力": 26,
       "ドメイン": 18
@@ -37,11 +37,11 @@ window.BETA_INVENTORY_DATA = {
   "verification": {
     "raw": {
       "features": 44,
-      "campaigns": 598
+      "campaigns": 601
     },
     "parsed": {
       "features": 44,
-      "campaigns": 598,
+      "campaigns": 601,
       "core": 25,
       "noncore": 19,
       "blockers": 23,
@@ -8510,6 +8510,108 @@ window.BETA_INVENTORY_DATA = {
         "runId": "CMP0616-I01-cmp0649-a875668f1796",
         "sourceHead": "d383c4494d5e6debb5cdb833f654fa5e5ae0430b",
         "evidencePath": "docs/evidence/CMP-261021-0649/I01-resident-D-summary.json"
+      },
+      {
+        "id": "W3-R1-DE",
+        "personaArchetype": "多言語ユーザー×素直",
+        "runId": "october-wave3-residents-20261027",
+        "sourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+        "originalResidentId": "W3-R1-DE",
+        "testAccountId": "[private runtime evidence]",
+        "sourceEvidencePath": ".claude/runtime/october-third-wave-20261026/residents/R1/summary.json",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "W3-R2-MOBILE",
+        "personaArchetype": "スマホ片手操作×表示崩れ",
+        "runId": "october-wave3-residents-20261027",
+        "sourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+        "originalResidentId": "W3-R2-MOBILE",
+        "testAccountId": "[private runtime evidence]",
+        "sourceEvidencePath": ".claude/runtime/october-third-wave-20261026/residents/R2/summary.json",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "W3-R3-INTERRUPT",
+        "personaArchetype": "ADHD傾向×中断・放棄 / 非所属",
+        "runId": "october-wave3-residents-20261027",
+        "sourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+        "originalResidentId": "W3-R3-INTERRUPT",
+        "testAccountId": "[private runtime evidence]",
+        "sourceEvidencePath": ".claude/runtime/october-third-wave-20261026/residents/R3/summary.json",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "W4-R1-MULTILINGUAL",
+        "personaArchetype": "多言語ドイツ語・素直な管理者",
+        "originalResidentId": "W4-R1-MULTILINGUAL",
+        "testAccountId": "[private runtime evidence]",
+        "sourceEvidencePath": ".claude/runtime/october-fourth-wave-20261027/residents/R1/report.json",
+        "runId": "october-wave4-residents-20261027",
+        "sourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+        "evidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "W4-R2-MOBILE",
+        "personaArchetype": "スマホ片手操作・表示崩れを気にする新メンバー",
+        "originalResidentId": "W4-R2-MOBILE",
+        "testAccountId": "[private runtime evidence]",
+        "sourceEvidencePath": ".claude/runtime/october-fourth-wave-20261027/residents/R2/observations.json",
+        "runId": "october-wave4-residents-20261027",
+        "sourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+        "evidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "W4-R3-INTERRUPT",
+        "personaArchetype": "ADHD傾向・中断放棄する別チーム管理者",
+        "originalResidentId": "W4-R3-INTERRUPT",
+        "testAccountId": "[private runtime evidence]",
+        "sourceEvidencePath": ".claude/runtime/october-fourth-wave-20261027/residents/R3/report.json",
+        "runId": "october-wave4-residents-20261027",
+        "sourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+        "evidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "CMP1432A-I03-A",
+        "personaArchetype": "ADHD傾向×中断・放棄",
+        "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+        "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+        "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+        "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-A-safe.json",
+        "personaIdSource": "resident-finish-root.jsonでrootが登録時付与。",
+        "personaArchetypeSource": "resident-purpose-contract.jsonのpersonas.axisA/axisBを保持。"
+      },
+      {
+        "id": "CMP1432A-I03-B",
+        "personaArchetype": "高齢・低リテラシー×素直",
+        "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+        "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+        "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+        "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-B-safe.json",
+        "personaIdSource": "resident-finish-root.jsonでrootが登録時付与。",
+        "personaArchetypeSource": "resident-purpose-contract.jsonのpersonas.axisA/axisBを保持。"
+      },
+      {
+        "id": "CMP1432A-I03-D",
+        "personaArchetype": "一般×隙間狙い",
+        "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+        "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+        "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+        "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-D-safe.json",
+        "personaIdSource": "resident-finish-root.jsonでrootが登録時付与。",
+        "personaArchetypeSource": "resident-purpose-contract.jsonのpersonas.axisA/axisBを保持。"
       }
     ],
     "journeys": [
@@ -8700,6 +8802,148 @@ window.BETA_INVENTORY_DATA = {
         },
         "coveragePassed": false,
         "goalsReached": false
+      },
+      {
+        "id": "W3-R1-DE-old-org-cup-roster",
+        "personaId": "W3-R1-DE",
+        "purpose": "旧組織URLからドイツ語でCup名簿を整え、関連情報を理解する",
+        "runId": "october-wave3-residents-20261027",
+        "sourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+        "sourceJourneyId": "W3-R1-DE-old-org-cup-roster",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "W3-R2-OLD-TEAM-TO-CUP",
+        "personaId": "W3-R2-MOBILE",
+        "purpose": "旧チームURLから現在の所属と自分の大会登録状況を確認する",
+        "runId": "october-wave3-residents-20261027",
+        "sourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+        "sourceJourneyId": "W3-R2-OLD-TEAM-TO-CUP",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "W3-R3-old-links-public-cup-interrupt",
+        "personaId": "W3-R3-INTERRUPT",
+        "purpose": "旧org/team案内から公開Cupを探し、中断しても自然に戻る",
+        "runId": "october-wave3-residents-20261027",
+        "sourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+        "sourceJourneyId": "W3-R3-old-links-public-cup-interrupt",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "W4-R1-module-navigation",
+        "personaId": "W4-R1-MULTILINGUAL",
+        "purpose": "新しいチームで予約機能を使えるようにし、開始場所を理解する",
+        "sourceJourneyId": "W4-R1-module-navigation",
+        "runId": "october-wave4-residents-20261027",
+        "sourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+        "evidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "W4-R2-module-navigation",
+        "personaId": "W4-R2-MOBILE",
+        "purpose": "予定と利用可能機能を確認し、予約場所を見つける",
+        "sourceJourneyId": "W4-R2-module-navigation",
+        "runId": "october-wave4-residents-20261027",
+        "sourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+        "evidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "W4-R3-module-navigation",
+        "personaId": "W4-R3-INTERRUPT",
+        "purpose": "公開別チームと自チームを比べ、利用準備する",
+        "sourceJourneyId": "W4-R3-module-navigation",
+        "runId": "october-wave4-residents-20261027",
+        "sourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+        "evidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "CMP1432A-I03-A-journey",
+        "personaId": "CMP1432A-I03-A",
+        "purpose": "10月29日18時の自分の担当をBへ相談し、中断復帰後に相談状態と自分の予定を確認する",
+        "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+        "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+        "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+        "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-A-safe.json",
+        "journeyIdSource": "原住民報告にIDなし。登録時付与。",
+        "executionCompleted": true,
+        "goalsReached": false,
+        "coveragePassed": false,
+        "outcome": {
+          "requestSubmittedViaUi": true,
+          "reasonExact": true,
+          "duplicateSubmission": false,
+          "ownDutyRediscovered": true,
+          "consultationStatusRediscovered": false,
+          "otherActorsOutcomeInferred": false
+        }
+      },
+      {
+        "id": "CMP1432A-I03-B-journey",
+        "personaId": "CMP1432A-I03-B",
+        "purpose": "普段の画面からAの18時担当相談を探して受諾し、離脱復帰後に相談状態と新しい担当を確認する",
+        "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+        "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+        "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+        "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-B-safe.json",
+        "journeyIdSource": "原住民報告にIDなし。登録時付与。",
+        "executionCompleted": true,
+        "goalsReached": false,
+        "coveragePassed": false,
+        "outcome": {
+          "findIncomingConsultation": false,
+          "acceptConsultation": false,
+          "leaveAndReturn": true,
+          "recheckOwnAssignment": true,
+          "confirmNew18Assignment": false,
+          "summary403UiCausalityVerified": false,
+          "visualInspectionPerformed": false
+        }
+      },
+      {
+        "id": "CMP1432A-I03-D-journey",
+        "personaId": "CMP1432A-I03-D",
+        "purpose": "対象理由の相談を探しB受諾後に管理者承認し、旧新担当とCの保持を確認する。余裕時にS3/X境界を観測する",
+        "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+        "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+        "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+        "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-D-safe.json",
+        "journeyIdSource": "原住民報告にIDなし。登録時付与。",
+        "executionCompleted": true,
+        "goalsReached": false,
+        "coveragePassed": false,
+        "outcome": {
+          "targetReasonFound": true,
+          "preApproval18Assignment": [
+            "A",
+            "C"
+          ],
+          "approvalCompleted": false,
+          "postApprovalAssignmentsConfirmed": false,
+          "S3XPerformed": false,
+          "rawGoalsReachedPartialAchievements": [
+            "目的理由の未処理相談をUIで発見",
+            "承認前18-19時担当A+CをUI確認"
+          ],
+          "rawGoalsReachedInterpretation": "部分達成の列挙。bool trueへ変換しない。",
+          "goalsUnreached": [
+            "B受諾後の管理者承認",
+            "承認後の相談状態/B担当/C保持確認",
+            "余裕時S3/X境界"
+          ]
+        }
       }
     ],
     "insights": [
@@ -9096,8 +9340,831 @@ window.BETA_INVENTORY_DATA = {
         "urgency": "normal",
         "priority": "could",
         "screenshotPath": ""
+      },
+      {
+        "id": "CMP-WAVE3-W3-R1-DE-O1",
+        "featureKey": "organization-manage",
+        "featureDetail": "第三陣の実UI探索・未実証観測",
+        "title": "de組織基本情報の日本語残存候補",
+        "detail": "de表示で組織基本情報のラベルが日本語だった。固有名・ユーザー名は対象外。原因未調査。",
+        "page": "/organizations/w3e-o-mvpxiuqd-new/tournaments/5",
+        "personaId": "W3-R1-DE",
+        "personaArchetype": "多言語ユーザー×素直",
+        "journeyId": "W3-R1-DE-old-org-cup-roster",
+        "originalRunId": "october-wave3-residents-20261027",
+        "runId": "october-wave3-residents-20261027",
+        "sourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+        "sourceEvidencePath": ".claude/runtime/october-third-wave-20261026/residents/R1/summary.json",
+        "screenshotPath": ".claude/runtime/october-third-wave-20261026/residents/R1/10-de-organization.png",
+        "originalObservationId": "O1",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-WAVE3-W3-R1-DE-O2",
+        "featureKey": "tournament",
+        "featureDetail": "第三陣の実UI探索・未実証観測",
+        "title": "de大会画面の日本語残存候補",
+        "detail": "de大会一覧/詳細に日本語ラベルが残った。名簿1名のUI保存は200で再読済み。",
+        "page": "/organizations/w3e-o-mvpxiuqd-new/tournaments/5",
+        "personaId": "W3-R1-DE",
+        "personaArchetype": "多言語ユーザー×素直",
+        "journeyId": "W3-R1-DE-old-org-cup-roster",
+        "originalRunId": "october-wave3-residents-20261027",
+        "runId": "october-wave3-residents-20261027",
+        "sourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+        "sourceEvidencePath": ".claude/runtime/october-third-wave-20261026/residents/R1/summary.json",
+        "screenshotPath": ".claude/runtime/october-third-wave-20261026/residents/R1/18-cup-ready.png",
+        "originalObservationId": "O2",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-WAVE3-W3-R1-DE-O3",
+        "featureKey": "tournament",
+        "featureDetail": "第三陣の実UI探索・未実証観測",
+        "title": "名簿保存buttonとfooter行の縦9px重なり候補",
+        "detail": "1280x720/deで保存box y584 h44とfooter y619 h44が縦9px重なった。保存click成功、親scroll/overflow未採取、操作不能とは断定しない。",
+        "page": "/organizations/w3e-o-mvpxiuqd-new/tournaments/5",
+        "personaId": "W3-R1-DE",
+        "personaArchetype": "多言語ユーザー×素直",
+        "journeyId": "W3-R1-DE-old-org-cup-roster",
+        "originalRunId": "october-wave3-residents-20261027",
+        "runId": "october-wave3-residents-20261027",
+        "sourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+        "sourceEvidencePath": ".claude/runtime/october-third-wave-20261026/residents/R1/summary.json",
+        "screenshotPath": ".claude/runtime/october-third-wave-20261026/residents/R1/23-pdf-settled.png",
+        "originalObservationId": "O3",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could",
+        "review": {
+          "reviewer": "root",
+          "status": "refuted-as-operation-blocker",
+          "conclusion": "意図した本文スクロール。通常scrollIntoView後に保存44px全体表示、footer重なりなし。原観測は保持。",
+          "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+          "sourceEvidencePath": ".claude/runtime/october-third-wave-20261026/root-repro/modal-geometry.json",
+          "screenshotPath": ".claude/runtime/october-third-wave-20261026/root-repro/03-modal-after-scroll.png"
+        }
+      },
+      {
+        "id": "CMP-WAVE3-W3-R1-DE-O4",
+        "featureKey": "tournament",
+        "featureDetail": "第三陣の実UI探索・未実証観測",
+        "title": "連絡欄の読込400と再試行400",
+        "detail": "Kontaktbereichのcategories/threadsが400、再試行threadsも400。画面は一時的問題と案内。query未保存で認可・仕様・原因は未確認。",
+        "page": "/organizations/w3e-o-mvpxiuqd-new/tournaments/5",
+        "personaId": "W3-R1-DE",
+        "personaArchetype": "多言語ユーザー×素直",
+        "journeyId": "W3-R1-DE-old-org-cup-roster",
+        "originalRunId": "october-wave3-residents-20261027",
+        "runId": "october-wave3-residents-20261027",
+        "sourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+        "sourceEvidencePath": ".claude/runtime/october-third-wave-20261026/residents/R1/summary.json",
+        "screenshotPath": ".claude/runtime/october-third-wave-20261026/residents/R1/29-contact-error-visible.png",
+        "originalObservationId": "O4",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could",
+        "review": {
+          "reviewer": "root",
+          "status": "reproduced-input-contract-mismatch-registration-pending",
+          "conclusion": "contact-spaces200でscopeType/scopeIdを返すが、実UIのthreads/categories queryはscope_typeのみでscope_id欠落→COMMON_001/400。殿がsource DTO不整合を私的記録。既存CMP重複なし、現時点未登録。",
+          "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+          "sourceEvidencePath": ".claude/runtime/october-third-wave-20261026/root-repro/contact-contract-responses.json"
+        }
+      },
+      {
+        "id": "CMP-WAVE3-W3-R2-MOBILE-R2-O1",
+        "featureKey": "tournament",
+        "featureDetail": "第三陣の実UI探索・未実証観測",
+        "title": "登録確認が空試合入力とcommon.loadで止まった",
+        "detail": "Cupまで到達したが、試合メンバー表の空number入力とdisabled common.loadで何を入力するか分からず登録状況は未把握。任意IDは入力せず、仕様違反とは未断定。",
+        "page": "/organizations/w3e-o-mvpxiuqd-new/tournaments/5",
+        "personaId": "W3-R2-MOBILE",
+        "personaArchetype": "スマホ片手操作×表示崩れ",
+        "journeyId": "W3-R2-OLD-TEAM-TO-CUP",
+        "originalRunId": "october-wave3-residents-20261027",
+        "runId": "october-wave3-residents-20261027",
+        "sourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+        "sourceEvidencePath": ".claude/runtime/october-third-wave-20261026/residents/R2/summary.json",
+        "screenshotPath": ".claude/runtime/october-third-wave-20261026/residents/R2/24-rosters-390.png;.claude/runtime/october-third-wave-20261026/residents/R2/27-roster-form-360-visible.png",
+        "originalObservationId": "R2-O1",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-WAVE3-W3-R2-MOBILE-R2-O2",
+        "featureKey": "tournament",
+        "featureDetail": "第三陣の実UI探索・未実証観測",
+        "title": "大会主要リンク高さ34pxの観測",
+        "detail": "390pxのrosters/standings linkは高34px。360/390でtap成功。44px未満という観測候補で操作不能とはしない。",
+        "page": "/organizations/w3e-o-mvpxiuqd-new/tournaments/5",
+        "personaId": "W3-R2-MOBILE",
+        "personaArchetype": "スマホ片手操作×表示崩れ",
+        "journeyId": "W3-R2-OLD-TEAM-TO-CUP",
+        "originalRunId": "october-wave3-residents-20261027",
+        "runId": "october-wave3-residents-20261027",
+        "sourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+        "sourceEvidencePath": ".claude/runtime/october-third-wave-20261026/residents/R2/summary.json",
+        "screenshotPath": ".claude/runtime/october-third-wave-20261026/residents/R2/28-final-cup-360.png;.claude/runtime/october-third-wave-20261026/residents/R2/29-final-cup-390.png",
+        "originalObservationId": "R2-O2",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-WAVE3-W3-R2-MOBILE-R2-O3",
+        "featureKey": "tournament",
+        "featureDetail": "第三陣の実UI探索・未実証観測",
+        "title": "360pxの部名省略とタブ内scroll",
+        "detail": "部名は360pxで省略/矢印、390pxで全文。全29snapshotでpage clientWidth=scrollWidth。タブ内scrollをページ横パンとしない。",
+        "page": "/organizations/w3e-o-mvpxiuqd-new/tournaments/5",
+        "personaId": "W3-R2-MOBILE",
+        "personaArchetype": "スマホ片手操作×表示崩れ",
+        "journeyId": "W3-R2-OLD-TEAM-TO-CUP",
+        "originalRunId": "october-wave3-residents-20261027",
+        "runId": "october-wave3-residents-20261027",
+        "sourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+        "sourceEvidencePath": ".claude/runtime/october-third-wave-20261026/residents/R2/summary.json",
+        "screenshotPath": ".claude/runtime/october-third-wave-20261026/residents/R2/22-cup-360.png;.claude/runtime/october-third-wave-20261026/residents/R2/21-cup-390.png",
+        "originalObservationId": "R2-O3",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-WAVE3-W3-R2-MOBILE-R2-O4",
+        "featureKey": "organization-manage",
+        "featureDetail": "第三陣の実UI探索・未実証観測",
+        "title": "探索中dynamic module import失敗の観測",
+        "detail": "UI操作中dynamic module import pageerror2件とCSP reports404を観測した。後続UIは操作可能。原因未調査。",
+        "page": "/organizations/w3e-o-mvpxiuqd-new/tournaments/5",
+        "personaId": "W3-R2-MOBILE",
+        "personaArchetype": "スマホ片手操作×表示崩れ",
+        "journeyId": "W3-R2-OLD-TEAM-TO-CUP",
+        "originalRunId": "october-wave3-residents-20261027",
+        "runId": "october-wave3-residents-20261027",
+        "sourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+        "sourceEvidencePath": ".claude/runtime/october-third-wave-20261026/residents/R2/summary.json",
+        "screenshotPath": "",
+        "originalObservationId": "R2-O4",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-WAVE3-W3-R3-INTERRUPT-W3-R3-01",
+        "featureKey": "auth",
+        "featureDetail": "第三陣の実UI探索・未実証観測",
+        "title": "login200後のNET_NETWORK_CHANGEDと白紙",
+        "detail": "実UI login200後waitForURLがNET_NETWORK_CHANGED、chrome-error白紙。精密発生時刻未記録。再loginせず旧URLから公開情報へ復帰し、原因は未調査。",
+        "page": "/teams/w3e-t-mvpxiuqd-new/info",
+        "personaId": "W3-R3-INTERRUPT",
+        "personaArchetype": "ADHD傾向×中断・放棄 / 非所属",
+        "journeyId": "W3-R3-old-links-public-cup-interrupt",
+        "originalRunId": "october-wave3-residents-20261027",
+        "runId": "october-wave3-residents-20261027",
+        "sourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+        "sourceEvidencePath": ".claude/runtime/october-third-wave-20261026/residents/R3/summary.json",
+        "screenshotPath": ".claude/runtime/october-third-wave-20261026/residents/R3/02-login-state.png",
+        "originalObservationId": "W3-R3-01",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-WAVE3-W3-R3-INTERRUPT-W3-R3-02",
+        "featureKey": "organization-manage",
+        "featureDetail": "第三陣の実UI探索・未実証観測",
+        "title": "旧org/teamから公開基本情報への復帰を観測",
+        "detail": "旧org/teamリンクから新slugの公開基本情報へ遷移、query/hash保持を観測。非公開情報の漏洩を認定する観測ではない。",
+        "page": "/teams/w3e-t-mvpxiuqd-new/info",
+        "personaId": "W3-R3-INTERRUPT",
+        "personaArchetype": "ADHD傾向×中断・放棄 / 非所属",
+        "journeyId": "W3-R3-old-links-public-cup-interrupt",
+        "originalRunId": "october-wave3-residents-20261027",
+        "runId": "october-wave3-residents-20261027",
+        "sourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+        "sourceEvidencePath": ".claude/runtime/october-third-wave-20261026/residents/R3/summary.json",
+        "screenshotPath": ".claude/runtime/october-third-wave-20261026/residents/R3/04-org-ready.png;.claude/runtime/october-third-wave-20261026/residents/R3/13-old-team-ready.png",
+        "originalObservationId": "W3-R3-02",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-WAVE3-W3-R3-INTERRUPT-W3-R3-03",
+        "featureKey": "tournament",
+        "featureDetail": "第三陣の実UI探索・未実証観測",
+        "title": "非所属者は公開Cup導線を見つけられなかった",
+        "detail": "非メンバー向け一部widget非表示案内があり、見えたsectionを探したがCup名/大会導線を見つけられず目的partial。導線不存在や仕様違反とは未断定。",
+        "page": "/teams/w3e-t-mvpxiuqd-new/info",
+        "personaId": "W3-R3-INTERRUPT",
+        "personaArchetype": "ADHD傾向×中断・放棄 / 非所属",
+        "journeyId": "W3-R3-old-links-public-cup-interrupt",
+        "originalRunId": "october-wave3-residents-20261027",
+        "runId": "october-wave3-residents-20261027",
+        "sourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+        "sourceEvidencePath": ".claude/runtime/october-third-wave-20261026/residents/R3/summary.json",
+        "screenshotPath": ".claude/runtime/october-third-wave-20261026/residents/R3/10-org-dashboard-settled.png;.claude/runtime/october-third-wave-20261026/residents/R3/16-team-sections.png",
+        "originalObservationId": "W3-R3-03",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-WAVE3-W3-R3-INTERRUPT-W3-R3-04",
+        "featureKey": "organization-manage",
+        "featureDetail": "第三陣の実UI探索・未実証観測",
+        "title": "別タブ中断後の基本情報復帰を観測",
+        "detail": "同contextのabout:blank別タブへ中断し元タブへ戻り、最終team基本情報を再表示。locator曖昧さによる別dashboard選択やtimeoutは製品欠陥としない。",
+        "page": "/teams/w3e-t-mvpxiuqd-new/info",
+        "personaId": "W3-R3-INTERRUPT",
+        "personaArchetype": "ADHD傾向×中断・放棄 / 非所属",
+        "journeyId": "W3-R3-old-links-public-cup-interrupt",
+        "originalRunId": "october-wave3-residents-20261027",
+        "runId": "october-wave3-residents-20261027",
+        "sourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "evidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+        "sourceEvidencePath": ".claude/runtime/october-third-wave-20261026/residents/R3/summary.json",
+        "screenshotPath": ".claude/runtime/october-third-wave-20261026/residents/R3/08-after-tab-interruption.png;.claude/runtime/october-third-wave-20261026/residents/R3/18-final-info.png",
+        "originalObservationId": "W3-R3-04",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-WAVE4-W4-R1-MULTILINGUAL-W4-R1-01",
+        "featureKey": "team-modules",
+        "featureDetail": "第四波の実UI探索・未実証観測",
+        "title": "de表示のカード名・説明が日本語",
+        "detail": "予約カードを同定できず有効化を行わず。原因未調査・今回削除との因果未実証。",
+        "page": "/teams/cmp2338-target-3070910257/modules",
+        "personaId": "W4-R1-MULTILINGUAL",
+        "personaArchetype": "多言語ドイツ語・素直な管理者",
+        "journeyId": "W4-R1-module-navigation",
+        "originalRunId": "october-wave4-residents-20261027",
+        "runId": "october-wave4-residents-20261027",
+        "sourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+        "evidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
+        "sourceEvidencePath": ".claude/runtime/october-fourth-wave-20261027/residents/R1/report.json",
+        "screenshotPath": ".claude/runtime/october-fourth-wave-20261027/residents/R1/08-modules-1280x720.png;.claude/runtime/october-fourth-wave-20261027/residents/R1/08-modules-1440x900.png",
+        "originalObservationId": "W4-R1-01",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-WAVE4-W4-R1-MULTILINGUAL-W4-R1-02",
+        "featureKey": "team-modules",
+        "featureDetail": "第四波の実UI探索・未実証観測",
+        "title": "機能設定に小さい操作要素",
+        "detail": "実要素の寸法。親を含むヒット領域・影響未確定。",
+        "page": "/teams/cmp2338-target-3070910257/modules",
+        "personaId": "W4-R1-MULTILINGUAL",
+        "personaArchetype": "多言語ドイツ語・素直な管理者",
+        "journeyId": "W4-R1-module-navigation",
+        "originalRunId": "october-wave4-residents-20261027",
+        "runId": "october-wave4-residents-20261027",
+        "sourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+        "evidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
+        "sourceEvidencePath": ".claude/runtime/october-fourth-wave-20261027/residents/R1/report.json",
+        "screenshotPath": ".claude/runtime/october-fourth-wave-20261027/residents/R1/08-modules-1440x900.png",
+        "originalObservationId": "W4-R1-02",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could",
+        "dimensions": {
+          "help": [
+            110,
+            35
+          ],
+          "input": [
+            40,
+            24
+          ],
+          "refresh": [
+            32,
+            32
+          ]
+        }
+      },
+      {
+        "id": "CMP-WAVE4-W4-R1-MULTILINGUAL-W4-R1-03",
+        "featureKey": "team-modules",
+        "featureDetail": "第四波の実UI探索・未実証観測",
+        "title": "低いviewportでカードまで下スクロール",
+        "detail": "1024×576では先頭viewportがヘッダーとタブ。欠陥・重大度未確定。",
+        "page": "/teams/cmp2338-target-3070910257/modules",
+        "personaId": "W4-R1-MULTILINGUAL",
+        "personaArchetype": "多言語ドイツ語・素直な管理者",
+        "journeyId": "W4-R1-module-navigation",
+        "originalRunId": "october-wave4-residents-20261027",
+        "runId": "october-wave4-residents-20261027",
+        "sourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+        "evidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
+        "sourceEvidencePath": ".claude/runtime/october-fourth-wave-20261027/residents/R1/report.json",
+        "screenshotPath": ".claude/runtime/october-fourth-wave-20261027/residents/R1/08-modules-1024x576.png",
+        "originalObservationId": "W4-R1-03",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-WAVE4-W4-R2-MOBILE-W4-R2-01",
+        "featureKey": "team-modules",
+        "featureDetail": "第四波の実UI探索・未実証観測",
+        "title": "スマホ幅で文字省略",
+        "detail": "390px/360pxでチーム名とカテゴリ説明が省略記号になる。360pxの予定・活動説明は『今後の予定 / 活動記録…』となり『ほか2件』が見えない。意図的な省略か不具合かは未判定。 原因・欠陥判定は未確定。",
+        "page": "/teams/cmp2338-target-3070910257",
+        "personaId": "W4-R2-MOBILE",
+        "personaArchetype": "スマホ片手操作・表示崩れを気にする新メンバー",
+        "journeyId": "W4-R2-module-navigation",
+        "originalRunId": "october-wave4-residents-20261027",
+        "runId": "october-wave4-residents-20261027",
+        "sourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+        "evidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
+        "sourceEvidencePath": ".claude/runtime/october-fourth-wave-20261027/residents/R2/observations.json",
+        "screenshotPath": ".claude/runtime/october-fourth-wave-20261027/residents/R2/04-team390-ready.png;.claude/runtime/october-fourth-wave-20261027/residents/R2/18-activity360.png;.claude/runtime/october-fourth-wave-20261027/residents/R2/19-activity360-scrolled.png",
+        "originalObservationId": "W4-R2-01",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could",
+        "dimensions": {
+          "headingClientWidth": 224,
+          "headingScrollWidth": 379,
+          "descriptionClientWidth": 154,
+          "descriptionScrollWidth": 191,
+          "overflow": "hidden",
+          "textOverflow": "ellipsis",
+          "whiteSpace": "nowrap"
+        }
+      },
+      {
+        "id": "CMP-WAVE4-W4-R2-MOBILE-W4-R2-02",
+        "featureKey": "team-modules",
+        "featureDetail": "第四波の実UI探索・未実証観測",
+        "title": "片手操作の小さい対象",
+        "detail": "タブ送り『次へ』の幅40px、今後の予定リンクの高さ30px、隣の開閉操作28x32pxを観測。44x44未満の片手操作対象。操作不能とは判定していない。 原因・欠陥判定は未確定。",
+        "page": "/teams/cmp2338-target-3070910257",
+        "personaId": "W4-R2-MOBILE",
+        "personaArchetype": "スマホ片手操作・表示崩れを気にする新メンバー",
+        "journeyId": "W4-R2-module-navigation",
+        "originalRunId": "october-wave4-residents-20261027",
+        "runId": "october-wave4-residents-20261027",
+        "sourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+        "evidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
+        "sourceEvidencePath": ".claude/runtime/october-fourth-wave-20261027/residents/R2/observations.json",
+        "screenshotPath": ".claude/runtime/october-fourth-wave-20261027/residents/R2/04-team390-ready.png;.claude/runtime/october-fourth-wave-20261027/residents/R2/19-activity360-scrolled.png",
+        "originalObservationId": "W4-R2-02",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could",
+        "dimensions": {
+          "next": {
+            "width": 40,
+            "height": 77
+          },
+          "upcomingLink": {
+            "width": 120,
+            "height": 30
+          },
+          "toggle": {
+            "width": 28,
+            "height": 32
+          }
+        }
+      },
+      {
+        "id": "CMP-WAVE4-W4-R2-MOBILE-W4-R2-03",
+        "featureKey": "team-modules",
+        "featureDetail": "第四波の実UI探索・未実証観測",
+        "title": "空予定と施設メニューの探索",
+        "detail": "今後の予定からスケジュールへ到達。2026年10月『この期間の予定はありません』。チーム施設管理を開くと表示された子項目はインシデント。予約入口は見つからなかった。 原因・欠陥判定は未確定。",
+        "page": "/teams/cmp2338-target-3070910257/schedule",
+        "personaId": "W4-R2-MOBILE",
+        "personaArchetype": "スマホ片手操作・表示崩れを気にする新メンバー",
+        "journeyId": "W4-R2-module-navigation",
+        "originalRunId": "october-wave4-residents-20261027",
+        "runId": "october-wave4-residents-20261027",
+        "sourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+        "evidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
+        "sourceEvidencePath": ".claude/runtime/october-fourth-wave-20261027/residents/R2/observations.json",
+        "screenshotPath": ".claude/runtime/october-fourth-wave-20261027/residents/R2/07-upcoming-ready.png;.claude/runtime/october-fourth-wave-20261027/residents/R2/09-menu-ready.png;.claude/runtime/october-fourth-wave-20261027/residents/R2/13-facility-menu360.png",
+        "originalObservationId": "W4-R2-03",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could",
+        "dimensions": {
+          "documentWidth390": 390,
+          "documentWidth360": 360
+        }
+      },
+      {
+        "id": "CMP-WAVE4-W4-R2-MOBILE-W4-R2-04",
+        "featureKey": "team-modules",
+        "featureDetail": "第四波の実UI探索・未実証観測",
+        "title": "予約確認の空状態から開始先を探す",
+        "detail": "全体メニューの予約確認へ到達。予約がありませんと表示。使い方は予約済み枠や状態の説明。空状態/使い方で新規予約先へ進む入口を見つけられず。探索範囲外の入口有無や原因は未判定。 原因・欠陥判定は未確定。",
+        "page": "/my/reservations",
+        "personaId": "W4-R2-MOBILE",
+        "personaArchetype": "スマホ片手操作・表示崩れを気にする新メンバー",
+        "journeyId": "W4-R2-module-navigation",
+        "originalRunId": "october-wave4-residents-20261027",
+        "runId": "october-wave4-residents-20261027",
+        "sourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+        "evidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
+        "sourceEvidencePath": ".claude/runtime/october-fourth-wave-20261027/residents/R2/observations.json",
+        "screenshotPath": ".claude/runtime/october-fourth-wave-20261027/residents/R2/14-global-menu360.png;.claude/runtime/october-fourth-wave-20261027/residents/R2/16-booking-ready.png;.claude/runtime/october-fourth-wave-20261027/residents/R2/17-booking-help360.png",
+        "originalObservationId": "W4-R2-04",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could",
+        "dimensions": {
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "document": {
+            "width": 360,
+            "height": 800
+          }
+        }
+      },
+      {
+        "id": "CMP-WAVE4-W4-R3-INTERRUPT-W4-R3-01",
+        "featureKey": "team-modules",
+        "featureDetail": "第四波の実UI探索・未実証観測",
+        "title": "公開別チームの空予定で比較が進まない",
+        "detail": "予定入口と空の10月カレンダーを確認。活動内容を把握できず。原因・欠陥判定なし。",
+        "page": "/teams/cmp2338-target-3070910257/schedule",
+        "personaId": "W4-R3-INTERRUPT",
+        "personaArchetype": "ADHD傾向・中断放棄する別チーム管理者",
+        "journeyId": "W4-R3-module-navigation",
+        "originalRunId": "october-wave4-residents-20261027",
+        "runId": "october-wave4-residents-20261027",
+        "sourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+        "evidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
+        "sourceEvidencePath": ".claude/runtime/october-fourth-wave-20261027/residents/R3/report.json",
+        "screenshotPath": ".claude/runtime/october-fourth-wave-20261027/residents/R3/07-target-stable.png;.claude/runtime/october-fourth-wave-20261027/residents/R3/09-target-schedule.png",
+        "originalObservationId": "W4-R3-01",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-WAVE4-W4-R3-INTERRUPT-W4-R3-02",
+        "featureKey": "team-modules",
+        "featureDetail": "第四波の実UI探索・未実証観測",
+        "title": "別タブ中断から自チームへ戻る",
+        "detail": "あとで決めるで閉じた初期設定ダイアログは再表示せず。設定画面に戻り説明を確認したが機能選定・有効化には至らず。",
+        "page": "/teams/cmp2338-other-3070910257/modules",
+        "personaId": "W4-R3-INTERRUPT",
+        "personaArchetype": "ADHD傾向・中断放棄する別チーム管理者",
+        "journeyId": "W4-R3-module-navigation",
+        "originalRunId": "october-wave4-residents-20261027",
+        "runId": "october-wave4-residents-20261027",
+        "sourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+        "evidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
+        "sourceEvidencePath": ".claude/runtime/october-fourth-wave-20261027/residents/R3/report.json",
+        "screenshotPath": ".claude/runtime/october-fourth-wave-20261027/residents/R3/10-return-own.png;.claude/runtime/october-fourth-wave-20261027/residents/R3/18-final-modules.png",
+        "originalObservationId": "W4-R3-02",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP-WAVE4-W4-R3-INTERRUPT-W4-R3-03",
+        "featureKey": "team-modules",
+        "featureDetail": "第四波の実UI探索・未実証観測",
+        "title": "機能選択を放棄",
+        "detail": "説明と0/10を確認したが利用準備未達。role locator timeout後は確認済みhrefに移動。クリック不能と断定しない。",
+        "page": "/teams/cmp2338-other-3070910257/modules",
+        "personaId": "W4-R3-INTERRUPT",
+        "personaArchetype": "ADHD傾向・中断放棄する別チーム管理者",
+        "journeyId": "W4-R3-module-navigation",
+        "originalRunId": "october-wave4-residents-20261027",
+        "runId": "october-wave4-residents-20261027",
+        "sourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+        "evidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
+        "sourceEvidencePath": ".claude/runtime/october-fourth-wave-20261027/residents/R3/report.json",
+        "screenshotPath": ".claude/runtime/october-fourth-wave-20261027/residents/R3/16-modules-help.png;.claude/runtime/october-fourth-wave-20261027/residents/R3/18-final-modules.png",
+        "originalObservationId": "W4-R3-03",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could",
+        "dimensions": {
+          "viewport": [
+            1440,
+            900
+          ],
+          "moduleInput": [
+            40,
+            24
+          ],
+          "moduleHelp": [
+            86,
+            35
+          ],
+          "save": [
+            82,
+            44
+          ]
+        }
+      },
+      {
+        "id": "CMP-WAVE4-W4-R3-INTERRUPT-W4-R3-04",
+        "featureKey": "team-modules",
+        "featureDetail": "第四波の実UI探索・未実証観測",
+        "title": "初期画面と安定後でカテゴリ件数が変化",
+        "detail": "初期PNG4/4/5、安定後1/0/2。ロード中観測として保持し原因・欠陥判定なし。",
+        "page": "/teams/cmp2338-target-3070910257",
+        "personaId": "W4-R3-INTERRUPT",
+        "personaArchetype": "ADHD傾向・中断放棄する別チーム管理者",
+        "journeyId": "W4-R3-module-navigation",
+        "originalRunId": "october-wave4-residents-20261027",
+        "runId": "october-wave4-residents-20261027",
+        "sourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+        "evidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
+        "sourceEvidencePath": ".claude/runtime/october-fourth-wave-20261027/residents/R3/report.json",
+        "screenshotPath": ".claude/runtime/october-fourth-wave-20261027/residents/R3/05-target-tab.png;.claude/runtime/october-fourth-wave-20261027/residents/R3/07-target-stable.png",
+        "originalObservationId": "W4-R3-04",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "when-free",
+        "priority": "could"
+      },
+      {
+        "id": "CMP1432A-I03-A-01",
+        "featureKey": "shift",
+        "featureDetail": "交代相談の独立住民探索・未実証観測",
+        "title": "交代相談を1回提出し、自分の担当へ戻れた",
+        "detail": "指定理由を入力し提出ボタンで1回送信、dialogが閉じた。中断復帰後も10月29日18〜19時の自分担当を再発見。再提出なし。受諾・承認・他住民の結果は推論しない。",
+        "page": "/my/shift",
+        "personaId": "CMP1432A-I03-A",
+        "personaArchetype": "ADHD傾向×中断・放棄",
+        "journeyId": "CMP1432A-I03-A-journey",
+        "originalRunId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+        "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+        "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+        "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+        "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-A-safe.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "normal",
+        "priority": "should",
+        "screenshotPath": ".claude/campaigns/cmp1432a-approved-20261027/A-final-my-shift.png"
+      },
+      {
+        "id": "CMP1432A-I03-A-02",
+        "featureKey": "shift",
+        "featureDetail": "交代相談の独立住民探索・未実証観測",
+        "title": "提出後の相談状態を再発見できなかった",
+        "detail": "インボックス、シフト管理、通知とマイシフトを自律探索したが、相談状態や処理者を発見できなかった。自担当への復帰は達成したが、目的全体は未達。原因未実証。",
+        "page": "/my/shift",
+        "personaId": "CMP1432A-I03-A",
+        "personaArchetype": "ADHD傾向×中断・放棄",
+        "journeyId": "CMP1432A-I03-A-journey",
+        "originalRunId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+        "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+        "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+        "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+        "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-A-safe.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "normal",
+        "priority": "should",
+        "screenshotPath": ".claude/campaigns/cmp1432a-approved-20261027/A-returned-week.png"
+      },
+      {
+        "id": "CMP1432A-I03-B-01",
+        "featureKey": "shift",
+        "featureDetail": "交代相談の独立住民探索・未実証観測",
+        "title": "受信相談と受諾操作を発見できなかった",
+        "detail": "ダッシュボード、マイシフト、シフト表、インボックス、チームメニューを探索。再訪・再読込・週表示で自担当08時/14時の2件へ戻れたが、Aからの相談発見・受諾・新18時担当確認は未達。",
+        "page": "/my/shift",
+        "personaId": "CMP1432A-I03-B",
+        "personaArchetype": "高齢・低リテラシー×素直",
+        "journeyId": "CMP1432A-I03-B-journey",
+        "originalRunId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+        "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+        "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+        "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+        "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-B-safe.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "normal",
+        "priority": "should"
+      },
+      {
+        "id": "CMP1432A-I03-B-02",
+        "featureKey": "shift",
+        "featureDetail": "交代相談の独立住民探索・未実証観測",
+        "title": "summary APIの403を観測したがUIとの関係は未実証",
+        "detail": "networkObservationsに/api/v1/shifts/requests/summaryの403が記録された。UI操作由来か、相談未発見の原因か、認可不備かは未実証。403だけで不具合へ昇格しない。",
+        "page": "/api/v1/shifts/requests/summary",
+        "personaId": "CMP1432A-I03-B",
+        "personaArchetype": "高齢・低リテラシー×素直",
+        "journeyId": "CMP1432A-I03-B-journey",
+        "originalRunId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+        "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+        "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+        "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+        "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-B-safe.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "normal",
+        "priority": "should"
+      },
+      {
+        "id": "CMP1432A-I03-D-01",
+        "featureKey": "shift",
+        "featureDetail": "交代相談の独立住民探索・未実証観測",
+        "title": "対象理由の相談は承諾待ちのままで承認未達",
+        "detail": "ダッシュボード承認cardからシフト交換一覧へ自力到達し、対象理由の未処理相談を発見。承認前18〜19時のA+Cを確認。交代相手未定/承諾待ちが再訪でも続き、B受諾後の管理者承認、承認後担当比較、S3/Xは未実施。",
+        "page": null,
+        "personaId": "CMP1432A-I03-D",
+        "personaArchetype": "一般×隙間狙い",
+        "journeyId": "CMP1432A-I03-D-journey",
+        "originalRunId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+        "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+        "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+        "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+        "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-D-safe.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "normal",
+        "priority": "should",
+        "pageLabel": "シフト交換リクエスト（dashboard承認カードから遷移）",
+        "pageProvenance": "D原報告に実pathnameなし。未採取。固定追試routeで補完しない。"
+      },
+      {
+        "id": "CMP1432A-I03-D-02",
+        "featureKey": "shift",
+        "featureDetail": "交代相談の独立住民探索・未実証観測",
+        "title": "交換一覧の数値ID表示では日時を判断しにくい",
+        "detail": "申請者/交代相手/スロットが数値IDで日時がなく、対象は理由完全一致で識別したという住民観測。既存CMP-261021-0650と同種の論点だが、原因・修正範囲・今回の不具合確定は行わない。",
+        "page": null,
+        "personaId": "CMP1432A-I03-D",
+        "personaArchetype": "一般×隙間狙い",
+        "journeyId": "CMP1432A-I03-D-journey",
+        "originalRunId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+        "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+        "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+        "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+        "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-D-safe.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "normal",
+        "priority": "should",
+        "pageLabel": "シフト交換リクエスト（dashboard承認カードから遷移）",
+        "pageProvenance": "D原報告に実pathnameなし。未採取。固定追試routeで補完しない。"
       }
-    ]
+    ],
+    "runEnvironments": {
+      "october-wave3-residents-20261027": {
+        "sourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "purpose": "旧6persona/6journey/13insightをdeep保持し、第三陣3住民・12観測を累積。探索実施stageは殿判定passed、個別観測は未実証状態を保持。",
+        "sourceImplementationHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+        "finalProductHead": null,
+        "sourceEvidencePath": "docs/evidence/october-third-wave-20261027/residents.md",
+        "viewport": [
+          "1280x720",
+          "360x800",
+          "390x844"
+        ],
+        "idAssignment": "原persona/journey/run IDを保持。固定P01-P20変換なし。旧objectの原sourceを維持。",
+        "imageProvenance": "新しい住民画像はprivate原本参照。公開代表3PNGは正式実機のfinal summary cases.imagesから複製。",
+        "implementationCandidates": [
+          {
+            "cmpId": "CMP-261006-0632",
+            "pr": 4160,
+            "sha": "903064839a1181d638259ff7d33ca6674c698768",
+            "status": "merged-ci-verified",
+            "mergeCommit": "6011154897ad62d6281da749b994fc754773d42e",
+            "mergedAt": "2026-10-27T04:52:59Z"
+          },
+          {
+            "cmpId": "CMP-261002-0743",
+            "pr": 4143,
+            "sha": "89f8a436354113d7e1affe101af0d06e86c10e68",
+            "status": "merged-ci-verified",
+            "mergeCommit": "13b3698b1ac4d2c1ea0fa4491e0ab9847314ba7d",
+            "mergedAt": "2026-10-27T02:05:57Z"
+          }
+        ],
+        "implementationNote": "0743はPR4143/head89f8/merge13b確定。0632は旧4145を不採用のまま、PR4160/head9030648を全21check終了後に通常mergeしat-merge eligible=true。4targetblobはformal d3d6と一致。",
+        "cleanup": {
+          "status": "removed",
+          "fixtureKinds": 5,
+          "proof": "all DELETE204 then GET404; private exploration-fixture.json status removed",
+          "accountLanguage": "ja restored by root UI; update200 and html/combobox verified",
+          "browser": "all residents and root closed"
+        },
+        "runId": "october-wave3-residents-20261027",
+        "overlayRunId": "october-wave3-resident-overlay-20261027",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "rejectedAdoption": {
+          "pr": 4145,
+          "head": "0c5b1bed3be1d08379addf6dee3c382cc7b76817",
+          "mergeCommit": "fa8a6c6657ec486faed88fe4649d4059eb8b522d",
+          "mergedAt": "2026-10-27T03:22:37Z",
+          "reason": "CI pending at merge; ineligible completion evidence"
+        }
+      },
+      "october-wave4-residents-20261027": {
+        "runId": "october-wave4-residents-20261027",
+        "sourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+        "finalProductHead": "0ac4c26439bbc837ca3214017d95ad0c323400b5",
+        "sourceEvidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
+        "viewport": [
+          "1280x720",
+          "1440x900",
+          "1920x1080",
+          "1024x576",
+          "1152x720",
+          "390x844",
+          "360x800"
+        ],
+        "trusted": false,
+        "status": "observed-unverified",
+        "registrationSource": "actual-resident-artifacts",
+        "implementationCandidates": [
+          {
+            "cmpId": "CMP-261012-2338",
+            "pr": 4156,
+            "sha": "0ac4c26439bbc837ca3214017d95ad0c323400b5",
+            "status": "merged-ci-verified",
+            "candidateHead": "d980728ce2bc5ccce4ec91d172995dbacc3047ed",
+            "mergeCommit": "09854466d335cd5e99b9dc6b80d69e683d761644",
+            "mergedAt": "2026-10-27T05:49:03Z"
+          }
+        ],
+        "rootStage": "exploratory passedは実施判定。目標はR1未達、R2/R3部分達成。",
+        "cleanup": {
+          "moduleChanges": 0,
+          "permissionsChanges": 0,
+          "newDomainObjects": 0,
+          "allContextsClosed": true,
+          "language": "ja→de→ja保存・reload復元",
+          "fixtures28and29": "後続所有照合DELETE204→GET404済み"
+        },
+        "limitation": "最新main全体との環境同一性・回帰因果・観測原因は未実証。"
+      },
+      "CMP1432A-I03-cmp0649-4c89611f1c78": {
+        "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+        "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+        "sourceEvidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "executionCompleted": true,
+        "goalsReached": false,
+        "coveragePassed": false,
+        "idAssignment": "personaIdはresident-finish-root.jsonのroot付与値を保持。runIdはresident-purpose-contract.jsonの原値を保持。journeyIdは原住民報告にないため登録時付与。固定P01-P20へ変換しない。",
+        "independentExploration": true,
+        "fixedFollowupSeparate": true
+      }
+    }
   },
   "decisions": {
     "schemaVersion": 1,
@@ -23141,9 +24208,9 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "Bump actions/upload-artifact from 4 to 7",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3683",
-          "updatedAt": "2026-10-25T15:23:39Z",
+          "updatedAt": "2026-10-27T02:08:13Z",
           "ci": {
-            "status": "success",
+            "status": "failure",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -23168,7 +24235,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "Bump hashicorp/setup-terraform from 3 to 4",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3685",
-          "updatedAt": "2026-10-25T15:23:38Z",
+          "updatedAt": "2026-10-27T02:08:14Z",
           "ci": {
             "status": "success",
             "checks": [],
@@ -23195,7 +24262,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "Bump actions/setup-java from 4 to 6",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3687",
-          "updatedAt": "2026-10-25T15:23:46Z",
+          "updatedAt": "2026-10-27T02:08:24Z",
           "ci": {
             "status": "success",
             "checks": [],
@@ -24033,7 +25100,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-056 全域機械走査: 未変換の付随通知が18箇所リスト外に多数残存（NotificationHelper直呼び）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/2997",
-          "updatedAt": "2026-10-21T10:15:34Z",
+          "updatedAt": "2026-10-27T04:54:22Z",
           "ci": null
         }
       ]
@@ -37499,8 +38566,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261002-0743",
       "title": "大会エントリー/テンプレ不備",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -37514,12 +38581,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260929-0654 派生",
       "issues": [
         {
-          "label": "第三陣着手（2026-10-26、大会エラー6言語契約／旧slug unmount競合）",
+          "label": "実装PR #4143（head89f8a436、merge13b3698b）。unit red68+modal3→87成功、正式実機9成功（初回未認証1timeout・手動再走1・原因未確定）、独立3住民探索（部分達成/未検証観測保持）。exact-head FE40434525496/E2E40434525520/Gate40435673624成功。[完了証拠](evidence/CMP-261002-0743.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "第三陣着手（2026-10-26、大会エラー6言語契約／旧slug unmount競合）"
+        "実装PR #4143（head89f8a436、merge13b3698b）。unit red68+modal3→87成功、正式実機9成功（初回未認証1timeout・手動再走1・原因未確定）、独立3住民探索（部分達成/未検証観測保持）。exact-head FE40434525496/E2E40434525520/Gate40435673624成功。[完了証拠](evidence/CMP-261002-0743.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -37532,10 +38599,27 @@ window.BETA_INVENTORY_DATA = {
         "enum"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4143
+      ],
+      "github": [
+        {
+          "number": 4143,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 大会エントリーのエラー通知と6言語を整合する（CMP-261002-0743）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4143",
+          "updatedAt": "2026-10-27T02:30:58Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-261002-0744",
@@ -40089,8 +41173,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261006-0632",
       "title": "組織・チームページの旧 slug 移動（MOVED）遷移が、slug 遷移で再マウントされた後の新しいページを奪いうる（要求連番がコンポーネントインスタンスごとのため旧インスタンスの待機中処理を失効できない）",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -40104,12 +41188,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "PR #3670 の検分第5巡で Codex が指摘（frontend/app/pages/organizations/[slug].vue の loadShellDataSeq、teams/[slug].vue の fetchTeam も同型）。検分5巡上限のため本 PR では非対応；第三陣着手（2026-10-26、大会エラー6言語契約／旧slug unmount競合）",
+          "label": "正式実装PR #4160（head90306483、merge60111548）。旧PR4145早期マージは不採用、通常revert後に再適用し全21check終了後に採用。unit red6→15成功、MOVED正式実機6成功（初回1失敗5未実行・手動再走1・原因未確定）、独立3住民探索。at-merge eligible、FE40449570283/E2E40449570170/Gate40449569970成功。[完了証拠](evidence/CMP-261006-0632.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "PR #3670 の検分第5巡で Codex が指摘（frontend/app/pages/organizations/[slug].vue の loadShellDataSeq、teams/[slug].vue の fetchTeam も同型）。検分5巡上限のため本 PR では非対応；第三陣着手（2026-10-26、大会エラー6言語契約／旧slug unmount競合）"
+        "正式実装PR #4160（head90306483、merge60111548）。旧PR4145早期マージは不採用、通常revert後に再適用し全21check終了後に採用。unit red6→15成功、MOVED正式実機6成功（初回1失敗5未実行・手動再走1・原因未確定）、独立3住民探索。at-merge eligible、FE40449570283/E2E40449570170/Gate40449569970成功。[完了証拠](evidence/CMP-261006-0632.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -40123,19 +41207,19 @@ window.BETA_INVENTORY_DATA = {
         "onBeforeUnmount"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
-        3670
+        4160
       ],
       "github": [
         {
-          "number": 3670,
+          "number": 4160,
           "kind": "pull_request",
           "state": "merged",
-          "title": "機能修正: 応援・解除後にヘッダのサポーター数を即時反映し、人数表示を多言語化（CMP-261004-1942/1943）",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/3670",
-          "updatedAt": "2026-10-06T00:07:40Z",
+          "title": "修正: CMP-261006-0632 旧slugの破棄後応答ガードを再採用",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4160",
+          "updatedAt": "2026-10-27T05:00:56Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -44497,8 +45581,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261012-2338",
       "title": "`useModuleApi.toggleTeamModule` が呼び出し元のない死んだ関数で、モジュール管理 UI は別の API ラッパーを使っている（重複）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -44512,12 +45596,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260911-0110",
       "issues": [
         {
-          "label": "発見元 PR #3801。実機で死んだ関数と確定（2026-10-13）",
+          "label": "実装PR #4156（head0ac4c264、merge09854466）。死んだwrapper/spec削除と0110参照固定。既存S4-S6は初回setup dialog遮断→権限PUTなし手動再走1で成功、MEMBER/他tenant UI＋同値PATCH403・42catalog不変、独立3住民探索（未達/partial保持）。全CI後採用・at-merge eligible、FE40454793387/E2E40454793400/Gate40454934952成功。[完了証拠](evidence/CMP-261012-2338.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "発見元 PR #3801。実機で死んだ関数と確定（2026-10-13）"
+        "実装PR #4156（head0ac4c264、merge09854466）。死んだwrapper/spec削除と0110参照固定。既存S4-S6は初回setup dialog遮断→権限PUTなし手動再走1で成功、MEMBER/他tenant UI＋同値PATCH403・42catalog不変、独立3住民探索（未達/partial保持）。全CI後採用・at-merge eligible、FE40454793387/E2E40454793400/Gate40454934952成功。[完了証拠](evidence/CMP-261012-2338.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -44536,19 +45620,19 @@ window.BETA_INVENTORY_DATA = {
         "API"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
       "githubRefs": [
-        3801
+        4156
       ],
       "github": [
         {
-          "number": 3801,
+          "number": 4156,
           "kind": "pull_request",
           "state": "merged",
-          "title": "toggleTeamModule がボディを送らず必ず400になる不具合を修正 (CMP-260911-0110)",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/3801",
-          "updatedAt": "2026-10-12T06:51:48Z",
+          "title": "整理: CMP-261012-2338 未使用の機能切替APIを削除",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4156",
+          "updatedAt": "2026-10-27T05:52:53Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -46252,7 +47336,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "merged",
           "title": "CMP-261015-1510 ログイン画面の入力欄・補助リンクを44px以上にする",
           "url": "https://github.com/kenta-0420/mannschaft/pull/4133",
-          "updatedAt": "2026-10-26T11:01:44Z",
+          "updatedAt": "2026-10-26T11:37:18Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -49442,8 +50526,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261021-0660",
       "title": "`/system-admin/email-outbox` が描画されず、画面が空白になる（BE の Page 形式と FE の型の取り違え）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "実装中",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -49457,12 +50541,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260912-1823",
       "issues": [
         {
-          "label": "—",
+          "label": "2026-10-27 着手（Codex 足軽）: SpringPage 全27経路の監査・6型境界の是正・契約番人の拡張を開始。実装・実機・アリシゼーションは未実施（本PRは着手登録のみ）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "2026-10-27 着手（Codex 足軽）: SpringPage 全27経路の監査・6型境界の是正・契約番人の拡張を開始。実装・実機・アリシゼーションは未実施（本PRは着手登録のみ）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -49483,7 +50567,7 @@ window.BETA_INVENTORY_DATA = {
         "PagedResponse"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3285
@@ -50823,19 +51907,19 @@ window.BETA_INVENTORY_DATA = {
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "計画書 §5.1/§9.1 のL0-M計測表・L0-S確認1〜8結論と確定DDL §11.2・L0-C各ストア合計一致/空0の集計スクリプトが揃う",
+      "nextAction": "計画書 §5.1/§9.1 のL0-M基準計測未完了裁可記録（計画§5.1.1）・L0-S確認1〜8結論と確定DDL §11.2・L0-C各ストア合計一致/空0の集計スクリプトが揃う",
       "acceptance": [
-        "計画書 §5.1/§9.1 のL0-M計測表・L0-S確認1〜8結論と確定DDL §11.2・L0-C各ストア合計一致/空0の集計スクリプトが揃う"
+        "計画書 §5.1/§9.1 のL0-M基準計測未完了裁可記録（計画§5.1.1）・L0-S確認1〜8結論と確定DDL §11.2・L0-C各ストア合計一致/空0の集計スクリプトが揃う"
       ],
       "blocker": "CMP-261021-0017",
       "issues": [
         {
-          "label": "[親Issue #4022](https://github.com/kenta-0420/mannschaft/issues/4022)。L0-S: `spike/cmp-261021-0017-modulith-261021`（確認1〜8・DDL §11.2）、L0-C: `feature/4022-boundary-l0-c`（各ストア合計一致/空0の集計スクリプト）、L0-M未着手。登録PR: [#4027](https://github.com/kenta-0420/mannschaft/pull/4027)",
+          "label": "[親Issue #4022](https://github.com/kenta-0420/mannschaft/issues/4022)。L0-S: `spike/cmp-261021-0017-modulith-261021`（確認1〜8・DDL §11.2）、L0-C: `feature/4022-boundary-l0-c`（各ストア合計一致/空0の集計スクリプト）、L0-Mは[裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6430453220)により計測スキップ。基準計測未完了・性能未実証、L3-P比較baseline未実証。担当保持・measurement予約は別owner調整、計測成功扱いにしない。登録PR: [#4027](https://github.com/kenta-0420/mannschaft/pull/4027)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "[親Issue #4022](https://github.com/kenta-0420/mannschaft/issues/4022)。L0-S: `spike/cmp-261021-0017-modulith-261021`（確認1〜8・DDL §11.2）、L0-C: `feature/4022-boundary-l0-c`（各ストア合計一致/空0の集計スクリプト）、L0-M未着手。登録PR: [#4027](https://github.com/kenta-0420/mannschaft/pull/4027)"
+        "[親Issue #4022](https://github.com/kenta-0420/mannschaft/issues/4022)。L0-S: `spike/cmp-261021-0017-modulith-261021`（確認1〜8・DDL §11.2）、L0-C: `feature/4022-boundary-l0-c`（各ストア合計一致/空0の集計スクリプト）、L0-Mは[裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6430453220)により計測スキップ。基準計測未完了・性能未実証、L3-P比較baseline未実証。担当保持・measurement予約は別owner調整、計測成功扱いにしない。登録PR: [#4027](https://github.com/kenta-0420/mannschaft/pull/4027)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -50864,7 +51948,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T10:45:15Z",
+          "updatedAt": "2026-10-27T05:08:11Z",
           "ci": null
         },
         {
@@ -50995,7 +52079,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T10:45:15Z",
+          "updatedAt": "2026-10-27T05:08:11Z",
           "ci": null
         },
         {
@@ -51361,7 +52445,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "merged",
           "title": "CMP-261022-0914: L1-A 認可サービスのinterface化とroleへの移設",
           "url": "https://github.com/kenta-0420/mannschaft/pull/4049",
-          "updatedAt": "2026-10-26T09:17:29Z",
+          "updatedAt": "2026-10-27T00:14:12Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -51438,12 +52522,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-261021-0017",
       "issues": [
         {
-          "label": "[親Issue #4022](https://github.com/kenta-0420/mannschaft/issues/4022)、計画書§8.5。実装branch: `feature/4022-multi-daimyo`。登録段階であり実装・検証未完了",
+          "label": "[親Issue #4022](https://github.com/kenta-0420/mannschaft/issues/4022)、計画書§8.5。実装branch: `feature/4022-multi-daimyo`。L1-B→L0-M依存のみ[裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6430453220)により免除し、statusに基準計測未完了・性能未実証を表示。manifest/state不変、他入口・共有予約・所有・L5排他を維持。製品UI/API/DB変更なし、画面E2E・ロール横断・画面探索は対象外。実originの操作検証は未実施（他ownerの保持資産に触れない）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "[親Issue #4022](https://github.com/kenta-0420/mannschaft/issues/4022)、計画書§8.5。実装branch: `feature/4022-multi-daimyo`。登録段階であり実装・検証未完了"
+        "[親Issue #4022](https://github.com/kenta-0420/mannschaft/issues/4022)、計画書§8.5。実装branch: `feature/4022-multi-daimyo`。L1-B→L0-M依存のみ[裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6430453220)により免除し、statusに基準計測未完了・性能未実証を表示。manifest/state不変、他入口・共有予約・所有・L5排他を維持。製品UI/API/DB変更なし、画面E2E・ロール横断・画面探索は対象外。実originの操作検証は未実施（他ownerの保持資産に触れない）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -51467,7 +52551,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T10:45:15Z",
+          "updatedAt": "2026-10-27T05:08:11Z",
           "ci": null
         }
       ]
@@ -51775,7 +52859,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T10:45:15Z",
+          "updatedAt": "2026-10-27T05:08:11Z",
           "ci": null
         }
       ]
@@ -52478,48 +53562,53 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T10:45:15Z",
+          "updatedAt": "2026-10-27T05:08:11Z",
           "ci": null
         },
         {
           "number": 4130,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 初回の管理URL遷移でも拒否通知を保持する（CMP-261026-1344）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4130",
+          "updatedAt": "2026-10-26T08:28:10Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-261026-1912",
       "title": "ログイン後の組織一覧・要対応集計・タイムライン初期表示の性能改善",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "組織一覧の既存DTO・並び順・size/metaとinactive・非system-roleの挙動を維持し、所属scope数に比例するSQL発行を固定回数へ改める。inboxは対象IDだけのoverlay取得とsummary labels用SQL0を実現し、全map集計を同値に保つ。FEの初期timeline limit=3、組織一覧single-flightとlogout後の旧応答破棄、みたよDTOの全経路整合と6言語表示を検証する。空・0・null・上限/カーソル境界・途中失敗・権限なし/他scopeを網羅し、local Zod4依存整合を復旧する。実API/実画面で改善前後のSQL回数・応答時間を再計測し、検分・実機・実機後探索の証拠を残す",
+      "nextAction": "組織一覧の既存DTO・並び順・size/metaとinactive・非system-roleの挙動を維持し、所属scope数に比例するSQL発行を固定回数へ改める。inboxは対象IDだけのoverlay取得とsummary labels用SQL0を実現し、全map集計を同値に保つ。FEの初期timeline limit=3、組織一覧single-flightとlogout後の旧応答破棄、みたよDTOの全経路整合と6言語表示を検証する。空・0・null・上限/カーソル境界・途中失敗・権限なし/他scopeを網羅し、local Zod4依存整合を復旧する。実API/実画面で改善前後のSQL回数・応答時間を再計測し、検分・実機・実機後探索の証拠を残す 追加AC9として通常team取得の無signal共有と直接WithResultのfreshness・signal境界を保持する。",
       "acceptance": [
-        "組織一覧の既存DTO・並び順・size/metaとinactive・非system-roleの挙動を維持し、所属scope数に比例するSQL発行を固定回数へ改める。inboxは対象IDだけのoverlay取得とsummary labels用SQL0を実現し、全map集計を同値に保つ。FEの初期timeline limit=3、組織一覧single-flightとlogout後の旧応答破棄、みたよDTOの全経路整合と6言語表示を検証する。空・0・null・上限/カーソル境界・途中失敗・権限なし/他scopeを網羅し、local Zod4依存整合を復旧する。実API/実画面で改善前後のSQL回数・応答時間を再計測し、検分・実機・実機後探索の証拠を残す"
+        "組織一覧の既存DTO・並び順・size/metaとinactive・非system-roleの挙動を維持し、所属scope数に比例するSQL発行を固定回数へ改める。inboxは対象IDだけのoverlay取得とsummary labels用SQL0を実現し、全map集計を同値に保つ。FEの初期timeline limit=3、組織一覧single-flightとlogout後の旧応答破棄、みたよDTOの全経路整合と6言語表示を検証する。空・0・null・上限/カーソル境界・途中失敗・権限なし/他scopeを網羅し、local Zod4依存整合を復旧する。実API/実画面で改善前後のSQL回数・応答時間を再計測し、検分・実機・実機後探索の証拠を残す 追加AC9として通常team取得の無signal共有と直接WithResultのfreshness・signal境界を保持する。"
       ],
       "blocker": "—",
       "issues": [
         {
-          "label": "2026-10-26 マスター「突き止めた原因、修正できる？SQLを改善したら早くなったりしないの？」に基づく修正承認。scope: app。出陣前の台帳登録のみ、実装・性能再測定・検分/実機/探索は未完了。既存InboxSummary生成型optional（CMP-261012-2342）とは別目的",
+          "label": "[完了証拠](evidence/CMP-261026-1912.json)・[検証要約](evidence/CMP-261026-1912/validation.md)。採用PR4140/4148/4149/4151/4153。最終実装head03866c0456dbf69dec3950e7225001d8fc45483a、同headのFE/E2E/Lighthouse成功。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "2026-10-26 マスター「突き止めた原因、修正できる？SQLを改善したら早くなったりしないの？」に基づく修正承認。scope: app。出陣前の台帳登録のみ、実装・性能再測定・検分/実機/探索は未完了。既存InboxSummary生成型optional（CMP-261012-2342）とは別目的"
+        "[完了証拠](evidence/CMP-261026-1912.json)・[検証要約](evidence/CMP-261026-1912/validation.md)。採用PR4140/4148/4149/4151/4153。最終実装head03866c0456dbf69dec3950e7225001d8fc45483a、同headのFE/E2E/Lighthouse成功。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "—"
+        "今回の特定SQL・取得・表示契約改善の完了であり速度完全解消ではない。最新統合小標本はmain約6.8–7.1秒/calendar約13.6–14.0秒。旧8b完全3旅程と最新部分旅程を区別し、自変更4file同値/DOMで補完。既知feed403・CSP報告404・国設定nullクリアは残課題として保持。"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -52548,10 +53637,16 @@ window.BETA_INVENTORY_DATA = {
         "local",
         "Zod4",
         "API",
-        "SQL"
+        "SQL",
+        "AC9",
+        "team",
+        "signal",
+        "WithResult",
+        "freshness",
+        "signal"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [],
       "github": []
@@ -52559,8 +53654,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261026-2253",
       "title": "秘密情報スキャン自己試験の合成値エントロピーによる不安定失敗",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -52574,12 +53669,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "PR #4143 CI 40331456472の自己試験失敗を調査。実Git同rangeで低entropy3.4185はexit0/findings0、保証entropy4はexit1/findings1を再現（値本体非記録）。製品秘密の検出findingではない",
+          "label": "PR #4143 CI 40331456472の自己試験失敗を調査。実Git同rangeで低entropy3.4185はexit0/findings0、保証entropy4はexit1/findings1を再現（値本体非記録）。製品秘密の検出findingではない [完了証拠](evidence/CMP-261026-2253.json)。実装PR #4147 head 0f3e181a、Secret Scan CI 40338933044成功。最終strict版11試験18.758秒・失敗0。実機・探索はtooling対象外（画面・API変更なし）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "PR #4143 CI 40331456472の自己試験失敗を調査。実Git同rangeで低entropy3.4185はexit0/findings0、保証entropy4はexit1/findings1を再現（値本体非記録）。製品秘密の検出findingではない"
+        "PR #4143 CI 40331456472の自己試験失敗を調査。実Git同rangeで低entropy3.4185はexit0/findings0、保証entropy4はexit1/findings1を再現（値本体非記録）。製品秘密の検出findingではない [完了証拠](evidence/CMP-261026-2253.json)。実装PR #4147 head 0f3e181a、Secret Scan CI 40338933044成功。最終strict版11試験18.758秒・失敗0。実機・探索はtooling対象外（画面・API変更なし）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -52595,14 +53690,226 @@ window.BETA_INVENTORY_DATA = {
         "allowlist"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
-        4143
+        4143,
+        4147
       ],
       "github": [
         {
           "number": 4143,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 大会エントリーのエラー通知と6言語を整合する（CMP-261002-0743）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4143",
+          "updatedAt": "2026-10-27T02:30:58Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4147,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 秘密スキャン自己試験の合成値エントロピーを保証",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4147",
+          "updatedAt": "2026-10-27T01:50:57Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261027-1311",
+      "title": "委員会一覧のHIDDEN除外がnull項目と不可視分の総件数を残す（コード確認・実機未）",
+      "status": "working",
+      "statusLabel": "実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "DBページング前に既存可視集合で絞り、contentとcountを一致させる。ADMIN/DEPUTY_ADMIN・既存組織認可・status・論理削除を維持し、非管理者は本人が現役所属するHIDDENだけ可視とする。全HIDDENで空/0、可視21件超、離脱・他scope、DTO内nullable scalarをred→green・MySQL IT・権限横断実機・独立3住民探索で確認する。一覧取得で当該利用者の全委員会IDを先にロードしない。新DDL・新権限仕様・全件ロード・FE/Controllerでnullだけ捨て元totalを保つ対症対応は禁止",
+      "acceptance": [
+        "DBページング前に既存可視集合で絞り、contentとcountを一致させる。ADMIN/DEPUTY_ADMIN・既存組織認可・status・論理削除を維持し、非管理者は本人が現役所属するHIDDENだけ可視とする。全HIDDENで空/0、可視21件超、離脱・他scope、DTO内nullable scalarをred→green・MySQL IT・権限横断実機・独立3住民探索で確認する。一覧取得で当該利用者の全委員会IDを先にロードしない。新DDL・新権限仕様・全件ロード・FE/Controllerでnullだけ捨て元totalを保つ対症対応は禁止"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "2026-10-27 計画着手（Codex 足軽）。コード上の原因を確認、実API再現・実装・試験・実機・探索は未実施。CMP-261021-0660のcommittee実機より先に独立PRで根本修復する",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "2026-10-27 計画着手（Codex 足軽）。コード上の原因を確認、実API再現・実装・試験・実機・探索は未実施。CMP-261021-0660のcommittee実機より先に独立PRで根本修復する"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CommitteeService#listCommitteesのPage.mapが非所属HIDDENをnull化し、CommitteeControllerもnullを保持するためcontent/countに不可視分が残る。[F04.10正本](features/F04.10_committee.md)の一覧可視性・HIDDEN非掲載の既存契約に反する。0660のshape不一致とは別原因"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "HIDDEN",
+        "null",
+        "DB",
+        "content",
+        "count",
+        "ADMIN",
+        "DEPUTY_ADMIN",
+        "status",
+        "HIDDEN",
+        "HIDDEN",
+        "scope",
+        "DTO",
+        "nullable",
+        "scalar",
+        "red",
+        "green",
+        "MySQL",
+        "IT",
+        "ID",
+        "DDL",
+        "FE",
+        "Controller",
+        "null",
+        "total"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261027-1646",
+      "title": "CMP-261021-0017 子: build-logic化（L1-B）",
+      "status": "working",
+      "statusLabel": "実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "[準備計画](evidence/CMP-261021-0017-l1b-plan.md) B-1〜B-8を満たす。B-1: 単一app・plugin版/全依存/解決graph/タスク一覧の前後一致。B-2: 4profile×6index全行一致・通常対象1shard・migration除外0・nested分断0、coverage緑。B-3: 重み欠損/空/未計測・未指定propertyのfallback不変、archTest0件/freezeclass欠損拒否・source全体0拒否。B-4: total1/2/6・index端/範囲外・非数値・負hash/同重み/nestedの挙動維持。B-5: archUnit失敗時freeze実走、必須番人欠損/0件・shard失敗/cancel/timeout/診断欠損でgate非成功、再生成不正入力で旧表bytes保持。B-6: 既存認可IT/番人green・生成OpenAPI前後差分0・実機の許可/拒否/他tenant。B-7: 6shard・heap/fork/context cap・タグ/engine/ログ維持、fresh runのJVM/heap/壁時計/失敗を記録。B-8: 限定例外の正本反映・owner/入口確認・最新HEAD検分・scope appの実機と探索passed、未実施を完了にしない",
+      "acceptance": [
+        "[準備計画](evidence/CMP-261021-0017-l1b-plan.md) B-1〜B-8を満たす。B-1: 単一app・plugin版/全依存/解決graph/タスク一覧の前後一致。B-2: 4profile×6index全行一致・通常対象1shard・migration除外0・nested分断0、coverage緑。B-3: 重み欠損/空/未計測・未指定propertyのfallback不変、archTest0件/freezeclass欠損拒否・source全体0拒否。B-4: total1/2/6・index端/範囲外・非数値・負hash/同重み/nestedの挙動維持。B-5: archUnit失敗時freeze実走、必須番人欠損/0件・shard失敗/cancel/timeout/診断欠損でgate非成功、再生成不正入力で旧表bytes保持。B-6: 既存認可IT/番人green・生成OpenAPI前後差分0・実機の許可/拒否/他tenant。B-7: 6shard・heap/fork/context cap・タグ/engine/ログ維持、fresh runのJVM/heap/壁時計/失敗を記録。B-8: 限定例外の正本反映・owner/入口確認・最新HEAD検分・scope appの実機と探索passed、未実施を完了にしない"
+      ],
+      "blocker": "CMP-261021-0017。L0-M依存のみ[裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6430453220)免除（基準計測未完了・性能未実証）。他入口・所有・build/weights共有予約を維持",
+      "issues": [
+        {
+          "label": "[親Issue #4022・チェックリスト](https://github.com/kenta-0420/mannschaft/issues/4022)、[準備PR #4162](https://github.com/kenta-0420/mannschaft/pull/4162)、[L0-M入口免除PR #4161](https://github.com/kenta-0420/mannschaft/pull/4161)、[限定承認 REQ-GRADLE-GUARD-01](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6436425040)。StripeJavaVersionGuardTest.javaの参照元のみ新依存定義へ追従可。28系固定・29以上/宣言欠損拒否を維持し、新参照先でも各検体で証明する。旧宣言コメント残し・skip・assertion/範囲緩和は不可。§8.1への限定例外反映は実装前に必要。登録のみでGradle/試練red/実装green/重み再生成/OpenAPI生成/実装CI/検分/実機/探索はすべて未実施",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "[親Issue #4022・チェックリスト](https://github.com/kenta-0420/mannschaft/issues/4022)、[準備PR #4162](https://github.com/kenta-0420/mannschaft/pull/4162)、[L0-M入口免除PR #4161](https://github.com/kenta-0420/mannschaft/pull/4161)、[限定承認 REQ-GRADLE-GUARD-01](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6436425040)。StripeJavaVersionGuardTest.javaの参照元のみ新依存定義へ追従可。28系固定・29以上/宣言欠損拒否を維持し、新参照先でも各検体で証明する。旧宣言コメント残し・skip・assertion/範囲緩和は不可。§8.1への限定例外反映は実装前に必要。登録のみでGradle/試練red/実装green/重み再生成/OpenAPI生成/実装CI/検分/実機/探索はすべて未実施"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "gradle owner `9ec2bb94-5ba6-494b-9d4a-dd4ed47f29f5`。登録branch `feature/4022-l1b-registration-261027`、WT `agent-4022-l1b-register-261027`。登録PRのmain反映後に試練→実装へ進む。L1-M/L3・他番人変更・Stripe版更新・親完了を含めない"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "CMP-261021-0017",
+        "build-logic",
+        "L1-B",
+        "evidence",
+        "CMP-261021-0017-l1b-plan",
+        "md",
+        "B-1",
+        "B-8",
+        "B-1",
+        "app",
+        "plugin",
+        "graph",
+        "B-2",
+        "profile",
+        "index",
+        "shard",
+        "migration",
+        "nested",
+        "coverage",
+        "B-3",
+        "property",
+        "fallback",
+        "archTest0",
+        "freezeclass",
+        "source",
+        "B-4",
+        "total1",
+        "index",
+        "hash",
+        "nested",
+        "B-5",
+        "archUnit",
+        "freeze",
+        "shard",
+        "cancel",
+        "timeout",
+        "gate",
+        "bytes",
+        "B-6",
+        "IT",
+        "green",
+        "OpenAPI",
+        "tenant",
+        "B-7",
+        "shard",
+        "heap",
+        "fork",
+        "context",
+        "cap",
+        "engine",
+        "fresh",
+        "run",
+        "JVM",
+        "heap",
+        "B-8",
+        "owner",
+        "HEAD",
+        "scope",
+        "app",
+        "passed"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        4022,
+        4161,
+        4162
+      ],
+      "github": [
+        {
+          "number": 4022,
+          "kind": "issue",
+          "state": "open",
+          "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
+          "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
+          "updatedAt": "2026-10-27T05:08:11Z",
+          "ci": null
+        },
+        {
+          "number": 4161,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4162,
           "kind": "unsynced",
           "state": "unknown",
           "title": "",
@@ -52611,12 +53918,65 @@ window.BETA_INVENTORY_DATA = {
           "ci": null
         }
       ]
+    },
+    {
+      "id": "CMP-261027-1353",
+      "title": "ログイン後の残存描画待ち・個人カレンダーN+1・合法feed403解消",
+      "status": "working",
+      "statusLabel": "実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "login成功からroute・main・calendarまでの通信・CPU・SQLを分離し、個人カレンダーの所属数比例SQLと合法scopeのfeed403を根治する。予定集合・可視性・割当・並び順・日時境界・既存UIを維持し、同条件production複数測定、先行red→green、CI、認可実機と実機後探索を確認する。",
+      "acceptance": [
+        "login成功からroute・main・calendarまでの通信・CPU・SQLを分離し、個人カレンダーの所属数比例SQLと合法scopeのfeed403を根治する。予定集合・可視性・割当・並び順・日時境界・既存UIを維持し、同条件production複数測定、先行red→green、CI、認可実機と実機後探索を確認する。"
+      ],
+      "blocker": "CMP-261026-1912",
+      "issues": [
+        {
+          "label": "調査・先行試験準備中",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "調査・先行試験準備中"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "本陣資産と常駐API/FEを保持し、隔離worktreeで実装・検証する。"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "feed403",
+        "login",
+        "route",
+        "main",
+        "calendar",
+        "CPU",
+        "SQL",
+        "SQL",
+        "scope",
+        "feed403",
+        "UI",
+        "production",
+        "red",
+        "green",
+        "CI"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [],
+      "github": []
     }
   ],
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-10-26T11:04:52+00:00",
+    "synchronizedAt": "2026-10-27T06:07:09+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -53873,8 +55233,12 @@ window.BETA_INVENTORY_DATA = {
         3387
       ],
       "CMP-261002-0742": [],
-      "CMP-261002-0743": [],
-      "CMP-261002-0744": [],
+      "CMP-261002-0743": [
+        4143
+      ],
+      "CMP-261002-0744": [
+        3759
+      ],
       "CMP-261002-0801": [],
       "CMP-261002-0802": [],
       "CMP-261002-0803": [],
@@ -53970,7 +55334,7 @@ window.BETA_INVENTORY_DATA = {
         3670
       ],
       "CMP-261006-0632": [
-        3670
+        4160
       ],
       "CMP-261006-0901": [
         3668
@@ -54157,7 +55521,7 @@ window.BETA_INVENTORY_DATA = {
         3802
       ],
       "CMP-261012-2338": [
-        3801
+        4156
       ],
       "CMP-261012-2339": [
         3810
@@ -54430,7 +55794,7 @@ window.BETA_INVENTORY_DATA = {
         4045
       ],
       "CMP-261022-0914": [
-        4022
+        4049
       ],
       "CMP-261022-0924": [],
       "CMP-261022-1026": [
@@ -54484,9 +55848,14 @@ window.BETA_INVENTORY_DATA = {
       ],
       "CMP-261026-1344": [
         4022,
-        4049
+        4130
       ],
-      "CMP-261026-1912": []
+      "CMP-261026-1912": [],
+      "CMP-261026-2253": [
+        4143,
+        4147
+      ],
+      "CMP-261027-1311": []
     },
     "items": {
       "261": {
@@ -57466,7 +58835,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "CMP-056 全域機械走査: 未変換の付随通知が18箇所リスト外に多数残存（NotificationHelper直呼び）",
         "url": "https://github.com/kenta-0420/mannschaft/issues/2997",
-        "updatedAt": "2026-10-21T10:15:34Z",
+        "updatedAt": "2026-10-27T04:54:22Z",
         "ci": null
       },
       "3002": {
@@ -61211,9 +62580,9 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "Bump actions/upload-artifact from 4 to 7",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3683",
-        "updatedAt": "2026-10-25T15:23:39Z",
+        "updatedAt": "2026-10-27T02:08:13Z",
         "ci": {
-          "status": "success",
+          "status": "failure",
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
@@ -61238,7 +62607,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "Bump hashicorp/setup-terraform from 3 to 4",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3685",
-        "updatedAt": "2026-10-25T15:23:38Z",
+        "updatedAt": "2026-10-27T02:08:14Z",
         "ci": {
           "status": "success",
           "checks": [],
@@ -61265,7 +62634,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "Bump actions/setup-java from 4 to 6",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3687",
-        "updatedAt": "2026-10-25T15:23:46Z",
+        "updatedAt": "2026-10-27T02:08:24Z",
         "ci": {
           "status": "success",
           "checks": [],
@@ -62930,7 +64299,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
         "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-        "updatedAt": "2026-10-26T10:45:15Z",
+        "updatedAt": "2026-10-27T05:08:11Z",
         "ci": null
       },
       "4023": {
@@ -63079,7 +64448,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "merged",
         "title": "CMP-261022-0914: L1-A 認可サービスのinterface化とroleへの移設",
         "url": "https://github.com/kenta-0420/mannschaft/pull/4049",
-        "updatedAt": "2026-10-26T09:17:29Z",
+        "updatedAt": "2026-10-27T00:14:12Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -63399,13 +64768,83 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "4130": {
+        "number": 4130,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 初回の管理URL遷移でも拒否通知を保持する（CMP-261026-1344）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4130",
+        "updatedAt": "2026-10-26T08:28:10Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "4133": {
         "number": 4133,
         "kind": "pull_request",
         "state": "merged",
         "title": "CMP-261015-1510 ログイン画面の入力欄・補助リンクを44px以上にする",
         "url": "https://github.com/kenta-0420/mannschaft/pull/4133",
-        "updatedAt": "2026-10-26T11:01:44Z",
+        "updatedAt": "2026-10-26T11:37:18Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4143": {
+        "number": 4143,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 大会エントリーのエラー通知と6言語を整合する（CMP-261002-0743）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4143",
+        "updatedAt": "2026-10-27T02:30:58Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4147": {
+        "number": 4147,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 秘密スキャン自己試験の合成値エントロピーを保証",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4147",
+        "updatedAt": "2026-10-27T01:50:57Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4156": {
+        "number": 4156,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "整理: CMP-261012-2338 未使用の機能切替APIを削除",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4156",
+        "updatedAt": "2026-10-27T05:52:53Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4160": {
+        "number": 4160,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261006-0632 旧slugの破棄後応答ガードを再採用",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4160",
+        "updatedAt": "2026-10-27T05:00:56Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -63417,8 +64856,8 @@ window.BETA_INVENTORY_DATA = {
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-10-26T11:04:52+00:00",
-      "referenceCount": 665
+      "synchronizedAt": "2026-10-27T06:07:09+00:00",
+      "referenceCount": 670
     }
   }
 };
