@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261009-0616",
+  "scope": "app",
+  "implementation": {
+    "pr": 3741,
+    "sha": "f972720bc85a664df16d578c54061c2106c4bf31"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC1",
+      "description": "変更依頼IDと異なるscheduleIdで正しい既存変更依頼一覧へ到達",
+      "tests": [
+        {
+          "name": "AC1 回帰契約",
+          "evidence": "backend/src/test/java/com/mannschaft/app/dashboard/service/AdminActionRequiredFacadeTest.java"
+        },
+        {
+          "name": "AC1 回帰契約",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/service/ShiftRequestAdminQueryServiceTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC2",
+      "description": "交代detailは既存?tab=swaps、一覧は既存shifts、API/DDL追加なし",
+      "tests": [
+        {
+          "name": "AC2 回帰契約",
+          "evidence": "backend/src/test/java/com/mannschaft/app/dashboard/service/AdminActionRequiredFacadeTest.java"
+        },
+        {
+          "name": "AC2 回帰契約",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/service/ShiftRequestAdminQueryServiceTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC3",
+      "description": "swaps初期/同ページquery変更/削除とunknown/array/空/未指定の既定タブ0",
+      "tests": [
+        {
+          "name": "初期swaps / 同ページquery変更・削除 / 未知・複数値（空文字はsource静的確認）",
+          "evidence": "frontend/app/pages/teams/[slug]/shifts.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC4",
+      "description": "0件/preview0/上限/日時sort/null順/tenant filter保持。既存試験と未変更sourceを対応",
+      "tests": [
+        {
+          "name": "previewSizeZero（0件/上限/sort/null/tenantは既存source不変の照合併用）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/dashboard/service/AdminActionRequiredFacadeTest.java"
+        },
+        {
+          "name": "countOnlySumsBothKinds / countAndPreviewMerged",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/service/ShiftRequestAdminQueryServiceTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC5-route",
+      "description": "純ADMINの実dashboardカード/listクリックから対象既存一覧に到達",
+      "tests": [
+        {
+          "name": "AC5-route 実測・検分証拠",
+          "evidence": "docs/evidence/CMP-261009-0616-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC5-operation",
+      "description": "到達先の既存操作入口を実測",
+      "tests": [
+        {
+          "name": "AC5-operation 実測・検分証拠",
+          "evidence": "docs/evidence/CMP-261009-0616-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC6",
+      "description": "MEMBER/真SUPPORTER/他team/tenant/匿名の既認可境界、URL直打ちで越境表示なし",
+      "tests": [
+        {
+          "name": "AC6 実測・検分証拠",
+          "evidence": "docs/evidence/CMP-261009-0616-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC7",
+      "description": "読取失敗は既存エラー表示を維持、業務3table書込なし。複数更新は今回なし",
+      "tests": [
+        {
+          "name": "AC7 実測・検分証拠",
+          "evidence": "docs/evidence/CMP-261009-0616-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC8",
+      "description": "既存batch lookup/preview上限維持、追加SQL/loopN+1なし",
+      "tests": [
+        {
+          "name": "AC8 実測・検分証拠",
+          "evidence": "docs/evidence/CMP-261009-0616-review.md"
+        }
+      ]
+    },
+    {
+      "id": "AC9",
+      "description": "固定実機後に独立3住民、目的のみ/別context/同actor並列login禁止、観測とroot裁定と気づき箱を分離",
+      "tests": [
+        {
+          "name": "AC9 実測・検分証拠",
+          "evidence": "docs/evidence/CMP-261009-0616-exploratory.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40489923587
+    },
+    {
+      "runId": 40489132186
+    },
+    {
+      "runId": 40489132303
+    },
+    {
+      "runId": 40489132160
+    },
+    {
+      "runId": 40489132269
+    },
+    {
+      "runId": 40489132335
+    },
+    {
+      "runId": 40489132142
+    },
+    {
+      "runId": 40489132288
+    },
+    {
+      "runId": 40489132139
+    },
+    {
+      "runId": 40489132222
+    },
+    {
+      "runId": 40489132356
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261009-0616-review.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261009-0616-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261009-0616-exploratory.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "管理者dashboardの依頼routeとswaps query追従の回帰",
+      "test": "AdminActionRequiredFacadeTest / ShiftRequestAdminQueryServiceTest / shifts.spec.ts",
+      "redEvidence": "docs/evidence/CMP-261009-0616/regression-red.json",
+      "greenEvidence": "docs/evidence/CMP-261009-0616-review.md"
+    }
+  ],
+  "completion": {
+    "mergedAt": "2026-10-27T11:52:19Z",
+    "mergeCommit": "2e2da2169d5661847dce846554a13acc4bda2c03",
+    "premergeChecks": {
+      "success": 28,
+      "skipped": 2,
+      "failure": 0,
+      "pending": 0
+    },
+    "scope": "CMP-261009-0616のみ"
+  }
+}

@@ -31,6 +31,12 @@ const showEditDialog = ref(false)
 const selectedDate = ref('')
 const showDayDialog = ref(false)
 const showCreateDialog = ref(false)
+const mountedDialogs = reactive({ day: false, create: false, edit: false })
+watch([showDayDialog, showCreateDialog, showEditDialog], ([day, create, edit]) => {
+  mountedDialogs.day ||= day
+  mountedDialogs.create ||= create
+  mountedDialogs.edit ||= edit
+})
 
 function onDateClick(date: string) {
   if (loading.value || calendarLoading.value || loadError.value) return
@@ -227,7 +233,8 @@ onMounted(async () => {
       </div>
     </template>
 
-    <ScheduleDayDialog
+    <LazyScheduleDayDialog
+      v-if="mountedDialogs.day"
       v-model:visible="showDayDialog"
       :date="selectedDate"
       :events="filteredEvents"
@@ -236,7 +243,8 @@ onMounted(async () => {
       @row-open="onDayEventOpen"
     />
 
-    <ScheduleEventForm
+    <LazyScheduleEventForm
+      v-if="mountedDialogs.create"
       v-model:visible="showCreateDialog"
       scope-type="team"
       scope-id=""
@@ -252,7 +260,7 @@ onMounted(async () => {
       :style="{ width: '480px', maxWidth: '95vw' }"
       :pt="{ header: { class: 'pb-2' } }"
     >
-      <EventDetailPanel
+      <LazyEventDetailPanel
         v-if="selectedEvent"
         :event="{
           id: selectedEvent.id,
@@ -286,8 +294,8 @@ onMounted(async () => {
       />
     </Dialog>
 
-    <ScheduleEventForm
-      v-if="selectedEvent && selectedEventId"
+    <LazyScheduleEventForm
+      v-if="mountedDialogs.edit && selectedEvent && selectedEventId"
       v-model:visible="showEditDialog"
       :schedule-id="selectedEventId"
       :scope-type="selectedEventIsPersonal ? 'team' : ((selectedEvent?.scopeType ?? '').toLowerCase() as 'team' | 'organization')"
