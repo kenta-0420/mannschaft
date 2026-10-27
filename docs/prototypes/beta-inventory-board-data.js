@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-10-27T20:17:01+00:00",
+  "generatedAt": "2026-10-27T20:21:15+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,9 +8,9 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "734ca74158076d8f491aa067328235862591703e",
+    "taskListCommit": "92cacad4d5723a224e879dcf034213b074012e1f",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "15ca52d40978a4c801e9a64bf2e7dbdd0415e3ca231e8b6f088abb08c5d0a03a",
+    "taskListSha256": "c4e310ff400c3c9f920b825551e1c9714c5f69a399bc3d0b9adcebd29436ec3c",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
@@ -40029,8 +40029,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261004-1818",
       "title": "AuthzTxFacadeRegistryArchTest のジェネリクスのブリッジメソッド遮蔽判定の誤り（偽陽性側）",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -40044,41 +40044,36 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260923-0954",
       "issues": [
         {
-          "label": "ブリッジメソッドを遮蔽判定の前に除外しているため、親の消去後シグネチャが残って誤って赤になる。現状該当なし（W6b #3623 の番人で判明）",
+          "label": "[完了証拠](evidence/CMP-261004-1818.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "ブリッジメソッドを遮蔽判定の前に除外しているため、親の消去後シグネチャが残って誤って赤になる。現状該当なし（W6b #3623 の番人で判明）"
+        "[完了証拠](evidence/CMP-261004-1818.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "—"
+        "PR #4182・head6315。[新26件green/既存23件保持](https://github.com/kenta-0420/mannschaft/actions/runs/40551206185/job/122367022115)、[先行red](https://github.com/kenta-0420/mannschaft/actions/runs/40530916480/job/122283408100)。検分finding0、test-onlyで実機/住民N/A。"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
         "AuthzTxFacadeRegistryArchTest"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
-        3623
+        4182
       ],
       "github": [
         {
-          "number": 3623,
-          "kind": "pull_request",
-          "state": "merged",
-          "title": "番人: 認可ファサード型の横断登録表（CMP-260923-0954 W6b）",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/3623",
-          "updatedAt": "2026-10-03T11:11:27Z",
-          "ci": {
-            "status": "unavailable",
-            "reason": "終了済みPRのCIは同期対象外",
-            "checks": [],
-            "source": "GraphQL statusCheckRollup"
-          }
+          "number": 4182,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
         }
       ]
     },
