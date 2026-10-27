@@ -73,7 +73,7 @@
     },
     {
       "id": "AC-5",
-      "description": "実API/MySQLと4画面で一覧・総数・ページ・nullableおよび権限あり/なし/他tenant/匿名・直URLを検証する。本物のメール送信はsimulate専用。初回51項目50PASS/overlay遮断1FAILと、別の通常あとで決める→Drawer成功を保持する。",
+      "description": "実API/MySQLと4画面で一覧・総数・ページ・nullableおよび認証済みactors 4/3/5/6/7の権限あり/なし・非所属・他tenant・直URLを検証。初回51項目50PASS/overlay遮断1FAILと、別の通常あとで決める→Drawer→委員会一覧（ADMIN3/org12/HTTP200/page0/総数41/20行）の成功を保持する。匿名とHTTP401は原51caseに0件で最終source匿名実機は未確認・補足待ち。旧f7の歴史匿名実機とBE1a CI未認証401を分離する。本物メール送信はsimulate専用。",
       "tests": [
         {
           "name": "root制御の実API/MySQL consumer matrixと通常入口・一度だけの取消",
@@ -128,7 +128,8 @@
     "mocked E2E変更2spec未実走。既存CI Smokeの成功と区別。",
     "NAME_ONLY詳細200＋members403で全体loadFailedは既存不具合CMP-261028-0513。詳細画面の使いやすさ合格を主張しない。",
     "B0通常validator/全体self-testは既存snapshot不一致46行FAIL。overlay限定PASSへ置換しない。",
-    "旧run後SIGHUPと成功command checkpointは別。recoverybuild5は同source/config/lock、新旧output全byte同一false。"
+    "旧run後SIGHUPと成功command checkpointは別。recoverybuild5は同source/config/lock、新旧output全byte同一false。",
+    "最終sourceの原51caseに匿名actor/HTTP401は含まれない。旧f7匿名実機・BE1a CIの未認証401を最終source匿名実機として主張しない。root補足証拠待ち。過去PR本文の匿名実機確認の主張も訂正が必要。"
   ],
   "implementationTrace": {
     "AC-1": [
@@ -229,6 +230,10 @@
       {
         "path": ".claude/runtime/october-third-wave-20261026/at-merge-audit-4188.json",
         "sha256": "30fba12265afab8866249992b9a9a67f2d713a95aec3f7ad189770f6226df1d7"
+      },
+      {
+        "path": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/root-drawer-diagnostic-20261027-v2.json",
+        "sha256": "084390474e53fda73173782a36968159bc5e76b16108adfe498336c71b30238b"
       }
     ],
     "externalReferences": [

@@ -11,7 +11,16 @@
   },
   "separateNormalEntry": {
     "pass": true,
-    "path": "通常あとで決める→Drawer→outbox一覧"
+    "path": "通常あとで決める→Drawer→委員会一覧",
+    "actor": "ADMIN3",
+    "organization": 12,
+    "firstPage": {
+      "HTTP": 200,
+      "number": 0,
+      "totalElements": 41,
+      "count": 20
+    },
+    "source": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/root-drawer-diagnostic-20261027-v2.json"
   },
   "consumerCounts": {
     "outbox": 22,
@@ -21,7 +30,7 @@
     "distributions": 21,
     "emptyDistributionVerified": true
   },
-  "authorization": "権限あり/なし・非所属・他tenant・匿名と直URLの拒否を確認。全27経路の認可合格は主張しない。",
+  "authorization": "最終sourceの51caseは認証済みactors 4/3/5/6/7の権限あり/なし・非所属・他tenantおよび直URLを検証。匿名actorとHTTP401はこの51caseに含まれない。全27経路の認可合格は主張しない。",
   "oneCancel": {
     "runs": 1,
     "cancelHTTP": 204,
@@ -32,5 +41,13 @@
     "extraFixtureRestore": false
   },
   "mail": "simulate専用。本物メール送信は行っていない。",
-  "adoption": "accepted-by-root-after-implementation-merge"
+  "adoption": "accepted-by-root-after-implementation-merge",
+  "anonymousEvidenceScope": {
+    "finalSourceReal": "未確認。root補足証拠待ち。",
+    "finalMatrixAnonymousCases": 0,
+    "finalMatrixHTTP401Cases": 0,
+    "historicalF7": "旧f7での匿名実機は歴史証拠であり、最終FE8f/BE1aでの匿名実機へ転用しない。",
+    "backend1aCI": "BE1aの未認証401自動試験はCI証拠であり、最終sourceの匿名実機とは別。",
+    "publicationCorrection": "過去の実装PR本文にある最終sourceで匿名を実機確認したとの記述は原51caseからは証明できず、訂正が必要。"
+  }
 }
