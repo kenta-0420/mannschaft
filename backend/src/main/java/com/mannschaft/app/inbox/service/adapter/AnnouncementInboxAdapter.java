@@ -22,11 +22,13 @@ import com.mannschaft.app.payment.dto.GateCheckResponse;
 import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.payment.spi.ContentGateTarget;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -48,7 +50,10 @@ import java.util.stream.Collectors;
  */
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class AnnouncementInboxAdapter implements InboxSourceAdapter {
+
+    private static final int CANDIDATE_BATCH_SIZE = 1000;
 
     private final MembershipScopeQueryService membershipScopeQueryService;
     private final RoleResolver roleResolver;
@@ -75,12 +80,17 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
             return List.of();
         }
 
+        Set<ScopeKey> candidates = findCandidateScopes(scopeRole.keySet());
+
         // 2. 各スコープのお知らせフィードを findByScope で取得する（重複 feed.id は除外）。
         // Phase3 ③：各スコープを window 件まで（無制限 fetch を根絶）。複数スコープの和集合から
         // 集約側が全順序ソートで上位 window 件を選ぶため、スコープ毎に window 件取れば取りこぼさない。
         Map<Long, AnnouncementFeedEntity> feedById = new LinkedHashMap<>();
         for (Map.Entry<ScopeKey, String> e : scopeRole.entrySet()) {
             ScopeKey scope = e.getKey();
+            if (!candidates.contains(scope)) {
+                continue;
+            }
             // 閲覧者ロール → 閲覧できる visibility 集合（正準）。
             List<AnnouncementFeedEntity> feeds = announcementFeedQueryRepository.findByScope(
                     scope.scopeType(), scope.scopeId(),
@@ -176,6 +186,24 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
                 ? new ContentGateTarget(feed.getId(), feed.getScopeId(), null)
                 : feed.getScopeType() == AnnouncementScopeType.ORGANIZATION
                     ? new ContentGateTarget(feed.getId(), null, feed.getScopeId()) : null;
+    }
+
+    private Set<ScopeKey> findCandidateScopes(Set<ScopeKey> all) {
+        Set<ScopeKey> result = new LinkedHashSet<>();
+        try {
+            for (AnnouncementScopeType type : List.of(AnnouncementScopeType.TEAM, AnnouncementScopeType.ORGANIZATION)) {
+                List<Long> ids = all.stream().filter(scope -> type == scope.scopeType()).map(ScopeKey::scopeId).toList();
+                for (int offset = 0; offset < ids.size(); offset += CANDIDATE_BATCH_SIZE) {
+                    List<Long> chunk = ids.subList(offset, Math.min(offset + CANDIDATE_BATCH_SIZE, ids.size()));
+                    announcementFeedQueryRepository.findScopeIdsWithHistory(type, chunk)
+                            .forEach(id -> result.add(new ScopeKey(type, id)));
+                }
+            }
+            return result;
+        } catch (RuntimeException ex) {
+            log.warn("AnnouncementInboxAdapter: 候補取得に失敗。元の全所属で取得します。", ex);
+            return all;
+        }
     }
 
     private Map<ScopeKey, String> resolveAccessibleScopes(Long userId) {

@@ -144,6 +144,14 @@ public class SurveyService {
         return new UnansweredSurveys(all.size(), List.copyOf(items));
     }
 
+    /** 個人横断集計の候補投影。候補の実取得では既存のscope認可を引き続き通す。 */
+    public List<Long> findUnansweredScopeIds(String scopeType, List<Long> scopeIds, Long userId) {
+        if (scopeIds.isEmpty()) {
+            return List.of();
+        }
+        return surveyRepository.findUnansweredScopeIds(scopeType, scopeIds, userId);
+    }
+
     /**
      * F22.1 第二波: 未回答アンケートの集計結果（件数 + 直近アイテム）。
      *
