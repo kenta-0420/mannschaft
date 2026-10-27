@@ -122,27 +122,16 @@ public class CommitteeService {
 
         boolean isAdmin = accessControlService.isAdminOrAbove(currentUserId, organizationId, "ORGANIZATION");
 
-        // ページング取得
-        Page<CommitteeEntity> committees;
-        if (statusFilter != null) {
-            committees = committeeRepository.findByOrganizationIdAndStatus(organizationId, statusFilter, pageable);
-        } else {
-            committees = committeeRepository.findByOrganizationId(organizationId, pageable);
-        }
-
-        // ADMIN は全件表示
+        // ADMIN は従来どおり、委員会への所属を問わず全件表示する。
         if (isAdmin) {
-            return committees;
+            return statusFilter != null
+                    ? committeeRepository.findByOrganizationIdAndStatus(organizationId, statusFilter, pageable)
+                    : committeeRepository.findByOrganizationId(organizationId, pageable);
         }
 
-        // 非ADMIN: HIDDEN委員会は委員会メンバーのみ表示
-        List<Long> myCommitteeIds = committeeMemberRepository.findActiveCommitteeIdsByUserId(currentUserId);
-        return committees.map(c -> {
-            if (CommitteeVisibility.HIDDEN.equals(c.getVisibilityToOrg()) && !myCommitteeIds.contains(c.getId())) {
-                return null; // フィルタ用のマーカー（Controllerでnullチェックして除外する）
-            }
-            return c;
-        });
+        // 非ADMINのHIDDEN可視性はDB内で絞り、ページ内容と総件数を同じ母集団にする。
+        return committeeRepository.findVisibleByOrganizationId(
+                organizationId, statusFilter, currentUserId, CommitteeVisibility.HIDDEN, pageable);
     }
 
     /**
