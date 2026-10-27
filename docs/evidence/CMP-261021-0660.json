@@ -1,0 +1,257 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261021-0660",
+  "scope": "app",
+  "implementation": {
+    "pr": 4167,
+    "sha": "8f671cba847a1641222c95fa37d23830d8f4e4d5"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "元AC: メール送信キュー画面が一覧・ページャー・総件数を正しく表示する。4画面で0/1/20/21/40/41、ページ往復、空・初回失敗・再試行を区別する。",
+      "tests": [
+        {
+          "name": "app/pages/pageEnvelope.spec.ts",
+          "evidence": "frontend/app/pages/pageEnvelope.spec.ts"
+        },
+        {
+          "name": "tests/unit/pages/committees/committees-list.spec.ts",
+          "evidence": "frontend/tests/unit/pages/committees/committees-list.spec.ts"
+        },
+        {
+          "name": "tests/unit/pages/committees/committee-distributions.spec.ts",
+          "evidence": "frontend/tests/unit/pages/committees/committee-distributions.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "元AC: Spring Pageと配列・PagedResponseの同種取り違えを全数監査する。OpenAPI全27経路の集合番人、6受信境界、実使用4adapter、未使用2境界のPage維持、compile-time負例を確認する。要素DTO全体・全27経路の実機合格は主張しない。",
+      "tests": [
+        {
+          "name": "app/composables/springPage.boundaries.spec.ts",
+          "evidence": "frontend/app/composables/springPage.boundaries.spec.ts"
+        },
+        {
+          "name": "app/types/springPage.coverage.spec.ts",
+          "evidence": "frontend/app/types/springPage.coverage.spec.ts"
+        },
+        {
+          "name": "app/types/springPage.contract.ts",
+          "evidence": "frontend/app/types/springPage.contract.ts"
+        },
+        {
+          "name": "app/types/pageMeta.contract.spec.ts",
+          "evidence": "frontend/app/types/pageMeta.contract.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "通常管理メニューからoutboxへ到達できる。既存6言語辞書を本番設定へ登録する。",
+      "tests": [
+        {
+          "name": "app/components/system-admin/SystemAdminQuickLinks.spec.ts",
+          "evidence": "frontend/app/components/system-admin/SystemAdminQuickLinks.spec.ts"
+        },
+        {
+          "name": "app/pages/pageEnvelope.spec.ts",
+          "evidence": "frontend/app/pages/pageEnvelope.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "PENDING末尾cancel204後の範囲外pageを補正・再取得する。空0件とALL総数不変では余分に再取得せず、409競合を表示する。",
+      "tests": [
+        {
+          "name": "app/pages/pageEnvelope.spec.ts",
+          "evidence": "frontend/app/pages/pageEnvelope.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "実API/MySQLと4画面で一覧・総数・ページ・nullableおよび認証済みactors 4/3/5/6/7の権限あり/なし・非所属・他tenant・直URLを検証。原51項目50PASS/overlay遮断1FAILと、別の通常あとで決める→Drawer→委員会一覧（ADMIN3/org12/HTTP200/page0/総数41/20行）の成功を保持する。原51caseの匿名/HTTP401は0件。別の同FE8f/BE1a補足実機3caseで委員会一覧・詳細・outbox一覧のログイン誘導・保護行0・API401を確認し、原51を変更しない。旧f7の歴史匿名実機とBE1a CI未認証401は別証拠。本物メール送信はsimulate専用。",
+      "tests": [
+        {
+          "name": "root制御の実API/MySQL consumer matrixと通常入口・一度だけの取消",
+          "evidence": "docs/evidence/october-0660-20261028/real-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "実機後に独立3名探索を実施し、各Context1作成/1閉鎖、予期しない業務書込0/pageError0を記録する。全目的達成false、既存詳細不具合別件0513、B0全体validator46行FAILとoverlay限定PASSを保持する。",
+      "tests": [
+        {
+          "name": "fresh3独立住民3名の実施・終了・未達保持",
+          "evidence": "docs/evidence/october-fresh3-20261028/resident-observations.json"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40549872565
+    }
+  ],
+  "sourceJobLinks": [
+    "https://github.com/kenta-0420/mannschaft/actions/runs/40549872565/job/122350398599"
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4167",
+      "note": "root source検分0件。PR採用済みという意味ではない。"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/october-0660-20261028/real-summary.json"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/october-0660-20261028/exploration-summary.json",
+      "note": "rootが0660対象の独立3名探索実施・閉鎖・B0観測登録・別件0513分離を受入。全目的達成falseとcoverage未合格を保持。"
+    }
+  },
+  "regressions": [
+    {
+      "description": "通常outbox入口欠落、PENDING末尾取消後page範囲外を追加red後に修復",
+      "test": "SystemAdminQuickLinks.spec.ts / pageEnvelope.spec.ts",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40518801266/job/122239753997",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40549872565/job/122350398599"
+    }
+  ],
+  "limitations": [
+    "mocked E2E変更2spec未実走。既存CI Smokeの成功と区別。",
+    "NAME_ONLY詳細200＋members403で全体loadFailedは既存不具合CMP-261028-0513。詳細画面の使いやすさ合格を主張しない。",
+    "B0通常validator/全体self-testは既存snapshot不一致46行FAIL。overlay限定PASSへ置換しない。",
+    "旧run後SIGHUPと成功command checkpointは別。recoverybuild5は同source/config/lock、新旧output全byte同一false。",
+    "原51caseには匿名actor/HTTP401が含まれず、過去PR本文の匿名実機確認という記述は訂正する。今回は別補足3画面で最終FE8f/BE1aの匿名拒否を確認した。旧f7匿名実機・BE1a CI401との区別と原51caseを保持する。"
+  ],
+  "implementationTrace": {
+    "AC-1": [
+      "frontend/app/pages/system-admin/email-outbox/index.vue",
+      "frontend/app/pages/admin/users.vue",
+      "frontend/app/pages/organizations/[slug]/committees.vue",
+      "frontend/app/pages/committees/[id]/distributions.vue"
+    ],
+    "AC-2": [
+      "frontend/app/composables/useEmailOutboxAdminApi.ts",
+      "frontend/app/composables/useCommitteeApi.ts",
+      "frontend/app/composables/system-admin/useSystemAdminDashboard.ts",
+      "frontend/app/composables/useAdminReportApi.ts",
+      "frontend/app/utils/toPagedResponse.ts"
+    ],
+    "AC-3": [
+      "frontend/app/components/system-admin/SystemAdminQuickLinks.vue",
+      "frontend/nuxt.config.ts"
+    ],
+    "AC-4": [
+      "frontend/app/pages/system-admin/email-outbox/index.vue"
+    ]
+  },
+  "adoption": {
+    "implementation": {
+      "pr": 4167,
+      "head": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+      "merge": "fa70ad7f87c1062b12ce8ae98f7abf47a7392b56",
+      "mergedAt": "2026-10-27T20:44:07Z",
+      "eligibleAtMerge": true,
+      "effectiveChecks": 21,
+      "success": 14,
+      "skipped": 7
+    },
+    "b0": {
+      "pr": 4188,
+      "head": "bdf1d63866de8b7a678eb44b59084393db00fdca",
+      "merge": "779dfe616e9113f32c85969bd6394a48cdb12431",
+      "mergedAt": "2026-10-27T20:48:37Z",
+      "effectiveChecks": 17,
+      "eligibleAtMerge": true
+    }
+  },
+  "sourceManifest": {
+    "references": [
+      {
+        "path": ".claude/runtime/october-fifth-wave-20261027/0660/root-final-source-review-8f.json",
+        "sha256": "3a106803bfdec3351a87b3171f3cc1c47bdf1b51f99a82285aa4f2805f3b277c"
+      },
+      {
+        "path": ".claude/runtime/october-fifth-wave-20261027/0660/ci-8f-final-green-proof.json",
+        "sha256": "f04aa4648820ba29c72694637210c3d2aca022769da20facc7d01af96c610e65"
+      },
+      {
+        "path": ".claude/runtime/october-fifth-wave-20261027/0660/pr4167-final-body-v3.md",
+        "sha256": "8245c48ab60e22e0c2ec010111d62777813497b208e81702dfbd78ccc7a74f66"
+      },
+      {
+        "path": ".claude/runtime/october-fifth-wave-20261027/0660/navigation-red495b-proof.json",
+        "sha256": "801a88e429f76fe16fb7c9c925dfc2e4d6352ae1bb469f06b9658d3b11049550"
+      },
+      {
+        "path": ".claude/runtime/october-fifth-wave-20261027/0660/recovery-build5/root-recovery-artifact-validated.json",
+        "sha256": "44a7470b703fd5aeb6f95b80f9d11b6f07d9b256295be27fd09ac91bf32d5ce4"
+      },
+      {
+        "path": ".claude/runtime/october-fifth-wave-20261027/0660/recovery-build5/sighup-classification.json",
+        "sha256": "21de39a76f5208b5ddc40dd28bd4bb56c59a9c1512ac2de848b808ccc8cd6810"
+      },
+      {
+        "path": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/root-final-consumer-matrix-aggregate-20261027.json",
+        "sha256": "3c8e2bfdcd502db9159a8220a2b694cf4c709f4e5eced6267efdac4f3049774a"
+      },
+      {
+        "path": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/root-fresh3-exploration-adjudication-v1.json",
+        "sha256": "c86890666193fd7af5128cf97f3fb6e498486780e7fd7077d1defcf5a0660c69"
+      },
+      {
+        "path": "docs/evidence/october-fresh3-20261028/registration.md",
+        "sha256": "ffa56d87ec0ff838d996fddae156fefe8c10daf9eb073a0e487d3e4dea1ed2d9"
+      },
+      {
+        "path": "docs/evidence/october-fresh3-20261028/resident-observations.json",
+        "sha256": "7eb96e0e7b996403aec9089e6073bec2e64a7c90e342971a8ced67e19cb7be9a"
+      },
+      {
+        "path": "docs/evidence/october-fresh3-20261028/validator-baseline-proof.json",
+        "sha256": "b2d9d78bf311fecba854cb82ccfc33a1a82fcf9b2a970568f24a30b230b9c75e"
+      },
+      {
+        "path": ".claude/runtime/october-fifth-wave-20261027/0660/root-main-adoption-proof.json",
+        "sha256": "763dbf8f97fc5487cb0f5c21977379f43c2e4b3a4486c6df91a3c8168d5d4dba"
+      },
+      {
+        "path": ".claude/runtime/october-third-wave-20261026/at-merge-audit-4167.json",
+        "sha256": "1510f053dcdcc767dca4e02a6929a6e30dac49a6403b29a113615e156a536512"
+      },
+      {
+        "path": ".claude/runtime/october-third-wave-20261026/at-merge-audit-4188.json",
+        "sha256": "30fba12265afab8866249992b9a9a67f2d713a95aec3f7ad189770f6226df1d7"
+      },
+      {
+        "path": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/root-drawer-diagnostic-20261027-v2.json",
+        "sha256": "084390474e53fda73173782a36968159bc5e76b16108adfe498336c71b30238b"
+      },
+      {
+        "path": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/anonymous-supplement-8f671-1a10-v1-observations.json",
+        "sha256": "123c0068e9f2801bb5f938dd1b8ae64efdf288534ab7d89e4af8dadb28277d16"
+      }
+    ],
+    "externalReferences": [
+      {
+        "root": "既存WSL証拠ルートからの相対path",
+        "path": "verification-evidence/october-fifth-wave-20261027-0660-local-green4-8f671cba/green-build-results.json",
+        "sha256": "a857d4fa473de85c46a6af28469cc4a0316a0e1b38e2b57f5211d51a0d372bdd"
+      },
+      {
+        "root": "既存WSL証拠ルートからの相対path",
+        "path": "verification-evidence/october-fifth-wave-20261027-0660-local-green4-8f671cba/runtime-counts.json",
+        "sha256": "e73c2b92b655188f96f810ecabe364b9de63ccd2845f506a5215d5ee8d8dc039"
+      }
+    ],
+    "policy": "path/SHAと選定集計のみ。raw HTTP、本文、DOM、HAR、画像、認証情報、メールアドレス、個人名を含めない。"
+  }
+}
