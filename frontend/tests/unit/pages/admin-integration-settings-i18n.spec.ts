@@ -7,6 +7,18 @@ import { createI18n } from 'vue-i18n'
 import LineSettings from '~/pages/admin/line-settings.vue'
 import SnsSettings from '~/pages/admin/sns-settings.vue'
 import PageHeader from '~/components/PageHeader.vue'
+import jaCommon from '~/locales/ja/common.json'
+import enCommon from '~/locales/en/common.json'
+import zhCommon from '~/locales/zh/common.json'
+import koCommon from '~/locales/ko/common.json'
+import esCommon from '~/locales/es/common.json'
+import deCommon from '~/locales/de/common.json'
+import jaSidebar from '~/locales/ja/org_sidebar.json'
+import enSidebar from '~/locales/en/org_sidebar.json'
+import zhSidebar from '~/locales/zh/org_sidebar.json'
+import koSidebar from '~/locales/ko/org_sidebar.json'
+import esSidebar from '~/locales/es/org_sidebar.json'
+import deSidebar from '~/locales/de/org_sidebar.json'
 
 const boundary = vi.hoisted(() => ({
   scope: { current: { type: 'team', id: 'test-team' } },
@@ -33,15 +45,16 @@ mockNuxtImport('useSnsFeedApi', () => () => ({
 }))
 
 // 本番の辞書を読み、翻訳関数・対象ページ・PageHeaderは実物で検証する。
-const dictionaries = import.meta.glob('../../../app/locales/*/{common,org_sidebar}.json', {
-  eager: true, import: 'default',
-}) as Record<string, Record<string, unknown>>
 const locales = ['ja', 'en', 'zh', 'ko', 'es', 'de'] as const
 type Locale = typeof locales[number]
-const messages = Object.fromEntries(locales.map(locale => [locale, {
-  ...dictionaries[`../../../app/locales/${locale}/common.json`],
-  ...dictionaries[`../../../app/locales/${locale}/org_sidebar.json`],
-}]))
+const messages = {
+  ja: { ...jaCommon, ...jaSidebar },
+  en: { ...enCommon, ...enSidebar },
+  zh: { ...zhCommon, ...zhSidebar },
+  ko: { ...koCommon, ...koSidebar },
+  es: { ...esCommon, ...esSidebar },
+  de: { ...deCommon, ...deSidebar },
+}
 const pages = [
   { name: 'LINE', component: LineSettings, titleKey: 'orgSidebar.lineSettings', subtitleKey: 'integrationSettings.lineSubtitle', read: boundary.getConfig },
   { name: 'SNS', component: SnsSettings, titleKey: 'orgSidebar.snsSettings', subtitleKey: 'integrationSettings.snsSubtitle', read: boundary.listFeeds },
