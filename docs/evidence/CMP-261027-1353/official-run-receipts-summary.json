@@ -1,0 +1,542 @@
+{
+  "campaign": "CMP-261027-1353",
+  "kind": "allowed-receipt-fields-and-JUnit-counts-only",
+  "runs": [
+    {
+      "officialRun": "CMP-261027-1353-calendar-red3",
+      "receiptAvailable": true,
+      "sourceHead": "be5263f80b748c20b370f87c419ca33e771c82da",
+      "exitCode": 1,
+      "errorPresent": false,
+      "cleanup": "removed",
+      "testSummary": [
+        {
+          "name": "com.mannschaft.app.schedule.CalendarBatchQueryIT",
+          "tests": "2",
+          "failures": "1",
+          "errors": "0",
+          "skipped": "0"
+        }
+      ]
+    },
+    {
+      "officialRun": "CMP-261027-1353-calendar-green1",
+      "receiptAvailable": true,
+      "sourceHead": "384e24fcc8c2e4cba5affd3e007badf6f1287a15",
+      "exitCode": 1,
+      "errorPresent": false,
+      "cleanup": "removed",
+      "testSummary": [
+        {
+          "name": "com.mannschaft.app.schedule.service.CalendarBatchOrderTest",
+          "tests": "8",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "listTeamSchedules",
+          "tests": "1",
+          "failures": "1",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "§3.4 色の優先順位",
+          "tests": "5",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "listOrgSchedules",
+          "tests": "1",
+          "failures": "1",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "myAttendanceStatusバッチ供給",
+          "tests": "5",
+          "failures": "4",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "getMyCalendar",
+          "tests": "5",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "com.mannschaft.app.schedule.CalendarBatchQueryIT",
+          "tests": "2",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "§4.7 カテゴリ色のバッチ取得",
+          "tests": "2",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "AC-19 / AC-08d enricher 由来エントリ",
+          "tests": "5",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "後方互換と色の埋め忘れ",
+          "tests": "3",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        }
+      ]
+    },
+    {
+      "officialRun": "CMP-261027-1353-calendar-green2",
+      "receiptAvailable": true,
+      "sourceHead": "3a09bca93f96203a84d8c4dd42df0b414f3d4402",
+      "exitCode": 0,
+      "errorPresent": false,
+      "cleanup": "removed",
+      "testSummary": [
+        {
+          "name": "listTeamSchedules",
+          "tests": "1",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "listOrgSchedules",
+          "tests": "1",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "myAttendanceStatusバッチ供給",
+          "tests": "5",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "getMyCalendar",
+          "tests": "5",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        }
+      ]
+    },
+    {
+      "officialRun": "CMP-261027-1353-action-preflight-red1",
+      "receiptAvailable": true,
+      "sourceHead": "177ecfcbcfaa8f1db5f086a692f24f1ea820534f",
+      "exitCode": 1,
+      "errorPresent": false,
+      "cleanup": "removed",
+      "testSummary": [
+        {
+          "name": "com.mannschaft.app.dashboard.service.PersonalActionRequiredBatchQueryIT",
+          "tests": "1",
+          "failures": "1",
+          "errors": "0",
+          "skipped": "0"
+        }
+      ]
+    },
+    {
+      "officialRun": "CMP-261027-1353-action-preflight-green1",
+      "receiptAvailable": true,
+      "sourceHead": "9da8f094ce04029961bf32baa9b56d4f15b6f08a",
+      "exitCode": 0,
+      "errorPresent": false,
+      "cleanup": "removed",
+      "testSummary": [
+        {
+          "name": "com.mannschaft.app.dashboard.service.ActionRequiredCandidateTest",
+          "tests": "8",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "fetch のマッピング",
+          "tests": "6",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "AC-16: fetchAndConvert の circulatedAt 通過",
+          "tests": "2",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "getActionRequired: 正常系",
+          "tests": "2",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "com.mannschaft.app.dashboard.service.ActionRequiredCandidateQueryIT",
+          "tests": "4",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "AnnouncementInboxAdapter 単体テスト",
+          "tests": "3",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "PersonalActionRequiredService 単体テスト",
+          "tests": "2",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "getActionRequired: 認可・縮退",
+          "tests": "2",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "com.mannschaft.app.dashboard.service.PersonalActionRequiredBatchQueryIT",
+          "tests": "1",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "isVisibleTo（IDOR）",
+          "tests": "9",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        }
+      ]
+    },
+    {
+      "officialRun": "CMP-261027-1353-inbox-query-contract-green1",
+      "receiptAvailable": true,
+      "sourceHead": "25d9ea729647039d65f7457db1f71090981e33c1",
+      "exitCode": 0,
+      "errorPresent": false,
+      "cleanup": "removed",
+      "testSummary": [
+        {
+          "name": "fetch のマッピング",
+          "tests": "6",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "com.mannschaft.app.inbox.AnnouncementInboxRoleBatchIT",
+          "tests": "19",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "AnnouncementInboxAdapter 単体テスト",
+          "tests": "3",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        },
+        {
+          "name": "isVisibleTo（IDOR）",
+          "tests": "9",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0"
+        }
+      ]
+    },
+    {
+      "officialRun": "CMP-261027-1353-api-fixed4",
+      "receiptAvailable": true,
+      "sourceHead": "3db393c2e4e5608e0e168d59baba85e68342ae78",
+      "exitCode": 0,
+      "errorPresent": false,
+      "cleanup": "removed"
+    },
+    {
+      "officialRun": "CMP-261027-1353-final-integrated-build3",
+      "receiptAvailable": true,
+      "sourceHead": "3db393c2e4e5608e0e168d59baba85e68342ae78",
+      "exitCode": 0,
+      "errorPresent": false,
+      "cleanup": "removed"
+    },
+    {
+      "officialRun": "CMP-261027-1353-carousel-red1",
+      "receiptAvailable": true,
+      "sourceHead": "5c71df4a36db642e6c6919053496dbe1901943e1",
+      "exitCode": 1,
+      "errorPresent": false,
+      "cleanup": "removed",
+      "frontendObservedResults": {
+        "officialRun": "CMP-261027-1353-carousel-red1",
+        "vitestCounts": {
+          "numTotalTests": 11,
+          "numPassedTests": 2,
+          "numFailedTests": 9,
+          "numPendingTests": 0,
+          "numTodoTests": 0,
+          "numRuntimeErrorTestSuites": null,
+          "numFailedTestSuites": 2
+        },
+        "assertionResultCount": 11,
+        "failedAssertionResults": 9,
+        "failureResultsContainingAssertionError": 9,
+        "failureMessagesSaved": false,
+        "collectionMetadata": {
+          "reportedFiles": 1,
+          "filesWithoutAssertions": 0,
+          "filesWithRuntimeError": 0,
+          "filesWithTopLevelMessage": 0,
+          "allFailedAssertionsClassifiedAsAssertionError": true,
+          "unreportedRuntimeErrorCounterTreatedAsUnknown": true
+        }
+      }
+    },
+    {
+      "officialRun": "CMP-261027-1353-carousel-green1",
+      "receiptAvailable": true,
+      "sourceHead": "2c8c49403ad2024fab593e04eec9381803e740a9",
+      "exitCode": 0,
+      "errorPresent": false,
+      "cleanup": "removed"
+    },
+    {
+      "officialRun": "CMP-261027-1353-timeline-access-red2",
+      "receiptAvailable": true,
+      "sourceHead": "9a1911d3bb6a7716b5726ec5fb073259df2b643d",
+      "exitCode": 1,
+      "errorPresent": false,
+      "cleanup": "removed",
+      "frontendObservedResults": {
+        "officialRun": "CMP-261027-1353-timeline-access-red2",
+        "vitestCounts": {
+          "numTotalTests": 12,
+          "numPassedTests": 0,
+          "numFailedTests": 12,
+          "numPendingTests": 0,
+          "numTodoTests": 0,
+          "numRuntimeErrorTestSuites": null,
+          "numFailedTestSuites": 5
+        },
+        "assertionResultCount": 12,
+        "failedAssertionResults": 12,
+        "failureResultsContainingAssertionError": 12,
+        "failureMessagesSaved": false,
+        "collectionMetadata": {
+          "reportedFiles": 2,
+          "filesWithoutAssertions": 0,
+          "filesWithRuntimeError": 0,
+          "filesWithTopLevelMessage": 0,
+          "allFailedAssertionsClassifiedAsAssertionError": true,
+          "unreportedRuntimeErrorCounterTreatedAsUnknown": true
+        }
+      }
+    },
+    {
+      "officialRun": "CMP-261027-1353-timeline-access-green1",
+      "receiptAvailable": true,
+      "sourceHead": "fc53a3139b2232169e5d79f40719e2f9bdfa33cc",
+      "exitCode": 0,
+      "errorPresent": false,
+      "cleanup": "removed"
+    },
+    {
+      "officialRun": "CMP-261027-1353-feed-red1",
+      "receiptAvailable": true,
+      "sourceHead": "ba1477f11fb816670d2079c9fad5838dce8727be",
+      "exitCode": 1,
+      "errorPresent": false,
+      "cleanup": "removed"
+    },
+    {
+      "officialRun": "CMP-261027-1353-feed-red2",
+      "receiptAvailable": true,
+      "sourceHead": "f27dfa9464eebec3c53ab839e8a8441e7a50bb30",
+      "exitCode": 1,
+      "errorPresent": false,
+      "cleanup": "removed"
+    },
+    {
+      "officialRun": "CMP-261027-1353-feed-red4",
+      "receiptAvailable": true,
+      "sourceHead": "c46bcefde27d54696a432cce7d96d47db1f9779f",
+      "exitCode": 1,
+      "errorPresent": false,
+      "cleanup": "removed"
+    },
+    {
+      "officialRun": "CMP-261027-1353-feed-green2",
+      "receiptAvailable": true,
+      "sourceHead": "4764684dc4cd77126b194ea62521cb1d3b8b30fb",
+      "exitCode": 0,
+      "errorPresent": false,
+      "cleanup": "removed"
+    },
+    {
+      "officialRun": "CMP-261027-1353-modal-red1",
+      "receiptAvailable": true,
+      "sourceHead": "21e4fc04a55c4d100f6b18943f1def35e6654cac",
+      "exitCode": 1,
+      "errorPresent": false,
+      "cleanup": "removed",
+      "frontendObservedResults": {
+        "officialRun": "CMP-261027-1353-modal-red1",
+        "vitestCounts": {
+          "numTotalTests": 58,
+          "numPassedTests": 50,
+          "numFailedTests": 8,
+          "numPendingTests": 0,
+          "numTodoTests": 0,
+          "numRuntimeErrorTestSuites": null,
+          "numFailedTestSuites": 12
+        },
+        "assertionResultCount": 58,
+        "failedAssertionResults": 8,
+        "failureResultsContainingAssertionError": 8,
+        "failureMessagesSaved": false,
+        "collectionMetadata": {
+          "reportedFiles": 8,
+          "filesWithoutAssertions": 0,
+          "filesWithRuntimeError": 0,
+          "filesWithTopLevelMessage": 0,
+          "allFailedAssertionsClassifiedAsAssertionError": true,
+          "unreportedRuntimeErrorCounterTreatedAsUnknown": true
+        }
+      }
+    },
+    {
+      "officialRun": "CMP-261027-1353-modal-green1",
+      "receiptAvailable": true,
+      "sourceHead": "452ec1d1fb2363c142085084d8c6092933a94819",
+      "exitCode": 1,
+      "errorPresent": false,
+      "cleanup": "removed"
+    },
+    {
+      "officialRun": "CMP-261027-1353-modal-green2",
+      "receiptAvailable": true,
+      "sourceHead": "e3c8cdd46d1cde93f24a8d54fb1d27619c7511d0",
+      "exitCode": 1,
+      "errorPresent": false,
+      "cleanup": "removed"
+    },
+    {
+      "officialRun": "CMP-261027-1353-theme-red1",
+      "receiptAvailable": true,
+      "sourceHead": "8628c490d77aa905396c5d9e1081aec239a9865c",
+      "exitCode": 1,
+      "errorPresent": false,
+      "cleanup": "removed",
+      "frontendObservedResults": {
+        "officialRun": "CMP-261027-1353-theme-red1",
+        "vitestCounts": {
+          "numTotalTests": 1,
+          "numPassedTests": 0,
+          "numFailedTests": 1,
+          "numPendingTests": 0,
+          "numTodoTests": 0,
+          "numRuntimeErrorTestSuites": null,
+          "numFailedTestSuites": 2
+        },
+        "assertionResultCount": 1,
+        "failedAssertionResults": 1,
+        "failureResultsContainingAssertionError": 1,
+        "failureMessagesSaved": false,
+        "collectionMetadata": {
+          "reportedFiles": 1,
+          "filesWithoutAssertions": 0,
+          "filesWithRuntimeError": 0,
+          "filesWithTopLevelMessage": 0,
+          "allFailedAssertionsClassifiedAsAssertionError": true,
+          "unreportedRuntimeErrorCounterTreatedAsUnknown": true
+        }
+      }
+    },
+    {
+      "officialRun": "CMP-261027-1353-theme-modal-green1",
+      "receiptAvailable": true,
+      "sourceHead": "8b74b601d30b66c07c501de8e50d8e99043fb69b",
+      "exitCode": 1,
+      "errorPresent": false,
+      "cleanup": "removed"
+    },
+    {
+      "officialRun": "CMP-261027-1353-theme-modal-green2",
+      "receiptAvailable": true,
+      "sourceHead": "8970fa2268caf37c7cb590747e757562048ac46b",
+      "exitCode": 1,
+      "errorPresent": false,
+      "cleanup": "removed"
+    },
+    {
+      "officialRun": "CMP-261027-1353-theme-modal-green3",
+      "receiptAvailable": true,
+      "sourceHead": "74cf3092b213c8b0b2b5d752006b8ca2dba274ef",
+      "exitCode": 1,
+      "errorPresent": false,
+      "cleanup": "removed",
+      "frontendObservedResults": {
+        "officialRun": "CMP-261027-1353-theme-modal-green3",
+        "vitestCounts": {
+          "numTotalTests": 6,
+          "numPassedTests": 6,
+          "numFailedTests": 0,
+          "numPendingTests": 0,
+          "numTodoTests": 0,
+          "numRuntimeErrorTestSuites": null,
+          "numFailedTestSuites": 0
+        },
+        "assertionResultCount": 6,
+        "failedAssertionResults": 0,
+        "failureResultsContainingAssertionError": 0,
+        "failureMessagesSaved": false,
+        "lint": {
+          "files": 17,
+          "errors": 0,
+          "warnings": 0
+        },
+        "wholeRunExitCode": 1,
+        "wholeRunFailurePhase": "virtual-template-disk-proof",
+        "unitAndLintSucceededButWholeRunNotGreen": true,
+        "collectionMetadata": {
+          "reportedFiles": 2,
+          "filesWithoutAssertions": 0,
+          "filesWithRuntimeError": 0,
+          "filesWithTopLevelMessage": 0,
+          "allFailedAssertionsClassifiedAsAssertionError": true,
+          "unreportedRuntimeErrorCounterTreatedAsUnknown": true
+        }
+      }
+    }
+  ],
+  "notAllRowsAreSuccessful": true,
+  "missingReferencesNotInvented": true
+}

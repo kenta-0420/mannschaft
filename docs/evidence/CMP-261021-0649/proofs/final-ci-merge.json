@@ -1,0 +1,380 @@
+{
+  "implementationPR": {
+    "headRefOid": "1eaafc2cd843e198abcc4d414c4f250ecd05bd77",
+    "mergeCommit": {
+      "oid": "e64f374896681a898bc6cb1d6bfe2fa14117b496"
+    },
+    "mergedAt": "2026-10-27T19:26:12Z",
+    "number": 4137,
+    "state": "MERGED",
+    "url": "https://github.com/kenta-0420/mannschaft/pull/4137"
+  },
+  "ci": [
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-27T18:57:00Z",
+      "databaseId": 40564670324,
+      "headSha": "1eaafc2cd843e198abcc4d414c4f250ecd05bd77",
+      "status": "completed",
+      "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564670324",
+      "workflowName": "FE lockfile 検証"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-27T18:56:59Z",
+      "databaseId": 40564668001,
+      "headSha": "1eaafc2cd843e198abcc4d414c4f250ecd05bd77",
+      "status": "completed",
+      "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564668001",
+      "workflowName": "OpenAPI Drift Check"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-27T18:56:59Z",
+      "databaseId": 40564668009,
+      "headSha": "1eaafc2cd843e198abcc4d414c4f250ecd05bd77",
+      "status": "completed",
+      "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564668009",
+      "workflowName": "Worktree cleanup guard"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-27T18:56:59Z",
+      "databaseId": 40564667931,
+      "headSha": "1eaafc2cd843e198abcc4d414c4f250ecd05bd77",
+      "status": "completed",
+      "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564667931",
+      "workflowName": "API Drift — Check (PR)"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-27T18:56:59Z",
+      "databaseId": 40564668113,
+      "headSha": "1eaafc2cd843e198abcc4d414c4f250ecd05bd77",
+      "status": "completed",
+      "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564668113",
+      "workflowName": "秘密情報スキャン（gitleaks）"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-27T18:56:59Z",
+      "databaseId": 40564667924,
+      "headSha": "1eaafc2cd843e198abcc4d414c4f250ecd05bd77",
+      "status": "completed",
+      "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564667924",
+      "workflowName": "Harness CI"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-27T18:56:59Z",
+      "databaseId": 40564668013,
+      "headSha": "1eaafc2cd843e198abcc4d414c4f250ecd05bd77",
+      "status": "completed",
+      "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564668013",
+      "workflowName": "Lighthouse CI"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-27T18:56:59Z",
+      "databaseId": 40564667958,
+      "headSha": "1eaafc2cd843e198abcc4d414c4f250ecd05bd77",
+      "status": "completed",
+      "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564667958",
+      "workflowName": "Frontend — E2E (PR Check)"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-27T18:56:59Z",
+      "databaseId": 40564668063,
+      "headSha": "1eaafc2cd843e198abcc4d414c4f250ecd05bd77",
+      "status": "completed",
+      "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564668063",
+      "workflowName": "Frontend — CI (PR Check)"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-27T18:56:59Z",
+      "databaseId": 40564667959,
+      "headSha": "1eaafc2cd843e198abcc4d414c4f250ecd05bd77",
+      "status": "completed",
+      "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564667959",
+      "workflowName": "Backend — CI (PR Check)"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-27T18:56:57Z",
+      "databaseId": 40564665118,
+      "headSha": "1eaafc2cd843e198abcc4d414c4f250ecd05bd77",
+      "status": "completed",
+      "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564665118",
+      "workflowName": "Task-List PR Gate"
+    }
+  ],
+  "ciSuccessRunCount": 11,
+  "headSha": "1eaafc2cd843e198abcc4d414c4f250ecd05bd77",
+  "old114SuccessReassigned": false,
+  "source": "GitHub CLIの最終head run list/PR viewを正式化時に一回取得。",
+  "production": false,
+  "cloudDeployStepsClaimed": false,
+  "premergeSnapshot": {
+    "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/cmp0649-final-premerge-root.json",
+    "sha256": "08e4f574bd53fc760af8223de24178dd8e6f6621c5f5155dd247ed9eec11a570",
+    "checkedAt": "2026-10-27T19:25:57.3196837Z",
+    "total": 27,
+    "success": 25,
+    "skipped": 2,
+    "failure": 0,
+    "pending": 0,
+    "checks": [
+      {
+        "name": "Scan & Comment",
+        "workflowName": "API Drift — Check (PR)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T18:57:35Z",
+        "completedAt": "2026-10-27T18:58:11Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564667931/job/122402611830"
+      },
+      {
+        "name": "Detect changes",
+        "workflowName": "Backend — CI (PR Check)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T18:57:01Z",
+        "completedAt": "2026-10-27T18:57:34Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564667959/job/122402612159"
+      },
+      {
+        "name": "lockfile 変更の有無",
+        "workflowName": "FE lockfile 検証",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T19:11:58Z",
+        "completedAt": "2026-10-27T19:12:28Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564670324/job/122402620559"
+      },
+      {
+        "name": "Install",
+        "workflowName": "Frontend — CI (PR Check)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T19:05:00Z",
+        "completedAt": "2026-10-27T19:24:01Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564668063/job/122402613055"
+      },
+      {
+        "name": "Smoke E2E (F15.4 + F22.1 + 拡大予定)",
+        "workflowName": "Frontend — E2E (PR Check)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T19:03:01Z",
+        "completedAt": "2026-10-27T19:22:40Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564667958/job/122402612302"
+      },
+      {
+        "name": "harness-tests",
+        "workflowName": "Harness CI",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T18:57:17Z",
+        "completedAt": "2026-10-27T18:58:10Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564667924/job/122402611741"
+      },
+      {
+        "name": "Lighthouse パフォーマンスチェック",
+        "workflowName": "Lighthouse CI",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T18:59:46Z",
+        "completedAt": "2026-10-27T19:04:58Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564668013/job/122402612526"
+      },
+      {
+        "name": "OpenAPI Drift Check",
+        "workflowName": "OpenAPI Drift Check",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T18:58:52Z",
+        "completedAt": "2026-10-27T18:59:20Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564668001/job/122402612094"
+      },
+      {
+        "name": "Task-List PR Gate",
+        "workflowName": "Task-List PR Gate",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T18:57:00Z",
+        "completedAt": "2026-10-27T18:57:15Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564665118/job/122402603568"
+      },
+      {
+        "name": "Worktree cleanup guard",
+        "workflowName": "Worktree cleanup guard",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T18:59:22Z",
+        "completedAt": "2026-10-27T18:59:44Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564668009/job/122402612440"
+      },
+      {
+        "name": "PR差分スキャン",
+        "workflowName": "秘密情報スキャン（gitleaks）",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T18:58:11Z",
+        "completedAt": "2026-10-27T18:58:49Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564668113/job/122402612382"
+      },
+      {
+        "name": "Docker ビルド検証（main push のみ）",
+        "workflowName": "Frontend — CI (PR Check)",
+        "status": "COMPLETED",
+        "conclusion": "SKIPPED",
+        "startedAt": "2026-10-27T18:57:00Z",
+        "completedAt": "2026-10-27T18:56:59Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564668063/job/122402615863"
+      },
+      {
+        "name": "フル履歴スキャン（週次）",
+        "workflowName": "秘密情報スキャン（gitleaks）",
+        "status": "COMPLETED",
+        "conclusion": "SKIPPED",
+        "startedAt": "2026-10-27T18:56:59Z",
+        "completedAt": "2026-10-27T18:56:59Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564668113/job/122402614244"
+      },
+      {
+        "name": "Lint (D-5 @Builder guard)",
+        "workflowName": "Backend — CI (PR Check)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T19:12:30Z",
+        "completedAt": "2026-10-27T19:12:57Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564667959/job/122402899777"
+      },
+      {
+        "name": "lockfile の内容検査（base 比較）",
+        "workflowName": "FE lockfile 検証",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T19:19:48Z",
+        "completedAt": "2026-10-27T19:19:51Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564670324/job/122410812853"
+      },
+      {
+        "name": "Shard coverage guard",
+        "workflowName": "Backend — CI (PR Check)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T19:13:09Z",
+        "completedAt": "2026-10-27T19:14:19Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564667959/job/122402899750"
+      },
+      {
+        "name": "npm ci（Ubuntu / glibc）",
+        "workflowName": "FE lockfile 検証",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T19:15:03Z",
+        "completedAt": "2026-10-27T19:15:06Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564670324/job/122410812864"
+      },
+      {
+        "name": "ArchUnit tests (separate JVM)",
+        "workflowName": "Backend — CI (PR Check)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T19:18:05Z",
+        "completedAt": "2026-10-27T19:20:50Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564667959/job/122402899854"
+      },
+      {
+        "name": "npm ci（Alpine / musl）",
+        "workflowName": "FE lockfile 検証",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T19:12:59Z",
+        "completedAt": "2026-10-27T19:13:07Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564670324/job/122410812711"
+      },
+      {
+        "name": "Non-JST timezone contract",
+        "workflowName": "Backend — CI (PR Check)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T18:58:13Z",
+        "completedAt": "2026-10-27T19:02:59Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564667959/job/122402899862"
+      },
+      {
+        "name": "Test (shard 0)",
+        "workflowName": "Backend — CI (PR Check)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T19:15:08Z",
+        "completedAt": "2026-10-27T19:18:22Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564667959/job/122402899952"
+      },
+      {
+        "name": "Test (shard 1)",
+        "workflowName": "Backend — CI (PR Check)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T19:12:23Z",
+        "completedAt": "2026-10-27T19:15:02Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564667959/job/122402899881"
+      },
+      {
+        "name": "Test (shard 2)",
+        "workflowName": "Backend — CI (PR Check)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T19:17:07Z",
+        "completedAt": "2026-10-27T19:19:47Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564667959/job/122402899831"
+      },
+      {
+        "name": "Test (shard 3)",
+        "workflowName": "Backend — CI (PR Check)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T19:18:24Z",
+        "completedAt": "2026-10-27T19:21:11Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564667959/job/122402899953"
+      },
+      {
+        "name": "Test (shard 4)",
+        "workflowName": "Backend — CI (PR Check)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T19:14:21Z",
+        "completedAt": "2026-10-27T19:17:05Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564667959/job/122402899850"
+      },
+      {
+        "name": "Test (shard 5)",
+        "workflowName": "Backend — CI (PR Check)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T19:19:52Z",
+        "completedAt": "2026-10-27T19:23:14Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564667959/job/122402901151"
+      },
+      {
+        "name": "Compile & Test",
+        "workflowName": "Backend — CI (PR Check)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-27T19:23:16Z",
+        "completedAt": "2026-10-27T19:23:20Z",
+        "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40564667959/job/122416536938"
+      }
+    ]
+  },
+  "deployGate": {
+    "requiredSecretNamesAbsentCount": 7,
+    "secretValuesRead": false,
+    "production": false,
+    "mainCloudStepSkipNotClaimed": true
+  }
+}

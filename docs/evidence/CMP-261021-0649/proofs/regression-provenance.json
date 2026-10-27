@@ -1,0 +1,71 @@
+{
+  "formal": true,
+  "heads": {
+    "red": "51ee0a14e375e13c44549c6bf1006162936e98a0",
+    "be": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+    "fe": "33a90ea9ca354bb234adac2aca62455803668ceb",
+    "review": "dd41b081219c1e8bb127b07f4086e2d104903a11",
+    "runtimeOld": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+    "runtimeNew": "84c8c2fa422bab8dec5fe01e81a695e92db9911d",
+    "candidate": "1eaafc2cd843e198abcc4d414c4f250ecd05bd77",
+    "previousCandidate": "e7115911c7d260b1f9044372d72f99d18c0ba4f8",
+    "reviewed114": "1143887d5251fdab860701fe47d8b7278655b342"
+  },
+  "red": {
+    "source": ".claude/campaigns/cmp0649-next-20261026/evidence-red-51ee0a14e375-02/red-be-summary.json",
+    "originalClassification": "test-not-executed",
+    "adjudication": ".claude/campaigns/cmp0649-next-20261026/evidence-red-51ee0a14e375-02/classification-adjudication.json",
+    "classification": "business-assertion-red",
+    "tests": 24,
+    "assertionFailures": 9,
+    "errors": 0,
+    "skip": 0,
+    "individualFailedCaseAttribution": "不確定。旧失敗ケースの個別帰属を確定したとは主張しない。",
+    "rawRetention": "標準runnerがscratchを撤去済み。rawは未保持。"
+  },
+  "green": {
+    "source": ".claude/campaigns/cmp0649-next-20261026/evidence-green-24ceb0588e2d-01/green-be-summary.json",
+    "head": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+    "fresh": true,
+    "tests": 25,
+    "failures": 0,
+    "errors": 0,
+    "skip": 0,
+    "laterCachedRunsNotFresh": true
+  },
+  "frontend": {
+    "source": ".claude/campaigns/cmp0649-next-20261026/fe-assertion-trace-33a90.json",
+    "head": "33a90ea9ca354bb234adac2aca62455803668ceb",
+    "dialog": 34,
+    "list": 9,
+    "targetSkip": 0,
+    "globalSkip": 5,
+    "perCaseCiOutputObserved": false
+  },
+  "finalHeadCi": {
+    "head": "1eaafc2cd843e198abcc4d414c4f250ecd05bd77",
+    "successRunIds": [
+      40564670324,
+      40564668001,
+      40564668009,
+      40564667931,
+      40564668113,
+      40564667924,
+      40564668013,
+      40564667958,
+      40564668063,
+      40564667959,
+      40564665118
+    ],
+    "evidence": "docs/evidence/CMP-261021-0649/proofs/final-ci-merge.json"
+  },
+  "newRuntime": {
+    "sourceHead": "84c8c2fa422bab8dec5fe01e81a695e92db9911d",
+    "owner": "cmp1432f-e48ca45535",
+    "fixedPassed": true,
+    "independentDGoalsReached": false,
+    "runExitCode": 1,
+    "runOutcome": "D-supplement-unmet",
+    "evidence": "docs/evidence/CMP-261021-0649/proofs/third-run-summary.json"
+  }
+}

@@ -14,16 +14,24 @@ const distributions = ref<CommitteeDistributionLog[]>([])
 const loading = ref(true)
 /** 取得失敗は「配布履歴なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
 const loadFailed = ref(false)
+const { page, rows, totalRecords, onPage } = usePagination()
+
+function changePage(event: { page: number; rows: number }) {
+  onPage(event)
+  loadDistributions()
+}
 
 async function loadDistributions() {
   loading.value = true
   loadFailed.value = false
   try {
-    const res = await committeeApi.listDistributions(committeeId)
+    const res = await committeeApi.listDistributions(committeeId, { page: page.value, size: rows.value })
     distributions.value = res.data
+    totalRecords.value = res.meta.total
   } catch (err) {
     handleApiError(err, 'listDistributions')
     distributions.value = []
+    totalRecords.value = 0
     loadFailed.value = true
   } finally {
     loading.value = false
@@ -86,6 +94,13 @@ onMounted(async () => {
           </div>
         </div>
       </div>
+      <Paginator
+        :first="page * rows"
+        :rows="rows"
+        :total-records="totalRecords"
+        template="PrevPageLink PageLinks NextPageLink"
+        @page="changePage"
+      />
     </SectionCard>
   </div>
 </template>
