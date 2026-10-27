@@ -173,7 +173,7 @@
     {
       "description": "管理者dashboardの依頼routeとswaps query追従の回帰",
       "test": "AdminActionRequiredFacadeTest / ShiftRequestAdminQueryServiceTest / shifts.spec.ts",
-      "redEvidence": "docs/evidence/CMP-261009-0616-regression-red.json",
+      "redEvidence": "docs/evidence/CMP-261009-0616/regression-red.json",
       "greenEvidence": "docs/evidence/CMP-261009-0616-review.md"
     }
   ],
