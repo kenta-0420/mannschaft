@@ -29,6 +29,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.context.event.ApplicationEvents;
@@ -86,6 +87,7 @@ class ConfirmableReminderResendTransactionIT extends AbstractMySqlIntegrationTes
     @Autowired private UserRepository userRepository;
     @Autowired private PlatformTransactionManager transactionManager;
     @Autowired private TransactionTemplate transactionTemplate;
+    @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired @Qualifier("event-pool") private ThreadPoolTaskExecutor eventPool;
     @Autowired private ApplicationEvents applicationEvents;
     @PersistenceContext private EntityManager em;
@@ -264,6 +266,43 @@ class ConfirmableReminderResendTransactionIT extends AbstractMySqlIntegrationTes
         drainEventPool();
         assertThat(notificationRepository.findById(fx.notificationId)).isPresent();
         assertThat(recipientRepository.findByConfirmableNotificationId(fx.notificationId)).hasSize(2);
+        for (Long user : fx.unconfirmed) {
+            assertThat(rows(user, fx.notificationId)).isEmpty();
+        }
+    }
+
+    @Test
+    @DisplayName("AC-B（同一業務TXの更新）: 業務行を更新した同じTXで再送し配送が実DB例外で全滅しても、更新はコミットされて残る")
+    void businessUpdateInSameTransactionSurvivesDeliveryFailure() {
+        Fx fx = seed(2, 0, 0);
+        String updatedTitle = "G4-b 業務更新 " + UUID.randomUUID();
+        // 配送の永続化を「呼ばれた時点の TX 上で不正 SQL を流す」形で全員失敗させる。
+        // 旧実装（業務TX内で同期配送）ではこの例外が業務TXを rollback-only にし、コミット時に
+        // UnexpectedRollbackException となって下の業務更新ごと巻き戻る（＝このテストは赤になる）。
+        willAnswer(inv -> {
+            em.createNativeQuery("INSERT INTO notifications (no_such_column_g4b) VALUES (1)").executeUpdate();
+            return null;
+        }).given(notificationService).createNotification(any(), any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), any());
+
+        // テスト側の外側TXで業務行を更新し、同じTXの中で再送する（resendReminder は REQUIRED で参加する）。
+        assertThatCode(() -> transactionTemplate.executeWithoutResult(tx -> {
+            int updated = jdbcTemplate.update(
+                    "UPDATE confirmable_notifications SET title = ? WHERE id = ?", updatedTitle, fx.notificationId);
+            assertThat(updated).isEqualTo(1);
+            confirmService.resendReminder(fx.notificationId);
+        })).as("配送失敗が業務TXのコミットへ波及しない（204 相当）").doesNotThrowAnyException();
+
+        // 注入点（実DB例外を流す createNotification）に全員ぶん到達したことを待つ。
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
+                verify(notificationService, times(2)).createNotification(any(), any(), any(), any(), any(), any(),
+                        any(), any(), any(), any(), any()));
+        drainEventPool();
+
+        // 別TX（JdbcTemplate の自動コミット接続）から、更新後の値が残っていることを確かめる。
+        String persistedTitle = jdbcTemplate.queryForObject(
+                "SELECT title FROM confirmable_notifications WHERE id = ?", String.class, fx.notificationId);
+        assertThat(persistedTitle).as("同じ業務TXの更新はコミットされて残る").isEqualTo(updatedTitle);
         for (Long user : fx.unconfirmed) {
             assertThat(rows(user, fx.notificationId)).isEmpty();
         }
