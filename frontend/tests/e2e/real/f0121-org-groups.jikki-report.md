@@ -1,8 +1,9 @@
 # F01.2.1 組織がチームをグループ化 — 実機E2E 結果報告
 
 - 戦役台帳: CMP-261011-0035（/実機）
-- 実施日: 2026-10-20〜21
-- 対象コード: origin/main `2c51ea237`（`9da2e465ba` との差分は文書のみ）
+- 実施日: 2026-10-20〜21（初回）、2026-10-28（#4014 マージ後の再実行。下の結果はこの最終実行）
+- 対象コード: 本ブランチ `409f1003ed`（origin/main `20f2d9ac7a`＝製品欠陥 D-1〜D-3 の修正 #4014 を取り込み済み）。BE はこのコミットから bootJar。spec の期待値修正（`63afd7edce`）は テストのみ
+- 初回の対象コード: origin/main `2c51ea237`（`9da2e465ba` との差分は文書のみ）
 - spec:
   - `f0121-org-affiliation.real.spec.ts`（加盟: 設定・申請・承認・拒否・制限・招待・離脱・除名・権限・バッチ・API 契約）
   - `f0121-org-team-groups.real.spec.ts`（チームグループ: 作成・改名・並び替え・削除・単体/一括割当・絞り込み・申請/承認/招待のグループ）
@@ -13,38 +14,54 @@
 
 | 項目 | 内容 |
 |---|---|
-| BE | 検証用 `http://localhost:8081`（WSL ネイティブ clone `~/jikki-orggroups-20261020` を bootJar → `java -jar`、`MANNSCHAFT_ALLOWED_ORIGINS=http://localhost:3021,http://localhost:8081`）。DB は共有の `mannschaft-mysql`、Valkey は `mannschaft-valkey` |
-| FE | 検証用 `http://localhost:3021`（同じ clone の `nuxt dev`。`NUXT_PUBLIC_API_BASE`・`NUXT_INTERNAL_API_BASE` とも 8081。BE の CORS 許可を 3021・8081 に設定） |
-| Playwright | WSL 内で専用設定 `playwright-f0121.config.ts`（3 spec を 1 回の実行で流し、globalTeardown で後始末）、`BASE_URL=http://localhost:3021 API_BASE_URL=http://localhost:8081` |
-| 向き先の裏取り | `ss -ltnp` で 3021・8081 が自分のプロセスであることを確認。各 spec の afterAll が「画面が呼んだ API のオリジン」を出力する（検証 BE 以外へ出た呼び出しはパス付き） |
+| BE | 検証用 `http://localhost:8121`（WSL ネイティブ clone `~/jikki-orggroups-20261020` を bootJar → `java -jar … --spring.profiles.active=local --server.port=8121`、`MANNSCHAFT_ALLOWED_ORIGINS=http://localhost:3121,http://localhost:8121`）。DB は共有の `mannschaft-mysql`、Valkey は `mannschaft-valkey`。Flyway は `253.20261025131621` で up to date（失敗行なし） |
+| FE | 検証用 `http://localhost:3121`（同じ clone の `nuxt dev --port 3121`。`NUXT_PUBLIC_API_BASE`・`NUXT_INTERNAL_API_BASE` とも 8121。BE の CORS 許可を 3121・8121 に設定し、OPTIONS が 200 になることを確認） |
+| Playwright | WSL 内で専用設定 `playwright-f0121.config.ts`（3 spec を 1 回の実行で流し、globalTeardown で後始末）、`BASE_URL=http://localhost:3121 API_BASE_URL=http://localhost:8121`。Chromium は clone 専用の `PLAYWRIGHT_BROWSERS_PATH` に導入 |
+| 向き先の裏取り | `ss -ltnp` と `/proc/{pid}/cmdline`・cwd で 3121・8121 が自分のプロセス（clone 配下の `java -jar`・`nuxi dev`）であることを確認。各 spec の afterAll が「画面が呼んだ API のオリジン」を出力し、3 spec とも `http://localhost:8121`（と FE 自身の CSP 報告先）だけだった |
+| ポートの選び方 | 前回の 8081 は再実行時に別セッションの検証 BE（`~/verification-evidence/…/preview-api.jar`）が占有していたため使わず、空いていた 8121・3121 を選んだ（他セッションのサーバーには触れていない） |
+| 後始末 | 実行後に自分の BE・FE（と nuxt の子プロセス）を PID・cmdline を確かめて停止し、8121・3121 の解放を `ss -ltnp` で確認 |
 | 本陣 8080/3000 | 使用せず・停止せず |
 
 環境上の注記（製品欠陥ではない）:
 
 - Windows 側 worktree（本陣 node_modules の junction）で動かした `nuxt dev` は、高負荷の共有機で 1 画面の水和に 40〜160 秒かかり、spec が時間切れで落ちた。Windows 側の `nuxt build` は 70 分を超えても終わらなかったため中止し、WSL ネイティブ clone で FE を立て直した（水和 10 秒前後）。
 - 本陣 `node_modules` は main より古く `unicode-segmenter` が無いため、本番ビルドでは解決に失敗する（dev では該当ページを開かない限り顕在化しない）。clone では `npm install --no-save` で lock に揃えた。
-- 3001 は途中から別セッションの検証 FE（`~/verify-friend3`、BE 8091 向き）が `0.0.0.0:3001` を占有しており、自分の FE は空きを探して 3000 で待ち受けていた。この間の実行は他セッションの FE・BE を画面が叩いていたため結果に採らず、FE を 3021 に立て直して全 spec を再実行した（下表はその最終実行）。他セッションのサーバーには触れていない。
+- 再実行（2026-10-28）では前回の clone が消えていたため GitHub から作り直した。WSL 側 nvm の node 22 / 24 に同梱の npm が壊れていた（`Cannot find module 'graceful-fs'`）ため、`npm ci` は Linux の node 22.23.2 で Windows 側 npm の `npm-cli.js` を実行して行った（依存は Linux 向けに入る）。Playwright の Chromium も `~/.cache/ms-playwright` に無かったため clone 専用のパスに導入した。いずれも製品とは無関係の環境事情。
+- （初回の記録）3001 は途中から別セッションの検証 FE（`~/verify-friend3`、BE 8091 向き）が `0.0.0.0:3001` を占有しており、自分の FE は空きを探して 3000 で待ち受けていた。この間の実行は他セッションの FE・BE を画面が叩いていたため結果に採らず、FE を 3021 に立て直して全 spec を再実行した（初回の 28 passed / 3 failed はその実行）。他セッションのサーバーには触れていない。
 - 前提作成の都合で、レート制限カウンタを Valkey 上で戻している（各 AC の対象はレート制限ではないため）。戻すのはテストに対応するキーだけで、パターンでの一括削除はしない: 登録（10 件/時/IP）は接続元 IP のキー `mannschaft:auth:register_attempt:127.0.0.1` だけ、申請（10 件/時/利用者）・告知送信（5 件/5 分/利用者）はテスト利用者の ID を固定した `mannschaft:rate:{zone}:u:{userId}:*` だけ。
 - 利用者のメールアドレスは「spec の識別子・役割名・実行 ID」で決まる（例 `e2e-og-aff-xa-{RUN}@…`）。同じ実行で 3 spec を流しても重複登録しない。組織・チームの slug も明示的に一意な値を渡す。利用者の有効化はメール認証トークンが平文で取れないため `users.status` を直更新している。
 
-## 実行結果（最終実行・Codex 検分 第1回の指摘対応後）
+## 実行結果（最終実行・#4014 マージ後の再実行）
 
-`playwright-f0121.config.ts` で 3 spec を 1 回の実行で流した結果: **28 passed / 3 failed（17.7 分）**。globalTeardown は「削除 21/21 件（途中削除済み 16 件）」で全件 204。
+2026-10-28 00:14〜00:39（JST）、`playwright-f0121.config.ts` で 3 spec を 1 回の実行で流した結果: **33 passed / 0 failed（24.4 分）**。globalTeardown は「削除 21/21 件（途中削除済み 16 件）」で全件 204、実行の終了コード 0。DB でも今回の実行 ID の組織 17 件・チーム 20 件がすべて `deleted_at` 付きであることを確認した。
 
-| spec | 結果 | 失敗の内容 |
+| spec | 結果 | 備考 |
 |---|---|---|
-| f0121-org-affiliation | 11 passed / 1 failed | ORGAFF-06 の soft 判定 1 件のみ（製品欠陥 D-1） |
+| f0121-org-affiliation | 12 passed / 0 failed | ORGAFF-06 が PASS に転じた（D-1 修正） |
 | f0121-org-team-groups | 10 passed / 0 failed | — |
-| f0121-org-group-broadcast | 7 passed / 2 failed | BC-07 の送信履歴の宛先表示（改名後 soft・削除後 hard。製品欠陥 D-2）、BC-09 のチーム指定（製品欠陥 D-3） |
+| f0121-org-group-broadcast | 11 passed / 0 failed | BC-07（D-2）・BC-09（D-3）・BC-10（AC-H27）・BC-11（AC-H29）が PASS に転じた |
 
-失敗 3 件はすべて既知の製品欠陥（D-1〜D-3。別 PR で修正中）による想定どおりのもの。欠陥が直れば同じ判定が PASS に転じる。
-画面が呼んだ API は検証 BE `http://localhost:8081` のほか、FE 自身の `/api/v1/security/csp-reports`（CSP 違反の報告先。FE 同一オリジン）だけ。
+前回（初回）は 28 passed / 3 failed で、失敗 3 件は製品欠陥 D-1〜D-3 によるものだった（このとき BC-10・BC-11 は第2回検分の対応で追加した直後で、D-3 で止まる判定）。#4014 で D-1〜D-3 が修正され、再実行で同じ判定がすべて PASS した。
+
+再実行にあたり、修正前の挙動を前提にしていた spec の箇所を設計書の受け入れ条件どおりに直した（判定は緩めていない。むしろ soft 判定を通常の判定に戻し、一部は厳しくした）:
+
+| spec 箇所 | 修正前 | 修正後 | 根拠 |
+|---|---|---|---|
+| ORGAFF-06 制限一覧の理由欄 | `expect.soft` で「生値 REJECTED を出さない」のみ | 通常の `expect` で「REJECTED を出さない」＋「ラベル『申請を拒否したため』で表示する」 | 設計書の制限一覧の節（理由は列挙値ごとのラベルで表示）。D-1 |
+| BC-07 送信履歴の宛先表示（改名後） | soft 判定 | 削除後と同じ通常の判定 | AC-H17。D-2 |
+| BC-08 API 契約の `targetTeamIds` | 数値 ID を送っていた | チームの slug を送る（存在しない 501 件も slug 形式） | 設計書 §8.1「`targetTeamIds` はチームの slug」（#4014 で slug 化） |
+| BC-08 AC-H14b の 501 チーム | ステータス 400 のみ | `[400, BROADCAST_010]` まで判定 | AC-H14b |
+| BC-09〜11 送信本体の `targetTeamIds` | `[T1 の数値 ID]` を期待 | `[T1 の slug]` を期待 | 設計書 §8.1。D-3 |
+
+ジョブ表の `scope_ref`（宛先チーム集合）は DB の内部 ID のままなので、`audienceTeams` の照合は数値 ID のままとした（設計書 §8.1「DB の target_team_ids は内部 ID」）。
+
+画面が呼んだ API は検証 BE `http://localhost:8121` のほか、FE 自身の `/api/v1/security/csp-reports`（CSP 違反の報告先。FE 同一オリジン）だけ。
 
 `test.skip` は無い。作成した組織・チームは作成時に記録し（`test-results/f0121-assets.jsonl`）、Playwright の globalTeardown（`helpers/f0121-global-teardown.ts`）が、テストの成否にかかわらず実行の最後に削除して 204 を検証する（1 件でも 204 以外なら実行を失敗にする）。テストの途中で削除するもの（`archiveScope`）も 204 を検証し、記録に削除済みと書く。
 
 ## AC ごとの結果
 
-凡例: PASS / FAIL（製品欠陥）/ 未実施（理由は後述）。「UI」は画面操作で対象操作を行ったもの、「API契約」は AC 自体が API 直打ちの応答を定めているもの。
+凡例: PASS / FAIL（製品欠陥）/ 未実施（理由は後述）。最終実行で FAIL は無い（初回 FAIL の行は「#4014 で修正・再実行で PASS 確認」と記す）。「UI」は画面操作で対象操作を行ったもの、「API契約」は AC 自体が API 直打ちの応答を定めているもの。
 
 | AC | 結果 | テスト ID | 方式 |
 |---|---|---|---|
@@ -64,7 +81,7 @@
 | C02 C03 | PASS | GRP-10 | UI（承認ダイアログで変更・未分類。監査ログに希望と確定） |
 | C04 | 一部 PASS | ORGAFF-11 | (a)(b)(d) は API で観測。(c) は未実施 |
 | C05 C06 P08 | PASS | ORGAFF-11 | API契約 |
-| C07 C09 C10 C11 C12 C08 | PASS（D-1 あり） | ORGAFF-06 | UI（理由・ブロック付き拒否、制限一覧から解除、申請ダイアログで「現在この組織には申請できません」） |
+| C07 C09 C10 C11 C12 C08 | PASS（初回は制限一覧の理由表示が D-1 で FAIL。#4014 で修正・再実行で PASS 確認） | ORGAFF-06 | UI（理由・ブロック付き拒否、制限一覧の理由が「申請を拒否したため」で生値 REJECTED は出ない、制限一覧から解除、申請ダイアログで「現在この組織には申請できません」） |
 | C13 | 未実施 | — | |
 | C14 | 前半 PASS | ORGAFF-11 | 申請中チームの削除→行が消え XA に取消通知 |
 | D01 D02 L06 D06 E02 E10 P07 | PASS | ORGAFF-08 | UI（除名、画面から招待、通知ベル→?view=invites→承諾） |
@@ -93,12 +110,12 @@
 | H09 | PASS | BC-04 | UI 送信＋通知一覧 |
 | H11 H28（すべてのチーム） | PASS | BC-09 | UI 送信＋ジョブ表 |
 | H13 | PASS | BC-06 | UI（XM の push 無し注記、ジョブ無し） |
-| H05 H12 K05 H14b K07 | PASS | BC-08 | API契約 |
+| H05 H12 K05 H14b K07 | PASS | BC-08 | API契約（`targetTeamIds` はチームの slug。H14b は 400 `BROADCAST_010` まで判定） |
 | H16 | 未実施 | — | |
-| H17 | 一部 FAIL | BC-01 / BC-07 | 完了パネルの宛先表示は PASS（「宛先: G2 以前（並び順で先頭から）（送信時 2 チーム）」を全文一致）。送信履歴（`/dashboard` の組織タブ）の B1 の項目に限った宛先表示は、改名後・削除後とも FAIL（D-2） |
-| H18 H28（チームを選ぶ） | FAIL | BC-09 | 画面からチーム指定の告知を送れない（D-3）。修正後は T1 宛てアンケートのジョブ・宛先集合・push と、T1 宛て掲示板のジョブなしを判定 |
-| H27 | FAIL | BC-10 | XM が「チームを選ぶ」で T1 宛てアンケートを画面から送る手順が D-3 で宛先プレビューから先に進めない。修正後は「ジョブなし・T1 と XO に push なし・T1 にだけ表示」を判定 |
-| H29 | FAIL | BC-11 | XA が「チームを選ぶ」で T1 宛て掲示板を画面から送る手順が D-3 で止まる。修正後は「T1 にだけ表示・T1 を G1→G3 へ移しても T1 に出続け、T3 には出ない」を判定 |
+| H17 | PASS（初回は送信履歴側が D-2 で FAIL。#4014 で修正・再実行で PASS 確認） | BC-01 / BC-07 | 完了パネルの宛先表示（「宛先: G2 以前（並び順で先頭から）（送信時 2 チーム）」を全文一致）に加え、送信履歴（`/dashboard` の組織タブ）の B1 の項目に限った宛先表示が、G2 の改名後・削除後とも送信時の全文のまま（改名後の名前は出ない） |
+| H18 H28（チームを選ぶ） | PASS（初回は D-3 で FAIL。#4014 で修正・再実行で PASS 確認） | BC-09 | UI（「チームを選ぶ」で T1 にチェック→宛先プレビュー 200・「該当: 1 チーム」→送信）。T1 宛てアンケートは `ORGANIZATION_TEAMS` ジョブ1件・宛先集合 T1 のみ・T1 と XO に push 1 件・T2/T0 に 0 件、T1 宛て掲示板はジョブなし |
+| H27 | PASS（初回は D-3 で FAIL。#4014 で修正・再実行で PASS 確認） | BC-10 | UI（XM が「チームを選ぶ」で T1 宛てアンケートを送信）。ジョブなし・T1 と XO に push なし・T1 にだけ表示（T2 には出ない） |
+| H29 | PASS（初回は D-3 で FAIL。#4014 で修正・再実行で PASS 確認） | BC-11 | UI（XA が「チームを選ぶ」で T1 宛て掲示板を送信、送信本文の `targetTeamIds` は T1 の slug）。T1 にだけ表示・T1 を G1→G3 へ移しても T1 に出続け、T3 には出ない |
 | H02 H03 H22 H24 H25 H30 H31 J01 J02 J03 | 未実施 | — | |
 | K02 | PASS | ORGAFF-04 | UI（XM・XD の 4 view 直打ち→一覧） |
 | K03 P01 P02 P03 P04 P06 P09 P10 P11 | PASS | ORGAFF-07 | UI（権限グループの作成とメンバー一覧からの割当、タブ・直打ちの可否） |
@@ -148,11 +165,13 @@
 
 ## 発見した製品欠陥
 
+D-1〜D-3 は **#4014 で修正・再実行（2026-10-28）で PASS 確認**。以下は初回に記録した内容（再現手順・証拠は修正前のもの）。再実行で新たな製品欠陥は見つかっていない。
+
 | ID | 内容 | 再現手順 | 証拠 | 重大度の見立て |
 |---|---|---|---|---|
-| D-1 | 組織の「申請の制限」一覧に、拒否理由コードの生値（`REJECTED` 等）がそのまま表示される | XA が申請を拒否（今後受け付けない）→ `/organizations/{X}/member-teams?view=restrictions` | 行の表示が「{チーム名}ブロック中REJECTED解除」。`MemberTeamsRestrictionsView.vue` は `restriction.reason` を自由文として描画するが、BE は列挙値（REJECTED/DECLINED/WITHDRAWN/CANCELLED）を返す | 低〜中（i18n 規約違反・利用者に意味不明な英字コード。拒否時に入力した理由文はここには出ない） |
-| D-2 | 送信履歴（組織のお知らせ一覧）に「宛先: …（送信時 N チーム）」が出ない（AC-H17 後半） | XA が G2 以前で掲示板告知を送信 → `/dashboard` の「組織」タブのお知らせ一覧 | 項目は出るが `broadcast-audience-summary` が無い。ダッシュボード API の `orgNotices`（`DashboardService#toAnnouncementFeedMap`）が `target_audience` を返さず、FE の `toDashboardAnnouncementItem` も写さない。組織のお知らせ一覧はこの経路しか無いため、宛先表示に到達する画面が無い（完了パネルには出る） | 中（AC-H17 の一覧表示が画面から観測できない） |
-| D-3 | 告知ウィザードの「チームを選ぶ」でチームにチェックすると宛先プレビューが 400 になり、「次へ」が押せない（チーム指定の告知を画面から送れない） | 組織の「組織内告知」→「チームを選ぶ」→チームにチェック | `POST /api/v1/organizations/{X}/broadcast/audience-preview` 本文 `{"targetRole":"MEMBERS_AND_ABOVE","targetTeamIds":["t1-…"]}` → 400 `COMMON_001`。FE（`BroadcastStep1Audience.vue` の `orgTeams`）が `GET /organizations/{X}/teams` の `id`（slug）を宛先 ID に使い、BE の `targetTeamIds` は `List<Long>`。数値 ID なら 200 | 高（AC-H18・H27・H28 後半・H29 と、既存の「チームを選ぶ」告知そのものが画面から使えない） |
+| D-1（#4014 で修正・再実行で PASS 確認） | 組織の「申請の制限」一覧に、拒否理由コードの生値（`REJECTED` 等）がそのまま表示される | XA が申請を拒否（今後受け付けない）→ `/organizations/{X}/member-teams?view=restrictions` | 行の表示が「{チーム名}ブロック中REJECTED解除」。`MemberTeamsRestrictionsView.vue` は `restriction.reason` を自由文として描画するが、BE は列挙値（REJECTED/DECLINED/WITHDRAWN/CANCELLED）を返す | 低〜中（i18n 規約違反・利用者に意味不明な英字コード。拒否時に入力した理由文はここには出ない） |
+| D-2（#4014 で修正・再実行で PASS 確認） | 送信履歴（組織のお知らせ一覧）に「宛先: …（送信時 N チーム）」が出ない（AC-H17 後半） | XA が G2 以前で掲示板告知を送信 → `/dashboard` の「組織」タブのお知らせ一覧 | 項目は出るが `broadcast-audience-summary` が無い。ダッシュボード API の `orgNotices`（`DashboardService#toAnnouncementFeedMap`）が `target_audience` を返さず、FE の `toDashboardAnnouncementItem` も写さない。組織のお知らせ一覧はこの経路しか無いため、宛先表示に到達する画面が無い（完了パネルには出る） | 中（AC-H17 の一覧表示が画面から観測できない） |
+| D-3（#4014 で修正・再実行で PASS 確認。`targetTeamIds` はチームの slug を受ける仕様になった） | 告知ウィザードの「チームを選ぶ」でチームにチェックすると宛先プレビューが 400 になり、「次へ」が押せない（チーム指定の告知を画面から送れない） | 組織の「組織内告知」→「チームを選ぶ」→チームにチェック | `POST /api/v1/organizations/{X}/broadcast/audience-preview` 本文 `{"targetRole":"MEMBERS_AND_ABOVE","targetTeamIds":["t1-…"]}` → 400 `COMMON_001`。FE（`BroadcastStep1Audience.vue` の `orgTeams`）が `GET /organizations/{X}/teams` の `id`（slug）を宛先 ID に使い、BE の `targetTeamIds` は `List<Long>`。数値 ID なら 200 | 高（AC-H18・H27・H28 後半・H29 と、既存の「チームを選ぶ」告知そのものが画面から使えない） |
 
 ### 対象外で見つけた欠陥（参考）
 
@@ -169,6 +188,5 @@
 | D08 | 移行前の招待行は現データと区別できない（direction の既定 ORG_INVITE の行を承諾する経路は ORGAFF-08 と同じ） | 移行前データのフィクスチャを用意して追加 |
 | E01（告知が出ない部分）・C04(c)・N02 N04 N05 N08 N09 N10 N12 N15 | 複数加盟時の読み手（投稿・行事・予算・試合など）は今回の対象画面外 | 読み手ごとの spec を別に起こす |
 | H02 H03 H16 H22 H24 H25 H30 H31 | 時間の都合で範囲の別パターン・SUPPORTER・XD2 などは未実施 | BC に追加（XD2 は組織の権限グループで MANAGE_CONTENT を外した DEPUTY を作る） |
-| H18 H27 H29（と H28 のチーム指定） | 製品欠陥 D-3 により画面から送れない（UI 検証は BC-09・BC-10・BC-11 として実装済み） | D-3 の修正後に BC-09〜BC-11 を再実行 |
 | J01 J02 J03 | 範囲テンプレートは未実施 | テンプレート保存→グループ並び替え・削除→適用の UI 手順を追加 |
 | M01 M02 | 移行直後の状態は共有 DB では再現できない（以降の行と混在） | 移行の IT（FlywayFromScratchMigrationTest 等）に委ねる |
