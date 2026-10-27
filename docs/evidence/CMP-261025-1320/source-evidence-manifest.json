@@ -1,0 +1,83 @@
+{
+  "purpose": "資格情報/秘密rawlogを含まない集約の原本SHA256。原本はprivate stablecamp、巨大traceや全API本文は転記しない。",
+  "sources": [
+    {
+      "source": "cmp1320-evidence/real/real-summary.json",
+      "sha256": "1d6a0d61239472cac1679bd19f69c97a0035e94d6f14231004b7ff610121a459"
+    },
+    {
+      "source": "root-review-cmp1320-final.json",
+      "sha256": "446da440e5204a44d170d6164b5699963e14ea56b03f4d939e5d6608a46c3631"
+    },
+    {
+      "source": "cmp1320-evidence/real/root-unauth-probe.json",
+      "sha256": "ed90d6620315e625c800913acfcc62d12cb9c98d46c0e3ac3797b3a97c8c497b"
+    },
+    {
+      "source": "cmp1320-runtime/final-postcheck.json",
+      "sha256": "13644b202e5fc9ecb23fdd0c8a73c5341bdf7bf7901b9d57841e1fd23b113173"
+    },
+    {
+      "source": "cmp1320-evidence/real/final-frontend-hashes.json",
+      "sha256": "17b51a6286401ffd765047ac4e82ff454b6b6a00ca401971aa97bd947752157a"
+    },
+    {
+      "source": "cmp1320-evidence/exploration-recovered/mobile2/receipt.json",
+      "sha256": "30bdfe7d28887f17947f94abcf9534698f1d0c8c62dbe8dd63df6e093d703ff3"
+    },
+    {
+      "source": "cmp1320-evidence/exploration-recovered/adhd/receipt.json",
+      "sha256": "596acb17fb3cdda351ea8e7955a1980862eac338d1f36faf8463037167fb3bcc"
+    },
+    {
+      "source": "cmp1320-evidence/exploration-recovered/scope2/report.json",
+      "sha256": "6c7b6aa5b5a8076c72413513033da746a6ef76af12e412a520a6130b35042830"
+    },
+    {
+      "source": "cmp1320-evidence/exploration-recovered/root-back-probe/receipt.json",
+      "sha256": "5e8b343865bbc4c829550547188bbb5a2516d659134edacbc995b7c9b6122397"
+    },
+    {
+      "source": "cmp1320-evidence/exploration-preflight.json",
+      "sha256": "d34b2987db981ccb9a9bffee154ce2074020a644bf515e8df3bca88fbe0ddaee"
+    },
+    {
+      "source": "cmp1320-evidence/exploration/mobile/safe-result.json",
+      "sha256": "76347c08cc10ff78f14f4c29e0bcc45ca48b3812642f430eee7c2dc53191ce2a"
+    },
+    {
+      "source": "cmp1320-evidence/exploration/adhd/environment-blocked.json",
+      "sha256": "8986a0279beb1982e5f704e2809a5a6b1cf7aea11e5a58c44c67335ee1aecab7"
+    },
+    {
+      "source": "cmp1320-evidence/exploration/scope/safe-result.json",
+      "sha256": "a3925a51ed238e1054e07941d9c2c0214135d18a0b178dddb263ad2cd7cb26e1"
+    },
+    {
+      "source": "cmp1320-ci/ci-status-snapshot.json",
+      "sha256": "f0c357dc44f5c6c851462ae755e142a460378508ca1346a66750e04196569226"
+    },
+    {
+      "source": "cmp1320-evidence/exploration-recovered/root-back-probe/01-before-tap390.png",
+      "sha256": "df7610e4858bf2100c8e1ba6e5a3fbd404b81e7577d9a07abfab6d7e65b26bc9"
+    },
+    {
+      "source": "cmp1320-main-ci/receipt.md",
+      "sha256": "fe64d06c78f742184c46912cd088250a6fa40f28676623fdab7ab8b6d80f1ad9"
+    }
+  ],
+  "images": [
+    {
+      "file": "docs/evidence/CMP-261025-1320/images/08-detailvisible360.png",
+      "sha256": "3c511ff69332b076dfd79df1077f33113ee152d25086a573414d9cb22b77ff77"
+    },
+    {
+      "file": "docs/evidence/CMP-261025-1320/images/11-filterdetail390.png",
+      "sha256": "d264af36f363016ca357f1766d9cb7ead702167a17d80c5ce93f354c4b690aa7"
+    },
+    {
+      "file": "docs/evidence/CMP-261025-1320/images/01-before-tap390.png",
+      "sha256": "df7610e4858bf2100c8e1ba6e5a3fbd404b81e7577d9a07abfab6d7e65b26bc9"
+    }
+  ]
+}

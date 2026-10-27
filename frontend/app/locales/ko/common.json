@@ -664,6 +664,7 @@
     }
   },
   "timeline": {
+    "refresh": "새로고침",
     "detail": {
       "back": "뒤로",
       "loadFailed": "게시물을 불러오지 못했습니다",
@@ -1650,7 +1651,9 @@
       "more": "외 {count}건",
       "today": "오늘",
       "dayDetail": {
-        "title": "{date}의 일정"
+        "title": "{date}의 일정",
+        "empty": "이 날짜에는 일정이 없습니다",
+        "create": "이 날짜에 일정 추가"
       },
       "empty": "이 기간에 일정이 없습니다",
       "view": {
@@ -3182,5 +3185,16 @@
         "step3": "추가에 실패해도 입력 내용은 유지됩니다. 표시된 이유와 입력 내용을 확인한 뒤 ‘추가’를 다시 누릅니다."
       }
     }
+  },
+  "feature_display": {
+    "title": "일반 기능 표시",
+    "description": "탐색 메뉴와 홈 화면 표시를 정리합니다. 직접 URL 및 기능 API 권한은 변경되지 않으며 관리자의 기본 화면에도 영향을 주지 않습니다.",
+    "feature": "기능",
+    "member": "멤버에게 표시",
+    "supporter": "서포터에게 표시",
+    "member_label": "멤버에게 {feature} 표시",
+    "supporter_label": "서포터에게 {feature} 표시",
+    "save_success": "표시 설정을 저장했습니다",
+    "nav": "길 안내"
   }
 }

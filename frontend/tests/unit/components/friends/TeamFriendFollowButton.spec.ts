@@ -17,16 +17,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import TeamFriendFollowButton from '~/components/friends/TeamFriendFollowButton.vue'
 
-const { mockApi, notifySuccess, notifyError, handleApiError } = vi.hoisted(() => ({
+const { mockApi, notifySuccess, notifyError, notifyInfo, handleApiError } = vi.hoisted(() => ({
   mockApi: vi.fn(),
   notifySuccess: vi.fn(),
   notifyError: vi.fn(),
+  notifyInfo: vi.fn(),
   handleApiError: vi.fn(),
 }))
 
 mockNuxtImport('useApi', () => () => mockApi)
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
-mockNuxtImport('useNotification', () => () => ({ success: notifySuccess, error: notifyError, warn: vi.fn(), info: vi.fn() }))
+mockNuxtImport('useNotification', () => () => ({ success: notifySuccess, error: notifyError, warn: vi.fn(), info: notifyInfo }))
 mockNuxtImport('useErrorHandler', () => () => ({ handleApiError }))
 
 const FOLLOW_RESPONSE = {
@@ -120,4 +121,25 @@ describe('TeamFriendFollowButton（CMP-261012-0315）', () => {
     expect(mockApi).toHaveBeenCalledTimes(2)
     expect(wrapper.emitted('followed')).toHaveLength(1)
   })
+  it('AC18: 409 SOCIAL_102は情報toastとalreadyFollowingを返し、汎用エラーを出さない', async () => {
+    mockApi.mockRejectedValueOnce({ statusCode: 409, data: { error: { code: 'SOCIAL_102' } } })
+    const wrapper = await mountButton()
+    await wrapper.get('button').trigger('click')
+    await flushPromises()
+    expect(notifyInfo).toHaveBeenCalledWith('friends.messages.already_following')
+    expect(handleApiError).not.toHaveBeenCalled()
+    expect(wrapper.emitted('alreadyFollowing')).toHaveLength(1)
+    expect(wrapper.emitted('followed')).toBeUndefined()
+  })
+
+  it('AC18: 404 SOCIAL_104は翻訳済み対象不在案内を出す', async () => {
+    mockApi.mockRejectedValueOnce({ statusCode: 404, data: { error: { code: 'SOCIAL_104' } } })
+    const wrapper = await mountButton()
+    await wrapper.get('button').trigger('click')
+    await flushPromises()
+    expect(notifyError).toHaveBeenCalledWith('friends.errors.target_unavailable')
+    expect(handleApiError).not.toHaveBeenCalled()
+    expect(wrapper.emitted('alreadyFollowing')).toBeUndefined()
+  })
+
 })

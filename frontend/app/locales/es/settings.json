@@ -120,6 +120,14 @@
       }
     },
     "password": {
+      "generator": {
+        "generate": "Generar contraseña",
+        "copy": "Copiar",
+        "copied": "Copiado",
+        "generate_error": "No se pudo generar una contraseña. Introdúcela manualmente.",
+        "copy_error": "No se pudo copiar. Muestra la contraseña y cópiala manualmente.",
+        "hint": "Al generar se reemplazan los campos de contraseña. Guárdala en un gestor antes de continuar."
+      },
       "section_title_change": "Cambiar contraseña",
       "section_title_set": "Establecer contraseña",
       "no_password_description": "Actualmente no hay contraseña configurada. Establecer una contraseña le permitirá iniciar sesión con correo y contraseña.",

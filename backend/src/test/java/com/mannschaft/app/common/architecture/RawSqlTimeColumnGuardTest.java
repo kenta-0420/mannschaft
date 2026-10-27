@@ -291,8 +291,8 @@ class RawSqlTimeColumnGuardTest {
     }
 
     /** 返済台帳のスナップショット（CMP-260909-1446 実装時点）。減ったら追随更新し、増やしてはならない。 */
-    private static final int EXPECTED_FROZEN_SQL_LOCAL_TIME_FUNCTION = 34;
-    private static final int EXPECTED_FROZEN_TIME_COLUMN_JAVA_BOUND = 51;
+    private static final int EXPECTED_FROZEN_SQL_LOCAL_TIME_FUNCTION = 33;
+    private static final int EXPECTED_FROZEN_TIME_COLUMN_JAVA_BOUND = 50;
     private static final int EXPECTED_FROZEN_RAW_SQL_ENTITY_TIME_GETTER = 4;
 
     // ────────────────────────────────────────────────────────────

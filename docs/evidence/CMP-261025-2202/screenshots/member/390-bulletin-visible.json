@@ -1,0 +1,341 @@
+{
+  "url": "http://localhost:3001/organizations/organizations-1792955082319/bulletin",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "text": "Mannschaft\n41\n表示\n表示設定住民探索-organizations-1792955082319\nメンバー\nメンバー 2人\nサポーター 1人\nお気に入り\nダッシュボード\nメンバー\n所属チーム\n戻る\n掲示板\n一覧\n保管庫\nすべて\n一括既読\n新規スレッド\n情報\n表示設定住民探索-organizations-1792955082319-アンケート — 掲示板\n\n投稿者不明\n18分前\n 0\n情報\n表示設定住民探索-organizations-1792955082319-掲示板\n\n表示復元で保持される本文\n\nE2E一般ユーザー\n18分前\n 0",
+  "geometry": {
+    "locale": "ja",
+    "width": 390,
+    "client": 390,
+    "scroll": 390,
+    "controls": [
+      {
+        "tag": "BUTTON",
+        "text": "メニューを開く",
+        "selector": "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 md:hidden dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-100",
+        "href": null,
+        "bounds": {
+          "x": 8,
+          "y": 9.5,
+          "width": 44,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "通知",
+        "selector": "p-button p-component p-button-icon-only p-button-secondary p-button-rounded p-button-text min-h-11 min-w-11",
+        "href": null,
+        "bounds": {
+          "x": 338,
+          "y": 9.5,
+          "width": 44,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "DIV",
+        "text": "ダッシュボード",
+        "selector": "#pv_id_0_28_tab_dashboard",
+        "href": null,
+        "bounds": {
+          "x": 16,
+          "y": -13,
+          "width": 172,
+          "height": 77
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "nowrap",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "A",
+        "text": "ダッシュボード",
+        "selector": "router-link-active flex items-center gap-2 min-h-11 no-underline text-inherit",
+        "href": "/organizations/organizations-1792955082319",
+        "bounds": {
+          "x": 34,
+          "y": 3,
+          "width": 136,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "nowrap",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      {
+        "tag": "DIV",
+        "text": "メンバー",
+        "selector": "#pv_id_0_28_tab_members",
+        "href": null,
+        "bounds": {
+          "x": 188,
+          "y": -13,
+          "width": 124,
+          "height": 77
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "nowrap",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "A",
+        "text": "メンバー",
+        "selector": "flex items-center gap-2 min-h-11 no-underline text-inherit",
+        "href": "/organizations/organizations-1792955082319/members",
+        "bounds": {
+          "x": 206,
+          "y": 3,
+          "width": 88,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "nowrap",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      {
+        "tag": "DIV",
+        "text": "所属チーム",
+        "selector": "#pv_id_0_28_tab_member-teams",
+        "href": null,
+        "bounds": {
+          "x": 312,
+          "y": -13,
+          "width": 139.53125,
+          "height": 77
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "nowrap",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "A",
+        "text": "所属チーム",
+        "selector": "flex items-center gap-2 min-h-11 no-underline text-inherit",
+        "href": "/organizations/organizations-1792955082319/member-teams",
+        "bounds": {
+          "x": 330,
+          "y": 3,
+          "width": 103.53125,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "nowrap",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "次へ",
+        "selector": "p-tablist-next-button p-tablist-nav-button min-h-11 min-w-11",
+        "href": null,
+        "bounds": {
+          "x": 330,
+          "y": -13,
+          "width": 44,
+          "height": 77
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "メニュー",
+        "selector": "p-button p-component p-button-icon-only p-button-rounded p-button-text p-button-sm min-h-11 min-w-11",
+        "href": null,
+        "bounds": {
+          "x": 20,
+          "y": 64,
+          "width": 44,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "14px",
+          "whiteSpace": "normal",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "戻る",
+        "selector": "inline-flex min-h-11 -ml-2 -mt-2 mb-2 items-center gap-1.5 pl-2 pt-2 pb-2 text-base font-medium text-primary hover:underline",
+        "href": null,
+        "bounds": {
+          "x": 32,
+          "y": 101,
+          "width": 60,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "一覧",
+        "selector": "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors border-primary text-primary",
+        "href": null,
+        "bounds": {
+          "x": 40,
+          "y": 209,
+          "width": 72,
+          "height": 38
+        },
+        "style": {
+          "fontSize": "14px",
+          "whiteSpace": "normal",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "保管庫",
+        "selector": "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors border-transparent text-surface-500 hover:text-surface-700",
+        "href": null,
+        "bounds": {
+          "x": 120,
+          "y": 209,
+          "width": 86,
+          "height": 38
+        },
+        "style": {
+          "fontSize": "14px",
+          "whiteSpace": "normal",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      {
+        "tag": "INPUT",
+        "text": null,
+        "selector": "p-inputtext p-component p-variant-filled w-full min-w-0 text-base sm:w-48",
+        "href": null,
+        "bounds": {
+          "x": 40,
+          "y": 263,
+          "width": 310,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "clip",
+          "overflowY": "clip"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "一括既読",
+        "selector": "p-button p-component p-button-text p-button-sm min-h-11",
+        "href": null,
+        "bounds": {
+          "x": 118,
+          "y": 373,
+          "width": 78,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "14px",
+          "whiteSpace": "normal",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "新規スレッド",
+        "selector": "p-button p-component min-h-11",
+        "href": null,
+        "bounds": {
+          "x": 204,
+          "y": 373,
+          "width": 146,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "情報\n表示設定住民探索-organizations-1792955082319-アンケート — 掲示板\n\n投稿者不明\n18分前\n 0",
+        "selector": "min-h-11 min-w-11 flex-1 text-left",
+        "href": null,
+        "bounds": {
+          "x": 64,
+          "y": 454,
+          "width": 265,
+          "height": 132
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "情報\n表示設定住民探索-organizations-1792955082319-掲示板\n\n表示復元で保持される本文\n\nE2E一般ユーザー\n18分前\n 0",
+        "selector": "min-h-11 min-w-11 flex-1 text-left",
+        "href": null,
+        "bounds": {
+          "x": 64,
+          "y": 644,
+          "width": 265,
+          "height": 138.75
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    ]
+  },
+  "events": []
+}

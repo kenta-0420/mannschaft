@@ -42,7 +42,7 @@
 | PUT | `/api/v1/shifts/availability` | 必要 | デフォルト可否プロファイル一括更新 |
 | DELETE | `/api/v1/shifts/availability` | 必要 | デフォルト可否プロファイルを削除（既定値に戻す） |
 | GET | `/api/v1/shifts/hourly-rate` | 必要 | 自分の時給設定取得 |
-| POST | `/api/v1/shifts/hourly-rate` | 必要 | 自分の時給設定登録・更新（旧 PUT → POST に変更、Service 側 upsert 動作） |
+| POST | `/api/v1/shifts/hourly-rate` | 必要 | 管理者によるメンバーの時給登録・訂正（Service 側 upsert 動作） |
 | GET | `/api/v1/shifts/hourly-rates` | 必要 | チームメンバーの有効時給を一括取得（ADMIN/DEPUTY_ADMIN 用・CMP-260912-1525 で実装） |
 | PUT | `/api/v1/shifts/hourly-rates/{userId}` | 必要 | メンバーの時給設定（管理者用） **【v2 計画、現状未実装】** |
 | POST | `/api/v1/shifts/schedules/{id}/auto-assign` | 必要 | **【v2】自動割当を実行（PROPOSED 状態で shift_assignments にドラフト書き込み）** |
@@ -1090,6 +1090,8 @@ scope は**パス変数でなくスケジュール実体の `team_id` から解�
 
 メンバーがシフト交代リクエストを作成する。`PUBLISHED` 状態のスケジュールに属する、自分がアサインされているスロットのみ対象。**v2.1 より 2 つのモードをサポート**: (A-2) 特定メンバー指名、(A-3) オープンコール（全体募集）。
 
+**受付資格（CMP-261021-0647）**: 現在の`assigned_user_ids`に本人を含むことを、スコープ認可後の業務TXで状態・割当変更と直列化して確認する。ADMIN / DEPUTY_ADMIN / SYSTEM_ADMINにも同じ資格を適用する。未割当は拒否し、公開履歴があってもARCHIVEDは受け付けない。
+
 **リクエストボディ（A-2 個別指名）**
 ```json
 {
@@ -1123,11 +1125,13 @@ scope は**パス変数でなくスケジュール実体の `team_id` から解�
 **エラーレスポンス**
 | ステータス | 条件 |
 |-----------|------|
-| 400 | 自分がアサインされていないスロット / 同一スロットに未解決の交代リクエストが既存 / `is_open_call=true` かつ `target_user_id` 指定（排他違反） |
-| 403 | チームメンバーではない |
-| 404 | スロットが存在しない / 指名した `target_user_id` がチームメンバーではない |
-| 409 | `PUBLISHED` 以外のステータス |
+| 400 | 同一スロットに未解決の交代リクエストが既存 / `is_open_call=true` かつ `target_user_id` 指定（排他違反） |
+| 403 | スコープ認可で拒否（SUPPORTER等は`COMMON_002`）/ 本人外・未割当（`SHIFT_019`） |
+| 404 | スロットが存在しない・越境（`SHIFT_002`）/ 親スケジュールが存在しない（`SHIFT_001`）/ 指名した `target_user_id` がチームメンバーではない（既存設計条件、本件では未変更・未検証） |
+| 409 | `PUBLISHED` 以外のステータス（`SHIFT_012`） |
 | 429 | **【v2.1】** オープンコール月間上限（3件/月/ユーザー）超過 |
+
+**検証範囲（CMP-261021-0647）**: 本件は作成者の状態・担当資格とスコープ境界を検証した。指名対象のチーム所属条件、400の既存条件、429の月間上限は変更・検証していない別条件として保持する。上記ボディの `target_user_id` / `is_open_call` は既存設計の記述であり、現DTOの `targetUserIds` / `openCall` との乖離も本件では変更しない。
 
 ---
 
@@ -1396,7 +1400,7 @@ status を既定の `PENDING` のままにしており、`OPEN_CALL` へ遷移�
 
 > ※ 旧設計は PUT。実装は POST に変更（`ShiftAvailabilityController#createHourlyRate`、Service 側で upsert）。
 
-自分の時給を登録・更新する。
+管理者が対象メンバーの時給を登録・訂正する。本人による閲覧は引き続き可能だが、一般メンバーの自己登録・自己訂正は許可しない（CMP-261021-0659）。
 
 **リクエストボディ**
 ```json
@@ -1411,19 +1415,21 @@ status を既定の `PENDING` のままにしており、`OPEN_CALL` へ遷移�
 - `effective_from`: 必須。未来日も過去日も指定可能（過去日指定で「入社時の時給を遡って登録」に対応）
 - 同一 `effective_from` のレコードが既存の場合は上書き更新
 
-**レスポンス（200 OK）**: 更新後の全時給履歴を返却
+**レスポンス（201 Created）**: 設定した時給を単票（`HourlyRateResponse`）で返却
 
-**認可**（認可根治 Wave6 追加戦 / 実装は `ShiftHourlyRateService#checkHourlyRateAccess`）
+**認可**（CMP-261021-0659 / 実装は `ShiftHourlyRateAuthorizer#checkHourlyRateWriteAccess`）
 
-参照（`GET /api/v1/shifts/hourly-rate`）と同一の判定を書込にも適用する。
-ボディの `user_id` が本人以外を指す場合は、呼び出し元が当該チームの ADMIN / DEPUTY_ADMIN であり、
+登録・同日訂正は、対象が本人か他人かにかかわらず、呼び出し元が当該チームの ADMIN / DEPUTY_ADMIN であり、
 かつ**対象ユーザーも当該チームのメンバーである**ことを要求する（対象側 BOLA 封鎖）。
+SYSTEM_ADMIN は従来どおり所属判定を短絡して許可する。管理者の判定は既存の `checkAdminOrAbove` を使い、新しい permission 条件を加えない。
+拒否は upsert より前に行い、時給・履歴を変更しない。参照は従来の本人 + 管理者という判定を維持する。
 
 **エラーレスポンス**
 | ステータス | 条件 |
 |-----------|------|
 | 400 | バリデーションエラー |
-| 403 | チームメンバーではない / 他メンバーの時給を管理権限なしで登録した / 対象ユーザーが当該チームの非メンバー |
+| 401 | 未認証 |
+| 403 | 当該チームの管理権限がない（本人への登録・訂正を含む） / 対象ユーザーが当該チームの非メンバー |
 
 ---
 

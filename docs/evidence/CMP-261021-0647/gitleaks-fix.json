@@ -1,0 +1,158 @@
+{
+  "cmpId": "CMP-261021-0647",
+  "recordedAtUtc": "2026-10-25T06:34:14Z",
+  "recordedAtJst": "2026-10-25T15:34:14+09:00",
+  "scannerVersion": "8.28.0",
+  "toolProvenance": {
+    "officialRelease": "https://github.com/gitleaks/gitleaks/releases/tag/v8.28.0",
+    "officialChecksum": "https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_checksums.txt",
+    "archiveSha256": "da6458e8864af553807de1c46a7a8eac0880bd6b99ba56288e87e86a45af884f",
+    "exeSha256": "54230c22688d19939f316cd3e2e040cd067ece40a3a8c5b684e5110c62ecbf52",
+    "officialChecksumMatched": true,
+    "exeMatchesArchiveEntry": true,
+    "newBinaryDownloaded": false
+  },
+  "config": {
+    "oldSha256": "bdd161da1542be9f497b3243dc5c1c637c071cdfa9ebe3d8fbe1bb9cf4ecb8bc",
+    "candidateSha256": "a8aac65d474881c4cd2103c23b8de87f08027e8157963952b8537904464ccd54",
+    "change": "既定ルール継承と旧config全内容を保持し、対象証拠path完全一致 AND 非秘密の抽出識別子完全一致だけ許可",
+    "wholeFileExcluded": false,
+    "ruleDisabled": false
+  },
+  "mainFailureHistory": {
+    "runId": 40168272040,
+    "head": "762481066dda0fd5aabced442d0400f3407e9f87",
+    "conclusion": "failure",
+    "preserved": true,
+    "rerun": false
+  },
+  "actualRangeResults": [
+    {
+      "id": "main-old",
+      "range": "bfd83ff311b15602085f8a4003c080cb0d564ca4..762481066dda0fd5aabced442d0400f3407e9f87",
+      "exitCode": 1,
+      "count": 1,
+      "findings": [
+        {
+          "rule": "generic-api-key",
+          "path": "docs/evidence/CMP-261021-0647/root-historical-roundtrip-applicability.json",
+          "line": 22,
+          "commit": "762481066dda0fd5aabced442d0400f3407e9f87",
+          "secretRedacted": true
+        }
+      ]
+    },
+    {
+      "id": "main-candidate",
+      "range": "bfd83ff311b15602085f8a4003c080cb0d564ca4..762481066dda0fd5aabced442d0400f3407e9f87",
+      "exitCode": 0,
+      "count": 0,
+      "findings": []
+    },
+    {
+      "id": "old-pr-default",
+      "range": "bfd83ff311b15602085f8a4003c080cb0d564ca4..5190deabf9e89ce1d00927c911875556e109ea8f",
+      "exitCode": 0,
+      "count": 0,
+      "findings": []
+    },
+    {
+      "id": "old-pr-first-parent",
+      "range": "--diff-merges=first-parent bfd83ff311b15602085f8a4003c080cb0d564ca4..5190deabf9e89ce1d00927c911875556e109ea8f",
+      "exitCode": 1,
+      "count": 1,
+      "findings": [
+        {
+          "rule": "generic-api-key",
+          "path": "docs/evidence/CMP-261021-0647/root-historical-roundtrip-applicability.json",
+          "line": 22,
+          "commit": "c393d5d9f326869bd03eac0d30b38f4761c28b46",
+          "secretRedacted": true
+        }
+      ]
+    }
+  ],
+  "controls": [
+    {
+      "id": "exact-target",
+      "exitCode": 0,
+      "count": 0,
+      "findings": []
+    },
+    {
+      "id": "other-path",
+      "exitCode": 1,
+      "count": 1,
+      "findings": [
+        {
+          "rule": "generic-api-key",
+          "path": "docs/evidence/CMP-261021-0647/neighbor.json",
+          "line": 1,
+          "commit": "92c92076de107b89ab236524b8ef6535858afbd7",
+          "secretRedacted": true
+        }
+      ]
+    },
+    {
+      "id": "other-value",
+      "exitCode": 1,
+      "count": 1,
+      "findings": [
+        {
+          "rule": "generic-api-key",
+          "path": "docs/evidence/CMP-261021-0647/root-historical-roundtrip-applicability.json",
+          "line": 1,
+          "commit": "a426611c486e7ebc7b27854360a224bc07ed0c91",
+          "secretRedacted": true
+        }
+      ]
+    }
+  ],
+  "mergeDifferenceFixture": {
+    "base": "ace4f5c0bb2eae61a444e84908fecd3407cd05c0",
+    "head": "6c46692eced155d07237308208a6c80b84270906",
+    "parents": [
+      "b01f6e7a81e35cb46ef612bc7aed07bdb685e72d",
+      "61b5e4880bee6dd6bba3f2ab7fcdadedd420dd00"
+    ],
+    "default": {
+      "id": "synthetic-merge-default",
+      "exitCode": 0,
+      "count": 0,
+      "findings": []
+    },
+    "firstParent": {
+      "id": "synthetic-merge-first-parent",
+      "exitCode": 1,
+      "count": 1,
+      "findings": [
+        {
+          "rule": "generic-api-key",
+          "path": "docs/evidence/CMP-261021-0647/root-historical-roundtrip-applicability.json",
+          "line": 1,
+          "commit": "6c46692eced155d07237308208a6c80b84270906",
+          "secretRedacted": true
+        }
+      ]
+    }
+  },
+  "unchangedEvidence": {
+    "committedBlobs": 23,
+    "existingManifest": "docs/evidence/CMP-261021-0647/preservation-manifest.json",
+    "privateOriginalsModified": false,
+    "imagesByteIdentical": true
+  },
+  "unapprovedFollowUp": {
+    "cmpId": "CMP-261025-1534",
+    "status": "未着手",
+    "implementationApproved": false,
+    "scope": "merge commitで追加した変更の検出、通常commit検出維持、FP除外限定維持",
+    "facts": "実旧PR範囲/独立合成mergeで既定走査0、first-parent差分走査1を再現。実秘密の漏えいは未確認。",
+    "workflowModified": false
+  },
+  "limitations": [
+    "この記録はローカル固定版scannerによる実証であり、修正head正式CI成功ではない",
+    "過去main赤を消さず、今回の限定FP対応とmerge差分走査漏れの未着手別件を分離する",
+    "本番/API/DB/業務操作/依存更新は行わない"
+  ]
+}

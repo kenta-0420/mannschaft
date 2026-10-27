@@ -86,7 +86,17 @@ function onScrollEnd() {
       class="max-h-[70vh]"
       @scroll-end="onScrollEnd"
     >
-      <template #default="{ item, index, active }: { item: KeyedTimelineItem; index: number; active: boolean }">
+      <template
+        #default="{
+          item,
+          index,
+          active,
+        }: {
+          item: KeyedTimelineItem
+          index: number
+          active: boolean
+        }"
+      >
         <DynamicScrollerItem
           :item="item"
           :active="active"
@@ -125,7 +135,10 @@ function onScrollEnd() {
                 {{ item.pageUrl }}
               </div>
               <div v-else class="mt-1 space-y-1">
-                <div v-if="item.content" class="whitespace-pre-wrap text-sm">
+                <div
+                  v-if="item.content"
+                  class="whitespace-pre-wrap text-sm [overflow-wrap:anywhere]"
+                >
                   {{ item.content }}
                 </div>
                 <div v-if="describeMetadata(item)" class="text-xs text-surface-500">

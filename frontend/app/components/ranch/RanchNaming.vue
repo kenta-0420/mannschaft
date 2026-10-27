@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { toTypedSchema } from '@vee-validate/zod'
+import { toTypedSchema } from '~/utils/toTypedSchema'
 import { useForm } from 'vee-validate'
 import { z } from 'zod'
 import { isRanchNameValid, normalizeRanchName, ranchNameLength } from '~/utils/ranch-name'
 const props = defineProps<{ busy?: boolean; retryRequired?: boolean }>()
 const emit = defineEmits<{ confirm: [name: string] }>()
 const { t } = useI18n()
-const { defineField, errors, handleSubmit } = useForm({ validationSchema: toTypedSchema(z.object({ name: z.string().refine(isRanchNameValid, () => ({ message: t('ranch.naming.invalid') })) })), initialValues: { name: '' } })
+const { defineField, errors, handleSubmit } = useForm({ validationSchema: toTypedSchema(z.object({ name: z.string().refine(isRanchNameValid, { error: () => t('ranch.naming.invalid') }) })), initialValues: { name: '' } })
 const [name, nameAttrs] = defineField('name')
 const composing = ref(false); const checkedName = ref<string | null>(null)
 const confirmationText = ref<HTMLElement | null>(null)

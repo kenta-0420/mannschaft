@@ -83,38 +83,38 @@ function linkTo(key: string): string | undefined {
       >
         <template v-if="isDataWidget(widget.key)">
           <SectionCard v-if="widget.key === 'my-calendar'"><WidgetMyCalendar /></SectionCard>
-          <DashboardTimetableTodayWidget v-else-if="widget.key === 'timetable-today'" />
-          <DashboardQuickMemoWidget v-else-if="widget.key === 'quick-memo'" />
-          <WidgetEventDismissalReminder
+          <LazyDashboardTimetableTodayWidget v-else-if="widget.key === 'timetable-today'" />
+          <LazyDashboardQuickMemoWidget v-else-if="widget.key === 'quick-memo'" />
+          <LazyWidgetEventDismissalReminder
             v-else-if="widget.key === 'event-dismissal-reminder'"
             @has-content="dismissalHasContent = $event"
           />
-          <WidgetRanch v-else-if="widget.key === 'dinosaur-ranch'" :active="active && !collapsedKeys.has(widget.key)" :collapsed="collapsedKeys.has(widget.key)" @update:collapsed="updateRanchCollapse(widget.key, $event)" />
+          <LazyWidgetRanch v-else-if="widget.key === 'dinosaur-ranch'" :active="active && !collapsedKeys.has(widget.key)" :collapsed="collapsedKeys.has(widget.key)" @update:collapsed="updateRanchCollapse(widget.key, $event)" />
           <WidgetNotices v-else-if="widget.key === 'notices'" />
-          <WidgetUpcomingEvents v-else-if="widget.key === 'upcoming-events'" />
-          <WidgetReturnStayPlan v-else-if="widget.key === 'return-stay-plan'" />
-          <WidgetPersonalTodo v-else-if="widget.key === 'personal-todo'" />
-          <WidgetWeather v-else-if="widget.key === 'weather'" />
-          <WidgetTodoCountdown v-else-if="widget.key === 'todo-countdown'" />
-          <WidgetReflectionToday v-else-if="widget.key === 'reflection-today'" />
-          <WidgetUnreadThreads v-else-if="widget.key === 'unread-threads'" />
-          <WidgetTeamAnnouncements v-else-if="widget.key === 'team-announcements'" />
-          <WidgetOrgAnnouncements v-else-if="widget.key === 'org-announcements'" />
-          <WidgetMyBlog v-else-if="widget.key === 'my-blog'" />
-          <WidgetMyTeams v-else-if="widget.key === 'my-teams'" />
-          <WidgetMyOrganizations v-else-if="widget.key === 'my-organizations'" />
-          <WidgetFavorites v-else-if="widget.key === 'favorites'" />
-          <WidgetMyTimeline v-else-if="widget.key === 'my-timeline'" />
-          <WidgetRecentActivity v-else-if="widget.key === 'recent-activity'" />
-          <WidgetRecruitmentFeed v-else-if="widget.key === 'recruitment-feed'" />
-          <WidgetMyRecruitments v-else-if="widget.key === 'my-recruitments'" />
+          <LazyWidgetUpcomingEvents v-else-if="widget.key === 'upcoming-events'" />
+          <LazyWidgetReturnStayPlan v-else-if="widget.key === 'return-stay-plan'" />
+          <LazyWidgetPersonalTodo v-else-if="widget.key === 'personal-todo'" />
+          <LazyWidgetWeather v-else-if="widget.key === 'weather'" />
+          <LazyWidgetTodoCountdown v-else-if="widget.key === 'todo-countdown'" />
+          <LazyWidgetReflectionToday v-else-if="widget.key === 'reflection-today'" />
+          <LazyWidgetUnreadThreads v-else-if="widget.key === 'unread-threads'" />
+          <LazyWidgetTeamAnnouncements v-else-if="widget.key === 'team-announcements'" />
+          <LazyWidgetOrgAnnouncements v-else-if="widget.key === 'org-announcements'" />
+          <LazyWidgetMyBlog v-else-if="widget.key === 'my-blog'" />
+          <LazyWidgetMyTeams v-else-if="widget.key === 'my-teams'" />
+          <LazyWidgetMyOrganizations v-else-if="widget.key === 'my-organizations'" />
+          <LazyWidgetFavorites v-else-if="widget.key === 'favorites'" />
+          <LazyWidgetMyTimeline v-else-if="widget.key === 'my-timeline'" />
+          <LazyWidgetRecentActivity v-else-if="widget.key === 'recent-activity'" />
+          <LazyWidgetRecruitmentFeed v-else-if="widget.key === 'recruitment-feed'" />
+          <LazyWidgetMyRecruitments v-else-if="widget.key === 'my-recruitments'" />
           <DashboardWidgetCard
             v-else-if="widget.key === 'my-corkboard'"
             :title="$t(widget.labelKey)"
             :icon="widget.icon"
             to="/my/corkboard"
             :scrollable="false"
-            ><WidgetMyCorkboard
+            ><LazyWidgetMyCorkboard
           /></DashboardWidgetCard>
           <DashboardWidgetCard
             v-else-if="widget.key === 'village-lobby-digest'"
@@ -122,7 +122,7 @@ function linkTo(key: string): string | undefined {
             :icon="widget.icon"
             to="/villages"
             :scrollable="false"
-            ><WidgetVillageLobbyDigest
+            ><LazyWidgetVillageLobbyDigest
           /></DashboardWidgetCard>
         </template>
         <DashboardWidgetCard

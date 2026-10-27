@@ -1,0 +1,40 @@
+{
+  "reviewedAt": "2026-10-25T02:14:10.644Z",
+  "historicalExecutionHead": "7f924ae77888926463b34145aeeda7e77183b7fc",
+  "currentHead": "a38b62efc5f20a214caf1d01faff31a536eb50ab",
+  "status": "pending-current-readonly-ui-residents-and-ci",
+  "facts": {
+    "historicalThreeModesUiAndApproved": true,
+    "criticalShiftStateDtoAuthorizationCallerUnchanged": "ac-evidence-readback-20261025.md",
+    "backendBuildRuntimeDependencyDeclarationsDiffZero": true,
+    "frontEndLockChangedEntries": 5,
+    "runtimeFrameworkVersionsUnchanged": [
+      "vue",
+      "@vue/runtime-core",
+      "@vue/runtime-dom",
+      "nuxt",
+      "primevue",
+      "ofetch",
+      "@nuxtjs/i18n",
+      "vue-i18n"
+    ],
+    "formValidation": "manual computed canSubmit; no Zod/VeeValidate import or use",
+    "swapApi": "useApi/ofetch typed request; no Zod runtime parsing",
+    "changedLockItems": [
+      "remove @vee-validate/zod",
+      "zod3->4",
+      "dompurify3.4.16->3.4.17",
+      "happy-dom dev20.9->21.0.4",
+      "buffer-image-size dev addition"
+    ]
+  },
+  "candidateJudgment": "既存の実UI往復証拠を不変な業務経路へ限定対応付け、新依存での入口・候補・モード・認可・表示を現在readonly実機とCIで別検証する。全アプリ入力同値とは主張しない。現在の送信再実行は0のまま明記する。",
+  "mustNotClaim": [
+    "a38で新規申請/承諾/承認を再実行した",
+    "全BE/FE/lock/runtime inputが7fと同一",
+    "実通信障害注入が合格した"
+  ],
+  "newBusinessMutationApproved": false,
+  "newBusinessMutationExecuted": false,
+  "finalStagePassed": false
+}

@@ -636,7 +636,10 @@ HTTP|com.mannschaft.app.social.controller.FriendContentForwardController|3|3
 HTTP|com.mannschaft.app.social.controller.FriendFeedController|1|1
 HTTP|com.mannschaft.app.social.controller.FriendFolderController|6|6
 HTTP|com.mannschaft.app.social.controller.FriendNotificationController|2|2
+HTTP|com.mannschaft.app.social.controller.FriendRequestSourceTeamController|0|1
 HTTP|com.mannschaft.app.social.controller.SocialProfileController|6|6
+HTTP|com.mannschaft.app.social.controller.TeamFriendIncomingFollowController|0|1
+HTTP|com.mannschaft.app.social.controller.TeamFriendPendingFollowController|0|1
 HTTP|com.mannschaft.app.social.controller.TeamFriendsController|4|4
 HTTP|com.mannschaft.app.social.controller.UserFollowController|5|5
 HTTP|com.mannschaft.app.succession.controller.DelinquencyEscalationController|4|4
@@ -660,9 +663,11 @@ HTTP|com.mannschaft.app.team.controller.TeamOrgInviteController|0|3
 HTTP|com.mannschaft.app.team.controller.TeamOrgMembershipLeaveController|0|1
 HTTP|com.mannschaft.app.team.controller.TeamShiftSettingsController|2|2
 HTTP|com.mannschaft.app.template.controller.ModuleController|2|2
+HTTP|com.mannschaft.app.template.controller.OrganizationFeatureDisplayPolicyController|0|2
 HTTP|com.mannschaft.app.template.controller.OrganizationModuleController|3|3
 HTTP|com.mannschaft.app.template.controller.SystemAdminModuleController|5|5
 HTTP|com.mannschaft.app.template.controller.SystemAdminTemplateController|3|3
+HTTP|com.mannschaft.app.template.controller.TeamFeatureDisplayPolicyController|0|2
 HTTP|com.mannschaft.app.template.controller.TeamModuleController|4|4
 HTTP|com.mannschaft.app.template.controller.TemplateController|3|3
 HTTP|com.mannschaft.app.ticket.controller.MyTicketController|5|5

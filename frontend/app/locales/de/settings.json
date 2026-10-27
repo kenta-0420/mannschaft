@@ -120,6 +120,14 @@
       }
     },
     "password": {
+      "generator": {
+        "generate": "Passwort generieren",
+        "copy": "Kopieren",
+        "copied": "Kopiert",
+        "generate_error": "Das Passwort konnte nicht generiert werden. Bitte manuell eingeben.",
+        "copy_error": "Kopieren fehlgeschlagen. Passwort anzeigen und manuell kopieren.",
+        "hint": "Das Generieren ersetzt die Passwortfelder. Vor dem Speichern in einem Passwortmanager sichern."
+      },
       "section_title_change": "Passwort ändern",
       "section_title_set": "Passwort festlegen",
       "no_password_description": "Derzeit ist kein Passwort festgelegt. Durch Festlegen eines Passworts können Sie sich auch mit E-Mail und Passwort anmelden.",

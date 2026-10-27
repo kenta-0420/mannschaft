@@ -11,11 +11,11 @@
  *
  * Props:
  *   teamId  — 自チーム ID
- *   canEdit — ADMIN 相当の編集操作が可能か（カードに伝搬）
+ *   canEdit — フレンド管理の実効権限を持つか（カードに伝搬）
  *   canToggleVisibility — ADMIN のみ公開設定可能か（カードに伝搬）
  *
  * Emits:
- *   refresh — 親へリフレッシュが行われたことを通知（カウント再取得等に使う）
+ *   refresh — 取消後の自一覧取得完了を親へ通知（兄弟一覧の再取得に使う）
  */
 import type { TeamFriendView } from '~/types/friends'
 
@@ -37,9 +37,7 @@ const { handleApiError } = useErrorHandler()
 
 const friends = ref<TeamFriendView[]>([])
 const loading = ref(true)
-const page = ref(0)
-const pageSize = ref(20)
-const totalElements = ref(0)
+const { page, rows: pageSize, totalRecords: totalElements, loadWithPageCorrection } = usePagination()
 // 取得失敗は空状態と区別して保持する（403=権限なし案内、5xx・通信断=エラー表示＋再試行）
 const loadError = shallowRef<unknown>(null)
 
@@ -47,10 +45,7 @@ async function load() {
   loading.value = true
   loadError.value = null
   try {
-    const response = await listFriends(props.teamId, {
-      page: page.value,
-      size: pageSize.value,
-    })
+    const response = await loadWithPageCorrection((page, size) => listFriends(props.teamId, { page, size }))
     friends.value = response.data
     totalElements.value = response.pagination.totalElements
   }
@@ -66,7 +61,6 @@ async function load() {
 
 async function refresh() {
   await load()
-  emit('refresh')
 }
 
 async function onPageChange(event: { page: number }) {
@@ -86,8 +80,15 @@ function handleUnfollow(friend: TeamFriendView) {
         })
         notification.success(t('friends.messages.unfollow_success'))
         await refresh()
+        emit('refresh')
       }
       catch (error) {
+        const apiError = error as { statusCode?: number; data?: { error?: { code?: string } } }
+        if (apiError.statusCode === 404 && apiError.data?.error?.code === 'SOCIAL_103') {
+          await refresh()
+          emit('refresh')
+          return
+        }
         handleApiError(error)
       }
     },
@@ -138,6 +139,7 @@ defineExpose({ refresh })
         <Paginator
           v-if="totalElements > pageSize"
           :rows="pageSize"
+          :first="page * pageSize"
           :total-records="totalElements"
           class="mt-2"
           @page="onPageChange"
