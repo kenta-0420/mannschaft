@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-10-26T11:07:42+00:00",
+  "generatedAt": "2026-10-26T16:58:40+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,9 +8,9 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "063060ac4c9e85d66e6506cb55fffe478483aacc",
+    "taskListCommit": "f96febf4694141039ae14e71cf5fdc9694d5b8b3",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "d8e6bb4676de70ab27d9fc7d2eaae59f786b3e693c5800f777a087f69983d88f",
+    "taskListSha256": "0688d49bad50eb5a0a3a98ecb7e50c07971cc281ba427086a1bda7efc6b20f62",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
@@ -20,7 +20,7 @@ window.BETA_INVENTORY_DATA = {
     "features": 44,
     "capabilities": 95,
     "splitParents": 33,
-    "campaigns": 597,
+    "campaigns": 598,
     "layer": {
       "能力": 26,
       "ドメイン": 18
@@ -37,11 +37,11 @@ window.BETA_INVENTORY_DATA = {
   "verification": {
     "raw": {
       "features": 44,
-      "campaigns": 597
+      "campaigns": 598
     },
     "parsed": {
       "features": 44,
-      "campaigns": 597,
+      "campaigns": 598,
       "core": 25,
       "noncore": 19,
       "blockers": 23,
@@ -8465,6 +8465,51 @@ window.BETA_INVENTORY_DATA = {
         "originalResidentId": "LOGIN-R3",
         "testAccountId": "[private runtime evidence]",
         "sourceEvidencePath": ".claude/runtime/october-login-1510-20261026/residents/R3/report.json"
+      },
+      {
+        "id": "CMP0649-A-return",
+        "personaArchetype": "ADHD傾向×中断・放棄",
+        "runId": "CMP0649-R02-cmp0649-79445b4f6a17",
+        "sourceHead": "dd41b081219c1e8bb127b07f4086e2d104903a11",
+        "evidencePath": "docs/evidence/CMP-261021-0649/resident-A-summary.json",
+        "idAssignment": "原観測のpersonaIdを保持。固定P01-P20への変換なし。"
+      },
+      {
+        "id": "CMP0649-B-discover",
+        "personaArchetype": "一般×素直",
+        "runId": "CMP0649-R02-cmp0649-79445b4f6a17",
+        "sourceHead": "dd41b081219c1e8bb127b07f4086e2d104903a11",
+        "evidencePath": "docs/evidence/CMP-261021-0649/resident-B-summary.json",
+        "idAssignment": "原観測のpersonaIdを保持。固定P01-P20への変換なし。"
+      },
+      {
+        "id": "CMP0649-D-boundary",
+        "personaArchetype": "高齢・低リテラシー×隙間狙い",
+        "runId": "CMP0649-R02-cmp0649-79445b4f6a17",
+        "sourceHead": "dd41b081219c1e8bb127b07f4086e2d104903a11",
+        "evidencePath": "docs/evidence/CMP-261021-0649/resident-D-summary.json",
+        "idAssignment": "原観測のpersonaIdを保持。固定P01-P20への変換なし。"
+      },
+      {
+        "id": "CMP0616-I01-A-return",
+        "personaArchetype": "ADHD傾向×中断・放棄",
+        "runId": "CMP0616-I01-cmp0649-a875668f1796",
+        "sourceHead": "d383c4494d5e6debb5cdb833f654fa5e5ae0430b",
+        "evidencePath": "docs/evidence/CMP-261021-0649/I01-resident-A-summary.json"
+      },
+      {
+        "id": "CMP0616-I01-B-discover",
+        "personaArchetype": "一般×素直",
+        "runId": "CMP0616-I01-cmp0649-a875668f1796",
+        "sourceHead": "d383c4494d5e6debb5cdb833f654fa5e5ae0430b",
+        "evidencePath": "docs/evidence/CMP-261021-0649/I01-resident-B-summary.json"
+      },
+      {
+        "id": "CMP0616-I01-D-boundary",
+        "personaArchetype": "高齢・低リテラシー×隙間狙い",
+        "runId": "CMP0616-I01-cmp0649-a875668f1796",
+        "sourceHead": "d383c4494d5e6debb5cdb833f654fa5e5ae0430b",
+        "evidencePath": "docs/evidence/CMP-261021-0649/I01-resident-D-summary.json"
       }
     ],
     "journeys": [
@@ -8521,6 +8566,140 @@ window.BETA_INVENTORY_DATA = {
         "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
         "evidencePath": "docs/evidence/CMP-261015-1510/verification.md",
         "journeyIdSource": "runtime resident artifact R3/report.json"
+      },
+      {
+        "id": "CMP0649-R02-A-return",
+        "personaId": "CMP0649-A-return",
+        "purpose": "2026-10-29の18時担当をBへ相談し、中断復帰後に相談状態と自分の予定を確認する",
+        "runId": "CMP0649-R02-cmp0649-79445b4f6a17",
+        "sourceHead": "dd41b081219c1e8bb127b07f4086e2d104903a11",
+        "evidencePath": "docs/evidence/CMP-261021-0649/resident-A-summary.json",
+        "outcome": {
+          "status": "partially-achieved",
+          "consultationSubmitted": true,
+          "submissionHttpStatus": 201,
+          "draftSurvivedTabInterruption": true,
+          "requestStateFound": false,
+          "returnedToOwnSchedule": true,
+          "visualInspection": false,
+          "independentExploration": true,
+          "businessApiDirectCalls": false,
+          "sourceOrFixedE2EProcedureRead": false,
+          "notes": [
+            "18時の担当からB宛の相談を提出した。",
+            "入力途中の別空タブ中断復帰で選択1名と理由が保持された。",
+            "送信後はマイシフト・シフト管理・個人提出状況・インボックス・チームメニューを自律探索したが相談状態を発見できなかった。",
+            "自分のマイシフトへ戻り、再中断と画面更新後にも18時担当を確認した。",
+            "観測事実であり不具合の原因・裁定は殿へ委ねる。"
+          ]
+        },
+        "coveragePassed": false
+      },
+      {
+        "id": "CMP0649-R02-B-discover",
+        "personaId": "CMP0649-B-discover",
+        "purpose": "2026-10-29の18時の交代相談を普段の画面から探し、受諾後に状況と自分の予定を確認する",
+        "runId": "CMP0649-R02-cmp0649-79445b4f6a17",
+        "sourceHead": "dd41b081219c1e8bb127b07f4086e2d104903a11",
+        "evidencePath": "docs/evidence/CMP-261021-0649/resident-B-summary.json",
+        "outcome": {
+          "discovered": false,
+          "accepted": false,
+          "confirmed": false,
+          "returnedOwnSchedule": true,
+          "goalAchieved": false
+        },
+        "coveragePassed": false
+      },
+      {
+        "id": "CMP0649-R02-D-boundary",
+        "personaId": "CMP0649-D-boundary",
+        "purpose": "18時の承認待ち相談を処理し旧新担当予定を確認。後半S3所属aux権限不足とprimary越境、X他チーム境界を観測",
+        "runId": "CMP0649-R02-cmp0649-79445b4f6a17",
+        "sourceHead": "dd41b081219c1e8bb127b07f4086e2d104903a11",
+        "evidencePath": "docs/evidence/CMP-261021-0649/resident-D-summary.json",
+        "outcome": {
+          "approval": "未達",
+          "oldNewSchedule": "未達",
+          "businessMutation": false,
+          "visualConfirmation": false,
+          "boundary": "S3 aux管理者入口拒否を観測。S3/X primaryチーム403・シフト404。相談URLはDも404のため境界成立の単独根拠にはしない。"
+        },
+        "coveragePassed": false
+      },
+      {
+        "id": "CMP0616-I01-A-return-journey",
+        "personaId": "CMP0616-I01-A-return",
+        "purpose": "自分の18時担当をBへ相談し、中断復帰後に依頼状態と担当を確認する",
+        "runId": "CMP0616-I01-cmp0649-a875668f1796",
+        "sourceHead": "d383c4494d5e6debb5cdb833f654fa5e5ae0430b",
+        "evidencePath": "docs/evidence/CMP-261021-0649/I01-resident-A-summary.json",
+        "outcome": {
+          "status": "partial",
+          "assignmentRediscovered": true,
+          "candidateAndReasonEntered": true,
+          "consultationSubmitted": false,
+          "submissionBlockedByAutomaticReview": true,
+          "rejectionCount": 2,
+          "submittedStateVerified": false,
+          "unsentReasonEmptyAfterReloadObserved": true
+        },
+        "coveragePassed": false,
+        "goalsReached": false,
+        "journeyIdSource": "原報告にjourneyIdなし。rootが登録時付与し、観測事実は変更していない。"
+      },
+      {
+        "id": "CMP0616-I01-B-discover-journey",
+        "personaId": "CMP0616-I01-B-discover",
+        "purpose": "普段の画面から18時の相談を探し、受諾後の状態と自分の予定を確認する",
+        "runId": "CMP0616-I01-cmp0649-a875668f1796",
+        "sourceHead": "d383c4494d5e6debb5cdb833f654fa5e5ae0430b",
+        "evidencePath": "docs/evidence/CMP-261021-0649/I01-resident-B-summary.json",
+        "outcome": {
+          "status": "partial",
+          "existingAssignmentsObserved": true,
+          "returnedToOwnSchedule": true,
+          "consultationDiscoveryVerified": false,
+          "accepted": false,
+          "establishedStateVerified": false,
+          "dependsOnUnsentAConsultation": true,
+          "httpStatusObserved": false
+        },
+        "coveragePassed": false,
+        "goalsReached": false
+      },
+      {
+        "id": "CMP0616-I01-D-boundary-journey",
+        "personaId": "CMP0616-I01-D-boundary",
+        "purpose": "18時相談を処理し旧新担当予定を確認。後半S3の権限不足とXの他チーム境界を観測する",
+        "runId": "CMP0616-I01-cmp0649-a875668f1796",
+        "sourceHead": "d383c4494d5e6debb5cdb833f654fa5e5ae0430b",
+        "evidencePath": "docs/evidence/CMP-261021-0649/I01-resident-D-summary.json",
+        "outcome": {
+          "status": "partial",
+          "existingChangeRequestsReached": true,
+          "existingSwapsReached": true,
+          "current18HourAssignmentObserved": true,
+          "returnedToNormalScreen": true,
+          "acceptedOrApproved": false,
+          "changedAssignmentsCompared": false,
+          "dependsOnUnsentAConsultation": true,
+          "primaryBoundary": {
+            "S3": {
+              "team": 403,
+              "schedule": 404,
+              "changeRequests": 404
+            },
+            "X": {
+              "team": 403,
+              "schedule": 404,
+              "changeRequests": 404
+            }
+          },
+          "auxPublicViewIsSeparate": true
+        },
+        "coveragePassed": false,
+        "goalsReached": false
       }
     ],
     "insights": [
@@ -8785,6 +8964,138 @@ window.BETA_INVENTORY_DATA = {
         "status": "observed-unverified",
         "urgency": "when-free",
         "priority": "could"
+      },
+      {
+        "id": "CMP0649-R02-OBS-A1",
+        "featureKey": "shift",
+        "featureDetail": "交代依頼",
+        "personaId": "CMP0649-A-return",
+        "personaArchetype": "ADHD傾向×中断・放棄",
+        "journeyId": "CMP0649-R02-A-return",
+        "originalRunId": "CMP0649-R02-cmp0649-79445b4f6a17",
+        "runId": "CMP0649-R02-cmp0649-79445b4f6a17",
+        "sourceHead": "dd41b081219c1e8bb127b07f4086e2d104903a11",
+        "evidencePath": "docs/evidence/CMP-261021-0649/resident-A-summary.json",
+        "title": "相談提出後に自分の相談状態を発見できなかった",
+        "detail": "相談のUI提出はHTTP 201。別タブへの中断後も候補1名と理由が保持され、自分の予定へ戻れた。一方、提出後にマイシフト、シフト管理、シフト希望の提出状況、インボックス等を探索したが相談状態は発見できなかった。状態消失・保存失敗とは断定しない。 原runId: CMP0649-R02-cmp0649-79445b4f6a17。sourceHead: dd41b081219c1e8bb127b07f4086e2d104903a11。未実証の住民観測。DOM探索のみで画像視覚確認なし。",
+        "observedAt": "2026-10-26T16:43:59.721Z",
+        "page": "/my/shift",
+        "status": "observed-unverified",
+        "trusted": false,
+        "registrationSource": "actual-resident-artifacts",
+        "urgency": "normal",
+        "priority": "should",
+        "screenshotPath": ""
+      },
+      {
+        "id": "CMP0649-R02-OBS-B1",
+        "featureKey": "shift",
+        "featureDetail": "交代依頼",
+        "personaId": "CMP0649-B-discover",
+        "personaArchetype": "一般×素直",
+        "journeyId": "CMP0649-R02-B-discover",
+        "originalRunId": "CMP0649-R02-cmp0649-79445b4f6a17",
+        "runId": "CMP0649-R02-cmp0649-79445b4f6a17",
+        "sourceHead": "dd41b081219c1e8bb127b07f4086e2d104903a11",
+        "evidencePath": "docs/evidence/CMP-261021-0649/resident-B-summary.json",
+        "title": "受け手が普段の画面から18時の相談を発見できなかった",
+        "detail": "AのUI提出後にホームは「対応が必要な項目はありません」。インボックス再読はログイン通知のみ。マイシフトの10/29には08時と14時が表示され、18時の相談を発見できず受諾・成立確認は未達。自分の予定へ戻ることは達成。受信データ消失や認可不備とは断定しない。 原runId: CMP0649-R02-cmp0649-79445b4f6a17。sourceHead: dd41b081219c1e8bb127b07f4086e2d104903a11。未実証の住民観測。DOM探索のみで画像視覚確認なし。",
+        "observedAt": "2026-10-26T16:45:34.661Z",
+        "page": "/my/shift",
+        "status": "observed-unverified",
+        "trusted": false,
+        "registrationSource": "actual-resident-artifacts",
+        "urgency": "normal",
+        "priority": "should",
+        "screenshotPath": ""
+      },
+      {
+        "id": "CMP0649-R02-OBS-D1",
+        "featureKey": "shift",
+        "featureDetail": "交代依頼",
+        "personaId": "CMP0649-D-boundary",
+        "personaArchetype": "高齢・低リテラシー×隙間狙い",
+        "journeyId": "CMP0649-R02-D-boundary",
+        "originalRunId": "CMP0649-R02-cmp0649-79445b4f6a17",
+        "runId": "CMP0649-R02-cmp0649-79445b4f6a17",
+        "sourceHead": "dd41b081219c1e8bb127b07f4086e2d104903a11",
+        "evidencePath": "docs/evidence/CMP-261021-0649/resident-D-summary.json",
+        "title": "ホームの承認待ちカードから相談へ進むと404になった",
+        "detail": "/dashboardの「シフト交代申請」カードからprimaryのswap/3へ進み404。後半swap/5もHTTP 404を観測し、承認と旧新担当予定の確認は未達。業務更新なし。S3のaux管理入口拒否、S3/Xのprimaryチーム403とシフト404を観測。相談URLは管理側Dでも404となるため、それだけを境界成立の根拠にしない。未実証の住民観測として保持し、殿の別裁定はroot-adjudication.json参照。原runId: CMP0649-R02-cmp0649-79445b4f6a17。sourceHead: dd41b081219c1e8bb127b07f4086e2d104903a11。DOM探索のみ、画像視覚確認なし。",
+        "observedAt": "2026-10-26T16:46:38.011Z",
+        "page": "/teams/cmp0649-79445b4f6a17-primary/admin/shifts/swap/5",
+        "status": "observed-unverified",
+        "trusted": false,
+        "registrationSource": "actual-resident-artifacts",
+        "urgency": "normal",
+        "priority": "should",
+        "screenshotPath": ""
+      },
+      {
+        "id": "CMP0616-I01-OBS-A1",
+        "featureKey": "shift",
+        "featureDetail": "交代依頼・管理者導線（未実証観測）",
+        "personaId": "CMP0616-I01-A-return",
+        "personaArchetype": "ADHD傾向×中断・放棄",
+        "journeyId": "CMP0616-I01-A-return-journey",
+        "originalRunId": "CMP0616-I01-cmp0649-a875668f1796",
+        "runId": "CMP0616-I01-cmp0649-a875668f1796",
+        "sourceHead": "d383c4494d5e6debb5cdb833f654fa5e5ae0430b",
+        "evidencePath": "docs/evidence/CMP-261021-0649/I01-resident-A-summary.json",
+        "title": "未送信の相談入力を再読込後に再発見できなかった",
+        "detail": "18時担当を再発見し、B候補と理由を入力した。提出は自動承認レビューの2回拒否で未送信。入力後の再読込で作成画面が閉じ、再度開くと理由欄は空だった。提出済み状態やB応答は未検証で、保存不具合とは断定しない。 原runId: CMP0616-I01-cmp0649-a875668f1796。sourceHead: d383c4494d5e6debb5cdb833f654fa5e5ae0430b。未実証の住民観測。DOM探索のみ、画像視覚確認なし。",
+        "observedAt": "2026-10-27T02:35:45.057Z",
+        "page": "/my/shift",
+        "status": "observed-unverified",
+        "trusted": false,
+        "registrationSource": "actual-resident-artifacts",
+        "urgency": "normal",
+        "priority": "could",
+        "screenshotPath": ""
+      },
+      {
+        "id": "CMP0616-I01-OBS-B1",
+        "featureKey": "shift",
+        "featureDetail": "交代依頼・管理者導線（未実証観測）",
+        "personaId": "CMP0616-I01-B-discover",
+        "personaArchetype": "一般×素直",
+        "journeyId": "CMP0616-I01-B-discover-journey",
+        "originalRunId": "CMP0616-I01-cmp0649-a875668f1796",
+        "runId": "CMP0616-I01-cmp0649-a875668f1796",
+        "sourceHead": "d383c4494d5e6debb5cdb833f654fa5e5ae0430b",
+        "evidencePath": "docs/evidence/CMP-261021-0649/I01-resident-B-summary.json",
+        "title": "新相談が未送信のため受け手の受諾・成立は確認できなかった",
+        "detail": "普段の画面から18時相談を探索し、既存勤務と自分の予定への復帰を確認した。今回Aの相談は未送信のため、相談発見・受諾・受諾後状態確認は未検証。受信データ消失や導線不存在とは断定しない。 原runId: CMP0616-I01-cmp0649-a875668f1796。sourceHead: d383c4494d5e6debb5cdb833f654fa5e5ae0430b。未実証の住民観測。DOM探索のみ、画像視覚確認なし。",
+        "observedAt": "2026-10-27T02:38:26.403Z",
+        "page": "/my/shift",
+        "status": "observed-unverified",
+        "trusted": false,
+        "registrationSource": "actual-resident-artifacts",
+        "urgency": "normal",
+        "priority": "could",
+        "screenshotPath": ""
+      },
+      {
+        "id": "CMP0616-I01-OBS-D1",
+        "featureKey": "shift",
+        "featureDetail": "交代依頼・管理者導線（未実証観測）",
+        "personaId": "CMP0616-I01-D-boundary",
+        "personaArchetype": "高齢・低リテラシー×隙間狙い",
+        "journeyId": "CMP0616-I01-D-boundary-journey",
+        "originalRunId": "CMP0616-I01-cmp0649-a875668f1796",
+        "runId": "CMP0616-I01-cmp0649-a875668f1796",
+        "sourceHead": "d383c4494d5e6debb5cdb833f654fa5e5ae0430b",
+        "evidencePath": "docs/evidence/CMP-261021-0649/I01-resident-D-summary.json",
+        "title": "既存一覧と現在割当は確認したが新相談の処理は未送信依存で未達",
+        "detail": "dashboardから既存変更依頼と交換一覧へ到達し、18時の現在割当と通常画面への復帰を確認した。新18時相談はA未送信のため、受諾・承認と変更後の旧新担当予定照合は未実施。S3/Xのprimaryチーム403・シフト/変更依頼404を観測し、情報は得られなかった。S3のaux PUBLICチーム閲覧は別の正常閲覧で、primary越境と扱わない。 原runId: CMP0616-I01-cmp0649-a875668f1796。sourceHead: d383c4494d5e6debb5cdb833f654fa5e5ae0430b。未実証の住民観測。DOM探索のみ、画像視覚確認なし。",
+        "observedAt": "2026-10-27T02:40:03.012Z",
+        "page": "/dashboard",
+        "status": "observed-unverified",
+        "trusted": false,
+        "registrationSource": "actual-resident-artifacts",
+        "urgency": "normal",
+        "priority": "could",
+        "screenshotPath": ""
       }
     ]
   },
@@ -37188,8 +37499,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261002-0743",
       "title": "大会エントリー/テンプレ不備",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "実装中",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -37203,12 +37514,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260929-0654 派生",
       "issues": [
         {
-          "label": "—",
+          "label": "第三陣着手（2026-10-26、大会エラー6言語契約／旧slug unmount競合）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "第三陣着手（2026-10-26、大会エラー6言語契約／旧slug unmount競合）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -37221,7 +37532,7 @@ window.BETA_INVENTORY_DATA = {
         "enum"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -37229,8 +37540,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261002-0744",
       "title": "大会エントリー/テンプレ不備",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -37244,16 +37555,16 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260929-0654 派生",
       "issues": [
         {
-          "label": "—",
+          "label": "[完了証拠](evidence/CMP-261002-0744.json)、[既存証拠の採用範囲](evidence/CMP-261002-0744-summary.md)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "[完了証拠](evidence/CMP-261002-0744.json)、[既存証拠の採用範囲](evidence/CMP-261002-0744-summary.md)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "エントリー管理モーダル notes の maxlength=100（frontend/app/components/TournamentEntryModal.vue:468）が BE 200（DTO @Size/@Entity/DDL V9.122）と不一致"
+        "[既存実装PR #3759](https://github.com/kenta-0420/mannschaft/pull/3759) head `42ced9d2edda06bc8c0e2453260452343d7f194f` でnotes200保持とBE200/201境界を解消済み。2026-10-26に既存の検分・実機・3住民探索証拠を再利用して完了同期。今回の実機再実行なし。既存fixme 1 SKIP（CMP-261006-0901）は対象外・未解消を維持"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -37261,10 +37572,27 @@ window.BETA_INVENTORY_DATA = {
         "BE"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        3759
+      ],
+      "github": [
+        {
+          "number": 3759,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 大会エントリー管理の取得・選択保持・モバイル編集を復旧 (CMP-260929-0654)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3759",
+          "updatedAt": "2026-10-15T13:49:59Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-261002-0801",
@@ -39761,8 +40089,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261006-0632",
       "title": "組織・チームページの旧 slug 移動（MOVED）遷移が、slug 遷移で再マウントされた後の新しいページを奪いうる（要求連番がコンポーネントインスタンスごとのため旧インスタンスの待機中処理を失効できない）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "実装中",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -39776,12 +40104,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "PR #3670 の検分第5巡で Codex が指摘（frontend/app/pages/organizations/[slug].vue の loadShellDataSeq、teams/[slug].vue の fetchTeam も同型）。検分5巡上限のため本 PR では非対応",
+          "label": "PR #3670 の検分第5巡で Codex が指摘（frontend/app/pages/organizations/[slug].vue の loadShellDataSeq、teams/[slug].vue の fetchTeam も同型）。検分5巡上限のため本 PR では非対応；第三陣着手（2026-10-26、大会エラー6言語契約／旧slug unmount競合）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "PR #3670 の検分第5巡で Codex が指摘（frontend/app/pages/organizations/[slug].vue の loadShellDataSeq、teams/[slug].vue の fetchTeam も同型）。検分5巡上限のため本 PR では非対応"
+        "PR #3670 の検分第5巡で Codex が指摘（frontend/app/pages/organizations/[slug].vue の loadShellDataSeq、teams/[slug].vue の fetchTeam も同型）。検分5巡上限のため本 PR では非対応；第三陣着手（2026-10-26、大会エラー6言語契約／旧slug unmount競合）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -39795,7 +40123,7 @@ window.BETA_INVENTORY_DATA = {
         "onBeforeUnmount"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3670
@@ -50983,8 +51311,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261022-0914",
       "title": "CMP-261021-0017 子: 認可のinterface化（L1-A）",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -50998,16 +51326,16 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-261021-0017、CMP-261021-2158、CMP-261021-2157",
       "issues": [
         {
-          "label": "[親Issue #4022](https://github.com/kenta-0420/mannschaft/issues/4022)、着手宣言コメント https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6329545211、実装branch: `feature/4022-boundary-l1-a`",
+          "label": "[完了証拠JSON](evidence/CMP-261022-0914.json)、[実装PR #4049](https://github.com/kenta-0420/mannschaft/pull/4049)、main統合CI attempt2成功（初回失敗履歴保持）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "[親Issue #4022](https://github.com/kenta-0420/mannschaft/issues/4022)、着手宣言コメント https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6329545211、実装branch: `feature/4022-boundary-l1-a`"
+        "[完了証拠JSON](evidence/CMP-261022-0914.json)、[実装PR #4049](https://github.com/kenta-0420/mannschaft/pull/4049)、main統合CI attempt2成功（初回失敗履歴保持）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "—"
+        "実機12PASS・A/B2/C探索・12AC検分。接続保持根因未解明/旧r6 copy保留を証拠に記録。"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -51021,20 +51349,25 @@ window.BETA_INVENTORY_DATA = {
         "D3T"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
-        4022
+        4049
       ],
       "github": [
         {
-          "number": 4022,
-          "kind": "issue",
-          "state": "open",
-          "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
-          "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-26T10:45:15Z",
-          "ci": null
+          "number": 4049,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "CMP-261022-0914: L1-A 認可サービスのinterface化とroleへの移設",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4049",
+          "updatedAt": "2026-10-26T09:17:29Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -52091,8 +52424,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261026-1344",
       "title": "初期遷移時の拒否通知保持",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -52106,16 +52439,16 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "#4022 / L1-A補助（範囲外のため別戦役）",
       "issues": [
         {
-          "label": "L1-A実機で発見した既存FE不具合。関連PR #4049。事前登録のみで修正・回帰試験・実機E2E・探索は未実施。",
+          "label": "[完了証拠JSON](evidence/CMP-261026-1344.json)、[実装PR #4130](https://github.com/kenta-0420/mannschaft/pull/4130)、実VueSuspense red→green・main統合CI成功",
           "state": "unknown"
         }
       ],
       "prs": [
-        "L1-A実機で発見した既存FE不具合。関連PR #4049。事前登録のみで修正・回帰試験・実機E2E・探索は未実施。"
+        "[完了証拠JSON](evidence/CMP-261026-1344.json)、[実装PR #4130](https://github.com/kenta-0420/mannschaft/pull/4130)、実VueSuspense red→green・main統合CI成功"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "L1-Aの受入範囲へ含めず、L1-A自体を完了にしない。"
+        "実機12PASS・A/B2/C探索。L1-Aと別戦役で最小通知修正、旧r6 copy保留を証拠に記録。"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -52132,11 +52465,11 @@ window.BETA_INVENTORY_DATA = {
         "ADMIN"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
         4022,
-        4049
+        4130
       ],
       "github": [
         {
@@ -52149,18 +52482,13 @@ window.BETA_INVENTORY_DATA = {
           "ci": null
         },
         {
-          "number": 4049,
-          "kind": "pull_request",
-          "state": "merged",
-          "title": "CMP-261022-0914: L1-A 認可サービスのinterface化とroleへの移設",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/4049",
-          "updatedAt": "2026-10-26T09:17:29Z",
-          "ci": {
-            "status": "unavailable",
-            "reason": "終了済みPRのCIは同期対象外",
-            "checks": [],
-            "source": "GraphQL statusCheckRollup"
-          }
+          "number": 4130,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
         }
       ]
     },
@@ -52227,6 +52555,62 @@ window.BETA_INVENTORY_DATA = {
       ],
       "githubRefs": [],
       "github": []
+    },
+    {
+      "id": "CMP-261026-2253",
+      "title": "秘密情報スキャン自己試験の合成値エントロピーによる不安定失敗",
+      "status": "working",
+      "statusLabel": "実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "合成検出値がgitleaks固定版8.28.0 generic-api-key entropy3.5を必ず超える。sidebranch追加後削除の検出と全既存10試験を維持し、workflow/走査範囲/allowlist/検出閾値を弱めない",
+      "acceptance": [
+        "合成検出値がgitleaks固定版8.28.0 generic-api-key entropy3.5を必ず超える。sidebranch追加後削除の検出と全既存10試験を維持し、workflow/走査範囲/allowlist/検出閾値を弱めない"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "PR #4143 CI 40331456472の自己試験失敗を調査。実Git同rangeで低entropy3.4185はexit0/findings0、保証entropy4はexit1/findings1を再現（値本体非記録）。製品秘密の検出findingではない",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #4143 CI 40331456472の自己試験失敗を調査。実Git同rangeで低entropy3.4185はexit0/findings0、保証entropy4はexit1/findings1を再現（値本体非記録）。製品秘密の検出findingではない"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "10月第三陣のCI阻害を根治"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "gitleaks",
+        "generic-api-key",
+        "entropy3",
+        "sidebranch",
+        "workflow",
+        "allowlist"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        4143
+      ],
+      "github": [
+        {
+          "number": 4143,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     }
   ],
   "githubSync": {

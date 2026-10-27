@@ -1,0 +1,38 @@
+{
+  "runId": "CMP0649-R02-cmp0649-79445b4f6a17",
+  "personaId": "CMP0649-A-return",
+  "journeyId": "CMP0649-R02-A-return",
+  "personaArchetype": "ADHD傾向×中断・放棄",
+  "sourceHead": "dd41b081219c1e8bb127b07f4086e2d104903a11",
+  "registrationSource": "actual-resident-artifacts",
+  "status": "observed-unverified",
+  "trusted": false,
+  "purpose": "2026-10-29の18時担当をBへ相談し、中断復帰後に相談状態と自分の予定を確認する",
+  "result": {
+    "status": "partially-achieved",
+    "consultationSubmitted": true,
+    "submissionHttpStatus": 201,
+    "draftSurvivedTabInterruption": true,
+    "requestStateFound": false,
+    "returnedToOwnSchedule": true,
+    "visualInspection": false,
+    "independentExploration": true,
+    "businessApiDirectCalls": false,
+    "sourceOrFixedE2EProcedureRead": false,
+    "notes": [
+      "18時の担当からB宛の相談を提出した。",
+      "入力途中の別空タブ中断復帰で選択1名と理由が保持された。",
+      "送信後はマイシフト・シフト管理・個人提出状況・インボックス・チームメニューを自律探索したが相談状態を発見できなかった。",
+      "自分のマイシフトへ戻り、再中断と画面更新後にも18時担当を確認した。",
+      "観測事実であり不具合の原因・裁定は殿へ委ねる。"
+    ]
+  },
+  "visualConfirmation": false,
+  "coveragePassed": false,
+  "observation": "相談のUI提出はHTTP 201。別タブへの中断後も候補1名と理由が保持され、自分の予定へ戻れた。一方、提出後にマイシフト、シフト管理、シフト希望の提出状況、インボックス等を探索したが相談状態は発見できなかった。状態消失・保存失敗とは断定しない。 原runId: CMP0649-R02-cmp0649-79445b4f6a17。sourceHead: dd41b081219c1e8bb127b07f4086e2d104903a11。未実証の住民観測。DOM探索のみで画像視覚確認なし。",
+  "observedAt": "2026-10-26T16:43:59.721Z",
+  "page": "/my/shift",
+  "privateEvidenceSha256": "3142ae4e9466527b4bb99df87bc1a6e0c13ab1723556519d66cbc219f9796e44",
+  "privateEvidencePath": ".claude/campaigns/cmp0649-next-20261026/resident-A-safe.json",
+  "note": "住民が独立UI探索で得た未実証観測。裏取り・製品修正・coverage合格を表さない。元private証跡全量は公開しない。"
+}
