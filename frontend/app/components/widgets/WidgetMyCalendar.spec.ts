@@ -48,6 +48,7 @@ describe('個人ダッシュボードの日付操作', () => {
     const wrapper = await mountWidget()
     wrapper.findComponent({ name: 'CalendarGrid' }).vm.$emit('dateClick', '2026-08-06')
     await flushPromises()
+    await vi.waitFor(() => expect(wrapper.findComponent({ name: 'ScheduleDayDialog' }).exists()).toBe(true))
     const dialog = wrapper.findComponent({ name: 'ScheduleDayDialog' })
 
     dialog.vm.$emit('rowOpen', { ...event, id: -12, isTodo: true })
@@ -70,6 +71,7 @@ describe('個人ダッシュボードの日付操作', () => {
 
     grid.vm.$emit('dateClick', '2026-08-06')
     await flushPromises()
+    await vi.waitFor(() => expect(wrapper.findComponent({ name: 'ScheduleEventForm' }).exists()).toBe(true))
     let form = wrapper.findComponent({ name: 'ScheduleEventForm' })
     const firstForm = form.vm
     expect(form.props('visible')).toBe(true)
