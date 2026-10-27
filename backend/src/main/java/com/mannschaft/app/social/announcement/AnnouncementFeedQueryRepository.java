@@ -81,6 +81,18 @@ public class AnnouncementFeedQueryRepository {
 
     private final EntityManager em;
 
+    /** 履歴が一つでもあるscopeの投影。可視性・期限は後段の正準findByScopeで判定する。 */
+    public List<Long> findScopeIdsWithHistory(AnnouncementScopeType scopeType, List<Long> scopeIds) {
+        if (scopeIds.isEmpty()) {
+            return List.of();
+        }
+        return em.createQuery("""
+                SELECT DISTINCT a.scopeId FROM AnnouncementFeedEntity a
+                WHERE a.scopeType = :scopeType AND a.scopeId IN :scopeIds
+                """, Long.class).setParameter("scopeType", scopeType).setParameter("scopeIds", scopeIds)
+                .getResultList();
+    }
+
     /**
      * 現役所属スコープを横断してフィードを有界取得する。
      * スコープ条件は最大20個であり、各条件に可視性集合を結び付けて別テナント露出を防ぐ。

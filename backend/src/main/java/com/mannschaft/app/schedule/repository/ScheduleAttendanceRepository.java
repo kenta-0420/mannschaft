@@ -131,4 +131,28 @@ public interface ScheduleAttendanceRepository extends JpaRepository<ScheduleAtte
             @Param("organizationId") Long organizationId,
             @Param("userId") Long userId,
             @Param("now") LocalDateTime now);
+
+    /** 時刻を絞らない保守的候補。最終取得の現在時刻・順序・認可は既存経路を使う。 */
+    @Query("""
+            SELECT DISTINCT s.teamId FROM ScheduleAttendanceEntity a
+            JOIN ScheduleEntity s ON s.id = a.scheduleId
+            WHERE a.userId = :userId
+              AND a.status = com.mannschaft.app.schedule.AttendanceStatus.UNDECIDED
+              AND a.respondedAt IS NULL
+              AND s.teamId IN :scopeIds
+              AND s.attendanceRequired = true
+            """)
+    List<Long> findUnansweredTeamScopeIds(@Param("scopeIds") List<Long> scopeIds, @Param("userId") Long userId);
+
+    @Query("""
+            SELECT DISTINCT s.organizationId FROM ScheduleAttendanceEntity a
+            JOIN ScheduleEntity s ON s.id = a.scheduleId
+            WHERE a.userId = :userId
+              AND a.status = com.mannschaft.app.schedule.AttendanceStatus.UNDECIDED
+              AND a.respondedAt IS NULL
+              AND s.organizationId IN :scopeIds
+              AND s.attendanceRequired = true
+            """)
+    List<Long> findUnansweredOrganizationScopeIds(@Param("scopeIds") List<Long> scopeIds,
+            @Param("userId") Long userId);
 }
