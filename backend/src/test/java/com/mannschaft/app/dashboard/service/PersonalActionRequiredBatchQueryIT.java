@@ -91,6 +91,7 @@ class PersonalActionRequiredBatchQueryIT extends AbstractMySqlIntegrationTest {
         try {
             long before = statistics.getPrepareStatementCount();
             var response = service.getPersonalActionRequired(USER_ID);
+            assertThat(response.totalCount()).isEqualTo(2);
             assertThat(response.items()).extracting(item -> item.itemType()).containsExactly("ATTENDANCE", "ATTENDANCE");
             assertThat(response.items()).extracting(item -> item.scopeType()).containsExactly("TEAM", "ORGANIZATION");
             assertThat(response.items()).extracting(item -> item.itemId())
