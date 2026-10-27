@@ -134,7 +134,7 @@ class BroadcastAudiencePersistenceIT extends AbstractBroadcastAudienceIT {
     @DisplayName("「チームを選ぶ」では target_audience に TEAMS と件数を残し、スナップショットは作らない")
     void teamsMode_recordsAudienceWithoutSnapshots() throws Exception {
         long feedId = feedIdOf(broadcastToOrg(XA, orgX.getId(),
-                bulletinBody(Map.of("targetTeamIds", List.of(t1.getId(), t3.getId())))).andExpect(status().isCreated()));
+                bulletinBody(Map.of("targetTeamIds", List.of(t1.getSlug(), t3.getSlug())))).andExpect(status().isCreated()));
 
         JsonNode audience = savedTargetAudience(feedId);
         assertThat(audience.path("mode").asText()).isEqualTo("TEAMS");
