@@ -2,6 +2,9 @@ import { defineComponent, h, reactive, type Component } from 'vue'
 import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
+import { useNuxtApp } from '#app'
+import jaCommon from '~/locales/ja/common.json'
+import jaSidebar from '~/locales/ja/org_sidebar.json'
 import LineSettings from '~/pages/admin/line-settings.vue'
 import SnsSettings from '~/pages/admin/sns-settings.vue'
 
@@ -17,6 +20,7 @@ const HeaderStub = defineComponent({ props: { title: String, subtitle: String },
 const ButtonStub = defineComponent({ props: { label: String, loading: Boolean, disabled: Boolean }, emits: ['click'], setup(props, { emit }) { return () => h('button', { disabled: props.loading || props.disabled, 'data-loading': String(props.loading), onClick: () => emit('click') }, props.label) } })
 const DialogStub = defineComponent({ props: { visible: Boolean }, setup(props, { slots }) { return () => props.visible ? h('div', { 'data-testid': 'sns-create-dialog' }, slots.footer?.()) : null } })
 const cleanups: Array<() => void> = []
+let restoreLocale: (() => Promise<void>) | undefined
 async function mountSettings(component: Component) {
   const wrapper = await mountSuspended(component, { global: { stubs: { PageHeader: HeaderStub, Button: ButtonStub, Dialog: DialogStub, DataTable: true, Column: true, SectionCard: { template: '<section><slot /></section>' } } } })
   cleanups.push(() => wrapper.unmount())
@@ -25,7 +29,12 @@ async function mountSettings(component: Component) {
 }
 const config = { id: 1, channelId: 'test-channel', webhookSecret: null, botUserId: null, isActive: true, notificationEnabled: true }
 describe('CMP-261014-2035 P11/P12 設定ヘッダ操作', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    const i18n = useNuxtApp().$i18n
+    const initialLocale = i18n.locale.value
+    restoreLocale = async () => { await i18n.setLocale(initialLocale) }
+    await i18n.loadLocaleMessages('ja')
+    await i18n.setLocale('ja')
     scope.current = { type: 'team', id: 't' }
     getConfig.mockReset().mockResolvedValue({ data: config })
     listFeeds.mockReset().mockResolvedValue({ data: [] })
@@ -34,12 +43,12 @@ describe('CMP-261014-2035 P11/P12 設定ヘッダ操作', () => {
     deleteConfig.mockReset().mockResolvedValue(undefined)
     vi.stubGlobal('confirm', vi.fn(() => true))
   })
-  afterEach(() => { cleanups.splice(0).forEach(cleanup => cleanup()); vi.unstubAllGlobals() })
+  afterEach(async () => { cleanups.splice(0).forEach(cleanup => cleanup()); vi.unstubAllGlobals(); await restoreLocale?.(); restoreLocale = undefined })
   it('P11 config有りでは削除・保存をactionsへ置き、クリックで既存APIを呼ぶ', async () => {
     const wrapper = await mountSettings(LineSettings)
     const header = wrapper.get('[data-testid="settings-header"]')
-    expect(header.get('[data-testid="page-header-subtitle"]').text()).toBe('LINE Messaging API との連携設定')
-    expect(header.get('h1').text()).toBe('LINE設定')
+    expect(header.get('[data-testid="page-header-subtitle"]').text()).toBe(jaCommon.integrationSettings.lineSubtitle)
+    expect(header.get('h1').text()).toBe(jaSidebar.orgSidebar.lineSettings)
     const buttons = header.findAll('button')
     expect(buttons.map(button => button.text())).toEqual(['削除', '保存'])
     await buttons[1]!.trigger('click')
@@ -77,8 +86,8 @@ describe('CMP-261014-2035 P11/P12 設定ヘッダ操作', () => {
   it('P12 SNS追加をactionsへ置きクリックで作成ダイアログを開く', async () => {
     const wrapper = await mountSettings(SnsSettings)
     const header = wrapper.get('[data-testid="settings-header"]')
-    expect(header.get('[data-testid="page-header-subtitle"]').text()).toBe('Instagram・X のフィード連携を管理します')
-    expect(header.get('h1').text()).toBe('SNS設定')
+    expect(header.get('[data-testid="page-header-subtitle"]').text()).toBe(jaCommon.integrationSettings.snsSubtitle)
+    expect(header.get('h1').text()).toBe(jaSidebar.orgSidebar.snsSettings)
     expect(header.get('button').text()).toBe('アカウントを追加')
     await header.get('button').trigger('click')
     expect(wrapper.find('[data-testid="sns-create-dialog"]').exists()).toBe(true)
