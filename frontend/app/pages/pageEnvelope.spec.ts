@@ -56,6 +56,16 @@ for (const entry of cases) {
       const pager = wrapper.findComponent({ name: entry.name === 'dashboard users' ? 'DataTable' : 'Paginator' })
       if (entry.name !== 'outbox' && total > 20) expect(pager.props('totalRecords')).toBe(total)
       if (entry.name === 'outbox' && total > 0) expect(wrapper.text()).toContain(String(total) + ' 件中')
+      if (entry.name === 'outbox') {
+        expect(wrapper.findAll('tbody tr')).toHaveLength(Math.min(total, 20))
+        if (total === 0) expect(wrapper.text()).toContain('データがありません')
+      } else if (entry.name === 'dashboard users') {
+        expect(wrapper.findComponent({ name: 'DataTable' }).props('value')).toHaveLength(Math.min(total, 20))
+        if (total === 0) expect(wrapper.text()).toContain('ユーザーがありません')
+      } else {
+        expect(wrapper.findAll('.divide-y > div')).toHaveLength(Math.min(total, 20))
+        expect(wrapper.findComponent({ name: 'DashboardEmptyState' }).exists()).toBe(total === 0)
+      }
       expect(listCalls(entry)).toHaveLength(1)
       expect(wrapper.text()).not.toContain('1〜0')
     })
