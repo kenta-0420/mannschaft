@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useScopeWidgetPreview } from '~/composables/useScopeWidgetPreview'
 import type {
   ScopeTabType,
@@ -39,6 +39,10 @@ const preview = useScopeWidgetPreview(() => ({
   numericScopeId: props.numericScopeId,
 }))
 const { state, target, detail, error, trigger } = preview
+const previewMounted = ref(false)
+watch(state, value => {
+  if (value !== 'CLOSED') previewMounted.value = true
+})
 const team = computed(() =>
   props.scopeType === 'TEAM' ? (props.data as TeamDashboardResponse) : null,
 )
@@ -161,7 +165,8 @@ const bulletinThreadItems = computed<ScopeBulletinThreadItem[]>(
     </DashboardScopeListWidget>
     <ScopeActionRequiredWidget v-if="showActionRequired" :key="scopeType + scopeId" :sections="actionSections" :scope-type="scopeType" :scope-id="scopeId" />
   </div>
-  <DashboardScopePreviewModal
+  <LazyDashboardScopePreviewModal
+    v-if="previewMounted"
     :state="state"
     :target="target"
     :detail="detail"

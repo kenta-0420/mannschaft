@@ -211,6 +211,8 @@ export default defineNuxtPlugin(async () => {
 
 > `dashboard.vue` 自体は「Carousel をマウントするシェル」に再構成し、その個人パネルスロットに従来の内容を移す。ルートは `/dashboard` のまま（URL 変更なし）。
 
+個人パネルの作成・設定ダイアログとカレンダーの日別一覧・予定フォームは、初回操作で遅延読み込みする。既定レイアウトのメモ・目安箱・インストール案内、チーム／組織グリッドの詳細プレビューも同じ方針とする。閉じてもインスタンスを破棄せず、従来の保存／キャンセル時のリセット、再表示時の下書き復元・日付と編集対象の同期を維持する。初回から開いた状態で生成されるため、open時の監視は必要な状態定義の後に登録し、初回にも一度実行する。詳細プレビューは最初のLOADINGから表示し、close/retryとフォーカス復帰を従来どおり保つ。パネル選択、ウィジェットの折りたたみ、必須資産のpreload、SSR/CSPは変更しない。
+
 ### 2.8 検索フォーム: `frontend/app/components/dashboard/ScopeSearchForm.vue`（新規）
 
 - props: `scopeType: 'TEAM' | 'ORGANIZATION'`。

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
-import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
+import { mockComponent, mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import { ref } from 'vue'
 import WidgetMyCalendar from './WidgetMyCalendar.vue'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
@@ -18,7 +18,31 @@ vi.mock('~/composables/useScheduleApi', () => ({ useScheduleApi: () => api }))
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
 mockNuxtImport('navigateTo', () => navigateMock)
 
-const stubs = { CalendarGrid: true, ScheduleDayDialog: true, ScheduleEventForm: true, Dialog: true }
+// 親の開閉契約を検証するため、Nuxtのasync import先を同じprops/emitsのstubへ固定する。
+mockComponent('ScheduleEventForm', {
+  name: 'ScheduleEventForm',
+  props: ['visible', 'initialDate', 'isPersonal', 'scheduleId'],
+  emits: ['update:visible', 'saved'],
+  template: '<div />',
+})
+const stubs = {
+  CalendarGrid: true,
+  ScheduleDayDialog: true,
+  LazyScheduleDayDialog: {
+    name: 'ScheduleDayDialog',
+    props: ['visible', 'date', 'events'],
+    emits: ['update:visible', 'rowOpen', 'create'],
+    template: '<div />',
+  },
+  ScheduleEventForm: true,
+  LazyScheduleEventForm: {
+    name: 'ScheduleEventForm',
+    props: ['visible', 'initialDate', 'isPersonal', 'scheduleId'],
+    emits: ['update:visible', 'saved'],
+    template: '<div />',
+  },
+  Dialog: true,
+}
 const event: CalendarEventItem = {
   id: 10, uniqueKey: 'personal:10', title: '当日予定', startAt: '2026-08-06T10:00:00',
   endAt: '2026-08-06T11:00:00', allDay: false, isPersonal: true, color: null,
@@ -37,8 +61,18 @@ beforeEach(() => {
 })
 
 describe('個人ダッシュボードの日付操作', () => {
-  it('一覧のTODO・reflectionと既存チップをそれぞれの既存導線へ渡す', async () => {
+  it('操作前には日別・新規フォームを読み込まない', async () => {
     const wrapper = await mountWidget()
+    expect(wrapper.findComponent({ name: 'ScheduleDayDialog' }).exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'ScheduleEventForm' }).exists()).toBe(false)
+  })
+
+  it('一覧のTODO・reflectionと既存チップをそれぞれの既存導線へ渡す', async () => {
+    state.filteredEvents.value = [event]
+    const wrapper = await mountWidget()
+    wrapper.findComponent({ name: 'CalendarGrid' }).vm.$emit('dateClick', '2026-08-06')
+    await flushPromises()
+    await vi.waitFor(() => expect(wrapper.findComponent({ name: 'ScheduleDayDialog' }).exists()).toBe(true))
     const dialog = wrapper.findComponent({ name: 'ScheduleDayDialog' })
 
     dialog.vm.$emit('rowOpen', { ...event, id: -12, isTodo: true })
@@ -61,7 +95,9 @@ describe('個人ダッシュボードの日付操作', () => {
 
     grid.vm.$emit('dateClick', '2026-08-06')
     await flushPromises()
+    await vi.waitFor(() => expect(wrapper.findComponent({ name: 'ScheduleEventForm' }).exists()).toBe(true))
     let form = wrapper.findComponent({ name: 'ScheduleEventForm' })
+    const firstForm = form.vm
     expect(form.props('visible')).toBe(true)
     expect(form.props('initialDate')).toBe('2026-08-06')
     expect(form.props('isPersonal')).toBe(true)
@@ -72,10 +108,12 @@ describe('個人ダッシュボードの日付操作', () => {
     state.filteredEvents.value = [event]
     grid.vm.$emit('dateClick', '2026-08-06')
     await flushPromises()
+    await vi.waitFor(() => expect(wrapper.findComponent({ name: 'ScheduleDayDialog' }).exists()).toBe(true))
     expect(wrapper.findComponent({ name: 'ScheduleDayDialog' }).props('visible')).toBe(true)
     wrapper.findComponent({ name: 'ScheduleDayDialog' }).vm.$emit('create')
     await flushPromises()
     form = wrapper.findComponent({ name: 'ScheduleEventForm' })
+    expect(form.vm).toBe(firstForm)
     expect(form.props('initialDate')).toBe('2026-08-06')
     form.vm.$emit('update:visible', false)
     grid.vm.$emit('dateClick', '2026-08-07')
@@ -100,7 +138,7 @@ describe('個人ダッシュボードの日付操作', () => {
     grid.vm.$emit('nextMonth')
     grid.vm.$emit('prevMonth')
     await flushPromises()
-    expect(wrapper.findComponent({ name: 'ScheduleEventForm' }).props('visible')).toBe(false)
+    expect(wrapper.findComponent({ name: 'ScheduleEventForm' }).exists()).toBe(false)
     expect(state.onNextMonth).not.toHaveBeenCalled()
     expect(state.onPrevMonth).not.toHaveBeenCalled()
   })
