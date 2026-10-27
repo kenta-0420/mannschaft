@@ -433,7 +433,7 @@ test('F22.1-4: 個人パネル内に検索フォーム・タグ行が無く、�
 
   // 3 sectionは常設するが、未訪問bodyのフォーム/取得は初回選択まで生成しない。
   // 個人パネルにタグ行/検索なしの契約は、その内側へスコープして検証する。
-  await expect(page.locator('section[role="tabpanel"]')).toHaveCount(3)
+  await expect(page.locator('section[id^="scope-panel-"][role="tabpanel"]')).toHaveCount(3)
   const personalPanel = page.locator('#scope-panel-PERSONAL')
   await expect(personalPanel.getByTestId('scope-search-form-TEAM')).toHaveCount(0)
   await expect(personalPanel.getByTestId('scope-search-form-ORGANIZATION')).toHaveCount(0)
@@ -462,7 +462,7 @@ test('F22.1-4: 個人パネル内に検索フォーム・タグ行が無く、�
   await page.getByTestId('scope-segment-TEAM').click()
   await expect(teamPanel.getByTestId('scope-search-form-TEAM').locator('input')).toHaveValue('保持する検索')
   expect(await teamPanel.getByTestId('scope-search-form-TEAM').evaluate((element, original) => element === original, teamForm)).toBe(true)
-  await expect(page.locator('section[role="tabpanel"]')).toHaveCount(3)
+  await expect(page.locator('section[id^="scope-panel-"][role="tabpanel"]')).toHaveCount(3)
 })
 
 // ──────────────────────────────────────────────────────────────────────────

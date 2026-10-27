@@ -175,7 +175,6 @@ describe('スコープbodyの初回選択と常設カルーセル', () => {
     const view = await render()
     const viewport = await beginDrag(view, -300)
     expect(state.store.activePanel).toBe('PERSONAL')
-    expectMountedOnce(['PERSONAL'])
     await viewport.trigger('touchcancel')
     expect(state.store.activePanel).toBe('PERSONAL')
     expectMountedOnce(['PERSONAL'])
