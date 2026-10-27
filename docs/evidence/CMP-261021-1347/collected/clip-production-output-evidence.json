@@ -1,0 +1,56 @@
+{
+  "status": "PASS",
+  "checkedAt": "2026-10-21T07:59:02.119Z",
+  "sourceCommit": "28389c61f505e877702e5572d21476d68747aead",
+  "build": {
+    "command": "node node_modules/nuxt/bin/nuxt.mjs build",
+    "exitCode": 0,
+    "nodeVersion": "v24.19.0",
+    "nuxtVersion": "3.21.11",
+    "environment": {
+      "NODE_ENV": "production",
+      "NUXT_PUBLIC_RANCH_DEVELOPMENT_CLIPS": "true",
+      "NUXT_GENERATE_SPA": "false",
+      "NODE_OPTIONS": "--max-old-space-size=8192"
+    },
+    "log": "outputs/clip-runtime-production-build.log",
+    "logSha256": "60903add5c890b8603eadf6767ca7ed29f6fdba2459ffed1998b1ed33fa5fae4",
+    "serverBuildObserved": true,
+    "fullSsrOutput": true,
+    "publicOutput": true,
+    "startedAt": "2026-10-21T06:12:20.342Z",
+    "finalLogWriteAt": "2026-10-21T07:56:26.955Z",
+    "elapsedToFinalLogSeconds": 6246.613,
+    "nitroMetadataDate": "2026-10-21T07:54:53.278Z",
+    "exitCodeConfirmedViaSession": 84088
+  },
+  "source": {
+    "entries": 96,
+    "rasterPaths": 480,
+    "uniqueRasterHashes": 480,
+    "rasterBytes": 72678652,
+    "speciesKeys": 16,
+    "manifestSha256": "bcc001841b2efaf75678376112303af216e0ae805781619bafc522a145efa28c"
+  },
+  "scanned": {
+    "files": 4287,
+    "bytes": 103165837,
+    "publicFiles": 1600,
+    "publicPngFiles": 5,
+    "textFiles": 4273,
+    "decompressedFiles": 0,
+    "metadataMarkers": 501
+  },
+  "checks": {
+    "noV3PublicDirectory": true,
+    "forbiddenPaths": [],
+    "matchingRasterFiles": [],
+    "matchingMetadataFiles": []
+  },
+  "scope": "All .output public/server files: exact source raster SHA256; path names; UTF8 client/server metadata markers including 16 DEV species keys, variant, source-manifest SHA, and all source-image SHA strings. Gzip/Brotli payloads are decompressed before scanning.",
+  "limitations": [
+    "Full SSR production build took approximately 104 minutes to final log; precise CPU hotspot not established.",
+    "Deployment-file verification only; HTTP/browser E2E is separate."
+  ],
+  "worktreeClean": true
+}

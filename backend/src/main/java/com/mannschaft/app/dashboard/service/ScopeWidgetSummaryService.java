@@ -78,7 +78,7 @@ public class ScopeWidgetSummaryService {
      *
      * @param scopeType {@code "TEAM"} / {@code "ORGANIZATION"}
      * @param scopeId   スコープ ID
-     * @return id / title / author / published_at を含む Map のリスト（記事なしは空配列）
+     * @return id / slug / title / author / published_at を含む Map のリスト（記事なしは空配列）
      */
     public List<Map<String, Object>> buildLatestBlogPosts(String scopeType, Long scopeId) {
         PageRequest top = PageRequest.of(0, RECENT_LIMIT);
@@ -103,6 +103,7 @@ public class ScopeWidgetSummaryService {
         for (BlogPostEntity p : posts) {
             Map<String, Object> map = new HashMap<>();
             map.put("id", p.getId());
+            map.put("slug", p.getSlug());
             map.put("title", p.getTitle());
             map.put("author", p.getAuthorId() != null ? authorNames.get(p.getAuthorId()) : null);
             map.put("published_at", p.getPublishedAt());

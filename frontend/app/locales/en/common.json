@@ -664,6 +664,7 @@
     }
   },
   "timeline": {
+    "refresh": "Refresh",
     "detail": {
       "back": "Back",
       "loadFailed": "Failed to load the post",
@@ -1650,7 +1651,9 @@
       "more": "+{count} more",
       "today": "Today",
       "dayDetail": {
-        "title": "Events on {date}"
+        "title": "Events on {date}",
+        "empty": "No events on this day",
+        "create": "Add event on this day"
       },
       "empty": "No events in this period",
       "view": {
@@ -3182,5 +3185,16 @@
         "step3": "Your input is retained if adding fails. Check the displayed reason and your input, then select “Add” again."
       }
     }
+  },
+  "feature_display": {
+    "title": "General feature visibility",
+    "description": "Organize navigation and home displays. Direct URLs and API permissions stay the same. Administrators retain their normal view.",
+    "feature": "Feature",
+    "member": "Show to members",
+    "supporter": "Show to supporters",
+    "member_label": "Show {feature} to members",
+    "supporter_label": "Show {feature} to supporters",
+    "save_success": "Visibility settings saved",
+    "nav": "Navigation"
   }
 }

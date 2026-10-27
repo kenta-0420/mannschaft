@@ -342,6 +342,7 @@ INDEX idx_hourly_rates_team (team_id, user_id)                                 -
 - 時給は履歴管理。改定時は新しい `effective_from` のレコードを追加し、過去の時給は保持（過去シフトの給与概算に使用）
 - 現在の時給 = `effective_from <= TODAY` の最新レコード
 - 時給の閲覧権限: **本人 + ADMIN / DEPUTY_ADMIN（MANAGE_SHIFTS）のみ**。他メンバーの時給は非公開
+- 時給の登録・同日訂正: 当該チームの **ADMIN / DEPUTY_ADMIN** に限定し、対象メンバーの在籍を確認する。一般メンバーは本人の時給も変更できない。SYSTEM_ADMIN の既存例外は維持する（CMP-261021-0659。閲覧権限とは分離）
 - 時給未設定のメンバーには給与概算を表示しない（`null` として返却）
 - 給与概算の計算: スロットの勤務時間（hours）× 適用時給。深夜跨ぎスロットの勤務時間は実時間で計算
 

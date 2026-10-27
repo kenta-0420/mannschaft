@@ -13,9 +13,15 @@ describe('会計年度入力', () => {
     expect(schema.safeParse({ ...valid, name }).success).toBe(false)
   })
   it.each(['startDate', 'endDate'] as const)('必須日付%sの欠落を拒否する', (key) => {
-    expect(schema.safeParse({ ...valid, [key]: null }).success).toBe(false)
-    expect(schema.safeParse({ ...valid, [key]: undefined }).success).toBe(false)
-    expect(schema.safeParse({ ...valid, [key]: new Date('invalid') }).success).toBe(false)
+    for (const value of [null, undefined, '2026-04-01', new Date('invalid')]) {
+      const result = schema.safeParse({ ...valid, [key]: value })
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error.issues).toContainEqual(expect.objectContaining({
+          path: [key], message: 'budget_accounting.validation.date_required',
+        }))
+      }
+    }
   })
   it.each([new Date(2026, 3, 1), new Date(2026, 2, 31)])(
     '終了日が同日または前日なら拒否する',

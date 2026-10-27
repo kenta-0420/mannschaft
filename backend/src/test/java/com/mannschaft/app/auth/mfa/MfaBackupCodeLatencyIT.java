@@ -83,6 +83,8 @@ class MfaBackupCodeLatencyIT extends MfaItSupport {
         String session = loginForMfaSession(u);
         String wrong = wrongBackupCode(u);
 
+        // wall記録と出力は既存nanoTime計測区間の外に置く。
+        long startEpochMillis = System.currentTimeMillis();
         long start = System.nanoTime();
         assertThatThrownBy(() -> auth2faService.validateMfaLogin(
                 session, MfaVerificationMethod.BACKUP_CODE, wrong, IP, USER_AGENT))
@@ -90,6 +92,9 @@ class MfaBackupCodeLatencyIT extends MfaItSupport {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode()).isEqualTo("AUTH_074"));
         long elapsed = Duration.ofNanos(System.nanoTime() - start).toMillis();
+        long endEpochMillis = System.currentTimeMillis();
+        System.out.println("[mfa-latency] pathKind=all-mismatch startEpochMillis=%d endEpochMillis=%d elapsedMillis=%d limitMillis=%d pid=%d".formatted(
+                startEpochMillis, endEpochMillis, elapsed, limitMillis, ProcessHandle.current().pid()));
 
         assertThat(elapsed).as("AC-54 全不一致の単発所要時間（ms）").isLessThanOrEqualTo(limitMillis);
     }
@@ -99,10 +104,15 @@ class MfaBackupCodeLatencyIT extends MfaItSupport {
         String session = loginForMfaSession(u);
         String last = u.backupCodes().get(u.backupCodes().size() - 1);
 
+        // wall記録と出力は既存nanoTime計測区間の外に置く。
+        long startEpochMillis = System.currentTimeMillis();
         long start = System.nanoTime();
         var response = auth2faService.validateMfaLogin(
                 session, MfaVerificationMethod.BACKUP_CODE, last, IP, USER_AGENT);
         long elapsed = Duration.ofNanos(System.nanoTime() - start).toMillis();
+        long endEpochMillis = System.currentTimeMillis();
+        System.out.println("[mfa-latency] pathKind=last-match startEpochMillis=%d endEpochMillis=%d elapsedMillis=%d limitMillis=%d pid=%d".formatted(
+                startEpochMillis, endEpochMillis, elapsed, limitMillis, ProcessHandle.current().pid()));
 
         assertThat(response.getData().getAccessToken()).as("AC-54 前提: 最後の 1 件で一致して成功").isNotBlank();
         assertThat(elapsed).as("AC-54 最後一致の単発所要時間（ms）").isLessThanOrEqualTo(limitMillis);

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { z } from 'zod'
-import { toTypedSchema } from '@vee-validate/zod'
+import { toTypedSchema } from '~/utils/toTypedSchema'
 import { useForm } from 'vee-validate'
 import type { CheckinLocation } from '~/types/member-card'
 import type { SelfAwardMode } from '~/types/team-loyalty'

@@ -489,7 +489,7 @@ export function useMyCalendarData() {
     return merged
   }
 
-  const { currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, refreshWithResult, onPrevMonth, onNextMonth, goToToday, navigateTo } =
+  const { currentYear, currentMonth, events, loading, calendarLoading, loadError, loadEvents, refresh, refreshWithResult, onPrevMonth, onNextMonth, goToToday, navigateTo } =
     useCalendarEvents(fetcher, {
       cacheHalfMonths: 0,
       // 予定取得（loadEvents / refresh / 月移動）の失敗を調査用に必ず記録する。
@@ -958,7 +958,7 @@ export function useMyCalendarData() {
 
   return {
     setLayerColor, resetLayerColor,
-    currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth, goToToday, navigateTo,
+    currentYear, currentMonth, events, loading, calendarLoading, loadError, loadEvents, refresh, onPrevMonth, onNextMonth, goToToday, navigateTo,
     extendedEvents, todosFailed, availableScopes, allScopeOptions, selectedScopes, filteredEvents,
     toggleScope, multiSelectScopes, initStorage,
     layers, layersLoaded, layersFailed, layersDegraded, loadLayers, view,

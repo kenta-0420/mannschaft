@@ -1,0 +1,26 @@
+{
+  "kind": "ROOT_FINAL_SOURCE_LAYER_ADOPTION",
+  "priorShippingHead": "4795daa45ba8d1470fb48f6ce9109681ab89f7bb",
+  "finalShippingHead": "6d0b8ec4f6c98fe014bd79a20ac96b402d78b0a4",
+  "mainMerged": "ef382d8f034e0d60e6fcc62c572b321bcb03c3d5",
+  "identicalSubtrees": {
+    "frontend": "9321b60bf9f383a9cd81623895404da53157b44d",
+    "backend": "9c59d60a4d5759ff82a7970b90e1df1d6774e2c4"
+  },
+  "changedPaths": [
+    ".github/workflows/harness-ci.yml",
+    "README.md",
+    "docs/architecture/modular_monolith_boundary_debt_repayment.md",
+    "docs/development/boundary-coordination.json",
+    "docs/development/boundary-coordination.md",
+    "docs/evidence/CMP-261021-0020-completion-20261022.md",
+    "docs/evidence/CMP-261021-0020-test-plan.md",
+    "docs/evidence/CMP-261021-0020.json",
+    "docs/evidence/CMP-261022-1026-coordination.md",
+    "docs/evidence/observations/CMP-261021-0020-final.json",
+    "docs/task-list.md",
+    "scripts/boundary-coordination.mjs",
+    "scripts/boundary-coordination.test.mjs"
+  ],
+  "reason": "Latestmain tooling/docs only, including README. Whole FE/BE subtrees identical to4795 (26checks passed/2skipped). Actual original runtime source not relabeled; exact newhead CI required independently."
+}

@@ -103,11 +103,11 @@ class CalendarColorResolutionTest {
         when(membershipService.getActiveTeamIdsIncludingRoleAssignments(anyLong())).thenReturn(List.of());
         when(membershipService.getActiveOrgIdsIncludingRoleAssignments(anyLong())).thenReturn(List.of());
         when(calendarLayerService.findUserLayerColors(anyLong())).thenReturn(Map.of());
-        when(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(anyLong(), any(), any()))
+        when(scheduleRepository.findCalendarByUserId(anyLong(), any(), any()))
                 .thenReturn(List.of());
-        when(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(anyLong(), any(), any()))
+        when(scheduleRepository.findCalendarByTeamId(anyLong(), any(), any()))
                 .thenReturn(List.of());
-        when(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(anyLong(), any(), any()))
+        when(scheduleRepository.findCalendarByOrganizationId(anyLong(), any(), any()))
                 .thenReturn(List.of());
         when(nameResolverService.resolveScopeName(anyString(), anyLong())).thenReturn("スコープ名");
         when(nameResolverService.resolveIconUrl(anyString(), anyLong())).thenReturn(null);
@@ -257,7 +257,7 @@ class CalendarColorResolutionTest {
         @Test
         @DisplayName("AC-18b 個人・チーム・組織・enricher 由来の全エントリで color / colorSource が非 null")
         void everyEntryHasColor() {
-            when(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(ME), any(), any()))
+            when(scheduleRepository.findCalendarByUserId(eq(ME), any(), any()))
                     .thenReturn(List.of(personalSchedule(1L, null)));
             givenTeamSchedule(101L, null, null);
             givenOrgSchedule(201L);
@@ -344,7 +344,7 @@ class CalendarColorResolutionTest {
         void personalLayerColorDoesApplyToPersonalSchedule() {
             when(calendarLayerService.findUserLayerColors(ME))
                     .thenReturn(Map.of("PERSONAL:0", "#DC2626"));
-            when(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(ME), any(), any()))
+            when(scheduleRepository.findCalendarByUserId(eq(ME), any(), any()))
                     .thenReturn(List.of(personalSchedule(1L, "#00FF00")));
 
             CalendarEntryResponse.CalendarContentDto content =
@@ -388,7 +388,7 @@ class CalendarColorResolutionTest {
 
     private void givenTeamSchedules(List<ScheduleEntity> schedules) {
         when(membershipService.getActiveTeamIdsIncludingRoleAssignments(ME)).thenReturn(List.of(TEAM_ID));
-        when(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(eq(TEAM_ID), any(), any()))
+        when(scheduleRepository.findCalendarByTeamId(eq(TEAM_ID), any(), any()))
                 .thenReturn(schedules);
         Set<Long> ids = new java.util.LinkedHashSet<>(schedules.stream().map(ScheduleEntity::getId).toList());
         when(contentVisibilityChecker.filterAccessible(eq(ReferenceType.SCHEDULE), any(), eq(ME)))
@@ -411,7 +411,7 @@ class CalendarColorResolutionTest {
                 .isException(false)
                 .createdBy(ME)
                 .build();
-        when(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(
+        when(scheduleRepository.findCalendarByOrganizationId(
                 eq(ORG_ID), any(), any())).thenReturn(List.of(org));
         // 可視性・割当は team/org 両方の呼び出しに効くよう「渡された ID をそのまま可視」とする。
         when(contentVisibilityChecker.filterAccessible(eq(ReferenceType.SCHEDULE), any(), eq(ME)))

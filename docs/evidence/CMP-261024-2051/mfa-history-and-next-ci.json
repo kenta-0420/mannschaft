@@ -1,0 +1,207 @@
+{
+  "schemaVersion": 1,
+  "kind": "mfa-latency-history-unresolved",
+  "currentRun": {
+    "runId": 40157405430,
+    "jobId": 121061701694,
+    "head": "543d63324e2756931d1b72591bdf4ae347198552",
+    "shard": 5,
+    "counts": {
+      "tests": 5082,
+      "passed": 5071,
+      "failures": 1,
+      "skipped": 10
+    },
+    "failureKind": "実AC54性能assertion・タイムアウト/起動/fixture exceptionではない"
+  },
+  "comparison": [
+    {
+      "kind": "oldMainGreen",
+      "runId": 40148629302,
+      "head": "d4f8b6ece263fb0ea7f6e7d367e6fefb364cea12",
+      "shard": 5,
+      "cases": [
+        {
+          "name": "AC-54 旧BCrypt 8件 最後一致は3秒以内",
+          "junitFullCaseSeconds": 7.368,
+          "status": "success",
+          "failureType": null,
+          "measuredElapsedMillis": null,
+          "limitMillis": 3000
+        },
+        {
+          "name": "AC-54 Argon2id 8件 全不一致は1.5秒以内",
+          "junitFullCaseSeconds": 2.598,
+          "status": "success",
+          "failureType": null,
+          "measuredElapsedMillis": null,
+          "limitMillis": 1500
+        },
+        {
+          "name": "AC-54 Argon2id 8件 最後一致は1.5秒以内",
+          "junitFullCaseSeconds": 2.512,
+          "status": "success",
+          "failureType": null,
+          "measuredElapsedMillis": null,
+          "limitMillis": 1500
+        },
+        {
+          "name": "AC-54 旧BCrypt 8件 全不一致は3秒以内",
+          "junitFullCaseSeconds": 6.859,
+          "status": "success",
+          "failureType": null,
+          "measuredElapsedMillis": null,
+          "limitMillis": 3000
+        }
+      ]
+    },
+    {
+      "kind": "oldApp46Failure",
+      "runId": 40150260637,
+      "head": "46deae93b5591fcb9bd4aae59bd68aa7157b0918",
+      "shard": 3,
+      "cases": [
+        {
+          "name": "AC-54 旧BCrypt 8件 最後一致は3秒以内",
+          "junitFullCaseSeconds": 8.045,
+          "status": "success",
+          "failureType": null,
+          "measuredElapsedMillis": null,
+          "limitMillis": 3000
+        },
+        {
+          "name": "AC-54 Argon2id 8件 全不一致は1.5秒以内",
+          "junitFullCaseSeconds": 6.184,
+          "status": "failure",
+          "failureType": "java.lang.AssertionError",
+          "measuredElapsedMillis": 1675,
+          "limitMillis": 1500
+        },
+        {
+          "name": "AC-54 Argon2id 8件 最後一致は1.5秒以内",
+          "junitFullCaseSeconds": 6.117,
+          "status": "failure",
+          "failureType": "java.lang.AssertionError",
+          "measuredElapsedMillis": 2558,
+          "limitMillis": 1500
+        },
+        {
+          "name": "AC-54 旧BCrypt 8件 全不一致は3秒以内",
+          "junitFullCaseSeconds": 6.733,
+          "status": "success",
+          "failureType": null,
+          "measuredElapsedMillis": null,
+          "limitMillis": 3000
+        }
+      ]
+    },
+    {
+      "kind": "currentApp543Failure",
+      "runId": 40157405430,
+      "head": "543d63324e2756931d1b72591bdf4ae347198552",
+      "shard": 5,
+      "cases": [
+        {
+          "name": "AC-54 旧BCrypt 8件 最後一致は3秒以内",
+          "junitFullCaseSeconds": 8.98,
+          "status": "success",
+          "failureType": null,
+          "measuredElapsedMillis": null,
+          "limitMillis": 3000
+        },
+        {
+          "name": "AC-54 Argon2id 8件 全不一致は1.5秒以内",
+          "junitFullCaseSeconds": 5.869,
+          "status": "failure",
+          "failureType": "java.lang.AssertionError",
+          "measuredElapsedMillis": 2297,
+          "limitMillis": 1500
+        },
+        {
+          "name": "AC-54 Argon2id 8件 最後一致は1.5秒以内",
+          "junitFullCaseSeconds": 5.055,
+          "status": "success",
+          "failureType": null,
+          "measuredElapsedMillis": null,
+          "limitMillis": 1500
+        },
+        {
+          "name": "AC-54 旧BCrypt 8件 全不一致は3秒以内",
+          "junitFullCaseSeconds": 8.375,
+          "status": "success",
+          "failureType": null,
+          "measuredElapsedMillis": null,
+          "limitMillis": 3000
+        }
+      ]
+    }
+  ],
+  "timeInterpretation": "junitFullCaseSecondsは生成8hash/fixture/1回warmup/セッション生成と測定操作を含むテスト全体。1500/3000msと比較するelapsedではない。旧成功caseの実elapsedはログ無しのためnull（成功assertの上限以内は確認）。",
+  "exactFileBlobs": {
+    "backend/src/main/java/com/mannschaft/app/auth/service/Auth2faService.java": {
+      "d4f8b6ece2": "b01136bd7df14434ebfc8d66eedcd0e127cdebc8",
+      "543d63324e": "b01136bd7df14434ebfc8d66eedcd0e127cdebc8",
+      "origin/main": "b01136bd7df14434ebfc8d66eedcd0e127cdebc8"
+    },
+    "backend/src/test/java/com/mannschaft/app/auth/mfa/MfaBackupCodeLatencyIT.java": {
+      "d4f8b6ece2": "e60e3fc0596d25e327061ae8f7abe026d4280082",
+      "543d63324e": "e60e3fc0596d25e327061ae8f7abe026d4280082",
+      "origin/main": "ef898506c3640d3b97d8d0cfad349e342436114a"
+    },
+    "backend/src/test/java/com/mannschaft/app/auth/mfa/MfaItSupport.java": {
+      "d4f8b6ece2": "e569d6748382c92ea4fcd26cacb29ba427265a17",
+      "543d63324e": "e569d6748382c92ea4fcd26cacb29ba427265a17",
+      "origin/main": "e569d6748382c92ea4fcd26cacb29ba427265a17"
+    },
+    "backend/build.gradle.kts": {
+      "d4f8b6ece2": "57ecdd6cf700c07a2faef9601fb51519ad9ec229",
+      "543d63324e": "57ecdd6cf700c07a2faef9601fb51519ad9ec229",
+      "origin/main": "57ecdd6cf700c07a2faef9601fb51519ad9ec229"
+    }
+  },
+  "currentMainObservation": {
+    "commit": "bfd83ff311b15602085f8a4003c080cb0d564ca4",
+    "pr": 4053,
+    "prUrl": "https://github.com/kenta-0420/mannschaft/pull/4053",
+    "mergedAt": "2026-10-25T04:26:23Z",
+    "diff": "MfaBackupCodeLatencyITのみ測定直前/直後のepoch wall記録と、elapsed計算後のpid/limit/elapsed出力を追加。既存System.nanoTimeの測定境界と1.5s/3s上限を変えていない。543未収録。"
+  },
+  "measuredRegion": {
+    "warmup": "別sessionで1回不一致を実行。fixtureのhash生成とwarmupは測定外。",
+    "allMismatch": "nanoTime開始→validateMfaLogin(BACKUP_CODE)のAUTH_074例外＋AssertJ意味assert→経過計算→上限assert",
+    "lastMatch": "nanoTime開始→validateMfaLogin成功応答→経過計算。その後accessToken意味assert＋上限assert",
+    "service": "セッション/ロック判定、DB pessimistic row read、最大8回passwordEncoder.matches。全不一致には失敗処理、最後一致にはsession消費/token発行/event処理とTX完了も含む。純粋なArgon2だけのmicrobenchmarkではない。"
+  },
+  "limits": {
+    "noCpuGcConclusion": "直接の測定windowと対応するCPU/GC情報は今回543ログに無い。forkEvery180/maxParallelForks2の競合可能性はあるが原因とは断定しない。",
+    "notProvenUnrelated": "auth本体/fixture/build同blobは直接ロジック変更を除外する根拠。app全体の依存graph/heap/DB/Redis負荷が等しいことは証明しない。",
+    "failedContractStillOpen": "旧main成功だけで今回の性能未達を合格扱いしない。最終headの観測付きCI結果と併せ殿/advisorが判断。",
+    "sharding": "migration除外有無と重み表で同classのshard位置が変わる。今回shard3成功はMFA成功を意味せず、MFA実名はshard5で確認。"
+  },
+  "advisorDecision": {
+    "timing": "同エラー再発時、Sol/high advisor相談済み（殿報告）",
+    "decision": "閾値・測定区間・認証処理を変更せず、latestmainの観測を新headCIへ取り込む。将来greenを過去原因解消と記さない。",
+    "ifRepeated": "同PID/windowのCPU時間・GC/safepoint・runner pressureを採取してからDB待ちを調査。",
+    "rootCause": "CPU/GC/DB等は未確定。関連blob一致だけで全環境同一を証明しない。"
+  },
+  "newHead": "2aac15e6e020d03cc9d26ee17d94922ab08ed8a4",
+  "newBackendCi": 40164501249,
+  "newCiStatus": "success",
+  "campaignFinalization": {
+    "implementationPr": 4106,
+    "implementationHead": "4fd2c79aaf9ecc66267ba1556b03d226db15f857",
+    "mergedAt": "2026-10-25T08:07:52Z",
+    "mergeSha": "38d234363531593850493ff48259db33bdcc4bcf",
+    "finalCiStatus": "success",
+    "finalCiEvidence": "docs/evidence/CMP-261024-2051/final-ci-merge-metadata.json",
+    "review": "passed",
+    "real": "passed",
+    "exploratory": "passed",
+    "historicalFields": "Original source SHA, failures, pending statements and receipt snapshots retain their acquisition-time meaning; final campaign state is this metadata and validation opening."
+  },
+  "newCiStatusAtAcquisition": "pending-success-not-recorded",
+  "finalHead": "4fd2c79aaf9ecc66267ba1556b03d226db15f857",
+  "finalBackendCi": 40173813800,
+  "finalBackendCiStatus": "success",
+  "causeResolutionClaimed": false
+}

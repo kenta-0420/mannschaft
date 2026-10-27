@@ -1,0 +1,90 @@
+{
+  "head": "e202bb96c03fc1b9197bfad8d27217dc7b4e8687",
+  "passed": true,
+  "responses": [
+    {
+      "event": "response",
+      "at": 1792987453533,
+      "path": "/api/v1/system-admin/error-reports/stats",
+      "status": 200
+    },
+    {
+      "event": "response",
+      "at": 1792987456610,
+      "path": "/api/v1/system-admin/error-reports",
+      "status": 200
+    },
+    {
+      "event": "response",
+      "at": 1792987458534,
+      "path": "/api/v1/system-admin/error-reports/7",
+      "status": 200
+    },
+    {
+      "event": "response",
+      "at": 1792987458534,
+      "path": "/api/v1/system-admin/error-reports/config",
+      "status": 200
+    },
+    {
+      "event": "response",
+      "at": 1792987458744,
+      "path": "/api/v1/system-admin/error-reports/assignable-users",
+      "status": 200
+    }
+  ],
+  "requestFailures": [],
+  "pageErrors": [],
+  "vite": [
+    {
+      "event": "vite",
+      "text": "[vite] connecting..."
+    },
+    {
+      "event": "vite",
+      "text": "[vite] connected."
+    }
+  ],
+  "navigations": [
+    {
+      "event": "navigation",
+      "at": 1792987443099,
+      "path": "/system-admin"
+    },
+    {
+      "event": "navigation",
+      "at": 1792987448928,
+      "path": "/system-admin"
+    },
+    {
+      "event": "navigation",
+      "at": 1792987449440,
+      "path": "/system-admin"
+    },
+    {
+      "event": "navigation",
+      "at": 1792987451714,
+      "path": "/system-admin"
+    },
+    {
+      "event": "navigation",
+      "at": 1792987456035,
+      "path": "/system-admin"
+    },
+    {
+      "event": "navigation",
+      "at": 1792987456035,
+      "path": "/system-admin/error-reports"
+    },
+    {
+      "event": "navigation",
+      "at": 1792987458240,
+      "path": "/system-admin/error-reports"
+    },
+    {
+      "event": "navigation",
+      "at": 1792987458240,
+      "path": "/system-admin/error-reports/7"
+    }
+  ]
+}

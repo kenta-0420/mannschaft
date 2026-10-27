@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { z } from 'zod'
-import { toTypedSchema } from '@vee-validate/zod'
+import { toTypedSchema } from '~/utils/toTypedSchema'
 import { useForm } from 'vee-validate'
 import type { LoyaltyRule } from '~/types/team-loyalty'
 const props = defineProps<{ teamId: number; rule?: LoyaltyRule }>()
@@ -20,7 +20,7 @@ const { defineField, handleSubmit, errors, isSubmitting } = useForm({
             .min(1, t('required'))
             .max(100, t('max_length', { max: 100 })),
           points: z
-            .number({ invalid_type_error: t('invalid_format') })
+            .number({ error: (issue) => issue.input === undefined ? undefined : t('invalid_format') })
             .int(t('invalid_format'))
             .min(1, t('invalid_format'))
             .max(10000, t('invalid_format')),

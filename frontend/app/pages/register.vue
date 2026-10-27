@@ -2,7 +2,7 @@
 import { inviteRedirect } from '~/utils/inviteRedirect'
 import dayjs from 'dayjs'
 import { useForm } from 'vee-validate'
-import { toTypedSchema } from '@vee-validate/zod'
+import { toTypedSchema } from '~/utils/toTypedSchema'
 import { z } from 'zod'
 import { resolveCountry } from '~/utils/resolveCountry'
 import { PRIVACY_POLICY_VERSION } from '~/constants/legalPolicy'
@@ -130,10 +130,10 @@ const schema = toTypedSchema(
         return d >= limit
       }, 'parental_consent.error_auth_053'),
     privacyPolicyAccepted: z.literal(true, {
-      errorMap: () => ({ message: 'auth.register.privacy_consent_required' }),
+      error: 'auth.register.privacy_consent_required',
     }),
     termsAccepted: z.literal(true, {
-      errorMap: () => ({ message: 'auth.register.terms_consent_required' }),
+      error: 'auth.register.terms_consent_required',
     }),
   }),
 )
@@ -216,6 +216,10 @@ function submitRegistration() {
   submitted.value = true
   return onSubmit()
 }
+
+function applyGeneratedPassword(value: string): void {
+  password.value = value
+}
 </script>
 
 <template>
@@ -274,6 +278,12 @@ function submitRegistration() {
           toggle-mask
           fluid
           :invalid="submitted && !!errors.password"
+          :input-props="{ autocomplete: 'new-password' }"
+        />
+        <PasswordGeneratorActions
+          :password="password ?? ''"
+          :disabled="submitting"
+          @generated="applyGeneratedPassword"
         />
         <small v-if="submitted && errors.password" class="text-red-500">{{
           errors.password

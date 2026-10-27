@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "kind": "layout-regression-red-green-final",
+  "candidateImplementationHead": "2aac15e6e020d03cc9d26ee17d94922ab08ed8a4",
+  "implementationPr": 4106,
+  "oldAppHead": "543d63324e2756931d1b72591bdf4ae347198552",
+  "redTestHead": "7a320c5c1e892af7b97064e3284e9f228c1274fd",
+  "redReceipt": {
+    "sourceHead": "7a320c5c1e892af7b97064e3284e9f228c1274fd",
+    "exitCode": 1,
+    "signal": null,
+    "cleanup": "removed",
+    "cleanupReason": null,
+    "error": null
+  },
+  "redAssertions": [
+    {
+      "id": "tabs",
+      "observed": "label scroll108 > client79+1、clip",
+      "file": "layout/tab-1.json"
+    },
+    {
+      "id": "long-candidate",
+      "observed": "option right869 > viewport390 / dialog391 / text857 >390",
+      "file": "layout/long-candidate.json"
+    },
+    {
+      "id": "source-select",
+      "observed": "42px <44px",
+      "file": "layout/source-select.json"
+    }
+  ],
+  "assertionStatus": "3body assertions observed red、CLI1/cleanupremoved。SOURCE末尾Escapeは別のfocus前提failureで寸法redと区別。",
+  "fixtureFailures": [
+    {
+      "head": "9f9cb259f3",
+      "result": "PUT405、1fail/2notrun。body assertion redではない。",
+      "correction": "正規PATCH+version0へ訂正"
+    },
+    {
+      "head": "1b520734dd",
+      "correction": "localecommon.save/html.lang明示、optionlist消滅待、Cancel通常click、候補左visibleclick。44px/境界assertを維持。"
+    }
+  ],
+  "cleanup": {
+    "newFixtureActive": 0,
+    "allFrActive": 0,
+    "debugLoginCount": 3,
+    "debug429Count": 0,
+    "basis": "殿報告"
+  },
+  "fix": {
+    "head": "55ab0adc3d",
+    "files": 3,
+    "insertions": 5,
+    "deletions": 3,
+    "scope": "局所CSSのみ",
+    "rootReview": "finding0",
+    "green": "exact2aac automated44/44、CLI0skip0、root最終28PNG/全60寸法視認合格、canonicalreceipt0/cleanupremoved",
+    "finalReview": "root finding0"
+  },
+  "candidate": {
+    "head": "2aac15e6e020d03cc9d26ee17d94922ab08ed8a4",
+    "mainMerged": "bfd83ff311b15602085f8a4003c080cb0d564ca4",
+    "relatedBackendSocialRoleSchemaChange": 0,
+    "oldPerformanceUse": "old543性能v2は関連production blob/DBschema同一の範囲で保持。全環境同一や10M性能実証ではない。"
+  },
+  "ci": {
+    "backend": 40164501249,
+    "frontend": 40164501261,
+    "smoke": 40164501199,
+    "openApi": 40164501303,
+    "types": 40164501280,
+    "taskGate": 40164498628,
+    "status": "開始済み、成功未取得（殿報告）"
+  },
+  "testCommitsAlreadyInImplementation": [
+    "4321894e70",
+    "b5f9b2605c"
+  ],
+  "cherryPickPlan": "U/U2は既に実装branchへ同blobで収録。完了docsWTで70a/4dの追加cherry-pickは禁止。",
+  "selectedRawHashes": [
+    {
+      "name": "tab-1.json",
+      "sourceFile": "real-team-friend-request-l-e4c27-BS-en-390pxでタブ全文を自コンテナ内で読める-chromium-real\\tab-1.json",
+      "sha256": "243b6b5d8e4896466409eb572188ff4400a867fd775373d4e07dfa5c550c704e",
+      "topKeys": [
+        "box",
+        "clientWidth",
+        "scrollWidth",
+        "fragments",
+        "clipped"
+      ]
+    },
+    {
+      "name": "long-candidate.json",
+      "sourceFile": "real-team-friend-request-l-245d4--en-390pxで長名候補とslugを画面内で読める-chromium-real\\long-candidate.json",
+      "sha256": "64ccdc865dd3296f78ca5b10dec89e6d7ddaed218a826a1d000184248eb6ed35",
+      "topKeys": [
+        "box",
+        "clientWidth",
+        "scrollWidth",
+        "fragments",
+        "clipped",
+        "dialogBox",
+        "name",
+        "slug",
+        "width"
+      ]
+    },
+    {
+      "name": "source-select.json",
+      "sourceFile": "real-team-friend-request-l-9a977--ko-390pxで申請元の選択領域が44px以上ある-chromium-real\\source-select.json",
+      "sha256": "8bdea0a2849925b6e382e7a3434f5e8c577288208424b35ce8698419de470841",
+      "topKeys": [
+        "width",
+        "height",
+        "minHeight"
+      ]
+    }
+  ],
+  "selectedPngs": [
+    {
+      "file": "layout/tab-1.png",
+      "visuallyInspected": true
+    },
+    {
+      "file": "layout/long-candidate.png",
+      "visuallyInspected": true
+    },
+    {
+      "file": "layout/source-select.png",
+      "visuallyInspected": true
+    }
+  ],
+  "greenEvidence": "new2aac/green44-desktop-selected.json",
+  "campaignFinalization": {
+    "implementationPr": 4106,
+    "implementationHead": "4fd2c79aaf9ecc66267ba1556b03d226db15f857",
+    "mergedAt": "2026-10-25T08:07:52Z",
+    "mergeSha": "38d234363531593850493ff48259db33bdcc4bcf",
+    "finalCiStatus": "success",
+    "finalCiEvidence": "docs/evidence/CMP-261024-2051/final-ci-merge-metadata.json",
+    "review": "passed",
+    "real": "passed",
+    "exploratory": "passed",
+    "historicalFields": "Original source SHA, failures, pending statements and receipt snapshots retain their acquisition-time meaning; final campaign state is this metadata and validation opening."
+  },
+  "acquisitionKind": "layout-regression-red-prepared-green-pending"
+}

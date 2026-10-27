@@ -39,7 +39,8 @@ env:
 jobs:
   e2e:
     name: Smoke E2E (F15.4 + F22.1 + 拡大予定)
-    runs-on: ubuntu-latest
+    # Playwright 1.60.0 は Ubuntu 26.04 非対応のため、対応済み OS に固定する。
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:
       run:
@@ -114,7 +115,7 @@ jobs:
             })
           })().catch(error => { console.error(error); process.exitCode = 1 })
           NODE
-          npx playwright test F15.4-org-team-search f221-swipe-dashboard F15.4-slug-navigation mobile/insight-ui-regressions mobile/common-controls mobile/calendar-layout --project=chromium --workers=1 --timeout=120000 --trace=retain-on-failure --output=test-results/smoke
+          npx playwright test F15.4-org-team-search f221-swipe-dashboard F15.4-slug-navigation mobile/insight-ui-regressions mobile/common-controls mobile/calendar-layout mobile/my-shift-touch-targets --project=chromium --workers=1 --timeout=120000 --trace=retain-on-failure --output=test-results/smoke
 
       - name: smoke E2Eの失敗時証跡を保存
         if: always()

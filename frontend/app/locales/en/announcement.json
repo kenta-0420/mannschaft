@@ -28,7 +28,13 @@
       "BULLETIN_THREAD": "Bulletin",
       "TIMELINE_POST": "Timeline",
       "CIRCULATION": "Circular",
-      "SURVEY": "Survey"
+      "CIRCULATION_DOCUMENT": "Circular",
+      "SURVEY": "Survey",
+      "TODO": "Task",
+      "SCHEDULE": "Schedule",
+      "COMMITTEE_DECISION": "Committee decision",
+      "COMMITTEE_MINUTES": "Committee minutes",
+      "ADVERTISER_CAMPAIGN": "Advertiser campaign"
     },
     "mark_all_read": "Mark All as Read",
     "remove_from_announcements": "Remove from Announcements",
