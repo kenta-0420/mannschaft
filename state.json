@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "6373eda7-3d99-4c8c-a729-b3ad6e187388",
+  "operation": "1fa40c08-9a69-42f3-8e1c-d91c2235ad52",
   "territories": {
     "foundation": {
       "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
@@ -26,7 +26,7 @@
     },
     "gradle": {
       "owner": "9ec2bb94-5ba6-494b-9d4a-dd4ed47f29f5",
-      "note": "L1-Bの読取準備を開始。現行task/6shard/依存/CI契約と移行ACを整理。L0-M免除反映は別担当feature/4022-l0m-waiverを待ち、共有build/weights予約と実装は未着手。管理WT agent-4022-gradle-manager-261027、引継-boundary-gradle-20261027-1350.md。\nL0-M免除PR4161 main b9bd40353f反映を受領、最新版CLI209be4eでL1-B依存blocker0を確認。準備計画PR4162で現行契約/8AC/検証手順を文書化。REQ-GRADLE-GUARD-01 要判断: 計画8.1の番人中身変更禁止と依存移設がStripeJavaVersionGuardTestのbuild本文参照で衝突。28固定/欠損failを維持し参照元だけ追従する限定例外を提案。判断前は実装しない。子CMP未登録/共有予約0/build実行0。担当保持、引継-boundary-gradle-20261027-1350.md。\nREQ-GRADLE-GUARD-01解決: ユーザー続けてと親6436425040の限定承認を受領。28固定/29以上・欠損拒否を維持し参照元だけ移設追従。子CMP登録PR先行中、登録main後にbuild/weights予約して実装。承認再確認不要。他owner/measurement不変。"
+      "note": "L1-Bの読取準備を開始。現行task/6shard/依存/CI契約と移行ACを整理。L0-M免除反映は別担当feature/4022-l0m-waiverを待ち、共有build/weights予約と実装は未着手。管理WT agent-4022-gradle-manager-261027、引継-boundary-gradle-20261027-1350.md。\nL0-M免除PR4161 main b9bd40353f反映を受領、最新版CLI209be4eでL1-B依存blocker0を確認。準備計画PR4162で現行契約/8AC/検証手順を文書化。REQ-GRADLE-GUARD-01 要判断: 計画8.1の番人中身変更禁止と依存移設がStripeJavaVersionGuardTestのbuild本文参照で衝突。28固定/欠損failを維持し参照元だけ追従する限定例外を提案。判断前は実装しない。子CMP未登録/共有予約0/build実行0。担当保持、引継-boundary-gradle-20261027-1350.md。\nREQ-GRADLE-GUARD-01解決: ユーザー続けてと親6436425040の限定承認を受領。28固定/29以上・欠損拒否を維持し参照元だけ移設追従。子CMP登録PR先行中、登録main後にbuild/weights予約して実装。承認再確認不要。他owner/measurement不変。\n子CMP-261027-1646登録PR4168 main a073644f7a確定。承認6436425040を正本へ限定反映して試練/実装開始。branch feature/4022-boundary-l1b、WT agent-4022-l1b-impl-261027。build/weights所有で移設前後契約比較。L1-M/L3/他番人/他owner不変、実装検証は未完了。"
     },
     "closure": {
       "owner": "587370fa-d6c0-4518-99d4-9d6d842e80d2",
@@ -103,12 +103,15 @@
       "held": []
     },
     "L1-B": {
-      "state": "planning",
+      "state": "working",
       "evidence": "",
-      "note": "L1-Bの読取準備を開始。現行task/6shard/依存/CI契約と移行ACを整理。L0-M免除反映は別担当feature/4022-l0m-waiverを待ち、共有build/weights予約と実装は未着手。管理WT agent-4022-gradle-manager-261027、引継-boundary-gradle-20261027-1350.md。\nL0-M免除PR4161 main b9bd40353f反映を受領、最新版CLI209be4eでL1-B依存blocker0を確認。準備計画PR4162で現行契約/8AC/検証手順を文書化。REQ-GRADLE-GUARD-01 要判断: 計画8.1の番人中身変更禁止と依存移設がStripeJavaVersionGuardTestのbuild本文参照で衝突。28固定/欠損failを維持し参照元だけ追従する限定例外を提案。判断前は実装しない。子CMP未登録/共有予約0/build実行0。担当保持、引継-boundary-gradle-20261027-1350.md。\nREQ-GRADLE-GUARD-01解決: ユーザー続けてと親6436425040の限定承認を受領。28固定/29以上・欠損拒否を維持し参照元だけ移設追従。子CMP登録PR先行中、登録main後にbuild/weights予約して実装。承認再確認不要。他owner/measurement不変。",
+      "note": "L1-Bの読取準備を開始。現行task/6shard/依存/CI契約と移行ACを整理。L0-M免除反映は別担当feature/4022-l0m-waiverを待ち、共有build/weights予約と実装は未着手。管理WT agent-4022-gradle-manager-261027、引継-boundary-gradle-20261027-1350.md。\nL0-M免除PR4161 main b9bd40353f反映を受領、最新版CLI209be4eでL1-B依存blocker0を確認。準備計画PR4162で現行契約/8AC/検証手順を文書化。REQ-GRADLE-GUARD-01 要判断: 計画8.1の番人中身変更禁止と依存移設がStripeJavaVersionGuardTestのbuild本文参照で衝突。28固定/欠損failを維持し参照元だけ追従する限定例外を提案。判断前は実装しない。子CMP未登録/共有予約0/build実行0。担当保持、引継-boundary-gradle-20261027-1350.md。\nREQ-GRADLE-GUARD-01解決: ユーザー続けてと親6436425040の限定承認を受領。28固定/29以上・欠損拒否を維持し参照元だけ移設追従。子CMP登録PR先行中、登録main後にbuild/weights予約して実装。承認再確認不要。他owner/measurement不変。\n子CMP-261027-1646登録PR4168 main a073644f7a確定。承認6436425040を正本へ限定反映して試練/実装開始。branch feature/4022-boundary-l1b、WT agent-4022-l1b-impl-261027。build/weights所有で移設前後契約比較。L1-M/L3/他番人/他owner不変、実装検証は未完了。",
       "history": [],
       "hold": null,
-      "held": []
+      "held": [
+        "build",
+        "weights"
+      ]
     },
     "L1-M": {
       "state": "todo",
