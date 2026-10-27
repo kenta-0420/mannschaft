@@ -225,6 +225,18 @@
       "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-D-safe.json",
       "personaIdSource": "resident-finish-root.jsonでrootが登録時付与。",
       "personaArchetypeSource": "resident-purpose-contract.jsonのpersonas.axisA/axisBを保持。"
+    },
+    {
+      "id": "CMP0649-84C8-03-D",
+      "personaArchetype": "純チーム管理者（新D独立補足）",
+      "runId": "evidence-standard-fixed-84c8-03",
+      "sourceHead": "84c8c2fa422bab8dec5fe01e81a695e92db9911d",
+      "evidencePath": "docs/evidence/CMP-261021-0649/proofs/third-D-observations.json",
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-standard-fixed-84c8-03/independent-D-resident-safe.json",
+      "owner": "cmp1432f-e48ca45535",
+      "originalPersonaId": "D",
+      "idAssignment": "原personaIdはD。累積登録用の一意personaIdは登録時付与。runIdは実evidenceディレクトリ名を保持。固定P01-P20へ変換しない。",
+      "personaArchetypeSource": "原役割の純チーム管理者を記述。原本にない人格軸は追加しない。"
     }
   ],
   "journeys": [
@@ -557,6 +569,24 @@
           "余裕時S3/X境界"
         ]
       }
+    },
+    {
+      "id": "CMP0649-84C8-03-D-journey",
+      "personaId": "CMP0649-84C8-03-D",
+      "purpose": "純team管理者として交代相談の状況を自分で確認し、権限のない利用者と別チーム利用者へ切り替えて、相談内容や管理操作が見えないことを独立に確認する。",
+      "runId": "evidence-standard-fixed-84c8-03",
+      "sourceHead": "84c8c2fa422bab8dec5fe01e81a695e92db9911d",
+      "evidencePath": "docs/evidence/CMP-261021-0649/proofs/third-D-observations.json",
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-standard-fixed-84c8-03/independent-D-resident-safe.json",
+      "owner": "cmp1432f-e48ca45535",
+      "idAssignment": "原本にjourneyIdなし。登録時付与。",
+      "executionCompleted": true,
+      "goalsReached": false,
+      "requiredSwitchGoalsReached": {
+        "unauthorized": false,
+        "crossTenant": false
+      },
+      "coveragePassed": false
     }
   ],
   "insights": [
@@ -1669,6 +1699,33 @@
       "priority": "should",
       "pageLabel": "シフト交換リクエスト（dashboard承認カードから遷移）",
       "pageProvenance": "D原報告に実pathnameなし。未採取。固定追試routeで補完しない。"
+    },
+    {
+      "id": "CMP0649-84C8-03-D-01",
+      "featureKey": "shift",
+      "featureDetail": "交代相談の独立補足・未実証観測",
+      "title": "予定へ再訪できても相談状態と担当者名へ到達できなかった",
+      "detail": "Dは予定の日時・2/2・割当済みを確認して再訪したが、相談の現在statusと担当者名へ自力到達できなかった。S3/Xは予定と編集への直打ちでAPI404・管理操作非表示を観測したが、相談個別の非露出は未達。原因・不具合確定・新CMP/blocker化は行わない。",
+      "page": "/shift/1/edit",
+      "personaId": "CMP0649-84C8-03-D",
+      "personaArchetype": "純チーム管理者（新D独立補足）",
+      "journeyId": "CMP0649-84C8-03-D-journey",
+      "originalRunId": "evidence-standard-fixed-84c8-03",
+      "runId": "evidence-standard-fixed-84c8-03",
+      "sourceHead": "84c8c2fa422bab8dec5fe01e81a695e92db9911d",
+      "owner": "cmp1432f-e48ca45535",
+      "evidencePath": "docs/evidence/CMP-261021-0649/proofs/third-D-observations.json",
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-standard-fixed-84c8-03/independent-D-resident-safe.json",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "when-free",
+      "priority": "should",
+      "rawObservationIndices": [
+        1,
+        2,
+        7
+      ],
+      "rawUnmet": "相談の現在statusと担当者名へ自力到達できず"
     }
   ],
   "runEnvironments": {
@@ -1776,6 +1833,19 @@
       "idAssignment": "personaIdはresident-finish-root.jsonのroot付与値を保持。runIdはresident-purpose-contract.jsonの原値を保持。journeyIdは原住民報告にないため登録時付与。固定P01-P20へ変換しない。",
       "independentExploration": true,
       "fixedFollowupSeparate": true
+    },
+    "evidence-standard-fixed-84c8-03": {
+      "runId": "evidence-standard-fixed-84c8-03",
+      "owner": "cmp1432f-e48ca45535",
+      "sourceHead": "84c8c2fa422bab8dec5fe01e81a695e92db9911d",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "executionCompleted": true,
+      "goalsReached": false,
+      "coveragePassed": false,
+      "sourceEvidencePath": "docs/evidence/CMP-261021-0649/proofs/third-D-observations.json",
+      "processRegisterLimitation": "初期の短命Node補助CLIはPID/start未記録。登録14世代は全終了、同UIDのD/browser参照は前後とも0、未知の読取不能0。"
     }
   }
 }
