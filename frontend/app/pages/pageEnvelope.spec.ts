@@ -169,6 +169,93 @@ describe('outboxの既存操作をraw HTTPで回帰する', () => {
     expect(rawApi.mock.calls.filter(([url]) => String(url).includes('/metrics'))).toHaveLength(1)
   })
 
+  async function mountCancelableOutbox(total: number, pendingOnly: boolean) {
+    setupRaw(entry, total)
+    const initial = rawApi.getMockImplementation()!
+    const rows = Array.from({ length: total }, (_, i) => entry.row(i + 1))
+    rawApi.mockImplementation(async (url: string, options?: { method?: string }) => {
+      if (url.includes('/metrics')) return initial(url)
+      if (url.endsWith('/cancel') && options?.method === 'POST') {
+        const item = rows.find(row => row.id === url.split('/').at(-2))
+        if (!item) throw new Error('想定外cancel: ' + url)
+        item.status = 'CANCELLED'
+        return undefined
+      }
+      if (url.split('?')[0] !== entry.endpoint) throw new Error('想定外HTTP: ' + url)
+      const query = new URL(url, 'http://localhost').searchParams
+      const page = Number(query.get('page') ?? 0)
+      const filtered = query.has('status') ? rows.filter(row => row.status === query.get('status')) : rows
+      return { data: springPage(filtered.slice(page * 20, (page + 1) * 20).map(row => ({ ...row })), filtered.length, page), message: null }
+    })
+    const wrapper = await mountSuspended(Outbox)
+    await flushPromises()
+    if (pendingOnly) {
+      wrapper.findComponent({ name: 'Select' }).vm.$emit('update:modelValue', 'PENDING')
+      await wrapper.findAll('button').find(button => button.text() === '適用')!.trigger('click')
+      await flushPromises()
+    }
+    return wrapper
+  }
+
+  it('PENDING21件の末尾cancel204で範囲外page1から有効page0を取り直す', async () => {
+    const wrapper = await mountCancelableOutbox(21, true)
+    expect(wrapper.findAll('tbody tr')).toHaveLength(20)
+    await wrapper.findAll('button').find(button => button.find('.pi-chevron-right').exists())!.trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1)
+    expect(wrapper.text()).toContain('VERIFICATION-21')
+    const beforeCancel = listCalls(entry).length
+    await wrapper.findAll('button').find(button => button.text() === 'キャンセル')!.trigger('click')
+    await flushPromises()
+
+    expect(rawApi).toHaveBeenCalledWith(entry.endpoint + '/row-21/cancel', { method: 'POST' })
+    expect(wrapper.findAll('tbody tr')).toHaveLength(20)
+    expect(wrapper.text()).toContain('20 件中')
+    expect(wrapper.text()).toContain('1〜20 件')
+    expect(wrapper.text()).not.toContain('VERIFICATION-21')
+    const queries = listCalls(entry).slice(beforeCancel).map(([url]) => Object.fromEntries(new URL(String(url), 'http://localhost').searchParams))
+    expect(queries).toEqual([{ page: '1', size: '20', status: 'PENDING' }, { page: '0', size: '20', status: 'PENDING' }])
+    const previous = wrapper.findAll('button').find(button => button.find('.pi-chevron-left').exists())!
+    const next = wrapper.findAll('button').find(button => button.find('.pi-chevron-right').exists())!
+    expect(previous.attributes('disabled')).toBeDefined()
+    expect(next.attributes('disabled')).toBeDefined()
+  })
+
+  it('PENDING1件のpage0で最後のcancel204後は追加再取得なく正規0件になる', async () => {
+    const wrapper = await mountCancelableOutbox(1, true)
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1)
+    const beforeCancel = listCalls(entry).length
+    await wrapper.findAll('button').find(button => button.text() === 'キャンセル')!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findAll('tbody tr')).toHaveLength(0)
+    expect(wrapper.text()).toContain('データがありません')
+    expect(wrapper.text()).not.toContain('1〜0')
+    expect(listCalls(entry)).toHaveLength(beforeCancel + 1)
+    expect(String(listCalls(entry).at(-1)![0])).toContain('page=0')
+    expect(showError).not.toHaveBeenCalled()
+  })
+
+  it('ALL21件の末尾cancel204で総数が縮まない場合はpage1を維持する', async () => {
+    const wrapper = await mountCancelableOutbox(21, false)
+    await wrapper.findAll('button').find(button => button.find('.pi-chevron-right').exists())!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('VERIFICATION-21')
+    const beforeCancel = listCalls(entry).length
+    await wrapper.findAll('button').find(button => button.text() === 'キャンセル')!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1)
+    expect(wrapper.text()).toContain('VERIFICATION-21')
+    expect(wrapper.text()).toContain(useNuxtApp().$i18n.t('email_outbox.status.CANCELLED'))
+    expect(wrapper.text()).toContain('21 件中')
+    expect(wrapper.text()).toContain('21〜21 件')
+    expect(listCalls(entry)).toHaveLength(beforeCancel + 1)
+    const query = new URL(String(listCalls(entry).at(-1)![0]), 'http://localhost').searchParams
+    expect(Object.fromEntries(query)).toEqual({ page: '1', size: '20' })
+    expect(wrapper.findAll('button').find(button => button.find('.pi-chevron-left').exists())!.attributes('disabled')).toBeUndefined()
+    expect(wrapper.findAll('button').find(button => button.find('.pi-chevron-right').exists())!.attributes('disabled')).toBeDefined()
+  })
   for (const action of ['retry', 'cancel'] as const) {
     for (const status of [204, 409]) {
       it(action + ' ' + status + 'で既存の再取得または競合通知を維持する', async () => {
