@@ -195,6 +195,36 @@
       "evidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
       "trusted": false,
       "status": "observed-unverified"
+    },
+    {
+      "id": "CMP1432A-I03-A",
+      "personaArchetype": "ADHD傾向×中断・放棄",
+      "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+      "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+      "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-A-safe.json",
+      "personaIdSource": "resident-finish-root.jsonでrootが登録時付与。",
+      "personaArchetypeSource": "resident-purpose-contract.jsonのpersonas.axisA/axisBを保持。"
+    },
+    {
+      "id": "CMP1432A-I03-B",
+      "personaArchetype": "高齢・低リテラシー×素直",
+      "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+      "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+      "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-B-safe.json",
+      "personaIdSource": "resident-finish-root.jsonでrootが登録時付与。",
+      "personaArchetypeSource": "resident-purpose-contract.jsonのpersonas.axisA/axisBを保持。"
+    },
+    {
+      "id": "CMP1432A-I03-D",
+      "personaArchetype": "一般×隙間狙い",
+      "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+      "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+      "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-D-safe.json",
+      "personaIdSource": "resident-finish-root.jsonでrootが登録時付与。",
+      "personaArchetypeSource": "resident-purpose-contract.jsonのpersonas.axisA/axisBを保持。"
     }
   ],
   "journeys": [
@@ -451,6 +481,82 @@
       "evidencePath": "docs/evidence/CMP-261012-2338-exploratory.md",
       "trusted": false,
       "status": "observed-unverified"
+    },
+    {
+      "id": "CMP1432A-I03-A-journey",
+      "personaId": "CMP1432A-I03-A",
+      "purpose": "10月29日18時の自分の担当をBへ相談し、中断復帰後に相談状態と自分の予定を確認する",
+      "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+      "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+      "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-A-safe.json",
+      "journeyIdSource": "原住民報告にIDなし。登録時付与。",
+      "executionCompleted": true,
+      "goalsReached": false,
+      "coveragePassed": false,
+      "outcome": {
+        "requestSubmittedViaUi": true,
+        "reasonExact": true,
+        "duplicateSubmission": false,
+        "ownDutyRediscovered": true,
+        "consultationStatusRediscovered": false,
+        "otherActorsOutcomeInferred": false
+      }
+    },
+    {
+      "id": "CMP1432A-I03-B-journey",
+      "personaId": "CMP1432A-I03-B",
+      "purpose": "普段の画面からAの18時担当相談を探して受諾し、離脱復帰後に相談状態と新しい担当を確認する",
+      "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+      "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+      "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-B-safe.json",
+      "journeyIdSource": "原住民報告にIDなし。登録時付与。",
+      "executionCompleted": true,
+      "goalsReached": false,
+      "coveragePassed": false,
+      "outcome": {
+        "findIncomingConsultation": false,
+        "acceptConsultation": false,
+        "leaveAndReturn": true,
+        "recheckOwnAssignment": true,
+        "confirmNew18Assignment": false,
+        "summary403UiCausalityVerified": false,
+        "visualInspectionPerformed": false
+      }
+    },
+    {
+      "id": "CMP1432A-I03-D-journey",
+      "personaId": "CMP1432A-I03-D",
+      "purpose": "対象理由の相談を探しB受諾後に管理者承認し、旧新担当とCの保持を確認する。余裕時にS3/X境界を観測する",
+      "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+      "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+      "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-D-safe.json",
+      "journeyIdSource": "原住民報告にIDなし。登録時付与。",
+      "executionCompleted": true,
+      "goalsReached": false,
+      "coveragePassed": false,
+      "outcome": {
+        "targetReasonFound": true,
+        "preApproval18Assignment": [
+          "A",
+          "C"
+        ],
+        "approvalCompleted": false,
+        "postApprovalAssignmentsConfirmed": false,
+        "S3XPerformed": false,
+        "rawGoalsReachedPartialAchievements": [
+          "目的理由の未処理相談をUIで発見",
+          "承認前18-19時担当A+CをUI確認"
+        ],
+        "rawGoalsReachedInterpretation": "部分達成の列挙。bool trueへ変換しない。",
+        "goalsUnreached": [
+          "B受諾後の管理者承認",
+          "承認後の相談状態/B担当/C保持確認",
+          "余裕時S3/X境界"
+        ]
+      }
     }
   ],
   "insights": [
@@ -1437,6 +1543,132 @@
       "status": "observed-unverified",
       "urgency": "when-free",
       "priority": "could"
+    },
+    {
+      "id": "CMP1432A-I03-A-01",
+      "featureKey": "shift",
+      "featureDetail": "交代相談の独立住民探索・未実証観測",
+      "title": "交代相談を1回提出し、自分の担当へ戻れた",
+      "detail": "指定理由を入力し提出ボタンで1回送信、dialogが閉じた。中断復帰後も10月29日18〜19時の自分担当を再発見。再提出なし。受諾・承認・他住民の結果は推論しない。",
+      "page": "/my/shift",
+      "personaId": "CMP1432A-I03-A",
+      "personaArchetype": "ADHD傾向×中断・放棄",
+      "journeyId": "CMP1432A-I03-A-journey",
+      "originalRunId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+      "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+      "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+      "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-A-safe.json",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "normal",
+      "priority": "should",
+      "screenshotPath": ".claude/campaigns/cmp1432a-approved-20261027/A-final-my-shift.png"
+    },
+    {
+      "id": "CMP1432A-I03-A-02",
+      "featureKey": "shift",
+      "featureDetail": "交代相談の独立住民探索・未実証観測",
+      "title": "提出後の相談状態を再発見できなかった",
+      "detail": "インボックス、シフト管理、通知とマイシフトを自律探索したが、相談状態や処理者を発見できなかった。自担当への復帰は達成したが、目的全体は未達。原因未実証。",
+      "page": "/my/shift",
+      "personaId": "CMP1432A-I03-A",
+      "personaArchetype": "ADHD傾向×中断・放棄",
+      "journeyId": "CMP1432A-I03-A-journey",
+      "originalRunId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+      "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+      "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+      "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-A-safe.json",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "normal",
+      "priority": "should",
+      "screenshotPath": ".claude/campaigns/cmp1432a-approved-20261027/A-returned-week.png"
+    },
+    {
+      "id": "CMP1432A-I03-B-01",
+      "featureKey": "shift",
+      "featureDetail": "交代相談の独立住民探索・未実証観測",
+      "title": "受信相談と受諾操作を発見できなかった",
+      "detail": "ダッシュボード、マイシフト、シフト表、インボックス、チームメニューを探索。再訪・再読込・週表示で自担当08時/14時の2件へ戻れたが、Aからの相談発見・受諾・新18時担当確認は未達。",
+      "page": "/my/shift",
+      "personaId": "CMP1432A-I03-B",
+      "personaArchetype": "高齢・低リテラシー×素直",
+      "journeyId": "CMP1432A-I03-B-journey",
+      "originalRunId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+      "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+      "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+      "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-B-safe.json",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "normal",
+      "priority": "should"
+    },
+    {
+      "id": "CMP1432A-I03-B-02",
+      "featureKey": "shift",
+      "featureDetail": "交代相談の独立住民探索・未実証観測",
+      "title": "summary APIの403を観測したがUIとの関係は未実証",
+      "detail": "networkObservationsに/api/v1/shifts/requests/summaryの403が記録された。UI操作由来か、相談未発見の原因か、認可不備かは未実証。403だけで不具合へ昇格しない。",
+      "page": "/api/v1/shifts/requests/summary",
+      "personaId": "CMP1432A-I03-B",
+      "personaArchetype": "高齢・低リテラシー×素直",
+      "journeyId": "CMP1432A-I03-B-journey",
+      "originalRunId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+      "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+      "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+      "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-B-safe.json",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "normal",
+      "priority": "should"
+    },
+    {
+      "id": "CMP1432A-I03-D-01",
+      "featureKey": "shift",
+      "featureDetail": "交代相談の独立住民探索・未実証観測",
+      "title": "対象理由の相談は承諾待ちのままで承認未達",
+      "detail": "ダッシュボード承認cardからシフト交換一覧へ自力到達し、対象理由の未処理相談を発見。承認前18〜19時のA+Cを確認。交代相手未定/承諾待ちが再訪でも続き、B受諾後の管理者承認、承認後担当比較、S3/Xは未実施。",
+      "page": null,
+      "personaId": "CMP1432A-I03-D",
+      "personaArchetype": "一般×隙間狙い",
+      "journeyId": "CMP1432A-I03-D-journey",
+      "originalRunId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+      "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+      "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+      "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-D-safe.json",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "normal",
+      "priority": "should",
+      "pageLabel": "シフト交換リクエスト（dashboard承認カードから遷移）",
+      "pageProvenance": "D原報告に実pathnameなし。未採取。固定追試routeで補完しない。"
+    },
+    {
+      "id": "CMP1432A-I03-D-02",
+      "featureKey": "shift",
+      "featureDetail": "交代相談の独立住民探索・未実証観測",
+      "title": "交換一覧の数値ID表示では日時を判断しにくい",
+      "detail": "申請者/交代相手/スロットが数値IDで日時がなく、対象は理由完全一致で識別したという住民観測。既存CMP-261021-0650と同種の論点だが、原因・修正範囲・今回の不具合確定は行わない。",
+      "page": null,
+      "personaId": "CMP1432A-I03-D",
+      "personaArchetype": "一般×隙間狙い",
+      "journeyId": "CMP1432A-I03-D-journey",
+      "originalRunId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+      "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+      "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+      "evidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-D-safe.json",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "normal",
+      "priority": "should",
+      "pageLabel": "シフト交換リクエスト（dashboard承認カードから遷移）",
+      "pageProvenance": "D原報告に実pathnameなし。未採取。固定追試routeで補完しない。"
     }
   ],
   "runEnvironments": {
@@ -1530,6 +1762,20 @@
         "fixtures28and29": "後続所有照合DELETE204→GET404済み"
       },
       "limitation": "最新main全体との環境同一性・回帰因果・観測原因は未実証。"
+    },
+    "CMP1432A-I03-cmp0649-4c89611f1c78": {
+      "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+      "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+      "sourceEvidencePath": "docs/evidence/CMP-261010-1432/resident-observations-20261027.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "executionCompleted": true,
+      "goalsReached": false,
+      "coveragePassed": false,
+      "idAssignment": "personaIdはresident-finish-root.jsonのroot付与値を保持。runIdはresident-purpose-contract.jsonの原値を保持。journeyIdは原住民報告にないため登録時付与。固定P01-P20へ変換しない。",
+      "independentExploration": true,
+      "fixedFollowupSeparate": true
     }
   }
 }
