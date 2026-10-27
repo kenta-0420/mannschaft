@@ -203,16 +203,15 @@ const B1_AUDIENCE = () => `宛先: ${GN['2']} 以前（並び順で先頭から�
 
 /**
  * 送信履歴（組織のお知らせ一覧）で、告知 B1 の項目に限って宛先表示を検証する。
- * 改名後の名前が出ないこと（送信時の名前のまま）も確かめる。soft=true なら宛先表示の不一致を記録して続ける。
+ * 改名後の名前が出ないこと（送信時の名前のまま）も確かめる。
  */
-async function expectHistoryAudience(browser: import('@playwright/test').Browser, when: string, soft = false) {
-  const check = soft ? expect.soft : expect
+async function expectHistoryAudience(browser: import('@playwright/test').Browser, when: string) {
   const history = await openOrgDashboard(browser, w.XA)
   try {
     const item = history.panel.locator('[data-announcement-item]').filter({ hasText: B1 })
     await expect(item, `${when}: 送信履歴に B1 の項目がある`).toHaveCount(1, { timeout: 30_000 })
     const summary = item.getByTestId('broadcast-audience-summary')
-    await check(summary, `${when}: B1 の宛先表示（宛先名・範囲・送信時のチーム数）`).toHaveText(B1_AUDIENCE(), { timeout: 10_000 })
+    await expect(summary, `${when}: B1 の宛先表示（宛先名・範囲・送信時のチーム数）`).toHaveText(B1_AUDIENCE(), { timeout: 10_000 })
     await expect(item, `${when}: 改名後の名前は出ない`).not.toContainText(`G2改 ${RUN}`)
   } finally {
     await history.context.close()
@@ -381,10 +380,9 @@ test.describe('F01.2.1 グループ宛てお知らせの実機E2E', () => {
     // AC-H17: 送信履歴（組織のお知らせ一覧＝/dashboard の「組織」タブ）で、対象の告知 B1 の項目に
     // 「宛先: G2 以前（並び順で先頭から）（送信時 2 チーム）」が出る。宛先名・範囲・件数は送信時の記録なので、
     // G2 を改名しても、削除しても変わらない。
-    // 【今の main では FAIL】ダッシュボード API の orgNotices が target_audience を返さず FE も写さない（製品欠陥 D-2）。
+    // （旧製品欠陥 D-2: ダッシュボード API の orgNotices が target_audience を返さず FE も写さなかった。#4014 で修正）
     await must(w.XA, 'PATCH', `/api/v1/organizations/${w.X.slug}/team-groups/${w.G['2']}`, { name: `G2改 ${RUN}` })
-    // 改名後は soft（後続の H20/H23 の判定を続ける）。削除後は通常の判定
-    await expectHistoryAudience(browser, '改名後', true)
+    await expectHistoryAudience(browser, '改名後')
     // G2 削除 → T2 はスナップショットで出続け（AC-H20）、T3 は送信時に対象でないので出ない（AC-H23）
     await must(w.XA, 'DELETE', `/api/v1/organizations/${w.X.slug}/team-groups/${w.G['2']}`)
     expect(await teamDashboardShows(browser, w.A['2'], w.T['2'], B1), 'AC-H20 T2 に出続ける').toBe(true)
@@ -406,10 +404,12 @@ test.describe('F01.2.1 グループ宛てお知らせの実機E2E', () => {
     const zGroup = sql(`SELECT BIN_TO_UUID(g.id) FROM org_team_groups g JOIN organizations o ON o.id=g.organization_id WHERE o.slug='${w.Z.slug}' LIMIT 1;`)
     const foreign = await call({ targetGroupIds: [zGroup] })
     expect([foreign.status, foreign.body?.error?.code]).toEqual([400, 'BROADCAST_006'])
-    const both = await call({ targetGroupIds: [w.G['1']], targetTeamIds: [w.T['1'].numericId] })
+    // targetTeamIds はチームの slug（設計書 §8.1。#4014 で slug 化）
+    const both = await call({ targetGroupIds: [w.G['1']], targetTeamIds: [w.T['1'].slug] })
     expect([both.status, both.body?.error?.code]).toEqual([400, 'BROADCAST_011'])
-    const tooMany = await call({ targetTeamIds: Array.from({ length: 501 }, (_, i) => 900_000_000 + i) })
-    expect(tooMany.status).toBe(400)
+    // AC-H14b: 501 チームは 400 BROADCAST_010（件数の上限は slug の解決より先に判定される）
+    const tooMany = await call({ targetTeamIds: Array.from({ length: 501 }, (_, i) => `e2e-og-none-${RUN}-${i}`) })
+    expect([tooMany.status, tooMany.body?.error?.code], 'AC-H14b 501 チーム').toEqual([400, 'BROADCAST_010'])
     const teamScope = await apiAs(w.A['1'], 'POST', `/api/v1/teams/${w.T['1'].numericId}/broadcast`, {
       channel: 'BULLETIN_THREAD',
       targetRole: 'MEMBERS_AND_ABOVE',
@@ -421,11 +421,11 @@ test.describe('F01.2.1 グループ宛てお知らせの実機E2E', () => {
     const zBase = `/api/v1/organizations/${w.Z.numericId}/broadcast`
     const crossGroup = await apiAs(w.A['1'], 'POST', zBase, { channel: 'BULLETIN_THREAD', targetRole: 'MEMBERS_AND_ABOVE', content, targetGroupIds: [w.G['1']] })
     expect([crossGroup.status, crossGroup.body?.error?.code]).toEqual([400, 'BROADCAST_006'])
-    const crossTeam = await apiAs(w.A['1'], 'POST', zBase, { channel: 'BULLETIN_THREAD', targetRole: 'MEMBERS_AND_ABOVE', content, targetTeamIds: [w.T['2'].numericId] })
+    const crossTeam = await apiAs(w.A['1'], 'POST', zBase, { channel: 'BULLETIN_THREAD', targetRole: 'MEMBERS_AND_ABOVE', content, targetTeamIds: [w.T['2'].slug] })
     expect([crossTeam.status, crossTeam.body?.error?.code]).toEqual([400, 'BROADCAST_002'])
     // AC-K07: X の組織ロールを持つメンバーはいるが X に ACTIVE 加盟していないチームを宛先に入れると 400 BROADCAST_002
     const loose = await createTeam(w.XM, `実機未加盟 ${RUN}`)
-    const k07 = await call({ targetTeamIds: [loose.numericId] })
+    const k07 = await call({ targetTeamIds: [loose.slug] })
     expect([k07.status, k07.body?.error?.code], 'K07').toEqual([400, 'BROADCAST_002'])
     await archiveScope('teams', w.XM, loose.slug)
   })
@@ -443,8 +443,8 @@ test.describe('F01.2.1 グループ宛てお知らせの実機E2E', () => {
           await s.page.getByTestId('broadcast-target-mode-teams').click()
           const preview = s.page.waitForResponse((r) => r.url().includes('/broadcast/audience-preview'), { timeout: 60_000 })
           await s.page.getByRole('checkbox', { name: w.T['1'].name, exact: true }).click()
-          // 【製品欠陥の検出点】FE は「チームを選ぶ」の宛先にチームの slug を送り、BE は数値 ID を要求するため
-          // 宛先プレビューが 400 COMMON_001 になり「次へ」が押せない（画面からはチーム指定の告知を送れない）。
+          // 旧製品欠陥 D-3: FE は slug を送り BE は数値 ID を要求していたため、宛先プレビューが 400 COMMON_001 になっていた。
+          // #4014 で BE が slug を受けるよう修正。プレビューが 200 で 1 チームに解決することを確かめる。
           const previewed = await preview
           expect(previewed.status(), `チームを選ぶの宛先プレビュー: ${previewed.request().postData()} -> ${await previewed.text()}`).toBe(200)
           await expect(s.page.getByTestId('broadcast-resolved-count')).toContainText('該当: 1 チーム')
@@ -478,7 +478,7 @@ test.describe('F01.2.1 グループ宛てお知らせの実機E2E', () => {
 
   /**
    * 「チームを選ぶ」で T1 だけを宛先にして画面から送信する（ステップ1〜3）。
-   * 【今の main では宛先プレビューが 400 で止まる（製品欠陥 D-3）】修正後は送信まで進む。
+   * 送信本体の targetTeamIds はチームの slug（旧製品欠陥 D-3。#4014 で修正）。
    */
   async function sendToT1ViaUi(browser: import('@playwright/test').Browser, actor: Actor, channel: '掲示板' | 'アンケート', title: string) {
     resetUserRateLimit('broadcast:send', actor)
@@ -494,7 +494,7 @@ test.describe('F01.2.1 グループ宛てお知らせの実機E2E', () => {
       await goChannelAndContent(s.page, channel, title)
       const sent = await submit(s.page)
       expect(sent.status(), await sent.text()).toBeLessThan(300)
-      expect(sent.request().postDataJSON()).toMatchObject({ targetTeamIds: [w.T['1'].numericId] })
+      expect(sent.request().postDataJSON()).toMatchObject({ targetTeamIds: [w.T['1'].slug] })
     } finally {
       await s.context.close()
     }

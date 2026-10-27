@@ -523,9 +523,10 @@ test.describe('F01.2.1 加盟の実機E2E', () => {
       const restriction = xa.page.getByTestId('restriction-row').filter({ hasText: w.T.name })
       await expect(restriction).toBeVisible({ timeout: 30_000 })
       await expect(restriction).toContainText('ブロック中')
-      // 【製品欠陥の記録】制限一覧の理由欄に理由コード（REJECTED）がそのまま表示される（i18n されていない生の列挙値）。
-      // 期待: 利用者向けの文言で表示する（または表示しない）。soft で記録し、以降の操作は続ける。
-      await expect.soft(restriction, '制限一覧に理由コードの生値を出さない').not.toContainText('REJECTED')
+      // 制限一覧の理由欄は理由コードの生値（REJECTED）を出さず、利用者向けのラベルで表示する
+      // （設計書 F01.2.1 制限一覧の節。旧製品欠陥 D-1、#4014 で修正）。
+      await expect(restriction, '制限一覧に理由コードの生値を出さない').not.toContainText('REJECTED')
+      await expect(restriction, '制限一覧の理由はラベルで表示する').toContainText('申請を拒否したため')
       const lifted = await clickAndWait(xa.page, () => restriction.getByRole('button', { name: '解除' }).click(), 'DELETE', new RegExp(`/team-affiliation-restrictions/[^/]+$`))
       expect(lifted.status()).toBe(204)
       await expect(restriction).toHaveCount(0)
