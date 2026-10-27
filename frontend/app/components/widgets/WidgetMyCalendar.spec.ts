@@ -18,7 +18,7 @@ vi.mock('~/composables/useScheduleApi', () => ({ useScheduleApi: () => api }))
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
 mockNuxtImport('navigateTo', () => navigateMock)
 
-const stubs = { CalendarGrid: true, ScheduleDayDialog: true, ScheduleEventForm: true, Dialog: true }
+const stubs = { CalendarGrid: true, ScheduleDayDialog: true, LazyScheduleDayDialog: { name: 'ScheduleDayDialog', props: ['visible', 'date', 'events'], emits: ['update:visible', 'rowOpen', 'create'], template: '<div />' }, ScheduleEventForm: true, LazyScheduleEventForm: { name: 'ScheduleEventForm', props: ['visible', 'initialDate', 'isPersonal', 'scheduleId'], emits: ['update:visible', 'saved'], template: '<div />' }, Dialog: true }
 const event: CalendarEventItem = {
   id: 10, uniqueKey: 'personal:10', title: '当日予定', startAt: '2026-08-06T10:00:00',
   endAt: '2026-08-06T11:00:00', allDay: false, isPersonal: true, color: null,

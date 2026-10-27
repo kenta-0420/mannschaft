@@ -32,6 +32,7 @@ function render() {
     props: { scopeType: 'TEAM', scopeId: 'team-a', numericScopeId: '1', data: {} as TeamDashboardResponse },
     global: {
       mocks: { $t: (key: string) => key },
+      components: { LazyDashboardScopePreviewModal: PreviewStub },
       stubs: {
         DashboardScopeListWidget: true, DashboardWidgetCard: true, DashboardScopeWidgetItem: true,
         TimelineFeed: true, ScopeActionRequiredWidget: true, DashboardEmptyState: true,
@@ -50,7 +51,7 @@ describe('DashboardSwipeWidgetGrid プレビューの遅延表示', () => {
   it('最初のLOADINGから表示し、closeとretryを既存処理へ渡す', async () => {
     const view = render()
     state.value = 'LOADING'
-    await nextTick()
+    await vi.waitFor(() => expect(view.findComponent(PreviewStub).exists()).toBe(true))
     const preview = view.getComponent(PreviewStub)
     expect(preview.props('state')).toBe('LOADING')
     preview.vm.$emit('retry')
@@ -62,7 +63,7 @@ describe('DashboardSwipeWidgetGrid プレビューの遅延表示', () => {
   it('close後も同じインスタンスを保持して再表示する', async () => {
     const view = render()
     state.value = 'LOADING'
-    await nextTick()
+    await vi.waitFor(() => expect(view.findComponent(PreviewStub).exists()).toBe(true))
     const instance = view.getComponent(PreviewStub).vm
     state.value = 'CLOSED'
     await nextTick()
