@@ -1,4 +1,4 @@
-// @vitest-environment node
+// @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useScopeDashboardStore } from '~/stores/useScopeDashboardStore'
@@ -81,5 +81,45 @@ describe('useScopeDashboardStore.loadTabs', () => {
     await request
 
     expect(store.selectedTeamId).toBe('team-manual')
+  })
+
+  describe.each(['TEAM', 'ORGANIZATION'] as const)('%s の数値slug選択', scopeType => {
+    const selectedKey = scopeType === 'TEAM' ? 'selectedTeamId' : 'selectedOrgId'
+
+    it.each([false, true])('FEED-SCOPE-12: 別scopeの内部IDより公開slug一致を優先する(逆順=%s)', async reverse => {
+      const target = { ...page(0, '7').items[0]!, scopeType, scopeId: '21', slug: '7' }
+      const collision = { ...page(0, 'other').items[0]!, scopeType, scopeId: '7', slug: 'other' }
+      getScopeTabs.mockResolvedValue({ ...page(0, '7'), items: reverse ? [target, collision] : [collision, target] })
+      const store = useScopeDashboardStore()
+      store[selectedKey] = '7'
+
+      await store.loadTabs(scopeType)
+
+      expect(store[selectedKey]).toBe('7')
+    })
+
+    it('FEED-SCOPE-13: 公開slug一致がない旧内部IDは従来どおりslugへ移行する', async () => {
+      getScopeTabs.mockResolvedValue({ ...page(0, 'canonical'), items: [{ ...page(0, 'canonical').items[0]!, scopeType, scopeId: '21' }] })
+      const store = useScopeDashboardStore()
+      store[selectedKey] = '21'
+
+      await store.loadTabs(scopeType)
+
+      expect(store[selectedKey]).toBe('canonical')
+    })
+
+    it('FEED-SCOPE-14: 取得中に利用者が変更した選択を衝突候補へ戻さない', async () => {
+      let resolveRequest!: (value: ScopeTabPage) => void
+      getScopeTabs.mockReturnValue(new Promise(resolve => { resolveRequest = resolve }))
+      const store = useScopeDashboardStore()
+      store[selectedKey] = '7'
+      const request = store.loadTabs(scopeType)
+      store[selectedKey] = 'manual'
+
+      resolveRequest({ ...page(0, 'other'), items: [{ ...page(0, 'other').items[0]!, scopeType, scopeId: '7' }] })
+      await request
+
+      expect(store[selectedKey]).toBe('manual')
+    })
   })
 })

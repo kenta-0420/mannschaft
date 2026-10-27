@@ -1,6 +1,5 @@
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
-import Aura from '@primeuix/themes/aura'
 import { buildGateRouteRules } from './app/constants/featureGates'
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -1012,6 +1011,8 @@ export default defineNuxtConfig({
   },
 
   primevue: {
+    // 巨大なpresetをpublic runtimeConfigへ複製せずSSR/CSRの正規importで共有する。
+    importTheme: { as: 'MannschaftTheme', from: '~/themes/mannschaft' },
     autoImport: true,
     components: {
       prefix: '',
@@ -1019,14 +1020,6 @@ export default defineNuxtConfig({
     options: {
       ripple: true,
       inputVariant: 'filled',
-      theme: {
-        preset: Aura,
-        options: {
-          prefix: 'p',
-          darkModeSelector: '.p-dark',
-          cssLayer: false,
-        },
-      },
     },
   },
 

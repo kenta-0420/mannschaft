@@ -109,6 +109,36 @@ async function mountForm(props: Record<string, unknown>): Promise<ProbeValues> {
 }
 
 describe('ScheduleEventForm: 初期日時のプリセット（F03.19 §6.6.5）', () => {
+  it('初回visible=trueでも日付を適用し、Google連携状態を一度だけ取得する', async () => {
+    googleCalendarMock.fetchPersonalSyncStatus.mockClear()
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: true, scopeType: 'team', scopeId: '', isPersonal: true, initialDate: '2026-10-12' },
+      global: { stubs: globalStubs },
+    })
+    await flushPromises()
+    expect(wrapper.get('[data-testid="datetime-probe"]').attributes('data-start-date')).toBe('2026-10-12')
+    expect(googleCalendarMock.fetchPersonalSyncStatus).toHaveBeenCalledOnce()
+    await wrapper.setProps({ visible: false })
+    await wrapper.setProps({ visible: true, initialDate: '2026-10-13' })
+    await flushPromises()
+    expect(wrapper.get('[data-testid="datetime-probe"]').attributes('data-start-date')).toBe('2026-10-13')
+    expect(googleCalendarMock.fetchPersonalSyncStatus).toHaveBeenCalledTimes(2)
+  })
+
+  it('初回visible=trueの個人編集も指定予定を一度だけ取得する', async () => {
+    scheduleApiMock.getMyScheduleDetail.mockReset().mockResolvedValue({ data: {
+      content: { title: '遅延編集' },
+      time: { startAt: '2026-10-12T09:00:00+09:00', endAt: '2026-10-12T10:00:00+09:00', allDay: false },
+    } })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: true, scopeType: 'team', scopeId: '', isPersonal: true, scheduleId: 14 },
+      global: { stubs: globalStubs },
+    })
+    await flushPromises()
+    expect(scheduleApiMock.getMyScheduleDetail).toHaveBeenCalledExactlyOnceWith(14)
+    expect(wrapper.get('[data-testid="datetime-probe"]').attributes('data-start-time')).toBe('09:00')
+  })
+
   const originalTz = process.env.TZ
 
   beforeAll(() => {

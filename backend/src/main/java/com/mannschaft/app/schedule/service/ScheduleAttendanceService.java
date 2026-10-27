@@ -482,6 +482,16 @@ public class ScheduleAttendanceService {
         return new UnansweredAttendances(all.size(), List.copyOf(items));
     }
 
+    /** 個人横断集計の候補投影。時刻で過小除外せず、最終取得の既存認可を維持する。 */
+    public List<Long> findUnansweredScopeIds(String scopeType, List<Long> scopeIds, Long userId) {
+        if (scopeIds.isEmpty()) {
+            return List.of();
+        }
+        return "ORGANIZATION".equals(scopeType)
+                ? attendanceRepository.findUnansweredOrganizationScopeIds(scopeIds, userId)
+                : attendanceRepository.findUnansweredTeamScopeIds(scopeIds, userId);
+    }
+
     /**
      * F22.1 第二波: 未回答出欠の集計結果（件数 + 直近イベント）。
      *
