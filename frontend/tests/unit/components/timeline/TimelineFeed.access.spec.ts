@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
 import { flushPromises } from '@vue/test-utils'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import TimelineFeed from '~/components/timeline/TimelineFeed.vue'
@@ -19,7 +20,7 @@ function deferred<T>() {
 }
 const wrappers: Array<Awaited<ReturnType<typeof mountSuspended>>> = []
 async function mountFeed() {
-  const wrapper = await mountSuspended(TimelineFeed, { props: { scopeType: 'TEAM', scopeId: 'scope-a' }, global: { stubs: { TimelinePostCard: true } } })
+  const wrapper = await mountSuspended(TimelineFeed, { props: { scopeType: 'TEAM', scopeId: 101 }, global: { stubs: { TimelinePostCard: true } } })
   wrappers.push(wrapper)
   return wrapper
 }
@@ -34,14 +35,14 @@ describe('TimelineFeed の読取結果と拒否表示', () => {
     const wrapper = await mountFeed()
     expect(wrapper.emitted('read-access')).toBeUndefined()
     request.resolve(emptyFeed()); await flushPromises()
-    expect(wrapper.emitted('read-access')).toEqual([[true, 'TEAM', 'scope-a']])
+    expect(wrapper.emitted('read-access')).toEqual([[true, 'TEAM', 101]])
     expect(wrapper.text()).toContain('まだ投稿がありません')
   })
 
   it.each([403, 404])('%i は空成功にせず永続拒否表示と false 通知にする', async statusCode => {
     getFeed.mockRejectedValueOnce({ statusCode })
     const wrapper = await mountFeed(); await flushPromises()
-    expect(wrapper.emitted('read-access')).toEqual([[false, 'TEAM', 'scope-a']])
+    expect(wrapper.emitted('read-access')).toEqual([[false, 'TEAM', 101]])
     expect(wrapper.find('[data-testid="timeline-access-error"]').exists()).toBe(true)
     expect(wrapper.text()).toContain(statusCode === 403 ? 'loadErrorState.states.forbidden.title' : 'loadErrorState.states.notFoundOrForbidden.title')
     expect(wrapper.text()).not.toContain('まだ投稿がありません')
@@ -51,7 +52,7 @@ describe('TimelineFeed の読取結果と拒否表示', () => {
     const wrapper = await mountFeed(); await flushPromises()
     getFeed.mockRejectedValueOnce({ statusCode: 500 })
     ;(wrapper.vm as unknown as { refresh: () => void }).refresh(); await flushPromises()
-    expect(wrapper.emitted('read-access')).toEqual([[true, 'TEAM', 'scope-a']])
+    expect(wrapper.emitted('read-access')).toEqual([[true, 'TEAM', 101]])
     expect(showError).toHaveBeenCalled()
   })
 
@@ -62,7 +63,7 @@ describe('TimelineFeed の読取結果と拒否表示', () => {
     getFeed.mockRejectedValueOnce({ statusCode: 403 })
     ;(wrapper.vm as unknown as { refresh: () => void }).refresh(); await flushPromises()
     old.resolve(emptyFeed()); await flushPromises()
-    expect(wrapper.emitted('read-access')).toEqual([[false, 'TEAM', 'scope-a']])
+    expect(wrapper.emitted('read-access')).toEqual([[false, 'TEAM', 101]])
     expect(wrapper.find('[data-testid="timeline-access-error"]').exists()).toBe(true)
   })
 
@@ -73,6 +74,6 @@ describe('TimelineFeed の読取結果と拒否表示', () => {
     ;(wrapper.vm as unknown as { refresh: () => void }).refresh(); await flushPromises()
     expect(wrapper.findAllComponents({ name: 'TimelinePostCard' })).toHaveLength(0)
     expect(wrapper.find('[data-testid="timeline-load-more-target"]').exists()).toBe(false)
-    expect(wrapper.emitted('read-access')?.at(-1)).toEqual([false, 'TEAM', 'scope-a'])
+    expect(wrapper.emitted('read-access')?.at(-1)).toEqual([false, 'TEAM', 101])
   })
 })
