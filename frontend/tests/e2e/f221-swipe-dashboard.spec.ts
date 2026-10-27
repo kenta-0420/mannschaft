@@ -431,35 +431,38 @@ test('F22.1-4: 個人パネル内に検索フォーム・タグ行が無く、�
   await page.goto('/dashboard')
   await waitForCarousel(page)
 
-  // 設計上 3 パネルは常時 DOM 上にマウントされ、非アクティブパネルは translateX で
-  // 画面外に退避される（再描画なし）。したがって TEAM/ORG パネルの検索フォーム自体は
-  // DOM に存在するが「個人パネルの内側には無い」ことを #scope-panel-PERSONAL に
-  // スコープして検証する（設計書 03 §3.9 個人パネルにタグ行/検索なし）。
+  // 3 sectionは常設するが、未訪問bodyのフォーム/取得は初回選択まで生成しない。
+  // 個人パネルにタグ行/検索なしの契約は、その内側へスコープして検証する。
+  await expect(page.locator('section[role="tabpanel"]')).toHaveCount(3)
   const personalPanel = page.locator('#scope-panel-PERSONAL')
   await expect(personalPanel.getByTestId('scope-search-form-TEAM')).toHaveCount(0)
   await expect(personalPanel.getByTestId('scope-search-form-ORGANIZATION')).toHaveCount(0)
   await expect(personalPanel.getByTestId('scope-tab-bar-TEAM')).toHaveCount(0)
   await expect(personalPanel.getByTestId('scope-tab-bar-ORGANIZATION')).toHaveCount(0)
 
-  // 逆に TEAM パネルの内側には検索フォーム・タグ行が存在する。
+  // 未訪問のTEAM/ORGにはフォーム・タグ行がまだ存在しない。
   const teamPanel = page.locator('#scope-panel-TEAM')
-  await expect(teamPanel.getByTestId('scope-search-form-TEAM')).toHaveCount(1)
-  await expect(teamPanel.getByTestId('scope-tab-bar-TEAM')).toHaveCount(1)
-
-  // 組織パネルの内側にも同様に存在する。
   const orgPanel = page.locator('#scope-panel-ORGANIZATION')
-  await expect(orgPanel.getByTestId('scope-search-form-ORGANIZATION')).toHaveCount(1)
-  await expect(orgPanel.getByTestId('scope-tab-bar-ORGANIZATION')).toHaveCount(1)
+  await expect(teamPanel.getByTestId('scope-search-form-TEAM')).toHaveCount(0)
+  await expect(teamPanel.getByTestId('scope-tab-bar-TEAM')).toHaveCount(0)
+  await expect(orgPanel.getByTestId('scope-search-form-ORGANIZATION')).toHaveCount(0)
+  await expect(orgPanel.getByTestId('scope-tab-bar-ORGANIZATION')).toHaveCount(0)
 
   // チームへ切替: チーム検索フォーム・タグ行が可視になる
   await page.getByTestId('scope-segment-TEAM').click()
   await expect(teamPanel.getByTestId('scope-search-form-TEAM')).toBeVisible()
   await expect(teamPanel.getByTestId('scope-tab-bar-TEAM')).toBeVisible()
+  const teamForm = await teamPanel.getByTestId('scope-search-form-TEAM').elementHandle()
+  await teamPanel.getByTestId('scope-search-form-TEAM').locator('input').fill('保持する検索')
 
   // 組織へ切替: 組織検索フォーム・タグ行が可視になる
   await page.getByTestId('scope-segment-ORGANIZATION').click()
   await expect(orgPanel.getByTestId('scope-search-form-ORGANIZATION')).toBeVisible()
   await expect(orgPanel.getByTestId('scope-tab-bar-ORGANIZATION')).toBeVisible()
+  await page.getByTestId('scope-segment-TEAM').click()
+  await expect(teamPanel.getByTestId('scope-search-form-TEAM').locator('input')).toHaveValue('保持する検索')
+  expect(await teamPanel.getByTestId('scope-search-form-TEAM').evaluate((element, original) => element === original, teamForm)).toBe(true)
+  await expect(page.locator('section[role="tabpanel"]')).toHaveCount(3)
 })
 
 // ──────────────────────────────────────────────────────────────────────────
