@@ -250,6 +250,13 @@ const quickLinks: QuickLink[] = [
     color: 'text-red-500',
     bg: 'bg-red-50 dark:bg-red-900/20',
   },
+  {
+    label: t('email_outbox.title'),
+    icon: 'pi pi-envelope',
+    to: '/system-admin/email-outbox',
+    color: 'text-blue-500',
+    bg: 'bg-blue-50 dark:bg-blue-900/20',
+  },
 ]
 </script>
 
