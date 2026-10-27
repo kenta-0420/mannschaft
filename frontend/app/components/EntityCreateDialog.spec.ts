@@ -126,6 +126,17 @@ beforeEach(() => {
 })
 
 describe('EntityCreateDialog 同名確認フロー', () => {
+  it('初回から開いた遅延ダイアログも下書きを一度復元して送信する', async () => {
+    restoreDraftMock.mockReturnValue({ name: '復元した組織', visibility: 'PRIVATE' })
+    apiMock.mockResolvedValue({ data: { id: '20', name: 'x', slug: 'x' } })
+    const wrapper = await mountDialog()
+    await flushPromises()
+    expect(restoreDraftMock).toHaveBeenCalledOnce()
+    await wrapper.get('[data-testid="entity-create-submit"]').trigger('click')
+    await flushPromises()
+    expect(apiMock.mock.calls[0]![1].body).toMatchObject({ name: '復元した組織', visibility: 'PRIVATE' })
+  })
+
   it('(a) 確認後の再送は初回ボディに confirmDuplicate/fingerprint を足しただけの同一ボディになる', async () => {
     apiMock.mockRejectedValueOnce(dupname001Error('fp-1', [{ id: '10', name: '重複組織' }], 0))
     apiMock.mockResolvedValueOnce({ data: { id: '20', name: 'x', slug: 'x' } })

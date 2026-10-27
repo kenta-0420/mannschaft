@@ -37,8 +37,17 @@ beforeEach(() => {
 })
 
 describe('個人ダッシュボードの日付操作', () => {
-  it('一覧のTODO・reflectionと既存チップをそれぞれの既存導線へ渡す', async () => {
+  it('操作前には日別・新規フォームを読み込まない', async () => {
     const wrapper = await mountWidget()
+    expect(wrapper.findComponent({ name: 'ScheduleDayDialog' }).exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'ScheduleEventForm' }).exists()).toBe(false)
+  })
+
+  it('一覧のTODO・reflectionと既存チップをそれぞれの既存導線へ渡す', async () => {
+    state.filteredEvents.value = [event]
+    const wrapper = await mountWidget()
+    wrapper.findComponent({ name: 'CalendarGrid' }).vm.$emit('dateClick', '2026-08-06')
+    await flushPromises()
     const dialog = wrapper.findComponent({ name: 'ScheduleDayDialog' })
 
     dialog.vm.$emit('rowOpen', { ...event, id: -12, isTodo: true })
@@ -62,6 +71,7 @@ describe('個人ダッシュボードの日付操作', () => {
     grid.vm.$emit('dateClick', '2026-08-06')
     await flushPromises()
     let form = wrapper.findComponent({ name: 'ScheduleEventForm' })
+    const firstForm = form.vm
     expect(form.props('visible')).toBe(true)
     expect(form.props('initialDate')).toBe('2026-08-06')
     expect(form.props('isPersonal')).toBe(true)
@@ -76,6 +86,7 @@ describe('個人ダッシュボードの日付操作', () => {
     wrapper.findComponent({ name: 'ScheduleDayDialog' }).vm.$emit('create')
     await flushPromises()
     form = wrapper.findComponent({ name: 'ScheduleEventForm' })
+    expect(form.vm).toBe(firstForm)
     expect(form.props('initialDate')).toBe('2026-08-06')
     form.vm.$emit('update:visible', false)
     grid.vm.$emit('dateClick', '2026-08-07')
@@ -100,7 +111,7 @@ describe('個人ダッシュボードの日付操作', () => {
     grid.vm.$emit('nextMonth')
     grid.vm.$emit('prevMonth')
     await flushPromises()
-    expect(wrapper.findComponent({ name: 'ScheduleEventForm' }).props('visible')).toBe(false)
+    expect(wrapper.findComponent({ name: 'ScheduleEventForm' }).exists()).toBe(false)
     expect(state.onNextMonth).not.toHaveBeenCalled()
     expect(state.onPrevMonth).not.toHaveBeenCalled()
   })
