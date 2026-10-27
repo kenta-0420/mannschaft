@@ -1,0 +1,359 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261026-1912",
+  "kind": "source-bridge",
+  "gateStatus": "passed",
+  "description": "採用した特定改善のソース・検証対応表。速度完全解消や全frontend同値の証拠ではない。",
+  "adoptedImplementations": [
+    {
+      "pr": 4140,
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4140",
+      "head": "7fc48f6f74282229b1c5bfe8bcbb180e44377807",
+      "merge": "abaab7f7d9320ca4bae33faed8819e41cc98d17a",
+      "status": "MERGED",
+      "successfulCi": [
+        40344558901,
+        40344558999,
+        40344558905
+      ]
+    },
+    {
+      "pr": 4148,
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4148",
+      "head": "765a3709c3547d2fa4c65467bc3ada03f2a64a61",
+      "merge": "79789dbbbc81f0961a82469a5c4bf88115df8295",
+      "status": "MERGED",
+      "observedFrontend": "763a108ebbc3544fc8ed8cdb331d3df878a8a4ac",
+      "successfulCi": [
+        40359090017,
+        40359089977
+      ],
+      "bridge": "FE製品内容は実機763と同値。"
+    },
+    {
+      "pr": 4149,
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4149",
+      "head": "a0fa43232274de50adc68634e6863519d12b4fb6",
+      "merge": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e",
+      "status": "MERGED",
+      "successfulCi": [
+        40370850099,
+        40383437896
+      ],
+      "checks": {
+        "success": 23,
+        "skipped": 1
+      }
+    },
+    {
+      "pr": 4151,
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4151",
+      "head": "c46be0d7b725559d23d8cbb4323af559f906c31c",
+      "merge": "fbca619e6522dfb5e5e7b3820b9069f4a2caae1b",
+      "status": "MERGED",
+      "mergedAt": "2026-10-27T01:23:08Z",
+      "successfulCi": [
+        40429713353,
+        40429713586,
+        40429713625,
+        40429709059
+      ],
+      "bridge": "採用head c46のFE製品はedと同値。全CI成功後、readyで発火した新gateも成功。SSRの機会的prefetch flagだけを抑制し、imports/preload/scripts/CSPを維持。"
+    },
+    {
+      "pr": 4153,
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4153",
+      "head": "03866c0456dbf69dec3950e7225001d8fc45483a",
+      "merge": "c6f33de14d2bb07d01449e8cc5f4144bc8d7e167",
+      "status": "MERGED",
+      "mergedAt": "2026-10-27T02:41:22Z",
+      "successfulCi": [
+        40437841436,
+        40437841246,
+        40437841184,
+        40439769982
+      ],
+      "checks": {
+        "success": 15,
+        "skipped": 7
+      },
+      "scope": "非now23widgetのLazy化とAC9通常無signal wrapperのsingle-flight。"
+    }
+  ],
+  "backendExecutableBridge": {
+    "artifactSource": "afbd48ddd3a0328f0f5ce7e9fb52f43ed61c3d52",
+    "artifactSha256": "0f7bf3ab92da367aabf2a73ba532b20b36a3f84ca2df78b0d043d66b30c1b897",
+    "intermediateHead": "a2173f71e07dab7463f6f6b1cb90dfe3f31791d6",
+    "adoptedHead": "a0fa43232274de50adc68634e6863519d12b4fb6",
+    "proof": "afbd→a217はJavadoc/設計同期とmain追従のみでBE実行コード・tests同値。a217→a0faはBE main tree完全同一、公開契約test1fileだけ変更。採用main ef1e9にも同じ実装を反映。",
+    "localGreen": {
+      "originalRelated": 104,
+      "architecture": 37,
+      "freeze": 2,
+      "catalogFixRelated": 47,
+      "catalogFixTotal": 86,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "publicReference": "https://github.com/kenta-0420/mannschaft/pull/4149"
+  },
+  "observedSourcePairs": [
+    {
+      "frontend": "acf72026e616a5b29a6c8e227f7dc2141fd5bc55",
+      "backend": "fad11b91a3df17e34c17b234ba9374cfbfed99d3",
+      "scope": "初回3ロール・旧3旅程・SW条件別ログイン。後続確認と区別。",
+      "status": "過去観測"
+    },
+    {
+      "frontend": "763a108ebbc3544fc8ed8cdb331d3df878a8a4ac",
+      "backend": "afbd48ddd3a0328f0f5ce7e9fb52f43ed61c3d52",
+      "scope": "3ロール、詳細みたよ往復/reload、非所属/他tenant拒否。fixture6件全204。",
+      "status": "passed"
+    },
+    {
+      "frontend": "7b666ccdfea28f6e00352215aae8419a8b29c760",
+      "backend": "afbd48ddd3a0328f0f5ce7e9fb52f43ed61c3d52",
+      "scope": "SSR prefetch0/modulepreload維持、通常UI・匿名nonce。新spec型修正は後続ed。",
+      "status": "観測済み・採用別"
+    },
+    {
+      "frontend": "8b78bc73247c00f0ffd1df6eb2a9f5a2c9dea193",
+      "backend": "afbd48ddd3a0328f0f5ce7e9fb52f43ed61c3d52",
+      "scope": "production成果物の3目的探索。初回/再展開、狭幅、6連続切替。",
+      "status": "passed-on-observed-artifact"
+    },
+    {
+      "currentMain": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e",
+      "backend": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e",
+      "frontendTreeUnchanged": true,
+      "scope": "資産を保持して両main FF。新API health200/UP・fresh batch class反映。通常UI login/TEAM/核心0/logout200/閉鎖。devで速度比較対象外。",
+      "status": "passed",
+      "frontendObservedTreeHead": "79789dbbbc81f0961a82469a5c4bf88115df8295"
+    },
+    {
+      "frontend": "2e5876867b5d1c60b386c3f512838e2626c87325",
+      "backend": "afbd48ddd3a0328f0f5ce7e9fb52f43ed61c3d52",
+      "status": "統合成果物の機能・小標本観測済み、採用ゲート待ち。",
+      "measurementRuns": {
+        "warmup": {
+          "status": "completed"
+        },
+        "block": {
+          "status": "completed",
+          "mainSeconds": 6.783,
+          "calendarSeconds": 13.644
+        },
+        "allow": {
+          "status": "completed",
+          "mainSeconds": 7.105,
+          "calendarSeconds": 13.972,
+          "serviceWorkerEvents": 1,
+          "backgroundRequests": 305
+        },
+        "common": {
+          "loginCompleted": true,
+          "teamReady": true,
+          "logoutHttp": 200,
+          "contextClosed": true,
+          "browserClosed": true,
+          "coreErrors": 0,
+          "logicalTeamsGetCount": 1,
+          "teamsGetHttp": 200
+        },
+        "previous8bLogicalTeamsGetCount": 2
+      },
+      "interpretation": "最新値は統合2eの値。旧8bの良好値を最新値として使わず、一般化率・完全解消・実wire量の減少率を主張しない。",
+      "prHeadAtHistoricalBridge": "85a900a3150c24500dd6db09c5e3671e59e43cab",
+      "frontendDiffEmptyAtHistoricalBridge": true
+    }
+  ],
+  "pendingIntegrations": [],
+  "performance": {
+    "interpretation": "初回を保持する小標本。runtime/SW条件差があり一般化率・本番SLA達成は非主張。",
+    "initialApi": {
+      "beforeMedianMs": {
+        "organizations": 2434,
+        "inbox": 1606
+      },
+      "afterMedianMs": {
+        "organizations": 55,
+        "inbox": 1035
+      },
+      "samplesPerSource": 3,
+      "canonicalPayloadEquivalent": true,
+      "limitation": "旧bootRun/localと新Jar/local+e2eのscheduler差あり。SQL単独効果率にしない。"
+    },
+    "roleBatchApi": {
+      "beforeElapsedMs": [
+        12339.31,
+        1345.08,
+        1675.44
+      ],
+      "afterElapsedMs": [
+        2050.59,
+        1194.75,
+        892.27
+      ],
+      "allStatus": 200,
+      "canonicalPayloadSha256": "76a9e3c17d97a8a4ffab3437565705cacd55e7bfd9b3ef6bf3e64f0dac78c23e",
+      "sameSubjectAndHelper": true
+    },
+    "excludedClaims": [
+      "旧dev対productionの率比較",
+      "不成立interception controlの効果推定",
+      "論理イベントとwire量の同一視",
+      "概算行数/別主体EXPLAIN/全DB digestの個別request値への転用"
+    ],
+    "historicalWidgetLazyUi": {
+      "source": "8b78bc73247c00f0ffd1df6eb2a9f5a2c9dea193",
+      "block": {
+        "samples": 1,
+        "mainMs": 5707.6,
+        "calendarMs": 9790.95
+      },
+      "allow": {
+        "samples": 1,
+        "mainMs": 4854.09,
+        "calendarMs": 10078.69
+      }
+    },
+    "latestIntegratedUi": {
+      "warmup": {
+        "status": "completed"
+      },
+      "block": {
+        "status": "completed",
+        "mainSeconds": 6.783,
+        "calendarSeconds": 13.644
+      },
+      "allow": {
+        "status": "completed",
+        "mainSeconds": 7.105,
+        "calendarSeconds": 13.972,
+        "serviceWorkerEvents": 1,
+        "backgroundRequests": 305
+      },
+      "common": {
+        "loginCompleted": true,
+        "teamReady": true,
+        "logoutHttp": 200,
+        "contextClosed": true,
+        "browserClosed": true,
+        "coreErrors": 0,
+        "logicalTeamsGetCount": 1,
+        "teamsGetHttp": 200
+      },
+      "previous8bLogicalTeamsGetCount": 2,
+      "source": "2e5876867b5d1c60b386c3f512838e2626c87325",
+      "interpretation": "最新値は統合2eの値。旧8bの良好値を最新値として使わず、一般化率・完全解消・実wire量の減少率を主張しない。"
+    }
+  },
+  "portableEvidence": [
+    "docs/evidence/CMP-261026-1912/validation.md",
+    "docs/evidence/CMP-261026-1912/real-exploratory-summary.json"
+  ],
+  "privateRawRequired": false,
+  "additionalAcceptanceCriterion": {
+    "id": "AC-9",
+    "description": "通常fetchMyTeamsのsignalなしwrapperだけを同時取得共有し、直接WithResultの更新後freshnessと既存signalのlast-wins/中断を維持する。",
+    "validatedSource": "2ec684fb63c6fa65946d95f43861d0239bf28a35",
+    "test": "frontend/app/stores/useTeamStore.spec.ts",
+    "green": {
+      "specs": 1,
+      "tests": 8,
+      "eslint": true,
+      "fullTypecheckHeapMiB": 8192,
+      "fullTypecheck": true,
+      "runnerExitCode": 0,
+      "cleanup": "removed"
+    },
+    "boundaries": [
+      "0件後の再取得",
+      "共有失敗後の再試行",
+      "clear後の旧成功/旧失敗が新flightを変更しない",
+      "signal中断と後続無signal要求の分離",
+      "signal付き同士の独立/last-wins",
+      "更新後の直接WithResultは旧閲覧flightを共有しない",
+      "別Pinia分離"
+    ],
+    "rejectedCandidate": {
+      "headPrefix": "16d",
+      "reason": "直接WithResultまで共有し、archive更新後のfresh読取を妨げる回帰があって差戻し。採用しない。"
+    },
+    "implementationLimit": "直接fetchMyTeamsWithResultはbaseと同一。新たな汎用cacheや認可変更なし。",
+    "integratedSource": "2e5876867b5d1c60b386c3f512838e2626c87325",
+    "finalPrHead": "03866c0456dbf69dec3950e7225001d8fc45483a",
+    "status": "正式8試験/lint/型確認成功、統合2e通常UIと自変更4file同値で採用head038へ対応。"
+  },
+  "finalSourceBridge": {
+    "productionBuildSource": "2e5876867b5d1c60b386c3f512838e2626c87325",
+    "finalPrHead": "03866c0456dbf69dec3950e7225001d8fc45483a",
+    "adoptedMain": "c6f33de14d2bb07d01449e8cc5f4144bc8d7e167",
+    "ownFiles": [
+      "frontend/README.md",
+      "frontend/app/components/dashboard/DashboardPersonalWidgetGrid.vue",
+      "frontend/app/stores/useTeamStore.ts",
+      "frontend/app/stores/useTeamStore.spec.ts"
+    ],
+    "ownFilesDiffEmpty": true,
+    "fullFrontendDiffEmpty": false,
+    "historicalBridge": {
+      "from": "2e5876867b5d1c60b386c3f512838e2626c87325",
+      "to": "85a900a3150c24500dd6db09c5e3671e59e43cab",
+      "frontendDiffEmpty": true
+    },
+    "mainFollowup": "85a→038は採用mainへの通常追従。大会エントリーの独立PR差分を含むため全frontend/app同値とは主張しない。",
+    "independentUpstream": {
+      "pr": 4143,
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4143",
+      "merge": "13b3698b1ac4d2c1ea0fa4491e0ab9847314ba7d",
+      "verification": "独立PRのMERGED・成功15/正当skip7を確認。最終本陣の通常UI login/TEAM完走で共存確認。"
+    },
+    "backendDiffFromEf1e9Empty": true,
+    "packageAndLockDiffEmpty": true
+  },
+  "mainAdoption": {
+    "windowsHead": "c6f33de14d2bb07d01449e8cc5f4144bc8d7e167",
+    "wslHead": "c6f33de14d2bb07d01449e8cc5f4144bc8d7e167",
+    "assetsPreserved": true,
+    "apiRestarted": false,
+    "apiStartedSource": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e",
+    "backendDiffEmpty": true,
+    "health": "200/UP",
+    "frontend": "既存Node22を保持。config更新によるNuxt再生成後、匿名login200/root/form/inline4nonce整合を確認。",
+    "normalUi": "既存Node22のready後1runはlogin/dashboard/TEAM ready、核心0、logout200/context+browser閉鎖で完走。初回503は再生成中の未成功試行として区別。",
+    "normalUiResult": {
+      "source": "c6f33de14d2bb07d01449e8cc5f4144bc8d7e167",
+      "status": "completed",
+      "route": "dashboard",
+      "team": "ready",
+      "logoutHttp": 200,
+      "contextClosed": true,
+      "browserClosed": true,
+      "pageErrors": 0,
+      "cspViolations": 0,
+      "mitayoPropWarnings": 0,
+      "hydrationMismatches": 0,
+      "otherErrors": 1,
+      "otherWarnings": 1,
+      "personalCalendarReadyDuring12SecondWindow": false,
+      "note": "既知のその他console1+1を保持。個人calendarは12秒の観測窓で未readyであり、全widget完了と扱わない。dev反映確認でproduction性能値に混ぜない。"
+    },
+    "frontendRestartedManually": false
+  },
+  "completionEvidence": {
+    "scope": "app",
+    "implementation": {
+      "pr": 4153,
+      "sha": "03866c0456dbf69dec3950e7225001d8fc45483a"
+    },
+    "ci": [
+      40437841436,
+      40437841246,
+      40437841184
+    ],
+    "rule": "最終head038のsuccess3runだけをtopciへ記載。4140/4148/4149/4151や85aの別head CIを混ぜない。",
+    "status": "最終head038と同headのsuccess3runをtopJSONへ記録。"
+  }
+}

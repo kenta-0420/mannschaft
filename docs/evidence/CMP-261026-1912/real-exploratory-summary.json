@@ -1,0 +1,221 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261026-1912",
+  "kind": "real-exploratory-summary",
+  "gateStatus": "passed",
+  "description": "採用した特定改善の実機・探索の可搬要約。旧完全旅程、最新部分旅程、4file限定source bridgeを区別する。",
+  "roleVerification": {
+    "frontend": "763a108ebbc3544fc8ed8cdb331d3df878a8a4ac",
+    "backend": "afbd48ddd3a0328f0f5ce7e9fb52f43ed61c3d52",
+    "status": "passed",
+    "checks": [
+      "通常UIログイン、PERSONAL/TEAM/ORGANIZATION。",
+      "告知・詳細みたよfalse/0→true/1→reload保持→false/0、logout/relogin。",
+      "同組織の非所属と別tenantからteam/post詳細への直接アクセス拒否。",
+      "自己fixture6件全204。page error/CSP/mitayo prop警告0。"
+    ],
+    "publicReferences": [
+      "https://github.com/kenta-0420/mannschaft/pull/4148",
+      "https://github.com/kenta-0420/mannschaft/pull/4149"
+    ]
+  },
+  "additionalChecks": [
+    {
+      "scope": "JP/KR祝日UI",
+      "frontend": "763a108ebbc3544fc8ed8cdb331d3df878a8a4ac",
+      "backend": "fad11b91a3df17e34c17b234ba9374cfbfed99d3",
+      "result": "表示は一致。元runのfinally復旧は失敗。元値確認済みの1列1行CAS復旧後、API/UI一致/logout200/閉鎖を別確認。",
+      "limitation": "旧BEとの組合せ。設定UIのnullクリア修正証拠ではない。"
+    },
+    {
+      "scope": "本陣dev反映",
+      "source": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e",
+      "status": "passed",
+      "result": "資産保護した両main FF、新API health200/UP・fresh batch class反映。Node22通常UI login/TEAM/核心0/logout200/閉鎖。",
+      "limitation": "FE treeは797と同じ。その他console1+1/feed403も直前797成功runと同じ。個別因果は断定せずdev速度比較率なし。"
+    }
+  ],
+  "historicalObservations": "初回acf/fadの3旅程は過去証拠。hydration1件、401付きhelper、不成立control、loading画像を後続8bの成功と混同しない。旧B0はobserved-unverified/trusted:falseのまま。",
+  "portableEvidence": [
+    "docs/evidence/CMP-261026-1912/validation.md",
+    "docs/evidence/CMP-261026-1912/source-bridge.json"
+  ],
+  "privateRawRequired": false,
+  "excludedPrivateData": [
+    "アカウント識別子",
+    "Cookie/token",
+    "API本文",
+    "nonce値",
+    "絶対local path",
+    "画像全量"
+  ],
+  "priorCompleteArtifactExploration": {
+    "frontend": "8b78bc73247c00f0ffd1df6eb2a9f5a2c9dea193",
+    "backend": "afbd48ddd3a0328f0f5ce7e9fb52f43ed61c3d52",
+    "status": "passed-on-observed-artifact",
+    "method": "同じ専用test seed利用者、別の順次context、通常UIログイン。3目的の役柄であり独立実ユーザー3名ではない。画像はroot目視済みで公開必須証拠にしない。",
+    "journeys": [
+      {
+        "id": "CMP-261027-8b-resume-r3",
+        "purpose": "中断復帰して通信と通知を確認する。",
+        "status": "passed",
+        "observations": [
+          "個人通信の初回/閉じ再展開で3widget。",
+          "TEAM通信、掲示板、未読通知、中断復帰、SSR dashboard帰還。"
+        ]
+      },
+      {
+        "id": "CMP-261027-8b-mobile-r2",
+        "purpose": "狭幅で予定と連絡を確認し個人へ戻る。",
+        "status": "passed",
+        "observations": [
+          "TEAM予定・通信を開き、360pxでdocument幅も360px。",
+          "個人dashboard帰還。"
+        ]
+      },
+      {
+        "id": "CMP-261027-8b-fast-r2",
+        "purpose": "3scopeの連続切替を行う。",
+        "status": "passed",
+        "observations": [
+          "6操作すべてselected tab1件とaria-hidden=false panel1件が要求scopeと一致。",
+          "幾何数visiblePanels=3は画面外paneを含むため同時表示3枚の証拠ではない。"
+        ]
+      }
+    ],
+    "commonResult": {
+      "loginHttp": 200,
+      "logoutHttp": 200,
+      "contextClosed": true,
+      "browserClosed": true,
+      "pageErrors": 0,
+      "cspConsoleMessages": 0,
+      "propWarnings": 0,
+      "hydrationMismatches": 0
+    },
+    "knownObservations": [
+      "timeline/feed403を観測。既知の数値のみ組織slug問題と整合するがquery未保存のため各slugは断定しない。",
+      "security/csp-reports404は報告先応答でありinline CSP違反観測ではない。"
+    ],
+    "adoptionGate": "旧8b/afbdの完全3旅程passとして保持。PersonalWidgetGridは統合2eと同一であり、最新DOMと合わせて再展開確認を補完する。"
+  },
+  "integratedArtifactVerification": {
+    "pr": 4153,
+    "head": "03866c0456dbf69dec3950e7225001d8fc45483a",
+    "buildSource": "2e5876867b5d1c60b386c3f512838e2626c87325",
+    "productionBuild": {
+      "exitCode": 0,
+      "cleanup": "removed",
+      "files": 4446
+    },
+    "ac9ValidatedSource": "2ec684fb63c6fa65946d95f43861d0239bf28a35",
+    "ac9LocalGreen": {
+      "tests": 8,
+      "eslint": true,
+      "fullTypecheck": true
+    },
+    "status": "統合production成果物の最終観測と自変更4file同値をroot確認し、PR4153で採用済み。",
+    "measurements": {
+      "warmup": {
+        "status": "completed"
+      },
+      "block": {
+        "status": "completed",
+        "mainSeconds": 6.783,
+        "calendarSeconds": 13.644
+      },
+      "allow": {
+        "status": "completed",
+        "mainSeconds": 7.105,
+        "calendarSeconds": 13.972,
+        "serviceWorkerEvents": 1,
+        "backgroundRequests": 305
+      },
+      "common": {
+        "loginCompleted": true,
+        "teamReady": true,
+        "logoutHttp": 200,
+        "contextClosed": true,
+        "browserClosed": true,
+        "coreErrors": 0,
+        "logicalTeamsGetCount": 1,
+        "teamsGetHttp": 200
+      },
+      "previous8bLogicalTeamsGetCount": 2
+    },
+    "journeys": [
+      {
+        "purpose": "中断復帰",
+        "goalAchieved": false,
+        "status": "部分観測。完全旅程passへ変換しない。"
+      },
+      {
+        "purpose": "表示settled確認",
+        "goalAchieved": false,
+        "status": "部分観測。完全旅程passへ変換しない。"
+      },
+      {
+        "purpose": "連続scope切替",
+        "goalAchieved": true,
+        "completedOperations": 6,
+        "status": "6操作の達成範囲だけを採用。"
+      }
+    ],
+    "communicationEvidence": {
+      "initialExpansion": "rootが初回通信3cardsとTEAM settled画像を目視確認。",
+      "reopen": "最新ARIA true・regionHidden false・DOM3を確認。旧8b完全探索とPersonalWidgetGridのUI source同値で補完。",
+      "excludedFinalImage": "再展開画像はアニメーション途中のため終端状態の画像証拠に採用しない。"
+    },
+    "sourceBridge": "正式build2e→85aの過去frontend全体同値と、85a→038のmain追従を分離。最終038へは自変更4files同値だけを主張し、大会エントリーの独立採用差分は独立CIと本陣確認で補完する。",
+    "additionalRealRunsRequired": false,
+    "performanceClaim": "改善率・完全解消を主張しない。最新値は2eのblock6.783/13.644秒、allow7.105/13.972秒。",
+    "prHeadAtBuildBridge": "85a900a3150c24500dd6db09c5e3671e59e43cab",
+    "ownFilesDiffEmpty": true,
+    "fullFrontendDiffEmpty": false,
+    "ownFiles": [
+      "frontend/README.md",
+      "frontend/app/components/dashboard/DashboardPersonalWidgetGrid.vue",
+      "frontend/app/stores/useTeamStore.ts",
+      "frontend/app/stores/useTeamStore.spec.ts"
+    ]
+  },
+  "previewState": {
+    "status": "検証用FE/APIは所有確認後SIGTERM停止。本陣は保持。",
+    "mainFrontendListener": "Windows側の接続所有情報で既存Node22のlistenを確認。WSL ssから見えないことを停止と誤判定しない。"
+  },
+  "mainAdoption": {
+    "windowsHead": "c6f33de14d2bb07d01449e8cc5f4144bc8d7e167",
+    "wslHead": "c6f33de14d2bb07d01449e8cc5f4144bc8d7e167",
+    "assetsPreserved": true,
+    "apiRestarted": false,
+    "apiStartedSource": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e",
+    "backendDiffEmpty": true,
+    "health": "200/UP",
+    "frontend": "既存Node22を保持。config更新によるNuxt再生成後、匿名login200/root/form/inline4nonce整合を確認。",
+    "normalUi": "既存Node22のready後1runはlogin/dashboard/TEAM ready、核心0、logout200/context+browser閉鎖で完走。初回503は再生成中の未成功試行として区別。",
+    "normalUiResult": {
+      "source": "c6f33de14d2bb07d01449e8cc5f4144bc8d7e167",
+      "status": "completed",
+      "route": "dashboard",
+      "team": "ready",
+      "logoutHttp": 200,
+      "contextClosed": true,
+      "browserClosed": true,
+      "pageErrors": 0,
+      "cspViolations": 0,
+      "mitayoPropWarnings": 0,
+      "hydrationMismatches": 0,
+      "otherErrors": 1,
+      "otherWarnings": 1,
+      "personalCalendarReadyDuring12SecondWindow": false,
+      "note": "既知のその他console1+1を保持。個人calendarは12秒の観測窓で未readyであり、全widget完了と扱わない。dev反映確認でproduction性能値に混ぜない。"
+    },
+    "frontendRestartedManually": false
+  },
+  "remainingLimitations": [
+    "旧8bの完全3旅程と最新2eの部分旅程を区別し、goal falseをpassへ書き換えない。",
+    "自変更4files同値のみを主張。大会エントリー独立差分を含む全app同値は非主張。",
+    "最新production約7秒/14秒、既知feed403・CSP報告404・国設定nullクリアなどの残課題は未解消。",
+    "main devでは個人calendarが12秒の観測窓で未ready。production比較率や全widget完了へ使わない。"
+  ]
+}
