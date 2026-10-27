@@ -1,0 +1,331 @@
+{
+  "schemaVersion": 1,
+  "sourceHead": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+  "runId": "october-wave4-residents-20261027",
+  "formalReal": {
+    "firstAttempt": "正規MemberPermissionSetupDialogがクリックを遮り120秒失敗。権限PUTなし。",
+    "manualReruns": 1,
+    "automaticRetries": 0,
+    "finalResult": "1件passed 17.4秒。OPTIONAL ON200→reload永続assert→OFF200",
+    "permissionsPutCount": 0,
+    "consoleErrors": 3,
+    "consoleErrorCause": "本文未保存・原因未確定。後続roles probeのCSP404へ付け替えない。",
+    "fixtures": [
+      {
+        "scope": "teams",
+        "numericId": 27,
+        "slug": "modcatalog-e2e-1793070470205",
+        "name": "ModCatalog-E2E-1793070470205",
+        "getStatus": 200,
+        "role": "ADMIN",
+        "deleteStatus": 204,
+        "finalGetStatus": 404
+      },
+      {
+        "scope": "organizations",
+        "numericId": 27,
+        "slug": "modcatalog-e2e-org-17930704706",
+        "name": "ModCatalog-E2E-Org-1793070470632",
+        "getStatus": 200,
+        "role": "ADMIN",
+        "deleteStatus": 204,
+        "finalGetStatus": 404
+      }
+    ],
+    "specCanonicalLfSHA256": "e0a56cdcd8e117b4958d62a860d4f46513d8ca59382cc81e31519de3704ccb96",
+    "helperCanonicalLfSHA256": "90bbcbeed800ef4d486688522d6ea831817ea5ef2380ef86697f551572e7bf4b",
+    "specUnchanged": true,
+    "helperUnchanged": true,
+    "productionOutputUnchanged": true
+  },
+  "roles": {
+    "uiLoginStatuses": [
+      {
+        "actor": "member",
+        "status": 200
+      },
+      {
+        "actor": "other",
+        "status": 200
+      }
+    ],
+    "negativePatches": [
+      {
+        "kind": "negative-patch",
+        "actor": "member",
+        "permission": {
+          "status": 200,
+          "roleName": "MEMBER",
+          "scopeAdmin": false,
+          "permissionsCount": 1
+        },
+        "publicGetStatus": 200,
+        "publicName": "CMP2338-ROLE-1793070910257-target",
+        "moduleId": 29,
+        "enabled": false,
+        "status": 403,
+        "errorCode": "COMMON_002"
+      },
+      {
+        "kind": "negative-patch",
+        "actor": "other",
+        "permission": {
+          "status": 200,
+          "roleName": null,
+          "scopeAdmin": false,
+          "permissionsCount": 0
+        },
+        "publicGetStatus": 200,
+        "publicName": "CMP2338-ROLE-1793070910257-target",
+        "moduleId": 29,
+        "enabled": false,
+        "status": 403,
+        "errorCode": "COMMON_002"
+      }
+    ],
+    "catalogItems": 42,
+    "catalogUnchanged": true,
+    "permissionsPutCount": 0,
+    "allApiContextsClosed": true,
+    "browserClosed": true,
+    "credentialPersistenceMatches": 0,
+    "unverified": [
+      "未認証UI/APIの追加補足は今回未実施"
+    ]
+  },
+  "fixtureCleanup": [
+    {
+      "startedAt": "2026-10-27T03:39:24.359Z",
+      "owner": "root/wave4_role_probe",
+      "reason": "3住民完了後、殿の回収指示。CLAUDEの自身テストデータ事前許可に基づく限定回収",
+      "previousAutomaticReview": {
+        "status": "rejected-before-process-start",
+        "reason": "対象削除への信頼できる承認証拠不足",
+        "subsequentEvidence": "cleanup-read-only-inspection.json / cleanup-source-evidence.json。POST201所有tuple・本人scopeADMIN・隔離e2e・DDL秒精度・exactteam論理削除を殿が独立確認。再審査承認時だけ実行"
+      },
+      "runtime": {
+        "pid": 308358,
+        "startTicks": "6849288",
+        "cwd": "/mnt/c/Claude/mannschaft/.claude/runtime/october-third-wave-20261026",
+        "profile": "e2e",
+        "dedicatedDatabasePort13340": true
+      },
+      "actors": [
+        {
+          "id": 3,
+          "systemRole": null,
+          "status": 200
+        },
+        {
+          "id": 6,
+          "systemRole": null,
+          "status": 200
+        }
+      ],
+      "fixtures": [
+        {
+          "numericId": 28,
+          "slug": "cmp2338-target-3070910257",
+          "creator": "owner",
+          "stage": "recovered",
+          "startedAt": "2026-10-27T03:39:24.414Z",
+          "loginStatus": 200,
+          "getStatus": 200,
+          "createdAtComparison": {
+            "postOriginal": "2026-10-27T12:15:10.30727038+09:00",
+            "actual": "2026-10-27T12:15:10+09:00",
+            "expectedNearestWholeSecond": "2026-10-27T03:15:10.000Z",
+            "differenceMs": -307,
+            "normalizedExactMatch": true,
+            "rawExactMatch": false
+          },
+          "identityMatched": true,
+          "observed": {
+            "numericId": 28,
+            "slug": "cmp2338-target-3070910257",
+            "name": "CMP2338-ROLE-1793070910257-target",
+            "createdAt": "2026-10-27T12:15:10+09:00"
+          },
+          "permission": {
+            "status": 200,
+            "roleName": "ADMIN",
+            "scopeAdmin": true
+          },
+          "invitation14AbsentBeforeDelete": true,
+          "deleteStatus": 204,
+          "finalGetStatus": 404,
+          "completedAt": "2026-10-27T03:39:26.045Z"
+        },
+        {
+          "numericId": 29,
+          "slug": "cmp2338-other-3070910257",
+          "creator": "other",
+          "stage": "recovered",
+          "startedAt": "2026-10-27T03:39:26.062Z",
+          "loginStatus": 200,
+          "getStatus": 200,
+          "createdAtComparison": {
+            "postOriginal": "2026-10-27T12:15:10.639512418+09:00",
+            "actual": "2026-10-27T12:15:11+09:00",
+            "expectedNearestWholeSecond": "2026-10-27T03:15:11.000Z",
+            "differenceMs": 361,
+            "normalizedExactMatch": true,
+            "rawExactMatch": false
+          },
+          "identityMatched": true,
+          "observed": {
+            "numericId": 29,
+            "slug": "cmp2338-other-3070910257",
+            "name": "CMP2338-ROLE-1793070910257-other",
+            "createdAt": "2026-10-27T12:15:11+09:00"
+          },
+          "permission": {
+            "status": 200,
+            "roleName": "ADMIN",
+            "scopeAdmin": true
+          },
+          "deleteStatus": 204,
+          "finalGetStatus": 404,
+          "completedAt": "2026-10-27T03:39:27.535Z"
+        }
+      ],
+      "allApiContextsClosed": true,
+      "credentialPersistenceMatches": 0,
+      "status": "recovered",
+      "finishedAt": "2026-10-27T03:39:27.901Z"
+    }
+  ],
+  "historicalEvidenceValidation": {
+    "unitExitCode": 0,
+    "unitSummary": [
+      "ℹ tests 21",
+      "ℹ pass 21",
+      "ℹ fail 0",
+      "ℹ skipped 0",
+      "ℹ duration_ms 11248.0982"
+    ],
+    "targetValidation": {
+      "passed": true,
+      "implementationPr": 3801,
+      "implementationHead": "300b19cc081a8c067a28afe25c05cb8f896f31da",
+      "mergedAt": "2026-10-12T06:51:48Z",
+      "checks": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "skipped",
+        "skipped",
+        "skipped",
+        "skipped",
+        "skipped",
+        "success",
+        "skipped",
+        "skipped",
+        "success",
+        "success",
+        "success",
+        "success",
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "checkRunsRead": 22,
+      "statusesRead": 0,
+      "ciRunId": 38183209926,
+      "ciConclusion": "success"
+    }
+  },
+  "rootAdjudication": {
+    "owner": "root",
+    "runId": "october-wave4-residents-20261027",
+    "source": "84944f1c94f63154e795648adba5f0a42fb51d2f",
+    "implementationPr": 4156,
+    "review": {
+      "findingCount": 0,
+      "scope": "未使用wrapperと専用testの削除。歴史証拠の相対path不在はCIで検出し固定commit URLへ修復中",
+      "targetBlob": "f6f86c6c8df7dea3c918c8b04c9b1116a373fe44"
+    },
+    "real": {
+      "status": "passed",
+      "firstAttempt": "正規のMemberPermissionSetupDialogが操作を遮り失敗",
+      "manualReruns": 1,
+      "final": "既存S4-S6成功、ON200→再読込永続→OFF200",
+      "permissionPuts": 0,
+      "consoleErrors": 3,
+      "consoleErrorCause": "未確定",
+      "roles": "MEMBER5/他tenant管理者6のfresh UI直URLと同値PATCH403 COMMON_002、PUBLIC GET200、42module前後不変"
+    },
+    "exploratory": {
+      "status": "passed",
+      "meaning": "3独立住民による探索を実施。利用目標全達成を意味しない",
+      "residentGoals": [
+        "R1未達",
+        "R2部分達成",
+        "R3部分達成"
+      ],
+      "rawTrust": "trusted:false / observed-unverified",
+      "newConfirmedBlockers": [],
+      "disposition": "言語・導線・小さい操作領域の観測は気づきとして保持。原因未検証のため不具合や今回削除による回帰と断定しない",
+      "viewedImages": [
+        "R1/08-modules-1280x720.png",
+        "R1/12-restored-persisted-ja.png",
+        "R2/16-booking-ready.png",
+        "R2/18-activity360.png",
+        "R3/18-final-modules.png"
+      ],
+      "languageRestored": "R1実UI ja→de→ja後reload確認、root代表PNG実見",
+      "contexts": "全住民browser/context閉鎖、作成データとmodule変更なし"
+    },
+    "limitations": [
+      "最新mainのdashboard/store差異を含む全環境再実機成功とはしない",
+      "旧S4console3件の原因を後続probeのCSP404等へ付け替えない",
+      "CI成功/実装採用/所有fixture回収は別ゲート"
+    ],
+    "remaining": [
+      "PR4156歴史証拠参照修復と全CI成功",
+      "MOVED正規再採用とのmain統合調整",
+      "fixture28/29回収",
+      "完了証拠と気づき箱の永続化"
+    ]
+  },
+  "note": "原正本privateは不変保持。root adjudication remainingは旧時点。後続fixture28/29回収完了と参照修復済みを上記で追記し原rawを改変しない。",
+  "adoption": {
+    "pr": 4156,
+    "head": "0ac4c26439bbc837ca3214017d95ad0c323400b5",
+    "mergeCommit": "09854466d335cd5e99b9dc6b80d69e683d761644",
+    "mergedAt": "2026-10-27T05:49:03Z",
+    "ci": [
+      {
+        "runId": 40454793387
+      },
+      {
+        "runId": 40454793400
+      },
+      {
+        "runId": 40454934952
+      }
+    ],
+    "net": {
+      "files": 3,
+      "additions": 2,
+      "deletions": 49
+    },
+    "atMerge": {
+      "eligible": true,
+      "rawChecks": 22,
+      "rawSuccess": 15,
+      "rawSkipped": 7,
+      "aggregatedConclusions": 21
+    },
+    "wrapper": {
+      "path": "frontend/app/composables/useModuleApi.ts",
+      "runtimeBlob": "f6f86c6c8df7dea3c918c8b04c9b1116a373fe44",
+      "implementationBlob": "f6f86c6c8df7dea3c918c8b04c9b1116a373fe44",
+      "equal": true
+    },
+    "limitation": "Formal source849 and original observations remain unchanged; historical candidate values are not rewritten into execution-time provenance."
+  }
+}

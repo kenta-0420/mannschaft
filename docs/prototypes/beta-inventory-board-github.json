@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "repository": "kenta-0420/mannschaft",
-  "synchronizedAt": "2026-10-26T11:04:52+00:00",
+  "synchronizedAt": "2026-10-27T06:07:09+00:00",
   "status": "synced",
   "error": null,
   "references": {
@@ -1258,8 +1258,12 @@
       3387
     ],
     "CMP-261002-0742": [],
-    "CMP-261002-0743": [],
-    "CMP-261002-0744": [],
+    "CMP-261002-0743": [
+      4143
+    ],
+    "CMP-261002-0744": [
+      3759
+    ],
     "CMP-261002-0801": [],
     "CMP-261002-0802": [],
     "CMP-261002-0803": [],
@@ -1355,7 +1359,7 @@
       3670
     ],
     "CMP-261006-0632": [
-      3670
+      4160
     ],
     "CMP-261006-0901": [
       3668
@@ -1542,7 +1546,7 @@
       3802
     ],
     "CMP-261012-2338": [
-      3801
+      4156
     ],
     "CMP-261012-2339": [
       3810
@@ -1815,7 +1819,7 @@
       4045
     ],
     "CMP-261022-0914": [
-      4022
+      4049
     ],
     "CMP-261022-0924": [],
     "CMP-261022-1026": [
@@ -1869,9 +1873,14 @@
     ],
     "CMP-261026-1344": [
       4022,
-      4049
+      4130
     ],
-    "CMP-261026-1912": []
+    "CMP-261026-1912": [],
+    "CMP-261026-2253": [
+      4143,
+      4147
+    ],
+    "CMP-261027-1311": []
   },
   "items": {
     "261": {
@@ -4851,7 +4860,7 @@
       "state": "open",
       "title": "CMP-056 全域機械走査: 未変換の付随通知が18箇所リスト外に多数残存（NotificationHelper直呼び）",
       "url": "https://github.com/kenta-0420/mannschaft/issues/2997",
-      "updatedAt": "2026-10-21T10:15:34Z",
+      "updatedAt": "2026-10-27T04:54:22Z",
       "ci": null
     },
     "3002": {
@@ -8596,9 +8605,9 @@
       "state": "open",
       "title": "Bump actions/upload-artifact from 4 to 7",
       "url": "https://github.com/kenta-0420/mannschaft/pull/3683",
-      "updatedAt": "2026-10-25T15:23:39Z",
+      "updatedAt": "2026-10-27T02:08:13Z",
       "ci": {
-        "status": "success",
+        "status": "failure",
         "checks": [],
         "source": "GraphQL statusCheckRollup"
       }
@@ -8623,7 +8632,7 @@
       "state": "open",
       "title": "Bump hashicorp/setup-terraform from 3 to 4",
       "url": "https://github.com/kenta-0420/mannschaft/pull/3685",
-      "updatedAt": "2026-10-25T15:23:38Z",
+      "updatedAt": "2026-10-27T02:08:14Z",
       "ci": {
         "status": "success",
         "checks": [],
@@ -8650,7 +8659,7 @@
       "state": "open",
       "title": "Bump actions/setup-java from 4 to 6",
       "url": "https://github.com/kenta-0420/mannschaft/pull/3687",
-      "updatedAt": "2026-10-25T15:23:46Z",
+      "updatedAt": "2026-10-27T02:08:24Z",
       "ci": {
         "status": "success",
         "checks": [],
@@ -10315,7 +10324,7 @@
       "state": "open",
       "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
       "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-      "updatedAt": "2026-10-26T10:45:15Z",
+      "updatedAt": "2026-10-27T05:08:11Z",
       "ci": null
     },
     "4023": {
@@ -10464,7 +10473,7 @@
       "state": "merged",
       "title": "CMP-261022-0914: L1-A 認可サービスのinterface化とroleへの移設",
       "url": "https://github.com/kenta-0420/mannschaft/pull/4049",
-      "updatedAt": "2026-10-26T09:17:29Z",
+      "updatedAt": "2026-10-27T00:14:12Z",
       "ci": {
         "status": "unavailable",
         "reason": "終了済みPRのCIは同期対象外",
@@ -10784,13 +10793,83 @@
         "source": "GraphQL statusCheckRollup"
       }
     },
+    "4130": {
+      "number": 4130,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "修正: 初回の管理URL遷移でも拒否通知を保持する（CMP-261026-1344）",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4130",
+      "updatedAt": "2026-10-26T08:28:10Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
     "4133": {
       "number": 4133,
       "kind": "pull_request",
       "state": "merged",
       "title": "CMP-261015-1510 ログイン画面の入力欄・補助リンクを44px以上にする",
       "url": "https://github.com/kenta-0420/mannschaft/pull/4133",
-      "updatedAt": "2026-10-26T11:01:44Z",
+      "updatedAt": "2026-10-26T11:37:18Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "4143": {
+      "number": 4143,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "修正: 大会エントリーのエラー通知と6言語を整合する（CMP-261002-0743）",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4143",
+      "updatedAt": "2026-10-27T02:30:58Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "4147": {
+      "number": 4147,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "修正: 秘密スキャン自己試験の合成値エントロピーを保証",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4147",
+      "updatedAt": "2026-10-27T01:50:57Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "4156": {
+      "number": 4156,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "整理: CMP-261012-2338 未使用の機能切替APIを削除",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4156",
+      "updatedAt": "2026-10-27T05:52:53Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "4160": {
+      "number": 4160,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "修正: CMP-261006-0632 旧slugの破棄後応答ガードを再採用",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4160",
+      "updatedAt": "2026-10-27T05:00:56Z",
       "ci": {
         "status": "unavailable",
         "reason": "終了済みPRのCIは同期対象外",
