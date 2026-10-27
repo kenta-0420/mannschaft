@@ -21,7 +21,7 @@ const cases = [
   { name: 'committee一覧', component: Committees, endpoint: '/api/v1/organizations/7/committees', errorId: 'committees-list-error-state', label: '委員会41',
     row: (id: number) => ({ id, name: '委員会' + id, status: 'ACTIVE', memberCount: 1, description: null }) },
   { name: 'committee配布履歴', component: Distributions, endpoint: '/api/v1/committees/9/distributions', errorId: 'committee-distributions-error-state', label: '配布41',
-    row: (id: number) => ({ id, customTitle: '配布' + id, contentType: 'BLOG', targetScope: 'COMMITTEE_ONLY', confirmationMode: 'NONE', createdAt: '2026-10-20T03:00:00' }) },
+    row: (id: number) => ({ id, customTitle: '配布' + id, contentType: 'CUSTOM_MESSAGE', targetScope: 'COMMITTEE_ONLY', confirmationMode: 'NONE', createdAt: '2026-10-20T03:00:00' }) },
   { name: 'dashboard users', component: Users, endpoint: '/api/v1/system-admin/dashboard/users', errorId: 'admin-users-error-state', label: '利用者41',
     row: (id: number) => ({ id, displayName: '利用者' + id, createdAt: '2026-10-20T03:00:00' }) },
 ] as const
@@ -64,6 +64,10 @@ for (const entry of cases) {
       setupRaw(entry, 41)
       const wrapper = await mountSuspended(entry.component)
       await flushPromises()
+      const previous = entry.name === 'outbox'
+        ? wrapper.findAll('button').find(b => b.find('.pi-chevron-left').exists())!
+        : wrapper.findComponent({ name: 'PrevPageLink' })
+      expect(previous.attributes('disabled')).toBeDefined()
       for (const page of [1, 2, 1]) {
         if (entry.name === 'outbox') {
           const buttons = wrapper.findAll('button')
@@ -76,11 +80,41 @@ for (const entry of cases) {
         await flushPromises()
         const calls = listCalls(entry)
         expect(String(calls.at(-1)?.[0])).toContain('page=' + page)
-        if (page === 2) expect(wrapper.text()).toContain(entry.label)
+        if (page === 2) {
+          expect(wrapper.text()).toContain(entry.label)
+          const next = entry.name === 'outbox'
+            ? wrapper.findAll('button').find(b => b.find('.pi-chevron-right').exists())!
+            : wrapper.findComponent({ name: 'NextPageLink' })
+          expect(next.attributes('disabled')).toBeDefined()
+        }
         if (entry.name === 'outbox') expect(wrapper.text()).toContain('41 件中')
         else expect(wrapper.findComponent({ name: entry.name === 'dashboard users' ? 'DataTable' : 'Paginator' }).props('totalRecords')).toBe(41)
       }
       expect(listCalls(entry)).toHaveLength(4)
+    })
+
+    it('表示済み一覧の次要求失敗では旧行と総件数を残さず再試行で戻る', async () => {
+      setupRaw(entry, 41)
+      const wrapper = await mountSuspended(entry.component)
+      await flushPromises()
+      const label = (id: number) => entry.name === 'outbox' ? 'VERIFICATION-' + id : entry.name === 'committee一覧' ? '委員会' + id : entry.name === 'committee配布履歴' ? '配布' + id : '利用者' + id
+      expect(wrapper.text()).toContain(label(1))
+      rawApi.mockRejectedValueOnce(new Error('network'))
+      if (entry.name === 'outbox') {
+        await wrapper.findAll('button').find(b => b.find('.pi-chevron-right').exists())!.trigger('click')
+      } else {
+        wrapper.findComponent({ name: entry.name === 'dashboard users' ? 'DataTable' : 'Paginator' }).vm.$emit('page', { page: 1, rows: 20, first: 20 })
+      }
+      await flushPromises()
+      expect(wrapper.find('[data-testid="' + entry.errorId + '"]').exists()).toBe(true)
+      expect(wrapper.text()).not.toContain(label(1))
+      expect(wrapper.text()).not.toContain('41 件中')
+      expect(wrapper.findComponent({ name: entry.name === 'dashboard users' ? 'DataTable' : 'Paginator' }).exists()).toBe(false)
+      await wrapper.find('[data-testid="' + entry.errorId + '-retry"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[data-testid="' + entry.errorId + '"]').exists()).toBe(false)
+      expect(wrapper.text()).toContain(label(21))
+      expect(listCalls(entry)).toHaveLength(3)
     })
 
     it('初回失敗は空表示と区別し再試行で行へ戻る', async () => {
