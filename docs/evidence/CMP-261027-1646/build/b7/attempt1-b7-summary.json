@@ -1,0 +1,1048 @@
+{
+  "runId": 40481639328,
+  "head": "a8b7d8b999973d2c138ffecce2fbe2233f6bb09a",
+  "attempt": 1,
+  "status": "completed",
+  "conclusion": "failure",
+  "completeShards": 5,
+  "freshTestTasks": 6,
+  "rows": [
+    {
+      "shard": 0,
+      "jobId": 122113965437,
+      "jobStatus": "completed",
+      "jobConclusion": "success",
+      "freshTestTask": true,
+      "cacheHit": false,
+      "completed": true,
+      "stepOutcome": "success",
+      "testStepExitCode": 0,
+      "commandExitCode": 0,
+      "shellExitCode": 0,
+      "wrapperWallSeconds": 5760,
+      "jobWallSeconds": 6075,
+      "testStepWallSeconds": 5760,
+      "tasks": {
+        "archUnitTest": {
+          "jvms": 9,
+          "forkEvery": 180,
+          "maxParallelForks": 1,
+          "heapMarkers": [
+            {
+              "pid": 3126,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3163,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3196,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3243,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3277,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3311,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3344,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3379,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3412,
+              "heapMiB": 4096
+            }
+          ],
+          "workerNames": [
+            "Gradle Test Executor 5",
+            "Gradle Test Executor 4",
+            "Gradle Test Executor 7",
+            "Gradle Test Executor 6",
+            "Gradle Test Executor 1",
+            "Gradle Test Executor 3",
+            "Gradle Test Executor 2",
+            "Gradle Test Executor 9",
+            "Gradle Test Executor 8"
+          ],
+          "tests": 6,
+          "success": 6,
+          "failed": 0,
+          "skipped": 0
+        },
+        "archUnitFreezeStoreIntegrityTest": {
+          "jvms": 1,
+          "forkEvery": 0,
+          "maxParallelForks": 1,
+          "heapMarkers": [
+            {
+              "pid": 3453,
+              "heapMiB": 128
+            }
+          ],
+          "workerNames": [
+            "Gradle Test Executor 10"
+          ],
+          "tests": 2,
+          "success": 2,
+          "failed": 0,
+          "skipped": 0
+        },
+        "test": {
+          "jvms": 10,
+          "forkEvery": 180,
+          "maxParallelForks": 2,
+          "heapMarkers": [
+            {
+              "pid": 3492,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3494,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 28715,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 56340,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 59531,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 83647,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 87907,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 104677,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 106580,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 122206,
+              "heapMiB": 4096
+            }
+          ],
+          "workerNames": [
+            "Gradle Test Executor 13",
+            "Gradle Test Executor 14",
+            "Gradle Test Executor 11",
+            "Gradle Test Executor 12",
+            "Gradle Test Executor 17",
+            "Gradle Test Executor 18",
+            "Gradle Test Executor 15",
+            "Gradle Test Executor 16",
+            "Gradle Test Executor 19",
+            "Gradle Test Executor 20"
+          ],
+          "tests": 5107,
+          "success": 5106,
+          "failed": 0,
+          "skipped": 1
+        }
+      },
+      "ciJobLimitMinutes": 120,
+      "ciTestLimitMinutes": 105,
+      "contextCacheCap5Observed": true,
+      "runtimeLimitFields": {
+        "jobLimitMinutes": null,
+        "testStepLimitMinutes": null
+      },
+      "terminalTestState": "2026-10-27T11:14:57.485074219Z [ci-test-task-state] task=:test skipped=false skipMessage=null upToDate=false noSource=false failed=false",
+      "classEndEvents": 1393,
+      "runtimeZipSha256": "2dd476f024b4b6aa2804212de6c1bdcccbb073efbbc50e8a9cf16dc64f98b996",
+      "jobLogSha256": "c42f2d90951468eb99aa4ba8c74feaca2c900a7e37188483fb7f994319f8b9a7",
+      "freshCommandComplete": true,
+      "timeoutObserved": false,
+      "oomLogOccurrences": 1
+    },
+    {
+      "shard": 1,
+      "jobId": 122113965482,
+      "jobStatus": "completed",
+      "jobConclusion": "success",
+      "freshTestTask": true,
+      "cacheHit": false,
+      "completed": true,
+      "stepOutcome": "success",
+      "testStepExitCode": 0,
+      "commandExitCode": 0,
+      "shellExitCode": 0,
+      "wrapperWallSeconds": 4131,
+      "jobWallSeconds": 4396,
+      "testStepWallSeconds": 4131,
+      "tasks": {
+        "archUnitTest": {
+          "jvms": 9,
+          "forkEvery": 180,
+          "maxParallelForks": 1,
+          "heapMarkers": [
+            {
+              "pid": 2762,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 2799,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 2836,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 2870,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 2904,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 2938,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 2971,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3004,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3039,
+              "heapMiB": 4096
+            }
+          ],
+          "workerNames": [
+            "Gradle Test Executor 5",
+            "Gradle Test Executor 4",
+            "Gradle Test Executor 7",
+            "Gradle Test Executor 6",
+            "Gradle Test Executor 1",
+            "Gradle Test Executor 3",
+            "Gradle Test Executor 2",
+            "Gradle Test Executor 9",
+            "Gradle Test Executor 8"
+          ],
+          "tests": 1,
+          "success": 1,
+          "failed": 0,
+          "skipped": 0
+        },
+        "archUnitFreezeStoreIntegrityTest": {
+          "jvms": 1,
+          "forkEvery": 0,
+          "maxParallelForks": 1,
+          "heapMarkers": [
+            {
+              "pid": 3079,
+              "heapMiB": 128
+            }
+          ],
+          "workerNames": [
+            "Gradle Test Executor 10"
+          ],
+          "tests": 2,
+          "success": 2,
+          "failed": 0,
+          "skipped": 0
+        },
+        "test": {
+          "jvms": 10,
+          "forkEvery": 180,
+          "maxParallelForks": 2,
+          "heapMarkers": [
+            {
+              "pid": 3121,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3123,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 30178,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 31449,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 41360,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 59153,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 69397,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 97733,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 100843,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 112655,
+              "heapMiB": 4096
+            }
+          ],
+          "workerNames": [
+            "Gradle Test Executor 13",
+            "Gradle Test Executor 14",
+            "Gradle Test Executor 11",
+            "Gradle Test Executor 12",
+            "Gradle Test Executor 17",
+            "Gradle Test Executor 18",
+            "Gradle Test Executor 15",
+            "Gradle Test Executor 16",
+            "Gradle Test Executor 19",
+            "Gradle Test Executor 20"
+          ],
+          "tests": 5291,
+          "success": 5288,
+          "failed": 0,
+          "skipped": 3
+        }
+      },
+      "ciJobLimitMinutes": 120,
+      "ciTestLimitMinutes": 105,
+      "contextCacheCap5Observed": true,
+      "runtimeLimitFields": {
+        "jobLimitMinutes": null,
+        "testStepLimitMinutes": null
+      },
+      "terminalTestState": "2026-10-27T10:46:50.517854443Z [ci-test-task-state] task=:test skipped=false skipMessage=null upToDate=false noSource=false failed=false",
+      "classEndEvents": 1336,
+      "runtimeZipSha256": "f53f7468c7a64f9f01739b96870ccbf5730c90606c1c1e4fc46ad8af00ebbfe4",
+      "jobLogSha256": "102b7f9d867d6da6c16d601e3461641e3ea861ec08bc00c65e3b64eaecb34c88",
+      "freshCommandComplete": true,
+      "timeoutObserved": false,
+      "oomLogOccurrences": 1
+    },
+    {
+      "shard": 2,
+      "jobId": 122113965433,
+      "jobStatus": "completed",
+      "jobConclusion": "success",
+      "freshTestTask": true,
+      "cacheHit": false,
+      "completed": true,
+      "stepOutcome": "success",
+      "testStepExitCode": 0,
+      "commandExitCode": 0,
+      "shellExitCode": 0,
+      "wrapperWallSeconds": 5283,
+      "jobWallSeconds": 5588,
+      "testStepWallSeconds": 5283,
+      "tasks": {
+        "archUnitTest": {
+          "jvms": 9,
+          "forkEvery": 180,
+          "maxParallelForks": 1,
+          "heapMarkers": [
+            {
+              "pid": 3401,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3437,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3492,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3525,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3558,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3591,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3624,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3659,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3693,
+              "heapMiB": 4096
+            }
+          ],
+          "workerNames": [
+            "Gradle Test Executor 5",
+            "Gradle Test Executor 4",
+            "Gradle Test Executor 7",
+            "Gradle Test Executor 6",
+            "Gradle Test Executor 1",
+            "Gradle Test Executor 3",
+            "Gradle Test Executor 2",
+            "Gradle Test Executor 9",
+            "Gradle Test Executor 8"
+          ],
+          "tests": 5,
+          "success": 5,
+          "failed": 0,
+          "skipped": 0
+        },
+        "archUnitFreezeStoreIntegrityTest": {
+          "jvms": 1,
+          "forkEvery": 0,
+          "maxParallelForks": 1,
+          "heapMarkers": [
+            {
+              "pid": 3733,
+              "heapMiB": 128
+            }
+          ],
+          "workerNames": [
+            "Gradle Test Executor 10"
+          ],
+          "tests": 2,
+          "success": 2,
+          "failed": 0,
+          "skipped": 0
+        },
+        "test": {
+          "jvms": 10,
+          "forkEvery": 180,
+          "maxParallelForks": 2,
+          "heapMarkers": [
+            {
+              "pid": 3772,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3775,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 21999,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 30694,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 56438,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 59851,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 77735,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 93528,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 101746,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 102439,
+              "heapMiB": 4096
+            }
+          ],
+          "workerNames": [
+            "Gradle Test Executor 13",
+            "Gradle Test Executor 14",
+            "Gradle Test Executor 11",
+            "Gradle Test Executor 12",
+            "Gradle Test Executor 17",
+            "Gradle Test Executor 18",
+            "Gradle Test Executor 15",
+            "Gradle Test Executor 16",
+            "Gradle Test Executor 19",
+            "Gradle Test Executor 20"
+          ],
+          "tests": 5523,
+          "success": 5521,
+          "failed": 0,
+          "skipped": 2
+        }
+      },
+      "ciJobLimitMinutes": 120,
+      "ciTestLimitMinutes": 105,
+      "contextCacheCap5Observed": true,
+      "runtimeLimitFields": {
+        "jobLimitMinutes": null,
+        "testStepLimitMinutes": null
+      },
+      "terminalTestState": "2026-10-27T11:07:10.698851780Z [ci-test-task-state] task=:test skipped=false skipMessage=null upToDate=false noSource=false failed=false",
+      "classEndEvents": 1407,
+      "runtimeZipSha256": "a22de8209ebebf2bd6b3550c8c6ec4bc682f6c66d5ccd73d91cf4cad8abb4632",
+      "jobLogSha256": "677207e72f206ed0a1dc536eab0919d36f882851370bc727ccddde3629a2aace",
+      "freshCommandComplete": true,
+      "timeoutObserved": false,
+      "oomLogOccurrences": 1
+    },
+    {
+      "shard": 3,
+      "jobId": 122113965669,
+      "jobStatus": "completed",
+      "jobConclusion": "success",
+      "freshTestTask": true,
+      "cacheHit": false,
+      "completed": true,
+      "stepOutcome": "success",
+      "testStepExitCode": 0,
+      "commandExitCode": 0,
+      "shellExitCode": 0,
+      "wrapperWallSeconds": 5463,
+      "jobWallSeconds": 5758,
+      "testStepWallSeconds": 5463,
+      "tasks": {
+        "archUnitTest": {
+          "jvms": 9,
+          "forkEvery": 180,
+          "maxParallelForks": 1,
+          "heapMarkers": [
+            {
+              "pid": 3065,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3101,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3151,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3185,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3234,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3267,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3301,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3334,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3373,
+              "heapMiB": 4096
+            }
+          ],
+          "workerNames": [
+            "Gradle Test Executor 5",
+            "Gradle Test Executor 4",
+            "Gradle Test Executor 7",
+            "Gradle Test Executor 6",
+            "Gradle Test Executor 1",
+            "Gradle Test Executor 3",
+            "Gradle Test Executor 2",
+            "Gradle Test Executor 9",
+            "Gradle Test Executor 8"
+          ],
+          "tests": 1,
+          "success": 1,
+          "failed": 0,
+          "skipped": 0
+        },
+        "archUnitFreezeStoreIntegrityTest": {
+          "jvms": 1,
+          "forkEvery": 0,
+          "maxParallelForks": 1,
+          "heapMarkers": [
+            {
+              "pid": 3414,
+              "heapMiB": 128
+            }
+          ],
+          "workerNames": [
+            "Gradle Test Executor 10"
+          ],
+          "tests": 2,
+          "success": 2,
+          "failed": 0,
+          "skipped": 0
+        },
+        "test": {
+          "jvms": 10,
+          "forkEvery": 180,
+          "maxParallelForks": 2,
+          "heapMarkers": [
+            {
+              "pid": 3453,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3455,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 22631,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 28885,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 38729,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 42851,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 76185,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 86755,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 112089,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 123771,
+              "heapMiB": 4096
+            }
+          ],
+          "workerNames": [
+            "Gradle Test Executor 13",
+            "Gradle Test Executor 14",
+            "Gradle Test Executor 11",
+            "Gradle Test Executor 12",
+            "Gradle Test Executor 17",
+            "Gradle Test Executor 18",
+            "Gradle Test Executor 15",
+            "Gradle Test Executor 16",
+            "Gradle Test Executor 19",
+            "Gradle Test Executor 20"
+          ],
+          "tests": 5297,
+          "success": 5291,
+          "failed": 0,
+          "skipped": 6
+        }
+      },
+      "ciJobLimitMinutes": 120,
+      "ciTestLimitMinutes": 105,
+      "contextCacheCap5Observed": true,
+      "runtimeLimitFields": {
+        "jobLimitMinutes": null,
+        "testStepLimitMinutes": null
+      },
+      "terminalTestState": "2026-10-27T11:09:49.290472786Z [ci-test-task-state] task=:test skipped=false skipMessage=null upToDate=false noSource=false failed=false",
+      "classEndEvents": 1383,
+      "runtimeZipSha256": "3e963ea47fd52b21015d10ce86b793fbcbef5568eccd207976a0066c3b78ebfb",
+      "jobLogSha256": "435b5d24a60508a1a4c7ff2e4b9431291e2ff225fb306572bc1a5218ee0e74c1",
+      "freshCommandComplete": true,
+      "timeoutObserved": false,
+      "oomLogOccurrences": 1
+    },
+    {
+      "shard": 4,
+      "jobId": 122113965413,
+      "jobStatus": "completed",
+      "jobConclusion": "success",
+      "freshTestTask": true,
+      "cacheHit": false,
+      "completed": true,
+      "stepOutcome": "success",
+      "testStepExitCode": 0,
+      "commandExitCode": 0,
+      "shellExitCode": 0,
+      "wrapperWallSeconds": 5348,
+      "jobWallSeconds": 5664,
+      "testStepWallSeconds": 5348,
+      "tasks": {
+        "archUnitTest": {
+          "jvms": 9,
+          "forkEvery": 180,
+          "maxParallelForks": 1,
+          "heapMarkers": [
+            {
+              "pid": 3177,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3214,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3255,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3306,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3340,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3381,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3414,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3447,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3480,
+              "heapMiB": 4096
+            }
+          ],
+          "workerNames": [
+            "Gradle Test Executor 5",
+            "Gradle Test Executor 4",
+            "Gradle Test Executor 7",
+            "Gradle Test Executor 6",
+            "Gradle Test Executor 1",
+            "Gradle Test Executor 3",
+            "Gradle Test Executor 2",
+            "Gradle Test Executor 9",
+            "Gradle Test Executor 8"
+          ],
+          "tests": 13,
+          "success": 13,
+          "failed": 0,
+          "skipped": 0
+        },
+        "archUnitFreezeStoreIntegrityTest": {
+          "jvms": 1,
+          "forkEvery": 0,
+          "maxParallelForks": 1,
+          "heapMarkers": [
+            {
+              "pid": 3520,
+              "heapMiB": 128
+            }
+          ],
+          "workerNames": [
+            "Gradle Test Executor 10"
+          ],
+          "tests": 2,
+          "success": 2,
+          "failed": 0,
+          "skipped": 0
+        },
+        "test": {
+          "jvms": 10,
+          "forkEvery": 180,
+          "maxParallelForks": 2,
+          "heapMarkers": [
+            {
+              "pid": 3559,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3561,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 26552,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 27850,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 45064,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 55314,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 64405,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 76846,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 93447,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 93530,
+              "heapMiB": 4096
+            }
+          ],
+          "workerNames": [
+            "Gradle Test Executor 13",
+            "Gradle Test Executor 14",
+            "Gradle Test Executor 11",
+            "Gradle Test Executor 12",
+            "Gradle Test Executor 17",
+            "Gradle Test Executor 18",
+            "Gradle Test Executor 15",
+            "Gradle Test Executor 16",
+            "Gradle Test Executor 19",
+            "Gradle Test Executor 20"
+          ],
+          "tests": 5491,
+          "success": 5491,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      "ciJobLimitMinutes": 120,
+      "ciTestLimitMinutes": 105,
+      "contextCacheCap5Observed": true,
+      "runtimeLimitFields": {
+        "jobLimitMinutes": null,
+        "testStepLimitMinutes": null
+      },
+      "terminalTestState": "2026-10-27T11:08:06.355396149Z [ci-test-task-state] task=:test skipped=false skipMessage=null upToDate=false noSource=false failed=false",
+      "classEndEvents": 1325,
+      "runtimeZipSha256": "64f0c25350a7e455854fb0b63a832d18158e012a7c07d010f0e7f786b10df4c0",
+      "jobLogSha256": "dafbc6a455691932f99ae88b4433290a570151312c309863f46a33734ca789ce",
+      "freshCommandComplete": true,
+      "timeoutObserved": false,
+      "oomLogOccurrences": 1
+    },
+    {
+      "shard": 5,
+      "jobId": 122113965471,
+      "jobStatus": "completed",
+      "jobConclusion": "failure",
+      "freshTestTask": true,
+      "cacheHit": false,
+      "completed": false,
+      "stepOutcome": "failure",
+      "testStepExitCode": null,
+      "commandExitCode": null,
+      "shellExitCode": null,
+      "wrapperWallSeconds": null,
+      "jobWallSeconds": 6614,
+      "testStepWallSeconds": 6312,
+      "tasks": {
+        "archUnitTest": {
+          "jvms": 10,
+          "forkEvery": 180,
+          "maxParallelForks": 1,
+          "heapMarkers": [
+            {
+              "pid": 3144,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3179,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3223,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3268,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3301,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3335,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3369,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3403,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3436,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3469,
+              "heapMiB": 4096
+            }
+          ],
+          "workerNames": [
+            "Gradle Test Executor 5",
+            "Gradle Test Executor 4",
+            "Gradle Test Executor 7",
+            "Gradle Test Executor 6",
+            "Gradle Test Executor 1",
+            "Gradle Test Executor 3",
+            "Gradle Test Executor 2",
+            "Gradle Test Executor 9",
+            "Gradle Test Executor 8",
+            "Gradle Test Executor 10"
+          ],
+          "tests": 11,
+          "success": 11,
+          "failed": 0,
+          "skipped": 0
+        },
+        "archUnitFreezeStoreIntegrityTest": {
+          "jvms": 1,
+          "forkEvery": 0,
+          "maxParallelForks": 1,
+          "heapMarkers": [
+            {
+              "pid": 3510,
+              "heapMiB": 128
+            }
+          ],
+          "workerNames": [
+            "Gradle Test Executor 11"
+          ],
+          "tests": 2,
+          "success": 2,
+          "failed": 0,
+          "skipped": 0
+        },
+        "test": {
+          "jvms": 10,
+          "forkEvery": 180,
+          "maxParallelForks": 2,
+          "heapMarkers": [
+            {
+              "pid": 3548,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 3550,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 18841,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 25269,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 31545,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 50327,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 64993,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 89553,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 91472,
+              "heapMiB": 4096
+            },
+            {
+              "pid": 108651,
+              "heapMiB": 4096
+            }
+          ],
+          "workerNames": [
+            "Gradle Test Executor 13",
+            "Gradle Test Executor 14",
+            "Gradle Test Executor 12",
+            "Gradle Test Executor 17",
+            "Gradle Test Executor 18",
+            "Gradle Test Executor 15",
+            "Gradle Test Executor 16",
+            "Gradle Test Executor 19",
+            "Gradle Test Executor 20",
+            "Gradle Test Executor 21"
+          ],
+          "tests": 5439,
+          "success": 5434,
+          "failed": 0,
+          "skipped": 5
+        }
+      },
+      "ciJobLimitMinutes": 120,
+      "ciTestLimitMinutes": 105,
+      "contextCacheCap5Observed": true,
+      "runtimeLimitFields": {
+        "jobLimitMinutes": null,
+        "testStepLimitMinutes": null
+      },
+      "terminalTestState": "2026-10-27T11:24:11.718831983Z [ci-test-task-state] task=:test skipped=false skipMessage=null upToDate=false noSource=false failed=false",
+      "classEndEvents": 1485,
+      "runtimeZipSha256": "260116f389d4445565adff08639104600dab2776157856bbfa49305c3cccda44",
+      "jobLogSha256": "5910132c97689ad51a9f3ac8918d085500e1465d1f4b2ac729c2727bdd8a3743",
+      "freshCommandComplete": false,
+      "timeoutObserved": true,
+      "oomLogOccurrences": 1
+    }
+  ],
+  "limits": [
+    "最終HEADのPR CI実測。nightly重み原本の性能値とは混同しない。",
+    "wrapper wallは診断start/finish差、test step wallとjob wallはGitHub API時刻差。JUnitテスト時間和ではない。",
+    "run全体/全6shard成功までは完了と扱わない。L0-M免除を性能改善の証拠にしない。",
+    "result.jsonのtimeout limit fieldsはfinalize時null。実行の上限120/105はjob log env値から採取。"
+  ]
+}
