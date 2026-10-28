@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "85fe1e7a-4e43-4ae8-92cf-5246cc75700f",
+  "operation": "21f774dc-ba28-475c-a230-6f34d1a88f89",
   "territories": {
     "foundation": {
       "owner": "61522ce4-f452-40e0-b3b7-b16530925934",
@@ -1413,7 +1413,7 @@
     "wave-workflow": "",
     "pattern-workflow": "",
     "measurement-window": "親6354404196の10/23 09:40-23:00事前予約、6355206680のユーザー今から実行指示と全担当heavy投入停止周知。10:29-10:31 fresh実確認でWSL稼働distribution0、Windows他Java/Gradleなし、旧worker51516は同世代/親不在/CPU差0。活動Node28724はnpm-cache配下mulmoterminal/server/index.tsで制御系サーバと特定、重いビルドではない。共通gate不在、C空き約30GiB。attempt5時計/34負例/host検証済。各担当の新窓書面宣言は未受領と明記し、ユーザー即時実行指示と現在の実停止確認に基づき殿GO。各run前後の実観測+Windows共通gate、途中の偶発heavy連続検出は保証せず混入時不採用・停止。",
-    "return-targets": "",
+    "return-targets": "https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6471350351 第1ロットDuplicateNameNormalizerのみ3FQCN担当宣言、付録A/L1A非交差/先行対象/移設先確認済。後続164型全体の完了や未宣言ロットへの着手許可ではない。REQ-L1R-BRIDGE-01提供待ち、製品未着手。",
     "bundle-map": "",
     "pilot-window": "",
     "pilot-continue": "",
