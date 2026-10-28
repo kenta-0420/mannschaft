@@ -34,7 +34,10 @@ interface ScopeProps {
   roleName: string | null
 }
 function render(props: Partial<ScopeProps> = {}) {
-  const i18n = createI18n({ legacy: false, locale: 'ja', messages: { ja: { ...common, ...guide } } })
+  const i18n = createI18n({
+    legacy: false, locale: 'ja',
+    messages: { ja: { ...common, ...guide }, en: {}, zh: {}, ko: {}, es: {}, de: {} },
+  })
   const wrapper = mount(MemberPermissionSetupDialog, {
     props: { scopeType: 'TEAM', scopeId: 12, slug: 'scope-12', roleName: 'ADMIN', ...props },
     global: { plugins: [i18n], stubs: { Dialog, Button, ToggleSwitch: true, NuxtLink: true } },
