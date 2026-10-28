@@ -114,6 +114,64 @@ class BatchExecutionAspectTest {
         assertThat(evtCaptor.getValue().log()).isSameAs(logEntity);
     }
 
+    @Test
+    @DisplayName("(G7-b) 開始ログ(startJob)が失敗したら本体を実行せず、例外を伝播し、イベントも発火しない")
+    void startJob失敗なら本体を動かさず例外伝播しイベントなし() throws Throwable {
+        IllegalStateException logDown = new IllegalStateException("log down");
+        given(batchJobLogService.startJob("sample-foo")).willThrow(logDown);
+        ProceedingJoinPoint pjp = mockJoinPoint("sample-foo", "foo");
+
+        assertThatThrownBy(() -> aspect.aroundBatchEndpoint(pjp)).isSameAs(logDown);
+
+        verify(pjp, never()).proceed();
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    @DisplayName("(G7-b) 完了ログ(completeJob)が失敗しても成功イベントは 1 回だけ発火し、結果は返る")
+    void completeJob失敗でも成功イベントは1回() throws Throwable {
+        BatchJobLogEntity logEntity = BatchJobLogEntity.builder().build();
+        given(batchJobLogService.startJob("sample-foo")).willReturn(logEntity);
+        org.mockito.Mockito.doThrow(new IllegalStateException("log down"))
+                .when(batchJobLogService).completeJob(any(), any(Integer.class));
+        ProceedingJoinPoint pjp = mockJoinPoint("sample-foo", "foo");
+        given(pjp.proceed()).willReturn(3);
+
+        Object result = aspect.aroundBatchEndpoint(pjp);
+
+        assertThat(result).isEqualTo(3);
+        ArgumentCaptor<Object> evt = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher, org.mockito.Mockito.times(1)).publishEvent(evt.capture());
+        assertThat(evt.getValue()).isInstanceOf(BatchCompletedEvent.class);
+    }
+
+    @Test
+    @DisplayName("(G7-b) 失敗ログ(failJob)が失敗しても失敗イベントは 1 回だけ発火し、元の例外が伝播する")
+    void failJob失敗でも失敗イベントは1回で元例外が伝播() throws Throwable {
+        BatchJobLogEntity logEntity = BatchJobLogEntity.builder().build();
+        given(batchJobLogService.startJob("sample-foo")).willReturn(logEntity);
+        org.mockito.Mockito.doThrow(new IllegalStateException("log down"))
+                .when(batchJobLogService).failJob(any(), any());
+        RuntimeException boom = new RuntimeException("kaboom");
+        ProceedingJoinPoint pjp = mockJoinPoint("sample-foo", "foo");
+        given(pjp.proceed()).willThrow(boom);
+
+        assertThatThrownBy(() -> aspect.aroundBatchEndpoint(pjp)).isSameAs(boom);
+
+        ArgumentCaptor<Object> evt = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher, org.mockito.Mockito.times(1)).publishEvent(evt.capture());
+        assertThat(evt.getValue()).isInstanceOf(BatchFailedEvent.class);
+    }
+
+    @Test
+    @DisplayName("(G7-b) Aspect は @Order(20)（Policy(5) → FeatureGate(10) → ShedLock(15) → 本Aspect(20) → TX）")
+    void aspectOrderは20() {
+        org.springframework.core.annotation.Order order =
+                BatchExecutionAspect.class.getAnnotation(org.springframework.core.annotation.Order.class);
+        assertThat(order).as("@Order 未指定(LOWEST)では TX と同順位で順序が登録順依存になる").isNotNull();
+        assertThat(order.value()).isEqualTo(20);
+    }
+
     /** ProceedingJoinPoint のモックを組み立てる。 */
     private static ProceedingJoinPoint mockJoinPoint(String batchName, String methodName) throws NoSuchMethodException {
         Method method = pickFixtureMethod(methodName);
