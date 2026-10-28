@@ -965,6 +965,7 @@ CLI基盤のAC1〜9と実Git競合・途中失敗・所有境界・予約・依�
 - [ ] L1-M: §11.3 の観測点がメトリクスとして出て、隔離状態になった行で即時の警告が出る。
 - [ ] L1-M: verify テストは違反があっても fail しない（レポートのみ）ことを確認するテストがある。
 - [ ] L1-B: build-logic 化の前後で `./gradlew tasks --all` の出力が一致し、`verifyShardCoverage` が緑、各テストクラスの shard 割当が一致する（前後の割当一覧を出力して比較）。
+  - B-5の範囲修正（2026-10-28）: [裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6462685947)により、公開診断artifact欠損でgate非成功とする強化は[別件 CMP-261028-1554 / Issue #4200](https://github.com/kenta-0420/mannschaft/issues/4200)へ分離する。L1-Bでは既存挙動を維持し、必須ジョブの失敗/cancel/timeout/結果欠損をgateが拒否すること、既存CI条件でのfreeze finalizer実走、番人欠損/0件拒否、ローカルTest終端検証、再生成不正入力で旧表bytes維持を確認する。公開artifactのmissing/empty/partial/upload failureの検証をgreen・解決済みとは扱わない。[準備計画](../evidence/CMP-261021-0017-l1b-plan.md) B-1〜B-8の他条件、入口・所有・予約は維持する。
 - [ ] L1-F: ストアの行数が上限を1行超えると fail、上限ちょうど・上限未満は pass（境界）。行の重複・整列崩れ・形式不正・`stored.rules` との不一致はそれぞれ fail する（陽性の検体テスト付き）。
 - [ ] L1-F記録移行: 全7storeでN/N-1/0と上限0を検体検証し、D-1/D-3/D-5はfield・constructor・signature・同一行の同call二回を一意に保存する。再importと走査順でmultisetが安定し、既定freezeは整形を許しN+1を拒否、N-1を縮小する。実全量候補の旧prefix射影頻度は§7.4承認の初回増分178だけを除き移行前と全件一致し、削減0・新class-pair0を証明する。三上限は2156/1325/1876に補正し、他4store・UUID・`stored.rules`・他4上限は不変。履歴原文を完全移設し、専用guardの既存2case経路とbuild設定を維持する。
 - [ ] L1-F main PR4070限定承認: 初回178件の履歴を保持し、別承認のgetSlug依存1件だけをD-1へ追加して最終行数/上限2157とする。既存prefix群6→7・旧2156行の生bytes保持、他7storeファイル/他6上限/formatter/判定/除外/タグ/重み/実行時間制限の不変を照合する。旧82caのCI成功を転用せず、main統合後HEADの全CIと担当runner原本・再実行不変を確認する。
