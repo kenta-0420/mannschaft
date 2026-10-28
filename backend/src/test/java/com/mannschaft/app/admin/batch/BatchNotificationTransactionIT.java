@@ -4,8 +4,6 @@ import com.mannschaft.app.admin.BatchJobStatus;
 import com.mannschaft.app.admin.entity.BatchJobLogEntity;
 import com.mannschaft.app.admin.repository.BatchJobLogRepository;
 import com.mannschaft.app.admin.service.BatchJobLogService;
-import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
-import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.notification.service.NotificationService;
@@ -34,7 +32,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -66,96 +63,15 @@ import static org.mockito.BDDMockito.willThrow;
 @DisplayName("Issue #2997 G7-b 管理バッチ通知のTX分離（実DB）")
 class BatchNotificationTransactionIT extends AbstractMySqlIntegrationTest {
 
-    /** commit 直前の rollback 注入（CommitSaboteur）の対象にするイベント。 */
-    record CommitProbeEvent(String tag) {
-    }
-
-    /** {@code @BatchEndpoint} 付きのプローブ。名前はテストごとに固有（通知の突き合わせに使う）。 */
-    static class BatchProbe {
-        // 検体は CGLIB プロキシ越しに使うため、インスタンスフィールドはプロキシ側から見えない（null）。static に置く。
-        static final AtomicInteger BODY_CALLS = new AtomicInteger();
-        private final ApplicationEventPublisher publisher;
-        private final JdbcTemplate jdbcTemplate;
-
-        BatchProbe(ApplicationEventPublisher publisher, JdbcTemplate jdbcTemplate) {
-            this.publisher = publisher;
-            this.jdbcTemplate = jdbcTemplate;
-        }
-
-        /** 業務行を書き込む TX 付きの検体（共通 AC-B/B2: 通知の失敗に業務更新が巻き込まれないこと）。 */
-        @BatchEndpoint(name = "g7b-it-biz-write")
-        @Transactional
-        public int writeBusinessRow(Long userId, String marker) {
-            BODY_CALLS.incrementAndGet();
-            jdbcTemplate.update("UPDATE users SET display_name = ? WHERE id = ?", marker, userId);
-            return 1;
-        }
-
-        @BatchEndpoint(name = "g7b-it-no-tx")
-        public int noTx() {
-            BODY_CALLS.incrementAndGet();
-            return 5;
-        }
-
-        @BatchEndpoint(name = "g7b-it-tx-ok")
-        @Transactional
-        public int txOk() {
-            BODY_CALLS.incrementAndGet();
-            return 3;
-        }
-
-        @BatchEndpoint(name = "g7b-it-tx-throws")
-        @Transactional
-        public int txThrows() {
-            BODY_CALLS.incrementAndGet();
-            throw new IllegalStateException("本体の失敗（検証用）");
-        }
-
-        @BatchEndpoint(name = "g7b-it-commit-fails")
-        @Transactional
-        public int commitFails() {
-            BODY_CALLS.incrementAndGet();
-            publisher.publishEvent(new CommitProbeEvent("commit-fails"));
-            return 9;
-        }
-
-        @BatchEndpoint(name = "g7b-it-log-fails")
-        public int logFails() {
-            BODY_CALLS.incrementAndGet();
-            return 1;
-        }
-
-        @BatchEndpoint(name = "g7b-it-body-throws-no-tx")
-        public int bodyThrowsNoTx() {
-            BODY_CALLS.incrementAndGet();
-            throw new IllegalStateException("本体の失敗・TXなし（検証用）");
-        }
-
-        @BatchEndpoint(name = "g7b-it-per-admin")
-        public int perAdmin() {
-            BODY_CALLS.incrementAndGet();
-            return 1;
-        }
-
-        /** 未シードのゲートキーは isEnabled=false（フェイルクローズ）なので常に停止側になる。 */
-        @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
-                gateKeys = {"g7b_it_unseeded_gate_key"}, reason = "G7-b IT: 停止遷移の検証用")
-        @BatchEndpoint(name = "g7b-it-gated")
-        public int gated() {
-            BODY_CALLS.incrementAndGet();
-            return 1;
-        }
-    }
-
     @TestConfiguration
     static class ProbeConfig {
         @Bean
-        BatchProbe batchProbe(ApplicationEventPublisher publisher, JdbcTemplate jdbcTemplate) {
-            return new BatchProbe(publisher, jdbcTemplate);
+        BatchNotificationProbe batchProbe(ApplicationEventPublisher publisher, JdbcTemplate jdbcTemplate) {
+            return new BatchNotificationProbe(publisher, jdbcTemplate);
         }
     }
 
-    @Autowired private BatchProbe probe;
+    @Autowired private BatchNotificationProbe probe;
     @Autowired private BatchJobLogRepository batchJobLogRepository;
     @Autowired private NotificationRepository notificationRepository;
     @Autowired private TransactionTemplate transactionTemplate;
@@ -172,7 +88,7 @@ class BatchNotificationTransactionIT extends AbstractMySqlIntegrationTest {
     @AfterEach
     void tearDown() {
         saboteur.disarm();
-        BatchProbe.BODY_CALLS.set(0);
+        BatchNotificationProbe.BODY_CALLS.set(0);
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -225,12 +141,12 @@ class BatchNotificationTransactionIT extends AbstractMySqlIntegrationTest {
     void commit失敗で失敗通知のみ() {
         Long admin = systemAdmin("cm-fail");
         Long admin2 = systemAdmin("cm-fail2");
-        saboteur.arm("CommitProbeEvent");
+        saboteur.arm("BatchNotificationCommitProbeEvent");
 
         assertThatThrownBy(() -> probe.commitFails()).isInstanceOf(IllegalStateException.class);
 
         assertThat(saboteur.tripped()).as("BEFORE_COMMIT 注入点への到達").isPositive();
-        assertThat(BatchProbe.BODY_CALLS.get()).as("本体は実行された").isEqualTo(1);
+        assertThat(BatchNotificationProbe.BODY_CALLS.get()).as("本体は実行された").isEqualTo(1);
         awaitNotification(admin, "BATCH_FAILED", "g7b-it-commit-fails");
         awaitNotification(admin2, "BATCH_FAILED", "g7b-it-commit-fails");
         drainEventPool();
@@ -265,7 +181,7 @@ class BatchNotificationTransactionIT extends AbstractMySqlIntegrationTest {
         assertThatThrownBy(() -> probe.logFails()).isInstanceOf(DataIntegrityViolationException.class);
 
         drainEventPool();
-        assertThat(BatchProbe.BODY_CALLS.get()).as("本体は動かない").isZero();
+        assertThat(BatchNotificationProbe.BODY_CALLS.get()).as("本体は動かない").isZero();
         assertThat(notificationsOf(admin, "BATCH_COMPLETED", "g7b-it-log-fails")).isEmpty();
         assertThat(notificationsOf(admin, "BATCH_FAILED", "g7b-it-log-fails")).isEmpty();
     }
@@ -365,7 +281,7 @@ class BatchNotificationTransactionIT extends AbstractMySqlIntegrationTest {
         drainEventPool();
         List<BatchJobLogEntity> logs = transactionTemplate.execute(tx ->
                 batchJobLogRepository.findByJobNameOrderByStartedAtDesc("g7b-it-gated"));
-        assertThat(BatchProbe.BODY_CALLS.get()).as("停止中は本体を呼ばない").isZero();
+        assertThat(BatchNotificationProbe.BODY_CALLS.get()).as("停止中は本体を呼ばない").isZero();
         assertThat(logs).as("SKIPPED が初回遷移で1件だけ").hasSize(1);
         assertThat(logs.get(0).getStatus()).isEqualTo(BatchJobStatus.SKIPPED);
         assertThat(notificationsOf(admin, "BATCH_COMPLETED", "g7b-it-gated")).isEmpty();
