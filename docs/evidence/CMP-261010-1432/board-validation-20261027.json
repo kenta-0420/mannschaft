@@ -1,0 +1,139 @@
+{
+  "checkedAt": "2026-10-27T09:29:46.365Z",
+  "baseHead": "2ef196da04864a75163ef9e6aa282b565f79bcee",
+  "scope": "観測文書とoverlayの静的検査。ブラウザ/サービス起動なし。",
+  "previousCounts": [
+    18,
+    18,
+    42
+  ],
+  "currentCounts": [
+    21,
+    21,
+    48
+  ],
+  "existingValuesDeepPreserved": true,
+  "threeCopiesEqual": true,
+  "originalValidatorOverlayChecks": {
+    "residentOverlayAccepted": true,
+    "emptyInsightsAccepted": true,
+    "syntheticBaselineAccepted": true,
+    "multipleSourceHeadsAndRunsAccepted": true,
+    "invalidOverlaysRejected": 10
+  },
+  "independentResidents": {
+    "executionCompleted": 3,
+    "goalsReached": 0,
+    "drawDPartialArrayAsBoolean": false
+  },
+  "wholeBoardValidation": {
+    "passed": false,
+    "commands": [
+      "node docs/prototypes/validate-beta-inventory-board.mjs",
+      "node docs/prototypes/validate-beta-inventory-board.mjs --self-test-overlay"
+    ],
+    "stage": "line46 GitHubスナップショットの参照集合が正本と不一致",
+    "overlayValidationReached": false,
+    "snapshotChanged": false
+  },
+  "generation": {
+    "passed": true,
+    "features": 44,
+    "capabilities": 95,
+    "campaigns": 601
+  },
+  "browserUi": {
+    "attempted": true,
+    "performed": false,
+    "status": "failed-infrastructure",
+    "phase": "before-board-navigation",
+    "chromeStarted": true,
+    "boardRenderingVerified": false,
+    "visualConfirmation": false,
+    "checksPassed": false,
+    "reason": "所有世代取得のPowerShell/CIM subprocessが7秒上限に達し、ボードへ遷移する前に失敗。描画・取込・リロード・重複なしの実画面検証は未達。起動前の初版ランチャー文字コードparse失敗も別記録として保持。",
+    "repeatedBrowserLaunchesAfterFailure": 0,
+    "cleanup": {
+      "verified": true,
+      "exactProfileChromeCountAfter": 0,
+      "listener13901CountAfter": 0,
+      "privateProfileRemoved": true,
+      "ownRecordedGenerationsRemaining": 0,
+      "checkedAt": "2026-10-27T09:50:54.0648066Z"
+    },
+    "privateEvidence": [
+      {
+        "path": ".claude/campaigns/cmp1432a-board-ui-private/launcher-v1-parse-failure.json",
+        "sha256": "e36d75aaa93ea675284220f35462dcc3994fdee00bf2e99ad579e519383ecf1a",
+        "bytes": 344
+      },
+      {
+        "path": ".claude/campaigns/cmp1432a-board-ui-private/result.json",
+        "sha256": "6ff991218b146738fa8465cd5e3a116b3b5b03431af24fabf2d7439eb6d78449",
+        "bytes": 555
+      },
+      {
+        "path": ".claude/campaigns/cmp1432a-board-ui-private/external-result.json",
+        "sha256": "2b24f4dcab07ad5bd67bfe09977e9c10e8ef7eb5ae322f01eda519405941cd64",
+        "bytes": 683
+      },
+      {
+        "path": ".claude/campaigns/cmp1432a-board-ui-private/cleanup-final.json",
+        "sha256": "348103bba2125ecdb62b2a045d4886746b0b867bf3074dd7cdbd4a83ce219877",
+        "bytes": 635
+      }
+    ]
+  },
+  "overlaySha256": "db618d92b24c7d31b25ffd5bc89bda00371aff298eaa9bcd7dfd0db2f6bc9bbf",
+  "mainFollowup": {
+    "checkedAt": "2026-10-27T10:15:10.744Z",
+    "mainHead": "dea78c8e4b2a868fc0124d3bc7a424a1af4f8fbf",
+    "mergeCommit": "f6b7836ea61b5c7855b55d271ecf5c91dc6e91b1",
+    "previousObservationHead": "74f181205af26b03b86b3d72f67b159eab5ccc11",
+    "bothSidesObservationValuesDeepPreserved": true,
+    "threeCopiesEqual": true,
+    "counts": [
+      21,
+      21,
+      48
+    ],
+    "generation": {
+      "features": 44,
+      "capabilities": 95,
+      "splitParents": 33,
+      "campaigns": 601,
+      "layer": {
+        "能力": 26,
+        "ドメイン": 18
+      },
+      "blockers": 23,
+      "coreStatus": {
+        "blocked": 5,
+        "unknown": 0,
+        "incomplete": 0,
+        "verifying": 19,
+        "ready": 1
+      }
+    },
+    "originalValidatorOverlayChecks": {
+      "residentOverlayAccepted": true,
+      "emptyInsightsAccepted": true,
+      "syntheticBaselineAccepted": true,
+      "multipleSourceHeadsAndRunsAccepted": true,
+      "invalidOverlaysRejected": 10
+    },
+    "wholeBoardValidation": [
+      {
+        "command": "node docs/prototypes/validate-beta-inventory-board.mjs",
+        "exitCode": 1,
+        "error": "Error: GitHubスナップショットの参照集合が正本と不一致です"
+      },
+      {
+        "command": "node docs/prototypes/validate-beta-inventory-board.mjs --self-test-overlay",
+        "exitCode": 1,
+        "error": "Error: GitHubスナップショットの参照集合が正本と不一致です"
+      }
+    ],
+    "browserRelaunched": false
+  }
+}

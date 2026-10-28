@@ -67,9 +67,6 @@ public class CommitteeController {
         Page<CommitteeEntity> committees = committeeService.listCommittees(orgId, status, currentUserId, pageable);
 
         Page<CommitteeSummaryResponse> response = committees.map(c -> {
-            if (c == null) {
-                return null;
-            }
             CommitteeRole myRole = committeeService.getCommitteeRole(c.getId(), currentUserId);
             // メンバーのみカウントを取得（非メンバーには null を返す）
             Integer memberCount = myRole != null

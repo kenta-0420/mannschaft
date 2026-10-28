@@ -24,6 +24,7 @@ import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -132,7 +133,8 @@ public class ShiftSwapService {
      * @param userId リクエスターID
      * @return 作成された交代リクエスト
      */
-    @Transactional
+    // 親ロック待ち前のsnapshotを未決照会へ持ち越さず、別スケジュールの作成を妨げるgap lockも避ける。
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public SwapRequestResponse createSwapRequest(CreateSwapRequestRequest req, Long userId) {
         // スコープ認可はFacade済み。親→子の順で既存の割当更新・親削除と直列化し、
         // 公開取消や担当変更のcommit後の値で作成資格を確定する（親不在は従来どおりSHIFT_001）。
@@ -152,6 +154,13 @@ public class ShiftSwapService {
         }
         if (!ShiftAssignedUserIds.parse(slot.getAssignedUserIds()).contains(userId)) {
             throw new BusinessException(ShiftErrorCode.ACCESS_DENIED);
+        }
+
+        // 宛先や募集モードにかかわらず同じ担当者の未決依頼は1件に限定する。
+        // 親の排他をcommitまで保持するので、同じスケジュールの作成は判定から保存まで直列化される。
+        if (swapRepository.existsBySlotIdAndRequesterIdAndStatusIn(
+                slot.getId(), userId, List.of(SwapRequestStatus.PENDING, SwapRequestStatus.ACCEPTED))) {
+            throw new BusinessException(ShiftErrorCode.INVALID_SWAP_STATUS);
         }
 
         // 受信者モードの決定

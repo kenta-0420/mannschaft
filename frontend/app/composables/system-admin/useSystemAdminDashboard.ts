@@ -5,9 +5,12 @@ import type {
   ErrorReportStatsResponse,
 } from '~/types/system-admin'
 import type { components } from '~/types/generated'
-import type { PagedResponse } from '~/types/api'
+import type { PagedResponse, SpringPage } from '~/types/api'
+import { toPagedResponse } from '~/utils/toPagedResponse'
 
 export type DeletedTeamSummary = components['schemas']['DeletedTeamSummaryResponse']
+export type DashboardTeamsResponse = { data: SpringPage<Record<string, unknown>> }
+export type DashboardUsersResponse = { data: SpringPage<Record<string, unknown>> }
 
 const BASE = '/api/v1/system-admin'
 
@@ -40,7 +43,7 @@ export function useSystemAdminDashboard() {
     const query = new URLSearchParams()
     query.set('page', String(params?.page ?? 0))
     query.set('size', String(params?.size ?? 20))
-    return api<{ data: Record<string, unknown>[] }>(`${BASE}/dashboard/teams?${query}`)
+    return api<DashboardTeamsResponse>(`${BASE}/dashboard/teams?${query}`)
   }
 
   async function getDeletedTeams(params: { page: number; size: number }) {
@@ -51,7 +54,8 @@ export function useSystemAdminDashboard() {
     const query = new URLSearchParams()
     query.set('page', String(params?.page ?? 0))
     query.set('size', String(params?.size ?? 20))
-    return api<{ data: Record<string, unknown>[] }>(`${BASE}/dashboard/users?${query}`)
+    const res = await api<DashboardUsersResponse>(`${BASE}/dashboard/users?${query}`)
+    return toPagedResponse(res.data)
   }
 
   // ===== Notification Stats =====

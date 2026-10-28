@@ -502,6 +502,10 @@ class AuthControllerIntegrationTest extends AbstractIntegrationTest {
 
 ### 7.1 ArchUnit テストの別 JVM 実行（`archTest` / `archUnitTest`・CMP-261002-1606）
 
+`AuthzTxFacadeRegistryScanningLogicTest` は、総称メソッドの override で javac が生成する bridge の実在も検証する。
+R3 の有効公開入口は、bridge を親宣言の遮蔽判定へ残してから結果から除き、子の具体型メソッドだけを検査する。
+認可付きの子を誤検出しない陰性対照と、認可なしの子を検出する陽性対照を対で維持する。
+
 ArchUnit を使うテストクラス（ArchUnit または `ProductionClasses` を参照するもの）は必ずタグを付け、
 Spring のテストコンテキストを使わない。通常の `test` はタグ `archunit` を除外する。タグ付きテストは
 **エンジンで2系統に分かれ、実行系統も異なる**:

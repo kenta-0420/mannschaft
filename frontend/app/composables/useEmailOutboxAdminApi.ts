@@ -12,6 +12,9 @@
  *  - {@code cancelPending(id)} — PENDING → CANCELLED（204）
  */
 
+import type { PagedResponse, SpringPage } from '~/types/api'
+import { toPagedResponse } from '~/utils/toPagedResponse'
+
 const BASE = '/api/v1/system-admin/email-outbox'
 
 export type EmailOutboxStatus =
@@ -67,6 +70,8 @@ export interface EmailOutboxListParams {
 // BE が送らない totalElements を必須にした影のコピーになっていた（CMP-260912-1823）。
 export type { PageMeta, PagedResponse } from '~/types/api'
 
+export type EmailOutboxListResponse = { data: SpringPage<EmailOutboxSummary> }
+
 export function useEmailOutboxAdminApi() {
   const api = useApi()
 
@@ -87,8 +92,8 @@ export function useEmailOutboxAdminApi() {
     if (params.size !== undefined) query.set('size', String(params.size))
     const qs = query.toString()
     const url = qs ? `${BASE}?${qs}` : BASE
-    const res = await api<PagedResponse<EmailOutboxSummary>>(url)
-    return res
+    const res = await api<EmailOutboxListResponse>(url)
+    return toPagedResponse(res.data)
   }
 
   /**

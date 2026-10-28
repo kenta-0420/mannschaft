@@ -1,0 +1,162 @@
+{
+  "sourceEvidencePath": ".claude/campaigns/cmp0649-next-20261026/ac-test-evidence-24ceb.json",
+  "sourceSha256": "8465c7a70dc336043a928753478c99879b81c13263a9c83ddd4f75c780e8b2dc",
+  "sourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+  "supportingSuites": [
+    {
+      "suite": "com.mannschaft.app.shift.ShiftSwapCreationEligibilityContractIT",
+      "sourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+      "count": {
+        "tests": 16,
+        "passed": 16,
+        "skipped": 0,
+        "failed": 0
+      },
+      "runId": 40304337146,
+      "link": "https://github.com/kenta-0420/mannschaft/actions/runs/40304337146",
+      "methods": [
+        {
+          "name": "枠削除が親行を先取したらcommit後は404で申請を保存しない()",
+          "status": "passed"
+        },
+        {
+          "name": "[1] openCall=false",
+          "status": "passed"
+        },
+        {
+          "name": "[2] openCall=true",
+          "status": "passed"
+        },
+        {
+          "name": "公開取消が親行を先取したらcommit後の状態で拒否する()",
+          "status": "passed"
+        },
+        {
+          "name": "未認証401とSUPPORTER403は本人担当でも維持する()",
+          "status": "passed"
+        },
+        {
+          "name": "[1] openCall=false",
+          "status": "passed"
+        },
+        {
+          "name": "[2] openCall=true",
+          "status": "passed"
+        },
+        {
+          "name": "[1] scheduleStatus=DRAFT",
+          "status": "passed"
+        },
+        {
+          "name": "[2] scheduleStatus=COLLECTING",
+          "status": "passed"
+        },
+        {
+          "name": "[3] scheduleStatus=ADJUSTING",
+          "status": "passed"
+        },
+        {
+          "name": "[4] scheduleStatus=ARCHIVED",
+          "status": "passed"
+        },
+        {
+          "name": "別チームの管理者と不存在の404本文は公開状態や担当に依存せず完全一致()",
+          "status": "passed"
+        },
+        {
+          "name": "担当変更が親ロックを先取したらcommit後の担当で拒否する()",
+          "status": "passed"
+        },
+        {
+          "name": "[1] assigned=null",
+          "status": "passed"
+        },
+        {
+          "name": "[2] assigned=[]",
+          "status": "passed"
+        },
+        {
+          "name": "[3] assigned=null",
+          "status": "passed"
+        }
+      ],
+      "xmlEntries": [
+        {
+          "name": "build/test-results/test/TEST-com.mannschaft.app.shift.ShiftSwapCreationEligibilityContractIT.xml",
+          "sha256": "173f036f357cc09a253786f6bf01297227604470bffc8b69e52a2ae6ed895d3c"
+        }
+      ],
+      "artifactSha256": "aee46d3cb01fffd74e1cab9460de438557f790543c78cf4ba8991d4c50ff266a"
+    },
+    {
+      "suite": "com.mannschaft.app.shift.ShiftSwapScopeContractIT",
+      "sourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+      "count": {
+        "tests": 37,
+        "passed": 37,
+        "skipped": 0,
+        "failed": 0
+      },
+      "runId": 40304337146,
+      "link": "https://github.com/kenta-0420/mannschaft/actions/runs/40304337146",
+      "methods": [
+        {
+          "name": "別scope ADMIN（teamBのADMINがteamAのslotIdを指定）は404（BOLA・存在オラクル是正 W2）",
+          "status": "passed"
+        },
+        {
+          "name": "部外者は404（存在オラクル是正 W2・不在slotIdと同一応答）",
+          "status": "passed"
+        },
+        {
+          "name": "公開済みの本人担当枠は201（正常系）",
+          "status": "passed"
+        },
+        {
+          "name": "★AC-1: 別scope ADMINの他チームslotIdと不在slotIdは同一応答（SHIFT_SLOT_NOT_FOUND）",
+          "status": "passed"
+        },
+        {
+          "name": "AC-10: ID 境界値（0・-1・Long.MAX_VALUE）は不在IDと同じ応答（全EP）",
+          "status": "passed"
+        },
+        {
+          "name": "AC-10: 数値でないパスIDは400のまま",
+          "status": "passed"
+        }
+      ],
+      "xmlEntries": [
+        {
+          "name": "build/test-results/test/TEST-com.mannschaft.app.shift.ShiftSwapScopeContractIT$AcceptSwapRequest.xml",
+          "sha256": "d00e6d0bfd3077d7cbf0889b1861d74593d5f873970cad554763d593e154b08d"
+        },
+        {
+          "name": "build/test-results/test/TEST-com.mannschaft.app.shift.ShiftSwapScopeContractIT$CancelSwapRequest.xml",
+          "sha256": "6a75cdaacfe4792cf6e6d11d824a270c060e4d4ede93c89015e78b3b1597327a"
+        },
+        {
+          "name": "build/test-results/test/TEST-com.mannschaft.app.shift.ShiftSwapScopeContractIT$CreateSwapRequest.xml",
+          "sha256": "de86395f349c53d35ba3b3afee83ca9dfe2d1975f7ede44e25c4b5cce0d91318"
+        },
+        {
+          "name": "build/test-results/test/TEST-com.mannschaft.app.shift.ShiftSwapScopeContractIT$ListSwapRequests.xml",
+          "sha256": "e33bd6295d558abbf5cb69812a26ddcc2a6f9f8b7168434ecd298e07e2688b94"
+        },
+        {
+          "name": "build/test-results/test/TEST-com.mannschaft.app.shift.ShiftSwapScopeContractIT$OracleCompletion.xml",
+          "sha256": "9637c89499114a5cda1636fe9a7e55588a6ff8e7b36928851a309d96a2ce1cb3"
+        },
+        {
+          "name": "build/test-results/test/TEST-com.mannschaft.app.shift.ShiftSwapScopeContractIT$ResolveSwapRequest.xml",
+          "sha256": "b798538e5ac6d4b85546a9f96757fc5f382539ca3e10f59a14920c212dafdd97"
+        }
+      ],
+      "artifactSha256": "aee46d3cb01fffd74e1cab9460de438557f790543c78cf4ba8991d4c50ff266a"
+    }
+  ],
+  "limits": [
+    "資格16件とscope全37件集計のうち作成4件/ID境界の具体結果だけを選別。",
+    "既存試験名のAC番号は原名称を保持し、0649の同番号ACへ対応付けない。",
+    "全37件が各0649条件を個別に証明するとは主張しない。"
+  ]
+}
