@@ -15,7 +15,8 @@ import com.mannschaft.app.team.service.TeamAffiliationAuditRecorder;
 import com.mannschaft.app.team.service.TeamOrgAffiliationRestrictionService;
 import com.mannschaft.app.team.service.TeamAffiliationNotifier;
 import com.mannschaft.app.team.service.TeamAffiliationOrganizationPort;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -83,11 +84,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *   <li>OB14: 承諾の通知は承諾の tx と同時に outbox に確定する（outbox の書き込みが失敗すれば承諾も巻き戻る）</li>
  * </ul>
  */
-@Slf4j
 @AutoConfigureMockMvc
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("F01.2.1 2-C 招待の通知の配信・並行競合（コミットを伴う検証）")
 class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
+
+    private static final Logger log = LoggerFactory.getLogger(TeamOrgInviteCommittedIT.class);
 
     @Autowired
     private MockMvc mockMvc;
@@ -595,7 +597,7 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
                 fixture.membershipId(), fixture.team().id(), fixture.org().id(), null)) {
             Result result = probe.run(TeamOrgInviteRaceProbe.Operation.CANCEL, () -> raceRequest(cancelRequest(fixture)));
 
-            assertThat(result.status()).isNotBetween(200, 299);
+            assertThat(result.status() >= 200 && result.status() <= 299).isFalse();
             assertThat(membershipRowState(fixture.team().id(), fixture.org().id())).isEqualTo("PENDING/ORG_INVITE");
             assertThat(raceEffects(fixture)).isEqualTo(new RaceEffects(0, 0, 0, 0));
             assertThat(probe.diagnostic()).contains("deletePendingInviteByOrganization:rows=1", "CANCEL:tx=ROLLED_BACK");
