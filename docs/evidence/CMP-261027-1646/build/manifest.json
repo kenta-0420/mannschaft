@@ -301,16 +301,30 @@
   ],
   "sourcePathSemantics": "Source paths identify collection-time locations, not permanent retention or current existence.",
   "rawArtifactLifecycle": {
-    "status": "partially-removed-retained-awaiting-specific-user-approval",
-    "removedRootCount": 1,
-    "removedBytes": 6349,
-    "remainingRootCount": 14,
-    "remainingBytes": 888898616,
-    "ownerUuid": "9ec2bb94-5ba6-494b-9d4a-dd4ed47f29f5",
-    "recheckDeadline": "2026-10-29T10:00:00+09:00",
-    "policy": "Small evidence JSON/XML summaries/images are in Git. Remaining full raw is retained after automatic approval rejection; no further deletion without explicit user approval and fresh ownership/stopped/reference checks plus root release.",
+    "status": "approved-owned-raw-cleanup-complete",
+    "removedRootCount": 15,
+    "removedBytes": 888904965,
+    "remainingRootCount": 0,
+    "remainingBytes": 0,
+    "approvedOperationRootCount": 14,
+    "approvedOperationBytes": 888898616,
+    "completedAt": "2026-10-28T11:24:12.605725+00:00",
+    "policy": "Safe evidence JSON/XML summaries/images remain in Git. User-approved duplicate raw was removed after fresh ownership/path/stopped/reference and Git adoption checks.",
     "cleanupEvidence": "docs/evidence/CMP-261027-1646/cleanup.md",
     "receipt": "docs/evidence/CMP-261027-1646/cleanup.json",
-    "sourcePathSemantics": "Collection-time locations; one source root has been removed and 14 remain held. No permanent retention or automatic deletion is promised."
+    "sourcePathSemantics": "Collection-time locations only; all15 campaign raw roots have been removed.",
+    "historicalRetention": {
+      "status": "partially-removed-retained-awaiting-specific-user-approval",
+      "removedRootCount": 1,
+      "removedBytes": 6349,
+      "remainingRootCount": 14,
+      "remainingBytes": 888898616,
+      "ownerUuid": "9ec2bb94-5ba6-494b-9d4a-dd4ed47f29f5",
+      "recheckDeadline": "2026-10-29T10:00:00+09:00",
+      "policy": "Small evidence JSON/XML summaries/images are in Git. Remaining full raw is retained after automatic approval rejection; no further deletion without explicit user approval and fresh ownership/stopped/reference checks plus root release.",
+      "cleanupEvidence": "docs/evidence/CMP-261027-1646/cleanup.md",
+      "receipt": "docs/evidence/CMP-261027-1646/cleanup.json",
+      "sourcePathSemantics": "Collection-time locations; one source root has been removed and 14 remain held. No permanent retention or automatic deletion is promised."
+    }
   }
 }
