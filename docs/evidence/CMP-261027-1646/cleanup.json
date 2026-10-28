@@ -1,5 +1,12 @@
 {
   "schemaVersion": 1,
+  "sourceReceipt": {
+    "collectionPath": "C:/Claude/mannschaft/.claude/evidence/CMP-261027-1646-cleanup-final.json",
+    "bytes": 57391,
+    "sha256": "a1be0ba503e1d569d30c0d52a04cf08a6ef3acaf542106f151575343fef940dc"
+  },
+  "recordedAt": "2026-10-28T09:51:06.834698+00:00",
+  "status": "partial-cleanup-blocked-by-automatic-approval-review",
   "implementation": {
     "pr": 4169,
     "merged": "bc2f2c89",
@@ -261,22 +268,23 @@
   },
   "managedVerificationCheck": {
     "exitCode": 1,
-    "originalL1BRuntimeScratchOutstanding": 0,
+    "ownCampaignScratchOutstanding": 0,
     "otherOrUnattributedEntries": [
       {
-        "path": "/var/tmp/mannschaft-verification-1000/run-1NaQ9f",
-        "ownership": "not this runtime or current L1-B docs worker; no inspection/deletion",
-        "untouched": true
+        "path": "/var/tmp/mannschaft-verification-1000/run-55fg9V",
+        "state": "要処置",
+        "evidence": "/home/kenta/verification-evidence/l1a-a363c8d-20261026-r6",
+        "owner": 100682
       },
       {
-        "path": "/var/tmp/mannschaft-verification-1000/run-55fg9V",
-        "ownership": "other L1-A campaign",
-        "untouched": true
+        "path": "/var/tmp/mannschaft-verification-1000/run-pcTCwN",
+        "state": "稼働中",
+        "attribution": "not in this campaign known scratch list; not inspected or touched"
       }
     ],
-    "scope": "nonzero global management condition is not an approved14 raw deletion failure; both entries left unchanged"
+    "scope": "management scratch check only; retained raw evidence14roots are separately listed and not zero"
   },
-  "linuxCleanupComplete": true,
+  "linuxCleanupComplete": false,
   "approvalReview": {
     "firstRejectedAction": "bulk recursive removal of 13 WSL evidence roots",
     "firstReason": "specific user authorization of potentially shared campaign deletion not confirmed",
@@ -286,389 +294,164 @@
     "secondReason": "specific user approval for 205401645 bytes/236 files large raw evidence deletion not confirmed",
     "response": "all further destructive work stopped; no workaround or further removal retries"
   },
-  "removedRootCount": 15,
-  "removedBytes": 888904965,
+  "removedRootCount": 1,
+  "removedBytes": 6349,
   "removedRoots": [
     {
       "path": "/home/kenta/verification-evidence/CMP-261027-1646-after-arch-continue-1",
       "bytes": 6349
-    },
+    }
+  ],
+  "remainingRawRoots": [
     {
       "path": "/home/kenta/verification-evidence/CMP-261027-1646-after-finalweights-1",
       "bytes": 205401645,
+      "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
+      "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
+      "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
       "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-      "removed": true,
-      "absent": true
+      "recheckDeadline": "2026-10-29T10:00:00+09:00",
+      "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
     },
     {
       "path": "/home/kenta/verification-evidence/CMP-261027-1646-after-freeze-openapi-1",
       "bytes": 7305798,
+      "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
+      "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
+      "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
       "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-      "removed": true,
-      "absent": true
+      "recheckDeadline": "2026-10-29T10:00:00+09:00",
+      "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
     },
     {
       "path": "/home/kenta/verification-evidence/CMP-261027-1646-after-independent-1",
       "bytes": 7462,
+      "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
+      "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
+      "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
       "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-      "removed": true,
-      "absent": true
+      "recheckDeadline": "2026-10-29T10:00:00+09:00",
+      "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
     },
     {
       "path": "/home/kenta/verification-evidence/CMP-261027-1646-after-oldweights-1",
       "bytes": 205420499,
+      "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
+      "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
+      "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
       "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-      "removed": true,
-      "absent": true
+      "recheckDeadline": "2026-10-29T10:00:00+09:00",
+      "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
     },
     {
       "path": "/home/kenta/verification-evidence/CMP-261027-1646-after-remaining-1",
       "bytes": 5475,
+      "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
+      "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
+      "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
       "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-      "removed": true,
-      "absent": true
+      "recheckDeadline": "2026-10-29T10:00:00+09:00",
+      "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
     },
     {
       "path": "/home/kenta/verification-evidence/CMP-261027-1646-before-1",
       "bytes": 1058,
+      "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
+      "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
+      "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
       "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-      "removed": true,
-      "absent": true
+      "recheckDeadline": "2026-10-29T10:00:00+09:00",
+      "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
     },
     {
       "path": "/home/kenta/verification-evidence/CMP-261027-1646-before-2",
       "bytes": 555,
+      "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
+      "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
+      "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
       "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-      "removed": true,
-      "absent": true
+      "recheckDeadline": "2026-10-29T10:00:00+09:00",
+      "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
     },
     {
       "path": "/home/kenta/verification-evidence/CMP-261027-1646-before-3",
       "bytes": 310200,
+      "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
+      "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
+      "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
       "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-      "removed": true,
-      "absent": true
+      "recheckDeadline": "2026-10-29T10:00:00+09:00",
+      "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
     },
     {
       "path": "/home/kenta/verification-evidence/CMP-261027-1646-before-4",
       "bytes": 212672762,
+      "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
+      "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
+      "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
       "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-      "removed": true,
-      "absent": true
+      "recheckDeadline": "2026-10-29T10:00:00+09:00",
+      "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
     },
     {
       "path": "/home/kenta/verification-evidence/CMP-261027-1646-before-finalweights-1",
       "bytes": 205430432,
+      "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
+      "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
+      "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
       "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-      "removed": true,
-      "absent": true
+      "recheckDeadline": "2026-10-29T10:00:00+09:00",
+      "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
     },
     {
       "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final",
       "bytes": 783,
+      "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
+      "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
+      "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
       "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-      "removed": true,
-      "absent": true
+      "recheckDeadline": "2026-10-29T10:00:00+09:00",
+      "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
     },
     {
       "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2",
       "bytes": 2778596,
+      "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
+      "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
+      "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
       "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-      "removed": true,
-      "absent": true
+      "recheckDeadline": "2026-10-29T10:00:00+09:00",
+      "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
     },
     {
       "path": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-real-support",
       "bytes": 2313562,
+      "reason": "held after second automatic approval rejection; no further deletion attempted",
+      "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
+      "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
       "provenance": "native Windows inventory and campaign collector/runtime creation records; includes f281/e67 raw, not other campaigns",
-      "removed": true,
-      "absent": true
+      "recheckDeadline": "2026-10-29T10:00:00+09:00",
+      "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
     },
     {
       "path": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support",
       "bytes": 47249789,
+      "reason": "held after second automatic approval rejection; no further deletion attempted",
+      "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
+      "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
       "provenance": "native Windows inventory and campaign collector/runtime creation records; includes f281/e67 raw, not other campaigns",
-      "removed": true,
-      "absent": true
+      "recheckDeadline": "2026-10-29T10:00:00+09:00",
+      "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
     }
   ],
+  "retainedRawBytes": 888898616,
+  "retentionOwnerUuid": "9ec2bb94-5ba6-494b-9d4a-dd4ed47f29f5",
+  "retentionPurpose": "完了証拠をGitへ採用済みの重複raw。製品L1-B完了とrawcleanup未完了を区別。",
+  "recheckDeadline": "2026-10-29T10:00:00+09:00",
+  "resumeConditions": "残14rootの明示的ユーザー承認と、freshな所有/絶対path/停止/対象参照0の確認、root releaseの後のみ再開する。期限時の自動実行は約束しない。",
   "limits": [
-    "Scope is only approved remaining14 raw roots; original1 root6349bytes was already removed and not deleted twice.",
-    "All WT, shared caches/development DB/server, other campaigns, and deletion-external receipt excluded.",
-    "Git anchor is root-verified merged a02a commit; local main was not updated or modified.",
-    "Windows reference audit covers readable command lines; unrelated protected/transient unreadable processes are noted. Known campaign producers stopped by root confirmation.",
-    "WSL audit covers readable sameUID references; pre-campaign systemd/sd-pam and hash-verified409-byte UID0 cleanup proof were explicitly identified.",
-    "No global cleanup --apply or fresh global worktree cleanup check was run in this raw-only task.",
-    "Only safe counts, paths and hashes are adopted; process argv/maps and full per-file inventories are omitted. Earlier rejection/retention remains historical, not a current block."
-  ],
-  "historicalRetention": {
-    "status": "partial-cleanup-blocked-by-automatic-approval-review",
-    "sourceReceipt": {
-      "collectionPath": "C:/Claude/mannschaft/.claude/evidence/CMP-261027-1646-cleanup-final.json",
-      "bytes": 57391,
-      "sha256": "a1be0ba503e1d569d30c0d52a04cf08a6ef3acaf542106f151575343fef940dc"
-    },
-    "recordedAt": "2026-10-28T09:51:06.834698+00:00",
-    "remainingRawRoots": [
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-after-finalweights-1",
-        "bytes": 205401645,
-        "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
-        "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
-        "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
-        "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-        "recheckDeadline": "2026-10-29T10:00:00+09:00",
-        "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-after-freeze-openapi-1",
-        "bytes": 7305798,
-        "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
-        "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
-        "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
-        "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-        "recheckDeadline": "2026-10-29T10:00:00+09:00",
-        "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-after-independent-1",
-        "bytes": 7462,
-        "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
-        "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
-        "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
-        "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-        "recheckDeadline": "2026-10-29T10:00:00+09:00",
-        "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-after-oldweights-1",
-        "bytes": 205420499,
-        "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
-        "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
-        "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
-        "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-        "recheckDeadline": "2026-10-29T10:00:00+09:00",
-        "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-after-remaining-1",
-        "bytes": 5475,
-        "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
-        "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
-        "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
-        "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-        "recheckDeadline": "2026-10-29T10:00:00+09:00",
-        "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-before-1",
-        "bytes": 1058,
-        "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
-        "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
-        "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
-        "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-        "recheckDeadline": "2026-10-29T10:00:00+09:00",
-        "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-before-2",
-        "bytes": 555,
-        "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
-        "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
-        "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
-        "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-        "recheckDeadline": "2026-10-29T10:00:00+09:00",
-        "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-before-3",
-        "bytes": 310200,
-        "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
-        "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
-        "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
-        "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-        "recheckDeadline": "2026-10-29T10:00:00+09:00",
-        "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-before-4",
-        "bytes": 212672762,
-        "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
-        "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
-        "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
-        "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-        "recheckDeadline": "2026-10-29T10:00:00+09:00",
-        "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-before-finalweights-1",
-        "bytes": 205430432,
-        "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
-        "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
-        "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
-        "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-        "recheckDeadline": "2026-10-29T10:00:00+09:00",
-        "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final",
-        "bytes": 783,
-        "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
-        "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
-        "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
-        "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-        "recheckDeadline": "2026-10-29T10:00:00+09:00",
-        "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2",
-        "bytes": 2778596,
-        "reason": "automatic approval review rejected further raw deletion; explicit user approval needed",
-        "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
-        "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
-        "provenance": "managed runner receipt matches exact evidence path/sourceSHA and UID1000",
-        "recheckDeadline": "2026-10-29T10:00:00+09:00",
-        "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
-      },
-      {
-        "path": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-real-support",
-        "bytes": 2313562,
-        "reason": "held after second automatic approval rejection; no further deletion attempted",
-        "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
-        "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
-        "provenance": "native Windows inventory and campaign collector/runtime creation records; includes f281/e67 raw, not other campaigns",
-        "recheckDeadline": "2026-10-29T10:00:00+09:00",
-        "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
-      },
-      {
-        "path": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support",
-        "bytes": 47249789,
-        "reason": "held after second automatic approval rejection; no further deletion attempted",
-        "owner": "CMP-261027-1646 L1-B root/runtime/implementation campaign; raw producers released by root final GO",
-        "purpose": "comparison/negative/CI/runtime raw test evidence and campaign support; safe adopted proof is in remote54bc completion docs",
-        "provenance": "native Windows inventory and campaign collector/runtime creation records; includes f281/e67 raw, not other campaigns",
-        "recheckDeadline": "2026-10-29T10:00:00+09:00",
-        "resumeConditions": "explicit user approval of remaining14roots; fresh owner/absolute-path/stopped-users/no-target-references checks; root release. No automatic execution promised."
-      }
-    ],
-    "retainedRawBytes": 888898616,
-    "retentionOwnerUuid": "9ec2bb94-5ba6-494b-9d4a-dd4ed47f29f5",
-    "retentionPurpose": "完了証拠をGitへ採用済みの重複raw。製品L1-B完了とrawcleanup未完了を区別。",
-    "recheckDeadline": "2026-10-29T10:00:00+09:00",
-    "resumeConditions": "残14rootの明示的ユーザー承認と、freshな所有/絶対path/停止/対象参照0の確認、root releaseの後のみ再開する。期限時の自動実行は約束しない。",
-    "resolvedBy": "Explicit user approval and approvedOperationSummary below; historical conditions are no longer active."
-  },
-  "sourceReceipt": {
-    "collectionPath": "C:/Claude/mannschaft/.claude/evidence/CMP-261027-1646-cleanup-final.json",
-    "bytes": 73771,
-    "sha256": "e1ec87a310f37e205deba0b56067aa064aae16030d638fae24efa8d849646cdb"
-  },
-  "recordedAt": "2026-10-28T11:24:12.605725+00:00",
-  "status": "approved-owned-raw-cleanup-complete",
-  "explicitUserApproval": {
-    "received": true,
-    "answer": "許可",
-    "scope": "previously listed remaining14 L1-B duplicate raw directories, 888898616 bytes",
-    "conveyedBy": "root, current task message; supersedes prior lack of specific authorization",
-    "rootAndWorkersNoRawUse": true,
-    "allWorktreesExcluded": true
-  },
-  "approvedOperationSummary": {
-    "deletedRootCount": 14,
-    "deletedBytes": 888898616,
-    "linuxRootCount": 12,
-    "linuxBytes": 839335265,
-    "windowsRootCount": 2,
-    "windowsBytes": 49563351,
-    "retainedRootCount": 0,
-    "retainedBytes": 0,
-    "allApprovedRootsAbsent": true,
-    "linuxAbsence": [
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-after-finalweights-1",
-        "absent": true
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-after-freeze-openapi-1",
-        "absent": true
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-after-independent-1",
-        "absent": true
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-after-oldweights-1",
-        "absent": true
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-after-remaining-1",
-        "absent": true
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-before-1",
-        "absent": true
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-before-2",
-        "absent": true
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-before-3",
-        "absent": true
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-before-4",
-        "absent": true
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP-261027-1646-before-finalweights-1",
-        "absent": true
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final",
-        "absent": true
-      },
-      {
-        "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2",
-        "absent": true
-      }
-    ],
-    "windowsAbsence": [
-      {
-        "path": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-real-support",
-        "absent": true
-      },
-      {
-        "path": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support",
-        "absent": true
-      }
-    ],
-    "approval": "User explicitly approved the exact remaining14 scope after earlier automatic approval rejection.",
-    "completedAt": "2026-10-28T11:24:12.605725+00:00"
-  },
-  "remainingRawRoots": [],
-  "retainedRawBytes": 0,
-  "freshDurablePreflight": {
-    "mergeCommit": "a02a3dc0db2bd6c58e650e549f4eda206d3904b5",
-    "rootVerifiedOnMain": true,
-    "localMainNotModified": true,
-    "gitBlobCount": 42,
-    "packagedHashCount": 29,
-    "allMatch": true,
-    "checkedAt": "2026-10-28T11:16:57.747332+00:00"
-  },
-  "freshReferenceAudit": {
-    "linux": {
-      "targetMatchCount": 0,
-      "unresolvedPidCount": 0,
-      "at": "2026-10-28T11:20:08.365940+00:00"
-    },
-    "windows": {
-      "targetMatchCount": 0,
-      "unreadableCommandLineCount": 24,
-      "at": "2026-10-28T20:21:52.9993474+09:00",
-      "limit": "Readable Windows command references only. Protected/transient unrelated processes are not a global block; root confirms all campaign runtime/helpers/collectors stopped. WSL cwd/fd/maps checked separately."
-    },
-    "knownProducersStopped": "root confirmed; ownership/path/reference preflight performed before deletion"
-  }
+    "Windows per-file inventory and raw process/map detail are omitted; exact source receipt SHA identifies the full audit.",
+    "Only one 6,349-byte root was removed. No remaining approval is inferred; no further deletion attempt or workaround is authorized by this record.",
+    "Managed runner scratch0 is campaign-specific. Two unrelated/unattributed entries were left untouched; global cleanup is not claimed."
+  ]
 }

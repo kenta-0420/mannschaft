@@ -2,15 +2,26 @@
 
 製品L1-Bは最終e67のCI/検分とPR4169通常mergeで完了した。別の後処理であるraw cleanupも、残14rootへのユーザーの明示承認「許可」を受け、freshな所有・絶対path・停止・対象参照・Git採用を再確認して完了した。**今回14root / 888,898,616bytesを撤去し、既削除1root / 6,349bytesと合わせ累計15root / 888,904,965bytesの不存在を確認。raw保持0。**
 
-[安全なreceipt要約](cleanup.json)に、削除対象の採取時fullpath・bytes・不存在結果と承認/監査の要約を保存した。最終原本receiptは73,771bytes、SHA256 `e1ec87a310f37e205deba0b56067aa064aae16030d638fae24efa8d849646cdb`、完了時刻 `2026-10-28T11:24:12.605725+00:00`。安全な証拠はmain `a02a3dc0db2bd6c58e650e549f4eda206d3904b5` の42 Git blob / 29 packaged hash一致を削除直前に再確認した。小さな証拠JSON/XML要約・画像はGitに残り、プロセスargv/map・秘密・全file一覧・巨大rawは転載していない。
+最新の安全なreceipt要約は本Markdownに記録する。[cleanup.json](cleanup.json)と[build/manifest.json](build/manifest.json)はmain `a02a3dc0db2bd6c58e650e549f4eda206d3904b5` の削除前snapshotをbytes不変で保持しており、そこにある14root保持・承認待ち・期限は過去時点の記録である。旧原本receipt SHA256は `a1be0ba503e1d569d30c0d52a04cf08a6ef3acaf542106f151575343fef940dc`。現在の撤去結果・承認/監査の要約は以下を参照する。最終原本receiptは73,771bytes、SHA256 `e1ec87a310f37e205deba0b56067aa064aae16030d638fae24efa8d849646cdb`、完了時刻 `2026-10-28T11:24:12.605725+00:00`。安全な証拠はmain `a02a3dc0db2bd6c58e650e549f4eda206d3904b5` の42 Git blob / 29 packaged hash一致を削除直前に再確認した。小さな証拠JSON/XML要約・画像はGitに残り、プロセスargv/map・秘密・全file一覧・巨大rawは転載していない。
 
 ## 今回の確定結果と限界
 
 - Linux12root / 839,335,265bytes、Windows2root / 49,563,351bytesを撤去し、全14絶対pathの不存在を確認した。既削除1件は二重削除していない。
-- 自動承認審査による旧拒否・承認待ち保持は以下とJSONのhistoricalRetention/approvalReviewへ履歴として保存する。今回の明示承認とfresh再確認によって解消しており、旧再確認期限や再開条件は現在の保留条件ではない。
+- 自動承認審査による旧拒否・承認待ち保持は以下と削除前JSON snapshotへ履歴として保存する。今回の明示承認とfresh再確認によって解消しており、旧再確認期限や再開条件は現在の保留条件ではない。
 - verification-run --checkはexit1。原L1-B runtimeの自隊scratchは0だが、別L1-Aのrun-55fg9Vと未帰属稼働run-1NaQ9fは対象外として不干渉。全システムのcleanup成功とは扱わない。
 - Windows監査は読取可能なcommand line、WSL監査は読取可能な同UID参照を対象とした。保護/一時的に読取不能な無関係process、既知systemd/sd-pam、hash確認済み409bytesのUID0 cleanup証明の限界は原本receiptに保存した。既知の本戦役producer停止はroot確認済み。
 - 対象外のWT、共有cache・開発DB/server、他戦役、削除対象外に保存したreceiptは削除していない。global cleanup --applyは実行していない。製品完了JSON/AC/テスト・実機の対象SHA、親戦役・別件1554の未完了は変更しない。
+
+## 最終receiptの安全な集計
+
+| 対象 | 今回削除root数 | bytes | 全対象不存在 | 現在保持root数 |
+|---|---:|---:|---|---:|
+| Linux | 12 | 839,335,265 | true | 0 |
+| Windows | 2 | 49,563,351 | true | 0 |
+| 今回承認対象計 | 14 | 888,898,616 | true | 0 |
+| 先行撤去分を含む累計 | 15 | 888,904,965 | true | 0 |
+
+最終原本の `approvedOperationSummary` はdeletedRootCount=14、deletedBytes=888898616、allApprovedRootsAbsent=true、retainedRootCount=0、retainedBytes=0、remainingRawRoots=[]。削除前にmain採用42 Git blob / 29 packaged hashのallMatch=trueを確認し、fresh参照監査はLinux targetMatchCount=0/unresolvedPidCount=0、Windows targetMatchCount=0。承認範囲は旧保持14rootに限定し、既知producer停止・所有/絶対path・対象参照0を再確認してから撤去した。原本receiptは削除対象外へ保存した。監査の読取可能範囲と対象外資産の限界は前節の通り。
 
 ## 旧保持条件（削除前の履歴）
 
