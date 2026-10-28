@@ -50,7 +50,7 @@ function onDateClick(date: string) {
 }
 
 function moveMonth(delta: number) {
-  if (loading.value || calendarLoading.value) return
+  if (loading.value || calendarLoading.value || loadError.value) return
   if (delta < 0) onPrevMonth()
   else onNextMonth()
 }
