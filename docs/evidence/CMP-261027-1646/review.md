@@ -22,3 +22,13 @@ REQ-GRADLE-DIAG-02 はユーザーの「推奨で。よきにはからえ」で�
 ## 証拠と限界
 
 実装報告・B7 attempt1/2・real-ui-reviewを参照。旧検証対象はa8bであり、統合後headへ名前だけ付け替えない。移設コードのblob同一性と新headのCIを追加記録する。全画面/全viewportの視覚監査ではなく、探索で個別予定詳細の復帰は未検証。管理側パネル選択前のselector遮蔽、素早い遷移時の一時fetch失敗は原因断定せず記録し、安定探索では継続再現なし。
+
+## main統合後の追記
+
+裁可文書PR #4201 は通常merge済み（b7e4bcd07e2bb93899ea761736bdd6a413e41780）。実装は同mainを通常mergeし f2817eb94326b413122c69f4b0c409288c8982a6 となった。rootはbuild/settings/build-logic/Stripe番人/weights/.githubのa8bからの差分0と、main比較の対象16file維持を確認。source bridgeは変更対象非Markdown11fileのblob同一を記録し、upstream全製品の同一性とは区別する。旧実機/探索はa8bで実施した結果として維持する。
+
+改訂B5のローカル終端欠損拒否は、f281の実wrapper原本を用いたfixture7caseで補足しrootが結果を確認。fresh/FROM-CACHE/UP-TO-DATEは0、NO-SOURCE/終端なし/failed終端+command0は125、command7は7を保持。Gradle/Java/公開artifactの実障害ではない。採取completed=trueでもcommand7は失敗として区別する。
+
+代表PNG3枚はrootが再度画像として確認し、テスト団体名以外の個人名/メール/資格値なし。member通信件数183と保存原本188の差は原因未確定として明記。証拠の成否を変更しない。移設対象コードの追加指摘0、統合CI run40648568860成功とマージ実体は引き続き待機中。
+
+git diff --check のPR全差分では、新規Kotlin2fileの末尾blank行警告がある。a8bから不変で機能影響は確認されず、これをgreenと偽らず記録する。
