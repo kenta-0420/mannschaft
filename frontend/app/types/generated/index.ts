@@ -20207,6 +20207,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{orgId}/announcements/read-batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 表示中の組織お知らせを一括既読
+         * @description 画面に取得済みの組織お知らせの ID（最大50件）を既読にする。宛先チームの現役メンバーも対象。通らない ID は黙って飛ばし、既読になった件数だけ返す。
+         */
+        post: operations["markBatchAsRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{orgId}/announcements/read-all": {
         parameters: {
             query?: never;
@@ -68190,6 +68210,23 @@ export interface components {
         SampleTeam: {
             name?: string;
             slug?: string;
+        };
+        /** @description 組織お知らせの一括既読リクエスト（表示中の未読項目の ID。1〜50件） */
+        AnnouncementReadBatchRequestDto: {
+            /** @description 既読にする組織お知らせの ID（1〜50件・重複は除く） */
+            feedIds: number[];
+        };
+        /** @description 組織お知らせの一括既読の結果 */
+        AnnouncementReadBatchResultDto: {
+            /**
+             * Format: int32
+             * @description 判定を通った ID のうち、このリクエストで新たに既読になった件数（既読済みは数えない）
+             * @example 2
+             */
+            markedCount: number;
+        };
+        ApiResponseAnnouncementReadBatchResultDto: {
+            data?: components["schemas"]["AnnouncementReadBatchResultDto"];
         };
         ActivateTemplateResponse: {
             /** Format: int64 */
@@ -131327,6 +131364,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseMapStringObject"];
+                };
+            };
+        };
+    };
+    markBatchAsRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnouncementReadBatchRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAnnouncementReadBatchResultDto"];
                 };
             };
         };
