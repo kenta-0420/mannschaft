@@ -1,0 +1,21 @@
+{
+  "officialGeneratorExit": 0,
+  "officialGeneratorPath": "docs/prototypes/generate-beta-inventory-board-data.py",
+  "adoptedFieldOnly": "b0RunOverlay",
+  "unrelatedDataFieldsDeepEqual": true,
+  "overlaySourceCopyGeneratedDataDeepEqual": true,
+  "counts": [
+    29,
+    29,
+    56
+  ],
+  "inputSha256": "856c6008b021581f238d99d4a9cb8ea800ee3ef0ffab4b3904a836d3ba33091c",
+  "dataBeforeSha256": "a5cdb6f4d929e6f29e613b869a799e340921081088b1a92b7b4bfc7c81ddb396",
+  "dataAfterSha256": "d189c29339e838278403c83a1d90dc51cb1585e6e4175448f808146916772cb2",
+  "taxonomyFeatureKey": "village-events-calendar-view",
+  "taxonomyFeatureDetail": "統合カレンダー閲覧",
+  "htmlChanged": false,
+  "sourceInventoryGitHubSynchronized": false,
+  "coverageOrExecutionPassedClaimed": false,
+  "temporaryInputRemoved": true
+}

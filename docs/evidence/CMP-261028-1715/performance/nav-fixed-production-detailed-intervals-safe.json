@@ -1,0 +1,231 @@
+{
+  "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+  "clock": "browser performance time relative to login click",
+  "samples": [
+    {
+      "sample": 1,
+      "resources": {
+        "widget-config": [
+          {
+            "startMs": 4176.300000071526,
+            "requestStartDelayMs": null,
+            "ttfbMs": null,
+            "endMs": 5405.900000095367,
+            "durationMs": 1229.6000000238419,
+            "completedByDOM": true,
+            "timingRestricted": true,
+            "encodedBodySize": 0,
+            "initiator": "fetch"
+          }
+        ],
+        "layers": [
+          {
+            "startMs": 5953.300000071526,
+            "requestStartDelayMs": null,
+            "ttfbMs": null,
+            "endMs": 7800.700000047684,
+            "durationMs": 1847.3999999761581,
+            "completedByDOM": true,
+            "timingRestricted": true,
+            "encodedBodySize": 0,
+            "initiator": "fetch"
+          }
+        ],
+        "personal": [
+          {
+            "startMs": 5960.5,
+            "requestStartDelayMs": null,
+            "ttfbMs": null,
+            "endMs": 7357.900000095367,
+            "durationMs": 1397.4000000953674,
+            "completedByDOM": true,
+            "timingRestricted": true,
+            "encodedBodySize": 0,
+            "initiator": "fetch"
+          }
+        ],
+        "shared": [
+          {
+            "startMs": 5960.800000071526,
+            "requestStartDelayMs": null,
+            "ttfbMs": null,
+            "endMs": 8225.5,
+            "durationMs": 2264.6999999284744,
+            "completedByDOM": true,
+            "timingRestricted": true,
+            "encodedBodySize": 0,
+            "initiator": "fetch"
+          }
+        ],
+        "todos": [
+          {
+            "startMs": 5961,
+            "requestStartDelayMs": null,
+            "ttfbMs": null,
+            "endMs": 7833.400000095367,
+            "durationMs": 1872.4000000953674,
+            "completedByDOM": true,
+            "timingRestricted": true,
+            "encodedBodySize": 0,
+            "initiator": "fetch"
+          }
+        ],
+        "calendar-grid": [
+          {
+            "startMs": 5918.900000095367,
+            "requestStartDelayMs": 925.1999999284744,
+            "ttfbMs": 19.600000023841858,
+            "endMs": 6970.5,
+            "durationMs": 1051.5999999046326,
+            "completedByDOM": true,
+            "timingRestricted": false,
+            "encodedBodySize": 10597,
+            "initiator": "script"
+          }
+        ]
+      },
+      "intervalsMs": {
+        "configResponseEndToWidgetHeaderVisible": 1643.3999999761581,
+        "configResponseEndToCoreFirstResourceStart": 554.5999999046326,
+        "configResponseEndToCalendarDOM": 4704.899999976158,
+        "coreResponseEndToCalendarDOM": 1885.3000000715256
+      },
+      "marks": {
+        "loginHydrated": -552,
+        "click": 0,
+        "firstSubmit": 0.30000007152557373,
+        "route": 1870.1000000238419,
+        "mainContainer": 2123.600000023842,
+        "personalSelected": 4380.5,
+        "widgetVisible": 7049.300000071526,
+        "calendarDOM": 10110.800000071526
+      },
+      "http200AllFourCalendarObserved": true,
+      "nodeEventLoopLag": {
+        "intervalMs": 100,
+        "count": 63,
+        "medianMs": 24.977399999988847,
+        "maxMs": 1186.2270000000062,
+        "over100ms": 11
+      },
+      "logoutStatus": 200,
+      "closed": true
+    },
+    {
+      "sample": 2,
+      "resources": {
+        "widget-config": [
+          {
+            "startMs": 2154.5,
+            "requestStartDelayMs": null,
+            "ttfbMs": null,
+            "endMs": 2331.8000000715256,
+            "durationMs": 177.30000007152557,
+            "completedByDOM": true,
+            "timingRestricted": true,
+            "encodedBodySize": 0,
+            "initiator": "fetch"
+          }
+        ],
+        "layers": [
+          {
+            "startMs": 2832.100000023842,
+            "requestStartDelayMs": null,
+            "ttfbMs": null,
+            "endMs": 3270.3000000715256,
+            "durationMs": 438.2000000476837,
+            "completedByDOM": true,
+            "timingRestricted": true,
+            "encodedBodySize": 0,
+            "initiator": "fetch"
+          }
+        ],
+        "personal": [
+          {
+            "startMs": 2832.2000000476837,
+            "requestStartDelayMs": null,
+            "ttfbMs": null,
+            "endMs": 3158.2000000476837,
+            "durationMs": 326,
+            "completedByDOM": true,
+            "timingRestricted": true,
+            "encodedBodySize": 0,
+            "initiator": "fetch"
+          }
+        ],
+        "shared": [
+          {
+            "startMs": 2832.3000000715256,
+            "requestStartDelayMs": null,
+            "ttfbMs": null,
+            "endMs": 3599.4000000953674,
+            "durationMs": 767.1000000238419,
+            "completedByDOM": true,
+            "timingRestricted": true,
+            "encodedBodySize": 0,
+            "initiator": "fetch"
+          }
+        ],
+        "todos": [
+          {
+            "startMs": 2832.4000000953674,
+            "requestStartDelayMs": null,
+            "ttfbMs": null,
+            "endMs": 3245.3000000715256,
+            "durationMs": 412.89999997615814,
+            "completedByDOM": true,
+            "timingRestricted": true,
+            "encodedBodySize": 0,
+            "initiator": "fetch"
+          }
+        ],
+        "calendar-grid": [
+          {
+            "startMs": 2823.7000000476837,
+            "requestStartDelayMs": 248.10000002384186,
+            "ttfbMs": 12.600000023841858,
+            "endMs": 3089,
+            "durationMs": 265.2999999523163,
+            "completedByDOM": true,
+            "timingRestricted": false,
+            "encodedBodySize": 10597,
+            "initiator": "script"
+          }
+        ]
+      },
+      "intervalsMs": {
+        "configResponseEndToWidgetHeaderVisible": 589,
+        "configResponseEndToCoreFirstResourceStart": 500.39999997615814,
+        "configResponseEndToCalendarDOM": 2409.1999999284744,
+        "coreResponseEndToCalendarDOM": 1141.5999999046326
+      },
+      "marks": {
+        "loginHydrated": -486.1999999284744,
+        "click": 0,
+        "firstSubmit": 0.30000007152557373,
+        "route": 896.8000000715256,
+        "mainContainer": 1139.7000000476837,
+        "personalSelected": 2298.5,
+        "widgetVisible": 2920.8000000715256,
+        "calendarDOM": 4741
+      },
+      "http200AllFourCalendarObserved": true,
+      "nodeEventLoopLag": {
+        "intervalMs": 100,
+        "count": 42,
+        "medianMs": 9.374700000000303,
+        "maxMs": 293.3420000000042,
+        "over100ms": 3
+      },
+      "logoutStatus": 200,
+      "closed": true
+    }
+  ],
+  "limitations": [
+    "Cross-origin API ResourceTiming is timingRestricted, so requestStartDelayMs and ttfbMs are unknown, not zero. API status200 is a separate safe response event.",
+    "Widget visible is the existing header/container visibility mark, not calendar data readiness. Config boundary below is response end, not config application completion.",
+    "RequestStartDelay may include browser scheduling, connection or request preparation; it is not isolated HTTP1 queue or DNS attribution.",
+    "Tagged CalendarGrid resource is HTTP acquisition, not module evaluation or mount. Baseline already fetched tagged modules before layers.",
+    "Nav hook counts do not establish network request counts or event origin. No extra measurement was performed."
+  ]
+}

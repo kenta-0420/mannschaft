@@ -1,0 +1,35 @@
+{
+  "adoptedMainHead": "2f524c7a19f8b928b0086ad700fe527e2d631843",
+  "priorCounts": [
+    26,
+    26,
+    55
+  ],
+  "newCounts": [
+    29,
+    29,
+    56
+  ],
+  "priorAllFieldsDeepEqual": true,
+  "baselineGitBlobByteSha256": "bdbbfa3238dce10ca83bf480805847a1de102dcb9041796772e0cdba547deee7",
+  "baselineWorktreeByteSha256": "de10d80723a3ac6bb90f41346f96d1f7f25dc3be37128d742d70bfd1bce0c57c",
+  "allExistingDeclarationsAndEnvironmentPreserved": true,
+  "canonicalGeneratorOverlayGeneratedDataMatch": true,
+  "otherDataFieldsDeepEqual": true,
+  "exactExistingOverlayValidatorPassed": true,
+  "featureKey": "village-events-calendar-view",
+  "featureDetail": "統合カレンダー閲覧",
+  "status": "observed-unverified",
+  "trusted": false,
+  "coveragePassedClaimed": false,
+  "htmlChanged": false,
+  "standardValidator": {
+    "passed": false,
+    "reason": "既存CMP正本行数と参照抽出数が一致しません。overlay限定検証とは別結果。"
+  },
+  "localTargetedGreen": {
+    "testsExecuted": false,
+    "originalReceiptRetained": true,
+    "adoptedGreen": "remote CI own15pass/0skip"
+  }
+}

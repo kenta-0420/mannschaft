@@ -1,0 +1,212 @@
+{
+  "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+  "kind": "single-session-diagnostic-not-AB-sample",
+  "clock": "Playwright Request.timing: startTime is Unix epoch milliseconds; remaining fields are milliseconds relative to that request startTime",
+  "phaseMeaning": "phase enum captured at request event, not finished callback",
+  "allObservedHttpStatuses200": true,
+  "rows": [
+    {
+      "phase": "initial-dashboard",
+      "category": "widget-config",
+      "status": 200,
+      "startTimeEpochMs": 1793193788772.479,
+      "domainLookupStartMs": null,
+      "domainLookupEndMs": null,
+      "connectStartMs": null,
+      "connectEndMs": null,
+      "requestStartMs": 11.127,
+      "responseStartMs": 99.675,
+      "responseEndMs": 278.23,
+      "ttfbMs": 88.548,
+      "responseDownloadMs": 178.555
+    },
+    {
+      "phase": "initial-dashboard",
+      "category": "personal",
+      "status": 200,
+      "startTimeEpochMs": 1793193789366.465,
+      "domainLookupStartMs": null,
+      "domainLookupEndMs": null,
+      "connectStartMs": null,
+      "connectEndMs": null,
+      "requestStartMs": 136.037,
+      "responseStartMs": 278.976,
+      "responseEndMs": 412.11,
+      "ttfbMs": 142.939,
+      "responseDownloadMs": 133.13400000000001
+    },
+    {
+      "phase": "initial-dashboard",
+      "category": "layers",
+      "status": 200,
+      "startTimeEpochMs": 1793193789347.946,
+      "domainLookupStartMs": null,
+      "domainLookupEndMs": null,
+      "connectStartMs": null,
+      "connectEndMs": null,
+      "requestStartMs": 149.509,
+      "responseStartMs": 520.381,
+      "responseEndMs": 638.24,
+      "ttfbMs": 370.87199999999996,
+      "responseDownloadMs": 117.85900000000004
+    },
+    {
+      "phase": "initial-dashboard",
+      "category": "todos",
+      "status": 200,
+      "startTimeEpochMs": 1793193789374.4412,
+      "domainLookupStartMs": null,
+      "domainLookupEndMs": null,
+      "connectStartMs": null,
+      "connectEndMs": null,
+      "requestStartMs": 370.373,
+      "responseStartMs": 525.424,
+      "responseEndMs": 662.936,
+      "ttfbMs": 155.051,
+      "responseDownloadMs": 137.51200000000006
+    },
+    {
+      "phase": "initial-dashboard",
+      "category": "shared",
+      "status": 200,
+      "startTimeEpochMs": 1793193789371.488,
+      "domainLookupStartMs": null,
+      "domainLookupEndMs": null,
+      "connectStartMs": null,
+      "connectEndMs": null,
+      "requestStartMs": 134.836,
+      "responseStartMs": 1028.252,
+      "responseEndMs": 1299.359,
+      "ttfbMs": 893.4159999999999,
+      "responseDownloadMs": 271.10699999999997
+    },
+    {
+      "phase": "calendar-page-after-click",
+      "category": "personal",
+      "status": 200,
+      "startTimeEpochMs": 1793193795302.1118,
+      "domainLookupStartMs": null,
+      "domainLookupEndMs": null,
+      "connectStartMs": null,
+      "connectEndMs": null,
+      "requestStartMs": 11.906,
+      "responseStartMs": 60.811,
+      "responseEndMs": 96.888,
+      "ttfbMs": 48.905,
+      "responseDownloadMs": 36.077000000000005
+    },
+    {
+      "phase": "calendar-page-after-click",
+      "category": "todos",
+      "status": 200,
+      "startTimeEpochMs": 1793193795336.715,
+      "domainLookupStartMs": null,
+      "domainLookupEndMs": null,
+      "connectStartMs": null,
+      "connectEndMs": null,
+      "requestStartMs": 15.119,
+      "responseStartMs": 93.86,
+      "responseEndMs": 154.515,
+      "ttfbMs": 78.741,
+      "responseDownloadMs": 60.65499999999999
+    },
+    {
+      "phase": "calendar-page-after-click",
+      "category": "layers",
+      "status": 200,
+      "startTimeEpochMs": 1793193795300.3208,
+      "domainLookupStartMs": null,
+      "domainLookupEndMs": null,
+      "connectStartMs": null,
+      "connectEndMs": null,
+      "requestStartMs": 0.734,
+      "responseStartMs": 184.145,
+      "responseEndMs": 212.883,
+      "ttfbMs": 183.411,
+      "responseDownloadMs": 28.738
+    },
+    {
+      "phase": "calendar-page-after-click",
+      "category": "shared",
+      "status": 200,
+      "startTimeEpochMs": 1793193795303.17,
+      "domainLookupStartMs": null,
+      "domainLookupEndMs": null,
+      "connectStartMs": null,
+      "connectEndMs": null,
+      "requestStartMs": 35.084,
+      "responseStartMs": 444.954,
+      "responseEndMs": 475.02,
+      "ttfbMs": 409.87,
+      "responseDownloadMs": 30.065999999999974
+    }
+  ],
+  "limitations": [
+    "Native Request.timing privileged transport metadata is separate from browser ResourceTiming and from frozen A/B samples.",
+    "requestStart relative delay includes browser scheduling/setup and possibly connection/preflight; it is not proof of one specific queue cause.",
+    "TTFB uses nonnegative ordered requestStart/responseStart only; null or missing category remains unknown.",
+    "Hook destination match and interaction correlation do not identify event call origin or network request counts."
+  ],
+  "categoryCoverage": [
+    {
+      "phase": "initial-dashboard",
+      "category": "widget-config",
+      "observedCount": 1,
+      "knownTTFBCount": 1
+    },
+    {
+      "phase": "initial-dashboard",
+      "category": "layers",
+      "observedCount": 1,
+      "knownTTFBCount": 1
+    },
+    {
+      "phase": "initial-dashboard",
+      "category": "personal",
+      "observedCount": 1,
+      "knownTTFBCount": 1
+    },
+    {
+      "phase": "initial-dashboard",
+      "category": "shared",
+      "observedCount": 1,
+      "knownTTFBCount": 1
+    },
+    {
+      "phase": "initial-dashboard",
+      "category": "todos",
+      "observedCount": 1,
+      "knownTTFBCount": 1
+    },
+    {
+      "phase": "calendar-page-after-click",
+      "category": "widget-config",
+      "observedCount": 0,
+      "knownTTFBCount": 0
+    },
+    {
+      "phase": "calendar-page-after-click",
+      "category": "layers",
+      "observedCount": 1,
+      "knownTTFBCount": 1
+    },
+    {
+      "phase": "calendar-page-after-click",
+      "category": "personal",
+      "observedCount": 1,
+      "knownTTFBCount": 1
+    },
+    {
+      "phase": "calendar-page-after-click",
+      "category": "shared",
+      "observedCount": 1,
+      "knownTTFBCount": 1
+    },
+    {
+      "phase": "calendar-page-after-click",
+      "category": "todos",
+      "observedCount": 1,
+      "knownTTFBCount": 1
+    }
+  ]
+}

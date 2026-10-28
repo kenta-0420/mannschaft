@@ -281,6 +281,30 @@
       "evidencePath": "docs/evidence/CMP-261027-1311/additional-observations.json",
       "sourceEvidencePath": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/committee-third-resident-observations.json",
       "idAssignment": "原personaId 2を保持し、累積一意personaIdのみ登録時付与。旧fresh3-R4の原ID2とは別の委員会目的探索。固定P01-P20へ変換しない。"
+    },
+    {
+      "id": "CMP-261028-1715-plain",
+      "personaArchetype": "一般・素直",
+      "originalResidentId": "resident-plain",
+      "runId": "calendar-residual-20261028",
+      "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+      "evidencePath": "docs/evidence/CMP-261028-1715/residents/plain/journey.jsonl"
+    },
+    {
+      "id": "CMP-261028-1715-return",
+      "personaArchetype": "ADHD傾向・中断放棄",
+      "originalResidentId": "resident-adhd-return",
+      "runId": "calendar-residual-20261028",
+      "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+      "evidencePath": "docs/evidence/CMP-261028-1715/residents/return/observation.safe.json"
+    },
+    {
+      "id": "CMP-261028-1715-mobile",
+      "personaArchetype": "スマホ片手・表示崩れ",
+      "originalResidentId": "resident-mobile",
+      "runId": "calendar-residual-20261028",
+      "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+      "evidencePath": "docs/evidence/CMP-261028-1715/residents/mobile/report.json"
     }
   ],
   "journeys": [
@@ -683,6 +707,36 @@
       "goalsReached": false,
       "coveragePassed": false,
       "purposeSupplement": "途中で目的組織名のみ補足。操作手順・URLの指示なし。"
+    },
+    {
+      "id": "CMP-261028-1715-plain-journey",
+      "personaId": "CMP-261028-1715-plain",
+      "purpose": "近い予定を確認して内容を把握する",
+      "originalJourneyId": "nearby-next-month",
+      "journeyIdSource": "登録時に独自ID付与・元journeyIdを保持",
+      "runId": "calendar-residual-20261028",
+      "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+      "evidencePath": "docs/evidence/CMP-261028-1715/residents/plain/journey.jsonl"
+    },
+    {
+      "id": "CMP-261028-1715-return-journey",
+      "personaId": "CMP-261028-1715-return",
+      "purpose": "表示を切り替えた後に離脱し復帰して確認する",
+      "originalJourneyId": "visible-schedule-interrupted-return",
+      "journeyIdSource": "登録時に独自ID付与・元journeyIdを保持",
+      "runId": "calendar-residual-20261028",
+      "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+      "evidencePath": "docs/evidence/CMP-261028-1715/residents/return/observation.safe.json"
+    },
+    {
+      "id": "CMP-261028-1715-mobile-journey",
+      "personaId": "CMP-261028-1715-mobile",
+      "purpose": "小画面で予定を閲覧し日付を移動する",
+      "originalJourneyId": "mobile-calendar-local-1",
+      "journeyIdSource": "登録時に独自ID付与・元journeyIdを保持",
+      "runId": "calendar-residual-20261028",
+      "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+      "evidencePath": "docs/evidence/CMP-261028-1715/residents/mobile/report.json"
     }
   ],
   "insights": [
@@ -1956,6 +2010,25 @@
       "status": "observed-unverified",
       "urgency": "normal",
       "priority": "should"
+    },
+    {
+      "id": "CMP-261028-1715-mobile-nearby-date-navigation",
+      "featureKey": "village-events-calendar-view",
+      "featureDetail": "統合カレンダー閲覧",
+      "title": "長い月一覧で直近日付を探す移動に迷った",
+      "detail": "390/360幅で個人scopeの近い週を確認した際、長い月一覧から対象日付へ移動する手掛かりを見つけにくいという住民観測。383 DOM行・高さ36444pxは観測であり、一意予定件数や遅延の原因は未確認。TEAM/ORGは未探索。製品不備・回帰・規約違反の実証とは扱わず、時間がある時の再調査候補とする。",
+      "page": "/calendar",
+      "personaId": "CMP-261028-1715-mobile",
+      "personaArchetype": "スマホ片手・表示崩れ",
+      "journeyId": "CMP-261028-1715-mobile-journey",
+      "originalRunId": "calendar-residual-20261028",
+      "runId": "calendar-residual-20261028",
+      "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+      "evidencePath": "docs/evidence/CMP-261028-1715/residents/mobile/report.json",
+      "status": "observed-unverified",
+      "trusted": false,
+      "registrationSource": "actual-resident-artifacts",
+      "urgency": "when-free"
     }
   ],
   "runEnvironments": {

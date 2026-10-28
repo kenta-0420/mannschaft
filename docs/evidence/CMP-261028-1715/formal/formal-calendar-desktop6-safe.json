@@ -1,0 +1,800 @@
+{
+  "kind": "formal-ui-not-performance",
+  "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+  "mode": "desktop",
+  "startedAt": "2026-10-28T13:27:20.652Z",
+  "cases": [
+    {
+      "name": "owner-widget-month-and-personal-create",
+      "status": "passed",
+      "createHTTP201": true,
+      "ownedIdCapturedInMemory": true,
+      "monthRoundTrip": true
+    },
+    {
+      "name": "owner-personal-detail-update-refetch",
+      "status": "passed",
+      "modalPositive": true,
+      "sameOwnedId": true,
+      "timePreserved": true,
+      "updateHTTP200": true,
+      "UIRefetchPreserved": true,
+      "detailAPIOwner200": true
+    },
+    {
+      "name": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "status": "passed",
+      "fullScreenUI": true,
+      "existingSharedQueryPositive": true,
+      "sharedRecordReadOnly": true,
+      "sharedIdentityKeptInMemory": true
+    },
+    {
+      "name": "member-personal-isolation",
+      "status": "passed",
+      "distinctAuthenticatedAccount": true,
+      "personalListNotExposed": true,
+      "detailAPIDenied": true,
+      "detailAPIStatus": 403,
+      "existingSharedQueryNotExposed": false,
+      "personalOwnershipNotManagementRole": true
+    },
+    {
+      "name": "outsider-personal-isolation-valid-shared-query-deny",
+      "status": "passed",
+      "distinctAuthenticatedAccount": true,
+      "personalListNotExposed": true,
+      "detailAPIDenied": true,
+      "detailAPIStatus": 403,
+      "existingSharedQueryNotExposed": true,
+      "personalOwnershipNotManagementRole": true
+    },
+    {
+      "name": "owner-personal-ui-delete",
+      "status": "passed",
+      "sameRecordDeletedByUI": true
+    }
+  ],
+  "checkpoints": [
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "case-start",
+      "at": "2026-10-28T13:27:38.136Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "owner-natural-login",
+      "at": "2026-10-28T13:27:38.138Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "identity-http",
+      "at": "2026-10-28T13:27:40.283Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "identity-shape",
+      "at": "2026-10-28T13:27:41.125Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "select-personal",
+      "at": "2026-10-28T13:27:41.161Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "widget-heading-visible",
+      "at": "2026-10-28T13:27:41.545Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "widget-42cells",
+      "at": "2026-10-28T13:27:43.927Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "widget-cells-visible",
+      "at": "2026-10-28T13:27:43.988Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-button-visible",
+      "at": "2026-10-28T13:27:44.174Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-button-click",
+      "at": "2026-10-28T13:27:44.208Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-click-completed",
+      "at": "2026-10-28T13:27:44.955Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-heading-changed",
+      "at": "2026-10-28T13:27:45.024Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-request-observed",
+      "at": "2026-10-28T13:27:45.074Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-observed-requests-finished",
+      "at": "2026-10-28T13:27:45.076Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-next-heading",
+      "at": "2026-10-28T13:27:45.677Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-button-visible",
+      "at": "2026-10-28T13:27:45.770Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-button-click",
+      "at": "2026-10-28T13:27:45.822Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-click-completed",
+      "at": "2026-10-28T13:27:46.444Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-heading-changed",
+      "at": "2026-10-28T13:27:46.469Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-request-observed",
+      "at": "2026-10-28T13:27:46.502Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-observed-requests-finished",
+      "at": "2026-10-28T13:27:46.503Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-restored",
+      "at": "2026-10-28T13:27:47.184Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "widget-heading-visible",
+      "at": "2026-10-28T13:27:47.211Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "widget-42cells",
+      "at": "2026-10-28T13:27:47.227Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "widget-cells-visible",
+      "at": "2026-10-28T13:27:47.243Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "current-month-day-click",
+      "at": "2026-10-28T13:27:47.262Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "form-or-day-list-visible",
+      "at": "2026-10-28T13:27:47.607Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "create-form-visible",
+      "at": "2026-10-28T13:27:47.655Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "own-title-fill",
+      "at": "2026-10-28T13:27:47.668Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "own-create-ui-post",
+      "at": "2026-10-28T13:27:47.739Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "own-create-response",
+      "at": "2026-10-28T13:27:48.284Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "own-create-form-closed",
+      "at": "2026-10-28T13:27:48.322Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "case-start",
+      "at": "2026-10-28T13:27:48.715Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "widget-heading-visible",
+      "at": "2026-10-28T13:27:48.716Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "widget-42cells",
+      "at": "2026-10-28T13:27:48.731Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "widget-cells-visible",
+      "at": "2026-10-28T13:27:49.486Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "current-month-day-click",
+      "at": "2026-10-28T13:27:49.503Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-day-row-visible",
+      "at": "2026-10-28T13:27:49.701Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-row-detail-click",
+      "at": "2026-10-28T13:27:49.743Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-modal-positive",
+      "at": "2026-10-28T13:27:50.103Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-edit-open",
+      "at": "2026-10-28T13:27:50.369Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-update-title",
+      "at": "2026-10-28T13:27:51.037Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-update-ui-patch",
+      "at": "2026-10-28T13:27:51.115Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-update-response",
+      "at": "2026-10-28T13:27:51.511Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-update-ui-reload",
+      "at": "2026-10-28T13:27:52.709Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "widget-heading-visible",
+      "at": "2026-10-28T13:27:53.656Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "widget-42cells",
+      "at": "2026-10-28T13:27:57.033Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "widget-cells-visible",
+      "at": "2026-10-28T13:27:57.191Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "current-month-day-click",
+      "at": "2026-10-28T13:27:57.287Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-day-row-visible",
+      "at": "2026-10-28T13:27:57.920Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-row-detail-click",
+      "at": "2026-10-28T13:27:57.934Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-modal-positive",
+      "at": "2026-10-28T13:27:58.458Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-modal-close",
+      "at": "2026-10-28T13:27:58.865Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "owner-detail-api-positive",
+      "at": "2026-10-28T13:27:59.290Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "case-start",
+      "at": "2026-10-28T13:27:59.771Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "widget-heading-visible",
+      "at": "2026-10-28T13:27:59.772Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "widget-42cells",
+      "at": "2026-10-28T13:27:59.790Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "widget-cells-visible",
+      "at": "2026-10-28T13:27:59.806Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "widget-fullscreen-ui",
+      "at": "2026-10-28T13:27:59.823Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "fullscreen-route",
+      "at": "2026-10-28T13:28:00.911Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "calendar-view-attached",
+      "at": "2026-10-28T13:28:01.185Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "shared-query-positive-entry",
+      "at": "2026-10-28T13:28:03.585Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "calendar-view-attached",
+      "at": "2026-10-28T13:28:05.130Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "shared-query-positive-detail",
+      "at": "2026-10-28T13:28:07.461Z"
+    },
+    {
+      "stage": "member-personal-isolation",
+      "name": "case-start",
+      "at": "2026-10-28T13:28:07.721Z"
+    },
+    {
+      "stage": "member-personal-isolation",
+      "name": "other-actor-open-login",
+      "at": "2026-10-28T13:28:07.722Z"
+    },
+    {
+      "stage": "member-personal-isolation",
+      "name": "identity-http",
+      "at": "2026-10-28T13:28:15.740Z"
+    },
+    {
+      "stage": "member-personal-isolation",
+      "name": "identity-shape",
+      "at": "2026-10-28T13:28:15.790Z"
+    },
+    {
+      "stage": "member-personal-isolation",
+      "name": "actor-membership-precondition",
+      "at": "2026-10-28T13:28:15.794Z"
+    },
+    {
+      "stage": "member-personal-isolation",
+      "name": "other-calendar-ui-entry",
+      "at": "2026-10-28T13:28:16.036Z"
+    },
+    {
+      "stage": "member-personal-isolation",
+      "name": "calendar-view-attached",
+      "at": "2026-10-28T13:28:16.946Z"
+    },
+    {
+      "stage": "member-personal-isolation",
+      "name": "other-calendar-four-http200",
+      "at": "2026-10-28T13:28:21.386Z"
+    },
+    {
+      "stage": "member-personal-isolation",
+      "name": "other-personal-list-not-exposed",
+      "at": "2026-10-28T13:28:21.391Z"
+    },
+    {
+      "stage": "member-personal-isolation",
+      "name": "other-personal-detail-api-denial",
+      "at": "2026-10-28T13:28:21.572Z"
+    },
+    {
+      "stage": "member-personal-isolation",
+      "name": "other-actor-close",
+      "at": "2026-10-28T13:28:21.850Z"
+    },
+    {
+      "stage": "outsider-personal-isolation-valid-shared-query-deny",
+      "name": "case-start",
+      "at": "2026-10-28T13:28:24.983Z"
+    },
+    {
+      "stage": "outsider-personal-isolation-valid-shared-query-deny",
+      "name": "other-actor-open-login",
+      "at": "2026-10-28T13:28:24.983Z"
+    },
+    {
+      "stage": "outsider-personal-isolation-valid-shared-query-deny",
+      "name": "identity-http",
+      "at": "2026-10-28T13:28:36.614Z"
+    },
+    {
+      "stage": "outsider-personal-isolation-valid-shared-query-deny",
+      "name": "identity-shape",
+      "at": "2026-10-28T13:28:36.687Z"
+    },
+    {
+      "stage": "outsider-personal-isolation-valid-shared-query-deny",
+      "name": "actor-membership-precondition",
+      "at": "2026-10-28T13:28:36.688Z"
+    },
+    {
+      "stage": "outsider-personal-isolation-valid-shared-query-deny",
+      "name": "other-calendar-ui-entry",
+      "at": "2026-10-28T13:28:37.049Z"
+    },
+    {
+      "stage": "outsider-personal-isolation-valid-shared-query-deny",
+      "name": "calendar-view-attached",
+      "at": "2026-10-28T13:28:37.677Z"
+    },
+    {
+      "stage": "outsider-personal-isolation-valid-shared-query-deny",
+      "name": "other-calendar-four-http200",
+      "at": "2026-10-28T13:28:41.880Z"
+    },
+    {
+      "stage": "outsider-personal-isolation-valid-shared-query-deny",
+      "name": "other-personal-list-not-exposed",
+      "at": "2026-10-28T13:28:41.882Z"
+    },
+    {
+      "stage": "outsider-personal-isolation-valid-shared-query-deny",
+      "name": "other-personal-detail-api-denial",
+      "at": "2026-10-28T13:28:42.051Z"
+    },
+    {
+      "stage": "outsider-personal-isolation-valid-shared-query-deny",
+      "name": "shared-query-other-entry",
+      "at": "2026-10-28T13:28:42.131Z"
+    },
+    {
+      "stage": "outsider-personal-isolation-valid-shared-query-deny",
+      "name": "calendar-view-attached",
+      "at": "2026-10-28T13:28:43.086Z"
+    },
+    {
+      "stage": "outsider-personal-isolation-valid-shared-query-deny",
+      "name": "shared-query-other-consumed",
+      "at": "2026-10-28T13:28:44.718Z"
+    },
+    {
+      "stage": "outsider-personal-isolation-valid-shared-query-deny",
+      "name": "shared-query-other-not-exposed",
+      "at": "2026-10-28T13:28:44.757Z"
+    },
+    {
+      "stage": "outsider-personal-isolation-valid-shared-query-deny",
+      "name": "other-actor-close",
+      "at": "2026-10-28T13:28:45.078Z"
+    },
+    {
+      "stage": "owner-personal-ui-delete",
+      "name": "case-start",
+      "at": "2026-10-28T13:29:00.670Z"
+    },
+    {
+      "stage": "owner-personal-ui-delete",
+      "name": "owner-delete-widget-entry",
+      "at": "2026-10-28T13:29:00.674Z"
+    },
+    {
+      "stage": "owner-personal-ui-delete",
+      "name": "widget-heading-visible",
+      "at": "2026-10-28T13:29:05.302Z"
+    },
+    {
+      "stage": "owner-personal-ui-delete",
+      "name": "widget-42cells",
+      "at": "2026-10-28T13:29:05.367Z"
+    },
+    {
+      "stage": "owner-personal-ui-delete",
+      "name": "widget-cells-visible",
+      "at": "2026-10-28T13:29:05.401Z"
+    },
+    {
+      "stage": "owner-personal-ui-delete",
+      "name": "current-month-day-click",
+      "at": "2026-10-28T13:29:05.540Z"
+    },
+    {
+      "stage": "owner-personal-ui-delete",
+      "name": "own-day-row-visible",
+      "at": "2026-10-28T13:29:06.234Z"
+    },
+    {
+      "stage": "owner-personal-ui-delete",
+      "name": "own-row-detail-click",
+      "at": "2026-10-28T13:29:06.282Z"
+    },
+    {
+      "stage": "owner-personal-ui-delete",
+      "name": "own-modal-positive",
+      "at": "2026-10-28T13:29:06.470Z"
+    },
+    {
+      "stage": "owner-personal-ui-delete",
+      "name": "owner-delete-ui",
+      "at": "2026-10-28T13:29:06.766Z"
+    },
+    {
+      "stage": "owner-personal-ui-delete",
+      "name": "owner-delete-response",
+      "at": "2026-10-28T13:29:07.151Z"
+    }
+  ],
+  "identityShapes": [
+    {
+      "actorAlias": "owner",
+      "httpStatus": 200,
+      "dataObject": true,
+      "idType": "number",
+      "idFinite": true,
+      "idDuplicate": false
+    },
+    {
+      "actorAlias": "member",
+      "httpStatus": 200,
+      "dataObject": true,
+      "idType": "number",
+      "idFinite": true,
+      "idDuplicate": false
+    },
+    {
+      "actorAlias": "outsider",
+      "httpStatus": 200,
+      "dataObject": true,
+      "idType": "number",
+      "idFinite": true,
+      "idDuplicate": false
+    }
+  ],
+  "ownCreates": 1,
+  "ownUpdates": 1,
+  "ownDeletes": 1,
+  "sharedWrites": 0,
+  "notificationsRequested": 0,
+  "trace": false,
+  "video": false,
+  "rawImages": false,
+  "screenshots": [
+    {
+      "file": "未採用ローカル画像（公開証跡に含めない）",
+      "masked": true,
+      "width": 1280,
+      "height": 900,
+      "bodyOverflowPx": 0
+    },
+    {
+      "file": "docs/evidence/CMP-261028-1715/images/formal-calendar-outsider-denial-v6-masked.png",
+      "masked": true,
+      "width": 1280,
+      "height": 900,
+      "bodyOverflowPx": 0
+    }
+  ],
+  "stage": "owner-personal-ui-delete",
+  "checkpoint": "owner-delete-response",
+  "monthMoves": [
+    {
+      "direction": 1,
+      "clickCompleted": true,
+      "headingChanged": true,
+      "observations": [
+        {
+          "category": "personal",
+          "status": 200,
+          "finished": true,
+          "failed": false
+        },
+        {
+          "category": "shared",
+          "status": 200,
+          "finished": true,
+          "failed": false
+        },
+        {
+          "category": "todos",
+          "status": 200,
+          "finished": true,
+          "failed": false
+        }
+      ],
+      "allObservedCompleted": true
+    },
+    {
+      "direction": -1,
+      "clickCompleted": true,
+      "headingChanged": true,
+      "observations": [
+        {
+          "category": "personal",
+          "status": 200,
+          "finished": true,
+          "failed": false
+        },
+        {
+          "category": "shared",
+          "status": 200,
+          "finished": true,
+          "failed": false
+        },
+        {
+          "category": "todos",
+          "status": 200,
+          "finished": true,
+          "failed": false
+        }
+      ],
+      "allObservedCompleted": true
+    }
+  ],
+  "createRequestAttempted": true,
+  "sharedQueryDenialNoticeVisible": true,
+  "status": "completed",
+  "sessions": [
+    {
+      "actorAlias": "owner",
+      "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+      "credentialsRead": true,
+      "businessMutations": 0,
+      "trace": false,
+      "video": false,
+      "pageErrorCount": 0,
+      "runtimeGuard": {
+        "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+        "ownerAndSourceMatch": true,
+        "frontendIdentityMatches": true,
+        "frontendOwnedSocketMatches": true,
+        "runtimePublic8081Internal8080Match": true,
+        "existingMainApiIdentityMatches": true,
+        "rawArgvEnvironmentSaved": false
+      },
+      "initialCookieCount": 0,
+      "frontend200": true,
+      "frontendActual3011": true,
+      "frontendLogicalPreserved": true,
+      "apiHealth200": true,
+      "apiActual8080": true,
+      "publicRuntimeApiExpected": true,
+      "fixtureAliasesDistinct": true,
+      "configuredActorAliases": [
+        "owner",
+        "member",
+        "outsider"
+      ],
+      "loginDashboardReached": true,
+      "logoutStatus": 200,
+      "contextClosed": true,
+      "browserClosed": true,
+      "closed": true
+    },
+    {
+      "actorAlias": "member",
+      "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+      "credentialsRead": true,
+      "businessMutations": 0,
+      "trace": false,
+      "video": false,
+      "pageErrorCount": 0,
+      "runtimeGuard": {
+        "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+        "ownerAndSourceMatch": true,
+        "frontendIdentityMatches": true,
+        "frontendOwnedSocketMatches": true,
+        "runtimePublic8081Internal8080Match": true,
+        "existingMainApiIdentityMatches": true,
+        "rawArgvEnvironmentSaved": false
+      },
+      "initialCookieCount": 0,
+      "frontend200": true,
+      "frontendActual3011": true,
+      "frontendLogicalPreserved": true,
+      "apiHealth200": true,
+      "apiActual8080": true,
+      "publicRuntimeApiExpected": true,
+      "fixtureAliasesDistinct": true,
+      "configuredActorAliases": [
+        "owner",
+        "member",
+        "outsider"
+      ],
+      "loginStatus": 200,
+      "apiPreconditionProfileStatus": 200,
+      "apiPreconditionIdentityMatches": true,
+      "apiPreconditionCookiePresent": true,
+      "apiPreconditionClientUserStored": true,
+      "apiPreconditionProjectionMatchesLoginSession": true,
+      "apiPreconditionLayerStateModified": false,
+      "apiPreconditionTokensStored": false,
+      "logoutStatus": 200,
+      "contextClosed": true,
+      "browserClosed": true,
+      "closed": true
+    },
+    {
+      "actorAlias": "outsider",
+      "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+      "credentialsRead": true,
+      "businessMutations": 0,
+      "trace": false,
+      "video": false,
+      "pageErrorCount": 0,
+      "runtimeGuard": {
+        "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+        "ownerAndSourceMatch": true,
+        "frontendIdentityMatches": true,
+        "frontendOwnedSocketMatches": true,
+        "runtimePublic8081Internal8080Match": true,
+        "existingMainApiIdentityMatches": true,
+        "rawArgvEnvironmentSaved": false
+      },
+      "initialCookieCount": 0,
+      "frontend200": true,
+      "frontendActual3011": true,
+      "frontendLogicalPreserved": true,
+      "apiHealth200": true,
+      "apiActual8080": true,
+      "publicRuntimeApiExpected": true,
+      "fixtureAliasesDistinct": true,
+      "configuredActorAliases": [
+        "owner",
+        "member",
+        "outsider"
+      ],
+      "loginStatus": 200,
+      "apiPreconditionProfileStatus": 200,
+      "apiPreconditionIdentityMatches": true,
+      "apiPreconditionCookiePresent": true,
+      "apiPreconditionClientUserStored": true,
+      "apiPreconditionProjectionMatchesLoginSession": true,
+      "apiPreconditionLayerStateModified": false,
+      "apiPreconditionTokensStored": false,
+      "logoutStatus": 200,
+      "contextClosed": true,
+      "browserClosed": true,
+      "closed": true
+    }
+  ],
+  "allSessionsClosed": true,
+  "finishedAt": "2026-10-28T13:29:34.193Z"
+}
