@@ -2,7 +2,7 @@
   "schema": 1,
   "campaign": "CMP-261021-0017",
   "manifest": "24a7e873fb7c08006fad3a77d4c3bda34507d5f294108d2dc2a2e8aa506d7960",
-  "operation": "241141a1-2d17-4317-8fab-9d90acf444db",
+  "operation": "9cdd4f32-f0c2-4c28-a04f-991d43e04914",
   "territories": {
     "foundation": {
       "owner": "9402167b-f025-4bd7-82f1-ef460aeca244",
@@ -103,15 +103,14 @@
       "held": []
     },
     "L1-B": {
-      "state": "working",
-      "evidence": "",
+      "state": "done",
+      "evidence": "実装PR4169 main bc2f2c89e7a40c0775d751aad2bd0e80287fdf0a、head e67a77172f67ddbacfe4c8d8f9504eae8f54b004、Backend CI40662266445 success/6shard成功、全check失敗未完了0で通常merge。f281 CI40648568860は6fresh成功。B1-B8改定承認PR4201、公開診断gate不足は未着手Issue4200へ分離。検分/実機4case/探索3住民passed、元a8b実証と統合HEAD同一性を記録。共有build/weights編集と実装足軽の当該WT使用は終了。完了証拠/子台帳PRと自隊cleanupは継続中、親CMPは未完了。",
       "note": "L1-Bの読取準備を開始。現行task/6shard/依存/CI契約と移行ACを整理。L0-M免除反映は別担当feature/4022-l0m-waiverを待ち、共有build/weights予約と実装は未着手。管理WT agent-4022-gradle-manager-261027、引継-boundary-gradle-20261027-1350.md。\nL0-M免除PR4161 main b9bd40353f反映を受領、最新版CLI209be4eでL1-B依存blocker0を確認。準備計画PR4162で現行契約/8AC/検証手順を文書化。REQ-GRADLE-GUARD-01 要判断: 計画8.1の番人中身変更禁止と依存移設がStripeJavaVersionGuardTestのbuild本文参照で衝突。28固定/欠損failを維持し参照元だけ追従する限定例外を提案。判断前は実装しない。子CMP未登録/共有予約0/build実行0。担当保持、引継-boundary-gradle-20261027-1350.md。\nREQ-GRADLE-GUARD-01解決: ユーザー続けてと親6436425040の限定承認を受領。28固定/29以上・欠損拒否を維持し参照元だけ移設追従。子CMP登録PR先行中、登録main後にbuild/weights予約して実装。承認再確認不要。他owner/measurement不変。\n子CMP-261027-1646登録PR4168 main a073644f7a確定。承認6436425040を正本へ限定反映して試練/実装開始。branch feature/4022-boundary-l1b、WT agent-4022-l1b-impl-261027。build/weights所有で移設前後契約比較。L1-M/L3/他番人/他owner不変、実装検証は未完了。\nREQ-GRADLE-DIAG-02 判断待ち: B5の診断artifact欠損時gate非成功は既存CIがwarnのため未担保。挙動不変移設と衝突するため既存不足を別件分離して条件修正するか今回gate強化するかユーザーへ質問済み・未回答。PR4169 Draft/head a8b7d8b999973d2c138ffecce2fbe2233f6bb09a。旧/新重み各37profile76比較一致、負試験/OpenAPI前後一致、実機4case/独立3住民探索完了。CI40481639328 attempt1は5shard成功、shard5もXML失敗0だがTest後105分step timeoutで全体failure。設定変更なしfailed jobs再実行attempt2進行中、green未判定。runtime自隊後始末完了、共有編集/ローカルheavy0。build/weightsと担当を保持し他領地不変。親完了/mergeなし。引継-boundary-gradle-20261027-1350.md。\nREQ-GRADLE-DIAG-02 続報: 最終head a8b7d8b999973d2c138ffecce2fbe2233f6bb09a のBackend CI40481639328 attempt2は集約含めsuccessをroot API確認。製品/timeout/選別変更なしfailed jobs再実行で完走。attempt1のfresh Test本体6本失敗0とpost-Test timeout原本は別保存、再試行cachehitと混同しない。実機4case/独立3住民探索完了、runtime自隊cleanup残0。残る出荷保留はB5公開診断artifact欠損gateの仕様判断未回答。PR4169 Draft/未merge、親CMP未完了、build/weightsと担当保持。\nREQ-GRADLE-DIAG-02解決: 2026-10-28ユーザー「推奨で。よきにはからえ」により既存公開診断artifact欠損gate不足を別件分離し、L1-Bは既存挙動維持へAC修正する方針を承認。隔離docs PRで正本条件/別件登録後、検証済head a8b7d8b999973d2c138ffecce2fbe2233f6bb09aのPR4169出荷を再開。CI40481639328 attempt2 success確認、実機/探索完了。build/weights保持、他owner不変。",
-      "history": [],
+      "history": [
+        "実装PR4169 main bc2f2c89e7a40c0775d751aad2bd0e80287fdf0a、head e67a77172f67ddbacfe4c8d8f9504eae8f54b004、Backend CI40662266445 success/6shard成功、全check失敗未完了0で通常merge。f281 CI40648568860は6fresh成功。B1-B8改定承認PR4201、公開診断gate不足は未着手Issue4200へ分離。検分/実機4case/探索3住民passed、元a8b実証と統合HEAD同一性を記録。共有build/weights編集と実装足軽の当該WT使用は終了。完了証拠/子台帳PRと自隊cleanupは継続中、親CMPは未完了。"
+      ],
       "hold": null,
-      "held": [
-        "build",
-        "weights"
-      ]
+      "held": []
     },
     "L1-M": {
       "state": "todo",
