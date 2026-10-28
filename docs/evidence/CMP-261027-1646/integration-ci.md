@@ -30,7 +30,7 @@
 
 [safe summary](build/integration-ci-40648568860-summary.json)にrun/jobs/全check結論、fresh/cache・exit・JVM/heap/fork/context・観測異常とZIP/member/job logのbytes/SHAを保存した。run/head/attempt/workflow/repository、全6shard job/artifact、API digest、ZIP必須memberを照合。旧run原本には書き込んでいない。
 
-support原本summaryのSHA256は `d4ff6833e4d21dac6d3483d143cda42fc09a7583cc846a04509d956daf5d84ad`。Git採用時のCRLF→LFは[manifest](build/manifest.json)のsourceSha256/packagedSha256で区別する。raw API本文・log・ZIPはGit未収録で、索引の絶対pathは採取時位置である。durable記録確定後に自隊cleanupし、撤去証明を別記する。本原稿時点で今回rawは未削除。
+support原本summaryのSHA256は `d4ff6833e4d21dac6d3483d143cda42fc09a7583cc846a04509d956daf5d84ad`。Git採用時のCRLF→LFは[manifest](build/manifest.json)のsourceSha256/packagedSha256で区別する。raw API本文・log・ZIPはGit未収録で、索引の絶対pathは採取時位置である。durable記録確定後に自隊cleanupし、撤去証明を別記する。今回runを含む残rawは[保持記録](cleanup.md)の14rootに含まれ、承認待ちで未撤去。
 
 ## 限界
 

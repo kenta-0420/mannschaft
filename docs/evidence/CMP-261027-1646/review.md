@@ -36,4 +36,4 @@ git diff --check のPR全差分では、新規Kotlin2fileの末尾blank行警告
 
 rootは最終e67の全6shard/Arch/Non-JST/OpenAPI/全check成功と変更差分を確認し、確定指摘0として通常squash mergeを実行した。API MERGED、head `e67a77172f67ddbacfe4c8d8f9504eae8f54b004`、merge `bc2f2c89e7a40c0775d751aad2bd0e80287fdf0a`、mergedAt `2026-10-28T09:22:13Z`。[採用記録](implementation-adoption.json)と[e67 CI採取](integration-ci.md)を照合し、元a8b実機/探索・f281の6fresh・e67の6cacheを区別して最終判定した。23check中22pass/1skip、未完了0。
 
-B-1〜B-8は改訂B5の裁可範囲で受入。公開診断gate強化の別件1554と親戦役は未完了のまま。全量raw cleanupは未完了であり、機能/検分のpassedを撤去完了へ読み替えない。
+B-1〜B-8は改訂B5の裁可範囲で受入。公開診断gate強化の別件1554と親戦役は未完了のまま。[cleanup receipt](cleanup.md)で1root撤去・残14保持を確認。全量raw cleanupは具体的ユーザー承認待ちで未完了であり、機能/検分のpassedを撤去完了へ読み替えない。
