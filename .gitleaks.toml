@@ -398,3 +398,14 @@ paths = [
 regexes = [
   '''^5fe9c33d1af8c869c3b1154b3bfd60f3ef86d5b7$''',
 ]
+
+[[rules.allowlists]]
+description = "CMP-261011-0035: F01.2.1 実機E2E設定 frontend/playwright-f0121.config.ts の接続先既定値代入（`process.env.API_BASE_URL = F0121_DEFAULT_API`）。ローカル検証BEのURL定数を環境変数へ代入するだけで秘密値ではない（commit 3a767d5196 の14行目で generic-api-key・entropy 3.6 と誤検知、CI gitleaks diff）。当該pathと当該行そのものの完全一致だけをAND除外する"
+condition = "AND"
+regexTarget = "line"
+paths = [
+  '''^frontend/playwright-f0121\.config\.ts$''',
+]
+regexes = [
+  '''^if \(!process\.env\.API_BASE_URL\) process\.env\.API_BASE_URL = F0121_DEFAULT_API$''',
+]

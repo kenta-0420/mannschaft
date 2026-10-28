@@ -68,9 +68,16 @@ const cacheFile = path.join(cacheDir, `f0121-affiliation-world-${process.ppid}.j
 let w: World
 
 async function buildWorld(): Promise<World> {
-  const actors: Actor[] = []
-  for (const label of ['XA', 'XD', 'XM', 'TA', 'TD', 'TM', 'TG', 'YA', 'UA', 'N']) actors.push(await createActor(label, 'aff'))
-  const [XA, XD, XM, TA, TD, TM, TG, YA, UA, N] = actors
+  const XA = await createActor('XA', 'aff')
+  const XD = await createActor('XD', 'aff')
+  const XM = await createActor('XM', 'aff')
+  const TA = await createActor('TA', 'aff')
+  const TD = await createActor('TD', 'aff')
+  const TM = await createActor('TM', 'aff')
+  const TG = await createActor('TG', 'aff')
+  const YA = await createActor('YA', 'aff')
+  const UA = await createActor('UA', 'aff')
+  const N = await createActor('N', 'aff')
   const X = await createOrg(XA, `実機組織X ${RUN}`)
   const Y = await createOrg(YA, `実機組織Y ${RUN}`)
   const T = await createTeam(TA, `実機チームT ${RUN}`)
@@ -120,6 +127,9 @@ function membershipRow(orgSlug: string, teamSlug: string): { id: string; status:
   )
   if (!out) return null
   const [id, status, direction, groupId] = out.split('\t')
+  if (id === undefined || status === undefined || direction === undefined || groupId === undefined) {
+    throw new Error(`加盟行の列数が想定外: ${JSON.stringify(out)}`)
+  }
   return { id, status, direction, groupId }
 }
 
@@ -890,6 +900,11 @@ test.describe('F01.2.1 加盟の実機E2E', () => {
     expect([b08.status, b08.body.error?.code], 'B08').toEqual([409, 'TEAM_066'])
     // B09: PENDING 10 件までは成功、11 件目は 422 TEAM_069（V は X へ 1 件申請済み）
     const extraOrgs: Scope[] = []
+    const extraOrgAt = (i: number): Scope => {
+      const org = extraOrgs[i]
+      if (!org) throw new Error(`B09 用の追加組織 ${i} が未作成`)
+      return org
+    }
     for (let i = 0; i < 10; i++) {
       const org = await createOrg(w.XA, `実機上限組織${i} ${RUN}`)
       await putSettings(w.XA, org.slug, { teamApplicationEnabled: true, teamGroupsEnabled: false, applicationGroupMode: 'OFF' })
@@ -898,11 +913,11 @@ test.describe('F01.2.1 加盟の実機E2E', () => {
     for (let i = 0; i < 9; i++) {
       // 申請の 10 件/時/利用者のレート制限（§10.10）は B09 の対象外なので、前提としてカウンタを戻す
       resetUserRateLimit('team-org-affiliation:apply', w.UA)
-      const r = await apply(w.UA, V.slug, { organizationSlug: extraOrgs[i].slug })
+      const r = await apply(w.UA, V.slug, { organizationSlug: extraOrgAt(i).slug })
       expect(r.status, `B09 ${i + 2} 件目`).toBe(201)
     }
     resetUserRateLimit('team-org-affiliation:apply', w.UA)
-    const b09 = await apply(w.UA, V.slug, { organizationSlug: extraOrgs[9].slug })
+    const b09 = await apply(w.UA, V.slug, { organizationSlug: extraOrgAt(9).slug })
     expect([b09.status, b09.body.error?.code], 'B09 11 件目').toEqual([422, 'TEAM_069'])
     // E03: 未加盟の組み合わせで離脱・除名
     const e03a = await apiAs(w.UA, 'DELETE', `/api/v1/teams/${w.U.slug}/organizations/${w.X.slug}`)

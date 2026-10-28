@@ -98,6 +98,12 @@ test.beforeAll(async () => {
   console.log(`[F0121-B] world X=${X.slug} Z=${Z.slug} T=${KEYS.map((k) => T[k].slug).join(',')}`)
 })
 
+function firstJob<T>(jobs: T[]): T {
+  const job = jobs[0]
+  if (job === undefined) throw new Error('fanout ジョブが 1 件も無い')
+  return job
+}
+
 function jobsSince(orgNumericId: number, since: string): Array<{ scopeType: string; scopeRef: string; type: string }> {
   const out = sql(
     `SELECT scope_type, scope_ref, notification_type FROM notification_fanout_jobs WHERE organization_id=${orgNumericId} ` +
@@ -106,6 +112,9 @@ function jobsSince(orgNumericId: number, since: string): Array<{ scopeType: stri
   if (!out) return []
   return out.split('\n').map((line) => {
     const [scopeType, scopeRef, type] = line.split('\t')
+    if (scopeType === undefined || scopeRef === undefined || type === undefined) {
+      throw new Error(`fanout ジョブ行の列数が想定外: ${JSON.stringify(line)}`)
+    }
     return { scopeType, scopeRef, type }
   })
 }
@@ -290,7 +299,7 @@ test.describe('F01.2.1 グループ宛てお知らせの実機E2E', () => {
     let jobs: ReturnType<typeof jobsSince> = []
     await expect.poll(() => (jobs = jobsSince(w.X.numericId, since)).length, { timeout: 60_000 }).toBeGreaterThan(0)
     expect(jobs.map((j) => j.scopeType)).toEqual(['ORGANIZATION_TEAMS'])
-    expect(audienceTeams(jobs[0].scopeRef)).toEqual([w.T['1'].numericId, w.T['2'].numericId].sort((a, b) => a - b))
+    expect(audienceTeams(firstJob(jobs).scopeRef)).toEqual([w.T['1'].numericId, w.T['2'].numericId].sort((a, b) => a - b))
     const received = async (actor: Actor) =>
       (await notificationsOf(actor)).filter((n) => `${n.title ?? ''}${(n as { body?: string }).body ?? ''}`.includes(S1)).length
     await expect.poll(() => received(w.A['1']), { timeout: 60_000 }).toBe(1)
@@ -465,7 +474,7 @@ test.describe('F01.2.1 グループ宛てお知らせの実機E2E', () => {
     const t1Title = `T1宛てアンケート ${RUN}`
     const one = await send('teams', 'アンケート', t1Title)
     expect(one.map((j) => j.scopeType), 'AC-H18').toEqual(['ORGANIZATION_TEAMS'])
-    expect(audienceTeams(one[0].scopeRef), 'AC-H18 宛先').toEqual([w.T['1'].numericId])
+    expect(audienceTeams(firstJob(one).scopeRef), 'AC-H18 宛先').toEqual([w.T['1'].numericId])
     const received = async (actor: Actor) =>
       (await notificationsOf(actor)).filter((n) => `${n.title ?? ''}${(n as { body?: string }).body ?? ''}`.includes(t1Title)).length
     await expect.poll(() => received(w.A['1']), { timeout: 60_000 }).toBe(1)
