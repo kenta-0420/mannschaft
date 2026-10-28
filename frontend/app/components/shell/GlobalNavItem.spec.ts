@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { defineComponent, h } from 'vue'
+import { RouterLink, routerKey } from 'vue-router'
 import { useNuxtApp, useRouter } from '#imports'
 import NuxtLink from '#app/components/nuxt-link'
 import GlobalNavItem from './GlobalNavItem.vue'
@@ -37,11 +38,14 @@ describe('グローバルナビの操作時先読み', () => {
     try {
       const wrapper = await mountSuspended(Host, {
         attachTo: document.body,
-        global: { components: { NuxtLink }, stubs: { NuxtLink: false } },
+        global: { components: { NuxtLink, RouterLink }, stubs: { NuxtLink: false, RouterLink: false } },
       })
       unmount = () => wrapper.unmount()
       const link = wrapper.get(`a[href="${destination}"]`)
       const control = wrapper.get(`a[href="${controlDestination}"]`)
+      const realLink = wrapper.findAllComponents(RouterLink).find(component => component.props('to') === destination)
+      expect(realLink).toBeDefined()
+      expect(realLink?.vm.$.provides[routerKey as symbol]).toBe(router)
       await vi.waitFor(() => expect(observed.has(control.element)).toBe(true))
       for (const callback of [...observed.values()]) callback()
       await flushPromises()
