@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261027-1646",
+  "scope": "app",
+  "implementation": {
+    "pr": 4169,
+    "sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "B-1",
+      "description": "単一app・plugin版/全依存/解決graph/タスク一覧を移設前後で維持する。元の前後比較sourceと最終実装headはsource bridgeで区別する。",
+      "tests": [
+        { "name": "実Gradle tasks/依存5構成/実行graph3本のraw9比較一致", "evidence": "docs/evidence/CMP-261027-1646/build/comparison/finalweights-raw-comparison-partial.json" },
+        { "name": "責務・consumer相対path・全依存宣言/版の検分と最終main採用", "evidence": "docs/evidence/CMP-261027-1646/review.md" }
+      ]
+    },
+    {
+      "id": "B-2",
+      "description": "重み有無×migration除外有無×6index全候補が前後一致し、通常対象1shard・migration除外0・nested分断0、coverageを満たす。",
+      "tests": [
+        { "name": "旧重み37profile/76比較の実Test候補・設定・helper一致", "evidence": "docs/evidence/CMP-261027-1646/build/comparison/oldweights-candidate-comparison.json" },
+        { "name": "再生成重み37profile/76比較と両側4profile coverage green", "evidence": "docs/evidence/CMP-261027-1646-l1b-implementation.md" }
+      ]
+    },
+    {
+      "id": "B-3",
+      "description": "重み欠損/空/未計測・未指定propertyのfallbackを維持し、archTest0件/freezeclass欠損・source全体0を成功扱いしない。",
+      "tests": [
+        { "name": "実helperの欠損/空/未計測/未指定とclass原一覧の非空確認", "evidence": "docs/evidence/CMP-261027-1646-l1b-implementation.md" },
+        { "name": "archTest0件・freeze必須class欠損を固有理由で拒否しclass復元", "evidence": "docs/evidence/CMP-261027-1646/build/negative-and-openapi-observations.json" }
+      ]
+    },
+    {
+      "id": "B-4",
+      "description": "total1/2/6・index端/範囲外・非数値・負hash/同重み/nestedの現行挙動を維持する。",
+      "tests": [
+        { "name": "既存helper直接呼出し境界試験と実候補/設定の前後一致", "evidence": "docs/evidence/CMP-261027-1646/build/comparison/finalweights-candidate-comparison.json" }
+      ]
+    },
+    {
+      "id": "B-5",
+      "description": "改訂B5: 既存CI条件でarchUnit故障後freeze実走、必須番人欠損/0件・shard失敗/cancel/timeout/必須job結果欠損拒否、ローカルTest終端欠損拒否、再生成不正入力で旧表bytes維持。公開artifact欠損gate強化は裁可により別件1554/Issue4200へ分離し未解決とする。",
+      "tests": [
+        { "name": "test --continueの制御arch故障後freeze XML2件成功", "evidence": "docs/evidence/CMP-261027-1646/build/negative/arch-failure-freeze-finalizer.xml" },
+        { "name": "実gate shell needs入力27ケースの成功/拒否", "evidence": "docs/evidence/CMP-261027-1646/build/gate-input-evidence.json" },
+        { "name": "固定実wrapperのfresh/cache/終端欠損/command非0契約7ケース", "evidence": "docs/evidence/CMP-261027-1646/terminal-contract/results.json" },
+        { "name": "重み再生成selftest6件・不正入力23種と旧bytes保全、裁可の限定確認", "evidence": "docs/evidence/CMP-261027-1646-l1b-implementation.md" }
+      ]
+    },
+    {
+      "id": "B-6",
+      "description": "新権限/API/DB変更を加えず、既存認可IT/番人選別とOpenAPI実生成前後差分0を維持する。実機は元a8bで許可/拒否/他tenant/匿名を検証し、最終headへの対応はsource bridgeと同HEAD CIで別に確認する。",
+      "tests": [
+        { "name": "同一18072で前後OpenAPI実生成6,378,658bytes完全一致", "evidence": "docs/evidence/CMP-261027-1646/build/negative-and-openapi-observations.json" },
+        { "name": "a8b専用実BE/FEでADMIN/MEMBER/非所属/匿名4case passed", "evidence": "docs/evidence/CMP-261027-1646/real-and-exploration.md" },
+        { "name": "最終e67の全6shard/番人/Non-JST/集約CI成功", "evidence": "docs/evidence/CMP-261027-1646/build/integration-ci-40662266445-summary.json" }
+      ]
+    },
+    {
+      "id": "B-7",
+      "description": "6shard・heap/fork/context cap/タグ/engine/ログを維持し、fresh JVM/heap/壁時計と失敗有無を記録する。a8b初回timeoutとcache再試行、f281の6fresh成功、最終e67の6cache成功を分離し、L0-M免除を性能実証としない。",
+      "tests": [
+        { "name": "a8b初回fresh実測とpost-Test timeoutの原本照合", "evidence": "docs/evidence/CMP-261027-1646-l1b-b7-attempt1.md" },
+        { "name": "f281六fresh/main32,303件失敗0、e67六cache・command成功を実task-stateで区別", "evidence": "docs/evidence/CMP-261027-1646/integration-ci.md" }
+      ]
+    },
+    {
+      "id": "B-8",
+      "description": "Stripe参照元限定裁可・B5分離裁可を正本同期し、owner/入口/共有予約と最新HEAD検分・scope appの実機/独立探索を照合する。親/別件を完了扱いせず、未完了のraw cleanupは別記する。",
+      "tests": [
+        { "name": "独立root最終検分・裁可/原本source区別・確定指摘0", "evidence": "docs/evidence/CMP-261027-1646/review.md" },
+        { "name": "a8b独立3住民探索・代表PNG確認と未検証事項の保持", "evidence": "docs/evidence/CMP-261027-1646/real/README.md" },
+        { "name": "最終e67同HEAD CI success・通常merge API・main全tree一致", "evidence": "docs/evidence/CMP-261027-1646/implementation-adoption.json" }
+      ]
+    }
+  ],
+  "ci": [ { "runId": 40662266445 } ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261027-1646/review.md",
+      "sourceHead": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "basis": "独立rootのa8b検分、統合後source bridge、最終e67全CIと通常mergeの確認を分けて判定"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261027-1646/real-and-exploration.md",
+      "sourceHead": "a8b7d8b999973d2c138ffecce2fbe2233f6bb09a",
+      "basis": "元a8bの実機4case。f281/e67で実機を再実施したとは扱わず、移設11fileとdocs-only追従のtree対応・最終CIを別記"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261027-1646/real/README.md",
+      "sourceHead": "a8b7d8b999973d2c138ffecce2fbe2233f6bb09a",
+      "basis": "独立3住民探索。個別予定詳細復帰は未検証、HTTP200集計183/188のsnapshot差を保持。最終HEADへの名称付替えなし"
+    }
+  },
+  "regressions": []
+}

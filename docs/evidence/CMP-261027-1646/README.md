@@ -1,13 +1,13 @@
-# L1-B 完了証拠の原稿入口
+# L1-B 完了証拠の入口
 
-子 CMP-261027-1646、実装[PR #4169](https://github.com/kenta-0420/mannschaft/pull/4169)。移設検証HEADは `a8b7d8b999973d2c138ffecce2fbe2233f6bb09a`。main統合HEAD `f2817eb94326b413122c69f4b0c409288c8982a6` の[CI40648568860](https://github.com/kenta-0420/mannschaft/actions/runs/40648568860)は6fresh・失敗0で成功。その後docsのみのmainを通常追従し、現在の実装HEADは `e67a77172f67ddbacfe4c8d8f9504eae8f54b004`。[新HEAD CI40662266445](https://github.com/kenta-0420/mannschaft/actions/runs/40662266445)と実装mergeは本原稿時点で待機中。実装merge・同HEAD成功CI・最終検分が確定するまでは、完了JSONとtask-listの完了遷移を作成しない。
+子 CMP-261027-1646、実装[PR #4169](https://github.com/kenta-0420/mannschaft/pull/4169)。移設検証HEADは `a8b7d8b999973d2c138ffecce2fbe2233f6bb09a`。main統合HEAD `f2817eb94326b413122c69f4b0c409288c8982a6` の[CI40648568860](https://github.com/kenta-0420/mannschaft/actions/runs/40648568860)は6fresh・失敗0で成功。その後docsのみのmainを通常追従し、現在の実装HEADは `e67a77172f67ddbacfe4c8d8f9504eae8f54b004`。[新HEAD CI40662266445](https://github.com/kenta-0420/mannschaft/actions/runs/40662266445)は6cache・観測異常0で成功し、実装PRは2026-10-28T09:22:13Zに通常squash mergeされた（main `bc2f2c89e7a40c0775d751aad2bd0e80287fdf0a`）。[採用記録](implementation-adoption.json)にmerge/head/全tree一致を保存し、[完了JSON](../CMP-261027-1646.json)は最終e67のCIだけを参照する。
 
 | 証拠 | 内容と対象 |
 |---|---|
 | [実装・検証報告](../CMP-261027-1646-l1b-implementation.md) | B-1〜B-8の移設設定・前後比較・重み再生成・負試験・OpenAPI。元の対象SHAを明示 |
 | [最小build証拠](build/README.md) | 旧/新重み各37profile、候補/設定/helper76比較ずつ、raw9本ずつの一致。安全な負XML・原本hash・重み分類・gate入力27件 |
 | [B7初回](../CMP-261027-1646-l1b-b7-attempt1.md) / [再試行](../CMP-261027-1646-l1b-b7-attempt2.md) | a8bの6fresh Test本体失敗0、初回shard5 post-Test105分timeout、設定不変のfailed-only再試行cache hit成功を分離 |
-| [f281統合CI実測](integration-ci.md) | CI40648568860の6fresh成功・Test32,303件失敗0。新HEAD e67のCIは別途待機中 |
+| [f281統合CI実測](integration-ci.md) | CI40648568860の6fresh成功・Test32,303件失敗0。最終e67 CIは6cacheで成功、元fresh値へ混ぜない |
 | [ローカルTest終端契約](terminal-contract/README.md) | f281固定git blobの実wrapperを未変更で実行したsynthetic producer7ケース。実Gradle/公開artifact欠損試験と区別 |
 | [実機・探索報告](real-and-exploration.md) / [安全な実機証拠](real/README.md) | a8bの実機4case・独立3住民探索・代表PNG3枚。個別予定詳細復帰未検証、集計snapshot差を保持 |
 | [検分記録](review.md) | rootによるa8bの検分と裁可確認。統合HEAD最終判定は別途確定 |

@@ -2,7 +2,7 @@
 
 本directoryはsupportの最小build証拠を完了登録用の文書原稿へ採用したものである。元の比較・負試験・実機の対象は実装HEAD `a8b7d8b999973d2c138ffecce2fbe2233f6bb09a`（移設前/旧重み後のSHAは比較JSON・実装報告に記載）。最新main `b7e4bcd07e2bb93899ea761736bdd6a413e41780` を通常mergeした統合HEADは `f2817eb94326b413122c69f4b0c409288c8982a6`。
 
-f281の[Backend CI40648568860](https://github.com/kenta-0420/mannschaft/actions/runs/40648568860)は全6freshで成功し、[統合CI報告](../integration-ci.md)とsafe summaryを採用した。その後docsのみのmainを通常追従した実装HEADはe67。[非docs全treeの一致](integration-e67-source-bridge.json)を確認し、[e67 CI40662266445](https://github.com/kenta-0420/mannschaft/actions/runs/40662266445)は本原稿時点で待機中。a8bの成功CIや旧実機を統合HEADで再実施したとは扱わない。完了JSONは最終実装HEADと同HEADの成功CIを参照し、元の比較/実機/探索の対象SHAを併記する。
+f281の[Backend CI40648568860](https://github.com/kenta-0420/mannschaft/actions/runs/40648568860)は全6freshで成功し、[統合CI報告](../integration-ci.md)とsafe summaryを採用した。その後docsのみのmainを通常追従した実装HEADはe67。[非docs全treeの一致](integration-e67-source-bridge.json)を確認し、[e67 CI40662266445](https://github.com/kenta-0420/mannschaft/actions/runs/40662266445)は6cacheで成功、PR4169も通常merge済み。a8bの成功CIや旧実機を統合HEADで再実施したとは扱わない。完了JSONは最終実装HEADと同HEADの成功CIを参照し、元の比較/実機/探索の対象SHAを併記する。
 
 | 条件 | ファイルと証拠範囲 |
 |---|---|
@@ -23,4 +23,4 @@ f281の[Backend CI40648568860](https://github.com/kenta-0420/mannschaft/actions/
 
 既存a8bから不変の新Kotlin2file末尾blank行により、PR全差分 `git diff --check b7e...f281` は警告を返す。作業treeの未commit差分が無いことと区別し、全差分チェック成功とは記録しない。目的外整形はしていない。
 
-実機/探索は[実機パッケージ](../real/README.md)と[対象SHA付き検分記録](../review.md)へ対応付ける。統合CI、最終検分、実装merge、完了JSON/台帳の正式完了は本パッケージだけでは成立しない。
+実機/探索は[実機パッケージ](../real/README.md)と[対象SHA付き検分記録](../review.md)へ対応付ける。最終e67 CI成功と実装mergeを別途API照合し、[採用記録](../implementation-adoption.json)と[完了JSON](../../CMP-261027-1646.json)へ対応付けた。raw cleanupはなお未完了で、最終撤去証明を別記する。

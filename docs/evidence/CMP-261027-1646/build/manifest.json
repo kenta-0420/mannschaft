@@ -283,10 +283,18 @@
       "sourceSha256": "0ae045ff2f38a6ec870d0ca4754c419a67a72fd8f422d15aad1079bd75694de0",
       "packagedSha256": "0ae045ff2f38a6ec870d0ca4754c419a67a72fd8f422d15aad1079bd75694de0",
       "mode": "exact-copy safe summary"
+    },
+    {
+      "source": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40662266445\\summary.json",
+      "path": "integration-ci-40662266445-summary.json",
+      "sourceBytes": 37343,
+      "sourceSha256": "4a0dce570ef90d3ca84c3731a98565da7ab9d91633ef80e0fd24fcc4b21d0478",
+      "packagedSha256": "145911acd88f475e0ee80a7a223643c3e27dbd504fa41c59f310fccb55947631",
+      "mode": "safe summary; CRLF normalized to LF for Git blob"
     }
   ],
   "limits": [
-    "Original comparisons and real/exploratory evidence retain their stated a8b/before/6f source. f281 CI40648568860 succeeded with six fresh main Test tasks; e67 CI40662266445 is a separate pending final-head run.",
+    "Original comparison/real/exploratory sources remain explicitly identified. f281 CI40648568860 sixfresh and e67 CI40662266445 sixcache both succeeded; PR4169 merged at e67.",
     "B5 published diagnostics gap is approved for separate CMP-261028-1554 / Issue4200; this package does not claim missing-artifact gate strengthened.",
     "Negative XML summaries preserve counts/test names/failure reason but omit raw system streams/properties/stack traces. Original SHA identifies collection-time source bytes; hash-only source content is not in Git and is scheduled for owned cleanup after durable evidence is finalized.",
     "No large TSV/log/archive/OpenAPI bytes are republished. Absence records are not accepted as proof."

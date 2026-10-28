@@ -30,4 +30,4 @@ adminの組織パネル切替前selector clickではpointer遮蔽があったが
 
 [安全な実機・探索パッケージ](real/README.md)に原本hash索引と代表PNG3枚を同梱。member HTTP200は当時報告183件に対して保存原本再集計188件で、差5件の時刻/因果は未確定。204件数は両方2件。同一snapshotとして読み替えない。
 
-本報告の実試験対象はa8b。統合HEAD f281ではupstream製品/画面変更もあり、同HEADでの再実施を主張しない。L1-B変更11fileのblob一致は[source bridge](build/integration-261028-source-bridge.json)、統合成立は[同HEAD CI](https://github.com/kenta-0420/mannschaft/actions/runs/40648568860)で別々に評価する。f281統合CIは6fresh・失敗0で成功。後続のdocs-only追従HEAD e67のCI40662266445と実装mergeは待機中。
+本報告の実試験対象はa8b。統合HEAD f281ではupstream製品/画面変更もあり、同HEADでの再実施を主張しない。L1-B変更11fileのblob一致は[source bridge](build/integration-261028-source-bridge.json)、統合成立は[同HEAD CI](https://github.com/kenta-0420/mannschaft/actions/runs/40648568860)で別々に評価する。f281統合CIは6fresh・失敗0で成功。後続docs-only追従HEAD e67のCI40662266445も6cacheで成功し、PR4169は通常merge済み。実施sourceのa8bは変更しない。
