@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { PermissionGroupListItem } from '~/types/organization'
+import { useI18n } from 'vue-i18n'
 import { MANAGE_ORG_AFFILIATION } from '~/utils/teamAffiliationAccess'
+import { permissionLabel, targetRoleLabel } from '~/utils/permissionLabel'
 
 /**
  * 権限グループの一覧表示。組織（/organizations/{slug}/permission-groups）とチーム
@@ -15,6 +17,7 @@ defineProps<{
   editable?: boolean
 }>()
 
+const { t } = useI18n()
 const emit = defineEmits<{
   edit: [group: PermissionGroupListItem]
 }>()
@@ -43,7 +46,7 @@ const emit = defineEmits<{
           <div class="flex items-center gap-2">
             <Tag
               v-if="group.targetRole"
-              :value="$t('teamAffiliations.permission_group_list.target_role', { role: group.targetRole })"
+              :value="t('teamAffiliations.permission_group_list.target_role', { role: targetRoleLabel(t, group.targetRole) })"
               severity="info"
               class="text-xs"
               :data-testid="`group-target-role-${group.id}`"
@@ -76,7 +79,7 @@ const emit = defineEmits<{
           <Tag
             v-for="perm in group.permissions"
             :key="perm"
-            :value="perm"
+            :value="permissionLabel(t, perm)"
             severity="secondary"
             class="text-xs"
           />
