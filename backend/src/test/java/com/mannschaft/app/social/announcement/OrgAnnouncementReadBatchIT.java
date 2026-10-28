@@ -256,11 +256,13 @@ class OrgAnnouncementReadBatchIT extends AbstractMySqlIntegrationTest {
     @DisplayName("AC-ALIC1-D04 役割解決の失敗は 500・既読行0")
     void D04_役割解決失敗は500() throws Exception {
         IllegalStateException failure = new IllegalStateException("試練: 役割解決障害");
+        // 失敗を注入するのは、キャッシュなしの役割解決の2入口（read-batch はキャッシュ付きの resolveViewerRole を使わない。
+        // 告知の可視性は降格・離脱の直後に効かせるためキャッシュを見ない＝ALIC-1 §2.6）。
+        // @Cacheable の入口（resolveViewerRole）にスパイ経由で stub を掛けると、プロキシ越しにキャッシュ機構を通り
+        // 意図しない値がキャッシュされうる（null キャッシュの罠）ため、この試験では掛けない。
         Mockito.doThrow(failure).when(roleResolver)
                 .resolveViewerRolesFresh(ArgumentMatchers.any(), ArgumentMatchers.any());
         Mockito.doThrow(failure).when(roleResolver).resolveViewerRoleForPreview(
-                ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any());
-        Mockito.doThrow(failure).when(roleResolver).resolveViewerRole(
                 ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any());
         readBatch(orgX, memberM, List.of(feedT1a, feedT1b)).andExpect(status().isInternalServerError());
         em.flush();

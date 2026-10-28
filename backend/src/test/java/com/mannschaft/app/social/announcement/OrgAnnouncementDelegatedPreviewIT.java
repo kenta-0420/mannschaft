@@ -57,6 +57,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -573,11 +574,14 @@ class OrgAnnouncementDelegatedPreviewIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════ I 会員限定の元を持つ告知を GUEST の一覧から外す（M11 代案） ═════════════════════════
 
     @Test
-    @DisplayName("AC-ALIC1-I01 東宛て PUBLIC 告知×掲示板: G の一覧・未読件数に出ずプレビュー 404、S・M には出て読める")
-    void 掲示板元のPUBLIC告知はGUESTの一覧に出さない() throws Exception {
+    @DisplayName("AC-ALIC1-I01 東宛て PUBLIC 告知×掲示板: G はチームダッシュボード 403（露出なし）・プレビュー 404、S・M には出て読める")
+    void 掲示板元のPUBLIC告知はGUESTに露出しない() throws Exception {
+        // 裏取り（裁可）: G は user_roles が GUEST のみで memberships 行がなく、チームダッシュボードの入口
+        // （checkMembership）で 403。チームの告知一覧 API はチームスコープの告知だけを返し組織告知を載せない。
+        // よって GUEST の「一覧」は存在せず、会員限定の元（掲示板）の告知が GUEST に露出する経路がない。
         AnnouncementFeedEntity feed = eastFeed("PUBLIC", "BULLETIN");
         Long g = people.get("G");
-        assertThat(guestNotice(g, feed.getId())).as("G の一覧に出ない").isEmpty();
+        assertGuestDashboardDenied(g);
         assertTeamFeedApiExcludesOrgFeed(g, feed.getId());
         assertHidden(feed, g);
         for (String who : List.of("S", "M")) {
@@ -587,19 +591,17 @@ class OrgAnnouncementDelegatedPreviewIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @DisplayName("AC-ALIC1-I02 PUBLIC 告知×PUBLIC ブログは G の一覧に出て読める。PUBLIC 告知×MEMBERS ブログは G の一覧に出ない")
-    void PUBLICブログ元はGUESTに出しMEMBERSブログ元は出さない() throws Exception {
+    @DisplayName("AC-ALIC1-I02 G はチームダッシュボード 403。プレビューは PUBLIC ブログ元なら読め、MEMBERS ブログ元なら読めない")
+    void GUESTはPUBLICブログ元だけプレビューで読める() throws Exception {
         Long g = people.get("G");
         AnnouncementFeedEntity open = eastFeed("PUBLIC", "BLOG");
         BlogPostEntity members = saveOrgBlog(orgX, Visibility.MEMBERS_AND_ABOVE, "会員向け");
         AnnouncementFeedEntity closed = saveFeed(builder(AnnouncementSourceType.BLOG_POST, members.getId(), "PUBLIC")
                 .targetGroupIds(groups(east)).build());
+        assertGuestDashboardDenied(g);
         preview(open, g).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.blogPost.content.body", notNullValue()));
-        Optional<List<Long>> guestList = guestNoticeIds(g);
-        guestList.ifPresent(ids -> assertThat(ids).as("G の一覧に PUBLIC ブログ元の告知は出る").contains(open.getId()));
-        guestList.ifPresent(ids -> assertThat(ids).as("G の一覧に MEMBERS ブログ元の告知は出ない")
-                .doesNotContain(closed.getId()));
+        assertTeamFeedApiExcludesOrgFeed(g, open.getId());
         assertTeamFeedApiExcludesOrgFeed(g, closed.getId());
         assertHidden(closed, g);
     }
@@ -694,26 +696,15 @@ class OrgAnnouncementDelegatedPreviewIT extends AbstractMySqlIntegrationTest {
     }
 
     /**
-     * G（user_roles の GUEST のみ・memberships なし）の T1 ダッシュボードの告知 ID。
-     * 現状 G はダッシュボード入口 checkMembership で拒否される（一覧が存在しない）ため empty を返しうる。
+     * G（user_roles の GUEST のみ・memberships なし）はチームダッシュボードの入口で 403（COMMON_002）になる。
+     * 一覧そのものが存在しないので、会員限定の元の告知が G の一覧に露出することはない。
      */
-    private Optional<List<Long>> guestNoticeIds(Long g) {
+    private void assertGuestDashboardDenied(Long g) {
         em.flush();
         em.clear();
-        try {
-            TeamDashboardResponse response = dashboardService.getTeamDashboard(g, t1, "WEEK");
-            if (response.getTeamNotices() == null) {
-                return Optional.empty();
-            }
-            return Optional.of(response.getTeamNotices().stream()
-                    .map(item -> ((Number) item.get("id")).longValue()).toList());
-        } catch (BusinessException denied) {
-            return Optional.empty();
-        }
-    }
-
-    private Optional<Long> guestNotice(Long g, Long feedId) {
-        return guestNoticeIds(g).flatMap(ids -> ids.contains(feedId) ? Optional.of(feedId) : Optional.empty());
+        assertThatThrownBy(() -> dashboardService.getTeamDashboard(g, t1, "WEEK"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode().getCode()).isEqualTo("COMMON_002"));
     }
 
     /** チームの告知一覧 API（未読件数 meta.unreadCount を含む）に組織告知が載らないこと。 */

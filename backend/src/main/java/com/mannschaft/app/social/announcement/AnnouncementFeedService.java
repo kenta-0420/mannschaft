@@ -317,41 +317,16 @@ public class AnnouncementFeedService {
     /**
      * お知らせを既読にする（冪等）。
      *
-     * <p>スコープ（URL のパス変数由来）を下流へ通し、スコープ帰属検証と可視性検証を
-     * {@link AnnouncementReadService} に行わせる（規則は「見える＝既読にできる」）。</p>
+     * <p>スコープ（URL のパス変数由来）を下流へ通す。可視性・宛先・課金の判定は呼び出し元の
+     * {@link AnnouncementReadCommandService}（トランザクションなし）が済ませており（規則は「見える＝既読にできる」）、
+     * 下流の {@link AnnouncementReadService} は social 内で閉じる確認（帰属・未削除・期限内）と書き込みだけを行う。
+     * 一括既読（read-all）の入口はこのクラスに持たない（判定を tx の外へ出すため {@link AnnouncementReadCommandService} に移した）。</p>
      *
      * @see AnnouncementReadService#markAsRead
      */
     @Transactional
     public void markAsRead(AnnouncementScopeType scopeType, Long scopeId, Long announcementId, Long userId) {
         readService.markAsRead(scopeType, scopeId, announcementId, userId);
-    }
-
-    /**
-     * スコープ内の全お知らせを既読にする。
-     *
-     * <p>下流は「可視かつ未読」を DB 側で絞り、{@link AnnouncementReadService#MARK_ALL_BATCH_SIZE}
-     * 件ずつのチャンクで処理する（#2494）。実行コストは<b>未読件数</b>にのみ比例し、
-     * カーソル（{@code lastSeenId}）により総インデックスプローブ数も線形である（#2530 ②）。</p>
-     *
-     * <p><b>応答契約（#2530 ① で決着）</b>: 下流の結果をそのまま返し、Controller は
-     * {@code markedCount}（実際に既読化した件数）と {@code hasMoreUnread}
-     * （防御上限で打ち切り、未読が残っているか）を応答する。キー名は
-     * <b>camelCase</b> を正とし（他 EP の応答および {@code @RequestBody} と揃える）、
-     * 設計書 F02.6 §4 の {@code marked_count} 表記を実装側に合わせて改めた。
-     * 応答型を {@code Map<String, Object>} から DTO に変えたので、以後キー名の食い違いは
-     * OpenAPI スキーマ（{@code docs/openapi.json}）と生成型に現れる。</p>
-     *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープ ID
-     * @param userId    ユーザー ID
-     * @return 既読化件数と残余の有無
-     * @see AnnouncementReadService#markAllAsRead
-     */
-    @Transactional
-    public AnnouncementReadService.MarkAllReadOutcome markAllAsRead(
-            AnnouncementScopeType scopeType, Long scopeId, Long userId) {
-        return readService.markAllAsRead(scopeType, scopeId, userId);
     }
 
     // ═════════════════════════════════════════════════════════════

@@ -50,21 +50,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * CMP-261011-0035 ALIC-1 §2.7 の SQL 本数（AC-ALIC1-G01・G02・I03。試練 red）。
+ * CMP-261011-0035 ALIC-1 §2.7 の SQL 本数（AC-ALIC1-G01・G02）。
+ *
+ * <p>I03（GUEST の一覧の SQL 本数）は対象が存在しないので削除した。G は user_roles が GUEST のみで memberships 行がなく、
+ * チームダッシュボードの入口で 403、チームの告知一覧 API は組織告知を返さないため、GUEST の「一覧」がない
+ * （マスター裁可 2026-10-29。M11 の意図は既に一覧側で満たされている）。</p>
  *
  * <p>計測は {@link SqlIntentCounter}（application-test.yml で statement_inspector に登録済み）で、
  * API 1回（MockMvc・実 Security Filter）の全 SQL を数える。各計測の前に別組織でウォームアップを1回行い、
  * 初回だけの読み込み（roles の seed 等）を本数から外す。比較は「件数・チーム数を変えても本数差0」が主、
  * 絶対値の上限は陣立て §2.7 の表から算出した値（下記定数のコメント）で固定する。</p>
- *
- * <p>現状（red の理由）: 組織ロールを持たないチームメンバーへの MEMBERS 告知の本文プレビューは 404
- * （§1.1 ①）、read-batch API は未実装（404/405）、GUEST はチームダッシュボードで会員限定元の告知が出る
- * （M11 代案未実装）ため、前提の検査で落ちる。</p>
  */
 @AutoConfigureMockMvc
 @Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@DisplayName("ALIC-1 G/I03 宛先資格判定の SQL 本数がチーム数・件数に比例しない")
+@DisplayName("ALIC-1 G 宛先資格判定の SQL 本数がチーム数・件数に比例しない")
 class OrgAnnouncementQueryCountIT extends AbstractMySqlIntegrationTest {
 
     /**
@@ -162,52 +162,11 @@ class OrgAnnouncementQueryCountIT extends AbstractMySqlIntegrationTest {
         return result.getResponse().getContentAsString(StandardCharsets.UTF_8);
     }
 
-    // ════════════════════════════════════ I03 ════════════════════════════════════
-
-    @Test
-    @DisplayName("AC-ALIC1-I03 GUEST の一覧（チームダッシュボード）: 会員限定元の告知1件と20件で SQL 本数差0、会員限定元は出ず PUBLIC 元は出る")
-    void i03_GUESTの一覧の本数は件数に比例しない() throws Exception {
-        GuestScenario warm = guestScenario(1);
-        guestDashboard(warm);
-
-        GuestScenario one = guestScenario(1);
-        GuestScenario twenty = guestScenario(20);
-        int small = countGuestDashboard(one);
-        int large = countGuestDashboard(twenty);
-
-        assertThat(large).as("会員限定元1件: %d 本 / 20件: %d 本", small, large).isEqualTo(small);
-    }
-
-    private int countGuestDashboard(GuestScenario s) throws Exception {
-        flushAndClear();
-        SqlIntentCounter.reset();
-        String body = guestDashboard(s);
-        int count = SqlIntentCounter.totalCount();
-        assertThat(body).as("前提（I02）: PUBLIC 告知×PUBLIC ブログは G の一覧に出る").contains(s.publicTitle());
-        assertThat(body).as("I01: PUBLIC 告知×掲示板（会員限定元）は G の一覧に出ない").doesNotContain(s.memberOnlyTitle());
-        return count;
-    }
-
-    private String guestDashboard(GuestScenario s) throws Exception {
-        flushAndClear();
-        String path = "/api/v1/dashboard/team/" + s.teamSlug();
-        MvcResult result = mockMvc.perform(get(path).servletPath(path).with(user(s.guestId().toString())))
-                .andReturn();
-        assertThat(result.getResponse().getStatus())
-                .as("前提: G（チーム GUEST）が自チームのダッシュボードの一覧を開ける。"
-                        + "現行は checkMembership が memberships のみを見るため 403 になる（未解決事項として上奏）")
-                .isEqualTo(200);
-        return result.getResponse().getContentAsString(StandardCharsets.UTF_8);
-    }
-
     // ════════════════════════════════════ fixtures ════════════════════════════════════
 
     private static final String BODY = "宛先資格の本数計測本文";
 
     record Scenario(Long orgId, Long viewerId, List<Long> feedIds, Long alreadyReadFeedId, Long hiddenFeedId) {
-    }
-
-    record GuestScenario(String teamSlug, Long guestId, String publicTitle, String memberOnlyTitle) {
     }
 
     /**
@@ -270,44 +229,6 @@ class OrgAnnouncementQueryCountIT extends AbstractMySqlIntegrationTest {
                 .targetGroupIds("[\"" + groupId + "\"]").includeUnassigned(false).build();
         em.persist(feed);
         return feed.getId();
-    }
-
-    /**
-     * 組織 X に ACTIVE 加盟するチーム T1 と、その GUEST（user_roles の GUEST・memberships なし）。
-     * T1 宛ての PUBLIC 告知×組織掲示板（会員限定元）を memberOnlyCount 件、PUBLIC 告知×PUBLIC ブログを1件。
-     */
-    private GuestScenario guestScenario(int memberOnlyCount) {
-        String key = UUID.randomUUID().toString().substring(0, 8);
-        Long orgId = TeamOrgFixtureHelper.insertOrganization(em, "GUEST計測組織", "qc-gorg-" + key);
-        String teamSlug = "qc-gteam-" + key;
-        Long team = TeamOrgFixtureHelper.insertTeam(em, "GUEST計測チーム", teamSlug);
-        TeamOrgFixtureHelper.insertTeamOrgMembership(em, team, orgId, "ACTIVE", LocalDateTime.now().minusDays(1));
-        Long author = saveUser("qc-gauthor-" + key);
-        Long guest = saveUser("qc-guest-" + key);
-        MembershipTestHelper.insertMembership(em, author, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, guest, "GUEST", team, null);
-        String memberOnlyTitle = "会員限定元の告知" + key;
-        for (int k = 0; k < memberOnlyCount; k++) {
-            BulletinThreadEntity thread = BulletinThreadEntity.builder()
-                    .scopeType(com.mannschaft.app.bulletin.ScopeType.ORGANIZATION).scopeId(orgId)
-                    .authorId(author).title("組織掲示板" + k).body("組織掲示板本文").build();
-            em.persist(thread);
-            em.persist(AnnouncementFeedEntity.builder().scopeType(AnnouncementScopeType.ORGANIZATION).scopeId(orgId)
-                    .sourceType(AnnouncementSourceType.BULLETIN_THREAD).sourceId(thread.getId()).authorId(author)
-                    .titleCache(memberOnlyTitle).excerptCache("抜粋").visibility(AnnouncementVisibility.PUBLIC)
-                    .targetTeamIds("[" + team + "]").build());
-        }
-        String publicTitle = "公開元の告知" + key;
-        BlogPostEntity blog = BlogPostEntity.builder().organizationId(orgId).authorId(author)
-                .title("公開記事").slug("qc-gpost-" + key).body("公開本文").visibility(Visibility.PUBLIC)
-                .status(PostStatus.PUBLISHED).postType(PostType.BLOG).build();
-        em.persist(blog);
-        em.persist(AnnouncementFeedEntity.builder().scopeType(AnnouncementScopeType.ORGANIZATION).scopeId(orgId)
-                .sourceType(AnnouncementSourceType.BLOG_POST).sourceId(blog.getId()).authorId(author)
-                .titleCache(publicTitle).excerptCache("抜粋").visibility(AnnouncementVisibility.PUBLIC)
-                .targetTeamIds("[" + team + "]").build());
-        flushAndClear();
-        return new GuestScenario(teamSlug, guest, publicTitle, memberOnlyTitle);
     }
 
     private Long saveUser(String name) {
