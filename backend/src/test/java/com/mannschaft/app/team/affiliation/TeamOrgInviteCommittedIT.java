@@ -504,8 +504,11 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
         assertThat(jdbc.queryForObject("SELECT status FROM team_org_memberships WHERE id = ?", String.class,
                 invited.id())).as("承諾は巻き戻り、招待のまま").isEqualTo("PENDING");
         assertThat(outboxStatus(idempotencyKeyOf(NotificationType.TEAM_ORG_INVITE_ACCEPTED, invited.id()))).isNull();
-        assertThat(countRaceRows("SELECT COUNT(*) FROM audit_logs WHERE event_type = 'TEAM_ORG_INVITE_ACCEPTED' AND team_id = ? AND organization_id = ?",
-                team.id(), org.id())).isZero();
+        assertThat(countRaceRows("SELECT COUNT(*) FROM audit_logs WHERE event_type = 'TEAM_ORG_MEMBERSHIP_CREATED' "
+                        + "AND team_id = ? AND organization_id = ? "
+                        + "AND JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.via')) = 'ORG_INVITE' "
+                        + "AND JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.membership_id')) = ?",
+                team.id(), org.id(), Long.toString(invited.id()))).isZero();
     }
 
     // =====================================================================
@@ -756,8 +759,16 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
         return new RaceEffects(
                 countRaceRows("SELECT COUNT(*) FROM team_notification_outbox WHERE idempotency_key = ?",
                         uuidBytes(idempotencyKeyOf(NotificationType.TEAM_ORG_INVITE_ACCEPTED, fixture.membershipId()))),
-                countRaceRows("SELECT COUNT(*) FROM audit_logs WHERE event_type = 'TEAM_ORG_INVITE_ACCEPTED' AND team_id = ? AND organization_id = ?", fixture.team().id(), fixture.org().id()),
-                countRaceRows("SELECT COUNT(*) FROM audit_logs WHERE event_type = 'TEAM_ORG_INVITE_CANCELLED' AND team_id = ? AND organization_id = ?", fixture.team().id(), fixture.org().id()),
+                // 承諾の通知種別とは別に、監査は加盟成立イベント（via=ORG_INVITE）で記録される。
+                countRaceRows("SELECT COUNT(*) FROM audit_logs WHERE event_type = 'TEAM_ORG_MEMBERSHIP_CREATED' "
+                                + "AND team_id = ? AND organization_id = ? "
+                                + "AND JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.via')) = 'ORG_INVITE' "
+                                + "AND JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.membership_id')) = ?",
+                        fixture.team().id(), fixture.org().id(), Long.toString(fixture.membershipId())),
+                countRaceRows("SELECT COUNT(*) FROM audit_logs WHERE event_type = 'TEAM_ORG_INVITE_CANCELLED' "
+                                + "AND team_id = ? AND organization_id = ? "
+                                + "AND JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.membership_id')) = ?",
+                        fixture.team().id(), fixture.org().id(), Long.toString(fixture.membershipId())),
                 countRaceRows("SELECT COUNT(*) FROM team_org_affiliation_restrictions WHERE team_id = ? AND organization_id = ? AND direction = 'ORG_INVITE'", fixture.team().id(), fixture.org().id()));
     }
 
