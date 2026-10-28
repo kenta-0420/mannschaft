@@ -17,10 +17,10 @@ f281の[Backend CI40648568860](https://github.com/kenta-0420/mannschaft/actions/
 
 公開診断artifact欠損gateの既存不足は[裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6462685947)により[別件 CMP-261028-1554 / Issue #4200](https://github.com/kenta-0420/mannschaft/issues/4200)へ分離済み。条件修正は[PR #4201](https://github.com/kenta-0420/mannschaft/pull/4201)でmain反映済み。ローカルTest終端検証、nightly再生成拒否、公開artifact完全性は別契約である。本パッケージは公開診断gateを強化済み・既存不足解決済みと主張しない。
 
-`manifest.json`はコピー/要約の対応、採取時の原本pathとbytes/SHAを記録する。`hash-only-source`は原本本文がGit未収録であることを示し、恒久保持や現在のpath実在を保証しない。`safe-xml-summary`も原本bytes同一ではない。小さな証拠JSON・XML要約・画像はGitへ保存し、全量TSV・ログ・archive・OpenAPI本体など約881MBの重複rawはdurable記録確定後の自隊cleanup対象とする。全量weights manifestも同じ扱い。[cleanup/保持記録](../cleanup.md)の通り、1root/6,349bytesのみ撤去、残14root/888,898,616bytesは具体的ユーザー承認待ちで保持する。owner/再確認期限/再開条件はreceiptへ記録し、rawcleanup未完了を維持する。安全な抽出・assertの再現scriptはsupportの `package-durable-build-261028.py`。
+`manifest.json`はコピー/要約の対応、採取時の原本pathとbytes/SHAを記録する。`hash-only-source`は原本本文がGit未収録であることを示し、恒久保持や現在のpath実在を保証しない。`safe-xml-summary`も原本bytes同一ではない。小さな証拠JSON・XML要約・画像はGitへ保存し、全量TSV・ログ・archive・OpenAPI本体など約881MBの重複rawはdurable記録確定後の自隊cleanup対象とする。全量weights manifestも同じ扱い。[cleanup記録](../cleanup.md)の通り、明示承認後の残14root/888,898,616bytesを含め累計15root/888,904,965bytesを撤去し、raw保持0を確認した。旧拒否・承認待ち保持は削除前の`../cleanup.json`および`manifest.json`のsnapshotとして不変保持する。両JSONのcleanup状態は現在値ではなく、最新の安全な集計・原本receipt hashは`../cleanup.md`を参照する。採取時の安全な抽出・assert用scriptはsupportの `package-durable-build-261028.py`（supportとともに撤去済み）。
 
 文書採用時に、nightly artifact metadataは元のUTF16LE JSONからUTF8へdecode・再serializeした。また既存CRLFのtextはGit blobと同じLFへ揃えた。manifestのsourceBytes/sourceSha256は採取時の元原本、packagedSha256は文書コピーのGit blob bytesを指し、変換した行のmodeに明記した。build JSON/XMLの同梱SHAをGit indexでも再照合した。support原本や実測値は変更していない。
 
 既存a8bから不変の新Kotlin2file末尾blank行により、PR全差分 `git diff --check b7e...f281` は警告を返す。作業treeの未commit差分が無いことと区別し、全差分チェック成功とは記録しない。目的外整形はしていない。
 
-実機/探索は[実機パッケージ](../real/README.md)と[対象SHA付き検分記録](../review.md)へ対応付ける。最終e67 CI成功と実装mergeを別途API照合し、[採用記録](../implementation-adoption.json)と[完了JSON](../../CMP-261027-1646.json)へ対応付けた。raw cleanupはなお未完了で、最終撤去証明を別記する。
+実機/探索は[実機パッケージ](../real/README.md)と[対象SHA付き検分記録](../review.md)へ対応付ける。最終e67 CI成功と実装mergeを別途API照合し、[採用記録](../implementation-adoption.json)と[完了JSON](../../CMP-261027-1646.json)へ対応付けた。raw cleanupの最終撤去証明は[cleanup記録](../cleanup.md)へ対応付ける。

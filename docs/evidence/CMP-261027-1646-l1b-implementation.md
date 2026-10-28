@@ -18,7 +18,7 @@
 - WSL Linux / JDK21.0.12.1 / Gradle8.14.4。同じproperty・scriptと同じ重みbytesを両側へ適用。全heavyは既存gradle-turnstile経由、既存サーバー停止なし。
 - clean sourceと固定HEADを既存scripts/verification-run.mjsで確認し、専用Linuxコピーで実行。native Git archiveに限定した`-c core.autocrlf=false`は、Git blobとshell原本bytes一致の検証を付して適用。共有Git設定は変更していない。
 - raw stdoutは除外・整形・正規化なしでbytes比較。候補TSVは実Gradle Test.candidateClassFilesを決定的順序で出力し、engine/tag/heap/fork設定を別TSVへ採取。割当を別言語で再実装していない。
-- source原本・stdout/stderr/exit/XML/TSV/receiptの採取時位置: `/home/kenta/verification-evidence/` の下記run。支援script・分類manifestの採取時位置は `.claude/evidence/CMP-261027-1646-l1b-support/`。原本pathは恒久保持や現在の実在を保証しない。小さな証拠JSON/XML要約・画像はGitへ保存し、全量TSV/archive等の重複rawはdurable記録確定後に自隊cleanupで撤去する。[cleanup/保持記録](CMP-261027-1646/cleanup.md)で1root撤去・残14承認待ち保持を記録し、全量raw cleanup未完了を維持する。本報告に原本の件数とSHAを残す。
+- source原本・stdout/stderr/exit/XML/TSV/receiptの採取時位置: `/home/kenta/verification-evidence/` の下記run。支援script・分類manifestの採取時位置は `.claude/evidence/CMP-261027-1646-l1b-support/`。原本pathは恒久保持や現在の実在を保証しない。小さな証拠JSON/XML要約・画像はGitへ保存し、全量TSV/archive等の重複rawはdurable記録確定後に自隊cleanupで撤去する。[cleanup記録](CMP-261027-1646/cleanup.md)に、旧拒否・承認待ち保持の履歴と、明示承認後の残14root撤去・累計15root/888,904,965bytesの不存在確認・raw保持0を記録した。本報告に原本の件数とSHAを残す。
 
 | run | 用途・結果 |
 |---|---|
