@@ -122,11 +122,19 @@ describe('カレンダー初期取得の並列化', () => {
     expect(cal.layersFailed.value).toBe(false)
     cal.multiSelectScopes.value = []
     await flushPromises()
-    const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('storage unavailable') })
-    await cal.initialize()
-    expect(cal.selectedScopes.value).toEqual([])
-    expect(api.getMyCalendarLayers).toHaveBeenCalledTimes(2)
-    getItem.mockRestore()
+    const read = vi.fn(() => { throw new DOMException('storage unavailable', 'SecurityError') })
+    vi.stubGlobal('localStorage', { getItem: read, setItem: vi.fn(() => { throw new DOMException('storage unavailable', 'SecurityError') }) })
+    try {
+      expect(() => localStorage.getItem(KEY)).toThrow('storage unavailable')
+      read.mockClear()
+      await cal.initialize()
+      expect(read).not.toHaveBeenCalled()
+      expect(cal.selectedScopes.value).toEqual([])
+      expect(api.getMyCalendarLayers).toHaveBeenCalledTimes(2)
+    }
+    finally {
+      vi.unstubAllGlobals()
+    }
     wrapper.unmount()
   })
 
@@ -173,22 +181,30 @@ describe('カレンダー初期取得の並列化', () => {
     const { cal, wrapper } = await boot()
     const read = vi.fn(() => { throw new DOMException('storage unavailable', 'SecurityError') })
     const write = vi.fn(() => { throw new DOMException('storage unavailable', 'SecurityError') })
-    if (storage === 'unavailable') {
-      // 読み書き両方を拒否する。Nuxt環境の準備後に注入し、検査対象の初期化だけを観測する。
-      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(read)
-      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(write)
-    }
+    try {
+      if (storage === 'unavailable') {
+        // HappyDOMのStorageはProxyでmethodをbindするため、実globalを置換して陽性対照も取る。
+        vi.stubGlobal('localStorage', { getItem: read, setItem: write })
+        expect(() => localStorage.getItem(KEY)).toThrow('storage unavailable')
+        expect(() => localStorage.setItem(KEY, '')).toThrow('storage unavailable')
+        read.mockClear()
+        write.mockClear()
+      }
 
-    expect(await cal.initialize()).toBe(true)
-    await flushPromises()
-    expect(cal.loading.value).toBe(false)
-    expect(cal.view.value).toBe('month')
-    expect(cal.selectedScopes.value).toEqual(['PERSONAL:0', 'TEAM:42'])
-    expect(cal.selectedScopes.value).not.toContain('TEAM:99')
-    expect(cal.filteredEvents.value).toHaveLength(1)
-    if (storage === 'unavailable') {
-      expect(read).toHaveBeenCalled()
-      expect(write).toHaveBeenCalled()
+      expect(await cal.initialize()).toBe(true)
+      await flushPromises()
+      expect(cal.loading.value).toBe(false)
+      expect(cal.view.value).toBe('month')
+      expect(cal.selectedScopes.value).toEqual(['PERSONAL:0', 'TEAM:42'])
+      expect(cal.selectedScopes.value).not.toContain('TEAM:99')
+      expect(cal.filteredEvents.value).toHaveLength(1)
+      if (storage === 'unavailable') {
+        expect(read).toHaveBeenCalled()
+        expect(write).toHaveBeenCalled()
+      }
+    }
+    finally {
+      if (storage === 'unavailable') vi.unstubAllGlobals()
     }
     wrapper.unmount()
   })

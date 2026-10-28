@@ -47,7 +47,7 @@ const event: CalendarEventItem = {
   id: 10, uniqueKey: 'personal:10', title: '当日予定', startAt: '2026-08-06T10:00:00',
   endAt: '2026-08-06T11:00:00', allDay: false, isPersonal: true, color: null,
 }
-const mountWidget = () => mountSuspended(WidgetMyCalendar, { global: { stubs } })
+const mountWidget = () => mountSuspended(WidgetMyCalendar, { attachTo: document.body, global: { stubs } })
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -147,6 +147,7 @@ describe('個人ダッシュボードの日付操作', () => {
     state.calendarLoading.value = true
     await wrapper.vm.$nextTick()
     const grid = wrapper.findComponent({ name: 'CalendarGrid' })
+    expect(grid.isVisible()).toBe(true)
     grid.vm.$emit('dateClick', '2026-08-06')
     grid.vm.$emit('nextMonth')
     grid.vm.$emit('prevMonth')

@@ -182,8 +182,8 @@ onMounted(async () => {
     </div>
     <DashboardErrorState v-else-if="loadError" @retry="initialize" />
     <!-- 表示対象のmount後、データ待ちの間に部品も読み込む。設定確定前の予定は渡さない。 -->
-    <LazyCalendarGrid
-        v-show="!loading && !loadError"
+    <div v-show="!loading && !loadError">
+      <LazyCalendarGrid
         :year="currentYear"
         :month="currentMonth"
         :events="loading || loadError ? [] : filteredEvents"
@@ -193,6 +193,7 @@ onMounted(async () => {
         @prev-month="moveMonth(-1)"
         @next-month="moveMonth(1)"
       />
+    </div>
     <template v-if="!loading && !loadError">
       <!-- スコープフィルター -->
       <div v-if="allScopeOptions.length > 1" class="mt-3 flex flex-wrap items-center gap-2 text-xs text-surface-500">
