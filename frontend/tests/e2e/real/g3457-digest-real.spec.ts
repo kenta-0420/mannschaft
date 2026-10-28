@@ -38,7 +38,7 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  for (const c of sessions) await c.close().catch(() => {})
+  for (const c of sessions) await c.close()
   try {
     const ids = dbScalar(`select id from notifications where id > ${baseline} and user_id = ${ownerId} and notification_type in ('DIGEST_COMPLETED','DIGEST_FAILED') and scope_id = ${team?.id ?? 0}`)
     deleteNotificationsByIds(ids ? ids.split(/\s+/).map(Number) : [])
@@ -47,11 +47,6 @@ test.afterAll(async () => {
   if (team) await deleteTeam(ownerCtx, ownerToken, team.slug)
   await ownerCtx.dispose(); await memberCtx.dispose()
 })
-
-function ymd(offsetDays: number): string {
-  const d = new Date(Date.now() + 9 * 3600_000 + offsetDays * 86400_000)
-  return `${d.getUTCFullYear()}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${String(d.getUTCDate()).padStart(2, '0')}`
-}
 
 test('DIG-G7-1: 管理者が画面でダイジェストを生成 → 確定(GENERATING 残りなし)し、起動者に結果通知が出る', async ({ browser }) => {
   const owner = await openSession(browser, OWNER); sessions.push(owner.context)

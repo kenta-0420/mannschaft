@@ -52,7 +52,7 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  for (const c of sessions) await c.close().catch(() => {})
+  for (const c of sessions) await c.close()
   try {
     // このテストが作ったアンケート(固有タイトル)に紐づく通知だけを ID 指定で削除
     const ids = dbScalar(`select id from notifications where id > ${baseline} and (instr(title, '${surveyTitle}') > 0 or instr(body, '${surveyTitle}') > 0)`)

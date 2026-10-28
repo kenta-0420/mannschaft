@@ -78,12 +78,16 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  for (const c of sessions) await c.close().catch(() => {})
+  for (const c of sessions) await c.close()
   try {
     const ids = dbScalar(`select id from notifications where id > ${baseline} and notification_type='TEAM_SLOT_NOTE_UPDATED' and scope_id=${team?.id ?? 0}`)
     deleteNotificationsByIds(ids ? ids.split(/\s+/).map(Number) : [])
   } catch (e) { console.log('[後始末] 通知削除失敗', String(e)) }
-  if (timetableId) await ownerCtx.delete(`${BE_API}/teams/${team.slug}/timetables/${timetableId}`, { headers: authHeaders(ownerToken) }).catch(() => {})
+  if (timetableId) {
+    const delRes = await ownerCtx.delete(`${BE_API}/teams/${team.slug}/timetables/${timetableId}`, { headers: authHeaders(ownerToken) })
+    // すでに無い(404)のみ後始末成功とみなし、それ以外は失敗として伝える
+    if (delRes.status() !== 404 && !delRes.ok()) throw new Error(`時間割の削除に失敗: ${delRes.status()} ${await delRes.text()}`)
+  }
   if (team) await deleteTeam(ownerCtx, ownerToken, team.slug)
   await ownerCtx.dispose(); await memberCtx.dispose()
 })

@@ -33,7 +33,7 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  for (const c of sessions) await c.close().catch(() => {})
+  for (const c of sessions) await c.close()
   try { deleteNotificationsByIds(created) } catch (e) { console.log('[後始末] 通知削除失敗', String(e)) }
   await sysCtx.dispose(); await memberCtx.dispose()
 })

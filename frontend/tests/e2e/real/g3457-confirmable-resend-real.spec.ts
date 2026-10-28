@@ -45,12 +45,14 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  for (const c of sessions) await c.close().catch(() => {})
+  for (const c of sessions) await c.close()
   try {
     const ids = dbScalar(`select id from notifications where id > ${baseline} and (instr(title, '${title}') > 0 or instr(body, '${title}') > 0)`)
     deleteNotificationsByIds(ids ? ids.split(/\s+/).map(Number) : [])
     if (notificationId) {
-      await ownerCtx.patch(`${BE_API}/teams/${team.slug}/confirmable-notifications/${notificationId}/cancel`, { headers: authHeaders(ownerToken) }).catch(() => {})
+      const cancelRes = await ownerCtx.patch(`${BE_API}/teams/${team.slug}/confirmable-notifications/${notificationId}/cancel`, { headers: authHeaders(ownerToken) })
+      // すでに無い(404)のみ後始末成功とみなし、それ以外は失敗として伝える
+      if (cancelRes.status() !== 404 && !cancelRes.ok()) throw new Error(`確認通知の取消に失敗: ${cancelRes.status()} ${await cancelRes.text()}`)
     }
   } catch (e) { console.log('[後始末] 失敗', String(e)) }
   if (team) await deleteTeam(ownerCtx, ownerToken, team.slug)

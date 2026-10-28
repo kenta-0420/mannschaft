@@ -103,7 +103,7 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  for (const c of sessions) await c.close().catch(() => {})
+  for (const c of sessions) await c.close()
   try {
     // 通知: このテストで作られた(ID 指定)ものだけ削除
     deleteNotificationsByIds(createdNotificationIds)

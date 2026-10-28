@@ -58,7 +58,7 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  for (const c of sessions) await c.close().catch(() => {})
+  for (const c of sessions) await c.close()
   try { removeTwoFactor(memberId) } catch (e) { console.log('[後始末] 2FA 除去失敗', String(e)) }
   try {
     // 打診・辞退の通知（このテスト専用チーム scope_id かつ baseline 以降）だけを ID 指定で削除
