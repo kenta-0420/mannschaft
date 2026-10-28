@@ -292,14 +292,22 @@ class AnnouncementReadAllCursorIT extends AbstractMySqlIntegrationTest {
 
     // ── ヘルパー ─────────────────────────────────────────────────
 
+    /**
+     * モックの引数（キー）を文字列にする。{@code String.valueOf(inv.getArgument(0))} と書くと、総称戻り値の推論で
+     * {@code String.valueOf(char[])} が選ばれ、実行時に ClassCastException になる（試練の不備を出陣で直した）。
+     */
+    private static String keyOf(Object key) {
+        return String.valueOf(key);
+    }
+
     @SuppressWarnings("unchecked")
     private void stubValkeyWithMap() {
         ValueOperations<String, String> ops = Mockito.mock(ValueOperations.class);
         Mockito.when(redisTemplate.opsForValue()).thenReturn(ops);
-        Mockito.when(ops.get(any())).thenAnswer(inv -> store.get(String.valueOf(inv.getArgument(0))));
+        Mockito.when(ops.get(any())).thenAnswer(inv -> store.get(keyOf(inv.getArgument(0))));
         Mockito.doAnswer(inv -> {
             store.put(inv.getArgument(0), inv.getArgument(1));
-            ttls.remove(String.valueOf(inv.getArgument(0)));
+            ttls.remove(keyOf(inv.getArgument(0)));
             return null;
         }).when(ops).set(anyString(), anyString());
         Mockito.doAnswer(inv -> {
@@ -313,13 +321,13 @@ class AnnouncementReadAllCursorIT extends AbstractMySqlIntegrationTest {
             ttls.put(inv.getArgument(0), Duration.ofMillis(unit.toMillis(inv.getArgument(2))));
             return null;
         }).when(ops).set(anyString(), anyString(), anyLong(), any(TimeUnit.class));
-        Mockito.when(ops.getAndDelete(anyString())).thenAnswer(inv -> store.remove(String.valueOf(inv.getArgument(0))));
+        Mockito.when(ops.getAndDelete(anyString())).thenAnswer(inv -> store.remove(keyOf(inv.getArgument(0))));
         Mockito.when(redisTemplate.delete(anyString())).thenAnswer(inv -> {
-            boolean existed = store.remove(String.valueOf(inv.getArgument(0))) != null;
-            ttls.remove(String.valueOf(inv.getArgument(0)));
+            boolean existed = store.remove(keyOf(inv.getArgument(0))) != null;
+            ttls.remove(keyOf(inv.getArgument(0)));
             return existed;
         });
-        Mockito.when(redisTemplate.hasKey(anyString())).thenAnswer(inv -> store.containsKey(String.valueOf(inv.getArgument(0))));
+        Mockito.when(redisTemplate.hasKey(anyString())).thenAnswer(inv -> store.containsKey(keyOf(inv.getArgument(0))));
     }
 
     private static String cursorKey(Long userId, String scopeType, Long scopeId) {
