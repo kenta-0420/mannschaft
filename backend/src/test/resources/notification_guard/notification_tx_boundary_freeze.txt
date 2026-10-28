@@ -55,7 +55,7 @@
 # 番人は「一度付けた分類が黙って外れること」だけを機械的に止める（# CLASSIFIED_FLOOR）。
 # 分類を増やしたら CLASSIFIED_FLOOR も同じPRで上げること。
 #
-# CLASSIFIED_FLOOR: 3
+# CLASSIFIED_FLOOR: 1
 #
 # 分類は綴りだけでなく「ソースの実際の注釈」と機械照合される（任務4）。
 # TX_NOTIFY_VIA_DELEGATE / TX_NOTIFY_BARE / TX_NOTIFY_IN_TRY について呼び先の宣言から区分を導出し、
@@ -315,13 +315,26 @@
 #   ShedLock を 15 に寄せたのは、Aspect だけを 20 にすると ShedLock の外側に出て、ロックを取れない pod でも完了が記録・通知されるため。
 #   保証範囲（M7）: エンドポイント自身の TX が確定した後に必ず通知する。外側 TX から呼ばれた場合は対象外（現行の呼出元は外側 TX を持たない）。
 #   実DB検証: BatchNotificationTransactionIT。順序の固定: BatchAdvisorOrderTest。
-# 裏取り（G5・G3 を取り込んだ最新 main 上）: 凍結エントリ 5 + REMOVED 8 = 13 -> 3 + 8 = 11、分類済み 3 -> 3（2件とも未分類行のため変化なし）。
-# CENSUS_FLOOR: 11
+# Issue #2997 G4-b（確認通知の手動リマインド再送 / fan-out ワーカー）:
+#   ConfirmableNotificationConfirmService#resendReminder（TX_NOTIFY_BARE / ROLLBACK_COUPLED）は是正。メソッドTXは残したまま、
+#     NotificationHelper#notifyAll を受信者IDのスナップショットを載せた ConfirmableReminderResendEvent の publish に置き換え、
+#     配送は新設の ConfirmableReminderResendNotificationListener（AFTER_COMMIT + @Async("event-pool") + 受信者ごとに
+#     NotificationDeliveryRunner#sendOne）が担う。実DB検証: ConfirmableReminderResendTransactionIT。
+#     HTTP 204 の意味が「再送完了」から「再送を受け付けた」へ変わる（M4）。event-pool 飽和で投入が拒否された回の再送は失われる（M9）。
+#   NotificationFanoutWorker#processOne（TX_NOTIFY_IN_TRY / ROLLBACK_COUPLED）は番人の誤検知であり、番人側を直して REMOVED へ移した。
+#     poll() は @Transactional(propagation = NEVER) の入口で、そこから到達する processReady -> processOne は業務TXの内側ではない
+#     （NEVER は TX が在ることを許さない）。番人は @Transactional という綴りだけで TX 文脈の起点にしていた。
+#     起点から propagation = NEVER / NOT_SUPPORTED の宣言を外した（NotificationTransactionBoundaryGuardTest#transactionalClosure）。
+#     外すのは起点だけで、REQUIRED の入口から自己呼出で到達した先の NEVER/NOT_SUPPORTED は効かない（プロキシを経ない）ため
+#     閉包の伝播はそのまま通し、「REQUIRED の入口 -> 自己呼出の NEVER/NOT_SUPPORTED -> 通知」は引き続き違反として挙げる
+#     （SuspendedEntryFixture が陰性・陽性対照・変異を固定）。processOne の失敗記録・カーソル再開・他ジョブ継続は
+#     NotificationFanoutWorker の既存テストが担保している。
+# 裏取り（G5・G3・G7-b を取り込んだ最新 main 上、G4-b 合流後）: 凍結エントリ 3 + REMOVED 8 = 11（G7-b 単独）-> 1 + 9 = 10、分類済み 3 -> 1（G4-b の2件とも ROLLBACK_COUPLED の分類済み行）。
+# REMOVED: com.mannschaft.app.notification.fanout.NotificationFanoutWorker#processOne -> TX_NOTIFY_IN_TRY : poll() は @Transactional(propagation = NEVER) の入口で、そこから到達する processOne は業務TXの内側ではない（番人が NEVER を TX 文脈の起点にしていた誤検知。Issue #2997 G4-b）。
+# CENSUS_FLOOR: 10
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
-com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationConfirmService#resendReminder -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.notification.fanout.NotificationFanoutWorker#processOne -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 com.mannschaft.app.reservation.service.ReservationPendingExpireService#notifyApplicant -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 
 # --- 2026-09-01 main 取り込みで増えた既存負債（本PRの差分が生んだものではない）---
