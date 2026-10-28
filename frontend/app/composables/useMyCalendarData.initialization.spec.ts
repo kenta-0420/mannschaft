@@ -163,4 +163,33 @@ describe('カレンダー初期取得の並列化', () => {
     expect(api.getMyCalendarLayers).toHaveBeenCalledOnce()
     wrapper.unmount()
   })
+
+  it.each(['broken-json', 'unavailable'])('初回storageが%sでも準備を完了し、hiddenを除く既定選択へ戻る', async (storage) => {
+    api.getMyCalendarLayers.mockResolvedValue({ data: [
+      ...layers,
+      { scopeType: 'TEAM', scopeId: 99, hidden: true, color: '#2563eb', colorSource: 'LAYER_AUTO' },
+    ] })
+    if (storage === 'broken-json') localStorage.setItem(KEY, '{broken')
+    const { cal, wrapper } = await boot()
+    let read: ReturnType<typeof vi.spyOn> | undefined
+    let write: ReturnType<typeof vi.spyOn> | undefined
+    if (storage === 'unavailable') {
+      // 読み書き両方を拒否する。Nuxt環境の準備後に注入し、検査対象の初期化だけを観測する。
+      read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new DOMException('storage unavailable', 'SecurityError') })
+      write = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('storage unavailable', 'SecurityError') })
+    }
+
+    expect(await cal.initialize()).toBe(true)
+    await flushPromises()
+    expect(cal.loading.value).toBe(false)
+    expect(cal.view.value).toBe('month')
+    expect(cal.selectedScopes.value).toEqual(['PERSONAL:0', 'TEAM:42'])
+    expect(cal.selectedScopes.value).not.toContain('TEAM:99')
+    expect(cal.filteredEvents.value).toHaveLength(1)
+    if (storage === 'unavailable') {
+      expect(read).toHaveBeenCalled()
+      expect(write).toHaveBeenCalled()
+    }
+    wrapper.unmount()
+  })
 })
