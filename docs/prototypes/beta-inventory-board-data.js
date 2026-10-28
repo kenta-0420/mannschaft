@@ -9098,7 +9098,7 @@ window.BETA_INVENTORY_DATA = {
       {
         "id": "CMP-261028-1715-plain-journey",
         "personaId": "CMP-261028-1715-plain",
-        "purpose": "近い予定を確認して内容を把握する",
+        "purpose": "近日と来月の自分が見られる予定を把握し、使いやすい表示で確認を終える",
         "originalJourneyId": "nearby-next-month",
         "journeyIdSource": "登録時に独自ID付与・元journeyIdを保持",
         "runId": "calendar-residual-20261028",
@@ -9108,7 +9108,7 @@ window.BETA_INVENTORY_DATA = {
       {
         "id": "CMP-261028-1715-return-journey",
         "personaId": "CMP-261028-1715-return",
-        "purpose": "表示を切り替えた後に離脱し復帰して確認する",
+        "purpose": "途中で別タブへ注意が逸れても、自分が見られる予定の確認を終える",
         "originalJourneyId": "visible-schedule-interrupted-return",
         "journeyIdSource": "登録時に独自ID付与・元journeyIdを保持",
         "runId": "calendar-residual-20261028",
@@ -9118,7 +9118,7 @@ window.BETA_INVENTORY_DATA = {
       {
         "id": "CMP-261028-1715-mobile-journey",
         "personaId": "CMP-261028-1715-mobile",
-        "purpose": "小画面で予定を閲覧し日付を移動する",
+        "purpose": "外出先で直近1週間の自分が見られる予定を把握したい",
         "originalJourneyId": "mobile-calendar-local-1",
         "journeyIdSource": "登録時に独自ID付与・元journeyIdを保持",
         "runId": "calendar-residual-20261028",

@@ -238,6 +238,20 @@
       "trackedPath": "docs/evidence/CMP-261028-1715/source/main-adoption-safe.json",
       "adoptedSha256": "c3bf94728eec6e103d77cb290ea7d52fad4bb1124983932d9ba303ad128eb482",
       "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "nav-fixed-owned-nitro1-stop-safe.json",
+      "inputSha256": "47dc827da8674dea3e513a22b6a2194dd341adbc3de0bea3eefd75e0d609c18a",
+      "trackedPath": "docs/evidence/CMP-261028-1715/source/nav-fixed-owned-nitro1-stop-safe.json",
+      "adoptedSha256": "25a7d487dda5e22e9ef4439cf46dea1b925cb88c3bb9bbb533e56a9bbb0e4857",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "completion-cli1-interrupted-safe.json",
+      "inputSha256": "a84704ba059cbcb63fb35be98ea57609342b97c5211d620b46e44903b59d0faa",
+      "trackedPath": "docs/evidence/CMP-261028-1715/validation/completion-cli1-interrupted-safe.json",
+      "adoptedSha256": "00008146d66391bdeafabb8c5cd2ad28d6139a2fa25d3601f72beef5180c2789",
+      "referenceRewritten": false
     }
   ],
   "derivedProjection": true,
@@ -263,21 +277,27 @@
     "featureKey": "village-events-calendar-view",
     "featureDetail": "統合カレンダー閲覧",
     "generatedOverlayOnlyAdopted": true,
-    "otherDataFieldsDeepEqual": true
+    "otherDataFieldsDeepEqual": true,
+    "rootAssignedOriginalPurposesPreserved": true
   },
   "completedCampaignJsonCreated": true,
   "taskListChanged": true,
   "finalCI": "root-verified-17-success-7-skip-failure-and-active-zero",
   "codePr4205": "merged",
   "stillPending": [
-    "docs-review-and-PR-CI",
-    "owned-Nav-runtime-and-artifact-cleanup"
+    "docs-final-review-and-PR-CI",
+    "owned-artifact-and-WT-cleanup"
   ],
   "implementationHead": "4697a0f99045a2218dbfe6eb8c7e1d894962d8d0",
   "implementationMergeCommit": "2f524c7a19f8b928b0086ad700fe527e2d631843",
   "cleanup": {
     "localInterruptedScratch": "removed-with-root-readonly-audit-and-uid1000-mutation",
-    "ownNavRuntime": "retained-until-separate-root-release",
+    "ownNavRuntime": "root-strict-stop-completed-artifact-retained",
     "mainAndForeignRuntimes": "unchanged"
+  },
+  "localCompletionCli": {
+    "status": "interrupted-unverified",
+    "passed": false,
+    "finalHeadRemoteGateRequired": true
   }
 }

@@ -1,4 +1,4 @@
-# CMP-261028-1715 検証記録（採用準備）
+# CMP-261028-1715 検証記録
 
 実artifact sourceは `488e4b9bf284bb6c996c2b87a09d37ad06a10bd6`。後続4697はspec-only bridge。コードPR4205はhead4697/merge2f524で採用済み。rootが最終CI17成功7条件skip・失敗/未完了0を確認。primary完了JSONとtask-listはこのdocs PRで確定する。
 
@@ -14,7 +14,7 @@ whole DOMはbaseline11.081/6.933s、calendar並列5.673/14.258s、Nav10.111/4.74
 
 独立3住民は各別actor/contextのfork-none探索。plain/returnは目的達成、mobileは個人scope直近週を確認した部分達成でTEAM/ORG未探索。3体の実施と全目的達成・coverage成功は別の判定。B0には既存26/26/55を不変保持して3/3宣言とmobileの未実証when-free観測1件だけを追加する。
 
-残るgate: この完了証跡PRの検分/CI/採用、本人runtime/成果物の後始末。overlay限定検証と既存標準validator失敗は分離して記録する。
+作成時点の残るgate: この完了証跡PRの検分/CI/採用、本人runtime/成果物の後始末。overlay限定検証と既存標準validator失敗は分離して記録する。
 
 ## 正式redの採用範囲
 
@@ -24,7 +24,7 @@ whole DOMはbaseline11.081/6.933s、calendar並列5.673/14.258s、Nav10.111/4.74
 
 ## 住民画像と派生射影
 
-rootは[一般住民の来月一覧・詳細](residents/plain/agenda-november.png)と[中断復帰後の表示](residents/return/06-return-list.png)を実視認した。画像内のmask対象文字そのものを確認したとは扱わない。mobileは原reportと07/09/10/11画像を候補として保持する。
+rootは[一般住民の来月一覧](residents/plain/agenda-november.png)と[中断復帰後の表示](residents/return/06-return-list.png)を実視認した。画像内のmask対象文字そのものを確認したとは扱わない。mobileは原reportと07/09/10/11画像を候補として保持する。
 
 safe JSON/JSONLは原本の派生projectionであり、採用画像だけをtracked pathへリンクした。未採用ローカル画像の参照値は明示マーカーへ変換し、実在しない画像pathを公開参照として残していない。未採用数・原本SHA・採用版SHAはadoption manifestで照合でき、原本自体は変更していない。[未採用alias一覧](local-images-not-adopted.md)は画像証拠ではない。
 
@@ -41,3 +41,9 @@ safe JSON/JSONLは原本の派生projectionであり、採用画像だけをtrac
 [実装merge](source/implementation-merge-safe.json)はPR4205/head4697/merge2f524。通常mergeはuptodate制限で拒否された後、rootがmain追加docsのみ・全CIを再照合し正本条件のadmin squashで採用。使用中local branch削除の失敗をmerge失敗と混同しない。[main反映](source/main-adoption-safe.json)はroot所有guardで行われた。本資料作成担当はmain runtimeを操作していない。
 
 B0は正規generatorを用い、既存26/26/55の全field・環境を保持して29/29/56。生成されたb0RunOverlayだけをdata.jsへ採用し、その他全field deep equality/HTML不変更を確認した。[限定一致検査](validation/final-overlay-safe.json)と[生成照合](validation/overlay-generated-equality-safe.json)を参照。新観測1件は既存taxonomy村予定calendar-viewへ紐付けた未実証when-freeで、execution/coverage合格ではない。最初の生成はsparseの既存参照spec34未展開で停止したため、参照存在metadataだけを追加展開して再実行し、spec/fixture内容は読取・採用していない。無関係inventory/GitHub同期とCMP既存不整合修正は行っていない。
+
+## 検証CLIと本人runtimeの終了
+
+local completion CLIは61fで過去全完了証拠・全参照を逐次git showするため長時間化し、root判断で所有読取Nodeだけを停止した。[中断safe](validation/completion-cli1-interrupted-safe.json)は未検証/exit-1でありgreenに数えない。最終docs headのGitHub Task-List完了ゲートが実PR/CI照合を含めて検証する。
+
+rootがレビュー済みstrict helperで本人Nav NitroだけをSIGTERMし、3011解放/main API847218同一/他signal0を確認した。[停止safe](source/nav-fixed-owned-nitro1-stop-safe.json)。配布物削除は別gateで未実施、本陣3000/8080と外国3001を変更していない。

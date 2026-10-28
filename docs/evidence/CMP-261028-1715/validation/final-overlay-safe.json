@@ -31,5 +31,11 @@
     "testsExecuted": false,
     "originalReceiptRetained": true,
     "adoptedGreen": "remote CI own15pass/0skip"
+  },
+  "originalRootAssignedPurposesRestoredExactly": true,
+  "purposes": {
+    "plain": "近日と来月の自分が見られる予定を把握し、使いやすい表示で確認を終える",
+    "return": "途中で別タブへ注意が逸れても、自分が見られる予定の確認を終える",
+    "mobile": "外出先で直近1週間の自分が見られる予定を把握したい"
   }
 }
