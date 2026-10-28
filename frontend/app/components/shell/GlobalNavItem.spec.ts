@@ -2,16 +2,14 @@ import { describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { defineComponent, h } from 'vue'
-import { RouterLink, routerKey } from 'vue-router'
-import { useNuxtApp, useRouter } from '#imports'
+import { createMemoryHistory, createRouter, RouterLink, useRouter as useVueRouter } from 'vue-router'
+import { useNuxtApp } from '#imports'
 import NuxtLink from '#app/components/nuxt-link'
 import GlobalNavItem from './GlobalNavItem.vue'
 
 describe('グローバルナビの操作時先読み', () => {
   it.each(['pointerenter', 'focus'] as const)('可視化だけでは先読みせず、%s とクリック遷移を保つ', async (interaction) => {
     const nuxt = useNuxtApp()
-    const router = useRouter()
-    const previousRoute = router.currentRoute.value.fullPath
     const previousObserver = nuxt._observer
     const observed = new Map<Element, () => void>()
     nuxt._observer = {
@@ -25,27 +23,41 @@ describe('グローバルナビの操作時先読み', () => {
     const destination = `/__nav-interaction-${interaction}`
     const controlDestination = `/__nav-visibility-${interaction}`
     const importer = vi.fn(async () => defineComponent({ render: () => h('div', '遷移先') }))
-    const removeDestination = router.addRoute({ path: destination, component: importer })
-    const removeControl = router.addRoute({ path: controlDestination, component: defineComponent({ render: () => h('div') }) })
+    const emptyPage = defineComponent({ render: () => h('div') })
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/', component: emptyPage },
+        { path: destination, component: importer },
+        { path: controlDestination, component: emptyPage },
+      ],
+    })
+    await router.push('/')
+    await router.isReady()
+    let injectedRouter: ReturnType<typeof useVueRouter> | undefined
     const Host = defineComponent({
-      render: () => h('div', [
-        h(GlobalNavItem, { item: { key: 'probe', labelKey: 'probe', icon: 'pi pi-calendar', path: destination }, rail: false, active: false }),
-        // 実NuxtLinkの可視先読みを陽性対照にし、observer/hook自体が動くことを確認する。
-        h(NuxtLink, { to: controlDestination, prefetchOn: 'visibility' }, { default: () => '可視先読みの対照' }),
-      ]),
+      setup() {
+        injectedRouter = useVueRouter()
+        return () => h('div', [
+          h(GlobalNavItem, { item: { key: 'probe', labelKey: 'probe', icon: 'pi pi-calendar', path: destination }, rail: false, active: false }),
+          // 実NuxtLinkの可視先読みを陽性対照にし、observer/hook自体が動くことを確認する。
+          h(NuxtLink, { to: controlDestination, prefetchOn: 'visibility' }, { default: () => '可視先読みの対照' }),
+        ])
+      },
     })
     let unmount: (() => void) | undefined
     try {
       const wrapper = await mountSuspended(Host, {
         attachTo: document.body,
-        global: { components: { NuxtLink, RouterLink }, stubs: { NuxtLink: false, RouterLink: false } },
+        global: { plugins: [router], components: { NuxtLink, RouterLink }, stubs: { NuxtLink: false, RouterLink: false } },
       })
       unmount = () => wrapper.unmount()
       const link = wrapper.get(`a[href="${destination}"]`)
       const control = wrapper.get(`a[href="${controlDestination}"]`)
       const realLink = wrapper.findAllComponents(RouterLink).find(component => component.props('to') === destination)
       expect(realLink).toBeDefined()
-      expect(realLink?.vm.$.appContext.provides[routerKey as symbol]).toBe(router)
+      expect(realLink?.vm.$.type).toBe(RouterLink)
+      expect(injectedRouter).toBe(router)
       await vi.waitFor(() => expect(observed.has(control.element)).toBe(true))
       for (const callback of [...observed.values()]) callback()
       await flushPromises()
@@ -65,9 +77,6 @@ describe('グローバルナビの操作時先読み', () => {
       unmount?.()
       unhook()
       nuxt._observer = previousObserver
-      await router.push(previousRoute)
-      removeDestination()
-      removeControl()
     }
   })
 })
