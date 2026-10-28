@@ -307,6 +307,14 @@
 #     OwnershipTransferNotificationListener（AFTER_COMMIT + @Async("event-pool") + NotificationDeliveryRunner#sendOne）。
 #   実DB検証: SurveyReminderNotificationTransactionIT / OwnershipTransferNotificationTransactionIT。
 # 裏取り（G5・G3 を取り込んだ最新 main 上）: 凍結エントリ 9 + REMOVED 8 = 17 -> 5 + 8 = 13、分類済み 7 -> 3（G5 の 4 件とも ROLLBACK_COUPLED の分類済み行）。
+# Issue #2997 G7-b（管理バッチ）: BatchEventListener#onCompleted / #onFailed（いずれも PLAIN_EVENT_LISTENER・未分類）を是正。
+#   リスナーを AFTER_COMMIT(fallbackExecution=true) + @Async("event-pool") に変更し、管理者ごとに NotificationDeliveryRunner#sendOne で配送
+#   （1 人の失敗が他に波及しない）。BatchExecutionAspect を @Order(20) にして BackgroundFeaturePolicy(5) → FeatureGate(10) →
+#   ShedLock(15) → BatchExecutionAspect(20) → TX の順にし、完了・失敗イベントが本体 TX の確定（commit 失敗を含む）後に publish されるようにした。
+#   旧実装の実測順序は Policy(5) / FeatureGate(10) / TX(LOWEST) / ShedLock(LOWEST) / BatchExecution(LOWEST) で、BatchExecutionAspect は TX の内側だった。
+#   ShedLock を 15 に寄せたのは、Aspect だけを 20 にすると ShedLock の外側に出て、ロックを取れない pod でも完了が記録・通知されるため。
+#   保証範囲（M7）: エンドポイント自身の TX が確定した後に必ず通知する。外側 TX から呼ばれた場合は対象外（現行の呼出元は外側 TX を持たない）。
+#   実DB検証: BatchNotificationTransactionIT。順序の固定: BatchAdvisorOrderTest。
 # Issue #2997 G4-b（確認通知の手動リマインド再送 / fan-out ワーカー）:
 #   ConfirmableNotificationConfirmService#resendReminder（TX_NOTIFY_BARE / ROLLBACK_COUPLED）は是正。メソッドTXは残したまま、
 #     NotificationHelper#notifyAll を受信者IDのスナップショットを載せた ConfirmableReminderResendEvent の publish に置き換え、
@@ -321,14 +329,12 @@
 #     閉包の伝播はそのまま通し、「REQUIRED の入口 -> 自己呼出の NEVER/NOT_SUPPORTED -> 通知」は引き続き違反として挙げる
 #     （SuspendedEntryFixture が陰性・陽性対照・変異を固定）。processOne の失敗記録・カーソル再開・他ジョブ継続は
 #     NotificationFanoutWorker の既存テストが担保している。
-# 裏取り（G5・G3 を取り込んだ最新 main 上）: 凍結エントリ 5 + REMOVED 8 = 13 -> 3 + 9 = 12、分類済み 3 -> 1（2件とも ROLLBACK_COUPLED の分類済み行）。
+# 裏取り（G5・G3・G7-b を取り込んだ最新 main 上、G4-b 合流後）: 凍結エントリ 3 + REMOVED 8 = 11（G7-b 単独）-> 1 + 9 = 10、分類済み 3 -> 1（G4-b の2件とも ROLLBACK_COUPLED の分類済み行）。
 # REMOVED: com.mannschaft.app.notification.fanout.NotificationFanoutWorker#processOne -> TX_NOTIFY_IN_TRY : poll() は @Transactional(propagation = NEVER) の入口で、そこから到達する processOne は業務TXの内側ではない（番人が NEVER を TX 文脈の起点にしていた誤検知。Issue #2997 G4-b）。
-# CENSUS_FLOOR: 12
+# CENSUS_FLOOR: 10
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
-com.mannschaft.app.admin.batch.BatchEventListener#onCompleted -> PLAIN_EVENT_LISTENER
-com.mannschaft.app.admin.batch.BatchEventListener#onFailed -> PLAIN_EVENT_LISTENER
 com.mannschaft.app.reservation.service.ReservationPendingExpireService#notifyApplicant -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 
 # --- 2026-09-01 main 取り込みで増えた既存負債（本PRの差分が生んだものではない）---

@@ -1,3 +1,4 @@
+import { springPage } from '../../fixtures/spring-page'
 import { test, expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
@@ -14,22 +15,11 @@ import { waitForHydration } from '../helpers/wait'
  * - timeout: 10_000 を統一
  *
  * 実行前提:
- * - feature/F04.10-committee ブランチのフロントエンド dev server が起動していること
- * - dev server が委員会機能のページ (organizations/[id]/committees 等) を持つ必要がある
- * - 委員会ページが存在しない dev server で実行した場合は 404 のため自動スキップする
+ * - 対象コミットのフロントエンドサーバーが起動していること
+ * - 組織委員会ページが利用できること（404は失敗とする）
  *
  * 仕様書: docs/features/F04.10_committee.md
  */
-
-/**
- * 委員会一覧ページが存在するか（404 でないか）を確認する。
- * feature/F04.10-committee 以外のブランチで動いている dev server では
- * このページが存在しないため、テストをスキップするために使用する。
- */
-async function committeePageExists(page: Page): Promise<boolean> {
-  const response = await page.request.get(`/organizations/1/committees`).catch(() => null)
-  return response !== null && response.status() !== 404
-}
 
 const ORG_ID = 1
 const COMMITTEE_ID = 101
@@ -171,11 +161,11 @@ async function mockCommitteeApis(page: Page): Promise<void> {
   await mockOrgApis(page)
 
   // 委員会一覧
-  await page.route(`**/api/v1/organizations/${ORG_ID}/committees`, async (route) => {
+  await page.route(url => url.pathname === `/api/v1/organizations/${ORG_ID}/committees`, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: MOCK_COMMITTEES }),
+      body: JSON.stringify({ data: springPage(MOCK_COMMITTEES) }),
     })
   })
 
@@ -214,11 +204,11 @@ async function mockOrgApisAsAdmin(page: Page): Promise<void> {
     })
   })
 
-  await page.route(`**/api/v1/organizations/${ORG_ID}/committees`, async (route) => {
+  await page.route(url => url.pathname === `/api/v1/organizations/${ORG_ID}/committees`, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: MOCK_COMMITTEES }),
+      body: JSON.stringify({ data: springPage(MOCK_COMMITTEES) }),
     })
   })
 }
@@ -234,8 +224,6 @@ test.describe('COMMITTEE-001〜004: F04.10 組織委員会機能', () => {
 
   test('COMMITTEE-001: 委員会一覧ページが表示される', async ({ page }) => {
     // feature/F04.10-committee ブランチ以外の dev server では委員会ページが存在しないためスキップ
-    const exists = await committeePageExists(page)
-    test.skip(!exists, 'dev server に委員会ページが存在しない（feature/F04.10-committee ブランチ以外）')
 
     await mockCommitteeApis(page)
 
@@ -255,8 +243,6 @@ test.describe('COMMITTEE-001〜004: F04.10 組織委員会機能', () => {
     page,
   }) => {
     // feature/F04.10-committee ブランチ以外の dev server では委員会ページが存在しないためスキップ
-    const exists = await committeePageExists(page)
-    test.skip(!exists, 'dev server に委員会ページが存在しない（feature/F04.10-committee ブランチ以外）')
 
     // ADMIN ロールとして設定
     await page.addInitScript(() => {
@@ -304,8 +290,6 @@ test.describe('COMMITTEE-001〜004: F04.10 組織委員会機能', () => {
     page,
   }) => {
     // feature/F04.10-committee ブランチ以外の dev server では委員会ページが存在しないためスキップ
-    const exists = await committeePageExists(page)
-    test.skip(!exists, 'dev server に委員会ページが存在しない（feature/F04.10-committee ブランチ以外）')
 
     await mockCommitteeApis(page)
 
@@ -332,8 +316,6 @@ test.describe('COMMITTEE-001〜004: F04.10 組織委員会機能', () => {
     page,
   }) => {
     // feature/F04.10-committee ブランチ以外の dev server では招集ページが存在しないためスキップ
-    const exists = await committeePageExists(page)
-    test.skip(!exists, 'dev server に委員会ページが存在しない（feature/F04.10-committee ブランチ以外）')
 
     // 無効なトークンに対して 404/400 を返すようにモック
     await page.route('**/api/v1/committee-invitations/accept-by-token', async (route) => {

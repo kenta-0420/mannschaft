@@ -1,0 +1,179 @@
+{
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "personaId": "OCT-COMMITTEE-SUPPLEMENT-20261028-R3",
+  "originalPersonaId": 2,
+  "personaArchetype": "高齢低リテラシー×素直",
+  "journeyId": "committee-third-resident-3-20261028-supplement",
+  "runId": "committee-third-resident-3-20261028-supplement",
+  "sourceHeads": {
+    "frontend": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+    "backend": "1a10ca038ffb4a215d4b1b44242ff4ef68275607"
+  },
+  "runtime": {
+    "kind": "same-head recovery-build5 production",
+    "wholeOutputByteEquivalence": false
+  },
+  "purpose": "所属組織の委員会を探し、活動の様子や伝達履歴を確かめ、一覧へ戻って他の委員会も探す",
+  "executionCompleted": true,
+  "allGoalsAchieved": false,
+  "coveragePassed": false,
+  "session": {
+    "actor": 3,
+    "startedAt": "2026-10-27T20:41:24.612Z",
+    "finishedAt": "2026-10-27T20:51:17.543Z",
+    "status": "closed",
+    "contextsCreated": 1,
+    "contextsClosed": 1,
+    "browserClosed": true,
+    "pageErrors": 0,
+    "unexpectedBusinessWrites": 0,
+    "runtimeUnchangedAtClose": true
+  },
+  "sourceEvidence": [
+    {
+      "path": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/committee-third-resident-observations.json",
+      "sha256": "b64f47bed1d9927a2aebd7eecc4e9c85207bb4321adf6e03ec3b1794dcaa55b8"
+    },
+    {
+      "path": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/resident-committee-third-resident-3-20261028-supplement-3.json",
+      "sha256": "973dabeb52e5fc197125e98ffa26165ae33d00bb4a109574ec7b4f8f6a54a77b"
+    },
+    {
+      "path": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/committee-third-resident-3-20261028-root-approval.json",
+      "sha256": "40bbbe8b4359d8f737a52f6e2f00f1ccbf95e9fe68075871c89f583e85773421"
+    }
+  ],
+  "observations": [
+    {
+      "url": "http://localhost:3004/dashboard",
+      "selected": "初期画面",
+      "result": "ダッシュボードにチーム・組織メニューがあり、委員会への直接の項目は見当たらなかった",
+      "hesitation": "所属組織から探すことにした",
+      "error": null
+    },
+    {
+      "url": "http://localhost:3004/dashboard",
+      "selected": "組織ボタン",
+      "result": "操作は Error となり画面遷移なし",
+      "hesitation": "組織名の書かれたボタンを選ぶ",
+      "error": "Error"
+    },
+    {
+      "url": "http://localhost:3004/dashboard",
+      "selected": "所属組織名ボタン",
+      "result": "カレンダーの表示切替で、委員会探索先ではなさそうだった",
+      "hesitation": "上部の組織メニューを改めて選ぶ",
+      "error": null
+    },
+    {
+      "url": "http://localhost:3004/dashboard",
+      "selected": "上部の文字付き組織ボタン",
+      "result": "フォルダ・すべて（一覧）・直接ジャンプと所属組織が表示された",
+      "hesitation": "直接ジャンプ内の所属組織を選ぶ",
+      "error": null
+    },
+    {
+      "url": "http://localhost:3004/organizations/:other-test-organization",
+      "selected": "直接ジャンプの所属組織",
+      "result": "組織ダッシュボードに到着。メンバーの権限を初期設定という案内が開いた",
+      "hesitation": "委員会確認と無関係そうなので、あとで決めるを選ぶ",
+      "error": null
+    },
+    {
+      "url": "http://localhost:3004/organizations/:other-test-organization",
+      "selected": "予定・活動",
+      "result": "今後の予定、カレンダー、活動記録、出席確認状況が開いた。委員会は見えない",
+      "hesitation": "委員会は連絡・共有にあるかもしれない",
+      "error": "自動操作の完全一致選択はTimeoutError、部分一致で操作成功"
+    },
+    {
+      "url": "http://localhost:3004/organizations/:other-test-organization",
+      "selected": "連絡・共有、やること・確認",
+      "result": "掲示板、タイムライン、ブログ、チャット、ギャラリー、プロジェクト、回覧板、アンケートが開いた。委員会への項目は見つからない",
+      "hesitation": "委員会は組織の一部なので下位組織を確認する",
+      "error": null
+    },
+    {
+      "url": "http://localhost:3004/organizations/:other-test-organization/children",
+      "selected": "下位組織タブ",
+      "result": "下位組織はありませんという空状態だった",
+      "hesitation": "委員会の入口が見つからない。もう一つの所属組織を探す",
+      "error": "完全一致選択のTimeoutErrorは部分一致で解消"
+    },
+    {
+      "url": "http://localhost:3004/organizations/:target-test-organization/modules",
+      "selected": "もう一つの所属組織、機能設定タブ（閲覧のみ）",
+      "result": "委員会・役員会の運営管理という機能の説明を見つけたが、委員会一覧へ進むリンクは見つからなかった",
+      "hesitation": "設定を変えることはできないので保存せず、最初の所属組織に戻る",
+      "error": null
+    },
+    {
+      "url": "http://localhost:3004/organizations/:other-test-organization",
+      "selected": "探索途中の目的範囲補足",
+      "result": "対象の所属組織は :target-test-organization と補足を受けた",
+      "hesitation": "複数組織のうち対象が分かったので戻って探す",
+      "error": null
+    },
+    {
+      "url": "http://localhost:3004/organizations/:target-test-organization",
+      "selected": "対象組織のメニューボタン",
+      "result": "業務・運用の中に委員会を見つけた",
+      "hesitation": "ダッシュボード内では見つからず、メニューから進むことが分かった",
+      "error": null
+    },
+    {
+      "url": "http://localhost:3004/organizations/:target-test-organization",
+      "selected": "メニュー内の業務・運用を展開し、委員会",
+      "result": "業務・運用は折りたたまれていた。展開すると可視の委員会リンクが現れた",
+      "hesitation": "展開前の不可視項目を含む文字取得で探索記録に混在があった。可視状態を確認し直してから進んだ",
+      "error": "操作補助のTimeoutError、UIの障害とは判定しない"
+    },
+    {
+      "url": "http://localhost:3004/committees/1",
+      "selected": "委員会一覧の活動中の委員会名",
+      "result": "委員会詳細に到達した。委員会名、メンバー（1）、戻る、活動を終了するが表示された。活動記録や伝達履歴はこの時点で見つけられていない",
+      "hesitation": "制限時間が近いため、一覧へ戻ることを優先",
+      "error": null
+    },
+    {
+      "url": "http://localhost:3004/committees/1",
+      "selected": "戻る",
+      "result": "自動操作がTimeoutErrorとなり、一覧へ帰還できた確認は取れていない。セッションを終了した",
+      "hesitation": "時間上限のため再操作せず終了",
+      "error": "TimeoutError"
+    }
+  ],
+  "achieved": [
+    "対象組織のメニューから委員会一覧へ到達",
+    "活動中の委員会詳細へ到達",
+    "一覧に複数委員会とページ番号1・2・3を確認"
+  ],
+  "unachieved": [
+    "活動の様子の確認",
+    "伝達履歴の確認",
+    "詳細から一覧へ戻る操作の完了確認",
+    "他の委員会の詳細確認"
+  ],
+  "limitations": [
+    "途中で対象組織名の補足を受けた",
+    "文字取得に一時不可視項目が混在したため可視状態を確認し直した",
+    "設定変更・保存・作成・送信・削除・取消・メンバー変更は実施せず",
+    "補足は対象組織名だけ。手順・URLの指示なし。",
+    "不可視項目の一時混在とlocator TimeoutをUI障害や帰還導線欠落の証明として扱わない。",
+    "旧fresh3全3住民の全目的falseは変更しない。",
+    "B0合計は旧fresh3の3住民＋今回追加1住民の4住民。委員会目的は一般fresh3-R3・ADHD fresh3-R5・今回高齢の異なる3住民、メールキュー目的fresh3-R4は別。"
+  ],
+  "privacyFilter": "テスト組織slug/名称をplaceholder化。個人名/email/rawDOM/HAR/trace/HTTP本文/認証情報/画像実体なし。原本は相対path+SHA256のみ。",
+  "rootAdjudication": {
+    "source": {
+      "path": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/root-be1311-three-purpose-exploration-adjudication.json",
+      "sha256": "8900c70eddd48119a7bc9dbd725d5c7d09ad99e4f63b225658f7ed08707c067e"
+    },
+    "stage": "exploration-executed-observations-triaged",
+    "scopeAcceptance": "required independent explorations performed and normally closed; partial goals preserved, no assertion of B0 coverage or all goals achieved",
+    "allResidentGoalsAchieved": false,
+    "coveragePassed": false
+  }
+}

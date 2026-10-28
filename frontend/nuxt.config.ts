@@ -1,6 +1,5 @@
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
-import Aura from '@primeuix/themes/aura'
 import { buildGateRouteRules } from './app/constants/featureGates'
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -552,6 +551,7 @@ export default defineNuxtConfig({
           'ja/wallet.json',
           'ja/village.json',
           'ja/system_admin_batch.json',
+          'ja/system_admin_email_outbox.json',
           'ja/system_admin_gdpr.json',
           'ja/system_admin_security_scan.json',
           'ja/system_admin_fee_policy.json',
@@ -634,6 +634,7 @@ export default defineNuxtConfig({
           'en/wallet.json',
           'en/village.json',
           'en/system_admin_batch.json',
+          'en/system_admin_email_outbox.json',
           'en/system_admin_gdpr.json',
           'en/system_admin_security_scan.json',
           'en/system_admin_fee_policy.json',
@@ -716,6 +717,7 @@ export default defineNuxtConfig({
           'zh/wallet.json',
           'zh/village.json',
           'zh/system_admin_batch.json',
+          'zh/system_admin_email_outbox.json',
           'zh/system_admin_gdpr.json',
           'zh/system_admin_security_scan.json',
           'zh/system_admin_fee_policy.json',
@@ -798,6 +800,7 @@ export default defineNuxtConfig({
           'ko/wallet.json',
           'ko/village.json',
           'ko/system_admin_batch.json',
+          'ko/system_admin_email_outbox.json',
           'ko/system_admin_gdpr.json',
           'ko/system_admin_security_scan.json',
           'ko/system_admin_fee_policy.json',
@@ -880,6 +883,7 @@ export default defineNuxtConfig({
           'es/wallet.json',
           'es/village.json',
           'es/system_admin_batch.json',
+          'es/system_admin_email_outbox.json',
           'es/system_admin_gdpr.json',
           'es/system_admin_security_scan.json',
           'es/system_admin_fee_policy.json',
@@ -962,6 +966,7 @@ export default defineNuxtConfig({
           'de/wallet.json',
           'de/village.json',
           'de/system_admin_batch.json',
+          'de/system_admin_email_outbox.json',
           'de/system_admin_gdpr.json',
           'de/system_admin_security_scan.json',
           'de/system_admin_fee_policy.json',
@@ -1006,6 +1011,8 @@ export default defineNuxtConfig({
   },
 
   primevue: {
+    // 巨大なpresetをpublic runtimeConfigへ複製せずSSR/CSRの正規importで共有する。
+    importTheme: { as: 'MannschaftTheme', from: '~/themes/mannschaft' },
     autoImport: true,
     components: {
       prefix: '',
@@ -1013,14 +1020,6 @@ export default defineNuxtConfig({
     options: {
       ripple: true,
       inputVariant: 'filled',
-      theme: {
-        preset: Aura,
-        options: {
-          prefix: 'p',
-          darkModeSelector: '.p-dark',
-          cssLayer: false,
-        },
-      },
     },
   },
 

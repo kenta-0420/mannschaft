@@ -1,0 +1,135 @@
+{
+  "sourceHead": "3db393c2e4e5608e0e168d59baba85e68342ae78",
+  "purpose": "final-feed-ui-permission-and-image-complement",
+  "businessMutationRequestsIssued": false,
+  "additionalFeedApiProbeIssued": false,
+  "actors": [
+    {
+      "actorClass": "TEST_USER",
+      "lastPhase": "identity-membership-api-read",
+      "loginStatus": 200,
+      "navigationTimeoutMs": 120000,
+      "postLoginRouteEnum": "DASHBOARD",
+      "readEndpointEnum": "ME_ORGANIZATIONS",
+      "readHttpStatus": 200,
+      "readDefaultTimeoutMs": 30000,
+      "systemAdminRoleKnown": false,
+      "systemAdminRoleObserved": null,
+      "identityAndMembershipsVerified": true,
+      "logoutStatus": 200,
+      "contextClosed": true
+    },
+    {
+      "actorClass": "TEST_OUTSIDER",
+      "lastPhase": "identity-membership-api-read",
+      "loginStatus": 200,
+      "navigationTimeoutMs": 120000,
+      "postLoginRouteEnum": "DASHBOARD",
+      "readEndpointEnum": "ME_ORGANIZATIONS",
+      "readHttpStatus": 200,
+      "readDefaultTimeoutMs": 30000,
+      "systemAdminRoleKnown": false,
+      "systemAdminRoleObserved": null,
+      "identityAndMembershipsVerified": true,
+      "logoutStatus": 200,
+      "contextClosed": true
+    }
+  ],
+  "cases": [
+    {
+      "condition": "organization-permission-settled",
+      "scopeType": "ORGANIZATION",
+      "permissions": [
+        {
+          "status": 200,
+          "afterFeedResponse": false,
+          "roleEnum": "ADMIN",
+          "settled": true
+        },
+        {
+          "status": 200,
+          "afterFeedResponse": true,
+          "roleEnum": "ADMIN",
+          "settled": true
+        }
+      ],
+      "browserFeedStatus": 200,
+      "expectedDeliveryVisible": true,
+      "deliveryScopeVisible": true,
+      "composerCount": 1,
+      "finiteAncestorTransitionsSettled": true,
+      "ancestorOpacityVisible": true,
+      "nonemptyText": true,
+      "imageSaved": true,
+      "passed": true
+    },
+    {
+      "condition": "retired-organization-image",
+      "scopeType": "ORGANIZATION",
+      "candidateHashMatches": true,
+      "currentMembershipAbsent": true,
+      "finiteAncestorTransitionsSettled": true,
+      "ancestorOpacityVisible": true,
+      "nonemptyText": true,
+      "imageSaved": true,
+      "cardCount": 0,
+      "composerCount": 0,
+      "passed": true
+    },
+    {
+      "condition": "other-account-ordinary-list",
+      "scopeType": "TEAM",
+      "targetSpecificNonmember": true,
+      "activeParentsDisjoint": true,
+      "fullTenantHierarchyProven": false,
+      "listApiStatus": 200,
+      "targetAbsentFromBrowserListData": true,
+      "targetCardAbsent": true,
+      "targetHrefAbsent": true,
+      "renderedCardCount": 21,
+      "membershipResponseCount": 21,
+      "finiteAncestorTransitionsSettled": true,
+      "ancestorOpacityVisible": true,
+      "nonemptyText": true,
+      "imageSaved": true,
+      "passed": true
+    },
+    {
+      "condition": "other-account-ordinary-list",
+      "scopeType": "ORGANIZATION",
+      "targetSpecificNonmember": true,
+      "activeParentsDisjoint": true,
+      "fullTenantHierarchyProven": false,
+      "listApiStatus": 200,
+      "targetAbsentFromBrowserListData": true,
+      "targetCardAbsent": true,
+      "targetHrefAbsent": true,
+      "renderedCardCount": 11,
+      "membershipResponseCount": 11,
+      "finiteAncestorTransitionsSettled": true,
+      "ancestorOpacityVisible": true,
+      "nonemptyText": true,
+      "imageSaved": true,
+      "passed": true
+    },
+    {
+      "condition": "outsider-team-rejection-parent-image",
+      "scopeType": "TEAM",
+      "finiteAncestorTransitionsSettled": true,
+      "ancestorOpacityVisible": true,
+      "nonemptyText": true,
+      "imageSaved": true,
+      "passed": true
+    }
+  ],
+  "startedAt": "2026-10-27T15:43:16.890Z",
+  "phase": "outsider-team-rejection-image",
+  "readOnlyTransactionVerified": true,
+  "rollbackCompleted": true,
+  "databaseConnectionClosed": true,
+  "completed": true,
+  "allComplementCasesPassed": true,
+  "browserClosed": true,
+  "allActorContextsClosed": true,
+  "endedAt": "2026-10-27T15:45:16.350Z"
+}

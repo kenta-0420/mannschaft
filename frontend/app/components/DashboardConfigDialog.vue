@@ -60,19 +60,6 @@ watch(
   { deep: true },
 )
 
-watch(
-  () => props.visible,
-  async (open: boolean) => {
-    if (open && showRoleTab.value && visibility.settings.value.length === 0) {
-      try {
-        await visibility.fetch()
-      } catch {
-        // エラーは settings の error ref に格納される。inline 表示で扱う
-      }
-    }
-  },
-)
-
 const roleOptions = computed(() => [
   { label: t('dashboard.widget_visibility.min_role_public'), value: 'PUBLIC' as MinRole },
   { label: t('dashboard.widget_visibility.min_role_supporter'), value: 'SUPPORTER' as MinRole },
@@ -197,6 +184,20 @@ function onDragEnd() {
   dragIndex.value = null
   dropTargetIndex.value = null
 }
+// 初回の遅延mountでも開く処理を実行する。状態・watchの定義後に登録する。
+watch(
+  () => props.visible,
+  async (open: boolean) => {
+    if (open && showRoleTab.value && visibility.settings.value.length === 0) {
+      try {
+        await visibility.fetch()
+      } catch {
+        // エラーは settings の error ref に格納される。inline 表示で扱う
+      }
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>

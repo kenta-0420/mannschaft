@@ -18,6 +18,12 @@ const hasAdminOrDeputyRole = computed(() =>
 const showTeamCreateDialog = ref(false)
 const showOrgCreateDialog = ref(false)
 const showConfig = ref(false)
+const mountedDialogs = reactive({ team: false, organization: false, config: false })
+watch([showTeamCreateDialog, showOrgCreateDialog, showConfig], ([team, organization, config]) => {
+  mountedDialogs.team ||= team
+  mountedDialogs.organization ||= organization
+  mountedDialogs.config ||= config
+})
 const collapsedKeys = ref<Set<string>>(new Set())
 const { sortedWidgets, visibleWidgets, isVisible, toggleWidget, reorder, ready } =
   useDashboardWidgets('personal')
@@ -156,19 +162,22 @@ onMounted(() => {
       </div>
     </div>
 
-    <EntityCreateDialog
+    <LazyEntityCreateDialog
+      v-if="mountedDialogs.team"
       entity-type="team"
       :visible="showTeamCreateDialog"
       @update:visible="showTeamCreateDialog = $event"
       @created="onTeamCreated"
     />
-    <EntityCreateDialog
+    <LazyEntityCreateDialog
+      v-if="mountedDialogs.organization"
       entity-type="organization"
       :visible="showOrgCreateDialog"
       @update:visible="showOrgCreateDialog = $event"
       @created="onOrgCreated"
     />
-    <DashboardConfigDialog
+    <LazyDashboardConfigDialog
+      v-if="mountedDialogs.config"
       v-model:visible="showConfig"
       :widgets="sortedWidgets"
       :is-visible="isVisible"

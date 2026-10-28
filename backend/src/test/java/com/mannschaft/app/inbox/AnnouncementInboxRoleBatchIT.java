@@ -33,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 実際のInbox adapterを通し、所属数に依存するrole照会の再発を検知する。
- * feedのスコープ毎取得は別budgetであり、role SQLへ混ぜない。
+ * 履歴候補投影と非空スコープのfeed取得は別budgetであり、role SQLへ混ぜない。
  */
 @Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
@@ -43,7 +43,7 @@ class AnnouncementInboxRoleBatchIT extends AbstractMySqlIntegrationTest {
     @PersistenceContext private EntityManager em;
 
     @Test
-    @DisplayName("所属1件から21件へ増えてもrole照会は一定、feedは各scopeで従来どおり取得する")
+    @DisplayName("空の所属1件から21件へ増えてもrole照会と履歴候補SQLは一定、feed本体は取得しない")
     void roleQueriesStayConstantAcrossScopes() {
         long oneUser = insertUser();
         long manyUser = insertUser();
@@ -53,12 +53,55 @@ class AnnouncementInboxRoleBatchIT extends AbstractMySqlIntegrationTest {
         List<String> many = fetchSql(manyUser);
 
         assertThat(feedQueries(one)).isEqualTo(1);
-        assertThat(feedQueries(many)).isEqualTo(21);
+        assertThat(feedQueries(many)).isEqualTo(1);
+        assertThat(canonicalFeedQueries(one)).isZero();
+        assertThat(canonicalFeedQueries(many)).isZero();
         assertThat(roleQueries(one)).isPositive();
         assertThat(roleQueries(many))
                 .as("role SQL budget: 1scope=%s / 21scope=%s (feedを除外)",
                         roleQueries(one), roleQueries(many))
                 .isEqualTo(roleQueries(one));
+    }
+
+    @Test
+    @DisplayName("空の所属が増えても非空scopeのfeed集合を保ち、feed本体の取得は一回だけ")
+    void nonemptyFeedQueriesStayConstantAcrossScopes() {
+        long oneUser = insertUser();
+        long manyUser = insertUser();
+        long oneTeam = addTeams(oneUser, 1).getFirst();
+        long manyTeam = addTeams(manyUser, 21).getFirst();
+        persistFeed(oneUser, oneTeam);
+        persistFeed(manyUser, manyTeam);
+
+        List<String> one = fetchSqlWithSingleFeed(oneUser);
+        List<String> many = fetchSqlWithSingleFeed(manyUser);
+
+        assertThat(feedQueries(one)).isEqualTo(2);
+        assertThat(feedQueries(many)).isEqualTo(2);
+        assertThat(canonicalFeedQueries(one)).isEqualTo(1);
+        assertThat(canonicalFeedQueries(many)).isEqualTo(1);
+        assertThat(roleQueries(one)).isPositive();
+        assertThat(roleQueries(many)).isEqualTo(roleQueries(one));
+    }
+
+    private void persistFeed(long user, long team) {
+        em.persist(AnnouncementFeedEntity.builder()
+                .scopeType(AnnouncementScopeType.TEAM).scopeId(team)
+                .sourceType(AnnouncementSourceType.BLOG_POST).sourceId(1L).authorId(user)
+                .titleCache("候補保持タイトル").excerptCache("候補保持本文")
+                .visibility("MEMBERS_AND_ABOVE").build());
+    }
+
+    private List<String> fetchSqlWithSingleFeed(long userId) {
+        em.flush();
+        em.clear();
+        try (var capture = SqlIntentCounter.captureCurrentThread()) {
+            assertThat(adapter.fetch(userId, 500)).singleElement().satisfies(item -> {
+                assertThat(item.title()).isEqualTo("候補保持タイトル");
+                assertThat(item.excerpt()).isEqualTo("候補保持本文");
+            });
+            return capture.capturedSqls();
+        }
     }
 
     @ParameterizedTest
@@ -211,6 +254,12 @@ class AnnouncementInboxRoleBatchIT extends AbstractMySqlIntegrationTest {
     private long feedQueries(List<String> statements) {
         return statements.stream().map(sql -> sql.toLowerCase(Locale.ROOT))
                 .filter(sql -> sql.contains("from announcement_feeds ")).count();
+    }
+
+    private long canonicalFeedQueries(List<String> statements) {
+        return statements.stream().map(sql -> sql.toLowerCase(Locale.ROOT))
+                .filter(sql -> sql.contains("from announcement_feeds ") && sql.contains(".expires_at"))
+                .count();
     }
 
     private long roleQueries(List<String> statements) {

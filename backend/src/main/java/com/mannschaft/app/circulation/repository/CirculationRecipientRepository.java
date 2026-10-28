@@ -17,6 +17,19 @@ import java.util.Optional;
 public interface CirculationRecipientRepository extends JpaRepository<CirculationRecipientEntity, Long>,
         JpaSpecificationExecutor<CirculationRecipientEntity> {
 
+    /** 未確認回覧がある所属だけを投影する。最終の認可・件数・順序は単一scope取得で判定する。 */
+    @Query("""
+            SELECT DISTINCT d.scopeId FROM CirculationRecipientEntity r
+            JOIN CirculationDocumentEntity d ON d.id = r.documentId
+            WHERE r.userId = :userId
+              AND r.status = com.mannschaft.app.circulation.RecipientStatus.PENDING
+              AND d.scopeType = :scopeType
+              AND d.scopeId IN :scopeIds
+              AND d.status = com.mannschaft.app.circulation.CirculationStatus.ACTIVE
+            """)
+    List<Long> findUnconfirmedScopeIds(@Param("scopeType") String scopeType,
+            @Param("scopeIds") List<Long> scopeIds, @Param("userId") Long userId);
+
     /**
      * 文書IDで受信者一覧を取得する（ソート順）。
      */

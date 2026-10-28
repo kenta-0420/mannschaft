@@ -87,6 +87,20 @@ public interface ScheduleRepository extends AbstractTenantAwareRepository<Schedu
     List<ScheduleEntity> findCalendarByUserId(
             @Param("userId") Long userId, @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
+    /** 複数チームのカレンダー予定を、継続予定を含む既存期間条件で一括取得する。 */
+    @Query("SELECT s FROM ScheduleEntity s WHERE s.teamId IN (:teamIds) AND s.startAt <= :to "
+            + "AND (s.endAt > :from OR (s.endAt IS NULL AND s.startAt >= :from)) ORDER BY s.startAt ASC")
+    List<ScheduleEntity> findCalendarByTeamIdIn(
+            @Param("teamIds") Collection<Long> teamIds,
+            @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /** 複数組織のカレンダー予定を、継続予定を含む既存期間条件で一括取得する。 */
+    @Query("SELECT s FROM ScheduleEntity s WHERE s.organizationId IN (:orgIds) AND s.startAt <= :to "
+            + "AND (s.endAt > :from OR (s.endAt IS NULL AND s.startAt >= :from)) ORDER BY s.startAt ASC")
+    List<ScheduleEntity> findCalendarByOrganizationIdIn(
+            @Param("orgIds") Collection<Long> orgIds,
+            @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
     /** 開始が表示期間より前の継続予定も含め、当該チームのカレンダー予定を取得する。 */
     @Query("SELECT s FROM ScheduleEntity s WHERE s.teamId = :teamId AND s.startAt <= :to "
             + "AND (s.endAt > :from OR (s.endAt IS NULL AND s.startAt >= :from)) ORDER BY s.startAt ASC")
