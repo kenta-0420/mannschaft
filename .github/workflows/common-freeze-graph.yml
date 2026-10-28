@@ -7,6 +7,8 @@ on:
       - '.github/workflows/common-freeze-graph.yml'
       - '.github/fixtures/common-freeze-graph/**'
       - 'backend/build.gradle.kts'
+      - 'backend/settings.gradle.kts'
+      - 'backend/build-logic/**'
       - 'backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitFreezeStoreIntegrityTest.java'
       - 'backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitFreezeStoreIntegritySelfTest.java'
       - 'backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitFreezeMechanismSelfTest.java'

@@ -1,0 +1,57 @@
+{
+  "sourceHead": "a8b7d8b999973d2c138ffecce2fbe2233f6bb09a",
+  "sourceValidationSha256": "1a699068186abd8639db666b9b9462dfbc32a3bc6d50c180879e3e6ae4b2f24c",
+  "originalChecks": {
+    "all22OriginalHashesMatch": true,
+    "all3ImageCopiesByteIdentical": true
+  },
+  "limits": "Original checks belong to source packaging snapshot. README was adapted for durable tracked docs; other adopted files remain byte identical.",
+  "realCaseCount": 4,
+  "personaCount": 3,
+  "privacyBasis": "raw text/links/buttons/errors/body/header/envをコピーせずallowlist抽出。3PNGを画像として確認。provenanceはpath/bytes/hashのみ。",
+  "files": [
+    {
+      "file": "README.md",
+      "bytes": 3902,
+      "sha256": "ef39e66d8671db844a47ff98bb5c7910f96523b470fa22a932549efb39fe1756",
+      "sourcePackageSha256": "8ff89a499217610968087c4320c1ab311f6339cdedb21b00a41a1023d3523bb6",
+      "unchangedFromSource": false,
+      "adaptation": "documentation updated for tracked adoption"
+    },
+    {
+      "file": "anonymous-denied.png",
+      "bytes": 36220,
+      "sha256": "f902f6268e21bea2a68590efb7c597666ea9af8fbab791cd1e11eeab6ab21e69",
+      "sourcePackageSha256": "f902f6268e21bea2a68590efb7c597666ea9af8fbab791cd1e11eeab6ab21e69",
+      "unchangedFromSource": true
+    },
+    {
+      "file": "evidence.json",
+      "bytes": 20309,
+      "sha256": "b2546606199d97735ce4498295d41f5b0ec096df7c0576cae83fae4900e44263",
+      "sourcePackageSha256": "b2546606199d97735ce4498295d41f5b0ec096df7c0576cae83fae4900e44263",
+      "unchangedFromSource": true
+    },
+    {
+      "file": "member-schedule.png",
+      "bytes": 207653,
+      "sha256": "210e8659844c91927648a356d8b94694a8005b0f50056d43f6b39a3458307e0d",
+      "sourcePackageSha256": "210e8659844c91927648a356d8b94694a8005b0f50056d43f6b39a3458307e0d",
+      "unchangedFromSource": true
+    },
+    {
+      "file": "provenance.json",
+      "bytes": 6623,
+      "sha256": "da4abfdb3e95e71b0df3e8c0e9203722ec2e0eef80b86fd26096aa293ed9b79f",
+      "sourcePackageSha256": "da4abfdb3e95e71b0df3e8c0e9203722ec2e0eef80b86fd26096aa293ed9b79f",
+      "unchangedFromSource": true
+    },
+    {
+      "file": "third-org-denied-stable.png",
+      "bytes": 218995,
+      "sha256": "3695ca81f5c0c91ec158efa3a7bf780ae429f3100879a6ce5d5be827c460f396",
+      "sourcePackageSha256": "3695ca81f5c0c91ec158efa3a7bf780ae429f3100879a6ce5d5be827c460f396",
+      "unchangedFromSource": true
+    }
+  ]
+}

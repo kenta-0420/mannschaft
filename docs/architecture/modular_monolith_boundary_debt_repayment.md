@@ -621,7 +621,7 @@ config → 業務の import 41 件は、Spring 設定が業務の Bean を直接
 | L1-G0 | D-3 / D-3T の偽の返済の穴を塞ぐ | なし | D-3 / D-3T の番人と検体、ストアの追加 | 他の番人 | §9.1 の L1-G0 条件 |
 | L1-A | 認可の interface 化 | L1-K、L1-G0 | `common/AccessControlService`、暫定core の実装 | 番人、build 設定 | FQCN 不変の interface、呼び出し側の差分ゼロ |
 | L1-R | common の業務ロジック返却（対象は親 Issue のチェックリスト） | L1-K | 対象クラス（旧 FQCN は `@TransitionalBridge` の橋渡し）と持ち主ドメインの `api` | 呼び出し側（L2 の範囲）、番人 | 対象の実体が持ち主の `api` にあり、旧 FQCN は橋渡しのみ |
-| L1-B | build-logic convention plugin 化 | L0-M依存のみ裁可免除（§5.1.1） | `build-logic/`、`build.gradle.kts`、`settings.gradle.kts`、CI の workflow | 番人の中身 | タスク一覧・shard 割当が前後一致 |
+| L1-B | build-logic convention plugin 化 | L0-M依存のみ裁可免除（§5.1.1） | `build-logic/`、`build.gradle.kts`、`settings.gradle.kts`、CI の workflow、`StripeJavaVersionGuardTest` の依存定義参照先のみ（下記限定裁可） | 番人の判定・正規表現・欠損時fail、他の番人の中身 | タスク一覧・shard 割当が前後一致 |
 | L1-M | Modulith 導入・イベント基盤・Registry の限定 | L0-S、L1-B、L1-G0 | `build-logic/` の依存定義、Flyway 新規1本、Modulith 設定、kernel の新規ファイル、verify テスト | shard 設定、凍結ストア | §9.1 の L1-M 条件 |
 | L1-F | 凍結番人の上限方式化・形式健全性・履歴の docs 移設 | なし | `ArchUnitFreezeStoreIntegrityTest` とその自己テスト、D-1/D-3/D-5の記録formatterと実検体、3storeの一度限りの形式移行と§7.4承認値への三上限補正、初回移行証拠、`archunit_freeze_history.md`、§30の旧運用同期 | 判定・除外・Dependencyごとの検出、他4store、UUID、`stored.rules`、他4上限、build設定 | §9.1 の L1-F 条件 |
 | L1-G | 番人の新設・改修（L1-G0 以外） | L1-K、L1-M | `common/architecture/`（L1-G0・L1-F の対象を除く）、`DomainPackages` | 凍結ストアの中身 | §9.1 の L1-G 条件 |
@@ -632,6 +632,8 @@ config → 業務の import 41 件は、Spring 設定が業務の Bean を直接
 | L3 | 束の卒業 | L3-P の判定「継続」、束の全ロット完了 | 対象の束と build 設定 | 他の束 | 未宣言依存でコンパイル失敗する |
 | L4 | 暫定core の循環解消 | 暫定core 以外の L2 がおおむね完了 | 暫定core の該当領域 | kernel | 当該領域が verify を通る |
 | L5 | 終結 | L2・L3・L4 全完了（Gradle 撤退時は §14） | 番人・凍結ストア削除・`DomainPackages` | — | §5.6 |
+
+**L1-B番人参照先の限定裁可（2026-10-27）**: [御裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6436425040)に従い、`backend/src/test/java/com/mannschaft/app/common/architecture/StripeJavaVersionGuardTest.java` の参照元だけを、移設後の実際の依存定義へ追従させる。28固定・29以上拒否・依存宣言欠損時fail、既存の正規表現と判定を維持し、旧buildファイルへのfallbackやコメントへの旧宣言残置で通さない。他の番人変更は認めない。これはL1-Bの範囲だけの例外であり、他レーンのowner・入口・品質ゲートは維持する。
 
 ### 8.2 レーン間の依存と同時実行
 
