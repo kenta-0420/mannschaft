@@ -186,15 +186,13 @@ class AnnouncementReadChunkTransactionIT extends AbstractMySqlIntegrationTest {
     /**
      * Spring Data の Repository は interface の JDK プロキシなので、その spy で
      * {@code invocation.callRealMethod()} を呼ぶと「Cannot call abstract real method」で落ちる（CI 実測で 500）。
-     * spy の元になった実 Repository（spiedInstance）へ反射で委譲して本物の UPSERT を実行する。
+     * Spring の MockitoSpyBean は JDK プロキシを spiedInstance ではなく既定 Answer
+     * （{@code AdditionalAnswers.delegatesTo(実 Repository)}）で包む（spiedInstance は null。CI 実測）ので、
+     * その既定 Answer に渡して本物の UPSERT を実行する。
      */
     private Object callReal(org.mockito.invocation.InvocationOnMock invocation) throws Throwable {
-        Object real = Mockito.mockingDetails(readStatusRepository).getMockCreationSettings().getSpiedInstance();
-        try {
-            return invocation.getMethod().invoke(real, invocation.getArguments());
-        } catch (java.lang.reflect.InvocationTargetException e) {
-            throw e.getCause();
-        }
+        return Mockito.mockingDetails(readStatusRepository).getMockCreationSettings()
+                .getDefaultAnswer().answer(invocation);
     }
 
     /** 1回目の UPSERT の直後に、別 tx（commit 済み）で所属を変える。 */
