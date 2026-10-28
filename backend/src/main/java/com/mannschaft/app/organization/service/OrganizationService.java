@@ -462,6 +462,14 @@ public class OrganizationService {
     }
 
     /**
+     * 組織が存在し、論理削除されていないか（非アクティブ組織の判定。ALIC-1 §2.3 / F00 §11.6）。
+     * {@link OrganizationEntity} は {@code @SQLRestriction("deleted_at IS NULL")} のため、削除済みの組織は {@code findById} で返らない。
+     */
+    public boolean isActiveOrganization(Long orgId) {
+        return organizationRepository.findById(orgId).isPresent();
+    }
+
+    /**
      * 柱②-2 販促プロビジョニング専用: 指定組織の {@code lifecycle_status} を
      * {@code PROVISIONED} から {@code ACTIVE} へ遷移させ、組織名を返す。
      * 存在しなければ empty。

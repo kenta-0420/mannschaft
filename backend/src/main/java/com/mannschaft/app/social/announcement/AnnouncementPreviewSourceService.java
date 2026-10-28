@@ -107,6 +107,9 @@ public class AnnouncementPreviewSourceService {
         if ((feed.getScopeType() == AnnouncementScopeType.TEAM && teamService.isProvisioned(feed.getScopeId()))
                 || (feed.getScopeType() == AnnouncementScopeType.ORGANIZATION
                     && organizationService.isProvisioned(feed.getScopeId()))) throw notFound();
+        // 論理削除された（非アクティブな）組織の告知は、委任経路でも直属経路でも読ませない
+        if (feed.getScopeType() == AnnouncementScopeType.ORGANIZATION
+                && !organizationService.isActiveOrganization(feed.getScopeId())) throw notFound();
     }
 
     private static void assertScope(AnnouncementFeedEntity feed, String type, Long id) {

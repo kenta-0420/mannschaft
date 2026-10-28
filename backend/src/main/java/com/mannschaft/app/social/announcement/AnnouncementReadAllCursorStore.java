@@ -2,7 +2,6 @@ package com.mannschaft.app.social.announcement;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -44,11 +43,13 @@ public class AnnouncementReadAllCursorStore {
             }
             long id = Long.parseLong(raw.trim());
             return id > 0 ? id : null;
-        } catch (DataAccessException e) {
-            log.warn("read-all の走査位置を読めないため先頭から走査します key={}", key, e);
-            return null;
         } catch (NumberFormatException e) {
             log.warn("read-all の走査位置が壊れているため先頭から走査します key={}", key, e);
+            return null;
+        } catch (RuntimeException e) {
+            // Valkey の障害（接続断・タイムアウト・シリアライズ失敗など）。位置は進み方を速めるだけの補助なので、
+            // 結果の正しさを保つ先頭からの走査に倒す。握りつぶさず WARN を残す。
+            log.warn("read-all の走査位置を読めないため先頭から走査します key={}", key, e);
             return null;
         }
     }
@@ -58,7 +59,7 @@ public class AnnouncementReadAllCursorStore {
         String key = key(userId, scopeType, scopeId);
         try {
             redisTemplate.opsForValue().set(key, Long.toString(lastFetchedFeedId), TTL);
-        } catch (DataAccessException e) {
+        } catch (RuntimeException e) {
             log.warn("read-all の走査位置を保存できません（次回は先頭から走査します）key={}", key, e);
         }
     }
@@ -68,7 +69,7 @@ public class AnnouncementReadAllCursorStore {
         String key = key(userId, scopeType, scopeId);
         try {
             redisTemplate.delete(key);
-        } catch (DataAccessException e) {
+        } catch (RuntimeException e) {
             log.warn("read-all の走査位置を消せません（TTL で失効します）key={}", key, e);
         }
     }
