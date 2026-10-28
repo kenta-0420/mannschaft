@@ -9,7 +9,7 @@ const state = {
   currentYear: ref(2026), currentMonth: ref(8), loading: ref(false), calendarLoading: ref(false), loadError: ref(false),
   filteredEvents: ref<CalendarEventItem[]>([]), extendedEvents: ref([]), allScopeOptions: ref([]),
   selectedScopes: ref([]), multiSelectScopes: ref([]),
-  loadEvents: vi.fn(), refresh: vi.fn(), initStorage: vi.fn(),
+  loadEvents: vi.fn(), refresh: vi.fn(), initStorage: vi.fn(), initialize: vi.fn(),
   onPrevMonth: vi.fn(), onNextMonth: vi.fn(), toggleScope: vi.fn(),
 }
 vi.mock('~/composables/useMyCalendarData', () => ({ useMyCalendarData: () => state, FILTER_OVERFLOW: 5 }))
@@ -56,6 +56,10 @@ beforeEach(() => {
   state.calendarLoading.value = false
   state.loadError.value = false
   state.initStorage.mockResolvedValue(undefined)
+  state.initialize.mockImplementation(async () => {
+    await Promise.all([state.initStorage(), state.loadEvents()])
+    return true
+  })
   state.loadEvents.mockResolvedValue(undefined)
   state.refresh.mockResolvedValue(undefined)
 })
@@ -121,12 +125,21 @@ describe('個人ダッシュボードの日付操作', () => {
     expect(form.props('initialDate')).toBe('2026-08-07')
   })
 
-  it('レイヤー初期化完了後に予定を取得し、月取得中のクリックを無視する', async () => {
+  it('設定復元と予定取得を重ね、準備前のグリッドを隠して操作を無視する', async () => {
     let resolveStorage!: () => void
     state.loading.value = true
     state.initStorage.mockImplementationOnce(() => new Promise<void>(resolve => { resolveStorage = resolve }))
     const wrapper = await mountWidget()
-    expect(state.loadEvents).not.toHaveBeenCalled()
+    expect(state.loadEvents).toHaveBeenCalledOnce()
+    const pendingGrid = wrapper.findComponent({ name: 'CalendarGrid' })
+    expect(pendingGrid.exists()).toBe(true)
+    expect(pendingGrid.isVisible()).toBe(false)
+    expect(pendingGrid.props('events')).toEqual([])
+    pendingGrid.vm.$emit('dateClick', '2026-08-06')
+    pendingGrid.vm.$emit('nextMonth')
+    await flushPromises()
+    expect(wrapper.findComponent({ name: 'ScheduleEventForm' }).exists()).toBe(false)
+    expect(state.onNextMonth).not.toHaveBeenCalled()
     resolveStorage()
     await flushPromises()
     expect(state.loadEvents).toHaveBeenCalledOnce()
@@ -148,10 +161,11 @@ describe('個人ダッシュボードの日付操作', () => {
     const wrapper = await mountWidget()
     const errorState = wrapper.findComponent({ name: 'DashboardErrorState' })
     expect(errorState.exists()).toBe(true)
-    expect(wrapper.findComponent({ name: 'CalendarGrid' }).exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'CalendarGrid' }).isVisible()).toBe(false)
     state.loadEvents.mockClear()
     errorState.vm.$emit('retry')
     await flushPromises()
     expect(state.loadEvents).toHaveBeenCalledOnce()
+    expect(state.initialize).toHaveBeenCalledTimes(2)
   })
 })
