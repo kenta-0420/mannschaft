@@ -17,9 +17,9 @@
 
 公開診断artifact欠損gateの既存不足は[裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6462685947)により[別件 CMP-261028-1554 / Issue #4200](https://github.com/kenta-0420/mannschaft/issues/4200)へ分離済み。条件修正は[PR #4201](https://github.com/kenta-0420/mannschaft/pull/4201)でmain反映済み。ローカルTest終端検証、nightly再生成拒否、公開artifact完全性は別契約である。本パッケージは公開診断gateを強化済み・既存不足解決済みと主張しない。
 
-`manifest.json`はコピー/要約の対応、元ファイルbytes/SHA、保持先を記録する。巨大TSV・ログ・archive・OpenAPI本体はGitへ追加せず原保持先で保全する。`hash-only-retained-raw`は内容未同梱、`safe-xml-summary`は原本bytes同一ではない。全量weights manifestも同じ扱い。安全な抽出・assertの再現scriptはsupportの `package-durable-build-261028.py`。
+`manifest.json`はコピー/要約の対応、採取時の原本pathとbytes/SHAを記録する。`hash-only-source`は原本本文がGit未収録であることを示し、恒久保持や現在のpath実在を保証しない。`safe-xml-summary`も原本bytes同一ではない。小さな証拠JSON・XML要約・画像はGitへ保存し、全量TSV・ログ・archive・OpenAPI本体など約881MBの重複rawはdurable記録確定後の自隊cleanup対象とする。全量weights manifestも同じ扱い。本原稿時点では未削除で、最終cleanupの実行・停止/所有確認・撤去結果は別の証明に記録する。安全な抽出・assertの再現scriptはsupportの `package-durable-build-261028.py`。
 
-文書採用時に、nightly artifact metadataは元のUTF16LE JSONからUTF8へdecode・再serializeした。また既存CRLFのtextはGit blobと同じLFへ揃えた。manifestのsourceBytes/sourceSha256は元の保持原本、packagedSha256は文書コピーのGit blob bytesを指し、変換した行のmodeに明記した。build JSON/XMLの同梱SHAをGit indexでも再照合した。support原本や実測値は変更していない。
+文書採用時に、nightly artifact metadataは元のUTF16LE JSONからUTF8へdecode・再serializeした。また既存CRLFのtextはGit blobと同じLFへ揃えた。manifestのsourceBytes/sourceSha256は採取時の元原本、packagedSha256は文書コピーのGit blob bytesを指し、変換した行のmodeに明記した。build JSON/XMLの同梱SHAをGit indexでも再照合した。support原本や実測値は変更していない。
 
 既存a8bから不変の新Kotlin2file末尾blank行により、PR全差分 `git diff --check b7e...f281` は警告を返す。作業treeの未commit差分が無いことと区別し、全差分チェック成功とは記録しない。目的外整形はしていない。
 

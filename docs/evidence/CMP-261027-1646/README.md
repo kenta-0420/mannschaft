@@ -20,6 +20,6 @@
 
 旧実機/探索をf281で再実施したとは記録しない。統合後にはupstreamの製品・テスト・凍結store・画面/API変更があり、元の比較結果を全アプリ同一性へ拡張しない。元の移設コードはsource bridge、統合後の成立は同HEAD CI、実機/探索の実施内容は元a8bの証拠として別々に評価する。
 
-元ログ・大きなTSV・archive・OpenAPI本体は収録しない。絶対ローカルpathは原本hash索引にだけ用い、stage参照には本directoryなどrepo内pathを使う。`build/manifest.json`、`real/provenance.json`に原本と安全なコピー/要約を対応付けた。認証値・Cookie・fixtureデータは収録しない。rootは同梱の代表PNG3枚を確認済み。
+元ログ・大きなTSV・archive・OpenAPI本体は収録しない。絶対ローカルpathは採取時位置を示す原本hash索引にだけ用い、恒久保持は保証せず、stage参照には本directoryなどrepo内pathを使う。小さな証拠JSON・画像はGitへ保存し、全量rawはdurable記録確定後の自隊cleanup対象とする。本原稿時点では未削除で、最終撤去は別のcleanup証明へ記録する。`build/manifest.json`、`real/provenance.json`に原本と安全なコピー/要約を対応付けた。認証値・Cookie・fixtureデータは収録しない。rootは同梱の代表PNG3枚を確認済み。
 
 member HTTP200の当時報告183件と保存responsesの再集計188件は同一snapshotと扱わず、差5件の因果未確定を保持する。全画面/全viewportの監査、個別予定詳細復帰、性能改善は実証していない。L0-M基準計測は未完了のまま。別件1554、親戦役、L1-M等の後続入口を本原稿だけで完了・充足としない。

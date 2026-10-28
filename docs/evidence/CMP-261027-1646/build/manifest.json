@@ -129,7 +129,7 @@
       "sourceBytes": 26830,
       "sourceSha256": "67dc200e37028f199a07274bda8c2c609c593425c3a8db638682bb6ed8d504d0",
       "packagedSha256": "8f1ed290228e37bcfb7ab536d9020bcae80020fb345724d385b6f211225ff6b5",
-      "mode": "UTF16LE source JSON decoded and re-serialized as UTF8 for tracked docs; original bytes/SHA retained"
+      "mode": "UTF16LE source JSON decoded and re-serialized as UTF8 for tracked docs; original byte count/SHA recorded"
     },
     {
       "source": "/mnt/c/Claude/mannschaft/.claude/evidence/CMP-261027-1646-l1b-support/shell-entry-original-bytes.json",
@@ -159,120 +159,126 @@
       "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-independent-1/arch-zero-negative.exit",
       "sourceBytes": 2,
       "sourceSha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
-      "mode": "hash-only-retained-raw"
+      "mode": "hash-only-source"
     },
     {
       "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-independent-1/arch-zero-negative.stdout",
       "sourceBytes": 1539,
       "sourceSha256": "ad0d0f0c4f4f6dd36bc0ce96bde36e7cae29c2ba3a1b7780f0b51f53748337a8",
-      "mode": "hash-only-retained-raw"
+      "mode": "hash-only-source"
     },
     {
       "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-independent-1/arch-zero-negative.stderr",
       "sourceBytes": 757,
       "sourceSha256": "d604f9bf1071901e3a498816a4c30012bbdad07c4491953bbec2a90b3fb91942",
-      "mode": "hash-only-retained-raw"
+      "mode": "hash-only-source"
     },
     {
       "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-independent-1/receipt.json",
       "sourceBytes": 438,
       "sourceSha256": "8396e8df59016740384d1fa27e43d3f02282f7413eaf19099121389474da2c86",
-      "mode": "hash-only-retained-raw"
+      "mode": "hash-only-source"
     },
     {
       "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-freeze-openapi-1/freeze-missing-negative.exit",
       "sourceBytes": 2,
       "sourceSha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
-      "mode": "hash-only-retained-raw"
+      "mode": "hash-only-source"
     },
     {
       "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-freeze-openapi-1/freeze-missing-negative.stdout",
       "sourceBytes": 1179,
       "sourceSha256": "d769bc2282cac52b1c1bf0231b1a814d912922e331790dabd7852c532e7d2bbc",
-      "mode": "hash-only-retained-raw"
+      "mode": "hash-only-source"
     },
     {
       "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-freeze-openapi-1/freeze-missing-negative.stderr",
       "sourceBytes": 4542,
       "sourceSha256": "35c36206937154d3a3d53d72ec9089c46952c19de72f7ca81bb8b12117ee434c",
-      "mode": "hash-only-retained-raw"
+      "mode": "hash-only-source"
     },
     {
       "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-freeze-openapi-1/required-freeze.before.sha256",
       "sourceBytes": 168,
       "sourceSha256": "fc108dce433a5c38034c7d338a5a9d555a635abff97e8fdba033a50afcbce24f",
-      "mode": "hash-only-retained-raw"
+      "mode": "hash-only-source"
     },
     {
       "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-freeze-openapi-1/required-freeze.after.sha256",
       "sourceBytes": 168,
       "sourceSha256": "fc108dce433a5c38034c7d338a5a9d555a635abff97e8fdba033a50afcbce24f",
-      "mode": "hash-only-retained-raw"
+      "mode": "hash-only-source"
     },
     {
       "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-freeze-openapi-1/openapi.exit",
       "sourceBytes": 2,
       "sourceSha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
-      "mode": "hash-only-retained-raw"
+      "mode": "hash-only-source"
     },
     {
       "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-freeze-openapi-1/openapi.json",
       "sourceBytes": 6378658,
       "sourceSha256": "03ebfc14e16829cb1866e4c8d17aa3140e9ad1bd3dab047f45a6b069db9a34a0",
-      "mode": "hash-only-retained-raw"
+      "mode": "hash-only-source"
     },
     {
       "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-freeze-openapi-1/receipt.json",
       "sourceBytes": 441,
       "sourceSha256": "6980ee0d8691e8fea6cb0313f5951f1c7907f4dfa007dcba1f98f52a90ed32b1",
-      "mode": "hash-only-retained-raw"
+      "mode": "hash-only-source"
     },
     {
       "source": "/home/kenta/verification-evidence/CMP-261027-1646-before-4/openapi.json",
       "sourceBytes": 6378658,
       "sourceSha256": "03ebfc14e16829cb1866e4c8d17aa3140e9ad1bd3dab047f45a6b069db9a34a0",
-      "mode": "hash-only-retained-raw"
+      "mode": "hash-only-source"
     },
     {
       "source": "/home/kenta/verification-evidence/CMP-261027-1646-before-4/receipt.json",
       "sourceBytes": 428,
       "sourceSha256": "32feb6f9b13bf1a4b9adff2e147c0a1a45c9584cfa41c2f7181da68db2e2e3c8",
-      "mode": "hash-only-retained-raw"
+      "mode": "hash-only-source"
     },
     {
       "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-arch-continue-1/arch-failure-finalizer.exit",
       "sourceBytes": 2,
       "sourceSha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
-      "mode": "hash-only-retained-raw"
+      "mode": "hash-only-source"
     },
     {
       "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-arch-continue-1/arch-failure-finalizer.stdout",
       "sourceBytes": 1613,
       "sourceSha256": "4a320ba212b2e366cd39db6e811d7608f69e59a45dbc6f62adaaa3e99acbbc10",
-      "mode": "hash-only-retained-raw"
+      "mode": "hash-only-source"
     },
     {
       "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-arch-continue-1/arch-failure-finalizer.stderr",
       "sourceBytes": 843,
       "sourceSha256": "044ab63e1074aed421db465102de3f26a93ba22b0eb997d0223935a1f38835b5",
-      "mode": "hash-only-retained-raw"
+      "mode": "hash-only-source"
     },
     {
       "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-arch-continue-1/receipt.json",
       "sourceBytes": 440,
       "sourceSha256": "d2a1d3fbee77c4b43a8eee59147456a502186ad32938dd6bf7c7645e112c0b73",
-      "mode": "hash-only-retained-raw"
+      "mode": "hash-only-source"
     },
     {
       "path": "negative-and-openapi-observations.json",
       "packagedSha256": "9238b023905d391d38bdd3c82f7389bbd45900c3ddd8aa3d2dcb20bade3b988c",
-      "mode": "asserted observations; retained raw hashes listed separately"
+      "mode": "asserted observations; source hashes listed separately"
     }
   ],
   "limits": [
     "Original comparison and runtime evidence targets a8b or stated before/6f source; integrated-head CI is separate and pending.",
     "B5 published diagnostics gap is approved for separate CMP-261028-1554 / Issue4200; this package does not claim missing-artifact gate strengthened.",
-    "Negative XML summaries preserve counts/test names/failure reason but omit raw system streams/properties/stack traces. Original SHA identifies retained raw.",
+    "Negative XML summaries preserve counts/test names/failure reason but omit raw system streams/properties/stack traces. Original SHA identifies collection-time source bytes; hash-only source content is not in Git and is scheduled for owned cleanup after durable evidence is finalized.",
     "No large TSV/log/archive/OpenAPI bytes are republished. Absence records are not accepted as proof."
-  ]
+  ],
+  "sourcePathSemantics": "Source paths identify collection-time locations, not permanent retention or current existence.",
+  "rawArtifactLifecycle": {
+    "status": "not-deleted-as-of-this-draft",
+    "policy": "Small evidence JSON/XML summaries and images are saved in Git. Full TSV/log/archive/OpenAPI and other duplicate raw are owned cleanup targets after durable evidence is finalized.",
+    "cleanupEvidence": "Final stop/ownership/removal proof is recorded separately; no raw deletion is claimed by this draft."
+  }
 }
