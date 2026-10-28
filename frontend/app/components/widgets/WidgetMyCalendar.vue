@@ -17,10 +17,10 @@ interface PersonalScheduleRaw {
 const scheduleApi = useScheduleApi()
 
 const {
-  currentYear, currentMonth, loading, calendarLoading, loadError, loadEvents, refresh,
+  currentYear, currentMonth, loading, calendarLoading, loadError, refresh,
   onPrevMonth, onNextMonth,
   extendedEvents, allScopeOptions, selectedScopes, filteredEvents,
-  toggleScope, multiSelectScopes, initStorage,
+  toggleScope, multiSelectScopes, initialize,
 } = useMyCalendarData()
 
 const selectedEventId = ref<number | null>(null)
@@ -50,7 +50,7 @@ function onDateClick(date: string) {
 }
 
 function moveMonth(delta: number) {
-  if (loading.value || calendarLoading.value) return
+  if (loading.value || calendarLoading.value || loadError.value) return
   if (delta < 0) onPrevMonth()
   else onNextMonth()
 }
@@ -163,8 +163,7 @@ async function onSaved() {
 }
 
 onMounted(async () => {
-  await initStorage()
-  await loadEvents()
+  await initialize()
 })
 </script>
 
@@ -181,19 +180,21 @@ onMounted(async () => {
       <Skeleton height="1.5rem" />
       <Skeleton height="12rem" />
     </div>
-    <DashboardErrorState v-else-if="loadError" @retry="loadEvents" />
-    <template v-else>
-        <LazyCalendarGrid
+    <DashboardErrorState v-else-if="loadError" @retry="initialize" />
+    <!-- 表示対象のmount後、データ待ちの間に部品も読み込む。設定確定前の予定は渡さない。 -->
+    <div v-show="!loading && !loadError">
+      <LazyCalendarGrid
         :year="currentYear"
         :month="currentMonth"
-        :events="filteredEvents"
+        :events="loading || loadError ? [] : filteredEvents"
         @date-click="onDateClick"
         @event-click="onEventClick"
         @reflection-click="onReflectionClick"
         @prev-month="moveMonth(-1)"
         @next-month="moveMonth(1)"
       />
-
+    </div>
+    <template v-if="!loading && !loadError">
       <!-- スコープフィルター -->
       <div v-if="allScopeOptions.length > 1" class="mt-3 flex flex-wrap items-center gap-2 text-xs text-surface-500">
         <span class="text-surface-400">{{ t('dashboard.widgets.myCalendar.show') }}</span>
