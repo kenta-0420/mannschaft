@@ -4,7 +4,7 @@
 
 製品差分について確定指摘0。出荷判定は、以下の承認条件の正本反映と最新main統合CI成功後に確定する。本記録時点では未merge。
 
-完了文書原稿への追記: B5裁可は[PR #4201](https://github.com/kenta-0420/mannschaft/pull/4201)で正本反映済み、[別件1554 / Issue #4200](https://github.com/kenta-0420/mannschaft/issues/4200)は未着手。main統合HEADは `f2817eb94326b413122c69f4b0c409288c8982a6`、[source bridge](build/integration-261028-source-bridge.json)でoriginal L1-B変更11fileのblob一致を確認。[統合CI40648568860](https://github.com/kenta-0420/mannschaft/actions/runs/40648568860)は本原稿時点で未完了。上記a8b検分を統合後の最終押印へ付け替えず、最終判定はrootが別途確定する。
+完了文書原稿への追記: B5裁可は[PR #4201](https://github.com/kenta-0420/mannschaft/pull/4201)で正本反映済み、[別件1554 / Issue #4200](https://github.com/kenta-0420/mannschaft/issues/4200)は未着手。main統合HEADは `f2817eb94326b413122c69f4b0c409288c8982a6`、[source bridge](build/integration-261028-source-bridge.json)でoriginal L1-B変更11fileのblob一致を確認。[統合CI40648568860](https://github.com/kenta-0420/mannschaft/actions/runs/40648568860)は後続採取で6fresh・失敗0の成功を確認。上記a8b検分を統合後の最終押印へ付け替えず、最終判定はrootが別途確定する。
 
 ## 裁可
 
@@ -29,6 +29,6 @@ REQ-GRADLE-DIAG-02 はユーザーの「推奨で。よきにはからえ」で�
 
 改訂B5のローカル終端欠損拒否は、f281の実wrapper原本を用いたfixture7caseで補足しrootが結果を確認。fresh/FROM-CACHE/UP-TO-DATEは0、NO-SOURCE/終端なし/failed終端+command0は125、command7は7を保持。Gradle/Java/公開artifactの実障害ではない。採取completed=trueでもcommand7は失敗として区別する。
 
-代表PNG3枚はrootが再度画像として確認し、テスト団体名以外の個人名/メール/資格値なし。member通信件数183と保存原本188の差は原因未確定として明記。証拠の成否を変更しない。移設対象コードの追加指摘0、統合CI run40648568860成功とマージ実体は引き続き待機中。
+代表PNG3枚はrootが再度画像として確認し、テスト団体名以外の個人名/メール/資格値なし。member通信件数183と保存原本188の差は原因未確定として明記。証拠の成否を変更しない。移設対象コードの追加指摘0、統合CI run40648568860は後続採取で6fresh・失敗0の成功を確認した。さらにdocs-only main追従後のe67 CI40662266445とマージ実体は待機中。
 
 git diff --check のPR全差分では、新規Kotlin2fileの末尾blank行警告がある。a8bから不変で機能影響は確認されず、これをgreenと偽らず記録する。

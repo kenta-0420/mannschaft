@@ -1,6 +1,6 @@
 # CMP-261027-1646 L1-B 実装・検証報告
 
-実装PR: [#4169](https://github.com/kenta-0420/mannschaft/pull/4169)。移設検証HEAD `a8b7d8b999973d2c138ffecce2fbe2233f6bb09a`。最新main統合HEAD `f2817eb94326b413122c69f4b0c409288c8982a6`、統合[Backend CI 40648568860](https://github.com/kenta-0420/mannschaft/actions/runs/40648568860)は本原稿作成時点で未完了。
+実装PR: [#4169](https://github.com/kenta-0420/mannschaft/pull/4169)。移設検証HEAD `a8b7d8b999973d2c138ffecce2fbe2233f6bb09a`。main統合HEAD `f2817eb94326b413122c69f4b0c409288c8982a6` の[CI40648568860](https://github.com/kenta-0420/mannschaft/actions/runs/40648568860)は6fresh・失敗0で成功し、[採取結果](CMP-261027-1646/integration-ci.md)を別記した。その後docsのみを通常追従した実装HEADは `e67a77172f67ddbacfe4c8d8f9504eae8f54b004`。[e67 CI40662266445](https://github.com/kenta-0420/mannschaft/actions/runs/40662266445)と実装mergeは本原稿時点で待機中。
 
 完了登録前の原稿であり、完了JSON・台帳完了は未確定。[証拠入口](CMP-261027-1646/README.md)にbuild・実機/探索・検分をまとめる。[source bridge](CMP-261027-1646/build/integration-261028-source-bridge.json)で元の移設変更11非Markdownファイルのblob一致を確認したが、upstreamの全製品/テスト/画面のbytes同一性や、旧a8b実証の統合HEADでの再実施を意味しない。
 

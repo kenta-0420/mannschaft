@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "sourceImplementationHead": "a8b7d8b999973d2c138ffecce2fbe2233f6bb09a",
-  "integrationHead": "f2817eb94326b413122c69f4b0c409288c8982a6",
+  "integrationHead": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
   "records": [
     {
       "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-oldweights-1/candidate-comparison.json",
@@ -267,10 +267,26 @@
       "path": "negative-and-openapi-observations.json",
       "packagedSha256": "9238b023905d391d38bdd3c82f7389bbd45900c3ddd8aa3d2dcb20bade3b988c",
       "mode": "asserted observations; source hashes listed separately"
+    },
+    {
+      "source": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40648568860\\summary.json",
+      "path": "integration-ci-40648568860-summary.json",
+      "sourceBytes": 40254,
+      "sourceSha256": "d4ff6833e4d21dac6d3483d143cda42fc09a7583cc846a04509d956daf5d84ad",
+      "packagedSha256": "2deab032d9fbefdc1a49854ba6b3494fa485d980de041afbd1024531d2e261f9",
+      "mode": "safe summary; CRLF normalized to LF for Git blob"
+    },
+    {
+      "source": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-e67-source-bridge.json",
+      "path": "integration-e67-source-bridge.json",
+      "sourceBytes": 7223,
+      "sourceSha256": "0ae045ff2f38a6ec870d0ca4754c419a67a72fd8f422d15aad1079bd75694de0",
+      "packagedSha256": "0ae045ff2f38a6ec870d0ca4754c419a67a72fd8f422d15aad1079bd75694de0",
+      "mode": "exact-copy safe summary"
     }
   ],
   "limits": [
-    "Original comparison and runtime evidence targets a8b or stated before/6f source; integrated-head CI is separate and pending.",
+    "Original comparisons and real/exploratory evidence retain their stated a8b/before/6f source. f281 CI40648568860 succeeded with six fresh main Test tasks; e67 CI40662266445 is a separate pending final-head run.",
     "B5 published diagnostics gap is approved for separate CMP-261028-1554 / Issue4200; this package does not claim missing-artifact gate strengthened.",
     "Negative XML summaries preserve counts/test names/failure reason but omit raw system streams/properties/stack traces. Original SHA identifies collection-time source bytes; hash-only source content is not in Git and is scheduled for owned cleanup after durable evidence is finalized.",
     "No large TSV/log/archive/OpenAPI bytes are republished. Absence records are not accepted as proof."
