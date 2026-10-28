@@ -2833,6 +2833,7 @@
       "empty": "아직 페이지가 없습니다",
       "titleLabel": "제목",
       "slugLabel": "URL 슬러그",
+      "slugHint": "이 페이지를 저장하려면 URL 슬러그가 필요합니다.",
       "yearLabel": "대상 연도",
       "visibilityLabel": "공개 범위",
       "visibilityPublic": "전체 공개",
