@@ -18,6 +18,8 @@ vi.mock('~/stores/useTeamStore', () => ({ useTeamStore: () => ({ myTeams: [], fe
 vi.mock('~/stores/useOrganizationStore', () => ({ useOrganizationStore: () => ({ myOrganizations: [], fetchMyOrganizations: vi.fn() }) }))
 
 const { useMyCalendarData, __resetCalendarLayerMigrationForTest } = await import('./useMyCalendarData')
+// 同じディレクトリの既存specと同様、初回のNuxt環境構築時間を含む。
+vi.setConfig({ testTimeout: 60000 })
 const KEY = 'mannschaft:calendar:layerState'
 const layers = [{ scopeType: 'PERSONAL', scopeId: 0, hidden: false, color: '#059669', colorSource: 'LAYER_AUTO' }]
 const fallback = {
@@ -109,7 +111,13 @@ describe('カレンダー初期取得の並列化', () => {
     await cal.initialize()
     expect(cal.layersFailed.value).toBe(true)
     expect(cal.filteredEvents.value).toHaveLength(1)
-    await cal.initialize()
+    const recoveredLayers = deferred<{ data: typeof layers }>()
+    api.getMyCalendarLayers.mockReturnValueOnce(recoveredLayers.promise)
+    const retried = cal.initialize()
+    await flushPromises()
+    expect(cal.loading.value).toBe(true)
+    recoveredLayers.resolve({ data: layers })
+    await retried
     await flushPromises()
     expect(cal.layersFailed.value).toBe(false)
     cal.multiSelectScopes.value = []
