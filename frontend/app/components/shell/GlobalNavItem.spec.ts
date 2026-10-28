@@ -45,7 +45,7 @@ describe('グローバルナビの操作時先読み', () => {
       const control = wrapper.get(`a[href="${controlDestination}"]`)
       const realLink = wrapper.findAllComponents(RouterLink).find(component => component.props('to') === destination)
       expect(realLink).toBeDefined()
-      expect(realLink?.vm.$.provides[routerKey as symbol]).toBe(router)
+      expect(realLink?.vm.$.appContext.provides[routerKey as symbol]).toBe(router)
       await vi.waitFor(() => expect(observed.has(control.element)).toBe(true))
       for (const callback of [...observed.values()]) callback()
       await flushPromises()
