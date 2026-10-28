@@ -171,12 +171,12 @@ describe('カレンダー初期取得の並列化', () => {
     ] })
     if (storage === 'broken-json') localStorage.setItem(KEY, '{broken')
     const { cal, wrapper } = await boot()
-    let read: ReturnType<typeof vi.spyOn> | undefined
-    let write: ReturnType<typeof vi.spyOn> | undefined
+    const read = vi.fn(() => { throw new DOMException('storage unavailable', 'SecurityError') })
+    const write = vi.fn(() => { throw new DOMException('storage unavailable', 'SecurityError') })
     if (storage === 'unavailable') {
       // 読み書き両方を拒否する。Nuxt環境の準備後に注入し、検査対象の初期化だけを観測する。
-      read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new DOMException('storage unavailable', 'SecurityError') })
-      write = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('storage unavailable', 'SecurityError') })
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(read)
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(write)
     }
 
     expect(await cal.initialize()).toBe(true)
