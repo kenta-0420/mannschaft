@@ -3,8 +3,6 @@ import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import { useNuxtApp } from '#app'
-import jaCommon from '~/locales/ja/common.json'
-import jaSidebar from '~/locales/ja/org_sidebar.json'
 import LineSettings from '~/pages/admin/line-settings.vue'
 import SnsSettings from '~/pages/admin/sns-settings.vue'
 
@@ -47,8 +45,8 @@ describe('CMP-261014-2035 P11/P12 設定ヘッダ操作', () => {
   it('P11 config有りでは削除・保存をactionsへ置き、クリックで既存APIを呼ぶ', async () => {
     const wrapper = await mountSettings(LineSettings)
     const header = wrapper.get('[data-testid="settings-header"]')
-    expect(header.get('[data-testid="page-header-subtitle"]').text()).toBe(jaCommon.integrationSettings.lineSubtitle)
-    expect(header.get('h1').text()).toBe(jaSidebar.orgSidebar.lineSettings)
+    expect(header.get('[data-testid="page-header-subtitle"]').text()).toBe('LINE Messaging API との連携設定')
+    expect(header.get('h1').text()).toBe('LINE設定')
     const buttons = header.findAll('button')
     expect(buttons.map(button => button.text())).toEqual(['削除', '保存'])
     await buttons[1]!.trigger('click')
@@ -86,8 +84,8 @@ describe('CMP-261014-2035 P11/P12 設定ヘッダ操作', () => {
   it('P12 SNS追加をactionsへ置きクリックで作成ダイアログを開く', async () => {
     const wrapper = await mountSettings(SnsSettings)
     const header = wrapper.get('[data-testid="settings-header"]')
-    expect(header.get('[data-testid="page-header-subtitle"]').text()).toBe(jaCommon.integrationSettings.snsSubtitle)
-    expect(header.get('h1').text()).toBe(jaSidebar.orgSidebar.snsSettings)
+    expect(header.get('[data-testid="page-header-subtitle"]').text()).toBe('Instagram・X のフィード連携を管理します')
+    expect(header.get('h1').text()).toBe('SNS設定')
     expect(header.get('button').text()).toBe('アカウントを追加')
     await header.get('button').trigger('click')
     expect(wrapper.find('[data-testid="sns-create-dialog"]').exists()).toBe(true)
