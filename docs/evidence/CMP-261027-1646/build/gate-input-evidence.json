@@ -1,0 +1,307 @@
+{
+  "sourceHead": "6f6c1eccaf298db643d5772b2fd988151b9fda89",
+  "source": ".github/workflows/backend-ci.yml",
+  "workflowSha256": "474bee09894bae6f2a5c7dcc4047958e27dcdeb12b01aedc0e99b95dc1b881e1",
+  "extractedShellSha256": "a4639d9cd0d1d0194e28c843977d1bfded1e951045a9c73512614db6b8a2f10f",
+  "recordedAt": "2026-10-27T09:05:47.977Z",
+  "passed": true,
+  "results": [
+    {
+      "name": "全成功",
+      "overrides": {},
+      "expected": 0,
+      "exit": 0,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = success\n[OK] 全 shard + lint + shard-coverage-guard + non-jst-timezone + arch-test が success。Compile & Test は success。\n",
+      "stderr": ""
+    },
+    {
+      "name": "docsのみ",
+      "overrides": {
+        "needs.detect.outputs.backend_changed": "false",
+        "needs.shard.result": "skipped"
+      },
+      "expected": 0,
+      "exit": 0,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = false\n[INFO] needs.shard.result              = skipped\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = success\n[OK] backend に変更なし（docs-only 等）。shard / lint / shard-coverage-guard / non-jst-timezone をスキップし success とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.detect.result:failure",
+      "overrides": {
+        "needs.detect.result": "failure"
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = failure\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = success\n[NG] detect が success ではない（結果: failure）。backend_changed の値は 信頼できず、shard/lint/shard-coverage-guard/non-jst-timezone の要否も判定不能。CI を再実行せよ。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.detect.result:cancelled",
+      "overrides": {
+        "needs.detect.result": "cancelled"
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = cancelled\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = success\n[NG] detect が success ではない（結果: cancelled）。backend_changed の値は 信頼できず、shard/lint/shard-coverage-guard/non-jst-timezone の要否も判定不能。CI を再実行せよ。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.detect.result:skipped",
+      "overrides": {
+        "needs.detect.result": "skipped"
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = skipped\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = success\n[NG] detect が success ではない（結果: skipped）。backend_changed の値は 信頼できず、shard/lint/shard-coverage-guard/non-jst-timezone の要否も判定不能。CI を再実行せよ。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.detect.result:missing",
+      "overrides": {
+        "needs.detect.result": ""
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = \n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = success\n[NG] detect が success ではない（結果: ）。backend_changed の値は 信頼できず、shard/lint/shard-coverage-guard/non-jst-timezone の要否も判定不能。CI を再実行せよ。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.shard.result:failure",
+      "overrides": {
+        "needs.shard.result": "failure"
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = failure\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = success\n[NG] shard=failure, lint=success, shard-coverage-guard=success, non-jst-timezone=success, arch-test=success — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.shard.result:cancelled",
+      "overrides": {
+        "needs.shard.result": "cancelled"
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = cancelled\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = success\n[NG] shard=cancelled, lint=success, shard-coverage-guard=success, non-jst-timezone=success, arch-test=success — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.shard.result:skipped",
+      "overrides": {
+        "needs.shard.result": "skipped"
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = skipped\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = success\n[NG] shard=skipped, lint=success, shard-coverage-guard=success, non-jst-timezone=success, arch-test=success — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.shard.result:missing",
+      "overrides": {
+        "needs.shard.result": ""
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = \n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = success\n[NG] shard=, lint=success, shard-coverage-guard=success, non-jst-timezone=success, arch-test=success — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.lint.result:failure",
+      "overrides": {
+        "needs.lint.result": "failure"
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = failure\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = success\n[NG] shard=success, lint=failure, shard-coverage-guard=success, non-jst-timezone=success, arch-test=success — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.lint.result:cancelled",
+      "overrides": {
+        "needs.lint.result": "cancelled"
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = cancelled\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = success\n[NG] shard=success, lint=cancelled, shard-coverage-guard=success, non-jst-timezone=success, arch-test=success — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.lint.result:skipped",
+      "overrides": {
+        "needs.lint.result": "skipped"
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = skipped\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = success\n[NG] shard=success, lint=skipped, shard-coverage-guard=success, non-jst-timezone=success, arch-test=success — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.lint.result:missing",
+      "overrides": {
+        "needs.lint.result": ""
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = \n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = success\n[NG] shard=success, lint=, shard-coverage-guard=success, non-jst-timezone=success, arch-test=success — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.shard-coverage-guard.result:failure",
+      "overrides": {
+        "needs.shard-coverage-guard.result": "failure"
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = failure\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = success\n[NG] shard=success, lint=success, shard-coverage-guard=failure, non-jst-timezone=success, arch-test=success — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.shard-coverage-guard.result:cancelled",
+      "overrides": {
+        "needs.shard-coverage-guard.result": "cancelled"
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = cancelled\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = success\n[NG] shard=success, lint=success, shard-coverage-guard=cancelled, non-jst-timezone=success, arch-test=success — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.shard-coverage-guard.result:skipped",
+      "overrides": {
+        "needs.shard-coverage-guard.result": "skipped"
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = skipped\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = success\n[NG] shard=success, lint=success, shard-coverage-guard=skipped, non-jst-timezone=success, arch-test=success — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.shard-coverage-guard.result:missing",
+      "overrides": {
+        "needs.shard-coverage-guard.result": ""
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = \n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = success\n[NG] shard=success, lint=success, shard-coverage-guard=, non-jst-timezone=success, arch-test=success — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.non-jst-timezone.result:failure",
+      "overrides": {
+        "needs.non-jst-timezone.result": "failure"
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = failure\n[INFO] needs.arch-test.result           = success\n[NG] shard=success, lint=success, shard-coverage-guard=success, non-jst-timezone=failure, arch-test=success — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.non-jst-timezone.result:cancelled",
+      "overrides": {
+        "needs.non-jst-timezone.result": "cancelled"
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = cancelled\n[INFO] needs.arch-test.result           = success\n[NG] shard=success, lint=success, shard-coverage-guard=success, non-jst-timezone=cancelled, arch-test=success — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.non-jst-timezone.result:skipped",
+      "overrides": {
+        "needs.non-jst-timezone.result": "skipped"
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = skipped\n[INFO] needs.arch-test.result           = success\n[NG] shard=success, lint=success, shard-coverage-guard=success, non-jst-timezone=skipped, arch-test=success — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.non-jst-timezone.result:missing",
+      "overrides": {
+        "needs.non-jst-timezone.result": ""
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = \n[INFO] needs.arch-test.result           = success\n[NG] shard=success, lint=success, shard-coverage-guard=success, non-jst-timezone=, arch-test=success — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.arch-test.result:failure",
+      "overrides": {
+        "needs.arch-test.result": "failure"
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = failure\n[NG] shard=success, lint=success, shard-coverage-guard=success, non-jst-timezone=success, arch-test=failure — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.arch-test.result:cancelled",
+      "overrides": {
+        "needs.arch-test.result": "cancelled"
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = cancelled\n[NG] shard=success, lint=success, shard-coverage-guard=success, non-jst-timezone=success, arch-test=cancelled — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.arch-test.result:skipped",
+      "overrides": {
+        "needs.arch-test.result": "skipped"
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = skipped\n[NG] shard=success, lint=success, shard-coverage-guard=success, non-jst-timezone=success, arch-test=skipped — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "needs.arch-test.result:missing",
+      "overrides": {
+        "needs.arch-test.result": ""
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = success\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = \n[NG] shard=success, lint=success, shard-coverage-guard=success, non-jst-timezone=success, arch-test= — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    },
+    {
+      "name": "shard timeoutの集約failure",
+      "overrides": {
+        "needs.shard.result": "failure"
+      },
+      "expected": 1,
+      "exit": 1,
+      "passed": true,
+      "stdout": "[INFO] needs.detect.result            = success\n[INFO] detect.backend_changed          = true\n[INFO] needs.shard.result              = failure\n[INFO] needs.lint.result               = success\n[INFO] needs.shard-coverage-guard.result = success\n[INFO] needs.non-jst-timezone.result    = success\n[INFO] needs.arch-test.result           = success\n[NG] shard=failure, lint=success, shard-coverage-guard=success, non-jst-timezone=success, arch-test=success — いずれかが success ではない。Compile & Test を失敗とする。\n",
+      "stderr": ""
+    }
+  ],
+  "limits": "needs入力展開後の実shellの試験。GitHubのmatrix集約やtimeout発生、診断artifactの存在そのものは模擬・判定しない。"
+}
