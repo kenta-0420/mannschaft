@@ -11,13 +11,15 @@ import com.mannschaft.app.support.test.TeamOrgFixtureHelper;
 import com.jayway.jsonpath.JsonPath;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +29,6 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.doReturn;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -35,10 +36,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * CMP-261011-0035 ALIC-1 §2.6 役割の鮮度（AC-ALIC1-E01〜E06・試練 red）。
  *
- * <p>告知の可視性に使う役割はキャッシュしない。テスト profile は {@code spring.cache.type=none} で
- * 実キャッシュが無いため、「{@code dashboard:viewer-role} に古い役割が事前投入され、無効化が失敗した状態」を
- * {@link RoleResolver#resolveViewerRole}（{@code @Cacheable} の入口）だけが古い値を返すスタブで表す。
- * キャッシュなしの入口（{@code resolveViewerRoleForPreview}・{@code resolveViewerRolesFresh}）は本物のまま。
+ * <p>告知の可視性に使う役割はキャッシュしない。テスト profile の CacheManager はプロセス内の
+ * {@code ConcurrentMapCacheManager}（RedisConfig#testInMemoryCacheManager）なので、
+ * 「{@code dashboard:viewer-role} に古い役割が事前投入され、無効化が失敗した状態」を、
+ * {@link RoleResolver#resolveViewerRole} と同じキー {@code {userId}:{scopeType}:{scopeId}} へ古い値を直接
+ * put して表す（DB の役割を直接書き換えるので MembershipChangedListener の無効化は走らない）。
+ * キャッシュなしの入口（{@code resolveViewerRoleForPreview}・{@code resolveViewerRolesFresh}）はキャッシュを見ない。
+ * なお RoleResolver を MockitoSpyBean にして stub する方式は、@Cacheable の CGLIB プロキシ越しで
+ * 全呼び出しが null を返し（CI 実測、全件 500）、red の理由が壊れるため採らない。
  * 告知部分がキャッシュなしの役割を使うよう直れば、古い値は告知の可否に効かなくなる。</p>
  *
  * <p>現状（red の理由）: チーム／組織の告知一覧 API・ダッシュボードの告知とも {@code resolveViewerRole}
@@ -57,7 +62,8 @@ class AnnouncementViewerRoleFreshnessIT extends AbstractMySqlIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
     @PersistenceContext private EntityManager em;
-    @MockitoSpyBean private RoleResolver roleResolver;
+    @Autowired private CacheManager cacheManager;
+    private final java.util.List<String> staleKeys = new java.util.ArrayList<>();
 
     private Long teamId;
     private String teamSlug;
@@ -169,7 +175,21 @@ class AnnouncementViewerRoleFreshnessIT extends AbstractMySqlIntegrationTest {
 
     /** 「キャッシュに古い役割が残り、無効化に失敗した」状態。@Cacheable の入口だけが古い値を返す。 */
     private void staleCachedRole(String scopeType, Long scopeId, ViewerRole stale) {
-        doReturn(stale).when(roleResolver).resolveViewerRole(viewerId, scopeType, scopeId);
+        String key = viewerId + ":" + scopeType + ":" + scopeId;
+        viewerRoleCache().put(key, stale);
+        staleKeys.add(key);
+    }
+
+    private Cache viewerRoleCache() {
+        Cache cache = cacheManager.getCache("dashboard:viewer-role");
+        assertThat(cache).as("前提: dashboard:viewer-role キャッシュが取得できる").isNotNull();
+        return cache;
+    }
+
+    @AfterEach
+    void evictStaleRoles() {
+        staleKeys.forEach(key -> viewerRoleCache().evict(key));
+        staleKeys.clear();
     }
 
     /** PUBLIC・SUPPORTERS・MEMBERS の3件を作り、その順の ID を返す。 */

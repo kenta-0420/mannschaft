@@ -141,10 +141,10 @@ class AnnouncementReadChunkTransactionIT extends AbstractMySqlIntegrationTest {
         AtomicInteger calls = new AtomicInteger();
         Mockito.doAnswer(invocation -> {
             if (calls.incrementAndGet() == 2) {
-                invocation.callRealMethod();
+                callReal(invocation);
                 throw new DataAccessResourceFailureException("試練: 2チャンク目の書き込み失敗");
             }
-            return invocation.callRealMethod();
+            return callReal(invocation);
         }).when(readStatusRepository).insertReadStatusesIgnoringExisting(
                 ArgumentMatchers.anyLong(), ArgumentMatchers.anyCollection());
 
@@ -166,7 +166,7 @@ class AnnouncementReadChunkTransactionIT extends AbstractMySqlIntegrationTest {
         Long a = orgFeed("[" + t1 + "]");
         Long b = orgFeed("[" + t1 + "]");
         Mockito.doAnswer(invocation -> {
-            invocation.callRealMethod();
+            callReal(invocation);
             throw new DataAccessResourceFailureException("試練: read-batch 書き込み失敗");
         }).when(readStatusRepository).insertReadStatusesIgnoringExisting(
                 ArgumentMatchers.anyLong(), ArgumentMatchers.anyCollection());
@@ -183,11 +183,25 @@ class AnnouncementReadChunkTransactionIT extends AbstractMySqlIntegrationTest {
 
     // ── ヘルパー ─────────────────────────────────────────────────
 
+    /**
+     * Spring Data の Repository は interface の JDK プロキシなので、その spy で
+     * {@code invocation.callRealMethod()} を呼ぶと「Cannot call abstract real method」で落ちる（CI 実測で 500）。
+     * spy の元になった実 Repository（spiedInstance）へ反射で委譲して本物の UPSERT を実行する。
+     */
+    private Object callReal(org.mockito.invocation.InvocationOnMock invocation) throws Throwable {
+        Object real = Mockito.mockingDetails(readStatusRepository).getMockCreationSettings().getSpiedInstance();
+        try {
+            return invocation.getMethod().invoke(real, invocation.getArguments());
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            throw e.getCause();
+        }
+    }
+
     /** 1回目の UPSERT の直後に、別 tx（commit 済み）で所属を変える。 */
     private void afterFirstWrite(String membershipUpdateSql) {
         AtomicInteger calls = new AtomicInteger();
         Mockito.doAnswer(invocation -> {
-            Object result = invocation.callRealMethod();
+            Object result = callReal(invocation);
             if (calls.incrementAndGet() == 1) {
                 requiresNew.executeWithoutResult(s -> jdbc.update(membershipUpdateSql, memberM, t1));
             }
