@@ -116,6 +116,8 @@ Scene は登録された同個体・同段階の静止 fallback を動き抑制�
 | テスト | Testcontainers (MySQL 8.0) |
 | その他 | Lombok, Virtual Threads (Project Loom) |
 
+バックエンドは単一Gradleプロジェクト `app` を維持し、`backend/build.gradle.kts` から included build `backend/build-logic` の `mannschaft.backend-conventions` を適用する。依存定義と共通Test・shard・番人・JaCoCo設定は同conventionへ、shard述語は `ShardAssignment.kt` へ集約する。アプリ固有のBoot・OpenAPI・OWASP設定はroot buildに置く。
+
 ### フロントエンド
 
 | 区分 | 技術 |

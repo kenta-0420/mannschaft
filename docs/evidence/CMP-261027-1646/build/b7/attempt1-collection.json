@@ -1,0 +1,96 @@
+{
+  "collectedAt": "2026-10-27T11:25:42.408171+00:00",
+  "runId": 40481639328,
+  "head": "a8b7d8b999973d2c138ffecce2fbe2233f6bb09a",
+  "attempt": 1,
+  "status": "completed",
+  "conclusion": "failure",
+  "artifacts": [
+    {
+      "name": "backend-runtime-diag-pr-4169-shard-4-attempt-1",
+      "id": 12730610547,
+      "bytes": 50437,
+      "sha256": "64f0c25350a7e455854fb0b63a832d18158e012a7c07d010f0e7f786b10df4c0"
+    },
+    {
+      "name": "backend-runtime-diag-pr-4169-shard-0-attempt-1",
+      "id": 12730491882,
+      "bytes": 52428,
+      "sha256": "2dd476f024b4b6aa2804212de6c1bdcccbb073efbbc50e8a9cf16dc64f98b996"
+    },
+    {
+      "name": "backend-runtime-diag-pr-4169-shard-3-attempt-1",
+      "id": 12730401038,
+      "bytes": 52467,
+      "sha256": "3e963ea47fd52b21015d10ce86b793fbcbef5568eccd207976a0066c3b78ebfb"
+    },
+    {
+      "name": "backend-runtime-diag-pr-4169-shard-5-attempt-1",
+      "id": 12729808889,
+      "bytes": 55714,
+      "sha256": "260116f389d4445565adff08639104600dab2776157856bbfa49305c3cccda44"
+    },
+    {
+      "name": "backend-runtime-diag-pr-4169-shard-2-attempt-1",
+      "id": 12729401408,
+      "bytes": 53157,
+      "sha256": "a22de8209ebebf2bd6b3550c8c6ec4bc682f6c66d5ccd73d91cf4cad8abb4632"
+    },
+    {
+      "name": "backend-runtime-diag-pr-4169-shard-1-attempt-1",
+      "id": 12727787747,
+      "bytes": 50055,
+      "sha256": "f53f7468c7a64f9f01739b96870ccbf5730c90606c1c1e4fc46ad8af00ebbfe4"
+    }
+  ],
+  "jobs": [
+    {
+      "id": 122113965413,
+      "name": "Test (shard 4)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-27T09:35:07Z",
+      "completed_at": "2026-10-27T11:09:31Z"
+    },
+    {
+      "id": 122113965433,
+      "name": "Test (shard 2)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-27T09:35:07Z",
+      "completed_at": "2026-10-27T11:08:15Z"
+    },
+    {
+      "id": 122113965437,
+      "name": "Test (shard 0)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-27T09:35:07Z",
+      "completed_at": "2026-10-27T11:16:22Z"
+    },
+    {
+      "id": 122113965471,
+      "name": "Test (shard 5)",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-27T09:35:07Z",
+      "completed_at": "2026-10-27T11:25:21Z"
+    },
+    {
+      "id": 122113965482,
+      "name": "Test (shard 1)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-27T09:35:07Z",
+      "completed_at": "2026-10-27T10:48:23Z"
+    },
+    {
+      "id": 122113965669,
+      "name": "Test (shard 3)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-27T09:35:07Z",
+      "completed_at": "2026-10-27T11:11:05Z"
+    }
+  ]
+}
