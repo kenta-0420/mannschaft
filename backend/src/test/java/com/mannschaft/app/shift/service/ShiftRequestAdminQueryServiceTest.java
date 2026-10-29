@@ -11,6 +11,8 @@ import com.mannschaft.app.shift.repository.ShiftSwapRequestRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -25,6 +27,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * F10.1.1 / P1: {@link ShiftRequestAdminQueryService} 単体テスト。
@@ -60,6 +63,49 @@ class ShiftRequestAdminQueryServiceTest {
         assertThat(result.items()).isEmpty();
         verify(changeRequestRepository, never()).findPendingByTeam(any(), any(), any());
         verify(swapRequestRepository, never()).findPendingByTeam(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("変更依頼と交代申請がともに0件 → 両プレビューと表示名取得を省略する")
+    void 両種別ゼロ件はプレビューを取得しない() {
+        given(changeRequestRepository.countPendingByTeam(TEAM_ID, ChangeRequestStatus.OPEN)).willReturn(0L);
+        given(swapRequestRepository.countPendingByTeam(TEAM_ID, SwapRequestStatus.PENDING)).willReturn(0L);
+
+        PendingAggregate result = service.pendingForTeam(TEAM_ID, TEAM_SLUG, 3);
+
+        assertThat(result.pendingCount()).isZero();
+        assertThat(result.items()).isEmpty();
+        verify(changeRequestRepository, never()).findPendingByTeam(any(), any(), any());
+        verify(swapRequestRepository, never()).findPendingByTeam(any(), any(), any());
+        verifyNoInteractions(nameResolverService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    @DisplayName("片方のみ承認待ちがある場合も両種別のプレビューを取得して項目を返す")
+    void 片方のみ正数ならプレビューを取得する(boolean changeOnly) {
+        given(changeRequestRepository.countPendingByTeam(TEAM_ID, ChangeRequestStatus.OPEN))
+                .willReturn(changeOnly ? 1L : 0L);
+        given(swapRequestRepository.countPendingByTeam(TEAM_ID, SwapRequestStatus.PENDING))
+                .willReturn(changeOnly ? 0L : 1L);
+        ShiftChangeRequestEntity change = ShiftChangeRequestEntity.builder()
+                .id(88L).scheduleId(100L).requestedBy(11L).status(ChangeRequestStatus.OPEN).build();
+        ShiftSwapRequestEntity swap = ShiftSwapRequestEntity.builder()
+                .slotId(200L).requesterId(11L).status(SwapRequestStatus.PENDING).build();
+        ReflectionTestUtils.setField(swap, "id", 99L);
+        given(changeRequestRepository.findPendingByTeam(eq(TEAM_ID), eq(ChangeRequestStatus.OPEN), any()))
+                .willReturn(changeOnly ? List.of(change) : List.of());
+        given(swapRequestRepository.findPendingByTeam(eq(TEAM_ID), eq(SwapRequestStatus.PENDING), any()))
+                .willReturn(changeOnly ? List.of() : List.of(swap));
+        given(nameResolverService.resolveUserDisplayNames(any())).willReturn(Map.of(11L, "申請者"));
+
+        PendingAggregate result = service.pendingForTeam(TEAM_ID, TEAM_SLUG, 3);
+
+        assertThat(result.pendingCount()).isEqualTo(1L);
+        assertThat(result.items()).hasSize(1);
+        assertThat(result.items().get(0).title()).isEqualTo(changeOnly ? "シフト変更依頼" : "シフト交代申請");
+        verify(changeRequestRepository).findPendingByTeam(eq(TEAM_ID), eq(ChangeRequestStatus.OPEN), any());
+        verify(swapRequestRepository).findPendingByTeam(eq(TEAM_ID), eq(SwapRequestStatus.PENDING), any());
     }
 
     @Test

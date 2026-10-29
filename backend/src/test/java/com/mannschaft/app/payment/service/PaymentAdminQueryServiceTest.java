@@ -24,8 +24,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * F10.1.1 / P1: {@link PaymentAdminQueryService} 単体テスト。
@@ -62,6 +64,25 @@ class PaymentAdminQueryServiceTest {
                 .countByIssuerScopeKindAndIssuerScopeIdAndStatusAndDeletedAtIsNull(any(), any(), any());
         verify(paymentRequestRepository, never())
                 .findByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(any(), any(), anyCollection(), any());
+    }
+
+    @Test
+    @DisplayName("未収請求0件 → プレビューと表示名の取得を省略して空集計を返す")
+    void 未収請求ゼロ件はプレビューを取得しない() {
+        given(paymentRequestRepository.countByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
+                eq(ScopeKind.ORG), eq(ORG_ID), anyCollection())).willReturn(0L);
+        // 修正前も空ページを返し、null参照ではなく不要なクエリ呼び出しを検出する。
+        lenient().when(paymentRequestRepository.findByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
+                any(), any(), anyCollection(), any())).thenReturn(org.springframework.data.domain.Page.empty());
+
+        PendingAggregate result = service.unsettledForOrg(ORG_ID, ORG_SLUG, 3);
+
+        assertThat(result.pendingCount()).isZero();
+        assertThat(result.items()).isEmpty();
+        verify(paymentRequestRepository, never())
+                .findByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
+                        any(), any(), anyCollection(), any());
+        verifyNoInteractions(nameResolverService);
     }
 
     @Test
