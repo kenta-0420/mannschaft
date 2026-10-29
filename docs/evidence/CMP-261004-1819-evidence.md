@@ -1,6 +1,6 @@
 ﻿# CMP-261004-1819 試練・実装証拠
 
-対象scopeは`app`。実装PRは[#4193](https://github.com/kenta-0420/mannschaft/pull/4193)。状態は実装中。b200の対象26ケースはCIでgreenだが、全体CIは既存の旧契約1件で失敗した。期待値修正後の再CI・実機E2E・独立探索は未実施。
+対象scopeは`app`。実装PRは[#4193](https://github.com/kenta-0420/mannschaft/pull/4193)。状態は実装中。以下の旧証拠は履歴として保持する。最新状況は末尾の2026-10-29追補を参照。最新main追従headのCI・実機差分smoke・最終検分待ちのため完了ではない。
 
 ## 原red（変更せず保存）
 
@@ -50,3 +50,15 @@ rootの最終確認ではcanonical cleanup=removed、元source/headは不変・c
 | 12/13 | 実認証の実機ロール横断/匿名直API、不在teamId POST、後続の独立3persona目的探索とtriage/正常閉鎖 | 未実施 |
 
 未削除親の存在確認だけを追加し、ACTIVE限定、新エラー、migration、別ドメインRepository参照は追加しない。同時親削除のTX保証は別課題1821へ分離する。原台帳ACと実装中状態を保持する。修正後の重いローカルbuild/testは資源割当のため未実施で、通常CIの確認はrootが担当する。
+
+## 2026-10-29 追補（完了保留）
+
+旧head `304db81dc552ba522698320e0b664290175e9dd2` は公式CI run [40643278817](https://github.com/kenta-0420/mannschaft/actions/runs/40643278817) と後続Task-List PR Gateをrootが照合し、実効check22 SUCCESS・1 SKIP・pending/fail0、選択XML445 passを確認。旧b200の失敗・原red・ローカル未認証は履歴として残す。
+
+AC-12は旧実機source `3e3c8bd7a21ed5200a4d4198dcb5dcb016654bbd` のUI7ロール・API23ケースを根拠とする。304とのprotected code同値証明SHA256 `6e995048c82f3cf599ad8a0b68d840258fe763a5bb81070aa30482a4d5c0cfec` をrootが採用した。最新head全体の実機合格とは主張しない。AC-13は[独立3住民選択観測](CMP-261004-1819/resident-observations.json)の実施・triage・正常閉鎖をroot採用。目的は管理者達成、一般メンバー/部外者は部分達成、画像評価なし。未実証観測は累積B0へtrusted=false/observed-unverifiedで登録し、coverageや確定bugへ昇格しない。
+
+最新main `f59ea6d054a4a61a05e3084e6b2b1083ccef7673` を隔離WTで競合なくmergeしたheadは `6c1faf5cae5903fbfa3e0bc30884f25a2d015546`。304からbackend/src/mainへの追加はTransitionalBridge annotation1件のみで、1819 protected製品コードは不変。mainのbuild-logic移設、GlobalNavItemのinteraction prefetch、calendar変更を取り込んだため、新headのCIと通常導線smokeを別途必要とする。旧CIを新head greenへ流用しない。
+
+[閉鎖・復元選択要約](CMP-261004-1819/closure-summary.json)のとおり2026-10-29 02:08:19 UTCに全起動サーバ・専用DB停止、4port不在、試験データ復元を確認。old lease延長なし。追加clickの自動承認レビュー拒否は未実行・再送なしとして保持する。台帳は実装中のまま、新head CI・実機差分smoke・最終検分・merge後の完了証拠確定まで保留する。
+
+検証限界: B0通常validator全体はCMP正本608行と生成campaign602件の既存不一致で失敗。今回行の追加削除なし・生成データのoverlay以外不変を確認した。overlay限定自己検証は空insights・複数head/runの受理と不正10件拒否を含め成功。全体validator合格・ボードUI検証・coverage合格とは扱わない。
