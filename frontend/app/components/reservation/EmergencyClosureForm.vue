@@ -238,8 +238,8 @@ async function confirmSend() {
       messageBody: messageBody.value,
       cancelReservations: cancelReservations.value,
     })
-    sendResult.value = res.data.notifiedCount
-    notification.success(t('emergency_closure.message.sent_count', { count: res.data.notifiedCount }))
+    sendResult.value = res.data.sentCount
+    notification.success(t('emergency_closure.message.sent_count', { count: res.data.sentCount }))
     await loadHistory()
     previewItems.value = []
     previewDone.value = false
