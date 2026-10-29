@@ -1,7 +1,6 @@
 package com.mannschaft.app.moduleevent.controller;
 
 import com.mannschaft.app.common.PagedResponse;
-import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.featuregate.AlwaysReachable;
 import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.security.AuthorizedByPathConfig;
@@ -48,7 +47,7 @@ public class SystemAdminModuleEventController {
             reason = "隔離した基盤イベントを機能の有効状態に依存せずSYSTEM_ADMINが理由付きで再開するため")
     public ResponseEntity<Void> resume(@PathVariable UUID publicationId,
             @Valid @RequestBody ResumeModuleEventRequest request) {
-        api.resume(publicationId, request.reason(), SecurityUtils.getCurrentUserId());
+        api.resume(publicationId, request.reason());
         return ResponseEntity.noContent().build();
     }
 }

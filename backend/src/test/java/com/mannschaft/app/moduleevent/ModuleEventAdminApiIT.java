@@ -281,7 +281,7 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
         SecurityContextHolder.setContext(actorContext);
         try {
             assertThatCode(() -> new TransactionTemplate(transactions).executeWithoutResult(status -> {
-                adminApi.resume(publicationId, "運用確認済み", Long.parseLong(ACTOR_ID));
+                adminApi.resume(publicationId, "運用確認済み");
                 entityManager.flush();
                 assertState(publicationId, "PENDING", 0);
                 assertThat(auditCount(publicationId)).isEqualTo(1L);
@@ -313,7 +313,7 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
         Throwable failure;
         try {
             failure = catchThrowable(() -> new TransactionTemplate(transactions).executeWithoutResult(status -> {
-                adminApi.resume(publicationId, "運用確認済み", Long.parseLong(ACTOR_ID));
+                adminApi.resume(publicationId, "運用確認済み");
                 entityManager.flush();
                 assertState(publicationId, "PENDING", 0);
                 assertThat(auditCount(publicationId)).isEqualTo(1L);
@@ -371,7 +371,7 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
         SecurityContextHolder.setContext(actorContext);
         try {
             Throwable failure = catchThrowable(() -> adminApi.resume(
-                    publicationId, "運用確認済み", Long.parseLong(ACTOR_ID)));
+                    publicationId, "運用確認済み"));
             assertThat(failure).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
         } finally {
             SecurityContextHolder.setContext(previousContext);
@@ -387,7 +387,7 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
         SecurityContextHolder.setContext(SecurityContextHolder.createEmptyContext());
         try {
             Throwable failure = catchThrowable(() -> adminApi.resume(
-                    publicationId, "運用確認済み", Long.parseLong(ACTOR_ID)));
+                    publicationId, "運用確認済み"));
             assertThat(failure).isInstanceOf(
                     org.springframework.security.authentication.AuthenticationCredentialsNotFoundException.class);
         } finally {

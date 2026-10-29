@@ -17,7 +17,7 @@ public final class ModuleEventAdminApi {
         return service.list(status, page, size);
     }
 
-    public void resume(UUID publicationId, String reason, Long actorUserId) {
-        service.resume(publicationId, reason, actorUserId);
+    public void resume(UUID publicationId, String reason) {
+        service.resume(publicationId, reason);
     }
 }
