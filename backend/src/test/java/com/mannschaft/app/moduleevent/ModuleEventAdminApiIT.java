@@ -339,6 +339,64 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
         assertThat(auditCount(publicationId)).isZero();
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"JSON", "QUERY"})
+    void actor偽装入力があっても監査には現在の認証主体を記録する(String input) throws Exception {
+        UUID publicationId = fixture(ModuleEventAttemptStatus.QUARANTINED, 7L);
+        var request = post(ROOT + "/{id}/resume", publicationId).with(systemAdmin())
+                .contentType(MediaType.APPLICATION_JSON);
+        if ("JSON".equals(input)) {
+            request.content(mapper.writeValueAsString(Map.of(
+                    "reason", "運用確認済み", "actorUserId", Long.parseLong(OTHER_ACTOR_ID))));
+        } else {
+            request.param("actorUserId", OTHER_ACTOR_ID)
+                    .content(mapper.writeValueAsString(Map.of("reason", "運用確認済み")));
+        }
+
+        mvc.perform(request).andExpect(status().isNoContent());
+        assertThat(auditCount(publicationId)).isEqualTo(1L);
+        assertThat(jdbc.queryForObject("SELECT actor_user_id FROM module_event_resume_audits "
+                + "WHERE publication_id = ?", Long.class, bytes(publicationId)))
+                .isEqualTo(Long.parseLong(ACTOR_ID));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"MEMBER", "ADMIN", "DEPUTY_ADMIN", "ORGANIZATION_ADMIN"})
+    void 直接APIも一般と組織チーム管理者による再開を拒否する(String role) {
+        UUID publicationId = fixture(ModuleEventAttemptStatus.QUARANTINED, 7L);
+        var previousContext = SecurityContextHolder.getContext();
+        var actorContext = SecurityContextHolder.createEmptyContext();
+        actorContext.setAuthentication(new UsernamePasswordAuthenticationToken(OTHER_ACTOR_ID, null,
+                List.of(new SimpleGrantedAuthority("ROLE_" + role))));
+        SecurityContextHolder.setContext(actorContext);
+        try {
+            Throwable failure = catchThrowable(() -> adminApi.resume(
+                    publicationId, "運用確認済み", Long.parseLong(ACTOR_ID)));
+            assertThat(failure).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        } finally {
+            SecurityContextHolder.setContext(previousContext);
+        }
+        assertState(publicationId, "QUARANTINED", RETRY_LIMIT);
+        assertThat(auditCount(publicationId)).isZero();
+    }
+
+    @Test
+    void 直接APIも認証主体がない再開を拒否する() {
+        UUID publicationId = fixture(ModuleEventAttemptStatus.QUARANTINED, 7L);
+        var previousContext = SecurityContextHolder.getContext();
+        SecurityContextHolder.setContext(SecurityContextHolder.createEmptyContext());
+        try {
+            Throwable failure = catchThrowable(() -> adminApi.resume(
+                    publicationId, "運用確認済み", Long.parseLong(ACTOR_ID)));
+            assertThat(failure).isInstanceOf(
+                    org.springframework.security.authentication.AuthenticationCredentialsNotFoundException.class);
+        } finally {
+            SecurityContextHolder.setContext(previousContext);
+        }
+        assertState(publicationId, "QUARANTINED", RETRY_LIMIT);
+        assertThat(auditCount(publicationId)).isZero();
+    }
+
     private long auditCount(UUID publicationId) {
         Long count = jdbc.queryForObject("SELECT COUNT(*) FROM module_event_resume_audits "
                 + "WHERE publication_id = ?", Long.class, bytes(publicationId));
