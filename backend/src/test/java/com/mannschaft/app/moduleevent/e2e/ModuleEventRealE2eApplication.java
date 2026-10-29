@@ -249,7 +249,8 @@ public final class ModuleEventRealE2eApplication {
 
     private static void stopResidentHelper(Process helper, Instant started) throws Exception {
         if (helper == null) return;
-        ModuleEventRealE2eFixtures.require(!helper.isAlive() || started != null
+        ModuleEventRealE2eFixtures.require(helper.isAlive(), "自己helperが停止指示前に終了した");
+        ModuleEventRealE2eFixtures.require(started != null
                 && helper.info().startInstant().filter(started::equals).isPresent(), "自己helper所有照合失敗");
         List<ProcessHandle> descendants = helper.descendants().toList();
         descendants.forEach(ProcessHandle::destroy);
