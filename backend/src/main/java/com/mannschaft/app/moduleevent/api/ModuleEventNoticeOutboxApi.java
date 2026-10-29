@@ -77,9 +77,37 @@ public final class ModuleEventNoticeOutboxApi {
                 descriptor -> evaluator.eligibleRecipients(descriptor, candidates)));
     }
 
-    /** relay 窓口。1..100 件を独立 TX で claim し、元の版と世代を返す。 */
+    /** 復旧待ちを有界評価した後、最大 limit 件を通常 relay の独立 TX で claim する。 */
     public List<ModuleEventNoticeClaim> claim(int limit, Instant now) {
-        return relay.claim(limit, now);
+        Instant nextAttemptAt = Objects.requireNonNull(now, "now").plusSeconds(60);
+        return withoutCallerTransaction.execute(status -> {
+            for (ModuleEventNoticeClaim claim : relay.claimRecovery(limit, now)) {
+                Optional<ModuleEventNoticeReadService.Snapshot> found = claim.getDescriptor().isEmpty()
+                        ? Optional.empty() : reads.snapshot(claim.getNoticeRef());
+                if (found.isEmpty() || !"WAITING_RECOVERY".equals(found.get().getStatus())
+                        || found.get().isPending()
+                        || found.get().getDescriptor().getPhase() != ModuleEventNoticePhase.RECOVERED
+                        || !sameDescriptor(claim.getDescriptor().orElseThrow(), found.get().getDescriptor())) {
+                    relay.deferRecovery(claim.getId(), claim.getClaimToken(), nextAttemptAt, now);
+                    continue;
+                }
+                ModuleEventRecoveryState recovery;
+                try {
+                    // claim と snapshot の M TX を閉じ、caller TX も停止した状態だけで業務を評価する。
+                    recovery = evaluator.recoveryState(found.get().getDescriptor().getImpact());
+                } catch (RuntimeException failure) {
+                    // 業務 SPI の障害だけを先送りする。DB/read/apply の例外は握りつぶさない。
+                    relay.deferRecovery(claim.getId(), claim.getClaimToken(), nextAttemptAt, now);
+                    continue;
+                }
+                if (recovery == ModuleEventRecoveryState.CLOSED_COMPLETE) {
+                    relay.applyRecoveryEvaluation(claim.getId(), claim.getClaimToken(), recovery, nextAttemptAt, now);
+                } else {
+                    relay.deferRecovery(claim.getId(), claim.getClaimToken(), nextAttemptAt, now);
+                }
+            }
+            return relay.claim(limit, now);
+        });
     }
 
     /** RELAYED は enqueue 受付のみ。現在 RELAYING の同じ世代だけを独立 TX で変更する。 */

@@ -6,6 +6,7 @@ import com.mannschaft.app.moduleevent.api.dto.ModuleEventNoticeClaim;
 import com.mannschaft.app.moduleevent.api.dto.ModuleEventNoticeDescriptor;
 import com.mannschaft.app.moduleevent.api.dto.ModuleEventNoticePhase;
 import com.mannschaft.app.moduleevent.api.dto.ModuleEventNoticeScope;
+import com.mannschaft.app.moduleevent.api.dto.ModuleEventRecoveryState;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -37,6 +38,25 @@ public class ModuleEventNoticeRelayService {
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED, readOnly = false)
     public List<ModuleEventNoticeClaim> claim(int limit, Instant now) {
         return store.claim(limit, now).stream().map(this::snapshot).toList();
+    }
+
+    /** 復旧待ちの scalar claim。業務 SPI をこの TX 内では呼ばない。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED, readOnly = false)
+    public List<ModuleEventNoticeClaim> claimRecovery(int limit, Instant now) {
+        return store.claimRecovery(limit, now).stream().map(this::snapshot).toList();
+    }
+
+    /** 業務評価後に helper → main → notice の現在世代を再確認する。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED, readOnly = false)
+    public boolean applyRecoveryEvaluation(UUID id, UUID claimToken, ModuleEventRecoveryState recovery,
+            Instant nextAttemptAt, Instant now) {
+        return store.applyRecoveryEvaluation(id, claimToken, recovery, nextAttemptAt, now);
+    }
+
+    /** 不明・不正な descriptor も解釈し直さず、所有する復旧 claim だけを解放する。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED, readOnly = false)
+    public boolean deferRecovery(UUID id, UUID claimToken, Instant nextAttemptAt, Instant now) {
+        return store.deferRecovery(id, claimToken, nextAttemptAt, now);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED, readOnly = false)
