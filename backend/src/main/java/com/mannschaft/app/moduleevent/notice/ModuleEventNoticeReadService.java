@@ -9,6 +9,7 @@ import jakarta.persistence.EntityManager;
 import lombok.Getter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.ByteBuffer;
@@ -32,7 +33,7 @@ public class ModuleEventNoticeReadService {
         this.registry = Objects.requireNonNull(registry, "registry");
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED, readOnly = false)
     public Optional<Snapshot> snapshot(long noticeRef) {
         if (noticeRef <= 0) {
             throw new IllegalArgumentException("通知参照 ID は正数が必要");
