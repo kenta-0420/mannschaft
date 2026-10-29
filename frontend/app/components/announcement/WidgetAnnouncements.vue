@@ -34,6 +34,7 @@ const {
   deleteAnnouncement,
   markAsReadBeforeOpen,
   markAllAsRead,
+  markOrganizationItemsRead,
   setReadLocally,
   removeFromFeedLocally,
   setFeedItemsLocally,
@@ -112,8 +113,19 @@ async function onMarkAllRead() {
   try {
     if (props.initialItems === undefined) await markAllAsRead()
     else {
-      const scopes = new Set(feed.value.map(item => `${item.scopeType === 'TEAM' ? 'teams' : 'organizations'}/${item.scopeId}`))
-      await Promise.all([...scopes].map(scope => api(`/api/v1/${scope}/announcements/read-all`, { method: 'POST' })))
+      // チーム項目は従来どおり team read-all。組織項目は取得済み一覧の未読だけを組織ごとに read-batch へ送る
+      // （組織の read-all は表示していない告知まで既読にしてしまうため呼ばない）。
+      const teamScopes = new Set(feed.value.filter(item => item.scopeType === 'TEAM').map(item => item.scopeId))
+      const unreadByOrganization = new Map<string, number[]>()
+      for (const item of feed.value) {
+        if (item.scopeType !== 'ORGANIZATION' || item.isRead) continue
+        const key = String(item.scopeId)
+        unreadByOrganization.set(key, [...(unreadByOrganization.get(key) ?? []), item.id])
+      }
+      await Promise.all([
+        ...[...teamScopes].map(teamId => api(`/api/v1/teams/${teamId}/announcements/read-all`, { method: 'POST' })),
+        ...[...unreadByOrganization].map(([organizationId, ids]) => markOrganizationItemsRead(organizationId, ids)),
+      ])
       emit('refresh')
     }
   } catch (error) { handleApiError(error) }

@@ -31,13 +31,33 @@ public class BlogPostPreviewService {
 
     /** 本文や署名を作らず最新実在・実 scope・F00・strict 課金を確認する。 */
     public PreviewMetadata getPreviewMetadata(Long id, Long viewerId) {
-        return metadata(find(id), viewerId);
+        return metadata(find(id), viewerId, null);
+    }
+
+    /**
+     * {@link #getPreviewMetadata} の委任版。記事の所有スコープでの閲覧者の役割を委任役割（"MEMBER" / "SUPPORTER"）に差し替えて F00 を評価する
+     * （組織告知の宛先チームのメンバーへの本文プレビュー委任。ALIC-1 §2.3）。課金・状態・所有スコープ照合は通常版と共通。
+     * 呼び出しは {@code AnnouncementPreviewSourceService} に限る。
+     */
+    public PreviewMetadata getPreviewMetadataDelegated(Long id, Long viewerId, String delegatedRole) {
+        return metadata(find(id), viewerId, requireDelegatedRole(delegatedRole));
     }
 
     /** FULL の時だけ本文を取得し、認可済み実 scope に束縛して署名する。 */
     public BlogPostResponse getPreviewById(Long id, Long viewerId, String scopeType, Long scopeId) {
+        return previewById(id, viewerId, scopeType, scopeId, null);
+    }
+
+    /** {@link #getPreviewById} の委任版（{@link #getPreviewMetadataDelegated} と同じ委任役割で評価する）。 */
+    public BlogPostResponse getPreviewByIdDelegated(Long id, Long viewerId, String scopeType, Long scopeId,
+                                                    String delegatedRole) {
+        return previewById(id, viewerId, scopeType, scopeId, requireDelegatedRole(delegatedRole));
+    }
+
+    private BlogPostResponse previewById(Long id, Long viewerId, String scopeType, Long scopeId,
+                                         String delegatedRole) {
         BlogPostEntity entity = find(id);
-        PreviewMetadata metadata = metadata(entity, viewerId);
+        PreviewMetadata metadata = metadata(entity, viewerId, delegatedRole);
         if (!metadata.scopeType().equals(scopeType) || !Objects.equals(metadata.scopeId(), scopeId)) throw notFound();
         BlogPostResponse dto = cmsMapper.toBlogPostResponse(entity).withAccessState(metadata.accessState());
         var content = dto.getContent();
@@ -53,13 +73,24 @@ public class BlogPostPreviewService {
                 content.title(), content.slug(), body, content.excerpt(), content.coverImageUrl())).build();
     }
 
-    private PreviewMetadata metadata(BlogPostEntity entity, Long viewerId) {
+    private static String requireDelegatedRole(String delegatedRole) {
+        if (delegatedRole == null || delegatedRole.isBlank()) {
+            throw new IllegalArgumentException("delegatedRole must not be blank");
+        }
+        return delegatedRole;
+    }
+
+    private PreviewMetadata metadata(BlogPostEntity entity, Long viewerId, String delegatedRole) {
         if ((entity.getTeamId() == null) == (entity.getOrganizationId() == null) || entity.getUserId() != null) throw notFound();
         var gate = Objects.requireNonNull(paymentGateService.checkAccessForPreview(ContentGateType.POST, entity.getId(),
                 viewerId, new ContentGateTarget(entity.getId(), entity.getTeamId(), entity.getOrganizationId())),
                 "preview 課金結果が null です");
         if (gate.isTitleHidden()) throw notFound();
-        visibilityResolver.assertCanViewForPreview(entity.getId(), viewerId, gate);
+        if (delegatedRole == null) {
+            visibilityResolver.assertCanViewForPreview(entity.getId(), viewerId, gate);
+        } else {
+            visibilityResolver.assertCanViewForPreviewDelegated(entity.getId(), viewerId, gate, delegatedRole);
+        }
         boolean full = gate.isAccessible() || accessControlService.isSystemAdmin(viewerId);
         return new PreviewMetadata(entity.getTeamId() != null ? "TEAM" : "ORGANIZATION",
                 entity.getTeamId() != null ? entity.getTeamId() : entity.getOrganizationId(), entity.getSlug(),

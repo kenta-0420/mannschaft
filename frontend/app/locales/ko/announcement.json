@@ -10,7 +10,8 @@
       "load_failed": "본문을 불러올 수 없습니다",
       "locked": "본문을 보려면 이용 조건을 충족해야 합니다",
       "image_failed": "이미지를 표시할 수 없습니다",
-      "read_failed": "읽음 상태를 업데이트할 수 없습니다"
+      "read_failed": "읽음 상태를 업데이트할 수 없습니다",
+      "delegated_source_note": "원본 페이지와 첨부 파일은 조직 멤버만 열 수 있습니다."
     },
     "widget_title": "공지사항",
     "all_announcements": "모든 공지사항",

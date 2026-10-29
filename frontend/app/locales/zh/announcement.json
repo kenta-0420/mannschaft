@@ -10,7 +10,8 @@
       "load_failed": "无法加载正文",
       "locked": "您需要满足访问条件才能查看正文",
       "image_failed": "无法显示图片",
-      "read_failed": "无法更新已读状态"
+      "read_failed": "无法更新已读状态",
+      "delegated_source_note": "原页面和附件仅组织成员可以打开。"
     },
     "widget_title": "公告",
     "all_announcements": "所有公告",
