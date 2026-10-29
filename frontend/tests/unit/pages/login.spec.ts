@@ -105,6 +105,7 @@ const mountLogin = (attachTo?: HTMLElement) => mount(LoginPage, {
     stubs: { NuxtLink: { template: '<a><slot /></a>' } },
   },
 })
+
 type Wrapper = ReturnType<typeof mountLogin>
 
 async function submit(wrapper: Wrapper): Promise<void> {

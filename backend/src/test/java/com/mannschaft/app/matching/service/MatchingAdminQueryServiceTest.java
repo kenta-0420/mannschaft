@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * F10.1.1 / P1: {@link MatchingAdminQueryService} 単体テスト。
@@ -54,6 +55,20 @@ class MatchingAdminQueryServiceTest {
         assertThat(result.items()).isEmpty();
         verify(matchProposalRepository, never())
                 .findPendingReceivedByTeam(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("承認待ち0件 → プレビューとチーム名の取得を省略して空集計を返す")
+    void 承認待ちゼロ件はプレビューを取得しない() {
+        given(matchProposalRepository.countPendingReceivedByTeam(TEAM_ID, MatchProposalStatus.PENDING))
+                .willReturn(0L);
+
+        PendingAggregate result = service.pendingReceivedForTeam(TEAM_ID, TEAM_SLUG, 3);
+
+        assertThat(result.pendingCount()).isZero();
+        assertThat(result.items()).isEmpty();
+        verify(matchProposalRepository, never()).findPendingReceivedByTeam(any(), any(), any());
+        verifyNoInteractions(nameResolverService);
     }
 
     @Test

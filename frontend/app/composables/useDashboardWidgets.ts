@@ -1,4 +1,5 @@
 import { getCurrentScope, onScopeDispose } from 'vue'
+import { usePersonalDashboardWidgetSettings } from '~/composables/usePersonalDashboardWidgetSettings'
 import type { MaybeRefOrGetter, Ref } from 'vue'
 import type { MinRole, ViewerRole, WidgetVisibilitySetting } from '~/types/dashboard'
 import type { components } from '~/types/generated'
@@ -728,7 +729,9 @@ export function useDashboardWidgets(
     // personal スコープの場合は scopeId=undefined（scope_id=0 相当として BE が識別）。
     const effectiveScopeId = apiScopeType === 'personal' ? undefined : resolvedId
     const dataKey = `dashboard-widgets:${settingsAuth.user?.id ?? 'anonymous'}:${apiScopeType}:${effectiveScopeId ?? '0'}`
-    const { data: serverSettings, status } = useAsyncData(
+    const { data: serverSettings, status } = apiScopeType === 'personal'
+      ? usePersonalDashboardWidgetSettings()
+      : useAsyncData(
       dataKey,
       async () => {
         const res = await api<{ data: WidgetSettingResponse[] }>('/api/v1/dashboard/widgets', {

@@ -58,7 +58,7 @@ public class PaymentAdminQueryService {
                 .countByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
                         ScopeKind.ORG, orgId, UNSETTLED_STATUSES);
 
-        if (previewSize <= 0) {
+        if (previewSize <= 0 || count == 0) {
             return new PendingAggregate(count, List.of());
         }
 
