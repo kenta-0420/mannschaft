@@ -269,6 +269,34 @@ class OrgAnnouncementReadBatchIT extends AbstractMySqlIntegrationTest {
         assertThat(readFeedIds(memberM)).isEmpty();
     }
 
+    @Test
+    @DisplayName("AC-ALIC1-D04 組織 ADMIN でも課金 HIDDEN の告知は read-batch で既読にならない（markedCount・行なし）")
+    void D04_管理者でも課金HIDDENは既読にならない() throws Exception {
+        Long orgAdmin = insertUser("admin-" + UUID.randomUUID().toString().substring(0, 8));
+        MembershipTestHelper.insertMembership(em, orgAdmin, ScopeType.ORGANIZATION, orgX, RoleKind.ADMIN);
+        // feedT1a は課金 HIDDEN、feedT1b は閲覧可
+        Mockito.doAnswer(invocation -> {
+            List<Long> ids = invocation.getArgument(1);
+            java.util.Map<Long, com.mannschaft.app.payment.dto.GateCheckResponse> result = new java.util.HashMap<>();
+            for (Long id : ids) {
+                boolean hidden = id.equals(feedT1a);
+                result.put(id, new com.mannschaft.app.payment.dto.GateCheckResponse(!hidden, hidden, List.of()));
+            }
+            return result;
+        }).when(paymentGateService).checkAccessBatchForPreview(
+                ArgumentMatchers.any(), ArgumentMatchers.anyList(), ArgumentMatchers.any(), ArgumentMatchers.anyMap());
+
+        readBatch(orgX, orgAdmin, List.of(feedT1a)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.markedCount").value(0));
+        em.flush();
+        assertThat(readFeedIds(orgAdmin)).as("HIDDEN は管理者でも既読行を作らない").isEmpty();
+
+        readBatch(orgX, orgAdmin, List.of(feedT1a, feedT1b)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.markedCount").value(1));
+        em.flush();
+        assertThat(readFeedIds(orgAdmin)).containsExactly(feedT1b);
+    }
+
     // ── D05 資格喪失後は行なし ────────────────────────────────────
 
     @Test

@@ -258,4 +258,14 @@ describe('TeamPermissionGroupFormDialog — 権限名の表示（ALIC-2）', () 
       expect(spans).toContain(label)
     }
   })
+
+  it('AC-ALIC2-04b: 生の権限コードを表示テキストに出さない', async () => {
+    const w = await mountDialog()
+    await switchLocale(w, 'ja')
+    const text = w.find('fieldset').text()
+    for (const code of ['MANAGE_SCHEDULES', 'jobs.manage']) {
+      expect(text).toContain(expectedPermissionLabel('ja', code) as string)
+      expect(text, `権限コード ${code} が利用者に見えている`).not.toContain(code)
+    }
+  })
 })

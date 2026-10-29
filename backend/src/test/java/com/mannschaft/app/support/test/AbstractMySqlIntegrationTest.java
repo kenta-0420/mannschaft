@@ -92,6 +92,19 @@ public abstract class AbstractMySqlIntegrationTest {
     @MockitoBean
     protected org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
 
+    /**
+     * Mock 化した {@code StringRedisTemplate} は既定で {@code opsForValue()} が null を返す。本番コードの Valkey 呼び出しが
+     * NPE になり、障害時フォールバック（DataAccessException の捕捉）と区別できなくなるため、実物と同じく
+     * {@code ValueOperations} を返す既定を共通設定として置く（get は null＝キー無し）。個別の試験は上書きしてよい。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void stubRedisTemplateValueOperations() {
+        @SuppressWarnings("unchecked")
+        org.springframework.data.redis.core.ValueOperations<String, String> ops =
+                org.mockito.Mockito.mock(org.springframework.data.redis.core.ValueOperations.class);
+        org.mockito.Mockito.when(redisTemplate.opsForValue()).thenReturn(ops);
+    }
+
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", MYSQL::getJdbcUrl);

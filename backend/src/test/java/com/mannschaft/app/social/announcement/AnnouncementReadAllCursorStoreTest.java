@@ -62,11 +62,4 @@ class AnnouncementReadAllCursorStoreTest {
         store.save(7L, AnnouncementScopeType.TEAM, 42L, 1L);
         store.clear(7L, AnnouncementScopeType.TEAM, 42L);
     }
-
-    @Test
-    @DisplayName("opsForValue が null を返すテスト用モックでも例外にしない")
-    void opsがnullでも落ちない() {
-        assertThat(store.load(7L, AnnouncementScopeType.TEAM, 42L)).isNull();
-        store.save(7L, AnnouncementScopeType.TEAM, 42L, 1L);
-    }
 }

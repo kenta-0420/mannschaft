@@ -227,7 +227,6 @@ async function save() {
             />
             <span class="min-w-0">
               <span>{{ permissionLabel(t, item.name) }}</span>
-              <span class="ml-2 text-xs text-surface-500">{{ item.name }}</span>
               <span
                 v-if="!roleAllows(item)"
                 class="ml-2 text-xs text-amber-600"

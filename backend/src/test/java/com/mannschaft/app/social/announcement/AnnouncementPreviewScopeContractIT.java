@@ -721,6 +721,15 @@ class AnnouncementPreviewScopeContractIT extends AbstractMySqlIntegrationTest {
         preview(item, viewer).andExpect(status().isOk());
     }
 
+    @Test
+    @DisplayName("PREVIEW-05 チーム指定とグループ併記の記録は、チーム不一致ならグループが一致しても 404（OR 判定への回帰を検出する逆側）")
+    void 宛先条件はチーム不一致ならグループ一致でも読めない() throws Exception {
+        UUID group = saveGroup(false);
+        Long viewer = childViewer(group, TeamOrgMembershipEntity.Status.ACTIVE);
+        AnnouncementFeedEntity item = audienceFeed("[" + (teamId + 1_000_000L) + "]", "[\"" + group + "\"]", false);
+        preview(item, viewer).andExpect(status().isNotFound());
+    }
+
     private AnnouncementFeedEntity audienceFeed(String teams, String groups, boolean unassigned) {
         BlogPostEntity source = saveBlog(null, organizationId, "配信対象の本文", Visibility.PUBLIC,
                 PostStatus.PUBLISHED, PostType.BLOG);

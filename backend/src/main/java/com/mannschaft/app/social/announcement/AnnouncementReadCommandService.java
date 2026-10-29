@@ -102,13 +102,11 @@ public class AnnouncementReadCommandService {
             // COMMITTEE / ADVERTISER_AD 等は既読 EP の入口を持たない。将来入口が増えても無検証で素通りしない（fail-closed）。
             return false;
         }
-        if (role == ViewerRole.ADMIN || role == ViewerRole.SYSTEM_ADMIN) {
-            return true;
-        }
+        // 課金 HIDDEN（titleHidden）は管理者でも既読対象にしない（プレビュー・一覧・read-all と同じ。管理者の課金バイパスは
+        // HIDDEN を除外した後の話で、既読の可否には効かない）。null は評価不能として fail-closed にする。
         GateCheckResponse gate = paymentGateService.checkAccess(
                 ContentGateType.ANNOUNCEMENT, feed.getId(), userId, targetOf(feed));
-        // null は評価不能として fail-closed にする。
-        return gate != null && (gate.isAccessible() || !gate.isTitleHidden());
+        return gate != null && !gate.isTitleHidden();
     }
 
     // ═════════════════════════════════════════════════════════════
@@ -150,10 +148,9 @@ public class AnnouncementReadCommandService {
                 "一括課金評価の結果が null です");
         List<Long> readable = new ArrayList<>();
         for (AnnouncementFeedEntity feed : allowed) {
-            ViewerRole role = access.get(feed.getId()).directRole();
+            // HIDDEN を先に除外する。管理者・システム管理者でも課金 HIDDEN は既読対象にしない。
             GateCheckResponse gate = gates.get(feed.getId());
-            if (role == ViewerRole.ADMIN || role == ViewerRole.SYSTEM_ADMIN
-                    || (gate != null && (gate.isAccessible() || !gate.isTitleHidden()))) {
+            if (gate != null && !gate.isTitleHidden()) {
                 readable.add(feed.getId());
             }
         }
