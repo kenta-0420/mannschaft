@@ -99,7 +99,8 @@ abstract class ModuleEventNoticeNotificationTestSupport extends AbstractMySqlInt
         LocalDateTime now = LocalDateTime.of(2100, 1, 1, 0, 0);
         UUID id = UuidV7.generate();
         tx(() -> {
-            entityManager.persist(NotificationFanoutJob.builder().id(id).sourceEventUuid(notice.getNoticeKey())
+            new SimpleJpaRepository<>(NotificationFanoutJob.class, entityManager).saveAndFlush(
+                    NotificationFanoutJob.builder().id(id).sourceEventUuid(notice.getNoticeKey())
                     .scopeType("MODULE_EVENT_NOTICE").scopeRef(notice.getNoticeRef().toString())
                     .notificationType("MODULE_EVENT_NOTICE").priority(NotificationPriority.NORMAL)
                     .sourceType("MODULE_EVENT_NOTICE").sourceId(notice.getNoticeRef())
@@ -107,10 +108,11 @@ abstract class ModuleEventNoticeNotificationTestSupport extends AbstractMySqlInt
                     .retryCount(0).includeSupporters(false).shardIndex((short) 0).shardCount((short) 1)
                     .nextAttemptAt(now).createdAt(now).updatedAt(now).build());
             for (String locale : List.of("ja", "en", "zh", "ko", "es", "de")) {
-                entityManager.persist(NotificationFanoutJobMessage.builder().id(UuidV7.generate()).jobId(id)
+                new SimpleJpaRepository<>(NotificationFanoutJobMessage.class, entityManager).saveAndFlush(
+                        NotificationFanoutJobMessage.builder().id(UuidV7.generate()).jobId(id)
                         .locale(locale).title("title-" + locale).body("body-" + locale).build());
             }
-            entityManager.flush(); return null;
+            return null;
         });
         jobs.add(id);
         return id;

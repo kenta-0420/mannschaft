@@ -96,9 +96,21 @@ class ModuleEventNoticeOutboxSourceIT extends ModuleEventNoticeNotificationTestS
 
     @ParameterizedTest
     @ValueSource(strings = {"DELAYED", "QUARANTINED", "RECOVERED"})
-    void 固定文面は引数0で六言語すべて描画できる(String phase) {
+    void 固定文面は七bundleに存在し引数0で六言語すべて描画できる(String phase) throws java.io.IOException {
         FanoutMessageKind kind = FanoutMessageKind.valueOf("MODULE_EVENT_" + phase);
         assertThat(kind.argCount()).isZero();
+        for (String suffix : List.of("", "_ja", "_en", "_zh", "_ko", "_es", "_de")) {
+            String path = "messages" + suffix + ".properties";
+            java.util.Properties bundle = new java.util.Properties();
+            try (var input = new org.springframework.core.io.ClassPathResource(path).getInputStream();
+                    var reader = new java.io.InputStreamReader(input, java.nio.charset.StandardCharsets.UTF_8)) {
+                bundle.load(reader);
+            }
+            // 実 bundle の原文を直接確認する。基底言語への fallback で欠落を隠さない。
+            for (String key : List.of(kind.titleKey(), kind.bodyKey(), "notification.type.MODULE_EVENT_NOTICE.label")) {
+                assertThat(bundle.getProperty(key)).as("%s に %s が必要", path, key).isNotBlank();
+            }
+        }
         var messages = renderer.renderAllLocales(kind);
         assertThat(messages).containsOnlyKeys("ja", "en", "zh", "ko", "es", "de");
         messages.values().forEach(m -> { assertThat(m.title()).isNotBlank(); assertThat(m.body()).isNotBlank(); });
@@ -118,9 +130,13 @@ class ModuleEventNoticeOutboxSourceIT extends ModuleEventNoticeNotificationTestS
     @ParameterizedTest
     @ValueSource(strings = {"RELAYED", "FAILED", "DEAD", "DEFER"})
     void 世代付き印付けは旧tokenを拒否し現在tokenだけをMへ委譲する(String operation) {
-        var row = notice("DELAYED");
+        int version = operation.equals("DEFER") ? 2 : 1;
+        var row = notice("DELAYED", "PENDING", version, "TEAM");
         var message = one();
+        assertThat(message.payloadVersion()).isEqualTo(version);
         assertThat(mark(operation, message, UUID.randomUUID())).isFalse();
+        assertThat(jdbc.queryForObject("SELECT status FROM module_event_notice_outbox WHERE notice_ref = ?",
+                String.class, row.getNoticeRef())).isEqualTo("RELAYING");
         assertThat(mark(operation, message, message.claimToken())).isTrue();
         String expected = operation.equals("RELAYED") ? "RELAYED" : operation.equals("DEAD") ? "DEAD" : "PENDING";
         assertThat(jdbc.queryForObject("SELECT status FROM module_event_notice_outbox WHERE notice_ref = ?",
@@ -128,6 +144,12 @@ class ModuleEventNoticeOutboxSourceIT extends ModuleEventNoticeNotificationTestS
         if (operation.equals("FAILED") || operation.equals("DEAD")) {
             assertThat(jdbc.queryForObject("SELECT last_error_code FROM module_event_notice_outbox WHERE notice_ref = ?",
                     String.class, row.getNoticeRef())).isEqualTo("RELAY_FAILED");
+        }
+        if (operation.equals("DEFER")) {
+            assertThat(jdbc.queryForObject("SELECT descriptor_version FROM module_event_notice_outbox WHERE notice_ref = ?",
+                    Integer.class, row.getNoticeRef())).isEqualTo(2);
+            assertThat(jdbc.queryForObject("SELECT attempt_count FROM module_event_notice_outbox WHERE notice_ref = ?",
+                    Integer.class, row.getNoticeRef())).isZero();
         }
     }
 

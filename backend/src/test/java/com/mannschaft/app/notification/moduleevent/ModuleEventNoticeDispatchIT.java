@@ -6,6 +6,7 @@ import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDispatchService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -29,48 +30,32 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Import(ModuleEventNoticeNotificationFixtures.class)
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class ModuleEventNoticeDispatchIT extends ModuleEventNoticeNotificationTestSupport {
+    private static final java.util.concurrent.atomic.AtomicLong IDS = new java.util.concurrent.atomic.AtomicLong(9_100_000L);
     @Autowired NotificationDispatchService dispatch;
     @Autowired @Qualifier("brokerChannel") AbstractMessageChannel broker;
+    @Autowired ObjectMapper mapper;
 
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    void 現在許可の配信後に降格退会tenant不適格へ変わったら再配送しない(boolean batch) {
+    void 実SPIの現在判定が許可から拒否へ変わったら再配送しない(boolean batch) {
         var row = notice("DELAYED");
         state(row).recipients = List.of(new ModuleEventNoticeRecipient(USER_A, "ja"));
         NotificationEntity notification = notification("MODULE_EVENT_NOTICE", row.getNoticeRef());
-        AtomicInteger sent = new AtomicInteger();
-        ChannelInterceptor observer = observer(sent);
-        broker.addInterceptor(observer);
-        try {
-            send(notification, batch);
-            assertThat(sent.get()).as("許可検体が実 broker に届くことを先に確認").isEqualTo(1);
-            sent.set(0);
-            state(row).recipients = List.of();
-            send(notification, batch);
-            assertThat(sent.get()).as("現在拒否された相手へ WebSocket を送らない").isZero();
-        } finally { broker.removeInterceptor(observer); }
+        assertThat(observedSend(notification, batch)).as("許可検体が実 broker に届くことを先に確認").isEqualTo(1);
+        state(row).recipients = List.of();
+        assertThat(observedSend(notification, batch)).as("実 SPI が現在拒否した相手へ WebSocket を送らない").isZero();
     }
 
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
     void Mのnull参照と未接続をfailclosedにする(boolean batch) {
-        AtomicInteger sent = new AtomicInteger();
-        ChannelInterceptor observer = observer(sent);
-        broker.addInterceptor(observer);
-        try {
-            send(notification("MODULE_EVENT_NOTICE", null), batch);
-            send(notification("MODULE_EVENT_NOTICE", Long.MAX_VALUE), batch);
-            assertThat(sent.get()).isZero();
-        } finally { broker.removeInterceptor(observer); }
+        assertThat(observedSend(notification("MODULE_EVENT_NOTICE", null), batch)).isZero();
+        assertThat(observedSend(notification("MODULE_EVENT_NOTICE", Long.MAX_VALUE), batch)).isZero();
     }
 
     @Test
     void 既存SYSTEM通知の未解決source互換性を維持する() {
-        AtomicInteger sent = new AtomicInteger();
-        ChannelInterceptor observer = observer(sent);
-        broker.addInterceptor(observer);
-        try { send(notification("SYSTEM", null), false); assertThat(sent.get()).isEqualTo(1); }
-        finally { broker.removeInterceptor(observer); }
+        assertThat(observedSend(notification("SYSTEM", null), false)).isEqualTo(1);
     }
 
     private void send(NotificationEntity notification, boolean batch) {
@@ -79,19 +64,41 @@ class ModuleEventNoticeDispatchIT extends ModuleEventNoticeNotificationTestSuppo
         if (batch) target.dispatchBatch(List.of(notification)); else target.dispatch(notification);
     }
 
-    private ChannelInterceptor observer(AtomicInteger sent) {
-        return new ChannelInterceptor() {
+    private int observedSend(NotificationEntity expected, boolean batch) {
+        AtomicInteger sent = new AtomicInteger();
+        var observationFailure = new java.util.concurrent.atomic.AtomicReference<Throwable>();
+        ChannelInterceptor observer = new ChannelInterceptor() {
             @Override public Message<?> preSend(Message<?> message, MessageChannel channel) {
-                if (String.valueOf(message.getHeaders().get("simpDestination")).endsWith("/queue/notifications")) {
-                    sent.incrementAndGet();
+                String destination = "/user/" + expected.getUserId() + "/queue/notifications";
+                if (!destination.equals(message.getHeaders().get("simpDestination"))) return message;
+                try {
+                    Object payload = message.getPayload();
+                    var json = payload instanceof byte[] bytes ? mapper.readTree(bytes)
+                            : payload instanceof String text ? mapper.readTree(text) : mapper.valueToTree(payload);
+                    Long sourceId = json.path("sourceId").isNull() || json.path("sourceId").isMissingNode()
+                            ? null : json.path("sourceId").asLong();
+                    if (json.path("id").asLong() == expected.getId()
+                            && json.path("userId").asLong() == expected.getUserId()
+                            && expected.getSourceType().equals(json.path("sourceType").asText())
+                            && java.util.Objects.equals(expected.getSourceId(), sourceId)) sent.incrementAndGet();
+                } catch (Throwable failure) {
+                    observationFailure.set(failure);
                 }
                 return message;
             }
         };
+        broker.addInterceptor(observer);
+        try {
+            send(expected, batch);
+            if (observationFailure.get() != null) {
+                throw new IllegalStateException("自己 broker payload の観測に失敗", observationFailure.get());
+            }
+            return sent.get();
+        } finally { broker.removeInterceptor(observer); }
     }
 
     private NotificationEntity notification(String sourceType, Long sourceId) {
-        return NotificationEntity.builder().id(1L).userId(USER_A).notificationType("MODULE_EVENT_NOTICE")
+        return NotificationEntity.builder().id(IDS.incrementAndGet()).userId(USER_A).notificationType("MODULE_EVENT_NOTICE")
                 .priority(NotificationPriority.NORMAL).title("通知接続試練").body("固定検体")
                 .sourceType(sourceType).sourceId(sourceId).scopeType(NotificationScopeType.TEAM).scopeId(8201L)
                 .isRead(false).createdAt(java.time.LocalDateTime.now()).build();

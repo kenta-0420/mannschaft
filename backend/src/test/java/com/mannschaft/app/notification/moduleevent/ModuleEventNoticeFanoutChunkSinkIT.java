@@ -2,6 +2,9 @@ package com.mannschaft.app.notification.moduleevent;
 
 import com.mannschaft.app.moduleevent.ModuleEventMySqlTest;
 import com.mannschaft.app.moduleevent.api.dto.ModuleEventNoticeRecipient;
+import com.mannschaft.app.moduleevent.notice.ModuleEventNoticeOutboxEntity;
+import com.mannschaft.app.notification.service.ModuleEventNoticeArchiveTestBridge;
+import com.mannschaft.app.notification.service.NotificationCleanupBatchService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -20,6 +23,11 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -32,6 +40,7 @@ class ModuleEventNoticeFanoutChunkSinkIT extends ModuleEventNoticeNotificationTe
     @Autowired ModuleEventNoticeFanoutChunkSink sink;
     @Autowired @Qualifier("brokerChannel") AbstractMessageChannel broker;
     @Autowired ObjectMapper mapper;
+    @Autowired NotificationCleanupBatchService cleanup;
 
     @Test
     void broker配信を観測した時点で生成IDが別connectionからcommit済みである() throws Exception {
@@ -45,16 +54,32 @@ class ModuleEventNoticeFanoutChunkSinkIT extends ModuleEventNoticeNotificationTe
                 if (!String.valueOf(message.getHeaders().get("simpDestination")).contains("/" + USER_A + "/queue/notifications")) {
                     return message;
                 }
+                boolean ownNotification = false;
                 try {
                     Object payload = message.getPayload();
                     var json = payload instanceof byte[] bytes ? mapper.readTree(bytes)
                             : payload instanceof String text ? mapper.readTree(text) : mapper.valueToTree(payload);
+                    if (json.path("userId").asLong() != USER_A || json.path("sourceId").asLong() != row.getNoticeRef()
+                            || !"MODULE_EVENT_NOTICE".equals(json.path("sourceType").asText())) return message;
+                    ownNotification = true;
                     long notificationId = json.path("id").asLong();
                     assertThat(notificationId).isPositive();
-                    assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notifications WHERE id = ? AND source_id = ?",
-                            Long.class, notificationId, row.getNoticeRef())).isEqualTo(1);
-                } catch (Throwable problem) { failure.set(problem); }
-                finally { observed.countDown(); }
+                    // Spring の caller TX/connection を共有しない物理別接続から commit 可視性を測る。
+                    try (Connection connection = openOwnConnection(false);
+                            PreparedStatement query = connection.prepareStatement("SELECT COUNT(*) FROM notifications "
+                                    + "WHERE id = ? AND source_type = ? AND source_id = ? AND user_id = ?")) {
+                        query.setQueryTimeout(1);
+                        query.setLong(1, notificationId);
+                        query.setString(2, "MODULE_EVENT_NOTICE");
+                        query.setLong(3, row.getNoticeRef());
+                        query.setLong(4, USER_A);
+                        try (ResultSet result = query.executeQuery()) {
+                            result.next();
+                            assertThat(result.getLong(1)).isEqualTo(1);
+                        }
+                    }
+                } catch (Throwable problem) { failure.set(problem); ownNotification = true; }
+                finally { if (ownNotification) observed.countDown(); }
                 return message;
             }
         };
@@ -62,7 +87,8 @@ class ModuleEventNoticeFanoutChunkSinkIT extends ModuleEventNoticeNotificationTe
         try {
             assertThat(sink.processChunk(id, row.getNoticeRef(), List.of(USER_A)).addedCount()).isEqualTo(1);
             assertThat(observed.await(30, TimeUnit.SECONDS)).as("実 broker へ届く採番済み通知").isTrue();
-            assertThat(failure.get()).isNull();
+            if (failure.get() instanceof AssertionError assertion) throw assertion;
+            if (failure.get() != null) throw new IllegalStateException("自己 commit 可視性の観測に失敗", failure.get());
         } finally { broker.removeInterceptor(observer); }
     }
 
@@ -115,14 +141,7 @@ class ModuleEventNoticeFanoutChunkSinkIT extends ModuleEventNoticeNotificationTe
         state(row).recipients = List.of(new ModuleEventNoticeRecipient(USER_A, "ja"));
         UUID id = job(row);
         assertThat(sink.processChunk(id, row.getNoticeRef(), List.of(USER_A)).addedCount()).isEqualTo(1);
-        // archive は Entity 管理外。実際の製品 migration を採った schema が必要。
-        assertThat(archiveExists()).as("notifications_archive の製品 schema が必要").isTrue();
-        tx(() -> { jdbc.update("INSERT INTO notifications_archive "
-                + "(id,user_id,organization_id,notification_type,priority,title,body,source_type,source_id,scope_type,scope_id,"
-                + "action_url,actor_id,is_read,created_at,archived_at) SELECT id,user_id,organization_id,notification_type,"
-                + "priority,title,body,source_type,source_id,scope_type,scope_id,action_url,actor_id,is_read,created_at,"
-                + "UTC_TIMESTAMP() FROM notifications WHERE source_type = ? AND source_id = ?",
-                "MODULE_EVENT_NOTICE", row.getNoticeRef()); return null; });
+        archiveOwnNotice(row);
         tx(() -> jdbc.update("DELETE FROM notifications WHERE source_type = ? AND source_id = ?",
                 "MODULE_EVENT_NOTICE", row.getNoticeRef()));
         assertThat(sink.processChunk(id, row.getNoticeRef(), List.of(USER_A)).addedCount()).isZero();
@@ -135,39 +154,111 @@ class ModuleEventNoticeFanoutChunkSinkIT extends ModuleEventNoticeNotificationTe
         state(row).recipients = List.of(new ModuleEventNoticeRecipient(USER_A, "ja"));
         UUID id = job(row);
         assertThat(sink.processChunk(id, row.getNoticeRef(), List.of(USER_A)).addedCount()).isEqualTo(1);
-        CountDownLatch moving = new CountDownLatch(1);
-        CountDownLatch release = new CountDownLatch(1);
-        try (var executor = Executors.newFixedThreadPool(2)) {
-            var mover = executor.submit(() -> tx(() -> {
-                jdbc.queryForList("SELECT id FROM notifications WHERE source_type = ? AND source_id = ? FOR UPDATE",
-                        "MODULE_EVENT_NOTICE", row.getNoticeRef());
-                jdbc.update("INSERT INTO notifications_archive "
-                        + "(id,user_id,organization_id,notification_type,priority,title,body,source_type,source_id,scope_type,scope_id,"
-                        + "action_url,actor_id,is_read,created_at,archived_at) SELECT id,user_id,organization_id,notification_type,"
-                        + "priority,title,body,source_type,source_id,scope_type,scope_id,action_url,actor_id,is_read,created_at,"
-                        + "UTC_TIMESTAMP() FROM notifications WHERE source_type = ? AND source_id = ?",
-                        "MODULE_EVENT_NOTICE", row.getNoticeRef());
-                jdbc.update("DELETE FROM notifications WHERE source_type = ? AND source_id = ?",
-                        "MODULE_EVENT_NOTICE", row.getNoticeRef());
-                moving.countDown();
-                try {
-                    if (!release.await(30, TimeUnit.SECONDS)) throw new IllegalStateException("自移送の解除が届かない");
-                } catch (InterruptedException ex) { Thread.currentThread().interrupt(); throw new IllegalStateException(ex); }
+        // 製品と同じ順序で archive INSERT を独立 commit し、続く自己 live DELETE の TX だけ hold する。
+        long notificationId = archiveOwnNotice(row);
+        var moving = new java.util.concurrent.CompletableFuture<Long>();
+        var release = new java.util.concurrent.CompletableFuture<Boolean>();
+        var executor = Executors.newFixedThreadPool(2);
+        java.util.concurrent.Future<?> mover = null;
+        java.util.concurrent.Future<com.mannschaft.app.notification.fanout.FanoutChunkSink.ChunkResult> retry = null;
+        try (Connection observer = openOwnConnection(true)) {
+            preflight(observer);
+            mover = executor.submit(() -> tx(() -> {
+                long connectionId = jdbc.queryForObject("SELECT CONNECTION_ID()", Long.class);
+                int deleted = jdbc.update("DELETE FROM notifications WHERE id = ? AND source_type = ? AND source_id = ?",
+                        notificationId, "MODULE_EVENT_NOTICE", row.getNoticeRef());
+                if (deleted != 1) throw new IllegalStateException("自己 live 行の DELETE 前提を満たさない");
+                moving.complete(connectionId);
+                try { release.get(45, TimeUnit.SECONDS); }
+                catch (Exception failure) { throw new IllegalStateException("自己 DELETE の解除が届かない", failure); }
                 return null;
             }));
+            long blocker = moving.get(15, TimeUnit.SECONDS);
+            retry = executor.submit(() -> sink.processChunk(id, row.getNoticeRef(), List.of(USER_A)));
+            var worker = retry;
+            org.awaitility.Awaitility.await().pollInSameThread().pollInterval(java.time.Duration.ofMillis(25))
+                    .atMost(java.time.Duration.ofSeconds(10)).until(() -> {
+                        if (worker.isDone()) {
+                            worker.get();
+                            throw new IllegalStateException("自己本体行の実 lock 待ちより前に retry が終了した");
+                        }
+                        return ownNotificationWaits(observer, blocker, notificationId) > 0;
+                    });
+            release.complete(true);
+            mover.get(30, TimeUnit.SECONDS);
+            assertThat(retry.get(30, TimeUnit.SECONDS).addedCount()).isZero();
+            assertThat(notificationCount(row)).isZero();
+        } finally {
+            release.complete(true);
+            executor.shutdown();
             try {
-                assertThat(moving.await(30, TimeUnit.SECONDS)).isTrue();
-                var retry = executor.submit(() -> sink.processChunk(id, row.getNoticeRef(), List.of(USER_A)));
-                // sleep による推測ではなく、実 MySQL の本体行ロック待ちを観測する。
-                org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(10)).untilAsserted(() ->
-                        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM performance_schema.data_locks "
-                                + "WHERE OBJECT_SCHEMA = DATABASE() AND OBJECT_NAME = 'notifications' AND LOCK_STATUS = 'WAITING'",
-                                Long.class)).isGreaterThan(0));
-                release.countDown();
-                mover.get(30, TimeUnit.SECONDS);
-                assertThat(retry.get(30, TimeUnit.SECONDS).addedCount()).isZero();
-                assertThat(notificationCount(row)).isZero();
-            } finally { release.countDown(); }
+                if (mover != null) mover.get(60, TimeUnit.SECONDS);
+                if (retry != null) retry.get(60, TimeUnit.SECONDS);
+            } finally {
+                if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
+                    executor.shutdownNow();
+                    throw new IllegalStateException("自己 worker が終了せず cleanup 前提を満たさない");
+                }
+            }
+        }
+    }
+
+    private long archiveOwnNotice(ModuleEventNoticeOutboxEntity row) {
+        Long otherEligible = jdbc.queryForObject("SELECT COUNT(*) FROM notifications WHERE "
+                + "((is_read = TRUE AND created_at < UTC_TIMESTAMP() - INTERVAL 90 DAY) OR "
+                + "(is_read = FALSE AND created_at < UTC_TIMESTAMP() - INTERVAL 365 DAY)) AND "
+                + "(source_type IS NULL OR source_type <> ? OR source_id IS NULL OR source_id <> ?)",
+                Long.class, "MODULE_EVENT_NOTICE", row.getNoticeRef());
+        if (otherEligible == null || otherEligible != 0) {
+            throw new IllegalStateException("自己対象以外の既存 archive 適格行があるため製品バッチを呼ばない");
+        }
+        long notificationId = jdbc.queryForObject("SELECT id FROM notifications WHERE source_type = ? AND source_id = ?",
+                Long.class, "MODULE_EVENT_NOTICE", row.getNoticeRef());
+        int changed = jdbc.update("UPDATE notifications SET created_at = UTC_TIMESTAMP() - INTERVAL 400 DAY "
+                + "WHERE id = ? AND source_type = ? AND source_id = ?", notificationId, "MODULE_EVENT_NOTICE", row.getNoticeRef());
+        if (changed != 1) throw new IllegalStateException("自己通知の aging 対象が1件でない");
+        if (ModuleEventNoticeArchiveTestBridge.insertIntoArchive(cleanup) != 1) {
+            throw new IllegalStateException("実製品 archive INSERT の自己対象前提を満たさない");
+        }
+        return notificationId;
+    }
+
+    /** 自己 MYSQL の公開 getter を使い、Spring TX を共有しない read-only 物理接続を開く。 */
+    private Connection openOwnConnection(boolean rootObserver) throws SQLException {
+        String url = MYSQL.getJdbcUrl();
+        url += (url.contains("?") ? "&" : "?")
+                + "connectTimeout=1000&socketTimeout=1000&useSSL=false&allowPublicKeyRetrieval=true";
+        Connection connection = DriverManager.getConnection(url,
+                rootObserver ? "root" : MYSQL.getUsername(), MYSQL.getPassword());
+        try { connection.setReadOnly(true); return connection; }
+        catch (SQLException failure) { connection.close(); throw failure; }
+    }
+
+    private static void preflight(Connection observer) throws SQLException {
+        for (String table : List.of("data_locks", "data_lock_waits", "threads")) {
+            try (PreparedStatement query = observer.prepareStatement("SELECT COUNT(*) FROM performance_schema." + table + " WHERE 1 = 0")) {
+                query.setQueryTimeout(1);
+                try (ResultSet ignored = query.executeQuery()) { /* SQL/権限不足は worker 開始前に OTHER とする。 */ }
+            }
+        }
+    }
+
+    private long ownNotificationWaits(Connection observer, long blocker, long rowId) throws SQLException {
+        try (PreparedStatement query = observer.prepareStatement("""
+                SELECT COUNT(*) FROM performance_schema.data_lock_waits waits
+                JOIN performance_schema.data_locks requested ON requested.ENGINE = waits.ENGINE
+                  AND requested.ENGINE_LOCK_ID = waits.REQUESTING_ENGINE_LOCK_ID
+                JOIN performance_schema.threads blocking ON blocking.THREAD_ID = waits.BLOCKING_THREAD_ID
+                WHERE requested.OBJECT_SCHEMA = ? AND requested.OBJECT_NAME = 'notifications'
+                  AND requested.INDEX_NAME = 'PRIMARY' AND requested.LOCK_TYPE = 'RECORD'
+                  AND requested.LOCK_STATUS = 'WAITING'
+                  AND requested.LOCK_DATA = ? AND blocking.PROCESSLIST_ID = ?
+                """)) {
+            query.setQueryTimeout(1);
+            query.setString(1, MYSQL.getDatabaseName());
+            query.setString(2, Long.toString(rowId));
+            query.setLong(3, blocker);
+            try (ResultSet result = query.executeQuery()) { result.next(); return result.getLong(1); }
         }
     }
 
