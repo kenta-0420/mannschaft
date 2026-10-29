@@ -34,9 +34,9 @@ class ModuleEventSerializationIT extends AbstractMySqlIntegrationTest {
 
     private static List<ShapeEvent> cases() {
         return List.of(
-                new ShapeEvent(new UUID(0, 0), 1L, null, Scope.TEAM, false, LocalDateTime.MIN),
+                new ShapeEvent(new UUID(0, 0), 1L, null, Scope.TEAM, false, LocalDateTime.of(1000, 1, 1, 0, 0)),
                 new ShapeEvent(new UUID(-1, -1), Long.MAX_VALUE, Long.MAX_VALUE, Scope.ORGANIZATION, false,
-                        LocalDateTime.MAX),
+                        LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999999999)),
                 new ShapeEvent(UUID.fromString("80000000-0000-0000-7fff-ffffffffffff"), Long.MAX_VALUE, 1L,
                         Scope.TEAM, true, LocalDateTime.of(2026, 10, 29, 0, 0, 0, 1)),
                 new ShapeEvent(UUID.fromString("7fffffff-ffff-ffff-8000-000000000000"), 1L, null,

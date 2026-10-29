@@ -87,7 +87,7 @@ class ModuleEventPurgeReplayIT extends AbstractMySqlIntegrationTest {
         active = createUser("保持対照");
         assertThat(auditIds("user_id = ? AND event_type = 'WITHDRAWAL_REQUESTED'", victim)).isEmpty();
         assertThat(auditIds("user_id = ? AND event_type = 'QUICK_MEMO_SETTINGS_UPDATED'", active)).isEmpty();
-        assertThat(auditIds("event_type = 'WITHDRAWAL_COMPLETED' AND metadata = ?", completionMetadata())).isEmpty();
+        assertThat(auditIds("event_type = 'WITHDRAWAL_COMPLETED' AND metadata = CAST(? AS JSON)", completionMetadata())).isEmpty();
         auditBaselineConfirmed = true;
         var deletedProbe = seed(victim);
         var activeProbe = seed(active);
@@ -107,7 +107,7 @@ class ModuleEventPurgeReplayIT extends AbstractMySqlIntegrationTest {
                     + "AND domain_name = 'quickmemo' AND status = 'SUCCESS'", victim)).isEqualTo(1);
         });
         idle();
-        completionAuditIds.addAll(auditIds("event_type = 'WITHDRAWAL_COMPLETED' AND metadata = ?", completionMetadata()));
+        completionAuditIds.addAll(auditIds("event_type = 'WITHDRAWAL_COMPLETED' AND metadata = CAST(? AS JSON)", completionMetadata()));
         assertThat(completionAuditIds).hasSize(1);
         assertThat(count("SELECT COUNT(*) FROM users WHERE id = ? AND status = 'ACTIVE' AND deleted_at IS NULL", active)).isEqualTo(1);
         assertThat(count("SELECT COUNT(*) FROM user_quick_memo_settings WHERE user_id = ? AND reminder_enabled = false", active)).isEqualTo(1);
@@ -168,12 +168,12 @@ class ModuleEventPurgeReplayIT extends AbstractMySqlIntegrationTest {
         if (auditBaselineConfirmed) {
             withdrawalAuditIds.addAll(auditIds("user_id = ? AND event_type = 'WITHDRAWAL_REQUESTED'", victim));
             settingsAuditIds.addAll(auditIds("user_id = ? AND event_type = 'QUICK_MEMO_SETTINGS_UPDATED'", active));
-            completionAuditIds.addAll(auditIds("event_type = 'WITHDRAWAL_COMPLETED' AND metadata = ?", completionMetadata()));
+            completionAuditIds.addAll(auditIds("event_type = 'WITHDRAWAL_COMPLETED' AND metadata = CAST(? AS JSON)", completionMetadata()));
         }
         // 使い捨て検体の回収。監査の本番privacy/retention方針を変更するものではない。
         for (Long id : withdrawalAuditIds.stream().distinct().toList()) jdbc.update("DELETE FROM audit_logs WHERE id = ? AND (user_id = ? OR user_id IS NULL) AND event_type = 'WITHDRAWAL_REQUESTED'", id, victim);
         for (Long id : settingsAuditIds.stream().distinct().toList()) jdbc.update("DELETE FROM audit_logs WHERE id = ? AND user_id = ? AND event_type = 'QUICK_MEMO_SETTINGS_UPDATED'", id, active);
-        for (Long id : completionAuditIds.stream().distinct().toList()) jdbc.update("DELETE FROM audit_logs WHERE id = ? AND event_type = 'WITHDRAWAL_COMPLETED' AND metadata = ?", id, completionMetadata());
+        for (Long id : completionAuditIds.stream().distinct().toList()) jdbc.update("DELETE FROM audit_logs WHERE id = ? AND event_type = 'WITHDRAWAL_COMPLETED' AND metadata = CAST(? AS JSON)", id, completionMetadata());
         new TransactionTemplate(transactions).executeWithoutResult(tx -> {
             var attempts = new SimpleJpaRepository<>(EventPublicationAttemptEntity.class, em);
             for (UUID id : publicationIds) {
