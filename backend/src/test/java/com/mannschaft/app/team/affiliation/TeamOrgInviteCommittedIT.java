@@ -10,6 +10,9 @@ import com.mannschaft.app.notification.fanout.NotificationFanoutWorker;
 import com.mannschaft.app.notification.outbox.NotificationOutboxIngestService;
 import com.mannschaft.app.notification.outbox.NotificationOutboxRelay;
 import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.team.entity.TeamOrgAffiliationDirection;
+import com.mannschaft.app.team.entity.TeamOrgAffiliationRestrictionKind;
+import com.mannschaft.app.team.entity.TeamOrgAffiliationRestrictionReason;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.team.service.TeamAffiliationAuditRecorder;
 import com.mannschaft.app.team.service.TeamOrgAffiliationRestrictionService;
@@ -33,6 +36,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -57,6 +61,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -72,6 +77,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *   <li>AC-G117e: 承諾の通知は、組織 ADMIN 全員にだけ届く</li>
  *   <li>並行: 同じ (チーム, 組織) への招待と申請が同時に来ても、行は1件だけ（チーム行 → 組織行の固定順ロック）</li>
  *   <li>並行: 承諾と取消が同時に来ても、ちょうど一方だけが成功し、判定表どおりの応答になる</li>
+ *   <li>1822-04: 既存の認可契約を固定する characterization test として、403・越境404の各応答後も
+ *       コミット済みの加盟・制限・outbox・加盟監査が変わらないことを確認する</li>
  * </ul>
  *
  * <h2>通知 outbox（docs/architecture/notification_outbox.md・陣立て書 2026-10-10 P1）</h2>
@@ -586,6 +593,153 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
         assertThat(cancel.status()).isEqualTo(401);
         assertThat(membershipRowState(fixture.team().id(), fixture.org().id())).isEqualTo("PENDING/ORG_INVITE");
         assertThat(raceEffects(fixture)).isEqualTo(new RaceEffects(0, 0, 0, 0));
+    }
+
+    @Test
+    @DisplayName("1822-04 TM・TDの承諾・辞退・受信一覧・制限一覧・解除は403で、コミット済み副作用は不変")
+    void チーム権限なしの各操作は403で副作用を変更しない() throws Exception {
+        DenyFixture fixture = newDenyFixture();
+        RaceFixture invite = fixture.invite();
+        for (long actor : fixture.teamDeniedActors()) {
+            for (MockHttpServletRequestBuilder request : List.of(
+                    post("/api/v1/teams/{slug}/org-invites/{id}/accept", invite.team().slug(), invite.membershipId()),
+                    post("/api/v1/teams/{slug}/org-invites/{id}/reject", invite.team().slug(), invite.membershipId())
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"block\":true}"),
+                    get("/api/v1/teams/{slug}/org-invites", invite.team().slug()),
+                    get("/api/v1/teams/{slug}/org-affiliation-restrictions", invite.team().slug()),
+                    delete("/api/v1/teams/{slug}/org-affiliation-restrictions/{id}",
+                            invite.team().slug(), fixture.teamRestrictionId()))) {
+                assertDeniedWithoutEffects(fixture, request.with(user(String.valueOf(actor))), 403, "COMMON_002");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("1822-04 XD・XM・YA・SYS・TAの招待・取消・送信一覧・制限一覧・解除は403で、副作用は不変")
+    void 組織ADMIN以外の各操作は403で副作用を変更しない() throws Exception {
+        DenyFixture fixture = newDenyFixture();
+        RaceFixture invite = fixture.invite();
+        String orgSlug = invite.org().slug();
+        for (long actor : fixture.orgDeniedActors()) {
+            for (MockHttpServletRequestBuilder request : List.of(
+                    post("/api/v1/organizations/{slug}/team-invites", orgSlug)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("teamSlug", fixture.otherTeam().slug()))),
+                    delete("/api/v1/organizations/{slug}/team-invites/{teamSlug}", orgSlug, invite.team().slug()),
+                    get("/api/v1/organizations/{slug}/team-invites", orgSlug),
+                    get("/api/v1/organizations/{slug}/team-affiliation-restrictions", orgSlug),
+                    delete("/api/v1/organizations/{slug}/team-affiliation-restrictions/{id}",
+                            orgSlug, fixture.orgRestrictionId()))) {
+                assertDeniedWithoutEffects(fixture, request.with(user(String.valueOf(actor))), 403, "COMMON_002");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("1822-04 他チームADMINの承諾・辞退は不存在IDと同じ404で、元・アクセス先の副作用は不変")
+    void 他チームの招待IDは404で副作用を変更しない() throws Exception {
+        DenyFixture fixture = newDenyFixture();
+        for (String operation : List.of("accept", "reject")) {
+            String crossBody = assertDeniedWithoutEffects(fixture,
+                    otherTeamInviteRequest(fixture, operation, fixture.invite().membershipId()), 404, "TEAM_070");
+            String missingBody = assertDeniedWithoutEffects(fixture,
+                    otherTeamInviteRequest(fixture, operation, 987_654_321L), 404, "TEAM_070");
+            assertThat(crossBody).as("越境IDと不存在IDは本文まで同じ").isEqualTo(missingBody);
+        }
+    }
+
+    private record DenyFixture(RaceFixture invite, TeamFx otherTeam, TeamFx blockedTeam, OrgFx otherOrg,
+                               List<Long> teamDeniedActors, List<Long> orgDeniedActors, long otherTeamAdmin,
+                               UUID teamRestrictionId, UUID orgRestrictionId) {
+    }
+
+    private record DenySnapshot(List<Map<String, Object>> memberships, List<Map<String, Object>> restrictions,
+                                List<Map<String, Object>> outbox, List<Map<String, Object>> audits) {
+    }
+
+    /** 正当な招待の通知・監査と解除対象2行を確定し、常時0の観測ではないことを先に確認する。 */
+    private DenyFixture newDenyFixture() throws Exception {
+        RaceFixture invite = newRaceFixture();
+        DenyFixture fixture = inTx(() -> {
+            TeamFx otherTeam = newTeam();
+            TeamFx blockedTeam = newTeam();
+            OrgFx otherOrg = newOrg();
+            long tm = newUser();
+            long td = newUser();
+            long xd = newUser();
+            long xm = newUser();
+            long ya = newUser();
+            long sys = newUser();
+            long ua = newUser();
+            makeTeamMember(tm, invite.team().id());
+            makeTeamDeputy(td, invite.team().id());
+            makeOrgDeputy(xd, invite.org().id());
+            makeOrgMember(xm, invite.org().id());
+            makeOrgAdmin(ya, otherOrg.id());
+            makeSystemAdmin(sys);
+            makeTeamAdmin(ua, otherTeam.id());
+            restrictionSpy.record(otherOrg.id(), invite.team().id(), TeamOrgAffiliationDirection.ORG_INVITE,
+                    TeamOrgAffiliationRestrictionReason.DECLINED, TeamOrgAffiliationRestrictionKind.BLOCK,
+                    null, invite.teamAdmin());
+            restrictionSpy.record(invite.org().id(), blockedTeam.id(), TeamOrgAffiliationDirection.TEAM_APPLY,
+                    TeamOrgAffiliationRestrictionReason.REJECTED, TeamOrgAffiliationRestrictionKind.BLOCK,
+                    null, invite.orgAdmin());
+            em.flush();
+            return new DenyFixture(invite, otherTeam, blockedTeam, otherOrg,
+                    List.of(tm, td), List.of(xd, xm, ya, sys, invite.teamAdmin()), ua,
+                    restrictionIdOf(otherOrg.id(), invite.team().id(), "ORG_INVITE"),
+                    restrictionIdOf(invite.org().id(), blockedTeam.id(), "TEAM_APPLY"));
+        });
+        DenySnapshot initial = denySnapshot(fixture);
+        assertThat(initial.memberships()).hasSize(1);
+        assertThat(initial.restrictions()).hasSize(2);
+        assertThat(initial.outbox()).hasSize(1);
+        assertThat(initial.audits()).hasSize(1);
+        assertThat(outboxStatus(idempotencyKeyOf(NotificationType.TEAM_ORG_INVITE_RECEIVED, invite.membershipId())))
+                .isEqualTo("PENDING");
+        assertThat(countRaceRows("SELECT COUNT(*) FROM audit_logs WHERE event_type = 'TEAM_ORG_INVITE_SENT' "
+                        + "AND team_id = ? AND organization_id = ? "
+                        + "AND JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.membership_id')) = ?",
+                invite.team().id(), invite.org().id(), Long.toString(invite.membershipId()))).isEqualTo(1);
+        return fixture;
+    }
+
+    private MockHttpServletRequestBuilder otherTeamInviteRequest(DenyFixture fixture, String operation, long id) {
+        MockHttpServletRequestBuilder request = post("/api/v1/teams/{slug}/org-invites/{id}/{operation}",
+                fixture.otherTeam().slug(), id, operation).with(user(String.valueOf(fixture.otherTeamAdmin())));
+        if (operation.equals("reject")) {
+            request.contentType(MediaType.APPLICATION_JSON).content("{\"block\":true}");
+        }
+        return request;
+    }
+
+    private String assertDeniedWithoutEffects(DenyFixture fixture, MockHttpServletRequestBuilder request,
+                                              int status, String code) throws Exception {
+        DenySnapshot before = denySnapshot(fixture);
+        MvcResult result = mockMvc.perform(request).andReturn();
+        assertThat(result.getResponse().getStatus()).isEqualTo(status);
+        String body = result.getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(body).path("error").path("code").asText()).isEqualTo(code);
+        assertThat(denySnapshot(fixture)).as("各deny応答後も元・アクセス先・解除対象の全観測行は同じ")
+                .usingRecursiveComparison().isEqualTo(before);
+        assertThat(membershipRowState(fixture.invite().team().id(), fixture.invite().org().id()))
+                .isEqualTo("PENDING/ORG_INVITE");
+        return body;
+    }
+
+    /** 同一接続の未commit行を数えず、元・アクセス先の所有scope全体をJDBCで読む。 */
+    private DenySnapshot denySnapshot(DenyFixture fixture) {
+        assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+        Object[] scope = {fixture.invite().team().id(), fixture.otherTeam().id(), fixture.blockedTeam().id(),
+                fixture.invite().org().id(), fixture.otherOrg().id()};
+        String where = " WHERE (team_id IN (?, ?, ?) OR organization_id IN (?, ?))";
+        return new DenySnapshot(
+                jdbc.queryForList("SELECT * FROM team_org_memberships" + where + " ORDER BY id", scope),
+                jdbc.queryForList("SELECT * FROM team_org_affiliation_restrictions" + where + " ORDER BY id", scope),
+                jdbc.queryForList("SELECT * FROM team_notification_outbox WHERE organization_id IN (?, ?) ORDER BY id",
+                        fixture.invite().org().id(), fixture.otherOrg().id()),
+                jdbc.queryForList("SELECT * FROM audit_logs" + where
+                        + " AND LEFT(event_type, 9) = 'TEAM_ORG_' ORDER BY id", scope));
     }
 
     @Test
