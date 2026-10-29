@@ -8,6 +8,7 @@ import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.team.service.TeamService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -82,6 +83,9 @@ class InquiryChatEventListenerTest {
     @Mock
     private UserLocaleCache userLocaleCache;
 
+    @Mock
+    private TeamService teamService;
+
     private InquiryChatEventListener listener;
 
     @BeforeEach
@@ -94,6 +98,7 @@ class InquiryChatEventListenerTest {
                 dispatchService,
                 messageSource,
                 userLocaleCache);
+        org.springframework.test.util.ReflectionTestUtils.setField(listener, "teamService", teamService);
         lenient().when(userLocaleCache.getLocales(org.mockito.ArgumentMatchers.anyCollection()))
                 .thenReturn(Map.of());
         lenient().when(messageSource.getMessage(
@@ -175,5 +180,46 @@ class InquiryChatEventListenerTest {
 
     private static <T> T mock(Class<T> c) {
         return org.mockito.Mockito.mock(c);
+    }
+
+    @Test
+    @DisplayName("AC1: 遷移先は数値 teamId ではなく /teams/{slug}/chat?channel= になり、slug の解決は宛先が複数でも 1 回")
+    void actionUrl_uses_slug() {
+        stubDedupPass();
+        when(userRoleRepository.findAdminUserIdsByTeamId(TEAM_ID)).thenReturn(List.of(ADMIN_ID, 11L));
+        when(userRoleRepository.findAllDeputyAdminUserIdsByTeamId(TEAM_ID)).thenReturn(List.of());
+        when(teamService.getSlugById(TEAM_ID)).thenReturn("my-team");
+        lenient().when(notificationService.createNotification(
+                anyLong(), anyString(), any(), anyString(), anyString(),
+                anyString(), any(), any(), any(), anyString(), any()))
+                .thenReturn(null);
+
+        listener.onInquiryReceived(event());
+
+        verify(notificationService, times(2)).createNotification(
+                anyLong(), eq("INQUIRY_RECEIVED"), any(), anyString(), anyString(),
+                eq("CHAT_MESSAGE"), eq(MESSAGE_ID), eq(NotificationScopeType.TEAM), eq(TEAM_ID),
+                eq("/teams/my-team/chat?channel=" + CHANNEL_ID), eq(SENDER_ID));
+        verify(teamService, times(1)).getSlugById(TEAM_ID);
+    }
+
+    @Test
+    @DisplayName("AC2: slug が解決できない（null）とき /notifications になり数値 URL は作られない")
+    void actionUrl_falls_back_to_notifications_when_slug_null() {
+        stubDedupPass();
+        when(userRoleRepository.findAdminUserIdsByTeamId(TEAM_ID)).thenReturn(List.of(ADMIN_ID));
+        when(userRoleRepository.findAllDeputyAdminUserIdsByTeamId(TEAM_ID)).thenReturn(List.of());
+        when(teamService.getSlugById(TEAM_ID)).thenReturn(null);
+        lenient().when(notificationService.createNotification(
+                anyLong(), anyString(), any(), anyString(), anyString(),
+                anyString(), any(), any(), any(), anyString(), any()))
+                .thenReturn(null);
+
+        listener.onInquiryReceived(event());
+
+        verify(notificationService).createNotification(
+                eq(ADMIN_ID), eq("INQUIRY_RECEIVED"), any(), anyString(), anyString(),
+                eq("CHAT_MESSAGE"), eq(MESSAGE_ID), eq(NotificationScopeType.TEAM), eq(TEAM_ID),
+                eq("/notifications"), eq(SENDER_ID));
     }
 }

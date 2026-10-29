@@ -5,6 +5,7 @@ import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -54,6 +55,9 @@ public class ReservationForceCancelNotificationEventListener {
     /** Issue #2715 ロットC-3: 通知件名・本文を受信者 locale で組み立てるために用いる。 */
     private final MessageSource messageSource;
 
+    /** 遷移先 URL の slug 解決用（Repository は直接使わず Service 経由）。 */
+    private final TeamService teamService;
+
     /**
      * 強行キャンセルイベントを受信し、申込者へ「管理者により予約がキャンセルされた」旨を通知する。
      *
@@ -73,6 +77,7 @@ public class ReservationForceCancelNotificationEventListener {
             String title = messageSource.getMessage(
                     "notification.reservation.forceCancelled.title", null,
                     "ご予約がキャンセルされました", locale);
+            String slug = teamService.getSlugById(event.getTeamId());
             notificationHelper.notify(
                     event.getUserId(),
                     NOTIFICATION_TYPE,
@@ -82,7 +87,7 @@ public class ReservationForceCancelNotificationEventListener {
                     event.getReservationId(),
                     NotificationScopeType.TEAM,
                     event.getTeamId(),
-                    "/teams/" + event.getTeamId() + "/reservations",
+                    slug != null ? "/teams/" + slug + "/reservations" : "/notifications",
                     null);
         } catch (Exception e) {
             // AFTER_COMMIT の副作用失敗。キャンセルは既にコミット済みのため波及させず、正直に記録する

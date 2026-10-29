@@ -3,6 +3,7 @@ package com.mannschaft.app.reservation.event;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.team.service.TeamService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -45,6 +47,9 @@ class ReservationForceCancelNotificationEventListenerTest {
     @Mock
     private UserLocaleCache userLocaleCache;
 
+    @Mock
+    private TeamService teamService;
+
     @Captor
     private ArgumentCaptor<String> titleCaptor;
 
@@ -62,7 +67,8 @@ class ReservationForceCancelNotificationEventListenerTest {
         ms.setDefaultEncoding("UTF-8");
         this.messageSource = ms;
         this.listener = new ReservationForceCancelNotificationEventListener(
-                notificationHelper, userLocaleCache, messageSource);
+                notificationHelper, userLocaleCache, messageSource, teamService);
+        lenient().when(teamService.getSlugById(10L)).thenReturn("my-team");
     }
 
     private ReservationForceCancelledByBlockEvent buildEvent(String slotTitle, String reason) {
@@ -93,7 +99,7 @@ class ReservationForceCancelNotificationEventListenerTest {
                 eq(100L),
                 eq(NotificationScopeType.TEAM),
                 eq(10L),
-                eq("/teams/10/reservations"),
+                eq("/teams/my-team/reservations"),
                 eq((Long) null));
 
         assertThat(titleCaptor.getValue()).isEqualTo("Your reservation has been canceled");
@@ -117,7 +123,7 @@ class ReservationForceCancelNotificationEventListenerTest {
                 titleCaptor.capture(), bodyCaptor.capture(),
                 eq("RESERVATION"), eq(100L),
                 eq(NotificationScopeType.TEAM), eq(10L),
-                eq("/teams/10/reservations"), eq((Long) null));
+                eq("/teams/my-team/reservations"), eq((Long) null));
 
         assertThat(titleCaptor.getValue()).isEqualTo("ご予約がキャンセルされました");
         assertThat(bodyCaptor.getValue())
@@ -138,7 +144,7 @@ class ReservationForceCancelNotificationEventListenerTest {
                 titleCaptor.capture(), bodyCaptor.capture(),
                 eq("RESERVATION"), eq(100L),
                 eq(NotificationScopeType.TEAM), eq(10L),
-                eq("/teams/10/reservations"), eq((Long) null));
+                eq("/teams/my-team/reservations"), eq((Long) null));
 
         assertThat(bodyCaptor.getValue())
                 .doesNotContain("{0}")
@@ -177,11 +183,25 @@ class ReservationForceCancelNotificationEventListenerTest {
                 titleCaptor.capture(), bodyCaptor.capture(),
                 eq("RESERVATION"), eq(100L),
                 eq(NotificationScopeType.TEAM), eq(10L),
-                eq("/teams/10/reservations"), eq((Long) null));
+                eq("/teams/my-team/reservations"), eq((Long) null));
 
         assertThat(JAPANESE_CHARS.matcher(bodyCaptor.getValue()).find())
                 .as("en 受信者の本文に日本語文字が含まれてはならない: %s", bodyCaptor.getValue())
                 .isFalse();
         assertThat(bodyCaptor.getValue()).contains("9/1 10:00");
+    }
+
+    @Test
+    @DisplayName("AC2: slug が解決できない（null）とき、actionUrl は /notifications になり数値 URL は作られない")
+    void slugがnullなら通知一覧へ逃がす() {
+        given(teamService.getSlugById(10L)).willReturn(null);
+        given(userLocaleCache.getLocale(1L)).willReturn("ja");
+
+        listener.onForceCancelled(buildEvent("数学", null));
+
+        verify(notificationHelper).notify(
+                eq(1L), eq("RESERVATION_CANCELLED"), any(), any(),
+                eq("RESERVATION"), eq(100L), eq(NotificationScopeType.TEAM), eq(10L),
+                eq("/notifications"), eq((Long) null));
     }
 }

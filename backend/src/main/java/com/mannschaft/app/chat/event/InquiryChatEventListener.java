@@ -10,8 +10,10 @@ import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
@@ -50,6 +52,15 @@ public class InquiryChatEventListener {
     private final NotificationDispatchService notificationDispatchService;
     private final MessageSource messageSource;
     private final UserLocaleCache userLocaleCache;
+    /**
+     * 遷移先 URL の slug 解決用（Repository は直接使わず Service 経由）。
+     *
+     * <p>コンストラクタ引数に足すと ArchUnit の凍結ストア（D-5 クロスドメイン Repository 依存）に
+     * 記録済みのコンストラクタ署名が変わり、既存違反が「新規違反」と誤判定されるため、
+     * 署名を変えないフィールド注入にしている（Repository ではなく Service なので新たな違反は生まない）。</p>
+     */
+    @Autowired
+    private TeamService teamService;
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
             reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。問い合わせ受信時のチャット連携。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
@@ -68,6 +79,13 @@ public class InquiryChatEventListener {
         recipientIds.addAll(userRoleRepository.findAdminUserIdsByTeamId(event.getTeamId()));
         recipientIds.addAll(userRoleRepository.findAllDeputyAdminUserIdsByTeamId(event.getTeamId()));
         recipientIds = recipientIds.stream().distinct().toList();
+
+        // 遷移先の slug はループの前に 1 回だけ解決する。FE ルートは slug のみ受けるため、
+        // 解決できない（不在・削除済み）ときは数値 URL を作らず通知一覧へ逃がす。
+        String slug = teamService.getSlugById(event.getTeamId());
+        String actionUrl = slug != null
+                ? "/teams/" + slug + "/chat?channel=" + event.getChannelId()
+                : "/notifications";
 
         // Issue #2715 CMP-055 ロットC-6: 受信者ごとに locale が異なるため、ループの外で一括解決する（N+1 防止）。
         // Codex 検分是正（PR #2873）: バルク取得自体を try で隔離し、失敗時は既定 locale ("ja") で継続する。
@@ -105,7 +123,7 @@ public class InquiryChatEventListener {
                         event.getMessageId(),
                         NotificationScopeType.TEAM,
                         event.getTeamId(),
-                        "/teams/" + event.getTeamId() + "/chat?channel=" + event.getChannelId(),
+                        actionUrl,
                         event.getActorUserId()
                 );
                 adminBusinessAlertService.invalidateCache(recipientId);

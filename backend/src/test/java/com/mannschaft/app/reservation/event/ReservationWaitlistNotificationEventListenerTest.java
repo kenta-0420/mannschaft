@@ -9,6 +9,7 @@ import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.reservation.service.ReservationWaitlistNotifyRunner;
 import com.mannschaft.app.reservation.service.ReservationWaitlistNotifyRunner.Target;
 import com.mannschaft.app.reservation.service.ReservationWaitlistNotifyRunner.Targets;
+import com.mannschaft.app.team.service.TeamService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -59,6 +60,8 @@ class ReservationWaitlistNotificationEventListenerTest {
     private NotificationDeliveryRunner deliveryRunner;
     @Mock
     private UserLocaleCache userLocaleCache;
+    @Mock
+    private TeamService teamService;
 
     /** 実プロパティファイル（messages*.properties）を読む実体（i18n の locale 分岐を実データで検証するため）。 */
     private final ReloadableResourceBundleMessageSource messageSource = realMessageSource();
@@ -76,7 +79,8 @@ class ReservationWaitlistNotificationEventListenerTest {
     void setUp() {
         lenient().when(userLocaleCache.getLocale(anyLong())).thenReturn("ja");
         listener = new ReservationWaitlistNotificationEventListener(
-                notifyRunner, deliveryRunner, userLocaleCache, messageSource, CLOCK);
+                notifyRunner, deliveryRunner, userLocaleCache, messageSource, CLOCK, teamService);
+        lenient().when(teamService.getSlugById(TEAM_ID)).thenReturn("my-team");
     }
 
     private static Target target(long userId, LocalDateTime prev) {
@@ -115,8 +119,52 @@ class ReservationWaitlistNotificationEventListenerTest {
         assertThat(first.sourceId()).isEqualTo(SLOT_ID);
         assertThat(first.scopeType()).isEqualTo(NotificationScopeType.TEAM);
         assertThat(first.scopeId()).isEqualTo(TEAM_ID);
-        assertThat(first.actionUrl()).isEqualTo("/teams/" + TEAM_ID + "/reservations");
+        assertThat(first.actionUrl()).isEqualTo("/teams/my-team/reservations");
         assertThat(first.actorId()).isNull();
+        verify(notifyRunner, never()).release(any(), any(), any());
+        // AC3: 宛先が 2 人でも slug の解決は 1 回だけ
+        verify(teamService, times(1)).getSlugById(TEAM_ID);
+    }
+
+    @Test
+    @DisplayName("AC3: 宛先が 5 人でも getSlugById は 1 回だけ呼ばれる")
+    void 宛先がN人でもslug解決は1回() {
+        givenTargets(target(901L, null), target(902L, null), target(903L, null), target(904L, null), target(905L, null));
+        given(notifyRunner.claim(any(), any(), any())).willReturn(true);
+        given(deliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.DELIVERED);
+
+        fire();
+
+        verify(deliveryRunner, times(5)).sendOne(any());
+        verify(teamService, times(1)).getSlugById(TEAM_ID);
+    }
+
+    @Test
+    @DisplayName("AC2: slug が解決できない（null）とき、全宛先の actionUrl は /notifications で数値 URL は作られない")
+    void slugがnullなら通知一覧へ逃がす() {
+        givenTargets(target(901L, null), target(902L, null));
+        given(teamService.getSlugById(TEAM_ID)).willReturn(null);
+        given(notifyRunner.claim(any(), any(), any())).willReturn(true);
+        given(deliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.DELIVERED);
+
+        fire();
+
+        ArgumentCaptor<NotificationDeliveryRequest> captor = ArgumentCaptor.forClass(NotificationDeliveryRequest.class);
+        verify(deliveryRunner, times(2)).sendOne(captor.capture());
+        assertThat(captor.getAllValues()).extracting(NotificationDeliveryRequest::actionUrl)
+                .containsExactly("/notifications", "/notifications");
+    }
+
+    @Test
+    @DisplayName("AC3: slug の取得が例外なら claim を取らず配送もしない（印が残らない）")
+    void slug取得が例外ならclaimしない() {
+        givenTargets(target(901L, null));
+        given(teamService.getSlugById(TEAM_ID)).willThrow(new RuntimeException("模擬 slug 取得失敗"));
+
+        fire();
+
+        verify(notifyRunner, never()).claim(any(), any(), any());
+        verify(deliveryRunner, never()).sendOne(any());
         verify(notifyRunner, never()).release(any(), any(), any());
     }
 

@@ -9,8 +9,10 @@ import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.reservation.ApprovalMode;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -37,6 +39,15 @@ public class ReservationAdminNotificationEventListener {
     private final NotificationService notificationService;
     private final AdminBusinessAlertService adminBusinessAlertService;
     private final MessageSource messageSource;
+    /**
+     * 遷移先 URL の slug 解決用（Repository は直接使わず Service 経由）。
+     *
+     * <p>コンストラクタ引数に足すと ArchUnit の凍結ストア（D-5 クロスドメイン Repository 依存）に
+     * 記録済みのコンストラクタ署名が変わり、既存違反が「新規違反」と誤判定されるため、
+     * 署名を変えないフィールド注入にしている（Repository ではなく Service なので新たな違反は生まない）。</p>
+     */
+    @Autowired
+    private TeamService teamService;
 
     /**
      * 予約作成イベントを受信し、管理者へ通知する。
@@ -49,6 +60,7 @@ public class ReservationAdminNotificationEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onReservationCreated(ReservationCreatedEvent event) {
         List<Long> recipientIds = resolveReservationRecipients(event.getTeamId());
+        String reservationsUrl = buildReservationsUrl(event.getTeamId());
 
         boolean pendingApproval = event.getApprovalMode() == ApprovalMode.MANUAL;
         String notificationType = pendingApproval ? "RESERVATION_PENDING_APPROVAL" : "RESERVATION_RECEIVED";
@@ -83,7 +95,7 @@ public class ReservationAdminNotificationEventListener {
                         event.getReservationId(),
                         NotificationScopeType.TEAM,
                         event.getTeamId(),
-                        "/teams/" + event.getTeamId() + "/reservations",
+                        reservationsUrl,
                         event.getActorUserId()
                 );
                 adminBusinessAlertService.invalidateCache(recipientId);
@@ -105,6 +117,7 @@ public class ReservationAdminNotificationEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onReservationCancelledByMember(ReservationCancelledByMemberEvent event) {
         List<Long> recipientIds = resolveReservationRecipients(event.getTeamId());
+        String reservationsUrl = buildReservationsUrl(event.getTeamId());
 
         for (Long recipientId : recipientIds) {
             if (recipientId.equals(event.getActorUserId())) {
@@ -130,7 +143,7 @@ public class ReservationAdminNotificationEventListener {
                         event.getReservationId(),
                         NotificationScopeType.TEAM,
                         event.getTeamId(),
-                        "/teams/" + event.getTeamId() + "/reservations",
+                        reservationsUrl,
                         event.getActorUserId()
                 );
                 adminBusinessAlertService.invalidateCache(recipientId);
@@ -139,6 +152,12 @@ public class ReservationAdminNotificationEventListener {
                         recipientId, event.getReservationId(), e);
             }
         }
+    }
+
+    /** チームの予約画面への遷移先。slug が解決できなければ数値 URL は作らず通知一覧へ逃がす。 */
+    private String buildReservationsUrl(Long teamId) {
+        String slug = teamService.getSlugById(teamId);
+        return slug != null ? "/teams/" + slug + "/reservations" : "/notifications";
     }
 
     /**

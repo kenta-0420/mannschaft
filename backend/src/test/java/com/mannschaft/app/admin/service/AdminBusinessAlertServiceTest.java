@@ -9,6 +9,7 @@ import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.template.service.ModuleService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -60,6 +61,9 @@ class AdminBusinessAlertServiceTest {
     private TeamRepository teamRepository;
 
     @Mock
+    private TeamService teamService;
+
+    @Mock
     private ModuleService moduleService;
 
     @Mock
@@ -84,6 +88,8 @@ class AdminBusinessAlertServiceTest {
 
     @BeforeEach
     void setUpWallClock() {
+        // TeamService はコンストラクタ署名を変えないためフィールド注入。@InjectMocks のコンストラクタ注入では入らない
+        ReflectionTestUtils.setField(adminBusinessAlertService, "teamService", teamService);
         lenient().when(wallClock.instant()).thenReturn(CURRENT_INSTANT);
         lenient().when(wallClock.getZone()).thenReturn(UserZoneLocalDateTimeParser.SERVER_ZONE);
     }
@@ -257,6 +263,66 @@ class AdminBusinessAlertServiceTest {
             assertThat(teamAlert.getAlerts().getNewReservations()).isEqualTo(2);
             assertThat(teamAlert.getAlerts().getPendingApproval()).isEqualTo(1);
             assertThat(result.getData().getTotalPending()).isEqualTo(3);
+        }
+    }
+
+    // ========================================
+    // links - 遷移先は slug（CMP-261028-2328）
+    // ========================================
+
+    @Nested
+    @DisplayName("getSummary - 遷移先リンクは slug")
+    class GetSummaryLinks {
+
+        private TeamEntity team(String slug) {
+            TeamEntity team = TeamEntity.builder()
+                    .name("テストチーム")
+                    .slug(slug)
+                    .build();
+            ReflectionTestUtils.setField(team, "id", TEAM_ID);
+            return team;
+        }
+
+        private void givenCommon(TeamEntity team, String slug) throws Exception {
+            lenient().when(teamService.getSlugsByIds(any())).thenReturn(
+                    slug == null ? java.util.Map.of() : java.util.Map.of(TEAM_ID, slug));
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.get(CACHE_KEY)).willReturn(null);
+            given(userRoleRepository.findAdminAndDeputyAdminTeamIds(USER_ID)).willReturn(List.of(TEAM_ID));
+            given(teamRepository.findAllById(List.of(TEAM_ID))).willReturn(List.of(team));
+            given(moduleService.isModuleEnabledForTeam("reservation", TEAM_ID)).willReturn(false);
+            com.mannschaft.app.chat.entity.ChatChannelEntity channel = com.mannschaft.app.chat.entity.ChatChannelEntity.builder()
+                    .teamId(TEAM_ID)
+                    .isInquiryChannel(true)
+                    .build();
+            ReflectionTestUtils.setField(channel, "id", 7001L);
+            given(chatChannelRepository.findByTeamIdInAndIsInquiryChannelTrue(List.of(TEAM_ID)))
+                    .willReturn(List.of(channel));
+            given(objectMapper.writeValueAsString(any())).willReturn("{}");
+        }
+
+        @Test
+        @DisplayName("AC1: reservationsUrl と inquiryChannelUrl は数値 teamId ではなく slug で組み立てられる")
+        void links_use_slug() throws Exception {
+            givenCommon(team("my-team"), "my-team");
+
+            AdminBusinessAlertSummaryResponse result = adminBusinessAlertService.getSummary(USER_ID);
+
+            AdminBusinessAlertSummaryResponse.Links links = result.getData().getTeams().get(0).getLinks();
+            assertThat(links.getReservationsUrl()).isEqualTo("/teams/my-team/reservations");
+            assertThat(links.getInquiryChannelUrl()).isEqualTo("/teams/my-team/chat?channel=7001");
+        }
+
+        @Test
+        @DisplayName("AC2: slug が無い（null）とき両リンクとも /notifications になり数値 URL は作られない")
+        void links_fall_back_when_slug_null() throws Exception {
+            givenCommon(team("unused"), null);
+
+            AdminBusinessAlertSummaryResponse result = adminBusinessAlertService.getSummary(USER_ID);
+
+            AdminBusinessAlertSummaryResponse.Links links = result.getData().getTeams().get(0).getLinks();
+            assertThat(links.getReservationsUrl()).isEqualTo("/notifications");
+            assertThat(links.getInquiryChannelUrl()).isEqualTo("/notifications");
         }
     }
 }
