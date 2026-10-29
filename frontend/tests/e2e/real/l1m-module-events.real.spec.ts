@@ -210,7 +210,8 @@ test('M21 管理API運用と既存batch・6言語通知bell（実検体）', asy
       expect((await system.request.post(`${endpoint}/${ids[0]}/resume`, { data: { reason: '  x  ' } })).status()).toBe(204)
       await waitState(state => state.quarantine.completed === 1 && state.quarantine.pending === 1)
       expect((await snapshot()).quarantine.recovered).toBe(0)
-      expect((await system.request.post(`${endpoint}/${ids[0]}/resume`, { data: { reason: 'M21 duplicate' } })).status()).toBe(409)
+      // 成功後はpublication/helperが削除されるため、完了済みIDは404。存在するIN_PROGRESSの競合409は後段で確認する。
+      expect((await system.request.post(`${endpoint}/${ids[0]}/resume`, { data: { reason: 'M21 duplicate' } })).status()).toBe(404)
       expect((await system.request.post(`${endpoint}/${ids[1]}/resume`, { data: { reason: `  ${'x'.repeat(500)}  ` } })).status()).toBe(204)
       await waitState(state => state.quarantine.entered && state.quarantine.pending === 1)
       expect((await snapshot()).quarantine.recovered).toBe(0)
