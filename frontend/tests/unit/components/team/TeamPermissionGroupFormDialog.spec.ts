@@ -3,6 +3,7 @@ import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
 import TeamPermissionGroupFormDialog from '~/components/team/TeamPermissionGroupFormDialog.vue'
 import { primeStubs } from '../organization/member-teams/stubs'
+import { expectedPermissionLabel } from '../../helpers/permissionLabelExpectations'
 
 /**
  * F01.2.1 8-D — チームの権限グループ 作成・編集ダイアログ（§3.2・AC-P03/P04/P10）。
@@ -219,5 +220,52 @@ describe('TeamPermissionGroupFormDialog', () => {
     await w.find('[data-testid="pf-submit"]').trigger('click')
     await flushPromises()
     expect(w.find('[data-testid="pf-go-members"]').attributes('href')).toBe('/teams/team-1/members')
+  })
+})
+
+/** テスト環境の既定ロケールに依存しないよう、明示的に切り替えて再描画を待つ。 */
+async function switchLocale(w: { vm: unknown }, locale: 'ja' | 'en'): Promise<void> {
+  const i18n = (w.vm as { $i18n: { locale: string, setLocale?: (l: string) => Promise<void> } }).$i18n
+  if (i18n.setLocale) await i18n.setLocale(locale)
+  else i18n.locale = locale
+  for (let i = 0; i < 10; i++) {
+    await flushPromises()
+    await new Promise(r => setTimeout(r, 25))
+  }
+}
+
+/**
+ * CMP-261011-0035 ALIC-2 — AC-ALIC2-04: ダイアログの権限名もカタログの displayName（DB 日本語固定）ではなく、
+ * 一覧と同じ i18n の訳で出す。displayName='X' を渡しても表示は訳になる。
+ */
+describe('TeamPermissionGroupFormDialog — 権限名の表示（ALIC-2）', () => {
+  beforeEach(() => {
+    listPermissionCatalog.mockReset()
+    listPermissionCatalog.mockResolvedValue([
+      { id: 2, name: 'MANAGE_SCHEDULES', displayName: 'X', scope: 'TEAM', adminOnlyGrantable: false, assignableTargetRoles: BOTH },
+      { id: 9, name: 'jobs.manage', displayName: 'X', scope: 'TEAM', adminOnlyGrantable: false, assignableTargetRoles: BOTH },
+    ])
+  })
+
+  it('AC-ALIC2-04: カタログの displayName を使わず、一覧と同じ i18n の訳を出す', async () => {
+    const w = await mountDialog()
+    await switchLocale(w, 'ja')
+    const spans = w.findAll('span').map(s => s.text().trim())
+    expect(spans).not.toContain('X')
+    for (const code of ['MANAGE_SCHEDULES', 'jobs.manage']) {
+      const label = expectedPermissionLabel('ja', code)
+      expect(label, `ja の teamAffiliations.permission_names に ${code} の訳が無い`).toBeTypeOf('string')
+      expect(spans).toContain(label)
+    }
+  })
+
+  it('AC-ALIC2-04b: 生の権限コードを表示テキストに出さない', async () => {
+    const w = await mountDialog()
+    await switchLocale(w, 'ja')
+    const text = w.find('fieldset').text()
+    for (const code of ['MANAGE_SCHEDULES', 'jobs.manage']) {
+      expect(text).toContain(expectedPermissionLabel('ja', code) as string)
+      expect(text, `権限コード ${code} が利用者に見えている`).not.toContain(code)
+    }
   })
 })

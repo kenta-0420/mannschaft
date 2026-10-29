@@ -10,7 +10,8 @@
       "load_failed": "Inhalt konnte nicht geladen werden",
       "locked": "Für diesen Inhalt benötigst du eine Zugangsberechtigung",
       "image_failed": "Bild konnte nicht angezeigt werden",
-      "read_failed": "Lesestatus konnte nicht aktualisiert werden"
+      "read_failed": "Lesestatus konnte nicht aktualisiert werden",
+      "delegated_source_note": "Die Originalseite und Anhänge können nur Mitglieder der Organisation öffnen."
     },
     "widget_title": "Ankündigungen",
     "all_announcements": "Alle Ankündigungen",

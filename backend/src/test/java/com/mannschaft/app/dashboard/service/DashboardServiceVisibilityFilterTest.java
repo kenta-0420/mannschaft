@@ -202,6 +202,109 @@ class DashboardServiceVisibilityFilterTest {
     }
 
     // ════════════════════════════════════════════════
+    // CMP-261011-0035 ALIC-1（試練 red）
+    // ════════════════════════════════════════════════
+
+    private static final Long ORG_ID = 700L;
+
+    private AnnouncementFeedEntity orgAnnouncement(long id, String visibility) {
+        AnnouncementFeedEntity feed = announcement(id);
+        given(feed.getScopeType()).willReturn(AnnouncementScopeType.ORGANIZATION);
+        given(feed.getScopeId()).willReturn(ORG_ID);
+        given(feed.getVisibility()).willReturn(visibility);
+        given(feed.getTargetTeamIds()).willReturn(null);
+        return feed;
+    }
+
+    /** キャッシュなしの役割解決（2入口とも）が返す最新の役割を固定する。指定のないスコープは PUBLIC。 */
+    private void freshRoles(ViewerRole teamRole, ViewerRole orgRole) {
+        given(roleResolver.resolveViewerRoleForPreview(eq(USER_ID), eq("TEAM"), eq(TEAM_ID))).willReturn(teamRole);
+        given(roleResolver.resolveViewerRoleForPreview(eq(USER_ID), eq("ORGANIZATION"), eq(ORG_ID))).willReturn(orgRole);
+        given(roleResolver.resolveViewerRolesFresh(eq(USER_ID), any())).willAnswer(inv -> {
+            @SuppressWarnings("unchecked")
+            java.util.Set<com.mannschaft.app.common.visibility.ScopeKey> scopes =
+                    (java.util.Set<com.mannschaft.app.common.visibility.ScopeKey>) inv.getArgument(1);
+            Map<com.mannschaft.app.common.visibility.ScopeKey, ViewerRole> result = new java.util.LinkedHashMap<>();
+            for (var scope : scopes) {
+                ViewerRole role = "TEAM".equals(scope.scopeType()) && TEAM_ID.equals(scope.scopeId()) ? teamRole
+                        : "ORGANIZATION".equals(scope.scopeType()) && ORG_ID.equals(scope.scopeId()) ? orgRole
+                        : ViewerRole.PUBLIC;
+                result.put(scope, role);
+            }
+            return result;
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> notices(TeamDashboardResponse response) {
+        return (List<Map<String, Object>>) response.getTeamNotices();
+    }
+
+    @Test
+    @DisplayName("AC-ALIC1-M2 チーム ADMIN でも組織告知の課金 LOCKED は素通しせず LOCKED のまま（チーム告知の ADMIN 素通しは従来どおり）")
+    void チームADMINは組織告知の課金を素通ししない() {
+        given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.ADMIN);
+        freshRoles(ViewerRole.ADMIN, ViewerRole.PUBLIC);
+        given(widgetVisibilityResolver.resolve("TEAM", TEAM_ID)).willReturn(teamDefaultVisibilityMap());
+        given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        AnnouncementFeedEntity teamFeed = announcement(1L);
+        AnnouncementFeedEntity orgFeed = orgAnnouncement(2L, "PUBLIC");
+        given(announcementFeedQueryRepository.findByScope(
+                eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(), any(), eq(10)))
+                .willReturn(List.of(teamFeed));
+        given(announcementAudienceMatcher.findVisibleOrgFeeds(eq(TEAM_ID), any(), anyInt()))
+                .willReturn(List.of(orgFeed));
+        // 両方とも未購入（accessible=false・タイトルは見せる）＝ LOCKED 相当
+        given(paymentGateService.checkAccessBatch(eq(ContentGateType.ANNOUNCEMENT), any(), eq(USER_ID), any(Map.class)))
+                .willAnswer(inv -> {
+                    Map<Long, GateCheckResponse> gates = new java.util.HashMap<>();
+                    for (Object id : (java.util.Collection<?>) inv.getArgument(1)) {
+                        gates.put((Long) id, new GateCheckResponse(false, false, List.of()));
+                    }
+                    return gates;
+                });
+
+        List<Map<String, Object>> notices = notices(dashboardService.getTeamDashboard(USER_ID, TEAM_ID, "WEEK"));
+
+        Map<String, Object> org = notices.stream().filter(item -> item.get("id").equals(2L)).findFirst()
+                .orElseThrow(() -> new AssertionError("前提: 組織告知がダッシュボードに出ている"));
+        assertThat(org).as("チーム ADMIN は組織の課金を素通ししない（組織ロールは PUBLIC）")
+                .containsEntry("access_state", "LOCKED")
+                .doesNotContainKeys("excerpt_cache", "source_type", "source_id", "target_team_ids");
+        Map<String, Object> team = notices.stream().filter(item -> item.get("id").equals(1L)).findFirst().orElseThrow();
+        assertThat(team).as("チーム告知はチーム ADMIN の素通しを維持（回帰）").containsEntry("access_state", "FULL");
+    }
+
+    @Test
+    @DisplayName("AC-ALIC1-E01(単体) 告知部分はキャッシュなしの役割で visibility を絞る（キャッシュ MEMBER・最新 SUPPORTER なら MEMBERS を出さない）")
+    void 告知の可視性はキャッシュなしの役割で判定する() {
+        given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+        freshRoles(ViewerRole.SUPPORTER, ViewerRole.PUBLIC);
+        given(widgetVisibilityResolver.resolve("TEAM", TEAM_ID)).willReturn(teamDefaultVisibilityMap());
+        given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+        AnnouncementFeedEntity membersFeed = announcement(5L);
+        given(membersFeed.getVisibility()).willReturn("MEMBERS_AND_ABOVE");
+        AnnouncementFeedEntity supportersFeed = announcement(6L);
+        given(supportersFeed.getVisibility()).willReturn("SUPPORTERS_AND_ABOVE");
+        // 問い合わせに渡された visibility 集合に従って返す（DB と同じ振る舞い）
+        given(announcementFeedQueryRepository.findByScope(
+                eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(), any(), anyInt()))
+                .willAnswer(inv -> {
+                    java.util.Collection<?> allowed = inv.getArgument(2);
+                    return java.util.stream.Stream.of(membersFeed, supportersFeed)
+                            .filter(feed -> allowed == null || allowed.contains(feed.getVisibility())).toList();
+                });
+        given(paymentGateService.checkAccessBatch(eq(ContentGateType.ANNOUNCEMENT), any(), eq(USER_ID), any(Map.class)))
+                .willReturn(Map.of(5L, new GateCheckResponse(true, false, List.of()),
+                        6L, new GateCheckResponse(true, false, List.of())));
+
+        List<Map<String, Object>> notices = notices(dashboardService.getTeamDashboard(USER_ID, TEAM_ID, "WEEK"));
+
+        assertThat(notices.stream().map(item -> item.get("id")))
+                .as("キャッシュの MEMBER ではなく最新の SUPPORTER で絞る").containsExactly(6L);
+    }
+
+    // ════════════════════════════════════════════════
     // ADMIN: 全ウィジェットバイパス
     // ════════════════════════════════════════════════
 

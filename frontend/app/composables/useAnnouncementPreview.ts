@@ -115,7 +115,12 @@ export function useAnnouncementPreview(callbacks: PreviewCallbacks = {}) {
         state.value = 'LOCKED'
         return
       }
-      if (data.accessState !== 'FULL' || !isAnnouncementSourceUrl(data.sourceUrl, data.sourceType, target)
+      // 委任経路（宛先チームの現役メンバーへの本文プレビュー）は sourceUrl=null・添付なしで返る。
+      // null は添付が空のときだけ受け入れ、null 以外は従来どおり内部 path だけを許す。
+      const sourceUrlAcceptable = data.sourceUrl === null
+        ? data.attachments.length === 0
+        : isAnnouncementSourceUrl(data.sourceUrl, data.sourceType, target)
+      if (data.accessState !== 'FULL' || !sourceUrlAcceptable
         || !Number.isSafeInteger(data.sourceId) || (data.sourceId ?? 0) <= 0
         || (data.sourceType === 'BLOG_POST' && (data.blogPost?.id !== data.sourceId || data.bulletinThread !== null))
         || (data.sourceType === 'BULLETIN_THREAD' && (data.bulletinThread?.id !== data.sourceId || data.blogPost !== null))) {
