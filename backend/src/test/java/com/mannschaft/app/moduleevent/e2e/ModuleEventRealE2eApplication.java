@@ -10,8 +10,10 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
+import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -55,7 +57,11 @@ public final class ModuleEventRealE2eApplication {
         application.addInitializers(context -> validate(context.getEnvironment()));
         ConfigurableApplicationContext context = null;
         Process child = null;
+        Process residentHelper = null;
+        Instant helperStarted = null;
         ModuleEventRealE2eFixtures.World world = null;
+        boolean formalPassed = false;
+        boolean explorationCompleted = false;
         boolean passed = false;
         Exception problem = null;
         try {
@@ -106,11 +112,26 @@ public final class ModuleEventRealE2eApplication {
                 ModuleEventRealE2eFixtures.require(accepted.equals(Set.of("release-delayed", "revoke-and-seed-quarantine", "release-last")),
                         "制御シナリオが未完了");
                 write(json, run.resolve("final-state.json"), domain.snapshot());
+                formalPassed = true;
+                residentHelper = startResidentHelper(json, run, temporary, world);
+                helperStarted = residentHelper.info().startInstant().orElseThrow();
+                write(json, run.resolve("resident-helper-owner.json"), Map.of("pid", residentHelper.pid(),
+                        "creation", helperStarted.toString(), "runId", run.getFileName().toString(),
+                        "executable", residentHelper.info().command().orElseThrow()));
+                awaitExploration(json, run, residentHelper);
+                explorationCompleted = true;
                 passed = true;
             }
         } catch (Exception failure) {
             problem = failure;
         } finally {
+            // 住民REPL/browserの停止はrootが完了markerを書く前に確認する。まず自己IPCを回収する。
+            try {
+                stopResidentHelper(residentHelper, helperStarted);
+            } catch (Exception cleanup) {
+                passed = false;
+                if (problem == null) problem = cleanup; else problem.addSuppressed(cleanup);
+            }
             if (world != null) world.releaseAll();
             if (child != null && child.isAlive()) {
                 child.descendants().forEach(ProcessHandle::destroy);
@@ -133,11 +154,112 @@ public final class ModuleEventRealE2eApplication {
                 } finally { context.close(); }
             }
             write(json, run.resolve("host-result.json"), Map.of("passed", passed && problem == null,
+                    "formalPassed", formalPassed, "explorationCompleted", explorationCompleted,
                     "contextClosed", context == null || !context.isActive(), "execution", "M21検体・実業務採用証明ではない",
                     "resourceDisposal", "root所有wrapperが専用DB/Valkey/container/volumeを所有照合して撤去する"));
         }
         if (problem != null) throw problem;
         ModuleEventRealE2eFixtures.require(passed, "M21未合格");
+    }
+
+    private static Process startResidentHelper(ObjectMapper json, Path run, Path temporary,
+            ModuleEventRealE2eFixtures.World world) throws Exception {
+        Path helper = Path.of(required("M21_RESIDENT_HELPER")).toRealPath();
+        String expected = required("M21_RESIDENT_HELPER_SHA256");
+        ModuleEventRealE2eFixtures.require(helper.startsWith(temporary) && Files.isRegularFile(helper)
+                && helper.getFileName().toString().endsWith(".cjs") && Files.size(helper) <= 65536
+                && expected.matches("[a-fA-F0-9]{64}"), "自己Tempの固定helperとSHAが必要");
+        String actual = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(helper)));
+        ModuleEventRealE2eFixtures.require(actual.equalsIgnoreCase(expected), "住民helperのSHA不一致");
+        ProcessBuilder builder = new ProcessBuilder(required("M21_NODE_EXE"), helper.toString());
+        builder.directory(run.toFile());
+        builder.environment().clear();
+        // Nodeは絶対path、helperは標準moduleのみなのでPATHも親から継承しない。
+        for (String key : List.of("SystemRoot", "WINDIR", "TEMP", "TMP")) {
+            String value = System.getenv(key);
+            if (value != null) builder.environment().put(key, value);
+        }
+        // 同Windows信頼済み自己run・生成テスト資格情報だけ。ランダムpipe名を認可とは扱わない。
+        builder.environment().put("M21_RUN_DIRECTORY", run.toString());
+        builder.environment().put("M21_ACTORS_JSON", json.writeValueAsString(world.credentials()));
+        builder.redirectOutput(ProcessBuilder.Redirect.DISCARD).redirectError(ProcessBuilder.Redirect.DISCARD);
+        return builder.start();
+    }
+
+    private static void awaitExploration(ObjectMapper json, Path run, Process helper) throws Exception {
+        Instant deadline = Instant.now().plus(Duration.ofMinutes(30));
+        Path marker = run.resolve("controls/exploration-finished.json");
+        Path ready = run.resolve("exploration-ready.json");
+        try (WatchService watcher = run.getFileSystem().newWatchService()) {
+            marker.getParent().register(watcher, StandardWatchEventKinds.ENTRY_CREATE,
+                    StandardWatchEventKinds.ENTRY_MODIFY);
+            while (true) {
+                ModuleEventRealE2eFixtures.require(helper.isAlive(), "住民helperが早期終了した");
+                ModuleEventRealE2eFixtures.require(Instant.now().isBefore(deadline), "住民探索待機上限");
+                if (Files.exists(marker)) {
+                    JsonNode completion = readExplorationJson(json, marker);
+                    requireRun(completion, run);
+                    ModuleEventRealE2eFixtures.require(completion.path("passed").isBoolean()
+                            && completion.path("passed").booleanValue(), "住民探索が未完了");
+                    requireResidentCodes(completion.path("actorCodes"));
+                    JsonNode metadata = readExplorationJson(json, ready);
+                    requireRun(metadata, run);
+                    requireResidentCodes(metadata.path("actorCodes"));
+                    ModuleEventRealE2eFixtures.require(metadata.path("pid").asLong(-1) == helper.pid()
+                            && !metadata.path("creation").asText().isBlank()
+                            && metadata.path("pipe").asText().startsWith("\\\\.\\pipe\\m21-"), "住民helper準備証拠不正");
+                    JsonNode state = readExplorationJson(json, run.resolve("exploration-helper-state.json"));
+                    requireRun(state, run);
+                    requireResidentCodes(state.path("servedCodes"));
+                    ModuleEventRealE2eFixtures.require(state.path("pid").asLong(-1) == helper.pid()
+                            && state.path("failed").isBoolean() && !state.path("failed").booleanValue()
+                            && helper.isAlive(), "資格情報の受渡しが未完了");
+                    // markerは自律探索の証明ではない。rootが3住民の観測と終了を裏取りしてから作る。
+                    return;
+                }
+                WatchKey key = watcher.poll(1, TimeUnit.SECONDS);
+                if (key != null) {
+                    ModuleEventRealE2eFixtures.require(key.pollEvents().stream()
+                            .noneMatch(event -> event.kind() == StandardWatchEventKinds.OVERFLOW), "探索eventの欠損");
+                    ModuleEventRealE2eFixtures.require(key.reset(), "探索制御ディレクトリが失われた");
+                }
+            }
+        }
+    }
+
+    private static JsonNode readExplorationJson(ObjectMapper json, Path path) throws Exception {
+        ModuleEventRealE2eFixtures.require(Files.isRegularFile(path) && Files.size(path) <= 16384,
+                "探索証拠がないか上限超過");
+        return json.reader().with(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+                .readTree(Files.readAllBytes(path));
+    }
+
+    private static void requireRun(JsonNode value, Path run) {
+        ModuleEventRealE2eFixtures.require(value != null && value.isObject()
+                && value.path("runId").asText().equals(run.getFileName().toString()), "探索run不一致");
+    }
+
+    private static void requireResidentCodes(JsonNode value) {
+        ModuleEventRealE2eFixtures.require(value.isArray() && value.size() == 3, "住民は固定3件が必要");
+        Set<String> codes = new java.util.HashSet<>();
+        value.forEach(code -> ModuleEventRealE2eFixtures.require(code.isTextual() && codes.add(code.textValue()),
+                "住民code不正または重複"));
+        ModuleEventRealE2eFixtures.require(codes.equals(Set.of("system", "admin-de", "member")), "住民code不一致");
+    }
+
+    private static void stopResidentHelper(Process helper, Instant started) throws Exception {
+        if (helper == null) return;
+        ModuleEventRealE2eFixtures.require(!helper.isAlive() || started != null
+                && helper.info().startInstant().filter(started::equals).isPresent(), "自己helper所有照合失敗");
+        List<ProcessHandle> descendants = helper.descendants().toList();
+        descendants.forEach(ProcessHandle::destroy);
+        helper.destroy();
+        if (!helper.waitFor(10, TimeUnit.SECONDS)) helper.destroyForcibly();
+        ModuleEventRealE2eFixtures.require(helper.waitFor(10, TimeUnit.SECONDS), "自己helper残留");
+        for (ProcessHandle descendant : descendants) {
+            if (descendant.isAlive()) descendant.destroyForcibly();
+            descendant.onExit().get(10, TimeUnit.SECONDS);
+        }
     }
 
     private static void validate(Environment environment) {
