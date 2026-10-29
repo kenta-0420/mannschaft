@@ -1,0 +1,18 @@
+{
+  "sourceHead": "4697a0f99045a2218dbfe6eb8c7e1d894962d8d0",
+  "identityVerified": true,
+  "ownerStopped": true,
+  "processReferences": 0,
+  "knownOwnedGroupProcesses": 0,
+  "accessibleLiveProcessesChecked": 100,
+  "inaccessibleBaselineExcluded": 0,
+  "baselinePolicy": "any-inaccessible-retains",
+  "referenceAuditScope": "all-uid-proc",
+  "inaccessibleProcesses": 0,
+  "foreignUidIncluded": true,
+  "originalReceiptUnchanged": true,
+  "localTestsExecuted": false,
+  "cleanup": "removed",
+  "deletionUid": 1000,
+  "supplementaryGroupsCleared": true
+}

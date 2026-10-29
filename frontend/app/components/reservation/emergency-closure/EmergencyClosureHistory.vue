@@ -73,7 +73,7 @@ const { formatDateTime } = useDatetime()
               </td>
               <td class="py-2 pr-4">{{ item.reason }}</td>
               <td class="py-2 pr-4">
-                <Tag :value="`${item.notifiedCount}件`" severity="info" />
+                <Tag :value="`${item.sentCount}件`" severity="info" />
               </td>
               <td class="py-2">
                 <button

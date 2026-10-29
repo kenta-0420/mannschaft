@@ -1,0 +1,394 @@
+{
+  "runId": 40632951797,
+  "runUrl": "https://github.com/kenta-0420/mannschaft/actions/runs/40632951797",
+  "runStatus": "completed",
+  "runConclusion": "success",
+  "ciHead": "6d9503ed3bd332b47899740558b05faa9fd84290",
+  "runtimeSourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+  "evidenceUse": "runtime補助CIの個別実行確認。元3176 formal同head CIへ混在せず、run08実機の不在ID比較へ付替えない。",
+  "artifactId": 12795482272,
+  "artifactName": "test-results-xml-pr-4181-shard-1",
+  "shardIndex": 1,
+  "shardAssignment": {
+    "sourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+    "gradlePath": "backend/build.gradle.kts",
+    "weightsPath": "backend/src/test/resources/shard-weights.properties",
+    "total": 6,
+    "excludeMigrationTests": true,
+    "targetWeightSeconds": 49.512,
+    "weightedShard": 1,
+    "hashFallbackShard": 1
+  },
+  "archiveBytes": 59104102,
+  "archiveSha256": "fc501b5d8f6c0606dbf9b235680cebf4a6f23af3336fb1851140ab621c0af828",
+  "targetClass": "com.mannschaft.app.shift.ShiftSwapScopeContractIT",
+  "suiteCount": 6,
+  "counts": {
+    "tests": 37,
+    "errors": 0,
+    "failures": 0,
+    "skipped": 0
+  },
+  "allTargetCasesExecutedWithoutSkipOrFailure": true,
+  "suites": [
+    {
+      "entry": "build/test-results/test/TEST-com.mannschaft.app.shift.ShiftSwapScopeContractIT$AcceptSwapRequest.xml",
+      "displayName": "3. POST /shifts/swap-requests/{swapId}/accept（承諾）",
+      "xmlSha256": "df432f90d09c9737a7ae6c06870edca5cf684ee8ec260fcb660a66df9a404a9c",
+      "counts": {
+        "tests": 6,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0
+      },
+      "cases": [
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$AcceptSwapRequest",
+          "name": "★自分に関係する依頼を承諾すると accepterId が自分になり ACCEPTED になる",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$AcceptSwapRequest",
+          "name": "別scope ADMINは404（BOLA・存在オラクル是正 W2）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$AcceptSwapRequest",
+          "name": "★申請者本人は自分の依頼を承諾できない",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$AcceptSwapRequest",
+          "name": "部外者は404（存在オラクル是正 W2）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$AcceptSwapRequest",
+          "name": "正当メンバーは200（正常系）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$AcceptSwapRequest",
+          "name": "★AC-1: 別scope ADMINの他チームswapIdと不在swapIdは同一応答",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    {
+      "entry": "build/test-results/test/TEST-com.mannschaft.app.shift.ShiftSwapScopeContractIT$CancelSwapRequest.xml",
+      "displayName": "5. DELETE /shifts/swap-requests/{swapId}（取消）",
+      "xmlSha256": "a108ac44e6e34eaf59b6e245ab801363245c9a9b22e707bab07e7492a6c77a81",
+      "counts": {
+        "tests": 5,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0
+      },
+      "cases": [
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$CancelSwapRequest",
+          "name": "別scope ADMINは404（BOLA・存在オラクル是正 W2）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$CancelSwapRequest",
+          "name": "当該チームのADMINは204（正常系）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$CancelSwapRequest",
+          "name": "申請者本人は204（正常系）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$CancelSwapRequest",
+          "name": "★AC-1: 別scope ADMINの他チームswapIdと不在swapIdは同一応答",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$CancelSwapRequest",
+          "name": "同じチームでも申請者でない一般メンバーは403",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    {
+      "entry": "build/test-results/test/TEST-com.mannschaft.app.shift.ShiftSwapScopeContractIT$CreateSwapRequest.xml",
+      "displayName": "2. POST /shifts/swap-requests（申請作成）",
+      "xmlSha256": "c88706f7053a225a0959310a5bc3d75082c7be663c057e44d0aa0d297c97881f",
+      "counts": {
+        "tests": 4,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0
+      },
+      "cases": [
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$CreateSwapRequest",
+          "name": "別scope ADMIN（teamBのADMINがteamAのslotIdを指定）は404（BOLA・存在オラクル是正 W2）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$CreateSwapRequest",
+          "name": "部外者は404（存在オラクル是正 W2・不在slotIdと同一応答）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$CreateSwapRequest",
+          "name": "公開済みの本人担当枠は201（正常系）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$CreateSwapRequest",
+          "name": "★AC-1: 別scope ADMINの他チームslotIdと不在slotIdは同一応答（SHIFT_SLOT_NOT_FOUND）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    {
+      "entry": "build/test-results/test/TEST-com.mannschaft.app.shift.ShiftSwapScopeContractIT$ListSwapRequests.xml",
+      "displayName": "1. GET /shifts/swap-requests?teamId=（一覧）",
+      "xmlSha256": "d31ec7d6969e983538cc84c1d6db249dbde91d80f810e9c14e1053fdf3d3fdbc",
+      "counts": {
+        "tests": 8,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0
+      },
+      "cases": [
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$ListSwapRequests",
+          "name": "別scope ADMIN（teamBのADMINがteamAを指定）は403（BOLA）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$ListSwapRequests",
+          "name": "部外者は403（メンバーですらない者には開かない）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$ListSwapRequests",
+          "name": "★ステータス指定でも他チームの交代申請が混入しない",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$ListSwapRequests",
+          "name": "★非ADMINメンバーも200（承諾するための一覧を引ける）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$ListSwapRequests",
+          "name": "★正当ADMINの一覧に他チーム（teamB）の交代申請が混入しない",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$ListSwapRequests",
+          "name": "★非ADMINメンバーの一覧は自分に関係する依頼だけ（他人同士の依頼は本文にも乗らない）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$ListSwapRequests",
+          "name": "正当ADMINは200（正常系）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$ListSwapRequests",
+          "name": "★申請者本人には自分の依頼が見える",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    {
+      "entry": "build/test-results/test/TEST-com.mannschaft.app.shift.ShiftSwapScopeContractIT$OracleCompletion.xml",
+      "displayName": "6. 存在オラクル是正 W2 補完",
+      "xmlSha256": "bcf43e5d68648e41e2d59766a5a283bd84a199eeefd9bf9b652131a63da7629e",
+      "counts": {
+        "tests": 6,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0
+      },
+      "cases": [
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$OracleCompletion",
+          "name": "AC-10: ID 境界値（0・-1・Long.MAX_VALUE）は不在IDと同じ応答（全EP）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$OracleCompletion",
+          "name": "AC-2/AC-3: user_roles のみの ADMIN は resolve・cancel で許可、member操作(create/accept)は 404 に化けず 403",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$OracleCompletion",
+          "name": "AC-1: 越境（別scope ADMIN・部外者）の実在IDと不在IDで status・code・message が一致（全EP）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$OracleCompletion",
+          "name": "AC-10: 数値でないパスIDは400のまま",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$OracleCompletion",
+          "name": "AC-5: 非メンバーの SYSTEM_ADMIN は resolve できる",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$OracleCompletion",
+          "name": "AC-11: 越境で404にした書込みは DB を一切変えない（件数・status・version）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    {
+      "entry": "build/test-results/test/TEST-com.mannschaft.app.shift.ShiftSwapScopeContractIT$ResolveSwapRequest.xml",
+      "displayName": "4. POST /shifts/swap-requests/{swapId}/resolve（承認・却下）",
+      "xmlSha256": "0a1b9af33d23067b1b59543e3df21ce1b6c0c97624557b332c98fdb05e3fdcb2",
+      "counts": {
+        "tests": 8,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0
+      },
+      "cases": [
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$ResolveSwapRequest",
+          "name": "部外者は404",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$ResolveSwapRequest",
+          "name": "★小文字 action（reject）は受理されない（FE が大文字で送る契約を固定する）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$ResolveSwapRequest",
+          "name": "★正当ADMINは大文字 REJECT で却下できる",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$ResolveSwapRequest",
+          "name": "非ADMINメンバーは403",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$ResolveSwapRequest",
+          "name": "★別scope ADMINは却下もできず404",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$ResolveSwapRequest",
+          "name": "★AC-1: 別scope ADMINの他チームswapIdと不在swapIdは同一応答",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$ResolveSwapRequest",
+          "name": "★別scope ADMIN（teamBのADMINがteamAのswapIdを直接指定）は承認できず404（存在オラクル是正 W2）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "classname": "com.mannschaft.app.shift.ShiftSwapScopeContractIT$ResolveSwapRequest",
+          "name": "正当ADMINは200（正常系・大文字 APPROVE が受理される）",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        }
+      ]
+    }
+  ],
+  "rawSystemOutExported": false,
+  "sqlLogsExported": false,
+  "archiveFullyExtracted": false,
+  "analysisHistory": [
+    {
+      "firstAttempt": "suite-name-FQCN-assertion-rejected",
+      "cause": "JUnit nested suites use DisplayName; exact XML filename and testcase classname validate identity instead",
+      "productTestFailure": false
+    }
+  ],
+  "cleanup": {
+    "status": "owned-archive-and-temp-removed",
+    "ownerMarkerVerified": true,
+    "archiveShaVerified": true,
+    "absoluteBoundaryVerified": true,
+    "reparsePoints": 0,
+    "onlyExpectedTwoFiles": true,
+    "temporaryDirectoryAbsent": true,
+    "rawXmlFilesWritten": 0,
+    "pointerRemoved": true,
+    "otherAssetsDeleted": false
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-28T11:50:13.759Z",
+  "repository": "kenta-0420/mannschaft",
+  "pr": 3176,
+  "head": "47f99539a359b6aaaae2adf03d99bfb3e5eb6035",
+  "mergedAt": "2026-09-08T17:56:22Z",
+  "checksAllCount": 22,
+  "statusesAllCount": 0,
+  "filesCount": 16,
+  "changedFiles": 16,
+  "allPagesCollected": true,
+  "canonicalGenerationSummary": {
+    "success": 20,
+    "skipped": 2
+  },
+  "canonicalGenerationRulePassed": true,
+  "validatorSourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+  "validatorSha256": "6827e0432fa58bb8db240f8fa6f76ac239146e97fdae56aa06b3ed559fbfe244",
+  "metadataSha256": {
+    "checks-pages.json": "4cf42f238ca0c7caae37368f05f1cd0541bc1fdc7507873ffed0567365ee2c84",
+    "statuses-pages.json": "cf1cbb66a638b4860a516671fb74850e6ccf787fe6c4c8d29e9c04efe880bd05",
+    "pr-metadata.json": "dc32207edb713da7deed8554332d77378d46945b8ea4c28bb360e012c803f254",
+    "files-pages.json": "800522b35e2c6ba3289abe5721821aca6218a136765daa5a1d179475651a39e6",
+    "checks-all.json": "c25075eb00b384a3281445d61eb31ff27a5bfd15a41b243de631bcfe9375f818",
+    "statuses-all.json": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "files-all.json": "b7c2b3be18fb456d6d8ce539daa4f6cb1046b0c2124ffccec7a31a6975a57ccf"
+  },
+  "branchProtectionHistoricalNamesReconstructed": false,
+  "formalDocsTaskGateStillRequired": true,
+  "productionOperations": 0
+}
