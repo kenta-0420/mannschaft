@@ -12,7 +12,6 @@ import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
-import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.template.service.ModuleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -61,14 +60,6 @@ public class AdminBusinessAlertService {
     private final ChatChannelRepository chatChannelRepository;
     private final ChatChannelMemberRepository chatChannelMemberRepository;
     private final TeamRepository teamRepository;
-
-    /**
-     * 遷移先 URL の slug 一括解決用。TeamEntity#getSlug を直接呼ぶと ArchUnit D-1（クロスドメイン Entity 依存）の
-     * 新規違反になり、コンストラクタ引数に足すと凍結ストアのコンストラクタ署名が変わって既存違反が
-     * 新規扱いになるため、Service 経由（プリミティブの Map のみ受け取る）かつフィールド注入にしている。
-     */
-    @org.springframework.beans.factory.annotation.Autowired
-    private TeamService teamService;
     private final ModuleService moduleService;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -231,9 +222,6 @@ public class AdminBusinessAlertService {
             }
         }
 
-        // 遷移先 URL 用の slug を一括取得する（FE ルートは slug のみ受ける。論理削除済みは含まれない）
-        Map<Long, String> slugMap = teamService.getSlugsByIds(allAdminTeamIds);
-
         // 7. レスポンスを組み立て
         List<AdminBusinessAlertSummaryResponse.TeamAlert> teamAlerts = new ArrayList<>();
         int totalPending = 0;
@@ -253,12 +241,9 @@ public class AdminBusinessAlertService {
 
             totalPending += newReservations + pendingApproval + unreadInquiries;
 
-            // FE ルートは slug のみ受ける。slug が無い（想定外）ときは数値 URL を作らず通知一覧へ逃がす。
-            String slug = slugMap.get(teamId);
-            String reservationsUrl = slug != null ? "/teams/" + slug + "/reservations" : "/notifications";
             ChatChannelEntity inquiryChannel = inquiryChannelByTeamId.get(teamId);
             String inquiryChannelUrl = inquiryChannel != null
-                    ? (slug != null ? "/teams/" + slug + "/chat?channel=" + inquiryChannel.getId() : "/notifications")
+                    ? "/teams/" + teamId + "/chat?channel=" + inquiryChannel.getId()
                     : null;
 
             teamAlerts.add(AdminBusinessAlertSummaryResponse.TeamAlert.builder()
@@ -271,7 +256,7 @@ public class AdminBusinessAlertService {
                             .unreadInquiries(unreadInquiries)
                             .build())
                     .links(AdminBusinessAlertSummaryResponse.Links.builder()
-                            .reservationsUrl(reservationsUrl)
+                            .reservationsUrl("/teams/" + teamId + "/reservations")
                             .inquiryChannelUrl(inquiryChannelUrl)
                             .build())
                     .build());

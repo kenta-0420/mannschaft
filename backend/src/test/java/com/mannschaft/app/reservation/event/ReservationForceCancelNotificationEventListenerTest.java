@@ -204,4 +204,16 @@ class ReservationForceCancelNotificationEventListenerTest {
                 eq("RESERVATION"), eq(100L), eq(NotificationScopeType.TEAM), eq(10L),
                 eq("/notifications"), eq((Long) null));
     }
+
+    @Test
+    @DisplayName("slug の取得が例外のとき、例外を外に出さず（既存の ERROR ログ経路）通知は作らない。数値 URL へ逃がさない")
+    void slug取得が例外なら通知せずログに残す() {
+        given(userLocaleCache.getLocale(1L)).willReturn("ja");
+        given(teamService.getSlugById(10L)).willThrow(new RuntimeException("模擬 slug 取得失敗"));
+
+        org.assertj.core.api.Assertions.assertThatCode(() -> listener.onForceCancelled(buildEvent("数学", null)))
+                .doesNotThrowAnyException();
+
+        org.mockito.Mockito.verifyNoInteractions(notificationHelper);
+    }
 }
