@@ -251,8 +251,8 @@ class ModuleEventOperationalAlertIT extends AbstractMySqlIntegrationTest {
     }
 
     private Cache<?, ?> aggregationBuffer() {
-        Cache<?, ?> buffer = (Cache<?, ?>) ReflectionTestUtils.getField(
-                AopTestUtils.getUltimateTargetObject(aggregator), "aggregationBuffer");
+        Object target = AopTestUtils.getUltimateTargetObject(aggregator);
+        Cache<?, ?> buffer = (Cache<?, ?>) ReflectionTestUtils.getField(target, "aggregationBuffer");
         assertThat(buffer).isNotNull();
         return buffer;
     }
