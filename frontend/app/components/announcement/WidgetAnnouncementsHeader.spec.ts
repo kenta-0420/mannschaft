@@ -47,6 +47,8 @@ describe('WidgetAnnouncements の見出し（本物の DashboardWidgetCard）', 
     })
     expect(wrapper.find('[data-announcement-heading]').exists()).toBe(true)
     expect(wrapper.find('[data-announcement-heading]').attributes('tabindex')).toBe('-1')
+    // 見出しは h3 要素（支援技術の見出しナビゲーション対象）
+    expect(wrapper.find('[data-announcement-heading]').element.tagName).toBe('H3')
     expect(wrapper.text()).toContain('announcement.unread_count:2')
     expect(wrapper.find('a[href="/teams/alpha/announcements"]').exists()).toBe(true)
     expect(wrapper.find('button[data-icon="pi pi-refresh"]').exists()).toBe(true)
