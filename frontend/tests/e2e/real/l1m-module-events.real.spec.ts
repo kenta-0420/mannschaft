@@ -15,7 +15,7 @@ type Workflow = {
 }
 type State = { delayed: Workflow; organization: Workflow; fast: Workflow; quarantine: Workflow; auditCount: number }
 const locales = ['ja', 'en', 'zh', 'ko', 'es', 'de'] as const
-const messages: Record<string, Record<Phase, readonly [string, string]>> = {
+const messages: Record<(typeof locales)[number], Record<Phase, readonly [string, string]>> = {
   "ja": {
     "DELAYED": [
       "処理の反映が遅れています",
