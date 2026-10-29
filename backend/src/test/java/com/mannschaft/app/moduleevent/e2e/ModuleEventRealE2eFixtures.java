@@ -134,7 +134,20 @@ public class ModuleEventRealE2eFixtures {
         }
         @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED, readOnly = false)
         public void seed() {
-            require(count("SELECT COUNT(*) FROM users") == 0, "M21は空の専用DBだけを使う");
+            // hostの専用DB照合に加え、通常Flywayの基底だけを認める。基底行は変更・削除しない。
+            require(world.users.isEmpty() && world.actors.isEmpty() && world.workflows.isEmpty()
+                    && world.roles.isEmpty() && world.memberships.isEmpty() && world.affiliations.isEmpty()
+                    && world.teams.isEmpty() && world.organizations.isEmpty(), "M21検体は未作成でなければならない");
+            require(count("SELECT COUNT(*) FROM flyway_schema_history WHERE success=0") == 0
+                    && count("SELECT COUNT(*) FROM flyway_schema_history WHERE success=1 AND script IN "
+                            + "('V1.012__seed_system_user.sql','V12.004__seed_deleted_sentinel_user.sql')") == 2,
+                    "通常Flywayの基底migration成功が必要");
+            require(count("SELECT COUNT(*) FROM users") == 2
+                    && count("SELECT COUNT(*) FROM users WHERE id=1 AND email='system@mannschaft.local' "
+                            + "AND password_hash IS NULL AND status='ACTIVE'") == 1
+                    && count("SELECT COUNT(*) FROM users WHERE email='deleted@system.internal' "
+                            + "AND password_hash IS NULL AND status='ARCHIVED'") == 1,
+                    "M21は通常Flyway基底2行だけの専用DBを使う。sentinelの採番は推測しない");
             Actor system = actor("system", "ja");
             assign(system, "SYSTEM_ADMIN", null, null);
             OrganizationEntity first = organization("a");
