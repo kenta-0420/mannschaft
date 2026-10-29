@@ -129,6 +129,18 @@ public final class ModuleEventNoticeOutboxStore {
         return claimed;
     }
 
+    /** 不明な復旧予約は notice 単独の current lock/token CAS だけで先送りする。 */
+    public boolean deferRecovery(UUID id, UUID claimToken, Instant nextAttemptAt, Instant now) {
+        Objects.requireNonNull(nextAttemptAt, "nextAttemptAt");
+        Objects.requireNonNull(now, "now");
+        ModuleEventNoticeOutboxEntity row = current(id);
+        if (!owned(row, claimToken, "WAITING_RECOVERY")) {
+            return false;
+        }
+        row.deferRecovery(nextAttemptAt, now);
+        return true;
+    }
+
     /** TX 外で得た業務評価を現在世代へ適用する。業務 SPI 自体は呼ばない。 */
     public boolean applyRecoveryEvaluation(UUID id, UUID claimToken, ModuleEventRecoveryState recovery,
             Instant nextAttemptAt, Instant now) {
