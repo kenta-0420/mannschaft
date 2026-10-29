@@ -345,6 +345,30 @@
       "runId": "calendar-residual-20261028",
       "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
       "evidencePath": "docs/evidence/CMP-261028-1715/residents/mobile/report.json"
+    },
+    {
+      "id": "CMP2116-R08-A",
+      "personaArchetype": "申請者・公開募集と離席復帰",
+      "originalResidentId": "A",
+      "runId": "CMP-260908-2116-revalidation-20261029-08",
+      "sourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+      "evidencePath": "docs/evidence/CMP-260908-2116/proofs/resident-observations.json"
+    },
+    {
+      "id": "CMP2116-R08-B",
+      "personaArchetype": "受諾候補・自分宛相談の導線探索",
+      "originalResidentId": "B",
+      "runId": "CMP-260908-2116-revalidation-20261029-08",
+      "sourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+      "evidencePath": "docs/evidence/CMP-260908-2116/proofs/resident-observations.json"
+    },
+    {
+      "id": "CMP2116-R08-D",
+      "personaArchetype": "チーム管理者・承認と権限切替",
+      "originalResidentId": "D",
+      "runId": "CMP-260908-2116-revalidation-20261029-08",
+      "sourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+      "evidencePath": "docs/evidence/CMP-260908-2116/proofs/resident-observations.json"
     }
   ],
   "journeys": [
@@ -825,6 +849,33 @@
       "runId": "calendar-residual-20261028",
       "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
       "evidencePath": "docs/evidence/CMP-261028-1715/residents/mobile/report.json"
+    },
+    {
+      "id": "CMP2116-R08-A-journey",
+      "personaId": "CMP2116-R08-A",
+      "purpose": "12〜13時の公開募集を提出し、離席後も相談状態を確かめたい",
+      "journeyIdSource": "登録時に一意ID付与。元safeにはjourneyIdの記載なし。",
+      "runId": "CMP-260908-2116-revalidation-20261029-08",
+      "sourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+      "evidencePath": "docs/evidence/CMP-260908-2116/proofs/resident-observations.json"
+    },
+    {
+      "id": "CMP2116-R08-B-journey",
+      "personaId": "CMP2116-R08-B",
+      "purpose": "14〜15時の自分宛相談を見つけて受諾したい",
+      "journeyIdSource": "登録時に一意ID付与。元safeにはjourneyIdの記載なし。",
+      "runId": "CMP-260908-2116-revalidation-20261029-08",
+      "sourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+      "evidencePath": "docs/evidence/CMP-260908-2116/proofs/resident-observations.json"
+    },
+    {
+      "id": "CMP2116-R08-D-journey",
+      "personaId": "CMP2116-R08-D",
+      "purpose": "16〜17時の相談を承認し、権限なし・別チームでも境界を確かめたい",
+      "journeyIdSource": "登録時に一意ID付与。元safeにはjourneyIdの記載なし。",
+      "runId": "CMP-260908-2116-revalidation-20261029-08",
+      "sourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+      "evidencePath": "docs/evidence/CMP-260908-2116/proofs/resident-observations.json"
     }
   ],
   "insights": [
@@ -2516,6 +2567,94 @@
       "trusted": false,
       "registrationSource": "actual-resident-artifacts",
       "urgency": "when-free"
+    },
+    {
+      "id": "CMP2116-R08-A-01",
+      "featureKey": "shift",
+      "featureDetail": "シフト交代相談の独立探索",
+      "title": "公開募集の提出後、戻った画面で相談状態を確認できなかった",
+      "detail": "元run: CMP-260908-2116-revalidation-20261029-08（標準run exit1・finish未作成）。sourceHead: ac49b5af784b79bade786ac0c82b9bb3822289f3。提出後にモーダルが閉じ成功表示を確認した。戻った自分のシフトには「交代依頼を作成」が残り、現在の相談状態を見つけられなかった。一覧件数変化の原因は未確認であり、製品不備の確定とは扱わない。 A/B/DのgoalsReachedは全てfalse。未検証の観測であり、修正完了・B0coverage達成を主張しない。",
+      "page": null,
+      "pageLabel": "住民が自力で辿ったシフト関連画面",
+      "pageProvenance": "元safeに具体的pathなし。固定試験のURLを住民探索へ転用しない。",
+      "personaId": "CMP2116-R08-A",
+      "personaArchetype": "申請者・公開募集と離席復帰",
+      "journeyId": "CMP2116-R08-A-journey",
+      "originalRunId": "CMP-260908-2116-revalidation-20261029-08",
+      "runId": "CMP-260908-2116-revalidation-20261029-08",
+      "sourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+      "evidencePath": "docs/evidence/CMP-260908-2116/proofs/resident-observations.json",
+      "sourceEvidencePath": "independent-residents/A-resident-safe.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "normal"
+    },
+    {
+      "id": "CMP2116-R08-B-01",
+      "featureKey": "shift",
+      "featureDetail": "シフト交代相談の独立探索",
+      "title": "自分宛の交代相談を探したが受諾入口に到達できなかった",
+      "detail": "元run: CMP-260908-2116-revalidation-20261029-08（標準run exit1・finish未作成）。sourceHead: ac49b5af784b79bade786ac0c82b9bb3822289f3。ホーム、自分のシフト、通知、チャット、シフト管理、マイページを探索したが、14〜15時の相談の受諾入口に到達せず、受諾操作は0回だった。ACCEPTEDになる前の割当や相談状態を画面で確認できていない。 A/B/DのgoalsReachedは全てfalse。未検証の観測であり、修正完了・B0coverage達成を主張しない。",
+      "page": null,
+      "pageLabel": "住民が自力で辿ったシフト関連画面",
+      "pageProvenance": "元safeに具体的pathなし。固定試験のURLを住民探索へ転用しない。",
+      "personaId": "CMP2116-R08-B",
+      "personaArchetype": "受諾候補・自分宛相談の導線探索",
+      "journeyId": "CMP2116-R08-B-journey",
+      "originalRunId": "CMP-260908-2116-revalidation-20261029-08",
+      "runId": "CMP-260908-2116-revalidation-20261029-08",
+      "sourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+      "evidencePath": "docs/evidence/CMP-260908-2116/proofs/resident-observations.json",
+      "sourceEvidencePath": "independent-residents/B-resident-safe.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "normal"
+    },
+    {
+      "id": "CMP2116-R08-D-01",
+      "featureKey": "shift",
+      "featureDetail": "シフト交代相談の独立探索",
+      "title": "承認待ち相談カードに数値IDが表示され日時・氏名はなかった",
+      "detail": "元run: CMP-260908-2116-revalidation-20261029-08（標準run exit1・finish未作成）。sourceHead: ac49b5af784b79bade786ac0c82b9bb3822289f3。承認待ちカードでは申請者・相手が数値IDで表示され、日時と氏名はなかった。承認操作後のAPPROVED表示と16〜17時のB+C割当は住民が画面で確認した。表示原因は未確認であり、既知0650の観測と独立した新不具合には数えない。 A/B/DのgoalsReachedは全てfalse。未検証の観測であり、修正完了・B0coverage達成を主張しない。",
+      "page": null,
+      "pageLabel": "住民が自力で辿ったシフト関連画面",
+      "pageProvenance": "元safeに具体的pathなし。固定試験のURLを住民探索へ転用しない。",
+      "personaId": "CMP2116-R08-D",
+      "personaArchetype": "チーム管理者・承認と権限切替",
+      "journeyId": "CMP2116-R08-D-journey",
+      "originalRunId": "CMP-260908-2116-revalidation-20261029-08",
+      "runId": "CMP-260908-2116-revalidation-20261029-08",
+      "sourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+      "evidencePath": "docs/evidence/CMP-260908-2116/proofs/resident-observations.json",
+      "sourceEvidencePath": "independent-residents/D-resident-safe.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "normal"
+    },
+    {
+      "id": "CMP2116-R08-D-02",
+      "featureKey": "shift",
+      "featureDetail": "シフト交代相談の独立探索",
+      "title": "権限なし切替後のローディングで相談境界の確認を終えられなかった",
+      "detail": "元run: CMP-260908-2116-revalidation-20261029-08（標準run exit1・finish未作成）。sourceHead: ac49b5af784b79bade786ac0c82b9bb3822289f3。権限なし利用者へ切り替え、自力で見つけた相談URLを開いた後、networkidle後もローディング表示だった。非漏洩の確認を終えられず、別チームの切替は未実施。固定試験の境界合格でこの住民の未達を置き換えない。 A/B/DのgoalsReachedは全てfalse。未検証の観測であり、修正完了・B0coverage達成を主張しない。",
+      "page": null,
+      "pageLabel": "住民が自力で辿ったシフト関連画面",
+      "pageProvenance": "元safeに具体的pathなし。固定試験のURLを住民探索へ転用しない。",
+      "personaId": "CMP2116-R08-D",
+      "personaArchetype": "チーム管理者・承認と権限切替",
+      "journeyId": "CMP2116-R08-D-journey",
+      "originalRunId": "CMP-260908-2116-revalidation-20261029-08",
+      "runId": "CMP-260908-2116-revalidation-20261029-08",
+      "sourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+      "evidencePath": "docs/evidence/CMP-260908-2116/proofs/resident-observations.json",
+      "sourceEvidencePath": "independent-residents/D-resident-safe.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "normal"
     }
   ],
   "runEnvironments": {

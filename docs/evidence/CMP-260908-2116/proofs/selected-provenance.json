@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "selectionPolicy": "選別safe要約のみ。資格情報・rawSQL/system-out・env・process register全量は非公開。元原本は変更しない。",
+  "sources": [
+    {
+      "privateSourcePath": ".claude/campaigns/cmp2116-revalidation-20261028/run08-postcleanup-root-review.json",
+      "sha256": "7cc3a322653df999d7939a9469cdb54e027eda14616b429ba4d59ffa92ae8b08",
+      "publicSelection": "docs/evidence/CMP-260908-2116/proofs/root-scope-review-partial-history.json"
+    },
+    {
+      "privateSourcePath": ".claude/campaigns/cmp2116-revalidation-20261028/run08-fixed-ui-root-review.json",
+      "sha256": "a9125837c3dbd094c1b78cdd52af3f25458ddb8ef305014fe19f0d9eb574e7e5",
+      "publicSelection": "docs/evidence/CMP-260908-2116/proofs/fixed-ui-summary.json"
+    },
+    {
+      "privateSourcePath": ".claude/campaigns/cmp2116-revalidation-20261028/historical-check-generation-root.json",
+      "sha256": "5ab0294cfe56846439f400e60a7eb2174460c6f829b06dacd8a14cce21fb7b7d",
+      "publicSelection": "docs/evidence/CMP-260908-2116/proofs/historical-ci-generation.json"
+    },
+    {
+      "privateSourcePath": ".claude/campaigns/cmp2116-revalidation-20261028/scope-contract-ci-cases-safe.json",
+      "sha256": "fce021730f78312c653d8b0ed9a7adac14cf310087629aa5bab2e47558c5e841",
+      "publicSelection": "docs/evidence/CMP-260908-2116/proofs/scope-contract-ci-cases.json"
+    },
+    {
+      "privateSourcePath": ".claude/campaigns/cmp2116-revalidation-20261028/run08-request-logging-classification-safe.json",
+      "sha256": "0b99fc4931f6b960162a49ee23afeef59a95e66c54308948a7c6b75d3e2d80e6",
+      "publicSelection": "docs/evidence/CMP-260908-2116/proofs/request-logger-classification.json"
+    },
+    {
+      "privateSourcePath": ".claude/campaigns/cmp2116-revalidation-20261028/package-prepared-v5/source-bridge-safe.json",
+      "sha256": "693fae387aa97ec8240bf8a78d99558026d4b7febcf7d27923728df1477e28d1",
+      "publicSelection": "docs/evidence/CMP-260908-2116/proofs/source-correspondence.json"
+    },
+    {
+      "privateSourcePath": ".claude/campaigns/cmp2116-revalidation-20261028/implementation-and-source-gh-safe.json",
+      "sha256": "7b8ecaddc72070a19af67ddbe7ac448cd472f89bbff19cb60e699972330480ee",
+      "publicSelection": "docs/evidence/CMP-260908-2116/proofs/source-correspondence.json"
+    },
+    {
+      "privateSourcePath": ".claude/campaigns/cmp2116-revalidation-20261028/standard-supervisor-6653c38256-safe.json",
+      "sha256": "d13794da5df8bbca850b6f326c564ca12c6b9f1962382526c637f295a9b00047",
+      "publicSelection": "docs/evidence/CMP-260908-2116/proofs/run08-outcome-summary.json"
+    },
+    {
+      "privateSourcePath": ".claude/campaigns/cmp2116-revalidation-20261028/run08-resident-preserved-root.json",
+      "sha256": "37c5533bec3a16c9766ec4ce6ed92458bac105d5dbac7c2cd3553ac41790d688",
+      "publicSelection": "docs/evidence/CMP-260908-2116/proofs/run08-outcome-summary.json"
+    },
+    {
+      "privateSourcePath": ".claude/campaigns/cmp2116-revalidation-20261028/independent-before-run08-root.json",
+      "sha256": "12db0d5ed974bc26abd810bbf15d1a560b53d5ff868b27e4dbf6ffe52e85f34b",
+      "publicSelection": "docs/evidence/CMP-260908-2116/proofs/run08-outcome-summary.json"
+    },
+    {
+      "privateSourcePath": ".claude/campaigns/cmp2116-revalidation-20261028/independent-before-run08-root-02.json",
+      "sha256": "589fdd7697944b5e91cabfed862a04216c1160aa673b8c70c98ac3cd68c04145",
+      "publicSelection": "docs/evidence/CMP-260908-2116/proofs/run08-outcome-summary.json"
+    },
+    {
+      "privateSourcePath": ".claude/campaigns/cmp2116-revalidation-20261028/independent-after-run08-root.json",
+      "sha256": "783d77d0ccb470b3506aa948489c582628e4bb911f60c0045fd818dc4dc1edc3",
+      "publicSelection": "docs/evidence/CMP-260908-2116/proofs/run08-outcome-summary.json"
+    },
+    {
+      "privateSourcePath": ".claude/campaigns/cmp2116-revalidation-20261028/independent-after-run08-root-02.json",
+      "sha256": "5ec9a596ad0622f9439d02ffa1051d225a82d08ae6589abca5ba246c658641b1",
+      "publicSelection": "docs/evidence/CMP-260908-2116/proofs/run08-outcome-summary.json"
+    },
+    {
+      "privateSourcePath": ".claude/campaigns/cmp2116-revalidation-20261028/run08-external-cleanup-audit-safe.json",
+      "sha256": "88f8a8b74c35a6fd6e211ee185cb92c26b9afa3ff5d1359a1918fba85700e0f6",
+      "publicSelection": "docs/evidence/CMP-260908-2116/proofs/run08-outcome-summary.json"
+    },
+    {
+      "privateSourcePath": "/home/kenta/verification-evidence/CMP-260908-2116-revalidation-20261029-08/fixed-ui-safe.json",
+      "sha256": "6d2e3fa0e1071a8f0c71663615769f64ac8d79e6ad5157b594b3f1756a59905d",
+      "publicSelection": "docs/evidence/CMP-260908-2116/proofs/fixed-ui-summary.json",
+      "selection": "URL/手順対応/9steps/8UI/8API/状態・hashの許可列挙のみ。生SQL・credential・env・registerは除外。"
+    },
+    {
+      "privateSourcePath": ".claude/campaigns/cmp2116-revalidation-20261028/package-prepared-v5/fixed-ui.mjs",
+      "sha256": "09326546200d84a1c1831599f4fa938980e887c4e3912c0be9cccd2520ee85c7",
+      "publicSelection": "docs/evidence/CMP-260908-2116/proofs/fixed-ui-summary.json",
+      "selection": "期待/操作手順の出所。実測値とは別。"
+    },
+    {
+      "privateSourcePath": ".claude/campaigns/cmp2116-revalidation-20261028/run08-selected-ui/boundary-X-team.png",
+      "sha256": "463a4571592edabee2f2bc5a37a25468202cfc6b8a7e98663f737c05c56ee7e4",
+      "publicSelection": "docs/evidence/CMP-260908-2116/proofs/images/boundary-X-team.png",
+      "newRun08CaptureMetadataVerifiedByRoot": true,
+      "samePixelsAsPriorRunReported": true,
+      "priorImageReusedClaimed": false
+    },
+    {
+      "privateSourcePath": ".claude/campaigns/cmp2116-revalidation-20261028/run08-selected-ui/approved-board-reload.png",
+      "sha256": "23d0a4d911617d14c95673385ca0060ad60f6cbe398c3695cd34c30ad8d34cf1",
+      "publicSelection": "docs/evidence/CMP-260908-2116/proofs/images/approved-board-reload.png",
+      "newRun08CaptureMetadataVerifiedByRoot": true,
+      "samePixelsAsPriorRunReported": true,
+      "priorImageReusedClaimed": false
+    },
+    {
+      "privateSourcePath": ".claude/campaigns/cmp2116-revalidation-20261028/run08-final-stage-adjudication-root.json",
+      "sha256": "e074fc72078ba8b6c12a30e6c95a1ba6c5f6ec802b89fd85ba65101e23202d1f",
+      "publicSelection": "docs/evidence/CMP-260908-2116/proofs/root-scope-review.json"
+    }
+  ],
+  "rawOriginalsPreserved": true,
+  "independentObservationPublicSelection": "docs/evidence/CMP-260908-2116/proofs/resident-observations.json",
+  "integratedObservation": {
+    "commit": "5c9eca951b99831a72245452b8d23743d91d62bd",
+    "publicPath": "docs/evidence/CMP-260908-2116/proofs/resident-observations.json",
+    "sha256": "dbf3b7f777011892b795c9e0732f0e0472fdf302cb69551d5e8e6ab7d4e1e1cd",
+    "baselineOutsideOverlayPreserved": true,
+    "fullBoardRegenerationPerformed": false
+  }
+}
