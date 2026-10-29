@@ -63,6 +63,7 @@ public class NotificationDispatchService {
      * <p>設計書: {@code docs/features/F00_content_visibility_resolver.md} §11.1 / §13.5。
      */
     private final ContentVisibilityChecker visibilityChecker;
+    private final com.mannschaft.app.moduleevent.api.ModuleEventNoticeOutboxApi moduleEventNotices;
 
     /**
      * 通知を配信する。ユーザーの設定を確認し、有効なチャネルに送信する。
@@ -253,6 +254,27 @@ public class NotificationDispatchService {
      * @return アクセス可能または判定対象外なら true
      */
     private boolean isAccessibleForRecipient(NotificationEntity notification) {
+        // M通知は未解決sourceを許可する既存互換分岐より先に、公開窓口で現在判定する。
+        if ("MODULE_EVENT_NOTICE".equals(notification.getSourceType())) {
+            if (notification.getSourceId() == null || notification.getSourceId() <= 0
+                    || notification.getUserId() == null || notification.getUserId() <= 0
+                    || !"MODULE_EVENT_NOTICE".equals(notification.getNotificationType())) return false;
+            try {
+                var descriptor = moduleEventNotices.readDescriptor(notification.getSourceId());
+                if (descriptor.isEmpty()) return false;
+                var impact = descriptor.get().getImpact();
+                if (notification.getScopeType() == null
+                        || !notification.getScopeType().name().equals(impact.getScopeType().name())
+                        || !Objects.equals(notification.getScopeId(), impact.getScopeId())
+                        || !Objects.equals(notification.getOrganizationId(), impact.getOrganizationId())
+                        || notification.getActorId() != null || notification.getActionUrl() != null) return false;
+                return moduleEventNotices.eligibleRecipients(notification.getSourceId(), List.of(notification.getUserId()))
+                        .map(recipients -> recipients.stream().anyMatch(r -> notification.getUserId().equals(r.getUserId())))
+                        .orElse(false);
+            } catch (RuntimeException unresolved) {
+                return false;
+            }
+        }
         Long sourceId = notification.getSourceId();
         if (sourceId == null) {
             return true;
