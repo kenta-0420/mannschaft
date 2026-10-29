@@ -87,6 +87,10 @@ class ModuleEventLoadIT extends AbstractMySqlIntegrationTest {
         long start = 0;
         Throwable original = null;
         try {
+            assertThat(application.getBeanFactory().getBeanNamesForType(
+                    ScheduledAnnotationBeanPostProcessor.class, true, false))
+                    .as("親contextでは他domainを含めスケジュールを起動しない").isEmpty();
+            assertThat(probe.ticks).as("子schedulerの明示起動前にはtickしない").isEmpty();
             assertThat(pool.getActiveCount()).isZero();
             assertThat(pool.getQueueSize()).isZero();
             assertThat(pool.availableCapacity()).isEqualTo(200);
@@ -250,7 +254,8 @@ class ModuleEventLoadIT extends AbstractMySqlIntegrationTest {
                         PublicationTargetIdentifier.of(ModuleEventLoadTestFixture.LISTENER_ID), Instant.now().minusSeconds(600)));
                 entry.publications.add(publication.getIdentifier());
                 attempts.save(EventPublicationAttemptEntity.builder().id(UuidV7.generate()).publicationId(publication.getIdentifier())
-                        .status(ModuleEventAttemptStatus.PENDING).retryCount(0).createdAt(now).updatedAt(now).version(0).build());
+                        .status(ModuleEventAttemptStatus.PENDING).claimToken(UUID.randomUUID())
+                        .retryCount(0).createdAt(now).updatedAt(now).version(0).build());
             }
             entityManager.flush();
         });

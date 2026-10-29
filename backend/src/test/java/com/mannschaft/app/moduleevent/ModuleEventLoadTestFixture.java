@@ -176,38 +176,43 @@ public class ModuleEventLoadTestFixture {
                         .withTableName(table).usingDbTime().build()));
         child.registerBean("m18ReplayBatch", ModuleEventReplayBatch.class, () -> new ModuleEventReplayBatch(
                 parent.getBean(IncompleteEventPublications.class), parent.getBean(ModuleEventOperations.class)));
-        child.register(Scheduling.class);
+        child.register(SchedulerScope.Scheduling.class);
         try { child.refresh(); return child; }
         catch (RuntimeException | Error failure) { child.close(); throw failure; }
     }
 
-    @TestConfiguration(proxyBeanMethods = false)
-    @EnableScheduling
-    @EnableAspectJAutoProxy(proxyTargetClass = true)
-    @EnableSchedulerLock(defaultLockAtMostFor = "PT3M", order = 15)
-    private static class Scheduling {
-        @Bean(destroyMethod = "shutdown") ThreadPoolTaskScheduler taskScheduler() {
-            ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
-            scheduler.setPoolSize(1);
-            scheduler.setThreadNamePrefix("m18-schedule-");
-            scheduler.setWaitForTasksToCompleteOnShutdown(true);
-            scheduler.setAwaitTerminationSeconds(15);
-            return scheduler;
-        }
-        @Bean DefaultPointcutAdvisor m18TickObserver(Probe probe) {
-            DefaultPointcutAdvisor advisor = new DefaultPointcutAdvisor(new StaticMethodMatcherPointcut() {
-                @Override public boolean matches(Method method, Class<?> type) {
-                    return ModuleEventReplayBatch.class.isAssignableFrom(type) && method.getName().equals("poll");
-                }
-            }, (MethodInterceptor) invocation -> {
-                LockAssert.assertLocked();
-                long[] tick = {System.nanoTime(), 0L};
-                probe.ticks.add(tick);
-                try { return invocation.proceed(); }
-                finally { tick[1] = System.nanoTime(); }
-            });
-            advisor.setOrder(16);
-            return advisor;
+    /** 親の設定解析がメンバー設定を自動取込しないよう、非設定クラスで子専用設定を隔離する。 */
+    private static final class SchedulerScope {
+        private SchedulerScope() { }
+
+        @TestConfiguration(proxyBeanMethods = false)
+        @EnableScheduling
+        @EnableAspectJAutoProxy(proxyTargetClass = true)
+        @EnableSchedulerLock(defaultLockAtMostFor = "PT3M", order = 15)
+        private static class Scheduling {
+            @Bean(destroyMethod = "shutdown") ThreadPoolTaskScheduler taskScheduler() {
+                ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+                scheduler.setPoolSize(1);
+                scheduler.setThreadNamePrefix("m18-schedule-");
+                scheduler.setWaitForTasksToCompleteOnShutdown(true);
+                scheduler.setAwaitTerminationSeconds(15);
+                return scheduler;
+            }
+            @Bean DefaultPointcutAdvisor m18TickObserver(Probe probe) {
+                DefaultPointcutAdvisor advisor = new DefaultPointcutAdvisor(new StaticMethodMatcherPointcut() {
+                    @Override public boolean matches(Method method, Class<?> type) {
+                        return ModuleEventReplayBatch.class.isAssignableFrom(type) && method.getName().equals("poll");
+                    }
+                }, (MethodInterceptor) invocation -> {
+                    LockAssert.assertLocked();
+                    long[] tick = {System.nanoTime(), 0L};
+                    probe.ticks.add(tick);
+                    try { return invocation.proceed(); }
+                    finally { tick[1] = System.nanoTime(); }
+                });
+                advisor.setOrder(16);
+                return advisor;
+            }
         }
     }
 
