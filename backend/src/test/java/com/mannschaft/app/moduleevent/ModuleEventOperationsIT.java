@@ -91,7 +91,7 @@ class ModuleEventOperationsIT extends AbstractMySqlIntegrationTest {
         local.register(Fixtures.class);
         local.registerBean(EntityManager.class, () -> entityManager);
         local.registerBean(Clock.class, Clock::systemUTC);
-        local.registerBean(SimpleMeterRegistry.class);
+        local.registerBean(SimpleMeterRegistry.class, definition -> definition.setPrimary(true));
         local.registerBean(ModuleEventPublicationStore.class);
         local.registerBean(ModuleEventOperations.class);
         local.registerBean(ModuleEventOperationsApi.class);
