@@ -11,7 +11,6 @@ import org.springframework.context.annotation.AnnotatedBeanDefinitionReader;
 import org.springframework.context.annotation.ConfigurationClassPostProcessor;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.modulith.moments.autoconfigure.MomentsAutoConfiguration;
 import org.springframework.scheduling.config.TaskManagementConfigUtils;
 
 import java.io.IOException;
@@ -38,7 +37,7 @@ class ModuleEventSchedulingIsolationTest {
             "local, true"
     })
     void 共通設定とModulith自動構成を読み込んでもプロファイルごとの起動契約を守る(
-            String profile, boolean schedulingEnabled) throws IOException {
+            String profile, boolean schedulingEnabled) throws IOException, ClassNotFoundException {
         var environment = new StandardEnvironment();
         // 実行端末の上書きが共通設定の欠落を補い、回帰を偽の緑にしないようにする。
         environment.getPropertySources().remove(StandardEnvironment.SYSTEM_PROPERTIES_PROPERTY_SOURCE_NAME);
@@ -50,7 +49,9 @@ class ModuleEventSchedulingIsolationTest {
         }
         var factory = new DefaultListableBeanFactory();
         var reader = new AnnotatedBeanDefinitionReader(factory, environment);
-        reader.register(SchedulingConfig.class, ShedLockConfig.class, MomentsAutoConfiguration.class);
+        reader.register(SchedulingConfig.class, ShedLockConfig.class,
+                Class.forName("org.springframework.modulith.moments.autoconfigure.MomentsAutoConfiguration",
+                        false, getClass().getClassLoader()));
         var processor = new ConfigurationClassPostProcessor();
         processor.setEnvironment(environment);
 
