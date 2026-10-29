@@ -885,20 +885,29 @@ for (const width of [360, 390, 1280]) {
         await expect(all.locator('span')).toHaveText('すべて（一覧）')
         await expect(all).toBeVisible()
         await page.evaluate(() => document.fonts.ready.then(() => true))
-        const lines = await all.locator('span').evaluate(element => {
-          const range = document.createRange()
-          range.selectNodeContents(element)
-          return [...range.getClientRects()].map(rect => ({ top: rect.top, left: rect.left, right: rect.right }))
+        // Popoverの拡大中に異なるフレームの矩形を比較しないよう、完了後に一括計測する。
+        await menu.panel.evaluate(async element => {
+          await Promise.all(element.getAnimations().map(animation => animation.finished))
         })
-        const foldersBox = await all.evaluate(element => {
-          const box = element.parentElement!.parentElement!.getBoundingClientRect()
-          return { x: box.x, y: box.y, width: box.width, height: box.height }
-        })
-        const jumpBox = await menu.jump.evaluate(element => {
-          const box = element.parentElement!.getBoundingClientRect()
-          return { x: box.x, y: box.y, width: box.width, height: box.height }
-        })
-        const documentSize = await page.evaluate(() => ({ width: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth, bodyWidth: document.body.scrollWidth }))
+        const { lines, foldersBox, jumpBox, documentSize } = await all.evaluate(
+          (element, jumpElement) => {
+            const range = document.createRange()
+            range.selectNodeContents(element.querySelector('span')!)
+            const folders = element.parentElement!.parentElement!.getBoundingClientRect()
+            const jump = jumpElement!.parentElement!.getBoundingClientRect()
+            return {
+              lines: [...range.getClientRects()].map(rect => ({ top: rect.top, left: rect.left, right: rect.right })),
+              foldersBox: { x: folders.x, y: folders.y, width: folders.width, height: folders.height },
+              jumpBox: { x: jump.x, y: jump.y, width: jump.width, height: jump.height },
+              documentSize: {
+                width: document.documentElement.clientWidth,
+                scrollWidth: document.documentElement.scrollWidth,
+                bodyWidth: document.body.scrollWidth,
+              },
+            }
+          },
+          await menu.jump.elementHandle(),
+        )
         await testInfo.attach('scope-navigation-geometry', { body: JSON.stringify({ width, scopeType, lines, foldersBox, jumpBox, documentSize }), contentType: 'application/json' })
         expect(lines, 'ALL_LIST_TEXT_HORIZONTAL: 一覧の文字が複数行に縦折返ししている').toHaveLength(1)
         if (mobile) {
