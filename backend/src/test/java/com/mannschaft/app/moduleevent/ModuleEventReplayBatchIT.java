@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -31,6 +32,7 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
@@ -40,6 +42,7 @@ import org.springframework.modulith.events.core.EventPublicationRepository;
 import org.springframework.modulith.events.core.PublicationTargetIdentifier;
 import org.springframework.modulith.events.core.TargetEventPublication;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -56,6 +59,7 @@ import static org.awaitility.Awaitility.await;
 @Isolated("同一DBで所有再配信検体と所有ShedLockテーブルを使う")
 class ModuleEventReplayBatchIT extends AbstractMySqlIntegrationTest {
     @Autowired private IncompleteEventPublications replay;
+    @Autowired @Qualifier("module-event-pool") private Executor executor;
     @Autowired private ModuleEventOperations operations;
     @Autowired private DataSource dataSource;
     @Autowired private PlatformTransactionManager transactions;
@@ -86,6 +90,8 @@ class ModuleEventReplayBatchIT extends AbstractMySqlIntegrationTest {
 
     @AfterEach
     void 所有資産だけを解放する() {
+        // 失敗時も業務/callbackが終了するまで自己行と購読を消さない。既存ReplayITと同じ境界。
+        idle();
         try {
             contexts.forEach(AnnotationConfigApplicationContext::close);
             new TransactionTemplate(transactions).executeWithoutResult(status -> {
@@ -188,6 +194,13 @@ class ModuleEventReplayBatchIT extends AbstractMySqlIntegrationTest {
             return invocation.proceed();
         });
         return (IncompleteEventPublications) proxy.getProxy();
+    }
+
+    private void idle() {
+        ThreadPoolTaskExecutor pool = (ThreadPoolTaskExecutor) executor;
+        var actual = pool.getThreadPoolExecutor();
+        await().atMost(Duration.ofSeconds(20)).until(() -> actual.getActiveCount() == 0
+                && actual.getQueue().isEmpty() && actual.getCompletedTaskCount() == actual.getTaskCount());
     }
 
     private void seed() {

@@ -111,7 +111,8 @@ class ModuleEventOperationsIT extends AbstractMySqlIntegrationTest {
         afterTransaction(store, invocation -> {
             Object result = invocation.proceed();
             if (rollBackStore && (invocation.getMethod().getName().equals("claim")
-                    || invocation.getMethod().getName().equals("finish"))) {
+                    || invocation.getMethod().getName().equals("finish")
+                    || invocation.getMethod().getName().equals("admit"))) {
                 TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             }
             return result;
@@ -162,6 +163,34 @@ class ModuleEventOperationsIT extends AbstractMySqlIntegrationTest {
         assertThat(meters.counter(ModuleEventOperations.REPLAY_ACCEPTED).count()).isEqualTo(before + 1);
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 実受理はrollback時ゼロで再配信commitだけを数え旧世代を拒否する(boolean initial) {
+        var fixture = seed(false, 0, ModuleEventAttemptStatus.IN_PROGRESS, Instant.now().plusSeconds(60), NOW);
+        var source = fixture.frame();
+        var frame = new ModuleEventExecutionFrame(source.event(), source.publicationId(), source.attemptId(),
+                source.token(), source.listenerId(), initial);
+        assertThat(meters.counter(ModuleEventOperations.REPLAY_ACCEPTED).count()).isZero();
+        rollBackStore = true;
+        assertThat(store.admit(frame)).isTrue();
+        assertThat(attempt(fixture).getRetryCount()).isZero();
+        assertThat(meters.counter(ModuleEventOperations.REPLAY_ACCEPTED).count()).isZero();
+        rollBackStore = false;
+        assertThat(store.admit(frame)).isTrue();
+        int accepted = initial ? 0 : 1;
+        assertThat(attempt(fixture).getRetryCount()).isEqualTo(accepted);
+        assertThat(meters.counter(ModuleEventOperations.REPLAY_ACCEPTED).count()).isEqualTo(accepted);
+        // 自己helperだけを新世代へ進め、古いimmutable tokenでの受理を再現する。
+        new TransactionTemplate(transactions).executeWithoutResult(status -> {
+            var repository = new SimpleJpaRepository<>(EventPublicationAttemptEntity.class, entityManager);
+            var current = repository.findById(frame.attemptId()).orElseThrow();
+            repository.saveAndFlush(current.toBuilder().claimToken(UUID.randomUUID()).build());
+        });
+        assertThat(store.admit(frame)).isFalse();
+        assertThat(attempt(fixture).getRetryCount()).isEqualTo(accepted);
+        assertThat(meters.counter(ModuleEventOperations.REPLAY_ACCEPTED).count()).isEqualTo(accepted);
+    }
+
     @Test
     void 空のsnapshotは件数ゼロで最古なし() {
         var snapshot = operations.observe(NOW);
@@ -194,9 +223,11 @@ class ModuleEventOperationsIT extends AbstractMySqlIntegrationTest {
             routes.add(DataSourceContextHolder.getDataSourceType());
             return invocation.proceed();
         });
+        double before = meters.counter(ModuleEventOperations.PATTERN_F_FAILURE).count();
         local.getBean(ReadOnlyCaller.class).call();
-        assertThat(active).containsExactly(false);
-        assertThat(routes).containsExactly(DataSourceType.PRIMARY);
+        assertThat(active).containsExactly(false, false);
+        assertThat(routes).containsExactly(DataSourceType.PRIMARY, DataSourceType.PRIMARY);
+        assertThat(meters.counter(ModuleEventOperations.PATTERN_F_FAILURE).count()).isEqualTo(before + 1);
         assertThat(DataSourceContextHolder.getDataSourceType()).isNull();
     }
 
@@ -298,12 +329,19 @@ class ModuleEventOperationsIT extends AbstractMySqlIntegrationTest {
 
     public static class ReadOnlyCaller {
         private final ModuleEventOperations operations;
-        public ReadOnlyCaller(ModuleEventOperations operations) { this.operations = operations; }
+        private final ModuleEventOperationsApi api;
+        public ReadOnlyCaller(ModuleEventOperations operations, ModuleEventOperationsApi api) {
+            this.operations = operations;
+            this.api = api;
+        }
         @Transactional(readOnly = true)
         public void call() {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
             assertThat(DataSourceContextHolder.getDataSourceType()).isEqualTo(DataSourceType.REPLICA);
             operations.observe(NOW);
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+            assertThat(DataSourceContextHolder.getDataSourceType()).isEqualTo(DataSourceType.REPLICA);
+            api.recordPatternFCompletionFailure();
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
             assertThat(DataSourceContextHolder.getDataSourceType()).isEqualTo(DataSourceType.REPLICA);
         }
