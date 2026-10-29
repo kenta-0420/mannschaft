@@ -6,6 +6,7 @@ withDefaults(defineProps<{ active?: boolean }>(), { active: true })
 const authStore = useAuthStore()
 const teamStore = useTeamStore()
 const orgStore = useOrganizationStore()
+const stopInitialActionSharing = provideInitialPersonalActionRequired()
 const greeting = useGreeting()
 const timedMessage = useTimedMessage()
 const hasFamilyTeam = computed(() => teamStore.myTeams.some((team) => team.template === 'FAMILY'))
@@ -23,6 +24,7 @@ watch([showTeamCreateDialog, showOrgCreateDialog, showConfig], ([team, organizat
   mountedDialogs.team ||= team
   mountedDialogs.organization ||= organization
   mountedDialogs.config ||= config
+  if (config) stopInitialActionSharing?.()
 })
 const collapsedKeys = ref<Set<string>>(new Set())
 const { sortedWidgets, visibleWidgets, isVisible, toggleWidget, reorder, ready } =

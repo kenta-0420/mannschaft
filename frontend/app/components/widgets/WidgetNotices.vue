@@ -186,7 +186,7 @@ async function loadActionRequired(generation: number) {
   if (actionRequiredLoaded.value) return
   actionRequiredLoading.value = true
   try {
-    const res = await fetchActionRequired()
+    const res = await fetchActionRequired({ shareInitial: generation === 1 })
     if (!isCurrentRequest(generation)) return
     actionRequiredItems.value = res.items
     actionRequiredLoaded.value = true
