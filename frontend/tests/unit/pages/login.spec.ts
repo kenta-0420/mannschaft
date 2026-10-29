@@ -112,14 +112,14 @@ describe('pages/login.vue 送信中の公開ダッシュボード資産準備', 
     '~/components/dashboard/DashboardPersonalPanel.vue',
     '~/components/schedule/CalendarGrid.vue',
   ]
-  let assetStarts: ReturnType<typeof vi.fn>[]
+  let assetStarts: ReturnType<typeof vi.fn<() => void>>[]
   let finishAssets: Array<() => void>
   let rejectAssets: Array<() => void>
   let warn: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     vi.resetModules()
-    assetStarts = modulePaths.map(() => vi.fn())
+    assetStarts = modulePaths.map(() => vi.fn<() => void>())
     finishAssets = []
     rejectAssets = []
     warn = vi.spyOn(console, 'warn').mockImplementation(() => {})

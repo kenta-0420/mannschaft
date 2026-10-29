@@ -215,8 +215,8 @@ async function load() {
   actionRequiredLoaded.value = false
   platformAnnouncementsLoaded.value = false
   try {
-    await Promise.all(
-      tabs.value.map(async (tabDef) => {
+    await Promise.all([
+      Promise.all(tabs.value.map(async (tabDef) => {
         if (tabDef.tab.kind === 'action-required') return // 別ステートで管理
         if (tabDef.tab.kind === 'platform-announcements') return // 別ステートで管理
         try {
@@ -226,10 +226,11 @@ async function load() {
           captureQuiet(error, { context: `WidgetNotices: ${tabDef.key} 取得` })
           noticeCache.set(tabCacheKey(tabDef.tab), [])
         }
-      }),
-    )
-    // 要対応タブ・運営お知らせタブも並列取得
-    await Promise.all([loadActionRequired(), loadPlatformAnnouncements()])
+      })),
+      // 通常タブ群の完了を待たず、独立した要対応・運営お知らせも開始する。
+      loadActionRequired(),
+      loadPlatformAnnouncements(),
+    ])
   }
   finally {
     if (currentTab.value.kind !== 'action-required' && currentTab.value.kind !== 'platform-announcements') {
@@ -440,8 +441,7 @@ function onAttendanceSubmitted() {
 }
 
 onMounted(async () => {
-  await ensureFoldersLoaded()
-  await refreshSummaries()
+  await Promise.all([ensureFoldersLoaded(), refreshSummaries()])
   await load()
 })
 </script>

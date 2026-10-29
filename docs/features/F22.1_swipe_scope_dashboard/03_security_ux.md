@@ -216,6 +216,10 @@ export default defineNuxtPlugin(async () => {
 
 パスワードログインの送信時は、認証応答待ちに `dashboard.vue`・`DashboardPersonalPanel.vue`・`CalendarGrid.vue` の公開JSを並列で準備する。componentのsetup・mountやprivate API取得は実行しない。先読み完了を認証・MFA判定・本人復元・遷移の条件にせず、失敗は秘密を含まない固定文言で診断して通常の画面遷移へ任せる。保存済みの表示設定・並び順のreadyゲートと、非表示widget・未訪問scopeを生成／取得しない境界を維持する。先読みの開始と安全境界は回帰試験、本番chunkの取得順序と表示時間への寄与は同条件の本番build実測で別々に確認する。
 
+`CalendarGrid` は表示対象42日分の祝日有無（国既定言語）と表示名（locale）をcomponent内のcomputed表で共有する。国・言語・表示年月の変更では再計算し、予定だけの再描画では再判定しない。`useHolidays` のpublic優先・null・日付解釈を維持し、profile取得・認証・todayの時計処理・依存関係は変更しない。初回は日付と言語ごとに最大1回（計84回）の判定が残るため、効果は再描画回数にも依存し、表示時間への寄与は本番buildの実測で確認する。
+
+`WidgetNotices` の初期化はフォルダ一覧と未読集計を並列に開始し、両方の完了後に本文取得へ進む。TEAM/ORGANIZATIONのフォルダ取得順は維持する。本文取得は通常タブ群・要対応・運営お知らせを同時に開始し、全群を待ってloadingを解除する。各取得の既存catch・空結果へのfallbackを維持する。実測でNotices GET開始が送信後7983msだった経路に直列待ちがあることを確認したが、個々のフォルダ取得時間は未分離のため短縮時間を断定しない。正式実機と最終表示時間の検証は別途必要である。
+
 ### 2.8 検索フォーム: `frontend/app/components/dashboard/ScopeSearchForm.vue`（新規）
 
 - props: `scopeType: 'TEAM' | 'ORGANIZATION'`。
