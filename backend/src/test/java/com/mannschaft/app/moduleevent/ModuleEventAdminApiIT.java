@@ -32,7 +32,6 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.modulith.events.core.EventPublicationRepository;
@@ -63,7 +62,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 未来のpublicationDateとleaseUntilにより、後続のretry schedulerが検体をclaimしない。
  * 再開監査はmoduleevent専用履歴の実行者・trim済理由・DB格納UTC時刻と原子性を検査する。
  */
-@AutoConfigureMockMvc
+@ModuleEventMySqlTest
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
     private static final String ROOT = "/api/v1/system-admin/module-events";
