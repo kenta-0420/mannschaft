@@ -350,5 +350,49 @@
     "firstFailure": "CMP-260827-1152の過去完了証拠リンク欠落。最新main追従前の台帳が原因。",
     "guardRelaxed": false,
     "finalHeadCIRequired": true
-  }
+  },
+  "localReceiptProvenance": [
+    {
+      "name": "CMP-261028-1715-fe-baseline1",
+      "sourceHead": "b7e4bcd07e2bb93899ea761736bdd6a413e41780",
+      "receiptSha256": "624a8de6eec467f9a5bed639ecd7b5cb3aa2cfe376bce8fa2df9a873de7d2f00",
+      "purpose": "比較元production build"
+    },
+    {
+      "name": "CMP-261028-1715-fe-fixed1",
+      "sourceHead": "c7879b0244b617ab363927122ab88f801413ecc1",
+      "receiptSha256": "52a3857fac8cc2889940e59d970af875a1107e3d48294b2cb3a234349a3a28e4",
+      "purpose": "カレンダー並列化production build"
+    },
+    {
+      "name": "CMP-261028-1715-fe-nav-fixed1",
+      "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+      "receiptSha256": "a0cb9edcd2e6dd2feb48e000f23f4a6fa77d3373c0a2a27a8f77594f19816d84",
+      "purpose": "Nav変更production build"
+    },
+    {
+      "name": "CMP-261028-1715-fe-green-linux1",
+      "sourceHead": "c7879b0244b617ab363927122ab88f801413ecc1",
+      "receiptSha256": "faa5d4344f8bc76626eecb3c3901b9f10bc97c7340ea5689496415a9acaed749",
+      "purpose": "カレンダー必要2spec green"
+    },
+    {
+      "name": "CMP-261028-1715-fe-red-linux1",
+      "sourceHead": "b027c4babd3007c0b41fcba08f4f3997756a5fbe",
+      "receiptSha256": "2ac286053c8ec32e1da52a8ba97d6d9f9921e8b3a1a0037235aa20a8990da95f",
+      "purpose": "カレンダー契約red"
+    },
+    {
+      "name": "CMP-261028-1715-nav-red-linux1",
+      "sourceHead": "1569a6b80aae2f2c1560b00f4c5ef6f025907135",
+      "receiptSha256": "3a602450e762449b25c6a1d3b1f810226afa1ca74483400ba8cbcd623eeae5e9",
+      "purpose": "Nav先読み契約red"
+    },
+    {
+      "name": "CMP-261028-1715-nav-green-linux2",
+      "sourceHead": "4697a0f99045a2218dbfe6eb8c7e1d894962d8d0",
+      "receiptSha256": "945ad668d8d4706fd0976b5e392b7c3cf6d82909c44bd7871329a057d89ed688",
+      "purpose": "最終CI同等検証へ移行し中断・試験未実行のlocal runner"
+    }
+  ]
 }
