@@ -58,9 +58,9 @@ public class ModuleEventNoticeOutboxSource implements NotificationOutboxSource {
         return api.deferUnsupportedVersion(id, token, next, now);
     }
     @Override public int recoverStuck(Instant before, Instant now) { return api.recoverStuck(before, now); }
-    /** 強い保持 gate は未提供。時刻だけによる削除をしない。 */
+    /** 通知予約とdescriptorを保持する。自動物理削除は行わず、正常に0件を返す。 */
     @Override public int sweep(Instant relayedBefore, Instant deadBefore) {
-        throw new UnsupportedOperationException("L1-M retention gate は未提供。通知予約を保持する");
+        return 0;
     }
     @Override public Optional<Instant> oldestPendingCreatedAt() { return api.oldestPendingCreatedAt(); }
 }
