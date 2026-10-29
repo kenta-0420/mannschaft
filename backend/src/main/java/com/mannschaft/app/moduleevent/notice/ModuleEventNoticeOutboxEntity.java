@@ -94,4 +94,50 @@ public class ModuleEventNoticeOutboxEntity extends UuidV7Entity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    /** claim は同じ行の current lock を持つ Store だけから行う。 */
+    void claim(boolean recovery, Instant now) {
+        status = recovery ? "WAITING_RECOVERY" : "RELAYING";
+        claimToken = UUID.randomUUID();
+        claimedAt = now;
+        updatedAt = now;
+    }
+
+    void relayed(Instant now) {
+        status = "RELAYED";
+        relayedAt = now;
+        claimedAt = null;
+        lastErrorCode = null;
+        updatedAt = now;
+        // claimToken は retention の世代 CAS のため残す。
+    }
+
+    void deferRelay(Instant next, Instant now) {
+        status = "PENDING";
+        lastErrorCode = "UNSUPPORTED_VERSION";
+        releaseLease(next, now);
+    }
+
+    void deferRecovery(Instant next, Instant now) {
+        releaseLease(next, now);
+    }
+
+    void readyAfterRecovery(Instant now) {
+        status = "PENDING";
+        releaseLease(now, now);
+    }
+
+    void recoverLease(Instant now) {
+        if ("RELAYING".equals(status)) {
+            status = "PENDING";
+        }
+        releaseLease(now, now);
+    }
+
+    private void releaseLease(Instant next, Instant now) {
+        claimToken = null;
+        claimedAt = null;
+        nextAttemptAt = next;
+        updatedAt = now;
+    }
+
 }

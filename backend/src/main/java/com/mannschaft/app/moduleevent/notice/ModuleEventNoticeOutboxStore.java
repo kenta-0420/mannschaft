@@ -1,8 +1,13 @@
 package com.mannschaft.app.moduleevent.notice;
 
+import com.mannschaft.app.common.UuidV7;
 import com.mannschaft.app.moduleevent.api.dto.ModuleEventRecoveryState;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.Query;
 
+import java.nio.ByteBuffer;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -10,69 +15,241 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * 通知予約の DB 契約骨格。実 DB の assertion red 確認前に動作実装しない。
- * この型は内部用であり notification へ Entity を公開しない。
- * reserve は呼出し元 M TX、claim/更新は M 専用 TX で接続する段階まで未実装。
+ * M 内部の通知予約 DB 操作。すべて呼出し元の M TX に参加し、業務 SPI を呼ばない。
+ * reserve は成功削除と同じ TX、relay/evaluation は接続 facade の独立 TX から呼ぶ。
+ * Entity は notification へ公開しない。全域 clear/detach で caller の dirty state を消さない。
  */
 public final class ModuleEventNoticeOutboxStore {
     public static final int MAX_CLAIMS = 100;
+    private static final int DESCRIPTOR_VERSION = 1;
+    private final EntityManager entityManager;
 
     public ModuleEventNoticeOutboxStore(EntityManager entityManager) {
-        Objects.requireNonNull(entityManager, "entityManager");
+        this.entityManager = Objects.requireNonNull(entityManager, "entityManager");
     }
 
-    /** 同一 noticeKey の再予約は同じ ID/noticeRef を返し、異なる descriptor は拒否する。
-     * 再予約で既存 status / lease / retry 時刻を初期化しない。 */
+    /** unique 競合を例外で握りつぶさず、同じ noticeKey の DB 行へ収束する。 */
     public Optional<ModuleEventNoticeOutboxEntity> reserve(ModuleEventNoticeOutboxEntity reservation) {
-        return Optional.empty();
+        Objects.requireNonNull(reservation, "reservation");
+        requireTransaction();
+        if (reservation.getId() == null) {
+            reservation.setId(UuidV7.generate());
+        }
+        entityManager.flush();
+        entityManager.createNativeQuery("""
+                INSERT INTO module_event_notice_outbox
+                    (id, notice_key, resolver_key, operation_id, episode_id, scope_type, scope_id,
+                     organization_id, phase, audience, descriptor_version, status, attempt_count,
+                     next_attempt_at, claim_token, claimed_at, relayed_at, dead_at, last_error_code,
+                     created_at, updated_at)
+                VALUES (:id, :noticeKey, :resolverKey, :operationId, :episodeId, :scopeType, :scopeId,
+                        :organizationId, :phase, :audience, :version, :status, :attemptCount,
+                        :next, :token, :claimed, :relayed, :dead, NULL, :created, :updated)
+                ON DUPLICATE KEY UPDATE id = id
+                """)
+                .setParameter("id", bytes(reservation.getId()))
+                .setParameter("noticeKey", bytes(reservation.getNoticeKey()))
+                .setParameter("resolverKey", reservation.getResolverKey())
+                .setParameter("operationId", bytes(reservation.getOperationId()))
+                .setParameter("episodeId", bytes(reservation.getEpisodeId()))
+                .setParameter("scopeType", reservation.getScopeType())
+                .setParameter("scopeId", reservation.getScopeId())
+                .setParameter("organizationId", reservation.getOrganizationId())
+                .setParameter("phase", reservation.getPhase())
+                .setParameter("audience", reservation.getAudience())
+                .setParameter("version", reservation.getDescriptorVersion())
+                .setParameter("status", reservation.getStatus())
+                .setParameter("attemptCount", reservation.getAttemptCount())
+                .setParameter("next", timestamp(reservation.getNextAttemptAt()))
+                .setParameter("token", bytes(reservation.getClaimToken()))
+                .setParameter("claimed", timestamp(reservation.getClaimedAt()))
+                .setParameter("relayed", timestamp(reservation.getRelayedAt()))
+                .setParameter("dead", timestamp(reservation.getDeadAt()))
+                .setParameter("created", timestamp(reservation.getCreatedAt()))
+                .setParameter("updated", timestamp(reservation.getUpdatedAt()))
+                .executeUpdate();
+        List<ModuleEventNoticeOutboxEntity> rows = rows(entityManager.createNativeQuery("""
+                SELECT * FROM module_event_notice_outbox WHERE notice_key = :key FOR UPDATE
+                """, ModuleEventNoticeOutboxEntity.class).setParameter("key", bytes(reservation.getNoticeKey())));
+        if (rows.size() != 1 || !sameDescriptor(rows.getFirst(), reservation)) {
+            throw new IllegalArgumentException("noticeKey と immutable descriptor が一致しない");
+        }
+        return Optional.of(rows.getFirst());
     }
 
-    /**
-     * 成功削除と同じ M TX に参加し、同じ binding / audience の既存 DELAYED 又は
-     * QUARANTINED を current read した場合だけ RECOVERED を WAITING_RECOVERY で予約する。
-     * 通常の高速成功は empty。業務 SPI を呼ばず、失敗は削除 TX ごと rollback する。
-     * Spring 接続時は MANDATORY とし、外側成功 hook の TX と原子的に確定する。
-     */
+    /** 影響通知のある同 binding/audience だけ、成功削除と同じ TX で WAITING を予約する。 */
     public Optional<ModuleEventNoticeOutboxEntity> reserveRecoveryIntent(
             ModuleEventNoticeOutboxEntity recoveryReservation) {
-        return Optional.empty();
+        Objects.requireNonNull(recoveryReservation, "recoveryReservation");
+        requireTransaction();
+        if (recoveryReservation.getDescriptorVersion() != DESCRIPTOR_VERSION
+                || !"RECOVERED".equals(recoveryReservation.getPhase())
+                || !"WAITING_RECOVERY".equals(recoveryReservation.getStatus())) {
+            throw new IllegalArgumentException("復旧 intent は既知版の RECOVERED / WAITING_RECOVERY が必要");
+        }
+        entityManager.flush();
+        Query query = binding(entityManager.createNativeQuery("""
+                SELECT id FROM module_event_notice_outbox
+                WHERE resolver_key = :resolver AND operation_id = :operation AND episode_id = :episode
+                  AND scope_type = :scopeType AND scope_id = :scopeId AND organization_id <=> :organization
+                  AND audience = :audience AND descriptor_version = :version
+                  AND phase IN ('DELAYED', 'QUARANTINED')
+                LIMIT 1 FOR UPDATE
+                """), recoveryReservation)
+                .setParameter("audience", recoveryReservation.getAudience())
+                .setParameter("version", DESCRIPTOR_VERSION);
+        return query.getResultList().isEmpty() ? Optional.empty() : reserve(recoveryReservation);
     }
 
-    /** SQL 自体を limit 件に制限。未知版を先に判定し、後続の既知版を停止させない。 */
+    /** 未知版を閉じた enum へ変換せず claim し、adapter の defer で後続へ進める。 */
     public List<ModuleEventNoticeOutboxEntity> claim(int limit, Instant now) {
-        return List.of();
+        return claimRows(limit, now, false);
     }
 
-    /** WAITING_RECOVERY だけを SQL 上限 1..100 件で取得し、新しい評価 token を採番する。 */
     public List<ModuleEventNoticeOutboxEntity> claimRecovery(int limit, Instant now) {
-        return List.of();
+        return claimRows(limit, now, true);
     }
 
-    /**
-     * M 読取 TX 終了後に得た業務評価を別 M TX へ戻す。SPI 呼出しを内包しない。
-     * 現 status / token が一致し、CLOSED_COMPLETE かつ M pending=0 を再確認した場合だけ
-     * PENDING へ昇格する。OPEN / UNKNOWN は WAITING の次回時刻へ繰り延べる。
-     * 評価の繰延べで relay attemptCount を増やさない。CLOSED 後の同 episode 再利用は禁止。
-     */
+    private List<ModuleEventNoticeOutboxEntity> claimRows(int limit, Instant now, boolean recovery) {
+        checkLimit(limit);
+        Objects.requireNonNull(now, "now");
+        requireTransaction();
+        entityManager.flush();
+        List<ModuleEventNoticeOutboxEntity> claimed = rows(entityManager.createNativeQuery("""
+                SELECT * FROM module_event_notice_outbox
+                WHERE status = :status AND next_attempt_at <= :now AND claim_token IS NULL
+                ORDER BY next_attempt_at, id LIMIT :limit FOR UPDATE SKIP LOCKED
+                """, ModuleEventNoticeOutboxEntity.class)
+                .setParameter("status", recovery ? "WAITING_RECOVERY" : "PENDING")
+                .setParameter("now", timestamp(now)).setParameter("limit", limit));
+        claimed.forEach(row -> row.claim(recovery, now));
+        return claimed;
+    }
+
+    /** TX 外で得た業務評価を現在世代へ適用する。業務 SPI 自体は呼ばない。 */
     public boolean applyRecoveryEvaluation(UUID id, UUID claimToken, ModuleEventRecoveryState recovery,
             Instant nextAttemptAt, Instant now) {
+        Objects.requireNonNull(recovery, "recovery");
+        Objects.requireNonNull(nextAttemptAt, "nextAttemptAt");
+        Objects.requireNonNull(now, "now");
+        ModuleEventNoticeOutboxEntity row = current(id);
+        if (!owned(row, claimToken, "WAITING_RECOVERY")
+                || row.getDescriptorVersion() != DESCRIPTOR_VERSION || !"RECOVERED".equals(row.getPhase())) {
+            return false;
+        }
+        if (recovery != ModuleEventRecoveryState.CLOSED_COMPLETE) {
+            row.deferRecovery(nextAttemptAt, now);
+            return true;
+        }
+        // core scalar 列接続は別 checkpoint。未確認 pending=0 を成功へ偽装しない。
+        row.deferRecovery(nextAttemptAt, now);
         return false;
     }
 
-    /** id と現在の claimToken と RELAYING を同時比較し、旧世代の成功を拒否する。
-     * RELAYED 後も token を保持し、二段 retention の世代 CAS に用いる。 */
+    /** RELAYED は enqueue 受付。配送済みとせず token を retention CAS のため保持する。 */
     public boolean markRelayed(UUID id, UUID claimToken, Instant now) {
-        return false;
+        Objects.requireNonNull(now, "now");
+        ModuleEventNoticeOutboxEntity row = current(id);
+        if (!owned(row, claimToken, "RELAYING") || row.getDescriptorVersion() != DESCRIPTOR_VERSION) {
+            return false;
+        }
+        row.relayed(now);
+        return true;
     }
 
-    /** 未知版は閉じた enum へ変換せず、現在世代だけ次回時刻へ繰り延べる。 */
     public boolean deferUnsupportedVersion(UUID id, UUID claimToken, Instant nextAttemptAt, Instant now) {
-        return false;
+        Objects.requireNonNull(nextAttemptAt, "nextAttemptAt");
+        Objects.requireNonNull(now, "now");
+        ModuleEventNoticeOutboxEntity row = current(id);
+        if (row == null || row.getDescriptorVersion() == DESCRIPTOR_VERSION
+                || !(owned(row, claimToken, "RELAYING") || owned(row, claimToken, "WAITING_RECOVERY"))) {
+            return false;
+        }
+        if ("RELAYING".equals(row.getStatus())) {
+            row.deferRelay(nextAttemptAt, now);
+        } else {
+            row.deferRecovery(nextAttemptAt, now);
+        }
+        return true;
     }
 
-    /** 期限切れ lease だけを有界処理する。WAITING は WAITING のまま評価 lease を失効させる。
-     * RELAYING は PENDING へ戻し、どちらも旧 token を無効化する。次 claim は新 token。 */
     public int recoverStuck(Instant claimedBefore, Instant now) {
-        return 0;
+        Objects.requireNonNull(claimedBefore, "claimedBefore");
+        Objects.requireNonNull(now, "now");
+        requireTransaction();
+        entityManager.flush();
+        List<ModuleEventNoticeOutboxEntity> expired = rows(entityManager.createNativeQuery("""
+                SELECT * FROM module_event_notice_outbox
+                WHERE status IN ('RELAYING', 'WAITING_RECOVERY')
+                  AND claim_token IS NOT NULL AND claimed_at < :before
+                ORDER BY claimed_at, id LIMIT 100 FOR UPDATE SKIP LOCKED
+                """, ModuleEventNoticeOutboxEntity.class).setParameter("before", timestamp(claimedBefore)));
+        expired.forEach(row -> row.recoverLease(now));
+        return expired.size();
+    }
+
+    private ModuleEventNoticeOutboxEntity current(UUID id) {
+        Objects.requireNonNull(id, "id");
+        requireTransaction();
+        entityManager.flush();
+        ModuleEventNoticeOutboxEntity row = entityManager.find(ModuleEventNoticeOutboxEntity.class,
+                id, LockModeType.PESSIMISTIC_WRITE);
+        if (row != null) {
+            entityManager.refresh(row, LockModeType.PESSIMISTIC_WRITE);
+        }
+        return row;
+    }
+
+    private List<ModuleEventNoticeOutboxEntity> rows(Query query) {
+        List<ModuleEventNoticeOutboxEntity> result = query.getResultList().stream()
+                .map(ModuleEventNoticeOutboxEntity.class::cast).toList();
+        result.forEach(row -> entityManager.refresh(row, LockModeType.PESSIMISTIC_WRITE));
+        return result;
+    }
+
+    private static boolean owned(ModuleEventNoticeOutboxEntity row, UUID token, String status) {
+        return row != null && token != null && token.equals(row.getClaimToken()) && status.equals(row.getStatus());
+    }
+
+    private static boolean sameDescriptor(ModuleEventNoticeOutboxEntity left, ModuleEventNoticeOutboxEntity right) {
+        return left.getDescriptorVersion() == right.getDescriptorVersion()
+                && Objects.equals(left.getNoticeKey(), right.getNoticeKey())
+                && Objects.equals(left.getResolverKey(), right.getResolverKey())
+                && Objects.equals(left.getOperationId(), right.getOperationId())
+                && Objects.equals(left.getEpisodeId(), right.getEpisodeId())
+                && Objects.equals(left.getScopeType(), right.getScopeType())
+                && Objects.equals(left.getScopeId(), right.getScopeId())
+                && Objects.equals(left.getOrganizationId(), right.getOrganizationId())
+                && Objects.equals(left.getPhase(), right.getPhase())
+                && Objects.equals(left.getAudience(), right.getAudience());
+    }
+
+    private static Query binding(Query query, ModuleEventNoticeOutboxEntity row) {
+        return query.setParameter("resolver", row.getResolverKey())
+                .setParameter("operation", bytes(row.getOperationId()))
+                .setParameter("episode", bytes(row.getEpisodeId()))
+                .setParameter("scopeType", row.getScopeType()).setParameter("scopeId", row.getScopeId())
+                .setParameter("organization", row.getOrganizationId());
+    }
+
+    private void requireTransaction() {
+        if (!entityManager.isJoinedToTransaction()) {
+            throw new IllegalStateException("通知予約 Store は既存 M TX 内で呼ぶ必要がある");
+        }
+    }
+
+    private static void checkLimit(int limit) {
+        if (limit < 1 || limit > MAX_CLAIMS) {
+            throw new IllegalArgumentException("limit は 1..100 が必要");
+        }
+    }
+
+    private static byte[] bytes(UUID id) {
+        return id == null ? null : ByteBuffer.allocate(16)
+                .putLong(id.getMostSignificantBits()).putLong(id.getLeastSignificantBits()).array();
+    }
+
+    private static Timestamp timestamp(Instant instant) {
+        return instant == null ? null : Timestamp.from(instant);
     }
 }
