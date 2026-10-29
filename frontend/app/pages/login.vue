@@ -126,7 +126,7 @@ async function handleLogin() {
   // 「メールアドレスまたはパスワードが不一致」という誤った文言を出してしまうため。
   let navigationTarget: string | null = null
   try {
-    const data = await api<{
+    const loginRequest = api<{
       data: LoginResult & {
         // MfaRequiredResponse（CMP-261012-0910 AC-27）。旧 BE 応答では欠落しうる。
         primaryMethod?: 'TOTP' | 'EMAIL' | 'BACKUP_CODE' | null
@@ -136,6 +136,16 @@ async function handleLogin() {
       method: 'POST',
       body: { email: email.value, password: password.value },
     })
+    // 認証の応答待ちに公開JSだけを準備する。setupやmount、private API取得は行わない。
+    // 先読みの完了・失敗で本人復元やMFA判定、通常の画面遷移を待たせない。
+    void Promise.all([
+      import('~/pages/dashboard.vue'),
+      import('~/components/dashboard/DashboardPersonalPanel.vue'),
+      import('~/components/schedule/CalendarGrid.vue'),
+    ]).catch(() => {
+      console.warn('ダッシュボード資産の先読みを完了できませんでした。通常の画面遷移を続行します。')
+    })
+    const data = await loginRequest
     if (data.data.mfaRequired) {
       // 方式情報を 2fa-verify へ引き継ぐ（AC-53）。欠落時は 2fa-verify 側が TOTP にフォールバックする。
       const mfaQuery = new URLSearchParams({ session: data.data.mfaSessionToken ?? '' })

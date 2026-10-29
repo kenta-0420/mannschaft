@@ -195,7 +195,7 @@ export default defineNuxtPlugin(async () => {
 ### 2.6 Carousel: `frontend/app/components/dashboard/DashboardScopeCarousel.vue`（新規）
 
 - **swiper ライブラリは使わない**（既存依存に swiper はなく、bundle 肥大を避ける）。`touchstart` / `touchmove` / `touchend` の自前スワイプを実装。
-- 個人/チーム/組織の外枠3 `section`・タブ・トラックを常設し、固定keyで循環順に並べて `translateX` でスライドする。bodyは復元された初期選択先だけを生成し、未訪問bodyは `PageLoading` を表示する。クリック・矢印・キーボード・確定スワイプ・外部store変更の選択時にNuxtのLazy componentを初めて読み込み、訪問後は非表示でも同じinstanceと入力状態を保持する。連打queueでも選択先は即時に生成し、並べ替えで再マウントしない。共通のscope-tabs/容量同期は維持する。
+- 個人/チーム/組織の外枠3 `section`・タブ・トラックを常設し、固定keyで循環順に並べて `translateX` でスライドする。bodyは復元された初期選択先だけを生成し、未訪問bodyは `PageLoading` を表示する。クリック・矢印・キーボード・確定スワイプ・外部store変更の選択時にNuxtのLazy componentのbodyを初めて生成し、訪問後は非表示でも同じinstanceと入力状態を保持する。連打queueでも選択先は即時に生成し、並べ替えで再マウントしない。共通のscope-tabs/容量同期は維持する。
 - **循環遷移**: 個人(0) → チーム(1) → 組織(2) → 個人(0)…。端からのスワイプは「ループ用ゴーストパネル」方式ではなく、`activeIndex` を mod 3 で循環させ、端では `transition` を一時無効化して瞬間ジャンプ → 再有効化（循環の継ぎ目を自然に見せる。03 §3.3）。
 - **スワイプ閾値**: 横移動量 > 画面幅の 20% かつ `|Δx| > |Δy| * 1.5`（縦スクロールと誤判定しない）で確定。閾値未満は元位置へ戻す（ばね戻し）。
 - **慣性**: フリック速度（`Δx / Δt`）が閾値超なら移動量が小さくてもページ送り。
@@ -213,6 +213,8 @@ export default defineNuxtPlugin(async () => {
 > `dashboard.vue` 自体は「Carousel をマウントするシェル」に再構成し、その個人パネルスロットに従来の内容を移す。ルートは `/dashboard` のまま（URL 変更なし）。
 
 個人パネルの作成・設定ダイアログとカレンダーの日別一覧・予定フォームは、初回操作で遅延読み込みする。既定レイアウトのメモ・目安箱・インストール案内、チーム／組織グリッドの詳細プレビューも同じ方針とする。閉じてもインスタンスを破棄せず、従来の保存／キャンセル時のリセット、再表示時の下書き復元・日付と編集対象の同期を維持する。初回から開いた状態で生成されるため、open時の監視は必要な状態定義の後に登録し、初回にも一度実行する。詳細プレビューは最初のLOADINGから表示し、close/retryとフォーカス復帰を従来どおり保つ。パネル選択、ウィジェットの折りたたみ、必須資産のpreload、SSR/CSPは変更しない。
+
+パスワードログインの送信時は、認証応答待ちに `dashboard.vue`・`DashboardPersonalPanel.vue`・`CalendarGrid.vue` の公開JSを並列で準備する。componentのsetup・mountやprivate API取得は実行しない。先読み完了を認証・MFA判定・本人復元・遷移の条件にせず、失敗は秘密を含まない固定文言で診断して通常の画面遷移へ任せる。保存済みの表示設定・並び順のreadyゲートと、非表示widget・未訪問scopeを生成／取得しない境界を維持する。先読みの開始と安全境界は回帰試験、本番chunkの取得順序と表示時間への寄与は同条件の本番build実測で別々に確認する。
 
 ### 2.8 検索フォーム: `frontend/app/components/dashboard/ScopeSearchForm.vue`（新規）
 
