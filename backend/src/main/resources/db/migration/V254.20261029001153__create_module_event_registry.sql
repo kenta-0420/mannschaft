@@ -20,10 +20,27 @@ CREATE TABLE event_publication_attempts (
     lease_until DATETIME(6) NULL,
     quarantined_at DATETIME(6) NULL,
     failure_code VARCHAR(64) NULL,
+    resolver_key VARCHAR(100) NULL,
+    operation_id BINARY(16) NULL,
+    episode_id BINARY(16) NULL,
+    scope_type VARCHAR(16) NULL,
+    scope_id BIGINT NULL,
+    organization_id BIGINT NULL,
     created_at DATETIME(6) NOT NULL,
     updated_at DATETIME(6) NOT NULL,
     version BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uq_event_publication_attempts_publication_id UNIQUE (publication_id),
-    KEY idx_event_publication_attempts_status_lease_until (status, lease_until)
+    KEY idx_event_publication_attempts_status_lease_until (status, lease_until),
+    KEY idx_event_publication_attempts_episode
+        (resolver_key, operation_id, episode_id, scope_type, scope_id, organization_id),
+    CONSTRAINT chk_event_publication_attempts_impact_binding CHECK (
+        (resolver_key IS NULL AND operation_id IS NULL AND episode_id IS NULL
+            AND scope_type IS NULL AND scope_id IS NULL AND organization_id IS NULL)
+        OR (resolver_key IS NOT NULL AND resolver_key <> ''
+            AND operation_id IS NOT NULL AND episode_id IS NOT NULL AND scope_type IS NOT NULL
+            AND scope_id IS NOT NULL AND scope_id > 0 AND scope_type IN ('TEAM','ORGANIZATION')
+            AND (organization_id IS NULL OR organization_id > 0)
+            AND (scope_type = 'TEAM' OR (organization_id IS NOT NULL AND organization_id = scope_id)))
+    )
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

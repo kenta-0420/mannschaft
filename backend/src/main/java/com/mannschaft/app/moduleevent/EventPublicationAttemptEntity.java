@@ -1,10 +1,12 @@
 package com.mannschaft.app.moduleevent;
 
 import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.moduleevent.api.dto.ModuleEventNoticeScope;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
@@ -14,11 +16,25 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.Check;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /** ライブラリ管理の publication に対して、試行回数・lease・隔離を保持する補助行。 */
 @Entity
 @Table(name = "event_publication_attempts", uniqueConstraints =
-        @UniqueConstraint(name = "uq_event_publication_attempts_publication_id", columnNames = "publication_id"))
+        @UniqueConstraint(name = "uq_event_publication_attempts_publication_id", columnNames = "publication_id"),
+        indexes = @Index(name = "idx_event_publication_attempts_episode",
+                columnList = "resolver_key,operation_id,episode_id,scope_type,scope_id,organization_id"))
+@Check(name = "chk_event_publication_attempts_impact_binding", constraints = """
+        (resolver_key IS NULL AND operation_id IS NULL AND episode_id IS NULL
+            AND scope_type IS NULL AND scope_id IS NULL AND organization_id IS NULL)
+        OR (resolver_key IS NOT NULL AND resolver_key <> ''
+            AND operation_id IS NOT NULL AND episode_id IS NOT NULL AND scope_type IS NOT NULL
+            AND scope_id IS NOT NULL AND scope_id > 0 AND scope_type IN ('TEAM','ORGANIZATION')
+            AND (organization_id IS NULL OR organization_id > 0)
+            AND (scope_type = 'TEAM' OR (organization_id IS NOT NULL AND organization_id = scope_id)))
+        """)
 @Getter
 @SuperBuilder(toBuilder = true)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -28,6 +44,7 @@ public class EventPublicationAttemptEntity extends UuidV7Entity {
     @Column(name = "retry_count", nullable = false)
     private int retryCount;
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "status", nullable = false, length = 32)
     private ModuleEventAttemptStatus status;
     @Column(name = "claim_token", nullable = false)
@@ -40,6 +57,21 @@ public class EventPublicationAttemptEntity extends UuidV7Entity {
     private LocalDateTime quarantinedAt;
     @Column(name = "failure_code", length = 64)
     private String failureCode;
+    // 業務が明示した識別子だけを保存する。未接続のイベントは全列nullのままにする。
+    @Column(name = "resolver_key", length = 100)
+    private String resolverKey;
+    @Column(name = "operation_id")
+    private UUID operationId;
+    @Column(name = "episode_id")
+    private UUID episodeId;
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "scope_type", length = 16)
+    private ModuleEventNoticeScope scopeType;
+    @Column(name = "scope_id")
+    private Long scopeId;
+    @Column(name = "organization_id")
+    private Long organizationId;
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
     @Column(name = "updated_at", nullable = false)

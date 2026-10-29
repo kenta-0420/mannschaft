@@ -2,6 +2,7 @@ package com.mannschaft.app.moduleevent;
 
 import com.mannschaft.app.common.event.ReliableEvent;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
+import com.mannschaft.app.moduleevent.notice.ModuleEventImpactResolverRegistry;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import java.time.Clock;
@@ -13,6 +14,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Stream;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.modulith.events.core.DefaultEventPublicationRegistry;
 import org.springframework.modulith.events.core.EventPublicationRepository;
 import org.springframework.modulith.events.core.PublicationTargetIdentifier;
@@ -33,17 +35,20 @@ public class RestrictedEventPublicationRegistry extends DefaultEventPublicationR
     private final Clock clock;
     private final EntityManager entityManager;
     private final ModuleEventListenerCatalog catalog;
+    private final ObjectProvider<ModuleEventImpactResolverRegistry> impacts;
     private final TransactionTemplate completionTransaction;
     private final ConcurrentMap<InvocationKey, Generation> generations = new ConcurrentHashMap<>();
 
     public RestrictedEventPublicationRegistry(EventPublicationRepository repository, Clock clock,
             EntityManager entityManager, ModuleEventListenerCatalog catalog,
-            PlatformTransactionManager transactions) {
+            PlatformTransactionManager transactions, ObjectProvider<ModuleEventImpactResolverRegistry> impacts) {
         super(repository, clock);
         this.repository = repository;
         this.clock = clock;
         this.entityManager = entityManager;
         this.catalog = catalog;
+        // 起動時は業務resolverを生成せず、保存hookの純識別時だけ解決する。
+        this.impacts = impacts;
         completionTransaction = new TransactionTemplate(transactions);
         completionTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }

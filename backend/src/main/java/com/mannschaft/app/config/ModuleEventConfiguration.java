@@ -2,6 +2,9 @@ package com.mannschaft.app.config;
 
 import com.mannschaft.app.moduleevent.RestrictedEventPublicationRegistry;
 import com.mannschaft.app.moduleevent.ModuleEventListenerCatalog;
+import com.mannschaft.app.moduleevent.api.spi.ModuleEventImpactResolver;
+import com.mannschaft.app.moduleevent.notice.ModuleEventImpactEvaluator;
+import com.mannschaft.app.moduleevent.notice.ModuleEventImpactResolverRegistry;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.util.concurrent.Executor;
@@ -28,9 +31,22 @@ public class ModuleEventConfiguration {
     public RestrictedEventPublicationRegistry moduleEventRegistry(
             @Qualifier("jpaEventPublicationRepository") EventPublicationRepository repository,
             EntityManager entityManager, ModuleEventListenerCatalog catalog,
-            PlatformTransactionManager transactions) {
+            PlatformTransactionManager transactions, ObjectProvider<ModuleEventImpactResolverRegistry> impacts) {
         return new RestrictedEventPublicationRegistry(repository, Clock.systemUTC(), entityManager,
-                catalog, transactions);
+                catalog, transactions, impacts);
+    }
+
+    /** 受信者評価を含まない純識別窓口。業務resolverの依存をM Registryの構築へ戻さない。 */
+    @Bean
+    public ModuleEventImpactResolverRegistry moduleEventImpactResolverRegistry(
+            ObjectProvider<ModuleEventImpactResolver> resolvers) {
+        return new ModuleEventImpactResolverRegistry(resolvers.orderedStream().toList());
+    }
+
+    /** 業務の現在評価は保存hookと分け、非TX段取りから呼ぶ。 */
+    @Bean
+    public ModuleEventImpactEvaluator moduleEventImpactEvaluator(ModuleEventImpactResolverRegistry registry) {
+        return new ModuleEventImpactEvaluator(registry);
     }
 
     /** 循環初期化を避け、Registry はイベント発行時に解決する。 */
