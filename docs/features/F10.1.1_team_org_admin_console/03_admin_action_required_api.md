@@ -187,7 +187,8 @@ CLAUDE.md 障害対応原則（症状を隠さない・対処療法禁止）に�
 
 ### 4.5 N+1 回避
 
-- 各 Query Service の `pendingForXxx(scopeId, previewSize)` は **1〜2 クエリで件数とプレビューを返す**実装契約とする（件数は `COUNT`、プレビューは `LIMIT previewSize` の1クエリ）。プレビュー要素の `requested_by`（表示名）は ID リストをまとめて1回の `UserService.getDisplayNames(ids)` でバルク解決し、要素ごとの個別 SELECT を禁止する。
+- 単一種別の基本取得は `COUNT` と `LIMIT previewSize` の1〜2本とし、シフト変更依頼・交代申請は各種別で取得する。`Page` 取得に伴う追加 `COUNT` と表示名解決のSQLは別に数え、スコープ全体のSQL本数を一定とは扱わない。プレビュー要素の `requested_by`（表示名）は ID リストをまとめて1回の `UserService.getDisplayNames(ids)` でバルク解決し、要素ごとの個別 SELECT を禁止する。
+- 承認待ちが0件ならプレビューと表示名の取得を省略する。空スコープのSQL本数は予約・マッチング・未収請求が各 `COUNT` 1本、シフトが変更依頼・交代申請の `COUNT` 計2本となり、実DB契約テスト `AdminActionRequiredEmptyQueryCountIT` で検証する。これは内部SQL本数の契約であり、HTTP応答・初期表示の1秒以内達成は別途計測が必要（本変更では未確認）。
 - スラッグ解決も同様にバルク（`TeamService.getSlugsByIds(ids): Map<Long,String>`・プリミティブ返却）。
 
 ### 4.6 `@Transactional` 境界
