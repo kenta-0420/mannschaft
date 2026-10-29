@@ -10,4 +10,9 @@ public class ModuleEventMySqlTestConfiguration {
     ModuleEventRegistryIT.Listeners moduleRegistryTestListeners() {
         return new ModuleEventRegistryIT.Listeners();
     }
+
+    @Bean
+    ModuleEventReplayTestFixture.Listeners moduleReplayTestListeners() {
+        return new ModuleEventReplayTestFixture.Listeners();
+    }
 }
