@@ -278,6 +278,73 @@ class ModuleEventExecutionBoundaryTest {
         assertThat(failure).hasValue(null);
     }
 
+    @Test
+    void queuedFuture取消は入口受理せず世代と受付を解放する() throws Exception {
+        try (Harness h = new Harness(false)) {
+            CountDownLatch running = new CountDownLatch(1);
+            CountDownLatch unblock = new CountDownLatch(1);
+            h.pool.execute(() -> { running.countDown(); waitFor(unblock); });
+            Event event = event();
+            try {
+                assertThat(running.await(5, TimeUnit.SECONDS)).isTrue();
+                ModuleEventExecutionFrame old = h.bind(event);
+                assertThat(h.context.capture(event, old.listenerId())).containsSame(old);
+                try (var ignored = h.context.submitting(old)) {
+                    var future = h.pool.submit(() -> h.probe.order.add("cancelled-body"));
+                    assertThat(future.cancel(false)).isTrue();
+                }
+            } finally {
+                unblock.countDown();
+            }
+            await().atMost(Duration.ofSeconds(5)).until(() -> h.pool.getActiveCount() == 0
+                    && h.pool.getThreadPoolExecutor().getQueue().isEmpty());
+            assertThat(h.owner.accepted).hasValue(0);
+            assertThat(h.owner.rejected).hasValue(1);
+            assertThat(h.owner.trackerCleanup).hasValue(1);
+            assertThat(h.probe.order).isEmpty();
+            assertThat(h.pool.availableCapacity()).isEqualTo(2);
+            ModuleEventExecutionFrame current = h.bind(event);
+            h.marker().handle(event);
+            assertThat(h.probe.done.await(5, TimeUnit.SECONDS)).isTrue();
+            assertThat(h.probe.frames).containsExactly(current);
+        }
+    }
+
+    @Test
+    void shutdownで未実行queueを返す時も世代と受付を一度だけ解放する() throws Exception {
+        try (Harness h = new Harness(false)) {
+            CountDownLatch running = new CountDownLatch(1);
+            CountDownLatch unblock = new CountDownLatch(1);
+            h.pool.execute(() -> {
+                running.countDown();
+                boolean interrupted = false;
+                while (unblock.getCount() > 0) {
+                    try { unblock.await(); } catch (InterruptedException ignored) { interrupted = true; }
+                }
+                if (interrupted) Thread.currentThread().interrupt();
+            });
+            Event event = event();
+            try {
+                assertThat(running.await(5, TimeUnit.SECONDS)).isTrue();
+                h.bind(event);
+                h.marker().handle(event);
+                h.pool.shutdown();
+                assertThat(h.owner.accepted).hasValue(0);
+                assertThat(h.owner.rejected).hasValue(1);
+                assertThat(h.owner.trackerCleanup).hasValue(1);
+                assertThat(h.pool.availableCapacity()).isEqualTo(1);
+                // 終了queueの旧登録が強参照のまま残っていないことを再登録で確認する。
+                h.bind(event);
+            } finally {
+                unblock.countDown();
+            }
+            assertThat(h.pool.getThreadPoolExecutor().awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+            assertThat(h.pool.availableCapacity()).isEqualTo(2);
+            assertThat(h.owner.rejected).hasValue(1);
+            assertThat(h.probe.frames).isEmpty();
+        }
+    }
+
     static void waitFor(CountDownLatch latch) {
         try {
             if (!latch.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("mini試練の解放待ちが期限切れ");
@@ -310,17 +377,23 @@ class ModuleEventExecutionBoundaryTest {
 
     static class Owner implements ModuleEventExecutionFrame.Owner {
         final Probe probe;
+        final ModuleEventExecutionFrame.Context context;
         final AtomicInteger accepted = new AtomicInteger();
         final AtomicInteger rejected = new AtomicInteger();
         final AtomicInteger finished = new AtomicInteger();
         final AtomicReference<UUID> onlyToken = new AtomicReference<>();
-        Owner(Probe probe) { this.probe = probe; }
+        final AtomicInteger trackerCleanup = new AtomicInteger();
+        Owner(Probe probe, ModuleEventExecutionFrame.Context context) { this.probe = probe; this.context = context; }
         @Override public boolean admit(ModuleEventExecutionFrame frame) {
             if (onlyToken.get() != null && !onlyToken.get().equals(frame.token())) return false;
             accepted.incrementAndGet(); probe.order.add("accept"); return true;
         }
-        @Override public void rejected(ModuleEventExecutionFrame frame) { rejected.incrementAndGet(); }
-        @Override public void finished(ModuleEventExecutionFrame frame) { finished.incrementAndGet(); }
+        @Override public void rejected(ModuleEventExecutionFrame frame) {
+            context.release(frame, trackerCleanup::incrementAndGet); rejected.incrementAndGet();
+        }
+        @Override public void finished(ModuleEventExecutionFrame frame) {
+            context.release(frame, trackerCleanup::incrementAndGet); finished.incrementAndGet();
+        }
     }
 
     static class Marker {
@@ -346,7 +419,7 @@ class ModuleEventExecutionBoundaryTest {
     static class Harness implements AutoCloseable {
         final ModuleEventExecutionFrame.Context context = new ModuleEventExecutionFrame.Context();
         final Probe probe = new Probe();
-        final Owner owner = new Owner(probe);
+        final Owner owner = new Owner(probe, context);
         final ModuleEventTaskExecutor pool = new ModuleEventTaskExecutor(context, owner, 2, task -> task);
         final ThreadPoolTaskExecutor ordinary = new ThreadPoolTaskExecutor();
         final AnnotationConfigApplicationContext spring = new AnnotationConfigApplicationContext();
