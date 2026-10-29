@@ -299,5 +299,56 @@
     "status": "interrupted-unverified",
     "passed": false,
     "finalHeadRemoteGateRequired": true
+  },
+  "latestMainIntegration": {
+    "latestMainHead": "8b8c563e44d593301fac8e25b7cc6ec8d70b6089",
+    "priorDocsHead": "3b15d50fdb936b04437a15cb2cb4359b4eeacf1b",
+    "mainOverlayGitBlobSha256": "86df7b1caa57f8f9237a3ca62048d2700986088bd0ec9c49350664343748bcba",
+    "latestMainCounts": [
+      30,
+      30,
+      74
+    ],
+    "mergedCounts": [
+      33,
+      33,
+      75
+    ],
+    "ownAdditions": [
+      3,
+      3,
+      1
+    ],
+    "allLatestMainOverlayFieldsDeepEqualAfterRemovingOwnAdditions": true,
+    "allLatestMainTaskListLinesPreservedExceptOwnOneRow": true,
+    "automaticTableMergeMatchedExpected": true,
+    "pastCMP260827EvidenceLinkPreservedExactly": true,
+    "ownOriginalPurposesAndPartialOutcomeRetained": true,
+    "newPrivatePayloadIntroduced": false,
+    "otherMainChangesAlreadyPublic": true,
+    "canonicalGeneratorExit": 0,
+    "overlayExactExistingFunctionPassed": true,
+    "generatedOverlaySourceDataEqual": true,
+    "otherDataFieldsDeepEqual": true,
+    "htmlChanged": false,
+    "originalRootAssignedPurposesExactlyPreserved": true,
+    "mobilePartialOutcomePreserved": true,
+    "completionGuard": {
+      "trustedSourceSha256": "6827e0432fa58bb8db240f8fa6f76ac239146e97fdae56aa06b3ed559fbfe244",
+      "selectEvidencePathsPassed": true,
+      "selectedEvidenceCount": 1,
+      "validateCompletionChangesPassed": true,
+      "pastEvidenceBlobExactlyLatestMain": true,
+      "standardCliExecuted": false,
+      "githubApiVerifiedLocally": false,
+      "finalHeadGitHubGateRequired": true
+    }
+  },
+  "docsTaskListGateHistory": {
+    "firstDocsHead": "3b15d50fdb936b04437a15cb2cb4359b4eeacf1b",
+    "firstFailureRun": 40790021709,
+    "firstFailure": "CMP-260827-1152の過去完了証拠リンク欠落。最新main追従前の台帳が原因。",
+    "guardRelaxed": false,
+    "finalHeadCIRequired": true
   }
 }

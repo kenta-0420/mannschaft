@@ -37,5 +37,50 @@
     "plain": "近日と来月の自分が見られる予定を把握し、使いやすい表示で確認を終える",
     "return": "途中で別タブへ注意が逸れても、自分が見られる予定の確認を終える",
     "mobile": "外出先で直近1週間の自分が見られる予定を把握したい"
+  },
+  "previous26_26_55ProofIsHistorical": true,
+  "latestMainIntegration": {
+    "latestMainHead": "8b8c563e44d593301fac8e25b7cc6ec8d70b6089",
+    "priorDocsHead": "3b15d50fdb936b04437a15cb2cb4359b4eeacf1b",
+    "mainOverlayGitBlobSha256": "86df7b1caa57f8f9237a3ca62048d2700986088bd0ec9c49350664343748bcba",
+    "latestMainCounts": [
+      30,
+      30,
+      74
+    ],
+    "mergedCounts": [
+      33,
+      33,
+      75
+    ],
+    "ownAdditions": [
+      3,
+      3,
+      1
+    ],
+    "allLatestMainOverlayFieldsDeepEqualAfterRemovingOwnAdditions": true,
+    "allLatestMainTaskListLinesPreservedExceptOwnOneRow": true,
+    "automaticTableMergeMatchedExpected": true,
+    "pastCMP260827EvidenceLinkPreservedExactly": true,
+    "ownOriginalPurposesAndPartialOutcomeRetained": true,
+    "newPrivatePayloadIntroduced": false,
+    "otherMainChangesAlreadyPublic": true,
+    "canonicalGeneratorExit": 0,
+    "overlayExactExistingFunctionPassed": true,
+    "generatedOverlaySourceDataEqual": true,
+    "otherDataFieldsDeepEqual": true,
+    "htmlChanged": false,
+    "originalRootAssignedPurposesExactlyPreserved": true,
+    "mobilePartialOutcomePreserved": true,
+    "completionGuard": {
+      "trustedSourceSha256": "6827e0432fa58bb8db240f8fa6f76ac239146e97fdae56aa06b3ed559fbfe244",
+      "selectEvidencePathsPassed": true,
+      "selectedEvidenceCount": 1,
+      "validateCompletionChangesPassed": true,
+      "pastEvidenceBlobExactlyLatestMain": true,
+      "standardCliExecuted": false,
+      "githubApiVerifiedLocally": false,
+      "finalHeadGitHubGateRequired": true
+    }
   }
 }

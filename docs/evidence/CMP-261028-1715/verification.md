@@ -47,3 +47,9 @@ B0は正規generatorを用い、既存26/26/55の全field・環境を保持し�
 local completion CLIは61fで過去全完了証拠・全参照を逐次git showするため長時間化し、root判断で所有読取Nodeだけを停止した。[中断safe](validation/completion-cli1-interrupted-safe.json)は未検証/exit-1でありgreenに数えない。最終docs headのGitHub Task-List完了ゲートが実PR/CI照合を含めて検証する。
 
 rootがレビュー済みstrict helperで本人Nav NitroだけをSIGTERMし、3011解放/main API847218同一/他signal0を確認した。[停止safe](source/nav-fixed-owned-nitro1-stop-safe.json)。配布物削除は別gateで未実施、本陣3000/8080と外国3001を変更していない。
+
+## 最新main追従と過去完了証拠の保持
+
+初回docs gateは、進んだmainにあるCMP-260827-1152の完了証拠リンクを古いPR台帳が持たず失敗した。最新公開main8b8を通常mergeし、台帳はmain全行を保持してownCMP1715完了行だけを維持した。累積overlay衝突は最新main30/30/74の全fieldを保持してown3/3/1だけ追加し33/33/75。旧26/26/55→29/29/56証明は当時の履歴として残す。
+
+正規generatorのoverlay同fieldだけを再反映し、source/生成data完全一致・他field不変・HTML不変更・原目的3件/部分達成維持を確認。既存completion-evidenceのselectEvidencePaths/validateCompletionChangesを最新main台帳対比で直接検証し、過去リンク保全・証拠blob一致と必要な参照を確認した。ガードは緩めず、長時間標準CLIは再起動していない。最終headのGitHubゲートで実PR/CI照合まで確認する。
