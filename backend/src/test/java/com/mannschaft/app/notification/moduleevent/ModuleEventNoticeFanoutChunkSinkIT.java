@@ -330,19 +330,38 @@ class ModuleEventNoticeFanoutChunkSinkIT extends ModuleEventNoticeNotificationTe
     }
 
     @Test
-    void 二人目INSERT失敗では一人目もcommitされない() {
+    void 二人目INSERT失敗では一人目もcommitされない() throws SQLException {
         var row = notice("DELAYED");
         state(row).recipients = List.of(new ModuleEventNoticeRecipient(USER_A, "ja"), new ModuleEventNoticeRecipient(USER_B, "en"));
         UUID id = job(row);
         String trigger = "l1m_notice_fail_" + UUID.randomUUID().toString().replace("-", "");
         // 自予約・自候補の二人目だけを失敗させる。既存利用者の INSERT には作用しない。
-        jdbc.execute("CREATE TRIGGER " + trigger + " BEFORE INSERT ON notifications FOR EACH ROW BEGIN "
-                + "IF NEW.source_type = 'MODULE_EVENT_NOTICE' AND NEW.source_id = " + row.getNoticeRef()
-                + " AND NEW.user_id = " + USER_B + " THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'own notice failure'; END IF; END");
+        executeOwnTriggerDdl(trigger, row.getNoticeRef(), true);
         try {
             assertThatThrownBy(() -> sink.processChunk(id, row.getNoticeRef(), List.of(USER_A, USER_B)))
                     .isInstanceOf(org.springframework.dao.DataAccessException.class);
             assertThat(notificationCount(row)).isZero();
-        } finally { jdbc.execute("DROP TRIGGER " + trigger); }
+        } finally { executeOwnTriggerDdl(trigger, row.getNoticeRef(), false); }
     }
+
+    /** 自己検体のtrigger DDLだけに使う書込接続。read-onlyのlock observerと共用しない。 */
+    private void executeOwnTriggerDdl(String trigger, long noticeRef, boolean create) throws SQLException {
+        if (!trigger.matches("l1m_notice_fail_[0-9a-f]{32}") || noticeRef <= 0) {
+            throw new IllegalArgumentException("自己triggerの識別子・sourceRef前提を満たさない");
+        }
+        String url = MYSQL.getJdbcUrl();
+        url += (url.contains("?") ? "&" : "?")
+                + "connectTimeout=1000&socketTimeout=1000&useSSL=false&allowPublicKeyRetrieval=true";
+        // binlog有効な自己MySQLでCREATE/DROPに必要な権限だけを使う。global設定は変更しない。
+        try (Connection connection = DriverManager.getConnection(url, "root", MYSQL.getPassword());
+                java.sql.Statement statement = connection.createStatement()) {
+            statement.setQueryTimeout(1);
+            statement.execute(create ? "CREATE TRIGGER " + trigger + " BEFORE INSERT ON notifications FOR EACH ROW BEGIN "
+                    + "IF NEW.source_type = 'MODULE_EVENT_NOTICE' AND NEW.source_id = " + noticeRef
+                    + " AND NEW.user_id = " + USER_B
+                    + " THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'own notice failure'; END IF; END"
+                    : "DROP TRIGGER " + trigger);
+        }
+    }
+
 }
