@@ -250,8 +250,8 @@ public final class ModuleEventRealE2eApplication {
     private static void stopResidentHelper(Process helper, Instant started) throws Exception {
         if (helper == null) return;
         ModuleEventRealE2eFixtures.require(helper.isAlive(), "自己helperが停止指示前に終了した");
-        ModuleEventRealE2eFixtures.require(started != null
-                && helper.info().startInstant().filter(started::equals).isPresent(), "自己helper所有照合失敗");
+        boolean ownerVerified = started != null && helper.info().startInstant().filter(started::equals).isPresent();
+        // PID検索ではなく、このhost自身がstartしたProcessだけを回収する。metadata取得失敗でも残留させない。
         List<ProcessHandle> descendants = helper.descendants().toList();
         descendants.forEach(ProcessHandle::destroy);
         helper.destroy();
@@ -261,6 +261,7 @@ public final class ModuleEventRealE2eApplication {
             if (descendant.isAlive()) descendant.destroyForcibly();
             descendant.onExit().get(10, TimeUnit.SECONDS);
         }
+        ModuleEventRealE2eFixtures.require(ownerVerified, "自己helper所有metadata照合失敗");
     }
 
     private static void validate(Environment environment) {
