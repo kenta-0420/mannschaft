@@ -50,8 +50,16 @@ type TabKey =
   | { kind: 'folder', scopeType: ScopeType, folderId: number }
 
 const notices = ref<Notice[]>([])
-const loading = ref(true)
 const currentTab = ref<TabKey>({ kind: 'all' })
+const tabStates = ref(new Map<string, 'pending' | 'settled'>())
+const loading = computed(() => tabStates.value.get(tabCacheKey(currentTab.value)) !== 'settled')
+let requestGeneration = 0
+let disposed = false
+let folderBootstrap: Promise<void> | null = null
+
+function isCurrentRequest(generation: number): boolean {
+  return !disposed && generation === requestGeneration
+}
 
 /**
  * `/api/v1/notifications` のレスポンス（PagedResponse 形）の最低限の形。
@@ -174,70 +182,90 @@ async function fetchForTab(tab: TabKey): Promise<Notice[]> {
 }
 
 /** 要対応タブ: API からアイテム一覧を取得。 */
-async function loadActionRequired() {
+async function loadActionRequired(generation: number) {
   if (actionRequiredLoaded.value) return
   actionRequiredLoading.value = true
   try {
     const res = await fetchActionRequired()
+    if (!isCurrentRequest(generation)) return
     actionRequiredItems.value = res.items
     actionRequiredLoaded.value = true
   }
   catch (error) {
+    if (!isCurrentRequest(generation)) return
     captureQuiet(error, { context: 'WidgetNotices: 要対応取得' })
     actionRequiredItems.value = []
   }
   finally {
-    actionRequiredLoading.value = false
+    if (isCurrentRequest(generation)) actionRequiredLoading.value = false
   }
 }
 
 /** 運営お知らせタブ: API からアイテム一覧を取得。 */
-async function loadPlatformAnnouncements() {
+async function loadPlatformAnnouncements(generation: number) {
   if (platformAnnouncementsLoaded.value) return
   platformAnnouncementsLoading.value = true
   try {
     const res = await getPlatformAnnouncements()
+    if (!isCurrentRequest(generation)) return
     platformAnnouncements.value = res.data
     platformAnnouncementsLoaded.value = true
   }
   catch {
+    if (!isCurrentRequest(generation)) return
     platformAnnouncements.value = []
   }
   finally {
-    platformAnnouncementsLoading.value = false
+    if (isCurrentRequest(generation)) platformAnnouncementsLoading.value = false
   }
 }
 
-/** 全タブ分を並列プリフェッチしてキャッシュに保存し、現在タブを表示する。 */
-async function load() {
-  loading.value = true
-  noticeCache.clear()
-  actionRequiredLoaded.value = false
-  platformAnnouncementsLoaded.value = false
+/** 非選択タブはキャッシュだけ更新し、現在タブの完了を独立して表示する。 */
+async function loadTab(tab: TabKey, generation: number) {
+  const key = tabCacheKey(tab)
+  if (!isCurrentRequest(generation) || tabStates.value.has(key)) return
+  tabStates.value.set(key, 'pending')
   try {
-    await Promise.all([
-      Promise.all(tabs.value.map(async (tabDef) => {
-        if (tabDef.tab.kind === 'action-required') return // 別ステートで管理
-        if (tabDef.tab.kind === 'platform-announcements') return // 別ステートで管理
-        try {
-          noticeCache.set(tabCacheKey(tabDef.tab), await fetchForTab(tabDef.tab))
-        }
-        catch (error) {
-          captureQuiet(error, { context: `WidgetNotices: ${tabDef.key} 取得` })
-          noticeCache.set(tabCacheKey(tabDef.tab), [])
-        }
-      })),
-      // 通常タブ群の完了を待たず、独立した要対応・運営お知らせも開始する。
-      loadActionRequired(),
-      loadPlatformAnnouncements(),
-    ])
+    if (tab.kind === 'action-required') await loadActionRequired(generation)
+    else if (tab.kind === 'platform-announcements') await loadPlatformAnnouncements(generation)
+    else {
+      const result = await fetchForTab(tab)
+      if (isCurrentRequest(generation)) noticeCache.set(key, result)
+    }
+  }
+  catch (error) {
+    if (!isCurrentRequest(generation)) return
+    captureQuiet(error, { context: `WidgetNotices: ${key} 取得` })
+    noticeCache.set(key, [])
   }
   finally {
-    if (currentTab.value.kind !== 'action-required' && currentTab.value.kind !== 'platform-announcements') {
-      notices.value = noticeCache.get(tabCacheKey(currentTab.value)) ?? []
+    if (isCurrentRequest(generation)) {
+      tabStates.value.set(key, 'settled')
+      if (tab.kind !== 'action-required' && tab.kind !== 'platform-announcements' && key === tabCacheKey(currentTab.value)) {
+        notices.value = noticeCache.get(key) ?? []
+      }
     }
-    loading.value = false
   }
+}
+
+/** 既知タブをすぐ開始し、一覧取得後に増えたフォルダも先読みする。 */
+async function load() {
+  if (disposed) return
+  if (!tabs.value.some(({ tab }) => tabCacheKey(tab) === tabCacheKey(currentTab.value))) {
+    currentTab.value = { kind: 'all' }
+  }
+  const generation = ++requestGeneration
+  noticeCache.clear()
+  tabStates.value = new Map()
+  actionRequiredLoaded.value = false
+  platformAnnouncementsLoaded.value = false
+  await Promise.all([
+    ...tabs.value.map(({ tab }) => loadTab(tab, generation)),
+    ensureFoldersLoaded().then(async () => {
+      if (!isCurrentRequest(generation)) return
+      await Promise.all(tabs.value.map(({ tab }) => loadTab(tab, generation)))
+    }),
+  ])
 }
 
 async function onMarkRead(id: number) {
@@ -256,15 +284,20 @@ async function onMarkAllRead() {
 
 const unreadCount = computed(() => notices.value.filter(n => !n.isRead).length)
 
-/** タブ切替。キャッシュから即座に表示するだけ（API呼び出しなし）。 */
+/** 取得済みタブは表示し、未完了ならloadingを継続、未取得なら取得を開始する。 */
 function switchTab(tab: TabKey) {
   currentTab.value = tab
   if (tab.kind !== 'action-required' && tab.kind !== 'platform-announcements') {
     notices.value = noticeCache.get(tabCacheKey(tab)) ?? []
   }
   if (tab.kind === 'platform-announcements') {
-    loadPlatformAnnouncements()
+    // 失敗した運営タブは、従来どおり次の選択時に再試行する。
+    const key = tabCacheKey(tab)
+    if (!platformAnnouncementsLoaded.value && tabStates.value.get(key) === 'settled') {
+      tabStates.value.delete(key)
+    }
   }
+  void loadTab(tab, requestGeneration)
 }
 
 /**
@@ -284,19 +317,24 @@ async function refreshSummaries() {
 }
 
 /** フォルダ一覧をストアからロード（未取得の場合のみ）。 */
-async function ensureFoldersLoaded() {
-  try {
-    if (foldersStore.foldersFor('TEAM').length === 0) {
-      await foldersStore.fetchAll('TEAM')
+function ensureFoldersLoaded(): Promise<void> {
+  // refreshが初期取得と重なっても、共有store.loadingを使う一覧取得を重複させない。
+  folderBootstrap ??= (async () => {
+    try {
+      if (foldersStore.foldersFor('TEAM').length === 0) {
+        await foldersStore.fetchAll('TEAM')
+      }
+      if (disposed) return
+      if (foldersStore.foldersFor('ORGANIZATION').length === 0) {
+        await foldersStore.fetchAll('ORGANIZATION')
+      }
     }
-    if (foldersStore.foldersFor('ORGANIZATION').length === 0) {
-      await foldersStore.fetchAll('ORGANIZATION')
+    catch (error) {
+      // フォルダ一覧取得失敗は致命的でないため、「すべて」タブだけで動作継続
+      if (!disposed) captureQuiet(error, { context: 'WidgetNotices: フォルダ一覧取得' })
     }
-  }
-  catch (error) {
-    // フォルダ一覧取得失敗は致命的でないため、「すべて」タブだけで動作継続
-    captureQuiet(error, { context: 'WidgetNotices: フォルダ一覧取得' })
-  }
+  })()
+  return folderBootstrap
 }
 
 interface FolderTabDef {
@@ -440,9 +478,13 @@ function onAttendanceSubmitted() {
   }
 }
 
-onMounted(async () => {
-  await Promise.all([ensureFoldersLoaded(), refreshSummaries()])
-  await load()
+onMounted(() => {
+  void load()
+  void refreshSummaries()
+})
+onBeforeUnmount(() => {
+  disposed = true
+  requestGeneration++
 })
 </script>
 

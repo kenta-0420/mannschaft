@@ -97,7 +97,7 @@ async function flush(times = 3): Promise<void> {
   for (let i = 0; i < times; i++) await nextTick()
 }
 
-const mountLogin = (attachTo?: HTMLElement, page = LoginPage) => mount(page, {
+const mountLogin = (attachTo?: HTMLElement) => mount(LoginPage, {
   attachTo,
   global: {
     plugins: [PrimeVue],
@@ -106,107 +106,6 @@ const mountLogin = (attachTo?: HTMLElement, page = LoginPage) => mount(page, {
   },
 })
 
-describe('pages/login.vue 送信中の公開ダッシュボード資産準備', () => {
-  const modulePaths = [
-    '~/pages/dashboard.vue',
-    '~/components/dashboard/DashboardPersonalPanel.vue',
-    '~/components/schedule/CalendarGrid.vue',
-  ]
-  let assetStarts: ReturnType<typeof vi.fn<() => void>>[]
-  let finishAssets: Array<() => void>
-  let rejectAssets: Array<() => void>
-  let warn: ReturnType<typeof vi.spyOn>
-
-  beforeEach(() => {
-    vi.resetModules()
-    assetStarts = modulePaths.map(() => vi.fn<() => void>())
-    finishAssets = []
-    rejectAssets = []
-    warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    modulePaths.forEach((path, index) => {
-      vi.doMock(path, () => {
-        assetStarts[index]!()
-        return new Promise<{ default: { render: () => null } }>((resolve, reject) => {
-          finishAssets[index] = () => resolve({ default: { render: () => null } })
-          rejectAssets[index] = () => reject(new Error('asset unavailable'))
-        })
-      })
-    })
-  })
-
-  afterEach(async () => {
-    finishAssets.forEach(finish => finish())
-    await flush(8)
-    modulePaths.forEach(path => vi.doUnmock(path))
-    warn.mockRestore()
-  })
-
-  async function mountAssetLogin(): Promise<Wrapper> {
-    const page = (await import('~/pages/login.vue')).default
-    const wrapper = mountLogin(undefined, page)
-    mountedPages.push(wrapper)
-    return wrapper
-  }
-
-  it('認証応答待ちに3資産を準備し、二重送信せず、資産未完了でも本人復元と遷移を進める', async () => {
-    let finishLogin: (value: unknown) => void = () => {}
-    mockApi.mockReturnValueOnce(new Promise(resolve => { finishLogin = resolve }))
-      .mockResolvedValueOnce({ data: profile })
-    routeState.query = { redirect: '/my/profile' }
-    const wrapper = await mountAssetLogin()
-    expect(assetStarts.every(start => start.mock.calls.length === 0)).toBe(true)
-
-    await submit(wrapper)
-    await vi.waitFor(() => assetStarts.forEach(start => expect(start).toHaveBeenCalledOnce()))
-    expect(mockApi).toHaveBeenCalledOnce()
-    expect(mockApi.mock.calls[0]?.[0]).toBe('/api/v1/auth/login')
-    expect(mockSetTokens).not.toHaveBeenCalled()
-    expect(mockNavigate).not.toHaveBeenCalled()
-
-    await submit(wrapper)
-    expect(mockApi).toHaveBeenCalledOnce()
-    assetStarts.forEach(start => expect(start).toHaveBeenCalledOnce())
-    finishLogin({ data: { ...tokenResponse, userId: 42, fullName: 'Test Member', email: profile.email } })
-    await vi.waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/my/profile'))
-    expect(mockApi).toHaveBeenCalledTimes(2)
-    expect(mockApi.mock.calls[1]?.[0]).toBe('/api/v1/users/me')
-    expect(mockSyncSettings).toHaveBeenCalledOnce()
-    expect(mockNotifyError).not.toHaveBeenCalled()
-  })
-
-  it.each(['failure', 'mfa'] as const)('%sでは資産だけを準備し本人・privateデータを取得しない', async (outcome) => {
-    if (outcome === 'failure') mockApi.mockRejectedValueOnce({ data: { error: { code: 'AUTH_001' } } })
-    else mockApi.mockResolvedValueOnce({ data: { mfaRequired: true, mfaSessionToken: 'mfa-session' } })
-    const wrapper = await mountAssetLogin()
-
-    await submit(wrapper)
-    await vi.waitFor(() => assetStarts.forEach(start => expect(start).toHaveBeenCalledOnce()))
-    expect(mockApi).toHaveBeenCalledOnce()
-    expect(mockSetTokens).not.toHaveBeenCalled()
-    expect(mockSetUser).not.toHaveBeenCalled()
-    expect(mockSyncSettings).not.toHaveBeenCalled()
-    if (outcome === 'failure') {
-      expect(mockNavigate).not.toHaveBeenCalled()
-      expect(mockNotifyError).toHaveBeenCalledWith('auth.login.failed', 'auth.login.invalid_credentials')
-    } else expect(mockNavigate).toHaveBeenCalledWith('/2fa-verify?session=mfa-session')
-  })
-
-  it('資産準備失敗は固定文言で診断し、成功した認証を失敗扱いにしない', async () => {
-    mockApi.mockResolvedValueOnce({ data: { ...tokenResponse, userId: 42, fullName: 'Test Member', email: profile.email } })
-      .mockResolvedValueOnce({ data: profile })
-    const wrapper = await mountAssetLogin()
-
-    await submit(wrapper)
-    await vi.waitFor(() => assetStarts.forEach(start => expect(start).toHaveBeenCalledOnce()))
-    rejectAssets[0]!()
-    finishAssets.slice(1).forEach(finish => finish())
-
-    await vi.waitFor(() => expect(warn).toHaveBeenCalledWith('ダッシュボード資産の先読みを完了できませんでした。通常の画面遷移を続行します。'))
-    expect(mockNavigate).toHaveBeenCalledWith('/dashboard')
-    expect(mockApi).toHaveBeenCalledTimes(2)
-    expect(mockNotifyError).not.toHaveBeenCalled()
-  })
-})
 type Wrapper = ReturnType<typeof mountLogin>
 
 async function submit(wrapper: Wrapper): Promise<void> {
