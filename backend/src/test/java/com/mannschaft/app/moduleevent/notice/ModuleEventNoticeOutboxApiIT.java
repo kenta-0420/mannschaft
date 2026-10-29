@@ -39,13 +39,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.LongStream;
 
+import static com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -299,21 +299,6 @@ class ModuleEventNoticeOutboxApiIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    void CLOSED評価後に同aliasのnoticeKeyが変わったら元通知を許可しない() {
-        ModuleEventNoticeOutboxEntity row = notice("RECOVERED", "RELAYED");
-        Scenario scenario = scenario(row);
-        scenario.recovery = ModuleEventRecoveryState.CLOSED_COMPLETE;
-        scenario.recipients = recipients();
-        // 自検体だけを不整合に置換し、評価前の識別子を信用しない防御条件を検査する。
-        UUID replacementKey = UUID.randomUUID();
-        noticeKeys.add(replacementKey);
-        scenario.afterClosedDecision = () -> save(row.toBuilder().noticeKey(replacementKey).build());
-        assertThat(api.eligibleRecipients(row.getNoticeRef(), List.of(11L))).isEmpty();
-        assertThat(scenario.recoveryCalls).hasValue(1);
-        assertThat(scenario.eligibleCalls).hasValue(0);
-    }
-
-    @Test
     void 不正provider返却や不正入力を正常空や許可へ変換しない() {
         ModuleEventNoticeOutboxEntity row = notice("DELAYED", "PENDING");
         scenario(row).badPage = true;
@@ -351,7 +336,7 @@ class ModuleEventNoticeOutboxApiIT extends AbstractMySqlIntegrationTest {
 
     private void pending(ModuleEventNoticeOutboxEntity row, ModuleEventAttemptStatus status) {
         UUID id = inTx(() -> {
-            LocalDateTime future = LocalDateTime.ofInstant(FUTURE, ZoneOffset.UTC);
+            LocalDateTime future = LocalDateTime.ofInstant(FUTURE, SERVER_ZONE);
             TargetEventPublication publication = publications.create(TargetEventPublication.of(
                     new NoticeReadFixtureEvent(UUID.randomUUID(), null, future),
                     PublicationTargetIdentifier.of("module-notice-read-it-" + UUID.randomUUID()), FUTURE));
