@@ -115,6 +115,8 @@ dependencies {
 
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    // L1-M: モジュール検証レポートの ApplicationModules / Violations はテストだけで使う。
+    testImplementation("org.springframework.modulith:spring-modulith-core:1.4.13")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:mysql")
