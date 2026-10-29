@@ -3,6 +3,8 @@ package com.mannschaft.app.moduleevent;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import java.time.Duration;
+import java.time.Instant;
 import net.javacrumbs.shedlock.core.LockAssert;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.modulith.events.IncompleteEventPublications;
@@ -24,7 +26,7 @@ public class ModuleEventReplayBatch {
         this.operations = operations;
     }
 
-    /** lock猶予はM18未確定の初期値。red後に実再投入と運用観測を接続する。 */
+    /** lock猶予はM18未確定の初期値。公式再投入と運用観測を同じlock内で開始する。 */
     @BatchEndpoint(name = BATCH_NAME, description = "未完了の確実配信を毎分有界に再投入する")
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
             reason = "永続済み未完了イベントの再配信主体であり、止めると業務間の未反映と遅延が残り続ける")
@@ -33,5 +35,7 @@ public class ModuleEventReplayBatch {
     @Transactional(propagation = Propagation.NEVER)
     public void poll() {
         LockAssert.assertLocked();
+        publications.resubmitIncompletePublicationsOlderThan(Duration.ofMinutes(5));
+        operations.monitor(Instant.now());
     }
 }

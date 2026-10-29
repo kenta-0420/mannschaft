@@ -3,6 +3,7 @@ package com.mannschaft.app.moduleevent;
 import com.mannschaft.app.common.event.ReliableEvent;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.moduleevent.api.dto.ModuleEventImpactBinding;
+import com.mannschaft.app.moduleevent.notice.ModuleEventNoticeLifecycleService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import java.nio.ByteBuffer;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.hibernate.query.NativeQuery;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.modulith.events.core.EventPublicationRepository;
 import org.springframework.modulith.events.core.EventSerializer;
 import org.springframework.modulith.events.core.PublicationTargetIdentifier;
@@ -23,9 +25,10 @@ import org.springframework.modulith.events.core.TargetEventPublication;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-/** 有界SQL・codec・短TXの内部窓口。業務resolverや通知のlockをここへ混ぜない。 */
+/** 有界SQL・codec・短TXの内部窓口。業務resolverを呼ばず、通知intentだけを同じ保存TXへ揃える。 */
 public class ModuleEventPublicationStore {
     private static final Duration REPLAY_CUTOFF = Duration.ofMinutes(5);
     // cutoffとは別の猶予。M18で処理時間との関係を検証する初期値。
@@ -35,14 +38,19 @@ public class ModuleEventPublicationStore {
     private final EventSerializer serializer;
     private final ModuleEventListenerCatalog catalog;
     private final Clock clock;
+    private final ObjectProvider<ModuleEventOperations> operations;
+    private final ObjectProvider<ModuleEventNoticeLifecycleService> notices;
 
     public ModuleEventPublicationStore(EntityManager entityManager, EventPublicationRepository repository,
-            EventSerializer serializer, ModuleEventListenerCatalog catalog, Clock clock) {
+            EventSerializer serializer, ModuleEventListenerCatalog catalog, Clock clock,
+            ObjectProvider<ModuleEventOperations> operations, ObjectProvider<ModuleEventNoticeLifecycleService> notices) {
         this.entityManager = entityManager;
         this.repository = repository;
         this.serializer = serializer;
         this.catalog = catalog;
         this.clock = clock;
+        this.operations = operations;
+        this.notices = notices;
     }
 
     /** 初回補助保存はpublisherと同一物理TX。独立TXへ逃がさない。 */
@@ -102,25 +110,25 @@ public class ModuleEventPublicationStore {
             LocalDateTime attemptedAt = local(now);
             if (attempt.getRetryCount() >= 10) {
                 // 10回目の受理commit直後に停止した行も、11回目の業務へ入れず隔離する。
-                attempt.quarantine("RETRY_LIMIT", attemptedAt);
+                quarantine(attempt, "RETRY_LIMIT", now);
                 continue;
             }
             String listenerId = (String) row[2];
             Class<? extends ReliableEvent> type = catalog.eventType(listenerId).orElse(null);
             if (type == null || !type.isRecord() || !type.getName().equals(row[3])) {
-                attempt.quarantine("UNKNOWN_EVENT_TARGET", attemptedAt);
+                quarantine(attempt, "UNKNOWN_EVENT_TARGET", now);
                 continue;
             }
             Object event;
             try {
                 event = serializer.deserialize(row[4], type);
-                if (event == null || event.getClass() != type) {
-                    attempt.quarantine("EVENT_TYPE_MISMATCH", attemptedAt);
-                    continue;
-                }
             } catch (RuntimeException failure) {
                 // 例外本文やpayloadを保存せず、固定codeだけでpoisonを隔離する。
-                attempt.quarantine("EVENT_DESERIALIZATION_FAILURE", attemptedAt);
+                quarantine(attempt, "EVENT_DESERIALIZATION_FAILURE", now);
+                continue;
+            }
+            if (event == null || event.getClass() != type) {
+                quarantine(attempt, "EVENT_TYPE_MISMATCH", now);
                 continue;
             }
             UUID token = UUID.randomUUID();
@@ -142,6 +150,7 @@ public class ModuleEventPublicationStore {
         if (attempt == null || attempt.getLeaseUntil() == null || !attempt.getLeaseUntil().isAfter(now)) return false;
         if (!frame.initial() && !attempt.admitReplay(frame.token(), now)) return false;
         attempt.renewLease(now, now.plus(EXECUTION_LEASE));
+        if (!frame.initial()) afterCommit(() -> operations.getObject().recordReplayAccepted());
         return true;
     }
 
@@ -152,10 +161,13 @@ public class ModuleEventPublicationStore {
         EventPublicationAttemptEntity attempt = lock(frame);
         if (attempt == null) return;
         if (completed) {
-            repository.markCompleted(frame.publicationId(), clock.instant());
+            Instant now = clock.instant();
+            ModuleEventImpactBinding binding = binding(attempt);
+            if (binding != null) notices.getObject().beforeSuccessfulRemoval(binding, now);
+            repository.markCompleted(frame.publicationId(), now);
             entityManager.remove(attempt);
         } else if (attempt.getRetryCount() >= 10) {
-            attempt.quarantine("LISTENER_FAILURE", local(clock.instant()));
+            quarantine(attempt, "LISTENER_FAILURE", clock.instant());
         } else {
             attempt.pending("LISTENER_FAILURE", local(clock.instant()));
         }
@@ -167,8 +179,46 @@ public class ModuleEventPublicationStore {
     public void rejected(ModuleEventExecutionFrame frame) {
         EventPublicationAttemptEntity attempt = lock(frame);
         if (attempt == null) return;
-        if (attempt.getRetryCount() >= 10) attempt.quarantine("RETRY_LIMIT", local(clock.instant()));
+        if (attempt.getRetryCount() >= 10) quarantine(attempt, "RETRY_LIMIT", clock.instant());
         else attempt.pending("EXECUTOR_REJECTED", local(clock.instant()));
+    }
+
+    /** 全未完了を集約するPRIMARY短TX。payloadやhelperの状態で母集団を落とさない。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED, readOnly = false)
+    public ModuleEventOperations.Observation observation() {
+        Object[] row = (Object[]) entityManager.createNativeQuery("""
+                SELECT COUNT(*) AS incomplete_count, MIN(p.publication_date) AS oldest_incomplete,
+                       COALESCE(SUM(CASE WHEN a.status='QUARANTINED' THEN 1 ELSE 0 END),0) AS quarantined_count
+                FROM event_publication p LEFT JOIN event_publication_attempts a ON a.publication_id=p.id
+                WHERE p.completion_date IS NULL
+                """).unwrap(NativeQuery.class).addScalar("incomplete_count", Long.class)
+                .addScalar("oldest_incomplete", Instant.class).addScalar("quarantined_count", Long.class)
+                .getSingleResult();
+        return new ModuleEventOperations.Observation((Long) row[0], Optional.ofNullable((Instant) row[1]), (Long) row[2]);
+    }
+
+    private void quarantine(EventPublicationAttemptEntity attempt, String code, Instant now) {
+        if (attempt.getStatus() == ModuleEventAttemptStatus.QUARANTINED) return;
+        ModuleEventImpactBinding binding = binding(attempt);
+        attempt.quarantine(code, local(now));
+        if (binding != null) notices.getObject().reserveQuarantined(binding, now);
+        afterCommit(() -> operations.getObject().quarantinedAfterCommit());
+    }
+
+    private static ModuleEventImpactBinding binding(EventPublicationAttemptEntity attempt) {
+        if (attempt.getResolverKey() == null && attempt.getOperationId() == null && attempt.getEpisodeId() == null
+                && attempt.getScopeType() == null && attempt.getScopeId() == null && attempt.getOrganizationId() == null) {
+            return null;
+        }
+        // 部分欠損を未接続扱いへ落とさず、Lifecycle側の純scalar検証まで同TXで通す。
+        return new ModuleEventImpactBinding(attempt.getResolverKey(), attempt.getOperationId(), attempt.getEpisodeId(),
+                attempt.getScopeType(), attempt.getScopeId(), attempt.getOrganizationId());
+    }
+
+    private static void afterCommit(Runnable action) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() { action.run(); }
+        });
     }
 
     private EventPublicationAttemptEntity lock(ModuleEventExecutionFrame frame) {

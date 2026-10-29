@@ -4,6 +4,8 @@ import com.mannschaft.app.moduleevent.RestrictedEventPublicationRegistry;
 import com.mannschaft.app.moduleevent.ModuleEventExecutionFrame;
 import com.mannschaft.app.moduleevent.ModuleEventTaskExecutor;
 import com.mannschaft.app.moduleevent.ModuleEventPublicationStore;
+import com.mannschaft.app.moduleevent.ModuleEventOperations;
+import com.mannschaft.app.moduleevent.notice.ModuleEventNoticeLifecycleService;
 import com.mannschaft.app.moduleevent.ModuleEventInvocationCapturePostProcessor;
 import com.mannschaft.app.moduleevent.ModuleEventListenerCatalog;
 import com.mannschaft.app.moduleevent.api.spi.ModuleEventImpactResolver;
@@ -56,8 +58,10 @@ public class ModuleEventConfiguration {
     @Bean
     public ModuleEventPublicationStore moduleEventPublicationStore(EntityManager entityManager,
             @Qualifier("jpaEventPublicationRepository") EventPublicationRepository repository,
-            EventSerializer serializer, ModuleEventListenerCatalog catalog) {
-        return new ModuleEventPublicationStore(entityManager, repository, serializer, catalog, Clock.systemUTC());
+            EventSerializer serializer, ModuleEventListenerCatalog catalog,
+            ObjectProvider<ModuleEventOperations> operations, ObjectProvider<ModuleEventNoticeLifecycleService> notices) {
+        return new ModuleEventPublicationStore(entityManager, repository, serializer, catalog, Clock.systemUTC(),
+                operations, notices);
     }
 
     /** 受信者評価を含まない純識別窓口。業務resolverの依存をM Registryの構築へ戻さない。 */

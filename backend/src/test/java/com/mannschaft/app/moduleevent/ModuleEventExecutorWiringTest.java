@@ -139,7 +139,7 @@ class ModuleEventExecutorWiringTest {
         final AtomicInteger claims = new AtomicInteger();
         IntSupplier capacity = () -> -1;
         int capacityInsideClaim;
-        RecordingStore() { super(null, null, null, null, Clock.systemUTC()); }
+        RecordingStore() { super(null, null, null, null, Clock.systemUTC(), null, null); }
         @Override public List<Claim> claim(Instant cutoff, Instant now, int limit) {
             claims.incrementAndGet();
             capacityInsideClaim = capacity.getAsInt();
