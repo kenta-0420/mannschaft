@@ -34,7 +34,7 @@ public class ModuleEventConfiguration {
             @Qualifier("jpaEventPublicationRepository") EventPublicationRepository repository,
             ModuleEventListenerCatalog catalog, ObjectProvider<ModuleEventImpactResolverRegistry> impacts,
             ModuleEventExecutionFrame.Context frames, ModuleEventPublicationStore store,
-            ObjectProvider<ModuleEventTaskExecutor> executor) {
+            @Qualifier("module-event-pool") ObjectProvider<ModuleEventTaskExecutor> executor) {
         return new RestrictedEventPublicationRegistry(repository, Clock.systemUTC(), catalog, impacts,
                 frames, store, executor);
     }
@@ -89,7 +89,8 @@ public class ModuleEventConfiguration {
     }
 
     /** 初期容量は負荷試験で確定する。拒否を捨てず呼出元へ返す。 */
-    @Bean("module-event-pool")
+    // BootのWebSocket既定executor候補へ流用させず、名前/Qualifierでだけ参照する。
+    @Bean(name = "module-event-pool", defaultCandidate = false)
     public ModuleEventTaskExecutor moduleEventPool(ModuleEventExecutionFrame.Context frames,
             ObjectProvider<RestrictedEventPublicationRegistry> registry) {
         // M18未実証の仮値。frameなしの従来taskも同じ容量で受付する。
