@@ -105,6 +105,55 @@ class ModuleEventNoticeLifecycleIT extends AbstractMySqlIntegrationTest {
         assertThat(allOwnNotices()).isEmpty();
     }
 
+    @Test
+    void 最古100bindingが予約済みなら残りへ進み同bindingの兄弟を再選択しない() {
+        List<Publication> fixtures = inNewTx(() -> {
+            List<Publication> created = new ArrayList<>();
+            for (int i = 0; i < 101; i++) created.add(createPublication(binding(), NOW.minusSeconds(3600),
+                    ModuleEventAttemptStatus.PENDING));
+            return created;
+        });
+        List<UUID> first = lifecycle.findDelayedCandidateIds(NOW, 100);
+        assertThat(first).hasSize(100).doesNotHaveDuplicates();
+        for (UUID id : first) assertThat(lifecycle.reserveDelayed(id, NOW)).isTrue();
+        List<Publication> reserved = fixtures.stream().filter(f -> first.contains(f.attemptId())).toList();
+        assertThat(reserved).hasSize(100);
+        reserved.forEach(f -> assertPhase(f.binding(), "DELAYED", "PENDING"));
+        Publication remaining = fixtures.stream().filter(f -> !first.contains(f.attemptId())).findFirst().orElseThrow();
+        // 同じ episode の後発 listener は同じ2 intentへ収束し、候補枠を消費しない。
+        Publication sibling = publication(reserved.getFirst().binding(), NOW.minusSeconds(3600),
+                ModuleEventAttemptStatus.IN_PROGRESS);
+        assertThat(lifecycle.findDelayedCandidateIds(NOW, 100))
+                .containsExactly(remaining.attemptId()).doesNotContain(sibling.attemptId());
+        assertThat(lifecycle.reserveDelayed(remaining.attemptId(), NOW)).isTrue();
+        assertThat(lifecycle.findDelayedCandidateIds(NOW, 100)).isEmpty();
+        assertThat(allOwnNotices()).hasSize(202);
+    }
+
+    @Test
+    void 片方audienceだけの遅延intentでは候補から除外せず不足分を予約する() {
+        Publication fixture = publication(binding(), NOW.minusSeconds(3600), ModuleEventAttemptStatus.PENDING);
+        assertThat(lifecycle.reserveDelayed(fixture.attemptId(), NOW)).isTrue();
+        List<ModuleEventNoticeOutboxEntity> initial = rows(fixture.binding(), "DELAYED");
+        ModuleEventNoticeOutboxEntity retained = initial.stream()
+                .filter(n -> n.getAudience().equals("CURRENT_ADMINS")).findFirst().orElseThrow();
+        inNewTx(() -> {
+            new SimpleJpaRepository<>(ModuleEventNoticeOutboxEntity.class, entityManager).deleteById(initial.stream()
+                    .filter(n -> n.getAudience().equals("AFFECTED_USERS")).findFirst().orElseThrow().getId());
+            return null;
+        });
+        assertThat(rows(fixture.binding(), "DELAYED")).hasSize(1);
+        assertThat(lifecycle.findDelayedCandidateIds(NOW, 100)).containsExactly(fixture.attemptId());
+        assertThat(lifecycle.reserveDelayed(fixture.attemptId(), NOW)).isTrue();
+        assertPhase(fixture.binding(), "DELAYED", "PENDING");
+        assertThat(rows(fixture.binding(), "DELAYED")).anySatisfy(n -> {
+            assertThat(n.getId()).isEqualTo(retained.getId());
+            assertThat(n.getNoticeKey()).isEqualTo(retained.getNoticeKey());
+            assertThat(n.getNoticeRef()).isEqualTo(retained.getNoticeRef());
+        });
+        assertThat(lifecycle.findDelayedCandidateIds(NOW, 100)).isEmpty();
+    }
+
     @ParameterizedTest
     @ValueSource(ints = {-1, 0, 1})
     void 遅延はpublication原時刻が厳密30分超のときだけ予約する(int offsetSeconds) {
