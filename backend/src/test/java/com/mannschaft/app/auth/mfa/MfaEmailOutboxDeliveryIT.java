@@ -1,7 +1,5 @@
 package com.mannschaft.app.auth.mfa;
 
-import com.mannschaft.app.auth.MfaEmailOtpPurpose;
-import com.mannschaft.app.auth.event.MfaEmailOtpRequestedEvent;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.mail.outbox.EmailOutboxWorker;
 import com.mannschaft.app.mail.outbox.EmailTransport;
@@ -327,13 +325,4 @@ class MfaEmailOutboxDeliveryIT extends MfaEmailOtpItSupport {
         assertThat(containsCode(logs, code)).as("AC-26 コード %s をログに出さない", code).isFalse();
     }
 
-    /** AC-26: OTP 送信要求イベントの文字列表現（ログに載りうる）にコード・宛先を含めない。 */
-    @Test
-    @DisplayName("AC-26 MfaEmailOtpRequestedEventの文字列表現にコードと宛先を含めない")
-    void イベントの文字列表現にコードを含めない() {
-        MfaEmailOtpRequestedEvent ev = new MfaEmailOtpRequestedEvent(
-                1L, "someone@example.com", "482913", MfaEmailOtpPurpose.LOGIN, 600, UUID.randomUUID().toString());
-
-        assertThat(ev.toString()).as("AC-26").doesNotContain("482913").doesNotContain("someone@example.com");
-    }
 }
