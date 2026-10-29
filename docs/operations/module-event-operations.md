@@ -10,6 +10,25 @@
 
 初回の個別再開UIは追加していない。[既存バッチ管理](../features/F10.X_batch_catalog.md)の実行操作はバッチ単位であり、ここで示す publication ID 指定の再開とは異なる。隔離の解除には次の実APIを使用する。
 
+## 永続enumの二段階配布
+
+[永続化enumの展開規約](../development/persisted_enum_deployment.md)に従い、基盤の読取り互換性を先に配り、C / F業務の採用による書込み開始を別リリースに分ける。今回の台帳追加は次の5値であり、配布済みの証明や新設表を理由とする手順の免除ではない。
+
+| 型 | 定数 | 保存先 |
+|---|---|---|
+| `com.mannschaft.app.moduleevent.ModuleEventAttemptStatus` | `IN_PROGRESS` / `PENDING` / `QUARANTINED` | `event_publication_attempts.status`（VARCHAR(32)） |
+| `com.mannschaft.app.moduleevent.api.dto.ModuleEventNoticeScope` | `ORGANIZATION` / `TEAM` | `event_publication_attempts.scope_type`（VARCHAR(16)、未接続時null） |
+
+scopeは通知予約の `module_event_notice_outbox.scope_type`（VARCHAR(16)）にも `name()` の文字列で保存する。ここはJPA enum番人の対象外だが、既知の `descriptor_version=1` を確認したreaderが同じenumへ変換するため、同じ配布条件で扱う。5値は列長内に収まり、補助表のbinding CHECKはscopeの2値を許可する。migrationは新表作成のみで、初期行の投入やbackfillを行わない。
+
+1. **第1段階の前提確認**: 初回環境で `event_publication`、`event_publication_attempts`、`module_event_notice_outbox` が新設・空であり、既存データの移入がないことを確認する。基盤の調査対象 `6eb30d15` には、本番ソース全体（shared / modulesを含む）に実業務の `ReliableEvent` 実装および `@ModuleEventListener` の採用がない。配布対象でもこの条件を再確認し、同じリリースへ業務の発行・購読・resolver接続を混ぜない。前提を確認できない、または既存行・採用がある場合はreader先配布と断定せず、展開を停止して書込み停止手順を個別に設計する。既存行の削除で空にする運用は行わない。
+2. **基盤をreaderとして先配布**: migrationと5値を知るMのreaderをAPI・worker・batchを含む全タスクへ配る。Registryは `ReliableEvent` 以外、または登録済み対象listenerが0件なら補助行を作らない。管理再開は既存の隔離行が必要で、新行を生成しない。再投入は既存publication / helper、遅延通知予約は既存helper、relay / pumpは既存outboxを起点とするため、前項の空・未採用条件では初回の5値を書き始めない。既存行があればこれらもwriterとなり得るので、単に基盤だけのリリースであることを停止条件の代わりにしない。
+3. **旧タスク退場を記録**: 対象環境、基盤リリースのversion / image digest、同じDBを読む全タスク、旧versionの実行数0、遅延起動・再起動で旧タスクが戻らないこと、確認時刻と証拠をリリース記録へ残す。この記録が揃うまで業務writerを接続しない。
+4. **別リリースで書込み開始**: C / F採用ロットは前項の完了記録を参照し、業務イベント発行とlistenerを接続する。初回保存・claimは `IN_PROGRESS`、初回失敗・実行失敗・投入拒否・管理再開は `PENDING`、再試行上限・不正な再投入対象は `QUARANTINED` を補助表へ書く。scopeは業務bindingから補助表へ保存し、遅延・隔離・成功時の復旧予約からoutboxへ引き継ぐ。これらの通常処理・管理操作・定期処理をすべて書込み経路として検証し、新しい行の再読込みを確認する。
+5. **rollbackの下限**: 書込み開始後は5値を知る第1段階の基盤versionを下限とする。旧mainに今回の新表・enumの読取り経路がなかったことは、未処理イベントや通知予約を扱えない旧版へ戻す許可にはならない。書込みを止めても既存行は残る。行削除や一律置換で下限を下げず、さらに古い版が必要なら別途設計・承認・検証する。
+
+本書は配布計画であり、対象環境での展開・旧タスク0・書込み開始の確認は未実施である。本番環境の構築状況も本書から断定しない。台帳一致やCI成功をこれらの実施証跡へ代用しない。
+
 ## SYSTEM_ADMIN 向けAPI
 
 追加したHTTP入口は以下の2本だけである。パスの `publicationId` は一覧に返る UUID を使う。
