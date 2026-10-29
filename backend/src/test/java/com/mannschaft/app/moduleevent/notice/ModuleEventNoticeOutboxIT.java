@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -334,6 +335,145 @@ class ModuleEventNoticeOutboxIT extends AbstractMySqlIntegrationTest {
             status.setRollbackOnly();
         });
         assertThat(countOwn()).isEqualTo(1L);
+    }
+
+    @Test
+    void relay失敗は現世代だけattemptを増やしPENDINGへ戻して他行を変えない() {
+        ModuleEventNoticeOutboxEntity row = persist(reservation().toBuilder().attemptCount(2).build());
+        ModuleEventNoticeOutboxEntity other = persist(reservation().toBuilder()
+                .attemptCount(7).nextAttemptAt(now.plusSeconds(120)).build());
+        ModuleEventNoticeOutboxEntity claimed = inTx(() -> store().claim(1, now)).getFirst();
+        assertThat(claimed.getId()).isEqualTo(row.getId());
+        UUID token = claimed.getClaimToken();
+        Instant failedAt = now.plusSeconds(1);
+        Instant next = now.plusSeconds(60);
+        assertThat(inTx(() -> store().markFailed(row.getId(), token, "RELAY_FAILED", next, false, failedAt)))
+                .as("markFailed の実 DB 実装が必要").isTrue();
+        ModuleEventNoticeOutboxEntity failed = read(row.getId());
+        assertThat(failed.getStatus()).isEqualTo("PENDING");
+        assertThat(failed.getAttemptCount()).isEqualTo(3);
+        assertThat(failed.getNextAttemptAt()).isEqualTo(next);
+        assertThat(failed.getClaimToken()).isNull();
+        assertThat(failed.getClaimedAt()).isNull();
+        assertThat(failed.getDeadAt()).isNull();
+        assertThat(failed.getLastErrorCode()).isEqualTo("RELAY_FAILED");
+        assertThat(failed.getUpdatedAt()).isEqualTo(failedAt);
+        assertThat(inTx(() -> store().markFailed(row.getId(), token, "RELAY_FAILED", next, false, failedAt)))
+                .as("同世代 callback の再送で attempt を二重加算しない").isFalse();
+        assertThat(read(row.getId()).getAttemptCount()).isEqualTo(3);
+        ModuleEventNoticeOutboxEntity untouched = read(other.getId());
+        assertThat(untouched.getStatus()).isEqualTo("PENDING");
+        assertThat(untouched.getAttemptCount()).isEqualTo(7);
+        assertThat(untouched.getNextAttemptAt()).isEqualTo(now.plusSeconds(120));
+        assertThat(untouched.getClaimToken()).isNull();
+        assertThat(untouched.getLastErrorCode()).isNull();
+        assertThat(untouched.getUpdatedAt()).isEqualTo(now);
+    }
+
+    @Test
+    void 最終relay失敗はDEADへ移りclaimもlease回収も再開しない() {
+        ModuleEventNoticeOutboxEntity row = persist(reservation().toBuilder().attemptCount(9).build());
+        UUID token = inTx(() -> store().claim(1, now)).getFirst().getClaimToken();
+        Instant failedAt = now.plusSeconds(1);
+        assertThat(inTx(() -> store().markFailed(row.getId(), token, "RELAY_FAILED",
+                now.plusSeconds(60), true, failedAt))).isTrue();
+        ModuleEventNoticeOutboxEntity dead = read(row.getId());
+        assertThat(dead.getStatus()).isEqualTo("DEAD");
+        assertThat(dead.getAttemptCount()).isEqualTo(10);
+        assertThat(dead.getDeadAt()).isEqualTo(failedAt);
+        assertThat(dead.getClaimToken()).isNull();
+        assertThat(dead.getClaimedAt()).isNull();
+        assertThat(dead.getLastErrorCode()).isEqualTo("RELAY_FAILED");
+        assertThat(inTx(() -> store().recoverStuck(now.plusSeconds(60), now.plusSeconds(61)))).isZero();
+        assertThat(inTx(() -> store().claim(100, now.plusSeconds(120)))).isEmpty();
+        assertThat(inTx(() -> store().markFailed(row.getId(), token, "RELAY_FAILED",
+                now.plusSeconds(120), false, now.plusSeconds(62)))).isFalse();
+        assertThat(read(row.getId()).getAttemptCount()).isEqualTo(10);
+        assertThat(read(row.getId()).getStatus()).isEqualTo("DEAD");
+    }
+
+    @Test
+    void 旧世代の失敗は新claimのtokenやattemptを変更しない() {
+        ModuleEventNoticeOutboxEntity row = persist(reservation());
+        UUID oldToken = inTx(() -> store().claim(1, now)).getFirst().getClaimToken();
+        assertThat(inTx(() -> store().recoverStuck(now.plusSeconds(1), now.plusSeconds(2)))).isEqualTo(1);
+        UUID token = inTx(() -> store().claim(1, now.plusSeconds(2))).getFirst().getClaimToken();
+        assertThat(token).isNotEqualTo(oldToken);
+        assertThat(inTx(() -> store().markFailed(row.getId(), oldToken, "RELAY_FAILED",
+                now.plusSeconds(60), true, now.plusSeconds(3)))).isFalse();
+        ModuleEventNoticeOutboxEntity unchanged = read(row.getId());
+        assertThat(unchanged.getStatus()).isEqualTo("RELAYING");
+        assertThat(unchanged.getClaimToken()).isEqualTo(token);
+        assertThat(unchanged.getAttemptCount()).isZero();
+        assertThat(unchanged.getLastErrorCode()).isNull();
+        assertThat(unchanged.getDeadAt()).isNull();
+    }
+
+    @Test
+    void PENDINGとWAITING評価中とRELAYEDにはrelay失敗を適用しない() {
+        ModuleEventNoticeOutboxEntity pending = persist(reservation());
+        assertThat(inTx(() -> store().markFailed(pending.getId(), UUID.randomUUID(), "RELAY_FAILED",
+                now.plusSeconds(60), true, now))).isFalse();
+        assertThat(read(pending.getId()).getAttemptCount()).isZero();
+        UUID relayToken = inTx(() -> store().claim(1, now)).getFirst().getClaimToken();
+        assertThat(inTx(() -> store().markRelayed(pending.getId(), relayToken, now))).isTrue();
+        assertThat(inTx(() -> store().markFailed(pending.getId(), relayToken, "RELAY_FAILED",
+                now.plusSeconds(60), true, now))).isFalse();
+        assertThat(read(pending.getId()).getStatus()).isEqualTo("RELAYED");
+        ModuleEventNoticeOutboxEntity waiting = persist(reservation().toBuilder()
+                .phase("RECOVERED").status("WAITING_RECOVERY").build());
+        UUID evaluationToken = inTx(() -> store().claimRecovery(1, now)).getFirst().getClaimToken();
+        assertThat(inTx(() -> store().markFailed(waiting.getId(), evaluationToken, "RELAY_FAILED",
+                now.plusSeconds(60), true, now))).isFalse();
+        ModuleEventNoticeOutboxEntity unchanged = read(waiting.getId());
+        assertThat(unchanged.getStatus()).isEqualTo("WAITING_RECOVERY");
+        assertThat(unchanged.getClaimToken()).isEqualTo(evaluationToken);
+        assertThat(unchanged.getAttemptCount()).isZero();
+        assertThat(unchanged.getLastErrorCode()).isNull();
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "UNKNOWN_CODE", "RELAY_FAILED exception: user@example.invalid",
+            "RELAY_FAILED\noriginal payload", "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"})
+    void 固定code以外は例外で拒否しraw本文や未知codeを保存しない(String invalidCode) {
+        ModuleEventNoticeOutboxEntity row = persist(reservation());
+        UUID token = inTx(() -> store().claim(1, now)).getFirst().getClaimToken();
+        assertThatIllegalArgumentException().isThrownBy(() -> inTx(() -> store().markFailed(
+                row.getId(), token, invalidCode, now.plusSeconds(60), true, now.plusSeconds(1))));
+        ModuleEventNoticeOutboxEntity unchanged = read(row.getId());
+        assertThat(unchanged.getStatus()).isEqualTo("RELAYING");
+        assertThat(unchanged.getClaimToken()).isEqualTo(token);
+        assertThat(unchanged.getAttemptCount()).isZero();
+        assertThat(unchanged.getLastErrorCode()).isNull();
+        assertThat(unchanged.getDeadAt()).isNull();
+        assertThat(unchanged.getUpdatedAt()).isEqualTo(now);
+    }
+
+    @Test
+    void PENDINGが空なら他状態の古い予約があっても最古時刻はempty() {
+        persist(reservation().toBuilder().status("WAITING_RECOVERY").phase("RECOVERED").build());
+        persist(reservation().toBuilder().status("RELAYING").claimToken(UUID.randomUUID()).claimedAt(now).build());
+        persist(reservation().toBuilder().status("RELAYED").relayedAt(now).build());
+        persist(reservation().toBuilder().status("DEAD").deadAt(now).build());
+        assertThat(inTx(() -> store().oldestPendingCreatedAt())).isEmpty();
+    }
+
+    @Test
+    void 最古時刻はPENDINGのMINcreatedAtだけを返す() {
+        Instant oldest = now.minusSeconds(120);
+        persist(reservation().toBuilder().createdAt(oldest).build());
+        persist(reservation().toBuilder().createdAt(now.minusSeconds(60)).build());
+        persist(reservation().toBuilder().status("WAITING_RECOVERY").phase("RECOVERED")
+                .createdAt(now.minusSeconds(500)).build());
+        persist(reservation().toBuilder().status("RELAYING").claimToken(UUID.randomUUID()).claimedAt(now)
+                .createdAt(now.minusSeconds(400)).build());
+        persist(reservation().toBuilder().status("RELAYED").relayedAt(now)
+                .createdAt(now.minusSeconds(300)).build());
+        persist(reservation().toBuilder().status("DEAD").deadAt(now)
+                .createdAt(now.minusSeconds(200)).build());
+        assertThat(inTx(() -> store().oldestPendingCreatedAt()))
+                .as("SQL MIN の実 DB 実装が必要。retry 時刻の早さとは区別する").contains(oldest);
     }
 
     private ModuleEventNoticeOutboxEntity recoveryFor(ModuleEventNoticeOutboxEntity incident) {
