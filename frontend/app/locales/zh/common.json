@@ -2833,6 +2833,7 @@
       "empty": "还没有页面",
       "titleLabel": "标题",
       "slugLabel": "URL 别名",
+      "slugHint": "保存此页面需要填写 URL 别名。",
       "yearLabel": "适用年度",
       "visibilityLabel": "公开范围",
       "visibilityPublic": "完全公开",

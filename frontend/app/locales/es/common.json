@@ -2833,6 +2833,7 @@
       "empty": "Aún no hay páginas",
       "titleLabel": "Título",
       "slugLabel": "Slug de URL",
+      "slugHint": "Para guardar esta página, se necesita un slug de URL.",
       "yearLabel": "Año de referencia",
       "visibilityLabel": "Visibilidad",
       "visibilityPublic": "Público",
