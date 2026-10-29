@@ -17,7 +17,7 @@
 | Q3 | 粒度 | **Modulith は全トップレベルパッケージを個別モジュール**、**Gradle サブプロジェクトは関連領域の束（10〜20 程度）**（§3.2） |
 | Q4 | 台帳の単位 | **子 CMP は Phase・レーン単位（10〜15 行程度）**。領域ごとのロットは親 Issue のチェックリストで管理し、台帳の「1戦役1行」を守る（§8.3） |
 | Q5 | 凍結定数の運用 | **`EXPECTED_LINES_*` を「上限」方式へ変更**し、専用の締めレーン（L-SHIME）が定期的に実測値へ引き下げる。返済 PR は定数を触らない＝並行マージ可（§7.4） |
-| Q6 | 外部 API 契約 | **変えない**。たとえば採用確定の応答の `chatRoomId` は今と同じく常に整数で返す（null を返す案は不採用） |
+| Q6 | 外部 API 契約 | **既存契約を変えない**。採用確定の応答の `chatRoomId` は今と同じく常に整数で返す（null を返す案は不採用）。L1-M の SYSTEM_ADMIN 専用2 API と専用 schema の追加だけを限定例外とする（§10、[2026-10-29裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6483913607)） |
 
 殿判断（上記方針から導出）:
 
@@ -51,7 +51,7 @@
 ### 1.4 目的外（マスター御裁可済み）
 
 - 起動・デプロイ単位は**1つのまま**。マイクロサービス化はしない（将来分割できる状態を目指すだけ）。
-- 外部 HTTP API の変更（§10）。
+- 既存の外部 HTTP API の変更（§10 の承認済み L1-M 管理2 API の追加だけを除く）。
 - ビルド時間短縮を目標値として約束すること（§13.1）。
 - D-2b の返済（CMP-261021-0115）。
 
@@ -469,12 +469,12 @@ L0-Mの担当・hold・measurement予約・履歴・証拠は変更しない。�
 - **L1-G0 偽の返済の穴を塞ぐ番人改修**（最初に切り出す単独レーン）: (1) D-3T が「本番クラス内に実装が1つだけの interface」の呼び出しを、その実装へ展開して判定する。(2) D-3 / D-3T が、合成アノテーション（メタアノテーション）を通じて持つ tx 属性を解決し、**tx 属性を持つ合成アノテーション**（`@ApplicationModuleListener` 等）を入口として検出する。**tx 属性を持たない `@ModuleEventListener` は入口にしない**（§4.4 の一本化した扱い）。検体（test ソース）で、interface 経由・tx 属性を持つ合成アノテーションのリスナー経由で越境 Repository へ到達するケースが red になり、tx 属性を持たないリスナーが自身では入口として数えられない（その先の `@Transactional` が入口になる）ことを固定する。改修で新たに検出された既存違反は凍結ストアに加える（改修の PR で行数が増えるのは想定どおりで、L1-F の前なら定数もその PR で上げる）。
 - **L1-A 認可の interface 化**: `common.AccessControlService` は**同じ完全修飾名のまま interface にし、実装だけを暫定core へ移す**（実装クラスの置き場所は L1-K で決める）。呼び出し側（main 538 ファイル・test 533 ファイル）の差分はゼロにする。確認事項: (a) テストで `new AccessControlService(...)` のように直接生成している箇所が無いか（あれば実装クラスへ直す）、(b) トランザクションの属性（現状クラスに `@Transactional(readOnly = true)`）を実装クラスへそのまま移し、`ReplicaRoutingAspect`（メソッドの `@Transactional` だけを見る）の振り分けが前後で変わらないこと、(c) L1-G0 の完了後に行い、D-3T の行が interface 化だけで消えないこと。
 - **L1-R common の業務ロジック返却**: `NameResolverService`、`ActivityScheduleFacade`、`*VisibilityMapper`（21）、`StorageUsageQueryService` などの実体を持ち主の業務の `api` へ移す。呼び出し側を書き換えないため（L2 のロットと同じファイルを触らないため）、旧 FQCN には**橋渡し**（`@Deprecated`、中身は持ち主の `api` を呼ぶだけ）を残す。ただし**橋渡しは kernel に含めない**:
-  - 橋渡しには `@TransitionalBridge`（理由と撤去予定のレーンを必須の属性に持つ）を付ける。kernel の出口条件「kernel 内に業務 import ゼロ・単独コンパイル可」は、`@TransitionalBridge` の付いたクラスを kernel に**数えない**ことで維持する。橋渡しの数は増やしてはならない（番人が上限方式で数える）。
+  - 橋渡しには `@TransitionalBridge`（`reason`・`removalLane` を必須属性に持つ runtime retention・TYPE 対象の印。foundation / L1-M が kernel に先行提供し、L1-R を L1-M 全体の完了待ちにしない）を付ける。kernel の出口条件「kernel 内に業務 import ゼロ・単独コンパイル可」は、`@TransitionalBridge` の付いたクラスを kernel に**数えない**ことで維持する。橋渡しの数は増やしてはならない（番人が上限方式で数える）。
   - 例: `common/NameResolverService.java:3-9` は auth / organization / team の Entity・Repository を import している。実体は持ち主（auth・organization・team の名前解決をどこが持つかは L1-K で決める）の `api` に移し、旧 FQCN `com.mannschaft.app.common.NameResolverService` は持ち主の `api` を呼ぶだけの橋渡しにする（橋渡しは業務の `api` を import するので、kernel の一部ではない）。
   - Phase 3 で `:kernel` を切り出すとき（L3-0）、橋渡しは**ソースの置き場所を `:app` 側に移し**、FQCN は維持する。同じパッケージ（split package）を `:kernel` と `:app` の2つの jar が持つ形になるが、次の理由で成り立つ: (i) JPMS（`module-info.java`）を使っていないため、同一パッケージが複数 jar にまたがってもクラスパス上で問題にならない、(ii) Spring はルートパッケージ `com.mannschaft.app` 配下をクラスパス全体（全 jar）からスキャンするため、どちらの jar にあっても検出される、(iii) ArchUnit と Modulith はパッケージ名でクラスを取り込むため、論理的な所属（common モジュール）は jar が分かれても変わらない。`:kernel` の jar には橋渡しが入らず、`:kernel` は単独でコンパイルできる。Modulith 上は橋渡しも common モジュールに属し、そのままでは「各モジュール → common（橋渡し）→ 持ち主の `api`」の循環が出る。この循環の扱いは §9.5 の規則（`@TransitionalBridge` を端点とする辺だけを除外）に一本化する。
   - 橋渡しの呼び出し側は、その呼び出し側ドメインの L2 ロットが持ち主の `api` へ付け替える。呼び出しが0になった橋渡しはそのロットで削除する。**橋渡しが0になることを Phase 5 の出口条件とする**。進捗は親 Issue のチェックリストで管理する。
 - **L1-B build-logic**: `build.gradle.kts` の Test 設定・shard 分割・番人タスク・依存定義を `build-logic`（included build の convention plugin）へ移す。単一プロジェクトのまま行い、挙動は変えない。**L1-M より先に行う**（同じ `build.gradle.kts` を触るため）。
-- **L1-M Modulith 導入**: L1-B の後に、依存追加（Phase 0 で確定した版）を build-logic 側で行う。`event_publication` 表の Flyway、`ReliableEvent`・`@ModuleEventListener`・専用 executor、Registry の登録対象の限定、再投入バッチ、`ApplicationModules` の verify テストを**レポートのみ（失敗させない）**で追加、`@NamedInterface` の規約（§3.4）。
+- **L1-M Modulith 導入**: L1-B の後に、依存追加（Phase 0 で確定した版）を build-logic 側で行う。`event_publication` と試行・隔離状態の Flyway、`ReliableEvent`・`@ModuleEventListener`・専用 executor、Registry の登録対象の限定、再投入バッチ、管理2 API・影響通知接続（§11.3）、`ApplicationModules` の verify テストを**レポートのみ（失敗させない）**で追加、`@NamedInterface` の規約（§3.4）。
 - **L1-F 凍結番人の上限方式化**（単独オーナー。§7.4）: `ArchUnitFreezeStoreIntegrityTest` の `EXPECTED_LINES_*` を「上限」に変え、ストア形式の健全性チェックを追加し、定数横の履歴コメントを `docs/architecture/archunit_freeze_history.md`（新設）へ移す。
 - **L1-G 番人の新設・改修（L1-G0 以外）**: `KernelNoBusinessDependencyArchTest`、`ProvisionalCoreMembershipGuardTest`、`CrossDomainTransactionLedger`、`DomainEventPayloadGuardTest`、Modulith verify 必須化リスト（§9.5）を新設。`NotificationTransactionBoundaryGuardTest` の入口判定に `@ModuleEventListener` を追加。`DomainPackages`（common 例外）は L1-G の担当で、L1-R 完了までは現状維持（先に外すと全ストアが一斉に増える）。撤廃は L5。
 - 入口条件: L1-K・L1-F・L1-G0 は即可。L1-A は L1-K と L1-G0 の完了。L1-R は L1-K の完了。L1-B は §5.1.1 の裁可により L0-M 完了依存を免除。L1-M は L0-S・L1-B・**L1-G0** の完了（合成アノテーションのリスナーを導入する前に、番人がそれを入口として解決できるようにするため）。L1-G は L1-K と L1-M の完了。
@@ -553,7 +553,7 @@ config → 業務の import 41 件は、Spring 設定が業務の Bean を直接
 - `build-logic` と `build.gradle.kts`・`settings.gradle.kts`（L1-B → L1-M の順、Phase 3 では L3-*）
 - `.github/workflows/backend-ci.yml`・`.github/workflows/security-scan.yml`（L1-B / L3-*）
 - `backend/src/test/resources/shard-weights.properties`（再生成は L1-B / L3-* と L-SHIME。§7.7）
-- Modulith の設定・`ReliableEvent`・`@ModuleEventListener`・専用 executor・`event_publication` の Flyway（L1-M）
+- Modulith の設定・`ReliableEvent`・`@ModuleEventListener`・`@TransitionalBridge` の先行提供・専用 executor・Registry / 試行状態の Flyway、新規 `moduleevent` 基盤 package、管理2 API と影響通知接続（L1-M）。admin / notification 等の既存 owner と対象ファイル・契約・実装担当を調整し、既存ファイルを無断変更しない。新基盤の所有は L1-M に置き、既存 L2 の113ロット・波・配賦・manifest を変更しない。既存 auth / notification / purge の一括 Reliable 化は行わない。
 
 
 - **Phase 3 以後の細分レーン**: §8.5 の L3-I が共有 root build / settings / build-logic / CI の単独 owner。各束の module build は対応 L3-B/P だけが持ち、共有変更は I へ依頼する。L4 の共有契約・verify一覧は L4-I、L5 の終結変更は L5-I に集約する。前 owner が解放するまで同じファイルを引き取らない。
@@ -602,7 +602,7 @@ config → 業務の import 41 件は、Spring 設定が業務の Bean を直接
 ### 7.7 共有ファイルの衝突規約
 
 - **`docs/task-list.md`**: 子 CMP の起票は表の末尾に追記する（CLAUDE.md の台帳運用）。他セッションの末尾追記と衝突した場合は、**双方の行を残して**（自分の行を相手の行の後ろへ置き）merge して push し直す。列数は `awk -F'|'` で NF を数えて既存行と一致を確認する。
-- **`docs/openapi.json`**: 各ロットは、**自ロットの変更の前と後で** `npm run generate:types` の入力になる openapi.json を同じ手順で再生成し、両者を比較して差分ゼロを確かめる（main のドリフトや手編集との混同を避けるため、main の既存ファイルとではなく、自分で生成した前後を比べる）。比較結果を PR 本文に書く。差分が出たら原因を直し、直せなければロットを止めて上奏する。
+- **`docs/openapi.json`**: 各ロットは、**自ロットの変更の前と後で** `npm run generate:types` の入力になる openapi.json を同じ手順で再生成し、両者を比較して差分ゼロを確かめる（main のドリフトや手編集との混同を避けるため、main の既存ファイルとではなく、自分で生成した前後を比べる）。L1-M は §10 の管理2 API と専用 schema の追加だけを限定例外とし、新入口を `@Hidden` で隠さず、既存 paths / schemas・応答・エラー・認可の不変を自生成前後で照合する。比較結果を PR 本文に書く。差分が出たら原因を直し、直せなければロットを止めて上奏する。
 - **`shard-weights.properties` と `verifyShardCoverage`**: 実在パスは `backend/src/test/resources/shard-weights.properties`（`git ls-files | grep shard-weights` で確認）。新規テストを足したロットは重み表を更新しない（重み表に無いクラスはハッシュで必ず1 shard に割り当たる。`build.gradle.kts:597-610`）。重み表の再生成（`backend/scripts/regen-shard-weights.sh`）は L-SHIME が締めのついでに行い、テストタスクの構成を変える L1-B / L3-* はその PR で再生成する。
 - **凍結ストア**: 実在パスは `backend/src/test/resources/archunit_store/`（`git ls-files | grep archunit_store` で確認）。扱いは §7.4。
 
@@ -621,8 +621,8 @@ config → 業務の import 41 件は、Spring 設定が業務の Bean を直接
 | L1-G0 | D-3 / D-3T の偽の返済の穴を塞ぐ | なし | D-3 / D-3T の番人と検体、ストアの追加 | 他の番人 | §9.1 の L1-G0 条件 |
 | L1-A | 認可の interface 化 | L1-K、L1-G0 | `common/AccessControlService`、暫定core の実装 | 番人、build 設定 | FQCN 不変の interface、呼び出し側の差分ゼロ |
 | L1-R | common の業務ロジック返却（対象は親 Issue のチェックリスト） | L1-K | 対象クラス（旧 FQCN は `@TransitionalBridge` の橋渡し）と持ち主ドメインの `api` | 呼び出し側（L2 の範囲）、番人 | 対象の実体が持ち主の `api` にあり、旧 FQCN は橋渡しのみ |
-| L1-B | build-logic convention plugin 化 | L0-M依存のみ裁可免除（§5.1.1） | `build-logic/`、`build.gradle.kts`、`settings.gradle.kts`、CI の workflow | 番人の中身 | タスク一覧・shard 割当が前後一致 |
-| L1-M | Modulith 導入・イベント基盤・Registry の限定 | L0-S、L1-B、L1-G0 | `build-logic/` の依存定義、Flyway 新規1本、Modulith 設定、kernel の新規ファイル、verify テスト | shard 設定、凍結ストア | §9.1 の L1-M 条件 |
+| L1-B | build-logic convention plugin 化 | L0-M依存のみ裁可免除（§5.1.1） | `build-logic/`、`build.gradle.kts`、`settings.gradle.kts`、CI の workflow、`StripeJavaVersionGuardTest` の依存定義参照先のみ（下記限定裁可） | 番人の判定・正規表現・欠損時fail、他の番人の中身 | タスク一覧・shard 割当が前後一致 |
+| L1-M | Modulith 導入・イベント基盤・Registry の限定・管理/影響通知 | L0-S、L1-B、L1-G0 | `build-logic/` の依存定義、Registry/試行状態の新規 Flyway、Modulith 設定、kernel の新規ファイル、新規 `moduleevent` 基盤、承認済み管理2 API/専用 DTO、owner 調整済み通知接続、関連テスト | shard 設定、凍結ストア、既存 owner の未調整ファイル、L2配賦/manifest | §9.1 の L1-M 条件 |
 | L1-F | 凍結番人の上限方式化・形式健全性・履歴の docs 移設 | なし | `ArchUnitFreezeStoreIntegrityTest` とその自己テスト、D-1/D-3/D-5の記録formatterと実検体、3storeの一度限りの形式移行と§7.4承認値への三上限補正、初回移行証拠、`archunit_freeze_history.md`、§30の旧運用同期 | 判定・除外・Dependencyごとの検出、他4store、UUID、`stored.rules`、他4上限、build設定 | §9.1 の L1-F 条件 |
 | L1-G | 番人の新設・改修（L1-G0 以外） | L1-K、L1-M | `common/architecture/`（L1-G0・L1-F の対象を除く）、`DomainPackages` | 凍結ストアの中身 | §9.1 の L1-G 条件 |
 | L2 | 返済ロット（ロットは親 Issue のチェックリスト、波ごとに固定） | L1-G0・L1-F・L1-G・L1-K（全ロット）、L1-A（認可）、L1-M（C/F） | 発生元ドメイン、相手の `api` への新規ファイル、橋渡しの呼び出しの付け替えと呼び出し0の橋渡しの削除、ストアの行の減少 | kernel、番人、定数、build 設定、他ロットの発生元 | §8.4 雛形 |
@@ -632,6 +632,8 @@ config → 業務の import 41 件は、Spring 設定が業務の Bean を直接
 | L3 | 束の卒業 | L3-P の判定「継続」、束の全ロット完了 | 対象の束と build 設定 | 他の束 | 未宣言依存でコンパイル失敗する |
 | L4 | 暫定core の循環解消 | 暫定core 以外の L2 がおおむね完了 | 暫定core の該当領域 | kernel | 当該領域が verify を通る |
 | L5 | 終結 | L2・L3・L4 全完了（Gradle 撤退時は §14） | 番人・凍結ストア削除・`DomainPackages` | — | §5.6 |
+
+**L1-B番人参照先の限定裁可（2026-10-27）**: [御裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6436425040)に従い、`backend/src/test/java/com/mannschaft/app/common/architecture/StripeJavaVersionGuardTest.java` の参照元だけを、移設後の実際の依存定義へ追従させる。28固定・29以上拒否・依存宣言欠損時fail、既存の正規表現と判定を維持し、旧buildファイルへのfallbackやコメントへの旧宣言残置で通さない。他の番人変更は認めない。これはL1-Bの範囲だけの例外であり、他レーンのowner・入口・品質ゲートは維持する。
 
 ### 8.2 レーン間の依存と同時実行
 
@@ -723,7 +725,7 @@ flowchart LR
 - 返済 PR の本文に、ストアの減少行と返済内容の照合がある。
 - Modulith verify の必須化リストに当該モジュールが載り、verify が緑（§9.5 の定義）。
 - openapi.json の前後比較で差分ゼロ（§7.7）。Controller の応答型に関わる変更がある場合は契約スナップショットテストが一致。
-- イベント化した連携ごとに §4.2 のテストがある。
+- イベント化した連携ごとに §4.2 のテストがある。C / F の各採用ロットは §11.3 の impact resolver を実業務の影響範囲・状態へ接続し、管理者通知と認可済み元操作/画面の待機・状況案内を実機で確認することを必須 AC とする。未接続のロットを業務影響通知 green としない。
 - **実機E2E**: パターン B / C / F を使うロットは、実機E2E（権限あり／なし／他テナント、URL 直打ちを含む）＋アリシゼーションを**既定で必須**とする。合否はそれぞれのスキル（`/実機`・`/アリシゼーション`）の判定基準による。加えて、イベント化した連携ごとに次を確かめる: 遅延中の体験（相手側の反映前に画面を開いた場合）、全段失敗時の見え方、通知と相手側の反映の順序が入れ替わった場合、通知の重複・欠落が無いこと。A / D だけのロットは、openapi.json の差分ゼロと既存 IT の無変更の緑をもって免除してよい（免除する場合は PR 本文にその旨と根拠を書く）。
 
 **L1 / L3 / L4 / L5**: 該当 Phase の出口条件（§5）を満たし、受け入れ条件（§9）のテストが緑。
@@ -744,7 +746,7 @@ flowchart LR
 | L1-A | 認可 interface と暫定core 実装・family SPI | L1-K / L1-G0 は完了。§9.1 の既存認可・routing・D-3T 非減少を確認 |
 | L1-R | 付録Aの業務返却と橋渡し。対象クラス単位で排他宣言 | L1-K は完了。L1-A の対象を除く |
 | L1-B | convention plugin 化・タスク/shard 不変の検証 | §5.1.1の裁可でL0-M依存免除。共有予約・他入口は維持 |
-| L1-M | Modulith / Registry / executor / 再配信と観測 | L1-B 完了待ち（L0-S / L1-G0 は完了） |
+| L1-M | Modulith / Registry / executor / 再配信・管理2 API・影響通知接続 | L0-S / L1-B / L1-G0 完了。承認済み範囲で実装中（CMP-261028-2251）。試験未実行を green としない |
 | L1-F | CMP-261021-2213 の既存担当が試練→実装を継続。登録 PR #4036 は実装完了を意味しない | §9.1 の全 AC を green にする。番人・履歴を他レーンへ重複配賦しない |
 | L1-G | 公開窓口・kernel・payload・verify 必須化等の番人 | L1-M 完了待ち（L1-K は完了） |
 | L2 | 全113ロット未着手。詳細は §8.5.1 | §8.1 の依存を維持 |
@@ -963,8 +965,13 @@ CLI基盤のAC1〜9と実Git競合・途中失敗・所有境界・予約・依�
 - [ ] L1-G: `@TransitionalBridge` の付いたクラスは kernel の番人の集計から除かれ、その数が上限を超えると fail する。
 - [ ] L1-M: 退会 purge の後に再配信されたイベントが、削除済み利用者のデータを作らない IT が緑。
 - [ ] L1-M: §11.3 の観測点がメトリクスとして出て、隔離状態になった行で即時の警告が出る。
-- [ ] L1-M: verify テストは違反があっても fail しない（レポートのみ）ことを確認するテストがある。
+- [ ] L1-M: §10 の管理2 API だけが公開され、新入口の `@Hidden` 使用0、専用 schema 追加以外の既存 OpenAPI 契約差分0を自生成前後で照合する。SYSTEM_ADMIN 成功、他ロール403、匿名401、理由 trim 後1/500文字成功・空/501文字拒否、対象1件・競合拒否・監査・payload/秘密値/例外本文非露出を契約テストと実機で確認する。
+- [ ] L1-M: §11.3 の impact resolver 契約/実装検体と通知接続で、継続遅延・隔離・実復旧の現在管理者への通知、短期 retry 通知0、冪等/dedup、再起動・outbox書込/配信途中失敗後の回復、所属/権限失効と他 tenant の否定、再開受付を復旧と誤判定しないこと、6言語を検証する。各 C / F 業務画面への接続は当該採用ロットの必須 AC とし、未接続を業務影響通知 green としない。既存認証/通知/purge の一括 Reliable 化はしない。
+- [ ] L1-M: 再起動/lease失効後に旧世代の遅延成功・失敗が新しい試行状態を上書きしない。試行上限到達中の処理期限切れは隔離へ調停し、deserialize失敗・購読先欠損の先頭行で後続を永久停止させない。再投入は SQL で cutoff / lease / 上限件数を絞り、通常再投入・shutdownで全未完了行をロード/deserializeしないことを検証する。
+- [ ] L1-M: `@TransitionalBridge` を kernel に先行提供し、必須 `reason` / `removalLane`、runtime retention / TYPE を検証して L1-R へ引き渡す。L1-R は L1-M 全体の完了を待たない。
+- [ ] L1-M: verify テストは違反があっても fail しない（レポートのみ）ことを確認するテストがある。全 AC の未実行・環境停止・未接続は green 扱いにしない。
 - [ ] L1-B: build-logic 化の前後で `./gradlew tasks --all` の出力が一致し、`verifyShardCoverage` が緑、各テストクラスの shard 割当が一致する（前後の割当一覧を出力して比較）。
+  - B-5の範囲修正（2026-10-28）: [裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6462685947)により、公開診断artifact欠損でgate非成功とする強化は[別件 CMP-261028-1554 / Issue #4200](https://github.com/kenta-0420/mannschaft/issues/4200)へ分離する。L1-Bでは既存挙動を維持し、必須ジョブの失敗/cancel/timeout/結果欠損をgateが拒否すること、既存CI条件でのfreeze finalizer実走、番人欠損/0件拒否、ローカルTest終端検証、再生成不正入力で旧表bytes維持を確認する。公開artifactのmissing/empty/partial/upload failureの検証をgreen・解決済みとは扱わない。[準備計画](../evidence/CMP-261021-0017-l1b-plan.md) B-1〜B-8の他条件、入口・所有・予約は維持する。
 - [ ] L1-F: ストアの行数が上限を1行超えると fail、上限ちょうど・上限未満は pass（境界）。行の重複・整列崩れ・形式不正・`stored.rules` との不一致はそれぞれ fail する（陽性の検体テスト付き）。
 - [ ] L1-F記録移行: 全7storeでN/N-1/0と上限0を検体検証し、D-1/D-3/D-5はfield・constructor・signature・同一行の同call二回を一意に保存する。再importと走査順でmultisetが安定し、既定freezeは整形を許しN+1を拒否、N-1を縮小する。実全量候補の旧prefix射影頻度は§7.4承認の初回増分178だけを除き移行前と全件一致し、削減0・新class-pair0を証明する。三上限は2156/1325/1876に補正し、他4store・UUID・`stored.rules`・他4上限は不変。履歴原文を完全移設し、専用guardの既存2case経路とbuild設定を維持する。
 - [ ] L1-F main PR4070限定承認: 初回178件の履歴を保持し、別承認のgetSlug依存1件だけをD-1へ追加して最終行数/上限2157とする。既存prefix群6→7・旧2156行の生bytes保持、他7storeファイル/他6上限/formatter/判定/除外/タグ/重み/実行時間制限の不変を照合する。旧82caのCI成功を転用せず、main統合後HEADの全CIと担当runner原本・再実行不変を確認する。
@@ -1046,7 +1053,7 @@ CLI基盤のAC1〜9と実Git競合・途中失敗・所有境界・予約・依�
 
 ## §10. API 契約
 
-- **外部 HTTP API は変更しない**（Q6）。各 PR で openapi.json の前後比較の差分ゼロ（§7.7）を条件にする。差分が出たらロットを止める。
+- **既存の外部 HTTP API 契約は変更しない**（Q6）。[L1-M 限定裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6483913607)により、新規入口は SYSTEM_ADMIN 専用のページ付き隔離一覧 `GET /api/v1/system-admin/module-events` と、理由付き1件再開 `POST /api/v1/system-admin/module-events/{publicationId}/resume` の2つ、および専用 schema の追加だけを許す。`@Hidden` で新入口を隠さない。各 PR で OpenAPI を同じ手順で自生成した前後を比較し、既存 paths / schemas・応答・エラー・認可の不変を確認する（§7.7）。承認範囲外の差分はロットを止める。
 - 応答の値の意味も変えない。たとえば採用確定の応答の `chatRoomId` は今と同じく常に整数で返す（§4.3 の予約→確定は、そのための形である）。なお openapi.json 上の `chatRoomId` は必須項目として宣言されていない（`chatRoomId?: number`、`frontend/app/types/generated/index.ts:69856`）が、実際の値が常に入ることを契約スナップショットテストで固定する。
 - エラーコード・HTTP ステータス・レスポンスの形も変えない（`ErrorCodeHttpStatusDeclarationGuardTest` 等の既存番人が緑のまま）。
 - 内部の公開 API は §3.4 の命名規約に従う。内部 API はモジュール間の契約で、外部へは出さない。
@@ -1083,7 +1090,7 @@ CREATE TABLE event_publication (
 - `ENGINE=InnoDB`、`DEFAULT CHARSET=utf8mb4`、`COLLATE=utf8mb4_0900_ai_ci` は今回のMySQL環境のSHOW CREATE出力である。ライブラリがこれらを宣言しているという意味ではない。プロジェクトmigrationの照合順序は `MigrationCollationDeclarationGuardTest` で別途担保する。
 - **原則6（UuidV7Entity）の例外**: この表はライブラリが管理し、主キーはライブラリが採番する。`UuidV7Entity` を継承させる余地が無いため、マスタ・シングルトン表と同じく例外とする。`EntityUuidV7ConventionArchTest` の対象packages (`com.mannschaft.app`) と `DoNotIncludeTests`、公式Entity FQCNをソース照合し、D-2b番人の対象外と確認した（番人自体の再実行ではない）。
 - **完了時の処理**: 本計画では `spring.modulith.events.completion-mode=delete` を採用し、完了した行を削除する。別contextの実DB試験で、公開API `markCompleted` を直接呼び、行数が1から0になることを確認した。非TX非同期listenerの正常完了は、Registry suiteで `update` を明示し、completion dateの設定と行の保持を確認した。未指定時のdefault値は公式sourceで確認した。hot切替とARCHIVE設定は未測定。
-- **試行回数・状態の永続化**: 実測した1.4.13の表にはattempt/state（処理中・失敗・隔離）列がない。再投入回数などの永続化は本計画側の補助表（`event_publication_attempts` 等、新規表は `UuidV7Entity` 継承）をL1-Mで設計・確定する。
+- **試行回数・状態の永続化**: 実測した1.4.13の表にはattempt/state（処理中・失敗・隔離）列がない。再投入回数などの永続化は本計画側の補助表（`event_publication_attempts` 等、新規表は `UuidV7Entity` 継承）をL1-Mで設計・確定する。通知の耐久化に既存 outbox を再利用できるか確認し、新規通知 outbox が必要なら publication 本表＋試行表＋通知 outbox の構成を検討する。表数・追加 DDL は未確定であり、2表固定や未承認 DDL の確定扱いはしない。
 - `event_type`、`listener_id`、`serialized_event` は実測上いずれも `VARCHAR(255)`。特にserialized payloadの長さをL1-Mで実イベントと測定し、必要なら拡張の要否を決める。ここで `TEXT` や512文字へ変更したDDLを確定しない。
 
 ### 11.3 Registry の運用値
@@ -1103,15 +1110,19 @@ CREATE TABLE event_publication (
 | 物理削除（パターン F） | **行わない**。保留・失効・取消の予約はすべて墓標として恒久に残す | §4.3-4。契約が ID を持っている可能性があり、誤った取消や長期の障害の後でも同一 ID で復旧できるようにするため。墓標はチャンネル行1つで容量への影響は軽微 |
 | 予約の上限（パターン F） | 作成者ごとの「保留」20 件（取消・失効・有効は数えない） | §4.3-3。並行な採用確定で事前検査をすり抜けた予約の蓄積を抑える。拒否時は明示取消で即時に枠が戻る |
 
-- **担当と手動再開の手順**: 隔離された行は、締めレーン（L-SHIME）の担当が週次で確認する（即時の警告は受けた者が親 Issue に記録する）。手順: (1) 隔離の原因（例外のログ）を調べる、(2) 原因を直す（コードの不具合なら修正 PR）、(3) 管理用の手動再開（隔離を解き試行回数を0に戻す操作。L1-M で `@BatchEndpoint` 等の管理入口として用意し、SYSTEM_ADMIN 限定）で再投入する。再投入は元のイベントをそのまま配信し直すもので、**作成物の ID を別の ID へ書き換えない**（パターン F では、契約に入っている同一のルーム ID を失効状態からでも有効化する）、(4) 完了したことを確認して親 Issue に記録する。業務上もう不要と判断した行は、理由を記録して削除する。
+- **担当と手動再開の手順**: 隔離された行は、締めレーン（L-SHIME）の担当が週次で確認する（即時の警告は受けた者が親 Issue に記録する）。手順: (1) 隔離の原因（例外のログ）を調べる、(2) 原因を直す（コードの不具合なら修正 PR）、(3) §10 の理由付き個別再開 API（隔離を解き試行回数を0に戻す操作。SYSTEM_ADMIN 限定）で再投入する。再投入は元のイベントをそのまま配信し直すもので、**作成物の ID を別の ID へ書き換えない**（パターン F では、契約に入っている同一のルーム ID を失効状態からでも有効化する）、(4) 完了したことを確認して親 Issue に記録する。業務上もう不要と判断した行は、理由を記録して削除する。
 - 観測点: 未完了の件数、最古の未完了の経過時間、再投入の件数、隔離の件数、パターン F の (c) の失敗件数。
+- **管理操作の契約**: 一覧はページ付き、再開は対象1件だけとし、理由は trim 後1〜500文字必須。処理中・完了済み等との競合を拒否し、操作者・対象・理由・結果を監査する。SYSTEM_ADMIN 以外の認証済みロールは403、匿名は401。payload・PII・秘密値・例外本文を一覧/再開応答や通知へ出さない。再開受付は復旧ではなく、購読先の実際の反映完了を確認して初めて復旧とする。
+- **影響通知と利用者案内**: 継続遅延・隔離・実復旧を、影響のある TEAM / ORGANIZATION の現在の管理者へ機能・遅延・対応状況として通知する。短期の自動 retry ごとの通知は0件とし、状態遷移の重複を抑止する。既存の通知ベル/一覧と耐久 outbox / fanout を優先再利用し、新 HTTP 入口は §10 の2 API だけに限定する。通知は冪等にし、配信時に現在の所属・権限を再検証して失効先に送らず、他 tenant の存在・PII を秘匿する。
+- **業務への接続責務**: L1-M は impact resolver の契約、実装検体、既存通知導線との接続を担保する。一般利用者の待機/状況案内は、既存の認可済み元操作の業務状態から、影響する操作/画面だけに出す。保留 room の存在・ID・直リンクを案内せず、既存の直参照404を維持する。具体的な業務画面・影響範囲への接続は各 C / F 採用ロットで必須 AC として実装・実機確認し、検体だけで業務接続済みと扱わない。
+- **通知の失敗・復旧検証**: 通知 outbox の書込/配信途中失敗、再起動、重複配信でも通知を欠落・重複させず、権限失効先と他 tenant に漏らさない。手動再開受付・一部処理成功・通知受付だけでは復旧通知を出さない。通知/待機/状況の文言は ja / en / zh / ko / es / de の6言語を検証する。これらと既存の全 L1-M AC（1,000件 backlog＋毎秒10件×5分、投入拒否0・p99 5秒以下を含む）の未実行を green としない。
 
 ---
 
 ## §12. エラーコード・i18n
 
 - **エラーコード**: 原則新規なし。保留・失効のルームの直接参照は既存の `CHAT_001`（404）を返す。新規が要りうるのはパターン F の予約上限の超過だけで（§4.3-3）、既存の流量制限系を流用できなければ、そのロットの時点の最大 + 1 で予約し、マージ時に再確認する。
-- **i18n**: 本計画の範囲では表示文字列を変えない。保留・失効のルームは存在しないルームと同じ扱い（404）とし、「準備中」表示は作らない。予約上限の超過に新規のエラーコードを足す場合は、その文言を6言語に追加する。チャットの初期メッセージ（`JobChatService.java:61`・`:83` の日本語直書き、DB に保存される）は現状維持とし、i18n 化は本計画外（別 CMP の候補）とする。
+- **i18n**: 既存表示文字列は維持する。限定例外として §11.3 の通知と、認可済み元操作の業務状態に基づく待機/状況案内を6言語で追加する。保留・失効のルームは存在しないルームと同じ `CHAT_001`（404）とし、room 自体の「準備中」表示・存在/ID/直リンクの露出は行わない。予約上限の超過に新規のエラーコードを足す場合は、その文言を6言語に追加する。チャットの初期メッセージ（`JobChatService.java:61`・`:83` の日本語直書き、DB に保存される）は現状維持とし、i18n 化は本計画外（別 CMP の候補）とする。
 
 ---
 

@@ -141,10 +141,10 @@ const ganttLoading = ref(false)
 const pad = (n: number) => String(n).padStart(2, '0')
 
 const {
-  currentYear, currentMonth, loading, calendarLoading, loadEvents, refresh,
+  currentYear, currentMonth, loading, calendarLoading, refresh,
   onPrevMonth: calPrevMonth, onNextMonth: calNextMonth, goToToday, navigateTo,
   extendedEvents, todosFailed, layersFailed, layers, availableScopes, allScopeOptions, selectedScopes,
-  filteredEvents, toggleScope, initStorage, view,
+  filteredEvents, toggleScope, initialize, view,
   setLayerColor, resetLayerColor,
 } = useMyCalendarData()
 
@@ -719,11 +719,10 @@ onMounted(async () => {
       return false
     }
   })()
-  await initStorage()
+  if (!await initialize()) return
   if (!hadPersistedViewState && typeof window !== 'undefined' && window.matchMedia(MOBILE_MEDIA_QUERY).matches) {
     view.value = 'agenda'
   }
-  await loadEvents()
   // クエリパラメータ ?tab=gantt で直接ガントタブを開いた場合は初期読み込みを行う
   if (activeTab.value === 'gantt') {
     loadGantt()
