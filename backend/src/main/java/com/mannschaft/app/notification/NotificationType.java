@@ -41,6 +41,8 @@ public enum NotificationType {
     MEMBER_JOINED(NotificationPriority.LOW, "USER"),
     MODULE_AVAILABLE(NotificationPriority.LOW, "MODULE"),
     SYSTEM_NOTICE(NotificationPriority.NORMAL, "SYSTEM"),
+    /** L1-M: 承認済み業務操作の遅延・隔離・実復旧。 */
+    MODULE_EVENT_NOTICE(NotificationPriority.NORMAL, "MODULE_EVENT_NOTICE"),
     RESERVATION_RECEIVED(NotificationPriority.HIGH, "RESERVATION"),
     RESERVATION_PENDING_APPROVAL(NotificationPriority.HIGH, "RESERVATION"),
     RESERVATION_CANCELLED_BY_MEMBER(NotificationPriority.NORMAL, "RESERVATION"),
