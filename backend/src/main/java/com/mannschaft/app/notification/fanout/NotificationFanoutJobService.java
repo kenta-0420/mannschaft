@@ -521,23 +521,42 @@ public class NotificationFanoutJobService {
         return jobs;
     }
 
-    /** M専用の開始窓口。先行試練用の委譲足場で、terminal拒否は後続実装。 */
+    /** M専用の開始窓口。現在行をロックし、終了済みjobの再開始を防ぐ。 */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean tryMarkModuleEventRunning(UUID jobId) {
+        NotificationFanoutJob job = jobRepository.findByIdForUpdate(jobId).orElse(null);
+        if (!isMutableModuleEventJob(job)) {
+            return false;
+        }
         markRunning(jobId);
         return true;
     }
 
-    /** M専用のcursor窓口。先行試練用に既存の独立TX操作へ委譲する。 */
+    /** M専用のcursor窓口。現在位置より先への前進だけを一度加算する。 */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void advanceModuleEventCursor(UUID jobId, long newCursor, long addedCount) {
+        NotificationFanoutJob job = jobRepository.findByIdForUpdate(jobId).orElse(null);
+        if (!isMutableModuleEventJob(job) || newCursor <= job.getCursorSubjectId()) {
+            return;
+        }
         advanceCursor(jobId, newCursor, addedCount);
     }
 
-    /** M専用の失敗窓口。即DEAD_LETTER指定も元の4引数操作へ委譲する。 */
+    /** M専用の失敗窓口。終了済みjobの状態と失敗counterを保持する。 */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordModuleEventFailure(UUID jobId, String error, int maxRetry, boolean immediateDeadLetter) {
+        NotificationFanoutJob job = jobRepository.findByIdForUpdate(jobId).orElse(null);
+        if (!isMutableModuleEventJob(job)) {
+            return;
+        }
         recordFailure(jobId, error, maxRetry, immediateDeadLetter);
+    }
+
+    private boolean isMutableModuleEventJob(NotificationFanoutJob job) {
+        return job != null
+                && "MODULE_EVENT_NOTICE".equals(job.getNotificationType())
+                && job.getStatus() != NotificationFanoutJobStatus.DONE
+                && job.getStatus() != NotificationFanoutJobStatus.DEAD_LETTER;
     }
 
     /** ジョブを RUNNING に遷移させる（{@link #processOne} を直接呼ぶ経路の保険・独立コミット）。 */
