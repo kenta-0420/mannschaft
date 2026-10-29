@@ -80,9 +80,43 @@ public class EventPublicationAttemptEntity extends UuidV7Entity {
     @Column(name = "version", nullable = false)
     private long version;
 
-    /** worker入口の永続受理。現token・期限境界をred後に実装する。 */
+    /** claimだけでは試行を増やさない。workerの短TX受理が計数点になる。 */
+    void claim(UUID token, LocalDateTime now, LocalDateTime lease) {
+        status = ModuleEventAttemptStatus.IN_PROGRESS;
+        claimToken = token;
+        lastAttemptAt = now;
+        leaseUntil = lease;
+        updatedAt = now;
+    }
+
     boolean admitReplay(UUID expectedToken, LocalDateTime now) {
-        return false;
+        if (!expectedToken.equals(claimToken) || status != ModuleEventAttemptStatus.IN_PROGRESS
+                || leaseUntil == null || !leaseUntil.isAfter(now) || retryCount >= 10) return false;
+        retryCount++;
+        lastAttemptAt = now;
+        updatedAt = now;
+        return true;
+    }
+
+    void renewLease(LocalDateTime now, LocalDateTime lease) {
+        lastAttemptAt = now;
+        leaseUntil = lease;
+        updatedAt = now;
+    }
+
+    void quarantine(String code, LocalDateTime now) {
+        status = ModuleEventAttemptStatus.QUARANTINED;
+        quarantinedAt = now;
+        leaseUntil = null;
+        failureCode = code;
+        updatedAt = now;
+    }
+
+    void pending(String code, LocalDateTime now) {
+        status = ModuleEventAttemptStatus.PENDING;
+        leaseUntil = null;
+        failureCode = code;
+        updatedAt = now;
     }
 
     /** 初回失敗は再配信回数に含めず、次の回収対象として残す。 */

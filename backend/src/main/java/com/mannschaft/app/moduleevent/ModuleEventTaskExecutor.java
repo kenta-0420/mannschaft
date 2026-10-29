@@ -1,6 +1,8 @@
 package com.mannschaft.app.moduleevent;
 
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
@@ -12,12 +14,13 @@ import org.springframework.core.task.TaskDecorator;
 import org.springframework.core.task.TaskRejectedException;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
-/** M専用の受付と世代搬送を検証するexecutor。既存Beanへの接続は別段階で行う。 */
+/** M専用の受付と世代搬送を検証するexecutor。世代受理は内部Ownerの短TXへ委譲する。 */
 public final class ModuleEventTaskExecutor extends ThreadPoolTaskExecutor {
     private final ModuleEventExecutionFrame.Context context;
     private final ModuleEventExecutionFrame.Owner owner;
     private final Semaphore capacity;
     private final ThreadLocal<Admission> submitting = new ThreadLocal<>();
+    private final ThreadLocal<Slot> reserved = new ThreadLocal<>();
     private final Map<Runnable, Admission> queued = new ConcurrentHashMap<>();
 
     public ModuleEventTaskExecutor(ModuleEventExecutionFrame.Context context,
@@ -39,15 +42,56 @@ public final class ModuleEventTaskExecutor extends ThreadPoolTaskExecutor {
         });
     }
 
-    /** SQL前の予算。移譲と未使用解放はApp試練のred後に実装する。 */
+    /** 全submitと同じ受付をSQL前に予約する。snapshotだけでclaim件数を決めない。 */
     public Batch reserveReplayBudget(int maximum, int normalReserve) {
-        return new Batch();
+        if (maximum < 1 || normalReserve < 0) throw new IllegalArgumentException("再配信予算が不正です");
+        synchronized (capacity) {
+            int size = Math.min(Math.min(maximum, 100), Math.max(0, capacity.availablePermits() - normalReserve));
+            if (!capacity.tryAcquire(size)) throw new IllegalStateException("受付の原子予約に失敗しました");
+            return new Batch(size);
+        }
     }
 
     public final class Batch implements AutoCloseable {
-        private Batch() { }
-        public int size() { return 0; }
-        @Override public void close() { }
+        private final List<Slot> slots;
+        private int next;
+        private boolean closed;
+        private Batch(int size) {
+            slots = new ArrayList<>(size);
+            for (int index = 0; index < size; index++) slots.add(new Slot());
+        }
+        public int size() { return slots.size(); }
+        public synchronized ModuleEventExecutionFrame.Scope submitting(ModuleEventExecutionFrame frame) {
+            if (closed || next >= slots.size()) throw new IllegalStateException("予約済みslotがありません");
+            Slot slot = slots.get(next++);
+            slot.frame = frame;
+            Slot previous = reserved.get();
+            reserved.set(slot);
+            return () -> {
+                try { slot.closeUnused(); }
+                finally {
+                    if (previous == null) reserved.remove();
+                    else reserved.set(previous);
+                }
+            };
+        }
+        @Override public synchronized void close() {
+            closed = true;
+            for (Slot slot : slots) slot.closeUnused();
+        }
+    }
+
+    private final class Slot {
+        // 0=予約所有、1=Admissionへ移譲、2=未使用解放済み。
+        private final AtomicInteger state = new AtomicInteger();
+        private ModuleEventExecutionFrame frame;
+        private void closeUnused() {
+            if (state.compareAndSet(0, 2)) releaseCapacity();
+        }
+    }
+
+    private void releaseCapacity() {
+        synchronized (capacity) { capacity.release(); }
     }
 
     public int availableCapacity() {
@@ -68,9 +112,18 @@ public final class ModuleEventTaskExecutor extends ThreadPoolTaskExecutor {
 
     private <T> T dispatch(Supplier<T> submission) {
         ModuleEventExecutionFrame frame = context.submission().orElse(null);
-        if (!capacity.tryAcquire()) {
-            if (frame != null) owner.rejected(frame);
-            throw new TaskRejectedException("M専用executorの受付上限です");
+        Slot slot = reserved.get();
+        if (slot != null && slot.frame == frame) {
+            if (!slot.state.compareAndSet(0, 1)) {
+                throw new TaskRejectedException("同じ予約slotを二重移譲できません");
+            }
+        } else {
+            boolean acquired;
+            synchronized (capacity) { acquired = capacity.tryAcquire(); }
+            if (!acquired) {
+                if (frame != null) owner.rejected(frame);
+                throw new TaskRejectedException("M専用executorの受付上限です");
+            }
         }
         Admission admission = new Admission(frame);
         Admission previous = submitting.get();
@@ -78,7 +131,9 @@ public final class ModuleEventTaskExecutor extends ThreadPoolTaskExecutor {
         try {
             return submission.get();
         } catch (RuntimeException | Error failure) {
-            try { admission.reject(); } catch (RuntimeException | Error cleanup) { failure.addSuppressed(cleanup); }
+            try { admission.reject(); } catch (RuntimeException | Error cleanup) {
+                if (failure != cleanup) failure.addSuppressed(cleanup);
+            }
             throw failure;
         } finally {
             if (previous == null) submitting.remove();
@@ -151,7 +206,7 @@ public final class ModuleEventTaskExecutor extends ThreadPoolTaskExecutor {
 
         private void free() {
             if (wrapper != null) queued.remove(wrapper, this);
-            capacity.release();
+            releaseCapacity();
         }
     }
 }

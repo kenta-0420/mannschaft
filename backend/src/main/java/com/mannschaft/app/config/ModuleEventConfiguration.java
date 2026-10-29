@@ -4,6 +4,7 @@ import com.mannschaft.app.moduleevent.RestrictedEventPublicationRegistry;
 import com.mannschaft.app.moduleevent.ModuleEventExecutionFrame;
 import com.mannschaft.app.moduleevent.ModuleEventTaskExecutor;
 import com.mannschaft.app.moduleevent.ModuleEventPublicationStore;
+import com.mannschaft.app.moduleevent.ModuleEventInvocationCapturePostProcessor;
 import com.mannschaft.app.moduleevent.ModuleEventListenerCatalog;
 import com.mannschaft.app.moduleevent.api.spi.ModuleEventImpactResolver;
 import com.mannschaft.app.moduleevent.notice.ModuleEventImpactEvaluator;
@@ -23,7 +24,6 @@ import org.springframework.modulith.events.core.EventSerializer;
 import org.springframework.modulith.events.core.EventPublicationRepository;
 import org.springframework.modulith.events.support.CompletionRegisteringAdvisor;
 import org.springframework.modulith.events.support.PersistentApplicationEventMulticaster;
-import org.springframework.transaction.PlatformTransactionManager;
 
 /** 公式 JPA 保存と公開イベント基盤を組み合わせる。既定 Registry の二重生成を避ける。 */
 @Configuration(proxyBeanMethods = false)
@@ -32,16 +32,24 @@ public class ModuleEventConfiguration {
     @Bean
     public RestrictedEventPublicationRegistry moduleEventRegistry(
             @Qualifier("jpaEventPublicationRepository") EventPublicationRepository repository,
-            EntityManager entityManager, ModuleEventListenerCatalog catalog,
-            PlatformTransactionManager transactions, ObjectProvider<ModuleEventImpactResolverRegistry> impacts,
-            ModuleEventExecutionFrame.Context frames) {
-        return new RestrictedEventPublicationRegistry(repository, Clock.systemUTC(), entityManager,
-                catalog, transactions, impacts, frames);
+            ModuleEventListenerCatalog catalog, ObjectProvider<ModuleEventImpactResolverRegistry> impacts,
+            ModuleEventExecutionFrame.Context frames, ModuleEventPublicationStore store,
+            ObjectProvider<ModuleEventTaskExecutor> executor) {
+        return new RestrictedEventPublicationRegistry(repository, Clock.systemUTC(), catalog, impacts,
+                frames, store, executor);
     }
 
     @Bean
-    public ModuleEventExecutionFrame.Context moduleEventExecutionContext() {
+    public static ModuleEventExecutionFrame.Context moduleEventExecutionContext() {
         return new ModuleEventExecutionFrame.Context();
+    }
+
+    /** Non-Orderedの公開BPPが標準Async装着後にM方法だけをcaptureする。 */
+    @Bean
+    @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
+    public static ModuleEventInvocationCapturePostProcessor moduleEventInvocationCapture(
+            ModuleEventExecutionFrame.Context frames) {
+        return new ModuleEventInvocationCapturePostProcessor(frames);
     }
 
     /** 初回保存と独立した短TXを区別する内部Store。 */

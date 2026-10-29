@@ -2,6 +2,8 @@ package com.mannschaft.app.moduleevent;
 
 import java.util.HashMap;
 import java.util.Collection;
+import java.util.List;
+import java.util.function.Consumer;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -33,8 +35,30 @@ public record ModuleEventExecutionFrame(Object event, UUID publicationId, UUID a
         private final ThreadLocal<ModuleEventExecutionFrame> submission = new ThreadLocal<>();
         private final ThreadLocal<ModuleEventExecutionFrame> execution = new ThreadLocal<>();
 
-        /** 全対象の所有確認は公式登録前に同じmonitor内で行う。実装はApp試練のred後に接続する。 */
+        /** 全対象の所有確認は公式登録前に同じmonitor内で行う。 */
         synchronized void assertUnregistered(Object event, Collection<String> listenerIds) {
+            for (String listenerId : listenerIds) {
+                if (registrations.containsKey(new InvocationKey(event, listenerId))) {
+                    throw new IllegalStateException("同じイベント実体と購読IDの登録が未解放です");
+                }
+            }
+        }
+
+        synchronized boolean wasCaptured(ModuleEventExecutionFrame frame) {
+            Registration current = registrations.get(new InvocationKey(frame.event(), frame.listenerId()));
+            return current != null && current.frame == frame && current.captured;
+        }
+
+        /** DB claimで置換済みの旧tokenだけを掃除する。未submit初回は置換しない。 */
+        synchronized void expirePriorGenerations(UUID publicationId, UUID newToken,
+                Consumer<ModuleEventExecutionFrame> trackerCleanup) {
+            for (Registration registration : List.copyOf(registrations.values())) {
+                ModuleEventExecutionFrame frame = registration.frame;
+                if (registration.captured && publicationId.equals(frame.publicationId())
+                        && !newToken.equals(frame.token())) {
+                    release(frame, () -> trackerCleanup.accept(frame));
+                }
+            }
         }
 
         public synchronized void register(ModuleEventExecutionFrame frame) {
@@ -64,8 +88,11 @@ public record ModuleEventExecutionFrame(Object event, UUID publicationId, UUID a
                 return false;
             }
             // 新世代が割り込む前に、同じ所有確認の内側で公式trackerを解除する。
-            trackerCleanup.run();
-            registrations.remove(key);
+            try {
+                trackerCleanup.run();
+            } finally {
+                registrations.remove(key, current);
+            }
             return true;
         }
 

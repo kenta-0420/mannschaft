@@ -1,19 +1,35 @@
 package com.mannschaft.app.moduleevent;
 
+import com.mannschaft.app.common.event.ReliableEvent;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.moduleevent.api.dto.ModuleEventImpactBinding;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import java.nio.ByteBuffer;
+import java.sql.Timestamp;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import org.hibernate.query.NativeQuery;
 import org.springframework.modulith.events.core.EventPublicationRepository;
 import org.springframework.modulith.events.core.EventSerializer;
+import org.springframework.modulith.events.core.PublicationTargetIdentifier;
+import org.springframework.modulith.events.core.TargetEventPublication;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-/** 有界SQL・codec・短TXの内部窓口。App試練のred前なので操作は未実装。 */
+/** 有界SQL・codec・短TXの内部窓口。業務resolverや通知のlockをここへ混ぜない。 */
 public class ModuleEventPublicationStore {
+    private static final Duration REPLAY_CUTOFF = Duration.ofMinutes(5);
+    // cutoffとは別の猶予。M18で処理時間との関係を検証する初期値。
+    private static final Duration EXECUTION_LEASE = Duration.ofMinutes(5);
     private final EntityManager entityManager;
     private final EventPublicationRepository repository;
     private final EventSerializer serializer;
@@ -30,26 +46,178 @@ public class ModuleEventPublicationStore {
     }
 
     /** 初回補助保存はpublisherと同一物理TX。独立TXへ逃がさない。 */
-    @Transactional(propagation = Propagation.MANDATORY)
+    @Transactional(propagation = Propagation.MANDATORY, readOnly = false)
     public EventPublicationAttemptEntity createInitialAttempt(UUID publicationId, UUID token,
             ModuleEventImpactBinding binding) {
-        return null;
+        if (TransactionSynchronizationManager.isCurrentTransactionReadOnly()) {
+            throw new IllegalStateException("確実配信イベントの保存には書込TXが必要です");
+        }
+        LocalDateTime now = local(clock.instant());
+        EventPublicationAttemptEntity attempt = EventPublicationAttemptEntity.builder()
+                .publicationId(publicationId).retryCount(0).status(ModuleEventAttemptStatus.IN_PROGRESS)
+                .claimToken(token).lastAttemptAt(now).leaseUntil(now.plus(EXECUTION_LEASE))
+                .resolverKey(binding == null ? null : binding.getResolverKey())
+                .operationId(binding == null ? null : binding.getOperationId())
+                .episodeId(binding == null ? null : binding.getEpisodeId())
+                .scopeType(binding == null ? null : binding.getScopeType())
+                .scopeId(binding == null ? null : binding.getScopeId())
+                .organizationId(binding == null ? null : binding.getOrganizationId())
+                .createdAt(now).updatedAt(now).build();
+        entityManager.persist(attempt);
+        return attempt;
     }
 
-    /** readOnly呼出元からも既存routing AspectがPRIMARYを指定する公開Bean境界。 */
+    /** SQL前に確保済みの件数だけ取得する。cutoffとleaseの等号は回収対象。 */
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED,
             readOnly = false)
     public List<Claim> claim(Instant cutoff, Instant now, int limit) {
-        return List.of();
+        if (limit < 1 || limit > 100) throw new IllegalArgumentException("再配信上限は1から100です");
+        if (!catalog.isReady()) throw new IllegalStateException("確実配信リスナー台帳が未初期化です");
+        Instant latest = now.minus(REPLAY_CUTOFF);
+        Instant effective = cutoff.isBefore(latest) ? cutoff : latest;
+        // 本表Instantと補助LocalDateTimeはどちらもDBではUTC。native境界は瞬間を明示する。
+        // STRAIGHT_JOINでhelperを先にlockし、JOIN optimizerのmain先行へ依存しない。
+        NativeQuery<?> query = entityManager.createNativeQuery("""
+                SELECT p.id AS publication_id, a.id AS attempt_id, p.listener_id AS listener_id,
+                       p.event_type AS event_type, p.serialized_event AS serialized_event,
+                       p.publication_date AS publication_date
+                FROM event_publication_attempts a STRAIGHT_JOIN event_publication p ON p.id=a.publication_id
+                WHERE p.completion_date IS NULL AND p.publication_date <= :cutoff
+                  AND a.status IN ('PENDING','IN_PROGRESS')
+                  AND (a.lease_until IS NULL OR a.lease_until <= :now)
+                ORDER BY p.publication_date, p.id LIMIT :limit FOR UPDATE SKIP LOCKED
+                """).unwrap(NativeQuery.class)
+                .addScalar("publication_id", byte[].class).addScalar("attempt_id", byte[].class)
+                .addScalar("listener_id", String.class).addScalar("event_type", String.class)
+                .addScalar("serialized_event", String.class).addScalar("publication_date", Instant.class);
+        query.setParameter("cutoff", Timestamp.from(effective));
+        query.setParameter("now", Timestamp.from(now));
+        query.setParameter("limit", limit);
+        List<Claim> result = new ArrayList<>();
+        for (Object value : query.getResultList()) {
+            Object[] row = (Object[]) value;
+            UUID publicationId = uuid((byte[]) row[0]);
+            EventPublicationAttemptEntity attempt = entityManager.find(EventPublicationAttemptEntity.class,
+                    uuid((byte[]) row[1]), LockModeType.PESSIMISTIC_WRITE);
+            LocalDateTime attemptedAt = local(now);
+            if (attempt.getRetryCount() >= 10) {
+                // 10回目の受理commit直後に停止した行も、11回目の業務へ入れず隔離する。
+                attempt.quarantine("RETRY_LIMIT", attemptedAt);
+                continue;
+            }
+            String listenerId = (String) row[2];
+            Class<? extends ReliableEvent> type = catalog.eventType(listenerId).orElse(null);
+            if (type == null || !type.isRecord() || !type.getName().equals(row[3])) {
+                attempt.quarantine("UNKNOWN_EVENT_TARGET", attemptedAt);
+                continue;
+            }
+            Object event;
+            try {
+                event = serializer.deserialize(row[4], type);
+                if (event == null || event.getClass() != type) {
+                    attempt.quarantine("EVENT_TYPE_MISMATCH", attemptedAt);
+                    continue;
+                }
+            } catch (RuntimeException failure) {
+                // 例外本文やpayloadを保存せず、固定codeだけでpoisonを隔離する。
+                attempt.quarantine("EVENT_DESERIALIZATION_FAILURE", attemptedAt);
+                continue;
+            }
+            UUID token = UUID.randomUUID();
+            attempt.claim(token, attemptedAt, attemptedAt.plus(EXECUTION_LEASE));
+            TargetEventPublication publication = new RestoredPublication(publicationId, event,
+                    PublicationTargetIdentifier.of(listenerId), (Instant) row[5]);
+            result.add(new Claim(publication, new ModuleEventExecutionFrame(event, publicationId,
+                    attempt.getId(), token, listenerId, false)));
+        }
+        return List.copyOf(result);
     }
 
+    /** worker入口直前のcommitが実行受理点。queue仮受理だけでは増やさない。 */
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED,
             readOnly = false)
     public boolean admit(ModuleEventExecutionFrame frame) {
-        return false;
+        EventPublicationAttemptEntity attempt = lock(frame);
+        LocalDateTime now = local(clock.instant());
+        if (attempt == null || attempt.getLeaseUntil() == null || !attempt.getLeaseUntil().isAfter(now)) return false;
+        if (!frame.initial() && !attempt.admitReplay(frame.token(), now)) return false;
+        attempt.renewLease(now, now.plus(EXECUTION_LEASE));
+        return true;
     }
 
-    /** 有界な取得行。Catalog許可型との完全一致を確認してから復元する。 */
-    public record Claim(UUID publicationId, UUID attemptId, UUID token, String listenerId,
-            String eventType, String serializedEvent, Instant publicationDate) { }
+    /** completion/delete/helperをUUIDとtokenで限定し、同じ短TXに揃える。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED,
+            readOnly = false)
+    public void finish(ModuleEventExecutionFrame frame, boolean completed) {
+        EventPublicationAttemptEntity attempt = lock(frame);
+        if (attempt == null) return;
+        if (completed) {
+            repository.markCompleted(frame.publicationId(), clock.instant());
+            entityManager.remove(attempt);
+        } else if (attempt.getRetryCount() >= 10) {
+            attempt.quarantine("LISTENER_FAILURE", local(clock.instant()));
+        } else {
+            attempt.pending("LISTENER_FAILURE", local(clock.instant()));
+        }
+    }
+
+    /** 拒否・取消・consumer未投入は試行を増やさず、現tokenだけを回収可能へ戻す。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED,
+            readOnly = false)
+    public void rejected(ModuleEventExecutionFrame frame) {
+        EventPublicationAttemptEntity attempt = lock(frame);
+        if (attempt == null) return;
+        if (attempt.getRetryCount() >= 10) attempt.quarantine("RETRY_LIMIT", local(clock.instant()));
+        else attempt.pending("EXECUTOR_REJECTED", local(clock.instant()));
+    }
+
+    private EventPublicationAttemptEntity lock(ModuleEventExecutionFrame frame) {
+        // 復旧評価・成功hookとhelper→main→noticeの順を揃える。旧tokenはmainへ進めない。
+        EventPublicationAttemptEntity attempt = entityManager.find(EventPublicationAttemptEntity.class,
+                frame.attemptId(), LockModeType.PESSIMISTIC_WRITE);
+        if (attempt == null || attempt.getStatus() != ModuleEventAttemptStatus.IN_PROGRESS
+                || !frame.publicationId().equals(attempt.getPublicationId())
+                || !frame.token().equals(attempt.getClaimToken())) return null;
+        if (entityManager.createNativeQuery("""
+                SELECT id FROM event_publication WHERE id=:id AND completion_date IS NULL
+                  AND listener_id=:listener AND event_type=:eventType FOR UPDATE
+                """).setParameter("id", bytes(frame.publicationId()))
+                .setParameter("listener", frame.listenerId()).setParameter("eventType", frame.event().getClass().getName())
+                .getResultList().isEmpty()) return null;
+        return attempt;
+    }
+
+    private static LocalDateTime local(Instant instant) {
+        return LocalDateTime.ofInstant(instant, UserZoneLocalDateTimeParser.SERVER_ZONE);
+    }
+    private static byte[] bytes(UUID id) {
+        return ByteBuffer.allocate(16).putLong(id.getMostSignificantBits()).putLong(id.getLeastSignificantBits()).array();
+    }
+    private static UUID uuid(byte[] bytes) {
+        ByteBuffer buffer = ByteBuffer.wrap(bytes);
+        return new UUID(buffer.getLong(), buffer.getLong());
+    }
+
+    public record Claim(TargetEventPublication publication, ModuleEventExecutionFrame frame) { }
+
+    /** public SPIだけで既存UUIDを復元する。Target.ofの新UUIDへ置き換えない。 */
+    private static final class RestoredPublication implements TargetEventPublication {
+        private final UUID id;
+        private final Object event;
+        private final PublicationTargetIdentifier target;
+        private final Instant publishedAt;
+        private Instant completedAt;
+        private RestoredPublication(UUID id, Object event, PublicationTargetIdentifier target, Instant publishedAt) {
+            this.id = id;
+            this.event = event;
+            this.target = target;
+            this.publishedAt = publishedAt;
+        }
+        @Override public UUID getIdentifier() { return id; }
+        @Override public Object getEvent() { return event; }
+        @Override public PublicationTargetIdentifier getTargetIdentifier() { return target; }
+        @Override public Instant getPublicationDate() { return publishedAt; }
+        @Override public Optional<Instant> getCompletionDate() { return Optional.ofNullable(completedAt); }
+        @Override public void markCompleted(Instant instant) { completedAt = instant; }
+    }
 }
