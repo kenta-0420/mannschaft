@@ -2,6 +2,7 @@ package com.mannschaft.app.moduleevent;
 
 import com.mannschaft.app.common.event.ReliableEvent;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
+import com.mannschaft.app.moduleevent.api.dto.ModuleEventImpactBinding;
 import com.mannschaft.app.moduleevent.notice.ModuleEventImpactResolverRegistry;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
@@ -71,6 +72,8 @@ public class RestrictedEventPublicationRegistry extends DefaultEventPublicationR
                 || !TransactionSynchronizationManager.isSynchronizationActive()) {
             throw new IllegalStateException("確実配信イベントは業務TX内で発行してください");
         }
+        // 対象と業務TXを確認した後、公式保存前に純識別を一回だけ行う。
+        ModuleEventImpactBinding impact = impacts.getObject().identify((ReliableEvent) event).orElse(null);
         Collection<TargetEventPublication> publications = super.store(event, selected.stream());
         for (TargetEventPublication publication : publications) {
             InvocationKey key = new InvocationKey(event, publication.getTargetIdentifier());
@@ -80,6 +83,12 @@ public class RestrictedEventPublicationRegistry extends DefaultEventPublicationR
                     .publicationId(publication.getIdentifier()).retryCount(0)
                     .status(ModuleEventAttemptStatus.IN_PROGRESS).claimToken(token)
                     .lastAttemptAt(now).leaseUntil(now.plus(INITIAL_LEASE))
+                    .resolverKey(impact == null ? null : impact.getResolverKey())
+                    .operationId(impact == null ? null : impact.getOperationId())
+                    .episodeId(impact == null ? null : impact.getEpisodeId())
+                    .scopeType(impact == null ? null : impact.getScopeType())
+                    .scopeId(impact == null ? null : impact.getScopeId())
+                    .organizationId(impact == null ? null : impact.getOrganizationId())
                     .createdAt(now).updatedAt(now).build();
             entityManager.persist(attempt);
             Generation generation = new Generation(publication.getIdentifier(), attempt.getId(), token);
