@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -345,6 +346,42 @@ class ModuleEventExecutionBoundaryTest {
         }
     }
 
+    @Test
+    void 入口受理例外は未実行Futureを取消してcleanup例外で元例外を隠さない() throws Exception {
+        try (Harness h = new Harness(false)) {
+            RuntimeException original = new IllegalStateException("proof-admission-failure");
+            RuntimeException cleanup = new IllegalArgumentException("proof-cleanup-failure");
+            h.owner.admitFailure.set(original);
+            h.owner.finishFailure.set(cleanup);
+            AtomicReference<Throwable> uncaught = new AtomicReference<>();
+            CountDownLatch failed = new CountDownLatch(1);
+            h.pool.getThreadPoolExecutor().setThreadFactory(task -> {
+                Thread thread = new Thread(task, "module-admission-failure-proof");
+                thread.setUncaughtExceptionHandler((ignored, failure) -> {
+                    uncaught.set(failure); failed.countDown();
+                });
+                return thread;
+            });
+            Event event = event();
+            ModuleEventExecutionFrame frame = h.bind(event);
+            assertThat(h.context.capture(event, frame.listenerId())).containsSame(frame);
+            java.util.concurrent.Future<Integer> future;
+            try (var ignored = h.context.submitting(frame)) {
+                future = h.pool.submit(() -> { h.probe.order.add("unexpected-body"); return 1; });
+            }
+            assertThat(failed.await(5, TimeUnit.SECONDS)).isTrue();
+            assertThat(future.isDone()).isTrue();
+            assertThat(future.isCancelled()).isTrue();
+            assertThatThrownBy(() -> future.get(1, TimeUnit.SECONDS)).isInstanceOf(CancellationException.class);
+            assertThat(uncaught).hasValue(original);
+            assertThat(original.getSuppressed()).containsExactly(cleanup);
+            assertThat(h.owner.finished).hasValue(1);
+            assertThat(h.owner.rejected).hasValue(0);
+            assertThat(h.probe.order).isEmpty();
+            assertThat(h.pool.availableCapacity()).isEqualTo(2);
+        }
+    }
+
     static void waitFor(CountDownLatch latch) {
         try {
             if (!latch.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("mini試練の解放待ちが期限切れ");
@@ -383,8 +420,11 @@ class ModuleEventExecutionBoundaryTest {
         final AtomicInteger finished = new AtomicInteger();
         final AtomicReference<UUID> onlyToken = new AtomicReference<>();
         final AtomicInteger trackerCleanup = new AtomicInteger();
+        final AtomicReference<RuntimeException> admitFailure = new AtomicReference<>();
+        final AtomicReference<RuntimeException> finishFailure = new AtomicReference<>();
         Owner(Probe probe, ModuleEventExecutionFrame.Context context) { this.probe = probe; this.context = context; }
         @Override public boolean admit(ModuleEventExecutionFrame frame) {
+            if (admitFailure.get() != null) throw admitFailure.get();
             if (onlyToken.get() != null && !onlyToken.get().equals(frame.token())) return false;
             accepted.incrementAndGet(); probe.order.add("accept"); return true;
         }
@@ -393,6 +433,7 @@ class ModuleEventExecutionBoundaryTest {
         }
         @Override public void finished(ModuleEventExecutionFrame frame) {
             context.release(frame, trackerCleanup::incrementAndGet); finished.incrementAndGet();
+            if (finishFailure.get() != null) throw finishFailure.get();
         }
     }
 

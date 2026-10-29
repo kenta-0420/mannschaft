@@ -99,12 +99,23 @@ public final class ModuleEventTaskExecutor extends ThreadPoolTaskExecutor {
                 if (frame == null) {
                     task.run();
                 } else {
+                    Throwable executionFailure = null;
                     try (var ignored = context.executing(frame)) {
                         // ここで短M TXをcommitしてから業務へ入る。最新mapを取り直さない。
                         if (owner.admit(frame)) task.run();
                         else cancelOriginal();
+                    } catch (RuntimeException | Error failure) {
+                        executionFailure = failure;
+                        // gateがthrowした場合も、まだrunしていないFutureを未完了に残さない。
+                        try { cancelOriginal(); } catch (RuntimeException | Error cleanup) {
+                            if (failure != cleanup) failure.addSuppressed(cleanup);
+                        }
+                        throw failure;
                     } finally {
-                        owner.finished(frame);
+                        try { owner.finished(frame); } catch (RuntimeException | Error cleanup) {
+                            if (executionFailure == null) throw cleanup;
+                            if (executionFailure != cleanup) executionFailure.addSuppressed(cleanup);
+                        }
                     }
                 }
             } finally {
