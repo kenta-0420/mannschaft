@@ -28,6 +28,7 @@ interface ScopeFoldersState {
   defaultOrgFolderId: number | null
   notificationSummaryByFolder: Record<number, number>
   loading: boolean
+  requestGeneration: number
 }
 
 const BASE_PATH = '/api/v1/me/scope-folders'
@@ -44,6 +45,7 @@ export const useScopeFoldersStore = defineStore('scopeFolders', {
     defaultOrgFolderId: null,
     notificationSummaryByFolder: {},
     loading: false,
+    requestGeneration: 0,
   }),
 
   getters: {
@@ -75,12 +77,14 @@ export const useScopeFoldersStore = defineStore('scopeFolders', {
      * 指定 scopeType のフォルダ一覧をフェッチして state に反映する。
      */
     async fetchAll(scopeType: ScopeType): Promise<void> {
+      const generation = this.requestGeneration
       this.loading = true
       try {
         const api = useApi()
         const res = await api<{ data: ScopeFolder[] }>(
           `${BASE_PATH}?scopeType=${scopeType}`,
         )
+        if (generation !== this.requestGeneration) return
         if (scopeType === 'TEAM') {
           this.myTeamFolders = res.data
           this.defaultTeamFolderId = res.data.find(isDefaultFolder)?.id ?? null
@@ -91,7 +95,7 @@ export const useScopeFoldersStore = defineStore('scopeFolders', {
         }
       }
       finally {
-        this.loading = false
+        if (generation === this.requestGeneration) this.loading = false
       }
     },
 
@@ -100,17 +104,20 @@ export const useScopeFoldersStore = defineStore('scopeFolders', {
      * 取得後、state のフォルダ配列にもマージする。
      */
     async fetchDefault(scopeType: ScopeType): Promise<ScopeFolder> {
+      const generation = this.requestGeneration
       const api = useApi()
       const res = await api<{ data: ScopeFolder }>(
         `${BASE_PATH}/default?scopeType=${scopeType}`,
       )
       const folder = res.data
-      this.upsertFolder(scopeType, folder)
-      if (scopeType === 'TEAM') {
-        this.defaultTeamFolderId = folder.id
-      }
-      else {
-        this.defaultOrgFolderId = folder.id
+      if (generation === this.requestGeneration) {
+        this.upsertFolder(scopeType, folder)
+        if (scopeType === 'TEAM') {
+          this.defaultTeamFolderId = folder.id
+        }
+        else {
+          this.defaultOrgFolderId = folder.id
+        }
       }
       return folder
     },
@@ -122,12 +129,13 @@ export const useScopeFoldersStore = defineStore('scopeFolders', {
       scopeType: ScopeType,
       payload: CreateFolderRequest,
     ): Promise<ScopeFolder> {
+      const generation = this.requestGeneration
       const api = useApi()
       const res = await api<{ data: ScopeFolder }>(
         `${BASE_PATH}?scopeType=${scopeType}`,
         { method: 'POST', body: payload },
       )
-      this.upsertFolder(scopeType, res.data)
+      if (generation === this.requestGeneration) this.upsertFolder(scopeType, res.data)
       return res.data
     },
 
@@ -139,6 +147,7 @@ export const useScopeFoldersStore = defineStore('scopeFolders', {
       folderId: number,
       payload: UpdateFolderRequest,
     ): Promise<ScopeFolder> {
+      const generation = this.requestGeneration
       const target = this.findFolder(scopeType, folderId)
       if (target && isDefaultFolder(target)) {
         throw new Error('scopeFolder.error.defaultImmutable')
@@ -148,7 +157,7 @@ export const useScopeFoldersStore = defineStore('scopeFolders', {
         method: 'PUT',
         body: payload,
       })
-      this.upsertFolder(scopeType, res.data)
+      if (generation === this.requestGeneration) this.upsertFolder(scopeType, res.data)
       return res.data
     },
 
@@ -156,13 +165,14 @@ export const useScopeFoldersStore = defineStore('scopeFolders', {
      * フォルダ削除。未分類フォルダは弾く。
      */
     async delete(scopeType: ScopeType, folderId: number): Promise<void> {
+      const generation = this.requestGeneration
       const target = this.findFolder(scopeType, folderId)
       if (target && isDefaultFolder(target)) {
         throw new Error('scopeFolder.error.defaultImmutable')
       }
       const api = useApi()
       await api(`${BASE_PATH}/${folderId}`, { method: 'DELETE' })
-      this.removeFolder(scopeType, folderId)
+      if (generation === this.requestGeneration) this.removeFolder(scopeType, folderId)
     },
 
     /**
@@ -173,11 +183,13 @@ export const useScopeFoldersStore = defineStore('scopeFolders', {
       folderId: number,
       scopeId: string,
     ): Promise<void> {
+      const generation = this.requestGeneration
       const api = useApi()
       const res = await api<{ data: ScopeFolder }>(
         `${BASE_PATH}/${folderId}/items`,
         { method: 'POST', body: { scopeId } },
       )
+      if (generation !== this.requestGeneration) return
       this.upsertFolder(scopeType, res.data)
       // 別フォルダに属していた場合は移動されるため、他のフォルダから取り除く
       this.removeScopeIdFromOtherFolders(scopeType, folderId, scopeId)
@@ -191,8 +203,10 @@ export const useScopeFoldersStore = defineStore('scopeFolders', {
       folderId: number,
       scopeId: string,
     ): Promise<void> {
+      const generation = this.requestGeneration
       const api = useApi()
       await api(`${BASE_PATH}/${folderId}/items/${scopeId}`, { method: 'DELETE' })
+      if (generation !== this.requestGeneration) return
       const folder = this.findFolder(scopeType, folderId)
       if (folder) {
         folder.itemScopeIds = folder.itemScopeIds.filter(id => id !== scopeId)
@@ -207,6 +221,7 @@ export const useScopeFoldersStore = defineStore('scopeFolders', {
       scopeIds: string[],
       scopeType: ScopeType,
     ): Promise<BulkAssignResponse> {
+      const generation = this.requestGeneration
       const api = useApi()
       const res = await api<{ data: BulkAssignResponse }>(
         `${BASE_PATH}/items/bulk-assign`,
@@ -216,7 +231,7 @@ export const useScopeFoldersStore = defineStore('scopeFolders', {
         },
       )
       // 振り分け後は最新フォルダ一覧を再取得（楽観的更新ではなく一貫性優先）
-      await this.fetchAll(scopeType)
+      if (generation === this.requestGeneration) await this.fetchAll(scopeType)
       return res.data
     },
 
@@ -224,10 +239,12 @@ export const useScopeFoldersStore = defineStore('scopeFolders', {
      * フォルダ別未読集計の取得（F15.3 新規）。
      */
     async refreshNotificationSummary(scopeType: ScopeType): Promise<void> {
+      const generation = this.requestGeneration
       const api = useApi()
       const res = await api<{ data: FolderNotificationSummary[] }>(
         `${BASE_PATH}/notifications/summary?scopeType=${scopeType}`,
       )
+      if (generation !== this.requestGeneration) return
       const next: Record<number, number> = { ...this.notificationSummaryByFolder }
       for (const item of res.data) {
         next[item.folderId] = item.unreadCount
@@ -237,11 +254,14 @@ export const useScopeFoldersStore = defineStore('scopeFolders', {
 
     /** state リセット（ログアウト時など）。 */
     clear() {
+      // 旧セッションの進行中応答が、clear後のstateへ書き戻すことを防ぐ。
+      this.requestGeneration += 1
       this.myTeamFolders = []
       this.myOrgFolders = []
       this.defaultTeamFolderId = null
       this.defaultOrgFolderId = null
       this.notificationSummaryByFolder = {}
+      this.loading = false
     },
 
     // === 内部ヘルパー ===
