@@ -3,6 +3,7 @@ package com.mannschaft.app.moduleevent.notice;
 import com.mannschaft.app.common.UuidV7;
 import com.mannschaft.app.moduleevent.api.dto.ModuleEventRecoveryState;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.moduleevent.ModuleEventMySqlTest;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -43,6 +44,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  * payload の全件 deserialize や JSON 検索で pending を照合しない。
  * schema 自動生成と Flyway の両経路の確認を統合実行時に分けて記録する。
  */
+@ModuleEventMySqlTest
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("M 通知予約の alias・冪等・有界 claim・世代 CAS")
 class ModuleEventNoticeOutboxIT extends AbstractMySqlIntegrationTest {

@@ -15,6 +15,7 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.moduleevent.ModuleEventMySqlTest;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,6 +61,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>この IT が通っても、M core の commit 後発行、隔離 rollback 時通知0、全未完了を対象にした
  * 30分ちょうど通知0 / 超過通知あり、再試行の抑止は未了。core 接続の別試練が必須。</p>
  */
+@ModuleEventMySqlTest
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @Isolated("共有 Notifier の空 Webhook を所有 loopback へ一時変更し完全復元するため")
 @DisplayName("M12 公開運用警報の実DB・AFTER_COMMIT・loopback 配送")

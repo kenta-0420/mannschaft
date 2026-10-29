@@ -19,10 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.modulith.events.core.EventPublicationRegistry;
 import org.springframework.scheduling.annotation.Async;
@@ -39,7 +36,7 @@ import static org.awaitility.Awaitility.await;
  * AFTER_COMMIT が必ず観測されるよう、テスト全体を rollback TX で包まない。
  * 本クラスの schema 検査は JPA 起動互換性であり、Flyway 全再生の代替ではない。
  */
-@Import(ModuleEventRegistryIT.Fixtures.class)
+@ModuleEventMySqlTest
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class ModuleEventRegistryIT extends AbstractMySqlIntegrationTest {
     @PersistenceContext private EntityManager entityManager;
@@ -211,12 +208,6 @@ class ModuleEventRegistryIT extends AbstractMySqlIntegrationTest {
     record FailureEvent(UUID targetId, Long organizationId, LocalDateTime occurredAt) implements ReliableEvent { }
     /** 正常終了用の検体。 */
     record SuccessEvent(UUID targetId, Long organizationId, LocalDateTime occurredAt) implements ReliableEvent { }
-
-    /** 本番の組立に検体 listener だけを足す。DB・自分の Bean はモックしない。 */
-    @TestConfiguration(proxyBeanMethods = false)
-    static class Fixtures {
-        @Bean Listeners moduleRegistryTestListeners() { return new Listeners(); }
-    }
 
     /** AOP proxy 本体のfieldを直接読まず、実targetと共有する観測状態。 */
     static class Probe {
