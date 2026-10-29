@@ -1,0 +1,39 @@
+{
+  "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+  "kind": "formal-ui-functional-validation-not-performance",
+  "desktop": {
+    "safeFile": "docs/evidence/CMP-261028-1715/formal/formal-calendar-desktop6-safe.json",
+    "casesPassed": 6,
+    "ownUIWrites": {
+      "create": 1,
+      "update": 1,
+      "delete": 1
+    },
+    "sharedWrites": 0,
+    "allThreeActorsLogout200Closed": true
+  },
+  "mobile": {
+    "safeFile": "docs/evidence/CMP-261028-1715/formal/formal-calendar-mobile6-safe.json",
+    "casesPassed": 2,
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "hasTouch": true,
+    "isMobile": true,
+    "apiPreconditionRealProfileProjectedToCurrentUser": true,
+    "businessWrites": 0,
+    "allLogout200Closed": true
+  },
+  "allSessionsClosed": true,
+  "cleanupFailure": false,
+  "oldFailedDriversAndSafeEvidenceRetained": true,
+  "laterTestOnlyCIBridgeNotRuntimeSource": true,
+  "limitations": [
+    "Member shared-query negative was not attempted in that case; the negative is the outsider case after owner same-valid-query positive.",
+    "Personal detail authorization includes UI owner modal/list positives and separate real detail API owner200/other actors403; no unsupported personal query route is claimed.",
+    "All roles remain bound to personal ownership; no artificial role or membership changes were made.",
+    "Screenshots are masked; raw sensitive UI text, route IDs, payloads and credentials are not stored.",
+    "Formal UI success does not establish overall latency improvement."
+  ]
+}
