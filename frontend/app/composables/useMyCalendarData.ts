@@ -2,6 +2,7 @@ import type { CalendarEventItem } from './useCalendarEvents'
 import type { CalendarLayerScopeType } from './schedule/useScheduleCrud'
 import type { MyCalendarTodo } from '~/types/todo'
 import { scheduleScopeKey } from '~/utils/scheduleScopeKey'
+import { getCurrentScope, onScopeDispose } from 'vue'
 
 interface CalendarEntryRaw {
   // reflection 等 UUID 主キードメインの行は id=null（§6.2/AC-21）。
@@ -334,6 +335,10 @@ export function useMyCalendarData() {
   /** `/me/calendar-layers` 由来のレイヤー一覧。events とは独立に取得し、月移動では再取得しない（AC-03）。 */
   const layers = ref<CalendarLayerView[]>([])
   const layersLoaded = ref(false)
+  const storageReady = ref(false)
+  const initializing = ref(false)
+  let disposed = false
+  if (getCurrentScope()) onScopeDispose(() => { disposed = true })
   /** P2修繕: レイヤー一覧の取得に失敗したか（部分失敗をユーザーと利用側に見せる。todosFailed と同じ流儀）。 */
   const layersFailed = ref(false)
   /**
@@ -489,7 +494,7 @@ export function useMyCalendarData() {
     return merged
   }
 
-  const { currentYear, currentMonth, events, loading, calendarLoading, loadError, loadEvents, refresh, refreshWithResult, onPrevMonth, onNextMonth, goToToday, navigateTo } =
+  const { currentYear, currentMonth, events, loading: eventsLoading, calendarLoading, loadError, loadEvents, refresh, refreshWithResult, onPrevMonth, onNextMonth, goToToday, navigateTo } =
     useCalendarEvents(fetcher, {
       cacheHalfMonths: 0,
       // 予定取得（loadEvents / refresh / 月移動）の失敗を調査用に必ず記録する。
@@ -504,6 +509,9 @@ export function useMyCalendarData() {
         errorReport.captureQuiet(error, { context: 'useMyCalendarData.calendarEvents' })
       },
     })
+
+  // 予定が先着しても、表示設定の復元と初期取得が揃うまで表示・操作を開始しない。
+  const loading = computed(() => !storageReady.value || initializing.value || eventsLoading.value)
 
   /**
    * レイヤー一覧の取得（§5.1）。events とは独立。月移動では呼ばない（AC-03）。
@@ -710,7 +718,7 @@ export function useMyCalendarData() {
   })
 
   const filteredEvents = computed(() =>
-    events.value.filter((e) => {
+    storageReady.value ? events.value.filter((e) => {
       // §6.2/AC-21: id は reflection 行で衝突する（id=null/-1）ため uniqueKey でルックアップする。
       const ext = eventsByUniqueKey.value.get(e.uniqueKey)
       if (!ext) return false
@@ -718,7 +726,7 @@ export function useMyCalendarData() {
       // 全件表示に劣化させる。「レイヤーが読めない＝予定も一切見えない」を再発させないため。
       if (layersDegraded.value) return true
       return selectedScopes.value.includes(eventLayerKey(ext))
-    }),
+    }) : [],
   )
 
   function toggleScope(value: string) {
@@ -745,7 +753,7 @@ export function useMyCalendarData() {
    * 何も無い状態から再判定する（layersLoaded の成否に応じて通常初期化 or 再度劣化）。
    */
   function persistLayerState(): void {
-    if (layersDegraded.value) return
+    if (!storageReady.value || disposed || layersDegraded.value) return
     try {
       const payload: LayerStateV2 = {
         version: 2,
@@ -764,7 +772,9 @@ export function useMyCalendarData() {
   // §5.2.1: レイヤー一覧に無いフォールバックチップは「初めて現れたときだけ」既定選択にする（AC-23）。
   // P2修繕: knownFallbackKeys に無いキーだけを新規とみなす。一度選択したキーをユーザーが
   // 明示的に外した後、月移動・再取得のたびに selectedScopes へ戻すと「外せない」バグになる。
-  watch(fallbackScopeOptions, (opts) => {
+  watch([fallbackScopeOptions, storageReady], ([opts, ready]) => {
+    // events先着時も、保存済みknownFallbackKeysの復元後に初めて新規キーを判定する。
+    if (!ready || disposed) return
     const newlySeen = opts.map((o) => o.value).filter((v) => !knownFallbackKeys.value.has(v))
     if (!newlySeen.length) return
     // P2修繕: knownFallbackKeys を持たない旧 V2 状態から移行した直後は、既に selectedScopes に
@@ -785,45 +795,64 @@ export function useMyCalendarData() {
    * migrateLegacyStorage 内でセッション中1度だけに限定される（R15）。
    */
   async function initStorage(): Promise<void> {
+    if (disposed) return
+    storageReady.value = false
     if (!layersLoaded.value) await loadLayers()
-
-    migrateLegacyStorage()
+    if (disposed) return
 
     try {
-      const raw = localStorage.getItem(LAYER_STATE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<LayerStateV2> | string[]
-        // 移行直後を含め、新形式 { version, selected, view } を前提とする。
-        const selected = Array.isArray(parsed) ? parsed : parsed.selected
-        if (Array.isArray(selected)) {
-          selectedScopes.value = selected.map(migrateLegacyScopeValue)
-          const parsedView = Array.isArray(parsed) ? undefined : parsed.view
-          view.value = isValidView(parsedView) ? parsedView : 'month'
-          // P2修繕: 永続化済みの knownFallbackKeys を復元する。復元し損ねると、リロードのたびに
-          // 「初めて見た」扱いになり、ユーザーが外したフォールバックチップが復活してしまう。
-          const parsedKnown = Array.isArray(parsed) ? undefined : parsed.knownFallbackKeys
-          knownFallbackKeys.value = new Set(Array.isArray(parsedKnown) ? parsedKnown.filter((v): v is string => typeof v === 'string') : [])
-          return
+      migrateLegacyStorage()
+
+      try {
+        const raw = localStorage.getItem(LAYER_STATE_KEY)
+        if (raw) {
+          const parsed = JSON.parse(raw) as Partial<LayerStateV2> | string[]
+          // 移行直後を含め、新形式 { version, selected, view } を前提とする。
+          const selected = Array.isArray(parsed) ? parsed : parsed.selected
+          if (Array.isArray(selected)) {
+            selectedScopes.value = selected.map(migrateLegacyScopeValue)
+            const parsedView = Array.isArray(parsed) ? undefined : parsed.view
+            view.value = isValidView(parsedView) ? parsedView : 'month'
+            // P2修繕: 復元前にfallbackを自動選択すると、明示的に外したキーまで復活する。
+            const parsedKnown = Array.isArray(parsed) ? undefined : parsed.knownFallbackKeys
+            knownFallbackKeys.value = new Set(Array.isArray(parsedKnown) ? parsedKnown.filter((v): v is string => typeof v === 'string') : [])
+            return
+          }
         }
       }
-    }
-    catch { /* 壊れたデータは初期化フォールバックへ */ }
+      catch { /* 壊れたデータは初期化フォールバックへ */ }
 
-    if (!layersLoaded.value) {
-      // P2修繕: レイヤー取得が失敗し、かつ永続化済みの選択も無い（初回利用中の障害）。
-      // layers.value が空のため「hidden=false を全選択」は空集合になり、そのまま selectedScopes
-      // へ適用すると全予定が弾かれて画面が真っ白になる（前回修繕が達成できていなかった箇所）。
-      // 選択肢を組み立てられない以上フィルタは機能させようがないため、劣化モードへ入り
-      // filteredEvents 側でフィルタそのものを迂回させ、取得できた予定は見えるようにする。
-      layersDegraded.value = true
-      selectedScopes.value = []
+      if (!layersLoaded.value) {
+        // レイヤー取得失敗かつ保存済み選択も無い初回は、予定を全件表示する既存の劣化モード。
+        layersDegraded.value = true
+        selectedScopes.value = []
+        view.value = 'month'
+        return
+      }
+
+      // 初回訪問、または localStorage が壊れている場合: hidden=false のレイヤーを全選択（P1・AC-15c）。
+      selectedScopes.value = layers.value.filter((l) => !l.hidden).map((l) => layerKey(l.scopeType, l.scopeId))
       view.value = 'month'
-      return
     }
+    finally {
+      storageReady.value = true
+    }
+  }
 
-    // 初回訪問、または localStorage が壊れている場合: hidden=false のレイヤーを全選択（P1・AC-15c）。
-    selectedScopes.value = layers.value.filter((l) => !l.hidden).map((l) => layerKey(l.scopeType, l.scopeId))
-    view.value = 'month'
+  /** 表示対象のmount後だけ呼ぶ。設定・予定を並列取得し、再試行でも同じ準備ゲートを使う。 */
+  async function initialize(): Promise<boolean> {
+    if (disposed) return false
+    initializing.value = true
+    try {
+      await Promise.all([
+        storageReady.value ? (layersFailed.value ? loadLayers() : Promise.resolve()) : initStorage(),
+        loadEvents(),
+      ])
+      return !disposed
+    }
+    finally {
+      initializing.value = false
+    }
   }
 
   /**
@@ -960,7 +989,7 @@ export function useMyCalendarData() {
     setLayerColor, resetLayerColor,
     currentYear, currentMonth, events, loading, calendarLoading, loadError, loadEvents, refresh, onPrevMonth, onNextMonth, goToToday, navigateTo,
     extendedEvents, todosFailed, availableScopes, allScopeOptions, selectedScopes, filteredEvents,
-    toggleScope, multiSelectScopes, initStorage,
+    toggleScope, multiSelectScopes, initStorage, initialize,
     layers, layersLoaded, layersFailed, layersDegraded, loadLayers, view,
   }
 }
