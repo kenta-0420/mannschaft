@@ -177,6 +177,19 @@ public final class ModuleEventNoticeOutboxStore {
         return true;
     }
 
+    /** relay adapter は自由文を渡さず RELAY_FAILED に変換する。
+     * 現 RELAYING/token のみ attempt+1、PENDING 又は DEAD、lease 解除を同じ TX で行う。
+     * 実 DB assertion red 確認待ちの stub。未知/null/空/長大コードは拒否し、保存しない。 */
+    public boolean markFailed(UUID id, UUID claimToken, String fixedErrorCode, Instant nextAttemptAt,
+            boolean dead, Instant now) {
+        return false;
+    }
+
+    /** PENDING 行だけの MIN(created_at)。空は Optional.empty。実 DB assertion red 待ち。 */
+    public Optional<Instant> oldestPendingCreatedAt() {
+        return Optional.empty();
+    }
+
     public int recoverStuck(Instant claimedBefore, Instant now) {
         Objects.requireNonNull(claimedBefore, "claimedBefore");
         Objects.requireNonNull(now, "now");
