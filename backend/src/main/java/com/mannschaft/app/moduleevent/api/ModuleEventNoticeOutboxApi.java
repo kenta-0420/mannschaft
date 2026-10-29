@@ -8,6 +8,7 @@ import com.mannschaft.app.moduleevent.api.dto.ModuleEventRecoveryState;
 import com.mannschaft.app.moduleevent.api.dto.ModuleEventImpactBinding;
 import com.mannschaft.app.moduleevent.notice.ModuleEventImpactEvaluator;
 import com.mannschaft.app.moduleevent.notice.ModuleEventNoticeReadService;
+import com.mannschaft.app.moduleevent.notice.ModuleEventNoticeRelayService;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -28,12 +29,14 @@ import java.util.Optional;
 @Component
 public final class ModuleEventNoticeOutboxApi {
     private final ModuleEventNoticeReadService reads;
+    private final ModuleEventNoticeRelayService relay;
     private final ModuleEventImpactEvaluator evaluator;
     private final TransactionTemplate withoutCallerTransaction;
 
     public ModuleEventNoticeOutboxApi(ModuleEventNoticeReadService reads, ModuleEventImpactEvaluator evaluator,
-            PlatformTransactionManager transactions) {
+            PlatformTransactionManager transactions, ModuleEventNoticeRelayService relay) {
         this.reads = Objects.requireNonNull(reads, "reads");
+        this.relay = Objects.requireNonNull(relay, "relay");
         this.evaluator = Objects.requireNonNull(evaluator, "evaluator");
         withoutCallerTransaction = new TransactionTemplate(Objects.requireNonNull(transactions, "transactions"));
         withoutCallerTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_NOT_SUPPORTED);
@@ -74,34 +77,34 @@ public final class ModuleEventNoticeOutboxApi {
                 descriptor -> evaluator.eligibleRecipients(descriptor, candidates)));
     }
 
-    /** 未実装の relay 窓口。1..100 件を独立 TX で claim し、元の版と世代を返す。 */
+    /** relay 窓口。1..100 件を独立 TX で claim し、元の版と世代を返す。 */
     public List<ModuleEventNoticeClaim> claim(int limit, Instant now) {
-        return List.of();
+        return relay.claim(limit, now);
     }
 
     /** RELAYED は enqueue 受付のみ。現在 RELAYING の同じ世代だけを独立 TX で変更する。 */
     public boolean markRelayed(UUID id, UUID claimToken, Instant now) {
-        return false;
+        return relay.markRelayed(id, claimToken, now);
     }
 
     /** 自由文は受け取らず RELAY_FAILED 固定。独立 TX で現在世代だけを失敗記録する。 */
     public boolean markFailed(UUID id, UUID claimToken, Instant nextAttemptAt, boolean dead, Instant now) {
-        return false;
+        return relay.markFailed(id, claimToken, nextAttemptAt, dead, now);
     }
 
     /** 未知版を元の版・試行回数のまま独立 TX で先送りする。 */
     public boolean deferUnsupportedVersion(UUID id, UUID claimToken, Instant nextAttemptAt, Instant now) {
-        return false;
+        return relay.deferUnsupportedVersion(id, claimToken, nextAttemptAt, now);
     }
 
     /** 独立 TX で期限切れ claim を最大100件回収する。 */
     public int recoverStuck(Instant claimedBefore, Instant now) {
-        return 0;
+        return relay.recoverStuck(claimedBefore, now);
     }
 
     /** 独立読取 TX で PENDING の最古を返す。強い retention gate は別ロット。 */
     public Optional<Instant> oldestPendingCreatedAt() {
-        return Optional.empty();
+        return relay.oldestPendingCreatedAt();
     }
 
     private Optional<List<ModuleEventNoticeRecipient>> recipients(long noticeRef,

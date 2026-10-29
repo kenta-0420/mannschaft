@@ -97,9 +97,12 @@ class ModuleEventNoticePrimaryRoutingTest {
             when(query.getResultList()).thenReturn(List.of());
             return new ModuleEventNoticeReadService(entityManager, registry);
         }
+        @Bean ModuleEventNoticeRelayService relay(ModuleEventImpactResolverRegistry registry) {
+            return new ModuleEventNoticeRelayService(mock(EntityManager.class), registry);
+        }
         @Bean ModuleEventNoticeOutboxApi api(ModuleEventNoticeReadService reads, ModuleEventImpactEvaluator evaluator,
-                DataSourceTransactionManager transactions) {
-            return new ModuleEventNoticeOutboxApi(reads, evaluator, transactions);
+                DataSourceTransactionManager transactions, ModuleEventNoticeRelayService relay) {
+            return new ModuleEventNoticeOutboxApi(reads, evaluator, transactions, relay);
         }
         @Bean ReadOnlyCaller caller(ModuleEventNoticeOutboxApi api, RoutingDataSource dataSource) {
             return new ReadOnlyCaller(api, dataSource);
