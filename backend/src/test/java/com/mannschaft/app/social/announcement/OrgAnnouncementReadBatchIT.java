@@ -298,6 +298,62 @@ class OrgAnnouncementReadBatchIT extends AbstractMySqlIntegrationTest {
         assertThat(readFeedIds(orgAdmin)).containsExactly(feedT1b);
     }
 
+    @Test
+    @DisplayName("AC-ALIC1-D04c 組織 ADMIN でも課金 HIDDEN は通常一覧・未読件数・単件既読・read-batch の全てで不在扱い、HIDDEN でない課金告知は一覧に FULL で出て既読にできる")
+    void D04c_管理者の一覧と既読でHIDDENの扱いが揃う() throws Exception {
+        // 旧挙動: 通常一覧は管理者に HIDDEN を FULL で残し、既読は拒否する不整合があった。
+        // ダッシュボード（DashboardService）・単件既読・read-batch と統一し、HIDDEN は誰でも除外、管理者の素通しは LOCKED 判定のみ。
+        Long orgAdmin = insertUser("admin2-" + UUID.randomUUID().toString().substring(0, 8));
+        MembershipTestHelper.insertMembership(em, orgAdmin, ScopeType.ORGANIZATION, orgX, RoleKind.MEMBER);
+        MembershipTestHelper.insertUserRole(em, orgAdmin, "ADMIN", null, orgX);
+        // feedT1a は課金 HIDDEN、feedT1b は課金未達だが HIDDEN ではない（LOCKED 相当）
+        Answer<Object> batchAnswer = invocation -> {
+            List<Long> ids = invocation.getArgument(1);
+            java.util.Map<Long, com.mannschaft.app.payment.dto.GateCheckResponse> result = new java.util.HashMap<>();
+            for (Long id : ids) {
+                boolean hidden = id.equals(feedT1a);
+                result.put(id, new com.mannschaft.app.payment.dto.GateCheckResponse(false, hidden, List.of()));
+            }
+            return result;
+        };
+        Mockito.doAnswer(batchAnswer).when(paymentGateService).checkAccessBatch(
+                ArgumentMatchers.any(), ArgumentMatchers.anyList(), ArgumentMatchers.any(), ArgumentMatchers.anyMap());
+        Mockito.doAnswer(batchAnswer).when(paymentGateService).checkAccessBatchForPreview(
+                ArgumentMatchers.any(), ArgumentMatchers.anyList(), ArgumentMatchers.any(), ArgumentMatchers.anyMap());
+        Mockito.doAnswer(invocation -> {
+            Long id = invocation.getArgument(1);
+            return new com.mannschaft.app.payment.dto.GateCheckResponse(false, id.equals(feedT1a), List.of());
+        }).when(paymentGateService).checkAccess(
+                ArgumentMatchers.any(), ArgumentMatchers.anyLong(), ArgumentMatchers.any(), ArgumentMatchers.any());
+        em.flush();
+
+        // (a)(b) 通常一覧: HIDDEN は出ず、LOCKED 相当は FULL で出る。未読件数も同じ集合
+        setAuth(orgAdmin);
+        String listPath = "/api/v1/organizations/" + orgX + "/announcements";
+        String body = mockMvc.perform(get(listPath).servletPath(listPath).param("limit", "50"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.unreadCount").value(2))
+                .andReturn().getResponse().getContentAsString();
+        List<Long> listed = com.jayway.jsonpath.JsonPath.<List<Number>>read(body, "$.data[*].id").stream()
+                .map(Number::longValue).toList();
+        assertThat(listed).contains(feedT1b).doesNotContain(feedT1a);
+        List<String> states = com.jayway.jsonpath.JsonPath.read(body, "$.data[?(@.id==" + feedT1b + ")].accessState");
+        assertThat(states).containsExactly("FULL");
+
+        // (c) 単件既読: HIDDEN は不在と同じ応答
+        singleRead(orgX, missingId, orgAdmin).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
+        singleRead(orgX, feedT1a, orgAdmin).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
+        // (d) read-batch: HIDDEN のみ markedCount=0、HIDDEN でない課金告知は既読にできる
+        readBatch(orgX, orgAdmin, List.of(feedT1a)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.markedCount").value(0));
+        readBatch(orgX, orgAdmin, List.of(feedT1b)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.markedCount").value(1));
+        em.flush();
+        assertThat(readFeedIds(orgAdmin)).containsExactly(feedT1b);
+    }
+
     // ── D05 資格喪失後は行なし ────────────────────────────────────
 
     @Test

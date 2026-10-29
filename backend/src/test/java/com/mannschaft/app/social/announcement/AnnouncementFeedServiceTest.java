@@ -670,6 +670,26 @@ class AnnouncementFeedServiceTest {
             assertThat(result.unreadCount()).isZero();
         }
 
+        @Test
+        @DisplayName("ADMINでも課金HIDDENは一覧・未読件数から除外し、HIDDENでない課金告知はFULLで残す（ダッシュボード・既読と統一）")
+        void adminDoesNotSeeHiddenButKeepsLockedAsFull() {
+            AnnouncementFeedEntity hidden2 = feed(2L);
+            AnnouncementFeedEntity locked1 = feed(1L);
+            given(feedQueryRepository.findByScope(eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(),
+                    isNull(), eq(3))).willReturn(List.of(hidden2, locked1));
+            given(paymentGateService.checkAccessBatch(eq(ContentGateType.ANNOUNCEMENT), any(), eq(ADMIN_USER_ID), any(Map.class)))
+                    .willReturn(java.util.Map.of(
+                            2L, new GateCheckResponse(false, true, List.of()),
+                            1L, new GateCheckResponse(false, false, List.of())));
+            AnnouncementFeedService.AnnouncementFeedResult result = announcementFeedService.getAnnouncementFeed(
+                    AnnouncementScopeType.TEAM, TEAM_ID, ADMIN_USER_ID, "ADMIN", null, 2);
+
+            assertThat(result.data()).extracting(item -> item.feed().getId()).containsExactly(1L);
+            assertThat(result.data()).extracting(AnnouncementFeedService.AnnouncementFeedItem::accessState)
+                    .containsExactly("FULL");
+            assertThat(result.unreadCount()).isEqualTo(1L);
+        }
+
         /**
          * 閲覧者ロール名から findByScope に渡される allowedVisibilities を捕捉する。
          */

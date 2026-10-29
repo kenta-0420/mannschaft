@@ -401,7 +401,8 @@ public class AnnouncementFeedService {
             }
             uniqueRows.stream().filter(feed -> {
                 GateCheckResponse gate = gates.get(feed.getId());
-                return gate != null && (adminBypass || !gate.isTitleHidden());
+                // HIDDEN は管理者でも一覧から除外する（ダッシュボード・既読と統一）。adminBypass は LOCKED 判定にだけ効く。
+                return gate != null && !gate.isTitleHidden();
             }).forEach(gatedRows::add);
             Long lastId = rows.get(rows.size() - 1).getId();
             if (!sourceHasNext || lastId == null || lastId.equals(fetchCursor)) {
