@@ -1,6 +1,7 @@
 package com.mannschaft.app.moduleevent.api;
 
 import com.mannschaft.app.moduleevent.api.dto.ModuleEventNoticeDescriptor;
+import com.mannschaft.app.moduleevent.api.dto.ModuleEventNoticeClaim;
 import com.mannschaft.app.moduleevent.api.dto.ModuleEventNoticeRecipient;
 import com.mannschaft.app.moduleevent.api.dto.ModuleEventNoticePhase;
 import com.mannschaft.app.moduleevent.api.dto.ModuleEventRecoveryState;
@@ -13,6 +14,8 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
+import java.time.Instant;
+import java.util.UUID;
 import java.util.HashSet;
 import java.util.function.Function;
 import java.util.Objects;
@@ -69,6 +72,36 @@ public final class ModuleEventNoticeOutboxApi {
         }
         return withoutCallerTransaction.execute(status -> recipients(noticeRef,
                 descriptor -> evaluator.eligibleRecipients(descriptor, candidates)));
+    }
+
+    /** 未実装の relay 窓口。1..100 件を独立 TX で claim し、元の版と世代を返す。 */
+    public List<ModuleEventNoticeClaim> claim(int limit, Instant now) {
+        return List.of();
+    }
+
+    /** RELAYED は enqueue 受付のみ。現在 RELAYING の同じ世代だけを独立 TX で変更する。 */
+    public boolean markRelayed(UUID id, UUID claimToken, Instant now) {
+        return false;
+    }
+
+    /** 自由文は受け取らず RELAY_FAILED 固定。独立 TX で現在世代だけを失敗記録する。 */
+    public boolean markFailed(UUID id, UUID claimToken, Instant nextAttemptAt, boolean dead, Instant now) {
+        return false;
+    }
+
+    /** 未知版を元の版・試行回数のまま独立 TX で先送りする。 */
+    public boolean deferUnsupportedVersion(UUID id, UUID claimToken, Instant nextAttemptAt, Instant now) {
+        return false;
+    }
+
+    /** 独立 TX で期限切れ claim を最大100件回収する。 */
+    public int recoverStuck(Instant claimedBefore, Instant now) {
+        return 0;
+    }
+
+    /** 独立読取 TX で PENDING の最古を返す。強い retention gate は別ロット。 */
+    public Optional<Instant> oldestPendingCreatedAt() {
+        return Optional.empty();
     }
 
     private Optional<List<ModuleEventNoticeRecipient>> recipients(long noticeRef,
