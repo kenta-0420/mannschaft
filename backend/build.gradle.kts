@@ -41,6 +41,22 @@ tasks.withType<JavaCompile> {
     ))
 }
 
+// 公開verifyを既存ArchUnitとは別のJVMで一度実行し、境界違反だけをTXTへ記録する。
+// 解析・保存の障害は通常どおり失敗させ、PR/nightly共通のarch結果収集へ載せる。
+val modulithVerificationReport = tasks.register<JavaExec>("modulithVerificationReport") {
+    group = "verification"
+    description = "本番モジュールの境界違反をreport-onlyで記録する"
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("com.mannschaft.app.moduleevent.report.ProductionModuleVerificationReport")
+    workingDir = projectDir
+    // Test型の設定は継承されないため、既存archTestと同じ上限を明示する。
+    maxHeapSize = "3g"
+    dependsOn("testClasses")
+}
+tasks.named("archTest") {
+    finalizedBy(modulithVerificationReport)
+}
+
 // F09.14 Phase 3-B: 重要事項説明書 Word テンプレート docx 生成タスク。
 // `./gradlew generateDisclosureWordTemplates` で 6 種の docx を
 // src/main/resources/docx/disclosure/ および src/test/resources/docx/disclosure/ に出力する。
