@@ -1,0 +1,20 @@
+{
+  "kind": "run08-known-request-logger-classification",
+  "observedUnix": 1793238374.2069921,
+  "tailBytesMaximum": 131072,
+  "events": [
+    {
+      "fingerprint": "60c758944ffe4a62bf702cdef5c6d840fd66e80e0ef6d87e7a5c8a07b9d0b520",
+      "loggerClass": "c.m.app.config.RequestLoggingFilter",
+      "knownMessageTokenMatches": true,
+      "finiteCategory": "request-duration-error-threshold",
+      "durationMs": null,
+      "status": null,
+      "durationOrStatusInferred": false,
+      "parentImpact": "not-adjudicated"
+    }
+  ],
+  "sourceConditionReportedByRoot": "RequestLoggingFilter.java:132-144 durationMs >= errorMs",
+  "rawExported": false,
+  "runtimeOperations": 0
+}
