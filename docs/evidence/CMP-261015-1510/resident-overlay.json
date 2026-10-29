@@ -347,6 +347,30 @@
       "evidencePath": "docs/evidence/CMP-261028-1715/residents/mobile/report.json"
     },
     {
+      "id": "r1819-a1-v11",
+      "originalResidentId": "r1819-a1-v11",
+      "personaArchetype": "地域クラブ管理者・素直",
+      "runId": "r1819-a1-v11",
+      "sourceHead": "8fe2b174fcec9bce0675744cfb752902a3846a89",
+      "evidencePath": "docs/evidence/CMP-261004-1819/resident-observations.json"
+    },
+    {
+      "id": "r1819-m2-v11",
+      "originalResidentId": "r1819-m2-v11",
+      "personaArchetype": "一般メンバー・中断復帰",
+      "runId": "r1819-m2-v11",
+      "sourceHead": "8fe2b174fcec9bce0675744cfb752902a3846a89",
+      "evidencePath": "docs/evidence/CMP-261004-1819/resident-observations.json"
+    },
+    {
+      "id": "r1819-o3-v11",
+      "originalResidentId": "r1819-o3-v11",
+      "personaArchetype": "新規関心利用者・スマホ片手・素直",
+      "runId": "r1819-o3-v11",
+      "sourceHead": "8fe2b174fcec9bce0675744cfb752902a3846a89",
+      "evidencePath": "docs/evidence/CMP-261004-1819/resident-observations.json"
+    },
+    {
       "id": "CMP2116-R08-A",
       "personaArchetype": "申請者・公開募集と離席復帰",
       "originalResidentId": "A",
@@ -849,6 +873,33 @@
       "runId": "calendar-residual-20261028",
       "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
       "evidencePath": "docs/evidence/CMP-261028-1715/residents/mobile/report.json"
+    },
+    {
+      "id": "r1819-a1-v11-journey",
+      "personaId": "r1819-a1-v11",
+      "purpose": "来週のシフト表を作り、後で内容を見直したい",
+      "journeyIdSource": "原本actorを保持しjourneyIdのみ登録時付与。固定P01-P20へ変換しない。",
+      "runId": "r1819-a1-v11",
+      "sourceHead": "8fe2b174fcec9bce0675744cfb752902a3846a89",
+      "evidencePath": "docs/evidence/CMP-261004-1819/resident-observations.json"
+    },
+    {
+      "id": "r1819-m2-v11-journey",
+      "personaId": "r1819-m2-v11",
+      "purpose": "来週の当番予定を離脱後も確認したい",
+      "journeyIdSource": "原本actorを保持しjourneyIdのみ登録時付与。固定P01-P20へ変換しない。",
+      "runId": "r1819-m2-v11",
+      "sourceHead": "8fe2b174fcec9bce0675744cfb752902a3846a89",
+      "evidencePath": "docs/evidence/CMP-261004-1819/resident-observations.json"
+    },
+    {
+      "id": "r1819-o3-v11-journey",
+      "personaId": "r1819-o3-v11",
+      "purpose": "当番案内と自分に見られること・次の行動を知りたい",
+      "journeyIdSource": "原本actorを保持しjourneyIdのみ登録時付与。固定P01-P20へ変換しない。",
+      "runId": "r1819-o3-v11",
+      "sourceHead": "8fe2b174fcec9bce0675744cfb752902a3846a89",
+      "evidencePath": "docs/evidence/CMP-261004-1819/resident-observations.json"
     },
     {
       "id": "CMP2116-R08-A-journey",
@@ -2569,6 +2620,63 @@
       "urgency": "when-free"
     },
     {
+      "id": "r1819-a1-v11-observation",
+      "featureKey": "shift",
+      "featureDetail": "シフト作成・予定確認・非メンバー導線",
+      "title": "作成ボタン common.create と日付3欄のDOMラベル未確認",
+      "detail": "UIから11月2日〜8日の下書きを作成し一覧・詳細calendarを確認。POST201、一覧・詳細・slot取得200。観測内HTTPエラーなし。slot追加・募集開始・言語変更なし。 既存CMP-261010-1432近接観測。日付欄の見た目・支援技術への影響は未評価。",
+      "personaId": "r1819-a1-v11",
+      "personaArchetype": "地域クラブ管理者・素直",
+      "journeyId": "r1819-a1-v11-journey",
+      "originalRunId": "r1819-a1-v11",
+      "runId": "r1819-a1-v11",
+      "sourceHead": "8fe2b174fcec9bce0675744cfb752902a3846a89",
+      "backendSourceHead": "304db81dc552ba522698320e0b664290175e9dd2",
+      "evidencePath": "docs/evidence/CMP-261004-1819/resident-observations.json",
+      "status": "observed-unverified",
+      "trusted": false,
+      "registrationSource": "actual-resident-artifacts",
+      "urgency": "when-free"
+    },
+    {
+      "id": "r1819-m2-v11-observation",
+      "featureKey": "shift",
+      "featureDetail": "シフト作成・予定確認・非メンバー導線",
+      "title": "来週選択後の再入場で月ビューへ戻った",
+      "detail": "マイシフト週ビューで11月2日〜8日を選択し空状態を確認。具体的な当番日時・内容は未確認。dashboardへ離脱後の再入場では10月の月ビューに戻り再選択が必要。GET200、業務書込なし。 選択状態の維持仕様は未確認。規約読取helper失敗後CLI開始がCLAUDE全文読取に先行したが、業務click前にUTF8全文を読んだ手順逸脱を保持。",
+      "personaId": "r1819-m2-v11",
+      "personaArchetype": "一般メンバー・中断復帰",
+      "journeyId": "r1819-m2-v11-journey",
+      "originalRunId": "r1819-m2-v11",
+      "runId": "r1819-m2-v11",
+      "sourceHead": "8fe2b174fcec9bce0675744cfb752902a3846a89",
+      "backendSourceHead": "304db81dc552ba522698320e0b664290175e9dd2",
+      "evidencePath": "docs/evidence/CMP-261004-1819/resident-observations.json",
+      "status": "observed-unverified",
+      "trusted": false,
+      "registrationSource": "actual-resident-artifacts",
+      "urgency": "when-free"
+    },
+    {
+      "id": "r1819-o3-v11-observation",
+      "featureKey": "shift",
+      "featureDetail": "シフト作成・予定確認・非メンバー導線",
+      "title": "非メンバーの当番案内へ到達せず参加入口を確認",
+      "detail": "チームを探す→空のマイチーム→検索→チーム表示に到達。非メンバーのため一部widget非表示、参加申請・サポーター入口を確認。当番案内未到達。GET200中心、一度のmask済チーム関連GET403はendpoint・原因・影響未特定。業務書込なし。 CMP-261025-2202の非メンバー非表示仕様と整合可能。チームを探すからマイチーム経由の意図と403の原因は未確認。",
+      "personaId": "r1819-o3-v11",
+      "personaArchetype": "新規関心利用者・スマホ片手・素直",
+      "journeyId": "r1819-o3-v11-journey",
+      "originalRunId": "r1819-o3-v11",
+      "runId": "r1819-o3-v11",
+      "sourceHead": "8fe2b174fcec9bce0675744cfb752902a3846a89",
+      "backendSourceHead": "304db81dc552ba522698320e0b664290175e9dd2",
+      "evidencePath": "docs/evidence/CMP-261004-1819/resident-observations.json",
+      "status": "observed-unverified",
+      "trusted": false,
+      "registrationSource": "actual-resident-artifacts",
+      "urgency": "when-free"
+    },
+    {
       "id": "CMP2116-R08-A-01",
       "featureKey": "shift",
       "featureDetail": "シフト交代相談の独立探索",
@@ -2823,6 +2931,42 @@
       "goalsReached": false,
       "coveragePassed": false,
       "note": "base d3e0d74f2d に実機E2E spec 1件（PR #4208 head dae9f24a92）を加えた構成での探索。画像実体は含めず private 原本への path 参照のみ。通常validatorの既知不一致を合格と読み替えない。"
+    },
+    "r1819-a1-v11": {
+      "runId": "r1819-a1-v11",
+      "sourceHead": "8fe2b174fcec9bce0675744cfb752902a3846a89",
+      "backendSourceHead": "304db81dc552ba522698320e0b664290175e9dd2",
+      "sourceEvidencePath": "docs/evidence/CMP-261004-1819/resident-observations.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "executionCompleted": true,
+      "goalsReached": true,
+      "coveragePassed": false
+    },
+    "r1819-m2-v11": {
+      "runId": "r1819-m2-v11",
+      "sourceHead": "8fe2b174fcec9bce0675744cfb752902a3846a89",
+      "backendSourceHead": "304db81dc552ba522698320e0b664290175e9dd2",
+      "sourceEvidencePath": "docs/evidence/CMP-261004-1819/resident-observations.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "executionCompleted": true,
+      "goalsReached": false,
+      "coveragePassed": false
+    },
+    "r1819-o3-v11": {
+      "runId": "r1819-o3-v11",
+      "sourceHead": "8fe2b174fcec9bce0675744cfb752902a3846a89",
+      "backendSourceHead": "304db81dc552ba522698320e0b664290175e9dd2",
+      "sourceEvidencePath": "docs/evidence/CMP-261004-1819/resident-observations.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "executionCompleted": true,
+      "goalsReached": false,
+      "coveragePassed": false
     }
   }
 }
