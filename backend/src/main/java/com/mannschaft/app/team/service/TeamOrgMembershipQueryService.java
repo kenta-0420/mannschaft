@@ -215,6 +215,35 @@ public class TeamOrgMembershipQueryService {
     }
 
     /**
+     * 組織に ACTIVE で加盟している指定チームと、その所属グループを返す（組織告知の宛先資格の判定。ALIC-1 §2.7）。
+     *
+     * <p>SQL は 1 本で、チーム数に比例しない（500 件ごとに分割）。アーカイブ済み・論理削除済みのチームは返らない（M3）。
+     * {@code groupId} は未分類なら null。削除済みグループを指す行もそのまま返す。</p>
+     *
+     * @param organizationId 組織 ID
+     * @param teamIds        判定したいチーム ID（null・空なら空リスト）
+     * @return ACTIVE な加盟（チーム ID・所属グループ ID）
+     */
+    public List<ActiveTeamGroupAssignment> findActiveTeamGroupAssignmentsIn(Long organizationId,
+                                                                           Collection<Long> teamIds) {
+        if (organizationId == null || teamIds == null || teamIds.isEmpty()) {
+            return List.of();
+        }
+        List<Long> ids = teamIds.stream().filter(java.util.Objects::nonNull).distinct().toList();
+        java.util.ArrayList<ActiveTeamGroupAssignment> result = new java.util.ArrayList<>();
+        for (int from = 0; from < ids.size(); from += IN_CHUNK) {
+            List<Long> chunk = ids.subList(from, Math.min(ids.size(), from + IN_CHUNK));
+            teamOrgMembershipRepository
+                    .findActiveTeamGroupAssignmentsByOrganizationIdAndTeamIdIn(organizationId, chunk)
+                    .forEach(p -> result.add(new ActiveTeamGroupAssignment(p.getTeamId(), p.getGroupId())));
+        }
+        return result;
+    }
+
+    /** IN 句 1 回あたりの最大件数。 */
+    private static final int IN_CHUNK = 500;
+
+    /**
      * チーム 1 件の ACTIVE な加盟（組織 ID と所属グループ ID）。
      *
      * @param organizationId 加盟先の組織 ID

@@ -273,6 +273,97 @@ class AnnouncementReadRateLimitFilterTest {
         }
     }
 
+    /**
+     * AC-ALIC1-D07（CMP-261011-0035 試練）: 組織の read-batch は 5 req/分・別枠
+     * {@code announcement:read-batch}。組織を変えても同一ユーザーで枠を共有し、
+     * 単件既読・read-all の枠とは別に数える。
+     *
+     * <p>出陣で {@code READ_BATCH_PATTERN}（{@code ^/api/v1/organizations/[^/]+/announcements/read-batch$}）
+     * と zone を足すまでは {@code shouldNotFilter=true} で素通しするため red。
+     * 定数（{@code READ_BATCH_LIMIT}・{@code ZONE_READ_BATCH}）は未設置なので文字列・数値で固定する。</p>
+     */
+    @Nested
+    @DisplayName("AC-ALIC1-D07 組織 read-batch — 5 req/分・別枠 announcement:read-batch")
+    class ReadBatchLimit {
+
+        private static final int READ_BATCH_LIMIT = 5;
+        private static final String ZONE_READ_BATCH = "announcement:read-batch";
+
+        private MockHttpServletRequest readBatch(String orgId) {
+            return post("/api/v1/organizations/" + orgId + "/announcements/read-batch");
+        }
+
+        @Test
+        @DisplayName("AC-ALIC1-D07 閾値内は通り、6回目で 429 / Retry-After / X-RateLimit-* / JSON ボディ")
+        void readBatchは6回目で429() throws Exception {
+            authenticateAs("user-batch-1");
+            for (int i = 0; i < READ_BATCH_LIMIT; i++) {
+                assertThat(invoke(readBatch("1")).getStatus())
+                        .as("read-batch POST #%d は通ること", i + 1)
+                        .isEqualTo(HttpStatus.OK.value());
+            }
+            MockHttpServletResponse overLimit = invoke(readBatch("1"));
+            assertThat(overLimit.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+            assertThat(overLimit.getHeader("Retry-After")).isEqualTo(String.valueOf(RETRY_AFTER));
+            assertThat(overLimit.getHeader("X-RateLimit-Limit")).isEqualTo(String.valueOf(READ_BATCH_LIMIT));
+            assertThat(overLimit.getHeader("X-RateLimit-Remaining")).isEqualTo("0");
+            assertThat(overLimit.getHeader("X-RateLimit-Reset")).isEqualTo(String.valueOf(RESET_EPOCH));
+            assertThat(overLimit.getContentAsString()).contains("Too many requests");
+
+            verify(rateLimiter, atLeastOnce()).tryConsume(
+                    eq(ZONE_READ_BATCH), eq("u:user-batch-1"),
+                    eq(READ_BATCH_LIMIT), eq(Duration.ofMinutes(1)));
+        }
+
+        @Test
+        @DisplayName("AC-ALIC1-D07 組織 ID を変えても同一ユーザーの枠を共有する（組織を変えて回避できない）")
+        void 組織を変えても合算される() throws Exception {
+            authenticateAs("user-batch-2");
+            for (int i = 0; i < READ_BATCH_LIMIT; i++) {
+                assertThat(invoke(readBatch(String.valueOf(100 + i))).getStatus())
+                        .isEqualTo(HttpStatus.OK.value());
+            }
+            assertThat(invoke(readBatch("999")).getStatus())
+                    .isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+        }
+
+        @Test
+        @DisplayName("AC-ALIC1-D07 read-batch の枠は read-all・単件既読と別計数")
+        void 単件とreadAllとは別計数() throws Exception {
+            authenticateAs("user-batch-3");
+            for (int i = 0; i < READ_BATCH_LIMIT; i++) {
+                invoke(readBatch("1"));
+            }
+            assertThat(invoke(readBatch("1")).getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+
+            MockHttpServletResponse readAllResponse = invoke(readAll("organizations", "1"));
+            assertThat(readAllResponse.getStatus())
+                    .as("read-batch の枠を使い切っても read-all は通る")
+                    .isEqualTo(HttpStatus.OK.value());
+            assertThat(readAllResponse.getHeader("X-RateLimit-Remaining"))
+                    .isEqualTo(String.valueOf(AnnouncementReadRateLimitFilter.READ_ALL_LIMIT - 1));
+            assertThat(invoke(singleRead("organizations", "1", "9")).getStatus())
+                    .isEqualTo(HttpStatus.OK.value());
+            // read-all の枠を使い切っても read-batch の枠は別（逆方向）
+            authenticateAs("user-batch-4");
+            for (int i = 0; i < AnnouncementReadRateLimitFilter.READ_ALL_LIMIT + 1; i++) {
+                invoke(readAll("organizations", "1"));
+            }
+            MockHttpServletResponse batch = invoke(readBatch("1"));
+            assertThat(batch.getStatus()).isEqualTo(HttpStatus.OK.value());
+            assertThat(batch.getHeader("X-RateLimit-Limit")).isEqualTo(String.valueOf(READ_BATCH_LIMIT));
+        }
+
+        @Test
+        @DisplayName("AC-ALIC1-D07 read-batch は shouldNotFilter=false、チームの read-batch 風パスは対象外")
+        void readBatchは対象内() {
+            authenticateAs("user-batch-5");
+            assertThat(filter.shouldNotFilter(readBatch("1"))).isFalse();
+            // read-batch は組織にのみ新設する EP（チーム側は設計にない）
+            assertThat(filter.shouldNotFilter(post("/api/v1/teams/1/announcements/read-batch"))).isTrue();
+        }
+    }
+
     @Nested
     @DisplayName("ValkeyRateLimiter Bean 不在（最小テストコンテキスト互換）")
     class LimiterBeanAbsent {

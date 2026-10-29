@@ -41,6 +41,46 @@ public class AnnouncementPreviewSourceService {
         return new Metadata("FULL", null, slug);
     }
 
+    /**
+     * {@link #metadata} の委任版。閲覧者の組織での役割ではなく、宛先チームでの委任役割（"MEMBER" / "SUPPORTER"）で元コンテンツの
+     * F00 を評価する（ALIC-1 §2.2）。課金・状態・所有スコープ照合は直属経路と共通。
+     */
+    Metadata metadataDelegated(AnnouncementFeedEntity feed, Long viewer, String delegatedRole) {
+        assertProvisionedScope(feed);
+        String slug = nameResolverService.resolveScopeSlug(feed.getScopeType().name(), feed.getScopeId());
+        if (slug == null || slug.isBlank()) throw notFound();
+        if (feed.getSourceType() == AnnouncementSourceType.BLOG_POST) {
+            var source = blogPostService.getPreviewMetadataDelegated(feed.getSourceId(), viewer, delegatedRole);
+            assertScope(feed, source.scopeType(), source.scopeId());
+            if (source.slug() == null || source.slug().isBlank()) throw notFound();
+            return new Metadata(source.accessState(), source.slug(), slug);
+        }
+        var source = bulletinReadFacade.getPreviewMetadataDelegated(feed.getSourceId(), viewer, delegatedRole);
+        assertScope(feed, source.scopeType(), source.scopeId());
+        return new Metadata("FULL", null, slug);
+    }
+
+    /**
+     * {@link #full} の委任版。元のページへの遷移先・添付は組織のメンバーだけが開けるので、<b>sourceUrl は null・添付は空</b>で返す
+     * （画面は「元のページ・添付は組織のメンバーだけが開けます」と注記する）。
+     */
+    AnnouncementPreviewResponse fullDelegated(AnnouncementFeedEntity feed, Long viewer, String delegatedRole) {
+        assertProvisionedScope(feed);
+        if (feed.getSourceType() == AnnouncementSourceType.BLOG_POST) {
+            var body = blogPostService.getPreviewByIdDelegated(feed.getSourceId(), viewer,
+                    feed.getScopeType().name(), feed.getScopeId(), delegatedRole);
+            if ("LOCKED".equals(body.getAccessState())) return locked(feed);
+            String slug = body.getContent().slug();
+            if (slug == null || slug.isBlank()) throw notFound();
+            return new AnnouncementPreviewResponse(feed.getId(), feed.getScopeType(), feed.getScopeId(), "FULL",
+                    feed.getSourceType(), feed.getSourceId(), null, body, null, List.of());
+        }
+        var body = bulletinReadFacade.getThreadDelegated(ScopeType.valueOf(feed.getScopeType().name()),
+                feed.getScopeId(), feed.getSourceId(), viewer, delegatedRole);
+        return new AnnouncementPreviewResponse(feed.getId(), feed.getScopeType(), feed.getScopeId(), "FULL",
+                feed.getSourceType(), feed.getSourceId(), null, null, body, List.of());
+    }
+
     AnnouncementPreviewResponse full(AnnouncementFeedEntity feed, Long viewer, Metadata metadata) {
         assertProvisionedScope(feed);
         if (feed.getSourceType() == AnnouncementSourceType.BLOG_POST) {
@@ -67,6 +107,9 @@ public class AnnouncementPreviewSourceService {
         if ((feed.getScopeType() == AnnouncementScopeType.TEAM && teamService.isProvisioned(feed.getScopeId()))
                 || (feed.getScopeType() == AnnouncementScopeType.ORGANIZATION
                     && organizationService.isProvisioned(feed.getScopeId()))) throw notFound();
+        // 論理削除された（非アクティブな）組織の告知は、委任経路でも直属経路でも読ませない
+        if (feed.getScopeType() == AnnouncementScopeType.ORGANIZATION
+                && !organizationService.isActiveOrganization(feed.getScopeId())) throw notFound();
     }
 
     private static void assertScope(AnnouncementFeedEntity feed, String type, Long id) {

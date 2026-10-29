@@ -4,9 +4,13 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.dashboard.ViewerRole;
 import com.mannschaft.app.dashboard.service.RoleResolver;
 import com.mannschaft.app.social.announcement.AnnouncementFeedService;
+import com.mannschaft.app.social.announcement.AnnouncementReadCommandService;
 import com.mannschaft.app.social.announcement.AnnouncementReadService;
 import com.mannschaft.app.social.announcement.AnnouncementScopeType;
 import com.mannschaft.app.social.announcement.AnnouncementSourceType;
@@ -14,6 +18,8 @@ import com.mannschaft.app.social.announcement.dto.AnnouncementFeedItemDto;
 import com.mannschaft.app.social.announcement.dto.AnnouncementFeedMetaDto;
 import com.mannschaft.app.social.announcement.dto.AnnouncementFeedResponseDto;
 import com.mannschaft.app.social.announcement.dto.AnnouncementMarkAllReadResultDto;
+import com.mannschaft.app.social.announcement.dto.AnnouncementReadBatchRequestDto;
+import com.mannschaft.app.social.announcement.dto.AnnouncementReadBatchResultDto;
 import com.mannschaft.app.social.announcement.dto.CreateAnnouncementRequestDto;
 import com.mannschaft.app.social.announcement.dto.PinAnnouncementRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -54,7 +60,8 @@ import java.util.Map;
  *   <li>{@code DELETE /api/v1/organizations/{orgId}/announcements/{id}} — お知らせ解除</li>
  *   <li>{@code PATCH  /api/v1/organizations/{orgId}/announcements/{id}/pin} — ピン留めトグル</li>
  *   <li>{@code POST   /api/v1/organizations/{orgId}/announcements/{id}/read} — 既読マーク</li>
- *   <li>{@code POST   /api/v1/organizations/{orgId}/announcements/read-all} — 全件既読</li>
+ *   <li>{@code POST   /api/v1/organizations/{orgId}/announcements/read-all} — 全件既読（直属範囲）</li>
+ *   <li>{@code POST   /api/v1/organizations/{orgId}/announcements/read-batch} — 表示中の項目を ID 指定で既読（宛先チームのメンバーを含む）</li>
  * </ul>
  * </p>
  */
@@ -67,6 +74,7 @@ import java.util.Map;
 public class AnnouncementFeedOrgController {
 
     private final AnnouncementFeedService announcementFeedService;
+    private final AnnouncementReadCommandService announcementReadCommandService;
     private final RoleResolver roleResolver;
     private final AccessControlService accessControlService;
 
@@ -94,7 +102,9 @@ public class AnnouncementFeedOrgController {
 
         Long userId = SecurityUtils.getCurrentUserId();
         // 固定 "MEMBER" ではなく、当該組織に対する閲覧者の実ロールを解決して渡す（可視性漏洩根治）。
-        ViewerRole viewerRole = roleResolver.resolveViewerRole(userId, "ORGANIZATION", orgId);
+        // 告知の可視性に使う役割はキャッシュ（60 秒）を使わない（降格・離脱の直後に会員限定の項目が見え続けない。ALIC-1 §2.6）。
+        // 一覧は直属範囲のまま（宛先チームの資格 Qa は加えない）。
+        ViewerRole viewerRole = roleResolver.resolveViewerRoleForPreview(userId, "ORGANIZATION", orgId);
         AnnouncementFeedService.AnnouncementFeedResult result = announcementFeedService.getAnnouncementFeed(
                 AnnouncementScopeType.ORGANIZATION, orgId, userId, viewerRole.name(), cursor, limit);
 
@@ -244,7 +254,7 @@ public class AnnouncementFeedOrgController {
             @PathVariable("id") Long announcementId) {
 
         Long userId = SecurityUtils.getCurrentUserId();
-        announcementFeedService.markAsRead(AnnouncementScopeType.ORGANIZATION, orgId, announcementId, userId);
+        announcementReadCommandService.markAsRead(AnnouncementScopeType.ORGANIZATION, orgId, announcementId, userId);
 
         return ResponseEntity.ok(ApiResponse.of(Map.of(
                 "id", announcementId,
@@ -276,12 +286,46 @@ public class AnnouncementFeedOrgController {
 
         Long userId = SecurityUtils.getCurrentUserId();
         AnnouncementReadService.MarkAllReadOutcome outcome =
-                announcementFeedService.markAllAsRead(AnnouncementScopeType.ORGANIZATION, orgId, userId);
+                announcementReadCommandService.markAllAsRead(AnnouncementScopeType.ORGANIZATION, orgId, userId);
 
         return ResponseEntity.ok(ApiResponse.of(AnnouncementMarkAllReadResultDto.builder()
                 .markedCount(outcome.markedCount())
                 .hasMoreUnread(outcome.hasMoreUnread())
                 .build()));
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // POST /api/v1/organizations/{orgId}/announcements/read-batch — 表示中の ID を既読
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * 表示中の組織お知らせを ID 指定で既読にする（ALIC-1 §2.4）。
+     *
+     * <p>チームダッシュボードに出ている組織告知（宛先チームの現役メンバーに届く分）は、組織一覧・組織 read-all の
+     * 直属範囲には入らないので、画面に取得済みの未読項目の ID を最大 50 件まで送って既読にする。
+     * 1 件ずつ宛先資格（Qd / Qa）と課金で判定し、通ったものだけを 1 tx で書く。通らない ID（存在しない・パスの組織と違う・
+     * 宛先外・見えない・期限切れ・元削除済み・課金 HIDDEN）は黙って飛ばし、<b>件数だけ</b>返す。
+     * 評価の障害は 500 で 1 行も書かない。認可は判定部品 {@code AnnouncementReadCommandService} が行う。</p>
+     *
+     * @param orgId   組織 ID（パスの組織に属する告知だけを対象にする）
+     * @param request 既読にする ID（1〜50 件）
+     * @return 200 OK（既読になった件数だけ）
+     */
+    @PostMapping("/read-batch")
+    @AuthorizedInService
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "既存のお知らせ既読の中核入口。宛先資格（組織の役割・宛先チームの役割）と課金の認可は AnnouncementReadCommandService で行う")
+    @Operation(
+            summary = "表示中の組織お知らせを一括既読",
+            description = "画面に取得済みの組織お知らせの ID（最大50件）を既読にする。宛先チームの現役メンバーも対象。"
+                    + "通らない ID は黙って飛ばし、既読になった件数だけ返す。")
+    public ResponseEntity<ApiResponse<AnnouncementReadBatchResultDto>> markBatchAsRead(
+            @PathVariable Long orgId,
+            @Valid @RequestBody AnnouncementReadBatchRequestDto request) {
+
+        Long userId = SecurityUtils.getCurrentUserId();
+        int markedCount = announcementReadCommandService.markBatch(orgId, request.feedIds(), userId);
+        return ResponseEntity.ok(ApiResponse.of(new AnnouncementReadBatchResultDto(markedCount)));
     }
 
     /**
