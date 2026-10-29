@@ -10,6 +10,8 @@ import java.nio.ByteBuffer;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -147,7 +149,9 @@ public final class ModuleEventNoticeOutboxStore {
             row.deferRecovery(nextAttemptAt, now);
             return true;
         }
-        if (pending) {
+        // helper 待機中の削除や notice 待機中の後発 commit を、空候補だけで復旧と推測しない。
+        // この非locking再確認以降の新規発行排他は、業務側 durable close 契約が担う。
+        if (pending || hasFreshPendingPublication(probe)) {
             row.deferRecovery(nextAttemptAt, now);
             return false;
         }
@@ -250,21 +254,61 @@ public final class ModuleEventNoticeOutboxStore {
      * 業務 CLOSED_COMPLETE だけで pending を推測せず、payload/JSON を走査しない。
      * 列導入と後発 attempt の実 DB 負例が通るまでは結合 green の根拠にしない。 */
     private boolean hasPendingPublication(RecoveryProbe probe) {
-        // STRAIGHT_JOIN は optimizer に main を先に読ませず、helper 起点の lock 順を保つ。
-        Query query = entityManager.createNativeQuery("""
-                SELECT STRAIGHT_JOIN a.publication_id FROM event_publication_attempts a
+        // 二次索引は候補取得だけ。current lock は必ず各 helper の PRIMARY 完全一致で取る。
+        List<?> candidates = binding(entityManager.createNativeQuery("""
+                SELECT a.id FROM event_publication_attempts a
+                WHERE a.resolver_key = :resolver AND a.operation_id = :operation AND a.episode_id = :episode
+                  AND a.scope_type = :scopeType AND a.scope_id = :scopeId
+                  AND a.organization_id <=> :organization ORDER BY a.id
+                """), probe).getResultList();
+        List<UUID> publications = new ArrayList<>();
+        boolean changedBinding = false;
+        for (Object candidate : candidates) {
+            List<?> helpers = entityManager.createNativeQuery("""
+                    SELECT publication_id, resolver_key, operation_id, episode_id, scope_type, scope_id, organization_id
+                    FROM event_publication_attempts FORCE INDEX (PRIMARY) WHERE id = :id FOR UPDATE
+                    """).setParameter("id", bytes(uuid(candidate))).getResultList();
+            if (helpers.isEmpty()) {
+                continue;
+            }
+            Object[] helper = (Object[]) helpers.getFirst();
+            if (!probe.matchesHelper(helper)) {
+                changedBinding = true;
+                continue;
+            }
+            publications.add(uuid(helper[0]));
+        }
+        // 全 helper を先に揃えてから main へ進む。状態フィルタは設けない。
+        boolean pending = changedBinding;
+        for (UUID publication : publications.stream().distinct().sorted(Comparator.comparing(UUID::toString)).toList()) {
+            List<?> main = entityManager.createNativeQuery("""
+                    SELECT id, completion_date FROM event_publication FORCE INDEX (PRIMARY)
+                    WHERE id = :id FOR UPDATE
+                    """).setParameter("id", bytes(publication)).getResultList();
+            if (!main.isEmpty() && ((Object[]) main.getFirst())[1] == null) {
+                pending = true;
+            }
+        }
+        return pending;
+    }
+
+    private boolean hasFreshPendingPublication(RecoveryProbe probe) {
+        return !binding(entityManager.createNativeQuery("""
+                SELECT a.id FROM event_publication_attempts a
                 JOIN event_publication p ON p.id = a.publication_id
                 WHERE a.resolver_key = :resolver AND a.operation_id = :operation AND a.episode_id = :episode
                   AND a.scope_type = :scopeType AND a.scope_id = :scopeId
                   AND a.organization_id <=> :organization AND p.completion_date IS NULL
-                LIMIT 1 FOR UPDATE
-                """)
-                .setParameter("resolver", probe.resolverKey())
+                LIMIT 1
+                """), probe).getResultList().isEmpty();
+    }
+
+    private static Query binding(Query query, RecoveryProbe probe) {
+        return query.setParameter("resolver", probe.resolverKey())
                 .setParameter("operation", bytes(probe.operationId()))
                 .setParameter("episode", bytes(probe.episodeId()))
                 .setParameter("scopeType", probe.scopeType()).setParameter("scopeId", probe.scopeId())
                 .setParameter("organization", probe.organizationId());
-        return !query.getResultList().isEmpty();
     }
 
     /** Entity を管理状態へ載せず immutable scalar を複写する。未知版は enum 変換せず拒否する。 */
@@ -293,6 +337,16 @@ public final class ModuleEventNoticeOutboxStore {
 
     private record RecoveryProbe(UUID noticeKey, String resolverKey, UUID operationId, UUID episodeId,
             String scopeType, Long scopeId, Long organizationId, int version, String phase, String audience) {
+        private boolean matchesHelper(Object[] row) {
+            return Objects.equals(resolverKey, row[1])
+                    && row[2] instanceof byte[] operation && Arrays.equals(bytes(operationId), operation)
+                    && row[3] instanceof byte[] episode && Arrays.equals(bytes(episodeId), episode)
+                    && Objects.equals(scopeType, row[4])
+                    && row[5] instanceof Number scope && Objects.equals(scopeId, scope.longValue())
+                    && (row[6] == null ? organizationId == null
+                        : row[6] instanceof Number organization && Objects.equals(organizationId, organization.longValue()));
+        }
+
         private boolean matches(ModuleEventNoticeOutboxEntity row) {
             return row.getDescriptorVersion() == version
                     && Objects.equals(noticeKey, row.getNoticeKey())
