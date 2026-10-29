@@ -9,6 +9,7 @@ import jakarta.persistence.Query;
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -141,9 +142,12 @@ public final class ModuleEventNoticeOutboxStore {
             row.deferRecovery(nextAttemptAt, now);
             return true;
         }
-        // core scalar 列接続は別 checkpoint。未確認 pending=0 を成功へ偽装しない。
-        row.deferRecovery(nextAttemptAt, now);
-        return false;
+        if (hasPendingPublication(row)) {
+            row.deferRecovery(nextAttemptAt, now);
+            return false;
+        }
+        row.readyAfterRecovery(now);
+        return true;
     }
 
     /** RELAYED は enqueue 受付。配送済みとせず token を retention CAS のため保持する。 */
@@ -201,10 +205,29 @@ public final class ModuleEventNoticeOutboxStore {
     }
 
     private List<ModuleEventNoticeOutboxEntity> rows(Query query) {
-        List<ModuleEventNoticeOutboxEntity> result = query.getResultList().stream()
-                .map(ModuleEventNoticeOutboxEntity.class::cast).toList();
-        result.forEach(row -> entityManager.refresh(row, LockModeType.PESSIMISTIC_WRITE));
-        return result;
+        List<ModuleEventNoticeOutboxEntity> result = new ArrayList<>();
+        for (Object value : query.getResultList()) {
+            ModuleEventNoticeOutboxEntity row = ModuleEventNoticeOutboxEntity.class.cast(value);
+            entityManager.refresh(row, LockModeType.PESSIMISTIC_WRITE);
+            result.add(row);
+        }
+        return List.copyOf(result);
+    }
+
+    /** core 所有の scalar 6 列と索引が必要。全状態の未完了 listener を current read する。
+     * 業務 CLOSED_COMPLETE だけで pending を推測せず、payload/JSON を走査しない。
+     * 列導入と後発 attempt の実 DB 負例が通るまでは結合 green の根拠にしない。 */
+    private boolean hasPendingPublication(ModuleEventNoticeOutboxEntity row) {
+        entityManager.flush();
+        Query query = binding(entityManager.createNativeQuery("""
+                SELECT a.publication_id FROM event_publication_attempts a
+                JOIN event_publication p ON p.id = a.publication_id
+                WHERE a.resolver_key = :resolver AND a.operation_id = :operation AND a.episode_id = :episode
+                  AND a.scope_type = :scopeType AND a.scope_id = :scopeId
+                  AND a.organization_id <=> :organization AND p.completion_date IS NULL
+                LIMIT 1 FOR UPDATE
+                """), row);
+        return !query.getResultList().isEmpty();
     }
 
     private static boolean owned(ModuleEventNoticeOutboxEntity row, UUID token, String status) {
