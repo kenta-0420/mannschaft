@@ -43,6 +43,7 @@ import org.springframework.modulith.events.core.TargetEventPublication;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.annotation.ScheduledAnnotationBeanPostProcessor;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -56,6 +57,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  */
 @ModuleEventMySqlTest
 @Import(ModuleEventLoadTestFixture.class)
+// Momentsの自動設定による親の全batch起動を防ぎ、M18の子で実schedulerだけを明示起動する。
+@TestPropertySource(properties = "spring.modulith.moments.enabled=false")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @Isolated
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
