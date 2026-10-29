@@ -19,6 +19,11 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
@@ -83,6 +88,47 @@ class ModuleEventNoticeOutboxIT extends AbstractMySqlIntegrationTest {
         assertThat(inTx(() -> entityManager.createQuery(
                 "select count(n) from ModuleEventNoticeOutboxEntity n where n.noticeKey = :key", Long.class)
                 .setParameter("key", draft.getNoticeKey()).getSingleResult())).isEqualTo(1L);
+    }
+
+    @Test
+    void 別TXの同時予約が一行へ収束し競合後もdescriptor不一致を拒否する() throws Exception {
+        ModuleEventNoticeOutboxEntity firstDraft = reservation();
+        ModuleEventNoticeOutboxEntity secondDraft = firstDraft.toBuilder().id(UuidV7.generate()).build();
+        CyclicBarrier barrier = new CyclicBarrier(2);
+        // 共通 EntityManager は Spring の thread-bound proxy。各 worker が別の実 TX を開始する。
+        try (ExecutorService workers = Executors.newFixedThreadPool(2)) {
+            Future<ModuleEventNoticeOutboxEntity> first = workers.submit(() -> inTx(() -> {
+                awaitBothTransactions(barrier);
+                return store().reserve(firstDraft).orElse(null);
+            }));
+            Future<ModuleEventNoticeOutboxEntity> second = workers.submit(() -> inTx(() -> {
+                awaitBothTransactions(barrier);
+                return store().reserve(secondDraft).orElse(null);
+            }));
+            // Future は TX commit 後に返る。片方の unique 例外や rollback-only も失敗として伝播する。
+            ModuleEventNoticeOutboxEntity firstResult = first.get(30, TimeUnit.SECONDS);
+            ModuleEventNoticeOutboxEntity secondResult = second.get(30, TimeUnit.SECONDS);
+            assertThat(firstResult).isNotNull();
+            assertThat(secondResult).isNotNull();
+            assertThat(firstResult.getId()).isEqualTo(secondResult.getId());
+            assertThat(firstResult.getNoticeRef()).isPositive().isEqualTo(secondResult.getNoticeRef());
+            assertThat(countOwn()).isEqualTo(1L);
+            assertThat(read(firstResult.getId()).getEpisodeId()).isEqualTo(firstDraft.getEpisodeId());
+        }
+        assertThatIllegalArgumentException().isThrownBy(() -> inTx(() -> store().reserve(
+                firstDraft.toBuilder().id(UuidV7.generate()).episodeId(UUID.randomUUID()).build())));
+        assertThat(countOwn()).isEqualTo(1L);
+    }
+
+    private static void awaitBothTransactions(CyclicBarrier barrier) {
+        try {
+            barrier.await(10, TimeUnit.SECONDS);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("同時予約試練が中断された", interrupted);
+        } catch (java.util.concurrent.BrokenBarrierException | java.util.concurrent.TimeoutException failed) {
+            throw new IllegalStateException("同時予約の両 TX が barrier に到達しなかった", failed);
+        }
     }
 
     @Test
