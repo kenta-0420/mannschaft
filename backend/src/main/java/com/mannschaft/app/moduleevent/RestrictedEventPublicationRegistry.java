@@ -29,11 +29,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 
 /** 保存対象の制約と試行台帳を接続する Registry。 */
-public class RestrictedEventPublicationRegistry extends DefaultEventPublicationRegistry {
+public class RestrictedEventPublicationRegistry extends DefaultEventPublicationRegistry implements ModuleEventExecutionFrame.Owner {
     // cutoffとは別の実行猶予。初期値は負荷試験で処理時間との関係を検証する。
     private static final Duration INITIAL_LEASE = Duration.ofMinutes(5);
     private final EventPublicationRepository repository;
     private final Clock clock;
+    private final ModuleEventExecutionFrame.Context frames;
     private final EntityManager entityManager;
     private final ModuleEventListenerCatalog catalog;
     private final ObjectProvider<ModuleEventImpactResolverRegistry> impacts;
@@ -42,10 +43,12 @@ public class RestrictedEventPublicationRegistry extends DefaultEventPublicationR
 
     public RestrictedEventPublicationRegistry(EventPublicationRepository repository, Clock clock,
             EntityManager entityManager, ModuleEventListenerCatalog catalog,
-            PlatformTransactionManager transactions, ObjectProvider<ModuleEventImpactResolverRegistry> impacts) {
+            PlatformTransactionManager transactions, ObjectProvider<ModuleEventImpactResolverRegistry> impacts,
+            ModuleEventExecutionFrame.Context frames) {
         super(repository, clock);
         this.repository = repository;
         this.clock = clock;
+        this.frames = frames;
         this.entityManager = entityManager;
         this.catalog = catalog;
         // 起動時は業務resolverを生成せず、保存hookの純識別時だけ解決する。
@@ -184,6 +187,11 @@ public class RestrictedEventPublicationRegistry extends DefaultEventPublicationR
             return 31 * System.identityHashCode(event) + target.hashCode();
         }
     }
+
+    /** App結合試練のred用窓口。現段階では既存publisher経路を置き換えない。 */
+    @Override public boolean admit(ModuleEventExecutionFrame frame) { return false; }
+    @Override public void rejected(ModuleEventExecutionFrame frame) { }
+    @Override public void finished(ModuleEventExecutionFrame frame) { }
 
     /** 終了時に未完了 payload を全件取り込まない。観測は集計クエリが担う。 */
     @Override

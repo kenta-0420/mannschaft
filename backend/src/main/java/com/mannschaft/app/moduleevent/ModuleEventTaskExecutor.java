@@ -39,6 +39,17 @@ public final class ModuleEventTaskExecutor extends ThreadPoolTaskExecutor {
         });
     }
 
+    /** SQL前の予算。移譲と未使用解放はApp試練のred後に実装する。 */
+    public Batch reserveReplayBudget(int maximum, int normalReserve) {
+        return new Batch();
+    }
+
+    public final class Batch implements AutoCloseable {
+        private Batch() { }
+        public int size() { return 0; }
+        @Override public void close() { }
+    }
+
     public int availableCapacity() {
         return capacity.availablePermits();
     }

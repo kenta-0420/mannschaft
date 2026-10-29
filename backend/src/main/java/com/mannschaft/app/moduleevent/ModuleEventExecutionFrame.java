@@ -1,6 +1,7 @@
 package com.mannschaft.app.moduleevent;
 
 import java.util.HashMap;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -31,6 +32,10 @@ public record ModuleEventExecutionFrame(Object event, UUID publicationId, UUID a
         private final Map<InvocationKey, Registration> registrations = new HashMap<>();
         private final ThreadLocal<ModuleEventExecutionFrame> submission = new ThreadLocal<>();
         private final ThreadLocal<ModuleEventExecutionFrame> execution = new ThreadLocal<>();
+
+        /** 全対象の所有確認は公式登録前に同じmonitor内で行う。実装はApp試練のred後に接続する。 */
+        synchronized void assertUnregistered(Object event, Collection<String> listenerIds) {
+        }
 
         public synchronized void register(ModuleEventExecutionFrame frame) {
             InvocationKey key = new InvocationKey(frame.event(), frame.listenerId());

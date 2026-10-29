@@ -80,6 +80,11 @@ public class EventPublicationAttemptEntity extends UuidV7Entity {
     @Column(name = "version", nullable = false)
     private long version;
 
+    /** worker入口の永続受理。現token・期限境界をred後に実装する。 */
+    boolean admitReplay(UUID expectedToken, LocalDateTime now) {
+        return false;
+    }
+
     /** 初回失敗は再配信回数に含めず、次の回収対象として残す。 */
     public void recordInitialFailure(LocalDateTime attemptedAt) {
         status = ModuleEventAttemptStatus.PENDING;

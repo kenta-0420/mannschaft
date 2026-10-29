@@ -1,13 +1,15 @@
 package com.mannschaft.app.config;
 
 import com.mannschaft.app.moduleevent.RestrictedEventPublicationRegistry;
+import com.mannschaft.app.moduleevent.ModuleEventExecutionFrame;
+import com.mannschaft.app.moduleevent.ModuleEventTaskExecutor;
+import com.mannschaft.app.moduleevent.ModuleEventPublicationStore;
 import com.mannschaft.app.moduleevent.ModuleEventListenerCatalog;
 import com.mannschaft.app.moduleevent.api.spi.ModuleEventImpactResolver;
 import com.mannschaft.app.moduleevent.notice.ModuleEventImpactEvaluator;
 import com.mannschaft.app.moduleevent.notice.ModuleEventImpactResolverRegistry;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -17,10 +19,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Role;
 import org.springframework.core.env.Environment;
 import org.springframework.modulith.events.core.EventPublicationRegistry;
+import org.springframework.modulith.events.core.EventSerializer;
 import org.springframework.modulith.events.core.EventPublicationRepository;
 import org.springframework.modulith.events.support.CompletionRegisteringAdvisor;
 import org.springframework.modulith.events.support.PersistentApplicationEventMulticaster;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
 /** 公式 JPA 保存と公開イベント基盤を組み合わせる。既定 Registry の二重生成を避ける。 */
@@ -31,9 +33,23 @@ public class ModuleEventConfiguration {
     public RestrictedEventPublicationRegistry moduleEventRegistry(
             @Qualifier("jpaEventPublicationRepository") EventPublicationRepository repository,
             EntityManager entityManager, ModuleEventListenerCatalog catalog,
-            PlatformTransactionManager transactions, ObjectProvider<ModuleEventImpactResolverRegistry> impacts) {
+            PlatformTransactionManager transactions, ObjectProvider<ModuleEventImpactResolverRegistry> impacts,
+            ModuleEventExecutionFrame.Context frames) {
         return new RestrictedEventPublicationRegistry(repository, Clock.systemUTC(), entityManager,
-                catalog, transactions, impacts);
+                catalog, transactions, impacts, frames);
+    }
+
+    @Bean
+    public ModuleEventExecutionFrame.Context moduleEventExecutionContext() {
+        return new ModuleEventExecutionFrame.Context();
+    }
+
+    /** 初回保存と独立した短TXを区別する内部Store。 */
+    @Bean
+    public ModuleEventPublicationStore moduleEventPublicationStore(EntityManager entityManager,
+            @Qualifier("jpaEventPublicationRepository") EventPublicationRepository repository,
+            EventSerializer serializer, ModuleEventListenerCatalog catalog) {
+        return new ModuleEventPublicationStore(entityManager, repository, serializer, catalog, Clock.systemUTC());
     }
 
     /** 受信者評価を含まない純識別窓口。業務resolverの依存をM Registryの構築へ戻さない。 */
@@ -66,14 +82,26 @@ public class ModuleEventConfiguration {
 
     /** 初期容量は負荷試験で確定する。拒否を捨てず呼出元へ返す。 */
     @Bean("module-event-pool")
-    public Executor moduleEventPool() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    public ModuleEventTaskExecutor moduleEventPool(ModuleEventExecutionFrame.Context frames,
+            ObjectProvider<RestrictedEventPublicationRegistry> registry) {
+        // M18未実証の仮値。frameなしの従来taskも同じ容量で受付する。
+        ModuleEventTaskExecutor executor = new ModuleEventTaskExecutor(frames,
+                new ModuleEventExecutionFrame.Owner() {
+                    @Override public boolean admit(ModuleEventExecutionFrame frame) {
+                        return registry.getObject().admit(frame);
+                    }
+                    @Override public void rejected(ModuleEventExecutionFrame frame) {
+                        registry.getObject().rejected(frame);
+                    }
+                    @Override public void finished(ModuleEventExecutionFrame frame) {
+                        registry.getObject().finished(frame);
+                    }
+                }, 200, new AsyncConfig.MdcTaskDecorator());
         executor.setCorePoolSize(4);
         executor.setMaxPoolSize(4);
         executor.setQueueCapacity(200);
         executor.setThreadNamePrefix("module-event-");
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
-        executor.setTaskDecorator(new AsyncConfig.MdcTaskDecorator());
         executor.initialize();
         return executor;
     }
