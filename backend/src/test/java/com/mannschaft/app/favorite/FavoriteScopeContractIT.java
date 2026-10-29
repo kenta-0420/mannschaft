@@ -2,6 +2,7 @@ package com.mannschaft.app.favorite;
 
 import com.mannschaft.app.favorite.entity.UserFavoriteEntity;
 import com.mannschaft.app.favorite.repository.UserFavoriteRepository;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -67,6 +68,9 @@ class FavoriteScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private UserFavoriteRepository favoriteRepository;
+
+    @Autowired
+    private OrganizationRepository organizationRepository;
 
     @PersistenceContext
     private EntityManager em;
@@ -336,6 +340,81 @@ class FavoriteScopeContractIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("同一IDのTEAMとORGANIZATIONを登録しても種別ごとの名前とslug URLを保持する")
+    void 同一IDの異種登録は名前とslugURLを保持する() throws Exception {
+        String orgSlug = saveOrganizationWithId(publicTeamId, "PUBLIC");
+        String teamSlug = (String) em.createNativeQuery("SELECT slug FROM teams WHERE id = :id")
+                .setParameter("id", publicTeamId).getSingleResult();
+        String teamName = (String) em.createNativeQuery("SELECT name FROM teams WHERE id = :id")
+                .setParameter("id", publicTeamId).getSingleResult();
+        setAuth(ownerId);
+        mockMvc.perform(post("/api/v1/me/favorites")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(addBody("ORGANIZATION", publicTeamId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.entityId").value(publicTeamId.toString()))
+                .andExpect(jsonPath("$.data.pageUrl").value("/organizations/" + orgSlug));
+        em.flush();
+        em.clear();
+        mockMvc.perform(get("/api/v1/me/favorites"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].entityType").value("ORGANIZATION"))
+                .andExpect(jsonPath("$.data[0].displayName").value("FAVAUTHZ 同ID組織"))
+                .andExpect(jsonPath("$.data[0].pageUrl").value("/organizations/" + orgSlug))
+                .andExpect(jsonPath("$.data[1].entityType").value("TEAM"))
+                .andExpect(jsonPath("$.data[1].entityId").value(publicTeamId.toString()))
+                .andExpect(jsonPath("$.data[1].displayName").value(teamName))
+                .andExpect(jsonPath("$.data[1].pageUrl").value("/teams/" + teamSlug));
+        mockMvc.perform(get("/api/v1/me/favorites/{id}", ownerFavoriteId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.pageUrl").value("/teams/" + teamSlug));
+        mockMvc.perform(get("/api/v1/teams/{slug}", teamSlug))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("同一IDの公開組織と閲覧不可チームは名前URLと利用可否が混線しない")
+    void 閲覧不可チームと同一ID公開組織は混線しない() throws Exception {
+        String orgSlug = saveOrganizationWithId(privateTeamId, "PUBLIC");
+        UUID teamFavorite = saveFavorite(memberId, FavoriteEntityType.TEAM, privateTeamId.toString());
+        UUID orgFavorite = saveFavorite(memberId, FavoriteEntityType.ORGANIZATION, privateTeamId.toString());
+        // 登録後の脱退を再現。行は残るがチームのメタデータは秘匿される。
+        em.createNativeQuery("DELETE FROM memberships WHERE user_id = :userId "
+                        + "AND scope_type = 'TEAM' AND scope_id = :teamId")
+                .setParameter("userId", memberId).setParameter("teamId", privateTeamId).executeUpdate();
+        em.flush();
+        em.clear();
+        setAuth(memberId);
+        mockMvc.perform(get("/api/v1/me/favorites"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.entityType == 'TEAM')].available", hasItem(false)))
+                .andExpect(jsonPath("$.data[?(@.entityType == 'ORGANIZATION')].available", hasItem(true)))
+                .andExpect(jsonPath("$.data[?(@.entityType == 'ORGANIZATION')].pageUrl",
+                        hasItem("/organizations/" + orgSlug)));
+        mockMvc.perform(get("/api/v1/me/favorites/{id}", teamFavorite))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.available").value(false))
+                .andExpect(jsonPath("$.data.displayName").isEmpty())
+                .andExpect(jsonPath("$.data.pageUrl").isEmpty())
+                .andExpect(jsonPath("$.data.canEdit").value(false));
+        mockMvc.perform(get("/api/v1/me/favorites/{id}", orgFavorite))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.available").value(true));
+    }
+
+    private String saveOrganizationWithId(Long id, String visibility) {
+        String slug = "favorg-" + UUID.randomUUID().toString().substring(0, 8);
+        var organization = organizationRepository.saveAndFlush(FavoriteTestFixture.organization(slug, visibility));
+        // 自動採番に依存せず衝突を再現する。新規組織には所属/ロール/子の参照がなく、
+        // テストのrollback内だけでIDを合わせる。作成自体はRepository/Fixture経由。
+        em.createNativeQuery("UPDATE organizations SET id = :targetId WHERE id = :generatedId")
+                .setParameter("targetId", id).setParameter("generatedId", organization.getId()).executeUpdate();
+        em.clear();
+        return slug;
+    }
 
     private String addBody(String entityType, Long entityId) {
         return "{\"entityType\":\"" + entityType + "\",\"entityId\":\"" + entityId + "\"}";

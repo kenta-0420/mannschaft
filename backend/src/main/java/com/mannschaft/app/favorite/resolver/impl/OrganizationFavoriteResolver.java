@@ -74,7 +74,7 @@ public class OrganizationFavoriteResolver implements FavoriteEntityResolver {
                         org.getName(),
                         // DB には生の R2 キーが入る。表示用署名付き URL へ解決して返す（生キーは 404）。
                         mediaUrlResolver.resolve(org.getIconUrl()),
-                        "/organizations/" + org.getId(),
+                        "/organizations/" + org.getSlug(),
                         canEdit,
                         FavoriteEntityStatus.AVAILABLE
                 ));

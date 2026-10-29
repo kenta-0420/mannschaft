@@ -57,6 +57,7 @@ class OrganizationFavoriteResolverTest {
     void resolveAll_resolvesIconUrl() {
         OrganizationEntity org = OrganizationEntity.builder()
                 .name("関東連盟")
+                .slug("kanto-league")
                 .iconUrl("org/9/icon/raw.png")
                 .build();
         ReflectionTestUtils.setField(org, "id", 9L);
@@ -73,6 +74,7 @@ class OrganizationFavoriteResolverTest {
 
         FavoriteEntityMetaDto meta = result.get("9");
         assertThat(meta).isNotNull();
+        assertThat(meta.pageUrl()).isEqualTo("/organizations/kanto-league");
         assertThat(meta.entityType()).isEqualTo(FavoriteEntityType.ORGANIZATION);
         assertThat(meta.iconUrl()).isEqualTo("https://cdn.example/signed/org-9");
         assertThat(meta.iconUrl()).isNotEqualTo("org/9/icon/raw.png");
