@@ -1,4 +1,12 @@
 spring:
+  # 限定 Registry は明示構成し、JPA/Jackson 自動構成は維持する。
+  autoconfigure:
+    exclude:
+      - org.springframework.modulith.events.config.EventPublicationAutoConfiguration
+  modulith:
+    events:
+      completion-mode: delete
+      republish-outstanding-events-on-restart: false
   application:
     name: mannschaft
 
