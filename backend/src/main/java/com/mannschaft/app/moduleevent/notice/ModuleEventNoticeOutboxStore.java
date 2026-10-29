@@ -133,16 +133,21 @@ public final class ModuleEventNoticeOutboxStore {
         Objects.requireNonNull(recovery, "recovery");
         Objects.requireNonNull(nextAttemptAt, "nextAttemptAt");
         Objects.requireNonNull(now, "now");
+        RecoveryProbe probe = recoveryProbe(id);
+        if (probe == null) {
+            return false;
+        }
+        // claim は別 TX で確定済み。helper → main → notice の順を崩さない。
+        boolean pending = hasPendingPublication(probe);
         ModuleEventNoticeOutboxEntity row = current(id);
-        if (!owned(row, claimToken, "WAITING_RECOVERY")
-                || row.getDescriptorVersion() != DESCRIPTOR_VERSION || !"RECOVERED".equals(row.getPhase())) {
+        if (!owned(row, claimToken, "WAITING_RECOVERY") || !probe.matches(row)) {
             return false;
         }
         if (recovery != ModuleEventRecoveryState.CLOSED_COMPLETE) {
             row.deferRecovery(nextAttemptAt, now);
             return true;
         }
-        if (hasPendingPublication(row)) {
+        if (pending) {
             row.deferRecovery(nextAttemptAt, now);
             return false;
         }
@@ -244,17 +249,66 @@ public final class ModuleEventNoticeOutboxStore {
     /** core 所有の scalar 6 列と索引が必要。全状態の未完了 listener を current read する。
      * 業務 CLOSED_COMPLETE だけで pending を推測せず、payload/JSON を走査しない。
      * 列導入と後発 attempt の実 DB 負例が通るまでは結合 green の根拠にしない。 */
-    private boolean hasPendingPublication(ModuleEventNoticeOutboxEntity row) {
-        entityManager.flush();
-        Query query = binding(entityManager.createNativeQuery("""
-                SELECT a.publication_id FROM event_publication_attempts a
+    private boolean hasPendingPublication(RecoveryProbe probe) {
+        // STRAIGHT_JOIN は optimizer に main を先に読ませず、helper 起点の lock 順を保つ。
+        Query query = entityManager.createNativeQuery("""
+                SELECT STRAIGHT_JOIN a.publication_id FROM event_publication_attempts a
                 JOIN event_publication p ON p.id = a.publication_id
                 WHERE a.resolver_key = :resolver AND a.operation_id = :operation AND a.episode_id = :episode
                   AND a.scope_type = :scopeType AND a.scope_id = :scopeId
                   AND a.organization_id <=> :organization AND p.completion_date IS NULL
                 LIMIT 1 FOR UPDATE
-                """), row);
+                """)
+                .setParameter("resolver", probe.resolverKey())
+                .setParameter("operation", bytes(probe.operationId()))
+                .setParameter("episode", bytes(probe.episodeId()))
+                .setParameter("scopeType", probe.scopeType()).setParameter("scopeId", probe.scopeId())
+                .setParameter("organization", probe.organizationId());
         return !query.getResultList().isEmpty();
+    }
+
+    /** Entity を管理状態へ載せず immutable scalar を複写する。未知版は enum 変換せず拒否する。 */
+    private RecoveryProbe recoveryProbe(UUID id) {
+        Objects.requireNonNull(id, "id");
+        requireTransaction();
+        entityManager.flush();
+        List<?> result = entityManager.createNativeQuery("""
+                SELECT notice_key, resolver_key, operation_id, episode_id, scope_type, scope_id,
+                       organization_id, descriptor_version, phase, audience
+                FROM module_event_notice_outbox WHERE id = :id
+                """).setParameter("id", bytes(id)).getResultList();
+        if (result.isEmpty()) {
+            return null;
+        }
+        Object[] values = (Object[]) result.getFirst();
+        int version = ((Number) values[7]).intValue();
+        if (version != DESCRIPTOR_VERSION || !"RECOVERED".equals(values[8])) {
+            return null;
+        }
+        return new RecoveryProbe(uuid(values[0]), (String) values[1], uuid(values[2]), uuid(values[3]),
+                (String) values[4], ((Number) values[5]).longValue(),
+                values[6] == null ? null : ((Number) values[6]).longValue(), version,
+                (String) values[8], (String) values[9]);
+    }
+
+    private record RecoveryProbe(UUID noticeKey, String resolverKey, UUID operationId, UUID episodeId,
+            String scopeType, Long scopeId, Long organizationId, int version, String phase, String audience) {
+        private boolean matches(ModuleEventNoticeOutboxEntity row) {
+            return row.getDescriptorVersion() == version
+                    && Objects.equals(noticeKey, row.getNoticeKey())
+                    && Objects.equals(resolverKey, row.getResolverKey())
+                    && Objects.equals(operationId, row.getOperationId())
+                    && Objects.equals(episodeId, row.getEpisodeId())
+                    && Objects.equals(scopeType, row.getScopeType())
+                    && Objects.equals(scopeId, row.getScopeId())
+                    && Objects.equals(organizationId, row.getOrganizationId())
+                    && Objects.equals(phase, row.getPhase()) && Objects.equals(audience, row.getAudience());
+        }
+    }
+
+    private static UUID uuid(Object value) {
+        ByteBuffer buffer = ByteBuffer.wrap((byte[]) value);
+        return new UUID(buffer.getLong(), buffer.getLong());
     }
 
     private static boolean owned(ModuleEventNoticeOutboxEntity row, UUID token, String status) {
