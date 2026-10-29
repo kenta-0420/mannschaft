@@ -511,9 +511,24 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
      * チームが ACTIVE で加盟している組織と、その所属グループ ID（未分類は NULL）を返す（告知の表示判定。§8.2）。
      */
     @Query("SELECT m.organizationId AS organizationId, m.groupId AS groupId FROM TeamOrgMembershipEntity m "
+        + "JOIN TeamEntity t ON t.id = m.teamId "
         + "WHERE m.teamId = :teamId "
-        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE")
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE "
+        + "AND t.archivedAt IS NULL AND t.deletedAt IS NULL")
     List<TeamOrgGroupProjection> findActiveOrgGroupsByTeamId(@Param("teamId") Long teamId);
+
+    /**
+     * 組織に ACTIVE で加盟している指定チームと所属グループ ID（未分類は NULL）を、チーム数に依らず 1 本の SQL で返す
+     * （組織告知の宛先資格 Qa の判定。F01.2.1 §8.2・ALIC-1 §2.7）。アーカイブ済み・論理削除済みのチームは返らない（M3）。
+     */
+    @Query("SELECT m.teamId AS teamId, m.groupId AS groupId FROM TeamOrgMembershipEntity m "
+        + "JOIN TeamEntity t ON t.id = m.teamId "
+        + "WHERE m.organizationId = :organizationId "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE "
+        + "AND t.archivedAt IS NULL AND t.deletedAt IS NULL "
+        + "AND m.teamId IN :teamIds ORDER BY m.teamId ASC")
+    List<TeamGroupAssignmentProjection> findActiveTeamGroupAssignmentsByOrganizationIdAndTeamIdIn(
+            @Param("organizationId") Long organizationId, @Param("teamIds") java.util.Collection<Long> teamIds);
 
     // ========================================================================
     // F01.2.1 2-B2: 組織側の受信申請一覧・承認・拒否（§6.2・§6.3・§6.4・§10.6）

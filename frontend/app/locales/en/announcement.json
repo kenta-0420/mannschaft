@@ -10,7 +10,8 @@
       "load_failed": "Unable to load content",
       "locked": "You need access to view this content",
       "image_failed": "Unable to display image",
-      "read_failed": "Unable to mark as read"
+      "read_failed": "Unable to mark as read",
+      "delegated_source_note": "The original page and attachments can be opened only by organization members."
     },
     "widget_title": "Announcements",
     "all_announcements": "All Announcements",

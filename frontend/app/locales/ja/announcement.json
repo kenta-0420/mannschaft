@@ -10,7 +10,8 @@
       "load_failed": "本文を取得できませんでした",
       "locked": "この本文を閲覧するには利用条件を満たす必要があります",
       "image_failed": "画像を表示できませんでした",
-      "read_failed": "既読を更新できませんでした"
+      "read_failed": "既読を更新できませんでした",
+      "delegated_source_note": "元のページ・添付は組織のメンバーだけが開けます"
     },
     "widget_title": "お知らせ",
     "all_announcements": "すべてのお知らせ",

@@ -1,0 +1,33 @@
+{
+  "artifactSourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+  "testOnlyBridgeHead": "49c2b5f6061b969e8e7bff6c0b5551000be65f41",
+  "productInputsUnchangedRootVerified": true,
+  "officialBuildFinished": true,
+  "ownedBuildCompilerUnitRunnerCount": 0,
+  "workerHeavy0Reported": true,
+  "workerPushExitCode": 0,
+  "remainingWorkerProcess": "git-read-tree-metadata-only",
+  "workerReportedCpuDeltaSeconds": 0.01,
+  "workerReportedObservationSeconds": 2,
+  "workerMetadataIoOngoing": true,
+  "environmentQuietGuaranteed": false,
+  "samplesPlanned": 2,
+  "outliersRetained": true,
+  "runtimeGuardAllTrue": true,
+  "measureDriverSha256": "6f8b16a2659ffd5508d001b48f12beddacd86c3692b4e931e27d3181abc3be2e",
+  "performanceClockDefinitionsUnchanged": true,
+  "createdAt": "2026-10-28T13:05:05.4436338Z",
+  "workerMetadataCompletionNotificationRecordedAt": "2026-10-28T13:06:38Z",
+  "workerMetadataEndNotificationWhileSample1Running": true,
+  "sample2Preflight": {
+    "workerMetadataProcessingEndedReported": true,
+    "workerSourceCleanHead": "49c2b5f6061b969e8e7bff6c0b5551000be65f41",
+    "workerLocalBuildCompilerUnitRunnerBrowserAuthCount": 0,
+    "ownerOfficialBuildReceiptExitCode": 0,
+    "ownerOfficialBuildCleanup": "removed",
+    "ownerNewLocalHeavyStarted": false,
+    "ownerSample1Closed": true,
+    "ownerSample1LogoutStatus": 200,
+    "checkedAt": "2026-10-28T13:07:48.668716+00:00"
+  }
+}

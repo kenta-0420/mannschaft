@@ -49,7 +49,7 @@ export interface ClosureSendBody {
 
 export interface ClosureSendResponse {
   data: {
-    notifiedCount: number
+    sentCount: number
   }
 }
 
@@ -69,7 +69,7 @@ export interface ClosureHistoryItem {
   endTime: string | null
   reason: string
   subject: string
-  notifiedCount: number
+  sentCount: number
   createdAt: string
 }
 
