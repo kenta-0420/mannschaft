@@ -33,6 +33,12 @@ dependencies {
     // L1-M: Boot 3.5 系で実測した版を固定。公開 Registry SPI は compile classpath に置く。
     implementation("org.springframework.modulith:spring-modulith-starter-jpa:1.4.13")
     implementation("org.springframework.modulith:spring-modulith-events-core:1.4.13")
+    // Modulith の推移依存による番人の版上げを防ぎ、採用版を全構成で固定する。
+    constraints {
+        implementation("com.tngtech.archunit:archunit") {
+            version { strictly("1.3.0") }
+        }
+    }
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")

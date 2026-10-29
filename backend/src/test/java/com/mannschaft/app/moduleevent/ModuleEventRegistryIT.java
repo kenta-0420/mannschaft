@@ -47,22 +47,26 @@ class ModuleEventRegistryIT extends AbstractMySqlIntegrationTest {
     @Autowired private PlatformTransactionManager transactions;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private Listeners listeners;
+    private Probe probe;
     @Autowired private List<EventPublicationRegistry> registries;
     private UUID ownedTarget;
 
     @BeforeEach
     void 検体を初期化する() {
-        listeners.failureObserved.set(false);
-        listeners.ordinaryObserved.set(false);
-        listeners.txObserved.set(null);
-        listeners.threadObserved.set(null);
-        listeners.authStarted = new CountDownLatch(1);
-        listeners.authRelease = new CountDownLatch(1);
+        probe = listeners.observations();
+        probe.failureObserved.set(false);
+        probe.ordinaryObserved.set(false);
+        probe.txObserved.set(null);
+        probe.threadObserved.set(null);
+        probe.authStarted = new CountDownLatch(1);
+        probe.authRelease = new CountDownLatch(1);
+        probe.authFinished = new CountDownLatch(1);
+        probe.authToken = null;
     }
 
     @AfterEach
     void 自分の検体だけを掃除する() {
-        listeners.authRelease.countDown();
+        probe.authRelease.countDown();
         if (ownedTarget != null) {
             cleanup(ownedTarget);
         }
@@ -86,31 +90,55 @@ class ModuleEventRegistryIT extends AbstractMySqlIntegrationTest {
         publish(event);
         try {
             await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> {
-                assertThat(listeners.failureObserved).isTrue();
-                assertThat(listeners.ordinaryObserved).isTrue();
+                assertThat(probe.failureObserved).isTrue();
+                assertThat(probe.ordinaryObserved).isTrue();
             });
             assertThat(jdbc.queryForList(
                     "SELECT listener_id FROM event_publication WHERE serialized_event LIKE ?",
                     String.class, "%" + target + "%"))
                     .containsExactly("module-registry-it-failure");
+            assertThat(jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM event_publication_attempts a JOIN event_publication p "
+                            + "ON p.id = a.publication_id WHERE p.serialized_event LIKE ? "
+                            + "AND p.listener_id = ?", Long.class, "%" + target + "%",
+                    "module-registry-it-failure")).isEqualTo(1L);
+            assertThat(jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM event_publication_attempts a JOIN event_publication p "
+                            + "ON p.id = a.publication_id WHERE p.serialized_event LIKE ? "
+                            + "AND p.listener_id = ?", Long.class, "%" + target + "%",
+                    "module-registry-it-ordinary")).isZero();
         } finally {
             cleanup(target);
         }
     }
 
     @Test
-    void M03_認証イベントは実commitと購読実行後も保存しない() throws Exception {
-        publish(new UserRegisteredEvent(919191L, "registry-it@example.invalid", "検体", "synthetic-secret"));
+    void M03_認証イベントは実commitと購読実行後も両表に保存しない() throws Exception {
+        String token = "registry-it-" + UUID.randomUUID();
+        probe.authToken = token;
+        Long attemptsBefore = jdbc.queryForObject("SELECT COUNT(*) FROM event_publication_attempts", Long.class);
         try {
-            assertThat(listeners.authStarted.await(20, TimeUnit.SECONDS)).isTrue();
+            publish(new UserRegisteredEvent(919191L, "registry-it@example.invalid", "検体", token));
+            assertThat(probe.authStarted.await(20, TimeUnit.SECONDS)).isTrue();
             assertThat(jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM event_publication WHERE listener_id = ?", Long.class,
-                    "module-registry-it-legacy-auth")).isZero();
+                    "SELECT COUNT(*) FROM event_publication WHERE listener_id = ? "
+                            + "AND serialized_event LIKE ?", Long.class,
+                    "module-registry-it-legacy-auth", "%" + token + "%")).isZero();
             assertThat(jdbc.queryForObject(
                     "SELECT COUNT(*) FROM event_publication WHERE serialized_event LIKE ?", Long.class,
-                    "%synthetic-secret%")).isZero();
+                    "%" + token + "%")).isZero();
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM event_publication_attempts", Long.class))
+                    .isEqualTo(attemptsBefore);
         } finally {
-            listeners.authRelease.countDown();
+            probe.authRelease.countDown();
+            if (probe.authStarted.getCount() == 0 && !probe.authFinished.await(20, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("自分の認証購読検体が終了しなかった");
+            }
+            // 一意な token に一致する自分の検体だけを掃除する。
+            jdbc.update("DELETE a FROM event_publication_attempts a JOIN event_publication p "
+                    + "ON p.id = a.publication_id WHERE p.serialized_event LIKE ?", "%" + token + "%");
+            jdbc.update("DELETE FROM event_publication WHERE serialized_event LIKE ?", "%" + token + "%");
+            probe.authToken = null;
         }
     }
 
@@ -125,7 +153,7 @@ class ModuleEventRegistryIT extends AbstractMySqlIntegrationTest {
                     byte[].class, "%" + target + "%");
         });
         await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> {
-            assertThat(listeners.threadObserved.get()).startsWith("module-event-");
+            assertThat(probe.threadObserved.get()).startsWith("module-event-");
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM event_publication_attempts "
                     + "WHERE publication_id = ?", Long.class, publicationId)).isZero();
             assertThat(jdbc.queryForObject(
@@ -138,19 +166,24 @@ class ModuleEventRegistryIT extends AbstractMySqlIntegrationTest {
     void M05_発行TXの中で補助行を作りrollbackで両表とも消える() {
         UUID target = UUID.randomUUID();
         ownedTarget = target;
-        new TransactionTemplate(transactions).executeWithoutResult(status -> {
+        byte[] publicationId = new TransactionTemplate(transactions).execute(status -> {
             publisher.publishEvent(new FailureEvent(target, 7L, LocalDateTime.now()));
             entityManager.flush();
             assertThat(jdbc.queryForObject(
                     "SELECT COUNT(*) FROM event_publication_attempts a JOIN event_publication p "
                             + "ON p.id = a.publication_id WHERE p.serialized_event LIKE ?", Long.class,
                     "%" + target + "%")).isEqualTo(1L);
+            byte[] id = jdbc.queryForObject("SELECT id FROM event_publication WHERE serialized_event LIKE ?",
+                    byte[].class, "%" + target + "%");
             status.setRollbackOnly();
+            return id;
         });
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM event_publication WHERE serialized_event LIKE ?", Long.class,
                 "%" + target + "%")).isZero();
-        assertThat(listeners.failureObserved).isFalse();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM event_publication_attempts "
+                + "WHERE publication_id = ?", Long.class, publicationId)).isZero();
+        assertThat(probe.failureObserved).isFalse();
     }
 
     @Test
@@ -159,8 +192,8 @@ class ModuleEventRegistryIT extends AbstractMySqlIntegrationTest {
         ownedTarget = target;
         publish(new SuccessEvent(target, 7L, LocalDateTime.now()));
         await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> {
-            assertThat(listeners.threadObserved.get()).startsWith("module-event-");
-            assertThat(listeners.txObserved.get()).isFalse();
+            assertThat(probe.threadObserved.get()).startsWith("module-event-");
+            assertThat(probe.txObserved.get()).isFalse();
         });
     }
 
@@ -185,41 +218,59 @@ class ModuleEventRegistryIT extends AbstractMySqlIntegrationTest {
         @Bean Listeners moduleRegistryTestListeners() { return new Listeners(); }
     }
 
-    /** 非同期の実行と保存をそれぞれ観測する購読検体。 */
-    static class Listeners {
+    /** AOP proxy 本体のfieldを直接読まず、実targetと共有する観測状態。 */
+    static class Probe {
         final AtomicBoolean failureObserved = new AtomicBoolean();
         final AtomicBoolean ordinaryObserved = new AtomicBoolean();
         final AtomicReference<Boolean> txObserved = new AtomicReference<>();
         final AtomicReference<String> threadObserved = new AtomicReference<>();
         CountDownLatch authStarted = new CountDownLatch(1);
         CountDownLatch authRelease = new CountDownLatch(1);
+        CountDownLatch authFinished = new CountDownLatch(1);
+        volatile String authToken;
+    }
+
+    /** 非同期の実行と保存をそれぞれ観測する購読検体。 */
+    static class Listeners {
+        private final Probe probe = new Probe();
+
+        public Probe observations() { return probe; }
 
         @ModuleEventListener(id = "module-registry-it-failure")
         public void failure(FailureEvent event) {
-            failureObserved.set(true);
+            probe.failureObserved.set(true);
             throw new IllegalStateException("意図した購読失敗の検体");
         }
 
         @Async("module-event-pool")
         @TransactionalEventListener(id = "module-registry-it-ordinary")
         public void ordinary(FailureEvent event) {
-            ordinaryObserved.set(true);
+            probe.ordinaryObserved.set(true);
             throw new IllegalStateException("保存対象外の通常購読検体");
         }
 
         @Async("module-event-pool")
         @TransactionalEventListener(id = "module-registry-it-legacy-auth")
         public void auth(UserRegisteredEvent event) throws InterruptedException {
-            authStarted.countDown();
-            if (!authRelease.await(30, TimeUnit.SECONDS)) {
-                throw new IllegalStateException("認証購読の検体を解放しなかった");
+            if (probe.authToken == null || !probe.authToken.equals(event.getRawToken())) {
+                return;
+            }
+            CountDownLatch release = probe.authRelease;
+            CountDownLatch finished = probe.authFinished;
+            probe.authStarted.countDown();
+            try {
+                if (!release.await(30, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("認証購読の検体を解放しなかった");
+                }
+            } finally {
+                finished.countDown();
             }
         }
 
         @ModuleEventListener(id = "module-registry-it-success")
         public void success(SuccessEvent event) {
-            txObserved.set(TransactionSynchronizationManager.isActualTransactionActive());
-            threadObserved.set(Thread.currentThread().getName());
+            probe.txObserved.set(TransactionSynchronizationManager.isActualTransactionActive());
+            probe.threadObserved.set(Thread.currentThread().getName());
         }
     }
 }
