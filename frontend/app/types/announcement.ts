@@ -146,6 +146,16 @@ export interface MarkAllReadResponse {
   hasMoreUnread: boolean
 }
 
+/** POST /api/v1/organizations/{orgId}/announcements/read-batch の要求（feedIds は 1〜50 件）。 */
+export interface ReadBatchRequest {
+  feedIds: number[]
+}
+
+/** read-batch の応答。宛先外などで通らなかった ID は黙って飛ばされ、件数だけが返る。 */
+export interface ReadBatchResponse {
+  markedCount: number
+}
+
 export interface AnnouncementFeedParams {
   cursor?: number
   limit?: number

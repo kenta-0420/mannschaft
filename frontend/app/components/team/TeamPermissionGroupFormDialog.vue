@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useTeamMembers } from '~/composables/team/useTeamMembers'
 import { usePermissionCatalogApi, type PermissionCatalogItem } from '~/composables/usePermissionCatalogApi'
+import { permissionLabel } from '~/utils/permissionLabel'
 
 /**
  * F01.2.1 8-D — チームの権限グループ 作成・編集ダイアログ（設計書 §3.2・AC-P03/P04/P10）。
@@ -225,8 +226,7 @@ async function save() {
               @update:model-value="(v: boolean) => toggle(item.id, v)"
             />
             <span class="min-w-0">
-              <span>{{ item.displayName }}</span>
-              <span class="ml-2 text-xs text-surface-500">{{ item.name }}</span>
+              <span>{{ permissionLabel(t, item.name) }}</span>
               <span
                 v-if="!roleAllows(item)"
                 class="ml-2 text-xs text-amber-600"

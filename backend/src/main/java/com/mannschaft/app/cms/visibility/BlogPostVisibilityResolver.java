@@ -69,6 +69,24 @@ public class BlogPostVisibilityResolver
         }
     }
 
+    /**
+     * 組織告知の宛先チームのメンバーへの本文プレビュー委任（ALIC-1 §2.3）。{@link #assertCanViewForPreview} と同じ本体を、
+     * 記事の所有スコープでの役割を委任役割（"MEMBER" / "SUPPORTER"）に差し替えて評価する。strict 課金結果は呼び出し側が事前に評価して渡す。
+     * 呼び出しは {@code BlogPostPreviewService}（組織告知の本文プレビューの正規経路）に限る。
+     */
+    public void assertCanViewForPreviewDelegated(Long contentId, Long viewerUserId, GateCheckResponse strictGate,
+                                                 String delegatedRole) {
+        PreviewGateContext context = new PreviewGateContext(contentId, strictGate);
+        var decision = decideDelegatedWithAdditionalAxisLoader(contentId, viewerUserId, delegatedRole,
+                (rows, viewer) -> context);
+        if (!decision.allowed()) {
+            throw new com.mannschaft.app.common.BusinessException(
+                    decision.denyReason() == com.mannschaft.app.common.visibility.DenyReason.NOT_FOUND
+                            ? com.mannschaft.app.common.visibility.VisibilityErrorCode.VISIBILITY_004
+                            : com.mannschaft.app.common.visibility.VisibilityErrorCode.VISIBILITY_001);
+        }
+    }
+
     @Override
     protected boolean evaluateCustom(BlogPostVisibilityProjection row, Long viewerUserId,
                                      UserScopeRoleSnapshot snapshot, Object additionalAxisContext) {

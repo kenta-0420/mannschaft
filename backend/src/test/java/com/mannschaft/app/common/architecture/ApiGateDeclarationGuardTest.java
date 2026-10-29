@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * API の mapped method が feature gate または明示的な常時到達理由を宣言することを監査する番人。
- * HTTP は 3,731 件（既存3,729件＋モジュールイベント管理GET/POST各1本）、
+ * HTTP は 3,732 件（既存3,730件＋モジュールイベント管理GET/POST各1本）、
  * STOMP は Chat の 2 件と VillageLobbyPresenceController の 3 件、計 5 件を走査する。
  */
 class ApiGateDeclarationGuardTest {
@@ -42,7 +42,10 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3731);   // 3729 + L1-M モジュールイベント管理GET/POST各1本。未宣言増加0。
+                .isEqualTo(3732);   // 3730 + L1-M モジュールイベント管理GET/POST各1本。未宣言増加0。
+                                    // 3730 = 3729 + CMP-261011-0035 ALIC-1 組織告知の一括既読 POST read-batch 1本（AnnouncementFeedOrgController・
+                                    //   @AuthorizedInService＋@AlwaysReachable(CORE) 宣言済みで未宣言増加0。6|6 → 6|7）。
+                                    // 3729 = 3725 + CMP-261025-2202 TEAM/ORG表示設定GET/PUT各2本。未宣言増加0。
                                     // ネストSwagger注釈へのclass mapping誤帰属2件は自己試験で防ぐ。
                                     // 3725 = 3723 + CMP-261024-2051 申請元候補・受信申請の2GET。CORE宣言済みで未宣言増加0。
                                     // 3723 = main 3722 + CMP-261021-0020 pending一覧1本。CORE宣言済みで未宣言増加0。
