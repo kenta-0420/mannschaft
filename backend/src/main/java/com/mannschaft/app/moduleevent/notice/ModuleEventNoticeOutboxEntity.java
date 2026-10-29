@@ -111,6 +111,14 @@ public class ModuleEventNoticeOutboxEntity extends UuidV7Entity {
         // claimToken は retention の世代 CAS のため残す。
     }
 
+    void relayFailed(boolean dead, Instant next, Instant now) {
+        attemptCount = Math.incrementExact(attemptCount);
+        status = dead ? "DEAD" : "PENDING";
+        deadAt = dead ? now : null;
+        lastErrorCode = "RELAY_FAILED";
+        releaseLease(next, now);
+    }
+
     void deferRelay(Instant next, Instant now) {
         status = "PENDING";
         lastErrorCode = "UNSUPPORTED_VERSION";

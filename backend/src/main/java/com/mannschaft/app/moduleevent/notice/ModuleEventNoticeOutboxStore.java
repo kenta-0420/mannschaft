@@ -179,15 +179,29 @@ public final class ModuleEventNoticeOutboxStore {
 
     /** relay adapter は自由文を渡さず RELAY_FAILED に変換する。
      * 現 RELAYING/token のみ attempt+1、PENDING 又は DEAD、lease 解除を同じ TX で行う。
-     * 実 DB assertion red 確認待ちの stub。未知/null/空/長大コードは拒否し、保存しない。 */
+     * 許可された固定 code だけを保存し、未知/null/空/長大コードは DB 操作前に拒否する。 */
     public boolean markFailed(UUID id, UUID claimToken, String fixedErrorCode, Instant nextAttemptAt,
             boolean dead, Instant now) {
-        return false;
+        if (!"RELAY_FAILED".equals(fixedErrorCode)) {
+            throw new IllegalArgumentException("relay 失敗 code は RELAY_FAILED のみ使用できる");
+        }
+        Objects.requireNonNull(nextAttemptAt, "nextAttemptAt");
+        Objects.requireNonNull(now, "now");
+        ModuleEventNoticeOutboxEntity row = current(id);
+        if (!owned(row, claimToken, "RELAYING") || row.getDescriptorVersion() != DESCRIPTOR_VERSION) {
+            return false;
+        }
+        row.relayFailed(dead, nextAttemptAt, now);
+        return true;
     }
 
-    /** PENDING 行だけの MIN(created_at)。空は Optional.empty。実 DB assertion red 待ち。 */
+    /** PENDING 行だけの SQL MIN(created_at)。Entity を全件ロードせず、空は Optional.empty。 */
     public Optional<Instant> oldestPendingCreatedAt() {
-        return Optional.empty();
+        requireTransaction();
+        entityManager.flush();
+        return Optional.ofNullable(entityManager.createQuery(
+                "select min(n.createdAt) from ModuleEventNoticeOutboxEntity n where n.status = :status",
+                Instant.class).setParameter("status", "PENDING").getSingleResult());
     }
 
     public int recoverStuck(Instant claimedBefore, Instant now) {
