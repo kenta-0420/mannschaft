@@ -3196,5 +3196,9 @@
     "supporter_label": "向支持者显示{feature}",
     "save_success": "显示设置已保存",
     "nav": "导航"
+  },
+  "integrationSettings": {
+    "lineSubtitle": "配置 LINE Messaging API 集成",
+    "snsSubtitle": "管理 Instagram 和 X 动态集成"
   }
 }

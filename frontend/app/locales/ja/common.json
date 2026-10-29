@@ -3196,5 +3196,9 @@
     "supporter_label": "{feature}をサポータに表示",
     "save_success": "表示設定を保存しました",
     "nav": "ナビ"
+  },
+  "integrationSettings": {
+    "lineSubtitle": "LINE Messaging API との連携設定",
+    "snsSubtitle": "Instagram・X のフィード連携を管理します"
   }
 }

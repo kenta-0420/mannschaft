@@ -3196,5 +3196,9 @@
     "supporter_label": "{feature} für Unterstützer anzeigen",
     "save_success": "Sichtbarkeit gespeichert",
     "nav": "Navigation"
+  },
+  "integrationSettings": {
+    "lineSubtitle": "Integration mit der LINE Messaging API konfigurieren",
+    "snsSubtitle": "Feed-Integrationen für Instagram und X verwalten"
   }
 }

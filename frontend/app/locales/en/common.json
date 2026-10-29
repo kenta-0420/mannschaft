@@ -3196,5 +3196,9 @@
     "supporter_label": "Show {feature} to supporters",
     "save_success": "Visibility settings saved",
     "nav": "Navigation"
+  },
+  "integrationSettings": {
+    "lineSubtitle": "Configure the LINE Messaging API integration",
+    "snsSubtitle": "Manage Instagram and X feed integrations"
   }
 }

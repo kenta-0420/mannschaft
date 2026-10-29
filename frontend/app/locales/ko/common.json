@@ -3196,5 +3196,9 @@
     "supporter_label": "서포터에게 {feature} 표시",
     "save_success": "표시 설정을 저장했습니다",
     "nav": "길 안내"
+  },
+  "integrationSettings": {
+    "lineSubtitle": "LINE Messaging API 연동 설정",
+    "snsSubtitle": "Instagram 및 X 피드 연동 관리"
   }
 }
