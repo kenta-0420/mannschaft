@@ -52,6 +52,23 @@ public class ModuleEventNoticeLifecycleService {
                   AND (a.organization_id IS NULL OR a.organization_id > 0)
                   AND (BINARY a.scope_type = 'TEAM'
                        OR (BINARY a.scope_type = 'ORGANIZATION' AND a.organization_id = a.scope_id))
+                  AND NOT (
+                    EXISTS (SELECT 1 FROM module_event_notice_outbox n
+                            WHERE n.resolver_key = a.resolver_key
+                              AND BINARY n.resolver_key = BINARY a.resolver_key
+                              AND n.operation_id = a.operation_id AND n.episode_id = a.episode_id
+                              AND n.scope_type = a.scope_type AND n.scope_id = a.scope_id
+                              AND BINARY n.scope_type = BINARY a.scope_type
+                              AND n.organization_id <=> a.organization_id AND n.descriptor_version = 1
+                              AND BINARY n.phase = 'DELAYED' AND BINARY n.audience = 'CURRENT_ADMINS')
+                    AND EXISTS (SELECT 1 FROM module_event_notice_outbox n
+                            WHERE n.resolver_key = a.resolver_key
+                              AND BINARY n.resolver_key = BINARY a.resolver_key
+                              AND n.operation_id = a.operation_id AND n.episode_id = a.episode_id
+                              AND n.scope_type = a.scope_type AND n.scope_id = a.scope_id
+                              AND BINARY n.scope_type = BINARY a.scope_type
+                              AND n.organization_id <=> a.organization_id AND n.descriptor_version = 1
+                              AND BINARY n.phase = 'DELAYED' AND BINARY n.audience = 'AFFECTED_USERS'))
                 ORDER BY p.publication_date, a.id LIMIT :limit
                 """).setParameter("cutoff", Timestamp.from(now.minusSeconds(1800)))
                 .setParameter("limit", limit).getResultList();
