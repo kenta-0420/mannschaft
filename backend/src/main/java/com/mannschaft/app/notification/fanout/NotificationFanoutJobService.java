@@ -521,6 +521,25 @@ public class NotificationFanoutJobService {
         return jobs;
     }
 
+    /** M専用の開始窓口。先行試練用の委譲足場で、terminal拒否は後続実装。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean tryMarkModuleEventRunning(UUID jobId) {
+        markRunning(jobId);
+        return true;
+    }
+
+    /** M専用のcursor窓口。先行試練用に既存の独立TX操作へ委譲する。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void advanceModuleEventCursor(UUID jobId, long newCursor, long addedCount) {
+        advanceCursor(jobId, newCursor, addedCount);
+    }
+
+    /** M専用の失敗窓口。即DEAD_LETTER指定も元の4引数操作へ委譲する。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordModuleEventFailure(UUID jobId, String error, int maxRetry, boolean immediateDeadLetter) {
+        recordFailure(jobId, error, maxRetry, immediateDeadLetter);
+    }
+
     /** ジョブを RUNNING に遷移させる（{@link #processOne} を直接呼ぶ経路の保険・独立コミット）。 */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markRunning(UUID jobId) {
