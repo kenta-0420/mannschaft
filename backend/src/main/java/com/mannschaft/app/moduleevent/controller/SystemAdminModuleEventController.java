@@ -7,6 +7,9 @@ import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.moduleevent.api.ModuleEventAdminApi;
 import com.mannschaft.app.moduleevent.api.dto.ModuleEventQuarantineResponse;
 import com.mannschaft.app.moduleevent.api.dto.ResumeModuleEventRequest;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -33,6 +36,7 @@ public class SystemAdminModuleEventController {
     private final ModuleEventAdminApi api;
 
     @GetMapping
+    @Operation(operationId = "listQuarantinedModuleEventPublications")
     @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
             reason = "隔離した基盤イベントを機能の有効状態に依存せずSYSTEM_ADMINが確認するため")
     public PagedResponse<ModuleEventQuarantineResponse> list(
@@ -43,6 +47,8 @@ public class SystemAdminModuleEventController {
     }
 
     @PostMapping("/{publicationId}/resume")
+    @Operation(operationId = "resumeModuleEventPublication")
+    @ApiResponse(responseCode = "204", description = "再開成功", content = @Content)
     @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
             reason = "隔離した基盤イベントを機能の有効状態に依存せずSYSTEM_ADMINが理由付きで再開するため")
     public ResponseEntity<Void> resume(@PathVariable UUID publicationId,
