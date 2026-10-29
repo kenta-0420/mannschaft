@@ -4,6 +4,9 @@ spring:
     exclude:
       - org.springframework.modulith.events.config.EventPublicationAutoConfiguration
   modulith:
+    # 時間イベントは未使用。自動バッチの起動は既存 SchedulingConfig のプロファイルに従う。
+    moments:
+      enabled: false
     events:
       completion-mode: delete
       republish-outstanding-events-on-restart: false
