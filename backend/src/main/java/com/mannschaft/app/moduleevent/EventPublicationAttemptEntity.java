@@ -47,4 +47,13 @@ public class EventPublicationAttemptEntity extends UuidV7Entity {
     @Version
     @Column(name = "version", nullable = false)
     private long version;
+
+    /** 初回失敗は再配信回数に含めず、次の回収対象として残す。 */
+    public void recordInitialFailure(LocalDateTime attemptedAt) {
+        status = ModuleEventAttemptStatus.PENDING;
+        lastAttemptAt = attemptedAt;
+        leaseUntil = null;
+        failureCode = "LISTENER_FAILURE";
+        updatedAt = attemptedAt;
+    }
 }
