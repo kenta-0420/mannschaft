@@ -62,6 +62,29 @@ describe('WidgetAnnouncements の見出し（本物の DashboardWidgetCard）', 
   })
 })
 
+describe('WidgetAnnouncements の見出し行はスマホ幅で潰れない（CMP-261011-0035）', () => {
+  const mountTeam = () => mount(Widget, {
+    props: { scopeType: 'TEAM', scopeId: '2', scopeSlug: 'alpha', initialItems: [item(1)] },
+    global: { stubs },
+  })
+
+  it('見出し行と見出し群・ボタン群が折り返し可能（flex-wrap）', () => {
+    wrapper = mountTeam()
+    expect(wrapper.find('[data-announcement-header-row]').classes()).toContain('flex-wrap')
+    expect(wrapper.find('[data-announcement-title-group]').classes()).toContain('flex-wrap')
+    expect(wrapper.find('[data-announcement-actions]').classes()).toContain('flex-wrap')
+  })
+
+  it('見出し・バッジ・すべて既読・すべてのお知らせのラベルは語の途中で折れない', () => {
+    wrapper = mountTeam()
+    expect(wrapper.find('[data-announcement-heading]').classes()).toContain('whitespace-nowrap')
+    expect(wrapper.find('[data-announcement-unread-badge]').classes()).toContain('whitespace-nowrap')
+    expect(wrapper.find('button[data-label="announcement.mark_all_read"]').classes()).toContain('whitespace-nowrap')
+    expect(wrapper.find('button[data-label="announcement.all_announcements"]').classes()).toContain('whitespace-nowrap')
+    expect(wrapper.find('a[href="/teams/alpha/announcements"]').classes()).toContain('whitespace-nowrap')
+  })
+})
+
 describe('DashboardWidgetCard の header スロット', () => {
   it('header スロット指定時は title 見出しの代わりに描画し、折り畳みボタンを残す', () => {
     wrapper = mount(DashboardWidgetCard, {
