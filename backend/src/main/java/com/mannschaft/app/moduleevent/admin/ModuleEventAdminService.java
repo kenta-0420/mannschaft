@@ -5,7 +5,6 @@ import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.UuidV7;
-import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.moduleevent.ModuleEventAttemptStatus;
 import com.mannschaft.app.moduleevent.api.dto.ModuleEventQuarantineResponse;
 import jakarta.persistence.EntityManager;
@@ -14,7 +13,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Calendar;
 import java.util.List;
@@ -56,7 +54,7 @@ public class ModuleEventAdminService {
             SET a.status = ?, a.retry_count = 0, a.claim_token = ?,
                 a.last_attempt_at = NULL, a.lease_until = NULL,
                 a.quarantined_at = NULL, a.failure_code = NULL,
-                a.version = a.version + 1, a.updated_at = ?
+                a.version = a.version + 1, a.updated_at = UTC_TIMESTAMP(6)
             WHERE a.publication_id = ? AND a.status = ? AND a.version = ?
               AND p.completion_date IS NULL
             """;
@@ -73,8 +71,8 @@ public class ModuleEventAdminService {
         List<ModuleEventQuarantineResponse> data = jdbc.query(QUARANTINE_QUERY, (row, index) -> {
             Calendar utc = utcCalendar();
             return new ModuleEventQuarantineResponse(uuid(row.getBytes("id")), row.getString("event_type"),
-                    row.getString("listener_id"), appDateTime(row, "publication_date", utc),
-                    appDateTime(row, "last_attempt_at", utc), appDateTime(row, "quarantined_at", utc),
+                    row.getString("listener_id"), instant(row, "publication_date", utc),
+                    instant(row, "last_attempt_at", utc), instant(row, "quarantined_at", utc),
                     row.getInt("retry_count"), row.getString("failure_code"));
         }, QUARANTINED, size, offset);
         int totalPages = Math.toIntExact(total / size + (total % size == 0 ? 0 : 1));
@@ -112,11 +110,9 @@ public class ModuleEventAdminService {
             var statement = connection.prepareStatement(RESUME_QUERY);
             statement.setString(1, ModuleEventAttemptStatus.PENDING.name());
             statement.setBytes(2, bytes(claimToken));
-            // 直接JDBCはUTC壁時計、JPAのLocalDateTimeはSERVER_ZONE壁時計へ同じ瞬間を変換する。
-            statement.setTimestamp(3, Timestamp.from(now), utcCalendar());
-            statement.setBytes(4, bytes(publicationId));
-            statement.setString(5, QUARANTINED);
-            statement.setLong(6, version);
+            statement.setBytes(3, bytes(publicationId));
+            statement.setString(4, QUARANTINED);
+            statement.setLong(5, version);
             return statement;
         });
         if (changed != 1) {
@@ -124,7 +120,7 @@ public class ModuleEventAdminService {
         }
         entityManager.persist(ModuleEventResumeAuditEntity.builder().publicationId(publicationId)
                 .actorUserId(actorUserId).reason(normalizedReason)
-                .createdAt(LocalDateTime.ofInstant(now, UserZoneLocalDateTimeParser.SERVER_ZONE)).build());
+                .createdAt(now).build());
         entityManager.flush();
     }
 
@@ -132,9 +128,9 @@ public class ModuleEventAdminService {
         return Calendar.getInstance(TimeZone.getTimeZone(ZoneOffset.UTC));
     }
 
-    private static LocalDateTime appDateTime(ResultSet row, String column, Calendar utc) throws SQLException {
+    private static Instant instant(ResultSet row, String column, Calendar utc) throws SQLException {
         Timestamp value = row.getTimestamp(column, utc);
-        return value == null ? null : LocalDateTime.ofInstant(value.toInstant(), UserZoneLocalDateTimeParser.SERVER_ZONE);
+        return value == null ? null : value.toInstant();
     }
 
     private static byte[] bytes(UUID id) {

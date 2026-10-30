@@ -5,6 +5,7 @@ import com.mannschaft.app.moduleevent.api.dto.ModuleEventRecoveryState;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.Query;
+import org.hibernate.LockOptions;
 
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
@@ -118,13 +119,16 @@ public final class ModuleEventNoticeOutboxStore {
         Objects.requireNonNull(now, "now");
         requireTransaction();
         entityManager.flush();
-        List<ModuleEventNoticeOutboxEntity> claimed = rows(entityManager.createNativeQuery("""
-                SELECT * FROM module_event_notice_outbox
-                WHERE status = :status AND next_attempt_at <= :now AND claim_token IS NULL
-                ORDER BY next_attempt_at, id LIMIT :limit FOR UPDATE SKIP LOCKED
+        // 型付きInstantの束縛をJPAへ任せ、nativeのJVMゾーン依存Timestampを避ける。
+        List<ModuleEventNoticeOutboxEntity> claimed = entityManager.createQuery("""
+                SELECT n FROM ModuleEventNoticeOutboxEntity n
+                WHERE n.status = :status AND n.nextAttemptAt <= :now AND n.claimToken IS NULL
+                ORDER BY n.nextAttemptAt, n.id
                 """, ModuleEventNoticeOutboxEntity.class)
                 .setParameter("status", recovery ? "WAITING_RECOVERY" : "PENDING")
-                .setParameter("now", timestamp(now)).setParameter("limit", limit));
+                .setParameter("now", now).setMaxResults(limit)
+                .setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                .setHint("jakarta.persistence.lock.timeout", LockOptions.SKIP_LOCKED).getResultList();
         claimed.forEach(row -> row.claim(recovery, now));
         return claimed;
     }
@@ -230,12 +234,14 @@ public final class ModuleEventNoticeOutboxStore {
         Objects.requireNonNull(now, "now");
         requireTransaction();
         entityManager.flush();
-        List<ModuleEventNoticeOutboxEntity> expired = rows(entityManager.createNativeQuery("""
-                SELECT * FROM module_event_notice_outbox
-                WHERE status IN ('RELAYING', 'WAITING_RECOVERY')
-                  AND claim_token IS NOT NULL AND claimed_at < :before
-                ORDER BY claimed_at, id LIMIT 100 FOR UPDATE SKIP LOCKED
-                """, ModuleEventNoticeOutboxEntity.class).setParameter("before", timestamp(claimedBefore)));
+        List<ModuleEventNoticeOutboxEntity> expired = entityManager.createQuery("""
+                SELECT n FROM ModuleEventNoticeOutboxEntity n
+                WHERE n.status IN ('RELAYING', 'WAITING_RECOVERY')
+                  AND n.claimToken IS NOT NULL AND n.claimedAt < :before
+                ORDER BY n.claimedAt, n.id
+                """, ModuleEventNoticeOutboxEntity.class).setParameter("before", claimedBefore)
+                .setMaxResults(100).setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                .setHint("jakarta.persistence.lock.timeout", LockOptions.SKIP_LOCKED).getResultList();
         expired.forEach(row -> row.recoverLease(now));
         return expired.size();
     }

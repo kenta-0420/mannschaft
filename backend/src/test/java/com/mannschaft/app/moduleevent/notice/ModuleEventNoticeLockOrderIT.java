@@ -183,10 +183,10 @@ class ModuleEventNoticeLockOrderIT extends AbstractMySqlIntegrationTest {
             EventPublicationAttemptEntity helper = new SimpleJpaRepository<>(EventPublicationAttemptEntity.class,
                     entityManager).saveAndFlush(EventPublicationAttemptEntity.builder().id(UuidV7.generate())
                     .publicationId(publication.getIdentifier()).retryCount(0).status(ModuleEventAttemptStatus.IN_PROGRESS)
-                    .claimToken(UUID.randomUUID()).lastAttemptAt(future).leaseUntil(future.plusMinutes(5))
+                    .claimToken(UUID.randomUUID()).lastAttemptAt(FUTURE).leaseUntil(FUTURE.plusSeconds(300))
                     .resolverKey("notice-lock-it").operationId(operation).episodeId(episode)
                     .scopeType(ModuleEventNoticeScope.TEAM).scopeId(8201L).organizationId(null)
-                    .createdAt(future).updatedAt(future).version(0).build());
+                    .createdAt(FUTURE).updatedAt(FUTURE).version(0).build());
             ModuleEventNoticeOutboxEntity impact = draft(operation, episode, "DELAYED", "PENDING");
             store().reserve(impact);
             ModuleEventNoticeOutboxEntity recovery = store().reserveRecoveryIntent(

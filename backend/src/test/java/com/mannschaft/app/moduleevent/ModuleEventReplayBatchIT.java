@@ -211,7 +211,7 @@ class ModuleEventReplayBatchIT extends AbstractMySqlIntegrationTest {
             publicationIds.add(publication.getIdentifier());
             var attempt = EventPublicationAttemptEntity.builder().publicationId(publication.getIdentifier())
                     .claimToken(UUID.randomUUID()).status(ModuleEventAttemptStatus.PENDING).retryCount(0)
-                    .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+                    .createdAt(Instant.now()).updatedAt(Instant.now()).build();
             attemptIds.add(new SimpleJpaRepository<>(EventPublicationAttemptEntity.class, entityManager)
                     .saveAndFlush(attempt).getId());
         });

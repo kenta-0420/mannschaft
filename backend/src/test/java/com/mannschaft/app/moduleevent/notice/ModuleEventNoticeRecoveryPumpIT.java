@@ -263,10 +263,10 @@ class ModuleEventNoticeRecoveryPumpIT extends AbstractMySqlIntegrationTest {
             new SimpleJpaRepository<>(EventPublicationAttemptEntity.class, entityManager).saveAndFlush(
                     EventPublicationAttemptEntity.builder().id(id).publicationId(publication.getIdentifier())
                             .retryCount(0).status(ModuleEventAttemptStatus.PENDING).claimToken(UUID.randomUUID())
-                            .lastAttemptAt(time).leaseUntil(time.plusMinutes(5)).resolverKey(binding.getResolverKey())
+                            .lastAttemptAt(NOW).leaseUntil(NOW.plusSeconds(300)).resolverKey(binding.getResolverKey())
                             .operationId(binding.getOperationId()).episodeId(binding.getEpisodeId())
                             .scopeType(binding.getScopeType()).scopeId(binding.getScopeId()).organizationId(binding.getOrganizationId())
-                            .createdAt(time).updatedAt(time).version(0).build());
+                            .createdAt(NOW).updatedAt(NOW).version(0).build());
             return null;
         });
     }

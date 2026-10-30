@@ -122,7 +122,7 @@ class ModuleEventReplayIT extends AbstractMySqlIntegrationTest {
 
     @Test
     void M10_有効なleaseは再配信しない() {
-        seed(1, 0, ModuleEventAttemptStatus.IN_PROGRESS, localNow().plusDays(1),
+        seed(1, 0, ModuleEventAttemptStatus.IN_PROGRESS, instantNow().plus(Duration.ofDays(1)),
                 Instant.now().minus(Duration.ofDays(1)));
         replay.resubmitIncompletePublicationsOlderThan(CUTOFF);
         idle();
@@ -132,7 +132,7 @@ class ModuleEventReplayIT extends AbstractMySqlIntegrationTest {
 
     @Test
     void M10_期限切れleaseは新しい世代で一度だけ再配信する() {
-        UUID oldToken = seed(1, 0, ModuleEventAttemptStatus.IN_PROGRESS, localNow().minusDays(1),
+        UUID oldToken = seed(1, 0, ModuleEventAttemptStatus.IN_PROGRESS, instantNow().minus(Duration.ofDays(1)),
                 Instant.now().minus(Duration.ofDays(1)));
         replay.resubmitIncompletePublicationsOlderThan(CUTOFF);
         finished(1);
@@ -167,20 +167,20 @@ class ModuleEventReplayIT extends AbstractMySqlIntegrationTest {
     }
 
     private UUID seed(int count, int retries, ModuleEventAttemptStatus state,
-            LocalDateTime lease, Instant publishedAt) {
+            Instant lease, Instant publishedAt) {
         UUID token = UUID.randomUUID();
         new TransactionTemplate(transactions).executeWithoutResult(status -> {
             var repository = new SimpleJpaRepository<>(EventPublicationAttemptEntity.class, entityManager);
             for (int index = 0; index < count; index++) {
-                var event = new ModuleEventReplayTestFixture.ReplayEvent(target, 7L, localNow());
+                var event = new ModuleEventReplayTestFixture.ReplayEvent(target, 7L, LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE));
                 TargetEventPublication publication = publicationRepository.create(TargetEventPublication.of(event,
                         PublicationTargetIdentifier.of(ModuleEventReplayTestFixture.LISTENER_ID),
                         publishedAt.plusNanos(index * 1000L)));
                 publications.add(publication.getIdentifier());
                 EventPublicationAttemptEntity attempt = repository.save(EventPublicationAttemptEntity.builder()
                         .publicationId(publication.getIdentifier()).retryCount(retries).status(state)
-                        .claimToken(token).leaseUntil(lease).createdAt(localNow()).updatedAt(localNow())
-                        .quarantinedAt(state == ModuleEventAttemptStatus.QUARANTINED ? localNow() : null).build());
+                        .claimToken(token).leaseUntil(lease).createdAt(instantNow()).updatedAt(instantNow())
+                        .quarantinedAt(state == ModuleEventAttemptStatus.QUARANTINED ? instantNow() : null).build());
                 attempts.add(attempt.getId());
             }
             entityManager.flush();
@@ -212,8 +212,8 @@ class ModuleEventReplayIT extends AbstractMySqlIntegrationTest {
                 && actual.getCompletedTaskCount() == actual.getTaskCount());
     }
 
-    private static LocalDateTime localNow() {
-        return LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE);
+    private static Instant instantNow() {
+        return Instant.now();
     }
 
     private static byte[] binary(UUID id) {

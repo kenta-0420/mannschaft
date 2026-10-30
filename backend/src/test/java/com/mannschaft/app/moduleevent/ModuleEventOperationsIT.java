@@ -298,8 +298,8 @@ class ModuleEventOperationsIT extends AbstractMySqlIntegrationTest {
             UUID token = UUID.randomUUID();
             var row = EventPublicationAttemptEntity.builder().publicationId(publication.getIdentifier())
                     .claimToken(token).status(state).retryCount(retries)
-                    .leaseUntil(lease == null ? null : LocalDateTime.ofInstant(lease, UserZoneLocalDateTimeParser.SERVER_ZONE))
-                    .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+                    .leaseUntil(lease)
+                    .createdAt(Instant.now()).updatedAt(Instant.now()).build();
             row = new SimpleJpaRepository<>(EventPublicationAttemptEntity.class, entityManager).saveAndFlush(row);
             ownAttempts.add(row.getId());
             return new Fixture(new ModuleEventExecutionFrame(event, publication.getIdentifier(), row.getId(), token, TARGET, false));

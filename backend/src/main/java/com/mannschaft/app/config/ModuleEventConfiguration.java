@@ -20,6 +20,10 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Role;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.ImportSelector;
+import org.springframework.core.type.AnnotationMetadata;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.core.env.Environment;
 import org.springframework.modulith.events.core.EventPublicationRegistry;
 import org.springframework.modulith.events.core.EventSerializer;
@@ -30,6 +34,20 @@ import org.springframework.modulith.events.support.PersistentApplicationEventMul
 /** 公式 JPA 保存と公開イベント基盤を組み合わせる。既定 Registry の二重生成を避ける。 */
 @Configuration(proxyBeanMethods = false)
 public class ModuleEventConfiguration {
+    /** DBを持つM構成だけが公式JPA保存を取り込む。手動Repositoryを持つ小試練は維持する。 */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnMissingBean(name = "jpaEventPublicationRepository")
+    @Import(JpaPublicationImportSelector.class)
+    static class JpaPublicationConfiguration { }
+
+    /** 公式自動構成はpackage-privateなので、公開SPIを維持してクラス名でimportする。 */
+    static class JpaPublicationImportSelector implements ImportSelector {
+        @Override
+        public String[] selectImports(AnnotationMetadata metadata) {
+            return new String[]{"org.springframework.modulith.events.jpa.JpaEventPublicationAutoConfiguration"};
+        }
+    }
+
     /** 公式 JPA repository の実装型は非公開なので、公開 SPI と Bean 名で受け取る。 */
     @Bean
     public RestrictedEventPublicationRegistry moduleEventRegistry(

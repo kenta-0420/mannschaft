@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -476,6 +477,94 @@ class ModuleEventNoticeOutboxIT extends AbstractMySqlIntegrationTest {
                 .createdAt(now.minusSeconds(200)).build());
         assertThat(inTx(() -> store().oldestPendingCreatedAt()))
                 .as("SQL MIN の実 DB 実装が必要。retry 時刻の早さとは区別する").contains(oldest);
+    }
+
+    @Test
+    void claimは別TXのロックを飛ばして時刻順とID順の先頭だけを取得する() throws Exception {
+        ModuleEventNoticeOutboxEntity locked = persist(reservation().toBuilder()
+                .nextAttemptAt(now.minusSeconds(2)).build());
+        ModuleEventNoticeOutboxEntity first = persist(reservation().toBuilder()
+                .nextAttemptAt(now.minusSeconds(1)).build());
+        ModuleEventNoticeOutboxEntity second = persist(reservation());
+        CountDownLatch held = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        try (ExecutorService workers = Executors.newSingleThreadExecutor()) {
+            Future<?> holder = workers.submit(() -> inTx(() -> {
+                entityManager.find(ModuleEventNoticeOutboxEntity.class, locked.getId(),
+                        jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+                held.countDown();
+                awaitLease(release);
+                return null;
+            }));
+            try {
+                assertThat(held.await(10, TimeUnit.SECONDS)).isTrue();
+                assertThat(inTx(() -> store().claim(1, now)))
+                        .extracting(ModuleEventNoticeOutboxEntity::getId).containsExactly(first.getId());
+                assertThat(read(second.getId()).getStatus()).isEqualTo("PENDING");
+            } finally {
+                release.countDown();
+            }
+            holder.get(10, TimeUnit.SECONDS);
+        }
+        assertThat(inTx(() -> store().claim(1, now)))
+                .extracting(ModuleEventNoticeOutboxEntity::getId).containsExactly(locked.getId());
+    }
+
+    @Test
+    void 同時刻のclaimはUUID順でlimit一件を取得する() {
+        ModuleEventNoticeOutboxEntity first = persist(reservation());
+        ModuleEventNoticeOutboxEntity second = persist(reservation());
+        UUID expected = first.getId().compareTo(second.getId()) < 0 ? first.getId() : second.getId();
+        assertThat(inTx(() -> store().claim(1, now)))
+                .extracting(ModuleEventNoticeOutboxEntity::getId).containsExactly(expected);
+    }
+
+    @Test
+    void lease回収も別TXのロックを飛ばして期限順に取得する() throws Exception {
+        ModuleEventNoticeOutboxEntity locked = persist(reservation().toBuilder().status("RELAYING")
+                .claimToken(UUID.randomUUID()).claimedAt(now.minusSeconds(2)).build());
+        ModuleEventNoticeOutboxEntity ready = persist(reservation().toBuilder().status("RELAYING")
+                .claimToken(UUID.randomUUID()).claimedAt(now.minusSeconds(1)).build());
+        CountDownLatch held = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        try (ExecutorService workers = Executors.newSingleThreadExecutor()) {
+            Future<?> holder = workers.submit(() -> inTx(() -> {
+                entityManager.find(ModuleEventNoticeOutboxEntity.class, locked.getId(),
+                        jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+                held.countDown();
+                awaitLease(release);
+                return null;
+            }));
+            try {
+                assertThat(held.await(10, TimeUnit.SECONDS)).isTrue();
+                assertThat(inTx(() -> store().recoverStuck(now, now))).isEqualTo(1);
+                assertThat(read(ready.getId()).getStatus()).isEqualTo("PENDING");
+            } finally {
+                release.countDown();
+            }
+            holder.get(10, TimeUnit.SECONDS);
+        }
+        assertThat(read(locked.getId()).getStatus()).isEqualTo("RELAYING");
+    }
+
+    @Test
+    void lease回収は期限等号を残し期限直前だけを回収する() {
+        ModuleEventNoticeOutboxEntity before = persist(reservation().toBuilder().status("RELAYING")
+                .claimToken(UUID.randomUUID()).claimedAt(now.minusNanos(1000)).build());
+        ModuleEventNoticeOutboxEntity equal = persist(reservation().toBuilder().status("RELAYING")
+                .claimToken(UUID.randomUUID()).claimedAt(now).build());
+        assertThat(inTx(() -> store().recoverStuck(now, now.plusSeconds(1)))).isEqualTo(1);
+        assertThat(read(before.getId()).getStatus()).isEqualTo("PENDING");
+        assertThat(read(equal.getId()).getStatus()).isEqualTo("RELAYING");
+    }
+
+    private static void awaitLease(CountDownLatch release) {
+        try {
+            if (!release.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("ロック解放待機timeout");
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("ロック保持試練が中断された", interrupted);
+        }
     }
 
     private ModuleEventNoticeOutboxEntity recoveryFor(ModuleEventNoticeOutboxEntity incident) {

@@ -178,11 +178,11 @@ class ModuleEventNoticeCoreHooksIT extends AbstractMySqlIntegrationTest {
             TargetEventPublication publication = publications.create(TargetEventPublication.of(event,
                     PublicationTargetIdentifier.of(TARGET), original));
             ownPublications.add(publication.getIdentifier());
-            LocalDateTime now = LocalDateTime.ofInstant(NOW, SERVER_ZONE);
+            Instant now = NOW;
             EventPublicationAttemptEntity attempt = new SimpleJpaRepository<EventPublicationAttemptEntity, UUID>(
                     EventPublicationAttemptEntity.class, entityManager).saveAndFlush(EventPublicationAttemptEntity.builder()
                     .id(UuidV7.generate()).publicationId(publication.getIdentifier()).status(state).retryCount(retry)
-                    .claimToken(UUID.randomUUID()).lastAttemptAt(now).leaseUntil(now.plusMinutes(5))
+                    .claimToken(UUID.randomUUID()).lastAttemptAt(now).leaseUntil(now.plusSeconds(300))
                     .resolverKey(RESOLVER).operationId(event.operationId()).episodeId(event.episodeId())
                     .scopeType(ModuleEventNoticeScope.TEAM).scopeId(SCOPE).organizationId(null)
                     .createdAt(now).updatedAt(now).version(0).build());

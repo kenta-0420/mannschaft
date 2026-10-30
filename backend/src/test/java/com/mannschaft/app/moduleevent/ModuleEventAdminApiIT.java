@@ -133,6 +133,14 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
                 "publicationDate", "lastAttemptAt", "quarantinedAt", "retryCount", "failureCode");
         assertThat(row.path("retryCount").asInt()).isEqualTo(RETRY_LIMIT);
         assertThat(row.path("failureCode").asText()).isEqualTo(FAILURE_CODE);
+        Instant publicationDate = jdbc.queryForObject(
+                "SELECT publication_date FROM event_publication WHERE id = ?",
+                (record, index) -> record.getTimestamp(1, java.util.Calendar.getInstance(
+                        java.util.TimeZone.getTimeZone(ZoneOffset.UTC))).toInstant(),
+                bytes(UUID.fromString(row.path("publicationId").asText())));
+        assertThat(Instant.parse(row.path("publicationDate").asText())).isEqualTo(publicationDate);
+        assertThat(Instant.parse(row.path("lastAttemptAt").asText())).isEqualTo(publicationDate);
+        assertThat(Instant.parse(row.path("quarantinedAt").asText())).isEqualTo(publicationDate);
         assertThat(result.getResponse().getContentAsString())
                 .doesNotContain(SYNTHETIC_SECRET, "serialized_event", "serializedEvent", "stackTrace", "exception");
     }
@@ -319,7 +327,7 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
                 invalidAuditAttempted.set(true);
                 entityManager.persist(ModuleEventResumeAuditEntity.builder()
                         .publicationId(publicationId).actorUserId(Long.parseLong(ACTOR_ID))
-                        .reason("再".repeat(501)).createdAt(LocalDateTime.now()).build());
+                        .reason("再".repeat(501)).createdAt(Instant.now()).build());
                 entityManager.flush();
             }));
         } finally {
@@ -436,10 +444,10 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
             entityManager.persist(EventPublicationAttemptEntity.builder()
                     .publicationId(publication.getIdentifier())
                     .status(attemptStatus).retryCount(attemptStatus == ModuleEventAttemptStatus.QUARANTINED ? RETRY_LIMIT : 0)
-                    .claimToken(UUID.randomUUID()).lastAttemptAt(future).leaseUntil(future)
-                    .quarantinedAt(attemptStatus == ModuleEventAttemptStatus.QUARANTINED ? future : null)
+                    .claimToken(UUID.randomUUID()).lastAttemptAt(publicationDate).leaseUntil(publicationDate)
+                    .quarantinedAt(attemptStatus == ModuleEventAttemptStatus.QUARANTINED ? publicationDate : null)
                     .failureCode(attemptStatus == ModuleEventAttemptStatus.QUARANTINED ? FAILURE_CODE : null)
-                    .createdAt(future).updatedAt(future).version(0).build());
+                    .createdAt(publicationDate).updatedAt(publicationDate).version(0).build());
             entityManager.flush();
             return publication.getIdentifier();
         });

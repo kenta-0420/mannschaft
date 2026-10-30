@@ -3,7 +3,7 @@
 CREATE TABLE module_event_resume_audits (
     id BINARY(16) NOT NULL,
     publication_id BINARY(16) NOT NULL,
-    actor_user_id BIGINT NOT NULL,
+    actor_user_id BIGINT UNSIGNED NOT NULL,
     reason VARCHAR(500) NOT NULL,
     created_at DATETIME(6) NOT NULL,
     PRIMARY KEY (id),

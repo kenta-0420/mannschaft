@@ -250,7 +250,7 @@ class ModuleEventReplayBoundaryIT extends AbstractMySqlIntegrationTest {
         assertThat(fixture.store().admit(claimed)).isTrue();
         assertThat(attempt(source).getRetryCount()).isEqualTo(10);
         assertThat(fixture.calls()).hasValue(0);
-        Instant leaseExpiry = attempt(source).getLeaseUntil().atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant();
+        Instant leaseExpiry = attempt(source).getLeaseUntil();
         // 業務・finishを呼ばずContextを破棄し、DBに受理commitだけが残った停止点を再現する。
         var previous = fixture;
         previous.close();
@@ -296,7 +296,7 @@ class ModuleEventReplayBoundaryIT extends AbstractMySqlIntegrationTest {
             UUID token = UUID.randomUUID();
             var row = EventPublicationAttemptEntity.builder().publicationId(publication.getIdentifier())
                     .claimToken(token).status(ModuleEventAttemptStatus.PENDING).retryCount(retries)
-                    .createdAt(local(NOW)).updatedAt(local(NOW)).build();
+                    .createdAt(NOW).updatedAt(NOW).build();
             row = new SimpleJpaRepository<>(EventPublicationAttemptEntity.class, entityManager).saveAndFlush(row);
             ownAttempts.add(row.getId());
             return new ModuleEventExecutionFrame(event, publication.getIdentifier(), row.getId(), token, LISTENER, false);
@@ -325,7 +325,7 @@ class ModuleEventReplayBoundaryIT extends AbstractMySqlIntegrationTest {
     private UUID seedAudit(UUID publicationId) {
         return new TransactionTemplate(transactions).execute(status -> {
             var audit = ModuleEventResumeAuditEntity.builder().publicationId(publicationId)
-                    .actorUserId(1L).reason("旧世代callbackの履歴保護検体").createdAt(local(NOW)).build();
+                    .actorUserId(1L).reason("旧世代callbackの履歴保護検体").createdAt(NOW).build();
             audit = new SimpleJpaRepository<>(ModuleEventResumeAuditEntity.class, entityManager).saveAndFlush(audit);
             ownAudits.add(audit.getId());
             return audit.getId();
@@ -393,12 +393,12 @@ class ModuleEventReplayBoundaryIT extends AbstractMySqlIntegrationTest {
     }
 
     /** JPA再読取の前後で監査対象となる全永続状態を比較する。 */
-    private record AttemptSnapshot(ModuleEventAttemptStatus status, UUID token, int count, LocalDateTime lease,
-            Long version, LocalDateTime lastAttemptAt, LocalDateTime quarantinedAt, String reason,
-            LocalDateTime createdAt, LocalDateTime updatedAt, boolean incomplete) { }
+    private record AttemptSnapshot(ModuleEventAttemptStatus status, UUID token, int count, Instant lease,
+            Long version, Instant lastAttemptAt, Instant quarantinedAt, String reason,
+            Instant createdAt, Instant updatedAt, boolean incomplete) { }
 
     /** 保存済み監査行の全fieldを旧callbackの前後で比較する。 */
-    private record AuditSnapshot(UUID id, UUID publicationId, Long actorUserId, String reason, LocalDateTime createdAt) { }
+    private record AuditSnapshot(UUID id, UUID publicationId, Long actorUserId, String reason, Instant createdAt) { }
 
     /** 同一DBを利用しつつ、再起動で捨てるMの全インスタンスを保持する。 */
     private record BoundaryFixture(AnnotationConfigApplicationContext context, ModuleEventPublicationStore store,

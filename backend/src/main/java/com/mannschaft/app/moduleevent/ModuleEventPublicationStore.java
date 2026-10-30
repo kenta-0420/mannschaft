@@ -1,7 +1,6 @@
 package com.mannschaft.app.moduleevent;
 
 import com.mannschaft.app.common.event.ReliableEvent;
-import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.moduleevent.api.dto.ModuleEventImpactBinding;
 import com.mannschaft.app.moduleevent.notice.ModuleEventNoticeLifecycleService;
 import jakarta.persistence.EntityManager;
@@ -11,7 +10,6 @@ import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -60,7 +58,7 @@ public class ModuleEventPublicationStore {
         if (TransactionSynchronizationManager.isCurrentTransactionReadOnly()) {
             throw new IllegalStateException("確実配信イベントの保存には書込TXが必要です");
         }
-        LocalDateTime now = local(clock.instant());
+        Instant now = clock.instant();
         EventPublicationAttemptEntity attempt = EventPublicationAttemptEntity.builder()
                 .publicationId(publicationId).retryCount(0).status(ModuleEventAttemptStatus.IN_PROGRESS)
                 .claimToken(token).lastAttemptAt(now).leaseUntil(now.plus(EXECUTION_LEASE))
@@ -83,7 +81,7 @@ public class ModuleEventPublicationStore {
         if (!catalog.isReady()) throw new IllegalStateException("確実配信リスナー台帳が未初期化です");
         Instant latest = now.minus(REPLAY_CUTOFF);
         Instant effective = cutoff.isBefore(latest) ? cutoff : latest;
-        // 本表Instantと補助LocalDateTimeはどちらもDBではUTC。native境界は瞬間を明示する。
+        // 本表と補助行はどちらもInstant/UTC。native境界でも瞬間を明示する。
         // STRAIGHT_JOINでhelperを先にlockし、JOIN optimizerのmain先行へ依存しない。
         NativeQuery<?> query = entityManager.createNativeQuery("""
                 SELECT p.id AS publication_id, a.id AS attempt_id, p.listener_id AS listener_id,
@@ -107,7 +105,7 @@ public class ModuleEventPublicationStore {
             UUID publicationId = uuid((byte[]) row[0]);
             EventPublicationAttemptEntity attempt = entityManager.find(EventPublicationAttemptEntity.class,
                     uuid((byte[]) row[1]), LockModeType.PESSIMISTIC_WRITE);
-            LocalDateTime attemptedAt = local(now);
+            Instant attemptedAt = now;
             if (attempt.getRetryCount() >= 10) {
                 // 10回目の受理commit直後に停止した行も、11回目の業務へ入れず隔離する。
                 quarantine(attempt, "RETRY_LIMIT", now);
@@ -146,7 +144,7 @@ public class ModuleEventPublicationStore {
             readOnly = false)
     public boolean admit(ModuleEventExecutionFrame frame) {
         EventPublicationAttemptEntity attempt = lock(frame);
-        LocalDateTime now = local(clock.instant());
+        Instant now = clock.instant();
         if (attempt == null || attempt.getLeaseUntil() == null || !attempt.getLeaseUntil().isAfter(now)) return false;
         if (!frame.initial() && !attempt.admitReplay(frame.token(), now)) return false;
         attempt.renewLease(now, now.plus(EXECUTION_LEASE));
@@ -169,7 +167,7 @@ public class ModuleEventPublicationStore {
         } else if (attempt.getRetryCount() >= 10) {
             quarantine(attempt, "LISTENER_FAILURE", clock.instant());
         } else {
-            attempt.pending("LISTENER_FAILURE", local(clock.instant()));
+            attempt.pending("LISTENER_FAILURE", clock.instant());
         }
     }
 
@@ -180,7 +178,7 @@ public class ModuleEventPublicationStore {
         EventPublicationAttemptEntity attempt = lock(frame);
         if (attempt == null) return;
         if (attempt.getRetryCount() >= 10) quarantine(attempt, "RETRY_LIMIT", clock.instant());
-        else attempt.pending("EXECUTOR_REJECTED", local(clock.instant()));
+        else attempt.pending("EXECUTOR_REJECTED", clock.instant());
     }
 
     /** 全未完了を集約するPRIMARY短TX。payloadやhelperの状態で母集団を落とさない。 */
@@ -200,7 +198,7 @@ public class ModuleEventPublicationStore {
     private void quarantine(EventPublicationAttemptEntity attempt, String code, Instant now) {
         if (attempt.getStatus() == ModuleEventAttemptStatus.QUARANTINED) return;
         ModuleEventImpactBinding binding = binding(attempt);
-        attempt.quarantine(code, local(now));
+        attempt.quarantine(code, now);
         if (binding != null) notices.getObject().reserveQuarantined(binding, now);
         afterCommit(() -> operations.getObject().quarantinedAfterCommit());
     }
@@ -237,9 +235,6 @@ public class ModuleEventPublicationStore {
         return attempt;
     }
 
-    private static LocalDateTime local(Instant instant) {
-        return LocalDateTime.ofInstant(instant, UserZoneLocalDateTimeParser.SERVER_ZONE);
-    }
     private static byte[] bytes(UUID id) {
         return ByteBuffer.allocate(16).putLong(id.getMostSignificantBits()).putLong(id.getLeastSignificantBits()).array();
     }

@@ -104,3 +104,15 @@ M側も同じbindingに属する未完了publicationが0件であることを確
 - [管理HTTP入口](../../backend/src/main/java/com/mannschaft/app/moduleevent/controller/SystemAdminModuleEventController.java)、[一覧・再開と監査TX](../../backend/src/main/java/com/mannschaft/app/moduleevent/admin/ModuleEventAdminService.java)
 - [固定指標・運用signal](../../backend/src/main/java/com/mannschaft/app/moduleevent/ModuleEventOperations.java)、[再投入バッチ](../../backend/src/main/java/com/mannschaft/app/moduleevent/ModuleEventReplayBatch.java)、[再投入と隔離](../../backend/src/main/java/com/mannschaft/app/moduleevent/ModuleEventPublicationStore.java)
 - [採用業務の責務](../../backend/src/main/java/com/mannschaft/app/moduleevent/api/spi/ModuleEventImpactResolver.java)、[通知予約](../../backend/src/main/java/com/mannschaft/app/moduleevent/notice/ModuleEventNoticeLifecycleService.java)、[自動削除をしない通知source](../../backend/src/main/java/com/mannschaft/app/notification/moduleevent/ModuleEventNoticeOutboxSource.java)
+
+### CI最小構成と時刻境界
+
+公式JPA publication repository は `ModuleEventConfiguration` が明示的に取り込む。
+DBを除外したSecurity/MVCの最小Boot構成へは自動登録しない。本番・M実MySQL構成では
+同じ公式 `jpaEventPublicationRepository` を使い、限定Registryによる保存・完了削除を維持する。
+
+Mのattempt・再開監査・隔離一覧の日時は瞬間を表す `Instant` とし、APIではオフセット付き日時で返す。
+Outboxのclaim/lease回収は型付きJPAクエリへ `Instant` を束縛し、現在時刻の注入・比較の等号条件・
+順序・件数上限・`PESSIMISTIC_WRITE` と `SKIP LOCKED` を維持する。
+再開CASの直接JDBC更新は `UTC_TIMESTAMP(6)` でUTC格納し、JVM既定ゾーンを使わない。
+通知配送層の既存 `NotificationEntity` の日時型へ渡す箇所だけは、既存SERVER_ZONEを明示して変換する。

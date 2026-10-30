@@ -343,10 +343,10 @@ class ModuleEventNoticeOutboxApiIT extends AbstractMySqlIntegrationTest {
             new SimpleJpaRepository<>(EventPublicationAttemptEntity.class, entityManager).saveAndFlush(
                     EventPublicationAttemptEntity.builder().publicationId(publication.getIdentifier())
                             .retryCount(status == ModuleEventAttemptStatus.QUARANTINED ? 10 : 0).status(status)
-                            .claimToken(UUID.randomUUID()).lastAttemptAt(future).leaseUntil(future)
+                            .claimToken(UUID.randomUUID()).lastAttemptAt(FUTURE).leaseUntil(FUTURE)
                             .resolverKey(row.getResolverKey()).operationId(row.getOperationId()).episodeId(row.getEpisodeId())
                             .scopeType(ModuleEventNoticeScope.TEAM).scopeId(row.getScopeId()).organizationId(row.getOrganizationId())
-                            .createdAt(future).updatedAt(future).version(0).build());
+                            .createdAt(FUTURE).updatedAt(FUTURE).version(0).build());
             return publication.getIdentifier();
         });
         publicationIds.add(id);

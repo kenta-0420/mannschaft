@@ -248,12 +248,12 @@ class ModuleEventLoadIT extends AbstractMySqlIntegrationTest {
 
     private void seedBacklog() {
         writeTransaction().executeWithoutResult(status -> {
-            LocalDateTime now = LocalDateTime.ofInstant(Instant.now(), SERVER_ZONE);
+            Instant now = Instant.now();
             SimpleJpaRepository<EventPublicationAttemptEntity, UUID> attempts = new SimpleJpaRepository<>(EventPublicationAttemptEntity.class, entityManager);
             for (int i = 0; i < 1000; i++) {
                 ModuleEventLoadTestFixture.Entry entry = probe.create(ModuleEventLoadTestFixture.Traffic.BACKLOG);
                 TargetEventPublication publication = publications.create(TargetEventPublication.of(
-                        new ModuleEventLoadTestFixture.LoadEvent(entry.id, null, now.minusMinutes(10)),
+                        new ModuleEventLoadTestFixture.LoadEvent(entry.id, null, LocalDateTime.ofInstant(now.minusSeconds(600), SERVER_ZONE)),
                         PublicationTargetIdentifier.of(ModuleEventLoadTestFixture.LISTENER_ID), Instant.now().minusSeconds(600)));
                 entry.publications.add(publication.getIdentifier());
                 attempts.save(EventPublicationAttemptEntity.builder().id(UuidV7.generate()).publicationId(publication.getIdentifier())

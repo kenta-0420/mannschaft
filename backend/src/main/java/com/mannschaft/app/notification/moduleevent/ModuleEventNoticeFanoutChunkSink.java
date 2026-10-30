@@ -1,6 +1,7 @@
 package com.mannschaft.app.notification.moduleevent;
 
 import com.mannschaft.app.moduleevent.api.ModuleEventNoticeOutboxApi;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.moduleevent.api.dto.ModuleEventNoticeDescriptor;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -76,7 +77,7 @@ public class ModuleEventNoticeFanoutChunkSink implements FanoutChunkSink {
                         .priority(NotificationPriority.NORMAL).title(title).body(body).sourceType(TYPE).sourceId(noticeRef)
                         .scopeType(NotificationScopeType.valueOf(descriptor.getImpact().getScopeType().name()))
                         .scopeId(descriptor.getImpact().getScopeId()).actorId(null).actionUrl(null)
-                        .isRead(false).createdAt(LocalDateTime.now()).build());
+                        .isRead(false).createdAt(LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE)).build());
             }
             return new Write(insert(seeds), false);
         });

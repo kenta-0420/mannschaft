@@ -249,11 +249,11 @@ public class ModuleEventRealE2eFixtures {
                 save(EventPublicationAttemptEntity.builder().id(UuidV7.generate()).publicationId(row.getIdentifier())
                         .status("quarantine".equals(workflow.kind) ? ModuleEventAttemptStatus.IN_PROGRESS : ModuleEventAttemptStatus.PENDING)
                         .retryCount("quarantine".equals(workflow.kind) ? 10 : 0).claimToken(UUID.randomUUID())
-                        .leaseUntil("quarantine".equals(workflow.kind) ? local(now.minusSeconds(1)) : null)
+                        .leaseUntil("quarantine".equals(workflow.kind) ? now.minusSeconds(1) : null)
                         .resolverKey(KEY).operationId(event.operationId()).episodeId(event.episodeId())
                         .scopeType(workflow.teamId == null ? ModuleEventNoticeScope.ORGANIZATION : ModuleEventNoticeScope.TEAM)
                         .scopeId(workflow.teamId == null ? workflow.organizationId : workflow.teamId)
-                        .organizationId(workflow.organizationId).createdAt(local(now)).updatedAt(local(now)).version(0).build(),
+                        .organizationId(workflow.organizationId).createdAt(now).updatedAt(now).version(0).build(),
                         EventPublicationAttemptEntity.class);
             }
             workflow.publications = List.copyOf(ids);

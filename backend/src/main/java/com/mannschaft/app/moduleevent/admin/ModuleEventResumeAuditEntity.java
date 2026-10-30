@@ -4,7 +4,7 @@ import com.mannschaft.app.common.entity.UuidV7Entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -31,5 +31,5 @@ public class ModuleEventResumeAuditEntity extends UuidV7Entity {
     private String reason;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }

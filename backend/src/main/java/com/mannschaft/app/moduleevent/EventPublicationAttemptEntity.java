@@ -10,7 +10,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -50,11 +50,11 @@ public class EventPublicationAttemptEntity extends UuidV7Entity {
     @Column(name = "claim_token", nullable = false)
     private UUID claimToken;
     @Column(name = "last_attempt_at")
-    private LocalDateTime lastAttemptAt;
+    private Instant lastAttemptAt;
     @Column(name = "lease_until")
-    private LocalDateTime leaseUntil;
+    private Instant leaseUntil;
     @Column(name = "quarantined_at")
-    private LocalDateTime quarantinedAt;
+    private Instant quarantinedAt;
     @Column(name = "failure_code", length = 64)
     private String failureCode;
     // 業務が明示した識別子だけを保存する。未接続のイベントは全列nullのままにする。
@@ -73,15 +73,15 @@ public class EventPublicationAttemptEntity extends UuidV7Entity {
     @Column(name = "organization_id")
     private Long organizationId;
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
     @Version
     @Column(name = "version", nullable = false)
     private long version;
 
     /** claimだけでは試行を増やさない。workerの短TX受理が計数点になる。 */
-    void claim(UUID token, LocalDateTime now, LocalDateTime lease) {
+    void claim(UUID token, Instant now, Instant lease) {
         status = ModuleEventAttemptStatus.IN_PROGRESS;
         claimToken = token;
         lastAttemptAt = now;
@@ -89,7 +89,7 @@ public class EventPublicationAttemptEntity extends UuidV7Entity {
         updatedAt = now;
     }
 
-    boolean admitReplay(UUID expectedToken, LocalDateTime now) {
+    boolean admitReplay(UUID expectedToken, Instant now) {
         if (!expectedToken.equals(claimToken) || status != ModuleEventAttemptStatus.IN_PROGRESS
                 || leaseUntil == null || !leaseUntil.isAfter(now) || retryCount >= 10) return false;
         retryCount++;
@@ -98,13 +98,13 @@ public class EventPublicationAttemptEntity extends UuidV7Entity {
         return true;
     }
 
-    void renewLease(LocalDateTime now, LocalDateTime lease) {
+    void renewLease(Instant now, Instant lease) {
         lastAttemptAt = now;
         leaseUntil = lease;
         updatedAt = now;
     }
 
-    void quarantine(String code, LocalDateTime now) {
+    void quarantine(String code, Instant now) {
         status = ModuleEventAttemptStatus.QUARANTINED;
         quarantinedAt = now;
         leaseUntil = null;
@@ -112,7 +112,7 @@ public class EventPublicationAttemptEntity extends UuidV7Entity {
         updatedAt = now;
     }
 
-    void pending(String code, LocalDateTime now) {
+    void pending(String code, Instant now) {
         status = ModuleEventAttemptStatus.PENDING;
         leaseUntil = null;
         failureCode = code;
@@ -120,7 +120,7 @@ public class EventPublicationAttemptEntity extends UuidV7Entity {
     }
 
     /** 初回失敗は再配信回数に含めず、次の回収対象として残す。 */
-    public void recordInitialFailure(LocalDateTime attemptedAt) {
+    public void recordInitialFailure(Instant attemptedAt) {
         status = ModuleEventAttemptStatus.PENDING;
         lastAttemptAt = attemptedAt;
         leaseUntil = null;

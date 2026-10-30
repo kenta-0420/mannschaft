@@ -48,7 +48,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 共通 meta のみ、fixture Bean/mock/設定/新 DDL は追加しない。検体は公式 Repository/EntityBuilder で作る。
  * candidate と個々の reserve は外側から別 Bean 呼出しとし、自己呼出しの TX 喪失を避ける契約。
  * 実 core hook/管理再開/Q afterCommit Ops/SPI close/recipient/retention/全 M の合格を意味しない。
- * 本表の Instant 原時刻と helper の SERVER_ZONE LocalDateTime を混同しない。
+ * 本表と helper の瞬間はどちらも Instant で保持する。
  */
 @ModuleEventMySqlTest
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
@@ -189,7 +189,7 @@ class ModuleEventNoticeLifecycleIT extends AbstractMySqlIntegrationTest {
                 EventPublicationAttemptEntity helper = lock(fixture);
                 new SimpleJpaRepository<>(EventPublicationAttemptEntity.class, entityManager).saveAndFlush(
                         helper.toBuilder().status(ModuleEventAttemptStatus.QUARANTINED).retryCount(10)
-                                .quarantinedAt(LocalDateTime.ofInstant(NOW, SERVER_ZONE)).build());
+                                .quarantinedAt(NOW).build());
             }
             return null;
         });
@@ -375,7 +375,7 @@ class ModuleEventNoticeLifecycleIT extends AbstractMySqlIntegrationTest {
     }
 
     private Publication createPublication(ModuleEventImpactBinding binding, Instant original, ModuleEventAttemptStatus status) {
-        LocalDateTime now = LocalDateTime.ofInstant(NOW, SERVER_ZONE);
+        Instant now = NOW;
         TargetEventPublication publication = publications.create(TargetEventPublication.of(
                 new LifecycleFixtureEvent(UUID.randomUUID(), null, LocalDateTime.ofInstant(original, SERVER_ZONE)),
                 PublicationTargetIdentifier.of("module-notice-lifecycle-it-" + UUID.randomUUID()), original));
@@ -383,7 +383,7 @@ class ModuleEventNoticeLifecycleIT extends AbstractMySqlIntegrationTest {
         EventPublicationAttemptEntity helper = new SimpleJpaRepository<>(EventPublicationAttemptEntity.class, entityManager)
                 .saveAndFlush(EventPublicationAttemptEntity.builder().id(UuidV7.generate()).publicationId(publication.getIdentifier())
                         .retryCount(status == ModuleEventAttemptStatus.QUARANTINED ? 10 : 0).status(status)
-                        .claimToken(UUID.randomUUID()).lastAttemptAt(now).leaseUntil(now.plusMinutes(5))
+                        .claimToken(UUID.randomUUID()).lastAttemptAt(now).leaseUntil(now.plusSeconds(300))
                         .quarantinedAt(status == ModuleEventAttemptStatus.QUARANTINED ? now : null)
                         .resolverKey(binding == null ? null : binding.getResolverKey())
                         .operationId(binding == null ? null : binding.getOperationId()).episodeId(binding == null ? null : binding.getEpisodeId())

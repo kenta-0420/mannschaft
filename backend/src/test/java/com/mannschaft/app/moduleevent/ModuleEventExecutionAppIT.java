@@ -209,12 +209,12 @@ class ModuleEventExecutionAppIT extends AbstractMySqlIntegrationTest {
             TargetEventPublication publication = publications.create(TargetEventPublication.of(event,
                     PublicationTargetIdentifier.of(ModuleEventExecutionAppTestFixture.FIRST),
                     Instant.now().minusSeconds(300)));
-            LocalDateTime now = LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE);
+            Instant now = Instant.now();
             EventPublicationAttemptEntity attempt = new SimpleJpaRepository<EventPublicationAttemptEntity, UUID>(
                     EventPublicationAttemptEntity.class, entityManager).saveAndFlush(
                     EventPublicationAttemptEntity.builder().publicationId(publication.getIdentifier())
                             .retryCount(0).status(ModuleEventAttemptStatus.IN_PROGRESS).claimToken(token)
-                            .leaseUntil(now.plusMinutes(5)).createdAt(now).updatedAt(now).build());
+                            .leaseUntil(now.plusSeconds(300)).createdAt(now).updatedAt(now).build());
             frame.set(new ModuleEventExecutionFrame(event, publication.getIdentifier(), attempt.getId(), token,
                     ModuleEventExecutionAppTestFixture.FIRST, false));
         });

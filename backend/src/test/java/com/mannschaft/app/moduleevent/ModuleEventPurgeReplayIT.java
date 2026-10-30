@@ -156,7 +156,7 @@ class ModuleEventPurgeReplayIT extends AbstractMySqlIntegrationTest {
             publicationIds.add(publication.getIdentifier());
             new SimpleJpaRepository<>(EventPublicationAttemptEntity.class, em).saveAndFlush(EventPublicationAttemptEntity.builder()
                     .publicationId(publication.getIdentifier()).retryCount(0).status(ModuleEventAttemptStatus.PENDING)
-                    .claimToken(UUID.randomUUID()).createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+                    .claimToken(UUID.randomUUID()).createdAt(Instant.now()).updatedAt(Instant.now()).build());
         });
         return probe;
     }
