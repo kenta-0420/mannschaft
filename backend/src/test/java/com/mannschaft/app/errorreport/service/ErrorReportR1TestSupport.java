@@ -21,6 +21,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.util.AopTestUtils;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -84,6 +85,7 @@ abstract class ErrorReportR1TestSupport extends AbstractMySqlIntegrationTest {
         }
         aiEnabled = r1Properties.getAi().isEnabled();
         hook.reset();
+        events = AopTestUtils.getUltimateTargetObject(events);
         events.committed.clear();
         aggregator.drainAndClear();
         // AI予算の外部Valkey境界。未作成キーのget=nullを予算0として扱う実サービス契約を通す。
