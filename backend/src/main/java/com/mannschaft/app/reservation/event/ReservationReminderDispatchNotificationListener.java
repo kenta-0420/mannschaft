@@ -10,6 +10,7 @@ import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.reservation.service.ReservationReminderDispatchRunner;
+import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -59,6 +60,8 @@ public class ReservationReminderDispatchNotificationListener {
     private final UserLocaleCache userLocaleCache;
     private final MessageSource messageSource;
     private final Clock clock;
+    /** 遷移先 URL の slug 解決用（FE ルートは slug のみ受ける。Repository は直接使わず Service 経由）。 */
+    private final TeamService teamService;
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
             reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。予約リマインドの配信。"
@@ -118,6 +121,12 @@ public class ReservationReminderDispatchNotificationListener {
         }
     }
 
+    /** チームの予約画面への遷移先。slug が解決できなければ数値 URL は作らず通知一覧へ逃がす。 */
+    private String buildActionUrl(Long teamId) {
+        String slug = teamService.getSlugById(teamId);
+        return slug != null ? "/teams/" + slug + "/reservations" : "/notifications";
+    }
+
     /** 通知配送要求を組み立てる（業務TX外・AFTER_COMMIT 後に実行される）。 */
     private NotificationDeliveryRequest buildRequest(ReservationReminderDispatchEvent event) {
         Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(event.userId()));
@@ -142,7 +151,7 @@ public class ReservationReminderDispatchNotificationListener {
                 event.reservationId(),
                 NotificationScopeType.TEAM,
                 event.teamId(),
-                "/teams/" + event.teamId() + "/reservations",
+                buildActionUrl(event.teamId()),
                 null);
     }
 }

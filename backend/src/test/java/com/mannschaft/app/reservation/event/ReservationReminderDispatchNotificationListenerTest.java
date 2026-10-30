@@ -7,6 +7,7 @@ import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.reservation.service.ReservationReminderDispatchRunner;
+import com.mannschaft.app.team.service.TeamService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,8 @@ class ReservationReminderDispatchNotificationListenerTest {
     private ReservationReminderDispatchRunner reminderRunner;
     @Mock
     private UserLocaleCache userLocaleCache;
+    @Mock
+    private TeamService teamService;
 
     private final ReloadableResourceBundleMessageSource messageSource = realMessageSource();
 
@@ -64,7 +67,8 @@ class ReservationReminderDispatchNotificationListenerTest {
     void setUp() {
         lenient().when(userLocaleCache.getLocale(anyLong())).thenReturn("ja");
         listener = new ReservationReminderDispatchNotificationListener(
-                deliveryRunner, reminderRunner, userLocaleCache, messageSource, java.time.Clock.systemUTC());
+                deliveryRunner, reminderRunner, userLocaleCache, messageSource, java.time.Clock.systemUTC(),
+                teamService);
     }
 
     @Test
@@ -72,6 +76,7 @@ class ReservationReminderDispatchNotificationListenerTest {
     void claimしてから配送() {
         given(reminderRunner.claim(eq(1L), any())).willReturn(true);
         given(deliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.DELIVERED);
+        given(teamService.getSlugById(300L)).willReturn("my-team");
 
         listener.onReservationReminderDispatch(EVENT);
 
@@ -87,7 +92,7 @@ class ReservationReminderDispatchNotificationListenerTest {
         assertThat(request.sourceId()).isEqualTo(100L);
         assertThat(request.scopeType()).isEqualTo(NotificationScopeType.TEAM);
         assertThat(request.scopeId()).isEqualTo(300L);
-        assertThat(request.actionUrl()).isEqualTo("/teams/300/reservations");
+        assertThat(request.actionUrl()).isEqualTo("/teams/my-team/reservations");
         assertThat(request.actorId()).isNull();
         assertThat(request.body()).contains("4月2日 10:00").contains("整体60分コース");
         verify(reminderRunner, never()).release(any(), any());
@@ -163,5 +168,32 @@ class ReservationReminderDispatchNotificationListenerTest {
 
         verify(reminderRunner, never()).claim(any(), any());
         verify(deliveryRunner, never()).sendOne(any());
+    }
+
+    @Test
+    @DisplayName("AC2: slug が解決できない（null）とき、actionUrl は /notifications になり数値 URL は作られない")
+    void slugがnullなら通知一覧へ逃がす() {
+        given(reminderRunner.claim(eq(1L), any())).willReturn(true);
+        given(deliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.DELIVERED);
+        given(teamService.getSlugById(300L)).willReturn(null);
+
+        listener.onReservationReminderDispatch(EVENT);
+
+        ArgumentCaptor<NotificationDeliveryRequest> captor = ArgumentCaptor.forClass(NotificationDeliveryRequest.class);
+        verify(deliveryRunner).sendOne(captor.capture());
+        assertThat(captor.getValue().actionUrl()).isEqualTo("/notifications");
+        verify(reminderRunner, never()).release(any(), any());
+    }
+
+    @Test
+    @DisplayName("AC4: slug の取得が例外なら配送せず、既存の claim 解除（release）の経路に乗る")
+    void slug取得が例外ならclaimを解除する() {
+        given(reminderRunner.claim(eq(1L), any())).willReturn(true);
+        given(teamService.getSlugById(300L)).willThrow(new RuntimeException("模擬 slug 取得失敗"));
+
+        listener.onReservationReminderDispatch(EVENT);
+
+        verify(deliveryRunner, never()).sendOne(any());
+        verify(reminderRunner).release(eq(1L), any());
     }
 }

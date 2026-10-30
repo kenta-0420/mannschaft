@@ -3,6 +3,7 @@ package com.mannschaft.app.reservation.event;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.reservation.service.ReservationWaitlistNotifyRunner;
+import com.mannschaft.app.team.service.TeamService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -67,6 +68,11 @@ class ReservationWaitlistNotificationEventListenerContextTest {
         }
 
         @Bean
+        TeamService teamService() {
+            return Mockito.mock(TeamService.class);
+        }
+
+        @Bean
         Clock clock() {
             return Clock.systemUTC();
         }
@@ -77,9 +83,10 @@ class ReservationWaitlistNotificationEventListenerContextTest {
                 NotificationDeliveryRunner deliveryRunner,
                 UserLocaleCache userLocaleCache,
                 MessageSource messageSource,
-                Clock clock) {
+                Clock clock,
+                TeamService teamService) {
             return new ReservationWaitlistNotificationEventListener(
-                    notifyRunner, deliveryRunner, userLocaleCache, messageSource, clock);
+                    notifyRunner, deliveryRunner, userLocaleCache, messageSource, clock, teamService);
         }
     }
 
