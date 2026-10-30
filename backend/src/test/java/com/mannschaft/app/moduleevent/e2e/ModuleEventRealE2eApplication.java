@@ -78,7 +78,7 @@ public final class ModuleEventRealE2eApplication {
             // 資格情報はprivate子process環境だけ。ファイル・コマンド引数・stdoutへ保存しない。
             builder.environment().put("M21_ACTORS_JSON", json.writeValueAsString(world.credentials()));
             builder.environment().put("M21_RUN_DIRECTORY", run.toString());
-            builder.environment().put("BASE_URL", "http://localhost:3001");
+            builder.environment().put("BASE_URL", required("BASE_URL"));
             builder.environment().put("API_BASE_URL", "http://localhost:8081");
             builder.redirectErrorStream(true).redirectOutput(run.resolve("playwright.raw.txt").toFile());
             try (WatchService watcher = controls.getFileSystem().newWatchService()) {
