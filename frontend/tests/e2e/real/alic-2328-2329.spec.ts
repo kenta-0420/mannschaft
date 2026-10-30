@@ -47,6 +47,9 @@ const waitDay = jstDay(2)
 const remindDay = jstDay(3)
 const forceDay = jstDay(4)
 
+/** 拒否画面に実際に出た文言（2026-10-30 実測: 「このコンテンツを閲覧する権限がありません」）。 */
+const DENIED_TEXT = /閲覧する権限がありません|権限がありません/
+
 let ownerCtx: APIRequestContext
 let memberCtx: APIRequestContext
 let ownerToken = ''
@@ -282,6 +285,11 @@ test('E2E-2328-1b: キャンセル待ち空き通知 — 会員が画面で待�
 // E2E-2328-1c 予約リマインド
 // ------------------------------------------------------------------
 test('E2E-2328-1c: 予約リマインド — SYSTEM_ADMIN が画面でバッチ実行 → 会員が通知から予約画面へ', async ({ browser }) => {
+  // skip の理由: 「予約リマインド配信」バッチは全テナントが対象で、使い捨てチームの予約だけに絞って起動する経路が無い。
+  // 共有 BE・共有 DB で実行すると、期限の来た既存のリマインド行を持つテスト外の利用者にも通知が飛ぶ。
+  // そのため、専用 DB の環境（E2E_DEDICATED_DB=1）でだけ実行する。
+  // 2026-10-30 の共有検証環境での実測では、このテストは PASS している（証跡は PR #4237 本文）。
+  test.skip(process.env.E2E_DEDICATED_DB !== '1', '全テナント対象のバッチを起動するため、専用 DB（E2E_DEDICATED_DB=1）でだけ実行する')
   // 前提(API): 間もなく到来するリマインド行を作る
   const remindAt = new Date(Date.now() + 15_000).toISOString().slice(0, 19)
   const mk = await ownerCtx.post(`${BE_API}/teams/${team.slug}/reservations/${remindReservationId}/reminders`, { headers: authHeaders(ownerToken), data: { remindAt } })
@@ -362,7 +370,10 @@ test('E2E-2329-2: 一般メンバーに緊急休業の導線が出ない（URL �
   await mem.page.screenshot({ path: 'test-results/a2328-2329-2-member.png', fullPage: true })
   // 管理画面ルートの直打ち（予約の管理者ページ）
   await mem.page.goto(`/teams/${team.slug}/admin/reservations`, { waitUntil: 'domcontentloaded', timeout: 180_000 })
-  await mem.page.waitForTimeout(5_000)
+  // 管理コンソールの middleware（admin-console）は、権限不足をスコープトップへ戻し、エラートースト
+  // 「アクセスできません／管理者権限が必要です」を出す。白画面や 500 で合格しないよう、そのトーストと着地先を確かめる。
+  await expect(mem.page.getByText('管理者権限が必要です').first()).toBeVisible({ timeout: 60_000 })
+  await mem.page.waitForURL(new RegExp(`/teams/${team.slug}/?$`), { timeout: 30_000 })
   console.log(`[E2E-2329-2] member admin直打ち 最終URL=${mem.page.url()}`)
   await expect(mem.page.getByRole('tab', { name: '緊急休業' })).toHaveCount(0)
   await expect(mem.page.getByRole('button', { name: '一括送信' })).toHaveCount(0)
@@ -378,6 +389,8 @@ test('E2E-2328-2 / E2E-2329-2: 部外者は /teams/{slug}/reservations を直打
   const text = ((await page.locator('body').innerText()) ?? '').replace(/\s+/g, ' ').slice(0, 400)
   console.log(`[E2E-2328-2] 部外者 直打ち 最終URL=${url} 本文先頭="${text}"`)
   await page.screenshot({ path: 'test-results/a2328-2-outsider-direct-url.png', fullPage: true })
+  // 実測で出た拒否画面の文言（白画面・500 では合格しない）
+  await expect(page.getByText(DENIED_TEXT).first()).toBeVisible({ timeout: 30_000 })
   await expect(page.getByRole('tab', { name: '予約する' })).toHaveCount(0)
   await expect(page.getByRole('tab', { name: '緊急休業' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: '一括送信' })).toHaveCount(0)
@@ -398,6 +411,10 @@ test('E2E-SYS: SYSTEM_ADMIN の観測 — 緊急休業 API は AccessGuard の�
   const bookTab = await sys.page.getByRole('tab', { name: '予約する' }).count()
   console.log(`[E2E-SYS] 画面 最終URL=${sys.page.url()} 予約するタブ=${bookTab} 緊急休業タブ=${tabCount}`)
   await sys.page.screenshot({ path: 'test-results/a2328-sys.png', fullPage: true })
-  // 一括送信は実行しない（実際に宛先へ通知が出るため）。導線の有無は記録のみ。
-  expect(list.status()).toBeLessThan(500)
+  // 一括送信は実行しない（実際に宛先へ通知が出るため）。実測した状態を断定する。
+  expect(list.status()).toBe(200)
+  expect(bookTab).toBe(1)
+  expect(tabCount).toBe(1)
+  await expect(sys.page.getByText(DENIED_TEXT)).toHaveCount(0)
+  await expect(sys.page.getByText('チームが見つかりません')).toHaveCount(0)
 })
