@@ -886,9 +886,10 @@ for (const width of [360, 390, 1280]) {
         await expect(all).toBeVisible()
         await page.evaluate(() => document.fonts.ready.then(() => true))
         // Popoverの拡大中に異なるフレームの矩形を比較しないよう、完了後に一括計測する。
-        await menu.panel.evaluate(async element => {
-          await Promise.all(element.getAnimations().map(animation => animation.finished))
-        })
+        // Transitionのクラス除去でキャンセルされるAnimationのPromiseを保持せず、現在の描画状態を待つ。
+        await expect.poll(() => menu.panel.evaluate(element =>
+          element.getAnimations().filter(animation => animation.playState === 'running' || animation.pending).length,
+        )).toBe(0)
         const { lines, foldersBox, jumpBox, documentSize } = await all.evaluate(
           (element, jumpElement) => {
             const range = document.createRange()
