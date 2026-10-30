@@ -77559,6 +77559,49 @@
         }
       }
     },
+    "/api/v1/organizations/{orgId}/announcements/read-batch": {
+      "post": {
+        "tags": [
+          "組織お知らせウィジェット"
+        ],
+        "summary": "表示中の組織お知らせを一括既読",
+        "description": "画面に取得済みの組織お知らせの ID（最大50件）を既読にする。宛先チームの現役メンバーも対象。通らない ID は黙って飛ばし、既読になった件数だけ返す。",
+        "operationId": "markBatchAsRead",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnouncementReadBatchRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAnnouncementReadBatchResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{orgId}/announcements/read-all": {
       "post": {
         "tags": [
@@ -206422,6 +206465,48 @@
           },
           "slug": {
             "type": "string"
+          }
+        }
+      },
+      "AnnouncementReadBatchRequestDto": {
+        "type": "object",
+        "description": "組織お知らせの一括既読リクエスト（表示中の未読項目の ID。1〜50件）",
+        "properties": {
+          "feedIds": {
+            "type": "array",
+            "description": "既読にする組織お知らせの ID（1〜50件・重複は除く）",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "maxItems": 50,
+            "minItems": 1
+          }
+        },
+        "required": [
+          "feedIds"
+        ]
+      },
+      "AnnouncementReadBatchResultDto": {
+        "type": "object",
+        "description": "組織お知らせの一括既読の結果",
+        "properties": {
+          "markedCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "判定を通った ID のうち、このリクエストで新たに既読になった件数（既読済みは数えない）",
+            "example": 2
+          }
+        },
+        "required": [
+          "markedCount"
+        ]
+      },
+      "ApiResponseAnnouncementReadBatchResultDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AnnouncementReadBatchResultDto"
           }
         }
       },

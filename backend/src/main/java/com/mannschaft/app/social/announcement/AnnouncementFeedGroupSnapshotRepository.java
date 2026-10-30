@@ -31,4 +31,9 @@ public interface AnnouncementFeedGroupSnapshotRepository
     @Query("SELECT s FROM AnnouncementFeedGroupSnapshotEntity s WHERE s.teamId = :teamId AND s.feedId IN :feedIds")
     List<AnnouncementFeedGroupSnapshotEntity> findByTeamIdAndFeedIdIn(
             @Param("teamId") Long teamId, @Param("feedIds") java.util.Collection<Long> feedIds);
+
+    /** 複数チーム×複数フィードのスナップショット行を 1 回の SQL で取得する（宛先資格 Qa・一括既読の判定用）。 */
+    @Query("SELECT s FROM AnnouncementFeedGroupSnapshotEntity s WHERE s.teamId IN :teamIds AND s.feedId IN :feedIds")
+    List<AnnouncementFeedGroupSnapshotEntity> findByTeamIdInAndFeedIdIn(
+            @Param("teamIds") java.util.Collection<Long> teamIds, @Param("feedIds") java.util.Collection<Long> feedIds);
 }

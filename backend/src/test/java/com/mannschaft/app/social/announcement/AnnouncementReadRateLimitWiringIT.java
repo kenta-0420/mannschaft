@@ -196,6 +196,101 @@ class AnnouncementReadRateLimitWiringIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // 1b. 組織 read-batch（AC-ALIC1-D07・CMP-261011-0035 試練）
+    // ═════════════════════════════════════════════════════════════════════
+
+    /**
+     * AC-ALIC1-D07 結線: 組織の read-batch（POST /api/v1/organizations/{orgId}/announcements/read-batch）が
+     * 実 HTTP 経路で 5 回/分（zone {@code announcement:read-batch}）に制限される。
+     * 出陣前は EP もフィルタ規則も無いため red（6 回目が 429 にならず、X-RateLimit-* も載らない）。
+     */
+    @Nested
+    @DisplayName("AC-ALIC1-D07 組織 read-batch は実 HTTP 経路で 5 回/分・組織を跨いで同一枠・別計数")
+    class ReadBatch {
+
+        private static final int READ_BATCH_LIMIT = 5;
+
+        @Test
+        @WithMockUser(username = USER_ID)
+        @DisplayName("AC-ALIC1-D07 6回目が 429 + Retry-After + X-RateLimit-* + 本文、既読行は書かれない")
+        void readBatchは6回目で429() throws Exception {
+            Long orgId = insertOrganization("rb-a");
+            for (int i = 0; i < READ_BATCH_LIMIT; i++) {
+                MvcResult ok = performReadBatch(orgId, "[999999001]");
+                assertThat(ok.getResponse().getStatus())
+                        .as("read-batch #%d は閾値内なので 200（存在しない ID は黙って除外・markedCount=0）", i + 1)
+                        .isEqualTo(HttpStatus.OK.value());
+            }
+            MvcResult over = performReadBatch(orgId, "[999999001]");
+            assertThat(over.getResponse().getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+            assertThat(over.getResponse().getHeader("Retry-After")).isNotNull().matches("\\d+");
+            assertThat(over.getResponse().getHeader("X-RateLimit-Limit")).isEqualTo(String.valueOf(READ_BATCH_LIMIT));
+            assertThat(over.getResponse().getHeader("X-RateLimit-Remaining")).isEqualTo("0");
+            assertThat(over.getResponse().getHeader("X-RateLimit-Reset")).isNotNull();
+            assertThat(over.getResponse().getContentAsString()).contains("Too many requests");
+            assertThat(counters.keySet()).as("zone 名は announcement:read-batch")
+                    .anyMatch(key -> key.contains("announcement:read-batch"));
+            assertThat(countReadStatusOfUser()).as("429 では既読行を書かない").isZero();
+        }
+
+        @Test
+        @WithMockUser(username = USER_ID)
+        @DisplayName("AC-ALIC1-D07 組織 ID を変えて呼んでも同一ユーザーの枠を共有する")
+        void 組織を変えても同一枠() throws Exception {
+            Long orgA = insertOrganization("rb-b");
+            Long orgB = insertOrganization("rb-c");
+            for (int i = 0; i < READ_BATCH_LIMIT; i++) {
+                MvcResult ok = performReadBatch(i % 2 == 0 ? orgA : orgB, "[999999002]");
+                assertThat(ok.getResponse().getStatus()).isEqualTo(HttpStatus.OK.value());
+            }
+            assertThat(performReadBatch(orgB, "[999999002]").getResponse().getStatus())
+                    .as("組織を変えれば回避できる、を許さない")
+                    .isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+        }
+
+        @Test
+        @WithMockUser(username = USER_ID)
+        @DisplayName("AC-ALIC1-D07 read-batch の枠は単件既読・read-all と別計数")
+        void 単件とreadAllとは別計数() throws Exception {
+            Long orgId = insertOrganization("rb-d");
+            for (int i = 0; i < READ_BATCH_LIMIT; i++) {
+                performReadBatch(orgId, "[999999003]");
+            }
+            MvcResult over = performReadBatch(orgId, "[999999003]");
+            assertThat(over.getResponse().getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+
+            MvcResult readAll = performReadAll();
+            assertThat(readAll.getResponse().getStatus()).isEqualTo(HttpStatus.OK.value());
+            assertThat(readAll.getResponse().getHeader("X-RateLimit-Remaining"))
+                    .as("read-batch の消費は read-all の枠に入らない")
+                    .isEqualTo(String.valueOf(AnnouncementReadRateLimitFilter.READ_ALL_LIMIT - 1));
+            MvcResult single = performSingleRead(999_999L);
+            assertThat(single.getResponse().getStatus()).isNotEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+            assertThat(single.getResponse().getHeader("X-RateLimit-Limit"))
+                    .isEqualTo(String.valueOf(AnnouncementReadRateLimitFilter.SINGLE_READ_LIMIT));
+        }
+
+        private MvcResult performReadBatch(Long orgId, String feedIdsJson) throws Exception {
+            String path = "/api/v1/organizations/" + orgId + "/announcements/read-batch";
+            return mockMvc.perform(post(path).servletPath(path)
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"feedIds\":" + feedIdsJson + "}")).andReturn();
+        }
+
+        private Long insertOrganization(String prefix) {
+            return com.mannschaft.app.support.test.TeamOrgFixtureHelper.insertOrganization(em,
+                    "READ-BATCH 組織 " + prefix, prefix + "-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        }
+
+        private long countReadStatusOfUser() {
+            return ((Number) em.createNativeQuery(
+                            "SELECT COUNT(*) FROM announcement_read_status WHERE user_id = :uid")
+                    .setParameter("uid", Long.parseLong(USER_ID))
+                    .getSingleResult()).longValue();
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // 2. 非対象パスには効かない
     // ═════════════════════════════════════════════════════════════════════
 
