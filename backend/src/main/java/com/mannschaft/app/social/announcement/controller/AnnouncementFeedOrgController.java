@@ -14,6 +14,7 @@ import com.mannschaft.app.social.announcement.AnnouncementReadCommandService;
 import com.mannschaft.app.social.announcement.AnnouncementReadService;
 import com.mannschaft.app.social.announcement.AnnouncementScopeType;
 import com.mannschaft.app.social.announcement.AnnouncementSourceType;
+import com.mannschaft.app.social.announcement.OrgAnnouncementAudienceAccess;
 import com.mannschaft.app.social.announcement.dto.AnnouncementFeedItemDto;
 import com.mannschaft.app.social.announcement.dto.AnnouncementFeedMetaDto;
 import com.mannschaft.app.social.announcement.dto.AnnouncementFeedResponseDto;
@@ -75,6 +76,7 @@ public class AnnouncementFeedOrgController {
 
     private final AnnouncementFeedService announcementFeedService;
     private final AnnouncementReadCommandService announcementReadCommandService;
+    private final OrgAnnouncementAudienceAccess audienceAccess;
     private final RoleResolver roleResolver;
     private final AccessControlService accessControlService;
 
@@ -105,8 +107,15 @@ public class AnnouncementFeedOrgController {
         // 告知の可視性に使う役割はキャッシュ（60 秒）を使わない（降格・離脱の直後に会員限定の項目が見え続けない。ALIC-1 §2.6）。
         // 一覧は直属範囲のまま（宛先チームの資格 Qa は加えない）。
         ViewerRole viewerRole = roleResolver.resolveViewerRoleForPreview(userId, "ORGANIZATION", orgId);
+        // 一覧は「その閲覧者がプレビューで読める告知」だけを返す（宛先指定の告知を宛先外に見せない。CMP-261011-0035）。
+        // 判定はプレビュー・既読と同じ OrgAnnouncementAudienceAccess（Qd／Qa。取得行をまとめて判定し SQL は件数に比例しない）。
+        // 判定部品は @Transactional のサービスから呼べない（ArchUnit F04）ので、ここから関数として渡す。
         AnnouncementFeedService.AnnouncementFeedResult result = announcementFeedService.getAnnouncementFeed(
-                AnnouncementScopeType.ORGANIZATION, orgId, userId, viewerRole.name(), cursor, limit);
+                AnnouncementScopeType.ORGANIZATION, orgId, userId, viewerRole.name(), cursor, limit,
+                feeds -> {
+                    var access = audienceAccess.evaluateAll(feeds, userId);
+                    return feeds.stream().filter(feed -> access.get(feed.getId()).allowed()).toList();
+                });
 
         // 宛先の記録（グループ名・チーム数）は、グループを閲覧してよい者にだけ返す（F01.2.1 §3.1・§10.1）
         boolean includeTargetAudience = canViewTargetAudience(userId, orgId);

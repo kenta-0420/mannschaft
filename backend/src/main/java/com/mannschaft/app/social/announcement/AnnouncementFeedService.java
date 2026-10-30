@@ -359,11 +359,37 @@ public class AnnouncementFeedService {
             String viewerRoleName,
             Long cursor,
             int limit) {
+        return getAnnouncementFeed(scopeType, scopeId, requestUserId, viewerRoleName, cursor, limit, null);
+    }
+
+    /**
+     * お知らせフィード一覧を取得する（読めるかの最終判定を呼び出し元から受け取る版）。
+     *
+     * <p>{@code readableFilter} が非 null のとき、可視性の前絞りは最も広い集合（MEMBER 相当）で取得し、
+     * 取得した行（課金評価より前）を {@code readableFilter} に通した残りだけを一覧・未読件数・ページ送りの対象にする。
+     * 組織スコープの一覧が、プレビュー・既読と同じ資格判定（{@link OrgAnnouncementAudienceAccess}。直属資格 Qd／宛先資格 Qa）で
+     * 「その閲覧者が読める告知だけ」を返すために使う（一覧と本文の可否を一致させる。CMP-261011-0035）。
+     * 判定部品は {@code @Transactional} のこのクラスからは呼べない（ArchUnit F04）ため、呼び出し元の
+     * コントローラーが関数として渡す。フィルタは行の集合に対して 1 回呼ばれる（件数に比例して SQL を発行しない実装であること）。</p>
+     *
+     * @param readableFilter 行のうち閲覧者が読めるものだけを返す関数（null は絞り込みなし＝従来どおりロール由来の可視性のみ）
+     */
+    public AnnouncementFeedResult getAnnouncementFeed(
+            AnnouncementScopeType scopeType,
+            Long scopeId,
+            Long requestUserId,
+            String viewerRoleName,
+            Long cursor,
+            int limit,
+            java.util.function.UnaryOperator<List<AnnouncementFeedEntity>> readableFilter) {
 
         int effectiveLimit = Math.max(1, Math.min(limit <= 0 ? DEFAULT_LIMIT : limit, MAX_LIMIT));
 
         // 閲覧者ロール → 閲覧できる visibility 集合（正準）。
-        Set<String> allowedVisibilities = AnnouncementVisibility.allowedFor(viewerRoleName);
+        // readableFilter があるときは、直属ロールより広い資格（宛先チームの委任資格 Qa）で読める行を取りこぼさないよう
+        // 最も広い集合で取り、最終判定を readableFilter に任せる。
+        Set<String> allowedVisibilities = AnnouncementVisibility.allowedFor(
+                readableFilter != null ? "MEMBER" : viewerRoleName);
 
         // limit + 1 件取得して hasNext を判定
         List<AnnouncementFeedEntity> dataRows = feedQueryRepository.findByScope(
@@ -388,6 +414,9 @@ public class AnnouncementFeedService {
             sourceHasNext = rows.size() > effectiveLimit;
             List<AnnouncementFeedEntity> uniqueRows = rows.stream()
                     .filter(row -> row.getId() != null && seenIds.add(row.getId())).toList();
+            if (readableFilter != null) {
+                uniqueRows = readableFilter.apply(uniqueRows);
+            }
             Map<Long, GateCheckResponse> fetchedGates = paymentGateService == null ? Map.of()
                     : paymentGateService.checkAccessBatch(ContentGateType.ANNOUNCEMENT,
                             uniqueRows.stream().map(AnnouncementFeedEntity::getId).toList(), requestUserId,
