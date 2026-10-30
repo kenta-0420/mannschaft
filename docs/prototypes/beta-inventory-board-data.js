@@ -8756,6 +8756,30 @@ window.BETA_INVENTORY_DATA = {
         "runId": "CMP-260908-2116-revalidation-20261029-08",
         "sourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
         "evidencePath": "docs/evidence/CMP-260908-2116/proofs/resident-observations.json"
+      },
+      {
+        "id": "CMP1555-R11-A",
+        "personaArchetype": "ADHD・中断と保存状態の確認",
+        "originalResidentId": "A",
+        "runId": "CMP-260910-1555-revalidation-20261030-11",
+        "sourceHead": "588407f98b2b7aecd99897c26bdd3b6129768a82",
+        "evidencePath": "docs/evidence/CMP-260910-1555/resident-observations-20261030.json"
+      },
+      {
+        "id": "CMP1555-R11-B",
+        "personaArchetype": "一般MEMBER・自分の時給と権限境界",
+        "originalResidentId": "B",
+        "runId": "CMP-260910-1555-revalidation-20261030-11",
+        "sourceHead": "588407f98b2b7aecd99897c26bdd3b6129768a82",
+        "evidencePath": "docs/evidence/CMP-260910-1555/resident-observations-20261030.json"
+      },
+      {
+        "id": "CMP1555-R11-C",
+        "personaArchetype": "スマホ片手・表示とタップ操作",
+        "originalResidentId": "C",
+        "runId": "CMP-260910-1555-revalidation-20261030-11",
+        "sourceHead": "588407f98b2b7aecd99897c26bdd3b6129768a82",
+        "evidencePath": "docs/evidence/CMP-260910-1555/resident-observations-20261030.json"
       }
     ],
     "journeys": [
@@ -9263,6 +9287,33 @@ window.BETA_INVENTORY_DATA = {
         "runId": "CMP-260908-2116-revalidation-20261029-08",
         "sourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
         "evidencePath": "docs/evidence/CMP-260908-2116/proofs/resident-observations.json"
+      },
+      {
+        "id": "CMP1555-R11-A-journey",
+        "personaId": "CMP1555-R11-A",
+        "purpose": "担当の合成メンバーの時給を登録・訂正し、途中で離れて戻っても保存内容を確認する。",
+        "journeyIdSource": "登録時に一意ID付与。元safeにはjourneyIdの記載なし。固定P01〜P20へ変換しない。",
+        "runId": "CMP-260910-1555-revalidation-20261030-11",
+        "sourceHead": "588407f98b2b7aecd99897c26bdd3b6129768a82",
+        "evidencePath": "docs/evidence/CMP-260910-1555/resident-observations-20261030.json"
+      },
+      {
+        "id": "CMP1555-R11-B-journey",
+        "personaId": "CMP1555-R11-B",
+        "purpose": "自分の時給情報を確認し、自分が管理操作をできる範囲を画面から理解する。",
+        "journeyIdSource": "登録時に一意ID付与。元safeにはjourneyIdの記載なし。固定P01〜P20へ変換しない。",
+        "runId": "CMP-260910-1555-revalidation-20261030-11",
+        "sourceHead": "588407f98b2b7aecd99897c26bdd3b6129768a82",
+        "evidencePath": "docs/evidence/CMP-260910-1555/resident-observations-20261030.json"
+      },
+      {
+        "id": "CMP1555-R11-C-journey",
+        "personaId": "CMP1555-R11-C",
+        "purpose": "スマホ幅で担当の合成メンバーの時給設定と有効日選択・履歴確認を完遂する。",
+        "journeyIdSource": "登録時に一意ID付与。元safeにはjourneyIdの記載なし。固定P01〜P20へ変換しない。",
+        "runId": "CMP-260910-1555-revalidation-20261030-11",
+        "sourceHead": "588407f98b2b7aecd99897c26bdd3b6129768a82",
+        "evidencePath": "docs/evidence/CMP-260910-1555/resident-observations-20261030.json"
       }
     ],
     "insights": [
@@ -11042,6 +11093,72 @@ window.BETA_INVENTORY_DATA = {
         "trusted": false,
         "status": "observed-unverified",
         "urgency": "normal"
+      },
+      {
+        "id": "CMP1555-R11-A-01",
+        "featureKey": "shift",
+        "featureDetail": "時給設定の独立住民探索",
+        "title": "下部の時給設定導線で迷い、中断後に保存・取消・訂正を確認した",
+        "detail": "自力でメンバー・シフト管理等を探索したが下部の設定導線で迷い、locator timeoutも経験した。1250円保存後、1350円の未保存入力を取消して離脱・復帰し1250円の履歴を確認。同日1350円へ訂正保存し、再離脱・復帰後の一覧・入力欄・履歴1350円を確認した。目的は達成したが、設定を探す摩擦とは分けて記録する。DOM locatorの失敗を製品バグとは断定しない。 元run: CMP-260910-1555-revalidation-20261030-11。実施完了と目的achievedを分離し、未実証観測として保持する。B0 coverageや親1555の正式完了へ昇格しない。",
+        "page": null,
+        "pageLabel": "住民が自力で辿った時給関連画面",
+        "pageProvenance": "この選別記録では具体的URLを採用せず、固定UIの経路で住民探索を補完しない。",
+        "personaId": "CMP1555-R11-A",
+        "personaArchetype": "ADHD・中断と保存状態の確認",
+        "journeyId": "CMP1555-R11-A-journey",
+        "originalRunId": "CMP-260910-1555-revalidation-20261030-11",
+        "runId": "CMP-260910-1555-revalidation-20261030-11",
+        "sourceHead": "588407f98b2b7aecd99897c26bdd3b6129768a82",
+        "evidencePath": "docs/evidence/CMP-260910-1555/resident-observations-20261030.json",
+        "sourceEvidencePath": "resident-A/resident-safe.json",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "normal"
+      },
+      {
+        "id": "CMP1555-R11-B-01",
+        "featureKey": "shift",
+        "featureDetail": "時給設定の独立住民探索",
+        "title": "一般メンバーとして自分の時給導線を発見できなかった",
+        "detail": "一般MEMBERとして自チームのメンバー一覧、マイシフト、シフト管理、マイページ、メンバー情報、データ・設定を自律探索したが、自分の時給表示・管理入力の導線を発見できなかった。登録試行0回・他人の時給変更0回で目的は未達。権限制約の正常性は未判定であり、全経路に導線がないことや製品不具合を断定しない。画像は本人が保存のみ、rootがその部分範囲を実視認した。 元run: CMP-260910-1555-revalidation-20261030-11。実施完了と目的unmetを分離し、未実証観測として保持する。B0 coverageや親1555の正式完了へ昇格しない。",
+        "page": null,
+        "pageLabel": "一般メンバーが自力で辿った自チーム関連画面",
+        "pageProvenance": "この選別記録では具体的URLを採用せず、固定UIの経路で住民探索を補完しない。",
+        "personaId": "CMP1555-R11-B",
+        "personaArchetype": "一般MEMBER・自分の時給と権限境界",
+        "journeyId": "CMP1555-R11-B-journey",
+        "originalRunId": "CMP-260910-1555-revalidation-20261030-11",
+        "runId": "CMP-260910-1555-revalidation-20261030-11",
+        "sourceHead": "588407f98b2b7aecd99897c26bdd3b6129768a82",
+        "evidencePath": "docs/evidence/CMP-260910-1555/resident-observations-20261030.json",
+        "sourceEvidencePath": "resident-B/resident-safe.json",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "normal"
+      },
+      {
+        "id": "CMP1555-R11-C-01",
+        "featureKey": "shift",
+        "featureDetail": "時給設定の独立住民探索",
+        "title": "スマホで日付選択の小さなタップ領域を観測した",
+        "detail": "Chromium mobile/touch contextを実生成し390×844・360×800でtap/scrollを実施。対象Cだけ1300円・2026-11-01を保存し、両幅の再開履歴「2026-11-01 — 1,300円/h」を確認して目的達成。日32×32、月50×32、年52×32のタップ領域を観測した（既知1038に隣接する未実証観測）。保存82×44・取消106×44・閉じる44×44、ページ横パンなし。横タブ初回tapはtimeout、横scroll後に進行。保存後一覧の未設定/—と再開時の金額空・当日は将来日仕様の可能性があり欠陥と断定しない。 元run: CMP-260910-1555-revalidation-20261030-11。実施完了と目的achievedを分離し、未実証観測として保持する。B0 coverageや親1555の正式完了へ昇格しない。",
+        "page": null,
+        "pageLabel": "住民が自力で辿った時給関連画面",
+        "pageProvenance": "この選別記録では具体的URLを採用せず、固定UIの経路で住民探索を補完しない。",
+        "personaId": "CMP1555-R11-C",
+        "personaArchetype": "スマホ片手・表示とタップ操作",
+        "journeyId": "CMP1555-R11-C-journey",
+        "originalRunId": "CMP-260910-1555-revalidation-20261030-11",
+        "runId": "CMP-260910-1555-revalidation-20261030-11",
+        "sourceHead": "588407f98b2b7aecd99897c26bdd3b6129768a82",
+        "evidencePath": "docs/evidence/CMP-260910-1555/resident-observations-20261030.json",
+        "sourceEvidencePath": "resident-C/resident-safe.json",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "urgency": "normal"
       }
     ],
     "runEnvironments": {
@@ -11210,6 +11327,24 @@ window.BETA_INVENTORY_DATA = {
         "goalsReached": false,
         "coveragePassed": false,
         "note": "base d3e0d74f2d に実機E2E spec 1件（PR #4208 head dae9f24a92）を加えた構成での探索。画像実体は含めず private 原本への path 参照のみ。通常validatorの既知不一致を合格と読み替えない。"
+      },
+      "CMP-260910-1555-revalidation-20261030-11": {
+        "runId": "CMP-260910-1555-revalidation-20261030-11",
+        "sourceHead": "588407f98b2b7aecd99897c26bdd3b6129768a82",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "sourceEvidencePath": "docs/evidence/CMP-260910-1555/resident-observations-20261030.json",
+        "executionCompleted": true,
+        "goalsReached": false,
+        "goalOutcomeByResident": {
+          "A": "achieved",
+          "B": "unmet",
+          "C": "achieved"
+        },
+        "coveragePassed": false,
+        "formalParentCompletion": false,
+        "note": "A/C目的達成・B未達を保持。固定58件/必須全greenと正式完了は別。検証後のprivate helper原本不在による完全再現性の制限を選別観測に記載。"
       }
     }
   },
