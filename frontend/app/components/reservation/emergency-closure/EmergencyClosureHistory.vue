@@ -5,6 +5,8 @@ import type { EmergencyClosureConnectionState } from '~/composables/useEmergency
 defineProps<{
   loading: boolean
   items: ClosureHistoryItem[]
+  /** 履歴の取得に失敗した。空配列の「履歴なし」と区別して失敗を表示する。 */
+  loadError?: boolean
   expandedClosureId: number | null
   /** 展開中の臨時休業 1 件の確認状況（リアルタイム購読の結果）。 */
   confirmations: ClosureConfirmationItem[]
@@ -36,6 +38,7 @@ const { formatDateTime } = useDatetime()
         rounded
         size="small"
         :loading="loading"
+        data-testid="closure-history-reload"
         @click="emit('reload')"
       />
     </div>
@@ -43,6 +46,14 @@ const { formatDateTime } = useDatetime()
     <div v-if="loading">
       <Skeleton v-for="i in 2" :key="i" height="2.5rem" class="mb-2" />
     </div>
+    <p
+      v-else-if="loadError"
+      data-testid="closure-history-error"
+      class="rounded-md bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400"
+    >
+      <i class="pi pi-exclamation-triangle mr-2" />
+      {{ $t('emergency_closure.error.history_failed') }}
+    </p>
     <div v-else-if="items.length > 0" class="overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
