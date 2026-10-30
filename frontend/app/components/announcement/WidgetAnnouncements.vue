@@ -138,9 +138,9 @@ async function onMarkAllRead() {
     <template #header>
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <span tabindex="-1" data-announcement-heading class="font-semibold text-surface-700 dark:text-surface-200">
+          <h3 tabindex="-1" data-announcement-heading class="font-semibold text-surface-700 dark:text-surface-200">
             {{ t('announcement.widget_title') }}
-          </span>
+          </h3>
           <span
             v-if="unreadCount > 0"
             class="rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-white"
