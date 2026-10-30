@@ -126,7 +126,7 @@ test('M21 管理API運用と既存batch・6言語通知bell（実検体）', asy
   const api = required('API_BASE_URL')
   const baseURL = required('BASE_URL')
   expect(api).toBe('http://localhost:8081')
-  expect(baseURL).toBe('http://localhost:3001')
+  expect(baseURL).toBe('http://localhost:3003')
   const actors = actorsFromEnvironment()
   const actor = (code: string): Actor => {
     const value = actors.find(item => item.code === code)
