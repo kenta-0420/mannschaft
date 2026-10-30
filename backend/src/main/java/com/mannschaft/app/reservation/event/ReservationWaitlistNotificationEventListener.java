@@ -11,6 +11,7 @@ import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.reservation.service.ReservationWaitlistNotifyRunner;
 import com.mannschaft.app.reservation.service.ReservationWaitlistNotifyRunner.Target;
 import com.mannschaft.app.reservation.service.ReservationWaitlistNotifyRunner.Targets;
+import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -72,6 +73,8 @@ public class ReservationWaitlistNotificationEventListener {
     private final UserLocaleCache userLocaleCache;
     private final MessageSource messageSource;
     private final Clock clock;
+    /** 遷移先 URL の slug 解決用（Repository は直接使わず Service 経由）。 */
+    private final TeamService teamService;
 
     /**
      * 枠の空き復帰イベントを受信し、当該枠の WAITING 登録者へ一斉通知する。
@@ -102,9 +105,21 @@ public class ReservationWaitlistNotificationEventListener {
             return;
         }
 
+        // 遷移先の slug は宛先ループの前に 1 回だけ解決する（宛先 N 人でも 1 回）。claim より前なので、
+        // 失敗しても印は残らない。FE ルートは slug のみ受けるため、解決できなければ数値 URL は作らない。
+        String actionUrl;
+        try {
+            String slug = teamService.getSlugById(event.getTeamId());
+            actionUrl = slug != null ? "/teams/" + slug + "/reservations" : "/notifications";
+        } catch (Exception e) {
+            log.error("キャンセル待ち空き通知の遷移先 slug の解決に失敗しました（印は取らず配送しません）: teamId={}, slotId={}",
+                    event.getTeamId(), event.getSlotId(), e);
+            return;
+        }
+
         int notified = 0;
         for (Target target : found.targets()) {
-            if (notifyOne(event, found, target, claimedAt, suppressBefore)) {
+            if (notifyOne(event, found, target, claimedAt, suppressBefore, actionUrl)) {
                 notified++;
             }
         }
@@ -118,7 +133,7 @@ public class ReservationWaitlistNotificationEventListener {
      * <p>claim できた後の例外は prev に戻す。行ごとの失敗は呼び出し元へ伝播させない。</p>
      */
     private boolean notifyOne(ReservationSlotReopenedEvent event, Targets found, Target target,
-                              LocalDateTime claimedAt, LocalDateTime suppressBefore) {
+                              LocalDateTime claimedAt, LocalDateTime suppressBefore, String actionUrl) {
         try {
             // 配送の前に印を先取りする。取れなければ他の配送が担当済み、または抑止期限内なので送らない。
             if (!notifyRunner.claim(target.entryId(), claimedAt, suppressBefore)) {
@@ -131,7 +146,7 @@ public class ReservationWaitlistNotificationEventListener {
         }
 
         try {
-            NotificationDeliveryRequest request = buildRequest(event, found, target);
+            NotificationDeliveryRequest request = buildRequest(event, found, target, actionUrl);
             NotificationDeliveryResult result = notificationDeliveryRunner.sendOne(request);
             if (result == NotificationDeliveryResult.VISIBILITY_DENIED) {
                 // visibility deny（例外ではない）。NotificationService 側で既に WARN 済み。印は保持する（戻さない）。
@@ -162,7 +177,8 @@ public class ReservationWaitlistNotificationEventListener {
     }
 
     /** 通知配送要求を組み立てる（業務TX外・AFTER_COMMIT 後に実行される）。 */
-    private NotificationDeliveryRequest buildRequest(ReservationSlotReopenedEvent event, Targets found, Target target) {
+    private NotificationDeliveryRequest buildRequest(ReservationSlotReopenedEvent event, Targets found, Target target,
+                                                     String actionUrl) {
         // UserLocaleCache は TTL 5分・件数上限つき LRU（D-5: 予約ドメインから auth リポジトリへ
         // 直接依存しない・common.i18n 配下の共有サービス経由に限定する）。
         Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(target.userId()));
@@ -185,7 +201,7 @@ public class ReservationWaitlistNotificationEventListener {
                 event.getSlotId(),
                 NotificationScopeType.TEAM,
                 event.getTeamId(),
-                "/teams/" + event.getTeamId() + "/reservations",
+                actionUrl,
                 null);
     }
 }

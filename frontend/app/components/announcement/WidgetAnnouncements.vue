@@ -136,25 +136,27 @@ async function onMarkAllRead() {
   <DashboardWidgetCard data-announcement-list>
     <!-- ヘッダー -->
     <template #header>
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <h3 tabindex="-1" data-announcement-heading class="font-semibold text-surface-700 dark:text-surface-200">
+      <!-- 狭い幅（スマホ等）では見出し群とボタン群が2段に折り返す。各ラベルは語の途中で折らない -->
+      <div data-announcement-header-row class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <div data-announcement-title-group class="flex flex-wrap items-center gap-2">
+          <h3 tabindex="-1" data-announcement-heading class="whitespace-nowrap font-semibold text-surface-700 dark:text-surface-200">
             {{ t('announcement.widget_title') }}
           </h3>
           <span
             v-if="unreadCount > 0"
-            class="rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-white"
+            data-announcement-unread-badge
+            class="whitespace-nowrap rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-white"
           >
             {{ t('announcement.unread_count', { count: unreadCount }) }}
           </span>
         </div>
-        <div class="flex items-center gap-1">
+        <div data-announcement-actions class="flex flex-wrap items-center gap-1">
           <Button
             v-if="unreadCount > 0"
             :label="t('announcement.mark_all_read')"
             size="small"
             text
-            class="text-xs"
+            class="min-h-11 whitespace-nowrap text-xs sm:min-h-0"
             @click="onMarkAllRead"
           />
           <Button
@@ -166,14 +168,14 @@ async function onMarkAllRead() {
             :title="t('button.loading')"
             @click="refresh"
           />
-          <NuxtLink v-if="allAnnouncementsPath" :to="allAnnouncementsPath">
+          <NuxtLink v-if="allAnnouncementsPath" :to="allAnnouncementsPath" class="whitespace-nowrap">
             <Button
               :label="t('announcement.all_announcements')"
               icon="pi pi-arrow-right"
               icon-pos="right"
               size="small"
               text
-              class="text-xs"
+              class="min-h-11 whitespace-nowrap text-xs sm:min-h-0"
             />
           </NuxtLink>
         </div>
