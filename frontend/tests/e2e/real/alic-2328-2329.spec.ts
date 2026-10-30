@@ -349,7 +349,8 @@ test('E2E-2329-1: ADMIN が緊急休業を画面で一括送信 → トースト
   const m = Number(closureDay.iso.slice(5, 7)); const d = Number(closureDay.iso.slice(8, 10))
   const historyRow = page.getByRole('row').filter({ hasText: `${m}月${d}日` }).first()
   await expect(historyRow).toBeVisible({ timeout: 30_000 })
-  await expect(historyRow).toContainText('2件')
+  // 件数を表示している Tag に絞り、「2件」と完全一致することを確かめる（「12件」「22件」では通らない）
+  await expect(historyRow.locator('.p-tag')).toHaveText(/^\s*2件\s*$/)
   const rowText = (await historyRow.textContent()) ?? ''
   expect(rowText).not.toMatch(/undefined|NaN|null/)
   console.log(`[E2E-2329-1] 履歴行="${rowText.replace(/\s+/g, ' ').trim()}"`)
