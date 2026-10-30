@@ -161,7 +161,7 @@ describe('EmergencyClosureForm 休業理由 (CMP-261030-0649)', () => {
   it('AC-6a: 400 の fieldErrors(reason/subject) を各入力欄の下に表示する', async () => {
     mockApi.mockImplementation(async (_url: string, opts?: MockOpts) => {
       if (opts?.method === 'POST') {
-        throw { data: { error: { code: 'COMMON_001', fieldErrors: [{ field: 'reason', message: 'must not be blank' }, { field: 'subject', message: 'size must be between 0 and 200' }] } } }
+        throw { data: { error: { code: 'COMMON_001', fieldErrors: [{ field: 'reason', message: 'must not be blank' }, { field: 'subject', message: 'too long' }] } } }
       }
       return { data: [] }
     })
@@ -171,9 +171,61 @@ describe('EmergencyClosureForm 休業理由 (CMP-261030-0649)', () => {
     vm.openConfirm()
     await vm.confirmSend()
     await wrapper.vm.$nextTick()
-    expect(wrapper.find('[data-testid="closure-reason-error"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="closure-subject-error"]').exists()).toBe(true)
+    // useErrorHandler.getFieldErrors が 'must not be blank' → required、'too long' → max_length に解決する。
+    // 欄ごとに別の文言が出ること（入れ替わっていないこと）を本文で照合する。
+    const requiredText = tr('required')
+    const maxLengthText = tr('max_length')
+    expect(requiredText).not.toBe(maxLengthText)
+    expect(wrapper.find('[data-testid="closure-reason-error"]').text()).toBe(requiredText)
+    expect(wrapper.find('[data-testid="closure-subject-error"]').text()).toBe(maxLengthText)
     expect(mockNotifyError).not.toHaveBeenCalled()
+    wrapper.unmount()
+  }, 60000)
+
+  it('AC-6a: reason だけの fieldErrors は reason 欄にだけ表示され subject 欄には出ない', async () => {
+    mockApi.mockImplementation(async (_url: string, opts?: MockOpts) => {
+      if (opts?.method === 'POST') {
+        throw { data: { error: { code: 'COMMON_001', fieldErrors: [{ field: 'reason', message: 'must not be blank' }] } } }
+      }
+      return { data: [] }
+    })
+    const wrapper = await mountSuspended(EmergencyClosureForm, { props: { teamId: 'team-slug' } })
+    const vm = wrapper.vm as unknown as FormVm
+    await fill(wrapper, { reason: 'r', subject: 's', body: 'b' })
+    vm.openConfirm()
+    await vm.confirmSend()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="closure-reason-error"]').text()).toBe(tr('required'))
+    expect(wrapper.find('[data-testid="closure-subject-error"]').exists()).toBe(false)
+    expect(mockNotifyError).not.toHaveBeenCalled()
+    wrapper.unmount()
+  }, 60000)
+
+  it('カスタム: 選択→本文入力→期間変更しても入力した本文が消えない', async () => {
+    const wrapper = await mountSuspended(EmergencyClosureForm, { props: { teamId: 'team-slug' } })
+    const vm = wrapper.vm as unknown as FormVm & { startDate: string }
+    vm.applyTemplate(3)
+    await fill(wrapper, { reason: '理由', subject: '件名', body: '手で書いた本文' })
+    vm.startDate = '2026-12-24'
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+    expect((wrapper.find('[data-testid="closure-body"]').element as HTMLTextAreaElement).value).toBe('手で書いた本文')
+    wrapper.unmount()
+  }, 60000)
+
+  it('定型テンプレート: 期間を変えると本文の期間表記は従来どおり差し替わる', async () => {
+    const wrapper = await mountSuspended(EmergencyClosureForm, { props: { teamId: 'team-slug' } })
+    const vm = wrapper.vm as unknown as FormVm & { startDate: string, endDate: string }
+    vm.applyTemplate(0)
+    await wrapper.vm.$nextTick()
+    const before = (wrapper.find('[data-testid="closure-body"]').element as HTMLTextAreaElement).value
+    vm.startDate = '2026-12-24'
+    vm.endDate = '2026-12-25'
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+    const after = (wrapper.find('[data-testid="closure-body"]').element as HTMLTextAreaElement).value
+    expect(after).not.toBe(before)
+    expect(after).toContain('24')
     wrapper.unmount()
   }, 60000)
 

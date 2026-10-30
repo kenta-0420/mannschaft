@@ -156,6 +156,9 @@ watch([startDate, endDate, useTimeRange, startHour, endHour], () => {
   if (selectedTemplateIndex.value === null) return
   const tmpl = TEMPLATES.value[selectedTemplateIndex.value]
   if (!tmpl) return
+  // 期間表記（__PERIOD__）を持たないテンプレート（カスタム＝本文が空）は再生成しない。
+  // 再代入すると、利用者が入力した本文が期間変更で消える。
+  if (!tmpl.body.includes('__PERIOD__')) return
   messageBody.value = tmpl.body.replace('__PERIOD__', periodText.value)
 })
 
