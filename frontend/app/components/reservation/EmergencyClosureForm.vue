@@ -10,6 +10,7 @@ const props = defineProps<{
 const { t } = useI18n()
 const closureApi = useEmergencyClosureApi()
 const notification = useNotification()
+const { getFieldErrors } = useErrorHandler()
 const { userTimezone } = useDatetime()
 // 多重防御（defense-in-depth）: 親タブの v-if に加え、一括送信ボタンを本コンポーネントでも
 // ロールで制御する（緊急休業は副管理者=DEPUTY_ADMIN まで許可）。BE が本防御線。
@@ -202,6 +203,8 @@ async function loadPreview() {
 const sendLoading = ref(false)
 const sendResult = ref<number | null>(null)
 const showConfirm = ref(false)
+/** BE の 400 fieldErrors（フィールド名 → メッセージ）。reason / subject の入力欄の下に表示する。 */
+const sendFieldErrors = ref<Record<string, string>>({})
 
 function openConfirm() {
   if (!startDate.value || !endDate.value) {
@@ -210,6 +213,10 @@ function openConfirm() {
   }
   if (timeRangeError.value) {
     notification.warn(timeRangeError.value)
+    return
+  }
+  if (!reason.value.trim()) {
+    notification.warn(t('emergency_closure.error.reason_required'))
     return
   }
   if (!subject.value.trim()) {
@@ -226,7 +233,9 @@ function openConfirm() {
 async function confirmSend() {
   showConfirm.value = false
   sendLoading.value = true
+  let sendSucceeded = false
   sendResult.value = null
+  sendFieldErrors.value = {}
   try {
     const res = await closureApi.sendClosure(props.teamId, {
       startDate: startDate.value,
@@ -240,30 +249,39 @@ async function confirmSend() {
     })
     sendResult.value = res.data.sentCount
     notification.success(t('emergency_closure.message.sent_count', { count: res.data.sentCount }))
-    await loadHistory()
     previewItems.value = []
     previewDone.value = false
+    sendSucceeded = true
   }
-  catch {
-    notification.error(t('emergency_closure.error.send_failed'))
+  catch (error) {
+    // 400 の fieldErrors があれば該当入力欄の下に出す。無ければ従来どおり汎用の失敗通知。
+    sendFieldErrors.value = getFieldErrors(error)
+    if (Object.keys(sendFieldErrors.value).length === 0) {
+      notification.error(t('emergency_closure.error.send_failed'))
+    }
   }
   finally {
     sendLoading.value = false
   }
+  // 履歴の取得は送信（POST）とは独立。ここで失敗しても送信成功の表示は変えず、履歴側に失敗を出す。
+  if (sendSucceeded) await loadHistory()
 }
 
 // --- 履歴 ---
 const historyLoading = ref(false)
 const historyItems = ref<ClosureHistoryItem[]>([])
+const historyLoadError = ref(false)
 
 async function loadHistory() {
   historyLoading.value = true
+  historyLoadError.value = false
   try {
     const res = await closureApi.listClosures(props.teamId)
     historyItems.value = res.data
   }
   catch {
-    historyItems.value = []
+    // 空配列に潰さず、取得失敗として履歴セクションに表示する（「履歴なし」と区別する）。
+    historyLoadError.value = true
   }
   finally {
     historyLoading.value = false
@@ -418,7 +436,9 @@ onUnmounted(() => {
     <!-- Section 3: メッセージ編集 -->
     <EmergencyClosureMessageEditor
       v-model:subject="subject"
+      v-model:reason="reason"
       v-model:message-body="messageBody"
+      :field-errors="sendFieldErrors"
     />
 
     <!-- Section 4: オプション -->
@@ -469,6 +489,7 @@ onUnmounted(() => {
     <EmergencyClosureHistory
       :loading="historyLoading"
       :items="historyItems"
+      :load-error="historyLoadError"
       :expanded-closure-id="expandedClosureId"
       :confirmations="liveItems"
       :confirmed-count="liveConfirmedCount"
@@ -485,6 +506,7 @@ onUnmounted(() => {
       v-model:visible="showConfirm"
       :period-text="periodText"
       :subject="subject"
+      :reason="reason"
       :cancel-reservations="cancelReservations"
       @confirm="confirmSend"
     />

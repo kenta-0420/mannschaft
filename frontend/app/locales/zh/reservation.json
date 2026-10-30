@@ -18,12 +18,14 @@
       "end_time": "结束时间",
       "target_period": "目标期间",
       "subject": "主题",
+      "reason": "休业原因",
       "body": "正文",
       "cancel_reservations": "取消受影响的预约"
     },
     "placeholder": {
       "select": "请选择",
       "subject": "请输入主题",
+      "reason": "请输入休业原因",
       "body": "请输入正文"
     },
     "hint": {
@@ -75,7 +77,8 @@
       "confirm_message": "是否以以下内容批量发送？",
       "cancel_warning": "※ 受影响的预约将被取消",
       "label_period": "目标期间",
-      "label_subject": "主题"
+      "label_subject": "主题",
+      "label_reason": "休业原因"
     },
     "error": {
       "time_range_required": "请选择开始和结束时间",
@@ -84,6 +87,8 @@
       "preview_failed": "预览加载失败",
       "subject_required": "请输入主题",
       "body_required": "请输入正文",
+      "reason_required": "请输入休业原因",
+      "history_failed": "发送记录加载失败，请重新加载",
       "send_failed": "发送失败",
       "confirmations_failed": "确认状态加载失败",
       "info_missing": "通知信息缺失"
