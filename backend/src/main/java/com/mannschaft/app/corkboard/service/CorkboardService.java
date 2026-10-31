@@ -282,7 +282,9 @@ public class CorkboardService {
         if (!accessControlService.isAdminOrAbove(userId, board.getScopeId(), board.getScopeType())) {
             log.warn("コルクボード更新権限なし: boardId={}, userId={}, scope={}, scopeId={}",
                     boardId, userId, board.getScopeType(), board.getScopeId());
-            throw new BusinessException(deniedErrorCode(board, userId));
+            // 非メンバー（閲覧できない者）は Controller が先に通す CorkboardScopedBoardVisibilityGuard が
+            // 不在と同一の 404 で弾く（CMP-260820-1422・D-3T のため取引の外で判定）。ここに来るのはメンバーのみ。
+            throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
         }
 
         board.update(
@@ -331,25 +333,14 @@ public class CorkboardService {
         if (!accessControlService.isAdminOrAbove(userId, board.getScopeId(), board.getScopeType())) {
             log.warn("コルクボード削除権限なし: boardId={}, userId={}, scope={}, scopeId={}",
                     boardId, userId, board.getScopeType(), board.getScopeId());
-            throw new BusinessException(deniedErrorCode(board, userId));
+            // 非メンバー（閲覧できない者）は Controller が先に通す CorkboardScopedBoardVisibilityGuard が
+            // 不在と同一の 404 で弾く（CMP-260820-1422・D-3T のため取引の外で判定）。ここに来るのはメンバーのみ。
+            throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
         }
         board.softDelete();
         corkboardRepository.save(board);
         log.info("コルクボード削除: boardId={}", boardId);
         eventPublisher.publishEvent(CorkboardEvent.boardDeleted(boardId));
-    }
-
-    /**
-     * スコープ別ボードの書込拒否時に返すエラーコードを決める（CMP-260820-1422 存在オラクル一掃）。
-     *
-     * <p>非メンバー（＝ボードを閲覧できない者）には不在と同一の {@link CorkboardErrorCode#BOARD_NOT_FOUND}
-     * （404）を返して boardId の実在を秘匿する。メンバーは当該ボードを一覧・詳細で既に閲覧できるため、
-     * 権限不足の {@link CorkboardErrorCode#INSUFFICIENT_PERMISSION}（403）を返しても新たに漏れる情報はない。</p>
-     */
-    private CorkboardErrorCode deniedErrorCode(CorkboardEntity board, Long userId) {
-        return accessControlService.isMember(userId, board.getScopeId(), board.getScopeType())
-                ? CorkboardErrorCode.INSUFFICIENT_PERMISSION
-                : CorkboardErrorCode.BOARD_NOT_FOUND;
     }
 
     /**
