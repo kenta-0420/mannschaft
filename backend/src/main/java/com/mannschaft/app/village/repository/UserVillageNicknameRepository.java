@@ -3,6 +3,7 @@ package com.mannschaft.app.village.repository;
 import com.mannschaft.app.village.entity.UserVillageNicknameEntity;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -74,4 +75,14 @@ public interface UserVillageNicknameRepository extends JpaRepository<UserVillage
     long countByUserIdsAndKeyword(
             @Param("userIds") Collection<Long> userIds,
             @Param("q") String q);
+
+    /**
+     * 退会30日後の強匿名化専用。所有列 {@code user_id} で本人の行を一括物理削除する（行ごとのループを行わない）。
+     *
+     * @param userId 完全削除された利用者 ID
+     * @return 削除件数
+     */
+    @Modifying
+    @Query(value = "DELETE FROM user_village_nicknames WHERE user_id = :userId", nativeQuery = true)
+    int deleteAllOwnedByUserId(@Param("userId") Long userId);
 }

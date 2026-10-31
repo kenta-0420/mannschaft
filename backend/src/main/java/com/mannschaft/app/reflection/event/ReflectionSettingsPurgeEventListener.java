@@ -7,6 +7,7 @@ import com.mannschaft.app.gdpr.service.AccountPurgeCompletionService;
 import com.mannschaft.app.reflection.repository.UserReflectionSettingsRepository;
 import com.mannschaft.app.reflection.repository.RecallSessionRepository;
 import com.mannschaft.app.reflection.repository.RecallSessionCommandRepository;
+import com.mannschaft.app.reflection.repository.ReflectionSpacedReminderRepository;
 import lombok.RequiredArgsConstructor;
 import com.mannschaft.app.reflection.repository.ReflectionRanchTransportRepository;
 import org.springframework.scheduling.annotation.Async;
@@ -28,6 +29,7 @@ public class ReflectionSettingsPurgeEventListener {
     private final RecallSessionCommandRepository recallSessionCommands;
     private final RecallSessionRepository recallSessions;
     private final ReflectionRanchTransportRepository transport;
+    private final ReflectionSpacedReminderRepository spacedReminderRepository;
 
     /** 30日後の強匿名化。所有データの削除コミット後にのみ完了を記録する。 */
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
@@ -60,5 +62,7 @@ public class ReflectionSettingsPurgeEventListener {
         recallSessionCommands.deleteByUserId(userId);
         recallSessions.deleteByUserId(userId);
         userReflectionSettingsRepository.deleteById(userId);
+        // CMP-260822-1243: 本人宛ての間隔反復リマインドも同じ所有TXで一括削除する（御裁可済）。
+        spacedReminderRepository.deleteAllOwnedByUserId(userId);
     }
 }
