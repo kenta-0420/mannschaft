@@ -56,7 +56,7 @@
 | 56日 | [#1073](https://github.com/kenta-0420/mannschaft/pull/1073) | poi-ooxml | **マージ済**（2026-10-04T01:59:10Z / 53f80e2e5238e7cebc56d3dd60876d31236b2ef1）前回照合（2026-10-03）時点の記録: 当時head `ffffae5ef5115d3bd00d24024a4d76ed8a014742`の対象27件はfailure/error/skip各0。[全体CI run](https://github.com/kenta-0420/mannschaft/actions/runs/37009214808)はArchUnit importerのJava heap spaceで失敗し、永続化enum番人もskip。当時は未マージであり、共通対策PR #3607（MERGED、2026-10-03T15:38:34Z）の全6シャードと全ArchUnit番人の正式検証を待っていた。#3607 は全ArchUnit番人を専用JVMへ分離してOOMを対照する対策で、着地済みのため「候補」ではない |
 | 48日 | [#1319](https://github.com/kenta-0420/mannschaft/pull/1319) | lint-staged 16→17 | **マージ済**（2026-10-03T21:23:23Z / 3fed9dea1b659cf277de0d417768e32283cc97e6） |
 | 48日 | [#1318](https://github.com/kenta-0420/mannschaft/pull/1318) | vue-virtual-scroller | **マージ済**（2026-10-04T00:09:06Z / 64d10f6d7e2bf380031065952710ab0d4d25df15） |
-| 48日 | [#1317](https://github.com/kenta-0420/mannschaft/pull/1317) | cheerio | **未処遇（OPEN）**。2026-10-30 時点 BEHIND/MERGEABLE。CI は Lighthouse と Smoke E2E が fail（他は pass、同一PRで2件のみ）。dependabot に `@dependabot rebase` を依頼済みだが「人手で編集されたため rebase 不可、`@dependabot recreate` なら再作成可」と返信（10-10）。殿の判断待ち |
+| 48日 | [#1317](https://github.com/kenta-0420/mannschaft/pull/1317) | cheerio | **未処遇（OPEN）**。2026-10-30 時点 BEHIND/MERGEABLE。CI は Lighthouse と Smoke E2E が fail（失敗2件・成功12件・未実行(skipping)6件。テストシャード等は未実行で検証済みではない。2026-10-31 実測）。dependabot に `@dependabot rebase` を依頼済みだが「人手で編集されたため rebase 不可、`@dependabot recreate` なら再作成可」と返信（10-10）。殿の判断待ち |
 | 48日 | [#1316](https://github.com/kenta-0420/mannschaft/pull/1316) | nuxt-security 1.4→2.6 | **クローズ済**（2026-10-27、dependabot 自動クローズ。コメント「Superseded by #4174.」）。後継 #4174（1.4.3→2.7.0）は OPEN。メジャーのため単独PRでCIを通すこと |
 | 48日 | [#1083](https://github.com/kenta-0420/mannschaft/pull/1083) | @nuxtjs/i18n 9→10 | **マージ済**（2026-10-04T21:30:39Z / 16dc01a60605dbb0a9fc9d1cfa366b516a80f1bc） |
 | 35日 | #1490 #1489 | **Spring Boot 3.5.13 → 4.1.0**（メジャー）/ AWS SDK BOM | **クローズ済（2件）**。#1490 は 2026-10-06 に dependabot が「Superseded by #3695.」で自動クローズ、#1489 は同日「Superseded by #3696.」で自動クローズ（#3696 も後に CLOSED、理由は「awssdk:bom は依存でなくなった」）。後継 #3695（Spring Boot 4.1.2）は OPEN だが CI 大半が fail のため見送り＝別戦役 |
@@ -72,9 +72,9 @@
 | PR | 中身 | 状態 / mergeable | CI fail | 処遇案 |
 |---|---|---|---|---|
 | #1317 | cheerio 1.0.0-rc.12 → 1.2.0（frontend, dev） | OPEN / BEHIND・MERGEABLE | Lighthouse、Smoke E2E | dependabot が rebase 不可（人手編集済）。`@dependabot recreate` で再作成が筋。cheerio の用途確認後に判断 |
-| #3683 | actions/upload-artifact 4 → 7 | OPEN / BEHIND・MERGEABLE | Compile & Test、Test (shard 1)（他は pass） | shard 1 は依存と無関係の可能性大。rerun かmain追従後に再判定、通ればマージ候補 |
+| #3683 | actions/upload-artifact 4 → 7 | OPEN / BEHIND・MERGEABLE | Compile & Test、Test (shard 1)（失敗2件・成功22件・未実行1件。2026-10-31 実測） | shard 1 は依存と無関係の可能性大。rerun かmain追従後に再判定、通ればマージ候補 |
 | #3685 | hashicorp/setup-terraform 3 → 4 | OPEN / BEHIND・MERGEABLE | なし（Terraform Plan は skipping） | マージ候補。ただし Plan 未実行のため main 追従後に infra 系ワークフローの挙動を確認 |
-| #3687 | actions/setup-java 4 → 6 | OPEN / BEHIND・MERGEABLE | なし（全シャード pass） | マージ候補（main 追従後） |
+| #3687 | actions/setup-java 4 → 6 | OPEN / BEHIND・MERGEABLE | なし（成功23件・未実行1件。2026-10-31 実測） | マージ候補（main 追従後） |
 | #3695 | Spring Boot 3.5.13 → 4.1.2（メジャー、#1490 の後継） | OPEN / BEHIND・MERGEABLE | Compile & Test、全6シャード、ArchUnit、Non-JST、Shard coverage、OpenAPI Drift | 見送り（別戦役）。クローズせず保留か、戦役化するまで放置 |
 | #4174 | nuxt-security 1.4.3 → 2.7.0（#1316 の後継） | OPEN（CI 未調査） | 未調査 | メジャー。単独PRでCI確認 |
 | #3689 | archunit-junit5 1.3.0 → 1.5.1 | CLOSED（2026-10-28、dependabot 自動クローズ「もはや依存でないため不要」）/ CONFLICTING | クローズ時 fail なし | 再起票の要否は下記「重要な所見」参照 |
