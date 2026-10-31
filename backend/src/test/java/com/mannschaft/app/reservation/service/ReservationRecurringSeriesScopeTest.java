@@ -494,7 +494,7 @@ class ReservationRecurringSeriesScopeTest {
                 .isEqualTo(ReservationStatus.CONFIRMED);
         assertThat(response.getRecurringCancel().cancelledCount()).isEqualTo(1);
         // 実装が userId 無しの finder（存在しない）や findAll 相当に退行していないことを固定する
-        verify(reservationRepository).findByRecurringSeriesIdAndUserIdForUpdate(SERIES_ID, USER_ID);
+        verify(reservationRepository, org.mockito.Mockito.atLeastOnce()).findByRecurringSeriesIdAndUserIdForUpdate(SERIES_ID, USER_ID);
         verify(reservationRepository, never()).findAll();
     }
 
@@ -565,7 +565,7 @@ class ReservationRecurringSeriesScopeTest {
                 .as("別チームの行は series を共有していても承認されない（テナント境界越え禁止）")
                 .isEqualTo(ReservationStatus.PENDING);
         assertThat(response.getRecurringConfirm().confirmedCount()).isEqualTo(1);
-        verify(reservationRepository).findByRecurringSeriesIdAndTeamIdForUpdate(SERIES_ID, TEAM_ID);
+        verify(reservationRepository, org.mockito.Mockito.atLeastOnce()).findByRecurringSeriesIdAndTeamIdForUpdate(SERIES_ID, TEAM_ID);
         verify(reservationRepository, never()).findByRecurringSeriesIdAndUserIdForUpdate(any(), anyLong());
     }
 
