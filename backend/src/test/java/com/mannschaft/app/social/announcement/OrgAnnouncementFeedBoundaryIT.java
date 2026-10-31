@@ -408,6 +408,53 @@ class OrgAnnouncementFeedBoundaryIT extends AbstractMySqlIntegrationTest {
         }
     }
 
+    // ═════════════════ 7. 準備中・削除済みの組織 ═════════════════
+
+    @Test
+    @DisplayName("論理削除された組織の告知は、SYSTEM_ADMIN を含め一覧に出ず、プレビューも 404（一致）")
+    void 削除済み組織の告知は一覧に出ない() throws Exception {
+        AnnouncementFeedEntity feed = feed(blog(Visibility.PUBLIC).getId(), null);
+        for (String who : List.of("N", "OM", "OA", "SA")) {
+            assertThat(previewStatus(feed, who)).as(who + " 削除前のプレビュー").isEqualTo(200);
+        }
+        em.flush();
+        em.createNativeQuery("UPDATE organizations SET deleted_at = NOW() WHERE id = :id")
+                .setParameter("id", orgX).executeUpdate();
+        em.clear();
+        for (String who : List.of("N", "OM", "OA", "SA")) {
+            assertThat(previewStatus(feed, who)).as(who + " のプレビュー").isEqualTo(404);
+            assertThat(listedIdsOrEmpty(who)).as(who + " の一覧").doesNotContain(feed.getId());
+        }
+    }
+
+    @Test
+    @DisplayName("準備中（PROVISIONED）の組織の告知は、SYSTEM_ADMIN を含め一覧に出ず、プレビューも 404（一致）")
+    void 準備中組織の告知は一覧に出ない() throws Exception {
+        AnnouncementFeedEntity feed = feed(blog(Visibility.PUBLIC).getId(), null);
+        em.flush();
+        em.createNativeQuery("UPDATE organizations SET lifecycle_status = 'PROVISIONED' WHERE id = :id")
+                .setParameter("id", orgX).executeUpdate();
+        em.clear();
+        for (String who : List.of("N", "OM", "OA", "SA")) {
+            assertThat(previewStatus(feed, who)).as(who + " のプレビュー").isEqualTo(404);
+            assertThat(listedIdsOrEmpty(who)).as(who + " の一覧").doesNotContain(feed.getId());
+        }
+    }
+
+    /** 組織の状態によっては一覧そのものが 200 以外になりうる。その場合は「出ない」として扱う。 */
+    private List<Long> listedIdsOrEmpty(String who) throws Exception {
+        em.flush();
+        String path = "/api/v1/organizations/" + orgX + "/announcements";
+        var result = mockMvc.perform(get(path).servletPath(path).param("limit", "50")
+                .with(user(people.get(who).toString()))).andReturn();
+        List<Long> ids = new ArrayList<>();
+        if (result.getResponse().getStatus() == 200) {
+            objectMapper.readTree(result.getResponse().getContentAsString()).path("data")
+                    .forEach(item -> ids.add(item.path("id").asLong()));
+        }
+        return ids;
+    }
+
     private void setStartsAt(AnnouncementFeedEntity feed, LocalDateTime startsAt) {
         em.flush();
         em.createNativeQuery("UPDATE announcement_feeds SET starts_at = :s WHERE id = :id")

@@ -38,6 +38,7 @@ public class OrgAnnouncementFeedReadability {
     private final OrgAnnouncementAudienceAccess audienceAccess;
     private final ContentVisibilityChecker visibilityChecker;
     private final BlogPostPreviewService blogPreviewService;
+    private final AnnouncementPreviewSourceService previewSourceService;
 
     /**
      * 閲覧者が本文プレビューを開ける行だけを、入力の順序のまま返す。
@@ -47,6 +48,10 @@ public class OrgAnnouncementFeedReadability {
      */
     public List<AnnouncementFeedEntity> filterReadable(List<AnnouncementFeedEntity> feeds, Long viewerId) {
         if (feeds == null || feeds.isEmpty()) {
+            return List.of();
+        }
+        // 準備中・論理削除された組織は、プレビューが管理者も含めて 404 にする。一覧も同じ判定（プレビューと共有）で空にする（組織単位で 1 回）
+        if (previewSourceService.isScopeDenied(feeds.get(0))) {
             return List.of();
         }
         Map<Long, OrgAnnouncementAudienceAccess.Access> access = audienceAccess.evaluateAll(feeds, viewerId);
