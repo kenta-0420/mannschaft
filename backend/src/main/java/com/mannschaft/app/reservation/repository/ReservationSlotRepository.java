@@ -2,12 +2,15 @@ package com.mannschaft.app.reservation.repository;
 
 import com.mannschaft.app.reservation.SlotStatus;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,6 +27,11 @@ public interface ReservationSlotRepository extends JpaRepository<ReservationSlot
     @Query(value = "SELECT * FROM reservation_slots WHERE id IN (:ids)", nativeQuery = true)
     List<ReservationSlotEntity> findAllByIdIncludingDeletedForHistory(
             @Param("ids") java.util.Collection<Long> ids);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM ReservationSlotEntity s WHERE s.id IN :ids "
+            + "AND s.deletedAt IS NULL ORDER BY s.id ASC")
+    List<ReservationSlotEntity> findPendingExpireSlotsForUpdate(@Param("ids") Collection<Long> ids);
 
     /** endDate を含む業務日範囲検索（日跨ぎ枠を slotDate だけで落とさない）。 */
     @Query("SELECT s FROM ReservationSlotEntity s WHERE s.teamId = :teamId "

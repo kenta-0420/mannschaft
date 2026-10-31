@@ -1,11 +1,14 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.reservation.ReservationStatus;
 import com.mannschaft.app.reservation.entity.ReservationPolicyEntity;
+import com.mannschaft.app.reservation.repository.ReservationPolicyRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,28 +28,17 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
- * 失効判定の「現在時刻」が <b>{@code booked_at} と同じ時間基準（JVM 既定ゾーン）</b>で
- * 組み立てられることを、ゾーンを明示的に切り替えて検証する番人テスト（家老指摘⑤）。
- *
- * <h2>このテストが無いと何が起きるか</h2>
- * <p>{@code Clock} Bean は UTC 固定（{@code ClockConfig#utcClock}）だが、
- * {@code ReservationEntity.bookedAt} は {@code LocalDateTime.now()}（JVM 既定ゾーン）で書かれる。
- * 実装が {@code LocalDateTime.now(clock)} のまま（＝UTC 基準）だと、JST 環境では経過時間が
- * 9 時間短く見積もられ「24 時間で自動キャンセル」が<b>実質 33 時間</b>になる。
- * これは W2-6 の実 MySQL 結合テストで実際に検出した中核バグである。</p>
- *
- * <p>ところが <b>CI の JVM 既定ゾーンは UTC</b> のため、
- * {@code clock.withZone(ZoneId.systemDefault())} を {@code LocalDateTime.now(clock)} に戻しても
- * CI では全テストが緑のまま通ってしまい、退行が JST 環境でしか露見しない。
- * 本テストは既定ゾーンに依存せず、<b>Clock のゾーンだけを UTC / +09:00 に振って</b>
- * 「渡される {@code now} が既定ゾーン基準で一致する」ことを直接観測することで、
- * その退行を CI 上でも捕まえる。</p>
+ * 旧bookedAtのJST保持形式に合わせ、固定瞬間をAsia/Tokyoの壁時計へ渡す番人。
+ * ClockのUTC/JST設定に引きずられず、03Zを12:00として扱うことをliteralで検証する。
+ * JVM既定ゾーンを変更せず、通常JSTとNon-JST CIの実workerで同じ契約を確認する。
+ * 既bookedAt列/データのUTC移行をこの試験の範囲へ広げない。
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("仮押さえ自動失効 判定時刻のゾーン基準 番人テスト（家老指摘⑤）")
@@ -68,20 +60,26 @@ class ReservationPendingExpireServiceClockZoneTest {
     @Mock
     private MessageSource messageSource;
 
+    @Mock private ReservationPolicyRepository policyRepository;
+    @Mock private ReservationPendingExpireProgressService progress;
+    @Mock private TeamTimezoneResolver timezoneResolver;
+    @Mock private EntityManager entityManager;
+
     private ReservationPendingExpireService serviceWith(Clock clock) {
         return new ReservationPendingExpireService(
                 reservationRepository, slotRepository, slotService, notificationHelper,
-                userLocaleCache, messageSource, clock);
+                userLocaleCache, messageSource, clock, policyRepository, progress, timezoneResolver, entityManager);
     }
 
     private void stubEmptyResult() {
-        given(reservationRepository.findExpirablePendingPrimaryRows(
-                eq(ReservationStatus.PENDING), any(), any(), any(), anyInt(), any(Pageable.class)))
+        given(reservationRepository.findPendingExpireHighWater()).willReturn(1L);
+        given(reservationRepository.findPendingPrimaryCandidates(
+                eq(ReservationStatus.PENDING), anyLong(), anyLong(), any(), anyInt(), any(Pageable.class)))
                 .willReturn(List.of());
     }
 
     @Test
-    @DisplayName("Clock のゾーンが UTC でも +09:00 でも、判定時刻は JVM 既定ゾーン基準で一致する")
+    @DisplayName("Clock UTC/JSTやJVM既定に引きずられず、旧JST保持形式の12:00で一致する")
     void 判定時刻はClockのゾーンに左右されず既定ゾーン基準になる() {
         stubEmptyResult();
 
@@ -90,8 +88,8 @@ class ReservationPendingExpireServiceClockZoneTest {
         serviceWith(Clock.fixed(FIXED_INSTANT, ZoneId.of("Asia/Tokyo"))).findExpirableUnits();
 
         ArgumentCaptor<LocalDateTime> now = ArgumentCaptor.forClass(LocalDateTime.class);
-        verify(reservationRepository, times(2)).findExpirablePendingPrimaryRows(
-                eq(ReservationStatus.PENDING), now.capture(), any(), any(), anyInt(), any(Pageable.class));
+        verify(reservationRepository, times(2)).findPendingPrimaryCandidates(
+                eq(ReservationStatus.PENDING), anyLong(), anyLong(), now.capture(), anyInt(), any(Pageable.class));
         List<LocalDateTime> passed = now.getAllValues();
 
         // 同じ瞬間を指す Clock なら、ゾーン設定が何であれ判定時刻は同一でなければならない。
@@ -100,10 +98,10 @@ class ReservationPendingExpireServiceClockZoneTest {
                 .as("Clock のゾーン設定が判定結果に漏れ出してはならない")
                 .isEqualTo(passed.get(1));
 
-        // かつ、その値は「その瞬間を JVM 既定ゾーンで見た壁時計」＝ booked_at と同じ基準であること。
-        LocalDateTime expected = LocalDateTime.ofInstant(FIXED_INSTANT, ZoneId.systemDefault());
+        // 実装定数を再使用せず、既JST保持形式の03Z→12:00をliteralで固定する。
+        LocalDateTime expected = LocalDateTime.of(2026, 7, 29, 12, 0);
         assertThat(passed.get(0))
-                .as("booked_at は LocalDateTime.now()（JVM 既定ゾーン）で書かれるため同一基準で測る")
+                .as("旧JST保持形式をClock/JVM既定へ引きずらず12:00で測る")
                 .isEqualTo(expected);
     }
 
@@ -113,16 +111,17 @@ class ReservationPendingExpireServiceClockZoneTest {
         ReservationPendingExpireService service = new ReservationPendingExpireService(
                 reservationRepository, slotRepository, slotService, notificationHelper,
                 userLocaleCache, messageSource,
-                Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC));
-        given(reservationRepository.findExpirablePendingPrimaryRows(
-                eq(ReservationStatus.PENDING), any(), any(), any(), anyInt(), any(Pageable.class)))
+                Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC), policyRepository, progress, timezoneResolver, entityManager);
+        given(reservationRepository.findPendingExpireHighWater()).willReturn(1L);
+        given(reservationRepository.findPendingPrimaryCandidates(
+                eq(ReservationStatus.PENDING), anyLong(), anyLong(), any(), anyInt(), any(Pageable.class)))
                 .willReturn(List.of());
 
         service.findExpirableUnits();
 
         ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
-        verify(reservationRepository).findExpirablePendingPrimaryRows(
-                eq(ReservationStatus.PENDING), any(), any(), any(), anyInt(), pageable.capture());
+        verify(reservationRepository).findPendingPrimaryCandidates(
+                eq(ReservationStatus.PENDING), anyLong(), anyLong(), any(), anyInt(), pageable.capture());
         assertThat(pageable.getValue().getPageSize())
                 .as("上限が無いとデプロイ初回に一斉失効・通知バーストが起きる（殿の裁定1）")
                 .isEqualTo(ReservationPendingExpireService.MAX_UNITS_PER_RUN);
@@ -135,16 +134,17 @@ class ReservationPendingExpireServiceClockZoneTest {
         ReservationPendingExpireService service = new ReservationPendingExpireService(
                 reservationRepository, slotRepository, slotService, notificationHelper,
                 userLocaleCache, messageSource,
-                Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC));
-        given(reservationRepository.findExpirablePendingPrimaryRows(
-                eq(ReservationStatus.PENDING), any(), any(), any(), anyInt(), any(Pageable.class)))
+                Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC), policyRepository, progress, timezoneResolver, entityManager);
+        given(reservationRepository.findPendingExpireHighWater()).willReturn(1L);
+        given(reservationRepository.findPendingPrimaryCandidates(
+                eq(ReservationStatus.PENDING), anyLong(), anyLong(), any(), anyInt(), any(Pageable.class)))
                 .willReturn(List.of());
 
         service.findExpirableUnits();
 
         ArgumentCaptor<Integer> defaultHours = ArgumentCaptor.forClass(Integer.class);
-        verify(reservationRepository).findExpirablePendingPrimaryRows(
-                eq(ReservationStatus.PENDING), any(), any(), any(), defaultHours.capture(),
+        verify(reservationRepository).findPendingPrimaryCandidates(
+                eq(ReservationStatus.PENDING), anyLong(), anyLong(), any(), defaultHours.capture(),
                 any(Pageable.class));
         assertThat(defaultHours.getValue())
                 .isEqualTo(ReservationPolicyEntity.DEFAULT_PENDING_EXPIRE_HOURS);

@@ -38,7 +38,9 @@ class ReservationPendingExpireBatchServiceContextTest {
         @Bean
         ReservationPendingExpireBatchService reservationPendingExpireBatchService(
                 ReservationPendingExpireService pendingExpireService) {
-            return new ReservationPendingExpireBatchService(pendingExpireService);
+            return new ReservationPendingExpireBatchService(pendingExpireService,
+                    Mockito.mock(ReservationPendingExpireProgressService.class),
+                    Mockito.mock(com.mannschaft.app.common.timezone.TeamTimezoneResolver.class));
         }
     }
 
