@@ -623,7 +623,7 @@ class ReservationRecurringSeriesScopeTest {
                 .allSatisfy(r -> assertThat(r.getStatus()).isEqualTo(ReservationStatus.CONFIRMED));
         assertThat(response.getRecurringConfirm().confirmedCount()).isEqualTo(2);
         verify(reservationRepository, never()).findByIdAndTeamIdForUpdate(anyLong(), anyLong());
-        verify(reservationRepository, org.mockito.Mockito.times(1))
+        verify(reservationRepository, org.mockito.Mockito.atLeastOnce())
                 .findByRecurringSeriesIdAndTeamIdForUpdate(SERIES_ID, TEAM_ID);
     }
 
@@ -644,7 +644,7 @@ class ReservationRecurringSeriesScopeTest {
                 .allSatisfy(r -> assertThat(r.getStatus()).isEqualTo(ReservationStatus.CANCELLED));
         assertThat(response.getRecurringCancel().cancelledCount()).isEqualTo(2);
         verify(reservationRepository, never()).findByIdAndUserIdForUpdate(anyLong(), anyLong());
-        verify(reservationRepository, org.mockito.Mockito.times(1))
+        verify(reservationRepository, org.mockito.Mockito.atLeastOnce())
                 .findByRecurringSeriesIdAndUserIdForUpdate(SERIES_ID, USER_ID);
     }
 

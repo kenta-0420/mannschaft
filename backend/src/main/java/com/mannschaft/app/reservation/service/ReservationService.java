@@ -360,7 +360,7 @@ public class ReservationService {
         ReservationResponse response = enrich(saved);
         if (scope == ReservationConfirmScope.SERIES && saved.getRecurringSeriesId() != null) {
             response = response.toBuilder()
-                    .recurringConfirm(confirmFollowingInSeries(teamId, saved, slot, lockedSeries))
+                    .recurringConfirm(confirmFollowingInSeries(teamId, saved, slot))
                     .build();
         }
         return response;
@@ -429,7 +429,7 @@ public class ReservationService {
         // 単発予約（series NULL）に THIS_AND_FOLLOWING を指定した場合は従来経路（無害）。
         if (request.getScope() == ReservationCancelScope.THIS_AND_FOLLOWING
                 && entity.getRecurringSeriesId() != null) {
-            return cancelSeriesFromBase(entity, slot, request.getReason(), lockedSeries);
+            return cancelSeriesFromBase(entity, slot, request.getReason());
         }
 
         if (!entity.isCancellable()) {
@@ -513,17 +513,15 @@ public class ReservationService {
      * @return 起点予約のレスポンス（{@code recurringCancel} に結果明細を含む）
      */
     private ReservationResponse cancelSeriesFromBase(
-            ReservationEntity base, ReservationSlotEntity baseSlot, String reason,
-            List<ReservationEntity> lockedSeries) {
+            ReservationEntity base, ReservationSlotEntity baseSlot, String reason) {
         java.util.UUID seriesId = base.getRecurringSeriesId();
 
         // IDOR（AC-5-8）: series ID は「知っていれば操作できる鍵」ではない。userId をクエリ条件に含めた
         // finder 以外から series を引かないことで、他人の行に触れる経路を構造的に消す。
-        // AC-1730-6: 呼び出し元が起点を含む series 全行を id 昇順で一括ロック済み。その集合をそのまま使う。
-        List<ReservationEntity> seriesRows = lockedSeries.isEmpty()
-                ? reservationRepository.findByRecurringSeriesIdAndUserIdForUpdate(seriesId, base.getUserId())
-                : lockedSeries;
-        List<ReservationEntity> siblings = seriesRows.stream()
+        // AC-1730-6: 呼び出し元が起点を含む series 全行を id 昇順で一括ロック済み。同じ tx で同じ行を
+        // 再取得するだけなので新たなロック待ちは生じない（同一インスタンスが返る）。
+        List<ReservationEntity> siblings = reservationRepository
+                .findByRecurringSeriesIdAndUserIdForUpdate(seriesId, base.getUserId()).stream()
                 .filter(r -> !r.getId().equals(base.getId()))
                 .toList();
 
@@ -633,16 +631,14 @@ public class ReservationService {
      * @return 承認結果の明細
      */
     private ReservationResponse.RecurringConfirmDto confirmFollowingInSeries(
-            Long teamId, ReservationEntity base, ReservationSlotEntity baseSlot,
-            List<ReservationEntity> lockedSeries) {
+            Long teamId, ReservationEntity base, ReservationSlotEntity baseSlot) {
         java.util.UUID seriesId = base.getRecurringSeriesId();
 
         // 認可（AC-5-9）: teamId をクエシー条件に含めた finder のみを使い、当該チームの行しか掴めないようにする。
-        // AC-1730-6: 呼び出し元が起点を含む series 全行を id 昇順で一括ロック済み。その集合をそのまま使う。
-        List<ReservationEntity> seriesRows = lockedSeries.isEmpty()
-                ? reservationRepository.findByRecurringSeriesIdAndTeamIdForUpdate(seriesId, teamId)
-                : lockedSeries;
-        List<ReservationEntity> siblings = seriesRows.stream()
+        // AC-1730-6: 呼び出し元が起点を含む series 全行を id 昇順で一括ロック済み。同じ tx で同じ行を
+        // 再取得するだけなので新たなロック待ちは生じない（同一インスタンスが返る）。
+        List<ReservationEntity> siblings = reservationRepository
+                .findByRecurringSeriesIdAndTeamIdForUpdate(seriesId, teamId).stream()
                 .filter(r -> !r.getId().equals(base.getId()))
                 .toList();
 
