@@ -164,6 +164,15 @@ class ReservationRecurringSeriesScopeTest {
             }
             return out;
         });
+        // AC-1730-6 / 検分 r2 P2: series 操作は起点の series ID をスカラーで読み、起点を含む全行を一括ロックする。
+        given(reservationRepository.findRecurringSeriesIdByIdAndUserId(anyLong(), anyLong())).willAnswer(inv ->
+                Optional.ofNullable(reservations.get((Long) inv.getArgument(0)))
+                        .filter(r -> r.getUserId().equals(inv.getArgument(1)))
+                        .map(ReservationEntity::getRecurringSeriesId));
+        given(reservationRepository.findRecurringSeriesIdByIdAndTeamId(anyLong(), anyLong())).willAnswer(inv ->
+                Optional.ofNullable(reservations.get((Long) inv.getArgument(0)))
+                        .filter(r -> r.getTeamId().equals(inv.getArgument(1)))
+                        .map(ReservationEntity::getRecurringSeriesId));
         given(reservationPolicyService.getOrDefault(anyLong()))
                 .willReturn(ReservationPolicyEntity.builder().teamId(TEAM_ID).build());
         given(reservationPolicyService.resolveApprovalMode(anyLong(), any())).willReturn(ApprovalMode.MANUAL);
@@ -592,5 +601,64 @@ class ReservationRecurringSeriesScopeTest {
         assertThat(single.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
         assertThat(response.getRecurringConfirm()).isNull();
         verify(reservationRepository, never()).findByRecurringSeriesIdAndTeamIdForUpdate(any(), eq(TEAM_ID));
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // CMP-260822-1730 検分 r2: ロック順序（起点の個別先取りをしない）・series 解除の行ロック
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("検分r2 P2: scope=SERIES の承認は起点を個別にロックせず、起点を含むseries全行を1回で一括ロックする")
+    void 一括承認は起点を個別先取りしない() {
+        seedSlot(8100L, BASE_DATE);
+        seedSlot(8101L, BASE_DATE.plusWeeks(1));
+        ReservationEntity target = seedReservation(1401L, TEAM_ID, USER_ID, 8100L, SERIES_ID, ReservationStatus.PENDING);
+        ReservationEntity next = seedReservation(1402L, TEAM_ID, USER_ID, 8101L, SERIES_ID, ReservationStatus.PENDING);
+        given(reservationRepository.findByRecurringSeriesIdAndTeamIdForUpdate(SERIES_ID, TEAM_ID))
+                .willReturn(List.of(target, next));
+
+        ReservationResponse response = service.confirmReservation(TEAM_ID, 1401L, ReservationConfirmScope.SERIES);
+
+        assertThat(List.of(target, next))
+                .allSatisfy(r -> assertThat(r.getStatus()).isEqualTo(ReservationStatus.CONFIRMED));
+        assertThat(response.getRecurringConfirm().confirmedCount()).isEqualTo(2);
+        verify(reservationRepository, never()).findByIdAndTeamIdForUpdate(anyLong(), anyLong());
+        verify(reservationRepository, org.mockito.Mockito.times(1))
+                .findByRecurringSeriesIdAndTeamIdForUpdate(SERIES_ID, TEAM_ID);
+    }
+
+    @Test
+    @DisplayName("検分r2 P2: 以降すべてキャンセルは起点を個別にロックせず、起点を含むseries全行を1回で一括ロックする")
+    void 以降取消は起点を個別先取りしない() {
+        seedSlot(8110L, BASE_DATE);
+        seedSlot(8111L, BASE_DATE.plusWeeks(1));
+        ReservationEntity target = seedReservation(1501L, TEAM_ID, USER_ID, 8110L, SERIES_ID, ReservationStatus.CONFIRMED);
+        ReservationEntity next = seedReservation(1502L, TEAM_ID, USER_ID, 8111L, SERIES_ID, ReservationStatus.CONFIRMED);
+        given(reservationRepository.findByRecurringSeriesIdAndUserIdForUpdate(SERIES_ID, USER_ID))
+                .willReturn(List.of(target, next));
+
+        ReservationResponse response = service.cancelByUser(USER_ID, 1501L,
+                new CancelReservationRequest("以降すべて", ReservationCancelScope.THIS_AND_FOLLOWING));
+
+        assertThat(List.of(target, next))
+                .allSatisfy(r -> assertThat(r.getStatus()).isEqualTo(ReservationStatus.CANCELLED));
+        assertThat(response.getRecurringCancel().cancelledCount()).isEqualTo(2);
+        verify(reservationRepository, never()).findByIdAndUserIdForUpdate(anyLong(), anyLong());
+        verify(reservationRepository, org.mockito.Mockito.times(1))
+                .findByRecurringSeriesIdAndUserIdForUpdate(SERIES_ID, USER_ID);
+    }
+
+    @Test
+    @DisplayName("検分r2 P1: series 解除は行ロック付きで読み、非ロックの findById を使わない")
+    void series解除は行ロックで読む() {
+        seedSlot(8120L, BASE_DATE);
+        ReservationEntity target = seedReservation(1601L, TEAM_ID, USER_ID, 8120L, SERIES_ID, ReservationStatus.PENDING);
+        given(reservationRepository.findByIdForUpdate(1601L)).willReturn(Optional.of(target));
+
+        service.clearRecurringSeries(1601L);
+
+        assertThat(target.getRecurringSeriesId()).isNull();
+        verify(reservationRepository).findByIdForUpdate(1601L);
+        verify(reservationRepository, never()).findById(anyLong());
     }
 }

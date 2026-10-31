@@ -261,7 +261,7 @@ public class ReservationRecurringBlockedTimeService {
             Long teamId, ReservationDayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime, Long lineId) {
         AffectedReservations affected =
                 resolveAffectedReservations(teamId, lineId, dayOfWeek, startTime, endTime,
-                        endTime.isBefore(startTime));
+                        endTime.isBefore(startTime), false);
         if (affected.rows().isEmpty()) {
             return RecurringBlockedTimeImpactResponse.builder().affectedCount(0).reservations(List.of()).build();
         }
@@ -387,7 +387,7 @@ public class ReservationRecurringBlockedTimeService {
             LocalTime startTime, LocalTime endTime, String blockReason, boolean endsNextDay, Long actorUserId) {
         // impact（事前確認）と<b>完全に同じ集合</b>を解決する（検分 MUST③）。
         AffectedReservations affected =
-                resolveAffectedReservations(teamId, lineId, dayOfWeek, startTime, endTime, endsNextDay);
+                resolveAffectedReservations(teamId, lineId, dayOfWeek, startTime, endTime, endsNextDay, true);
         if (affected.rows().isEmpty()) {
             return 0;
         }
@@ -469,7 +469,7 @@ public class ReservationRecurringBlockedTimeService {
      */
     private AffectedReservations resolveAffectedReservations(
             Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek, LocalTime startTime,
-            LocalTime endTime, boolean endsNextDay) {
+            LocalTime endTime, boolean endsNextDay, boolean lockForCancel) {
         List<ReservationRecurringOverlapRow> matched =
                 findOverlappingRows(teamId, lineId, dayOfWeek, startTime, endTime, endsNextDay);
         if (matched.isEmpty()) {
@@ -481,10 +481,35 @@ public class ReservationRecurringBlockedTimeService {
                 .distinct()
                 .toList();
 
+        List<ReservationEntity> directRows;
+        java.util.function.Function<UUID, List<ReservationEntity>> siblingsOf;
+        if (lockForCancel) {
+            // CMP-260822-1730 AC-1730-6 / 検分 r2 P1: 強行キャンセルは影響行（グループ兄弟行を含む）を
+            // id 昇順の 1 文で一括ロックし、ロック後の最新状態で active なものだけを取消・枠減算する。
+            // 非ロック読取のままだと、読取後に仮押さえ失効バッチが同じ PENDING を取消・枠減算して commit したとき
+            // こちらも同じ予約で枠を再減算する（二重減算＝過剰予約・強行キャンセル通知の重複）。
+            // 対象 id はスカラー問い合わせで確定し、エンティティを非ロックで先読みしない
+            // （永続化コンテキストに古い状態が残り、ロック後も最新状態を読めなくなるため）。
+            Set<Long> lockIds = new LinkedHashSet<>(matchedIds);
+            List<UUID> matchedGroupIds = reservationRepository.findGroupIdsByIdIn(matchedIds);
+            if (!matchedGroupIds.isEmpty()) {
+                lockIds.addAll(reservationRepository.findIdsByGroupIdInAndTeamId(matchedGroupIds, teamId));
+            }
+            List<ReservationEntity> locked = reservationRepository.findByIdInForUpdate(lockIds);
+            Set<Long> matchedIdSet = Set.copyOf(matchedIds);
+            directRows = locked.stream().filter(r -> matchedIdSet.contains(r.getId())).toList();
+            siblingsOf = groupId -> locked.stream()
+                    .filter(r -> groupId.equals(r.getGroupId()) && teamId.equals(r.getTeamId()))
+                    .toList();
+        } else {
+            directRows = reservationRepository.findAllById(matchedIds);
+            siblingsOf = groupId -> reservationRepository.findByGroupIdAndTeamIdOrderById(groupId, teamId);
+        }
+
         Map<Long, ReservationEntity> targets = new LinkedHashMap<>();
         List<ReservationEntity> directlyOverlapping = new ArrayList<>();
         Set<UUID> expandedGroupIds = new LinkedHashSet<>();
-        for (ReservationEntity row : reservationRepository.findAllById(matchedIds)) {
+        for (ReservationEntity row : directRows) {
             if (!ACTIVE_STATUSES.contains(row.getStatus())) {
                 // 抽出後に他経路で状態が変わった行。二重キャンセル（booked_count の二重減算）を避ける。
                 log.info("定期不可枠の影響解決: 既に終端状態のためスキップ reservationId={}, status={}",
@@ -500,8 +525,7 @@ public class ReservationRecurringBlockedTimeService {
         // グループ予約は兄弟行まで展開する。1 行だけ消すと F03.4.3 が禁じる部分キャンセル
         // （booked_count 不整合・グループ状態の分裂）になる。
         for (UUID groupId : expandedGroupIds) {
-            for (ReservationEntity sibling
-                    : reservationRepository.findByGroupIdAndTeamIdOrderById(groupId, teamId)) {
+            for (ReservationEntity sibling : siblingsOf.apply(groupId)) {
                 if (ACTIVE_STATUSES.contains(sibling.getStatus())) {
                     targets.putIfAbsent(sibling.getId(), sibling);
                 }

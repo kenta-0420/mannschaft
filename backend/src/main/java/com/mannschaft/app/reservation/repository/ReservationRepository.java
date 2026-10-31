@@ -111,6 +111,54 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
     @Query("SELECT r FROM ReservationEntity r WHERE r.id = :id AND r.teamId = :teamId")
     Optional<ReservationEntity> findByIdAndTeamIdForUpdate(@Param("id") Long id, @Param("teamId") Long teamId);
 
+    /**
+     * CMP-260822-1730 AC-1730-6: スコープ条件を持たない内部経路（series 解除など）用の行ロック付き取得。
+     * {@code ReservationEntity} は {@code @Version}・{@code @DynamicUpdate} を持たず、メタデータだけの更新でも
+     * 状態列を書き戻すため、失効・取消と同じ行ロックで直列化してから読む。
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ReservationEntity r WHERE r.id = :id")
+    Optional<ReservationEntity> findByIdForUpdate(@Param("id") Long id);
+
+    /**
+     * CMP-260822-1730 AC-1730-6: 複数行を <b>id 昇順</b>で一括ロックする（PK の IN 走査は id 昇順で行ロックを取る）。
+     *
+     * <p>一括取消（臨時休業・定期不可枠の強行登録）は、対象行の id 集合をスカラー問い合わせで先に確定し、
+     * 本メソッドで一度にロックする。行ごと・グループごとに分けてロックすると、失効バッチ（代表行→兄弟行）
+     * との間でロック順序が逆転しデッドロックの循環を作るため、取得順を id 昇順の 1 文に統一する。</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ReservationEntity r WHERE r.id IN :ids ORDER BY r.id ASC")
+    List<ReservationEntity> findByIdInForUpdate(@Param("ids") Collection<Long> ids);
+
+    /**
+     * 起点予約の series ID だけをスカラーで読む（チームスコープ・AC-1730-6）。
+     *
+     * <p>エンティティを非ロックで読むと永続化コンテキストに古い状態が残り、後続の行ロック付き取得が
+     * 同じインスタンスを返して最新状態を読めない。series 全行を id 昇順で一括ロックする前段として、
+     * エンティティを載せずに series ID だけを得る。</p>
+     */
+    @Query("SELECT r.recurringSeriesId FROM ReservationEntity r WHERE r.id = :id AND r.teamId = :teamId")
+    Optional<UUID> findRecurringSeriesIdByIdAndTeamId(@Param("id") Long id, @Param("teamId") Long teamId);
+
+    /** 起点予約の series ID だけをスカラーで読む（本人スコープ・AC-1730-6）。 */
+    @Query("SELECT r.recurringSeriesId FROM ReservationEntity r WHERE r.id = :id AND r.userId = :userId")
+    Optional<UUID> findRecurringSeriesIdByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
+
+    /** 指定行のうちグループ所属行のグループ ID（一括ロック対象の展開用・エンティティを載せない）。 */
+    @Query("SELECT DISTINCT r.groupId FROM ReservationEntity r WHERE r.id IN :ids AND r.groupId IS NOT NULL")
+    List<UUID> findGroupIdsByIdIn(@Param("ids") Collection<Long> ids);
+
+    /** グループ群の兄弟行 ID（チームスコープ・一括ロック対象の展開用・エンティティを載せない）。 */
+    @Query("SELECT r.id FROM ReservationEntity r WHERE r.groupId IN :groupIds AND r.teamId = :teamId")
+    List<Long> findIdsByGroupIdInAndTeamId(@Param("groupIds") Collection<UUID> groupIds,
+                                          @Param("teamId") Long teamId);
+
+    /** 指定枠群の active 予約 ID（臨時休業の一括取消の対象確定用・エンティティを載せない）。 */
+    @Query("SELECT r.id FROM ReservationEntity r WHERE r.reservationSlotId IN :slotIds AND r.status IN :statuses")
+    List<Long> findIdsByReservationSlotIdInAndStatusIn(@Param("slotIds") Collection<Long> slotIds,
+                                                      @Param("statuses") Collection<ReservationStatus> statuses);
+
     // ===== F03.4.3 機能G: 予約グループ（案(b) 兄弟行方式）=====
 
     /**

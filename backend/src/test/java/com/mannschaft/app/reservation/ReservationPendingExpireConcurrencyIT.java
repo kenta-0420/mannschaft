@@ -3,6 +3,9 @@ package com.mannschaft.app.reservation;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.notification.service.NotificationDispatchService;
+import com.mannschaft.app.reservation.dto.CancelReservationRequest;
+import com.mannschaft.app.reservation.dto.CreateEmergencyClosureRequest;
+import com.mannschaft.app.reservation.dto.CreateRecurringBlockedTimeRequest;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationPendingExpireScanStateEntity;
 import com.mannschaft.app.reservation.entity.ReservationPolicyEntity;
@@ -11,8 +14,10 @@ import com.mannschaft.app.reservation.repository.ReservationPendingExpireScanSta
 import com.mannschaft.app.reservation.repository.ReservationPolicyRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
+import com.mannschaft.app.reservation.service.EmergencyClosureService;
 import com.mannschaft.app.reservation.service.ReservationPendingExpireBatchService;
 import com.mannschaft.app.reservation.service.ReservationPendingExpireService;
+import com.mannschaft.app.reservation.service.ReservationRecurringBlockedTimeService;
 import com.mannschaft.app.reservation.service.ReservationService;
 import com.mannschaft.app.reservation.service.ReservationSlotService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -49,7 +54,9 @@ import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
@@ -85,6 +92,8 @@ class ReservationPendingExpireConcurrencyIT extends AbstractMySqlIntegrationTest
     @Autowired private ReservationPendingExpireBatchService batch;
     @Autowired private ReservationPendingExpireService expireService;
     @Autowired private ReservationService reservationService;
+    @Autowired private EmergencyClosureService emergencyClosureService;
+    @Autowired private ReservationRecurringBlockedTimeService blockedTimeService;
     @Autowired private ReservationSlotService slotService;
     @Autowired private NotificationDispatchService notificationDispatch;
     @Autowired private ReservationRepository reservations;
@@ -102,6 +111,8 @@ class ReservationPendingExpireConcurrencyIT extends AbstractMySqlIntegrationTest
     private final ExecutorService workers = Executors.newFixedThreadPool(2);
     private Object expireTarget;
     private Clock originalClock;
+    private Object blockedTimeTarget;
+    private Clock originalBlockedTimeClock;
     private UUID stateId;
 
     @BeforeEach
@@ -110,6 +121,11 @@ class ReservationPendingExpireConcurrencyIT extends AbstractMySqlIntegrationTest
         originalClock = (Clock) ReflectionTestUtils.getField(expireTarget, "clock");
         assertThat(originalClock).isNotNull();
         ReflectionTestUtils.setField(expireTarget, "clock", Clock.fixed(NOW, ZoneOffset.UTC));
+        // 定期不可枠の 90 日 horizon も同じ基準時刻で判定させる（強行キャンセル試練用）。
+        blockedTimeTarget = AopTestUtils.getUltimateTargetObject(blockedTimeService);
+        originalBlockedTimeClock = (Clock) ReflectionTestUtils.getField(blockedTimeTarget, "clock");
+        assertThat(originalBlockedTimeClock).isNotNull();
+        ReflectionTestUtils.setField(blockedTimeTarget, "clock", Clock.fixed(NOW, ZoneOffset.UTC));
         assertThat(expireService.findExpirableUnits()).as("前提: 他試練の失効候補が残っていない").isEmpty();
         assertThat(states.count()).as("他runnerの進捗を上書きしない").isZero();
         stateId = states.saveAndFlush(ReservationPendingExpireTestFixture.minimumValidState(NOW)).getId();
@@ -123,6 +139,9 @@ class ReservationPendingExpireConcurrencyIT extends AbstractMySqlIntegrationTest
         if (originalClock != null) {
             ReflectionTestUtils.setField(expireTarget, "clock", originalClock);
         }
+        if (originalBlockedTimeClock != null) {
+            ReflectionTestUtils.setField(blockedTimeTarget, "clock", originalBlockedTimeClock);
+        }
         Awaitility.await().atMost(Duration.ofSeconds(30)).until(() ->
                 eventPool.getActiveCount() == 0 && eventPool.getThreadPoolExecutor().getQueue().isEmpty());
         for (Long user : ownedUsers) {
@@ -133,6 +152,10 @@ class ReservationPendingExpireConcurrencyIT extends AbstractMySqlIntegrationTest
                     stateId.toString());
         }
         for (Long team : ownedTeams) {
+            jdbc.update("DELETE FROM emergency_closure_confirmations WHERE emergency_closure_id IN "
+                    + "(SELECT id FROM emergency_closures WHERE team_id = ?)", team);
+            jdbc.update("DELETE FROM emergency_closures WHERE team_id = ?", team);
+            jdbc.update("DELETE FROM reservation_recurring_blocked_times WHERE team_id = ?", team);
             jdbc.update("DELETE FROM reservation_reminders WHERE reservation_id IN "
                     + "(SELECT id FROM reservations WHERE team_id = ?)", team);
             jdbc.update("DELETE FROM reservations WHERE team_id = ?", team);
@@ -297,6 +320,189 @@ class ReservationPendingExpireConcurrencyIT extends AbstractMySqlIntegrationTest
         });
     }
 
+    @Test
+    @DisplayName("AC1730-6d: バッチが行ロック中に臨時休業の一括取消が来ても、枠の減算は失効の1回だけで休業通知の対象にもならない")
+    void バッチ先行時は臨時休業の一括取消が二重減算しない() throws Exception {
+        Long team = team();
+        // 同じ枠に別の有効予約 1 件ぶんを持たせる（二重減算すると他人の分まで空きになる状況）。
+        ReservationSlotEntity slot = slot(team, 2);
+        ReservationEntity pending = pending(team, slot);
+        BatchHold hold = holdBatchInsideUnit();
+
+        CreateEmergencyClosureRequest request = new CreateEmergencyClosureRequest();
+        request.setStartDate(slot.getSlotDate());
+        request.setEndDate(slot.getSlotDate());
+        request.setReason("CMP1730休業");
+        request.setSubject("CMP1730休業");
+        request.setMessageBody("CMP1730休業");
+        request.setCancelReservations(true);
+        Future<Integer> closure = workers.submit(() ->
+                emergencyClosureService.sendClosure(team, 1L, request).getSentCount());
+        Awaitility.await().during(Duration.ofMillis(500)).atMost(Duration.ofSeconds(5))
+                .until(() -> !closure.isDone());
+        hold.release().countDown();
+
+        assertThat(hold.run().get(60, TimeUnit.SECONDS)).isEqualTo(1);
+        int sentCount = closure.get(60, TimeUnit.SECONDS);
+        assertSoftly(soft -> {
+            soft.assertThat(reload(pending).getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+            soft.assertThat(reload(pending).getCancelReason()).as("失効の取消理由が残る（休業取消で上書きしない）")
+                    .isNotEqualTo("臨時休業のためキャンセル");
+            soft.assertThat(reload(slot).getBookedCount()).as("失効の1回だけ減算する").isEqualTo(1);
+            soft.assertThat(sentCount).as("失効済みの利用者へ休業通知を重ねない").isZero();
+            soft.assertThat(expiredNotifications(pending.getUserId())).isEqualTo(1);
+        });
+    }
+
+    @Test
+    @DisplayName("AC1730-6e: バッチが行ロック中に定期不可枠の強行登録が来ても、枠の減算は失効の1回だけで強行取消通知も出ない")
+    void バッチ先行時は定期不可枠の強行キャンセルが二重減算しない() throws Exception {
+        Long team = team();
+        ReservationSlotEntity slot = slot(team, 2);
+        ReservationEntity pending = pending(team, slot);
+        BatchHold hold = holdBatchInsideUnit();
+
+        CreateRecurringBlockedTimeRequest request = new CreateRecurringBlockedTimeRequest(
+                null, ReservationDayOfWeek.SAT, LocalTime.of(10, 0), LocalTime.of(11, 0),
+                "CMP1730研修", false, true);
+        Future<Integer> force = workers.submit(() ->
+                blockedTimeService.createRule(team, request, 1L).getForceCancelledCount());
+        Awaitility.await().during(Duration.ofMillis(500)).atMost(Duration.ofSeconds(5))
+                .until(() -> !force.isDone());
+        hold.release().countDown();
+
+        assertThat(hold.run().get(60, TimeUnit.SECONDS)).isEqualTo(1);
+        int forceCancelled = force.get(60, TimeUnit.SECONDS);
+        assertSoftly(soft -> {
+            soft.assertThat(reload(pending).getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+            soft.assertThat(reload(slot).getBookedCount()).as("失効の1回だけ減算する").isEqualTo(1);
+            soft.assertThat(forceCancelled).as("失効済みの予約を強行取消・通知の対象にしない").isZero();
+            soft.assertThat(expiredNotifications(pending.getUserId())).isEqualTo(1);
+        });
+    }
+
+    @Test
+    @DisplayName("AC1730-6f: 管理者取消が行ロック中にseries解除が来ても、取消済み予約を古いPENDINGで書き戻さない")
+    void series解除は取消済み予約を復活させない() throws Exception {
+        Long team = team();
+        ReservationSlotEntity slot = slot(team);
+        ReservationEntity pending = pending(team, slot, NOW, UUID.randomUUID());
+        CountDownLatch holding = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+
+        Future<?> cancel = workers.submit(() -> new TransactionTemplate(transactionManager).executeWithoutResult(tx -> {
+            reservationService.cancelByAdmin(team, pending.getId(), new CancelReservationRequest("CMP1730取消", null));
+            holding.countDown();
+            try {
+                assertThat(release.await(60, TimeUnit.SECONDS)).isTrue();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(e);
+            }
+        }));
+        assertThat(holding.await(60, TimeUnit.SECONDS)).as("取消が行ロックを保持した").isTrue();
+        Future<?> clear = workers.submit(() -> reservationService.clearRecurringSeries(pending.getId()));
+        Awaitility.await().during(Duration.ofMillis(500)).atMost(Duration.ofSeconds(5))
+                .until(() -> !clear.isDone());
+        release.countDown();
+
+        cancel.get(60, TimeUnit.SECONDS);
+        clear.get(60, TimeUnit.SECONDS);
+        ReservationEntity after = reload(pending);
+        assertSoftly(soft -> {
+            soft.assertThat(after.getStatus()).as("取消済みのまま").isEqualTo(ReservationStatus.CANCELLED);
+            soft.assertThat(after.getRecurringSeriesId()).as("series 解除は反映される").isNull();
+            soft.assertThat(reload(slot).getBookedCount()).as("取消の1回だけ減算").isZero();
+        });
+    }
+
+    @Test
+    @DisplayName("AC1730-6g: 同じseriesの別の行を起点に一括承認と以降取消を同時に走らせても、どちらも500(デッドロック)にならない")
+    void 同じseriesの別起点の同時操作でデッドロックしない() throws Exception {
+        Long team = team();
+        for (int i = 0; i < 3; i++) {
+            UUID series = UUID.randomUUID();
+            Long user = USERS.incrementAndGet();
+            ownedUsers.add(user);
+            ReservationSlotEntity slotA = slot(team, LocalDate.of(2000, 8, 19));
+            ReservationSlotEntity slotB = slot(team, LocalDate.of(2000, 8, 26));
+            ReservationEntity rowA = pending(team, slotA, NOW, series, user);
+            ReservationEntity rowB = pending(team, slotB, NOW, series, user);
+            // 旧実装（起点行を先に単独ロック→series 全行ロック）の循環を決定的に再現するため、
+            // 両スレッドが「起点だけを保持した地点」で互いを待ち合わせる。新実装は起点の個別先取りをしないので、
+            // 先行側が series 全行を保持し後続はロック待ちとなり、待ち合わせは時間切れで素通りする。
+            Set<Thread> participants = ConcurrentHashMap.newKeySet();
+            CountDownLatch rendezvous = new CountDownLatch(2);
+            advise(slotService, "getSlotEntity", invocation -> {
+                if (participants.contains(Thread.currentThread())) {
+                    rendezvous.countDown();
+                    rendezvous.await(2, TimeUnit.SECONDS);
+                }
+                return invocation.proceed();
+            });
+            Future<String> confirm = workers.submit(() -> {
+                participants.add(Thread.currentThread());
+                try {
+                    reservationService.confirmReservation(team, rowA.getId(), ReservationConfirmScope.SERIES);
+                    return "OK";
+                } catch (BusinessException e) {
+                    return e.getErrorCode().toString();
+                } finally {
+                    participants.remove(Thread.currentThread());
+                }
+            });
+            Future<String> cancel = workers.submit(() -> {
+                participants.add(Thread.currentThread());
+                try {
+                    reservationService.cancelByUser(user, rowB.getId(),
+                            new CancelReservationRequest("CMP1730以降取消", ReservationCancelScope.THIS_AND_FOLLOWING));
+                    return "OK";
+                } catch (BusinessException e) {
+                    return e.getErrorCode().toString();
+                } finally {
+                    participants.remove(Thread.currentThread());
+                }
+            });
+            String round = "round " + i;
+            // デッドロック・ロック待ち時間切れは BusinessException ではなく例外で表面化し get() が失敗する。
+            String confirmResult = confirm.get(60, TimeUnit.SECONDS);
+            String cancelResult = cancel.get(60, TimeUnit.SECONDS);
+            advisorRemovals.remove(advisorRemovals.size() - 1).run();
+            assertThat(List.of(confirmResult, cancelResult)).as(round + " 業務上の負け以外の失敗がない")
+                    .allMatch(r -> r.equals("OK") || r.equals(ReservationErrorCode.INVALID_RESERVATION_STATUS.toString()));
+            ReservationStatus a = reload(rowA).getStatus();
+            ReservationStatus b = reload(rowB).getStatus();
+            assertThat(a).as(round + " 起点Aは一括承認で確定する（取消の対象はB以降）")
+                    .isEqualTo("OK".equals(confirmResult) ? ReservationStatus.CONFIRMED : ReservationStatus.PENDING);
+            assertThat(b).as(round + " Bは直列化された後勝ちの結果だけを持つ")
+                    .isIn(ReservationStatus.CONFIRMED, ReservationStatus.CANCELLED);
+        }
+    }
+
+    /** 失効バッチを、予約行ロック保持・取消と枠減算を終えた commit 前の地点で止める。 */
+    private BatchHold holdBatchInsideUnit() throws InterruptedException {
+        Thread[] batchThread = new Thread[1];
+        CountDownLatch holding = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        advise(slotService, "decrementAndReopen", invocation -> {
+            Object result = invocation.proceed();
+            if (Thread.currentThread() == batchThread[0]) {
+                holding.countDown();
+                assertThat(release.await(60, TimeUnit.SECONDS)).as("試練側の解放待ち").isTrue();
+            }
+            return result;
+        });
+        Future<Integer> run = workers.submit(() -> {
+            batchThread[0] = Thread.currentThread();
+            return batch.expirePendingReservations();
+        });
+        assertThat(holding.await(60, TimeUnit.SECONDS)).as("バッチが失効unit内で行ロックを保持した").isTrue();
+        return new BatchHold(run, release);
+    }
+
+    private record BatchHold(Future<Integer> run, CountDownLatch release) {
+    }
+
     private void advise(Object bean, String methodName, MethodInterceptor interceptor) {
         Advisor advisor = new DefaultPointcutAdvisor(new StaticMethodMatcherPointcut() {
             @Override
@@ -319,21 +525,42 @@ class ReservationPendingExpireConcurrencyIT extends AbstractMySqlIntegrationTest
     }
 
     private ReservationSlotEntity slot(Long team) {
-        // AVAILABLEのまま減算できる未来枠。待機通知の非同期連鎖を発生させない。
+        return slot(team, LocalDate.of(2000, 8, 12), 1);
+    }
+
+    private ReservationSlotEntity slot(Long team, int bookedCount) {
+        return slot(team, LocalDate.of(2000, 8, 12), bookedCount);
+    }
+
+    private ReservationSlotEntity slot(Long team, LocalDate date) {
+        return slot(team, date, 1);
+    }
+
+    private ReservationSlotEntity slot(Long team, LocalDate date, int bookedCount) {
+        // AVAILABLEのまま減算できる未来枠（2000-08-12 は土曜）。待機通知の非同期連鎖を発生させない。
         return slots.saveAndFlush(ReservationSlotEntity.builder().teamId(team).title("CMP1730競合枠")
-                .slotDate(LocalDate.of(2000, 8, 12)).endDate(LocalDate.of(2000, 8, 12))
+                .slotDate(date).endDate(date)
                 .startTime(LocalTime.of(10, 0)).endTime(LocalTime.of(10, 30))
-                .capacity(2).bookedCount(1).slotStatus(SlotStatus.AVAILABLE).build());
+                .capacity(2).bookedCount(bookedCount).slotStatus(SlotStatus.AVAILABLE).build());
     }
 
     private ReservationEntity pending(Long team, ReservationSlotEntity slot) {
+        // 24h ポリシーで期限切れ（25時間前）の単枠 PENDING。
+        return pending(team, slot, NOW.minusSeconds(25 * 3600L), null);
+    }
+
+    private ReservationEntity pending(Long team, ReservationSlotEntity slot, Instant bookedAt, UUID series) {
         Long user = USERS.incrementAndGet();
         ownedUsers.add(user);
-        // 24h ポリシーで期限切れ（25時間前）の単枠 PENDING。
+        return pending(team, slot, bookedAt, series, user);
+    }
+
+    private ReservationEntity pending(Long team, ReservationSlotEntity slot, Instant bookedAt, UUID series,
+                                      Long user) {
         return reservations.saveAndFlush(ReservationEntity.builder().teamId(team).userId(user).lineId(1L)
                 .reservationSlotId(slot.getId()).status(ReservationStatus.PENDING)
-                .bookedAt(LocalDateTime.ofInstant(NOW.minusSeconds(25 * 3600L), UserZoneLocalDateTimeParser.SERVER_ZONE))
-                .isGroupPrimary(true).build());
+                .bookedAt(LocalDateTime.ofInstant(bookedAt, UserZoneLocalDateTimeParser.SERVER_ZONE))
+                .recurringSeriesId(series).isGroupPrimary(true).build());
     }
 
     private ReservationEntity reload(ReservationEntity row) {

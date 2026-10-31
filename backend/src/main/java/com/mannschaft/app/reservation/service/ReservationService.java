@@ -331,7 +331,16 @@ public class ReservationService {
     @Transactional
     public ReservationResponse confirmReservation(
             Long teamId, Long reservationId, ReservationConfirmScope scope) {
-        ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
+        // AC-1730-6 / 検分 r2 P2: series 操作は起点を含む series 全行を id 昇順で一括ロックする。
+        // 起点だけを先にロックしてから series を取ると、同じ series の別行を起点にした同時操作と
+        // 互いの起点行を待ち合う循環（デッドロック）になるため、起点の個別先取りをしない。
+        List<ReservationEntity> lockedSeries = scope == ReservationConfirmScope.SERIES
+                ? reservationRepository.findRecurringSeriesIdByIdAndTeamId(reservationId, teamId)
+                        .map(seriesId -> reservationRepository.findByRecurringSeriesIdAndTeamIdForUpdate(seriesId, teamId))
+                        .orElse(List.of())
+                : List.of();
+        ReservationEntity entity = findLockedBase(lockedSeries, reservationId)
+                .orElseGet(() -> findReservationForUpdateOrThrow(teamId, reservationId));
         assertNotGroupRow(entity);
 
         if (!entity.isConfirmable()) {
@@ -351,7 +360,7 @@ public class ReservationService {
         ReservationResponse response = enrich(saved);
         if (scope == ReservationConfirmScope.SERIES && saved.getRecurringSeriesId() != null) {
             response = response.toBuilder()
-                    .recurringConfirm(confirmFollowingInSeries(teamId, saved, slot))
+                    .recurringConfirm(confirmFollowingInSeries(teamId, saved, slot, lockedSeries))
                     .build();
         }
         return response;
@@ -395,8 +404,17 @@ public class ReservationService {
     @Transactional
     public ReservationResponse cancelByUser(Long userId, Long reservationId, CancelReservationRequest request) {
         // AC-1730-6: 失効バッチ・管理者操作と同じ行ロックで直列化してから状態を判定する。
-        ReservationEntity entity = reservationRepository.findByIdAndUserIdForUpdate(reservationId, userId)
-                .orElseThrow(() -> new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+        // 「以降すべて」は起点を含む series 全行を id 昇順で一括ロックする（検分 r2 P2・起点の個別先取り禁止）。
+        List<ReservationEntity> lockedSeries =
+                request.getScope() == ReservationCancelScope.THIS_AND_FOLLOWING
+                        ? reservationRepository.findRecurringSeriesIdByIdAndUserId(reservationId, userId)
+                                .map(seriesId -> reservationRepository
+                                        .findByRecurringSeriesIdAndUserIdForUpdate(seriesId, userId))
+                                .orElse(List.of())
+                        : List.of();
+        ReservationEntity entity = findLockedBase(lockedSeries, reservationId)
+                .orElseGet(() -> reservationRepository.findByIdAndUserIdForUpdate(reservationId, userId)
+                        .orElseThrow(() -> new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND)));
         assertNotGroupRow(entity);
 
         if (!entity.isCancellable()) {
@@ -411,7 +429,7 @@ public class ReservationService {
         // 単発予約（series NULL）に THIS_AND_FOLLOWING を指定した場合は従来経路（無害）。
         if (request.getScope() == ReservationCancelScope.THIS_AND_FOLLOWING
                 && entity.getRecurringSeriesId() != null) {
-            return cancelSeriesFromBase(entity, slot, request.getReason());
+            return cancelSeriesFromBase(entity, slot, request.getReason(), lockedSeries);
         }
 
         if (!entity.isCancellable()) {
@@ -495,13 +513,17 @@ public class ReservationService {
      * @return 起点予約のレスポンス（{@code recurringCancel} に結果明細を含む）
      */
     private ReservationResponse cancelSeriesFromBase(
-            ReservationEntity base, ReservationSlotEntity baseSlot, String reason) {
+            ReservationEntity base, ReservationSlotEntity baseSlot, String reason,
+            List<ReservationEntity> lockedSeries) {
         java.util.UUID seriesId = base.getRecurringSeriesId();
 
         // IDOR（AC-5-8）: series ID は「知っていれば操作できる鍵」ではない。userId をクエリ条件に含めた
         // finder 以外から series を引かないことで、他人の行に触れる経路を構造的に消す。
-        List<ReservationEntity> siblings = reservationRepository
-                .findByRecurringSeriesIdAndUserIdForUpdate(seriesId, base.getUserId()).stream()
+        // AC-1730-6: 呼び出し元が起点を含む series 全行を id 昇順で一括ロック済み。その集合をそのまま使う。
+        List<ReservationEntity> seriesRows = lockedSeries.isEmpty()
+                ? reservationRepository.findByRecurringSeriesIdAndUserIdForUpdate(seriesId, base.getUserId())
+                : lockedSeries;
+        List<ReservationEntity> siblings = seriesRows.stream()
                 .filter(r -> !r.getId().equals(base.getId()))
                 .toList();
 
@@ -611,12 +633,16 @@ public class ReservationService {
      * @return 承認結果の明細
      */
     private ReservationResponse.RecurringConfirmDto confirmFollowingInSeries(
-            Long teamId, ReservationEntity base, ReservationSlotEntity baseSlot) {
+            Long teamId, ReservationEntity base, ReservationSlotEntity baseSlot,
+            List<ReservationEntity> lockedSeries) {
         java.util.UUID seriesId = base.getRecurringSeriesId();
 
         // 認可（AC-5-9）: teamId をクエシー条件に含めた finder のみを使い、当該チームの行しか掴めないようにする。
-        List<ReservationEntity> siblings = reservationRepository
-                .findByRecurringSeriesIdAndTeamIdForUpdate(seriesId, teamId).stream()
+        // AC-1730-6: 呼び出し元が起点を含む series 全行を id 昇順で一括ロック済み。その集合をそのまま使う。
+        List<ReservationEntity> seriesRows = lockedSeries.isEmpty()
+                ? reservationRepository.findByRecurringSeriesIdAndTeamIdForUpdate(seriesId, teamId)
+                : lockedSeries;
+        List<ReservationEntity> siblings = seriesRows.stream()
                 .filter(r -> !r.getId().equals(base.getId()))
                 .toList();
 
@@ -691,7 +717,10 @@ public class ReservationService {
      */
     @Transactional
     public void clearRecurringSeries(Long reservationId) {
-        reservationRepository.findById(reservationId).ifPresent(entity -> {
+        // AC-1730-6 / 検分 r2 P1: ReservationEntity は @Version・@DynamicUpdate を持たず、series 解除だけの
+        // 更新でも状態列を書き戻す。非ロック読取だと、その間に commit された取消・失効を古い PENDING で
+        // 上書きして復活させるため、失効バッチ・取消と同じ行ロックで読む。
+        reservationRepository.findByIdForUpdate(reservationId).ifPresent(entity -> {
             entity.clearRecurringSeries();
             reservationRepository.save(entity);
         });
@@ -925,6 +954,17 @@ public class ReservationService {
      */
     public void assertReservationInTeam(Long teamId, Long reservationId) {
         findReservationOrThrow(teamId, reservationId);
+    }
+
+    /**
+     * id 昇順で一括ロック済みの series 行から起点行を取り出す（検分 r2 P2）。
+     *
+     * <p>起点が集合に無い（series 未所属・ID 読取後に series が解除された）ときは空を返し、
+     * 呼び出し側が単票の行ロック取得へ落とす。</p>
+     */
+    private static java.util.Optional<ReservationEntity> findLockedBase(
+            List<ReservationEntity> lockedSeries, Long reservationId) {
+        return lockedSeries.stream().filter(r -> reservationId.equals(r.getId())).findFirst();
     }
 
     /**
