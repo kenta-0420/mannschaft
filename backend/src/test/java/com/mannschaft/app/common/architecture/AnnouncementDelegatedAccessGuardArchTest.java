@@ -53,6 +53,9 @@ class AnnouncementDelegatedAccessGuardArchTest {
     static final String BLOG_PREVIEW = "com.mannschaft.app.cms.service.BlogPostPreviewService";
     static final String BULLETIN_FACADE = "com.mannschaft.app.bulletin.service.BulletinReadFacade";
     static final String BULLETIN_READER = "com.mannschaft.app.bulletin.service.BulletinAnnouncementPreviewReader";
+    static final String CHECKER = "com.mannschaft.app.common.visibility.ContentVisibilityChecker";
+    static final String FEED_QUERY_SERVICE = "com.mannschaft.app.social.announcement.OrgAnnouncementFeedQueryService";
+    static final String FEED_READABILITY = "com.mannschaft.app.social.announcement.OrgAnnouncementFeedReadability";
     static final String PREVIEW_SOURCE = "com.mannschaft.app.social.announcement.AnnouncementPreviewSourceService";
 
     static final String FEED_SERVICE = "com.mannschaft.app.social.announcement.AnnouncementFeedService";
@@ -91,7 +94,11 @@ class AnnouncementDelegatedAccessGuardArchTest {
             JavaClasses production = ProductionClasses.get();
             Set<String> violations = new TreeSet<>();
             violations.addAll(callerViolations(production, F02::isResolverHierarchy,
-                    name -> name.contains(DELEGATED_MARK), Set.of(BLOG_PREVIEW, BULLETIN_FACADE, BULLETIN_READER)));
+                    name -> name.contains(DELEGATED_MARK),
+                    Set.of(BLOG_PREVIEW, BULLETIN_FACADE, BULLETIN_READER, CHECKER)));
+            // 組織告知の一覧の一括版（ContentVisibilityChecker 経由）は、一覧の元コンテンツ可視性判定の部品だけが呼ぶ
+            violations.addAll(callerViolations(production, owner -> owner.getFullName().equals(CHECKER),
+                    name -> name.contains(DELEGATED_MARK), Set.of(FEED_READABILITY)));
             violations.addAll(callerViolations(production, owner -> owner.getFullName().equals(BLOG_PREVIEW),
                     name -> name.contains(DELEGATED_MARK), Set.of(PREVIEW_SOURCE)));
             violations.addAll(callerViolations(production, owner -> owner.getFullName().equals(BULLETIN_FACADE),
@@ -116,6 +123,10 @@ class AnnouncementDelegatedAccessGuardArchTest {
             assertThat(edges(production, owner -> owner.getFullName().equals(BULLETIN_READER), name -> !name.startsWith("<")))
                     .as("BulletinReadFacade → BulletinAnnouncementPreviewReader（bulletin の tx なし読取部品）")
                     .anyMatch(edge -> edge.startsWith(BULLETIN_FACADE + "#"));
+            assertThat(edges(production, owner -> owner.getFullName().equals(CHECKER),
+                    name -> name.contains(DELEGATED_MARK)))
+                    .as("OrgAnnouncementFeedReadability → ContentVisibilityChecker#filterAccessibleDelegated（組織告知一覧の一括判定）")
+                    .anyMatch(edge -> edge.startsWith(FEED_READABILITY + "#"));
             List<String> resolverEdges = edges(production, F02::isResolverHierarchy, name -> name.contains(DELEGATED_MARK));
             assertThat(resolverEdges).as("cms 側: BlogPostPreviewService → Resolver#…Delegated…")
                     .anyMatch(edge -> edge.startsWith(BLOG_PREVIEW + "#"));
@@ -221,6 +232,18 @@ class AnnouncementDelegatedAccessGuardArchTest {
             assertThat(access.getMethods()).noneMatch(F04::isTransactional);
             assertThat(edges(production, owner -> owner.getFullName().equals(AUDIENCE_ACCESS), name -> !name.startsWith("<")))
                     .as("呼び出し元（プレビュー・既読判定）").isNotEmpty();
+            // 組織告知の一覧も同じ判定部品を、tx を持たない部品（OrgAnnouncementFeedReadability）と取りまとめ役
+            // （OrgAnnouncementFeedQueryService）経由で呼ぶ（規則が一覧の経路で空振りしていないことの確認）
+            assertThat(production.contain(FEED_READABILITY)).isTrue();
+            assertThat(isTransactional(production.get(FEED_READABILITY))).as("一覧の判定部品はクラスに tx を持たない").isFalse();
+            assertThat(production.get(FEED_READABILITY).getMethods()).noneMatch(F04::isTransactional);
+            assertThat(edges(production, owner -> owner.getFullName().equals(AUDIENCE_ACCESS), name -> !name.startsWith("<")))
+                    .as("一覧の判定部品 → OrgAnnouncementAudienceAccess").anyMatch(edge -> edge.startsWith(FEED_READABILITY + "#"));
+            JavaClass queryService = production.get(FEED_QUERY_SERVICE);
+            assertThat(isTransactional(queryService)).as("一覧の取りまとめ役は tx を持たない").isFalse();
+            assertThat(queryService.getMethods()).noneMatch(F04::isTransactional);
+            assertThat(edges(production, owner -> owner.getFullName().equals(FEED_READABILITY), name -> !name.startsWith("<")))
+                    .as("取りまとめ役 → 一覧の判定部品").anyMatch(edge -> edge.startsWith(FEED_QUERY_SERVICE + "#"));
         }
 
         private static Set<String> violations(JavaClasses classes) {

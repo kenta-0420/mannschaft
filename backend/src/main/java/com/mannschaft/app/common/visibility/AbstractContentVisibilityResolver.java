@@ -224,6 +224,28 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
      */
     @Override
     public final Set<Long> filterAccessible(Collection<Long> contentIds, Long viewerUserId) {
+        return filterAccessibleInternal(contentIds, viewerUserId, null);
+    }
+
+    /**
+     * {@link #filterAccessible} の委任版。所有スコープでの閲覧者の役割を<b>委任役割に差し替えて</b>まとめて評価する
+     * （組織告知の一覧が、プレビューの委任経路と同じ可否を件数に比例しない SQL 本数で判定するため。{@link #assertCanViewDelegated} の一括版）。
+     *
+     * <p>呼び出しは組織告知の一覧の正規経路（{@code social.announcement}）に限る。ArchUnit
+     * （{@code AnnouncementDelegatedAccessGuardArchTest} F02）が呼び出し元を縛る。通常の閲覧 API へ委任資格を流用してはならない。</p>
+     *
+     * @param delegatedRole 委任役割（"MEMBER" / "SUPPORTER"）
+     */
+    public final Set<Long> filterAccessibleDelegated(Collection<Long> contentIds, Long viewerUserId,
+                                                     String delegatedRole) {
+        if (delegatedRole == null || delegatedRole.isBlank()) {
+            throw new IllegalArgumentException("delegatedRole must not be blank");
+        }
+        return filterAccessibleInternal(contentIds, viewerUserId, delegatedRole);
+    }
+
+    private Set<Long> filterAccessibleInternal(Collection<Long> contentIds, Long viewerUserId,
+                                               String delegatedRole) {
         if (contentIds == null || contentIds.isEmpty()) {
             return Set.of();
         }
@@ -254,7 +276,9 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             if (row == null || row.id() == null) {
                 continue;
             }
-            if (!visibleByStatus(row, viewerUserId, snapshot)) {
+            UserScopeRoleSnapshot rowSnapshot = delegatedRole == null
+                    ? snapshot : withDelegatedRole(snapshot, scopeOf(row), delegatedRole);
+            if (!visibleByStatus(row, viewerUserId, rowSnapshot)) {
                 continue;
             }
             // 4.5) DRAFT / SCHEDULED × 作成者本人 → visibility 評価スキップ（§7.5 OQ-A 根治）
@@ -267,7 +291,7 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
                 result.add(row.id());
                 continue;
             }
-            if (!visibleByVisibility(row, viewerUserId, snapshot, additionalAxisContext)) {
+            if (!visibleByVisibility(row, viewerUserId, rowSnapshot, additionalAxisContext)) {
                 continue;
             }
             result.add(row.id());

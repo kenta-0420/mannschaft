@@ -145,7 +145,7 @@ ArchUnit 認可番人（`AuthzControllerGuardArchTest`）は、公開エンド�
 
 ### 4.4 組織告知の一覧は宛先資格で絞る（一覧と本文の可否を一致） **【必須】**
 
-宛先（チームを選ぶ／グループ）を指定した組織告知は、**宛先外の人の一覧にタイトルを出さない**。組織告知を非メンバーにも返しうる一覧経路は、ロール由来の可視性だけでなく、本文プレビュー・既読と同じ資格判定（`OrgAnnouncementAudienceAccess`。直属資格 Qd／宛先資格 Qa）を通す。判定を別実装にしない（二重化は将来のずれの元）。取得行をまとめて判定し、SQL 本数は件数に比例させない。判定部品は `@Transactional` のクラス・メソッドから呼ばない（`AnnouncementDelegatedAccessGuardArchTest` F04）。詳細: F02.6 §4 組織スコープ・F01.2.1 §8.2。
+宛先（チームを選ぶ／グループ）を指定した組織告知は、**宛先外の人の一覧にタイトルを出さない**。元コンテンツ（ブログ・掲示板）の可視性で本文プレビューが 404 になる行も一覧に出さない。組織告知を非メンバーにも返しうる一覧経路は、ロール由来の可視性だけでなく、本文プレビュー・既読と同じ資格判定（`OrgAnnouncementAudienceAccess`。直属資格 Qd／宛先資格 Qa）と、元コンテンツの F00 一括評価（`OrgAnnouncementFeedReadability`）を通す。判定を別実装にしない（二重化は将来のずれの元）。取得行をまとめて判定し、SQL 本数は件数に比例させない。判定は `@Transactional` を持たない取りまとめ役（`OrgAnnouncementFeedQueryService`）が tx の外で行い、`@Transactional` のクラス・メソッドから呼ばない（`AnnouncementDelegatedAccessGuardArchTest` F04）。詳細: F02.6 §4 組織スコープ・F01.2.1 §8.2。
 
 ---
 

@@ -3,6 +3,7 @@ package com.mannschaft.app.social.announcement;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.bulletin.entity.BulletinThreadEntity;
 import com.mannschaft.app.cms.PostStatus;
 import com.mannschaft.app.cms.PostType;
 import com.mannschaft.app.cms.Visibility;
@@ -176,6 +177,23 @@ class OrgAnnouncementFeedAudienceIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    @DisplayName("全チーム宛ての PUBLIC 告知: 元が掲示板・会員限定ブログなら部外者・他組織の一覧に出ずプレビューも 404。元が PUBLIC ブログなら出て 200")
+    void 元コンテンツ側で拒否される行は一覧に出ない() throws Exception {
+        AnnouncementFeedEntity bulletin = feed("PUBLIC", "BULLETIN", null, null, false);
+        AnnouncementFeedEntity membersBlog = feed("PUBLIC", "BLOG_MEMBERS", null, null, false);
+        AnnouncementFeedEntity publicBlog = feed("PUBLIC", "BLOG_PUBLIC", null, null, false);
+        for (String outsider : List.of("N", "YA", "TYM")) {
+            assertThat(listedIds(outsider)).as(outsider + " の一覧")
+                    .doesNotContain(bulletin.getId(), membersBlog.getId()).contains(publicBlog.getId());
+            assertThat(previewStatus(bulletin, outsider)).isEqualTo(404);
+            assertThat(previewStatus(membersBlog, outsider)).isEqualTo(404);
+            assertThat(previewStatus(publicBlog, outsider)).isEqualTo(200);
+        }
+        assertThat(listedIds("OM")).contains(bulletin.getId(), membersBlog.getId(), publicBlog.getId());
+        assertThat(previewStatus(bulletin, "OM")).isEqualTo(200);
+    }
+
+    @Test
     @DisplayName("全人物×全告知で『一覧に出る ⇔ プレビューが 404 でない』が一致し、未読件数も一覧と同じ集合")
     void 一覧とプレビューの可否が全員で一致する() throws Exception {
         List<AnnouncementFeedEntity> feeds = new ArrayList<>();
@@ -184,6 +202,12 @@ class OrgAnnouncementFeedAudienceIT extends AbstractMySqlIntegrationTest {
             feeds.add(feed(visibility, null, groups(east), false));
             feeds.add(feed(visibility, null, groups(west), false));
             feeds.add(feed(visibility, "[" + t1 + "]", null, false));
+        }
+        // 元コンテンツ側で拒否される組み合わせ（告知は公開でも、元が掲示板・会員限定ブログ）
+        for (String source : List.of("BULLETIN", "BLOG_MEMBERS", "BLOG_PUBLIC")) {
+            feeds.add(feed("PUBLIC", source, null, null, false));
+            feeds.add(feed("PUBLIC", source, null, groups(east), false));
+            feeds.add(feed("SUPPORTERS", source, null, null, false));
         }
         List<String> mismatches = new ArrayList<>();
         for (String who : people.keySet()) {
@@ -253,22 +277,47 @@ class OrgAnnouncementFeedAudienceIT extends AbstractMySqlIntegrationTest {
 
     /** 組織 X の告知（元は告知と同じ visibility の組織ブログ）。 */
     private AnnouncementFeedEntity feed(String visibility, String teams, String groups, boolean includeUnassigned) {
-        Visibility blogVisibility = switch (visibility) {
-            case "PUBLIC" -> Visibility.PUBLIC;
-            case "SUPPORTERS" -> Visibility.SUPPORTERS_AND_ABOVE;
-            default -> Visibility.MEMBERS_AND_ABOVE;
-        };
+        return feed(visibility, "BLOG", teams, groups, includeUnassigned);
+    }
+
+    /**
+     * 組織 X の告知。source は BLOG（告知と同じ visibility のブログ）／BLOG_PUBLIC／BLOG_MEMBERS／BULLETIN（組織の掲示板スレッド）。
+     */
+    private AnnouncementFeedEntity feed(String visibility, String source, String teams, String groups,
+                                        boolean includeUnassigned) {
         String feedVisibility = switch (visibility) {
             case "PUBLIC" -> AnnouncementVisibility.PUBLIC;
             case "SUPPORTERS" -> AnnouncementVisibility.SUPPORTERS_AND_ABOVE;
             default -> AnnouncementVisibility.MEMBERS_AND_ABOVE;
         };
-        BlogPostEntity post = BlogPostEntity.builder().organizationId(orgX).authorId(author)
-                .title("一覧の試練の記事").slug("feed-" + UUID.randomUUID()).body(visibility + " の本文")
-                .visibility(blogVisibility).status(PostStatus.PUBLISHED).postType(PostType.BLOG).build();
-        em.persist(post);
+        AnnouncementSourceType type;
+        Long sourceId;
+        if ("BULLETIN".equals(source)) {
+            BulletinThreadEntity thread = BulletinThreadEntity.builder()
+                    .scopeType(com.mannschaft.app.bulletin.ScopeType.ORGANIZATION).scopeId(orgX)
+                    .authorId(author).title("一覧の試練の掲示板").body("掲示板の本文").build();
+            em.persist(thread);
+            type = AnnouncementSourceType.BULLETIN_THREAD;
+            sourceId = thread.getId();
+        } else {
+            Visibility blogVisibility = switch (source) {
+                case "BLOG_PUBLIC" -> Visibility.PUBLIC;
+                case "BLOG_MEMBERS" -> Visibility.MEMBERS_AND_ABOVE;
+                default -> switch (visibility) {
+                    case "PUBLIC" -> Visibility.PUBLIC;
+                    case "SUPPORTERS" -> Visibility.SUPPORTERS_AND_ABOVE;
+                    default -> Visibility.MEMBERS_AND_ABOVE;
+                };
+            };
+            BlogPostEntity post = BlogPostEntity.builder().organizationId(orgX).authorId(author)
+                    .title("一覧の試練の記事").slug("feed-" + UUID.randomUUID()).body(visibility + " の本文")
+                    .visibility(blogVisibility).status(PostStatus.PUBLISHED).postType(PostType.BLOG).build();
+            em.persist(post);
+            type = AnnouncementSourceType.BLOG_POST;
+            sourceId = post.getId();
+        }
         AnnouncementFeedEntity feed = AnnouncementFeedEntity.builder().scopeType(AnnouncementScopeType.ORGANIZATION)
-                .scopeId(orgX).sourceType(AnnouncementSourceType.BLOG_POST).sourceId(post.getId()).authorId(author)
+                .scopeId(orgX).sourceType(type).sourceId(sourceId).authorId(author)
                 .titleCache("一覧の試練の告知").excerptCache("告知の要約").visibility(feedVisibility)
                 .targetTeamIds(teams).targetGroupIds(groups).includeUnassigned(includeUnassigned).build();
         em.persist(feed);
