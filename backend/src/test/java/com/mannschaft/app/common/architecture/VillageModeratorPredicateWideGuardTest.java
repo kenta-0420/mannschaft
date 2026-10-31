@@ -47,6 +47,7 @@ class VillageModeratorPredicateWideGuardTest {
     private static final Pattern ROLE_REFERENCE = Pattern.compile("\\b(HEADMAN|ELDER)\\b");
     private static final Pattern IDENTIFIER_BEFORE_PAREN = Pattern.compile("([A-Za-z_$][\\w$]*)\\s*$");
     private static final Pattern THROWS_TAIL = Pattern.compile("\\bthrows\\s+[\\w$.,\\s<>]+$");
+    private static final Pattern TYPE_BODY_PREFIX = Pattern.compile("\\b(record|new)\\s*$");
     private static final Set<String> NON_METHOD_KEYWORDS = Set.of(
             "if", "for", "while", "switch", "catch", "synchronized", "try", "return", "new", "else", "do");
     /** 現 main で検出されるモデレーター判定メソッドの下限（11 ヘルパ＋本体の村長操作）。番人の空振り検出用。 */
@@ -153,12 +154,51 @@ class VillageModeratorPredicateWideGuardTest {
     void 番人_メソッド参照で生述語を渡しても_拒否する() {
         String source = wrap("""
                 private boolean isHeadman(UUID villageId, Long userId) {
-                    Function<Long, Optional<VillageMembershipEntity>> f = id -> membershipRepository
-                            .%s(villageId, USER, id);
-                    return f.apply(userId).isPresent();
+                    MembershipFinder finder = membershipRepository::%s;
+                    return finder.find(villageId, USER, userId).isPresent();
                 }
                 """.formatted(RAW));
+        assertThat(source).contains("::" + RAW + ";");
         assertThat(violations(source)).containsExactly("Fixture.java#isHeadman");
+    }
+
+    @Test
+    void 番人_ネストしたrecordのメソッドも走査する() {
+        String source = wrap("""
+                record Inner(Repo repo) {
+                    boolean isModerator(UUID v, Long u) {
+                        return repo.%s(v, USER, u).isPresent();
+                    }
+                }
+                """.formatted(RAW));
+        assertThat(violations(source)).containsExactly("Fixture.java#isModerator");
+    }
+
+    @Test
+    void 番人_フィールド初期化子の匿名クラスのメソッドも走査する() {
+        String source = wrap("""
+                private final Object guard = new Object() {
+                    boolean isModerator(UUID v, Long u) {
+                        return repo.%s(v, USER, u).isPresent();
+                    }
+                };
+                """.formatted(RAW));
+        assertThat(violations(source)).containsExactly("Fixture.java#isModerator");
+    }
+
+    @Test
+    void 番人_中立メソッド内の匿名クラスのメソッドも走査する() {
+        String source = wrap("""
+                void schedule(UUID v, Long u) {
+                    Runnable r = new Runnable() {
+                        public void run() { requireElder(v, u); }
+                        void requireElder(UUID v, Long u) {
+                            repo.%s(v, USER, u).orElseThrow();
+                        }
+                    };
+                }
+                """.formatted(RAW));
+        assertThat(violations(source)).containsExactly("Fixture.java#requireElder");
     }
 
     @Test
@@ -310,27 +350,23 @@ class VillageModeratorPredicateWideGuardTest {
     /**
      * コメント・文字列を潰したソースからメソッド本体（波括弧の内側）を取り出す。
      * {@code {} の直前が「識別子 + 括弧の釣り合った引数 + 任意の throws 節」であればメソッド
-     * （またはコンストラクタ）とみなし、対応する閉じ括弧までを本体とする。本体の内側は再帰的に
-     * 走査しない（ラムダや匿名クラスは囲むメソッドの本文として扱う）。型宣言の内側は走査を続けるため、
-     * ネストしたクラスのメソッドも拾う。
+     * （またはコンストラクタ）とみなし、対応する閉じ括弧までを本体とする。
+     *
+     * <p>{@code record Inner(...) {...}} と {@code new Foo() {...}}（匿名クラス）は形が似ているが型の本体なので
+     * メソッドとはみなさない。また、メソッド本体の内側も読み飛ばさずに走査を続ける。これにより、
+     * ネストした record・匿名クラス（フィールド初期化子・メソッド内のいずれも）・ローカルクラスの
+     * メソッドも個別のメソッドとして抽出される（外側メソッドの本文にも内側が含まれたまま残る）。</p>
      */
     static List<Method> extractMethods(String file, String source) {
         String masked = JavaSourceScanningUtils.maskCommentsAndLiterals(source);
         List<Method> methods = new ArrayList<>();
-        int i = 0;
         int n = masked.length();
-        while (i < n) {
-            char c = masked.charAt(i);
-            if (c == '{') {
-                String name = methodNameBefore(masked, i);
-                if (name != null) {
-                    int end = matchingBrace(masked, i);
-                    methods.add(new Method(file, name, masked.substring(i + 1, Math.max(i + 1, end))));
-                    i = end < 0 ? n : end + 1;
-                    continue;
-                }
-            }
-            i++;
+        for (int i = 0; i < n; i++) {
+            if (masked.charAt(i) != '{') continue;
+            String name = methodNameBefore(masked, i);
+            if (name == null) continue;
+            int end = matchingBrace(masked, i);
+            methods.add(new Method(file, name, masked.substring(i + 1, end < 0 ? n : end)));
         }
         return methods;
     }
@@ -361,6 +397,8 @@ class VillageModeratorPredicateWideGuardTest {
         // 注釈 @Foo(...) { はありえないが、識別子直前が @ なら除外する。
         int before = id.start() - 1;
         if (before >= 0 && head.charAt(before) == '@') return null;
+        // record Inner(...) { と new Foo(...) { は型の本体であってメソッドではない。
+        if (TYPE_BODY_PREFIX.matcher(head.substring(0, id.start())).find()) return null;
         return name;
     }
 
