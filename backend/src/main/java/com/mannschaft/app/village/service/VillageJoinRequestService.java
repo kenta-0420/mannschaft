@@ -17,6 +17,8 @@ import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.VillageJoinRequestRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -48,7 +50,7 @@ import java.util.stream.Collectors;
  * <p>アーキテクチャ原則の遵守:</p>
  * <ul>
  *   <li>原則 5: {@code @Transactional} は village ドメイン内のみ（VillageRepository /
- *       VillageJoinRequestRepository / VillageMembershipRepository）。</li>
+ *       VillageJoinRequestRepository / VillageMembershipRepository）。入村のUSER根はauthの行ロック窓口で取得する。</li>
  *   <li>{@link VillageMembershipService} を DI して subject の代表権限検証を委譲する（
  *       検証ロジックの一元化）。B3 の {@code join} は FREE 村専用のため、承認時の
  *       実メンバー登録は本 Service 内で {@link VillageMembershipRepository#save} を直接呼ぶ
@@ -65,6 +67,8 @@ public class VillageJoinRequestService {
     private final VillageJoinRequestRepository joinRequestRepository;
     private final VillageMembershipRepository membershipRepository;
     private final VillageRepository villageRepository;
+    private final VillageMembershipSlotService slotService;
+    private final EntityManager entityManager;
     /** 代表権限検証ロジックを委譲する（B3 既存メソッド再利用）。 */
     private final VillageMembershipService membershipService;
     private final VillageAccessGate accessGate;
@@ -243,29 +247,32 @@ public class VillageJoinRequestService {
         loadActiveVillage(villageId, actorUserId);
         VillageMembershipEntity reviewer = ensureReviewer(villageId, actorUserId);
 
-        VillageJoinRequestEntity req = loadRequestForVillage(villageId, requestId);
+        var subject = joinRequestRepository.findAdmissionSubject(villageId, requestId)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_JOIN_REQUEST_NOT_FOUND));
+        if (subject.getSubjectType() == VillageSubjectType.USER && !slotService.lockUser(subject.getSubjectId())) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        VillageJoinRequestEntity req = loadRequestForVillageForUpdate(villageId, requestId);
+        if (req.getSubjectType() != subject.getSubjectType() || !req.getSubjectId().equals(subject.getSubjectId())) {
+            throw new IllegalStateException("村参加申請の入村主体が変更されています");
+        }
         ensurePending(req);
 
-        // 承認時にも membership 重複ガード（申請受付〜承認の間に直接参加された可能性）
-        membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                        villageId, req.getSubjectType(), req.getSubjectId())
-                .ifPresent(m -> {
-                    if (m.getBannedAt() != null) {
-                        throw new BusinessException(VillageErrorCode.MEMBER_BANNED);
-                    }
-                    throw new BusinessException(VillageErrorCode.ALREADY_MEMBER);
-                });
+        slotService.ensureNotCurrentMember(villageId, req.getSubjectType(), req.getSubjectId());
+        Short userSlot = req.getSubjectType() == VillageSubjectType.USER
+                ? slotService.allocate(req.getSubjectId()).slot() : null;
 
         // メンバーシップ作成（村ドメイン内で完結）
         VillageMembershipEntity membership = VillageMembershipEntity.builder()
                 .villageId(villageId)
                 .subjectType(req.getSubjectType())
                 .subjectId(req.getSubjectId())
+                .userSlot(userSlot)
                 .role(VillageRole.VILLAGER)
                 .joinedAt(LocalDateTime.now())
                 .invitedByMembershipId(reviewer.getId())
                 .build();
-        membershipRepository.save(membership);
+        slotService.admit(membership);
 
         // 申請を APPROVED に更新
         LocalDateTime now = LocalDateTime.now();
@@ -297,7 +304,7 @@ public class VillageJoinRequestService {
         loadActiveVillage(villageId, actorUserId);
         VillageMembershipEntity reviewer = ensureReviewer(villageId, actorUserId);
 
-        VillageJoinRequestEntity req = loadRequestForVillage(villageId, requestId);
+        VillageJoinRequestEntity req = loadRequestForVillageForUpdate(villageId, requestId);
         ensurePending(req);
 
         req.setStatus(VillageRequestStatus.REJECTED);
@@ -326,7 +333,7 @@ public class VillageJoinRequestService {
     public JoinRequestResponse withdraw(UUID villageId, UUID requestId, Long actorUserId) {
         loadActiveVillage(villageId, actorUserId);
 
-        VillageJoinRequestEntity req = loadRequestForVillage(villageId, requestId);
+        VillageJoinRequestEntity req = loadRequestForVillageForUpdate(villageId, requestId);
 
         if (!req.getRequesterUserId().equals(actorUserId)) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
@@ -358,14 +365,12 @@ public class VillageJoinRequestService {
         return accessGate.loadActiveVillage(villageId, actorUserId);
     }
 
-    /**
-     * 申請を取得し、villageId が一致することを確認する（IDOR 対策）。
-     */
-    private VillageJoinRequestEntity loadRequestForVillage(UUID villageId, UUID requestId) {
-        VillageJoinRequestEntity req = joinRequestRepository.findById(requestId)
+    /** cached PENDINGが存在しても、ロック取得後に現在の状態へ再読込する。 */
+    private VillageJoinRequestEntity loadRequestForVillageForUpdate(UUID villageId, UUID requestId) {
+        VillageJoinRequestEntity req = joinRequestRepository.findByIdForUpdate(requestId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_JOIN_REQUEST_NOT_FOUND));
+        entityManager.refresh(req, LockModeType.PESSIMISTIC_WRITE);
         if (!req.getVillageId().equals(villageId)) {
-            // パス villageId とレコードの villageId 不一致は不存在扱い（IDOR）
             throw new BusinessException(VillageErrorCode.VILLAGE_JOIN_REQUEST_NOT_FOUND);
         }
         return req;

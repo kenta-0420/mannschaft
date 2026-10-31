@@ -1,5 +1,6 @@
 package com.mannschaft.app.village.service;
 
+import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.village.VillageErrorCode;
@@ -20,8 +21,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import jakarta.persistence.EntityManager;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -63,6 +64,11 @@ import static org.mockito.Mockito.verify;
 class VillageCreationRequestServiceTest {
 
     @Mock
+    private UserRowLockService userRowLockService;
+    @Mock
+    private EntityManager entityManager;
+
+    @Mock
     private VillageCreationRequestRepository requestRepository;
     @Mock
     private VillageRepository villageRepository;
@@ -71,7 +77,6 @@ class VillageCreationRequestServiceTest {
     @Mock
     private UserRoleRepository userRoleRepository;
 
-    @InjectMocks
     private VillageCreationRequestService service;
 
     private static final Long REQUESTER_ID = 100L;
@@ -90,8 +95,17 @@ class VillageCreationRequestServiceTest {
     }
 
     @BeforeEach
+    void wireRealAdmissionSlots() {
+        org.mockito.Mockito.lenient().when(userRowLockService.lock(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(UserRowLockService.UserState.ACTIVE);
+        VillageMembershipSlotService slots = new VillageMembershipSlotService(userRowLockService, membershipRepository);
+        service = new VillageCreationRequestService(requestRepository, villageRepository, membershipRepository, slots, entityManager, userRoleRepository);
+    }
+
+    @BeforeEach
     void setup() {
-        // テストごとに必要分だけ stubbing
+        org.mockito.Mockito.lenient().when(requestRepository.findAdmissionRequesterId(any()))
+                .thenReturn(Optional.of(REQUESTER_ID));
     }
 
     // ---------------------------------------------------------------
@@ -217,7 +231,7 @@ class VillageCreationRequestServiceTest {
                 .build();
         ReflectionTestUtils.setField(pending, "id", requestId);
 
-        given(requestRepository.findById(requestId)).willReturn(Optional.of(pending));
+        given(requestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(pending));
         given(villageRepository.existsBySlug("casual-baseball")).willReturn(false);
         given(villageRepository.save(any())).willAnswer(inv -> {
             VillageEntity v = inv.getArgument(0);
@@ -281,7 +295,7 @@ class VillageCreationRequestServiceTest {
                 .build();
         ReflectionTestUtils.setField(pending, "id", requestId);
 
-        given(requestRepository.findById(requestId)).willReturn(Optional.of(pending));
+        given(requestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(pending));
         given(requestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         VillageCreationRequestResponse res = service.reject(
@@ -307,7 +321,7 @@ class VillageCreationRequestServiceTest {
                 .status(VillageRequestStatus.APPROVED)
                 .build();
         ReflectionTestUtils.setField(approved, "id", requestId);
-        given(requestRepository.findById(requestId)).willReturn(Optional.of(approved));
+        given(requestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(approved));
 
         assertThatThrownBy(() -> service.approve(requestId, ADMIN_ID,
                 new VillageCreationRequestReviewRequest("再審査")))
@@ -330,7 +344,7 @@ class VillageCreationRequestServiceTest {
                 .status(VillageRequestStatus.REJECTED)
                 .build();
         ReflectionTestUtils.setField(rejected, "id", requestId);
-        given(requestRepository.findById(requestId)).willReturn(Optional.of(rejected));
+        given(requestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(rejected));
 
         assertThatThrownBy(() -> service.approve(requestId, ADMIN_ID,
                 new VillageCreationRequestReviewRequest("コメ")))
@@ -355,7 +369,7 @@ class VillageCreationRequestServiceTest {
                 .build();
         ReflectionTestUtils.setField(pending, "id", requestId);
 
-        given(requestRepository.findById(requestId)).willReturn(Optional.of(pending));
+        given(requestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(pending));
         given(requestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         VillageCreationRequestResponse res = service.withdraw(requestId, REQUESTER_ID);
@@ -382,7 +396,7 @@ class VillageCreationRequestServiceTest {
         ReflectionTestUtils.setField(pending, "id", requestId);
 
         Long otherUserId = 200L;
-        given(requestRepository.findById(requestId)).willReturn(Optional.of(pending));
+        given(requestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(pending));
         given(userRoleRepository.existsSystemAdminByUserId(otherUserId)).willReturn(0L);
 
         assertThatThrownBy(() -> service.withdraw(requestId, otherUserId))
