@@ -248,7 +248,7 @@ class JobPostingServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 権限なしで JOB_PERMISSION_DENIED")
+        @DisplayName("異常系: 権限なしは求人の存在を明かさず JOB_NOT_FOUND")
         void 権限なし_拒否() {
             JobPostingEntity posting = postingWithStatus(JobPostingStatus.DRAFT);
             given(postingRepository.findById(POSTING_ID)).willReturn(Optional.of(posting));
@@ -257,7 +257,7 @@ class JobPostingServiceTest {
             assertThatThrownBy(() -> service.publish(POSTING_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(JobmatchingErrorCode.JOB_PERMISSION_DENIED));
+                            .isEqualTo(JobmatchingErrorCode.JOB_NOT_FOUND));
         }
 
         @Test

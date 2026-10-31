@@ -2326,23 +2326,21 @@ public class GlobalExceptionHandler {
             Map.entry("ONBOARDING_015", HttpStatus.CONFLICT),            // 進行中の進捗がありテンプレート削除不可
 
             // 認可監査 Wave6 ロットE: メンバーシップ基盤（MembershipBasisErrorCode・F00.5）の残り未登録分。
-            // MEMBERSHIP_POSITION_SCOPE_MISMATCH は既存 PARKING_020 と同じ「越境は存在秘匿」の流儀で 404。
+            // 役職割当のスコープ越境は専用コードを廃し、不在と同一の MEMBERSHIP_POSITION_CATALOG_NOT_FOUND で返す（CMP-260821-1027）。
             Map.entry("MEMBERSHIP_LAST_ADMIN_BLOCKED", HttpStatus.CONFLICT),
             Map.entry("MEMBERSHIP_NOT_FOUND", HttpStatus.NOT_FOUND),
             Map.entry("MEMBERSHIP_ACTIVE_EXISTS", HttpStatus.CONFLICT),
             Map.entry("MEMBERSHIP_ALREADY_LEFT", HttpStatus.CONFLICT),
-            Map.entry("MEMBERSHIP_POSITION_SCOPE_MISMATCH", HttpStatus.NOT_FOUND),
             Map.entry("MEMBERSHIP_POSITION_ACTIVE_EXISTS", HttpStatus.CONFLICT),
             Map.entry("MEMBERSHIP_POSITION_NOT_FOUND", HttpStatus.NOT_FOUND),
             Map.entry("MEMBERSHIP_POSITION_CATALOG_NOT_FOUND", HttpStatus.NOT_FOUND),
 
             // 認可監査 Wave6 ロットE: 備品管理（EquipmentErrorCode）の残り未登録分。
-            // EQUIPMENT_009（SCOPE_MISMATCH）は既存 PARKING_020 と同じ「越境は存在秘匿」の流儀で 404。
+            // EQUIPMENT_009（SCOPE_MISMATCH）は廃止。他備品の貸出記録は不在と同一の EQUIPMENT_002 で返す（CMP-260821-1027）。
             Map.entry("EQUIPMENT_003", HttpStatus.CONFLICT),             // INSUFFICIENT_STOCK
             Map.entry("EQUIPMENT_004", HttpStatus.CONFLICT),             // ALREADY_RETURNED
             Map.entry("EQUIPMENT_005", HttpStatus.CONFLICT),             // NOT_CONSUMABLE（備品種別と操作の不整合）
             Map.entry("EQUIPMENT_008", HttpStatus.CONFLICT),             // HAS_ACTIVE_ASSIGNMENTS
-            Map.entry("EQUIPMENT_009", HttpStatus.NOT_FOUND),            // SCOPE_MISMATCH（越境は存在秘匿）
             Map.entry("EQUIPMENT_014", HttpStatus.CONFLICT),             // ITEM_NOT_AVAILABLE
 
             // ErrorCode ステータス写像是正ロットH: 残り未登録 enum の一括是正。

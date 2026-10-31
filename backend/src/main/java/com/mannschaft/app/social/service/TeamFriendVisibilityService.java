@@ -71,11 +71,8 @@ public class TeamFriendVisibilityService {
                 .orElseThrow(() -> new BusinessException(SocialErrorCode.FRIEND_RELATION_NOT_FOUND));
 
         if (!friend.getTeamAId().equals(teamId) && !friend.getTeamBId().equals(teamId)) {
-            // 保存済みの公開値で分類し、私的な他チーム関係は不在と同じコードで拒否する。
-            // 公開済みの他チーム関係は既存の拒否コードを維持する。
-            throw new BusinessException(Boolean.TRUE.equals(friend.getIsPublic())
-                    ? SocialErrorCode.FRIEND_VISIBILITY_ADMIN_ONLY
-                    : SocialErrorCode.FRIEND_RELATION_NOT_FOUND);
+            // 他チームの関係は、公開・非公開を問わず不在と同一のコードで拒否する（存在オラクル対策。CMP-260821-1027）。
+            throw new BusinessException(SocialErrorCode.FRIEND_RELATION_NOT_FOUND);
         }
 
         boolean before = Boolean.TRUE.equals(friend.getIsPublic());

@@ -134,7 +134,7 @@ class MatchProposalServiceTest {
             assertThatThrownBy(() -> service.listProposals(REQUEST_ID, ACTOR_ID, PageRequest.of(0, 20)))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MatchingErrorCode.INSUFFICIENT_PERMISSION);
+                    .isEqualTo(MatchingErrorCode.REQUEST_NOT_FOUND);
         }
 
         @Test
@@ -339,7 +339,7 @@ class MatchProposalServiceTest {
             assertThatThrownBy(() -> service.acceptProposal(PROPOSAL_ID, ACTOR_ID, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MatchingErrorCode.INSUFFICIENT_PERMISSION);
+                    .isEqualTo(MatchingErrorCode.PROPOSAL_NOT_FOUND);
         }
     }
 
@@ -389,7 +389,7 @@ class MatchProposalServiceTest {
             assertThatThrownBy(() -> service.withdrawProposal(PROPOSAL_ID, ACTOR_ID, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MatchingErrorCode.INSUFFICIENT_PERMISSION);
+                    .isEqualTo(MatchingErrorCode.PROPOSAL_NOT_FOUND);
         }
     }
 
@@ -631,7 +631,7 @@ class MatchProposalServiceTest {
             assertThatThrownBy(() -> service.rejectProposal(PROPOSAL_ID, ACTOR_ID, "不適合"))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(MatchingErrorCode.INSUFFICIENT_PERMISSION));
+                            .isEqualTo(MatchingErrorCode.PROPOSAL_NOT_FOUND));
         }
 
         @Test

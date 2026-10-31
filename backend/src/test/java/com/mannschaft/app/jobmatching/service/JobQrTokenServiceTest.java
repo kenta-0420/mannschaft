@@ -44,7 +44,7 @@ import static org.mockito.Mockito.verify;
  *       署名偽造 {@code JOB_QR_TOKEN_INVALID_SIGNATURE} / TTL 超過 {@code JOB_QR_TOKEN_EXPIRED} /
  *       オフライン送信で scanned_at が有効範囲内なら許可</li>
  *   <li>{@code verifyShortCode}: 成功 / 失効コード {@code JOB_QR_SHORT_CODE_NOT_FOUND}</li>
- *   <li>{@code getCurrent}: Requester 一致 / 不一致で {@code JOB_PERMISSION_DENIED}</li>
+ *   <li>{@code getCurrent}: Requester 一致 / 不一致で {@code JOB_CONTRACT_NOT_FOUND}</li>
  * </ul>
  *
  * <p>{@link Clock} を {@link Clock#fixed(Instant, java.time.ZoneId)} で固定し、時間依存ロジックを決定論的に検証する。
@@ -169,14 +169,14 @@ class JobQrTokenServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: Requester 以外からの発行は JOB_PERMISSION_DENIED（404 に写像され契約不在と区別できない）")
-        void 発行者が別人でJOB_PERMISSION_DENIED() {
+        @DisplayName("異常系: Requester 以外からの発行は JOB_CONTRACT_NOT_FOUND（契約不在と本文まで同一）")
+        void 発行者が別人でJOB_CONTRACT_NOT_FOUND() {
             given(contractRepository.findById(CONTRACT_ID)).willReturn(Optional.of(contract()));
 
             assertThatThrownBy(() -> service.issue(CONTRACT_ID, JobCheckInType.IN, null, OTHER_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(JobmatchingErrorCode.JOB_PERMISSION_DENIED));
+                            .isEqualTo(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND));
         }
     }
 
@@ -406,7 +406,7 @@ class JobQrTokenServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: Requester 以外は JOB_PERMISSION_DENIED")
+        @DisplayName("異常系: Requester 以外は JOB_CONTRACT_NOT_FOUND")
         void 別ユーザーで403() {
             given(contractRepository.findById(CONTRACT_ID)).willReturn(Optional.of(contract()));
 
@@ -414,7 +414,7 @@ class JobQrTokenServiceTest {
                     service.getCurrent(CONTRACT_ID, JobCheckInType.IN, OTHER_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(JobmatchingErrorCode.JOB_PERMISSION_DENIED));
+                            .isEqualTo(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND));
         }
     }
 

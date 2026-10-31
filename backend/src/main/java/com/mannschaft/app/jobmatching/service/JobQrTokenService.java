@@ -82,7 +82,7 @@ public class JobQrTokenService {
      * @param issuerUserId 発行者（通常は Requester 本人）
      * @return 発行結果（QR 画像化する {@code token} 文字列 + 手動入力用 {@code shortCode}）
      * <p>契約が存在しない場合と発行者が Requester でない場合は、いずれも 404 で応答する
-     * （{@code JOB_PERMISSION_DENIED} を 404 に写像済み）。ステータスが割れていると
+     * （同一の {@code JOB_CONTRACT_NOT_FOUND}・同一本文）。status や error.code が割れていると
      * 応答差から契約 ID の実在を判別できる存在オラクルになるため。</p>
      *
      * @throws BusinessException 契約が存在しない、または発行者が Requester でない場合
@@ -96,9 +96,9 @@ public class JobQrTokenService {
                 .orElseThrow(() -> new BusinessException(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND));
 
         // 発行権限: Requester 本人のみ。第三者や Worker 本人からの発行は許可しない。
-        // 拒否は 403 ではなく不在と同じ 404 で返し、契約 ID の実在を秘匿する。
+        // 拒否は 403 ではなく不在と同一の JOB_CONTRACT_NOT_FOUND（404）で返し、契約 ID の実在を秘匿する。
         if (!Objects.equals(contract.getRequesterUserId(), issuerUserId)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            throw new BusinessException(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND);
         }
 
         // TTL のクランプ。リクエストに従うが上限を超えないよう min() で抑える。
@@ -270,7 +270,7 @@ public class JobQrTokenService {
         JobContractEntity contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new BusinessException(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND));
         if (!Objects.equals(contract.getRequesterUserId(), issuerUserId)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            throw new BusinessException(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND);
         }
 
         Instant now = Instant.now(clock);

@@ -155,7 +155,7 @@ class JobContractServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 権限なしで JOB_PERMISSION_DENIED")
+        @DisplayName("異常系: 権限なしは応募の存在を明かさず JOB_APPLICATION_NOT_FOUND")
         void 権限なし_拒否() {
             JobApplicationEntity app = appliedApplication();
             JobPostingEntity posting = openPosting(1);
@@ -166,7 +166,7 @@ class JobContractServiceTest {
             assertThatThrownBy(() -> service.acceptApplication(APPLICATION_ID, REQUESTER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(JobmatchingErrorCode.JOB_PERMISSION_DENIED));
+                            .isEqualTo(JobmatchingErrorCode.JOB_APPLICATION_NOT_FOUND));
         }
 
         @Test
@@ -558,7 +558,7 @@ class JobContractServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 関係者でないユーザーは JOB_PERMISSION_DENIED")
+        @DisplayName("異常系: 関係者でないユーザーは契約の存在を明かさず JOB_CONTRACT_NOT_FOUND")
         void 権限なし_拒否() {
             JobContractEntity contract = contractWithStatus(JobContractStatus.MATCHED, 0);
             given(contractRepository.findById(1L)).willReturn(Optional.of(contract));
@@ -566,7 +566,7 @@ class JobContractServiceTest {
             assertThatThrownBy(() -> service.cancelContract(1L, 9999L, "無関係ユーザー"))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(JobmatchingErrorCode.JOB_PERMISSION_DENIED));
+                            .isEqualTo(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND));
         }
     }
 

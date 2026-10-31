@@ -127,7 +127,8 @@ public class JobPostingService {
         JobPostingEntity posting = findOrThrow(postingId);
 
         if (!jobPolicy.canEditPosting(userId, posting)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            // 編集権限の無い者には求人の存在を明かさない（不在IDと同一応答。CMP-260821-1027）。
+            throw new BusinessException(JobmatchingErrorCode.JOB_NOT_FOUND);
         }
 
         stateMachine.validate(posting.getStatus(), JobPostingStatus.OPEN);
@@ -156,7 +157,8 @@ public class JobPostingService {
         JobPostingEntity posting = findOrThrow(postingId);
 
         if (!jobPolicy.canEditPosting(userId, posting)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            // 編集権限の無い者には求人の存在を明かさない（不在IDと同一応答。CMP-260821-1027）。
+            throw new BusinessException(JobmatchingErrorCode.JOB_NOT_FOUND);
         }
 
         // CLOSED/CANCELLED は編集不可。
@@ -219,7 +221,8 @@ public class JobPostingService {
     public JobPostingEntity close(Long postingId, Long userId) {
         JobPostingEntity posting = findOrThrow(postingId);
         if (!jobPolicy.canEditPosting(userId, posting)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            // 編集権限の無い者には求人の存在を明かさない（不在IDと同一応答。CMP-260821-1027）。
+            throw new BusinessException(JobmatchingErrorCode.JOB_NOT_FOUND);
         }
         stateMachine.validate(posting.getStatus(), JobPostingStatus.CLOSED);
         posting.close();
@@ -235,7 +238,8 @@ public class JobPostingService {
     public JobPostingEntity cancel(Long postingId, Long userId) {
         JobPostingEntity posting = findOrThrow(postingId);
         if (!jobPolicy.canEditPosting(userId, posting)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            // 編集権限の無い者には求人の存在を明かさない（不在IDと同一応答。CMP-260821-1027）。
+            throw new BusinessException(JobmatchingErrorCode.JOB_NOT_FOUND);
         }
         stateMachine.validate(posting.getStatus(), JobPostingStatus.CANCELLED);
         posting.cancel();
@@ -251,7 +255,8 @@ public class JobPostingService {
     public void delete(Long postingId, Long userId) {
         JobPostingEntity posting = findOrThrow(postingId);
         if (!jobPolicy.canEditPosting(userId, posting)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            // 編集権限の無い者には求人の存在を明かさない（不在IDと同一応答。CMP-260821-1027）。
+            throw new BusinessException(JobmatchingErrorCode.JOB_NOT_FOUND);
         }
         int applicantCount = applicationRepository.countByJobPostingId(postingId);
         if (applicantCount > 0) {

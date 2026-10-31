@@ -183,7 +183,8 @@ public class MatchRequestService {
 
         // 所有権チェック: 募集チームの管理者/副管理者のみ編集可（userID≠teamID の誤比較を撤廃）。
         if (!accessControlService.isAdminOrAbove(currentUserId, entity.getTeamId(), "TEAM")) {
-            throw new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);
+            // 権限外には募集の存在を明かさない（不在IDと同一応答。CMP-260821-1027）。
+            throw new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND);
         }
         if (!entity.isEditable()) {
             throw new BusinessException(MatchingErrorCode.REQUEST_NOT_EDITABLE);
@@ -223,7 +224,8 @@ public class MatchRequestService {
 
         // 所有権チェック: 募集チームの管理者/副管理者のみ取り下げ可（userID≠teamID の誤比較を撤廃）。
         if (!accessControlService.isAdminOrAbove(currentUserId, entity.getTeamId(), "TEAM")) {
-            throw new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);
+            // 権限外には募集の存在を明かさない（不在IDと同一応答。CMP-260821-1027）。
+            throw new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND);
         }
         if (entity.getStatus() == MatchRequestStatus.MATCHED) {
             throw new BusinessException(MatchingErrorCode.REQUEST_MATCHED_CANNOT_DELETE);

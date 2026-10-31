@@ -157,7 +157,16 @@ class JobContractWriteBodyParityContractIT extends AbstractMySqlIntegrationTest 
         try {
             tx(() -> {
                 if (!postingIds.isEmpty()) {
+                    // accept 正常系が JobChatService で作る契約チャットの後始末（自所有契約の chat_room_id のみ）。
+                    String ownChannels = "(SELECT chat_room_id FROM job_contracts WHERE chat_room_id IS NOT NULL AND job_posting_id IN (:ids))";
+                    em.createNativeQuery("DELETE FROM chat_messages WHERE channel_id IN " + ownChannels).setParameter("ids", postingIds).executeUpdate();
+                    em.createNativeQuery("DELETE FROM chat_channel_members WHERE channel_id IN " + ownChannels).setParameter("ids", postingIds).executeUpdate();
+                    List<?> channelIds = em.createNativeQuery("SELECT chat_room_id FROM job_contracts WHERE chat_room_id IS NOT NULL AND job_posting_id IN (:ids)")
+                            .setParameter("ids", postingIds).getResultList();
                     em.createNativeQuery("DELETE FROM job_contracts WHERE job_posting_id IN (:ids)").setParameter("ids", postingIds).executeUpdate();
+                    if (!channelIds.isEmpty()) {
+                        em.createNativeQuery("DELETE FROM chat_channels WHERE id IN (:cids)").setParameter("cids", channelIds).executeUpdate();
+                    }
                     em.createNativeQuery("DELETE FROM job_applications WHERE job_posting_id IN (:ids)").setParameter("ids", postingIds).executeUpdate();
                     em.createNativeQuery("DELETE FROM job_postings WHERE id IN (:ids)").setParameter("ids", postingIds).executeUpdate();
                 }
