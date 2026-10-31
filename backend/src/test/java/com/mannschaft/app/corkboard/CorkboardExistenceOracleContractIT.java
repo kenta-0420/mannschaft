@@ -2,12 +2,20 @@ package com.mannschaft.app.corkboard;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.service.AuthTokenService;
+import com.mannschaft.app.corkboard.repository.CorkboardCardRepository;
+import com.mannschaft.app.corkboard.repository.CorkboardGroupRepository;
+import com.mannschaft.app.corkboard.repository.CorkboardRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
+import com.mannschaft.app.team.repository.TeamRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -16,64 +24,86 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * CMP-260820-1422（存在オラクル一掃）corkboard 残件の API 契約テスト。
  *
  * <p>契約: 閲覧権限のない者（非メンバー・他チーム/他組織の者・他人の個人ボード）が
  * 実在 boardId を指定したときの応答は、不在 boardId を指定したときと
- * <b>status・error.code・error 本文（message 含む）まで同一</b>の 404 {@code CORKBOARD_001} とする。
+ * <b>status・Content-Type・本文全体（error.code・message 含む）まで同一</b>の 404 {@code CORKBOARD_001} とする。
  * 是正前は scope 内に実在するが非メンバーなら 403 {@code CORKBOARD_009}、不在なら 404 で、
  * boardId の実在が外部から判別できた（存在オラクル）。</p>
  *
  * <p>メンバー（＝ボードを閲覧できる者）の権限不足 403 {@code CORKBOARD_009} は維持する。
- * メンバーは当該ボードを一覧・詳細で既に見られるため、403 を返しても新たに漏れる存在情報はない。</p>
+ * メンバーは当該ボードを一覧・詳細で既に閲覧できるため、403 を返しても新たに漏れる存在情報はない。</p>
+ *
+ * <p>実JWT・実Securityフィルタ・実MySQL で検査する（TEST_CONVENTION §3.1.2。認可を検査するため
+ * {@code addFilters=false} を使わない）。fixture は Repository 経由で独立 commit し、所有行だけを後始末する。
+ * 拒否された要求の DB 不変は、所有ボード・カード・セクションの全列スナップショット（{@code deleted_at} 含む）の
+ * 前後一致で確かめる。</p>
  *
  * <p>攻め口: 空（不在ID）／認可（他チーム・他組織・非メンバー・他人の個人ボード・未認証401）／
- * 途中失敗（拒否された更新・削除で DB が変わらないこと）。</p>
+ * 途中失敗（拒否された更新・削除・作成で DB が変わらないこと）。</p>
  */
-@AutoConfigureMockMvc(addFilters = false)
-@Transactional
+@AutoConfigureMockMvc(addFilters = true)
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@DisplayName("corkboard 存在オラクル契約（越境IDは不在IDと同一の404）")
+@DisplayName("corkboard 存在オラクル契約（越境IDは不在IDと同一の404・実JWT/filter）")
 class CorkboardExistenceOracleContractIT extends AbstractMySqlIntegrationTest {
 
-    /** 確実に存在しない boardId / cardId / groupId。 */
-    private static final long MISSING_ID = 9_000_000_000L;
+    /** 確実に存在しない boardId。 */
+    private static final long MISSING_ID = Long.MAX_VALUE;
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private ObjectMapper objectMapper;
+    @Autowired private AuthTokenService tokens;
+    @Autowired private PlatformTransactionManager transactions;
+    @Autowired private JdbcTemplate jdbc;
+    @Autowired private UserRepository users;
+    @Autowired private TeamRepository teams;
+    @Autowired private OrganizationRepository organizations;
+    @Autowired private CorkboardRepository boards;
+    @Autowired private CorkboardCardRepository cards;
+    @Autowired private CorkboardGroupRepository groups;
+    @PersistenceContext private EntityManager em;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @PersistenceContext
-    private EntityManager em;
+    private final List<Long> userIds = new ArrayList<>();
+    private final List<Long> teamIds = new ArrayList<>();
+    private final List<Long> orgIds = new ArrayList<>();
+    private final List<Long> boardIds = new ArrayList<>();
 
     private Long teamAId;
-    private Long teamBId;
     private Long orgOId;
-    private Long orgPId;
-    private Long adminAId;
     private Long adminBId;
     private Long memberAId;
-    private Long orgOMemberId;
     private Long orgPMemberId;
     private Long outsiderId;
 
@@ -85,36 +115,64 @@ class CorkboardExistenceOracleContractIT extends AbstractMySqlIntegrationTest {
     private Long groupId;
 
     @BeforeEach
-    void setUp() {
-        teamAId = insertTeam("CBオラクル チームA");
-        teamBId = insertTeam("CBオラクル チームB");
-        orgOId = insertOrganization("CBオラクル 組織O");
-        orgPId = insertOrganization("CBオラクル 組織P");
+    void Repository経由で所有行をcommitする() {
+        var values = mock(org.springframework.data.redis.core.ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(values);
+        when(values.get(anyString())).thenReturn(null);
+        when(redisTemplate.hasKey(anyString())).thenReturn(false);
+        tx(() -> {
+            teamAId = saveTeam("コルク契約チームA");
+            Long teamBId = saveTeam("コルク契約チームB");
+            orgOId = saveOrganization("コルク契約組織O");
+            Long orgPId = saveOrganization("コルク契約組織P");
 
-        adminAId = insertUser("cb-oracle-admin-a@example.com");
-        adminBId = insertUser("cb-oracle-admin-b@example.com");
-        memberAId = insertUser("cb-oracle-member-a@example.com");
-        orgOMemberId = insertUser("cb-oracle-org-o@example.com");
-        orgPMemberId = insertUser("cb-oracle-org-p@example.com");
-        outsiderId = insertUser("cb-oracle-outsider@example.com");
+            Long adminAId = saveUser("admin-a");
+            adminBId = saveUser("admin-b");
+            memberAId = saveUser("member-a");
+            Long orgOMemberId = saveUser("org-o");
+            orgPMemberId = saveUser("org-p");
+            outsiderId = saveUser("outsider");
 
-        MembershipTestHelper.insertUserRole(em, adminAId, "ADMIN", teamAId, null);
-        MembershipTestHelper.insertMembership(em, adminAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, adminBId, "ADMIN", teamBId, null);
-        MembershipTestHelper.insertMembership(em, adminBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
-        MembershipTestHelper.insertMembership(em, memberAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
-        MembershipTestHelper.insertMembership(em, orgOMemberId, ScopeType.ORGANIZATION, orgOId, RoleKind.MEMBER);
-        MembershipTestHelper.insertMembership(em, orgPMemberId, ScopeType.ORGANIZATION, orgPId, RoleKind.MEMBER);
+            MembershipTestHelper.insertUserRole(em, adminAId, "ADMIN", teamAId, null);
+            MembershipTestHelper.insertMembership(em, adminAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+            MembershipTestHelper.insertUserRole(em, adminBId, "ADMIN", teamBId, null);
+            MembershipTestHelper.insertMembership(em, adminBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
+            MembershipTestHelper.insertMembership(em, memberAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+            MembershipTestHelper.insertMembership(em, orgOMemberId, ScopeType.ORGANIZATION, orgOId, RoleKind.MEMBER);
+            MembershipTestHelper.insertMembership(em, orgPMemberId, ScopeType.ORGANIZATION, orgPId, RoleKind.MEMBER);
 
-        teamBoardId = insertBoard("TEAM", teamAId, "CBオラクル チームボード", "ADMIN_ONLY");
-        teamAllMembersBoardId = insertBoard("TEAM", teamAId, "CBオラクル 全員編集ボード", "ALL_MEMBERS");
-        orgBoardId = insertBoard("ORGANIZATION", orgOId, "CBオラクル 組織ボード", "ADMIN_ONLY");
-        personalBoardId = insertPersonalBoard(memberAId, "CBオラクル 個人ボード");
-        cardId = insertCard(teamAllMembersBoardId, memberAId);
-        groupId = insertGroup(teamAllMembersBoardId);
+            teamBoardId = saveBoard(CorkboardTestFixture.scopedBoard("TEAM", teamAId, "ADMIN_ONLY"));
+            teamAllMembersBoardId = saveBoard(CorkboardTestFixture.scopedBoard("TEAM", teamAId, "ALL_MEMBERS"));
+            orgBoardId = saveBoard(CorkboardTestFixture.scopedBoard("ORGANIZATION", orgOId, "ADMIN_ONLY"));
+            personalBoardId = saveBoard(CorkboardTestFixture.personalBoard(memberAId));
+            cardId = cards.save(CorkboardTestFixture.memoCard(teamAllMembersBoardId, memberAId)).getId();
+            groupId = groups.save(CorkboardTestFixture.group(teamAllMembersBoardId)).getId();
 
-        em.flush();
-        em.clear();
+            assertThat(boards.existsById(MISSING_ID)).isFalse();
+            return null;
+        });
+    }
+
+    @AfterEach
+    void 所有行だけ削除して共有認証状態を復元する() {
+        try {
+            tx(() -> {
+                if (!boardIds.isEmpty()) {
+                    named("DELETE FROM corkboard_cards WHERE corkboard_id IN (:ids)", boardIds);
+                    named("DELETE FROM corkboard_groups WHERE corkboard_id IN (:ids)", boardIds);
+                    named("DELETE FROM corkboards WHERE id IN (:ids)", boardIds);
+                }
+                named("DELETE FROM memberships WHERE user_id IN (:ids)", userIds);
+                named("DELETE FROM user_roles WHERE user_id IN (:ids)", userIds);
+                teams.deleteAllById(teamIds);
+                organizations.deleteAllById(orgIds);
+                em.flush();
+                users.deleteAllById(userIds);
+                return null;
+            });
+        } finally {
+            try { reset(redisTemplate); } finally { SecurityContextHolder.clearContext(); }
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -134,26 +192,23 @@ class CorkboardExistenceOracleContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("非メンバーの更新: 実在IDと不在IDで応答が同一の404・ボード名は不変")
+        @DisplayName("非メンバーの更新: 実在IDと不在IDで応答が同一の404・DB不変")
         void 非メンバー_更新_実在と不在が同一() throws Exception {
-            String before = boardName(teamBoardId);
             assertSameAsMissing(outsiderId,
                     jsonBody(put("/api/v1/teams/{t}/corkboards/{id}", teamAId, teamBoardId), "{\"name\":\"乗っ取り\"}"),
                     jsonBody(put("/api/v1/teams/{t}/corkboards/{id}", teamAId, MISSING_ID), "{\"name\":\"乗っ取り\"}"));
-            assertThat(boardName(teamBoardId)).isEqualTo(before);
         }
 
         @Test
-        @DisplayName("非メンバーの削除: 実在IDと不在IDで応答が同一の404・論理削除されない")
+        @DisplayName("非メンバーの削除: 実在IDと不在IDで応答が同一の404・論理削除されない（DB不変）")
         void 非メンバー_削除_実在と不在が同一() throws Exception {
             assertSameAsMissing(outsiderId,
                     delete("/api/v1/teams/{t}/corkboards/{id}", teamAId, teamBoardId),
                     delete("/api/v1/teams/{t}/corkboards/{id}", teamAId, MISSING_ID));
-            assertThat(boardDeletedAtIsNull(teamBoardId)).isTrue();
         }
 
         @Test
-        @DisplayName("他チームADMINが他チームのパスで実在IDを指定: 不在IDと同一の404")
+        @DisplayName("他チームADMINが他チームのパスで実在IDを指定: 不在IDと同一の404・DB不変")
         void 他チームADMIN_他チームパス_実在と不在が同一() throws Exception {
             assertSameAsMissing(adminBId,
                     jsonBody(put("/api/v1/teams/{t}/corkboards/{id}", teamAId, teamBoardId), "{\"name\":\"越境\"}"),
@@ -161,34 +216,46 @@ class CorkboardExistenceOracleContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("他チームADMINが自チームのパスで他チームの実在IDを指定: 不在IDと同一の404")
-        void 他チームADMIN_自チームパス_実在と不在が同一() throws Exception {
+        @DisplayName("他チームADMINが他チームの実在IDを削除: 不在IDと同一の404・DB不変")
+        void 他チームADMIN_削除_実在と不在が同一() throws Exception {
             assertSameAsMissing(adminBId,
-                    get("/api/v1/teams/{t}/corkboards/{id}", teamBId, teamBoardId),
-                    get("/api/v1/teams/{t}/corkboards/{id}", teamBId, MISSING_ID));
+                    delete("/api/v1/teams/{t}/corkboards/{id}", teamAId, teamBoardId),
+                    delete("/api/v1/teams/{t}/corkboards/{id}", teamAId, MISSING_ID));
         }
 
         @Test
-        @DisplayName("メンバーの権限不足は403を維持（メンバーはボードを閲覧でき、存在情報は新たに漏れない）")
+        @DisplayName("メンバーの権限不足は403を維持（メンバーはボードを閲覧でき、存在情報は新たに漏れない）・DB不変")
         void メンバーの権限不足は403維持() throws Exception {
-            setAuthentication(memberAId);
-            mockMvc.perform(jsonBody(put("/api/v1/teams/{t}/corkboards/{id}", teamAId, teamBoardId),
-                            "{\"name\":\"改題\"}"))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CORKBOARD_009"));
-            mockMvc.perform(delete("/api/v1/teams/{t}/corkboards/{id}", teamAId, teamBoardId))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CORKBOARD_009"));
+            String before = snapshot();
+            assertError(perform(memberAId, jsonBody(put("/api/v1/teams/{t}/corkboards/{id}", teamAId, teamBoardId),
+                    "{\"name\":\"改題\"}")), 403, "CORKBOARD_009");
+            assertError(perform(memberAId, delete("/api/v1/teams/{t}/corkboards/{id}", teamAId, teamBoardId)),
+                    403, "CORKBOARD_009");
+            assertThat(snapshot()).isEqualTo(before);
         }
 
         @Test
-        @DisplayName("未認証は実在IDでも不在IDでも401")
-        void 未認証は401() throws Exception {
-            SecurityContextHolder.clearContext();
-            mockMvc.perform(get("/api/v1/teams/{t}/corkboards/{id}", teamAId, teamBoardId))
-                    .andExpect(status().isUnauthorized());
-            mockMvc.perform(get("/api/v1/teams/{t}/corkboards/{id}", teamAId, MISSING_ID))
-                    .andExpect(status().isUnauthorized());
+        @DisplayName("未認証は実filterで実在IDも不在IDも同一の401・DB不変")
+        void 未認証は実filterで401() throws Exception {
+            String before = snapshot();
+            for (MockHttpServletRequestBuilder[] pair : List.of(
+                    new MockHttpServletRequestBuilder[] {
+                            get("/api/v1/teams/{t}/corkboards/{id}", teamAId, teamBoardId),
+                            get("/api/v1/teams/{t}/corkboards/{id}", teamAId, MISSING_ID)},
+                    new MockHttpServletRequestBuilder[] {
+                            delete("/api/v1/teams/{t}/corkboards/{id}", teamAId, teamBoardId),
+                            delete("/api/v1/teams/{t}/corkboards/{id}", teamAId, MISSING_ID)},
+                    new MockHttpServletRequestBuilder[] {
+                            get("/api/v1/corkboards/{id}", personalBoardId),
+                            get("/api/v1/corkboards/{id}", MISSING_ID)})) {
+                MvcResult actual = perform(null, pair[0]);
+                MvcResult missing = perform(null, pair[1]);
+                assertThat(actual.getResponse().getStatus()).isEqualTo(401);
+                assertThat(missing.getResponse().getStatus()).isEqualTo(401);
+                assertThat(actual.getResponse().getContentAsString(StandardCharsets.UTF_8))
+                        .isEqualTo(missing.getResponse().getContentAsString(StandardCharsets.UTF_8));
+            }
+            assertThat(snapshot()).isEqualTo(before);
         }
     }
 
@@ -206,15 +273,6 @@ class CorkboardExistenceOracleContractIT extends AbstractMySqlIntegrationTest {
             assertSameAsMissing(orgPMemberId,
                     get("/api/v1/organizations/{o}/corkboards/{id}", orgOId, orgBoardId),
                     get("/api/v1/organizations/{o}/corkboards/{id}", orgOId, MISSING_ID));
-        }
-
-        @Test
-        @DisplayName("正常系: 組織メンバーの詳細取得は200")
-        void 組織メンバーは200() throws Exception {
-            setAuthentication(orgOMemberId);
-            mockMvc.perform(get("/api/v1/organizations/{o}/corkboards/{id}", orgOId, orgBoardId))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.id").value(orgBoardId.intValue()));
         }
     }
 
@@ -253,10 +311,9 @@ class CorkboardExistenceOracleContractIT extends AbstractMySqlIntegrationTest {
         @Test
         @DisplayName("正常系: メンバーの参照は200")
         void メンバーは200() throws Exception {
-            setAuthentication(memberAId);
-            mockMvc.perform(get("/api/v1/corkboards/{id}", teamBoardId))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.id").value(teamBoardId.intValue()));
+            MvcResult result = perform(memberAId, get("/api/v1/corkboards/{id}", teamBoardId));
+            assertThat(result.getResponse().getStatus()).isEqualTo(200);
+            assertThat(json(result).path("data").path("id").asLong()).isEqualTo(teamBoardId);
         }
     }
 
@@ -269,35 +326,33 @@ class CorkboardExistenceOracleContractIT extends AbstractMySqlIntegrationTest {
     class CardsAndGroups {
 
         @Test
-        @DisplayName("非メンバーのカード作成: 実在IDと不在IDで応答が同一の404・カードは増えない")
+        @DisplayName("非メンバーのカード作成: 実在IDと不在IDで応答が同一の404・DB不変")
         void 非メンバー_カード作成_実在と不在が同一() throws Exception {
-            long before = cardCount(teamAllMembersBoardId);
             assertSameAsMissing(outsiderId,
                     jsonBody(post("/api/v1/corkboards/{id}/cards", teamAllMembersBoardId), "{\"cardType\":\"MEMO\"}"),
                     jsonBody(post("/api/v1/corkboards/{id}/cards", MISSING_ID), "{\"cardType\":\"MEMO\"}"));
-            assertThat(cardCount(teamAllMembersBoardId)).isEqualTo(before);
         }
 
         @Test
-        @DisplayName("他チームADMINのカード削除: 実在IDと不在IDで応答が同一の404・カードは残る")
+        @DisplayName("他チームADMINのカード削除: 実在IDと不在IDで応答が同一の404・論理削除されない（DB不変）")
         void 他チームADMIN_カード削除_実在と不在が同一() throws Exception {
             assertSameAsMissing(adminBId,
                     delete("/api/v1/corkboards/{b}/cards/{c}", teamAllMembersBoardId, cardId),
                     delete("/api/v1/corkboards/{b}/cards/{c}", MISSING_ID, cardId));
-            assertThat(cardExists(cardId)).isTrue();
+            assertThat(tx(() -> jdbc.queryForObject(
+                    "SELECT deleted_at IS NULL FROM corkboard_cards WHERE id = ?", Boolean.class, cardId))).isTrue();
         }
 
         @Test
-        @DisplayName("非メンバーのセクション削除: 実在IDと不在IDで応答が同一の404・セクションは残る")
+        @DisplayName("非メンバーのセクション削除: 実在IDと不在IDで応答が同一の404・DB不変")
         void 非メンバー_セクション削除_実在と不在が同一() throws Exception {
             assertSameAsMissing(outsiderId,
                     delete("/api/v1/corkboards/{b}/groups/{g}", teamAllMembersBoardId, groupId),
                     delete("/api/v1/corkboards/{b}/groups/{g}", MISSING_ID, groupId));
-            assertThat(groupExists(groupId)).isTrue();
         }
 
         @Test
-        @DisplayName("他人の個人ボードへのカード作成: 実在IDと不在IDで応答が同一の404")
+        @DisplayName("他人の個人ボードへのカード作成: 実在IDと不在IDで応答が同一の404・DB不変")
         void 他人の個人ボード_カード作成_実在と不在が同一() throws Exception {
             assertSameAsMissing(outsiderId,
                     jsonBody(post("/api/v1/corkboards/{id}/cards", personalBoardId), "{\"cardType\":\"MEMO\"}"),
@@ -305,21 +360,20 @@ class CorkboardExistenceOracleContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("ADMIN_ONLYボードでのメンバーのカード作成は403を維持（メンバーはボードを閲覧できる）")
+        @DisplayName("ADMIN_ONLYボードでのメンバーのカード作成は403を維持（メンバーはボードを閲覧できる）・DB不変")
         void メンバーの権限不足は403維持() throws Exception {
-            setAuthentication(memberAId);
-            mockMvc.perform(jsonBody(post("/api/v1/corkboards/{id}/cards", teamBoardId), "{\"cardType\":\"MEMO\"}"))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CORKBOARD_009"));
+            String before = snapshot();
+            assertError(perform(memberAId, jsonBody(post("/api/v1/corkboards/{id}/cards", teamBoardId),
+                    "{\"cardType\":\"MEMO\"}")), 403, "CORKBOARD_009");
+            assertThat(snapshot()).isEqualTo(before);
         }
 
         @Test
         @DisplayName("正常系: ALL_MEMBERSボードでのメンバーのカード作成は201")
         void メンバーのカード作成は201() throws Exception {
-            setAuthentication(memberAId);
-            mockMvc.perform(jsonBody(post("/api/v1/corkboards/{id}/cards", teamAllMembersBoardId),
-                            "{\"cardType\":\"MEMO\",\"title\":\"CBオラクル正常系\"}"))
-                    .andExpect(status().isCreated());
+            MvcResult result = perform(memberAId, jsonBody(post("/api/v1/corkboards/{id}/cards", teamAllMembersBoardId),
+                    "{\"cardType\":\"MEMO\",\"title\":\"コルク契約正常系\"}"));
+            assertThat(result.getResponse().getStatus()).isEqualTo(201);
         }
     }
 
@@ -328,189 +382,93 @@ class CorkboardExistenceOracleContractIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
 
     /**
-     * 実在IDへの要求と不在IDへの要求が、同一の 404 {@code CORKBOARD_001} かつ error 本文まで一致することを検証する。
+     * 実在IDへの要求と不在IDへの要求が、同一の 404 {@code CORKBOARD_001} かつ本文全体まで一致し、
+     * 所有行（{@code deleted_at} を含む全列）が要求の前後で変わらないことを検証する。
      */
     private void assertSameAsMissing(Long actorId, MockHttpServletRequestBuilder actual,
                                      MockHttpServletRequestBuilder missing) throws Exception {
-        setAuthentication(actorId);
-        MvcResult actualResult = mockMvc.perform(actual).andReturn();
-        MvcResult missingResult = mockMvc.perform(missing).andReturn();
-
-        JsonNode actualError = errorNode(actualResult);
-        JsonNode missingError = errorNode(missingResult);
-        assertThat(missingResult.getResponse().getStatus()).as("不在IDの応答").isEqualTo(404);
-        assertThat(missingError.path("code").asText()).as("不在IDの error.code").isEqualTo("CORKBOARD_001");
-        assertThat(actualResult.getResponse().getStatus())
-                .as("実在IDの status は不在IDと同一であること（存在オラクル）")
-                .isEqualTo(missingResult.getResponse().getStatus());
-        assertThat(actualError).as("実在IDの error 本文は不在IDと同一であること（存在オラクル）")
-                .isEqualTo(missingError);
-    }
-
-    private JsonNode errorNode(MvcResult result) throws Exception {
-        byte[] body = result.getResponse().getContentAsByteArray();
-        if (body.length == 0) {
-            return objectMapper.nullNode();
+        String before = snapshot();
+        try {
+            MvcResult missingResult = perform(actorId, missing);
+            assertError(missingResult, 404, "CORKBOARD_001");
+            MvcResult actualResult = perform(actorId, actual);
+            assertThat(actualResult.getResponse().getStatus())
+                    .as("実在IDの status は不在IDと同一であること（存在オラクル）")
+                    .isEqualTo(missingResult.getResponse().getStatus());
+            assertThat(actualResult.getResponse().getContentType())
+                    .isEqualTo(missingResult.getResponse().getContentType());
+            assertThat(json(actualResult)).as("実在IDの本文は不在IDと同一であること（存在オラクル）")
+                    .isEqualTo(json(missingResult));
+        } finally {
+            assertThat(snapshot()).as("拒否された要求で所有行が変わらないこと").isEqualTo(before);
         }
-        return objectMapper.readTree(body).path("error");
     }
 
-    private MockHttpServletRequestBuilder jsonBody(MockHttpServletRequestBuilder builder, String json) {
-        return builder.contentType(MediaType.APPLICATION_JSON).content(json);
+    private void assertError(MvcResult result, int status, String code) throws Exception {
+        assertThat(result.getResponse().getStatus()).isEqualTo(status);
+        assertThat(result.getResponse().getContentType()).startsWith(MediaType.APPLICATION_JSON_VALUE);
+        assertThat(json(result).path("error").path("code").asText()).isEqualTo(code);
     }
 
-    private void setAuthentication(Long userId) {
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
+    private MvcResult perform(Long actorId, MockHttpServletRequestBuilder request) throws Exception {
+        request.header("Accept-Language", "ja");
+        if (actorId != null) {
+            request.header("Authorization", "Bearer " + tokens.issueAccessToken(actorId, List.of("USER")));
+        }
+        return mockMvc.perform(request).andReturn();
     }
 
-    private String boardName(Long boardId) {
-        em.flush();
-        em.clear();
-        return (String) em.createNativeQuery("SELECT name FROM corkboards WHERE id = :id")
-                .setParameter("id", boardId)
-                .getSingleResult();
+    private JsonNode json(MvcResult result) throws Exception {
+        return objectMapper.readTree(result.getResponse().getContentAsString(StandardCharsets.UTF_8));
     }
 
-    private boolean boardDeletedAtIsNull(Long boardId) {
-        em.flush();
-        em.clear();
-        return em.createNativeQuery("SELECT deleted_at FROM corkboards WHERE id = :id")
-                .setParameter("id", boardId)
-                .getSingleResult() == null;
+    private MockHttpServletRequestBuilder jsonBody(MockHttpServletRequestBuilder builder, String body) {
+        return builder.contentType(MediaType.APPLICATION_JSON).content(body);
     }
 
-    private long cardCount(Long boardId) {
-        em.flush();
-        em.clear();
-        return ((Number) em.createNativeQuery("SELECT COUNT(*) FROM corkboard_cards WHERE corkboard_id = :id")
-                .setParameter("id", boardId)
-                .getSingleResult()).longValue();
+    /** 所有ボード・カード・セクションの全列（{@code deleted_at} 含む）を文字列化したスナップショット。 */
+    private String snapshot() {
+        return tx(() -> String.valueOf(List.of(
+                rows("SELECT * FROM corkboards WHERE id IN (:ids) ORDER BY id"),
+                rows("SELECT * FROM corkboard_cards WHERE corkboard_id IN (:ids) ORDER BY id"),
+                rows("SELECT * FROM corkboard_groups WHERE corkboard_id IN (:ids) ORDER BY id"))));
     }
 
-    private boolean cardExists(Long id) {
-        em.flush();
-        em.clear();
-        return ((Number) em.createNativeQuery("SELECT COUNT(*) FROM corkboard_cards WHERE id = :id")
-                .setParameter("id", id)
-                .getSingleResult()).longValue() == 1L;
+    private List<Map<String, Object>> rows(String sql) {
+        return new NamedParameterJdbcTemplate(jdbc).queryForList(sql, new MapSqlParameterSource("ids", boardIds));
     }
 
-    private boolean groupExists(Long id) {
-        em.flush();
-        em.clear();
-        return ((Number) em.createNativeQuery("SELECT COUNT(*) FROM corkboard_groups WHERE id = :id")
-                .setParameter("id", id)
-                .getSingleResult()).longValue() == 1L;
+    private void named(String sql, List<Long> ids) {
+        new NamedParameterJdbcTemplate(jdbc).update(sql, new MapSqlParameterSource("ids", ids));
     }
 
-    private Long insertBoard(String scopeType, Long scopeId, String name, String editPolicy) {
-        String uniqueName = name + " " + System.nanoTime();
-        em.createNativeQuery(
-                        "INSERT INTO corkboards "
-                                + "(scope_type, scope_id, name, background_style, edit_policy, is_default, "
-                                + "version, created_at, updated_at) "
-                                + "VALUES (:scopeType, :scopeId, :name, 'CORK', :editPolicy, 0, 0, NOW(), NOW())")
-                .setParameter("scopeType", scopeType)
-                .setParameter("scopeId", scopeId)
-                .setParameter("name", uniqueName)
-                .setParameter("editPolicy", editPolicy)
-                .executeUpdate();
-        return ((Number) em.createNativeQuery("SELECT id FROM corkboards WHERE name = :name")
-                .setParameter("name", uniqueName)
-                .getSingleResult()).longValue();
+    private <T> T tx(Supplier<T> work) {
+        TransactionTemplate template = new TransactionTemplate(transactions);
+        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return template.execute(status -> work.get());
     }
 
-    private Long insertPersonalBoard(Long ownerId, String name) {
-        String uniqueName = name + " " + System.nanoTime();
-        em.createNativeQuery(
-                        "INSERT INTO corkboards "
-                                + "(scope_type, owner_id, name, background_style, edit_policy, is_default, "
-                                + "version, created_at, updated_at) "
-                                + "VALUES ('PERSONAL', :ownerId, :name, 'CORK', 'ADMIN_ONLY', 0, 0, NOW(), NOW())")
-                .setParameter("ownerId", ownerId)
-                .setParameter("name", uniqueName)
-                .executeUpdate();
-        return ((Number) em.createNativeQuery("SELECT id FROM corkboards WHERE name = :name")
-                .setParameter("name", uniqueName)
-                .getSingleResult()).longValue();
+    private Long saveUser(String label) {
+        Long id = users.save(CorkboardTestFixture.user(label)).getId();
+        userIds.add(id);
+        return id;
     }
 
-    private Long insertCard(Long boardId, Long createdBy) {
-        em.createNativeQuery(
-                        "INSERT INTO corkboard_cards "
-                                + "(corkboard_id, card_type, color_label, card_size, position_x, position_y, "
-                                + "z_index, is_archived, is_pinned, is_ref_deleted, created_by, "
-                                + "created_at, updated_at) "
-                                + "VALUES (:boardId, 'MEMO', 'NONE', 'MEDIUM', 0, 0, 0, 0, 0, 0, :createdBy, "
-                                + "NOW(), NOW())")
-                .setParameter("boardId", boardId)
-                .setParameter("createdBy", createdBy)
-                .executeUpdate();
-        return ((Number) em.createNativeQuery(
-                        "SELECT id FROM corkboard_cards WHERE corkboard_id = :boardId ORDER BY id DESC LIMIT 1")
-                .setParameter("boardId", boardId)
-                .getSingleResult()).longValue();
+    private Long saveTeam(String name) {
+        Long id = teams.save(CorkboardTestFixture.team(name)).getId();
+        teamIds.add(id);
+        return id;
     }
 
-    private Long insertGroup(Long boardId) {
-        em.createNativeQuery(
-                        "INSERT INTO corkboard_groups (corkboard_id, name, is_collapsed, position_x, position_y, "
-                                + "width, height, display_order, created_at, updated_at) "
-                                + "VALUES (:boardId, 'CBオラクル セクション', 0, 0, 0, 400, 300, 0, NOW(), NOW())")
-                .setParameter("boardId", boardId)
-                .executeUpdate();
-        return ((Number) em.createNativeQuery(
-                        "SELECT id FROM corkboard_groups WHERE corkboard_id = :boardId ORDER BY id DESC LIMIT 1")
-                .setParameter("boardId", boardId)
-                .getSingleResult()).longValue();
+    private Long saveOrganization(String name) {
+        Long id = organizations.save(CorkboardTestFixture.organization(name)).getId();
+        orgIds.add(id);
+        return id;
     }
 
-    private Long insertUser(String email) {
-        em.createNativeQuery(
-                        "INSERT INTO users ("
-                                + "email, last_name, first_name, display_name, status, "
-                                + "is_searchable, handle_searchable, contact_approval_required, "
-                                + "online_visibility, dm_receive_from, encryption_key_version, "
-                                + "locale, timezone, reporting_restricted, follow_list_visibility, "
-                                + "care_notification_enabled, offline_only, "
-                                + "created_at, updated_at) "
-                                + "VALUES (:email, 'CBオラクル', 'テスト', 'CBオラクルテスト', 'ACTIVE', "
-                                + "1, 1, 1, "
-                                + "'NOBODY', 'ANYONE', 1, "
-                                + "'ja', 'Asia/Tokyo', 0, 'PUBLIC', "
-                                + "1, 0, "
-                                + "NOW(), NOW())")
-                .setParameter("email", email)
-                .executeUpdate();
-        return ((Number) em.createNativeQuery("SELECT id FROM users WHERE email = :email")
-                .setParameter("email", email)
-                .getSingleResult()).longValue();
-    }
-
-    private Long insertTeam(String name) {
-        em.createNativeQuery(
-                        "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, "
-                                + "created_at, updated_at) "
-                                + "VALUES (:name, 'PUBLIC', 1, 0, 0, "
-                                + "CONCAT('cbo-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
-                .setParameter("name", name)
-                .executeUpdate();
-        return ((Number) em.createNativeQuery("SELECT id FROM teams WHERE name = :name")
-                .setParameter("name", name)
-                .getSingleResult()).longValue();
-    }
-
-    private Long insertOrganization(String name) {
-        em.createNativeQuery(
-                        "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, "
-                                + "supporter_enabled, version, slug, created_at, updated_at) "
-                                + "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, "
-                                + "CONCAT('cbo-o-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
-                .setParameter("name", name)
-                .executeUpdate();
-        return ((Number) em.createNativeQuery("SELECT id FROM organizations WHERE name = :name")
-                .setParameter("name", name)
-                .getSingleResult()).longValue();
+    private Long saveBoard(com.mannschaft.app.corkboard.entity.CorkboardEntity board) {
+        Long id = boards.save(board).getId();
+        boardIds.add(id);
+        return id;
     }
 }
