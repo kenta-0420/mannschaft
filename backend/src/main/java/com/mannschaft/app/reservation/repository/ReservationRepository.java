@@ -102,6 +102,15 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
      */
     Optional<ReservationEntity> findByIdAndTeamId(Long id, Long teamId);
 
+    /**
+     * CMP-260822-1730 AC-1730-6: 状態遷移（承認・取消・完了等）用の行ロック付き取得。
+     * 仮押さえ失効バッチ（{@code findPendingExpirePrimaryForUpdate}）と同じ行ロックで直列化し、
+     * 先に commit した側の状態を後続が必ず読むようにする（失効済み予約の CONFIRMED 上書き防止）。
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ReservationEntity r WHERE r.id = :id AND r.teamId = :teamId")
+    Optional<ReservationEntity> findByIdAndTeamIdForUpdate(@Param("id") Long id, @Param("teamId") Long teamId);
+
     // ===== F03.4.3 機能G: 予約グループ（案(b) 兄弟行方式）=====
 
     /**
@@ -109,6 +118,12 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
      * 他チームの groupId は空 → 404 = RESERVATION_040 で存在秘匿）。
      */
     List<ReservationEntity> findByGroupIdAndTeamIdOrderById(UUID groupId, Long teamId);
+
+    /** グループ状態遷移用の行ロック付き取得（id 昇順でロック・AC-1730-6）。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ReservationEntity r WHERE r.groupId = :groupId AND r.teamId = :teamId ORDER BY r.id ASC")
+    List<ReservationEntity> findByGroupIdAndTeamIdForUpdate(@Param("groupId") UUID groupId,
+                                                            @Param("teamId") Long teamId);
 
     /**
      * 複数グループの「枠数・末尾枠終了時刻」を 1 クエリで集約する
@@ -147,6 +162,11 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
      */
     Optional<ReservationEntity> findByIdAndUserId(Long id, Long userId);
 
+    /** 本人取消用の行ロック付き取得（AC-1730-6）。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ReservationEntity r WHERE r.id = :id AND r.userId = :userId")
+    Optional<ReservationEntity> findByIdAndUserIdForUpdate(@Param("id") Long id, @Param("userId") Long userId);
+
     // ===== F03.4.5 §6.2 W2-5: 定期予約（series 兄弟行方式）=====
 
     /**
@@ -166,6 +186,13 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
      */
     List<ReservationEntity> findByRecurringSeriesIdAndUserIdOrderById(UUID recurringSeriesId, Long userId);
 
+    /** series 以降取消用の行ロック付き取得（id 昇順でロック・AC-1730-6）。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ReservationEntity r WHERE r.recurringSeriesId = :seriesId AND r.userId = :userId "
+            + "ORDER BY r.id ASC")
+    List<ReservationEntity> findByRecurringSeriesIdAndUserIdForUpdate(@Param("seriesId") UUID recurringSeriesId,
+                                                                      @Param("userId") Long userId);
+
     /**
      * series の兄弟行を<b>チームスコープ</b>で取得する（{@code scope=SERIES} の一括承認の唯一の経路・AC-5-9）。
      *
@@ -178,6 +205,13 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
      * @return 当該チームに属する series の行（id 昇順）
      */
     List<ReservationEntity> findByRecurringSeriesIdAndTeamIdOrderById(UUID recurringSeriesId, Long teamId);
+
+    /** series 一括承認用の行ロック付き取得（id 昇順でロック・AC-1730-6）。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ReservationEntity r WHERE r.recurringSeriesId = :seriesId AND r.teamId = :teamId "
+            + "ORDER BY r.id ASC")
+    List<ReservationEntity> findByRecurringSeriesIdAndTeamIdForUpdate(@Param("seriesId") UUID recurringSeriesId,
+                                                                      @Param("teamId") Long teamId);
 
     /**
      * 指定スロット群のうち<b>当該ユーザーが既に active 予約を持つ</b>スロット ID を列挙する

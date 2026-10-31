@@ -245,7 +245,7 @@ class ReservationRecurringSeriesScopeTest {
         seedSlot(8003L, BASE_DATE.plusWeeks(1));
         ReservationEntity target = seedReservation(101L, TEAM_ID, USER_ID, 8002L, SERIES_ID, ReservationStatus.CONFIRMED);
         ReservationEntity future = seedReservation(102L, TEAM_ID, USER_ID, 8003L, SERIES_ID, ReservationStatus.CONFIRMED);
-        given(reservationRepository.findByIdAndUserId(101L, USER_ID)).willReturn(Optional.of(target));
+        given(reservationRepository.findByIdAndUserIdForUpdate(101L, USER_ID)).willReturn(Optional.of(target));
 
         ReservationResponse response = service.cancelByUser(
                 USER_ID, 101L, new CancelReservationRequest("予定変更", null));
@@ -257,7 +257,7 @@ class ReservationRecurringSeriesScopeTest {
         assertThat(response.getRecurringCancel())
                 .as("THIS_ONLY では series 明細を返さない（既存契約不変）")
                 .isNull();
-        verify(reservationRepository, never()).findByRecurringSeriesIdAndUserIdOrderById(any(), anyLong());
+        verify(reservationRepository, never()).findByRecurringSeriesIdAndUserIdForUpdate(any(), anyLong());
     }
 
     @Test
@@ -271,8 +271,8 @@ class ReservationRecurringSeriesScopeTest {
         ReservationEntity target = seedReservation(101L, TEAM_ID, USER_ID, 8002L, SERIES_ID, ReservationStatus.CONFIRMED);
         ReservationEntity next1 = seedReservation(102L, TEAM_ID, USER_ID, 8003L, SERIES_ID, ReservationStatus.CONFIRMED);
         ReservationEntity next2 = seedReservation(103L, TEAM_ID, USER_ID, 8004L, SERIES_ID, ReservationStatus.PENDING);
-        given(reservationRepository.findByIdAndUserId(101L, USER_ID)).willReturn(Optional.of(target));
-        given(reservationRepository.findByRecurringSeriesIdAndUserIdOrderById(SERIES_ID, USER_ID))
+        given(reservationRepository.findByIdAndUserIdForUpdate(101L, USER_ID)).willReturn(Optional.of(target));
+        given(reservationRepository.findByRecurringSeriesIdAndUserIdForUpdate(SERIES_ID, USER_ID))
                 .willReturn(List.of(past, target, next1, next2));
 
         ReservationResponse response = service.cancelByUser(USER_ID, 101L,
@@ -321,8 +321,8 @@ class ReservationRecurringSeriesScopeTest {
         ReservationEntity tooSoon =
                 seedReservation(302L, OTHER_TEAM_ID, USER_ID, 8021L, SERIES_ID, ReservationStatus.CONFIRMED);
         ReservationEntity far = seedReservation(303L, TEAM_ID, USER_ID, 8022L, SERIES_ID, ReservationStatus.CONFIRMED);
-        given(reservationRepository.findByIdAndUserId(301L, USER_ID)).willReturn(Optional.of(target));
-        given(reservationRepository.findByRecurringSeriesIdAndUserIdOrderById(SERIES_ID, USER_ID))
+        given(reservationRepository.findByIdAndUserIdForUpdate(301L, USER_ID)).willReturn(Optional.of(target));
+        given(reservationRepository.findByRecurringSeriesIdAndUserIdForUpdate(SERIES_ID, USER_ID))
                 .willReturn(List.of(target, tooSoon, far));
 
         ReservationResponse response = service.cancelByUser(USER_ID, 301L,
@@ -351,8 +351,8 @@ class ReservationRecurringSeriesScopeTest {
         seedSlot(8031L, BASE_DATE.plusWeeks(1));
         ReservationEntity target = seedReservation(401L, TEAM_ID, USER_ID, 8030L, SERIES_ID, ReservationStatus.CONFIRMED);
         ReservationEntity already = seedReservation(402L, TEAM_ID, USER_ID, 8031L, SERIES_ID, ReservationStatus.CANCELLED);
-        given(reservationRepository.findByIdAndUserId(401L, USER_ID)).willReturn(Optional.of(target));
-        given(reservationRepository.findByRecurringSeriesIdAndUserIdOrderById(SERIES_ID, USER_ID))
+        given(reservationRepository.findByIdAndUserIdForUpdate(401L, USER_ID)).willReturn(Optional.of(target));
+        given(reservationRepository.findByRecurringSeriesIdAndUserIdForUpdate(SERIES_ID, USER_ID))
                 .willReturn(List.of(target, already));
 
         ReservationResponse response = service.cancelByUser(USER_ID, 401L,
@@ -386,8 +386,8 @@ class ReservationRecurringSeriesScopeTest {
         ReservationEntity target = seedReservation(1101L, TEAM_ID, USER_ID, 8100L, SERIES_ID, ReservationStatus.CONFIRMED);
         ReservationEntity next1 = seedReservation(1102L, TEAM_ID, USER_ID, 8101L, SERIES_ID, ReservationStatus.CONFIRMED);
         ReservationEntity next2 = seedReservation(1103L, TEAM_ID, USER_ID, 8102L, SERIES_ID, ReservationStatus.CONFIRMED);
-        given(reservationRepository.findByIdAndUserId(1101L, USER_ID)).willReturn(Optional.of(target));
-        given(reservationRepository.findByRecurringSeriesIdAndUserIdOrderById(SERIES_ID, USER_ID))
+        given(reservationRepository.findByIdAndUserIdForUpdate(1101L, USER_ID)).willReturn(Optional.of(target));
+        given(reservationRepository.findByRecurringSeriesIdAndUserIdForUpdate(SERIES_ID, USER_ID))
                 .willReturn(List.of(target, next1, next2));
 
         ReservationResponse response = service.cancelByUser(USER_ID, 1101L,
@@ -423,8 +423,8 @@ class ReservationRecurringSeriesScopeTest {
         seedSlot(8111L, BASE_DATE.plusWeeks(1));
         ReservationEntity target = seedReservation(1201L, TEAM_ID, USER_ID, 8110L, SERIES_ID, ReservationStatus.CONFIRMED);
         ReservationEntity next1 = seedReservation(1202L, TEAM_ID, USER_ID, 8111L, SERIES_ID, ReservationStatus.CONFIRMED);
-        given(reservationRepository.findByIdAndUserId(1201L, USER_ID)).willReturn(Optional.of(target));
-        given(reservationRepository.findByRecurringSeriesIdAndUserIdOrderById(SERIES_ID, USER_ID))
+        given(reservationRepository.findByIdAndUserIdForUpdate(1201L, USER_ID)).willReturn(Optional.of(target));
+        given(reservationRepository.findByRecurringSeriesIdAndUserIdForUpdate(SERIES_ID, USER_ID))
                 .willReturn(List.of(target, next1));
 
         ReservationResponse response = service.cancelByUser(USER_ID, 1201L,
@@ -449,7 +449,7 @@ class ReservationRecurringSeriesScopeTest {
 
         seedSlot(8120L, BASE_DATE);
         ReservationEntity target = seedReservation(1301L, TEAM_ID, USER_ID, 8120L, SERIES_ID, ReservationStatus.CONFIRMED);
-        given(reservationRepository.findByIdAndUserId(1301L, USER_ID)).willReturn(Optional.of(target));
+        given(reservationRepository.findByIdAndUserIdForUpdate(1301L, USER_ID)).willReturn(Optional.of(target));
 
         assertThatThrownBy(() -> service.cancelByUser(USER_ID, 1301L,
                 new CancelReservationRequest("この回のみ", null)))
@@ -472,9 +472,9 @@ class ReservationRecurringSeriesScopeTest {
         ReservationEntity mine = seedReservation(501L, TEAM_ID, USER_ID, 8040L, SERIES_ID, ReservationStatus.CONFIRMED);
         ReservationEntity theirs =
                 seedReservation(502L, TEAM_ID, OTHER_USER_ID, 8041L, SERIES_ID, ReservationStatus.CONFIRMED);
-        given(reservationRepository.findByIdAndUserId(501L, USER_ID)).willReturn(Optional.of(mine));
+        given(reservationRepository.findByIdAndUserIdForUpdate(501L, USER_ID)).willReturn(Optional.of(mine));
         // ユーザースコープの finder は本人の行しか返さない（これが構造的な防御）
-        given(reservationRepository.findByRecurringSeriesIdAndUserIdOrderById(SERIES_ID, USER_ID))
+        given(reservationRepository.findByRecurringSeriesIdAndUserIdForUpdate(SERIES_ID, USER_ID))
                 .willReturn(List.of(mine));
 
         ReservationResponse response = service.cancelByUser(USER_ID, 501L,
@@ -485,7 +485,7 @@ class ReservationRecurringSeriesScopeTest {
                 .isEqualTo(ReservationStatus.CONFIRMED);
         assertThat(response.getRecurringCancel().cancelledCount()).isEqualTo(1);
         // 実装が userId 無しの finder（存在しない）や findAll 相当に退行していないことを固定する
-        verify(reservationRepository).findByRecurringSeriesIdAndUserIdOrderById(SERIES_ID, USER_ID);
+        verify(reservationRepository).findByRecurringSeriesIdAndUserIdForUpdate(SERIES_ID, USER_ID);
         verify(reservationRepository, never()).findAll();
     }
 
@@ -502,8 +502,8 @@ class ReservationRecurringSeriesScopeTest {
         ReservationEntity target = seedReservation(601L, TEAM_ID, USER_ID, 8050L, SERIES_ID, ReservationStatus.PENDING);
         ReservationEntity p2 = seedReservation(602L, TEAM_ID, USER_ID, 8051L, SERIES_ID, ReservationStatus.PENDING);
         ReservationEntity p3 = seedReservation(603L, TEAM_ID, USER_ID, 8052L, SERIES_ID, ReservationStatus.PENDING);
-        given(reservationRepository.findByIdAndTeamId(601L, TEAM_ID)).willReturn(Optional.of(target));
-        given(reservationRepository.findByRecurringSeriesIdAndTeamIdOrderById(SERIES_ID, TEAM_ID))
+        given(reservationRepository.findByIdAndTeamIdForUpdate(601L, TEAM_ID)).willReturn(Optional.of(target));
+        given(reservationRepository.findByRecurringSeriesIdAndTeamIdForUpdate(SERIES_ID, TEAM_ID))
                 .willReturn(List.of(target, p2, p3));
 
         ReservationResponse response =
@@ -523,8 +523,8 @@ class ReservationRecurringSeriesScopeTest {
         seedSlot(8061L, BASE_DATE.plusWeeks(1));
         ReservationEntity target = seedReservation(701L, TEAM_ID, USER_ID, 8060L, SERIES_ID, ReservationStatus.PENDING);
         ReservationEntity done = seedReservation(702L, TEAM_ID, USER_ID, 8061L, SERIES_ID, ReservationStatus.CONFIRMED);
-        given(reservationRepository.findByIdAndTeamId(701L, TEAM_ID)).willReturn(Optional.of(target));
-        given(reservationRepository.findByRecurringSeriesIdAndTeamIdOrderById(SERIES_ID, TEAM_ID))
+        given(reservationRepository.findByIdAndTeamIdForUpdate(701L, TEAM_ID)).willReturn(Optional.of(target));
+        given(reservationRepository.findByRecurringSeriesIdAndTeamIdForUpdate(SERIES_ID, TEAM_ID))
                 .willReturn(List.of(target, done));
 
         ReservationResponse response =
@@ -544,9 +544,9 @@ class ReservationRecurringSeriesScopeTest {
         ReservationEntity target = seedReservation(801L, TEAM_ID, USER_ID, 8070L, SERIES_ID, ReservationStatus.PENDING);
         ReservationEntity crossTeam =
                 seedReservation(802L, OTHER_TEAM_ID, USER_ID, 8070L, SERIES_ID, ReservationStatus.PENDING);
-        given(reservationRepository.findByIdAndTeamId(801L, TEAM_ID)).willReturn(Optional.of(target));
+        given(reservationRepository.findByIdAndTeamIdForUpdate(801L, TEAM_ID)).willReturn(Optional.of(target));
         // チームスコープ finder は当該チームの行のみを返す（これが構造的な防御）
-        given(reservationRepository.findByRecurringSeriesIdAndTeamIdOrderById(SERIES_ID, TEAM_ID))
+        given(reservationRepository.findByRecurringSeriesIdAndTeamIdForUpdate(SERIES_ID, TEAM_ID))
                 .willReturn(List.of(target));
 
         ReservationResponse response =
@@ -556,8 +556,8 @@ class ReservationRecurringSeriesScopeTest {
                 .as("別チームの行は series を共有していても承認されない（テナント境界越え禁止）")
                 .isEqualTo(ReservationStatus.PENDING);
         assertThat(response.getRecurringConfirm().confirmedCount()).isEqualTo(1);
-        verify(reservationRepository).findByRecurringSeriesIdAndTeamIdOrderById(SERIES_ID, TEAM_ID);
-        verify(reservationRepository, never()).findByRecurringSeriesIdAndUserIdOrderById(any(), anyLong());
+        verify(reservationRepository).findByRecurringSeriesIdAndTeamIdForUpdate(SERIES_ID, TEAM_ID);
+        verify(reservationRepository, never()).findByRecurringSeriesIdAndUserIdForUpdate(any(), anyLong());
     }
 
     @Test
@@ -567,7 +567,7 @@ class ReservationRecurringSeriesScopeTest {
         seedSlot(8081L, BASE_DATE.plusWeeks(1));
         ReservationEntity target = seedReservation(901L, TEAM_ID, USER_ID, 8080L, SERIES_ID, ReservationStatus.PENDING);
         ReservationEntity other = seedReservation(902L, TEAM_ID, USER_ID, 8081L, SERIES_ID, ReservationStatus.PENDING);
-        given(reservationRepository.findByIdAndTeamId(901L, TEAM_ID)).willReturn(Optional.of(target));
+        given(reservationRepository.findByIdAndTeamIdForUpdate(901L, TEAM_ID)).willReturn(Optional.of(target));
 
         ReservationResponse response = service.confirmReservation(TEAM_ID, 901L);
 
@@ -576,7 +576,7 @@ class ReservationRecurringSeriesScopeTest {
                 .as("単票承認は従来どおり1件だけ")
                 .isEqualTo(ReservationStatus.PENDING);
         assertThat(response.getRecurringConfirm()).isNull();
-        verify(reservationRepository, never()).findByRecurringSeriesIdAndTeamIdOrderById(any(), anyLong());
+        verify(reservationRepository, never()).findByRecurringSeriesIdAndTeamIdForUpdate(any(), anyLong());
     }
 
     @Test
@@ -584,13 +584,13 @@ class ReservationRecurringSeriesScopeTest {
     void 単発予約へのSERIES指定は無害() {
         seedSlot(8090L, BASE_DATE);
         ReservationEntity single = seedReservation(1001L, TEAM_ID, USER_ID, 8090L, null, ReservationStatus.PENDING);
-        given(reservationRepository.findByIdAndTeamId(1001L, TEAM_ID)).willReturn(Optional.of(single));
+        given(reservationRepository.findByIdAndTeamIdForUpdate(1001L, TEAM_ID)).willReturn(Optional.of(single));
 
         ReservationResponse response =
                 service.confirmReservation(TEAM_ID, 1001L, ReservationConfirmScope.SERIES);
 
         assertThat(single.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
         assertThat(response.getRecurringConfirm()).isNull();
-        verify(reservationRepository, never()).findByRecurringSeriesIdAndTeamIdOrderById(any(), eq(TEAM_ID));
+        verify(reservationRepository, never()).findByRecurringSeriesIdAndTeamIdForUpdate(any(), eq(TEAM_ID));
     }
 }

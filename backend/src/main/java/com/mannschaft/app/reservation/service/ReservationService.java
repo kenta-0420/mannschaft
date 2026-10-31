@@ -331,7 +331,7 @@ public class ReservationService {
     @Transactional
     public ReservationResponse confirmReservation(
             Long teamId, Long reservationId, ReservationConfirmScope scope) {
-        ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
 
         if (!entity.isConfirmable()) {
@@ -367,7 +367,7 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse cancelByAdmin(Long teamId, Long reservationId, CancelReservationRequest request) {
-        ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
 
         if (!entity.isCancellable()) {
@@ -394,7 +394,8 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse cancelByUser(Long userId, Long reservationId, CancelReservationRequest request) {
-        ReservationEntity entity = reservationRepository.findByIdAndUserId(reservationId, userId)
+        // AC-1730-6: 失効バッチ・管理者操作と同じ行ロックで直列化してから状態を判定する。
+        ReservationEntity entity = reservationRepository.findByIdAndUserIdForUpdate(reservationId, userId)
                 .orElseThrow(() -> new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND));
         assertNotGroupRow(entity);
 
@@ -500,7 +501,7 @@ public class ReservationService {
         // IDOR（AC-5-8）: series ID は「知っていれば操作できる鍵」ではない。userId をクエリ条件に含めた
         // finder 以外から series を引かないことで、他人の行に触れる経路を構造的に消す。
         List<ReservationEntity> siblings = reservationRepository
-                .findByRecurringSeriesIdAndUserIdOrderById(seriesId, base.getUserId()).stream()
+                .findByRecurringSeriesIdAndUserIdForUpdate(seriesId, base.getUserId()).stream()
                 .filter(r -> !r.getId().equals(base.getId()))
                 .toList();
 
@@ -615,7 +616,7 @@ public class ReservationService {
 
         // 認可（AC-5-9）: teamId をクエシー条件に含めた finder のみを使い、当該チームの行しか掴めないようにする。
         List<ReservationEntity> siblings = reservationRepository
-                .findByRecurringSeriesIdAndTeamIdOrderById(seriesId, teamId).stream()
+                .findByRecurringSeriesIdAndTeamIdForUpdate(seriesId, teamId).stream()
                 .filter(r -> !r.getId().equals(base.getId()))
                 .toList();
 
@@ -705,7 +706,7 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse completeReservation(Long teamId, Long reservationId) {
-        ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
         entity.complete();
         ReservationEntity saved = reservationRepository.save(entity);
@@ -722,7 +723,7 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse markNoShow(Long teamId, Long reservationId) {
-        ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
         entity.noShow();
         ReservationEntity saved = reservationRepository.save(entity);
@@ -740,7 +741,7 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse rescheduleReservation(Long teamId, Long reservationId, RescheduleRequest request) {
-        ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
 
         // oldSlot: entity は findReservationOrThrow で既に teamId 検証済みのため、その reservationSlotId は
@@ -773,7 +774,7 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse updateAdminNote(Long teamId, Long reservationId, AdminNoteRequest request) {
-        ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
         // F03.4.3 §4: 非代表行のメモは一覧（代表行のみ返す）に浮上せず事実上消失するため 400=042 で拒否する。
         // 代表行への更新は許可（グループのメモは代表行に集約）。
         if (entity.getGroupId() != null && !Boolean.TRUE.equals(entity.getIsGroupPrimary())) {
@@ -924,6 +925,19 @@ public class ReservationService {
      */
     public void assertReservationInTeam(Long teamId, Long reservationId) {
         findReservationOrThrow(teamId, reservationId);
+    }
+
+    /**
+     * 状態遷移用に予約を行ロック付きで取得する（CMP-260822-1730 AC-1730-6）。
+     *
+     * <p>仮押さえ失効バッチは同じ行を {@code PESSIMISTIC_WRITE} で取得してから取消・枠減算する。
+     * 承認・取消等もロックなしで読むと、バッチ commit 前の PENDING を読んで CONFIRMED で上書きし
+     * 「確定なのに枠減算済み」（過剰予約）を作る。同じ行ロックで直列化し、後続は commit 済みの
+     * 状態を読んで既存の状態検証（{@code INVALID_RESERVATION_STATUS}）で負けを返す。</p>
+     */
+    private ReservationEntity findReservationForUpdateOrThrow(Long teamId, Long reservationId) {
+        return reservationRepository.findByIdAndTeamIdForUpdate(reservationId, teamId)
+                .orElseThrow(() -> new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND));
     }
 
     /**
