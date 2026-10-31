@@ -224,7 +224,7 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
             Long actor = op == Op.PROPOSAL_WITHDRAW ? proposingAdmin : requestingAdmin;
             MvcResult result = call(op, actor, f.target(op));
             assertThat(result.getResponse().getStatus()).as("%s: %s", op,
-                    result.getResponse().getContentAsString(StandardCharsets.UTF_8)).isEqualTo(200);
+                    result.getResponse().getContentAsString(StandardCharsets.UTF_8)).isEqualTo(op == Op.REQUEST_DELETE ? 204 : 200);
         }
     }
 
