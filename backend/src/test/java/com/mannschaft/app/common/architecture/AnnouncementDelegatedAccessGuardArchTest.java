@@ -99,8 +99,9 @@ class AnnouncementDelegatedAccessGuardArchTest {
             // 組織告知の一覧の一括版（ContentVisibilityChecker 経由）は、一覧の元コンテンツ可視性判定の部品だけが呼ぶ
             violations.addAll(callerViolations(production, owner -> owner.getFullName().equals(CHECKER),
                     name -> name.contains(DELEGATED_MARK), Set.of(FEED_READABILITY)));
+            // 組織告知の一覧の一括版（filterPreviewReadableDelegated）は一覧の判定部品も呼ぶ
             violations.addAll(callerViolations(production, owner -> owner.getFullName().equals(BLOG_PREVIEW),
-                    name -> name.contains(DELEGATED_MARK), Set.of(PREVIEW_SOURCE)));
+                    name -> name.contains(DELEGATED_MARK), Set.of(PREVIEW_SOURCE, FEED_READABILITY)));
             violations.addAll(callerViolations(production, owner -> owner.getFullName().equals(BULLETIN_FACADE),
                     name -> name.contains(DELEGATED_MARK), Set.of(PREVIEW_SOURCE)));
             violations.addAll(callerViolations(production, owner -> owner.getFullName().equals(BULLETIN_READER),

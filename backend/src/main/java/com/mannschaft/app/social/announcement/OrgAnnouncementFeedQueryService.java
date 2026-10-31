@@ -41,8 +41,11 @@ public class OrgAnnouncementFeedQueryService {
     /** 最大取得件数 */
     private static final int MAX_LIMIT = 50;
 
-    /** 補充取得の最大反復回数（防御上限）。 */
-    private static final int MAX_FETCH_ROUNDS = 1000;
+    /** 1 回の取得で読む行数の下限（件数が小さくても判定で落ちる行を補充できるよう、まとめて読む）。 */
+    static final int SCAN_BATCH = 50;
+
+    /** 1 リクエストで走査する行数の上限（防御上限）。到達しても続きは次のリクエストで再開できる。 */
+    static final int MAX_SCANNED_ROWS = 2000;
 
     private final AnnouncementFeedQueryRepository feedQueryRepository;
     private final AnnouncementReadService readService;
@@ -69,17 +72,27 @@ public class OrgAnnouncementFeedQueryService {
         Map<Long, GateCheckResponse> gates = new LinkedHashMap<>();
         List<AnnouncementFeedEntity> gatedRows = new ArrayList<>();
         Set<Long> seenIds = new HashSet<>();
-        Long fetchCursor = cursor;
+        // 並び（ピン留め→新着→ID）と一致するキーセットで読み進める。API のカーソルは直前の最後の項目の ID（Long）のまま、
+        // その行の位置（ピン留めか否か）はサーバ側で引く。その組織の告知でなければ旧来の id < cursor で続ける。
+        AnnouncementFeedQueryRepository.OrgFeedCursor position =
+                cursor == null ? null : feedQueryRepository.findOrgFeedPosition(orgId, cursor);
+        Long legacyCursor = cursor != null && position == null ? cursor : null;
+        int fetchSize = Math.max(effectiveLimit + 1, SCAN_BATCH);
+        AnnouncementFeedQueryRepository.OrgFeedCursor lastScanned = null;
         boolean sourceHasNext = true;
-        int rounds = 0;
-        while (rounds++ < MAX_FETCH_ROUNDS && gatedRows.size() < effectiveLimit + 1) {
-            List<AnnouncementFeedEntity> rows = feedQueryRepository.findByScope(
-                    AnnouncementScopeType.ORGANIZATION, orgId, allowedVisibilities, fetchCursor, effectiveLimit + 1);
+        int scanned = 0;
+        while (gatedRows.size() < effectiveLimit + 1 && scanned < MAX_SCANNED_ROWS) {
+            List<AnnouncementFeedEntity> rows = feedQueryRepository.findOrgScopePage(
+                    orgId, allowedVisibilities, position, legacyCursor, fetchSize);
             if (rows == null || rows.isEmpty()) {
                 sourceHasNext = false;
                 break;
             }
-            sourceHasNext = rows.size() > effectiveLimit;
+            scanned += rows.size();
+            sourceHasNext = rows.size() == fetchSize;
+            lastScanned = AnnouncementFeedQueryRepository.OrgFeedCursor.of(rows.get(rows.size() - 1));
+            position = lastScanned;
+            legacyCursor = null;
             List<AnnouncementFeedEntity> uniqueRows = rows.stream()
                     .filter(row -> row.getId() != null && seenIds.add(row.getId())).toList();
             List<AnnouncementFeedEntity> readable = readability.filterReadable(uniqueRows, requestUserId);
@@ -99,13 +112,14 @@ public class OrgAnnouncementFeedQueryService {
                     return gate != null && !gate.isTitleHidden();
                 }).forEach(gatedRows::add);
             }
-            Long lastId = rows.get(rows.size() - 1).getId();
-            if (!sourceHasNext || lastId == null || lastId.equals(fetchCursor)) {
+            if (!sourceHasNext) {
                 break;
             }
-            fetchCursor = lastId;
         }
-        boolean hasNext = gatedRows.size() > effectiveLimit || (sourceHasNext && rounds > MAX_FETCH_ROUNDS);
+        boolean moreRowsAfterPage = gatedRows.size() > effectiveLimit;
+        // 走査の上限で打ち切ったが、その先にまだ行がある（読める行が続きにあるかもしれない）
+        boolean scanLimited = !moreRowsAfterPage && sourceHasNext && lastScanned != null;
+        boolean hasNext = moreRowsAfterPage || scanLimited;
         List<AnnouncementFeedEntity> page = gatedRows.stream().limit(effectiveLimit).toList();
         List<Long> feedIds = page.stream().map(AnnouncementFeedEntity::getId).toList();
         Set<Long> readFeedIds = readService.fetchReadFeedIds(requestUserId, feedIds);
@@ -116,7 +130,12 @@ public class OrgAnnouncementFeedQueryService {
                         adminBypass || !isLocked(gates.get(feed.getId()))
                                 ? ContentAccessState.FULL.name() : ContentAccessState.LOCKED.name()))
                 .toList();
-        Long nextCursor = hasNext && !page.isEmpty() ? page.get(page.size() - 1).getId() : null;
+        // 次ページの位置: 通常は返した最後の項目。項目が 1 件も無いまま走査上限に達したときだけ、最後に走査した行の位置から
+        // 再開する（空ページで止めない）。この位置の ID は、閲覧者が読めない告知の実在 ID でありうる（報告事項）。
+        Long nextCursor = null;
+        if (hasNext) {
+            nextCursor = !page.isEmpty() ? page.get(page.size() - 1).getId() : lastScanned.feedId();
+        }
         return new AnnouncementFeedService.AnnouncementFeedResult(items, nextCursor, hasNext, unreadCount);
     }
 

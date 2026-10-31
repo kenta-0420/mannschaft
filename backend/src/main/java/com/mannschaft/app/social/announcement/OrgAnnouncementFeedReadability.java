@@ -1,5 +1,6 @@
 package com.mannschaft.app.social.announcement;
 
+import com.mannschaft.app.cms.service.BlogPostPreviewService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ public class OrgAnnouncementFeedReadability {
 
     private final OrgAnnouncementAudienceAccess audienceAccess;
     private final ContentVisibilityChecker visibilityChecker;
+    private final BlogPostPreviewService blogPreviewService;
 
     /**
      * 閲覧者が本文プレビューを開ける行だけを、入力の順序のまま返す。
@@ -48,6 +50,8 @@ public class OrgAnnouncementFeedReadability {
             return List.of();
         }
         Map<Long, OrgAnnouncementAudienceAccess.Access> access = audienceAccess.evaluateAll(feeds, viewerId);
+        // 同じ組織の告知（一覧は 1 組織ずつ）。組織が複数混じる入力は想定しない
+        Long orgId = feeds.get(0).getScopeId();
 
         // 元コンテンツの可視性を評価する対象（元の種別 × 経路）を集める
         Map<ReferenceType, Set<Long>> directIds = new HashMap<>();
@@ -66,13 +70,17 @@ public class OrgAnnouncementFeedReadability {
                         .computeIfAbsent(type, k -> new HashSet<>()).add(feed.getSourceId());
             }
         }
+        // 元がブログの記事はプレビューと同じ strict 課金（HIDDEN は管理者でも除外）で、掲示板は F00 で一括評価する
         Map<ReferenceType, Set<Long>> directReadable = new HashMap<>();
-        directIds.forEach((type, ids) ->
-                directReadable.put(type, visibilityChecker.filterAccessible(type, ids, viewerId)));
+        directIds.forEach((type, ids) -> directReadable.put(type, type == ReferenceType.BLOG_POST
+                ? blogPreviewService.filterPreviewReadable(ids, viewerId, orgId)
+                : visibilityChecker.filterAccessible(type, ids, viewerId)));
         Map<String, Map<ReferenceType, Set<Long>>> delegatedReadable = new HashMap<>();
         delegatedIds.forEach((role, byType) -> byType.forEach((type, ids) ->
-                delegatedReadable.computeIfAbsent(role, k -> new HashMap<>())
-                        .put(type, visibilityChecker.filterAccessibleDelegated(type, ids, viewerId, role))));
+                delegatedReadable.computeIfAbsent(role, k -> new HashMap<>()).put(type,
+                        type == ReferenceType.BLOG_POST
+                                ? blogPreviewService.filterPreviewReadableDelegated(ids, viewerId, orgId, role)
+                                : visibilityChecker.filterAccessibleDelegated(type, ids, viewerId, role))));
 
         List<AnnouncementFeedEntity> readable = new ArrayList<>();
         for (AnnouncementFeedEntity feed : feeds) {

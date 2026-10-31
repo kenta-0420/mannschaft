@@ -224,7 +224,7 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
      */
     @Override
     public final Set<Long> filterAccessible(Collection<Long> contentIds, Long viewerUserId) {
-        return filterAccessibleInternal(contentIds, viewerUserId, null);
+        return filterAccessibleInternal(contentIds, viewerUserId, null, this::prepareAdditionalAxisContext);
     }
 
     /**
@@ -241,11 +241,32 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
         if (delegatedRole == null || delegatedRole.isBlank()) {
             throw new IllegalArgumentException("delegatedRole must not be blank");
         }
-        return filterAccessibleInternal(contentIds, viewerUserId, delegatedRole);
+        return filterAccessibleInternal(contentIds, viewerUserId, delegatedRole, this::prepareAdditionalAxisContext);
+    }
+
+    /**
+     * 追加軸（課金）の先読み結果を呼び出し側が渡す一括判定（プレビューと同じ厳格な課金結果で一覧を判定する用途）。
+     * 通常の {@link #filterAccessible} は変えない。
+     */
+    protected final Set<Long> filterAccessibleWithAdditionalAxisLoader(
+            Collection<Long> contentIds, Long viewerUserId,
+            java.util.function.BiFunction<List<P>, Long, Object> additionalAxisLoader) {
+        return filterAccessibleInternal(contentIds, viewerUserId, null, additionalAxisLoader);
+    }
+
+    /** {@link #filterAccessibleWithAdditionalAxisLoader} の委任役割版（{@link #filterAccessibleDelegated} と同じ制約）。 */
+    protected final Set<Long> filterAccessibleDelegatedWithAdditionalAxisLoader(
+            Collection<Long> contentIds, Long viewerUserId, String delegatedRole,
+            java.util.function.BiFunction<List<P>, Long, Object> additionalAxisLoader) {
+        if (delegatedRole == null || delegatedRole.isBlank()) {
+            throw new IllegalArgumentException("delegatedRole must not be blank");
+        }
+        return filterAccessibleInternal(contentIds, viewerUserId, delegatedRole, additionalAxisLoader);
     }
 
     private Set<Long> filterAccessibleInternal(Collection<Long> contentIds, Long viewerUserId,
-                                               String delegatedRole) {
+                                               String delegatedRole,
+                                               java.util.function.BiFunction<List<P>, Long, Object> additionalAxisLoader) {
         if (contentIds == null || contentIds.isEmpty()) {
             return Set.of();
         }
@@ -268,7 +289,7 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
 
         // 3.5) 追加軸がスナップショット外の情報を要する場合の一括取得（バッチ全体で 1 回）。
         //      これをループ内で行うと件数比例の N+1 になり §9 の SQL 本数上限に反する。
-        Object additionalAxisContext = prepareAdditionalAxisContext(rows, viewerUserId);
+        Object additionalAxisContext = additionalAxisLoader.apply(rows, viewerUserId);
 
         // 4) 各 row の判定（DB アクセスなし、純メモリ）。
         Set<Long> result = new HashSet<>();

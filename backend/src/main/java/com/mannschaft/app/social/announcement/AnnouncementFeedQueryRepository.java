@@ -317,6 +317,76 @@ public class AnnouncementFeedQueryRepository {
     }
 
     /**
+     * 組織告知一覧の API カーソル（直前のページの最後の項目の ID）から、読み進める位置を作る。
+     * その組織の告知でなければ（他組織・存在しない・解除済み）null（呼び出し側は旧来の {@code id < cursor} で続ける）。
+     * 他組織の告知 ID に対して、実在かどうか・ピン留めかどうかが応答の違いとして漏れないよう、組織で絞る。
+     */
+    public OrgFeedCursor findOrgFeedPosition(Long orgId, Long feedId) {
+        if (orgId == null || feedId == null) {
+            return null;
+        }
+        List<Boolean> pinned = em.createQuery("""
+                        SELECT a.isPinned FROM AnnouncementFeedEntity a
+                        WHERE a.id = :id AND a.scopeType = :scopeType AND a.scopeId = :scopeId
+                        """, Boolean.class)
+                .setParameter("id", feedId)
+                .setParameter("scopeType", AnnouncementScopeType.ORGANIZATION)
+                .setParameter("scopeId", orgId)
+                .getResultList();
+        return pinned.isEmpty() ? null : new OrgFeedCursor(Boolean.TRUE.equals(pinned.get(0)), feedId);
+    }
+
+    /**
+     * 組織告知一覧を、並び（{@code is_pinned DESC, created_at DESC, id DESC}）と一致するキーセットで 1 ページ取得する。
+     * 一覧の補充取得と外部のページ送りで、ピン留めの先頭群と通常群の境目で行を飛ばさないための取得（{@link #findByScope} は
+     * 並びが {@code is_pinned, created_at} なのにカーソル条件が {@code id} だけで、ピン留めがあると行を飛ばす）。
+     * 可視性・期限・元削除の条件は {@link #findByScope} と同じ定数。
+     *
+     * @param after        直前に読んだ最後の行の位置（先頭からは null）
+     * @param legacyCursor {@code after} が作れないときの旧来カーソル（{@code id < legacyCursor}。通常は null）
+     */
+    public List<AnnouncementFeedEntity> findOrgScopePage(
+            Long orgId, Set<String> allowedVisibilities, OrgFeedCursor after, Long legacyCursor, int limit) {
+        if (allowedVisibilities == null || allowedVisibilities.isEmpty() || limit <= 0) {
+            return List.of();
+        }
+        boolean keyset = after != null;
+        StringBuilder jpql = new StringBuilder(keyset
+                ? "SELECT a FROM AnnouncementFeedEntity a, AnnouncementFeedEntity k\n"
+                : "SELECT a FROM AnnouncementFeedEntity a\n")
+                .append(VISIBLE_IN_SCOPE_WHERE);
+        if (keyset) {
+            jpql.append("  AND k.id = :afterFeedId\n");
+            if (after.pinned()) {
+                jpql.append("""
+                          AND (a.isPinned = false
+                               OR (a.isPinned = true
+                                   AND (a.createdAt < k.createdAt
+                                        OR (a.createdAt = k.createdAt AND a.id < k.id))))
+                        """);
+            } else {
+                jpql.append("""
+                          AND a.isPinned = false
+                          AND (a.createdAt < k.createdAt
+                               OR (a.createdAt = k.createdAt AND a.id < k.id))
+                        """);
+            }
+        } else if (legacyCursor != null) {
+            jpql.append("  AND a.id < :legacyCursor\n");
+        }
+        jpql.append("ORDER BY a.isPinned DESC, a.createdAt DESC, a.id DESC");
+        TypedQuery<AnnouncementFeedEntity> query = em.createQuery(jpql.toString(), AnnouncementFeedEntity.class);
+        bindVisibleInScopeParameters(query, AnnouncementScopeType.ORGANIZATION, orgId, allowedVisibilities);
+        if (keyset) {
+            query.setParameter("afterFeedId", after.feedId());
+        } else if (legacyCursor != null) {
+            query.setParameter("legacyCursor", legacyCursor);
+        }
+        query.setMaxResults(limit);
+        return query.getResultList();
+    }
+
+    /**
      * チームダッシュボード向けに、組織スコープのお知らせフィードを 1 ページ分、キーセットで取得する（F01.2.1 §8.2・§15）。
      *
      * <p><b>宛先の判定はしない</b>。表示するかどうかの正は {@code AnnouncementAudienceMatcher}（Java）であり、

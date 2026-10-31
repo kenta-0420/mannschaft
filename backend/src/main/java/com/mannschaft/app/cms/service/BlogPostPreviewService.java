@@ -11,12 +11,18 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
 import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.payment.spi.ContentGateTarget;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /** preview 専用の非トランザクション読取。F00/課金/署名を記事の更新 TX に含めない。 */
 @Service
@@ -41,6 +47,40 @@ public class BlogPostPreviewService {
      */
     public PreviewMetadata getPreviewMetadataDelegated(Long id, Long viewerId, String delegatedRole) {
         return metadata(find(id), viewerId, requireDelegatedRole(delegatedRole));
+    }
+
+    /**
+     * 組織告知の一覧用の一括版。{@link #getPreviewMetadata} が 404 にならない組織ブログの ID だけを返す
+     * （strict 課金で HIDDEN は管理者・システム管理者でも除外し、F00 は strict 課金結果を使って一括評価する。
+     * 課金・F00 とも SQL 本数は記事の数に比例しない）。
+     */
+    public Set<Long> filterPreviewReadable(Collection<Long> ids, Long viewerId, Long organizationId) {
+        return filterReadable(ids, viewerId, organizationId, null);
+    }
+
+    /** {@link #filterPreviewReadable} の委任版（{@link #getPreviewMetadataDelegated} の一括版）。 */
+    public Set<Long> filterPreviewReadableDelegated(Collection<Long> ids, Long viewerId, Long organizationId,
+                                                    String delegatedRole) {
+        return filterReadable(ids, viewerId, organizationId, requireDelegatedRole(delegatedRole));
+    }
+
+    private Set<Long> filterReadable(Collection<Long> ids, Long viewerId, Long organizationId, String delegatedRole) {
+        if (ids == null || ids.isEmpty()) return Set.of();
+        List<Long> distinct = ids.stream().filter(Objects::nonNull).distinct().toList();
+        Map<Long, ContentGateTarget> targets = new LinkedHashMap<>();
+        distinct.forEach(id -> targets.put(id, new ContentGateTarget(id, null, organizationId)));
+        Map<Long, GateCheckResponse> gates = paymentGateService.checkAccessBatchForPreview(
+                ContentGateType.POST, distinct, viewerId, targets);
+        if (gates == null) return Set.of();
+        // 課金 HIDDEN（タイトルも隠す）は管理者でも除外する（プレビューは管理者バイパスより先に 404）。結果に無い記事も除外。
+        List<Long> titleVisible = distinct.stream().filter(id -> {
+            GateCheckResponse gate = gates.get(id);
+            return gate != null && !gate.isTitleHidden();
+        }).toList();
+        if (titleVisible.isEmpty()) return Set.of();
+        return delegatedRole == null
+                ? visibilityResolver.filterAccessibleForPreview(titleVisible, viewerId, gates)
+                : visibilityResolver.filterAccessibleForPreviewDelegated(titleVisible, viewerId, gates, delegatedRole);
     }
 
     /** FULL の時だけ本文を取得し、認可済み実 scope に束縛して署名する。 */
