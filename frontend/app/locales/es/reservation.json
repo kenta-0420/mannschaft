@@ -11,6 +11,7 @@
       "confirmations": "Estado de confirmación"
     },
     "label": {
+      "unknown_user": "Usuario desconocido",
       "start_date": "Fecha de inicio",
       "end_date": "Fecha de fin",
       "partial_time": "Cerrar solo durante ciertas horas del día",

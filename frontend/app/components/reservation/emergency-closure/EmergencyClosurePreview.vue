@@ -59,7 +59,7 @@ const emit = defineEmits<{
               :key="item.reservationId"
               class="border-b border-surface-100 last:border-0 dark:border-surface-700"
             >
-              <td class="py-2 pr-4">{{ item.userDisplayName }}</td>
+              <td class="py-2 pr-4">{{ item.userFullName || $t('emergency_closure.label.unknown_user') }}</td>
               <td class="py-2 pr-4 text-surface-600 dark:text-surface-300">
                 {{ formatPreviewDateTime(item.slotDate, item.startTime, item.endTime) }}
               </td>
