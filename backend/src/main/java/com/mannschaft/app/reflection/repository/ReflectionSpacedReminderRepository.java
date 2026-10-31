@@ -3,6 +3,9 @@ package com.mannschaft.app.reflection.repository;
 import com.mannschaft.app.reflection.ReflectionReminderStatus;
 import com.mannschaft.app.reflection.entity.ReflectionSpacedReminderEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -35,4 +38,14 @@ public interface ReflectionSpacedReminderRepository
 
     /** exam_date 変更・テーマ削除時に PRE_EXAM 行を引く（CANCELLED 化・再生成用）。 */
     List<ReflectionSpacedReminderEntity> findByThemeIdAndStatus(UUID themeId, ReflectionReminderStatus status);
+
+    /**
+     * 退会30日後の強匿名化専用。所有列 {@code user_id} で本人の行を一括物理削除する（行ごとのループを行わない）。
+     *
+     * @param userId 完全削除された利用者 ID
+     * @return 削除件数
+     */
+    @Modifying
+    @Query(value = "DELETE FROM reflection_spaced_reminders WHERE user_id = :userId", nativeQuery = true)
+    int deleteAllOwnedByUserId(@Param("userId") Long userId);
 }

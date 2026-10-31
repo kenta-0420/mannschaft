@@ -802,5 +802,372 @@ seal_scope_defaultsの選択のみ削除し印鑑・押印履歴を残す。新D
 `chat_channel_members`（membership共有契約）、`activity_feed`（既存30日TTLの共有履歴）である。
 本文・認証・同意・参加履歴等を設定と一律に扱わない。
 `visibility_templates` / 子rulesは正本の理由文言に矛盾がありユーザー判断待ちで変更しない。
-村pin/nicknameは既存即時匿名化契約の別残件とし、この設定強消去へ混ぜない。
+村pin/nicknameは既存即時匿名化契約の別残件とし、この設定強消去へ混ぜない（第2陣で御裁可を得て強側へ追加。下記）。
 これらの除外・保留を含む棚卸であり、今回の38親表が全システムの個人データ全体の上限であるとはしない。
+
+### 第2陣（2026-10-31）: 所有列の再走査と個人所有表の判断一覧
+
+第1陣の棚卸しは Entity の `private Long userId` を起点にしていたため、`owner_user_id` や
+`*_user_id` を所有列に持つ表、Entity を持たない native 専用表を拾えていなかった。第2陣では
+Entity（`@Table` と `@Column`／命名規則から導いた列名）と Flyway（`CREATE TABLE`／`ALTER TABLE ADD`
+の列、`RENAME`・`DROP` を反映）の両方から、列名が `user_id` または `_user_id` で終わる表を全数列挙し、
+次の判断一覧に1表1行で載せた。
+
+**御裁可済みで本PRが強側へ追加した7表**（退会30日後の強匿名化で所有列 `user_id` の一括 DELETE。
+行ごとのループは行わない）:
+
+| domain | 表 | 強消去リスナー |
+| --- | --- | --- |
+| shift | `member_availability_defaults` | `ShiftAvailabilityPurgeEventListener` |
+| parking | `parking_watchlist` | `ParkingWatchlistPurgeEventListener` |
+| reflection | `reflection_spaced_reminders` | 既存 `ReflectionSettingsPurgeEventListener` の同一TXへ同梱 |
+| advertising | `user_ad_preferences` | `UserAdPreferencePurgeEventListener` |
+| property | `property_work_history_views` | `PropertyWorkHistoryViewPurgeEventListener` |
+| village | `user_village_pins` / `user_village_nicknames` | `VillagePersonalSettingsPurgeEventListener` |
+
+新5domain（shift / parking / advertising / property / village）は第1陣と同じ型で組み込む。
+`AccountPurgeService` の本体TXで PENDING を登録し、各リスナーは `purge-pool` 上の REQUIRES_NEW TX で
+自ドメインの表だけを削除して、commit 成立後の afterCommit でのみ SUCCESS を記録する。途中の SQL 失敗は
+owner の TX 全体をロールバックし、queue 拒否・完了更新失敗はいずれも PENDING を保持する。手動 retry は
+非TXの `GdprPurgeRetryFacade` → `GdprSettingsPurgeRetryService` へ振り分け、owner の REQUIRES_NEW が
+commit して戻った後にだけ SUCCESS を保存する。対象0件でも SUCCESS、SUCCESS 済みの再 retry はドメイン操作を
+行わない（冪等）。村 pin/nickname の弱側（`VillageUserCleanerEventListener`、`UserAnonymizedEvent` 購読）は
+発火経路が休眠中のため変更せず、強側で確実に消す。新DDL・新pool は追加しない。
+
+**判断一覧の読み方**: `強消去` は退会30日後に物理削除（既存または本PR）、`匿名化` は所有列の NULL 化・
+センチネル化、`弱消去` は弱側購読者で削除（発火経路は休眠中。強側未接続のものは別途判断が要る）、`保持` は
+理由を付けて残す、`要裁可` は境界判断が必要なためこの戦役では消さずマスターの判断を待つ。
+番人 `WithdrawalPersonalDataListenerCoverageGuardTest` が、所有列（`user_id` / `owner_user_id` / `*_user_id`）
+を持つ表がこの一覧に無い場合と、一覧に残った表が実装から消えた場合の両方を CI で失敗させる。新しい表を
+追加したら、判断と理由を添えて一覧へ1行足すこと。
+
+<!-- PERSONAL_OWNER_TABLE_LEDGER_START -->
+| 表 | 所有列 | 判断 | 理由・経路 |
+| --- | --- | --- | --- |
+| `account_purge_completion_status` | `user_id` | 保持 | GDPR 完了監査。email_hash のみで本人を再特定できない |
+| `action_memo_tags` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `action_memos` | `user_id` | 弱消去 | 弱側 `UserAnonymizedEvent` 購読者で物理削除（発火経路は休眠中。正本 withdrawal_flow_immediate_anonymization_fix.md） |
+| `activity_comments` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `activity_participants` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `ad_announcement_deliveries` | `user_id` | 要裁可 | 広告の配信・計測ログ（個人の行動履歴か、広告主課金の根拠か） |
+| `ad_banner_deliveries` | `user_id` | 要裁可 | 広告の配信・計測ログ（個人の行動履歴か、広告主課金の根拠か） |
+| `ad_campaign_delivery_claims` | `user_id` | 要裁可 | 広告の配信・計測ログ（個人の行動履歴か、広告主課金の根拠か） |
+| `ad_campaign_moderation_logs` | `moderator_user_id` | 保持 | 監査ログ（改ざん防止・説明責任） |
+| `ad_clicks` | `user_id` | 要裁可 | 広告の配信・計測ログ（個人の行動履歴か、広告主課金の根拠か） |
+| `ad_conversions` | `converted_user_id` | 要裁可 | 広告の配信・計測ログ（個人の行動履歴か、広告主課金の根拠か） |
+| `ad_email_deliveries` | `user_id` | 要裁可 | 広告の配信・計測ログ（個人の行動履歴か、広告主課金の根拠か） |
+| `ad_impressions` | `user_id` | 要裁可 | 広告の配信・計測ログ（個人の行動履歴か、広告主課金の根拠か） |
+| `ad_messaging_campaigns` | `created_by_user_id` | 保持 | 共有物の作成者・行為者参照（行は共有物そのもの） |
+| `ad_ng_words` | `created_by_user_id` | 保持 | 共有物の作成者・行為者参照（行は共有物そのもの） |
+| `ad_push_deliveries` | `user_id` | 要裁可 | 広告の配信・計測ログ（個人の行動履歴か、広告主課金の根拠か） |
+| `ad_user_reports` | `reporter_user_id` | 保持 | 通報・モデレーション証跡（被通報者・通報者の記録は運営判断の根拠） |
+| `announcement_read_status` | `user_id` | 保持 | 発信側が参照する既読・確認状況（共同業務の記録） |
+| `annual_review_responses` | `respondent_user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `appearance_settings` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `attendance_disclosure_records` | `student_user_id` | 保持 | 学校・出欠の業務記録（学籍・法定保存の根拠） |
+| `attendance_location_changes` | `student_user_id` | 保持 | 学校・出欠の業務記録（学籍・法定保存の根拠） |
+| `attendance_requirement_evaluations` | `resolver_user_id` / `student_user_id` | 保持 | 学校・出欠の業務記録（学籍・法定保存の根拠） |
+| `attendance_transition_alerts` | `student_user_id` | 保持 | 学校・出欠の業務記録（学籍・法定保存の根拠） |
+| `audit_logs` | `target_user_id` / `user_id` | 保持 | 監査ログ（改ざん防止・説明責任） |
+| `billing_contracts` | `payer_user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `billing_payer_handover_requests` | `new_payer_user_id` / `old_payer_user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `birth_profile_commands` | `user_id` | 要裁可 | 出生プロフィールの確認・操作記録（diagnosis 強消去の対象外） |
+| `birth_profile_confirmations` | `user_id` | 要裁可 | 出生プロフィールの確認・操作記録（diagnosis 強消去の対象外） |
+| `blog_post_reactions` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `blog_posts` | `first_published_author_user_id` / `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `bulletin_reactions` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `bulletin_read_status` | `user_id` | 保持 | 発信側が参照する既読・確認状況（共同業務の記録） |
+| `chart_records` | `customer_user_id` / `staff_user_id` | 匿名化 | `ChartPurgeEventListener` が `customer_user_id` を NULL 化。`staff_user_id` は施術者の業務記録として保持 |
+| `chat_channel_members` | `user_id` | 保持 | membership・参加の共有契約（既決の除外対象。RolePurge が権限を除去） |
+| `chat_contact_folders` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `chat_message_bookmarks` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `chat_message_reactions` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `circulation_comments` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `circulation_recipients` | `user_id` | 保持 | 発信側が参照する既読・確認状況（共同業務の記録） |
+| `circulation_stamp_delegations` | `delegatee_user_id` / `delegator_user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `class_homerooms` | `homeroom_teacher_user_id` | 保持 | 学校・出欠の業務記録（学籍・法定保存の根拠） |
+| `coin_toss_results` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `committee_invitations` | `invitee_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `committee_members` | `user_id` | 保持 | membership・参加の共有契約（既決の除外対象。RolePurge が権限を除去） |
+| `confirmable_notification_recipients` | `user_id` | 保持 | 発信側が参照する既読・確認状況（共同業務の記録） |
+| `contact_invite_tokens` | `user_id` | 要裁可 | 外部連携・購読トークン（本人以外に用途がないが既存弱側の対象外） |
+| `contact_request_blocks` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `content_reports` | `target_user_id` | 保持 | 通報・モデレーション証跡（被通報者・通報者の記録は運営判断の根拠） |
+| `content_reports_archive` | `target_user_id` | 保持 | 通報・モデレーション証跡（被通報者・通報者の記録は運営判断の根拠） |
+| `coupon_distributions` | `user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `daily_attendance_records` | `student_user_id` | 保持 | 学校・出欠の業務記録（学籍・法定保存の根拠） |
+| `dashboard_scope_tab_order` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `dashboard_widget_settings` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `data_exports` | `user_id` | 強消去 | `AccountPurgeService` 本体TX（S3 ファイルと行を削除） |
+| `diagnosis_commands` | `user_id` | 強消去 | `DiagnosisPurgeEventListener` |
+| `diagnosis_results` | `user_id` | 強消去 | `DiagnosisPurgeEventListener` |
+| `diagnosis_sessions` | `user_id` | 強消去 | `DiagnosisPurgeEventListener` |
+| `direct_mail_recipients` | `user_id` | 要裁可 | 広告の配信・計測ログ（個人の行動履歴か、広告主課金の根拠か） |
+| `direct_mail_recipients_archive` | `user_id` | 要裁可 | 広告の配信・計測ログ（個人の行動履歴か、広告主課金の根拠か） |
+| `disclosure_exports` | `requester_user_id` | 保持 | 監査ログ（改ざん防止・説明責任） |
+| `electronic_seals` | `user_id` | 保持 | 印鑑・押印履歴（F05.3 の既決で保持） |
+| `email_change_tokens` | `user_id` | 強消去 | `AccountPurgeService` 本体TX（auth トークン・認証情報） |
+| `email_outbox` | `user_id` | 要裁可 | 送信待ち・一時データ（宛先PIIを含む） |
+| `email_verification_tokens` | `user_id` | 強消去 | `AccountPurgeService` 本体TX（auth トークン・認証情報） |
+| `emergency_closure_confirmations` | `user_id` | 弱消去 | 弱側 `UserAnonymizedEvent` 購読者で物理削除（発火経路は休眠中。正本 withdrawal_flow_immediate_anonymization_fix.md） |
+| `equipment_assignments` | `assigned_by_user_id` / `assigned_to_user_id` / `returned_by_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `equipment_ranking_exclusions` | `excluded_by_user_id` | 保持 | 共有物の作成者・行為者参照（行は共有物そのもの） |
+| `error_report_occurrences` | `user_id` | 匿名化 | `ErrorReportPurgeEventListener` が user_id・IP・UA を NULL 化 |
+| `error_reports` | `user_id` | 要裁可 | エラー報告本体の報告者（occurrence のみ匿名化済み） |
+| `event_care_notification_logs` | `care_recipient_user_id` / `watcher_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `event_checkins` | `roll_call_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `event_registrations` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `event_rsvp_responses` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `event_survey_responses` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `external_agent_delegations` | `agent_user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `facility_booking_payments` | `payer_user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `family_attendance_notices` | `student_user_id` / `submitter_user_id` | 保持 | 学校・出欠の業務記録（学籍・法定保存の根拠） |
+| `feedback_votes` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `gamification_user_settings` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `gdpr_s3_purge_failures` | `user_id` | 保持 | GDPR S3 削除の再試行運用記録（S3キーのみ） |
+| `geonames_metadata` | `imported_by_user_id` | 保持 | 共有物の作成者・行為者参照（行は共有物そのもの） |
+| `google_calendar_webhook_channels` | `user_id` | 要裁可 | 外部連携・購読トークン（本人以外に用途がないが既存弱側の対象外） |
+| `guardianship_transition_notifications` | `child_user_id` / `recipient_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `inbox_item_states` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `inbox_label_links` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `incident_assignments` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `incident_comments` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `incident_maintenance_schedules` | `default_assignee_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `invite_tokens` | `target_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `job_applications` | `applicant_user_id` / `decided_by_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `job_check_ins` | `worker_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `job_contracts` | `requester_user_id` / `worker_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `job_postings` | `created_by_user_id` | 保持 | 共有物の作成者・行為者参照（行は共有物そのもの） |
+| `job_qr_tokens` | `issued_by_user_id` | 保持 | 共有物の作成者・行為者参照（行は共有物そのもの） |
+| `join_requests` | `requester_user_id` / `reviewer_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `kb_page_favorites` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `match_events` | `player_user_id` / `related_player_user_id` | 保持 | 試合・大会・成績の共同記録 |
+| `match_roster_staff` | `user_id` | 保持 | 試合・大会・成績の共同記録 |
+| `match_score_entries` | `competitor_user_id` | 保持 | 試合・大会・成績の共同記録 |
+| `matches` | `scorekeeper_user_id` | 保持 | 試合・大会・成績の共同記録 |
+| `member_availability_defaults` | `user_id` | 強消去 | 本PRで追加。退会30日後の強匿名化で所有列一括DELETE（御裁可済）。shift ドメイン `ShiftAvailabilityPurgeEventListener` |
+| `member_cards` | `active_platform_user_id` / `user_id` | 要裁可 | チームが参照する本人プロフィール・回答（PIIを含む） |
+| `member_payments` | `payer_user_id` / `user_id` | 匿名化 | `PaymentPurgeEventListener` がセンチネル化（会計7年保持との両立） |
+| `member_profiles` | `user_id` | 要裁可 | チームが参照する本人プロフィール・回答（PIIを含む） |
+| `member_skills` | `user_id` | 要裁可 | 本人の勤務条件・技能（シフト業務の判断材料か本人設定か） |
+| `member_work_constraints` | `user_id` | 要裁可 | 本人の勤務条件・技能（シフト業務の判断材料か本人設定か） |
+| `membership_beneficiary_withdrawal_cancellations` | `beneficiary_user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `membership_payer_withdrawal_cancellations` | `payer_user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `membership_subscriptions` | `beneficiary_user_id` / `payer_user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `memberships` | `user_id` | 保持 | membership・参加の共有契約（既決の除外対象。RolePurge が権限を除去） |
+| `mentions` | `mentioned_user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `mfa_recovery_tokens` | `user_id` | 強消去 | `AccountPurgeService` 本体TX（auth トークン・認証情報） |
+| `moderation_appeals` | `user_id` | 保持 | 通報・モデレーション証跡（被通報者・通報者の記録は運営判断の根拠） |
+| `monitoring_committee_visits` | `subject_user_id` / `visitor_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `my_scope_folders` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `notification_credit_purchases` | `purchased_by_user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `notification_labels` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `notification_preferences` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `notification_settings` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `notification_type_preferences` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `notifications` | `user_id` | 弱消去 | 弱側 `UserAnonymizedEvent` 購読者で物理削除（発火経路は休眠中。正本 withdrawal_flow_immediate_anonymization_fix.md） |
+| `notifications_archive` | `user_id` | 弱消去 | 弱側 `UserAnonymizedEvent` 購読者で物理削除（発火経路は休眠中。正本 withdrawal_flow_immediate_anonymization_fix.md） |
+| `oauth_accounts` | `user_id` | 強消去 | `AccountPurgeService` 本体TX（auth トークン・認証情報） |
+| `oauth_link_tokens` | `user_id` | 強消去 | `AccountPurgeService` 本体TX（auth トークン・認証情報） |
+| `offline_sync_conflicts` | `user_id` | 要裁可 | 送信待ち・一時データ（宛先PIIを含む） |
+| `onboarding_progresses` | `user_id` | 保持 | 業務進捗（既決の除外対象） |
+| `organization_blocks` | `user_id` | 保持 | 通報・モデレーション証跡（被通報者・通報者の記録は運営判断の根拠） |
+| `otp_challenges` | `user_id` | 要裁可 | 外部連携・購読トークン（本人以外に用途がないが既存弱側の対象外） |
+| `ownership_transfer_offers` | `target_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `page_view_logs` | `user_id` | 要裁可 | 既知の境界案件: 閲覧ログ（90日TTLで消えるが退会時に前倒すか） |
+| `parental_consent_links` | `child_user_id` / `parent_user_id` | 強消去 | `AccountPurgeService` 本体TXで子側リンクを削除。親側は REVOKED のまま値参照のみ保持 |
+| `parking_applications` | `user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `parking_assignments` | `user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `parking_listings` | `transferee_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `parking_sublease_applications` | `user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `parking_sublease_payments` | `payee_user_id` / `payer_user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `parking_visitor_recurring` | `user_id` | 要裁可 | 本人の車両情報・定期来客（区画契約の根拠か本人データか） |
+| `parking_watchlist` | `user_id` | 強消去 | 本PRで追加。退会30日後の強匿名化で所有列一括DELETE（御裁可済）。parking ドメイン `ParkingWatchlistPurgeEventListener` |
+| `password_reset_tokens` | `user_id` | 強消去 | `AccountPurgeService` 本体TX（auth トークン・認証情報） |
+| `payment_request_payment_attempts` | `payer_user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `pending_uploads` | `user_id` | 要裁可 | 送信待ち・一時データ（宛先PIIを含む） |
+| `performance_monthly_summaries` | `user_id` | 保持 | 試合・大会・成績の共同記録 |
+| `performance_records` | `user_id` | 保持 | 試合・大会・成績の共同記録 |
+| `period_attendance_records` | `student_user_id` / `teacher_user_id` | 保持 | 学校・出欠の業務記録（学籍・法定保存の根拠） |
+| `personal_timetable_settings` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `personal_timetables` | `user_id` | 要裁可 | 本人専用の本文（既存方針は本文を対象外としたが、他者と共有しない私有本文の保持根拠は未裁定） |
+| `player_appearances` | `player_user_id` | 保持 | 試合・大会・成績の共同記録 |
+| `point_card_balance_events` | `operated_by_user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `point_card_groups` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `point_card_stamp_events` | `pressed_by_user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `point_card_user_settings` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `point_transactions` | `user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `presence_events` | `user_id` | 要裁可 | 本人の行動・在席記録 |
+| `promotion_deliveries` | `user_id` | 要裁可 | 広告の配信・計測ログ（個人の行動履歴か、広告主課金の根拠か） |
+| `property_listing_inquiries` | `user_id` | 弱消去 | 弱側 `UserAnonymizedEvent` 購読者で物理削除（発火経路は休眠中。正本 withdrawal_flow_immediate_anonymization_fix.md） |
+| `property_work_history_views` | `user_id` | 強消去 | 本PRで追加。退会30日後の強匿名化で所有列一括DELETE（御裁可済）。property ドメイン `PropertyWorkHistoryViewPurgeEventListener` |
+| `proxy_input_consents` | `approved_by_user_id` / `proxy_user_id` / `revoke_witnessed_by_user_id` / `subject_user_id` / `witness_user_id` | 匿名化 | `ProxyPurgeEventListener` が records を物理削除、consents を論理削除（監査証跡） |
+| `proxy_input_records` | `proxy_user_id` / `subject_user_id` | 匿名化 | `ProxyPurgeEventListener` が records を物理削除、consents を論理削除（監査証跡） |
+| `proxy_vote_motion_comments` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `proxy_votes` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `push_subscriptions` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `queue_tickets` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `quick_memos` | `user_id` | 要裁可 | 本人専用の本文（既存方針は本文を対象外としたが、他者と共有しない私有本文の保持根拠は未裁定） |
+| `ranch_admin_commands` | `actor_user_id` | 保持 | 監査ログ（改ざん防止・説明責任） |
+| `ranch_affinity_units` | `user_id` | 強消去 | `RanchPurgeEventListener`（`RanchPurgeService`） |
+| `ranch_care_week_budgets` | `user_id` | 強消去 | `RanchPurgeEventListener`（`RanchPurgeService`） |
+| `ranch_collectible_inventory` | `user_id` | 強消去 | `RanchPurgeEventListener`（`RanchPurgeService`） |
+| `ranch_commands` | `user_id` | 強消去 | `RanchPurgeEventListener`（`RanchPurgeService`） |
+| `ranch_dinosaurs` | `user_id` | 強消去 | `RanchPurgeEventListener`（`RanchPurgeService`） |
+| `ranch_owners` | `user_id` | 強消去 | `RanchPurgeEventListener`（`RanchPurgeService`） |
+| `ranch_participation_periods` | `user_id` | 強消去 | `RanchPurgeEventListener`（`RanchPurgeService`） |
+| `ranch_point_ledger` | `user_id` | 強消去 | `RanchPurgeEventListener`（`RanchPurgeService`） |
+| `ranch_reward_decisions` | `user_id` | 強消去 | `RanchPurgeEventListener`（`RanchPurgeService`） |
+| `ranch_room_placements` | `user_id` | 強消去 | `RanchPurgeEventListener`（`RanchPurgeService`） |
+| `ranch_week_budgets` | `user_id` | 強消去 | `RanchPurgeEventListener`（`RanchPurgeService`） |
+| `ranking_snapshots` | `user_id` | 保持 | 試合・大会・成績の共同記録 |
+| `recall_attempts` | `user_id` | 要裁可 | 本人専用の本文（既存方針は本文を対象外としたが、他者と共有しない私有本文の保持根拠は未裁定） |
+| `receipt_issuer_settings` | `default_seal_user_id` | 保持 | 印鑑・押印履歴（F05.3 の既決で保持） |
+| `receipt_queue` | `recipient_user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `receipts` | `recipient_user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `recruitment_cancellation_records` | `user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `recruitment_listings` | `payee_user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `recruitment_no_show_records` | `user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `recruitment_participants` | `user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `recruitment_user_penalties` | `user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `reflection_entries` | `user_id` | 要裁可 | 本人専用の本文（既存方針は本文を対象外としたが、他者と共有しない私有本文の保持根拠は未裁定） |
+| `reflection_ranch_admin_commands` | `actor_user_id` | 強消去 | `ReflectionSettingsPurgeEventListener`（想起・牧場輸送の私有行） |
+| `reflection_ranch_outboxes` | `recipient_user_id` | 強消去 | `ReflectionSettingsPurgeEventListener`（想起・牧場輸送の私有行） |
+| `reflection_ranch_witnesses` | `recipient_user_id` | 強消去 | `ReflectionSettingsPurgeEventListener`（想起・牧場輸送の私有行） |
+| `reflection_recall_commands` | `user_id` | 強消去 | `ReflectionSettingsPurgeEventListener`（想起・牧場輸送の私有行） |
+| `reflection_recall_sessions` | `user_id` | 強消去 | `ReflectionSettingsPurgeEventListener`（想起・牧場輸送の私有行） |
+| `reflection_spaced_reminders` | `user_id` | 強消去 | 本PRで追加。退会30日後の強匿名化で所有列一括DELETE（御裁可済）。既存 reflection 強消去 TX に同梱 |
+| `reflection_themes` | `user_id` | 要裁可 | 本人専用の本文（既存方針は本文を対象外としたが、他者と共有しない私有本文の保持根拠は未裁定） |
+| `refresh_tokens` | `user_id` | 強消去 | `AccountPurgeService` 本体TX（auth トークン・認証情報） |
+| `refunds` | `refunded_by_user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `registered_vehicles` | `user_id` | 要裁可 | 本人の車両情報・定期来客（区画契約の根拠か本人データか） |
+| `reservation_lines` | `default_staff_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `reservation_slot_templates` | `staff_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `reservation_slots` | `staff_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `reservation_waitlist_entries` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `reservations` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `resident_activity_snapshots` | `subject_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `resident_registry` | `user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `resumes` | `user_id` | 強消去 | `ResumePurgeEventListener` |
+| `return_stay_plan_owner_locks` | `owner_user_id` | 強消去 | `ReturnStayPlanLifecycleListener`（弱・強の両側で冪等削除） |
+| `return_stay_plans` | `owner_user_id` | 強消去 | `ReturnStayPlanLifecycleListener`（弱・強の両側で冪等削除） |
+| `safety_responses` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `schedule_attendances` | `ranch_first_self_user_id` / `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `schedule_comments` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `schedule_keeps` | `user_id` | 弱消去 | 弱側で論理削除（`ScheduleKeepAnonymizationEventListener`。発火経路は休眠中） |
+| `schedule_targets` | `user_id` | 弱消去 | 弱側 `UserAnonymizedEvent` 購読者で物理削除（発火経路は休眠中。正本 withdrawal_flow_immediate_anonymization_fix.md） |
+| `schedules` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `scope_member_calendar_settings` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `seal_scope_defaults` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `seal_stamp_logs` | `user_id` | 保持 | 印鑑・押印履歴（F05.3 の既決で保持） |
+| `search_histories` | `user_id` | 弱消去 | 弱側 `UserAnonymizedEvent` 購読者で物理削除（発火経路は休眠中。正本 withdrawal_flow_immediate_anonymization_fix.md） |
+| `search_saved_queries` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `service_record_reactions` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `service_records` | `member_user_id` / `staff_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `shared_file_comments` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `shared_file_stars` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `shared_file_tags` | `user_id` | 保持 | 共同コンテンツ（既決の除外対象） |
+| `shared_folders` | `user_id` | 保持 | 共同コンテンツ（既決の除外対象） |
+| `shift_assignments` | `user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `shift_budget_consumptions` | `user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `shift_hourly_rates` | `user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `shift_requests` | `user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `shift_swap_requests` | `target_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `stripe_connect_accounts` | `user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `stripe_customers` | `user_id` | 強消去 | `PaymentPurgeEventListener` が Stripe 顧客行を削除 |
+| `student_attendance_summaries` | `student_user_id` | 保持 | 学校・出欠の業務記録（学籍・法定保存の根拠） |
+| `succession_covenants` | `signer_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `succession_pre_registrations` | `owner_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `supporter_applications` | `user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `survey_responses` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `survey_result_viewers` | `user_id` | 要裁可 | 既知の境界案件: 結果閲覧者の指定（調査主催者側の権限設定か本人データか） |
+| `survey_targets` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `team_blocks` | `user_id` | 保持 | 通報・モデレーション証跡（被通報者・通報者の記録は運営判断の根拠） |
+| `team_loyalty_accounts` | `user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `team_loyalty_award_requests` | `terminal_actor_user_id` / `user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `team_loyalty_transactions` | `actor_user_id` / `user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `team_member_info_responses` | `user_id` | 要裁可 | チームが参照する本人プロフィール・回答（PIIを含む） |
+| `team_member_terms` | `user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `team_payment_advances` | `payer_user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `ticket_books` | `user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `ticket_payments` | `user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `timeline_bookmarks` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `timeline_poll_votes` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `timeline_post_reactions` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `timeline_posts` | `ranch_qualified_user_id` / `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `timetable_slot_user_note_attachments` | `user_id` | 保持 | 時間割メモ本文（F03.15 の既決: 定義のみ消去し本文は保持） |
+| `timetable_slot_user_note_fields` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `timetable_slot_user_notes` | `user_id` | 保持 | 時間割メモ本文（F03.15 の既決: 定義のみ消去し本文は保持） |
+| `todo_assignees` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `todo_comments` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `todo_handoffs` | `from_user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `todo_personal_memos` | `user_id` | 要裁可 | 本人専用の本文（既存方針は本文を対象外としたが、他者と共有しない私有本文の保持根拠は未裁定） |
+| `todo_shared_memo_entries` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `tournament_entry_members` | `user_id` | 保持 | 試合・大会・成績の共同記録 |
+| `tournament_entry_template_members` | `user_id` | 要裁可 | 既知の境界案件: 大会エントリーの雛形メンバー（雛形所有者の設定に退会者IDが残る） |
+| `tournament_entry_template_staff` | `user_id` | 要裁可 | 既知の境界案件: 大会エントリーの雛形メンバー（雛形所有者の設定に退会者IDが残る） |
+| `tournament_individual_rankings` | `user_id` | 保持 | 試合・大会・成績の共同記録 |
+| `tournament_match_player_stats` | `user_id` | 保持 | 試合・大会・成績の共同記録 |
+| `tournament_match_rosters` | `user_id` | 保持 | 試合・大会・成績の共同記録 |
+| `tournament_scorekeepers` | `user_id` | 保持 | 試合・大会・成績の共同記録 |
+| `translation_assignments` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `two_factor_auth` | `user_id` | 強消去 | `AccountPurgeService` 本体TX（auth トークン・認証情報） |
+| `unseal_audit_views` | `viewer_user_id` | 保持 | 監査ログ（改ざん防止・説明責任） |
+| `unseal_requests` | `first_approver_user_id` / `second_approver_user_id` | 保持 | 監査ログ（改ざん防止・説明責任） |
+| `user_action_memo_settings` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `user_ad_delivery_counters` | `user_id` | 要裁可 | 本人専用の頻度上限カウンタ（設定に近いが計測と連動） |
+| `user_ad_preferences` | `user_id` | 強消去 | 本PRで追加。退会30日後の強匿名化で所有列一括DELETE（御裁可済）。advertising ドメイン `UserAdPreferencePurgeEventListener` |
+| `user_badges` | `user_id` | 要裁可 | 本人の獲得バッジ（ランキング本文か本人データか） |
+| `user_blog_settings` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `user_calendar_layer_settings` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `user_calendar_sync_settings` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `user_care_links` | `care_recipient_user_id` / `watcher_user_id` | 要裁可 | 見守り関係（相手方の設定でもある） |
+| `user_favorites` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `user_google_calendar_connections` | `user_id` | 弱消去 | 弱側 `UserAnonymizedEvent` 購読者で物理削除（発火経路は休眠中。正本 withdrawal_flow_immediate_anonymization_fix.md） |
+| `user_ical_tokens` | `user_id` | 要裁可 | 外部連携・購読トークン（本人以外に用途がないが既存弱側の対象外） |
+| `user_interest_tags` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `user_line_connections` | `user_id` | 要裁可 | 外部連携・購読トークン（本人以外に用途がないが既存弱側の対象外） |
+| `user_mutes` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `user_nav_settings` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `user_permission_groups` | `user_id` | 要裁可 | 権限グループ所属（RolePurge の対象外） |
+| `user_point_cards` | `user_id` | 弱消去 | 弱側 `UserAnonymizedEvent` 購読者で物理削除（発火経路は休眠中。正本 withdrawal_flow_immediate_anonymization_fix.md） |
+| `user_quick_memo_settings` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `user_reflection_settings` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `user_roles` | `user_id` | 強消去 | `RolePurgeEventListener` |
+| `user_schedule_google_events` | `user_id` | 要裁可 | 外部連携・購読トークン（本人以外に用途がないが既存弱側の対象外） |
+| `user_social_profiles` | `user_id` | 弱消去 | 弱側で無効化（`SocialAnonymizationEventListener`。発火経路は休眠中） |
+| `user_village_nicknames` | `user_id` | 強消去 | 本PRで追加。退会30日後の強匿名化で所有列一括DELETE（御裁可済）。village ドメイン `VillagePersonalSettingsPurgeEventListener`（弱側 `VillageUserCleanerEventListener` は休眠中のため強側で確実に消す） |
+| `user_village_pins` | `user_id` | 強消去 | 本PRで追加。退会30日後の強匿名化で所有列一括DELETE（御裁可済）。village ドメイン `VillagePersonalSettingsPurgeEventListener`（弱側 `VillageUserCleanerEventListener` は休眠中のため強側で確実に消す） |
+| `user_violations` | `user_id` | 保持 | 通報・モデレーション証跡（被通報者・通報者の記録は運営判断の根拠） |
+| `user_voice_input_consents` | `user_id` | 保持 | 同意記録（同意の証跡） |
+| `user_weather_locations` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
+| `users` | `account_created_by_watcher_user_id` | 保持 | `users` 本体は強消去で物理削除。この列は他ユーザー行が持つ見守り作成者参照 |
+| `village_calendar_event_logs` | `created_by_user_id` | 保持 | 共有物の作成者・行為者参照（行は共有物そのもの） |
+| `village_calendar_events` | `created_by_user_id` | 保持 | 共有物の作成者・行為者参照（行は共有物そのもの） |
+| `village_charter_drafters` | `user_id` | 匿名化 | 弱側 `VillageUserCleanerEventListener` が `user_id` を NULL 化し仮名スナップショットを残す（憲章の史料） |
+| `village_creation_requests` | `requester_user_id` / `reviewer_user_id` | 要裁可 | 村作成申請の申請者（設計書 §7.1 の申請者0化は未実装） |
+| `village_festival_rsvps` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `village_festivals` | `created_by_user_id` | 保持 | 共有物の作成者・行為者参照（行は共有物そのもの） |
+| `village_invitations` | `target_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `village_join_requests` | `requester_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `village_match_recruit_applications` | `applicant_user_id` / `reviewed_by_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `village_match_recruits` | `posted_by_user_id` | 保持 | 共有物の作成者・行為者参照（行は共有物そのもの） |
+| `village_meetup_attendances` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `village_meetup_comments` | `author_user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `village_meetup_todos` | `assignee_user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `village_meetup_votes` | `voter_user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `village_meetups` | `organizer_user_id` | 保持 | 共有物の作成者・行為者参照（行は共有物そのもの） |
+| `village_newsletter_opt_outs` | `user_id` | 要裁可 | 村の個人化データ（配信停止・推薦・スコア） |
+| `village_pilgrimage_recommendations` | `user_id` | 要裁可 | 村の個人化データ（配信停止・推薦・スコア） |
+| `village_reports` | `reporter_user_id` | 保持 | 通報・モデレーション証跡（被通報者・通報者の記録は運営判断の根拠） |
+| `village_representatives` | `granted_by_user_id` / `representative_user_id` / `revoked_by_user_id` | 保持 | 共有物の作成者・行為者参照（行は共有物そのもの） |
+| `village_serendipity_scores` | `user_id` | 要裁可 | 村の個人化データ（配信停止・推薦・スコア） |
+| `villages` | `created_by_user_id` | 保持 | 共有物の作成者・行為者参照（行は共有物そのもの） |
+| `visibility_templates` | `owner_user_id` | 強消去 | `VisibilityTemplatePurgeEventListener`（退会者所有のカスタムのみ） |
+| `warning_re_reviews` | `user_id` | 保持 | 通報・モデレーション証跡（被通報者・通報者の記録は運営判断の根拠） |
+| `webauthn_credentials` | `user_id` | 強消去 | `AccountPurgeService` 本体TX（auth トークン・認証情報） |
+| `withdraw_jobs` | `user_id` | 保持 | 退会処理そのものの運用記録 |
+| `workflow_request_approvers` | `approver_user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
+| `workflow_request_comments` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `yabai_unflag_requests` | `user_id` | 保持 | 通報・モデレーション証跡（被通報者・通報者の記録は運営判断の根拠） |
+<!-- PERSONAL_OWNER_TABLE_LEDGER_END -->

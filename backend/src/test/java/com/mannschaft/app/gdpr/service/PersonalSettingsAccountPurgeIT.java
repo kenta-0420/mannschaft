@@ -80,12 +80,17 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
             "scope_member_calendar_settings", "notification_preferences", "notification_type_preferences",
             "push_subscriptions", "user_calendar_layer_settings", "user_weather_locations", "inbox_item_states",
             "notification_labels", "inbox_label_links", "timetable_slot_user_note_fields",
-            "seal_scope_defaults")).toList();
+            "seal_scope_defaults",
+            // CMP-260822-1243 第2陣（御裁可済）: 個人に属する残表と村 pin/nickname
+            "member_availability_defaults", "parking_watchlist", "reflection_spaced_reminders",
+            "user_ad_preferences", "property_work_history_views", "user_village_pins",
+            "user_village_nicknames")).toList();
     private static final List<String> SETTING_DOMAINS = List.of(
             "actionmemo", "pointcard", "timeline", "search", "dashboard", "scopefolder", "schedule", "quickmemo",
             "auth", "notification", "filesharing", "contact", "user", "appearance", "navsettings", "gamification",
             "reflection", "timetable.personal", "cms", "chat", "knowledgebase", "favorite", "membership", "weather",
-            "inbox", "timetable.notes", "seal", "visibility");
+            "inbox", "timetable.notes", "seal", "visibility",
+            "shift", "parking", "advertising", "property", "village");
     private static final List<String> EXISTING_DOMAINS = List.of(
             "role", "team", "payment", "chart", "proxy", "errorreport", "resume", "billing", "ranch", "diagnosis");
     private static final List<String> RETAINED_UNTIL_STRONG = Stream.concat(
@@ -411,6 +416,57 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
                     .isZero();
             assertThat(countDomain(target, "dashboard", "SUCCESS")).isEqualTo(1);
             assertThat(retryService.retryDomainPurge(target, "dashboard").retryCount()).isEqualTo(2);
+            assertThat(readOwnerCounts(other)).containsExactlyInAnyOrderEntriesOf(retained);
+        } finally {
+            awaitPurgePoolIdle();
+            dropOwnedTrigger(trigger);
+            cleanupFullSettings(List.of(target, other), contact, chatFolders, scopeFolders);
+        }
+    }
+
+    @Test
+    @DisplayName("村domainの2表目DELETE障害はpinも巻き戻してPENDINGに残し、実retryで本人のpin/nicknameだけを消す")
+    void villageSecondTableFailureRollsBackWholeOwnerUntilRetry() {
+        stubRedisValueOperations();
+        Long target = createUser("村部分失敗の本人");
+        Long other = createUser("別所有者");
+        Long contact = createUser("対象外の連絡先");
+        List<Long> chatFolders = new ArrayList<>();
+        List<Long> scopeFolders = new ArrayList<>();
+        String trigger = "cmp1243_village_" + target;
+        try {
+            scopeFolders.addAll(seedAdditionalSettings(target, contact));
+            scopeFolders.addAll(seedAdditionalSettings(other, contact));
+            Map<String, Long> retained = readOwnerCounts(other);
+            // nickname を先に消した後、pin の本人行で失敗させる（owner の1TXが丸ごと巻き戻ることの証明）。
+            executeOwnedTriggerDdl("CREATE TRIGGER " + trigger + " BEFORE DELETE ON user_village_pins FOR EACH ROW "
+                    + "BEGIN IF OLD.user_id = " + target + " THEN SIGNAL SQLSTATE '45000' "
+                    + "SET MESSAGE_TEXT = 'cmp1243 village delete failure'; END IF; END");
+            prepareExpiredWithdrawal(target);
+            accountPurgeService.purgeExpiredAccounts();
+            Map<String, Long> expected = new LinkedHashMap<>();
+            addExpectedCompletionCounts(expected, "village");
+            await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+                Map<String, Long> actual = new LinkedHashMap<>();
+                addActualCompletionCounts(actual, target);
+                assertThat(actual).as("村domainだけ未完了").containsExactlyInAnyOrderEntriesOf(expected);
+                assertThat(countOwner("user_village_nicknames", target)).as("先行DELETEも巻き戻る").isEqualTo(1);
+                assertThat(countOwner("user_village_pins", target)).isEqualTo(1);
+            });
+            awaitPurgePoolIdle();
+            RetryResultResponse failed = retryService.retryDomainPurge(target, "village");
+            assertThat(failed.succeeded()).isFalse();
+            assertThat(failed.newStatus()).isEqualTo("PENDING");
+            assertThat(countOwner("user_village_nicknames", target)).isEqualTo(1);
+            dropOwnedTrigger(trigger);
+            RetryResultResponse recovered = retryService.retryDomainPurge(target, "village");
+            assertThat(recovered.succeeded()).isTrue();
+            assertThat(recovered.newStatus()).isEqualTo("SUCCESS");
+            assertThat(recovered.retryCount()).isEqualTo(2);
+            assertThat(countOwner("user_village_nicknames", target)).isZero();
+            assertThat(countOwner("user_village_pins", target)).isZero();
+            // SUCCESS 後の再retryは冪等（ドメイン操作も試行回数も増えない）。
+            assertThat(retryService.retryDomainPurge(target, "village").retryCount()).isEqualTo(2);
             assertThat(readOwnerCounts(other)).containsExactlyInAnyOrderEntriesOf(retained);
         } finally {
             awaitPurgePoolIdle();
@@ -785,6 +841,29 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
                     binaryUuid() + "," + owner + "," + labelId + ",'NOTIFICATION',123,NOW()");
             insert("my_scope_folders", "user_id,scope_type,name,sort_order,is_default,deleted_at,created_at,updated_at",
                     owner + ",'ORGANIZATION','論理削除済の私有分類',1,false,NOW(),NOW(),NOW()");
+            // 第2陣の7表。所有列 user_id 以外の参照先（チーム・パッケージ・村）は本文を作らずscalar値で置く。
+            insert("member_availability_defaults",
+                    "user_id,team_id,day_of_week,start_time,end_time,preference,created_at,updated_at",
+                    owner + ",123,1,'09:00:00','12:00:00','AVAILABLE',NOW(),NOW()");
+            insert("member_availability_defaults",
+                    "user_id,team_id,day_of_week,start_time,end_time,preference,created_at,updated_at",
+                    owner + ",123,2,'09:00:00','12:00:00','PREFERRED',NOW(),NOW()");
+            insert("parking_watchlist", "user_id,scope_type,scope_id,is_active,created_at,updated_at",
+                    owner + ",'TEAM',123,true,NOW(),NOW()");
+            insert("reflection_spaced_reminders", "id,user_id,remind_at,kind,status,created_at",
+                    binaryUuid() + "," + owner + ",NOW(),'SPACED','PENDING',NOW()");
+            insert("user_ad_preferences", "id,user_id,accept_announcement_ads,accept_email_ads,accept_push_ads,"
+                            + "accept_banner_ads,blocked_advertiser_account_ids,unsubscribe_token_version,created_at,updated_at",
+                    binaryUuid() + "," + owner + ",true,false,false,true,'[]',0,NOW(),NOW()");
+            insert("property_work_history_views", "package_id,user_id,action,viewed_at,ip_address,user_agent",
+                    "123," + owner + ",'VIEW',NOW(),'192.0.2.1','cmp1243'");
+            insert("property_work_history_views", "package_id,user_id,action,viewed_at",
+                    "123," + owner + ",'EXPORT',NOW()");
+            insert("user_village_pins", "id,user_id,village_id,sort_order,pinned_at",
+                    binaryUuid() + "," + owner + "," + binaryUuid() + ",0,NOW()");
+            insert("user_village_nicknames", "id,user_id,nickname,last_changed_at,change_count_this_month,"
+                            + "created_at,updated_at",
+                    binaryUuid() + "," + owner + ",'cmp1243_" + owner + "',NOW(),0,NOW(),NOW()");
             List<Long> folders = scopeFolderIds(owner);
             for (Long folder : folders) {
                 insert("my_scope_folder_items", "folder_id,scope_id,sort_order,assigned_via,created_at",
