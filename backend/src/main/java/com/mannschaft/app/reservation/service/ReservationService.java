@@ -331,7 +331,16 @@ public class ReservationService {
     @Transactional
     public ReservationResponse confirmReservation(
             Long teamId, Long reservationId, ReservationConfirmScope scope) {
-        ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        // AC-1730-6 / 検分 r2 P2: series 操作は起点を含む series 全行を id 昇順で一括ロックする。
+        // 起点だけを先にロックしてから series を取ると、同じ series の別行を起点にした同時操作と
+        // 互いの起点行を待ち合う循環（デッドロック）になるため、起点の個別先取りをしない。
+        List<ReservationEntity> lockedSeries = scope == ReservationConfirmScope.SERIES
+                ? reservationRepository.findRecurringSeriesIdByIdAndTeamId(reservationId, teamId)
+                        .map(seriesId -> reservationRepository.findByRecurringSeriesIdAndTeamIdForUpdate(seriesId, teamId))
+                        .orElse(List.of())
+                : List.of();
+        ReservationEntity entity = findLockedBase(lockedSeries, reservationId)
+                .orElseGet(() -> findReservationForUpdateOrThrow(teamId, reservationId));
         assertNotGroupRow(entity);
 
         if (!entity.isConfirmable()) {
@@ -367,7 +376,7 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse cancelByAdmin(Long teamId, Long reservationId, CancelReservationRequest request) {
-        ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
 
         if (!entity.isCancellable()) {
@@ -394,8 +403,18 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse cancelByUser(Long userId, Long reservationId, CancelReservationRequest request) {
-        ReservationEntity entity = reservationRepository.findByIdAndUserId(reservationId, userId)
-                .orElseThrow(() -> new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+        // AC-1730-6: 失効バッチ・管理者操作と同じ行ロックで直列化してから状態を判定する。
+        // 「以降すべて」は起点を含む series 全行を id 昇順で一括ロックする（検分 r2 P2・起点の個別先取り禁止）。
+        List<ReservationEntity> lockedSeries =
+                request.getScope() == ReservationCancelScope.THIS_AND_FOLLOWING
+                        ? reservationRepository.findRecurringSeriesIdByIdAndUserId(reservationId, userId)
+                                .map(seriesId -> reservationRepository
+                                        .findByRecurringSeriesIdAndUserIdForUpdate(seriesId, userId))
+                                .orElse(List.of())
+                        : List.of();
+        ReservationEntity entity = findLockedBase(lockedSeries, reservationId)
+                .orElseGet(() -> reservationRepository.findByIdAndUserIdForUpdate(reservationId, userId)
+                        .orElseThrow(() -> new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND)));
         assertNotGroupRow(entity);
 
         if (!entity.isCancellable()) {
@@ -499,8 +518,10 @@ public class ReservationService {
 
         // IDOR（AC-5-8）: series ID は「知っていれば操作できる鍵」ではない。userId をクエリ条件に含めた
         // finder 以外から series を引かないことで、他人の行に触れる経路を構造的に消す。
+        // AC-1730-6: 呼び出し元が起点を含む series 全行を id 昇順で一括ロック済み。同じ tx で同じ行を
+        // 再取得するだけなので新たなロック待ちは生じない（同一インスタンスが返る）。
         List<ReservationEntity> siblings = reservationRepository
-                .findByRecurringSeriesIdAndUserIdOrderById(seriesId, base.getUserId()).stream()
+                .findByRecurringSeriesIdAndUserIdForUpdate(seriesId, base.getUserId()).stream()
                 .filter(r -> !r.getId().equals(base.getId()))
                 .toList();
 
@@ -614,8 +635,10 @@ public class ReservationService {
         java.util.UUID seriesId = base.getRecurringSeriesId();
 
         // 認可（AC-5-9）: teamId をクエシー条件に含めた finder のみを使い、当該チームの行しか掴めないようにする。
+        // AC-1730-6: 呼び出し元が起点を含む series 全行を id 昇順で一括ロック済み。同じ tx で同じ行を
+        // 再取得するだけなので新たなロック待ちは生じない（同一インスタンスが返る）。
         List<ReservationEntity> siblings = reservationRepository
-                .findByRecurringSeriesIdAndTeamIdOrderById(seriesId, teamId).stream()
+                .findByRecurringSeriesIdAndTeamIdForUpdate(seriesId, teamId).stream()
                 .filter(r -> !r.getId().equals(base.getId()))
                 .toList();
 
@@ -690,7 +713,10 @@ public class ReservationService {
      */
     @Transactional
     public void clearRecurringSeries(Long reservationId) {
-        reservationRepository.findById(reservationId).ifPresent(entity -> {
+        // AC-1730-6 / 検分 r2 P1: ReservationEntity は @Version・@DynamicUpdate を持たず、series 解除だけの
+        // 更新でも状態列を書き戻す。非ロック読取だと、その間に commit された取消・失効を古い PENDING で
+        // 上書きして復活させるため、失効バッチ・取消と同じ行ロックで読む。
+        reservationRepository.findByIdForUpdate(reservationId).ifPresent(entity -> {
             entity.clearRecurringSeries();
             reservationRepository.save(entity);
         });
@@ -705,7 +731,7 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse completeReservation(Long teamId, Long reservationId) {
-        ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
         entity.complete();
         ReservationEntity saved = reservationRepository.save(entity);
@@ -722,7 +748,7 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse markNoShow(Long teamId, Long reservationId) {
-        ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
         entity.noShow();
         ReservationEntity saved = reservationRepository.save(entity);
@@ -740,7 +766,7 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse rescheduleReservation(Long teamId, Long reservationId, RescheduleRequest request) {
-        ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
 
         // oldSlot: entity は findReservationOrThrow で既に teamId 検証済みのため、その reservationSlotId は
@@ -773,7 +799,7 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse updateAdminNote(Long teamId, Long reservationId, AdminNoteRequest request) {
-        ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
         // F03.4.3 §4: 非代表行のメモは一覧（代表行のみ返す）に浮上せず事実上消失するため 400=042 で拒否する。
         // 代表行への更新は許可（グループのメモは代表行に集約）。
         if (entity.getGroupId() != null && !Boolean.TRUE.equals(entity.getIsGroupPrimary())) {
@@ -924,6 +950,30 @@ public class ReservationService {
      */
     public void assertReservationInTeam(Long teamId, Long reservationId) {
         findReservationOrThrow(teamId, reservationId);
+    }
+
+    /**
+     * id 昇順で一括ロック済みの series 行から起点行を取り出す（検分 r2 P2）。
+     *
+     * <p>起点が集合に無い（series 未所属・ID 読取後に series が解除された）ときは空を返し、
+     * 呼び出し側が単票の行ロック取得へ落とす。</p>
+     */
+    private static java.util.Optional<ReservationEntity> findLockedBase(
+            List<ReservationEntity> lockedSeries, Long reservationId) {
+        return lockedSeries.stream().filter(r -> reservationId.equals(r.getId())).findFirst();
+    }
+
+    /**
+     * 状態遷移用に予約を行ロック付きで取得する（CMP-260822-1730 AC-1730-6）。
+     *
+     * <p>仮押さえ失効バッチは同じ行を {@code PESSIMISTIC_WRITE} で取得してから取消・枠減算する。
+     * 承認・取消等もロックなしで読むと、バッチ commit 前の PENDING を読んで CONFIRMED で上書きし
+     * 「確定なのに枠減算済み」（過剰予約）を作る。同じ行ロックで直列化し、後続は commit 済みの
+     * 状態を読んで既存の状態検証（{@code INVALID_RESERVATION_STATUS}）で負けを返す。</p>
+     */
+    private ReservationEntity findReservationForUpdateOrThrow(Long teamId, Long reservationId) {
+        return reservationRepository.findByIdAndTeamIdForUpdate(reservationId, teamId)
+                .orElseThrow(() -> new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND));
     }
 
     /**

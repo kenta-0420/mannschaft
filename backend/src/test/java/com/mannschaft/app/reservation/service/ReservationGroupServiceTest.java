@@ -272,6 +272,12 @@ class ReservationGroupServiceTest {
                 .willReturn(groupRows(status));
     }
 
+    /** 状態遷移系はロック付き取得を使う（CMP-260822-1730 AC-1730-6）。 */
+    private void stubGroupRowsForUpdate(ReservationStatus status) {
+        given(reservationRepository.findByGroupIdAndTeamIdForUpdate(GROUP_ID, TEAM_ID))
+                .willReturn(groupRows(status));
+    }
+
     private BusinessException catchBusiness(Runnable runnable) {
         try {
             runnable.run();
@@ -819,7 +825,7 @@ class ReservationGroupServiceTest {
         @DisplayName("G-8: 締切内の本人キャンセル — 全行 CANCELLED・booked_count 復帰×N・リマインド CANCELLED 化・イベント 1 回")
         void 本人締切内キャンセル() {
             List<ReservationEntity> rows = groupRows(ReservationStatus.CONFIRMED);
-            given(reservationRepository.findByGroupIdAndTeamIdOrderById(GROUP_ID, TEAM_ID)).willReturn(rows);
+            given(reservationRepository.findByGroupIdAndTeamIdForUpdate(GROUP_ID, TEAM_ID)).willReturn(rows);
             ReservationReminderEntity pendingReminder = ReservationReminderEntity.builder()
                     .id(1L).reservationId(501L).remindAt(LocalDateTime.of(2026, 3, 31, 10, 0)).build();
             ReservationReminderEntity sentReminder = ReservationReminderEntity.builder()
@@ -851,7 +857,7 @@ class ReservationGroupServiceTest {
         @DisplayName("G-8: 締切超過（先頭枠開始 20 時間前）の本人キャンセルは 400=026")
         void 締切超過の本人は026() {
             reinitServiceWithClockAt(LocalDateTime.of(2026, 3, 31, 14, 0)); // 先頭枠 4/1 10:00 の 20h 前
-            stubGroupRows(ReservationStatus.CONFIRMED);
+            stubGroupRowsForUpdate(ReservationStatus.CONFIRMED);
 
             BusinessException e = catchBusiness(() ->
                     service.cancelGroup(TEAM_ID, GROUP_ID, USER_ID, null));
@@ -871,13 +877,13 @@ class ReservationGroupServiceTest {
                     .atZone(ZoneId.systemDefault()).toInstant();
 
             reinitServiceWithClock(Clock.fixed(sameInstant, ZoneOffset.UTC));
-            stubGroupRows(ReservationStatus.CONFIRMED);
+            stubGroupRowsForUpdate(ReservationStatus.CONFIRMED);
             ReservationGroupCancelResponse responseUtc =
                     service.cancelGroup(TEAM_ID, GROUP_ID, USER_ID, "予定が変わりました");
             assertThat(responseUtc.status()).as("UTC Clock: 締切内のためキャンセル成功するはず").isEqualTo("CANCELLED");
 
             reinitServiceWithClock(Clock.fixed(sameInstant, ZoneId.of("Asia/Tokyo")));
-            stubGroupRows(ReservationStatus.CONFIRMED);
+            stubGroupRowsForUpdate(ReservationStatus.CONFIRMED);
             ReservationGroupCancelResponse responseTokyo =
                     service.cancelGroup(TEAM_ID, GROUP_ID, USER_ID, "予定が変わりました");
             assertThat(responseTokyo.status())
@@ -889,7 +895,7 @@ class ReservationGroupServiceTest {
         @DisplayName("G-8: 締切超過でも ADMIN キャンセルは 200 相当で成功する（cancelledBy=ADMIN）")
         void 締切超過でも管理者は可() {
             reinitServiceWithClockAt(LocalDateTime.of(2026, 3, 31, 14, 0));
-            stubGroupRows(ReservationStatus.CONFIRMED);
+            stubGroupRowsForUpdate(ReservationStatus.CONFIRMED);
 
             ReservationGroupCancelResponse response =
                     service.cancelGroup(TEAM_ID, GROUP_ID, ADMIN_USER_ID, "店都合");
@@ -904,7 +910,7 @@ class ReservationGroupServiceTest {
         @Test
         @DisplayName("G-12: 非本人・非 ADMIN のキャンセルは 404=040（存在秘匿）")
         void 他人のキャンセルは040() {
-            stubGroupRows(ReservationStatus.CONFIRMED);
+            stubGroupRowsForUpdate(ReservationStatus.CONFIRMED);
 
             BusinessException e = catchBusiness(() ->
                     service.cancelGroup(TEAM_ID, GROUP_ID, OTHER_USER_ID, null));
@@ -915,7 +921,7 @@ class ReservationGroupServiceTest {
         @Test
         @DisplayName("PENDING/CONFIRMED 以外のグループのキャンセルは 400=006")
         void 完了済みキャンセルは006() {
-            stubGroupRows(ReservationStatus.COMPLETED);
+            stubGroupRowsForUpdate(ReservationStatus.COMPLETED);
 
             BusinessException e = catchBusiness(() ->
                     service.cancelGroup(TEAM_ID, GROUP_ID, USER_ID, null));
@@ -936,7 +942,7 @@ class ReservationGroupServiceTest {
         @DisplayName("G-7: confirm — 全行 PENDING → CONFIRMED・確定イベントは代表行で 1 回")
         void 一括confirm() {
             List<ReservationEntity> rows = groupRows(ReservationStatus.PENDING);
-            given(reservationRepository.findByGroupIdAndTeamIdOrderById(GROUP_ID, TEAM_ID)).willReturn(rows);
+            given(reservationRepository.findByGroupIdAndTeamIdForUpdate(GROUP_ID, TEAM_ID)).willReturn(rows);
 
             ReservationGroupResponse response = service.confirmGroup(TEAM_ID, GROUP_ID, ADMIN_USER_ID);
 
@@ -949,7 +955,7 @@ class ReservationGroupServiceTest {
         @Test
         @DisplayName("G-7: 既に CONFIRMED のグループへの confirm は 400=006")
         void 確定済みconfirmは006() {
-            stubGroupRows(ReservationStatus.CONFIRMED);
+            stubGroupRowsForUpdate(ReservationStatus.CONFIRMED);
 
             BusinessException e = catchBusiness(() -> service.confirmGroup(TEAM_ID, GROUP_ID, ADMIN_USER_ID));
 
@@ -959,7 +965,7 @@ class ReservationGroupServiceTest {
         @Test
         @DisplayName("不存在グループへの confirm は 404=040")
         void 不存在confirmは040() {
-            given(reservationRepository.findByGroupIdAndTeamIdOrderById(GROUP_ID, TEAM_ID)).willReturn(List.of());
+            given(reservationRepository.findByGroupIdAndTeamIdForUpdate(GROUP_ID, TEAM_ID)).willReturn(List.of());
 
             BusinessException e = catchBusiness(() -> service.confirmGroup(TEAM_ID, GROUP_ID, ADMIN_USER_ID));
 
@@ -970,7 +976,7 @@ class ReservationGroupServiceTest {
         @DisplayName("complete — 全行 CONFIRMED → COMPLETED")
         void 一括complete() {
             List<ReservationEntity> rows = groupRows(ReservationStatus.CONFIRMED);
-            given(reservationRepository.findByGroupIdAndTeamIdOrderById(GROUP_ID, TEAM_ID)).willReturn(rows);
+            given(reservationRepository.findByGroupIdAndTeamIdForUpdate(GROUP_ID, TEAM_ID)).willReturn(rows);
 
             ReservationGroupResponse response = service.completeGroup(TEAM_ID, GROUP_ID, ADMIN_USER_ID);
 
@@ -981,7 +987,7 @@ class ReservationGroupServiceTest {
         @Test
         @DisplayName("PENDING グループへの complete は 400=006（前提 CONFIRMED・§4）")
         void 未確定completeは006() {
-            stubGroupRows(ReservationStatus.PENDING);
+            stubGroupRowsForUpdate(ReservationStatus.PENDING);
 
             BusinessException e = catchBusiness(() -> service.completeGroup(TEAM_ID, GROUP_ID, ADMIN_USER_ID));
 
@@ -992,7 +998,7 @@ class ReservationGroupServiceTest {
         @DisplayName("no-show — 全行 CONFIRMED → NO_SHOW")
         void 一括noShow() {
             List<ReservationEntity> rows = groupRows(ReservationStatus.CONFIRMED);
-            given(reservationRepository.findByGroupIdAndTeamIdOrderById(GROUP_ID, TEAM_ID)).willReturn(rows);
+            given(reservationRepository.findByGroupIdAndTeamIdForUpdate(GROUP_ID, TEAM_ID)).willReturn(rows);
 
             ReservationGroupResponse response = service.markGroupNoShow(TEAM_ID, GROUP_ID, ADMIN_USER_ID);
 
@@ -1003,7 +1009,7 @@ class ReservationGroupServiceTest {
         @Test
         @DisplayName("PENDING グループへの no-show は 400=006（前提 CONFIRMED・§4）")
         void 未確定noShowは006() {
-            stubGroupRows(ReservationStatus.PENDING);
+            stubGroupRowsForUpdate(ReservationStatus.PENDING);
 
             BusinessException e = catchBusiness(() -> service.markGroupNoShow(TEAM_ID, GROUP_ID, ADMIN_USER_ID));
 

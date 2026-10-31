@@ -365,7 +365,7 @@ public class ReservationGroupService {
     @Transactional
     public ReservationGroupCancelResponse cancelGroup(
             Long teamId, UUID groupId, Long currentUserId, String cancelReason) {
-        List<ReservationEntity> rows = findGroupRowsOrThrow(teamId, groupId);
+        List<ReservationEntity> rows = findGroupRowsForUpdateOrThrow(teamId, groupId);
         ReservationEntity primary = primaryRow(rows);
         boolean isAdmin = accessControlService.isAdminOrAbove(currentUserId, teamId, "TEAM");
         boolean isOwner = currentUserId.equals(primary.getUserId());
@@ -441,7 +441,7 @@ public class ReservationGroupService {
      */
     @Transactional
     public ReservationGroupResponse confirmGroup(Long teamId, UUID groupId, Long actorUserId) {
-        List<ReservationEntity> rows = findGroupRowsOrThrow(teamId, groupId);
+        List<ReservationEntity> rows = findGroupRowsForUpdateOrThrow(teamId, groupId);
         if (rows.stream().anyMatch(r -> r.getStatus() != ReservationStatus.PENDING)) {
             throw new BusinessException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
         }
@@ -467,7 +467,7 @@ public class ReservationGroupService {
      */
     @Transactional
     public ReservationGroupResponse completeGroup(Long teamId, UUID groupId, Long actorUserId) {
-        List<ReservationEntity> rows = findGroupRowsOrThrow(teamId, groupId);
+        List<ReservationEntity> rows = findGroupRowsForUpdateOrThrow(teamId, groupId);
         if (rows.stream().anyMatch(r -> r.getStatus() != ReservationStatus.CONFIRMED)) {
             throw new BusinessException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
         }
@@ -483,7 +483,7 @@ public class ReservationGroupService {
      */
     @Transactional
     public ReservationGroupResponse markGroupNoShow(Long teamId, UUID groupId, Long actorUserId) {
-        List<ReservationEntity> rows = findGroupRowsOrThrow(teamId, groupId);
+        List<ReservationEntity> rows = findGroupRowsForUpdateOrThrow(teamId, groupId);
         if (rows.stream().anyMatch(r -> r.getStatus() != ReservationStatus.CONFIRMED)) {
             throw new BusinessException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
         }
@@ -497,6 +497,18 @@ public class ReservationGroupService {
     // ========================================
     // 内部ヘルパー
     // ========================================
+
+    /**
+     * 状態遷移用にグループの兄弟行を id 昇順の行ロック付きで取得する（CMP-260822-1730 AC-1730-6）。
+     * 仮押さえ失効バッチと同じ行ロックで直列化し、バッチ取消後の PENDING 読みによる上書きを防ぐ。
+     */
+    private List<ReservationEntity> findGroupRowsForUpdateOrThrow(Long teamId, UUID groupId) {
+        List<ReservationEntity> rows = reservationRepository.findByGroupIdAndTeamIdForUpdate(groupId, teamId);
+        if (rows.isEmpty()) {
+            throw new BusinessException(ReservationErrorCode.GROUP_NOT_FOUND);
+        }
+        return rows;
+    }
 
     /** グループの兄弟行を取得する。不存在/他チームは 404 = RESERVATION_040（存在秘匿・§4）。 */
     private List<ReservationEntity> findGroupRowsOrThrow(Long teamId, UUID groupId) {

@@ -100,8 +100,18 @@ public class EmergencyClosureService {
         validateDateRange(request.getStartDate(), request.getEndDate());
         validateTimeRange(request.getStartTime(), request.getEndTime());
 
-        List<ReservationEntity> activeReservations =
-                findActiveReservations(
+        // CMP-260822-1730 AC-1730-6 / 検分 r2 P1: 一括取消するときは対象行を id 昇順で一括ロックし、
+        // ロック後の最新状態で active なものだけを取消・枠減算する。非ロック読取のままだと、読取後に
+        // 仮押さえ失効バッチが同じ PENDING を取消・枠減算して commit したとき、こちらも同じ予約で
+        // 枠を再減算し（二重減算＝過剰予約）、失効済みの利用者へ休業通知まで重ねて送る。
+        List<ReservationEntity> activeReservations = request.isCancelReservations()
+                ? lockActiveReservations(
+                        teamId,
+                        request.getStartDate(),
+                        request.getEndDate(),
+                        request.getStartTime(),
+                        request.getEndTime())
+                : findActiveReservations(
                         teamId,
                         request.getStartDate(),
                         request.getEndDate(),
@@ -281,6 +291,41 @@ public class EmergencyClosureService {
      */
     private List<ReservationEntity> findActiveReservations(
             Long teamId, LocalDate startDate, LocalDate endDate, LocalTime startTime, LocalTime endTime) {
+        List<Long> slotIds = findTargetSlotIds(teamId, startDate, endDate, startTime, endTime);
+        if (slotIds.isEmpty()) {
+            return List.of();
+        }
+        return reservationRepository.findByReservationSlotIdInAndStatusIn(slotIds, ACTIVE_STATUSES);
+    }
+
+    /**
+     * 一括取消の対象予約を行ロック付きで取得する（CMP-260822-1730 AC-1730-6）。
+     *
+     * <p>対象 id 集合をスカラー問い合わせで確定してから {@code findByIdInForUpdate} で id 昇順に一括ロックする。
+     * エンティティを非ロックで先読みしないのは、永続化コンテキストに古い状態が残り行ロック取得後も
+     * 最新状態を読めなくなるため。ロック待ちの間に失効バッチ等が終端状態へ遷移させた行は、
+     * ロック後に読む最新状態で除外する（二重取消・枠の二重減算・通知の重複を作らない）。</p>
+     */
+    private List<ReservationEntity> lockActiveReservations(
+            Long teamId, LocalDate startDate, LocalDate endDate, LocalTime startTime, LocalTime endTime) {
+        List<Long> slotIds = findTargetSlotIds(teamId, startDate, endDate, startTime, endTime);
+        if (slotIds.isEmpty()) {
+            return List.of();
+        }
+        List<Long> ids = reservationRepository.findIdsByReservationSlotIdInAndStatusIn(slotIds, ACTIVE_STATUSES);
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return reservationRepository.findByIdInForUpdate(ids).stream()
+                .filter(r -> ACTIVE_STATUSES.contains(r.getStatus()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 休業期間（部分時間帯休業なら時間帯 overlap も）に該当するチーム枠の ID を列挙する。
+     */
+    private List<Long> findTargetSlotIds(
+            Long teamId, LocalDate startDate, LocalDate endDate, LocalTime startTime, LocalTime endTime) {
         List<ReservationSlotEntity> slots =
                 slotRepository.findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                         teamId, startDate, endDate);
@@ -301,11 +346,9 @@ public class EmergencyClosureService {
             }
         }
 
-        List<Long> slotIds = slots.stream()
+        return slots.stream()
                 .map(ReservationSlotEntity::getId)
                 .collect(Collectors.toList());
-
-        return reservationRepository.findByReservationSlotIdInAndStatusIn(slotIds, ACTIVE_STATUSES);
     }
 
     /**
