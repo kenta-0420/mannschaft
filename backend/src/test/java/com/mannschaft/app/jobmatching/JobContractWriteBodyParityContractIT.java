@@ -162,7 +162,6 @@ class JobContractWriteBodyParityContractIT extends AbstractMySqlIntegrationTest 
                     em.createNativeQuery("DELETE FROM job_postings WHERE id IN (:ids)").setParameter("ids", postingIds).executeUpdate();
                 }
                 if (!userIds.isEmpty()) {
-                    em.createNativeQuery("DELETE FROM notifications WHERE user_id IN (:ids)").setParameter("ids", userIds).executeUpdate();
                     em.createNativeQuery("DELETE FROM user_roles WHERE user_id IN (:ids)").setParameter("ids", userIds).executeUpdate();
                     em.createNativeQuery("DELETE FROM memberships WHERE user_id IN (:ids)").setParameter("ids", userIds).executeUpdate();
                     users.deleteAllById(userIds);

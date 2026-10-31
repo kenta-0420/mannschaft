@@ -95,7 +95,7 @@ class JobPostingApplicationWriteBodyParityContractIT extends AbstractMySqlIntegr
         APPLICATION_LIST(HttpMethod.GET, "/api/v1/jobs/{id}/applications", null, Target.POSTING, JobPostingStatus.OPEN, 200),
         APPLICATION_WITHDRAW(HttpMethod.POST, "/api/v1/applications/{id}/withdraw", null, Target.APPLICATION, JobPostingStatus.OPEN, 200),
         APPLICATION_REJECT(HttpMethod.POST, "/api/v1/applications/{id}/reject", "{}", Target.APPLICATION, JobPostingStatus.OPEN, 200),
-        APPLICATION_ACCEPT(HttpMethod.POST, "/api/v1/applications/{id}/accept", null, Target.APPLICATION, JobPostingStatus.OPEN, 200),
+        APPLICATION_ACCEPT(HttpMethod.POST, "/api/v1/applications/{id}/accept", null, Target.APPLICATION, JobPostingStatus.OPEN, 201),
         QR_ISSUE(HttpMethod.POST, "/api/v1/contracts/{id}/qr-tokens", "{\"type\":\"IN\"}", Target.CONTRACT, JobPostingStatus.OPEN, 201),
         QR_CURRENT(HttpMethod.GET, "/api/v1/contracts/{id}/qr-tokens/current?type=IN", null, Target.CONTRACT, JobPostingStatus.OPEN, 204);
 
