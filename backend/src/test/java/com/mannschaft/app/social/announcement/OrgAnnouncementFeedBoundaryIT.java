@@ -21,6 +21,9 @@ import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
+import org.mockito.Mockito;
+import org.springframework.data.redis.RedisConnectionFailureException;
+import org.springframework.data.redis.core.ValueOperations;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -32,16 +35,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -89,9 +98,22 @@ class OrgAnnouncementFeedBoundaryIT extends AbstractMySqlIntegrationTest {
     private Long author;
     private PaymentItemEntity item;
     private Map<String, Long> people;
+    /** Valkey（継続トークン）をインメモリで裏打ちする。 */
+    private final Map<String, String> store = new ConcurrentHashMap<>();
+
+    @SuppressWarnings("unchecked")
+    private void stubValkeyWithMap() {
+        store.clear();
+        ValueOperations<String, String> ops = Mockito.mock(ValueOperations.class);
+        Mockito.when(redisTemplate.opsForValue()).thenReturn(ops);
+        Mockito.when(ops.get(any())).thenAnswer(inv -> store.get(String.valueOf((Object) inv.getArgument(0))));
+        Mockito.when(ops.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenAnswer(inv ->
+                store.putIfAbsent(inv.getArgument(0), inv.getArgument(1)) == null);
+    }
 
     @BeforeEach
     void setUp() {
+        stubValkeyWithMap();
         String key = UUID.randomUUID().toString().substring(0, 8);
         orgX = TeamOrgFixtureHelper.insertOrganization(em, "境界の組織X", "bnd-x-" + key);
         OrgTeamGroupEntity group = OrgTeamGroupEntity.builder().organizationId(orgX).name("東" + key).build();
@@ -233,6 +255,186 @@ class OrgAnnouncementFeedBoundaryIT extends AbstractMySqlIntegrationTest {
         second.path("data").forEach(item -> ids.add(item.path("id").asLong()));
         assertThat(ids).as("2 回目で読める告知に届く").containsExactly(readable.getId());
     }
+
+    @Test
+    @DisplayName("空ページで返す継続トークンは、どの告知 ID とも一致しない（読めない告知の実在 ID を出さない）")
+    void 空ページのトークンは告知IDではない() throws Exception {
+        feed(blog(Visibility.PUBLIC).getId(), null);
+        BlogPostEntity sharedBlog = blog(Visibility.PUBLIC);
+        for (int i = 0; i < SCAN_LIMIT + 1; i++) {
+            feed(sharedBlog.getId(), groups(east));
+            if (i % 500 == 0) {
+                em.flush();
+            }
+        }
+        em.flush();
+        Set<Long> allFeedIds = new HashSet<>(em.createQuery(
+                "SELECT a.id FROM AnnouncementFeedEntity a WHERE a.scopeId = :o", Long.class)
+                .setParameter("o", orgX).getResultList());
+        JsonNode first = list("N", 1, null);
+        assertThat(first.path("data")).isEmpty();
+        long token = first.path("meta").path("nextCursor").asLong();
+        assertThat(token).as("継続トークン").isBetween(1L, (1L << 53) - 1);
+        assertThat(allFeedIds).as("告知 ID のどれとも一致しない").doesNotContain(token);
+        assertThat(store.keySet()).as("利用者×組織×トークンに結び付く")
+                .contains("announcement:org-feed:cursor:" + people.get("N") + ":" + orgX + ":" + token);
+    }
+
+    // ═════════════════ 5. 継続トークン ═════════════════
+
+    @Test
+    @DisplayName("告知 ID・存在しない値・他組織の ID・不正値を cursor に渡すと、すべて同一の 400（COMMON_001）")
+    void 告知IDをカーソルに渡すと同一の400() throws Exception {
+        AnnouncementFeedEntity readable = feed(blog(Visibility.PUBLIC).getId(), null);
+        AnnouncementFeedEntity hiddenPinned = feed(blog(Visibility.PUBLIC).getId(), groups(east));
+        hiddenPinned.markPinned(author);
+        em.flush();
+        String otherKey = UUID.randomUUID().toString().substring(0, 8);
+        Long otherOrg = TeamOrgFixtureHelper.insertOrganization(em, "別組織", "bnd-o-" + otherKey);
+        AnnouncementFeedEntity otherOrgFeed = AnnouncementFeedEntity.builder()
+                .scopeType(AnnouncementScopeType.ORGANIZATION).scopeId(otherOrg)
+                .sourceType(AnnouncementSourceType.BLOG_POST).sourceId(blog(Visibility.PUBLIC).getId()).authorId(author)
+                .titleCache("他組織").visibility(AnnouncementVisibility.PUBLIC).build();
+        em.persist(otherOrgFeed);
+        em.flush();
+        Set<String> bodies = new HashSet<>();
+        for (long cursor : new long[] {readable.getId(), hiddenPinned.getId(), otherOrgFeed.getId(), 99_999_999L, 0L, -5L,
+                Long.MAX_VALUE}) {
+            em.flush();
+            String path = "/api/v1/organizations/" + orgX + "/announcements";
+            var result = mockMvc.perform(get(path).servletPath(path).param("cursor", String.valueOf(cursor))
+                            .with(user(people.get("N").toString())))
+                    .andExpect(status().isBadRequest()).andReturn();
+            JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+            assertThat(body.path("error").path("code").asText()).as("cursor=" + cursor).isEqualTo("COMMON_001");
+            bodies.add(body.path("error").path("code").asText() + "|" + body.path("error").path("message").asText());
+        }
+        assertThat(bodies).as("エラーの内容まで同一").hasSize(1);
+    }
+
+    @Test
+    @DisplayName("期限切れ（キーが消えた）・他人のトークンは同一の 400")
+    void 期限切れと他人のトークンは400() throws Exception {
+        for (int i = 0; i < 3; i++) {
+            feed(blog(Visibility.PUBLIC).getId(), null);
+        }
+        long token = list("OM", 1, null).path("meta").path("nextCursor").asLong();
+        assertThat(token).isPositive();
+        // 他人（同じ組織の別の利用者）のトークン
+        expect400("OA", token);
+        // 期限切れ（Valkey のキーが消えた）
+        store.clear();
+        expect400("OM", token);
+    }
+
+    @Test
+    @DisplayName("カーソル行が削除されても、保存した位置から飛ばし・重複なく続けられる")
+    void カーソル行の削除後も続けられる() throws Exception {
+        AnnouncementFeedEntity pinned = feed(blog(Visibility.PUBLIC).getId(), null);
+        pinned.markPinned(author);
+        AnnouncementFeedEntity n1 = feed(blog(Visibility.PUBLIC).getId(), null);
+        AnnouncementFeedEntity n2 = feed(blog(Visibility.PUBLIC).getId(), null);
+        AnnouncementFeedEntity n3 = feed(blog(Visibility.PUBLIC).getId(), null);
+        JsonNode first = list("OM", 1, null);
+        assertThat(first.path("data").get(0).path("id").asLong()).isEqualTo(pinned.getId());
+        long token = first.path("meta").path("nextCursor").asLong();
+        em.remove(pinned);
+        em.flush();
+        List<Long> rest = new ArrayList<>();
+        collectFrom("OM", token, rest);
+        assertThat(rest).containsExactly(n3.getId(), n2.getId(), n1.getId());
+    }
+
+    @Test
+    @DisplayName("カーソル行のピン留めが解除されても、後続を飛ばさない（解除された行は通常の位置に 1 回だけ現れうる）")
+    void カーソル行のピン留め解除後も後続を飛ばさない() throws Exception {
+        AnnouncementFeedEntity pinned = feed(blog(Visibility.PUBLIC).getId(), null);
+        pinned.markPinned(author);
+        AnnouncementFeedEntity n1 = feed(blog(Visibility.PUBLIC).getId(), null);
+        AnnouncementFeedEntity n2 = feed(blog(Visibility.PUBLIC).getId(), null);
+        AnnouncementFeedEntity n3 = feed(blog(Visibility.PUBLIC).getId(), null);
+        long token = list("OM", 1, null).path("meta").path("nextCursor").asLong();
+        pinned.unpin();
+        em.flush();
+        List<Long> rest = new ArrayList<>();
+        collectFrom("OM", token, rest);
+        Long pinnedId = pinned.getId();
+        assertThat(rest.stream().filter(id -> !id.equals(pinnedId)).toList())
+                .containsExactly(n3.getId(), n2.getId(), n1.getId());
+        assertThat(rest.stream().filter(id -> id.equals(pinnedId)).count()).isLessThanOrEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Valkey に保存できないとき、続きを隠さず 503（ANNOUNCE_011）で失敗する。読み出せないときも同様")
+    void Valkey障害は503で失敗する() throws Exception {
+        for (int i = 0; i < 3; i++) {
+            feed(blog(Visibility.PUBLIC).getId(), null);
+        }
+        long token = list("OM", 1, null).path("meta").path("nextCursor").asLong();
+        Mockito.when(redisTemplate.opsForValue()).thenThrow(new RedisConnectionFailureException("down"));
+        String path = "/api/v1/organizations/" + orgX + "/announcements";
+        // 発行できない（続きがあるページ）
+        em.flush();
+        var issue = mockMvc.perform(get(path).servletPath(path).param("limit", "1")
+                        .with(user(people.get("OM").toString())))
+                .andExpect(status().isServiceUnavailable()).andReturn();
+        assertThat(objectMapper.readTree(issue.getResponse().getContentAsString()).path("error").path("code").asText())
+                .isEqualTo("ANNOUNCE_011");
+        // 読み出せない
+        var read = mockMvc.perform(get(path).servletPath(path).param("cursor", String.valueOf(token))
+                        .with(user(people.get("OM").toString())))
+                .andExpect(status().isServiceUnavailable()).andReturn();
+        assertThat(objectMapper.readTree(read.getResponse().getContentAsString()).path("error").path("code").asText())
+                .isEqualTo("ANNOUNCE_011");
+        // 続きが無いページは Valkey を使わないので成功する
+        assertThat(listedIds("OM", 50, null)).hasSize(3);
+    }
+
+    // ═════════════════ 6. 開始日時 ═════════════════
+
+    @Test
+    @DisplayName("開始日時が未来の告知は、プレビューが 404 なので一覧にも出さない。過去・なしは一覧に出てプレビュー 200")
+    void 開始日時が未来の告知は一覧に出ない() throws Exception {
+        AnnouncementFeedEntity future = feed(blog(Visibility.PUBLIC).getId(), null);
+        setStartsAt(future, LocalDateTime.of(2099, 1, 1, 0, 0));
+        AnnouncementFeedEntity past = feed(blog(Visibility.PUBLIC).getId(), null);
+        setStartsAt(past, LocalDateTime.of(2020, 1, 1, 0, 0));
+        AnnouncementFeedEntity none = feed(blog(Visibility.PUBLIC).getId(), null);
+        for (String who : List.of("N", "OM", "OA", "SA")) {
+            assertThat(previewStatus(future, who)).as(who + " 未来のプレビュー").isEqualTo(404);
+            assertThat(listedIds(who, 50, null)).as(who + " の一覧")
+                    .doesNotContain(future.getId()).contains(past.getId(), none.getId());
+            assertThat(previewStatus(past, who)).isEqualTo(200);
+        }
+    }
+
+    private void setStartsAt(AnnouncementFeedEntity feed, LocalDateTime startsAt) {
+        em.flush();
+        em.createNativeQuery("UPDATE announcement_feeds SET starts_at = :s WHERE id = :id")
+                .setParameter("s", startsAt).setParameter("id", feed.getId()).executeUpdate();
+        em.clear();
+    }
+
+    private void expect400(String who, long token) throws Exception {
+        em.flush();
+        String path = "/api/v1/organizations/" + orgX + "/announcements";
+        var result = mockMvc.perform(get(path).servletPath(path).param("cursor", String.valueOf(token))
+                        .with(user(people.get(who).toString())))
+                .andExpect(status().isBadRequest()).andReturn();
+        assertThat(objectMapper.readTree(result.getResponse().getContentAsString()).path("error").path("code").asText())
+                .isEqualTo("COMMON_001");
+    }
+
+    /** 継続トークンを辿って（limit=1）残りを集める。 */
+    private void collectFrom(String who, long token, List<Long> out) throws Exception {
+        Long cursor = token;
+        for (int guard = 0; guard < 20 && cursor != null; guard++) {
+            JsonNode body = list(who, 1, cursor);
+            body.path("data").forEach(item -> out.add(item.path("id").asLong()));
+            cursor = body.path("meta").path("hasNext").asBoolean() ? body.path("meta").path("nextCursor").asLong() : null;
+        }
+    }
+
 
     // ═════════════════ 観測 ═════════════════
 

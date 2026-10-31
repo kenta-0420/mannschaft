@@ -1,5 +1,7 @@
 package com.mannschaft.app.social.announcement;
 
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
 import com.mannschaft.app.payment.service.ContentAccessState;
@@ -27,7 +29,8 @@ import java.util.stream.Collectors;
  *   <li>資格判定（{@link OrgAnnouncementFeedReadability}。告知の資格 Qd／Qa と元コンテンツの可視性。取得行をまとめて判定）</li>
  *   <li>課金ゲート（HIDDEN は管理者でも除外）と既読状態の付与</li>
  * </ol>
- * <p>ゲートや資格判定で落ちて足りなくなった分は、このループでカーソルを進めて補充取得する。</p>
+ * <p>ゲートや資格判定で落ちて足りなくなった分は、このループで補充取得する。続きの位置は告知 ID ではなく、サーバが発行する継続トークン
+ * （{@link OrgAnnouncementFeedCursorStore}）で返す。</p>
  *
  * <p>公開 API の型は {@link AnnouncementFeedService.AnnouncementFeedResult} だけで、エンティティを引数・戻り値に出さない。</p>
  */
@@ -51,6 +54,7 @@ public class OrgAnnouncementFeedQueryService {
     private final AnnouncementReadService readService;
     private final OrgAnnouncementFeedReadability readability;
     private final PaymentGateService paymentGateService;
+    private final OrgAnnouncementFeedCursorStore cursorStore;
 
     /**
      * 組織の告知一覧をカーソルページングで取得する。
@@ -58,7 +62,7 @@ public class OrgAnnouncementFeedQueryService {
      * @param orgId          組織 ID
      * @param requestUserId  閲覧者
      * @param viewerRoleName 組織での閲覧者の実ロール名（課金ゲートの管理者バイパスの判定に使う）
-     * @param cursor         カーソル（null は先頭から）
+     * @param cursor         サーバが発行した継続トークン（null は先頭から。告知 ID ではない）
      * @param limit          取得件数（0 以下は既定、上限超は補正）
      */
     public AnnouncementFeedService.AnnouncementFeedResult getFeed(
@@ -72,27 +76,28 @@ public class OrgAnnouncementFeedQueryService {
         Map<Long, GateCheckResponse> gates = new LinkedHashMap<>();
         List<AnnouncementFeedEntity> gatedRows = new ArrayList<>();
         Set<Long> seenIds = new HashSet<>();
-        // 並び（ピン留め→新着→ID）と一致するキーセットで読み進める。API のカーソルは直前の最後の項目の ID（Long）のまま、
-        // その行の位置（ピン留めか否か）はサーバ側で引く。その組織の告知でなければ旧来の id < cursor で続ける。
-        AnnouncementFeedQueryRepository.OrgFeedCursor position =
-                cursor == null ? null : feedQueryRepository.findOrgFeedPosition(orgId, cursor);
-        Long legacyCursor = cursor != null && position == null ? cursor : null;
+        // 並び（ピン留め→新着→ID）と一致するキーセットで読み進める。API の cursor はサーバが発行した継続トークン（Long）だけを
+        // 受け付ける。不明・期限切れ・他人・他組織・告知 ID を直接渡したものは、理由を区別せず同一の 400 にする（存在オラクルを作らない）。
+        AnnouncementFeedQueryRepository.OrgFeedPosition position = null;
+        if (cursor != null) {
+            position = cursorStore.resolve(requestUserId, orgId, cursor)
+                    .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_001));
+        }
         int fetchSize = Math.max(effectiveLimit + 1, SCAN_BATCH);
-        AnnouncementFeedQueryRepository.OrgFeedCursor lastScanned = null;
+        AnnouncementFeedQueryRepository.OrgFeedPosition lastScanned = null;
         boolean sourceHasNext = true;
         int scanned = 0;
         while (gatedRows.size() < effectiveLimit + 1 && scanned < MAX_SCANNED_ROWS) {
             List<AnnouncementFeedEntity> rows = feedQueryRepository.findOrgScopePage(
-                    orgId, allowedVisibilities, position, legacyCursor, fetchSize);
+                    orgId, allowedVisibilities, position, fetchSize);
             if (rows == null || rows.isEmpty()) {
                 sourceHasNext = false;
                 break;
             }
             scanned += rows.size();
             sourceHasNext = rows.size() == fetchSize;
-            lastScanned = AnnouncementFeedQueryRepository.OrgFeedCursor.of(rows.get(rows.size() - 1));
+            lastScanned = AnnouncementFeedQueryRepository.OrgFeedPosition.of(rows.get(rows.size() - 1));
             position = lastScanned;
-            legacyCursor = null;
             List<AnnouncementFeedEntity> uniqueRows = rows.stream()
                     .filter(row -> row.getId() != null && seenIds.add(row.getId())).toList();
             List<AnnouncementFeedEntity> readable = readability.filterReadable(uniqueRows, requestUserId);
@@ -130,11 +135,13 @@ public class OrgAnnouncementFeedQueryService {
                         adminBypass || !isLocked(gates.get(feed.getId()))
                                 ? ContentAccessState.FULL.name() : ContentAccessState.LOCKED.name()))
                 .toList();
-        // 次ページの位置: 通常は返した最後の項目。項目が 1 件も無いまま走査上限に達したときだけ、最後に走査した行の位置から
-        // 再開する（空ページで止めない）。この位置の ID は、閲覧者が読めない告知の実在 ID でありうる（報告事項）。
+        // 次ページの位置: 項目が続くなら返した最後の項目の位置、走査上限で打ち切ったなら最後に走査した行の位置。どちらも告知の ID ではなく、
+        // サーバが発行する継続トークン（乱数）として返す。発行できなければ続きを隠さず 503 で失敗させる。
         Long nextCursor = null;
         if (hasNext) {
-            nextCursor = !page.isEmpty() ? page.get(page.size() - 1).getId() : lastScanned.feedId();
+            AnnouncementFeedQueryRepository.OrgFeedPosition next = moreRowsAfterPage
+                    ? AnnouncementFeedQueryRepository.OrgFeedPosition.of(page.get(page.size() - 1)) : lastScanned;
+            nextCursor = cursorStore.issue(requestUserId, orgId, next);
         }
         return new AnnouncementFeedService.AnnouncementFeedResult(items, nextCursor, hasNext, unreadCount);
     }
