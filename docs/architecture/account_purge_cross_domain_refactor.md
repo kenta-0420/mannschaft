@@ -875,6 +875,9 @@ commit して戻った後にだけ SUCCESS を保存する。対象0件でも SU
 | `birth_profile_confirmations` | `user_id` | 要裁可 | 出生プロフィールの確認・操作記録（diagnosis 強消去の対象外） |
 | `blog_post_reactions` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
 | `blog_posts` | `first_published_author_user_id` / `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `blog_ranch_admin_commands` | `actor_user_id` | 強消去 | 本人が実行した牧場管理コマンドの冪等記録（結果JSON・本文ハッシュ）。cms の強消去リスナー `UserBlogSettingsPurgeEventListener` が `cms` 強消去TX内で `actor_user_id` 一致行を一括削除 |
+| `blog_ranch_outboxes` | `recipient_user_id` | 強消去 | 本人宛ての牧場配送 outbox（payload JSON を含む技術配送表）。`UserBlogSettingsPurgeEventListener` が同TX内で `recipient_user_id` 一致行を一括削除 |
+| `blog_ranch_witnesses` | `recipient_user_id` | 強消去 | 本人の牧場資格判定の証跡（内容ダイジェスト・週次）。`UserBlogSettingsPurgeEventListener` が同TX内で `recipient_user_id` 一致行を一括削除 |
 | `bulletin_reactions` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
 | `bulletin_read_status` | `user_id` | 保持 | 発信側が参照する既読・確認状況（共同業務の記録） |
 | `chart_records` | `customer_user_id` / `staff_user_id` | 匿名化 | `ChartPurgeEventListener` が `customer_user_id` を NULL 化。`staff_user_id` は施術者の業務記録として保持 |
@@ -1055,6 +1058,9 @@ commit して戻った後にだけ SUCCESS を保存する。対象0件でも SU
 | `schedule_attendances` | `ranch_first_self_user_id` / `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
 | `schedule_comments` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
 | `schedule_keeps` | `user_id` | 弱消去 | 弱側で論理削除（`ScheduleKeepAnonymizationEventListener`。発火経路は休眠中） |
+| `schedule_ranch_admin_commands` | `actor_user_id` | 強消去 | 本人が実行した牧場管理コマンドの冪等記録（結果JSON・本文ハッシュ）。schedule の強消去リスナー `CalendarLayerLifecycleListener`（`CalendarLayerCleanupExecutor`） が `schedule` 強消去TX内で `actor_user_id` 一致行を一括削除 |
+| `schedule_ranch_outboxes` | `recipient_user_id` | 強消去 | 本人宛ての牧場配送 outbox（payload JSON を含む技術配送表）。`CalendarLayerLifecycleListener`（`CalendarLayerCleanupExecutor`） が同TX内で `recipient_user_id` 一致行を一括削除 |
+| `schedule_ranch_witnesses` | `recipient_user_id` | 強消去 | 本人の牧場資格判定の証跡（内容ダイジェスト・週次）。`CalendarLayerLifecycleListener`（`CalendarLayerCleanupExecutor`） が同TX内で `recipient_user_id` 一致行を一括削除 |
 | `schedule_targets` | `user_id` | 弱消去 | 弱側 `UserAnonymizedEvent` 購読者で物理削除（発火経路は休眠中。正本 withdrawal_flow_immediate_anonymization_fix.md） |
 | `schedules` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
 | `scope_member_calendar_settings` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
@@ -1095,6 +1101,9 @@ commit して戻った後にだけ SUCCESS を保存する。対象0件でも SU
 | `timeline_poll_votes` | `user_id` | 保持 | 参加・出欠・回答・投票・担当の共同記録（他メンバーの集計・業務根拠） |
 | `timeline_post_reactions` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
 | `timeline_posts` | `ranch_qualified_user_id` / `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
+| `timeline_ranch_admin_commands` | `actor_user_id` | 強消去 | 本人が実行した牧場管理コマンドの冪等記録（結果JSON・本文ハッシュ）。timeline の強消去リスナー `TimelineBookmarkAnonymizationEventListener` が `timeline` 強消去TX内で `actor_user_id` 一致行を一括削除 |
+| `timeline_ranch_outboxes` | `recipient_user_id` | 強消去 | 本人宛ての牧場配送 outbox（payload JSON を含む技術配送表）。`TimelineBookmarkAnonymizationEventListener` が同TX内で `recipient_user_id` 一致行を一括削除 |
+| `timeline_ranch_witnesses` | `recipient_user_id` | 強消去 | 本人の牧場資格判定の証跡（内容ダイジェスト・週次）。`TimelineBookmarkAnonymizationEventListener` が同TX内で `recipient_user_id` 一致行を一括削除 |
 | `timetable_slot_user_note_attachments` | `user_id` | 保持 | 時間割メモ本文（F03.15 の既決: 定義のみ消去し本文は保持） |
 | `timetable_slot_user_note_fields` | `user_id` | 強消去 | CMP-260822-1243 第1陣の本人設定38親表（上表）。各domainの強消去リスナー |
 | `timetable_slot_user_notes` | `user_id` | 保持 | 時間割メモ本文（F03.15 の既決: 定義のみ消去し本文は保持） |
