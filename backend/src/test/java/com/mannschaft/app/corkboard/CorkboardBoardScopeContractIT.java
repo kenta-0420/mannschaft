@@ -180,14 +180,14 @@ class CorkboardBoardScopeContractIT extends AbstractMySqlIntegrationTest {
     class GetBoard {
 
         @Test
-        @DisplayName("非メンバーの取得は403（scopeId/boardIdを知るだけではカード・セクション全内容を閲覧できない）")
-        void 非メンバーの取得は403() throws Exception {
+        @DisplayName("非メンバーの取得は404秘匿（scopeId/boardIdを知るだけでは閲覧できず、実在も漏れない。CMP-260820-1422）")
+        void 非メンバーの取得は404秘匿() throws Exception {
             Long boardId = insertBoard("TEAM", teamAId, "詳細テストボード", "ADMIN_ONLY");
 
             setAuthentication(outsiderId);
             mockMvc.perform(get("/api/v1/teams/{teamId}/corkboards/{id}", teamAId, boardId))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CORKBOARD_009"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CORKBOARD_001"));
         }
 
         @Test

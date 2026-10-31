@@ -49,10 +49,22 @@ class CorkboardPermissionServiceTest {
     @DisplayName("ADMIN_ONLY: 一般メンバーは CORKBOARD_009")
     void adminOnly_member拒否() {
         given(accessControlService.isAdminOrAbove(1L, 10L, "TEAM")).willReturn(false);
+        given(accessControlService.isMember(1L, 10L, "TEAM")).willReturn(true);
         assertThatThrownBy(() -> service.checkEditPermission(teamBoard("ADMIN_ONLY"), 1L))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> org.assertj.core.api.Assertions.assertThat(
                         ((BusinessException) e).getErrorCode().getCode()).isEqualTo("CORKBOARD_009"));
+    }
+
+    @Test
+    @DisplayName("ADMIN_ONLY: 非メンバーは不在と同一の CORKBOARD_001（存在秘匿・CMP-260820-1422）")
+    void adminOnly_nonMember_存在秘匿() {
+        given(accessControlService.isAdminOrAbove(1L, 10L, "TEAM")).willReturn(false);
+        given(accessControlService.isMember(1L, 10L, "TEAM")).willReturn(false);
+        assertThatThrownBy(() -> service.checkEditPermission(teamBoard("ADMIN_ONLY"), 1L))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> org.assertj.core.api.Assertions.assertThat(
+                        ((BusinessException) e).getErrorCode().getCode()).isEqualTo("CORKBOARD_001"));
     }
 
     @Test
@@ -64,24 +76,28 @@ class CorkboardPermissionServiceTest {
     }
 
     @Test
-    @DisplayName("ALL_MEMBERS: 非メンバーは CORKBOARD_009")
+    @DisplayName("ALL_MEMBERS: 非メンバーは不在と同一の CORKBOARD_001（存在秘匿）")
     void allMembers_nonMember拒否() {
         given(accessControlService.isMember(1L, 20L, "ORGANIZATION")).willReturn(false);
         assertThatThrownBy(() -> service.checkEditPermission(orgBoard("ALL_MEMBERS"), 1L))
-                .isInstanceOf(BusinessException.class);
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> org.assertj.core.api.Assertions.assertThat(
+                        ((BusinessException) e).getErrorCode().getCode()).isEqualTo("CORKBOARD_001"));
     }
 
     @Test
-    @DisplayName("PERSONAL: 所有者は通過、他人は CORKBOARD_009")
+    @DisplayName("PERSONAL: 所有者は通過、他人は不在と同一の CORKBOARD_001（存在秘匿）")
     void personal_所有者のみ通過() {
         assertThatCode(() -> service.checkEditPermission(personalBoard(1L), 1L))
                 .doesNotThrowAnyException();
         assertThatThrownBy(() -> service.checkEditPermission(personalBoard(2L), 1L))
-                .isInstanceOf(BusinessException.class);
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> org.assertj.core.api.Assertions.assertThat(
+                        ((BusinessException) e).getErrorCode().getCode()).isEqualTo("CORKBOARD_001"));
     }
 
     @Test
-    @DisplayName("未知のポリシーは CORKBOARD_009")
+    @DisplayName("未知のポリシーは拒否")
     void 未知ポリシー拒否() {
         assertThatThrownBy(() -> service.checkEditPermission(teamBoard("UNKNOWN_POLICY"), 1L))
                 .isInstanceOf(BusinessException.class);
