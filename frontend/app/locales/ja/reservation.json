@@ -18,12 +18,14 @@
       "end_time": "終了時刻",
       "target_period": "対象期間",
       "subject": "件名",
+      "reason": "休業理由",
       "body": "本文",
       "cancel_reservations": "対象予約をキャンセルする"
     },
     "placeholder": {
       "select": "選択してください",
       "subject": "件名を入力してください",
+      "reason": "休業の理由を入力してください",
       "body": "本文を入力してください"
     },
     "hint": {
@@ -75,7 +77,8 @@
       "confirm_message": "以下の内容で一括送信します。よろしいですか？",
       "cancel_warning": "※ 対象予約はキャンセルされます",
       "label_period": "対象期間",
-      "label_subject": "件名"
+      "label_subject": "件名",
+      "label_reason": "休業理由"
     },
     "error": {
       "time_range_required": "開始時刻と終了時刻を選択してください",
@@ -84,6 +87,8 @@
       "preview_failed": "プレビューの取得に失敗しました",
       "subject_required": "件名を入力してください",
       "body_required": "本文を入力してください",
+      "reason_required": "休業理由を入力してください",
+      "history_failed": "送信履歴の取得に失敗しました。再読み込みしてください",
       "send_failed": "送信に失敗しました",
       "confirmations_failed": "確認状況の取得に失敗しました",
       "info_missing": "通知情報が不足しています"

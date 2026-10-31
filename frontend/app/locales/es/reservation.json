@@ -18,12 +18,14 @@
       "end_time": "Hora de fin",
       "target_period": "Período objetivo",
       "subject": "Asunto",
+      "reason": "Motivo del cierre",
       "body": "Cuerpo",
       "cancel_reservations": "Cancelar reservas afectadas"
     },
     "placeholder": {
       "select": "Por favor, seleccione",
       "subject": "Ingrese el asunto",
+      "reason": "Introduzca el motivo del cierre",
       "body": "Ingrese el cuerpo del mensaje"
     },
     "hint": {
@@ -75,7 +77,8 @@
       "confirm_message": "¿Desea enviar el mensaje masivo con los siguientes detalles?",
       "cancel_warning": "※ Las reservas afectadas serán canceladas",
       "label_period": "Período objetivo",
-      "label_subject": "Asunto"
+      "label_subject": "Asunto",
+      "label_reason": "Motivo"
     },
     "error": {
       "time_range_required": "Por favor, seleccione la hora de inicio y fin",
@@ -84,6 +87,8 @@
       "preview_failed": "Error al cargar la vista previa",
       "subject_required": "Por favor, ingrese un asunto",
       "body_required": "Por favor, ingrese el cuerpo del mensaje",
+      "reason_required": "Introduzca el motivo del cierre",
+      "history_failed": "No se pudo cargar el historial de envíos. Vuelva a cargarlo.",
       "send_failed": "Error al enviar",
       "confirmations_failed": "Error al cargar el estado de confirmación",
       "info_missing": "Falta información de la notificación"
