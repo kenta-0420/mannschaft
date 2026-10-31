@@ -75,15 +75,6 @@ public class BlogPostVisibilityResolver
                 (rows, viewer) -> new PreviewGatesContext(strictGates));
     }
 
-    /** {@link #filterAccessibleForPreview} の委任役割版（{@link #assertCanViewForPreviewDelegated} の一括版）。 */
-    public java.util.Set<Long> filterAccessibleForPreviewDelegated(java.util.Collection<Long> contentIds,
-                                                                   Long viewerUserId,
-                                                                   Map<Long, GateCheckResponse> strictGates,
-                                                                   String delegatedRole) {
-        return filterAccessibleDelegatedWithAdditionalAxisLoader(contentIds, viewerUserId, delegatedRole,
-                (rows, viewer) -> new PreviewGatesContext(strictGates));
-    }
-
     /** 通常 F00 と同じ判定本体に strict 結果を渡し、課金を lenient に再評価しない。 */
     public void assertCanViewForPreview(Long contentId, Long viewerUserId, GateCheckResponse strictGate) {
         PreviewGateContext context = new PreviewGateContext(contentId, strictGate);

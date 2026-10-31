@@ -153,11 +153,11 @@ class OrgAnnouncementFeedAudienceIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @DisplayName("宛先チーム T1 の管理者（組織ロールなし）には会員限定の東宛て告知が一覧に出る（委任資格）。宛先外 T2 の者には出ない")
-    void 宛先チームの管理者は会員限定も一覧に出る() throws Exception {
+    @DisplayName("D08 組織の一覧は直属範囲: 宛先チーム T1 の管理者（組織ロールなし）の一覧に会員限定の東宛て告知は出ない（プレビューは委任資格で 200）。直属 MEMBER には出る")
+    void 宛先チームの管理者の組織一覧に会員限定は出ない() throws Exception {
         AnnouncementFeedEntity feed = feed("MEMBERS", null, groups(east), false);
-        assertThat(listedIds("A")).contains(feed.getId());
-        assertThat(previewStatus(feed, "A")).isEqualTo(200);
+        assertThat(listedIds("A")).as("委任資格 Qa で読める告知は組織の一覧に加えない（チーム側の一覧に出る）").doesNotContain(feed.getId());
+        assertThat(previewStatus(feed, "A")).as("プレビューは委任経路で 200（一覧 ⊆ 本文）").isEqualTo(200);
         assertThat(listedIds("T2M")).doesNotContain(feed.getId());
         assertThat(previewStatus(feed, "T2M")).isEqualTo(404);
         assertThat(listedIds("OM")).contains(feed.getId());
@@ -194,7 +194,7 @@ class OrgAnnouncementFeedAudienceIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @DisplayName("全人物×全告知で『一覧に出る ⇔ プレビューが 404 でない』が一致し、未読件数も一覧と同じ集合")
+    @DisplayName("全人物×全告知で『一覧に出たものは全てプレビューで読める（一覧 ⊆ 本文）』。直属 MEMBER は全件読め、未読件数も一覧と同じ集合")
     void 一覧とプレビューの可否が全員で一致する() throws Exception {
         List<AnnouncementFeedEntity> feeds = new ArrayList<>();
         for (String visibility : List.of("PUBLIC", "SUPPORTERS", "MEMBERS")) {
@@ -214,10 +214,15 @@ class OrgAnnouncementFeedAudienceIT extends AbstractMySqlIntegrationTest {
             Set<Long> listed = new LinkedHashSet<>(listedIds(who));
             for (AnnouncementFeedEntity f : feeds) {
                 boolean readable = previewStatus(f, who) != 404;
-                if (readable != listed.contains(f.getId())) {
+                // 直属範囲の一覧は本文より狭くてよい（委任資格 Qa だけで読める告知は一覧に出ない）が、一覧に出たものは必ず読める
+                if (listed.contains(f.getId()) && !readable) {
                     mismatches.add(who + " feed=" + f.getId() + " vis=" + f.getVisibility()
                             + " 一覧=" + listed.contains(f.getId()) + " プレビュー可=" + readable);
                 }
+            }
+            if (who.equals("OM")) {
+                assertThat(listed).as("直属 MEMBER は読める告知を全て一覧で見られる")
+                        .containsAll(feeds.stream().map(AnnouncementFeedEntity::getId).toList());
             }
             JsonNode body = list(who);
             assertThat(body.path("meta").path("unreadCount").asLong()).as(who + " の未読件数")

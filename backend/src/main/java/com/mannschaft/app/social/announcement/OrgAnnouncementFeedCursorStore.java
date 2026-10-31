@@ -93,8 +93,9 @@ public class OrgAnnouncementFeedCursorStore {
             if (parts.length != 3) {
                 throw new IllegalArgumentException("bad cursor value");
             }
+            LocalDateTime.parse(parts[1]); // 形式の検証（値は文字列のまま持つ）
             return Optional.of(new AnnouncementFeedQueryRepository.OrgFeedPosition(
-                    "1".equals(parts[0]), LocalDateTime.parse(parts[1]), Long.parseLong(parts[2])));
+                    "1".equals(parts[0]), parts[1], Long.parseLong(parts[2])));
         } catch (IllegalArgumentException | DateTimeParseException e) {
             log.warn("組織告知一覧の継続トークンの値が壊れています orgId={}", orgId, e);
             return Optional.empty();

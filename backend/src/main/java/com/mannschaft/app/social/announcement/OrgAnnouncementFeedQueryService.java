@@ -68,8 +68,9 @@ public class OrgAnnouncementFeedQueryService {
     public AnnouncementFeedService.AnnouncementFeedResult getFeed(
             Long orgId, Long requestUserId, String viewerRoleName, Long cursor, int limit) {
         int effectiveLimit = Math.max(1, Math.min(limit <= 0 ? DEFAULT_LIMIT : limit, MAX_LIMIT));
-        // 最終的な可否は資格判定が決める。宛先チームの委任資格で読める行を取りこぼさないよう、前絞りは最も広い集合で取る。
-        Set<String> allowedVisibilities = AnnouncementVisibility.allowedFor("MEMBER");
+        // 組織の一覧は直属範囲（直属資格 Qd）だけで判定する（マスター裁可 D08）。可視性の前絞りは直属ロール由来。
+        // 宛先チームの委任資格 Qa で読める告知はチーム側の一覧に出る。
+        Set<String> allowedVisibilities = AnnouncementVisibility.allowedFor(viewerRoleName);
         boolean adminBypass = "ADMIN".equalsIgnoreCase(viewerRoleName)
                 || "SYSTEM_ADMIN".equalsIgnoreCase(viewerRoleName);
 

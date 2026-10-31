@@ -55,16 +55,10 @@ public class BlogPostPreviewService {
      * 課金・F00 とも SQL 本数は記事の数に比例しない）。
      */
     public Set<Long> filterPreviewReadable(Collection<Long> ids, Long viewerId, Long organizationId) {
-        return filterReadable(ids, viewerId, organizationId, null);
+        return filterReadable(ids, viewerId, organizationId);
     }
 
-    /** {@link #filterPreviewReadable} の委任版（{@link #getPreviewMetadataDelegated} の一括版）。 */
-    public Set<Long> filterPreviewReadableDelegated(Collection<Long> ids, Long viewerId, Long organizationId,
-                                                    String delegatedRole) {
-        return filterReadable(ids, viewerId, organizationId, requireDelegatedRole(delegatedRole));
-    }
-
-    private Set<Long> filterReadable(Collection<Long> ids, Long viewerId, Long organizationId, String delegatedRole) {
+    private Set<Long> filterReadable(Collection<Long> ids, Long viewerId, Long organizationId) {
         if (ids == null || ids.isEmpty()) return Set.of();
         List<Long> distinct = ids.stream().filter(Objects::nonNull).distinct().toList();
         Map<Long, ContentGateTarget> targets = new LinkedHashMap<>();
@@ -78,9 +72,7 @@ public class BlogPostPreviewService {
             return gate != null && !gate.isTitleHidden();
         }).toList();
         if (titleVisible.isEmpty()) return Set.of();
-        return delegatedRole == null
-                ? visibilityResolver.filterAccessibleForPreview(titleVisible, viewerId, gates)
-                : visibilityResolver.filterAccessibleForPreviewDelegated(titleVisible, viewerId, gates, delegatedRole);
+        return visibilityResolver.filterAccessibleForPreview(titleVisible, viewerId, gates);
     }
 
     /** FULL の時だけ本文を取得し、認可済み実 scope に束縛して署名する。 */

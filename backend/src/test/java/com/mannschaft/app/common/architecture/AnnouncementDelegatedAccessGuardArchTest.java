@@ -53,7 +53,6 @@ class AnnouncementDelegatedAccessGuardArchTest {
     static final String BLOG_PREVIEW = "com.mannschaft.app.cms.service.BlogPostPreviewService";
     static final String BULLETIN_FACADE = "com.mannschaft.app.bulletin.service.BulletinReadFacade";
     static final String BULLETIN_READER = "com.mannschaft.app.bulletin.service.BulletinAnnouncementPreviewReader";
-    static final String CHECKER = "com.mannschaft.app.common.visibility.ContentVisibilityChecker";
     static final String FEED_QUERY_SERVICE = "com.mannschaft.app.social.announcement.OrgAnnouncementFeedQueryService";
     static final String FEED_READABILITY = "com.mannschaft.app.social.announcement.OrgAnnouncementFeedReadability";
     static final String PREVIEW_SOURCE = "com.mannschaft.app.social.announcement.AnnouncementPreviewSourceService";
@@ -94,14 +93,9 @@ class AnnouncementDelegatedAccessGuardArchTest {
             JavaClasses production = ProductionClasses.get();
             Set<String> violations = new TreeSet<>();
             violations.addAll(callerViolations(production, F02::isResolverHierarchy,
-                    name -> name.contains(DELEGATED_MARK),
-                    Set.of(BLOG_PREVIEW, BULLETIN_FACADE, BULLETIN_READER, CHECKER)));
-            // 組織告知の一覧の一括版（ContentVisibilityChecker 経由）は、一覧の元コンテンツ可視性判定の部品だけが呼ぶ
-            violations.addAll(callerViolations(production, owner -> owner.getFullName().equals(CHECKER),
-                    name -> name.contains(DELEGATED_MARK), Set.of(FEED_READABILITY)));
-            // 組織告知の一覧の一括版（filterPreviewReadableDelegated）は一覧の判定部品も呼ぶ
+                    name -> name.contains(DELEGATED_MARK), Set.of(BLOG_PREVIEW, BULLETIN_FACADE, BULLETIN_READER)));
             violations.addAll(callerViolations(production, owner -> owner.getFullName().equals(BLOG_PREVIEW),
-                    name -> name.contains(DELEGATED_MARK), Set.of(PREVIEW_SOURCE, FEED_READABILITY)));
+                    name -> name.contains(DELEGATED_MARK), Set.of(PREVIEW_SOURCE)));
             violations.addAll(callerViolations(production, owner -> owner.getFullName().equals(BULLETIN_FACADE),
                     name -> name.contains(DELEGATED_MARK), Set.of(PREVIEW_SOURCE)));
             violations.addAll(callerViolations(production, owner -> owner.getFullName().equals(BULLETIN_READER),
@@ -124,10 +118,6 @@ class AnnouncementDelegatedAccessGuardArchTest {
             assertThat(edges(production, owner -> owner.getFullName().equals(BULLETIN_READER), name -> !name.startsWith("<")))
                     .as("BulletinReadFacade → BulletinAnnouncementPreviewReader（bulletin の tx なし読取部品）")
                     .anyMatch(edge -> edge.startsWith(BULLETIN_FACADE + "#"));
-            assertThat(edges(production, owner -> owner.getFullName().equals(CHECKER),
-                    name -> name.contains(DELEGATED_MARK)))
-                    .as("OrgAnnouncementFeedReadability → ContentVisibilityChecker#filterAccessibleDelegated（組織告知一覧の一括判定）")
-                    .anyMatch(edge -> edge.startsWith(FEED_READABILITY + "#"));
             List<String> resolverEdges = edges(production, F02::isResolverHierarchy, name -> name.contains(DELEGATED_MARK));
             assertThat(resolverEdges).as("cms 側: BlogPostPreviewService → Resolver#…Delegated…")
                     .anyMatch(edge -> edge.startsWith(BLOG_PREVIEW + "#"));

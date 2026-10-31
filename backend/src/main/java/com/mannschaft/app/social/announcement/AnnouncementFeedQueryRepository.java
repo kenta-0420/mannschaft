@@ -322,14 +322,15 @@ public class AnnouncementFeedQueryRepository {
      * 同じ位置から再開できる。
      *
      * @param pinned    その行を取得したときの {@code is_pinned}
-     * @param createdAt その行の {@code created_at}
+     * @param createdAt その行の {@code created_at}（ISO-8601 文字列。時刻型のフィールドを持たないため文字列で保存し、束縛時に解釈する）
      * @param feedId    その行の ID
      */
-    public record OrgFeedPosition(boolean pinned, java.time.LocalDateTime createdAt, Long feedId) {
+    public record OrgFeedPosition(boolean pinned, String createdAt, Long feedId) {
 
         /** 取得した行から位置を作る。 */
         public static OrgFeedPosition of(AnnouncementFeedEntity feed) {
-            return new OrgFeedPosition(Boolean.TRUE.equals(feed.getIsPinned()), feed.getCreatedAt(), feed.getId());
+            return new OrgFeedPosition(Boolean.TRUE.equals(feed.getIsPinned()),
+                    String.valueOf(feed.getCreatedAt()), feed.getId());
         }
     }
 
@@ -349,7 +350,7 @@ public class AnnouncementFeedQueryRepository {
         }
         StringBuilder jpql = new StringBuilder("SELECT a FROM AnnouncementFeedEntity a\n")
                 .append(VISIBLE_IN_SCOPE_WHERE)
-                .append("  AND (a.startsAt IS NULL OR a.startsAt <= CURRENT_TIMESTAMP)\n");
+                .append("  AND (a.startsAt IS NULL OR a.startsAt <= function('UTC_TIMESTAMP'))\n");
         if (after != null) {
             if (after.pinned()) {
                 jpql.append("""
@@ -370,7 +371,7 @@ public class AnnouncementFeedQueryRepository {
         TypedQuery<AnnouncementFeedEntity> query = em.createQuery(jpql.toString(), AnnouncementFeedEntity.class);
         bindVisibleInScopeParameters(query, AnnouncementScopeType.ORGANIZATION, orgId, allowedVisibilities);
         if (after != null) {
-            query.setParameter("afterCreatedAt", after.createdAt());
+            query.setParameter("afterCreatedAt", java.time.LocalDateTime.parse(after.createdAt()));
             query.setParameter("afterFeedId", after.feedId());
         }
         query.setMaxResults(limit);
