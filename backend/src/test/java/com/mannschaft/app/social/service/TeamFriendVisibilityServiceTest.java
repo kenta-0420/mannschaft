@@ -132,8 +132,8 @@ class TeamFriendVisibilityServiceTest {
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    @DisplayName("公開済み他チーム関係の既存拒否コードを維持する")
-    void IDOR_公開他チーム関係_既存例外(boolean requestedPublic) {
+    @DisplayName("公開済み他チーム関係も不在と同一コードで拒否する")
+    void IDOR_公開他チーム関係_不在と同一(boolean requestedPublic) {
         TeamFriendEntity friend = buildTeamFriend(100L, 200L, 1L);
         friend.changePublicity(true);
         given(accessControlService.isAdmin(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
@@ -141,7 +141,7 @@ class TeamFriendVisibilityServiceTest {
         assertThatThrownBy(() -> teamFriendVisibilityService.setVisibility(TEAM_ID, 1L, requestedPublic, USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                        .isEqualTo(SocialErrorCode.FRIEND_VISIBILITY_ADMIN_ONLY));
+                        .isEqualTo(SocialErrorCode.FRIEND_RELATION_NOT_FOUND));
         assertThat(friend.getIsPublic()).isTrue();
         verify(teamFriendRepository, never()).save(any());
         verifyNoInteractions(auditLogService);

@@ -48,7 +48,7 @@ import static org.mockito.BDDMockito.given;
  *   <li><b>更新/削除</b>: Controller から渡される actor（{@code currentUserId}）に対し
  *       {@code accessControlService.isAdminOrAbove(currentUserId, entity.getTeamId(), "TEAM")}
  *       が true の場合のみ許可（従来の {@code entity.getTeamId().equals(teamId)} という userID≠teamID の
- *       誤比較を撤廃）。非権限は {@link MatchingErrorCode#INSUFFICIENT_PERMISSION}。</li>
+ *       誤比較を撤廃）。非権限は不在と同一の {@link MatchingErrorCode#REQUEST_NOT_FOUND}。</li>
  *   <li><b>詳細/検索</b>: NG 除外・可視性判定は「閲覧ユーザーの所属チーム群」
  *       （{@code accessControlService.findAffiliatedScopeIds(currentUserId, "TEAM")}）を基準にする
  *       （従来の userID を teamId として扱う誤りを撤廃）。</li>
@@ -162,7 +162,7 @@ class MatchRequestServiceTest {
             assertThatThrownBy(() -> service.updateRequest(REQUEST_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MatchingErrorCode.INSUFFICIENT_PERMISSION);
+                    .isEqualTo(MatchingErrorCode.REQUEST_NOT_FOUND);
         }
     }
 
@@ -197,7 +197,7 @@ class MatchRequestServiceTest {
             assertThatThrownBy(() -> service.deleteRequest(REQUEST_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(MatchingErrorCode.INSUFFICIENT_PERMISSION));
+                            .isEqualTo(MatchingErrorCode.REQUEST_NOT_FOUND));
         }
 
         @Test

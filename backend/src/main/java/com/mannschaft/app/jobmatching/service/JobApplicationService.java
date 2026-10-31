@@ -127,7 +127,7 @@ public class JobApplicationService {
     public JobApplicationEntity withdraw(Long applicationId, Long userId) {
         JobApplicationEntity app = findOrThrow(applicationId);
         if (!userId.equals(app.getApplicantUserId())) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            throw new BusinessException(JobmatchingErrorCode.JOB_APPLICATION_NOT_FOUND);
         }
         stateMachine.validate(app.getStatus(), JobApplicationStatus.WITHDRAWN);
         app.withdraw();
@@ -148,7 +148,7 @@ public class JobApplicationService {
                 .orElseThrow(() -> new BusinessException(JobmatchingErrorCode.JOB_NOT_FOUND));
 
         if (!jobPolicy.canDecideApplication(userId, posting)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            throw new BusinessException(JobmatchingErrorCode.JOB_APPLICATION_NOT_FOUND);
         }
 
         stateMachine.validate(app.getStatus(), JobApplicationStatus.REJECTED);
@@ -169,7 +169,7 @@ public class JobApplicationService {
         JobPostingEntity posting = postingRepository.findById(postingId)
                 .orElseThrow(() -> new BusinessException(JobmatchingErrorCode.JOB_NOT_FOUND));
         if (!jobPolicy.canDecideApplication(userId, posting)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            throw new BusinessException(JobmatchingErrorCode.JOB_NOT_FOUND);
         }
         return applicationRepository.findByJobPostingIdOrderByAppliedAtDesc(postingId);
     }

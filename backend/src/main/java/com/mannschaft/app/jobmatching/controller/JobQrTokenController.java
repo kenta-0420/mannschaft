@@ -66,8 +66,8 @@ public class JobQrTokenController {
      * <p><b>認可の所在</b>: 本メソッド冒頭で対象契約を実体としてロードし、
      * {@code JobPolicy#canIssueQrToken}（{@code jobmatching/policy/JobPolicy.java:175}）で
      * 契約の {@code requester_user_id} と認証主体の一致を検証する。不一致は
-     * {@code JOB_PERMISSION_DENIED}（404）、契約不存在は {@code JOB_CONTRACT_NOT_FOUND}（404）。
-     * 両者を同一ステータスに揃えているのは、応答差から契約 ID の実在を判別されること
+     * 契約不存在と同一の {@code JOB_CONTRACT_NOT_FOUND}（404・同一本文）で拒否する。
+     * status・error.code・message まで揃えているのは、応答差から契約 ID の実在を判別されること
      * （存在オラクル）を防ぐためである。
      * {@code JobQrTokenService#issue} でも同等判定を行う二重防御である。</p>
      *
@@ -77,9 +77,6 @@ public class JobQrTokenController {
     @PostMapping
     @Operation(summary = "QR トークン発行", description = "Requester デバイスで QR 画像化するための短命トークンを発行する")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "発行成功")
-    // TODO(存在オラクル是正): 実挙動は「発行権限なし」も 404（JOB_PERMISSION_DENIED を 404 に写像済み）。
-    // 下の 403 宣言は実態と乖離しているが、修正には docs/openapi.json の再生成が必要なため別 PR で是正する。
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "発行権限なし（Requester 本人以外）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "契約が見つからない")
     public ResponseEntity<ApiResponse<QrTokenResponse>> issue(
             @PathVariable Long contractId,
@@ -90,7 +87,7 @@ public class JobQrTokenController {
         JobContractEntity contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new BusinessException(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND));
         if (!jobPolicy.canIssueQrToken(contract, userId)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            throw new BusinessException(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND);
         }
 
         JobQrTokenService.IssueResult result =
@@ -119,8 +116,8 @@ public class JobQrTokenController {
      * <p><b>認可の所在</b>: 本メソッド冒頭で対象契約を実体としてロードし、
      * {@code JobPolicy#canIssueQrToken}（{@code jobmatching/policy/JobPolicy.java:175}）で
      * 契約の {@code requester_user_id} と認証主体の一致を検証する。不一致は
-     * {@code JOB_PERMISSION_DENIED}（404）、契約不存在は {@code JOB_CONTRACT_NOT_FOUND}（404）。
-     * 両者を同一ステータスに揃えているのは、応答差から契約 ID の実在を判別されること
+     * 契約不存在と同一の {@code JOB_CONTRACT_NOT_FOUND}（404・同一本文）で拒否する。
+     * status・error.code・message まで揃えているのは、応答差から契約 ID の実在を判別されること
      * （存在オラクル）を防ぐためである。
      * {@code JobQrTokenService#getCurrent} でも同等判定を行う二重防御である。</p>
      *
@@ -131,9 +128,6 @@ public class JobQrTokenController {
     @Operation(summary = "現在有効な QR トークン取得", description = "Requester 画面再表示用。存在しなければ 204 No Content")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "該当トークン無し")
-    // TODO(存在オラクル是正): 実挙動は「閲覧権限なし」も 404。下の 403 宣言は実態と乖離しているが、
-    // 修正には docs/openapi.json の再生成が必要なため別 PR で是正する。
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "閲覧権限なし")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "契約が見つからない")
     public ResponseEntity<ApiResponse<QrTokenResponse>> getCurrent(
             @PathVariable Long contractId,
@@ -144,7 +138,7 @@ public class JobQrTokenController {
         JobContractEntity contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new BusinessException(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND));
         if (!jobPolicy.canIssueQrToken(contract, userId)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            throw new BusinessException(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND);
         }
 
         Optional<JobQrTokenEntity> found = qrTokenService.getCurrent(contractId, type, userId);

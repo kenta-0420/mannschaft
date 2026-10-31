@@ -109,8 +109,9 @@ public class JobContractService {
                     .orElseThrow(() -> new BusinessException(JobmatchingErrorCode.JOB_NOT_FOUND));
 
             // 採否権限チェック。
+            // 採否権限が無い者には応募の存在を明かさない（不在応募IDと同一応答。CMP-260821-1027）。
             if (!jobPolicy.canDecideApplication(requesterId, posting)) {
-                throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+                throw new BusinessException(JobmatchingErrorCode.JOB_APPLICATION_NOT_FOUND);
             }
 
             // 応募が処理前（APPLIED）であるか。
@@ -185,7 +186,7 @@ public class JobContractService {
         Objects.requireNonNull(cmd, "cmd は必須");
         JobContractEntity contract = findContractOrThrow(contractId);
         if (!jobPolicy.canReportCompletion(workerId, contract)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            throw permissionDeniedOrHidden(workerId, contract);
         }
         stateMachine.validate(contract.getStatus(), JobContractStatus.COMPLETION_REPORTED);
         contract.reportCompletion();
@@ -207,7 +208,7 @@ public class JobContractService {
     public JobContractEntity approveCompletion(Long contractId, Long requesterId) {
         JobContractEntity contract = findContractOrThrow(contractId);
         if (!jobPolicy.canApproveCompletion(requesterId, contract)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            throw permissionDeniedOrHidden(requesterId, contract);
         }
         stateMachine.validate(contract.getStatus(), JobContractStatus.COMPLETED);
         contract.approveCompletion();
@@ -226,7 +227,7 @@ public class JobContractService {
     public JobContractEntity rejectCompletion(Long contractId, String reason, Long requesterId) {
         JobContractEntity contract = findContractOrThrow(contractId);
         if (!jobPolicy.canApproveCompletion(requesterId, contract)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            throw permissionDeniedOrHidden(requesterId, contract);
         }
         stateMachine.validate(contract.getStatus(), JobContractStatus.MATCHED);
 
@@ -258,7 +259,7 @@ public class JobContractService {
     public JobContractEntity cancelContract(Long contractId, Long userId, String reason) {
         JobContractEntity contract = findContractOrThrow(contractId);
         if (!isParticipant(userId, contract)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            throw permissionDeniedOrHidden(userId, contract);
         }
         stateMachine.validate(contract.getStatus(), JobContractStatus.CANCELLED);
         contract.cancel();
@@ -292,6 +293,17 @@ public class JobContractService {
     // ---------------------------------------------------------------------
     // 内部ヘルパー
     // ---------------------------------------------------------------------
+
+    /**
+     * 権限不足の例外を作る。当事者でない者には契約の存在を明かさないため、不在と同一の
+     * {@code JOB_CONTRACT_NOT_FOUND} を返す（存在オラクル対策。CMP-260821-1027）。
+     * 当事者が自分の権限外の操作を行った場合のみ {@code JOB_PERMISSION_DENIED}。
+     */
+    private BusinessException permissionDeniedOrHidden(Long userId, JobContractEntity contract) {
+        return isParticipant(userId, contract)
+                ? new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED)
+                : new BusinessException(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND);
+    }
 
     private JobContractEntity findContractOrThrow(Long contractId) {
         return contractRepository.findById(contractId)

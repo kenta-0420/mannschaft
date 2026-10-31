@@ -136499,15 +136499,6 @@ export interface operations {
                     "*/*": components["schemas"]["ApiResponseQrTokenResponse"];
                 };
             };
-            /** @description 発行権限なし（Requester 本人以外） */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseQrTokenResponse"];
-                };
-            };
             /** @description 契約が見つからない */
             404: {
                 headers: {
@@ -174165,15 +174156,6 @@ export interface operations {
             };
             /** @description 該当トークン無し */
             204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseQrTokenResponse"];
-                };
-            };
-            /** @description 閲覧権限なし */
-            403: {
                 headers: {
                     [name: string]: unknown;
                 };

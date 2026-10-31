@@ -138,7 +138,7 @@ public class MatchProposalService {
         // 非所属は募集不在時（MATCHING_001）と同じ 404 で応答し、募集IDの実在を秘匿する（存在オラクル封じ）。
         if (!accessControlService.isSystemAdmin(currentUserId)
                 && !accessControlService.isMember(currentUserId, matchRequest.getTeamId(), "TEAM")) {
-            throw new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);
+            throw new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND);
         }
 
         Page<MatchProposalEntity> page = proposalRepository.findByRequestIdOrderByCreatedAtDesc(requestId, pageable);
@@ -173,7 +173,8 @@ public class MatchProposalService {
 
         // 権限チェック（募集チームの管理者/副管理者のみ・userID≠teamID の誤比較を撤廃）
         if (!accessControlService.isAdminOrAbove(actorUserId, matchRequest.getTeamId(), "TEAM")) {
-            throw new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);
+            // 権限外には応募の存在を明かさない（不在IDと同一応答。CMP-260821-1027）。
+            throw new BusinessException(MatchingErrorCode.PROPOSAL_NOT_FOUND);
         }
 
         // OPENチェック
@@ -234,7 +235,8 @@ public class MatchProposalService {
 
         // 権限チェック（募集チームの管理者/副管理者のみ）
         if (!accessControlService.isAdminOrAbove(actorUserId, matchRequest.getTeamId(), "TEAM")) {
-            throw new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);
+            // 権限外には応募の存在を明かさない（不在IDと同一応答。CMP-260821-1027）。
+            throw new BusinessException(MatchingErrorCode.PROPOSAL_NOT_FOUND);
         }
         if (proposal.getStatus() != MatchProposalStatus.PENDING) {
             throw new BusinessException(MatchingErrorCode.INVALID_PROPOSAL_STATUS);
@@ -256,7 +258,8 @@ public class MatchProposalService {
 
         // 権限チェック（応募チームの管理者/副管理者のみ・userID≠teamID の誤比較を撤廃）
         if (!accessControlService.isAdminOrAbove(actorUserId, proposal.getProposingTeamId(), "TEAM")) {
-            throw new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);
+            // 権限外には応募の存在を明かさない（不在IDと同一応答。CMP-260821-1027）。
+            throw new BusinessException(MatchingErrorCode.PROPOSAL_NOT_FOUND);
         }
         if (proposal.getStatus() != MatchProposalStatus.PENDING) {
             throw new BusinessException(MatchingErrorCode.INVALID_PROPOSAL_STATUS);

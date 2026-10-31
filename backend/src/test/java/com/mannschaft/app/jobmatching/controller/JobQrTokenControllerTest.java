@@ -146,7 +146,7 @@ class JobQrTokenControllerTest {
         }
 
         @Test
-        @DisplayName("権限なし（Requester 本人以外）: 404 JOB_PERMISSION_DENIED（契約不在と同一ステータスで存在秘匿）")
+        @DisplayName("権限なし（Requester 本人以外）: 404 JOB_CONTRACT_NOT_FOUND（契約不在と同一本文で存在秘匿）")
         void issue_権限外_404_存在秘匿() throws Exception {
             JobContractEntity contract = setupContractForUser(OTHER_USER_ID);
             given(jobPolicy.canIssueQrToken(contract, USER_ID)).willReturn(false);
@@ -157,7 +157,7 @@ class JobQrTokenControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.error.code").value("JOB_PERMISSION_DENIED"));
+                    .andExpect(jsonPath("$.error.code").value("JOB_CONTRACT_NOT_FOUND"));
         }
 
         @Test
@@ -253,7 +253,7 @@ class JobQrTokenControllerTest {
         }
 
         @Test
-        @DisplayName("権限なし（Requester 本人以外）: 404 JOB_PERMISSION_DENIED（契約不在と同一ステータスで存在秘匿）")
+        @DisplayName("権限なし（Requester 本人以外）: 404 JOB_CONTRACT_NOT_FOUND（契約不在と同一本文で存在秘匿）")
         void getCurrent_権限外_404_存在秘匿() throws Exception {
             JobContractEntity contract = setupContractForUser(OTHER_USER_ID);
             given(jobPolicy.canIssueQrToken(contract, USER_ID)).willReturn(false);
@@ -261,7 +261,7 @@ class JobQrTokenControllerTest {
             mockMvc.perform(get("/api/v1/contracts/{contractId}/qr-tokens/current", CONTRACT_ID)
                             .param("type", "IN"))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.error.code").value("JOB_PERMISSION_DENIED"));
+                    .andExpect(jsonPath("$.error.code").value("JOB_CONTRACT_NOT_FOUND"));
         }
 
         @Test

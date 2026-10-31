@@ -73,7 +73,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 /**
  * CMP-260821-1027: 私的フレンド子IDの本文秘匿と既存認可のHTTP契約。
  * 実JWT/filter/controller/service/GHE/MySQLを通す。私的foreign本文のみRED対象で、
- * public107・非ADMIN107・正常204は現契約の固定。公開例外の裁可を新たに主張しない。
+ * 非ADMIN107・正常204は現契約の固定。公開済み他チーム関係も不在と同一本文（CMP-260821-1027）。
  * 共通MOCKを継承し、fixtureを明示commitするため非同期監査も実DBで観測できる。
  * testのDDLはentity由来であり、本番FlywayのFK適用証明ではない。
  */
@@ -221,11 +221,15 @@ class TeamFriendVisibilityScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void 公開foreignは107を維持し拒否による変更なし(boolean requestedPublic) throws Exception {
+    void 公開foreignも不在と完全同一で副作用なし(boolean requestedPublic) throws Exception {
+        // CMP-260821-1027: 公開済みの他チーム関係も SOCIAL_106 に畳み、公開例外の 107 を廃した。
         Map<String, String> before = snapshot();
         try {
-            assertError(http(actors.get("B-admin-role"), b, foreignPublic, Map.of("isPublic", requestedPublic)),
-                    "SOCIAL_107", "公開設定の変更には ADMIN 権限が必要です");
+            MvcResult missing = http(actors.get("B-admin-role"), b, MISSING, Map.of("isPublic", requestedPublic));
+            MvcResult foreign = http(actors.get("B-admin-role"), b, foreignPublic, Map.of("isPublic", requestedPublic));
+            assertError(missing, "SOCIAL_106", "フレンド関係が見つかりません");
+            assertError(foreign, "SOCIAL_106", "フレンド関係が見つかりません");
+            assertThat(json(foreign)).isEqualTo(json(missing));
         } finally { assertUnchanged(before); }
     }
 
