@@ -166,7 +166,8 @@ public class CorkboardService {
         if (!accessControlService.isMember(userId, board.getScopeId(), board.getScopeType())) {
             log.warn("コルクボード詳細閲覧権限なし: boardId={}, userId={}, scope={}, scopeId={}",
                     boardId, userId, board.getScopeType(), board.getScopeId());
-            throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
+            // CMP-260820-1422: 非メンバーには不在と同一の 404 を返し boardId の実在を秘匿する
+            throw new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND);
         }
         return buildDetailResponse(board, userId);
     }
@@ -185,7 +186,8 @@ public class CorkboardService {
                 .orElseThrow(() -> new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND));
         if (!accessControlService.isMember(userId, orgId, "ORGANIZATION")) {
             log.warn("組織コルクボード閲覧権限なし: boardId={}, userId={}, orgId={}", boardId, userId, orgId);
-            throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
+            // CMP-260820-1422: 非所属者には不在と同一の 404 を返し boardId の実在を秘匿する
+            throw new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND);
         }
         return buildDetailResponse(board, userId);
     }
@@ -203,7 +205,8 @@ public class CorkboardService {
      * @param boardId ボードID
      * @param userId  操作ユーザーID
      * @return ボード詳細レスポンス
-     * @throws BusinessException ボード未存在 ({@code CORKBOARD_001} / 404) または権限不足 ({@code CORKBOARD_009} / 403)
+     * @throws BusinessException ボード未存在または閲覧権限なし（いずれも {@code CORKBOARD_001} / 404。
+     *                           CMP-260820-1422: 閲覧できない者に boardId の実在を漏らさないため不在と同一応答にする）
      */
     public CorkboardDetailResponse getBoardDetailByIdOnly(Long boardId, Long userId) {
         CorkboardEntity board = corkboardRepository.findById(boardId)
@@ -215,7 +218,7 @@ public class CorkboardService {
                 if (board.getOwnerId() == null || !board.getOwnerId().equals(userId)) {
                     log.warn("個人コルクボード閲覧権限なし: boardId={}, userId={}, ownerId={}",
                             boardId, userId, board.getOwnerId());
-                    throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
+                    throw new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND);
                 }
             }
             case "TEAM", "ORGANIZATION" -> {
@@ -223,12 +226,12 @@ public class CorkboardService {
                 if (scopeId == null || !accessControlService.isMember(userId, scopeId, scopeType)) {
                     log.warn("共有コルクボード閲覧権限なし: boardId={}, userId={}, scope={}, scopeId={}",
                             boardId, userId, scopeType, scopeId);
-                    throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
+                    throw new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND);
                 }
             }
             default -> {
                 log.warn("未知のスコープタイプ: boardId={}, scopeType={}", boardId, scopeType);
-                throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
+                throw new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND);
             }
         }
         return buildDetailResponse(board, userId);
@@ -279,6 +282,8 @@ public class CorkboardService {
         if (!accessControlService.isAdminOrAbove(userId, board.getScopeId(), board.getScopeType())) {
             log.warn("コルクボード更新権限なし: boardId={}, userId={}, scope={}, scopeId={}",
                     boardId, userId, board.getScopeType(), board.getScopeId());
+            // 非メンバー（閲覧できない者）は Controller が先に通す CorkboardScopedBoardVisibilityGuard が
+            // 不在と同一の 404 で弾く（CMP-260820-1422・D-3T のため取引の外で判定）。ここに来るのはメンバーのみ。
             throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
         }
 
@@ -328,6 +333,8 @@ public class CorkboardService {
         if (!accessControlService.isAdminOrAbove(userId, board.getScopeId(), board.getScopeType())) {
             log.warn("コルクボード削除権限なし: boardId={}, userId={}, scope={}, scopeId={}",
                     boardId, userId, board.getScopeType(), board.getScopeId());
+            // 非メンバー（閲覧できない者）は Controller が先に通す CorkboardScopedBoardVisibilityGuard が
+            // 不在と同一の 404 で弾く（CMP-260820-1422・D-3T のため取引の外で判定）。ここに来るのはメンバーのみ。
             throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
         }
         board.softDelete();
