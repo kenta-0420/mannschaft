@@ -47,7 +47,14 @@ class VillageModeratorPredicateWideGuardTest {
     private static final Pattern ROLE_REFERENCE = Pattern.compile("\\b(HEADMAN|ELDER)\\b");
     private static final Pattern IDENTIFIER_BEFORE_PAREN = Pattern.compile("([A-Za-z_$][\\w$]*)\\s*$");
     private static final Pattern THROWS_TAIL = Pattern.compile("\\bthrows\\s+[\\w$.,\\s<>]+$");
-    private static final Pattern TYPE_BODY_PREFIX = Pattern.compile("\\b(record|new)\\s*$");
+    /**
+     * 識別子の直前がこれに一致すれば型の本体（record 宣言・匿名クラス生成）。
+     * {@code new pkg.sub.Foo() {...}} のような修飾名付きの匿名クラスも含める。
+     * ジェネリクス付き（{@code new pkg.Foo<Bar>() {...}}）は {@code (} の直前が {@code >} になり、
+     * そもそもメソッド名として抽出されない。
+     */
+    private static final Pattern TYPE_BODY_PREFIX = Pattern.compile(
+            "\\b(?:record|new(?:\\s+[A-Za-z_$][\\w$]*(?:\\s*\\.\\s*[A-Za-z_$][\\w$]*)*\\s*\\.)?)\\s*$");
     private static final Set<String> NON_METHOD_KEYWORDS = Set.of(
             "if", "for", "while", "switch", "catch", "synchronized", "try", "return", "new", "else", "do");
     /** 現 main で検出されるモデレーター判定メソッドの下限（11 ヘルパ＋本体の村長操作）。番人の空振り検出用。 */
@@ -184,6 +191,49 @@ class VillageModeratorPredicateWideGuardTest {
                 };
                 """.formatted(RAW));
         assertThat(violations(source)).containsExactly("Fixture.java#isModerator");
+    }
+
+    @Test
+    void 番人_修飾名付き匿名クラスの正当な会員判定_型名のModeratorに反応しない() {
+        String source = wrap("""
+                void schedule(UUID v, Long u) {
+                    Object a = new pkg.sub.ModeratorAdapter() {
+                        boolean isUserMember(UUID v, Long u) {
+                            return repo.%s(v, USER, u)
+                                    .filter(m -> m.getBannedAt() == null).isPresent();
+                        }
+                    };
+                    Object b = new pkg . ModeratorAdapter<String>() {
+                        boolean isUserMember(UUID v, Long u) {
+                            return repo.%s(v, USER, u)
+                                    .filter(m -> m.getBannedAt() == null).isPresent();
+                        }
+                    };
+                }
+                """.formatted(RAW, RAW));
+        List<String> names = extractMethods("Fixture.java", source).stream().map(Method::name).toList();
+        assertThat(names).doesNotContain("ModeratorAdapter");
+        assertThat(violations(source)).isEmpty();
+    }
+
+    @Test
+    void 番人_修飾名付き匿名クラス内のモデレーター判定の生述語_拒否する() {
+        String source = wrap("""
+                void schedule(UUID v, Long u) {
+                    Object a = new pkg.sub.Adapter() {
+                        void requireModerator(UUID v, Long u) {
+                            repo.%s(v, USER, u).orElseThrow();
+                        }
+                    };
+                    Object b = new pkg.Adapter<String>() {
+                        void ensureReviewer(UUID v, Long u) {
+                            repo.%s(v, USER, u).orElseThrow();
+                        }
+                    };
+                }
+                """.formatted(RAW, RAW));
+        assertThat(violations(source))
+                .containsExactly("Fixture.java#requireModerator", "Fixture.java#ensureReviewer");
     }
 
     @Test
