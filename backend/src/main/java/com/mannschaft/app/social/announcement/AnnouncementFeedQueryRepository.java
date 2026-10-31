@@ -317,6 +317,67 @@ public class AnnouncementFeedQueryRepository {
     }
 
     /**
+     * 組織告知一覧の読み進める位置（サーバが発行した継続トークンに結び付けて保存する値。{@code OrgAnnouncementFeedCursorStore}）。
+     * ページ取得時点の {@code (is_pinned, created_at, id)} をそのまま持つので、位置の行がその後に削除・ピン留め解除されても
+     * 同じ位置から再開できる。
+     *
+     * @param pinned    その行を取得したときの {@code is_pinned}
+     * @param createdAt その行の {@code created_at}
+     * @param feedId    その行の ID
+     */
+    public record OrgFeedPosition(boolean pinned, java.time.LocalDateTime createdAt, Long feedId) {
+
+        /** 取得した行から位置を作る。 */
+        public static OrgFeedPosition of(AnnouncementFeedEntity feed) {
+            return new OrgFeedPosition(Boolean.TRUE.equals(feed.getIsPinned()), feed.getCreatedAt(), feed.getId());
+        }
+    }
+
+    /**
+     * 組織告知一覧を、並び（{@code is_pinned DESC, created_at DESC, id DESC}）と一致するキーセットで 1 ページ取得する。
+     * 一覧の補充取得と外部のページ送りで、ピン留めの先頭群と通常群の境目で行を飛ばさないための取得（{@link #findByScope} は
+     * 並びが {@code is_pinned, created_at} なのにカーソル条件が {@code id} だけで、ピン留めがあると行を飛ばす）。
+     * 可視性・期限・元削除の条件は {@link #findByScope} と同じ定数に、<b>開始日時</b>
+     * （{@code starts_at} が未来の告知は、プレビューが 404 にするので一覧にも出さない）を足す。
+     *
+     * @param after 直前に読んだ最後の行の位置（先頭からは null）
+     */
+    public List<AnnouncementFeedEntity> findOrgScopePage(
+            Long orgId, Set<String> allowedVisibilities, OrgFeedPosition after, int limit) {
+        if (allowedVisibilities == null || allowedVisibilities.isEmpty() || limit <= 0) {
+            return List.of();
+        }
+        StringBuilder jpql = new StringBuilder("SELECT a FROM AnnouncementFeedEntity a\n")
+                .append(VISIBLE_IN_SCOPE_WHERE)
+                .append("  AND (a.startsAt IS NULL OR a.startsAt <= CURRENT_TIMESTAMP)\n");
+        if (after != null) {
+            if (after.pinned()) {
+                jpql.append("""
+                          AND (a.isPinned = false
+                               OR (a.isPinned = true
+                                   AND (a.createdAt < :afterCreatedAt
+                                        OR (a.createdAt = :afterCreatedAt AND a.id < :afterFeedId))))
+                        """);
+            } else {
+                jpql.append("""
+                          AND a.isPinned = false
+                          AND (a.createdAt < :afterCreatedAt
+                               OR (a.createdAt = :afterCreatedAt AND a.id < :afterFeedId))
+                        """);
+            }
+        }
+        jpql.append("ORDER BY a.isPinned DESC, a.createdAt DESC, a.id DESC");
+        TypedQuery<AnnouncementFeedEntity> query = em.createQuery(jpql.toString(), AnnouncementFeedEntity.class);
+        bindVisibleInScopeParameters(query, AnnouncementScopeType.ORGANIZATION, orgId, allowedVisibilities);
+        if (after != null) {
+            query.setParameter("afterCreatedAt", after.createdAt());
+            query.setParameter("afterFeedId", after.feedId());
+        }
+        query.setMaxResults(limit);
+        return query.getResultList();
+    }
+
+    /**
      * チームダッシュボード向けに、組織スコープのお知らせフィードを 1 ページ分、キーセットで取得する（F01.2.1 §8.2・§15）。
      *
      * <p><b>宛先の判定はしない</b>。表示するかどうかの正は {@code AnnouncementAudienceMatcher}（Java）であり、

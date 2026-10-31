@@ -143,6 +143,10 @@ ArchUnit 認可番人（`AuthzControllerGuardArchTest`）は、公開エンド�
 
 **なぜ「実機裏取り」を required 化しないか**: `e2e-real-smoke` は JAR ビルド〜Testcontainers 不要の実サーバー起動〜seed 投入までを含む重量ワークフローで、ネットワーク・起動タイミング等に起因する flaky 要因を認可とは無関係に持ち込みうる。real E2E（Playwright）を CI スモーク必須対象から除外したのと同じ理由（[project_real_admin_e2e_excluded_from_ci_smoke]）で、**認可回帰の機械的ゲートは既に `*ScopeContractIT` が「Compile & Test」内で担っている**ため、二重に required 化する必要がない。実機裏取りは「契約テストのモック/DI 境界では見えない、実際の HTTP レイヤーでの認可漏れ」を低頻度で捕捉する補助網として非 required のまま維持する。
 
+### 4.4 組織告知の一覧は宛先資格で絞る（一覧と本文の可否を一致） **【必須】**
+
+宛先（チームを選ぶ／グループ）を指定した組織告知は、**宛先外の人の一覧にタイトルを出さない**。元コンテンツ（ブログ・掲示板）の可視性で本文プレビューが 404 になる行も一覧に出さない。組織告知を非メンバーにも返しうる一覧経路は、ロール由来の可視性だけでなく、本文プレビュー・既読と同じ資格判定（`OrgAnnouncementAudienceAccess`。直属資格 Qd／宛先資格 Qa）と、元コンテンツの F00 一括評価（`OrgAnnouncementFeedReadability`）を通す。判定を別実装にしない（二重化は将来のずれの元）。取得行をまとめて判定し、SQL 本数は件数に比例させない。一覧の続き（`nextCursor`）に読めない告知の実在 ID を出さない・任意の告知 ID から位置を復元させないため、カーソルはサーバが発行する継続トークン（Valkey に利用者×組織で結び付けて保存）にし、無効なトークンは理由を区別せず同一の 400 にする。判定は `@Transactional` を持たない取りまとめ役（`OrgAnnouncementFeedQueryService`）が tx の外で行い、`@Transactional` のクラス・メソッドから呼ばない（`AnnouncementDelegatedAccessGuardArchTest` F04）。詳細: F02.6 §4 組織スコープ・F01.2.1 §8.2。
+
 ---
 
 ## 5. 本番移行チェックリスト（セキュリティ関連）

@@ -27,8 +27,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * F01.2.1 AC-H17 / §3.1・§10.1: 組織お知らせ一覧（送信履歴）が返す {@code targetAudience}（グループ名・チーム数）は、
  * チームグループを閲覧してよい者（組織 MEMBER 以上・SYSTEM_ADMIN。{@code GET /organizations/{slug}/team-groups} と同じ判定）にだけ返す。
  *
- * <p>組織お知らせ一覧は非メンバーにも PUBLIC 告知を返すため、告知自体は見えても、
- * 他組織の利用者にグループ構成を渡してはならない（Controller 経由で検証する）。</p>
+ * <p>グループ宛ての告知は宛先外の人（非メンバー・他組織・宛先グループに属さないチームの者）の一覧に出さない
+ * （一覧と本文の可否を一致。CMP-261011-0035）ので、グループ構成も渡らない（Controller 経由で検証する）。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
@@ -82,11 +82,18 @@ class AnnouncementFeedOrgTargetAudienceIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertUserRole(em, adminBId, "ADMIN", null, orgBId);
         MembershipTestHelper.insertUserRole(em, systemAdminId, "SYSTEM_ADMIN", null, null);
 
+        // 一覧は本文プレビューが開ける行だけを返すので、元のブログ記事は実在する公開記事にする（CMP-261011-0035）
+        var post = com.mannschaft.app.cms.entity.BlogPostEntity.builder().organizationId(orgAId).authorId(adminAId)
+                .title("AUD 記事").slug("aud-post-" + java.util.UUID.randomUUID()).body("AUD 本文")
+                .visibility(com.mannschaft.app.cms.Visibility.PUBLIC)
+                .status(com.mannschaft.app.cms.PostStatus.PUBLISHED)
+                .postType(com.mannschaft.app.cms.PostType.BLOG).build();
+        em.persist(post);
         feedRepository.save(AnnouncementFeedEntity.builder()
                 .scopeType(AnnouncementScopeType.ORGANIZATION)
                 .scopeId(orgAId)
                 .sourceType(AnnouncementSourceType.BLOG_POST)
-                .sourceId(2001L)
+                .sourceId(post.getId())
                 .titleCache("AUD グループ宛て")
                 .visibility(AnnouncementVisibility.PUBLIC)
                 .targetAudience(AUDIENCE_JSON)
@@ -95,11 +102,21 @@ class AnnouncementFeedOrgTargetAudienceIT extends AbstractMySqlIntegrationTest {
         em.clear();
     }
 
+    /**
+     * グループ宛ての告知は宛先外の人（他組織・無所属・グループに属さないチームの者）の一覧に出ない
+     * （一覧と本文の可否を一致。CMP-261011-0035）。出ないのでグループ構成も渡らない。
+     */
+    private void listHiddenFrom(Long userId) throws Exception {
+        setAuth(userId);
+        mockMvc.perform(get("/api/v1/organizations/{orgId}/announcements", orgAId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isEmpty());
+    }
+
     private void listAs(Long userId, boolean expectAudience) throws Exception {
         setAuth(userId);
         var result = mockMvc.perform(get("/api/v1/organizations/{orgId}/announcements", orgAId))
                 .andExpect(status().isOk())
-                // 告知自体は PUBLIC なので誰にでも見える
                 .andExpect(jsonPath("$.data[0].titleCache").value("AUD グループ宛て"));
         if (expectAudience) {
             result.andExpect(jsonPath("$.data[0].targetAudience.teamCount").value(12))
@@ -128,21 +145,21 @@ class AnnouncementFeedOrgTargetAudienceIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @DisplayName("配下チームだけの所属者（組織の閲覧権限なし）には返らない")
+    @DisplayName("配下チームだけの所属者（組織の閲覧権限なし・宛先グループ外）の一覧にはグループ宛て告知自体が出ない")
     void childTeamOnlyMember() throws Exception {
-        listAs(childMemberAId, false);
+        listHiddenFrom(childMemberAId);
     }
 
     @Test
-    @DisplayName("非メンバーには返らない（PUBLIC 告知は見えるがグループ構成は渡さない）")
+    @DisplayName("非メンバーの一覧にはグループ宛て告知自体が出ない（グループ構成も渡らない）")
     void outsider() throws Exception {
-        listAs(outsiderId, false);
+        listHiddenFrom(outsiderId);
     }
 
     @Test
-    @DisplayName("他組織の ADMIN には返らない")
+    @DisplayName("他組織の ADMIN の一覧にもグループ宛て告知自体が出ない")
     void otherOrgAdmin() throws Exception {
-        listAs(adminBId, false);
+        listHiddenFrom(adminBId);
     }
 
     private void setAuth(Long userId) {

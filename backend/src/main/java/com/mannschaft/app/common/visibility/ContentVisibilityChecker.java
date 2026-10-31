@@ -212,6 +212,26 @@ public class ContentVisibilityChecker {
     }
 
     /**
+     * {@link #filterAccessible} の委任版。所有スコープでの閲覧者の役割を委任役割（"MEMBER" / "SUPPORTER"）に差し替えて
+     * 同一 reference_type をまとめて判定する（組織告知の一覧が、プレビューの委任経路と同じ可否を一括で判定するため）。
+     *
+     * <p>呼び出しは組織告知の一覧の正規経路（{@code social.announcement}）に限る
+     * （{@code AnnouncementDelegatedAccessGuardArchTest} F02）。未対応 type・Abstract 派生でない Resolver は fail-closed で空 Set。</p>
+     */
+    public Set<Long> filterAccessibleDelegated(
+            ReferenceType type, Collection<Long> ids, Long userId, String delegatedRole) {
+        ContentVisibilityResolver<?> resolver = resolverMap.get(type);
+        if (resolver == null) {
+            recordUnsupported(type);
+            return Set.of();
+        }
+        if (!(resolver instanceof AbstractContentVisibilityResolver<?, ?> abstractResolver)) {
+            return Set.of();
+        }
+        return abstractResolver.filterAccessibleDelegated(ids, userId, delegatedRole);
+    }
+
+    /**
      * 複数 reference_type の混在バッチ判定。
      *
      * <p>コルクボード等で複数種別の参照を一画面で表示する際に用いる。
