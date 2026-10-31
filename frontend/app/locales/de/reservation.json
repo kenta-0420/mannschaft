@@ -18,12 +18,14 @@
       "end_time": "Endzeit",
       "target_period": "Zielzeitraum",
       "subject": "Betreff",
+      "reason": "Schließungsgrund",
       "body": "Nachrichtentext",
       "cancel_reservations": "Betroffene Reservierungen stornieren"
     },
     "placeholder": {
       "select": "Bitte auswählen",
       "subject": "Betreff eingeben",
+      "reason": "Grund der Schließung eingeben",
       "body": "Nachrichtentext eingeben"
     },
     "hint": {
@@ -75,7 +77,8 @@
       "confirm_message": "Massenbenachrichtigung mit folgenden Details senden?",
       "cancel_warning": "※ Betroffene Reservierungen werden storniert",
       "label_period": "Zielzeitraum",
-      "label_subject": "Betreff"
+      "label_subject": "Betreff",
+      "label_reason": "Grund"
     },
     "error": {
       "time_range_required": "Bitte Start- und Endzeit auswählen",
@@ -84,6 +87,8 @@
       "preview_failed": "Vorschau konnte nicht geladen werden",
       "subject_required": "Bitte einen Betreff eingeben",
       "body_required": "Bitte einen Nachrichtentext eingeben",
+      "reason_required": "Bitte geben Sie den Grund der Schließung ein",
+      "history_failed": "Der Sendeverlauf konnte nicht geladen werden. Bitte neu laden.",
       "send_failed": "Versand fehlgeschlagen",
       "confirmations_failed": "Bestätigungsstatus konnte nicht geladen werden",
       "info_missing": "Benachrichtigungsinformationen fehlen"

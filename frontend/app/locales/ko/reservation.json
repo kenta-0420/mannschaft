@@ -18,12 +18,14 @@
       "end_time": "종료 시간",
       "target_period": "대상 기간",
       "subject": "제목",
+      "reason": "휴업 사유",
       "body": "본문",
       "cancel_reservations": "대상 예약 취소"
     },
     "placeholder": {
       "select": "선택해 주세요",
       "subject": "제목을 입력해 주세요",
+      "reason": "휴업 사유를 입력해 주세요",
       "body": "본문을 입력해 주세요"
     },
     "hint": {
@@ -75,7 +77,8 @@
       "confirm_message": "다음 내용으로 일괄 전송하시겠습니까?",
       "cancel_warning": "※ 대상 예약이 취소됩니다",
       "label_period": "대상 기간",
-      "label_subject": "제목"
+      "label_subject": "제목",
+      "label_reason": "휴업 사유"
     },
     "error": {
       "time_range_required": "시작 시간과 종료 시간을 선택해 주세요",
@@ -84,6 +87,8 @@
       "preview_failed": "미리보기 불러오기 실패",
       "subject_required": "제목을 입력해 주세요",
       "body_required": "본문을 입력해 주세요",
+      "reason_required": "휴업 사유를 입력해 주세요",
+      "history_failed": "발송 이력을 불러오지 못했습니다. 다시 불러와 주세요",
       "send_failed": "전송에 실패했습니다",
       "confirmations_failed": "확인 현황 불러오기 실패",
       "info_missing": "알림 정보가 누락되었습니다"
