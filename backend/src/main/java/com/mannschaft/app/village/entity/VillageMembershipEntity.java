@@ -49,6 +49,10 @@ public class VillageMembershipEntity extends UuidV7Entity {
     @Column(name = "subject_id", nullable = false)
     private Long subjectId;
 
+    /** USER現役在籍の1..100枠。TEAM/ORGはNULL、退村履歴は保持可。 */
+    @Column(name = "user_slot", columnDefinition = "smallint")
+    private Short userSlot;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 20)
     private VillageRole role;

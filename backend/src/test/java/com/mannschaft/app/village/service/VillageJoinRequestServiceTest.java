@@ -1,5 +1,6 @@
 package com.mannschaft.app.village.service;
 
+import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.village.VillageErrorCode;
@@ -23,8 +24,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import jakarta.persistence.EntityManager;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -67,6 +68,11 @@ import static org.mockito.Mockito.verifyNoInteractions;
 class VillageJoinRequestServiceTest {
 
     @Mock
+    private UserRowLockService userRowLockService;
+    @Mock
+    private EntityManager entityManager;
+
+    @Mock
     private VillageJoinRequestRepository joinRequestRepository;
     @Mock
     private VillageRepository villageRepository;
@@ -79,8 +85,15 @@ class VillageJoinRequestServiceTest {
     @Mock
     private VillageAccessGate accessGate;
 
-    @InjectMocks
     private VillageJoinRequestService service;
+
+    @BeforeEach
+    void wireRealAdmissionSlots() {
+        org.mockito.Mockito.lenient().when(userRowLockService.lock(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(UserRowLockService.UserState.ACTIVE);
+        VillageMembershipSlotService slots = new VillageMembershipSlotService(userRowLockService, membershipRepository);
+        service = new VillageJoinRequestService(joinRequestRepository, membershipRepository, slots, entityManager, membershipService, accessGate);
+    }
 
     /**
      * 村サービスの村存在確認は {@link VillageAccessGate} へ移った。
@@ -299,11 +312,13 @@ class VillageJoinRequestServiceTest {
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(USER_ID)))
                 .willReturn(Optional.of(reviewer));
         // 申請ロード
-        given(joinRequestRepository.findById(requestId)).willReturn(Optional.of(pending));
+        given(joinRequestRepository.findAdmissionSubject(VILLAGE_ID, requestId))
+                .willReturn(Optional.of(VillageMembershipSlotTestFixture.subject(pending.getSubjectType(), pending.getSubjectId())));
+        given(joinRequestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(pending));
         // 重複ガード（申請主体が既にメンバーでないこと）
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(OTHER_USER_ID)))
-                .willReturn(Optional.empty());
+        given(membershipRepository.findAdmissionPresenceForUpdate(
+                eq(VILLAGE_ID), eq("USER"), eq(OTHER_USER_ID)))
+                .willReturn(List.of());
         given(membershipRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(joinRequestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
@@ -343,10 +358,12 @@ class VillageJoinRequestServiceTest {
         given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(USER_ID)))
                 .willReturn(Optional.of(reviewer));
-        given(joinRequestRepository.findById(requestId)).willReturn(Optional.of(pending));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(OTHER_USER_ID)))
-                .willReturn(Optional.of(membership(VillageRole.VILLAGER, OTHER_USER_ID)));
+        given(joinRequestRepository.findAdmissionSubject(VILLAGE_ID, requestId))
+                .willReturn(Optional.of(VillageMembershipSlotTestFixture.subject(pending.getSubjectType(), pending.getSubjectId())));
+        given(joinRequestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(pending));
+        given(membershipRepository.findAdmissionPresenceForUpdate(
+                eq(VILLAGE_ID), eq("USER"), eq(OTHER_USER_ID)))
+                .willReturn(List.of(VillageMembershipSlotTestFixture.presence(false)));
 
         assertThatThrownBy(() -> service.approve(
                 VILLAGE_ID, requestId, USER_ID, new JoinRequestReviewRequest(null)))
@@ -411,7 +428,7 @@ class VillageJoinRequestServiceTest {
         ReflectionTestUtils.setField(pending, "id", requestId);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(approvalVillage()));
-        given(joinRequestRepository.findById(requestId)).willReturn(Optional.of(pending));
+        given(joinRequestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(pending));
         given(joinRequestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         JoinRequestResponse res = service.withdraw(VILLAGE_ID, requestId, USER_ID);
@@ -436,7 +453,7 @@ class VillageJoinRequestServiceTest {
         ReflectionTestUtils.setField(pending, "id", requestId);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(approvalVillage()));
-        given(joinRequestRepository.findById(requestId)).willReturn(Optional.of(pending));
+        given(joinRequestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(pending));
 
         assertThatThrownBy(() -> service.withdraw(VILLAGE_ID, requestId, OTHER_USER_ID))
                 .isInstanceOf(BusinessException.class)

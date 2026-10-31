@@ -21,6 +21,30 @@ import java.util.UUID;
  */
 public interface VillageMembershipRepository extends JpaRepository<VillageMembershipEntity, UUID> {
 
+    /** USER根を同じTXで取得した後、BANを含む全村の占有枠を現在値で取得する。 */
+    @Query(value = "SELECT user_slot AS userSlot FROM village_memberships "
+            + "WHERE subject_type = 'USER' AND subject_id = :userId AND left_at IS NULL "
+            + "ORDER BY user_slot FOR UPDATE", nativeQuery = true)
+    List<AdmissionSlotRow> findAdmissionSlotsForUpdate(@Param("userId") Long userId);
+
+    /** 固定のscalar projection。EntityのL1 snapshotを容量判定へ流用しない。 */
+    interface AdmissionSlotRow {
+        Short getUserSlot();
+    }
+
+    /** 同村在籍とBANをcurrent readで区別する。nullを不存在へ丸めない。 */
+    @Query(value = "SELECT CASE WHEN banned_at IS NULL THEN 0 ELSE 1 END AS bannedFlag "
+            + "FROM village_memberships WHERE village_id = :villageId "
+            + "AND subject_type = :subjectType AND subject_id = :subjectId "
+            + "AND left_at IS NULL FOR UPDATE", nativeQuery = true)
+    List<AdmissionPresenceRow> findAdmissionPresenceForUpdate(
+            @Param("villageId") UUID villageId, @Param("subjectType") String subjectType,
+            @Param("subjectId") Long subjectId);
+
+    interface AdmissionPresenceRow {
+        Integer getBannedFlag();
+    }
+
     /**
      * 在籍メンバーシップ（leftAt IS NULL）を主体で取得。
      *
