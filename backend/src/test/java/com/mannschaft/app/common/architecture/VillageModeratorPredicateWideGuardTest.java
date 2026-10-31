@@ -47,14 +47,6 @@ class VillageModeratorPredicateWideGuardTest {
     private static final Pattern ROLE_REFERENCE = Pattern.compile("\\b(HEADMAN|ELDER)\\b");
     private static final Pattern IDENTIFIER_BEFORE_PAREN = Pattern.compile("([A-Za-z_$][\\w$]*)\\s*$");
     private static final Pattern THROWS_TAIL = Pattern.compile("\\bthrows\\s+[\\w$.,\\s<>]+$");
-    /**
-     * 識別子の直前がこれに一致すれば型の本体（record 宣言・匿名クラス生成）。
-     * {@code new pkg.sub.Foo() {...}} のような修飾名付きの匿名クラスも含める。
-     * ジェネリクス付き（{@code new pkg.Foo<Bar>() {...}}）は {@code (} の直前が {@code >} になり、
-     * そもそもメソッド名として抽出されない。
-     */
-    private static final Pattern TYPE_BODY_PREFIX = Pattern.compile(
-            "\\b(?:record|new(?:\\s+[A-Za-z_$][\\w$]*(?:\\s*\\.\\s*[A-Za-z_$][\\w$]*)*\\s*\\.)?)\\s*$");
     private static final Set<String> NON_METHOD_KEYWORDS = Set.of(
             "if", "for", "while", "switch", "catch", "synchronized", "try", "return", "new", "else", "do");
     /** 現 main で検出されるモデレーター判定メソッドの下限（11 ヘルパ＋本体の村長操作）。番人の空振り検出用。 */
@@ -214,6 +206,51 @@ class VillageModeratorPredicateWideGuardTest {
         List<String> names = extractMethods("Fixture.java", source).stream().map(Method::name).toList();
         assertThat(names).doesNotContain("ModeratorAdapter");
         assertThat(violations(source)).isEmpty();
+    }
+
+    @Test
+    void 番人_型注釈付き匿名クラスの正当な会員判定_型名をメソッド扱いしない() {
+        assertNegativeAnonymous("new pkg.@A ModeratorAdapter()");
+    }
+
+    @Test
+    void 番人_コンストラクタ型引数付き匿名クラスの正当な会員判定_型名をメソッド扱いしない() {
+        assertNegativeAnonymous("new <String> pkg.ModeratorAdapter()");
+    }
+
+    @Test
+    void 番人_型注釈とコンストラクタ型引数を併用した匿名クラスの正当な会員判定_型名をメソッド扱いしない() {
+        assertNegativeAnonymous("new <String, List<Long>> pkg . sub.@A(value = \"(x)\") @B ModeratorAdapter()");
+    }
+
+    private static void assertNegativeAnonymous(String creation) {
+        String source = wrap("""
+                void schedule(UUID v, Long u) {
+                    Object a = %s {
+                        boolean isUserMember(UUID v, Long u) {
+                            return repo.%s(v, USER, u)
+                                    .filter(m -> m.getBannedAt() == null).isPresent();
+                        }
+                    };
+                }
+                """.formatted(creation, RAW));
+        List<String> names = extractMethods("Fixture.java", source).stream().map(Method::name).toList();
+        assertThat(names).as(creation).doesNotContain("ModeratorAdapter").contains("schedule", "isUserMember");
+        assertThat(violations(source)).as(creation).isEmpty();
+    }
+
+    @Test
+    void 番人_型注釈付き匿名クラス内のモデレーター判定の生述語_拒否する() {
+        String source = wrap("""
+                void schedule(UUID v, Long u) {
+                    Object a = new <String> pkg.@A(x = 1) Adapter() {
+                        void requireHeadmanOrElder(UUID v, Long u) {
+                            repo.%s(v, USER, u).orElseThrow();
+                        }
+                    };
+                }
+                """.formatted(RAW));
+        assertThat(violations(source)).containsExactly("Fixture.java#requireHeadmanOrElder");
     }
 
     @Test
@@ -448,8 +485,49 @@ class VillageModeratorPredicateWideGuardTest {
         int before = id.start() - 1;
         if (before >= 0 && head.charAt(before) == '@') return null;
         // record Inner(...) { と new Foo(...) { は型の本体であってメソッドではない。
-        if (TYPE_BODY_PREFIX.matcher(head.substring(0, id.start())).find()) return null;
+        if (isTypeBodyHeader(head, id.start())) return null;
         return name;
+    }
+
+    /**
+     * {@code (} の直前の識別子（位置 {@code identStart}）から左へ、型の名前を構成しうる要素
+     * （識別子・{@code .}・型注釈 {@code @X} とその引数 {@code (...)}・型引数 {@code <...>}・
+     * 配列 {@code []}・空白）を読み飛ばし、最初に行き当たったキーワードで判定する。
+     * {@code new} ならコンストラクタ呼び出し（匿名クラス本体）、{@code record} なら record 宣言の本体。
+     * 型名の書き方（修飾名・型注釈・コンストラクタ型引数の任意の組合せ）に依らず同じ判定になる。
+     * メソッド宣言では、戻り値型や修飾子を読み進めた末に {@code ;} {@code }} {@code {} などで止まり false になる。
+     */
+    static boolean isTypeBodyHeader(String s, int identStart) {
+        int k = identStart - 1;
+        while (k >= 0) {
+            char ch = s.charAt(k);
+            if (Character.isWhitespace(ch) || ch == '.' || ch == '@' || ch == '[' || ch == ']') {
+                k--;
+            } else if (ch == '>') {
+                k = skipBalancedBackward(s, k, '<', '>');
+            } else if (ch == ')') {
+                k = skipBalancedBackward(s, k, '(', ')');
+            } else if (Character.isJavaIdentifierPart(ch)) {
+                int end = k + 1;
+                while (k >= 0 && Character.isJavaIdentifierPart(s.charAt(k))) k--;
+                String word = s.substring(k + 1, end);
+                if (word.equals("new") || word.equals("record")) return true;
+            } else {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    /** 位置 {@code close} の閉じ記号に対応する開き記号の1つ手前の位置を返す（見つからなければ -1）。 */
+    private static int skipBalancedBackward(String s, int close, char openCh, char closeCh) {
+        int depth = 0;
+        for (int k = close; k >= 0; k--) {
+            char ch = s.charAt(k);
+            if (ch == closeCh) depth++;
+            else if (ch == openCh && --depth == 0) return k - 1;
+        }
+        return -1;
     }
 
     private static int matchingBrace(String s, int open) {
