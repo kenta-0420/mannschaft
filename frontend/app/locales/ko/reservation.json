@@ -11,6 +11,7 @@
       "confirmations": "확인 현황"
     },
     "label": {
+      "unknown_user": "알 수 없는 사용자",
       "start_date": "시작일",
       "end_date": "종료일",
       "partial_time": "당일 일부 시간대만 휴업",

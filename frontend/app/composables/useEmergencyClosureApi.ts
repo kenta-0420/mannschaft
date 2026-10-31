@@ -5,7 +5,8 @@
 export interface ClosurePreviewItem {
   reservationId: number
   userId: number
-  userDisplayName: string
+  /** 氏名（姓 名）。ユーザーが見つからない場合は空文字。 */
+  userFullName: string
   userEmail: string
   /** "yyyy-MM-dd" */
   slotDate: string
@@ -79,7 +80,8 @@ export interface ClosureHistoryResponse {
 
 export interface ClosureConfirmationItem {
   userId: number
-  userDisplayName: string
+  /** 氏名（姓 名）。ユーザーが見つからない場合は空文字。 */
+  userFullName: string
   userEmail: string
   appointmentAt: string
   confirmed: boolean

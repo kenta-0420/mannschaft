@@ -255,9 +255,20 @@ public class EmergencyClosureService {
                 .filter(c -> c.getTeamId().equals(teamId))
                 .orElseThrow(() -> new BusinessException(ReservationErrorCode.CLOSURE_NOT_FOUND));
 
-        return confirmationRepository.findByEmergencyClosureId(closureId).stream()
+        List<EmergencyClosureConfirmationEntity> confirmations =
+                confirmationRepository.findByEmergencyClosureId(closureId);
+        // N+1 回避: 対象ユーザーを1回で取得する（退会者は @SQLRestriction で取れず、氏名・メールは "" で返す）
+        // （ArchUnit 凍結ストアのシグネチャを変えないため、ヘルパーに切り出さずこのメソッド内で取得する）
+        List<Long> userIds = confirmations.stream()
+                .map(EmergencyClosureConfirmationEntity::getUserId).distinct().collect(Collectors.toList());
+        Map<Long, UserEntity> userMap = userIds.isEmpty()
+                ? Map.of()
+                : userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(UserEntity::getId, java.util.function.Function.identity(), (a, b) -> a));
+
+        return confirmations.stream()
                 .map(c -> {
-                    UserEntity user = userRepository.findById(c.getUserId()).orElse(null);
+                    UserEntity user = userMap.get(c.getUserId());
                     return EmergencyClosureConfirmationResponse.builder()
                             .userId(c.getUserId())
                             .userFullName(user != null ? user.getLastName() + " " + user.getFirstName() : "")
@@ -361,10 +372,17 @@ public class EmergencyClosureService {
         Map<Long, ReservationSlotEntity> slotMap = slotRepository.findAllById(slotIds).stream()
                 .collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
 
+        // N+1 回避: 対象ユーザーを1回で取得する（見つからないユーザーは氏名・メール "" のまま行を残す）
+        // （ArchUnit 凍結ストアのシグネチャを変えないため、ヘルパーに切り出さずこのメソッド内で取得する）
+        List<Long> userIds = reservations.stream()
+                .map(ReservationEntity::getUserId).distinct().collect(Collectors.toList());
+        Map<Long, UserEntity> userMap = userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(UserEntity::getId, java.util.function.Function.identity(), (a, b) -> a));
+
         List<EmergencyClosurePreviewResponse.AffectedReservation> result = new ArrayList<>();
         for (ReservationEntity reservation : reservations) {
             ReservationSlotEntity slot = slotMap.get(reservation.getReservationSlotId());
-            UserEntity user = userRepository.findById(reservation.getUserId()).orElse(null);
+            UserEntity user = userMap.get(reservation.getUserId());
 
             String fullName = user != null ? user.getLastName() + " " + user.getFirstName() : "";
             String email = user != null ? user.getEmail() : "";

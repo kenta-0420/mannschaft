@@ -11,6 +11,7 @@
       "confirmations": "确认状态"
     },
     "label": {
+      "unknown_user": "未知用户",
       "start_date": "开始日期",
       "end_date": "结束日期",
       "partial_time": "仅在当天部分时段内休业",

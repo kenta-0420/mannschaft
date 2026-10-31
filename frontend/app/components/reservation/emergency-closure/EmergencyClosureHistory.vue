@@ -127,7 +127,7 @@ const { formatDateTime } = useDatetime()
                         :key="conf.userId"
                         class="border-b border-surface-100 last:border-0 dark:border-surface-700"
                       >
-                        <td class="py-1 pr-4">{{ conf.userDisplayName }}</td>
+                        <td class="py-1 pr-4">{{ conf.userFullName || $t('emergency_closure.label.unknown_user') }}</td>
                         <td class="py-1 pr-4 text-surface-500">
                           {{ formatDateTime(conf.appointmentAt) }}
                         </td>

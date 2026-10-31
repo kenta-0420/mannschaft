@@ -11,6 +11,7 @@
       "confirmations": "確認状況"
     },
     "label": {
+      "unknown_user": "不明なユーザー",
       "start_date": "開始日",
       "end_date": "終了日",
       "partial_time": "一日のうち一部の時間帯のみ休業する",
