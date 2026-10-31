@@ -7,11 +7,12 @@ import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.corkboard.repository.CorkboardCardRepository;
 import com.mannschaft.app.corkboard.repository.CorkboardGroupRepository;
 import com.mannschaft.app.corkboard.repository.CorkboardRepository;
-import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.role.repository.RoleRepository;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
-import com.mannschaft.app.support.test.MembershipTestHelper;
 import com.mannschaft.app.team.repository.TeamRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -66,7 +67,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * メンバーは当該ボードを一覧・詳細で既に閲覧できるため、403 を返しても新たに漏れる存在情報はない。</p>
  *
  * <p>実JWT・実Securityフィルタ・実MySQL で検査する（TEST_CONVENTION §3.1.2。認可を検査するため
- * {@code addFilters=false} を使わない）。fixture は Repository 経由で独立 commit し、所有行だけを後始末する。
+ * {@code addFilters=false} を使わない）。fixture は {@link CorkboardTestFixture} ＋ Repository 経由（所属・権限ロール・roles も含む）で独立 commit し、所有行だけを後始末する。
  * 拒否された要求の DB 不変は、所有ボード・カード・セクションの全列スナップショット（{@code deleted_at} 含む）の
  * 前後一致で確かめる。</p>
  *
@@ -93,12 +94,18 @@ class CorkboardExistenceOracleContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private CorkboardRepository boards;
     @Autowired private CorkboardCardRepository cards;
     @Autowired private CorkboardGroupRepository groups;
+    @Autowired private MembershipRepository memberships;
+    @Autowired private UserRoleRepository userRoles;
+    @Autowired private RoleRepository roles;
     @PersistenceContext private EntityManager em;
 
     private final List<Long> userIds = new ArrayList<>();
     private final List<Long> teamIds = new ArrayList<>();
     private final List<Long> orgIds = new ArrayList<>();
     private final List<Long> boardIds = new ArrayList<>();
+    private final List<Long> membershipIds = new ArrayList<>();
+    private final List<Long> userRoleIds = new ArrayList<>();
+    private final List<Long> createdRoleIds = new ArrayList<>();
 
     private Long teamAId;
     private Long orgOId;
@@ -133,13 +140,15 @@ class CorkboardExistenceOracleContractIT extends AbstractMySqlIntegrationTest {
             orgPMemberId = saveUser("org-p");
             outsiderId = saveUser("outsider");
 
-            MembershipTestHelper.insertUserRole(em, adminAId, "ADMIN", teamAId, null);
-            MembershipTestHelper.insertMembership(em, adminAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
-            MembershipTestHelper.insertUserRole(em, adminBId, "ADMIN", teamBId, null);
-            MembershipTestHelper.insertMembership(em, adminBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
-            MembershipTestHelper.insertMembership(em, memberAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
-            MembershipTestHelper.insertMembership(em, orgOMemberId, ScopeType.ORGANIZATION, orgOId, RoleKind.MEMBER);
-            MembershipTestHelper.insertMembership(em, orgPMemberId, ScopeType.ORGANIZATION, orgPId, RoleKind.MEMBER);
+            Long adminRoleId = ensureRole("ADMIN");
+            ensureRole("MEMBER");
+            saveUserRole(adminAId, adminRoleId, teamAId);
+            saveMembership(adminAId, ScopeType.TEAM, teamAId);
+            saveUserRole(adminBId, adminRoleId, teamBId);
+            saveMembership(adminBId, ScopeType.TEAM, teamBId);
+            saveMembership(memberAId, ScopeType.TEAM, teamAId);
+            saveMembership(orgOMemberId, ScopeType.ORGANIZATION, orgOId);
+            saveMembership(orgPMemberId, ScopeType.ORGANIZATION, orgPId);
 
             teamBoardId = saveBoard(CorkboardTestFixture.scopedBoard("TEAM", teamAId, "ADMIN_ONLY"));
             teamAllMembersBoardId = saveBoard(CorkboardTestFixture.scopedBoard("TEAM", teamAId, "ALL_MEMBERS"));
@@ -162,8 +171,10 @@ class CorkboardExistenceOracleContractIT extends AbstractMySqlIntegrationTest {
                     named("DELETE FROM corkboard_groups WHERE corkboard_id IN (:ids)", boardIds);
                     named("DELETE FROM corkboards WHERE id IN (:ids)", boardIds);
                 }
-                named("DELETE FROM memberships WHERE user_id IN (:ids)", userIds);
-                named("DELETE FROM user_roles WHERE user_id IN (:ids)", userIds);
+                memberships.deleteAllById(membershipIds);
+                userRoles.deleteAllById(userRoleIds);
+                em.flush();
+                roles.deleteAllById(createdRoleIds);
                 teams.deleteAllById(teamIds);
                 organizations.deleteAllById(orgIds);
                 em.flush();
@@ -452,6 +463,22 @@ class CorkboardExistenceOracleContractIT extends AbstractMySqlIntegrationTest {
         Long id = users.save(CorkboardTestFixture.user(label)).getId();
         userIds.add(id);
         return id;
+    }
+
+    private Long ensureRole(String name) {
+        return roles.findByName(name).map(role -> role.getId()).orElseGet(() -> {
+            Long id = roles.save(CorkboardTestFixture.role(name)).getId();
+            createdRoleIds.add(id);
+            return id;
+        });
+    }
+
+    private void saveMembership(Long userId, ScopeType scopeType, Long scopeId) {
+        membershipIds.add(memberships.save(CorkboardTestFixture.membership(userId, scopeType, scopeId)).getId());
+    }
+
+    private void saveUserRole(Long userId, Long roleId, Long teamId) {
+        userRoleIds.add(userRoles.save(CorkboardTestFixture.userRole(userId, roleId, teamId, null)).getId());
     }
 
     private Long saveTeam(String name) {

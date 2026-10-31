@@ -1,10 +1,16 @@
 package com.mannschaft.app.corkboard;
 
 import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.common.visibility.RolePriority;
 import com.mannschaft.app.corkboard.entity.CorkboardCardEntity;
 import com.mannschaft.app.corkboard.entity.CorkboardEntity;
 import com.mannschaft.app.corkboard.entity.CorkboardGroupEntity;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.role.entity.RoleEntity;
+import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.team.entity.TeamEntity;
 
 import java.util.UUID;
@@ -70,6 +76,30 @@ final class CorkboardTestFixture {
     static CorkboardGroupEntity group(Long boardId) {
         return CorkboardGroupEntity.builder()
                 .corkboardId(boardId).name("コルク契約セクション")
+                .build();
+    }
+
+    /** アクティブな所属（memberships 行）。所属は memberships で表現する（user_roles に MEMBER を張らない）。 */
+    static MembershipEntity membership(Long userId, ScopeType scopeType, Long scopeId) {
+        return MembershipEntity.builder()
+                .userId(userId).scopeType(scopeType).scopeId(scopeId).roleKind(RoleKind.MEMBER)
+                .build();
+    }
+
+    /** 権限ロール割当（user_roles 行）。チーム権限なら organizationId は null。 */
+    static UserRoleEntity userRole(Long userId, Long roleId, Long teamId, Long organizationId) {
+        return UserRoleEntity.builder()
+                .userId(userId).roleId(roleId).teamId(teamId).organizationId(organizationId)
+                .build();
+    }
+
+    /**
+     * roles 行（統合テストは Flyway 無効で seed が無いため、未投入時だけ保存する）。
+     * priority は本番 seed と同じ正準表 {@link RolePriority} から採る。
+     */
+    static RoleEntity role(String name) {
+        return RoleEntity.builder()
+                .name(name).displayName(name).priority(RolePriority.priority(name)).isSystem(false)
                 .build();
     }
 }
