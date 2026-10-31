@@ -93,8 +93,7 @@ public class VillageMembershipSlotService {
         StringBuilder detail = new StringBuilder();
         for (Throwable cause = error; cause != null && detail.length() < 4096; cause = cause.getCause()) {
             if (cause.getMessage() != null) {
-                detail.append(cause.getMessage()).append('
-');
+                detail.append(cause.getMessage()).append(' ');
             }
             if (cause.getCause() == cause) {
                 break;
