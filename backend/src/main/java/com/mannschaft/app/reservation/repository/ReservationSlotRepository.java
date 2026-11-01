@@ -33,6 +33,14 @@ public interface ReservationSlotRepository extends JpaRepository<ReservationSlot
             + "AND s.deletedAt IS NULL ORDER BY s.id ASC")
     List<ReservationSlotEntity> findPendingExpireSlotsForUpdate(@Param("ids") Collection<Long> ids);
 
+    /**
+     * CMP-260822-1730 AC-1730-6 / 検分 r3 P2: 複数枠を更新する前に <b>id 昇順</b>で行ロックを取る。
+     * 失効バッチ（{@link #findPendingExpireSlotsForUpdate}）と同じ取得順にそろえ、枠ロックの循環を作らない。
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM ReservationSlotEntity s WHERE s.id IN :ids ORDER BY s.id ASC")
+    List<ReservationSlotEntity> findByIdInForUpdate(@Param("ids") Collection<Long> ids);
+
     /** endDate を含む業務日範囲検索（日跨ぎ枠を slotDate だけで落とさない）。 */
     @Query("SELECT s FROM ReservationSlotEntity s WHERE s.teamId = :teamId "
             + "AND s.slotDate <= :to AND s.endDate >= :from AND s.deletedAt IS NULL")

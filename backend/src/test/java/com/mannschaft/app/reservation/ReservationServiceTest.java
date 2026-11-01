@@ -1153,8 +1153,9 @@ class ReservationServiceTest {
         @Test
         @DisplayName("正常系: 予約を完了にする")
         void 予約完了_正常() {
-            // Given
+            // Given（F03.4 §3: 来店完了は CONFIRMED からのみ）
             ReservationEntity entity = createReservationEntity();
+            entity.confirm();
             ReservationResponse response = createReservationResponse();
             given(reservationRepository.findByIdAndTeamIdForUpdate(RESERVATION_ID, TEAM_ID))
                     .willReturn(Optional.of(entity));
@@ -1167,6 +1168,35 @@ class ReservationServiceTest {
             // Then
             assertThat(result).isNotNull();
             verify(reservationRepository).save(entity);
+        }
+
+        @Test
+        @DisplayName("AC-1730-6 検分r3: 行ロック後に失効済み(CANCELLED)なら完了にせず INVALID_RESERVATION_STATUS")
+        void 予約完了_失効済みは状態不正() {
+            ReservationEntity entity = createReservationEntity();
+            entity.cancel("失効", com.mannschaft.app.reservation.CancelledBy.SYSTEM);
+            given(reservationRepository.findByIdAndTeamIdForUpdate(RESERVATION_ID, TEAM_ID))
+                    .willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> service.completeReservation(TEAM_ID, RESERVATION_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.INVALID_RESERVATION_STATUS);
+            assertThat(entity.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+            then(reservationRepository).should(org.mockito.Mockito.never()).save(entity);
+        }
+
+        @Test
+        @DisplayName("AC-1730-6 検分r3: PENDING（未承認）は完了にできない")
+        void 予約完了_PENDINGは状態不正() {
+            ReservationEntity entity = createReservationEntity();
+            given(reservationRepository.findByIdAndTeamIdForUpdate(RESERVATION_ID, TEAM_ID))
+                    .willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> service.completeReservation(TEAM_ID, RESERVATION_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.INVALID_RESERVATION_STATUS);
         }
     }
 
@@ -1181,8 +1211,9 @@ class ReservationServiceTest {
         @Test
         @DisplayName("正常系: ノーショーとしてマークする")
         void ノーショー_正常() {
-            // Given
+            // Given（F03.4 §3: ノーショーは CONFIRMED からのみ）
             ReservationEntity entity = createReservationEntity();
+            entity.confirm();
             ReservationResponse response = createReservationResponse();
             given(reservationRepository.findByIdAndTeamIdForUpdate(RESERVATION_ID, TEAM_ID))
                     .willReturn(Optional.of(entity));
@@ -1195,6 +1226,21 @@ class ReservationServiceTest {
             // Then
             assertThat(result).isNotNull();
             verify(reservationRepository).save(entity);
+        }
+
+        @Test
+        @DisplayName("AC-1730-6 検分r3: 行ロック後に失効済み(CANCELLED)ならノーショーにせず INVALID_RESERVATION_STATUS")
+        void ノーショー_失効済みは状態不正() {
+            ReservationEntity entity = createReservationEntity();
+            entity.cancel("失効", com.mannschaft.app.reservation.CancelledBy.SYSTEM);
+            given(reservationRepository.findByIdAndTeamIdForUpdate(RESERVATION_ID, TEAM_ID))
+                    .willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> service.markNoShow(TEAM_ID, RESERVATION_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.INVALID_RESERVATION_STATUS);
+            assertThat(entity.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
         }
     }
 
@@ -1261,6 +1307,49 @@ class ReservationServiceTest {
             verify(slotService).decrementAndReopen(oldSlot);
             then(slotService).should(org.mockito.Mockito.never()).incrementAndCheckFull(any());
             then(reservationRepository).should(org.mockito.Mockito.never()).save(entity);
+        }
+
+        @Test
+        @DisplayName("AC-1730-6 検分r3: 行ロック後に失効済み(CANCELLED)ならリスケせず、旧枠も減算しない")
+        void リスケジュール_失効済みは状態不正で旧枠を減算しない() {
+            RescheduleRequest request = new RescheduleRequest(NEW_SLOT_ID);
+            ReservationEntity entity = createReservationEntity();
+            entity.cancel("失効", com.mannschaft.app.reservation.CancelledBy.SYSTEM);
+            given(reservationRepository.findByIdAndTeamIdForUpdate(RESERVATION_ID, TEAM_ID))
+                    .willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> service.rescheduleReservation(TEAM_ID, RESERVATION_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.INVALID_RESERVATION_STATUS);
+            assertThat(entity.getStatus()).as("PENDING に戻さない").isEqualTo(ReservationStatus.CANCELLED);
+            then(slotService).should(org.mockito.Mockito.never()).decrementAndReopen(any());
+            then(slotService).should(org.mockito.Mockito.never()).incrementAndCheckFull(any());
+        }
+
+        @Test
+        @DisplayName("AC-1730-6 検分r3: リスケは旧枠・新枠を枠ID昇順で先に行ロックする")
+        void リスケジュール_枠をID昇順で先にロックする() {
+            RescheduleRequest request = new RescheduleRequest(5L);
+            ReservationEntity entity = createReservationEntity();
+            ReservationSlotEntity oldSlot = createAvailableSlotEntity();
+            ReservationSlotEntity newSlot = createAvailableSlotEntity();
+            given(reservationRepository.findByIdAndTeamIdForUpdate(RESERVATION_ID, TEAM_ID))
+                    .willReturn(Optional.of(entity));
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(oldSlot);
+            given(slotService.getSlotEntity(TEAM_ID, 5L)).willReturn(newSlot);
+            given(reservationRepository.save(entity)).willReturn(entity);
+            given(reservationMapper.toReservationResponse(entity)).willReturn(createReservationResponse());
+
+            service.rescheduleReservation(TEAM_ID, RESERVATION_ID, request);
+
+            @SuppressWarnings("unchecked")
+            org.mockito.ArgumentCaptor<java.util.Collection<Long>> ids =
+                    org.mockito.ArgumentCaptor.forClass(java.util.Collection.class);
+            org.mockito.InOrder order = org.mockito.Mockito.inOrder(slotRepository, slotService);
+            order.verify(slotRepository).findByIdInForUpdate(ids.capture());
+            order.verify(slotService).decrementAndReopen(oldSlot);
+            assertThat(ids.getValue()).containsExactly(Math.min(SLOT_ID, 5L), Math.max(SLOT_ID, 5L));
         }
 
         @Test

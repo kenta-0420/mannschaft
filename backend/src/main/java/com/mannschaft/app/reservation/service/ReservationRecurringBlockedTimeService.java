@@ -406,6 +406,7 @@ public class ReservationRecurringBlockedTimeService {
         }
         reservationRepository.saveAll(toCancel);
 
+        List<ReservationSlotEntity> slotsToReopen = new ArrayList<>();
         for (ReservationEntity row : toCancel) {
             ReservationSlotEntity slot = slotById.get(row.getReservationSlotId());
             if (slot == null) {
@@ -414,9 +415,11 @@ public class ReservationRecurringBlockedTimeService {
                         row.getId(), row.getReservationSlotId());
                 continue;
             }
-            // 枠復帰は decrementAndReopen を必ず経由する（§6.1 キャンセル待ち通知の唯一の統合点）。
-            slotService.decrementAndReopen(slot);
+            slotsToReopen.add(slot);
         }
+        // 枠復帰は decrementAndReopen を必ず経由する（§6.1 キャンセル待ち通知の唯一の統合点）。
+        // 枠 ID 昇順で減算する（AC-1730-6 / 検分 r3 P2・失効バッチと枠ロックの取得順を揃える）。
+        SlotLockOrder.byIdAsc(slotsToReopen).forEach(slotService::decrementAndReopen);
 
         // 予約を消して黙っているのは許されない。AFTER_COMMIT で申込者へ通知する
         // （ロールバックされた登録では通知が飛ばない）。

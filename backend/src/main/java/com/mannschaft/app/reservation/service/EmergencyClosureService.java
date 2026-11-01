@@ -125,13 +125,14 @@ public class EmergencyClosureService {
 
         // 予約キャンセル処理
         if (request.isCancelReservations()) {
+            List<ReservationSlotEntity> slotsToReopen = new java.util.ArrayList<>();
             for (ReservationEntity reservation : activeReservations) {
                 reservation.cancel("臨時休業のためキャンセル", CancelledBy.ADMIN);
                 reservationRepository.save(reservation);
-
-                ReservationSlotEntity slot = slotService.getSlotEntity(reservation.getReservationSlotId());
-                slotService.decrementAndReopen(slot);
+                slotsToReopen.add(slotService.getSlotEntity(reservation.getReservationSlotId()));
             }
+            // 枠 ID 昇順で減算する（AC-1730-6 / 検分 r3 P2・失効バッチと枠ロックの取得順を揃える）。
+            SlotLockOrder.byIdAsc(slotsToReopen).forEach(slotService::decrementAndReopen);
             log.info("臨時休業: 予約キャンセル完了 teamId={}, 件数={}", teamId, activeReservations.size());
         }
 

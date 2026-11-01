@@ -592,7 +592,8 @@ public class ReservationService {
         if (!toSave.isEmpty()) {
             reservationRepository.saveAll(toSave);
             // 枠復帰は decrementAndReopen を必ず経由する（§6.1 キャンセル待ち通知の唯一の統合点）。
-            slotsToReopen.forEach(slotService::decrementAndReopen);
+            // 枠 ID 昇順で減算する（AC-1730-6 / 検分 r3 P2・失効バッチと枠ロックの取得順を揃える）。
+            SlotLockOrder.byIdAsc(slotsToReopen).forEach(slotService::decrementAndReopen);
         }
 
         // 会員キャンセル通知は「起点回が実際にキャンセルされたとき」だけ従来どおり 1 回発行する
@@ -733,6 +734,8 @@ public class ReservationService {
     public ReservationResponse completeReservation(Long teamId, Long reservationId) {
         ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
+        // AC-1730-6 / 検分 r3 P1: 行ロック後の最新状態で遷移元を検査する（失効・取消済みを上書きしない）。
+        assertTransitionAllowed(entity.isAttendanceRecordable());
         entity.complete();
         ReservationEntity saved = reservationRepository.save(entity);
         log.info("予約完了: teamId={}, reservationId={}", teamId, reservationId);
@@ -750,6 +753,8 @@ public class ReservationService {
     public ReservationResponse markNoShow(Long teamId, Long reservationId) {
         ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
+        // AC-1730-6 / 検分 r3 P1: 行ロック後の最新状態で遷移元を検査する（失効・取消済みを上書きしない）。
+        assertTransitionAllowed(entity.isAttendanceRecordable());
         entity.noShow();
         ReservationEntity saved = reservationRepository.save(entity);
         log.info("予約ノーショー: teamId={}, reservationId={}", teamId, reservationId);
@@ -768,6 +773,13 @@ public class ReservationService {
     public ReservationResponse rescheduleReservation(Long teamId, Long reservationId, RescheduleRequest request) {
         ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
+        // AC-1730-6 / 検分 r3 P1: 行ロック後の最新状態で遷移元を検査してから旧枠を減算する。
+        // 失効バッチが先に取消・枠減算を commit した予約を受け入れると、旧枠を二重減算し PENDING へ戻してしまう。
+        assertTransitionAllowed(entity.isReschedulable());
+
+        // AC-1730-6 / 検分 r3 P2: 旧枠（減算）と新枠（加算）の行ロックを枠 ID 昇順で先に取る。
+        // 旧枠→新枠の呼び出し順のまま更新すると、失効バッチ（ORDER BY id）や逆向きのリスケと循環しうる。
+        lockSlotsInIdOrder(entity.getReservationSlotId(), request.getNewSlotId());
 
         // oldSlot: entity は findReservationOrThrow で既に teamId 検証済みのため、その reservationSlotId は
         // 自チームの枠であることが保証されている（teamId スコープ不要）。
@@ -950,6 +962,27 @@ public class ReservationService {
      */
     public void assertReservationInTeam(Long teamId, Long reservationId) {
         findReservationOrThrow(teamId, reservationId);
+    }
+
+    /** 行ロック後の状態で遷移元を検査する。許されない遷移は既存の {@code INVALID_RESERVATION_STATUS}（400）。 */
+    private static void assertTransitionAllowed(boolean allowed) {
+        if (!allowed) {
+            throw new BusinessException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
+        }
+    }
+
+    /** リスケで触る 2 枠を枠 ID 昇順で行ロックする（null・同一枠は除く）。 */
+    private void lockSlotsInIdOrder(Long oldSlotId, Long newSlotId) {
+        java.util.TreeSet<Long> ids = new java.util.TreeSet<>();
+        if (oldSlotId != null) {
+            ids.add(oldSlotId);
+        }
+        if (newSlotId != null) {
+            ids.add(newSlotId);
+        }
+        if (!ids.isEmpty()) {
+            slotRepository.findByIdInForUpdate(ids);
+        }
     }
 
     /**

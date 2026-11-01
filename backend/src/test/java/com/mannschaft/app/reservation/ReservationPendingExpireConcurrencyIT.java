@@ -6,6 +6,7 @@ import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.reservation.dto.CancelReservationRequest;
 import com.mannschaft.app.reservation.dto.CreateEmergencyClosureRequest;
 import com.mannschaft.app.reservation.dto.CreateRecurringBlockedTimeRequest;
+import com.mannschaft.app.reservation.dto.RescheduleRequest;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationPendingExpireScanStateEntity;
 import com.mannschaft.app.reservation.entity.ReservationPolicyEntity;
@@ -15,6 +16,7 @@ import com.mannschaft.app.reservation.repository.ReservationPolicyRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import com.mannschaft.app.reservation.service.EmergencyClosureService;
+import com.mannschaft.app.reservation.service.ReservationGroupService;
 import com.mannschaft.app.reservation.service.ReservationPendingExpireBatchService;
 import com.mannschaft.app.reservation.service.ReservationPendingExpireService;
 import com.mannschaft.app.reservation.service.ReservationRecurringBlockedTimeService;
@@ -94,6 +96,7 @@ class ReservationPendingExpireConcurrencyIT extends AbstractMySqlIntegrationTest
     @Autowired private ReservationService reservationService;
     @Autowired private EmergencyClosureService emergencyClosureService;
     @Autowired private ReservationRecurringBlockedTimeService blockedTimeService;
+    @Autowired private ReservationGroupService groupService;
     @Autowired private ReservationSlotService slotService;
     @Autowired private NotificationDispatchService notificationDispatch;
     @Autowired private ReservationRepository reservations;
@@ -113,6 +116,8 @@ class ReservationPendingExpireConcurrencyIT extends AbstractMySqlIntegrationTest
     private Clock originalClock;
     private Object blockedTimeTarget;
     private Clock originalBlockedTimeClock;
+    private Object groupTarget;
+    private Clock originalGroupClock;
     private UUID stateId;
 
     @BeforeEach
@@ -126,6 +131,11 @@ class ReservationPendingExpireConcurrencyIT extends AbstractMySqlIntegrationTest
         originalBlockedTimeClock = (Clock) ReflectionTestUtils.getField(blockedTimeTarget, "clock");
         assertThat(originalBlockedTimeClock).isNotNull();
         ReflectionTestUtils.setField(blockedTimeTarget, "clock", Clock.fixed(NOW, ZoneOffset.UTC));
+        // グループ本人取消の締切判定も同じ基準時刻で行わせる（枠ロック順序の試練用）。
+        groupTarget = AopTestUtils.getUltimateTargetObject(groupService);
+        originalGroupClock = (Clock) ReflectionTestUtils.getField(groupTarget, "clock");
+        assertThat(originalGroupClock).isNotNull();
+        ReflectionTestUtils.setField(groupTarget, "clock", Clock.fixed(NOW, ZoneOffset.UTC));
         assertThat(expireService.findExpirableUnits()).as("前提: 他試練の失効候補が残っていない").isEmpty();
         assertThat(states.count()).as("他runnerの進捗を上書きしない").isZero();
         stateId = states.saveAndFlush(ReservationPendingExpireTestFixture.minimumValidState(NOW)).getId();
@@ -141,6 +151,9 @@ class ReservationPendingExpireConcurrencyIT extends AbstractMySqlIntegrationTest
         }
         if (originalBlockedTimeClock != null) {
             ReflectionTestUtils.setField(blockedTimeTarget, "clock", originalBlockedTimeClock);
+        }
+        if (originalGroupClock != null) {
+            ReflectionTestUtils.setField(groupTarget, "clock", originalGroupClock);
         }
         Awaitility.await().atMost(Duration.ofSeconds(30)).until(() ->
                 eventPool.getActiveCount() == 0 && eventPool.getThreadPoolExecutor().getQueue().isEmpty());
@@ -477,6 +490,115 @@ class ReservationPendingExpireConcurrencyIT extends AbstractMySqlIntegrationTest
             assertThat(b).as(round + " Bは直列化された後勝ちの結果だけを持つ")
                     .isIn(ReservationStatus.CONFIRMED, ReservationStatus.CANCELLED);
         }
+    }
+
+    @Test
+    @DisplayName("AC1730-6h: バッチが行ロック中にリスケが来ても、リスケは状態不正で負け、旧枠の減算は失効の1回だけでCANCELLEDのまま")
+    void 失効後のリスケは旧枠を二重減算しない() throws Exception {
+        Long team = team();
+        ReservationSlotEntity oldSlot = slot(team, 2);
+        ReservationSlotEntity newSlot = slot(team, LocalDate.of(2000, 8, 13), 0);
+        ReservationEntity pending = pending(team, oldSlot);
+        BatchHold hold = holdBatchInsideUnit();
+
+        Future<?> reschedule = workers.submit(() -> reservationService.rescheduleReservation(
+                team, pending.getId(), new RescheduleRequest(newSlot.getId())));
+        Awaitility.await().during(Duration.ofMillis(500)).atMost(Duration.ofSeconds(5))
+                .until(() -> !reschedule.isDone());
+        hold.release().countDown();
+
+        assertThat(hold.run().get(60, TimeUnit.SECONDS)).isEqualTo(1);
+        assertThatThrownBy(() -> reschedule.get(60, TimeUnit.SECONDS))
+                .hasCauseInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e.getCause()).getErrorCode())
+                        .isEqualTo(ReservationErrorCode.INVALID_RESERVATION_STATUS));
+        ReservationEntity after = reload(pending);
+        assertSoftly(soft -> {
+            soft.assertThat(after.getStatus()).as("失効の CANCELLED のまま（PENDING に戻さない）")
+                    .isEqualTo(ReservationStatus.CANCELLED);
+            soft.assertThat(after.getReservationSlotId()).as("新枠へ移さない").isEqualTo(oldSlot.getId());
+            soft.assertThat(reload(oldSlot).getBookedCount()).as("旧枠の減算は失効の1回だけ").isEqualTo(1);
+            soft.assertThat(reload(newSlot).getBookedCount()).as("新枠は加算しない").isZero();
+            soft.assertThat(expiredNotifications(pending.getUserId())).isEqualTo(1);
+        });
+    }
+
+    @Test
+    @DisplayName("AC1730-6i: 開始時刻順とID順が逆の2枠で、グループ取消と失効バッチが重なっても枠ロックが循環せず両方成功する")
+    void グループ取消と失効バッチは枠ロック順が一致しデッドロックしない() throws Exception {
+        Long team = team();
+        // 先に作る枠（ID が小さい）の開始を遅くし、ID 順と開始時刻順を逆にする。
+        ReservationSlotEntity lowIdLate = slots.saveAndFlush(ReservationSlotEntity.builder().teamId(team)
+                .title("CMP1730遅い枠").slotDate(LocalDate.of(2000, 8, 12)).endDate(LocalDate.of(2000, 8, 12))
+                .startTime(LocalTime.of(15, 0)).endTime(LocalTime.of(15, 30))
+                .capacity(3).bookedCount(2).slotStatus(SlotStatus.AVAILABLE).build());
+        ReservationSlotEntity highIdEarly = slots.saveAndFlush(ReservationSlotEntity.builder().teamId(team)
+                .title("CMP1730早い枠").slotDate(LocalDate.of(2000, 8, 12)).endDate(LocalDate.of(2000, 8, 12))
+                .startTime(LocalTime.of(10, 0)).endTime(LocalTime.of(10, 30))
+                .capacity(3).bookedCount(2).slotStatus(SlotStatus.AVAILABLE).build());
+        assertThat(lowIdLate.getId()).isLessThan(highIdEarly.getId());
+        // 取消されるグループ（本人・確定済み）と、失効するグループ（期限切れ PENDING）が同じ2枠を使う。
+        Long owner = USERS.incrementAndGet();
+        ownedUsers.add(owner);
+        UUID cancelGroupId = UUID.randomUUID();
+        ReservationEntity cancelPrimary = groupRow(team, owner, highIdEarly, cancelGroupId, true,
+                ReservationStatus.CONFIRMED, NOW);
+        ReservationEntity cancelSibling = groupRow(team, owner, lowIdLate, cancelGroupId, false,
+                ReservationStatus.CONFIRMED, NOW);
+        Long expiring = USERS.incrementAndGet();
+        ownedUsers.add(expiring);
+        UUID expireGroupId = UUID.randomUUID();
+        ReservationEntity expirePrimary = groupRow(team, expiring, lowIdLate, expireGroupId, true,
+                ReservationStatus.PENDING, NOW.minusSeconds(25 * 3600L));
+        ReservationEntity expireSibling = groupRow(team, expiring, highIdEarly, expireGroupId, false,
+                ReservationStatus.PENDING, NOW.minusSeconds(25 * 3600L));
+
+        // 取消側が最初の枠を減算した直後（その枠の行ロックを保持したまま）で、バッチが枠ロック待ちに入るまで止める。
+        // 旧実装（開始時刻順）では取消側が ID の大きい枠を、バッチが ID の小さい枠を保持して互いを待つ循環になる。
+        Thread[] cancelThread = new Thread[1];
+        CountDownLatch firstDecremented = new CountDownLatch(1);
+        CountDownLatch resume = new CountDownLatch(1);
+        advise(slotService, "decrementAndReopen", invocation -> {
+            Object result = invocation.proceed();
+            if (Thread.currentThread() == cancelThread[0] && firstDecremented.getCount() > 0) {
+                firstDecremented.countDown();
+                assertThat(resume.await(60, TimeUnit.SECONDS)).as("試練側の再開待ち").isTrue();
+            }
+            return result;
+        });
+        Future<?> cancel = workers.submit(() -> {
+            cancelThread[0] = Thread.currentThread();
+            groupService.cancelGroup(team, cancelGroupId, owner, "CMP1730取消");
+        });
+        assertThat(firstDecremented.await(60, TimeUnit.SECONDS)).as("取消側が最初の枠を減算した").isTrue();
+        Future<Integer> batchRun = workers.submit(() -> batch.expirePendingReservations());
+        Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> lockWaits() >= 1 || batchRun.isDone());
+        resume.countDown();
+
+        cancel.get(60, TimeUnit.SECONDS);
+        assertThat(batchRun.get(60, TimeUnit.SECONDS)).as("失効 unit がデッドロックで巻き戻されない").isEqualTo(1);
+        assertSoftly(soft -> {
+            for (ReservationEntity row : List.of(cancelPrimary, cancelSibling, expirePrimary, expireSibling)) {
+                soft.assertThat(reload(row).getStatus()).as("row " + row.getId())
+                        .isEqualTo(ReservationStatus.CANCELLED);
+            }
+            soft.assertThat(reload(lowIdLate).getBookedCount()).as("取消と失効で1回ずつ減算").isZero();
+            soft.assertThat(reload(highIdEarly).getBookedCount()).as("取消と失効で1回ずつ減算").isZero();
+            soft.assertThat(expiredNotifications(expiring)).isEqualTo(1);
+        });
+    }
+
+    private ReservationEntity groupRow(Long team, Long user, ReservationSlotEntity slot, UUID groupId,
+                                       boolean primary, ReservationStatus status, Instant bookedAt) {
+        return reservations.saveAndFlush(ReservationEntity.builder().teamId(team).userId(user).lineId(1L)
+                .reservationSlotId(slot.getId()).status(status)
+                .bookedAt(LocalDateTime.ofInstant(bookedAt, UserZoneLocalDateTimeParser.SERVER_ZONE))
+                .groupId(groupId).isGroupPrimary(primary).build());
+    }
+
+    private long lockWaits() {
+        return jdbc.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.innodb_trx WHERE trx_state = 'LOCK WAIT'", Long.class);
     }
 
     /** 失効バッチを、予約行ロック保持・取消と枠減算を終えた commit 前の地点で止める。 */

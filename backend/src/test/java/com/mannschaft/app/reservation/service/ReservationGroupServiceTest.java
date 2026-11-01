@@ -844,7 +844,11 @@ class ReservationGroupServiceTest {
             assertThat(rows.get(0).getCancelledBy()).isEqualTo(CancelledBy.USER);
 
             // booked_count 復帰は既存 decrementAndReopen（throw しない void）を枠数ぶん流用（§5.1）
-            verify(slotService, times(2)).decrementAndReopen(any(ReservationSlotEntity.class));
+            org.mockito.ArgumentCaptor<ReservationSlotEntity> decremented =
+                    org.mockito.ArgumentCaptor.forClass(ReservationSlotEntity.class);
+            verify(slotService, times(2)).decrementAndReopen(decremented.capture());
+            // AC-1730-6 検分r3 P2: 失効バッチ（ORDER BY id）と枠ロックの取得順を揃えるため枠 ID 昇順で減算する
+            assertThat(decremented.getAllValues()).extracting(ReservationSlotEntity::getId).isSorted();
             // 未送信リマインドのみ CANCELLED 化（SENT は不変・§5.4）
             assertThat(pendingReminder.getStatus()).isEqualTo(ReminderStatus.CANCELLED);
             assertThat(sentReminder.getStatus()).isEqualTo(ReminderStatus.SENT);

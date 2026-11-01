@@ -402,8 +402,10 @@ public class ReservationGroupService {
         rows.forEach(r -> r.cancel(cancelReason, cancelledBy));
         reservationRepository.saveAll(rows);
 
-        // 全枠の booked_count 復帰（既存 decrementAndReopen = throw しない void を流用・§5.1）
-        slots.forEach(slotService::decrementAndReopen);
+        // 全枠の booked_count 復帰（既存 decrementAndReopen = throw しない void を流用・§5.1）。
+        // 枠 ID 昇順で減算する（AC-1730-6 / 検分 r3 P2: 失効バッチの ORDER BY id と取得順を揃え、
+        // 開始時刻順のまま減算して同じ 2 枠を逆順に待ち合う循環を作らない）。
+        SlotLockOrder.byIdAsc(slots).forEach(slotService::decrementAndReopen);
 
         // 未送信リマインドの CANCELLED 化（代表行由来のリマインドのみ存在する・§5.5）
         List<ReservationReminderEntity> reminders =
