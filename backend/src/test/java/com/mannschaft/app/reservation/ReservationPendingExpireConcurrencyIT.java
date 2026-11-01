@@ -579,7 +579,7 @@ class ReservationPendingExpireConcurrencyIT extends AbstractMySqlIntegrationTest
         resume.countDown();
 
         cancel.get(60, TimeUnit.SECONDS);
-        assertThat(batchRun.get(60, TimeUnit.SECONDS)).as("失効 unit がデッドロックで巻き戻されない").isEqualTo(1);
+        assertThat(batchRun.get(60, TimeUnit.SECONDS)).as("失効 unit（グループ2行）がデッドロックで巻き戻されない").isEqualTo(2);
         assertSoftly(soft -> {
             for (ReservationEntity row : List.of(cancelPrimary, cancelSibling, expirePrimary, expireSibling)) {
                 soft.assertThat(reload(row).getStatus()).as("row " + row.getId())
