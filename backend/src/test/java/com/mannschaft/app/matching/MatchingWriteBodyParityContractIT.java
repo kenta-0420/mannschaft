@@ -376,7 +376,7 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
     private MvcResult call(Op op, Long actor, long id) throws Exception {
         assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
         var builder = request(op.method, op.path.replace("{team}", Long.toString(proposingTeam)).replace("{id}", Long.toString(id))).header("Accept-Language", "ja");
-        if (op == Op.REQUEST_UPDATE) {
+        if (op.method == HttpMethod.PUT) {
             builder.contentType(MediaType.APPLICATION_JSON).content(
                     "{\"title\":\"改題\",\"activityType\":\"" + ActivityType.values()[0].name() + "\",\"prefectureCode\":\"13\"}");
         } else if (op.method == HttpMethod.PATCH || op.method == HttpMethod.POST) {
