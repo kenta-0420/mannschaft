@@ -12,6 +12,9 @@ import org.springframework.stereotype.Component;
  * フレンド関係（team_friends）の書込前に通す「閲覧可否の門」（CMP-260821-1027 存在オラクルの本文正規化）。
  *
  * <h2>保証する内容</h2>
+ * <p>一覧と本部品の閲覧資格は、本クラスの {@link #listsPublicOnly} を唯一の部品として共有する
+ * （フレンド一覧 {@code TeamFriendsController#listFriends} も同メソッドで SUPPORTER の公開限定を決める）。</p>
+ *
  * <p>フレンド関係を閲覧できない者には、不在の関係IDと同一の {@link SocialErrorCode#FRIEND_RELATION_NOT_FOUND}
  * （SOCIAL_106・404・同一本文）を返して実在を秘匿する。閲覧資格はフレンド一覧
  * （{@code GET /teams/{id}/friends}・{@link TeamFriendQueryService#listFriends}）と同じで、関係の片方のチームに
@@ -64,11 +67,26 @@ public class TeamFriendViewAccessGuard {
         throw new BusinessException(SocialErrorCode.FRIEND_RELATION_NOT_FOUND);
     }
 
+    /**
+     * フレンド一覧で、閲覧者が公開済み（{@code is_public=TRUE}）の関係だけに限られるか（SUPPORTER のみの者）を返す。
+     *
+     * <p>フレンド一覧（{@code GET /teams/{id}/friends}）と本部品の書込前判定が共有する唯一の規則
+     * （CMP-260821-1027）。一覧の所属判定そのものは {@link TeamFriendQueryService#listFriends} の
+     * {@link AccessControlService#checkMembership} が行い、本部品は同じ {@link AccessControlService#isMember} を使う。</p>
+     *
+     * @param userId 閲覧者ユーザーID
+     * @param teamId 一覧のチームID
+     * @return SUPPORTER のみの場合 true（公開済みの関係だけが見える）
+     */
+    public boolean listsPublicOnly(Long userId, Long teamId) {
+        return ROLE_SUPPORTER.equals(accessControlService.getRoleName(userId, teamId, SCOPE_TEAM));
+    }
+
     /** 一覧と同じ規則: 所属者のみ。SUPPORTER のみの者は公開済みの関係に限る。 */
     private boolean canSeeFrom(Long teamId, boolean isPublic, Long userId) {
         if (!accessControlService.isMember(userId, teamId, SCOPE_TEAM)) {
             return false;
         }
-        return isPublic || !ROLE_SUPPORTER.equals(accessControlService.getRoleName(userId, teamId, SCOPE_TEAM));
+        return isPublic || !listsPublicOnly(userId, teamId);
     }
 }

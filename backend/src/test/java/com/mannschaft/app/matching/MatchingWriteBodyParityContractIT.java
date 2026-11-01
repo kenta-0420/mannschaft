@@ -209,6 +209,10 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
                     em.createNativeQuery("DELETE FROM ng_teams WHERE team_id IN (:ids) OR blocked_team_id IN (:ids)")
                             .setParameter("ids", teamIds).executeUpdate();
                 }
+                if (!proposalIds.isEmpty()) {
+                    em.createNativeQuery("DELETE FROM match_reviews WHERE proposal_id IN (:ids)")
+                            .setParameter("ids", proposalIds).executeUpdate();
+                }
                 proposals.deleteAllById(proposalIds);
                 if (!requestIds.isEmpty()) {
                     em.createNativeQuery("DELETE FROM match_requests WHERE id IN (:ids)")
@@ -276,6 +280,81 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
             assertThat(error(result).path("code").asText()).as("%s", op).isEqualTo("MATCHING_001");
             assertThat(snapshot()).as("%s", op).isEqualTo(before);
         }
+    }
+
+    @Test
+    @DisplayName("レビュー投稿: 非閲覧者は親募集の有無を問わず不在応募と完全一致し、閲覧者（募集TEAMのMEMBER）は従来の MATCHING_014、DBは不変")
+    void レビュー投稿の越境と不在の本文一致() throws Exception {
+        List<String> diffs = new ArrayList<>();
+        for (boolean parentDeleted : List.of(false, true)) {
+            long proposalId = acceptedProposal(parentDeleted);
+            for (Actor actor : outsiders) {
+                boolean viewer = actor.id().equals(requestingMember) && !parentDeleted;
+                Snapshot before = snapshot();
+                long reviewsBefore = reviewCount();
+                MvcResult missing = review(actor.id(), MISSING);
+                MvcResult existing = review(actor.id(), proposalId);
+                assertThat(missing.getResponse().getStatus()).isEqualTo(404);
+                assertThat(error(missing).path("code").asText()).isEqualTo("MATCHING_002");
+                if (viewer) {
+                    if (!"MATCHING_014".equals(error(existing).path("code").asText())) {
+                        diffs.add("親削除=" + parentDeleted + "/" + actor.name() + ": 閲覧者の診断が MATCHING_014 でない: "
+                                + existing.getResponse().getStatus() + " " + error(existing));
+                    }
+                } else if (existing.getResponse().getStatus() != missing.getResponse().getStatus()
+                        || !error(existing).equals(error(missing))) {
+                    diffs.add("親削除=" + parentDeleted + "/" + actor.name() + ": 越境=" + existing.getResponse().getStatus()
+                            + " " + error(existing) + " 不在=" + error(missing));
+                }
+                assertThat(snapshot()).isEqualTo(before);
+                assertThat(reviewCount()).isEqualTo(reviewsBefore);
+            }
+        }
+        assertThat(diffs).as("レビュー投稿で越境と不在が割れている、または閲覧者の診断が失われた").isEmpty();
+    }
+
+    @Test
+    @DisplayName("レビュー投稿: 親募集が削除済みの応募を応募TEAMのADMINが投稿すると従来の親不在診断 MATCHING_001、正常系は201")
+    void レビュー投稿の閲覧者の診断と正常系() throws Exception {
+        MvcResult deletedParent = review(proposingAdmin, acceptedProposal(true));
+        assertThat(error(deletedParent).path("code").asText()).isEqualTo("MATCHING_001");
+        MvcResult ok = review(proposingAdmin, acceptedProposal(false));
+        assertThat(ok.getResponse().getStatus()).as(ok.getResponse().getContentAsString(StandardCharsets.UTF_8))
+                .isEqualTo(201);
+    }
+
+    private long acceptedProposal(boolean parentDeleted) {
+        return tx(() -> {
+            MatchRequestEntity parent = requests.save(MatchRequestEntity.builder().teamId(requestingTeam)
+                    .title("レビュー契約").activityType(ActivityType.values()[0]).prefectureCode("13")
+                    .status(MatchRequestStatus.MATCHED).build());
+            requestIds.add(parent.getId());
+            MatchProposalEntity proposal = proposals.save(MatchProposalEntity.builder().requestId(parent.getId())
+                    .proposingTeamId(proposingTeam).status(MatchProposalStatus.ACCEPTED).build());
+            proposalIds.add(proposal.getId());
+            em.flush();
+            if (parentDeleted) {
+                parent.softDelete();
+                requests.save(parent);
+            }
+            return proposal.getId();
+        });
+    }
+
+    private MvcResult review(Long actor, long proposalId) throws Exception {
+        assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+        var builder = request(HttpMethod.POST, "/api/v1/matching/reviews").header("Accept-Language", "ja")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"proposalId\":" + proposalId + ",\"rating\":5,\"comment\":\"良い試合\",\"isPublic\":true}");
+        if (actor != null) { builder.header("Authorization", "Bearer " + tokens.issueAccessToken(actor, List.of("USER"))); }
+        try { return mvc.perform(builder).andReturn(); }
+        finally { SecurityContextHolder.clearContext(); }
+    }
+
+    private long reviewCount() {
+        return tx(() -> ((Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM match_reviews WHERE proposal_id IN (:ids)")
+                .setParameter("ids", proposalIds.isEmpty() ? List.of(-1L) : proposalIds).getSingleResult()).longValue());
     }
 
     /** 閲覧資格に応じた期待。 */

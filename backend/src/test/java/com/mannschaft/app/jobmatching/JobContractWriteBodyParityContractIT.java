@@ -103,6 +103,7 @@ class JobContractWriteBodyParityContractIT extends AbstractMySqlIntegrationTest 
     @Autowired private ObjectMapper mapper;
     @Autowired private AuthTokenService tokens;
     @Autowired private PlatformTransactionManager transactions;
+    @Autowired private javax.sql.DataSource dataSource;
     @Autowired private UserRepository users;
     @Autowired private TeamRepository teams;
     @Autowired private JobPostingRepository postings;
@@ -272,6 +273,80 @@ class JobContractWriteBodyParityContractIT extends AbstractMySqlIntegrationTest 
             assertThat(json(result).path("error").path("code").asText()).as("%s", op).isEqualTo("JOB_PERMISSION_DENIED");
             assertThat(snapshot()).as("%s", op).isEqualTo(before);
         }
+    }
+
+    @Test
+    @DisplayName("AC-1027-T1-6: QRチェックイン記録は、非当事者の実在契約IDと不在IDで status・error.code・message まで一致し、記録されない")
+    void AC_1027_T1_6_チェックインの越境と不在の本文一致() throws Exception {
+        Long id = fixture(JobContractStatus.MATCHED);
+        Snapshot before = snapshot();
+        List<String> diffs = new ArrayList<>();
+        for (Actor actor : nonParticipants) {
+            String token = tokens.issueAccessToken(actor.id(), List.of("USER"));
+            MvcResult missing = checkIn(token, MISSING);
+            MvcResult existing = checkIn(token, id);
+            assertThat(missing.getResponse().getStatus()).as("%s 不在", actor.name()).isEqualTo(404);
+            assertThat(json(missing).path("error").path("code").asText()).isEqualTo("JOB_CONTRACT_NOT_FOUND");
+            if (existing.getResponse().getStatus() != missing.getResponse().getStatus()
+                    || !json(existing).equals(json(missing))) {
+                diffs.add(actor.name() + ": 越境=" + existing.getResponse().getStatus() + " " + json(existing)
+                        + " 不在=" + missing.getResponse().getStatus() + " " + json(missing));
+            }
+        }
+        assertThat(diffs).as("チェックインで越境と不在の応答が割れている").isEmpty();
+        assertThat(snapshot()).isEqualTo(before);
+        assertThat(checkInCount(id)).isZero();
+    }
+
+    @Test
+    @DisplayName("AC-1027-T1-7: Worker でない当事者（Requester）のチェックインは従来どおり 403 JOB_QR_TOKEN_WRONG_WORKER")
+    void AC_1027_T1_7_当事者の権限外チェックインは従来コード() throws Exception {
+        Long id = fixture(JobContractStatus.MATCHED);
+        MvcResult result = checkIn(tokens.issueAccessToken(requester, List.of("USER")), id);
+        assertThat(result.getResponse().getStatus()).isEqualTo(403);
+        assertThat(json(result).path("error").path("code").asText()).isEqualTo("JOB_QR_TOKEN_WRONG_WORKER");
+        assertThat(checkInCount(id)).isZero();
+    }
+
+    @Test
+    @DisplayName("AC-1027-T1-8: 契約行を他者が FOR UPDATE で保持中でも、非当事者のチェックインはロック待ちに入らず不在と同一の404")
+    void AC_1027_T1_8_行ロック保持中も非当事者は不在と同一() throws Exception {
+        Long id = fixture(JobContractStatus.MATCHED);
+        String token = tokens.issueAccessToken(nonParticipants.get(0).id(), List.of("USER"));
+        MvcResult missing = checkIn(token, MISSING);
+        try (java.sql.Connection holder = dataSource.getConnection()) {
+            holder.setAutoCommit(false);
+            try {
+                try (var ps = holder.prepareStatement("SELECT id FROM job_contracts WHERE id = ? FOR UPDATE")) {
+                    ps.setLong(1, id);
+                    ps.executeQuery().close();
+                }
+                long started = System.nanoTime();
+                MvcResult existing = checkIn(token, id);
+                long elapsedMs = (System.nanoTime() - started) / 1_000_000;
+                assertThat(existing.getResponse().getStatus()).isEqualTo(404);
+                assertThat(json(existing)).isEqualTo(json(missing));
+                assertThat(elapsedMs).as("行ロック待ちに入らない").isLessThan(5_000);
+            } finally {
+                holder.rollback();
+            }
+        }
+    }
+
+    private MvcResult checkIn(String token, long contractId) throws Exception {
+        assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+        var request = post("/api/v1/jobs/check-ins").header("Accept-Language", "ja")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"contractId\":" + contractId + ",\"shortCode\":\"ZZZZZZ\",\"type\":\"IN\","
+                        + "\"scannedAt\":\"2026-01-01T00:00:00Z\"}");
+        if (token != null) request.header("Authorization", "Bearer " + token);
+        try { return mvc.perform(request).andReturn(); }
+        finally { SecurityContextHolder.clearContext(); }
+    }
+
+    private long checkInCount(Long contractId) {
+        return tx(() -> ((Number) em.createNativeQuery("SELECT COUNT(*) FROM job_check_ins WHERE job_contract_id = :cid")
+                .setParameter("cid", contractId).getSingleResult()).longValue());
     }
 
     private MvcResult call(Op op, String token, long id) throws Exception {

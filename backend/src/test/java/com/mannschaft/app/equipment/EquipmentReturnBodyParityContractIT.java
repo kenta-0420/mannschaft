@@ -9,6 +9,7 @@ import com.mannschaft.app.equipment.entity.EquipmentAssignmentEntity;
 import com.mannschaft.app.equipment.entity.EquipmentItemEntity;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.FeatureFlagTestSupport;
 import com.mannschaft.app.support.test.MembershipTestHelper;
@@ -78,6 +79,15 @@ class EquipmentReturnBodyParityContractIT extends AbstractMySqlIntegrationTest {
     private long otherItem;
     private long foreignItem;
     private long ownAssignment;
+    private long orgA;
+    private long orgAdmin;
+    private long orgMember;
+    private long orgItem;
+    private long orgOtherItem;
+    private long orgForeignItem;
+    private long orgOwnAssignment;
+    private long orgOtherItemAssignment;
+    private long orgForeignAssignment;
     private long otherItemAssignment;
     private long foreignAssignment;
 
@@ -106,6 +116,23 @@ class EquipmentReturnBodyParityContractIT extends AbstractMySqlIntegrationTest {
         ownAssignment = assignment(item, borrower, admin);
         otherItemAssignment = assignment(otherItem, borrower, admin);
         foreignAssignment = assignment(foreignItem, foreignAdmin, foreignAdmin);
+        // 組織経路（閲覧ガード EquipmentAssignmentViewAccessGuard を通る HTTP 経路）の fixture。
+        orgA = organization();
+        long orgB = organization();
+        orgAdmin = user();
+        orgMember = user();
+        long orgForeignAdmin = user();
+        MembershipTestHelper.insertMembership(em, orgAdmin, ScopeType.ORGANIZATION, orgA, RoleKind.MEMBER);
+        MembershipTestHelper.insertUserRole(em, orgAdmin, "ADMIN", null, orgA);
+        MembershipTestHelper.insertMembership(em, orgMember, ScopeType.ORGANIZATION, orgA, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, orgForeignAdmin, ScopeType.ORGANIZATION, orgB, RoleKind.MEMBER);
+        MembershipTestHelper.insertUserRole(em, orgForeignAdmin, "ADMIN", null, orgB);
+        orgItem = orgItem(orgA);
+        orgOtherItem = orgItem(orgA);
+        orgForeignItem = orgItem(orgB);
+        orgOwnAssignment = assignment(orgItem, orgMember, orgAdmin);
+        orgOtherItemAssignment = assignment(orgOtherItem, orgMember, orgAdmin);
+        orgForeignAssignment = assignment(orgForeignItem, orgForeignAdmin, orgForeignAdmin);
         em.flush();
         em.clear();
         assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM equipment_assignments WHERE id = ?", Long.class, MISSING))
@@ -196,6 +223,87 @@ class EquipmentReturnBodyParityContractIT extends AbstractMySqlIntegrationTest {
         em.flush();
         assertThat(jdbcTemplate.queryForObject("SELECT returned_at IS NOT NULL FROM equipment_assignments WHERE id = ?",
                 Boolean.class, ownAssignment)).isTrue();
+    }
+
+    @Test
+    @DisplayName("AC-1027-T3-7: 組織備品の単件・一括返却も、他備品・他組織の貸出記録IDは不在IDと完全一致し、DBは不変")
+    void AC_1027_T3_7_組織経路の越境と不在の本文一致() throws Exception {
+        Map<String, List<Map<String, Object>>> before = orgSnapshot();
+        List<String> diffs = new ArrayList<>();
+        // 組織ADMIN（返却の権限者）と組織MEMBER（備品を閲覧できる非権限者）の双方で、閲覧ガードを通る経路を確認する。
+        for (long actor : List.of(orgAdmin, orgMember)) {
+            String token = tokens.issueAccessToken(actor, List.of("USER"));
+            MvcResult missing = orgCall(token, "/return", Map.of("assignmentId", MISSING));
+            MvcResult bulkMissing = orgCall(token, "/return-bulk", Map.of("assignmentIds", List.of(MISSING)));
+            assertThat(missing.getResponse().getStatus()).isEqualTo(404);
+            assertThat(body(missing).path("error").path("code").asText()).isEqualTo("EQUIPMENT_002");
+            assertThat(body(bulkMissing)).isEqualTo(body(missing));
+            for (long foreign : List.of(orgOtherItemAssignment, orgForeignAssignment)) {
+                MvcResult single = orgCall(token, "/return", Map.of("assignmentId", foreign));
+                MvcResult bulk = orgCall(token, "/return-bulk", Map.of("assignmentIds", List.of(orgOwnAssignment, foreign)));
+                for (MvcResult existing : List.of(single, bulk)) {
+                    if (existing.getResponse().getStatus() != missing.getResponse().getStatus()
+                            || !body(existing).equals(body(missing))) {
+                        diffs.add("actor=" + actor + " assignment=" + foreign + ": 越境="
+                                + existing.getResponse().getStatus() + " " + body(existing));
+                    }
+                }
+            }
+        }
+        assertThat(diffs).as("組織経路で越境と不在の応答が割れている").isEmpty();
+        assertThat(orgSnapshot()).isEqualTo(before);
+    }
+
+    @Test
+    @DisplayName("AC-1027-T3-8: 組織ADMINの正当な返却（単件）は200で返却済みになる")
+    void AC_1027_T3_8_組織経路の正常返却() throws Exception {
+        MvcResult result = orgCall(tokens.issueAccessToken(orgAdmin, List.of("USER")), "/return",
+                Map.of("assignmentId", orgOwnAssignment));
+        assertThat(result.getResponse().getStatus()).as(result.getResponse().getContentAsString(StandardCharsets.UTF_8))
+                .isEqualTo(200);
+        em.flush();
+        assertThat(jdbcTemplate.queryForObject("SELECT returned_at IS NOT NULL FROM equipment_assignments WHERE id = ?",
+                Boolean.class, orgOwnAssignment)).isTrue();
+    }
+
+    private MvcResult orgCall(String token, String suffix, Map<String, ?> payload) throws Exception {
+        String url = "/api/v1/organizations/" + orgA + "/equipment/" + orgItem + suffix;
+        var request = patch(url).servletPath(url).header("Accept-Language", "ja")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(payload));
+        if (token != null) request.header("Authorization", "Bearer " + token);
+        try { return mockMvc.perform(request).andReturn(); }
+        finally { SecurityContextHolder.clearContext(); }
+    }
+
+    private Map<String, List<Map<String, Object>>> orgSnapshot() {
+        em.flush();
+        em.clear();
+        Map<String, List<Map<String, Object>>> rows = new LinkedHashMap<>();
+        rows.put("items", ownedRows("SELECT * FROM equipment_items WHERE id IN (?, ?, ?) ORDER BY id",
+                orgItem, orgOtherItem, orgForeignItem));
+        rows.put("assignments", ownedRows("SELECT * FROM equipment_assignments WHERE equipment_item_id IN (?, ?, ?) ORDER BY id",
+                orgItem, orgOtherItem, orgForeignItem));
+        return rows;
+    }
+
+    private long organization() {
+        OrganizationEntity org = OrganizationEntity.builder()
+                .slug("eqret-" + UUID.randomUUID().toString().substring(0, 20)).name("備品返却試練組織")
+                .orgType(OrganizationEntity.OrgType.ASSOCIATION)
+                .visibility(OrganizationEntity.Visibility.PRIVATE)
+                .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE)
+                .supporterEnabled(false).build();
+        em.persist(org);
+        return org.getId();
+    }
+
+    private long orgItem(long orgId) {
+        EquipmentItemEntity entity = EquipmentItemEntity.builder().organizationId(orgId).name("備品返却試練")
+                .quantity(5).assignedQuantity(1).status(EquipmentStatus.AVAILABLE).isConsumable(false)
+                .qrCode("eqret-" + UUID.randomUUID()).build();
+        em.persist(entity);
+        return entity.getId();
     }
 
     private MvcResult bulkCall(String token, List<Long> assignmentIds) throws Exception {
