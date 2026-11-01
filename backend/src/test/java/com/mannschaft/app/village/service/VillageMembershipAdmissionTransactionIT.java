@@ -188,6 +188,7 @@ class VillageMembershipAdmissionTransactionIT {
     @MockitoBean private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
 
     @Autowired private VillageMembershipService memberships;
+    @Autowired private VillageSubjectAuthorizationGuard subjectGuard;
     @Autowired private VillageJoinRequestService joins;
     @Autowired private VillageInvitationService invitations;
     @Autowired private VillageCreationRequestService creations;
@@ -338,7 +339,8 @@ class VillageMembershipAdmissionTransactionIT {
         if (shape == SlotShape.LEFT_HISTORY) {
             UUID secondVillage = newVillage("left-" + UUID.randomUUID(), VillageJoinPolicy.FREE, fixture.subjectId());
             UUID leaving = insertMembership(secondVillage, fixture.subjectId(), 2, false, "VILLAGER");
-            memberships.leave(secondVillage, leaving, fixture.subjectId());
+            memberships.leave(secondVillage, leaving, fixture.subjectId(),
+                    subjectGuard.judgeMembership(fixture.subjectId(), leaving));
             assertThat(jdbc.queryForObject("SELECT user_slot FROM village_memberships WHERE id=UUID_TO_BIN(?)",
                     Integer.class, leaving.toString())).isEqualTo(2);
         }
@@ -501,9 +503,17 @@ class VillageMembershipAdmissionTransactionIT {
 
     /** 独立connectionのRR TX。SQLの待機を5秒、TXを20秒へ有界化しsession値を戻す。 */
     private <T> T isolated(Supplier<T> work) {
+        return isolated(work, TransactionDefinition.ISOLATION_REPEATABLE_READ);
+    }
+
+    /**
+     * 独立connectionのTX（分離レベル指定）。並行入村は本番の入口と同じ READ_COMMITTED で包む。
+     * 外側TXへ参加した入口は外側の分離レベルで動くため、RRで包むと本番に無いギャップロックを足してしまう。
+     */
+    private <T> T isolated(Supplier<T> work, int isolationLevel) {
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        transaction.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
+        transaction.setIsolationLevel(isolationLevel);
         transaction.setTimeout(20);
         return transaction.execute(status -> {
             Integer previous = jdbc.queryForObject("SELECT @@session.innodb_lock_wait_timeout", Integer.class);
@@ -516,7 +526,7 @@ class VillageMembershipAdmissionTransactionIT {
         });
     }
 
-    /** 両TXのsnapshot成立後に開始する。失敗はrollback完了後に親threadへ返す。 */
+    /** 両TXの開始後に同時に入村させる（本番の入口と同じ READ_COMMITTED）。失敗はrollback完了後に親threadへ返す。 */
     private List<InvocationOutcome> concurrentInvoke(List<Fixture> fixtures, int existingCount) throws Exception {
         ExecutorService executor = Executors.newFixedThreadPool(2);
         CountDownLatch snapshotsReady = new CountDownLatch(2);
@@ -536,7 +546,7 @@ class VillageMembershipAdmissionTransactionIT {
                                 throw new IllegalStateException("開始待機を中断", interrupted);
                             }
                             return invoke(fixture);
-                        });
+                        }, TransactionDefinition.ISOLATION_READ_COMMITTED);
                         return new InvocationOutcome(village, null);
                     } catch (RuntimeException failure) {
                         return new InvocationOutcome(null, failure);
@@ -677,7 +687,8 @@ class VillageMembershipAdmissionTransactionIT {
         UUID membershipId = jdbc.queryForObject("SELECT BIN_TO_UUID(id) FROM village_memberships "
                 + "WHERE village_id=UUID_TO_BIN(?) AND subject_type='USER' AND subject_id=? AND left_at IS NULL",
                 (rs, row) -> UUID.fromString(rs.getString(1)), fixture.villageId().toString(), fixture.subjectId());
-        memberships.leave(fixture.villageId(), membershipId, fixture.subjectId());
+        memberships.leave(fixture.villageId(), membershipId, fixture.subjectId(),
+                subjectGuard.judgeMembership(fixture.subjectId(), membershipId));
         assertThat(activeCount(fixture.subjectId())).isEqualTo(99);
 
         invoke(fixture);
@@ -698,7 +709,8 @@ class VillageMembershipAdmissionTransactionIT {
         long attacker = newUser();
 
         assertThatThrownBy(() -> memberships.join(fixture.villageId(), attacker,
-                new MembershipJoinRequest(VillageSubjectType.USER, fixture.subjectId())))
+                new MembershipJoinRequest(VillageSubjectType.USER, fixture.subjectId()),
+                subjectGuard.judge(attacker, VillageSubjectType.USER, fixture.subjectId())))
                 .isInstanceOfSatisfying(BusinessException.class,
                         error -> assertThat(error.getErrorCode()).isEqualTo(VillageErrorCode.REPRESENT_FORBIDDEN));
 
@@ -879,7 +891,8 @@ class VillageMembershipAdmissionTransactionIT {
         return switch (fixture.writer()) {
             case FREE -> {
                 memberships.join(fixture.villageId(), fixture.subjectId(),
-                        new MembershipJoinRequest(VillageSubjectType.USER, fixture.subjectId()));
+                        new MembershipJoinRequest(VillageSubjectType.USER, fixture.subjectId()),
+                        subjectGuard.judge(fixture.subjectId(), VillageSubjectType.USER, fixture.subjectId()));
                 yield fixture.villageId();
             }
             case JOIN_APPROVAL -> {

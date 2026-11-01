@@ -1,6 +1,6 @@
 package com.mannschaft.app.village.service;
 
-import com.mannschaft.app.auth.service.UserRowLockService;
+import com.mannschaft.app.village.repository.VillageUserAdmissionLockRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.village.VillageErrorCode;
@@ -39,7 +39,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -68,7 +67,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 class VillageJoinRequestServiceTest {
 
     @Mock
-    private UserRowLockService userRowLockService;
+    private VillageUserAdmissionLockRepository admissionLockRepository;
     @Mock
     private EntityManager entityManager;
 
@@ -78,8 +77,6 @@ class VillageJoinRequestServiceTest {
     private VillageRepository villageRepository;
     @Mock
     private VillageMembershipRepository membershipRepository;
-    @Mock
-    private VillageMembershipService membershipService;
 
     /** 村の存在秘匿ゲート。実物へ委譲させるため {@link VillageAccessGateTestSupport} で結線する。 */
     @Mock
@@ -89,10 +86,8 @@ class VillageJoinRequestServiceTest {
 
     @BeforeEach
     void wireRealAdmissionSlots() {
-        org.mockito.Mockito.lenient().when(userRowLockService.lock(org.mockito.ArgumentMatchers.any()))
-                .thenReturn(UserRowLockService.UserState.ACTIVE);
-        VillageMembershipSlotService slots = new VillageMembershipSlotService(userRowLockService, membershipRepository);
-        service = new VillageJoinRequestService(joinRequestRepository, membershipRepository, villageRepository, slots, entityManager, membershipService, accessGate);
+        VillageMembershipSlotService slots = new VillageMembershipSlotService(admissionLockRepository, membershipRepository);
+        service = new VillageJoinRequestService(joinRequestRepository, membershipRepository, villageRepository, slots, entityManager, accessGate);
     }
 
     /**
@@ -170,13 +165,12 @@ class VillageJoinRequestServiceTest {
             return e;
         });
 
-        JoinRequestResponse res = service.createRequest(VILLAGE_ID, USER_ID, validCreateRequest());
+        JoinRequestResponse res = service.createRequest(VILLAGE_ID, USER_ID, validCreateRequest(), permitted(USER_ID, validCreateRequest()));
 
         assertThat(res.status()).isEqualTo(VillageRequestStatus.PENDING);
         assertThat(res.subjectId()).isEqualTo(USER_ID);
         assertThat(res.message()).isEqualTo("よろしくお願いします");
 
-        verify(membershipService).validateSubjectAuthorization(USER_ID, VillageSubjectType.USER, USER_ID);
         ArgumentCaptor<VillageJoinRequestEntity> captor =
                 ArgumentCaptor.forClass(VillageJoinRequestEntity.class);
         verify(joinRequestRepository).save(captor.capture());
@@ -192,7 +186,7 @@ class VillageJoinRequestServiceTest {
     void create_freeVillage_rejected() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage()));
 
-        assertThatThrownBy(() -> service.createRequest(VILLAGE_ID, USER_ID, validCreateRequest()))
+        assertThatThrownBy(() -> service.createRequest(VILLAGE_ID, USER_ID, validCreateRequest(), permitted(USER_ID, validCreateRequest())))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(VillageErrorCode.VILLAGE_FREE_VILLAGE_DIRECT_JOIN);
@@ -211,7 +205,7 @@ class VillageJoinRequestServiceTest {
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(USER_ID)))
                 .willReturn(Optional.of(membership(VillageRole.VILLAGER, USER_ID)));
 
-        assertThatThrownBy(() -> service.createRequest(VILLAGE_ID, USER_ID, validCreateRequest()))
+        assertThatThrownBy(() -> service.createRequest(VILLAGE_ID, USER_ID, validCreateRequest(), permitted(USER_ID, validCreateRequest())))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(VillageErrorCode.ALREADY_MEMBER);
@@ -232,7 +226,7 @@ class VillageJoinRequestServiceTest {
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(USER_ID)))
                 .willReturn(Optional.of(banned));
 
-        assertThatThrownBy(() -> service.createRequest(VILLAGE_ID, USER_ID, validCreateRequest()))
+        assertThatThrownBy(() -> service.createRequest(VILLAGE_ID, USER_ID, validCreateRequest(), permitted(USER_ID, validCreateRequest())))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(VillageErrorCode.MEMBER_BANNED);
@@ -259,7 +253,7 @@ class VillageJoinRequestServiceTest {
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(USER_ID), eq(VillageRequestStatus.PENDING)))
                 .willReturn(Optional.of(existing));
 
-        assertThatThrownBy(() -> service.createRequest(VILLAGE_ID, USER_ID, validCreateRequest()))
+        assertThatThrownBy(() -> service.createRequest(VILLAGE_ID, USER_ID, validCreateRequest(), permitted(USER_ID, validCreateRequest())))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(VillageErrorCode.VILLAGE_JOIN_REQUEST_PENDING_DUPLICATE);
@@ -271,16 +265,15 @@ class VillageJoinRequestServiceTest {
     // 6. 代表権限なし（USER 主体で他人 ID を指定）
     // ----------------------------------------------------------------
     @Test
-    @DisplayName("06. 代表権限なし — VillageMembershipService が VILLAGE_015 を投げる")
+    @DisplayName("06. 代表権限なし — 取引の外の判定が拒否なら VILLAGE_015")
     void create_representForbidden() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(approvalVillage()));
-        willThrow(new BusinessException(VillageErrorCode.REPRESENT_FORBIDDEN))
-                .given(membershipService)
-                .validateSubjectAuthorization(eq(USER_ID), eq(VillageSubjectType.USER), eq(OTHER_USER_ID));
 
         JoinRequestCreateRequest req = new JoinRequestCreateRequest(
                 VillageSubjectType.USER, OTHER_USER_ID, null);
-        assertThatThrownBy(() -> service.createRequest(VILLAGE_ID, USER_ID, req))
+        VillageSubjectAuthorization denied = new VillageSubjectAuthorization(
+                USER_ID, VillageSubjectType.USER, OTHER_USER_ID, false);
+        assertThatThrownBy(() -> service.createRequest(VILLAGE_ID, USER_ID, req, denied))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(VillageErrorCode.REPRESENT_FORBIDDEN);
@@ -506,7 +499,6 @@ class VillageJoinRequestServiceTest {
         // 申請者は定義上まだ非メンバーなので、メンバーシップ判定は一切行わない。
         // （メソッド名に依存せず「メンバーシップ層に触れないこと」自体を固定する）
         verifyNoInteractions(membershipRepository);
-        verifyNoInteractions(membershipService);
     }
 
     @Test
@@ -528,5 +520,10 @@ class VillageJoinRequestServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
+    }
+
+    /** 取引の外の判定（VillageSubjectAuthorizationGuard）が許可した結果。判定自体の試験は guard 側で行う。 */
+    private static VillageSubjectAuthorization permitted(Long actorUserId, JoinRequestCreateRequest request) {
+        return new VillageSubjectAuthorization(actorUserId, request.subjectType(), request.subjectId(), true);
     }
 }

@@ -108,5 +108,15 @@ PREPARE cmp1808_stmt FROM @cmp1808_ddl;
 EXECUTE cmp1808_stmt;
 DEALLOCATE PREPARE cmp1808_stmt;
 
+-- 入村を USER 単位で直列化するロック行（村ドメイン内。auth の users 行をロックすると村の取引が越境するため）。
+-- 行は入村時に INSERT ... ON DUPLICATE KEY UPDATE で作成・ロックする。user_id に FK は張らない（原則1）。
+CREATE TABLE IF NOT EXISTS village_user_admission_locks (
+    id        BINARY(16)      NOT NULL COMMENT 'UUIDv7 PK',
+    user_id   BIGINT UNSIGNED NOT NULL COMMENT '入村を直列化するUSER（FK 張らない / 原則1）',
+    locked_at DATETIME(6)     NOT NULL COMMENT '最後に入村ロックを取った時刻',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_vual_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='村入村のUSER単位直列化ロック行（CMP-260827-1808）';
+
 -- PK・村 CASCADE FK・代表委任の下流 FK・旧 uk_vm_village_subject は変更しない。
 -- 旧キーは退村履歴の同時刻重複を防ぐ役割が残るため存置する（uk_vm_active_subject は現役のみが対象）。

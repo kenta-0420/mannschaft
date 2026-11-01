@@ -1,15 +1,14 @@
 package com.mannschaft.app.village.service;
 
-import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
+import com.mannschaft.app.village.repository.VillageUserAdmissionLockRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -34,7 +33,7 @@ class VillageMembershipSlotServiceTest {
     private static final Long USER_ID = 42L;
 
     @Mock
-    private UserRowLockService userRowLockService;
+    private VillageUserAdmissionLockRepository admissionLockRepository;
     @Mock
     private VillageMembershipRepository membershipRepository;
     @InjectMocks
@@ -78,21 +77,20 @@ class VillageMembershipSlotServiceTest {
                 List.of(VillageMembershipSlotTestFixture.slot((short) 1), VillageMembershipSlotTestFixture.slot((short) 1)));
     }
 
-    @ParameterizedTest
-    @EnumSource(value = UserRowLockService.UserState.class, names = {"INELIGIBLE_EXISTING", "ABSENT"})
-    @DisplayName("非現役・不在USERは入村根の取得成功にしない")
-    void inactiveRootCannotProceed(UserRowLockService.UserState state) {
-        when(userRowLockService.lock(USER_ID)).thenReturn(state);
-        assertThat(service.lockUser(USER_ID)).isFalse();
-        verifyNoInteractions(membershipRepository);
+    @Test
+    @DisplayName("USER IDが無ければ入村ロックを取らない")
+    void nullUserCannotProceed() {
+        assertThat(service.lockUser(null)).isFalse();
+        verifyNoInteractions(admissionLockRepository, membershipRepository);
     }
 
     @Test
-    @DisplayName("本人IDの現役USER行ロックを使う")
-    void locksExactUserRoot() {
-        when(userRowLockService.lock(USER_ID)).thenReturn(UserRowLockService.UserState.ACTIVE);
+    @DisplayName("村ドメインのUSER単位ロック行を本人IDで取る（auth の users 行は使わない）")
+    void locksVillageAdmissionRowOfExactUser() {
         assertThat(service.lockUser(USER_ID)).isTrue();
-        verify(userRowLockService).lock(USER_ID);
+        verify(admissionLockRepository).lockForAdmission(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq(USER_ID));
+        verifyNoInteractions(membershipRepository);
     }
 
     @ParameterizedTest

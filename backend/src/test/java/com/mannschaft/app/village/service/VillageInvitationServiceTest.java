@@ -1,6 +1,6 @@
 package com.mannschaft.app.village.service;
 
-import com.mannschaft.app.auth.service.UserRowLockService;
+import com.mannschaft.app.village.repository.VillageUserAdmissionLockRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.ErrorCode;
 import com.mannschaft.app.village.VillageErrorCode;
@@ -95,7 +95,7 @@ class VillageInvitationServiceTest {
     private static final String VALID_TOKEN = "valid-token-00000000000000000000000000000";
 
     @Mock
-    private UserRowLockService userRowLockService;
+    private VillageUserAdmissionLockRepository admissionLockRepository;
     @Mock
     private EntityManager entityManager;
 
@@ -129,9 +129,7 @@ class VillageInvitationServiceTest {
 
     @BeforeEach
     void wireRealAdmissionSlots() {
-        org.mockito.Mockito.lenient().when(userRowLockService.lock(org.mockito.ArgumentMatchers.any()))
-                .thenReturn(UserRowLockService.UserState.ACTIVE);
-        VillageMembershipSlotService slots = new VillageMembershipSlotService(userRowLockService, membershipRepository);
+        VillageMembershipSlotService slots = new VillageMembershipSlotService(admissionLockRepository, membershipRepository);
         service = new VillageInvitationService(invitationRepository, membershipRepository, slots, entityManager, villageAccessGate, secretTokenVault, clock);
     }
 

@@ -1,6 +1,6 @@
 package com.mannschaft.app.village.service;
 
-import com.mannschaft.app.auth.service.UserRowLockService;
+import com.mannschaft.app.village.repository.VillageUserAdmissionLockRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.village.VillageErrorCode;
@@ -76,7 +76,7 @@ class VillageMembershipServiceTest {
     private static final Long ORG_ID = 89L;
 
     @Mock
-    private UserRowLockService userRowLockService;
+    private VillageUserAdmissionLockRepository admissionLockRepository;
 
     @Mock
     private VillageRepository villageRepository;
@@ -90,13 +90,14 @@ class VillageMembershipServiceTest {
     private VillageAccessGate accessGate;
 
     private VillageMembershipService service;
+    /** 取引の外の代表権限判定（実物。AccessControlService はモック）。 */
+    private VillageSubjectAuthorizationGuard guard;
 
     @BeforeEach
     void wireRealAdmissionSlots() {
-        org.mockito.Mockito.lenient().when(userRowLockService.lock(org.mockito.ArgumentMatchers.any()))
-                .thenReturn(UserRowLockService.UserState.ACTIVE);
-        VillageMembershipSlotService slots = new VillageMembershipSlotService(userRowLockService, membershipRepository);
-        service = new VillageMembershipService(membershipRepository, slots, accessControlService, accessGate);
+        VillageMembershipSlotService slots = new VillageMembershipSlotService(admissionLockRepository, membershipRepository);
+        service = new VillageMembershipService(membershipRepository, slots, accessGate);
+        guard = new VillageSubjectAuthorizationGuard(accessControlService, membershipRepository);
     }
 
     /**
@@ -154,9 +155,7 @@ class VillageMembershipServiceTest {
                     return e;
                 });
 
-        MembershipResponse res = service.join(
-                VILLAGE_ID, ACTOR_USER_ID,
-                new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID));
+        MembershipResponse res = service.join(VILLAGE_ID, ACTOR_USER_ID, new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID), guard.judge(ACTOR_USER_ID, VillageSubjectType.USER, ACTOR_USER_ID));
 
         assertThat(res.role()).isEqualTo(VillageRole.VILLAGER);
         assertThat(res.subjectType()).isEqualTo(VillageSubjectType.USER);
@@ -168,9 +167,7 @@ class VillageMembershipServiceTest {
     void join_approvalVillage_denied() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(approvalVillage));
 
-        assertThatThrownBy(() -> service.join(
-                VILLAGE_ID, ACTOR_USER_ID,
-                new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID)))
+        assertThatThrownBy(() -> service.join(VILLAGE_ID, ACTOR_USER_ID, new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID), guard.judge(ACTOR_USER_ID, VillageSubjectType.USER, ACTOR_USER_ID)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(VillageErrorCode.VILLAGE_JOIN_REQUIRES_APPROVAL);
     }
@@ -180,9 +177,7 @@ class VillageMembershipServiceTest {
     void join_idor_user_subjectId_mismatch() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
 
-        assertThatThrownBy(() -> service.join(
-                VILLAGE_ID, ACTOR_USER_ID,
-                new MembershipJoinRequest(VillageSubjectType.USER, OTHER_USER_ID)))
+        assertThatThrownBy(() -> service.join(VILLAGE_ID, ACTOR_USER_ID, new MembershipJoinRequest(VillageSubjectType.USER, OTHER_USER_ID), guard.judge(ACTOR_USER_ID, VillageSubjectType.USER, OTHER_USER_ID)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(VillageErrorCode.REPRESENT_FORBIDDEN);
     }
@@ -194,9 +189,7 @@ class VillageMembershipServiceTest {
         given(accessControlService.isAdminOrAbove(ACTOR_USER_ID, TEAM_ID, "TEAM"))
                 .willReturn(false);
 
-        assertThatThrownBy(() -> service.join(
-                VILLAGE_ID, ACTOR_USER_ID,
-                new MembershipJoinRequest(VillageSubjectType.TEAM, TEAM_ID)))
+        assertThatThrownBy(() -> service.join(VILLAGE_ID, ACTOR_USER_ID, new MembershipJoinRequest(VillageSubjectType.TEAM, TEAM_ID), guard.judge(ACTOR_USER_ID, VillageSubjectType.TEAM, TEAM_ID)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(VillageErrorCode.REPRESENT_FORBIDDEN);
     }
@@ -216,9 +209,7 @@ class VillageMembershipServiceTest {
                     return e;
                 });
 
-        MembershipResponse res = service.join(
-                VILLAGE_ID, ACTOR_USER_ID,
-                new MembershipJoinRequest(VillageSubjectType.ORGANIZATION, ORG_ID));
+        MembershipResponse res = service.join(VILLAGE_ID, ACTOR_USER_ID, new MembershipJoinRequest(VillageSubjectType.ORGANIZATION, ORG_ID), guard.judge(ACTOR_USER_ID, VillageSubjectType.ORGANIZATION, ORG_ID));
 
         assertThat(res.subjectType()).isEqualTo(VillageSubjectType.ORGANIZATION);
         assertThat(res.role()).isEqualTo(VillageRole.VILLAGER);
@@ -232,9 +223,7 @@ class VillageMembershipServiceTest {
         given(membershipRepository.findAdmissionPresenceForUpdate(
                 VILLAGE_ID, "USER", ACTOR_USER_ID)).willReturn(List.of(VillageMembershipSlotTestFixture.presence(existing.getBannedAt() != null)));
 
-        assertThatThrownBy(() -> service.join(
-                VILLAGE_ID, ACTOR_USER_ID,
-                new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID)))
+        assertThatThrownBy(() -> service.join(VILLAGE_ID, ACTOR_USER_ID, new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID), guard.judge(ACTOR_USER_ID, VillageSubjectType.USER, ACTOR_USER_ID)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(VillageErrorCode.ALREADY_MEMBER);
     }
@@ -248,9 +237,7 @@ class VillageMembershipServiceTest {
         given(membershipRepository.findAdmissionPresenceForUpdate(
                 VILLAGE_ID, "USER", ACTOR_USER_ID)).willReturn(List.of(VillageMembershipSlotTestFixture.presence(banned.getBannedAt() != null)));
 
-        assertThatThrownBy(() -> service.join(
-                VILLAGE_ID, ACTOR_USER_ID,
-                new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID)))
+        assertThatThrownBy(() -> service.join(VILLAGE_ID, ACTOR_USER_ID, new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID), guard.judge(ACTOR_USER_ID, VillageSubjectType.USER, ACTOR_USER_ID)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(VillageErrorCode.MEMBER_BANNED);
     }
@@ -264,9 +251,7 @@ class VillageMembershipServiceTest {
         given(membershipRepository.findAdmissionSlotsForUpdate(ACTOR_USER_ID))
                 .willReturn(VillageMembershipSlotTestFixture.occupied(100));
 
-        assertThatThrownBy(() -> service.join(
-                VILLAGE_ID, ACTOR_USER_ID,
-                new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID)))
+        assertThatThrownBy(() -> service.join(VILLAGE_ID, ACTOR_USER_ID, new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID), guard.judge(ACTOR_USER_ID, VillageSubjectType.USER, ACTOR_USER_ID)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(VillageErrorCode.PARTICIPATION_LIMIT_EXCEEDED);
     }
@@ -288,9 +273,7 @@ class VillageMembershipServiceTest {
                     return e;
                 });
 
-        MembershipResponse res = service.join(
-                VILLAGE_ID, ACTOR_USER_ID,
-                new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID));
+        MembershipResponse res = service.join(VILLAGE_ID, ACTOR_USER_ID, new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID), guard.judge(ACTOR_USER_ID, VillageSubjectType.USER, ACTOR_USER_ID));
 
         assertThat(res.participationWarn()).isTrue();
     }
@@ -310,9 +293,7 @@ class VillageMembershipServiceTest {
         archived.setId(VILLAGE_ID);
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(archived));
 
-        assertThatThrownBy(() -> service.join(
-                VILLAGE_ID, ACTOR_USER_ID,
-                new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID)))
+        assertThatThrownBy(() -> service.join(VILLAGE_ID, ACTOR_USER_ID, new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID), guard.judge(ACTOR_USER_ID, VillageSubjectType.USER, ACTOR_USER_ID)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(VillageErrorCode.VILLAGE_ALREADY_ARCHIVED);
     }
@@ -337,7 +318,7 @@ class VillageMembershipServiceTest {
         given(membershipRepository.save(any(VillageMembershipEntity.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        service.leave(VILLAGE_ID, membershipId, ACTOR_USER_ID);
+        service.leave(VILLAGE_ID, membershipId, ACTOR_USER_ID, guard.judgeMembership(ACTOR_USER_ID, membershipId));
 
         assertThat(elder.getRole()).isEqualTo(VillageRole.HEADMAN);
         assertThat(headman.getLeftAt()).isNotNull();
@@ -364,7 +345,7 @@ class VillageMembershipServiceTest {
         given(membershipRepository.save(any(VillageMembershipEntity.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        service.leave(VILLAGE_ID, membershipId, ACTOR_USER_ID);
+        service.leave(VILLAGE_ID, membershipId, ACTOR_USER_ID, guard.judgeMembership(ACTOR_USER_ID, membershipId));
 
         assertThat(villager.getRole()).isEqualTo(VillageRole.HEADMAN);
     }
@@ -397,7 +378,7 @@ class VillageMembershipServiceTest {
         given(membershipRepository.save(any(VillageMembershipEntity.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        service.leave(VILLAGE_ID, membershipId, ACTOR_USER_ID);
+        service.leave(VILLAGE_ID, membershipId, ACTOR_USER_ID, guard.judgeMembership(ACTOR_USER_ID, membershipId));
 
         assertThat(bannedElder.getRole()).isEqualTo(VillageRole.ELDER);
         assertThat(bannedVillager.getRole()).isEqualTo(VillageRole.VILLAGER);
@@ -422,7 +403,7 @@ class VillageMembershipServiceTest {
         given(membershipRepository.save(any(VillageMembershipEntity.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        service.leave(VILLAGE_ID, membershipId, ACTOR_USER_ID);
+        service.leave(VILLAGE_ID, membershipId, ACTOR_USER_ID, guard.judgeMembership(ACTOR_USER_ID, membershipId));
 
         assertThat(headman.getLeftAt()).isNotNull();
         // ELDER/VILLAGER への save は呼ばれず、自身の save のみ
@@ -440,7 +421,7 @@ class VillageMembershipServiceTest {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
         given(membershipRepository.findById(membershipId)).willReturn(Optional.of(left));
 
-        assertThatThrownBy(() -> service.leave(VILLAGE_ID, membershipId, ACTOR_USER_ID))
+        assertThatThrownBy(() -> service.leave(VILLAGE_ID, membershipId, ACTOR_USER_ID, guard.judgeMembership(ACTOR_USER_ID, membershipId)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(VillageErrorCode.NOT_MEMBER);
     }

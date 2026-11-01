@@ -1,6 +1,6 @@
 package com.mannschaft.app.village.service;
 
-import com.mannschaft.app.auth.service.UserRowLockService;
+import com.mannschaft.app.village.repository.VillageUserAdmissionLockRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.village.VillageErrorCode;
@@ -64,7 +64,7 @@ import static org.mockito.Mockito.verify;
 class VillageCreationRequestServiceTest {
 
     @Mock
-    private UserRowLockService userRowLockService;
+    private VillageUserAdmissionLockRepository admissionLockRepository;
     @Mock
     private EntityManager entityManager;
 
@@ -96,9 +96,7 @@ class VillageCreationRequestServiceTest {
 
     @BeforeEach
     void wireRealAdmissionSlots() {
-        org.mockito.Mockito.lenient().when(userRowLockService.lock(org.mockito.ArgumentMatchers.any()))
-                .thenReturn(UserRowLockService.UserState.ACTIVE);
-        VillageMembershipSlotService slots = new VillageMembershipSlotService(userRowLockService, membershipRepository);
+        VillageMembershipSlotService slots = new VillageMembershipSlotService(admissionLockRepository, membershipRepository);
         service = new VillageCreationRequestService(requestRepository, villageRepository, membershipRepository, slots, entityManager, accessControlService);
     }
 

@@ -21,6 +21,7 @@ import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -158,7 +159,7 @@ public class VillageInvitationService {
      * 行は {@code findByTokenHashForUpdate} の悲観ロックで直列化するため、
      * 同時受諾で {@code max_uses} を超えることはない。</p>
      */
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public VillageInvitationAcceptResponse accept(String token, Long actorUserId) {
         if (token == null || token.isBlank()) {
             throw foldToAbsent();

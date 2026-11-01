@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -39,7 +40,7 @@ import java.util.UUID;
  * すべての @Transactional は village ドメイン内（VillageRepository / VillageMembershipRepository /
  * VillageCreationRequestRepository）に閉じている。
  * 申請者が SYSTEM_ADMIN か否かの判定は共通の {@link AccessControlService} 経由で行い（role ドメインの Repository は直接参照しない）、
- * これは権限判定であって write は行わない。入村のUSER根にはauthの行ロック窓口を使い、ユーザーentityの書込みはしない。</p>
+ * これは権限判定であって write は行わない。入村は村ドメインのUSER単位ロック行で直列化し、ユーザーentityには触れない。</p>
  */
 @Slf4j
 @Service
@@ -70,7 +71,7 @@ public class VillageCreationRequestService {
      * 申請者を HEADMAN として membership に追加する。
      * これにより申請者は申請完了後すぐに村を利用できる。</p>
      */
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public VillageCreationRequestResponse createRequest(Long requesterUserId,
                                                         VillageCreationRequestCreateRequest req) {
         if (requesterUserId == null) {
@@ -197,7 +198,7 @@ public class VillageCreationRequestService {
     /**
      * 運営による承認。村レコードを自動作成し、申請者を HEADMAN として membership に追加する。
      */
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public VillageCreationRequestResponse approve(UUID requestId,
                                                   Long reviewerUserId,
                                                   VillageCreationRequestReviewRequest review) {

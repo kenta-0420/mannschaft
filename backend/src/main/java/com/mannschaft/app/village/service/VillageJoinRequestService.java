@@ -26,6 +26,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -50,9 +51,9 @@ import java.util.stream.Collectors;
  * <p>アーキテクチャ原則の遵守:</p>
  * <ul>
  *   <li>原則 5: {@code @Transactional} は village ドメイン内のみ（VillageRepository /
- *       VillageJoinRequestRepository / VillageMembershipRepository）。入村のUSER根はauthの行ロック窓口で取得する。</li>
- *   <li>{@link VillageMembershipService} を DI して subject の代表権限検証を委譲する（
- *       検証ロジックの一元化）。B3 の {@code join} は FREE 村専用のため、承認時の
+ *       VillageJoinRequestRepository / VillageMembershipRepository）。入村は村ドメインのUSER単位ロック行で直列化する。</li>
+ *   <li>subject の代表権限は {@link VillageSubjectAuthorizationGuard} が取引の外で判定し、
+ *       取引には判定結果だけを渡す（D-3T）。B3 の {@code join} は FREE 村専用のため、承認時の
  *       実メンバー登録は本 Service 内で {@link VillageMembershipRepository#save} を直接呼ぶ
  *       （B5 と同じ村ドメイン内パターン）。</li>
  *   <li>審査権限（HEADMAN / ELDER）は本 Service 内で {@link VillageMembershipRepository}
@@ -69,8 +70,6 @@ public class VillageJoinRequestService {
     private final VillageRepository villageRepository;
     private final VillageMembershipSlotService slotService;
     private final EntityManager entityManager;
-    /** 代表権限検証ロジックを委譲する（B3 既存メソッド再利用）。 */
-    private final VillageMembershipService membershipService;
     private final VillageAccessGate accessGate;
 
     // ========================================================================
@@ -89,7 +88,8 @@ public class VillageJoinRequestService {
     @Transactional
     public JoinRequestResponse createRequest(UUID villageId,
                                              Long actorUserId,
-                                             JoinRequestCreateRequest request) {
+                                             JoinRequestCreateRequest request,
+                                             VillageSubjectAuthorization authorization) {
         if (actorUserId == null) {
             throw new BusinessException(CommonErrorCode.COMMON_000);
         }
@@ -101,8 +101,8 @@ public class VillageJoinRequestService {
             throw new BusinessException(VillageErrorCode.VILLAGE_FREE_VILLAGE_DIRECT_JOIN);
         }
 
-        // 主体権限検証（B3 と同じロジックを委譲）
-        membershipService.validateSubjectAuthorization(actorUserId, request.subjectType(), request.subjectId());
+        // 主体権限検証。判定は取引の外で済ませ（VillageSubjectAuthorizationGuard）、ここでは一致と許可だけを確かめる
+        VillageSubjectAuthorization.require(authorization, actorUserId, request.subjectType(), request.subjectId());
 
         // 既に現役メンバーか
         membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
@@ -239,7 +239,7 @@ public class VillageJoinRequestService {
      *   <li>レビュー時に既に他経路でメンバーになっていれば VILLAGE_006</li>
      * </ul>
      */
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public JoinRequestResponse approve(UUID villageId,
                                        UUID requestId,
                                        Long actorUserId,

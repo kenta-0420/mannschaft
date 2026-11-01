@@ -91,6 +91,7 @@ class VillageMembershipSlotMigrationTest {
         caseMigrationDirectory = Files.createDirectory(migrationDirectory.resolve("case-" + UUID.randomUUID()));
         try (Connection c = open(); Statement s = c.createStatement()) {
             // 専用TCの固定3表だけを、子から順に落とす。共有DBには接続しない。
+            s.executeUpdate("DROP TABLE IF EXISTS village_user_admission_locks");
             s.executeUpdate("DROP TABLE IF EXISTS village_representatives");
             s.executeUpdate("DROP TABLE IF EXISTS village_memberships");
             s.executeUpdate("DROP TABLE IF EXISTS villages");
