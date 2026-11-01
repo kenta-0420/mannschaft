@@ -2,9 +2,12 @@ package com.mannschaft.app.reservation;
 
 import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.reservation.dto.CreateEmergencyClosureRequest;
 import com.mannschaft.app.reservation.dto.EmergencyClosurePreviewResponse;
+import com.mannschaft.app.reservation.dto.EmergencyClosureResponse;
 import com.mannschaft.app.reservation.entity.EmergencyClosureConfirmationEntity;
 import com.mannschaft.app.reservation.entity.EmergencyClosureEntity;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
@@ -561,8 +564,9 @@ class EmergencyClosureServiceTest {
                 .willReturn(List.of(slot(300L, LocalTime.of(9, 0), LocalTime.of(10, 0))));
         given(reservationRepository.findByReservationSlotIdInAndStatusIn(any(), any()))
                 .willReturn(reservations);
-        given(slotRepository.findAllById(any()))
-                .willReturn(List.of(slot(300L, LocalTime.of(9, 0), LocalTime.of(10, 0))));
+        // preview では使うが sendClosure では使わないため lenient にする
+        org.mockito.Mockito.lenient().when(slotRepository.findAllById(any()))
+                .thenReturn(List.of(slot(300L, LocalTime.of(9, 0), LocalTime.of(10, 0))));
     }
 
     private EmergencyClosureConfirmationEntity confirmationOf(long userId) {
@@ -748,6 +752,59 @@ class EmergencyClosureServiceTest {
                             tuple(1L, "山田 太郎", "u1@example.com"),
                             tuple(99L, "", ""),
                             tuple(2L, "鈴木 花子", "u2@example.com"));
+        }
+    }
+
+    @Nested
+    @DisplayName("sendClosure / メール送信経路の氏名・宛先解決")
+    class SendClosureMail {
+
+        private CreateEmergencyClosureRequest request() {
+            CreateEmergencyClosureRequest r = new CreateEmergencyClosureRequest();
+            r.setStartDate(TARGET_DATE);
+            r.setEndDate(TARGET_DATE);
+            r.setReason("設備点検");
+            r.setSubject("臨時休業のお知らせ");
+            r.setMessageBody("本文");
+            r.setCancelReservations(false);
+            return r;
+        }
+
+        @Test
+        @DisplayName("重複予約と見つからないユーザーが混ざっても、取得ID集合・宛先・enqueue件数・sentCountが正しい")
+        void 重複と欠損が混ざる送信() {
+            // ユーザー1は予約2件（重複）、ユーザー2は1件、ユーザー99は退会等で見つからない
+            givenSlotsAndReservations(List.of(
+                    reservationOf(300L, 1L), reservationOf(300L, 1L),
+                    reservationOf(300L, 99L), reservationOf(300L, 2L)));
+            givenUsers(Map.of(1L, contact(1L, "山田 太郎"), 2L, contact(2L, "鈴木 花子")));
+            given(emergencyClosureRepository.save(any())).willAnswer(inv -> {
+                EmergencyClosureEntity e = inv.getArgument(0);
+                injectId(e, 700L);
+                return e;
+            });
+
+            EmergencyClosureResponse response = service.sendClosure(TEAM_ID, 5L, request());
+
+            // 取得対象は重複排除済みの {1, 99, 2}
+            ArgumentCaptor<Collection<Long>> idsCaptor = idsCaptor();
+            verify(userService, times(1)).getFullNamesAndEmails(idsCaptor.capture());
+            assertThat(idsCaptor.getValue()).containsExactlyInAnyOrder(1L, 99L, 2L);
+
+            // メールは見つかったユーザー2人にだけ、ユーザーごとに1通
+            ArgumentCaptor<EmailOutboxRequest> mailCaptor = ArgumentCaptor.forClass(EmailOutboxRequest.class);
+            verify(emailOutboxService, times(2)).enqueue(mailCaptor.capture());
+            assertThat(mailCaptor.getAllValues())
+                    .extracting(EmailOutboxRequest::userId, EmailOutboxRequest::toAddress)
+                    .containsExactlyInAnyOrder(
+                            tuple(1L, "u1@example.com"),
+                            tuple(2L, "u2@example.com"));
+
+            // 従来どおり、送信件数は見つからないユーザーも含む重複排除済みの対象数（3）
+            assertThat(response.getSentCount()).isEqualTo(3);
+            ArgumentCaptor<EmergencyClosureEntity> savedCaptor = ArgumentCaptor.forClass(EmergencyClosureEntity.class);
+            verify(emergencyClosureRepository).save(savedCaptor.capture());
+            assertThat(savedCaptor.getValue().getSentCount()).isEqualTo(3);
         }
     }
 }
