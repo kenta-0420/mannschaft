@@ -82,6 +82,26 @@ class VillageParticipationLimitsMigrationConsistencyTest {
                 VillageParticipationLimits.MIN_HARD_LIMIT, VillageParticipationLimits.DB_SLOT_CEILING);
     }
 
+    @Test
+    @DisplayName("E2E seed の既定上限と天井が Java の定数と一致する（JS は Java 定数を読めないため照合する）")
+    void seedConstantsMatchJavaConstants() throws IOException {
+        String seed = Files.readString(Path.of("scripts/seed-e2e-data.js"), StandardCharsets.UTF_8);
+        assertThat(seedConstant(seed, "VILLAGE_DEFAULT_PARTICIPATION_HARD_LIMIT"))
+                .isEqualTo(VillageParticipationLimits.DEFAULT_HARD_LIMIT);
+        assertThat(seedConstant(seed, "VILLAGE_DB_SLOT_CEILING"))
+                .isEqualTo(VillageParticipationLimits.DB_SLOT_CEILING);
+        assertThat(seed).as("seed の現在の上限は BE の設定と同じ環境変数から読む")
+                .contains("process.env.MANNSCHAFT_VILLAGE_PARTICIPATION_HARD_LIMIT");
+    }
+
+    private static int seedConstant(String seed, String name) {
+        Matcher matcher = Pattern.compile("const\\s+" + name + "\\s*=\\s*(\\d+)\\s*;").matcher(seed);
+        assertThat(matcher.find()).as("seed に定数 " + name + " がある").isTrue();
+        int value = Integer.parseInt(matcher.group(1));
+        assertThat(matcher.find()).as("seed の定数 " + name + " は1か所だけ").isFalse();
+        return value;
+    }
+
     private static long maxOf(String type, boolean unsigned) {
         int bits = switch (type.toUpperCase()) {
             case "TINYINT" -> Byte.SIZE;

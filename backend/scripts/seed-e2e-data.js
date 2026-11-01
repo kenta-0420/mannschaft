@@ -27,6 +27,24 @@ function generateSlug(name) {
 // 鍵は application-local.yml の `mannschaft.encryption.key`
 // （Base64 エンコードされた 32 バイト鍵）と同じ値を使用する。
 // ============================================================
+// ============================================================
+// F17 村の参加枠（CMP-260827-1808）
+// JS は Java の定数を読めないため、ここに1か所だけ名前付きで置く。値は
+// VillageParticipationLimits（DEFAULT_HARD_LIMIT / DB_SLOT_CEILING）と一致させ、
+// VillageParticipationLimitsMigrationConsistencyTest が照合する。
+// 現在の上限は BE の設定値 mannschaft.village.participation-hard-limit と同じ環境変数から読む。
+// ============================================================
+const VILLAGE_DEFAULT_PARTICIPATION_HARD_LIMIT = 100;
+const VILLAGE_DB_SLOT_CEILING = 1000;
+const VILLAGE_PARTICIPATION_HARD_LIMIT = (() => {
+  const raw = process.env.MANNSCHAFT_VILLAGE_PARTICIPATION_HARD_LIMIT;
+  const value = raw === undefined || raw === '' ? VILLAGE_DEFAULT_PARTICIPATION_HARD_LIMIT : Number(raw);
+  if (!Number.isInteger(value) || value < 1 || value > VILLAGE_DB_SLOT_CEILING) {
+    throw new Error(`MANNSCHAFT_VILLAGE_PARTICIPATION_HARD_LIMIT は 1 以上 ${VILLAGE_DB_SLOT_CEILING} 以下: ${raw}`);
+  }
+  return value;
+})();
+
 const F18_ENCRYPTION_KEY_BASE64 = 'pE8ozQmki8gdQ1nCFC86zcK1SSNJuVRLd7uhdpO4ihc=';
 const F18_KEY_BYTES = Buffer.from(F18_ENCRYPTION_KEY_BASE64, 'base64');
 if (F18_KEY_BYTES.length !== 32) {
@@ -866,17 +884,20 @@ function encryptForTest(plain) {
     );
     const occupiedSlots = new Set();
     for (const { user_slot: slot } of slotRows) {
-      if (!Number.isInteger(slot) || slot < 1 || slot > 100 || occupiedSlots.has(slot)) {
+      if (!Number.isInteger(slot) || slot < 1 || slot > VILLAGE_DB_SLOT_CEILING || occupiedSlots.has(slot)) {
         throw new Error('F17 seed: 在籍USERのslotがNULL・範囲外・重複');
       }
       occupiedSlots.add(slot);
     }
+    if (occupiedSlots.size >= VILLAGE_PARTICIPATION_HARD_LIMIT) {
+      throw new Error(`F17 seed: USERの現役所属が上限 ${VILLAGE_PARTICIPATION_HARD_LIMIT} に達している`);
+    }
     let userSlot = 1;
-    while (userSlot <= 100 && occupiedSlots.has(userSlot)) {
+    while (userSlot <= VILLAGE_DB_SLOT_CEILING && occupiedSlots.has(userSlot)) {
       userSlot++;
     }
-    if (userSlot > 100) {
-      throw new Error('F17 seed: USERの全村参加枠100件が占有済み');
+    if (userSlot > VILLAGE_DB_SLOT_CEILING) {
+      throw new Error('F17 seed: USERの枠番号が天井まで占有済み');
     }
     await conn.execute(
       `INSERT INTO village_memberships
