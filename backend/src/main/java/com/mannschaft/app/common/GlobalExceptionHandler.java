@@ -1877,6 +1877,7 @@ public class GlobalExceptionHandler {
             Map.entry("ANNOUNCE_008", HttpStatus.NOT_FOUND),             // テンプレート不在 → 404
             Map.entry("ANNOUNCE_009", HttpStatus.FORBIDDEN),             // テンプレート操作権限なし → 403
             Map.entry("ANNOUNCE_010", HttpStatus.CONFLICT),              // テンプレート上限超過 → 409
+            Map.entry("ANNOUNCE_011", HttpStatus.SERVICE_UNAVAILABLE),  // 組織告知一覧の継続トークン（Valkey）障害 → 503
             Map.entry("BROADCAST_003", HttpStatus.BAD_REQUEST),         // 一斉配信テンプレート不在・他スコープ → 400（F01.2.1 §8.6。存在を区別しない）
             Map.entry("ORG_064", HttpStatus.NOT_FOUND), // F01.2.1 §11 チームグループが見つかりません
             Map.entry("ORG_065", HttpStatus.CONFLICT), // F01.2.1 §11 同じ名前のチームグループがすでにあります
