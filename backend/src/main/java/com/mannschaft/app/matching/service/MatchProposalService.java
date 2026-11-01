@@ -70,20 +70,18 @@ public class MatchProposalService {
             throw new BusinessException(MatchingErrorCode.SELF_PROPOSAL_NOT_ALLOWED);
         }
 
-        // OPENチェック
+        // 他チームから見えない募集（OPEN以外・NG関係）は、詳細取得と同じく不在と同一の応答にする（CMP-260821-1027）。
         if (matchRequest.getStatus() != MatchRequestStatus.OPEN) {
-            throw new BusinessException(MatchingErrorCode.REQUEST_NOT_OPEN);
+            throw new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND);
         }
-
-        // 期限切れチェック
-        if (matchRequest.getExpiresAt() != null && matchRequest.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new BusinessException(MatchingErrorCode.REQUEST_NOT_OPEN);
-        }
-
-        // NGチームチェック（双方向）
         List<Long> blockedIds = ngTeamRepository.findBidirectionalBlockedTeamIds(teamId);
         if (blockedIds.contains(matchRequest.getTeamId())) {
-            throw new BusinessException(MatchingErrorCode.NG_TEAM_BLOCKED);
+            throw new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND);
+        }
+
+        // 期限切れチェック（OPEN の募集は公開情報）
+        if (matchRequest.getExpiresAt() != null && matchRequest.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new BusinessException(MatchingErrorCode.REQUEST_NOT_OPEN);
         }
 
         // 重複応募チェック
@@ -168,8 +166,9 @@ public class MatchProposalService {
         MatchProposalEntity proposal = findProposalOrThrow(proposalId);
 
         // 募集を悲観ロックで取得
+        // 親の募集が論理削除済みの応募は、不在の応募と同一応答にする（CMP-260821-1027）。
         MatchRequestEntity matchRequest = requestRepository.findByIdForUpdate(proposal.getRequestId())
-                .orElseThrow(() -> new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(MatchingErrorCode.PROPOSAL_NOT_FOUND));
 
         // 権限チェック（募集チームの管理者/副管理者のみ・userID≠teamID の誤比較を撤廃）
         if (!accessControlService.isAdminOrAbove(actorUserId, matchRequest.getTeamId(), "TEAM")) {
@@ -231,7 +230,7 @@ public class MatchProposalService {
     public ProposalStatusResponse rejectProposal(Long proposalId, Long actorUserId, String statusReason) {
         MatchProposalEntity proposal = findProposalOrThrow(proposalId);
         MatchRequestEntity matchRequest = requestRepository.findById(proposal.getRequestId())
-                .orElseThrow(() -> new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(MatchingErrorCode.PROPOSAL_NOT_FOUND));
 
         // 権限チェック（募集チームの管理者/副管理者のみ）
         if (!accessControlService.isAdminOrAbove(actorUserId, matchRequest.getTeamId(), "TEAM")) {

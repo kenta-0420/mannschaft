@@ -97,7 +97,10 @@ class JobPostingApplicationWriteBodyParityContractIT extends AbstractMySqlIntegr
         APPLICATION_REJECT(HttpMethod.POST, "/api/v1/applications/{id}/reject", "{}", Target.APPLICATION, JobPostingStatus.OPEN, 200),
         APPLICATION_ACCEPT(HttpMethod.POST, "/api/v1/applications/{id}/accept", null, Target.APPLICATION, JobPostingStatus.OPEN, 201),
         QR_ISSUE(HttpMethod.POST, "/api/v1/contracts/{id}/qr-tokens", "{\"type\":\"IN\"}", Target.CONTRACT, JobPostingStatus.OPEN, 201),
-        QR_CURRENT(HttpMethod.GET, "/api/v1/contracts/{id}/qr-tokens/current?type=IN", null, Target.CONTRACT, JobPostingStatus.OPEN, 204);
+        QR_CURRENT(HttpMethod.GET, "/api/v1/contracts/{id}/qr-tokens/current?type=IN", null, Target.CONTRACT, JobPostingStatus.OPEN, 204),
+        // 応募作成。応募資格の無い者には求人の存在・状態（DRAFT 等）を明かさない。
+        APPLICATION_CREATE(HttpMethod.POST, "/api/v1/jobs/{id}/apply", "{\"selfPr\":\"よろしくお願いします\"}", Target.POSTING, JobPostingStatus.OPEN, 201),
+        APPLICATION_CREATE_DRAFT(HttpMethod.POST, "/api/v1/jobs/{id}/apply", "{\"selfPr\":\"よろしくお願いします\"}", Target.POSTING, JobPostingStatus.DRAFT, 409);
 
         final HttpMethod method;
         final String path;
@@ -209,7 +212,7 @@ class JobPostingApplicationWriteBodyParityContractIT extends AbstractMySqlIntegr
         List<String> diffs = new ArrayList<>();
         for (Op op : Op.values()) {
             Fixture f = fixture(op);
-            for (Actor actor : outsiders) {
+            for (Actor actor : outsidersFor(op)) {
                 String token = tokens.issueAccessToken(actor.id(), List.of("USER"));
                 MvcResult missing = call(op, token, MISSING);
                 MvcResult existing = call(op, token, f.target(op));
@@ -230,7 +233,7 @@ class JobPostingApplicationWriteBodyParityContractIT extends AbstractMySqlIntegr
         for (Op op : Op.values()) {
             Fixture f = fixture(op);
             Snapshot before = snapshot();
-            for (Actor actor : outsiders) {
+            for (Actor actor : outsidersFor(op)) {
                 call(op, tokens.issueAccessToken(actor.id(), List.of("USER")), f.target(op));
             }
             assertThat(snapshot()).as("%s", op).isEqualTo(before);
@@ -241,11 +244,13 @@ class JobPostingApplicationWriteBodyParityContractIT extends AbstractMySqlIntegr
     @DisplayName("AC-1027-T2-3: 投稿者・TEAM ADMIN・応募者本人・Requester の正常系を維持する")
     void AC_1027_T2_3_権限者の正常系() throws Exception {
         for (Op op : Op.values()) {
+            if (op == Op.APPLICATION_CREATE_DRAFT) { continue; }
             Fixture f = fixture(op);
             Long actor = switch (op) {
                 case POSTING_UPDATE, POSTING_PUBLISH, POSTING_CANCEL, POSTING_DELETE, QR_ISSUE, QR_CURRENT -> requester;
                 case POSTING_CLOSE, APPLICATION_LIST, APPLICATION_REJECT, APPLICATION_ACCEPT -> teamAdmin;
-                case APPLICATION_WITHDRAW -> applicant;
+                case APPLICATION_WITHDRAW, APPLICATION_CREATE -> applicant;
+                case APPLICATION_CREATE_DRAFT -> throw new IllegalStateException();
             };
             MvcResult result = call(op, tokens.issueAccessToken(actor, List.of("USER")), f.target(op));
             assertThat(result.getResponse().getStatus()).as("%s: %s", op,
@@ -264,6 +269,12 @@ class JobPostingApplicationWriteBodyParityContractIT extends AbstractMySqlIntegr
             }
             assertThat(snapshot()).isEqualTo(before);
         }
+    }
+
+    /** 応募作成は同TEAMのMEMBERが正当な応募資格者（DRAFT は状態診断を受ける）のため、対象外にする。 */
+    private List<Actor> outsidersFor(Op op) {
+        if (op != Op.APPLICATION_CREATE && op != Op.APPLICATION_CREATE_DRAFT) { return outsiders; }
+        return outsiders.stream().filter(a -> !a.name().equals("同TEAMのMEMBER")).toList();
     }
 
     private MvcResult call(Op op, String token, long id) throws Exception {

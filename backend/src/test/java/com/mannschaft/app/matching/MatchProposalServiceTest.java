@@ -218,7 +218,7 @@ class MatchProposalServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 募集がOPEN以外だとエラー")
+        @DisplayName("異常系: 募集がOPEN以外は不在と同一の REQUEST_NOT_FOUND")
         void 募集がOPEN以外() {
             // Given
             MatchRequestEntity request = MatchRequestEntity.builder()
@@ -233,11 +233,11 @@ class MatchProposalServiceTest {
             assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MatchingErrorCode.REQUEST_NOT_OPEN);
+                    .isEqualTo(MatchingErrorCode.REQUEST_NOT_FOUND);
         }
 
         @Test
-        @DisplayName("異常系: NGチームによるブロック")
+        @DisplayName("異常系: NGチームによるブロックは不在と同一の REQUEST_NOT_FOUND")
         void NGチームブロック() {
             // Given
             MatchRequestEntity request = createOpenRequest();
@@ -250,7 +250,7 @@ class MatchProposalServiceTest {
             assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MatchingErrorCode.NG_TEAM_BLOCKED);
+                    .isEqualTo(MatchingErrorCode.REQUEST_NOT_FOUND);
         }
 
         @Test

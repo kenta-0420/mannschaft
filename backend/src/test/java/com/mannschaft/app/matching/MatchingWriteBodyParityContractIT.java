@@ -97,17 +97,33 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
         PROPOSAL_LIST(HttpMethod.GET, "/api/v1/matching/requests/{id}/proposals", Target.REQUEST, "MATCHING_001"),
         PROPOSAL_ACCEPT(HttpMethod.PATCH, "/api/v1/matching/proposals/{id}/accept", Target.PROPOSAL, "MATCHING_002"),
         PROPOSAL_REJECT(HttpMethod.PATCH, "/api/v1/matching/proposals/{id}/reject", Target.PROPOSAL, "MATCHING_002"),
-        PROPOSAL_WITHDRAW(HttpMethod.PATCH, "/api/v1/matching/proposals/{id}/withdraw", Target.PROPOSAL, "MATCHING_002");
+        PROPOSAL_WITHDRAW(HttpMethod.PATCH, "/api/v1/matching/proposals/{id}/withdraw", Target.PROPOSAL, "MATCHING_002"),
+        // 親の募集が論理削除された後の承諾・拒否は、不在の応募と同一応答（MATCHING_002）。
+        PROPOSAL_ACCEPT_PARENT_DELETED(HttpMethod.PATCH, "/api/v1/matching/proposals/{id}/accept", Target.PROPOSAL, "MATCHING_002", Variant.PARENT_DELETED),
+        PROPOSAL_REJECT_PARENT_DELETED(HttpMethod.PATCH, "/api/v1/matching/proposals/{id}/reject", Target.PROPOSAL, "MATCHING_002", Variant.PARENT_DELETED),
+        // 応募作成。他チームから見えない募集（OPEN以外・NG関係）は不在の募集と同一応答（MATCHING_001）。
+        PROPOSAL_CREATE_NOT_OPEN(HttpMethod.POST, "/api/v1/teams/{team}/matching/requests/{id}/propose", Target.REQUEST, "MATCHING_001", Variant.NOT_OPEN),
+        PROPOSAL_CREATE_NG(HttpMethod.POST, "/api/v1/teams/{team}/matching/requests/{id}/propose", Target.REQUEST, "MATCHING_001", Variant.NG);
 
         final HttpMethod method;
         final String path;
         final Target target;
         final String missingCode;
+        final Variant variant;
 
         Op(HttpMethod method, String path, Target target, String missingCode) {
-            this.method = method; this.path = path; this.target = target; this.missingCode = missingCode;
+            this(method, path, target, missingCode, Variant.NORMAL);
         }
+
+        Op(HttpMethod method, String path, Target target, String missingCode, Variant variant) {
+            this.method = method; this.path = path; this.target = target; this.missingCode = missingCode;
+            this.variant = variant;
+        }
+
+        boolean isCreate() { return variant == Variant.NOT_OPEN || variant == Variant.NG; }
     }
+
+    private enum Variant { NORMAL, PARENT_DELETED, NOT_OPEN, NG }
 
     @Autowired private MockMvc mvc;
     @Autowired private ObjectMapper mapper;
@@ -165,6 +181,10 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
     void 自所有fixtureと共有flagを復元する() {
         try {
             tx(() -> {
+                if (!teamIds.isEmpty()) {
+                    em.createNativeQuery("DELETE FROM ng_teams WHERE team_id IN (:ids) OR blocked_team_id IN (:ids)")
+                            .setParameter("ids", teamIds).executeUpdate();
+                }
                 proposals.deleteAllById(proposalIds);
                 if (!requestIds.isEmpty()) {
                     em.createNativeQuery("DELETE FROM match_requests WHERE id IN (:ids)")
@@ -196,8 +216,8 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
     void 越境と不在の本文一致とDB不変() throws Exception {
         List<String> diffs = new ArrayList<>();
         for (Op op : Op.values()) {
-            Fixture f = fixture();
-            for (Actor actor : outsiders) {
+            Fixture f = fixture(op);
+            for (Actor actor : actorsFor(op)) {
                 // 募集TEAMのMEMBERは応募一覧を閲覧できる（所属者の正当な読み取り）ため対象外。
                 if (op == Op.PROPOSAL_LIST && actor.name().equals("募集TEAMのMEMBER")) { continue; }
                 Snapshot before = snapshot();
@@ -220,7 +240,8 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
     @DisplayName("募集TEAM ADMIN・応募TEAM ADMIN の正常系を維持する")
     void 権限者の正常系() throws Exception {
         for (Op op : Op.values()) {
-            Fixture f = fixture();
+            if (op.variant != Variant.NORMAL) { continue; }
+            Fixture f = fixture(op);
             Long actor = op == Op.PROPOSAL_WITHDRAW ? proposingAdmin : requestingAdmin;
             MvcResult result = call(op, actor, f.target(op));
             assertThat(result.getResponse().getStatus()).as("%s: %s", op,
@@ -232,7 +253,7 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
     @DisplayName("未認証は実在・不在とも401でDB不変")
     void 未認証は401() throws Exception {
         for (Op op : Op.values()) {
-            Fixture f = fixture();
+            Fixture f = fixture(op);
             Snapshot before = snapshot();
             for (long target : List.of(f.target(op), MISSING)) {
                 assertThat(call(op, null, target).getResponse().getStatus()).as("%s", op).isEqualTo(401);
@@ -241,13 +262,42 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
         }
     }
 
+    /** 応募作成は応募TEAMのADMIN（パスTEAMの認可を通る者）が操作者。それ以外は越境者。 */
+    private List<Actor> actorsFor(Op op) {
+        return op.isCreate() ? List.of(new Actor("応募TEAMのADMIN", proposingAdmin)) : outsiders;
+    }
+
+    @Test
+    @DisplayName("応募作成の正常系（OPEN募集・応募TEAMのADMIN）は201を維持する")
+    void 応募作成の正常系() throws Exception {
+        MatchRequestEntity parent = tx(() -> {
+            MatchRequestEntity saved = requests.save(MatchRequestEntity.builder().teamId(requestingTeam)
+                    .title("応募作成").activityType(ActivityType.values()[0]).prefectureCode("13")
+                    .status(MatchRequestStatus.OPEN).build());
+            requestIds.add(saved.getId());
+            return saved;
+        });
+        MvcResult result = mvc.perform(request(HttpMethod.POST,
+                        "/api/v1/teams/" + proposingTeam + "/matching/requests/" + parent.getId() + "/propose")
+                .header("Accept-Language", "ja").contentType(MediaType.APPLICATION_JSON).content("{}")
+                .header("Authorization", "Bearer " + tokens.issueAccessToken(proposingAdmin, List.of("USER")))).andReturn();
+        SecurityContextHolder.clearContext();
+        assertThat(result.getResponse().getStatus()).as(result.getResponse().getContentAsString(StandardCharsets.UTF_8))
+                .isEqualTo(201);
+        tx(() -> {
+            proposalIds.addAll(proposals.findAll().stream()
+                    .filter(p -> p.getRequestId().equals(parent.getId())).map(MatchProposalEntity::getId).toList());
+            return null;
+        });
+    }
+
     private MvcResult call(Op op, Long actor, long id) throws Exception {
         assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
-        var builder = request(op.method, op.path.replace("{id}", Long.toString(id))).header("Accept-Language", "ja");
+        var builder = request(op.method, op.path.replace("{team}", Long.toString(proposingTeam)).replace("{id}", Long.toString(id))).header("Accept-Language", "ja");
         if (op == Op.REQUEST_UPDATE) {
             builder.contentType(MediaType.APPLICATION_JSON).content(
                     "{\"title\":\"改題\",\"activityType\":\"" + ActivityType.values()[0].name() + "\",\"prefectureCode\":\"13\"}");
-        } else if (op.method == HttpMethod.PATCH) {
+        } else if (op.method == HttpMethod.PATCH || op.method == HttpMethod.POST) {
             builder.contentType(MediaType.APPLICATION_JSON).content("{}");
         }
         if (actor != null) { builder.header("Authorization", "Bearer " + tokens.issueAccessToken(actor, List.of("USER"))); }
@@ -261,16 +311,24 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
     }
 
     /** 操作ごとに独立した OPEN 募集と PENDING 応募を作る。 */
-    private Fixture fixture() {
+    private Fixture fixture(Op op) {
         return tx(() -> {
             MatchRequestEntity parent = requests.save(MatchRequestEntity.builder().teamId(requestingTeam)
                     .title("書込契約").activityType(ActivityType.values()[0]).prefectureCode("13")
-                    .status(MatchRequestStatus.OPEN).build());
+                    .status(op.variant == Variant.NOT_OPEN ? MatchRequestStatus.MATCHED : MatchRequestStatus.OPEN).build());
             requestIds.add(parent.getId());
             MatchProposalEntity proposal = proposals.save(MatchProposalEntity.builder().requestId(parent.getId())
                     .proposingTeamId(proposingTeam).status(MatchProposalStatus.PENDING).build());
             proposalIds.add(proposal.getId());
             em.flush();
+            if (op.variant == Variant.PARENT_DELETED) {
+                em.createNativeQuery("UPDATE match_requests SET deleted_at=NOW() WHERE id=:id")
+                        .setParameter("id", parent.getId()).executeUpdate();
+            }
+            if (op.variant == Variant.NG) {
+                em.createNativeQuery("INSERT INTO ng_teams (team_id, blocked_team_id, created_at) VALUES (:t, :b, NOW())")
+                        .setParameter("t", requestingTeam).setParameter("b", proposingTeam).executeUpdate();
+            }
             return new Fixture(parent.getId(), proposal.getId());
         });
     }

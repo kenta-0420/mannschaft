@@ -44,9 +44,6 @@ public enum EquipmentErrorCode implements ErrorCode {
     /** 一括操作の件数超過 */
     BULK_LIMIT_EXCEEDED("EQUIPMENT_012", "一括操作は最大20件までです", Severity.WARN),
 
-    /** 一括返却で異なる備品が混在 */
-    MIXED_EQUIPMENT_IN_BULK("EQUIPMENT_013", "一括返却は同一備品の貸出レコードのみ指定できます", Severity.WARN),
-
     /** 備品がメンテナンス中または廃棄済み */
     ITEM_NOT_AVAILABLE("EQUIPMENT_014", "この備品は現在貸出できません", Severity.WARN),
 

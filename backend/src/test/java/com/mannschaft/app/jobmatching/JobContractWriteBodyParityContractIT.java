@@ -254,6 +254,26 @@ class JobContractWriteBodyParityContractIT extends AbstractMySqlIntegrationTest 
         }
     }
 
+    @Test
+    @DisplayName("AC-1027-T1-5: 当事者が自分の権限外の操作をすると、既存の写像どおり 404 JOB_PERMISSION_DENIED（403 ではない）でDB不変")
+    void AC_1027_T1_5_当事者の権限外は404固定() throws Exception {
+        for (Op op : Op.values()) {
+            // 完了報告は Worker のみ・承認/差戻は Requester のみ。逆の当事者が行うと権限外。解約は双方可のため対象外。
+            Long wrongParty = switch (op) {
+                case REPORT -> requester;
+                case APPROVE, REJECT -> worker;
+                case CANCEL -> null;
+            };
+            if (wrongParty == null) { continue; }
+            Long id = fixture(op.before);
+            Snapshot before = snapshot();
+            MvcResult result = call(op, tokens.issueAccessToken(wrongParty, List.of("USER")), id);
+            assertThat(result.getResponse().getStatus()).as("%s", op).isEqualTo(404);
+            assertThat(json(result).path("error").path("code").asText()).as("%s", op).isEqualTo("JOB_PERMISSION_DENIED");
+            assertThat(snapshot()).as("%s", op).isEqualTo(before);
+        }
+    }
+
     private MvcResult call(Op op, String token, long id) throws Exception {
         assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
         var request = post("/api/v1/contracts/" + id + "/" + op.path).header("Accept-Language", "ja")

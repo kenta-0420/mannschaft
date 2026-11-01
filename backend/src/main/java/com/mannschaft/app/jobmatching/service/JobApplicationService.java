@@ -69,6 +69,13 @@ public class JobApplicationService {
         JobPostingEntity posting = postingRepository.findById(postingId)
                 .orElseThrow(() -> new BusinessException(JobmatchingErrorCode.JOB_NOT_FOUND));
 
+        // 応募資格の無い者には求人の存在・状態を明かさない（不在IDと同一応答。CMP-260821-1027）。
+        // 状態診断（OPEN/締切）より前に判定する。投稿者本人は自分の求人なので対象外。
+        if (!userId.equals(posting.getCreatedByUserId())
+                && isSupportedScope(posting) && !jobPolicy.canApply(userId, posting)) {
+            throw new BusinessException(JobmatchingErrorCode.JOB_NOT_FOUND);
+        }
+
         if (posting.getStatus() != JobPostingStatus.OPEN) {
             throw new BusinessException(JobmatchingErrorCode.JOB_NOT_OPEN);
         }

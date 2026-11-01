@@ -164,6 +164,50 @@ class EquipmentReturnBodyParityContractIT extends AbstractMySqlIntegrationTest {
         assertThat(snapshot()).isEqualTo(before);
     }
 
+    @Test
+    @DisplayName("AC-1027-T3-5: 一括返却でも他備品の貸出記録IDは不在IDと完全一致し、DBは不変")
+    void AC_1027_T3_5_一括返却の越境と不在の本文一致() throws Exception {
+        String token = tokens.issueAccessToken(admin, List.of("USER"));
+        Map<String, List<Map<String, Object>>> before = snapshot();
+        List<String> diffs = new ArrayList<>();
+        // 自備品の貸出IDとの混在を含め、他備品IDの位置を変えても不在IDと同じ応答になること。
+        for (List<Long> foreign : List.of(List.of(otherItemAssignment), List.of(foreignAssignment),
+                List.of(ownAssignment, otherItemAssignment), List.of(otherItemAssignment, ownAssignment))) {
+            List<Long> absent = foreign.stream().map(id -> id == otherItemAssignment || id == foreignAssignment ? MISSING : id).toList();
+            MvcResult missing = bulkCall(token, absent);
+            MvcResult existing = bulkCall(token, foreign);
+            assertThat(missing.getResponse().getStatus()).isEqualTo(404);
+            if (existing.getResponse().getStatus() != missing.getResponse().getStatus()
+                    || !body(existing).equals(body(missing))) {
+                diffs.add(foreign + ": 越境=" + existing.getResponse().getStatus() + " " + body(existing)
+                        + " 不在=" + missing.getResponse().getStatus() + " " + body(missing));
+            }
+        }
+        assertThat(diffs).as("一括返却で越境と不在の応答が割れている").isEmpty();
+        assertThat(snapshot()).isEqualTo(before);
+    }
+
+    @Test
+    @DisplayName("AC-1027-T3-6: 一括返却の正常系（自備品のみ）は200で返却済みになる")
+    void AC_1027_T3_6_一括返却の正常系() throws Exception {
+        MvcResult result = bulkCall(tokens.issueAccessToken(admin, List.of("USER")), List.of(ownAssignment));
+        assertThat(result.getResponse().getStatus()).as(result.getResponse().getContentAsString(StandardCharsets.UTF_8))
+                .isEqualTo(200);
+        em.flush();
+        assertThat(jdbcTemplate.queryForObject("SELECT returned_at IS NOT NULL FROM equipment_assignments WHERE id = ?",
+                Boolean.class, ownAssignment)).isTrue();
+    }
+
+    private MvcResult bulkCall(String token, List<Long> assignmentIds) throws Exception {
+        String url = "/api/v1/teams/" + teamA + "/equipment/" + item + "/return-bulk";
+        var request = patch(url).servletPath(url).header("Accept-Language", "ja")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("assignmentIds", assignmentIds)));
+        if (token != null) request.header("Authorization", "Bearer " + token);
+        try { return mockMvc.perform(request).andReturn(); }
+        finally { SecurityContextHolder.clearContext(); }
+    }
+
     private MvcResult returnCall(String token, long assignmentId) throws Exception {
         String url = "/api/v1/teams/" + teamA + "/equipment/" + item + "/return";
         var request = patch(url).servletPath(url).header("Accept-Language", "ja")
