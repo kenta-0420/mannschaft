@@ -13,6 +13,7 @@
  */
 import dayjs from 'dayjs'
 import type { Dayjs } from 'dayjs'
+import { parseWallClockInTz } from '~/utils/wallClock'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
 import { MINUTES_PER_DAY, dateToOrdinal, eventDayOccupancy, ordinalToDate, todayInTimezone } from '~/utils/calendarWeek'
 import type { GridPoint } from '~/composables/useGridRangeSelect'
@@ -411,29 +412,7 @@ function toUserTzMoment(dayIndex: number, minutes: number): Dayjs {
   const withinDay = minutes - dayCarry * MINUTES_PER_DAY
   const dateStr = dayCarry === 0 ? day.dateStr : ordinalToDate(day.ord + dayCarry)
   const timeStr = `${pad(Math.floor(withinDay / 60))}:${pad(withinDay % 60)}:00`
-  const wallClock = `${dateStr}T${timeStr}`
-  const resolved = dayjs.tz(wallClock, userTimezone.value)
-  return earlierOfAmbiguous(resolved, wallClock)
-}
-
-/**
- * 秋の重複（同じ壁時計が二度来る）では、常に**先に来る側**を選ぶ。
- *
- * `dayjs.tz(文字列, tz)` は重複時刻の解決に「**現在時刻**のオフセット」を第一推測として使うため
- * （dayjs の timezone プラグイン `previousOffset = tzOffset(+d(), timezone)`）、
- * 同じ入力でも実行した日時（切替の前か後か）で先の側にも後の側にもなる。
- * 例: America/New_York の 2026-11-01 01:30 は、切替前に実行すると -04:00、切替後に実行すると -05:00 になる。
- * これでは選んだ範囲の長さが実行日で変わる（壁時計 01:30–02:00 が 90分にも 30分にもなる）。
- * 切替の無い日・存在しない時刻（春のギャップ）では壁時計が一致しないため、何もしない。
- */
-function earlierOfAmbiguous(resolved: Dayjs, wallClock: string): Dayjs {
-  const tz = userTimezone.value
-  const offsetBefore = dayjs(resolved.valueOf() - 24 * 3_600_000).tz(tz).utcOffset()
-  const shiftMin = resolved.utcOffset() - offsetBefore
-  // 切替の前後でオフセットが小さくなる側（= 重複を作る側）のみが対象。
-  if (shiftMin >= 0) return resolved
-  const earlier = dayjs(resolved.valueOf() + shiftMin * 60_000).tz(tz)
-  return earlier.format('YYYY-MM-DDTHH:mm:ss') === wallClock ? earlier : resolved
+  return parseWallClockInTz(`${dateStr}T${timeStr}`, userTimezone.value)
 }
 
 /**
