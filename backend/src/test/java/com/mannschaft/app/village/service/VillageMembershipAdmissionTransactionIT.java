@@ -7,6 +7,7 @@ import com.mannschaft.app.common.persistence.probe.UnsignedIdProbeRepository;
 import com.mannschaft.app.common.token.SecretTokenVault;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.JoinRequestReviewRequest;
+import com.mannschaft.app.village.dto.MembershipBanRequest;
 import com.mannschaft.app.village.dto.MembershipJoinRequest;
 import com.mannschaft.app.village.dto.VillageCreationRequestCreateRequest;
 import com.mannschaft.app.village.dto.VillageCreationRequestReviewRequest;
@@ -705,12 +706,22 @@ class VillageMembershipAdmissionTransactionIT {
         assertThat(activeCount(attacker)).isZero();
     }
 
-    /** AC-1808-6: 現役BAN中の主体は、どの入口からも再参加できない。 */
+    /**
+     * AC-1808-6: 実際の ban() を通った主体は、どの入口からも再参加できない。
+     * ban() は banned_at と同時に left_at も設定する（BAN は退村扱い）ため、
+     * 現役行だけを見る判定では再入村が通ってしまう。直接INSERTではなく実操作の結果状態から検証する。
+     */
     @ParameterizedTest(name = "{0}: BAN済み再参加")
     @MethodSource("bannedRejoinWriters")
     void 入村_BAN済み主体の再参加は拒否する(Writer writer) {
         Fixture fixture = prepare(writer);
-        insertMembership(fixture.villageId(), fixture.subjectId(), 1, true, "VILLAGER");
+        UUID membership = insertMembership(fixture.villageId(), fixture.subjectId(), 1, false, "VILLAGER");
+        memberships.ban(fixture.villageId(), membership, fixture.reviewerId(), new MembershipBanRequest("CMP1808試練"));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM village_memberships WHERE id=UUID_TO_BIN(?) "
+                + "AND banned_at IS NOT NULL AND left_at IS NOT NULL", Integer.class, membership.toString()))
+                .as("実ban()はBANと退村を同時に記録する").isEqualTo(1);
+        assertThat(activeCount(fixture.subjectId())).isZero();
+        List<Map<String, Object>> membershipsBefore = actorMemberships(fixture.subjectId());
         List<Map<String, Object>> effectsBefore = sideEffectSnapshot(fixture);
 
         assertThatThrownBy(() -> invoke(fixture))
@@ -718,7 +729,8 @@ class VillageMembershipAdmissionTransactionIT {
                         error -> assertThat(error.getErrorCode()).isEqualTo(VillageErrorCode.MEMBER_BANNED));
 
         assertThat(sideEffectSnapshot(fixture)).isEqualTo(effectsBefore);
-        assertThat(activeCount(fixture.subjectId())).isEqualTo(1);
+        assertThat(actorMemberships(fixture.subjectId())).isEqualTo(membershipsBefore);
+        assertThat(activeCount(fixture.subjectId())).isZero();
     }
 
     static Stream<Arguments> bannedRejoinWriters() {

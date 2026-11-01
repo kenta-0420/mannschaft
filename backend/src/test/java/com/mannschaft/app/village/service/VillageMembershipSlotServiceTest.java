@@ -132,4 +132,30 @@ class VillageMembershipSlotServiceTest {
         assertThat(service.admit(entity)).isSameAs(entity);
         verify(membershipRepository).flush();
     }
+
+    @Test
+    @DisplayName("AC-1808-6: 退村扱いのBAN行が残っていれば現役行の有無を問わずMEMBER_BANNED")
+    void bannedHistoryRejectsRejoin() {
+        java.util.UUID village = java.util.UUID.randomUUID();
+        when(membershipRepository.findAdmissionPresenceForUpdate(village, "USER", USER_ID)).thenReturn(List.of(
+                VillageMembershipSlotTestFixture.presence(true), VillageMembershipSlotTestFixture.presence(true)));
+        assertThatThrownBy(() -> service.ensureNotCurrentMember(village,
+                com.mannschaft.app.village.entity.enums.VillageSubjectType.USER, USER_ID))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(VillageErrorCode.MEMBER_BANNED));
+    }
+
+    @Test
+    @DisplayName("BAN行が無く現役行だけならALREADY_MEMBER、行が無ければ通す")
+    void activeWithoutBanIsAlreadyMember() {
+        java.util.UUID village = java.util.UUID.randomUUID();
+        when(membershipRepository.findAdmissionPresenceForUpdate(village, "USER", USER_ID))
+                .thenReturn(List.of(VillageMembershipSlotTestFixture.presence(false)))
+                .thenReturn(List.of());
+        assertThatThrownBy(() -> service.ensureNotCurrentMember(village,
+                com.mannschaft.app.village.entity.enums.VillageSubjectType.USER, USER_ID))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(VillageErrorCode.ALREADY_MEMBER));
+        service.ensureNotCurrentMember(village, com.mannschaft.app.village.entity.enums.VillageSubjectType.USER, USER_ID);
+    }
 }

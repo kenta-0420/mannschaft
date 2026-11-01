@@ -92,7 +92,7 @@ class VillageJoinRequestServiceTest {
         org.mockito.Mockito.lenient().when(userRowLockService.lock(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(UserRowLockService.UserState.ACTIVE);
         VillageMembershipSlotService slots = new VillageMembershipSlotService(userRowLockService, membershipRepository);
-        service = new VillageJoinRequestService(joinRequestRepository, membershipRepository, slots, entityManager, membershipService, accessGate);
+        service = new VillageJoinRequestService(joinRequestRepository, membershipRepository, villageRepository, slots, entityManager, membershipService, accessGate);
     }
 
     /**

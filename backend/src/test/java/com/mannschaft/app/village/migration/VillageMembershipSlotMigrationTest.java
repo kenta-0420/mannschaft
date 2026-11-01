@@ -373,6 +373,41 @@ class VillageMembershipSlotMigrationTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {1, 3, 5})
+    @DisplayName("AC-1808-1: 途中のDDLで止まった後でも同じ移行を再適用できる（冪等）")
+    void 途中失敗後の再適用は冪等に完走する(int appliedDdl) throws Exception {
+        try (Connection c = open()) {
+            UUID village = village(c);
+            membership(c, village, "USER", 71, null, false, false, "2026-01-01 00:00:00");
+            membership(c, village, "USER", 71, null, false, false, "2026-02-01 00:00:00");
+            // 暗黙commitで残りうる「途中まで適用済み」の状態を再現する。
+            List<String> partial = List.of(
+                    "ALTER TABLE village_memberships ADD COLUMN user_slot SMALLINT UNSIGNED NULL",
+                    "UPDATE village_memberships SET user_slot=1 WHERE left_at IS NULL AND joined_at='2026-01-01 00:00:00'",
+                    "UPDATE village_memberships SET left_at='2026-10-31 00:00:00' WHERE joined_at='2026-02-01 00:00:00'",
+                    "ALTER TABLE village_memberships ADD COLUMN active_user_slot SMALLINT UNSIGNED GENERATED ALWAYS AS "
+                            + "(CASE WHEN subject_type = 'USER' AND left_at IS NULL THEN user_slot ELSE NULL END) VIRTUAL",
+                    "ALTER TABLE village_memberships ADD UNIQUE KEY uk_vm_user_active_slot (subject_id, active_user_slot)");
+            try (Statement s = c.createStatement()) {
+                for (int index = 0; index < appliedDdl; index++) {
+                    s.executeUpdate(partial.get(index));
+                }
+            }
+
+            migrateCandidateIfPresent();
+
+            String ddl;
+            try (Statement s = c.createStatement(); ResultSet r = s.executeQuery("SHOW CREATE TABLE village_memberships")) {
+                r.next();
+                ddl = r.getString(2);
+            }
+            assertThat(ddl).contains("ck_vm_active_user_slot", "uk_vm_user_active_slot", "uk_vm_active_subject");
+            assertThat(count(c, "SELECT COUNT(*) FROM village_memberships WHERE left_at IS NULL")).isEqualTo(1);
+            assertThat(count(c, "SELECT COUNT(*) FROM village_memberships WHERE left_at IS NULL AND user_slot=1")).isEqualTo(1);
+        }
+    }
+
     private void migrateCandidateIfPresent() throws Exception {
         // REDでは候補DDLはowned evidenceのみで、productionにはまだ存在しない。
         try (var files = Files.list(Path.of("src/main/resources/db/migration"))) {

@@ -31,16 +31,22 @@ public class VillageMembershipSlotService {
         return userId != null && userRowLockService.lock(userId) == UserRowLockService.UserState.ACTIVE;
     }
 
-    /** 現在の同村在籍をscalarで確認し、BAN/既所属の既存エラーを保つ。 */
+    /** 現在の同村在籍とBAN履歴をscalarで確認し、BAN/既所属のエラーを返す。BANは退村扱いの行も含む。 */
     public void ensureNotCurrentMember(UUID villageId, VillageSubjectType subjectType, Long subjectId) {
         var rows = membershipRepository.findAdmissionPresenceForUpdate(villageId, subjectType.name(), subjectId);
-        if (!rows.isEmpty()) {
-            Integer banned = rows.getFirst().getBannedFlag();
-            if (banned == null || rows.size() != 1) {
+        if (rows.isEmpty()) {
+            return;
+        }
+        boolean banned = false;
+        for (var row : rows) {
+            Integer flag = row.getBannedFlag();
+            if (flag == null) {
                 throw new IllegalStateException("村在籍のcurrent projectionが不正です");
             }
-            throw new BusinessException(banned != 0 ? VillageErrorCode.MEMBER_BANNED : VillageErrorCode.ALREADY_MEMBER);
+            banned |= flag != 0;
         }
+        // BAN（退村扱いの行を含む）は再参加を拒否する。BANが無ければ残る行は現役在籍。
+        throw new BusinessException(banned ? VillageErrorCode.MEMBER_BANNED : VillageErrorCode.ALREADY_MEMBER);
     }
 
     /**
