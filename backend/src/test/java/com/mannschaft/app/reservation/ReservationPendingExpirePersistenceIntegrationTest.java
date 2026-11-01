@@ -6,6 +6,7 @@ import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationPolicyEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.entity.ReservationWaitlistEntryEntity;
+import com.mannschaft.app.reservation.repository.ReservationPendingExpireScanStateRepository;
 import com.mannschaft.app.reservation.repository.ReservationPolicyRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
@@ -17,12 +18,15 @@ import jakarta.persistence.EntityManagerFactory;
 import org.awaitility.Awaitility;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -55,6 +59,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("仮押さえ自動失効 永続化結合テスト（実MySQL・F03.4.5 §6.3）")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class ReservationPendingExpirePersistenceIntegrationTest extends AbstractMySqlIntegrationTest {
+
+    @Autowired private ReservationPendingExpireScanStateRepository scanStates;
+    private UUID ownedStateId;
+
+    @BeforeEach
+    void 所有進捗行を保存する() {
+        assertThat(scanStates.count()).as("既存進捗を上書きしない").isZero();
+        ownedStateId = scanStates.saveAndFlush(
+                ReservationPendingExpireTestFixture.minimumValidState(Instant.now())).getId();
+    }
+
+    @AfterEach
+    void 所有進捗行を片付ける() {
+        if (ownedStateId != null) scanStates.deleteById(ownedStateId);
+    }
 
     @Autowired
     private ReservationPendingExpireBatchService batchService;
