@@ -73,6 +73,19 @@ public class VillageGuardRogueModerators {
         return repo.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(v, VillageSubjectType.USER, u);
     }
 
+    /** オーバーロード（正当）: BAN フィルタ付き。下の同名オーバーロードの違反を打ち消してはならない。 */
+    boolean isMemberOverload(UUID v, Long u) {
+        return repo.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(v, VillageSubjectType.USER, u)
+                .filter(m -> m.getBannedAt() == null)
+                .isPresent();
+    }
+
+    /** オーバーロード（違反）: BAN を見ずに生述語を使う。 */
+    boolean isMemberOverload(UUID v, Long u, boolean includeBanned) {
+        return repo.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(v, VillageSubjectType.USER, u)
+                .isPresent();
+    }
+
     /** ネストした record のメソッド。 */
     record Inner(VillageMembershipRepository r) {
         boolean isModeratorInRecord(UUID v, Long u) {

@@ -14,7 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.regex.Matcher;
+import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -31,19 +31,21 @@ import static org.assertj.core.api.Assertions.assertThat;
  * バイトコードではネストした型・匿名クラス・enum 定数本体はすべて別クラスになり、コメント・文字列は
  * 呼び出しとして現れないため、それらによる誤認は構造的に起きない。</p>
  *
- * <h2>判定単位（論理メソッド）</h2>
- * <p>メソッド・コンストラクタ・static 初期化子ごとに判定する。ラムダの本体は javac が
- * {@code lambda$<囲むメソッド名>$<連番>} という合成メソッドに出すため、同じクラスの囲むメソッドへ帰属させる
- * （{@code .filter(m -> m.getBannedAt() == null)} の BAN 検査や、ラムダ内だけの生述語呼び出しを囲むメソッドの事実として扱う）。
+ * <h2>判定単位（コードユニット＝シグネチャ）</h2>
+ * <p>メソッド・コンストラクタ・static 初期化子ごとに、<b>シグネチャ（実クラス＋名前＋引数型）</b>で区別して判定する。
+ * 同名のオーバーロードの事実は合算しない。ラムダの本体は javac が合成メソッドに出すが、ArchUnit 1.x は
+ * 合成メソッドを取り込まず、その中のアクセスを<b>ラムダを実際に含むコードユニット</b>のアクセスとして取り込む。
+ * そのため {@code .filter(m -> m.getBannedAt() == null)} の BAN 検査や、ラムダ内だけの生述語呼び出しは、
+ * ラムダを含むメソッド（オーバーロードも区別される）の事実になる（見本 {@code createRequest} で確認する）。
  * メソッド参照 {@code repo::生述語} はメソッド呼び出しではなく参照として現れるので、呼び出しと参照の両方を数える。</p>
  *
  * <h2>規則</h2>
  * <ul>
- *   <li><b>R1（AC-1455-1）</b>: モデレーター判定の論理メソッドは生述語を呼ばない（BAN フィルタを後付けしても不可。
+ *   <li><b>R1（AC-1455-1）</b>: モデレーター判定のメソッドは生述語を呼ばない（BAN フィルタを後付けしても不可。
  *       正準は {@code findActiveByVillageIdAndSubject}）。モデレーター判定 = メソッド名に Moderator / Reviewer /
  *       Headman / Elder を含む、または {@code VillageRole.HEADMAN} / {@code VillageRole.ELDER} を参照する、
  *       または {@code VillageRole} で switch する（{@code VillageRole#ordinal()} を呼ぶ）。</li>
- *   <li><b>R2（AC-1455-2）</b>: それ以外で生述語を呼ぶ論理メソッドは、{@code getBannedAt} も呼ぶ（BAN フィルタ付きの会員判定・
+ *   <li><b>R2（AC-1455-2）</b>: それ以外で生述語を呼ぶメソッドは、{@code getBannedAt} も呼ぶ（BAN フィルタ付きの会員判定・
  *       参加時の BAN 判別）か、{@link #ALLOWED_WITHOUT_BAN_CHECK} に理由付きで載っていること。</li>
  * </ul>
  *
@@ -62,14 +64,13 @@ class VillageModeratorPredicateWideGuardArchTest {
     private static final String BAN_CHECK = "getBannedAt";
     private static final Set<String> MODERATOR_ROLES = Set.of("HEADMAN", "ELDER");
     private static final Pattern MODERATOR_NAME = Pattern.compile("(?i)moderator|reviewer|headman|elder");
-    private static final Pattern LAMBDA = Pattern.compile("^lambda\\$(.+)\\$\\d+$");
 
     /**
-     * BAN 検査なしに生述語を使ってよい論理メソッド（トップレベルクラスの単純名#メソッド名）と理由。
+     * BAN 検査なしに生述語を使ってよいメソッド（トップレベルクラスの単純名#メソッド名(引数の単純型名)。オーバーロードを区別する）と理由。
      * ここに足すときは、認可判定に使われないことを理由に書くこと。
      */
     static final Map<String, String> ALLOWED_WITHOUT_BAN_CHECK = Map.of(
-            "VillageService#toResponse",
+            "VillageService#toResponse(VillageEntity, Long, boolean, String, String, String)",
             "表示用の自分のロール取得。呼出し前に会員判定済みで、認可判定には使わない");
 
     /** 現 main で R1 の対象として検出されなければならないモデレーター判定（番人の空振り検出）。 */
@@ -116,7 +117,7 @@ class VillageModeratorPredicateWideGuardArchTest {
         long rawUsers = facts.values().stream().filter(f -> f.callsRaw).count();
         assertThat(rawUsers).isGreaterThanOrEqualTo(10);
         for (String allowed : ALLOWED_WITHOUT_BAN_CHECK.keySet()) {
-            assertThat(byDisplay(facts, allowed).callsRaw).as(allowed + " は生述語を使っている").isTrue();
+            assertThat(bySignature(facts, allowed).callsRaw).as(allowed + " は生述語を使っている").isTrue();
         }
     }
 
@@ -140,7 +141,9 @@ class VillageModeratorPredicateWideGuardArchTest {
                 "R1 VillageGuardRogueModerators#requireElderInAnonymous",
                 "R1 VillageGuardRogueModerators#requireModeratorInEnumBody",
                 // AC-1455-2 の裏: BAN 検査も許可もない生述語利用
-                "R2 VillageGuardRogueModerators#loadForDisplay");
+                "R2 VillageGuardRogueModerators#loadForDisplay",
+                // BAN 検査のある同名オーバーロードと合算しない（シグネチャ単位の判定）
+                "R2 VillageGuardRogueModerators#isMemberOverload");
     }
 
     @Test
@@ -173,10 +176,12 @@ class VillageModeratorPredicateWideGuardArchTest {
 
     // ───────────────────────── 判定ロジック ─────────────────────────
 
-    /** 論理メソッド1つ分の事実。 */
+    /** コードユニット（シグネチャ）1つ分の事実。 */
     static final class Facts {
-        /** 表示名（トップレベルクラスの単純名#論理メソッド名）。 */
+        /** 表示名（トップレベルクラスの単純名#メソッド名）。 */
         String display;
+        /** 許可リスト照合用（表示名＋引数の単純型名）。 */
+        String signature;
         boolean moderator;
         boolean callsRaw;
         boolean callsBanCheck;
@@ -198,11 +203,14 @@ class VillageModeratorPredicateWideGuardArchTest {
         Map<String, Facts> result = new LinkedHashMap<>();
         for (JavaClass c : classes) {
             for (JavaCodeUnit unit : c.getCodeUnits()) {
-                String logicalName = logicalName(unit.getName());
-                // 判定はクラス（ネスト・匿名を区別した実クラス）単位、表示はトップレベルクラス名で行う。
-                Facts f = result.computeIfAbsent(c.getName() + "#" + logicalName, k -> new Facts());
-                f.display = topLevelSimpleName(c) + "#" + logicalName;
-                if (MODERATOR_NAME.matcher(logicalName).find()) f.moderator = true;
+                // 判定はシグネチャ単位（実クラス＋名前＋引数型。オーバーロード・ネスト・匿名クラスを区別する）。
+                // 表示はトップレベルクラスの単純名＋メソッド名、許可リストは引数型まで含めて照合する。
+                Facts f = new Facts();
+                result.put(unit.getFullName(), f);
+                f.display = topLevelSimpleName(c) + "#" + unit.getName();
+                f.signature = f.display + "(" + unit.getRawParameterTypes().stream()
+                        .map(JavaClass::getSimpleName).collect(Collectors.joining(", ")) + ")";
+                if (MODERATOR_NAME.matcher(unit.getName()).find()) f.moderator = true;
                 if (referencesModeratorRole(unit)) f.moderator = true;
                 if (callsOrReferences(unit, REPOSITORY, RAW)) f.callsRaw = true;
                 if (callsOrReferences(unit, null, BAN_CHECK)) f.callsBanCheck = true;
@@ -216,22 +224,23 @@ class VillageModeratorPredicateWideGuardArchTest {
         for (Facts f : facts.values()) {
             if (!f.callsRaw) continue;
             if (f.moderator) out.add("R1 " + f.display);
-            else if (!f.callsBanCheck && !ALLOWED_WITHOUT_BAN_CHECK.containsKey(f.display)) out.add("R2 " + f.display);
+            else if (!f.callsBanCheck && !ALLOWED_WITHOUT_BAN_CHECK.containsKey(f.signature)) out.add("R2 " + f.display);
         }
         return out;
     }
 
-    /** 表示名が一意に定まる論理メソッドの事実を返す。 */
+    /** 許可リストのシグネチャに一致するメソッドの事実を返す（一意であること）。 */
+    private static Facts bySignature(Map<String, Facts> facts, String signature) {
+        var hits = facts.values().stream().filter(f -> signature.equals(f.signature)).toList();
+        assertThat(hits).as(signature).hasSize(1);
+        return hits.get(0);
+    }
+
+    /** 表示名が一意に定まるメソッドの事実を返す。 */
     private static Facts byDisplay(Map<String, Facts> facts, String display) {
         var hits = facts.values().stream().filter(f -> f.display.equals(display)).toList();
         assertThat(hits).as(display).hasSize(1);
         return hits.get(0);
-    }
-
-    /** ラムダの合成メソッド {@code lambda$foo$0} は囲むメソッド {@code foo} に帰属させる。 */
-    private static String logicalName(String name) {
-        Matcher m = LAMBDA.matcher(name);
-        return m.matches() ? m.group(1) : name;
     }
 
     /** {@code a.b.Outer$Inner$1} → {@code Outer}。 */
