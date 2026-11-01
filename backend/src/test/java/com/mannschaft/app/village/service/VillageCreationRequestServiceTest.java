@@ -2,7 +2,7 @@ package com.mannschaft.app.village.service;
 
 import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.VillageCreationRequestCreateRequest;
 import com.mannschaft.app.village.dto.VillageCreationRequestResponse;
@@ -75,7 +75,7 @@ class VillageCreationRequestServiceTest {
     @Mock
     private VillageMembershipRepository membershipRepository;
     @Mock
-    private UserRoleRepository userRoleRepository;
+    private AccessControlService accessControlService;
 
     private VillageCreationRequestService service;
 
@@ -99,7 +99,7 @@ class VillageCreationRequestServiceTest {
         org.mockito.Mockito.lenient().when(userRowLockService.lock(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(UserRowLockService.UserState.ACTIVE);
         VillageMembershipSlotService slots = new VillageMembershipSlotService(userRowLockService, membershipRepository);
-        service = new VillageCreationRequestService(requestRepository, villageRepository, membershipRepository, slots, entityManager, userRoleRepository);
+        service = new VillageCreationRequestService(requestRepository, villageRepository, membershipRepository, slots, entityManager, accessControlService);
     }
 
     @BeforeEach
@@ -397,7 +397,7 @@ class VillageCreationRequestServiceTest {
 
         Long otherUserId = 200L;
         given(requestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(pending));
-        given(userRoleRepository.existsSystemAdminByUserId(otherUserId)).willReturn(0L);
+        given(accessControlService.isSystemAdmin(otherUserId)).willReturn(false);
 
         assertThatThrownBy(() -> service.withdraw(requestId, otherUserId))
                 .isInstanceOf(BusinessException.class);
@@ -415,7 +415,7 @@ class VillageCreationRequestServiceTest {
                 "公式村", "official-slug", null, "p",
                 OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(5),
                 VillageType.OFFICIAL, null);
-        given(userRoleRepository.existsSystemAdminByUserId(REQUESTER_ID)).willReturn(0L);
+        given(accessControlService.isSystemAdmin(REQUESTER_ID)).willReturn(false);
 
         assertThatThrownBy(() -> service.createRequest(REQUESTER_ID, req))
                 .isInstanceOf(BusinessException.class)

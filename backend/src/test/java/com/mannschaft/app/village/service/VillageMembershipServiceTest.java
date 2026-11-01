@@ -2,7 +2,7 @@ package com.mannschaft.app.village.service;
 
 import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.MembershipBanRequest;
 import com.mannschaft.app.village.dto.MembershipJoinRequest;
@@ -83,7 +83,7 @@ class VillageMembershipServiceTest {
     @Mock
     private VillageMembershipRepository membershipRepository;
     @Mock
-    private UserRoleRepository userRoleRepository;
+    private AccessControlService accessControlService;
 
     /** 村の存在秘匿ゲート。実物へ委譲させるため {@link VillageAccessGateTestSupport} で結線する。 */
     @Mock
@@ -96,7 +96,7 @@ class VillageMembershipServiceTest {
         org.mockito.Mockito.lenient().when(userRowLockService.lock(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(UserRowLockService.UserState.ACTIVE);
         VillageMembershipSlotService slots = new VillageMembershipSlotService(userRowLockService, membershipRepository);
-        service = new VillageMembershipService(membershipRepository, slots, userRoleRepository, accessGate);
+        service = new VillageMembershipService(membershipRepository, slots, accessControlService, accessGate);
     }
 
     /**
@@ -191,8 +191,8 @@ class VillageMembershipServiceTest {
     @DisplayName("TEAM 主体: actor が ADMIN でない → VILLAGE_015")
     void join_team_notAdmin() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
-        given(userRoleRepository.countTeamAdminByUserIdAndTeamId(ACTOR_USER_ID, TEAM_ID))
-                .willReturn(0L);
+        given(accessControlService.isAdminOrAbove(ACTOR_USER_ID, TEAM_ID, "TEAM"))
+                .willReturn(false);
 
         assertThatThrownBy(() -> service.join(
                 VILLAGE_ID, ACTOR_USER_ID,
@@ -205,8 +205,8 @@ class VillageMembershipServiceTest {
     @DisplayName("ORG 主体: actor が ADMIN → 参加成功")
     void join_organization_asAdmin() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
-        given(userRoleRepository.findAdminUserIdsByOrganizationId(ORG_ID))
-                .willReturn(List.of(ACTOR_USER_ID, 999L));
+        given(accessControlService.isAdminOrAbove(ACTOR_USER_ID, ORG_ID, "ORGANIZATION"))
+                .willReturn(true);
         given(membershipRepository.findAdmissionPresenceForUpdate(
                 VILLAGE_ID, "ORGANIZATION", ORG_ID)).willReturn(List.of());
         given(membershipRepository.save(any(VillageMembershipEntity.class)))

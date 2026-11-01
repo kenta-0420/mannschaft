@@ -3,8 +3,9 @@
 -- 既存データの扱い（御裁可済み B案）: 異常データがあっても移行を止めず、この SQL の中で自動是正する。
 --   (1) 同村・同主体の現役所属の重複 … 1件だけ残し、残りに left_at を設定して退村扱いにする。
 --   (2) USER の現役所属が100村を超える … 100件だけ残し、超過分に left_at を設定して退村扱いにする。
--- 残す行の順位: BAN 中の所属を最優先（退村扱いにすると BAN の扱いが変わるため）、
---   次に joined_at が古い順、同値なら id が小さい順。
+-- 残す行の順位: joined_at が古い順、同値なら id が小さい順（BAN の有無は順位に使わない）。
+--   BAN 済みの所属を退村扱いにしても banned_at は残り、再参加の拒否は left_at を問わず
+--   banned_at の行で判定するため、BAN が外れることはない。
 -- 退村扱いにした行は role・BAN・履歴列を変更せず、left_at / updated_at / version だけを更新する。
 -- 是正件数は途中の SELECT（cmp1808_fixed_duplicates / cmp1808_fixed_overflow）で Flyway のログに出す。
 -- 旧 uk_vm_village_subject の重複を避けるため、重複是正の退村時刻は行ごとに1秒ずつずらす。
@@ -22,7 +23,7 @@ CREATE TEMPORARY TABLE cmp1808_duplicate_fix AS
 SELECT id, rn FROM (
     SELECT id, ROW_NUMBER() OVER (
         PARTITION BY village_id, subject_type, subject_id
-        ORDER BY (banned_at IS NULL), joined_at, id) AS rn
+        ORDER BY joined_at, id) AS rn
     FROM village_memberships
     WHERE left_at IS NULL
 ) ranked
@@ -40,7 +41,7 @@ CREATE TEMPORARY TABLE cmp1808_overflow_fix AS
 SELECT id FROM (
     SELECT id, ROW_NUMBER() OVER (
         PARTITION BY subject_id
-        ORDER BY (banned_at IS NULL), joined_at, id) AS rn
+        ORDER BY joined_at, id) AS rn
     FROM village_memberships
     WHERE subject_type = 'USER' AND left_at IS NULL
 ) ranked

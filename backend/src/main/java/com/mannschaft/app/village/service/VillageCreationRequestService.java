@@ -1,8 +1,8 @@
 package com.mannschaft.app.village.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.VillageCreationRequestCreateRequest;
 import com.mannschaft.app.village.dto.VillageCreationRequestResponse;
@@ -38,7 +38,7 @@ import java.util.UUID;
  * <p>レートリミット・運営審査・承認時の自動村作成を担う。
  * すべての @Transactional は village ドメイン内（VillageRepository / VillageMembershipRepository /
  * VillageCreationRequestRepository）に閉じている。
- * 申請者が SYSTEM_ADMIN か否かの判定のため {@link UserRoleRepository} を読み取り専用で参照するが、
+ * 申請者が SYSTEM_ADMIN か否かの判定は共通の {@link AccessControlService} 経由で行い（role ドメインの Repository は直接参照しない）、
  * これは権限判定であって write は行わない。入村のUSER根にはauthの行ロック窓口を使い、ユーザーentityの書込みはしない。</p>
  */
 @Slf4j
@@ -57,7 +57,7 @@ public class VillageCreationRequestService {
     private final VillageMembershipRepository membershipRepository;
     private final VillageMembershipSlotService slotService;
     private final EntityManager entityManager;
-    private final UserRoleRepository userRoleRepository;
+    private final AccessControlService accessControlService;
 
     // ------------------------------------------------------------------
     // 申請者向け
@@ -340,6 +340,6 @@ public class VillageCreationRequestService {
 
     private boolean isSystemAdmin(Long userId) {
         if (userId == null) return false;
-        return userRoleRepository.existsSystemAdminByUserId(userId) > 0;
+        return accessControlService.isSystemAdmin(userId);
     }
 }

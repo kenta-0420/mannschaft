@@ -1,8 +1,8 @@
 package com.mannschaft.app.village.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.MembershipBanRequest;
 import com.mannschaft.app.village.dto.MembershipJoinRequest;
@@ -42,10 +42,10 @@ import java.util.UUID;
  *
  * <p>アーキテクチャ原則:</p>
  * <ul>
- *   <li>原則1: TeamMember/OrganizationMember 相当の {@link UserRoleRepository} は Read-only で呼ぶ。
+ *   <li>原則1: チーム/組織の管理者判定は共通の {@link AccessControlService} 経由で行い、role ドメインの Repository を直接参照しない。
  *       subject_id に FK は張らない（B1 で対応済み）。</li>
  *   <li>原則5: {@code @Transactional} は village ドメインに閉じる。
- *       UserRoleRepository は読取のみ。入村ではauthの狭いUSER行ロック窓口を同一TXで使う。</li>
+ *       入村ではauthの狭いUSER行ロック窓口を同一TXで使う。</li>
  * </ul>
  *
  * <p>HEADMAN 引き継ぎ仕様:</p>
@@ -68,8 +68,8 @@ public class VillageMembershipService {
 
     private final VillageMembershipRepository membershipRepository;
     private final VillageMembershipSlotService slotService;
-    /** Read-only: チーム/組織の ADMIN 権限検証用（原則1 FK 不在）。 */
-    private final UserRoleRepository userRoleRepository;
+    /** チーム/組織の ADMIN・DEPUTY_ADMIN 判定用（role ドメインへは共通インターフェース経由）。 */
+    private final AccessControlService accessControlService;
     private final VillageAccessGate accessGate;
 
     // ========================================================================
@@ -355,14 +355,12 @@ public class VillageMembershipService {
                 }
             }
             case TEAM -> {
-                long count = userRoleRepository.countTeamAdminByUserIdAndTeamId(actorUserId, subjectId);
-                if (count == 0) {
+                if (!accessControlService.isAdminOrAbove(actorUserId, subjectId, "TEAM")) {
                     throw new BusinessException(VillageErrorCode.REPRESENT_FORBIDDEN);
                 }
             }
             case ORGANIZATION -> {
-                List<Long> admins = userRoleRepository.findAdminUserIdsByOrganizationId(subjectId);
-                if (!admins.contains(actorUserId)) {
+                if (!accessControlService.isAdminOrAbove(actorUserId, subjectId, "ORGANIZATION")) {
                     throw new BusinessException(VillageErrorCode.REPRESENT_FORBIDDEN);
                 }
             }

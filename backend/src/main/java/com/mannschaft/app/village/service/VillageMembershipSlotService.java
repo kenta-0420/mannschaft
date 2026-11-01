@@ -77,8 +77,10 @@ public class VillageMembershipSlotService {
      * <p>アプリのロックをすり抜けた並行入村（TEAM/ORGなどUSER根を持たない主体を含む）でも、
      * 現役一意・USER枠のDB制約違反を500にせず、既存の業務コードで返す。
      * 例外は呼出側TXをrollbackさせるため、招待の使用回数や申請の状態も巻き戻る。</p>
+     *
+     * <p>Entity を受け渡すため package-private とし、同じ village.service の五入口からだけ呼ぶ（D-1）。</p>
      */
-    public VillageMembershipEntity admit(VillageMembershipEntity membership) {
+    VillageMembershipEntity admit(VillageMembershipEntity membership) {
         try {
             VillageMembershipEntity saved = membershipRepository.save(membership);
             membershipRepository.flush();

@@ -288,8 +288,8 @@ class VillageMembershipSlotMigrationTest {
     }
 
     @Test
-    @DisplayName("AC-1808-1b: 現役BANの重複はBANを残し再参加の抜け道を作らない")
-    void 現役重複にBANがあればBANを残す() throws Exception {
+    @DisplayName("AC-1808-1b: BANの有無は順位に使わず最古を残し、退村扱いのBAN行もbanned_atを保つ")
+    void 現役重複はBANの有無を問わず最古を残す() throws Exception {
         try (Connection c = open()) {
             UUID village = village(c);
             UUID oldest = membership(c, village, "USER", 71, null, false, false, "2026-01-01 00:00:00");
@@ -297,8 +297,29 @@ class VillageMembershipSlotMigrationTest {
 
             migrateCandidateIfPresent();
 
-            assertThat(leftAtIsNull(c, banned)).isTrue();
-            assertThat(leftAtIsNull(c, oldest)).isFalse();
+            assertThat(leftAtIsNull(c, oldest)).isTrue();
+            assertThat(leftAtIsNull(c, banned)).isFalse();
+            assertThat(count(c, "SELECT COUNT(*) FROM village_memberships WHERE banned_at IS NOT NULL"))
+                    .as("BAN記録は消さない（再参加の拒否はbanned_atで判定する）").isEqualTo(1);
+        }
+    }
+
+    @Test
+    @DisplayName("AC-1808-1b: 100村超過の是正もBANの有無を問わず最古100件を残す")
+    void 百村超過の是正はBANの有無を問わない() throws Exception {
+        try (Connection c = open()) {
+            for (int index = 0; index < 100; index++) {
+                membership(c, village(c), "USER", 71, null, false, false,
+                        String.format("2026-01-01 00:%02d:%02d", index / 60, index % 60));
+            }
+            UUID newestBanned = membership(c, village(c), "USER", 71, null, false, true, "2026-09-01 00:00:00");
+
+            migrateCandidateIfPresent();
+
+            assertThat(leftAtIsNull(c, newestBanned)).as("最新のBAN所属が超過として退村扱い").isFalse();
+            assertThat(count(c, "SELECT COUNT(*) FROM village_memberships WHERE subject_id=71 AND left_at IS NULL"))
+                    .isEqualTo(100);
+            assertThat(count(c, "SELECT COUNT(*) FROM village_memberships WHERE banned_at IS NOT NULL")).isEqualTo(1);
         }
     }
 
