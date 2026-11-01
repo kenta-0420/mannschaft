@@ -1,7 +1,6 @@
 // 修正版のない間接依存の個別例外（方針 docs/security/04_dependency_and_supply_chain.md §4.3/§4.4）。
-// GHSA-86w9-cpqp-85rv / node-forge 1.4.0 と GHSA-vfj7-8cjw-p6xm / braces 3.0.3 のみ。
-// node-forge は 2026-10-30 UTC 当日まで、braces は 2026-10-23 UTC 当日まで。
-// node-forge: listhen の証明書生成経路では当該署名検証を呼ばない。本番 .output の除外は未実測。
+// GHSA-vfj7-8cjw-p6xm / braces 3.0.3 のみ。braces は 2026-10-23 UTC 当日まで。
+// node-forge の例外（GHSA-86w9-cpqp-85rv）は node-forge 1.4.2 への更新（overrides）で解消し削除済み。
 // braces: アプリの限定検索では直接 glob 呼出しなし、確認した設定パターンは固定値。
 // dbaa 本番 server の2537テキストは静的token/package検出0。14リンク・4バイナリは対象外。
 // minify・動的参照の非到達は未証明であり、dev-onlyや本番での非到達を断定しない。
@@ -14,40 +13,6 @@ const SEVERITY_RANK = { info: 0, low: 1, moderate: 2, high: 3, critical: 4 }
 // GHSA 単位の除外表。パッケージ名での包括除外はしない。
 // packages は実監査で確認した到達経路だけ。別の消費者への拡大を認めない。
 const EXEMPTIONS = {
-  'https://github.com/advisories/GHSA-86w9-cpqp-85rv': {
-    id: 'GHSA-86w9-cpqp-85rv',
-    name: 'node-forge',
-    expiresAt: Date.parse('2026-10-31T00:00:00Z'),
-    range: '<=1.4.0',
-    version: '1.4.0',
-    packages: new Set([
-      'node-forge',
-      'listhen',
-      'nitropack',
-      '@nuxt/cli',
-      '@nuxt/nitro-server',
-      '@nuxt/vite-builder',
-      'nuxt',
-    ]),
-    nodes: {
-      'node-forge': ['node_modules/node-forge'],
-      listhen: ['node_modules/listhen'],
-      nitropack: ['node_modules/nitropack'],
-      '@nuxt/cli': ['node_modules/@nuxt/cli'],
-      '@nuxt/nitro-server': ['node_modules/@nuxt/nitro-server'],
-      '@nuxt/vite-builder': ['node_modules/@nuxt/vite-builder'],
-      nuxt: ['node_modules/nuxt'],
-    },
-    edges: {
-      'node-forge': [],
-      listhen: ['node-forge'],
-      nitropack: ['listhen'],
-      '@nuxt/cli': ['listhen'],
-      '@nuxt/nitro-server': ['nitropack', 'nuxt'],
-      '@nuxt/vite-builder': ['nuxt'],
-      nuxt: ['@nuxt/cli', '@nuxt/nitro-server', '@nuxt/vite-builder'],
-    },
-  },
   // braces: 実監査で確認したノードと braces に到達する参照辺だけ。
   'https://github.com/advisories/GHSA-vfj7-8cjw-p6xm': {
     id: 'GHSA-vfj7-8cjw-p6xm',
