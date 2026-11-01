@@ -189,6 +189,9 @@ class VillageMembershipAdmissionTransactionIT {
 
     @Autowired private VillageMembershipService memberships;
     @Autowired private VillageSubjectAuthorizationGuard subjectGuard;
+    /** 上限を下げた状態の試験だけで値を差し替える（各試験の後に自動で戻る）。 */
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+    private VillageParticipationLimitProvider limitProvider;
     @Autowired private VillageJoinRequestService joins;
     @Autowired private VillageInvitationService invitations;
     @Autowired private VillageCreationRequestService creations;
@@ -233,7 +236,7 @@ class VillageMembershipAdmissionTransactionIT {
     }
 
     static Stream<Arguments> availableSlots() {
-        return Stream.of(Writer.values()).flatMap(writer -> Stream.of(0, 99)
+        return Stream.of(Writer.values()).flatMap(writer -> Stream.of(0, VillageParticipationLimits.DEFAULT_HARD_LIMIT - 1)
                 .map(count -> Arguments.of(writer, count)));
     }
 
@@ -265,7 +268,7 @@ class VillageMembershipAdmissionTransactionIT {
     @MethodSource("fullSlots")
     void 入村_百枠占有_全経路で上限拒否し業務が不変(Writer writer, boolean includeBanned) {
         Fixture fixture = prepare(writer);
-        fillSlots(fixture.subjectId(), 100, includeBanned);
+        fillSlots(fixture.subjectId(), VillageParticipationLimits.DEFAULT_HARD_LIMIT, includeBanned);
         List<Map<String, Object>> before = actorMemberships(fixture.subjectId());
         List<Map<String, Object>> sideEffects = sideEffectSnapshot(fixture);
 
@@ -275,7 +278,7 @@ class VillageMembershipAdmissionTransactionIT {
 
         assertThat(actorMemberships(fixture.subjectId())).isEqualTo(before);
         assertThat(sideEffectSnapshot(fixture)).isEqualTo(sideEffects);
-        assertThat(activeCount(fixture.subjectId())).isEqualTo(100);
+        assertThat(activeCount(fixture.subjectId())).isEqualTo(VillageParticipationLimits.DEFAULT_HARD_LIMIT);
         assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
     }
 
@@ -303,7 +306,7 @@ class VillageMembershipAdmissionTransactionIT {
                 new Writer[]{Writer.FREE, Writer.INVITATION},
                 new Writer[]{Writer.JOIN_APPROVAL, Writer.CREATION_AUTO},
                 new Writer[]{Writer.CREATION_APPROVAL, Writer.FREE})
-                .flatMap(pair -> Stream.of(98, 99)
+                .flatMap(pair -> Stream.of(VillageParticipationLimits.DEFAULT_HARD_LIMIT - 2, VillageParticipationLimits.DEFAULT_HARD_LIMIT - 1)
                         .map(count -> Arguments.of(pair[0], pair[1], count)));
     }
 
@@ -364,21 +367,21 @@ class VillageMembershipAdmissionTransactionIT {
     @Test
     void 入村_RRで先にsnapshotを作っても別TXの百枠目を読む() {
         Fixture fixture = prepare(Writer.FREE);
-        fillSlots(fixture.subjectId(), 99, false);
+        fillSlots(fixture.subjectId(), VillageParticipationLimits.DEFAULT_HARD_LIMIT - 1, false);
         List<Map<String, Object>> effectsBefore = sideEffectSnapshot(fixture);
 
         assertThatThrownBy(() -> isolated(() -> {
-            assertThat(activeCount(fixture.subjectId())).isEqualTo(99);
+            assertThat(activeCount(fixture.subjectId())).isEqualTo(VillageParticipationLimits.DEFAULT_HARD_LIMIT - 1);
             isolated(() -> {
                 UUID lastVillage = newVillage("last-" + UUID.randomUUID(), VillageJoinPolicy.FREE, fixture.subjectId());
-                insertMembership(lastVillage, fixture.subjectId(), 100, false, "VILLAGER");
+                insertMembership(lastVillage, fixture.subjectId(), VillageParticipationLimits.DEFAULT_HARD_LIMIT, false, "VILLAGER");
                 return null;
             });
             return invoke(fixture);
         })).isInstanceOfSatisfying(BusinessException.class,
                 error -> assertThat(error.getErrorCode()).isEqualTo(VillageErrorCode.PARTICIPATION_LIMIT_EXCEEDED));
 
-        assertThat(activeCount(fixture.subjectId())).isEqualTo(100);
+        assertThat(activeCount(fixture.subjectId())).isEqualTo(VillageParticipationLimits.DEFAULT_HARD_LIMIT);
         assertThat(sideEffectSnapshot(fixture)).isEqualTo(effectsBefore);
     }
 
@@ -465,11 +468,11 @@ class VillageMembershipAdmissionTransactionIT {
         List<InvocationOutcome> results = concurrentInvoke(fixtures, existingCount);
 
         assertThat(results.stream().filter(result -> result.failure() == null).count())
-                .isEqualTo(existingCount == 98 ? 2 : 1);
-        assertThat(activeCount(subject)).isEqualTo(100);
+                .isEqualTo(existingCount == VillageParticipationLimits.DEFAULT_HARD_LIMIT - 2 ? 2 : 1);
+        assertThat(activeCount(subject)).isEqualTo(VillageParticipationLimits.DEFAULT_HARD_LIMIT);
         assertThat(jdbc.queryForObject("SELECT COUNT(DISTINCT user_slot) FROM village_memberships "
                 + "WHERE subject_type='USER' AND subject_id=? AND left_at IS NULL",
-                Integer.class, subject)).isEqualTo(100);
+                Integer.class, subject)).isEqualTo(VillageParticipationLimits.DEFAULT_HARD_LIMIT);
         for (int index = 0; index < results.size(); index++) {
             InvocationOutcome result = results.get(index);
             if (result.failure() == null) {
@@ -605,6 +608,39 @@ class VillageMembershipAdmissionTransactionIT {
         assertThat(sideEffectSnapshot(fixture)).isEqualTo(effectsBefore);
     }
 
+    /**
+     * 上限を下げても既存の所属は残し、新しい入村だけを止める。退村は常にできる。
+     * 既定上限まで所属した利用者を、上限を1つ下げた状態で検証する。
+     */
+    @Test
+    void 入村_上限を下げても既存の所属は残り新しい入村だけを止め退村はできる() {
+        int lowered = VillageParticipationLimits.DEFAULT_HARD_LIMIT - 1;
+        Fixture fixture = prepare(Writer.FREE);
+        fillSlots(fixture.subjectId(), VillageParticipationLimits.DEFAULT_HARD_LIMIT, false);
+        org.mockito.Mockito.doReturn(lowered).when(limitProvider).currentHardLimit();
+
+        assertThatThrownBy(() -> invoke(fixture))
+                .isInstanceOfSatisfying(BusinessException.class, error -> {
+                    assertThat(error.getErrorCode()).isEqualTo(VillageErrorCode.PARTICIPATION_LIMIT_EXCEEDED);
+                    assertThat(error.getMessageArgs()).containsExactly(String.valueOf(lowered));
+                });
+        assertThat(activeCount(fixture.subjectId())).as("既存の所属は消さない")
+                .isEqualTo(VillageParticipationLimits.DEFAULT_HARD_LIMIT);
+
+        Map<String, Object> one = jdbc.queryForMap("SELECT BIN_TO_UUID(id) AS membership_id, "
+                + "BIN_TO_UUID(village_id) AS village_id FROM village_memberships "
+                + "WHERE subject_type='USER' AND subject_id=? AND left_at IS NULL LIMIT 1", fixture.subjectId());
+        UUID membershipId = UUID.fromString((String) one.get("membership_id"));
+        UUID village = UUID.fromString((String) one.get("village_id"));
+        memberships.leave(village, membershipId, fixture.subjectId(),
+                subjectGuard.judgeMembership(fixture.subjectId(), membershipId));
+
+        assertThat(activeCount(fixture.subjectId())).as("上限超過のままでも退村できる").isEqualTo(lowered);
+        assertThatThrownBy(() -> invoke(fixture)).as("上限ちょうどでは、まだ新しい入村はできない")
+                .isInstanceOfSatisfying(BusinessException.class, error ->
+                        assertThat(error.getErrorCode()).isEqualTo(VillageErrorCode.PARTICIPATION_LIMIT_EXCEEDED));
+    }
+
     static Stream<Arguments> sameVillagePairs() {
         return Stream.of(
                 Arguments.of(Writer.FREE, Writer.FREE),
@@ -658,7 +694,7 @@ class VillageMembershipAdmissionTransactionIT {
     @Test
     void 入村_TEAMとORGの所属はUSER枠を消費しない() {
         Fixture fixture = prepare(Writer.FREE);
-        fillSlots(fixture.subjectId(), 99, false);
+        fillSlots(fixture.subjectId(), VillageParticipationLimits.DEFAULT_HARD_LIMIT - 1, false);
         for (String type : List.of("TEAM", "ORGANIZATION")) {
             UUID other = newVillage("subject-" + UUID.randomUUID().toString().replace("-", ""),
                     VillageJoinPolicy.FREE, fixture.subjectId());
@@ -670,10 +706,10 @@ class VillageMembershipAdmissionTransactionIT {
 
         UUID joined = invoke(fixture);
 
-        assertThat(activeCount(fixture.subjectId())).isEqualTo(100);
+        assertThat(activeCount(fixture.subjectId())).isEqualTo(VillageParticipationLimits.DEFAULT_HARD_LIMIT);
         assertThat(jdbc.queryForObject("SELECT user_slot FROM village_memberships WHERE village_id=UUID_TO_BIN(?) "
                 + "AND subject_type='USER' AND subject_id=? AND left_at IS NULL",
-                Integer.class, joined.toString(), fixture.subjectId())).isEqualTo(100);
+                Integer.class, joined.toString(), fixture.subjectId())).isEqualTo(VillageParticipationLimits.DEFAULT_HARD_LIMIT);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM village_memberships WHERE subject_type<>'USER' "
                 + "AND subject_id=? AND user_slot IS NOT NULL", Integer.class, fixture.subjectId())).isZero();
     }
@@ -682,24 +718,24 @@ class VillageMembershipAdmissionTransactionIT {
     @Test
     void 入村_退村後の同村再加入は枠を再利用する() {
         Fixture fixture = prepare(Writer.FREE);
-        fillSlots(fixture.subjectId(), 99, false);
+        fillSlots(fixture.subjectId(), VillageParticipationLimits.DEFAULT_HARD_LIMIT - 1, false);
         invoke(fixture);
         UUID membershipId = jdbc.queryForObject("SELECT BIN_TO_UUID(id) FROM village_memberships "
                 + "WHERE village_id=UUID_TO_BIN(?) AND subject_type='USER' AND subject_id=? AND left_at IS NULL",
                 (rs, row) -> UUID.fromString(rs.getString(1)), fixture.villageId().toString(), fixture.subjectId());
         memberships.leave(fixture.villageId(), membershipId, fixture.subjectId(),
                 subjectGuard.judgeMembership(fixture.subjectId(), membershipId));
-        assertThat(activeCount(fixture.subjectId())).isEqualTo(99);
+        assertThat(activeCount(fixture.subjectId())).isEqualTo(VillageParticipationLimits.DEFAULT_HARD_LIMIT - 1);
 
         invoke(fixture);
 
-        assertThat(activeCount(fixture.subjectId())).isEqualTo(100);
+        assertThat(activeCount(fixture.subjectId())).isEqualTo(VillageParticipationLimits.DEFAULT_HARD_LIMIT);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM village_memberships WHERE village_id=UUID_TO_BIN(?) "
                 + "AND subject_type='USER' AND subject_id=?", Integer.class,
                 fixture.villageId().toString(), fixture.subjectId())).as("退村履歴を残して新行で再加入").isEqualTo(2);
         assertThat(jdbc.queryForObject("SELECT user_slot FROM village_memberships WHERE village_id=UUID_TO_BIN(?) "
                 + "AND subject_type='USER' AND subject_id=? AND left_at IS NULL",
-                Integer.class, fixture.villageId().toString(), fixture.subjectId())).isEqualTo(100);
+                Integer.class, fixture.villageId().toString(), fixture.subjectId())).isEqualTo(VillageParticipationLimits.DEFAULT_HARD_LIMIT);
     }
 
     /** AC-1808-6: 他人の subjectId を指定した参加は REPRESENT_FORBIDDEN（HTTP 403）で、何も作らない。 */
@@ -750,13 +786,13 @@ class VillageMembershipAdmissionTransactionIT {
     }
 
     /**
-     * AC-1808-7: Service を経由しない独立接続（JdbcTemplate 直）からの現役重複・101村目を DB 制約が拒否し、
+     * AC-1808-7: Service を経由しない独立接続（JdbcTemplate 直）からの現役重複・天井超えの枠番号・同じ枠番号を DB 制約が拒否し、
      * 既存行を変えない。アプリのロックが漏れても DB が不変条件を守る証明。
      */
     @Test
-    void DB制約_Service非経由の現役重複と101村目の直INSERTを拒否し既存行を保全する() {
+    void DB制約_Service非経由の現役重複と枠番号違反の直INSERTを拒否し既存行を保全する() {
         long subject = newUser();
-        fillSlots(subject, 100, false);
+        fillSlots(subject, VillageParticipationLimits.DEFAULT_HARD_LIMIT, false);
         UUID existingVillage = jdbc.queryForObject("SELECT BIN_TO_UUID(village_id) FROM village_memberships "
                 + "WHERE subject_type='USER' AND subject_id=? AND user_slot=1",
                 (rs, row) -> UUID.fromString(rs.getString(1)), subject);
@@ -767,7 +803,7 @@ class VillageMembershipAdmissionTransactionIT {
         assertThatThrownBy(() -> insertMembership(existingVillage, subject, 1, false, "VILLAGER"))
                 .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class)
                 .hasMessageContaining("uk_vm_");
-        assertThatThrownBy(() -> insertMembership(overflowVillage, subject, 101, false, "VILLAGER"))
+        assertThatThrownBy(() -> insertMembership(overflowVillage, subject, VillageParticipationLimits.DB_SLOT_CEILING + 1, false, "VILLAGER"))
                 .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class)
                 .hasMessageContaining("ck_vm_active_user_slot");
         assertThatThrownBy(() -> insertMembership(overflowVillage, subject, 50, false, "VILLAGER"))

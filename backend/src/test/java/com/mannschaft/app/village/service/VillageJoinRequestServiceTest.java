@@ -86,7 +86,7 @@ class VillageJoinRequestServiceTest {
 
     @BeforeEach
     void wireRealAdmissionSlots() {
-        VillageMembershipSlotService slots = new VillageMembershipSlotService(admissionLockRepository, membershipRepository);
+        VillageMembershipSlotService slots = new VillageMembershipSlotService(admissionLockRepository, membershipRepository, new VillageParticipationLimitProvider(null));
         service = new VillageJoinRequestService(joinRequestRepository, membershipRepository, villageRepository, slots, entityManager, accessGate);
     }
 

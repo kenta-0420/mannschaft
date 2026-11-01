@@ -6,6 +6,7 @@ import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.gdpr.service.AccountPurgeCompletionService;
 import com.mannschaft.app.village.repository.UserVillageNicknameRepository;
 import com.mannschaft.app.village.repository.UserVillagePinRepository;
+import com.mannschaft.app.village.repository.VillageUserAdmissionLockRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -17,9 +18,9 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * 本人の村ピン留め・村ニックネームを30日後に強消去する。村・投稿・メンバーシップは対象外。
+ * 本人の村ピン留め・村ニックネーム・入村ロック行を30日後に強消去する。村・投稿・メンバーシップは対象外。
  *
- * <p>CMP-260822-1243: 退会30日後の強匿名化で、本人だけが使う {@code user_village_pins} と {@code user_village_nicknames} を所有列 {@code user_id} で
+ * <p>CMP-260822-1243: 退会30日後の強匿名化で、 本人だけが使う {@code user_village_pins} と {@code user_village_nicknames}、入村の直列化ロック行 {@code village_user_admission_locks}（CMP-260827-1808）を所有列 {@code user_id} で
  * 一括物理削除する。他人の行は残す。所有ドメイン内の削除を1つの新規TXで行い、途中のSQL失敗は
  * TX全体をロールバックして例外を伝播させる（完了記録は残らず PENDING のまま手動 retry 対象になる）。</p>
  *
@@ -31,11 +32,12 @@ public class VillagePersonalSettingsPurgeEventListener {
 
     private final UserVillageNicknameRepository userVillageNicknameRepository;
     private final UserVillagePinRepository userVillagePinRepository;
+    private final VillageUserAdmissionLockRepository villageUserAdmissionLockRepository;
     private final AccountPurgeCompletionService completionService;
 
     /** 30日後の強匿名化。所有データの削除コミット後にのみ完了を記録する。 */
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
-            reason = "完全削除済み利用者の村ピン留めとニックネームを消去する。停止すると個人データが残留し、消去イベントは再生されない")
+            reason = "完全削除済み利用者の村ピン留め・ニックネーム・入村ロック行を消去する。停止すると個人データが残留し、消去イベントは再生されない")
     @Async("purge-pool")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -61,5 +63,6 @@ public class VillagePersonalSettingsPurgeEventListener {
     private void purgeOwnedRows(Long userId) {
         userVillageNicknameRepository.deleteAllOwnedByUserId(userId);
         userVillagePinRepository.deleteAllOwnedByUserId(userId);
+        villageUserAdmissionLockRepository.deleteAllOwnedByUserId(userId);
     }
 }

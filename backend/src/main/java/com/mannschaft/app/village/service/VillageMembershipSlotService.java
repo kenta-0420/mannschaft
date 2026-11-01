@@ -37,6 +37,7 @@ import java.util.UUID;
 public class VillageMembershipSlotService {
     private final VillageUserAdmissionLockRepository admissionLockRepository;
     private final VillageMembershipRepository membershipRepository;
+    private final VillageParticipationLimitProvider limitProvider;
 
     /**
      * USER単位の入村ロックを取り、呼出側の取引の終わりまで保持する。
@@ -73,24 +74,37 @@ public class VillageMembershipSlotService {
 
     /**
      * USER単位ロック取得後のcurrent read。BANも枠を占有し、退村履歴は除外する。
-     * count+1ではなく1..100の最小空きを返す。DB不変条件の破損を上限エラーへ隠さない。
+     * count+1ではなく1..DB天井の最小空きを返す。DB不変条件の破損を上限エラーへ隠さない。
+     *
+     * <p>上限は {@link VillageParticipationLimitProvider} の現在値。現役所属数が上限以上なら拒否する。
+     * 上限を下げた場合、既存の所属は残したまま新しい入村だけを止める（退村は枠割当を通らないので常にできる）。</p>
      */
     public Allocation allocate(Long userId) {
-        boolean[] occupied = new boolean[VillageMembershipService.PARTICIPATION_HARD_LIMIT + 1];
+        int hardLimit = limitProvider.currentHardLimit();
+        boolean[] occupied = new boolean[VillageParticipationLimits.DB_SLOT_CEILING + 1];
         var rows = membershipRepository.findAdmissionSlotsForUpdate(userId);
         for (var row : rows) {
             Short slot = row.getUserSlot();
-            if (slot == null || slot < 1 || slot > VillageMembershipService.PARTICIPATION_HARD_LIMIT || occupied[slot]) {
+            if (slot == null || slot < 1 || slot > VillageParticipationLimits.DB_SLOT_CEILING || occupied[slot]) {
                 throw new IllegalStateException("村USER枠のcurrent projectionが不正です");
             }
             occupied[slot] = true;
         }
-        for (short slot = 1; slot <= VillageMembershipService.PARTICIPATION_HARD_LIMIT; slot++) {
+        if (rows.size() >= hardLimit) {
+            throw limitExceeded(hardLimit, null);
+        }
+        for (short slot = 1; slot <= VillageParticipationLimits.DB_SLOT_CEILING; slot++) {
             if (!occupied[slot]) {
                 return new Allocation(slot, rows.size() + 1);
             }
         }
-        throw new BusinessException(VillageErrorCode.PARTICIPATION_LIMIT_EXCEEDED);
+        throw limitExceeded(hardLimit, null);
+    }
+
+    /** 上限超過。文言の {0} へ現在の上限値を差し込む（固定の数字を持たない）。 */
+    private static BusinessException limitExceeded(int hardLimit, Throwable cause) {
+        return BusinessException.withMessageArgs(
+                VillageErrorCode.PARTICIPATION_LIMIT_EXCEEDED, cause, String.valueOf(hardLimit));
     }
 
     /**
@@ -113,7 +127,7 @@ public class VillageMembershipSlotService {
                 throw new BusinessException(VillageErrorCode.ALREADY_MEMBER, violation);
             }
             if (detail.contains("uk_vm_user_active_slot") || detail.contains("ck_vm_active_user_slot")) {
-                throw new BusinessException(VillageErrorCode.PARTICIPATION_LIMIT_EXCEEDED, violation);
+                throw limitExceeded(limitProvider.currentHardLimit(), violation);
             }
             throw violation;
         }

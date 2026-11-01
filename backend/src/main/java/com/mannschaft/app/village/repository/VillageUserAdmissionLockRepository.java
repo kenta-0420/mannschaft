@@ -25,4 +25,13 @@ public interface VillageUserAdmissionLockRepository extends JpaRepository<Villag
             + "VALUES (UUID_TO_BIN(:id), :userId, CURRENT_TIMESTAMP(6)) "
             + "ON DUPLICATE KEY UPDATE locked_at = CURRENT_TIMESTAMP(6)", nativeQuery = true)
     int lockForAdmission(@Param("id") String id, @Param("userId") Long userId);
+
+    /**
+     * 退会30日後の強匿名化で、本人のロック行を物理削除する（CMP-260822-1243 の判断一覧で「強消去」）。
+     *
+     * @return 削除件数
+     */
+    @Modifying
+    @Query(value = "DELETE FROM village_user_admission_locks WHERE user_id = :userId", nativeQuery = true)
+    int deleteAllOwnedByUserId(@Param("userId") Long userId);
 }

@@ -129,7 +129,7 @@ class VillageInvitationServiceTest {
 
     @BeforeEach
     void wireRealAdmissionSlots() {
-        VillageMembershipSlotService slots = new VillageMembershipSlotService(admissionLockRepository, membershipRepository);
+        VillageMembershipSlotService slots = new VillageMembershipSlotService(admissionLockRepository, membershipRepository, new VillageParticipationLimitProvider(null));
         service = new VillageInvitationService(invitationRepository, membershipRepository, slots, entityManager, villageAccessGate, secretTokenVault, clock);
     }
 
@@ -579,7 +579,7 @@ class VillageInvitationServiceTest {
         unlistedVillage();
         tokenResolvesTo(usableInvitation());
         lenient().when(membershipRepository.findAdmissionSlotsForUpdate(INVITEE_ID))
-                .thenReturn(VillageMembershipSlotTestFixture.occupied(100));
+                .thenReturn(VillageMembershipSlotTestFixture.occupied(VillageParticipationLimits.DEFAULT_HARD_LIMIT));
 
         ErrorCode code = acceptErrorCode(VALID_TOKEN, INVITEE_ID);
 

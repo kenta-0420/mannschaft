@@ -52,7 +52,7 @@ import static org.mockito.Mockito.verify;
  *   <li>再参加（退村中レコードがあっても新規行で参加できる）</li>
  *   <li>ALREADY_MEMBER (VILLAGE_006)</li>
  *   <li>BAN 中の再参加拒否 (VILLAGE_031)</li>
- *   <li>参加上限 100 ハードリミット (VILLAGE_012)</li>
+ *   <li>参加上限（既定値 VillageParticipationLimits.DEFAULT_HARD_LIMIT）到達 (VILLAGE_012)</li>
  *   <li>30 村超過ソフト警告</li>
  *   <li>IDOR: USER 主体で他人 ID 指定 → 403 (VILLAGE_015)</li>
  *   <li>TEAM/ORG 主体で ADMIN でない → 403 (VILLAGE_015)</li>
@@ -95,7 +95,7 @@ class VillageMembershipServiceTest {
 
     @BeforeEach
     void wireRealAdmissionSlots() {
-        VillageMembershipSlotService slots = new VillageMembershipSlotService(admissionLockRepository, membershipRepository);
+        VillageMembershipSlotService slots = new VillageMembershipSlotService(admissionLockRepository, membershipRepository, new VillageParticipationLimitProvider(null));
         service = new VillageMembershipService(membershipRepository, slots, accessGate);
         guard = new VillageSubjectAuthorizationGuard(accessControlService, membershipRepository);
     }
@@ -243,13 +243,13 @@ class VillageMembershipServiceTest {
     }
 
     @Test
-    @DisplayName("参加上限 100 村到達 → VILLAGE_012")
+    @DisplayName("既定の参加上限に到達 → VILLAGE_012")
     void join_participationLimit_exceeded() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
         given(membershipRepository.findAdmissionPresenceForUpdate(
                 VILLAGE_ID, "USER", ACTOR_USER_ID)).willReturn(List.of());
         given(membershipRepository.findAdmissionSlotsForUpdate(ACTOR_USER_ID))
-                .willReturn(VillageMembershipSlotTestFixture.occupied(100));
+                .willReturn(VillageMembershipSlotTestFixture.occupied(VillageParticipationLimits.DEFAULT_HARD_LIMIT));
 
         assertThatThrownBy(() -> service.join(VILLAGE_ID, ACTOR_USER_ID, new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID), guard.judge(ACTOR_USER_ID, VillageSubjectType.USER, ACTOR_USER_ID)))
                 .isInstanceOf(BusinessException.class)

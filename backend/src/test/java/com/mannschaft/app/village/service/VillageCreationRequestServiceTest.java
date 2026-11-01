@@ -96,7 +96,7 @@ class VillageCreationRequestServiceTest {
 
     @BeforeEach
     void wireRealAdmissionSlots() {
-        VillageMembershipSlotService slots = new VillageMembershipSlotService(admissionLockRepository, membershipRepository);
+        VillageMembershipSlotService slots = new VillageMembershipSlotService(admissionLockRepository, membershipRepository, new VillageParticipationLimitProvider(null));
         service = new VillageCreationRequestService(requestRepository, villageRepository, membershipRepository, slots, entityManager, accessControlService);
     }
 

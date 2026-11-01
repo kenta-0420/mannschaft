@@ -1,5 +1,6 @@
 package com.mannschaft.app.village.migration;
 
+import com.mannschaft.app.village.service.VillageParticipationLimits;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -38,12 +39,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * CMP-260827-1808: Javaの事前検査を迂回した実MySQLの所属一意・USER100村制限。
+ * CMP-260827-1808: Javaの事前検査を迂回した実MySQLの所属一意・USER枠番号の一意と天井。
  *
  * <p>既存FlywayMeetupCandidateTimeMigrationTestのSpring不要なTC方式を使い、
  * 村・所属・代表委任の正本3migrationだけを各caseで再生する限定DDL試練。
  * 全migrationとの共存と全5業務writerのTXは別試練であり、本試練で合格を主張しない。
- * 既存の異常データ（現役重複・101村以上）は移行SQLの中で自動是正されることも固定する（B案）。
+ * 既存の異常データ（現役重複・既定の上限超過）は移行SQLの中で自動是正されることも固定する（B案）。
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @EnabledIf("com.mannschaft.app.village.migration.VillageMembershipSlotMigrationTest#isDockerAvailable")
@@ -111,8 +112,8 @@ class VillageMembershipSlotMigrationTest {
     @AfterEach
     void assertBoundedFixtureSize() throws Exception {
         try (Connection c = open()) {
-            assertThat(count(c, "SELECT COUNT(*) FROM villages")).isLessThanOrEqualTo(103);
-            assertThat(count(c, "SELECT COUNT(*) FROM village_memberships")).isLessThanOrEqualTo(105);
+            assertThat(count(c, "SELECT COUNT(*) FROM villages")).isLessThanOrEqualTo(VillageParticipationLimits.DEFAULT_HARD_LIMIT + 3);
+            assertThat(count(c, "SELECT COUNT(*) FROM village_memberships")).isLessThanOrEqualTo(VillageParticipationLimits.DEFAULT_HARD_LIMIT + 5);
             assertThat(count(c, "SELECT COUNT(*) FROM village_representatives")).isLessThanOrEqualTo(2);
         }
     }
@@ -131,22 +132,22 @@ class VillageMembershipSlotMigrationTest {
     }
 
     @Test
-    void USERの101村目はJava検査なしでもDBで拒否する() throws Exception {
+    void 既定上限まで埋めたUSERの同じ枠番号はJava検査なしでもDBで拒否する() throws Exception {
         migrateCandidateIfPresent();
         try (Connection c = open()) {
-            for (int slot = 1; slot <= 100; slot++) {
+            for (int slot = 1; slot <= VillageParticipationLimits.DEFAULT_HARD_LIMIT; slot++) {
                 membership(c, village(c), "USER", 71, slot, false, false);
             }
             UUID overflowVillage = village(c);
             assertThatThrownBy(() -> membership(c, overflowVillage, "USER", 71, 1, false, false))
                     .isInstanceOf(SQLException.class).hasMessageContaining("uk_vm_user_active_slot");
             assertThat(count(c, "SELECT COUNT(*) FROM village_memberships WHERE left_at IS NULL"))
-                    .isEqualTo(100);
+                    .isEqualTo(VillageParticipationLimits.DEFAULT_HARD_LIMIT);
         }
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {0, 101})
+    @ValueSource(ints = {0, VillageParticipationLimits.DB_SLOT_CEILING + 1})
     void activeUSERの範囲外slotをCHECKが拒否する(int slot) throws Exception {
         migrateCandidateIfPresent();
         try (Connection c = open()) {
@@ -221,7 +222,7 @@ class VillageMembershipSlotMigrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {0, 99, 100})
+    @ValueSource(ints = {0, VillageParticipationLimits.DEFAULT_HARD_LIMIT - 1, VillageParticipationLimits.DEFAULT_HARD_LIMIT})
     void 正常既存USERはid順backfillされBAN履歴非USERを保つ(int active) throws Exception {
         try (Connection c = open()) {
             for (int index = 0; index < active; index++) {
@@ -235,7 +236,7 @@ class VillageMembershipSlotMigrationTest {
             assertThat(snapshot(c)).as("slot以外の全membership列が同値").isEqualTo(before);
             assertThat(hasSlot(c)).as("移行が実際に追加された").isTrue();
             assertThat(count(c, "SELECT COUNT(*) FROM village_memberships WHERE subject_type='USER' "
-                    + "AND left_at IS NULL AND (user_slot IS NULL OR user_slot<1 OR user_slot>100)" )).isZero();
+                    + "AND left_at IS NULL AND (user_slot IS NULL OR user_slot<1 OR user_slot>" + VillageParticipationLimits.DB_SLOT_CEILING + ")")).isZero();
             assertThat(count(c, "SELECT COUNT(*) FROM (SELECT user_slot,ROW_NUMBER() OVER "
                     + "(PARTITION BY subject_id ORDER BY id) expected FROM village_memberships "
                     + "WHERE subject_type='USER' AND left_at IS NULL) ranked WHERE user_slot<>expected")).isZero();
@@ -306,10 +307,10 @@ class VillageMembershipSlotMigrationTest {
     }
 
     @Test
-    @DisplayName("AC-1808-1b: 100村超過の是正もBANの有無を問わず最古100件を残す")
-    void 百村超過の是正はBANの有無を問わない() throws Exception {
+    @DisplayName("AC-1808-1b: 既定上限の超過是正もBANの有無を問わず最古から既定上限件を残す")
+    void 既定上限の超過是正はBANの有無を問わない() throws Exception {
         try (Connection c = open()) {
-            for (int index = 0; index < 100; index++) {
+            for (int index = 0; index < VillageParticipationLimits.DEFAULT_HARD_LIMIT; index++) {
                 membership(c, village(c), "USER", 71, null, false, false,
                         String.format("2026-01-01 00:%02d:%02d", index / 60, index % 60));
             }
@@ -319,17 +320,17 @@ class VillageMembershipSlotMigrationTest {
 
             assertThat(leftAtIsNull(c, newestBanned)).as("最新のBAN所属が超過として退村扱い").isFalse();
             assertThat(count(c, "SELECT COUNT(*) FROM village_memberships WHERE subject_id=71 AND left_at IS NULL"))
-                    .isEqualTo(100);
+                    .isEqualTo(VillageParticipationLimits.DEFAULT_HARD_LIMIT);
             assertThat(count(c, "SELECT COUNT(*) FROM village_memberships WHERE banned_at IS NOT NULL")).isEqualTo(1);
         }
     }
 
     @Test
-    @DisplayName("AC-1808-1b: 101村所属は最古100件を残し超過分を退村扱いにする")
-    void 百一村所属は最古百件を残して自動是正する() throws Exception {
+    @DisplayName("AC-1808-1b: 既定上限を超える所属は最古から既定上限件を残し超過分を退村扱いにする")
+    void 既定上限を超える所属は最古から残して自動是正する() throws Exception {
         try (Connection c = open()) {
             List<UUID> ids = new ArrayList<>();
-            for (int index = 0; index < 101; index++) {
+            for (int index = 0; index < VillageParticipationLimits.DEFAULT_HARD_LIMIT + 1; index++) {
                 // index 0 を最新にし、id 順と joined_at 順を逆にする。
                 String joinedAt = index == 0 ? "2026-09-01 00:00:00"
                         : String.format("2026-01-01 00:%02d:%02d", index / 60, index % 60);
@@ -340,15 +341,15 @@ class VillageMembershipSlotMigrationTest {
             migrateCandidateIfPresent();
 
             assertThat(leftAtIsNull(c, ids.get(0))).as("最新の1件が超過として退村扱い").isFalse();
-            for (int index = 1; index < 101; index++) {
+            for (int index = 1; index < VillageParticipationLimits.DEFAULT_HARD_LIMIT + 1; index++) {
                 assertThat(leftAtIsNull(c, ids.get(index))).isTrue();
             }
             assertThat(count(c, "SELECT COUNT(*) FROM village_memberships WHERE subject_id=71 AND left_at IS NULL"))
-                    .isEqualTo(100);
+                    .isEqualTo(VillageParticipationLimits.DEFAULT_HARD_LIMIT);
             assertThat(count(c, "SELECT COUNT(*) FROM village_memberships WHERE subject_id=72 AND left_at IS NULL"))
                     .as("他USERは影響を受けない").isEqualTo(1);
             assertThat(count(c, "SELECT COUNT(DISTINCT user_slot) FROM village_memberships "
-                    + "WHERE subject_id=71 AND left_at IS NULL")).isEqualTo(100);
+                    + "WHERE subject_id=71 AND left_at IS NULL")).isEqualTo(VillageParticipationLimits.DEFAULT_HARD_LIMIT);
             UUID overflow = village(c);
             assertThatThrownBy(() -> membership(c, overflow, "USER", 71, 1, false, false))
                     .isInstanceOf(SQLException.class).hasMessageContaining("uk_vm_user_active_slot");

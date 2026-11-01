@@ -116,7 +116,8 @@ class VillageInvitationContractTest {
                 villageRepository, membershipRepository,
                 Mockito.mock(com.mannschaft.app.common.AccessControlService.class));
         var admissionLocks = Mockito.mock(com.mannschaft.app.village.repository.VillageUserAdmissionLockRepository.class);
-        var slots = new com.mannschaft.app.village.service.VillageMembershipSlotService(admissionLocks, membershipRepository);
+        var slots = new com.mannschaft.app.village.service.VillageMembershipSlotService(admissionLocks, membershipRepository,
+                new com.mannschaft.app.village.service.VillageParticipationLimitProvider(null));
         VillageInvitationService real = new VillageInvitationService(
                 invitationRepository, membershipRepository, slots, Mockito.mock(jakarta.persistence.EntityManager.class), gate,
                 // 金庫は状態を持たない共通部品なので実物を渡す（モックだとトークンが null になる）。

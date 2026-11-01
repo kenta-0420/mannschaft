@@ -13,8 +13,8 @@ public final class VillageMembershipSlotTestFixture {
     private VillageMembershipSlotTestFixture() { }
 
     public static List<AdmissionSlotRow> occupied(int count) {
-        if (count < 0 || count > 100) {
-            throw new IllegalArgumentException("占有枠数は0..100です");
+        if (count < 0 || count > VillageParticipationLimits.DB_SLOT_CEILING) {
+            throw new IllegalArgumentException("占有枠数は0..DB天井です");
         }
         return IntStream.rangeClosed(1, count).mapToObj(i -> slot((short) i)).toList();
     }

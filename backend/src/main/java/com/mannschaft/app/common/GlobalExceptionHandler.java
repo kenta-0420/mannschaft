@@ -2638,7 +2638,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex,
                                                                   HttpServletRequest request) {
         ErrorCode errorCode = ex.getErrorCode();
-        String message = resolveMessage(errorCode);
+        String message = resolveMessage(errorCode, ex.getMessageArgs());
         log.warn("BusinessException: code={}, message={}", errorCode.getCode(), message);
 
         // スロー箇所固有のステータス上書きがあれば優先する（F04.12 ROLE_009 は
@@ -3217,6 +3217,14 @@ public class GlobalExceptionHandler {
      * キーが存在しない場合は ErrorCode.getMessage()（日本語）にフォールバック。
      */
     private String resolveMessage(ErrorCode errorCode) {
+        return resolveMessage(errorCode, new Object[0]);
+    }
+
+    /**
+     * プレースホルダへ値を差し込んで文言を解決する（{@link BusinessException#withMessageArgs}）。
+     * 値が空なら従来と同じ固定文言を返す。
+     */
+    private String resolveMessage(ErrorCode errorCode, Object[] messageArgs) {
         String code = errorCode.getCode();
         // TEAM_001 → "error.team.001" に変換
         int lastUnderscore = code.lastIndexOf('_');
@@ -3232,12 +3240,14 @@ public class GlobalExceptionHandler {
         try {
             return messageSource.getMessage(
                     messageKey,
-                    null,
+                    messageArgs.length == 0 ? null : messageArgs,
                     LocaleContextHolder.getLocale()
             );
         } catch (NoSuchMessageException e) {
             // properties にキーがない場合は日本語の getMessage() にフォールバック
-            return errorCode.getMessage();
+            return messageArgs.length == 0
+                    ? errorCode.getMessage()
+                    : java.text.MessageFormat.format(errorCode.getMessage(), messageArgs);
         }
     }
 

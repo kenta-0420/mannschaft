@@ -60,12 +60,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class VillageMembershipService {
 
-    /** 1 主体がアクティブメンバーとして所属できる村数のハードリミット。 */
-    static final int PARTICIPATION_HARD_LIMIT = 100;
-
-    /** ソフト警告閾値（30 村超過でレスポンスに warn フラグを立てる）。 */
-    static final int PARTICIPATION_SOFT_WARN_THRESHOLD = 30;
-
     private final VillageMembershipRepository membershipRepository;
     private final VillageMembershipSlotService slotService;
     private final VillageAccessGate accessGate;
@@ -117,7 +111,7 @@ public class VillageMembershipService {
         log.info("Village joined: villageId={} subjectType={} subjectId={} membershipId={}",
                 villageId, request.subjectType(), request.subjectId(), created.getId());
 
-        boolean warn = allocation != null && allocation.joinedCount() > PARTICIPATION_SOFT_WARN_THRESHOLD;
+        boolean warn = allocation != null && allocation.joinedCount() > VillageParticipationLimits.SOFT_WARN_THRESHOLD;
         return MembershipResponse.ofJoined(created, resolveDisplayName(created), warn);
     }
 

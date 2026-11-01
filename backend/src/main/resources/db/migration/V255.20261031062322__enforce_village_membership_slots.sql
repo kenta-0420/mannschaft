@@ -1,4 +1,4 @@
--- CMP-260827-1808: 現役所属の一意と USER 100村上限を DB 制約で保証する。
+-- CMP-260827-1808: 現役所属の一意と USER の参加枠（枠番号の天井 1000。上限の既定 100 はアプリ設定）を DB 制約で保証する。
 --
 -- 既存データの扱い（御裁可済み B案）: 異常データがあっても移行を止めず、この SQL の中で自動是正する。
 --   (1) 同村・同主体の現役所属の重複 … 1件だけ残し、残りに left_at を設定して退村扱いにする。
@@ -61,7 +61,7 @@ DROP TEMPORARY TABLE cmp1808_duplicate_fix;
 DROP TEMPORARY TABLE cmp1808_overflow_fix;
 
 -- user_slot 列（無ければ追加）
-SET @cmp1808_ddl = IF((SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'village_memberships' AND column_name = 'user_slot') = 0, 'ALTER TABLE village_memberships ADD COLUMN user_slot SMALLINT UNSIGNED NULL COMMENT ''USERの在籍村slot。現役は1..100、退村履歴は保持可''', 'DO 0');
+SET @cmp1808_ddl = IF((SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'village_memberships' AND column_name = 'user_slot') = 0, 'ALTER TABLE village_memberships ADD COLUMN user_slot SMALLINT UNSIGNED NULL COMMENT ''USERの在籍村slot。現役は1..天井（1000）、退村履歴は保持可''', 'DO 0');
 PREPARE cmp1808_stmt FROM @cmp1808_ddl;
 EXECUTE cmp1808_stmt;
 DEALLOCATE PREPARE cmp1808_stmt;
@@ -81,6 +81,10 @@ SET m.user_slot = b.user_slot, m.updated_at = m.updated_at
 WHERE @cmp1808_slot_uk_exists = 0;
 DROP TEMPORARY TABLE cmp1808_user_slot_backfill;
 
+-- 枠番号の天井（1000）と、(2) の超過是正のしきい値（既定の上限 100）は Java の
+-- VillageParticipationLimits.DB_SLOT_CEILING / DEFAULT_HARD_LIMIT と一致させる（照合は
+-- VillageParticipationLimitsMigrationConsistencyTest）。実際の上限は設定で天井以下に変えられ、
+-- 上限の判定はアプリ（VillageParticipationLimitProvider）が行う。DB は天井と枠番号の一意だけを保証する。
 -- generated 式の base は FK 付き village_id / subject_id を含めない。
 -- 現役 BAN も一意・容量の対象。退村履歴と TEAM/ORGANIZATION は USER の slot を消費しない。
 SET @cmp1808_ddl = IF((SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'village_memberships' AND column_name = 'active_user_slot') = 0, 'ALTER TABLE village_memberships ADD COLUMN active_user_slot SMALLINT UNSIGNED GENERATED ALWAYS AS (CASE WHEN subject_type = ''USER'' AND left_at IS NULL THEN user_slot ELSE NULL END) VIRTUAL', 'DO 0');
@@ -93,7 +97,7 @@ PREPARE cmp1808_stmt FROM @cmp1808_ddl;
 EXECUTE cmp1808_stmt;
 DEALLOCATE PREPARE cmp1808_stmt;
 
-SET @cmp1808_ddl = IF((SELECT COUNT(*) FROM information_schema.table_constraints WHERE table_schema = DATABASE() AND table_name = 'village_memberships' AND constraint_name = 'ck_vm_active_user_slot') = 0, 'ALTER TABLE village_memberships ADD CONSTRAINT ck_vm_active_user_slot CHECK (subject_type <> ''USER'' OR left_at IS NOT NULL OR (user_slot IS NOT NULL AND user_slot BETWEEN 1 AND 100))', 'DO 0');
+SET @cmp1808_ddl = IF((SELECT COUNT(*) FROM information_schema.table_constraints WHERE table_schema = DATABASE() AND table_name = 'village_memberships' AND constraint_name = 'ck_vm_active_user_slot') = 0, 'ALTER TABLE village_memberships ADD CONSTRAINT ck_vm_active_user_slot CHECK (subject_type <> ''USER'' OR left_at IS NOT NULL OR (user_slot IS NOT NULL AND user_slot BETWEEN 1 AND 1000))', 'DO 0');
 PREPARE cmp1808_stmt FROM @cmp1808_ddl;
 EXECUTE cmp1808_stmt;
 DEALLOCATE PREPARE cmp1808_stmt;
