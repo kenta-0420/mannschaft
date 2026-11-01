@@ -227,7 +227,7 @@ public void withdrawUser(Long userId) {
 | AccountPurgedEvent | `com.mannschaft.app.navsettings.event.NavSettingsPurgeEventListener` | navsettings | `user_nav_settings`を物理削除し、所有TXのcommit後に完了記録 |
 | AccountPurgedEvent | `com.mannschaft.app.notification.event.NotificationAnonymizationEventListener` | notification | `notification_settings`、`notification_preferences`、`notification_type_preferences`、`push_subscriptions`を物理削除し、所有TXのcommit後に完了記録 |
 | AccountPurgedEvent | `com.mannschaft.app.quickmemo.event.QuickMemoSettingsPurgeEventListener` | quickmemo | `user_quick_memo_settings`を物理削除し、所有TXのcommit後に完了記録 |
-| AccountPurgedEvent | `com.mannschaft.app.reflection.event.ReflectionSettingsPurgeEventListener` | reflection | `user_reflection_settings`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.reflection.event.ReflectionSettingsPurgeEventListener` | reflection | `user_reflection_settings`、`reflection_spaced_reminders`（CMP-260822-1243 第2陣）を物理削除し、所有TXのcommit後に完了記録 |
 | AccountPurgedEvent | `com.mannschaft.app.schedule.listener.CalendarLayerLifecycleListener` | schedule | `user_calendar_sync_settings`、`user_calendar_layer_settings`を物理削除し、所有TXのcommit後に完了記録 |
 | AccountPurgedEvent | `com.mannschaft.app.scopefolder.event.MyScopeFolderPurgeEventListener` | scopefolder | `my_scope_folder_items`、`my_scope_folders`を物理削除し、所有TXのcommit後に完了記録 |
 | AccountPurgedEvent | `com.mannschaft.app.seal.event.SealScopeDefaultsPurgeEventListener` | seal | `seal_scope_defaults`を物理削除し、所有TXのcommit後に完了記録 |
@@ -238,6 +238,11 @@ public void withdrawUser(Long userId) {
 | AccountPurgedEvent | `com.mannschaft.app.weather.event.WeatherLocationCleanupListener` | weather | `user_weather_locations`を物理削除し、所有TXのcommit後に完了記録 |
 | AccountPurgedEvent | `com.mannschaft.app.ranch.event.RanchPurgeEventListener` | ranch | 本人の牧場・恐竜・報酬・所持品・操作記録を独立TXで物理削除し、commit後に完了記録 |
 | AccountPurgedEvent | `com.mannschaft.app.diagnosis.event.DiagnosisPurgeEventListener` | diagnosis | 本人の診断回答・診断結果・出生派生結果を独立TXで物理削除し、commit後に完了記録。失敗時は未完了として再試行 |
+| AccountPurgedEvent | `com.mannschaft.app.shift.event.ShiftAvailabilityPurgeEventListener` | shift | `member_availability_defaults`を所有列で一括物理削除し、所有TXのcommit後に完了記録（CMP-260822-1243 第2陣） |
+| AccountPurgedEvent | `com.mannschaft.app.parking.event.ParkingWatchlistPurgeEventListener` | parking | `parking_watchlist`を所有列で一括物理削除し、所有TXのcommit後に完了記録（CMP-260822-1243 第2陣） |
+| AccountPurgedEvent | `com.mannschaft.app.advertising.campaign.event.UserAdPreferencePurgeEventListener` | advertising | `user_ad_preferences`を所有列で一括物理削除し、所有TXのcommit後に完了記録（CMP-260822-1243 第2陣） |
+| AccountPurgedEvent | `com.mannschaft.app.property.event.PropertyWorkHistoryViewPurgeEventListener` | property | `property_work_history_views`を所有列で一括物理削除し、所有TXのcommit後に完了記録（CMP-260822-1243 第2陣） |
+| AccountPurgedEvent | `com.mannschaft.app.village.event.VillagePersonalSettingsPurgeEventListener` | village | `user_village_nicknames`、`user_village_pins`を所有列で一括物理削除し、所有TXのcommit後に完了記録（休眠中の弱側を強側で補う。CMP-260822-1243 第2陣） |
 <!-- GDPR_EVENT_LISTENER_LEDGER_END -->
 
 実装同期時点の件数は `UserAnonymizedEvent` 18クラス、`AccountPurgedEvent` 40クラス、両方を購読する11クラス、ユニーク47クラスである。件数は説明用であり、番人は固定件数ではなく購読者の集合そのものを照合する。

@@ -1,0 +1,65 @@
+package com.mannschaft.app.village.event;
+
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.service.AccountPurgeCompletionService;
+import com.mannschaft.app.village.repository.UserVillageNicknameRepository;
+import com.mannschaft.app.village.repository.UserVillagePinRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+/**
+ * 本人の村ピン留め・村ニックネームを30日後に強消去する。村・投稿・メンバーシップは対象外。
+ *
+ * <p>CMP-260822-1243: 退会30日後の強匿名化で、本人だけが使う {@code user_village_pins} と {@code user_village_nicknames} を所有列 {@code user_id} で
+ * 一括物理削除する。他人の行は残す。所有ドメイン内の削除を1つの新規TXで行い、途中のSQL失敗は
+ * TX全体をロールバックして例外を伝播させる（完了記録は残らず PENDING のまま手動 retry 対象になる）。</p>
+ *
+ * <p>設計根拠: {@code docs/architecture/account_purge_cross_domain_refactor.md} §CMP-260822-1243</p>
+ */
+@Component
+@RequiredArgsConstructor
+public class VillagePersonalSettingsPurgeEventListener {
+
+    private final UserVillageNicknameRepository userVillageNicknameRepository;
+    private final UserVillagePinRepository userVillagePinRepository;
+    private final AccountPurgeCompletionService completionService;
+
+    /** 30日後の強匿名化。所有データの削除コミット後にのみ完了を記録する。 */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "完全削除済み利用者の村ピン留めとニックネームを消去する。停止すると個人データが残留し、消去イベントは再生されない")
+    @Async("purge-pool")
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onAccountPurged(AccountPurgedEvent event) {
+        Long userId = event.getUserId();
+        purgeOwnedRows(userId);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                completionService.markDomainSuccess(userId, "village");
+            }
+        });
+    }
+
+    /** 手動再試行。呼出元はこの新規TXのコミット成立後に完了状態を更新する。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean retryPurge(Long userId) {
+        purgeOwnedRows(userId);
+        return true;
+    }
+
+    /** 同じ所有domain内の全削除を一つのTXで実行し、途中失敗を伝播させる。対象0件でも成功とする。 */
+    private void purgeOwnedRows(Long userId) {
+        userVillageNicknameRepository.deleteAllOwnedByUserId(userId);
+        userVillagePinRepository.deleteAllOwnedByUserId(userId);
+    }
+}
