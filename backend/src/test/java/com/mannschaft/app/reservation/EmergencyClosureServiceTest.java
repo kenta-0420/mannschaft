@@ -464,6 +464,74 @@ class EmergencyClosureServiceTest {
     }
 
     // ========================================
+    // sendClosure の一括取消（CMP-260822-1730 AC-1730-6）
+    // ========================================
+
+    @Nested
+    @DisplayName("sendClosure の一括取消は行ロック後の最新状態で判定する（AC-1730-6）")
+    class SendClosureLocking {
+
+        private com.mannschaft.app.reservation.dto.CreateEmergencyClosureRequest request(boolean cancel) {
+            com.mannschaft.app.reservation.dto.CreateEmergencyClosureRequest r =
+                    new com.mannschaft.app.reservation.dto.CreateEmergencyClosureRequest();
+            r.setStartDate(TARGET_DATE);
+            r.setEndDate(TARGET_DATE);
+            r.setReason("休業");
+            r.setSubject("休業");
+            r.setMessageBody("休業");
+            r.setCancelReservations(cancel);
+            return r;
+        }
+
+        @Test
+        @DisplayName("一括取消は対象idを行ロックで取り、ロック後にCANCELLEDの行は取消・枠減算・通知対象から外す")
+        void ロック後に失効済みの行は取消も減算もしない() {
+            ReservationSlotEntity s = slot(401L, LocalTime.of(10, 0), LocalTime.of(11, 0));
+            given(slotRepository.findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
+                    eq(TEAM_ID), any(), any())).willReturn(List.of(s));
+            ReservationEntity active = reservationFor(401L);
+            injectId(active, 9001L);
+            ReservationEntity expired = ReservationEntity.builder().reservationSlotId(401L).lineId(1L)
+                    .teamId(TEAM_ID).userId(777L).status(ReservationStatus.CANCELLED).build();
+            injectId(expired, 9002L);
+            given(reservationRepository.findIdsByReservationSlotIdInAndStatusIn(any(), any()))
+                    .willReturn(List.of(9001L, 9002L));
+            given(reservationRepository.findByIdInForUpdate(List.of(9001L, 9002L)))
+                    .willReturn(List.of(active, expired));
+            given(slotService.getSlotEntity(401L)).willReturn(s);
+            given(emergencyClosureRepository.save(any())).willAnswer(inv -> {
+                EmergencyClosureEntity e = inv.getArgument(0);
+                injectId(e, 1L);
+                return e;
+            });
+
+            var response = service.sendClosure(TEAM_ID, 1L, request(true));
+
+            assertThat(active.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+            assertThat(expired.getCancelReason()).as("失効の取消を上書きしない").isNull();
+            verify(slotService, org.mockito.Mockito.times(1)).decrementAndReopen(s);
+            assertThat(response.getSentCount()).as("失効済みの利用者へ休業通知を重ねない").isEqualTo(1);
+            verify(reservationRepository, never()).findByReservationSlotIdInAndStatusIn(any(), any());
+        }
+
+        @Test
+        @DisplayName("取消しない通知のみの送信は行ロックを取らない")
+        void 通知のみは行ロックを取らない() {
+            ReservationSlotEntity s = slot(402L, LocalTime.of(10, 0), LocalTime.of(11, 0));
+            given(slotRepository.findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
+                    eq(TEAM_ID), any(), any())).willReturn(List.of(s));
+            given(reservationRepository.findByReservationSlotIdInAndStatusIn(any(), any()))
+                    .willReturn(List.of(reservationFor(402L)));
+            given(emergencyClosureRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+            service.sendClosure(TEAM_ID, 1L, request(false));
+
+            verify(reservationRepository, never()).findByIdInForUpdate(any());
+            verify(slotService, never()).decrementAndReopen(any());
+        }
+    }
+
+    // ========================================
     // confirmClosure / 患者確認イベント発火
     // ========================================
 
