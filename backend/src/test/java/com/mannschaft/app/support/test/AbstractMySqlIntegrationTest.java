@@ -78,6 +78,8 @@ public abstract class AbstractMySqlIntegrationTest {
             .withUsername("test")
             .withPassword("test")
             .withReuse(false)
+            // 専用Testcontainerで実SQLのtriggerを作成可能にし、既存Flyway試験と同じ条件に揃える。
+            .withCommand("--log-bin-trust-function-creators=1")
             // WSL2 環境でMySQL初期化がVHDのI/O待ちで2分超になりTestcontainersのタイムアウトを超える問題を回避するため、
             // /var/lib/mysql をtmpfs(RAM)に置くことで初期化を数秒に短縮する。
             .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"));
