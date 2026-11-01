@@ -191,7 +191,7 @@ class MatchProposalServiceTest {
             CreateProposalRequest createRequest = new CreateProposalRequest("テスト応募", null, "テスト会場");
 
             // When
-            ProposalCreateResponse result = service.createProposal(TEAM_ID, REQUEST_ID, createRequest);
+            ProposalCreateResponse result = service.createProposal(TEAM_ID, REQUEST_ID, createRequest, ACTOR_ID);
 
             // Then
             assertThat(result).isNotNull();
@@ -211,7 +211,7 @@ class MatchProposalServiceTest {
             CreateProposalRequest createRequest = new CreateProposalRequest("テスト", null, null);
 
             // When & Then
-            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest))
+            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MatchingErrorCode.SELF_PROPOSAL_NOT_ALLOWED);
@@ -230,7 +230,7 @@ class MatchProposalServiceTest {
             CreateProposalRequest createRequest = new CreateProposalRequest("テスト", null, null);
 
             // When & Then
-            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest))
+            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MatchingErrorCode.REQUEST_NOT_FOUND);
@@ -247,7 +247,7 @@ class MatchProposalServiceTest {
             CreateProposalRequest createRequest = new CreateProposalRequest("テスト", null, null);
 
             // When & Then
-            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest))
+            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MatchingErrorCode.REQUEST_NOT_FOUND);
@@ -265,7 +265,7 @@ class MatchProposalServiceTest {
             CreateProposalRequest createRequest = new CreateProposalRequest("テスト", null, null);
 
             // When & Then
-            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest))
+            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MatchingErrorCode.DUPLICATE_PROPOSAL);
@@ -280,7 +280,7 @@ class MatchProposalServiceTest {
             CreateProposalRequest createRequest = new CreateProposalRequest("テスト", null, null);
 
             // When & Then
-            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest))
+            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MatchingErrorCode.REQUEST_NOT_FOUND);
@@ -675,7 +675,7 @@ class MatchProposalServiceTest {
             CreateProposalRequest createRequest = new CreateProposalRequest("テスト", null, null);
 
             // When & Then
-            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest))
+            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MatchingErrorCode.REQUEST_NOT_OPEN);
@@ -701,7 +701,7 @@ class MatchProposalServiceTest {
             CreateProposalRequest createRequest = new CreateProposalRequest("テスト", dates, null);
 
             // When & Then
-            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest))
+            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MatchingErrorCode.TOO_MANY_PROPOSED_DATES);

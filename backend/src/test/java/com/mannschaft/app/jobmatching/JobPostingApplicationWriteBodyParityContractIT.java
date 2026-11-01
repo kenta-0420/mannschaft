@@ -259,6 +259,17 @@ class JobPostingApplicationWriteBodyParityContractIT extends AbstractMySqlIntegr
     }
 
     @Test
+    @DisplayName("AC-1027-T2-5: 応募を閲覧できる採否権限者（TEAM ADMIN）が withdraw すると従来コード JOB_PERMISSION_DENIED、DB不変")
+    void AC_1027_T2_5_閲覧できる者の権限不足は従来コード() throws Exception {
+        Op op = Op.APPLICATION_WITHDRAW;
+        Fixture f = fixture(op);
+        Snapshot before = snapshot();
+        MvcResult result = call(op, tokens.issueAccessToken(teamAdmin, List.of("USER")), f.target(op));
+        assertThat(json(result).path("error").path("code").asText()).isEqualTo("JOB_PERMISSION_DENIED");
+        assertThat(snapshot()).isEqualTo(before);
+    }
+
+    @Test
     @DisplayName("AC-1027-T2-4: 未認証は実在・不在とも401でDB不変")
     void AC_1027_T2_4_未認証は401() throws Exception {
         for (Op op : Op.values()) {
@@ -271,9 +282,12 @@ class JobPostingApplicationWriteBodyParityContractIT extends AbstractMySqlIntegr
         }
     }
 
-    /** 応募作成は同TEAMのMEMBERが正当な応募資格者（DRAFT は状態診断を受ける）のため、対象外にする。 */
+    /**
+     * 応募作成(OPEN)は同TEAMのMEMBERが正当な応募資格者のため対象外。
+     * DRAFT は投稿者本人と SYSTEM_ADMIN のみ閲覧可なので、同TEAMのMEMBERも不在と同一応答になる（比較対象に含める）。
+     */
     private List<Actor> outsidersFor(Op op) {
-        if (op != Op.APPLICATION_CREATE && op != Op.APPLICATION_CREATE_DRAFT) { return outsiders; }
+        if (op != Op.APPLICATION_CREATE) { return outsiders; }
         return outsiders.stream().filter(a -> !a.name().equals("同TEAMのMEMBER")).toList();
     }
 

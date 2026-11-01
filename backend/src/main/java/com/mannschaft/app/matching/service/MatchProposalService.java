@@ -35,8 +35,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 応募サービス。応募のCRUD・承諾・拒否・取り下げ・キャンセルを担当する。
@@ -61,22 +63,32 @@ public class MatchProposalService {
      * 募集への応募を作成する。
      */
     @Transactional
-    public ProposalCreateResponse createProposal(Long teamId, Long requestId, CreateProposalRequest request) {
+    public ProposalCreateResponse createProposal(Long teamId, Long requestId, CreateProposalRequest request,
+                                                 Long actorUserId) {
         MatchRequestEntity matchRequest = requestRepository.findById(requestId)
                 .orElseThrow(() -> new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND));
+
+        // 閲覧資格の判定は詳細取得（MatchRequestService#getRequest）と同じ規則: 利用者の全所属TEAM（＋パスTEAM）で
+        // NG判定し、自所属以外のOPEN以外の募集は見えない。見えない募集は不在と同一の応答にする（CMP-260821-1027）。
+        Set<Long> myTeamIds = new LinkedHashSet<>(accessControlService.findAffiliatedScopeIds(actorUserId, "TEAM"));
+        myTeamIds.add(teamId);
+        for (Long myTeamId : myTeamIds) {
+            if (ngTeamRepository.findBidirectionalBlockedTeamIds(myTeamId).contains(matchRequest.getTeamId())) {
+                throw new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND);
+            }
+        }
+        if (!myTeamIds.contains(matchRequest.getTeamId()) && matchRequest.getStatus() != MatchRequestStatus.OPEN) {
+            throw new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND);
+        }
 
         // 自チーム応募チェック
         if (matchRequest.getTeamId().equals(teamId)) {
             throw new BusinessException(MatchingErrorCode.SELF_PROPOSAL_NOT_ALLOWED);
         }
 
-        // 他チームから見えない募集（OPEN以外・NG関係）は、詳細取得と同じく不在と同一の応答にする（CMP-260821-1027）。
+        // OPENチェック（自所属の募集に限り到達する）
         if (matchRequest.getStatus() != MatchRequestStatus.OPEN) {
-            throw new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND);
-        }
-        List<Long> blockedIds = ngTeamRepository.findBidirectionalBlockedTeamIds(teamId);
-        if (blockedIds.contains(matchRequest.getTeamId())) {
-            throw new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND);
+            throw new BusinessException(MatchingErrorCode.REQUEST_NOT_OPEN);
         }
 
         // 期限切れチェック（OPEN の募集は公開情報）
@@ -172,8 +184,8 @@ public class MatchProposalService {
 
         // 権限チェック（募集チームの管理者/副管理者のみ・userID≠teamID の誤比較を撤廃）
         if (!accessControlService.isAdminOrAbove(actorUserId, matchRequest.getTeamId(), "TEAM")) {
-            // 権限外には応募の存在を明かさない（不在IDと同一応答。CMP-260821-1027）。
-            throw new BusinessException(MatchingErrorCode.PROPOSAL_NOT_FOUND);
+            // 応募を閲覧できる者には従来の権限不足、閲覧できない者には不在と同一応答（CMP-260821-1027）。
+            throw permissionDeniedOrHidden(proposal, actorUserId);
         }
 
         // OPENチェック
@@ -234,8 +246,8 @@ public class MatchProposalService {
 
         // 権限チェック（募集チームの管理者/副管理者のみ）
         if (!accessControlService.isAdminOrAbove(actorUserId, matchRequest.getTeamId(), "TEAM")) {
-            // 権限外には応募の存在を明かさない（不在IDと同一応答。CMP-260821-1027）。
-            throw new BusinessException(MatchingErrorCode.PROPOSAL_NOT_FOUND);
+            // 応募を閲覧できる者には従来の権限不足、閲覧できない者には不在と同一応答（CMP-260821-1027）。
+            throw permissionDeniedOrHidden(proposal, actorUserId);
         }
         if (proposal.getStatus() != MatchProposalStatus.PENDING) {
             throw new BusinessException(MatchingErrorCode.INVALID_PROPOSAL_STATUS);
@@ -257,8 +269,8 @@ public class MatchProposalService {
 
         // 権限チェック（応募チームの管理者/副管理者のみ・userID≠teamID の誤比較を撤廃）
         if (!accessControlService.isAdminOrAbove(actorUserId, proposal.getProposingTeamId(), "TEAM")) {
-            // 権限外には応募の存在を明かさない（不在IDと同一応答。CMP-260821-1027）。
-            throw new BusinessException(MatchingErrorCode.PROPOSAL_NOT_FOUND);
+            // 応募を閲覧できる者には従来の権限不足、閲覧できない者には不在と同一応答（CMP-260821-1027）。
+            throw permissionDeniedOrHidden(proposal, actorUserId);
         }
         if (proposal.getStatus() != MatchProposalStatus.PENDING) {
             throw new BusinessException(MatchingErrorCode.INVALID_PROPOSAL_STATUS);
@@ -316,6 +328,16 @@ public class MatchProposalService {
                 : accessControlService.isAdminOrAbove(actorUserId, canceller, "TEAM"));
         return new Context(proposalId, proposal.getRequestId(), proposal.getProposingTeamId(), requestingTeamId,
                 read.independentReader(), requestingAdmin, proposingAdmin, canceller, cancellerAdmin);
+    }
+
+    /** 応募の閲覧者なら MATCHING_010、閲覧できない者なら不在と同一の MATCHING_002 を返す。 */
+    private BusinessException permissionDeniedOrHidden(MatchProposalEntity proposal, Long actorUserId) {
+        try {
+            checkProposalReadAccess(proposal, actorUserId);
+            return new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);
+        } catch (BusinessException hidden) {
+            return hidden;
+        }
     }
 
     /** readerの由来を保持し、募集親が消えた場合の002と既存診断→001を区別する。 */

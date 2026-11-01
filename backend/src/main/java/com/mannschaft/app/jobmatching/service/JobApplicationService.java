@@ -1,6 +1,8 @@
 package com.mannschaft.app.jobmatching.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.jobmatching.entity.JobApplicationEntity;
 import com.mannschaft.app.jobmatching.entity.JobPostingEntity;
 import com.mannschaft.app.jobmatching.enums.JobApplicationStatus;
@@ -43,6 +45,7 @@ public class JobApplicationService {
     private final JobPostingRepository postingRepository;
     private final JobApplicationStateMachine stateMachine;
     private final JobPolicy jobPolicy;
+    private final ContentVisibilityChecker visibilityChecker;
     private final ApplicationEventPublisher eventPublisher;
 
     // ---------------------------------------------------------------------
@@ -69,10 +72,10 @@ public class JobApplicationService {
         JobPostingEntity posting = postingRepository.findById(postingId)
                 .orElseThrow(() -> new BusinessException(JobmatchingErrorCode.JOB_NOT_FOUND));
 
-        // 応募資格の無い者には求人の存在・状態を明かさない（不在IDと同一応答。CMP-260821-1027）。
-        // 状態診断（OPEN/締切）より前に判定する。投稿者本人は自分の求人なので対象外。
-        if (!userId.equals(posting.getCreatedByUserId())
-                && isSupportedScope(posting) && !jobPolicy.canApply(userId, posting)) {
+        // 閲覧資格の無い者（DRAFT は投稿者本人と SYSTEM_ADMIN のみ可視など）には、求人の存在・状態を明かさない
+        // （詳細取得と同じ可視性基盤で判定し、不在IDと同一応答にする。CMP-260821-1027）。
+        // 閲覧できる者が応募資格を欠く場合は、従来どおり後段の権限不足コードで拒否する。
+        if (!visibilityChecker.canView(ReferenceType.JOB_POSTING, postingId, userId)) {
             throw new BusinessException(JobmatchingErrorCode.JOB_NOT_FOUND);
         }
 
@@ -134,7 +137,7 @@ public class JobApplicationService {
     public JobApplicationEntity withdraw(Long applicationId, Long userId) {
         JobApplicationEntity app = findOrThrow(applicationId);
         if (!userId.equals(app.getApplicantUserId())) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_APPLICATION_NOT_FOUND);
+            throw permissionDeniedOrHidden(app, userId);
         }
         stateMachine.validate(app.getStatus(), JobApplicationStatus.WITHDRAWN);
         app.withdraw();
@@ -155,7 +158,7 @@ public class JobApplicationService {
                 .orElseThrow(() -> new BusinessException(JobmatchingErrorCode.JOB_NOT_FOUND));
 
         if (!jobPolicy.canDecideApplication(userId, posting)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_APPLICATION_NOT_FOUND);
+            throw permissionDeniedOrHidden(app, userId);
         }
 
         stateMachine.validate(app.getStatus(), JobApplicationStatus.REJECTED);
@@ -216,6 +219,20 @@ public class JobApplicationService {
     // ---------------------------------------------------------------------
     // 内部ヘルパー
     // ---------------------------------------------------------------------
+
+    /**
+     * 権限不足の例外を作る。応募を閲覧できる者（応募者本人・採否権限者）には従来の
+     * {@code JOB_PERMISSION_DENIED} を、閲覧できない者には不在と同一の {@code JOB_APPLICATION_NOT_FOUND} を返す
+     * （CMP-260821-1027）。
+     */
+    private BusinessException permissionDeniedOrHidden(JobApplicationEntity app, Long userId) {
+        boolean viewer = userId != null && (userId.equals(app.getApplicantUserId())
+                || postingRepository.findById(app.getJobPostingId())
+                        .map(posting -> jobPolicy.canDecideApplication(userId, posting)).orElse(false));
+        return new BusinessException(viewer
+                ? JobmatchingErrorCode.JOB_PERMISSION_DENIED
+                : JobmatchingErrorCode.JOB_APPLICATION_NOT_FOUND);
+    }
 
     private JobApplicationEntity findOrThrow(Long applicationId) {
         return applicationRepository.findById(applicationId)

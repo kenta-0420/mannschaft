@@ -343,7 +343,7 @@ class MatchingAuthorizationEnforcementTest {
     void admin_propose_created() throws Exception {
         given(accessControlService.isSystemAdmin(ADMIN_USER_ID)).willReturn(false);
         given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
-        given(matchProposalService.createProposal(eq(TEAM_ID), eq(REQUEST_ID), any()))
+        given(matchProposalService.createProposal(eq(TEAM_ID), eq(REQUEST_ID), any(), any()))
                 .willReturn(new ProposalCreateResponse(70L, REQUEST_ID, "PENDING"));
 
         mockMvc.perform(post(PROPOSE_PATH)

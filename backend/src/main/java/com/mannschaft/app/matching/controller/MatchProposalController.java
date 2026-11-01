@@ -54,7 +54,7 @@ public class MatchProposalController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody CreateProposalRequest request) {
-        ProposalCreateResponse response = proposalService.createProposal(teamId, id, request);
+        ProposalCreateResponse response = proposalService.createProposal(teamId, id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

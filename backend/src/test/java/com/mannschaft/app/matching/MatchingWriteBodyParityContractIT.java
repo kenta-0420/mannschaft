@@ -10,6 +10,8 @@ import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.visibility.RolePriority;
 import com.mannschaft.app.matching.entity.MatchProposalEntity;
+import com.mannschaft.app.matching.entity.NgTeamEntity;
+import com.mannschaft.app.matching.repository.NgTeamRepository;
 import com.mannschaft.app.matching.entity.MatchRequestEntity;
 import com.mannschaft.app.matching.repository.MatchProposalRepository;
 import com.mannschaft.app.matching.repository.MatchRequestRepository;
@@ -103,7 +105,9 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
         PROPOSAL_REJECT_PARENT_DELETED(HttpMethod.PATCH, "/api/v1/matching/proposals/{id}/reject", Target.PROPOSAL, "MATCHING_002", Variant.PARENT_DELETED),
         // 応募作成。他チームから見えない募集（OPEN以外・NG関係）は不在の募集と同一応答（MATCHING_001）。
         PROPOSAL_CREATE_NOT_OPEN(HttpMethod.POST, "/api/v1/teams/{team}/matching/requests/{id}/propose", Target.REQUEST, "MATCHING_001", Variant.NOT_OPEN),
-        PROPOSAL_CREATE_NG(HttpMethod.POST, "/api/v1/teams/{team}/matching/requests/{id}/propose", Target.REQUEST, "MATCHING_001", Variant.NG);
+        PROPOSAL_CREATE_NG(HttpMethod.POST, "/api/v1/teams/{team}/matching/requests/{id}/propose", Target.REQUEST, "MATCHING_001", Variant.NG),
+        // パスのTEAMではなく、利用者の別の所属TEAMが募集TEAMとNG関係にある場合も、詳細取得と同じく不在と同一応答。
+        PROPOSAL_CREATE_NG_OTHER_TEAM(HttpMethod.POST, "/api/v1/teams/{team}/matching/requests/{id}/propose", Target.REQUEST, "MATCHING_001", Variant.NG_OTHER_TEAM);
 
         final HttpMethod method;
         final String path;
@@ -120,10 +124,14 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
             this.variant = variant;
         }
 
-        boolean isCreate() { return variant == Variant.NOT_OPEN || variant == Variant.NG; }
+        boolean isCreate() { return variant == Variant.NOT_OPEN || variant == Variant.NG || variant == Variant.NG_OTHER_TEAM; }
+
+        boolean isProposalDecision() {
+            return variant == Variant.NORMAL && (this == PROPOSAL_ACCEPT || this == PROPOSAL_REJECT || this == PROPOSAL_WITHDRAW);
+        }
     }
 
-    private enum Variant { NORMAL, PARENT_DELETED, NOT_OPEN, NG }
+    private enum Variant { NORMAL, PARENT_DELETED, NOT_OPEN, NG, NG_OTHER_TEAM }
 
     @Autowired private MockMvc mvc;
     @Autowired private ObjectMapper mapper;
@@ -133,6 +141,7 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private TeamRepository teams;
     @Autowired private MatchRequestRepository requests;
     @Autowired private MatchProposalRepository proposals;
+    @Autowired private NgTeamRepository ngTeams;
     @Autowired private FeatureFlagRepository flags;
     @Autowired private CacheManager caches;
     @Autowired private MembershipRepository memberships;
@@ -145,7 +154,7 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
     private final List<Long> proposalIds = new ArrayList<>();
     private final List<Long> createdRoleIds = new ArrayList<>();
     private final List<Actor> outsiders = new ArrayList<>();
-    private Long requestingTeam, proposingTeam, requestingAdmin, proposingAdmin;
+    private Long requestingTeam, proposingTeam, requestingAdmin, proposingAdmin, sideTeam, multiTeamAdmin, requestingMember;
     private Long flagId;
     private FlagState previousFlag;
     private boolean createdFlag;
@@ -169,7 +178,13 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
             proposingAdmin = admin(proposingTeam, "ADMIN", true);
             outsiders.add(new Actor("所属なし", user()));
             outsiders.add(new Actor("他TEAMのADMIN", admin(foreignTeam, "ADMIN", true)));
-            outsiders.add(new Actor("募集TEAMのMEMBER", member(requestingTeam)));
+            requestingMember = member(requestingTeam);
+            outsiders.add(new Actor("募集TEAMのMEMBER", requestingMember));
+            // 応募TEAMのADMINでありつつ、別TEAM（sideTeam）にも所属する者。
+            sideTeam = team();
+            multiTeamAdmin = admin(proposingTeam, "ADMIN", true);
+            memberships.save(MembershipEntity.builder().userId(multiTeamAdmin).scopeType(ScopeType.TEAM)
+                    .scopeId(sideTeam).roleKind(RoleKind.MEMBER).build());
             assertThat(requests.existsById(MISSING)).isFalse();
             assertThat(proposals.existsById(MISSING)).isFalse();
             return null;
@@ -218,8 +233,9 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
         for (Op op : Op.values()) {
             Fixture f = fixture(op);
             for (Actor actor : actorsFor(op)) {
-                // 募集TEAMのMEMBERは応募一覧を閲覧できる（所属者の正当な読み取り）ため対象外。
-                if (op == Op.PROPOSAL_LIST && actor.name().equals("募集TEAMのMEMBER")) { continue; }
+                // 募集TEAMのMEMBERは応募一覧・応募を閲覧できる（閲覧資格あり）ため、不在との一致対象外。
+                // 閲覧できる者の権限不足は従来コード（MATCHING_010）を維持する（別テストで固定）。
+                if ((op == Op.PROPOSAL_LIST || op.isProposalDecision()) && actor.name().equals("募集TEAMのMEMBER")) { continue; }
                 Snapshot before = snapshot();
                 MvcResult missing = call(op, actor.id(), MISSING);
                 MvcResult existing = call(op, actor.id(), f.target(op));
@@ -234,6 +250,23 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
             }
         }
         assertThat(diffs).as("越境と不在で応答が割れている操作").isEmpty();
+    }
+
+    @Test
+    @DisplayName("応募を閲覧できる者の権限不足は従来コード MATCHING_010 を維持し、DBは不変")
+    void 閲覧できる者の権限不足は従来コード() throws Exception {
+        Object[][] cases = {
+                {Op.PROPOSAL_ACCEPT, "募集TEAMのMEMBER"}, {Op.PROPOSAL_REJECT, "募集TEAMのMEMBER"},
+                {Op.PROPOSAL_WITHDRAW, "募集TEAMのMEMBER"}, {Op.PROPOSAL_WITHDRAW, "募集TEAMのADMIN"}};
+        for (Object[] c : cases) {
+            Op op = (Op) c[0];
+            Long actor = c[1].equals("募集TEAMのADMIN") ? requestingAdmin : requestingMember;
+            Fixture f = fixture(op);
+            Snapshot before = snapshot();
+            MvcResult result = call(op, actor, f.target(op));
+            assertThat(error(result).path("code").asText()).as("%s/%s", op, c[1]).isEqualTo("MATCHING_010");
+            assertThat(snapshot()).as("%s/%s", op, c[1]).isEqualTo(before);
+        }
     }
 
     @Test
@@ -264,6 +297,7 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
 
     /** 応募作成は応募TEAMのADMIN（パスTEAMの認可を通る者）が操作者。それ以外は越境者。 */
     private List<Actor> actorsFor(Op op) {
+        if (op.variant == Variant.NG_OTHER_TEAM) { return List.of(new Actor("応募TEAMのADMIN兼別TEAM所属", multiTeamAdmin)); }
         return op.isCreate() ? List.of(new Actor("応募TEAMのADMIN", proposingAdmin)) : outsiders;
     }
 
@@ -322,12 +356,14 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
             proposalIds.add(proposal.getId());
             em.flush();
             if (op.variant == Variant.PARENT_DELETED) {
-                em.createNativeQuery("UPDATE match_requests SET deleted_at=NOW() WHERE id=:id")
-                        .setParameter("id", parent.getId()).executeUpdate();
+                parent.softDelete();
+                requests.save(parent);
             }
             if (op.variant == Variant.NG) {
-                em.createNativeQuery("INSERT INTO ng_teams (team_id, blocked_team_id, created_at) VALUES (:t, :b, NOW())")
-                        .setParameter("t", requestingTeam).setParameter("b", proposingTeam).executeUpdate();
+                ngTeams.save(NgTeamEntity.builder().teamId(requestingTeam).blockedTeamId(proposingTeam).build());
+            }
+            if (op.variant == Variant.NG_OTHER_TEAM) {
+                ngTeams.save(NgTeamEntity.builder().teamId(sideTeam).blockedTeamId(requestingTeam).build());
             }
             return new Fixture(parent.getId(), proposal.getId());
         });
