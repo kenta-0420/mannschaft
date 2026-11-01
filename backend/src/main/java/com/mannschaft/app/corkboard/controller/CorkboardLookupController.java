@@ -34,8 +34,8 @@ public class CorkboardLookupController {
     /**
      * boardId 単独でボード詳細を取得する（scope-agnostic）。
      *
-     * <p>権限チェック失敗時は 403 ({@code CORKBOARD_009})、ボード未存在時は 404
-     * ({@code CORKBOARD_001}) を返す。</p>
+     * <p>閲覧権限なし・ボード未存在のいずれも 404 ({@code CORKBOARD_001}) を返す
+     * （CMP-260820-1422: 閲覧できない者に boardId の実在を漏らさないため不在と同一応答にする）。</p>
      *
      * @param boardId ボードID
      * @return ボード詳細レスポンス
