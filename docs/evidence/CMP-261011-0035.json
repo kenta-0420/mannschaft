@@ -50,32 +50,32 @@
     {
       "description": "ALIC-1/ALIC-2: 宛先チーム経由の委任閲覧が通らない、権限名が未翻訳で表示される。",
       "test": "OrgAnnouncementDelegatedPreviewIT / AnnouncementDelegatedAccessGuardArchTest / permission-names-coverage.spec.ts",
-      "red": "https://github.com/kenta-0420/mannschaft/pull/4206",
-      "green": "https://github.com/kenta-0420/mannschaft/pull/4206"
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4206",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/pull/4206"
     },
     {
       "description": "ダッシュボードの告知カード見出しが描画されない不具合。",
       "test": "WidgetAnnouncementsHeader.spec.ts",
-      "red": "https://github.com/kenta-0420/mannschaft/pull/4229",
-      "green": "https://github.com/kenta-0420/mannschaft/pull/4229"
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4229",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/pull/4229"
     },
     {
       "description": "告知カードの見出し行がスマホ幅で潰れる。",
       "test": "WidgetAnnouncementsHeader.spec.ts（スマホ幅の追加ケース）",
-      "red": "https://github.com/kenta-0420/mannschaft/pull/4236",
-      "green": "https://github.com/kenta-0420/mannschaft/pull/4236"
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4236",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/pull/4236"
     },
     {
       "description": "スマホ幅で告知カードの一覧が1件しか見えない。",
       "test": "WidgetAnnouncementsHeader.spec.ts（一覧の表示件数ケース）",
-      "red": "https://github.com/kenta-0420/mannschaft/pull/4239",
-      "green": "https://github.com/kenta-0420/mannschaft/pull/4239"
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4239",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/pull/4239"
     },
     {
       "description": "組織告知一覧が宛先外の人に宛先指定の告知を出す。",
       "test": "OrgAnnouncementFeedAudienceIT（修正前に 5 件中 3 件が assertion で red、修正後 green）",
-      "red": "https://github.com/kenta-0420/mannschaft/pull/4240",
-      "green": "https://github.com/kenta-0420/mannschaft/actions/runs/41249102515"
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4240",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/41249102515"
     }
   ]
 }
