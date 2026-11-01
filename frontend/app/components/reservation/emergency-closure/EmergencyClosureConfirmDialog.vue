@@ -3,6 +3,7 @@ const props = defineProps<{
   visible: boolean
   periodText: string
   subject: string
+  reason: string
   cancelReservations: boolean
 }>()
 
@@ -29,6 +30,7 @@ const visibleModel = computed({
       <ul class="mt-2 space-y-1 rounded-md bg-surface-50 p-3 dark:bg-surface-800">
         <li><span class="font-medium">{{ $t('emergency_closure.dialog.label_period') }}:</span> {{ periodText }}</li>
         <li><span class="font-medium">{{ $t('emergency_closure.dialog.label_subject') }}:</span> {{ subject }}</li>
+        <li><span class="font-medium">{{ $t('emergency_closure.dialog.label_reason') }}:</span> {{ reason }}</li>
         <li v-if="cancelReservations" class="text-orange-600 dark:text-orange-400">
           {{ $t('emergency_closure.dialog.cancel_warning') }}
         </li>

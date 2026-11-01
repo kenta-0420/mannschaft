@@ -202,8 +202,25 @@ class AnnouncementViewerRoleFreshnessIT extends AbstractMySqlIntegrationTest {
     }
 
     private Long saveFeed(AnnouncementScopeType scope, Long scopeId, String visibility, String title, String excerpt) {
+        AnnouncementSourceType sourceType = AnnouncementSourceType.BULLETIN_THREAD;
+        long sourceId = System.nanoTime() % 1_000_000_000L;
+        if (scope == AnnouncementScopeType.ORGANIZATION) {
+            // 組織の一覧は本文プレビューが開ける行だけを返す（CMP-261011-0035）ので、告知と同じ可視性の実在する組織ブログを元にする
+            com.mannschaft.app.cms.Visibility blogVisibility = switch (visibility) {
+                case AnnouncementVisibility.PUBLIC -> com.mannschaft.app.cms.Visibility.PUBLIC;
+                case AnnouncementVisibility.SUPPORTERS_AND_ABOVE -> com.mannschaft.app.cms.Visibility.SUPPORTERS_AND_ABOVE;
+                default -> com.mannschaft.app.cms.Visibility.MEMBERS_AND_ABOVE;
+            };
+            var post = com.mannschaft.app.cms.entity.BlogPostEntity.builder().organizationId(scopeId).authorId(authorId)
+                    .title(title).slug("fresh-" + java.util.UUID.randomUUID()).body(excerpt).visibility(blogVisibility)
+                    .status(com.mannschaft.app.cms.PostStatus.PUBLISHED)
+                    .postType(com.mannschaft.app.cms.PostType.BLOG).build();
+            em.persist(post);
+            sourceType = AnnouncementSourceType.BLOG_POST;
+            sourceId = post.getId();
+        }
         AnnouncementFeedEntity feed = AnnouncementFeedEntity.builder().scopeType(scope).scopeId(scopeId)
-                .sourceType(AnnouncementSourceType.BULLETIN_THREAD).sourceId(System.nanoTime() % 1_000_000_000L)
+                .sourceType(sourceType).sourceId(sourceId)
                 .authorId(authorId).titleCache(title).excerptCache(excerpt).visibility(visibility).build();
         em.persist(feed);
         return feed.getId();
