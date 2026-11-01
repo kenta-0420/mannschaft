@@ -572,7 +572,10 @@ class ReservationPendingExpireConcurrencyIT extends AbstractMySqlIntegrationTest
         });
         assertThat(firstDecremented.await(60, TimeUnit.SECONDS)).as("取消側が最初の枠を減算した").isTrue();
         Future<Integer> batchRun = workers.submit(() -> batch.expirePendingReservations());
-        Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> lockWaits() >= 1 || batchRun.isDone());
+        // バッチが失効 unit の枠ロック取得まで進んで待たされる時間を与える（試験DBユーザーに PROCESS 権限が無く
+        // innodb_trx でロック待ちを観測できないため、一定時間「終わらないこと」で待ち状態を確かめる）。
+        Awaitility.await().pollDelay(Duration.ofSeconds(2)).during(Duration.ofMillis(500))
+                .atMost(Duration.ofSeconds(10)).until(() -> !batchRun.isDone());
         resume.countDown();
 
         cancel.get(60, TimeUnit.SECONDS);
@@ -594,11 +597,6 @@ class ReservationPendingExpireConcurrencyIT extends AbstractMySqlIntegrationTest
                 .reservationSlotId(slot.getId()).status(status)
                 .bookedAt(LocalDateTime.ofInstant(bookedAt, UserZoneLocalDateTimeParser.SERVER_ZONE))
                 .groupId(groupId).isGroupPrimary(primary).build());
-    }
-
-    private long lockWaits() {
-        return jdbc.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.innodb_trx WHERE trx_state = 'LOCK WAIT'", Long.class);
     }
 
     /** 失効バッチを、予約行ロック保持・取消と枠減算を終えた commit 前の地点で止める。 */
