@@ -1,7 +1,6 @@
 package com.mannschaft.app.reservation.service;
 
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
@@ -50,7 +49,8 @@ public class EmergencyClosureService {
 
     private final ReservationSlotRepository slotRepository;
     private final ReservationRepository reservationRepository;
-    private final UserRepository userRepository;
+    /** 氏名・メールの取得は auth ドメインの Service 経由（D-5: 他ドメインの Repository / Entity を直接使わない）。 */
+    private final UserService userService;
     private final EmailOutboxService emailOutboxService;
     private final EmergencyClosureRepository emergencyClosureRepository;
     private final ReservationSlotService slotService;
@@ -146,12 +146,13 @@ public class EmergencyClosureService {
 
         // F09.18 Phase 18-b: メール送信は EmailOutboxService.enqueue() 経由に移行
         // (1 record = 1 宛先展開、テンプレ未整備のため RESERVATION_EMERGENCY_CLOSURE はスルー方式)
+        Map<Long, UserService.FullNameAndEmail> contacts = userService.getFullNamesAndEmails(targetUserIds);
         for (Long userId : targetUserIds) {
-            userRepository.findById(userId).ifPresent(user ->
+            java.util.Optional.ofNullable(contacts.get(userId)).ifPresent(user ->
                 emailOutboxService.enqueue(new EmailOutboxRequest(
                         "RESERVATION_EMERGENCY_CLOSURE",
                         "ja",
-                        user.getEmail(),
+                        user.email(),
                         Map.of(
                                 "subject", request.getSubject(),
                                 "body", request.getMessageBody()
@@ -258,21 +259,18 @@ public class EmergencyClosureService {
         List<EmergencyClosureConfirmationEntity> confirmations =
                 confirmationRepository.findByEmergencyClosureId(closureId);
         // N+1 回避: 対象ユーザーを1回で取得する（退会者は @SQLRestriction で取れず、氏名・メールは "" で返す）
-        // （ArchUnit 凍結ストアのシグネチャを変えないため、ヘルパーに切り出さずこのメソッド内で取得する）
         List<Long> userIds = confirmations.stream()
                 .map(EmergencyClosureConfirmationEntity::getUserId).distinct().collect(Collectors.toList());
-        Map<Long, UserEntity> userMap = userIds.isEmpty()
-                ? Map.of()
-                : userRepository.findAllById(userIds).stream()
-                        .collect(Collectors.toMap(UserEntity::getId, java.util.function.Function.identity(), (a, b) -> a));
+        Map<Long, UserService.FullNameAndEmail> userMap =
+                userIds.isEmpty() ? Map.of() : userService.getFullNamesAndEmails(userIds);
 
         return confirmations.stream()
                 .map(c -> {
-                    UserEntity user = userMap.get(c.getUserId());
+                    UserService.FullNameAndEmail user = userMap.get(c.getUserId());
                     return EmergencyClosureConfirmationResponse.builder()
                             .userId(c.getUserId())
-                            .userFullName(user != null ? user.getLastName() + " " + user.getFirstName() : "")
-                            .userEmail(user != null ? user.getEmail() : "")
+                            .userFullName(user != null ? user.fullName() : "")
+                            .userEmail(user != null ? user.email() : "")
                             .appointmentAt(c.getAppointmentAt())
                             .confirmed(c.isConfirmed())
                             .confirmedAt(c.getConfirmedAt())
@@ -373,19 +371,17 @@ public class EmergencyClosureService {
                 .collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
 
         // N+1 回避: 対象ユーザーを1回で取得する（見つからないユーザーは氏名・メール "" のまま行を残す）
-        // （ArchUnit 凍結ストアのシグネチャを変えないため、ヘルパーに切り出さずこのメソッド内で取得する）
         List<Long> userIds = reservations.stream()
                 .map(ReservationEntity::getUserId).distinct().collect(Collectors.toList());
-        Map<Long, UserEntity> userMap = userRepository.findAllById(userIds).stream()
-                .collect(Collectors.toMap(UserEntity::getId, java.util.function.Function.identity(), (a, b) -> a));
+        Map<Long, UserService.FullNameAndEmail> userMap = userService.getFullNamesAndEmails(userIds);
 
         List<EmergencyClosurePreviewResponse.AffectedReservation> result = new ArrayList<>();
         for (ReservationEntity reservation : reservations) {
             ReservationSlotEntity slot = slotMap.get(reservation.getReservationSlotId());
-            UserEntity user = userMap.get(reservation.getUserId());
+            UserService.FullNameAndEmail user = userMap.get(reservation.getUserId());
 
-            String fullName = user != null ? user.getLastName() + " " + user.getFirstName() : "";
-            String email = user != null ? user.getEmail() : "";
+            String fullName = user != null ? user.fullName() : "";
+            String email = user != null ? user.email() : "";
 
             EmergencyClosurePreviewResponse.AffectedReservation affected =
                     EmergencyClosurePreviewResponse.AffectedReservation.builder()

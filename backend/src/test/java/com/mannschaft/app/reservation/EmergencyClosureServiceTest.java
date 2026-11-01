@@ -1,7 +1,6 @@
 package com.mannschaft.app.reservation;
 
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -30,7 +29,11 @@ import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -63,7 +66,7 @@ class EmergencyClosureServiceTest {
     private ReservationRepository reservationRepository;
 
     @Mock
-    private UserRepository userRepository;
+    private UserService userService;
 
     @Mock
     private EmailOutboxService emailOutboxService;
@@ -536,17 +539,11 @@ class EmergencyClosureServiceTest {
     }
 
     // ========================================
-    // 氏名解決（CMP-261030-0650）: ユーザーの一括取得（N+1 解消）
+    // 氏名解決（CMP-261030-0650）: auth の UserService 経由の一括取得（N+1 解消・越境依存の解消）
     // ========================================
 
-    private UserEntity user(long id, String last, String first) {
-        UserEntity u = UserEntity.builder()
-                .email("u" + id + "@example.com")
-                .lastName(last)
-                .firstName(first)
-                .build();
-        injectId(u, id);
-        return u;
+    private static UserService.FullNameAndEmail contact(long id, String fullName) {
+        return new UserService.FullNameAndEmail(fullName, "u" + id + "@example.com");
     }
 
     private ReservationEntity reservationOf(long slotId, long userId) {
@@ -577,40 +574,64 @@ class EmergencyClosureServiceTest {
                 .build();
     }
 
+    /** 一括取得の引数（取得対象 userId の集合）を捕まえる。モックの戻り値は引数に依存させる。 */
+    @SuppressWarnings("unchecked")
+    private ArgumentCaptor<Collection<Long>> idsCaptor() {
+        return ArgumentCaptor.forClass(Collection.class);
+    }
+
+    /** 引数と無関係に固定の一覧を返さず、渡された ID のうち known に含まれるものだけを返す。 */
+    private void givenUsers(Map<Long, UserService.FullNameAndEmail> known) {
+        given(userService.getFullNamesAndEmails(any())).willAnswer(inv -> {
+            Collection<Long> ids = inv.getArgument(0);
+            Map<Long, UserService.FullNameAndEmail> result = new LinkedHashMap<>();
+            // 逆順で返して、呼び出し側が順序でなく userId で対応づけることを確かめる
+            List<Long> reversed = new ArrayList<>(known.keySet());
+            java.util.Collections.reverse(reversed);
+            for (Long id : reversed) {
+                if (ids.contains(id)) {
+                    result.put(id, known.get(id));
+                }
+            }
+            return result;
+        });
+    }
+
     @Nested
     @DisplayName("previewClosure / 氏名の一括解決")
     class PreviewNames {
 
         @Test
-        @DisplayName("AC-11: 対象行があるとき findAllById は1回・findById は0回")
-        void 一括取得は1回でfindByIdは呼ばない() {
-            givenSlotsAndReservations(List.of(reservationOf(300L, 1L), reservationOf(300L, 2L)));
-            given(userRepository.findAllById(any())).willReturn(List.of(user(1L, "山田", "太郎"), user(2L, "鈴木", "花子")));
+        @DisplayName("AC-11: 一括取得は重複排除済みの対象 userId 集合で1回だけ呼ぶ")
+        void 一括取得は対象IDで1回だけ() {
+            givenSlotsAndReservations(List.of(
+                    reservationOf(300L, 1L), reservationOf(300L, 2L), reservationOf(300L, 1L)));
+            givenUsers(Map.of(1L, contact(1L, "山田 太郎"), 2L, contact(2L, "鈴木 花子")));
 
             service.previewClosure(TEAM_ID, TARGET_DATE, TARGET_DATE, null, null);
 
-            verify(userRepository, times(1)).findAllById(any());
-            verify(userRepository, never()).findById(any());
+            ArgumentCaptor<Collection<Long>> captor = idsCaptor();
+            verify(userService, times(1)).getFullNamesAndEmails(captor.capture());
+            assertThat(captor.getValue()).containsExactlyInAnyOrder(1L, 2L);
         }
 
         @Test
-        @DisplayName("AC-11: 対象0件のときユーザー取得は0回")
-        void 対象0件ならユーザー取得しない() {
+        @DisplayName("AC-11: 対象0件のとき氏名取得は0回")
+        void 対象0件なら取得しない() {
             given(slotRepository.findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                     eq(TEAM_ID), any(), any())).willReturn(List.of());
 
             EmergencyClosurePreviewResponse res = service.previewClosure(TEAM_ID, TARGET_DATE, TARGET_DATE, null, null);
 
             assertThat(res.getAffectedReservations()).isEmpty();
-            verify(userRepository, never()).findAllById(any());
-            verify(userRepository, never()).findById(any());
+            verify(userService, never()).getFullNamesAndEmails(any());
         }
 
         @Test
-        @DisplayName("AC-11: findAllById が逆順で返しても userId で氏名が対応する")
-        void 逆順で返っても氏名が正しく対応する() {
+        @DisplayName("AC-11: 一括取得の結果が逆順でも userId で氏名が対応する")
+        void 逆順でも氏名が正しく対応する() {
             givenSlotsAndReservations(List.of(reservationOf(300L, 1L), reservationOf(300L, 2L)));
-            given(userRepository.findAllById(any())).willReturn(List.of(user(2L, "鈴木", "花子"), user(1L, "山田", "太郎")));
+            givenUsers(Map.of(1L, contact(1L, "山田 太郎"), 2L, contact(2L, "鈴木 花子")));
 
             EmergencyClosurePreviewResponse res = service.previewClosure(TEAM_ID, TARGET_DATE, TARGET_DATE, null, null);
 
@@ -623,8 +644,9 @@ class EmergencyClosureServiceTest {
         @Test
         @DisplayName("AC-11: 同一ユーザーの予約が複数あっても行数を維持する")
         void 同一ユーザー複数予約でも行数を維持() {
-            givenSlotsAndReservations(List.of(reservationOf(300L, 1L), reservationOf(300L, 1L), reservationOf(300L, 1L)));
-            given(userRepository.findAllById(any())).willReturn(List.of(user(1L, "山田", "太郎")));
+            givenSlotsAndReservations(List.of(
+                    reservationOf(300L, 1L), reservationOf(300L, 1L), reservationOf(300L, 1L)));
+            givenUsers(Map.of(1L, contact(1L, "山田 太郎")));
 
             EmergencyClosurePreviewResponse res = service.previewClosure(TEAM_ID, TARGET_DATE, TARGET_DATE, null, null);
 
@@ -635,8 +657,9 @@ class EmergencyClosureServiceTest {
         @Test
         @DisplayName("AC-10d/AC-11: 見つからないユーザーも行を落とさず氏名・メールは空文字、他の行は取り違えない")
         void 見つからないユーザーは空文字で行を維持() {
-            givenSlotsAndReservations(List.of(reservationOf(300L, 1L), reservationOf(300L, 99L), reservationOf(300L, 2L)));
-            given(userRepository.findAllById(any())).willReturn(List.of(user(2L, "鈴木", "花子"), user(1L, "山田", "太郎")));
+            givenSlotsAndReservations(List.of(
+                    reservationOf(300L, 1L), reservationOf(300L, 99L), reservationOf(300L, 2L)));
+            givenUsers(Map.of(1L, contact(1L, "山田 太郎"), 2L, contact(2L, "鈴木 花子")));
 
             EmergencyClosurePreviewResponse res = service.previewClosure(TEAM_ID, TARGET_DATE, TARGET_DATE, null, null);
 
@@ -658,38 +681,38 @@ class EmergencyClosureServiceTest {
         }
 
         @Test
-        @DisplayName("AC-11: 対象行があるとき findAllById は1回・findById は0回")
-        void 一括取得は1回でユーザーfindByIdは呼ばない() {
+        @DisplayName("AC-11: 一括取得は重複排除済みの対象 userId 集合で1回だけ呼ぶ")
+        void 一括取得は対象IDで1回だけ() {
             givenClosure();
             given(confirmationRepository.findByEmergencyClosureId(700L))
-                    .willReturn(List.of(confirmationOf(1L), confirmationOf(2L)));
-            given(userRepository.findAllById(any())).willReturn(List.of(user(1L, "山田", "太郎"), user(2L, "鈴木", "花子")));
+                    .willReturn(List.of(confirmationOf(1L), confirmationOf(2L), confirmationOf(1L)));
+            givenUsers(Map.of(1L, contact(1L, "山田 太郎"), 2L, contact(2L, "鈴木 花子")));
 
             service.getConfirmations(TEAM_ID, 700L);
 
-            verify(userRepository, times(1)).findAllById(any());
-            verify(userRepository, never()).findById(any());
+            ArgumentCaptor<Collection<Long>> captor = idsCaptor();
+            verify(userService, times(1)).getFullNamesAndEmails(captor.capture());
+            assertThat(captor.getValue()).containsExactlyInAnyOrder(1L, 2L);
         }
 
         @Test
-        @DisplayName("AC-11: 対象0件のときユーザー取得は0回")
-        void 対象0件ならユーザー取得しない() {
+        @DisplayName("AC-11: 対象0件のとき氏名取得は0回")
+        void 対象0件なら取得しない() {
             givenClosure();
             given(confirmationRepository.findByEmergencyClosureId(700L)).willReturn(List.of());
 
             assertThat(service.getConfirmations(TEAM_ID, 700L)).isEmpty();
 
-            verify(userRepository, never()).findAllById(any());
-            verify(userRepository, never()).findById(any());
+            verify(userService, never()).getFullNamesAndEmails(any());
         }
 
         @Test
-        @DisplayName("AC-11: findAllById が逆順で返しても userId で氏名が対応する")
-        void 逆順で返っても氏名が正しく対応する() {
+        @DisplayName("AC-11: 一括取得の結果が逆順でも userId で氏名が対応する")
+        void 逆順でも氏名が正しく対応する() {
             givenClosure();
             given(confirmationRepository.findByEmergencyClosureId(700L))
                     .willReturn(List.of(confirmationOf(1L), confirmationOf(2L)));
-            given(userRepository.findAllById(any())).willReturn(List.of(user(2L, "鈴木", "花子"), user(1L, "山田", "太郎")));
+            givenUsers(Map.of(1L, contact(1L, "山田 太郎"), 2L, contact(2L, "鈴木 花子")));
 
             var res = service.getConfirmations(TEAM_ID, 700L);
 
@@ -705,7 +728,7 @@ class EmergencyClosureServiceTest {
             givenClosure();
             given(confirmationRepository.findByEmergencyClosureId(700L))
                     .willReturn(List.of(confirmationOf(1L), confirmationOf(1L)));
-            given(userRepository.findAllById(any())).willReturn(List.of(user(1L, "山田", "太郎")));
+            givenUsers(Map.of(1L, contact(1L, "山田 太郎")));
 
             assertThat(service.getConfirmations(TEAM_ID, 700L)).hasSize(2);
         }
@@ -716,7 +739,7 @@ class EmergencyClosureServiceTest {
             givenClosure();
             given(confirmationRepository.findByEmergencyClosureId(700L))
                     .willReturn(List.of(confirmationOf(1L), confirmationOf(99L), confirmationOf(2L)));
-            given(userRepository.findAllById(any())).willReturn(List.of(user(2L, "鈴木", "花子"), user(1L, "山田", "太郎")));
+            givenUsers(Map.of(1L, contact(1L, "山田 太郎"), 2L, contact(2L, "鈴木 花子")));
 
             var res = service.getConfirmations(TEAM_ID, 700L);
 

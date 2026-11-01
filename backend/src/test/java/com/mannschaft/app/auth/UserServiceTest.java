@@ -1352,4 +1352,71 @@ class UserServiceTest {
             assertThat(saved.getEmail()).isEqualTo("new@example.com");
         }
     }
+
+    // ========================================
+    // getFullNamesAndEmails（CMP-261030-0650: 他ドメインの一括氏名解決）
+    // ========================================
+
+    @Nested
+    @DisplayName("getFullNamesAndEmails")
+    class GetFullNamesAndEmails {
+
+        private UserEntity named(long id, String last, String first, String email) {
+            UserEntity u = UserEntity.builder()
+                    .email(email)
+                    .lastName(last)
+                    .firstName(first)
+                    .build();
+            setId(u, id);
+            return u;
+        }
+
+        @Test
+        @DisplayName("氏名は「姓 名」、メールはそのまま、userId をキーに返る（逆順でも対応する）")
+        void 姓名とメールをuserIdで返す() {
+            given(userRepository.findAllById(any())).willReturn(List.of(
+                    named(2L, "鈴木", "花子", "b@example.com"),
+                    named(1L, "山田", "太郎", "a@example.com")));
+
+            var result = userService.getFullNamesAndEmails(List.of(1L, 2L));
+
+            assertThat(result).containsOnlyKeys(1L, 2L);
+            assertThat(result.get(1L)).isEqualTo(new UserService.FullNameAndEmail("山田 太郎", "a@example.com"));
+            assertThat(result.get(2L)).isEqualTo(new UserService.FullNameAndEmail("鈴木 花子", "b@example.com"));
+        }
+
+        @Test
+        @DisplayName("findAllById は重複・null を除いた ID 集合で1回だけ呼ぶ")
+        void 重複とnullを除いて1回で取得する() {
+            given(userRepository.findAllById(any())).willReturn(List.of(named(1L, "山田", "太郎", "a@example.com")));
+
+            userService.getFullNamesAndEmails(java.util.Arrays.asList(1L, 1L, null, 1L));
+
+            @SuppressWarnings("unchecked")
+            org.mockito.ArgumentCaptor<Iterable<Long>> captor = org.mockito.ArgumentCaptor.forClass(Iterable.class);
+            verify(userRepository, org.mockito.Mockito.times(1)).findAllById(captor.capture());
+            assertThat(captor.getValue()).containsExactly(1L);
+            verify(userRepository, never()).findById(any());
+        }
+
+        @Test
+        @DisplayName("見つからないユーザーは Map に含めない")
+        void 見つからないユーザーは含めない() {
+            given(userRepository.findAllById(any())).willReturn(List.of(named(1L, "山田", "太郎", "a@example.com")));
+
+            var result = userService.getFullNamesAndEmails(List.of(1L, 99L));
+
+            assertThat(result).containsOnlyKeys(1L);
+        }
+
+        @Test
+        @DisplayName("null・空集合・null のみの集合は DB に問い合わせず空 Map")
+        void 空入力は問い合わせない() {
+            assertThat(userService.getFullNamesAndEmails(null)).isEmpty();
+            assertThat(userService.getFullNamesAndEmails(List.of())).isEmpty();
+            assertThat(userService.getFullNamesAndEmails(java.util.Collections.singletonList(null))).isEmpty();
+
+            verify(userRepository, never()).findAllById(any());
+        }
+    }
 }
