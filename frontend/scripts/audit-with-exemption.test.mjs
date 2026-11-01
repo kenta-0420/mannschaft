@@ -66,7 +66,6 @@ for (const severity of ['high', 'critical']) {
   })
 }
 
-const BRACES_URL = URL
 const BRACES_LOCK = LOCK
 const bracesAdvisory = () => advisory()
 const bracesGraph = () => ({
