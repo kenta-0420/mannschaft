@@ -25,6 +25,8 @@ import com.mannschaft.app.matching.dto.TemplateCreateResponse;
 import com.mannschaft.app.matching.dto.TemplateResponse;
 import com.mannschaft.app.matching.service.MatchNotificationService;
 import com.mannschaft.app.matching.service.MatchProposalService;
+import com.mannschaft.app.matching.service.MatchProposalViewAccessGuard;
+import com.mannschaft.app.matching.service.MatchRequestViewAccessGuard;
 import com.mannschaft.app.matching.service.MatchRequestService;
 import com.mannschaft.app.matching.service.MatchReviewService;
 import com.mannschaft.app.matching.service.MatchTemplateService;
@@ -268,6 +270,13 @@ class MatchingAuthorizationEnforcementTest {
     @MockitoBean
     private MatchProposalService matchProposalService;
 
+    /** 書込前の閲覧ガード（CMP-260821-1027）。本テストは認可ゲートの発火を見るため素通しの mock とする。 */
+    @MockitoBean
+    private MatchRequestViewAccessGuard matchRequestViewAccessGuard;
+
+    @MockitoBean
+    private MatchProposalViewAccessGuard matchProposalViewAccessGuard;
+
     @MockitoBean
     private NgTeamService ngTeamService;
 
@@ -343,7 +352,7 @@ class MatchingAuthorizationEnforcementTest {
     void admin_propose_created() throws Exception {
         given(accessControlService.isSystemAdmin(ADMIN_USER_ID)).willReturn(false);
         given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
-        given(matchProposalService.createProposal(eq(TEAM_ID), eq(REQUEST_ID), any(), any()))
+        given(matchProposalService.createProposal(eq(TEAM_ID), eq(REQUEST_ID), any()))
                 .willReturn(new ProposalCreateResponse(70L, REQUEST_ID, "PENDING"));
 
         mockMvc.perform(post(PROPOSE_PATH)

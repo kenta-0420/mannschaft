@@ -12,6 +12,7 @@ import com.mannschaft.app.jobmatching.enums.JobCheckInType;
 import com.mannschaft.app.jobmatching.exception.JobmatchingErrorCode;
 import com.mannschaft.app.jobmatching.policy.JobPolicy;
 import com.mannschaft.app.jobmatching.repository.JobContractRepository;
+import com.mannschaft.app.jobmatching.service.JobContractViewAccessGuard;
 import com.mannschaft.app.jobmatching.service.JobQrTokenService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -57,6 +58,8 @@ public class JobQrTokenController {
     private final JobQrTokenService qrTokenService;
     private final JobContractRepository contractRepository;
     private final JobPolicy jobPolicy;
+    /** 契約の閲覧可否の門（当事者でない者には不在と同一応答。CMP-260821-1027）。 */
+    private final JobContractViewAccessGuard contractViewGuard;
 
     /**
      * QR トークンを発行する（Requester 本人のみ）。
@@ -65,10 +68,11 @@ public class JobQrTokenController {
      * @param req        IN/OUT 種別と任意 TTL（秒）
      * <p><b>認可の所在</b>: 本メソッド冒頭で対象契約を実体としてロードし、
      * {@code JobPolicy#canIssueQrToken}（{@code jobmatching/policy/JobPolicy.java:175}）で
-     * 契約の {@code requester_user_id} と認証主体の一致を検証する。不一致は
-     * 契約不存在と同一の {@code JOB_CONTRACT_NOT_FOUND}（404・同一本文）で拒否する。
-     * status・error.code・message まで揃えているのは、応答差から契約 ID の実在を判別されること
-     * （存在オラクル）を防ぐためである。
+     * 契約の {@code requester_user_id} と認証主体の一致を検証する。その前に
+     * {@code JobContractViewAccessGuard} が、契約の当事者でない者を契約不存在と同一の
+     * {@code JOB_CONTRACT_NOT_FOUND}（404・同一本文）で拒否する（応答差から契約 ID の実在を判別される
+     * 存在オラクルを防ぐ。CMP-260821-1027）。当事者である Worker 本人の要求は、契約を閲覧できるため
+     * 従来どおり {@code JOB_PERMISSION_DENIED}（404 固定の写像）で拒否する。
      * {@code JobQrTokenService#issue} でも同等判定を行う二重防御である。</p>
      *
      * @return 発行結果（JWT 文字列 + 短コード + メタ情報）
@@ -84,10 +88,11 @@ public class JobQrTokenController {
         Long userId = SecurityUtils.getCurrentUserId();
 
         // Controller 側でも認可の早期チェック（Service 内でも同等判定が行われる）。
+        contractViewGuard.requireVisible(contractId, userId);
         JobContractEntity contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new BusinessException(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND));
         if (!jobPolicy.canIssueQrToken(contract, userId)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND);
+            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
         }
 
         JobQrTokenService.IssueResult result =
@@ -115,10 +120,11 @@ public class JobQrTokenController {
      * @param type       IN / OUT 種別
      * <p><b>認可の所在</b>: 本メソッド冒頭で対象契約を実体としてロードし、
      * {@code JobPolicy#canIssueQrToken}（{@code jobmatching/policy/JobPolicy.java:175}）で
-     * 契約の {@code requester_user_id} と認証主体の一致を検証する。不一致は
-     * 契約不存在と同一の {@code JOB_CONTRACT_NOT_FOUND}（404・同一本文）で拒否する。
-     * status・error.code・message まで揃えているのは、応答差から契約 ID の実在を判別されること
-     * （存在オラクル）を防ぐためである。
+     * 契約の {@code requester_user_id} と認証主体の一致を検証する。その前に
+     * {@code JobContractViewAccessGuard} が、契約の当事者でない者を契約不存在と同一の
+     * {@code JOB_CONTRACT_NOT_FOUND}（404・同一本文）で拒否する（応答差から契約 ID の実在を判別される
+     * 存在オラクルを防ぐ。CMP-260821-1027）。当事者である Worker 本人の要求は、契約を閲覧できるため
+     * 従来どおり {@code JOB_PERMISSION_DENIED}（404 固定の写像）で拒否する。
      * {@code JobQrTokenService#getCurrent} でも同等判定を行う二重防御である。</p>
      *
      * @return 現在有効なトークン（存在しなければ 204 No Content）
@@ -135,10 +141,11 @@ public class JobQrTokenController {
         Long userId = SecurityUtils.getCurrentUserId();
 
         // Controller 側でも認可の早期チェック。
+        contractViewGuard.requireVisible(contractId, userId);
         JobContractEntity contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new BusinessException(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND));
         if (!jobPolicy.canIssueQrToken(contract, userId)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND);
+            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
         }
 
         Optional<JobQrTokenEntity> found = qrTokenService.getCurrent(contractId, type, userId);

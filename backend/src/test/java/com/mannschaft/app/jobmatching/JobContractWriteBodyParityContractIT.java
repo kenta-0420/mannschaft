@@ -67,8 +67,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * CMP-260821-1027 T1: 契約の書込（完了報告・承認・差戻・解約）における存在オラクルの本文正規化（試練）。
  *
  * <p>非当事者が実在契約 ID に書込を試みた応答と、不在 ID の応答が status・error.code・message まで
- * 完全一致することを契約とする。修正前は越境が {@code JOB_PERMISSION_DENIED}、不在が
- * {@code JOB_CONTRACT_NOT_FOUND} で本文が割れており RED になる。</p>
+ * 完全一致することを契約とする（非当事者は閲覧ガード {@code JobContractViewAccessGuard} が書込TXより前に
+ * 不在コードで拒否）。当事者（閲覧者）の権限外操作は従来の {@code JOB_PERMISSION_DENIED} を維持する（AC-1027-T1-5）。</p>
  *
  * <p>金型: {@link JobContractReadScopeContractIT}（#3814。実JWT・filter・Service・MySQL・GHE を通し、
  * fixture は Repository 経由の独立TXで確定する。acceptApplication の GET_LOCK を含む系と同じく

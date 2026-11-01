@@ -94,6 +94,9 @@ class JobContractServiceTest {
         emField.setAccessible(true);
         emField.set(service, entityManager);
 
+        // 当事者判定は JobPolicy に一本化した（閲覧ガードと共有。CMP-260821-1027）。mock でも実判定を使う。
+        org.mockito.Mockito.lenient().when(jobPolicy.isContractParticipant(any(), any())).thenCallRealMethod();
+
         // GET_LOCK / RELEASE_LOCK の共通スタブ（成功ケース）。
         given(entityManager.createNativeQuery(anyString())).willReturn(nativeQuery);
         given(nativeQuery.setParameter(anyInt(), any())).willReturn(nativeQuery);
@@ -155,7 +158,7 @@ class JobContractServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 権限なしは応募の存在を明かさず JOB_APPLICATION_NOT_FOUND")
+        @DisplayName("異常系: 権限なしで JOB_PERMISSION_DENIED")
         void 権限なし_拒否() {
             JobApplicationEntity app = appliedApplication();
             JobPostingEntity posting = openPosting(1);
@@ -166,7 +169,7 @@ class JobContractServiceTest {
             assertThatThrownBy(() -> service.acceptApplication(APPLICATION_ID, REQUESTER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(JobmatchingErrorCode.JOB_APPLICATION_NOT_FOUND));
+                            .isEqualTo(JobmatchingErrorCode.JOB_PERMISSION_DENIED));
         }
 
         @Test
@@ -558,7 +561,7 @@ class JobContractServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 関係者でないユーザーは契約の存在を明かさず JOB_CONTRACT_NOT_FOUND")
+        @DisplayName("異常系: 関係者でないユーザーは JOB_PERMISSION_DENIED")
         void 権限なし_拒否() {
             JobContractEntity contract = contractWithStatus(JobContractStatus.MATCHED, 0);
             given(contractRepository.findById(1L)).willReturn(Optional.of(contract));
@@ -566,7 +569,7 @@ class JobContractServiceTest {
             assertThatThrownBy(() -> service.cancelContract(1L, 9999L, "無関係ユーザー"))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND));
+                            .isEqualTo(JobmatchingErrorCode.JOB_PERMISSION_DENIED));
         }
     }
 

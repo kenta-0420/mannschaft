@@ -13,6 +13,7 @@ import com.mannschaft.app.jobmatching.enums.JobCheckInType;
 import com.mannschaft.app.jobmatching.exception.JobmatchingErrorCode;
 import com.mannschaft.app.jobmatching.policy.JobPolicy;
 import com.mannschaft.app.jobmatching.repository.JobContractRepository;
+import com.mannschaft.app.jobmatching.service.JobContractViewAccessGuard;
 import com.mannschaft.app.jobmatching.service.JobQrTokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -75,6 +76,10 @@ class JobQrTokenControllerTest {
 
     @MockitoBean
     private JobPolicy jobPolicy;
+
+    /** 契約の閲覧ガード（CMP-260821-1027）。当事者判定の本体は契約IT側で検証し、ここでは素通しの mock とする。 */
+    @MockitoBean
+    private JobContractViewAccessGuard contractViewGuard;
 
     // JwtAuthenticationFilter の依存解決用
     @MockitoBean
@@ -146,7 +151,7 @@ class JobQrTokenControllerTest {
         }
 
         @Test
-        @DisplayName("権限なし（Requester 本人以外）: 404 JOB_CONTRACT_NOT_FOUND（契約不在と同一本文で存在秘匿）")
+        @DisplayName("権限なし（Requester 本人以外）: 404 JOB_PERMISSION_DENIED（契約不在と同一ステータスで存在秘匿）")
         void issue_権限外_404_存在秘匿() throws Exception {
             JobContractEntity contract = setupContractForUser(OTHER_USER_ID);
             given(jobPolicy.canIssueQrToken(contract, USER_ID)).willReturn(false);
@@ -157,7 +162,7 @@ class JobQrTokenControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.error.code").value("JOB_CONTRACT_NOT_FOUND"));
+                    .andExpect(jsonPath("$.error.code").value("JOB_PERMISSION_DENIED"));
         }
 
         @Test
@@ -253,7 +258,7 @@ class JobQrTokenControllerTest {
         }
 
         @Test
-        @DisplayName("権限なし（Requester 本人以外）: 404 JOB_CONTRACT_NOT_FOUND（契約不在と同一本文で存在秘匿）")
+        @DisplayName("権限なし（Requester 本人以外）: 404 JOB_PERMISSION_DENIED（契約不在と同一ステータスで存在秘匿）")
         void getCurrent_権限外_404_存在秘匿() throws Exception {
             JobContractEntity contract = setupContractForUser(OTHER_USER_ID);
             given(jobPolicy.canIssueQrToken(contract, USER_ID)).willReturn(false);
@@ -261,7 +266,7 @@ class JobQrTokenControllerTest {
             mockMvc.perform(get("/api/v1/contracts/{contractId}/qr-tokens/current", CONTRACT_ID)
                             .param("type", "IN"))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.error.code").value("JOB_CONTRACT_NOT_FOUND"));
+                    .andExpect(jsonPath("$.error.code").value("JOB_PERMISSION_DENIED"));
         }
 
         @Test

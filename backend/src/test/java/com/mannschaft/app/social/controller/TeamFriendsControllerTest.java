@@ -17,6 +17,7 @@ import com.mannschaft.app.social.dto.TeamFriendListResponse;
 import com.mannschaft.app.social.dto.TeamFriendView;
 import com.mannschaft.app.social.service.TeamFriendFollowBySlugService;
 import com.mannschaft.app.social.service.TeamFriendsService;
+import com.mannschaft.app.social.service.TeamFriendViewAccessGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -81,6 +82,10 @@ class TeamFriendsControllerTest {
 
     @MockitoBean
     private TeamFriendsService teamFriendsService;
+
+    /** フレンド関係の閲覧ガード（CMP-260821-1027）。閲覧判定の本体は契約IT側で検証し、ここでは素通しの mock とする。 */
+    @MockitoBean
+    private TeamFriendViewAccessGuard friendViewGuard;
 
     @MockitoBean
     private TeamFriendFollowBySlugService teamFriendFollowBySlugService;

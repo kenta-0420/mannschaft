@@ -10,6 +10,7 @@ import com.mannschaft.app.social.dto.SetVisibilityRequest;
 import com.mannschaft.app.social.dto.TeamFriendListResponse;
 import com.mannschaft.app.social.dto.UnfollowRequest;
 import com.mannschaft.app.social.service.TeamFriendRequestFacade;
+import com.mannschaft.app.social.service.TeamFriendViewAccessGuard;
 import com.mannschaft.app.social.service.TeamFriendsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -69,6 +70,8 @@ public class TeamFriendsController {
     private final TeamFriendsService teamFriendsService;
     private final TeamFriendRequestFacade teamFriendRequestFacade;
     private final AccessControlService accessControlService;
+    /** フレンド関係の閲覧可否の門（閲覧できない者には不在と同一応答。CMP-260821-1027）。 */
+    private final TeamFriendViewAccessGuard friendViewGuard;
 
     // ═════════════════════════════════════════════════════════════
     // POST /follow — 他チームをフォロー
@@ -207,6 +210,7 @@ public class TeamFriendsController {
             @PathVariable("teamFriendId") Long teamFriendId,
             @Valid @RequestBody SetVisibilityRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
+        friendViewGuard.requireVisible(teamId, teamFriendId, userId);
         teamFriendsService.setVisibility(teamId, teamFriendId,
                 Boolean.TRUE.equals(request.getIsPublic()), userId);
         return ResponseEntity.noContent().build();

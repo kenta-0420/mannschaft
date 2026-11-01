@@ -78,9 +78,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 /**
  * CMP-260821-1027 追加分: 募集・応募の書込（および非公開の応募一覧）における存在オラクルの本文正規化。
  *
- * <p>権限外の者が実在 ID に操作した応答と不在 ID の応答が、status・error.code・message まで
- * 完全一致することを契約とする。修正前は権限外が {@code MATCHING_010}、不在が
- * {@code MATCHING_001} / {@code MATCHING_002} で本文が割れる。金型は {@link MatchProposalCancelScopeContractIT}。</p>
+ * <p>契約は2系統。対象を閲覧できない者（非閲覧者）が実在 ID に操作した応答は、不在 ID の応答と
+ * status・error.code・message まで完全一致する（閲覧ガード {@code MatchRequestViewAccessGuard} /
+ * {@code MatchProposalViewAccessGuard} が書込TX・行ロックより前に不在コードで拒否）。
+ * 対象を閲覧できる者（閲覧者）の権限不足は従来の診断 {@code MATCHING_010}、親募集が削除済みの応募を閲覧できる
+ * 応募TEAMの者には従来の親不在診断 {@code MATCHING_001} を維持する。金型は {@link MatchProposalCancelScopeContractIT}。</p>
+ *
+ * <p>閲覧資格は詳細取得と同じ: 募集は「所属TEAM群のいずれともNG関係が無く、OPEN か自所属TEAMの募集」、
+ * 応募は「応募TEAM・（親が残っていれば）募集TEAMの所属者・管理者」。</p>
  */
 @AutoConfigureMockMvc(addFilters = true)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -97,6 +102,10 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
         REQUEST_UPDATE(HttpMethod.PUT, "/api/v1/matching/requests/{id}", Target.REQUEST, "MATCHING_001"),
         REQUEST_DELETE(HttpMethod.DELETE, "/api/v1/matching/requests/{id}", Target.REQUEST, "MATCHING_001"),
         PROPOSAL_LIST(HttpMethod.GET, "/api/v1/matching/requests/{id}/proposals", Target.REQUEST, "MATCHING_001"),
+        // OPEN 以外の募集は自所属TEAM以外から見えない。非所属者の更新・削除・応募一覧は不在と同一応答。
+        REQUEST_UPDATE_NOT_OPEN(HttpMethod.PUT, "/api/v1/matching/requests/{id}", Target.REQUEST, "MATCHING_001", Variant.NOT_OPEN),
+        REQUEST_DELETE_NOT_OPEN(HttpMethod.DELETE, "/api/v1/matching/requests/{id}", Target.REQUEST, "MATCHING_001", Variant.NOT_OPEN),
+        PROPOSAL_LIST_NOT_OPEN(HttpMethod.GET, "/api/v1/matching/requests/{id}/proposals", Target.REQUEST, "MATCHING_001", Variant.NOT_OPEN),
         PROPOSAL_ACCEPT(HttpMethod.PATCH, "/api/v1/matching/proposals/{id}/accept", Target.PROPOSAL, "MATCHING_002"),
         PROPOSAL_REJECT(HttpMethod.PATCH, "/api/v1/matching/proposals/{id}/reject", Target.PROPOSAL, "MATCHING_002"),
         PROPOSAL_WITHDRAW(HttpMethod.PATCH, "/api/v1/matching/proposals/{id}/withdraw", Target.PROPOSAL, "MATCHING_002"),
@@ -124,7 +133,7 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
             this.variant = variant;
         }
 
-        boolean isCreate() { return variant == Variant.NOT_OPEN || variant == Variant.NG || variant == Variant.NG_OTHER_TEAM; }
+        boolean isCreate() { return path.endsWith("/propose"); }
 
         boolean isProposalDecision() {
             return variant == Variant.NORMAL && (this == PROPOSAL_ACCEPT || this == PROPOSAL_REJECT || this == PROPOSAL_WITHDRAW);
@@ -227,21 +236,25 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @DisplayName("権限外の実在ID操作と不在IDの応答が status・error.code・message まで一致し、DBは不変")
+    @DisplayName("非閲覧者は不在IDと status・error.code・message まで一致し、閲覧者は従来の診断を受け、DBは不変")
     void 越境と不在の本文一致とDB不変() throws Exception {
         List<String> diffs = new ArrayList<>();
         for (Op op : Op.values()) {
             Fixture f = fixture(op);
             for (Actor actor : actorsFor(op)) {
-                // 募集TEAMのMEMBERは応募一覧・応募を閲覧できる（閲覧資格あり）ため、不在との一致対象外。
-                // 閲覧できる者の権限不足は従来コード（MATCHING_010）を維持する（別テストで固定）。
-                if ((op == Op.PROPOSAL_LIST || op.isProposalDecision()) && actor.name().equals("募集TEAMのMEMBER")) { continue; }
+                Expect expect = expected(op, actor);
+                if (expect == Expect.ALLOWED) { continue; }
                 Snapshot before = snapshot();
                 MvcResult missing = call(op, actor.id(), MISSING);
                 MvcResult existing = call(op, actor.id(), f.target(op));
                 assertThat(missing.getResponse().getStatus()).as("%s 不在", op).isEqualTo(404);
                 assertThat(error(missing).path("code").asText()).as("%s 不在のコード", op).isEqualTo(op.missingCode);
-                if (existing.getResponse().getStatus() != missing.getResponse().getStatus()
+                if (expect == Expect.PERMISSION_DENIED) {
+                    if (!"MATCHING_010".equals(error(existing).path("code").asText())) {
+                        diffs.add(op + "/" + actor.name() + ": 閲覧者の診断が MATCHING_010 でない: "
+                                + existing.getResponse().getStatus() + " " + error(existing));
+                    }
+                } else if (existing.getResponse().getStatus() != missing.getResponse().getStatus()
                         || !error(existing).equals(error(missing))) {
                     diffs.add(op + "/" + actor.name() + ": 越境=" + existing.getResponse().getStatus() + " " + error(existing)
                             + " 不在=" + missing.getResponse().getStatus() + " " + error(missing));
@@ -249,7 +262,42 @@ class MatchingWriteBodyParityContractIT extends AbstractMySqlIntegrationTest {
                 assertThat(snapshot()).as("%s/%s 拒否によるDB変更なし", op, actor.name()).isEqualTo(before);
             }
         }
-        assertThat(diffs).as("越境と不在で応答が割れている操作").isEmpty();
+        assertThat(diffs).as("非閲覧者で越境と不在が割れている、または閲覧者の診断が失われた操作").isEmpty();
+    }
+
+    @Test
+    @DisplayName("親募集が削除済みの応募を閲覧できる応募TEAMの者には、従来の親不在診断 MATCHING_001 を返し、DBは不変")
+    void 削除済み親の応募の閲覧者は親不在診断() throws Exception {
+        for (Op op : List.of(Op.PROPOSAL_ACCEPT_PARENT_DELETED, Op.PROPOSAL_REJECT_PARENT_DELETED)) {
+            Fixture f = fixture(op);
+            Snapshot before = snapshot();
+            MvcResult result = call(op, proposingAdmin, f.target(op));
+            assertThat(result.getResponse().getStatus()).as("%s", op).isEqualTo(404);
+            assertThat(error(result).path("code").asText()).as("%s", op).isEqualTo("MATCHING_001");
+            assertThat(snapshot()).as("%s", op).isEqualTo(before);
+        }
+    }
+
+    /** 閲覧資格に応じた期待。 */
+    private enum Expect { HIDDEN, PERMISSION_DENIED, ALLOWED }
+
+    /**
+     * 操作者ごとの期待（詳細取得・一覧と同じ閲覧資格）。
+     * OPEN 募集は NG 関係の無い誰からも見えるため、その更新・削除・応募一覧の権限不足は従来コード。
+     * OPEN 以外の募集は募集TEAMの所属者にだけ見える。応募は募集TEAM・応募TEAMの所属者にだけ見え、
+     * 親募集が削除済みなら募集TEAMからは見えない。
+     */
+    private Expect expected(Op op, Actor actor) {
+        if (op.isCreate()) { return Expect.HIDDEN; }
+        boolean requestingTeamMember = actor.id().equals(requestingMember);
+        if (op == Op.PROPOSAL_LIST || op == Op.PROPOSAL_LIST_NOT_OPEN) {
+            if (requestingTeamMember) { return Expect.ALLOWED; }
+            return op.variant == Variant.NORMAL ? Expect.PERMISSION_DENIED : Expect.HIDDEN;
+        }
+        if (op.target == Target.REQUEST) {
+            return requestingTeamMember || op.variant == Variant.NORMAL ? Expect.PERMISSION_DENIED : Expect.HIDDEN;
+        }
+        return requestingTeamMember && op.variant == Variant.NORMAL ? Expect.PERMISSION_DENIED : Expect.HIDDEN;
     }
 
     @Test

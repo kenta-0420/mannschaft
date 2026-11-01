@@ -134,7 +134,7 @@ class MatchProposalServiceTest {
             assertThatThrownBy(() -> service.listProposals(REQUEST_ID, ACTOR_ID, PageRequest.of(0, 20)))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MatchingErrorCode.REQUEST_NOT_FOUND);
+                    .isEqualTo(MatchingErrorCode.INSUFFICIENT_PERMISSION);
         }
 
         @Test
@@ -191,7 +191,7 @@ class MatchProposalServiceTest {
             CreateProposalRequest createRequest = new CreateProposalRequest("テスト応募", null, "テスト会場");
 
             // When
-            ProposalCreateResponse result = service.createProposal(TEAM_ID, REQUEST_ID, createRequest, ACTOR_ID);
+            ProposalCreateResponse result = service.createProposal(TEAM_ID, REQUEST_ID, createRequest);
 
             // Then
             assertThat(result).isNotNull();
@@ -211,14 +211,14 @@ class MatchProposalServiceTest {
             CreateProposalRequest createRequest = new CreateProposalRequest("テスト", null, null);
 
             // When & Then
-            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest, ACTOR_ID))
+            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MatchingErrorCode.SELF_PROPOSAL_NOT_ALLOWED);
         }
 
         @Test
-        @DisplayName("異常系: 募集がOPEN以外は不在と同一の REQUEST_NOT_FOUND")
+        @DisplayName("異常系: 募集がOPEN以外だとエラー")
         void 募集がOPEN以外() {
             // Given
             MatchRequestEntity request = MatchRequestEntity.builder()
@@ -230,14 +230,14 @@ class MatchProposalServiceTest {
             CreateProposalRequest createRequest = new CreateProposalRequest("テスト", null, null);
 
             // When & Then
-            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest, ACTOR_ID))
+            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MatchingErrorCode.REQUEST_NOT_FOUND);
+                    .isEqualTo(MatchingErrorCode.REQUEST_NOT_OPEN);
         }
 
         @Test
-        @DisplayName("異常系: NGチームによるブロックは不在と同一の REQUEST_NOT_FOUND")
+        @DisplayName("異常系: NGチームによるブロック")
         void NGチームブロック() {
             // Given
             MatchRequestEntity request = createOpenRequest();
@@ -247,10 +247,10 @@ class MatchProposalServiceTest {
             CreateProposalRequest createRequest = new CreateProposalRequest("テスト", null, null);
 
             // When & Then
-            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest, ACTOR_ID))
+            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MatchingErrorCode.REQUEST_NOT_FOUND);
+                    .isEqualTo(MatchingErrorCode.NG_TEAM_BLOCKED);
         }
 
         @Test
@@ -265,7 +265,7 @@ class MatchProposalServiceTest {
             CreateProposalRequest createRequest = new CreateProposalRequest("テスト", null, null);
 
             // When & Then
-            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest, ACTOR_ID))
+            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MatchingErrorCode.DUPLICATE_PROPOSAL);
@@ -280,7 +280,7 @@ class MatchProposalServiceTest {
             CreateProposalRequest createRequest = new CreateProposalRequest("テスト", null, null);
 
             // When & Then
-            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest, ACTOR_ID))
+            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MatchingErrorCode.REQUEST_NOT_FOUND);
@@ -339,7 +339,7 @@ class MatchProposalServiceTest {
             assertThatThrownBy(() -> service.acceptProposal(PROPOSAL_ID, ACTOR_ID, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MatchingErrorCode.PROPOSAL_NOT_FOUND);
+                    .isEqualTo(MatchingErrorCode.INSUFFICIENT_PERMISSION);
         }
     }
 
@@ -389,7 +389,7 @@ class MatchProposalServiceTest {
             assertThatThrownBy(() -> service.withdrawProposal(PROPOSAL_ID, ACTOR_ID, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MatchingErrorCode.PROPOSAL_NOT_FOUND);
+                    .isEqualTo(MatchingErrorCode.INSUFFICIENT_PERMISSION);
         }
     }
 
@@ -631,7 +631,7 @@ class MatchProposalServiceTest {
             assertThatThrownBy(() -> service.rejectProposal(PROPOSAL_ID, ACTOR_ID, "不適合"))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(MatchingErrorCode.PROPOSAL_NOT_FOUND));
+                            .isEqualTo(MatchingErrorCode.INSUFFICIENT_PERMISSION));
         }
 
         @Test
@@ -675,7 +675,7 @@ class MatchProposalServiceTest {
             CreateProposalRequest createRequest = new CreateProposalRequest("テスト", null, null);
 
             // When & Then
-            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest, ACTOR_ID))
+            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MatchingErrorCode.REQUEST_NOT_OPEN);
@@ -701,7 +701,7 @@ class MatchProposalServiceTest {
             CreateProposalRequest createRequest = new CreateProposalRequest("テスト", dates, null);
 
             // When & Then
-            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest, ACTOR_ID))
+            assertThatThrownBy(() -> service.createProposal(TEAM_ID, REQUEST_ID, createRequest))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MatchingErrorCode.TOO_MANY_PROPOSED_DATES);

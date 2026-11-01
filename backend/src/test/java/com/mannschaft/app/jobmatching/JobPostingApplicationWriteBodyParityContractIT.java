@@ -67,9 +67,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 /**
  * CMP-260821-1027 T2: 求人・応募・QR の書込（および非公開の応募一覧）における存在オラクルの本文正規化（試練）。
  *
- * <p>権限外の者が実在 ID に操作した応答と不在 ID の応答が、status・error.code・message まで完全一致することを
- * 契約とする。修正前は権限外が {@code JOB_PERMISSION_DENIED}、不在が {@code JOB_NOT_FOUND} /
- * {@code JOB_APPLICATION_NOT_FOUND} / {@code JOB_CONTRACT_NOT_FOUND} で本文が割れており RED になる。
+ * <p>契約は2系統。対象を閲覧できない者（非閲覧者）が実在 ID に操作した応答は、不在 ID の応答と
+ * status・error.code・message まで完全一致する（閲覧ガード {@code JobPostingViewAccessGuard} /
+ * {@code JobApplicationViewAccessGuard} / {@code JobContractViewAccessGuard} が TX・ロックより前に不在コードで拒否）。
+ * 対象を閲覧できる者（閲覧者）の権限不足は、従来の診断 {@code JOB_PERMISSION_DENIED} を維持する。
  * 求人の閲覧（GET /jobs/{id}）は公開情報のため対象外。</p>
  *
  * <p>金型: {@link JobContractReadScopeContractIT}（#3814）/ {@code JobApplicationReadScopeContractIT}（#3818）。</p>
@@ -119,6 +120,7 @@ class JobPostingApplicationWriteBodyParityContractIT extends AbstractMySqlIntegr
     @Autowired private ObjectMapper mapper;
     @Autowired private AuthTokenService tokens;
     @Autowired private PlatformTransactionManager transactions;
+    @Autowired private javax.sql.DataSource dataSource;
     @Autowired private UserRepository users;
     @Autowired private TeamRepository teams;
     @Autowired private JobPostingRepository postings;
@@ -133,7 +135,7 @@ class JobPostingApplicationWriteBodyParityContractIT extends AbstractMySqlIntegr
     private final List<Long> postingIds = new ArrayList<>();
     private final List<Long> createdRoleIds = new ArrayList<>();
     private final List<Actor> outsiders = new ArrayList<>();
-    private Long team, requester, applicant, teamAdmin;
+    private Long team, requester, applicant, teamAdmin, plainMember;
 
     @BeforeEach
     void Repositoryで自所有fixtureを確定する() {
@@ -156,7 +158,7 @@ class JobPostingApplicationWriteBodyParityContractIT extends AbstractMySqlIntegr
             member(teamAdmin, team);
             assignRole(teamAdmin, "ADMIN", team);
             outsiders.add(new Actor("所属なし", user()));
-            Long plainMember = user();
+            plainMember = user();
             member(plainMember, team);
             outsiders.add(new Actor("同TEAMのMEMBER", plainMember));
             Long foreignAdmin = user();
@@ -207,7 +209,7 @@ class JobPostingApplicationWriteBodyParityContractIT extends AbstractMySqlIntegr
     }
 
     @Test
-    @DisplayName("AC-1027-T2-1: 権限外の実在ID操作と不在IDの応答が status・error.code・message まで一致する")
+    @DisplayName("AC-1027-T2-1: 非閲覧者は不在IDと status・error.code・message まで一致し、閲覧者は従来の診断を受ける")
     void AC_1027_T2_1_越境と不在の本文一致() throws Exception {
         List<String> diffs = new ArrayList<>();
         for (Op op : Op.values()) {
@@ -217,14 +219,78 @@ class JobPostingApplicationWriteBodyParityContractIT extends AbstractMySqlIntegr
                 MvcResult missing = call(op, token, MISSING);
                 MvcResult existing = call(op, token, f.target(op));
                 assertThat(missing.getResponse().getStatus()).as("%s 不在", op).isEqualTo(404);
-                if (existing.getResponse().getStatus() != missing.getResponse().getStatus()
+                String diagnostic = viewerDiagnostic(op, actor);
+                if (diagnostic != null) {
+                    // 閲覧者（求人が見える同TEAMのMEMBER）: 見えている求人の権限不足は従来コード（404 固定の写像）。
+                    if (existing.getResponse().getStatus() != 404
+                            || !diagnostic.equals(json(existing).path("error").path("code").asText())) {
+                        diffs.add(op + "/" + actor.name() + ": 閲覧者の診断が " + diagnostic + " でない: "
+                                + existing.getResponse().getStatus() + " " + json(existing));
+                    }
+                } else if (existing.getResponse().getStatus() != missing.getResponse().getStatus()
                         || !json(existing).equals(json(missing))) {
                     diffs.add(op + "/" + actor.name() + ": 越境=" + existing.getResponse().getStatus() + " " + json(existing)
                             + " 不在=" + missing.getResponse().getStatus() + " " + json(missing));
                 }
             }
         }
-        assertThat(diffs).as("越境と不在で応答が割れている操作").isEmpty();
+        assertThat(diffs).as("非閲覧者で越境と不在が割れている、または閲覧者の診断が失われた操作").isEmpty();
+    }
+
+    @Test
+    @DisplayName("AC-1027-T2-6: 応募者本人の採否・Worker の QR 操作は閲覧者として従来コード JOB_PERMISSION_DENIED、DB不変")
+    void AC_1027_T2_6_当事者の権限外操作は従来コード() throws Exception {
+        for (Op op : List.of(Op.APPLICATION_REJECT, Op.APPLICATION_ACCEPT, Op.QR_ISSUE, Op.QR_CURRENT)) {
+            Fixture f = fixture(op);
+            Snapshot before = snapshot();
+            MvcResult result = call(op, tokens.issueAccessToken(applicant, List.of("USER")), f.target(op));
+            assertThat(result.getResponse().getStatus()).as("%s", op).isEqualTo(404);
+            assertThat(json(result).path("error").path("code").asText()).as("%s", op).isEqualTo("JOB_PERMISSION_DENIED");
+            assertThat(snapshot()).as("%s", op).isEqualTo(before);
+        }
+    }
+
+    @Test
+    @DisplayName("AC-1027-T2-7: DRAFT を閲覧できない TEAM ADMIN（編集権限者）も門で落ちず、公開・更新できる")
+    void AC_1027_T2_7_編集権限者はDRAFTを操作できる() throws Exception {
+        for (Op op : List.of(Op.POSTING_PUBLISH, Op.POSTING_UPDATE)) {
+            Fixture f = fixture(op);
+            MvcResult result = call(op, tokens.issueAccessToken(teamAdmin, List.of("USER")), f.target(op));
+            assertThat(result.getResponse().getStatus()).as("%s: %s", op,
+                    result.getResponse().getContentAsString(StandardCharsets.UTF_8)).isEqualTo(op.okStatus);
+        }
+    }
+
+    @Test
+    @DisplayName("AC-1027-T2-8: 採用の求人ロック（GET_LOCK）を他者が保持中でも、非閲覧者は待たずに不在と同一の404")
+    void AC_1027_T2_8_ロック競合中も非閲覧者は不在と同一() throws Exception {
+        Op op = Op.APPLICATION_ACCEPT;
+        Fixture f = fixture(op);
+        String token = tokens.issueAccessToken(outsiders.get(0).id(), List.of("USER"));
+        MvcResult missing = call(op, token, MISSING);
+        String lockKey = "job_posting_" + f.posting();
+        try (java.sql.Connection holder = dataSource.getConnection()) {
+            try (var ps = holder.prepareStatement("SELECT GET_LOCK(?, 0)")) {
+                ps.setString(1, lockKey);
+                try (var rs = ps.executeQuery()) {
+                    assertThat(rs.next()).isTrue();
+                    assertThat(rs.getInt(1)).as("試験側がロックを保持できること").isEqualTo(1);
+                }
+            }
+            try {
+                long started = System.nanoTime();
+                MvcResult existing = call(op, token, f.target(op));
+                long elapsedMs = (System.nanoTime() - started) / 1_000_000;
+                assertThat(existing.getResponse().getStatus()).isEqualTo(404);
+                assertThat(json(existing)).isEqualTo(json(missing));
+                assertThat(elapsedMs).as("ロック待ち（10秒）に入らない").isLessThan(5_000);
+            } finally {
+                try (var ps = holder.prepareStatement("SELECT RELEASE_LOCK(?)")) {
+                    ps.setString(1, lockKey);
+                    ps.executeQuery().close();
+                }
+            }
+        }
     }
 
     @Test
@@ -280,6 +346,21 @@ class JobPostingApplicationWriteBodyParityContractIT extends AbstractMySqlIntegr
             }
             assertThat(snapshot()).isEqualTo(before);
         }
+    }
+
+    /**
+     * 閲覧者に返すべき従来の診断コード。null は非閲覧者（不在と同一応答であるべき）。
+     * 同TEAMのMEMBER は OPEN の求人（TEAM_MEMBERS）を閲覧できるため、その求人の編集・応募一覧の権限不足は従来コード。
+     * DRAFT の求人・他人の応募・契約は閲覧できないため不在と同一。
+     */
+    private String viewerDiagnostic(Op op, Actor actor) {
+        if (!actor.id().equals(plainMember)) {
+            return null;
+        }
+        return switch (op) {
+            case POSTING_CLOSE, POSTING_CANCEL, POSTING_DELETE, APPLICATION_LIST -> "JOB_PERMISSION_DENIED";
+            default -> null;
+        };
     }
 
     /**
