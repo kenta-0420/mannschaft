@@ -86,6 +86,20 @@ public class VillageGuardRogueModerators {
                 .isPresent();
     }
 
+    /** ジェネリクスのインタフェース。実装側に戻り値 Object の bridge メソッドが生成される。 */
+    interface Gate<T> {
+        T requireModeratorViaGate(UUID v, Long u);
+    }
+
+    /** bridge メソッド（生述語を呼ばない）が本体の事実を打ち消してはならない。 */
+    class GateImpl implements Gate<VillageMembershipEntity> {
+        @Override
+        public VillageMembershipEntity requireModeratorViaGate(UUID v, Long u) {
+            return repo.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(v, VillageSubjectType.USER, u)
+                    .orElseThrow();
+        }
+    }
+
     /** ネストした record のメソッド。 */
     record Inner(VillageMembershipRepository r) {
         boolean isModeratorInRecord(UUID v, Long u) {

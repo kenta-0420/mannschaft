@@ -4,6 +4,7 @@ import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaCodeUnit;
 import com.tngtech.archunit.core.domain.JavaFieldAccess;
+import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.DisplayName;
@@ -32,8 +33,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 呼び出しとして現れないため、それらによる誤認は構造的に起きない。</p>
  *
  * <h2>判定単位（コードユニット＝シグネチャ）</h2>
- * <p>メソッド・コンストラクタ・static 初期化子ごとに、<b>シグネチャ（実クラス＋名前＋引数型）</b>で区別して判定する。
- * 同名のオーバーロードの事実は合算しない。ラムダの本体は javac が合成メソッドに出すが、ArchUnit 1.x は
+ * <p>メソッド・コンストラクタ・static 初期化子ごとに、<b>JVM ディスクリプタ相当（実クラス＋名前＋引数型＋戻り値型）</b>で
+ * 区別して判定する。同名のオーバーロードの事実は合算しない。javac が生成する bridge / synthetic メソッドは
+ * 本体へ委譲するだけなので判定から外す。ラムダの本体は javac が合成メソッドに出すが、ArchUnit 1.x は
  * 合成メソッドを取り込まず、その中のアクセスを<b>ラムダを実際に含むコードユニット</b>のアクセスとして取り込む。
  * そのため {@code .filter(m -> m.getBannedAt() == null)} の BAN 検査や、ラムダ内だけの生述語呼び出しは、
  * ラムダを含むメソッド（オーバーロードも区別される）の事実になる（見本 {@code createRequest} で確認する）。
@@ -143,7 +145,9 @@ class VillageModeratorPredicateWideGuardArchTest {
                 // AC-1455-2 の裏: BAN 検査も許可もない生述語利用
                 "R2 VillageGuardRogueModerators#loadForDisplay",
                 // BAN 検査のある同名オーバーロードと合算しない（シグネチャ単位の判定）
-                "R2 VillageGuardRogueModerators#isMemberOverload");
+                "R2 VillageGuardRogueModerators#isMemberOverload",
+                // ジェネリクス実装の bridge メソッドが本体の事実を上書きしない
+                "R1 VillageGuardRogueModerators#requireModeratorViaGate");
     }
 
     @Test
@@ -203,17 +207,23 @@ class VillageModeratorPredicateWideGuardArchTest {
         Map<String, Facts> result = new LinkedHashMap<>();
         for (JavaClass c : classes) {
             for (JavaCodeUnit unit : c.getCodeUnits()) {
-                // 判定はシグネチャ単位（実クラス＋名前＋引数型。オーバーロード・ネスト・匿名クラスを区別する）。
+                // javac が生成する bridge / synthetic メソッド（ジェネリクス実装の戻り値 Object 版など）は
+                // 本体へ委譲するだけなので判定対象から外す。本体と同じキーで事実を上書きさせないためでもある。
+                if (unit.getModifiers().contains(JavaModifier.BRIDGE)
+                        || unit.getModifiers().contains(JavaModifier.SYNTHETIC)) {
+                    continue;
+                }
+                // 判定は JVM ディスクリプタ相当の単位（実クラス＋名前＋引数型＋戻り値型）。オーバーロード・
+                // 共変戻り値・ネスト・匿名クラスを区別する。万一キーが衝突しても上書きせず、事実は OR で合算する。
+                String key = unit.getFullName() + ":" + unit.getRawReturnType().getName();
+                Facts f = result.computeIfAbsent(key, k -> new Facts());
                 // 表示はトップレベルクラスの単純名＋メソッド名、許可リストは引数型まで含めて照合する。
-                Facts f = new Facts();
-                result.put(unit.getFullName(), f);
                 f.display = topLevelSimpleName(c) + "#" + unit.getName();
                 f.signature = f.display + "(" + unit.getRawParameterTypes().stream()
                         .map(JavaClass::getSimpleName).collect(Collectors.joining(", ")) + ")";
-                if (MODERATOR_NAME.matcher(unit.getName()).find()) f.moderator = true;
-                if (referencesModeratorRole(unit)) f.moderator = true;
-                if (callsOrReferences(unit, REPOSITORY, RAW)) f.callsRaw = true;
-                if (callsOrReferences(unit, null, BAN_CHECK)) f.callsBanCheck = true;
+                f.moderator |= MODERATOR_NAME.matcher(unit.getName()).find() || referencesModeratorRole(unit);
+                f.callsRaw |= callsOrReferences(unit, REPOSITORY, RAW);
+                f.callsBanCheck |= callsOrReferences(unit, null, BAN_CHECK);
             }
         }
         return result;
