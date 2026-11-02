@@ -1,4 +1,5 @@
 import dayjs from 'dayjs'
+import { parseWallClockInTz } from '~/utils/wallClock'
 import type { components } from '~/types/generated'
 import type { NestedScheduleResponse } from '~/utils/scheduleCalendar'
 
@@ -34,7 +35,7 @@ export function attendanceSchedules(schedules: NestedScheduleResponse[]): Nested
 export function attendanceDate(value: string, timezone: string) {
   return /(?:Z|[+-]\d{2}:?\d{2})$/.test(value)
     ? dayjs(value).tz(timezone)
-    : dayjs.tz(value, timezone)
+    : parseWallClockInTz(value, timezone)
 }
 export function formatAttendanceDate(
   value: string | null | undefined,
