@@ -22,8 +22,8 @@ public interface VillageUserAdmissionLockRepository extends JpaRepository<Villag
      */
     @Modifying
     @Query(value = "INSERT INTO village_user_admission_locks (id, user_id, locked_at) "
-            + "VALUES (UUID_TO_BIN(:id), :userId, CURRENT_TIMESTAMP(6)) "
-            + "ON DUPLICATE KEY UPDATE locked_at = CURRENT_TIMESTAMP(6)", nativeQuery = true)
+            + "VALUES (UUID_TO_BIN(:id), :userId, UTC_TIMESTAMP(6)) "
+            + "ON DUPLICATE KEY UPDATE locked_at = UTC_TIMESTAMP(6)", nativeQuery = true)
     int lockForAdmission(@Param("id") String id, @Param("userId") Long userId);
 
     /**

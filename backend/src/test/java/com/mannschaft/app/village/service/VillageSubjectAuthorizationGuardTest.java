@@ -18,7 +18,6 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /** CMP-260827-1808: 取引の外の代表権限判定と、取引の中の一致確認。 */
@@ -45,7 +44,9 @@ class VillageSubjectAuthorizationGuardTest {
                 guard.judge(ACTOR, VillageSubjectType.USER, ACTOR), ACTOR, VillageSubjectType.USER, ACTOR))
                 .doesNotThrowAnyException();
         assertForbidden(guard.judge(ACTOR, VillageSubjectType.USER, OTHER), VillageSubjectType.USER, OTHER);
-        verifyNoInteractions(accessControlService);
+        org.mockito.Mockito.verify(accessControlService, org.mockito.Mockito.never())
+                .isAdminOrAbove(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -89,6 +90,17 @@ class VillageSubjectAuthorizationGuardTest {
                 guard.judgeMembership(ACTOR, present), ACTOR, VillageSubjectType.USER, ACTOR))
                 .doesNotThrowAnyException();
         assertForbidden(guard.judgeMembership(ACTOR, absent), VillageSubjectType.USER, ACTOR);
+    }
+
+    @Test
+    @DisplayName("非公開村の可視性に使う SYSTEM_ADMIN 判定も取引の外で済ませ、操作者が違えば使わない")
+    void systemAdminJudgmentTravelsWithVerdict() {
+        when(accessControlService.isSystemAdmin(ACTOR)).thenReturn(true);
+        VillageSubjectAuthorization verdict = guard.judge(ACTOR, VillageSubjectType.USER, ACTOR);
+
+        org.assertj.core.api.Assertions.assertThat(VillageSubjectAuthorization.actorIsSystemAdmin(verdict, ACTOR)).isTrue();
+        org.assertj.core.api.Assertions.assertThat(VillageSubjectAuthorization.actorIsSystemAdmin(verdict, OTHER)).isFalse();
+        org.assertj.core.api.Assertions.assertThat(VillageSubjectAuthorization.actorIsSystemAdmin(null, ACTOR)).isFalse();
     }
 
     private static void assertForbidden(VillageSubjectAuthorization verdict, VillageSubjectType type, Long subjectId) {

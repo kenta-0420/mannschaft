@@ -15,7 +15,7 @@
 -- 失敗行を flyway repair で消したあと同じ移行をそのまま再適用できるようにしている。
 -- 本番前の点検 SQL と停止窓の手順は docs/features/F17.1_village_community.md「USER 参加枠の移行手順」を参照。
 
-SET @cmp1808_left_base = CURRENT_TIMESTAMP(6);
+SET @cmp1808_left_base = UTC_TIMESTAMP(6);
 
 -- (1) 現役所属の重複を是正する。window 結果を一時表へ確定させ、同表 UPDATE の制限を避ける。
 DROP TEMPORARY TABLE IF EXISTS cmp1808_duplicate_fix;
@@ -32,7 +32,7 @@ WHERE rn > 1;
 UPDATE village_memberships m
 JOIN cmp1808_duplicate_fix f ON f.id = m.id
 SET m.left_at = @cmp1808_left_base + INTERVAL f.rn SECOND,
-    m.updated_at = CURRENT_TIMESTAMP(6),
+    m.updated_at = UTC_TIMESTAMP(6),
     m.version = m.version + 1;
 
 -- (2) USER の100村超過を是正する（(1) の後の現役所属が対象）。
@@ -50,7 +50,7 @@ WHERE rn > 100;
 UPDATE village_memberships m
 JOIN cmp1808_overflow_fix f ON f.id = m.id
 SET m.left_at = @cmp1808_left_base,
-    m.updated_at = CURRENT_TIMESTAMP(6),
+    m.updated_at = UTC_TIMESTAMP(6),
     m.version = m.version + 1;
 
 -- 是正件数を Flyway のログへ出す。

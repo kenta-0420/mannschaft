@@ -80,7 +80,8 @@ public class VillageMembershipService {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public MembershipResponse join(UUID villageId, Long actorUserId, MembershipJoinRequest request,
                                    VillageSubjectAuthorization authorization) {
-        VillageEntity village = loadActiveVillage(villageId, actorUserId);
+        VillageEntity village = accessGate.loadActiveVillage(
+                villageId, actorUserId, VillageSubjectAuthorization.actorIsSystemAdmin(authorization, actorUserId));
 
         if (village.getJoinPolicy() != VillageJoinPolicy.FREE) {
             throw new BusinessException(VillageErrorCode.VILLAGE_JOIN_REQUIRES_APPROVAL);
@@ -126,7 +127,8 @@ public class VillageMembershipService {
     @Transactional
     public void leave(UUID villageId, UUID membershipId, Long actorUserId,
                       VillageSubjectAuthorization authorization) {
-        VillageEntity village = loadActiveVillage(villageId, actorUserId);
+        VillageEntity village = accessGate.loadActiveVillage(
+                villageId, actorUserId, VillageSubjectAuthorization.actorIsSystemAdmin(authorization, actorUserId));
 
         VillageMembershipEntity membership = membershipRepository.findById(membershipId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.NOT_MEMBER));

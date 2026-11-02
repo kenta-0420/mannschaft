@@ -23,17 +23,33 @@ public final class VillageSubjectAuthorization {
     private final VillageSubjectType subjectType;
     private final Long subjectId;
     private final boolean permitted;
+    /** 操作者が SYSTEM_ADMIN か（非公開村の可視性判定に使う。取引の外で判定済み）。 */
+    private final boolean actorIsSystemAdmin;
 
     VillageSubjectAuthorization(Long actorUserId, VillageSubjectType subjectType, Long subjectId, boolean permitted) {
+        this(actorUserId, subjectType, subjectId, permitted, false);
+    }
+
+    VillageSubjectAuthorization(Long actorUserId, VillageSubjectType subjectType, Long subjectId, boolean permitted,
+                                boolean actorIsSystemAdmin) {
         this.actorUserId = actorUserId;
         this.subjectType = subjectType;
         this.subjectId = subjectId;
         this.permitted = permitted;
+        this.actorIsSystemAdmin = actorIsSystemAdmin;
     }
 
     /** 対象の主体を特定できなかった（所属が無い等）ときの判定。常に拒否する。 */
-    static VillageSubjectAuthorization unresolved(Long actorUserId) {
-        return new VillageSubjectAuthorization(actorUserId, null, null, false);
+    static VillageSubjectAuthorization unresolved(Long actorUserId, boolean actorIsSystemAdmin) {
+        return new VillageSubjectAuthorization(actorUserId, null, null, false, actorIsSystemAdmin);
+    }
+
+    /**
+     * 村の可視性判定に使う SYSTEM_ADMIN 判定。判定が無い・操作者が違うときは false（秘匿側へ倒す）。
+     */
+    static boolean actorIsSystemAdmin(VillageSubjectAuthorization authorization, Long actorUserId) {
+        return authorization != null && authorization.actorIsSystemAdmin
+                && Objects.equals(authorization.actorUserId, actorUserId);
     }
 
     /**

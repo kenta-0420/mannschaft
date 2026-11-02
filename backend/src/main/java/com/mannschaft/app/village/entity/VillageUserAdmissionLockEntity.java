@@ -10,7 +10,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * 村への入村を USER 単位で直列化するためのロック行（CMP-260827-1808）。
@@ -36,7 +36,7 @@ public class VillageUserAdmissionLockEntity extends UuidV7Entity {
     @Column(name = "user_id", nullable = false, unique = true)
     private Long userId;
 
-    /** 最後に入村ロックを取った時刻。 */
+    /** 最後に入村ロックを取った瞬間（UTC。SQL の UTC_TIMESTAMP(6) で書く）。 */
     @Column(name = "locked_at", nullable = false)
-    private LocalDateTime lockedAt;
+    private Instant lockedAt;
 }

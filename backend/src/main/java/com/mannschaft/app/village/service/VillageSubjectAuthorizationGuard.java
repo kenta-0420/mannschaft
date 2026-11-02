@@ -24,6 +24,9 @@ import java.util.UUID;
  *   <li>TEAM / ORGANIZATION: 操作者が当該スコープの ADMIN / DEPUTY_ADMIN であること</li>
  * </ul>
  *
+ * <p>非公開村の可視性判定に使う SYSTEM_ADMIN 判定も、ここで取引の外に済ませて判定結果に載せる
+ * （{@link VillageAccessGate#loadActiveVillage(java.util.UUID, Long, boolean)}）。</p>
+ *
  * <p>本部品は例外を投げない。拒否は村の取引の中の従来の位置で {@link VillageSubjectAuthorization#require} が投げる。</p>
  */
 @Component
@@ -43,7 +46,8 @@ public class VillageSubjectAuthorizationGuard {
             case TEAM -> accessControlService.isAdminOrAbove(actorUserId, subjectId, "TEAM");
             case ORGANIZATION -> accessControlService.isAdminOrAbove(actorUserId, subjectId, "ORGANIZATION");
         };
-        return new VillageSubjectAuthorization(actorUserId, subjectType, subjectId, permitted);
+        return new VillageSubjectAuthorization(actorUserId, subjectType, subjectId, permitted,
+                accessControlService.isSystemAdmin(actorUserId));
     }
 
     /**
@@ -53,11 +57,12 @@ public class VillageSubjectAuthorizationGuard {
      * 所属が無いときは常に拒否の判定を返す（不在の扱いは村の取引が従来どおり NOT_MEMBER で返す）。</p>
      */
     public VillageSubjectAuthorization judgeMembership(Long actorUserId, UUID membershipId) {
-        if (membershipId == null) {
-            return VillageSubjectAuthorization.unresolved(actorUserId);
+        if (membershipId == null || actorUserId == null) {
+            return VillageSubjectAuthorization.unresolved(actorUserId, false);
         }
         return membershipRepository.findById(membershipId)
                 .map(membership -> judge(actorUserId, membership.getSubjectType(), membership.getSubjectId()))
-                .orElseGet(() -> VillageSubjectAuthorization.unresolved(actorUserId));
+                .orElseGet(() -> VillageSubjectAuthorization.unresolved(
+                        actorUserId, accessControlService.isSystemAdmin(actorUserId)));
     }
 }

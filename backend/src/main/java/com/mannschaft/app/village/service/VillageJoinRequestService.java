@@ -94,7 +94,8 @@ public class VillageJoinRequestService {
             throw new BusinessException(CommonErrorCode.COMMON_000);
         }
 
-        VillageEntity village = loadActiveVillage(villageId, actorUserId);
+        VillageEntity village = accessGate.loadActiveVillage(
+                villageId, actorUserId, VillageSubjectAuthorization.actorIsSystemAdmin(authorization, actorUserId));
 
         // FREE 村は申請不要。直接参加 API を使うべき
         if (village.getJoinPolicy() == VillageJoinPolicy.FREE) {
