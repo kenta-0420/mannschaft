@@ -190,9 +190,11 @@ public class VillageAccessGate {
      * 呼出側が取引の外で済ませた値で受け取る点だけで、村の取引から role ドメインの Repository へ
      * 到達しない（D-3T、CLAUDE.md DB 設計の原則 #5）。判定値は {@link VillageSubjectAuthorizationGuard} が作る。</p>
      *
+     * <p>Entity を返すため package-private とし、同じ village.service の入口からだけ呼ぶ（D-1）。</p>
+     *
      * @param actorIsSystemAdmin 操作者が SYSTEM_ADMIN か（取引の外で判定済みの値）
      */
-    public VillageEntity loadActiveVillage(UUID villageId, @Nullable Long actorUserId, boolean actorIsSystemAdmin) {
+    VillageEntity loadActiveVillage(UUID villageId, @Nullable Long actorUserId, boolean actorIsSystemAdmin) {
         VillageEntity village = loadExistingVillage(villageId);
         Boolean decided = visibilityWithoutAdminCheck(village, actorUserId);
         boolean visible = decided != null ? decided : actorIsSystemAdmin;

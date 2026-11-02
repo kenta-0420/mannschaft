@@ -118,6 +118,19 @@ class VillageMembershipSlotServiceTest {
     }
 
     @Test
+    @DisplayName("AC-1808-4: MySQL の CHECK 違反（変換表に無い error 3819）も上限超過へ写像する")
+    void admitMapsUncategorizedCheckViolation() {
+        VillageMembershipEntity entity = VillageMembershipEntity.builder().build();
+        when(membershipRepository.save(entity)).thenReturn(entity);
+        doThrow(new org.springframework.jdbc.UncategorizedSQLException("flush", "INSERT",
+                new java.sql.SQLException("Check constraint 'ck_vm_active_user_slot' is violated.", "HY000", 3819)))
+                .when(membershipRepository).flush();
+        assertThatThrownBy(() -> service.admit(entity))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(VillageErrorCode.PARTICIPATION_LIMIT_EXCEEDED));
+    }
+
+    @Test
     @DisplayName("AC-1808-4: 入村と無関係な制約違反は業務コードへ丸めず再送出する")
     void admitRethrowsUnrelatedViolation() {
         VillageMembershipEntity entity = VillageMembershipEntity.builder().build();

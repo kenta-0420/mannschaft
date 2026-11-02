@@ -809,20 +809,33 @@ class VillageMembershipAdmissionTransactionIT {
         assertThatThrownBy(() -> insertMembership(existingVillage, subject, 1, false, "VILLAGER"))
                 .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class)
                 .hasMessageContaining("uk_vm_");
-        assertThatThrownBy(() -> insertMembership(overflowVillage, subject, VillageParticipationLimits.DB_SLOT_CEILING + 1, false, "VILLAGER"))
-                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class)
-                .hasMessageContaining("ck_vm_active_user_slot");
+        assertCheckViolation(() -> insertMembership(
+                overflowVillage, subject, VillageParticipationLimits.DB_SLOT_CEILING + 1, false, "VILLAGER"));
         assertThatThrownBy(() -> insertMembership(overflowVillage, subject, 50, false, "VILLAGER"))
                 .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class)
                 .hasMessageContaining("uk_vm_user_active_slot");
-        assertThatThrownBy(() -> jdbc.update("INSERT INTO village_memberships "
-                        + "(id,village_id,subject_type,subject_id,role,joined_at,created_at,updated_at,version,profile_public) "
-                        + "VALUES(UUID_TO_BIN(?),UUID_TO_BIN(?),'USER',?,'VILLAGER',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,"
-                        + "CURRENT_TIMESTAMP,0,1)", UUID.randomUUID().toString(), overflowVillage.toString(), subject))
-                .as("slot無しの現役USER行").isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class)
-                .hasMessageContaining("ck_vm_active_user_slot");
+        // slot無しの現役USER行
+        assertCheckViolation(() -> jdbc.update("INSERT INTO village_memberships "
+                + "(id,village_id,subject_type,subject_id,role,joined_at,created_at,updated_at,version,profile_public) "
+                + "VALUES(UUID_TO_BIN(?),UUID_TO_BIN(?),'USER',?,'VILLAGER',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,"
+                + "CURRENT_TIMESTAMP,0,1)", UUID.randomUUID().toString(), overflowVillage.toString(), subject));
 
         assertThat(actorMemberships(subject)).isEqualTo(before);
+    }
+
+    /** MySQL の CHECK 制約違反（error 3819）。Spring の JDBC 変換表に無いため、原因の SQLException で特定する。 */
+    private static final int MYSQL_CHECK_CONSTRAINT_VIOLATED = 3819;
+
+    private static void assertCheckViolation(org.assertj.core.api.ThrowableAssert.ThrowingCallable insert) {
+        assertThatThrownBy(insert)
+                .isInstanceOf(org.springframework.dao.DataAccessException.class)
+                .satisfies(error -> {
+                    Throwable cause = ((org.springframework.dao.DataAccessException) error).getMostSpecificCause();
+                    assertThat(cause).isInstanceOf(java.sql.SQLException.class)
+                            .hasMessageContaining("ck_vm_active_user_slot");
+                    assertThat(((java.sql.SQLException) cause).getErrorCode())
+                            .isEqualTo(MYSQL_CHECK_CONSTRAINT_VIOLATED);
+                });
     }
 
     /** AC-1808-7: 独立接続の同一村への並行 INSERT は、片方だけ確定し既存行を保全する。 */

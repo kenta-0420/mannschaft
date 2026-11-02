@@ -8,7 +8,7 @@ import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageUserAdmissionLockRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -121,7 +121,9 @@ public class VillageMembershipSlotService {
             VillageMembershipEntity saved = membershipRepository.save(membership);
             membershipRepository.flush();
             return saved;
-        } catch (DataIntegrityViolationException violation) {
+        } catch (DataAccessException violation) {
+            // 一意キー違反は DataIntegrityViolationException だが、MySQL の CHECK 違反（error 3819）は
+            // 変換表に無く別の DataAccessException になりうる。制約名で判定し、無関係なものは再送出する。
             String detail = constraintDetail(violation);
             if (detail.contains("uk_vm_active_subject") || detail.contains("uk_vm_village_subject")) {
                 throw new BusinessException(VillageErrorCode.ALREADY_MEMBER, violation);
