@@ -65,7 +65,7 @@ import com.mannschaft.app.common.security.AccessGuard;
  * </p>
  */
 @WebMvcTest(TeamFriendsController.class)
-@Import(TeamFriendRequestFacade.class)
+@Import({TeamFriendRequestFacade.class, TeamFriendViewAccessGuard.class})
 @AutoConfigureMockMvc(addFilters = false)
 @DisplayName("TeamFriendsController 結合テスト")
 class TeamFriendsControllerTest {
@@ -83,9 +83,12 @@ class TeamFriendsControllerTest {
     @MockitoBean
     private TeamFriendsService teamFriendsService;
 
-    /** フレンド関係の閲覧ガード（CMP-260821-1027）。閲覧判定の本体は契約IT側で検証し、ここでは素通しの mock とする。 */
+    /**
+     * フレンド関係の閲覧ガード（CMP-260821-1027）は実物を使う。一覧の SUPPORTER 公開限定もこのガードの
+     * {@code listsPublicOnly} が決めるため。依存の Repository だけ mock にする（閲覧判定の本体は契約ITで検証）。
+     */
     @MockitoBean
-    private TeamFriendViewAccessGuard friendViewGuard;
+    private com.mannschaft.app.social.repository.TeamFriendRepository teamFriendRepository;
 
     @MockitoBean
     private TeamFriendFollowBySlugService teamFriendFollowBySlugService;
