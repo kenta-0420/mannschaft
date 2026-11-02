@@ -66,7 +66,7 @@ public final class VillageAccessGateTestSupport {
         lenient().doAnswer(inv -> real.loadActiveVillage(inv.getArgument(0), inv.getArgument(1)))
                 .when(gateMock).loadActiveVillage(any(), any());
         lenient().doAnswer(inv -> real.loadActiveVillage(
-                        inv.getArgument(0), inv.getArgument(1), (boolean) inv.getArgument(2)))
+                        inv.getArgument(0), inv.getArgument(1), inv.<Boolean>getArgument(2)))
                 .when(gateMock).loadActiveVillage(any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
         lenient().doAnswer(inv -> real.loadReadableVillage(inv.getArgument(0), inv.getArgument(1)))
                 .when(gateMock).loadReadableVillage(any(), any());
