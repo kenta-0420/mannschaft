@@ -454,13 +454,13 @@ test('ロール OUTSIDER 部外者(負): 対象チームの緊急休業が見え
   })
   await recordNegativeView(page, 'OUTSIDER-admin-reservations', `/teams/${team.slug}/admin/reservations`, () => settledRedirectedToTeamTop(page))
 })
-test('ロール SYSTEM_ADMIN: 挙動を記録する（テナントの通常アカウントではない）', async ({ browser }) => {
+test('ロール SYSTEM_ADMIN: 緊急休業タブが出る（テナントの通常アカウントではないが、予約管理の権限判定は SYSTEM_ADMIN を許可する）', async ({ browser }) => {
   const { page } = await openSession(browser, SYSADMIN)
   await page.goto(`/teams/${team.slug}/reservations`, { waitUntil: 'commit', timeout: 240_000 })
   // 予約画面の本体（予約する タブ）が出るまで待つ。緊急休業タブの有無は記録のみ（仕様判断は殿）
   await expect(page.getByRole('tab', { name: '予約する' })).toBeVisible({ timeout: 150_000 })
-  // 緊急休業タブは権限取得後に出るため、最大60秒待つ（出なければ 0 件として記録。この試験は記録のみで合否に使わない）
-  await page.getByRole('tab', { name: '緊急休業' }).waitFor({ state: 'visible', timeout: 60_000 }).then(() => true, () => false)
+  // 緊急休業タブは権限取得後に出る。SYSTEM_ADMIN には出ることを assert する（出なくなれば落ちる）
+  await expect(page.getByRole('tab', { name: '緊急休業' })).toBeVisible({ timeout: 60_000 })
   const hasTab = await page.getByRole('tab', { name: '緊急休業' }).count()
   const body = (await page.locator('body').innerText()).replace(/\s+/g, ' ').slice(0, 160)
   roleLog.push(`[SYSTEM_ADMIN] /teams/${team.slug}/reservations -> ${new URL(page.url()).pathname} tab=${hasTab} body="${body}"`)
