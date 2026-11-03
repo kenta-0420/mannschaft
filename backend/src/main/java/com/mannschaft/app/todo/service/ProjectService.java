@@ -84,8 +84,9 @@ public class ProjectService {
         Page<ProjectEntity> pageResult = projectRepository
                 .findByScopeTypeAndScopeIdAndStatusAndDeletedAtIsNull(scopeType, scopeId, status, pageable);
 
+        ProjectListLookups lookups = loadLookups(pageResult.getContent());
         List<ProjectResponse> responses = pageResult.getContent().stream()
-                .map(this::toProjectResponse)
+                .map(p -> toProjectResponse(p, lookups))
                 .toList();
 
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
@@ -135,10 +136,12 @@ public class ProjectService {
         Map<Long, String> nameMap = teamService.getNamesByIds(scopeIds);
         Map<Long, String> slugMap = teamService.getSlugsByIds(scopeIds);
 
+        ProjectListLookups lookups = loadLookups(pageResult.getContent());
         List<TeamProjectSummaryResponse> responses = pageResult.getContent().stream()
                 .map(p -> {
-                    long milestoneTotal = milestoneRepository.countByProjectId(p.getId());
-                    long milestoneCompleted = milestoneRepository.countByProjectIdAndIsCompletedTrue(p.getId());
+                    long[] ms = lookups.milestoneCounts(p.getId());
+                    long milestoneTotal = ms[0];
+                    long milestoneCompleted = ms[1];
                     return new TeamProjectSummaryResponse(
                             p.getId(),
                             p.getTitle(),
@@ -151,7 +154,7 @@ public class ProjectService {
                             p.getTotalTodos(),
                             p.getCompletedTodos(),
                             new ProjectResponse.MilestoneSummary(milestoneTotal, milestoneCompleted),
-                            resolveUserInfo(p.getCreatedBy()),
+                            lookups.userInfo(p.getCreatedBy()),
                             p.getCreatedAt(),
                             p.getScopeId(),
                             nameMap.getOrDefault(p.getScopeId(), ""),
@@ -207,10 +210,12 @@ public class ProjectService {
         Map<Long, String> nameMap = organizationService.getNamesByIds(scopeIds);
         Map<Long, String> slugMap = organizationService.getSlugsByIds(scopeIds);
 
+        ProjectListLookups lookups = loadLookups(pageResult.getContent());
         List<OrgProjectSummaryResponse> responses = pageResult.getContent().stream()
                 .map(p -> {
-                    long milestoneTotal = milestoneRepository.countByProjectId(p.getId());
-                    long milestoneCompleted = milestoneRepository.countByProjectIdAndIsCompletedTrue(p.getId());
+                    long[] ms = lookups.milestoneCounts(p.getId());
+                    long milestoneTotal = ms[0];
+                    long milestoneCompleted = ms[1];
                     return new OrgProjectSummaryResponse(
                             p.getId(),
                             p.getTitle(),
@@ -223,7 +228,7 @@ public class ProjectService {
                             p.getTotalTodos(),
                             p.getCompletedTodos(),
                             new ProjectResponse.MilestoneSummary(milestoneTotal, milestoneCompleted),
-                            resolveUserInfo(p.getCreatedBy()),
+                            lookups.userInfo(p.getCreatedBy()),
                             p.getCreatedAt(),
                             p.getScopeId(),
                             nameMap.getOrDefault(p.getScopeId(), ""),
@@ -830,7 +835,8 @@ public class ProjectService {
     }
 
     /**
-     * エンティティをレスポンスDTOに変換する。
+     * 単票（作成・更新・取得）用の変換。1件のみのため件数・作成者名を個別に引く。
+     * 一覧経路は {@link #toProjectResponse(ProjectEntity, ProjectListLookups)} を使うこと。
      */
     private ProjectResponse toProjectResponse(ProjectEntity entity) {
         long milestoneTotal = milestoneRepository.countByProjectId(entity.getId());
@@ -844,6 +850,52 @@ public class ProjectService {
                 new ProjectResponse.MilestoneSummary(milestoneTotal, milestoneCompleted),
                 resolveUserInfo(entity.getCreatedBy()),
                 entity.getCreatedAt());
+    }
+
+    private ProjectResponse toProjectResponse(ProjectEntity entity, ProjectListLookups lookups) {
+        long[] ms = lookups.milestoneCounts(entity.getId());
+        long milestoneTotal = ms[0];
+        long milestoneCompleted = ms[1];
+
+        return new ProjectResponse(
+                entity.getId(), entity.getTitle(), entity.getEmoji(), entity.getColor(),
+                entity.getDueDate(), calculateDaysRemaining(entity.getDueDate()),
+                entity.getStatus().name(), entity.getProgressRate(),
+                entity.getTotalTodos(), entity.getCompletedTodos(),
+                new ProjectResponse.MilestoneSummary(milestoneTotal, milestoneCompleted),
+                lookups.userInfo(entity.getCreatedBy()),
+                entity.getCreatedAt());
+    }
+
+    /**
+     * 一覧変換用の一括参照データ。マイルストーン件数と作成者名を、ページ内プロジェクト数に
+     * 依存しない固定本数のクエリで取得する（N+1 回避）。
+     */
+    private record ProjectListLookups(Map<Long, long[]> milestoneCounts, Map<Long, String> userNames) {
+        long[] milestoneCounts(Long projectId) {
+            return milestoneCounts.getOrDefault(projectId, new long[]{0L, 0L});
+        }
+
+        ProjectResponse.UserInfo userInfo(Long userId) {
+            return new ProjectResponse.UserInfo(userId, userNames.getOrDefault(userId, ""));
+        }
+    }
+
+    private ProjectListLookups loadLookups(List<ProjectEntity> projects) {
+        if (projects.isEmpty()) {
+            return new ProjectListLookups(Map.of(), Map.of());
+        }
+        Set<Long> projectIds = projects.stream().map(ProjectEntity::getId)
+                .collect(java.util.stream.Collectors.toSet());
+        Map<Long, long[]> counts = new java.util.HashMap<>();
+        for (Object[] row : milestoneRepository.countSummaryByProjectIds(projectIds)) {
+            counts.put(((Number) row[0]).longValue(),
+                    new long[]{((Number) row[1]).longValue(), ((Number) row[2]).longValue()});
+        }
+        Set<Long> creatorIds = projects.stream().map(ProjectEntity::getCreatedBy)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        return new ProjectListLookups(counts, nameResolverService.resolveUserDisplayNames(creatorIds));
     }
 
     /**

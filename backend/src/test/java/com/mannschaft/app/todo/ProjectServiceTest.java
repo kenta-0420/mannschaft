@@ -160,13 +160,13 @@ class ProjectServiceTest {
         @DisplayName("正常系: プロジェクト一覧が返却される")
         void listProjects_正常_一覧返却() {
             // Given
-            ProjectEntity project = createActiveProject();
+            ProjectEntity project = createActiveProject().toBuilder().id(PROJECT_ID).build();
             Page<ProjectEntity> page = new PageImpl<>(List.of(project));
             given(projectRepository.findByScopeTypeAndScopeIdAndStatusAndDeletedAtIsNull(
                     eq(SCOPE_TYPE), eq(SCOPE_ID), eq(ProjectStatus.ACTIVE), any(Pageable.class)))
                     .willReturn(page);
-            given(milestoneRepository.countByProjectId(any())).willReturn(2L);
-            given(milestoneRepository.countByProjectIdAndIsCompletedTrue(any())).willReturn(1L);
+            given(milestoneRepository.countSummaryByProjectIds(any()))
+                    .willReturn(List.<Object[]>of(new Object[]{PROJECT_ID, 2L, 1L}));
 
             // When
             PagedResponse<ProjectResponse> response = projectService.listProjects(
@@ -176,6 +176,8 @@ class ProjectServiceTest {
             assertThat(response.getData()).hasSize(1);
             assertThat(response.getData().get(0).getTitle()).isEqualTo("テストプロジェクト");
             assertThat(response.getMeta().getPage()).isEqualTo(0);
+            assertThat(response.getData().get(0).getMilestones().getTotal()).isEqualTo(2L);
+            assertThat(response.getData().get(0).getMilestones().getCompleted()).isEqualTo(1L);
         }
     }
 

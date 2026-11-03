@@ -2,7 +2,10 @@ package com.mannschaft.app.todo.repository;
 
 import com.mannschaft.app.todo.entity.ProjectMilestoneEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -40,6 +43,16 @@ public interface ProjectMilestoneRepository extends JpaRepository<ProjectMilesto
      * プロジェクト内の完了済みマイルストーン数を取得する。
      */
     long countByProjectIdAndIsCompletedTrue(Long projectId);
+
+    /**
+     * 複数プロジェクトのマイルストーン総数・完了数を一括集計する（一覧変換の N+1 回避用）。
+     * 各行は [projectId, total, completed]。マイルストーンが無いプロジェクトは行が返らない。
+     * 呼び出し側で空コレクションを渡さないこと。
+     */
+    @Query("SELECT m.projectId, COUNT(m), "
+            + "COALESCE(SUM(CASE WHEN m.isCompleted = true THEN 1 ELSE 0 END), 0) "
+            + "FROM ProjectMilestoneEntity m WHERE m.projectId IN :projectIds GROUP BY m.projectId")
+    List<Object[]> countSummaryByProjectIds(@Param("projectIds") Collection<Long> projectIds);
 
     /**
      * 指定マイルストーンを前マイルストーンとしてロックされている後続マイルストーンを取得する（F02.7）。
