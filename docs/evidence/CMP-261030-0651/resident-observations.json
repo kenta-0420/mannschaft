@@ -86,16 +86,21 @@
         "殿の追加検証"
       ],
       "status": "確定（殿が裏取り）。新しい戦役として台帳末尾に起票済み（未着手）",
-      "journeyId": "（住民ではなく別の足軽による追加検証）",
+      "journeyId": "ALIC-EC-V1-J1",
       "sourceHead": "4888152b533a6ce6ada7328475cb64798c344fdd",
       "verification": "別の足軽が WS フレームと BE ログを採取し、殿が確認した。",
-      "evidenceFiles": [],
+      "evidenceFiles": [
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\logs\\alic4-ws-frames.md",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\logs\\alic4-be-log-excerpt.txt",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res1\\390-09-history-expanded.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res4\\10-history-expanded-390.png"
+      ],
       "measurements": [
         "CONNECT の Authorization が「Bearer 」（空のトークン）",
         "BE ログ「購読を拒否（未認証）」",
         "2秒ごとの再接続の繰り返し"
       ],
-      "note": "画像ではなくフレームとログによる観測のため、スクリーンショットは無い。"
+      "note": "検証専任の足軽E による WS フレームと BE ログの採取。住民の関連観測: 足軽1 は確認状況の展開時に「閲覧権限がありません」、足軽4 は同じ展開部に「Kein Zugriff」を観測した（住民報告は logs\\resident-reports.md）。画像は両者の展開時のもの。"
     }
   ],
   "residents": [
@@ -203,9 +208,11 @@
       "observedBy": "足軽3",
       "verdict": "気づき（確定に至らず。台帳へは昇格しない）",
       "journeyId": "ALIC-EC-R3-J1",
-      "evidenceFiles": [],
+      "evidenceFiles": [
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\logs\\resident-reports.md"
+      ],
       "sourceHead": "4888152b533a6ce6ada7328475cb64798c344fdd",
-      "note": "住民報告のみ、画像なし"
+      "note": "住民報告のみ、画像なし。resident-reports.md の「足軽3」節、テンプレート「先生体調不良」を選ぶと書いた理由・件名・本文が確認なしで上書きされた、の項。"
     },
     {
       "id": "ALIC-EC-INS-5",
@@ -236,12 +243,18 @@
     {
       "id": "ALIC-EC-INS-7",
       "title": "dev の初回描画が遅い",
-      "observedBy": "足軽1",
+      "observedBy": [
+        "足軽2",
+        "足軽3",
+        "足軽4"
+      ],
       "verdict": "気づき（確定に至らず。台帳へは昇格しない）",
       "journeyId": "ALIC-EC-R1-J1",
-      "evidenceFiles": [],
+      "evidenceFiles": [
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\logs\\resident-reports.md"
+      ],
       "sourceHead": "4888152b533a6ce6ada7328475cb64798c344fdd",
-      "note": "住民報告のみ、画像なし（ログのみ）"
+      "note": "住民報告のみ、画像なし（ログのみ）。resident-reports.md の「足軽2」「足軽3」「足軽4」各節の初回描画の遅さの項（足軽2: loading が1分以上、足軽3: 数十秒、足軽4: SSR が30秒超でタイムアウト）。"
     }
   ],
   "sourceHeads": {
