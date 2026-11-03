@@ -7,14 +7,14 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     event_survey_responses {
         bigint id PK
         bigint event_survey_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     event_surveys {
         bigint id PK
@@ -22,7 +22,7 @@ erDiagram
     }
     google_calendar_webhook_channels {
         binary id PK
-        bigint user_id FK, UK "ID参照"
+        bigint user_id UK "ID参照"
         varchar channel_id UK
     }
     personal_schedule_reminders {
@@ -31,9 +31,9 @@ erDiagram
     }
     schedule_annual_copy_logs {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint organization_id FK "ID参照"
-        bigint executed_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint organization_id "ID参照"
+        bigint executed_by "ID参照"
     }
     schedule_attendance_reminders {
         bigint id PK
@@ -42,40 +42,40 @@ erDiagram
     schedule_attendances {
         bigint id PK
         bigint schedule_id FK
-        bigint user_id FK "ID参照"
-        bigint proxy_input_record_id FK "ID参照"
-        bigint ranch_first_self_user_id FK "ID参照"
+        bigint user_id "ID参照"
+        bigint proxy_input_record_id "ID参照"
+        bigint ranch_first_self_user_id "ID参照"
     }
     schedule_comments {
         binary id PK
         bigint schedule_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         binary parent_id FK
     }
     schedule_cross_refs {
         bigint id PK
         bigint source_schedule_id FK
         bigint target_schedule_id FK
-        bigint invited_by FK "ID参照"
+        bigint invited_by "ID参照"
     }
     schedule_delegations {
         binary id PK
         bigint schedule_id FK
-        bigint organization_id FK "ID参照"
-        bigint team_id FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint team_id "ID参照"
     }
     schedule_event_categories {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint organization_id FK "ID参照"
+        bigint team_id "ID参照"
+        bigint organization_id "ID参照"
     }
     schedule_keeps {
         binary id PK
-        bigint team_id FK "ID参照"
-        bigint organization_id FK "ID参照"
-        bigint user_id FK "ID参照"
-        bigint converted_schedule_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint organization_id "ID参照"
+        bigint user_id "ID参照"
+        bigint converted_schedule_id "ID参照"
+        bigint created_by "ID参照"
     }
     schedule_media_uploads {
         binary id PK
@@ -84,63 +84,63 @@ erDiagram
     }
     schedule_ranch_admin_commands {
         binary id PK
-        bigint actor_user_id FK "ID参照"
+        bigint actor_user_id "ID参照"
     }
     schedule_ranch_outboxes {
         binary id PK
-        bigint recipient_user_id FK "ID参照"
+        bigint recipient_user_id "ID参照"
     }
     schedule_ranch_witnesses {
         binary id PK
-        bigint recipient_user_id FK "ID参照"
-        bigint schedule_id FK "ID参照"
+        bigint recipient_user_id "ID参照"
+        bigint schedule_id "ID参照"
     }
     schedule_scheduled_tasks {
         binary id PK
-        bigint schedule_id FK "ID参照"
-        bigint organization_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint schedule_id "ID参照"
+        bigint organization_id "ID参照"
+        bigint created_by "ID参照"
     }
     schedule_targets {
         binary id PK
         bigint schedule_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     schedules {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint organization_id FK "ID参照"
-        bigint user_id FK "ID参照"
-        bigint committee_id FK "ID参照"
-        bigint venue_id FK "ID参照"
+        bigint team_id "ID参照"
+        bigint organization_id "ID参照"
+        bigint user_id "ID参照"
+        bigint committee_id "ID参照"
+        bigint venue_id "ID参照"
         bigint event_category_id FK
-        bigint source_schedule_id FK "ID参照"
+        bigint source_schedule_id "ID参照"
         bigint parent_schedule_id FK
-        bigint linked_todo_id FK, UK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint linked_todo_id UK "ID参照"
+        bigint created_by "ID参照"
         char external_ref_hash UK
-        bigint visibility_template_id FK "ID参照"
+        bigint visibility_template_id "ID参照"
     }
     user_calendar_layer_settings {
         binary id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     user_calendar_sync_settings {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     user_google_calendar_connections {
         bigint id PK
-        bigint user_id FK, UK "ID参照"
+        bigint user_id UK "ID参照"
     }
     user_ical_tokens {
         bigint id PK
-        bigint user_id FK, UK "ID参照"
+        bigint user_id UK "ID参照"
         varchar token UK
     }
     user_schedule_google_events {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         bigint schedule_id FK
     }
     committees
@@ -208,6 +208,20 @@ erDiagram
     schedules ||--o{ user_schedule_google_events : "schedule_id"
     users ||..o{ user_schedule_google_events : "ID参照(FKなし) user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [activity](activity.md) | `activity_results` | `schedule_id` | ID参照 | `schedules` |
+| [event](event.md) | `events` | `schedule_id` | ID参照 | `schedules` |
+| [match](match.md) | `matches` | `schedule_id` | ID参照 | `schedules` |
+| [performance](performance.md) | `performance_records` | `schedule_id` | ID参照 | `schedules` |
+| [receipt](receipt.md) | `receipts` | `schedule_id` | ID参照 | `schedules` |
+| [todo](todo.md) | `todos` | `linked_schedule_id` | ID参照 | `schedules` |
+| [tournament](tournament.md) | `tournament_matches` | `schedule_id` | ID参照 | `schedules` |
 
 ## 多態参照（線を引かない）
 

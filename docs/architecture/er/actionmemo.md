@@ -7,7 +7,7 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
@@ -18,19 +18,19 @@ erDiagram
     }
     action_memo_tags {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     action_memos {
         bigint id PK
-        bigint user_id FK "ID参照"
-        bigint related_todo_id FK "ID参照"
-        bigint timeline_post_id FK "ID参照"
-        bigint posted_team_id FK "ID参照"
-        bigint organization_id FK "ID参照"
+        bigint user_id "ID参照"
+        bigint related_todo_id "ID参照"
+        bigint timeline_post_id "ID参照"
+        bigint posted_team_id "ID参照"
+        bigint organization_id "ID参照"
     }
     user_action_memo_settings {
-        bigint user_id PK, FK "ID参照"
-        bigint default_post_team_id FK "ID参照"
+        bigint user_id PK "ID参照"
+        bigint default_post_team_id "ID参照"
     }
     organizations
     teams
@@ -48,6 +48,12 @@ erDiagram
     teams |o..o{ user_action_memo_settings : "ID参照(FKなし) default_post_team_id"
     users ||..o| user_action_memo_settings : "ID参照(FKなし) user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## テーブル定義
 

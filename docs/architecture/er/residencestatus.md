@@ -7,41 +7,41 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     annual_review_responses {
         binary id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         binary annual_review_id FK
-        bigint dwelling_unit_id FK "ID参照"
-        bigint respondent_user_id FK "ID参照"
+        bigint dwelling_unit_id "ID参照"
+        bigint respondent_user_id "ID参照"
     }
     annual_reviews {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint created_by "ID参照"
     }
     monitoring_committee_visits {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint dwelling_unit_id FK "ID参照"
-        bigint subject_user_id FK "ID参照"
-        bigint committee_id FK "ID参照"
-        bigint visitor_user_id FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint dwelling_unit_id "ID参照"
+        bigint subject_user_id "ID参照"
+        bigint committee_id "ID参照"
+        bigint visitor_user_id "ID参照"
     }
     org_wide_safety_checks {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint safety_check_id FK "ID参照"
-        bigint triggered_by FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint safety_check_id "ID参照"
+        bigint triggered_by "ID参照"
     }
     resident_activity_snapshots {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint dwelling_unit_id FK "ID参照"
-        bigint subject_user_id FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint dwelling_unit_id "ID参照"
+        bigint subject_user_id "ID参照"
     }
     committees
     dwelling_units
@@ -66,6 +66,12 @@ erDiagram
     organizations ||..o{ resident_activity_snapshots : "ID参照(FKなし) organization_id"
     users ||..o{ resident_activity_snapshots : "ID参照(FKなし) subject_user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 推定不能参照
 

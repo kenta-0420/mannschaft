@@ -7,47 +7,47 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     delinquency_escalations {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint dwelling_unit_id FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint dwelling_unit_id "ID参照"
     }
     legal_filings {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint dwelling_unit_id FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint dwelling_unit_id "ID参照"
     }
     succession_covenants {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint dwelling_unit_id FK "ID参照"
-        bigint signer_user_id FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint dwelling_unit_id "ID参照"
+        bigint signer_user_id "ID参照"
     }
     succession_pre_registrations {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint dwelling_unit_id FK "ID参照"
-        bigint owner_user_id FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint dwelling_unit_id "ID参照"
+        bigint owner_user_id "ID参照"
     }
     unseal_audit_views {
         binary id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         binary unseal_request_id FK
-        bigint viewer_user_id FK "ID参照"
+        bigint viewer_user_id "ID参照"
     }
     unseal_requests {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint dwelling_unit_id FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint dwelling_unit_id "ID参照"
         binary pre_registration_id FK
-        bigint requested_by FK "ID参照"
-        bigint first_approver_user_id FK "ID参照"
-        bigint second_approver_user_id FK "ID参照"
-        bigint rejected_by FK "ID参照"
+        bigint requested_by "ID参照"
+        bigint first_approver_user_id "ID参照"
+        bigint second_approver_user_id "ID参照"
+        bigint rejected_by "ID参照"
     }
     dwelling_units
     organizations
@@ -73,6 +73,12 @@ erDiagram
     users ||..o{ unseal_requests : "ID参照(FKなし) requested_by"
     users |o..o{ unseal_requests : "ID参照(FKなし) second_approver_user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 推定不能参照
 

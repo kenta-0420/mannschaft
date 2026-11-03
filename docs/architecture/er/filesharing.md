@@ -7,7 +7,7 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
@@ -17,41 +17,41 @@ erDiagram
     shared_file_comments {
         bigint id PK
         bigint file_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     shared_file_links {
         bigint id PK
         bigint file_id FK
         char token UK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     shared_file_stars {
         bigint id PK
         bigint file_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     shared_file_tags {
         bigint id PK
         bigint file_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     shared_file_versions {
         bigint id PK
         bigint file_id FK
-        bigint uploaded_by FK "ID参照"
+        bigint uploaded_by "ID参照"
     }
     shared_files {
         bigint id PK
         bigint folder_id FK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     shared_folders {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint organization_id FK "ID参照"
-        bigint user_id FK "ID参照"
+        bigint team_id "ID参照"
+        bigint organization_id "ID参照"
+        bigint user_id "ID参照"
         bigint parent_id FK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     organizations
     teams
@@ -74,6 +74,15 @@ erDiagram
     users |o..o{ shared_folders : "ID参照(FKなし) created_by"
     users |o..o{ shared_folders : "ID参照(FKなし) user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [disclosure](disclosure.md) | `disclosure_exports` | `shared_file_id` | ID参照 | `shared_files` |
+| [property](property.md) | `property_work_documents` | `shared_file_id` | ID参照 | `shared_files` |
 
 ## 多態参照（線を引かない）
 

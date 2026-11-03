@@ -7,19 +7,19 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     timeline_digest_configs {
         bigint id PK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     timeline_digests {
         bigint id PK
         bigint config_id FK
-        bigint blog_post_id FK "ID参照"
-        bigint triggered_by FK "ID参照"
+        bigint blog_post_id "ID参照"
+        bigint triggered_by "ID参照"
     }
     blog_posts
     users
@@ -28,6 +28,12 @@ erDiagram
     timeline_digest_configs |o--o{ timeline_digests : "config_id"
     users |o..o{ timeline_digests : "ID参照(FKなし) triggered_by"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 多態参照（線を引かない）
 

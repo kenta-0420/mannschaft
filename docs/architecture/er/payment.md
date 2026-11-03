@@ -7,24 +7,24 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     connect_accounts {
         binary id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         varchar stripe_account_id UK
     }
     content_payment_gates {
         bigint id PK
         bigint payment_item_id FK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     escrow_transactions {
         binary id PK
-        binary payee_connect_account_id FK "ID参照"
-        bigint organization_id FK "ID参照"
+        binary payee_connect_account_id "ID参照"
+        bigint organization_id "ID参照"
         varchar stripe_payment_intent_id UK
         varchar stripe_idempotency_key UK
     }
@@ -33,12 +33,12 @@ erDiagram
     }
     fee_policy_assignments {
         binary id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
     }
     fee_recovery_balances {
         binary id PK
-        binary connect_account_id FK "ID参照"
-        bigint organization_id FK "ID参照"
+        binary connect_account_id "ID参照"
+        bigint organization_id "ID参照"
     }
     ledger_entries {
         binary id PK
@@ -46,102 +46,102 @@ erDiagram
     }
     member_payments {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         bigint payment_item_id FK
         varchar stripe_checkout_session_id UK
         varchar stripe_payment_intent_id UK
-        bigint recorded_by FK "ID参照"
+        bigint recorded_by "ID参照"
         varchar stripe_refund_id UK
-        bigint payer_user_id FK "ID参照"
-        binary escrow_transaction_id FK, UK "ID参照"
-        binary membership_subscription_id FK "ID参照"
+        bigint payer_user_id "ID参照"
+        binary escrow_transaction_id UK "ID参照"
+        binary membership_subscription_id "ID参照"
     }
     membership_beneficiary_withdrawal_cancellations {
         binary id PK
         binary subscription_id UK
-        bigint beneficiary_user_id FK "ID参照"
+        bigint beneficiary_user_id "ID参照"
     }
     membership_payer_withdrawal_cancellations {
         binary id PK
         binary subscription_id UK
-        bigint payer_user_id FK "ID参照"
+        bigint payer_user_id "ID参照"
     }
     membership_subscriptions {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint payment_item_id FK "ID参照"
-        bigint beneficiary_user_id FK "ID参照"
-        bigint payer_user_id FK "ID参照"
-        binary payee_connect_account_id FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint payment_item_id "ID参照"
+        bigint beneficiary_user_id "ID参照"
+        bigint payer_user_id "ID参照"
+        binary payee_connect_account_id "ID参照"
         varchar stripe_subscription_id UK
     }
     organization_access_requirements {
         bigint id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         bigint payment_item_id FK
     }
     payment_beneficiary_settings {
         binary id PK
-        bigint team_id FK, UK "ID参照"
-        bigint organization_id FK, UK "ID参照"
+        bigint team_id UK "ID参照"
+        bigint organization_id UK "ID参照"
     }
     payment_items {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint organization_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint organization_id "ID参照"
+        bigint created_by "ID参照"
     }
     payment_request_payment_attempts {
         binary id PK
-        bigint organization_id FK "ID参照"
-        binary payment_request_id FK "ID参照"
-        bigint payer_user_id FK "ID参照"
+        bigint organization_id "ID参照"
+        binary payment_request_id "ID参照"
+        bigint payer_user_id "ID参照"
         varchar stripe_idempotency_key UK
         varchar stripe_payment_intent_id UK
-        binary escrow_transaction_id FK, UK "ID参照"
+        binary escrow_transaction_id UK "ID参照"
     }
     payment_requests {
         binary id PK
-        bigint organization_id FK "ID参照"
-        binary payee_connect_account_id FK "ID参照"
-        binary escrow_transaction_id FK "ID参照"
-        bigint confirmable_notification_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint organization_id "ID参照"
+        binary payee_connect_account_id "ID参照"
+        binary escrow_transaction_id "ID参照"
+        bigint confirmable_notification_id "ID参照"
+        bigint created_by "ID参照"
     }
     refunds {
         binary id PK
         binary escrow_transaction_id FK
         varchar stripe_refund_id UK
-        bigint refunded_by_user_id FK "ID参照"
+        bigint refunded_by_user_id "ID参照"
     }
     stripe_customers {
         bigint id PK
-        bigint user_id FK, UK "ID参照"
+        bigint user_id UK "ID参照"
         varchar stripe_customer_id UK
     }
     stripe_webhook_events {
         binary id PK
         varchar event_id UK
-        binary billing_contract_id FK "ID参照"
-        binary billing_customer_id FK "ID参照"
+        binary billing_contract_id "ID参照"
+        binary billing_customer_id "ID参照"
     }
     team_access_requirements {
         bigint id PK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
         bigint payment_item_id FK
     }
     team_payment_advances {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint team_id FK "ID参照"
-        bigint payer_user_id FK "ID参照"
-        binary escrow_transaction_id FK "ID参照"
-        binary payment_request_id FK, UK "ID参照"
-        bigint settled_confirmed_by FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint team_id "ID参照"
+        bigint payer_user_id "ID参照"
+        binary escrow_transaction_id "ID参照"
+        binary payment_request_id UK "ID参照"
+        bigint settled_confirmed_by "ID参照"
     }
     team_subscriptions {
         bigint id PK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
     }
     billing_contracts
     billing_customers
@@ -202,6 +202,16 @@ erDiagram
     users |o..o{ team_payment_advances : "ID参照(FKなし) settled_confirmed_by"
     teams ||..o{ team_subscriptions : "ID参照(FKなし) team_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [receipt](receipt.md) | `receipt_queue` | `member_payment_id` | ID参照 | `member_payments` |
+| [receipt](receipt.md) | `receipts` | `member_payment_id` | ID参照 | `member_payments` |
+| [tournament](tournament.md) | `tournament_fee` | `payment_item_id` | ID参照 | `payment_items` |
 
 ## 多態参照（線を引かない）
 

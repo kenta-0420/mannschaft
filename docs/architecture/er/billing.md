@@ -7,7 +7,7 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
@@ -18,14 +18,14 @@ erDiagram
     active_contract_pointers {
         binary id PK
         binary contract_id FK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
     }
     beta_grants {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint review_resolved_by FK "ID参照"
-        bigint revoked_by FK "ID参照"
-        bigint granted_by FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint review_resolved_by "ID参照"
+        bigint revoked_by "ID参照"
+        bigint granted_by "ID参照"
     }
     beta_perk_criteria {
         tinyint beta_phase PK
@@ -38,7 +38,7 @@ erDiagram
         binary id PK
         binary contract_id FK
         binary billing_customer_id FK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         binary from_price_band_version_id FK
         binary to_price_band_version_id FK
     }
@@ -51,59 +51,59 @@ erDiagram
         binary operation_id FK, UK
         binary contract_id FK
         binary billing_customer_id FK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         binary from_price_band_version_id FK
         binary to_price_band_version_id FK
         varchar stripe_invoice_ref UK
         varchar stripe_schedule_ref UK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     billing_contract_operations {
         binary id PK
         binary contract_id FK
         binary billing_customer_id FK
-        bigint organization_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint created_by "ID参照"
     }
     billing_contracts {
         binary id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         binary price_band_version_id FK
-        bigint created_by FK "ID参照"
-        bigint payer_user_id FK "ID参照"
+        bigint created_by "ID参照"
+        bigint payer_user_id "ID参照"
         binary billing_customer_id FK
         varchar psp_subscription_ref UK
         varchar stripe_checkout_session_ref UK
     }
     billing_customers {
         binary id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         varchar psp_customer_ref UK
     }
     billing_invoice_adjustments {
         binary id PK
         binary invoice_id FK
         binary operation_id FK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         varchar psp_object_ref UK
     }
     billing_invoice_lines {
         binary id PK
         binary invoice_id FK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         binary price_band_version_id FK
     }
     billing_invoices {
         binary id PK
         binary billing_customer_id FK
         binary contract_id FK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         varchar psp_invoice_ref UK
     }
     billing_payer_handover_requests {
         binary id PK
-        bigint old_payer_user_id FK "ID参照"
-        bigint new_payer_user_id FK "ID参照"
+        bigint old_payer_user_id "ID参照"
+        bigint new_payer_user_id "ID参照"
         binary open_old_contract_id UK
     }
     billing_price_band_versions {
@@ -113,24 +113,24 @@ erDiagram
         varchar scope_kind FK
         binary price_version_id FK
         varchar stripe_price_ref UK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     billing_price_versions {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint created_by "ID参照"
         varchar future_reservation_key UK
     }
     billing_quotes {
         binary id PK
         binary billing_customer_id FK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         binary price_band_version_id FK
     }
     billing_return_state_nonces {
         binary id PK
         char nonce_hash UK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         binary billing_customer_id FK
     }
     billing_stripe_products {
@@ -141,8 +141,8 @@ erDiagram
     }
     entitlements {
         binary id PK
-        bigint revoked_by FK "ID参照"
-        bigint organization_id FK "ID参照"
+        bigint revoked_by "ID参照"
+        bigint organization_id "ID参照"
     }
     feature_catalog {
         varchar feature_key PK
@@ -216,6 +216,22 @@ erDiagram
     plans ||--o{ plan_features : "plan_key"
     plans ||--o{ plan_price_bands : "plan_key"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [_unmapped](_unmapped.md) | `billing_customer_migrations` | `billing_customer_id` | FK | `billing_customers` |
+| [_unmapped](_unmapped.md) | `billing_customer_migrations` | `contract_id` | FK | `billing_contracts` |
+| [_unmapped](_unmapped.md) | `billing_customer_migrations` | `operation_id` | FK | `billing_contract_operations` |
+| [_unmapped](_unmapped.md) | `billing_membership_price_adjustments` | `contract_id` | FK | `billing_contracts` |
+| [_unmapped](_unmapped.md) | `billing_membership_price_adjustments` | `from_price_band_version_id` | FK | `billing_price_band_versions` |
+| [_unmapped](_unmapped.md) | `billing_membership_price_adjustments` | `operation_id` | FK | `billing_contract_operations` |
+| [_unmapped](_unmapped.md) | `billing_membership_price_adjustments` | `to_price_band_version_id` | FK | `billing_price_band_versions` |
+| [payment](payment.md) | `stripe_webhook_events` | `billing_contract_id` | ID参照 | `billing_contracts` |
+| [payment](payment.md) | `stripe_webhook_events` | `billing_customer_id` | ID参照 | `billing_customers` |
 
 ## 推定不能参照
 

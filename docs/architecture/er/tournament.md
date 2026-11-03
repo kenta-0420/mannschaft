@@ -7,21 +7,21 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     league_transfer {
         binary id PK
-        bigint team_id FK "ID参照"
-        bigint from_organization_id FK "ID参照"
-        bigint to_organization_id FK "ID参照"
-        bigint initiated_by FK "ID参照"
-        bigint responded_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint from_organization_id "ID参照"
+        bigint to_organization_id "ID参照"
+        bigint initiated_by "ID参照"
+        bigint responded_by "ID参照"
     }
     match_roster_staff {
         binary id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     system_tournament_preset_stat_defs {
         bigint id PK
@@ -44,52 +44,52 @@ erDiagram
     tournament_entry_members {
         binary id PK
         bigint participant_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     tournament_entry_template_members {
         binary id PK
         binary template_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     tournament_entry_template_staff {
         binary id PK
         binary template_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     tournament_entry_templates {
         binary id PK
-        bigint team_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint created_by "ID参照"
     }
     tournament_fee {
         binary id PK
-        bigint tournament_id FK "ID参照"
-        bigint payment_item_id FK "ID参照"
-        bigint organization_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint tournament_id "ID参照"
+        bigint payment_item_id "ID参照"
+        bigint organization_id "ID参照"
+        bigint created_by "ID参照"
     }
     tournament_fee_target {
         binary id PK
         binary fee_id FK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
     }
     tournament_individual_rankings {
         bigint id PK
         bigint tournament_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         bigint participant_id FK
     }
     tournament_match_player_stats {
         bigint id PK
         bigint match_id FK
         bigint participant_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     tournament_match_rosters {
         bigint id PK
         bigint match_id FK
         bigint participant_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     tournament_match_sets {
         bigint id PK
@@ -106,26 +106,26 @@ erDiagram
         bigint away_participant_id FK
         bigint winner_participant_id FK
         bigint next_match_id FK
-        bigint schedule_id FK "ID参照"
+        bigint schedule_id "ID参照"
     }
     tournament_participants {
         bigint id PK
         bigint division_id FK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
     }
     tournament_promotion_records {
         bigint id PK
         bigint tournament_id FK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
         bigint from_division_id FK
         bigint to_division_id FK
-        bigint executed_by FK "ID参照"
+        bigint executed_by "ID参照"
     }
     tournament_scorekeepers {
         binary id PK
-        bigint tournament_id FK "ID参照"
-        bigint user_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint tournament_id "ID参照"
+        bigint user_id "ID参照"
+        bigint created_by "ID参照"
     }
     tournament_standings {
         bigint id PK
@@ -138,15 +138,15 @@ erDiagram
     }
     tournament_submission_requirement {
         binary id PK
-        bigint tournament_id FK "ID参照"
-        bigint form_template_id FK "ID参照"
-        bigint organization_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint tournament_id "ID参照"
+        bigint form_template_id "ID参照"
+        bigint organization_id "ID参照"
+        bigint created_by "ID参照"
     }
     tournament_submission_requirement_target {
         binary id PK
         binary requirement_id FK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
     }
     tournament_template_stat_defs {
         bigint id PK
@@ -158,9 +158,9 @@ erDiagram
     }
     tournament_templates {
         bigint id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         bigint source_preset_id FK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     tournament_tiebreakers {
         bigint id PK
@@ -168,10 +168,10 @@ erDiagram
     }
     tournaments {
         bigint id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         bigint template_id FK
         bigint previous_tournament_id FK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     form_templates
     organizations
@@ -249,6 +249,12 @@ erDiagram
     tournaments |o--o{ tournaments : "previous_tournament_id"
     users ||..o{ tournaments : "ID参照(FKなし) created_by"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 多態参照（線を引かない）
 

@@ -7,65 +7,65 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     coin_toss_results {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint user_id FK "ID参照"
+        bigint team_id "ID参照"
+        bigint user_id "ID参照"
     }
     duty_rotations {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint created_by "ID参照"
     }
     presence_events {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint user_id FK "ID参照"
+        bigint team_id "ID参照"
+        bigint user_id "ID参照"
     }
     shopping_list_items {
         bigint id PK
         bigint list_id FK
-        bigint checked_by FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint checked_by "ID参照"
+        bigint created_by "ID参照"
     }
     shopping_lists {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint created_by "ID参照"
     }
     team_anniversaries {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint created_by "ID参照"
     }
     team_care_notification_overrides {
         bigint id PK
         bigint care_link_id FK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     team_presence_icons {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint updated_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint updated_by "ID参照"
     }
     team_role_aliases {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint updated_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint updated_by "ID参照"
     }
     template_wallpapers {
         bigint id PK
     }
     user_care_links {
         bigint id PK
-        bigint care_recipient_user_id FK "ID参照"
-        bigint watcher_user_id FK "ID参照"
-        bigint created_by FK "ID参照"
-        bigint revoked_by FK "ID参照"
+        bigint care_recipient_user_id "ID参照"
+        bigint watcher_user_id "ID参照"
+        bigint created_by "ID参照"
+        bigint revoked_by "ID参照"
     }
     teams
     users
@@ -93,6 +93,12 @@ erDiagram
     users |o..o{ user_care_links : "ID参照(FKなし) revoked_by"
     users ||..o{ user_care_links : "ID参照(FKなし) watcher_user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 多態参照（線を引かない）
 

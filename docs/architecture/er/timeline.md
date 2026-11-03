@@ -7,13 +7,13 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     timeline_bookmarks {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         bigint timeline_post_id FK
     }
     timeline_poll_options {
@@ -24,7 +24,7 @@ erDiagram
         bigint id PK
         bigint timeline_poll_id FK
         bigint timeline_poll_option_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     timeline_polls {
         bigint id PK
@@ -41,32 +41,32 @@ erDiagram
     timeline_post_reactions {
         bigint id PK
         bigint timeline_post_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     timeline_posts {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         bigint parent_id FK
         bigint repost_of_id FK
         bigint forward_source_post_id FK
-        binary scope_village_id FK "ID参照"
-        bigint ranch_qualified_user_id FK "ID参照"
+        binary scope_village_id "ID参照"
+        bigint ranch_qualified_user_id "ID参照"
     }
     timeline_ranch_admin_commands {
         binary id PK
-        bigint actor_user_id FK "ID参照"
+        bigint actor_user_id "ID参照"
     }
     timeline_ranch_outboxes {
         binary id PK
-        bigint recipient_user_id FK "ID参照"
+        bigint recipient_user_id "ID参照"
     }
     timeline_ranch_witnesses {
         binary id PK
-        bigint recipient_user_id FK "ID参照"
+        bigint recipient_user_id "ID参照"
     }
     user_mutes {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     users
     villages
@@ -92,6 +92,17 @@ erDiagram
     users ||..o{ timeline_ranch_witnesses : "ID参照(FKなし) recipient_user_id"
     users ||..o{ user_mutes : "ID参照(FKなし) user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [actionmemo](actionmemo.md) | `action_memos` | `timeline_post_id` | ID参照 | `timeline_posts` |
+| [cms](cms.md) | `blog_posts` | `timeline_post_id` | ID参照 | `timeline_posts` |
+| [property](property.md) | `property_work_packages` | `timeline_post_id` | ID参照 | `timeline_posts` |
+| [village](village.md) | `village_festival_live_posts` | `timeline_post_id` | ID参照 | `timeline_posts` |
 
 ## 多態参照（線を引かない）
 

@@ -7,7 +7,7 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
@@ -17,7 +17,7 @@ erDiagram
     }
     match_notification_preferences {
         bigint id PK
-        bigint team_id FK, UK "ID参照"
+        bigint team_id UK "ID参照"
         char prefecture_code FK
         char city_code FK
     }
@@ -28,16 +28,16 @@ erDiagram
     match_proposals {
         bigint id PK
         bigint request_id FK
-        bigint proposing_team_id FK "ID参照"
-        bigint cancelled_by_team_id FK "ID参照"
+        bigint proposing_team_id "ID参照"
+        bigint cancelled_by_team_id "ID参照"
     }
     match_request_templates {
         bigint id PK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
     }
     match_requests {
         bigint id PK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
         char prefecture_code FK
         char city_code FK
         bigint matched_proposal_id FK
@@ -45,13 +45,13 @@ erDiagram
     match_reviews {
         bigint id PK
         bigint proposal_id FK
-        bigint reviewer_team_id FK "ID参照"
-        bigint reviewee_team_id FK "ID参照"
+        bigint reviewer_team_id "ID参照"
+        bigint reviewee_team_id "ID参照"
     }
     ng_teams {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint blocked_team_id FK "ID参照"
+        bigint team_id "ID参照"
+        bigint blocked_team_id "ID参照"
     }
     prefectures {
         char code PK
@@ -80,6 +80,12 @@ erDiagram
     teams ||..o{ ng_teams : "ID参照(FKなし) blocked_team_id"
     teams ||..o{ ng_teams : "ID参照(FKなし) team_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## テーブル定義
 

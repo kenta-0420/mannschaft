@@ -7,70 +7,70 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     parking_applications {
         bigint id PK
-        bigint user_id FK "ID参照"
-        bigint proxy_input_record_id FK "ID参照"
+        bigint user_id "ID参照"
+        bigint proxy_input_record_id "ID参照"
     }
     parking_assignments {
         bigint id PK
-        bigint user_id FK "ID参照"
-        bigint assigned_by FK "ID参照"
-        bigint released_by FK "ID参照"
+        bigint user_id "ID参照"
+        bigint assigned_by "ID参照"
+        bigint released_by "ID参照"
     }
     parking_listings {
         bigint id PK
-        bigint listed_by FK "ID参照"
-        bigint transferee_user_id FK "ID参照"
+        bigint listed_by "ID参照"
+        bigint transferee_user_id "ID参照"
     }
     parking_settings {
         bigint id PK
     }
     parking_space_price_history {
         bigint id PK
-        bigint changed_by FK "ID参照"
+        bigint changed_by "ID参照"
     }
     parking_spaces {
         bigint id PK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     parking_sublease_applications {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     parking_sublease_payments {
         bigint id PK
-        bigint payer_user_id FK "ID参照"
-        bigint payee_user_id FK "ID参照"
+        bigint payer_user_id "ID参照"
+        bigint payee_user_id "ID参照"
     }
     parking_subleases {
         bigint id PK
-        bigint offered_by FK "ID参照"
+        bigint offered_by "ID参照"
     }
     parking_visitor_recurring {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     parking_visitor_reservations {
         bigint id PK
-        bigint reserved_by FK "ID参照"
-        bigint approved_by FK "ID参照"
+        bigint reserved_by "ID参照"
+        bigint approved_by "ID参照"
     }
     parking_watchlist {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     registered_vehicles {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     stripe_connect_accounts {
         bigint id PK
-        bigint user_id FK, UK "ID参照"
+        bigint user_id UK "ID参照"
         varchar stripe_account_id UK
     }
     proxy_input_records
@@ -95,6 +95,12 @@ erDiagram
     users ||..o{ registered_vehicles : "ID参照(FKなし) user_id"
     users ||..o| stripe_connect_accounts : "ID参照(FKなし) user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 多態参照（線を引かない）
 

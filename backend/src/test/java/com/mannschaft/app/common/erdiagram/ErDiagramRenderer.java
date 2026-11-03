@@ -68,7 +68,7 @@ final class ErDiagramRenderer {
 
     /** 描く関係線。 */
     record Relation(String child, String parent, String label, boolean dotted, boolean parentOptional,
-                    boolean childUnique) {
+                    boolean childUnique, String columns) {
     }
 
     record Polymorphic(String table, String typeColumn, String idColumn) {
@@ -125,7 +125,7 @@ final class ErDiagramRenderer {
                     fkColumns.add(fk.table() + "\0" + c);
                 });
                 relations.add(new Relation(fk.table(), fk.refTable(), String.join(", ", fk.columns()), false,
-                        nullable, unique));
+                        nullable, unique, String.join(", ", fk.columns())));
             }
 
             // 多態参照と参照推定
@@ -230,10 +230,10 @@ final class ErDiagramRenderer {
                 }
                 return;
             }
-            mark(t.name(), name, "FK");
+            // 実 FK ではないので FK マーカーは付けない（図には列だけ出し、"ID参照" で示す）
             inferredColumns.add(t.name() + "\0" + name);
             boolean unique = t.uniqueColumns().contains(name) || t.primaryKey().equals(List.of(name));
-            relations.add(new Relation(t.name(), target, "ID参照(FKなし) " + name, true, c.nullable(), unique));
+            relations.add(new Relation(t.name(), target, "ID参照(FKなし) " + name, true, c.nullable(), unique, name));
         }
     }
 
@@ -270,7 +270,8 @@ final class ErDiagramRenderer {
         if (!baseTables.isEmpty()) {
             out.add("## ER 図");
             out.add("");
-            out.add("実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。"
+            out.add("実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず \"ID参照\" と注記）。"
+                    + "図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。"
                     + "全列は下の「テーブル定義」を参照。");
             out.add("");
             out.add("```mermaid");
@@ -278,6 +279,8 @@ final class ErDiagramRenderer {
             out.add("```");
             out.add("");
         }
+
+        renderInbound(m, domain, memberNames, out);
 
         List<Polymorphic> poly = m.polymorphics.stream().filter(p -> memberNames.contains(p.table())).toList();
         if (!poly.isEmpty()) {
@@ -333,6 +336,33 @@ final class ErDiagramRenderer {
         return out.finish();
     }
 
+    /** 被参照（他ドメインの表がこのドメインの表を参照している側）の逆引き索引。 */
+    private static void renderInbound(Model m, String domain, Set<String> memberNames, Lines out) {
+        List<Relation> inbound = m.relations.stream()
+                .filter(r -> memberNames.contains(r.parent()) && !m.domainOf.get(r.child()).equals(domain))
+                .sorted(Comparator.comparing((Relation r) -> m.domainOf.get(r.child()))
+                        .thenComparing(Relation::child).thenComparing(Relation::columns)
+                        .thenComparing(Relation::parent).thenComparing(Relation::dotted))
+                .toList();
+        out.add("## 被参照（他ドメインから）");
+        out.add("");
+        out.add("このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。"
+                + "多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。");
+        out.add("");
+        if (inbound.isEmpty()) {
+            out.add("なし");
+        } else {
+            out.add("| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |");
+            out.add("| --- | --- | --- | --- | --- |");
+            for (Relation r : inbound) {
+                String d = m.domainOf.get(r.child());
+                out.add("| [" + d + "](" + d + ".md) | `" + r.child() + "` | `" + r.columns() + "` | "
+                        + (r.dotted() ? "ID参照" : "FK") + " | `" + r.parent() + "` |");
+            }
+        }
+        out.add("");
+    }
+
     // ─── mermaid ──────────────────────────────────────────────────
 
     private static String mermaid(Model m, Set<String> memberNames) {
@@ -362,13 +392,16 @@ final class ErDiagramRenderer {
             Map<String, Set<String>> marks = m.keyMarks.getOrDefault(name, Map.of());
             for (SchemaSnapshot.Column c : t.columns()) {
                 Set<String> mk = marks.get(c.name());
-                if (mk == null || mk.isEmpty()) {
+                boolean inferred = m.inferredColumns.contains(name + "\0" + c.name());
+                if ((mk == null || mk.isEmpty()) && !inferred) {
                     continue;
                 }
                 StringBuilder line = new StringBuilder("        ");
                 line.append(attrToken(c.dataType(), "t")).append(' ').append(attrToken(c.name(), "c"));
-                line.append(' ').append(String.join(", ", mk));
-                if (m.inferredColumns.contains(name + "\0" + c.name())) {
+                if (mk != null && !mk.isEmpty()) {
+                    line.append(' ').append(String.join(", ", mk));
+                }
+                if (inferred) {
                     line.append(" \"ID参照\"");
                 }
                 out.add(line.toString());
@@ -465,6 +498,12 @@ final class ErDiagramRenderer {
         out.add("");
         out.add("## 凡例");
         out.add("");
+        out.add("- 図中の `FK` マーカーは information_schema 上の**実外部キー列だけ**に付く。"
+                + "ID参照（推定）の列には付かず、`\"ID参照\"` と注記する。");
+        out.add("- 列定義表の「コメント」列は migration の COMMENT をそのまま転記したもの。"
+                + "「FK → teams」とあっても実 FK とは限らない。");
+        out.add("- あるテーブルを参照している側を探すには、そのテーブルが属するドメインのページの「被参照」節を見る。"
+                + "多態参照・推定不能参照・`" + UNMAPPED + "` は被参照に出ないので、網羅確認では各ファイルの表を別途見ること。");
         out.add("- 実線: 外部キー（FK）。子側の列が NULL 可なら親側 `0..1`、NOT NULL なら `1`。");
         out.add("- 点線: ID参照(FKなし)。`user_id` / `*_user_id` / `*_by` は `users`、`<x>_id` は `x` の複数形テーブルへ、"
                 + "**列の DATA_TYPE が参照先の主キーと一致する場合だけ**推定して引く。");

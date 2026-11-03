@@ -7,16 +7,16 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     confirmable_notification_recipients {
         bigint id PK
         bigint confirmable_notification_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         varchar confirm_token UK
-        bigint excluded_by FK "ID参照"
+        bigint excluded_by "ID参照"
     }
     confirmable_notification_settings {
         bigint id PK
@@ -27,12 +27,12 @@ erDiagram
     }
     confirmable_notification_templates {
         bigint id PK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     confirmable_notifications {
         bigint id PK
-        bigint cancelled_by FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint cancelled_by "ID参照"
+        bigint created_by "ID参照"
         varchar once_per_source_key UK
     }
     confirmable_recipient_group_targets {
@@ -41,26 +41,26 @@ erDiagram
     }
     confirmable_recipient_groups {
         binary id PK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     notification_credit_packages {
         bigint id PK
     }
     notification_credit_purchases {
         bigint id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         bigint package_id FK
-        bigint purchased_by_user_id FK "ID参照"
+        bigint purchased_by_user_id "ID参照"
         varchar idempotency_key UK
     }
     notification_fanout_audience_teams {
         binary id PK
         binary audience_snapshot_id FK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
     }
     notification_fanout_audiences {
         binary audience_snapshot_id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
     }
     notification_fanout_job_messages {
         binary id PK
@@ -68,36 +68,36 @@ erDiagram
     }
     notification_fanout_jobs {
         binary id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
     }
     notification_monthly_usage {
         bigint id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
     }
     notification_preferences {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     notification_settings {
         binary id PK
-        bigint user_id FK, UK "ID参照"
+        bigint user_id UK "ID参照"
     }
     notification_type_preferences {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     notifications {
         bigint id PK
-        bigint user_id FK "ID参照"
-        bigint organization_id FK "ID参照"
+        bigint user_id "ID参照"
+        bigint organization_id "ID参照"
     }
     organization_notification_balances {
         bigint id PK
-        bigint organization_id FK, UK "ID参照"
+        bigint organization_id UK "ID参照"
     }
     push_subscriptions {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         varchar endpoint UK
     }
     organizations
@@ -129,6 +129,18 @@ erDiagram
     organizations ||..o| organization_notification_balances : "ID参照(FKなし) organization_id"
     users ||..o{ push_subscriptions : "ID参照(FKなし) user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [advertising](advertising.md) | `ad_push_deliveries` | `notification_id` | ID参照 | `notifications` |
+| [committee](committee.md) | `committee_distribution_logs` | `confirmable_notification_id` | ID参照 | `confirmable_notifications` |
+| [payment](payment.md) | `payment_requests` | `confirmable_notification_id` | ID参照 | `confirmable_notifications` |
+| [recruitment](recruitment.md) | `recruitment_reminders` | `notification_id` | ID参照 | `notifications` |
+| [school](school.md) | `attendance_disclosure_records` | `notification_id` | ID参照 | `notifications` |
 
 ## 多態参照（線を引かない）
 

@@ -7,22 +7,22 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     electronic_seals {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     seal_scope_defaults {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         bigint seal_id FK
     }
     seal_stamp_logs {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         bigint seal_id FK
     }
     users
@@ -32,6 +32,16 @@ erDiagram
     electronic_seals ||--o{ seal_stamp_logs : "seal_id"
     users ||..o{ seal_stamp_logs : "ID参照(FKなし) user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [chart](chart.md) | `chart_intake_forms` | `electronic_seal_id` | ID参照 | `electronic_seals` |
+| [proxyvote](proxyvote.md) | `proxy_delegations` | `electronic_seal_id` | ID参照 | `electronic_seals` |
+| [receipt](receipt.md) | `receipts` | `seal_stamp_log_id` | ID参照 | `seal_stamp_logs` |
 
 ## 多態参照（線を引かない）
 

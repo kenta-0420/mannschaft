@@ -7,62 +7,62 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     board_handover_packs {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint generated_by FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint generated_by "ID参照"
     }
     external_agent_delegations {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint agent_user_id FK "ID参照"
-        bigint granted_by FK "ID参照"
-        bigint revoked_by FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint agent_user_id "ID参照"
+        bigint granted_by "ID参照"
+        bigint revoked_by "ID参照"
     }
     repair_plan_items {
         binary id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         binary template_id FK
-        bigint created_by FK "ID参照"
-        bigint updated_by FK "ID参照"
+        bigint created_by "ID参照"
+        bigint updated_by "ID参照"
     }
     repair_plan_templates {
         binary id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
     }
     repair_quote_cards {
         binary id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         binary kanban_id FK
-        bigint vendor_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint vendor_id "ID参照"
+        bigint created_by "ID参照"
     }
     repair_quote_kanbans {
         binary id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         binary repair_plan_item_id FK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     repair_simulation_scenario_versions {
         binary id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         binary scenario_id FK
-        bigint locked_by FK "ID参照"
+        bigint locked_by "ID参照"
     }
     repair_simulation_scenarios {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint pinned_corkboard_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint pinned_corkboard_id "ID参照"
+        bigint created_by "ID参照"
     }
     team_member_terms {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint user_id FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint user_id "ID参照"
     }
     corkboards
     organizations
@@ -95,6 +95,12 @@ erDiagram
     organizations ||..o{ team_member_terms : "ID参照(FKなし) organization_id"
     users ||..o{ team_member_terms : "ID参照(FKなし) user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 多態参照（線を引かない）
 

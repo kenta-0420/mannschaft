@@ -7,39 +7,39 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     budget_threshold_alerts {
         bigint id PK
         bigint allocation_id FK
-        bigint workflow_request_id FK "ID参照"
-        bigint acknowledged_by FK "ID参照"
+        bigint workflow_request_id "ID参照"
+        bigint acknowledged_by "ID参照"
     }
     shift_budget_allocations {
         bigint id PK
-        bigint organization_id FK "ID参照"
-        bigint team_id FK "ID参照"
-        bigint project_id FK "ID参照"
-        bigint budget_category_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint team_id "ID参照"
+        bigint project_id "ID参照"
+        bigint budget_category_id "ID参照"
+        bigint created_by "ID参照"
     }
     shift_budget_consumptions {
         bigint id PK
         bigint allocation_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     shift_budget_failed_events {
         bigint id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
     }
     todo_budget_links {
         bigint id PK
-        bigint project_id FK "ID参照"
-        bigint todo_id FK "ID参照"
+        bigint project_id "ID参照"
+        bigint todo_id "ID参照"
         bigint allocation_id FK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     budget_categories
     organizations
@@ -64,6 +64,12 @@ erDiagram
     todos |o..o{ todo_budget_links : "ID参照(FKなし) todo_id"
     users ||..o{ todo_budget_links : "ID参照(FKなし) created_by"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 推定不能参照
 

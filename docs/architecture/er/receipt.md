@@ -7,13 +7,13 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     receipt_issuer_settings {
         bigint id PK
-        bigint default_seal_user_id FK "ID参照"
+        bigint default_seal_user_id "ID参照"
     }
     receipt_line_items {
         bigint id PK
@@ -28,23 +28,23 @@ erDiagram
     }
     receipt_presets {
         bigint id PK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     receipt_queue {
         bigint id PK
-        bigint member_payment_id FK, UK "ID参照"
-        bigint recipient_user_id FK "ID参照"
+        bigint member_payment_id UK "ID参照"
+        bigint recipient_user_id "ID参照"
         bigint preset_id FK
         bigint processed_receipt_id FK
     }
     receipts {
         bigint id PK
-        bigint member_payment_id FK "ID参照"
-        bigint recipient_user_id FK "ID参照"
-        bigint issued_by FK "ID参照"
-        bigint seal_stamp_log_id FK "ID参照"
-        bigint schedule_id FK "ID参照"
-        bigint voided_by FK "ID参照"
+        bigint member_payment_id "ID参照"
+        bigint recipient_user_id "ID参照"
+        bigint issued_by "ID参照"
+        bigint seal_stamp_log_id "ID参照"
+        bigint schedule_id "ID参照"
+        bigint voided_by "ID参照"
         varchar active_platform_source_key UK
     }
     member_payments
@@ -66,6 +66,12 @@ erDiagram
     users |o..o{ receipts : "ID参照(FKなし) recipient_user_id"
     users |o..o{ receipts : "ID参照(FKなし) voided_by"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 多態参照（線を引かない）
 

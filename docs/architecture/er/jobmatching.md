@@ -7,39 +7,39 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     job_applications {
         bigint id PK
         bigint job_posting_id FK
-        bigint applicant_user_id FK "ID参照"
-        bigint decided_by_user_id FK "ID参照"
+        bigint applicant_user_id "ID参照"
+        bigint decided_by_user_id "ID参照"
     }
     job_check_ins {
         bigint id PK
         bigint job_contract_id FK
-        bigint worker_user_id FK "ID参照"
+        bigint worker_user_id "ID参照"
         bigint qr_token_id FK
     }
     job_contracts {
         bigint id PK
         bigint job_posting_id FK
         bigint job_application_id FK, UK
-        bigint requester_user_id FK "ID参照"
-        bigint worker_user_id FK "ID参照"
+        bigint requester_user_id "ID参照"
+        bigint worker_user_id "ID参照"
     }
     job_postings {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint created_by_user_id FK "ID参照"
+        bigint team_id "ID参照"
+        bigint created_by_user_id "ID参照"
     }
     job_qr_tokens {
         bigint id PK
         bigint job_contract_id FK
         varchar nonce UK
-        bigint issued_by_user_id FK "ID参照"
+        bigint issued_by_user_id "ID参照"
     }
     teams
     users
@@ -58,6 +58,12 @@ erDiagram
     job_contracts ||--o{ job_qr_tokens : "job_contract_id"
     users ||..o{ job_qr_tokens : "ID参照(FKなし) issued_by_user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 推定不能参照
 

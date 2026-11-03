@@ -7,7 +7,7 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
@@ -17,18 +17,18 @@ erDiagram
     }
     proxy_input_consents {
         bigint id PK
-        bigint subject_user_id FK "ID参照"
-        bigint proxy_user_id FK "ID参照"
-        bigint organization_id FK "ID参照"
-        bigint witness_user_id FK "ID参照"
-        bigint revoke_witnessed_by_user_id FK "ID参照"
-        bigint approved_by_user_id FK "ID参照"
+        bigint subject_user_id "ID参照"
+        bigint proxy_user_id "ID参照"
+        bigint organization_id "ID参照"
+        bigint witness_user_id "ID参照"
+        bigint revoke_witnessed_by_user_id "ID参照"
+        bigint approved_by_user_id "ID参照"
     }
     proxy_input_records {
         bigint id PK
         bigint proxy_input_consent_id FK
-        bigint subject_user_id FK "ID参照"
-        bigint proxy_user_id FK "ID参照"
+        bigint subject_user_id "ID参照"
+        bigint proxy_user_id "ID参照"
     }
     organizations
     users
@@ -43,6 +43,19 @@ erDiagram
     users ||..o{ proxy_input_records : "ID参照(FKなし) proxy_user_id"
     users ||..o{ proxy_input_records : "ID参照(FKなし) subject_user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [circulation](circulation.md) | `circulation_recipients` | `proxy_input_record_id` | ID参照 | `proxy_input_records` |
+| [parking](parking.md) | `parking_applications` | `proxy_input_record_id` | ID参照 | `proxy_input_records` |
+| [schedule](schedule.md) | `schedule_attendances` | `proxy_input_record_id` | ID参照 | `proxy_input_records` |
+| [shift](shift.md) | `shift_requests` | `proxy_input_record_id` | ID参照 | `proxy_input_records` |
+| [social](social.md) | `announcement_read_status` | `proxy_input_record_id` | ID参照 | `proxy_input_records` |
+| [survey](survey.md) | `survey_responses` | `proxy_input_record_id` | ID参照 | `proxy_input_records` |
 
 ## 多態参照（線を引かない）
 

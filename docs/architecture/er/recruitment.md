@@ -7,13 +7,13 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     recruitment_cancellation_policies {
         bigint id PK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     recruitment_cancellation_policy_tiers {
         bigint id PK
@@ -23,9 +23,9 @@ erDiagram
         bigint id PK
         bigint participant_id FK
         bigint listing_id FK
-        bigint user_id FK "ID参照"
-        bigint team_id FK "ID参照"
-        bigint cancelled_by FK "ID参照"
+        bigint user_id "ID参照"
+        bigint team_id "ID参照"
+        bigint cancelled_by "ID参照"
         bigint applied_tier_id FK
         varchar payment_id UK
     }
@@ -40,7 +40,7 @@ erDiagram
     recruitment_friend_targets {
         binary id PK
         bigint listing_id FK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
     }
     recruitment_listing_audience_scopes {
         binary id PK
@@ -54,33 +54,33 @@ erDiagram
         bigint id PK
         bigint category_id FK
         bigint subcategory_id FK
-        bigint reservation_line_id FK "ID参照"
+        bigint reservation_line_id "ID参照"
         bigint cancellation_policy_id FK
-        bigint created_by FK "ID参照"
-        bigint cancelled_by FK "ID参照"
-        bigint visibility_template_id FK "ID参照"
-        bigint payee_user_id FK "ID参照"
+        bigint created_by "ID参照"
+        bigint cancelled_by "ID参照"
+        bigint visibility_template_id "ID参照"
+        bigint payee_user_id "ID参照"
     }
     recruitment_no_show_records {
         bigint id PK
         bigint participant_id FK
         bigint listing_id FK
-        bigint user_id FK "ID参照"
-        bigint recorded_by FK "ID参照"
+        bigint user_id "ID参照"
+        bigint recorded_by "ID参照"
     }
     recruitment_participant_history {
         bigint id PK
         bigint participant_id FK
         bigint listing_id FK
-        bigint changed_by FK "ID参照"
+        bigint changed_by "ID参照"
     }
     recruitment_participants {
         bigint id PK
         bigint listing_id FK
-        bigint user_id FK "ID参照"
-        bigint team_id FK "ID参照"
-        bigint applied_by FK "ID参照"
-        bigint cancelled_by FK "ID参照"
+        bigint user_id "ID参照"
+        bigint team_id "ID参照"
+        bigint applied_by "ID参照"
+        bigint cancelled_by "ID参照"
     }
     recruitment_penalty_settings {
         bigint id PK
@@ -89,24 +89,24 @@ erDiagram
         bigint id PK
         bigint listing_id FK
         bigint participant_id FK
-        bigint notification_id FK "ID参照"
+        bigint notification_id "ID参照"
     }
     recruitment_subcategories {
         bigint id PK
         bigint category_id FK
         bigint parent_subcategory_id FK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     recruitment_templates {
         bigint id PK
-        bigint default_reservation_line_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint default_reservation_line_id "ID参照"
+        bigint created_by "ID参照"
     }
     recruitment_user_penalties {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         bigint triggered_by_setting_id FK
-        bigint lifted_by FK "ID参照"
+        bigint lifted_by "ID参照"
     }
     notifications
     reservation_lines
@@ -158,6 +158,12 @@ erDiagram
     users |o..o{ recruitment_user_penalties : "ID参照(FKなし) lifted_by"
     users ||..o{ recruitment_user_penalties : "ID参照(FKなし) user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 多態参照（線を引かない）
 

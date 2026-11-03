@@ -7,7 +7,7 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
@@ -18,40 +18,40 @@ erDiagram
     }
     projects {
         bigint id PK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     todo_assignees {
         bigint id PK
         bigint todo_id FK
-        bigint user_id FK "ID参照"
-        bigint assigned_by FK "ID参照"
+        bigint user_id "ID参照"
+        bigint assigned_by "ID参照"
     }
     todo_comments {
         bigint id PK
         bigint todo_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     todo_handoffs {
         bigint id PK
         bigint todo_id FK
-        bigint from_user_id FK "ID参照"
+        bigint from_user_id "ID参照"
         bigint previous_status_label_id FK
         bigint new_status_label_id FK
     }
     todo_personal_memos {
         bigint id PK
         bigint todo_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     todo_shared_memo_entries {
         bigint id PK
         bigint todo_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         bigint quoted_entry_id FK
     }
     todo_status_labels {
         bigint id PK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     todos {
         bigint id PK
@@ -59,10 +59,10 @@ erDiagram
         bigint milestone_id FK
         bigint parent_id FK
         bigint status_label_id FK
-        bigint linked_schedule_id FK, UK "ID参照"
-        bigint completed_by FK "ID参照"
-        bigint created_by FK "ID参照"
-        bigint linked_shift_slot_id FK "ID参照"
+        bigint linked_schedule_id UK "ID参照"
+        bigint completed_by "ID参照"
+        bigint created_by "ID参照"
+        bigint linked_shift_slot_id "ID参照"
     }
     schedules
     shift_slots
@@ -94,6 +94,21 @@ erDiagram
     users |o..o{ todos : "ID参照(FKなし) completed_by"
     users ||..o{ todos : "ID参照(FKなし) created_by"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [actionmemo](actionmemo.md) | `action_memos` | `related_todo_id` | ID参照 | `todos` |
+| [quickmemo](quickmemo.md) | `quick_memos` | `converted_to_todo_id` | ID参照 | `todos` |
+| [quickmemo](quickmemo.md) | `todo_tag_links` | `todo_id` | ID参照 | `todos` |
+| [schedule](schedule.md) | `schedules` | `linked_todo_id` | ID参照 | `todos` |
+| [shift](shift.md) | `shift_schedules` | `linked_project_id` | ID参照 | `projects` |
+| [shiftbudget](shiftbudget.md) | `shift_budget_allocations` | `project_id` | ID参照 | `projects` |
+| [shiftbudget](shiftbudget.md) | `todo_budget_links` | `project_id` | ID参照 | `projects` |
+| [shiftbudget](shiftbudget.md) | `todo_budget_links` | `todo_id` | ID参照 | `todos` |
 
 ## 多態参照（線を引かない）
 

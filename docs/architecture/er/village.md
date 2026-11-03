@@ -7,29 +7,29 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     user_village_nicknames {
         binary id PK
-        bigint user_id FK "ID参照"
-        binary village_id FK "ID参照"
+        bigint user_id "ID参照"
+        binary village_id "ID参照"
         varchar nickname UK
     }
     user_village_pins {
         binary id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         binary village_id FK
     }
     village_calendar_event_logs {
         binary id PK
-        bigint created_by_user_id FK "ID参照"
+        bigint created_by_user_id "ID参照"
     }
     village_calendar_events {
         binary id PK
         binary village_id FK
-        bigint created_by_user_id FK "ID参照"
+        bigint created_by_user_id "ID参照"
     }
     village_categories {
         binary id PK
@@ -38,12 +38,12 @@ erDiagram
     village_charter_articles {
         binary id PK
         binary charter_id FK
-        binary village_id FK "ID参照"
+        binary village_id "ID参照"
     }
     village_charter_drafters {
         binary id PK
         binary charter_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     village_charter_revisions {
         binary id PK
@@ -51,7 +51,7 @@ erDiagram
     }
     village_charters {
         binary id PK
-        binary village_id FK, UK "ID参照"
+        binary village_id UK "ID参照"
     }
     village_chronicles {
         binary id PK
@@ -59,60 +59,60 @@ erDiagram
     }
     village_creation_requests {
         binary id PK
-        bigint requester_user_id FK "ID参照"
-        bigint reviewer_user_id FK "ID参照"
-        binary created_village_id FK "ID参照"
+        bigint requester_user_id "ID参照"
+        bigint reviewer_user_id "ID参照"
+        binary created_village_id "ID参照"
     }
     village_event_archives {
         binary id PK
-        binary village_id FK "ID参照"
+        binary village_id "ID参照"
     }
     village_festival_live_posts {
         binary festival_id PK
-        bigint timeline_post_id PK, FK "ID参照"
+        bigint timeline_post_id PK "ID参照"
     }
     village_festival_rsvps {
         binary id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     village_festivals {
         binary id PK
         binary village_id FK
-        bigint created_by_user_id FK "ID参照"
+        bigint created_by_user_id "ID参照"
     }
     village_invitations {
         binary id PK
-        binary village_id FK "ID参照"
+        binary village_id "ID参照"
         varchar token_hash UK
-        bigint target_user_id FK "ID参照"
+        bigint target_user_id "ID参照"
     }
     village_join_requests {
         binary id PK
         binary village_id FK
-        bigint requester_user_id FK "ID参照"
+        bigint requester_user_id "ID参照"
     }
     village_lobby_daily_threads {
         binary id PK
         binary village_id FK
-        bigint chat_channel_id FK "ID参照"
+        bigint chat_channel_id "ID参照"
     }
     village_match_recruit_applications {
         binary id PK
         binary recruit_id FK
-        bigint applicant_user_id FK "ID参照"
-        bigint applicant_team_id FK "ID参照"
-        bigint reviewed_by_user_id FK "ID参照"
+        bigint applicant_user_id "ID参照"
+        bigint applicant_team_id "ID参照"
+        bigint reviewed_by_user_id "ID参照"
     }
     village_match_recruits {
         binary id PK
         binary village_id FK
-        bigint posted_by_user_id FK "ID参照"
-        bigint posted_by_team_id FK "ID参照"
+        bigint posted_by_user_id "ID参照"
+        bigint posted_by_team_id "ID参照"
         binary category_id FK
     }
     village_meetup_attendances {
         binary id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     village_meetup_candidate_dates {
         binary id PK
@@ -120,22 +120,22 @@ erDiagram
     }
     village_meetup_comments {
         binary id PK
-        bigint author_user_id FK "ID参照"
+        bigint author_user_id "ID参照"
     }
     village_meetup_todos {
         binary id PK
-        bigint assignee_user_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint assignee_user_id "ID参照"
+        bigint created_by "ID参照"
     }
     village_meetup_votes {
         binary id PK
         binary candidate_date_id FK
-        bigint voter_user_id FK "ID参照"
+        bigint voter_user_id "ID参照"
     }
     village_meetups {
         binary id PK
         binary village_id FK
-        bigint organizer_user_id FK "ID参照"
+        bigint organizer_user_id "ID参照"
     }
     village_memberships {
         binary id PK
@@ -149,12 +149,12 @@ erDiagram
     village_newsletter_issues {
         binary id PK
         binary village_id FK
-        bigint comment_updated_by FK "ID参照"
+        bigint comment_updated_by "ID参照"
     }
     village_newsletter_opt_outs {
         binary id PK
         binary village_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     village_newsletter_send_logs {
         binary id PK
@@ -170,41 +170,41 @@ erDiagram
     }
     village_pilgrimage_recommendations {
         binary id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         binary recommended_village_id FK
     }
     village_recruit_categories {
         binary id PK
         binary village_id FK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     village_reports {
         binary id PK
         binary village_id FK
-        bigint reporter_user_id FK "ID参照"
+        bigint reporter_user_id "ID参照"
     }
     village_representatives {
         binary id PK
         binary village_id FK
         binary membership_id FK
-        bigint representative_user_id FK "ID参照"
-        bigint granted_by_user_id FK "ID参照"
-        bigint revoked_by_user_id FK "ID参照"
+        bigint representative_user_id "ID参照"
+        bigint granted_by_user_id "ID参照"
+        bigint revoked_by_user_id "ID参照"
     }
     village_serendipity_scores {
         binary id PK
         binary village_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     village_user_admission_locks {
         binary id PK
-        bigint user_id FK, UK "ID参照"
+        bigint user_id UK "ID参照"
     }
     villages {
         binary id PK
         varchar slug UK
         varchar name UK
-        bigint created_by_user_id FK "ID参照"
+        bigint created_by_user_id "ID参照"
     }
     chat_channels
     teams
@@ -282,6 +282,18 @@ erDiagram
     users ||..o| village_user_admission_locks : "ID参照(FKなし) user_id"
     users |o..o{ villages : "ID参照(FKなし) created_by_user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [bulletin](bulletin.md) | `bulletin_archive_folders` | `scope_village_id` | ID参照 | `villages` |
+| [bulletin](bulletin.md) | `bulletin_categories` | `scope_village_id` | ID参照 | `villages` |
+| [bulletin](bulletin.md) | `bulletin_threads` | `scope_village_id` | ID参照 | `villages` |
+| [chat](chat.md) | `chat_channels` | `village_id` | ID参照 | `villages` |
+| [timeline](timeline.md) | `timeline_posts` | `scope_village_id` | ID参照 | `villages` |
 
 ## 多態参照（線を引かない）
 

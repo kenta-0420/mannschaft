@@ -7,24 +7,24 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     workflow_request_approvers {
         bigint id PK
         bigint request_step_id FK
-        bigint approver_user_id FK "ID参照"
+        bigint approver_user_id "ID参照"
     }
     workflow_request_attachments {
         bigint id PK
         bigint request_id FK
-        bigint uploaded_by FK "ID参照"
+        bigint uploaded_by "ID参照"
     }
     workflow_request_comments {
         bigint id PK
         bigint request_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     workflow_request_steps {
         bigint id PK
@@ -33,7 +33,7 @@ erDiagram
     workflow_requests {
         bigint id PK
         bigint template_id FK
-        bigint requested_by FK "ID参照"
+        bigint requested_by "ID参照"
     }
     workflow_template_fields {
         bigint id PK
@@ -45,7 +45,7 @@ erDiagram
     }
     workflow_templates {
         bigint id PK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     users
     users ||..o{ workflow_request_approvers : "ID参照(FKなし) approver_user_id"
@@ -61,6 +61,20 @@ erDiagram
     workflow_templates ||--o{ workflow_template_steps : "template_id"
     users |o..o{ workflow_templates : "ID参照(FKなし) created_by"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [budget](budget.md) | `budget_configs` | `workflow_template_id` | ID参照 | `workflow_templates` |
+| [budget](budget.md) | `budget_transactions` | `workflow_request_id` | ID参照 | `workflow_requests` |
+| [event](event.md) | `events` | `workflow_request_id` | ID参照 | `workflow_requests` |
+| [forms](forms.md) | `form_submissions` | `workflow_request_id` | ID参照 | `workflow_requests` |
+| [forms](forms.md) | `form_templates` | `workflow_template_id` | ID参照 | `workflow_templates` |
+| [incident](incident.md) | `incidents` | `workflow_request_id` | ID参照 | `workflow_requests` |
+| [shiftbudget](shiftbudget.md) | `budget_threshold_alerts` | `workflow_request_id` | ID参照 | `workflow_requests` |
 
 ## 多態参照（線を引かない）
 

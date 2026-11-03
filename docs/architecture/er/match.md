@@ -7,28 +7,28 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     match_attachments {
         binary id PK
         binary match_id FK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     match_events {
         binary id PK
         binary match_id FK
-        bigint player_user_id FK "ID参照"
-        bigint related_player_user_id FK "ID参照"
+        bigint player_user_id "ID参照"
+        bigint related_player_user_id "ID参照"
         binary linked_event_id FK
-        bigint recorded_by_team_id FK "ID参照"
+        bigint recorded_by_team_id "ID参照"
     }
     match_score_entries {
         binary id PK
         binary match_id FK
-        bigint competitor_user_id FK "ID参照"
-        bigint competitor_team_id FK "ID参照"
+        bigint competitor_user_id "ID参照"
+        bigint competitor_team_id "ID参照"
     }
     match_scored_components {
         binary id PK
@@ -40,19 +40,19 @@ erDiagram
     }
     matches {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint team_id FK "ID参照"
-        bigint schedule_id FK "ID参照"
-        bigint opponent_team_id FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint team_id "ID参照"
+        bigint schedule_id "ID参照"
+        bigint opponent_team_id "ID参照"
         binary parent_match_id FK
-        bigint scorekeeper_user_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint scorekeeper_user_id "ID参照"
+        bigint created_by "ID参照"
     }
     player_appearances {
         binary id PK
         binary match_id FK
-        bigint player_user_id FK "ID参照"
-        bigint owning_team_id FK "ID参照"
+        bigint player_user_id "ID参照"
+        bigint owning_team_id "ID参照"
     }
     organizations
     schedules
@@ -81,6 +81,12 @@ erDiagram
     teams ||..o{ player_appearances : "ID参照(FKなし) owning_team_id"
     users |o..o{ player_appearances : "ID参照(FKなし) player_user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 推定不能参照
 

@@ -7,7 +7,7 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
@@ -16,45 +16,45 @@ erDiagram
         binary operation_id FK, UK
         binary contract_id FK, UK
         binary billing_customer_id FK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         varchar stripe_setup_intent_ref UK
         varchar stripe_schedule_ref UK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     billing_membership_price_adjustments {
         binary id PK
         binary operation_id FK, UK
         binary contract_id FK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
         binary from_price_band_version_id FK
         binary to_price_band_version_id FK
         varchar stripe_schedule_ref UK
     }
     chat_messages_archive {
         bigint id PK
-        bigint parent_id FK "ID参照"
+        bigint parent_id "ID参照"
     }
     content_reports_archive {
         bigint id PK
-        bigint reported_by FK "ID参照"
-        bigint target_user_id FK "ID参照"
-        bigint reviewed_by FK "ID参照"
+        bigint reported_by "ID参照"
+        bigint target_user_id "ID参照"
+        bigint reviewed_by "ID参照"
     }
     direct_mail_logs_archive {
         bigint id PK
     }
     direct_mail_recipients_archive {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     notifications_archive {
         bigint id PK
-        bigint user_id FK "ID参照"
-        bigint organization_id FK "ID参照"
+        bigint user_id "ID参照"
+        bigint organization_id "ID参照"
     }
     report_actions_archive {
         bigint id PK
-        bigint action_by FK "ID参照"
+        bigint action_by "ID参照"
     }
     shedlock {
         varchar name PK
@@ -84,6 +84,12 @@ erDiagram
     users ||..o{ notifications_archive : "ID参照(FKなし) user_id"
     users ||..o{ report_actions_archive : "ID参照(FKなし) action_by"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 多態参照（線を引かない）
 

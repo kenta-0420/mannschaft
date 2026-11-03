@@ -7,53 +7,53 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     recall_attempts {
         binary id PK
         binary entry_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     reflection_entries {
         binary id PK
         binary theme_id FK
-        bigint user_id FK "ID参照"
-        bigint exported_blog_post_id FK "ID参照"
+        bigint user_id "ID参照"
+        bigint exported_blog_post_id "ID参照"
     }
     reflection_ranch_admin_commands {
         binary id PK
-        bigint actor_user_id FK "ID参照"
+        bigint actor_user_id "ID参照"
     }
     reflection_ranch_outboxes {
         binary id PK
-        bigint recipient_user_id FK "ID参照"
+        bigint recipient_user_id "ID参照"
     }
     reflection_ranch_witnesses {
         binary id PK
-        bigint recipient_user_id FK "ID参照"
+        bigint recipient_user_id "ID参照"
     }
     reflection_recall_commands {
         binary id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         binary session_id FK
     }
     reflection_recall_sessions {
         binary id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     reflection_spaced_reminders {
         binary id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     reflection_themes {
         binary id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         binary parent_theme_id FK
     }
     user_reflection_settings {
-        bigint user_id PK, FK "ID参照"
+        bigint user_id PK "ID参照"
     }
     blog_posts
     users
@@ -73,6 +73,12 @@ erDiagram
     users ||..o{ reflection_themes : "ID参照(FKなし) user_id"
     users ||..o| user_reflection_settings : "ID参照(FKなし) user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 推定不能参照
 

@@ -7,7 +7,7 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
@@ -17,7 +17,7 @@ erDiagram
     }
     chart_custom_fields {
         bigint id PK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
     }
     chart_custom_values {
         bigint id PK
@@ -30,12 +30,12 @@ erDiagram
     }
     chart_intake_form_templates {
         bigint id PK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
     }
     chart_intake_forms {
         bigint id PK
         bigint chart_record_id FK
-        bigint electronic_seal_id FK "ID参照"
+        bigint electronic_seal_id "ID参照"
     }
     chart_photos {
         bigint id PK
@@ -43,17 +43,17 @@ erDiagram
     }
     chart_record_templates {
         bigint id PK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
     }
     chart_records {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint customer_user_id FK "ID参照"
-        bigint staff_user_id FK "ID参照"
+        bigint team_id "ID参照"
+        bigint customer_user_id "ID参照"
+        bigint staff_user_id "ID参照"
     }
     chart_section_settings {
         bigint id PK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
     }
     electronic_seals
     teams
@@ -73,6 +73,12 @@ erDiagram
     users |o..o{ chart_records : "ID参照(FKなし) staff_user_id"
     teams ||..o{ chart_section_settings : "ID参照(FKなし) team_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## テーブル定義
 

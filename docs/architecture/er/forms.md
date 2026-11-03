@@ -7,7 +7,7 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
@@ -18,8 +18,8 @@ erDiagram
     form_submissions {
         bigint id PK
         bigint template_id FK
-        bigint submitted_by FK "ID参照"
-        bigint workflow_request_id FK "ID参照"
+        bigint submitted_by "ID参照"
+        bigint workflow_request_id "ID参照"
     }
     form_template_fields {
         bigint id PK
@@ -27,12 +27,12 @@ erDiagram
     }
     form_templates {
         bigint id PK
-        bigint workflow_template_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint workflow_template_id "ID参照"
+        bigint created_by "ID参照"
     }
     system_form_presets {
         bigint id PK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     users
     workflow_requests
@@ -46,6 +46,14 @@ erDiagram
     workflow_templates |o..o{ form_templates : "ID参照(FKなし) workflow_template_id"
     users |o..o{ system_form_presets : "ID参照(FKなし) created_by"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [tournament](tournament.md) | `tournament_submission_requirement` | `form_template_id` | ID参照 | `form_templates` |
 
 ## 多態参照（線を引かない）
 

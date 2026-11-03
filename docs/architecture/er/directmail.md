@@ -7,14 +7,14 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     direct_mail_image_uploads {
         bigint id PK
         bigint mail_log_id FK
-        bigint uploaded_by FK "ID参照"
+        bigint uploaded_by "ID参照"
     }
     direct_mail_logs {
         bigint id PK
@@ -22,11 +22,11 @@ erDiagram
     direct_mail_recipients {
         bigint id PK
         bigint mail_log_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     direct_mail_templates {
         bigint id PK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     users
     direct_mail_logs |o--o{ direct_mail_image_uploads : "mail_log_id"
@@ -35,6 +35,14 @@ erDiagram
     users ||..o{ direct_mail_recipients : "ID参照(FKなし) user_id"
     users ||..o{ direct_mail_templates : "ID参照(FKなし) created_by"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [advertising](advertising.md) | `ad_email_deliveries` | `direct_mail_recipient_id` | ID参照 | `direct_mail_recipients` |
 
 ## 多態参照（線を引かない）
 

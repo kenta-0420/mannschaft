@@ -7,37 +7,37 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     dwelling_units {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint organization_id FK "ID参照"
+        bigint team_id "ID参照"
+        bigint organization_id "ID参照"
     }
     property_listing_inquiries {
         bigint id PK
         bigint listing_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     property_listings {
         bigint id PK
         bigint dwelling_unit_id FK
-        bigint listed_by FK "ID参照"
+        bigint listed_by "ID参照"
     }
     resident_documents {
         bigint id PK
         bigint resident_id FK
-        bigint uploaded_by FK "ID参照"
+        bigint uploaded_by "ID参照"
     }
     resident_registry {
         bigint id PK
         bigint dwelling_unit_id FK
-        bigint user_id FK "ID参照"
-        bigint verified_by FK "ID参照"
-        bigint death_status_changed_by FK "ID参照"
-        bigint move_out_changed_by FK "ID参照"
+        bigint user_id "ID参照"
+        bigint verified_by "ID参照"
+        bigint death_status_changed_by "ID参照"
+        bigint move_out_changed_by "ID参照"
     }
     organizations
     teams
@@ -56,6 +56,24 @@ erDiagram
     users |o..o{ resident_registry : "ID参照(FKなし) user_id"
     users |o..o{ resident_registry : "ID参照(FKなし) verified_by"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [disclosure](disclosure.md) | `disclosure_exports` | `target_dwelling_unit_id` | ID参照 | `dwelling_units` |
+| [disclosure](disclosure.md) | `disclosure_form_drafts` | `target_dwelling_unit_id` | ID参照 | `dwelling_units` |
+| [property](property.md) | `property_work_packages` | `dwelling_unit_id` | ID参照 | `dwelling_units` |
+| [residencestatus](residencestatus.md) | `annual_review_responses` | `dwelling_unit_id` | ID参照 | `dwelling_units` |
+| [residencestatus](residencestatus.md) | `monitoring_committee_visits` | `dwelling_unit_id` | ID参照 | `dwelling_units` |
+| [residencestatus](residencestatus.md) | `resident_activity_snapshots` | `dwelling_unit_id` | ID参照 | `dwelling_units` |
+| [succession](succession.md) | `delinquency_escalations` | `dwelling_unit_id` | ID参照 | `dwelling_units` |
+| [succession](succession.md) | `legal_filings` | `dwelling_unit_id` | ID参照 | `dwelling_units` |
+| [succession](succession.md) | `succession_covenants` | `dwelling_unit_id` | ID参照 | `dwelling_units` |
+| [succession](succession.md) | `succession_pre_registrations` | `dwelling_unit_id` | ID参照 | `dwelling_units` |
+| [succession](succession.md) | `unseal_requests` | `dwelling_unit_id` | ID参照 | `dwelling_units` |
 
 ## テーブル定義
 

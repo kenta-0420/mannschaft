@@ -7,41 +7,41 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     content_reports {
         bigint id PK
-        bigint reported_by FK "ID参照"
-        bigint target_user_id FK "ID参照"
-        bigint reviewed_by FK "ID参照"
+        bigint reported_by "ID参照"
+        bigint target_user_id "ID参照"
+        bigint reviewed_by "ID参照"
     }
     moderation_action_templates {
         bigint id PK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     moderation_appeals {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         bigint report_id FK
         bigint action_id FK
         varchar appeal_token UK
-        bigint reviewed_by FK "ID参照"
+        bigint reviewed_by "ID参照"
     }
     moderation_settings {
         bigint id PK
         varchar setting_key UK
-        bigint updated_by FK "ID参照"
+        bigint updated_by "ID参照"
     }
     moderation_settings_history {
         bigint id PK
-        bigint changed_by FK "ID参照"
+        bigint changed_by "ID参照"
     }
     report_actions {
         bigint id PK
         bigint report_id FK
-        bigint action_by FK "ID参照"
+        bigint action_by "ID参照"
     }
     report_internal_notes {
         bigint id PK
@@ -49,22 +49,22 @@ erDiagram
     }
     user_violations {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         bigint report_id FK
         bigint action_id FK
     }
     warning_re_reviews {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         bigint report_id FK
         bigint action_id FK
-        bigint admin_reviewed_by FK "ID参照"
-        bigint system_admin_reviewed_by FK "ID参照"
+        bigint admin_reviewed_by "ID参照"
+        bigint system_admin_reviewed_by "ID参照"
     }
     yabai_unflag_requests {
         bigint id PK
-        bigint user_id FK "ID参照"
-        bigint reviewed_by FK "ID参照"
+        bigint user_id "ID参照"
+        bigint reviewed_by "ID参照"
     }
     users
     users ||..o{ content_reports : "ID参照(FKなし) reported_by"
@@ -91,6 +91,12 @@ erDiagram
     users |o..o{ yabai_unflag_requests : "ID参照(FKなし) reviewed_by"
     users ||..o{ yabai_unflag_requests : "ID参照(FKなし) user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 多態参照（線を引かない）
 

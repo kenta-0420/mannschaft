@@ -7,74 +7,74 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     attendance_disclosure_records {
         bigint id PK
         bigint evaluation_id FK
-        bigint student_user_id FK "ID参照"
-        bigint decided_by FK "ID参照"
-        bigint notification_id FK "ID参照"
+        bigint student_user_id "ID参照"
+        bigint decided_by "ID参照"
+        bigint notification_id "ID参照"
     }
     attendance_location_changes {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint student_user_id FK "ID参照"
-        bigint recorded_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint student_user_id "ID参照"
+        bigint recorded_by "ID参照"
     }
     attendance_requirement_evaluations {
         bigint id PK
         bigint requirement_rule_id FK
-        bigint student_user_id FK "ID参照"
+        bigint student_user_id "ID参照"
         bigint summary_id FK
-        bigint resolver_user_id FK "ID参照"
+        bigint resolver_user_id "ID参照"
     }
     attendance_requirement_rules {
         bigint id PK
-        bigint organization_id FK "ID参照"
-        bigint team_id FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint team_id "ID参照"
     }
     attendance_transition_alerts {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint student_user_id FK "ID参照"
-        bigint resolved_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint student_user_id "ID参照"
+        bigint resolved_by "ID参照"
     }
     class_homerooms {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint homeroom_teacher_user_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint homeroom_teacher_user_id "ID参照"
+        bigint created_by "ID参照"
     }
     daily_attendance_records {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint student_user_id FK "ID参照"
+        bigint team_id "ID参照"
+        bigint student_user_id "ID参照"
         bigint family_notice_id FK
-        bigint recorded_by FK "ID参照"
+        bigint recorded_by "ID参照"
     }
     family_attendance_notices {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint student_user_id FK "ID参照"
-        bigint submitter_user_id FK "ID参照"
-        bigint acknowledged_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint student_user_id "ID参照"
+        bigint submitter_user_id "ID参照"
+        bigint acknowledged_by "ID参照"
     }
     period_attendance_records {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint student_user_id FK "ID参照"
-        bigint timetable_slot_id FK "ID参照"
-        bigint timetable_change_id FK "ID参照"
-        bigint teacher_user_id FK "ID参照"
-        bigint recorded_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint student_user_id "ID参照"
+        bigint timetable_slot_id "ID参照"
+        bigint timetable_change_id "ID参照"
+        bigint teacher_user_id "ID参照"
+        bigint recorded_by "ID参照"
     }
     student_attendance_summaries {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint student_user_id FK "ID参照"
+        bigint team_id "ID参照"
+        bigint student_user_id "ID参照"
     }
     notifications
     organizations
@@ -118,6 +118,12 @@ erDiagram
     teams ||..o{ student_attendance_summaries : "ID参照(FKなし) team_id"
     users ||..o{ student_attendance_summaries : "ID参照(FKなし) student_user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 推定不能参照
 

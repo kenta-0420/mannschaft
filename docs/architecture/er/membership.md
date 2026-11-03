@@ -7,48 +7,48 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     checkin_locations {
         bigint id PK
         char location_code UK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     member_card_checkins {
         bigint id PK
         bigint member_card_id FK
-        bigint checked_in_by FK "ID参照"
+        bigint checked_in_by "ID参照"
         bigint checkin_location_id FK
-        bigint reservation_id FK "ID参照"
-        bigint service_record_id FK "ID参照"
+        bigint reservation_id "ID参照"
+        bigint service_record_id "ID参照"
     }
     member_cards {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         char card_code UK
-        bigint active_platform_user_id FK, UK "ID参照"
+        bigint active_platform_user_id UK "ID参照"
     }
     member_positions {
         bigint id PK
         bigint membership_id FK
         bigint position_id FK
-        bigint assigned_by FK "ID参照"
+        bigint assigned_by "ID参照"
     }
     memberships {
         bigint id PK
-        bigint user_id FK "ID参照"
-        bigint invited_by FK "ID参照"
-        bigint archived_by FK "ID参照"
-        bigint left_by FK "ID参照"
+        bigint user_id "ID参照"
+        bigint invited_by "ID参照"
+        bigint archived_by "ID参照"
+        bigint left_by "ID参照"
     }
     positions {
         bigint id PK
     }
     scope_member_calendar_settings {
         binary id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     reservations
     service_records
@@ -70,6 +70,14 @@ erDiagram
     users |o..o{ memberships : "ID参照(FKなし) user_id"
     users ||..o{ scope_member_calendar_settings : "ID参照(FKなし) user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [role](role.md) | `archived_membership_grants` | `membership_id` | ID参照 | `memberships` |
 
 ## 多態参照（線を引かない）
 

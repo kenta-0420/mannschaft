@@ -7,22 +7,22 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     organization_name_disclosure_change_logs {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint changed_by FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint changed_by "ID参照"
     }
     public_post_comments {
         char id PK
     }
     team_name_disclosure_change_logs {
         binary id PK
-        bigint team_id FK "ID参照"
-        bigint changed_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint changed_by "ID参照"
     }
     organizations
     teams
@@ -32,6 +32,12 @@ erDiagram
     teams ||..o{ team_name_disclosure_change_logs : "ID参照(FKなし) team_id"
     users ||..o{ team_name_disclosure_change_logs : "ID参照(FKなし) changed_by"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 推定不能参照
 

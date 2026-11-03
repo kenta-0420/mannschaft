@@ -7,15 +7,15 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     ad_announcement_deliveries {
         binary id PK
         binary campaign_id FK
-        bigint user_id FK "ID参照"
-        bigint announcement_feed_id FK "ID参照"
+        bigint user_id "ID参照"
+        bigint announcement_feed_id "ID参照"
     }
     ad_audience_segments {
         binary id PK
@@ -24,18 +24,18 @@ erDiagram
     ad_banner_deliveries {
         binary id PK
         binary campaign_id FK
-        bigint user_id FK "ID参照"
-        bigint ad_impression_id FK "ID参照"
+        bigint user_id "ID参照"
+        bigint ad_impression_id "ID参照"
     }
     ad_campaign_delivery_claims {
         binary id PK
         binary campaign_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     ad_campaign_moderation_logs {
         binary id PK
         binary campaign_id FK
-        bigint moderator_user_id FK "ID参照"
+        bigint moderator_user_id "ID参照"
     }
     ad_campaigns {
         bigint id PK
@@ -46,19 +46,19 @@ erDiagram
         bigint id PK
         bigint ad_id FK
         bigint campaign_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     ad_conversions {
         bigint id PK
         bigint click_id FK
         bigint campaign_id FK
         bigint ad_id FK
-        bigint converted_user_id FK "ID参照"
+        bigint converted_user_id "ID参照"
     }
     ad_credit_limit_requests {
         bigint id PK
         bigint advertiser_account_id FK
-        bigint reviewed_by FK "ID参照"
+        bigint reviewed_by "ID参照"
     }
     ad_daily_stats {
         bigint id PK
@@ -68,14 +68,14 @@ erDiagram
     ad_email_deliveries {
         binary id PK
         binary campaign_id FK
-        bigint user_id FK "ID参照"
-        bigint direct_mail_recipient_id FK "ID参照"
+        bigint user_id "ID参照"
+        bigint direct_mail_recipient_id "ID参照"
     }
     ad_impressions {
         bigint id PK
         bigint ad_id FK
         bigint campaign_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     ad_invoice_items {
         bigint id PK
@@ -92,28 +92,28 @@ erDiagram
     }
     ad_messaging_campaigns {
         binary id PK
-        bigint advertiser_account_id FK "ID参照"
-        bigint created_by_user_id FK "ID参照"
+        bigint advertiser_account_id "ID参照"
+        bigint created_by_user_id "ID参照"
     }
     ad_ng_words {
         binary id PK
         varchar word UK
-        bigint created_by_user_id FK "ID参照"
+        bigint created_by_user_id "ID参照"
     }
     ad_push_deliveries {
         binary id PK
         binary campaign_id FK
-        bigint user_id FK "ID参照"
-        bigint notification_id FK "ID参照"
+        bigint user_id "ID参照"
+        bigint notification_id "ID参照"
     }
     ad_rate_cards {
         bigint id PK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     ad_report_schedules {
         bigint id PK
         bigint advertiser_account_id FK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     ad_targeting_rules {
         bigint id PK
@@ -122,7 +122,7 @@ erDiagram
     ad_user_reports {
         binary id PK
         binary campaign_id FK
-        bigint reporter_user_id FK "ID参照"
+        bigint reporter_user_id "ID参照"
     }
     ads {
         bigint id PK
@@ -130,26 +130,26 @@ erDiagram
     }
     advertiser_accounts {
         bigint id PK
-        bigint approved_by FK "ID参照"
+        bigint approved_by "ID参照"
     }
     affiliate_configs {
         bigint id PK
     }
     equipment_ranking_exclusions {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint excluded_by_user_id FK "ID参照"
+        bigint team_id "ID参照"
+        bigint excluded_by_user_id "ID参照"
     }
     equipment_rankings {
         bigint id PK
     }
     user_ad_delivery_counters {
         binary id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     user_ad_preferences {
         binary id PK
-        bigint user_id FK, UK "ID参照"
+        bigint user_id UK "ID参照"
     }
     announcement_feeds
     direct_mail_recipients
@@ -208,6 +208,12 @@ erDiagram
     users ||..o{ user_ad_delivery_counters : "ID参照(FKなし) user_id"
     users ||..o| user_ad_preferences : "ID参照(FKなし) user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 多態参照（線を引かない）
 

@@ -7,24 +7,24 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     proxy_delegations {
         bigint id PK
         bigint session_id FK
-        bigint electronic_seal_id FK "ID参照"
-        bigint reviewed_by FK "ID参照"
+        bigint electronic_seal_id "ID参照"
+        bigint reviewed_by "ID参照"
     }
     proxy_vote_attachments {
         bigint id PK
-        bigint uploaded_by FK "ID参照"
+        bigint uploaded_by "ID参照"
     }
     proxy_vote_motion_comments {
         bigint id PK
         bigint motion_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     proxy_vote_motions {
         bigint id PK
@@ -32,14 +32,14 @@ erDiagram
     }
     proxy_vote_sessions {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint organization_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint organization_id "ID参照"
+        bigint created_by "ID参照"
     }
     proxy_votes {
         bigint id PK
         bigint motion_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         bigint delegation_id FK
     }
     electronic_seals
@@ -60,6 +60,15 @@ erDiagram
     proxy_vote_motions ||--o{ proxy_votes : "motion_id"
     users ||..o{ proxy_votes : "ID参照(FKなし) user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [event](event.md) | `event_delegations` | `proxy_delegation_id` | ID参照 | `proxy_delegations` |
+| [event](event.md) | `event_delegations` | `proxy_vote_session_id` | ID参照 | `proxy_vote_sessions` |
 
 ## 多態参照（線を引かない）
 

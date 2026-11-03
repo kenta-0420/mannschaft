@@ -7,49 +7,49 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     event_care_notification_logs {
         bigint id PK
         bigint event_id FK
-        bigint care_recipient_user_id FK "ID参照"
-        bigint watcher_user_id FK "ID参照"
+        bigint care_recipient_user_id "ID参照"
+        bigint watcher_user_id "ID参照"
     }
     event_checkins {
         bigint id PK
         bigint event_id FK
         bigint ticket_id FK, UK
-        bigint checked_in_by FK "ID参照"
-        bigint roll_call_user_id FK "ID参照"
+        bigint checked_in_by "ID参照"
+        bigint roll_call_user_id "ID参照"
     }
     event_delegations {
         binary id PK
         bigint event_id FK
-        bigint organization_id FK "ID参照"
-        bigint team_id FK "ID参照"
-        bigint proxy_vote_session_id FK "ID参照"
-        bigint proxy_delegation_id FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint team_id "ID参照"
+        bigint proxy_vote_session_id "ID参照"
+        bigint proxy_delegation_id "ID参照"
     }
     event_guest_invite_tokens {
         bigint id PK
         bigint event_id FK
         char token UK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     event_registrations {
         bigint id PK
         bigint event_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         bigint ticket_type_id FK
-        bigint approved_by FK "ID参照"
-        bigint invite_token_id FK "ID参照"
+        bigint approved_by "ID参照"
+        bigint invite_token_id "ID参照"
     }
     event_rsvp_responses {
         bigint id PK
         bigint event_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     event_ticket_types {
         bigint id PK
@@ -69,13 +69,13 @@ erDiagram
     }
     events {
         bigint id PK
-        bigint schedule_id FK, UK "ID参照"
+        bigint schedule_id UK "ID参照"
         varchar slug UK
-        bigint post_survey_id FK "ID参照"
-        bigint workflow_request_id FK "ID参照"
-        bigint created_by FK "ID参照"
-        bigint pre_survey_id FK "ID参照"
-        bigint dismissal_notified_by FK "ID参照"
+        bigint post_survey_id "ID参照"
+        bigint workflow_request_id "ID参照"
+        bigint created_by "ID参照"
+        bigint pre_survey_id "ID参照"
+        bigint dismissal_notified_by "ID参照"
     }
     invite_tokens
     organizations
@@ -119,6 +119,12 @@ erDiagram
     users |o..o{ events : "ID参照(FKなし) dismissal_notified_by"
     workflow_requests |o..o{ events : "ID参照(FKなし) workflow_request_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 多態参照（線を引かない）
 

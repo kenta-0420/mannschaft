@@ -7,7 +7,7 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
@@ -16,45 +16,45 @@ erDiagram
         bigint personal_timetable_id FK
     }
     personal_timetable_settings {
-        bigint user_id PK, FK "ID参照"
+        bigint user_id PK "ID参照"
     }
     personal_timetable_share_targets {
         bigint id PK
         bigint personal_timetable_id FK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
     }
     personal_timetable_slots {
         bigint id PK
         bigint personal_timetable_id FK
-        bigint linked_team_id FK "ID参照"
+        bigint linked_team_id "ID参照"
         bigint linked_timetable_id FK
         bigint linked_slot_id FK
     }
     personal_timetables {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     timetable_changes {
         bigint id PK
         bigint timetable_id FK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     timetable_period_templates {
         bigint id PK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
     }
     timetable_slot_user_note_attachments {
         bigint id PK
         bigint note_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     timetable_slot_user_note_fields {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     timetable_slot_user_notes {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     timetable_slots {
         bigint id PK
@@ -62,14 +62,14 @@ erDiagram
     }
     timetable_terms {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint organization_id FK "ID参照"
+        bigint team_id "ID参照"
+        bigint organization_id "ID参照"
     }
     timetables {
         bigint id PK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
         bigint term_id FK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     organizations
     teams
@@ -97,6 +97,15 @@ erDiagram
     timetable_terms ||--o{ timetables : "term_id"
     users |o..o{ timetables : "ID参照(FKなし) created_by"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [school](school.md) | `period_attendance_records` | `timetable_change_id` | ID参照 | `timetable_changes` |
+| [school](school.md) | `period_attendance_records` | `timetable_slot_id` | ID参照 | `timetable_slots` |
 
 ## 推定不能参照
 

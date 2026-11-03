@@ -7,34 +7,34 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     emergency_closure_confirmations {
         bigint id PK
         bigint emergency_closure_id FK
-        bigint user_id FK "ID参照"
-        bigint reservation_id FK "ID参照"
+        bigint user_id "ID参照"
+        bigint reservation_id "ID参照"
     }
     emergency_closures {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint created_by "ID参照"
     }
     reservation_blocked_times {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint created_by "ID参照"
     }
     reservation_business_hours {
         bigint id PK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
     }
     reservation_lines {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint default_staff_user_id FK "ID参照"
+        bigint team_id "ID参照"
+        bigint default_staff_user_id "ID参照"
     }
     reservation_menu_lines {
         binary menu_id PK, FK
@@ -42,13 +42,13 @@ erDiagram
     }
     reservation_menus {
         binary id PK
-        bigint team_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint created_by "ID参照"
     }
     reservation_notification_recipients {
         binary id PK
-        bigint team_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint created_by "ID参照"
     }
     reservation_pending_expire_scan_state {
         binary id PK
@@ -56,13 +56,13 @@ erDiagram
     }
     reservation_policies {
         binary id PK
-        bigint team_id FK, UK "ID参照"
+        bigint team_id UK "ID参照"
     }
     reservation_recurring_blocked_times {
         binary id PK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
         bigint line_id FK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     reservation_reminders {
         bigint id PK
@@ -70,35 +70,35 @@ erDiagram
     }
     reservation_slot_templates {
         binary id PK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
         bigint line_id FK
-        bigint staff_user_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint staff_user_id "ID参照"
+        bigint created_by "ID参照"
     }
     reservation_slots {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint staff_user_id FK "ID参照"
+        bigint team_id "ID参照"
+        bigint staff_user_id "ID参照"
         bigint line_id FK
         binary template_id FK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     reservation_team_settings {
         binary id PK
-        bigint team_id FK, UK "ID参照"
+        bigint team_id UK "ID参照"
     }
     reservation_waitlist_entries {
         binary id PK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
         bigint slot_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     reservations {
         bigint id PK
         bigint reservation_slot_id FK
         bigint line_id FK
-        bigint team_id FK "ID参照"
-        bigint user_id FK "ID参照"
+        bigint team_id "ID参照"
+        bigint user_id "ID参照"
         binary menu_id FK
     }
     teams
@@ -143,6 +143,17 @@ erDiagram
     teams ||..o{ reservations : "ID参照(FKなし) team_id"
     users ||..o{ reservations : "ID参照(FKなし) user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [membership](membership.md) | `member_card_checkins` | `reservation_id` | ID参照 | `reservations` |
+| [recruitment](recruitment.md) | `recruitment_listings` | `reservation_line_id` | ID参照 | `reservation_lines` |
+| [recruitment](recruitment.md) | `recruitment_templates` | `default_reservation_line_id` | ID参照 | `reservation_lines` |
+| [ticket](ticket.md) | `ticket_consumptions` | `reservation_id` | ID参照 | `reservations` |
 
 ## 多態参照（線を引かない）
 

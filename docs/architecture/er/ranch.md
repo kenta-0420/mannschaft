@@ -7,29 +7,29 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     ranch_admin_commands {
         binary id PK
-        bigint actor_user_id FK "ID参照"
+        bigint actor_user_id "ID参照"
     }
     ranch_affinity_units {
         binary id PK
         binary owner_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     ranch_care_rules {
         binary id PK
         bigint version_number UK
         datetime effective_at UK
-        bigint published_by FK "ID参照"
+        bigint published_by "ID参照"
     }
     ranch_care_week_budgets {
         binary id PK
         binary owner_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     ranch_collectible_catalog {
         varchar collectible_key PK
@@ -37,58 +37,58 @@ erDiagram
     ranch_collectible_inventory {
         binary id PK
         binary owner_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         varchar collectible_key FK
     }
     ranch_commands {
         binary id PK
         binary owner_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     ranch_dinosaurs {
         binary id PK
         binary owner_id FK, UK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     ranch_operational_controls {
         tinyint id PK
-        bigint updated_by FK "ID参照"
+        bigint updated_by "ID参照"
     }
     ranch_owners {
         binary id PK
-        bigint user_id FK, UK "ID参照"
+        bigint user_id UK "ID参照"
     }
     ranch_participation_periods {
         binary id PK
         binary owner_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     ranch_point_ledger {
         binary id PK
         binary owner_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         binary decision_id UK
     }
     ranch_reward_decisions {
         binary id PK
         binary owner_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         binary event_id UK
     }
     ranch_reward_pause_periods {
         binary id PK
-        bigint changed_by FK "ID参照"
+        bigint changed_by "ID参照"
     }
     ranch_reward_policies {
         binary id PK
         bigint version_number UK
         datetime effective_at UK
-        bigint published_by FK "ID参照"
+        bigint published_by "ID参照"
     }
     ranch_room_placements {
         binary id PK
         binary owner_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         binary inventory_id FK
     }
     ranch_shop_items {
@@ -98,7 +98,7 @@ erDiagram
     ranch_week_budgets {
         binary id PK
         binary owner_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     users
     users ||..o{ ranch_admin_commands : "ID参照(FKなし) actor_user_id"
@@ -131,6 +131,12 @@ erDiagram
     ranch_owners ||--o{ ranch_week_budgets : "owner_id"
     users ||..o{ ranch_week_budgets : "ID参照(FKなし) user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 推定不能参照
 

@@ -7,54 +7,54 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     team_blocks {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint user_id FK "ID参照"
-        bigint blocked_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint user_id "ID参照"
+        bigint blocked_by "ID参照"
     }
     team_custom_fields {
         bigint id PK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
     }
     team_notification_outbox {
         binary id PK
         binary idempotency_key UK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
     }
     team_officers {
         bigint id PK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
     }
     team_org_affiliation_restrictions {
         binary id PK
-        bigint organization_id FK "ID参照"
-        bigint team_id FK "ID参照"
-        bigint created_by FK "ID参照"
+        bigint organization_id "ID参照"
+        bigint team_id "ID参照"
+        bigint created_by "ID参照"
     }
     team_org_memberships {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint organization_id FK "ID参照"
-        bigint invited_by FK "ID参照"
-        bigint responded_by FK "ID参照"
+        bigint team_id "ID参照"
+        bigint organization_id "ID参照"
+        bigint invited_by "ID参照"
+        bigint responded_by "ID参照"
     }
     team_shift_settings {
         bigint id PK
-        bigint team_id FK, UK "ID参照"
+        bigint team_id UK "ID参照"
     }
     team_slug_history {
         binary id PK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
         varchar old_slug UK
     }
     team_uniform_set {
         binary id PK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
     }
     teams {
         bigint id PK
@@ -79,6 +79,138 @@ erDiagram
     teams ||..o{ team_slug_history : "ID参照(FKなし) team_id"
     teams ||..o{ team_uniform_set : "ID参照(FKなし) team_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [actionmemo](actionmemo.md) | `action_memos` | `posted_team_id` | ID参照 | `teams` |
+| [actionmemo](actionmemo.md) | `user_action_memo_settings` | `default_post_team_id` | ID参照 | `teams` |
+| [admin](admin.md) | `beta_restriction_config` | `max_team_id` | ID参照 | `teams` |
+| [advertising](advertising.md) | `equipment_ranking_exclusions` | `team_id` | ID参照 | `teams` |
+| [auth](auth.md) | `audit_logs` | `team_id` | ID参照 | `teams` |
+| [chart](chart.md) | `chart_custom_fields` | `team_id` | ID参照 | `teams` |
+| [chart](chart.md) | `chart_intake_form_templates` | `team_id` | ID参照 | `teams` |
+| [chart](chart.md) | `chart_record_templates` | `team_id` | ID参照 | `teams` |
+| [chart](chart.md) | `chart_records` | `team_id` | ID参照 | `teams` |
+| [chart](chart.md) | `chart_section_settings` | `team_id` | ID参照 | `teams` |
+| [chat](chat.md) | `chat_channels` | `team_id` | ID参照 | `teams` |
+| [cms](cms.md) | `blog_post_series` | `team_id` | ID参照 | `teams` |
+| [cms](cms.md) | `blog_post_shares` | `team_id` | ID参照 | `teams` |
+| [cms](cms.md) | `blog_posts` | `team_id` | ID参照 | `teams` |
+| [cms](cms.md) | `blog_tags` | `team_id` | ID参照 | `teams` |
+| [equipment](equipment.md) | `equipment_items` | `team_id` | ID参照 | `teams` |
+| [event](event.md) | `event_delegations` | `team_id` | ID参照 | `teams` |
+| [family](family.md) | `coin_toss_results` | `team_id` | ID参照 | `teams` |
+| [family](family.md) | `duty_rotations` | `team_id` | ID参照 | `teams` |
+| [family](family.md) | `presence_events` | `team_id` | ID参照 | `teams` |
+| [family](family.md) | `shopping_lists` | `team_id` | ID参照 | `teams` |
+| [family](family.md) | `team_anniversaries` | `team_id` | ID参照 | `teams` |
+| [family](family.md) | `team_presence_icons` | `team_id` | ID参照 | `teams` |
+| [family](family.md) | `team_role_aliases` | `team_id` | ID参照 | `teams` |
+| [filesharing](filesharing.md) | `shared_folders` | `team_id` | ID参照 | `teams` |
+| [gallery](gallery.md) | `photo_albums` | `team_id` | ID参照 | `teams` |
+| [jobmatching](jobmatching.md) | `job_postings` | `team_id` | ID参照 | `teams` |
+| [joinrequest](joinrequest.md) | `join_requests` | `team_id` | ID参照 | `teams` |
+| [loyalty](loyalty.md) | `team_loyalty_accounts` | `team_id` | ID参照 | `teams` |
+| [loyalty](loyalty.md) | `team_loyalty_programs` | `team_id` | ID参照 | `teams` |
+| [loyalty](loyalty.md) | `team_loyalty_rewards` | `team_id` | ID参照 | `teams` |
+| [loyalty](loyalty.md) | `team_loyalty_rules` | `team_id` | ID参照 | `teams` |
+| [match](match.md) | `match_events` | `recorded_by_team_id` | ID参照 | `teams` |
+| [match](match.md) | `match_score_entries` | `competitor_team_id` | ID参照 | `teams` |
+| [match](match.md) | `matches` | `opponent_team_id` | ID参照 | `teams` |
+| [match](match.md) | `matches` | `team_id` | ID参照 | `teams` |
+| [match](match.md) | `player_appearances` | `owning_team_id` | ID参照 | `teams` |
+| [matching](matching.md) | `match_notification_preferences` | `team_id` | ID参照 | `teams` |
+| [matching](matching.md) | `match_proposals` | `cancelled_by_team_id` | ID参照 | `teams` |
+| [matching](matching.md) | `match_proposals` | `proposing_team_id` | ID参照 | `teams` |
+| [matching](matching.md) | `match_request_templates` | `team_id` | ID参照 | `teams` |
+| [matching](matching.md) | `match_requests` | `team_id` | ID参照 | `teams` |
+| [matching](matching.md) | `match_reviews` | `reviewee_team_id` | ID参照 | `teams` |
+| [matching](matching.md) | `match_reviews` | `reviewer_team_id` | ID参照 | `teams` |
+| [matching](matching.md) | `ng_teams` | `blocked_team_id` | ID参照 | `teams` |
+| [matching](matching.md) | `ng_teams` | `team_id` | ID参照 | `teams` |
+| [member](member.md) | `member_profile_fields` | `team_id` | ID参照 | `teams` |
+| [member](member.md) | `team_pages` | `team_id` | ID参照 | `teams` |
+| [memberinfo](memberinfo.md) | `team_member_info_fields` | `team_id` | ID参照 | `teams` |
+| [memberinfo](memberinfo.md) | `team_member_info_responses` | `team_id` | ID参照 | `teams` |
+| [notification](notification.md) | `notification_fanout_audience_teams` | `team_id` | ID参照 | `teams` |
+| [payment](payment.md) | `payment_beneficiary_settings` | `team_id` | ID参照 | `teams` |
+| [payment](payment.md) | `payment_items` | `team_id` | ID参照 | `teams` |
+| [payment](payment.md) | `team_access_requirements` | `team_id` | ID参照 | `teams` |
+| [payment](payment.md) | `team_payment_advances` | `team_id` | ID参照 | `teams` |
+| [payment](payment.md) | `team_subscriptions` | `team_id` | ID参照 | `teams` |
+| [performance](performance.md) | `performance_metrics` | `team_id` | ID参照 | `teams` |
+| [provisioning](provisioning.md) | `provisioning_invitations` | `team_id` | ID参照 | `teams` |
+| [proxyvote](proxyvote.md) | `proxy_vote_sessions` | `team_id` | ID参照 | `teams` |
+| [publicview](publicview.md) | `team_name_disclosure_change_logs` | `team_id` | ID参照 | `teams` |
+| [recruitment](recruitment.md) | `recruitment_cancellation_records` | `team_id` | ID参照 | `teams` |
+| [recruitment](recruitment.md) | `recruitment_friend_targets` | `team_id` | ID参照 | `teams` |
+| [recruitment](recruitment.md) | `recruitment_participants` | `team_id` | ID参照 | `teams` |
+| [reservation](reservation.md) | `emergency_closures` | `team_id` | ID参照 | `teams` |
+| [reservation](reservation.md) | `reservation_blocked_times` | `team_id` | ID参照 | `teams` |
+| [reservation](reservation.md) | `reservation_business_hours` | `team_id` | ID参照 | `teams` |
+| [reservation](reservation.md) | `reservation_lines` | `team_id` | ID参照 | `teams` |
+| [reservation](reservation.md) | `reservation_menus` | `team_id` | ID参照 | `teams` |
+| [reservation](reservation.md) | `reservation_notification_recipients` | `team_id` | ID参照 | `teams` |
+| [reservation](reservation.md) | `reservation_policies` | `team_id` | ID参照 | `teams` |
+| [reservation](reservation.md) | `reservation_recurring_blocked_times` | `team_id` | ID参照 | `teams` |
+| [reservation](reservation.md) | `reservation_slot_templates` | `team_id` | ID参照 | `teams` |
+| [reservation](reservation.md) | `reservation_slots` | `team_id` | ID参照 | `teams` |
+| [reservation](reservation.md) | `reservation_team_settings` | `team_id` | ID参照 | `teams` |
+| [reservation](reservation.md) | `reservation_waitlist_entries` | `team_id` | ID参照 | `teams` |
+| [reservation](reservation.md) | `reservations` | `team_id` | ID参照 | `teams` |
+| [resident](resident.md) | `dwelling_units` | `team_id` | ID参照 | `teams` |
+| [returnstayplan](returnstayplan.md) | `return_stay_plan_team_visibilities` | `team_id` | ID参照 | `teams` |
+| [role](role.md) | `invite_tokens` | `team_id` | ID参照 | `teams` |
+| [role](role.md) | `ownership_transfer_offers` | `team_id` | ID参照 | `teams` |
+| [role](role.md) | `permission_groups` | `team_id` | ID参照 | `teams` |
+| [role](role.md) | `user_roles` | `team_id` | ID参照 | `teams` |
+| [schedule](schedule.md) | `schedule_annual_copy_logs` | `team_id` | ID参照 | `teams` |
+| [schedule](schedule.md) | `schedule_delegations` | `team_id` | ID参照 | `teams` |
+| [schedule](schedule.md) | `schedule_event_categories` | `team_id` | ID参照 | `teams` |
+| [schedule](schedule.md) | `schedule_keeps` | `team_id` | ID参照 | `teams` |
+| [schedule](schedule.md) | `schedules` | `team_id` | ID参照 | `teams` |
+| [school](school.md) | `attendance_location_changes` | `team_id` | ID参照 | `teams` |
+| [school](school.md) | `attendance_requirement_rules` | `team_id` | ID参照 | `teams` |
+| [school](school.md) | `attendance_transition_alerts` | `team_id` | ID参照 | `teams` |
+| [school](school.md) | `class_homerooms` | `team_id` | ID参照 | `teams` |
+| [school](school.md) | `daily_attendance_records` | `team_id` | ID参照 | `teams` |
+| [school](school.md) | `family_attendance_notices` | `team_id` | ID参照 | `teams` |
+| [school](school.md) | `period_attendance_records` | `team_id` | ID参照 | `teams` |
+| [school](school.md) | `student_attendance_summaries` | `team_id` | ID参照 | `teams` |
+| [service](service.md) | `service_record_fields` | `team_id` | ID参照 | `teams` |
+| [service](service.md) | `service_record_settings` | `team_id` | ID参照 | `teams` |
+| [service](service.md) | `service_record_templates` | `team_id` | ID参照 | `teams` |
+| [service](service.md) | `service_records` | `team_id` | ID参照 | `teams` |
+| [shift](shift.md) | `member_availability_defaults` | `team_id` | ID参照 | `teams` |
+| [shift](shift.md) | `member_work_constraints` | `team_id` | ID参照 | `teams` |
+| [shift](shift.md) | `shift_hourly_rates` | `team_id` | ID参照 | `teams` |
+| [shift](shift.md) | `shift_positions` | `team_id` | ID参照 | `teams` |
+| [shift](shift.md) | `shift_schedules` | `team_id` | ID参照 | `teams` |
+| [shiftbudget](shiftbudget.md) | `shift_budget_allocations` | `team_id` | ID参照 | `teams` |
+| [social](social.md) | `announcement_feed_group_snapshots` | `team_id` | ID参照 | `teams` |
+| [social](social.md) | `friend_content_forwards` | `forwarding_team_id` | ID参照 | `teams` |
+| [social](social.md) | `friend_content_forwards` | `source_team_id` | ID参照 | `teams` |
+| [social](social.md) | `team_friend_folders` | `team_id` | ID参照 | `teams` |
+| [template](template.md) | `team_enabled_modules` | `team_id` | ID参照 | `teams` |
+| [ticket](ticket.md) | `ticket_books` | `team_id` | ID参照 | `teams` |
+| [ticket](ticket.md) | `ticket_payments` | `team_id` | ID参照 | `teams` |
+| [ticket](ticket.md) | `ticket_products` | `team_id` | ID参照 | `teams` |
+| [timetable](timetable.md) | `personal_timetable_share_targets` | `team_id` | ID参照 | `teams` |
+| [timetable](timetable.md) | `personal_timetable_slots` | `linked_team_id` | ID参照 | `teams` |
+| [timetable](timetable.md) | `timetable_terms` | `team_id` | ID参照 | `teams` |
+| [timetable](timetable.md) | `timetables` | `team_id` | ID参照 | `teams` |
+| [tournament](tournament.md) | `league_transfer` | `team_id` | ID参照 | `teams` |
+| [tournament](tournament.md) | `tournament_entry_templates` | `team_id` | ID参照 | `teams` |
+| [tournament](tournament.md) | `tournament_fee_target` | `team_id` | ID参照 | `teams` |
+| [tournament](tournament.md) | `tournament_participants` | `team_id` | ID参照 | `teams` |
+| [tournament](tournament.md) | `tournament_promotion_records` | `team_id` | ID参照 | `teams` |
+| [tournament](tournament.md) | `tournament_submission_requirement_target` | `team_id` | ID参照 | `teams` |
+| [village](village.md) | `village_match_recruit_applications` | `applicant_team_id` | ID参照 | `teams` |
+| [village](village.md) | `village_match_recruits` | `posted_by_team_id` | ID参照 | `teams` |
 
 ## 推定不能参照
 

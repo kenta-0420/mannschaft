@@ -7,13 +7,13 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     geonames_metadata {
         tinyint id PK
-        bigint imported_by_user_id FK "ID参照"
+        bigint imported_by_user_id "ID参照"
     }
     postal_codes {
         char country_code PK
@@ -21,7 +21,7 @@ erDiagram
     }
     user_weather_locations {
         binary id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     weather_location_bootstrap_jobs {
         tinyint id PK
@@ -30,6 +30,12 @@ erDiagram
     users |o..o{ geonames_metadata : "ID参照(FKなし) imported_by_user_id"
     users ||..o{ user_weather_locations : "ID参照(FKなし) user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## テーブル定義
 

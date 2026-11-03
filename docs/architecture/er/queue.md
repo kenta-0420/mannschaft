@@ -7,7 +7,7 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
@@ -17,7 +17,7 @@ erDiagram
     queue_counters {
         bigint id PK
         bigint category_id FK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     queue_daily_stats {
         bigint id PK
@@ -36,8 +36,8 @@ erDiagram
         bigint id PK
         bigint category_id FK
         bigint counter_id FK
-        bigint user_id FK "ID参照"
-        bigint cancelled_by FK "ID参照"
+        bigint user_id "ID参照"
+        bigint cancelled_by "ID参照"
         bigint previous_ticket_id FK
     }
     users
@@ -52,6 +52,12 @@ erDiagram
     users |o..o{ queue_tickets : "ID参照(FKなし) cancelled_by"
     users |o..o{ queue_tickets : "ID参照(FKなし) user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+なし
 
 ## 多態参照（線を引かない）
 

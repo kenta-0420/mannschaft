@@ -7,21 +7,21 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     chat_channel_members {
         bigint id PK
         bigint channel_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     chat_channels {
         bigint id PK
-        bigint team_id FK "ID参照"
-        bigint organization_id FK "ID参照"
-        bigint created_by FK "ID参照"
-        binary village_id FK "ID参照"
+        bigint team_id "ID参照"
+        bigint organization_id "ID参照"
+        bigint created_by "ID参照"
+        binary village_id "ID参照"
     }
     chat_message_attachments {
         bigint id PK
@@ -30,19 +30,19 @@ erDiagram
     chat_message_bookmarks {
         bigint id PK
         bigint message_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     chat_message_reactions {
         bigint id PK
         bigint message_id FK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
     }
     chat_messages {
         bigint id PK
         bigint channel_id FK
         bigint parent_id FK
         bigint root_id FK
-        bigint invite_token_id FK "ID参照"
+        bigint invite_token_id "ID参照"
     }
     invite_tokens
     organizations
@@ -65,6 +65,14 @@ erDiagram
     chat_messages |o--o{ chat_messages : "root_id"
     invite_tokens |o..o{ chat_messages : "ID参照(FKなし) invite_token_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [village](village.md) | `village_lobby_daily_threads` | `chat_channel_id` | ID参照 | `chat_channels` |
 
 ## 多態参照（線を引かない）
 

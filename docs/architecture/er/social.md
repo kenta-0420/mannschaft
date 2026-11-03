@@ -7,53 +7,53 @@
 
 ## ER 図
 
-実線 = 外部キー、点線 = ID参照(FKなし)。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
+実線 = 外部キー、点線 = ID参照(FKなし)。図中の `FK` は実外部キーの列だけ（ID参照列は `FK` を付けず "ID参照" と注記）。図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE）のみを描く。全列は下の「テーブル定義」を参照。
 
 ```mermaid
 erDiagram
     announcement_feed_group_snapshots {
         binary id PK
         bigint feed_id FK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
     }
     announcement_feeds {
         bigint id PK
-        bigint pinned_by FK "ID参照"
+        bigint pinned_by "ID参照"
     }
     announcement_range_templates {
         bigint id PK
-        bigint created_by FK "ID参照"
+        bigint created_by "ID参照"
     }
     announcement_read_status {
         bigint id PK
         bigint announcement_feed_id FK
-        bigint user_id FK "ID参照"
-        bigint proxy_input_record_id FK "ID参照"
+        bigint user_id "ID参照"
+        bigint proxy_input_record_id "ID参照"
     }
     follows {
         bigint id PK
     }
     friend_content_forwards {
         bigint id PK
-        bigint source_team_id FK "ID参照"
-        bigint forwarding_team_id FK "ID参照"
-        bigint forwarded_by FK "ID参照"
-        bigint revoked_by FK "ID参照"
+        bigint source_team_id "ID参照"
+        bigint forwarding_team_id "ID参照"
+        bigint forwarded_by "ID参照"
+        bigint revoked_by "ID参照"
     }
     social_notification_outbox {
         binary id PK
         binary idempotency_key UK
-        bigint organization_id FK "ID参照"
+        bigint organization_id "ID参照"
     }
     team_friend_folder_members {
         bigint id PK
         bigint folder_id FK
         bigint team_friend_id FK
-        bigint added_by FK "ID参照"
+        bigint added_by "ID参照"
     }
     team_friend_folders {
         bigint id PK
-        bigint team_id FK "ID参照"
+        bigint team_id "ID参照"
     }
     team_friends {
         bigint id PK
@@ -62,7 +62,7 @@ erDiagram
     }
     user_social_profiles {
         bigint id PK
-        bigint user_id FK "ID参照"
+        bigint user_id "ID参照"
         varchar handle UK
     }
     organizations
@@ -89,6 +89,14 @@ erDiagram
     follows ||--o{ team_friends : "b_follow_id"
     users ||..o{ user_social_profiles : "ID参照(FKなし) user_id"
 ```
+
+## 被参照（他ドメインから）
+
+このドメインのテーブルを参照している他ドメインの側（実 FK と ID参照のみ。多態参照と推定不能参照は含まない。同一ドメイン内の参照は上の図を参照）。
+
+| 参照元ドメイン | 参照元テーブル | 列 | 種別 | 参照先テーブル |
+| --- | --- | --- | --- | --- |
+| [advertising](advertising.md) | `ad_announcement_deliveries` | `announcement_feed_id` | ID参照 | `announcement_feeds` |
 
 ## 多態参照（線を引かない）
 

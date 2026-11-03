@@ -179,6 +179,92 @@ class ErDiagramRendererTest {
         assertThat(m2).contains("nodes |o--o{ nodes : \"parent_id\"");
     }
 
+    // ─── 導線改善: FK マーカー規則・被参照節・凡例 ───
+
+    @Test
+    @DisplayName("マーカー規則: FK は実 FK 列だけ。ID参照（推定）列はマーカーなしで \"ID参照\" 注記のみ")
+    void FKマーカーは実FKのみ() {
+        var users = simple("users");
+        var teams = simple("teams");
+        var posts = simple("posts", col("user_id", "bigint", false), col("team_id", "bigint", true));
+        var fk = new SchemaSnapshot.ForeignKey("posts", "fk", List.of("user_id"), "users", List.of("id"));
+        String m = mermaidOf(render(List.of(users, teams, posts), List.of(fk),
+                Map.of("users", "d", "teams", "d", "posts", "d")).get("d.md"));
+        assertThat(m).contains("        bigint user_id FK\n");
+        assertThat(m).contains("        bigint team_id \"ID参照\"\n");
+        assertThat(m).doesNotContain("team_id FK");
+    }
+
+    @Test
+    @DisplayName("マーカー規則: PK を兼ねる推定列は PK＋ID参照注記のみ（FK なし）")
+    void 推定列がPKを兼ねてもFKは付かない() {
+        var teams = simple("teams");
+        var ext = table("team_ext", List.of(col("team_id", "bigint", false)), List.of("team_id"), List.of());
+        String m = mermaidOf(render(List.of(teams, ext), List.of(), Map.of("teams", "d", "team_ext", "d"))
+                .get("d.md"));
+        assertThat(m).contains("bigint team_id PK \"ID参照\"").doesNotContain(" FK").doesNotContain("PK, ");
+    }
+
+    private static Map<String, String> inboundFixture() {
+        var users = simple("users");
+        var teams = simple("teams");
+        var posts = simple("posts", col("user_id", "bigint", false), col("team_id", "bigint", true));
+        var notes = simple("notes", col("scope_type", "varchar", false), col("scope_id", "bigint", false),
+                col("mystery_id", "bigint", true));
+        var local = simple("local_things", col("user_id", "bigint", false));
+        var fk = new SchemaSnapshot.ForeignKey("posts", "fk", List.of("user_id"), "users", List.of("id"));
+        return render(List.of(users, teams, posts, notes, local), List.of(fk),
+                Map.of("users", "user", "teams", "team", "posts", "blog", "notes", "wiki", "local_things", "user"));
+    }
+
+    @Test
+    @DisplayName("被参照節: 他ドメインからの FK / ID参照が載り、同一ドメイン・多態・推定不能は載らない")
+    void 被参照節の内容() {
+        Map<String, String> files = inboundFixture();
+        String user = files.get("user.md");
+        assertThat(user).contains("## 被参照（他ドメインから）")
+                .contains("| [blog](blog.md) | `posts` | `user_id` | FK | `users` |");
+        assertThat(user).doesNotContain("`local_things` | `user_id` | ID参照 | `users` |");
+        assertThat(files.get("team.md"))
+                .contains("| [blog](blog.md) | `posts` | `team_id` | ID参照 | `teams` |");
+        assertThat(files.get("wiki.md")).doesNotContain("| [wiki]");
+        assertThat(files.get("team.md")).doesNotContain("scope_id").doesNotContain("mystery_id");
+    }
+
+    @Test
+    @DisplayName("被参照節: 0件のドメインでも節を省かず「なし」を出す")
+    void 被参照ゼロはなしと出す() {
+        Map<String, String> files = inboundFixture();
+        assertThat(files.get("blog.md")).contains("## 被参照（他ドメインから）\n\n")
+                .contains("多態参照と推定不能参照は含まない").contains("\nなし\n");
+    }
+
+    @Test
+    @DisplayName("被参照節: 参照元ドメイン→テーブル→列の固定順で、入力順に依らない")
+    void 被参照節は決定的な順序() {
+        var users = simple("users");
+        var b = simple("b_tbl", col("user_id", "bigint", false), col("created_by", "bigint", true));
+        var a = simple("a_tbl", col("user_id", "bigint", false));
+        Map<String, String> d = Map.of("users", "u", "b_tbl", "z", "a_tbl", "y");
+        String c1 = render(List.of(users, b, a), List.of(), d).get("u.md");
+        String c2 = render(List.of(a, b, users), List.of(), d).get("u.md");
+        assertThat(c1).isEqualTo(c2);
+        List<String> rows = c1.lines().filter(l -> l.startsWith("| [")).toList();
+        assertThat(rows).containsExactly(
+                "| [y](y.md) | `a_tbl` | `user_id` | ID参照 | `users` |",
+                "| [z](z.md) | `b_tbl` | `created_by` | ID参照 | `users` |",
+                "| [z](z.md) | `b_tbl` | `user_id` | ID参照 | `users` |");
+    }
+
+    @Test
+    @DisplayName("README 凡例: FK は実FKのみ・COMMENT 転記・被参照の探し方・被参照に出ない対象を明記する")
+    void README凡例() {
+        String r = inboundFixture().get("README.md");
+        assertThat(r).contains("**実外部キー列だけ**").contains("migration の COMMENT をそのまま転記")
+                .contains("実 FK とは限らない").contains("「被参照」節を見る")
+                .contains("多態参照・推定不能参照・`_unmapped` は被参照に出ない");
+    }
+
     // ─── AC-10 / 11 / 12 ───
 
     @Test
