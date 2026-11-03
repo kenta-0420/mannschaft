@@ -1572,42 +1572,11 @@ class FlywayFromScratchMigrationTest {
 
     @Test
     @Order(26)
-    @DisplayName("CMP1243 実Flywayで失効済みrefresh_tokensを持つuserをDELETEでき、トークンは同domain CASCADEで消え別userは保持される")
-    void usersDeleteCascadesRevokedRefreshTokens() throws SQLException {
+    @DisplayName("CMP1243 refresh_tokens.user_id の FK が同domain ON DELETE CASCADE である（実purge完走は AccountPurgeRefreshTokenFlywayIT）")
+    void refreshTokensUserFkIsCascade() throws SQLException {
         migrateFromScratch();
         try (Connection conn = connect()) {
             assertCascade(conn, "refresh_tokens", "user_id", "users");
-            conn.setAutoCommit(false);
-            try {
-                long target = insertGeneratedKey(conn, "INSERT INTO users (email,last_name,first_name,display_name,status,created_at,updated_at)"
-                        + " VALUES ('cmp1243-rt-t@example.com','試練','本人','本人','ACTIVE',NOW(),NOW())");
-                long other = insertGeneratedKey(conn, "INSERT INTO users (email,last_name,first_name,display_name,status,created_at,updated_at)"
-                        + " VALUES ('cmp1243-rt-o@example.com','試練','他人','他人','ACTIVE',NOW(),NOW())");
-                try (Statement st = conn.createStatement()) {
-                    // 退会受付後の状態: 全トークンが revoked_at 付き（未失効は無い）
-                    for (long[] row : new long[][] {{target, 1}, {target, 2}, {other, 3}}) {
-                        st.executeUpdate("INSERT INTO refresh_tokens (user_id,token_hash,remember_me,jti,expires_at,revoked_at,created_at)"
-                                + " VALUES (" + row[0] + ",'cmp1243-rt-" + row[1] + "',0,'cmp1243-rt-" + row[1]
-                                + "',DATE_ADD(NOW(), INTERVAL 7 DAY),NOW(),NOW())");
-                    }
-                    // AccountPurgeService の最終段（userRepository.delete）と同じ users 物理DELETE
-                    st.executeUpdate("DELETE FROM users WHERE id = " + target);
-                    assertThat(countRows(st, "SELECT COUNT(*) FROM refresh_tokens WHERE user_id = " + target))
-                            .as("FK違反にならず対象のトークンは0件").isZero();
-                    assertThat(countRows(st, "SELECT COUNT(*) FROM refresh_tokens WHERE user_id = " + other))
-                            .as("別userのトークンは保持").isEqualTo(1);
-                }
-            } finally {
-                conn.rollback();
-            }
         }
     }
-
-    private static long countRows(Statement st, String sql) throws SQLException {
-        try (ResultSet rs = st.executeQuery(sql)) {
-            rs.next();
-            return rs.getLong(1);
-        }
-    }
-
 }
