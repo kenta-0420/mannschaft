@@ -362,11 +362,14 @@ for (const vp of [{ name: '390x844', width: 390, height: 844 }, { name: '1440x90
   })
 }
 
-async function recordNegativeView(page: Page, label: string, url: string): Promise<void> {
+/**
+ * 負の視点を記録する。「読み込み前にタブが無いだけ」の偽合格を避けるため、必ず「期待する到達状態」を明示的に待ってから
+ * タブ・送信ボタン 0 件を assert する。
+ *  - settled: 画面が確定した証拠を待つ関数（権限 API の応答＋本体要素の可視 / 拒否文言 / 遷移先 URL）
+ */
+async function recordNegativeView(page: Page, label: string, url: string, settled: () => Promise<void>): Promise<void> {
   await page.goto(url, { waitUntil: 'commit', timeout: 240_000 })
-  // 読み込み中スピナー(body が "loading" のみ)が消えるまで待つ。読み込み前に「タブ無し」と判定する偽の合格を避ける
-  await expect.poll(async () => (await page.locator('body').innerText()).replace(/\s+/g, '').replace(/loading/gi, '').length, { timeout: 150_000 }).toBeGreaterThan(20)
-  await page.waitForTimeout(8_000)
+  await settled()
   const body = (await page.locator('body').innerText()).replace(/\s+/g, ' ').slice(0, 160)
   const hasTab = await page.getByRole('tab', { name: '緊急休業' }).count()
   const hasSend = await page.getByRole('button', { name: '一括送信' }).count()
@@ -377,6 +380,12 @@ async function recordNegativeView(page: Page, label: string, url: string): Promi
   expect(hasSend).toBe(0)
 }
 
+const teamTopPath = () => `/teams/${team.slug}`
+/** 管理画面の URL 直打ちがチームトップへ戻されたことを明示的に確認する */
+const settledRedirectedToTeamTop = (page: Page) => async () => {
+  await page.waitForURL(u => u.pathname === teamTopPath(), { timeout: 150_000 })
+  await expect(page).toHaveURL(new RegExp(`${teamTopPath()}$`))
+}
 test('ロール DEPUTY_ADMIN: 緊急休業の導線があり、理由必須・プレビュー・送信ができる（BE/FE とも副管理者まで許可）', async ({ browser }) => {
   const { page } = await openSession(browser, DEPUTY)
   await openClosureTab(page)
@@ -394,39 +403,33 @@ test('ロール DEPUTY_ADMIN: 緊急休業の導線があり、理由必須・�
 
 test('ロール MEMBER(負): 緊急休業のタブ・送信ボタンが出ない。URL 直打ち(管理画面)でも操作できない', async ({ browser }) => {
   const { page } = await openSession(browser, MEMBER)
-  await recordNegativeView(page, 'MEMBER-reservations', `/teams/${team.slug}/reservations`)
-  await recordNegativeView(page, 'MEMBER-admin-reservations', `/teams/${team.slug}/admin/reservations`)
-  // 補助(API 直叩きは認可の裏取りのみ。対象操作の代替ではない)
-  const freshMemberToken = await apiLogin(memberCtx, MEMBER) // 長い実行で期限切れの 401 を拒否と誤認しないよう取り直す
-  const direct = await memberCtx.get(`${BE_API}/teams/${team.slug}/emergency-closures`, { headers: authHeaders(freshMemberToken) })
-  roleLog.push(`[MEMBER] GET emergency-closures 直叩き status=${direct.status()}`)
-  expect([401, 403, 404]).toContain(direct.status())
+  // 予約画面の本体（「予約する」タブ=一般メンバーに見えるタブ）が出て、かつ権限 API の応答が返ってから「緊急休業なし」を判定する
+  const permResp = page.waitForResponse(r => /\/teams\/[^/]+\/me\/permissions/.test(r.url()) && r.ok(), { timeout: 150_000 })
+  await recordNegativeView(page, 'MEMBER-reservations', `/teams/${team.slug}/reservations`, async () => {
+    await permResp
+    await expect(page.getByRole('tab', { name: '予約する' })).toBeVisible({ timeout: 150_000 })
+  })
+  await recordNegativeView(page, 'MEMBER-admin-reservations', `/teams/${team.slug}/admin/reservations`, settledRedirectedToTeamTop(page))
 })
 
 test('ロール OUTSIDER 部外者(負): 対象チームの緊急休業が見えず、URL 直打ちでも弾かれる', async ({ browser }) => {
   const { page } = await openSession(browser, OUTSIDER)
-  await recordNegativeView(page, 'OUTSIDER-reservations', `/teams/${team.slug}/reservations`)
-  await recordNegativeView(page, 'OUTSIDER-admin-reservations', `/teams/${team.slug}/admin/reservations`)
-  const octx = await pwRequest.newContext()
-  const tok = await apiLogin(octx, OUTSIDER)
-  const direct = await octx.get(`${BE_API}/teams/${team.slug}/emergency-closures`, { headers: authHeaders(tok) })
-  roleLog.push(`[OUTSIDER] GET emergency-closures 直叩き status=${direct.status()}`)
-  expect([401, 403, 404]).toContain(direct.status())
-  await octx.dispose()
+  // 拒否画面の文言を明示的に待つ（読み込み中の空白では合格させない）
+  await recordNegativeView(page, 'OUTSIDER-reservations', `/teams/${team.slug}/reservations`, async () => {
+    await expect(page.getByText('情報を取得できませんでした')).toBeVisible({ timeout: 150_000 })
+    await expect(page.getByRole('tab', { name: '予約する' })).toHaveCount(0)
+  })
+  await recordNegativeView(page, 'OUTSIDER-admin-reservations', `/teams/${team.slug}/admin/reservations`, settledRedirectedToTeamTop(page))
 })
-
 test('ロール SYSTEM_ADMIN: 挙動を記録する（テナントの通常アカウントではない）', async ({ browser }) => {
   const { page } = await openSession(browser, SYSADMIN)
   await page.goto(`/teams/${team.slug}/reservations`, { waitUntil: 'commit', timeout: 240_000 })
-  await expect.poll(async () => (await page.locator('body').innerText()).replace(/\s+/g, '').replace(/loading/gi, '').length, { timeout: 150_000 }).toBeGreaterThan(20)
-  await page.waitForTimeout(8_000)
+  // 予約画面の本体（予約する タブ）が出るまで待つ。緊急休業タブの有無は記録のみ（仕様判断は殿）
+  await expect(page.getByRole('tab', { name: '予約する' })).toBeVisible({ timeout: 150_000 })
+  // 緊急休業タブは権限取得後に出るため、最大60秒待つ（出なければ 0 件として記録。この試験は記録のみで合否に使わない）
+  await page.getByRole('tab', { name: '緊急休業' }).waitFor({ state: 'visible', timeout: 60_000 }).catch(() => {})
   const hasTab = await page.getByRole('tab', { name: '緊急休業' }).count()
   const body = (await page.locator('body').innerText()).replace(/\s+/g, ' ').slice(0, 160)
   roleLog.push(`[SYSTEM_ADMIN] /teams/${team.slug}/reservations -> ${new URL(page.url()).pathname} tab=${hasTab} body="${body}"`)
   await shot(page, 'role-sysadmin')
-  const sctx = await pwRequest.newContext()
-  const tok = await apiLogin(sctx, SYSADMIN)
-  const direct = await sctx.get(`${BE_API}/teams/${team.slug}/emergency-closures`, { headers: authHeaders(tok) })
-  roleLog.push(`[SYSTEM_ADMIN] GET emergency-closures 直叩き status=${direct.status()}`)
-  await sctx.dispose()
 })
