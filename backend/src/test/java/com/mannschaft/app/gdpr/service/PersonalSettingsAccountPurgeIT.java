@@ -332,6 +332,58 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    @DisplayName("失効済みrefresh_tokensを持つ退会者でも、実FK制約の上で強匿名化が完走し、別ownerのトークンは保つ")
+    void purgesUserWithRevokedRefreshTokensUnderRealForeignKey() {
+        stubRedisValueOperations();
+        Long target = createUser("失効トークンを持つ本人");
+        Long other = createUser("別所有者");
+        try {
+            // ddl-auto の Entity 生成schemaには refresh_tokens→users の FK が無い。Flyway V1.003 の実制約を再現する。
+            transactionTemplate.executeWithoutResult(tx -> entityManager.createNativeQuery(
+                    "ALTER TABLE refresh_tokens ADD CONSTRAINT fk_refresh_tokens_user "
+                            + "FOREIGN KEY (user_id) REFERENCES users(id)").executeUpdate());
+            insertRefreshToken(target, "cmp1243-t-active", false);
+            insertRefreshToken(target, "cmp1243-t-revoked", true);
+            insertRefreshToken(other, "cmp1243-o-active", false);
+            // 退会受付が target の未失効トークンを失効させる（本番と同じ経路）。以後は全て revoked_at 付きになる。
+            prepareExpiredWithdrawal(target);
+            assertThat(count("SELECT COUNT(*) FROM refresh_tokens WHERE user_id = " + target
+                    + " AND revoked_at IS NULL")).as("退会受付後は未失効トークンが無い").isZero();
+            assertThat(count("SELECT COUNT(*) FROM refresh_tokens WHERE user_id = " + target))
+                    .as("強匿名化前は失効済みトークンが残る").isEqualTo(2);
+
+            accountPurgeService.purgeExpiredAccounts();
+
+            assertThat(count("SELECT COUNT(*) FROM users WHERE id = " + target))
+                    .as("FK違反で失敗せずユーザー本体まで物理削除される").isZero();
+            assertThat(count("SELECT COUNT(*) FROM refresh_tokens WHERE user_id = " + target))
+                    .as("失効済みを含め対象のトークンは0件").isZero();
+            assertThat(count("SELECT COUNT(*) FROM refresh_tokens WHERE user_id = " + other))
+                    .as("別ownerのトークンは保たれる").isEqualTo(1);
+        } finally {
+            awaitPurgePoolIdle();
+            transactionTemplate.executeWithoutResult(tx -> {
+                entityManager.createNativeQuery("DELETE FROM refresh_tokens WHERE user_id IN ("
+                        + target + "," + other + ")").executeUpdate();
+                entityManager.createQuery("DELETE FROM AccountPurgeCompletionStatusEntity status "
+                                + "WHERE status.userId IN :owners")
+                        .setParameter("owners", List.of(target, other)).executeUpdate();
+                entityManager.createNativeQuery("DELETE FROM users WHERE id IN (" + target + "," + other + ")")
+                        .executeUpdate();
+            });
+            transactionTemplate.executeWithoutResult(tx -> entityManager.createNativeQuery(
+                    "ALTER TABLE refresh_tokens DROP FOREIGN KEY fk_refresh_tokens_user").executeUpdate());
+        }
+    }
+
+    private void insertRefreshToken(Long userId, String hash, boolean revoked) {
+        transactionTemplate.executeWithoutResult(tx -> insert("refresh_tokens",
+                "user_id,token_hash,remember_me,jti,expires_at,revoked_at,created_at",
+                userId + ",'" + hash + "',false,'" + hash + "',DATE_ADD(NOW(), INTERVAL 7 DAY),"
+                        + (revoked ? "NOW()" : "NULL") + ",NOW()"));
+    }
+
+    @Test
     @DisplayName("設定0件の公開batchと強イベントを重複実行しても27domainは一意完了し別ownerの全設定を保つ")
     void emptySettingsAndDuplicateEventsPreserveOtherOwner() {
         stubRedisValueOperations();

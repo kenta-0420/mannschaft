@@ -47,6 +47,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -143,7 +144,6 @@ class AccountPurgeServiceTest {
 
     /** テスト共通の mock スタブ設定（auth ドメイン・gdpr ドメイン） */
     private void stubAuthAndGdprMocks(Long userId) {
-        given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(userId)).willReturn(List.of());
         given(oAuthAccountRepository.findByUserId(userId)).willReturn(List.of());
         given(twoFactorAuthRepository.findByUserId(userId)).willReturn(Optional.empty());
         given(webAuthnCredentialRepository.findByUserId(userId)).willReturn(List.of());
@@ -176,6 +176,8 @@ class AccountPurgeServiceTest {
 
             service.purgeExpiredAccounts();
 
+            // 失効済みを含む全トークンを users 削除より前に消す（FK 違反の根治）
+            verify(refreshTokenRepository).deleteByUserId(USER_ID);
             verify(userRepository).delete(user);
         }
 
@@ -262,8 +264,8 @@ class AccountPurgeServiceTest {
                     .willReturn(List.of(user1, user2));
 
             // user1の処理で例外をスロー
-            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID))
-                    .willThrow(new RuntimeException("DB error"));
+            willThrow(new RuntimeException("DB error"))
+                    .given(refreshTokenRepository).deleteByUserId(USER_ID);
 
             // user2の処理は正常
             stubAuthAndGdprMocks(USER_ID + 1);
@@ -288,7 +290,6 @@ class AccountPurgeServiceTest {
             given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
                     .willReturn(List.of(user));
 
-            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID)).willReturn(List.of());
             given(oAuthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
             given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
             given(webAuthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
@@ -315,7 +316,6 @@ class AccountPurgeServiceTest {
             given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
                     .willReturn(List.of(user));
 
-            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID)).willReturn(List.of());
             given(oAuthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
             given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
             given(webAuthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
@@ -424,7 +424,6 @@ class AccountPurgeServiceTest {
             given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
                     .willReturn(List.of(user));
 
-            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID)).willReturn(List.of());
             given(oAuthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
             given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
             given(webAuthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());

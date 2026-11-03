@@ -53,6 +53,13 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshTokenEntity
     @Query("update RefreshTokenEntity r set r.revokedAt = :now where r.userId = :userId and r.revokedAt is null")
     int revokeAllActiveByUserId(@Param("userId") Long userId, @Param("now") LocalDateTime now);
 
+    /**
+     * 指定ユーザーの全リフレッシュトークン（失効済みを含む）を物理削除する（退会の強匿名化用）。
+     * 失効済みトークンも {@code fk_refresh_tokens_user} で users を参照するため、残すとユーザー物理削除が FK 違反になる。
+     */
+    @Modifying
+    void deleteByUserId(Long userId);
+
     void deleteByExpiresAtBefore(LocalDateTime dateTime);
 
     /**
