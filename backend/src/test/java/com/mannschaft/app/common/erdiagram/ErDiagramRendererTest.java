@@ -262,7 +262,29 @@ class ErDiagramRendererTest {
         String r = inboundFixture().get("README.md");
         assertThat(r).contains("**実外部キー列だけ**").contains("migration の COMMENT をそのまま転記")
                 .contains("実 FK とは限らない").contains("「被参照」節を見る")
-                .contains("多態参照・推定不能参照・`_unmapped` は被参照に出ない");
+                .contains("多態参照・推定不能参照は被参照に出ない")
+                .contains("`_unmapped`（ドメイン未割当）のテーブルは通常のドメインと同じく、参照元としても参照先としても被参照に載る");
+    }
+
+    @Test
+    @DisplayName("README 凡例と実装の一致: _unmapped は参照元にも参照先にも被参照へ載り、多態・推定不能は載らない")
+    void 凡例とunmapped被参照の実挙動が一致する() {
+        var users = simple("users");
+        var orphan = simple("orphan_tbl", col("user_id", "bigint", false));
+        var parentless = simple("loose_parents");
+        var child = simple("child_tbl", col("loose_parent_id", "bigint", false));
+        var poly = simple("poly_tbl", col("scope_type", "varchar", false), col("scope_id", "bigint", false));
+        Map<String, String> files = render(List.of(users, orphan, parentless, child, poly), List.of(),
+                Map.of("users", "user", "child_tbl", "blog", "poly_tbl", "blog"));
+        // 参照元が _unmapped
+        assertThat(files.get("user.md"))
+                .contains("| [_unmapped](_unmapped.md) | `orphan_tbl` | `user_id` | ID参照 | `users` |");
+        // 参照先が _unmapped
+        assertThat(files.get("_unmapped.md"))
+                .contains("| [blog](blog.md) | `child_tbl` | `loose_parent_id` | ID参照 | `loose_parents` |");
+        // 多態参照は載らない
+        assertThat(files.get("_unmapped.md")).doesNotContain("scope_id");
+        assertThat(files.get("README.md")).contains("参照元としても参照先としても被参照に載る");
     }
 
     // ─── AC-10 / 11 / 12 ───
