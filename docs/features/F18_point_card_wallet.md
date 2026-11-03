@@ -483,6 +483,8 @@ INDEX idx_pcgi_card (card_id)                        -- カード削除時の中
 
 ### 5.6 ER 図
 
+> 現在のスキーマは [pointcard](../architecture/er/pointcard.md)（実スキーマからの自動生成）を参照。この図は設計時点の意図。
+
 ```mermaid
 erDiagram
     users ||--o{ user_point_cards : "user_id CASCADE"
