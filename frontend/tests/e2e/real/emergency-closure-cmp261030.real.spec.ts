@@ -178,7 +178,7 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  for (const c of contexts) await c.close().catch(() => {})
+  for (const c of contexts) await c.close().catch(e => console.log('[後始末] context close 失敗', String(e)))
   try {
     if (!team) throw new Error('team 未作成のため DB 後始末は不要')
     // 作成元が確認できる（このチームのスコープ）通知・休業・予約データのみ、チーム ID 指定で削除する
@@ -402,8 +402,6 @@ test('ロール DEPUTY_ADMIN: 緊急休業の導線があり、理由必須・�
   await shot(page, 'role-deputy-sent')
 })
 
-/** red 確認用の差分（通常は 0）。件数の期待を実測より多くして落ちることを確かめるために使う */
-const EC_EXTRA_PERMS = Number(process.env.EC_EXTRA_PERMS ?? 0)
 const apiPath = (suffix: string) => `/api/v1/teams/${team.slug}${suffix}`
 const waitApi = (page: Page, suffix: string) =>
   page.waitForResponse(r => r.request().method() === 'GET' && new URL(r.url()).pathname === apiPath(suffix), { timeout: 150_000 })
@@ -430,7 +428,7 @@ test('ロール MEMBER(負): 緊急休業のタブ・送信ボタンが出ない
       await settings
       await Promise.all(bodies)
       roleLog.push(`[MEMBER] me/permissions 応答=${JSON.stringify(perms)}`)
-      expect(perms.length, '親シェルとパネルの権限応答が両方あること').toBeGreaterThanOrEqual(2 + EC_EXTRA_PERMS)
+      expect(perms.length, '親シェルとパネルの権限応答が両方あること').toBeGreaterThanOrEqual(2)
       expect(perms.every(p => p.status === 200), `権限応答がすべて 200: ${JSON.stringify(perms)}`).toBe(true)
       expect(perms.every(p => p.roleName === 'MEMBER'), `roleName がすべて MEMBER: ${JSON.stringify(perms)}`).toBe(true)
       await expect(page.getByRole('tab', { name: '予約する' })).toBeVisible({ timeout: 150_000 })
@@ -462,7 +460,7 @@ test('ロール SYSTEM_ADMIN: 挙動を記録する（テナントの通常ア�
   // 予約画面の本体（予約する タブ）が出るまで待つ。緊急休業タブの有無は記録のみ（仕様判断は殿）
   await expect(page.getByRole('tab', { name: '予約する' })).toBeVisible({ timeout: 150_000 })
   // 緊急休業タブは権限取得後に出るため、最大60秒待つ（出なければ 0 件として記録。この試験は記録のみで合否に使わない）
-  await page.getByRole('tab', { name: '緊急休業' }).waitFor({ state: 'visible', timeout: 60_000 }).catch(() => {})
+  await page.getByRole('tab', { name: '緊急休業' }).waitFor({ state: 'visible', timeout: 60_000 }).then(() => true, () => false)
   const hasTab = await page.getByRole('tab', { name: '緊急休業' }).count()
   const body = (await page.locator('body').innerText()).replace(/\s+/g, ' ').slice(0, 160)
   roleLog.push(`[SYSTEM_ADMIN] /teams/${team.slug}/reservations -> ${new URL(page.url()).pathname} tab=${hasTab} body="${body}"`)
