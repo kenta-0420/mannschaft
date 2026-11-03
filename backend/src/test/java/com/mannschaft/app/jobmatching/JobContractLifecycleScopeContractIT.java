@@ -329,17 +329,18 @@ class JobContractLifecycleScopeContractIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("4. JobCheckInController#recordCheckIn — Worker 本人以外は 403")
+    @DisplayName("4. JobCheckInController#recordCheckIn — 非当事者は 404、Worker でない当事者は 403")
     class RecordCheckIn {
 
         @Test
-        @DisplayName("POST /api/v1/jobs/check-ins: 第三者は403（トークン検証より前に当事者判定で拒否）")
-        void 第三者のチェックインは403() throws Exception {
+        @DisplayName("POST /api/v1/jobs/check-ins: 第三者は契約不在と同一の404（ロック・トークン検証より前に閲覧ガードで拒否。CMP-260821-1027）")
+        void 第三者のチェックインは404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/jobs/check-ins")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(checkInBody()))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("JOB_CONTRACT_NOT_FOUND"));
             assertNoCheckInRecorded();
         }
 

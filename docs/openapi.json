@@ -85397,16 +85397,6 @@
               }
             }
           },
-          "403": {
-            "description": "発行権限なし（Requester 本人以外）",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseQrTokenResponse"
-                }
-              }
-            }
-          },
           "404": {
             "description": "契約が見つからない",
             "content": {
@@ -149015,16 +149005,6 @@
           },
           "204": {
             "description": "該当トークン無し",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseQrTokenResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "閲覧権限なし",
             "content": {
               "*/*": {
                 "schema": {
