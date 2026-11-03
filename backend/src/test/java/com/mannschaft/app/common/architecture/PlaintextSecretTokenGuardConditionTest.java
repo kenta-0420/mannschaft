@@ -6,6 +6,7 @@ import com.mannschaft.app.common.architecture.PlaintextSecretTokenGuardRules.Gua
 import com.mannschaft.app.common.architecture.plaintexttoken.CsvPreviewLikeFixtureService;
 import com.mannschaft.app.common.architecture.plaintexttoken.ExemptedSecretFixtureEntity;
 import com.mannschaft.app.common.architecture.plaintexttoken.ExemptedSecretFixtureRepository;
+import com.mannschaft.app.common.architecture.plaintexttoken.FlowSelfIssuingFixtureService;
 import com.mannschaft.app.common.architecture.plaintexttoken.HashedTokenFixtureEntity;
 import com.mannschaft.app.common.architecture.plaintexttoken.HashedTokenFixtureRepository;
 import com.mannschaft.app.common.architecture.plaintexttoken.IssuedTokenHoldingFixtureEntity;
@@ -135,7 +136,7 @@ class PlaintextSecretTokenGuardConditionTest {
         @DisplayName("陽性（AC-27）: 他の戦役の cmp を名乗る @PlaintextTokenDebt は免除にならない")
         void foreignDebtCmpIsNotExemption() {
             assertListed(result.violations(), field(MisdeclaredExemptionFixtureEntity.class, "previewToken"),
-                    "cmp が CMP-260826-1457 でない債務注釈");
+                    "cmp が台帳に未登録または完了済み債務注釈");
         }
 
         @Test
@@ -286,7 +287,7 @@ class PlaintextSecretTokenGuardConditionTest {
         @DisplayName("陽性（AC-27）: 他の戦役の cmp を名乗る債務注釈のメソッドは免除にならない")
         void foreignDebtMethodIsViolation() {
             assertListed(result.violations(), method(SelfIssuingFixtureService.class, "issueUnderForeignDebt"),
-                    "cmp が CMP-260826-1457 でない");
+                    "cmp が台帳に未登録または完了済み");
         }
 
         @Test
@@ -347,6 +348,96 @@ class PlaintextSecretTokenGuardConditionTest {
                     "setTokenExpiresAt は String/char[] を受け取らない");
             assertListed(result.inspected(), method(SelfIssuingFixtureService.class, "stampCorrelation"),
                     "自前乱数を呼ぶメソッドとして検査対象には拾う");
+        }
+    }
+
+    @Nested
+    @DisplayName("番人3 の値の流れ（メソッド内の分岐合流・配列の別名）と既知の偽陰性")
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class SelfIssuedFlow {
+
+        private GuardResult result;
+
+        @BeforeAll
+        void evaluate() {
+            result = PlaintextSecretTokenGuardRules.selfIssuedTokens(fixtureClasses);
+        }
+
+        @Test
+        @DisplayName("陽性: if/else の一方で乱数、他方で固定値を代入して合流しても違反")
+        void branchMergeIsViolation() {
+            assertListed(result.violations(), method(FlowSelfIssuingFixtureService.class, "issueWithBranchMerge"),
+                    "else 枝のきれいな代入で乱数由来の印が消えてはならない");
+            assertListed(result.violations(),
+                    method(FlowSelfIssuingFixtureService.class, "issueWithBranchMergeOverwrite"),
+                    "分岐の中で固定値に上書きする枝があっても、もう一方は乱数");
+        }
+
+        @Test
+        @DisplayName("陽性: 三項演算子で乱数と固定値が合流しても違反")
+        void ternaryMergeIsViolation() {
+            assertListed(result.violations(), method(FlowSelfIssuingFixtureService.class, "issueWithTernary"),
+                    "合流したスタックの印の和集合をとる");
+        }
+
+        @Test
+        @DisplayName("陽性: 乱数を詰める配列の別名から取り出した値も違反")
+        void arrayAliasIsViolation() {
+            assertListed(result.violations(), method(FlowSelfIssuingFixtureService.class, "issueWithArrayAlias"),
+                    "nextBytes(bytes) のあと alias から取り出す");
+        }
+
+        @Test
+        @DisplayName("陰性: UUID が相関 ID にだけ届き、token 系は固定値同士の三項演算子なら違反でない")
+        void cleanTernaryIsNotViolation() {
+            String id = method(FlowSelfIssuingFixtureService.class, "ternaryCleanTokenWithCorrelationUuid");
+            assertNotListed(result.violations(), id, "token 系へ届く値は乱数由来でない");
+            assertListed(result.inspected(), id, "自前乱数を呼ぶメソッドとして検査対象には拾う");
+        }
+
+        /**
+         * 既知の偽陰性（2026-11-03 殿裁定）。番人3の追跡はメソッドの内側だけで、メソッドをまたぐ流れは見逃す。
+         * 将来これらを検出できるようになったら、{@code assertNotListed} を {@code assertListed} に反転すること。
+         */
+        @Test
+        @DisplayName("既知の偽陰性: 生成ヘルパ・書込みヘルパを経由した乱数の流れは検出されない（検出できるようになったら反転）")
+        void crossMethodFlowsAreKnownFalseNegatives() {
+            assertNotListed(result.violations(), method(FlowSelfIssuingFixtureService.class, "issueViaGeneratorHelper"),
+                    "既知の限界: 乱数の生成ヘルパの戻り値");
+            assertNotListed(result.violations(), method(FlowSelfIssuingFixtureService.class, "issueViaWriterHelper"),
+                    "既知の限界: 乱数を書込みヘルパへ渡す");
+        }
+    }
+
+    @Nested
+    @DisplayName("債務注釈の cmp 検査: 台帳に登録された未完了の CMP ID だけを許す")
+    class DebtCmpValidation {
+
+        private static final String LEDGER = String.join("\n",
+                "| ID | 戦役 | 状態 | 依存 | 完了条件 | 証拠(PR/テスト) | 台帳 |",
+                "| CMP-260101-0001 | 実装中の戦役 | 実装中 | — | 条件 | — | — |",
+                "| CMP-260101-0002 | 完了した戦役 | 完了（2026-10-21） | — | 条件 | — | — |",
+                "| CMP-260101-0003 | 半角括弧の完了 | 完了(2026-10-10) | — | 条件 | — | — |",
+                "| CMP-260101-0004 | 戦役名に \\| を含む | 未着手 | — | 条件 | — | — |",
+                "| CMP-005 | 旧連番形式 | 対応中 | — | 条件 | — | — |");
+
+        @Test
+        @DisplayName("許可: 登録済みで未完了の ID（日時形式・旧連番形式・戦役名に | を含む行）")
+        void openRegisteredIdsAreAccepted() {
+            for (String id : List.of("CMP-260101-0001", "CMP-260101-0004", "CMP-005")) {
+                assertThat(PlaintextSecretTokenGuardRules.isOpenRegisteredCmp(id, LEDGER))
+                        .as("%s は登録済みで未完了", id).isTrue();
+            }
+        }
+
+        @Test
+        @DisplayName("拒否: 完了済み・未登録・任意の文字列")
+        void completedUnregisteredAndArbitraryIdsAreRejected() {
+            for (String id : List.of("CMP-260101-0002", "CMP-260101-0003", "CMP-999999-0000", "OTHER-CMP", "",
+                    "CMP-2601")) {
+                assertThat(PlaintextSecretTokenGuardRules.isOpenRegisteredCmp(id, LEDGER))
+                        .as("%s は拒否", id).isFalse();
+            }
         }
     }
 

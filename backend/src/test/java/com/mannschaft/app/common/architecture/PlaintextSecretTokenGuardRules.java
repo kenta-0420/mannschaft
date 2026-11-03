@@ -17,9 +17,14 @@ import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.Transient;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -85,12 +90,35 @@ import org.springframework.data.repository.Repository;
  * </ol>
  *
  * <p><b>有効な免除注釈</b>: {@code @PlaintextSecretRequired}（{@code reason} が空白以外の文字を含む）または
- * {@code @PlaintextTokenDebt}（{@code cmp} が {@link #DEBT_CMP} と一致）。無効な免除注釈が付いた要素は免除されず違反になる。</p>
+ * {@code @PlaintextTokenDebt}（{@code cmp} が {@code docs/task-list.md} に登録された CMP ID で、状態が完了でないもの。
+ * {@link #isOpenRegisteredCmp}）。任意の文字列・未登録の ID・完了済みの戦役は無効で、
+ * 無効な免除注釈が付いた要素は免除されず違反になる。</p>
+ *
+ * <h2>番人3の既知の限界（偽陰性。2026-11-03 殿裁定）</h2>
+ * <p>番人3の値の流れの追跡は<b>メソッドの内側だけ</b>である。メソッド内の流れは追う
+ * （ローカル変数・分岐の合流［if/else・三項演算子］・乱数を詰めた配列の別名）。
+ * 一方、<b>メソッドをまたぐ流れは追えず見逃す</b>:</p>
+ * <ul>
+ *   <li>乱数の生成ヘルパ: 別メソッドが {@code UUID.randomUUID()} を返し、呼び出し側がその戻り値を token 系に詰める形</li>
+ *   <li>書込みヘルパ: 乱数を引数に別メソッドを呼び、そのメソッドの中で Entity の token 系に詰める形</li>
+ * </ul>
+ * <p>これらは {@link PlaintextSecretTokenGuardConditionTest} に「既知の偽陰性」として、検出されないことを固定する試験を置く。
+ * 将来検出できるようになったら、その試験の期待値を反転する。ソースの字句解析で補う案は棄却済み。</p>
  */
 final class PlaintextSecretTokenGuardRules {
 
-    /** {@code @PlaintextTokenDebt} の {@code cmp} として唯一許される値。 */
-    static final String DEBT_CMP = "CMP-260826-1457";
+    /** 台帳（リポジトリルートからの相対パス）。債務注釈の {@code cmp} はここに登録された未完了の戦役でなければならない。 */
+    private static final Path TASK_LIST_RELATIVE = Paths.get("docs", "task-list.md");
+
+    /** 台帳の表の行から ID と状態（第3列）を取り出す。戦役名の列に {@code \|} が含まれても列を取り違えない。 */
+    private static final Pattern LEDGER_ROW = Pattern.compile(
+            "(?m)^\\|\\s*(CMP-\\d{6}-\\d{4}|CMP-\\d+)\\s*\\|(?:\\\\\\||[^|])*\\|\\s*([^|]*?)\\s*\\|");
+
+    /** 台帳で「完了」を表す状態の接頭辞（完了（日付）・完了(日付) を含む）。 */
+    private static final String LEDGER_DONE_PREFIX = "完了";
+
+    /** 台帳の本文（初回に1度だけ読む）。 */
+    private static String ledgerContent;
 
     /** 合言葉を指す語彙（陣立て書 §2-4 番人1）。フィールド名・列名はどちらも snake_case に直してから判定する。 */
     private static final Pattern SECRET_VOCABULARY =
@@ -194,9 +222,49 @@ final class PlaintextSecretTokenGuardRules {
                 .orElse(false);
         boolean debt = element.tryGetAnnotationOfType(PlaintextTokenDebt.class.getName())
                 .flatMap(annotation -> annotation.get(EXEMPTION_CMP_PROP))
-                .map(DEBT_CMP::equals)
+                .map(value -> value instanceof String cmp && isOpenRegisteredCmp(cmp, ledger()))
                 .orElse(false);
         return required || debt;
+    }
+
+    /**
+     * {@code cmp} が台帳に登録された CMP ID で、状態が完了でないか。
+     *
+     * @param cmp    債務注釈の {@code cmp}
+     * @param ledger {@code docs/task-list.md} の本文
+     * @return 登録済みかつ未完了なら true
+     */
+    static boolean isOpenRegisteredCmp(String cmp, String ledger) {
+        Matcher matcher = LEDGER_ROW.matcher(ledger);
+        while (matcher.find()) {
+            if (matcher.group(1).equals(cmp)) {
+                return !matcher.group(2).startsWith(LEDGER_DONE_PREFIX);
+            }
+        }
+        return false;
+    }
+
+    private static synchronized String ledger() {
+        if (ledgerContent == null) {
+            Path path = null;
+            for (Path candidate : new Path[]{TASK_LIST_RELATIVE, Paths.get("..").resolve(TASK_LIST_RELATIVE),
+                    Paths.get("backend").resolve(TASK_LIST_RELATIVE)}) {
+                if (Files.isRegularFile(candidate)) {
+                    path = candidate;
+                    break;
+                }
+            }
+            if (path == null) {
+                throw new IllegalStateException("docs/task-list.md が見つからない（債務注釈の cmp を検証できない）。CWD="
+                        + Paths.get("").toAbsolutePath());
+            }
+            try {
+                ledgerContent = Files.readString(path, StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                throw new IllegalStateException("docs/task-list.md を読めません: " + path, e);
+            }
+        }
+        return ledgerContent;
     }
 
     /** 免除注釈が付いているが無効（cmp 違い・reason 空）か。形に関係なく常に違反として扱う（AC-27）。 */
@@ -270,7 +338,7 @@ final class PlaintextSecretTokenGuardRules {
             for (JavaField field : type.getFields()) {
                 // 免除注釈の検証は列の種類（ハッシュ列・語彙に一致しない列）に関係なく、付いていれば必ず行う
                 if (hasInvalidExemption(field)) {
-                    out.violations.add(fieldId(field) + " 無効な免除注釈（cmp が CMP-260826-1457 でない、または reason が空）");
+                    out.violations.add(fieldId(field) + " 無効な免除注釈（cmp が台帳に未登録または完了済み、または reason が空）");
                 }
                 if (!isSecretCandidate(field)) {
                     continue;
@@ -415,7 +483,7 @@ final class PlaintextSecretTokenGuardRules {
             Map<String, Set<String>> taintedCalls = null;
             for (JavaMethod method : type.getMethods()) {
                 if (hasInvalidExemption(method)) {
-                    out.violations.add(methodId(method) + " 無効な免除注釈（cmp が CMP-260826-1457 でない、または reason が空）");
+                    out.violations.add(methodId(method) + " 無効な免除注釈（cmp が台帳に未登録または完了済み、または reason が空）");
                 }
                 if (!callsSelfRandom(method)) {
                     continue;
@@ -501,7 +569,7 @@ final class PlaintextSecretTokenGuardRules {
             Map<String, Set<String>> constants = null;
             for (JavaMethod method : type.getMethods()) {
                 if (hasInvalidExemption(method)) {
-                    out.violations.add(methodId(method) + " 無効な免除注釈（cmp が CMP-260826-1457 でない、または reason が空）");
+                    out.violations.add(methodId(method) + " 無効な免除注釈（cmp が台帳に未登録または完了済み、または reason が空）");
                 }
                 if (!callsSelfRandom(method)) {
                     continue;
@@ -589,7 +657,11 @@ final class PlaintextSecretTokenGuardRules {
      *
      * <p>メソッド内の命令列を上から1回なぞる簡易な値の流れ追跡で、オペランドスタックとローカル変数に「乱数由来か」の印を持つ。
      * 呼び出しの戻り値は、引数かレシーバのどれかが乱数由来なら乱数由来とする（{@code toString}・ハッシュ化・連結を貫通する）。
-     * 分岐は読まないので、三項演算子などでスタックが1つ余ることがあるが、余りは下に残るだけで判定を狂わせない。
+     * 分岐の合流は、前方ジャンプの時点のスタックを覚えておき、ジャンプ先のラベルで復元（直前が無条件ジャンプ等のとき）または
+     * 乱数由来の印の和集合（落ちてきたとき）をとって合わせる（三項演算子・if/else の値が合流しても印が消えない）。
+     * 未到達のラベルが残っている間（分岐の内側）は、きれいな値の代入でローカル変数の印を外さない。
+     * 乱数を詰める配列の別名（{@code byte[] b = a;}）は同じ配列として扱い、片方へ印が付けば他方にも付く。
+     * 追うのはメソッドの内側だけで、メソッドをまたぐ流れは追えない（既知の限界。クラス Javadoc 参照）。
      * 判定が追えない形（配列がローカル変数でない）では {@link #ANY_CALL} を入れ、同居だけで違反とする側に倒す。</p>
      *
      * <p>JTI のように token 系でない名前の書込み（{@code jti}・{@code jwtId} 等）へ UUID を渡すだけの発行は、
@@ -624,10 +696,96 @@ final class PlaintextSecretTokenGuardRules {
         private final Set<String> reachedCalls;
         private final Deque<Operand> stack = new ArrayDeque<>();
         private final Set<Integer> taintedLocals = new HashSet<>();
+        /** 同じ配列を指すローカル変数の集まり（別名）。変数番号 → 同じ集まりを共有する Set。 */
+        private final Map<Integer, Set<Integer>> aliases = new HashMap<>();
+        /** 前方ジャンプの時点のスタック（ラベル → 上から順の要素）。ラベルに着いたら消す。残っている間は分岐の内側。 */
+        private final Map<Label, List<Operand>> pendingJumps = new IdentityHashMap<>();
+        private final Set<Label> visitedLabels = Collections.newSetFromMap(new IdentityHashMap<>());
+        private final Set<Label> handlerLabels = Collections.newSetFromMap(new IdentityHashMap<>());
+        /** 直前の命令が無条件ジャンプ・return・throw で、次の命令へは落ちてこないか。 */
+        private boolean unreachable;
 
         RandomTaintTracker(Set<String> reachedCalls) {
             super(SpringAsmInfo.ASM_VERSION);
             this.reachedCalls = reachedCalls;
+        }
+
+        /** 変数 {@code slot} と、その別名すべてに乱数由来の印を付ける。 */
+        private void taintSlot(int slot) {
+            taintedLocals.add(slot);
+            Set<Integer> group = aliases.get(slot);
+            if (group != null) {
+                taintedLocals.addAll(group);
+            }
+        }
+
+        /** 変数 {@code slot} を別名の集まりから外す（別の値を代入したとき）。 */
+        private void detachAlias(int slot) {
+            Set<Integer> group = aliases.remove(slot);
+            if (group != null) {
+                group.remove(slot);
+            }
+        }
+
+        private void joinAlias(int slot, int source) {
+            Set<Integer> group = aliases.computeIfAbsent(source, key -> new HashSet<>(Set.of(source)));
+            group.add(slot);
+            aliases.put(slot, group);
+        }
+
+        private void recordSwitchTargets(Label dflt, Label... labels) {
+            recordJump(dflt);
+            for (Label label : labels) {
+                recordJump(label);
+            }
+            unreachable = true;
+        }
+
+        private void recordJump(Label target) {
+            if (visitedLabels.contains(target)) {
+                return;
+            }
+            List<Operand> snapshot = new ArrayList<>(stack);
+            pendingJumps.merge(target, snapshot, RandomTaintTracker::mergeStacks);
+        }
+
+        /** 同じ深さのスタックは要素ごとに印の和集合をとる。深さが違うときは先のものを残す。 */
+        private static List<Operand> mergeStacks(List<Operand> first, List<Operand> second) {
+            if (first.size() != second.size()) {
+                return first;
+            }
+            List<Operand> merged = new ArrayList<>(first.size());
+            for (int i = 0; i < first.size(); i++) {
+                Operand a = first.get(i);
+                Operand b = second.get(i);
+                merged.add(Operand.of(a.tainted() || b.tainted(), a.wide()));
+            }
+            return merged;
+        }
+
+        private void replaceStack(List<Operand> top2bottom) {
+            stack.clear();
+            for (int i = top2bottom.size() - 1; i >= 0; i--) {
+                stack.push(top2bottom.get(i));
+            }
+        }
+
+        @Override
+        public void visitTryCatchBlock(Label start, Label end, Label handler, String type) {
+            handlerLabels.add(handler);
+        }
+
+        @Override
+        public void visitLabel(Label label) {
+            visitedLabels.add(label);
+            List<Operand> snapshot = pendingJumps.remove(label);
+            if (snapshot != null) {
+                replaceStack(unreachable ? snapshot : mergeStacks(new ArrayList<>(stack), snapshot));
+            } else if (handlerLabels.contains(label)) {
+                stack.clear();
+                push(Operand.clean());
+            }
+            unreachable = false;
         }
 
         private Operand pop() {
@@ -664,10 +822,14 @@ final class PlaintextSecretTokenGuardRules {
                     pop();
                     Operand array = pop();
                     if (value.tainted() && array.slot() != NO_LOCAL_SLOT) {
-                        taintedLocals.add(array.slot());
+                        taintSlot(array.slot());
                     }
                 }
-                case Opcodes.POP, Opcodes.ATHROW, Opcodes.MONITORENTER, Opcodes.MONITOREXIT -> pop();
+                case Opcodes.ATHROW -> {
+                    pop();
+                    unreachable = true;
+                }
+                case Opcodes.POP, Opcodes.MONITORENTER, Opcodes.MONITOREXIT -> pop();
                 case Opcodes.POP2 -> {
                     if (!pop().wide()) {
                         pop();
@@ -713,7 +875,10 @@ final class PlaintextSecretTokenGuardRules {
                     push(Operand.of(value.tainted(), value.wide()));
                 }
                 case Opcodes.RETURN, Opcodes.IRETURN, Opcodes.LRETURN, Opcodes.FRETURN, Opcodes.DRETURN,
-                     Opcodes.ARETURN -> stack.clear();
+                     Opcodes.ARETURN -> {
+                    stack.clear();
+                    unreachable = true;
+                }
                 default -> visitArithmetic(opcode);
             }
         }
@@ -746,10 +911,15 @@ final class PlaintextSecretTokenGuardRules {
         public void visitVarInsn(int opcode, int varIndex) {
             if (opcode >= Opcodes.ISTORE && opcode <= Opcodes.ASTORE) {
                 Operand value = pop();
+                detachAlias(varIndex);
+                if (opcode == Opcodes.ASTORE && value.slot() != NO_LOCAL_SLOT && value.slot() != varIndex) {
+                    joinAlias(varIndex, value.slot());
+                }
                 if (value.tainted()) {
-                    taintedLocals.add(varIndex);
-                } else {
-                    // javac はスコープの終わった変数の番号を使い回すので、きれいな値の代入では印を外す
+                    taintSlot(varIndex);
+                } else if (pendingJumps.isEmpty()) {
+                    // javac はスコープの終わった変数の番号を使い回すので、きれいな値の代入では印を外す。
+                    // ただし分岐の内側（未到達の前方ジャンプがある間）は、別の枝の乱数由来の値が合流しうるので外さない
                     taintedLocals.remove(varIndex);
                 }
             } else if (opcode >= Opcodes.ILOAD && opcode <= Opcodes.ALOAD) {
@@ -823,7 +993,7 @@ final class PlaintextSecretTokenGuardRules {
         private void markArrayArgumentsTainted(Operand[] arguments) {
             for (Operand argument : arguments) {
                 if (argument.slot() != NO_LOCAL_SLOT) {
-                    taintedLocals.add(argument.slot());
+                    taintSlot(argument.slot());
                 } else {
                     reachedCalls.add(ANY_CALL);
                 }
@@ -851,6 +1021,10 @@ final class PlaintextSecretTokenGuardRules {
             } else if (oneOperand) {
                 pop();
             }
+            recordJump(label);
+            if (opcode == Opcodes.GOTO) {
+                unreachable = true;
+            }
         }
 
         @Override
@@ -861,11 +1035,13 @@ final class PlaintextSecretTokenGuardRules {
         @Override
         public void visitTableSwitchInsn(int min, int max, Label dflt, Label... labels) {
             pop();
+            recordSwitchTargets(dflt, labels);
         }
 
         @Override
         public void visitLookupSwitchInsn(Label dflt, int[] keys, Label[] labels) {
             pop();
+            recordSwitchTargets(dflt, labels);
         }
 
         @Override

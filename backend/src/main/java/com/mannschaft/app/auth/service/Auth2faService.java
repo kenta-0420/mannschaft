@@ -241,7 +241,7 @@ public class Auth2faService {
      * @param mfaSessionToken MFAセッショントークン
      * @return メッセージレスポンス
      */
-    @PlaintextTokenDebt(cmp = "CMP-260826-1457") // ハッシュ保存済みだが乱数源が UUID で金庫（SecretTokenVault）未使用。金庫への統合が債務
+    @PlaintextTokenDebt(cmp = "CMP-261103-2059") // ハッシュ保存済みだが乱数源が UUID で金庫（SecretTokenVault）未使用。金庫への統合が債務
     @Transactional
     public ApiResponse<MessageResponse> requestMfaRecovery(String mfaSessionToken) {
         // MFAセッショントークンからuserIdを取得（削除はしない。リカバリーフローで再利用可能にする）

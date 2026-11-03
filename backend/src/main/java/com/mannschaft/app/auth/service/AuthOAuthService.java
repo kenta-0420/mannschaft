@@ -100,7 +100,7 @@ public class AuthOAuthService {
      * @param userAgent         ユーザーエージェント
      * @return トークンレスポンスまたはOAuth競合レスポンス
      */
-    @PlaintextTokenDebt(cmp = "CMP-260826-1457") // ハッシュ保存済みだが乱数源が UUID で金庫（SecretTokenVault）未使用。金庫への統合が債務
+    @PlaintextTokenDebt(cmp = "CMP-261103-2059") // ハッシュ保存済みだが乱数源が UUID で金庫（SecretTokenVault）未使用。金庫への統合が債務
     @Transactional
     public ApiResponse<?> loginWithOAuth(
             String provider, String authorizationCode, String ipAddress, String userAgent) {
