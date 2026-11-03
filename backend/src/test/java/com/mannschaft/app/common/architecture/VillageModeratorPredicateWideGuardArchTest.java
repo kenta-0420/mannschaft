@@ -117,7 +117,10 @@ class VillageModeratorPredicateWideGuardArchTest {
     void 実ソース_生述語利用者と許可リストが実在する() {
         Map<String, Facts> facts = analyze(importVillage());
         long rawUsers = facts.values().stream().filter(f -> f.callsRaw).count();
-        assertThat(rawUsers).isGreaterThanOrEqualTo(10);
+        // 下限は実数に合わせる。CMP-260827-1808 で村参加（join）の既所属検出が、生述語から
+        // VillageMembershipSlotService#ensureNotCurrentMember（退村扱いの BAN 行も含む行ロック付き current read）へ
+        // 移ったため 10 → 9 に減った。安全な述語への移行による正当な減少で、0 件化による空振りの検出は維持する。
+        assertThat(rawUsers).isGreaterThanOrEqualTo(9);
         for (String allowed : ALLOWED_WITHOUT_BAN_CHECK.keySet()) {
             assertThat(bySignature(facts, allowed).callsRaw).as(allowed + " は生述語を使っている").isTrue();
         }

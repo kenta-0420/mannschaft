@@ -1171,6 +1171,7 @@ commit して戻った後にだけ SUCCESS を保存する。対象0件でも SU
 | `village_reports` | `reporter_user_id` | 保持 | 通報・モデレーション証跡（被通報者・通報者の記録は運営判断の根拠） |
 | `village_representatives` | `granted_by_user_id` / `representative_user_id` / `revoked_by_user_id` | 保持 | 共有物の作成者・行為者参照（行は共有物そのもの） |
 | `village_serendipity_scores` | `user_id` | 要裁可 | 村の個人化データ（配信停止・推薦・スコア） |
+| `village_user_admission_locks` | `user_id` | 強消去 | CMP-260827-1808 で追加した入村の USER 単位直列化ロック行（業務データを持たず user_id と時刻のみ）。退会30日後の強匿名化で所有列一括DELETE（御裁可済）。village ドメイン `VillagePersonalSettingsPurgeEventListener` |
 | `villages` | `created_by_user_id` | 保持 | 共有物の作成者・行為者参照（行は共有物そのもの） |
 | `visibility_templates` | `owner_user_id` | 強消去 | `VisibilityTemplatePurgeEventListener`（退会者所有のカスタムのみ） |
 | `warning_re_reviews` | `user_id` | 保持 | 通報・モデレーション証跡（被通報者・通報者の記録は運営判断の根拠） |
