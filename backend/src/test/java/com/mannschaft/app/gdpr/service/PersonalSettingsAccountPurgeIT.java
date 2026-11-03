@@ -84,7 +84,9 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
             // CMP-260822-1243 第2陣（御裁可済）: 個人に属する残表と村 pin/nickname
             "member_availability_defaults", "parking_watchlist", "reflection_spaced_reminders",
             "user_ad_preferences", "property_work_history_views", "user_village_pins",
-            "user_village_nicknames")).toList();
+            "user_village_nicknames",
+            // CMP-260827-1808（御裁可済）: 入村の USER 単位直列化ロック行
+            "village_user_admission_locks")).toList();
     private static final List<String> SETTING_DOMAINS = List.of(
             "actionmemo", "pointcard", "timeline", "search", "dashboard", "scopefolder", "schedule", "quickmemo",
             "auth", "notification", "filesharing", "contact", "user", "appearance", "navsettings", "gamification",
@@ -864,6 +866,8 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
             insert("user_village_nicknames", "id,user_id,nickname,last_changed_at,change_count_this_month,"
                             + "created_at,updated_at",
                     binaryUuid() + "," + owner + ",'cmp1243_" + owner + "',NOW(),0,NOW(),NOW()");
+            insert("village_user_admission_locks", "id,user_id,locked_at",
+                    binaryUuid() + "," + owner + ",NOW()");
             List<Long> folders = scopeFolderIds(owner);
             for (Long folder : folders) {
                 insert("my_scope_folder_items", "folder_id,scope_id,sort_order,assigned_via,created_at",
