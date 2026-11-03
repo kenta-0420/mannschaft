@@ -48,6 +48,7 @@
       "sent_at": "전송 일시",
       "reason": "이유",
       "count": "건수",
+      "count_value": "{count}건",
       "confirmation_status": "확인 현황",
       "appointment_at": "예약 일시",
       "confirmed_header": "확인",

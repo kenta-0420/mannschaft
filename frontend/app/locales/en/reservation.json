@@ -48,6 +48,7 @@
       "sent_at": "Sent At",
       "reason": "Reason",
       "count": "Count",
+      "count_value": "{count} sent",
       "confirmation_status": "Confirmation Status",
       "appointment_at": "Appointment Date/Time",
       "confirmed_header": "Confirmed",

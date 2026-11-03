@@ -29,7 +29,28 @@ const beRow = {
 }
 
 describe('EmergencyClosureHistory 送信件数タグ', () => {
-  it('AC-3/4: sentCount=3 の行が「3件」と描画され undefined を含まない', async () => {
+  it('AC-15: 件数タグは i18n キー（count 付き）で描画され、日本語の直書き「件」が混ざらない（環境ロケール en）', async () => {
+    const wrapper = await mountSuspended(EmergencyClosureHistory, {
+      props: {
+        loading: false,
+        items: [{ ...beRow, sentCount: 12 }] as unknown as ClosureHistoryItem[],
+        expandedClosureId: null,
+        confirmations: [],
+        confirmedCount: 0,
+        totalCount: 0,
+        confirmationsLoading: false,
+        connectionState: 'LIVE',
+        formatDate: (iso: string) => iso,
+      },
+    })
+
+    const tag = wrapper.find('tbody tr td:nth-child(4)')
+    expect(tag.text()).toBe('12 sent')
+    expect(tag.text()).not.toContain('件')
+    wrapper.unmount()
+  }, 120000)
+
+  it('AC-3/4: sentCount=3 の行が件数タグに「3」を含んで描画され undefined を含まない', async () => {
     const wrapper = await mountSuspended(EmergencyClosureHistory, {
       props: {
         loading: false,
@@ -45,7 +66,7 @@ describe('EmergencyClosureHistory 送信件数タグ', () => {
     })
 
     const text = wrapper.text()
-    expect(text).toContain('3件')
+    expect(text).toContain('3 sent')
     expect(text).not.toContain('undefined')
     wrapper.unmount()
   }, 60000)
