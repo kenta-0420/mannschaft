@@ -365,9 +365,10 @@ for (const vp of [{ name: '390x844', width: 390, height: 844 }, { name: '1440x90
 /**
  * 負の視点を記録する。「読み込み前にタブが無いだけ」の偽合格を避けるため、必ず「期待する到達状態」を明示的に待ってから
  * タブ・送信ボタン 0 件を assert する。
- *  - settled: 画面が確定した証拠を待つ関数（権限 API の応答＋本体要素の可視 / 拒否文言 / 遷移先 URL）
+ *  - arm: goto の前に応答の待ち受けを仕掛け、画面が確定した証拠を待つ関数を返す（API 応答の assert / 拒否文言 / 遷移先 URL）
  */
-async function recordNegativeView(page: Page, label: string, url: string, settled: () => Promise<void>): Promise<void> {
+async function recordNegativeView(page: Page, label: string, url: string, arm: () => () => Promise<void>): Promise<void> {
+  const settled = arm() // 応答の待ち受けは goto より前に仕掛ける
   await page.goto(url, { waitUntil: 'commit', timeout: 240_000 })
   await settled()
   const body = (await page.locator('body').innerText()).replace(/\s+/g, ' ').slice(0, 160)
@@ -401,25 +402,43 @@ test('ロール DEPUTY_ADMIN: 緊急休業の導線があり、理由必須・�
   await shot(page, 'role-deputy-sent')
 })
 
+const apiPath = (suffix: string) => `/api/v1/teams/${team.slug}${suffix}`
+const waitApi = (page: Page, suffix: string) =>
+  page.waitForResponse(r => r.request().method() === 'GET' && new URL(r.url()).pathname === apiPath(suffix), { timeout: 150_000 })
+
 test('ロール MEMBER(負): 緊急休業のタブ・送信ボタンが出ない。URL 直打ち(管理画面)でも操作できない', async ({ browser }) => {
   const { page } = await openSession(browser, MEMBER)
-  // 予約画面の本体（「予約する」タブ=一般メンバーに見えるタブ）が出て、かつ権限 API の応答が返ってから「緊急休業なし」を判定する
-  const permResp = page.waitForResponse(r => /\/teams\/[^/]+\/me\/permissions/.test(r.url()) && r.ok(), { timeout: 150_000 })
-  await recordNegativeView(page, 'MEMBER-reservations', `/teams/${team.slug}/reservations`, async () => {
-    await permResp
-    await expect(page.getByRole('tab', { name: '予約する' })).toBeVisible({ timeout: 150_000 })
+  await recordNegativeView(page, 'MEMBER-reservations', `/teams/${team.slug}/reservations`, () => {
+    // 親シェルと予約パネルは同じ GET /api/v1/teams/{slug}/me/permissions を呼ぶため、この応答だけではパネルの権限確定を保証できない。
+    // パネル(TeamReservationsPanel.onMounted)は「自分の権限取得 → GET .../reservation-settings → 呼称取得」の順に呼ぶため、
+    // パネル専用の reservation-settings 応答まで待てば、パネルの権限確定後であることが保証される。
+    const perm = waitApi(page, '/me/permissions')
+    const settings = waitApi(page, '/reservation-settings')
+    return async () => {
+      expect((await perm).status()).toBe(200)
+      await settings
+      await expect(page.getByRole('tab', { name: '予約する' })).toBeVisible({ timeout: 150_000 })
+      await page.waitForTimeout(2_000) // 描画の安定待ち
+    }
   })
-  await recordNegativeView(page, 'MEMBER-admin-reservations', `/teams/${team.slug}/admin/reservations`, settledRedirectedToTeamTop(page))
+  await recordNegativeView(page, 'MEMBER-admin-reservations', `/teams/${team.slug}/admin/reservations`, () => settledRedirectedToTeamTop(page))
 })
 
 test('ロール OUTSIDER 部外者(負): 対象チームの緊急休業が見えず、URL 直打ちでも弾かれる', async ({ browser }) => {
   const { page } = await openSession(browser, OUTSIDER)
-  // 拒否画面の文言を明示的に待つ（読み込み中の空白では合格させない）
-  await recordNegativeView(page, 'OUTSIDER-reservations', `/teams/${team.slug}/reservations`, async () => {
-    await expect(page.getByText('情報を取得できませんでした')).toBeVisible({ timeout: 150_000 })
-    await expect(page.getByRole('tab', { name: '予約する' })).toHaveCount(0)
+  await recordNegativeView(page, 'OUTSIDER-reservations', `/teams/${team.slug}/reservations`, () => {
+    // チーム取得 API(GET /api/v1/teams/{slug})の拒否応答を待つ。拒否文言は SSR 初期状態でも出るため、文言だけでは到達を保証できない
+    const teamResp = waitApi(page, '')
+    return async () => {
+      const status = (await teamResp).status()
+      roleLog.push(`[OUTSIDER] GET ${apiPath('')} status=${status}`)
+      expect(status).toBe(403)
+      await expect(page.getByText('情報を取得できませんでした')).toBeVisible({ timeout: 30_000 })
+      await expect(page.getByRole('tab', { name: '予約する' })).toHaveCount(0)
+      await page.waitForTimeout(2_000)
+    }
   })
-  await recordNegativeView(page, 'OUTSIDER-admin-reservations', `/teams/${team.slug}/admin/reservations`, settledRedirectedToTeamTop(page))
+  await recordNegativeView(page, 'OUTSIDER-admin-reservations', `/teams/${team.slug}/admin/reservations`, () => settledRedirectedToTeamTop(page))
 })
 test('ロール SYSTEM_ADMIN: 挙動を記録する（テナントの通常アカウントではない）', async ({ browser }) => {
   const { page } = await openSession(browser, SYSADMIN)
