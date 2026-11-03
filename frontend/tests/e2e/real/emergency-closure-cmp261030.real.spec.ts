@@ -402,6 +402,8 @@ test('ロール DEPUTY_ADMIN: 緊急休業の導線があり、理由必須・�
   await shot(page, 'role-deputy-sent')
 })
 
+/** red 確認用の差分（通常は 0）。件数の期待を実測より多くして落ちることを確かめるために使う */
+const EC_EXTRA_PERMS = Number(process.env.EC_EXTRA_PERMS ?? 0)
 const apiPath = (suffix: string) => `/api/v1/teams/${team.slug}${suffix}`
 const waitApi = (page: Page, suffix: string) =>
   page.waitForResponse(r => r.request().method() === 'GET' && new URL(r.url()).pathname === apiPath(suffix), { timeout: 150_000 })
@@ -412,11 +414,25 @@ test('ロール MEMBER(負): 緊急休業のタブ・送信ボタンが出ない
     // 親シェルと予約パネルは同じ GET /api/v1/teams/{slug}/me/permissions を呼ぶため、この応答だけではパネルの権限確定を保証できない。
     // パネル(TeamReservationsPanel.onMounted)は「自分の権限取得 → GET .../reservation-settings → 呼称取得」の順に呼ぶため、
     // パネル専用の reservation-settings 応答まで待てば、パネルの権限確定後であることが保証される。
-    const perm = waitApi(page, '/me/permissions')
+    // 権限応答は「すべて」集める（親シェルとパネルの両方。片方だけ失敗しても見逃さない）
+    const perms: Array<{ status: number; roleName: string | null }> = []
+    const bodies: Promise<void>[] = []
+    page.on('response', r => {
+      if (r.request().method() === 'GET' && new URL(r.url()).pathname === apiPath('/me/permissions')) {
+        bodies.push(r.json().then(
+          j => { perms.push({ status: r.status(), roleName: (j as { data?: { roleName?: string } }).data?.roleName ?? null }) },
+          () => { perms.push({ status: r.status(), roleName: null }) },
+        ))
+      }
+    })
     const settings = waitApi(page, '/reservation-settings')
     return async () => {
-      expect((await perm).status()).toBe(200)
       await settings
+      await Promise.all(bodies)
+      roleLog.push(`[MEMBER] me/permissions 応答=${JSON.stringify(perms)}`)
+      expect(perms.length, '親シェルとパネルの権限応答が両方あること').toBeGreaterThanOrEqual(2 + EC_EXTRA_PERMS)
+      expect(perms.every(p => p.status === 200), `権限応答がすべて 200: ${JSON.stringify(perms)}`).toBe(true)
+      expect(perms.every(p => p.roleName === 'MEMBER'), `roleName がすべて MEMBER: ${JSON.stringify(perms)}`).toBe(true)
       await expect(page.getByRole('tab', { name: '予約する' })).toBeVisible({ timeout: 150_000 })
       await page.waitForTimeout(2_000) // 描画の安定待ち
     }
