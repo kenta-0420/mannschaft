@@ -205,7 +205,7 @@ public class ReservationPendingExpireService {
 
     /**
      * 最新行をcurrent readで再構成し、進捗・予約・枠・既通知DB行を同じunit TXでcommitする。
-     * 旧unitはIDだけを使う。必要slotの欠損は失敗として全rollbackしdurable retryを残す。
+     * 旧unitはIDだけを使う。枠が論理削除済みの行は枠の復帰だけを省き予約は失効させる（D-1730-1）。物理欠損は失敗としrollback・retryを残す。
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int expireUnit(PendingExpireUnit unit) {
@@ -247,20 +247,43 @@ public class ReservationPendingExpireService {
                 rows.stream().map(ReservationEntity::getReservationSlotId).collect(Collectors.toSet()));
         slots.forEach(slot -> entityManager.refresh(slot, LockModeType.PESSIMISTIC_WRITE));
         var slotsById = slots.stream().collect(Collectors.toMap(ReservationSlotEntity::getId, slot -> slot));
-        if (rows.isEmpty() || rows.stream().anyMatch(row -> !slotsById.containsKey(row.getReservationSlotId()))) {
-            throw new IllegalStateException("仮押さえ失効に必要な最新枠がありません: reservationId=" + primary.getId());
+        if (rows.isEmpty()) {
+            throw new IllegalStateException("仮押さえ失効の対象行がありません: reservationId=" + primary.getId());
+        }
+        // 論理削除済み枠に紐づく PENDING は承認も来店もできない残骸。失敗として
+        // 毎周期リトライさせず、経過時間の条件で通常どおり失効させる。生きている枠だけ予約数を戻す。
+        var orphanSlotRows = rows.stream()
+                .filter(row -> !slotsById.containsKey(row.getReservationSlotId())).toList();
+        if (!orphanSlotRows.isEmpty()) {
+            // 論理削除（行は存在し deleted_at 非NULL）だけを終状態へ送る。枠行が物理的に無いのは整合性破損で、
+            // 黙って閉じず従来どおり失敗（rollback・retry保持）にする（#4248）。
+            var existingIncludingDeleted = slotRepository.findAllByIdIncludingDeletedForHistory(
+                    orphanSlotRows.stream().map(ReservationEntity::getReservationSlotId)
+                            .collect(Collectors.toSet())).stream()
+                    .map(ReservationSlotEntity::getId).collect(Collectors.toSet());
+            if (orphanSlotRows.stream().anyMatch(
+                    row -> !existingIncludingDeleted.contains(row.getReservationSlotId()))) {
+                throw new IllegalStateException("仮押さえ失効に必要な最新枠がありません: reservationId=" + primary.getId());
+            }
+            log.warn("仮押さえ失効: 削除済み枠の予約を失効対象として扱う reservationIds={}, slotIds={}",
+                    orphanSlotRows.stream().map(ReservationEntity::getId).toList(),
+                    orphanSlotRows.stream().map(ReservationEntity::getReservationSlotId).toList());
         }
         var primarySlot = slotsById.get(primary.getReservationSlotId());
         var now = LocalDateTime.ofInstant(clock.instant(), UserZoneLocalDateTimeParser.SERVER_ZONE);
         boolean expired = reservationRepository.pendingExpireElapsedHours(primary.getBookedAt(), now) >= hours
-                || endPassed(primarySlot.getSlotDate(), primarySlot.getEndDate(), primarySlot.getEndTime(), zone);
+                || (primarySlot != null
+                && endPassed(primarySlot.getSlotDate(), primarySlot.getEndDate(), primarySlot.getEndTime(), zone));
         if (!expired) {
             progress.completeUnit(epoch, primary.getId(), completedPrefix);
             return 0;
         }
         for (var row : rows) row.cancel(CANCEL_REASON, CancelledBy.SYSTEM);
         reservationRepository.saveAll(rows);
-        for (var row : rows) slotService.decrementAndReopen(slotsById.get(row.getReservationSlotId()));
+        for (var row : rows) {
+            var rowSlot = slotsById.get(row.getReservationSlotId());
+            if (rowSlot != null) slotService.decrementAndReopen(rowSlot);
+        }
         notifyApplicant(primary, primarySlot);
         progress.completeUnit(epoch, primary.getId(), completedPrefix);
         log.info("仮押さえ自動失効: teamId={}, reservationId={}, groupId={}, {}行",

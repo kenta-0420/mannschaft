@@ -301,6 +301,65 @@ class ReservationPendingExpirePersistenceIntegrationTest extends AbstractMySqlIn
     }
 
     // ────────────────────────────────────────────────────────────
+    // D-1730-1: 論理削除済みの枠に残った PENDING は1周期で終状態にし、再処理しない
+    // ────────────────────────────────────────────────────────────
+
+    private void softDeleteSlot(ReservationSlotEntity slot) {
+        slot.softDelete();
+        slotRepository.saveAndFlush(slot);
+    }
+
+    @Test
+    @DisplayName("D-1730-1: 論理削除済み枠のPENDINGは1周期でCANCELLED/SYSTEMになり、次周期で再処理されず通知も1通のみ")
+    void 削除済み枠のPENDINGは1周期で終状態になり再処理されない() {
+        Long teamId = nextId();
+        Long userId = nextId();
+        seedPolicy(teamId, 24);
+        ReservationSlotEntity slot = seedSlot(teamId, FUTURE, LocalTime.of(19, 0), SlotStatus.FULL, 1, 1);
+        ReservationEntity pending = seedPending(
+                teamId, userId, slot.getId(), LocalDateTime.now().minusHours(25), null, true);
+        softDeleteSlot(slot);
+
+        batchService.expirePendingReservations();
+
+        ReservationEntity after = reload(pending.getId());
+        assertThat(after.getStatus()).as("1周期で終状態へ遷移する").isEqualTo(ReservationStatus.CANCELLED);
+        assertThat(after.getCancelledBy()).isEqualTo(CancelledBy.SYSTEM);
+        assertThat(scanStates.findById(ownedStateId).orElseThrow().getRetryPrimaryIds())
+                .as("失敗扱いでretryに残さない").doesNotContain(pending.getId());
+        assertThat(notificationsOf(userId)).as("申込者へ失効通知が1通").hasSize(1);
+
+        batchService.expirePendingReservations();
+
+        assertThat(reload(pending.getId()).getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+        assertThat(notificationsOf(userId)).as("次周期で再処理・再通知されない").hasSize(1);
+    }
+
+    @Test
+    @DisplayName("D-1730-1(グループ): 代表行の枠だけ削除済みでも全行CANCELLED。生きている兄弟枠は復帰する")
+    void グループの一部の枠が削除済みでも全行が失効し生存枠は復帰する() {
+        Long teamId = nextId();
+        Long userId = nextId();
+        seedPolicy(teamId, 24);
+        UUID groupId = UUID.randomUUID();
+        LocalDateTime bookedAt = LocalDateTime.now().minusHours(25);
+        ReservationSlotEntity deleted = seedSlot(teamId, FUTURE, LocalTime.of(20, 0), SlotStatus.FULL, 1, 1);
+        ReservationSlotEntity alive = seedSlot(teamId, FUTURE, LocalTime.of(20, 30), SlotStatus.FULL, 1, 1);
+        ReservationEntity primary = seedPending(teamId, userId, deleted.getId(), bookedAt, groupId, true);
+        ReservationEntity sibling = seedPending(teamId, userId, alive.getId(), bookedAt, groupId, false);
+        softDeleteSlot(deleted);
+
+        batchService.expirePendingReservations();
+
+        assertThat(List.of(primary.getId(), sibling.getId()))
+                .allSatisfy(id -> assertThat(reload(id).getStatus()).isEqualTo(ReservationStatus.CANCELLED));
+        ReservationSlotEntity aliveAfter = slotRepository.findById(alive.getId()).orElseThrow();
+        assertThat(aliveAfter.getBookedCount()).as("生きている枠は予約数が戻る").isZero();
+        assertThat(aliveAfter.getSlotStatus()).isEqualTo(SlotStatus.AVAILABLE);
+        assertThat(notificationsOf(userId)).as("グループにつき1通").hasSize(1);
+    }
+
+    // ────────────────────────────────────────────────────────────
     // AC-6-6: グループは一括失効（部分失効を作らない）
     // ────────────────────────────────────────────────────────────
 
