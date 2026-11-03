@@ -205,7 +205,7 @@ public class ReservationPendingExpireService {
 
     /**
      * 最新行をcurrent readで再構成し、進捗・予約・枠・既通知DB行を同じunit TXでcommitする。
-     * 旧unitはIDだけを使う。枠が論理削除済みの行は枠の復帰だけを省き、予約は通常どおり失効させる（D-1730-1）。
+     * 旧unitはIDだけを使う。枠が論理削除済みの行は枠の復帰だけを省き予約は失効させる（D-1730-1）。物理欠損は失敗としrollback・retryを残す。
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int expireUnit(PendingExpireUnit unit) {
@@ -250,11 +250,21 @@ public class ReservationPendingExpireService {
         if (rows.isEmpty()) {
             throw new IllegalStateException("仮押さえ失効の対象行がありません: reservationId=" + primary.getId());
         }
-        // 論理削除済み（または実在しない）枠に紐づく PENDING は承認も来店もできない残骸。失敗として
+        // 論理削除済み枠に紐づく PENDING は承認も来店もできない残骸。失敗として
         // 毎周期リトライさせず、経過時間の条件で通常どおり失効させる。生きている枠だけ予約数を戻す。
         var orphanSlotRows = rows.stream()
                 .filter(row -> !slotsById.containsKey(row.getReservationSlotId())).toList();
         if (!orphanSlotRows.isEmpty()) {
+            // 論理削除（行は存在し deleted_at 非NULL）だけを終状態へ送る。枠行が物理的に無いのは整合性破損で、
+            // 黙って閉じず従来どおり失敗（rollback・retry保持）にする（#4248）。
+            var existingIncludingDeleted = slotRepository.findAllByIdIncludingDeletedForHistory(
+                    orphanSlotRows.stream().map(ReservationEntity::getReservationSlotId)
+                            .collect(Collectors.toSet())).stream()
+                    .map(ReservationSlotEntity::getId).collect(Collectors.toSet());
+            if (orphanSlotRows.stream().anyMatch(
+                    row -> !existingIncludingDeleted.contains(row.getReservationSlotId()))) {
+                throw new IllegalStateException("仮押さえ失効に必要な最新枠がありません: reservationId=" + primary.getId());
+            }
             log.warn("仮押さえ失効: 削除済み枠の予約を失効対象として扱う reservationIds={}, slotIds={}",
                     orphanSlotRows.stream().map(ReservationEntity::getId).toList(),
                     orphanSlotRows.stream().map(ReservationEntity::getReservationSlotId).toList());
