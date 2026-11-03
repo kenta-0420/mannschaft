@@ -141,11 +141,8 @@ public class AccountPurgeService {
         Long userId = user.getId();
 
         // Phase 1: トークン・セッション系の削除
-        // RefreshToken: 失効済み（revoked_at 付き）も含め全件を物理削除する。
-        // 退会受付で全トークンが失効済みになるため、未失効のみを対象にすると refresh_tokens.fk_refresh_tokens_user
-        // （users 参照、ON DELETE なし）が最後の users 物理削除で FK 違反となり、強匿名化が完走しない（CMP-260822-1243）。
-        refreshTokenRepository.deleteByUserId(userId);
-        log.debug("refresh_tokens削除完了: userId={}", userId);
+        refreshTokenRepository.findByUserIdAndRevokedAtIsNull(userId)
+                .forEach(t -> refreshTokenRepository.delete(t));
 
         List<Long> userIdList = List.of(userId);
         emailVerificationTokenRepository.deleteByUserIdIn(userIdList);
