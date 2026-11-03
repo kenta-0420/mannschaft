@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261030-0651",
+  "runIds": [
+    "run-20261104-emergency-closure"
+  ],
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "note": "緊急休業の戦役3件（送信理由・患者名・送信履歴の表）のアリシゼーション住民4体。画像実体は含めず、private 保管先 C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\（git 非追跡）への path 参照のみ。確定した不備4件は殿が裏取りし、新しい戦役として台帳末尾に起票した。確定に至らない観測（気づき）は台帳へ昇格せず、ここにだけ記録する。",
+  "privateEvidenceRoot": "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\",
+  "realE2eEvidencePath": "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\real-e2e\\",
+  "confirmedDefects": [
+    {
+      "id": "ALIC-1",
+      "title": "確認ダイアログの「送信する」を素早く3回押すと一括送信が3件作られる",
+      "observedBy": [
+        "足軽3"
+      ],
+      "status": "確定（殿が裏取り）。新しい戦役として台帳末尾に起票済み（未着手）"
+    },
+    {
+      "id": "ALIC-2",
+      "title": "緊急休業の日付表記が ja の直書き（de でも「11月9日（月）〜…」）",
+      "observedBy": [
+        "足軽4"
+      ],
+      "status": "確定（殿が裏取り）。新しい戦役として台帳末尾に起票済み（未着手）"
+    },
+    {
+      "id": "ALIC-3",
+      "title": "390px で送信履歴・プレビュー表の主要な列と「確認状況を見る」が画面外で、横スクロールの手がかりも無い",
+      "observedBy": [
+        "足軽1",
+        "足軽2",
+        "足軽4",
+        "実機E2E"
+      ],
+      "status": "確定（殿が裏取り）。新しい戦役として台帳末尾に起票済み（未着手）"
+    },
+    {
+      "id": "ALIC-4",
+      "title": "リロード・URL 直打ちの後、STOMP CONNECT のトークンが空で購読が拒否され、誤表示と無限再接続になる",
+      "observedBy": [
+        "殿の追加検証"
+      ],
+      "status": "確定（殿が裏取り）。新しい戦役として台帳末尾に起票済み（未着手）"
+    }
+  ],
+  "residents": [
+    {
+      "personaId": "ALIC-EC-R1",
+      "name": "足軽1",
+      "archetype": "スマホ片手×表示崩れ（390/360、ja）",
+      "runId": "run-20261104-emergency-closure",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "スマホ片手で緊急休業を作成し、履歴・プレビューを見る",
+      "privateEvidencePath": "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res1\\",
+      "insights": []
+    },
+    {
+      "personaId": "ALIC-EC-R2",
+      "name": "足軽2",
+      "archetype": "高齢・低リテラシー×素直（390、ja）",
+      "runId": "run-20261104-emergency-closure",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "画面の指示どおりに素直に操作して緊急休業を送る",
+      "privateEvidencePath": "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res2\\",
+      "insights": []
+    },
+    {
+      "personaId": "ALIC-EC-R3",
+      "name": "足軽3",
+      "archetype": "ADHD傾向×中断・連打（390、ja）",
+      "runId": "run-20261104-emergency-closure",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "途中で離れる、ボタンを連打するなど落ち着かない操作をする",
+      "privateEvidencePath": "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res3\\",
+      "insights": []
+    },
+    {
+      "personaId": "ALIC-EC-R4",
+      "name": "足軽4",
+      "archetype": "多言語(de)×表示崩れ（390/360）",
+      "runId": "run-20261104-emergency-closure",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "de ロケールで表示の崩れと未翻訳を探す",
+      "privateEvidencePath": "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res4\\",
+      "insights": []
+    }
+  ],
+  "unconfirmedInsights": [
+    {
+      "id": "ALIC-EC-INS-1",
+      "title": "de でボタン「Betroffene Reservierungen prüfen」が語の途中で折れ、placeholder が切れる",
+      "observedBy": "足軽4",
+      "verdict": "気づき（確定に至らず。台帳へは昇格しない）"
+    },
+    {
+      "id": "ALIC-EC-INS-2",
+      "title": "日付 input が 151x40、チェックボックスが 20x20、タブ送りが 40x57 で、いずれも 44px 未満",
+      "observedBy": "足軽1",
+      "verdict": "気づき（確定に至らず。台帳へは昇格しない）"
+    },
+    {
+      "id": "ALIC-EC-INS-3",
+      "title": "理由が空のとき、エラーはトーストだけで欄の赤枠が無い",
+      "observedBy": "足軽2",
+      "verdict": "気づき（確定に至らず。台帳へは昇格しない）"
+    },
+    {
+      "id": "ALIC-EC-INS-4",
+      "title": "テンプレートを選ぶと、書いた文面が確認なしで上書きされる",
+      "observedBy": "足軽3",
+      "verdict": "気づき（確定に至らず。台帳へは昇格しない）"
+    },
+    {
+      "id": "ALIC-EC-INS-5",
+      "title": "別ページへ行って戻ると、書きかけが消える",
+      "observedBy": "足軽3",
+      "verdict": "気づき（確定に至らず。台帳へは昇格しない）"
+    },
+    {
+      "id": "ALIC-EC-INS-6",
+      "title": "予約画面を初めて開くと「メンバーの権限を初期設定」モーダルが唐突に出る",
+      "observedBy": "足軽2",
+      "verdict": "気づき（確定に至らず。台帳へは昇格しない）"
+    },
+    {
+      "id": "ALIC-EC-INS-7",
+      "title": "dev の初回描画が遅い",
+      "observedBy": "足軽1",
+      "verdict": "気づき（確定に至らず。台帳へは昇格しない）"
+    }
+  ]
+}
