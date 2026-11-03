@@ -389,11 +389,17 @@ final class ErDiagramRenderer {
     /** mermaid 実体名の字句規則（英字/下線始まりの英数字・下線）へ正規化する。 */
     static String entityId(String table) {
         String s = table.replaceAll("[^A-Za-z0-9_]", "_");
-        if (s.isEmpty() || Character.isDigit(s.charAt(0))) {
+        if (s.isEmpty() || Character.isDigit(s.charAt(0)) || MERMAID_RESERVED.contains(s.toLowerCase(Locale.ROOT))) {
             s = "t_" + s;
         }
         return s;
     }
+
+    /**
+     * mermaid@11.4.1 erDiagram の字句規則（大文字小文字無視・単語境界）で、実体名として構文エラーになる語。
+     * 出典: mermaid の erDiagram 字句規則（erDiagram / one / many / to / u）。mermaid.parse で実測確認済み。
+     */
+    private static final Set<String> MERMAID_RESERVED = Set.of("erdiagram", "one", "many", "to", "u");
 
     /** 属性の型・名前を mermaid の字句規則へ正規化する（varchar(255) → varchar、先頭数字は接頭辞付与）。 */
     static String attrToken(String raw, String digitPrefix) {

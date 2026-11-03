@@ -202,6 +202,21 @@ class ErDiagramRendererTest {
     }
 
     @Test
+    @DisplayName("AC-11: mermaid erDiagram の予約語（mermaid@11.4.1 字句規則・大小無視）と同名のテーブルは接頭辞で回避する")
+    void 予約語の実体名を回避する() {
+        for (String w : List.of("erDiagram", "ERDIAGRAM", "one", "many", "to", "u", "U")) {
+            String id = ErDiagramRenderer.entityId(w);
+            assertThat(id).as(w).startsWith("t_");
+        }
+        assertThat(ErDiagramRenderer.entityId("one")).isNotEqualTo(ErDiagramRenderer.entityId("many"));
+        assertThat(ErDiagramRenderer.entityId("users")).isEqualTo("users");
+        assertThat(ErDiagramRenderer.entityId("one_x")).isEqualTo("one_x");
+        var reserved = table("one", List.of(col("id", "bigint", false)), List.of("id"), List.of());
+        String m = mermaidOf(render(List.of(reserved), List.of(), Map.of("one", "d")).get("d.md"));
+        assertThat(m).contains("t_one {").doesNotContain("\n    one {");
+    }
+
+    @Test
     @DisplayName("AC-11: 実体名・属性型を mermaid の字句規則に正規化する")
     void 字句規則の正規化() {
         assertThat(ErDiagramRenderer.attrToken("varchar(255)", "t")).isEqualTo("varchar");
