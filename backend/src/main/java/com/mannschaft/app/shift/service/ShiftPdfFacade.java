@@ -76,11 +76,15 @@ public class ShiftPdfFacade {
         }
         boolean privileged = accessControlService.isAdminOrAbove(requesterId, scope.teamId(), TEAM);
         if (!privileged) {
-            // 未公開は認可結果より先に 404、次に越境（所属していない）も不在と同じ 404。
-            if (scope.isHidden()) {
+            // 越境（所属していない）は不在と同じ 404。SUPPORTER は公開状態に依らず一律 403、
+            // 未公開の 404 はその後（404/403 の差で公開状態を読ませない。CMP-260826-2127 D-2127-1）。
+            if (!accessControlService.isMember(requesterId, scope.teamId(), TEAM)) {
                 throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
             }
-            if (!accessControlService.isMember(requesterId, scope.teamId(), TEAM)) {
+            if (accessControlService.isSupporter(requesterId, scope.teamId(), TEAM)) {
+                throw new BusinessException(CommonErrorCode.COMMON_002);
+            }
+            if (scope.isHidden()) {
                 throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
             }
         } else if (!accessControlService.isMember(requesterId, scope.teamId(), TEAM)) {
