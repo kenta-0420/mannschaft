@@ -40,7 +40,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import com.mannschaft.app.common.token.PlaintextSecretRequired;
 
 /**
  * 認証コアサービス（ファサード）。
@@ -453,7 +452,6 @@ public class AuthService {
     /**
      * パスワードとパスキーの成功後処理を共有し、セッションと監査の方式差を防ぐ。
      */
-    @PlaintextSecretRequired(reason = "既にハッシュ保存済み（AuthTokenService.hashToken）。乱数源が UUID で金庫（SecretTokenVault）と別実装のため、統合は別 CMP で扱う")
     private TokenResponse issueLoginSession(UserEntity user, String requestedDeviceFingerprint,
                                             boolean rememberMe, String ipAddress, String userAgent, String method,
                                             List<String> resolvedRoles) {

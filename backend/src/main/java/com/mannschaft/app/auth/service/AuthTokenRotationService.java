@@ -20,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
-import com.mannschaft.app.common.token.PlaintextSecretRequired;
 
 /**
  * Refresh Token ローテーションサービス。
@@ -223,7 +222,6 @@ public class AuthTokenRotationService {
      *                          （grace window 内の並行更新正規化経路。発行元は既に失効済み）。
      * @return 新しいトークンペア
      */
-    @PlaintextSecretRequired(reason = "既にハッシュ保存済み（AuthTokenService.hashToken）。乱数源が UUID で金庫（SecretTokenVault）と別実装のため、統合は別 CMP で扱う")
     private ApiResponse<TokenResponse> issueRotatedTokens(RefreshTokenEntity source, boolean markSourceRotated) {
         Long userId = source.getUserId();
         if (!userRepository.existsById(userId)) {

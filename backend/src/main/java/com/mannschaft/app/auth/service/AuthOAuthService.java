@@ -44,7 +44,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import com.mannschaft.app.common.token.PlaintextSecretRequired;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * OAuth認証サービス。OAuthプロバイダ連携によるログイン・アカウント連携・連携解除を担当する。
@@ -100,7 +100,7 @@ public class AuthOAuthService {
      * @param userAgent         ユーザーエージェント
      * @return トークンレスポンスまたはOAuth競合レスポンス
      */
-    @PlaintextSecretRequired(reason = "既にハッシュ保存済み（AuthTokenService.hashToken）。乱数源が UUID で金庫（SecretTokenVault）と別実装のため、統合は別 CMP で扱う")
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457") // ハッシュ保存済みだが乱数源が UUID で金庫（SecretTokenVault）未使用。金庫への統合が債務
     @Transactional
     public ApiResponse<?> loginWithOAuth(
             String provider, String authorizationCode, String ipAddress, String userAgent) {

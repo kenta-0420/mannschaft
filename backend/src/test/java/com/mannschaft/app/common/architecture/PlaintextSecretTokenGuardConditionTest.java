@@ -11,6 +11,8 @@ import com.mannschaft.app.common.architecture.plaintexttoken.HashedTokenFixtureR
 import com.mannschaft.app.common.architecture.plaintexttoken.IssuedTokenHoldingFixtureEntity;
 import com.mannschaft.app.common.architecture.plaintexttoken.IssuedTokenParamFixtureRepository;
 import com.mannschaft.app.common.architecture.plaintexttoken.JdbcSelfRandomFixtureSink;
+import com.mannschaft.app.common.architecture.plaintexttoken.JtiSessionFixtureService;
+import com.mannschaft.app.common.architecture.plaintexttoken.MisdeclaredHashExemptionFixtureEntity;
 import com.mannschaft.app.common.architecture.plaintexttoken.MisdeclaredExemptionFixtureEntity;
 import com.mannschaft.app.common.architecture.plaintexttoken.MisdeclaredExemptionFixtureRepository;
 import com.mannschaft.app.common.architecture.plaintexttoken.PlaintextSecretFixtureSuperclass;
@@ -134,6 +136,17 @@ class PlaintextSecretTokenGuardConditionTest {
         void foreignDebtCmpIsNotExemption() {
             assertListed(result.violations(), field(MisdeclaredExemptionFixtureEntity.class, "previewToken"),
                     "cmp が CMP-260826-1457 でない債務注釈");
+        }
+
+        @Test
+        @DisplayName("陽性: ハッシュ列・語彙外の列に付いた無効な免除注釈（cmp 違い・reason 空）も違反になる")
+        void invalidExemptionOnAnyColumnIsViolation() {
+            assertListed(result.violations(), field(MisdeclaredHashExemptionFixtureEntity.class, "tokenHash"),
+                    "ハッシュ列に cmp=OTHER-CMP");
+            assertListed(result.violations(), field(MisdeclaredHashExemptionFixtureEntity.class, "resetTokenHash"),
+                    "ハッシュ列に reason が空");
+            assertListed(result.violations(), field(MisdeclaredHashExemptionFixtureEntity.class, "note"),
+                    "語彙に一致しない列に cmp=OTHER-CMP");
         }
 
         @Test
@@ -303,6 +316,26 @@ class PlaintextSecretTokenGuardConditionTest {
         void vaultIssuingIsNotViolation() {
             assertNotListed(result.violations(), method(SelfIssuingFixtureService.class, "issueViaVault"),
                     "自前乱数を呼ばない");
+        }
+
+        @Test
+        @DisplayName("陰性: JTI 用の UUID と、別経路の乱数トークン（外から受領・別クラスのヘルパ）が同居しても違反でない")
+        void jtiUuidWithSeparateTokenIsNotViolation() {
+            assertNotListed(result.violations(), method(JtiSessionFixtureService.class, "issueWithJtiAndExternalToken"),
+                    "UUID は JTI にだけ届く");
+            assertNotListed(result.violations(), method(JtiSessionFixtureService.class, "issueWithJtiAndHelperToken"),
+                    "UUID は JTI にだけ届く。トークンは別クラスのヘルパ由来");
+            assertListed(result.inspected(), method(JtiSessionFixtureService.class, "issueWithJtiAndHelperToken"),
+                    "自前乱数を呼ぶメソッドとして検査対象には拾う");
+        }
+
+        @Test
+        @DisplayName("陽性: UUID が token_hash に届く、または同じメソッドの SecureRandom の値が token 系へ届く形は違反")
+        void uuidOrLocalRandomReachingTokenIsViolation() {
+            assertListed(result.violations(), method(JtiSessionFixtureService.class, "uuidReachesTokenHash"),
+                    "UUID → hash → setTokenHash");
+            assertListed(result.violations(), method(JtiSessionFixtureService.class, "jtiAndLocalSecureRandomToken"),
+                    "JTI の UUID があっても SecureRandom → hex → hash → setTokenHash は届いている");
         }
 
         @Test
