@@ -19,6 +19,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextSecretRequired;
 
 /**
  * 二要素認証エンティティ。TOTP設定とバックアップコードを管理する。
@@ -53,6 +54,7 @@ public class TwoFactorAuthEntity {
     /**
      * AES-256-GCM 暗号化済み TOTP 秘密鍵。{@link TwoFactorMethod#EMAIL} 方式では NULL。
      */
+    @PlaintextSecretRequired(reason = "TOTP の検証に平文の共有鍵が要るため（ハッシュ不可）。暗号化保管の棚卸しは別 CMP で扱う")
     @Column(length = 500)
     private String totpSecret;
 

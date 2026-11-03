@@ -1570,4 +1570,101 @@ class FlywayFromScratchMigrationTest {
         }
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // CMP-260826-1457: 招待・共有トークンの平文保存をハッシュ保存へ統一（全失効）の検査枠
+    //
+    // 各波（W1〜W2）は「自分の表のメソッドを1つ足すだけ」にする（新しい試験クラスは作らない）。
+    // メソッドは表名のアルファベット順に、下の「各波の検査メソッド」の位置へ並べる（差分の衝突箇所を分散させる）。
+    // 共通ヘルパ（tokenHashMigration...）は W0 が置く。各波は列の形（平文列の削除・*_hash 列の型・一意索引）を
+    // ヘルパで検査し、AC-7（旧平文では照合に当たらない）・AC-8（行を削除しない）は自分の表専用の Migration IT で検査する。
+    // ---------------------------------------------------------------------------------------------
+
+    /** SHA-256 の hex 表記の長さ（ハッシュ列の長さ）。 */
+    private static final int TOKEN_HASH_COLUMN_LENGTH = 64;
+
+    /**
+     * 全失効の移行が済んだ表の期待形。
+     *
+     * @param table            表名
+     * @param plaintextColumn  移行前に平文を保存していた列（移行後は存在しない）
+     * @param hashColumn       移行後のハッシュ列
+     * @param hashNullable     ハッシュ列が NULL 許容か（preview_token 等の NULL 許容列の系統だけ true）
+     */
+    record TokenHashMigrationExpectation(String table, String plaintextColumn, String hashColumn, boolean hashNullable) {
+    }
+
+    /** 平文列が消え、ハッシュ列が SHA-256 hex64 の形（VARCHAR/CHAR(64)・NOT NULL 指定どおり・一意索引つき）であることを検査する。 */
+    private static void assertTokenHashMigrated(Connection conn, TokenHashMigrationExpectation expected) throws SQLException {
+        assertThat(columnExists(conn, expected.table(), expected.plaintextColumn()))
+                .as("%s.%s: 平文の列が残っていない（全失効・平文は捨てる）", expected.table(), expected.plaintextColumn())
+                .isFalse();
+        try (ResultSet column = conn.getMetaData().getColumns(conn.getCatalog(), null, expected.table(), expected.hashColumn())) {
+            assertThat(column.next())
+                    .as("%s.%s: ハッシュ列が存在する", expected.table(), expected.hashColumn()).isTrue();
+            assertThat(column.getInt("COLUMN_SIZE"))
+                    .as("%s.%s: SHA-256 hex64 の長さ", expected.table(), expected.hashColumn())
+                    .isEqualTo(TOKEN_HASH_COLUMN_LENGTH);
+            assertThat(column.getString("IS_NULLABLE"))
+                    .as("%s.%s: NULL 許容の指定", expected.table(), expected.hashColumn())
+                    .isEqualTo(expected.hashNullable() ? "YES" : "NO");
+        }
+        assertThat(hasSingleColumnUniqueIndex(conn, expected.table(), expected.hashColumn()))
+                .as("%s.%s: 照合に使う一意索引がある", expected.table(), expected.hashColumn()).isTrue();
+    }
+
+    private static boolean columnExists(Connection conn, String table, String column) throws SQLException {
+        try (ResultSet rs = conn.getMetaData().getColumns(conn.getCatalog(), null, table, column)) {
+            return rs.next();
+        }
+    }
+
+    /** 指定列だけを対象にする一意索引（主キーを含む）があるか。 */
+    private static boolean hasSingleColumnUniqueIndex(Connection conn, String table, String column) throws SQLException {
+        String sql = "SELECT INDEX_NAME FROM information_schema.STATISTICS "
+                + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND NON_UNIQUE = 0 "
+                + "GROUP BY INDEX_NAME HAVING COUNT(*) = 1 AND MAX(COLUMN_NAME) = ?";
+        try (var statement = conn.prepareStatement(sql)) {
+            statement.setString(1, table);
+            statement.setString(2, column);
+            try (ResultSet rs = statement.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    // 各波の検査メソッド（表名のアルファベット順）。各波はここへ自分の表のメソッドを1つ足す:
+    //   @Test @Order(...) void <表名>のtokenはハッシュ化され全失効する() throws Exception {
+    //       migrateFromScratch();
+    //       try (Connection conn = connect()) {
+    //           assertTokenHashMigrated(conn, new TokenHashMigrationExpectation("<表名>", "<旧平文列>", "<hash列>", false));
+    //       }
+    //   }
+
+    @Test
+    @Order(26)
+    @DisplayName("CMP-260826-1457 W0: 全失効の検査ヘルパが、既にハッシュ保存の村招待表で成立する（枠の健全性）")
+    void 全失効の検査ヘルパは既にハッシュ保存の表で成立する() throws Exception {
+        migrateFromScratch();
+        try (Connection conn = connect()) {
+            assertTokenHashMigrated(conn,
+                    new TokenHashMigrationExpectation("village_invitations", "token", "token_hash", false));
+        }
+    }
+
+    @Test
+    @Order(27)
+    @DisplayName("CMP-260826-1457 W0: 全失効の検査ヘルパは、平文列が残る表を不合格にする（陰性対照）")
+    void 全失効の検査ヘルパは平文列が残る表を不合格にする() throws Exception {
+        migrateFromScratch();
+        try (Connection conn = connect()) {
+            // 移行前の形（invite_tokens.token が平文のまま）は、各波が移行するまで不合格になるはず。
+            // いずれかの波で invite_tokens の移行が入ったら、この陰性対照は別の未移行表へ付け替える。
+            if (columnExists(conn, "invite_tokens", "token")) {
+                assertThatThrownBy(() -> assertTokenHashMigrated(conn,
+                        new TokenHashMigrationExpectation("invite_tokens", "token", "token_hash", false)))
+                        .isInstanceOf(AssertionError.class);
+            }
+        }
+    }
+
 }

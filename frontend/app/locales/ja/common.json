@@ -3196,5 +3196,28 @@
     "supporter_label": "{feature}をサポータに表示",
     "save_success": "表示設定を保存しました",
     "nav": "ナビ"
+  },
+  "secret_token": {
+    "issued_dialog": {
+      "title": "リンクを発行しました",
+      "once_warning": "このリンクは今だけ表示されます。閉じると二度と表示されません。必要な方へ共有してから閉じてください。",
+      "url_label": "発行されたリンク",
+      "copy": "コピー",
+      "copied": "コピーしました",
+      "copy_failed": "コピーできませんでした。手動で選択してコピーしてください",
+      "qr_label": "QRコード",
+      "close": "閉じる",
+      "pdf_download": "QRコードをPDFで保存"
+    },
+    "list": {
+      "not_shown_hint": "セキュリティのため、発行済みのリンクは再表示されません。必要な場合は再発行してください。",
+      "revoked_by_migration": "セキュリティ強化のため失効しました",
+      "reissue": "再発行",
+      "reissue_hint": "再発行すると新しいリンクが作られ、古いリンクは使えなくなります。",
+      "label_with_id": "リンク #{id}",
+      "created_at": "発行日時",
+      "expires_at": "有効期限",
+      "used_count": "利用回数"
+    }
   }
 }

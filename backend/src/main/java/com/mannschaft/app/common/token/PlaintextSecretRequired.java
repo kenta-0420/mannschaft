@@ -13,7 +13,7 @@ import java.lang.annotation.Target;
  * ハッシュ化すると機能が成り立たない列（陣立て書 1-C）にだけ付ける。番人
  * {@code PlaintextSecretTokenGuardArchTest} は、この注釈の {@link #reason()} が空のとき違反として扱う。</p>
  *
- * <p>W0 試練の段階では型の宣言だけを置く（番人の判定は出陣で実装する）。</p>
+ * <p>判定は番人 {@code PlaintextSecretTokenGuardArchTest} が行う。</p>
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

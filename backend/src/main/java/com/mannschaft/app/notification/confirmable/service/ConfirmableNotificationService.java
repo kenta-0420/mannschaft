@@ -42,6 +42,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * F04.9 確認通知コアサービス（ファサード）。
@@ -335,6 +336,7 @@ public class ConfirmableNotificationService {
      * F04.9 Phase D 導入前の呼び出し元（CommitteeDistributionService 等）の互換性のため。
      * 内部で {@code unconfirmedVisibility=null} を渡し、スコープ設定の default に解決させる。
      */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Transactional
     public ConfirmableNotificationEntity send(
             ScopeType scopeType,
@@ -354,6 +356,7 @@ public class ConfirmableNotificationService {
                 null, createdByUserId, recipientUserIds);
     }
 
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Transactional
     public ConfirmableNotificationEntity send(
             ScopeType scopeType,
@@ -404,6 +407,7 @@ public class ConfirmableNotificationService {
                 createdByUserId, recipientUserIds);
     }
 
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Transactional
     public ConfirmableNotificationEntity send(
             ScopeType scopeType,

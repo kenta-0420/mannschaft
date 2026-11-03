@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * 連絡先招待トークンサービス。
@@ -54,6 +55,7 @@ public class ContactInviteTokenService {
     /**
      * 招待トークンを発行する。
      */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Transactional
     public ContactInviteTokenResponse createToken(Long userId, CreateInviteTokenBody req) {
         String token = UUID.randomUUID().toString();

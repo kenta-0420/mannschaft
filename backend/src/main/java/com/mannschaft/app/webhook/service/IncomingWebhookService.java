@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * Incoming Webhook管理サービス。
@@ -77,6 +78,7 @@ public class IncomingWebhookService {
      * @param req       作成リクエスト
      * @return 作成されたトークン情報
      */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Transactional
     public ApiResponse<IncomingWebhookTokenResponse> createToken(Long createdBy, CreateIncomingWebhookRequest req) {
         // 認可: 作成先スコープの ADMIN/DEPUTY_ADMIN のみ発行可能

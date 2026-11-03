@@ -16,7 +16,7 @@ import java.lang.annotation.Target;
  * <p>番人 {@code PlaintextSecretTokenGuardArchTest} は {@link #cmp()} が
  * {@code "CMP-260826-1457"} 以外のとき違反として扱う（他の戦役が流用して番人を黙らせることを防ぐ）。</p>
  *
- * <p>W0 試練の段階では型の宣言だけを置く（番人の判定は出陣で実装する）。</p>
+ * <p>判定は番人 {@code PlaintextSecretTokenGuardArchTest} が行う。</p>
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

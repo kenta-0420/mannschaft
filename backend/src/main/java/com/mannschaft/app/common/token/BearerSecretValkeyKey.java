@@ -1,5 +1,7 @@
 package com.mannschaft.app.common.token;
 
+import java.util.regex.Pattern;
+
 /**
  * 「知っている者だけが通れる合言葉」を Valkey に置くときのキーを作る唯一の入口（CMP-260826-1457 §2-4 番人6）。
  *
@@ -9,10 +11,15 @@ package com.mannschaft.app.common.token;
  * 手がかりに「同じメソッド内で自前の乱数（{@code UUID.randomUUID()}・{@code SecureRandom#nextBytes}）を
  * 使っていないか」を検査する。</p>
  *
- * <p><b>W0 試練の段階のスタブ</b>: 呼び出しをコンパイルさせるためだけに置いている。実装（hex64 検査と
- * キーの組み立て）は出陣で行う。</p>
+ * <p>第2引数は必ず金庫のハッシュ（SHA-256 hex64）でなければならない。平文の UUID や Base64URL の平文を渡す誤用は、
+ * 番人より先にここで実行時例外として止める。例外メッセージには渡された値を含めない（値が平文だった場合にログへ残さない）。</p>
  */
 public final class BearerSecretValkeyKey {
+
+    /** SHA-256 の hex 表記の長さ。 */
+    private static final int HASH_HEX_LENGTH = 64;
+
+    private static final Pattern HASH_HEX_PATTERN = Pattern.compile("[0-9a-fA-F]{" + HASH_HEX_LENGTH + "}");
 
     private BearerSecretValkeyKey() {
     }
@@ -26,6 +33,12 @@ public final class BearerSecretValkeyKey {
      * @throws IllegalArgumentException {@code tokenHash} が SHA-256 hex64 の形でないとき
      */
     public static String of(String namespace, String tokenHash) {
-        throw new UnsupportedOperationException("未実装（CMP-260826-1457 W0 出陣で実装する）");
+        if (namespace == null || namespace.isEmpty()) {
+            throw new IllegalArgumentException("Valkey キーの接頭辞が空です");
+        }
+        if (tokenHash == null || !HASH_HEX_PATTERN.matcher(tokenHash).matches()) {
+            throw new IllegalArgumentException("tokenHash は SHA-256 の hex64 でなければなりません（平文を渡していないか確認）");
+        }
+        return namespace + tokenHash;
     }
 }
