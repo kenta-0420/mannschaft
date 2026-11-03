@@ -11,6 +11,7 @@
       "confirmations": "確認状況"
     },
     "label": {
+      "unknown_user": "不明なユーザー",
       "start_date": "開始日",
       "end_date": "終了日",
       "partial_time": "一日のうち一部の時間帯のみ休業する",
@@ -47,6 +48,7 @@
       "sent_at": "送信日時",
       "reason": "理由",
       "count": "件数",
+      "count_value": "{count}件",
       "confirmation_status": "確認状況",
       "appointment_at": "予約日時",
       "confirmed_header": "確認",

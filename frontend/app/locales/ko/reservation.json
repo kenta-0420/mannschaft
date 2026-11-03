@@ -11,6 +11,7 @@
       "confirmations": "확인 현황"
     },
     "label": {
+      "unknown_user": "알 수 없는 사용자",
       "start_date": "시작일",
       "end_date": "종료일",
       "partial_time": "당일 일부 시간대만 휴업",
@@ -47,6 +48,7 @@
       "sent_at": "전송 일시",
       "reason": "이유",
       "count": "건수",
+      "count_value": "{count}건",
       "confirmation_status": "확인 현황",
       "appointment_at": "예약 일시",
       "confirmed_header": "확인",

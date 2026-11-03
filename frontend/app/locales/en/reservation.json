@@ -11,6 +11,7 @@
       "confirmations": "Confirmation Status"
     },
     "label": {
+      "unknown_user": "Unknown user",
       "start_date": "Start Date",
       "end_date": "End Date",
       "partial_time": "Close only during specific hours of the day",
@@ -47,6 +48,7 @@
       "sent_at": "Sent At",
       "reason": "Reason",
       "count": "Count",
+      "count_value": "{count} sent",
       "confirmation_status": "Confirmation Status",
       "appointment_at": "Appointment Date/Time",
       "confirmed_header": "Confirmed",

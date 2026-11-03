@@ -11,6 +11,7 @@
       "confirmations": "Bestätigungsstatus"
     },
     "label": {
+      "unknown_user": "Unbekannter Benutzer",
       "start_date": "Startdatum",
       "end_date": "Enddatum",
       "partial_time": "Nur während bestimmter Stunden des Tages schließen",
@@ -47,6 +48,7 @@
       "sent_at": "Gesendet am",
       "reason": "Grund",
       "count": "Anzahl",
+      "count_value": "{count} gesendet",
       "confirmation_status": "Bestätigungsstatus",
       "appointment_at": "Termindatum/-uhrzeit",
       "confirmed_header": "Bestätigt",
