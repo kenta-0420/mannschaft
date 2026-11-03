@@ -1,91 +1,16 @@
-// 修正版のない間接依存の個別例外（方針 docs/security/04_dependency_and_supply_chain.md §4.3/§4.4）。
-// GHSA-vfj7-8cjw-p6xm / braces 3.0.3 のみ。braces は 2026-10-23 UTC 当日まで。
-// node-forge の例外（GHSA-86w9-cpqp-85rv）は node-forge 1.4.2 への更新（overrides）で解消し削除済み。
-// braces: アプリの限定検索では直接 glob 呼出しなし、確認した設定パターンは固定値。
-// dbaa 本番 server の2537テキストは静的token/package検出0。14リンク・4バイナリは対象外。
-// minify・動的参照の非到達は未証明であり、dev-onlyや本番での非到達を断定しない。
-// 修正版導入または依存撤去時に該当例外を削除する。
+// npm audit の high/critical ゲート（方針 docs/security/04_dependency_and_supply_chain.md §4）。
+// 個別除外は現在ゼロ。node-forge（GHSA-86w9-cpqp-85rv）は 1.4.2 への更新で、
+// braces（GHSA-vfj7-8cjw-p6xm）は勧告が発火しなくなったため、いずれも除外を撤去した。
+// 除外を再導入する場合は GHSA 単位・期限付き・到達経路限定で定義し、方針文書に理由を残すこと。
 import { execSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 
 const SEVERITY_RANK = { info: 0, low: 1, moderate: 2, high: 3, critical: 4 }
-// GHSA 単位の除外表。パッケージ名での包括除外はしない。
-// packages は実監査で確認した到達経路だけ。別の消費者への拡大を認めない。
-const EXEMPTIONS = {
-  // braces: 実監査で確認したノードと braces に到達する参照辺だけ。
-  'https://github.com/advisories/GHSA-vfj7-8cjw-p6xm': {
-    id: 'GHSA-vfj7-8cjw-p6xm',
-    name: 'braces',
-    expiresAt: Date.parse('2026-10-24T00:00:00Z'),
-    range: '<=3.0.3',
-    version: '3.0.3',
-    packages: new Set([
-      'braces',
-      'micromatch',
-      'chokidar',
-      'fast-glob',
-      'globby',
-      'tailwindcss',
-      'unplugin-vue-components',
-      'unplugin-vue-router',
-      '@intlify/unplugin-vue-i18n',
-      '@nuxtjs/i18n',
-      '@nuxtjs/tailwindcss',
-      '@primevue/nuxt-module',
-      'nitropack',
-      '@nuxt/nitro-server',
-      '@nuxt/vite-builder',
-      'nuxt',
-    ]),
-    nodes: {
-      braces: ['node_modules/braces'],
-      micromatch: ['node_modules/micromatch'],
-      chokidar: [
-        'node_modules/@primevue/nuxt-module/node_modules/chokidar',
-        'node_modules/tailwindcss/node_modules/chokidar',
-      ],
-      'fast-glob': ['node_modules/fast-glob'],
-      globby: ['node_modules/globby'],
-      tailwindcss: ['node_modules/tailwindcss'],
-      'unplugin-vue-components': [
-        'node_modules/@primevue/nuxt-module/node_modules/unplugin-vue-components',
-      ],
-      'unplugin-vue-router': ['node_modules/unplugin-vue-router'],
-      '@intlify/unplugin-vue-i18n': ['node_modules/@intlify/unplugin-vue-i18n'],
-      '@nuxtjs/i18n': ['node_modules/@nuxtjs/i18n'],
-      '@nuxtjs/tailwindcss': ['node_modules/@nuxtjs/tailwindcss'],
-      '@primevue/nuxt-module': ['node_modules/@primevue/nuxt-module'],
-      nitropack: ['node_modules/nitropack'],
-      '@nuxt/nitro-server': ['node_modules/@nuxt/nitro-server'],
-      '@nuxt/vite-builder': ['node_modules/@nuxt/vite-builder'],
-      nuxt: ['node_modules/nuxt'],
-    },
-    edges: {
-      braces: [],
-      micromatch: ['braces'],
-      chokidar: ['braces'],
-      'fast-glob': ['micromatch'],
-      globby: ['fast-glob'],
-      tailwindcss: ['chokidar', 'fast-glob', 'micromatch'],
-      'unplugin-vue-components': ['chokidar'],
-      'unplugin-vue-router': ['fast-glob', 'micromatch'],
-      '@intlify/unplugin-vue-i18n': ['fast-glob'],
-      '@nuxtjs/i18n': ['@intlify/unplugin-vue-i18n', 'unplugin-vue-router'],
-      '@nuxtjs/tailwindcss': ['tailwindcss'],
-      '@primevue/nuxt-module': ['unplugin-vue-components'],
-      nitropack: ['globby'],
-      '@nuxt/nitro-server': ['nitropack', 'nuxt'],
-      '@nuxt/vite-builder': ['nuxt'],
-      nuxt: ['@nuxt/nitro-server', '@nuxt/vite-builder'],
-    },
-  },
-}
 const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
 const validSeverity = (value) => Object.hasOwn(SEVERITY_RANK, value)
 
 // npm の終了状態も検証する。通信失敗の stdout が JSON でも成功扱いしない。
-export function checkAudit(raw, status, lock, now = Date.now()) {
+export function checkAudit(raw, status) {
   if (![0, 1].includes(status)) throw new Error(`npm audit の取得失敗: exit ${status}`)
   const report = JSON.parse(raw)
   if (
@@ -152,7 +77,6 @@ export function checkAudit(raw, status, lock, now = Date.now()) {
       typeof via === 'string' ? collectAdvisories(via, visited) : [via],
     )
   }
-  let exempt = false
   for (const [name, entry] of Object.entries(vulnerabilities)) {
     // metavuln参照先の全severity一致はnpm JSONが保証しない。直接advisoryは過小報告を拒否する。
     const advisories = collectAdvisories(name)
@@ -164,65 +88,12 @@ export function checkAudit(raw, status, lock, now = Date.now()) {
     ) {
       throw new Error(`npm audit の依存と到達 advisory の深刻度が不一致: ${name}`)
     }
-    // 報告entryがlow/moderateでも、到達する全high/criticalを同じ例外条件で検証する。
+    // 報告entryがlow/moderateでも、到達するhigh/criticalは例外なく拒否する。
     const high = advisories.filter((via) => SEVERITY_RANK[via.severity] >= SEVERITY_RANK.high)
-    if (
-      entry.severity === 'critical' ||
-      (entry.severity === 'high' && high.length === 0) ||
-      high.some((via) => via.severity === 'critical' || !EXEMPTIONS[via.url]?.packages.has(name))
-    ) {
+    if (entry.severity === 'critical' || high.length > 0 || entry.severity === 'high') {
       throw new Error(`許可されない脆弱性: ${entry.severity} ${name}`)
     }
-    for (const advisory of high) {
-      const spec = EXEMPTIONS[advisory.url]
-      const target = spec && vulnerabilities[spec.name]
-      // 混在辺は、現在検証している GHSA に到達する辺だけを制限する。
-      if (spec?.nodes) {
-        const allowedNodes = spec.nodes[name]
-        const allowedEdges = spec.edges[name]
-        if (
-          !allowedNodes ||
-          !entry.nodes.every((node) => allowedNodes.includes(node)) ||
-          !entry.via.every(
-            (via) =>
-              typeof via !== 'string' ||
-              !collectAdvisories(via).some((item) => item.url === advisory.url) ||
-              allowedEdges.includes(via),
-          )
-        ) {
-          throw new Error(`許可されない依存経路: ${name}`)
-        }
-      }
-      if (
-        !spec ||
-        advisory.name !== spec.name ||
-        advisory.dependency !== spec.name ||
-        advisory.range !== spec.range ||
-        advisory.severity !== 'high' ||
-        !target ||
-        target.isDirect !== false ||
-        !target.via.includes(advisory) ||
-        !isObject(lock?.packages) ||
-        !target.nodes.every(
-          (node) =>
-            typeof node === 'string' &&
-            (node === `node_modules/${spec.name}` || node.endsWith(`/node_modules/${spec.name}`)) &&
-            lock.packages[node]?.version === spec.version,
-        )
-      ) {
-        throw new Error(
-          `許可されない advisory: ${advisory.severity} ${advisory.name} ${advisory.url}`,
-        )
-      }
-      if (!Number.isFinite(now) || now >= spec.expiresAt) {
-        throw new Error(
-          `${spec.id} の除外期限切れ（${new Date(spec.expiresAt - 1).toISOString().slice(0, 10)} UTC 当日まで）`,
-        )
-      }
-      exempt = true
-    }
   }
-  return exempt
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -238,13 +109,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       raw = error.stdout
       status = error.status
     }
-    const lock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'))
-    const exempt = checkAudit(raw, status, lock)
-    console.log(
-      exempt
-        ? 'npm audit: 承認済みGHSAの個別例外を適用、他の high/critical は0件（期限は各例外定義を参照）'
-        : 'npm audit: high/critical は0件',
-    )
+    checkAudit(raw, status)
+    console.log('npm audit: high/critical は0件')
   } catch (error) {
     console.error(error.message)
     process.exitCode = 1

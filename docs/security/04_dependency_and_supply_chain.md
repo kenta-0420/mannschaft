@@ -58,10 +58,10 @@ updates:
 ## 4. フロント `npm audit`
 
 - フロントエンド CI（`frontend-ci.yml`）に `npm audit --audit-level=high` ステップを追加済み（依存インストール `npm ci` の直後に実行）
-- **現状の CI 扱いは「ブロッキング（門番）」**: `continue-on-error` を付けずに実行し、§4.3/§4.4 の個別例外以外の high/critical が 1 件でも検出されると CI を落とす
+- **現状の CI 扱いは「ブロッキング（門番）」**: `continue-on-error` を付けずに実行し、high/critical が 1 件でも検出されると CI を落とす
   - **経緯**: 2026-05-26 の初回スキャンでは high 11 件（moderate 14・low 1・total 26）が存在したため、段階導入方針に従い当初は警告のみ（`continue-on-error: true`）で導入した。その後 Nuxt 系の更新で high が全て解消され、2026-06-02 に `continue-on-error` を削除してブロッキング化した
   - **現状（2026-06-13）**: high/critical のみならず moderate も含め `npm audit` は **0 件**。`--audit-level` を `critical` 等へ安易に緩めて症状を隠すことは引き続き禁止
-- 既知の誤検知・修正不可能な transitive 依存は `package.json` の `overrides` または audit の除外設定で管理し、理由をコメントで残す
+- 既知の誤検知・修正不可能な transitive 依存は `package.json` の `overrides` で管理し、理由をコメントで残す（audit の個別除外は現在ゼロ。§4.3）
 - Dependabot と役割が重複するが、audit は「（脆弱性解消後は）CI を落とす門番」、Dependabot は「更新 PR の自動生成」と位置づけ、両輪で運用する
 
 ### 4.1. 初回スキャン結果（2026-05-26）→ 全件解消済み（2026-06-13）
@@ -106,35 +106,16 @@ updates:
 
 ---
 
-### 4.3. node-forge の期限付き個別例外（2026-10-02）
+### 4.3. node-forge / braces の個別例外は撤去済み（2026-11-03）
 
-[GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv)（CVE-2026-85393）は RSA PKCS#1 v1.5 の署名検証の問題。2026-10-02 時点で影響範囲は `<=1.4.0`、公式 advisory の修正版は None。既存 lock の `node-forge` は 1.4.0、`listhen` は 1.10.0。`npm audit` の `fixAvailable` は Nuxt 3.15.1 への降格を提示するが、node-forge の公式修正版を意味しない。強制降格・未公開暗号パッチの取り込みは行わない。2026-06-13 の0件という記載は当時の記録であり、この新しい advisory の解消を意味しない。
+現状: 監査例外の仕組み（`frontend/scripts/audit-with-exemption.mjs` の `EXEMPTIONS` 表）は畳んだ。個別除外は **ゼロ** で、`npm audit` の high/critical は **無条件で CI を落とす**。除外を再導入する場合は GHSA 単位・期限付き・到達経路限定で定義し、本書に理由を残すこと。`--audit-level` の緩和は引き続き禁止。
 
-§4 の「修正不可能な transitive 依存」の管理規則に基づき、`frontend/scripts/audit-with-exemption.mjs` で **当該 URL・パッケージ・high・影響範囲・間接依存・lock の 1.4.0** が一致するものだけを一時除外する。実監査の high 7 パッケージ（`node-forge` / `listhen` / `nitropack` / `@nuxt/cli` / `@nuxt/nitro-server` / `@nuxt/vite-builder` / `nuxt`）に限定する。Nuxt の循環を含む `via` の参照先も追い、末端 advisory を全て検証する。別 high/critical、未知の high 消費者、参照欠落、末端のない high 循環、不正 JSON・集計・直接 advisory の過小報告、取得失敗は CI を落とす。Node 標準テストを CI の必須ステップとして実行する。
+撤去の経緯（履歴）:
 
-2026-10-23、npmのmetavulnerabilityはJSONで依存名へ集約され、参照先の別advisoryも含めた最大深刻度とentryの報告値が一致するとは限らないことを確認した（[npm公式実装](https://github.com/npm/cli/blob/latest/workspaces/arborist/lib/vuln.js)）。直接advisoryの過小報告は引き続き拒否する。間接参照から到達する全high/criticalは、報告entryの深刻度によらず検証し、criticalと未知highは拒否する。既存highは従来のGHSA・許可packages/nodes/edges・末端版/range・間接依存・期限をすべて満たす場合のみ除外する。metadataとnpm終了状態は生の報告件数で照合し、深刻度を書き換えない。例外対象・経路・期限の追加や延長ではない。
+- node-forge（GHSA-86w9-cpqp-85rv）: 2026-10-02 に修正版が無く期限付き例外を設けたが、1.4.2 への更新で解消したため撤去した。
+- braces（GHSA-vfj7-8cjw-p6xm、CMP-261003-1229）: 2026-10-03 に修正版が無く期限付き例外を設けた。期限（2026-10-23 UTC）切れ後、勧告が発火しなくなった（npm audit の high/critical は 0 件、braces 3.0.3）ため撤去した。
 
-2026-10-17（CMP-261017-1604）にnode-forge側も上記7パッケージの既知`nodes`と当該GHSAへ到達する`via`の依存辺へ限定した。既知名でも別node・経路付替え・未知の循環辺を拒否する。末端は`node_modules/node-forge`のみでlockの1.4.0を確認する。2 GHSA混在時は各GHSAへ実際に到達する辺だけをそれぞれの表で判定し、braces側の制限は維持する。既存2例外の対象・承認済み期限・深刻度・fail-closed条件・依存関係は変更しない。Node標準試験18件で未知経路拒否と両件単独/混在の期限直前・一致・直後、非有限時刻を確認する。これは経路制限の強化であり、脆弱性の解消ではない。
-
-到達経路の根拠: `listhen` 1.10.0 の `dist/shared/listhen.DmCHmEQ1.cjs` は forge を読み、`resolveCertificate` で RSA 鍵生成と証明書署名を行い、HTTPS オプション時に呼ぶ。当該署名検証の `.verify` 呼び出しはこの経路に無く、`frontend/nuxt.config.ts` の `devServer` に HTTPS 設定は無い。アプリ・サーバーに forge/RSA の直接利用も確認されなかった。Nuxt は `dependencies` にあるため「devOnly」とは扱わず、**本番 `.output` からの除外は未実測**。脆弱性そのものが直ったという判断ではない。
-
-有効期限は **2026-10-30 UTC 当日まで（2026-10-31T00:00:00Z 以降は当該例外を拒否）**。解除管理は `docs/task-list.md` の CMP-261002-1135。公式修正版を導入するか listhen から依存が撤去されたら、例外を削除して通常の `npm audit --audit-level=high` に戻す。期限以前でも、RSA 署名検証の利用追加・新しい消費者や未知の依存経路・依存の直接化があれば例外を直ちに失効させ、到達可能性を再評価する。期限延長を自動では行わない。
-
-2026-10-24、ユーザー再承認により **node-forge の当該 GHSA だけ**を10月30日UTC当日まで再承認した。lock固定の listhen 1.10.0 / node-forge 1.4.0 の配布物はSHA512 integrityが一致し、forgeの唯一の直接消費者はlisthenである。ESM/CJS全体と鍵生成・証明書署名・PFX読込みを追い、当該RSA署名検証の呼出しは確認されず、アプリの直接利用も無かった。本番 `.output` 非包含は未実測であり、この判断は静的調査に限る。脆弱性の解消とは扱わない。期限はGHSA別に判定し、bracesは2026-10-24T00:00:00Z以降拒否のまま維持する。URL・版・range・high・間接依存・許可packages/nodes/edgesとfail-closed条件は変更しない。公式修正版の導入または依存撤去時に例外を削除し、期限の自動延長は行わない。
-
-### 4.4. braces の期限付き個別例外（2026-10-03）
-
-[GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) は `braces` の問題。影響範囲は `<=3.0.3`（全公開版）で、2026-10-03 時点で修正版は未公開（`npm audit` の `fixAvailable` も false）。既存 lock の `braces` は 3.0.3。`chokidar` / `micromatch` / `fast-glob` を経由し、`nuxt` / `@nuxtjs/i18n` / `@nuxtjs/tailwindcss` / `@primevue/nuxt-module` などビルド時ツールへ波及して FE CI の Install ジョブが赤になった。
-
-§4.3 と同じ仕組みで、`frontend/scripts/audit-with-exemption.mjs` の `EXEMPTIONS` 表に **GHSA 単位で名指し**して一時除外する（パッケージ名での包括除外や `--audit-level` の緩和はしない）。**当該 URL・パッケージ・high・影響範囲 `<=3.0.3`・間接依存・lock の 3.0.3** が一致するものだけを通し、波及先は実監査で確認した経路（`braces` / `micromatch` / `chokidar` / `fast-glob` / `globby` / `tailwindcss` / `unplugin-vue-components` / `unplugin-vue-router` / `@intlify/unplugin-vue-i18n` / `@nuxtjs/i18n` / `@nuxtjs/tailwindcss` / `@primevue/nuxt-module` / `nitropack` / `@nuxt/nitro-server` / `@nuxt/vite-builder` / `nuxt`）に限定する。除外ごとに許可パッケージ集合を持つため、node-forge の消費者が braces を、またはその逆を流用することはできない。fail closed の検証（取得失敗・不正レポート・深刻度の過小報告・未知の high 消費者の拒否）は §4.3 と共通。
-
-確認した範囲: `braces` は glob の波括弧展開に使われ、lock 上の直接消費者は `micromatch` と `chokidar` の2コピー。アプリの `app/server/scripts/tests` の ts/js/mjs/cjs に対する直接 glob 呼出し検索は0件で、確認した i18n の設定ファイル列挙・Tailwind content・PWA globPatterns は固定値だった。dbaa 本番 `.output/server` の2537テキストファイルでは静的 token・package 検出は0件。ただし14リンク・4バイナリは除外され、minify・動的参照を含む非到達は未証明。Nuxt は `dependencies` にあり、dev-only や本番利用者入力からの非到達を断定しない。保存済み実監査は high 19エントリ・末端 advisory 2件であり、脆弱性そのものが直ったという判断ではない。
-
-braces 側は上記16パッケージについて実監査の既知 `nodes` と、braces advisory に到達する `via` の依存辺だけを許容する。末端は `node_modules/braces` に限定し lock の3.0.3を確認する。既知名でも未知ノード・経路付替えは拒否する。Nuxt の既知循環を許容し、forge だけに到達する混在辺は braces の表で判定しない。消費者全バージョンや lock 全体の固定は行わない。
-
-有効期限は **2026-10-23 UTC 当日まで（2026-10-24T00:00:00Z 以降は当該例外を拒否）**。解除管理は既存 CMP-261003-1229 に集約する。解除条件: `braces` の修正版が公開されたら lock を引き上げ、除外を削除して通常の `npm audit --audit-level=high` に戻す。期限延長を自動では行わない。
-
-2026-10-17、公式修正版が両件とも未公開であることを再確認し、ユーザーの「２延長可」により既存2例外の期限だけを7日延長した。URL・版・high・間接依存・許可 packages/nodes/edges と fail-closed の拒否条件は変更しない。脆弱性の解消や本番非到達の証明とは扱わない。
+設計の詳細（許可 packages/nodes/edges・期限判定など）は git 履歴（PR #4259 以前の本節と `audit-with-exemption.mjs`）を参照する。
 
 ### 4.5. 修正版依存と simple-git v4 の限定consumer互換補正（2026-10-06）
 
@@ -142,7 +123,7 @@ braces 側は上記16パッケージについて実監査の既知 `nodes` と�
 
 Nuxt DevTools は `@nuxt/devtools` override で3.4.1に固定する。安定版3.4.2も同じdefault importを持ち、4系betaへの更新はNuxt/Viteの変更を伴うため採用しない。Nuxt DevTools 3.4.1 は配布物 `dist/chunks/module-main.mjs` に default import を一つ持つ。一方、simple-git v4 は default export を削除したため、`scripts/patch-nuxt-devtools-simple-git.mjs` を正規 postinstall の `nuxt prepare` より前に実行し、その唯一の import を `import { simpleGit as Git } from 'simple-git'` へ合わせる。Gitの branch/revparse/status APIや本体の認可・Git unsafe guard は変更しない。対象版3.4.1・元配布SHA256 `13f0dbd2e845848ad98fe644eab152c43a0a8cb88d6ff04a4bd77d12a68ac784`・補正後SHA256 `e42d96ee5d9a85f68785341fcac20b161da70336c5a10a11da5ea703d6c7406e` が一致するものだけを受理し、既に同一補正済みの場合のみ冪等とする。未知版・改変bytes・symlink・任意pathは失敗させる。変更対象は install された node_modules 内の一ファイルだけで、公式配布物をリポジトリへ複製しない。追加npmパッケージは使わず、Dockerの依存インストール段階にも同じ厳格スクリプトを渡す。postcss-selector-parserは7.1.6へ固定する。
 
-解除条件は、安定版の公式DevToolsがnamed importへ対応し、適切な修正済みsimple-git/argv-parserへ依存し、正規npm ci→nuxt prepareと実監査ゲート・FE CIが通ること。その時に互換script/test・postinstall挿入を除去し、不要となった限定overrideも見直す。版を更新してSHA検査を単に緩める運用は禁止。既node-forge/bracesの個別例外は変更しない。
+解除条件は、安定版の公式DevToolsがnamed importへ対応し、適切な修正済みsimple-git/argv-parserへ依存し、正規npm ci→nuxt prepareと実監査ゲート・FE CIが通ること。その時に互換script/test・postinstall挿入を除去し、不要となった限定overrideも見直す。版を更新してSHA検査を単に緩める運用は禁止。監査例外の追加や閾値緩和は行わない。
 
 本節の版指定だけで検証済みとは扱わない。正規lock生成、実npm ci/nuxt prepare、配布bytesを用いた互換補正テスト、実auditと既監査ゲート、FE unit/lint/type/type-drift の実行結果が別途必要。
 
@@ -150,7 +131,7 @@ Nuxt DevTools は `@nuxt/devtools` override で3.4.1に固定する。安定版3
 
 新たに検出された [simple-git](https://github.com/advisories/GHSA-x6jw-m9v5-85vh) / [argv-parser](https://github.com/advisories/GHSA-v5rq-49vh-5v5c) の critical は例外に追加せず、simple-git 4.0.2（argv-parser 2.0.1）へ更新する。[Vue SSR](https://github.com/advisories/GHSA-g2v6-rqmx-r4w6) 3.5.43、[seroval](https://github.com/advisories/GHSA-jp82-f5mq-hwhp) 1.6.8、[source-map-js](https://github.com/advisories/GHSA-68fv-2mgg-jv7q) 1.2.2、[postcss-selector-parser](https://github.com/advisories/GHSA-rj75-hqrm-r3gf) 7.1.6 も既知 advisory の影響範囲外へ更新する。Vue compiler-sfc の実依存要求を満たすため、正規 npm resolver の PostCSS 8.5.29 / nanoid 3.3.20 の node を同期し、既存 platform binding は保持する。
 
-利用方針の選択により全環境で `devtools.enabled: false` とする。§4.5 の版・配布物 SHA を照合する互換パッチは保持する。Docker の依存インストール段階では製品 Nuxt 設定をまだコピーしていないため、このパッチが必要である。installed Nuxt の静的条件分岐を確認したが、修正後の実 dev 起動・CI・本番生成は別途検証が必要であり、本記録だけで合格とは扱わない。既存 node-forge / braces の期限付き個別例外と経路制限を維持し、critical の例外追加や audit 閾値緩和は行わない。
+利用方針の選択により全環境で `devtools.enabled: false` とする。§4.5 の版・配布物 SHA を照合する互換パッチは保持する。Docker の依存インストール段階では製品 Nuxt 設定をまだコピーしていないため、このパッチが必要である。installed Nuxt の静的条件分岐を確認したが、修正後の実 dev 起動・CI・本番生成は別途検証が必要であり、本記録だけで合格とは扱わない。監査例外の追加や audit 閾値緩和は行わない（個別例外の仕組みは撤去済み。§4.3）。
 
 2026-10-07 の追加監査では [sharp の GHSA-wq5f-xc86-pv6w](https://github.com/lovell/sharp/security/advisories/GHSA-wq5f-xc86-pv6w) と [shell-quote の GHSA-pqg4-j6r4-53mv](https://github.com/ljharb/shell-quote/security/advisories/GHSA-pqg4-j6r4-53mv) が検出された。sharp 0.35.5（対応する全プラットフォーム配布物を含む）と shell-quote 1.11.0 を通常 npm 解決による修正版候補とする。候補 lock の読み取り監査は critical 0、既存の期限付き例外のみ high 18 で、既存 checkAudit の実終了値は 0。npm ci、実開発起動、Sharp の実ロード、本番生成の検証は別途必要であり、この候補監査だけで合格とは扱わない。新しい例外や閾値緩和は行わない。
 
@@ -167,9 +148,9 @@ Zod の GHSA-mrhx-c7xc-m3w5（過大な制約付きコレクション検証に�
 
 Webhook の URL は Zod 4 により前後の空白と ASCII tab/CR/LF を除いた出力になる。通常の URL の受理条件とバックエンドの HTTPS・DNS/SSRF 境界は維持し、この正規化を互換試験で固定する。
 
-正規 `npm ci` / `npm ls`、全体 lint と8GBヒープの型検査、実 `useForm` 7件と監査関連の Node 回帰27件を確認した。実監査では Zod・旧 adapter・happy-dom の finding は消失したが、当初はnode-forgeの例外期限切れで監査ゲートが赤だった。個別再承認は§4.3に分けて記録する。全量 Vitest の fixture 補完再試行と既存 SSR の5件 skip を含む検証記録は `docs/task-list.md` の CMP-261024-0528 に記載する。
+正規 `npm ci` / `npm ls`、全体 lint と8GBヒープの型検査、実 `useForm` 7件と監査関連の Node 回帰27件を確認した。実監査では Zod・旧 adapter・happy-dom の finding は消失したが、当初はnode-forgeの例外期限切れで監査ゲートが赤だった。node-forge の例外は後に撤去した（§4.3）。全量 Vitest の fixture 補完再試行と既存 SSR の5件 skip を含む検証記録は `docs/task-list.md` の CMP-261024-0528 に記載する。
 
-解除条件は、公式の安定版 adapter が修正済み Zod 4 と互換であり、初期値/default/reset・非同期検証・送信出力・エラーの契約試験と実機確認を通過すること。その時にこの互換層を撤去する。版指定や単体試験だけで出荷済みとは扱わず、正規 `npm ci`、`npm ls`、実監査、lint/typecheck、既存フォームの回帰と実機試験の結果を別途記録する。既存 node-forge/braces の期限付き例外とその期限は本対応では変更しない。
+解除条件は、公式の安定版 adapter が修正済み Zod 4 と互換であり、初期値/default/reset・非同期検証・送信出力・エラーの契約試験と実機確認を通過すること。その時にこの互換層を撤去する。版指定や単体試験だけで出荷済みとは扱わず、正規 `npm ci`、`npm ls`、実監査、lint/typecheck、既存フォームの回帰と実機試験の結果を別途記録する。監査例外の追加や閾値緩和は行わない。
 
 ## 5. 脆弱性対応フロー
 
@@ -192,6 +173,7 @@ Webhook の URL は Zod 4 により前後の空白と ASCII tab/CR/LF を除い�
 
 | 日付 | 変更 |
 |---|---|
+| 2026-11-03 | §4.3/§4.4 の node-forge・braces 個別例外と `EXEMPTIONS` を撤去済みの現状へ改め、経緯を履歴化（CMP-261003-1229）。high/critical は無条件で拒否 |
 | 2026-10-24 | 静的到達性の再評価とユーザー再承認によりnode-forgeの当該GHSAだけ10月30日UTC当日まで再承認。braces期限・対象・経路・拒否条件は不変 |
 | 2026-10-17 | ユーザー再承認により§4.3/§4.4の既存2例外を10月23日UTC当日まで7日延長。対象・経路・拒否条件は不変 |
 | 2026-10-06 | §4.5 に修正版依存の指定と DevTools 3.4.1 の版・配布SHAを検証する厳格互換対応、Docker連携・解除条件を記録 |
