@@ -45,7 +45,7 @@ vi.mock('~/stores/useAuthStore', () => ({
 
 const writeText = vi.fn<(text: string) => Promise<void>>()
 
-async function mountDialog(props: Record<string, unknown>) {
+async function mountDialog(props: { visible: boolean, url: string, title?: string }) {
   const SecretIssuedDialog = (await import('~/components/SecretIssuedDialog.vue')).default
   return mountSuspended(SecretIssuedDialog, { props })
 }

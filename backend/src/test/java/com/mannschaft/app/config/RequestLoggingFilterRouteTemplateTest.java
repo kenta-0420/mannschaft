@@ -104,6 +104,25 @@ class RequestLoggingFilterRouteTemplateTest {
                 .doesNotContain(PLAINTEXT);
     }
 
+    @Test
+    @DisplayName("秘密でない path 変数の許可リスト: 数字だけの {token} は pathIds に積まず、{teamId} は積む")
+    void 数字だけのtoken変数はpathIdsに積まない() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/teams/7/invite/123456789");
+        FilterChain chain = (req, res) -> {
+            req.setAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE, "/api/v1/teams/{teamId}/invite/{token}");
+            req.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE,
+                    java.util.Map.of("teamId", "7", "token", "123456789"));
+            ((HttpServletResponse) res).setStatus(HttpServletResponse.SC_OK);
+        };
+
+        filter.doFilter(request, new MockHttpServletResponse(), chain);
+
+        ILoggingEvent event = appender.list.stream()
+                .filter(e -> "request_completed".equals(e.getMessage())).findFirst().orElseThrow();
+        assertThat(event.getMDCPropertyMap().get("pathIds")).isEqualTo("teamId=7");
+        assertThat(event.getMDCPropertyMap().values()).noneMatch(v -> v != null && v.contains("123456789"));
+    }
+
     private List<String> completedPaths() {
         return appender.list.stream()
                 .filter(event -> "request_completed".equals(event.getMessage()))

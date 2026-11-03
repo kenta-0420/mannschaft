@@ -277,6 +277,20 @@ class PlaintextSecretTokenGuardConditionTest {
         }
 
         @Test
+        @DisplayName("陽性（AC-22）: UUID.randomUUID() を vault.hash() に通して setTokenHash に詰める金庫外発行も違反")
+        void uuidThenHashIsViolation() {
+            assertListed(result.violations(), method(SelfIssuingFixtureService.class, "issueWithUuidThenHash"),
+                    "Hash を含む書込みでも、金庫を通さない乱数の発行は違反");
+        }
+
+        @Test
+        @DisplayName("陽性（AC-27）: Entity に書かない乱数ヘルパでも、他の戦役の cmp を名乗る債務注釈は常に違反")
+        void foreignDebtIsAlwaysViolation() {
+            assertListed(result.violations(), method(SelfIssuingFixtureService.class, "randomHelperUnderForeignDebt"),
+                    "cmp の検査は違反の形に関係なく効く");
+        }
+
+        @Test
         @DisplayName("陰性: 正しい債務注釈のメソッドは違反でなく免除一覧に載る")
         void debtMethodIsExempted() {
             String id = method(SelfIssuingFixtureService.class, "issueUnderDebt");
@@ -382,6 +396,13 @@ class PlaintextSecretTokenGuardConditionTest {
         void bearerKeyWithSecureRandomIsViolation() {
             assertListed(result.violations(), method(ValkeyBearerFixtureService.class, "issueWithSecureRandom"),
                     "of(KEY_PREFIX, 自前乱数の hex)");
+        }
+
+        @Test
+        @DisplayName("陽性（AC-27）: 番人6でも、他の戦役の cmp を名乗る債務注釈は形に関係なく違反")
+        void foreignDebtIsAlwaysViolation() {
+            assertListed(result.violations(), method(SelfIssuingFixtureService.class, "randomHelperUnderForeignDebt"),
+                    "cmp の検査は常に効く");
         }
 
         @Test

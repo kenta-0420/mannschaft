@@ -186,6 +186,13 @@ final class PlaintextSecretTokenGuardRules {
         return required || debt;
     }
 
+    /** 免除注釈が付いているが無効（cmp 違い・reason 空）か。形に関係なく常に違反として扱う（AC-27）。 */
+    private static boolean hasInvalidExemption(HasAnnotations<?> element) {
+        boolean present = element.tryGetAnnotationOfType(PlaintextSecretRequired.class.getName()).isPresent()
+                || element.tryGetAnnotationOfType(PlaintextTokenDebt.class.getName()).isPresent();
+        return present && !hasValidExemption(element);
+    }
+
     /** 永続フィールドの列名。{@code @Column(name)} があればそれ、無ければフィールド名の snake_case。 */
     private static String columnNameOf(JavaField field) {
         return field.tryGetAnnotationOfType(Column.class.getName())
@@ -389,6 +396,9 @@ final class PlaintextSecretTokenGuardRules {
         Collector out = new Collector();
         for (JavaClass type : classes) {
             for (JavaMethod method : type.getMethods()) {
+                if (hasInvalidExemption(method)) {
+                    out.violations.add(methodId(method) + " 無効な免除注釈（cmp が CMP-260826-1457 でない、または reason が空）");
+                }
                 if (!callsSelfRandom(method)) {
                     continue;
                 }
@@ -417,7 +427,8 @@ final class PlaintextSecretTokenGuardRules {
             return false;
         }
         String name = call.getName();
-        if (!SECRET_METHOD_VOCABULARY.matcher(name).find() || name.toLowerCase().contains(HASH_WORD)) {
+        // Hash を含む書込みも対象にする: 乱数 → vault.hash() → setTokenHash() は金庫外の発行（AC-22）
+        if (!SECRET_METHOD_VOCABULARY.matcher(name).find()) {
             return false;
         }
         return call.getTarget().getRawParameterTypes().stream()
@@ -460,6 +471,9 @@ final class PlaintextSecretTokenGuardRules {
         for (JavaClass type : classes) {
             Map<String, Set<String>> constants = null;
             for (JavaMethod method : type.getMethods()) {
+                if (hasInvalidExemption(method)) {
+                    out.violations.add(methodId(method) + " 無効な免除注釈（cmp が CMP-260826-1457 でない、または reason が空）");
+                }
                 if (!callsSelfRandom(method)) {
                     continue;
                 }

@@ -60,6 +60,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import com.mannschaft.app.common.token.PlaintextSecretRequired;
 
 /**
  * 二要素認証（TOTP）サービス。TOTP設定・検証・バックアップコード・MFAリカバリーを担当する。
@@ -240,6 +241,7 @@ public class Auth2faService {
      * @param mfaSessionToken MFAセッショントークン
      * @return メッセージレスポンス
      */
+    @PlaintextSecretRequired(reason = "既にハッシュ保存済み（AuthTokenService.hashToken）。乱数源が UUID で金庫（SecretTokenVault）と別実装のため、統合は別 CMP で扱う")
     @Transactional
     public ApiResponse<MessageResponse> requestMfaRecovery(String mfaSessionToken) {
         // MFAセッショントークンからuserIdを取得（削除はしない。リカバリーフローで再利用可能にする）
@@ -875,6 +877,7 @@ public class Auth2faService {
     /**
      * Access Token + Refresh Token のペアを発行する。
      */
+    @PlaintextSecretRequired(reason = "既にハッシュ保存済み（AuthTokenService.hashToken）。乱数源が UUID で金庫（SecretTokenVault）と別実装のため、統合は別 CMP で扱う")
     private TokenResponse issueTokenPair(Long userId) {
         // 認可基盤完全根治 Phase 1（§3.2）: RoleClaimResolver で SYSTEM_ADMIN を判定して roles に載せる。
         String accessToken = authTokenService.issueAccessToken(userId, roleClaimResolver.resolveRoles(userId),

@@ -60,6 +60,9 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
     /** 秘密でない path 変数（数値の ID）だけを積む MDC 項目。障害調査でログから個別リソースを追う手段を残す。 */
     private static final String MDC_PATH_IDS = "pathIds";
 
+    /** 秘密でない path 変数の許可リスト: 変数名が {@code id} または {@code *Id}。{@code {token}} などは数字だけでも積まない。 */
+    private static final Pattern ID_VARIABLE_NAME = Pattern.compile("(?:id|[a-z][A-Za-z0-9]*Id)");
+
     /** ルート テンプレートが無いとき、パスの各セグメントを置き換える固定記号。 */
     static final String UNRESOLVED_SEGMENT = "{segment}";
 
@@ -212,7 +215,7 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
     }
 
     /**
-     * path 変数のうち値が数字だけのもの（数値 ID）を {@code name=value} のカンマ区切りで返す。
+     * path 変数のうち変数名が id／*Id で、値が数字だけのもの（数値 ID）を {@code name=value} のカンマ区切りで返す。
      * トークンなど文字を含む値は積まない。ハンドラ未解決のときは空。
      */
     @SuppressWarnings("unchecked")
@@ -222,6 +225,7 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             return "";
         }
         return ((Map<String, String>) variables).entrySet().stream()
+                .filter(entry -> ID_VARIABLE_NAME.matcher(entry.getKey()).matches())
                 .filter(entry -> entry.getValue() != null && NUMERIC_VALUE.matcher(entry.getValue()).matches())
                 .map(entry -> entry.getKey() + "=" + entry.getValue())
                 .collect(Collectors.joining(","));

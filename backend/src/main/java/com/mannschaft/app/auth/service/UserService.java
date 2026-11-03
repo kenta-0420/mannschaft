@@ -56,6 +56,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import com.mannschaft.app.common.token.PlaintextSecretRequired;
 
 /**
  * ユーザー管理サービス。プロフィール操作・パスワード変更・メール変更・退会を担当する。
@@ -528,6 +529,7 @@ public class UserService {
      * @param req    メールアドレス変更リクエスト
      * @return メッセージレスポンス
      */
+    @PlaintextSecretRequired(reason = "既にハッシュ保存済み（AuthTokenService.hashToken）。乱数源が UUID で金庫（SecretTokenVault）と別実装のため、統合は別 CMP で扱う")
     @Transactional
     public ApiResponse<MessageResponse> requestEmailChange(Long userId, RequestEmailChangeRequest req) {
         // 1. レートリミット

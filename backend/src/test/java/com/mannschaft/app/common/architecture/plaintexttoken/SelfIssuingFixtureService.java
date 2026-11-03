@@ -86,4 +86,17 @@ public class SelfIssuingFixtureService {
         entity.setTokenExpiresAt(LocalDateTime.now().plusDays(EXPIRY_DAYS));
         return correlation.isEmpty() ? null : entity;
     }
+
+    /** 金庫外の発行: 自前乱数を vault.hash() に通して setTokenHash に詰める形（Hash を含む書込みでも金庫外は違反）。 */
+    public HashedTokenFixtureEntity issueWithUuidThenHash(SecretTokenVault vault) {
+        HashedTokenFixtureEntity entity = new HashedTokenFixtureEntity();
+        entity.setTokenHash(vault.hash(UUID.randomUUID().toString()));
+        return entity;
+    }
+
+    /** 他の戦役の cmp を名乗る債務注釈は、Entity に書かない乱数ヘルパでも違反（cmp の検査は形に関係なく常に効く）。 */
+    @PlaintextTokenDebt(cmp = "CMP-999999-0000")
+    public String randomHelperUnderForeignDebt() {
+        return UUID.randomUUID().toString();
+    }
 }

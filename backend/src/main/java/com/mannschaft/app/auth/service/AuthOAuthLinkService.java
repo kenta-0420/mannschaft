@@ -74,6 +74,7 @@ public class AuthOAuthLinkService {
      * @throws BusinessException AUTH_028 — サポート外プロバイダ
      * @throws BusinessException AUTH_034 — 既に連携済み
      */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     public String generateAuthUrl(Long userId, String provider, boolean includeCalendar) {
         // 1. プロバイダ検証（GOOGLE のみサポート）
         OAuthAccountEntity.OAuthProvider oauthProvider = validateProvider(provider);
