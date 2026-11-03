@@ -40,8 +40,8 @@ import java.util.List;
  * 対象不在                  404 SHIFT_001       404 SHIFT_001              404 SHIFT_002
  * 親だけ削除済み            404 SHIFT_001       404 SHIFT_001              404 SHIFT_002（是正前は SHIFT_001）
  * </pre>
- * <p>枠一覧の未公開（DRAFT・ARCHIVED で publishedAt なし）は、管理者側以外へは認可結果より先に 404 SHIFT_001、
- * COLLECTING・ADJUSTING は割当だけ伏せる。</p>
+ * <p>枠一覧の未公開（DRAFT・ARCHIVED で publishedAt なし）は、一般メンバーには 404 SHIFT_001
+ * （越境・SUPPORTER の判定の後。SUPPORTER は公開状態に依らず 403）、COLLECTING・ADJUSTING は割当だけ伏せる。</p>
  */
 @Service
 @RequiredArgsConstructor

@@ -357,6 +357,26 @@ class ShiftChangeRequestServiceAuthzTest {
         verify(changeRequestRepository, never()).save(any());
     }
 
+    @Test
+    @DisplayName("親スケジュール削除済みの他人の依頼は、get・review・withdraw とも不在依頼と同じ CHANGE_REQUEST_NOT_FOUND（SHIFT_001 を漏らさない）")
+    void 親削除済みの他人の依頼は不在依頼と同一応答() {
+        given(changeRequestRepository.findById(REQUEST_ID)).willReturn(Optional.of(requestedBy(77L)));
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.empty());
+        given(accessControlService.isSystemAdmin(REVIEWER_ID)).willReturn(false);
+
+        org.assertj.core.api.ThrowableAssert.ThrowingCallable[] calls = {
+                () -> service.get(REQUEST_ID, REVIEWER_ID),
+                () -> service.review(REQUEST_ID, reviewReq(), REVIEWER_ID),
+                () -> service.withdraw(REQUEST_ID, REVIEWER_ID)};
+        for (org.assertj.core.api.ThrowableAssert.ThrowingCallable call : calls) {
+            assertThatThrownBy(call)
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ShiftErrorCode.CHANGE_REQUEST_NOT_FOUND));
+        }
+        verify(changeRequestRepository, never()).save(any());
+    }
+
     /** 指定ユーザーが依頼者である変更依頼を作る */
     private ShiftChangeRequestEntity requestedBy(Long requesterId) {
         return ShiftChangeRequestEntity.builder()
