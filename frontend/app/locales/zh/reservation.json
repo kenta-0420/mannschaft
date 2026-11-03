@@ -48,6 +48,7 @@
       "sent_at": "发送时间",
       "reason": "原因",
       "count": "件数",
+      "count_value": "{count}条",
       "confirmation_status": "确认状态",
       "appointment_at": "预约日期/时间",
       "confirmed_header": "已确认",

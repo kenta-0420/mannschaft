@@ -48,6 +48,7 @@
       "sent_at": "Enviado el",
       "reason": "Motivo",
       "count": "Cantidad",
+      "count_value": "{count} enviados",
       "confirmation_status": "Estado de confirmación",
       "appointment_at": "Fecha/Hora de cita",
       "confirmed_header": "Confirmado",
