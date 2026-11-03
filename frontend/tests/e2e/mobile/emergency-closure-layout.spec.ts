@@ -43,9 +43,10 @@ const PREVIEW = {
     { reservationId: 2, userId: 2, userFullName: '鈴木 花子', userEmail: 'u2@example.com', slotDate: '2026-11-11', startTime: '10:00:00', endTime: '10:30:00', status: 'PENDING' },
   ],
 }
+const TEAM_NAME = 'レイアウト検証総合メディカルクリニック本院予約センター'
 const TEAM = {
   id: 1, slug: SLUG, timezone: 'Asia/Tokyo',
-  basic: { name: 'レイアウト検証クリニック' }, location: { template: 'CLINIC' },
+  basicInfo: { name: TEAM_NAME }, location: { template: 'CLINIC' },
   visibility: { visibility: 'PUBLIC', supporterEnabled: false }, metadata: { version: 1, memberCount: 3 },
 }
 
@@ -197,6 +198,7 @@ test.describe('CMP-261030-0651 緊急休業 送信履歴・プレビュー表 39
 
   test('AC-13a: 送信履歴（折りたたみ時）— 理由が縦崩れせず、見出し・ボタン・ページ幅が健全', async ({ page }) => {
     await openClosureTab(page)
+    await expect(page.getByText(TEAM_NAME).first(), 'ヘッダーにチーム名が出ていない').toBeVisible()
     const history = historySection(page)
     await expectReasonNotVertical(history)
 
