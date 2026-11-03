@@ -58,10 +58,13 @@ public class ShiftChangeRequestFacade {
     private final NameResolverService nameResolverService;
 
     /**
-     * 変更依頼を作成する（スケジュール所属チームのメンバー。SUPPORTER も可）。
+     * 変更依頼を作成する（スケジュール所属チームのメンバー。SUPPORTER は不可 403 COMMON_002）。
      *
      * <p>Gate は冒頭で SYSTEM_ADMIN を通すが、是正前は {@code checkMembership}（memberships のみ）で
      * 非メンバーの SYSTEM_ADMIN も 403 {@code COMMON_002} だった。挙動を変えないため先に弾く。</p>
+     *
+     * <p>SUPPORTER は仕様（F03.5 README: 変更依頼不可）どおり、シフト表のステータスを見る前に 403 で弾く
+     * （tx 本体のステータス判定の 201/409 の差で公開状態を読ませない。CMP-260826-2127 P2）。</p>
      *
      * @param request 作成リクエスト
      * @param userId  依頼者ユーザー ID
@@ -73,7 +76,7 @@ public class ShiftChangeRequestFacade {
             accessControlService.checkMembership(userId, teamId, TEAM);
         }
         accessGate.requireMemberOrConceal(
-                userId, teamId, TEAM, ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND, false);
+                userId, teamId, TEAM, ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND, true);
         return withRequesterName(changeRequestService.create(request, userId));
     }
 

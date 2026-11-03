@@ -340,6 +340,23 @@ class ShiftChangeRequestServiceAuthzTest {
         verify(changeRequestRepository).save(any());
     }
 
+    @Test
+    @DisplayName("create: SUPPORTER は 403 COMMON_002。シフト表の状態に関わらず保存されず、状態も読まれない（CMP-260826-2127 P2）")
+    void create_SUPPORTERは状態に依らず403() {
+        for (com.mannschaft.app.shift.ShiftScheduleStatus status : new com.mannschaft.app.shift.ShiftScheduleStatus[] {com.mannschaft.app.shift.ShiftScheduleStatus.DRAFT, com.mannschaft.app.shift.ShiftScheduleStatus.PUBLISHED}) {
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
+                    ShiftScheduleEntity.builder().teamId(TEAM_ID).status(status).build()));
+            given(accessControlService.isMember(MEMBER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isSupporter(MEMBER_ID, TEAM_ID, "TEAM")).willReturn(true);
+
+            assertThatThrownBy(() -> service.create(createReq(null), MEMBER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+        }
+        verify(changeRequestRepository, never()).save(any());
+    }
+
     /** 指定ユーザーが依頼者である変更依頼を作る */
     private ShiftChangeRequestEntity requestedBy(Long requesterId) {
         return ShiftChangeRequestEntity.builder()

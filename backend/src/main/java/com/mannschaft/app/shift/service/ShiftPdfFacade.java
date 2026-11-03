@@ -16,13 +16,13 @@ import org.springframework.stereotype.Service;
  *
  * <p>是正前は、越境の 404 隠蔽を {@code ShiftScheduleService#getSchedule} の認可に頼っていた
  *（{@code ShiftPdfService} 側の認可は 403）。tx 本体から認可を抜くと PDF が新しい存在オラクルになるため、
- * 同じ判定順（未公開の 404 → 越境の 404 → SUPPORTER・非在籍の 403）をここへ移した。</p>
+ * 同じ判定順（越境の 404 → SUPPORTER の 403 → 未公開の 404。SUPPORTER に応答差で公開状態を読ませない）をここへ移した。</p>
  *
  * <h3>認可表（是正前の契約から変えていない）</h3>
  * <pre>
  * 主体                          応答
  * 部外者(越境)                  404 SHIFT_001（不在 ID と同一）
- * 同チーム SUPPORTER            403 COMMON_002（未公開なら先に 404）
+ * 同チーム SUPPORTER            403 COMMON_002（未公開でも同じ 403）
  * 同チーム一般メンバー          200（公開済みのみ。COLLECTING・ADJUSTING・未公開は 404 SHIFT_001）
  * チーム ADMIN（在籍あり）      200（未公開も可）
  * user_roles のみの ADMIN       403 COMMON_002（是正前から在籍を要求。許可は広げない）

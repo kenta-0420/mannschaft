@@ -37,8 +37,8 @@ import java.util.List;
  * SYSTEM_ADMIN(非/メンバー) 200(全件)      200              201             200/204/201
  * 対象不在・親削除済み      (n/a)          404 SHIFT_001    (n/a)           404 SHIFT_001
  * </pre>
- * <p>未公開（DRAFT・ARCHIVED で publishedAt なし）の詳細は、管理者側以外へは認可結果より先に 404 SHIFT_001 へ
- * 寄せる（存在オラクル対策）。一覧・作成は {@code ?teamId=} 直接指定なので越境も不在も 403 のまま（隠さない）。</p>
+ * <p>未公開（DRAFT・ARCHIVED で publishedAt なし）の詳細は、一般メンバーには 404 SHIFT_001 へ寄せる
+ * （越境・SUPPORTER の判定の後。SUPPORTER は公開状態に依らず 403。存在オラクル対策）。一覧・作成は {@code ?teamId=} 直接指定なので越境も不在も 403 のまま（隠さない）。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -81,8 +81,8 @@ public class ShiftScheduleFacade {
     /**
      * シフトスケジュールを単体取得する。
      *
-     * <p>管理者側（SYSTEM_ADMIN・ADMIN 以上。user_roles のみの ADMIN も含む）は常に可。それ以外は、未公開なら
-     * 404（認可結果より先）、所属していなければ越境として 404、SUPPORTER は 403。</p>
+     * <p>管理者側（SYSTEM_ADMIN・ADMIN 以上。user_roles のみの ADMIN も含む）は常に可。それ以外は、所属していなければ越境として 404、
+     * SUPPORTER は公開状態に依らず 403、その後に未公開なら 404（SUPPORTER に応答差で公開状態を読ませない）。</p>
      *
      * @param id     スケジュールID
      * @param userId 操作者ユーザーID
