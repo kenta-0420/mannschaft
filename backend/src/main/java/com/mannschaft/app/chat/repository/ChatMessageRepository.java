@@ -140,6 +140,27 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
             @Param("channelId") Long channelId, Pageable pageable);
 
     /**
+     * {@link #findLatestRootMessagesByChannelId} のチャンネル ID 群版（村フィードの N+1 解消用）。
+     * チャンネルごとに最新 {@code perChannel} 件を window 関数で切り出す。native のため
+     * {@code deleted_at IS NULL} を明示する。
+     */
+    @Query(value = """
+            SELECT x.* FROM (
+              SELECT m.*, ROW_NUMBER() OVER (
+                       PARTITION BY m.channel_id ORDER BY m.created_at DESC, m.id DESC) AS rn
+              FROM chat_messages m
+              WHERE m.channel_id IN (:channelIds)
+                AND m.parent_id IS NULL
+                AND m.deleted_at IS NULL
+            ) x
+            WHERE x.rn <= :perChannel
+            ORDER BY x.created_at DESC, x.id DESC
+            """, nativeQuery = true)
+    List<ChatMessageEntity> findLatestRootMessagesByChannelIds(
+            @Param("channelIds") java.util.Collection<Long> channelIds,
+            @Param("perChannel") int perChannel);
+
+    /**
      * 村ロビーチャネル内のメッセージを部分一致で検索する（F17.1 §4.12）。
      *
      * <p>既存の {@link #searchByKeyword} は FULLTEXT を使う native query で高速だが、

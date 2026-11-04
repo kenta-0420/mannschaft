@@ -28,6 +28,18 @@ public interface TimetableSlotUserNoteRepository extends JpaRepository<Timetable
             Long userId, TimetableSlotKind slotKind, Long slotId, LocalDate targetDate);
 
     /**
+     * スロット ID 群の「指定日付限定メモ ＋ 常設メモ」を一括取得する（ダッシュボード N+1 解消用）。
+     */
+    @Query("SELECT n FROM TimetableSlotUserNoteEntity n"
+            + " WHERE n.userId = :userId AND n.slotKind = :kind AND n.slotId IN :slotIds"
+            + "   AND (n.targetDate = :date OR n.targetDate IS NULL)"
+            + " ORDER BY n.id ASC")
+    List<TimetableSlotUserNoteEntity> findForSlots(@Param("userId") Long userId,
+                                                    @Param("kind") TimetableSlotKind kind,
+                                                    @Param("slotIds") java.util.Collection<Long> slotIds,
+                                                    @Param("date") LocalDate date);
+
+    /**
      * 指定 ID のメモを所有者検証込みで取得する（IDOR 対策）。
      */
     Optional<TimetableSlotUserNoteEntity> findByIdAndUserId(Long id, Long userId);
