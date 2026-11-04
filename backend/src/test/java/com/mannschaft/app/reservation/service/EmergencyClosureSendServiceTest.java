@@ -20,6 +20,7 @@ import java.sql.SQLIntegrityConstraintViolationException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -43,7 +44,8 @@ class EmergencyClosureSendServiceTest {
 
     private static final Long TEAM_ID = 10L;
     private static final Long OPERATOR_ID = 100L;
-    private static final String KEY = "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
+    /** 試験ごとに生成する（固定の16進リテラルは秘密情報スキャナの誤検知を招くため）。小文字表記。 */
+    private static final String KEY = UUID.randomUUID().toString();
     private static final String CONSTRAINT = "uq_emergency_closures_team_creator_idempotency";
 
     @Mock

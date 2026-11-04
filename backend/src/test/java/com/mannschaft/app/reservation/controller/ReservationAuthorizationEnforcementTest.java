@@ -304,7 +304,7 @@ class ReservationAuthorizationEnforcementTest {
 
         mockMvc.perform(post(CLOSURES_PATH)
                         .with(csrf())
-                        .header("Idempotency-Key", "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d")
+                        .header("Idempotency-Key", java.util.UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID_CLOSURE_BODY))
                 .andExpect(status().isForbidden());
