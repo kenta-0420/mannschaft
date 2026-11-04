@@ -116,8 +116,14 @@ class WebSocketStompRejectionIntegrationTest extends AbstractMySqlIntegrationTes
         // client.stop() だけでは確立済みの STOMP セッションは閉じず、サーバ側の SimpUserRegistry に
         // 次のテストまで残る（同一 context を共有するため他テストの断定へ混入する）。明示的に DISCONNECT する。
         for (Connection connection : connections) {
-            StompSession session = connection.session().getNow(null);
-            if (session != null && session.isConnected()) {
+            CompletableFuture<StompSession> future = connection.session();
+            // 拒否された CONNECT の接続 Future は、サーバの ERROR→切断で ConnectionLostException により例外完了する。
+            // getNow/join は例外完了だと CompletionException を投げるため、正常完了した（＝確立した）接続だけを対象にする。
+            if (!future.isDone() || future.isCompletedExceptionally()) {
+                continue;
+            }
+            StompSession session = future.join();
+            if (session.isConnected()) {
                 session.disconnect();
             }
         }
