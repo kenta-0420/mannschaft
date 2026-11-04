@@ -1,5 +1,9 @@
 package com.mannschaft.app.common.schema;
 
+import com.mannschaft.app.auth.dto.RequestWithdrawalRequest;
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.service.UserService;
+import com.mannschaft.app.gdpr.service.AccountPurgeService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.DisplayName;
@@ -7,12 +11,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -22,6 +30,8 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 
 /**
  * <b>物理命名戦略の導出が曖昧なフィールド（{@code s3Key} / {@code r2ObjectKey} / {@code alertSent30d} /
@@ -105,6 +115,10 @@ class EntityDigitBoundaryColumnFlywaySchemaIT {
     @MockitoBean
     org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
 
+    @Autowired private TransactionTemplate transactionTemplate;
+    @Autowired private UserService userService;
+    @Autowired private AccountPurgeService accountPurgeService;
+
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", MYSQL::getJdbcUrl);
@@ -172,5 +186,81 @@ class EntityDigitBoundaryColumnFlywaySchemaIT {
         List<Object> native_ = em.createNativeQuery(
                         "SELECT s3_key FROM data_exports LIMIT 1").getResultList();
         assertThat(native_).as("Flyway の実列名 s3_key が存在すること").isNotNull();
+    }
+
+    /**
+     * CMP-260822-1243: 失効済み refresh_tokens を持つ退会ユーザーの強匿名化が、Flyway 実スキーマで
+     * commit 後まで完走することを、実際の {@link AccountPurgeService#purgeExpiredAccounts()} で確かめる。
+     *
+     * <p>通常の IT は {@code ddl-auto=create} で {@code refresh_tokens.user_id} に FK が存在せず欠陥を再現できない。
+     * V256 が {@code fk_refresh_tokens_user} を ON DELETE CASCADE へ張り替えたことを、実スキーマ上の purge 完走で証明する。
+     * コンテナを増やさない規約（{@code backend/.claudecode.md}）に従い本クラスへ相乗りした。
+     * クラスは {@code @Transactional} だが本メソッドは {@code NOT_SUPPORTED} で外し、明示 TX で実 commit した後に
+     * 別 TX から検証し、作成データは finally で自ら後始末する。</p>
+     */
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    @DisplayName("失効済みと未失効の refresh_token を持つ退会者を実purgeで物理削除でき、別ユーザーのトークンは残る")
+    void purgeCompletesWithRevokedRefreshTokensAndKeepsOtherUser() {
+        @SuppressWarnings("unchecked")
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+        Long target = createPurgeUser("本人");
+        Long other = createPurgeUser("別ユーザー");
+        try {
+            insertPurgeToken(target, "a", true);
+            insertPurgeToken(target, "b", false);
+            insertPurgeToken(other, "c", true);
+            insertPurgeToken(other, "d", false);
+            // 退会受付は本人の全トークンを失効させる（失効済み行が残る欠陥の入口）。
+            userService.requestWithdrawal(target, new RequestWithdrawalRequest(null));
+            assertThat(purgeCount("SELECT COUNT(*) FROM refresh_tokens WHERE user_id = " + target + " AND revoked_at IS NULL"))
+                    .as("退会受付後は本人の未失効トークンが無い").isZero();
+            assertThat(purgeCount("SELECT COUNT(*) FROM refresh_tokens WHERE user_id = " + target))
+                    .as("失効済みの行は残っている").isEqualTo(2);
+            transactionTemplate.executeWithoutResult(tx -> em.createNativeQuery(
+                    "UPDATE users SET deleted_at = DATE_SUB(NOW(), INTERVAL 31 DAY) WHERE id = :id")
+                    .setParameter("id", target).executeUpdate());
+
+            accountPurgeService.purgeExpiredAccounts();
+
+            assertThat(purgeCount("SELECT COUNT(*) FROM users WHERE id = " + target))
+                    .as("commit 後に退会者の users 行が物理削除されている").isZero();
+            assertThat(purgeCount("SELECT COUNT(*) FROM refresh_tokens WHERE user_id = " + target))
+                    .as("退会者の refresh_tokens は0件").isZero();
+            assertThat(purgeCount("SELECT COUNT(*) FROM users WHERE id = " + other))
+                    .as("別ユーザーは残る").isEqualTo(1);
+            assertThat(purgeCount("SELECT COUNT(*) FROM refresh_tokens WHERE user_id = " + other))
+                    .as("別ユーザーの refresh_tokens は残る").isEqualTo(2);
+        } finally {
+            transactionTemplate.executeWithoutResult(tx -> em.createNativeQuery(
+                    "DELETE FROM users WHERE id IN (" + target + "," + other + ")").executeUpdate());
+        }
+    }
+
+    private Long createPurgeUser(String name) {
+        return transactionTemplate.execute(tx -> {
+            UserEntity user = UserEntity.builder()
+                    .email("cmp1243-fw-" + System.nanoTime() + "@example.com")
+                    .lastName("試練").firstName(name).displayName(name)
+                    .status(UserEntity.UserStatus.ACTIVE).locale("ja").timezone("Asia/Tokyo")
+                    .isSearchable(true).build();
+            em.persist(user);
+            em.flush();
+            return user.getId();
+        });
+    }
+
+    private void insertPurgeToken(Long userId, String suffix, boolean revoked) {
+        transactionTemplate.executeWithoutResult(tx -> em.createNativeQuery(
+                "INSERT INTO refresh_tokens (user_id,token_hash,remember_me,jti,expires_at,revoked_at,created_at)"
+                        + " VALUES (" + userId + ",'cmp1243-fw-" + userId + suffix + "',0,'cmp1243-fw-" + userId + suffix
+                        + "',DATE_ADD(NOW(), INTERVAL 7 DAY)," + (revoked ? "NOW()" : "NULL") + ",NOW())")
+                .executeUpdate());
+    }
+
+    private long purgeCount(String sql) {
+        return transactionTemplate.execute(tx -> ((Number) em.createNativeQuery(sql)
+                .getSingleResult()).longValue());
     }
 }

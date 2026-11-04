@@ -19,8 +19,6 @@ import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.repository.UserVillagePinRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -129,15 +127,14 @@ public class VillageFeedService {
         // 各村の最新動きを集約（本文は現役の村人である村のみ）
         Set<UUID> memberVillageIds =
                 new HashSet<>(postingIdentityService.getActiveVillageIdsByUser(actorUserId));
-        List<VillageFeedItemResponse> aggregate = new ArrayList<>();
-        Pageable pageable = PageRequest.of(0, PER_VILLAGE_FETCH_HARD_CAP);
+        List<VillageEntity> targets = new ArrayList<>();
         for (VillageEntity v : villageMap.values()) {
-            if (!memberVillageIds.contains(v.getId())) {
-                continue;
+            if (memberVillageIds.contains(v.getId())) {
+                targets.add(v);
             }
-            collectTimelinePosts(v, pageable, aggregate);
-            collectLobbyMessages(v, pageable, aggregate);
         }
+        // 村数（ピン数）に比例して SQL が増えないよう、村 ID 群でまとめて取得して村ごとに振り分ける
+        List<VillageFeedItemResponse> aggregate = collectFeedItems(targets);
 
         // createdAt 降順で並べて limit 件まで
         aggregate.sort(Comparator.comparing(
@@ -202,54 +199,85 @@ public class VillageFeedService {
         return result;
     }
 
-    private void collectTimelinePosts(VillageEntity v, Pageable pageable,
-                                      List<VillageFeedItemResponse> out) {
-        List<TimelinePostEntity> posts = timelinePostRepository
-                .findLatestByVillageId(v.getId(), pageable);
-        for (TimelinePostEntity p : posts) {
-            out.add(VillageFeedItemResponse.builder()
-                    .type("TIMELINE")
-                    .villageId(v.getId())
-                    .villageName(v.getName())
-                    .postId(p.getId())
-                    .snippet(VillageSearchService.makeSnippet(p.getContent()))
-                    .createdAt(p.getCreatedAt())
-                    .build());
+    /**
+     * 対象村の最新動き（タイムライン・掲示板・ロビー）を一括取得し、村ごとに従来と同じ順
+     * （タイムライン → 掲示板 → ロビー）で並べて返す。各村 {@value #PER_VILLAGE_FETCH_HARD_CAP} 件上限・
+     * 新しい順は window 関数で村単位に適用される。SQL は村数によらず固定本数。
+     */
+    private List<VillageFeedItemResponse> collectFeedItems(List<VillageEntity> targets) {
+        List<VillageFeedItemResponse> out = new ArrayList<>();
+        if (targets.isEmpty()) {
+            return out;
         }
-        // 掲示板スレッドも TIMELINE 型として含める（フィードは「最新動き」の包括的表示）
-        List<BulletinThreadEntity> threads = bulletinThreadRepository
-                .findLatestByVillageId(v.getId(), pageable);
-        for (BulletinThreadEntity t : threads) {
-            out.add(VillageFeedItemResponse.builder()
-                    .type("TIMELINE")
-                    .villageId(v.getId())
-                    .villageName(v.getName())
-                    .postId(t.getId())
-                    .snippet(VillageSearchService.makeSnippet(t.getTitle()))
-                    .createdAt(t.getCreatedAt())
-                    .build());
-        }
-    }
+        List<UUID> villageIds = targets.stream().map(VillageEntity::getId).toList();
 
-    private void collectLobbyMessages(VillageEntity v, Pageable pageable,
-                                      List<VillageFeedItemResponse> out) {
-        ChatChannelEntity lobby = chatChannelRepository
-                .findByVillageIdAndChannelType(v.getId(), ChannelType.VILLAGE_LOBBY)
-                .orElse(null);
-        if (lobby == null) {
-            return;
+        Map<UUID, List<TimelinePostEntity>> postsByVillage = new HashMap<>();
+        for (TimelinePostEntity p : timelinePostRepository
+                .findLatestByVillageIds(villageIds, PER_VILLAGE_FETCH_HARD_CAP)) {
+            if (p.getScopeVillageId() != null) {
+                postsByVillage.computeIfAbsent(p.getScopeVillageId(), k -> new ArrayList<>()).add(p);
+            }
         }
-        List<ChatMessageEntity> messages = chatMessageRepository
-                .findLatestRootMessagesByChannelId(lobby.getId(), pageable);
-        for (ChatMessageEntity m : messages) {
-            out.add(VillageFeedItemResponse.builder()
-                    .type("LOBBY")
-                    .villageId(v.getId())
-                    .villageName(v.getName())
-                    .messageId(m.getId())
-                    .snippet(VillageSearchService.makeSnippet(m.getBody()))
-                    .createdAt(m.getCreatedAt())
-                    .build());
+        Map<UUID, List<BulletinThreadEntity>> threadsByVillage = new HashMap<>();
+        for (BulletinThreadEntity t : bulletinThreadRepository
+                .findLatestByVillageIds(villageIds, PER_VILLAGE_FETCH_HARD_CAP)) {
+            if (t.getScopeVillageId() != null) {
+                threadsByVillage.computeIfAbsent(t.getScopeVillageId(), k -> new ArrayList<>()).add(t);
+            }
         }
+        // 村ロビーは 1 村 1 チャネルが前提。万一重複していても最古の 1 件に決める（例外にしない）。
+        Map<UUID, Long> lobbyByVillage = new HashMap<>();
+        for (ChatChannelEntity ch : chatChannelRepository
+                .findByVillageIdInAndChannelTypeOrderByIdAsc(villageIds, ChannelType.VILLAGE_LOBBY)) {
+            if (ch.getVillageId() != null) {
+                lobbyByVillage.putIfAbsent(ch.getVillageId(), ch.getId());
+            }
+        }
+        Map<Long, List<ChatMessageEntity>> messagesByChannel = new HashMap<>();
+        if (!lobbyByVillage.isEmpty()) {
+            for (ChatMessageEntity m : chatMessageRepository.findLatestRootMessagesByChannelIds(
+                    new ArrayList<>(lobbyByVillage.values()), PER_VILLAGE_FETCH_HARD_CAP)) {
+                messagesByChannel.computeIfAbsent(m.getChannelId(), k -> new ArrayList<>()).add(m);
+            }
+        }
+
+        for (VillageEntity v : targets) {
+            for (TimelinePostEntity p : postsByVillage.getOrDefault(v.getId(), List.of())) {
+                out.add(VillageFeedItemResponse.builder()
+                        .type("TIMELINE")
+                        .villageId(v.getId())
+                        .villageName(v.getName())
+                        .postId(p.getId())
+                        .snippet(VillageSearchService.makeSnippet(p.getContent()))
+                        .createdAt(p.getCreatedAt())
+                        .build());
+            }
+            // 掲示板スレッドも TIMELINE 型として含める（フィードは「最新動き」の包括的表示）
+            for (BulletinThreadEntity t : threadsByVillage.getOrDefault(v.getId(), List.of())) {
+                out.add(VillageFeedItemResponse.builder()
+                        .type("TIMELINE")
+                        .villageId(v.getId())
+                        .villageName(v.getName())
+                        .postId(t.getId())
+                        .snippet(VillageSearchService.makeSnippet(t.getTitle()))
+                        .createdAt(t.getCreatedAt())
+                        .build());
+            }
+            Long lobbyId = lobbyByVillage.get(v.getId());
+            if (lobbyId == null) {
+                continue;
+            }
+            for (ChatMessageEntity m : messagesByChannel.getOrDefault(lobbyId, List.of())) {
+                out.add(VillageFeedItemResponse.builder()
+                        .type("LOBBY")
+                        .villageId(v.getId())
+                        .villageName(v.getName())
+                        .messageId(m.getId())
+                        .snippet(VillageSearchService.makeSnippet(m.getBody()))
+                        .createdAt(m.getCreatedAt())
+                        .build());
+            }
+        }
+        return out;
     }
 }
