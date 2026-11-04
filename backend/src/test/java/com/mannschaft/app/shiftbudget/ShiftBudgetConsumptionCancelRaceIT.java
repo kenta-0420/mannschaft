@@ -115,7 +115,7 @@ class ShiftBudgetConsumptionCancelRaceIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @DisplayName("AC01/08 batchとarchive listenerが同じ2消化を読んでも各1回だけ減算する")
+    @DisplayName("AC01/12 batchとarchive listenerが同じ2消化を読んでも各1回だけ減算する")
     void 整合バッチと取消リスナーが競合しても二重減算しない() throws Exception {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         Future<Integer> result;
@@ -161,8 +161,10 @@ class ShiftBudgetConsumptionCancelRaceIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @DisplayName("AC09/10 逐次再実行は0件、CONFIRMED・CANCELLED・削除済み・対象0件は不変")
+    @DisplayName("AC08 逐次再実行は0件、CONFIRMED・CANCELLED・削除済み・対象0件は不変")
     void 逐次重複取消と取消対象外は無作用() {
+        Long zero = transactionTemplate.execute(tx -> saveConsumption(fixture.allocationId(),
+                fixture.shiftId(), BigDecimal.ZERO, ShiftBudgetConsumptionStatus.PLANNED));
         List<Long> unchanged = transactionTemplate.execute(tx -> List.of(
                 saveConsumption(fixture.allocationId(), fixture.shiftId(), BigDecimal.ZERO, ShiftBudgetConsumptionStatus.CONFIRMED),
                 saveConsumption(fixture.allocationId(), fixture.shiftId(), BigDecimal.ZERO, ShiftBudgetConsumptionStatus.CANCELLED)));
@@ -173,21 +175,26 @@ class ShiftBudgetConsumptionCancelRaceIT extends AbstractMySqlIntegrationTest {
                     ShiftBudgetConsumptionStatus.PLANNED).toBuilder().deletedAt(java.time.LocalDateTime.now()).build()).getId();
         });
 
-        assertThat(consumptionService.cancelAllForShift(fixture.shiftId())).isEqualTo(2);
+        assertThat(consumptionService.cancelAllForShift(fixture.shiftId())).isEqualTo(3);
         assertThat(consumptionService.cancelAllForShift(fixture.shiftId())).isZero();
         assertThat(consumptionService.cancelAllForShift(Long.MIN_VALUE)).isZero();
 
         assertThat(amount()).isEqualByComparingTo(OTHER_SHIFT);
+        assertThat(status(zero)).isEqualTo("CANCELLED");
+        assertThat(jdbc.queryForObject("SELECT cancel_reason FROM shift_budget_consumptions WHERE id = ?",
+                String.class, zero)).isEqualTo("SHIFT_DELETED");
+        assertThat(jdbc.queryForObject("SELECT amount FROM shift_budget_consumptions WHERE id = ?",
+                BigDecimal.class, zero)).isEqualByComparingTo(BigDecimal.ZERO);
         assertThat(status(unchanged.getFirst())).isEqualTo("CONFIRMED");
         assertThat(status(unchanged.getLast())).isEqualTo("CANCELLED");
         assertThat(status(deleted)).isEqualTo("PLANNED");
         assertThat(jdbc.queryForList("SELECT cancel_reason FROM shift_budget_consumptions WHERE shift_id = ? "
                 + "AND deleted_at IS NULL AND cancel_reason IS NOT NULL", String.class, fixture.shiftId()))
-                .containsExactly("SHIFT_DELETED", "SHIFT_DELETED");
+                .containsExactly("SHIFT_DELETED", "SHIFT_DELETED", "SHIFT_DELETED");
     }
 
     @Test
-    @DisplayName("AC12 2件目の実SQL減算が失敗したら、先行分を含め消化と割当が同時rollbackする")
+    @DisplayName("AC09/12 2件目の実SQL減算が失敗したら、先行分を含め消化と割当が同時rollbackする")
     void 減算途中失敗時は消化更新も全件巻き戻る() {
         String trigger = "cmp0717_cancel_" + fixture.allocationId();
         // 共通Hibernate schemaにはFlywayのCHECKが無い。対象IDの2件目減算だけを実DBで拒否する。
