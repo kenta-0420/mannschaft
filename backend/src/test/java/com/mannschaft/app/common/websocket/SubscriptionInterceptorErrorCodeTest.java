@@ -6,7 +6,9 @@ import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.chat.ws.ChatChannelSubscriptionInterceptor;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.match.live.MatchLiveSubscriptionInterceptor;
+import com.mannschaft.app.match.repository.MatchRepository;
 import com.mannschaft.app.match.service.MatchAccessService;
+import com.mannschaft.app.match.visibility.MatchVisibilityResolver;
 import com.mannschaft.app.reservation.ws.EmergencyClosureSubscriptionInterceptor;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.DisplayName;
@@ -30,6 +32,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -109,14 +113,28 @@ class SubscriptionInterceptorErrorCodeTest {
         private final UUID matchId = UUID.fromString("01900000-0000-7000-8000-000000000001");
         private final String dest = "/topic/matches/" + matchId + "/live";
 
-        @Test
-        @DisplayName("0337-10: 未認証でも公開試合（canView(null)=true）は購読可（従来どおり）")
-        void 未認証の公開試合は可() {
-            when(matchAccessService.canView(null, matchId)).thenReturn(true);
-            var interceptor = new MatchLiveSubscriptionInterceptor(matchAccessService);
-            Message<byte[]> msg = subscribe(dest, null);
+        @Mock
+        private MatchRepository matchRepository;
 
-            assertThat(interceptor.preSend(msg, channel)).isSameAs(msg);
+        @Mock
+        private AccessControlService resolverAccessControl;
+
+        @Test
+        @DisplayName("0337-10: 匿名購読は実 MatchVisibilityResolver の判定（匿名は常に不可）に委譲され UNAUTHENTICATED で拒否（FORBIDDEN にならない）")
+        void 匿名購読は実Resolverに委譲されUNAUTHENTICATED() {
+            // 実 Resolver の挙動: 閲覧者 null は試合の実在確認より前に false（匿名で公開観戦できる試合は現状存在しない）
+            MatchVisibilityResolver resolver = new MatchVisibilityResolver(matchRepository, resolverAccessControl);
+            assertThat(resolver.canViewUuid(matchId, null)).isFalse();
+            verifyNoInteractions(matchRepository, resolverAccessControl);
+
+            // Interceptor は匿名を事前拒否せず canView(null, matchId) に委譲する。委譲先の結果は実 Resolver の判定に合わせる。
+            when(matchAccessService.canView(null, matchId))
+                    .thenAnswer(invocation -> resolver.canViewUuid(matchId, null));
+            var interceptor = new MatchLiveSubscriptionInterceptor(matchAccessService);
+
+            assertRejected(() -> interceptor.preSend(subscribe(dest, null), channel),
+                    StompErrorCode.UNAUTHENTICATED, "ライブ観戦の購読権限がありません");
+            verify(matchAccessService).canView(null, matchId);
         }
 
         @Test

@@ -29,7 +29,12 @@ import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.lang.reflect.Type;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +45,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * CMP-261104-0337（B 案・BE）実接続の結合テスト。
@@ -54,7 +58,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *   <li>0337-4: 未認証 UNAUTHENTICATED／権限なし FORBIDDEN／宛先不正 INVALID_DESTINATION を 3 Interceptor で別コード</li>
  *   <li>0337-8: 許可外 Origin・同一サイト別 Origin のハンドシェイク拒否</li>
  *   <li>0337-9: 無効 Bearer＋有効 Cookie／Bearer と Cookie が別ユーザー／他人の /user 通知を受信しない</li>
- *   <li>0337-10: 匿名 CONNECT は従来どおり成立し、match の匿名拒否は FORBIDDEN ではなく UNAUTHENTICATED</li>
+ *   <li>0337-10: 匿名 CONNECT は従来どおり成立し、match の購読可否は MatchVisibilityResolver に委譲される
+ *       （現状、匿名は常に不可のため UNAUTHENTICATED で拒否され FORBIDDEN にはならない）</li>
  * </ul>
  *
  * <p>実 HTTP / WebSocket の接続契約を検査するため RANDOM_PORT で WebEnvironment を上書きし、
@@ -275,7 +280,7 @@ class WebSocketStompRejectionIntegrationTest extends AbstractMySqlIntegrationTes
     }
 
     @Test
-    @DisplayName("0337-10: match: 匿名で閲覧不可 → FORBIDDEN ではなく UNAUTHENTICATED（ログインで解消しうる）")
+    @DisplayName("0337-10: match: 匿名購読は実 MatchVisibilityResolver（匿名は常に不可）に委譲され、FORBIDDEN ではなく UNAUTHENTICATED で拒否")
     void match未認証() throws Exception {
         StompHeaders error = subscribeExpectingError(open(null, null, null),
                 "/topic/matches/" + UUID.randomUUID() + "/live");
@@ -286,28 +291,58 @@ class WebSocketStompRejectionIntegrationTest extends AbstractMySqlIntegrationTes
     // ─── 0337-8: CSWSH（Origin 制限） ──────────────────────────────
 
 
-    @Test
-    @DisplayName("許可外 Origin（別サイト）からのハンドシェイクは Cookie があっても拒否される")
-    void 別サイトOriginは拒否() {
-        Connection connection = open("https://attacker.example", jwt(USER_A), null);
+    // 任意の例外（タイムアウト・サーバ障害）で偽緑にならないよう、ハンドシェイクの HTTP ステータスそのものを
+    // 生ソケットで読み取って断定する。許可 Origin が 101 になる対照と必ず対にする。
 
-        assertThatThrownBy(connection::await).as("許可外 Origin の WS 接続は成立しない").isNotNull();
+    @Test
+    @DisplayName("許可外 Origin（別サイト）からのハンドシェイクは Cookie があっても HTTP 403 で拒否される")
+    void 別サイトOriginは403() throws Exception {
+        assertThat(handshakeStatus("https://attacker.example", jwt(USER_A)))
+                .as("許可外 Origin のアップグレード要求は 403").isEqualTo(403);
     }
 
     @Test
-    @DisplayName("同一サイト別 Origin（同ホスト別ポート）からのハンドシェイクも拒否される")
-    void 同一サイト別Originは拒否() {
-        Connection connection = open("http://localhost:3999", jwt(USER_A), null);
-
-        assertThatThrownBy(connection::await).as("同一サイトでも許可リスト外の Origin は成立しない").isNotNull();
+    @DisplayName("同一サイト別 Origin（同ホスト別ポート）からのハンドシェイクも HTTP 403 で拒否される")
+    void 同一サイト別Originは403() throws Exception {
+        assertThat(handshakeStatus("http://localhost:3999", jwt(USER_A)))
+                .as("同一サイトでも許可リスト外の Origin は 403").isEqualTo(403);
     }
 
     @Test
-    @DisplayName("許可 Origin からのハンドシェイクは成立する（対照）")
-    void 許可Originは成立() throws Exception {
+    @DisplayName("許可 Origin からのハンドシェイクは HTTP 101 で成立し、STOMP 接続も確立する（対照）")
+    void 許可Originは101で成立() throws Exception {
+        assertThat(handshakeStatus(ALLOWED_ORIGIN, jwt(USER_A)))
+                .as("許可 Origin のアップグレード要求は 101 Switching Protocols").isEqualTo(101);
+
         StompSession session = open(ALLOWED_ORIGIN, jwt(USER_A), null).await();
-
         assertThat(session.isConnected()).isTrue();
+    }
+
+    /**
+     * 生ソケットで WebSocket アップグレード要求（{@code /ws/websocket}）を送り、応答ステータスコードを返す。
+     * Origin・Cookie は任意に指定できる（ブラウザからの越境接続を再現）。
+     */
+    private int handshakeStatus(String origin, String cookieJwt) throws Exception {
+        try (Socket socket = new Socket("localhost", port)) {
+            socket.setSoTimeout(60_000);
+            String request = "GET /ws/websocket HTTP/1.1\r\n"
+                    + "Host: localhost:" + port + "\r\n"
+                    + "Upgrade: websocket\r\n"
+                    + "Connection: Upgrade\r\n"
+                    + "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+                    + "Sec-WebSocket-Version: 13\r\n"
+                    + "Origin: " + origin + "\r\n"
+                    + "Cookie: access_token=" + cookieJwt + "\r\n"
+                    + "\r\n";
+            OutputStream out = socket.getOutputStream();
+            out.write(request.getBytes(StandardCharsets.US_ASCII));
+            out.flush();
+            BufferedReader in = new BufferedReader(
+                    new InputStreamReader(socket.getInputStream(), StandardCharsets.US_ASCII));
+            String statusLine = in.readLine();
+            assertThat(statusLine).as("ステータス行が返ること").isNotNull().startsWith("HTTP/1.1 ");
+            return Integer.parseInt(statusLine.split(" ")[1]);
+        }
     }
 
     // ─── 0337-9: 認証ソースの優先順位 ─────────────────────────────

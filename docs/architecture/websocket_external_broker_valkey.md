@@ -161,7 +161,7 @@ CONNECT／SUBSCRIBE をインターセプタで拒否するときは `StompRejec
 | `INVALID_DESTINATION` | 宛先の識別子が解釈できない（数値範囲外・UUID 不正など）| 解消しない |
 | （ヘッダなし）| 想定外の失敗 | クライアントは未知のエラーとして扱う |
 
-適用している購読 Interceptor: 臨時休業確認状況（未認証→`UNAUTHENTICATED`／ADMIN・DEPUTY_ADMIN 以外→`FORBIDDEN`）、match ライブ観戦（`canView=false` のとき未認証なら `UNAUTHENTICATED`・認証済みなら `FORBIDDEN`。`canView(null)=true` の試合の匿名購読は従来どおり可）、チャットチャネル（未認証→`UNAUTHENTICATED`／不在・削除済み・非メンバー→`FORBIDDEN`）。いずれも宛先不正は `INVALID_DESTINATION`。
+適用している購読 Interceptor: 臨時休業確認状況（未認証→`UNAUTHENTICATED`／ADMIN・DEPUTY_ADMIN 以外→`FORBIDDEN`）、match ライブ観戦（購読可否は `MatchAccessService.canView` → F00 `MatchVisibilityResolver` に委譲し、Interceptor は匿名を事前拒否しない。`canView=false` のとき未認証なら `UNAUTHENTICATED`・認証済みなら `FORBIDDEN`。**現状の `MatchVisibilityResolver` は閲覧者 null を常に不可とするため、匿名の match 購読は常に `UNAUTHENTICATED` で拒否される**＝匿名で観戦できる公開試合は現状存在しない。匿名 CONNECT 自体は従来どおり成立する）、チャットチャネル（未認証→`UNAUTHENTICATED`／不在・削除済み・非メンバー→`FORBIDDEN`）。いずれも宛先不正は `INVALID_DESTINATION`。
 
 ### 2.4 Valkey 現状（pub/sub 未使用 → 新設が必要）
 
