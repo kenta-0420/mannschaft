@@ -61050,6 +61050,8 @@ export interface components {
             status?: string;
         };
         SlotSummaryDto: {
+            /** Format: date */
+            endDate?: string;
             /** @example 14:30:00 */
             endTime?: string;
             lineName?: string;
