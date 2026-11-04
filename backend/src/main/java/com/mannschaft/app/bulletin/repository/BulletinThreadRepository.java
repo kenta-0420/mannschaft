@@ -335,6 +335,26 @@ public interface BulletinThreadRepository extends JpaRepository<BulletinThreadEn
     List<BulletinThreadEntity> findLatestByVillageId(
             @Param("villageId") UUID villageId, Pageable pageable);
 
+    /**
+     * {@link #findLatestByVillageId} の村 ID 群版（ダッシュボード村フィードの N+1 解消用）。
+     * 村ごとに最新 {@code perVillage} 件を window 関数で切り出す。native のため
+     * {@code deleted_at IS NULL} を明示する。
+     */
+    @Query(value = """
+            SELECT x.* FROM (
+              SELECT t.*, ROW_NUMBER() OVER (
+                       PARTITION BY t.scope_village_id ORDER BY t.created_at DESC, t.id DESC) AS rn
+              FROM bulletin_threads t
+              WHERE t.scope_village_id IN (:villageIds)
+                AND t.deleted_at IS NULL
+            ) x
+            WHERE x.rn <= :perVillage
+            ORDER BY x.created_at DESC, x.id DESC
+            """, nativeQuery = true)
+    List<BulletinThreadEntity> findLatestByVillageIds(
+            @Param("villageIds") java.util.Collection<UUID> villageIds,
+            @Param("perVillage") int perVillage);
+
     // ====================================================================
     // F17.1 Phase 3-β — 村史月次集計（村ドメインから read-only 呼出）
     // TODO: 将来は VillagePostCreatedEvent によるカウンタ非同期更新へ分離予定。

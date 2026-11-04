@@ -173,9 +173,21 @@ class ShiftScheduleFacadeTest {
         }
 
         @Test
-        @DisplayName("未公開は認可結果より先に 404（SUPPORTER にも 403 を見せない）")
+        @DisplayName("SUPPORTER は未公開でも公開済みと同じ 403 COMMON_002（D-2127-1: 公開状態を応答差で漏らさない）")
+        void 未公開でもSUPPORTERは403() {
+            given(scheduleService.resolveScope(SCHEDULE_ID)).willReturn(draft());
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isSupporter(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+
+            assertCode(catchThrowable(() -> facade.getSchedule(SCHEDULE_ID, USER_ID)),
+                    CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("一般メンバーには未公開は 404")
         void 未公開は404() {
             given(scheduleService.resolveScope(SCHEDULE_ID)).willReturn(draft());
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             assertCode(catchThrowable(() -> facade.getSchedule(SCHEDULE_ID, USER_ID)),
                     ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
