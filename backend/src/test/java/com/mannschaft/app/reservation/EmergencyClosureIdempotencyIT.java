@@ -7,7 +7,6 @@ import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
-import com.mannschaft.app.reservation.event.EmergencyClosureNotificationListener;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -56,7 +55,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -72,9 +70,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * 所有行は {@link #所有行とadvisorを片付ける()} で明示的に消す。</p>
  *
  * <ul>
- *   <li>0334-4: 同キー同内容の2回目は 200・新行なし・同 closureId/sentCount、outbox・通知イベント・確認行は1回分</li>
+ *   <li>0334-4: 同キー同内容の2回目は 200・新行なし・同 closureId/sentCount、outbox・通知行（AFTER_COMMIT 後の実配送行）・確認行は1回分</li>
  *   <li>0334-5: 同キー別内容は 409（RESERVATION_055）・副作用0</li>
- *   <li>0334-6: 同キー同時2本で行1つ・両方同じ closureId/sentCount</li>
+ *   <li>0334-6: 同キー同時2本で行1つ・両方同じ closureId/sentCount。後着が「初回照会で未検出 → UNIQUE 違反 → rollback →
+ *       新 TX で再読込」の経路を通ったことを同期点と観測 advisor で断定する</li>
  *   <li>0334-7/12: 他テナント ADMIN が対象チーム URL へ POST → 403・副作用0、MEMBER 403、キーは team×送信者で区別</li>
  *   <li>0334-9: commit 済み・応答消失 → 同キー再送で新行なし</li>
  *   <li>0334-10: 途中失敗 → 全 rollback → 同キー再送で成功・副作用1回分</li>
@@ -97,7 +96,7 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
     @Autowired private ReservationSlotRepository slots;
     @Autowired private PlatformTransactionManager transactionManager;
     @Autowired private EmailOutboxService emailOutboxService;
-    @Autowired private EmergencyClosureNotificationListener notificationListener;
+    @Autowired private com.mannschaft.app.reservation.service.EmergencyClosureService closureService;
     @Autowired @Qualifier("event-pool") private ThreadPoolTaskExecutor eventPool;
 
     @PersistenceContext
@@ -107,7 +106,6 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
     private final List<Long> ownedUsers = new ArrayList<>();
     private final List<Runnable> advisorRemovals = new ArrayList<>();
     private final ExecutorService workers = Executors.newFixedThreadPool(2);
-    private final AtomicInteger notificationEvents = new AtomicInteger();
 
     private Long teamA;
     private Long teamB;
@@ -150,10 +148,6 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
                     .reservationSlotId(slotA).status(ReservationStatus.CONFIRMED)
                     .bookedAt(LocalDateTime.now()).isGroupPrimary(true).build());
         }
-        advise(notificationListener, "onEmergencyClosureNotification", invocation -> {
-            notificationEvents.incrementAndGet();
-            return invocation.proceed();
-        });
     }
 
     @AfterEach
@@ -188,7 +182,7 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
     // ─────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("0334-4: 同キー同内容の2回目は200で新行なし・同closureId/sentCount、outbox・通知イベント・確認行は1回分")
+    @DisplayName("0334-4: 同キー同内容の2回目は200で新行なし・同closureId/sentCount、outbox・通知行・確認行は1回分")
     void 同キー同内容の再送は既存結果を返し副作用を重ねない() throws Exception {
         String key = UUID.randomUUID().toString();
 
@@ -203,7 +197,7 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
             soft.assertThat(closures(teamA)).isEqualTo(1);
             soft.assertThat(outbox(teamA)).as("予約者2人へのメールは1回分").isEqualTo(2);
             soft.assertThat(confirmations(teamA)).as("確認行は1回分").isEqualTo(2);
-            soft.assertThat(notificationEvents.get()).as("通知配送イベントは1回分").isEqualTo(1);
+            soft.assertThat(deliveredNotifications()).as("AFTER_COMMIT 後の通知行は予約者2人ぶん（1回分）").isEqualTo(2);
             soft.assertThat(bookedCount()).as("枠の減算は1回分").isZero();
         });
     }
@@ -223,7 +217,7 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
             soft.assertThat(closureId(retry)).isEqualTo(committedId);
             soft.assertThat(closures(teamA)).isEqualTo(1);
             soft.assertThat(outbox(teamA)).isEqualTo(2);
-            soft.assertThat(notificationEvents.get()).isEqualTo(1);
+            soft.assertThat(deliveredNotifications()).isEqualTo(2);
         });
     }
 
@@ -245,7 +239,7 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
             soft.assertThat(closures(teamA)).isEqualTo(1);
             soft.assertThat(outbox(teamA)).isEqualTo(2);
             soft.assertThat(confirmations(teamA)).isEqualTo(2);
-            soft.assertThat(notificationEvents.get()).isEqualTo(1);
+            soft.assertThat(deliveredNotifications()).isEqualTo(2);
             soft.assertThat(activeReservations()).as("別内容の取消は実行されない").isEqualTo(2);
             soft.assertThat(bookedCount()).isEqualTo(2);
         });
@@ -263,6 +257,7 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
 
         RaceResult race = race(request, request, key);
 
+        assertCollisionPath(race);
         assertSoftly(soft -> {
             soft.assertThat(List.of(race.first().getStatus(), race.second().getStatus()))
                     .containsExactlyInAnyOrder(201, 200);
@@ -271,7 +266,7 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
             soft.assertThat(closures(teamA)).isEqualTo(1);
             soft.assertThat(outbox(teamA)).isEqualTo(2);
             soft.assertThat(confirmations(teamA)).isEqualTo(2);
-            soft.assertThat(notificationEvents.get()).isEqualTo(1);
+            soft.assertThat(deliveredNotifications()).isEqualTo(2);
             soft.assertThat(bookedCount()).as("枠の減算は1回分").isZero();
         });
     }
@@ -283,6 +278,7 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
 
         RaceResult race = race(body(true, "取消あり"), body(false, "取消なし"), key);
 
+        assertCollisionPath(race);
         assertSoftly(soft -> {
             soft.assertThat(race.first().getStatus()).isEqualTo(201);
             soft.assertThat(race.second().getStatus()).isEqualTo(409);
@@ -290,7 +286,7 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
             soft.assertThat(closures(teamA)).isEqualTo(1);
             soft.assertThat(outbox(teamA)).isEqualTo(2);
             soft.assertThat(confirmations(teamA)).isEqualTo(2);
-            soft.assertThat(notificationEvents.get()).as("AFTER_COMMIT の通知配送は勝者の1回分").isEqualTo(1);
+            soft.assertThat(deliveredNotifications()).as("AFTER_COMMIT の通知配送は勝者の1回分").isEqualTo(2);
             soft.assertThat(activeReservations()).isZero();
             soft.assertThat(bookedCount()).isZero();
         });
@@ -303,6 +299,7 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
 
         RaceResult race = race(body(false, "取消なし"), body(true, "取消あり"), key);
 
+        assertCollisionPath(race);
         assertSoftly(soft -> {
             soft.assertThat(race.first().getStatus()).isEqualTo(201);
             soft.assertThat(race.second().getStatus()).isEqualTo(409);
@@ -310,7 +307,7 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
             soft.assertThat(closures(teamA)).isEqualTo(1);
             soft.assertThat(outbox(teamA)).isEqualTo(2);
             soft.assertThat(confirmations(teamA)).isEqualTo(2);
-            soft.assertThat(notificationEvents.get()).isEqualTo(1);
+            soft.assertThat(deliveredNotifications()).isEqualTo(2);
             soft.assertThat(activeReservations()).as("後着の取消は巻き戻る").isEqualTo(2);
             soft.assertThat(bookedCount()).as("後着の枠減算は巻き戻る").isEqualTo(2);
         });
@@ -338,7 +335,7 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
             soft.assertThat(closures(teamA)).as("休業行は巻き戻る").isZero();
             soft.assertThat(activeReservations()).as("取消は巻き戻る").isEqualTo(2);
             soft.assertThat(bookedCount()).isEqualTo(2);
-            soft.assertThat(notificationEvents.get()).isZero();
+            soft.assertThat(deliveredNotifications()).isZero();
         });
 
         MockHttpServletResponse retry = send(adminA, teamA, body(true, "途中失敗"), key);
@@ -348,7 +345,7 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
             soft.assertThat(closures(teamA)).isEqualTo(1);
             soft.assertThat(outbox(teamA)).isEqualTo(2);
             soft.assertThat(confirmations(teamA)).isEqualTo(2);
-            soft.assertThat(notificationEvents.get()).isEqualTo(1);
+            soft.assertThat(deliveredNotifications()).isEqualTo(2);
             soft.assertThat(activeReservations()).isZero();
             soft.assertThat(bookedCount()).isZero();
         });
@@ -373,7 +370,7 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
             soft.assertThat(deniedFresh.getStatus()).isEqualTo(403);
             soft.assertThat(closures(teamA)).isEqualTo(1);
             soft.assertThat(outbox(teamA)).isEqualTo(2);
-            soft.assertThat(notificationEvents.get()).isEqualTo(1);
+            soft.assertThat(deliveredNotifications()).isEqualTo(2);
             soft.assertThat(activeReservations()).isEqualTo(2);
         });
     }
@@ -387,7 +384,7 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
             soft.assertThat(denied.getStatus()).isEqualTo(403);
             soft.assertThat(closures(teamA)).isZero();
             soft.assertThat(outbox(teamA)).isZero();
-            soft.assertThat(notificationEvents.get()).isZero();
+            soft.assertThat(deliveredNotifications()).isZero();
             soft.assertThat(activeReservations()).isEqualTo(2);
         });
     }
@@ -468,18 +465,35 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 
-    private record RaceResult(MockHttpServletResponse first, MockHttpServletResponse second) {
+    private static final String IDEMPOTENCY_CONSTRAINT = "uq_emergency_closures_team_creator_idempotency";
+
+    /**
+     * 同時送信の結果と、後着側が通った経路の記録。
+     *
+     * @param secondLookups 後着側の既存行照会の結果（"empty" / "found"）を呼び出し順に並べたもの
+     * @param secondSendFailure 後着側の送信本体（TX 境界の外側）で観測した例外。rollback 完了後に捕捉したもの
+     */
+    private record RaceResult(MockHttpServletResponse first, MockHttpServletResponse second,
+                              List<String> secondLookups, Throwable secondSendFailure) {
     }
 
     /**
-     * 先行送信を outbox 投入（休業行 INSERT・予約取消の後、commit 前）で止め、その間に後着送信を走らせて
-     * 後着が先行の commit を待つ状態（UNIQUE 行または予約行のロック待ち）を作ってから先行を解放する。
+     * 先行送信を outbox 投入（休業行 INSERT・予約取消の後、commit 前）で止め、その間に後着送信を走らせる。
+     *
+     * <p>後着が「初回の既存行照会で未検出 → 送信本体へ進入」したことを同期点で確かめてから先行を解放する
+     * （照会の結果と送信本体への進入は、送信本体 Bean の TX 境界の外側に差し込んだ観測 advisor で記録する）。
+     * これで、後着が先行の commit 後に逐次の再送として既存行を見つける経路では緑にならず、
+     * 「UNIQUE 違反 → rollback → 新 TX で再読込」の経路を通ったことを {@link #assertCollisionPath} で断定できる。</p>
      */
     private RaceResult race(Map<String, Object> firstBody, Map<String, Object> secondBody, String key)
             throws Exception {
         AtomicReference<Thread> holder = new AtomicReference<>();
+        AtomicReference<Thread> secondThread = new AtomicReference<>();
         CountDownLatch holding = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch secondEnteredSend = new CountDownLatch(1);
+        List<String> secondLookups = new java.util.concurrent.CopyOnWriteArrayList<>();
+        AtomicReference<Throwable> secondSendFailure = new AtomicReference<>();
         advise(emailOutboxService, "enqueue", invocation -> {
             if (holder.compareAndSet(null, Thread.currentThread())) {
                 holding.countDown();
@@ -487,14 +501,70 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
             }
             return invocation.proceed();
         });
+        advise(closureService, "findIdempotentClosure", invocation -> {
+            Object result = invocation.proceed();
+            if (Thread.currentThread() == secondThread.get()) {
+                secondLookups.add(((java.util.Optional<?>) result).isPresent() ? "found" : "empty");
+            }
+            return result;
+        });
+        advise(closureService, "sendClosure", invocation -> {
+            if (Thread.currentThread() != secondThread.get()) {
+                return invocation.proceed();
+            }
+            secondEnteredSend.countDown();
+            try {
+                return invocation.proceed();
+            } catch (Throwable failure) {
+                // この advisor は TransactionInterceptor の外側にあるため、ここで見える例外は rollback 完了後のもの。
+                secondSendFailure.set(failure);
+                throw failure;
+            }
+        });
         Future<MockHttpServletResponse> first = workers.submit(() -> send(adminA, teamA, firstBody, key));
         assertThat(holding.await(60, TimeUnit.SECONDS)).as("先行送信が commit 前で止まった").isTrue();
-        Future<MockHttpServletResponse> second = workers.submit(() -> send(adminA, teamA, secondBody, key));
-        // 後着が先行の commit 待ちで止まっていることを確かめてから先行を解放する。
+        Future<MockHttpServletResponse> second = workers.submit(() -> {
+            secondThread.set(Thread.currentThread());
+            return send(adminA, teamA, secondBody, key);
+        });
+        // 同期点: 後着が初回照会で既存行を見つけられず（先行は未 commit）、送信本体へ進入した。
+        assertThat(secondEnteredSend.await(60, TimeUnit.SECONDS)).as("後着が送信本体へ進入した").isTrue();
+        assertThat(secondLookups).as("後着の初回照会は未検出（先行は未 commit）").containsExactly("empty");
+        // 後着が先行の commit 待ち（UNIQUE 行または予約行のロック待ち）で止まっていることを確かめてから解放する。
         Awaitility.await().during(Duration.ofMillis(700)).atMost(Duration.ofSeconds(10))
                 .until(() -> !second.isDone());
         release.countDown();
-        return new RaceResult(first.get(60, TimeUnit.SECONDS), second.get(60, TimeUnit.SECONDS));
+        return new RaceResult(first.get(60, TimeUnit.SECONDS), second.get(60, TimeUnit.SECONDS),
+                List.copyOf(secondLookups), secondSendFailure.get());
+    }
+
+    /**
+     * 後着が「初回照会で未検出 → 送信本体で冪等キーの UNIQUE 違反 → rollback → 新 TX で再読込（検出）」の
+     * 経路を実際に通ったことを断定する。
+     */
+    private void assertCollisionPath(RaceResult race) {
+        assertThat(race.secondLookups()).as("後着の照会は 未検出 → (UNIQUE 違反後の新 TX で) 検出 の2回")
+                .containsExactly("empty", "found");
+        assertThat(race.secondSendFailure()).as("後着の送信本体は失敗して rollback された").isNotNull();
+        boolean uniqueViolation = false;
+        for (Throwable cause = race.secondSendFailure(); cause != null; cause = cause.getCause()) {
+            if (cause.getMessage() != null && cause.getMessage().contains(IDEMPOTENCY_CONSTRAINT)) {
+                uniqueViolation = true;
+                break;
+            }
+            if (cause.getCause() == cause) {
+                break;
+            }
+        }
+        assertThat(uniqueViolation).as("失敗の原因は冪等キーの一意制約違反: " + race.secondSendFailure()).isTrue();
+    }
+
+    /** AFTER_COMMIT 後に非同期配送で実際にできた臨時休業の通知行の件数（予約者2人ぶん）。 */
+    private long deliveredNotifications() {
+        Awaitility.await().atMost(Duration.ofSeconds(30)).until(() ->
+                eventPool.getActiveCount() == 0 && eventPool.getThreadPoolExecutor().getQueue().isEmpty());
+        return jdbc.queryForObject("SELECT COUNT(*) FROM notifications WHERE notification_type = 'EMERGENCY_CLOSURE' "
+                + "AND source_type = 'EMERGENCY_CLOSURE' AND user_id IN (?, ?)", Long.class, patient1, patient2);
     }
 
     private MockHttpServletResponse send(Long actor, Long team, Map<String, Object> body, String key)
