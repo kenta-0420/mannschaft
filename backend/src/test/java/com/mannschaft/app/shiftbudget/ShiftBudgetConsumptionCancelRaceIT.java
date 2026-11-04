@@ -18,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.awaitility.core.ConditionTimeoutException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -31,6 +32,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -46,7 +48,7 @@ import static org.awaitility.Awaitility.await;
  * CMP-261021-0717: 整合バッチとAFTER_COMMIT取消リスナーの競合を実MySQLで固定する。
  *
  * <p>外側のTransactionalは付けない。fixtureを明示commitし、第三の接続で割当を保持する。
- * batchが割当待ち、listenerが消化行待ちになったことをperformance_schemaで観測してから解放する。
+ * 異なる2つの取消TXが対象割当/消化PKを待つことをperformance_schemaで観測してから解放する。
  * 開始時刻やsleepに依存せず、両経路が取消前のPLANNEDを読んだ競合を再現する。</p>
  * <p>別シフト分30000円を残すので、二重減算後の8400円も非負となる。
  * CHECK違反によるrollbackで二重減算が隠れる検体にはしない。</p>
@@ -119,6 +121,7 @@ class ShiftBudgetConsumptionCancelRaceIT extends AbstractMySqlIntegrationTest {
     void 整合バッチと取消リスナーが競合しても二重減算しない() throws Exception {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         Future<Integer> result;
+        WaitSnapshot observed;
         try (Connection observer = observer(); Connection blocker = dataSource.getConnection()) {
             // P_S参照権限と実接続を先に検査し、環境不備と業務assertionのredを区別する。
             try (var query = observer.createStatement(); var rows = query.executeQuery(
@@ -126,6 +129,11 @@ class ShiftBudgetConsumptionCancelRaceIT extends AbstractMySqlIntegrationTest {
                 assertThat(rows.next()).isTrue();
             }
             blocker.setAutoCommit(false);
+            long blockerConnectionId;
+            try (var query = blocker.createStatement(); var rows = query.executeQuery("SELECT CONNECTION_ID()")) {
+                assertThat(rows.next()).isTrue();
+                blockerConnectionId = rows.getLong(1);
+            }
             try {
                 try (var lock = blocker.prepareStatement("SELECT id FROM shift_budget_allocations WHERE id = ? FOR UPDATE")) {
                     lock.setLong(1, fixture.allocationId());
@@ -136,7 +144,7 @@ class ShiftBudgetConsumptionCancelRaceIT extends AbstractMySqlIntegrationTest {
                 assertThat(result.isDone()).isFalse();
                 transactionTemplate.executeWithoutResult(tx -> eventPublisher.publish(
                         new ShiftArchivedEvent(fixture.shiftId(), teamId, null)));
-                awaitLockWait(observer, "shift_budget_consumptions", fixture.targetIds().getFirst());
+                observed = awaitBothCancellationWaits(observer, blockerConnectionId);
             } finally {
                 blocker.rollback();
             }
@@ -147,7 +155,7 @@ class ShiftBudgetConsumptionCancelRaceIT extends AbstractMySqlIntegrationTest {
             awaitEventsFinished();
         }
 
-        assertThat(amount()).as("別シフト30000円を残し、二重減算8400円を許さない")
+        assertThat(amount()).as("別シフト30000円を残し、二重減算8400円を許さない: %s", observed)
                 .isEqualByComparingTo(OTHER_SHIFT);
         assertThat(targetStatuses()).containsExactly("CANCELLED", "CANCELLED");
         assertThat(status(fixture.otherId())).isEqualTo("PLANNED");
@@ -246,6 +254,72 @@ class ShiftBudgetConsumptionCancelRaceIT extends AbstractMySqlIntegrationTest {
                 }
             }
         });
+    }
+
+    /** 対象PKで待つ2つの取消TXを、待ち先のテーブルを固定せず観測する。 */
+    private WaitSnapshot awaitBothCancellationWaits(Connection observer, long blockerConnectionId) {
+        try {
+            await().atMost(LIMIT).pollInterval(Duration.ofMillis(50)).untilAsserted(() -> {
+                WaitSnapshot snapshot = cancellationWaits(observer, blockerConnectionId);
+                assertThat(snapshot.waitingTransactions())
+                        .as("対象PKで待つ異なる取消TX（blocker除外）: %s", snapshot.locks())
+                        .isGreaterThanOrEqualTo(2);
+            });
+            return cancellationWaits(observer, blockerConnectionId);
+        } catch (ConditionTimeoutException timeout) {
+            WaitSnapshot snapshot;
+            try {
+                snapshot = cancellationWaits(observer, blockerConnectionId);
+            } catch (SQLException failure) {
+                throw new AssertionError("取消待機の診断SELECTが失敗", failure);
+            }
+            Integer failures = jdbc.queryForObject("SELECT COUNT(*) FROM shift_budget_failed_events "
+                    + "WHERE organization_id = ? AND event_type = 'CONSUMPTION_CANCEL' AND source_id = ?",
+                    Integer.class, orgId, fixture.shiftId());
+            throw new AssertionError("取消待機の前提未成立: blocker_connection=" + blockerConnectionId
+                    + ", snapshot=" + snapshot + ", cancel_failed_events=" + failures, timeout);
+        } catch (SQLException failure) {
+            throw new AssertionError("取消待機の診断SELECTが失敗", failure);
+        }
+    }
+
+    private record WaitSnapshot(int waitingTransactions, List<String> locks) { }
+
+    /** 当fixtureの割当PK/消化2PKのPRIMARY RECORD待機だけを取り出す。 */
+    private WaitSnapshot cancellationWaits(Connection observer, long blockerConnectionId) throws SQLException {
+        try (var query = observer.prepareStatement("""
+                SELECT w.REQUESTING_ENGINE_TRANSACTION_ID AS requesting_tx,
+                       w.BLOCKING_ENGINE_TRANSACTION_ID AS blocking_tx,
+                       request_thread.PROCESSLIST_ID AS requesting_connection,
+                       l.OBJECT_NAME, l.INDEX_NAME, l.LOCK_DATA, l.LOCK_MODE
+                FROM performance_schema.data_lock_waits w
+                JOIN performance_schema.data_locks l ON l.ENGINE = w.ENGINE
+                 AND l.ENGINE_LOCK_ID = w.REQUESTING_ENGINE_LOCK_ID
+                JOIN performance_schema.threads request_thread ON request_thread.THREAD_ID = w.REQUESTING_THREAD_ID
+                WHERE l.OBJECT_SCHEMA = ? AND l.INDEX_NAME = 'PRIMARY' AND l.LOCK_TYPE = 'RECORD'
+                 AND request_thread.PROCESSLIST_ID <> ?
+                 AND ((l.OBJECT_NAME = 'shift_budget_allocations' AND l.LOCK_DATA = ?)
+                  OR (l.OBJECT_NAME = 'shift_budget_consumptions' AND l.LOCK_DATA IN (?, ?)))
+                """)) {
+            query.setString(1, MYSQL.getDatabaseName());
+            query.setLong(2, blockerConnectionId);
+            query.setString(3, fixture.allocationId().toString());
+            query.setString(4, fixture.targetIds().getFirst().toString());
+            query.setString(5, fixture.targetIds().getLast().toString());
+            var transactions = new HashSet<String>();
+            var locks = new java.util.ArrayList<String>();
+            try (var rows = query.executeQuery()) {
+                while (rows.next()) {
+                    String request = rows.getString("requesting_tx");
+                    transactions.add(request);
+                    locks.add("tx=" + request + "/connection=" + rows.getLong("requesting_connection")
+                            + " -> blocking_tx=" + rows.getString("blocking_tx") + " "
+                            + rows.getString("OBJECT_NAME") + "/" + rows.getString("INDEX_NAME") + "/"
+                            + rows.getString("LOCK_DATA") + "/" + rows.getString("LOCK_MODE"));
+                }
+            }
+            return new WaitSnapshot(transactions.size(), List.copyOf(locks));
+        }
     }
 
     private void awaitEventsFinished() {
