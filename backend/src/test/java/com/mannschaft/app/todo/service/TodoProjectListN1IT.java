@@ -1,7 +1,11 @@
 package com.mannschaft.app.todo.service;
 
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.todo.ProjectStatus;
 import com.mannschaft.app.todo.ProjectVisibility;
 import com.mannschaft.app.todo.TodoPriority;
@@ -53,6 +57,10 @@ class TodoProjectListN1IT extends AbstractMySqlIntegrationTest {
     @Autowired
     private ProjectService projectService;
     @Autowired
+    private UserRepository userRepository;
+    @Autowired
+    private TeamRepository teamRepository;
+    @Autowired
     private TodoRepository todoRepository;
     @Autowired
     private TodoAssigneeRepository assigneeRepository;
@@ -71,18 +79,12 @@ class TodoProjectListN1IT extends AbstractMySqlIntegrationTest {
     }
 
     private Long insertUser(String displayName) {
-        String email = UUID.randomUUID() + "@n1.invalid";
-        em.createNativeQuery(
-                        "INSERT INTO users (email, last_name, first_name, display_name, status, "
-                                + "is_searchable, handle_searchable, contact_approval_required, "
-                                + "online_visibility, dm_receive_from, encryption_key_version, "
-                                + "locale, timezone, reporting_restricted, follow_list_visibility, "
-                                + "care_notification_enabled, offline_only, created_at, updated_at) "
-                                + "VALUES (:email, 'N1', 'テスト', :dn, 'ACTIVE', 1, 1, 1, 'NOBODY', 'ANYONE', 1, "
-                                + "'ja', 'Asia/Tokyo', 0, 'PUBLIC', 1, 0, NOW(), NOW())")
-                .setParameter("email", email).setParameter("dn", displayName).executeUpdate();
-        return ((Number) em.createNativeQuery("SELECT id FROM users WHERE email = :e")
-                .setParameter("e", email).getSingleResult()).longValue();
+        // Repository 経由で保存し、Entity の builder 既定値を効かせる（BACKEND_CODING_CONVENTION のフィクスチャ規約）
+        return userRepository.saveAndFlush(UserEntity.builder()
+                .email(UUID.randomUUID() + "@n1.invalid")
+                .lastName("N1").firstName("テスト").displayName(displayName)
+                .locale("ja").timezone("Asia/Tokyo").isSearchable(false)
+                .status(UserEntity.UserStatus.ACTIVE).build()).getId();
     }
 
     /** 退会（論理削除）済みユーザーを作る。JPA からは見えず、表示名は空になる。 */
@@ -95,11 +97,8 @@ class TodoProjectListN1IT extends AbstractMySqlIntegrationTest {
 
     private Long insertTeam() {
         String slug = "n1-" + Long.toString(System.nanoTime(), 36);
-        em.createNativeQuery("INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, "
-                        + "created_at, updated_at) VALUES ('N1チーム', 'PUBLIC', 1, 0, 0, :slug, NOW(), NOW())")
-                .setParameter("slug", slug).executeUpdate();
-        return ((Number) em.createNativeQuery("SELECT id FROM teams WHERE slug = :s")
-                .setParameter("s", slug).getSingleResult()).longValue();
+        return teamRepository.saveAndFlush(TeamEntity.builder().name("N1チーム").slug(slug)
+                .visibility(TeamEntity.Visibility.PUBLIC).supporterEnabled(true).build()).getId();
     }
 
     private TodoEntity todo(Long teamId, String title, Long createdBy) {
@@ -161,6 +160,10 @@ class TodoProjectListN1IT extends AbstractMySqlIntegrationTest {
         Long other = insertTeam();
         assign(todo(other, "OTHER", carol), carol);
         em.flush();
+        em.clear();
+
+        // systemDefaultLabels 等のキャッシュ初回 SQL が小さい側だけに乗らないよう、測定前に温める
+        listTodos(teamSmall);
         em.clear();
 
         Statistics s = stats();
@@ -244,6 +247,10 @@ class TodoProjectListN1IT extends AbstractMySqlIntegrationTest {
         Long other = insertTeam();
         milestones(project(other, "P-OTHER", alice), 2, 2);
         em.flush();
+        em.clear();
+
+        // キャッシュ・遅延初期化の初回 SQL が小さい側だけに乗らないよう、測定前に温める
+        projectService.listProjects(TodoScopeType.TEAM, teamSmall, ProjectStatus.ACTIVE, 0, 50);
         em.clear();
 
         Statistics s = stats();
