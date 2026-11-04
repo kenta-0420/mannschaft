@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261021-1342",
+  "scope": "test-only",
+  "implementation": {
+    "pr": 4231,
+    "sha": "b75829ef767c800e827fcb87b13e43512e5ce1ad"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "MFA session付きのrequest画面で見出しとメール送信ボタンを厳密に確認する",
+      "tests": [
+        {
+          "name": "AUTH-011: 2FAリカバリーページが表示される",
+          "evidence": "frontend/tests/e2e/auth/2fa.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "POSTのmethod/bodyと成功応答200を照合し、通常クリック後のdone画面に唯一のトークン入力欄が表示される",
+      "tests": [
+        {
+          "name": "AUTH-012: メール送信後にリカバリートークン入力欄が表示される",
+          "evidence": "frontend/tests/e2e/auth/2fa.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "done画面の唯一の入力欄が空で、唯一の確認ボタンが表示されdisabledであることを無条件に検証する",
+      "tests": [
+        {
+          "name": "AUTH-013: 空のリカバリートークンで確認ボタンが無効",
+          "evidence": "frontend/tests/e2e/auth/2fa.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40942829855
+    },
+    {
+      "runId": 40942830027
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4231"
+    },
+    "real": {
+      "status": "not-applicable",
+      "scope": "test-only",
+      "reason": "既存E2EテストとCIの選択引数だけを変更し、画面・認証・API・依存の挙動を変更しない。API境界mockのCI実走を実サービス実機の証明とは扱わない。"
+    },
+    "exploratory": {
+      "status": "not-applicable",
+      "scope": "test-only",
+      "reason": "製品と利用者の導線は変更せず、既存試験の期待とCI実行範囲だけを是正する。新規の住民探索で製品完了を主張する変更ではない。"
+    }
+  },
+  "regressions": []
+}
