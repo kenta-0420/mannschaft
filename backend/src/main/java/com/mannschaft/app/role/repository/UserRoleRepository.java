@@ -2707,6 +2707,25 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
                                                             @Param("permissionName") String permissionName);
 
     /**
+     * 指定チーム群のうち、指定ユーザーが ADMIN であるチーム ID を返す（F10.7 業務アラートの N+1 解消用）。
+     *
+     * <p>{@link #findAdminUserIdsByTeamId} をチームごとに呼んで {@code contains(userId)} を判定していたのを
+     * 1 クエリにまとめる。条件（ADMIN・非削除・ACTIVE ユーザー）は同メソッドと同一。
+     * 呼び出し側は {@code teamIds} が空の場合に本メソッドを呼ばないこと。</p>
+     */
+    @Query(value =
+            "SELECT DISTINCT ur.team_id FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.user_id = :userId " +
+            "AND ur.team_id IN (:teamIds) " +
+            "AND r.name = 'ADMIN' " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    List<Long> findAdminTeamIdsByUserIdAndTeamIds(@Param("userId") Long userId,
+                                                  @Param("teamIds") Collection<Long> teamIds);
+
+    /**
      * F00.5 フェーズ 3 — {@link com.mannschaft.app.membership.batch.MembershipConsistencyChecker} 用:
      * user_roles（TEAM/ORGANIZATION 行）のうち、対応する memberships のアクティブ行
      * （{@code left_at IS NULL}）が存在しない件数を SQL 側で集計する。

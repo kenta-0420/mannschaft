@@ -80,6 +80,20 @@ public class PermissionScopeQueryService {
     }
 
     /**
+     * 指定チーム群のうち、当該ユーザーがチーム ADMIN であるチーム ID を返す（SQL 1 本・CMP-261103-1225）。
+     *
+     * <p>判定は {@link UserRoleRepository#findAdminUserIdsByTeamId} をチームごとに呼んで
+     * {@code contains(userId)} を見る単票版と同一（ADMIN ロール・非削除・ACTIVE ユーザー）。
+     * 入力が空・ユーザー未指定なら SQL を発行せず空集合を返す。</p>
+     */
+    public Set<Long> findAdminTeamIds(Long userId, Collection<Long> teamIds) {
+        if (userId == null || teamIds == null || teamIds.isEmpty()) {
+            return Set.of();
+        }
+        return toIdSet(userRoleRepository.findAdminTeamIdsByUserIdAndTeamIds(userId, teamIds));
+    }
+
+    /**
      * native クエリの単一列結果を {@code Long} 集合へ正規化する。
      *
      * <p>native の数値列は JDBC ドライバ／列型により {@code Long} 以外（{@code Integer} や

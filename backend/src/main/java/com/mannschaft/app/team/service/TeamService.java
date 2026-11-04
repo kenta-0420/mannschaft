@@ -1260,6 +1260,28 @@ public class TeamService {
     }
 
     /**
+     * チーム ID 群の表示名とアイコン URL をまとめて返す（SQL 1 本・CMP-261103-1225 の N+1 解消用）。
+     *
+     * <p>個人ダッシュボードの「今後の予定」が予定ごとに {@code teamRepository.findById} で名前とアイコンを
+     * 引いていたのを置き換える。{@code findById} と同じく論理削除済みのチームは
+     * {@code @SQLRestriction} で除外され、結果に含まれない。Entity は外へ渡さない。</p>
+     *
+     * @param ids チーム ID 群（null・空なら空 Map）
+     * @return チーム ID → 名前・アイコン（見つかったものだけ）
+     */
+    public Map<Long, com.mannschaft.app.team.dto.TeamNameIconView> getNameIconsByIds(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, com.mannschaft.app.team.dto.TeamNameIconView> result = new HashMap<>();
+        for (TeamEntity team : teamRepository.findAllById(ids)) {
+            result.put(team.getId(),
+                    new com.mannschaft.app.team.dto.TeamNameIconView(team.getId(), team.getName(), team.getIconUrl()));
+        }
+        return result;
+    }
+
+    /**
      * slug の集合を、承諾済み（ACTIVE）で論理削除されていないチームの ID へまとめて解決する（SQL 1 本）。
      *
      * <p>告知の「チームを選ぶ」は URL 識別子（slug）で受け取るため（slug 一本化）、宛先の検証の前に内部 ID へ写す。
