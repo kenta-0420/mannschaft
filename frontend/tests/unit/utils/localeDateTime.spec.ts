@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   formatCalendarDay,
   formatCalendarDayRange,
+  formatClockTime,
   formatInstantDate,
   formatInstantDateTime,
   formatInstantTime,
@@ -33,8 +34,9 @@ describe('瞬間の整形: ja は従来出力と同一', () => {
 })
 
 describe('暦日の曜日付き整形', () => {
-  it('ja は日本語曜日', () => {
-    expect(formatCalendarDay('2026-11-04', 'ja')).toMatch(/11月4日.*水/)
+  it('ja は従来の緊急休業表記と厳密一致（全角括弧）', () => {
+    expect(formatCalendarDay('2026-11-04', 'ja')).toBe('11月4日（水）')
+    expect(formatCalendarDay('2026-12-01', 'ja')).toBe('12月1日（火）')
   })
   it.each(['en', 'es', 'de'] as const)('%s は日本語が残らない', (loc) => {
     expect(formatCalendarDay('2026-11-04', loc)).not.toMatch(JA_ONLY)
@@ -93,5 +95,31 @@ describe('0335-3 時刻範囲', () => {
   })
   it.each(['en', 'es', 'de'] as const)('%s: 「〜」が出ない', (loc) => {
     expect(formatTimeRange('09:00', '11:00', loc)).not.toContain('〜')
+  })
+})
+
+describe('ja は従来の緊急休業の出力と厳密一致', () => {
+  it('単日', () => expect(formatCalendarDayRange('2026-11-04', '2026-11-04', 'ja')).toBe('11月4日（水）'))
+  it('同月期間', () => expect(formatCalendarDayRange('2026-11-04', '2026-11-06', 'ja')).toBe('11月4日（水）〜11月6日（金）'))
+  it('月跨ぎ', () => expect(formatCalendarDayRange('2026-10-30', '2026-11-02', 'ja')).toBe('10月30日（金）〜11月2日（月）'))
+  it('年跨ぎ', () => expect(formatCalendarDayRange('2026-12-31', '2027-01-02', 'ja')).toBe('12月31日（木）〜1月2日（土）'))
+  it('閏日', () => expect(formatCalendarDayRange('2028-02-28', '2028-03-01', 'ja')).toBe('2月28日（月）〜3月1日（水）'))
+  it('時刻範囲', () => expect(formatTimeRange('09:00:00', '11:00:00', 'ja')).toBe('09:00〜11:00'))
+  it('単一時刻', () => {
+    expect(formatClockTime('9:00', 'ja')).toBe('09:00')
+    expect(formatClockTime('23:00', 'ja')).toBe('23:00')
+  })
+})
+
+describe('空・不正入力は例外にせず空文字（safeParse と同流儀）', () => {
+  it.each(LOCALES)('%s', (loc) => {
+    expect(formatCalendarDay('', loc)).toBe('')
+    expect(formatCalendarDay(null, loc)).toBe('')
+    expect(formatCalendarDay('abc', loc)).toBe('')
+    expect(formatCalendarDayRange('', '2026-11-04', loc)).toBe('')
+    expect(formatCalendarDayRange('2026-11-04', undefined, loc)).toBe('')
+    expect(formatTimeRange('', '11:00', loc)).toBe('')
+    expect(formatTimeRange('09:00', 'zz', loc)).toBe('')
+    expect(formatClockTime('', loc)).toBe('')
   })
 })

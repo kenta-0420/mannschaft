@@ -61,7 +61,8 @@ describe('useDatetime ロケール対応', () => {
     expect(formatCalendarDayRange('2026-11-04', '2026-11-04')).toBe(formatCalendarDay('2026-11-04'))
     expect(formatTimeRange('09:00:00', '11:00:00')).not.toMatch(/\d{2}:\d{2}:\d{2}/)
     i18n().locale.value = 'ja'
-    expect(formatCalendarDay('2026-11-04')).toMatch(/11月4日.*水/)
+    expect(formatCalendarDay('2026-11-04')).toBe('11月4日（水）')
+    expect(formatCalendarDayRange('', '')).toBe('')
     expect(formatTimeRange('09:00:00', '11:00:00')).toBe('09:00〜11:00')
   })
 

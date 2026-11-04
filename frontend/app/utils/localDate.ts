@@ -149,39 +149,69 @@ export function formatInstantDateTime(date: Date, locale: string, timeZone: stri
   return `${formatInstantDate(date, locale, timeZone)} ${formatInstantTime(date, locale, timeZone)}`
 }
 
-/** `yyyy-MM-dd` を UTC 暦日の Date にする（TZ 変換を経由しない。表示は必ず timeZone:'UTC' で行う）。 */
-function ymdToUtcDate(ymd: string): Date {
-  const [y, m, d] = ymd.split('-').map(Number)
-  return new Date(Date.UTC(y!, m! - 1, d!))
+/** `yyyy-MM-dd` を UTC 暦日の Date にする（TZ 変換を経由しない。表示は必ず timeZone:'UTC' で行う）。空・不正は null。 */
+function ymdToUtcDate(ymd: string | null | undefined): Date | null {
+  if (!ymd) return null
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd)
+  if (!m) return null
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])))
+  return Number.isNaN(d.getTime()) ? null : d
 }
 
 const CALENDAR_DAY_OPTS: Intl.DateTimeFormatOptions = {
   month: 'short', day: 'numeric', weekday: 'short', timeZone: 'UTC',
 }
 
-/**
- * 暦日（`yyyy-MM-dd`）を曜日付きで整形する。UTC 暦日として扱うため西側 TZ でも前日にならない。
- * @example formatCalendarDay('2026-11-04', 'ja') // "11月4日(水)"
- */
-export function formatCalendarDay(ymd: string, locale: string): string {
-  return new Intl.DateTimeFormat(toIntlLocale(locale), CALENDAR_DAY_OPTS).format(ymdToUtcDate(ymd))
+function isJa(locale: string): boolean {
+  return locale.split('-')[0]!.toLowerCase() === 'ja'
+}
+
+/** ja の暦日表記（従来の緊急休業と同一: 「11月4日（水）」）。 */
+function formatCalendarDayJa(date: Date): string {
+  const weekday = new Intl.DateTimeFormat('ja-JP', { weekday: 'short', timeZone: 'UTC' }).format(date)
+  return `${date.getUTCMonth() + 1}月${date.getUTCDate()}日（${weekday}）`
 }
 
 /**
- * 暦日の範囲を曜日付きで整形する（Intl formatRange。同日なら単日表示）。
- * 区切り文字・月の省略などはロケールの規則に従う。
+ * 暦日（`yyyy-MM-dd`）を曜日付きで整形する。UTC 暦日として扱うため西側 TZ でも前日にならない。
+ * 空・不正入力は '' を返す（useDatetime の safeParse と同じ流儀）。
+ * ja は従来表記「11月4日（水）」、他言語は Intl。
  */
-export function formatCalendarDayRange(startYmd: string, endYmd: string, locale: string): string {
-  const fmt = new Intl.DateTimeFormat(toIntlLocale(locale), CALENDAR_DAY_OPTS)
+export function formatCalendarDay(ymd: string | null | undefined, locale: string): string {
+  const d = ymdToUtcDate(ymd)
+  if (!d) return ''
+  return isJa(locale) ? formatCalendarDayJa(d) : new Intl.DateTimeFormat(toIntlLocale(locale), CALENDAR_DAY_OPTS).format(d)
+}
+
+/**
+ * 暦日の範囲を曜日付きで整形する（同日なら単日表示）。どちらかが空・不正なら '' 。
+ * ja は従来表記「11月4日（水）〜11月5日（木）」、他言語は Intl formatRange。
+ */
+export function formatCalendarDayRange(
+  startYmd: string | null | undefined, endYmd: string | null | undefined, locale: string,
+): string {
   const s = ymdToUtcDate(startYmd)
   const e = ymdToUtcDate(endYmd)
+  if (!s || !e) return ''
+  if (s.getTime() === e.getTime()) return formatCalendarDay(startYmd, locale)
+  if (isJa(locale)) return `${formatCalendarDayJa(s)}〜${formatCalendarDayJa(e)}`
+  const fmt = new Intl.DateTimeFormat(toIntlLocale(locale), CALENDAR_DAY_OPTS)
   return typeof fmt.formatRange === 'function' ? fmt.formatRange(s, e) : `${fmt.format(s)} – ${fmt.format(e)}`
 }
 
-/** `HH:mm` または `HH:mm:ss` を UTC 基準の Date（1970-01-01）にする。 */
-function hhmmToUtcDate(hhmm: string): Date {
-  const [h, m] = hhmm.split(':').map(Number)
-  return new Date(Date.UTC(1970, 0, 1, h ?? 0, m ?? 0))
+/** `HH:mm` / `H:mm` / `HH:mm:ss` を UTC 基準の Date（1970-01-01）にする。不正は null。 */
+function hhmmToUtcDate(hhmm: string | null | undefined): Date | null {
+  if (!hhmm) return null
+  const m = /^(\d{1,2}):(\d{2})/.exec(hhmm)
+  if (!m) return null
+  return new Date(Date.UTC(1970, 0, 1, Number(m[1]), Number(m[2])))
+}
+
+/** 時刻（`HH:mm[:ss]`、秒は表示しない）を 24 時間表記で整形する。ja は従来どおり `09:00`。空・不正は ''。 */
+export function formatClockTime(hhmm: string | null | undefined, locale: string): string {
+  const d = hhmmToUtcDate(hhmm)
+  if (!d) return ''
+  return new Intl.DateTimeFormat(toIntlLocale(locale), { ...TIME_OPTS, timeZone: 'UTC' }).format(d)
 }
 
 /** 時刻範囲の区切り。ja は従来どおり「〜」、それ以外は en ダッシュ（書式は各端点を単独整形した結果をそのまま繋ぐ） */
@@ -192,8 +222,12 @@ const TIME_RANGE_SEP: Record<string, string> = { ja: '〜' }
  * Intl formatRange は ja で「9時00分～」の文字表記に切り替わり単独整形と不揃いになるため、端点を個別に整形して繋ぐ。
  * @example formatTimeRange('09:00:00', '11:00:00', 'ja') // "09:00〜11:00"
  */
-export function formatTimeRange(startHhmm: string, endHhmm: string, locale: string): string {
-  const fmt = new Intl.DateTimeFormat(toIntlLocale(locale), { ...TIME_OPTS, timeZone: 'UTC' })
+export function formatTimeRange(
+  startHhmm: string | null | undefined, endHhmm: string | null | undefined, locale: string,
+): string {
+  const s0 = formatClockTime(startHhmm, locale)
+  const e0 = formatClockTime(endHhmm, locale)
+  if (!s0 || !e0) return ''
   const sep = TIME_RANGE_SEP[locale.split('-')[0]!.toLowerCase()] ?? ' – '
-  return `${fmt.format(hhmmToUtcDate(startHhmm))}${sep}${fmt.format(hhmmToUtcDate(endHhmm))}`
+  return `${s0}${sep}${e0}`
 }

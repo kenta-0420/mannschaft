@@ -11,6 +11,7 @@ import dayjs from 'dayjs'
 import {
   formatCalendarDay as fmtCalendarDay,
   formatCalendarDayRange as fmtCalendarDayRange,
+  formatClockTime as fmtClockTime,
   formatInstantDate,
   formatInstantDateTime,
   formatInstantTime,
@@ -68,17 +69,22 @@ export function useDatetime() {
   }
 
   /** 暦日（'YYYY-MM-DD'）を曜日付きで整形する。UTC 暦日扱いのため TZ によるずれはない。 */
-  function formatCalendarDay(ymd: string): string {
+  function formatCalendarDay(ymd: string | null | undefined): string {
     return fmtCalendarDay(ymd, currentLocale())
   }
 
   /** 暦日の範囲を曜日付きで整形する（同日なら単日）。 */
-  function formatCalendarDayRange(startYmd: string, endYmd: string): string {
+  function formatCalendarDayRange(startYmd: string | null | undefined, endYmd: string | null | undefined): string {
     return fmtCalendarDayRange(startYmd, endYmd, currentLocale())
   }
 
+  /** 時刻（'HH:mm' / 'H:mm'）を 24 時間表記で整形する。空・不正は ''。 */
+  function formatClockTime(hhmm: string | null | undefined): string {
+    return fmtClockTime(hhmm, currentLocale())
+  }
+
   /** 時刻の範囲（'HH:mm' / 'HH:mm:ss'）を秒なしで整形する。 */
-  function formatTimeRange(startHhmm: string, endHhmm: string): string {
+  function formatTimeRange(startHhmm: string | null | undefined, endHhmm: string | null | undefined): string {
     return fmtTimeRange(startHhmm, endHhmm, currentLocale())
   }
 
@@ -280,6 +286,7 @@ export function useDatetime() {
     formatCalendarDay,
     formatCalendarDayRange,
     formatTimeRange,
+    formatClockTime,
     fromNow,
     buildOffsetDateTimeStr,
     buildOffsetDateTimeFromLocalInput,
