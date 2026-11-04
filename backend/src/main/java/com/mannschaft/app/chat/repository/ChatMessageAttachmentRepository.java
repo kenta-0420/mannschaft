@@ -3,6 +3,7 @@ package com.mannschaft.app.chat.repository;
 import com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,6 +16,12 @@ public interface ChatMessageAttachmentRepository extends JpaRepository<ChatMessa
      * メッセージの添付ファイル一覧を取得する。
      */
     List<ChatMessageAttachmentEntity> findByMessageId(Long messageId);
+
+    /**
+     * 複数メッセージの添付ファイルを ID 昇順で一括取得する（一覧の N+1 解消用）。
+     * 呼び出し側は {@code messageIds} が空の場合に本メソッドを呼ばないこと。
+     */
+    List<ChatMessageAttachmentEntity> findByMessageIdInOrderByIdAsc(Collection<Long> messageIds);
 
     /**
      * オブジェクトキーから添付ファイルを 1 件取得する。
