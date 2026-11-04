@@ -82,7 +82,7 @@ class ShiftBudgetConsumptionCancelRaceIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        String nonce = UUID.randomUUID().toString();
+        String nonce = UUID.randomUUID().toString().replace("-", "").substring(0, 20);
         fixture = transactionTemplate.execute(tx -> {
             orgId = TeamOrgFixtureHelper.insertOrganization(em, "0717組織", "o-" + nonce);
             teamId = TeamOrgFixtureHelper.insertTeam(em, "0717チーム", "t-" + nonce);
