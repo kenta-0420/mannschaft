@@ -586,7 +586,10 @@ class DashboardControllerTest {
 
         private com.mannschaft.app.schedule.dto.ScopeScheduleView toView(ScheduleEntity e) {
             return new com.mannschaft.app.schedule.dto.ScopeScheduleView(e.getId(), e.getTeamId(),
-                    e.getOrganizationId(), e.getTitle(), e.getStartAt(), e.getEndAt(), e.getLocation(), e.getAllDay());
+                    e.getOrganizationId(), e.getTitle(),
+                    e.getStartAt().toLocalDate(), e.getStartAt().toLocalTime(),
+                    e.getEndAt().toLocalDate(), e.getEndAt().toLocalTime(),
+                    e.getLocation(), e.getAllDay());
         }
 
         private ScheduleEntity buildScheduleAt(Long id, LocalDateTime startAt) {

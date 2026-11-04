@@ -769,8 +769,9 @@ public class DashboardController {
         // 司令塔第二弾（ADHD-UX戦役第四陣）: kind でイベント/シフト/予約を区別する（AC-B2-1）。
         map.put("kind", "EVENT");
         map.put("title", view.title());
-        map.put("start_at", view.startAt());
-        map.put("end_at", view.endAt());
+        // 壁時計の日付・時刻から、予定 Entity と同じ LocalDateTime を復元する（修正前と同じ値・型）
+        map.put("start_at", view.startDate() != null ? LocalDateTime.of(view.startDate(), view.startTime()) : null);
+        map.put("end_at", view.endDate() != null ? LocalDateTime.of(view.endDate(), view.endTime()) : null);
         map.put("location", view.location());
         map.put("all_day", view.allDay());
         map.put("scope_type", scopeType);

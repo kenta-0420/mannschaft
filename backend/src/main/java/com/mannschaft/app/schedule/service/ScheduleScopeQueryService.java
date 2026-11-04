@@ -73,7 +73,11 @@ public class ScheduleScopeQueryService {
             List<ScopeScheduleView> bucket = byScope.get(scopeOf.apply(s));
             if (bucket != null) {
                 bucket.add(new ScopeScheduleView(s.getId(), s.getTeamId(), s.getOrganizationId(), s.getTitle(),
-                        s.getStartAt(), s.getEndAt(), s.getLocation(), s.getAllDay()));
+                        s.getStartAt() != null ? s.getStartAt().toLocalDate() : null,
+                        s.getStartAt() != null ? s.getStartAt().toLocalTime() : null,
+                        s.getEndAt() != null ? s.getEndAt().toLocalDate() : null,
+                        s.getEndAt() != null ? s.getEndAt().toLocalTime() : null,
+                        s.getLocation(), s.getAllDay()));
             }
         }
         List<ScopeScheduleView> ordered = new ArrayList<>(schedules.size());
