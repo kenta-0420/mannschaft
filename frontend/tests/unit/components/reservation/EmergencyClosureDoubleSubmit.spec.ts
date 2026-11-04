@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import EmergencyClosureForm from '~/components/reservation/EmergencyClosureForm.vue'
@@ -182,8 +184,10 @@ describe('緊急休業 多重送信防止', () => {
   }, 60000)
 
   it.each(['ja', 'en', 'zh', 'ko', 'es', 'de'] as const)('0334-13: ロケール %s で専用文言が出る（日本語以外では日本語でない）', async (locale) => {
-    const { default: messages } = await import(`~/locales/${locale}/reservation.json`)
-    const expected = (messages as { emergency_closure: { error: { idempotency_conflict?: string } } }).emergency_closure.error.idempotency_conflict
+    // 生 JSON の文字列を直接読む（i18n 経由の import はコンパイル済み AST になり文字列でない）
+    const raw = readFileSync(resolve(process.cwd(), 'app/locales', locale, 'reservation.json'), 'utf-8')
+    const messages = JSON.parse(raw) as { emergency_closure: { error: { idempotency_conflict?: string } } }
+    const expected = messages.emergency_closure.error.idempotency_conflict
     expect(expected).toBeTruthy()
     if (locale !== 'ja') expect(expected).not.toMatch(/[぀-ヿ]/) // かな残存なし
     defaultImpl(async () => {
