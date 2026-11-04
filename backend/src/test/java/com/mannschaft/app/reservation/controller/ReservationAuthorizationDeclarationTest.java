@@ -137,8 +137,9 @@ class ReservationAuthorizationDeclarationTest {
         void 管理系はゲート済み() {
             assertGated(TeamEmergencyClosureController.class, "previewClosure",
                     Long.class, LocalDate.class, LocalDate.class, LocalTime.class, LocalTime.class);
+            // CMP-261104-0334: 任意の Idempotency-Key ヘッダ（String）を受けるシグネチャ
             assertGated(TeamEmergencyClosureController.class, "sendClosure",
-                    Long.class, CreateEmergencyClosureRequest.class);
+                    Long.class, String.class, CreateEmergencyClosureRequest.class);
             assertGated(TeamEmergencyClosureController.class, "listClosures", Long.class);
             assertGated(TeamEmergencyClosureController.class, "getConfirmations",
                     Long.class, Long.class);
