@@ -25,7 +25,7 @@ import java.time.LocalTime;
  *
  * <p>冪等性（CMP-261104-0334）: {@code Idempotency-Key} ヘッダ付きの送信は {@code idempotencyKey} と
  * {@code requestHash} を保存し、{@code (team_id, created_by, idempotency_key)} の一意制約で同じキーの二重作成を
- * DB で止める。制約名 {@link #IDEMPOTENCY_UNIQUE_CONSTRAINT} は重複判別に使うため Flyway V256 と一致させる
+ * DB で止める。制約名 {@link #IDEMPOTENCY_UNIQUE_CONSTRAINT} は重複判別に使うため Flyway V257 と一致させる
  * （test プロファイルは本 Entity から DDL を作るため、ここにも同じ制約を宣言する）。</p>
  */
 @Entity
@@ -38,7 +38,7 @@ import java.time.LocalTime;
 @SuperBuilder
 public class EmergencyClosureEntity extends BaseEntity {
 
-    /** 冪等キーの一意制約名（Flyway V256 と一致。重複判別に使うため変更禁止）。 */
+    /** 冪等キーの一意制約名（Flyway V257 と一致。重複判別に使うため変更禁止）。 */
     public static final String IDEMPOTENCY_UNIQUE_CONSTRAINT = "uq_emergency_closures_team_creator_idempotency";
 
     @Column(nullable = false)
