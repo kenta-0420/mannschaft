@@ -236,12 +236,12 @@ function prepareIdempotencyKey() {
   }
 }
 
-/** 内容相違の冪等性競合（BE: 409 / EMERGENCY_CLOSURE_IDEMPOTENCY_*）か。 */
+/** 内容相違の冪等性競合（BE: 409 / RESERVATION_055 CLOSURE_IDEMPOTENCY_KEY_REUSED。コード無しの 409 も同扱い）か。 */
 function isIdempotencyConflict(error: unknown): boolean {
   const e = error as { statusCode?: number, status?: number, response?: { status?: number }, data?: { error?: { code?: string } } }
   const status = e?.statusCode ?? e?.status ?? e?.response?.status
   const code = e?.data?.error?.code ?? ''
-  return code.includes('IDEMPOTENCY') || (status === 409 && code === '')
+  return code === 'RESERVATION_055' || (status === 409 && code === '')
 }
 
 function openConfirm() {

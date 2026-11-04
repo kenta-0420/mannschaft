@@ -146,7 +146,7 @@ describe('緊急休業 多重送信防止', () => {
     defaultImpl(async () => {
       throw Object.assign(new Error('conflict'), {
         statusCode: 409,
-        data: { error: { code: 'EMERGENCY_CLOSURE_IDEMPOTENCY_CONFLICT', message: 'x' } },
+        data: { error: { code: 'RESERVATION_055', message: 'x' } },
       })
     })
     const { wrapper, vm } = await mountForm()
@@ -154,6 +154,55 @@ describe('緊急休業 多重送信防止', () => {
     await vm.confirmSend()
     expect(mockError).toHaveBeenCalledTimes(1)
     expect(String(mockError.mock.calls[0]![0])).toBe('同じ送信操作で内容が異なっています。画面を確認し、送信内容を見直してもう一度お試しください')
+    wrapper.unmount()
+  }, 60000)
+
+  it('0334-13: 別コードの 409 以外のエラーは汎用の送信失敗文言のまま', async () => {
+    defaultImpl(async () => {
+      throw Object.assign(new Error('boom'), { statusCode: 500, data: { error: { code: 'RESERVATION_999', message: 'x' } } })
+    })
+    const { wrapper, vm } = await mountForm()
+    vm.openConfirm()
+    await vm.confirmSend()
+    expect(String(mockError.mock.calls[0]![0])).toBe('送信に失敗しました')
+    wrapper.unmount()
+  }, 60000)
+
+  it.each(['ja', 'en', 'zh', 'ko', 'es', 'de'] as const)('0334-13: ロケール %s で専用文言が出る（日本語以外では日本語でない）', async (locale) => {
+    const { default: messages } = await import(`~/locales/${locale}/reservation.json`)
+    const expected = (messages as { emergency_closure: { error: { idempotency_conflict?: string } } }).emergency_closure.error.idempotency_conflict
+    expect(expected).toBeTruthy()
+    if (locale !== 'ja') expect(expected).not.toMatch(/[぀-ヿ]/) // かな残存なし
+    defaultImpl(async () => {
+      throw Object.assign(new Error('conflict'), { statusCode: 409, data: { error: { code: 'RESERVATION_055', message: 'x' } } })
+    })
+    const { wrapper, vm } = await mountForm()
+    const nuxtApp = useNuxtApp() as unknown as { $i18n: { setLocale: (l: string) => Promise<void> } }
+    await nuxtApp.$i18n.setLocale(locale)
+    vm.openConfirm()
+    await vm.confirmSend()
+    expect(String(mockError.mock.calls[0]![0])).toBe(expected)
+    wrapper.unmount()
+  }, 120000)
+
+  it('0334-1: 成功後に履歴再取得が1回走り、履歴が +1 される', async () => {
+    const row = (id: number) => ({ id, teamId: 1, startDate: '2026-11-05', endDate: '2026-11-05', startTime: null, endTime: null, reason: 'r', subject: 's', sentCount: 1, createdAt: '2026-11-05T10:00:00' })
+    let rows = [row(1)]
+    mockApi.mockImplementation(async (url: string, opts?: PostCall) => {
+      if (url.endsWith('/emergency-closures') && opts?.method === 'POST') {
+        rows = [row(2), ...rows]
+        return { data: { sentCount: 1 } }
+      }
+      if (url.endsWith('/emergency-closures')) return { data: rows }
+      return { data: [] }
+    })
+    const { wrapper, vm } = await mountForm()
+    const listCalls = () => mockApi.mock.calls.filter(c => (c[1] as PostCall | undefined)?.method !== 'POST' && String(c[0]).endsWith('/emergency-closures')).length
+    const before = listCalls()
+    vm.openConfirm()
+    await Promise.all([vm.confirmSend(), vm.confirmSend(), vm.confirmSend()])
+    expect(listCalls()).toBe(before + 1)
+    expect((vm as unknown as { historyItems: unknown[] }).historyItems).toHaveLength(2)
     wrapper.unmount()
   }, 60000)
 })
