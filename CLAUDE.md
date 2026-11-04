@@ -118,6 +118,7 @@
 - `backend/BACKEND_CODING_CONVENTION.md`（BE規約変更時）
 - `frontend/FRONTEND_CODING_CONVENTION.md`（FE規約変更時）
 - `backend/.claudecode.md`（プロジェクト構成規約変更時）
+- `docs/architecture/er/`（migration・Entity を変更したら `cd backend && ./gradlew generateErDiagrams` で E-R 図を再生成してコミット。CI の ER Diagram Drift Check が再生成漏れを検出する）
 
 ---
 
@@ -130,6 +131,7 @@
 | `frontend/FRONTEND_CODING_CONVENTION.md` | TypeScript / Nuxt.jsコーディング規約 |
 | `TEST_CONVENTION.md` | テスト規約 |
 | `docs/security/README.md` | セキュリティ横断方針 |
+| `docs/architecture/er/README.md` | 実スキーマから自動生成したドメイン単位の E-R 図（テーブル設計・ドメイン境界・既存テーブル把握の前に見る。`docs/features` の手描き図は設計意図、こちらは現実のスキーマ） |
 
 実装前に必ず確認すること。**認可・Cookie・セキュリティヘッダー・依存関係に関わる変更時は `docs/security/` を参照**すること。
 
@@ -259,6 +261,8 @@ Mannschaft は将来のマイクロサービス分割を見据えた**モジュ�
 5. `@Transactional` はドメイン内に閉じる（越境時はコメントで理由明記）
 6. 新規テーブルは `UuidV7Entity` 継承（主キーUUIDv7。マスタテーブル・シングルトン表は自然キー/固定値IDのまま可）
 7. テナントスコープ（`organization_id` 絞り込み）Repository は `AbstractTenantAwareRepository` 継承
+
+既存テーブルの構造・ドメイン間の参照は、実スキーマから自動生成した [`docs/architecture/er/README.md`](docs/architecture/er/README.md)（ドメイン単位の E-R 図）をまず見ること。
 
 **DB変更・新規テーブル・ドメイン境界に関わる実装時は必ず** [`docs/architecture/domain_db_design_principles.md`](docs/architecture/domain_db_design_principles.md) **を読むこと**（コード例・例外区分の判定基準・なぜこの設計かの背景を含む詳細版）。
 
