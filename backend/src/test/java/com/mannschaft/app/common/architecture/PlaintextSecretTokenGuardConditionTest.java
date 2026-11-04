@@ -418,6 +418,17 @@ class PlaintextSecretTokenGuardConditionTest {
         }
 
         @Test
+        @DisplayName("陽性: カテゴリ2の値（long・double）を配列要素へ代入する式の値も違反（DUP2_X2）")
+        void categoryTwoArrayAssignExpressionIsViolation() {
+            assertListed(result.violations(),
+                    method(FlowSelfIssuingFixtureService.class, "issueWithLongArrayAssignInExpression"),
+                    "long の代入式の値は DUP2_X2 でスタックに残り token 系に届く");
+            assertListed(result.violations(),
+                    method(FlowSelfIssuingFixtureService.class, "issueWithDoubleArrayAssignInExpression"),
+                    "double の代入式の値も同じ");
+        }
+
+        @Test
         @DisplayName("陰性: UUID が相関 ID にだけ届き、token 系は固定値同士の三項演算子なら違反でない")
         void cleanTernaryIsNotViolation() {
             String id = method(FlowSelfIssuingFixtureService.class, "ternaryCleanTokenWithCorrelationUuid");

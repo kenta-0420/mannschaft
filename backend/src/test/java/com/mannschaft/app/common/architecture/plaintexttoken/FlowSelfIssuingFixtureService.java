@@ -24,6 +24,8 @@ import java.util.UUID;
  *   <li>{@link #issueWithTaintInCatch(Object)}: try の途中（乱数を詰めた直後）の例外で catch へ移り、詰めた配列が token 系に届く</li>
  *   <li>{@link #issueWithTaintInFinally(Object)}: 同じ形を finally で書く（例外経路の finally の複製に届く）</li>
  *   <li>{@link #issueWithTaintInNestedTry(Object)}: 内側の catch が受けない例外が外側の catch へ抜け、詰めた配列が token 系に届く</li>
+ *   <li>{@link #issueWithLongArrayAssignInExpression()}: {@code long} の配列要素への代入式の値（DUP2_X2）が token 系に届く</li>
+ *   <li>{@link #issueWithDoubleArrayAssignInExpression()}: {@code double} の配列要素への代入式の値（DUP2_X2）が token 系に届く</li>
  * </ul>
  * <p>陰性（検出されてはならない）:</p>
  * <ul>
@@ -170,6 +172,20 @@ public class FlowSelfIssuingFixtureService {
         } catch (RuntimeException outer) {
             entity.setToken(HexFormat.of().formatHex(bytes));
         }
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithLongArrayAssignInExpression() {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        long[] values = new long[1];
+        entity.setToken(Long.toString(values[0] = UUID.randomUUID().getMostSignificantBits()));
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithDoubleArrayAssignInExpression() {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        double[] values = new double[1];
+        entity.setToken(Double.toString(values[0] = UUID.randomUUID().getMostSignificantBits()));
         return entity;
     }
 
