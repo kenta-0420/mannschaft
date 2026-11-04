@@ -33,6 +33,14 @@ type PostCall = { method?: string, headers?: Record<string, string> }
 const postCalls = () => mockApi.mock.calls.filter(c => (c[1] as PostCall | undefined)?.method === 'POST')
 const keyOf = (i: number) => (postCalls()[i]![1] as PostCall).headers!['Idempotency-Key']
 
+interface TestI18n {
+  locale: { value: string }
+  setLocale: (l: string) => Promise<void>
+  t: (key: string) => string
+}
+const i18n = () => (useNuxtApp() as unknown as { $i18n: TestI18n }).$i18n
+const activeT = (key: string) => i18n().t(key)
+
 let release: (() => void) | null = null
 function defaultImpl(postImpl: () => Promise<unknown>) {
   mockApi.mockImplementation(async (url: string, opts?: PostCall) => {
@@ -50,7 +58,8 @@ async function mountForm() {
   return { wrapper, vm }
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  await i18n().setLocale('en') // ロケール別テストの切替が他テストへ漏れないよう既定に戻す
   mockApi.mockReset()
   mockSuccess.mockReset()
   mockError.mockReset()
@@ -97,9 +106,10 @@ describe('緊急休業 多重送信防止', () => {
     const buttons = wrapper.findAllComponents({ name: 'Button' })
     const send = buttons.find(b => b.props('icon') === 'pi pi-send')!
     expect(send.props('loading')).toBe(true)
-    expect(send.props('disabled')).toBe(true)
+    // disabled は PrimeVue Button の props ではなく DOM 属性として出る（実物に合わせて属性で検証）
+    expect(send.attributes('disabled')).toBeDefined()
     const cancel = buttons.find(b => b.props('text') === true)!
-    expect(cancel.props('disabled')).toBe(true)
+    expect(cancel.attributes('disabled')).toBeDefined()
     wrapper.unmount()
   }, 60000)
 
@@ -153,7 +163,9 @@ describe('緊急休業 多重送信防止', () => {
     vm.openConfirm()
     await vm.confirmSend()
     expect(mockError).toHaveBeenCalledTimes(1)
-    expect(String(mockError.mock.calls[0]![0])).toBe('同じ送信操作で内容が異なっています。画面を確認し、送信内容を見直してもう一度お試しください')
+    // テスト環境の既定ロケールに依存しないよう、有効なロケールの辞書値から期待値を引く
+    expect(String(mockError.mock.calls[0]![0])).toBe(activeT('emergency_closure.error.idempotency_conflict'))
+    expect(activeT('emergency_closure.error.idempotency_conflict')).not.toBe('emergency_closure.error.idempotency_conflict')
     wrapper.unmount()
   }, 60000)
 
@@ -164,7 +176,8 @@ describe('緊急休業 多重送信防止', () => {
     const { wrapper, vm } = await mountForm()
     vm.openConfirm()
     await vm.confirmSend()
-    expect(String(mockError.mock.calls[0]![0])).toBe('送信に失敗しました')
+    expect(String(mockError.mock.calls[0]![0])).toBe(activeT('emergency_closure.error.send_failed'))
+    expect(String(mockError.mock.calls[0]![0])).not.toBe(activeT('emergency_closure.error.idempotency_conflict'))
     wrapper.unmount()
   }, 60000)
 
@@ -177,8 +190,8 @@ describe('緊急休業 多重送信防止', () => {
       throw Object.assign(new Error('conflict'), { statusCode: 409, data: { error: { code: 'RESERVATION_055', message: 'x' } } })
     })
     const { wrapper, vm } = await mountForm()
-    const nuxtApp = useNuxtApp() as unknown as { $i18n: { setLocale: (l: string) => Promise<void> } }
-    await nuxtApp.$i18n.setLocale(locale)
+    await i18n().setLocale(locale)
+    expect(i18n().locale.value).toBe(locale) // 切替が実際に効いていること
     vm.openConfirm()
     await vm.confirmSend()
     expect(String(mockError.mock.calls[0]![0])).toBe(expected)
