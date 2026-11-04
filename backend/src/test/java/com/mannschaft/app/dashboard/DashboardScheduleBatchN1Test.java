@@ -117,6 +117,8 @@ class DashboardScheduleBatchN1Test {
     // CMP-260908-2117: 今後の予定のシフトは割当の正本（shift_slots.assigned_user_ids）から引く。
     @Mock private ShiftMyService shiftMyService;
     @Mock private ReservationRepository reservationRepository;
+    @Mock private com.mannschaft.app.schedule.service.ScheduleScopeQueryService scheduleScopeQueryService;
+    @Mock private com.mannschaft.app.bulletin.service.BulletinUnreadQueryService bulletinUnreadQueryService;
     @Mock private OrganizationService organizationService;
     @Mock private TeamService teamService;
     /** Controller の DashboardService 依存はモックに差し替える（getCalendar は service を呼ばないため挙動に影響なし）。 */
@@ -160,13 +162,12 @@ class DashboardScheduleBatchN1Test {
                 timelinePostRepository,
                 scheduleRepository,
                 membershipScopeQueryService,
-                bulletinThreadRepository,
-                bulletinReadStatusRepository,
                 chatChannelMemberRepository,
                 teamRepository,
-                organizationRepository,
                 contentVisibilityChecker,
                 shiftMyService,
+                scheduleScopeQueryService,
+                bulletinUnreadQueryService,
                 reservationRepository,
                 scopeActionRequiredFacade,
                 organizationService,
