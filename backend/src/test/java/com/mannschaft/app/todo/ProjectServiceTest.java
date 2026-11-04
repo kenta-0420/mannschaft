@@ -17,6 +17,7 @@ import com.mannschaft.app.todo.entity.ProjectMilestoneEntity;
 import com.mannschaft.app.todo.repository.ProjectMilestoneRepository;
 import com.mannschaft.app.todo.repository.ProjectRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
+import com.mannschaft.app.todo.service.ProjectListLookupLoader;
 import com.mannschaft.app.todo.service.ProjectService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -80,6 +81,9 @@ class ProjectServiceTest {
     @Mock
     private com.mannschaft.app.organization.service.OrganizationService organizationService;
 
+    @Mock
+    private ProjectListLookupLoader lookupLoader;
+
     @InjectMocks
     private ProjectService projectService;
 
@@ -87,6 +91,9 @@ class ProjectServiceTest {
     void setUpNameResolver() {
         lenient().when(nameResolverService.resolveUserDisplayNames(any()))
                 .thenReturn(Map.of(USER_ID, "テストユーザー"));
+        // 一括参照ローダーは本物の実装を、同じモック Repository / NameResolver に被せて使う
+        lenient().when(lookupLoader.load(any())).thenAnswer(inv ->
+                new ProjectListLookupLoader(milestoneRepository, nameResolverService).load(inv.getArgument(0)));
     }
 
     // ========================================
@@ -160,13 +167,13 @@ class ProjectServiceTest {
         @DisplayName("正常系: プロジェクト一覧が返却される")
         void listProjects_正常_一覧返却() {
             // Given
-            ProjectEntity project = createActiveProject();
+            ProjectEntity project = createActiveProject().toBuilder().id(PROJECT_ID).build();
             Page<ProjectEntity> page = new PageImpl<>(List.of(project));
             given(projectRepository.findByScopeTypeAndScopeIdAndStatusAndDeletedAtIsNull(
                     eq(SCOPE_TYPE), eq(SCOPE_ID), eq(ProjectStatus.ACTIVE), any(Pageable.class)))
                     .willReturn(page);
-            given(milestoneRepository.countByProjectId(any())).willReturn(2L);
-            given(milestoneRepository.countByProjectIdAndIsCompletedTrue(any())).willReturn(1L);
+            given(milestoneRepository.countSummaryByProjectIds(any()))
+                    .willReturn(List.<Object[]>of(new Object[]{PROJECT_ID, 2L, 1L}));
 
             // When
             PagedResponse<ProjectResponse> response = projectService.listProjects(
@@ -176,6 +183,8 @@ class ProjectServiceTest {
             assertThat(response.getData()).hasSize(1);
             assertThat(response.getData().get(0).getTitle()).isEqualTo("テストプロジェクト");
             assertThat(response.getMeta().getPage()).isEqualTo(0);
+            assertThat(response.getData().get(0).getMilestones().getTotal()).isEqualTo(2L);
+            assertThat(response.getData().get(0).getMilestones().getCompleted()).isEqualTo(1L);
         }
     }
 
