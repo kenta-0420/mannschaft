@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "cmpId": "CMP-261002-1135",
-  "scope": "tooling",
+  "scope": "app",
   "implementation": {
     "pr": 4259,
     "sha": "71886d7eecd3fc9fececb485b302fc493844530e"
@@ -19,9 +19,15 @@
     }
   ],
   "ci": [
-    { "runId": 41614278490 },
-    { "runId": 41614278393 },
-    { "runId": 41614278260 }
+    {
+      "runId": 41614278490
+    },
+    {
+      "runId": 41614278393
+    },
+    {
+      "runId": 41614278260
+    }
   ],
   "stages": {
     "review": {
@@ -29,14 +35,12 @@
       "evidence": "https://github.com/kenta-0420/mannschaft/pull/4259"
     },
     "real": {
-      "status": "not-applicable",
-      "scope": "tooling",
-      "reason": "CI の依存監査ゲートの変更で画面・APIの挙動を変えない"
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261002-1135-verification.md"
     },
     "exploratory": {
-      "status": "not-applicable",
-      "scope": "tooling",
-      "reason": "CI の依存監査ゲートの変更で住民の導線を変えない"
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261002-1135-verification.md"
     }
   },
   "regressions": []
