@@ -5,6 +5,8 @@ const props = defineProps<{
   subject: string
   reason: string
   cancelReservations: boolean
+  /** 送信中（応答待ち）。true の間は送信・キャンセル・×・Esc・外側クリックのいずれでも閉じない。 */
+  sending?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -14,7 +16,11 @@ const emit = defineEmits<{
 
 const visibleModel = computed({
   get: () => props.visible,
-  set: (v: boolean) => emit('update:visible', v),
+  set: (v: boolean) => {
+    // 送信中は閉じさせない（応答が返るまで開いたまま・親が完了後に閉じる）
+    if (!v && props.sending) return
+    emit('update:visible', v)
+  },
 })
 </script>
 
@@ -23,6 +29,9 @@ const visibleModel = computed({
     v-model:visible="visibleModel"
     :header="$t('emergency_closure.dialog.title')"
     :style="{ width: '420px' }"
+    :closable="!sending"
+    :close-on-escape="!sending"
+    :dismissable-mask="false"
     modal
   >
     <div class="space-y-2 text-sm">
@@ -37,8 +46,15 @@ const visibleModel = computed({
       </ul>
     </div>
     <template #footer>
-      <Button :label="$t('button.cancel')" text @click="visibleModel = false" />
-      <Button :label="$t('emergency_closure.button.send_confirm')" icon="pi pi-send" severity="danger" @click="emit('confirm')" />
+      <Button :label="$t('button.cancel')" text :disabled="sending" @click="visibleModel = false" />
+      <Button
+        :label="$t('emergency_closure.button.send_confirm')"
+        icon="pi pi-send"
+        severity="danger"
+        :loading="sending"
+        :disabled="sending"
+        @click="emit('confirm')"
+      />
     </template>
   </Dialog>
 </template>
