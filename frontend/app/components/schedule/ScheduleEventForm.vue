@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { parseWallClockInTz } from '~/utils/wallClock'
 import dayjs from 'dayjs'
 import type { RecurrenceEndType, RecurrenceType, ReminderFormEntry, ScheduleEventFormState, TimeHistoryEntry } from './event-form/types'
 import type { ScheduleTargetMode } from '~/types/schedule'
@@ -273,7 +274,7 @@ function toUserZonedParts(iso: string): { date: Date; time: string } | null {
   if (!parsed.isValid()) return null
   // オフセット無しの旧API値はユーザーTZの壁時計。端末TZで解釈してから変換しない。
   const hasOffset = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(iso)
-  const z = hasOffset ? parsed.tz(userTimezone.value) : dayjs.tz(iso, userTimezone.value)
+  const z = hasOffset ? parsed.tz(userTimezone.value) : parseWallClockInTz(iso, userTimezone.value)
   const date = new Date(z.year(), z.month(), z.date(), z.hour(), z.minute(), z.second(), z.millisecond())
   return {
     date,

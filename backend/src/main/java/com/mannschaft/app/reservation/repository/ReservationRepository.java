@@ -3,10 +3,11 @@ package com.mannschaft.app.reservation.repository;
 import com.mannschaft.app.reservation.ReservationStatus;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -22,6 +23,54 @@ import java.util.UUID;
  * 予約リポジトリ。
  */
 public interface ReservationRepository extends JpaRepository<ReservationEntity, Long> {
+
+    /** COUNTを発行しない有界走査の行。bookedAt枝は従来TIMESTAMPDIFFの意味を保持する。 */
+    interface PendingExpireCandidate {
+        ReservationEntity getPrimary();
+        LocalDate getSlotDate();
+        LocalDate getEndDate();
+        LocalTime getEndTime();
+        Boolean getEnabled();
+        Boolean getBookedExpired();
+    }
+
+    String PENDING_EXPIRE_SELECT = "SELECT r AS primary, s.slotDate AS slotDate, "
+            + "s.endDate AS endDate, s.endTime AS endTime, "
+            + "CASE WHEN p.id IS NULL OR p.pendingExpireHours IS NOT NULL THEN TRUE ELSE FALSE END AS enabled, "
+            + "CASE WHEN FUNCTION('TIMESTAMPDIFF', HOUR, r.bookedAt, :now) "
+            + ">= COALESCE(p.pendingExpireHours, :defaultHours) THEN TRUE ELSE FALSE END AS bookedExpired "
+            + "FROM ReservationEntity r LEFT JOIN ReservationSlotEntity s "
+            + "ON s.id = r.reservationSlotId AND s.deletedAt IS NULL "
+            + "LEFT JOIN ReservationPolicyEntity p ON p.teamId = r.teamId "
+            + "WHERE r.status = :pendingStatus AND r.isGroupPrimary = TRUE AND r.deletedAt IS NULL ";
+
+    @Query("SELECT COALESCE(MAX(r.id), 0) FROM ReservationEntity r")
+    long findPendingExpireHighWater();
+
+    @Query(PENDING_EXPIRE_SELECT + "AND r.id > :cursor AND r.id <= :highWater ORDER BY r.id ASC")
+    List<PendingExpireCandidate> findPendingPrimaryCandidates(
+            @Param("pendingStatus") ReservationStatus pendingStatus,
+            @Param("cursor") long cursor, @Param("highWater") long highWater,
+            @Param("now") LocalDateTime now, @Param("defaultHours") int defaultHours, Pageable pageable);
+
+    @Query(PENDING_EXPIRE_SELECT + "AND r.id IN :ids ORDER BY r.id ASC")
+    List<PendingExpireCandidate> findPendingPrimaryCandidatesByIds(
+            @Param("pendingStatus") ReservationStatus pendingStatus, @Param("ids") Collection<Long> ids,
+            @Param("now") LocalDateTime now, @Param("defaultHours") int defaultHours);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ReservationEntity r WHERE r.id = :id")
+    Optional<ReservationEntity> findPendingExpirePrimaryForUpdate(@Param("id") long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ReservationEntity r WHERE r.groupId = :groupId "
+            + "AND r.deletedAt IS NULL ORDER BY r.id ASC")
+    List<ReservationEntity> findPendingExpireGroupForUpdate(@Param("groupId") UUID groupId);
+
+    /** unitの最新policy/primary値で従来のSQL時間切捨てを再判定する。 */
+    @Query(value = "SELECT TIMESTAMPDIFF(HOUR, :bookedAt, :now)", nativeQuery = true)
+    long pendingExpireElapsedHours(@Param("bookedAt") LocalDateTime bookedAt,
+            @Param("now") LocalDateTime now);
 
     /**
      * チームの予約をステータス指定でページング取得する（代表行のみ・F03.4.3 §5.6 #10）。
@@ -53,6 +102,63 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
      */
     Optional<ReservationEntity> findByIdAndTeamId(Long id, Long teamId);
 
+    /**
+     * CMP-260822-1730 AC-1730-6: 状態遷移（承認・取消・完了等）用の行ロック付き取得。
+     * 仮押さえ失効バッチ（{@code findPendingExpirePrimaryForUpdate}）と同じ行ロックで直列化し、
+     * 先に commit した側の状態を後続が必ず読むようにする（失効済み予約の CONFIRMED 上書き防止）。
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ReservationEntity r WHERE r.id = :id AND r.teamId = :teamId")
+    Optional<ReservationEntity> findByIdAndTeamIdForUpdate(@Param("id") Long id, @Param("teamId") Long teamId);
+
+    /**
+     * CMP-260822-1730 AC-1730-6: スコープ条件を持たない内部経路（series 解除など）用の行ロック付き取得。
+     * {@code ReservationEntity} は {@code @Version}・{@code @DynamicUpdate} を持たず、メタデータだけの更新でも
+     * 状態列を書き戻すため、失効・取消と同じ行ロックで直列化してから読む。
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ReservationEntity r WHERE r.id = :id")
+    Optional<ReservationEntity> findByIdForUpdate(@Param("id") Long id);
+
+    /**
+     * CMP-260822-1730 AC-1730-6: 複数行を <b>id 昇順</b>で一括ロックする（PK の IN 走査は id 昇順で行ロックを取る）。
+     *
+     * <p>一括取消（臨時休業・定期不可枠の強行登録）は、対象行の id 集合をスカラー問い合わせで先に確定し、
+     * 本メソッドで一度にロックする。行ごと・グループごとに分けてロックすると、失効バッチ（代表行→兄弟行）
+     * との間でロック順序が逆転しデッドロックの循環を作るため、取得順を id 昇順の 1 文に統一する。</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ReservationEntity r WHERE r.id IN :ids ORDER BY r.id ASC")
+    List<ReservationEntity> findByIdInForUpdate(@Param("ids") Collection<Long> ids);
+
+    /**
+     * 起点予約の series ID だけをスカラーで読む（チームスコープ・AC-1730-6）。
+     *
+     * <p>エンティティを非ロックで読むと永続化コンテキストに古い状態が残り、後続の行ロック付き取得が
+     * 同じインスタンスを返して最新状態を読めない。series 全行を id 昇順で一括ロックする前段として、
+     * エンティティを載せずに series ID だけを得る。</p>
+     */
+    @Query("SELECT r.recurringSeriesId FROM ReservationEntity r WHERE r.id = :id AND r.teamId = :teamId")
+    Optional<UUID> findRecurringSeriesIdByIdAndTeamId(@Param("id") Long id, @Param("teamId") Long teamId);
+
+    /** 起点予約の series ID だけをスカラーで読む（本人スコープ・AC-1730-6）。 */
+    @Query("SELECT r.recurringSeriesId FROM ReservationEntity r WHERE r.id = :id AND r.userId = :userId")
+    Optional<UUID> findRecurringSeriesIdByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
+
+    /** 指定行のうちグループ所属行のグループ ID（一括ロック対象の展開用・エンティティを載せない）。 */
+    @Query("SELECT DISTINCT r.groupId FROM ReservationEntity r WHERE r.id IN :ids AND r.groupId IS NOT NULL")
+    List<UUID> findGroupIdsByIdIn(@Param("ids") Collection<Long> ids);
+
+    /** グループ群の兄弟行 ID（チームスコープ・一括ロック対象の展開用・エンティティを載せない）。 */
+    @Query("SELECT r.id FROM ReservationEntity r WHERE r.groupId IN :groupIds AND r.teamId = :teamId")
+    List<Long> findIdsByGroupIdInAndTeamId(@Param("groupIds") Collection<UUID> groupIds,
+                                          @Param("teamId") Long teamId);
+
+    /** 指定枠群の active 予約 ID（臨時休業の一括取消の対象確定用・エンティティを載せない）。 */
+    @Query("SELECT r.id FROM ReservationEntity r WHERE r.reservationSlotId IN :slotIds AND r.status IN :statuses")
+    List<Long> findIdsByReservationSlotIdInAndStatusIn(@Param("slotIds") Collection<Long> slotIds,
+                                                      @Param("statuses") Collection<ReservationStatus> statuses);
+
     // ===== F03.4.3 機能G: 予約グループ（案(b) 兄弟行方式）=====
 
     /**
@@ -60,6 +166,12 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
      * 他チームの groupId は空 → 404 = RESERVATION_040 で存在秘匿）。
      */
     List<ReservationEntity> findByGroupIdAndTeamIdOrderById(UUID groupId, Long teamId);
+
+    /** グループ状態遷移用の行ロック付き取得（id 昇順でロック・AC-1730-6）。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ReservationEntity r WHERE r.groupId = :groupId AND r.teamId = :teamId ORDER BY r.id ASC")
+    List<ReservationEntity> findByGroupIdAndTeamIdForUpdate(@Param("groupId") UUID groupId,
+                                                            @Param("teamId") Long teamId);
 
     /**
      * 複数グループの「枠数・末尾枠終了時刻」を 1 クエリで集約する
@@ -98,6 +210,11 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
      */
     Optional<ReservationEntity> findByIdAndUserId(Long id, Long userId);
 
+    /** 本人取消用の行ロック付き取得（AC-1730-6）。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ReservationEntity r WHERE r.id = :id AND r.userId = :userId")
+    Optional<ReservationEntity> findByIdAndUserIdForUpdate(@Param("id") Long id, @Param("userId") Long userId);
+
     // ===== F03.4.5 §6.2 W2-5: 定期予約（series 兄弟行方式）=====
 
     /**
@@ -117,6 +234,13 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
      */
     List<ReservationEntity> findByRecurringSeriesIdAndUserIdOrderById(UUID recurringSeriesId, Long userId);
 
+    /** series 以降取消用の行ロック付き取得（id 昇順でロック・AC-1730-6）。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ReservationEntity r WHERE r.recurringSeriesId = :seriesId AND r.userId = :userId "
+            + "ORDER BY r.id ASC")
+    List<ReservationEntity> findByRecurringSeriesIdAndUserIdForUpdate(@Param("seriesId") UUID recurringSeriesId,
+                                                                      @Param("userId") Long userId);
+
     /**
      * series の兄弟行を<b>チームスコープ</b>で取得する（{@code scope=SERIES} の一括承認の唯一の経路・AC-5-9）。
      *
@@ -129,6 +253,13 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
      * @return 当該チームに属する series の行（id 昇順）
      */
     List<ReservationEntity> findByRecurringSeriesIdAndTeamIdOrderById(UUID recurringSeriesId, Long teamId);
+
+    /** series 一括承認用の行ロック付き取得（id 昇順でロック・AC-1730-6）。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ReservationEntity r WHERE r.recurringSeriesId = :seriesId AND r.teamId = :teamId "
+            + "ORDER BY r.id ASC")
+    List<ReservationEntity> findByRecurringSeriesIdAndTeamIdForUpdate(@Param("seriesId") UUID recurringSeriesId,
+                                                                      @Param("teamId") Long teamId);
 
     /**
      * 指定スロット群のうち<b>当該ユーザーが既に active 予約を持つ</b>スロット ID を列挙する

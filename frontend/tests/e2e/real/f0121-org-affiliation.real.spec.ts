@@ -127,10 +127,11 @@ function membershipRow(orgSlug: string, teamSlug: string): { id: string; status:
   )
   if (!out) return null
   const [id, status, direction, groupId] = out.split('\t')
-  if (id === undefined || status === undefined || direction === undefined || groupId === undefined) {
+  if (id === undefined || status === undefined || direction === undefined) {
     throw new Error(`加盟行の列数が想定外: ${JSON.stringify(out)}`)
   }
-  return { id, status, direction, groupId }
+  // sql() が出力を trim するため、末尾の group_id が空だとタブごと消える。欠落は空文字として扱う
+  return { id, status, direction, groupId: groupId ?? '' }
 }
 
 async function close(...contexts: { context: { close(): Promise<void> } }[]) {

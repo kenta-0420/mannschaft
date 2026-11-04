@@ -82,12 +82,17 @@ watch(collapsed, value => emit('collapse-change', value), { flush: 'sync' })
 
     <!-- ヘッダー（固定・スクロールしない） -->
     <div
-      v-if="title"
+      v-if="title || $slots.header"
       class="flex flex-none items-center justify-between"
       :class="{ 'mb-3': !collapsed }"
     >
+      <!-- header スロット指定時は既定の見出し（icon + title）の代わりに描画する。
+           折り畳みボタン・refreshable・actions は引き続き右側に出す。 -->
+      <div v-if="$slots.header" class="min-w-0 flex-1">
+        <slot name="header" />
+      </div>
       <NuxtLink
-        v-if="to"
+        v-else-if="to"
         :to="to"
         class="group/title flex items-center gap-2.5 cursor-pointer"
       >
@@ -118,7 +123,7 @@ watch(collapsed, value => emit('collapse-change', value), { flush: 'sync' })
           {{ title }}
         </h3>
       </div>
-      <div class="flex items-center gap-1">
+      <div class="flex items-center gap-1" :class="{ 'ml-1': $slots.header }">
         <slot name="actions" />
         <Button
           v-if="refreshable"

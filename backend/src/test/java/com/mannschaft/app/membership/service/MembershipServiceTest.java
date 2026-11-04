@@ -525,7 +525,7 @@ class MembershipServiceTest {
         }
 
         @Test
-        @DisplayName("スコープ越境で MEMBERSHIP_POSITION_SCOPE_MISMATCH")
+        @DisplayName("スコープ越境は不在と同一の MEMBERSHIP_POSITION_CATALOG_NOT_FOUND")
         void crossScopeRejected() {
             MembershipEntity m = activeMembership(11L, 99L, ScopeType.TEAM, 100L, RoleKind.MEMBER);
             PositionEntity p = PositionEntity.builder()
@@ -541,7 +541,7 @@ class MembershipServiceTest {
             assertThatThrownBy(() -> service.assignPosition(11L, req))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode",
-                            MembershipBasisErrorCode.MEMBERSHIP_POSITION_SCOPE_MISMATCH);
+                            MembershipBasisErrorCode.MEMBERSHIP_POSITION_CATALOG_NOT_FOUND);
         }
 
         @Test

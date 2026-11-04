@@ -42,9 +42,9 @@ public class TeamFriendVisibilityService {
      *
      * <p>
      * 認可: {@code teamId} チームの ADMIN のみ（DEPUTY_ADMIN 不可）。それ以外は 404。
-     * ADMIN が他チームの私的な関係を指定した場合は、不在と同じ
-     * {@code FRIEND_RELATION_NOT_FOUND} を返す。公開済みの他チーム関係と
-     * 非 ADMIN の先行拒否は、既存の {@code FRIEND_VISIBILITY_ADMIN_ONLY} を維持する。
+     * 関係を閲覧できない者は、Controller が本メソッドより先に呼ぶ {@link TeamFriendViewAccessGuard} が
+     * 不在と同一の {@code FRIEND_RELATION_NOT_FOUND} で拒否する（CMP-260821-1027）。
+     * 本メソッドへ来る閲覧者の権限不足（非 ADMIN・他チームの関係）は {@code FRIEND_VISIBILITY_ADMIN_ONLY}。
      * 両コードとも HTTP 404 だが、応答本文は異なる。
      * Phase 1 は単独承認型として、どちらかの ADMIN が {@code TRUE} に切り替えれば
      * 公開となる。Phase 3 で両チーム承認型に昇格予定。
@@ -71,11 +71,9 @@ public class TeamFriendVisibilityService {
                 .orElseThrow(() -> new BusinessException(SocialErrorCode.FRIEND_RELATION_NOT_FOUND));
 
         if (!friend.getTeamAId().equals(teamId) && !friend.getTeamBId().equals(teamId)) {
-            // 保存済みの公開値で分類し、私的な他チーム関係は不在と同じコードで拒否する。
-            // 公開済みの他チーム関係は既存の拒否コードを維持する。
-            throw new BusinessException(Boolean.TRUE.equals(friend.getIsPublic())
-                    ? SocialErrorCode.FRIEND_VISIBILITY_ADMIN_ONLY
-                    : SocialErrorCode.FRIEND_RELATION_NOT_FOUND);
+            // ここへ来るのは閲覧ガード（TeamFriendViewAccessGuard）を通った閲覧者のみ。
+            // 閲覧できる関係なので、公開・非公開を問わず従来の ADMIN 限定の拒否を返す（CMP-260821-1027）。
+            throw new BusinessException(SocialErrorCode.FRIEND_VISIBILITY_ADMIN_ONLY);
         }
 
         boolean before = Boolean.TRUE.equals(friend.getIsPublic());

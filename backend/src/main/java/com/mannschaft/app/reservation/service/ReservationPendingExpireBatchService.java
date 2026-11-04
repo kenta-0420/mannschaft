@@ -3,14 +3,13 @@ package com.mannschaft.app.reservation.service;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
-import com.mannschaft.app.reservation.service.ReservationPendingExpireService.PendingExpireUnit;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 
 /**
  * 仮押さえ(PENDING)自動失効バッチ（F03.4.5 §6.3・W2-6）。
@@ -41,13 +40,15 @@ import java.util.List;
 public class ReservationPendingExpireBatchService {
 
     private final ReservationPendingExpireService pendingExpireService;
+    private final ReservationPendingExpireProgressService progress;
+    private final TeamTimezoneResolver timezoneResolver;
 
     /**
      * 期限切れの仮押さえ(PENDING)を自動キャンセルする。
      *
      * <p>1 単位（単枠予約 1 件 / グループ 1 組）の失敗が他の単位を巻き込まないよう単位ごとに
-     * try/catch する。失敗は握り潰さず {@code log.error} で記録し、次回起動で再試行される
-     * （失効条件は時刻経過なので、失敗した単位は次回も対象に残る＝自己修復する）。</p>
+     * try/catch する。失敗は {@code log.error} で記録し、永続retryに残して次回起動で再試行する。
+     * checkpointの保存に失敗した場合は処理を停止し、未検査のprefixを進めない。</p>
      *
      * <p>戻り値はプリミティブ {@code int} ではなく参照型 {@code Integer} にしている（issue #2724）。
      * ShedLock はプリミティブ戻り値のメソッドをロックできず、{@code int} を返していた旧実装は
@@ -70,23 +71,45 @@ public class ReservationPendingExpireBatchService {
     // ロック保持時間にも余裕（3 倍）を持たせて窓を閉じる（殿の裁定・2026-07-29）。
     @SchedulerLock(name = "reservationPendingExpireBatch", lockAtLeastFor = "30s", lockAtMostFor = "15m")
     public Integer expirePendingReservations() {
-        List<PendingExpireUnit> units = pendingExpireService.findExpirableUnits();
-        if (units.isEmpty()) {
-            return 0;
-        }
+        var run = progress.beginRun();
+        var plan = pendingExpireService.findScanPlan(run);
+        long cursor = run.cursor();
         int expiredRows = 0;
         int failedUnits = 0;
-        for (PendingExpireUnit unit : units) {
+        int attempts = 0;
+        boolean stoppedAtUnprocessedTrue = false;
+        for (var entry : plan.entries()) {
+            if (!entry.eligible()) {
+                if (entry.retry()) progress.discardRetry(run.epoch(), entry.primaryId());
+                else cursor = entry.primaryId();
+                continue;
+            }
+            if (entry.unit() == null || attempts == ReservationPendingExpireService.MAX_UNITS_PER_RUN) {
+                stoppedAtUnprocessedTrue = true;
+                break;
+            }
+            // false prefixを越す前に耐久記録。enqueue/epoch/checkpoint失敗は当回を停止する。
+            progress.checkpoint(run.epoch(), cursor);
+            if (!entry.retry()) progress.enqueue(run.epoch(), entry.primaryId());
+            long completedPrefix = entry.retry() ? cursor : entry.primaryId();
             try {
-                expiredRows += pendingExpireService.expireUnit(unit);
+                var zone = timezoneResolver.resolveZone(entry.unit().primary().getTeamId());
+                attempts++;
+                expiredRows += pendingExpireService.expireUnit(entry.unit().withProgress(run.epoch(), completedPrefix, zone));
             } catch (Exception e) {
                 failedUnits++;
                 log.error("仮押さえ自動失効に失敗（次回起動で再試行）: reservationId={}, teamId={}",
-                        unit.primary().getId(), unit.primary().getTeamId(), e);
+                        entry.primaryId(), entry.unit().primary().getTeamId(), e);
+                // 実unitはrollback済み。失敗IDを消さず検査済みprefixだけ進める。
+                progress.checkpointFailure(run.epoch(), entry.primaryId(), completedPrefix);
             }
+            if (!entry.retry()) cursor = completedPrefix;
         }
-        log.info("仮押さえ自動失効バッチ: 対象{}単位中 {}行を失効、{}単位が失敗",
-                units.size(), expiredRows, failedUnits);
+        if (!stoppedAtUnprocessedTrue) cursor = plan.scannedThrough();
+        progress.checkpoint(run.epoch(), cursor);
+        if (!stoppedAtUnprocessedTrue && plan.exhausted()) progress.finishCycle(run.epoch());
+        log.info("仮押さえ自動失効バッチ: {}単位を試行、{}行を失効、{}単位が失敗",
+                attempts, expiredRows, failedUnits);
         return expiredRows;
     }
 }
