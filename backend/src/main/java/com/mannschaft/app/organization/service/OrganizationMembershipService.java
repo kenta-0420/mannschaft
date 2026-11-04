@@ -228,14 +228,16 @@ public class OrganizationMembershipService {
         List<TeamOrgMembershipEntity> links = includeTeams
                 ? teamOrgMembershipRepository.findByOrganizationIdAndStatus(orgId, TeamOrgMembershipEntity.Status.ACTIVE)
                 : List.of();
-        Set<Long> linkedTeamIds = new LinkedHashSet<>();
+        // 加盟の並び順どおりのチーム ID（所属元の ID・引き当てのキーにもこれを使う）
+        List<Long> linkedTeamIds = new ArrayList<>(links.size());
         for (TeamOrgMembershipEntity membership : links) {
             linkedTeamIds.add(membership.getTeamId());
         }
-        linkedTeamIds.remove(null);
+        Set<Long> distinctTeamIds = new LinkedHashSet<>(linkedTeamIds);
+        distinctTeamIds.remove(null);
         Map<Long, TeamEntity> teamsById = new HashMap<>();
-        if (!linkedTeamIds.isEmpty()) {
-            for (TeamEntity team : teamRepository.findAllById(linkedTeamIds)) {
+        if (!distinctTeamIds.isEmpty()) {
+            for (TeamEntity team : teamRepository.findAllById(distinctTeamIds)) {
                 teamsById.put(team.getId(), team);
             }
         }
@@ -247,12 +249,32 @@ public class OrganizationMembershipService {
             }
         }
 
-        // 直属・傘下チームの全行が参照するユーザーとロールを、それぞれ 1 クエリで引く
+        // 応答の並び（直属 → 加盟の並び順でチームごと）に、行と所属元をそろえて並べる。
+        // teams に返らないチーム（論理削除済み等）は是正前と同じく飛ばす
+        List<UserRoleEntity> rows = new ArrayList<>(directRoles);
+        List<OrgAllMembersResponse.MemberOf> rowScopes = new ArrayList<>(directRoles.size());
+        OrgAllMembersResponse.MemberOf orgScope =
+                new OrgAllMembersResponse.MemberOf("ORGANIZATION", org.getId(), org.getName());
+        for (int i = 0; i < directRoles.size(); i++) {
+            rowScopes.add(orgScope);
+        }
+        for (Long teamId : linkedTeamIds) {
+            TeamEntity team = teamsById.get(teamId);
+            if (team == null) {
+                continue;
+            }
+            OrgAllMembersResponse.MemberOf teamScope =
+                    new OrgAllMembersResponse.MemberOf("TEAM", teamId, team.getName());
+            for (UserRoleEntity ur : teamRolesByTeamId.getOrDefault(teamId, List.of())) {
+                rows.add(ur);
+                rowScopes.add(teamScope);
+            }
+        }
+
+        // 全行が参照するユーザーとロールを、それぞれ 1 クエリで引く
         Set<Long> userIds = new LinkedHashSet<>();
         Set<Long> roleIds = new LinkedHashSet<>();
-        List<UserRoleEntity> allRoles = new ArrayList<>(directRoles);
-        teamRolesByTeamId.values().forEach(allRoles::addAll);
-        for (UserRoleEntity ur : allRoles) {
+        for (UserRoleEntity ur : rows) {
             userIds.add(ur.getUserId());
             roleIds.add(ur.getRoleId());
         }
@@ -271,42 +293,22 @@ public class OrganizationMembershipService {
             }
         }
 
-        List<OrgAllMembersResponse> result = new ArrayList<>();
-        // 直属メンバー
-        for (UserRoleEntity ur : directRoles) {
-            UserEntity user = usersById.get(ur.getUserId());
-            String roleName = roleNamesById.get(ur.getRoleId());
-            if (user != null) {
-                result.add(new OrgAllMembersResponse(
-                        user.getId(),
-                        user.getLastName() + " " + user.getFirstName(),
-                        // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
-                        mediaUrlResolver.resolve(user.getAvatarUrl()),
-                        new OrgAllMembersResponse.MemberOf("ORGANIZATION", org.getId(), org.getName()),
-                        roleName));
+        List<OrgAllMembersResponse> result = new ArrayList<>(rows.size());
+        for (int i = 0; i < rows.size(); i++) {
+            UserRoleEntity ur = rows.get(i);
+            Long userId = ur.getUserId();
+            UserEntity user = usersById.get(userId);
+            if (user == null) {
+                continue; // 退会者等（users の @SQLRestriction で返らない）は是正前と同じく行ごと除外
             }
+            result.add(new OrgAllMembersResponse(
+                    userId,
+                    user.getLastName() + " " + user.getFirstName(),
+                    // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
+                    mediaUrlResolver.resolve(user.getAvatarUrl()),
+                    rowScopes.get(i),
+                    roleNamesById.get(ur.getRoleId())));
         }
-        // 所属チームのメンバー（加盟の並び順。teams に返らないチームは是正前と同じく飛ばす）
-        for (TeamOrgMembershipEntity membership : links) {
-            TeamEntity team = teamsById.get(membership.getTeamId());
-            if (team == null) {
-                continue;
-            }
-            for (UserRoleEntity ur : teamRolesByTeamId.getOrDefault(team.getId(), List.of())) {
-                UserEntity user = usersById.get(ur.getUserId());
-                String roleName = roleNamesById.get(ur.getRoleId());
-                if (user != null) {
-                    result.add(new OrgAllMembersResponse(
-                            user.getId(),
-                            user.getLastName() + " " + user.getFirstName(),
-                            // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
-                            mediaUrlResolver.resolve(user.getAvatarUrl()),
-                            new OrgAllMembersResponse.MemberOf("TEAM", team.getId(), team.getName()),
-                            roleName));
-                }
-            }
-        }
-
         return result;
     }
 
