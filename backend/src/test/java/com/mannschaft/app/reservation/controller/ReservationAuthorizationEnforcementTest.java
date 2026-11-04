@@ -228,6 +228,9 @@ class ReservationAuthorizationEnforcementTest {
     @MockitoBean
     private EmergencyClosureService emergencyClosureService;
 
+    @MockitoBean
+    private com.mannschaft.app.reservation.service.EmergencyClosureSendService emergencyClosureSendService;
+
     // ── ReservationBusinessHourController の依存（F03.4.5 §6.3 AC-6-15） ──
     @MockitoBean
     private com.mannschaft.app.reservation.service.ReservationBusinessHourService reservationBusinessHourService;
@@ -290,6 +293,22 @@ class ReservationAuthorizationEnforcementTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID_CLOSURE_BODY))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "200", roles = "MEMBER")
+    @DisplayName("CMP-261104-0334 0334-7: MEMBER が Idempotency-Key 付きで POST /emergency-closures → 403・送信処理に到達しない")
+    void member_sendClosureWithIdempotencyKey_forbidden() throws Exception {
+        given(accessControlService.isSystemAdmin(MEMBER_USER_ID)).willReturn(false);
+        given(accessControlService.isAdminOrAbove(MEMBER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+        mockMvc.perform(post(CLOSURES_PATH)
+                        .with(csrf())
+                        .header("Idempotency-Key", java.util.UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_CLOSURE_BODY))
+                .andExpect(status().isForbidden());
+        org.mockito.Mockito.verifyNoInteractions(emergencyClosureSendService, emergencyClosureService);
     }
 
     // ────────────────────────────────────────────────────────────
