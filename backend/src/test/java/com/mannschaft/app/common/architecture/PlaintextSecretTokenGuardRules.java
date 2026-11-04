@@ -24,7 +24,6 @@ import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,7 +33,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.asm.ClassReader;
@@ -97,7 +98,8 @@ import org.springframework.data.repository.Repository;
  *
  * <h2>番人3の既知の限界（偽陰性。2026-11-03 殿裁定）</h2>
  * <p>番人3の値の流れの追跡は<b>メソッドの内側だけ</b>である。メソッド内の流れは追う
- * （ローカル変数・分岐の合流［if/else・三項演算子］・乱数を詰めた配列の別名）。
+ * （ローカル変数・分岐の合流［if/else・三項演算子］・ループで次の周回へ持ち越される値・乱数を詰めた配列の別名。
+ * 基本ブロックとワークリストによる不動点反復の may 解析）。
  * 一方、<b>メソッドをまたぐ流れは追えず見逃す</b>:</p>
  * <ul>
  *   <li>乱数の生成ヘルパ: 別メソッドが {@code UUID.randomUUID()} を返し、呼び出し側がその戻り値を token 系に詰める形</li>
@@ -642,16 +644,139 @@ final class PlaintextSecretTokenGuardRules {
     // ---------------------------------------------------------------- 乱数の値の行き先（番人3）
 
     /**
-     * 値の流れの追跡で使う、オペランドスタックの1要素。{@code slot} は ALOAD 由来のときのローカル変数番号。
+     * 値の流れの追跡で使う、オペランドスタックの1要素。
      * {@code sources} は、この値が（分岐の合流を含めて）どのローカル変数の値でありうるか（may-alias の元）。
      */
-    private record Operand(boolean tainted, int slot, boolean wide, Set<Integer> sources) {
+    private record Operand(boolean tainted, boolean wide, Set<Integer> sources) {
         static Operand clean() {
-            return new Operand(false, NO_LOCAL_SLOT, false, Set.of());
+            return new Operand(false, false, Set.of());
         }
 
         static Operand of(boolean tainted, boolean wide) {
-            return new Operand(tainted, NO_LOCAL_SLOT, wide, Set.of());
+            return new Operand(tainted, wide, Set.of());
+        }
+
+        /** 合流点での和集合（印は論理和、元の変数は和集合）。 */
+        Operand join(Operand other) {
+            if (sources.containsAll(other.sources()) && (tainted || !other.tainted())) {
+                return this;
+            }
+            Set<Integer> merged = new HashSet<>(sources);
+            merged.addAll(other.sources());
+            return new Operand(tainted || other.tainted(), wide, Set.copyOf(merged));
+        }
+    }
+
+    /**
+     * 値の流れの追跡の抽象状態（あるプログラム点での、オペランドスタック・乱数由来のローカル変数・配列の別名）。
+     * 別名は「同じ配列を指しうる」ローカル変数の組（無向の辺）の集合で持つ。
+     */
+    private static final class TaintState {
+        /** 下から上へ並べたオペランドスタック。 */
+        private final List<Operand> stack;
+        private final Set<Integer> taintedLocals;
+        /** 別名の辺（{@link #edge} で符号化した、変数番号の順序なし組）。 */
+        private final Set<Long> aliasEdges;
+
+        TaintState() {
+            this(new ArrayList<>(), new HashSet<>(), new HashSet<>());
+        }
+
+        private TaintState(List<Operand> stack, Set<Integer> taintedLocals, Set<Long> aliasEdges) {
+            this.stack = stack;
+            this.taintedLocals = taintedLocals;
+            this.aliasEdges = aliasEdges;
+        }
+
+        TaintState copy() {
+            return new TaintState(new ArrayList<>(stack), new HashSet<>(taintedLocals), new HashSet<>(aliasEdges));
+        }
+
+        /** 例外ハンドラの入口: ローカル変数の情報は保ち、スタックは投げられた例外1つだけにする。 */
+        TaintState handlerEntry() {
+            List<Operand> handlerStack = new ArrayList<>();
+            handlerStack.add(Operand.clean());
+            return new TaintState(handlerStack, new HashSet<>(taintedLocals), new HashSet<>(aliasEdges));
+        }
+
+        /**
+         * 合流点で {@code other} を和集合として取り込み、状態が増えたかを返す。
+         * スタックの深さが違う（検証済みのバイトコードでは起きない）ときはスタックを据え置く。
+         */
+        boolean joinFrom(TaintState other) {
+            boolean changed = taintedLocals.addAll(other.taintedLocals);
+            changed |= aliasEdges.addAll(other.aliasEdges);
+            if (stack.size() == other.stack.size()) {
+                for (int i = 0; i < stack.size(); i++) {
+                    Operand merged = stack.get(i).join(other.stack.get(i));
+                    if (!merged.equals(stack.get(i))) {
+                        stack.set(i, merged);
+                        changed = true;
+                    }
+                }
+            }
+            return changed;
+        }
+
+        Operand pop() {
+            return stack.isEmpty() ? Operand.clean() : stack.remove(stack.size() - 1);
+        }
+
+        void push(Operand operand) {
+            stack.add(operand);
+        }
+
+        private static long edge(int a, int b) {
+            return ((long) Math.min(a, b) << Integer.SIZE) | Math.max(a, b);
+        }
+
+        private static int low(long key) {
+            return (int) (key >>> Integer.SIZE);
+        }
+
+        private static int high(long key) {
+            return (int) key;
+        }
+
+        private Set<Integer> neighbors(int slot) {
+            Set<Integer> result = new HashSet<>();
+            for (long key : aliasEdges) {
+                if (low(key) == slot) {
+                    result.add(high(key));
+                } else if (high(key) == slot) {
+                    result.add(low(key));
+                }
+            }
+            return result;
+        }
+
+        /** 変数 {@code slot} と、その別名（辺を辿って届くものすべて）に乱数由来の印を付ける。 */
+        void taintSlot(int slot) {
+            Set<Integer> seen = new HashSet<>();
+            Deque<Integer> work = new ArrayDeque<>();
+            work.push(slot);
+            while (!work.isEmpty()) {
+                int current = work.pop();
+                if (seen.add(current)) {
+                    taintedLocals.add(current);
+                    neighbors(current).forEach(work::push);
+                }
+            }
+        }
+
+        /** 変数 {@code slot} を別名から外す（別の値を代入したとき）。経由していた別名どうしの関係は残す。 */
+        void detachAlias(int slot) {
+            List<Integer> around = new ArrayList<>(neighbors(slot));
+            for (int i = 0; i < around.size(); i++) {
+                for (int j = i + 1; j < around.size(); j++) {
+                    aliasEdges.add(edge(around.get(i), around.get(j)));
+                }
+            }
+            aliasEdges.removeIf(key -> low(key) == slot || high(key) == slot);
+        }
+
+        void joinAlias(int slot, int source) {
+            aliasEdges.add(edge(slot, source));
         }
     }
 
@@ -659,12 +784,16 @@ final class PlaintextSecretTokenGuardRules {
      * クラスファイルから、メソッドごとに「自前乱数（{@code UUID.randomUUID()}・{@code SecureRandom#nextBytes} の配列）から
      * 導かれた値を引数に受けた呼び出し」を取り出す（キーは {@link #callKey}）。
      *
-     * <p>メソッド内の命令列を上から1回なぞる簡易な値の流れ追跡で、オペランドスタックとローカル変数に「乱数由来か」の印を持つ。
-     * 呼び出しの戻り値は、引数かレシーバのどれかが乱数由来なら乱数由来とする（{@code toString}・ハッシュ化・連結を貫通する）。
-     * 分岐の合流は、前方ジャンプの時点のスタックを覚えておき、ジャンプ先のラベルで復元（直前が無条件ジャンプ等のとき）または
-     * 乱数由来の印の和集合（落ちてきたとき）をとって合わせる（三項演算子・if/else の値が合流しても印が消えない）。
-     * 未到達のラベルが残っている間（分岐の内側）は、きれいな値の代入でローカル変数の印を外さない。
+     * <p>メソッド内の値の流れ追跡（may 解析）で、オペランドスタックとローカル変数に「乱数由来か」の印を持つ。
+     * 命令列を基本ブロックに分け、ワークリストで不動点まで反復する。合流点（分岐の合流・ループの先頭・例外ハンドラ）では
+     * 流れ込む状態の和集合をとり、ブロックの入口の状態が増えなくなるまで回す。後方ジャンプ（ループ）で次の周回へ持ち越される
+     * 乱数・配列の別名も、周回後の状態でループ本体を再評価するので見逃さない。
+     * <b>停止性</b>: 状態はローカル変数番号の有限集合の部分集合（印・別名の辺・スタック要素の元の変数）と深さ固定のスタックの組で
+     * 格子は有限であり、ブロック入口の状態は和集合でしか更新しない（単調に増える）ので、有限回で不動点に達する。</p>
+     *
+     * <p>呼び出しの戻り値は、引数かレシーバのどれかが乱数由来なら乱数由来とする（{@code toString}・ハッシュ化・連結を貫通する）。
      * 乱数を詰める配列の別名（{@code byte[] b = a;}）は同じ配列として扱い、片方へ印が付けば他方にも付く。
+     * 直線上の代入（ブロック内）は印・別名を上書きし、枝ごとの違いは合流点の和集合で保つ。
      * 追うのはメソッドの内側だけで、メソッドをまたぐ流れは追えない（既知の限界。クラス Javadoc 参照）。
      * 判定が追えない形（配列がローカル変数でない）では {@link #ANY_CALL} を入れ、同居だけで違反とする側に倒す。</p>
      *
@@ -691,331 +820,377 @@ final class PlaintextSecretTokenGuardRules {
         return result;
     }
 
-    /** 1メソッド分の値の流れ追跡（{@link #loadRandomTaintedCalls} の本体）。 */
+    /**
+     * 1メソッド分の値の流れ追跡（{@link #loadRandomTaintedCalls} の本体）。
+     * 訪問中は命令ごとの状態遷移と制御の行き先を記録するだけで、{@link #visitEnd} で基本ブロックに分けて不動点反復する。
+     */
     private static final class RandomTaintTracker extends MethodVisitor {
         private static final String UUID_OWNER = UUID.class.getName().replace('.', '/');
         private static final String SECURE_RANDOM_OWNER = SecureRandom.class.getName().replace('.', '/');
         private static final String CONSTRUCTOR = "<init>";
 
+        /** 1命令: 状態遷移、ジャンプ先、次の命令へ落ちるか。 */
+        private record Step(Consumer<TaintState> effect, List<Label> targets, boolean fallsThrough) {
+            boolean endsBlock() {
+                return !fallsThrough || !targets.isEmpty();
+            }
+        }
+
+        /** 例外ハンドラの範囲（{@code start} 以上 {@code end} 未満の命令が {@code handler} へ飛びうる）。 */
+        private record TryCatch(Label start, Label end, Label handler) {
+        }
+
         private final Set<String> reachedCalls;
-        private final Deque<Operand> stack = new ArrayDeque<>();
-        private final Set<Integer> taintedLocals = new HashSet<>();
-        /** 同じ配列を指すローカル変数の集まり（別名）。変数番号 → 同じ集まりを共有する Set。 */
-        private final Map<Integer, Set<Integer>> aliases = new HashMap<>();
-        /** 前方ジャンプの時点のスタック（ラベル → 上から順の要素）。ラベルに着いたら消す。残っている間は分岐の内側。 */
-        private final Map<Label, List<Operand>> pendingJumps = new IdentityHashMap<>();
-        private final Set<Label> visitedLabels = Collections.newSetFromMap(new IdentityHashMap<>());
-        private final Set<Label> handlerLabels = Collections.newSetFromMap(new IdentityHashMap<>());
-        /** 直前の命令が無条件ジャンプ・return・throw で、次の命令へは落ちてこないか。 */
-        private boolean unreachable;
+        private final List<Step> steps = new ArrayList<>();
+        /** ラベル → その直後の命令の番号。 */
+        private final Map<Label, Integer> labelIndex = new IdentityHashMap<>();
+        private final List<TryCatch> tryCatches = new ArrayList<>();
 
         RandomTaintTracker(Set<String> reachedCalls) {
             super(SpringAsmInfo.ASM_VERSION);
             this.reachedCalls = reachedCalls;
         }
 
-        /** 変数 {@code slot} と、その別名すべてに乱数由来の印を付ける。 */
-        private void taintSlot(int slot) {
-            taintedLocals.add(slot);
-            Set<Integer> group = aliases.get(slot);
-            if (group != null) {
-                taintedLocals.addAll(group);
-            }
-        }
-
-        /** 変数 {@code slot} を別名の集まりから外す（別の値を代入したとき）。 */
-        private void detachAlias(int slot) {
-            Set<Integer> group = aliases.remove(slot);
-            if (group != null) {
-                group.remove(slot);
-            }
-        }
-
-        /** 変数 {@code slot} と {@code source} を同じ別名の集まりへ入れる（すでに別の集まりに居れば和集合にする）。 */
-        private void joinAlias(int slot, int source) {
-            Set<Integer> group = aliases.computeIfAbsent(source, key -> new HashSet<>(Set.of(source)));
-            Set<Integer> previous = aliases.get(slot);
-            group.add(slot);
-            if (previous != null && previous != group) {
-                group.addAll(previous);
-                previous.forEach(member -> aliases.put(member, group));
-            }
-            aliases.put(slot, group);
-        }
-
-        private void recordSwitchTargets(Label dflt, Label... labels) {
-            recordJump(dflt);
-            for (Label label : labels) {
-                recordJump(label);
-            }
-            unreachable = true;
-        }
-
-        private void recordJump(Label target) {
-            if (visitedLabels.contains(target)) {
-                return;
-            }
-            List<Operand> snapshot = new ArrayList<>(stack);
-            pendingJumps.merge(target, snapshot, RandomTaintTracker::mergeStacks);
-        }
-
-        /** 同じ深さのスタックは要素ごとに印の和集合をとる。深さが違うときは先のものを残す。 */
-        private static List<Operand> mergeStacks(List<Operand> first, List<Operand> second) {
-            if (first.size() != second.size()) {
-                return first;
-            }
-            List<Operand> merged = new ArrayList<>(first.size());
-            for (int i = 0; i < first.size(); i++) {
-                Operand a = first.get(i);
-                Operand b = second.get(i);
-                Set<Integer> sources = new HashSet<>(a.sources());
-                sources.addAll(b.sources());
-                merged.add(new Operand(a.tainted() || b.tainted(), NO_LOCAL_SLOT, a.wide(), Set.copyOf(sources)));
-            }
-            return merged;
-        }
-
-        private void replaceStack(List<Operand> top2bottom) {
-            stack.clear();
-            for (int i = top2bottom.size() - 1; i >= 0; i--) {
-                stack.push(top2bottom.get(i));
-            }
+        private void step(Consumer<TaintState> effect) {
+            steps.add(new Step(effect, List.of(), true));
         }
 
         @Override
         public void visitTryCatchBlock(Label start, Label end, Label handler, String type) {
-            handlerLabels.add(handler);
+            tryCatches.add(new TryCatch(start, end, handler));
         }
 
         @Override
         public void visitLabel(Label label) {
-            visitedLabels.add(label);
-            List<Operand> snapshot = pendingJumps.remove(label);
-            if (snapshot != null) {
-                replaceStack(unreachable ? snapshot : mergeStacks(new ArrayList<>(stack), snapshot));
-            } else if (handlerLabels.contains(label)) {
-                stack.clear();
-                push(Operand.clean());
+            labelIndex.put(label, steps.size());
+        }
+
+        @Override
+        public void visitEnd() {
+            analyze();
+        }
+
+        // ------------------------------------------------------------ 基本ブロックと不動点反復
+
+        private void analyze() {
+            int count = steps.size();
+            if (count == 0) {
+                return;
             }
-            unreachable = false;
+            TreeSet<Integer> leaders = new TreeSet<>();
+            leaders.add(0);
+            labelIndex.values().stream().filter(index -> index < count).forEach(leaders::add);
+            for (int i = 0; i + 1 < count; i++) {
+                if (steps.get(i).endsBlock()) {
+                    leaders.add(i + 1);
+                }
+            }
+            int[] starts = leaders.stream().mapToInt(Integer::intValue).toArray();
+            Map<Integer, Integer> blockAt = new HashMap<>();
+            for (int b = 0; b < starts.length; b++) {
+                blockAt.put(starts[b], b);
+            }
+            List<List<Integer>> successors = new ArrayList<>();
+            List<List<Integer>> handlers = new ArrayList<>();
+            for (int b = 0; b < starts.length; b++) {
+                Step last = steps.get(blockEnd(starts, b, count) - 1);
+                List<Integer> next = new ArrayList<>();
+                for (Label target : last.targets()) {
+                    blockOf(target, blockAt).ifPresent(next::add);
+                }
+                if (last.fallsThrough() && b + 1 < starts.length) {
+                    next.add(b + 1);
+                }
+                successors.add(next);
+                List<Integer> covering = new ArrayList<>();
+                for (TryCatch tryCatch : tryCatches) {
+                    Integer from = labelIndex.get(tryCatch.start());
+                    Integer to = labelIndex.get(tryCatch.end());
+                    if (from != null && to != null && starts[b] >= from && starts[b] < to) {
+                        blockOf(tryCatch.handler(), blockAt).ifPresent(covering::add);
+                    }
+                }
+                handlers.add(covering);
+            }
+
+            TaintState[] entry = new TaintState[starts.length];
+            entry[0] = new TaintState();
+            Deque<Integer> work = new ArrayDeque<>();
+            boolean[] queued = new boolean[starts.length];
+            work.add(0);
+            queued[0] = true;
+            while (!work.isEmpty()) {
+                int b = work.poll();
+                queued[b] = false;
+                TaintState state = entry[b].copy();
+                for (int i = starts[b]; i < blockEnd(starts, b, count); i++) {
+                    steps.get(i).effect().accept(state);
+                }
+                for (int next : successors.get(b)) {
+                    if (flowInto(entry, next, state)) {
+                        enqueue(work, queued, next);
+                    }
+                }
+                // 例外はブロックの途中でも起きうるので、入口と出口の両方の状態をハンドラへ流す
+                for (int handler : handlers.get(b)) {
+                    boolean changed = flowInto(entry, handler, entry[b].handlerEntry());
+                    changed |= flowInto(entry, handler, state.handlerEntry());
+                    if (changed) {
+                        enqueue(work, queued, handler);
+                    }
+                }
+            }
         }
 
-        private Operand pop() {
-            return stack.isEmpty() ? Operand.clean() : stack.pop();
+        private static int blockEnd(int[] starts, int block, int count) {
+            return block + 1 < starts.length ? starts[block + 1] : count;
         }
 
-        private void push(Operand operand) {
-            stack.push(operand);
+        private Optional<Integer> blockOf(Label label, Map<Integer, Integer> blockAt) {
+            Integer index = labelIndex.get(label);
+            return index == null ? Optional.empty() : Optional.ofNullable(blockAt.get(index));
         }
 
-        private void pushResult(boolean tainted, Type type) {
+        /** ブロック {@code block} の入口へ {@code state} を和集合で流し込み、入口の状態が増えたかを返す。 */
+        private static boolean flowInto(TaintState[] entry, int block, TaintState state) {
+            if (entry[block] == null) {
+                entry[block] = state.copy();
+                return true;
+            }
+            return entry[block].joinFrom(state);
+        }
+
+        private static void enqueue(Deque<Integer> work, boolean[] queued, int block) {
+            if (!queued[block]) {
+                queued[block] = true;
+                work.add(block);
+            }
+        }
+
+        // ------------------------------------------------------------ 命令ごとの状態遷移
+
+        private static void pushResult(TaintState state, boolean tainted, Type type) {
             if (type.getSort() != Type.VOID) {
-                push(Operand.of(tainted, type.getSize() == 2));
+                state.push(Operand.of(tainted, type.getSize() == 2));
             }
         }
 
         @Override
         public void visitInsn(int opcode) {
             switch (opcode) {
+                case Opcodes.ATHROW, Opcodes.RETURN, Opcodes.IRETURN, Opcodes.LRETURN, Opcodes.FRETURN,
+                     Opcodes.DRETURN, Opcodes.ARETURN ->
+                        steps.add(new Step(state -> state.stack.clear(), List.of(), false));
+                default -> step(state -> applyInsn(state, opcode));
+            }
+        }
+
+        private static void applyInsn(TaintState state, int opcode) {
+            switch (opcode) {
                 case Opcodes.ACONST_NULL, Opcodes.ICONST_M1, Opcodes.ICONST_0, Opcodes.ICONST_1, Opcodes.ICONST_2,
                      Opcodes.ICONST_3, Opcodes.ICONST_4, Opcodes.ICONST_5, Opcodes.FCONST_0, Opcodes.FCONST_1,
-                     Opcodes.FCONST_2 -> push(Operand.clean());
+                     Opcodes.FCONST_2 -> state.push(Operand.clean());
                 case Opcodes.LCONST_0, Opcodes.LCONST_1, Opcodes.DCONST_0, Opcodes.DCONST_1 ->
-                        push(Operand.of(false, true));
+                        state.push(Operand.of(false, true));
                 case Opcodes.IALOAD, Opcodes.FALOAD, Opcodes.AALOAD, Opcodes.BALOAD, Opcodes.CALOAD,
                      Opcodes.SALOAD, Opcodes.LALOAD, Opcodes.DALOAD -> {
-                    pop();
-                    Operand array = pop();
-                    push(Operand.of(array.tainted(), opcode == Opcodes.LALOAD || opcode == Opcodes.DALOAD));
+                    state.pop();
+                    Operand array = state.pop();
+                    state.push(Operand.of(array.tainted(), opcode == Opcodes.LALOAD || opcode == Opcodes.DALOAD));
                 }
                 case Opcodes.IASTORE, Opcodes.FASTORE, Opcodes.AASTORE, Opcodes.BASTORE, Opcodes.CASTORE,
                      Opcodes.SASTORE, Opcodes.LASTORE, Opcodes.DASTORE -> {
-                    Operand value = pop();
-                    pop();
-                    Operand array = pop();
-                    if (value.tainted() && array.slot() != NO_LOCAL_SLOT) {
-                        taintSlot(array.slot());
+                    Operand value = state.pop();
+                    state.pop();
+                    Operand array = state.pop();
+                    if (value.tainted()) {
+                        array.sources().forEach(state::taintSlot);
                     }
                 }
-                case Opcodes.ATHROW -> {
-                    pop();
-                    unreachable = true;
-                }
-                case Opcodes.POP, Opcodes.MONITORENTER, Opcodes.MONITOREXIT -> pop();
+                case Opcodes.POP, Opcodes.MONITORENTER, Opcodes.MONITOREXIT -> state.pop();
                 case Opcodes.POP2 -> {
-                    if (!pop().wide()) {
-                        pop();
+                    if (!state.pop().wide()) {
+                        state.pop();
                     }
                 }
                 case Opcodes.DUP -> {
-                    Operand top = pop();
-                    push(top);
-                    push(top);
+                    Operand top = state.pop();
+                    state.push(top);
+                    state.push(top);
                 }
                 case Opcodes.DUP_X1, Opcodes.DUP_X2 -> {
-                    Operand top = pop();
-                    Operand second = pop();
-                    Operand third = opcode == Opcodes.DUP_X2 && !second.wide() ? pop() : null;
-                    push(top);
+                    Operand top = state.pop();
+                    Operand second = state.pop();
+                    Operand third = opcode == Opcodes.DUP_X2 && !second.wide() ? state.pop() : null;
+                    state.push(top);
                     if (third != null) {
-                        push(third);
+                        state.push(third);
                     }
-                    push(second);
-                    push(top);
+                    state.push(second);
+                    state.push(top);
                 }
                 case Opcodes.DUP2, Opcodes.DUP2_X1, Opcodes.DUP2_X2 -> {
-                    Operand top = pop();
+                    Operand top = state.pop();
                     if (top.wide()) {
-                        push(top);
-                        push(top);
+                        state.push(top);
+                        state.push(top);
                     } else {
-                        Operand second = pop();
-                        push(second);
-                        push(top);
-                        push(second);
-                        push(top);
+                        Operand second = state.pop();
+                        state.push(second);
+                        state.push(top);
+                        state.push(second);
+                        state.push(top);
                     }
                 }
                 case Opcodes.SWAP -> {
-                    Operand top = pop();
-                    Operand second = pop();
-                    push(top);
-                    push(second);
+                    Operand top = state.pop();
+                    Operand second = state.pop();
+                    state.push(top);
+                    state.push(second);
                 }
                 case Opcodes.INEG, Opcodes.LNEG, Opcodes.FNEG, Opcodes.DNEG, Opcodes.ARRAYLENGTH -> {
-                    Operand value = pop();
-                    push(Operand.of(value.tainted(), value.wide()));
+                    Operand value = state.pop();
+                    state.push(Operand.of(value.tainted(), value.wide()));
                 }
-                case Opcodes.RETURN, Opcodes.IRETURN, Opcodes.LRETURN, Opcodes.FRETURN, Opcodes.DRETURN,
-                     Opcodes.ARETURN -> {
-                    stack.clear();
-                    unreachable = true;
-                }
-                default -> visitArithmetic(opcode);
+                default -> applyArithmetic(state, opcode);
             }
         }
 
         /** 四則・ビット演算・型変換・比較。値は2つ取って1つ返す（型変換は1つ取って1つ返す）。 */
-        private void visitArithmetic(int opcode) {
+        private static void applyArithmetic(TaintState state, int opcode) {
             boolean conversion = opcode >= Opcodes.I2L && opcode <= Opcodes.I2S;
             boolean binary = (opcode >= Opcodes.IADD && opcode <= Opcodes.DREM)
                     || (opcode >= Opcodes.ISHL && opcode <= Opcodes.LXOR)
                     || (opcode >= Opcodes.LCMP && opcode <= Opcodes.DCMPG);
             if (conversion) {
-                Operand value = pop();
-                push(Operand.of(value.tainted(), false));
+                Operand value = state.pop();
+                state.push(Operand.of(value.tainted(), false));
             } else if (binary) {
-                Operand right = pop();
-                Operand left = pop();
-                push(Operand.of(left.tainted() || right.tainted(), false));
+                Operand right = state.pop();
+                Operand left = state.pop();
+                state.push(Operand.of(left.tainted() || right.tainted(), false));
             }
         }
 
         @Override
         public void visitIntInsn(int opcode, int operand) {
-            if (opcode == Opcodes.NEWARRAY) {
-                pop();
-            }
-            push(Operand.clean());
+            step(state -> {
+                if (opcode == Opcodes.NEWARRAY) {
+                    state.pop();
+                }
+                state.push(Operand.clean());
+            });
         }
 
         @Override
         public void visitVarInsn(int opcode, int varIndex) {
+            step(state -> applyVarInsn(state, opcode, varIndex));
+        }
+
+        private static void applyVarInsn(TaintState state, int opcode, int varIndex) {
             if (opcode >= Opcodes.ISTORE && opcode <= Opcodes.ASTORE) {
-                Operand value = pop();
-                // 別名の関係を解除してよいのは、分岐の外にある直線上の代入だけ。分岐の内側では関係を保ち（may-alias）、
-                // 合流点では和集合になる。値が自分自身の変数を含む合流（b = flag ? b : new ...）でも関係を保つ
-                if (pendingJumps.isEmpty() && !value.sources().contains(varIndex)) {
-                    detachAlias(varIndex);
+                Operand value = state.pop();
+                // 直線上の代入は別名を外す。ただし値が自分自身の変数を含む合流（b = flag ? b : new ...）のときは、
+                // 合流前の別名でありうるので関係を保つ（may-alias）
+                if (!value.sources().contains(varIndex)) {
+                    state.detachAlias(varIndex);
                 }
                 if (opcode == Opcodes.ASTORE) {
                     for (int source : value.sources()) {
                         if (source != varIndex) {
-                            joinAlias(varIndex, source);
+                            state.joinAlias(varIndex, source);
                         }
                     }
                 }
                 if (value.tainted()) {
-                    taintSlot(varIndex);
-                } else if (pendingJumps.isEmpty()) {
-                    // javac はスコープの終わった変数の番号を使い回すので、きれいな値の代入では印を外す。
-                    // ただし分岐の内側（未到達の前方ジャンプがある間）は、別の枝の乱数由来の値が合流しうるので外さない
-                    taintedLocals.remove(varIndex);
+                    state.taintSlot(varIndex);
+                } else {
+                    // javac はスコープの終わった変数の番号を使い回すので、きれいな値の代入では印を外す
+                    // （別の枝の乱数由来の値は、合流点の和集合で残る）
+                    state.taintedLocals.remove(varIndex);
                 }
             } else if (opcode >= Opcodes.ILOAD && opcode <= Opcodes.ALOAD) {
                 boolean wide = opcode == Opcodes.LLOAD || opcode == Opcodes.DLOAD;
-                push(new Operand(taintedLocals.contains(varIndex), varIndex, wide, Set.of(varIndex)));
+                state.push(new Operand(state.taintedLocals.contains(varIndex), wide, Set.of(varIndex)));
             }
         }
 
         @Override
         public void visitTypeInsn(int opcode, String typeName) {
-            switch (opcode) {
-                case Opcodes.NEW -> push(Operand.clean());
-                case Opcodes.INSTANCEOF -> {
-                    pop();
-                    push(Operand.clean());
+            step(state -> {
+                switch (opcode) {
+                    case Opcodes.NEW -> state.push(Operand.clean());
+                    case Opcodes.INSTANCEOF -> {
+                        state.pop();
+                        state.push(Operand.clean());
+                    }
+                    default -> {
+                        // ANEWARRAY は長さを取って配列を返し、CHECKCAST は値をそのまま通す
+                        Operand value = state.pop();
+                        state.push(opcode == Opcodes.ANEWARRAY ? Operand.clean() : value);
+                    }
                 }
-                default -> {
-                    // ANEWARRAY は長さを取って配列を返し、CHECKCAST は値をそのまま通す
-                    Operand value = pop();
-                    push(opcode == Opcodes.ANEWARRAY ? Operand.clean() : value);
-                }
-            }
+            });
         }
 
         @Override
         public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
             Type type = Type.getType(descriptor);
-            switch (opcode) {
-                case Opcodes.GETSTATIC -> pushResult(false, type);
-                case Opcodes.GETFIELD -> {
-                    pop();
-                    pushResult(false, type);
+            step(state -> {
+                switch (opcode) {
+                    case Opcodes.GETSTATIC -> pushResult(state, false, type);
+                    case Opcodes.GETFIELD -> {
+                        state.pop();
+                        pushResult(state, false, type);
+                    }
+                    case Opcodes.PUTSTATIC -> state.pop();
+                    default -> {
+                        state.pop();
+                        state.pop();
+                    }
                 }
-                case Opcodes.PUTSTATIC -> pop();
-                default -> {
-                    pop();
-                    pop();
-                }
-            }
+            });
         }
 
         @Override
         public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
+            step(state -> applyMethodInsn(state, opcode, owner, name, descriptor));
+        }
+
+        private void applyMethodInsn(TaintState state, int opcode, String owner, String name, String descriptor) {
             Type[] arguments = Type.getArgumentTypes(descriptor);
             Operand[] popped = new Operand[arguments.length];
             boolean argumentTainted = false;
             for (int i = arguments.length - 1; i >= 0; i--) {
-                popped[i] = pop();
+                popped[i] = state.pop();
                 argumentTainted |= popped[i].tainted();
             }
-            Operand receiver = opcode == Opcodes.INVOKESTATIC ? Operand.clean() : pop();
+            Operand receiver = opcode == Opcodes.INVOKESTATIC ? Operand.clean() : state.pop();
             Type returnType = Type.getReturnType(descriptor);
             if (argumentTainted) {
                 reachedCalls.add(owner.replace('/', '.') + "." + name);
             }
             if (owner.equals(UUID_OWNER) && name.equals("randomUUID")) {
-                pushResult(true, returnType);
+                pushResult(state, true, returnType);
             } else if (owner.equals(SECURE_RANDOM_OWNER) && name.equals("nextBytes")) {
-                markArrayArgumentsTainted(popped);
+                markArrayArgumentsTainted(state, popped);
             } else if (name.equals(CONSTRUCTOR)) {
                 // new X(args) は NEW と DUP で積んだ2つのうち DUP 側が残っている。乱数由来の引数は残る側へ移す
-                if (argumentTainted && !stack.isEmpty()) {
-                    Operand created = pop();
-                    push(Operand.of(true, created.wide()));
+                if (argumentTainted && !state.stack.isEmpty()) {
+                    Operand created = state.pop();
+                    state.push(Operand.of(true, created.wide()));
                 }
             } else {
-                pushResult(argumentTainted || receiver.tainted(), returnType);
+                pushResult(state, argumentTainted || receiver.tainted(), returnType);
             }
         }
 
-        private void markArrayArgumentsTainted(Operand[] arguments) {
+        private void markArrayArgumentsTainted(TaintState state, Operand[] arguments) {
             for (Operand argument : arguments) {
-                if (argument.slot() != NO_LOCAL_SLOT) {
-                    taintSlot(argument.slot());
-                } else {
+                if (argument.sources().isEmpty()) {
                     reachedCalls.add(ANY_CALL);
+                } else {
+                    argument.sources().forEach(state::taintSlot);
                 }
             }
         }
@@ -1023,11 +1198,15 @@ final class PlaintextSecretTokenGuardRules {
         @Override
         public void visitInvokeDynamicInsn(String name, String descriptor, Handle bootstrap,
                                            Object... bootstrapArguments) {
-            boolean tainted = false;
-            for (int i = 0; i < Type.getArgumentTypes(descriptor).length; i++) {
-                tainted |= pop().tainted();
-            }
-            pushResult(tainted, Type.getReturnType(descriptor));
+            int argumentCount = Type.getArgumentTypes(descriptor).length;
+            Type returnType = Type.getReturnType(descriptor);
+            step(state -> {
+                boolean tainted = false;
+                for (int i = 0; i < argumentCount; i++) {
+                    tainted |= state.pop().tainted();
+                }
+                pushResult(state, tainted, returnType);
+            });
         }
 
         @Override
@@ -1035,41 +1214,44 @@ final class PlaintextSecretTokenGuardRules {
             boolean twoOperands = opcode >= Opcodes.IF_ICMPEQ && opcode <= Opcodes.IF_ACMPNE;
             boolean oneOperand = (opcode >= Opcodes.IFEQ && opcode <= Opcodes.IFLE)
                     || opcode == Opcodes.IFNULL || opcode == Opcodes.IFNONNULL;
-            if (twoOperands) {
-                pop();
-                pop();
-            } else if (oneOperand) {
-                pop();
-            }
-            recordJump(label);
-            if (opcode == Opcodes.GOTO) {
-                unreachable = true;
-            }
+            int operands = twoOperands ? 2 : oneOperand ? 1 : 0;
+            steps.add(new Step(state -> {
+                for (int i = 0; i < operands; i++) {
+                    state.pop();
+                }
+            }, List.of(label), opcode != Opcodes.GOTO));
         }
 
         @Override
         public void visitLdcInsn(Object value) {
-            push(Operand.of(false, value instanceof Long || value instanceof Double));
+            boolean wide = value instanceof Long || value instanceof Double;
+            step(state -> state.push(Operand.of(false, wide)));
         }
 
         @Override
         public void visitTableSwitchInsn(int min, int max, Label dflt, Label... labels) {
-            pop();
-            recordSwitchTargets(dflt, labels);
+            addSwitch(dflt, labels);
         }
 
         @Override
         public void visitLookupSwitchInsn(Label dflt, int[] keys, Label[] labels) {
-            pop();
-            recordSwitchTargets(dflt, labels);
+            addSwitch(dflt, labels);
+        }
+
+        private void addSwitch(Label dflt, Label[] labels) {
+            List<Label> targets = new ArrayList<>(List.of(labels));
+            targets.add(dflt);
+            steps.add(new Step(TaintState::pop, List.copyOf(targets), false));
         }
 
         @Override
         public void visitMultiANewArrayInsn(String descriptor, int numDimensions) {
-            for (int i = 0; i < numDimensions; i++) {
-                pop();
-            }
-            push(Operand.clean());
+            step(state -> {
+                for (int i = 0; i < numDimensions; i++) {
+                    state.pop();
+                }
+                state.push(Operand.clean());
+            });
         }
     }
 }

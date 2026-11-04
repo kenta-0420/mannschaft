@@ -398,6 +398,15 @@ class PlaintextSecretTokenGuardConditionTest {
         }
 
         @Test
+        @DisplayName("陽性: ループの後方ジャンプで次の周回へ持ち越される乱数・配列の別名も違反")
+        void loopCarriedFlowIsViolation() {
+            assertListed(result.violations(), method(FlowSelfIssuingFixtureService.class, "issueWithLoopCarriedRandom"),
+                    "1周目の終わりに詰めた乱数が2周目の先頭で token 系に届く（周回後の状態を再評価する）");
+            assertListed(result.violations(), method(FlowSelfIssuingFixtureService.class, "issueWithLoopCarriedAlias"),
+                    "1周目の終わりに作った別名が2周目へ持ち越される");
+        }
+
+        @Test
         @DisplayName("陰性: UUID が相関 ID にだけ届き、token 系は固定値同士の三項演算子なら違反でない")
         void cleanTernaryIsNotViolation() {
             String id = method(FlowSelfIssuingFixtureService.class, "ternaryCleanTokenWithCorrelationUuid");

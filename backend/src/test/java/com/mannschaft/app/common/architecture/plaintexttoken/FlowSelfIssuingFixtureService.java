@@ -15,6 +15,9 @@ import java.util.UUID;
  *   <li>{@link #issueWithArrayAlias()}: 乱数を詰める配列の別名から値を取り出す</li>
  *   <li>{@link #issueWithAliasKeptInBranch(boolean)}: 別名のあと、分岐の中で別名の変数に新しい配列を代入する枝がある</li>
  *   <li>{@link #issueWithAliasKeptByTernary(boolean)}: 別名のあと、三項演算子で別名の変数へ新しい配列を代入する</li>
+ *   <li>{@link #issueWithLoopCarriedRandom()}: ループの1周目の終わりに詰めた乱数が、2周目の先頭で token 系に届く</li>
+ *   <li>{@link #issueWithLoopCarriedAlias()}: ループの1周目の終わりに作った配列の別名が2周目へ持ち越され、
+ *       2周目に別名側へ詰めた乱数が元の配列から token 系に届く</li>
  * </ul>
  * <p>陰性（検出されてはならない）:</p>
  * <ul>
@@ -93,6 +96,28 @@ public class FlowSelfIssuingFixtureService {
         secureRandom.nextBytes(bytes);
         PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
         entity.setToken(HexFormat.of().formatHex(alias));
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithLoopCarriedRandom() {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        byte[] bytes = new byte[RANDOM_BYTE_LENGTH];
+        for (int i = 0; i < 2; i++) {
+            entity.setToken(HexFormat.of().formatHex(bytes));
+            secureRandom.nextBytes(bytes);
+        }
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithLoopCarriedAlias() {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        byte[] bytes = new byte[RANDOM_BYTE_LENGTH];
+        byte[] alias = new byte[RANDOM_BYTE_LENGTH];
+        for (int i = 0; i < 2; i++) {
+            secureRandom.nextBytes(alias);
+            entity.setToken(HexFormat.of().formatHex(bytes));
+            alias = bytes;
+        }
         return entity;
     }
 
