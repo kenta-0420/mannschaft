@@ -917,13 +917,24 @@ public class TeamService {
         Page<TeamEntity> page = teamRepository.searchByKeyword(
                 keyword != null ? keyword : "", pageable);
 
+        // CMP-261103-1225: 是正前は 1 行ごとに人数・フレンド数・応援者数を 1 本ずつ数えており、
+        // ヒット数 N に対して 3N 本の SQL が出ていた。ページ内のチーム ID をまとめて GROUP BY で数え、
+        // ヒット数に依らず 3 本に抑える。結果に現れないチームは 0 件として扱う（是正前の COUNT と同じ）。
+        List<Long> teamIds = page.getContent().stream().map(TeamEntity::getId).toList();
+        Map<Long, Long> memberCounts = teamIds.isEmpty()
+                ? Map.of() : toCountMap(userRoleRepository.countGroupByTeamIdIn(teamIds));
+        Map<Long, Long> friendCounts = teamIds.isEmpty()
+                ? Map.of() : toCountMap(teamFriendRepository.countFriendsGroupByTeamIdIn(teamIds));
+        // F00.5 Phase 5: SUPPORTER カウントを memberships 経由に切替
+        Map<Long, Long> supporterCounts = teamIds.isEmpty()
+                ? Map.of() : toCountMap(membershipRepository.countActiveGroupByScopeIdInAndRoleKind(
+                        ScopeType.TEAM, teamIds, RoleKind.SUPPORTER));
+
         var data = page.getContent().stream()
                 .map(team -> {
-                    int memberCount = (int) userRoleRepository.countByTeamId(team.getId());
-                    long teamFriendCount = teamFriendRepository.countFriendsByTeamId(team.getId());
-                    // F00.5 Phase 5: SUPPORTER カウントを memberships 経由に切替
-                    long supporterCount = membershipRepository.countActiveByScopeAndRoleKind(
-                            ScopeType.TEAM, team.getId(), RoleKind.SUPPORTER);
+                    int memberCount = memberCounts.getOrDefault(team.getId(), 0L).intValue();
+                    long teamFriendCount = friendCounts.getOrDefault(team.getId(), 0L);
+                    long supporterCount = supporterCounts.getOrDefault(team.getId(), 0L);
                     return new TeamSummaryResponse(
                             team.getSlug(), team.getSlug(), team.getName(), team.getTemplate(),
                             team.getVisibility().name(), memberCount,
@@ -934,6 +945,15 @@ public class TeamService {
         var meta = new PagedResponse.PageMeta(
                 page.getTotalElements(), page.getNumber(), page.getSize(), page.getTotalPages());
         return PagedResponse.of(data, meta);
+    }
+
+    /** {@code [ID, 件数]} の行を ID → 件数の Map にする（native クエリの型揺れに備えて Number で受ける）。 */
+    private static Map<Long, Long> toCountMap(List<Object[]> rows) {
+        Map<Long, Long> counts = new HashMap<>();
+        for (Object[] row : rows) {
+            counts.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
+        }
+        return counts;
     }
 
     /**

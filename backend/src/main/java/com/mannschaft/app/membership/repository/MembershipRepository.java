@@ -154,6 +154,22 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             @Param("roleKind") RoleKind roleKind);
 
     /**
+     * 複数スコープの指定 {@link RoleKind} のアクティブメンバー数を 1 本の SQL で数える
+     * （CMP-261103-1225。{@link #countActiveByScopeAndRoleKind} の一括版）。
+     * 該当者が 1 人もいないスコープは結果に含まれない。
+     *
+     * @param scopeIds 対象スコープ ID（空を渡してはならない。呼び出し側で早期 return すること）
+     * @return 各要素は {@code [スコープ ID (Long), 件数 (Long)]}
+     */
+    @Query("SELECT m.scopeId, COUNT(m) FROM MembershipEntity m " +
+            "WHERE m.scopeType = :scopeType AND m.scopeId IN :scopeIds " +
+            "AND m.roleKind = :roleKind AND m.leftAt IS NULL GROUP BY m.scopeId")
+    List<Object[]> countActiveGroupByScopeIdInAndRoleKind(
+            @Param("scopeType") ScopeType scopeType,
+            @Param("scopeIds") Collection<Long> scopeIds,
+            @Param("roleKind") RoleKind roleKind);
+
+    /**
      * 指定スコープ × 指定 {@link RoleKind} のアクティブメンバーシップを joined_at 降順でページング取得する。
      *
      * <p>サポーター一覧取得（{@code roleKind=SUPPORTER}）などに使用する。</p>

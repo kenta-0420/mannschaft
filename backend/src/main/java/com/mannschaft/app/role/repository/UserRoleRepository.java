@@ -123,6 +123,17 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
 
     Page<UserRoleEntity> findByTeamId(Long teamId, Pageable pageable);
 
+    /**
+     * 複数チームの user_roles 行を 1 クエリで取得する（CMP-261103-1225。{@link #findByTeamId} の一括版）。
+     *
+     * <p>チームごとに {@link #findByTeamId} を呼ぶとチーム数ぶんクエリが出る（N+1）。
+     * 並びはチーム ID・行 ID の昇順で、チーム単位に切り分けると {@link #findByTeamId} を
+     * チームごとに呼んだときと同じ行順になる。</p>
+     *
+     * @param teamIds 対象チーム ID（空を渡してはならない。呼び出し側で早期 return すること）
+     */
+    List<UserRoleEntity> findByTeamIdInOrderByTeamIdAscIdAsc(Collection<Long> teamIds);
+
     List<UserRoleEntity> findByUserIdAndTeamIdIsNotNull(Long userId);
 
     List<UserRoleEntity> findByUserIdAndOrganizationIdIsNotNull(Long userId);
