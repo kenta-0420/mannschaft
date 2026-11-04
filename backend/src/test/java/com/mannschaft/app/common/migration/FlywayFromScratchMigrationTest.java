@@ -1667,4 +1667,13 @@ class FlywayFromScratchMigrationTest {
         }
     }
 
+    @Test
+    @Order(26)
+    @DisplayName("CMP1243 refresh_tokens.user_id の FK が同domain ON DELETE CASCADE である（実purge完走は EntityDigitBoundaryColumnFlywaySchemaIT）")
+    void refreshTokensUserFkIsCascade() throws SQLException {
+        migrateFromScratch();
+        try (Connection conn = connect()) {
+            assertCascade(conn, "refresh_tokens", "user_id", "users");
+        }
+    }
 }
