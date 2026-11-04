@@ -26,6 +26,7 @@ import java.util.UUID;
  *   <li>{@link #issueWithTaintInNestedTry(Object)}: 内側の catch が受けない例外が外側の catch へ抜け、詰めた配列が token 系に届く</li>
  *   <li>{@link #issueWithLongArrayAssignInExpression()}: {@code long} の配列要素への代入式の値（DUP2_X2）が token 系に届く</li>
  *   <li>{@link #issueWithDoubleArrayAssignInExpression()}: {@code double} の配列要素への代入式の値（DUP2_X2）が token 系に届く</li>
+ *   <li>{@link #issueWithTwoDimensionalArray()}: 2次元配列の内側の要素へ乱数を書き、読み出した値が token 系に届く</li>
  * </ul>
  * <p>陰性（検出されてはならない）:</p>
  * <ul>
@@ -186,6 +187,14 @@ public class FlowSelfIssuingFixtureService {
         PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
         double[] values = new double[1];
         entity.setToken(Double.toString(values[0] = UUID.randomUUID().getMostSignificantBits()));
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithTwoDimensionalArray() {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        String[][] box = new String[1][1];
+        box[0][0] = UUID.randomUUID().toString();
+        entity.setToken(box[0][0]);
         return entity;
     }
 

@@ -429,6 +429,13 @@ class PlaintextSecretTokenGuardConditionTest {
         }
 
         @Test
+        @DisplayName("陽性: 2次元配列の内側の要素を経由した乱数も違反（内側の配列参照は外側の作った場所を受け継ぐ）")
+        void multiDimensionalArrayFlowIsViolation() {
+            assertListed(result.violations(), method(FlowSelfIssuingFixtureService.class, "issueWithTwoDimensionalArray"),
+                    "box[0][0] への書込みで外側の配列に印が付き、読出しで印が伝わる");
+        }
+
+        @Test
         @DisplayName("陰性: UUID が相関 ID にだけ届き、token 系は固定値同士の三項演算子なら違反でない")
         void cleanTernaryIsNotViolation() {
             String id = method(FlowSelfIssuingFixtureService.class, "ternaryCleanTokenWithCorrelationUuid");

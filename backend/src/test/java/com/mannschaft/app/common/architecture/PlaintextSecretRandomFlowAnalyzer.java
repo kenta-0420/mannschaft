@@ -36,6 +36,8 @@ import org.objectweb.asm.tree.analysis.Value;
  *
  * <p>配列の別名は「同じ場所で作られた配列」として扱う。{@code SecureRandom#nextBytes(a)} や乱数由来の値の配列要素への代入は、
  * その時点のフレーム（局所変数とスタック）で {@code a} と作った場所が重なる値すべてに印を付ける（{@link TaintFrame}）。
+ * 多次元配列の内側の配列（{@code AALOAD} の結果）は外側の配列を作った場所を受け継ぐ（内側への書込みで外側に印が付き、
+ * 読出しで印が伝わる保守的な近似）。
  * 作った場所が分からない配列（フィールドや戻り値の配列）へ {@code nextBytes} したときは {@link #ANY_CALL} を入れ、
  * 同居だけで違反とする側に倒す。</p>
  *
@@ -185,7 +187,10 @@ final class PlaintextSecretRandomFlowAnalyzer {
             int opcode = insn.getOpcode();
             boolean tainted = value1.tainted() || value2.tainted();
             return switch (opcode) {
-                case Opcodes.IALOAD, Opcodes.FALOAD, Opcodes.AALOAD, Opcodes.BALOAD, Opcodes.CALOAD, Opcodes.SALOAD ->
+                // 参照の要素（多次元配列の内側の配列を含む）は外側の配列を作った場所を受け継ぐ。内側への書込みで外側に印が付き、
+                // 読出しで印が伝わる保守的な近似（一次元と同じ扱いになる）
+                case Opcodes.AALOAD -> new TaintValue(1, value1.tainted(), value1.sites());
+                case Opcodes.IALOAD, Opcodes.FALOAD, Opcodes.BALOAD, Opcodes.CALOAD, Opcodes.SALOAD ->
                         TaintValue.of(1, value1.tainted());
                 case Opcodes.LALOAD, Opcodes.DALOAD -> TaintValue.of(2, value1.tainted());
                 case Opcodes.LADD, Opcodes.LSUB, Opcodes.LMUL, Opcodes.LDIV, Opcodes.LREM, Opcodes.LSHL, Opcodes.LSHR,
