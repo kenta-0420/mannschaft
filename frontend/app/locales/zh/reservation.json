@@ -92,6 +92,7 @@
       "reason_required": "请输入休业原因",
       "history_failed": "发送记录加载失败，请重新加载",
       "send_failed": "发送失败",
+      "idempotency_conflict": "同一发送操作的内容与之前提交的不一致。请确认内容后重试。",
       "confirmations_failed": "确认状态加载失败",
       "info_missing": "通知信息缺失"
     },

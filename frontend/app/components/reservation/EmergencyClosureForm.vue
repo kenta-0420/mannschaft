@@ -209,6 +209,41 @@ const showConfirm = ref(false)
 /** BE の 400 fieldErrors（フィールド名 → メッセージ）。reason / subject の入力欄の下に表示する。 */
 const sendFieldErrors = ref<Record<string, string>>({})
 
+// --- 多重送信防止（Idempotency-Key）---
+// 確認ダイアログを開いた時点で送信操作ごとのキーを発行する。失敗後に同じ内容で再送するときは同じキー、
+// 入力内容が変わった・送信が成功したときは新しいキーに替える（BE は同キー同内容を同一送信として扱う）。
+let idempotencyKey: string | null = null
+let idempotencySignature = ''
+
+function requestSignature(): string {
+  return JSON.stringify([
+    startDate.value,
+    endDate.value,
+    useTimeRange.value ? toHHmm(startHour.value) : null,
+    useTimeRange.value ? toHHmm(endHour.value) : null,
+    reason.value,
+    subject.value,
+    messageBody.value,
+    cancelReservations.value,
+  ])
+}
+
+function prepareIdempotencyKey() {
+  const signature = requestSignature()
+  if (idempotencyKey === null || idempotencySignature !== signature) {
+    idempotencyKey = crypto.randomUUID()
+    idempotencySignature = signature
+  }
+}
+
+/** 内容相違の冪等性競合（BE: 409 / RESERVATION_055 CLOSURE_IDEMPOTENCY_KEY_REUSED。コード無しの 409 も同扱い）か。 */
+function isIdempotencyConflict(error: unknown): boolean {
+  const e = error as { statusCode?: number, status?: number, response?: { status?: number }, data?: { error?: { code?: string } } }
+  const status = e?.statusCode ?? e?.status ?? e?.response?.status
+  const code = e?.data?.error?.code ?? ''
+  return code === 'RESERVATION_055' || (status === 409 && code === '')
+}
+
 function openConfirm() {
   if (!startDate.value || !endDate.value) {
     notification.warn(t('emergency_closure.error.period_required'))
@@ -230,12 +265,17 @@ function openConfirm() {
     notification.warn(t('emergency_closure.error.body_required'))
     return
   }
+  prepareIdempotencyKey()
   showConfirm.value = true
 }
 
 async function confirmSend() {
-  showConfirm.value = false
+  // 連打対策: await より前に同期で判定する（ボタンの disabled 反映を待たない）
+  if (sendLoading.value) return
   sendLoading.value = true
+  // ダイアログを開かず呼ばれた場合も、現在の内容に対応するキーを必ず持つ
+  prepareIdempotencyKey()
+  const key = idempotencyKey!
   let sendSucceeded = false
   sendResult.value = null
   sendFieldErrors.value = {}
@@ -249,7 +289,8 @@ async function confirmSend() {
       subject: subject.value,
       messageBody: messageBody.value,
       cancelReservations: cancelReservations.value,
-    })
+    }, key)
+    idempotencyKey = null // 成功したら次の送信は新しいキー
     sendResult.value = res.data.sentCount
     notification.success(t('emergency_closure.message.sent_count', { count: res.data.sentCount }))
     previewItems.value = []
@@ -259,12 +300,17 @@ async function confirmSend() {
   catch (error) {
     // 400 の fieldErrors があれば該当入力欄の下に出す。無ければ従来どおり汎用の失敗通知。
     sendFieldErrors.value = getFieldErrors(error)
-    if (Object.keys(sendFieldErrors.value).length === 0) {
+    if (isIdempotencyConflict(error)) {
+      notification.error(t('emergency_closure.error.idempotency_conflict'))
+    }
+    else if (Object.keys(sendFieldErrors.value).length === 0) {
       notification.error(t('emergency_closure.error.send_failed'))
     }
   }
   finally {
     sendLoading.value = false
+    // 応答が返った後（成功・失敗とも）にダイアログを閉じる
+    showConfirm.value = false
   }
   // 履歴の取得は送信（POST）とは独立。ここで失敗しても送信成功の表示は変えず、履歴側に失敗を出す。
   if (sendSucceeded) await loadHistory()
@@ -511,6 +557,7 @@ onUnmounted(() => {
       :subject="subject"
       :reason="reason"
       :cancel-reservations="cancelReservations"
+      :sending="sendLoading"
       @confirm="confirmSend"
     />
   </div>

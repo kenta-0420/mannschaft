@@ -92,6 +92,7 @@
       "reason_required": "休業理由を入力してください",
       "history_failed": "送信履歴の取得に失敗しました。再読み込みしてください",
       "send_failed": "送信に失敗しました",
+      "idempotency_conflict": "同じ送信操作で内容が異なっています。画面を確認し、送信内容を見直してもう一度お試しください",
       "confirmations_failed": "確認状況の取得に失敗しました",
       "info_missing": "通知情報が不足しています"
     },
