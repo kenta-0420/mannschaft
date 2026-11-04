@@ -92,6 +92,7 @@
       "reason_required": "Bitte geben Sie den Grund der Schließung ein",
       "history_failed": "Der Sendeverlauf konnte nicht geladen werden. Bitte neu laden.",
       "send_failed": "Versand fehlgeschlagen",
+      "idempotency_conflict": "Dieser Sendevorgang wurde bereits mit anderem Inhalt übermittelt. Bitte prüfen Sie die Angaben und versuchen Sie es erneut.",
       "confirmations_failed": "Bestätigungsstatus konnte nicht geladen werden",
       "info_missing": "Benachrichtigungsinformationen fehlen"
     },

@@ -92,6 +92,7 @@
       "reason_required": "Introduzca el motivo del cierre",
       "history_failed": "No se pudo cargar el historial de envíos. Vuelva a cargarlo.",
       "send_failed": "Error al enviar",
+      "idempotency_conflict": "Esta operación de envío ya se envió con un contenido distinto. Revise los datos e inténtelo de nuevo.",
       "confirmations_failed": "Error al cargar el estado de confirmación",
       "info_missing": "Falta información de la notificación"
     },
