@@ -67,6 +67,7 @@ public class ProjectService {
     private final MembershipService membershipService;
     private final TeamService teamService;
     private final OrganizationService organizationService;
+    private final ProjectListLookupLoader lookupLoader;
 
     /**
      * プロジェクト一覧を取得する。
@@ -84,8 +85,9 @@ public class ProjectService {
         Page<ProjectEntity> pageResult = projectRepository
                 .findByScopeTypeAndScopeIdAndStatusAndDeletedAtIsNull(scopeType, scopeId, status, pageable);
 
+        ProjectListLookupLoader.Lookups lookups = lookupLoader.load(pageResult.getContent());
         List<ProjectResponse> responses = pageResult.getContent().stream()
-                .map(this::toProjectResponse)
+                .map(p -> toProjectResponse(p, lookups))
                 .toList();
 
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
@@ -135,10 +137,12 @@ public class ProjectService {
         Map<Long, String> nameMap = teamService.getNamesByIds(scopeIds);
         Map<Long, String> slugMap = teamService.getSlugsByIds(scopeIds);
 
+        ProjectListLookupLoader.Lookups lookups = lookupLoader.load(pageResult.getContent());
         List<TeamProjectSummaryResponse> responses = pageResult.getContent().stream()
                 .map(p -> {
-                    long milestoneTotal = milestoneRepository.countByProjectId(p.getId());
-                    long milestoneCompleted = milestoneRepository.countByProjectIdAndIsCompletedTrue(p.getId());
+                    long[] ms = lookups.milestoneCounts(p.getId());
+                    long milestoneTotal = ms[0];
+                    long milestoneCompleted = ms[1];
                     return new TeamProjectSummaryResponse(
                             p.getId(),
                             p.getTitle(),
@@ -151,7 +155,7 @@ public class ProjectService {
                             p.getTotalTodos(),
                             p.getCompletedTodos(),
                             new ProjectResponse.MilestoneSummary(milestoneTotal, milestoneCompleted),
-                            resolveUserInfo(p.getCreatedBy()),
+                            lookups.userInfo(p.getCreatedBy()),
                             p.getCreatedAt(),
                             p.getScopeId(),
                             nameMap.getOrDefault(p.getScopeId(), ""),
@@ -207,10 +211,12 @@ public class ProjectService {
         Map<Long, String> nameMap = organizationService.getNamesByIds(scopeIds);
         Map<Long, String> slugMap = organizationService.getSlugsByIds(scopeIds);
 
+        ProjectListLookupLoader.Lookups lookups = lookupLoader.load(pageResult.getContent());
         List<OrgProjectSummaryResponse> responses = pageResult.getContent().stream()
                 .map(p -> {
-                    long milestoneTotal = milestoneRepository.countByProjectId(p.getId());
-                    long milestoneCompleted = milestoneRepository.countByProjectIdAndIsCompletedTrue(p.getId());
+                    long[] ms = lookups.milestoneCounts(p.getId());
+                    long milestoneTotal = ms[0];
+                    long milestoneCompleted = ms[1];
                     return new OrgProjectSummaryResponse(
                             p.getId(),
                             p.getTitle(),
@@ -223,7 +229,7 @@ public class ProjectService {
                             p.getTotalTodos(),
                             p.getCompletedTodos(),
                             new ProjectResponse.MilestoneSummary(milestoneTotal, milestoneCompleted),
-                            resolveUserInfo(p.getCreatedBy()),
+                            lookups.userInfo(p.getCreatedBy()),
                             p.getCreatedAt(),
                             p.getScopeId(),
                             nameMap.getOrDefault(p.getScopeId(), ""),
@@ -830,7 +836,8 @@ public class ProjectService {
     }
 
     /**
-     * エンティティをレスポンスDTOに変換する。
+     * 単票（作成・更新・取得）用の変換。1件のみのため件数・作成者名を個別に引く。
+     * 一覧経路は {@link #toProjectResponse(ProjectEntity, ProjectListLookupLoader.Lookups)} を使うこと。
      */
     private ProjectResponse toProjectResponse(ProjectEntity entity) {
         long milestoneTotal = milestoneRepository.countByProjectId(entity.getId());
@@ -843,6 +850,21 @@ public class ProjectService {
                 entity.getTotalTodos(), entity.getCompletedTodos(),
                 new ProjectResponse.MilestoneSummary(milestoneTotal, milestoneCompleted),
                 resolveUserInfo(entity.getCreatedBy()),
+                entity.getCreatedAt());
+    }
+
+    private ProjectResponse toProjectResponse(ProjectEntity entity, ProjectListLookupLoader.Lookups lookups) {
+        long[] ms = lookups.milestoneCounts(entity.getId());
+        long milestoneTotal = ms[0];
+        long milestoneCompleted = ms[1];
+
+        return new ProjectResponse(
+                entity.getId(), entity.getTitle(), entity.getEmoji(), entity.getColor(),
+                entity.getDueDate(), calculateDaysRemaining(entity.getDueDate()),
+                entity.getStatus().name(), entity.getProgressRate(),
+                entity.getTotalTodos(), entity.getCompletedTodos(),
+                new ProjectResponse.MilestoneSummary(milestoneTotal, milestoneCompleted),
+                lookups.userInfo(entity.getCreatedBy()),
                 entity.getCreatedAt());
     }
 
