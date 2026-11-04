@@ -422,7 +422,29 @@ public enum ReservationErrorCode implements ErrorCode {
      * （設計書 §6.2）。Severity.WARN のため既定マッピングで 400（個別 map 不要）。</p>
      */
     RECURRING_RESERVATION_LIMIT_EXCEEDED("RESERVATION_054",
-            "毎週の繰り返しは最大12週までです", Severity.WARN);
+            "毎週の繰り返しは最大12週までです", Severity.WARN),
+
+    // ===== CMP-261104-0334: 臨時休業通知送信の冪等性 =====
+    //
+    // 採番: enum 実物の現最大（RESERVATION_054）の次で確定した（2026-11-04）。
+
+    /**
+     * 同じ冪等キー（{@code Idempotency-Key}）で、先に受け付けた送信と内容が異なる臨時休業通知が送られた（409）。
+     *
+     * <p>キーは同じ送信者・同じチームの中で一度だけ使える。先の送信の結果を上書き・追加作成せず、
+     * 副作用（休業行・予約取消・メール・通知・確認行）を一切起こさずに拒否する。
+     * {@code GlobalExceptionHandler} の個別マッピングで 409。</p>
+     */
+    CLOSURE_IDEMPOTENCY_KEY_REUSED("RESERVATION_055",
+            "同じ送信キーで内容の異なる臨時休業通知が送られました。内容を確認してから送り直してください", Severity.WARN),
+
+    /**
+     * {@code Idempotency-Key} ヘッダが UUID 形式（8-4-4-4-12 の16進）でない（入力不正なので 400）。
+     *
+     * <p>Severity.WARN のため既定マッピングで 400（個別 map 不要）。生のヘッダ値はメッセージに含めない。</p>
+     */
+    INVALID_CLOSURE_IDEMPOTENCY_KEY("RESERVATION_056",
+            "送信キー（Idempotency-Key）の形式が不正です", Severity.WARN);
 
     private final String code;
     private final String message;
