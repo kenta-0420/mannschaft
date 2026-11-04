@@ -255,9 +255,6 @@
   "ci": [
     {
       "runId": 41744744605
-    },
-    {
-      "runId": 41777801373
     }
   ],
   "stages": {
@@ -269,7 +266,7 @@
     "real": {
       "status": "passed",
       "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/41744744605",
-      "note": "PR上のER Diagram Drift Checkが合格（GitHubランナーの実MySQL 8.0へFlywayを全適用しE-R図を再生成、コミット済みer/と照合）。main push側の同チェック(run 41777801373)もsuccess。WSLのクリーンコピーで2回生成しdiff -rが完全一致。mermaid@11.4.1パーサで113ブロックを検証しエラー0。GitHub上での描画の目視確認は未実施。"
+      "note": "PR上のER Diagram Drift Checkが合格（GitHubランナーの実MySQL 8.0へFlywayを全適用しE-R図を再生成、コミット済みer/と照合）。main push側の同チェック(run 41777801373、マージコミット上)もsuccess（ciには実装SHA不一致のため含めない）。WSLのクリーンコピーで2回生成しdiff -rが完全一致。mermaid@11.4.1パーサで113ブロックを検証しエラー0。GitHub上での描画の目視確認は未実施。"
     },
     "exploratory": {
       "status": "passed",
