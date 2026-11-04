@@ -17,6 +17,7 @@ import com.mannschaft.app.todo.entity.ProjectMilestoneEntity;
 import com.mannschaft.app.todo.repository.ProjectMilestoneRepository;
 import com.mannschaft.app.todo.repository.ProjectRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
+import com.mannschaft.app.todo.service.ProjectListLookupLoader;
 import com.mannschaft.app.todo.service.ProjectService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -80,6 +81,9 @@ class ProjectServiceTest {
     @Mock
     private com.mannschaft.app.organization.service.OrganizationService organizationService;
 
+    @Mock
+    private ProjectListLookupLoader lookupLoader;
+
     @InjectMocks
     private ProjectService projectService;
 
@@ -87,6 +91,9 @@ class ProjectServiceTest {
     void setUpNameResolver() {
         lenient().when(nameResolverService.resolveUserDisplayNames(any()))
                 .thenReturn(Map.of(USER_ID, "テストユーザー"));
+        // 一括参照ローダーは本物の実装を、同じモック Repository / NameResolver に被せて使う
+        lenient().when(lookupLoader.load(any())).thenAnswer(inv ->
+                new ProjectListLookupLoader(milestoneRepository, nameResolverService).load(inv.getArgument(0)));
     }
 
     // ========================================
