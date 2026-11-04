@@ -250,7 +250,10 @@ public class PersonalTimetableDashboardService {
             Long noteId = personalNotes.get(e.slot().getId());
             items.add(buildPersonalItem(e.personal(), e.slot(), e.period(), noteId,
                     noteId != null && noteIdsWithAttachments.contains(noteId),
-                    changesByTimetable.getOrDefault(e.slot().getLinkedTimetableId(), List.of()),
+                    // 未リンク(null)で検索すると、空時の Map.of() が null キーで NPE を投げるため分岐する
+                    e.slot().getLinkedTimetableId() == null
+                            ? List.of()
+                            : changesByTimetable.getOrDefault(e.slot().getLinkedTimetableId(), List.of()),
                     joinedTeamIdSet));
         }
         for (TeamEntry e : teamEntries) {

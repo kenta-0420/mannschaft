@@ -327,6 +327,22 @@ class PersonalTimetableDashboardN1IT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    @DisplayName("回帰: 当日の個人コマが全て未リンク(linked_timetable_id=null)でも NPE にならず 200 相当で返る")
+    void allPersonalSlotsUnlinkedDoesNotThrow() {
+        // teams=0・slotsPerP=1 → 唯一のコマ(j=0)は linkedTimetableId=null のまま
+        Seeded seeded = seed(930051L, 938000L, 0, 0, 0, 1, 1);
+        em.flush();
+        em.clear();
+        DashboardTimetableTodayResponse res = service.getTimetableToday(930051L, TODAY);
+        assertThat(res.items()).hasSize(1);
+        assertThat(res.items()).allSatisfy(i -> {
+            Expect e = seeded.expects.get("PERSONAL:" + i.slotId());
+            assertThat(i.isChanged()).isFalse();
+            assertThat(i.linkRevoked()).isEqualTo(e.revoked());
+        });
+    }
+
+    @Test
     @DisplayName("AC-4/AC-5: 同一メモ・同一時間割への複数リンクと、存在しない時限・null リンクで例外を出さない")
     void duplicateKeysAndNullLinksAreSafe() {
         Seeded seeded = seed(930041L, 937000L, 1, 1, 1, 1, 6);
