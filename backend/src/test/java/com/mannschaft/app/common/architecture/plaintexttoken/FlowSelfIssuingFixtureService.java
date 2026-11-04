@@ -13,6 +13,8 @@ import java.util.UUID;
  *   <li>{@link #issueWithBranchMergeOverwrite(boolean)}: 乱数を代入したあと、分岐の中で固定値に上書きする枝がある</li>
  *   <li>{@link #issueWithTernary(boolean)}: 三項演算子で乱数と固定値が合流</li>
  *   <li>{@link #issueWithArrayAlias()}: 乱数を詰める配列の別名から値を取り出す</li>
+ *   <li>{@link #issueWithAliasKeptInBranch(boolean)}: 別名のあと、分岐の中で別名の変数に新しい配列を代入する枝がある</li>
+ *   <li>{@link #issueWithAliasKeptByTernary(boolean)}: 別名のあと、三項演算子で別名の変数へ新しい配列を代入する</li>
  * </ul>
  * <p>陰性（検出されてはならない）:</p>
  * <ul>
@@ -66,6 +68,28 @@ public class FlowSelfIssuingFixtureService {
     public PlaintextTokenFixtureEntity issueWithArrayAlias() {
         byte[] bytes = new byte[RANDOM_BYTE_LENGTH];
         byte[] alias = bytes;
+        secureRandom.nextBytes(bytes);
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        entity.setToken(HexFormat.of().formatHex(alias));
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithAliasKeptInBranch(boolean flag) {
+        byte[] bytes = new byte[RANDOM_BYTE_LENGTH];
+        byte[] alias = bytes;
+        if (flag) {
+            alias = new byte[RANDOM_BYTE_LENGTH];
+        }
+        secureRandom.nextBytes(bytes);
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        entity.setToken(HexFormat.of().formatHex(alias));
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithAliasKeptByTernary(boolean flag) {
+        byte[] bytes = new byte[RANDOM_BYTE_LENGTH];
+        byte[] alias = bytes;
+        alias = flag ? new byte[RANDOM_BYTE_LENGTH] : alias;
         secureRandom.nextBytes(bytes);
         PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
         entity.setToken(HexFormat.of().formatHex(alias));

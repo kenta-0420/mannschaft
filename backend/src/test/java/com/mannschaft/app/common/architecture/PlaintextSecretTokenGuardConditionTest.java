@@ -388,6 +388,16 @@ class PlaintextSecretTokenGuardConditionTest {
         }
 
         @Test
+        @DisplayName("陽性: 別名のあと、分岐の中・三項演算子で別名の変数へ代入しても関係は保たれ違反")
+        void aliasKeptAcrossBranchIsViolation() {
+            assertListed(result.violations(), method(FlowSelfIssuingFixtureService.class, "issueWithAliasKeptInBranch"),
+                    "分岐の中の代入で別名を解除してはならない（may-alias）");
+            assertListed(result.violations(),
+                    method(FlowSelfIssuingFixtureService.class, "issueWithAliasKeptByTernary"),
+                    "三項演算子の合流でも別名を保つ");
+        }
+
+        @Test
         @DisplayName("陰性: UUID が相関 ID にだけ届き、token 系は固定値同士の三項演算子なら違反でない")
         void cleanTernaryIsNotViolation() {
             String id = method(FlowSelfIssuingFixtureService.class, "ternaryCleanTokenWithCorrelationUuid");

@@ -641,14 +641,17 @@ final class PlaintextSecretTokenGuardRules {
 
     // ---------------------------------------------------------------- 乱数の値の行き先（番人3）
 
-    /** 値の流れの追跡で使う、オペランドスタックの1要素。{@code slot} は ALOAD 由来のときのローカル変数番号。 */
-    private record Operand(boolean tainted, int slot, boolean wide) {
+    /**
+     * 値の流れの追跡で使う、オペランドスタックの1要素。{@code slot} は ALOAD 由来のときのローカル変数番号。
+     * {@code sources} は、この値が（分岐の合流を含めて）どのローカル変数の値でありうるか（may-alias の元）。
+     */
+    private record Operand(boolean tainted, int slot, boolean wide, Set<Integer> sources) {
         static Operand clean() {
-            return new Operand(false, NO_LOCAL_SLOT, false);
+            return new Operand(false, NO_LOCAL_SLOT, false, Set.of());
         }
 
         static Operand of(boolean tainted, boolean wide) {
-            return new Operand(tainted, NO_LOCAL_SLOT, wide);
+            return new Operand(tainted, NO_LOCAL_SLOT, wide, Set.of());
         }
     }
 
@@ -728,9 +731,15 @@ final class PlaintextSecretTokenGuardRules {
             }
         }
 
+        /** 変数 {@code slot} と {@code source} を同じ別名の集まりへ入れる（すでに別の集まりに居れば和集合にする）。 */
         private void joinAlias(int slot, int source) {
             Set<Integer> group = aliases.computeIfAbsent(source, key -> new HashSet<>(Set.of(source)));
+            Set<Integer> previous = aliases.get(slot);
             group.add(slot);
+            if (previous != null && previous != group) {
+                group.addAll(previous);
+                previous.forEach(member -> aliases.put(member, group));
+            }
             aliases.put(slot, group);
         }
 
@@ -759,7 +768,9 @@ final class PlaintextSecretTokenGuardRules {
             for (int i = 0; i < first.size(); i++) {
                 Operand a = first.get(i);
                 Operand b = second.get(i);
-                merged.add(Operand.of(a.tainted() || b.tainted(), a.wide()));
+                Set<Integer> sources = new HashSet<>(a.sources());
+                sources.addAll(b.sources());
+                merged.add(new Operand(a.tainted() || b.tainted(), NO_LOCAL_SLOT, a.wide(), Set.copyOf(sources)));
             }
             return merged;
         }
@@ -912,9 +923,17 @@ final class PlaintextSecretTokenGuardRules {
         public void visitVarInsn(int opcode, int varIndex) {
             if (opcode >= Opcodes.ISTORE && opcode <= Opcodes.ASTORE) {
                 Operand value = pop();
-                detachAlias(varIndex);
-                if (opcode == Opcodes.ASTORE && value.slot() != NO_LOCAL_SLOT && value.slot() != varIndex) {
-                    joinAlias(varIndex, value.slot());
+                // 別名の関係を解除してよいのは、分岐の外にある直線上の代入だけ。分岐の内側では関係を保ち（may-alias）、
+                // 合流点では和集合になる。値が自分自身の変数を含む合流（b = flag ? b : new ...）でも関係を保つ
+                if (pendingJumps.isEmpty() && !value.sources().contains(varIndex)) {
+                    detachAlias(varIndex);
+                }
+                if (opcode == Opcodes.ASTORE) {
+                    for (int source : value.sources()) {
+                        if (source != varIndex) {
+                            joinAlias(varIndex, source);
+                        }
+                    }
                 }
                 if (value.tainted()) {
                     taintSlot(varIndex);
@@ -925,7 +944,7 @@ final class PlaintextSecretTokenGuardRules {
                 }
             } else if (opcode >= Opcodes.ILOAD && opcode <= Opcodes.ALOAD) {
                 boolean wide = opcode == Opcodes.LLOAD || opcode == Opcodes.DLOAD;
-                push(new Operand(taintedLocals.contains(varIndex), varIndex, wide));
+                push(new Operand(taintedLocals.contains(varIndex), varIndex, wide, Set.of(varIndex)));
             }
         }
 
