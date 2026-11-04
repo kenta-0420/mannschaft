@@ -1,7 +1,10 @@
 package com.mannschaft.app.common.architecture.plaintexttoken;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.security.SecureRandom;
 import java.util.HexFormat;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -18,16 +21,22 @@ import java.util.UUID;
  *   <li>{@link #issueWithLoopCarriedRandom()}: ループの1周目の終わりに詰めた乱数が、2周目の先頭で token 系に届く</li>
  *   <li>{@link #issueWithLoopCarriedAlias()}: ループの1周目の終わりに作った配列の別名が2周目へ持ち越され、
  *       2周目に別名側へ詰めた乱数が元の配列から token 系に届く</li>
+ *   <li>{@link #issueWithTaintInCatch(Object)}: try の途中（乱数を詰めた直後）の例外で catch へ移り、詰めた配列が token 系に届く</li>
+ *   <li>{@link #issueWithTaintInFinally(Object)}: 同じ形を finally で書く（例外経路の finally の複製に届く）</li>
+ *   <li>{@link #issueWithTaintInNestedTry(Object)}: 内側の catch が受けない例外が外側の catch へ抜け、詰めた配列が token 系に届く</li>
  * </ul>
  * <p>陰性（検出されてはならない）:</p>
  * <ul>
  *   <li>{@link #ternaryCleanTokenWithCorrelationUuid(boolean)}: UUID は相関 ID にだけ届き、token 系は固定値同士の三項演算子</li>
  * </ul>
- * <p>既知の偽陰性（<b>検出されないことを固定</b>する。メソッドをまたぐ流れは追えない。
+ * <p>既知の偽陰性（<b>検出されないことを固定</b>する。追うのはメソッド内のローカル変数の流れだけで、次の4つは追わない。
  * 将来検出できるようになったら、試験の期待値を反転する）:</p>
  * <ul>
- *   <li>{@link #issueViaGeneratorHelper()}: 乱数の生成ヘルパ（{@link #newRandomToken()}）の戻り値を token 系に詰める</li>
- *   <li>{@link #issueViaWriterHelper()}: 乱数を書込みヘルパ（{@link #writeToken}）へ渡し、そちらで token 系に詰める</li>
+ *   <li>メソッドをまたぐ流れ: {@link #issueViaGeneratorHelper()}（乱数の生成ヘルパ {@link #newRandomToken()} の戻り値を
+ *       token 系に詰める）と {@link #issueViaWriterHelper()}（乱数を書込みヘルパ {@link #writeToken} へ渡す）</li>
+ *   <li>フィールド経由: {@link #issueViaField()}（乱数をフィールドへ入れ、読み戻して token 系に詰める）</li>
+ *   <li>ラムダの本体: {@link #issueViaLambdaBody()}（乱数を捕捉したラムダの本体で token 系に詰める）</li>
+ *   <li>リフレクション: {@link #issueViaReflection()}（{@link Method#invoke} で token 系の setter を呼ぶ）</li>
  * </ul>
  */
 public class FlowSelfIssuingFixtureService {
@@ -121,6 +130,49 @@ public class FlowSelfIssuingFixtureService {
         return entity;
     }
 
+    public PlaintextTokenFixtureEntity issueWithTaintInCatch(Object input) {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        byte[] bytes = new byte[RANDOM_BYTE_LENGTH];
+        try {
+            secureRandom.nextBytes(bytes);
+            Objects.requireNonNull(input);
+            bytes = new byte[RANDOM_BYTE_LENGTH];
+        } catch (RuntimeException e) {
+            entity.setToken(HexFormat.of().formatHex(bytes));
+        }
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithTaintInFinally(Object input) {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        byte[] bytes = new byte[RANDOM_BYTE_LENGTH];
+        try {
+            secureRandom.nextBytes(bytes);
+            Objects.requireNonNull(input);
+            bytes = new byte[RANDOM_BYTE_LENGTH];
+        } finally {
+            entity.setToken(HexFormat.of().formatHex(bytes));
+        }
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithTaintInNestedTry(Object input) {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        byte[] bytes = new byte[RANDOM_BYTE_LENGTH];
+        try {
+            try {
+                secureRandom.nextBytes(bytes);
+                Objects.requireNonNull(input);
+                bytes = new byte[RANDOM_BYTE_LENGTH];
+            } catch (IllegalStateException inner) {
+                bytes = new byte[RANDOM_BYTE_LENGTH];
+            }
+        } catch (RuntimeException outer) {
+            entity.setToken(HexFormat.of().formatHex(bytes));
+        }
+        return entity;
+    }
+
     public PlaintextTokenFixtureEntity ternaryCleanTokenWithCorrelationUuid(boolean flag) {
         HashedTokenFixtureEntity correlated = new HashedTokenFixtureEntity();
         correlated.setCorrelationId(UUID.randomUUID().toString());
@@ -150,6 +202,35 @@ public class FlowSelfIssuingFixtureService {
     public PlaintextTokenFixtureEntity issueViaWriterHelper() {
         PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
         writeToken(entity, UUID.randomUUID().toString());
+        return entity;
+    }
+
+    /** フィールド経由の受け渡し先（既知の限界の fixture 用）。 */
+    private String pendingValue;
+
+    /** 既知の偽陰性: 乱数をフィールドへ入れ、読み戻して token 系に詰める（フィールド経由の流れ）。 */
+    public PlaintextTokenFixtureEntity issueViaField() {
+        pendingValue = UUID.randomUUID().toString();
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        entity.setToken(pendingValue);
+        return entity;
+    }
+
+    /** 既知の偽陰性: 乱数を捕捉したラムダの本体で token 系に詰める（ラムダの本体の流れ）。 */
+    public PlaintextTokenFixtureEntity issueViaLambdaBody() {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        String value = UUID.randomUUID().toString();
+        Runnable writer = () -> entity.setToken(value);
+        writer.run();
+        return entity;
+    }
+
+    /** 既知の偽陰性: リフレクションで token 系の setter を呼ぶ（リフレクションの流れ）。 */
+    public PlaintextTokenFixtureEntity issueViaReflection()
+            throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        Method setter = PlaintextTokenFixtureEntity.class.getMethod("setToken", String.class);
+        setter.invoke(entity, UUID.randomUUID().toString());
         return entity;
     }
 }

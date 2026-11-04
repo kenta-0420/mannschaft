@@ -352,7 +352,7 @@ class PlaintextSecretTokenGuardConditionTest {
     }
 
     @Nested
-    @DisplayName("番人3 の値の流れ（メソッド内の分岐合流・配列の別名）と既知の偽陰性")
+    @DisplayName("番人3 の値の流れ（メソッド内の分岐合流・ループ・例外辺・配列の別名）と既知の偽陰性")
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class SelfIssuedFlow {
 
@@ -407,6 +407,17 @@ class PlaintextSecretTokenGuardConditionTest {
         }
 
         @Test
+        @DisplayName("陽性: try の途中の例外で catch・finally・外側の catch へ移る経路の乱数も違反（例外辺）")
+        void exceptionEdgeFlowIsViolation() {
+            assertListed(result.violations(), method(FlowSelfIssuingFixtureService.class, "issueWithTaintInCatch"),
+                    "try 範囲の各命令の実行前の状態がハンドラへ合流する");
+            assertListed(result.violations(), method(FlowSelfIssuingFixtureService.class, "issueWithTaintInFinally"),
+                    "finally（例外経路の複製）も同じ規則で合流する");
+            assertListed(result.violations(), method(FlowSelfIssuingFixtureService.class, "issueWithTaintInNestedTry"),
+                    "入れ子の try でも、外側のハンドラへ内側の try 範囲の状態が合流する");
+        }
+
+        @Test
         @DisplayName("陰性: UUID が相関 ID にだけ届き、token 系は固定値同士の三項演算子なら違反でない")
         void cleanTernaryIsNotViolation() {
             String id = method(FlowSelfIssuingFixtureService.class, "ternaryCleanTokenWithCorrelationUuid");
@@ -415,16 +426,23 @@ class PlaintextSecretTokenGuardConditionTest {
         }
 
         /**
-         * 既知の偽陰性（2026-11-03 殿裁定）。番人3の追跡はメソッドの内側だけで、メソッドをまたぐ流れは見逃す。
+         * 既知の偽陰性（2026-11-03・11-04 殿裁定）。番人3が追うのはメソッド内のローカル変数の流れ（通常・後方・例外の辺）だけで、
+         * メソッドをまたぐ流れ・フィールド経由・ラムダの本体・リフレクションは見逃す。
          * 将来これらを検出できるようになったら、{@code assertNotListed} を {@code assertListed} に反転すること。
          */
         @Test
-        @DisplayName("既知の偽陰性: 生成ヘルパ・書込みヘルパを経由した乱数の流れは検出されない（検出できるようになったら反転）")
-        void crossMethodFlowsAreKnownFalseNegatives() {
+        @DisplayName("既知の偽陰性: ヘルパ・フィールド・ラムダの本体・リフレクションを経由した乱数の流れは検出されない（検出できるようになったら反転）")
+        void outOfScopeFlowsAreKnownFalseNegatives() {
             assertNotListed(result.violations(), method(FlowSelfIssuingFixtureService.class, "issueViaGeneratorHelper"),
-                    "既知の限界: 乱数の生成ヘルパの戻り値");
+                    "既知の限界（メソッドをまたぐ流れ）: 乱数の生成ヘルパの戻り値");
             assertNotListed(result.violations(), method(FlowSelfIssuingFixtureService.class, "issueViaWriterHelper"),
-                    "既知の限界: 乱数を書込みヘルパへ渡す");
+                    "既知の限界（メソッドをまたぐ流れ）: 乱数を書込みヘルパへ渡す");
+            assertNotListed(result.violations(), method(FlowSelfIssuingFixtureService.class, "issueViaField"),
+                    "既知の限界: フィールド経由");
+            assertNotListed(result.violations(), method(FlowSelfIssuingFixtureService.class, "issueViaLambdaBody"),
+                    "既知の限界: ラムダの本体");
+            assertNotListed(result.violations(), method(FlowSelfIssuingFixtureService.class, "issueViaReflection"),
+                    "既知の限界: リフレクション");
         }
     }
 

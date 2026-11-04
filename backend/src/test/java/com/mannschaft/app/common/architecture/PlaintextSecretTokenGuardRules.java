@@ -96,16 +96,20 @@ import org.springframework.data.repository.Repository;
  * {@link #isOpenRegisteredCmp}）。任意の文字列・未登録の ID・完了済みの戦役は無効で、
  * 無効な免除注釈が付いた要素は免除されず違反になる。</p>
  *
- * <h2>番人3の既知の限界（偽陰性。2026-11-03 殿裁定）</h2>
- * <p>番人3の値の流れの追跡は<b>メソッドの内側だけ</b>である。メソッド内の流れは追う
- * （ローカル変数・分岐の合流［if/else・三項演算子］・ループで次の周回へ持ち越される値・乱数を詰めた配列の別名。
- * 基本ブロックとワークリストによる不動点反復の may 解析）。
- * 一方、<b>メソッドをまたぐ流れは追えず見逃す</b>:</p>
+ * <h2>番人3の健全性の範囲と既知の限界（偽陰性。2026-11-03・11-04 殿裁定）</h2>
+ * <p><b>覆う範囲</b>: メソッド内のローカル変数（とオペランドスタック）の流れ。制御フローは通常の辺（分岐の合流
+ * ［if/else・三項演算子・switch］）、後方辺（ループで次の周回へ持ち越される値）、例外辺（try 範囲の各命令の実行前の状態を
+ * ハンドラへ合流。入れ子の try・finally を含む）のすべてを含む。乱数を詰めた配列の別名も追う。
+ * 基本ブロックとワークリストによる不動点反復の may 解析である。</p>
+ * <p><b>既知の限界（検出しない）</b>:</p>
  * <ul>
- *   <li>乱数の生成ヘルパ: 別メソッドが {@code UUID.randomUUID()} を返し、呼び出し側がその戻り値を token 系に詰める形</li>
- *   <li>書込みヘルパ: 乱数を引数に別メソッドを呼び、そのメソッドの中で Entity の token 系に詰める形</li>
+ *   <li>メソッドをまたぐ流れ: 乱数の生成ヘルパ（別メソッドが {@code UUID.randomUUID()} を返し、呼び出し側が戻り値を
+ *       token 系に詰める）と、書込みヘルパ（乱数を引数に別メソッドを呼び、その中で Entity の token 系に詰める）</li>
+ *   <li>フィールド経由: 乱数をフィールドへ入れ、読み戻して token 系に詰める形（フィールドの読み出しは乱数由来としない）</li>
+ *   <li>ラムダの本体: 乱数を捕捉したラムダの本体（合成メソッド）で token 系に詰める形</li>
+ *   <li>リフレクション: {@code Method#invoke} 等で token 系の setter を呼ぶ形</li>
  * </ul>
- * <p>これらは {@link PlaintextSecretTokenGuardConditionTest} に「既知の偽陰性」として、検出されないことを固定する試験を置く。
+ * <p>限界ごとに {@link PlaintextSecretTokenGuardConditionTest} に「既知の偽陰性」の fixture と、検出されないことを固定する試験を置く。
  * 将来検出できるようになったら、その試験の期待値を反転する。ソースの字句解析で補う案は棄却済み。</p>
  */
 final class PlaintextSecretTokenGuardRules {
@@ -718,6 +722,12 @@ final class PlaintextSecretTokenGuardRules {
             return changed;
         }
 
+        /** ローカル変数の情報（印・別名）だけを和集合で取り込む（スタックは触らない）。 */
+        void joinLocalsFrom(TaintState other) {
+            taintedLocals.addAll(other.taintedLocals);
+            aliasEdges.addAll(other.aliasEdges);
+        }
+
         Operand pop() {
             return stack.isEmpty() ? Operand.clean() : stack.remove(stack.size() - 1);
         }
@@ -788,13 +798,16 @@ final class PlaintextSecretTokenGuardRules {
      * 命令列を基本ブロックに分け、ワークリストで不動点まで反復する。合流点（分岐の合流・ループの先頭・例外ハンドラ）では
      * 流れ込む状態の和集合をとり、ブロックの入口の状態が増えなくなるまで回す。後方ジャンプ（ループ）で次の周回へ持ち越される
      * 乱数・配列の別名も、周回後の状態でループ本体を再評価するので見逃さない。
+     * 例外ハンドラの入口には、例外表のエントリが覆う範囲内の各命令の「実行前の状態」の和集合を合流させる
+     * （try の途中で例外が起きた時点の状態を取りこぼさない。入れ子の try・finally も同じ規則）。
      * <b>停止性</b>: 状態はローカル変数番号の有限集合の部分集合（印・別名の辺・スタック要素の元の変数）と深さ固定のスタックの組で
      * 格子は有限であり、ブロック入口の状態は和集合でしか更新しない（単調に増える）ので、有限回で不動点に達する。</p>
      *
      * <p>呼び出しの戻り値は、引数かレシーバのどれかが乱数由来なら乱数由来とする（{@code toString}・ハッシュ化・連結を貫通する）。
      * 乱数を詰める配列の別名（{@code byte[] b = a;}）は同じ配列として扱い、片方へ印が付けば他方にも付く。
      * 直線上の代入（ブロック内）は印・別名を上書きし、枝ごとの違いは合流点の和集合で保つ。
-     * 追うのはメソッドの内側だけで、メソッドをまたぐ流れは追えない（既知の限界。クラス Javadoc 参照）。
+     * 追うのはメソッド内のローカル変数の流れだけで、メソッドをまたぐ流れ・フィールド経由・ラムダの本体・リフレクションは
+     * 追わない（既知の限界。クラス Javadoc 参照）。
      * 判定が追えない形（配列がローカル変数でない）では {@link #ANY_CALL} を入れ、同居だけで違反とする側に倒す。</p>
      *
      * <p>JTI のように token 系でない名前の書込み（{@code jti}・{@code jwtId} 等）へ UUID を渡すだけの発行は、
@@ -923,7 +936,13 @@ final class PlaintextSecretTokenGuardRules {
                 int b = work.poll();
                 queued[b] = false;
                 TaintState state = entry[b].copy();
+                // 例外辺: try 範囲のどの命令でも例外は起きうるので、範囲内の各命令の「実行前の状態」の和集合を
+                // ハンドラの入口へ合流させる（入れ子の try・finally も例外表のエントリごとに同じ規則）
+                TaintState toHandlers = handlers.get(b).isEmpty() ? null : state.handlerEntry();
                 for (int i = starts[b]; i < blockEnd(starts, b, count); i++) {
+                    if (toHandlers != null) {
+                        toHandlers.joinLocalsFrom(state);
+                    }
                     steps.get(i).effect().accept(state);
                 }
                 for (int next : successors.get(b)) {
@@ -931,11 +950,8 @@ final class PlaintextSecretTokenGuardRules {
                         enqueue(work, queued, next);
                     }
                 }
-                // 例外はブロックの途中でも起きうるので、入口と出口の両方の状態をハンドラへ流す
                 for (int handler : handlers.get(b)) {
-                    boolean changed = flowInto(entry, handler, entry[b].handlerEntry());
-                    changed |= flowInto(entry, handler, state.handlerEntry());
-                    if (changed) {
+                    if (flowInto(entry, handler, toHandlers)) {
                         enqueue(work, queued, handler);
                     }
                 }
