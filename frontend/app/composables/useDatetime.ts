@@ -8,12 +8,23 @@
  * 未設定の場合は 'Asia/Tokyo' をデフォルトとして使用する。
  */
 import dayjs from 'dayjs'
-import { toLocalDateString } from '~/utils/localDate'
+import {
+  formatCalendarDay as fmtCalendarDay,
+  formatCalendarDayRange as fmtCalendarDayRange,
+  formatInstantDate,
+  formatInstantDateTime,
+  formatInstantTime,
+  formatTimeRange as fmtTimeRange,
+  toLocalDateString,
+} from '~/utils/localDate'
 import { parseWallClockInTz } from '~/utils/wallClock'
 
 export function useDatetime() {
   const authStore = useAuthStore()
   const userTimezone = computed(() => authStore.user?.timezone ?? 'Asia/Tokyo')
+  // 現在の UI ロケール（ja/en/zh/ko/es/de）。関数内で .value を読むので、テンプレートから呼べば言語切替で再描画される
+  const i18n = useNuxtApp().$i18n as { locale?: { value: string } } | undefined
+  const currentLocale = (): string => i18n?.locale?.value ?? 'ja'
 
   /**
    * ISO-8601 文字列を安全にパースする。
@@ -27,12 +38,13 @@ export function useDatetime() {
 
   /**
    * 日付のみを表示する。
-   * @example formatDate("2026-05-22T09:15:20+09:00") → "2026/05/22"
+   * ja は YYYY/MM/DD、他ロケールは各言語の数値日付書式（en: MM/DD/YYYY 等）。
+   * @example formatDate("2026-05-22T09:15:20+09:00") → "2026/05/22"（ja）
    */
   function formatDate(iso: string | null | undefined): string {
     const d = safeParse(iso)
     if (!d) return ''
-    return d.tz(userTimezone.value).format('YYYY/MM/DD')
+    return formatInstantDate(d.toDate(), currentLocale(), userTimezone.value)
   }
 
   /**
@@ -42,7 +54,7 @@ export function useDatetime() {
   function formatDateTime(iso: string | null | undefined): string {
     const d = safeParse(iso)
     if (!d) return ''
-    return d.tz(userTimezone.value).format('YYYY/MM/DD HH:mm')
+    return formatInstantDateTime(d.toDate(), currentLocale(), userTimezone.value)
   }
 
   /**
@@ -52,7 +64,22 @@ export function useDatetime() {
   function formatTime(iso: string | null | undefined): string {
     const d = safeParse(iso)
     if (!d) return ''
-    return d.tz(userTimezone.value).format('HH:mm')
+    return formatInstantTime(d.toDate(), currentLocale(), userTimezone.value)
+  }
+
+  /** 暦日（'YYYY-MM-DD'）を曜日付きで整形する。UTC 暦日扱いのため TZ によるずれはない。 */
+  function formatCalendarDay(ymd: string): string {
+    return fmtCalendarDay(ymd, currentLocale())
+  }
+
+  /** 暦日の範囲を曜日付きで整形する（同日なら単日）。 */
+  function formatCalendarDayRange(startYmd: string, endYmd: string): string {
+    return fmtCalendarDayRange(startYmd, endYmd, currentLocale())
+  }
+
+  /** 時刻の範囲（'HH:mm' / 'HH:mm:ss'）を秒なしで整形する。 */
+  function formatTimeRange(startHhmm: string, endHhmm: string): string {
+    return fmtTimeRange(startHhmm, endHhmm, currentLocale())
   }
 
   /**
@@ -250,6 +277,9 @@ export function useDatetime() {
     formatDate,
     formatDateTime,
     formatTime,
+    formatCalendarDay,
+    formatCalendarDayRange,
+    formatTimeRange,
     fromNow,
     buildOffsetDateTimeStr,
     buildOffsetDateTimeFromLocalInput,

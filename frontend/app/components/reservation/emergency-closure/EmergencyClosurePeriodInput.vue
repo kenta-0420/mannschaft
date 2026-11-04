@@ -98,7 +98,7 @@ const endHourModel = computed({
             </option>
           </select>
         </div>
-        <span class="pb-2 text-surface-400">〜</span>
+        <span class="pb-2 text-surface-400">{{ $t('emergency_closure.label.range_separator') }}</span>
         <div>
           <label class="mb-1 block text-sm font-medium">{{ $t('emergency_closure.label.end_time') }}</label>
           <select

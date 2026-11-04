@@ -106,3 +106,94 @@ export function toLocalDateTimeString(date: Date): string {
   const min = String(date.getMinutes()).padStart(2, '0')
   return `${toLocalDateString(date)}T${h}:${min}`
 }
+
+// ---------------------------------------------------------------------------
+// ロケール対応の日時整形（純関数）。
+//
+// 日時整形の正準はここと `useDatetime()`（内部で本節の関数を呼ぶ）。画面側で曜日配列・
+// 「m月d日」・「〜」などを自前で組み立ててはならない（ロケールごとの書式が二重管理になる）。
+// ---------------------------------------------------------------------------
+
+const INTL_LOCALES: Record<string, string> = {
+  ja: 'ja-JP',
+  en: 'en-US',
+  zh: 'zh-CN',
+  ko: 'ko-KR',
+  es: 'es-ES',
+  de: 'de-DE',
+}
+
+/** アプリのロケールコード（ja/en/zh/ko/es/de）を Intl 用の BCP 47 タグへ変換する。未知の値は ja-JP。 */
+export function toIntlLocale(locale: string): string {
+  return INTL_LOCALES[locale.split('-')[0]!.toLowerCase()] ?? 'ja-JP'
+}
+
+const DATE_OPTS: Intl.DateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit' }
+const TIME_OPTS: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }
+
+/**
+ * 瞬間（Date）を timeZone の数値日付へ整形する。ja は `YYYY/MM/DD`（従来と同一）。
+ * @example formatInstantDate(d, 'ja', 'Asia/Tokyo') // "2026/05/22"
+ */
+export function formatInstantDate(date: Date, locale: string, timeZone: string): string {
+  return new Intl.DateTimeFormat(toIntlLocale(locale), { ...DATE_OPTS, timeZone }).format(date)
+}
+
+/** 瞬間を timeZone の `HH:mm`（24時間・秒なし）へ整形する。 */
+export function formatInstantTime(date: Date, locale: string, timeZone: string): string {
+  return new Intl.DateTimeFormat(toIntlLocale(locale), { ...TIME_OPTS, timeZone }).format(date)
+}
+
+/** 瞬間を timeZone の日付＋時刻へ整形する。ja は `YYYY/MM/DD HH:mm`（従来と同一）。 */
+export function formatInstantDateTime(date: Date, locale: string, timeZone: string): string {
+  return `${formatInstantDate(date, locale, timeZone)} ${formatInstantTime(date, locale, timeZone)}`
+}
+
+/** `yyyy-MM-dd` を UTC 暦日の Date にする（TZ 変換を経由しない。表示は必ず timeZone:'UTC' で行う）。 */
+function ymdToUtcDate(ymd: string): Date {
+  const [y, m, d] = ymd.split('-').map(Number)
+  return new Date(Date.UTC(y!, m! - 1, d!))
+}
+
+const CALENDAR_DAY_OPTS: Intl.DateTimeFormatOptions = {
+  month: 'short', day: 'numeric', weekday: 'short', timeZone: 'UTC',
+}
+
+/**
+ * 暦日（`yyyy-MM-dd`）を曜日付きで整形する。UTC 暦日として扱うため西側 TZ でも前日にならない。
+ * @example formatCalendarDay('2026-11-04', 'ja') // "11月4日(水)"
+ */
+export function formatCalendarDay(ymd: string, locale: string): string {
+  return new Intl.DateTimeFormat(toIntlLocale(locale), CALENDAR_DAY_OPTS).format(ymdToUtcDate(ymd))
+}
+
+/**
+ * 暦日の範囲を曜日付きで整形する（Intl formatRange。同日なら単日表示）。
+ * 区切り文字・月の省略などはロケールの規則に従う。
+ */
+export function formatCalendarDayRange(startYmd: string, endYmd: string, locale: string): string {
+  const fmt = new Intl.DateTimeFormat(toIntlLocale(locale), CALENDAR_DAY_OPTS)
+  const s = ymdToUtcDate(startYmd)
+  const e = ymdToUtcDate(endYmd)
+  return typeof fmt.formatRange === 'function' ? fmt.formatRange(s, e) : `${fmt.format(s)} – ${fmt.format(e)}`
+}
+
+/** `HH:mm` または `HH:mm:ss` を UTC 基準の Date（1970-01-01）にする。 */
+function hhmmToUtcDate(hhmm: string): Date {
+  const [h, m] = hhmm.split(':').map(Number)
+  return new Date(Date.UTC(1970, 0, 1, h ?? 0, m ?? 0))
+}
+
+/** 時刻範囲の区切り。ja は従来どおり「〜」、それ以外は en ダッシュ（書式は各端点を単独整形した結果をそのまま繋ぐ） */
+const TIME_RANGE_SEP: Record<string, string> = { ja: '〜' }
+
+/**
+ * 時刻の範囲（`HH:mm` / `HH:mm:ss`、秒は表示しない）をロケール書式（24時間表記）で整形する。
+ * Intl formatRange は ja で「9時00分～」の文字表記に切り替わり単独整形と不揃いになるため、端点を個別に整形して繋ぐ。
+ * @example formatTimeRange('09:00:00', '11:00:00', 'ja') // "09:00〜11:00"
+ */
+export function formatTimeRange(startHhmm: string, endHhmm: string, locale: string): string {
+  const fmt = new Intl.DateTimeFormat(toIntlLocale(locale), { ...TIME_OPTS, timeZone: 'UTC' })
+  const sep = TIME_RANGE_SEP[locale.split('-')[0]!.toLowerCase()] ?? ' – '
+  return `${fmt.format(hhmmToUtcDate(startHhmm))}${sep}${fmt.format(hhmmToUtcDate(endHhmm))}`
+}
