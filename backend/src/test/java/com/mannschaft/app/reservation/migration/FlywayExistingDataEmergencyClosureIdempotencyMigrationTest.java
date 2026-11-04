@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.migration;
 
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.MigrationInfo;
 import org.flywaydb.core.api.MigrationVersion;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.junit.jupiter.api.AfterAll;
@@ -20,8 +21,11 @@ import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,8 +52,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("Flyway 既存データ emergency_closures 冪等キー追加（V257）移行試練")
 class FlywayExistingDataEmergencyClosureIdempotencyMigrationTest {
 
-    /** V257.20261104102344 の直前（これ以下の版はすべて当たる）。 */
-    private static final String PRE_TARGET = "257.20261104102343";
+    /** 本試練の対象（冪等キー追加）の版。 */
+    private static final MigrationVersion TARGET_MIGRATION = MigrationVersion.fromVersion("257.20261104102344");
     private static final String CONSTRAINT = "uq_emergency_closures_team_creator_idempotency";
     private static final long TEAM_ID = 880_001L;
     private static final long CREATOR_ID = 880_101L;
@@ -91,10 +95,10 @@ class FlywayExistingDataEmergencyClosureIdempotencyMigrationTest {
         MigrateResult preResult = Flyway.configure()
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .locations("classpath:db/migration")
-                .target(MigrationVersion.fromVersion(PRE_TARGET))
+                .target(versionJustBeforeTarget())
                 .load()
                 .migrate();
-        assertThat(preResult.success).as("V257 直前までの適用が成功すること").isTrue();
+        assertThat(preResult.success).as("V257 直前（実在する最大版）までの適用が成功すること").isTrue();
 
         List<Long> existing = new ArrayList<>();
         try (Connection c = conn()) {
@@ -144,6 +148,29 @@ class FlywayExistingDataEmergencyClosureIdempotencyMigrationTest {
     }
 
     // ── helpers ────────────────────────────────────────────────
+
+    /**
+     * classpath 上の移行を列挙し、対象（V257）より前で実在する最大の版を返す。
+     *
+     * <p>Flyway の target は実在する版でなければならないため、版番号を決め打ちしない。main に新しい版が
+     * 入っても（対象より前・後のどちらでも）この試練が壊れないよう、毎回実ファイルから求める。</p>
+     */
+    private MigrationVersion versionJustBeforeTarget() {
+        MigrationInfo[] all = Flyway.configure()
+                .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
+                .locations("classpath:db/migration")
+                .load()
+                .info()
+                .all();
+        assertThat(Arrays.stream(all).map(MigrationInfo::getVersion).filter(Objects::nonNull))
+                .as("対象の移行が classpath に実在する").contains(TARGET_MIGRATION);
+        return Arrays.stream(all)
+                .map(MigrationInfo::getVersion)
+                .filter(Objects::nonNull)
+                .filter(version -> version.compareTo(TARGET_MIGRATION) < 0)
+                .max(Comparator.naturalOrder())
+                .orElseThrow(() -> new IllegalStateException("対象より前の移行が見つからない"));
+    }
 
     private long insertLegacyClosure(Connection c, String reason) throws SQLException {
         try (PreparedStatement ps = c.prepareStatement("""
