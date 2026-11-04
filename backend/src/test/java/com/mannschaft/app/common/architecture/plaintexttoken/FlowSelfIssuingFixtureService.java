@@ -27,10 +27,16 @@ import java.util.UUID;
  *   <li>{@link #issueWithLongArrayAssignInExpression()}: {@code long} の配列要素への代入式の値（DUP2_X2）が token 系に届く</li>
  *   <li>{@link #issueWithDoubleArrayAssignInExpression()}: {@code double} の配列要素への代入式の値（DUP2_X2）が token 系に届く</li>
  *   <li>{@link #issueWithTwoDimensionalArray()}: 2次元配列の内側の要素へ乱数を書き、読み出した値が token 系に届く</li>
+ *   <li>{@link #issueWithRowStoredThenTainted()}: 内側の配列を外側へ格納してから内側に乱数を書き、外側から読む</li>
+ *   <li>{@link #issueWithRowTaintedThenStored()}: 内側の配列に乱数を書いてから外側へ格納し、外側から読む</li>
+ *   <li>{@link #issueWithThreeDimensionalAlias()}: 3次元に重ねた配列の最も内側に乱数を書き、最も外側から読む</li>
+ *   <li>{@link #issueWithCopiedAliasWrite()}: 外側から取り出した内側の配列（別名のローカル変数）へ書き、元の変数から読む</li>
+ *   <li>{@link #issueWithBranchMergedAlias(boolean)}: 分岐で合流した別名を外側へ格納し、外側経由で書いて元の変数から読む</li>
  * </ul>
  * <p>陰性（検出されてはならない）:</p>
  * <ul>
  *   <li>{@link #ternaryCleanTokenWithCorrelationUuid(boolean)}: UUID は相関 ID にだけ届き、token 系は固定値同士の三項演算子</li>
+ *   <li>{@link #separateArraysDoNotShareTaint()}: 別の配列に乱数を入れても、token 系へ渡す配列には伝わらない</li>
  * </ul>
  * <p>既知の偽陰性（<b>検出されないことを固定</b>する。追うのはメソッド内のローカル変数の流れだけで、次の4つは追わない。
  * 将来検出できるようになったら、試験の期待値を反転する）:</p>
@@ -195,6 +201,65 @@ public class FlowSelfIssuingFixtureService {
         String[][] box = new String[1][1];
         box[0][0] = UUID.randomUUID().toString();
         entity.setToken(box[0][0]);
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithRowStoredThenTainted() {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        String[] row = new String[1];
+        String[][] box = {row};
+        row[0] = UUID.randomUUID().toString();
+        entity.setToken(box[0][0]);
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithRowTaintedThenStored() {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        String[] row = new String[1];
+        row[0] = UUID.randomUUID().toString();
+        String[][] box = {row};
+        entity.setToken(box[0][0]);
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithThreeDimensionalAlias() {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        String[] row = new String[1];
+        String[][] plane = {row};
+        String[][][] cube = {plane};
+        row[0] = UUID.randomUUID().toString();
+        entity.setToken(cube[0][0][0]);
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithCopiedAliasWrite() {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        String[] row = new String[1];
+        String[][] box = {row};
+        String[] copy = box[0];
+        copy[0] = UUID.randomUUID().toString();
+        entity.setToken(row[0]);
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithBranchMergedAlias(boolean flag) {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        String[] first = new String[1];
+        String[] second = new String[1];
+        String[][] box = new String[1][];
+        box[0] = flag ? first : second;
+        box[0][0] = UUID.randomUUID().toString();
+        entity.setToken(first[0]);
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity separateArraysDoNotShareTaint() {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        String[] other = new String[1];
+        other[0] = UUID.randomUUID().toString();
+        String[] tokenBox = new String[1];
+        tokenBox[0] = FIXED_VALUE;
+        entity.setToken(tokenBox[0]);
         return entity;
     }
 

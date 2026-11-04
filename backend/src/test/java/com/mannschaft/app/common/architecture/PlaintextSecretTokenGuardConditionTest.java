@@ -436,6 +436,24 @@ class PlaintextSecretTokenGuardConditionTest {
         }
 
         @Test
+        @DisplayName("陽性: 配列の別名（外側への格納・取り出し・コピー・分岐合流・3次元）を経由した乱数も違反（別名の同値類に印を付ける）")
+        void arrayAliasClassFlowIsViolation() {
+            for (String name : List.of("issueWithRowStoredThenTainted", "issueWithRowTaintedThenStored",
+                    "issueWithThreeDimensionalAlias", "issueWithCopiedAliasWrite", "issueWithBranchMergedAlias")) {
+                assertListed(result.violations(), method(FlowSelfIssuingFixtureService.class, name),
+                        "格納した参照と格納先は同じ別名の類になり、どの別名から書いても読んでも印が伝わる");
+            }
+        }
+
+        @Test
+        @DisplayName("陰性: 別の配列に乱数を入れても、token 系へ渡す配列には伝わらない")
+        void separateArraysAreNotViolation() {
+            String id = method(FlowSelfIssuingFixtureService.class, "separateArraysDoNotShareTaint");
+            assertNotListed(result.violations(), id, "別名でない配列どうしは別の類");
+            assertListed(result.inspected(), id, "自前乱数を呼ぶメソッドとして検査対象には拾う");
+        }
+
+        @Test
         @DisplayName("陰性: UUID が相関 ID にだけ届き、token 系は固定値同士の三項演算子なら違反でない")
         void cleanTernaryIsNotViolation() {
             String id = method(FlowSelfIssuingFixtureService.class, "ternaryCleanTokenWithCorrelationUuid");
