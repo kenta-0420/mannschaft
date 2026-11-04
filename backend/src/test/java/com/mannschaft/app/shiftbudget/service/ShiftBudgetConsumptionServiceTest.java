@@ -182,7 +182,7 @@ class ShiftBudgetConsumptionServiceTest {
         @Test
         @DisplayName("PLANNED は CANCELLED 遷移 + 減算、CONFIRMED は変更なし")
         void planned_のみ_cancel() {
-            ShiftBudgetConsumptionEntity planned = ShiftBudgetConsumptionEntity.builder()
+            ShiftBudgetConsumptionEntity planned = ShiftBudgetConsumptionEntity.builder().id(1L)
                     .allocationId(ALLOCATION_ID).shiftId(SHIFT_ID).slotId(SLOT_ID).userId(USER_ID)
                     .hourlyRateSnapshot(new BigDecimal("1200")).hours(new BigDecimal("4"))
                     .amount(new BigDecimal("4800.00")).currency("JPY")
@@ -196,14 +196,17 @@ class ShiftBudgetConsumptionServiceTest {
                     .status(ShiftBudgetConsumptionStatus.CONFIRMED)
                     .recordedAt(java.time.LocalDateTime.now())
                     .build();
-            given(consumptionRepository.findByShiftIdAndDeletedAtIsNull(SHIFT_ID))
+            given(consumptionRepository.findByShiftIdAndDeletedAtIsNullOrderByIdAsc(SHIFT_ID))
                     .willReturn(List.of(planned, confirmed));
+            given(consumptionRepository.cancelPlannedById(eq(1L),
+                    eq(ShiftBudgetCancelReason.SHIFT_DELETED), any(java.time.LocalDateTime.class))).willReturn(1);
 
             int cancelled = service.cancelAllForShift(SHIFT_ID);
 
             assertThat(cancelled).isEqualTo(1);
-            assertThat(planned.getStatus()).isEqualTo(ShiftBudgetConsumptionStatus.CANCELLED);
-            assertThat(planned.getCancelReason()).isEqualTo(ShiftBudgetCancelReason.SHIFT_DELETED);
+            verify(consumptionRepository).cancelPlannedById(eq(1L),
+                    eq(ShiftBudgetCancelReason.SHIFT_DELETED), any(java.time.LocalDateTime.class));
+            verify(consumptionRepository, never()).save(any());
             assertThat(confirmed.getStatus()).isEqualTo(ShiftBudgetConsumptionStatus.CONFIRMED);
             verify(allocationRepository).decrementConsumedAmount(eq(ALLOCATION_ID),
                     eq(new BigDecimal("4800.00")));
