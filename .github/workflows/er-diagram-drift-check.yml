@@ -1,0 +1,147 @@
+# =============================================================================
+# ER Diagram Drift Check — pull_request to main / push to main（CMP-261103-1940）
+# =============================================================================
+# 「migration / Entity / 生成器を変えたのに docs/architecture/er/ を再生成していない PR」を CI で弾く。
+#
+# 仕組み:
+#   Flyway を全適用した MySQL（Testcontainers）の information_schema から ER 図を再生成し、
+#   コミット済みの docs/architecture/er/ とバイト単位で照合する（./gradlew checkErDiagrams）。
+#   生成器は backend の test ソースセット（com.mannschaft.app.common.erdiagram）にあり、
+#   通常の test / archTest には含まれない（JUnit タグ "er-diagram"）。
+#
+# 運用（openapi-drift-check.yml と同じ流儀）:
+#   - on.pull_request に paths: を書かない。ジョブは全 PR で必ず起動して必ず結果を報告する。
+#     関連変更が無い PR では重いステップを step-level の if で skip して success で終わる。
+#   - ジョブに if: を付けない（skipped な check を作らない）。
+#   - push to main では関連変更の判定をせず常に全件照合する（main の漂流を検出する）。
+#   - 本ジョブは main Ruleset の required check には登録しない（登録は別途マスター判断）。
+#     登録した場合、ジョブ名「ER Diagram Drift Check」を変えると全 PR が永久ブロックされる。
+#
+# 失敗したら: cd backend && ./gradlew generateErDiagrams を実行し、docs/architecture/er/ をコミットする。
+# ローカルに Docker が無い場合は、失敗時に CI が生成した成果物（artifact）を取り込んでよい。
+# =============================================================================
+
+name: ER Diagram Drift Check
+
+on:
+  pull_request:
+    branches:
+      - main
+    # ⚠️ ここに paths: を書いてはならない（起動しない = 結果を報告しない になり、
+    # required に登録した場合に永久 pending → BLOCKED を招く。openapi-drift-check.yml 参照）。
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: er-diagram-drift-check-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: "21"
+
+jobs:
+  drift-check:
+    name: ER Diagram Drift Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 関連変更パス検出。3 ドット（merge-base...head）で PR が実際に加えた変更のみ見る。
+      # PR 以外のイベント（push to main / workflow_dispatch）は安全側で常に全件照合する。
+      - name: 関連変更パス検出
+        id: changes
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -e
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "[INFO] non-PR event (${{ github.event_name }}) → er_related=true（全件照合）"
+            echo "er_related=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          echo "[INFO] diff range: ${BASE_SHA}...${HEAD_SHA}"
+          CHANGED=$(git diff --name-only "${BASE_SHA}...${HEAD_SHA}")
+          echo "----- changed files -----"
+          echo "${CHANGED}"
+          echo "-------------------------"
+          # 関連変更:
+          #   backend/src/main/resources/db/migration/**        スキーマそのもの
+          #   backend/src/main/java/**                          Entity（テーブル→ドメイン解決）
+          #   backend/src/test/java/**/erdiagram/**             生成器・照合テスト
+          #   backend/src/test/java/**/architecture/TableDomainResolver.java・DomainPackages.java
+          #   backend/build-logic/** ・build.gradle.kts ・settings.gradle.kts ・gradle/**   タスク定義・依存
+          #   docs/architecture/er/**                           コミット済み出力
+          #   本ワークフロー
+          PATTERN='^(backend/src/main/resources/db/migration/|backend/src/main/java/|backend/src/test/java/(.*/)?erdiagram/|backend/src/test/java/(.*/)?architecture/(TableDomainResolver|DomainPackages)\.java$|backend/build-logic/|backend/build\.gradle\.kts$|backend/settings\.gradle\.kts$|backend/gradle/|docs/architecture/er/|\.github/workflows/er-diagram-drift-check\.yml$)'
+          if echo "${CHANGED}" | grep -E "${PATTERN}" > /dev/null; then
+            echo "[INFO] ER 図に関連する変更を検出 → er_related=true"
+            echo "er_related=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "[INFO] ER 図に関連する変更なし → er_related=false（重いステップを skip し success で終了）"
+            echo "er_related=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        if: steps.changes.outputs.er_related == 'true'
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+
+      - name: Set up Gradle（依存＋ビルドキャッシュ）
+        if: steps.changes.outputs.er_related == 'true'
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+          gradle-home-cache-includes: |
+            caches
+            notifications
+
+      - name: Grant Gradle wrapper execute permission
+        if: steps.changes.outputs.er_related == 'true'
+        run: chmod +x gradlew
+
+      # Docker 不在は skip ではなく失敗にする（-Der.requireDocker=true）。走らない番人は最悪。
+      - name: Check ER diagrams
+        id: check
+        if: steps.changes.outputs.er_related == 'true'
+        run: |
+          if ! ./gradlew checkErDiagrams -Der.requireDocker=true --no-daemon --build-cache; then
+            echo ""
+            echo "::error title=docs/architecture/er/ が古い、または照合に失敗しました::migration / Entity / 生成器の変更が ER 図に未反映の可能性があります。'cd backend && ./gradlew generateErDiagrams' を実行し docs/architecture/er/ をコミットしてください（テストレポートの該当ファイル名を参照）"
+            echo ""
+            exit 1
+          fi
+          echo "docs/architecture/er/ は現在のスキーマの生成結果と同期しています。"
+
+      # 失敗時だけ、CI で再生成した ER 図を artifact に残す（ローカルに Docker が無い場合の取り込み用）。
+      - name: Regenerate ER diagrams（照合失敗時のみ）
+        if: always() && steps.check.outcome == 'failure'
+        continue-on-error: true
+        run: ./gradlew generateErDiagrams -Der.requireDocker=true --no-daemon --build-cache
+
+      - name: Upload regenerated ER diagrams（照合失敗時のみ）
+        if: always() && steps.check.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: regenerated-er-diagrams
+          path: docs/architecture/er
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: ER 図の照合をスキップ
+        if: steps.changes.outputs.er_related != 'true'
+        run: |
+          echo "migration / Entity / ER 図生成器 / ビルド設定 / docs/architecture/er の変更が無いため、"
+          echo "ER 図の照合をスキップしました。success を報告します。"
