@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261030-0651",
+  "scope": "app",
+  "implementation": {
+    "pr": 4261,
+    "sha": "61178485374b74c2064b75e11a5464e231797d39"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "390x844 で、理由の列が1文字ずつ縦に並ばない。「確認状況」の見出しが切れない。「確認状況を見る」ボタンの幅が 44px 以上。ページが横にはみ出さない（表コンテナ内の横スクロールは可）。",
+      "tests": [
+        {
+          "name": "emergency-closure-layout.spec.ts（DOM 寸法の assert）",
+          "evidence": "frontend/tests/e2e/mobile/emergency-closure-layout.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 41615911475
+    },
+    {
+      "runId": 41615911563
+    },
+    {
+      "runId": 41615911426
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4261"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4273"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261030-0651/resident-observations.json"
+    }
+  },
+  "regressions": [
+    {
+      "description": "送信履歴の表が 390px で崩れる（理由の列が1文字幅、ボタンが小さい）。",
+      "test": "emergency-closure-layout.spec.ts",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4261",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/41615911563"
+    }
+  ]
+}

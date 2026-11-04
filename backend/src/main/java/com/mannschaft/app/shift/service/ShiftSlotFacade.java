@@ -40,8 +40,8 @@ import java.util.List;
  * 対象不在                  404 SHIFT_001       404 SHIFT_001              404 SHIFT_002
  * 親だけ削除済み            404 SHIFT_001       404 SHIFT_001              404 SHIFT_002（是正前は SHIFT_001）
  * </pre>
- * <p>枠一覧の未公開（DRAFT・ARCHIVED で publishedAt なし）は、管理者側以外へは認可結果より先に 404 SHIFT_001、
- * COLLECTING・ADJUSTING は割当だけ伏せる。</p>
+ * <p>枠一覧の未公開（DRAFT・ARCHIVED で publishedAt なし）は、一般メンバーには 404 SHIFT_001
+ * （越境・SUPPORTER の判定の後。SUPPORTER は公開状態に依らず 403）、COLLECTING・ADJUSTING は割当だけ伏せる。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -65,14 +65,16 @@ public class ShiftSlotFacade {
         boolean privileged = accessControlService.isSystemAdmin(userId)
                 || accessControlService.isAdminOrAbove(userId, scope.teamId(), TEAM);
         if (!privileged) {
-            if (scope.isHidden()) {
-                throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
-            }
+            // 越境は不在と同じ 404、SUPPORTER は公開状態に依らず一律 403、未公開の 404 はその後
+            // （SUPPORTER に 404/403 の差で公開状態を読ませない。CMP-260826-2127 D-2127-1）。
             if (!accessControlService.isMember(userId, scope.teamId(), TEAM)) {
                 throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
             }
             if (accessControlService.isSupporter(userId, scope.teamId(), TEAM)) {
                 throw new BusinessException(CommonErrorCode.COMMON_002);
+            }
+            if (scope.isHidden()) {
+                throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
             }
         }
         return slotService.listSlots(scheduleId, privileged);
