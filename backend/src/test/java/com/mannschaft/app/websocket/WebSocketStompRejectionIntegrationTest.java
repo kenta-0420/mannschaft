@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.event.EventListener;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.lang.NonNull;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
@@ -27,6 +29,8 @@ import org.springframework.messaging.simp.user.SimpUserRegistry;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
+import org.springframework.web.socket.messaging.SessionConnectEvent;
+import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.io.BufferedReader;
@@ -38,9 +42,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -77,6 +83,11 @@ class WebSocketStompRejectionIntegrationTest extends AbstractMySqlIntegrationTes
     private static final long USER_A = 991_301L;
     private static final long USER_B = 991_302L;
     private static final long OUTSIDER = 991_303L;
+    /**
+     * 無効 Bearer＋有効 Cookie の拒否テスト専用のユーザー。他テストの接続（USER_A 名義など）が
+     * SimpUserRegistry に残っていても、この断定に混入しないよう他では使わない。
+     */
+    private static final long USER_REJECTED = 991_304L;
 
     @LocalServerPort
     private int port;
@@ -98,22 +109,63 @@ class WebSocketStompRejectionIntegrationTest extends AbstractMySqlIntegrationTes
 
     private final List<WebSocketStompClient> clients = new ArrayList<>();
 
+    private final List<Connection> connections = new ArrayList<>();
+
     @AfterEach
     void tearDown() {
+        // client.stop() だけでは確立済みの STOMP セッションは閉じず、サーバ側の SimpUserRegistry に
+        // 次のテストまで残る（同一 context を共有するため他テストの断定へ混入する）。明示的に DISCONNECT する。
+        for (Connection connection : connections) {
+            StompSession session = connection.session().getNow(null);
+            if (session != null && session.isConnected()) {
+                session.disconnect();
+            }
+        }
+        connections.clear();
         clients.forEach(WebSocketStompClient::stop);
         clients.clear();
     }
 
+    /**
+     * サーバ側の接続確立イベントを記録する試験用リスナー。
+     *
+     * <p>{@link SimpUserRegistry} への登録は {@link SessionConnectedEvent}（CONNECTED フレーム送出時）でのみ行われ、
+     * {@link SessionConnectEvent} は CONNECT が inbound チャンネルを通過した後にしか発行されない。
+     * 拒否した CONNECT についてこれらが一度も発行されないことを断定するために置く。</p>
+     */
+    @TestConfiguration
+    static class ConnectEventRecorder {
+
+        static final Queue<String> CONNECT_EVENTS = new ConcurrentLinkedQueue<>();
+
+        @EventListener
+        public void onConnect(SessionConnectEvent event) {
+            CONNECT_EVENTS.add("CONNECT:" + (event.getUser() == null ? null : event.getUser().getName()));
+        }
+
+        @EventListener
+        public void onConnected(SessionConnectedEvent event) {
+            CONNECT_EVENTS.add("CONNECTED:" + (event.getUser() == null ? null : event.getUser().getName()));
+        }
+    }
+
     // ─── 接続ヘルパー ────────────────────────────────────────────
 
-    /** サーバから届いた ERROR フレームのヘッダを捕捉するセッションハンドラ。 */
+    /** サーバから届いた ERROR フレームのヘッダと、その後の接続断を捕捉するセッションハンドラ。 */
     private static final class ErrorCapturingHandler extends StompSessionHandlerAdapter {
         final CompletableFuture<StompHeaders> error = new CompletableFuture<>();
+        final CompletableFuture<Throwable> closed = new CompletableFuture<>();
 
         @Override
         public void handleFrame(@NonNull StompHeaders headers, Object payload) {
             // セッションハンドラの handleFrame へ届くのは ERROR フレーム
             error.complete(headers);
+        }
+
+        @Override
+        public void handleTransportError(@NonNull StompSession session, @NonNull Throwable exception) {
+            // ERROR 送出後にサーバが接続を閉じると ConnectionLostException 等でここに来る
+            closed.complete(exception);
         }
     }
 
@@ -124,6 +176,10 @@ class WebSocketStompRejectionIntegrationTest extends AbstractMySqlIntegrationTes
 
         StompHeaders awaitError() throws Exception {
             return handler.error.get(60, TimeUnit.SECONDS);
+        }
+
+        Throwable awaitClosed() throws Exception {
+            return handler.closed.get(60, TimeUnit.SECONDS);
         }
     }
 
@@ -163,7 +219,9 @@ class WebSocketStompRejectionIntegrationTest extends AbstractMySqlIntegrationTes
         ErrorCapturingHandler handler = new ErrorCapturingHandler();
         CompletableFuture<StompSession> future =
                 client.connectAsync("ws://localhost:" + port + "/ws/websocket", handshake, connect, handler);
-        return new Connection(future, handler);
+        Connection connection = new Connection(future, handler);
+        connections.add(connection);
+        return connection;
     }
 
     private String jwt(long userId) {
@@ -316,6 +374,10 @@ class WebSocketStompRejectionIntegrationTest extends AbstractMySqlIntegrationTes
 
         StompSession session = open(ALLOWED_ORIGIN, jwt(USER_A), null).await();
         assertThat(session.isConnected()).isTrue();
+        // 接続確立イベント記録の対照: 成立した接続ではサーバが CONNECTED 送出前に SessionConnectedEvent を発行する
+        assertThat(ConnectEventRecorder.CONNECT_EVENTS)
+                .as("成立した接続は Cookie のユーザー名義で SessionConnectedEvent が記録される（記録器の対照）")
+                .contains("CONNECTED:" + USER_A);
     }
 
     /**
@@ -351,11 +413,19 @@ class WebSocketStompRejectionIntegrationTest extends AbstractMySqlIntegrationTes
     @Test
     @DisplayName("無効 Bearer＋有効 Cookie → Cookie へ黙って切り替えず CONNECT を UNAUTHENTICATED で拒否")
     void 無効Bearerと有効Cookieは拒否() throws Exception {
-        Connection connection = open(ALLOWED_ORIGIN, jwt(USER_A), "Bearer not-a-valid-jwt");
+        Connection connection = open(ALLOWED_ORIGIN, jwt(USER_REJECTED), "Bearer not-a-valid-jwt");
 
         StompHeaders error = connection.awaitError();
         assertThat(error.getFirst(StompErrorCode.HEADER)).isEqualTo("UNAUTHENTICATED");
-        assertThat(simpUserRegistry.getUser(String.valueOf(USER_A)))
+
+        // サーバは ERROR 送出後に接続を閉じる。閉じ終わるまで待ってから「一度も登録されなかった」ことを断定する
+        // （登録は SessionConnectedEvent でのみ起こるため、接続確立イベントの不在で時間窓が無いことを示す）。
+        assertThat(connection.awaitClosed()).as("ERROR の後にサーバが接続を閉じる").isNotNull();
+        String cookieUser = String.valueOf(USER_REJECTED);
+        assertThat(ConnectEventRecorder.CONNECT_EVENTS)
+                .as("拒否した CONNECT は SessionConnectEvent／SessionConnectedEvent を一度も発行しない")
+                .doesNotContain("CONNECT:" + cookieUser, "CONNECTED:" + cookieUser);
+        assertThat(simpUserRegistry.getUser(cookieUser))
                 .as("拒否された接続は Cookie のユーザー名義で登録されない").isNull();
     }
 
