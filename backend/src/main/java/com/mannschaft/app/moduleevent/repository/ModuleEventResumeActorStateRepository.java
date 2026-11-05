@@ -20,7 +20,7 @@ public interface ModuleEventResumeActorStateRepository
     @Query(value = """
             INSERT INTO module_event_resume_actor_states (id, actor_user_id, purged)
             VALUES (UUID_TO_BIN(:id), :actorUserId, false)
-            ON DUPLICATE KEY UPDATE actor_user_id = :actorUserId
+            ON DUPLICATE KEY UPDATE actor_user_id = module_event_resume_actor_states.actor_user_id
             """, nativeQuery = true)
     int createIfAbsent(@Param("id") String id, @Param("actorUserId") Long actorUserId);
 
