@@ -51,6 +51,9 @@ $assigned=$false
 $ackPublished=$false
 $grandchildEvidence=$null
 $knownExitEvidence=@()
+$p6Grand=$null
+$p6GrandIdentity=$null
+$p6Observations=New-Object 'Collections.Generic.List[object]'
 function Remaining([int]$cap=[int]::MaxValue,[switch]$Recovery) {
  $budget=$WorkRemainingMs;if($Recovery){$budget=$TotalRemainingMs}
  return [int][Math]::Max(0,[Math]::Min($cap,[Math]::Floor($budget-$localClock.Elapsed.TotalMilliseconds)))
@@ -105,16 +108,24 @@ public sealed class M21Child : IDisposable {
  public int RecordedPid;public string RecordedCreation,LogPrefix;public Exception StartupFailure;
  public List<string> StartupCleanupFailures=new List<string>();
  public List<Exception> StartupCleanupExceptions=new List<Exception>();
+ public bool ObserveTimings,TimingOverflow;
+ public List<Dictionary<string,object>> Timings=new List<Dictionary<string,object>>();
+ Stopwatch timingClock=Stopwatch.StartNew();
+ public void Mark(string stage,int cap) {
+  if(!ObserveTimings)return;
+  if(Timings.Count>=16){TimingOverflow=true;return;}
+  Timings.Add(new Dictionary<string,object>{{"stage",stage},{"utcTicks",DateTime.UtcNow.Ticks.ToString()},{"localMs",timingClock.ElapsedMilliseconds},{"capMs",cap},{"stdoutTask",OutTask==null?"not-started":OutTask.Status.ToString()},{"stderrTask",ErrTask==null?"not-started":ErrTask.Status.ToString()}});
+ }
  void CleanupFailure(string stage,Exception e) { StartupCleanupFailures.Add(stage+":"+e.GetType().Name);StartupCleanupExceptions.Add(e); }
  static string Quote(string s) {
   StringBuilder b=new StringBuilder("\"");int slash=0;
   foreach(char c in s){if(c=='\\'){slash++;continue;}if(c=='"'){b.Append('\\',slash*2+1);b.Append(c);}else{b.Append('\\',slash);b.Append(c);}slash=0;}
   b.Append('\\',slash*2);b.Append('"');return b.ToString();
  }
- public static M21Child Start(string exe,string[] args,string cwd,string prefix,int recoveryMs) {
+ public static M21Child Start(string exe,string[] args,string cwd,string prefix,int recoveryMs,bool observeTimings) {
   Stopwatch recoveryClock=Stopwatch.StartNew();
   Func<int,int> remaining=cap=>Math.Max(0,Math.Min(cap,recoveryMs-(int)recoveryClock.ElapsedMilliseconds));
-  M21Child c=new M21Child();c.LogPrefix=prefix;
+  M21Child c=new M21Child();c.LogPrefix=prefix;c.ObserveTimings=observeTimings;
   try {
    c.output=new FileStream(prefix+".out",FileMode.CreateNew,FileAccess.Write,FileShare.Read);
    c.error=new FileStream(prefix+".err",FileMode.CreateNew,FileAccess.Write,FileShare.Read);
@@ -125,8 +136,12 @@ public sealed class M21Child : IDisposable {
    c.RecordedPid=c.Process.Id;
    IntPtr retained=c.Process.Handle;
    c.RecordedCreation=c.Process.StartTime.ToUniversalTime().Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture);
+   c.Mark("stdout-copy-before",-1);
    c.OutTask=c.Process.StandardOutput.BaseStream.CopyToAsync(c.output);
-   c.ErrTask=c.Process.StandardError.BaseStream.CopyToAsync(c.error);return c;
+   c.Mark("stdout-copy-after",-1);
+   c.Mark("stderr-copy-before",-1);
+   c.ErrTask=c.Process.StandardError.BaseStream.CopyToAsync(c.error);
+   c.Mark("stderr-copy-after",-1);return c;
   } catch(Exception original) {
    // 先にprimaryを固定し、直接保持したProcessと開始済みpumpを個別に有限回収する。
    // このcatchではDispose/throwで保持情報を捨てず、呼出元のheldへ必ず返す。
@@ -141,8 +156,11 @@ public sealed class M21Child : IDisposable {
   }
  }
  public bool Eof(bool stdout,int ms) {
-  Task t=stdout?OutTask:ErrTask;if(t==null)return false;
-  bool done=t.Wait(ms);if(done){if(stdout)output.Flush();else error.Flush();}return done;
+  string role=stdout?"stdout":"stderr";Mark(role+"-eof-before",ms);
+  try{
+   Task t=stdout?OutTask:ErrTask;if(t==null)return false;
+   bool done=t.Wait(ms);if(done){if(stdout)output.Flush();else error.Flush();}return done;
+  }finally{Mark(role+"-eof-after",ms);}
  }
  public void Dispose() {
   List<Exception> errors=new List<Exception>();
@@ -303,7 +321,7 @@ catch {
  Attempt 'bootstrap-process-identity' {$current=[Diagnostics.Process]::GetCurrentProcess();$script:processIdentity=@{pid=$current.Id;creation=$current.StartTime.ToUniversalTime().Ticks.ToString()}}
  Attempt 'bootstrap-result-save' {
   $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}
-  Write-Json $name @{owner=$owner;nonce=$Nonce;process=$processIdentity;passed=$false;primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@();lastHandles=@();startupRecovery=@();resourceRecovery=@{confirmed=$true;jobEmpty=$null;retained=@()};recovered=$true;parentKilled=$false;knownExited=0}
+  Write-Json $name @{owner=$owner;nonce=$Nonce;process=$processIdentity;passed=$false;primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@();parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@();lastHandles=@();startupRecovery=@();resourceRecovery=@{confirmed=$true;jobEmpty=$null;retained=@()};recovered=$true;parentKilled=$false;knownExited=0}
   $script:bootstrapSaved=$true
  }
  if(!$bootstrapSaved){[Console]::Error.WriteLine((@{passed=$false;primary=$primary;secondary=@($secondary.ToArray())}|ConvertTo-Json -Depth 12 -Compress))}
@@ -328,7 +346,7 @@ function New-Supervisor([string]$childMode,[string]$prefix) {
  $ps=[Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
  $childArguments=@('-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode',$childMode,'-Scenario',$Scenario,'-RunDirectory',$run,'-Nonce',$Nonce,'-NodePath',$NodePath,'-WorkRemainingMs',[string](Remaining),'-TotalRemainingMs',[string](Remaining -Recovery))
  Require-Work
- return [M21Child]::Start($ps,$childArguments,$PSScriptRoot,(Join-Path $run $prefix),(Remaining -Recovery))
+ return [M21Child]::Start($ps,$childArguments,$PSScriptRoot,(Join-Path $run $prefix),(Remaining -Recovery),($Scenario -eq 'stdio-eof'))
 }
 function Register-Child([M21Child]$child,[string]$role) {
  $script:held.Add($child)
@@ -339,13 +357,25 @@ function Register-Child([M21Child]$child,[string]$role) {
   throw '起動境界失敗。保持Processはfinallyで再確認する'
  }
 }
+function P6-State([string]$stage) {
+ if($Mode -ne 'Supervisor' -or $Scenario -ne 'stdio-eof' -or $null -eq $script:p6Grand){return}
+ $snapshot=@{stage=$stage;utcTicks=[DateTime]::UtcNow.Ticks.ToString();localMs=$localClock.ElapsedMilliseconds;pid=$script:p6GrandIdentity.pid;creation=$script:p6GrandIdentity.creation;waitExit0=$script:p6Grand.WaitForExit(0);hasExited=$script:p6Grand.HasExited;exitCode=$null}
+ if($snapshot.waitExit0){$snapshot.exitCode=$script:p6Grand.ExitCode}
+ $script:p6Observations.Add($snapshot)
+}
 function Capture([M21Child]$child,[string]$role,[int]$milliseconds) {
  if(!$child.Started){$script:streams.Add(@{role=$role;notStarted=$true;exited=$true;exitCode=$null;stdoutEof=$true;stderrEof=$true});$child.Captured=$true;return}
- $item=[ordered]@{role=$role;pid=$child.RecordedPid;creation=$child.RecordedCreation;logs=$child.LogPrefix;exited=$false;exitCode=$null;stdoutEof=$false;stderrEof=$false}
- try{$item.exited=$child.Process.WaitForExit((Remaining $milliseconds -Recovery));if($item.exited){$item.exitCode=$child.Process.ExitCode}}catch{Fail ($role+'-exit') $_.Exception}
+ $item=[ordered]@{role=$role;pid=$child.RecordedPid;creation=$child.RecordedCreation;logs=$child.LogPrefix;exited=$false;exitCode=$null;stdoutEof=$false;stderrEof=$false;timingOrigin='held-child-instance';timings=@();timingOverflow=$false}
+ $exitCap=Remaining $milliseconds -Recovery
+ $child.Mark('capture-exit-before',$exitCap)
+ try{$item.exited=$child.Process.WaitForExit($exitCap);if($item.exited){$item.exitCode=$child.Process.ExitCode}}catch{Fail ($role+'-exit') $_.Exception}finally{$child.Mark('capture-exit-after',$exitCap)}
+ Attempt 'p6-after-child-exit' {P6-State 'after-child-exit'}
  if(!$item.exited){$script:recovered=$false;Fail ($role+'-exit-timeout') ([TimeoutException]::new())}
- try{$item.stdoutEof=$child.Eof($true,(Remaining $milliseconds -Recovery));if(!$item.stdoutEof){Set-Reason 'stdout-eof-timeout';throw 'stdout EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stdout') $_.Exception $_}
- try{$item.stderrEof=$child.Eof($false,(Remaining $milliseconds -Recovery));if(!$item.stderrEof){Set-Reason 'stderr-eof-timeout';throw 'stderr EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stderr') $_.Exception $_}
+ Attempt 'p6-stdout-before' {P6-State 'stdout-before'}
+ try{$item.stdoutEof=$child.Eof($true,(Remaining $milliseconds -Recovery));if(!$item.stdoutEof){Set-Reason 'stdout-eof-timeout';throw 'stdout EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stdout') $_.Exception $_}finally{Attempt 'p6-stdout-after' {P6-State 'stdout-after'}}
+ Attempt 'p6-stderr-before' {P6-State 'stderr-before'}
+ try{$item.stderrEof=$child.Eof($false,(Remaining $milliseconds -Recovery));if(!$item.stderrEof){Set-Reason 'stderr-eof-timeout';throw 'stderr EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stderr') $_.Exception $_}finally{Attempt 'p6-stderr-after' {P6-State 'stderr-after'}}
+ $item.timings=@($child.Timings.ToArray());$item.timingOverflow=$child.TimingOverflow
  $script:streams.Add($item)
  $child.Captured=$true
 }
@@ -368,7 +398,7 @@ try {
   if(![M21Job]::InJob($self,$null)){throw 'ack後Job不在'}
   Guard-Run
   Require-Work
-  $child=[M21Child]::Start($NodePath,@($dummy,'--dummy','child',$run,$Nonce,$Scenario,[string](Remaining),[string](Remaining -Recovery)),$run,(Join-Path $run 'dummy'),(Remaining -Recovery))
+  $child=[M21Child]::Start($NodePath,@($dummy,'--dummy','child',$run,$Nonce,$Scenario,[string](Remaining),[string](Remaining -Recovery)),$run,(Join-Path $run 'dummy'),(Remaining -Recovery),($Scenario -eq 'stdio-eof'))
   Register-Child $child 'dummy'
   $creatorIdentity=@{owner=$owner;nonce=$Nonce;pid=$child.RecordedPid;creation=$child.RecordedCreation}
   Write-Json 'child-candidate.json' $creatorIdentity
@@ -396,10 +426,14 @@ try {
     $liveIdentity=Identity $grand
     Write-Json 'grandchild-candidate.json' $liveIdentity
     $grandchildEvidence=@{kind='os-live-observation';identity=$liveIdentity;osLiveLookup=$true;osExactJobVerified=$false;jobEvidence='any-job-observation'}
-   }finally{$grand.Dispose()}
+    if($Scenario -eq 'stdio-eof'){$script:p6Grand=$grand;$script:p6GrandIdentity=$liveIdentity}
+   }finally{if($Scenario -ne 'stdio-eof' -or $null -eq $script:p6Grand){$grand.Dispose()}}
   }
   if($Scenario -eq 'kill-close'){Start-Sleep -Milliseconds (Remaining);Set-Reason 'work-budget-exhausted';throw 'observer未動作'}
-  if(!$child.Process.WaitForExit((Remaining))){Set-Reason 'work-budget-exhausted';throw 'dummy exit期限超過'}
+  $workExitCap=Remaining
+  $child.Mark('body-exit-before',$workExitCap)
+  try{if(!$child.Process.WaitForExit($workExitCap)){Set-Reason 'work-budget-exhausted';throw 'dummy exit期限超過'}}finally{$child.Mark('body-exit-after',$workExitCap)}
+  Attempt 'p6-after-body-exit' {P6-State 'after-body-child-exit'}
   if($child.Process.ExitCode -ne 0){Set-Reason 'dummy-nonzero';Fail 'dummy-nonzero' ([InvalidOperationException]::new())}
   Capture $child 'dummy' 500
  }elseif($Mode -eq 'Observe'){
@@ -471,6 +505,7 @@ try {
    foreach($item in $inner.streams){$streams.Add($item)}
    foreach($item in $inner.lastHandles){$lastHandles.Add($item)}
    foreach($item in $inner.startupRecovery){$startupRecovery.Add($item)}
+   foreach($item in $inner.p6Observations){$p6Observations.Add($item)}
    $grandchildEvidence=$inner.grandchildEvidence
    if($Scenario -in @('host-fail','cleanup-fail') -and !$inner.recovered){$recovered=$false}
   }
@@ -515,6 +550,7 @@ finally {
   }}
  }
  foreach($p in $certified){Attempt 'certified-handle-close' {$p.Dispose()}}
+ Attempt 'p6-grand-handle-close' {if($null -ne $script:p6Grand){$script:p6Grand.Dispose();$script:p6Grand=$null}}
  foreach($child in $held){
   Attempt 'last-handle' {
    $last=@{pid=$child.RecordedPid;creation=$child.RecordedCreation;exited=(!$child.Started -or $child.Process.WaitForExit(0));stdoutEof=(!$child.Started -or ($null -ne $child.OutTask -and $child.OutTask.Status -eq [Threading.Tasks.TaskStatus]::RanToCompletion));stderrEof=(!$child.Started -or ($null -ne $child.ErrTask -and $child.ErrTask.Status -eq [Threading.Tasks.TaskStatus]::RanToCompletion))}
@@ -539,7 +575,7 @@ finally {
  # streamsは一次観測、resourceRecoveryは後続Job/直接handle回収の別事実。
  $retained=New-Object 'Collections.Generic.List[object]'
  if(!$recovered){foreach($child in $held){$retained.Add(@{pid=$child.RecordedPid;creation=$child.RecordedCreation;logs=$child.LogPrefix;reason='direct-exit/stream/Job recovery unconfirmed'})}}
- $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;lateObservation=$lateObservation;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());knownExitEvidence=$knownExitEvidence;startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
+ $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@($p6Observations.ToArray());lateObservation=$lateObservation;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());knownExitEvidence=$knownExitEvidence;startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
  if($null -ne $observer){$result.knownExited=$observer.knownExited}
  try{
   $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}

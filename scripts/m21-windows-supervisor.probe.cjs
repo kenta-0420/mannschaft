@@ -264,7 +264,7 @@ async function suite() {
           }
         }
         const reason = value => value ? { stage: value.stage, reason: value.reason ?? null, kind: value.kind } : null;
-        const streamEvidence = receipt.streams.map(s => ({ role: s.role, pid: s.pid, creation: s.creation, exited: s.exited, exitCode: s.exitCode, stdoutEof: s.stdoutEof, stderrEof: s.stderrEof }));
+        const streamEvidence = receipt.streams.map(s => ({ role: s.role, pid: s.pid, creation: s.creation, exited: s.exited, exitCode: s.exitCode, stdoutEof: s.stdoutEof, stderrEof: s.stderrEof, timingOrigin: s.timingOrigin, timings: s.timings, timingOverflow: s.timingOverflow }));
         let p4 = null;
         if (scenario === 'kill-close') {
           const certificate = read(path.join(run, 'certified-tree.json'));
@@ -274,7 +274,7 @@ async function suite() {
         }
         const evidence = { process: receipt.process, primary: reason(receipt.primary), secondary: receipt.secondary.map(reason),
           streams: streamEvidence, lastHandles: receipt.lastHandles, resourceRecovery: receipt.resourceRecovery,
-          grandchildEvidence: receipt.grandchildEvidence, p4 };
+          grandchildEvidence: receipt.grandchildEvidence, p6Observations: receipt.p6Observations, p4 };
         stamp(scenario, 'case-recovered');
         results.push({ scenario, passed: true, launcherPid: p.pid, launcherCreation: receipt.process?.creation ?? null,
           launcherExitCode: code, launcherExited: exited, channels: channels.map(c => c.state), evidence });

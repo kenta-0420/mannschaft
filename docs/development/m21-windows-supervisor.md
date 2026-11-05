@@ -48,6 +48,8 @@ GO BのPS修正はこの2caseだけを対象とする。自己run/owner/nonce、
 
 成功時に既存自己Tempが撤去されても、既存receiptからprimary/secondary理由・process世代・actual exit/両EOF・Jobempty・grandchild証拠種別・P4のexact Job認定と保持3handleのactual exitを最小summaryへ抽出してstdout packetに残す。入力3file SHA256と、採取側が指定した任意のM21_INPUT_COMMIT（40桁hexのみ）もpacketへ残す。新metadataファイルや削除方式は追加しない。
 
+P6診断では既存live lookupで得た同じgrand Process/handleをCapture完了まで保持し、直接child exit後・各EOF前後にWaitForExit(0)/HasExited/取得可能なExitCodeを記録する。PID再検索や追加待機はしない。採用CopyToAsync前後・body/Capture exit待機前後・Eof前後はP6だけ最大16件の固定timingにUTC/local elapsed/実cap/TaskStatusを記録する。local elapsedは保持child object原点（PS観測はparam後原点）を区別する。15秒hold・500ms EOF・G/R・業務挙動は変えず、診断値も成功summaryへ抽出する。
+
 ## 有限probe（実行には別GOが必要）
 
 Windows標準PowerShellと既存Nodeだけを使う。新依存/SDK/ダウンロードなし。通常のPowerShell policyを適用し、ExecutionPolicy Bypass/Unblock-File/ACL変更を行わない。policyや強い既存Jobで拒否されたら、非0・保持理由を報告する。sandbox無効化やbreakawayで逃がさない。
