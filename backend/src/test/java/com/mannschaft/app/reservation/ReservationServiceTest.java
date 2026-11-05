@@ -346,6 +346,7 @@ class ReservationServiceTest {
                     .slot(new ReservationResponse.SlotSummaryDto(
                             "カット", null,
                             java.time.LocalDate.of(2026, 4, 1),
+                            java.time.LocalDate.of(2026, 4, 1),
                             java.time.LocalTime.of(10, 0),
                             java.time.LocalTime.of(11, 0)))
                     .build();

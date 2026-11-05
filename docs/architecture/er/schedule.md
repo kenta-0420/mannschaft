@@ -223,6 +223,16 @@ erDiagram
 | [todo](todo.md) | `todos` | `linked_schedule_id` | ID参照 | `schedules` |
 | [tournament](tournament.md) | `tournament_matches` | `schedule_id` | ID参照 | `schedules` |
 
+## 自己参照
+
+mermaid は同一テーブルの自己参照を複数描けず 1 本に畳むため、図に線が欠けることがある。自己参照はこの表を正とする。
+
+| テーブル | 列 | 種別 |
+| --- | --- | --- |
+| `schedule_comments` | `parent_id` | 外部キー |
+| `schedules` | `parent_schedule_id` | 外部キー |
+| `schedules` | `source_schedule_id` | ID参照 |
+
 ## 多態参照（線を引かない）
 
 | テーブル | 種別列 | ID列 |

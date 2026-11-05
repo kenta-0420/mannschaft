@@ -424,4 +424,49 @@ class ErDiagramRendererTest {
         }
         return n;
     }
+
+    // ─── 自己参照（mermaid は同一テーブルの自己参照を複数描けず 1 本に畳む） ───
+
+    @Test
+    @DisplayName("自己参照: 実FKとID参照が混在する2本・3本の自己参照が「自己参照」表に全件並ぶ（テーブル→列の辞書順）")
+    void 自己参照の節() {
+        var msgs = simple("msgs", col("root_id", "bigint", true), col("parent_id", "bigint", true));
+        var posts = simple("posts", col("repost_of_id", "bigint", true), col("parent_id", "bigint", true),
+                col("forward_source_post_id", "bigint", true));
+        var fk = new SchemaSnapshot.ForeignKey("msgs", "fk_root", List.of("root_id"), "msgs", List.of("id"));
+        var fk2 = new SchemaSnapshot.ForeignKey("posts", "fk_fw", List.of("forward_source_post_id"), "posts",
+                List.of("id"));
+        var fk3 = new SchemaSnapshot.ForeignKey("posts", "fk_rp", List.of("repost_of_id"), "posts", List.of("id"));
+        String md = render(List.of(msgs, posts), List.of(fk, fk2, fk3), Map.of("msgs", "d", "posts", "d")).get("d.md");
+        assertThat(md).contains("## 自己参照");
+        assertThat(md).contains("mermaid は同一テーブルの自己参照を複数描けず");
+        String section = md.substring(md.indexOf("## 自己参照"));
+        int next = section.indexOf("\n## ", 5);
+        section = next < 0 ? section : section.substring(0, next);
+        assertThat(section).contains("| テーブル | 列 | 種別 |");
+        List<String> rows = section.lines().filter(l -> l.startsWith("| `")).toList();
+        assertThat(rows).containsExactly(
+                "| `msgs` | `parent_id` | ID参照 |",
+                "| `msgs` | `root_id` | 外部キー |",
+                "| `posts` | `forward_source_post_id` | 外部キー |",
+                "| `posts` | `parent_id` | ID参照 |",
+                "| `posts` | `repost_of_id` | 外部キー |");
+    }
+
+    @Test
+    @DisplayName("自己参照: 0件のドメインでは節を出さない（多態参照・推定不能参照節と同じ流儀）")
+    void 自己参照ゼロなら節なし() {
+        var users = simple("users");
+        var posts = simple("posts", col("user_id", "bigint", false));
+        String md = render(List.of(users, posts), List.of(), Map.of("users", "d", "posts", "d")).get("d.md");
+        assertThat(md).doesNotContain("## 自己参照");
+    }
+
+    @Test
+    @DisplayName("自己参照: README の凡例に、自己参照は各ページの「自己参照」表を正とする旨がある")
+    void 自己参照の凡例() {
+        String readme = render(List.of(simple("users")), List.of(), Map.of("users", "d")).get("README.md");
+        assertThat(readme).contains("mermaid は同一テーブルの自己参照を複数描けず1本に畳むため、"
+                + "自己参照は各ページの「自己参照」表を正とする");
+    }
 }
