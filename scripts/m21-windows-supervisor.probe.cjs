@@ -98,7 +98,7 @@ async function dummy(role, run, nonce, scenario, workMs, totalMs) {
   if (role !== 'grandchild' || !afterGrandchildExit) atomic(path.join(run, `${role}.json`), { pid: process.pid, nonce });
   if (role === 'child') {
     requireWork(workDeadline);
-    const grandchild = spawn(process.execPath, [__filename, '--dummy', 'grandchild', run, nonce, scenario, String(remaining(workDeadline)), String(remaining(totalDeadline))], { windowsHide: true, stdio: 'inherit' });
+    const grandchild = spawn(process.execPath, [__filename, '--dummy', 'grandchild', run, nonce, scenario, String(remaining(workDeadline)), String(remaining(totalDeadline))], { windowsHide: true, stdio: 'inherit', detached: scenario === 'stdio-eof' });
     let grandchildObserved = null;
     const grandchildExit = new Promise(resolve => {
       grandchild.once('exit', (code, signal) => { grandchildObserved = { code, signal }; resolve(grandchildObserved); });
@@ -115,7 +115,22 @@ async function dummy(role, run, nonce, scenario, workMs, totalMs) {
       process.exit(17);
     }
     await until(() => fs.existsSync(path.join(run, 'grandchild.json')), Infinity, workDeadline);
-    if (scenario === 'stdio-eof') process.exit(0); // 孫が継承pipeを開いたままにする。
+    if (scenario === 'stdio-eof') {
+      await until(() => fs.existsSync(path.join(run, 'p6-release.json')), Infinity, workDeadline);
+      const ack = read(path.join(run, 'p6-release.json'));
+      assert.deepEqual(Object.keys(ack).sort(), ['child', 'grandchild', 'nonce', 'ownedJobVerified', 'owner'].sort());
+      assert.equal(ack.owner, OWNER); assert.equal(ack.nonce, nonce); assert.equal(ack.ownedJobVerified, true);
+      for (const [name, pid] of [['child', process.pid], ['grandchild', grandchild.pid]]) {
+        const identity = ack[name];
+        assert.deepEqual(Object.keys(identity).sort(), ['owner', 'nonce', 'pid', 'creation'].sort());
+        assert.equal(identity.owner, OWNER); assert.equal(identity.nonce, nonce);
+        assert.ok(Number.isInteger(identity.pid) && identity.pid > 0); assert.equal(identity.pid, pid);
+        assert.equal(typeof identity.creation, 'string'); assert.match(identity.creation, /^[1-9][0-9]*$/);
+        assert.deepEqual(identity, read(path.join(run, `${name}-candidate.json`)));
+      }
+      requireWork(workDeadline);
+      process.exit(0); // exact outer Job認定後、孫が継承pipeを開いたままにする。
+    }
     if (scenario === 'kill-close') {
       await wait(Math.min(15000, remaining(workDeadline))); // 固定dummy holdを総work残予算でclampする。
       process.exit(19);
@@ -260,7 +275,18 @@ async function suite() {
           if (scenario === 'stdio-eof') {
             assert.equal(receipt.resourceRecovery.jobEmpty, true);
             assert.ok(dummyExit); assert.equal(dummyExit.exitCode, 0);
-            assert.ok(receipt.streams.some(s => !s.stdoutEof || !s.stderrEof), '一次EOF失敗を後続Job回収で消さない');
+            assert.equal(dummyExit.stdoutEof, false); assert.equal(dummyExit.stderrEof, false);
+            const certified = receipt.p6Certification;
+            assert.equal(certified.ownedJobVerified, true); assert.equal(certified.liveBeforeRelease, true);
+            assert.equal(certified.releasePublished, true); assert.equal(certified.jobStopped, true);
+            assert.equal(certified.child.pid, dummyExit.pid); assert.equal(certified.child.creation, dummyExit.creation);
+            assert.equal(certified.childExited, true); assert.equal(certified.childExitCode, 0);
+            assert.equal(certified.grandchildExited, true); assert.equal(typeof certified.grandchildExitCode, 'number');
+            assert.deepEqual(receipt.p6Observations.map(s => s.stage), ['after-body-child-exit', 'after-child-exit', 'stdout-before', 'stdout-after', 'stderr-before', 'stderr-after']);
+            for (const observation of receipt.p6Observations) {
+              assert.equal(observation.pid, certified.grandchild.pid); assert.equal(observation.creation, certified.grandchild.creation);
+              assert.equal(observation.waitExit0, false); assert.equal(observation.hasExited, false);
+            }
           }
         }
         const reason = value => value ? { stage: value.stage, reason: value.reason ?? null, kind: value.kind } : null;
@@ -274,7 +300,7 @@ async function suite() {
         }
         const evidence = { process: receipt.process, primary: reason(receipt.primary), secondary: receipt.secondary.map(reason),
           streams: streamEvidence, lastHandles: receipt.lastHandles, resourceRecovery: receipt.resourceRecovery,
-          grandchildEvidence: receipt.grandchildEvidence, p6Observations: receipt.p6Observations, p4 };
+          grandchildEvidence: receipt.grandchildEvidence, p6Observations: receipt.p6Observations, p6Certification: receipt.p6Certification, p4 };
         stamp(scenario, 'case-recovered');
         results.push({ scenario, passed: true, launcherPid: p.pid, launcherCreation: receipt.process?.creation ?? null,
           launcherExitCode: code, launcherExited: exited, channels: channels.map(c => c.state), evidence });

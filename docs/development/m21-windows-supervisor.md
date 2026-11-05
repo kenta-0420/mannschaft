@@ -50,6 +50,10 @@ GO BのPS修正はこの2caseだけを対象とする。自己run/owner/nonce、
 
 P6診断では既存live lookupで得た同じgrand Process/handleをCapture完了まで保持し、直接child exit後・各EOF前後にWaitForExit(0)/HasExited/取得可能なExitCodeを記録する。PID再検索や追加待機はしない。採用CopyToAsync前後・body/Capture exit待機前後・Eof前後はP6だけ最大16件の固定timingにUTC/local elapsed/実cap/TaskStatusを記録する。local elapsedは保持child object原点（PS観測はparam後原点）を区別する。15秒hold・500ms EOF・G/R・業務挙動は変えず、診断値も成功summaryへ抽出する。
 
+P6の孫spawnだけはdetached=trueとし、Node自身の非detached用Jobへの登録を避ける。outer Jobのbreakaway許可・起動flag・security設定は変更しない。子は既存grandchild.jsonを見た直後に終了せず、固定p6-release.jsonをremainingW内で待つ。ParentはSupervisor終了待機より前にchild/grandchild候補の厳密なfield/type・owner/nonce・出生を検証し、自身Job handleでexact所属と保持handleの生存を認定した後だけACKを公開する。子もACKの厳密なfield/typeと両candidate identityを照合してからactual exit0する。
+
+親のp6Certificationはinnerのany-job観測で上書きしない。保持孫はchild exit後から両EOF判定後までliveであること、一次stdout/stderr EOFが共にfalseでprimaryがstdout-eof-timeoutであることを要求する。その後ParentのJob.Stop・Jobempty・認定時から保持した同じ孫handleのactual exitを別々に保存する。15秒以内に認定できなかった場合や孫が先に自然終了した場合は不成立として停止し、hold/500ms/G/Rを増やさない。後続dummy pumpのEOFを再観測した証拠としては扱わない。
+
 ## 有限probe（実行には別GOが必要）
 
 Windows標準PowerShellと既存Nodeだけを使う。新依存/SDK/ダウンロードなし。通常のPowerShell policyを適用し、ExecutionPolicy Bypass/Unblock-File/ACL変更を行わない。policyや強い既存Jobで拒否されたら、非0・保持理由を報告する。sandbox無効化やbreakawayで逃がさない。
@@ -81,6 +85,6 @@ assign-fail/cleanup-fail/save-failは固定fault点への例外注入であり�
 
 ## 現段階の検証
 
-PS Parser.ParseFile、Node --check、diffの静的確認だけを行う段階。Add-TypeのC#実コンパイル、P/Invoke呼出し、dummy probe、正式環境、実UIは未実行。正式監督に進む前にこの固定dummy probeと独立レビューを通し、同一固定HEADの証拠で判断する。
+PS Parser.ParseFile、Node --check、diffの静的確認後、rootの限定GOごとに固定入力のsuiteを1回実行する。過去のprobeでAdd-Type実コンパイル・Win32 Job・host非0伝播まで観測したが、P6では孫の早期exit0によりpipe保持fixtureが不成立だった。P6限定修正版の全10caseは同一固定HEADの実測packetで判定する。正式環境・実UI・Chromium互換は未実施で、dummy成功を正式M21合格へ流用しない。過去のsharing違反やPS admission遅延の原因解消とも扱わない。
 
 根拠: [Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects)、[AssignProcessToJobObject](https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/nf-jobapi2-assignprocesstojobobject)。last handle閉鎖がkill条件であり、CreateProcess系の子は既定でJob継承する。WMI生成やbreakawayは利用しない。

@@ -53,6 +53,9 @@ $grandchildEvidence=$null
 $knownExitEvidence=@()
 $p6Grand=$null
 $p6GrandIdentity=$null
+$p6ParentChild=$null
+$p6ParentGrand=$null
+$p6Certification=$null
 $p6Observations=New-Object 'Collections.Generic.List[object]'
 function Remaining([int]$cap=[int]::MaxValue,[switch]$Recovery) {
  $budget=$WorkRemainingMs;if($Recovery){$budget=$TotalRemainingMs}
@@ -389,6 +392,13 @@ function Open-Known([object]$metadata,[M21Job]$expectedJob) {
   return $p
  }catch{$p.Dispose();throw}
 }
+function Assert-P6Identity([object]$metadata) {
+ $fields=@($metadata.PSObject.Properties.Name)
+ if($fields.Count -ne 4){throw 'P6 identity field集合不一致'}
+ foreach($field in $fields){if(@('owner','nonce','pid','creation') -cnotcontains $field){throw 'P6 identity未知field'}}
+ if($metadata.owner -isnot [string] -or $metadata.owner -cne $owner -or $metadata.nonce -isnot [string] -or $metadata.nonce -cne $Nonce){throw 'P6 identity owner/nonce不一致'}
+ if(($metadata.pid -isnot [int] -and $metadata.pid -isnot [long]) -or $metadata.pid -le 0 -or $metadata.pid -gt [int]::MaxValue -or $metadata.creation -isnot [string] -or $metadata.creation -cnotmatch '^[1-9][0-9]*$'){throw 'P6 identity出生不正'}
+}
 try {
  Guard-Run
  if(![IO.Path]::IsPathRooted($NodePath) -or [IO.Path]::GetFileName($NodePath) -ine 'node.exe' -or !(Test-Path -LiteralPath $NodePath -PathType Leaf)){throw 'Node exe不一致'}
@@ -496,6 +506,20 @@ try {
    Write-Json 'certified-tree.json' @{owner=$owner;nonce=$Nonce;certifier=(Identity ([Diagnostics.Process]::GetCurrentProcess()));members=@($members.ToArray())}
    Start-Sleep -Milliseconds (Remaining);Set-Reason 'work-budget-exhausted';throw 'observer待機期限超過'
   }
+  if($Scenario -eq 'stdio-eof'){
+   Set-Operation 'Parent.p6-certify'
+   $childIdentity=Wait-File 'child-candidate.json';Assert-P6Identity $childIdentity
+   $grandIdentity=Wait-File 'grandchild-candidate.json';Assert-P6Identity $grandIdentity
+   if($childIdentity.pid -eq $grandIdentity.pid){throw 'P6同一pid'}
+   $p6ParentChild=Open-Known $childIdentity $job;$certified.Add($p6ParentChild)
+   $p6ParentGrand=Open-Known $grandIdentity $job;$certified.Add($p6ParentGrand)
+   $p6Certification=@{kind='parent-exact-owned-job';child=$childIdentity;grandchild=$grandIdentity;ownedJobVerified=$true;liveBeforeRelease=$false;releasePublished=$false;jobStopped=$false;childExited=$false;childExitCode=$null;grandchildExited=$false;grandchildExitCode=$null}
+   if($p6ParentChild.WaitForExit(0) -or $p6ParentGrand.WaitForExit(0)){throw 'P6認定前終了'}
+   $p6Certification.liveBeforeRelease=$true
+   Require-Work
+   Write-Json 'p6-release.json' @{owner=$owner;nonce=$Nonce;child=$childIdentity;grandchild=$grandIdentity;ownedJobVerified=$true}
+   $p6Certification.releasePublished=$true
+  }
   Set-Operation 'Parent.wait'
   if(!$supervisor.Process.WaitForExit((Remaining))){Set-Reason 'work-budget-exhausted';throw 'supervisor exit期限超過'}
   if(Test-Path -LiteralPath (Join-Path $run 'supervisor-result.json')){
@@ -520,7 +544,7 @@ try {
 }
 finally {
  if($Mode -ne 'Supervisor'){
-  Attempt 'job-stop' {if($null -ne $job){$job.Stop()}}
+  Attempt 'job-stop' {if($null -ne $job){$job.Stop();if($null -ne $p6Certification){$p6Certification.jobStopped=$true}}}
   foreach($child in $held){
    Attempt 'direct-stop' {Parent-Event 'kill-before' $child;if($child.Started -and !$child.Process.HasExited){Parent-Event 'kill-issued' $child;$child.Process.Kill();Parent-Event 'kill-returned' $child}else{Parent-Event 'kill-skipped' $child}}
    Attempt 'exit-and-streams' {Capture $child 'direct' 1500}
@@ -532,6 +556,13 @@ finally {
     while($job.Active() -gt 0 -and $clock.ElapsedMilliseconds -lt $cleanupLimit -and (Remaining -Recovery) -gt 0){Start-Sleep -Milliseconds ([Math]::Min(25,(Remaining -Recovery)))}
     $script:jobEmpty=($job.Active() -eq 0)
     if(!$script:jobEmpty){$script:recovered=$false;throw 'Job残留'}
+   }
+  }
+  Attempt 'p6-certified-exit' {
+   if($null -ne $p6Certification){
+    Attempt 'p6-child-exit' {try{$p6Certification.childExited=$p6ParentChild.WaitForExit(0);if($p6Certification.childExited){$p6Certification.childExitCode=$p6ParentChild.ExitCode}}catch{$script:recovered=$false;throw}}
+    Attempt 'p6-grand-exit' {try{$p6Certification.grandchildExited=$p6ParentGrand.WaitForExit(0);if($p6Certification.grandchildExited){$p6Certification.grandchildExitCode=$p6ParentGrand.ExitCode}}catch{$script:recovered=$false;throw}}
+    if(!$p6Certification.childExited -or !$p6Certification.grandchildExited){$script:recovered=$false;throw 'P6認定handle回収未確認'}
    }
   }
   Attempt 'job-close' {if($null -ne $job){$job.Dispose();$job=$null}}
@@ -575,7 +606,11 @@ finally {
  # streamsは一次観測、resourceRecoveryは後続Job/直接handle回収の別事実。
  $retained=New-Object 'Collections.Generic.List[object]'
  if(!$recovered){foreach($child in $held){$retained.Add(@{pid=$child.RecordedPid;creation=$child.RecordedCreation;logs=$child.LogPrefix;reason='direct-exit/stream/Job recovery unconfirmed'})}}
- $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@($p6Observations.ToArray());lateObservation=$lateObservation;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());knownExitEvidence=$knownExitEvidence;startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
+ if($null -ne $p6Certification){
+  if(!$p6Certification.childExited){$retained.Add(@{identity=$p6Certification.child;reason='P6 certified child exit unconfirmed'})}
+  if(!$p6Certification.grandchildExited){$retained.Add(@{identity=$p6Certification.grandchild;reason='P6 certified grandchild exit unconfirmed'})}
+ }
+ $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@($p6Observations.ToArray());p6Certification=$p6Certification;lateObservation=$lateObservation;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());knownExitEvidence=$knownExitEvidence;startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
  if($null -ne $observer){$result.knownExited=$observer.knownExited}
  try{
   $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}
