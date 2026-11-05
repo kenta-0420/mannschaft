@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -111,6 +112,16 @@ public class ShiftBudgetConsumptionService {
                 .recordedAt(LocalDateTime.now(wallClock)).build());
         requireAllocationUpdate(allocationRepository.incrementConsumedAmount(allocationId, amount), allocationId);
         return true;
+    }
+
+    /** 旧消化の計上先IDを一括取得する。フラグ判定用の参照だけで、取消や親ロックは行わない。 */
+    @Transactional(readOnly = true)
+    public List<Long> findOlderPlannedOrganizationIds(Long shiftScheduleId, long publicationGeneration) {
+        if (publicationGeneration == 0) {
+            return List.of();
+        }
+        return consumptionRepository.findPlannedCancellationRows(shiftScheduleId, publicationGeneration - 1).stream()
+                .map(ShiftBudgetConsumptionRepository.PlannedCancellationRow::getOrganizationId).distinct().toList();
     }
 
     /** 新しい公開の記録前に、取り外された枠・利用者を含む旧世代全体を掃除する。 */

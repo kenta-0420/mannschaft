@@ -29,6 +29,8 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationContext;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -40,6 +42,8 @@ import org.springframework.test.util.AopTestUtils;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -84,6 +88,7 @@ class ShiftBudgetPublicationGenerationIT extends AbstractMySqlIntegrationTest {
     private static final Duration LIMIT = Duration.ofSeconds(30);
 
     @Autowired private TransactionTemplate transactionTemplate;
+    @Autowired private ApplicationContext applicationContext;
     @Autowired private com.mannschaft.app.common.DomainEventPublisher eventPublisher;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private UserRepository users;
@@ -130,6 +135,8 @@ class ShiftBudgetPublicationGenerationIT extends AbstractMySqlIntegrationTest {
     void setUp() {
         // 待機中のcloseとは別の実workerで再公開が進む構成を前提として検査する。
         assertThat(eventExecutor.getCorePoolSize()).as("実event-poolの並行worker数").isGreaterThanOrEqualTo(2);
+        assertThat(applicationContext.getBean(TaskExecutor.class)).as("無指定Asyncも同じ実event-poolを使う前提")
+                .isSameAs(eventExecutor);
         String nonce = UUID.randomUUID().toString().replace("-", "").substring(0, 20);
         transactionTemplate.executeWithoutResult(tx -> {
             organizationId = TeamOrgFixtureHelper.insertOrganization(em, "0718組織", "o-" + nonce);
@@ -365,6 +372,7 @@ class ShiftBudgetPublicationGenerationIT extends AbstractMySqlIntegrationTest {
     void 同じ公開の再配送は記録成功を増やさない() throws Exception {
         ShiftPublishedEvent original = publishAndAwait();
         awaitEventsFinished();
+        await().atMost(LIMIT).untilAsserted(() -> assertThat(recordedAuditCount()).isEqualTo(1));
         int audits = recordedAuditCount();
         transactionTemplate.executeWithoutResult(tx -> eventPublisher.publish(original));
         assertThat(required(completedPublications, "同世代の再配送完了")).isSameAs(original);
@@ -387,6 +395,7 @@ class ShiftBudgetPublicationGenerationIT extends AbstractMySqlIntegrationTest {
         ShiftPublishedEvent current = publishAndAwait();
         assertThat(current.getPublicationGeneration()).isEqualTo(oldPublication.getPublicationGeneration() + 1);
         awaitEventsFinished();
+        await().atMost(LIMIT).untilAsserted(() -> assertThat(recordedAuditCount()).isEqualTo(2));
         int audits = recordedAuditCount();
         transactionTemplate.executeWithoutResult(tx -> eventPublisher.publish(oldPublication));
         assertThat(required(completedPublications, "旧世代の再配送完了")).isSameAs(oldPublication);
@@ -490,6 +499,9 @@ class ShiftBudgetPublicationGenerationIT extends AbstractMySqlIntegrationTest {
     void 同じ取消の再配送は成功件数を増やさない() throws Exception {
         publishAndAwait();
         ShiftScheduleClosedEvent closed = closeAndAwait();
+        await().atMost(LIMIT).untilAsserted(() -> assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM audit_logs WHERE team_id = ? "
+                        + "AND event_type = 'SHIFT_BUDGET_CONSUMPTION_CANCELLED'", Integer.class, teamId)).isEqualTo(1));
         int audits = jdbc.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE team_id = ? "
                 + "AND event_type = 'SHIFT_BUDGET_CONSUMPTION_CANCELLED'", Integer.class, teamId);
         transactionTemplate.executeWithoutResult(tx -> eventPublisher.publish(closed));
@@ -523,6 +535,9 @@ class ShiftBudgetPublicationGenerationIT extends AbstractMySqlIntegrationTest {
             assertThat(current.getPublicationGeneration()).isEqualTo(batchGeneration.get() + 1);
             assertThat(consumedAmount()).as("batchを止めたまま新世代Bだけが記録済み")
                     .isEqualByComparingTo(SECOND_AMOUNT);
+            await().atMost(LIMIT).untilAsserted(() -> assertThat(jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM audit_logs WHERE team_id = ? "
+                            + "AND event_type = 'SHIFT_BUDGET_CONSUMPTION_CANCELLED'", Integer.class, teamId)).isEqualTo(1));
             int audits = jdbc.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE team_id = ? "
                     + "AND event_type = 'SHIFT_BUDGET_CONSUMPTION_CANCELLED'", Integer.class, teamId);
             releaseBatchCancellation.countDown();
@@ -573,6 +588,81 @@ class ShiftBudgetPublicationGenerationIT extends AbstractMySqlIntegrationTest {
                 () -> assertThat(plannedCount(firstUserId)).isZero(),
                 () -> assertThat(cancelledCount(firstUserId)).isEqualTo(1),
                 () -> assertThat(consumedAmount()).isEqualByComparingTo(BigDecimal.ZERO));
+    }
+
+    @Test
+    @Timeout(120)
+    @DisplayName("AC13 親変更TX先行でrecordが実SQL待機し、commit後の非公開状態を見て記録しない")
+    void 親変更を待った記録は最新状態を再判定する() throws Exception {
+        ShiftPublishedEvent publication = publishAndAwait();
+        CountDownLatch parentChanged = new CountDownLatch(1);
+        CountDownLatch releaseParent = new CountDownLatch(1);
+        var worker = Executors.newFixedThreadPool(2);
+        try (Connection observer = DriverManager.getConnection(MYSQL.getJdbcUrl(), "root", MYSQL.getPassword())) {
+            var parent = worker.submit(() -> transactionTemplate.executeWithoutResult(tx -> {
+                scheduleService.transitionStatus(scheduleId, "ADJUSTING", firstUserId);
+                em.flush();
+                parentChanged.countDown();
+                try {
+                    assertThat(releaseParent.await(LIMIT.toSeconds(), TimeUnit.SECONDS))
+                            .as("親変更の実TXをcommitする有限解放待ち").isTrue();
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("親変更待機が中断", interrupted);
+                }
+            }));
+            assertThat(parentChanged.await(LIMIT.toSeconds(), TimeUnit.SECONDS))
+                    .as("公開取消を実DBへflush済み・親lock保持中").isTrue();
+            var record = worker.submit(() -> consumptionService.recordSingleConsumption(
+                    allocationId, scheduleId, slotId, secondUserId, SECOND_RATE,
+                    new BigDecimal("8.00"), publication.getPublicationGeneration()));
+            await().atMost(LIMIT).pollInterval(Duration.ofMillis(50)).untilAsserted(() -> {
+                try (var query = observer.prepareStatement("SELECT COUNT(*) FROM performance_schema.data_lock_waits w "
+                        + "JOIN performance_schema.data_locks l ON l.ENGINE = w.ENGINE "
+                        + "AND l.ENGINE_LOCK_ID = w.REQUESTING_ENGINE_LOCK_ID "
+                        + "WHERE l.OBJECT_SCHEMA = ? AND l.OBJECT_NAME = 'shift_schedules' "
+                        + "AND l.INDEX_NAME = 'PRIMARY' AND l.LOCK_TYPE = 'RECORD' AND l.LOCK_DATA = ?")) {
+                    query.setString(1, MYSQL.getDatabaseName());
+                    query.setString(2, scheduleId.toString());
+                    try (var rows = query.executeQuery()) {
+                        assertThat(rows.next()).isTrue();
+                        assertThat(rows.getLong(1)).as("自用親PKの実DB lock wait").isPositive();
+                    }
+                }
+            });
+            assertThat(record.isDone()).isFalse();
+            releaseParent.countDown();
+            parent.get(LIMIT.toSeconds(), TimeUnit.SECONDS);
+            assertThat(record.get(LIMIT.toSeconds(), TimeUnit.SECONDS)).as("commit後の非公開で不受理").isFalse();
+            required(completedCloses, "親変更commit後の実close配送完了");
+            awaitEventsFinished();
+            assertAll(
+                    () -> assertThat(plannedCount(secondUserId)).isZero(),
+                    () -> assertThat(cancelledCount(firstUserId)).isEqualTo(1),
+                    () -> assertThat(consumedAmount()).isEqualByComparingTo(BigDecimal.ZERO));
+        } finally {
+            releaseParent.countDown();
+            worker.shutdown();
+            assertThat(worker.awaitTermination(LIMIT.toSeconds(), TimeUnit.SECONDS)).isTrue();
+        }
+    }
+
+    @Test
+    @Timeout(120)
+    @DisplayName("AC08 設定済み時給0は実MySQLで有効なPLANNEDとして0円計上する")
+    void 設定済み0円時給は記録成功として完了する() throws Exception {
+        transactionTemplate.executeWithoutResult(tx -> rates.findEffectiveRate(firstUserId, teamId,
+                ShiftBudgetPublicationGenerationTestFixture.SLOT_DATE).orElseThrow().changeRate(BigDecimal.ZERO));
+        publishAndAwait();
+        awaitEventsFinished();
+        await().atMost(LIMIT).untilAsserted(() -> assertThat(recordedAuditCount()).isEqualTo(1));
+        assertAll(
+                () -> assertThat(plannedCount(firstUserId)).as("0円でも有効な消化を1件記録").isEqualTo(1),
+                () -> assertThat(plannedAmount(firstUserId)).isEqualByComparingTo(BigDecimal.ZERO),
+                () -> assertThat(consumedAmount()).isEqualByComparingTo(BigDecimal.ZERO),
+                () -> assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM shift_budget_failed_events "
+                        + "WHERE organization_id = ? AND event_type = 'CONSUMPTION_RECORD' AND source_id = ?",
+                        Integer.class, organizationId, scheduleId)).isZero());
     }
 
     private int recordedAuditCount() {

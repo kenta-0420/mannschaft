@@ -14,7 +14,6 @@ import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventType;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFeatureService;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository;
-import com.mannschaft.app.shiftbudget.repository.ShiftBudgetConsumptionRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetRateQueryRepository;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetConsumptionService;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService;
@@ -63,7 +62,6 @@ public class ShiftBudgetConsumptionRecordListener {
     private final ShiftBudgetAllocationRepository allocationRepository;
     private final ShiftBudgetRateQueryRepository rateQueryRepository;
     private final ShiftBudgetConsumptionService consumptionService;
-    private final ShiftBudgetConsumptionRepository consumptionRepository;
     private final ShiftSlotRepository slotRepository;
     private final ShiftHourlyRateRepository hourlyRateRepository;
     private final AuditLogService auditLogService;
@@ -104,16 +102,16 @@ public class ShiftBudgetConsumptionRecordListener {
                     slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(scheduleId);
 
             // 割当解決を再利用し、旧世代だけに残る組織もフラグ判定へ含める。
-            Map<Long, Optional<ShiftBudgetAllocationEntity>> allocationsBySlot = new java.util.HashMap<>();
+            Map<ShiftSlotEntity, Optional<ShiftBudgetAllocationEntity>> allocationsBySlot = new java.util.IdentityHashMap<>();
             for (ShiftSlotEntity slot : slots) {
                 Optional<ShiftBudgetAllocationEntity> allocation = resolveAllocationForSlot(teamId, slot);
-                allocationsBySlot.put(slot.getId(), allocation);
+                allocationsBySlot.put(slot, allocation);
                 allocation.ifPresent(a -> featureEnabledByOrg.computeIfAbsent(
                         a.getOrganizationId(), featureService::isEnabled));
             }
-            for (var row : consumptionRepository.findPlannedCancellationRows(scheduleId,
-                    event.getPublicationGeneration() == 0 ? -1L : event.getPublicationGeneration() - 1)) {
-                featureEnabledByOrg.computeIfAbsent(row.getOrganizationId(), featureService::isEnabled);
+            for (Long organizationId : consumptionService.findOlderPlannedOrganizationIds(
+                    scheduleId, event.getPublicationGeneration())) {
+                featureEnabledByOrg.computeIfAbsent(organizationId, featureService::isEnabled);
             }
             if (!featureEnabledByOrg.isEmpty() && featureEnabledByOrg.values().stream().noneMatch(Boolean::booleanValue)) {
                 return;
@@ -129,10 +127,16 @@ public class ShiftBudgetConsumptionRecordListener {
                 return;
             }
             for (var entry : cleanup.cancellation().countsByOrganization().entrySet()) {
-                auditLogService.record("SHIFT_BUDGET_CONSUMPTION_CANCELLED",
-                        event.getTriggeredByUserId(), null, teamId, entry.getKey(), null, null, null,
-                        String.format("{\"shift_schedule_id\":%d,\"cancelled_count\":%d,\"source\":\"RE_PUBLISHED\"}",
-                                scheduleId, entry.getValue()));
+                try {
+                    auditLogService.record("SHIFT_BUDGET_CONSUMPTION_CANCELLED",
+                            event.getTriggeredByUserId(), null, teamId, entry.getKey(), null, null, null,
+                            String.format("{\"shift_schedule_id\":%d,\"cancelled_count\":%d,\"source\":\"RE_PUBLISHED\"}",
+                                    scheduleId, entry.getValue()));
+                } catch (Exception auditEx) {
+                    // 取消はcommit済み。監査のenqueue拒否で新しい計上まで止めない。
+                    log.error("F08.7 hook: 再公開取消の監査投入失敗（記録処理は継続）: "
+                                    + "scheduleId={}, organizationId={}", scheduleId, entry.getKey(), auditEx);
+                }
             }
             for (var entry : cleanup.cancellation().organizationsByAllocation().entrySet()) {
                 try {
@@ -147,7 +151,7 @@ public class ShiftBudgetConsumptionRecordListener {
 
             for (ShiftSlotEntity slot : slots) {
                 // 当日の allocation を解決（割当を持つ組織 → その組織の allocation）
-                Optional<ShiftBudgetAllocationEntity> allocOpt = allocationsBySlot.get(slot.getId());
+                Optional<ShiftBudgetAllocationEntity> allocOpt = allocationsBySlot.get(slot);
                 if (allocOpt.isEmpty()) {
                     log.warn("F08.7 hook: 該当 allocation 不在または計上先の組織を一意に決められない"
                                     + "（事前作成漏れの可能性）: teamId={}, slotDate={}, slotId={}",

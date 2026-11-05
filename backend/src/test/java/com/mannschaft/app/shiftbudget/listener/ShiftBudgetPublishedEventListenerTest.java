@@ -66,8 +66,6 @@ class ShiftBudgetPublishedEventListenerTest {
     @Mock
     private ShiftBudgetConsumptionService consumptionService;
     @Mock
-    private com.mannschaft.app.shiftbudget.repository.ShiftBudgetConsumptionRepository consumptionRepository;
-    @Mock
     private ShiftSlotRepository slotRepository;
     @Mock
     private ShiftHourlyRateRepository hourlyRateRepository;
@@ -91,7 +89,7 @@ class ShiftBudgetPublishedEventListenerTest {
     void setUp() {
         listener = new ShiftBudgetConsumptionRecordListener(
                 featureService, allocationRepository, rateQueryRepository,
-                consumptionService, consumptionRepository, slotRepository, hourlyRateRepository,
+                consumptionService, slotRepository, hourlyRateRepository,
                 auditLogService, objectMapper, thresholdAlertEvaluationService, failedEventService,
                 eventPublisher);
         // 共通の有効公開前提。フラグOFFでは入口に到達しないため、この2項だけ任意利用とする。
@@ -269,6 +267,40 @@ class ShiftBudgetPublishedEventListenerTest {
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
         verify(auditLogService).record(eq("SHIFT_BUDGET_CONSUMPTION_RECORDED"),
+                any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("旧世代取消の監査投入拒否でも新世代の記録を継続する")
+    void 取消監査の投入拒否は新規計上を止めない() {
+        given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
+                .willReturn(List.of(sampleSlotWithUser(7L, USER_ID)));
+        given(allocationRepository.findOrganizationIdsWithTeamAllocationContaining(eq(TEAM_ID), any()))
+                .willReturn(List.of(ORG_ID));
+        given(allocationRepository.findContainingPeriod(eq(ORG_ID), eq(TEAM_ID), any()))
+                .willReturn(Optional.of(allocationWithId()));
+        given(featureService.isEnabled(ORG_ID)).willReturn(true);
+        given(hourlyRateRepository.findEffectiveRate(eq(USER_ID), eq(TEAM_ID), any()))
+                .willReturn(Optional.of(ShiftHourlyRateEntity.builder()
+                        .userId(USER_ID).teamId(TEAM_ID).hourlyRate(new BigDecimal("1200"))
+                        .effectiveFrom(LocalDate.of(2026, 1, 1)).build()));
+        given(consumptionService.cancelOldPlannedForPublication(SCHEDULE_ID, 2L))
+                .willReturn(new ShiftBudgetConsumptionService.PublicationCleanup(true,
+                        new ShiftBudgetConsumptionService.CancellationResult(1,
+                                java.util.Map.of(ORG_ID, 1L), java.util.Map.of(ALLOCATION_ID, ORG_ID))));
+        org.mockito.BDDMockito.willThrow(new org.springframework.core.task.TaskRejectedException("0718 audit rejected"))
+                .given(auditLogService).record(eq("SHIFT_BUDGET_CONSUMPTION_CANCELLED"),
+                        any(), any(), any(), any(), any(), any(), any(), any());
+
+        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID,
+                java.time.LocalDateTime.now(), 2L));
+
+        verify(consumptionService).recordSingleConsumption(eq(ALLOCATION_ID), eq(SCHEDULE_ID), eq(7L), eq(USER_ID),
+                eq(new BigDecimal("1200")), any(), eq(2L));
+        verify(thresholdAlertEvaluationService, times(2)).evaluateAndTrigger(ALLOCATION_ID);
+        verify(auditLogService).record(eq("SHIFT_BUDGET_CONSUMPTION_RECORDED"),
+                any(), any(), any(), any(), any(), any(), any(), any());
+        verify(auditLogService, never()).record(eq("SHIFT_BUDGET_CONSUMPTION_FAILED"),
                 any(), any(), any(), any(), any(), any(), any(), any());
     }
 
