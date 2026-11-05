@@ -2,7 +2,7 @@
 
 > このファイルは自動生成されます。手で編集しないでください。再生成: `cd backend && ./gradlew generateErDiagrams`
 
-- テーブル数: 3
+- テーブル数: 4
 - ビュー数: 0
 
 ## ER 図
@@ -22,6 +22,10 @@ erDiagram
         binary notice_key UK
         bigint organization_id "ID参照"
     }
+    module_event_resume_actor_states {
+        binary id PK
+        bigint actor_user_id UK "ID参照"
+    }
     module_event_resume_audits {
         binary id PK
         bigint actor_user_id "ID参照"
@@ -30,6 +34,7 @@ erDiagram
     users
     organizations |o..o{ event_publication_attempts : "ID参照(FKなし) organization_id"
     organizations |o..o{ module_event_notice_outbox : "ID参照(FKなし) organization_id"
+    users ||..o| module_event_resume_actor_states : "ID参照(FKなし) actor_user_id"
     users ||..o{ module_event_resume_audits : "ID参照(FKなし) actor_user_id"
 ```
 
@@ -108,6 +113,14 @@ erDiagram
 | `last_error_code` | `varchar(64)` | YES | NULL |  |
 | `created_at` | `datetime(6)` | NO | （なし） |  |
 | `updated_at` | `datetime(6)` | NO | （なし） |  |
+
+### `module_event_resume_actor_states`
+
+| 列名 | 型 | NULL | 既定値 | コメント |
+| --- | --- | --- | --- | --- |
+| `id` | `binary(16)` | NO | （なし） | UUIDv7 |
+| `actor_user_id` | `bigint` | NO | （なし） | 実行者ID。匿名参照を保持しusersへのFKは作らない |
+| `purged` | `tinyint(1)` | NO | （なし） | 強匿名化済み。trueからfalseへ戻さない |
 
 ### `module_event_resume_audits`
 
