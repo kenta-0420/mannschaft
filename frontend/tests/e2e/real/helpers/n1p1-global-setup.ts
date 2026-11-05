@@ -34,15 +34,23 @@ export interface World {
 }
 
 export function readWorld(): World {
+  if (!existsSync(WORLD_FILE)) {
+    throw new Error(`前提データ ${WORLD_FILE} が無い。この spec は playwright-n1p1.config.ts（専用 globalSetup）から実行すること`)
+  }
   return JSON.parse(readFileSync(WORLD_FILE, 'utf8')) as World
 }
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const
 
-/** JST の今日（YYYY-MM-DD）と曜日。 */
-function jstToday(): { date: string; dow: (typeof DAYS)[number] } {
-  const now = new Date(Date.now() + 9 * 3600_000)
-  return { date: now.toISOString().slice(0, 10), dow: DAYS[now.getUTCDay()]! }
+/** 実行時刻から offsetMs だけ先の JST 壁時計（ISO 8601、+09:00 付き・分単位）。 */
+function jstIsoFromNow(offsetMs: number): string {
+  const jst = new Date(Date.now() + offsetMs + 9 * 3600_000)
+  return `${jst.toISOString().slice(0, 16)}:00+09:00`
+}
+
+/** JST で days 日ずらした日付（YYYY-MM-DD）。 */
+function jstDate(days: number): string {
+  return new Date(Date.now() + days * 86_400_000 + 9 * 3600_000).toISOString().slice(0, 10)
 }
 
 async function buildWorld(): Promise<World> {
@@ -120,9 +128,9 @@ async function buildWorld(): Promise<World> {
     attachments: [{ fileKey: upload.fileKey, fileName: attachmentName, fileSize: fileBytes.length, contentType: 'text/plain' }],
   })
 
-  // 今日の時間割: MEMBER1 の個人時間割（チーム時間割に未リンクのコマ 2 件）
-  const today = jstToday()
-  const timetable = (await must(member1, 'POST', '/api/v1/me/personal-timetables', { name: `N1時間割 ${tag}`, effective_from: today.date })).data
+  // 今日の時間割: MEMBER1 の個人時間割（チーム時間割に未リンクのコマ 2 件）。
+  // 実行中に日付をまたいでも「今日」にコマがあるよう、全曜日に同じ2コマを置き、適用開始は前日にする（実行時刻に依存させない）。
+  const timetable = (await must(member1, 'POST', '/api/v1/me/personal-timetables', { name: `N1時間割 ${tag}`, effective_from: jstDate(-1) })).data
   recordAsset(`timetable ${timetable.id}`, `/api/v1/me/personal-timetables/${timetable.id}`, member1)
   await must(member1, 'PUT', `/api/v1/me/personal-timetables/${timetable.id}/periods`, {
     periods: [
@@ -132,20 +140,23 @@ async function buildWorld(): Promise<World> {
   })
   const subjects = [`N1国語 ${RUN}`, `N1算数 ${RUN}`]
   await must(member1, 'PUT', `/api/v1/me/personal-timetables/${timetable.id}/slots`, {
-    slots: [
-      { day_of_week: today.dow, period_number: 1, subject_name: subjects[0], room_name: '101' },
-      { day_of_week: today.dow, period_number: 2, subject_name: subjects[1] },
-    ],
+    slots: DAYS.flatMap((day) => [
+      { day_of_week: day, period_number: 1, subject_name: subjects[0], room_name: '101' },
+      { day_of_week: day, period_number: 2, subject_name: subjects[1] },
+    ]),
   })
   await must(member1, 'POST', `/api/v1/me/personal-timetables/${timetable.id}/activate`)
 
-  // 直近の予定: T1 に今日の予定 2 件（JST 22:00〜23:00 / 23:00〜23:30）
+  // 直近の予定: T1 に予定 2 件。実行時刻から相対で十分先（3時間後・4時間後に開始）に置く
+  // （固定の時刻だと夜に走らせたとき過去になり「今後の予定」から外れる。TEST_CONVENTION.md の相対日時）。
+  // 画面側は直近予定ウィジェットの既定「今週」（7日間）とスコープの「今後の予定」で見るため、日付をまたいでも外れない。
   const scheduleTitles = [`N1予定一 ${tag}`, `N1予定二 ${tag}`]
+  const HOUR = 3_600_000
   for (const [index, title] of scheduleTitles.entries()) {
     await must(admin, 'POST', `/api/v1/teams/${t1.slug}/schedules`, {
       title,
-      startAt: `${today.date}T${index === 0 ? '22:00' : '23:00'}:00+09:00`,
-      endAt: `${today.date}T${index === 0 ? '23:00' : '23:30'}:00+09:00`,
+      startAt: jstIsoFromNow((3 + index) * HOUR),
+      endAt: jstIsoFromNow((4 + index) * HOUR),
       allDay: false,
       eventType: 'EVENT',
       attendanceRequired: false,

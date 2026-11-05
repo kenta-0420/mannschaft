@@ -84,7 +84,7 @@ test('#4277 今日の時間割: 時間割の無い利用者は空表示（MEMBER
 
 // ───────────────────────── #4288 ダッシュボード ─────────────────────────
 
-test('#4288 個人ダッシュボード: 今日の予定2件・未読（チャット）が出る（MEMBER1）／業務アラートは出ない', async ({ browser }) => {
+test('#4288 個人ダッシュボード: 直近の予定2件・未読（チャット）が出る（MEMBER1）／業務アラートは出ない', async ({ browser }) => {
   await withPage(browser, w.member1, '/dashboard', async (page) => {
     const [eventsStatus] = await Promise.all([
       waitApi(page, /\/api\/v1\/dashboard\/upcoming-events$/, async () => {}),
@@ -173,8 +173,11 @@ test('#4288 チャット: 送信者名・添付が出る（MEMBER1 が一覧か�
 })
 
 test('#4288 チャット: 発言0件のチャンネルは壊れず空のまま（MEMBER1）', async ({ browser }) => {
-  await withPage(browser, w.member1, `/chat?channel=${w.emptyChannel.id}`, async (page) => {
-    const status = await waitApi(page, new RegExp(`/api/v1/chat/channels/${w.emptyChannel.id}/messages$`), async () => {})
+  await withPage(browser, w.member1, undefined, async (page) => {
+    // 応答待ちを先に登録してから遷移する（遷移後に登録すると速い環境で応答を取り逃す）
+    const status = await waitApi(page, new RegExp(`/api/v1/chat/channels/${w.emptyChannel.id}/messages$`), () =>
+      gotoAndHydrate(page, `/chat?channel=${w.emptyChannel.id}`),
+    )
     expect(status).toBe(200)
     await expect(page.getByTestId('team-chat-input')).toBeVisible({ timeout: 30_000 })
     await expect(page.getByTestId('chat-message')).toHaveCount(0)
