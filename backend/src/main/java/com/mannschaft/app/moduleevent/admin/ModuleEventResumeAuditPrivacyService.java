@@ -1,6 +1,7 @@
 package com.mannschaft.app.moduleevent.admin;
 
 import com.mannschaft.app.common.UuidV7;
+import com.mannschaft.app.moduleevent.api.ModuleEventResumeAuditPrivacyApi.ActorStateData;
 import com.mannschaft.app.moduleevent.api.ModuleEventResumeAuditPrivacyApi.PersonalData;
 import com.mannschaft.app.moduleevent.repository.ModuleEventResumeActorStateRepository;
 import jakarta.persistence.EntityManager;
@@ -22,6 +23,17 @@ public class ModuleEventResumeAuditPrivacyService {
             ModuleEventResumeActorStateRepository actorStates) {
         this.entityManager = entityManager;
         this.actorStates = actorStates;
+    }
+
+    /** 外側TXのL1に依存せず、本人の状態0/1件だけをprimaryから取得する。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
+    public List<ActorStateData> collectActorStates(Long actorUserId) {
+        Objects.requireNonNull(actorUserId, "actorUserId");
+        return entityManager.createQuery("""
+                SELECT s FROM ModuleEventResumeActorStateEntity s WHERE s.actorUserId = :actorUserId
+                """, ModuleEventResumeActorStateEntity.class)
+                .setParameter("actorUserId", actorUserId).getResultList().stream()
+                .map(s -> new ActorStateData(s.getId(), s.isPurged())).toList();
     }
 
     /** 監査0件でも不可逆stateを残し、再開と同じactorロックで全理由を置換する。 */

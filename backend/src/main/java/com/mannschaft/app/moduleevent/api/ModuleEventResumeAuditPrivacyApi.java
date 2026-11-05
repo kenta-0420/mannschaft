@@ -24,7 +24,7 @@ public class ModuleEventResumeAuditPrivacyApi {
     }
 
     public List<ActorStateData> collectActorStates(Long actorUserId) {
-        throw new UnsupportedOperationException("未実装");
+        return service.collectActorStates(actorUserId);
     }
 
     public void redactReasonsForPurgedUser(Long actorUserId) {
