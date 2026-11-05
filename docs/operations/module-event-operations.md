@@ -105,6 +105,23 @@ M側も同じbindingに属する未完了publicationが0件であることを確
 
 局所の実DB・通知・復旧・運用alertの検証は進んでいるが、全CI、OpenAPI生成前後の照合、M18性能実測、M21実機と探索、最新mainへの着地の全体完了は未証明である。L1-Mや親戦役の終了、全C / F業務の接続完了として読まない。
 
+## 日次保持jobの試練契約（業務本体は未実装）
+
+保持削除は `ModuleEventResumeAuditRetentionBatch.deleteExpiredAudits()` を毎日03:00 UTCに起動する設計とする。管理起動名は `module-event-resume-audit-retention-daily` で、定期起動と同じBean proxy・ShedLock名 `moduleEventResumeAuditRetentionBatch` を通す。瞬時TTLではなく日次整理であり、対象が期限を超えた瞬間の削除は保証しない。機能停止中も保持責務を継続するため `@BackgroundFeaturePolicy(mode=ALWAYS)` とし、対象監査が0件でも正常終了する。
+
+入口は無引数・`Integer`件数を返し、`LockAssert` と `Transactional.NEVER` の境界から既存M privacy APIの `deleteExpired(Instant)`（独立primary REQUIRES_NEW）へ委譲する計画である。削除件数とSUCCESS/FAILEDは既存 `BatchExecutionAspect` の履歴へ載せる。試練surfaceのlease候補は `lockAtLeastFor=PT1M / lockAtMostFor=PT30M` で、後者は未確定。V257.20261105164744でactor/created_atとcreated_at先頭索引は追加済みだが、実DELETEの所要時間は未測定であり、30分以内の性能保証とはしない。green化前に既存DB/TX/queryの有限timeout有無と索引を使う単一DELETEを確認し、最悪処理時間に基づく根拠を確定する。
+
+現在は公開surfaceと先行試験だけを追加した段階で、job本体は `UnsupportedOperationException` のままである。純JUnitの注釈契約は骨格でもgreenになり得るcharacterizationであり、実MySQLによる業務red/green、手動起動の実機、C接続完了を代替しない。
+
+| 最小AC | 対応試験 | 状態 |
+| --- | --- | --- |
+| UTC日次・管理名・Integer・ALWAYS・明示lock・NEVER | RetentionBatchTest「日次UTCの同一入口が管理起動と背景処理と明示lockの契約を持つ」 | 未実行。surface characterization |
+| 空の0件成功、管理registryから期限超過だけ削除、件数とactor state不変 | RetentionBatchIT「空の監査も実M入口を一度通り0件成功とfence保持を記録する」「管理registryの同一入口から期限超過だけ削除し件数とstate不変を記録する」 | 業務red未実測 |
+| 独立2Providerの同時実行で削除と履歴は1回 | RetentionBatchIT「独立二Providerの同時起動は同じDBlockで一方だけ削除と履歴を実行する」 | 業務red未実測 |
+| DELETE障害の例外伝播、FAILED履歴、監査rollback、state保持 | RetentionBatchIT「実DELETEの障害を返しFAILED履歴と監査rollbackとfence保持を残す」 | 業務red未実測 |
+
+UTC暦年2年の等号・閏日・microsecond境界と削除の冪等性は既存 `ModuleEventResumeAuditPrivacyIT` を正本とし、このjob試験で重複実装しない。actor stateにTTLを追加せず、中央監査の7項目・本人監査の4項目・既存exportカテゴリも維持する。
+
 ## 実装の参照先
 
 - [管理HTTP入口](../../backend/src/main/java/com/mannschaft/app/moduleevent/controller/SystemAdminModuleEventController.java)、[一覧・再開と監査TX](../../backend/src/main/java/com/mannschaft/app/moduleevent/admin/ModuleEventAdminService.java)
