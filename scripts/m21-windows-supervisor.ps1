@@ -132,6 +132,9 @@ public sealed class M21Child : IDisposable {
   b.Append('\\',slash*2);b.Append('"');return b.ToString();
  }
  public static M21Child Start(string exe,string[] args,string cwd,string prefix,int recoveryMs,bool observeTimings) {
+  return Start(exe,args,cwd,prefix,recoveryMs,observeTimings,null);
+ }
+ public static M21Child Start(string exe,string[] args,string cwd,string prefix,int recoveryMs,bool observeTimings,Dictionary<string,string> environment) {
   Stopwatch recoveryClock=Stopwatch.StartNew();
   Func<int,int> remaining=cap=>Math.Max(0,Math.Min(cap,recoveryMs-(int)recoveryClock.ElapsedMilliseconds));
   M21Child c=new M21Child();c.LogPrefix=prefix;c.ObserveTimings=observeTimings;
@@ -141,6 +144,7 @@ public sealed class M21Child : IDisposable {
    ProcessStartInfo s=new ProcessStartInfo(exe);s.UseShellExecute=false;s.CreateNoWindow=true;s.WorkingDirectory=cwd;
    s.RedirectStandardOutput=true;s.RedirectStandardError=true;
    StringBuilder a=new StringBuilder();foreach(string x in args){if(a.Length>0)a.Append(' ');a.Append(Quote(x));}s.Arguments=a.ToString();
+   if(environment!=null){s.EnvironmentVariables.Clear();foreach(KeyValuePair<string,string> item in environment)s.EnvironmentVariables.Add(item.Key,item.Value);}
    c.Process=new Process();c.Process.StartInfo=s;if(!c.Process.Start())throw new IOException("起動失敗");c.Started=true;
    c.RecordedPid=c.Process.Id;
    IntPtr retained=c.Process.Handle;
