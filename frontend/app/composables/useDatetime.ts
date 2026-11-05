@@ -15,6 +15,7 @@ import {
   formatInstantDate,
   formatInstantDateTime,
   formatInstantTime,
+  parseInstantStrict,
   formatTimeRange as fmtTimeRange,
   toLocalDateString,
 } from '~/utils/localDate'
@@ -35,6 +36,8 @@ export function useDatetime() {
    */
   function safeParse(iso: string | null | undefined): dayjs.Dayjs | null {
     if (!iso) return null
+    // dayjs は 2026-02-30 → 3/2、T25:00 → 翌日01:00 と自動補正するため、ISO 形式は実在検証を先に通す
+    if (/^\d{4}-\d{2}-\d{2}/.test(iso) && !parseInstantStrict(iso)) return null
     const d = dayjs(iso)
     return d.isValid() ? d : null
   }

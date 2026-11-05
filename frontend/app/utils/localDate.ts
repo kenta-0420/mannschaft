@@ -131,22 +131,51 @@ export function toIntlLocale(locale: string): string {
 const DATE_OPTS: Intl.DateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit' }
 const TIME_OPTS: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }
 
+function isValidInstant(date: unknown): date is Date {
+  return date instanceof Date && !Number.isNaN(date.getTime())
+}
+
 /**
- * 瞬間（Date）を timeZone の数値日付へ整形する。ja は `YYYY/MM/DD`（従来と同一）。
+ * 瞬間（Date）を timeZone の数値日付へ整形する。ja は `YYYY/MM/DD`（従来と同一）。不正な Date は ''。
  * @example formatInstantDate(d, 'ja', 'Asia/Tokyo') // "2026/05/22"
  */
 export function formatInstantDate(date: Date, locale: string, timeZone: string): string {
+  if (!isValidInstant(date)) return ''
   return new Intl.DateTimeFormat(toIntlLocale(locale), { ...DATE_OPTS, timeZone }).format(date)
 }
 
-/** 瞬間を timeZone の `HH:mm`（24時間・秒なし）へ整形する。 */
+/** 瞬間を timeZone の `HH:mm`（24時間・秒なし）へ整形する。不正な Date は ''。 */
 export function formatInstantTime(date: Date, locale: string, timeZone: string): string {
+  if (!isValidInstant(date)) return ''
   return new Intl.DateTimeFormat(toIntlLocale(locale), { ...TIME_OPTS, timeZone }).format(date)
 }
 
-/** 瞬間を timeZone の日付＋時刻へ整形する。ja は `YYYY/MM/DD HH:mm`（従来と同一）。 */
+/** 瞬間を timeZone の日付＋時刻へ整形する。ja は `YYYY/MM/DD HH:mm`（従来と同一）。不正な Date は ''。 */
 export function formatInstantDateTime(date: Date, locale: string, timeZone: string): string {
+  if (!isValidInstant(date)) return ''
   return `${formatInstantDate(date, locale, timeZone)} ${formatInstantTime(date, locale, timeZone)}`
+}
+
+/**
+ * ISO-8601 風の文字列を検証して Date にする。不正・空は null。
+ * `yyyy-MM-dd` で始まる文字列は全体を完全一致で検証し（暦日は実在、時刻は 0-23/0-59/0-59、
+ * 小数秒・Z・±hh:mm / ±hhmm のオフセットは可）、dayjs の自動補正（2月30日→3月2日 等）を許さない。
+ * それ以外の形式は従来どおり Date の解釈に委ねる。
+ */
+export function parseInstantStrict(iso: string | null | undefined): Date | null {
+  if (!iso) return null
+  if (/^\d{4}-\d{2}-\d{2}/.test(iso)) {
+    const m = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)(Z|[+-]\d{2}(?::?\d{2})?)?)?$/.exec(iso)
+    if (!m) return null
+    if (!ymdToUtcDate(m[1])) return null
+    if (m[2] && !hhmmToUtcDate(m[2].replace(/\.\d+$/, ''))) return null
+    if (m[3] && m[3] !== 'Z') {
+      const off = /^[+-](\d{2})(?::?(\d{2}))?$/.exec(m[3])!
+      if (Number(off[1]) > 23 || Number(off[2] ?? 0) > 59) return null
+    }
+  }
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? null : d
 }
 
 /** `yyyy-MM-dd` を UTC 暦日の Date にする（TZ 変換を経由しない。表示は必ず timeZone:'UTC' で行う）。空・不正は null。 */

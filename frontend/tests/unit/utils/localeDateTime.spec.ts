@@ -7,6 +7,7 @@ import {
   formatInstantDateTime,
   formatInstantTime,
   formatTimeRange,
+  parseInstantStrict,
 } from '~/utils/localDate'
 
 /**
@@ -151,5 +152,30 @@ describe('不正入力は別の値に化けず空文字を返す（Codex 再検�
     expect(formatClockTime('9:05', 'ja')).toBe('09:05')
     expect(formatClockTime('23:59:59', 'ja')).toBe('23:59')
     expect(formatClockTime('00:00', 'ja')).toBe('00:00')
+  })
+})
+
+describe('不正な Date / 不正な ISO 文字列は例外にも補正にもならず空文字（Codex 再確認 P2）', () => {
+  it('Invalid Date は formatInstant* が RangeError を投げず \'\'', () => {
+    const bad = new Date(NaN)
+    expect(formatInstantDate(bad, 'ja', 'Asia/Tokyo')).toBe('')
+    expect(formatInstantTime(bad, 'en', 'Asia/Tokyo')).toBe('')
+    expect(formatInstantDateTime(bad, 'de', 'UTC')).toBe('')
+  })
+  it('Date でない値も \'\'', () => {
+    expect(formatInstantDate('2026-05-22' as unknown as Date, 'ja', 'Asia/Tokyo')).toBe('')
+    expect(formatInstantDateTime(null as unknown as Date, 'ja', 'Asia/Tokyo')).toBe('')
+  })
+  it('正常な Date は従来どおり', () => {
+    expect(formatInstantDateTime(new Date('2026-05-22T00:15:20Z'), 'ja', 'Asia/Tokyo')).toBe('2026/05/22 09:15')
+  })
+  it('parseInstantStrict: 不正は null、正常な Instant 形式は通る', () => {
+    for (const bad of ['2026-02-30', '2026-02-30T25:00:00', '2026-11-04junk', '2026-11-04T24:00:00', '2026-11-04T10:60:00', '2026-11-04T10:00:00+25:00', '2025-02-29T10:00:00Z', '']) {
+      expect(parseInstantStrict(bad), bad).toBeNull()
+    }
+    expect(parseInstantStrict('2026-05-22T09:15:20+09:00')!.toISOString()).toBe('2026-05-22T00:15:20.000Z')
+    expect(parseInstantStrict('2026-05-22T00:15:20Z')!.toISOString()).toBe('2026-05-22T00:15:20.000Z')
+    expect(parseInstantStrict('2026-05-22T00:15:20.123Z')!.toISOString()).toBe('2026-05-22T00:15:20.123Z')
+    expect(parseInstantStrict('2024-02-29T00:00:00Z')!.toISOString()).toBe('2024-02-29T00:00:00.000Z')
   })
 })

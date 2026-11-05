@@ -73,3 +73,25 @@ describe('useDatetime ロケール対応', () => {
     expect(out).not.toContain('〜')
   })
 })
+
+describe('useDatetime 不正入力は自動補正されず空文字（Codex 再確認 P2）', () => {
+  it('実在しない暦日・範囲外の時刻は formatDate/formatDateTime/formatTime が空文字', () => {
+    i18n().locale.value = 'ja'
+    setUserTimezone('Asia/Tokyo')
+    const { formatDate, formatDateTime, formatTime } = useDatetime()
+    for (const bad of ['2026-02-30', '2026-02-30T25:00:00', '2026-11-04junk', '2025-02-29T10:00:00+09:00', '2026-13-01', '2026-11-04T24:00:00']) {
+      expect(formatDate(bad), bad).toBe('')
+      expect(formatDateTime(bad), bad).toBe('')
+      expect(formatTime(bad), bad).toBe('')
+    }
+  })
+  it('正常な Instant 形式（Z / オフセット / ミリ秒 / 閏日）は従来どおり', () => {
+    i18n().locale.value = 'ja'
+    setUserTimezone('Asia/Tokyo')
+    const { formatDateTime } = useDatetime()
+    expect(formatDateTime('2026-05-22T09:15:20+09:00')).toBe('2026/05/22 09:15')
+    expect(formatDateTime('2026-05-22T00:15:20Z')).toBe('2026/05/22 09:15')
+    expect(formatDateTime('2026-05-22T00:15:20.123Z')).toBe('2026/05/22 09:15')
+    expect(formatDateTime('2024-02-29T00:00:00Z')).toBe('2024/02/29 09:00')
+  })
+})
