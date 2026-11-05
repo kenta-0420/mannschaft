@@ -76,6 +76,20 @@ class ModuleEventResumeAuditPrivacyIT extends AbstractMySqlIntegrationTest {
         assertThatThrownBy(() -> api.redactReasonsForPurgedUser(null)).isInstanceOf(NullPointerException.class);
     }
 
+    @Test
+    void 保持期限はUTC暦年で計算し境界より古い行だけ削除する() {
+        Instant now = Instant.parse("2024-02-29T12:00:00Z");
+        Instant cutoff = Instant.parse("2022-02-28T12:00:00Z");
+        fixture(ACTOR, "期限前", cutoff.minusNanos(1_000));
+        fixture(ACTOR, "等号", cutoff);
+        fixture(ACTOR, "期限後", cutoff.plusNanos(1_000));
+        api.deleteExpired(now);
+        assertThat(api.collectPersonalData(ACTOR)).extracting(row -> row.reason())
+                .containsExactlyInAnyOrder("等号", "期限後");
+        api.deleteExpired(now);
+        assertThat(api.collectPersonalData(ACTOR)).hasSize(2);
+    }
+
     private void fixture(long actor, String reason, Instant createdAt) {
         UUID publication = UUID.randomUUID();
         publications.add(publication);
