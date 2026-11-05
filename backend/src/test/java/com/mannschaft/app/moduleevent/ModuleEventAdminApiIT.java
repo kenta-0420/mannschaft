@@ -3,7 +3,7 @@ package com.mannschaft.app.moduleevent;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.service.UserRowLockService;
+import com.mannschaft.app.moduleevent.admin.ModuleEventResumeActorStateEntity;
 import com.mannschaft.app.moduleevent.api.ModuleEventResumeAuditPrivacyApi;
 import com.mannschaft.app.common.event.ReliableEvent;
 import com.mannschaft.app.moduleevent.api.ModuleEventAdminApi;
@@ -84,7 +84,6 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
     @Autowired private JdbcTemplate jdbc;
     @Autowired private PlatformTransactionManager transactions;
     @Autowired private ModuleEventAdminApi adminApi;
-    @Autowired private UserRowLockService userRowLock;
     @Autowired private ModuleEventResumeAuditPrivacyApi privacyApi;
     @Autowired @Qualifier("jpaEventPublicationRepository") private EventPublicationRepository publications;
     @PersistenceContext private EntityManager entityManager;
@@ -112,6 +111,7 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
             jdbc.update("DELETE FROM event_publication_attempts WHERE publication_id = ?", id);
             jdbc.update("DELETE FROM event_publication WHERE id = ?", id);
         }
+        jdbc.update("DELETE FROM module_event_resume_actor_states WHERE actor_user_id = ?", Long.parseLong(actorId));
         jdbc.update("DELETE FROM users WHERE id = ?", Long.parseLong(actorId));
     }
 
@@ -301,40 +301,30 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    void 退会が先に確定すると再開は拒否され監査を残さない() throws Exception {
+    void 監査0件の強匿名化が先に確定すると古い管理者principalでも再開を拒否する() throws Exception {
         UUID publicationId = fixture(ModuleEventAttemptStatus.QUARANTINED, 7L);
-        CountDownLatch locked = new CountDownLatch(1);
-        CountDownLatch release = new CountDownLatch(1);
-        try (var executor = Executors.newFixedThreadPool(2)) {
-            var withdrawal = executor.submit(() -> new TransactionTemplate(transactions).executeWithoutResult(status -> {
-                assertThat(userRowLock.lock(Long.parseLong(actorId))).isEqualTo(UserRowLockService.UserState.ACTIVE);
-                jdbc.update("UPDATE users SET deleted_at = UTC_TIMESTAMP() WHERE id = ?", Long.parseLong(actorId));
-                locked.countDown();
-                await(release);
-            }));
-            assertThat(locked.await(10, TimeUnit.SECONDS)).isTrue();
-            var resume = executor.submit(() -> mvc.perform(post(ROOT + "/{id}/resume", publicationId)
-                    .with(systemAdmin()).contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"reason\":\"再開\"}")).andReturn().getResponse().getStatus());
-            try {
-                assertThatThrownBy(() -> resume.get(1, TimeUnit.SECONDS)).isInstanceOf(TimeoutException.class);
-            } finally {
-                release.countDown();
-            }
-            withdrawal.get(20, TimeUnit.SECONDS);
-            assertThat(resume.get(20, TimeUnit.SECONDS)).isEqualTo(403);
-        }
+        assertThat(actorStateCount()).isZero();
+        privacyApi.redactReasonsForPurgedUser(Long.parseLong(actorId));
+        resume(publicationId, "再作成してはいけない理由", 403);
         assertState(publicationId, "QUARANTINED", RETRY_LIMIT);
         assertThat(auditCount(publicationId)).isZero();
+        assertPurgedState();
     }
 
     @Test
-    void 凍結済み管理者は再開できない() throws Exception {
+    void 監査が保持期限で全削除されても強匿名化済みactorの再開を拒否する() throws Exception {
         UUID publicationId = fixture(ModuleEventAttemptStatus.QUARANTINED, 7L);
-        jdbc.update("UPDATE users SET status = 'FROZEN' WHERE id = ?", Long.parseLong(actorId));
-        resume(publicationId, "運用確認済み", 403);
-        assertState(publicationId, "QUARANTINED", RETRY_LIMIT);
+        resume(publicationId, "期限前の理由", 204);
+        jdbc.update("UPDATE module_event_resume_audits SET created_at = '2000-01-01 00:00:00' "
+                + "WHERE publication_id = ?", bytes(publicationId));
+        privacyApi.redactReasonsForPurgedUser(Long.parseLong(actorId));
+        privacyApi.deleteExpired(Instant.now());
         assertThat(auditCount(publicationId)).isZero();
+        UUID next = fixture(ModuleEventAttemptStatus.QUARANTINED, 7L);
+        resume(next, "復活してはいけない理由", 403);
+        assertState(next, "QUARANTINED", RETRY_LIMIT);
+        assertThat(auditCount(next)).isZero();
+        assertPurgedState();
     }
 
     @Test
@@ -359,10 +349,7 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
                 }
             });
             assertThat(resumed.await(10, TimeUnit.SECONDS)).isTrue();
-            var purge = executor.submit(() -> new TransactionTemplate(transactions).executeWithoutResult(status -> {
-                userRowLock.lock(Long.parseLong(actorId));
-                privacyApi.redactReasonsForPurgedUser(Long.parseLong(actorId));
-            }));
+            var purge = executor.submit(() -> privacyApi.redactReasonsForPurgedUser(Long.parseLong(actorId)));
             try {
                 assertThatThrownBy(() -> purge.get(1, TimeUnit.SECONDS)).isInstanceOf(TimeoutException.class);
             } finally {
@@ -374,6 +361,145 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
         assertState(publicationId, "PENDING", 0);
         assertThat(jdbc.queryForObject("SELECT reason FROM module_event_resume_audits WHERE publication_id = ?",
                 String.class, bytes(publicationId))).isEqualTo("[REDACTED]");
+        assertPurgedState();
+    }
+
+    @Test
+    void state不在から再開と強匿名化が同時に初期作成しても1行へ収束し原文を残さない() throws Exception {
+        UUID publicationId = fixture(ModuleEventAttemptStatus.QUARANTINED, 7L);
+        assertThat(actorStateCount()).isZero();
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var resume = executor.submit(() -> {
+                ready.countDown();
+                await(start);
+                return mvc.perform(post(ROOT + "/{id}/resume", publicationId).with(systemAdmin())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"競合時の原文\"}"))
+                        .andReturn().getResponse().getStatus();
+            });
+            var purge = executor.submit(() -> {
+                ready.countDown();
+                await(start);
+                privacyApi.redactReasonsForPurgedUser(Long.parseLong(actorId));
+            });
+            try {
+                assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            } finally {
+                start.countDown();
+            }
+            int status = resume.get(20, TimeUnit.SECONDS);
+            purge.get(20, TimeUnit.SECONDS);
+            assertThat(status).isIn(204, 403);
+            assertState(publicationId, status == 204 ? "PENDING" : "QUARANTINED", status == 204 ? 0 : RETRY_LIMIT);
+            assertThat(auditCount(publicationId)).isEqualTo(status == 204 ? 1 : 0);
+        }
+        assertPurgedState();
+        assertThat(jdbc.queryForList("SELECT reason FROM module_event_resume_audits WHERE actor_user_id = ?",
+                String.class, Long.parseLong(actorId))).allSatisfy(reason -> assertThat(reason).isEqualTo("[REDACTED]"));
+    }
+
+    @Test
+    void 外側EMに古いfalseがあっても消去commit後は拒否し未flush検体をdetachしない() {
+        UUID publicationId = fixture(ModuleEventAttemptStatus.QUARANTINED, 7L);
+        UUID stateId = new TransactionTemplate(transactions).execute(status -> {
+            var state = ModuleEventResumeActorStateEntity.builder().actorUserId(Long.parseLong(actorId)).purged(false).build();
+            entityManager.persist(state);
+            entityManager.flush();
+            return state.getId();
+        });
+        var previous = SecurityContextHolder.getContext();
+        var context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(new UsernamePasswordAuthenticationToken(actorId, null,
+                List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
+        SecurityContextHolder.setContext(context);
+        try {
+            new TransactionTemplate(transactions).executeWithoutResult(status -> {
+                var stale = entityManager.find(ModuleEventResumeActorStateEntity.class, stateId);
+                assertThat(stale.isPurged()).isFalse();
+                privacyApi.redactReasonsForPurgedUser(Long.parseLong(actorId));
+                var pending = ModuleEventResumeAuditEntity.builder().publicationId(publicationId)
+                        .actorUserId(Long.parseLong(actorId)).reason("callerの未flush検体").createdAt(Instant.now()).build();
+                entityManager.persist(pending);
+                assertThatThrownBy(() -> adminApi.resume(publicationId, "復活不可"))
+                        .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+                assertThat(entityManager.contains(pending)).isTrue();
+                status.setRollbackOnly();
+            });
+        } finally {
+            SecurityContextHolder.setContext(previous);
+        }
+        assertState(publicationId, "QUARANTINED", RETRY_LIMIT);
+        assertThat(auditCount(publicationId)).isZero();
+        assertPurgedState();
+    }
+
+    @Test
+    void 初回fence作成のDB失敗はCASと監査もrollbackする() {
+        UUID publicationId = fixture(ModuleEventAttemptStatus.QUARANTINED, 7L);
+        UUID oldToken = claimToken(publicationId);
+        jdbc.execute("""
+                CREATE TRIGGER module_resume_fence_fail BEFORE INSERT ON module_event_resume_actor_states
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fence fixture failure'
+                """);
+        var previous = SecurityContextHolder.getContext();
+        var context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(new UsernamePasswordAuthenticationToken(actorId, null,
+                List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
+        SecurityContextHolder.setContext(context);
+        try {
+            assertThatThrownBy(() -> adminApi.resume(publicationId, "保存不可"))
+                    .hasRootCauseInstanceOf(SQLException.class);
+        } finally {
+            SecurityContextHolder.setContext(previous);
+            jdbc.execute("DROP TRIGGER IF EXISTS module_resume_fence_fail");
+        }
+        assertState(publicationId, "QUARANTINED", RETRY_LIMIT);
+        assertThat(claimToken(publicationId)).isEqualTo(oldToken);
+        assertThat(auditCount(publicationId)).isZero();
+        assertThat(actorStateCount()).isZero();
+    }
+
+    @Test
+    void 初回再開はUUIDv7の未消去stateを1件作り同actorの再開で増やさない() throws Exception {
+        UUID first = fixture(ModuleEventAttemptStatus.QUARANTINED, 7L);
+        UUID second = fixture(ModuleEventAttemptStatus.QUARANTINED, 7L);
+        assertThat(actorStateCount()).isZero();
+        resume(first, "初回", 204);
+        assertThat(actorStateCount()).isEqualTo(1);
+        byte[] stateId = jdbc.queryForObject("SELECT id FROM module_event_resume_actor_states WHERE actor_user_id = ?",
+                byte[].class, Long.parseLong(actorId));
+        ByteBuffer id = ByteBuffer.wrap(stateId);
+        assertThat(new UUID(id.getLong(), id.getLong()).version()).isEqualTo(7);
+        resume(second, "同actorの次の再開", 204);
+        assertThat(actorStateCount()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT purged FROM module_event_resume_actor_states WHERE actor_user_id = ?",
+                Boolean.class, Long.parseLong(actorId))).isFalse();
+    }
+
+    @Test
+    void 既存の消去済みstateをupsertでfalseへ戻さず再開を拒否する() throws Exception {
+        UUID publicationId = fixture(ModuleEventAttemptStatus.QUARANTINED, 7L);
+        new TransactionTemplate(transactions).executeWithoutResult(status -> {
+            entityManager.persist(ModuleEventResumeActorStateEntity.builder()
+                    .actorUserId(Long.parseLong(actorId)).purged(true).build());
+            entityManager.flush();
+        });
+        resume(publicationId, "再生不可", 403);
+        assertState(publicationId, "QUARANTINED", RETRY_LIMIT);
+        assertThat(auditCount(publicationId)).isZero();
+        assertPurgedState();
+    }
+
+    private long actorStateCount() {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM module_event_resume_actor_states WHERE actor_user_id = ?",
+                Long.class, Long.parseLong(actorId));
+    }
+
+    private void assertPurgedState() {
+        assertThat(actorStateCount()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT purged FROM module_event_resume_actor_states WHERE actor_user_id = ?",
+                Boolean.class, Long.parseLong(actorId))).isTrue();
     }
 
     private static void await(CountDownLatch latch) {
@@ -410,6 +536,7 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
         assertState(publicationId, "QUARANTINED", RETRY_LIMIT);
         assertThat(claimToken(publicationId)).isEqualTo(oldToken);
         assertThat(auditCount(publicationId)).isZero();
+        assertThat(actorStateCount()).isZero();
     }
 
     /**
@@ -454,6 +581,7 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
         assertState(publicationId, "QUARANTINED", RETRY_LIMIT);
         assertThat(claimToken(publicationId)).isEqualTo(oldToken);
         assertThat(auditCount(publicationId)).isZero();
+        assertThat(actorStateCount()).isZero();
     }
 
     @ParameterizedTest
