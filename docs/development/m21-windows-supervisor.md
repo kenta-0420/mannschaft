@@ -1,5 +1,7 @@
 # M21 Windows Job監督 prototype
 
+Java Instantの正規表記はUTCの秒のみZまたは3桁msZとなるため、formal-msへ秒のみ候補1件をtest先行追加した。保持Processの実javaIsoのms部分を000へ丸めた同じ秒を使い、ms同一の場合だけmatched=true、それ以外はparse成功後formal-java-ms-mismatchを要求する。世代許容幅0、表記対照を実OS世代証明にしない。現adapterの.fffZ必須parserは未修正で、次の有限1回は通常ms経路後の秒表記REDを測る（まだ未実行）。6/9桁・offset・曖昧parseは許可しない。JDK21 Instant.ofEpochMilli(wholeSecond).toStringの一次挙動確認は後段の小さい確認として残し、Gradle/Appを起動しない。
+
 正式adapterのPS契約試練は既存probeの固定 `--formal-contract-fixture` で選ぶ。e340の単発で(1)の未実装関数REDへ到達した。現在はmsの2関数だけgreen実装を追加した段階で、変更後実行は別GO待ち。順番は (1) 保持Supervisor実出生のfull ticks文字列とJava epoch-ms整数商・別ms拒否、(2) 所有Temp内のfake Nuxt CLIによる絶対CLI/CWD/FE-role環境、(3) 同じadmission入口でW後work拒否→実owned cleanup dummy終了→G後cleanup拒否。実出生subms=0は有効とし、固定BigInteger vectorを実OS世代証明へ格上げしない。Java登録/envの3境界試練は別未実測のままで、このPS試練で代替しない。
 
 既存readiness4/通常10のcase・期待値・予算は変更しない。新3件は全体G420秒/R18秒/W402秒を一度だけ設定しcase間でresetしない。最大同時5process（harness Node、Parent、Supervisor、固定dummy、過渡compiler）、同時Job1。実サービス・ネットワーク・Chrome・Gradleは起動しない。最初の不合格で後続を止め、actual exit/両EOF/Job回収と失敗を分け、失敗Tempを保持する。case3の局所W/Gを短縮するだけで延長せず、markerと実owned childを検査するが、本番cleanup実行済みとは呼ばない。

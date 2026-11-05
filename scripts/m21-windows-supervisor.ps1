@@ -487,12 +487,19 @@ function Invoke-FormalContractFixture {
   $vectors=@(@{ticks='638000000000009999';epochMs='1664403200000';subMs='9999'},@{ticks='638000000000010000';epochMs='1664403200001';subMs='0'})
   $script:formalContractEvidence.actualSubMs=@{creationTicks=$ticks;epochMs=$ms;subMs=$sub;javaIso=$javaIso;hasSubMs=($sub -cne '0');actualHandleHeld=$true}
   $script:formalContractEvidence.vectors=$vectors
+  # Java Instantの正規な秒のみZ表記。数値比較の許容幅は増やさない。
+  $zeroIso=[DateTimeOffset]::FromUnixTimeMilliseconds([long]::Parse($ms)).UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'",[Globalization.CultureInfo]::InvariantCulture)
+  $zeroExpected=[Numerics.BigInteger]::Remainder([Numerics.BigInteger]::Parse($ms),[Numerics.BigInteger]::Parse('1000')).IsZero
+  $script:formalContractEvidence.zeroFormat=@{javaIso=$zeroIso;expectedMatched=$zeroExpected;proof=$null;kind='format-counterexample-not-os-generation'}
   Write-Json 'formal-contract-input.json' @{owner=$owner;nonce=$Nonce;evidence=$formalContractEvidence}
   # 未実装の固定関数入口によるRED。vectorを実OS世代証明にしない。
   foreach($v in $vectors){if([string](Convert-M21FormalTicksToEpochMs $v.ticks) -cne $v.epochMs){throw 'formal ms整数vector不一致'}}
   if([string](Convert-M21FormalTicksToEpochMs $ticks) -cne $ms){throw 'formal実出生のms整数商不一致'}
   $proof=Confirm-M21FormalJavaGeneration $self $javaIso
   if($proof.matched -ne $true -or [string]$proof.creationTicks -cne $ticks -or [string]$proof.epochMs -cne $ms){throw 'formal実出生の採用不一致'}
+  $zeroProof=Confirm-M21FormalJavaGeneration $self $zeroIso
+  $script:formalContractEvidence.zeroFormat.proof=$zeroProof
+  if($zeroProof.matched -ne $zeroExpected -or (!$zeroExpected -and $zeroProof.reason -cne 'formal-java-ms-mismatch')){throw 'formal Java秒表記対照不一致'}
   $wrong=[DateTimeOffset]::FromUnixTimeMilliseconds([long]::Parse($ms)+1).UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'",[Globalization.CultureInfo]::InvariantCulture)
   if((Confirm-M21FormalJavaGeneration $self $wrong).matched -ne $false){throw '異なるmsを拒否しなかった'}
  }else{
