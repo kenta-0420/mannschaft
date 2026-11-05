@@ -133,6 +133,10 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
                         "SELECT COUNT(*) FROM notification_fanout_jobs WHERE scope_type = 'CONFIRMABLE_TARGETS' AND scope_ref = :ref AND actor_id = :actor")
                 .setParameter("ref", String.valueOf(controlNotificationId))
                 .setParameter("actor", controlUserId).getSingleResult()).longValue()).isEqualTo(1L);
+        Object controlJobId = em.createNativeQuery(
+                        "SELECT id FROM notification_fanout_jobs WHERE scope_type = 'CONFIRMABLE_TARGETS' AND scope_ref = :ref AND actor_id = :actor")
+                .setParameter("ref", String.valueOf(controlNotificationId))
+                .setParameter("actor", controlUserId).getSingleResult();
         String title = "AC-22試練-" + SEQ.incrementAndGet();
         // 是正: target_id に負数を与える方式は、JDBCのバイナリプロトコルでは-1が
         // BIGINT UNSIGNEDの最大値（2^64-1）としてそのまま有効値になり、範囲外エラーにならない
@@ -169,9 +173,16 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
 
         // AC-22: fanoutジョブも1件も残らない（本体が無い以上、scope_refで引ける行があってはならない）。
         long jobCount = ((Number) em.createNativeQuery(
-                        "SELECT COUNT(*) FROM notification_fanout_jobs WHERE scope_type = 'CONFIRMABLE_TARGETS'")
+                        "SELECT COUNT(*) FROM notification_fanout_jobs WHERE scope_type = 'CONFIRMABLE_TARGETS' AND actor_id = :actor")
+                .setParameter("actor", adminUserId)
                 .getSingleResult()).longValue();
         assertThat(jobCount).as("AC-22: 本体が無い以上、fanoutジョブも孤立して残ってはならない").isZero();
+        long controlJobCount = ((Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM notification_fanout_jobs WHERE id = :id AND scope_type = 'CONFIRMABLE_TARGETS' AND scope_ref = :ref AND actor_id = :actor")
+                .setParameter("id", controlJobId)
+                .setParameter("ref", String.valueOf(controlNotificationId))
+                .setParameter("actor", controlUserId).getSingleResult()).longValue();
+        assertThat(controlJobCount).as("別利用者の正常なfanoutジョブは残る").isEqualTo(1L);
     }
 
     @Test
