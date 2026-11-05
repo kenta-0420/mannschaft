@@ -1530,7 +1530,9 @@
     },
     "ws": {
       "disconnected": "连接已断开",
-      "reconnecting": "正在重新连接…"
+      "reconnecting": "正在重新连接…",
+      "denied": "您没有查看此看板的权限，实时更新已停止",
+      "unauthenticated": "登录已过期，实时更新已停止。请重新登录"
     },
     "validation": {
       "required": "此项为必填。",

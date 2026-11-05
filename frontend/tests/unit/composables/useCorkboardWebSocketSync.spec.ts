@@ -238,6 +238,28 @@ describe('useCorkboardWebSocketSync', () => {
 
       expect(mockDisconnect).toHaveBeenCalledTimes(1)
     })
+
+    it('CORK-SYNC-019: リスナーの停止状態（DENIED / UNAUTHENTICATED）を realtimeState で画面へ公開する', async () => {
+      const state = ref<'OK' | 'DENIED' | 'UNAUTHENTICATED'>('OK')
+      mockUseCorkboardEventListener.mockImplementationOnce(
+        (() => ({ connect: mockConnect, disconnect: mockDisconnect, connectionState: state })) as unknown as () => {
+          connect: typeof mockConnect
+          disconnect: typeof mockDisconnect
+        },
+      )
+      const board = ref<CorkboardDetail | null>(makeBoard('TEAM'))
+      const { result } = await setupComposable(board)
+
+      expect(result.realtimeState.value).toBe('OK')
+      state.value = 'DENIED'
+      expect(result.realtimeState.value).toBe('DENIED')
+      state.value = 'UNAUTHENTICATED'
+      expect(result.realtimeState.value).toBe('UNAUTHENTICATED')
+      // 個人ボードへ移ったら（購読解除）停止表示も消える。
+      board.value = makeBoard('PERSONAL', { id: 99 })
+      await nextTick()
+      expect(result.realtimeState.value).toBe('OK')
+    })
   })
 
   // ============================================================

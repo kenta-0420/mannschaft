@@ -35,10 +35,13 @@ const h = vi.hoisted(() => {
     deactivate: ReturnType<typeof vi.fn>
     activate: ReturnType<typeof vi.fn>
   }> = []
+  // auth.client プラグインがアプリ初期化時に呼ぶ loadFromStorage も持たせる。初期値は未ログインにして
+  // プラグインが先回り更新を武装しないようにする（各テストの beforeEach でログイン状態にする）。
   const authStore = {
     accessToken: null as string | null,
-    isAuthenticated: true,
-    user: { id: 7 } as { id: number } | null,
+    isAuthenticated: false,
+    user: null as { id: number } | null,
+    loadFromStorage: () => {},
   }
   return {
     instances,
@@ -82,6 +85,21 @@ vi.mock('~/composables/useApi', async (importOriginal) => {
 })
 
 mockNuxtImport('useAuthStore', () => () => h.authStore)
+
+// 回復手順が使う authStore をテストの偽ストアに固定する（回復ロジック自体は本物の createStompAuthRecovery）。
+// 先回の CI では、composable 側には偽ストアが渡る一方で回復手順側が別のストア（未ログイン扱い）を掴み、
+// 更新が呼ばれないまま停止していた（WSDED-004/005 失敗）。
+vi.mock('~/composables/stomp/stompAuth', async (importOriginal) => {
+  const original = await importOriginal<typeof import('~/composables/stomp/stompAuth')>()
+  type Deps = Parameters<typeof original.createStompAuthRecovery>[0]
+  return {
+    ...original,
+    useStompAuthRecovery: () => original.createStompAuthRecovery({
+      config: { public: { apiBase: '' } } as unknown as Deps['config'],
+      authStore: h.authStore as unknown as Deps['authStore'],
+    }),
+  }
+})
 mockNuxtImport('useEmergencyClosureApi', () => () => ({
   getConfirmations: vi.fn().mockResolvedValue({ data: [] }),
 }))
@@ -92,8 +110,16 @@ mockNuxtImport('useMatchEventApi', () => () => ({
   listEvents: vi.fn().mockResolvedValue({ events: [] }),
 }))
 
-const { useEmergencyClosureLive } = await import('~/composables/useEmergencyClosureLive')
-const { useMatchLiveSpectator } = await import('~/composables/match/useMatchLiveSpectator')
+/** モジュールを読み直して取得する（モックの適用を確実にし、テスト間で状態を持ち越さない）。 */
+async function freshComposables() {
+  vi.resetModules()
+  const emergency = await import('~/composables/useEmergencyClosureLive')
+  const match = await import('~/composables/match/useMatchLiveSpectator')
+  return {
+    useEmergencyClosureLive: emergency.useEmergencyClosureLive,
+    useMatchLiveSpectator: match.useMatchLiveSpectator,
+  }
+}
 
 type Live = {
   connectionState: { value: string }
@@ -101,16 +127,16 @@ type Live = {
   resync: () => Promise<void>
 }
 
-const targets: Array<{ name: string; destination: string; create: () => Live }> = [
+const targets: Array<{ name: string; destination: string; create: () => Promise<Live> }> = [
   {
     name: 'emergency',
     destination: '/topic/teams/42/emergency-closures/100/confirmations',
-    create: () => useEmergencyClosureLive({ teamId: ref(42), apiTeamRef: ref('42'), closureId: 100 }),
+    create: async () => (await freshComposables()).useEmergencyClosureLive({ teamId: ref(42), apiTeamRef: ref('42'), closureId: 100 }),
   },
   {
     name: 'match',
     destination: '/topic/matches/m-1/live',
-    create: () => useMatchLiveSpectator({ orgId: ref(1), teamId: ref(2), matchId: 'm-1' }),
+    create: async () => (await freshComposables()).useMatchLiveSpectator({ orgId: ref(1), teamId: ref(2), matchId: 'm-1' }),
   },
 ]
 
@@ -153,7 +179,7 @@ beforeEach(() => {
 
 describe.each(targets)('$name — 専用 STOMP 接続の認証・拒否', ({ destination, create }) => {
   it('WSDED-001: トークンが無いときは Authorization を送らず、あれば Bearer を送る', async () => {
-    const live = create()
+    const live = await create()
     await live.start()
     expect(lastClient().connectHeaders).toEqual({})
     h.authStore.accessToken = 'tok-1'
@@ -162,7 +188,7 @@ describe.each(targets)('$name — 専用 STOMP 接続の認証・拒否', ({ des
   })
 
   it('WSDED-002: 許可されると LIVE になり宛先を購読する', async () => {
-    const live = create()
+    const live = await create()
     await live.start()
     await simulateConnect()
     expect(live.connectionState.value).toBe('LIVE')
@@ -170,7 +196,7 @@ describe.each(targets)('$name — 専用 STOMP 接続の認証・拒否', ({ des
   })
 
   it('WSDED-003: FORBIDDEN は DENIED にして deactivate し、オンライン復帰でも再接続しない', async () => {
-    const live = create()
+    const live = await create()
     await live.start()
     await simulateConnect()
     simulateError({ 'x-error-code': 'FORBIDDEN', message: 'denied' })
@@ -190,7 +216,7 @@ describe.each(targets)('$name — 専用 STOMP 接続の認証・拒否', ({ des
       h.authStore.accessToken = 'fresh-token'
       return 'refreshed'
     })
-    const live = create()
+    const live = await create()
     await live.start()
     simulateError({ 'x-error-code': 'UNAUTHENTICATED' })
     expect(live.connectionState.value).toBe('RECONNECTING')
@@ -204,7 +230,7 @@ describe.each(targets)('$name — 専用 STOMP 接続の認証・拒否', ({ des
 
   it('WSDED-005: UNAUTHENTICATED で更新失敗 → ログアウトし UNAUTHENTICATED で再接続を止める', async () => {
     h.refresh.mockResolvedValue('auth_failed')
-    const live = create()
+    const live = await create()
     await live.start()
     simulateError({ 'x-error-code': 'UNAUTHENTICATED' })
     expect(await simulateConnect()).toBe(false)
@@ -215,7 +241,7 @@ describe.each(targets)('$name — 専用 STOMP 接続の認証・拒否', ({ des
   })
 
   it('WSDED-006: 未知の ERROR は DENIED にせず、再接続を続ける', async () => {
-    const live = create()
+    const live = await create()
     await live.start()
     await simulateConnect()
     simulateError({ message: 'unexpected' })
@@ -227,7 +253,7 @@ describe.each(targets)('$name — 専用 STOMP 接続の認証・拒否', ({ des
   })
 
   it('WSDED-007: 通信断（ERROR なしの切断）は RECONNECTING → 再接続で LIVE', async () => {
-    const live = create()
+    const live = await create()
     await live.start()
     await simulateConnect()
     const c = lastClient()
@@ -244,6 +270,7 @@ describe('match — 匿名の閲覧者', () => {
   it('WSDED-008: 匿名は Authorization なしで接続し、UNAUTHENTICATED でも更新・ログアウトしない', async () => {
     h.authStore.isAuthenticated = false
     h.authStore.user = null
+    const { useMatchLiveSpectator } = await freshComposables()
     const live = useMatchLiveSpectator({ orgId: ref(1), teamId: ref(2), matchId: 'm-1' })
     await live.start()
     expect(lastClient().connectHeaders).toEqual({})

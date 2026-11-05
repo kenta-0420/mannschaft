@@ -42,10 +42,13 @@ const h = vi.hoisted(() => {
     deactivate: ReturnType<typeof vi.fn>
     activate: ReturnType<typeof vi.fn>
   }> = []
+  // auth.client プラグインがアプリ初期化時に呼ぶ loadFromStorage も持たせる。初期値は未ログイン
+  // （プラグインに先回り更新を武装させない）。各テストの beforeEach でログイン状態にする。
   const authStore = {
     accessToken: null as string | null,
-    isAuthenticated: true,
-    user: { id: 7 } as { id: number } | null,
+    isAuthenticated: false,
+    user: null as { id: number } | null,
+    loadFromStorage: () => {},
   }
   return { instances, authStore, refresh: vi.fn(), logout: vi.fn() }
 })
@@ -91,6 +94,19 @@ vi.mock('~/composables/useApi', async (importOriginal) => {
 
 mockNuxtImport('useAuthStore', () => () => h.authStore)
 
+// 回復手順が使う authStore をテストの偽ストアに固定する（回復ロジック自体は本物の createStompAuthRecovery）。
+vi.mock('~/composables/stomp/stompAuth', async (importOriginal) => {
+  const original = await importOriginal<typeof import('~/composables/stomp/stompAuth')>()
+  type Deps = Parameters<typeof original.createStompAuthRecovery>[0]
+  return {
+    ...original,
+    useStompAuthRecovery: () => original.createStompAuthRecovery({
+      config: { public: { apiBase: '' } } as unknown as Deps['config'],
+      authStore: h.authStore as unknown as Deps['authStore'],
+    }),
+  }
+})
+
 function lastClient() {
   const c = h.instances[h.instances.length - 1]
   if (!c) throw new Error('STOMP client が生成されていない')
@@ -129,6 +145,12 @@ async function freshChat() {
   vi.resetModules()
   const mod = await import('~/composables/chat/useChatWebSocket')
   return mod.useChatWebSocket()
+}
+
+async function freshChatModule() {
+  vi.resetModules()
+  const mod = await import('~/composables/chat/useChatWebSocket')
+  return { ws: mod.useChatWebSocket(), diagnostics: mod.getChatWsDiagnostics }
 }
 
 async function freshCorkboard() {
@@ -265,7 +287,102 @@ describe('chat 共有接続 — 認証・拒否', () => {
   })
 })
 
+describe('chat 共有接続 — receipt の寿命と二重購読', () => {
+  it('WSCHAT-008: 再接続・購読解除・拒否を繰り返しても receipt は現在の購読数を超えて増えない', async () => {
+    const { ws, diagnostics } = await freshChatModule()
+    const unsubscribeNotification = ws.subscribeRaw('/user/queue/notifications', vi.fn())
+    ws.subscribeChannel(1)
+    ws.subscribeChannel(2)
+    await simulateConnect()
+    expect(diagnostics()).toEqual({ routes: 3, activeSubscriptions: 3, receipts: 3 })
+
+    // 通信断 → 再接続を 5 回繰り返しても、receipt は現在の購読数のまま。
+    for (let i = 0; i < 5; i++) {
+      lastClient().connected = false
+      lastClient().config.onWebSocketClose?.({})
+      expect(diagnostics().receipts).toBe(0)
+      await simulateConnect()
+      expect(diagnostics()).toEqual({ routes: 3, activeSubscriptions: 3, receipts: 3 })
+    }
+
+    // 拒否: 拒否された宛先の receipt は消え、再接続後は残りの購読分だけ。
+    const denied = subscribedSince(0).reverse().find(s => s.destination === '/topic/channels/2')
+    simulateError({ 'x-error-code': 'FORBIDDEN', 'receipt-id': denied?.receipt ?? '' })
+    await simulateConnect()
+    expect(diagnostics()).toEqual({ routes: 3, activeSubscriptions: 2, receipts: 2 })
+
+    // 購読解除: その購読の receipt も消える。
+    ws.unsubscribeChannel(1)
+    unsubscribeNotification()
+    expect(diagnostics()).toEqual({ routes: 1, activeSubscriptions: 0, receipts: 0 })
+  })
+
+  it('WSCHAT-009: 再接続後に同じ宛先を二重購読しない（各宛先 1 回だけ SUBSCRIBE）', async () => {
+    const { ws, diagnostics } = await freshChatModule()
+    ws.subscribeRaw('/user/queue/notifications', vi.fn())
+    ws.subscribeChannel(5)
+    ws.subscribeChannelEvents(5)
+    await simulateConnect()
+    for (let i = 0; i < 3; i++) {
+      lastClient().connected = false
+      lastClient().config.onWebSocketClose?.({})
+      const before = lastClient().subscribe.mock.calls.length
+      await simulateConnect()
+      const destinations = subscribedSince(before).map(s => s.destination).sort()
+      expect(destinations).toEqual([
+        '/topic/channels/5',
+        '/topic/channels/5/events',
+        '/user/queue/notifications',
+      ])
+    }
+    // 接続中に同じチャンネルを再度購読しても SUBSCRIBE は増えない（参照カウント）。
+    const before = lastClient().subscribe.mock.calls.length
+    ws.subscribeChannel(5)
+    expect(lastClient().subscribe.mock.calls.length).toBe(before)
+    expect(diagnostics().activeSubscriptions).toBe(3)
+  })
+})
+
 describe('corkboard 共有接続 — 認証・拒否', () => {
+  it('WSCORK-006: DENIED で止まった後も、別のボードの購読で接続を再開して同期できる', async () => {
+    const useListener = await freshCorkboard()
+    const first = useListener({ boardId: 1, onEvent: vi.fn() })
+    first.connect()
+    await simulateConnect()
+    simulateError({ 'x-error-code': 'FORBIDDEN' })
+    await flush()
+    expect(first.connectionState.value).toBe('DENIED')
+    first.disconnect()
+
+    const second = useListener({ boardId: 2, onEvent: vi.fn() })
+    second.connect()
+    expect(second.connectionState.value).toBe('OK')
+    const before = lastClient().subscribe.mock.calls.length
+    expect(await simulateConnect()).toBe(true)
+    expect(subscribedSince(before).map(s => s.destination)).toEqual(['/topic/corkboard/2'])
+  })
+
+  it('WSCORK-007: UNAUTHENTICATED で止まった後も、新しいセッションでの購読で再開できる', async () => {
+    h.refresh.mockResolvedValue('auth_failed')
+    const useListener = await freshCorkboard()
+    const first = useListener({ boardId: 3, onEvent: vi.fn() })
+    first.connect()
+    simulateError({ 'x-error-code': 'UNAUTHENTICATED' })
+    expect(await simulateConnect()).toBe(false)
+    expect(first.connectionState.value).toBe('UNAUTHENTICATED')
+    first.disconnect()
+
+    // 再ログイン後にボードを開き直す。
+    h.authStore.accessToken = 'new-session-token'
+    const second = useListener({ boardId: 3, onEvent: vi.fn() })
+    second.connect()
+    expect(second.connectionState.value).toBe('OK')
+    const before = lastClient().subscribe.mock.calls.length
+    expect(await simulateConnect()).toBe(true)
+    expect(lastClient().connectHeaders).toEqual({ Authorization: 'Bearer new-session-token' })
+    expect(subscribedSince(before).map(s => s.destination)).toEqual(['/topic/corkboard/3'])
+  })
+
   it('WSCORK-001: トークンが無いときは Authorization を送らない', async () => {
     const useListener = await freshCorkboard()
     useListener({ boardId: 1, onEvent: vi.fn() }).connect()

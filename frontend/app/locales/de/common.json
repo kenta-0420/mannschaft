@@ -1530,7 +1530,9 @@
     },
     "ws": {
       "disconnected": "Verbindung verloren",
-      "reconnecting": "Verbindung wird wiederhergestellt…"
+      "reconnecting": "Verbindung wird wiederhergestellt…",
+      "denied": "Die Echtzeit-Updates wurden gestoppt, weil du keine Berechtigung hast, diese Pinnwand anzuzeigen",
+      "unauthenticated": "Deine Anmeldung ist abgelaufen, daher wurden die Echtzeit-Updates gestoppt. Bitte melde dich erneut an"
     },
     "validation": {
       "required": "Pflichtfeld.",

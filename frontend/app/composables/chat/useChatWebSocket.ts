@@ -29,8 +29,14 @@ interface StompRoute {
 const _routes = new Map<string, StompRoute>()
 /** 購読キー → 現在の接続上の STOMP Subscription（接続が切れたら無効になる）。 */
 const _activeSubscriptions = new Map<string, StompSubscription>()
-/** SUBSCRIBE に付けた receipt → 宛先。ERROR フレームの receipt-id から拒否された宛先を特定する。 */
+/**
+ * SUBSCRIBE に付けた receipt → 宛先。ERROR フレームの receipt-id から拒否された宛先を特定する。
+ * 寿命は「現在の接続上の購読」と同じ: 購読の張り直し・解除・拒否で該当分を消し、接続が切れたら全消去する
+ * （onStompError は onWebSocketClose より先に呼ばれるため、切断時の全消去で特定に失敗することはない）。
+ */
 const _receiptToDestination = new Map<string, string>()
+/** 購読キー → 現在の接続上の SUBSCRIBE に付けた receipt。 */
+const _receiptByKey = new Map<string, string>()
 let _receiptSeq = 0
 let _rawSeq = 0
 
@@ -70,18 +76,46 @@ function channelEventsDestination(channelId: number): string {
   return `/topic/channels/${channelId}/events`
 }
 
-/** 現在の接続上で 1 購読を張る（拒否済みの宛先・未接続なら何もしない）。 */
+/** 購読キーの現在の接続上の購読と receipt を外す（UNSUBSCRIBE は呼び出し側の判断で行う）。 */
+function _forgetActive(key: string, unsubscribe: boolean): void {
+  if (unsubscribe) _activeSubscriptions.get(key)?.unsubscribe()
+  _activeSubscriptions.delete(key)
+  const receipt = _receiptByKey.get(key)
+  if (receipt !== undefined) {
+    _receiptToDestination.delete(receipt)
+    _receiptByKey.delete(key)
+  }
+}
+
+/** 接続が切れたときに、その接続上の購読と receipt をすべて捨てる。 */
+function _forgetAllActive(): void {
+  _activeSubscriptions.clear()
+  _receiptToDestination.clear()
+  _receiptByKey.clear()
+}
+
+/** 現在の接続上で 1 購読を張る（拒否済みの宛先・未接続なら何もしない）。張り直しでも二重にはならない。 */
 function _subscribeRoute(key: string): void {
   const route = _routes.get(key)
   if (!route || _stompClient === null || !_stompClient.connected) return
   if (_deniedDestinations.value.includes(route.destination)) return
-  _activeSubscriptions.get(key)?.unsubscribe()
+  _forgetActive(key, true)
   // receipt を付けておくと、SUBSCRIBE が拒否されたとき ERROR フレームの receipt-id に同じ値が載る
   // （Spring の StompSubProtocolErrorHandler の既定動作）。これで共有接続でも拒否された宛先を特定できる。
   const receipt = `sub-${++_receiptSeq}`
   _receiptToDestination.set(receipt, route.destination)
+  _receiptByKey.set(key, receipt)
   const subscription = _stompClient.subscribe(route.destination, route.onFrame, { receipt })
   _activeSubscriptions.set(key, subscription)
+}
+
+/** テスト・診断用: 共有接続が保持している購読・receipt の件数（増え続けないことの確認に使う）。 */
+export function getChatWsDiagnostics(): { routes: number; activeSubscriptions: number; receipts: number } {
+  return {
+    routes: _routes.size,
+    activeSubscriptions: _activeSubscriptions.size,
+    receipts: _receiptToDestination.size,
+  }
 }
 
 /** 購読を登録し、接続済みなら即座に張る（未接続なら接続後に onConnect が張る）。 */
@@ -100,8 +134,7 @@ function _registerRoute(key: string, route: StompRoute): void {
 /** 購読を登録から外し、現在の接続上の購読も解除する。 */
 function _unregisterRoute(key: string): void {
   _routes.delete(key)
-  _activeSubscriptions.get(key)?.unsubscribe()
-  _activeSubscriptions.delete(key)
+  _forgetActive(key, true)
 }
 
 /**
@@ -120,8 +153,8 @@ function _denyDestination(destination: string): void {
   _deniedDestinations.value = [...merged]
   for (const [key, route] of _routes) {
     if (targets.includes(route.destination)) {
-      _activeSubscriptions.get(key)?.unsubscribe()
-      _activeSubscriptions.delete(key)
+      // ERROR 後にサーバが接続を閉じるため UNSUBSCRIBE は送らない（閉じかけの接続へ送ると stompjs が例外を投げる）。
+      _forgetActive(key, false)
     }
   }
 }
@@ -175,8 +208,8 @@ function _ensureClientActive(): void {
       for (const waiter of waiters) waiter.resolve()
     },
     onWebSocketClose: () => {
-      // 接続が切れたら現在の購読はすべて無効。再接続時に onConnect が _routes から張り直す。
-      _activeSubscriptions.clear()
+      // 接続が切れたら現在の購読と receipt はすべて無効。再接続時に onConnect が _routes から張り直す。
+      _forgetAllActive()
     },
     onDisconnect: () => {
       // 指数バックオフ: 1s → 2s → 4s → 8s → 16s → 最大30s

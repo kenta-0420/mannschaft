@@ -21,7 +21,8 @@
  * 制限事項（v1.0）:
  *  - 個人ボードでの「同一ユーザーの複数タブ間同期」は対象外。タブごとに `load()` で再取得する運用。
  *  - 切断中の接続状態 UI（「再接続中…」インジケータ等）は Phase F では未実装。
- *    拒否・未認証の確定状態は `connectionState` で公開する（画面への結線は未実施）。
+ *    拒否・未認証の確定状態は `connectionState` で公開し、`useCorkboardWebSocketSync` の `realtimeState`
+ *    経由でボード詳細画面に表示する。停止後も、新しい購読（別ボードへの移動・再ログイン後の再訪）で再開する。
  */
 import type { Client, IFrame, IMessage, StompSubscription } from '@stomp/stompjs'
 import { Client as StompClient } from '@stomp/stompjs'
@@ -108,7 +109,10 @@ function ensureClientActive(): void {
     if (_stompClient.connected) {
       return
     }
-    if (_stompClient.active === false && _connectionState.value === 'OK') {
+    if (_stompClient.active === false) {
+      // DENIED / UNAUTHENTICATED で止めた接続も、新しい購読（別ボードへの移動・再ログイン後の再訪）を機に
+      // 再開する。拒否・未認証が続くなら、サーバが再び同じ理由で拒否して停止状態に戻る。
+      _connectionState.value = 'OK'
       _stompClient.activate()
     }
     return

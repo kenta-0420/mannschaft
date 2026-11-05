@@ -1530,7 +1530,9 @@
     },
     "ws": {
       "disconnected": "Connection lost",
-      "reconnecting": "Reconnecting…"
+      "reconnecting": "Reconnecting…",
+      "denied": "Real-time updates have stopped because you do not have permission to view this board",
+      "unauthenticated": "Your login has expired, so real-time updates have stopped. Please log in again"
     },
     "validation": {
       "required": "This field is required.",

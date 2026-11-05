@@ -1530,7 +1530,9 @@
     },
     "ws": {
       "disconnected": "Conexión perdida",
-      "reconnecting": "Reconectando…"
+      "reconnecting": "Reconectando…",
+      "denied": "Las actualizaciones en tiempo real se han detenido porque no tienes permiso para ver este tablero",
+      "unauthenticated": "Tu sesión ha caducado y las actualizaciones en tiempo real se han detenido. Vuelve a iniciar sesión"
     },
     "validation": {
       "required": "Este campo es obligatorio.",
