@@ -26,6 +26,24 @@ $operation='bootstrap'
 $ioOperation=$null
 $metadataFile=$null
 $failureContext=$null
+$reason=$null
+$reasonFile=$null
+$reasonElapsed=$null
+$reasonLimit=$null
+$parentEvents=New-Object 'Collections.Generic.List[object]'
+$lastHandles=New-Object 'Collections.Generic.List[object]'
+$localClock=[Diagnostics.Stopwatch]::StartNew()
+$phaseCount=0
+$phaseBytes=0
+function Emit-Phase([ValidateSet('entry','guard-before','guard-after','hello-before','hello-published','ack-validated','native-before','native-after')][string]$phase) {
+ $current=[Diagnostics.Process]::GetCurrentProcess()
+ $line='M21_PHASE|'+$phase+'|pid='+$current.Id+'|creation='+$current.StartTime.ToUniversalTime().Ticks+'|utcTicks='+[DateTime]::UtcNow.Ticks+'|elapsedMs='+$localClock.ElapsedMilliseconds
+ $bytes=[Text.Encoding]::ASCII.GetByteCount($line)+2
+ if($script:phaseCount -ge 12 -or $script:phaseBytes+$bytes -gt 4096){throw 'phase上限'}
+ $script:phaseCount++;$script:phaseBytes+=$bytes
+ [Console]::Out.WriteLine($line)
+}
+if($Mode -eq 'Supervisor'){Emit-Phase 'entry'}
 # Job handleは親のSafeHandleだけで保持する。名前/継承/複製を提供しない。
 $nativeCode=@'
 using System;
@@ -147,10 +165,22 @@ function Safe-ScriptTrace([Management.Automation.ErrorRecord]$record) {
   }
   if($frames.Count -ge 8){break}
  }
+ if($frames.Count -eq 0 -and $null -ne $record.InvocationInfo){
+  $info=$record.InvocationInfo
+  if([string]::Equals($info.ScriptName,$PSCommandPath,[StringComparison]::OrdinalIgnoreCase) -and $info.ScriptLineNumber -gt 0){$frames.Add(@{function='InvocationInfo';line=$info.ScriptLineNumber})}
+ }
  return $frames.ToArray()
 }
 function Set-Operation([string]$name) {
  $script:operation=$name;$script:ioOperation=$null;$script:metadataFile=$null
+ $script:reason=$null;$script:reasonFile=$null;$script:reasonElapsed=$null;$script:reasonLimit=$null
+}
+function Set-Reason([string]$code,[string]$file=$null,[object]$elapsed=$null,[object]$limit=$null) {$script:reason=$code;$script:reasonFile=$file;$script:reasonElapsed=$elapsed;$script:reasonLimit=$limit}
+function Parent-Event([string]$name,[object]$child=$null) {
+ if($parentEvents.Count -ge 16){throw 'parent event上限'}
+ $item=@{event=$name;utcTicks=[DateTime]::UtcNow.Ticks.ToString();elapsedMs=$localClock.ElapsedMilliseconds;pid=$null;creation=$null;hasExited=$null}
+ if($null -ne $child){$item.pid=$child.RecordedPid;$item.creation=$child.RecordedCreation;if($child.Started){$item.hasExited=$child.Process.HasExited}}
+ $script:parentEvents.Add($item)
 }
 function Remember-Failure([Management.Automation.ErrorRecord]$record) {
  $current=$record.Exception
@@ -158,16 +188,16 @@ function Remember-Failure([Management.Automation.ErrorRecord]$record) {
   if($null -ne $script:failureContext -and [object]::ReferenceEquals($script:failureContext.exception,$current)){return}
   $current=$current.InnerException
  }
- $script:failureContext=@{exception=$record.Exception;operation=$script:operation;ioOperation=$script:ioOperation;metadataFile=$script:metadataFile;scriptTrace=@(Safe-ScriptTrace $record)}
+ $script:failureContext=@{exception=$record.Exception;operation=$script:operation;ioOperation=$script:ioOperation;metadataFile=$script:metadataFile;reason=$script:reason;reasonFile=$script:reasonFile;elapsedMs=$script:reasonElapsed;limitMs=$script:reasonLimit;scriptTrace=@(Safe-ScriptTrace $record)}
 }
 function Fail([string]$stage,[object]$errorValue,[Management.Automation.ErrorRecord]$record=$null) {
- $context=@{operation=$script:operation;ioOperation=$script:ioOperation;metadataFile=$script:metadataFile;scriptTrace=@(Safe-ScriptTrace $record)}
+ $context=@{operation=$script:operation;ioOperation=$script:ioOperation;metadataFile=$script:metadataFile;reason=$script:reason;reasonFile=$script:reasonFile;elapsedMs=$script:reasonElapsed;limitMs=$script:reasonLimit;scriptTrace=@(Safe-ScriptTrace $record)}
  $current=$errorValue
  for($i=0;$null -ne $current -and $i -lt 8;$i++){
   if($null -ne $script:failureContext -and [object]::ReferenceEquals($script:failureContext.exception,$current)){$context=$script:failureContext;break}
   $current=$current.InnerException
  }
- $failure=[ordered]@{stage=$stage;kind=$errorValue.GetType().Name;operation=$context.operation;ioOperation=$context.ioOperation;metadataFile=$context.metadataFile;scriptTrace=@($context.scriptTrace);exceptions=@(Safe-Error $errorValue)}
+ $failure=[ordered]@{stage=$stage;kind=$errorValue.GetType().Name;reason=$context.reason;reasonFile=$context.reasonFile;elapsedMs=$context.elapsedMs;limitMs=$context.limitMs;operation=$context.operation;ioOperation=$context.ioOperation;metadataFile=$context.metadataFile;scriptTrace=@($context.scriptTrace);exceptions=@(Safe-Error $errorValue)}
  if($null -eq $script:primary){$script:primary=$failure}else{$script:secondary.Add($failure)}
 }
 function Attempt([string]$stage,[scriptblock]$action) {
@@ -176,12 +206,15 @@ function Attempt([string]$stage,[scriptblock]$action) {
 }
 function Read-Json([string]$name) {
  $priorIo=$script:ioOperation;$priorFile=$script:metadataFile
- $script:ioOperation='read';$script:metadataFile=$name
+ $script:ioOperation='get-item';$script:metadataFile=$name
  try{
   $file=Join-Path $run $name
   $info=Get-Item -LiteralPath $file
   if($info.Length -gt 16384 -or ($info.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw 'JSON境界違反'}
-  return ([IO.File]::ReadAllText($file)|ConvertFrom-Json)
+  $script:ioOperation='read'
+  $text=[IO.File]::ReadAllText($file)
+  $script:ioOperation='decode'
+  return ($text|ConvertFrom-Json)
  }catch{Remember-Failure $_;throw}
  finally{$script:ioOperation=$priorIo;$script:metadataFile=$priorFile}
 }
@@ -197,14 +230,15 @@ function Guard-Run {
 }
 function Write-Json([string]$name,[object]$value) {
  $priorIo=$script:ioOperation;$priorFile=$script:metadataFile
- $script:ioOperation='write';$script:metadataFile=$name
+ $script:ioOperation='guard';$script:metadataFile=$name
  try{
  Guard-Run
  $file=Join-Path $run $name;$next=$file+'.next'
  $bytes=$utf8.GetBytes(($value|ConvertTo-Json -Depth 12 -Compress))
  if($bytes.Length -gt 16384){throw 'JSON上限'}
+ $script:ioOperation='open'
  $s=New-Object IO.FileStream($next,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
- try{$s.Write($bytes,0,$bytes.Length)}finally{$s.Dispose()}
+ try{$script:ioOperation='write';$s.Write($bytes,0,$bytes.Length)}catch{Remember-Failure $_;throw}finally{$script:ioOperation='close';$s.Dispose()}
  # 各metadataは一度だけ。既存fileを上書きして別世代へ接続しない。
  $script:ioOperation='move'
  [IO.File]::Move($next,$file)
@@ -217,20 +251,27 @@ try {
  # この区間にはcustom型参照/外部command/Process.Startを置かない。
  if($Mode -eq 'Supervisor'){
   $bootstrapStage='supervisor-bootstrap'
+  Emit-Phase 'guard-before'
   Guard-Run
+  Emit-Phase 'guard-after'
   $self=[Diagnostics.Process]::GetCurrentProcess()
   $identity=[ordered]@{owner=$owner;pid=$self.Id;creation=$self.StartTime.ToUniversalTime().Ticks.ToString();nonce=$Nonce}
   if($Scenario -eq 'owner-mismatch'){$identity.owner='wrong-owner'}
+  Emit-Phase 'hello-before'
   Write-Json 'hello.json' $identity
+  Emit-Phase 'hello-published'
   $clock=[Diagnostics.Stopwatch]::StartNew()
   while(!(Test-Path -LiteralPath (Join-Path $run 'ack.json')) -and $clock.ElapsedMilliseconds -lt 2500){Start-Sleep -Milliseconds 25}
-  if(!(Test-Path -LiteralPath (Join-Path $run 'ack.json'))){throw 'ack待機期限超過'}
+  if(!(Test-Path -LiteralPath (Join-Path $run 'ack.json'))){Set-Reason 'ack-timeout' 'ack.json' $clock.ElapsedMilliseconds 2500;throw 'ack待機期限超過'}
   $ack=Read-Json 'ack.json'
-  if($ack.owner -cne $owner -or $ack.nonce -cne $Nonce -or $ack.pid -ne $self.Id -or [string]$ack.creation -cne $identity.creation -or $ack.ownedJobVerified -ne $true){throw 'ack/親Job認定不一致'}
+  if($ack.owner -cne $owner -or $ack.nonce -cne $Nonce -or $ack.pid -ne $self.Id -or [string]$ack.creation -cne $identity.creation -or $ack.ownedJobVerified -ne $true){Set-Reason 'ack-mismatch' 'ack.json';throw 'ack/親Job認定不一致'}
+  Emit-Phase 'ack-validated'
   Guard-Run
  }
  $bootstrapStage='native-bootstrap'
+ if($Mode -eq 'Supervisor'){Emit-Phase 'native-before'}
  Add-Type -TypeDefinition $nativeCode
+ if($Mode -eq 'Supervisor'){Emit-Phase 'native-after'}
 }
 catch {
  # custom型の関数定義/起動へ進まず、安全な型・数値だけを保存する。
@@ -240,7 +281,7 @@ catch {
  Attempt 'bootstrap-process-identity' {$current=[Diagnostics.Process]::GetCurrentProcess();$script:processIdentity=@{pid=$current.Id;creation=$current.StartTime.ToUniversalTime().Ticks.ToString()}}
  Attempt 'bootstrap-result-save' {
   $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}
-  Write-Json $name @{owner=$owner;nonce=$Nonce;process=$processIdentity;passed=$false;primary=$primary;secondary=@($secondary.ToArray());attempts=@($attempts.ToArray());streams=@();startupRecovery=@();resourceRecovery=@{confirmed=$true;jobEmpty=$null;retained=@()};recovered=$true;parentKilled=$false;knownExited=0}
+  Write-Json $name @{owner=$owner;nonce=$Nonce;process=$processIdentity;passed=$false;primary=$primary;secondary=@($secondary.ToArray());parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@();lastHandles=@();startupRecovery=@();resourceRecovery=@{confirmed=$true;jobEmpty=$null;retained=@()};recovered=$true;parentKilled=$false;knownExited=0}
   $script:bootstrapSaved=$true
  }
  if(!$bootstrapSaved){[Console]::Error.WriteLine((@{passed=$false;primary=$primary;secondary=@($secondary.ToArray())}|ConvertTo-Json -Depth 12 -Compress))}
@@ -255,6 +296,8 @@ function Wait-File([string]$name,[int]$milliseconds) {
   if(Test-Path -LiteralPath (Join-Path $run $name)){return (Read-Json $name)}
   Start-Sleep -Milliseconds 25
  }
+ Set-Reason 'metadata-timeout' $name $clock.ElapsedMilliseconds $milliseconds
+ if($operation -eq 'Parent.readHello'){Parent-Event 'hello-deadline'}
  throw 'metadata待機期限超過'
 }
 function New-Supervisor([string]$childMode,[string]$prefix) {
@@ -273,11 +316,11 @@ function Register-Child([M21Child]$child,[string]$role) {
 }
 function Capture([M21Child]$child,[string]$role,[int]$milliseconds) {
  if(!$child.Started){$script:streams.Add(@{role=$role;notStarted=$true;exited=$true;exitCode=$null;stdoutEof=$true;stderrEof=$true});$child.Captured=$true;return}
- $item=[ordered]@{role=$role;exited=$false;exitCode=$null;stdoutEof=$false;stderrEof=$false}
+ $item=[ordered]@{role=$role;pid=$child.RecordedPid;creation=$child.RecordedCreation;logs=$child.LogPrefix;exited=$false;exitCode=$null;stdoutEof=$false;stderrEof=$false}
  try{$item.exited=$child.Process.WaitForExit($milliseconds);if($item.exited){$item.exitCode=$child.Process.ExitCode}}catch{Fail ($role+'-exit') $_.Exception}
  if(!$item.exited){$script:recovered=$false;Fail ($role+'-exit-timeout') ([TimeoutException]::new())}
- try{$item.stdoutEof=$child.Eof($true,$milliseconds);if(!$item.stdoutEof){throw 'stdout EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stdout') $_.Exception}
- try{$item.stderrEof=$child.Eof($false,$milliseconds);if(!$item.stderrEof){throw 'stderr EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stderr') $_.Exception}
+ try{$item.stdoutEof=$child.Eof($true,$milliseconds);if(!$item.stdoutEof){Set-Reason 'stdout-eof-timeout';throw 'stdout EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stdout') $_.Exception $_}
+ try{$item.stderrEof=$child.Eof($false,$milliseconds);if(!$item.stderrEof){Set-Reason 'stderr-eof-timeout';throw 'stderr EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stderr') $_.Exception $_}
  $script:streams.Add($item)
  $child.Captured=$true
 }
@@ -313,7 +356,7 @@ try {
   }finally{$grand.Dispose()}
   if($Scenario -eq 'kill-close'){Start-Sleep -Seconds 20;throw 'observer未動作'}
   if(!$child.Process.WaitForExit(4000)){throw 'dummy exit期限超過'}
-  if($child.Process.ExitCode -ne 0){Fail 'dummy-nonzero' ([InvalidOperationException]::new())}
+  if($child.Process.ExitCode -ne 0){Set-Reason 'dummy-nonzero';Fail 'dummy-nonzero' ([InvalidOperationException]::new())}
   Capture $child 'dummy' 500
  }elseif($Mode -eq 'Observe'){
   # observerはJob外に残る。親は直接保持Processだけを停止する。
@@ -336,14 +379,17 @@ try {
   Set-Operation 'Parent.createJob'
   $job=[M21Job]::Create()
   Set-Operation 'Parent.startSupervisor'
+  Parent-Event 'start-before'
   $supervisor=New-Supervisor 'Supervisor' 'supervisor';Register-Child $supervisor 'supervisor'
+  Parent-Event 'start-after' $supervisor
   Set-Operation 'Parent.readHello'
+  Parent-Event 'hello-wait-before' $supervisor
   $hello=Wait-File 'hello.json' 5000
   Set-Operation 'Parent.identity'
   $identity=Identity $supervisor.Process
-  if($hello.owner -cne $owner -or $hello.nonce -cne $Nonce -or $hello.pid -ne $identity.pid -or [string]$hello.creation -cne $identity.creation -or $supervisor.Process.HasExited){throw 'hello世代不一致'}
-  if($Scenario -eq 'assign-fail'){throw '割当失敗の故障注入'}
+  if($hello.owner -cne $owner -or $hello.nonce -cne $Nonce -or $hello.pid -ne $identity.pid -or [string]$hello.creation -cne $identity.creation -or $supervisor.Process.HasExited){Set-Reason 'hello-identity-mismatch' 'hello.json';throw 'hello世代不一致'}
   Set-Operation 'Parent.assign'
+  if($Scenario -eq 'assign-fail'){Set-Reason 'assign-fault' 'hello.json';throw '割当失敗の故障注入'}
   $job.Assign($supervisor.Process)
   Set-Operation 'Parent.publishOwned'
   Write-Json 'supervisor-owned.json' $identity
@@ -370,6 +416,7 @@ try {
    if($null -ne $inner.primary){$primary=$inner.primary}
    foreach($failure in $inner.secondary){$secondary.Add($failure)}
    foreach($item in $inner.streams){$streams.Add($item)}
+   foreach($item in $inner.lastHandles){$lastHandles.Add($item)}
    foreach($item in $inner.startupRecovery){$startupRecovery.Add($item)}
   }
   if($supervisor.Process.ExitCode -ne 0 -and $null -eq $primary){Fail 'dummy-nonzero' ([InvalidOperationException]::new())}
@@ -383,7 +430,7 @@ finally {
  if($Mode -ne 'Supervisor'){
   Attempt 'job-stop' {if($null -ne $job){$job.Stop()}}
   foreach($child in $held){
-   Attempt 'direct-stop' {if($child.Started -and !$child.Process.HasExited){$child.Process.Kill()}}
+   Attempt 'direct-stop' {Parent-Event 'kill-before' $child;if($child.Started -and !$child.Process.HasExited){Parent-Event 'kill-issued' $child;$child.Process.Kill();Parent-Event 'kill-returned' $child}else{Parent-Event 'kill-skipped' $child}}
    Attempt 'exit-and-streams' {Capture $child 'direct' 1500}
   }
   Attempt 'job-empty' {
@@ -396,7 +443,7 @@ finally {
   }
   Attempt 'job-close' {if($null -ne $job){$job.Dispose();$job=$null}}
   # 将来のDocker清掃/ledgerの位置。prototypeは自己dummyだけを扱う。
-  Attempt 'external-cleanup' {Guard-Run;if($Scenario -eq 'cleanup-fail'){throw 'cleanup故障注入'}}
+  Attempt 'external-cleanup' {Guard-Run;if($Scenario -eq 'cleanup-fail'){Set-Reason 'cleanup-fault';throw 'cleanup故障注入'}}
  }
  # 起動catchで回収不明だった対象も、保持情報を失う前に再度独立に確認する。
  if($Mode -eq 'Supervisor'){
@@ -410,7 +457,14 @@ finally {
   }}
  }
  foreach($p in $certified){Attempt 'certified-handle-close' {$p.Dispose()}}
- foreach($child in $held){Attempt 'dispose' {$child.Dispose()}}
+ foreach($child in $held){
+  Attempt 'last-handle' {
+   $last=@{pid=$child.RecordedPid;creation=$child.RecordedCreation;exited=(!$child.Started -or $child.Process.WaitForExit(0));stdoutEof=(!$child.Started -or ($null -ne $child.OutTask -and $child.OutTask.Status -eq [Threading.Tasks.TaskStatus]::RanToCompletion));stderrEof=(!$child.Started -or ($null -ne $child.ErrTask -and $child.ErrTask.Status -eq [Threading.Tasks.TaskStatus]::RanToCompletion))}
+   $script:lastHandles.Add($last)
+   if(!$last.exited -or !$last.stdoutEof -or !$last.stderrEof){$script:recovered=$false}
+  }
+  Attempt 'dispose' {$child.Dispose()}
+ }
  $observer=$null
  Attempt 'observer-metadata' {
   if($Mode -eq 'Observe' -and (Test-Path -LiteralPath (Join-Path $run 'observer.json'))){
@@ -419,13 +473,13 @@ finally {
    $script:observer=$candidate
   }
  }
- Attempt 'result-save' {Guard-Run;if($Scenario -eq 'save-fail'){throw '初回保存失敗の故障注入'}}
+ Attempt 'result-save' {Guard-Run;if($Scenario -eq 'save-fail'){Set-Reason 'save-fault';throw '初回保存失敗の故障注入'}}
  $processIdentity=$null
  Attempt 'process-identity' {$script:processIdentity=Identity ([Diagnostics.Process]::GetCurrentProcess())}
  # streamsは一次観測、resourceRecoveryは後続Job/直接handle回収の別事実。
  $retained=New-Object 'Collections.Generic.List[object]'
  if(!$recovered){foreach($child in $held){$retained.Add(@{pid=$child.RecordedPid;creation=$child.RecordedCreation;logs=$child.LogPrefix;reason='direct-exit/stream/Job recovery unconfirmed'})}}
- $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
+ $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
  if($null -ne $observer){$result.knownExited=$observer.knownExited}
  try{
   $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}
