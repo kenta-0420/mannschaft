@@ -54,7 +54,8 @@ class LocalTimeOpenApiContractTest {
     @ParameterizedTest
     @MethodSource("unrelatedArguments")
     void 対象外はスキーマを変更しない(int index, String location) throws Exception {
-        StringSchema schema = new StringSchema().format("uuid");
+        StringSchema schema = new StringSchema();
+        schema.setFormat("uuid");
         Parameter parameter = new Parameter().in(location).schema(schema);
         Parameter result = customize(parameter, new MethodParameter(fixture(), index));
         assertThat(result.getSchema()).isSameAs(schema);
@@ -73,7 +74,8 @@ class LocalTimeOpenApiContractTest {
     void nullモデルと既存formatを維持する() throws Exception {
         MethodParameter argument = new MethodParameter(fixture(), 0);
         assertThat(customize(null, argument)).isNull();
-        StringSchema schema = new StringSchema().format("custom");
+        StringSchema schema = new StringSchema();
+        schema.setFormat("custom");
         Parameter parameter = new Parameter().in("query").schema(schema);
         assertThat(customize(parameter, argument).getSchema().getFormat()).isEqualTo("custom");
     }
