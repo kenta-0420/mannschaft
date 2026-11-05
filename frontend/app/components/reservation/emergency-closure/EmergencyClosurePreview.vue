@@ -44,7 +44,19 @@ const emit = defineEmits<{
         </span>
       </p>
 
-      <div v-if="items.length > 0" class="overflow-x-auto">
+      <ul v-if="items.length > 0" class="space-y-2 md:hidden" data-testid="closure-preview-cards">
+        <li
+          v-for="item in items"
+          :key="item.reservationId"
+          data-testid="closure-preview-card"
+          class="rounded-md border border-surface-200 p-3 text-sm dark:border-surface-700"
+        >
+          <p data-field="name" class="break-words font-medium [overflow-wrap:anywhere]">{{ item.userFullName || $t('emergency_closure.label.unknown_user') }}</p>
+          <p data-field="datetime" class="text-surface-600 dark:text-surface-300">{{ formatPreviewDateTime(item.slotDate, item.startTime, item.endTime) }}</p>
+          <div class="mt-1"><Tag :value="statusLabel(item.status)" :severity="statusSeverity(item.status)" /></div>
+        </li>
+      </ul>
+      <div v-if="items.length > 0" class="hidden overflow-x-auto md:block">
         <table class="w-full min-w-[22rem] text-sm">
           <thead>
             <tr class="border-b border-surface-200 dark:border-surface-600">
