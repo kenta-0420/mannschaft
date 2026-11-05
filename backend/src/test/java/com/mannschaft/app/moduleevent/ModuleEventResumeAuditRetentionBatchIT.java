@@ -6,12 +6,15 @@ import com.mannschaft.app.admin.service.BatchJobLogService;
 import com.mannschaft.app.config.ShedLockConfig;
 import com.mannschaft.app.moduleevent.admin.ModuleEventResumeActorStateEntity;
 import com.mannschaft.app.moduleevent.admin.ModuleEventResumeAuditEntity;
+import com.mannschaft.app.moduleevent.admin.ModuleEventResumeAuditPrivacyService;
 import com.mannschaft.app.moduleevent.api.ModuleEventResumeAuditPrivacyApi;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.nio.ByteBuffer;
+import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.SQLTimeoutException;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -23,6 +26,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.sql.DataSource;
@@ -41,12 +45,14 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.util.AopTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 /**
  * 日次保持jobの先行試練。実M API・実MySQL・実Batch履歴・独立2Providerを通す。
@@ -59,6 +65,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Isolated("所有監査検体・ShedLock表・job履歴だけを作成して解放する")
 class ModuleEventResumeAuditRetentionBatchIT extends AbstractMySqlIntegrationTest {
     @Autowired private ModuleEventResumeAuditPrivacyApi privacyApi;
+    @Autowired private ModuleEventResumeAuditPrivacyService privacyService;
     @Autowired private BatchJobLogService jobLogs;
     @Autowired private DataSource dataSource;
     @Autowired private PlatformTransactionManager transactions;
@@ -202,6 +209,98 @@ class ModuleEventResumeAuditRetentionBatchIT extends AbstractMySqlIntegrationTes
                 + "ORDER BY id DESC LIMIT 1", String.class, ModuleEventResumeAuditRetentionBatch.BATCH_NAME))
                 .contains("retention fixture failure");
         assertFence();
+    }
+
+    /**
+     * 本体と同じDELETEのJPA→JDBC取消経路を短い期限で実証するcharacterization test。
+     * 本番methodの300秒そのものの計測ではない。実targetを短いテストTX内で呼び、
+     * Service proxyのREQUIRES_NEWによる本番timeoutへの置換だけを避ける。
+     */
+    @Test
+    void 行ロック中の実DELETEは短いTX期限で取り消されrollbackと接続解放を完了する() throws Exception {
+        Instant now = Instant.now();
+        UUID expired = audit(now.atZone(ZoneOffset.UTC).minusYears(3).toInstant());
+        UUID retained = audit(now.atZone(ZoneOffset.UTC).minusYears(1).toInstant());
+        var target = AopTestUtils.<ModuleEventResumeAuditPrivacyService>getUltimateTargetObject(privacyService);
+        var shortTransaction = new TransactionTemplate(transactions);
+        shortTransaction.setTimeout(2);
+        CountDownLatch locked = new CountDownLatch(1);
+        AtomicBoolean deleteEntered = new AtomicBoolean();
+        AtomicReference<Connection> transactionConnection = new AtomicReference<>();
+        var worker = Executors.newSingleThreadExecutor();
+        try (var blocker = dataSource.getConnection()) {
+            blocker.setAutoCommit(false);
+            try (var statement = blocker.prepareStatement(
+                    "SELECT id FROM module_event_resume_audits WHERE id = ? FOR UPDATE")) {
+                statement.setQueryTimeout(5);
+                statement.setBytes(1, bytes(expired));
+                try (var rows = statement.executeQuery()) {
+                    assertThat(rows.next()).isTrue();
+                }
+                locked.countDown();
+                var running = worker.submit(() -> {
+                    assertThat(locked.await(5, TimeUnit.SECONDS)).isTrue();
+                    return catchThrowable(() -> shortTransaction.executeWithoutResult(status -> {
+                        entityManager.unwrap(org.hibernate.Session.class).doWork(connection -> {
+                            transactionConnection.set(connection);
+                            try (var setting = connection.createStatement();
+                                    var rows = setting.executeQuery("SELECT @@SESSION.innodb_lock_wait_timeout")) {
+                                assertThat(rows.next()).isTrue();
+                                // poolのsession設定を変更せず、DB側期限が外側waitより長いことを確認する。
+                                assertThat(rows.getInt(1)).isGreaterThan(15);
+                            }
+                        });
+                        entityManager.createQuery("UPDATE ModuleEventResumeAuditEntity a SET a.reason = :reason WHERE a.id = :id")
+                                .setParameter("reason", "timeout rollback marker").setParameter("id", retained).executeUpdate();
+                        deleteEntered.set(true);
+                        target.deleteExpired(now);
+                    }));
+                });
+                try {
+                    // 正常な専用ローカルDBでの試験期待値。取消通信のhard deadlineではない。
+                    Throwable failure = running.get(15, TimeUnit.SECONDS);
+                    assertThat(deleteEntered).as("事前UPDATEのtimeoutをDELETE取消の証拠にしない").isTrue();
+                    assertThat(failure).as("外側の待機期限やDB lock-waitではなくquery取消の例外を確認する").isNotNull();
+                    List<Throwable> causes = new ArrayList<>();
+                    for (Throwable cause = failure; cause != null && !causes.contains(cause); cause = cause.getCause()) {
+                        causes.add(cause);
+                    }
+                    assertThat(causes).anyMatch(cause -> cause instanceof SQLTimeoutException
+                            || cause instanceof org.hibernate.QueryTimeoutException
+                            || cause instanceof jakarta.persistence.QueryTimeoutException
+                            || cause.getClass().getName().equals("com.mysql.cj.jdbc.exceptions.MySQLTimeoutException"));
+                    assertThat(causes).noneMatch(cause -> cause instanceof SQLException sql && sql.getErrorCode() == 1205);
+                    assertThat(transactionConnection.get()).isNotNull();
+                    assertThat(transactionConnection.get().isClosed()).as("JPAが取得したJDBC接続をpoolへ返却する").isTrue();
+                    assertThat(auditCount(expired)).isEqualTo(1);
+                    assertThat(auditCount(retained)).isEqualTo(1);
+                    assertThat(jdbc.queryForObject("SELECT reason FROM module_event_resume_audits WHERE id = ?",
+                            String.class, bytes(retained))).isEqualTo("[REDACTED]");
+                    try (var next = dataSource.getConnection()) {
+                        next.setAutoCommit(false);
+                        try (var rowLock = next.prepareStatement(
+                                "SELECT id FROM module_event_resume_audits WHERE id = ? FOR UPDATE")) {
+                            rowLock.setQueryTimeout(5);
+                            rowLock.setBytes(1, bytes(retained));
+                            try (var rows = rowLock.executeQuery()) {
+                                assertThat(rows.next()).as("rollbackしたUPDATEの行ロックを後続接続が取得できる").isTrue();
+                            }
+                        } finally {
+                            next.rollback();
+                        }
+                    }
+                    assertFence();
+                } finally {
+                    // assert/future timeoutでも所有行ロックを先に解放し、workerを残さない。
+                    blocker.rollback();
+                }
+            } finally {
+                blocker.rollback();
+            }
+        } finally {
+            worker.shutdownNow();
+            assertThat(worker.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        }
     }
 
     private Harness harness(ModuleEventResumeAuditPrivacyApi delegate) {
