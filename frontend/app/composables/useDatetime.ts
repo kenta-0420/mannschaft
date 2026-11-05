@@ -24,7 +24,9 @@ export function useDatetime() {
   const authStore = useAuthStore()
   const userTimezone = computed(() => authStore.user?.timezone ?? 'Asia/Tokyo')
   // 現在の UI ロケール（ja/en/zh/ko/es/de）。関数内で .value を読むので、テンプレートから呼べば言語切替で再描画される
-  const i18n = useNuxtApp().$i18n as { locale?: { value: string } } | undefined
+  // Nuxt 文脈の外（素の vitest・ユーティリティからの呼び出し等）は正当な呼び出しとして ja 既定で動かす。
+  // useNuxtApp() は文脈が無いと例外を投げるため、投げない tryUseNuxtApp() を使う（握りつぶしではなく設計）。
+  const i18n = tryUseNuxtApp()?.$i18n as { locale?: { value: string } } | undefined
   const currentLocale = (): string => i18n?.locale?.value ?? 'ja'
 
   /**
