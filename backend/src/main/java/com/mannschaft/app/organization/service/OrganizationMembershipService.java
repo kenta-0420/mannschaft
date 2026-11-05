@@ -21,6 +21,7 @@ import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.dto.MemberResponse;
 import com.mannschaft.app.role.entity.RoleEntity;
+import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
@@ -35,9 +36,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 組織のメンバー・フォロー・所属チーム管理を担当するサービス。
@@ -82,11 +85,25 @@ public class OrganizationMembershipService {
         findOrganizationOrThrow(orgId);
 
         // F00.5 Phase 3: MemberQueryDispatcher 経由で memberships 参照に完全切替
-        var memberDtos = memberQueryDispatcher.queryMembers(orgId, ScopeType.ORGANIZATION, null);
+        //
+        // CMP-261103-1225: 是正前は queryMembers で組織の全員を実体化し（ユーザー 1 人ごとに users を引く N+1）、
+        // 全員ぶんの色解決まで済ませてから subList でページを切り出していた。1 ページ取るたびに
+        // 組織全員ぶんの処理が走る。TeamService#getMembers（CMP-260910-1555）と同じ形に揃え、
+        // 軽い行（userId・ロール・joinedAt のみ）を queryMemberIdentities で全件そろえてページ位置で切り出し、
+        // 表示名・アバターは hydrate で 1 クエリ、色解決もページ内のユーザーに限定する。
+        // 重複排除（OQ-2 優先度）・並び順・総件数・退会者の扱い（行は残し表示名は null）は不変。
+        var identities = memberQueryDispatcher.queryMemberIdentities(orgId, ScopeType.ORGANIZATION, null);
+        long totalElements = identities.size();
+        int page = pageable.isPaged() ? pageable.getPageNumber() : 0;
+        int size = pageable.isPaged() ? pageable.getPageSize() : (int) totalElements;
+        int fromIndex = page * size;
+        int toIndex = Math.min(fromIndex + size, identities.size());
+        var memberDtos = memberQueryDispatcher.hydrate(
+                fromIndex >= identities.size() ? List.of() : identities.subList(fromIndex, toIndex));
         var colorsByUserId = scopeMemberCalendarSettingService.resolveColors(
                 ScopeType.ORGANIZATION, orgId, memberDtos.stream().map(dto -> dto.userId()).toList());
 
-        var data = memberDtos.stream()
+        List<MemberResponse> pagedData = memberDtos.stream()
                 .map(dto -> new MemberResponse(
                         dto.userId(),
                         dto.displayName(),
@@ -96,15 +113,6 @@ public class OrganizationMembershipService {
                         colorsByUserId.get(dto.userId())))
                 .toList();
 
-        // Dispatcher は全件リストを返すため、ページネーションはアプリ側でエミュレート
-        int page = pageable.isPaged() ? pageable.getPageNumber() : 0;
-        int size = pageable.isPaged() ? pageable.getPageSize() : data.size();
-        int fromIndex = page * size;
-        int toIndex = Math.min(fromIndex + size, data.size());
-        List<MemberResponse> pagedData = (fromIndex >= data.size())
-                ? List.<MemberResponse>of() : data.subList(fromIndex, toIndex);
-
-        long totalElements = data.size();
         int totalPages = size == 0 ? 1 : (int) Math.ceil((double) totalElements / size);
 
         var meta = new PagedResponse.PageMeta(totalElements, page, size, totalPages);
@@ -204,53 +212,103 @@ public class OrganizationMembershipService {
     // TODO: OrganizationドメインとAuthドメイン・Roleドメイン・Teamドメインをまたいでいる。将来はMemberQueryServiceで分離予定
     public List<OrgAllMembersResponse> getAllMembers(Long orgId, String scope) {
         OrganizationEntity org = findOrganizationOrThrow(orgId);
-        List<OrgAllMembersResponse> result = new ArrayList<>();
+        boolean includeDirect = "ORGANIZATION".equals(scope) || "INDIVIDUAL".equals(scope);
+        boolean includeTeams = "TEAM".equals(scope) || "INDIVIDUAL".equals(scope);
 
-        if ("ORGANIZATION".equals(scope) || "INDIVIDUAL".equals(scope)) {
-            // 直属メンバー
-            userRoleRepository.findByOrganizationId(orgId, Pageable.unpaged())
-                    .getContent()
-                    .forEach(ur -> {
-                        UserEntity user = userRepository.findById(ur.getUserId()).orElse(null);
-                        String roleName = roleRepository.findById(ur.getRoleId())
-                                .map(RoleEntity::getName).orElse(null);
-                        if (user != null) {
-                            result.add(new OrgAllMembersResponse(
-                                    user.getId(),
-                                    user.getLastName() + " " + user.getFirstName(),
-                                    // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
-                                    mediaUrlResolver.resolve(user.getAvatarUrl()),
-                                    new OrgAllMembersResponse.MemberOf("ORGANIZATION", org.getId(), org.getName()),
-                                    roleName));
-                        }
-                    });
+        // CMP-261103-1225: 是正前は直属・傘下チームの 1 人ごとに users と roles を、チームごとに teams と
+        // user_roles を引いており、SQL 数が人数とチーム数に比例していた。取得対象をまとめて IN で引き、
+        // Map で引き当てる。行の並び（直属 → 加盟の並び順でチームごと → チーム内は行 ID 順）と、
+        // 退会者（users の @SQLRestriction で返らない）・論理削除済みチーム（teams の @SQLRestriction で返らない）を
+        // 行ごと除外する扱いは是正前と同じ。同一ユーザーが直属と複数チームに属する場合も、是正前と同じく
+        // 所属ごとに 1 行ずつ返す（重複を畳まない）。
+        List<UserRoleEntity> directRoles = includeDirect
+                ? userRoleRepository.findByOrganizationId(orgId, Pageable.unpaged()).getContent()
+                : List.of();
+
+        List<TeamOrgMembershipEntity> links = includeTeams
+                ? teamOrgMembershipRepository.findByOrganizationIdAndStatus(orgId, TeamOrgMembershipEntity.Status.ACTIVE)
+                : List.of();
+        // 加盟の並び順どおりのチーム ID（所属元の ID・引き当てのキーにもこれを使う）
+        List<Long> linkedTeamIds = new ArrayList<>(links.size());
+        for (TeamOrgMembershipEntity membership : links) {
+            linkedTeamIds.add(membership.getTeamId());
+        }
+        Set<Long> distinctTeamIds = new LinkedHashSet<>(linkedTeamIds);
+        distinctTeamIds.remove(null);
+        Map<Long, TeamEntity> teamsById = new HashMap<>();
+        if (!distinctTeamIds.isEmpty()) {
+            for (TeamEntity team : teamRepository.findAllById(distinctTeamIds)) {
+                teamsById.put(team.getId(), team);
+            }
+        }
+        Map<Long, List<UserRoleEntity>> teamRolesByTeamId = new HashMap<>();
+        if (!teamsById.isEmpty()) {
+            for (UserRoleEntity ur : userRoleRepository.findByTeamIdInOrderByTeamIdAscIdAsc(
+                    List.copyOf(teamsById.keySet()))) {
+                teamRolesByTeamId.computeIfAbsent(ur.getTeamId(), k -> new ArrayList<>()).add(ur);
+            }
         }
 
-        if ("TEAM".equals(scope) || "INDIVIDUAL".equals(scope)) {
-            // 所属チームのメンバー
-            teamOrgMembershipRepository.findByOrganizationIdAndStatus(orgId, TeamOrgMembershipEntity.Status.ACTIVE)
-                    .forEach(membership -> {
-                        TeamEntity team = teamRepository.findById(membership.getTeamId()).orElse(null);
-                        if (team == null) return;
-                        userRoleRepository.findByTeamId(team.getId(), Pageable.unpaged())
-                                .getContent()
-                                .forEach(ur -> {
-                                    UserEntity user = userRepository.findById(ur.getUserId()).orElse(null);
-                                    String roleName = roleRepository.findById(ur.getRoleId())
-                                            .map(RoleEntity::getName).orElse(null);
-                                    if (user != null) {
-                                        result.add(new OrgAllMembersResponse(
-                                                user.getId(),
-                                                user.getLastName() + " " + user.getFirstName(),
-                                                // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
-                                                mediaUrlResolver.resolve(user.getAvatarUrl()),
-                                                new OrgAllMembersResponse.MemberOf("TEAM", team.getId(), team.getName()),
-                                                roleName));
-                                    }
-                                });
-                    });
+        // 応答の並び（直属 → 加盟の並び順でチームごと）に、行と所属元をそろえて並べる。
+        // teams に返らないチーム（論理削除済み等）は是正前と同じく飛ばす
+        List<UserRoleEntity> rows = new ArrayList<>(directRoles);
+        List<OrgAllMembersResponse.MemberOf> rowScopes = new ArrayList<>(directRoles.size());
+        OrgAllMembersResponse.MemberOf orgScope =
+                new OrgAllMembersResponse.MemberOf("ORGANIZATION", org.getId(), org.getName());
+        for (int i = 0; i < directRoles.size(); i++) {
+            rowScopes.add(orgScope);
+        }
+        for (Long teamId : linkedTeamIds) {
+            TeamEntity team = teamsById.get(teamId);
+            if (team == null) {
+                continue;
+            }
+            OrgAllMembersResponse.MemberOf teamScope =
+                    new OrgAllMembersResponse.MemberOf("TEAM", teamId, team.getName());
+            for (UserRoleEntity ur : teamRolesByTeamId.getOrDefault(teamId, List.of())) {
+                rows.add(ur);
+                rowScopes.add(teamScope);
+            }
         }
 
+        // 全行が参照するユーザーとロールを、それぞれ 1 クエリで引く
+        Set<Long> userIds = new LinkedHashSet<>();
+        Set<Long> roleIds = new LinkedHashSet<>();
+        for (UserRoleEntity ur : rows) {
+            userIds.add(ur.getUserId());
+            roleIds.add(ur.getRoleId());
+        }
+        userIds.remove(null);
+        roleIds.remove(null);
+        Map<Long, UserEntity> usersById = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            for (UserEntity user : userRepository.findAllById(userIds)) {
+                usersById.put(user.getId(), user);
+            }
+        }
+        Map<Long, String> roleNamesById = new HashMap<>();
+        if (!roleIds.isEmpty()) {
+            for (RoleEntity role : roleRepository.findAllById(roleIds)) {
+                roleNamesById.put(role.getId(), role.getName());
+            }
+        }
+
+        List<OrgAllMembersResponse> result = new ArrayList<>(rows.size());
+        for (int i = 0; i < rows.size(); i++) {
+            UserRoleEntity ur = rows.get(i);
+            Long userId = ur.getUserId();
+            UserEntity user = usersById.get(userId);
+            if (user == null) {
+                continue; // 退会者等（users の @SQLRestriction で返らない）は是正前と同じく行ごと除外
+            }
+            result.add(new OrgAllMembersResponse(
+                    userId,
+                    user.getLastName() + " " + user.getFirstName(),
+                    // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
+                    mediaUrlResolver.resolve(user.getAvatarUrl()),
+                    rowScopes.get(i),
+                    roleNamesById.get(ur.getRoleId())));
+        }
         return result;
     }
 
