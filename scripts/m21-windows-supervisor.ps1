@@ -7,6 +7,18 @@ param(
  [Parameter(Mandatory=$true)][ValidatePattern('^[a-f0-9]{32}$')][string]$Nonce,
  [Parameter(Mandatory=$true)][string]$NodePath
 )
+$localClock=[Diagnostics.Stopwatch]::StartNew()
+$phaseCount=0
+$phaseBytes=0
+function Emit-Phase([ValidateSet('entry','guard-before','guard-after','hello-before','hello-published','ack-validated','native-before','native-after')][string]$phase) {
+ $current=[Diagnostics.Process]::GetCurrentProcess()
+ $line='M21_PHASE|'+$phase+'|pid='+$current.Id+'|creation='+$current.StartTime.ToUniversalTime().Ticks+'|utcTicks='+[DateTime]::UtcNow.Ticks+'|elapsedMs='+$localClock.ElapsedMilliseconds
+ $bytes=[Text.Encoding]::ASCII.GetByteCount($line)+2
+ if($script:phaseCount -ge 12 -or $script:phaseBytes+$bytes -gt 4096){throw 'phase上限'}
+ $script:phaseCount++;$script:phaseBytes+=$bytes
+ [Console]::Out.WriteLine($line)
+}
+if($Mode -eq 'Supervisor'){Emit-Phase 'entry'}
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 $owner='d7249e88-1678-4e0c-ae21-a550989098a6'
@@ -32,18 +44,9 @@ $reasonElapsed=$null
 $reasonLimit=$null
 $parentEvents=New-Object 'Collections.Generic.List[object]'
 $lastHandles=New-Object 'Collections.Generic.List[object]'
-$localClock=[Diagnostics.Stopwatch]::StartNew()
-$phaseCount=0
-$phaseBytes=0
-function Emit-Phase([ValidateSet('entry','guard-before','guard-after','hello-before','hello-published','ack-validated','native-before','native-after')][string]$phase) {
- $current=[Diagnostics.Process]::GetCurrentProcess()
- $line='M21_PHASE|'+$phase+'|pid='+$current.Id+'|creation='+$current.StartTime.ToUniversalTime().Ticks+'|utcTicks='+[DateTime]::UtcNow.Ticks+'|elapsedMs='+$localClock.ElapsedMilliseconds
- $bytes=[Text.Encoding]::ASCII.GetByteCount($line)+2
- if($script:phaseCount -ge 12 -or $script:phaseBytes+$bytes -gt 4096){throw 'phase上限'}
- $script:phaseCount++;$script:phaseBytes+=$bytes
- [Console]::Out.WriteLine($line)
-}
-if($Mode -eq 'Supervisor'){Emit-Phase 'entry'}
+$lateObservation=$null
+$assigned=$false
+$ackPublished=$false
 # Job handleは親のSafeHandleだけで保持する。名前/継承/複製を提供しない。
 $nativeCode=@'
 using System;
@@ -391,12 +394,14 @@ try {
   Set-Operation 'Parent.assign'
   if($Scenario -eq 'assign-fail'){Set-Reason 'assign-fault' 'hello.json';throw '割当失敗の故障注入'}
   $job.Assign($supervisor.Process)
+  $assigned=$true
   Set-Operation 'Parent.publishOwned'
   Write-Json 'supervisor-owned.json' $identity
   if($Scenario -ne 'pre-ack'){
    $ackNonce=$Nonce;if($Scenario -eq 'wrong-ack'){$ackNonce='00000000000000000000000000000000'}
    Set-Operation 'Parent.publishAck'
    Write-Json 'ack.json' @{owner=$owner;nonce=$ackNonce;pid=$identity.pid;creation=$identity.creation;ownedJobVerified=$true}
+   $ackPublished=$true
   }
   if($Scenario -eq 'kill-close'){
    $members=New-Object 'Collections.Generic.List[object]'
@@ -425,7 +430,36 @@ try {
    if(!$inner.passed -or !$inner.recovered){throw 'inner失敗'}
   }
  }
-}catch{Fail 'execution' $_.Exception $_}
+}catch{
+ Fail 'execution' $_.Exception $_
+ # 5秒の仕様失敗を固定してから、normalだけを追加最大3秒観測する。解禁はしない。
+ if($Mode -eq 'Parent' -and $Scenario -eq 'normal' -and $primary.reason -eq 'metadata-timeout' -and $primary.reasonFile -eq 'hello.json'){
+  $lateObservation=[ordered]@{limitMs=3000;startUtcTicks=[DateTime]::UtcNow.Ticks.ToString();elapsedMs=0;helloSeen=$false;helloIdentity=$null;hasExitedBefore=$null;hasExitedAfter=$null;stdoutBytesBefore=$null;stdoutBytesAfter=$null;assignedBefore=$assigned;assignedAfter=$assigned;ackBefore=$ackPublished;ackAfter=$ackPublished;nonGreenFixed=$true}
+  Attempt 'late-hello-observation' {
+   if($assigned -or $ackPublished){throw '未解禁境界不一致'}
+   $lateClock=[Diagnostics.Stopwatch]::StartNew()
+   try{
+    $lateObservation.hasExitedBefore=$supervisor.Process.HasExited
+    $outFile=$supervisor.LogPrefix+'.out'
+    if(Test-Path -LiteralPath $outFile){$lateObservation.stdoutBytesBefore=(Get-Item -LiteralPath $outFile).Length}
+    while($lateClock.ElapsedMilliseconds -lt 3000){
+     if(Test-Path -LiteralPath (Join-Path $run 'hello.json')){
+      $lateObservation.helloSeen=$true
+      $lateObservation.helloIdentity=Read-Json 'hello.json'
+      break
+     }
+     if($supervisor.Process.HasExited){break}
+     Start-Sleep -Milliseconds 25
+    }
+   }finally{
+    $lateObservation.elapsedMs=$lateClock.ElapsedMilliseconds
+    $lateObservation.assignedAfter=$assigned;$lateObservation.ackAfter=$ackPublished
+    Attempt 'late-supervisor-state' {$lateObservation.hasExitedAfter=$supervisor.Process.HasExited}
+    Attempt 'late-stdout-size' {if(Test-Path -LiteralPath $outFile){$lateObservation.stdoutBytesAfter=(Get-Item -LiteralPath $outFile).Length}}
+   }
+  }
+ }
+}
 finally {
  if($Mode -ne 'Supervisor'){
   Attempt 'job-stop' {if($null -ne $job){$job.Stop()}}
@@ -479,7 +513,7 @@ finally {
  # streamsは一次観測、resourceRecoveryは後続Job/直接handle回収の別事実。
  $retained=New-Object 'Collections.Generic.List[object]'
  if(!$recovered){foreach($child in $held){$retained.Add(@{pid=$child.RecordedPid;creation=$child.RecordedCreation;logs=$child.LogPrefix;reason='direct-exit/stream/Job recovery unconfirmed'})}}
- $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
+ $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());lateObservation=$lateObservation;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
  if($null -ne $observer){$result.knownExited=$observer.knownExited}
  try{
   $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}

@@ -24,6 +24,10 @@ failure診断はexception type・InnerException type・HResultと、Win32Excepti
 
 診断採取版は既存stdoutへSupervisorの固定ASCII phaseを最大12件/合計4KiBだけ出す。entry→Guard前後→hello保存前/公開後→ack検証→native型前後をpid/creation・同一OSのUTC ticks・ローカルStopwatch elapsedで区別する。親子elapsedは原点が異なるため直接減算しない。Parentの開始前後/hello期限/kill前状態と実施有無は既存resultの最大16件の配列へ残す。CPU pollは追加しない。
 
+entryはparam直後へ置き、New-Object等cmdlet・各種List/UTF8初期化・custom型初期化より前にnative .NETだけで出す。normalのhello5秒でmetadata-timeoutが確定した場合に限り、primary/nonGreenを固定したまま追加最大3秒の観測を行う。観測中のJob割当・ACK発行・work解禁は0。lateObservationに遅延hello/保持Process状態/既存stdout byte数を保存し、phase本体は既存stdout原本で確認する。遅延helloが見えても合格へ変更しない。初期phase0ならengine/param前を含む未観測として返し、原因は推測しない。
+
+制御された待機のnormal hello失敗分岐は5秒+観測3秒+直接exit/両pump各1.5秒+Jobempty3秒=最大15.5秒、hello成功分岐は5秒+Supervisor exit9秒+直接exit/両pump各1.5秒+Jobempty3秒=最大21.5秒。同期OS/IOは従来どおり別の不確定要因とし、launcher30秒がこれらを包む。全体の待機式上限390325ms/外側420秒は変更しない。ack2.5秒・fixture保持時間・短命孫の旧PS実装も変更しない。観測の追加猶予は診断だけであり成功期限の延長ではない。
+
 metadata-timeoutには固定理由・filename・elapsed/limitを付け、JSON IOはget-item/read/decode、guard/open/write/close/moveを区別する。ScriptStackTraceの英語形式が得られなければtrusted script一致のInvocationInfo.ScriptLineNumberへfallbackする。最後の保持handleでWaitForExit(0)とpump完了を再観測し、一次失敗は消さない。追加待機はない。
 
 negativeはcase固有reasonに加え、wrong ack実体/親Job認定/一致hello/実dummy exit17等の指定故障点をassertする。別bootstrap失敗をnegativeの成功にしない。normalはdummy/directの非空2role集合・異なるpid/creation・実exit0/各EOF・最後のhandle観測・8phase順序を必須にし、every(empty)を許さない。これは診断採取であり、一度の成功を過去sharing違反/timeoutの根治とは呼ばない。
