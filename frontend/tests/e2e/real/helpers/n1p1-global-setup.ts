@@ -1,0 +1,188 @@
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import path from 'node:path'
+import { createActor, createOrg, createTeam, joinAsMember, must, recordAsset, RUN, type Actor, type Scope } from './n1p1-world'
+
+/**
+ * CMP-261103-1225 Phase1 実機E2E の前提データ作成（globalSetup）。API はここ（前提作成）と後始末だけに使う。
+ * 作成したデータは WORLD_FILE に書き出し、spec はそれを読む（失敗でワーカーが替わっても作り直さない）。
+ * N1P1_REUSE_WORLD=1 のときは既存の WORLD_FILE をそのまま使う（spec の手直し中の再実行用）。
+ */
+// test-results/ は Playwright が実行開始時に消すため置かない。tests/e2e/.auth/*.json は .gitignore 済み。
+export const WORLD_FILE = path.resolve('tests', 'e2e', '.auth', 'n1p1-world.json')
+
+export interface World {
+  tag: string
+  admin: Actor // 組織A・チームT1/T2 のオーナー（ADMIN）
+  member1: Actor // 組織A・チームT1 の MEMBER（時間割・未読あり）
+  member2: Actor // 組織A・チームT1 の MEMBER（時間割なし＝空表示確認用）
+  outsider: Actor // 別組織B・チームTB のオーナー（他テナント）
+  orgA: Scope
+  orgB: Scope
+  t1: Scope
+  t2: Scope
+  tb: Scope
+  projectFull: { id: number; title: string }
+  projectEmpty: { id: number; title: string }
+  milestoneTitle: string
+  channel: { id: number; name: string }
+  emptyChannel: { id: number; name: string }
+  timetableId: number
+  subjects: string[]
+  scheduleTitles: string[]
+  attachmentName: string
+  messages: string[]
+}
+
+export function readWorld(): World {
+  return JSON.parse(readFileSync(WORLD_FILE, 'utf8')) as World
+}
+
+const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const
+
+/** JST の今日（YYYY-MM-DD）と曜日。 */
+function jstToday(): { date: string; dow: (typeof DAYS)[number] } {
+  const now = new Date(Date.now() + 9 * 3600_000)
+  return { date: now.toISOString().slice(0, 10), dow: DAYS[now.getUTCDay()]! }
+}
+
+async function buildWorld(): Promise<World> {
+  const tag = `n1p1${RUN}`
+  const admin = await createActor('Admin')
+  const member1 = await createActor('MemberOne')
+  const member2 = await createActor('MemberTwo')
+  const outsider = await createActor('Outsider')
+
+  const orgA = await createOrg(admin, `N1検証組織A ${tag}`)
+  const orgB = await createOrg(outsider, `N1検証組織B ${tag}`)
+  await joinAsMember('organizations', admin, orgA.slug, member1)
+  await joinAsMember('organizations', admin, orgA.slug, member2)
+
+  // チーム検索の対象（PUBLIC）。T1 は 3 人、T2 は 1 人。T1 と TB は相互フォロー（友好チーム）。
+  const t1 = await createTeam(admin, `N1検証チーム壱 ${tag}`)
+  const t2 = await createTeam(admin, `N1検証チーム弐 ${tag}`)
+  const tb = await createTeam(outsider, `N1別組織チーム ${tag}`)
+  await joinAsMember('teams', admin, t1.slug, member1)
+  await joinAsMember('teams', admin, t1.slug, member2)
+  await must(admin, 'POST', `/api/v1/teams/${t1.numericId}/friends/follow`, { targetTeamId: tb.numericId })
+  await must(outsider, 'POST', `/api/v1/teams/${tb.numericId}/friends/follow`, { targetTeamId: t1.numericId })
+
+  // TODO プロジェクト: 2件（TODO 2件・うち1件完了＋マイルストーンありの物と、TODO 0件の物）
+  const projectFull = (await must(admin, 'POST', `/api/v1/teams/${t1.slug}/projects`, { title: `N1計画あり ${tag}` })).data
+  const projectEmpty = (await must(admin, 'POST', `/api/v1/teams/${t1.slug}/projects`, { title: `N1計画空 ${tag}` })).data
+  const milestoneTitle = `N1節目 ${tag}`
+  const milestone = (
+    await must(admin, 'POST', `/api/v1/teams/${t1.slug}/projects/${projectFull.id}/milestones`, { title: milestoneTitle })
+  ).data
+  const todoA = (
+    await must(admin, 'POST', `/api/v1/teams/${t1.slug}/todos`, {
+      title: `N1作業A ${tag}`,
+      projectId: projectFull.id,
+      milestoneId: milestone.id,
+      assigneeIds: [member1.id, member2.id],
+    })
+  ).data
+  await must(admin, 'POST', `/api/v1/teams/${t1.slug}/todos`, { title: `N1作業B ${tag}`, projectId: projectFull.id, assigneeIds: [member1.id] })
+  await must(admin, 'PATCH', `/api/v1/teams/${t1.slug}/todos/${todoA.id}/status`, { status: 'COMPLETED' })
+
+  // チャット: T1 のチャンネル（ADMIN と MEMBER1 の発言＋添付1件）と、発言0件のチャンネル
+  // 応答の名前は identity 配下の入れ子なので、送った名前をそのまま持つ
+  const createChannel = async (name: string): Promise<{ id: number; name: string }> => {
+    const created = await must(admin, 'POST', '/api/v1/chat/channels', {
+      channelType: 'TEAM_PUBLIC',
+      teamId: t1.numericId,
+      name,
+      memberUserIds: [member1.id, member2.id],
+    })
+    return { id: created.data.id, name }
+  }
+  const channel = await createChannel(`N1話題 ${tag}`)
+  const emptyChannel = await createChannel(`N1無言 ${tag}`)
+  // チャンネルはチーム削除に連動して消えないため、個別に後始末する（実測: チーム削除後も chat_channels が残った）
+  recordAsset(`channel ${channel.id}`, `/api/v1/chat/channels/${channel.id}`, admin)
+  recordAsset(`channel ${emptyChannel.id}`, `/api/v1/chat/channels/${emptyChannel.id}`, admin)
+  const attachmentName = `n1p1-${RUN}.txt`
+  const fileBytes = Buffer.from(`N1 attachment ${RUN}`)
+  const upload = (
+    await must(admin, 'POST', '/api/v1/chat/files/upload-url', {
+      channelId: channel.id,
+      fileName: attachmentName,
+      contentType: 'text/plain',
+      fileSize: fileBytes.length,
+    })
+  ).data
+  const put = await fetch(upload.uploadUrl, { method: 'PUT', headers: { 'content-type': 'text/plain' }, body: fileBytes })
+  if (!put.ok) throw new Error(`添付の PUT 失敗 ${put.status}`)
+  const messages = [`N1発言管理者 ${tag}`, `N1発言メンバー ${tag}`, `N1発言添付 ${tag}`]
+  await must(admin, 'POST', `/api/v1/chat/channels/${channel.id}/messages`, { body: messages[0] })
+  await must(member1, 'POST', `/api/v1/chat/channels/${channel.id}/messages`, { body: messages[1] })
+  await must(admin, 'POST', `/api/v1/chat/channels/${channel.id}/messages`, {
+    body: messages[2],
+    attachments: [{ fileKey: upload.fileKey, fileName: attachmentName, fileSize: fileBytes.length, contentType: 'text/plain' }],
+  })
+
+  // 今日の時間割: MEMBER1 の個人時間割（チーム時間割に未リンクのコマ 2 件）
+  const today = jstToday()
+  const timetable = (await must(member1, 'POST', '/api/v1/me/personal-timetables', { name: `N1時間割 ${tag}`, effective_from: today.date })).data
+  recordAsset(`timetable ${timetable.id}`, `/api/v1/me/personal-timetables/${timetable.id}`, member1)
+  await must(member1, 'PUT', `/api/v1/me/personal-timetables/${timetable.id}/periods`, {
+    periods: [
+      { period_number: 1, label: '1限', start_time: '09:00', end_time: '09:50' },
+      { period_number: 2, label: '2限', start_time: '10:00', end_time: '10:50' },
+    ],
+  })
+  const subjects = [`N1国語 ${RUN}`, `N1算数 ${RUN}`]
+  await must(member1, 'PUT', `/api/v1/me/personal-timetables/${timetable.id}/slots`, {
+    slots: [
+      { day_of_week: today.dow, period_number: 1, subject_name: subjects[0], room_name: '101' },
+      { day_of_week: today.dow, period_number: 2, subject_name: subjects[1] },
+    ],
+  })
+  await must(member1, 'POST', `/api/v1/me/personal-timetables/${timetable.id}/activate`)
+
+  // 直近の予定: T1 に今日の予定 2 件（JST 22:00〜23:00 / 23:00〜23:30）
+  const scheduleTitles = [`N1予定一 ${tag}`, `N1予定二 ${tag}`]
+  for (const [index, title] of scheduleTitles.entries()) {
+    await must(admin, 'POST', `/api/v1/teams/${t1.slug}/schedules`, {
+      title,
+      startAt: `${today.date}T${index === 0 ? '22:00' : '23:00'}:00+09:00`,
+      endAt: `${today.date}T${index === 0 ? '23:00' : '23:30'}:00+09:00`,
+      allDay: false,
+      eventType: 'EVENT',
+      attendanceRequired: false,
+    })
+  }
+
+  return {
+    tag,
+    admin,
+    member1,
+    member2,
+    outsider,
+    orgA,
+    orgB,
+    t1,
+    t2,
+    tb,
+    projectFull: { id: projectFull.id, title: projectFull.title },
+    projectEmpty: { id: projectEmpty.id, title: projectEmpty.title },
+    milestoneTitle,
+    channel: { id: channel.id, name: channel.name },
+    emptyChannel: { id: emptyChannel.id, name: emptyChannel.name },
+    timetableId: timetable.id,
+    subjects,
+    scheduleTitles,
+    attachmentName,
+    messages,
+  }
+}
+
+export default async function globalSetup(): Promise<void> {
+  if (process.env.N1P1_REUSE_WORLD === '1' && existsSync(WORLD_FILE)) {
+    console.log(`[n1p1] world 再利用: ${WORLD_FILE}`)
+    return
+  }
+  const world = await buildWorld()
+  mkdirSync(path.dirname(WORLD_FILE), { recursive: true })
+  writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2))
+  console.log(`[n1p1] world: tag=${world.tag} orgA=${world.orgA.slug} orgB=${world.orgB.slug} t1=${world.t1.slug} t2=${world.t2.slug} tb=${world.tb.slug} channel=${world.channel.id}`)
+}
