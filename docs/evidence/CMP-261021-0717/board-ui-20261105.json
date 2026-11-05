@@ -27,7 +27,8 @@
       "profileAbsent": true,
       "ownPortReleased": true,
       "clientsClosed": true
-    }
+    },
+    "originalExitCode": 1
   },
   "greenAttempt": {
     "receiptSha256": "37efbc8824c455fd6850f1dea3a41a727547cf8dc2c3fbd2ba84cb54e771231f",
@@ -138,7 +139,8 @@
       "serverClosed": true,
       "browserChildTerminal": true,
       "generationSnapshotIncomplete": false
-    }
+    },
+    "originalExitCode": 0
   },
   "selectedBoardScreenshot": {
     "path": "docs/evidence/CMP-261021-0717/board-new-three.png",
@@ -165,5 +167,8 @@
     "postScreenshotPathRerun": false,
     "knownEarlierNormalAndFullSelfTestExitCode": 1,
     "knownReason": "validator line 37: CMP正本行数と参照抽出数が一致しません。限定overlay checkの成功とは区別。"
-  }
+  },
+  "sourceHeadMeaning": "住民が操作した製品アプリのsource",
+  "boardBaseHead": "f51ee7c58660297b9ce2eb7bd252da2b6eed2dd6",
+  "boardUiHelperSha256": "34c47211d702485c8dc176b24f82546a071492f2596110acc72151191f24ec68"
 }
