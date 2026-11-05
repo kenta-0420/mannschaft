@@ -85397,16 +85397,6 @@
               }
             }
           },
-          "403": {
-            "description": "発行権限なし（Requester 本人以外）",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseQrTokenResponse"
-                }
-              }
-            }
-          },
           "404": {
             "description": "契約が見つからない",
             "content": {
@@ -149023,16 +149013,6 @@
               }
             }
           },
-          "403": {
-            "description": "閲覧権限なし",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseQrTokenResponse"
-                }
-              }
-            }
-          },
           "404": {
             "description": "契約が見つからない",
             "content": {
@@ -186813,6 +186793,10 @@
       "SlotSummaryDto": {
         "type": "object",
         "properties": {
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
           "endTime": {
             "type": "string",
             "example": "14:30:00"

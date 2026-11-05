@@ -10,6 +10,7 @@ const props = defineProps<{
 const { t } = useI18n()
 const closureApi = useEmergencyClosureApi()
 const notification = useNotification()
+const { getFieldErrors } = useErrorHandler()
 const { userTimezone } = useDatetime()
 // 多重防御（defense-in-depth）: 親タブの v-if に加え、一括送信ボタンを本コンポーネントでも
 // ロールで制御する（緊急休業は副管理者=DEPUTY_ADMIN まで許可）。BE が本防御線。
@@ -155,6 +156,9 @@ watch([startDate, endDate, useTimeRange, startHour, endHour], () => {
   if (selectedTemplateIndex.value === null) return
   const tmpl = TEMPLATES.value[selectedTemplateIndex.value]
   if (!tmpl) return
+  // 期間表記（__PERIOD__）を持たないテンプレート（カスタム＝本文が空）は再生成しない。
+  // 再代入すると、利用者が入力した本文が期間変更で消える。
+  if (!tmpl.body.includes('__PERIOD__')) return
   messageBody.value = tmpl.body.replace('__PERIOD__', periodText.value)
 })
 
@@ -202,6 +206,43 @@ async function loadPreview() {
 const sendLoading = ref(false)
 const sendResult = ref<number | null>(null)
 const showConfirm = ref(false)
+/** BE の 400 fieldErrors（フィールド名 → メッセージ）。reason / subject の入力欄の下に表示する。 */
+const sendFieldErrors = ref<Record<string, string>>({})
+
+// --- 多重送信防止（Idempotency-Key）---
+// 確認ダイアログを開いた時点で送信操作ごとのキーを発行する。失敗後に同じ内容で再送するときは同じキー、
+// 入力内容が変わった・送信が成功したときは新しいキーに替える（BE は同キー同内容を同一送信として扱う）。
+let idempotencyKey: string | null = null
+let idempotencySignature = ''
+
+function requestSignature(): string {
+  return JSON.stringify([
+    startDate.value,
+    endDate.value,
+    useTimeRange.value ? toHHmm(startHour.value) : null,
+    useTimeRange.value ? toHHmm(endHour.value) : null,
+    reason.value,
+    subject.value,
+    messageBody.value,
+    cancelReservations.value,
+  ])
+}
+
+function prepareIdempotencyKey() {
+  const signature = requestSignature()
+  if (idempotencyKey === null || idempotencySignature !== signature) {
+    idempotencyKey = crypto.randomUUID()
+    idempotencySignature = signature
+  }
+}
+
+/** 内容相違の冪等性競合（BE: 409 / RESERVATION_055 CLOSURE_IDEMPOTENCY_KEY_REUSED。コード無しの 409 も同扱い）か。 */
+function isIdempotencyConflict(error: unknown): boolean {
+  const e = error as { statusCode?: number, status?: number, response?: { status?: number }, data?: { error?: { code?: string } } }
+  const status = e?.statusCode ?? e?.status ?? e?.response?.status
+  const code = e?.data?.error?.code ?? ''
+  return code === 'RESERVATION_055' || (status === 409 && code === '')
+}
 
 function openConfirm() {
   if (!startDate.value || !endDate.value) {
@@ -212,6 +253,10 @@ function openConfirm() {
     notification.warn(timeRangeError.value)
     return
   }
+  if (!reason.value.trim()) {
+    notification.warn(t('emergency_closure.error.reason_required'))
+    return
+  }
   if (!subject.value.trim()) {
     notification.warn(t('emergency_closure.error.subject_required'))
     return
@@ -220,13 +265,20 @@ function openConfirm() {
     notification.warn(t('emergency_closure.error.body_required'))
     return
   }
+  prepareIdempotencyKey()
   showConfirm.value = true
 }
 
 async function confirmSend() {
-  showConfirm.value = false
+  // 連打対策: await より前に同期で判定する（ボタンの disabled 反映を待たない）
+  if (sendLoading.value) return
   sendLoading.value = true
+  // ダイアログを開かず呼ばれた場合も、現在の内容に対応するキーを必ず持つ
+  prepareIdempotencyKey()
+  const key = idempotencyKey!
+  let sendSucceeded = false
   sendResult.value = null
+  sendFieldErrors.value = {}
   try {
     const res = await closureApi.sendClosure(props.teamId, {
       startDate: startDate.value,
@@ -237,33 +289,48 @@ async function confirmSend() {
       subject: subject.value,
       messageBody: messageBody.value,
       cancelReservations: cancelReservations.value,
-    })
+    }, key)
+    idempotencyKey = null // 成功したら次の送信は新しいキー
     sendResult.value = res.data.sentCount
     notification.success(t('emergency_closure.message.sent_count', { count: res.data.sentCount }))
-    await loadHistory()
     previewItems.value = []
     previewDone.value = false
+    sendSucceeded = true
   }
-  catch {
-    notification.error(t('emergency_closure.error.send_failed'))
+  catch (error) {
+    // 400 の fieldErrors があれば該当入力欄の下に出す。無ければ従来どおり汎用の失敗通知。
+    sendFieldErrors.value = getFieldErrors(error)
+    if (isIdempotencyConflict(error)) {
+      notification.error(t('emergency_closure.error.idempotency_conflict'))
+    }
+    else if (Object.keys(sendFieldErrors.value).length === 0) {
+      notification.error(t('emergency_closure.error.send_failed'))
+    }
   }
   finally {
     sendLoading.value = false
+    // 応答が返った後（成功・失敗とも）にダイアログを閉じる
+    showConfirm.value = false
   }
+  // 履歴の取得は送信（POST）とは独立。ここで失敗しても送信成功の表示は変えず、履歴側に失敗を出す。
+  if (sendSucceeded) await loadHistory()
 }
 
 // --- 履歴 ---
 const historyLoading = ref(false)
 const historyItems = ref<ClosureHistoryItem[]>([])
+const historyLoadError = ref(false)
 
 async function loadHistory() {
   historyLoading.value = true
+  historyLoadError.value = false
   try {
     const res = await closureApi.listClosures(props.teamId)
     historyItems.value = res.data
   }
   catch {
-    historyItems.value = []
+    // 空配列に潰さず、取得失敗として履歴セクションに表示する（「履歴なし」と区別する）。
+    historyLoadError.value = true
   }
   finally {
     historyLoading.value = false
@@ -418,7 +485,9 @@ onUnmounted(() => {
     <!-- Section 3: メッセージ編集 -->
     <EmergencyClosureMessageEditor
       v-model:subject="subject"
+      v-model:reason="reason"
       v-model:message-body="messageBody"
+      :field-errors="sendFieldErrors"
     />
 
     <!-- Section 4: オプション -->
@@ -469,6 +538,7 @@ onUnmounted(() => {
     <EmergencyClosureHistory
       :loading="historyLoading"
       :items="historyItems"
+      :load-error="historyLoadError"
       :expanded-closure-id="expandedClosureId"
       :confirmations="liveItems"
       :confirmed-count="liveConfirmedCount"
@@ -485,7 +555,9 @@ onUnmounted(() => {
       v-model:visible="showConfirm"
       :period-text="periodText"
       :subject="subject"
+      :reason="reason"
       :cancel-reservations="cancelReservations"
+      :sending="sendLoading"
       @confirm="confirmSend"
     />
   </div>

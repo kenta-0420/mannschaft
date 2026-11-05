@@ -9,6 +9,7 @@
  */
 import dayjs from 'dayjs'
 import { toLocalDateString } from '~/utils/localDate'
+import { parseWallClockInTz } from '~/utils/wallClock'
 
 export function useDatetime() {
   const authStore = useAuthStore()
@@ -90,7 +91,7 @@ export function useDatetime() {
    *
    * よって本関数は `getFullYear()` / `getMonth()` / `getDate()`（time 省略時は
    * `getHours()` / `getMinutes()` / `getSeconds()` も）でローカル壁時計成分を取り出し、
-   * それを `dayjs.tz(壁時計文字列, userTimezone)` でユーザーTZの壁時計として解釈する。
+   * それを `parseWallClockInTz(壁時計文字列, userTimezone)`（`~/utils/wallClock`）でユーザーTZの壁時計として解釈する。
    * これにより「画面で見た値がそのまま送られる」（WYSIWYG）が保証される。
    * 同じ原則は {@link ~/utils/localDate#toLocalDateString}（`LocalDate` 用）にも記してある。
    *
@@ -113,7 +114,7 @@ export function useDatetime() {
             .join(':')
         // time 指定: 指定時刻を採用（'' は終日イベントの 00:00:00）
         : time ? `${time}:00` : '00:00:00'
-    return dayjs.tz(`${dateStr}T${timeStr}`, userTimezone.value).format()
+    return parseWallClockInTz(`${dateStr}T${timeStr}`, userTimezone.value).format()
   }
 
   /**
@@ -231,7 +232,7 @@ export function useDatetime() {
    * @example buildDayStartStr('2026-08-01') // JST → "2026-08-01T00:00:00+09:00"
    */
   function buildDayStartStr(ymd: string): string {
-    return dayjs.tz(`${ymd}T00:00:00`, userTimezone.value).format()
+    return parseWallClockInTz(`${ymd}T00:00:00`, userTimezone.value).format()
   }
 
   /**
@@ -241,7 +242,7 @@ export function useDatetime() {
    * @example buildDayEndStr('2026-08-31') // JST → "2026-08-31T23:59:59+09:00"
    */
   function buildDayEndStr(ymd: string): string {
-    return dayjs.tz(`${ymd}T23:59:59`, userTimezone.value).format()
+    return parseWallClockInTz(`${ymd}T23:59:59`, userTimezone.value).format()
   }
 
   return {

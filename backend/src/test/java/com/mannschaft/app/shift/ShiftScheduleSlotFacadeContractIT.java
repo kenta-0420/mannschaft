@@ -585,9 +585,10 @@ class ShiftScheduleSlotFacadeContractIT extends AbstractMySqlIntegrationTest {
         for (Ep ep : List.of(Ep.S2_GET, Ep.L1_LIST, Ep.P1_PDF_TEAM)) {
             assertResponse(perform(Actor.MEMBER_A, ep, targetId(ep)), ep,
                     Expect.error(404, ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND), "一般メンバー・未公開");
-            // SUPPORTER も未公開は 404（未公開の判定が SUPPORTER の 403 より先）。
+            // SUPPORTER は公開状態に依らず一律 403（CMP-260826-2127 D-2127-1: 404/403 の差で公開状態を読ませない）。
+            // 一覧は元から 403。
             assertResponse(perform(Actor.SUPPORTER_A, ep, targetId(ep)), ep,
-                    Expect.error(404, ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND), "SUPPORTER・未公開");
+                    Expect.error(403, CommonErrorCode.COMMON_002), "SUPPORTER・未公開");
         }
     }
 

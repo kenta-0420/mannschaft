@@ -81,6 +81,41 @@ public interface BulletinThreadRepository extends JpaRepository<BulletinThreadEn
             @Param("scopeType") ScopeType scopeType, @Param("scopeIds") Collection<Long> scopeIds);
 
     /**
+     * 同一スコープ種別の複数スコープについて、スコープごとの先頭 {@code perScopeLimit} 件
+     * （ピン留め優先 → 更新日時降順）のうち、指定ユーザーが未読のスレッド数を 1 クエリで数える（N+1 解消用）。
+     *
+     * <p>個人ダッシュボードの未読スレッド集計は、所属チームごとに
+     * {@link #findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc}（先頭 100 件）を呼び、
+     * さらにスレッドごとに既読判定を発行していた（所属チーム数 × スレッド数のクエリ）。
+     * 「スコープごとの先頭 N 件だけを数える」意味を保つため、ROW_NUMBER でスコープ内順位を付けて絞る。
+     * 同順位の並びは修正前は不定だったため、決定的になるよう {@code id DESC} を最後に置く。</p>
+     *
+     * <p>native クエリには {@code @SQLRestriction} が効かないため {@code deleted_at IS NULL} を明示する。
+     * 呼び出し側は {@code scopeIds} が空の場合に本メソッドを呼ばないこと（{@code IN ()} 非発行）。</p>
+     *
+     * @param scopeType     スコープ種別名（例: {@code "TEAM"}）
+     * @param scopeIds      対象スコープ ID 集合（空集合で呼ばないこと）
+     * @param perScopeLimit スコープごとの走査上限
+     * @param userId        既読判定するユーザー ID
+     * @return 未読スレッド数
+     */
+    @Query(value = "SELECT COUNT(*) FROM ( "
+            + "  SELECT t.id, ROW_NUMBER() OVER ( "
+            + "    PARTITION BY t.scope_id ORDER BY t.is_pinned DESC, t.updated_at DESC, t.id DESC) AS rn "
+            + "  FROM bulletin_threads t "
+            + "  WHERE t.deleted_at IS NULL AND t.scope_type = :scopeType AND t.scope_id IN (:scopeIds) "
+            + ") ranked "
+            + "WHERE ranked.rn <= :perScopeLimit "
+            + "AND NOT EXISTS (SELECT 1 FROM bulletin_read_status r "
+            + "                WHERE r.thread_id = ranked.id AND r.user_id = :userId)",
+            nativeQuery = true)
+    long countUnreadInTopThreadsPerScope(
+            @Param("scopeType") String scopeType,
+            @Param("scopeIds") Collection<Long> scopeIds,
+            @Param("perScopeLimit") int perScopeLimit,
+            @Param("userId") Long userId);
+
+    /**
      * 村スコープ内の全スレッド ID を取得する（一括既読の対象抽出用）。
      *
      * <p>{@link #findIdsByScopeTypeAndScopeId} の村スコープ対称メソッド。</p>
@@ -299,6 +334,26 @@ public interface BulletinThreadRepository extends JpaRepository<BulletinThreadEn
             """)
     List<BulletinThreadEntity> findLatestByVillageId(
             @Param("villageId") UUID villageId, Pageable pageable);
+
+    /**
+     * {@link #findLatestByVillageId} の村 ID 群版（ダッシュボード村フィードの N+1 解消用）。
+     * 村ごとに最新 {@code perVillage} 件を window 関数で切り出す。native のため
+     * {@code deleted_at IS NULL} を明示する。
+     */
+    @Query(value = """
+            SELECT x.* FROM (
+              SELECT t.*, ROW_NUMBER() OVER (
+                       PARTITION BY t.scope_village_id ORDER BY t.created_at DESC, t.id DESC) AS rn
+              FROM bulletin_threads t
+              WHERE t.scope_village_id IN (:villageIds)
+                AND t.deleted_at IS NULL
+            ) x
+            WHERE x.rn <= :perVillage
+            ORDER BY x.created_at DESC, x.id DESC
+            """, nativeQuery = true)
+    List<BulletinThreadEntity> findLatestByVillageIds(
+            @Param("villageIds") java.util.Collection<UUID> villageIds,
+            @Param("perVillage") int perVillage);
 
     // ====================================================================
     // F17.1 Phase 3-β — 村史月次集計（村ドメインから read-only 呼出）

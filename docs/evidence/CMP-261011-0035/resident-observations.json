@@ -1,0 +1,387 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261011-0035",
+  "runIds": [
+    "alicization-cmp0035-run-20261028",
+    "alicization-cmp0035-run-20261030"
+  ],
+  "sourceHeads": {
+    "alicization-cmp0035-run-20261028": "69de853d1fbad5744d6deb9cab98516be633cf9e",
+    "alicization-cmp0035-run-20261030": "0f8354b879e6f58103e07d76606928ea499a4dbf"
+  },
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "note": "F01.2.1 組織チームグループ戦役のアリシゼーション2 run（初回 20261028 の住民7体・再確認 20261030 の住民3体）の公開用選択観測。画像実体は含めず、private 原本（.claude/evidence/CMP-261011-0035-alicization/、git 非追跡）への path 参照のみ。全観測は未実証ラベル。初回 run の人格・目的は原本に記載がなく、役割と操作画像名からの推定を明記した。画像の紐付けは暫定。",
+  "confirmedDefects": [
+    {
+      "description": "チーム権限グループ一覧で内部コード直出し（初回観測7）",
+      "pr": 4206,
+      "runId": "alicization-cmp0035-run-20261028",
+      "personaId": "ALIC-CMP0035-A-TA"
+    },
+    {
+      "description": "組織告知一覧の宛先漏れ（再確認・確定1）",
+      "pr": 4240,
+      "runId": "alicization-cmp0035-run-20261030",
+      "personaId": "ALIC-CMP0035-B-YA"
+    },
+    {
+      "description": "390px で告知カードに1件しか見えない（再確認・確定2）",
+      "pr": 4239,
+      "runId": "alicization-cmp0035-run-20261030",
+      "personaId": "ALIC-CMP0035-B-TO"
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "title": "U の加盟申請の通知が XA に無い",
+      "reason": "殿の裏取りで誤報。通知は存在し、一覧最下部に出ていた。"
+    },
+    {
+      "title": "XM がダッシュボード組織タブで宛先表示に辿り着けない",
+      "reason": "殿の裏取りで誤報。組織タブでは表示される。個人タブのままだった可能性が高い。"
+    }
+  ],
+  "outOfScopeFollowups": [
+    "設計未定義の空状態: 告知ウィザードで加盟チーム 0 件のときの説明文言（初回観測8）",
+    "仕様どおりだが改善案: 公開ページのログイン済み CTA、申請中ボタン状態、申請中タブのバッジ（初回観測3〜5）",
+    "台帳起票予定（別行）: チーム告知一覧ページに組織告知が出ない（再確認時の確定外）"
+  ],
+  "residents": [
+    {
+      "personaId": "ALIC-CMP0035-A-XA",
+      "archetype": "組織管理者（XA。人格・攻め口は原本に記載なし）",
+      "role": "ORG ADMIN",
+      "originalResidentId": "xa",
+      "accountPrefix": "alic-xa",
+      "journeyId": "ALIC-CMP0035-A-XA-J1",
+      "runId": "alicization-cmp0035-run-20261028",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "原本に人格・目的の記載なし。操作画像名からの推定。組織を作成し、チーム権限グループ・加盟設定・加盟申請の承認/拒否・告知送信までを組織管理者として操作する",
+      "privateEvidencePath": ".claude/evidence/CMP-261011-0035-alicization/alic1028/xa/",
+      "insights": [
+        {
+          "id": "ALIC-CMP0035-A-XA-01",
+          "title": "U の加盟申請の通知が XA に無いように見えた（誤報）",
+          "detail": "殿の裏取りで誤報と判定。通知は存在する（notifications id 5101997、TEAM_ORG_APPLICATION_RECEIVED、XA 宛て・未読）。GET /api/v1/notifications も 8 件中の 1 件として返し、U の申請は最古のため一覧の最下部に出る。観測者が見落とした可能性が高い。",
+          "verdict": "誤報",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP0035-A-XA",
+          "journeyId": "ALIC-CMP0035-A-XA-J1"
+        }
+      ]
+    },
+    {
+      "personaId": "ALIC-CMP0035-A-XM",
+      "archetype": "組織メンバー（XM。人格・攻め口は原本に記載なし）",
+      "role": "ORG MEMBER",
+      "originalResidentId": "xm",
+      "accountPrefix": "alic-xm",
+      "journeyId": "ALIC-CMP0035-A-XM-J1",
+      "runId": "alicization-cmp0035-run-20261028",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "原本に人格・目的の記載なし。操作画像名からの推定。組織メンバーとして組織を検索・閲覧し、告知・通知を確認する",
+      "privateEvidencePath": ".claude/evidence/CMP-261011-0035-alicization/alic1028/xm/",
+      "insights": [
+        {
+          "id": "ALIC-CMP0035-A-XM-02",
+          "title": "ダッシュボード「組織」タブで告知の宛先表示に辿り着けなかった（誤報）",
+          "detail": "殿の裏取りで誤報と判定。XM で /dashboard の組織タブ（scope-segment-ORGANIZATION）を開くと「宛先: 東地区（送信時 2 チーム）」が出て broadcast-audience-summary も 1 件描画される。API も MEMBER に target_audience を返す。住民が「個人」タブのままだった可能性が高い。",
+          "verdict": "誤報",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP0035-A-XM",
+          "journeyId": "ALIC-CMP0035-A-XM-J1",
+          "evidenceFiles": [
+            ".claude/evidence/CMP-261011-0035-alicization/alic1028/alic1028/verify/c2-2.png"
+          ]
+        }
+      ]
+    },
+    {
+      "personaId": "ALIC-CMP0035-A-OUT",
+      "archetype": "部外者（OUT。人格・攻め口は原本に記載なし）",
+      "role": "部外者",
+      "originalResidentId": "out",
+      "accountPrefix": "alic-out",
+      "journeyId": "ALIC-CMP0035-A-OUT-J1",
+      "runId": "alicization-cmp0035-run-20261028",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "原本に人格・目的の記載なし。操作画像名からの推定。どの組織・チームにも属さない立場で画面を巡る",
+      "privateEvidencePath": ".claude/evidence/CMP-261011-0035-alicization/alic1028/out/",
+      "insights": []
+    },
+    {
+      "personaId": "ALIC-CMP0035-A-TO",
+      "archetype": "チーム所有者（TO。人格・攻め口は原本に記載なし）",
+      "role": "TEAM OWNER",
+      "originalResidentId": "to",
+      "accountPrefix": "alic-to",
+      "journeyId": "ALIC-CMP0035-A-TO-J1",
+      "runId": "alicization-cmp0035-run-20261028",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "原本に人格・目的の記載なし。操作画像名からの推定。複数チームを作成し、組織へ加盟申請して申請中・拒否後の見え方を確かめる",
+      "privateEvidencePath": ".claude/evidence/CMP-261011-0035-alicization/alic1028/to/",
+      "insights": [
+        {
+          "id": "ALIC-CMP0035-A-TO-05",
+          "title": "申請中があっても既定タブが「所属組織」のまま、「申請中」タブに件数バッジが無い（仕様どおり・改善案）",
+          "detail": "仕様どおり。設計書がバッジを定めるのは組織側の「加盟申請（N）」と管理コンソールのカードだけで、チーム側「申請中」には定めが無い。実装は inviteCount（受信招待）のみバッジにする設計どおり。欠陥ではなく UX 改善案。",
+          "verdict": "仕様どおり（改善案）",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP0035-A-TO",
+          "journeyId": "ALIC-CMP0035-A-TO-J1",
+          "evidenceFiles": [
+            ".claude/evidence/CMP-261011-0035-alicization/alic1028/alic1028/to/44-t3-tab-申請中.png"
+          ]
+        },
+        {
+          "id": "ALIC-CMP0035-A-TO-06",
+          "title": "拒否された T3 に再申請可能日が出ない（仕様どおり・意図的な非開示）",
+          "detail": "仕様どおり。設計書 §5.4 は冷却中かブロックかを相手に区別して見せないと定め、利用者側に期限を出す AC も無い。期限（restrictedUntil）を受け取るのは拒否した組織 ADMIN だけ。期限の公開は仕様変更になる。",
+          "verdict": "仕様どおり（意図的な非開示）",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP0035-A-TO",
+          "journeyId": "ALIC-CMP0035-A-TO-J1",
+          "evidenceFiles": [
+            ".claude/evidence/CMP-261011-0035-alicization/alic1028/alic1028/to/34-t3-pending.png"
+          ]
+        }
+      ]
+    },
+    {
+      "personaId": "ALIC-CMP0035-A-TA",
+      "archetype": "チーム管理者（TA。人格・攻め口は原本に記載なし）",
+      "role": "TEAM ADMIN",
+      "originalResidentId": "ta",
+      "accountPrefix": "alic-ta",
+      "journeyId": "ALIC-CMP0035-A-TA-J1",
+      "runId": "alicization-cmp0035-run-20261028",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "原本に人格・目的の記載なし。操作画像名からの推定。チームを作成して権限グループを作り、加盟申請・招待の受諾を行う",
+      "privateEvidencePath": ".claude/evidence/CMP-261011-0035-alicization/alic1028/ta/",
+      "insights": [
+        {
+          "id": "ALIC-CMP0035-A-TA-03",
+          "title": "公開組織ページ・組織検索のヘッダーが「ログイン／新規登録」、本文に「参加しませんか」が出る（仕様どおり・範囲外）",
+          "detail": "仕様どおり（F01.2.1 の範囲外）。両ページは layout: public 固定で、ログイン状態でレイアウトを切り替える作りが無い（F19.1 §8.1/§8.6）。LoginCtaCard は無条件描画で、ログイン済みの扱いは F19.1 に未定義。別課題の改善提案。",
+          "verdict": "仕様どおり（改善案）",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP0035-A-TA",
+          "journeyId": "ALIC-CMP0035-A-TA-J1",
+          "evidenceFiles": [
+            ".claude/evidence/CMP-261011-0035-alicization/alic1028/alic1028/ta/24-public.png"
+          ]
+        },
+        {
+          "id": "ALIC-CMP0035-A-TA-07",
+          "title": "チームの権限グループ一覧で英語の内部コードが出る",
+          "detail": "殿の裏取りで確定欠陥（軽微）。/teams/{slug}/permission-groups の一覧が権限を生コード（MANAGE_SCHEDULES 等）、対象ロールを「対象: MEMBER」の列挙値で直出しする。作成ダイアログは日本語名を併記しており不整合。コード読みで確認し画面再現はしていない。PR #4206 で修正済み。住民観測としては未実証ラベルを維持する。",
+          "verdict": "確定欠陥（PR #4206 で修正済み）",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP0035-A-TA",
+          "journeyId": "ALIC-CMP0035-A-TA-J1",
+          "evidenceFiles": [
+            ".claude/evidence/CMP-261011-0035-alicization/alic1028/alic1028/ta/09-permgroups.png"
+          ],
+          "fixedByPr": 4206
+        }
+      ]
+    },
+    {
+      "personaId": "ALIC-CMP0035-A-UA",
+      "archetype": "未加盟チーム管理者（UA。人格・攻め口は原本に記載なし）",
+      "role": "未加盟 TEAM ADMIN",
+      "originalResidentId": "ua",
+      "accountPrefix": "alic-ua",
+      "journeyId": "ALIC-CMP0035-A-UA-J1",
+      "runId": "alicization-cmp0035-run-20261028",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "原本に人格・目的の記載なし。操作画像名からの推定。未加盟チームを作成し、組織を検索して加盟申請する",
+      "privateEvidencePath": ".claude/evidence/CMP-261011-0035-alicization/alic1028/ua/",
+      "insights": [
+        {
+          "id": "ALIC-CMP0035-A-UA-04",
+          "title": "申請後も公開ページのボタンが「チームとして加盟を申請」のまま（仕様どおり）",
+          "detail": "仕様に定めなし。ボタンは acceptingTeamApplications && canApply のときだけ出す設計で、申請中の表示はダイアログ内の affiliationStatus=APPLYING（「申請中です」）が担う。実装は設計どおり。欠陥ではなく UX 改善案。",
+          "verdict": "仕様どおり（改善案）",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP0035-A-UA",
+          "journeyId": "ALIC-CMP0035-A-UA-J1",
+          "evidenceFiles": [
+            ".claude/evidence/CMP-261011-0035-alicization/alic1028/alic1028/ua/28-pending.png"
+          ]
+        }
+      ]
+    },
+    {
+      "personaId": "ALIC-CMP0035-A-YA",
+      "archetype": "別組織管理者・英語表示（YA。人格・攻め口は原本に記載なし）",
+      "role": "別組織 ADMIN（locale=en）",
+      "originalResidentId": "ya",
+      "accountPrefix": "alic-ya",
+      "journeyId": "ALIC-CMP0035-A-YA-J1",
+      "runId": "alicization-cmp0035-run-20261028",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "原本に人格・目的の記載なし。操作画像名からの推定。言語を英語へ切り替え、別組織 Y を作成してチーム権限グループ・加盟設定・告知を操作し、他組織の URL も開いてみる",
+      "privateEvidencePath": ".claude/evidence/CMP-261011-0035-alicization/alic1028/ya/",
+      "insights": [
+        {
+          "id": "ALIC-CMP0035-A-YA-08",
+          "title": "告知ウィザードで「チームを選ぶ」を選ぶと、加盟チーム 0 件で空白・説明なし・「次へ」無効になる",
+          "detail": "再現（コード上確認）。BroadcastStep1Audience.vue は orgTeams.length > 0 のときだけ描画し、0 件では何も出さず nextDisabled が true のまま。設計書に空状態の定めが無く、F01.2.1 範囲外寄りの既存告知ウィザード側の UX 課題。",
+          "verdict": "設計未定義の空状態（範囲外 UX 課題）",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP0035-A-YA",
+          "journeyId": "ALIC-CMP0035-A-YA-J1",
+          "evidenceFiles": [
+            ".claude/evidence/CMP-261011-0035-alicization/alic1028/alic1028/ya/52-bygroup.png"
+          ]
+        }
+      ]
+    },
+    {
+      "personaId": "ALIC-CMP0035-B-TA",
+      "archetype": "一般×素直",
+      "role": "TEAM ADMIN",
+      "originalResidentId": "ta",
+      "accountPrefix": "alic-ta",
+      "journeyId": "ALIC-CMP0035-B-TA-J1",
+      "runId": "alicization-cmp0035-run-20261030",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "再確認 run。チーム管理者として告知を順に開いて読み、未読が残らないかを確かめる（告知5件読了・未読0）",
+      "privateEvidencePath": ".claude/evidence/CMP-261011-0035-alicization/alic1030/r1/",
+      "insights": [
+        {
+          "id": "ALIC-CMP0035-B-TA-01",
+          "title": "告知5件を読了でき、未読が残らなかった",
+          "detail": "告知 5 件を読み終え未読 0。問題の観測なしの正常確認。",
+          "verdict": "正常確認",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP0035-B-TA",
+          "journeyId": "ALIC-CMP0035-B-TA-J1",
+          "evidenceFiles": [
+            ".claude/evidence/CMP-261011-0035-alicization/alic1030/alic1030/r1/07-announcements.png"
+          ]
+        },
+        {
+          "id": "ALIC-CMP0035-B-TA-02",
+          "title": "/teams/{slug} の初期表示でスケルトンが約5秒続く、初期設定ダイアログが毎回出る",
+          "detail": "範囲外の気づき（台帳に列挙）。/teams/{slug} 初期スケルトン約5秒と、初期設定ダイアログが毎回出る点。観測者の個別割当は原本に明記なし。登録時に所在から推定付与。",
+          "verdict": "範囲外の気づき",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP0035-B-TA",
+          "journeyId": "ALIC-CMP0035-B-TA-J1"
+        },
+        {
+          "id": "ALIC-CMP0035-B-TA-03",
+          "title": "組織の権限グループ画面に作成・編集ダイアログが無い",
+          "detail": "範囲外の気づき（台帳に列挙）。組織の権限グループ画面に作成・編集のダイアログが無い。観測者の個別割当は原本に明記なし。登録時に所在から推定付与。",
+          "verdict": "範囲外の気づき",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP0035-B-TA",
+          "journeyId": "ALIC-CMP0035-B-TA-J1",
+          "evidenceFiles": [
+            ".claude/evidence/CMP-261011-0035-alicization/alic1030/alic1030/r2/390-40-groups.png"
+          ]
+        }
+      ]
+    },
+    {
+      "personaId": "ALIC-CMP0035-B-TO",
+      "archetype": "スマホ片手操作×表示崩れ",
+      "role": "TEAM OWNER（360/390px）",
+      "originalResidentId": "to",
+      "accountPrefix": "alic-to",
+      "journeyId": "ALIC-CMP0035-B-TO-J1",
+      "runId": "alicization-cmp0035-run-20261030",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "再確認 run。スマホ幅（360x800・390x844、ja/de）で告知カードと権限グループ画面を操作し、表示崩れと横パンが無いかを確かめる（告知読了・横パンなし・生コードなし）",
+      "privateEvidencePath": ".claude/evidence/CMP-261011-0035-alicization/alic1030/r2/",
+      "insights": [
+        {
+          "id": "ALIC-CMP0035-B-TO-01",
+          "title": "390px で告知カードに1件しか見えない（見出し3段・一覧 74px）",
+          "detail": "確定欠陥。#4229・#4236 の副作用で告知見出しが3段になり、一覧が 74px で1件しか見えない。スクショ 390-30-card.png で殿が目視。PR #4239 で修正済み。住民観測としては未実証ラベルを維持する。",
+          "verdict": "確定欠陥（PR #4239 で修正済み）",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP0035-B-TO",
+          "journeyId": "ALIC-CMP0035-B-TO-J1",
+          "evidenceFiles": [
+            ".claude/evidence/CMP-261011-0035-alicization/alic1030/alic1030/r2/390-30-card.png"
+          ],
+          "fixedByPr": 4239
+        },
+        {
+          "id": "ALIC-CMP0035-B-TO-02",
+          "title": "「管理者ビューに切り替えできます」ポップオーバーが居座り、「すべてのお知らせ」・未読バッジを覆う",
+          "detail": "範囲外の気づき。ポップオーバーの閉じるが 15x24 で小さい。台帳では3住民で独立観測。観測者の個別割当は原本に明記なし。登録時に所在から推定付与。",
+          "verdict": "範囲外の気づき",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP0035-B-TO",
+          "journeyId": "ALIC-CMP0035-B-TO-J1",
+          "evidenceFiles": [
+            ".claude/evidence/CMP-261011-0035-alicization/alic1030/alic1030/r2/360-31-modal.png"
+          ]
+        },
+        {
+          "id": "ALIC-CMP0035-B-TO-03",
+          "title": "タップ対象が小さい（チーム選択チップ切れ 38px、権限チェックボックス行 20px、「メンバー一覧で割り当てる」168x20）",
+          "detail": "範囲外の気づき。観測者の個別割当は原本に明記なし。登録時に所在から推定付与。",
+          "verdict": "範囲外の気づき",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP0035-B-TO",
+          "journeyId": "ALIC-CMP0035-B-TO-J1",
+          "evidenceFiles": [
+            ".claude/evidence/CMP-261011-0035-alicization/alic1030/alic1030/r2/360-41-create-dialog.png"
+          ]
+        },
+        {
+          "id": "ALIC-CMP0035-B-TO-04",
+          "title": "チームホームで戻るが二重になり、権限グループタブが画面外にある",
+          "detail": "範囲外の気づき。観測者の個別割当は原本に明記なし。登録時に所在から推定付与。",
+          "verdict": "範囲外の気づき",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP0035-B-TO",
+          "journeyId": "ALIC-CMP0035-B-TO-J1",
+          "evidenceFiles": [
+            ".claude/evidence/CMP-261011-0035-alicization/alic1030/alic1030/r2/390-12-team-top.png"
+          ]
+        }
+      ]
+    },
+    {
+      "personaId": "ALIC-CMP0035-B-YA",
+      "archetype": "多言語（en）×隙間狙い",
+      "role": "別組織 ADMIN（locale=en）",
+      "originalResidentId": "ya",
+      "accountPrefix": "alic-ya",
+      "journeyId": "ALIC-CMP0035-B-YA-J1",
+      "runId": "alicization-cmp0035-run-20261030",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "再確認 run。英語表示で組織の告知を、宛先外・他組織管理者・無所属の立場から隙間狙いで探る。途中でSonnet側の安全対策により中断し、殿がAPIで代行した",
+      "privateEvidencePath": ".claude/evidence/CMP-261011-0035-alicization/alic1030/r3/",
+      "insights": [
+        {
+          "id": "ALIC-CMP0035-B-YA-01",
+          "title": "組織告知一覧が宛先外の人に宛先指定の告知を出す",
+          "detail": "確定欠陥。GET /organizations/{id}/announcements が宛先を判定せず、東宛て PUBLIC（193）を宛先外（ya・out）に contentPreviewAvailable=true で返す（プレビュー自体は 404 で A01 と不一致）。殿が API で確認。PR #4240 で修正済み。住民観測としては未実証ラベルを維持する。",
+          "verdict": "確定欠陥（PR #4240 で修正済み）",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP0035-B-YA",
+          "journeyId": "ALIC-CMP0035-B-YA-J1",
+          "fixedByPr": 4240
+        },
+        {
+          "id": "ALIC-CMP0035-B-YA-02",
+          "title": "他組織管理者・無所属は告知 190〜194 と存在しない 999999 が同一の 404 になり、read-batch は 0 件",
+          "detail": "殿が API で代行確認。他組織管理者・無所属は 190〜194 と 999999 が同一 404 ANNOUNCE_001、read-batch 0。to は 192〜194 のみ可で設計どおり。存在オラクルなし。",
+          "verdict": "仕様どおり",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP0035-B-YA",
+          "journeyId": "ALIC-CMP0035-B-YA-J1"
+        }
+      ]
+    }
+  ]
+}

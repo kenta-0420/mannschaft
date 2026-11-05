@@ -54,4 +54,14 @@ public interface PropertyWorkHistoryViewRepository
      * パッケージの最近の閲覧ログを取得する。
      */
     List<PropertyWorkHistoryViewEntity> findTop50ByPackageIdOrderByViewedAtDesc(Long packageId);
+
+    /**
+     * 退会30日後の強匿名化専用。所有列 {@code user_id} で本人の行を一括物理削除する（行ごとのループを行わない）。
+     *
+     * @param userId 完全削除された利用者 ID
+     * @return 削除件数
+     */
+    @Modifying
+    @Query(value = "DELETE FROM property_work_history_views WHERE user_id = :userId", nativeQuery = true)
+    int deleteAllOwnedByUserId(@Param("userId") Long userId);
 }

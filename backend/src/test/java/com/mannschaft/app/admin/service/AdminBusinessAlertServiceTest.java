@@ -74,6 +74,12 @@ class AdminBusinessAlertServiceTest {
     @Mock
     private Clock wallClock;
 
+    @Mock
+    private com.mannschaft.app.role.service.PermissionScopeQueryService permissionScopeQueryService;
+
+    @Mock
+    private com.mannschaft.app.chat.service.ChatMemberBatchQueryService chatMemberBatchQueryService;
+
     @InjectMocks
     private AdminBusinessAlertService adminBusinessAlertService;
 
@@ -186,7 +192,8 @@ class AdminBusinessAlertServiceTest {
             given(teamRepository.findAllById(List.of(TEAM_ID))).willReturn(List.of(team));
 
             // 予約モジュール無効
-            given(moduleService.isModuleEnabledForTeam("reservation", TEAM_ID)).willReturn(false);
+            given(moduleService.isModuleEnabledForTeams("reservation", List.of(TEAM_ID)))
+                    .willReturn(java.util.Map.of(TEAM_ID, false));
 
             // 問い合わせチャンネルなし
             given(chatChannelRepository.findByTeamIdInAndIsInquiryChannelTrue(List.of(TEAM_ID)))
@@ -222,10 +229,13 @@ class AdminBusinessAlertServiceTest {
             given(teamRepository.findAllById(List.of(TEAM_ID))).willReturn(List.of(team));
 
             // 予約モジュール有効
-            given(moduleService.isModuleEnabledForTeam("reservation", TEAM_ID)).willReturn(true);
+            given(moduleService.isModuleEnabledForTeams("reservation", List.of(TEAM_ID)))
+                    .willReturn(java.util.Map.of(TEAM_ID, true));
 
             // ADMIN 権限（予約カウント対象）
-            given(userRoleRepository.findAdminUserIdsByTeamId(TEAM_ID)).willReturn(List.of(USER_ID));
+            // CMP-261103-1225: チームごとの判定ではなくチーム群まとめて判定する
+            given(permissionScopeQueryService.findAdminTeamIds(USER_ID, List.of(TEAM_ID)))
+                    .willReturn(java.util.Set.of(TEAM_ID));
 
             // 本日の確定予約数: 2
             java.util.ArrayList<Object[]> todayConfirmed = new java.util.ArrayList<>();

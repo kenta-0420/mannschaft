@@ -533,8 +533,8 @@ class ChatMessageServiceTest {
             ChatMessageEntity message = createMessage();
             given(messageRepository.findByChannelIdAndIdLessThan(eq(CHANNEL_ID), eq(cursor), any(Pageable.class)))
                     .willReturn(List.of(message));
-            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
-            given(reactionRepository.findByMessageId(any())).willReturn(List.of());
+            given(attachmentRepository.findByMessageIdInOrderByIdAsc(any())).willReturn(List.of());
+            given(reactionRepository.findByMessageIdInOrderByIdAsc(any())).willReturn(List.of());
             given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any()))
                     .willReturn(createMessageResponse());
             given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
@@ -559,8 +559,8 @@ class ChatMessageServiceTest {
             ChatMessageEntity msg3 = createMessage();
             given(messageRepository.findByChannelIdOrderByCreatedAtDesc(eq(CHANNEL_ID), any(Pageable.class)))
                     .willReturn(List.of(msg1, msg2, msg3));
-            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
-            given(reactionRepository.findByMessageId(any())).willReturn(List.of());
+            given(attachmentRepository.findByMessageIdInOrderByIdAsc(any())).willReturn(List.of());
+            given(reactionRepository.findByMessageIdInOrderByIdAsc(any())).willReturn(List.of());
             given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any()))
                     .willReturn(createMessageResponse());
             given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
@@ -627,8 +627,8 @@ class ChatMessageServiceTest {
             given(messageRepository.findById(parentId)).willReturn(Optional.of(parent));
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
             given(messageRepository.findByParentIdOrderByCreatedAtAsc(parentId)).willReturn(List.of(reply));
-            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
-            given(reactionRepository.findByMessageId(any())).willReturn(List.of());
+            given(attachmentRepository.findByMessageIdInOrderByIdAsc(any())).willReturn(List.of());
+            given(reactionRepository.findByMessageIdInOrderByIdAsc(any())).willReturn(List.of());
             given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
             given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
@@ -671,8 +671,8 @@ class ChatMessageServiceTest {
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
             given(messageRepository.searchByKeyword(eq(CHANNEL_ID), eq("テスト"), any(Pageable.class)))
                     .willReturn(List.of(message));
-            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
-            given(reactionRepository.findByMessageId(any())).willReturn(List.of());
+            given(attachmentRepository.findByMessageIdInOrderByIdAsc(any())).willReturn(List.of());
+            given(reactionRepository.findByMessageIdInOrderByIdAsc(any())).willReturn(List.of());
             given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
             given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
@@ -936,8 +936,8 @@ class ChatMessageServiceTest {
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
             given(messageRepository.findByRootIdAndDeletedAtIsNullOrderByCreatedAtAsc(
                     eq(MESSAGE_ID), any(Pageable.class))).willReturn(replyPage);
-            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
-            given(reactionRepository.findByMessageId(any())).willReturn(List.of());
+            given(attachmentRepository.findByMessageIdInOrderByIdAsc(any())).willReturn(List.of());
+            given(reactionRepository.findByMessageIdInOrderByIdAsc(any())).willReturn(List.of());
             given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
             given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
@@ -1171,8 +1171,8 @@ class ChatMessageServiceTest {
 
             given(messageRepository.findByChannelIdAndIdLessThan(eq(CHANNEL_ID), eq(cursor), any(Pageable.class)))
                     .willReturn(List.of(m1, m2, m3));
-            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
-            given(reactionRepository.findByMessageId(any())).willReturn(List.of());
+            given(attachmentRepository.findByMessageIdInOrderByIdAsc(any())).willReturn(List.of());
+            given(reactionRepository.findByMessageIdInOrderByIdAsc(any())).willReturn(List.of());
             given(nameResolver.resolveUserDisplayNames(any()))
                     .willReturn(java.util.Map.of(SENDER_ID, "山田太郎", OTHER_USER_ID, "佐藤花子"));
             given(nameResolver.resolveUserAvatarUrls(any())).willReturn(java.util.Map.of());
@@ -1188,6 +1188,11 @@ class ChatMessageServiceTest {
             verify(nameResolver, org.mockito.Mockito.times(1)).resolveUserAvatarUrls(any());
             // 単発解決メソッドは呼ばれない
             verify(nameResolver, never()).resolveUserDisplayName(any());
+            // CMP-261103-1225: 添付・リアクションもメッセージ数に依存せず各 1 回の一括取得
+            verify(attachmentRepository, org.mockito.Mockito.times(1)).findByMessageIdInOrderByIdAsc(any());
+            verify(reactionRepository, org.mockito.Mockito.times(1)).findByMessageIdInOrderByIdAsc(any());
+            verify(attachmentRepository, never()).findByMessageId(any());
+            verify(reactionRepository, never()).findByMessageId(any());
         }
     }
 }

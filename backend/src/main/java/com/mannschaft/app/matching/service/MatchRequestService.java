@@ -18,7 +18,6 @@ import com.mannschaft.app.matching.entity.MatchRequestEntity;
 import com.mannschaft.app.matching.repository.MatchProposalRepository;
 import com.mannschaft.app.matching.repository.MatchRequestRepository;
 import com.mannschaft.app.matching.repository.MatchReviewRepository;
-import com.mannschaft.app.matching.repository.NgTeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -28,7 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -47,8 +45,8 @@ public class MatchRequestService {
     private final MatchRequestRepository requestRepository;
     private final MatchProposalRepository proposalRepository;
     private final MatchReviewRepository reviewRepository;
-    private final NgTeamRepository ngTeamRepository;
     private final AccessControlService accessControlService;
+    private final MatchRequestVisibilityPolicy visibilityPolicy;
 
     /**
      * 募集を検索する（パブリック検索）。
@@ -108,16 +106,9 @@ public class MatchRequestService {
     public MatchRequestResponse getRequest(Long id, Long currentUserId) {
         MatchRequestEntity entity = findRequestOrThrow(id);
 
-        // 閲覧ユーザーの所属チーム群を解決（userID を teamId として扱う誤りを撤廃）。
-        Set<Long> myTeamIds = accessControlService.findAffiliatedScopeIds(currentUserId, "TEAM");
-
-        // NGチームチェック: 所属チーム群のいずれかが双方向ブロックしている募集は 404 扱い。
-        if (resolveBlockedTeamIds(myTeamIds).contains(entity.getTeamId())) {
-            throw new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND);
-        }
-
-        // 自チーム（所属チーム群に含む）以外の OPEN 以外は 404。
-        if (!myTeamIds.contains(entity.getTeamId()) && entity.getStatus() != MatchRequestStatus.OPEN) {
+        // 閲覧資格（所属チーム群のいずれかとのNG関係・自チーム以外のOPEN以外）は 404 扱い。
+        // 判定は書込前の閲覧ガード（MatchRequestViewAccessGuard）と共有する（CMP-260821-1027）。
+        if (!visibilityPolicy.isVisible(entity, currentUserId)) {
             throw new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND);
         }
 
@@ -278,11 +269,7 @@ public class MatchRequestService {
      * 指定チーム群のそれぞれが双方向ブロックしている teamId を union して返す。
      */
     private Set<Long> resolveBlockedTeamIds(Set<Long> myTeamIds) {
-        Set<Long> blocked = new LinkedHashSet<>();
-        for (Long teamId : myTeamIds) {
-            blocked.addAll(ngTeamRepository.findBidirectionalBlockedTeamIds(teamId));
-        }
-        return blocked;
+        return visibilityPolicy.blockedTeamIdsOf(myTeamIds);
     }
 
     /**

@@ -506,6 +506,8 @@ INDEX idx_jmc_worker_valid (worker_user_id, valid_until)
 
 ### 5.3 ER図（mermaid）
 
+> 現在のスキーマは [jobmatching](../../architecture/er/jobmatching.md)（実スキーマからの自動生成）を参照。この図は設計時点の意図。
+
 ```mermaid
 erDiagram
     users ||--o{ job_postings : "creates"

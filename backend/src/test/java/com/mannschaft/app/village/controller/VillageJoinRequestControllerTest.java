@@ -58,6 +58,10 @@ class VillageJoinRequestControllerTest {
     @MockitoBean
     private VillageJoinRequestService service;
 
+    /** 取引の外の代表権限判定（判定内容は VillageSubjectAuthorizationGuardTest で検証する）。 */
+    @MockitoBean
+    private com.mannschaft.app.village.service.VillageSubjectAuthorizationGuard subjectAuthorizationGuard;
+
     @MockitoBean
     private com.mannschaft.app.auth.service.AuthTokenService authTokenService;
 
@@ -105,7 +109,7 @@ class VillageJoinRequestControllerTest {
     @Test
     @DisplayName("POST join-requests — 正常系 201")
     void create_success() throws Exception {
-        given(service.createRequest(eq(VILLAGE_ID), eq(USER_ID), any())).willReturn(pendingResponse());
+        given(service.createRequest(eq(VILLAGE_ID), eq(USER_ID), any(), any())).willReturn(pendingResponse());
 
         String body = """
                 {
@@ -127,7 +131,7 @@ class VillageJoinRequestControllerTest {
     @DisplayName("POST join-requests — FREE 村への申請は 422")
     void create_freeVillage() throws Exception {
         willThrow(new BusinessException(VillageErrorCode.VILLAGE_FREE_VILLAGE_DIRECT_JOIN))
-                .given(service).createRequest(eq(VILLAGE_ID), eq(USER_ID), any());
+                .given(service).createRequest(eq(VILLAGE_ID), eq(USER_ID), any(), any());
 
         String body = """
                 {
@@ -147,7 +151,7 @@ class VillageJoinRequestControllerTest {
     @DisplayName("POST join-requests — PENDING 重複は 409")
     void create_pendingDuplicate() throws Exception {
         willThrow(new BusinessException(VillageErrorCode.VILLAGE_JOIN_REQUEST_PENDING_DUPLICATE))
-                .given(service).createRequest(eq(VILLAGE_ID), eq(USER_ID), any());
+                .given(service).createRequest(eq(VILLAGE_ID), eq(USER_ID), any(), any());
 
         String body = """
                 {
