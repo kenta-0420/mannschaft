@@ -1106,6 +1106,9 @@
     }
   },
   "project": {
+    "related_todo_no_due": "기한 없음",
+    "related_todo_no_assignee": "담당자 없음",
+    "related_todo_open": "TODO 상세 열기",
     "milestones": "마일스톤",
     "no_milestones": "마일스톤이 없습니다",
     "due_date": "기한",
