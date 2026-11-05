@@ -446,6 +446,25 @@ class PlaintextSecretTokenGuardConditionTest {
         }
 
         @Test
+        @DisplayName("陽性: 乱数の文字列を split した配列の要素も違反（値自体の印は要素の読出しに伝わる）")
+        void splitOfRandomIsViolation() {
+            assertListed(result.violations(), method(FlowSelfIssuingFixtureService.class, "issueWithSplitOfRandom"),
+                    "AALOAD の結果は配列の値自体の印と類の印を合わせる");
+        }
+
+        /**
+         * 既知の偽陽性（2026-11-05 殿裁定）。配列の別名を union-find の同値類で保守的に近似するため、共通の格納先を通じて
+         * 乱数を受けていない配列も同じ類になり検出される。番人は安全側に倒す方針で許容する。
+         * 誤検出したときは配列を分けるか {@code @PlaintextTokenDebt} を付ける。近似を精密にしたら期待値を反転する。
+         */
+        @Test
+        @DisplayName("既知の偽陽性: 乱数の配列と同じ外側の配列へ格納したきれいな配列も検出される（保守的近似。精密化したら反転）")
+        void sharedBoxOverMergeIsKnownFalsePositive() {
+            assertListed(result.violations(), method(FlowSelfIssuingFixtureService.class, "cleanRowSharingBoxWithRandomRow"),
+                    "既知の偽陽性: 共通の格納先を通じて類が併合される");
+        }
+
+        @Test
         @DisplayName("陰性: 別の配列に乱数を入れても、token 系へ渡す配列には伝わらない")
         void separateArraysAreNotViolation() {
             String id = method(FlowSelfIssuingFixtureService.class, "separateArraysDoNotShareTaint");

@@ -103,6 +103,10 @@ import org.springframework.data.repository.Repository;
  * </ul>
  * <p>限界ごとに {@link PlaintextSecretTokenGuardConditionTest} に「既知の偽陰性」の fixture と、検出されないことを固定する試験を置く。
  * 将来検出できるようになったら、その試験の期待値を反転する。ソースの字句解析で補う案は棄却済み。</p>
+ * <p><b>既知の偽陽性（保守的近似。2026-11-05 殿裁定で許容）</b>: 配列の別名を同値類で近似するため、共通の格納先
+ * （外側の配列）へ入れた別々の配列が同じ類になり、乱数を受けていない配列から token 系へ詰めた値も検出する
+ * （{@link PlaintextSecretRandomFlowAnalyzer} 参照。検出を固定する fixture あり）。誤検出したときは配列を共通の格納先に
+ * 入れずに分けるか、{@code @PlaintextTokenDebt}（台帳登録済みの未完了 CMP）を付ける。</p>
  */
 final class PlaintextSecretTokenGuardRules {
 

@@ -32,6 +32,7 @@ import java.util.UUID;
  *   <li>{@link #issueWithThreeDimensionalAlias()}: 3次元に重ねた配列の最も内側に乱数を書き、最も外側から読む</li>
  *   <li>{@link #issueWithCopiedAliasWrite()}: 外側から取り出した内側の配列（別名のローカル変数）へ書き、元の変数から読む</li>
  *   <li>{@link #issueWithBranchMergedAlias(boolean)}: 分岐で合流した別名を外側へ格納し、外側経由で書いて元の変数から読む</li>
+ *   <li>{@link #issueWithSplitOfRandom()}: 乱数の文字列を split した配列（値自体に印がある配列）の要素が token 系に届く</li>
  * </ul>
  * <p>陰性（検出されてはならない）:</p>
  * <ul>
@@ -46,6 +47,12 @@ import java.util.UUID;
  *   <li>フィールド経由: {@link #issueViaField()}（乱数をフィールドへ入れ、読み戻して token 系に詰める）</li>
  *   <li>ラムダの本体: {@link #issueViaLambdaBody()}（乱数を捕捉したラムダの本体で token 系に詰める）</li>
  *   <li>リフレクション: {@link #issueViaReflection()}（{@link Method#invoke} で token 系の setter を呼ぶ）</li>
+ * </ul>
+ * <p>既知の偽陽性（<b>検出されることを固定</b>する。配列の別名を union-find の同値類で保守的に近似するため、
+ * 共通の格納先を通じて別々の配列が同じ類に併合され、乱数を受けていない配列にも印が及ぶ。番人は安全側に倒す方針で許容する。
+ * 誤検出したときは、配列を共通の格納先に入れずに分けるか、{@code @PlaintextTokenDebt} を付ける）:</p>
+ * <ul>
+ *   <li>{@link #cleanRowSharingBoxWithRandomRow()}: 乱数を入れた配列ときれいな配列を同じ外側の配列へ格納し、きれいな配列から token 系に詰める</li>
  * </ul>
  */
 public class FlowSelfIssuingFixtureService {
@@ -260,6 +267,24 @@ public class FlowSelfIssuingFixtureService {
         String[] tokenBox = new String[1];
         tokenBox[0] = FIXED_VALUE;
         entity.setToken(tokenBox[0]);
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithSplitOfRandom() {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        String[] parts = UUID.randomUUID().toString().split("-");
+        entity.setToken(parts[0]);
+        return entity;
+    }
+
+    /** 既知の偽陽性（保守的近似）: cleanRow は乱数を受けないが、randomRow と同じ box へ格納したため同じ類になり検出される。 */
+    public PlaintextTokenFixtureEntity cleanRowSharingBoxWithRandomRow() {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        String[] randomRow = new String[1];
+        String[] cleanRow = {FIXED_VALUE};
+        String[][] box = {randomRow, cleanRow};
+        randomRow[0] = UUID.randomUUID().toString();
+        entity.setToken(cleanRow[0]);
         return entity;
     }
 

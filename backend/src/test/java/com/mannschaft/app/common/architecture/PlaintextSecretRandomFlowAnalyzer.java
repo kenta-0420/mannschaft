@@ -36,7 +36,8 @@ import org.objectweb.asm.tree.analysis.Value;
  * まとめて扱い、乱数の印は値ではなく類に付ける。</p>
  * <ul>
  *   <li>{@code AASTORE} で参照を配列へ格納したら、格納した値の場所と格納先の場所を同じ類へ併合する</li>
- *   <li>{@code AALOAD} の結果（内側の配列や要素）は、格納先と同じ類に属する（格納先の場所をそのまま持つ）</li>
+ *   <li>{@code AALOAD} の結果（内側の配列や要素）は、格納先と同じ類に属する（格納先の場所をそのまま持つ）。
+ *       配列の値自体に印があれば（{@code split} の戻り値など）、結果も印付きとする</li>
  *   <li>{@code SecureRandom#nextBytes(a)} や乱数由来の値の要素への代入は、{@code a} の類に印を付ける</li>
  *   <li>値を読むときは、値自身の印か、値の場所のどれかの類の印があれば乱数由来とみなす</li>
  * </ul>
@@ -44,6 +45,13 @@ import org.objectweb.asm.tree.analysis.Value;
  * 類の印は流れに依らない（同じ類の配列は、書込みの前後を問わず乱数由来とみなす保守的な近似）。
  * 作った場所が分からない配列（フィールドや戻り値の配列）へ {@code nextBytes} したときは {@link #ANY_CALL} を入れ、
  * 同居だけで違反とする側に倒す。</p>
+ *
+ * <p><b>既知の偽陽性（保守的近似。2026-11-05 殿裁定で許容）</b>: 格納は本来「格納先が格納値を含む」包含関係だが、
+ * これを同値関係として併合するため、共通の格納先を通じて別々の配列が同じ類になる。たとえば乱数を入れた配列ときれいな配列を
+ * 同じ外側の配列へ格納すると、きれいな配列から token 系へ詰めた値も乱数由来とみなして検出する。番人は安全側に倒す方針で、
+ * 本番の違反は0件のため精密化しない（{@code PlaintextSecretTokenGuardConditionTest} に検出を固定する fixture を置く）。
+ * 誤検出したときの回避策: 配列を共通の格納先に入れずに分ける。分けられない事情があれば {@code @PlaintextTokenDebt}
+ * （台帳登録済みの未完了 CMP）を付けて債務として扱う。</p>
  *
  * <p><b>停止性と単調性</b>: 値の格子は「印（真偽）× 作った場所（メソッド内の命令と引数の有限集合）の部分集合」で有限であり、
  * 合流は和集合なので単調に増える。類は併合しかせず（分割しない）、類の印は付けるだけで外さないので、類の状態も単調に増え
@@ -261,8 +269,9 @@ final class PlaintextSecretRandomFlowAnalyzer {
             int opcode = insn.getOpcode();
             boolean tainted = isTainted(value1) || isTainted(value2);
             return switch (opcode) {
-                // 参照の要素（内側の配列を含む）は格納先と同じ類に属する
-                case Opcodes.AALOAD -> new TaintValue(1, false, value1.sites());
+                // 参照の要素（内側の配列を含む）は格納先と同じ類に属する。印は配列の値自体の印（split の戻り値など、
+                // 作った場所の分からない乱数由来の配列）と類の印を合わせる
+                case Opcodes.AALOAD -> new TaintValue(1, value1.tainted(), value1.sites());
                 case Opcodes.IALOAD, Opcodes.FALOAD, Opcodes.BALOAD, Opcodes.CALOAD, Opcodes.SALOAD ->
                         TaintValue.of(1, isTainted(value1));
                 case Opcodes.LALOAD, Opcodes.DALOAD -> TaintValue.of(2, isTainted(value1));
