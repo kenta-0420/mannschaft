@@ -56,7 +56,7 @@ P6の孫spawnだけはdetached=trueとし、Node自身の非detached用Jobへの
 
 ## 有限probe（実行には別GOが必要）
 
-固定readiness試練は `node scripts/m21-windows-supervisor.probe.cjs --readiness-fixture` だけを入口とし、通常10case suiteを呼ばない。PSのTestFixtureは固定列挙のみ、ReadinessFixture本体は同じscripts内の定数pathに限定する。通常Wait-Fileのretry・ObserveのParent終了判定はまだ変更せず、genuine RED採取前にgreen処理を足さない。
+固定readiness試練は `node scripts/m21-windows-supervisor.probe.cjs --readiness-fixture` だけを入口とし、通常10case suiteを呼ばない。PSのTestFixtureは固定列挙のみ、ReadinessFixture本体は同じscripts内の定数pathに限定する。da699ddb/private Node22の同fixtureでA/B/Cのgenuine RED、不正JSON対照の即失敗を実測した後、以下の限定green処理を追加した。実測結果は固定commit/SHAと区別して判定する。
 
 | fixture | 実境界と要求 |
 |---|---|
@@ -65,7 +65,11 @@ P6の孫spawnだけはdetached=trueとし、Node自身の非detached用Jobへの
 | lock-held | 同じ実lockを保持し、専用WorkRemainingMsをMin(既存絶対W,現在elapsed+1000)へ短縮するだけ。実32count>0・元code・枯渇・受理0を要求。旧readerの即32は枯渇とは扱わない。finallyで自分のlockを閉じる |
 | invalid-json | 同期write/close→move後の読取可能な固定不正JSON。decode段階の即失敗、実32count0、受理0、予算未枯渇を対照として要求 |
 
-共有modeを緩めない。実32観測hookはReadinessFixtureの固定file/read段階だけで動き、例外の握りつぶし・通常readerのretryは行わない。同processの別handleにもWindows共有制約は適用される。lockの時系列はlock-acquired→actual-read32→Bだけlock-released→受理の固定記録を残す。Cのfinally解放を、readiness回復による受理とは扱わない。
+共有modeを緩めない。実32観測hookはReadinessFixtureの固定file/read段階だけで動き、hook自身は例外を握りつぶさず元例外をrethrowする。同processの別handleにもWindows共有制約は適用される。lockの時系列はlock-acquired→actual-read32→Bだけlock-released→受理の固定記録を残す。Cのfinally解放を、readiness回復による受理とは扱わない。
+
+Wait-Fileのread段階では、同じRead-Json例外の有限InnerException chain中に実IOExceptionと完全HRESULT0x80070020/21を確認した場合だけ、同じ絶対Wと既存25msの外pollへ戻す。毎回Get-Itemのsize/reparse境界・read・decodeをやり直す。decode、owner/nonce/世代、reparse、サイズ、access denied、公開後消失、その他IOはretryしない。既存読取share modeは変えない。32/33別count・first/last elapsed・累積poll待機・元HRESULT・recovered/exhaustedを有限集計して結果へ残し、枯渇時は元例外chainとmetadata-readiness-exhaustedを保存する。回復待ちとして消費したRemember-Failure contextは直ちにclearし、後の無関係な失敗へ流用しない。
+
+Observeのcert待ちだけは各外pollの先頭と認定前・親Kill直前で、直接保持ParentのWaitForExit(0)を確認する。早期終了ならparent-exited-before-certificateをprimaryとし、保持出生・actual code・認定0をparentExitEvidenceへ保存する。Parent receiptの読取・owner/nonce/出生照合は後続の独立attemptにして、失敗してもprimaryとactual exitを維持する。通常finallyのCaptureで親のactual exit/各EOFを採取し、ParentのJobemptyとP4成功を同一視しない。Observe自身のbootstrap/final結果は固定observe-result.jsonへ保存し、Parentのresult.json、3handle exit用observer.jsonと衝突させない。
 
 試練全体も開始前に単一G420000/R18000を設定し、caseごとにresetしない。Aの18秒観測は既存絶対W内、回収の各exit/EOF/finish-closeは残Gへclampする。意図したREDでも独立した4fixtureの対照は採取するが、直接launcher未終了やAのParent安全条件が未確認なら後続へ進まずexact retainedへ残す。通常10case/正式環境は起動しない。test専用PSを含む4file SHA・入力commit・実exit/code・各channel・原本pathをpacketへ保存する。
 

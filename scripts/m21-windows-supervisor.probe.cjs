@@ -216,7 +216,7 @@ async function readinessFixtureSuite() {
       for (const channel of channels) channelFailures.push(...await collectChannel(channel, totalDeadline));
       assert.deepEqual(channelFailures, []);
       await until(() => closed, LIMIT.channel, totalDeadline);
-      receipt = read(path.join(run, 'result.json'));
+      receipt = read(path.join(run, parentCase ? 'observe-result.json' : 'result.json'));
       assert.equal(receipt.owner, OWNER); assert.equal(receipt.nonce, nonce); assert.equal(receipt.process.pid, p.pid);
       assert.equal(receipt.resourceRecovery.confirmed, true);
       if (parentCase) {
@@ -229,21 +229,33 @@ async function readinessFixtureSuite() {
         assert.equal(captured.role, 'direct'); assert.equal(captured.pid, parentActual.pid); assert.equal(captured.creation, parentActual.creation);
         assert.equal(captured.exited, true); assert.equal(captured.exitCode, 1);
         assert.equal(captured.stdoutEof, true); assert.equal(captured.stderrEof, true);
+        const parentExit = receipt.parentExitEvidence;
+        assert.equal(parentExit.exited, true); assert.equal(parentExit.exitCode, 1); assert.equal(parentExit.certificateAdopted, false);
+        assert.equal(parentExit.identity.pid, parentActual.pid); assert.equal(parentExit.identity.creation, parentActual.creation);
+        assert.equal(parentExit.receiptPresent, true); assert.equal(parentExit.receipt.mode, 'Parent');
       } else {
         evidence = receipt.fixtureEvidence;
         assert.equal(evidence.fixture, fixture);
+        const stats = receipt.metadataReadiness.filter(s => s.file === 'child-candidate.json');
+        assert.equal(stats.length, 1);
         if (fixture === 'invalid-json') {
           assert.equal(code, 1); assert.equal(receipt.primary.ioOperation, 'decode');
           assert.equal(evidence.realRead32, 0); assert.equal(evidence.accepted, 0); assert.equal(evidence.budgetExhausted, false);
+          assert.equal(stats[0].count32, 0); assert.equal(stats[0].count33, 0); assert.equal(stats[0].exhausted, false);
         } else {
           assert.ok(evidence.realRead32 > 0); assert.equal(evidence.lastHResult, -2147024864); assert.equal(evidence.lockAcquired, true);
+          assert.equal(stats[0].count32, evidence.realRead32); assert.equal(stats[0].count33, 0);
+          assert.equal(stats[0].lastHResult, -2147024864); assert.ok(stats[0].cumulativeWaitMs > 0);
           if (fixture === 'lock-release') {
             assert.equal(evidence.lockReleased, true); assert.equal(code, 0); assert.equal(receipt.primary, null);
             assert.equal(evidence.accepted, 1); assert.deepEqual(evidence.acceptedIdentity, evidence.expectedIdentity);
             assert.deepEqual(evidence.events.map(e => e.event), ['lock-acquired', 'actual-read32', 'lock-released', 'accepted']);
+            assert.equal(stats[0].recovered, true); assert.equal(stats[0].exhausted, false);
           } else {
             assert.equal(code, 1); assert.equal(evidence.accepted, 0); assert.equal(evidence.budgetExhausted, true);
             assert.equal(receipt.primary.reason, 'metadata-readiness-exhausted');
+            assert.equal(stats[0].recovered, false); assert.equal(stats[0].exhausted, true);
+            assert.ok(receipt.primary.exceptions.some(e => e.type === 'System.IO.IOException' && e.hResult === -2147024864));
           }
         }
       }
@@ -354,7 +366,7 @@ async function suite() {
         if (launchError) throw launchError;
         if (channelFailures.length) throw new Error(JSON.stringify(channelFailures));
         assert.ok(remaining(totalDeadline) > 0, 'total-budget-exhausted');
-        receipt = read(path.join(run, 'result.json'));
+        receipt = read(path.join(run, scenario === 'kill-close' ? 'observe-result.json' : 'result.json'));
         assert.equal(receipt.nonce, nonce);
         assert.equal(receipt.owner, OWNER);
         assert.equal(receipt.process.pid, p.pid);
@@ -435,7 +447,8 @@ async function suite() {
         }
         const evidence = { process: receipt.process, primary: reason(receipt.primary), secondary: receipt.secondary.map(reason),
           streams: streamEvidence, lastHandles: receipt.lastHandles, resourceRecovery: receipt.resourceRecovery,
-          grandchildEvidence: receipt.grandchildEvidence, p6Observations: receipt.p6Observations, p6Certification: receipt.p6Certification, p4 };
+          grandchildEvidence: receipt.grandchildEvidence, p6Observations: receipt.p6Observations, p6Certification: receipt.p6Certification,
+          metadataReadiness: receipt.metadataReadiness, parentExitEvidence: receipt.parentExitEvidence, p4 };
         stamp(scenario, 'case-recovered');
         results.push({ scenario, passed: true, launcherPid: p.pid, launcherCreation: receipt.process?.creation ?? null,
           launcherExitCode: code, launcherExited: exited, channels: channels.map(c => c.state), evidence });

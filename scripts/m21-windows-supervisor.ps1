@@ -59,6 +59,8 @@ $p6ParentGrand=$null
 $p6Certification=$null
 $fixtureEvidence=$null
 $fixtureLock=$null
+$metadataReadiness=New-Object 'Collections.Generic.List[object]'
+$parentExitEvidence=$null
 $p6Observations=New-Object 'Collections.Generic.List[object]'
 function Remaining([int]$cap=[int]::MaxValue,[switch]$Recovery) {
  $budget=$WorkRemainingMs;if($Recovery){$budget=$TotalRemainingMs}
@@ -332,8 +334,8 @@ catch {
  $processIdentity=$null
  Attempt 'bootstrap-process-identity' {$current=[Diagnostics.Process]::GetCurrentProcess();$script:processIdentity=@{pid=$current.Id;creation=$current.StartTime.ToUniversalTime().Ticks.ToString()}}
  Attempt 'bootstrap-result-save' {
-  $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}
-  Write-Json $name @{owner=$owner;nonce=$Nonce;process=$processIdentity;passed=$false;primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@();parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@();lastHandles=@();startupRecovery=@();resourceRecovery=@{confirmed=$true;jobEmpty=$null;retained=@()};recovered=$true;parentKilled=$false;knownExited=0}
+  $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}elseif($Mode -eq 'Observe'){$name='observe-result.json'}
+  Write-Json $name @{owner=$owner;nonce=$Nonce;process=$processIdentity;passed=$false;primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@();metadataReadiness=@($metadataReadiness.ToArray());parentExitEvidence=$parentExitEvidence;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@();lastHandles=@();startupRecovery=@();resourceRecovery=@{confirmed=$true;jobEmpty=$null;retained=@()};recovered=$true;parentKilled=$false;knownExited=0}
   $script:bootstrapSaved=$true
  }
  if(!$bootstrapSaved){[Console]::Error.WriteLine((@{passed=$false;primary=$primary;secondary=@($secondary.ToArray())}|ConvertTo-Json -Depth 12 -Compress))}
@@ -342,12 +344,67 @@ catch {
 function Identity([Diagnostics.Process]$process) {
  return [ordered]@{owner=$owner;pid=$process.Id;creation=$process.StartTime.ToUniversalTime().Ticks.ToString();nonce=$Nonce}
 }
-function Wait-File([string]$name) {
+function Read-LockCode([Management.Automation.ErrorRecord]$record,[string]$name) {
+ # read段階の同じ例外だけを対象にする。任意例外のlow wordで判定しない。
+ $context=$script:failureContext
+ if($null -eq $context -or $context.ioOperation -cne 'read' -or $context.metadataFile -cne $name){return 0}
+ $current=$record.Exception;$matchesContext=$false;$code=0
+ for($i=0;$null -ne $current -and $i -lt 8;$i++){
+  if([object]::ReferenceEquals($context.exception,$current)){$matchesContext=$true}
+  if($current -is [IO.IOException]){if($current.HResult -eq -2147024864){$code=32}elseif($current.HResult -eq -2147024863){$code=33}}
+  $current=$current.InnerException
+ }
+ if($matchesContext){return $code};return 0
+}
+function Assert-ObserverParentAlive {
+ if($parent.Process.WaitForExit(0)){
+  $script:parentExitEvidence=@{identity=@{owner=$owner;nonce=$Nonce;pid=$parent.RecordedPid;creation=$parent.RecordedCreation};exited=$true;exitCode=$parent.Process.ExitCode;certificateAdopted=$false;receiptPresent=$false;receipt=$null}
+  Set-Operation 'Observe.parent-exit'
+  Set-Reason 'parent-exited-before-certificate' 'certified-tree.json'
+  throw ([InvalidOperationException]::new())
+ }
+}
+function Wait-File([string]$name,[switch]$ParentCertificate) {
+ if($ParentCertificate -and ($Mode -ne 'Observe' -or $name -cne 'certified-tree.json')){throw '固定cert待ち以外のParent監視は拒否'}
  $clock=[Diagnostics.Stopwatch]::StartNew()
  $milliseconds=Remaining
+ $stats=@{file=$name;count32=0;count33=0;firstElapsedMs=$null;lastElapsedMs=$null;cumulativeWaitMs=0;lastHResult=$null;recovered=$false;exhausted=$false}
+ $script:metadataReadiness.Add($stats)
+ $published=$false;$lastLockRecord=$null;$lastLockContext=$null
  while((Remaining) -gt 0){
-  if(Test-Path -LiteralPath (Join-Path $run $name)){return (Read-Json $name)}
+  if($ParentCertificate){Assert-ObserverParentAlive}
+  $retryWaiting=$false
+  if(Test-Path -LiteralPath (Join-Path $run $name)){
+   $published=$true
+   try{
+    # 毎回Get-Itemのsize/reparse境界、read、decodeをやり直す。
+    if($null -ne $lastLockRecord){Guard-Run} # retry時のowner/経路異常自体はretryしない。
+    $value=Read-Json $name
+    $stats.recovered=($stats.count32+$stats.count33 -gt 0)
+    return $value
+   }catch{
+    $code=Read-LockCode $_ $name
+    if($code -eq 0){throw}
+    $lastLockRecord=$_;$lastLockContext=$script:failureContext
+    $script:failureContext=$null # 回復待ちの旧例外を次の無関係なfailureへ流用しない。
+    if($code -eq 32){$stats.count32++}else{$stats.count33++}
+    if($null -eq $stats.firstElapsedMs){$stats.firstElapsedMs=$clock.ElapsedMilliseconds}
+    $stats.lastElapsedMs=$clock.ElapsedMilliseconds
+    $stats.lastHResult=([int]-2147024896+$code)
+    $retryWaiting=$true
+   }
+  }elseif($published){Set-Reason 'metadata-disappeared' $name;throw ([IO.FileNotFoundException]::new())}
+  $beforeSleep=$clock.ElapsedMilliseconds
   Start-Sleep -Milliseconds ([Math]::Min(25,(Remaining)))
+  if($retryWaiting){$stats.cumulativeWaitMs+=($clock.ElapsedMilliseconds-$beforeSleep)}
+ }
+ if($null -ne $lastLockRecord){
+  $stats.exhausted=$true
+  Set-Reason 'metadata-readiness-exhausted' $name $clock.ElapsedMilliseconds $milliseconds
+  $script:failureContext=$lastLockContext
+  $script:failureContext.reason='metadata-readiness-exhausted';$script:failureContext.reasonFile=$name
+  $script:failureContext.elapsedMs=$clock.ElapsedMilliseconds;$script:failureContext.limitMs=$milliseconds
+  throw $lastLockRecord
  }
  Set-Reason 'work-budget-exhausted' $name $clock.ElapsedMilliseconds $milliseconds
  if($operation -eq 'Parent.readHello'){Parent-Event 'hello-deadline'}
@@ -470,13 +527,15 @@ try {
     Write-Json 'fixture-parent-exit.json' @{owner=$owner;nonce=$Nonce;pid=$parent.RecordedPid;creation=$parent.RecordedCreation;exited=$true;exitCode=$parent.Process.ExitCode}
    }
    # 自分が直接保持した親世代が、自身Jobで認定した集合だけを採用する。
-   $certificate=Wait-File 'certified-tree.json'
+   $certificate=Wait-File 'certified-tree.json' -ParentCertificate
+   Assert-ObserverParentAlive
    $parentIdentity=Identity $parent.Process
    if($certificate.owner -cne $owner -or $certificate.nonce -cne $Nonce -or $certificate.certifier.owner -cne $owner -or $certificate.certifier.nonce -cne $Nonce -or $certificate.certifier.pid -ne $parentIdentity.pid -or [string]$certificate.certifier.creation -cne $parentIdentity.creation -or $certificate.members.Count -ne 3){throw '親認定metadata不一致'}
    $roles=@($certificate.members | ForEach-Object {$_.role})
    if(($roles -join ',') -cne 'supervisor,child,grandchild'){throw '親認定集合不一致'}
    foreach($member in $certificate.members){if($member.ownedJobVerified -ne $true){throw '親所有Job未認定'};$known.Add((Open-Known $member.identity $null))}
    foreach($p in $known){if($p.HasExited){throw 'RequiredAlive早期終了'}}
+   Assert-ObserverParentAlive
    $parent.Process.Kill()
    $exitEvidence=New-Object 'Collections.Generic.List[object]'
    for($i=0;$i -lt $known.Count;$i++){
@@ -515,6 +574,7 @@ try {
    $ackPublished=$true
   }
   if($Scenario -eq 'kill-close'){
+   Set-Operation 'Parent.certify-tree'
    $members=New-Object 'Collections.Generic.List[object]'
    foreach($entry in @(@{role='supervisor';identity=$identity},@{role='child';identity=(Wait-File 'child-candidate.json')},@{role='grandchild';identity=(Wait-File 'grandchild-candidate.json')})){
     $verified=Open-Known $entry.identity $job
@@ -549,6 +609,7 @@ try {
    foreach($item in $inner.lastHandles){$lastHandles.Add($item)}
    foreach($item in $inner.startupRecovery){$startupRecovery.Add($item)}
    foreach($item in $inner.p6Observations){$p6Observations.Add($item)}
+   foreach($item in $inner.metadataReadiness){$metadataReadiness.Add($item)}
    $grandchildEvidence=$inner.grandchildEvidence
    if($Scenario -in @('host-fail','cleanup-fail') -and !$inner.recovered){$recovered=$false}
   }
@@ -610,6 +671,15 @@ finally {
   Attempt 'dispose' {$child.Dispose()}
  }
  $observer=$null
+ Attempt 'parent-receipt' {
+  if($Mode -eq 'Observe' -and $null -ne $parentExitEvidence -and (Test-Path -LiteralPath (Join-Path $run 'result.json'))){
+   Set-Operation 'Observe.parent-receipt'
+   $candidate=Read-Json 'result.json'
+   $identity=$parentExitEvidence.identity
+   if($candidate.owner -cne $owner -or $candidate.nonce -cne $Nonce -or $candidate.mode -cne 'Parent' -or $candidate.process.owner -cne $owner -or $candidate.process.nonce -cne $Nonce -or $candidate.process.pid -ne $identity.pid -or [string]$candidate.process.creation -cne $identity.creation){throw 'Parent receipt出生/owner不一致'}
+   $script:parentExitEvidence.receiptPresent=$true;$script:parentExitEvidence.receipt=$candidate
+  }
+ }
  Attempt 'observer-metadata' {
   if($Mode -eq 'Observe' -and (Test-Path -LiteralPath (Join-Path $run 'observer.json'))){
    $candidate=Read-Json 'observer.json'
@@ -629,10 +699,10 @@ finally {
   if(!$p6Certification.childExited){$retained.Add(@{identity=$p6Certification.child;reason='P6 certified child exit unconfirmed'})}
   if(!$p6Certification.grandchildExited){$retained.Add(@{identity=$p6Certification.grandchild;reason='P6 certified grandchild exit unconfirmed'})}
  }
- $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@($p6Observations.ToArray());p6Certification=$p6Certification;fixtureEvidence=$fixtureEvidence;lateObservation=$lateObservation;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());knownExitEvidence=$knownExitEvidence;startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
+ $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@($p6Observations.ToArray());p6Certification=$p6Certification;fixtureEvidence=$fixtureEvidence;metadataReadiness=@($metadataReadiness.ToArray());parentExitEvidence=$parentExitEvidence;lateObservation=$lateObservation;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());knownExitEvidence=$knownExitEvidence;startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
  if($null -ne $observer){$result.knownExited=$observer.knownExited}
  try{
-  $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}
+  $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}elseif($Mode -eq 'Observe'){$name='observe-result.json'}
   Write-Json $name $result
  }catch{
   Fail 'result-save-final' $_.Exception $_
