@@ -1106,6 +1106,9 @@
     }
   },
   "project": {
+    "related_todo_no_due": "期限なし",
+    "related_todo_no_assignee": "担当者なし",
+    "related_todo_open": "TODO詳細を開く",
     "milestones": "マイルストーン",
     "no_milestones": "マイルストーンがありません",
     "due_date": "期限",

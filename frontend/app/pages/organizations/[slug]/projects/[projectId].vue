@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { normalizeProjectDetail, toProgressPercent } from '~/utils/projectDetail'
 import type {
   ProjectResponse,
   UpdateProjectRequest,
@@ -48,9 +49,9 @@ async function load() {
       projectApi.listOrgMilestones(orgSlug, projectId),
       projectApi.getOrgProjectTodos(orgSlug, projectId),
     ])
-    project.value = pRes.data
+    project.value = normalizeProjectDetail(pRes.data)
     milestones.value = mRes.data
-    todos.value = (tRes.data ?? []) as TodoResponse[]
+    todos.value = tRes.data ?? []
   } catch {
     showError(t('project.error.fetch_failed'))
   } finally {
@@ -184,7 +185,7 @@ onMounted(async () => {
         <div class="mb-2 grid gap-4 sm:grid-cols-4">
           <div>
             <p class="text-xs text-surface-400">{{ $t('project.stats.progress') }}</p>
-            <p class="text-2xl font-bold">{{ Math.round(project.progressRate * 100) }}%</p>
+            <p class="text-2xl font-bold">{{ toProgressPercent(project.progressRate) }}%</p>
           </div>
           <div>
             <p class="text-xs text-surface-400">{{ $t('project.stats.tasks') }}</p>
@@ -207,7 +208,7 @@ onMounted(async () => {
           </div>
         </div>
         <ProgressBar
-          :value="Math.round(project.progressRate * 100)"
+          :value="toProgressPercent(project.progressRate)"
           :show-value="false"
           style="height: 8px"
         />
