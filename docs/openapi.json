@@ -186793,6 +186793,10 @@
       "SlotSummaryDto": {
         "type": "object",
         "properties": {
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
           "endTime": {
             "type": "string",
             "example": "14:30:00"
