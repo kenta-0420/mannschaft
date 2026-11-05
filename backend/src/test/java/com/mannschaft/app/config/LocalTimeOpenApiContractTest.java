@@ -1,4 +1,4 @@
-﻿package com.mannschaft.app.config;
+package com.mannschaft.app.config;
 
 import com.mannschaft.app.reservation.controller.ReservationBusinessHourController;
 import com.mannschaft.app.reservation.controller.ReservationRecurringBlockedTimeController;
