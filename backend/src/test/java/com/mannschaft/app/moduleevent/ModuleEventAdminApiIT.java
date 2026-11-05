@@ -2,6 +2,9 @@ package com.mannschaft.app.moduleevent;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.service.UserRowLockService;
+import com.mannschaft.app.moduleevent.api.ModuleEventResumeAuditPrivacyApi;
 import com.mannschaft.app.common.event.ReliableEvent;
 import com.mannschaft.app.moduleevent.api.ModuleEventAdminApi;
 import com.mannschaft.app.moduleevent.admin.ModuleEventResumeAuditEntity;
@@ -23,8 +26,10 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -48,6 +53,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -66,7 +72,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
     private static final String ROOT = "/api/v1/system-admin/module-events";
-    private static final String ACTOR_ID = "919201";
+    private String actorId;
     private static final String OTHER_ACTOR_ID = "919202";
     private static final String FAILURE_CODE = "LISTENER_FAILED";
     private static final String SYNTHETIC_SECRET = "module-admin-it-private-payload";
@@ -78,9 +84,25 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
     @Autowired private JdbcTemplate jdbc;
     @Autowired private PlatformTransactionManager transactions;
     @Autowired private ModuleEventAdminApi adminApi;
+    @Autowired private UserRowLockService userRowLock;
+    @Autowired private ModuleEventResumeAuditPrivacyApi privacyApi;
     @Autowired @Qualifier("jpaEventPublicationRepository") private EventPublicationRepository publications;
     @PersistenceContext private EntityManager entityManager;
     private final List<UUID> ownedPublications = new ArrayList<>();
+
+    @BeforeEach
+    void 実在する有効な管理者を用意する() {
+        Long id = new TransactionTemplate(transactions).execute(status -> {
+            UserEntity user = UserEntity.builder().email(UUID.randomUUID() + "@example.test")
+                    .lastName("試験").firstName("管理者").displayName("試験管理者")
+                    .isSearchable(false).locale("ja").timezone("Asia/Tokyo")
+                    .status(UserEntity.UserStatus.ACTIVE).build();
+            entityManager.persist(user);
+            entityManager.flush();
+            return user.getId();
+        });
+        actorId = String.valueOf(id);
+    }
 
     @AfterEach
     void 自分の検体だけを掃除する() {
@@ -90,6 +112,7 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
             jdbc.update("DELETE FROM event_publication_attempts WHERE publication_id = ?", id);
             jdbc.update("DELETE FROM event_publication WHERE id = ?", id);
         }
+        jdbc.update("DELETE FROM users WHERE id = ?", Long.parseLong(actorId));
     }
 
     @Test
@@ -209,7 +232,7 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
                 + "WHERE publication_id = ?", java.sql.Timestamp.class, bytes(publicationId))).isNull();
         Map<String, Object> audit = jdbc.queryForMap("SELECT id, actor_user_id, reason, created_at "
                 + "FROM module_event_resume_audits WHERE publication_id = ?", bytes(publicationId));
-        assertThat(((Number) audit.get("actor_user_id")).longValue()).isEqualTo(Long.parseLong(ACTOR_ID));
+        assertThat(((Number) audit.get("actor_user_id")).longValue()).isEqualTo(Long.parseLong(actorId));
         assertThat(audit.get("reason")).isEqualTo("再".repeat(length));
         assertThat(audit.get("created_at")).isNotNull();
         ByteBuffer auditId = ByteBuffer.wrap((byte[]) audit.get("id"));
@@ -278,12 +301,99 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    void 退会が先に確定すると再開は拒否され監査を残さない() throws Exception {
+        UUID publicationId = fixture(ModuleEventAttemptStatus.QUARANTINED, 7L);
+        CountDownLatch locked = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var withdrawal = executor.submit(() -> new TransactionTemplate(transactions).executeWithoutResult(status -> {
+                assertThat(userRowLock.lock(Long.parseLong(actorId))).isEqualTo(UserRowLockService.UserState.ACTIVE);
+                jdbc.update("UPDATE users SET deleted_at = UTC_TIMESTAMP() WHERE id = ?", Long.parseLong(actorId));
+                locked.countDown();
+                await(release);
+            }));
+            assertThat(locked.await(10, TimeUnit.SECONDS)).isTrue();
+            var resume = executor.submit(() -> mvc.perform(post(ROOT + "/{id}/resume", publicationId)
+                    .with(systemAdmin()).contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"reason\":\"再開\"}")).andReturn().getResponse().getStatus());
+            try {
+                assertThatThrownBy(() -> resume.get(1, TimeUnit.SECONDS)).isInstanceOf(TimeoutException.class);
+            } finally {
+                release.countDown();
+            }
+            withdrawal.get(20, TimeUnit.SECONDS);
+            assertThat(resume.get(20, TimeUnit.SECONDS)).isEqualTo(403);
+        }
+        assertState(publicationId, "QUARANTINED", RETRY_LIMIT);
+        assertThat(auditCount(publicationId)).isZero();
+    }
+
+    @Test
+    void 凍結済み管理者は再開できない() throws Exception {
+        UUID publicationId = fixture(ModuleEventAttemptStatus.QUARANTINED, 7L);
+        jdbc.update("UPDATE users SET status = 'FROZEN' WHERE id = ?", Long.parseLong(actorId));
+        resume(publicationId, "運用確認済み", 403);
+        assertState(publicationId, "QUARANTINED", RETRY_LIMIT);
+        assertThat(auditCount(publicationId)).isZero();
+    }
+
+    @Test
+    void 再開が先に確定すると後続の強匿名化が理由を消去する() throws Exception {
+        UUID publicationId = fixture(ModuleEventAttemptStatus.QUARANTINED, 7L);
+        CountDownLatch resumed = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var resume = executor.submit(() -> {
+                var context = SecurityContextHolder.createEmptyContext();
+                context.setAuthentication(new UsernamePasswordAuthenticationToken(actorId, null,
+                        List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
+                SecurityContextHolder.setContext(context);
+                try {
+                    new TransactionTemplate(transactions).executeWithoutResult(status -> {
+                        adminApi.resume(publicationId, "個人情報を含む理由");
+                        resumed.countDown();
+                        await(release);
+                    });
+                } finally {
+                    SecurityContextHolder.clearContext();
+                }
+            });
+            assertThat(resumed.await(10, TimeUnit.SECONDS)).isTrue();
+            var purge = executor.submit(() -> new TransactionTemplate(transactions).executeWithoutResult(status -> {
+                userRowLock.lock(Long.parseLong(actorId));
+                privacyApi.redactReasonsForPurgedUser(Long.parseLong(actorId));
+            }));
+            try {
+                assertThatThrownBy(() -> purge.get(1, TimeUnit.SECONDS)).isInstanceOf(TimeoutException.class);
+            } finally {
+                release.countDown();
+            }
+            resume.get(20, TimeUnit.SECONDS);
+            purge.get(20, TimeUnit.SECONDS);
+        }
+        assertState(publicationId, "PENDING", 0);
+        assertThat(jdbc.queryForObject("SELECT reason FROM module_event_resume_audits WHERE publication_id = ?",
+                String.class, bytes(publicationId))).isEqualTo("[REDACTED]");
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            if (!latch.await(10, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("並行試験の解放待ちが時間切れ");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Test
     void 明示rollbackで再開状態と監査履歴が両方戻る() {
         UUID publicationId = fixture(ModuleEventAttemptStatus.QUARANTINED, 7L);
         UUID oldToken = claimToken(publicationId);
         var previousContext = SecurityContextHolder.getContext();
         var actorContext = SecurityContextHolder.createEmptyContext();
-        actorContext.setAuthentication(new UsernamePasswordAuthenticationToken(ACTOR_ID, null,
+        actorContext.setAuthentication(new UsernamePasswordAuthenticationToken(actorId, null,
                 List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
         SecurityContextHolder.setContext(actorContext);
         try {
@@ -314,7 +424,7 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
         AtomicBoolean invalidAuditAttempted = new AtomicBoolean();
         var previousContext = SecurityContextHolder.getContext();
         var actorContext = SecurityContextHolder.createEmptyContext();
-        actorContext.setAuthentication(new UsernamePasswordAuthenticationToken(ACTOR_ID, null,
+        actorContext.setAuthentication(new UsernamePasswordAuthenticationToken(actorId, null,
                 List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
         SecurityContextHolder.setContext(actorContext);
         Throwable failure;
@@ -326,7 +436,7 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
                 assertThat(auditCount(publicationId)).isEqualTo(1L);
                 invalidAuditAttempted.set(true);
                 entityManager.persist(ModuleEventResumeAuditEntity.builder()
-                        .publicationId(publicationId).actorUserId(Long.parseLong(ACTOR_ID))
+                        .publicationId(publicationId).actorUserId(Long.parseLong(actorId))
                         .reason("再".repeat(501)).createdAt(Instant.now()).build());
                 entityManager.flush();
             }));
@@ -364,7 +474,7 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
         assertThat(auditCount(publicationId)).isEqualTo(1L);
         assertThat(jdbc.queryForObject("SELECT actor_user_id FROM module_event_resume_audits "
                 + "WHERE publication_id = ?", Long.class, bytes(publicationId)))
-                .isEqualTo(Long.parseLong(ACTOR_ID));
+                .isEqualTo(Long.parseLong(actorId));
     }
 
     @ParameterizedTest
@@ -426,7 +536,7 @@ class ModuleEventAdminApiIT extends AbstractMySqlIntegrationTest {
     }
 
     private RequestPostProcessor systemAdmin() {
-        return user(ACTOR_ID).roles("SYSTEM_ADMIN");
+        return user(actorId).roles("SYSTEM_ADMIN");
     }
 
     /**

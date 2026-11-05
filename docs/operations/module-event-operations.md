@@ -57,7 +57,7 @@ scopeは通知予約の `module_event_notice_outbox.scope_type`（VARCHAR(16)）
 
 1. 監視と隔離一覧で事象を確認する。例えば `GET /api/v1/system-admin/module-events?status=QUARANTINED&page=0&size=20` で、対象の event type、listener、時刻、失敗コードを照合し、再開する `publicationId` を1件選ぶ。
 2. 対象業務の担当と根本原因、修正反映、同じ処理を再実行しても整合性を保てることを確認する。業務ごとの完了条件・実影響・現在の権限を確認できない場合は再開判断を保留する。
-3. 同じ認証済み経路で、そのIDの `POST .../{publicationId}/resume` に修正確認を含む理由を送る。全件再開や手動SQLによる状態更新は行わない。
+3. 同じ認証済み経路で、そのIDの `POST .../{publicationId}/resume` に修正確認を含む理由を送る。理由に第三者の個人情報、秘密、イベントpayload、例外本文を入力しない。自動匿名検出は保証されていない。全件再開や手動SQLによる状態更新は行わない。
 4. 204を受けたら再開受付として記録する。再開は隔離から `PENDING` へ戻して再試行回数を0にする操作であり、その場で業務処理の成功を保証しない。409や通信途絶時は同じ操作を連打せず、まず一覧と業務状態を再確認する。
 5. 通常の再投入を待ち、隔離一覧、未完了指標、既存の通知ベル／通知一覧、対象業務の実際の反映を確認する。隔離一覧から消えたこと、受付、enqueue、listener単体成功、部分完了だけでは復旧と判定しない。再隔離や遅延継続なら原因調査へ戻る。
 
@@ -95,7 +95,9 @@ M側も同じbindingに属する未完了publicationが0件であることを確
 
 通知予約とdescriptorは自動物理削除しない。`ModuleEventNoticeOutboxSource.sweep` が正常に0件を返すのはこの実装上の方針であり、削除処理が完了したことを意味しない。
 
-再開監査の actor / reason の保持期間、退会時匿名化、export、DBでの2年保持とarchiveの具体的な適用は、ユーザー判断および他領地の AUTH / common-core、PRIVACY / C との調整が未回答・未実装である。一般の[監査ログ仕様](../features/F10.3_audit_logs.md)だけで、この専用監査への中央監査一覧接続や保存・削除実装が完了したとは扱わない。無期限保存の承認を意味しない。
+専用の `module_event_resume_audits` は、DB上で `created_at` からUTCの暦年2年を経過した行を完全削除する方針である（cutoffと等しい行は残す）。強匿名化時は `actor_user_id` を保持し、`reason` のみを不可逆な固定値 `[REDACTED]` に置換する。本人データ取得窓口は本人がactorの行だけを全件対象とし、`id`・`publicationId`・`reason`・`createdAt` の4項目を返す方針である。第三者情報等の入力を防ぐ運用上の注意は上記のとおりであり、自動検出は保証しない。
+
+この保持・匿名化・取得は方針決定済みだが実装と検証は未完了である。既存 `audit_logs` カテゴリ選択時に `module_event_resume_audits.json` を追加出力する設計で、新カテゴリ・UI選択肢は設けない。M窓口は骨格と先行試験の準備段階で赤は未実測、PRIVACY / C からのexport・purge・再試行への接続は未提供である。中央の `audit_logs` の本人export 7項目・ファイル名およびarchive方針は変更しない。一般の[監査ログ仕様](../features/F10.3_audit_logs.md)を、専用監査の中央一覧接続や保存・削除実装の完了とみなさない。
 
 局所の実DB・通知・復旧・運用alertの検証は進んでいるが、全CI、OpenAPI生成前後の照合、M18性能実測、M21実機と探索、最新mainへの着地の全体完了は未証明である。L1-Mや親戦役の終了、全C / F業務の接続完了として読まない。
 
