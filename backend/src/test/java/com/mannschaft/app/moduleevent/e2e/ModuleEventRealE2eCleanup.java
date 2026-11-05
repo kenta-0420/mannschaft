@@ -99,9 +99,10 @@ final class ModuleEventRealE2eCleanup {
     static void stopOwnedProcess(Process process, Instant started, boolean requiredAlive) throws Throwable {
         if (process == null) return;
         ModuleEventRealE2eCleanup cleanup = new ModuleEventRealE2eCleanup(null);
-        List<ProcessHandle> descendants = new ArrayList<>();
+        List<ProcessHandle> snapshot = new ArrayList<>();
+        List<Descendant> descendants = new ArrayList<>();
         try {
-            cleanup.attempt("identity", () -> {
+            boolean identity = cleanup.attempt("identity", () -> {
                 // 終了済みの自己Processはinfoが空になり得る。保持した開始世代と実exitを使う。
                 if (started == null || (process.isAlive()
                         && process.info().startInstant().filter(started::equals).isEmpty())) {
@@ -111,11 +112,25 @@ final class ModuleEventRealE2eCleanup {
             cleanup.attempt("required-alive", () -> {
                 if (requiredAlive && !process.isAlive()) throw new IllegalStateException("自己helperが停止指示前に終了した");
             });
-            cleanup.attempt("descendants", () -> {
-                try (var handles = process.descendants()) { handles.forEach(descendants::add); }
+            // JDK の descendants() は現在の PID snapshot を使い、保持した親世代を比較しない。
+            // dead/不明な親では呼ばず、列挙前後とも自己親が live で世代一致した場合だけ採用する。
+            boolean stableSnapshot = identity && cleanup.attempt("descendants", () -> {
+                if (!process.isAlive()) return;
+                requireLiveParent(process, started);
+                try (var handles = process.descendants()) { handles.forEach(snapshot::add); }
+                requireLiveParent(process, started);
             });
-            for (ProcessHandle descendant : descendants) {
-                cleanup.attempt("descendant-stop", () -> descendant.destroy());
+            if (stableSnapshot) {
+                for (ProcessHandle handle : snapshot) {
+                    cleanup.attempt("descendant-identity", () -> descendants.add(new Descendant(handle,
+                            handle.info().startInstant().filter(value -> value.isAfter(Instant.EPOCH))
+                                    .orElseThrow(() -> new IllegalStateException("子の開始世代が不明。外側監督で回収する")))));
+                }
+            }
+            for (Descendant descendant : descendants) {
+                cleanup.attempt("descendant-stop", () -> {
+                    if (descendant.hasVerifiedLiveGeneration()) descendant.handle.destroy();
+                });
             }
             cleanup.attempt("process-stop", () -> { if (process.isAlive()) process.destroy(); });
             boolean exited = cleanup.attempt("process-exit", () -> {
@@ -132,9 +147,14 @@ final class ModuleEventRealE2eCleanup {
                     }
                 });
             }
-            for (ProcessHandle descendant : descendants) {
-                cleanup.attempt("descendant-force", () -> { if (descendant.isAlive()) descendant.destroyForcibly(); });
-                cleanup.attempt("descendant-exit", () -> descendant.onExit().get(PROCESS_STOP_SECONDS, TimeUnit.SECONDS));
+            for (Descendant descendant : descendants) {
+                if (!descendant.trusted) continue;
+                cleanup.attempt("descendant-force", () -> {
+                    if (descendant.hasVerifiedLiveGeneration()) descendant.handle.destroyForcibly();
+                });
+                if (descendant.trusted) {
+                    cleanup.attempt("descendant-exit", () -> descendant.handle.onExit().get(PROCESS_STOP_SECONDS, TimeUnit.SECONDS));
+                }
             }
             // stdin の親側 pipe と、redirect により空である親側読取り口も独立に閉じる。
             cleanup.attempt("stdin-close", () -> process.getOutputStream().close());
@@ -144,6 +164,40 @@ final class ModuleEventRealE2eCleanup {
             cleanup.restoreInterrupt();
         }
         cleanup.throwIfFailed();
+    }
+
+    private static void requireLiveParent(Process process, Instant started) {
+        if (!process.isAlive() || started == null
+                || process.info().startInstant().filter(started::equals).isEmpty() || !process.isAlive()) {
+            throw new IllegalStateException("子の列挙前後に自己親世代を確認できない。外側監督で回収する");
+        }
+    }
+
+    /** M21 の検証済み snapshot で捕捉した子。世代照合を失ったら停止対象へ戻さない。 */
+    private static final class Descendant {
+        private final ProcessHandle handle;
+        private final Instant started;
+        private boolean trusted = true;
+
+        private Descendant(ProcessHandle handle, Instant started) {
+            this.handle = handle;
+            this.started = started;
+        }
+
+        private boolean hasVerifiedLiveGeneration() throws Throwable {
+            try {
+                if (!handle.isAlive()) return false;
+                // JDK21 Info は保持 startTime が 0/不一致なら startInstant を返さない。
+                // 既知の正の開始世代を再照合し、native の startTime=0 による比較省略を使わない。
+                if (handle.info().startInstant().filter(started::equals).isEmpty()) {
+                    throw new IllegalStateException("子の開始世代が不明または不一致。外側監督で回収する");
+                }
+                return handle.isAlive();
+            } catch (Throwable failure) {
+                trusted = false;
+                throw failure;
+            }
+        }
     }
 
     Throwable problem() { return problem; }
