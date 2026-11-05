@@ -26,6 +26,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -93,7 +94,8 @@ class ShiftBudgetPublishedEventListenerTest {
                 auditLogService, objectMapper, thresholdAlertEvaluationService, failedEventService,
                 eventPublisher);
         // 共通の有効公開前提。フラグOFFでは入口に到達しないため、この2項だけ任意利用とする。
-        org.mockito.Mockito.lenient().when(consumptionService.cancelOldPlannedForPublication(SCHEDULE_ID, 0L))
+        org.mockito.Mockito.lenient().when(consumptionService.cancelOldPlannedForPublication(
+                eq(SCHEDULE_ID), eq(0L), org.mockito.ArgumentMatchers.anySet()))
                 .thenReturn(new ShiftBudgetConsumptionService.PublicationCleanup(true,
                         ShiftBudgetConsumptionService.CancellationResult.empty()));
         org.mockito.Mockito.lenient().when(consumptionService.recordSingleConsumption(
@@ -284,7 +286,7 @@ class ShiftBudgetPublishedEventListenerTest {
                 .willReturn(Optional.of(ShiftHourlyRateEntity.builder()
                         .userId(USER_ID).teamId(TEAM_ID).hourlyRate(new BigDecimal("1200"))
                         .effectiveFrom(LocalDate.of(2026, 1, 1)).build()));
-        given(consumptionService.cancelOldPlannedForPublication(SCHEDULE_ID, 2L))
+        given(consumptionService.cancelOldPlannedForPublication(SCHEDULE_ID, 2L, Set.of(ORG_ID)))
                 .willReturn(new ShiftBudgetConsumptionService.PublicationCleanup(true,
                         new ShiftBudgetConsumptionService.CancellationResult(1,
                                 java.util.Map.of(ORG_ID, 1L), java.util.Map.of(ALLOCATION_ID, ORG_ID))));

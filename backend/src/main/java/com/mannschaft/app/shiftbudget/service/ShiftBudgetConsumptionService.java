@@ -21,6 +21,7 @@ import java.time.LocalTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * F08.7 シフト予算消化記録サービス（Phase 9-β、F03.5 hook 内ロジック）。
@@ -95,7 +96,7 @@ public class ShiftBudgetConsumptionService {
             if (planned.get().getPublicationGeneration() == publicationGeneration) {
                 return false;
             }
-            // 旧世代の掃除は、全slot/userを対象にする別の短いTXで先に完了させる。
+            // 有効組織の旧世代は先に掃除する。OFF組織などの残存行は消さず、このslot/userを個別失敗にする。
             throw new IllegalStateException("Old planned consumption remains: shift=" + shiftScheduleId);
         }
         if (consumptionRepository.findBySlotIdAndUserIdAndStatusAndDeletedAtIsNull(
@@ -124,16 +125,20 @@ public class ShiftBudgetConsumptionService {
                 .map(ShiftBudgetConsumptionRepository.PlannedCancellationRow::getOrganizationId).distinct().toList();
     }
 
-    /** 新しい公開の記録前に、取り外された枠・利用者を含む旧世代全体を掃除する。 */
+    /** 新しい公開の記録前に、有効な組織の旧世代を取り外された枠・利用者も含めて掃除する。 */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public PublicationCleanup cancelOldPlannedForPublication(Long shiftScheduleId, long publicationGeneration) {
+    public PublicationCleanup cancelOldPlannedForPublication(Long shiftScheduleId, long publicationGeneration,
+                                                            Set<Long> enabledOrganizationIds) {
         var publication = publicationPort.lockPublication(shiftScheduleId);
         if (publication.isEmpty() || !publication.get().accepts(publicationGeneration)) {
             return new PublicationCleanup(false, CancellationResult.empty());
         }
         CancellationResult cancellation = publicationGeneration == 0
                 ? CancellationResult.empty()
-                : cancelClaimed(shiftScheduleId, publicationGeneration - 1, ShiftBudgetCancelReason.RE_PUBLISHED);
+                : cancelClaimed(consumptionRepository.findPlannedCancellationRows(
+                                shiftScheduleId, publicationGeneration - 1).stream()
+                        .filter(row -> enabledOrganizationIds.contains(row.getOrganizationId())).toList(),
+                        ShiftBudgetCancelReason.RE_PUBLISHED);
         return new PublicationCleanup(true, cancellation);
     }
 
@@ -151,11 +156,16 @@ public class ShiftBudgetConsumptionService {
 
     private CancellationResult cancelClaimed(Long shiftScheduleId, long generationUpperBound,
                                              ShiftBudgetCancelReason reason) {
+        return cancelClaimed(consumptionRepository.findPlannedCancellationRows(shiftScheduleId, generationUpperBound), reason);
+    }
+
+    private CancellationResult cancelClaimed(List<ShiftBudgetConsumptionRepository.PlannedCancellationRow> rows,
+                                             ShiftBudgetCancelReason reason) {
         Map<Long, Long> countsByOrganization = new LinkedHashMap<>();
         Map<Long, Long> organizationsByAllocation = new LinkedHashMap<>();
         int count = 0;
         // 共通の割当ID→消化ID順。割当を先取りせず、claimできた行だけ同じTXで減算する。
-        for (var row : consumptionRepository.findPlannedCancellationRows(shiftScheduleId, generationUpperBound)) {
+        for (var row : rows) {
             int claimed = consumptionRepository.cancelPlannedById(
                     row.getConsumptionId(), reason, LocalDateTime.now(wallClock));
             if (claimed != 1) {

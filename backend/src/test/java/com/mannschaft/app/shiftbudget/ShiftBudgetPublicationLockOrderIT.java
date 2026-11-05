@@ -219,7 +219,8 @@ public class ShiftBudgetPublicationLockOrderIT extends AbstractMySqlIntegrationT
         try {
             for (Observation observation : List.of(first, second)) {
                 results.add(executor.submit(() -> observe(observation, () ->
-                        service.cancelOldPlannedForPublication(observation.shiftId, GENERATION))));
+                        service.cancelOldPlannedForPublication(observation.shiftId, GENERATION,
+                                Set.of(organizationId)))));
             }
             for (Future<ShiftBudgetConsumptionService.PublicationCleanup> result : results) {
                 var cleanup = result.get(LIMIT_SECONDS, TimeUnit.SECONDS);
@@ -232,7 +233,7 @@ public class ShiftBudgetPublicationLockOrderIT extends AbstractMySqlIntegrationT
                 assertThat(jdbc.queryForList("SELECT status FROM shift_budget_consumptions WHERE shift_id = ?",
                         String.class, observation.shiftId)).containsExactlyInAnyOrder(
                         "CANCELLED", "CANCELLED", "CANCELLED", "CANCELLED");
-                assertThat(service.cancelOldPlannedForPublication(observation.shiftId, GENERATION)
+                assertThat(service.cancelOldPlannedForPublication(observation.shiftId, GENERATION, Set.of(organizationId))
                         .cancellation().cancelledCount()).as("同じ取消の再実行は再claimしない").isZero();
             }
             assertThat(amount(fixture.allocationA())).as("対象外シフトの残額を二重減算しない")

@@ -122,7 +122,7 @@ public class ShiftBudgetConsumptionRecordListener {
                 }
             }
             var cleanup = consumptionService.cancelOldPlannedForPublication(
-                    scheduleId, event.getPublicationGeneration());
+                    scheduleId, event.getPublicationGeneration(), Set.copyOf(tallies.keySet()));
             if (!cleanup.accepted()) {
                 return;
             }

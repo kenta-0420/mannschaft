@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -171,6 +172,69 @@ class ShiftBudgetConsumptionServiceTest {
             verify(consumptionRepository).save(capt.capture());
             assertThat(capt.getValue().getHourlyRateSnapshot()).isEqualByComparingTo(BigDecimal.ZERO);
             assertThat(capt.getValue().getAmount()).isEqualByComparingTo("0.00");
+        }
+    }
+
+    @Nested
+    @DisplayName("再公開前の旧世代清掃")
+    class PublicationCleanup {
+
+        @Test
+        @DisplayName("AC05/10 有効orgだけをclaimしOFF組織の履歴と金額へ触れない")
+        void 有効な組織だけを掃除する() {
+            given(publicationPort.lockPublication(SHIFT_ID)).willReturn(Optional.of(
+                    new com.mannschaft.app.shiftbudget.port.ShiftBudgetPublicationPort.PublicationState(2L, true)));
+            var enabled = org.mockito.Mockito.mock(ShiftBudgetConsumptionRepository.PlannedCancellationRow.class);
+            given(enabled.getOrganizationId()).willReturn(1L);
+            given(enabled.getConsumptionId()).willReturn(1L);
+            given(enabled.getAllocationId()).willReturn(ALLOCATION_ID);
+            given(enabled.getAmount()).willReturn(new BigDecimal("4800.00"));
+            var disabled = org.mockito.Mockito.mock(ShiftBudgetConsumptionRepository.PlannedCancellationRow.class);
+            given(disabled.getOrganizationId()).willReturn(2L);
+            org.mockito.Mockito.lenient().when(disabled.getConsumptionId()).thenReturn(9L);
+            given(consumptionRepository.findPlannedCancellationRows(SHIFT_ID, 1L))
+                    .willReturn(List.of(enabled, disabled));
+            given(consumptionRepository.cancelPlannedById(eq(1L), eq(ShiftBudgetCancelReason.RE_PUBLISHED), any()))
+                    .willReturn(1);
+            given(allocationRepository.decrementConsumedAmount(ALLOCATION_ID, new BigDecimal("4800.00")))
+                    .willReturn(1);
+
+            var result = service.cancelOldPlannedForPublication(SHIFT_ID, 2L, Set.of(1L));
+
+            assertThat(result.accepted()).isTrue();
+            assertThat(result.cancellation().cancelledCount()).isEqualTo(1);
+            assertThat(result.cancellation().countsByOrganization()).containsOnlyKeys(1L);
+            assertThat(result.cancellation().organizationsByAllocation()).containsEntry(ALLOCATION_ID, 1L);
+            verify(consumptionRepository, never()).cancelPlannedById(eq(9L), any(), any());
+            var order = org.mockito.Mockito.inOrder(publicationPort, consumptionRepository);
+            order.verify(publicationPort).lockPublication(SHIFT_ID);
+            order.verify(consumptionRepository).findPlannedCancellationRows(SHIFT_ID, 1L);
+        }
+
+        @Test
+        @DisplayName("AC05/14 有効な公開で対象0件ならacceptedを維持する")
+        void 対象0件は正常な掃除完了() {
+            given(publicationPort.lockPublication(SHIFT_ID)).willReturn(Optional.of(
+                    new com.mannschaft.app.shiftbudget.port.ShiftBudgetPublicationPort.PublicationState(2L, true)));
+            given(consumptionRepository.findPlannedCancellationRows(SHIFT_ID, 1L)).willReturn(List.of());
+
+            var result = service.cancelOldPlannedForPublication(SHIFT_ID, 2L, Set.of(1L));
+
+            assertThat(result.accepted()).isTrue();
+            assertThat(result.cancellation().cancelledCount()).isZero();
+            org.mockito.Mockito.verifyNoInteractions(allocationRepository);
+        }
+
+        @Test
+        @DisplayName("AC03/14 親不在は不受理で掃除も新記録も始めない")
+        void 親不在は不受理() {
+            given(publicationPort.lockPublication(SHIFT_ID)).willReturn(Optional.empty());
+
+            var result = service.cancelOldPlannedForPublication(SHIFT_ID, 2L, Set.of(1L));
+
+            assertThat(result.accepted()).isFalse();
+            assertThat(result.cancellation().cancelledCount()).isZero();
+            org.mockito.Mockito.verifyNoInteractions(consumptionRepository, allocationRepository);
         }
     }
 
