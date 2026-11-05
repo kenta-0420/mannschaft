@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260821-1027",
+  "scope": "app",
+  "implementation": {
+    "pr": 4252,
+    "sha": "16113fb818a8af14b8e541b6cf826a195c61cb71"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1027-T1",
+      "description": "契約書込・チェックインの越境と不在が本文まで一致",
+      "tests": [
+        {
+          "name": "JobContractWriteBodyParityContractIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/jobmatching/JobContractWriteBodyParityContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-1027-T2",
+      "description": "求人・応募の非閲覧者は不在と同一、閲覧者の診断は残る",
+      "tests": [
+        {
+          "name": "JobPostingApplicationWriteBodyParityContractIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/jobmatching/JobPostingApplicationWriteBodyParityContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-1027-T3",
+      "description": "備品返却: 他備品の貸出記録を EQUIPMENT_002 に",
+      "tests": [
+        {
+          "name": "EquipmentReturnBodyParityContractIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/equipment/EquipmentReturnBodyParityContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-1027-T6",
+      "description": "フレンド公開設定の越境と不在が本文まで一致",
+      "tests": [
+        {
+          "name": "TeamFriendVisibilityScopeContractIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/social/TeamFriendVisibilityScopeContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-1027-matching",
+      "description": "マッチ募集・応募の非閲覧者は不在と同一",
+      "tests": [
+        {
+          "name": "MatchingWriteBodyParityContractIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/matching/MatchingWriteBodyParityContractIT.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 41372932233
+    },
+    {
+      "runId": 41372932072
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4252"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260821-1027-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260821-1027-exploratory.md"
+    }
+  },
+  "regressions": []
+}
