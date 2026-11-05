@@ -35,6 +35,13 @@ const CONFIRMATIONS = [
   { userId: 1, userFullName: '山田 太郎', userEmail: 'u1@example.com', appointmentAt: '2026-11-10T09:30:00', confirmed: true, confirmedAt: '2026-11-03T10:00:00', reminderSent: true },
   { userId: 2, userFullName: '鈴木 花子', userEmail: 'u2@example.com', appointmentAt: '2026-11-11T10:00:00', confirmed: false, confirmedAt: null, reminderSent: false },
 ]
+const NOSPACE_A = 'A'.repeat(120)
+const NOSPACE_JA = 'あ'.repeat(80)
+const LONG_CLOSURES = [{ ...CLOSURES[0]!, reason: NOSPACE_A }, { ...CLOSURES[1]!, reason: NOSPACE_JA }]
+const LONG_CONFIRMATIONS = [
+  { ...CONFIRMATIONS[0]!, userFullName: NOSPACE_JA },
+  { ...CONFIRMATIONS[1]!, userFullName: NOSPACE_A },
+]
 const PREVIEW = {
   startDate: '2026-11-10', endDate: '2026-11-12', startTime: null, endTime: null, affectedCount: 2,
   affectedReservations: [
@@ -50,7 +57,7 @@ const TEAM = {
 }
 
 /** 認証（localStorage の currentUser）と API モックを仕込む。未モックの API は空配列で返し、一覧を返す。 */
-async function setupMocks(page: Page): Promise<string[]> {
+async function setupMocks(page: Page, long = false): Promise<string[]> {
   const unmatched: string[] = []
   await page.addInitScript(() => {
     localStorage.setItem('currentUser', JSON.stringify({
@@ -69,9 +76,9 @@ async function setupMocks(page: Page): Promise<string[]> {
     if (p === `/teams/${SLUG}`) return route.fulfill(ok(TEAM))
     if (p === `/teams/${SLUG}/modules`) return route.fulfill(ok([{ moduleSlug: 'reservation', isEnabled: true }]))
     if (p === '/me/teams') return route.fulfill(ok([{ id: 1, slug: SLUG }]))
-    if (p === `/teams/${SLUG}/emergency-closures`) return route.fulfill(ok(CLOSURES))
+    if (p === `/teams/${SLUG}/emergency-closures`) return route.fulfill(ok(long ? LONG_CLOSURES : CLOSURES))
     if (p === `/teams/${SLUG}/emergency-closures/preview`) return route.fulfill(ok(PREVIEW))
-    if (p === `/teams/${SLUG}/emergency-closures/1/confirmations`) return route.fulfill(ok(CONFIRMATIONS))
+    if (p === `/teams/${SLUG}/emergency-closures/1/confirmations`) return route.fulfill(ok(long ? LONG_CONFIRMATIONS : CONFIRMATIONS))
     unmatched.push(`${method} ${p}`)
     return route.fulfill(ok([]))
   })
@@ -79,8 +86,8 @@ async function setupMocks(page: Page): Promise<string[]> {
 }
 
 /** 実画面の「緊急休業」タブまで進む。 */
-async function openClosureTab(page: Page): Promise<void> {
-  await setupMocks(page)
+async function openClosureTab(page: Page, long = false): Promise<void> {
+  await setupMocks(page, long)
   await page.goto(`/teams/${SLUG}/reservations`, { waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
   await page.getByRole('tab', { name: '緊急休業' }).click()
@@ -252,6 +259,77 @@ test.describe('CMP-261104-0336 緊急休業 表/カード切替の境界 767/768
     await expect(history.locator('table').first()).toBeVisible()
     await expect(history.locator('[data-testid="closure-history-cards"]')).toBeHidden()
     await expectNoPageOverflow(page, 768)
+  })
+})
+
+test.describe('CMP-261104-0336 長文の折り返し 390px', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+
+  async function expectAllRightWithin(root: Locator, width: number, label: string) {
+    const over = await root.evaluate((r, w) => {
+      const bad: string[] = []
+      r.querySelectorAll('*').forEach((n) => {
+        const b = n.getBoundingClientRect()
+        if (b.width > 0 && b.right > w + 0.5) bad.push(`${n.tagName}.${(n as HTMLElement).className}: ${b.right}`)
+      })
+      return bad
+    }, width)
+    expect(over, `${label}: 右端が ${width}px を超える要素`).toEqual([])
+  }
+
+  test('0336-6: 空白なしの長い理由・氏名でも履歴カード・患者カードが 390px に収まる', async ({ page }) => {
+    await openClosureTab(page, true)
+    const history = historySection(page)
+    const cards = history.locator('[data-testid="closure-history-card"]')
+    await expect(cards.first().locator('[data-field="reason"]')).toHaveText(NOSPACE_A)
+    await expect(cards.nth(1).locator('[data-field="reason"]')).toHaveText(NOSPACE_JA)
+    await expectAllRightWithin(cards.first(), 390, '履歴カード1')
+    await expectAllRightWithin(cards.nth(1), 390, '履歴カード2')
+    const btn = cards.first().locator('[data-testid="closure-card-toggle"]')
+    await expect(btn).toBeVisible()
+    await expect(btn).toBeEnabled()
+    await btn.click()
+    const items = history.locator('[data-testid="closure-card-confirmation"]')
+    await expect(items).toHaveCount(2)
+    await expect(items.nth(0).locator('[data-field="name"]')).toHaveText(NOSPACE_JA)
+    await expect(items.nth(1).locator('[data-field="name"]')).toHaveText(NOSPACE_A)
+    for (let i = 0; i < 2; i++) await expectAllRightWithin(items.nth(i), 390, `患者カード${i}`)
+    await expectAllRightWithin(cards.first(), 390, '展開後の履歴カード1')
+    await expect(btn).toBeVisible()
+    await expect(btn).toBeEnabled()
+    await expectNoPageOverflow(page, 390)
+  })
+})
+
+test.describe('CMP-261104-0336 境界 767/768px — プレビュー・確認状況展開', () => {
+  test.use({ viewport: { width: 767, height: 900 } })
+
+  test('0336-6: プレビュー表示中・確認状況展開中に 767=カード / 768=表、幅内、状態保持', async ({ page }) => {
+    await openClosureTab(page)
+    const history = historySection(page)
+    await history.locator('[data-testid="closure-card-toggle"]').first().click()
+    await expect(history.locator('[data-testid="closure-card-confirmation"]')).toHaveCount(2)
+    await page.getByRole('button', { name: '影響する予約を確認' }).click()
+    const preview = previewSection(page)
+    await expect(preview.locator('[data-testid="closure-preview-card"]')).toHaveCount(2)
+    await expect(preview.locator('table')).toBeHidden()
+    await expect(history.locator('table')).toBeHidden()
+    await expectNoPageOverflow(page, 767)
+
+    await page.setViewportSize({ width: 768, height: 900 })
+    await expect(history.locator('table').first()).toBeVisible()
+    await expect(preview.locator('table')).toBeVisible()
+    await expect(preview.locator('[data-testid="closure-preview-card"]').first()).toBeHidden()
+    await expect(history.locator('[data-testid="closure-card-confirmation"]').first()).toBeHidden()
+    // 状態保持: 展開中の内側表（2行）とプレビュー（2行）が残っている
+    await expect(history.locator('table table tbody tr')).toHaveCount(2)
+    await expect(preview.locator('tbody tr')).toHaveCount(2)
+    await expectNoPageOverflow(page, 768)
+
+    await page.setViewportSize({ width: 767, height: 900 })
+    await expect(history.locator('[data-testid="closure-card-confirmation"]')).toHaveCount(2)
+    await expect(preview.locator('[data-testid="closure-preview-card"]')).toHaveCount(2)
+    await expectNoPageOverflow(page, 767)
   })
 })
 
