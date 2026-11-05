@@ -74,6 +74,15 @@ erDiagram
 | --- | --- | --- | --- | --- |
 | [village](village.md) | `village_lobby_daily_threads` | `chat_channel_id` | ID参照 | `chat_channels` |
 
+## 自己参照
+
+mermaid は同一テーブルの自己参照を複数描けず 1 本に畳むため、図に線が欠けることがある。自己参照はこの表を正とする。
+
+| テーブル | 列 | 種別 |
+| --- | --- | --- |
+| `chat_messages` | `parent_id` | 外部キー |
+| `chat_messages` | `root_id` | 外部キー |
+
 ## 多態参照（線を引かない）
 
 | テーブル | 種別列 | ID列 |
