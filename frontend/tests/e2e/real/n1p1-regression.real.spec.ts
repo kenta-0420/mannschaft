@@ -250,12 +250,9 @@ test('#4280 プロジェクト一覧: 2件と件数・進捗が出る（MEMBER1 
   })
 })
 
-test('既存欠陥（#4280 の回帰ではない）: プロジェクト一覧の進捗率は TODO 1/2 完了で 50% と出るべき', async ({ browser }) => {
-  // BE は progressRate を 0〜100 の百分率で返す（ProjectRepository.recalculateProgress の `* 100.0`）が、
-  // FE（pages/teams/[slug]/projects/index.vue の `Math.round(project.progressRate * 100)`）が更に 100 倍し 5000% と出る。
-  // #4280 は progressRate をそのまま渡しており値の意味を変えていない（2026-06 以前からの既存欠陥）。
-  // 期待どおりの表示を検証し、現状は失敗することを test.fail で明示する（直れば赤になって知らせる）。
-  test.fail(true, '既存欠陥: プロジェクト進捗率が 100 倍表示（FE が百分率を更に 100 倍）')
+test('プロジェクト一覧の進捗率は TODO 1/2 完了で 50% と出る（CMP-261105-1507 で 100 倍表示を修正）', async ({ browser }) => {
+  // BE は progressRate を 0〜100 の百分率で返す（ProjectRepository.recalculateProgress の `* 100.0`）。
+  // 以前は FE が更に 100 倍し 5000% と出ていた（test.fail で明示していた既存欠陥）。FE は百分率をそのまま丸めて出す。
   await withPage(browser, w.member1, `/teams/${w.t1.slug}/projects`, async (page) => {
     const card = page.getByText('1/2 タスク').locator('xpath=ancestor::*[contains(., "%")][1]')
     await expect(card).toBeVisible({ timeout: 60_000 })

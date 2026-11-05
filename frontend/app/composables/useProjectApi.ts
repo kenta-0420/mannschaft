@@ -1,5 +1,6 @@
 import type {
   ProjectResponse,
+  ProjectDetailResponse,
   TeamProjectResponse,
   OrgProjectResponse,
   CreateProjectRequest,
@@ -49,7 +50,7 @@ export function useProjectApi() {
   }
 
   async function getOrgProject(orgSlug: string, projectId: number) {
-    return api<{ data: ProjectResponse }>(buildOrgScopedBase(orgSlug, projectId))
+    return api<{ data: ProjectDetailResponse }>(buildOrgScopedBase(orgSlug, projectId))
   }
 
   async function createOrgProject(orgSlug: string, body: CreateProjectRequest) {
@@ -111,7 +112,7 @@ export function useProjectApi() {
   }
 
   async function getOrgProjectTodos(orgSlug: string, projectId: number) {
-    return api<{ data: unknown[] }>(`${buildOrgScopedBase(orgSlug, projectId)}/todos`)
+    return api<{ data: TodoResponse[] }>(`${buildOrgScopedBase(orgSlug, projectId)}/todos`)
   }
 
   /**
@@ -132,7 +133,7 @@ export function useProjectApi() {
   }
 
   async function getProject(teamId: string | null, projectId: number) {
-    return api<{ data: ProjectResponse }>(buildScopedBase(teamId, projectId))
+    return api<{ data: ProjectDetailResponse }>(buildScopedBase(teamId, projectId))
   }
 
   async function createProject(teamId: string | null, body: CreateProjectRequest) {
@@ -204,7 +205,7 @@ export function useProjectApi() {
 
   // === Project Todos ===
   async function getProjectTodos(teamId: string | null, projectId: number) {
-    return api<{ data: unknown[] }>(`${buildScopedBase(teamId, projectId)}/todos`)
+    return api<{ data: TodoResponse[] }>(`${buildScopedBase(teamId, projectId)}/todos`)
   }
 
   // === F02.7 マイルストーンゲート ===

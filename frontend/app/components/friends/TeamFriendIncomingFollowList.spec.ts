@@ -1,5 +1,5 @@
 import { flushPromises } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import IncomingList from './TeamFriendIncomingFollowList.vue'
 const mocks = vi.hoisted(() => ({ list: vi.fn() }))
@@ -10,7 +10,11 @@ const row = { followId: 1, sourceTeamId: 2, sourceTeamName: 'Sender', sourceTeam
 const result = (data: unknown[]) => ({ data, pagination: { totalElements: data.length, totalPages: data.length ? 1 : 0 } })
 async function mountList() { const w = await mountSuspended(IncomingList, { props: { teamId: '3', sourceTeam: { teamId: 3, teamSlug: 'own-team', teamName: 'Recipient' } } }); await flushPromises(); return w }
 describe('FR-09/10 受信申請', () => {
-  beforeEach(() => mocks.list.mockReset())
+  // 日時表記は UI ロケール依存（CMP-261104-0335）。テスト環境の既定は en のため、ja 表記を検証するここでは ja に明示する。
+  const i18n = () => useNuxtApp().$i18n as unknown as { locale: { value: string } }
+  let originalLocale = 'ja'
+  beforeEach(() => { mocks.list.mockReset(); originalLocale = i18n().locale.value; i18n().locale.value = 'ja' })
+  afterEach(() => { i18n().locale.value = originalLocale })
   it('元→受信先を明示し、返しは申請元を確認ダイアログに渡す', async () => {
     mocks.list.mockResolvedValue(result([row]))
     const w = await mountList()
