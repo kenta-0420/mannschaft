@@ -33,6 +33,10 @@ import java.util.UUID;
  *   <li>{@link #issueWithCopiedAliasWrite()}: 外側から取り出した内側の配列（別名のローカル変数）へ書き、元の変数から読む</li>
  *   <li>{@link #issueWithBranchMergedAlias(boolean)}: 分岐で合流した別名を外側へ格納し、外側経由で書いて元の変数から読む</li>
  *   <li>{@link #issueWithSplitOfRandom()}: 乱数の文字列を split した配列（値自体に印がある配列）の要素が token 系に届く</li>
+ *   <li>{@link #issueWithReturnedArrayWrite()}: メソッドの戻り値の配列に乱数を書き、同じ配列から読む</li>
+ *   <li>{@link #issueWithArgumentArrayWrite(String[])}: 引数の配列に乱数を書き、同じ配列から読む</li>
+ *   <li>{@link #issueWithFieldArrayReadIntoLocal()}: フィールドから読み出したローカル配列に乱数を書き、同じローカル配列から読む</li>
+ *   <li>{@link #issueWithCastArrayWrite()}: CHECKCAST で得た配列に乱数を書き、同じ配列から読む</li>
  * </ul>
  * <p>陰性（検出されてはならない）:</p>
  * <ul>
@@ -44,7 +48,9 @@ import java.util.UUID;
  * <ul>
  *   <li>メソッドをまたぐ流れ: {@link #issueViaGeneratorHelper()}（乱数の生成ヘルパ {@link #newRandomToken()} の戻り値を
  *       token 系に詰める）と {@link #issueViaWriterHelper()}（乱数を書込みヘルパ {@link #writeToken} へ渡す）</li>
- *   <li>フィールド経由: {@link #issueViaField()}（乱数をフィールドへ入れ、読み戻して token 系に詰める）</li>
+ *   <li>フィールド経由: {@link #issueViaField()}（乱数をフィールドへ入れ、読み戻して token 系に詰める。
+ *       フィールドから読み出したローカル配列に書いて同じメソッド内で読む流れは範囲内で、陽性
+ *       {@link #issueWithFieldArrayReadIntoLocal()} で検出する）</li>
  *   <li>ラムダの本体: {@link #issueViaLambdaBody()}（乱数を捕捉したラムダの本体で token 系に詰める）</li>
  *   <li>リフレクション: {@link #issueViaReflection()}（{@link Method#invoke} で token 系の setter を呼ぶ）</li>
  * </ul>
@@ -64,6 +70,9 @@ public class FlowSelfIssuingFixtureService {
     private static final String OTHER_FIXED_VALUE = "other";
 
     private final SecureRandom secureRandom = new SecureRandom();
+
+    /** フィールドから読み出したローカル配列の fixture 用。 */
+    private final String[] sharedSlots = new String[1];
 
     public PlaintextTokenFixtureEntity issueWithBranchMerge(boolean external) {
         String value;
@@ -285,6 +294,38 @@ public class FlowSelfIssuingFixtureService {
         String[][] box = {randomRow, cleanRow};
         randomRow[0] = UUID.randomUUID().toString();
         entity.setToken(cleanRow[0]);
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithReturnedArrayWrite() {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        String[] parts = FIXED_VALUE.split("-");
+        parts[0] = UUID.randomUUID().toString();
+        entity.setToken(parts[0]);
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithArgumentArrayWrite(String[] slots) {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        slots[0] = UUID.randomUUID().toString();
+        entity.setToken(slots[0]);
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithFieldArrayReadIntoLocal() {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        String[] local = sharedSlots;
+        local[0] = UUID.randomUUID().toString();
+        entity.setToken(local[0]);
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithCastArrayWrite() {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        Object raw = java.lang.reflect.Array.newInstance(String.class, 1);
+        String[] slots = (String[]) raw;
+        slots[0] = UUID.randomUUID().toString();
+        entity.setToken(slots[0]);
         return entity;
     }
 

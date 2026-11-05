@@ -465,6 +465,16 @@ class PlaintextSecretTokenGuardConditionTest {
         }
 
         @Test
+        @DisplayName("陽性: 戻り値・引数・フィールドから読んだローカル・CHECKCAST の配列に書いて読む乱数も違反（配列参照はすべて作った場所を持つ）")
+        void arrayFromAnySourceIsViolation() {
+            for (String name : List.of("issueWithReturnedArrayWrite", "issueWithArgumentArrayWrite",
+                    "issueWithFieldArrayReadIntoLocal", "issueWithCastArrayWrite")) {
+                assertListed(result.violations(), method(FlowSelfIssuingFixtureService.class, name),
+                        "配列参照を生む命令はすべて命令位置の合成 site を持ち、要素への書込みの印が保持される");
+            }
+        }
+
+        @Test
         @DisplayName("陰性: 別の配列に乱数を入れても、token 系へ渡す配列には伝わらない")
         void separateArraysAreNotViolation() {
             String id = method(FlowSelfIssuingFixtureService.class, "separateArraysDoNotShareTaint");

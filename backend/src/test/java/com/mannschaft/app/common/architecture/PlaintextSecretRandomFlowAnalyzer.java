@@ -15,10 +15,12 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.InvokeDynamicInsnNode;
 import org.objectweb.asm.tree.LdcInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.TypeInsnNode;
 import org.objectweb.asm.tree.analysis.Analyzer;
 import org.objectweb.asm.tree.analysis.AnalyzerException;
 import org.objectweb.asm.tree.analysis.Frame;
@@ -43,7 +45,11 @@ import org.objectweb.asm.tree.analysis.Value;
  * </ul>
  * <p>これで多次元・格納の前後・コピーした別名・分岐で合流した別名を、次数や形ごとの継ぎ当てなしに同じ規則で追う。
  * 類の印は流れに依らない（同じ類の配列は、書込みの前後を問わず乱数由来とみなす保守的な近似）。
- * 作った場所が分からない配列（フィールドや戻り値の配列）へ {@code nextBytes} したときは {@link #ANY_CALL} を入れ、
+ * 配列型の参照値を生む命令（NEWARRAY・ANEWARRAY・MULTIANEWARRAY・INVOKE* の戻り値・メソッド引数・AALOAD・
+ * CHECKCAST・GETFIELD・GETSTATIC）はすべて命令位置（引数は局所変数番号）をキーとする場所を持ち、作った場所の空な
+ * 配列参照は生まれない。合成の場所も同じ union-find の類に乗る。フィールドの読み出しは1回ごとに別の場所なので、
+ * フィールドをまたぐ流れは既知の限界のまま、読み出したローカル配列に書いて同じメソッド内で読む流れは検出する。
+ * それでも場所が空の値（{@code null} 定数など）へ {@code nextBytes} したときは {@link #ANY_CALL} を入れ、
  * 同居だけで違反とする側に倒す。</p>
  *
  * <p><b>既知の偽陽性（保守的近似。2026-11-05 殿裁定で許容）</b>: 格納は本来「格納先が格納値を含む」包含関係だが、
@@ -92,7 +98,7 @@ final class PlaintextSecretRandomFlowAnalyzer {
                 long before;
                 do {
                     before = aliases.version();
-                    new TaintAnalyzer(new TaintInterpreter(reached, aliases)).analyze(type.name, method);
+                    new TaintAnalyzer(new TaintInterpreter(reached, aliases, method.instructions)).analyze(type.name, method);
                 } while (aliases.version() != before);
             } catch (AnalyzerException e) {
                 throw new IllegalStateException("値の流れを解析できません: " + type.name + "#" + method.name, e);
@@ -189,11 +195,13 @@ final class PlaintextSecretRandomFlowAnalyzer {
     static final class TaintInterpreter extends Interpreter<TaintValue> {
         private final Set<String> reached;
         private final AliasClasses aliases;
+        private final InsnList instructions;
 
-        TaintInterpreter(Set<String> reached, AliasClasses aliases) {
+        TaintInterpreter(Set<String> reached, AliasClasses aliases, InsnList instructions) {
             super(Opcodes.ASM9);
             this.reached = reached;
             this.aliases = aliases;
+            this.instructions = instructions;
         }
 
         void reach(String call) {
@@ -233,7 +241,7 @@ final class PlaintextSecretRandomFlowAnalyzer {
                     Object constant = ((LdcInsnNode) insn).cst;
                     yield TaintValue.of(constant instanceof Long || constant instanceof Double ? 2 : 1, false);
                 }
-                case Opcodes.GETSTATIC -> TaintValue.of(Type.getType(((FieldInsnNode) insn).desc).getSize(), false);
+                case Opcodes.GETSTATIC -> fieldValue(insn);
                 // NEW は <init> の後に印を付け替えるため、命令ごとに別の値（同一性で追う）にする
                 case Opcodes.NEW -> new TaintValue(1, false, Set.of());
                 default -> TaintValue.of(1, false);
@@ -256,9 +264,13 @@ final class PlaintextSecretRandomFlowAnalyzer {
                      Opcodes.D2L -> TaintValue.of(2, isTainted(value));
                 // 配列を作った場所は命令の番号で識別する
                 case Opcodes.NEWARRAY, Opcodes.ANEWARRAY -> new TaintValue(1, false, Set.of(insnIndex(insn)));
-                case Opcodes.CHECKCAST -> value;
+                // 配列型への CHECKCAST は、作った場所を持たない値（Object を返す呼び出し等）に合成の場所を与える
+                case Opcodes.CHECKCAST ->
+                        Type.getObjectType(((TypeInsnNode) insn).desc).getSort() == Type.ARRAY && value.sites().isEmpty()
+                                ? new TaintValue(1, value.tainted(), Set.of(insnIndex(insn)))
+                                : value;
                 case Opcodes.INSTANCEOF -> TaintValue.of(1, false);
-                case Opcodes.GETFIELD -> TaintValue.of(Type.getType(((FieldInsnNode) insn).desc).getSize(), false);
+                case Opcodes.GETFIELD -> fieldValue(insn);
                 // 分岐・switch・return・throw・PUTSTATIC・MONITOR* は値を返さない
                 default -> null;
             };
@@ -271,7 +283,8 @@ final class PlaintextSecretRandomFlowAnalyzer {
             return switch (opcode) {
                 // 参照の要素（内側の配列を含む）は格納先と同じ類に属する。印は配列の値自体の印（split の戻り値など、
                 // 作った場所の分からない乱数由来の配列）と類の印を合わせる
-                case Opcodes.AALOAD -> new TaintValue(1, value1.tainted(), value1.sites());
+                case Opcodes.AALOAD -> new TaintValue(1, value1.tainted(),
+                        value1.sites().isEmpty() ? Set.of(insnIndex(insn)) : value1.sites());
                 case Opcodes.IALOAD, Opcodes.FALOAD, Opcodes.BALOAD, Opcodes.CALOAD, Opcodes.SALOAD ->
                         TaintValue.of(1, isTainted(value1));
                 case Opcodes.LALOAD, Opcodes.DALOAD -> TaintValue.of(2, isTainted(value1));
@@ -307,7 +320,7 @@ final class PlaintextSecretRandomFlowAnalyzer {
             }
             if (opcode == Opcodes.INVOKEDYNAMIC) {
                 boolean tainted = values.stream().anyMatch(this::isTainted);
-                return newValueOrNull(Type.getReturnType(((InvokeDynamicInsnNode) insn).desc), tainted);
+                return resultValue(insn, Type.getReturnType(((InvokeDynamicInsnNode) insn).desc), tainted);
             }
             MethodInsnNode call = (MethodInsnNode) insn;
             int argumentStart = opcode == Opcodes.INVOKESTATIC ? 0 : 1;
@@ -320,7 +333,7 @@ final class PlaintextSecretRandomFlowAnalyzer {
             }
             Type returnType = Type.getReturnType(call.desc);
             if (call.owner.equals(UUID_OWNER) && call.name.equals("randomUUID")) {
-                return newValueOrNull(returnType, true);
+                return resultValue(insn, returnType, true);
             }
             if (call.owner.equals(SECURE_RANDOM_OWNER) && call.name.equals("nextBytes") && values.size() == 2) {
                 Set<Integer> sites = values.get(1).sites();
@@ -332,11 +345,27 @@ final class PlaintextSecretRandomFlowAnalyzer {
                 return null;
             }
             boolean receiverTainted = argumentStart == 1 && isTainted(values.get(0));
-            return newValueOrNull(returnType, argumentTainted || receiverTainted);
+            return resultValue(insn, returnType, argumentTainted || receiverTainted);
         }
 
-        private static TaintValue newValueOrNull(Type type, boolean tainted) {
-            return type.getSort() == Type.VOID ? null : TaintValue.of(type.getSize(), tainted);
+        /** 呼び出しの戻り値。配列型なら命令位置の合成の場所を与える（作った場所の空な配列参照を作らない）。 */
+        private TaintValue resultValue(AbstractInsnNode insn, Type type, boolean tainted) {
+            if (type.getSort() == Type.VOID) {
+                return null;
+            }
+            if (type.getSort() == Type.ARRAY) {
+                return new TaintValue(1, tainted, Set.of(insnIndex(insn)));
+            }
+            return TaintValue.of(type.getSize(), tainted);
+        }
+
+        /** フィールドの値。配列型なら命令位置の合成の場所を与える（フィールドをまたぐ流れは追わず、読み出し1回ごとに別の場所）。 */
+        private TaintValue fieldValue(AbstractInsnNode insn) {
+            Type type = Type.getType(((FieldInsnNode) insn).desc);
+            if (type.getSort() == Type.ARRAY) {
+                return new TaintValue(1, false, Set.of(insnIndex(insn)));
+            }
+            return TaintValue.of(type.getSize(), false);
         }
 
         @Override
@@ -356,12 +385,9 @@ final class PlaintextSecretRandomFlowAnalyzer {
             return new TaintValue(size, tainted, Set.copyOf(sites));
         }
 
-        private static int insnIndex(AbstractInsnNode insn) {
-            int index = 0;
-            for (AbstractInsnNode current = insn.getPrevious(); current != null; current = current.getPrevious()) {
-                index++;
-            }
-            return index;
+        /** 命令位置（0 以上）。配列を作った場所・合成の場所の識別子に使う。 */
+        private int insnIndex(AbstractInsnNode insn) {
+            return instructions.indexOf(insn);
         }
     }
 
