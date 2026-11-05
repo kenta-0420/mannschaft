@@ -17,6 +17,7 @@
       "partial_time": "仅在当天部分时段内休业",
       "start_time": "开始时间",
       "end_time": "结束时间",
+      "range_separator": "至",
       "target_period": "目标期间",
       "subject": "主题",
       "reason": "休业原因",

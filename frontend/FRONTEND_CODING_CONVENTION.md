@@ -540,6 +540,19 @@ date.toLocaleDateString(locale.value, { weekday: 'short' })
 
 また、`'ja-JP'` などロケールをハードコードしないこと。ユーザーの言語設定に追従させるため、必ず `locale.value` を使用する。
 
+### 日時の表示整形は共通関数を使う（自前で整形しない）**【必須】**
+
+画面に出す日付・時刻・期間の整形は **`useDatetime()`**（`app/composables/useDatetime.ts`）と純関数群 `app/utils/localDate.ts` に一本化する。両者は現在の UI ロケールとユーザーTZ（`authStore.user.timezone`）に従う。**曜日配列・`m月d日`・`YYYY/MM/DD` 文字列の組み立て・「〜」の直書きを画面側に書いてはならない**（ロケールごとの書式が二重管理になり、ja 以外で日本語が残る。緊急休業 CMP-261104-0335 の実例）。
+
+| 用途 | 使うもの |
+|---|---|
+| 瞬間（ISO-8601）の日付／日時／時刻 | `formatDate` / `formatDateTime` / `formatTime`（ja は `YYYY/MM/DD`・`YYYY/MM/DD HH:mm`・`HH:mm`、他言語は各言語の数値書式） |
+| 暦日（`yyyy-MM-dd`）の曜日付き表示・範囲 | `formatCalendarDay` / `formatCalendarDayRange`（UTC 暦日として扱うので西側TZでも前日にならない。`new Date('YYYY-MM-DD')` を直接読まない） |
+| 時刻（`HH:mm[:ss]`）の範囲（秒は出さない） | `formatTimeRange` |
+| 範囲の区切りを画面で出す必要がある場合 | i18n キー（例: `emergency_closure.label.range_separator`）。直書きしない |
+
+足りない書式は画面に自前実装せず、共通側（`utils/localDate.ts` の純関数 + `useDatetime` の薄いラッパ）に足す。
+
 ### i18n ファイル追加時のガードレール
 
 新規ロケール JSON（例: `app/locales/ja/xxx.json`）を追加した際は、**必ず `nuxt.config.ts` の `i18n.locales[*].files` 配列にも登録すること**。登録漏れがあると `@nuxtjs/i18n` の lazy loading 機構が該当ファイルを一切ロードせず、UI にはキー文字列そのまま（例: `shift.index.title`）が表示される。この不具合は lint / unit test / backend CI では検出されない性質のため、機械的なチェックが効かない。

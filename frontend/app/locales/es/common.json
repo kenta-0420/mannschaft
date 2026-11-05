@@ -1108,6 +1108,9 @@
     }
   },
   "project": {
+    "related_todo_no_due": "Sin fecha límite",
+    "related_todo_no_assignee": "Sin responsable",
+    "related_todo_open": "Abrir detalle de la tarea",
     "milestones": "Hitos",
     "no_milestones": "No hay hitos",
     "due_date": "Fecha límite",

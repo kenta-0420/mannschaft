@@ -1108,6 +1108,9 @@
     }
   },
   "project": {
+    "related_todo_no_due": "No due date",
+    "related_todo_no_assignee": "Unassigned",
+    "related_todo_open": "Open TODO details",
     "milestones": "Milestones",
     "no_milestones": "No milestones",
     "due_date": "Due date",

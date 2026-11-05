@@ -17,6 +17,7 @@
       "partial_time": "Close only during specific hours of the day",
       "start_time": "Start Time",
       "end_time": "End Time",
+      "range_separator": "to",
       "target_period": "Target Period",
       "subject": "Subject",
       "reason": "Reason for closure",

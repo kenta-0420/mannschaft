@@ -17,7 +17,6 @@ defineProps<{
   confirmationsLoading: boolean
   /** 確認状況パネルの接続状態（LIVE/再接続中/オフライン/拒否）。 */
   connectionState: EmergencyClosureConnectionState
-  formatDate: (iso: string) => string
 }>()
 
 const emit = defineEmits<{
@@ -25,7 +24,7 @@ const emit = defineEmits<{
   'toggle-confirmations': [closureId: number]
 }>()
 
-const { formatDateTime } = useDatetime()
+const { formatDateTime, formatCalendarDayRange, formatTimeRange } = useDatetime()
 </script>
 
 <template>
@@ -76,10 +75,10 @@ const { formatDateTime } = useDatetime()
               </td>
               <td class="min-w-[10rem] py-2 pr-4">
                 <div>
-                  {{ item.startDate === item.endDate ? formatDate(item.startDate) : `${formatDate(item.startDate)}〜${formatDate(item.endDate)}` }}
+                  {{ formatCalendarDayRange(item.startDate, item.endDate) }}
                 </div>
                 <div v-if="item.startTime && item.endTime" class="text-xs text-surface-500">
-                  {{ item.startTime }}〜{{ item.endTime }}
+                  {{ formatTimeRange(item.startTime, item.endTime) }}
                 </div>
               </td>
               <td class="min-w-[14rem] break-words py-2 pr-4">{{ item.reason }}</td>

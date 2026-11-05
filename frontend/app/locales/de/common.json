@@ -1108,6 +1108,9 @@
     }
   },
   "project": {
+    "related_todo_no_due": "Kein Fälligkeitsdatum",
+    "related_todo_no_assignee": "Nicht zugewiesen",
+    "related_todo_open": "TODO-Details öffnen",
     "milestones": "Meilensteine",
     "no_milestones": "Keine Meilensteine",
     "due_date": "Fälligkeitsdatum",

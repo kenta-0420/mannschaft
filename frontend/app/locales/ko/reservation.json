@@ -17,6 +17,7 @@
       "partial_time": "당일 일부 시간대만 휴업",
       "start_time": "시작 시간",
       "end_time": "종료 시간",
+      "range_separator": "~",
       "target_period": "대상 기간",
       "subject": "제목",
       "reason": "휴업 사유",
