@@ -88,3 +88,19 @@ A/B/Cの独立3 persona・3 journey・3 insightを、元run `CMP-260910-1555-rev
 - run B `alicization-cmp0035-run-20261030`（再確認、main `0f8354b879e6f58103e07d76606928ea499a4dbf`、住民3体 ta/to/ya）: 一般×素直は告知5件読了・未読0、スマホ片手×表示崩れは横パンなし、多言語en×隙間狙いは途中中断し殿が API で代行したため実施完了とはしない。確定2件（組織告知一覧の宛先漏れ PR #4240、390px で告知カードに1件しか見えない PR #4239）も住民insight側は未実証ラベルのままとする。範囲外の気づき（管理者ビュー切替ポップオーバーの被り、タップ対象の小ささ、戻る二重、初期スケルトン約5秒、組織の権限グループ画面に作成・編集ダイアログなし）は台帳の列挙を保持し、観測者割当は推定。
 
 画像実体は含めず、private 原本 `.claude/evidence/CMP-261011-0035-alicization/`（版管理の非追跡。`alic1028/{xa,xm,out,to,ta,ua,ya,verify}/`・`alic1030/{r1,r2,r3,prep}/`、初回8観測の裏取り報告 `verify-report-alic1028.md`）への path 参照のみとする。再生成用copyは ignored `docs/prototypes/.b0-local/run-cmp0035-observations-20261101.json`（正本同一）。`beta-inventory-board-data.js` は通常generatorの出力ではなく、baselineの全fieldを保持して `b0RunOverlay` だけを正本へ置換した（baseline側は82件で旧正本91件に未追随だったため、今回で108件へ揃う）。通常validatorと自己検証全体は既知のGitHub snapshot参照集合不一致（CMP正本行数と参照抽出数）で失敗しており、overlay限定検査（`validateRunOverlay` の抜き出し実行と不正なjourney/sourceHeadの拒否、正本とdata.jsのdeepEqual）の合格と混同しない。
+
+### CMP-261021-0717 UI9 住民観測（2026-11-05）
+
+UI9の独立3住民観測を `docs/evidence/CMP-261021-0717/resident-observations-20261105.json` へ選別記録し、累積正本 `docs/evidence/CMP-261015-1510/resident-overlay.json` の52/52/108を全保持して、3 persona / 3 journey / 3 insightを追記し55/55/111とした。元runは `CMP-261021-0717-ui9-20261105`、個別sourceHeadは `dc977b6724958111c149140ab83f0094b433bb78`。3件とも `actual-resident-artifacts` / `trusted=false` / `observed-unverified` とし、coverage・欠陥確定・task-list完了へ昇格しない。A/Bに原persona/journey IDがない部分は登録時付与を明記。Cの原ID `resident-c` / `resident-c-ui9` を衝突なしでそのまま使う。累積overlayの既存トップrunIdとenvironmentを変更しない。
+
+選択画像はresident A予算画面、Bマイシフト、C管理者拒否の3枚を同ディレクトリへコピーし、raw JSONのprivate原本pathは証跡内に保持する。Aは公開・アーカイブ表示を確認したが予算消化の戻りを理解できず、一般会計0円は消化額と別の観測として既知CMP-261021-0652と分離。rootの03:32:06Z read-only照合ではARCHIVED/deleted=null、消化3/4がCANCELLED 9,600/12,000（SHIFT_DELETED、03:14:14Z）、allocation2 consumed0/deleted=null。Bの初回12月空表示はA公開より前で正常。月表示の復帰、未提出入力消失、アーカイブ後のシフト/交代導線、取消説明未発見は住民観測として保持し、原因を断定しない。strict selector/timeoutは自動操作失敗で、アプリ例外としない。Cの別組織404・予算管理者拒否はroot確認済み既存挙動。推測不存在は認可成功と扱わず、書込みAPI認可も未検証。
+
+rootは3住民の原session正常終了、cleanup=removed、専用scratchと内部source copyの撤去を確認。元source worktreeは保持している。root API metadataでGitHub environment 0、本番environment作成なし、本番操作0も確認済み。選択画像6枚はrootが視認し、固定read-only 4 SELECTで住民fixture/DB後状態を確認した。新規確定bug 0、blocker昇格0。通常validatorの既知snapshot不一致FAIL、overlay限定検査、自己検証、静的board UI確認は別々に報告し、UI確認はrootのGO前には実行しない。既存importerの保存runIdがoverlayトップ旧runIdを使う精度制限も維持する。この記録時点のCMP-261021-0717は実装中であり、正式完了更新は別PRで行う。
+
+### CMP-261021-0717 UI9 静的ボード取込確認（2026-11-05）
+
+静的ボードUIをroot承認下で一度確認した。HTML SHA256 `64d62b5cae580815a09d353844cb45d44232417bfeaf9473953b22dcbca220d4`（Git blob OID `5939210c58225795e1c168052903f5b4293b206d`）、生成JS SHA256 `355c66e99a952de8de9ffb5850367e2403023bef0ce6bc91705edee8ba2d8c8b`。外部要求遮断0、製品アプリ起動なし。初回111件・reload後111件、全行deepEqual、旧108件projection保持、新3件はすべてB4で表示し、persona/journey/run/evidence/screenshotPath/featureKey/stage/sourceの各表示確認成功。選択3 PNG pathと「自動テストのスクショ証拠あり」表示も確認した。board結果画像は `docs/evidence/CMP-261021-0717/board-new-three.png`（SHA256 `e50d7af44c2dd782fde9420c429de77734fa011e534c2a6f17438c80b5cf6606`）。UI receiptは `board-ui-20261105.json` に選別記録した。
+
+初回UIは旧featureKeyがcanonical capabilityに無く、未設定stageへfallbackしたため新3件がB4検索で見つからず失敗した（receipt SHA256 `695478ce29b22ce92b707307d3185c00b0f4c117a065c6c3bc6436d370f25c30`）。新3件のみを既存capability keyへ合わせてB4解決し、再確認は全成功（receipt SHA256 `37efbc8824c455fd6850f1dea3a41a727547cf8dc2c3fbd2ba84cb54e771231f`）。最終runは50.060秒、撤収30.399秒で各予算180秒/120秒/全体300秒内。既知browser generation live0、profile不在、port解放、各client/server正常終了を確認し、generation snapshot欠落なし。外部通信は0件だった。
+
+保存済みrunIdは累積overlayのトップ旧runIdとなる既存importer仕様のため `originalRunIdPrecisionPassed=false` を維持する。元runIdは各カード詳細・証拠に保持する。これは静的ボードの証拠であり、製品実機・DB検証やB0 coverage合格を意味しない。実装PR #4291が未mergeのため、task-listと正式完了JSON/MDはこのdocs PRにまだ含めない。docs PRもコードPRの全gate/merge後に正式完了内容を追加するまではdraftとする。
