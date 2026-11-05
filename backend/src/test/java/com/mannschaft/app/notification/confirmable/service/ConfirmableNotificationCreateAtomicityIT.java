@@ -11,6 +11,7 @@ import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -61,6 +62,51 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
     private TransactionTemplate txTemplate;
     private Long orgId;
     private Long adminUserId;
+    private Long controlUserId;
+    private Long controlNotificationId;
+    private Long notificationId;
+
+    @AfterEach
+    void cleanup() {
+        txTemplate.executeWithoutResult(status -> {
+            if (adminUserId != null) {
+                List<?> jobIds = em.createNativeQuery("SELECT id FROM notification_fanout_jobs WHERE scope_type = 'CONFIRMABLE_TARGETS' AND actor_id = :actor")
+                        .setParameter("actor", adminUserId).getResultList();
+                for (Object id : jobIds) {
+                    em.createNativeQuery("DELETE FROM notification_fanout_jobs WHERE id = :id")
+                            .setParameter("id", id).executeUpdate();
+                }
+            }
+            for (Long id : new Long[] {controlNotificationId, notificationId}) {
+                if (id != null) {
+                    em.createNativeQuery("DELETE FROM notification_fanout_jobs WHERE scope_type = 'CONFIRMABLE_TARGETS' AND scope_ref = :ref")
+                            .setParameter("ref", String.valueOf(id)).executeUpdate();
+                    em.createNativeQuery("DELETE FROM confirmable_notification_targets WHERE confirmable_notification_id = :id")
+                            .setParameter("id", id).executeUpdate();
+                    em.createNativeQuery("DELETE FROM confirmable_notifications WHERE id = :id")
+                            .setParameter("id", id).executeUpdate();
+                }
+            }
+            if (orgId != null) {
+                List<?> ids = em.createNativeQuery("SELECT id FROM confirmable_notifications WHERE scope_id = :orgId")
+                        .setParameter("orgId", orgId).getResultList();
+                for (Object id : ids) {
+                    em.createNativeQuery("DELETE FROM confirmable_notification_targets WHERE confirmable_notification_id = :id")
+                            .setParameter("id", id).executeUpdate();
+                    em.createNativeQuery("DELETE FROM confirmable_notifications WHERE id = :id")
+                            .setParameter("id", id).executeUpdate();
+                }
+            }
+            for (Long id : new Long[] {controlUserId, adminUserId}) {
+                if (id != null) {
+                    em.createNativeQuery("DELETE FROM users WHERE id = :id").setParameter("id", id).executeUpdate();
+                }
+            }
+            if (orgId != null) {
+                em.createNativeQuery("DELETE FROM organizations WHERE id = :id").setParameter("id", orgId).executeUpdate();
+            }
+        });
+    }
 
     @BeforeEach
     void setUp() {
@@ -74,6 +120,18 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
     @Test
     @DisplayName("AC-22: targetsのINSERTが失敗すると、本体もfanoutジョブも1件も残らない（同一トランザクション）")
     void ac22_targetsInsert失敗で本体もジョブも残らない() {
+        controlUserId = txTemplate.execute(status -> insertUser());
+        assertThat(controlUserId).isNotEqualTo(adminUserId);
+        controlNotificationId = txTemplate.execute(status ->
+                notificationService.createQueuedNotificationWithTargetsAndJob(
+                        ScopeType.ORGANIZATION, orgId, "AC-22制御-" + SEQ.incrementAndGet(), null,
+                        ConfirmableNotificationPriority.NORMAL, null, null, null,
+                        UnconfirmedVisibility.CREATOR_AND_ADMIN, controlUserId,
+                        List.of(new ConfirmableTargetSpec(ConfirmableTargetType.ORGANIZATION, orgId))).getId());
+        assertThat(((Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM notification_fanout_jobs WHERE scope_type = 'CONFIRMABLE_TARGETS' AND scope_ref = :ref AND actor_id = :actor")
+                .setParameter("ref", String.valueOf(controlNotificationId))
+                .setParameter("actor", controlUserId).getSingleResult()).longValue()).isEqualTo(1L);
         String title = "AC-22試練-" + SEQ.incrementAndGet();
         // 是正: target_id に負数を与える方式は、JDBCのバイナリプロトコルでは-1が
         // BIGINT UNSIGNEDの最大値（2^64-1）としてそのまま有効値になり、範囲外エラーにならない
@@ -122,7 +180,7 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
         List<ConfirmableTargetSpec> validTargets =
                 List.of(new ConfirmableTargetSpec(ConfirmableTargetType.ORGANIZATION, orgId));
 
-        Long notificationId = txTemplate.execute(status ->
+        notificationId = txTemplate.execute(status ->
                 notificationService.createQueuedNotificationWithTargetsAndJob(
                         ScopeType.ORGANIZATION, orgId, title, null,
                         ConfirmableNotificationPriority.NORMAL, null, null, null,
