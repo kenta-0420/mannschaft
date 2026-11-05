@@ -36,3 +36,7 @@
 ## 検証状態
 
 既存Python再生成unit 6件は変更前にrootが成功確認。同一コードの重複実行は省略。ローカル重いGradle、実class 4 profile、Integrity SelfTest 17、専用Integrity 12、および実装headの全必須CIは本記録時点で未実施・未確認。CI結果と独立検分は実装merge後の別完了記録で示す。画面/API/業務認可の変更はなく、実機・探索はtest-only scopeにおいて対象外。
+
+## 最新main追従時のsource再確認
+
+通常mergeしたmain `f51ee7c58660297b9ce2eb7bd252da2b6eed2dd6` では開始親 `bb9e81532ee8b6b24445dd50332a8e909110ef23` からtest source 2ファイルのみが変更された。`ErDiagramRenderer` はclass注釈・テスト注釈なしのhelperのまま、`ErDiagramRendererTest` はclassの `@DisplayName` のままで通常 `@Test` が23→26となり、nightly未計測の通常テスト分類を維持する。追加・削除なし、静的source 3445と上記分類数は不変。実class coverage・XMLは追従後の実装headで改めて確認する。開始親とnightly採用時の記録は上記のとおり維持する。
