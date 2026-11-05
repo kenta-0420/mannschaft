@@ -28,6 +28,8 @@ metadata-timeoutには固定理由・filename・elapsed/limitを付け、JSON IO
 
 negativeはcase固有reasonに加え、wrong ack実体/親Job認定/一致hello/実dummy exit17等の指定故障点をassertする。別bootstrap失敗をnegativeの成功にしない。normalはdummy/directの非空2role集合・異なるpid/creation・実exit0/各EOF・最後のhandle観測・8phase順序を必須にし、every(empty)を許さない。これは診断採取であり、一度の成功を過去sharing違反/timeoutの根治とは呼ばない。
 
+test-firstのhost-fail/cleanup-fail fixtureは、孫exit listenerをspawn直後に登録し、子が保持した孫のactual exit0後にだけ既存grandchild.jsonを公開してexit17する。孫自身はこの2caseで同fileを公開しない。孫の保持時間・既存timeoutは増やさず、旧PSの生存前提lookupを終了後へ通すRED試験である。PSのgreen修正はこの試験と別GOで行う。
+
 ## 有限probe（実行には別GOが必要）
 
 Windows標準PowerShellと既存Nodeだけを使う。新依存/SDK/ダウンロードなし。通常のPowerShell policyを適用し、ExecutionPolicy Bypass/Unblock-File/ACL変更を行わない。policyや強い既存Jobで拒否されたら、非0・保持理由を報告する。sandbox無効化やbreakawayで逃がさない。

@@ -85,19 +85,32 @@ async function dummy(role, run, nonce, scenario) {
   assert.equal(owner.nonce, nonce);
   process.stdout.write(`${role}:out\n`);
   process.stderr.write(`${role}:err\n`);
-  atomic(path.join(run, `${role}.json`), { pid: process.pid, nonce });
+  const afterGrandchildExit = scenario === 'host-fail' || scenario === 'cleanup-fail';
+  // この2caseの孫metadataは、直接creatorである子が実exit0を観測した後だけ公開する。
+  if (role !== 'grandchild' || !afterGrandchildExit) atomic(path.join(run, `${role}.json`), { pid: process.pid, nonce });
   if (role === 'child') {
     const grandchild = spawn(process.execPath, [__filename, '--dummy', 'grandchild', run, nonce, scenario], { windowsHide: true, stdio: 'inherit' });
+    const grandchildExit = new Promise(resolve => {
+      grandchild.once('exit', (code, signal) => resolve({ code, signal }));
+      grandchild.once('error', () => resolve({ code: null, signal: 'spawn-error' }));
+    });
     grandchild.on('error', () => { process.exitCode = 2; });
+    if (afterGrandchildExit) {
+      const observed = await grandchildExit;
+      assert.equal(observed.code, 0);
+      assert.equal(observed.signal, null);
+      atomic(path.join(run, 'grandchild.json'), { pid: grandchild.pid, nonce, creatorPid: process.pid, exited: true, exitCode: observed.code });
+      process.exit(17);
+    }
     await until(() => fs.existsSync(path.join(run, 'grandchild.json')), 3000);
-    if (scenario === 'host-fail' || scenario === 'cleanup-fail') process.exit(17);
     if (scenario === 'stdio-eof') process.exit(0); // 孫が継承pipeを開いたままにする。
     if (scenario === 'kill-close') {
       await wait(15000); // 親死亡時のJob回収を外側observerが実handleで確認する。
       process.exit(19);
     }
-    const code = await new Promise((resolve, reject) => { grandchild.on('exit', resolve); grandchild.on('error', reject); });
-    assert.equal(code, 0);
+    const observed = await grandchildExit;
+    assert.equal(observed.code, 0);
+    assert.equal(observed.signal, null);
     return;
   }
   await wait(scenario === 'stdio-eof' || scenario === 'kill-close' ? 15000 : 800);
