@@ -67,7 +67,7 @@ public class ModuleEventResumeAuditPrivacyService {
     }
 
     /** UTC の暦年2年より厳密に古い監査だけを削除する。 */
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false, timeout = 300)
     public int deleteExpired(Instant now) {
         Instant cutoff = Objects.requireNonNull(now, "now").atZone(ZoneOffset.UTC).minusYears(2).toInstant();
         return entityManager.createQuery("DELETE FROM ModuleEventResumeAuditEntity a WHERE a.createdAt < :cutoff")

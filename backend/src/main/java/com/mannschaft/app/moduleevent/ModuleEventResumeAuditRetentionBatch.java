@@ -4,6 +4,8 @@ import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.moduleevent.api.ModuleEventResumeAuditPrivacyApi;
+import java.time.Instant;
+import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.core.LockAssert;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -13,8 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 再開監査の保持期限を日次で整理する入口。
- * 削除はM privacy APIの独立TXへ委譲する。現在は試練用の公開骨格で、業務本体は未実装。
+ * 削除はM privacy APIの独立TXへ委譲し、actor stateは保持する。
  */
+@Slf4j
 @Component
 public class ModuleEventResumeAuditRetentionBatch {
     public static final String BATCH_NAME = "module-event-resume-audit-retention-daily";
@@ -26,9 +29,10 @@ public class ModuleEventResumeAuditRetentionBatch {
     }
 
     /**
-     * UTC 03:00の日次整理。PT30Mは未確定の試練surface値で、完走時間の保証ではない。
-     * green化前に既存DB/TX/queryの有限timeoutとcreated_at索引による単一DELETEを確認し、
-     * 最悪処理時間に基づくlease根拠を確定する。業務本体はまだ実装しない。
+     * UTC 03:00の日次整理。created_at索引を持つ単一DELETEのquery予算300秒と、
+     * 本番Hikari接続取得3秒、取消・rollback/commit・解放の保守的余裕1497秒からleaseを30分と推定する。
+     * 余裕は実測最大値ではなく、通信障害を含めた完走の絶対期限も保証しない。
+     * backlog最大量と所要時間は未測定であり、timeoutが続く場合は容量と競合を再評価する。
      */
     @BatchEndpoint(name = BATCH_NAME, description = "UTC暦年2年より古い再開監査を毎日03:00 UTCに整理する")
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
@@ -38,6 +42,8 @@ public class ModuleEventResumeAuditRetentionBatch {
     @Transactional(propagation = Propagation.NEVER)
     public Integer deleteExpiredAudits() {
         LockAssert.assertLocked();
-        throw new UnsupportedOperationException("未実装");
+        int deleted = privacyApi.deleteExpired(Instant.now());
+        log.info("再開監査の日次保持削除が完了しました: deleted={}", deleted);
+        return deleted;
     }
 }

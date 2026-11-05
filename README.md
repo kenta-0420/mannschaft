@@ -1272,7 +1272,7 @@ Phase 9 以降で実装される機能（**広告表示 #27・コルクボード
 
 再開理由は専用監査に保存し、本人の全履歴4項目を開示し、強匿名化時に理由を `[REDACTED]` に置換する設計です。監査はUTCの暦年2年より古い行を削除します。強匿名化後の理由再生を防ぐM所有の `module_event_resume_actor_states`（UUIDv7 id・一意なactor_user_id・不可逆なpurged）は、監査削除後もTTLなしで保持します。本人stateのid/purgedも既存audit_logsカテゴリ内の別JSONへ出力する方針です。M内部の本人監査・state取得、期限削除、再開fenceと強匿名化の本文は接続済みです。新fenceとstate取得の業務REDはCIで確認済みですが、接続後の実DB green、PRIVACY/Cへの正式引渡しと実ZIP検証は未完了です。詳細は[運用仕様](docs/operations/module-event-operations.md)と[個人データ仕様](docs/features/F12.3_gdpr_personal_data.md)を参照してください。
 
-保持削除の定期入口は毎日03:00 UTCの `module-event-resume-audit-retention-daily` を採用し、同じ登録名から手動起動する設計です。瞬時TTLではありません。現在はjob公開骨格と先行試験だけで、業務本体・実MySQLでのred/green・実機起動は未完了です。
+保持削除は毎日03:00 UTCの `module-event-resume-audit-retention-daily` と同じ登録名の手動入口から、既存M privacy APIへ一度だけ委譲します。瞬時TTLではありません。独立TXのquery予算は300秒、leaseは接続取得と取消・rollback/commit・解放の余裕を含めて30分と推定しています。実MySQLの先行4試験で未実装stubによる業務REDをCI確認後に本文を接続しましたが、接続後のgreen・短TX取消試験・実機起動は未測定です。leaseは障害時を含む完走時間の保証ではありません。
 
 ### チームの予算・会計画面
 
