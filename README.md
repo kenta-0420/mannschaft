@@ -1270,7 +1270,7 @@ Phase 9 以降で実装される機能（**広告表示 #27・コルクボード
 
 ### モジュールイベントの再開監査と本人データ（実装・検証中）
 
-再開理由は専用監査に保存し、本人の全履歴4項目を開示し、強匿名化時に理由を `[REDACTED]` に置換する設計です。監査はUTCの暦年2年より古い行を削除します。強匿名化後の理由再生を防ぐM所有の `module_event_resume_actor_states`（UUIDv7 id・一意なactor_user_id・不可逆なpurged）は、監査削除後もTTLなしで保持します。本人stateのid/purgedも既存audit_logsカテゴリ内の別JSONへ出力する方針です。現在は骨格と先行試験の段階で、新fenceのred/green実測、PRIVACY/Cへの正式引渡しと実ZIP検証は未完了です。詳細は[運用仕様](docs/operations/module-event-operations.md)と[個人データ仕様](docs/features/F12.3_gdpr_personal_data.md)を参照してください。
+再開理由は専用監査に保存し、本人の全履歴4項目を開示し、強匿名化時に理由を `[REDACTED]` に置換する設計です。監査はUTCの暦年2年より古い行を削除します。強匿名化後の理由再生を防ぐM所有の `module_event_resume_actor_states`（UUIDv7 id・一意なactor_user_id・不可逆なpurged）は、監査削除後もTTLなしで保持します。本人stateのid/purgedも既存audit_logsカテゴリ内の別JSONへ出力する方針です。M内部の本人監査・state取得、期限削除、再開fenceと強匿名化の本文は接続済みです。新fenceとstate取得の業務REDはCIで確認済みですが、接続後の実DB green、PRIVACY/Cへの正式引渡しと実ZIP検証は未完了です。詳細は[運用仕様](docs/operations/module-event-operations.md)と[個人データ仕様](docs/features/F12.3_gdpr_personal_data.md)を参照してください。
 
 保持削除の定期入口は毎日03:00 UTCの `module-event-resume-audit-retention-daily` を採用し、同じ登録名から手動起動する設計です。瞬時TTLではありません。現在はjob公開骨格と先行試験だけで、業務本体・実MySQLでのred/green・実機起動は未完了です。
 

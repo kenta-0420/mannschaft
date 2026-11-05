@@ -99,7 +99,7 @@ M側も同じbindingに属する未完了publicationが0件であることを確
 
 理由の再生防止にはM所有の `module_event_resume_actor_states`（UUIDv7のid、一意なactor_user_id、不可逆なpurged）を採用する。resumeは同actorのupsert→write lock→purged確認→CASと監査保存を同じM TXで行い、強匿名化は独立したprimaryのREQUIRES_NEWで同じlock→purged=trueと全理由置換をcommitする設計である。upsertの重複側でtrueをfalseへ戻さず、locking current readで外側EntityManagerの古い値を再利用しない。監査0件でもstateを作り、監査の期限削除後もTTLを設けず保持する。失敗時はresumeのCAS・監査・初回state、またはpurgeのstate・理由置換をそれぞれ全てrollbackする。
 
-この保持・匿名化・取得は方針決定済みだが実装と検証は未完了である。既存 `audit_logs` カテゴリ選択時に `module_event_resume_audits.json` と本人stateのid/purgedだけを0/1件収める `module_event_resume_actor_states.json` を追加出力する設計で、新カテゴリ・UI選択肢は設けない。M窓口は骨格と先行試験の準備段階で新fenceの赤・greenは未実測、PRIVACY / C からのexport・purge・再試行への正式引渡し・実ZIP検証は未完了である。中央の `audit_logs` の本人export 7項目・ファイル名およびarchive方針は変更しない。一般の[監査ログ仕様](../features/F10.3_audit_logs.md)を、専用監査の中央一覧接続や保存・削除実装の完了とみなさない。
+この保持・匿名化・取得は方針決定済みだが検証は未完了である。M内部の本人監査取得・期限削除に加え、再開fence・強匿名化と本人state取得の `collectActorStates` の業務本文を接続した。CIの `ModuleEventAdminApiIT` と `ModuleEventResumeAuditPrivacyIT` で新fenceとstate取得の業務REDを確認済みだが、接続後の実DB greenは未測定である。既存 `audit_logs` カテゴリ選択時に `module_event_resume_audits.json` と本人stateのid/purgedだけを0/1件収める `module_event_resume_actor_states.json` を追加出力する設計で、新カテゴリ・UI選択肢は設けない。PRIVACY / C からのexport・purge・再試行への正式引渡し・実ZIP検証は未完了である。中央の `audit_logs` の本人export 7項目・ファイル名およびarchive方針は変更しない。一般の[監査ログ仕様](../features/F10.3_audit_logs.md)を、専用監査の中央一覧接続や保存・削除実装の完了とみなさない。
 
 試験の設計訂正: 旧「退会が先に確定…」のusers行lock／弱退会試験は「監査0件の強匿名化が先に確定…」へ、旧「凍結済み管理者…」の直接principal/FROZEN試験は「監査が保持期限で全削除されても…」へ置換する。前者の2期待値は撤回したauth同TX案からの局所追加であり、元21ACからの削除ではない。既存の匿名401・roles403・直接API認可・actor偽装拒否・一般認証層の回帰は維持する。resume先勝・state不在の同時作成・外側L1古値と未flush変更の保全もM fence試験として追加する。
 

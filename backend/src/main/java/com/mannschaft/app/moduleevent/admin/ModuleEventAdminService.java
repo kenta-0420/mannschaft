@@ -7,6 +7,7 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.UuidV7;
 import com.mannschaft.app.moduleevent.ModuleEventAttemptStatus;
 import com.mannschaft.app.moduleevent.api.dto.ModuleEventQuarantineResponse;
+import com.mannschaft.app.moduleevent.repository.ModuleEventResumeActorStateRepository;
 import jakarta.persistence.EntityManager;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
@@ -21,6 +22,7 @@ import java.util.TimeZone;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,6 +62,7 @@ public class ModuleEventAdminService {
             """;
     private final JdbcTemplate jdbc;
     private final EntityManager entityManager;
+    private final ModuleEventResumeActorStateRepository actorStates;
 
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public PagedResponse<ModuleEventQuarantineResponse> list(String status, int page, int size) {
@@ -89,6 +92,14 @@ public class ModuleEventAdminService {
             throw new BusinessException(CommonErrorCode.COMMON_001);
         }
         Long actorUserId = SecurityUtils.getCurrentUserId();
+        actorStates.createIfAbsent(UuidV7.generate().toString(), actorUserId);
+        Long purged = actorStates.lockPurged(actorUserId);
+        if (purged == null || (purged != 0L && purged != 1L)) {
+            throw new IllegalStateException("再開理由の再生防止状態を確認できません");
+        }
+        if (purged == 1L) {
+            throw new AccessDeniedException("強匿名化済みの実行者は再開できません");
+        }
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT p.completion_date, a.id AS attempt_id, a.status, a.version AS attempt_version
                 FROM event_publication p
