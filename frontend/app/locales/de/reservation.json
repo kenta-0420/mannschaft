@@ -72,7 +72,8 @@
       "connecting": "Verbinden…",
       "reconnecting": "Erneut verbinden…",
       "offline": "Offline",
-      "denied": "Kein Zugriff"
+      "denied": "Kein Zugriff",
+      "unauthenticated": "Anmeldung erforderlich"
     },
     "dialog": {
       "title": "Versand bestätigen",

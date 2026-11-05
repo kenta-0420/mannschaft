@@ -72,7 +72,8 @@
       "connecting": "接続中…",
       "reconnecting": "再接続中…",
       "offline": "オフライン",
-      "denied": "閲覧権限がありません"
+      "denied": "閲覧権限がありません",
+      "unauthenticated": "ログインが必要です"
     },
     "dialog": {
       "title": "送信確認",

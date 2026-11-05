@@ -102,7 +102,9 @@
       "multiple": "{names} tippen…"
     },
     "connection": {
-      "failed": "Verbindung unterbrochen. Verbindungsversuch läuft…"
+      "failed": "Verbindung unterbrochen. Verbindungsversuch läuft…",
+      "denied": "Du hast keine Berechtigung, diesen Kanal anzuzeigen",
+      "unauthenticated": "Deine Anmeldung ist abgelaufen, daher wurden die Echtzeit-Updates gestoppt. Bitte melde dich erneut an"
     },
     "mobile": {
       "backToList": "Zurück zur Kanalliste",

@@ -102,7 +102,9 @@
       "multiple": "{names} are typing…"
     },
     "connection": {
-      "failed": "Connection lost. Attempting to reconnect…"
+      "failed": "Connection lost. Attempting to reconnect…",
+      "denied": "You do not have permission to view this channel",
+      "unauthenticated": "Your login has expired, so real-time updates have stopped. Please log in again"
     },
     "mobile": {
       "backToList": "Back to channel list",

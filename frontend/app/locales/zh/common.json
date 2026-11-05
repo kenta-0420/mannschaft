@@ -102,7 +102,9 @@
       "multiple": "{names}正在输入…"
     },
     "connection": {
-      "failed": "连接已断开。正在尝试重新连接…"
+      "failed": "连接已断开。正在尝试重新连接…",
+      "denied": "您没有查看此频道的权限",
+      "unauthenticated": "登录已过期，实时更新已停止。请重新登录"
     },
     "mobile": {
       "backToList": "返回频道列表",

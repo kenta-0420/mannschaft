@@ -72,7 +72,8 @@
       "connecting": "连接中…",
       "reconnecting": "重新连接中…",
       "offline": "离线",
-      "denied": "无查看权限"
+      "denied": "无查看权限",
+      "unauthenticated": "需要登录"
     },
     "dialog": {
       "title": "确认发送",

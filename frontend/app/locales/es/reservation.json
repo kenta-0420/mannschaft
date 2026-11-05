@@ -72,7 +72,8 @@
       "connecting": "Conectando…",
       "reconnecting": "Reconectando…",
       "offline": "Sin conexión",
-      "denied": "Sin acceso"
+      "denied": "Sin acceso",
+      "unauthenticated": "Inicio de sesión requerido"
     },
     "dialog": {
       "title": "Confirmar envío",
