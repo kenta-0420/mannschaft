@@ -770,6 +770,14 @@ erDiagram
 | [workflow](workflow.md) | `workflow_requests` | `requested_by` | ID参照 | `users` |
 | [workflow](workflow.md) | `workflow_templates` | `created_by` | ID参照 | `users` |
 
+## 自己参照
+
+mermaid は同一テーブルの自己参照を複数描けず 1 本に畳むため、図に線が欠けることがある。自己参照はこの表を正とする。
+
+| テーブル | 列 | 種別 |
+| --- | --- | --- |
+| `users` | `account_created_by_watcher_user_id` | ID参照 |
+
 ## 多態参照（線を引かない）
 
 | テーブル | 種別列 | ID列 |
