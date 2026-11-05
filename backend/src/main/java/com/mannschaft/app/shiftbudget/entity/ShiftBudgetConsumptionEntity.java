@@ -11,6 +11,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,7 +23,7 @@ import java.time.LocalDateTime;
 /**
  * F08.7 シフト予算消化記録エンティティ。
  *
- * <p>1 レコード = 1 (slot, user) ペア。シフト公開時に {@link ShiftBudgetConsumptionStatus#PLANNED}
+ * <p>1 レコード = ある公開世代の 1 (slot, user) ペア。シフト公開時に {@link ShiftBudgetConsumptionStatus#PLANNED}
  * で INSERT され、月次締めで {@link ShiftBudgetConsumptionStatus#CONFIRMED} へ昇格、
  * シフトキャンセル等で {@link ShiftBudgetConsumptionStatus#CANCELLED} へ遷移する。</p>
  *
@@ -41,7 +42,7 @@ import java.time.LocalDateTime;
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uq_sbc_slot_user_status",
-                        columnNames = {"slot_id", "user_id", "status", "deleted_at_uq"}
+                        columnNames = {"slot_id", "user_id", "active_status", "deleted_at_uq"}
                 )
         },
         indexes = {
@@ -63,6 +64,11 @@ public class ShiftBudgetConsumptionEntity extends BaseEntity {
     /** FK → shift_schedules。ON DELETE RESTRICT */
     @Column(name = "shift_id", nullable = false)
     private Long shiftId;
+
+    /** 記録元の公開世代。既存の消化記録は世代 0 として保持する。 */
+    @Column(name = "publication_generation", nullable = false)
+    @Builder.Default
+    private long publicationGeneration = 0L;
 
     /** FK → shift_slots。ON DELETE RESTRICT */
     @Column(name = "slot_id", nullable = false)
@@ -92,6 +98,11 @@ public class ShiftBudgetConsumptionEntity extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private ShiftBudgetConsumptionStatus status;
+
+    /** CANCELLED 履歴を UNIQUE の対象から外す、NULL 許容の STORED 生成カラム。 */
+    @GeneratedColumn("CASE WHEN status = 'CANCELLED' THEN NULL ELSE status END")
+    @Column(name = "active_status", length = 20, insertable = false, updatable = false)
+    private String activeStatus;
 
     /** 公開イベント発火時刻 */
     @Column(name = "recorded_at", nullable = false)

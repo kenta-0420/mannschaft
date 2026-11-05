@@ -91,6 +91,11 @@ public class ShiftScheduleEntity extends BaseEntity {
 
     private Long publishedBy;
 
+    /** 公開のたびに進む世代。既存スケジュールは世代 0 として扱う。 */
+    @Column(name = "publication_generation", nullable = false)
+    @Builder.Default
+    private long publicationGeneration = 0L;
+
     @Column(nullable = false)
     @Builder.Default
     private Boolean isReminderSent = false;
@@ -191,6 +196,11 @@ public class ShiftScheduleEntity extends BaseEntity {
         this.status = ShiftScheduleStatus.PUBLISHED;
         this.publishedAt = LocalDateTime.now();
         this.publishedBy = userId;
+    }
+
+    /** 親行ロック下で確定した公開世代を反映する。 */
+    public void setPublicationGeneration(long publicationGeneration) {
+        this.publicationGeneration = publicationGeneration;
     }
 
     /**
