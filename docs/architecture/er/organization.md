@@ -168,6 +168,14 @@ erDiagram
 | [tournament](tournament.md) | `tournament_templates` | `organization_id` | ID参照 | `organizations` |
 | [tournament](tournament.md) | `tournaments` | `organization_id` | ID参照 | `organizations` |
 
+## 自己参照
+
+mermaid は同一テーブルの自己参照を複数描けず 1 本に畳むため、図に線が欠けることがある。自己参照はこの表を正とする。
+
+| テーブル | 列 | 種別 |
+| --- | --- | --- |
+| `organizations` | `parent_organization_id` | 外部キー |
+
 ## テーブル定義
 
 ### `org_team_groups`
