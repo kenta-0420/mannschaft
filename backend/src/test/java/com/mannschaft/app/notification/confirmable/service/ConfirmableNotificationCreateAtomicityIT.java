@@ -88,7 +88,8 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
                 }
             }
             if (orgId != null) {
-                List<?> ids = em.createNativeQuery("SELECT id FROM confirmable_notifications WHERE scope_id = :orgId")
+                List<?> ids = em.createNativeQuery("SELECT id FROM confirmable_notifications "
+                                + "WHERE scope_type = 'ORGANIZATION' AND scope_id = :orgId")
                         .setParameter("orgId", orgId).getResultList();
                 for (Object id : ids) {
                     em.createNativeQuery("DELETE FROM confirmable_notification_targets WHERE confirmable_notification_id = :id")
