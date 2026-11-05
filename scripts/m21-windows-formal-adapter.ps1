@@ -82,7 +82,33 @@ function New-M21FormalFrontendLaunchSpec([string]$Frontend,[string]$NodeExe,[Col
 
 function Start-M21FormalAdmittedChild([ValidateSet('frontend','owned-cleanup')][string]$Role,[object]$Spec) {
  if((Remaining -Recovery) -le 0){return $null}
- if($Role -eq 'owned-cleanup'){Set-Reason 'formal-owned-cleanup-unimplemented';throw ([NotImplementedException]::new())}
+ if($Role -eq 'owned-cleanup'){
+  # この分岐は所有fixture marker専用。実Docker等のcleanupではない。
+  if($Mode -cne 'Supervisor' -or $TestFixture -cne 'formal-admission' -or $Scenario -cne 'normal' -or ![M21Job]::InJob($self,$null)){Set-Reason 'formal-cleanup-job-unverified';throw ([InvalidOperationException]::new())}
+  Guard-Run
+  $resource=$Spec.OwnedResource
+  if($resource -isnot [Collections.IDictionary] -or $resource.Count -ne 3 -or @($resource.Keys|Where-Object {$_ -cnotin @('owner','nonce','kind')}).Count -ne 0 -or $resource.owner -isnot [string] -or $resource.owner -cne $owner -or $resource.nonce -isnot [string] -or $resource.nonce -cne $Nonce -or $resource.kind -isnot [string] -or $resource.kind -cne 'fixture-marker'){
+   Set-Reason 'formal-cleanup-owner-kind-invalid';throw ([IO.InvalidDataException]::new())
+  }
+  $probe=Join-Path $PSScriptRoot 'm21-windows-supervisor.probe.cjs'
+  $prefix=Join-Path $run 'formal-cleanup'
+  $arguments=@($Spec.ArgumentList)
+  $fixedHeadArguments=@($probe,'--dummy','hold-stream',$run,$Nonce,'normal')
+  if($Spec.FilePath -cne $NodePath -or $Spec.WorkingDirectory -cne $run -or $Spec.LogPrefix -cne $prefix -or $arguments.Count -ne 8){Set-Reason 'formal-cleanup-spec-invalid';throw ([IO.InvalidDataException]::new())}
+  foreach($argument in $arguments){if($argument -isnot [string]){Set-Reason 'formal-cleanup-spec-invalid';throw ([IO.InvalidDataException]::new())}}
+  for($index=0;$index -lt $fixedHeadArguments.Count;$index++){if($arguments[$index] -cne $fixedHeadArguments[$index]){Set-Reason 'formal-cleanup-spec-invalid';throw ([IO.InvalidDataException]::new())}}
+  if($arguments[6] -cne '2000' -or $arguments[7] -cnotmatch '^[0-9]{1,6}$'){Set-Reason 'formal-cleanup-budget-invalid';throw ([IO.InvalidDataException]::new())}
+  $inputTotal=[int]::Parse($arguments[7],[Globalization.CultureInfo]::InvariantCulture)
+  if($inputTotal -gt 420000){Set-Reason 'formal-cleanup-budget-invalid';throw ([IO.InvalidDataException]::new())}
+  $environment=New-Object 'Collections.Generic.Dictionary[string,string]' ([StringComparer]::OrdinalIgnoreCase)
+  foreach($key in @('SystemRoot','WINDIR')){$value=[Environment]::GetEnvironmentVariable($key);if($null -ne $value){$environment.Add($key,$value)}}
+  $environment.Add('TEMP',$run);$environment.Add('TMP',$run)
+  # 古いremaining値との完全一致は要求せず、元上限と直前Gの小さい方へ縮める。
+  $launchTotal=[int][Math]::Min($inputTotal,(Remaining -Recovery))
+  if($launchTotal -le 0){return $null}
+  $launchArguments=[string[]]@($probe,'--dummy','hold-stream',$run,$Nonce,'normal',[string]([Math]::Min(2000,$launchTotal)),[string]$launchTotal)
+  return [M21Child]::Start($NodePath,$launchArguments,$run,$prefix,$launchTotal,$false,$environment)
+ }
  if((Remaining) -le 0){return $null}
  if($Mode -cne 'Supervisor' -or ![M21Job]::InJob($self,$null)){Set-Reason 'formal-frontend-job-unverified';throw ([InvalidOperationException]::new())}
  # 呼出しspecの任意argv/envを転送せず、固定FE値を再構成する。

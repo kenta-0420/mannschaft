@@ -1,22 +1,12 @@
 # M21 Windows Job監督 prototype
 
-462単発はms PASS後、FE dummy actual0/両EOF成功の後に自己stdout読取IO32で不合格となった。producerのwriter保持が原因で、現在は同じM21Childが実exit＋両CopyToAsync成功後に両writerを独立attemptでsealする修正を追加した静的段階（変更後実行は次GO待ち）。stdoutPublished/stderrPublishedをEOFと別記録し、Process handle/出生/exitは保持する。P6一次EOF失敗ではsealしない。再観測Eofはseal済みwriterを再Flushせず、finally Disposeも再度安全に行う。reader共有条件・metadata retry・期待値・予算は変更していない。原本packetは `foundation-m21-formal-fe-stdout-sharing-red-result-d7249e88.json` に単一renameし、3UGiPY rawは不変更保持する。
+現在の固定境界は、Job外Parentの非継承Job/ACK、保持Processの世代・actual exit・両EOFとwriter publication、Java epoch-msの整数投影とUTC秒Z/3桁msZの厳密照合、固定FEの絶対CLI/CWD/環境分離、fixture-markerだけのowned-cleanup admissionである。FEは127.0.0.1:3003とlocalhost public/API baseを固定し、8GiB NODE_OPTIONSはFEだけ。cleanupはOS2値と所有runのTEMP/TMPだけを再構成し、親秘密・任意command/envを転送しない。実Docker cleanupは未実装、未知kindは拒否する。
 
-06単発でms契約のcanonical/zero/wrongを直接保存してGREEN、次FE未実装入口の実REDを確認した。現在は固定FE specとfrontend admissionだけをgreen実装した静的段階で、実行は次GO待ち。絶対Nuxt CLI/frontend CWD/127.0.0.1:3003、localhost public/API base、FEだけ8GiB NODE_OPTIONSを固定し、SystemRoot/WINDIRと所有Supervisor runのTEMP/TMP以外の親値を転送しない。Java innerRun/outerTempの契約は変更しない。既存M21Child.Startの同一本体へ明示env overloadを加え、FEではClear後固定envのみ、旧6引数dummyは継承挙動のまま。W/G後frontendはspawn前null拒否、owned-cleanupはG内でもformal-owned-cleanup-unimplementedで明示失敗する未実装状態。実Nuxt/FE/Java/Gradleは起動していない。
+`--formal-contract-fixture` はms→fake FE→W後work拒否/実owned marker cleanup/G後拒否の3件。G420秒/R18秒/W402秒を一度だけ設定しcase間resetなし、最大同時5process/Job1、最初の不合格で停止する。局所W/Gは短縮だけで、実OS subms=0は有効、整数vector/表記対照を実OS世代証明にしない。c59でms/FEとpublicationは合格、owned-cleanupの実REDを確認済み。今回cleanup実装後の3件と既存readiness4/通常10回帰は未実施で、次GO待ち。期待値・予算は変更していない。
 
-Java epoch-ms由来Instantの正規表記はUTCの秒のみZまたは3桁msZとなるため、formal-msへ秒のみ候補1件をtest先行追加した。保持Processの実javaIsoのms部分を000へ丸めた同じ秒を使い、ms同一の場合だけmatched=true、それ以外はparse成功後formal-java-ms-mismatchを要求する。世代許容幅0、表記対照を実OS世代証明にしない。ab4単発でformal-java-invalid-msの実REDを観測したが、呼出別地点が未保存だった制限は残す。現在は正規2形式だけのstrict parserとcanonicalProof/zero/wrong-msの地点・結果保存を追加した段階で、変更後実行は別GO待ち。6/9桁・offset・曖昧parseは許可しない。既存JDK21 src.zipのInstant346-349/1354-1355、DateTimeFormatter1199-1201、DateTimeFormatterBuilder895-897/3861-3873で0/3桁出力の一次sourceを確認済み（JDK実行なし、Gradle/App起動なし）。
+Java登録/envの3境界試練、full productionCP/明示3source JAR、実App/FE、Chrome nested Job/Sky GUI、実Docker cleanupは未実測である。productionCP前に固定HEADのbackend main/resources/build-logic/Gradle設定/依存入力を全materializeしてGit manifestと照合し、focused test前はtest source/resourcesも揃える。test CPをproductionと呼ばず、既存prototype/Java/helperの資格を正式実機へ転用しない。Java innerRun/outerTemp契約は変更しない。
 
-正式adapterのPS契約試練は既存probeの固定 `--formal-contract-fixture` で選ぶ。e340の単発で(1)の未実装関数REDへ到達した。現在はmsの2関数だけgreen実装を追加した段階で、変更後実行は別GO待ち。順番は (1) 保持Supervisor実出生のfull ticks文字列とJava epoch-ms整数商・別ms拒否、(2) 所有Temp内のfake Nuxt CLIによる絶対CLI/CWD/FE-role環境、(3) 同じadmission入口でW後work拒否→実owned cleanup dummy終了→G後cleanup拒否。実出生subms=0は有効とし、固定BigInteger vectorを実OS世代証明へ格上げしない。Java登録/envの3境界試練は別未実測のままで、このPS試練で代替しない。
-
-既存readiness4/通常10のcase・期待値・予算は変更しない。新3件は全体G420秒/R18秒/W402秒を一度だけ設定しcase間でresetしない。最大同時5process（harness Node、Parent、Supervisor、固定dummy、過渡compiler）、同時Job1。実サービス・ネットワーク・Chrome・Gradleは起動しない。最初の不合格で後続を止め、actual exit/両EOF/Job回収と失敗を分け、失敗Tempを保持する。case3の局所W/Gを短縮するだけで延長せず、markerと実owned childを検査するが、本番cleanup実行済みとは呼ばない。
-
-固定後の実行案（rootの次GOまで未実行）: private Node22の `node.exe scripts/m21-windows-supervisor.probe.cjs --formal-contract-fixture`。`M21_INPUT_COMMIT` は当該固定full HEAD、通常user/TTY/login:false、外側観測420秒、再試行0。次はms合格とFE未実装REDを分けて採取する予定で、bootstrap/環境失敗を指定RED成立とはしない。新adapterは関数定義のみをdot-sourceし、BigInteger assembly loadもACK後の関数呼出し内。full ticksはstring/Int64/BigIntegerの整数として保持し、Java UTCミリ秒の厳密構文と一致した世代だけ採用する。違うmsはmatched=false、不正値/取得失敗/実終了は固定reasonでfail closed、PID再検索はしない。
-
-e340の原本DNGZitは保持する。Supervisor actual1/両EOF/Jobemptyは記録されたが、wrapper保存先欠落によりharness actual/Parent launcher両EOFは未保存で全run資格を主張しない。次回は.claude保存先を先に作成し、Node stdout/stderrとactual exitをpacket整形前にprivate rawへ永続化する（tracked runner追加なし）。
-
-正式adapterの先行試練は `ModuleEventRealE2eBootstrapBoundaryTest`。DB/full Appをrefreshせず、通常component走査のfixture候補0と明示sourceの既存4BeanDefinitionを対照にする。host formal子の既存env putだけをprivate methodへ挙動不変抽出し、固定JDK-only子へ公開sentinelを渡して不要key非到達/必要actor・run・Temp・URL到達を検査する。現段階はtest先行であり、TestConfiguration除去・env clearのgreen修正と実試験は未実施。production main CPだけの3source javacはrootのheavy gate/別GO後に一度行い、test CPをproductionと呼ばない。
-
-この入口はM21の固定dummy用で、正式FE/Java/Docker/browserを起動しない。実サービスへの結線、production CP生成、UI操作APIは未実装。Java host/helperのqualified結果やこのprototypeの結果を、Chromium互換・正式実機・探索の合格に流用しない。
+過去runの経緯・原本・不足証拠は自隊private result packetに保持する。固定Node22/入力full HEADを記録し、保存dirを事前作成、stdout/stderr/actual exitをpacket整形前にprivate rawへ永続化する。原本はroot解放まで保持し、新tracked runnerは作らない。
 
 ## 所有と失敗時の境界
 
