@@ -153,6 +153,7 @@ public class ShiftBudgetPublicationLockOrderIT extends AbstractMySqlIntegrationT
 
             releaseCommit.countDown();
             assertThat(result.get(LIMIT_SECONDS, TimeUnit.SECONDS)).isTrue();
+            assertParentFirst(observation);
             assertThat(lockParentNowait(fixture[0])).as("commit後は同じ親行を取得できる").isEqualTo(fixture[0]);
             assertThat(amount(fixture[2])).as("外側TXのrollback後もREQUIRES_NEWの実commitは残る")
                     .isEqualByComparingTo(ROW_AMOUNT);
@@ -296,6 +297,10 @@ public class ShiftBudgetPublicationLockOrderIT extends AbstractMySqlIntegrationT
         assertThat(observation.sqls).isNotEmpty();
         assertThat(observation.sqls.getFirst()).as("最初の業務SQL").startsWith("select ")
                 .contains(" from shift_schedules ", " for update");
+        // 現行Hibernateの非修飾・非引用テーブル名に対応し、予算テーブルへのDMLは許可する。
+        assertThat(observation.sqls).as("親シフト表は行ロックと参照だけで、書き込まない")
+                .noneMatch(sql -> sql.matches(
+                        "^(insert into|update|delete from|replace( into)?) shift_schedules( |\\().*"));
     }
 
     private static <T> T observe(Observation observation, Callable<T> action) throws Exception {
