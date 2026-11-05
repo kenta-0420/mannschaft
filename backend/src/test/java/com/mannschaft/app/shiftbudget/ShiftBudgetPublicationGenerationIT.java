@@ -32,6 +32,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.util.AopTestUtils;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
@@ -51,6 +52,7 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mockingDetails;
 
 /**
  * CMP-261021-0718: 実公開イベントの逆順配送と、同じ割当の取消履歴保全を検査する。
@@ -132,6 +134,10 @@ class ShiftBudgetPublicationGenerationIT extends AbstractMySqlIntegrationTest {
 
     /** 実listenerの入口だけで順序を制御し、DBロックを保持したまま再公開を待たない。 */
     private void observeRealDeliveries() {
+        ShiftBudgetConsumptionRecordListener recordTarget = AopTestUtils.getUltimateTargetObject(recordListener);
+        ShiftBudgetConsumptionCancelListener cancelTarget = AopTestUtils.getUltimateTargetObject(cancelListener);
+        assertThat(mockingDetails(recordTarget).isSpy()).as("公開listenerのAOP内側の実spy").isTrue();
+        assertThat(mockingDetails(cancelTarget).isSpy()).as("取消listenerのAOP内側の実spy").isTrue();
         doAnswer(invocation -> {
             ShiftPublishedEvent event = invocation.getArgument(0);
             if (!scheduleId.equals(event.getScheduleId())) return invocation.callRealMethod();
@@ -143,7 +149,7 @@ class ShiftBudgetPublicationGenerationIT extends AbstractMySqlIntegrationTest {
             } finally {
                 completedPublications.add(event);
             }
-        }).when(recordListener).onShiftPublished(any(ShiftPublishedEvent.class));
+        }).when(recordTarget).onShiftPublished(any(ShiftPublishedEvent.class));
         doAnswer(invocation -> {
             ShiftScheduleClosedEvent event = invocation.getArgument(0);
             if (!scheduleId.equals(event.getScheduleId())) return invocation.callRealMethod();
@@ -161,7 +167,7 @@ class ShiftBudgetPublicationGenerationIT extends AbstractMySqlIntegrationTest {
             } finally {
                 completedCloses.add(event);
             }
-        }).when(cancelListener).onShiftScheduleClosed(any(ShiftScheduleClosedEvent.class));
+        }).when(cancelTarget).onShiftScheduleClosed(any(ShiftScheduleClosedEvent.class));
     }
 
     @AfterEach
