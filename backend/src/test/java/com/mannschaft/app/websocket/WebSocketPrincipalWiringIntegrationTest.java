@@ -7,6 +7,8 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.event.EventListener;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.lang.NonNull;
 import org.springframework.messaging.Message;
@@ -33,6 +35,7 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 import org.springframework.web.socket.sockjs.client.SockJsClient;
 import org.springframework.web.socket.sockjs.client.Transport;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
+import org.springframework.web.socket.messaging.SessionSubscribeEvent;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.MySQLContainer;
 
@@ -40,7 +43,9 @@ import java.lang.reflect.Type;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -196,6 +201,126 @@ class WebSocketPrincipalWiringIntegrationTest {
                 .isNotNull();
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // CMP-261104-0337 AC 0337-3: Cookie 認証ハンドシェイクの採用（B 案）
+    // ─────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("0337-3: Bearer 無し＋Cookie 認証ハンドシェイク → session userId＝Principal＝Cookie のユーザーで /user 通知が届く")
+    void cookieOnlyHandshake_wiresPrincipalAndSessionUserIdFromSameSource() throws Exception {
+        long userId = 90002L;
+        String jwt = authTokenService.issueAccessToken(userId, List.of("USER"));
+
+        StompSession session = connect(null, jwt);
+
+        assertSubscribeSeesSameSource(session, userId);
+        assertUserDestinationDelivered(session, userId);
+    }
+
+    @Test
+    @DisplayName("0337-3: 空の 'Bearer ' ＋Cookie 認証ハンドシェイク → Bearer 無しと同じく Cookie のユーザーで確立")
+    void emptyBearerWithCookieHandshake_wiresPrincipalAndSessionUserIdFromCookie() throws Exception {
+        long userId = 90003L;
+        String jwt = authTokenService.issueAccessToken(userId, List.of("USER"));
+
+        StompSession session = connect("Bearer ", jwt);
+
+        assertSubscribeSeesSameSource(session, userId);
+        assertUserDestinationDelivered(session, userId);
+    }
+
+    @Test
+    @DisplayName("0337-3: Bearer も Cookie も無い → 匿名（接続は成立し Principal・session userId とも無い）")
+    void noCredentials_staysAnonymous() throws Exception {
+        StompSession session = connect(null, null);
+        assertThat(session.isConnected()).as("匿名でも CONNECT は成立する（匿名接続許容）").isTrue();
+
+        String probeDestination = "/topic/principal-probe/" + UUID.randomUUID();
+        session.subscribe(probeDestination, new StompSessionHandlerAdapter() { });
+        SubscribeObservation observed = SubscribeEventRecorder.await(probeDestination, Duration.ofSeconds(30));
+
+        assertThat(observed).as("SUBSCRIBE がサーバに届くこと").isNotNull();
+        assertThat(observed.principalName()).as("匿名セッションに Principal は無い").isNull();
+        assertThat(observed.sessionUserId()).as("匿名セッションに session userId は無い").isNull();
+    }
+
+    /** 任意の /topic を SUBSCRIBE し、サーバ側で観測した Principal 名と session userId が同一ソースであることを検証する。 */
+    private void assertSubscribeSeesSameSource(StompSession session, long expectedUserId) throws InterruptedException {
+        String probeDestination = "/topic/principal-probe/" + UUID.randomUUID();
+        session.subscribe(probeDestination, new StompSessionHandlerAdapter() { });
+        SubscribeObservation observed = SubscribeEventRecorder.await(probeDestination, Duration.ofSeconds(30));
+
+        assertThat(observed).as("SUBSCRIBE がサーバに届くこと").isNotNull();
+        assertThat(observed.sessionUserId())
+                .as("session userId が Cookie のユーザー（購読 Interceptor が参照する値）")
+                .isEqualTo(expectedUserId);
+        assertThat(observed.principalName())
+                .as("Principal 名が session userId と同一（同一ソース原則 §2.3）")
+                .isEqualTo(String.valueOf(expectedUserId));
+    }
+
+    /** /user/queue/notifications を購読し、convertAndSendToUser が当該セッションへ届くことを検証する。 */
+    private void assertUserDestinationDelivered(StompSession session, long userId) throws Exception {
+        BlockingQueue<Object> inbox = new LinkedBlockingQueue<>();
+        StompSession.Subscription subscription = session.subscribe("/user/queue/notifications", new StompFrameHandler() {
+            @Override
+            public @NonNull Type getPayloadType(@NonNull StompHeaders headers) {
+                return Object.class;
+            }
+
+            @Override
+            public void handleFrame(@NonNull StompHeaders headers, Object payload) {
+                inbox.offer(payload);
+            }
+        });
+        boolean subscribed = awaitUntil(
+                () -> isBrokerSubscriptionRegistered(userId, subscription.getSubscriptionId()), Duration.ofSeconds(30));
+        assertThat(subscribed).as("/user/queue/notifications の購読が Cookie のユーザー名義で登録されること").isTrue();
+
+        messagingTemplate.convertAndSendToUser(
+                String.valueOf(userId), "/queue/notifications", Map.of("type", "TEST", "message", "cookie"));
+        assertThat(inbox.poll(10, TimeUnit.SECONDS)).as("Cookie 認証セッションへユーザー宛通知が届く").isNotNull();
+    }
+
+    /** サーバ側 SUBSCRIBE 時点の Principal 名と session 属性 userId。 */
+    record SubscribeObservation(String principalName, Object sessionUserId) { }
+
+    /**
+     * {@link SessionSubscribeEvent} からサーバ側の Principal と session 属性 userId を記録する試験用リスナー。
+     * 購読 Interceptor が実際に参照する値（session 属性 userId）と /user 宛解決に使われる Principal を
+     * 外から観測するために置く。
+     */
+    @TestConfiguration
+    static class SubscribeEventRecorder {
+
+        private static final Map<String, SubscribeObservation> OBSERVED = new ConcurrentHashMap<>();
+
+        @EventListener
+        public void onSubscribe(SessionSubscribeEvent event) {
+            SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.wrap(event.getMessage());
+            String destination = accessor.getDestination();
+            if (destination == null || !destination.startsWith("/topic/principal-probe/")) {
+                return;
+            }
+            Map<String, Object> attrs = accessor.getSessionAttributes();
+            Object sessionUserId = attrs == null ? null : attrs.get("userId");
+            String principalName = event.getUser() == null ? null : event.getUser().getName();
+            OBSERVED.put(destination, new SubscribeObservation(principalName, sessionUserId));
+        }
+
+        static SubscribeObservation await(String destination, Duration timeout) throws InterruptedException {
+            long deadline = System.currentTimeMillis() + timeout.toMillis();
+            while (System.currentTimeMillis() < deadline) {
+                SubscribeObservation observation = OBSERVED.get(destination);
+                if (observation != null) {
+                    return observation;
+                }
+                Thread.sleep(50);
+            }
+            return OBSERVED.get(destination);
+        }
+    }
+
     private boolean isBrokerSubscriptionRegistered(long userId, String subscriptionId) {
         Message<byte[]> userDestination = messageTo("/user/" + userId + "/queue/notifications");
         var resolved = userDestinationResolver.resolveDestination(userDestination);
@@ -220,6 +345,15 @@ class WebSocketPrincipalWiringIntegrationTest {
     }
 
     private StompSession connect(String jwt) throws Exception {
+        return connect("Bearer " + jwt, null);
+    }
+
+    /**
+     * 実 STOMP CONNECT。{@code authorization} が null なら Authorization ヘッダを送らない。
+     * {@code cookieJwt} が非 null ならハンドシェイク HTTP に {@code access_token} Cookie を付ける
+     * （ブラウザのリロード後と同じく、HttpOnly Cookie だけで認証されたハンドシェイクを再現する）。
+     */
+    private StompSession connect(String authorization, String cookieJwt) throws Exception {
         List<Transport> transports = List.of(new WebSocketTransport(new StandardWebSocketClient()));
         stompClient = new WebSocketStompClient(new SockJsClient(transports));
         stompClient.setMessageConverter(new MappingJackson2MessageConverter());
@@ -227,14 +361,19 @@ class WebSocketPrincipalWiringIntegrationTest {
         WebSocketHttpHeaders handshakeHeaders = new WebSocketHttpHeaders();
         // ハンドシェイクのオリジン検査（WebSocketConfig の allowed-origins 既定）を満たす
         handshakeHeaders.add("Origin", "http://localhost:8080");
+        if (cookieJwt != null) {
+            handshakeHeaders.add("Cookie", "access_token=" + cookieJwt);
+        }
 
         StompHeaders connectHeaders = new StompHeaders();
-        connectHeaders.add("Authorization", "Bearer " + jwt);
+        if (authorization != null) {
+            connectHeaders.add("Authorization", authorization);
+        }
 
         String url = "http://localhost:" + port + "/ws";
         return stompClient
                 .connectAsync(url, handshakeHeaders, connectHeaders, new StompSessionHandlerAdapter() { })
-                .get(5, TimeUnit.SECONDS);
+                .get(30, TimeUnit.SECONDS);
     }
 
     private boolean awaitUntil(java.util.function.BooleanSupplier condition, Duration timeout) throws InterruptedException {
