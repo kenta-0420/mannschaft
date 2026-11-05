@@ -145,7 +145,7 @@ const { formatDateTime, formatCalendarDayRange, formatTimeRange } = useDatetime(
           </div>
         </li>
       </ul>
-    <div class="hidden overflow-x-auto md:block">
+    <div class="hidden overflow-x-auto md:block" data-testid="closure-history-table">
       <table class="w-full min-w-[40rem] text-sm">
         <thead>
           <tr class="border-b border-surface-200 dark:border-surface-600">

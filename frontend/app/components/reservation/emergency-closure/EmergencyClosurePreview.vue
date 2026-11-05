@@ -56,7 +56,7 @@ const emit = defineEmits<{
           <div class="mt-1"><Tag :value="statusLabel(item.status)" :severity="statusSeverity(item.status)" /></div>
         </li>
       </ul>
-      <div v-if="items.length > 0" class="hidden overflow-x-auto md:block">
+      <div v-if="items.length > 0" class="hidden overflow-x-auto md:block" data-testid="closure-preview-table">
         <table class="w-full min-w-[22rem] text-sm">
           <thead>
             <tr class="border-b border-surface-200 dark:border-surface-600">
