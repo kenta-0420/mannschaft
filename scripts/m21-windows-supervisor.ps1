@@ -49,6 +49,8 @@ $lastHandles=New-Object 'Collections.Generic.List[object]'
 $lateObservation=$null
 $assigned=$false
 $ackPublished=$false
+$grandchildEvidence=$null
+$knownExitEvidence=@()
 function Remaining([int]$cap=[int]::MaxValue,[switch]$Recovery) {
  $budget=$WorkRemainingMs;if($Recovery){$budget=$TotalRemainingMs}
  return [int][Math]::Max(0,[Math]::Min($cap,[Math]::Floor($budget-$localClock.Elapsed.TotalMilliseconds)))
@@ -301,7 +303,7 @@ catch {
  Attempt 'bootstrap-process-identity' {$current=[Diagnostics.Process]::GetCurrentProcess();$script:processIdentity=@{pid=$current.Id;creation=$current.StartTime.ToUniversalTime().Ticks.ToString()}}
  Attempt 'bootstrap-result-save' {
   $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}
-  Write-Json $name @{owner=$owner;nonce=$Nonce;process=$processIdentity;passed=$false;primary=$primary;secondary=@($secondary.ToArray());parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@();lastHandles=@();startupRecovery=@();resourceRecovery=@{confirmed=$true;jobEmpty=$null;retained=@()};recovered=$true;parentKilled=$false;knownExited=0}
+  Write-Json $name @{owner=$owner;nonce=$Nonce;process=$processIdentity;passed=$false;primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@();lastHandles=@();startupRecovery=@();resourceRecovery=@{confirmed=$true;jobEmpty=$null;retained=@()};recovered=$true;parentKilled=$false;knownExited=0}
   $script:bootstrapSaved=$true
  }
  if(!$bootstrapSaved){[Console]::Error.WriteLine((@{passed=$false;primary=$primary;secondary=@($secondary.ToArray())}|ConvertTo-Json -Depth 12 -Compress))}
@@ -368,16 +370,34 @@ try {
   Require-Work
   $child=[M21Child]::Start($NodePath,@($dummy,'--dummy','child',$run,$Nonce,$Scenario,[string](Remaining),[string](Remaining -Recovery)),$run,(Join-Path $run 'dummy'),(Remaining -Recovery))
   Register-Child $child 'dummy'
-  Write-Json 'child-candidate.json' (Identity $child.Process)
+  $creatorIdentity=@{owner=$owner;nonce=$Nonce;pid=$child.RecordedPid;creation=$child.RecordedCreation}
+  Write-Json 'child-candidate.json' $creatorIdentity
   $g=Wait-File 'grandchild.json'
-  # childが同一信頼runへ登録した孫だけを観測。未知PID停止口はない。
-  if($g.nonce -cne $Nonce){throw '孫nonce不一致'}
-  $grand=[Diagnostics.Process]::GetProcessById([int]$g.pid)
-  try{
-   $gh=$grand.Handle
-   if(![M21Job]::InJob($grand,$null)){throw '孫Job不一致'}
-   Write-Json 'grandchild-candidate.json' (Identity $grand)
-  }finally{$grand.Dispose()}
+  if($Scenario -in @('host-fail','cleanup-fail')){
+   # 固定creatorの完了観測を受け取り、終了済みPIDへOS handleを取り直さない。
+   Set-Reason 'creator-exit-invalid' 'grandchild.json'
+   Guard-Run
+   $fields=@($g.PSObject.Properties.Name)
+   $allowed=@('pid','nonce','creatorPid','exited','exitCode')
+   if($fields.Count -ne $allowed.Count){throw '完了孫field集合不一致'}
+   foreach($field in $fields){if($allowed -cnotcontains $field){throw '完了孫の未知field'}}
+   if($g.nonce -isnot [string] -or $g.nonce -cne $Nonce){throw '完了孫nonce不一致'}
+   if(($g.pid -isnot [int] -and $g.pid -isnot [long]) -or $g.pid -le 0 -or $g.pid -gt [int]::MaxValue -or $g.pid -eq $child.RecordedPid){throw '完了孫pid不正'}
+   if(($g.creatorPid -isnot [int] -and $g.creatorPid -isnot [long]) -or $g.creatorPid -ne $child.RecordedPid -or $child.RecordedPid -le 0 -or $child.RecordedCreation -notmatch '^[1-9][0-9]*$'){throw '直接保持creator出生不一致'}
+   if($g.exited -isnot [bool] -or $g.exited -ne $true -or ($g.exitCode -isnot [int] -and $g.exitCode -isnot [long]) -or $g.exitCode -ne 0){throw 'creator実exit0観測不一致'}
+   $grandchildEvidence=@{kind='creator-observed-exit';owner=$owner;nonce=$Nonce;pid=$g.pid;creator=$creatorIdentity;exited=$true;exitCode=0;osLiveLookup=$false;osExactJobVerified=$false;jobEvidence='creator-chain-inheritance'}
+  }else{
+   # P4等のlive経路は従来どおり。exact owned Job認定は親が別途行う。
+   if($g.nonce -cne $Nonce){throw '孫nonce不一致'}
+   $grand=[Diagnostics.Process]::GetProcessById([int]$g.pid)
+   try{
+    $gh=$grand.Handle
+    if(![M21Job]::InJob($grand,$null)){throw '孫Job不一致'}
+    $liveIdentity=Identity $grand
+    Write-Json 'grandchild-candidate.json' $liveIdentity
+    $grandchildEvidence=@{kind='os-live-observation';identity=$liveIdentity;osLiveLookup=$true;osExactJobVerified=$false;jobEvidence='any-job-observation'}
+   }finally{$grand.Dispose()}
+  }
   if($Scenario -eq 'kill-close'){Start-Sleep -Milliseconds (Remaining);Set-Reason 'work-budget-exhausted';throw 'observer未動作'}
   if(!$child.Process.WaitForExit((Remaining))){Set-Reason 'work-budget-exhausted';throw 'dummy exit期限超過'}
   if($child.Process.ExitCode -ne 0){Set-Reason 'dummy-nonzero';Fail 'dummy-nonzero' ([InvalidOperationException]::new())}
@@ -396,8 +416,13 @@ try {
    foreach($member in $certificate.members){if($member.ownedJobVerified -ne $true){throw '親所有Job未認定'};$known.Add((Open-Known $member.identity $null))}
    foreach($p in $known){if($p.HasExited){throw 'RequiredAlive早期終了'}}
    $parent.Process.Kill()
-   foreach($p in $known){if(!$p.WaitForExit((Remaining 5000 -Recovery))){throw 'kill-on-close子残留'}}
-   Write-Json 'observer.json' @{owner=$owner;nonce=$Nonce;parentKilled=$true;knownExited=$known.Count}
+   $exitEvidence=New-Object 'Collections.Generic.List[object]'
+   for($i=0;$i -lt $known.Count;$i++){
+    $p=$known[$i]
+    if(!$p.WaitForExit((Remaining 5000 -Recovery))){throw 'kill-on-close子残留'}
+    $exitEvidence.Add(@{role=$certificate.members[$i].role;identity=$certificate.members[$i].identity;exited=$true;exitCode=$p.ExitCode;evidence='observer-held-handle-exit'})
+   }
+   Write-Json 'observer.json' @{owner=$owner;nonce=$Nonce;parentKilled=$true;knownExited=$known.Count;exits=@($exitEvidence.ToArray())}
   }finally{foreach($p in $known){Attempt 'observer-handle-close' {$p.Dispose()}}}
  }else{
   Set-Operation 'Parent.createJob'
@@ -446,6 +471,8 @@ try {
    foreach($item in $inner.streams){$streams.Add($item)}
    foreach($item in $inner.lastHandles){$lastHandles.Add($item)}
    foreach($item in $inner.startupRecovery){$startupRecovery.Add($item)}
+   $grandchildEvidence=$inner.grandchildEvidence
+   if($Scenario -in @('host-fail','cleanup-fail') -and !$inner.recovered){$recovered=$false}
   }
   if($supervisor.Process.ExitCode -ne 0 -and $null -eq $primary){Fail 'dummy-nonzero' ([InvalidOperationException]::new())}
   if($Scenario -eq 'normal'){
@@ -501,6 +528,8 @@ finally {
   if($Mode -eq 'Observe' -and (Test-Path -LiteralPath (Join-Path $run 'observer.json'))){
    $candidate=Read-Json 'observer.json'
    if($candidate.owner -cne $owner -or $candidate.nonce -cne $Nonce -or $candidate.parentKilled -ne $true -or $candidate.knownExited -ne 3){throw 'observer metadata不一致'}
+   if($candidate.exits.Count -ne 3 -or @($candidate.exits | Where-Object {$_.exited -ne $true}).Count -ne 0){throw 'observer actual exit集合不一致'}
+   $script:knownExitEvidence=@($candidate.exits)
    $script:observer=$candidate
   }
  }
@@ -510,7 +539,7 @@ finally {
  # streamsは一次観測、resourceRecoveryは後続Job/直接handle回収の別事実。
  $retained=New-Object 'Collections.Generic.List[object]'
  if(!$recovered){foreach($child in $held){$retained.Add(@{pid=$child.RecordedPid;creation=$child.RecordedCreation;logs=$child.LogPrefix;reason='direct-exit/stream/Job recovery unconfirmed'})}}
- $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());lateObservation=$lateObservation;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
+ $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;lateObservation=$lateObservation;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());knownExitEvidence=$knownExitEvidence;startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
  if($null -ne $observer){$result.knownExited=$observer.knownExited}
  try{
   $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}

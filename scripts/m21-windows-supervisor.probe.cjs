@@ -136,6 +136,12 @@ async function suite() {
   const suiteStart = performance.now();
   const totalDeadline = suiteStart + LIMIT.total;
   const workDeadline = totalDeadline - LIMIT.reserve;
+  const inputCommit = process.env.M21_INPUT_COMMIT ?? null;
+  if (inputCommit !== null) assert.match(inputCommit, /^[0-9a-f]{40}$/);
+  const inputSHA256 = Object.fromEntries([
+    ['supervisor', path.join(__dirname, 'm21-windows-supervisor.ps1')], ['probe', __filename],
+    ['operations', path.join(__dirname, '..', 'docs', 'development', 'm21-windows-supervisor.md')],
+  ].map(([name, file]) => [name, crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').toUpperCase()]));
   const events = [];
   const stamp = (scenario, event) => events.push({ scenario, event, elapsedMs: Math.floor(performance.now() - suiteStart), remainingWorkMs: remaining(workDeadline), remainingTotalMs: remaining(totalDeadline) });
   const script = path.join(__dirname, 'm21-windows-supervisor.ps1');
@@ -257,9 +263,21 @@ async function suite() {
             assert.ok(receipt.streams.some(s => !s.stdoutEof || !s.stderrEof), '一次EOF失敗を後続Job回収で消さない');
           }
         }
+        const reason = value => value ? { stage: value.stage, reason: value.reason ?? null, kind: value.kind } : null;
+        const streamEvidence = receipt.streams.map(s => ({ role: s.role, pid: s.pid, creation: s.creation, exited: s.exited, exitCode: s.exitCode, stdoutEof: s.stdoutEof, stderrEof: s.stderrEof }));
+        let p4 = null;
+        if (scenario === 'kill-close') {
+          const certificate = read(path.join(run, 'certified-tree.json'));
+          assert.equal(receipt.knownExitEvidence.length, 3);
+          assert.ok(receipt.knownExitEvidence.every(s => s.exited === true));
+          p4 = { certifier: certificate.certifier, members: certificate.members, actualExits: receipt.knownExitEvidence };
+        }
+        const evidence = { process: receipt.process, primary: reason(receipt.primary), secondary: receipt.secondary.map(reason),
+          streams: streamEvidence, lastHandles: receipt.lastHandles, resourceRecovery: receipt.resourceRecovery,
+          grandchildEvidence: receipt.grandchildEvidence, p4 };
         stamp(scenario, 'case-recovered');
         results.push({ scenario, passed: true, launcherPid: p.pid, launcherCreation: receipt.process?.creation ?? null,
-          launcherExitCode: code, launcherExited: exited, channels: channels.map(c => c.state) });
+          launcherExitCode: code, launcherExited: exited, channels: channels.map(c => c.state), evidence });
       } catch (error) {
         allRecovered = false;
         // own childだけ。Job親のkillでJob treeを閉じる。成功・回収済みとは主張しない。
@@ -298,7 +316,7 @@ async function suite() {
       }
     }
   }
-  console.log(JSON.stringify({ passed: allRecovered && results.length === scenarios.length && results.every(r => r.passed), totalMs: LIMIT.total, reserveMs: LIMIT.reserve, events, results,
+  console.log(JSON.stringify({ passed: allRecovered && results.length === scenarios.length && results.every(r => r.passed), inputCommit, inputSHA256, totalMs: LIMIT.total, reserveMs: LIMIT.reserve, events, results,
     notRun: scenarios.filter(s => !results.some(r => r.scenario === s)),
     retained: allRecovered ? null : base }));
   if (!allRecovered) process.exitCode = 1;

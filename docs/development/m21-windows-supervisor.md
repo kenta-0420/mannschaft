@@ -44,6 +44,10 @@ negativeはcase固有reasonに加え、wrong ack実体/親Job認定/一致hello/
 
 test-firstのhost-fail/cleanup-fail fixtureは、孫exit listenerをspawn直後に登録し、子が保持した孫のactual exit0後にだけ既存grandchild.jsonを公開してexit17する。孫自身はこの2caseで同fileを公開しない。孫の保持時間・既存timeoutは増やさず、旧PSの生存前提lookupを終了後へ通すRED試験である。PSのgreen修正はこの試験と別GOで行う。
 
+GO BのPS修正はこの2caseだけを対象とする。自己run/owner/nonce、grandchild.jsonの厳密な5fieldと型・正整数pid・creatorPid一致・直接保持childのStart時RecordedPid/RecordedCreation・actual exited=true/exitCode0を検証する。受理した証拠はcreator-observed-exitとし、終了済み孫のPID/Handle/Jobを後追い取得しない。OS live/exact owned Job照会済みとは記録しない。子の実exit17/両EOFを保持Processで記録する。P4のlive世代・親exact Job認定・3handleの実exit経路、他caseのlive経路、予算/fixture/hold/faultは変更しない。
+
+成功時に既存自己Tempが撤去されても、既存receiptからprimary/secondary理由・process世代・actual exit/両EOF・Jobempty・grandchild証拠種別・P4のexact Job認定と保持3handleのactual exitを最小summaryへ抽出してstdout packetに残す。入力3file SHA256と、採取側が指定した任意のM21_INPUT_COMMIT（40桁hexのみ）もpacketへ残す。新metadataファイルや削除方式は追加しない。
+
 ## 有限probe（実行には別GOが必要）
 
 Windows標準PowerShellと既存Nodeだけを使う。新依存/SDK/ダウンロードなし。通常のPowerShell policyを適用し、ExecutionPolicy Bypass/Unblock-File/ACL変更を行わない。policyや強い既存Jobで拒否されたら、非0・保持理由を報告する。sandbox無効化やbreakawayで逃がさない。
