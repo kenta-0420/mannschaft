@@ -8,6 +8,7 @@ import com.mannschaft.app.corkboard.dto.CorkboardDetailResponse;
 import com.mannschaft.app.corkboard.dto.CorkboardResponse;
 import com.mannschaft.app.corkboard.dto.CreateCorkboardRequest;
 import com.mannschaft.app.corkboard.dto.UpdateCorkboardRequest;
+import com.mannschaft.app.corkboard.service.CorkboardScopedBoardVisibilityGuard;
 import com.mannschaft.app.corkboard.service.CorkboardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,6 +37,7 @@ import java.util.List;
 public class TeamCorkboardController {
 
     private final CorkboardService corkboardService;
+    private final CorkboardScopedBoardVisibilityGuard visibilityGuard;
 
     /**
      * チームボード一覧を取得する。
@@ -94,6 +96,8 @@ public class TeamCorkboardController {
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody UpdateCorkboardRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
+        // 閲覧可否の門は CorkboardService の取引の外で先に通す（CMP-260820-1422・D-3T）
+        visibilityGuard.requireVisible("TEAM", teamId, id, userId);
         CorkboardResponse response = corkboardService.updateScopedBoard("TEAM", teamId, id, userId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -108,6 +112,8 @@ public class TeamCorkboardController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteBoard(@PathVariable Long teamId, @PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
+        // 閲覧可否の門は CorkboardService の取引の外で先に通す（CMP-260820-1422・D-3T）
+        visibilityGuard.requireVisible("TEAM", teamId, id, userId);
         corkboardService.deleteScopedBoard("TEAM", teamId, id, userId);
         return ResponseEntity.noContent().build();
     }

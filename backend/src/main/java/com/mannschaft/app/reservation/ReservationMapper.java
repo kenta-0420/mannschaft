@@ -81,6 +81,8 @@ public interface ReservationMapper {
                         line != null ? line.getName() : null,
                         slot != null ? slot.getTitle() : null,
                         slot != null ? slot.getSlotDate() : null,
+                        // endDate は @PrePersist で backfill 済み。未設定（null）は同日枠として slotDate にフォールバック
+                        slot != null ? (slot.getEndDate() != null ? slot.getEndDate() : slot.getSlotDate()) : null,
                         slot != null ? slot.getStartTime() : null,
                         slot != null ? slot.getEndTime() : null))
                 .build();

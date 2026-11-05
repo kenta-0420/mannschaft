@@ -85,6 +85,31 @@ describe('WidgetAnnouncements の見出し行はスマホ幅で潰れない（CM
   })
 })
 
+describe('スマホ幅で告知一覧が潰れない構造（CMP-261011-0035）', () => {
+  const mountTeam = () => mount(Widget, {
+    props: { scopeType: 'TEAM', scopeId: '2', scopeSlug: 'alpha', initialItems: [item(1), item(2), item(3), item(4)] },
+    global: { stubs },
+  })
+
+  it('カードの高さ上限（既定 15rem のインライン style）をスマホ幅だけ外す', () => {
+    wrapper = mountTeam()
+    const card = wrapper.find('[data-announcement-list]')
+    expect(card.attributes('style')).toContain('max-height')
+    expect(card.classes()).toContain('max-sm:!max-h-none')
+  })
+
+  it('見出しの「すべてのお知らせ」はスマホ幅で隠し、一覧の後ろ（カード下部）にスマホ幅専用で出す', () => {
+    wrapper = mountTeam()
+    const headerLink = wrapper.find('[data-announcement-actions] a[href="/teams/alpha/announcements"]')
+    expect(headerLink.classes()).toContain('max-sm:hidden')
+    const footer = wrapper.find('[data-announcement-footer-link]')
+    expect(footer.exists()).toBe(true)
+    expect(footer.classes()).toContain('sm:hidden')
+    expect(footer.find('a[href="/teams/alpha/announcements"]').exists()).toBe(true)
+    expect(footer.find('button').classes()).toContain('min-h-11')
+  })
+})
+
 describe('DashboardWidgetCard の header スロット', () => {
   it('header スロット指定時は title 見出しの代わりに描画し、折り畳みボタンを残す', () => {
     wrapper = mount(DashboardWidgetCard, {

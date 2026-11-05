@@ -54,7 +54,10 @@ public class TodoResponseConverter {
         TodoResponse.TodoStatusLabelInfo labelInfo = resolveLabelInfo(
                 entity.getStatusLabelId(), entity.getStatus());
         String scopeSlug = resolveScopeSlugSingle(entity.getScopeType(), entity.getScopeId());
-        return toTodoResponseInternal(entity, labelInfo, scopeSlug);
+        List<TodoAssigneeEntity> assigneeEntities = assigneeRepository.findByTodoId(entity.getId());
+        Map<Long, String> nameMap = nameResolverService.resolveUserDisplayNames(
+                collectUserIds(List.of(entity), assigneeEntities));
+        return toTodoResponseInternal(entity, labelInfo, scopeSlug, assigneeEntities, nameMap);
     }
 
     /**
@@ -93,6 +96,14 @@ public class TodoResponseConverter {
                 .collect(Collectors.toSet());
         Map<Long, String> orgSlugMap = organizationService.getSlugsByIds(orgScopeIds);
 
+        // 担当者と関連ユーザー名を一括取得（todo 件数・担当者数に依存せず固定本数）
+        Set<Long> todoIds = entities.stream().map(TodoEntity::getId).collect(Collectors.toSet());
+        Map<Long, List<TodoAssigneeEntity>> assigneesByTodo = assigneeRepository
+                .findByTodoIdInOrderByIdAsc(todoIds).stream()
+                .collect(Collectors.groupingBy(TodoAssigneeEntity::getTodoId));
+        Map<Long, String> nameMap = nameResolverService.resolveUserDisplayNames(
+                collectUserIds(entities, assigneesByTodo.values().stream().flatMap(List::stream).toList()));
+
         return entities.stream()
                 .map(e -> {
                     TodoResponse.TodoStatusLabelInfo info = e.getStatusLabelId() == null
@@ -100,7 +111,8 @@ public class TodoResponseConverter {
                             : labelMap.get(e.getStatusLabelId());
                     String scopeSlug = resolveScopeSlugFromMaps(
                             e.getScopeType(), e.getScopeId(), teamSlugMap, orgSlugMap);
-                    return toTodoResponseInternal(e, info, scopeSlug);
+                    return toTodoResponseInternal(e, info, scopeSlug,
+                            assigneesByTodo.getOrDefault(e.getId(), List.of()), nameMap);
                 })
                 .toList();
     }
@@ -228,17 +240,19 @@ public class TodoResponseConverter {
 
     // --- プライベートメソッド ---
 
+    /** 作成者・完了者・担当者の userId を重複なく集める（null は除外）。 */
+    private Set<Long> collectUserIds(List<TodoEntity> entities, List<TodoAssigneeEntity> assigneeEntities) {
+        return Stream.concat(
+                entities.stream().flatMap(e -> Stream.of(e.getCreatedBy(), e.getCompletedBy())),
+                assigneeEntities.stream().map(TodoAssigneeEntity::getUserId)
+        ).filter(Objects::nonNull).collect(Collectors.toSet());
+    }
+
     private TodoResponse toTodoResponseInternal(TodoEntity entity,
                                                  TodoResponse.TodoStatusLabelInfo labelInfo,
-                                                 String scopeSlug) {
-        List<TodoAssigneeEntity> assigneeEntities = assigneeRepository.findByTodoId(entity.getId());
-
-        // 関連ユーザーIDを一括収集して名前解決
-        Set<Long> userIds = Stream.concat(
-                Stream.of(entity.getCreatedBy(), entity.getCompletedBy()),
-                assigneeEntities.stream().map(TodoAssigneeEntity::getUserId)
-        ).filter(id -> id != null).collect(Collectors.toSet());
-        Map<Long, String> nameMap = nameResolverService.resolveUserDisplayNames(userIds);
+                                                 String scopeSlug,
+                                                 List<TodoAssigneeEntity> assigneeEntities,
+                                                 Map<Long, String> nameMap) {
 
         List<AssigneeResponse> assignees = assigneeEntities.stream()
                 .map(a -> new AssigneeResponse(

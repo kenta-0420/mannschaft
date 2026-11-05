@@ -19,6 +19,12 @@ public interface PersonalTimetablePeriodRepository extends JpaRepository<Persona
     List<PersonalTimetablePeriodEntity> findByPersonalTimetableIdOrderByPeriodNumberAsc(Long personalTimetableId);
 
     /**
+     * 個人時間割 ID 群で時限を一括取得（ダッシュボード N+1 解消用。period_number 昇順）。
+     */
+    List<PersonalTimetablePeriodEntity> findByPersonalTimetableIdInOrderByPeriodNumberAsc(
+            java.util.Collection<Long> personalTimetableIds);
+
+    /**
      * 個人時間割 ID で時限を一括削除。duplicate / 上書きで使用。
      */
     @Modifying

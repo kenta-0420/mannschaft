@@ -16,6 +16,11 @@ public interface OrganizationAccessRequirementRepository extends JpaRepository<O
     List<OrganizationAccessRequirementEntity> findByOrganizationId(Long organizationId);
 
     /**
+     * 複数組織の支払い要件を一括取得する（N+1 回避）。呼び出し側で空コレクションを渡さないこと。
+     */
+    List<OrganizationAccessRequirementEntity> findByOrganizationIdIn(java.util.Collection<Long> organizationIds);
+
+    /**
      * 組織 ID で全件削除する（一括設定の置換用）。
      */
     void deleteByOrganizationId(Long organizationId);

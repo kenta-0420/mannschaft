@@ -5,6 +5,8 @@ import type { EmergencyClosureConnectionState } from '~/composables/useEmergency
 defineProps<{
   loading: boolean
   items: ClosureHistoryItem[]
+  /** 履歴の取得に失敗した。空配列の「履歴なし」と区別して失敗を表示する。 */
+  loadError?: boolean
   expandedClosureId: number | null
   /** 展開中の臨時休業 1 件の確認状況（リアルタイム購読の結果）。 */
   confirmations: ClosureConfirmationItem[]
@@ -36,6 +38,7 @@ const { formatDateTime } = useDatetime()
         rounded
         size="small"
         :loading="loading"
+        data-testid="closure-history-reload"
         @click="emit('reload')"
       />
     </div>
@@ -43,15 +46,23 @@ const { formatDateTime } = useDatetime()
     <div v-if="loading">
       <Skeleton v-for="i in 2" :key="i" height="2.5rem" class="mb-2" />
     </div>
+    <p
+      v-else-if="loadError"
+      data-testid="closure-history-error"
+      class="rounded-md bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400"
+    >
+      <i class="pi pi-exclamation-triangle mr-2" />
+      {{ $t('emergency_closure.error.history_failed') }}
+    </p>
     <div v-else-if="items.length > 0" class="overflow-x-auto">
-      <table class="w-full text-sm">
+      <table class="w-full min-w-[40rem] text-sm">
         <thead>
           <tr class="border-b border-surface-200 dark:border-surface-600">
-            <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.sent_at') }}</th>
-            <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.section.period') }}</th>
-            <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.reason') }}</th>
-            <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.count') }}</th>
-            <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.confirmation_status') }}</th>
+            <th class="whitespace-nowrap pb-2 pr-4 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.sent_at') }}</th>
+            <th class="whitespace-nowrap pb-2 pr-4 text-left font-medium text-surface-500">{{ $t('emergency_closure.section.period') }}</th>
+            <th class="whitespace-nowrap pb-2 pr-4 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.reason') }}</th>
+            <th class="whitespace-nowrap pb-2 pr-4 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.count') }}</th>
+            <th class="whitespace-nowrap pb-2 pr-4 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.confirmation_status') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -60,10 +71,10 @@ const { formatDateTime } = useDatetime()
             :key="item.id"
           >
             <tr class="border-b border-surface-100 dark:border-surface-700">
-              <td class="py-2 pr-4 text-surface-600 dark:text-surface-300">
+              <td class="whitespace-nowrap py-2 pr-4 text-surface-600 dark:text-surface-300">
                 {{ formatDateTime(item.createdAt) }}
               </td>
-              <td class="py-2 pr-4">
+              <td class="min-w-[10rem] py-2 pr-4">
                 <div>
                   {{ item.startDate === item.endDate ? formatDate(item.startDate) : `${formatDate(item.startDate)}〜${formatDate(item.endDate)}` }}
                 </div>
@@ -71,13 +82,13 @@ const { formatDateTime } = useDatetime()
                   {{ item.startTime }}〜{{ item.endTime }}
                 </div>
               </td>
-              <td class="py-2 pr-4">{{ item.reason }}</td>
-              <td class="py-2 pr-4">
-                <Tag :value="`${item.sentCount}件`" severity="info" />
+              <td class="min-w-[14rem] break-words py-2 pr-4">{{ item.reason }}</td>
+              <td class="min-w-[10rem] py-2 pr-4">
+                <Tag :value="$t('emergency_closure.table.count_value', { count: item.sentCount })" severity="info" class="whitespace-nowrap" />
               </td>
               <td class="py-2">
                 <button
-                  class="inline-flex items-center gap-1 rounded text-xs text-primary-600 hover:underline dark:text-primary-400"
+                  class="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 whitespace-nowrap rounded text-xs text-primary-600 hover:underline dark:text-primary-400"
                   @click="emit('toggle-confirmations', item.id)"
                 >
                   <i v-if="confirmationsLoading && expandedClosureId === item.id" class="pi pi-spin pi-spinner text-xs" />
@@ -112,13 +123,13 @@ const { formatDateTime } = useDatetime()
                       {{ $t(`emergency_closure.connection.${connectionState.toLowerCase()}`) }}
                     </span>
                   </div>
-                  <table class="w-full text-xs">
+                  <table class="w-full min-w-[26rem] text-xs">
                     <thead>
                       <tr class="border-b border-surface-200 dark:border-surface-600">
-                        <th class="pb-1 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.patient_name') }}</th>
-                        <th class="pb-1 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.appointment_at') }}</th>
-                        <th class="pb-1 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.confirmed_header') }}</th>
-                        <th class="pb-1 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.reminder') }}</th>
+                        <th class="whitespace-nowrap pb-1 pr-4 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.patient_name') }}</th>
+                        <th class="whitespace-nowrap pb-1 pr-4 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.appointment_at') }}</th>
+                        <th class="whitespace-nowrap pb-1 pr-4 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.confirmed_header') }}</th>
+                        <th class="whitespace-nowrap pb-1 pr-4 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.reminder') }}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -127,11 +138,11 @@ const { formatDateTime } = useDatetime()
                         :key="conf.userId"
                         class="border-b border-surface-100 last:border-0 dark:border-surface-700"
                       >
-                        <td class="py-1 pr-4">{{ conf.userDisplayName }}</td>
-                        <td class="py-1 pr-4 text-surface-500">
+                        <td class="whitespace-nowrap py-1 pr-4">{{ conf.userFullName || $t('emergency_closure.label.unknown_user') }}</td>
+                        <td class="whitespace-nowrap py-1 pr-4 text-surface-500">
                           {{ formatDateTime(conf.appointmentAt) }}
                         </td>
-                        <td class="py-1 pr-4">
+                        <td class="whitespace-nowrap py-1 pr-4">
                           <span v-if="conf.confirmed" class="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
                             <i class="pi pi-check-circle" /> {{ $t('emergency_closure.status.confirmed') }}
                           </span>
@@ -139,7 +150,7 @@ const { formatDateTime } = useDatetime()
                             <i class="pi pi-times-circle" /> {{ $t('emergency_closure.status.unconfirmed') }}
                           </span>
                         </td>
-                        <td class="py-1">
+                        <td class="whitespace-nowrap py-1">
                           <span v-if="conf.reminderSent" class="text-amber-500">{{ $t('emergency_closure.status.reminder_sent') }}</span>
                           <span v-else class="text-surface-400">{{ $t('emergency_closure.status.reminder_not_sent') }}</span>
                         </td>

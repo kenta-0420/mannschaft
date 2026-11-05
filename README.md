@@ -1228,6 +1228,7 @@ CI では `openapi.json` と生成型の乖離を自動検出します。`docs/o
 > - フロントエンド・バックエンド連携（OpenAPI 型同期）: `BACKEND_CODING_CONVENTION.md` §5 + `FRONTEND_CODING_CONVENTION.md` §7
 > - パフォーマンス最適化（LCP < 2.5s）: `FRONTEND_CODING_CONVENTION.md` §10
 > - Flyway マイグレーション: `.claudecode.md` §18
+> - E-R 図（実スキーマから自動生成・ドメイン単位）: [`docs/architecture/er/README.md`](docs/architecture/er/README.md)。再生成は `cd backend && ./gradlew generateErDiagrams`、仕組みは `.claudecode.md` §10.1。migration／Entity を変更したら再生成してコミットする（CI の ER Diagram Drift Check が検出）。`docs/features` の手描き図は設計意図、`er/` は現実のスキーマ
 
 ### フィーチャーフラグ（Phase 制御）
 

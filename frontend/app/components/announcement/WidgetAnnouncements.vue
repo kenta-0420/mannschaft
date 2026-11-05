@@ -133,7 +133,9 @@ async function onMarkAllRead() {
 </script>
 
 <template>
-  <DashboardWidgetCard data-announcement-list>
+  <!-- 高さ上限（既定 15rem）はインライン style のためスマホ幅だけ !important で外す。
+       スマホ幅は見出しが2段になり、上限のままだと一覧が1件ぶんに潰れる -->
+  <DashboardWidgetCard data-announcement-list class="max-sm:!max-h-none">
     <!-- ヘッダー -->
     <template #header>
       <!-- 狭い幅（スマホ等）では見出し群とボタン群が2段に折り返す。各ラベルは語の途中で折らない -->
@@ -168,7 +170,7 @@ async function onMarkAllRead() {
             :title="t('button.loading')"
             @click="refresh"
           />
-          <NuxtLink v-if="allAnnouncementsPath" :to="allAnnouncementsPath" class="whitespace-nowrap">
+          <NuxtLink v-if="allAnnouncementsPath" :to="allAnnouncementsPath" class="whitespace-nowrap max-sm:hidden">
             <Button
               :label="t('announcement.all_announcements')"
               icon="pi pi-arrow-right"
@@ -206,6 +208,20 @@ async function onMarkAllRead() {
         @pin="onTogglePin"
         @delete="onDelete"
       />
+    </div>
+
+    <!-- スマホ幅では「すべてのお知らせ」を一覧の後ろへ移し、見出しを2段に抑える -->
+    <div v-if="allAnnouncementsPath" data-announcement-footer-link class="mt-2 flex justify-end sm:hidden">
+      <NuxtLink :to="allAnnouncementsPath" class="whitespace-nowrap">
+        <Button
+          :label="t('announcement.all_announcements')"
+          icon="pi pi-arrow-right"
+          icon-pos="right"
+          size="small"
+          text
+          class="min-h-11 whitespace-nowrap text-xs"
+        />
+      </NuxtLink>
     </div>
   </DashboardWidgetCard>
   <AnnouncementDetailModal
