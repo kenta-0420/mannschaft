@@ -113,7 +113,7 @@ public sealed class M21Job : SafeHandleZeroOrMinusOneIsInvalid {
 }
 public sealed class M21Child : IDisposable {
  public Process Process;public Task OutTask,ErrTask;FileStream output,error;
- public bool Started,StartupExited,StartupStdoutEof,StartupStderrEof,Captured;
+ public bool Started,StartupExited,StartupStdoutEof,StartupStderrEof,Captured,StdoutPublished,StderrPublished;
  public int RecordedPid;public string RecordedCreation,LogPrefix;public Exception StartupFailure;
  public List<string> StartupCleanupFailures=new List<string>();
  public List<Exception> StartupCleanupExceptions=new List<Exception>();
@@ -172,8 +172,14 @@ public sealed class M21Child : IDisposable {
   string role=stdout?"stdout":"stderr";Mark(role+"-eof-before",ms);
   try{
    Task t=stdout?OutTask:ErrTask;if(t==null)return false;
-   bool done=t.Wait(ms);if(done){if(stdout)output.Flush();else error.Flush();}return done;
+   bool done=t.Wait(ms);if(done){if(stdout){if(!StdoutPublished)output.Flush();}else{if(!StderrPublished)error.Flush();}}return done;
   }finally{Mark(role+"-eof-after",ms);}
+ }
+ public void PublishCapturedOutput(bool stdout) {
+  // 両pump完了と保持Processの実exit後だけ。Process handleは保持し続ける。
+  if(!Started||!Process.WaitForExit(0)||OutTask==null||ErrTask==null||OutTask.Status!=TaskStatus.RanToCompletion||ErrTask.Status!=TaskStatus.RanToCompletion)throw new InvalidOperationException("未完了stdioのpublication拒否");
+  if(stdout){if(StdoutPublished)return;output.Dispose();StdoutPublished=true;}
+  else{if(StderrPublished)return;error.Dispose();StderrPublished=true;}
  }
  public void Dispose() {
   List<Exception> errors=new List<Exception>();
@@ -441,7 +447,7 @@ function P6-State([string]$stage) {
 }
 function Capture([M21Child]$child,[string]$role,[int]$milliseconds) {
  if(!$child.Started){$script:streams.Add(@{role=$role;notStarted=$true;exited=$true;exitCode=$null;stdoutEof=$true;stderrEof=$true});$child.Captured=$true;return}
- $item=[ordered]@{role=$role;pid=$child.RecordedPid;creation=$child.RecordedCreation;logs=$child.LogPrefix;exited=$false;exitCode=$null;stdoutEof=$false;stderrEof=$false;timingOrigin='held-child-instance';timings=@();timingOverflow=$false}
+ $item=[ordered]@{role=$role;pid=$child.RecordedPid;creation=$child.RecordedCreation;logs=$child.LogPrefix;exited=$false;exitCode=$null;stdoutEof=$false;stderrEof=$false;stdoutPublished=$false;stderrPublished=$false;timingOrigin='held-child-instance';timings=@();timingOverflow=$false}
  $exitCap=Remaining $milliseconds -Recovery
  $child.Mark('capture-exit-before',$exitCap)
  try{$item.exited=$child.Process.WaitForExit($exitCap);if($item.exited){$item.exitCode=$child.Process.ExitCode}}catch{Fail ($role+'-exit') $_.Exception}finally{$child.Mark('capture-exit-after',$exitCap)}
@@ -451,6 +457,11 @@ function Capture([M21Child]$child,[string]$role,[int]$milliseconds) {
  try{$item.stdoutEof=$child.Eof($true,(Remaining $milliseconds -Recovery));if(!$item.stdoutEof){Set-Reason 'stdout-eof-timeout';throw 'stdout EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stdout') $_.Exception $_}finally{Attempt 'p6-stdout-after' {P6-State 'stdout-after'}}
  Attempt 'p6-stderr-before' {P6-State 'stderr-before'}
  try{$item.stderrEof=$child.Eof($false,(Remaining $milliseconds -Recovery));if(!$item.stderrEof){Set-Reason 'stderr-eof-timeout';throw 'stderr EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stderr') $_.Exception $_}finally{Attempt 'p6-stderr-after' {P6-State 'stderr-after'}}
+ if($item.exited -and $item.stdoutEof -and $item.stderrEof){
+  Attempt ($role+'-stdout-publication') {try{$child.PublishCapturedOutput($true)}catch{$script:recovered=$false;Set-Reason 'stdout-publication-failed';throw}}
+  Attempt ($role+'-stderr-publication') {try{$child.PublishCapturedOutput($false)}catch{$script:recovered=$false;Set-Reason 'stderr-publication-failed';throw}}
+ }
+ $item.stdoutPublished=$child.StdoutPublished;$item.stderrPublished=$child.StderrPublished
  $item.timings=@($child.Timings.ToArray());$item.timingOverflow=$child.TimingOverflow
  $script:streams.Add($item)
  $child.Captured=$true

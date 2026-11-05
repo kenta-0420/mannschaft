@@ -1,5 +1,7 @@
 # M21 Windows Job監督 prototype
 
+462単発はms PASS後、FE dummy actual0/両EOF成功の後に自己stdout読取IO32で不合格となった。producerのwriter保持が原因で、現在は同じM21Childが実exit＋両CopyToAsync成功後に両writerを独立attemptでsealする修正を追加した静的段階（変更後実行は次GO待ち）。stdoutPublished/stderrPublishedをEOFと別記録し、Process handle/出生/exitは保持する。P6一次EOF失敗ではsealしない。再観測Eofはseal済みwriterを再Flushせず、finally Disposeも再度安全に行う。reader共有条件・metadata retry・期待値・予算は変更していない。原本packetは `foundation-m21-formal-fe-stdout-sharing-red-result-d7249e88.json` に単一renameし、3UGiPY rawは不変更保持する。
+
 06単発でms契約のcanonical/zero/wrongを直接保存してGREEN、次FE未実装入口の実REDを確認した。現在は固定FE specとfrontend admissionだけをgreen実装した静的段階で、実行は次GO待ち。絶対Nuxt CLI/frontend CWD/127.0.0.1:3003、localhost public/API base、FEだけ8GiB NODE_OPTIONSを固定し、SystemRoot/WINDIRと所有Supervisor runのTEMP/TMP以外の親値を転送しない。Java innerRun/outerTempの契約は変更しない。既存M21Child.Startの同一本体へ明示env overloadを加え、FEではClear後固定envのみ、旧6引数dummyは継承挙動のまま。W/G後frontendはspawn前null拒否、owned-cleanupはG内でもformal-owned-cleanup-unimplementedで明示失敗する未実装状態。実Nuxt/FE/Java/Gradleは起動していない。
 
 Java epoch-ms由来Instantの正規表記はUTCの秒のみZまたは3桁msZとなるため、formal-msへ秒のみ候補1件をtest先行追加した。保持Processの実javaIsoのms部分を000へ丸めた同じ秒を使い、ms同一の場合だけmatched=true、それ以外はparse成功後formal-java-ms-mismatchを要求する。世代許容幅0、表記対照を実OS世代証明にしない。ab4単発でformal-java-invalid-msの実REDを観測したが、呼出別地点が未保存だった制限は残す。現在は正規2形式だけのstrict parserとcanonicalProof/zero/wrong-msの地点・結果保存を追加した段階で、変更後実行は別GO待ち。6/9桁・offset・曖昧parseは許可しない。既存JDK21 src.zipのInstant346-349/1354-1355、DateTimeFormatter1199-1201、DateTimeFormatterBuilder895-897/3861-3873で0/3桁出力の一次sourceを確認済み（JDK実行なし、Gradle/App起動なし）。
