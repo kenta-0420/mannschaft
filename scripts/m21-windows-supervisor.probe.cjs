@@ -443,7 +443,8 @@ async function suite() {
           const certificate = read(path.join(run, 'certified-tree.json'));
           assert.equal(receipt.knownExitEvidence.length, 3);
           assert.ok(receipt.knownExitEvidence.every(s => s.exited === true));
-          p4 = { certifier: certificate.certifier, members: certificate.members, actualExits: receipt.knownExitEvidence };
+          p4 = { certifier: certificate.certifier, members: certificate.members, actualExits: receipt.knownExitEvidence,
+            metadataReadiness: certificate.metadataReadiness };
         }
         const evidence = { process: receipt.process, primary: reason(receipt.primary), secondary: receipt.secondary.map(reason),
           streams: streamEvidence, lastHandles: receipt.lastHandles, resourceRecovery: receipt.resourceRecovery,

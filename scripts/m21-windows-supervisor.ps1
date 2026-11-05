@@ -582,7 +582,7 @@ try {
     if($verified.HasExited){throw '認定前RequiredAlive終了'}
     $members.Add(@{role=$entry.role;identity=$entry.identity;ownedJobVerified=$true})
    }
-   Write-Json 'certified-tree.json' @{owner=$owner;nonce=$Nonce;certifier=(Identity ([Diagnostics.Process]::GetCurrentProcess()));members=@($members.ToArray())}
+   Write-Json 'certified-tree.json' @{owner=$owner;nonce=$Nonce;certifier=(Identity ([Diagnostics.Process]::GetCurrentProcess()));members=@($members.ToArray());metadataReadiness=@($metadataReadiness.ToArray())}
    Start-Sleep -Milliseconds (Remaining);Set-Reason 'work-budget-exhausted';throw 'observer待機期限超過'
   }
   if($Scenario -eq 'stdio-eof'){
