@@ -4,11 +4,15 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.shift.event.ShiftPublishedEvent;
+import com.mannschaft.app.shift.event.ShiftArchivedEvent;
 import com.mannschaft.app.shift.event.ShiftScheduleClosedEvent;
 import com.mannschaft.app.shift.repository.ShiftHourlyRateRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.shift.service.ShiftScheduleService;
+import com.mannschaft.app.shift.service.ShiftSlotService;
+import com.mannschaft.app.shiftbudget.batch.ShiftBudgetConsumptionReconcileBatchService;
+import com.mannschaft.app.shiftbudget.service.ShiftBudgetConsumptionService;
 import com.mannschaft.app.shiftbudget.listener.ShiftBudgetConsumptionCancelListener;
 import com.mannschaft.app.shiftbudget.listener.ShiftBudgetConsumptionRecordListener;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository;
@@ -44,13 +48,17 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mockingDetails;
 
@@ -76,6 +84,7 @@ class ShiftBudgetPublicationGenerationIT extends AbstractMySqlIntegrationTest {
     private static final Duration LIMIT = Duration.ofSeconds(30);
 
     @Autowired private TransactionTemplate transactionTemplate;
+    @Autowired private com.mannschaft.app.common.DomainEventPublisher eventPublisher;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private UserRepository users;
     @Autowired private ShiftScheduleRepository schedules;
@@ -83,16 +92,28 @@ class ShiftBudgetPublicationGenerationIT extends AbstractMySqlIntegrationTest {
     @Autowired private ShiftHourlyRateRepository rates;
     @Autowired private ShiftBudgetAllocationRepository allocations;
     @Autowired private ShiftScheduleService scheduleService;
+    @Autowired private ShiftSlotService slotService;
+    @Autowired private ShiftBudgetConsumptionReconcileBatchService reconcileBatch;
     @Autowired @Qualifier("event-pool") private ThreadPoolTaskExecutor eventExecutor;
     @PersistenceContext private EntityManager em;
 
     @MockitoSpyBean private ShiftBudgetConsumptionRecordListener recordListener;
     @MockitoSpyBean private ShiftBudgetConsumptionCancelListener cancelListener;
+    @MockitoSpyBean private ShiftBudgetConsumptionService consumptionService;
+    private final AtomicInteger recordInvocations = new AtomicInteger();
 
     private final BlockingQueue<ShiftPublishedEvent> completedPublications = new LinkedBlockingQueue<>();
     private final BlockingQueue<ShiftScheduleClosedEvent> enteredCloses = new LinkedBlockingQueue<>();
     private final BlockingQueue<ShiftScheduleClosedEvent> completedCloses = new LinkedBlockingQueue<>();
+    private final BlockingQueue<ShiftArchivedEvent> completedArchives = new LinkedBlockingQueue<>();
     private final AtomicBoolean holdNextClose = new AtomicBoolean();
+    private final AtomicBoolean holdNextPublication = new AtomicBoolean();
+    private final BlockingQueue<ShiftPublishedEvent> enteredPublications = new LinkedBlockingQueue<>();
+    private final CountDownLatch releasePublication = new CountDownLatch(1);
+    private final AtomicBoolean holdNextBatchCancellation = new AtomicBoolean();
+    private final CountDownLatch batchCandidateSelected = new CountDownLatch(1);
+    private final CountDownLatch releaseBatchCancellation = new CountDownLatch(1);
+    private final AtomicLong batchGeneration = new AtomicLong(-1L);
     private final CountDownLatch releaseClose = new CountDownLatch(1);
     private final AtomicReference<Throwable> deliveryFailure = new AtomicReference<>();
     private final AtomicReference<String> closeThread = new AtomicReference<>();
@@ -138,10 +159,36 @@ class ShiftBudgetPublicationGenerationIT extends AbstractMySqlIntegrationTest {
         ShiftBudgetConsumptionCancelListener cancelTarget = AopTestUtils.getUltimateTargetObject(cancelListener);
         assertThat(mockingDetails(recordTarget).isSpy()).as("公開listenerのAOP内側の実spy").isTrue();
         assertThat(mockingDetails(cancelTarget).isSpy()).as("取消listenerのAOP内側の実spy").isTrue();
+        var consumptionTarget = AopTestUtils.getUltimateTargetObject(consumptionService);
+        assertThat(mockingDetails(consumptionTarget).isSpy()).as("記録serviceの実spy").isTrue();
+        doAnswer(invocation -> {
+            if (scheduleId.equals(invocation.getArgument(1))) {
+                recordInvocations.incrementAndGet();
+            }
+            return invocation.callRealMethod();
+        }).when((ShiftBudgetConsumptionService) consumptionTarget)
+                .recordSingleConsumption(any(), any(), any(), any(), any(), any(),
+                        anyLong());
+        doAnswer(invocation -> {
+            Long id = invocation.getArgument(0);
+            if (scheduleId.equals(id) && holdNextBatchCancellation.compareAndSet(true, false)) {
+                batchGeneration.set(invocation.getArgument(1));
+                batchCandidateSelected.countDown();
+                assertThat(releaseBatchCancellation.await(LIMIT.toSeconds(), TimeUnit.SECONDS))
+                        .as("候補選択済み・DB取消前のbatch解放待ち").isTrue();
+            }
+            return invocation.callRealMethod();
+        }).when((ShiftBudgetConsumptionService) consumptionTarget)
+                .cancelAllForShift(any(), anyLong());
         doAnswer(invocation -> {
             ShiftPublishedEvent event = invocation.getArgument(0);
             if (!scheduleId.equals(event.getScheduleId())) return invocation.callRealMethod();
             try {
+                enteredPublications.add(event);
+                if (holdNextPublication.compareAndSet(true, false)) {
+                    assertThat(releasePublication.await(LIMIT.toSeconds(), TimeUnit.SECONDS))
+                            .as("DB操作前で保留した旧publishの有限解放待ち").isTrue();
+                }
                 return invocation.callRealMethod();
             } catch (Throwable failure) {
                 deliveryFailure.compareAndSet(null, failure);
@@ -168,11 +215,22 @@ class ShiftBudgetPublicationGenerationIT extends AbstractMySqlIntegrationTest {
                 completedCloses.add(event);
             }
         }).when(cancelTarget).onShiftScheduleClosed(any(ShiftScheduleClosedEvent.class));
+        doAnswer(invocation -> {
+            ShiftArchivedEvent event = invocation.getArgument(0);
+            if (!scheduleId.equals(event.getScheduleId())) return invocation.callRealMethod();
+            try {
+                return invocation.callRealMethod();
+            } finally {
+                completedArchives.add(event);
+            }
+        }).when(cancelTarget).onShiftArchived(any(ShiftArchivedEvent.class));
     }
 
     @AfterEach
     void cleanup() {
         releaseClose.countDown();
+        releasePublication.countDown();
+        releaseBatchCancellation.countDown();
         awaitEventsFinished();
         SecurityContextHolder.clearContext();
         // 自分で採番したスケジュール・組織・チーム・利用者に属する行だけを撤去する。
@@ -217,6 +275,9 @@ class ShiftBudgetPublicationGenerationIT extends AbstractMySqlIntegrationTest {
         assertThat(plannedCount(secondUserId)).as("旧slot/userとは異なる新Bの実PLANNED").isEqualTo(1);
         assertThat(plannedAmount(secondUserId)).as("旧close解放より先に新Bの実額が記録済み").isEqualByComparingTo(SECOND_AMOUNT);
         assertThat(cancelledCount(secondUserId)).as("既存CANCELLEDとの衝突による偶然の保護を除く").isZero();
+        assertThat(cancelledCount(firstUserId)).as("旧close解放前に再公開の掃除だけで旧Aが取消済み").isEqualTo(1);
+        assertThat(plannedCount(firstUserId)).as("取り外した旧担当AのPLANNEDを掃除").isZero();
+        assertThat(consumedAmount()).as("旧close解放前もBだけの16000円").isEqualByComparingTo(SECOND_AMOUNT);
 
         releaseClose.countDown();
         assertThat(required(completedCloses, "保留した旧closeの実処理完了")).isSameAs(held);
@@ -250,17 +311,290 @@ class ShiftBudgetPublicationGenerationIT extends AbstractMySqlIntegrationTest {
                 () -> assertThat(cancelledCount(firstUserId)).as("同一slot/userの取消履歴を2件保持").isEqualTo(2));
     }
 
-    private void publishAndAwait() throws InterruptedException {
-        scheduleService.transitionStatus(scheduleId, "PUBLISHED", firstUserId);
-        assertThat(required(completedPublications, "公開イベントの実記録listener完了").getScheduleId()).isEqualTo(scheduleId);
-        assertThat(deliveryFailure.get()).isNull();
+    @Test
+    @Timeout(120)
+    @DisplayName("AC03 公開取消後に遅延publishを配送しても消化と成功監査を作らない")
+    void 公開取消後の旧公開は記録しない() throws Exception {
+        stalePublicationAfter("ADJUSTING");
     }
 
-    private void closeAndAwait() throws InterruptedException {
+    @Test
+    @Timeout(120)
+    @DisplayName("AC03 アーカイブ後に遅延publishを配送しても消化を作らない")
+    void アーカイブ後の旧公開は記録しない() throws Exception {
+        stalePublicationAfter("ARCHIVED");
+    }
+
+    @Test
+    @Timeout(120)
+    @DisplayName("AC03 論理削除後に遅延publishを配送しても消化を作らない")
+    void 論理削除後の旧公開は記録しない() throws Exception {
+        stalePublicationAfter("DELETE");
+    }
+
+    private void stalePublicationAfter(String status) throws Exception {
+        holdNextPublication.set(true);
+        scheduleService.transitionStatus(scheduleId, "PUBLISHED", firstUserId);
+        ShiftPublishedEvent held = required(enteredPublications, "旧publishの実配送入口");
+        assertThat(held.getPublicationGeneration()).isEqualTo(1L);
+        if ("DELETE".equals(status)) {
+            scheduleService.deleteSchedule(scheduleId, firstUserId);
+        } else {
+            scheduleService.transitionStatus(scheduleId, status, firstUserId);
+        }
+        if ("ARCHIVED".equals(status)) {
+            assertThat(required(completedArchives, "失効archiveの実処理完了").getPublicationGeneration())
+                    .isEqualTo(held.getPublicationGeneration());
+        } else {
+            assertThat(required(completedCloses, "失効closeの実処理完了").getPublicationGeneration())
+                    .isEqualTo(held.getPublicationGeneration());
+        }
+        releasePublication.countDown();
+        assertThat(required(completedPublications, "失効後の旧publish完了")).isSameAs(held);
+        awaitEventsFinished();
+        assertThat(deliveryFailure.get()).isNull();
+        assertAll(
+                () -> assertThat(plannedCount(firstUserId)).isZero(),
+                () -> assertThat(consumedAmount()).isEqualByComparingTo(BigDecimal.ZERO),
+                () -> assertThat(recordedAuditCount()).as("不受理を記録成功として監査しない").isZero());
+    }
+
+    @Test
+    @Timeout(120)
+    @DisplayName("AC04/14 同世代publish再配送は履歴・実額・成功監査を増やさない")
+    void 同じ公開の再配送は記録成功を増やさない() throws Exception {
+        ShiftPublishedEvent original = publishAndAwait();
+        awaitEventsFinished();
+        int audits = recordedAuditCount();
+        transactionTemplate.executeWithoutResult(tx -> eventPublisher.publish(original));
+        assertThat(required(completedPublications, "同世代の再配送完了")).isSameAs(original);
+        awaitEventsFinished();
+        assertAll(
+                () -> assertThat(plannedCount(firstUserId)).isEqualTo(1),
+                () -> assertThat(cancelledCount(firstUserId)).isZero(),
+                () -> assertThat(consumedAmount()).isEqualByComparingTo(FIRST_AMOUNT),
+                () -> assertThat(recordedAuditCount()).isEqualTo(audits));
+    }
+
+    @Test
+    @Timeout(120)
+    @DisplayName("AC04 新世代公開後の旧publishは新担当の記録と実額を維持する")
+    void 新世代公開後の旧公開は何も記録しない() throws Exception {
+        ShiftPublishedEvent oldPublication = publishAndAwait();
+        closeAndAwait();
+        transactionTemplate.executeWithoutResult(tx -> slots.findById(slotId).orElseThrow()
+                .updateAssignedUserIds("[" + secondUserId + "]"));
+        ShiftPublishedEvent current = publishAndAwait();
+        assertThat(current.getPublicationGeneration()).isEqualTo(oldPublication.getPublicationGeneration() + 1);
+        awaitEventsFinished();
+        int audits = recordedAuditCount();
+        transactionTemplate.executeWithoutResult(tx -> eventPublisher.publish(oldPublication));
+        assertThat(required(completedPublications, "旧世代の再配送完了")).isSameAs(oldPublication);
+        awaitEventsFinished();
+        assertAll(
+                () -> assertThat(plannedCount(firstUserId)).isZero(),
+                () -> assertThat(plannedCount(secondUserId)).isEqualTo(1),
+                () -> assertThat(consumedAmount()).isEqualByComparingTo(SECOND_AMOUNT),
+                () -> assertThat(recordedAuditCount()).isEqualTo(audits));
+    }
+
+    @Test
+    @Timeout(120)
+    @DisplayName("AC05 削除した旧slotのPLANNEDも再公開時に掃除し、新slotだけの実額にする")
+    void 削除済み旧枠の消化を再公開で回収する() throws Exception {
+        publishAndAwait();
+        holdNextClose.set(true);
         scheduleService.transitionStatus(scheduleId, "ADJUSTING", firstUserId);
-        assertThat(required(completedCloses, "公開取消イベントの実listener完了").getScheduleId()).isEqualTo(scheduleId);
+        ShiftScheduleClosedEvent held = required(enteredCloses, "旧closeを保留");
+        Long oldSlotId = slotId;
+        slotService.deleteSlot(oldSlotId);
+        transactionTemplate.executeWithoutResult(tx -> slotId = slots.save(
+                ShiftBudgetPublicationGenerationTestFixture.slot(scheduleId, secondUserId)).getId());
+        publishAndAwait();
+        assertAll(
+                () -> assertThat(jdbc.queryForObject("SELECT status FROM shift_budget_consumptions "
+                        + "WHERE shift_id = ? AND slot_id = ?", String.class, scheduleId, oldSlotId))
+                        .as("旧closeを解放する前に、削除済みslotの旧消化を回収").isEqualTo("CANCELLED"),
+                () -> assertThat(plannedCount(secondUserId)).isEqualTo(1),
+                () -> assertThat(consumedAmount()).isEqualByComparingTo(SECOND_AMOUNT));
+        releaseClose.countDown();
+        assertThat(required(completedCloses, "旧close完了")).isSameAs(held);
+        awaitEventsFinished();
+        assertThat(consumedAmount()).isEqualByComparingTo(SECOND_AMOUNT);
+    }
+
+    @Test
+    @Timeout(120)
+    @DisplayName("AC05/14 旧世代掃除の実DB減算失敗時、新しい単一記録を開始しない")
+    void 旧消化掃除が失敗したら新消化を開始しない() throws Exception {
+        publishAndAwait();
+        assertThat(recordInvocations.get()).as("初回の実recordを観測済み").isEqualTo(1);
+        holdNextClose.set(true);
+        scheduleService.transitionStatus(scheduleId, "ADJUSTING", firstUserId);
+        ShiftScheduleClosedEvent held = required(enteredCloses, "旧closeを保留");
+        transactionTemplate.executeWithoutResult(tx -> slots.findById(slotId).orElseThrow()
+                .updateAssignedUserIds("[" + secondUserId + "]"));
+        String trigger = "cmp0718_cleanup_" + allocationId;
+        jdbc.execute("CREATE TRIGGER " + trigger + " BEFORE UPDATE ON shift_budget_allocations FOR EACH ROW "
+                + "BEGIN IF OLD.id = " + allocationId + " AND NEW.consumed_amount < OLD.consumed_amount "
+                + "THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '0718 cleanup rejected'; END IF; END");
+        try {
+            publishAndAwait();
+            assertAll(
+                    () -> assertThat(recordInvocations.get()).as("掃除失敗後はrecord入口へ進まない").isEqualTo(1),
+                    () -> assertThat(plannedCount(firstUserId)).as("claimも同時rollback").isEqualTo(1),
+                    () -> assertThat(plannedCount(secondUserId)).isZero(),
+                    () -> assertThat(cancelledCount(firstUserId)).isZero(),
+                    () -> assertThat(consumedAmount()).isEqualByComparingTo(FIRST_AMOUNT),
+                    () -> assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM shift_budget_failed_events "
+                            + "WHERE organization_id = ? AND event_type = 'CONSUMPTION_RECORD' AND source_id = ?",
+                            Integer.class, organizationId, scheduleId)).isEqualTo(1));
+        } finally {
+            jdbc.execute("DROP TRIGGER " + trigger);
+            releaseClose.countDown();
+        }
+        assertThat(required(completedCloses, "旧closeを正常に収束")).isSameAs(held);
+        awaitEventsFinished();
+        assertThat(consumedAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    @Test
+    @Timeout(120)
+    @DisplayName("AC11 移行前の世代0は実listenerで記録・取消でき、最初の再公開は世代1になる")
+    void 既存世代0の取消と初回再公開を対応付ける() throws Exception {
+        transactionTemplate.executeWithoutResult(tx -> {
+            var legacy = schedules.findById(scheduleId).orElseThrow();
+            legacy.publish(firstUserId);
+            eventPublisher.publish(new ShiftPublishedEvent(scheduleId, teamId, firstUserId,
+                    legacy.getPublishedAt()));
+        });
+        assertThat(required(completedPublications, "既存世代0の実配送完了").getPublicationGeneration()).isZero();
+        assertThat(jdbc.queryForObject("SELECT publication_generation FROM shift_budget_consumptions "
+                + "WHERE shift_id = ? AND status = 'PLANNED'", Long.class, scheduleId)).isZero();
+        ShiftScheduleClosedEvent closed = closeAndAwait();
+        assertThat(closed.getPublicationGeneration()).isZero();
+        assertThat(consumedAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+        ShiftPublishedEvent fresh = publishAndAwait();
+        assertThat(fresh.getPublicationGeneration()).isEqualTo(1L);
+        assertAll(
+                () -> assertThat(jdbc.queryForList("SELECT publication_generation FROM shift_budget_consumptions "
+                        + "WHERE shift_id = ? ORDER BY id", Long.class, scheduleId)).containsExactly(0L, 1L),
+                () -> assertThat(cancelledCount(firstUserId)).isEqualTo(1),
+                () -> assertThat(plannedCount(firstUserId)).isEqualTo(1),
+                () -> assertThat(consumedAmount()).isEqualByComparingTo(FIRST_AMOUNT));
+    }
+
+    @Test
+    @Timeout(120)
+    @DisplayName("AC04/14 同じcloseの再配送では減算・履歴・取消成功監査を増やさない")
+    void 同じ取消の再配送は成功件数を増やさない() throws Exception {
+        publishAndAwait();
+        ShiftScheduleClosedEvent closed = closeAndAwait();
+        int audits = jdbc.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE team_id = ? "
+                + "AND event_type = 'SHIFT_BUDGET_CONSUMPTION_CANCELLED'", Integer.class, teamId);
+        transactionTemplate.executeWithoutResult(tx -> eventPublisher.publish(closed));
+        assertThat(required(completedCloses, "同じcloseの実再配送完了")).isSameAs(closed);
+        awaitEventsFinished();
+        assertAll(
+                () -> assertThat(cancelledCount(firstUserId)).isEqualTo(1),
+                () -> assertThat(consumedAmount()).isEqualByComparingTo(BigDecimal.ZERO),
+                () -> assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE team_id = ? "
+                        + "AND event_type = 'SHIFT_BUDGET_CONSUMPTION_CANCELLED'", Integer.class, teamId))
+                        .isEqualTo(audits));
+    }
+
+    @Test
+    @Timeout(120)
+    @DisplayName("AC12/14 batchが旧孤児を選択後に再公開されても新世代を取り消さず成功監査も増やさない")
+    void 古いbatch候補の取消上限は選択時点で固定する() throws Exception {
+        ShiftPublishedEvent oldPublication = publishAndAwait();
+        // 配送失敗で孤児が残った既存状態を、JPA fixtureでcommitする。
+        transactionTemplate.executeWithoutResult(tx -> schedules.findById(scheduleId).orElseThrow().archive());
+        holdNextBatchCancellation.set(true);
+        var worker = Executors.newSingleThreadExecutor();
+        try {
+            var batch = worker.submit(() -> reconcileBatch.reconcileOrphanConsumptions());
+            assertThat(batchCandidateSelected.await(LIMIT.toSeconds(), TimeUnit.SECONDS))
+                    .as("実候補SELECT後・実取消SQL前の同期点").isTrue();
+            assertThat(batchGeneration.get()).isEqualTo(oldPublication.getPublicationGeneration());
+            transactionTemplate.executeWithoutResult(tx -> slots.findById(slotId).orElseThrow()
+                    .updateAssignedUserIds("[" + secondUserId + "]"));
+            ShiftPublishedEvent current = publishAndAwait();
+            assertThat(current.getPublicationGeneration()).isEqualTo(batchGeneration.get() + 1);
+            assertThat(consumedAmount()).as("batchを止めたまま新世代Bだけが記録済み")
+                    .isEqualByComparingTo(SECOND_AMOUNT);
+            int audits = jdbc.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE team_id = ? "
+                    + "AND event_type = 'SHIFT_BUDGET_CONSUMPTION_CANCELLED'", Integer.class, teamId);
+            releaseBatchCancellation.countDown();
+            assertThat(batch.get(LIMIT.toSeconds(), TimeUnit.SECONDS)).isGreaterThanOrEqualTo(0);
+            awaitEventsFinished();
+            assertAll(
+                    () -> assertThat(plannedCount(secondUserId)).isEqualTo(1),
+                    () -> assertThat(consumedAmount()).isEqualByComparingTo(SECOND_AMOUNT),
+                    () -> assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE team_id = ? "
+                            + "AND event_type = 'SHIFT_BUDGET_CONSUMPTION_CANCELLED'", Integer.class, teamId))
+                            .as("stale snapshotを取消成功件数へ付け替えない").isEqualTo(audits));
+        } finally {
+            releaseBatchCancellation.countDown();
+            worker.shutdown();
+            assertThat(worker.awaitTermination(LIMIT.toSeconds(), TimeUnit.SECONDS)).isTrue();
+        }
+    }
+
+    @Test
+    @Timeout(120)
+    @DisplayName("AC07 公開TXのrollbackは世代・状態を戻しAFTER_COMMIT消化を発生させない")
+    void 公開のrollbackでは世代も消化も進めない() {
+        transactionTemplate.executeWithoutResult(tx -> {
+            scheduleService.transitionStatus(scheduleId, "PUBLISHED", firstUserId);
+            tx.setRollbackOnly();
+        });
+        awaitEventsFinished();
+        assertAll(
+                () -> assertThat(jdbc.queryForObject("SELECT publication_generation FROM shift_schedules WHERE id = ?",
+                        Long.class, scheduleId)).isZero(),
+                () -> assertThat(jdbc.queryForObject("SELECT status FROM shift_schedules WHERE id = ?",
+                        String.class, scheduleId)).isEqualTo("ADJUSTING"),
+                () -> assertThat(completedPublications).isEmpty(),
+                () -> assertThat(recordInvocations.get()).isZero(),
+                () -> assertThat(consumedAmount()).isEqualByComparingTo(BigDecimal.ZERO));
+    }
+
+    @Test
+    @Timeout(120)
+    @DisplayName("AC07 手動archiveは公開と同じ世代を運び実消化を取り消す")
+    void 手動アーカイブは現在公開世代を取り消す() throws Exception {
+        ShiftPublishedEvent publication = publishAndAwait();
+        scheduleService.transitionStatus(scheduleId, "ARCHIVED", firstUserId);
+        assertThat(required(completedArchives, "archive実配送完了").getPublicationGeneration())
+                .isEqualTo(publication.getPublicationGeneration());
+        awaitEventsFinished();
+        assertAll(
+                () -> assertThat(plannedCount(firstUserId)).isZero(),
+                () -> assertThat(cancelledCount(firstUserId)).isEqualTo(1),
+                () -> assertThat(consumedAmount()).isEqualByComparingTo(BigDecimal.ZERO));
+    }
+
+    private int recordedAuditCount() {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE team_id = ? "
+                + "AND event_type = 'SHIFT_BUDGET_CONSUMPTION_RECORDED'", Integer.class, teamId);
+    }
+
+    private ShiftPublishedEvent publishAndAwait() throws InterruptedException {
+        scheduleService.transitionStatus(scheduleId, "PUBLISHED", firstUserId);
+        ShiftPublishedEvent event = required(completedPublications, "公開イベントの実記録listener完了");
+        assertThat(event.getScheduleId()).isEqualTo(scheduleId);
+        assertThat(deliveryFailure.get()).isNull();
+        return event;
+    }
+
+    private ShiftScheduleClosedEvent closeAndAwait() throws InterruptedException {
+        scheduleService.transitionStatus(scheduleId, "ADJUSTING", firstUserId);
+        ShiftScheduleClosedEvent event = required(completedCloses, "公開取消イベントの実listener完了");
+        assertThat(event.getScheduleId()).isEqualTo(scheduleId);
         assertThat(deliveryFailure.get()).isNull();
         awaitEventsFinished();
+        return event;
     }
 
     private <T> T required(BlockingQueue<T> queue, String point) throws InterruptedException {

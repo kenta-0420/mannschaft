@@ -14,6 +14,8 @@ import java.time.LocalDateTime;
 public class ShiftPublishedEvent extends BaseEvent {
 
     private final Long scheduleId;
+    /** 公開と取消を対応付ける単調増加世代。旧イベントは0。 */
+    private final long publicationGeneration;
     private final Long teamId;
     private final Long triggeredByUserId;
 
@@ -27,7 +29,12 @@ public class ShiftPublishedEvent extends BaseEvent {
     private final LocalDateTime publishedAt;
 
     public ShiftPublishedEvent(Long scheduleId, Long teamId, Long triggeredByUserId, LocalDateTime publishedAt) {
+        this(scheduleId, teamId, triggeredByUserId, publishedAt, 0L);
+    }
+
+    public ShiftPublishedEvent(Long scheduleId, Long teamId, Long triggeredByUserId, LocalDateTime publishedAt, long publicationGeneration) {
         super();
+        this.publicationGeneration = publicationGeneration;
         this.scheduleId = scheduleId;
         this.teamId = teamId;
         this.triggeredByUserId = triggeredByUserId;

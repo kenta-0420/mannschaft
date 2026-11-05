@@ -28,6 +28,8 @@ import lombok.Getter;
 public class ShiftScheduleClosedEvent extends BaseEvent {
 
     private final Long scheduleId;
+    /** 公開と取消を対応付ける単調増加世代。旧イベントは0。 */
+    private final long publicationGeneration;
     private final Long teamId;
     /** 操作者のユーザーID。バッチ等の自動処理では null。 */
     private final Long actorUserId;
@@ -35,7 +37,13 @@ public class ShiftScheduleClosedEvent extends BaseEvent {
 
     public ShiftScheduleClosedEvent(Long scheduleId, Long teamId, Long actorUserId,
                                     ShiftScheduleCloseReason reason) {
+        this(scheduleId, teamId, actorUserId, reason, 0L);
+    }
+
+    public ShiftScheduleClosedEvent(Long scheduleId, Long teamId, Long actorUserId,
+                                    ShiftScheduleCloseReason reason, long publicationGeneration) {
         super();
+        this.publicationGeneration = publicationGeneration;
         this.scheduleId = scheduleId;
         this.teamId = teamId;
         this.actorUserId = actorUserId;

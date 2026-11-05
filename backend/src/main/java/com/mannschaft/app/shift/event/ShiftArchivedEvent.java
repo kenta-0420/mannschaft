@@ -11,12 +11,19 @@ import lombok.Getter;
 public class ShiftArchivedEvent extends BaseEvent {
 
     private final Long scheduleId;
+    /** 公開と取消を対応付ける単調増加世代。旧イベントは0。 */
+    private final long publicationGeneration;
     private final Long teamId;
     /** バッチ実行による自動アーカイブの場合は null。 */
     private final Long archivedByUserId;
 
     public ShiftArchivedEvent(Long scheduleId, Long teamId, Long archivedByUserId) {
+        this(scheduleId, teamId, archivedByUserId, 0L);
+    }
+
+    public ShiftArchivedEvent(Long scheduleId, Long teamId, Long archivedByUserId, long publicationGeneration) {
         super();
+        this.publicationGeneration = publicationGeneration;
         this.scheduleId = scheduleId;
         this.teamId = teamId;
         this.archivedByUserId = archivedByUserId;
