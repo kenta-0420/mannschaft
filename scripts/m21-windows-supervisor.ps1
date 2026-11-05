@@ -1,0 +1,439 @@
+﻿# M21固定dummy専用Windows Job監督。実サービス/任意commandの起動口は持たない。
+[CmdletBinding()]
+param(
+ [ValidateSet('Parent','Supervisor','Observe')][string]$Mode='Parent',
+ [Parameter(Mandatory=$true)][ValidateSet('normal','pre-ack','wrong-ack','assign-fail','host-fail','stdio-eof','cleanup-fail','save-fail','owner-mismatch','kill-close')][string]$Scenario,
+ [Parameter(Mandatory=$true)][string]$RunDirectory,
+ [Parameter(Mandatory=$true)][ValidatePattern('^[a-f0-9]{32}$')][string]$Nonce,
+ [Parameter(Mandatory=$true)][string]$NodePath
+)
+Set-StrictMode -Version Latest
+$ErrorActionPreference='Stop'
+$owner='d7249e88-1678-4e0c-ae21-a550989098a6'
+$run=[IO.Path]::GetFullPath($RunDirectory).TrimEnd('\')
+$utf8=New-Object Text.UTF8Encoding($false)
+$primary=$null
+$secondary=New-Object 'Collections.Generic.List[object]'
+$attempts=New-Object 'Collections.Generic.List[string]'
+$streams=New-Object 'Collections.Generic.List[object]'
+$held=New-Object 'Collections.Generic.List[object]'
+$startupRecovery=New-Object 'Collections.Generic.List[object]'
+$certified=New-Object 'Collections.Generic.List[object]'
+$recovered=$true
+$jobEmpty=$null
+$job=$null
+$operation='bootstrap'
+$ioOperation=$null
+$metadataFile=$null
+$failureContext=$null
+# Job handleは親のSafeHandleだけで保持する。名前/継承/複製を提供しない。
+$nativeCode=@'
+using System;
+using System.IO;
+using System.Text;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using Microsoft.Win32.SafeHandles;
+public sealed class M21Job : SafeHandleZeroOrMinusOneIsInvalid {
+ private M21Job() : base(true) {}
+ protected override bool ReleaseHandle() { return CloseHandle(handle); }
+ [DllImport("kernel32.dll", SetLastError=true)] static extern bool CloseHandle(IntPtr h);
+ [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)] static extern M21Job CreateJobObjectW(IntPtr a,string n);
+ [DllImport("kernel32.dll", SetLastError=true)] static extern bool SetInformationJobObject(M21Job j,int c,ref Extended x,uint n);
+ [DllImport("kernel32.dll", SetLastError=true)] static extern bool AssignProcessToJobObject(M21Job j,IntPtr p);
+ [DllImport("kernel32.dll", SetLastError=true)] static extern bool IsProcessInJob(IntPtr p,IntPtr j,out bool yes);
+ [DllImport("kernel32.dll", SetLastError=true)] static extern bool TerminateJobObject(M21Job j,uint code);
+ [StructLayout(LayoutKind.Sequential)] struct Basic {
+  public long ProcessTime,JobTime;public uint Flags;public UIntPtr Min,Max;
+  public uint Active;public UIntPtr Affinity;public uint Priority,Scheduling;
+ }
+ [StructLayout(LayoutKind.Sequential)] struct Io { public ulong ROp,WOp,OOp,RBytes,WBytes,OBytes; }
+ [StructLayout(LayoutKind.Sequential)] struct Extended { public Basic Basic;public Io Io;public UIntPtr ProcessMemory,JobMemory,PeakProcess,PeakJob; }
+ static void Check(bool yes) { if(!yes)throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error()); }
+ public static M21Job Create() {
+  M21Job j=CreateJobObjectW(IntPtr.Zero,null);
+  if(j.IsInvalid){int e=Marshal.GetLastWin32Error();j.Dispose();throw new System.ComponentModel.Win32Exception(e);}
+  Extended x=new Extended();x.Basic.Flags=0x2000;
+  try{Check(SetInformationJobObject(j,9,ref x,(uint)Marshal.SizeOf(typeof(Extended))));return j;}catch{j.Dispose();throw;}
+ }
+ public void Assign(Process p) { Check(AssignProcessToJobObject(this,p.Handle));if(!InJob(p,this))throw new IOException("Job所属不一致"); }
+ public static bool InJob(Process p,M21Job job) {
+  bool yes;Check(IsProcessInJob(p.Handle,job==null?IntPtr.Zero:job.DangerousGetHandle(),out yes));return yes;
+ }
+ [StructLayout(LayoutKind.Sequential)] struct Accounting { public long User,Kernel,PeriodUser,PeriodKernel;public uint Faults,Total,Active,Terminated; }
+ [DllImport("kernel32.dll", SetLastError=true)] static extern bool QueryInformationJobObject(M21Job j,int c,out Accounting a,uint n,IntPtr length);
+ public uint Active() { Accounting a;Check(QueryInformationJobObject(this,1,out a,(uint)Marshal.SizeOf(typeof(Accounting)),IntPtr.Zero));return a.Active; }
+ public void Stop() { Check(TerminateJobObject(this,71)); }
+}
+public sealed class M21Child : IDisposable {
+ public Process Process;public Task OutTask,ErrTask;FileStream output,error;
+ public bool Started,StartupExited,StartupStdoutEof,StartupStderrEof,Captured;
+ public int RecordedPid;public string RecordedCreation,LogPrefix;public Exception StartupFailure;
+ public List<string> StartupCleanupFailures=new List<string>();
+ public List<Exception> StartupCleanupExceptions=new List<Exception>();
+ void CleanupFailure(string stage,Exception e) { StartupCleanupFailures.Add(stage+":"+e.GetType().Name);StartupCleanupExceptions.Add(e); }
+ static string Quote(string s) {
+  StringBuilder b=new StringBuilder("\"");int slash=0;
+  foreach(char c in s){if(c=='\\'){slash++;continue;}if(c=='"'){b.Append('\\',slash*2+1);b.Append(c);}else{b.Append('\\',slash);b.Append(c);}slash=0;}
+  b.Append('\\',slash*2);b.Append('"');return b.ToString();
+ }
+ public static M21Child Start(string exe,string[] args,string cwd,string prefix) {
+  M21Child c=new M21Child();c.LogPrefix=prefix;
+  try {
+   c.output=new FileStream(prefix+".out",FileMode.CreateNew,FileAccess.Write,FileShare.Read);
+   c.error=new FileStream(prefix+".err",FileMode.CreateNew,FileAccess.Write,FileShare.Read);
+   ProcessStartInfo s=new ProcessStartInfo(exe);s.UseShellExecute=false;s.CreateNoWindow=true;s.WorkingDirectory=cwd;
+   s.RedirectStandardOutput=true;s.RedirectStandardError=true;
+   StringBuilder a=new StringBuilder();foreach(string x in args){if(a.Length>0)a.Append(' ');a.Append(Quote(x));}s.Arguments=a.ToString();
+   c.Process=new Process();c.Process.StartInfo=s;if(!c.Process.Start())throw new IOException("起動失敗");c.Started=true;
+   c.RecordedPid=c.Process.Id;
+   IntPtr retained=c.Process.Handle;
+   c.RecordedCreation=c.Process.StartTime.ToUniversalTime().Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture);
+   c.OutTask=c.Process.StandardOutput.BaseStream.CopyToAsync(c.output);
+   c.ErrTask=c.Process.StandardError.BaseStream.CopyToAsync(c.error);return c;
+  } catch(Exception original) {
+   // 先にprimaryを固定し、直接保持したProcessと開始済みpumpを個別に有限回収する。
+   // このcatchではDispose/throwで保持情報を捨てず、呼出元のheldへ必ず返す。
+   c.StartupFailure=original;
+   if(c.Started){
+    try{if(!c.Process.HasExited)c.Process.Kill();}catch(Exception e){c.CleanupFailure("kill",e);}
+    try{c.StartupExited=c.Process.WaitForExit(1000);if(!c.StartupExited)c.CleanupFailure("exit",new TimeoutException());}catch(Exception e){c.CleanupFailure("exit",e);}
+   }else{c.StartupExited=true;}
+   try{c.StartupStdoutEof=!c.Started||c.Eof(true,500);if(!c.StartupStdoutEof)c.CleanupFailure("stdout",new TimeoutException());}catch(Exception e){c.CleanupFailure("stdout",e);}
+   try{c.StartupStderrEof=!c.Started||c.Eof(false,500);if(!c.StartupStderrEof)c.CleanupFailure("stderr",new TimeoutException());}catch(Exception e){c.CleanupFailure("stderr",e);}
+   return c;
+  }
+ }
+ public bool Eof(bool stdout,int ms) {
+  Task t=stdout?OutTask:ErrTask;if(t==null)return false;
+  bool done=t.Wait(ms);if(done){if(stdout)output.Flush();else error.Flush();}return done;
+ }
+ public void Dispose() {
+  List<Exception> errors=new List<Exception>();
+  try{if(output!=null)output.Dispose();}catch(Exception e){errors.Add(e);}
+  try{if(error!=null)error.Dispose();}catch(Exception e){errors.Add(e);}
+  try{if(Process!=null)Process.Dispose();}catch(Exception e){errors.Add(e);}
+  if(errors.Count>0)throw new AggregateException(errors);
+ }
+}
+'@
+function Safe-Error([Exception]$exception) {
+ $details=New-Object 'Collections.Generic.List[object]'
+ $current=$exception
+ for($i=0;$null -ne $current -and $i -lt 8;$i++){
+  $native=$null;$innerType=$null
+  if($current -is [ComponentModel.Win32Exception]){$native=$current.NativeErrorCode}
+  if($null -ne $current.InnerException){$innerType=$current.InnerException.GetType().FullName}
+  $methods=New-Object 'Collections.Generic.List[string]'
+  $trace=New-Object Diagnostics.StackTrace($current,$false)
+  foreach($frame in @($trace.GetFrames()) | Select-Object -First 6){
+   if($null -eq $frame){continue}
+   $method=$frame.GetMethod()
+   if($null -ne $method -and $null -ne $method.DeclaringType){$methods.Add($method.DeclaringType.FullName+'.'+$method.Name)}
+  }
+  $details.Add(@{type=$current.GetType().FullName;innerType=$innerType;hResult=$current.HResult;nativeErrorCode=$native;methods=@($methods.ToArray())})
+  $current=$current.InnerException
+ }
+ return $details.ToArray()
+}
+function Safe-ScriptTrace([Management.Automation.ErrorRecord]$record) {
+ if($null -eq $record){return @()}
+ $frames=New-Object 'Collections.Generic.List[object]'
+ foreach($line in @($record.ScriptStackTrace -split '\r?\n')){
+  if($line -match '^\s*at ([A-Za-z0-9_-]+|<ScriptBlock>),\s+(.+): line ([0-9]+)\s*$'){
+   if([string]::Equals($Matches[2],$PSCommandPath,[StringComparison]::OrdinalIgnoreCase)){$frames.Add(@{function=$Matches[1];line=[int]$Matches[3]})}
+  }
+  if($frames.Count -ge 8){break}
+ }
+ return $frames.ToArray()
+}
+function Set-Operation([string]$name) {
+ $script:operation=$name;$script:ioOperation=$null;$script:metadataFile=$null
+}
+function Remember-Failure([Management.Automation.ErrorRecord]$record) {
+ $current=$record.Exception
+ for($i=0;$null -ne $current -and $i -lt 8;$i++){
+  if($null -ne $script:failureContext -and [object]::ReferenceEquals($script:failureContext.exception,$current)){return}
+  $current=$current.InnerException
+ }
+ $script:failureContext=@{exception=$record.Exception;operation=$script:operation;ioOperation=$script:ioOperation;metadataFile=$script:metadataFile;scriptTrace=@(Safe-ScriptTrace $record)}
+}
+function Fail([string]$stage,[object]$errorValue,[Management.Automation.ErrorRecord]$record=$null) {
+ $context=@{operation=$script:operation;ioOperation=$script:ioOperation;metadataFile=$script:metadataFile;scriptTrace=@(Safe-ScriptTrace $record)}
+ $current=$errorValue
+ for($i=0;$null -ne $current -and $i -lt 8;$i++){
+  if($null -ne $script:failureContext -and [object]::ReferenceEquals($script:failureContext.exception,$current)){$context=$script:failureContext;break}
+  $current=$current.InnerException
+ }
+ $failure=[ordered]@{stage=$stage;kind=$errorValue.GetType().Name;operation=$context.operation;ioOperation=$context.ioOperation;metadataFile=$context.metadataFile;scriptTrace=@($context.scriptTrace);exceptions=@(Safe-Error $errorValue)}
+ if($null -eq $script:primary){$script:primary=$failure}else{$script:secondary.Add($failure)}
+}
+function Attempt([string]$stage,[scriptblock]$action) {
+ $script:attempts.Add($stage)
+ try{& $action}catch{if($stage -in @('job-stop','direct-stop','exit-and-streams','job-empty','job-close')){$script:recovered=$false};Fail $stage $_.Exception $_}
+}
+function Read-Json([string]$name) {
+ $priorIo=$script:ioOperation;$priorFile=$script:metadataFile
+ $script:ioOperation='read';$script:metadataFile=$name
+ try{
+  $file=Join-Path $run $name
+  $info=Get-Item -LiteralPath $file
+  if($info.Length -gt 16384 -or ($info.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw 'JSON境界違反'}
+  return ([IO.File]::ReadAllText($file)|ConvertFrom-Json)
+ }catch{Remember-Failure $_;throw}
+ finally{$script:ioOperation=$priorIo;$script:metadataFile=$priorFile}
+}
+function Guard-Run {
+ if(!(Test-Path -LiteralPath $run -PathType Container)){throw '自己run不在'}
+ $cursor=Get-Item -LiteralPath $run
+ while($null -ne $cursor){
+  if(($cursor.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw 'run経路がreparse point'}
+  $cursor=$cursor.Parent
+ }
+ $o=Read-Json 'owner.json'
+ if($o.owner -cne $owner -or $o.nonce -cne $Nonce){throw 'owner/nonce不一致'}
+}
+function Write-Json([string]$name,[object]$value) {
+ $priorIo=$script:ioOperation;$priorFile=$script:metadataFile
+ $script:ioOperation='write';$script:metadataFile=$name
+ try{
+ Guard-Run
+ $file=Join-Path $run $name;$next=$file+'.next'
+ $bytes=$utf8.GetBytes(($value|ConvertTo-Json -Depth 12 -Compress))
+ if($bytes.Length -gt 16384){throw 'JSON上限'}
+ $s=New-Object IO.FileStream($next,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
+ try{$s.Write($bytes,0,$bytes.Length)}finally{$s.Dispose()}
+ # 各metadataは一度だけ。既存fileを上書きして別世代へ接続しない。
+ $script:ioOperation='move'
+ [IO.File]::Move($next,$file)
+ }catch{Remember-Failure $_;throw}
+ finally{$script:ioOperation=$priorIo;$script:metadataFile=$priorFile}
+}
+$bootstrapStage='native-bootstrap'
+try {
+ # Supervisorは型compileも子を生み得るものとして、標準Process/JSONのgateだけを先行する。
+ # この区間にはcustom型参照/外部command/Process.Startを置かない。
+ if($Mode -eq 'Supervisor'){
+  $bootstrapStage='supervisor-bootstrap'
+  Guard-Run
+  $self=[Diagnostics.Process]::GetCurrentProcess()
+  $identity=[ordered]@{owner=$owner;pid=$self.Id;creation=$self.StartTime.ToUniversalTime().Ticks.ToString();nonce=$Nonce}
+  if($Scenario -eq 'owner-mismatch'){$identity.owner='wrong-owner'}
+  Write-Json 'hello.json' $identity
+  $clock=[Diagnostics.Stopwatch]::StartNew()
+  while(!(Test-Path -LiteralPath (Join-Path $run 'ack.json')) -and $clock.ElapsedMilliseconds -lt 2500){Start-Sleep -Milliseconds 25}
+  if(!(Test-Path -LiteralPath (Join-Path $run 'ack.json'))){throw 'ack待機期限超過'}
+  $ack=Read-Json 'ack.json'
+  if($ack.owner -cne $owner -or $ack.nonce -cne $Nonce -or $ack.pid -ne $self.Id -or [string]$ack.creation -cne $identity.creation -or $ack.ownedJobVerified -ne $true){throw 'ack/親Job認定不一致'}
+  Guard-Run
+ }
+ $bootstrapStage='native-bootstrap'
+ Add-Type -TypeDefinition $nativeCode
+}
+catch {
+ # custom型の関数定義/起動へ進まず、安全な型・数値だけを保存する。
+ Fail $bootstrapStage $_.Exception $_
+ $bootstrapSaved=$false
+ $processIdentity=$null
+ Attempt 'bootstrap-process-identity' {$current=[Diagnostics.Process]::GetCurrentProcess();$script:processIdentity=@{pid=$current.Id;creation=$current.StartTime.ToUniversalTime().Ticks.ToString()}}
+ Attempt 'bootstrap-result-save' {
+  $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}
+  Write-Json $name @{owner=$owner;nonce=$Nonce;process=$processIdentity;passed=$false;primary=$primary;secondary=@($secondary.ToArray());attempts=@($attempts.ToArray());streams=@();startupRecovery=@();resourceRecovery=@{confirmed=$true;jobEmpty=$null;retained=@()};recovered=$true;parentKilled=$false;knownExited=0}
+  $script:bootstrapSaved=$true
+ }
+ if(!$bootstrapSaved){[Console]::Error.WriteLine((@{passed=$false;primary=$primary;secondary=@($secondary.ToArray())}|ConvertTo-Json -Depth 12 -Compress))}
+ exit 1
+}
+function Identity([Diagnostics.Process]$process) {
+ return [ordered]@{owner=$owner;pid=$process.Id;creation=$process.StartTime.ToUniversalTime().Ticks.ToString();nonce=$Nonce}
+}
+function Wait-File([string]$name,[int]$milliseconds) {
+ $clock=[Diagnostics.Stopwatch]::StartNew()
+ while($clock.ElapsedMilliseconds -lt $milliseconds){
+  if(Test-Path -LiteralPath (Join-Path $run $name)){return (Read-Json $name)}
+  Start-Sleep -Milliseconds 25
+ }
+ throw 'metadata待機期限超過'
+}
+function New-Supervisor([string]$childMode,[string]$prefix) {
+ $ps=[Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
+ $childArguments=@('-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode',$childMode,'-Scenario',$Scenario,'-RunDirectory',$run,'-Nonce',$Nonce,'-NodePath',$NodePath)
+ return [M21Child]::Start($ps,$childArguments,$PSScriptRoot,(Join-Path $run $prefix))
+}
+function Register-Child([M21Child]$child,[string]$role) {
+ $script:held.Add($child)
+ if($null -ne $child.StartupFailure){
+  $script:startupRecovery.Add([ordered]@{role=$role;pid=$child.RecordedPid;creation=$child.RecordedCreation;logs=$child.LogPrefix;exited=$child.StartupExited;stdoutAdopted=($null -ne $child.OutTask);stderrAdopted=($null -ne $child.ErrTask);stdoutEof=$child.StartupStdoutEof;stderrEof=$child.StartupStderrEof;retainedAtStartup=(!$child.StartupExited -or !$child.StartupStdoutEof -or !$child.StartupStderrEof);failures=@($child.StartupCleanupFailures.ToArray())})
+  Fail ($role+'-start') $child.StartupFailure
+  for($i=0;$i -lt $child.StartupCleanupExceptions.Count;$i++){Fail ($role+'-start-cleanup-'+$child.StartupCleanupFailures[$i].Split(':')[0]) $child.StartupCleanupExceptions[$i]}
+  throw '起動境界失敗。保持Processはfinallyで再確認する'
+ }
+}
+function Capture([M21Child]$child,[string]$role,[int]$milliseconds) {
+ if(!$child.Started){$script:streams.Add(@{role=$role;notStarted=$true;exited=$true;exitCode=$null;stdoutEof=$true;stderrEof=$true});$child.Captured=$true;return}
+ $item=[ordered]@{role=$role;exited=$false;exitCode=$null;stdoutEof=$false;stderrEof=$false}
+ try{$item.exited=$child.Process.WaitForExit($milliseconds);if($item.exited){$item.exitCode=$child.Process.ExitCode}}catch{Fail ($role+'-exit') $_.Exception}
+ if(!$item.exited){$script:recovered=$false;Fail ($role+'-exit-timeout') ([TimeoutException]::new())}
+ try{$item.stdoutEof=$child.Eof($true,$milliseconds);if(!$item.stdoutEof){throw 'stdout EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stdout') $_.Exception}
+ try{$item.stderrEof=$child.Eof($false,$milliseconds);if(!$item.stderrEof){throw 'stderr EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stderr') $_.Exception}
+ $script:streams.Add($item)
+ $child.Captured=$true
+}
+function Open-Known([object]$metadata,[M21Job]$expectedJob) {
+ if($metadata.owner -cne $owner -or $metadata.nonce -cne $Nonce){throw '子owner/nonce不一致'}
+ $p=[Diagnostics.Process]::GetProcessById([int]$metadata.pid)
+ try{
+  $handle=$p.Handle
+  if($p.StartTime.ToUniversalTime().Ticks.ToString() -cne [string]$metadata.creation){throw '子世代不一致'}
+  if($null -ne $expectedJob -and ![M21Job]::InJob($p,$expectedJob)){throw '親所有Job不一致'}
+  return $p
+ }catch{$p.Dispose();throw}
+}
+try {
+ Guard-Run
+ if(![IO.Path]::IsPathRooted($NodePath) -or [IO.Path]::GetFileName($NodePath) -ine 'node.exe' -or !(Test-Path -LiteralPath $NodePath -PathType Leaf)){throw 'Node exe不一致'}
+ $dummy=Join-Path $PSScriptRoot 'm21-windows-supervisor.probe.cjs'
+ if($Mode -eq 'Supervisor'){
+  # 親のexact Job認定ack後に初期化した型で補助観測する。
+  if(![M21Job]::InJob($self,$null)){throw 'ack後Job不在'}
+  Guard-Run
+  $child=[M21Child]::Start($NodePath,@($dummy,'--dummy','child',$run,$Nonce,$Scenario),$run,(Join-Path $run 'dummy'))
+  Register-Child $child 'dummy'
+  Write-Json 'child-candidate.json' (Identity $child.Process)
+  $g=Wait-File 'grandchild.json' 3000
+  # childが同一信頼runへ登録した孫だけを観測。未知PID停止口はない。
+  if($g.nonce -cne $Nonce){throw '孫nonce不一致'}
+  $grand=[Diagnostics.Process]::GetProcessById([int]$g.pid)
+  try{
+   $gh=$grand.Handle
+   if(![M21Job]::InJob($grand,$null)){throw '孫Job不一致'}
+   Write-Json 'grandchild-candidate.json' (Identity $grand)
+  }finally{$grand.Dispose()}
+  if($Scenario -eq 'kill-close'){Start-Sleep -Seconds 20;throw 'observer未動作'}
+  if(!$child.Process.WaitForExit(4000)){throw 'dummy exit期限超過'}
+  if($child.Process.ExitCode -ne 0){Fail 'dummy-nonzero' ([InvalidOperationException]::new())}
+  Capture $child 'dummy' 500
+ }elseif($Mode -eq 'Observe'){
+  # observerはJob外に残る。親は直接保持Processだけを停止する。
+  $parent=New-Supervisor 'Parent' 'parent';Register-Child $parent 'parent'
+  $known=New-Object 'Collections.Generic.List[object]'
+  try{
+   # 自分が直接保持した親世代が、自身Jobで認定した集合だけを採用する。
+   $certificate=Wait-File 'certified-tree.json' 8000
+   $parentIdentity=Identity $parent.Process
+   if($certificate.owner -cne $owner -or $certificate.nonce -cne $Nonce -or $certificate.certifier.owner -cne $owner -or $certificate.certifier.nonce -cne $Nonce -or $certificate.certifier.pid -ne $parentIdentity.pid -or [string]$certificate.certifier.creation -cne $parentIdentity.creation -or $certificate.members.Count -ne 3){throw '親認定metadata不一致'}
+   $roles=@($certificate.members | ForEach-Object {$_.role})
+   if(($roles -join ',') -cne 'supervisor,child,grandchild'){throw '親認定集合不一致'}
+   foreach($member in $certificate.members){if($member.ownedJobVerified -ne $true){throw '親所有Job未認定'};$known.Add((Open-Known $member.identity $null))}
+   foreach($p in $known){if($p.HasExited){throw 'RequiredAlive早期終了'}}
+   $parent.Process.Kill()
+   foreach($p in $known){if(!$p.WaitForExit(5000)){throw 'kill-on-close子残留'}}
+   Write-Json 'observer.json' @{owner=$owner;nonce=$Nonce;parentKilled=$true;knownExited=$known.Count}
+  }finally{foreach($p in $known){Attempt 'observer-handle-close' {$p.Dispose()}}}
+ }else{
+  Set-Operation 'Parent.createJob'
+  $job=[M21Job]::Create()
+  Set-Operation 'Parent.startSupervisor'
+  $supervisor=New-Supervisor 'Supervisor' 'supervisor';Register-Child $supervisor 'supervisor'
+  Set-Operation 'Parent.readHello'
+  $hello=Wait-File 'hello.json' 5000
+  Set-Operation 'Parent.identity'
+  $identity=Identity $supervisor.Process
+  if($hello.owner -cne $owner -or $hello.nonce -cne $Nonce -or $hello.pid -ne $identity.pid -or [string]$hello.creation -cne $identity.creation -or $supervisor.Process.HasExited){throw 'hello世代不一致'}
+  if($Scenario -eq 'assign-fail'){throw '割当失敗の故障注入'}
+  Set-Operation 'Parent.assign'
+  $job.Assign($supervisor.Process)
+  Set-Operation 'Parent.publishOwned'
+  Write-Json 'supervisor-owned.json' $identity
+  if($Scenario -ne 'pre-ack'){
+   $ackNonce=$Nonce;if($Scenario -eq 'wrong-ack'){$ackNonce='00000000000000000000000000000000'}
+   Set-Operation 'Parent.publishAck'
+   Write-Json 'ack.json' @{owner=$owner;nonce=$ackNonce;pid=$identity.pid;creation=$identity.creation;ownedJobVerified=$true}
+  }
+  if($Scenario -eq 'kill-close'){
+   $members=New-Object 'Collections.Generic.List[object]'
+   foreach($entry in @(@{role='supervisor';identity=$identity},@{role='child';identity=(Wait-File 'child-candidate.json' 5000)},@{role='grandchild';identity=(Wait-File 'grandchild-candidate.json' 5000)})){
+    $verified=Open-Known $entry.identity $job
+    $certified.Add($verified)
+    if($verified.HasExited){throw '認定前RequiredAlive終了'}
+    $members.Add(@{role=$entry.role;identity=$entry.identity;ownedJobVerified=$true})
+   }
+   Write-Json 'certified-tree.json' @{owner=$owner;nonce=$Nonce;certifier=(Identity ([Diagnostics.Process]::GetCurrentProcess()));members=@($members.ToArray())}
+   Start-Sleep -Seconds 20;throw 'observer待機期限超過'
+  }
+  Set-Operation 'Parent.wait'
+  if(!$supervisor.Process.WaitForExit(9000)){throw 'supervisor exit期限超過'}
+  if(Test-Path -LiteralPath (Join-Path $run 'supervisor-result.json')){
+   $inner=Read-Json 'supervisor-result.json'
+   if($null -ne $inner.primary){$primary=$inner.primary}
+   foreach($failure in $inner.secondary){$secondary.Add($failure)}
+   foreach($item in $inner.streams){$streams.Add($item)}
+   foreach($item in $inner.startupRecovery){$startupRecovery.Add($item)}
+  }
+  if($supervisor.Process.ExitCode -ne 0 -and $null -eq $primary){Fail 'dummy-nonzero' ([InvalidOperationException]::new())}
+  if($Scenario -eq 'normal'){
+   $inner=Read-Json 'supervisor-result.json'
+   if(!$inner.passed -or !$inner.recovered){throw 'inner失敗'}
+  }
+ }
+}catch{Fail 'execution' $_.Exception $_}
+finally {
+ if($Mode -ne 'Supervisor'){
+  Attempt 'job-stop' {if($null -ne $job){$job.Stop()}}
+  foreach($child in $held){
+   Attempt 'direct-stop' {if($child.Started -and !$child.Process.HasExited){$child.Process.Kill()}}
+   Attempt 'exit-and-streams' {Capture $child 'direct' 1500}
+  }
+  Attempt 'job-empty' {
+   if($null -ne $job){
+    $clock=[Diagnostics.Stopwatch]::StartNew()
+    while($job.Active() -gt 0 -and $clock.ElapsedMilliseconds -lt 3000){Start-Sleep -Milliseconds 25}
+    $script:jobEmpty=($job.Active() -eq 0)
+    if(!$script:jobEmpty){$script:recovered=$false;throw 'Job残留'}
+   }
+  }
+  Attempt 'job-close' {if($null -ne $job){$job.Dispose();$job=$null}}
+  # 将来のDocker清掃/ledgerの位置。prototypeは自己dummyだけを扱う。
+  Attempt 'external-cleanup' {Guard-Run;if($Scenario -eq 'cleanup-fail'){throw 'cleanup故障注入'}}
+ }
+ # 起動catchで回収不明だった対象も、保持情報を失う前に再度独立に確認する。
+ if($Mode -eq 'Supervisor'){
+  foreach($child in $held){if($null -ne $child.StartupFailure){
+   Attempt 'direct-stop' {if($child.Started -and !$child.Process.HasExited){$child.Process.Kill()}}
+   Attempt 'exit-and-streams' {Capture $child 'startup-recheck' 1000}
+  }elseif(!$child.Captured){
+   # bodyの早期throwでCapture未到達なら、親Job回収へ委ねる未確認として残す。
+   $script:recovered=$false
+   Fail 'supervisor-unobserved-child' ([InvalidOperationException]::new())
+  }}
+ }
+ foreach($p in $certified){Attempt 'certified-handle-close' {$p.Dispose()}}
+ foreach($child in $held){Attempt 'dispose' {$child.Dispose()}}
+ $observer=$null
+ Attempt 'observer-metadata' {
+  if($Mode -eq 'Observe' -and (Test-Path -LiteralPath (Join-Path $run 'observer.json'))){
+   $candidate=Read-Json 'observer.json'
+   if($candidate.owner -cne $owner -or $candidate.nonce -cne $Nonce -or $candidate.parentKilled -ne $true -or $candidate.knownExited -ne 3){throw 'observer metadata不一致'}
+   $script:observer=$candidate
+  }
+ }
+ Attempt 'result-save' {Guard-Run;if($Scenario -eq 'save-fail'){throw '初回保存失敗の故障注入'}}
+ $processIdentity=$null
+ Attempt 'process-identity' {$script:processIdentity=Identity ([Diagnostics.Process]::GetCurrentProcess())}
+ # streamsは一次観測、resourceRecoveryは後続Job/直接handle回収の別事実。
+ $retained=New-Object 'Collections.Generic.List[object]'
+ if(!$recovered){foreach($child in $held){$retained.Add(@{pid=$child.RecordedPid;creation=$child.RecordedCreation;logs=$child.LogPrefix;reason='direct-exit/stream/Job recovery unconfirmed'})}}
+ $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
+ if($null -ne $observer){$result.knownExited=$observer.knownExited}
+ try{
+  $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}
+  Write-Json $name $result
+ }catch{
+  Fail 'result-save-final' $_.Exception $_
+  [Console]::Error.WriteLine('M21_RESULT_SAVE_FAILED')
+ }
+}
+if($null -ne $primary){exit 1}
+exit 0

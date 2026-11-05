@@ -1,0 +1,206 @@
+﻿// Windows Job Object の固定dummy専用probe。通常のサーバやブラウザを起動しない。
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const { spawn } = require('node:child_process');
+const OWNER = 'd7249e88-1678-4e0c-ae21-a550989098a6';
+const scenarios = ['normal', 'pre-ack', 'wrong-ack', 'assign-fail', 'host-fail', 'stdio-eof', 'cleanup-fail', 'save-fail', 'owner-mismatch', 'kill-close'];
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+const LIMIT = Object.freeze({ launch: 30000, channel: 2000, recoveryExit: 5000, recoveryChannel: 2000, poll: 25 });
+function atomic(file, value) {
+  fs.writeFileSync(`${file}.next`, JSON.stringify(value), { flag: 'wx' });
+  fs.renameSync(`${file}.next`, file);
+}
+function read(file) {
+  const stat = fs.lstatSync(file);
+  assert.ok(stat.isFile() && !stat.isSymbolicLink() && stat.size <= 16384);
+  return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
+}
+async function until(predicate, ms) {
+  const end = performance.now() + ms;
+  while (performance.now() < end) {
+    if (predicate()) return;
+    await wait(LIMIT.poll);
+  }
+  throw new Error('固定probe期限超過');
+}
+function observeChannel(name, source, target) {
+  const state = { name, file: target.path, eof: false, readClosed: false, readError: null, written: false, writeClosed: false, writeError: null };
+  source.on('end', () => { state.eof = true; });
+  source.on('close', () => { state.readClosed = true; });
+  source.on('error', error => { state.readError = error.message; });
+  target.on('finish', () => { state.written = true; });
+  target.on('close', () => { state.writeClosed = true; });
+  target.on('error', error => { state.writeError = error.message; });
+  source.pipe(target);
+  return { source, target, state };
+}
+async function collectChannel(channel) {
+  const failures = [];
+  const state = channel.state;
+  try {
+    await until(() => state.eof || state.readError !== null, LIMIT.channel);
+    if (state.readError !== null) throw new Error(state.readError);
+  } catch (error) { failures.push({ stage: state.name + '-eof', reason: error.message }); }
+  // EOF失敗でも、もう一方のstreamとファイル書込完了は独立に待つ。
+  try {
+    await until(() => (state.written && state.writeClosed) || state.writeError !== null, LIMIT.channel);
+    if (state.writeError !== null) throw new Error(state.writeError);
+  } catch (error) { failures.push({ stage: state.name + '-write', reason: error.message }); }
+  return failures;
+}
+async function recoverChannel(channel) {
+  const state = channel.state;
+  channel.source.destroy();
+  if (!channel.target.writableEnded) channel.target.end();
+  let failure = null;
+  try {
+    await until(() => state.readClosed && state.writeClosed, LIMIT.recoveryChannel);
+  } catch (error) { failure = error.message; }
+  if (!state.writeClosed) channel.target.destroy();
+  return { ...state, recoveryWaitFailure: failure };
+}
+async function dummy(role, run, nonce, scenario) {
+  assert.ok(['child', 'grandchild', 'hold-stream'].includes(role));
+  assert.ok(scenarios.includes(scenario) && /^[a-f0-9]{32}$/.test(nonce));
+  const owner = read(path.join(run, 'owner.json'));
+  assert.equal(owner.owner, OWNER);
+  assert.equal(owner.nonce, nonce);
+  process.stdout.write(`${role}:out\n`);
+  process.stderr.write(`${role}:err\n`);
+  atomic(path.join(run, `${role}.json`), { pid: process.pid, nonce });
+  if (role === 'child') {
+    const grandchild = spawn(process.execPath, [__filename, '--dummy', 'grandchild', run, nonce, scenario], { windowsHide: true, stdio: 'inherit' });
+    grandchild.on('error', () => { process.exitCode = 2; });
+    await until(() => fs.existsSync(path.join(run, 'grandchild.json')), 3000);
+    if (scenario === 'host-fail' || scenario === 'cleanup-fail') process.exit(17);
+    if (scenario === 'stdio-eof') process.exit(0); // 孫が継承pipeを開いたままにする。
+    if (scenario === 'kill-close') {
+      await wait(15000); // 親死亡時のJob回収を外側observerが実handleで確認する。
+      process.exit(19);
+    }
+    const code = await new Promise((resolve, reject) => { grandchild.on('exit', resolve); grandchild.on('error', reject); });
+    assert.equal(code, 0);
+    return;
+  }
+  await wait(scenario === 'stdio-eof' || scenario === 'kill-close' ? 15000 : 800);
+}
+async function suite() {
+  assert.equal(process.platform, 'win32', 'Windows専用。非Windowsを合格扱いにしない');
+  assert.equal(process.argv.length, 2, '任意commandや出力pathの入力は受け付けない');
+  const script = path.join(__dirname, 'm21-windows-supervisor.ps1');
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'm21-job-probe-'));
+  const baseIdentity = fs.lstatSync(base);
+  const baseCanonical = fs.realpathSync(base);
+  const results = [];
+  // このharness自身が新規作成した領域だけを最後に撤去する。
+  fs.writeFileSync(path.join(base, 'owner.json'), JSON.stringify({ owner: OWNER, purpose: 'M21固定dummy probe' }), { flag: 'wx' });
+  let allRecovered = true;
+  try {
+    for (const scenario of scenarios) {
+      const run = path.join(base, scenario);
+      fs.mkdirSync(run);
+      const nonce = crypto.randomBytes(16).toString('hex');
+      atomic(path.join(run, 'owner.json'), { owner: OWNER, nonce });
+      const p = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', script,
+        '-Mode', scenario === 'kill-close' ? 'Observe' : 'Parent', '-Scenario', scenario,
+        '-RunDirectory', run, '-Nonce', nonce, '-NodePath', process.execPath], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+      // 親stdioも捨てず、有限終端まで採取する。内容は資格情報を含まない固定dummyだけ。
+      const out = fs.createWriteStream(path.join(run, 'launcher.out'), { flags: 'wx' });
+      const err = fs.createWriteStream(path.join(run, 'launcher.err'), { flags: 'wx' });
+      const channels = [observeChannel('stdout', p.stdout, out), observeChannel('stderr', p.stderr, err)];
+      let code = null;
+      let exited = false;
+      let closed = false;
+      let launchError;
+      let receipt = null;
+      p.on('error', error => { launchError = error; });
+      p.on('exit', value => { code = value; exited = true; });
+      p.on('close', () => { closed = true; });
+      try {
+        let launchFailure = null;
+        try { await until(() => exited || launchError !== undefined, LIMIT.launch); } catch (error) { launchFailure = error; }
+        const channelFailures = [];
+        for (const channel of channels) channelFailures.push(...await collectChannel(channel));
+        if (launchFailure) throw launchFailure;
+        if (launchError) throw launchError;
+        if (channelFailures.length) throw new Error(JSON.stringify(channelFailures));
+        receipt = read(path.join(run, 'result.json'));
+        assert.equal(receipt.nonce, nonce);
+        assert.equal(receipt.owner, OWNER);
+        assert.equal(receipt.recovered, true, `${scenario}: 自身資源の回収不明`);
+        assert.equal(code, scenario === 'normal' || scenario === 'kill-close' ? 0 : 1);
+        assert.equal(receipt.passed, code === 0);
+        if (scenario === 'normal') {
+          assert.equal(receipt.primary, null);
+          assert.ok(receipt.streams.every(s => s.exited && s.stdoutEof && s.stderrEof));
+        } else if (scenario === 'kill-close') {
+          assert.equal(receipt.parentKilled, true);
+          assert.equal(receipt.knownExited, 3);
+        } else {
+          assert.ok(receipt.primary);
+          assert.ok(receipt.attempts.includes('external-cleanup'));
+          assert.ok(receipt.attempts.includes('result-save'));
+          if (['pre-ack', 'wrong-ack', 'assign-fail', 'owner-mismatch'].includes(scenario)) {
+            assert.equal(fs.existsSync(path.join(run, 'child.json')), false);
+          }
+          if (scenario === 'cleanup-fail') assert.equal(receipt.primary.stage, 'dummy-nonzero');
+          if (scenario === 'save-fail') assert.equal(receipt.primary.stage, 'result-save');
+          if (scenario === 'stdio-eof') {
+            assert.equal(receipt.resourceRecovery.jobEmpty, true);
+            assert.ok(receipt.streams.some(s => !s.stdoutEof || !s.stderrEof), '一次EOF失敗を後続Job回収で消さない');
+          }
+        }
+        results.push({ scenario, passed: true, launcherPid: p.pid, launcherCreation: receipt.process?.creation ?? null,
+          launcherExitCode: code, launcherExited: exited, channels: channels.map(c => c.state) });
+      } catch (error) {
+        allRecovered = false;
+        // own childだけ。Job親のkillでJob treeを閉じる。成功・回収済みとは主張しない。
+        let killFailure = null;
+        if (!exited && p.pid) { try { p.kill(); } catch (killError) { killFailure = killError.message; } }
+        let cleanupFailure = null;
+        try { await until(() => exited || launchError !== undefined, LIMIT.recoveryExit); } catch (cleanupError) { cleanupFailure = cleanupError.message; }
+        const channelRecovery = [];
+        for (const channel of channels) {
+          try { channelRecovery.push(await recoverChannel(channel)); }
+          catch (channelError) { channelRecovery.push({ ...channel.state, recoveryWaitFailure: channelError.message }); }
+        }
+        results.push({ scenario, passed: false, reason: error.message, killFailure, cleanupFailure,
+          ownLauncherPid: p.pid ?? null, ownLauncherCreation: receipt?.process?.creation ?? null,
+          ownLauncherExitCode: code, ownLauncherExited: exited, ownLauncherClosed: closed, channels: channelRecovery });
+        // 回収不明をretainedへ記録して非0にする。未知PID/子へ再取得して接続しない。
+        p.unref();
+        break;
+      }
+    }
+  } finally {
+    if (allRecovered && results.length === scenarios.length) {
+      try {
+        const current = fs.lstatSync(base);
+        assert.ok(current.isDirectory() && !current.isSymbolicLink());
+        assert.equal(current.dev, baseIdentity.dev);
+        assert.equal(current.ino, baseIdentity.ino);
+        assert.equal(fs.realpathSync(base), baseCanonical);
+        assert.equal(read(path.join(base, 'owner.json')).owner, OWNER);
+        fs.rmSync(base, { recursive: true });
+      } catch (error) {
+        allRecovered = false;
+        results.push({ scenario: 'own-temp-cleanup', passed: false, reason: error.message });
+      }
+    }
+  }
+  console.log(JSON.stringify({ passed: allRecovered && results.length === scenarios.length && results.every(r => r.passed), results,
+    retained: allRecovered ? null : base }));
+  if (!allRecovered) process.exitCode = 1;
+}
+(async () => {
+  if (process.argv[2] === '--dummy') {
+    assert.equal(process.argv.length, 7);
+    await dummy(...process.argv.slice(3));
+  } else {
+    await suite();
+  }
+})().catch(error => { console.error(error.message); process.exitCode = 1; });
