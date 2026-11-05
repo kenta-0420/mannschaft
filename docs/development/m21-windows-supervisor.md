@@ -24,9 +24,19 @@ failure診断はexception type・InnerException type・HResultと、Win32Excepti
 
 診断採取版は既存stdoutへSupervisorの固定ASCII phaseを最大12件/合計4KiBだけ出す。entry→Guard前後→hello保存前/公開後→ack検証→native型前後をpid/creation・同一OSのUTC ticks・ローカルStopwatch elapsedで区別する。親子elapsedは原点が異なるため直接減算しない。Parentの開始前後/hello期限/kill前状態と実施有無は既存resultの最大16件の配列へ残す。CPU pollは追加しない。
 
-entryはparam直後へ置き、New-Object等cmdlet・各種List/UTF8初期化・custom型初期化より前にnative .NETだけで出す。normalのhello5秒でmetadata-timeoutが確定した場合に限り、primary/nonGreenを固定したまま追加最大3秒の観測を行う。観測中のJob割当・ACK発行・work解禁は0。lateObservationに遅延hello/保持Process状態/既存stdout byte数を保存し、phase本体は既存stdout原本で確認する。遅延helloが見えても合格へ変更しない。初期phase0ならengine/param前を含む未観測として返し、原因は推測しない。
+entryはparam直後へ置き、New-Object等cmdlet・各種List/UTF8初期化・custom型初期化より前にnative .NETだけで出す。履歴（91fad953、GO Aでは撤去済）として、normalのhello5秒失敗を固定後に最大3秒の非解禁観測を置いていた。今回の単一予算ではこの追加観測を実行せず、二重消費しない。初期phase0ならengine/param前を含む未観測として返し、原因は推測しない。
 
-制御された待機のnormal hello失敗分岐は5秒+観測3秒+直接exit/両pump各1.5秒+Jobempty3秒=最大15.5秒、hello成功分岐は5秒+Supervisor exit9秒+直接exit/両pump各1.5秒+Jobempty3秒=最大21.5秒。同期OS/IOは従来どおり別の不確定要因とし、launcher30秒がこれらを包む。全体の待機式上限390325ms/外側420秒は変更しない。ack2.5秒・fixture保持時間・短命孫の旧PS実装も変更しない。観測の追加猶予は診断だけであり成功期限の延長ではない。
+旧分岐の15.5/21.5秒と独立launcher30秒は履歴値であり、製品ACではない。GO AはNodeのperformance.nowで自己Temp準備・最初のspawnより前に一度だけG=start+420000ms、R=18000ms、W=G-Rを設定し、caseごとにresetしない。Nodeが最終停止正本。PS/.NETやdummyのローカルclockと原点が同じとは仮定しない。
+
+| wait/境界 | GO Aでの扱い |
+|---|---|
+| Node launcher/admission、PS hello/通常ACK/孫metadata/dummy終了/Supervisor終了/P4候補認定、dummy孫exit | 同じremainingWへclamp。独立30/5/3/4/8/9秒打切りは撤去 |
+| spawn/Add-Type/Job assign/ACK/子解禁 | 各側のremainingW>0が必要。Node W到達でchannel収集より先に直接保持launcher停止を開始し、新case spawnを行わない |
+| pre-ack故障注入 | 2500msとremainingWの小さい方。work予算切れをack-timeoutの成功にしない |
+| P6 EOF観測・dummy hold | 既存500msの短期EOF、800/15000msのfixture holdを維持し、残予算で短くclamp。保持時間を延長しない |
+| exit/各EOF/finish-close/回収、C# Start失敗回収 | remainingGへclampし、既存局所capを維持。最後のWaitForExit(0)は追加待機なし |
+
+Node clockでcase/spawn前後/entry・hello・ACKの観測/actual exit/cleanupを記録する。entry等の時刻はファイルをNodeが観測した時刻であり、PS phase自体のUTC/elapsedとは区別する。固定case・数値残予算の引数だけを渡し、新metadata群やclock同期protocolは作らない。PS入場前の時間はPS側だけでは減算できないため、Node W/Gを越えた回収不明をgreenへ変換しない。
 
 metadata-timeoutには固定理由・filename・elapsed/limitを付け、JSON IOはget-item/read/decode、guard/open/write/close/moveを区別する。ScriptStackTraceの英語形式が得られなければtrusted script一致のInvocationInfo.ScriptLineNumberへfallbackする。最後の保持handleでWaitForExit(0)とpump完了を再観測し、一次失敗は消さない。追加待機はない。
 
@@ -42,9 +52,11 @@ Windows標準PowerShellと既存Nodeだけを使う。新依存/SDK/ダウンロ
 
     node scripts/m21-windows-supervisor.probe.cjs
 
-10 case逐次。launcherの実exitを最大30秒、stdout EOF・stdout書込finish/close・stderr EOF・stderr書込finish/closeをそれぞれ最大2秒で別々に待つ。実exitとChildProcess closeを同一視しない。失敗後も直接own childのexitを最大5秒、各streamのclose/書込回収をそれぞれ最大2秒待ち、失敗はstream別の保持情報へ残す。無期限finished待機はない。
+10 case逐次で総W/Gを共有する。実exitとChildProcess closeを同一視しない。stdout EOF・書込finish/close・stderr EOF・書込finish/closeは各最大2秒、失敗後の直接own child exit最大5秒、各stream回収各最大2秒をremainingGでclampする。無期限finished待機はない。
 
-pollは25msなので、待機式の保守的上限は **10 × (30000 + 25 + 4 × (2000 + 25)) + (5000 + 25) + 2 × (2000 + 25) = 390325ms**。最初の失敗で次caseへ進まず、末尾の回収項は最大1回。C#起動catchの有限回収もlauncher30秒枠内で観測する。外側観測の予算案は420秒。これは制御された待機の予算であり、同期filesystemやOS fatalの完了を保証するものではない。timeout/未回収はnonGreenと正確なretained対象で返し、上限超過を成功に読み替えない。
+回収reserveは **4×(2000+25)+(5000+25)+2×(2000+25)=17175ms < R=18000ms**。workは最大402000ms、総Gは420000msで、各待機はその残りを上限とする。W到達時は先に停止を開始するため、回収前にEOF待機へreserveを浪費しない。最初の失敗/予算切れで残caseへ進まず未実施を返す。同期filesystem/OS fatal/event-loop pauseまで420秒以内に完了する保証ではなく、未回収はexact retainedへ残す。
+
+P4で外側がObserveを停止しただけでは、Observeが所有するParent/Job treeを回収済みとしない。総期限途中停止はunverifiedOwnedTreeとexact runを保持し、未知PIDへ接続して停止しない。GO Aがhost REDで停止した場合はP4未実施であり、この制限を試験済みとはしない。
 
 成功時だけ新規自己Tempを所有marker照合後撤去し、その結果も確認してからpassedを出す。failure/回収不明時は正確なretained pathと直接launcher pid・exit/close・stream別状態をJSONに残し、成功・清掃済みとしない。launcher.out/err、dummy.out/err等は固定dummyだけ。資格情報を入力しない。
 

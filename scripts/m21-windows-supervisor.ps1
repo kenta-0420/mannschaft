@@ -5,7 +5,9 @@ param(
  [Parameter(Mandatory=$true)][ValidateSet('normal','pre-ack','wrong-ack','assign-fail','host-fail','stdio-eof','cleanup-fail','save-fail','owner-mismatch','kill-close')][string]$Scenario,
  [Parameter(Mandatory=$true)][string]$RunDirectory,
  [Parameter(Mandatory=$true)][ValidatePattern('^[a-f0-9]{32}$')][string]$Nonce,
- [Parameter(Mandatory=$true)][string]$NodePath
+ [Parameter(Mandatory=$true)][string]$NodePath,
+ [Parameter(Mandatory=$true)][ValidateRange(0,420000)][int]$WorkRemainingMs,
+ [Parameter(Mandatory=$true)][ValidateRange(0,420000)][int]$TotalRemainingMs
 )
 $localClock=[Diagnostics.Stopwatch]::StartNew()
 $phaseCount=0
@@ -47,6 +49,13 @@ $lastHandles=New-Object 'Collections.Generic.List[object]'
 $lateObservation=$null
 $assigned=$false
 $ackPublished=$false
+function Remaining([int]$cap=[int]::MaxValue,[switch]$Recovery) {
+ $budget=$WorkRemainingMs;if($Recovery){$budget=$TotalRemainingMs}
+ return [int][Math]::Max(0,[Math]::Min($cap,[Math]::Floor($budget-$localClock.Elapsed.TotalMilliseconds)))
+}
+function Require-Work {
+ if((Remaining) -le 0){Set-Reason 'work-budget-exhausted';throw 'work budget exhausted'}
+}
 # Job handleは親のSafeHandleだけで保持する。名前/継承/複製を提供しない。
 $nativeCode=@'
 using System;
@@ -100,7 +109,9 @@ public sealed class M21Child : IDisposable {
   foreach(char c in s){if(c=='\\'){slash++;continue;}if(c=='"'){b.Append('\\',slash*2+1);b.Append(c);}else{b.Append('\\',slash);b.Append(c);}slash=0;}
   b.Append('\\',slash*2);b.Append('"');return b.ToString();
  }
- public static M21Child Start(string exe,string[] args,string cwd,string prefix) {
+ public static M21Child Start(string exe,string[] args,string cwd,string prefix,int recoveryMs) {
+  Stopwatch recoveryClock=Stopwatch.StartNew();
+  Func<int,int> remaining=cap=>Math.Max(0,Math.Min(cap,recoveryMs-(int)recoveryClock.ElapsedMilliseconds));
   M21Child c=new M21Child();c.LogPrefix=prefix;
   try {
    c.output=new FileStream(prefix+".out",FileMode.CreateNew,FileAccess.Write,FileShare.Read);
@@ -120,10 +131,10 @@ public sealed class M21Child : IDisposable {
    c.StartupFailure=original;
    if(c.Started){
     try{if(!c.Process.HasExited)c.Process.Kill();}catch(Exception e){c.CleanupFailure("kill",e);}
-    try{c.StartupExited=c.Process.WaitForExit(1000);if(!c.StartupExited)c.CleanupFailure("exit",new TimeoutException());}catch(Exception e){c.CleanupFailure("exit",e);}
+    try{c.StartupExited=c.Process.WaitForExit(remaining(1000));if(!c.StartupExited)c.CleanupFailure("exit",new TimeoutException());}catch(Exception e){c.CleanupFailure("exit",e);}
    }else{c.StartupExited=true;}
-   try{c.StartupStdoutEof=!c.Started||c.Eof(true,500);if(!c.StartupStdoutEof)c.CleanupFailure("stdout",new TimeoutException());}catch(Exception e){c.CleanupFailure("stdout",e);}
-   try{c.StartupStderrEof=!c.Started||c.Eof(false,500);if(!c.StartupStderrEof)c.CleanupFailure("stderr",new TimeoutException());}catch(Exception e){c.CleanupFailure("stderr",e);}
+   try{c.StartupStdoutEof=!c.Started||c.Eof(true,remaining(500));if(!c.StartupStdoutEof)c.CleanupFailure("stdout",new TimeoutException());}catch(Exception e){c.CleanupFailure("stdout",e);}
+   try{c.StartupStderrEof=!c.Started||c.Eof(false,remaining(500));if(!c.StartupStderrEof)c.CleanupFailure("stderr",new TimeoutException());}catch(Exception e){c.CleanupFailure("stderr",e);}
    return c;
   }
  }
@@ -250,6 +261,7 @@ function Write-Json([string]$name,[object]$value) {
 }
 $bootstrapStage='native-bootstrap'
 try {
+ if($WorkRemainingMs -gt $TotalRemainingMs){Set-Reason 'invalid-budget';throw 'work/total budget不一致'}
  # Supervisorは型compileも子を生み得るものとして、標準Process/JSONのgateだけを先行する。
  # この区間にはcustom型参照/外部command/Process.Startを置かない。
  if($Mode -eq 'Supervisor'){
@@ -264,14 +276,19 @@ try {
   Write-Json 'hello.json' $identity
   Emit-Phase 'hello-published'
   $clock=[Diagnostics.Stopwatch]::StartNew()
-  while(!(Test-Path -LiteralPath (Join-Path $run 'ack.json')) -and $clock.ElapsedMilliseconds -lt 2500){Start-Sleep -Milliseconds 25}
-  if(!(Test-Path -LiteralPath (Join-Path $run 'ack.json'))){Set-Reason 'ack-timeout' 'ack.json' $clock.ElapsedMilliseconds 2500;throw 'ack待機期限超過'}
+  $ackLimit=Remaining;if($Scenario -eq 'pre-ack'){$ackLimit=[Math]::Min(2500,$ackLimit)}
+  while(!(Test-Path -LiteralPath (Join-Path $run 'ack.json')) -and $clock.ElapsedMilliseconds -lt $ackLimit -and (Remaining) -gt 0){Start-Sleep -Milliseconds ([Math]::Min(25,(Remaining)))}
+  if(!(Test-Path -LiteralPath (Join-Path $run 'ack.json'))){
+   if($Scenario -eq 'pre-ack' -and $clock.ElapsedMilliseconds -ge 2500 -and (Remaining) -gt 0){Set-Reason 'ack-timeout' 'ack.json' $clock.ElapsedMilliseconds 2500}else{Set-Reason 'work-budget-exhausted' 'ack.json' $clock.ElapsedMilliseconds $ackLimit}
+   throw 'ack待機期限超過'
+  }
   $ack=Read-Json 'ack.json'
   if($ack.owner -cne $owner -or $ack.nonce -cne $Nonce -or $ack.pid -ne $self.Id -or [string]$ack.creation -cne $identity.creation -or $ack.ownedJobVerified -ne $true){Set-Reason 'ack-mismatch' 'ack.json';throw 'ack/親Job認定不一致'}
   Emit-Phase 'ack-validated'
   Guard-Run
  }
  $bootstrapStage='native-bootstrap'
+ Require-Work
  if($Mode -eq 'Supervisor'){Emit-Phase 'native-before'}
  Add-Type -TypeDefinition $nativeCode
  if($Mode -eq 'Supervisor'){Emit-Phase 'native-after'}
@@ -293,20 +310,23 @@ catch {
 function Identity([Diagnostics.Process]$process) {
  return [ordered]@{owner=$owner;pid=$process.Id;creation=$process.StartTime.ToUniversalTime().Ticks.ToString();nonce=$Nonce}
 }
-function Wait-File([string]$name,[int]$milliseconds) {
+function Wait-File([string]$name) {
  $clock=[Diagnostics.Stopwatch]::StartNew()
- while($clock.ElapsedMilliseconds -lt $milliseconds){
+ $milliseconds=Remaining
+ while((Remaining) -gt 0){
   if(Test-Path -LiteralPath (Join-Path $run $name)){return (Read-Json $name)}
-  Start-Sleep -Milliseconds 25
+  Start-Sleep -Milliseconds ([Math]::Min(25,(Remaining)))
  }
- Set-Reason 'metadata-timeout' $name $clock.ElapsedMilliseconds $milliseconds
+ Set-Reason 'work-budget-exhausted' $name $clock.ElapsedMilliseconds $milliseconds
  if($operation -eq 'Parent.readHello'){Parent-Event 'hello-deadline'}
  throw 'metadata待機期限超過'
 }
 function New-Supervisor([string]$childMode,[string]$prefix) {
+ Require-Work
  $ps=[Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
- $childArguments=@('-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode',$childMode,'-Scenario',$Scenario,'-RunDirectory',$run,'-Nonce',$Nonce,'-NodePath',$NodePath)
- return [M21Child]::Start($ps,$childArguments,$PSScriptRoot,(Join-Path $run $prefix))
+ $childArguments=@('-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode',$childMode,'-Scenario',$Scenario,'-RunDirectory',$run,'-Nonce',$Nonce,'-NodePath',$NodePath,'-WorkRemainingMs',[string](Remaining),'-TotalRemainingMs',[string](Remaining -Recovery))
+ Require-Work
+ return [M21Child]::Start($ps,$childArguments,$PSScriptRoot,(Join-Path $run $prefix),(Remaining -Recovery))
 }
 function Register-Child([M21Child]$child,[string]$role) {
  $script:held.Add($child)
@@ -320,10 +340,10 @@ function Register-Child([M21Child]$child,[string]$role) {
 function Capture([M21Child]$child,[string]$role,[int]$milliseconds) {
  if(!$child.Started){$script:streams.Add(@{role=$role;notStarted=$true;exited=$true;exitCode=$null;stdoutEof=$true;stderrEof=$true});$child.Captured=$true;return}
  $item=[ordered]@{role=$role;pid=$child.RecordedPid;creation=$child.RecordedCreation;logs=$child.LogPrefix;exited=$false;exitCode=$null;stdoutEof=$false;stderrEof=$false}
- try{$item.exited=$child.Process.WaitForExit($milliseconds);if($item.exited){$item.exitCode=$child.Process.ExitCode}}catch{Fail ($role+'-exit') $_.Exception}
+ try{$item.exited=$child.Process.WaitForExit((Remaining $milliseconds -Recovery));if($item.exited){$item.exitCode=$child.Process.ExitCode}}catch{Fail ($role+'-exit') $_.Exception}
  if(!$item.exited){$script:recovered=$false;Fail ($role+'-exit-timeout') ([TimeoutException]::new())}
- try{$item.stdoutEof=$child.Eof($true,$milliseconds);if(!$item.stdoutEof){Set-Reason 'stdout-eof-timeout';throw 'stdout EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stdout') $_.Exception $_}
- try{$item.stderrEof=$child.Eof($false,$milliseconds);if(!$item.stderrEof){Set-Reason 'stderr-eof-timeout';throw 'stderr EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stderr') $_.Exception $_}
+ try{$item.stdoutEof=$child.Eof($true,(Remaining $milliseconds -Recovery));if(!$item.stdoutEof){Set-Reason 'stdout-eof-timeout';throw 'stdout EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stdout') $_.Exception $_}
+ try{$item.stderrEof=$child.Eof($false,(Remaining $milliseconds -Recovery));if(!$item.stderrEof){Set-Reason 'stderr-eof-timeout';throw 'stderr EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stderr') $_.Exception $_}
  $script:streams.Add($item)
  $child.Captured=$true
 }
@@ -345,10 +365,11 @@ try {
   # 親のexact Job認定ack後に初期化した型で補助観測する。
   if(![M21Job]::InJob($self,$null)){throw 'ack後Job不在'}
   Guard-Run
-  $child=[M21Child]::Start($NodePath,@($dummy,'--dummy','child',$run,$Nonce,$Scenario),$run,(Join-Path $run 'dummy'))
+  Require-Work
+  $child=[M21Child]::Start($NodePath,@($dummy,'--dummy','child',$run,$Nonce,$Scenario,[string](Remaining),[string](Remaining -Recovery)),$run,(Join-Path $run 'dummy'),(Remaining -Recovery))
   Register-Child $child 'dummy'
   Write-Json 'child-candidate.json' (Identity $child.Process)
-  $g=Wait-File 'grandchild.json' 3000
+  $g=Wait-File 'grandchild.json'
   # childが同一信頼runへ登録した孫だけを観測。未知PID停止口はない。
   if($g.nonce -cne $Nonce){throw '孫nonce不一致'}
   $grand=[Diagnostics.Process]::GetProcessById([int]$g.pid)
@@ -357,8 +378,8 @@ try {
    if(![M21Job]::InJob($grand,$null)){throw '孫Job不一致'}
    Write-Json 'grandchild-candidate.json' (Identity $grand)
   }finally{$grand.Dispose()}
-  if($Scenario -eq 'kill-close'){Start-Sleep -Seconds 20;throw 'observer未動作'}
-  if(!$child.Process.WaitForExit(4000)){throw 'dummy exit期限超過'}
+  if($Scenario -eq 'kill-close'){Start-Sleep -Milliseconds (Remaining);Set-Reason 'work-budget-exhausted';throw 'observer未動作'}
+  if(!$child.Process.WaitForExit((Remaining))){Set-Reason 'work-budget-exhausted';throw 'dummy exit期限超過'}
   if($child.Process.ExitCode -ne 0){Set-Reason 'dummy-nonzero';Fail 'dummy-nonzero' ([InvalidOperationException]::new())}
   Capture $child 'dummy' 500
  }elseif($Mode -eq 'Observe'){
@@ -367,7 +388,7 @@ try {
   $known=New-Object 'Collections.Generic.List[object]'
   try{
    # 自分が直接保持した親世代が、自身Jobで認定した集合だけを採用する。
-   $certificate=Wait-File 'certified-tree.json' 8000
+   $certificate=Wait-File 'certified-tree.json'
    $parentIdentity=Identity $parent.Process
    if($certificate.owner -cne $owner -or $certificate.nonce -cne $Nonce -or $certificate.certifier.owner -cne $owner -or $certificate.certifier.nonce -cne $Nonce -or $certificate.certifier.pid -ne $parentIdentity.pid -or [string]$certificate.certifier.creation -cne $parentIdentity.creation -or $certificate.members.Count -ne 3){throw '親認定metadata不一致'}
    $roles=@($certificate.members | ForEach-Object {$_.role})
@@ -375,7 +396,7 @@ try {
    foreach($member in $certificate.members){if($member.ownedJobVerified -ne $true){throw '親所有Job未認定'};$known.Add((Open-Known $member.identity $null))}
    foreach($p in $known){if($p.HasExited){throw 'RequiredAlive早期終了'}}
    $parent.Process.Kill()
-   foreach($p in $known){if(!$p.WaitForExit(5000)){throw 'kill-on-close子残留'}}
+   foreach($p in $known){if(!$p.WaitForExit((Remaining 5000 -Recovery))){throw 'kill-on-close子残留'}}
    Write-Json 'observer.json' @{owner=$owner;nonce=$Nonce;parentKilled=$true;knownExited=$known.Count}
   }finally{foreach($p in $known){Attempt 'observer-handle-close' {$p.Dispose()}}}
  }else{
@@ -387,11 +408,12 @@ try {
   Parent-Event 'start-after' $supervisor
   Set-Operation 'Parent.readHello'
   Parent-Event 'hello-wait-before' $supervisor
-  $hello=Wait-File 'hello.json' 5000
+  $hello=Wait-File 'hello.json'
   Set-Operation 'Parent.identity'
   $identity=Identity $supervisor.Process
   if($hello.owner -cne $owner -or $hello.nonce -cne $Nonce -or $hello.pid -ne $identity.pid -or [string]$hello.creation -cne $identity.creation -or $supervisor.Process.HasExited){Set-Reason 'hello-identity-mismatch' 'hello.json';throw 'hello世代不一致'}
   Set-Operation 'Parent.assign'
+  Require-Work
   if($Scenario -eq 'assign-fail'){Set-Reason 'assign-fault' 'hello.json';throw '割当失敗の故障注入'}
   $job.Assign($supervisor.Process)
   $assigned=$true
@@ -400,22 +422,23 @@ try {
   if($Scenario -ne 'pre-ack'){
    $ackNonce=$Nonce;if($Scenario -eq 'wrong-ack'){$ackNonce='00000000000000000000000000000000'}
    Set-Operation 'Parent.publishAck'
+   Require-Work
    Write-Json 'ack.json' @{owner=$owner;nonce=$ackNonce;pid=$identity.pid;creation=$identity.creation;ownedJobVerified=$true}
    $ackPublished=$true
   }
   if($Scenario -eq 'kill-close'){
    $members=New-Object 'Collections.Generic.List[object]'
-   foreach($entry in @(@{role='supervisor';identity=$identity},@{role='child';identity=(Wait-File 'child-candidate.json' 5000)},@{role='grandchild';identity=(Wait-File 'grandchild-candidate.json' 5000)})){
+   foreach($entry in @(@{role='supervisor';identity=$identity},@{role='child';identity=(Wait-File 'child-candidate.json')},@{role='grandchild';identity=(Wait-File 'grandchild-candidate.json')})){
     $verified=Open-Known $entry.identity $job
     $certified.Add($verified)
     if($verified.HasExited){throw '認定前RequiredAlive終了'}
     $members.Add(@{role=$entry.role;identity=$entry.identity;ownedJobVerified=$true})
    }
    Write-Json 'certified-tree.json' @{owner=$owner;nonce=$Nonce;certifier=(Identity ([Diagnostics.Process]::GetCurrentProcess()));members=@($members.ToArray())}
-   Start-Sleep -Seconds 20;throw 'observer待機期限超過'
+   Start-Sleep -Milliseconds (Remaining);Set-Reason 'work-budget-exhausted';throw 'observer待機期限超過'
   }
   Set-Operation 'Parent.wait'
-  if(!$supervisor.Process.WaitForExit(9000)){throw 'supervisor exit期限超過'}
+  if(!$supervisor.Process.WaitForExit((Remaining))){Set-Reason 'work-budget-exhausted';throw 'supervisor exit期限超過'}
   if(Test-Path -LiteralPath (Join-Path $run 'supervisor-result.json')){
    $inner=Read-Json 'supervisor-result.json'
    if($null -ne $inner.primary){$primary=$inner.primary}
@@ -432,33 +455,6 @@ try {
  }
 }catch{
  Fail 'execution' $_.Exception $_
- # 5秒の仕様失敗を固定してから、normalだけを追加最大3秒観測する。解禁はしない。
- if($Mode -eq 'Parent' -and $Scenario -eq 'normal' -and $primary.reason -eq 'metadata-timeout' -and $primary.reasonFile -eq 'hello.json'){
-  $lateObservation=[ordered]@{limitMs=3000;startUtcTicks=[DateTime]::UtcNow.Ticks.ToString();elapsedMs=0;helloSeen=$false;helloIdentity=$null;hasExitedBefore=$null;hasExitedAfter=$null;stdoutBytesBefore=$null;stdoutBytesAfter=$null;assignedBefore=$assigned;assignedAfter=$assigned;ackBefore=$ackPublished;ackAfter=$ackPublished;nonGreenFixed=$true}
-  Attempt 'late-hello-observation' {
-   if($assigned -or $ackPublished){throw '未解禁境界不一致'}
-   $lateClock=[Diagnostics.Stopwatch]::StartNew()
-   try{
-    $lateObservation.hasExitedBefore=$supervisor.Process.HasExited
-    $outFile=$supervisor.LogPrefix+'.out'
-    if(Test-Path -LiteralPath $outFile){$lateObservation.stdoutBytesBefore=(Get-Item -LiteralPath $outFile).Length}
-    while($lateClock.ElapsedMilliseconds -lt 3000){
-     if(Test-Path -LiteralPath (Join-Path $run 'hello.json')){
-      $lateObservation.helloSeen=$true
-      $lateObservation.helloIdentity=Read-Json 'hello.json'
-      break
-     }
-     if($supervisor.Process.HasExited){break}
-     Start-Sleep -Milliseconds 25
-    }
-   }finally{
-    $lateObservation.elapsedMs=$lateClock.ElapsedMilliseconds
-    $lateObservation.assignedAfter=$assigned;$lateObservation.ackAfter=$ackPublished
-    Attempt 'late-supervisor-state' {$lateObservation.hasExitedAfter=$supervisor.Process.HasExited}
-    Attempt 'late-stdout-size' {if(Test-Path -LiteralPath $outFile){$lateObservation.stdoutBytesAfter=(Get-Item -LiteralPath $outFile).Length}}
-   }
-  }
- }
 }
 finally {
  if($Mode -ne 'Supervisor'){
@@ -470,7 +466,8 @@ finally {
   Attempt 'job-empty' {
    if($null -ne $job){
     $clock=[Diagnostics.Stopwatch]::StartNew()
-    while($job.Active() -gt 0 -and $clock.ElapsedMilliseconds -lt 3000){Start-Sleep -Milliseconds 25}
+    $cleanupLimit=Remaining 3000 -Recovery
+    while($job.Active() -gt 0 -and $clock.ElapsedMilliseconds -lt $cleanupLimit -and (Remaining -Recovery) -gt 0){Start-Sleep -Milliseconds ([Math]::Min(25,(Remaining -Recovery)))}
     $script:jobEmpty=($job.Active() -eq 0)
     if(!$script:jobEmpty){$script:recovered=$false;throw 'Job残留'}
    }

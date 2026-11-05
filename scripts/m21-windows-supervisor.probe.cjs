@@ -9,7 +9,9 @@ const { spawn } = require('node:child_process');
 const OWNER = 'd7249e88-1678-4e0c-ae21-a550989098a6';
 const scenarios = ['normal', 'pre-ack', 'wrong-ack', 'assign-fail', 'host-fail', 'stdio-eof', 'cleanup-fail', 'save-fail', 'owner-mismatch', 'kill-close'];
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
-const LIMIT = Object.freeze({ launch: 30000, channel: 2000, recoveryExit: 5000, recoveryChannel: 2000, poll: 25 });
+const LIMIT = Object.freeze({ total: 420000, reserve: 18000, channel: 2000, recoveryExit: 5000, recoveryChannel: 2000, poll: 25 });
+const remaining = deadline => Math.max(0, Math.floor(deadline - performance.now()));
+function requireWork(deadline) { assert.ok(remaining(deadline) > 0, 'work-budget-exhausted'); }
 const REASONS = Object.freeze({ 'pre-ack': 'ack-timeout', 'wrong-ack': 'ack-mismatch', 'assign-fail': 'assign-fault',
   'host-fail': 'dummy-nonzero', 'stdio-eof': 'stdout-eof-timeout', 'cleanup-fail': 'dummy-nonzero',
   'save-fail': 'save-fault', 'owner-mismatch': 'hello-identity-mismatch' });
@@ -33,11 +35,11 @@ function read(file) {
   assert.ok(stat.isFile() && !stat.isSymbolicLink() && stat.size <= 16384);
   return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
 }
-async function until(predicate, ms) {
-  const end = performance.now() + ms;
+async function until(predicate, ms, deadline) {
+  const end = Math.min(performance.now() + ms, deadline);
   while (performance.now() < end) {
     if (predicate()) return;
-    await wait(LIMIT.poll);
+    await wait(Math.min(LIMIT.poll, remaining(end)));
   }
   throw new Error('固定probe期限超過');
 }
@@ -52,32 +54,38 @@ function observeChannel(name, source, target) {
   source.pipe(target);
   return { source, target, state };
 }
-async function collectChannel(channel) {
+async function collectChannel(channel, totalDeadline) {
   const failures = [];
   const state = channel.state;
   try {
-    await until(() => state.eof || state.readError !== null, LIMIT.channel);
+    await until(() => state.eof || state.readError !== null, LIMIT.channel, totalDeadline);
     if (state.readError !== null) throw new Error(state.readError);
   } catch (error) { failures.push({ stage: state.name + '-eof', reason: error.message }); }
   // EOF失敗でも、もう一方のstreamとファイル書込完了は独立に待つ。
   try {
-    await until(() => (state.written && state.writeClosed) || state.writeError !== null, LIMIT.channel);
+    await until(() => (state.written && state.writeClosed) || state.writeError !== null, LIMIT.channel, totalDeadline);
     if (state.writeError !== null) throw new Error(state.writeError);
   } catch (error) { failures.push({ stage: state.name + '-write', reason: error.message }); }
   return failures;
 }
-async function recoverChannel(channel) {
+async function recoverChannel(channel, totalDeadline) {
   const state = channel.state;
   channel.source.destroy();
   if (!channel.target.writableEnded) channel.target.end();
   let failure = null;
   try {
-    await until(() => state.readClosed && state.writeClosed, LIMIT.recoveryChannel);
+    await until(() => state.readClosed && state.writeClosed, LIMIT.recoveryChannel, totalDeadline);
   } catch (error) { failure = error.message; }
   if (!state.writeClosed) channel.target.destroy();
   return { ...state, recoveryWaitFailure: failure };
 }
-async function dummy(role, run, nonce, scenario) {
+async function dummy(role, run, nonce, scenario, workMs, totalMs) {
+  workMs = Number(workMs); totalMs = Number(totalMs);
+  assert.ok(Number.isInteger(workMs) && Number.isInteger(totalMs) && workMs >= 0 && workMs <= totalMs && totalMs <= LIMIT.total);
+  const origin = performance.now();
+  const workDeadline = origin + workMs;
+  const totalDeadline = origin + totalMs;
+  requireWork(workDeadline);
   assert.ok(['child', 'grandchild', 'hold-stream'].includes(role));
   assert.ok(scenarios.includes(scenario) && /^[a-f0-9]{32}$/.test(nonce));
   const owner = read(path.join(run, 'owner.json'));
@@ -89,35 +97,47 @@ async function dummy(role, run, nonce, scenario) {
   // この2caseの孫metadataは、直接creatorである子が実exit0を観測した後だけ公開する。
   if (role !== 'grandchild' || !afterGrandchildExit) atomic(path.join(run, `${role}.json`), { pid: process.pid, nonce });
   if (role === 'child') {
-    const grandchild = spawn(process.execPath, [__filename, '--dummy', 'grandchild', run, nonce, scenario], { windowsHide: true, stdio: 'inherit' });
+    requireWork(workDeadline);
+    const grandchild = spawn(process.execPath, [__filename, '--dummy', 'grandchild', run, nonce, scenario, String(remaining(workDeadline)), String(remaining(totalDeadline))], { windowsHide: true, stdio: 'inherit' });
+    let grandchildObserved = null;
     const grandchildExit = new Promise(resolve => {
-      grandchild.once('exit', (code, signal) => resolve({ code, signal }));
-      grandchild.once('error', () => resolve({ code: null, signal: 'spawn-error' }));
+      grandchild.once('exit', (code, signal) => { grandchildObserved = { code, signal }; resolve(grandchildObserved); });
+      grandchild.once('error', () => { grandchildObserved = { code: null, signal: 'spawn-error' }; resolve(grandchildObserved); });
     });
     grandchild.on('error', () => { process.exitCode = 2; });
     if (afterGrandchildExit) {
+      await until(() => grandchildObserved !== null, Infinity, workDeadline);
       const observed = await grandchildExit;
       assert.equal(observed.code, 0);
       assert.equal(observed.signal, null);
+      requireWork(workDeadline);
       atomic(path.join(run, 'grandchild.json'), { pid: grandchild.pid, nonce, creatorPid: process.pid, exited: true, exitCode: observed.code });
       process.exit(17);
     }
-    await until(() => fs.existsSync(path.join(run, 'grandchild.json')), 3000);
+    await until(() => fs.existsSync(path.join(run, 'grandchild.json')), Infinity, workDeadline);
     if (scenario === 'stdio-eof') process.exit(0); // 孫が継承pipeを開いたままにする。
     if (scenario === 'kill-close') {
-      await wait(15000); // 親死亡時のJob回収を外側observerが実handleで確認する。
+      await wait(Math.min(15000, remaining(workDeadline))); // 固定dummy holdを総work残予算でclampする。
       process.exit(19);
     }
+    await until(() => grandchildObserved !== null, Infinity, workDeadline);
     const observed = await grandchildExit;
     assert.equal(observed.code, 0);
     assert.equal(observed.signal, null);
     return;
   }
-  await wait(scenario === 'stdio-eof' || scenario === 'kill-close' ? 15000 : 800);
+  await wait(Math.min(scenario === 'stdio-eof' || scenario === 'kill-close' ? 15000 : 800, remaining(workDeadline)));
+  requireWork(workDeadline);
 }
 async function suite() {
   assert.equal(process.platform, 'win32', 'Windows専用。非Windowsを合格扱いにしない');
   assert.equal(process.argv.length, 2, '任意commandや出力pathの入力は受け付けない');
+  // 自己Temp準備/最初のspawnより前に一度だけ設定し、caseではresetしない。
+  const suiteStart = performance.now();
+  const totalDeadline = suiteStart + LIMIT.total;
+  const workDeadline = totalDeadline - LIMIT.reserve;
+  const events = [];
+  const stamp = (scenario, event) => events.push({ scenario, event, elapsedMs: Math.floor(performance.now() - suiteStart), remainingWorkMs: remaining(workDeadline), remainingTotalMs: remaining(totalDeadline) });
   const script = path.join(__dirname, 'm21-windows-supervisor.ps1');
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'm21-job-probe-'));
   const baseIdentity = fs.lstatSync(base);
@@ -128,13 +148,19 @@ async function suite() {
   let allRecovered = true;
   try {
     for (const scenario of scenarios) {
+      if (remaining(workDeadline) === 0) { allRecovered = false; results.push({ scenario, passed: false, reason: 'work-budget-exhausted', notStarted: true }); break; }
+      stamp(scenario, 'case-start');
       const run = path.join(base, scenario);
       fs.mkdirSync(run);
       const nonce = crypto.randomBytes(16).toString('hex');
       atomic(path.join(run, 'owner.json'), { owner: OWNER, nonce });
+      if (remaining(workDeadline) === 0) { allRecovered = false; results.push({ scenario, passed: false, reason: 'work-budget-exhausted', notStarted: true }); break; }
+      stamp(scenario, 'spawn-before');
       const p = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', script,
         '-Mode', scenario === 'kill-close' ? 'Observe' : 'Parent', '-Scenario', scenario,
-        '-RunDirectory', run, '-Nonce', nonce, '-NodePath', process.execPath], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+        '-RunDirectory', run, '-Nonce', nonce, '-NodePath', process.execPath,
+        '-WorkRemainingMs', String(remaining(workDeadline)), '-TotalRemainingMs', String(remaining(totalDeadline))], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+      stamp(scenario, 'spawn-after');
       // 親stdioも捨てず、有限終端まで採取する。内容は資格情報を含まない固定dummyだけ。
       const out = fs.createWriteStream(path.join(run, 'launcher.out'), { flags: 'wx' });
       const err = fs.createWriteStream(path.join(run, 'launcher.err'), { flags: 'wx' });
@@ -144,17 +170,34 @@ async function suite() {
       let closed = false;
       let launchError;
       let receipt = null;
+      let stopStarted = false;
+      let killFailure = null;
+      const stopLauncher = () => {
+        if (!stopStarted && !exited && p.pid) { stopStarted = true; stamp(scenario, 'stop-start'); try { p.kill(); } catch (error) { killFailure = error.message; } }
+      };
+      const observed = new Set();
+      const observeProgress = () => {
+        for (const name of ['hello.json', 'ack.json']) if (!observed.has(name) && fs.existsSync(path.join(run, name))) { observed.add(name); stamp(scenario, name + '-observed'); }
+        const phaseFile = path.join(run, 'supervisor.out');
+        if (!observed.has('entry') && fs.existsSync(phaseFile) && fs.statSync(phaseFile).size > 0) {
+          if (fs.readFileSync(phaseFile, 'ascii').startsWith('M21_PHASE|entry|')) { observed.add('entry'); stamp(scenario, 'entry-observed'); }
+        }
+      };
       p.on('error', error => { launchError = error; });
-      p.on('exit', value => { code = value; exited = true; });
+      p.on('exit', value => { code = value; exited = true; stamp(scenario, 'actual-exit'); });
       p.on('close', () => { closed = true; });
       try {
         let launchFailure = null;
-        try { await until(() => exited || launchError !== undefined, LIMIT.launch); } catch (error) { launchFailure = error; }
+        try { await until(() => { observeProgress(); return exited || launchError !== undefined; }, Infinity, workDeadline); } catch (error) { launchFailure = remaining(workDeadline) === 0 ? new Error('work-budget-exhausted') : error; }
+        // W到達ではEOF収集より先に、直接保持launcherの停止を開始する。
+        if (launchFailure) { stopLauncher(); throw launchFailure; }
+        stamp(scenario, 'channel-recovery-start');
         const channelFailures = [];
-        for (const channel of channels) channelFailures.push(...await collectChannel(channel));
-        if (launchFailure) throw launchFailure;
+        for (const channel of channels) channelFailures.push(...await collectChannel(channel, totalDeadline));
+        stamp(scenario, 'channel-recovery-end');
         if (launchError) throw launchError;
         if (channelFailures.length) throw new Error(JSON.stringify(channelFailures));
+        assert.ok(remaining(totalDeadline) > 0, 'total-budget-exhausted');
         receipt = read(path.join(run, 'result.json'));
         assert.equal(receipt.nonce, nonce);
         assert.equal(receipt.owner, OWNER);
@@ -214,23 +257,26 @@ async function suite() {
             assert.ok(receipt.streams.some(s => !s.stdoutEof || !s.stderrEof), '一次EOF失敗を後続Job回収で消さない');
           }
         }
+        stamp(scenario, 'case-recovered');
         results.push({ scenario, passed: true, launcherPid: p.pid, launcherCreation: receipt.process?.creation ?? null,
           launcherExitCode: code, launcherExited: exited, channels: channels.map(c => c.state) });
       } catch (error) {
         allRecovered = false;
         // own childだけ。Job親のkillでJob treeを閉じる。成功・回収済みとは主張しない。
-        let killFailure = null;
-        if (!exited && p.pid) { try { p.kill(); } catch (killError) { killFailure = killError.message; } }
+        stamp(scenario, 'cleanup-start');
+        stopLauncher();
         let cleanupFailure = null;
-        try { await until(() => exited || launchError !== undefined, LIMIT.recoveryExit); } catch (cleanupError) { cleanupFailure = cleanupError.message; }
+        try { await until(() => exited || launchError !== undefined, LIMIT.recoveryExit, totalDeadline); } catch (cleanupError) { cleanupFailure = cleanupError.message; }
         const channelRecovery = [];
         for (const channel of channels) {
-          try { channelRecovery.push(await recoverChannel(channel)); }
+          try { channelRecovery.push(await recoverChannel(channel, totalDeadline)); }
           catch (channelError) { channelRecovery.push({ ...channel.state, recoveryWaitFailure: channelError.message }); }
         }
         results.push({ scenario, passed: false, reason: error.message, killFailure, cleanupFailure,
           ownLauncherPid: p.pid ?? null, ownLauncherCreation: receipt?.process?.creation ?? null,
-          ownLauncherExitCode: code, ownLauncherExited: exited, ownLauncherClosed: closed, channels: channelRecovery });
+          ownLauncherExitCode: code, ownLauncherExited: exited, ownLauncherClosed: closed, channels: channelRecovery,
+          unverifiedOwnedTree: stopStarted, workBudgetStopStarted: stopStarted });
+        stamp(scenario, 'cleanup-end');
         // 回収不明をretainedへ記録して非0にする。未知PID/子へ再取得して接続しない。
         p.unref();
         break;
@@ -252,13 +298,14 @@ async function suite() {
       }
     }
   }
-  console.log(JSON.stringify({ passed: allRecovered && results.length === scenarios.length && results.every(r => r.passed), results,
+  console.log(JSON.stringify({ passed: allRecovered && results.length === scenarios.length && results.every(r => r.passed), totalMs: LIMIT.total, reserveMs: LIMIT.reserve, events, results,
+    notRun: scenarios.filter(s => !results.some(r => r.scenario === s)),
     retained: allRecovered ? null : base }));
   if (!allRecovered) process.exitCode = 1;
 }
 (async () => {
   if (process.argv[2] === '--dummy') {
-    assert.equal(process.argv.length, 7);
+    assert.equal(process.argv.length, 9);
     await dummy(...process.argv.slice(3));
   } else {
     await suite();
