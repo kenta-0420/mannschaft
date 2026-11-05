@@ -24,19 +24,22 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
     boolean existsByChannelIdAndInviteTokenIdAndMessageType(
             Long channelId, Long inviteTokenId, String messageType);
 
-    String SEARCH_BY_CHANNEL = "SELECT * FROM chat_messages WHERE channel_id = :channelId AND deleted_at IS NULL AND MATCH(body) AGAINST(:keyword IN BOOLEAN MODE) ORDER BY created_at DESC";
-    String SEARCH_BY_CHANNELS = "SELECT * FROM chat_messages WHERE channel_id IN (:channelIds) AND deleted_at IS NULL AND MATCH(body) AGAINST(:keyword IN BOOLEAN MODE) ORDER BY created_at DESC";
+    String SEARCH_BY_CHANNEL = "SELECT * FROM chat_messages WHERE channel_id = :channelId AND deleted_at IS NULL AND MATCH(body) AGAINST(:keyword IN BOOLEAN MODE) ORDER BY created_at DESC, id DESC";
+    String SEARCH_BY_CHANNELS = "SELECT * FROM chat_messages WHERE channel_id IN (:channelIds) AND deleted_at IS NULL AND MATCH(body) AGAINST(:keyword IN BOOLEAN MODE) ORDER BY created_at DESC, id DESC";
 
     /**
      * チャンネルのメッセージ一覧を新しい順に取得する。
      */
-    List<ChatMessageEntity> findByChannelIdOrderByCreatedAtDesc(Long channelId, Pageable pageable);
+    List<ChatMessageEntity> findByChannelIdOrderByCreatedAtDescIdDesc(Long channelId, Pageable pageable);
 
     /**
      * カーソル（指定ID）より前のメッセージを取得する。
      */
-    @Query("SELECT m FROM ChatMessageEntity m WHERE m.channelId = :channelId AND m.id < :cursorId " +
-            "ORDER BY m.createdAt DESC")
+    @Query("SELECT m FROM ChatMessageEntity m WHERE m.channelId = :channelId AND (" +
+            "m.createdAt < (SELECT c.createdAt FROM ChatMessageEntity c WHERE c.id = :cursorId) " +
+            "OR (m.createdAt = (SELECT c2.createdAt FROM ChatMessageEntity c2 WHERE c2.id = :cursorId) " +
+            "AND m.id < :cursorId)) " +
+            "ORDER BY m.createdAt DESC, m.id DESC")
     List<ChatMessageEntity> findByChannelIdAndIdLessThan(
             @Param("channelId") Long channelId, @Param("cursorId") Long cursorId, Pageable pageable);
 
@@ -45,8 +48,11 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
      * WebSocket切断後のキャッチアップ用。cursor より大きいIDを持つメッセージを
      * 古い順（ASC）で返すことで、切断中に積まれたメッセージを時系列順に復元できる。
      */
-    @Query("SELECT m FROM ChatMessageEntity m WHERE m.channelId = :channelId AND m.id > :cursorId " +
-            "AND m.deletedAt IS NULL ORDER BY m.id ASC")
+    @Query("SELECT m FROM ChatMessageEntity m WHERE m.channelId = :channelId AND (" +
+            "m.createdAt > (SELECT c.createdAt FROM ChatMessageEntity c WHERE c.id = :cursorId) " +
+            "OR (m.createdAt = (SELECT c2.createdAt FROM ChatMessageEntity c2 WHERE c2.id = :cursorId) " +
+            "AND m.id > :cursorId)) " +
+            "AND m.deletedAt IS NULL ORDER BY m.createdAt ASC, m.id ASC")
     List<ChatMessageEntity> findMessagesAfterCursor(
             @Param("channelId") Long channelId,
             @Param("cursorId") Long cursorId,
@@ -55,23 +61,23 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
     /**
      * スレッド返信を取得する（旧2階層ロジック用）。
      */
-    List<ChatMessageEntity> findByParentIdOrderByCreatedAtAsc(Long parentId);
+    List<ChatMessageEntity> findByParentIdOrderByCreatedAtAscIdAsc(Long parentId);
 
     /**
      * スレッド内の全返信をフラット取得する（root_id でページング）。
      */
-    Page<ChatMessageEntity> findByRootIdAndDeletedAtIsNullOrderByCreatedAtAsc(Long rootId, Pageable pageable);
+    Page<ChatMessageEntity> findByRootIdAndDeletedAtIsNullOrderByCreatedAtAscIdAsc(Long rootId, Pageable pageable);
 
     /**
      * アクティブスレッド一覧を取得する（reply_count > 0 のトップレベルメッセージ）。
      */
-    @Query("SELECT m FROM ChatMessageEntity m WHERE m.channelId = :channelId AND m.depth = 0 AND m.replyCount > 0 AND m.deletedAt IS NULL ORDER BY m.createdAt DESC")
+    @Query("SELECT m FROM ChatMessageEntity m WHERE m.channelId = :channelId AND m.depth = 0 AND m.replyCount > 0 AND m.deletedAt IS NULL ORDER BY m.createdAt DESC, m.id DESC")
     Page<ChatMessageEntity> findActiveThreadsByChannelId(@Param("channelId") Long channelId, Pageable pageable);
 
     /**
      * チャンネルのピン留めメッセージを取得する。
      */
-    List<ChatMessageEntity> findByChannelIdAndIsPinnedTrueOrderByCreatedAtDesc(Long channelId);
+    List<ChatMessageEntity> findByChannelIdAndIsPinnedTrueOrderByCreatedAtDescIdDesc(Long channelId);
 
     /**
      * IDとチャンネルIDでメッセージを取得する。
@@ -81,7 +87,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
     /**
      * チャンネルのメッセージを古い順に全件取得する（履歴コピー用）。
      */
-    List<ChatMessageEntity> findByChannelIdOrderByCreatedAtAsc(Long channelId);
+    List<ChatMessageEntity> findByChannelIdOrderByCreatedAtAscIdAsc(Long channelId);
 
     /**
      * 特定送信者のメッセージ総件数を取得する（GDPR削除プレビュー用）。
@@ -126,7 +132,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
      * 村ロビーチャネル等の最新トップレベルメッセージ N 件を返す（F17.1 §4.13）。
      *
      * <p>parentId IS NULL でスレッド返信を除外。
-     * 既存の {@link #findByChannelIdOrderByCreatedAtDesc} はスレッド返信も含めて返してしまうため
+     * 既存の {@link #findByChannelIdOrderByCreatedAtDescIdDesc} はスレッド返信も含めて返してしまうため
      * フィード用途では新規メソッドが必要。</p>
      */
     @Query("""
@@ -134,7 +140,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
             WHERE m.channelId = :channelId
               AND m.parentId IS NULL
               AND m.deletedAt IS NULL
-            ORDER BY m.createdAt DESC
+            ORDER BY m.createdAt DESC, m.id DESC
             """)
     List<ChatMessageEntity> findLatestRootMessagesByChannelId(
             @Param("channelId") Long channelId, Pageable pageable);
@@ -172,7 +178,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
             WHERE m.channelId = :channelId
               AND m.deletedAt IS NULL
               AND LOWER(m.body) LIKE LOWER(CONCAT('%', :q, '%'))
-            ORDER BY m.createdAt DESC
+            ORDER BY m.createdAt DESC, m.id DESC
             """)
     List<ChatMessageEntity> searchByChannelIdAndKeyword(
             @Param("channelId") Long channelId,
