@@ -112,7 +112,7 @@ export function useProjectApi() {
   }
 
   async function getOrgProjectTodos(orgSlug: string, projectId: number) {
-    return api<{ data: unknown[] }>(`${buildOrgScopedBase(orgSlug, projectId)}/todos`)
+    return api<{ data: TodoResponse[] }>(`${buildOrgScopedBase(orgSlug, projectId)}/todos`)
   }
 
   /**
@@ -205,7 +205,7 @@ export function useProjectApi() {
 
   // === Project Todos ===
   async function getProjectTodos(teamId: string | null, projectId: number) {
-    return api<{ data: unknown[] }>(`${buildScopedBase(teamId, projectId)}/todos`)
+    return api<{ data: TodoResponse[] }>(`${buildScopedBase(teamId, projectId)}/todos`)
   }
 
   // === F02.7 マイルストーンゲート ===

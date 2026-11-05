@@ -8,6 +8,7 @@ import type {
   GatesSummaryResponse,
   MilestoneCompletionMode,
 } from '~/types/project'
+import type { TodoResponse } from '~/types/todo'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -20,7 +21,7 @@ const { t } = useI18n()
 
 const project = ref<ProjectResponse | null>(null)
 const milestones = ref<MilestoneResponse[]>([])
-const todos = ref<unknown[]>([])
+const todos = ref<TodoResponse[]>([])
 const gatesSummary = ref<GatesSummaryResponse | null>(null)
 const loading = ref(true)
 const showEditDialog = ref(false)

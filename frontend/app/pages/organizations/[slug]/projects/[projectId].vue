@@ -51,7 +51,7 @@ async function load() {
     ])
     project.value = normalizeProjectDetail(pRes.data)
     milestones.value = mRes.data
-    todos.value = (tRes.data ?? []) as TodoResponse[]
+    todos.value = tRes.data ?? []
   } catch {
     showError(t('project.error.fetch_failed'))
   } finally {

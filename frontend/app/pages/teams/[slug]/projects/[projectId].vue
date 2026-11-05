@@ -63,7 +63,7 @@ async function load() {
     ])
     project.value = normalizeProjectDetail(pRes.data)
     milestones.value = mRes.data
-    todos.value = (tRes.data ?? []) as TodoResponse[]
+    todos.value = tRes.data ?? []
     gatesSummary.value = gRes?.data ?? null
   } catch {
     showError('プロジェクト情報の取得に失敗しました')
