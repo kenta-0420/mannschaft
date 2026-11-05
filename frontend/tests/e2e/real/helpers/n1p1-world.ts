@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test'
+import { expect, type Browser, type BrowserContext, type Page, type Response } from '@playwright/test'
 import { loginViaApi } from '../../fixtures/auth'
 
 /**
@@ -240,6 +240,14 @@ export async function gotoAndHydrate(page: Page, path: string): Promise<void> {
     undefined,
     { timeout: 180_000 },
   )
+}
+
+/**
+ * 指定 API の応答を待つ Promise を「今」登録して返す（遷移・クリックより前に呼ぶこと）。
+ * 負の視点では、この応答（403/404 等）を認可判定が終わった証拠として受け取ってから非表示を確かめる。
+ */
+export function responseOf(page: Page, pathname: RegExp, method = 'GET'): Promise<Response> {
+  return page.waitForResponse((r) => r.request().method() === method && pathname.test(new URL(r.url()).pathname), { timeout: 120_000 })
 }
 
 /** 指定 API の応答を待ちつつ操作する（画面が実 BE を叩いたことの証拠を取る）。 */

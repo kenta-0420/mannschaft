@@ -1,6 +1,6 @@
 import { test, type Browser, type Page } from '@playwright/test'
 import { readWorld, type World } from './helpers/n1p1-global-setup'
-import { API, expect, FE, gotoAndHydrate, openAs, waitApi, type Actor } from './helpers/n1p1-world'
+import { API, expect, FE, gotoAndHydrate, openAs, responseOf, waitApi, type Actor } from './helpers/n1p1-world'
 
 /**
  * 実機E2E: CMP-261103-1225 Phase1（BE の N+1 を一括取得へ置き換えた5PR）の表示回帰確認。
@@ -84,8 +84,20 @@ test('#4277 今日の時間割: 時間割の無い利用者は空表示（MEMBER
 
 // ───────────────────────── #4288 ダッシュボード ─────────────────────────
 
-test('#4288 個人ダッシュボード: 直近の予定2件・未読（チャット）が出る（MEMBER1）／業務アラートは出ない', async ({ browser }) => {
-  await withPage(browser, w.member1, '/dashboard', async (page) => {
+test('#4288 個人ダッシュボード: 直近の予定2件が出る（MEMBER1）／業務アラートは出ない', async ({ browser }) => {
+  await withPage(browser, w.member1, undefined, async (page) => {
+    const summaryCalls: string[] = []
+    page.on('request', (r) => {
+      if (new URL(r.url()).pathname.endsWith('/api/v1/admin/business-alerts/summary')) summaryCalls.push(r.url())
+    })
+    // 業務アラートの出し分けは所属チームのロール（GET /me/teams）で決まる。その応答を判定完了の証拠として待つ
+    const myTeams = responseOf(page, /\/api\/v1\/me\/teams$/)
+    await gotoAndHydrate(page, '/dashboard')
+    const myTeamsResponse = await myTeams
+    expect(myTeamsResponse.status()).toBe(200)
+    const roles = ((await myTeamsResponse.json()).data as Array<{ role: string }>).map((team) => team.role)
+    expect(roles.length).toBeGreaterThan(0)
+    expect(roles.every((role) => role === 'MEMBER')).toBe(true)
     const [eventsStatus] = await Promise.all([
       waitApi(page, /\/api\/v1\/dashboard\/upcoming-events$/, async () => {}),
       openSection(page, 'schedule'),
@@ -93,17 +105,30 @@ test('#4288 個人ダッシュボード: 直近の予定2件・未読（チャ�
     expect(eventsStatus).toBe(200)
     const schedule = page.locator('#personal-dashboard-section-schedule')
     for (const title of w.scheduleTitles) await expect(schedule.getByText(title).first()).toBeVisible({ timeout: 60_000 })
-    const [unreadStatus] = await Promise.all([
-      waitApi(page, /\/api\/v1\/dashboard\/unread-threads$/, async () => {}),
+    // ロール判定（/me/teams）と画面の描画が済んだあとで、業務アラートのウィジェットも API 呼び出しも無いことを確かめる
+    await expect(page.getByText('業務アラート')).toHaveCount(0)
+    expect(summaryCalls).toEqual([])
+    await shot(page, '4288-dashboard-member1')
+  })
+})
+
+test('#4288 個人ダッシュボード: 未読（チャット）が出る（未読確認専用の READER）', async ({ browser }) => {
+  // 未読はチャットを開くと既読になるため、どのテストもチャットを開かない専用の利用者・チャンネルで確かめる
+  await withPage(browser, w.reader, '/dashboard', async (page) => {
+    const [unread] = await Promise.all([
+      responseOf(page, /\/api\/v1\/dashboard\/unread-threads$/),
       openSection(page, 'communication'),
     ])
-    expect(unreadStatus).toBe(200)
+    expect(unread.status()).toBe(200)
+    // READER は専用チャンネル（ADMIN の発言2件）だけに所属し、どのテストも既読にしないので常に 2
+    expect((await unread.json()).data.total_unread_chat).toBe(2)
     const communication = page.locator('#personal-dashboard-section-communication')
-    await expect(communication.getByText('チャット').first()).toBeVisible({ timeout: 30_000 })
+    // 「チャット」行（未読メッセージ）は件数が 1 以上のときだけ描画される（WidgetUnreadThreads.vue）
+    const chatRow = communication.locator('div.cursor-pointer').filter({ hasText: '未読メッセージ' })
+    await expect(chatRow).toBeVisible({ timeout: 30_000 })
+    await expect(chatRow).toContainText('2')
     await expect(communication.getByText('未読はありません')).toHaveCount(0)
-    // MEMBER にはどのスコープにも管理者ロールが無いので業務アラートのウィジェット自体が出ない
-    await expect(page.getByText('業務アラート')).toHaveCount(0)
-    await shot(page, '4288-dashboard-member1')
+    await shot(page, '4288-dashboard-reader-unread')
   })
 })
 
@@ -186,7 +211,15 @@ test('#4288 チャット: 発言0件のチャンネルは壊れず空のまま�
 })
 
 test('#4288 チャット 他テナント: 他組織利用者には一覧に出ず、?channel= 直打ちでも開けない', async ({ browser }) => {
-  await withPage(browser, w.outsider, `/chat?channel=${w.channel.id}`, async (page) => {
+  await withPage(browser, w.outsider, undefined, async (page) => {
+    // 認可判定が終わった証拠: 自分のチャンネル一覧（200）と、対象チャンネル取得の拒否（403/404）の応答を受け取ってから非表示を確かめる
+    const list = responseOf(page, /\/api\/v1\/chat\/channels$/)
+    const detail = responseOf(page, new RegExp(`/api/v1/chat/channels/${w.channel.id}$`))
+    await gotoAndHydrate(page, `/chat?channel=${w.channel.id}`)
+    expect((await list).status()).toBe(200)
+    const detailStatus = (await detail).status()
+    console.log(`[n1p1] 他組織 GET /chat/channels/${w.channel.id} -> ${detailStatus}`)
+    expect([403, 404]).toContain(detailStatus)
     // ?channel= の自動オープンが 403/404 を受けたときの警告（locales/ja/common.json chat.tab.channelNotAccessible）
     await expect(page.getByText('指定されたチャンネルにアクセスできません').first()).toBeVisible({ timeout: 60_000 })
     for (const text of w.messages) await expect(page.getByText(text)).toHaveCount(0)
@@ -239,12 +272,21 @@ test('#4280 プロジェクト一覧: 0件のチームは空表示（ADMIN / T2�
 })
 
 test('#4280 プロジェクト 他テナント: 他組織利用者は一覧・詳細 URL 直打ちとも中身が出ない', async ({ browser }) => {
-  await withPage(browser, w.outsider, `/teams/${w.t1.slug}/projects`, async (page) => {
-    await page.waitForTimeout(5_000)
+  await withPage(browser, w.outsider, undefined, async (page) => {
+    // 認可判定が終わった証拠として、一覧・詳細 API の拒否応答（403/404）を受け取ってから非表示を確かめる
+    const list = responseOf(page, new RegExp(`/api/v1/teams/${w.t1.slug}/projects$`))
+    await gotoAndHydrate(page, `/teams/${w.t1.slug}/projects`)
+    const listStatus = (await list).status()
+    console.log(`[n1p1] 他組織 GET /teams/{t1}/projects -> ${listStatus}`)
+    expect([403, 404]).toContain(listStatus)
     await expect(page.getByText(w.projectFull.title)).toHaveCount(0)
+    await expect(page.getByText(w.projectEmpty.title)).toHaveCount(0)
     await shot(page, '4280-projects-outsider-list')
+    const detail = responseOf(page, new RegExp(`/api/v1/teams/${w.t1.slug}/projects/${w.projectFull.id}$`))
     await gotoAndHydrate(page, `/teams/${w.t1.slug}/projects/${w.projectFull.id}`)
-    await page.waitForTimeout(5_000)
+    const detailStatus = (await detail).status()
+    console.log(`[n1p1] 他組織 GET /teams/{t1}/projects/{id} -> ${detailStatus}`)
+    expect([403, 404]).toContain(detailStatus)
     await expect(page.getByText(w.projectFull.title)).toHaveCount(0)
     await expect(page.getByText(w.milestoneTitle)).toHaveCount(0)
     await shot(page, '4280-project-detail-outsider')
@@ -267,8 +309,16 @@ test('#4294 組織メンバー一覧: ADMIN に3人（ロール付き）が出�
 })
 
 test('#4294 組織メンバー一覧: 同組織 MEMBER では管理操作が出ない', async ({ browser }) => {
-  await withPage(browser, w.member1, `/organizations/${w.orgA.slug}/members`, async (page) => {
-    await page.waitForTimeout(5_000)
+  await withPage(browser, w.member1, undefined, async (page) => {
+    // 一覧の取得（200）と自分のロール（me/permissions）の応答を受け、一覧が描画されてから管理操作の非表示を確かめる
+    const members = responseOf(page, new RegExp(`/api/v1/organizations/${w.orgA.slug}/members$`))
+    const permissions = responseOf(page, /\/api\/v1\/organizations\/[^/]+\/me\/permissions$/)
+    await gotoAndHydrate(page, `/organizations/${w.orgA.slug}/members`)
+    expect((await members).status()).toBe(200)
+    const permissionsResponse = await permissions
+    expect(permissionsResponse.status()).toBe(200)
+    console.log(`[n1p1] MEMBER1 組織 me/permissions roleName=${(await permissionsResponse.json()).data?.roleName}`)
+    for (const actor of [w.admin, w.member1, w.member2]) await expect(page.getByText(actor.nickname).first()).toBeVisible({ timeout: 60_000 })
     await expect(page.getByTestId(`member-remove-${w.member2.id}`)).toHaveCount(0)
     await expect(page.getByTestId(`member-permission-groups-${w.member2.id}`)).toHaveCount(0)
     await shot(page, '4294-org-members-member1')
@@ -276,8 +326,13 @@ test('#4294 組織メンバー一覧: 同組織 MEMBER では管理操作が出�
 })
 
 test('#4294 組織メンバー一覧 他テナント: 他組織利用者の URL 直打ちでメンバーが出ない', async ({ browser }) => {
-  await withPage(browser, w.outsider, `/organizations/${w.orgA.slug}/members`, async (page) => {
-    await page.waitForTimeout(5_000)
+  await withPage(browser, w.outsider, undefined, async (page) => {
+    // 認可判定が終わった証拠として、メンバー一覧 API の拒否応答（403/404）を受け取ってから非表示を確かめる
+    const members = responseOf(page, new RegExp(`/api/v1/organizations/${w.orgA.slug}/members$`))
+    await gotoAndHydrate(page, `/organizations/${w.orgA.slug}/members`)
+    const status = (await members).status()
+    console.log(`[n1p1] 他組織 GET /organizations/{orgA}/members -> ${status}`)
+    expect([403, 404]).toContain(status)
     for (const actor of [w.admin, w.member1, w.member2]) await expect(page.getByText(actor.nickname)).toHaveCount(0)
     await shot(page, '4294-org-members-outsider')
   })
@@ -340,8 +395,14 @@ test('#4288 業務アラート（組織の管理者レンズ）: ADMIN は管理
 })
 
 test('#4288 業務アラート 負の視点: 同組織 MEMBER には管理者レンズ・業務アラートが出ず、管理コンソール URL 直打ちは組織トップへ戻される', async ({ browser }) => {
-  await withPage(browser, w.member1, '/dashboard', async (page) => {
+  await withPage(browser, w.member1, undefined, async (page) => {
+    // レンズの出し分けは組織の me/permissions（useRoleAccess）で決まる。その応答（MEMBER）を判定完了の証拠として待つ
+    const permissions = responseOf(page, /\/api\/v1\/organizations\/[^/]+\/me\/permissions$/)
+    await gotoAndHydrate(page, '/dashboard')
     await page.getByTestId('scope-segment-ORGANIZATION').click()
+    const permissionsResponse = await permissions
+    expect(permissionsResponse.status()).toBe(200)
+    expect((await permissionsResponse.json()).data?.roleName).toBe('MEMBER')
     await expect(page.getByTestId('swipe-widget-grid-ORGANIZATION')).toBeVisible({ timeout: 60_000 })
     await expect(page.getByRole('group', { name: '管理者表示の切り替え' })).toHaveCount(0)
     await expect(page.getByTestId('admin-alert-total-ORGANIZATION')).toHaveCount(0)

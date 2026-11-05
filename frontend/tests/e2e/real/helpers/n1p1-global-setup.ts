@@ -13,7 +13,10 @@ export const WORLD_FILE = path.resolve('tests', 'e2e', '.auth', 'n1p1-world.json
 export interface World {
   tag: string
   admin: Actor // 組織A・チームT1/T2 のオーナー（ADMIN）
-  member1: Actor // 組織A・チームT1 の MEMBER（時間割・未読あり）
+  member1: Actor // 組織A・チームT1 の MEMBER（時間割あり。チャットを開いて既読にするテストもこの利用者）
+  reader: Actor // 未読確認専用の利用者（チームT3 の MEMBER）。どのテストもチャットを開かないので未読が残り続ける
+  t3: Scope // 未読確認専用のチーム（名前に tag を含めず、チーム検索の結果に混ざらない）
+  unreadChannel: { id: number; name: string } // 未読確認専用のチャンネル（ADMIN の発言2件）
   member2: Actor // 組織A・チームT1 の MEMBER（時間割なし＝空表示確認用）
   outsider: Actor // 別組織B・チームTB のオーナー（他テナント）
   orgA: Scope
@@ -128,6 +131,23 @@ async function buildWorld(): Promise<World> {
     attachments: [{ fileKey: upload.fileKey, fileName: attachmentName, fileSize: fileBytes.length, contentType: 'text/plain' }],
   })
 
+  // 未読確認専用: READER と T3・専用チャンネル。チャットを開くテスト（MEMBER1 が既読にする）と状態を共有しない
+  // （TEST_CONVENTION.md「テスト間の状態依存の禁止」）。T3 の名前は tag を含めず、チーム検索の期待値に影響させない。
+  const reader = await createActor('Reader')
+  const t3 = await createTeam(admin, `N1未読検証 ${RUN}`)
+  await joinAsMember('teams', admin, t3.slug, reader)
+  const unreadChannelName = `N1未読 ${RUN}`
+  const unreadCreated = await must(admin, 'POST', '/api/v1/chat/channels', {
+    channelType: 'TEAM_PUBLIC',
+    teamId: t3.numericId,
+    name: unreadChannelName,
+    memberUserIds: [reader.id],
+  })
+  const unreadChannel = { id: unreadCreated.data.id as number, name: unreadChannelName }
+  recordAsset(`channel ${unreadChannel.id}`, `/api/v1/chat/channels/${unreadChannel.id}`, admin)
+  await must(admin, 'POST', `/api/v1/chat/channels/${unreadChannel.id}/messages`, { body: `N1未読一 ${RUN}` })
+  await must(admin, 'POST', `/api/v1/chat/channels/${unreadChannel.id}/messages`, { body: `N1未読二 ${RUN}` })
+
   // 今日の時間割: MEMBER1 の個人時間割（チーム時間割に未リンクのコマ 2 件）。
   // 実行中に日付をまたいでも「今日」にコマがあるよう、全曜日に同じ2コマを置き、適用開始は前日にする（実行時刻に依存させない）。
   const timetable = (await must(member1, 'POST', '/api/v1/me/personal-timetables', { name: `N1時間割 ${tag}`, effective_from: jstDate(-1) })).data
@@ -167,6 +187,9 @@ async function buildWorld(): Promise<World> {
     tag,
     admin,
     member1,
+    reader,
+    t3,
+    unreadChannel,
     member2,
     outsider,
     orgA,
