@@ -56,6 +56,19 @@ P6の孫spawnだけはdetached=trueとし、Node自身の非detached用Jobへの
 
 ## 有限probe（実行には別GOが必要）
 
+固定readiness試練は `node scripts/m21-windows-supervisor.probe.cjs --readiness-fixture` だけを入口とし、通常10case suiteを呼ばない。PSのTestFixtureは固定列挙のみ、ReadinessFixture本体は同じscripts内の定数pathに限定する。通常Wait-Fileのretry・ObserveのParent終了判定はまだ変更せず、genuine RED採取前にgreen処理を足さない。
+
+| fixture | 実境界と要求 |
+|---|---|
+| parent-before-certificate | Parentをcert前の固定故障で実exit1、作業子0。Observeのtest前処理は直接保持Parentのactual exit/codeだけをfixture-parent-exit.jsonへ記録し、Capture/streams/Capturedには触れない。旧cert待ちが継続すれば実exit記録後の既存R18000と残W/GのMinまで観測し、自隊Parent実終了とreceiptの作業子0を照合した後だけNodeが自分のObserveを停止。green判定には通常Observe自身のactual1・親Captureのactual1/両EOF・認定0が必要 |
+| lock-release | publish完了済みの固定child-candidate.jsonを同PSの実FileStream/FileShare.Noneで保持し、未変更Wait-File→Read-Jsonで実HRESULT0x80070020を観測。test hookはcount/時刻だけを記録し、Bだけhandleを解放、元例外をそのままrethrow。受理1回・同owner/nonce/identityを要求し、旧readerの即失敗をREDとして残す |
+| lock-held | 同じ実lockを保持し、専用WorkRemainingMsをMin(既存絶対W,現在elapsed+1000)へ短縮するだけ。実32count>0・元code・枯渇・受理0を要求。旧readerの即32は枯渇とは扱わない。finallyで自分のlockを閉じる |
+| invalid-json | 同期write/close→move後の読取可能な固定不正JSON。decode段階の即失敗、実32count0、受理0、予算未枯渇を対照として要求 |
+
+共有modeを緩めない。実32観測hookはReadinessFixtureの固定file/read段階だけで動き、例外の握りつぶし・通常readerのretryは行わない。同processの別handleにもWindows共有制約は適用される。lockの時系列はlock-acquired→actual-read32→Bだけlock-released→受理の固定記録を残す。Cのfinally解放を、readiness回復による受理とは扱わない。
+
+試練全体も開始前に単一G420000/R18000を設定し、caseごとにresetしない。Aの18秒観測は既存絶対W内、回収の各exit/EOF/finish-closeは残Gへclampする。意図したREDでも独立した4fixtureの対照は採取するが、直接launcher未終了やAのParent安全条件が未確認なら後続へ進まずexact retainedへ残す。通常10case/正式環境は起動しない。test専用PSを含む4file SHA・入力commit・実exit/code・各channel・原本pathをpacketへ保存する。
+
 Windows標準PowerShellと既存Nodeだけを使う。新依存/SDK/ダウンロードなし。通常のPowerShell policyを適用し、ExecutionPolicy Bypass/Unblock-File/ACL変更を行わない。policyや強い既存Jobで拒否されたら、非0・保持理由を報告する。sandbox無効化やbreakawayで逃がさない。
 
 自隊worktreeのルートで、rootから有限probe実行GOを得た後だけ実行する:

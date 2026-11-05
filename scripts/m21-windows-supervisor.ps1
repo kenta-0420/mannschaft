@@ -1,7 +1,8 @@
 ﻿# M21固定dummy専用Windows Job監督。実サービス/任意commandの起動口は持たない。
 [CmdletBinding()]
 param(
- [ValidateSet('Parent','Supervisor','Observe')][string]$Mode='Parent',
+ [ValidateSet('Parent','Supervisor','Observe','ReadinessFixture')][string]$Mode='Parent',
+ [ValidateSet('none','parent-before-certificate','lock-release','lock-held','invalid-json')][string]$TestFixture='none',
  [Parameter(Mandatory=$true)][ValidateSet('normal','pre-ack','wrong-ack','assign-fail','host-fail','stdio-eof','cleanup-fail','save-fail','owner-mismatch','kill-close')][string]$Scenario,
  [Parameter(Mandatory=$true)][string]$RunDirectory,
  [Parameter(Mandatory=$true)][ValidatePattern('^[a-f0-9]{32}$')][string]$Nonce,
@@ -56,6 +57,8 @@ $p6GrandIdentity=$null
 $p6ParentChild=$null
 $p6ParentGrand=$null
 $p6Certification=$null
+$fixtureEvidence=$null
+$fixtureLock=$null
 $p6Observations=New-Object 'Collections.Generic.List[object]'
 function Remaining([int]$cap=[int]::MaxValue,[switch]$Recovery) {
  $budget=$WorkRemainingMs;if($Recovery){$budget=$TotalRemainingMs}
@@ -252,7 +255,12 @@ function Read-Json([string]$name) {
   $text=[IO.File]::ReadAllText($file)
   $script:ioOperation='decode'
   return ($text|ConvertFrom-Json)
- }catch{Remember-Failure $_;throw}
+ }catch{
+  Remember-Failure $_
+  # 固定試練だけの観測点。実read失敗を解放後も元例外のまま再throwする。
+  if($Mode -eq 'ReadinessFixture' -and $name -ceq 'child-candidate.json' -and $script:ioOperation -ceq 'read' -and $null -ne $fixtureEvidence){Record-FixtureReadFailure $_}
+  throw
+ }
  finally{$script:ioOperation=$priorIo;$script:metadataFile=$priorFile}
 }
 function Guard-Run {
@@ -284,6 +292,7 @@ function Write-Json([string]$name,[object]$value) {
 }
 $bootstrapStage='native-bootstrap'
 try {
+ if(($TestFixture -eq 'none' -and $Mode -eq 'ReadinessFixture') -or ($TestFixture -eq 'parent-before-certificate' -and ($Mode -notin @('Parent','Observe') -or $Scenario -ne 'kill-close')) -or ($TestFixture -in @('lock-release','lock-held','invalid-json') -and ($Mode -ne 'ReadinessFixture' -or $Scenario -ne 'normal'))){throw '固定fixture組合せ不一致'}
  if($WorkRemainingMs -gt $TotalRemainingMs){Set-Reason 'invalid-budget';throw 'work/total budget不一致'}
  # Supervisorは型compileも子を生み得るものとして、標準Process/JSONのgateだけを先行する。
  # この区間にはcustom型参照/外部command/Process.Startを置かない。
@@ -348,6 +357,7 @@ function New-Supervisor([string]$childMode,[string]$prefix) {
  Require-Work
  $ps=[Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
  $childArguments=@('-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode',$childMode,'-Scenario',$Scenario,'-RunDirectory',$run,'-Nonce',$Nonce,'-NodePath',$NodePath,'-WorkRemainingMs',[string](Remaining),'-TotalRemainingMs',[string](Remaining -Recovery))
+ if($TestFixture -eq 'parent-before-certificate'){$childArguments+=@('-TestFixture','parent-before-certificate')}
  Require-Work
  return [M21Child]::Start($ps,$childArguments,$PSScriptRoot,(Join-Path $run $prefix),(Remaining -Recovery),($Scenario -eq 'stdio-eof'))
 }
@@ -403,7 +413,10 @@ try {
  Guard-Run
  if(![IO.Path]::IsPathRooted($NodePath) -or [IO.Path]::GetFileName($NodePath) -ine 'node.exe' -or !(Test-Path -LiteralPath $NodePath -PathType Leaf)){throw 'Node exe不一致'}
  $dummy=Join-Path $PSScriptRoot 'm21-windows-supervisor.probe.cjs'
- if($Mode -eq 'Supervisor'){
+ if($Mode -eq 'ReadinessFixture'){
+  # テスト本体は固定pathだけ。通常reader/Observeを置換しない。
+  . (Join-Path $PSScriptRoot 'm21-windows-supervisor.readiness-fixture.ps1')
+ }elseif($Mode -eq 'Supervisor'){
   # 親のexact Job認定ack後に初期化した型で補助観測する。
   if(![M21Job]::InJob($self,$null)){throw 'ack後Job不在'}
   Guard-Run
@@ -451,6 +464,11 @@ try {
   $parent=New-Supervisor 'Parent' 'parent';Register-Child $parent 'parent'
   $known=New-Object 'Collections.Generic.List[object]'
   try{
+   if($TestFixture -eq 'parent-before-certificate'){
+    # Fixture自身の独立実exit証拠だけ。通常Capture/streams/Capturedへは触れない。
+    if(!$parent.Process.WaitForExit((Remaining))){throw 'fixture Parent実終了未確認'}
+    Write-Json 'fixture-parent-exit.json' @{owner=$owner;nonce=$Nonce;pid=$parent.RecordedPid;creation=$parent.RecordedCreation;exited=$true;exitCode=$parent.Process.ExitCode}
+   }
    # 自分が直接保持した親世代が、自身Jobで認定した集合だけを採用する。
    $certificate=Wait-File 'certified-tree.json'
    $parentIdentity=Identity $parent.Process
@@ -469,6 +487,7 @@ try {
    Write-Json 'observer.json' @{owner=$owner;nonce=$Nonce;parentKilled=$true;knownExited=$known.Count;exits=@($exitEvidence.ToArray())}
   }finally{foreach($p in $known){Attempt 'observer-handle-close' {$p.Dispose()}}}
  }else{
+  if($TestFixture -eq 'parent-before-certificate'){Set-Reason 'fixture-parent-exit';throw '固定fixture: cert前Parent終了'}
   Set-Operation 'Parent.createJob'
   $job=[M21Job]::Create()
   Set-Operation 'Parent.startSupervisor'
@@ -610,7 +629,7 @@ finally {
   if(!$p6Certification.childExited){$retained.Add(@{identity=$p6Certification.child;reason='P6 certified child exit unconfirmed'})}
   if(!$p6Certification.grandchildExited){$retained.Add(@{identity=$p6Certification.grandchild;reason='P6 certified grandchild exit unconfirmed'})}
  }
- $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@($p6Observations.ToArray());p6Certification=$p6Certification;lateObservation=$lateObservation;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());knownExitEvidence=$knownExitEvidence;startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
+ $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@($p6Observations.ToArray());p6Certification=$p6Certification;fixtureEvidence=$fixtureEvidence;lateObservation=$lateObservation;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());knownExitEvidence=$knownExitEvidence;startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
  if($null -ne $observer){$result.knownExited=$observer.knownExited}
  try{
   $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}

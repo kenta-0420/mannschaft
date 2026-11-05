@@ -144,6 +144,141 @@ async function dummy(role, run, nonce, scenario, workMs, totalMs) {
   await wait(Math.min(scenario === 'stdio-eof' || scenario === 'kill-close' ? 15000 : 800, remaining(workDeadline)));
   requireWork(workDeadline);
 }
+async function readinessFixtureSuite() {
+  assert.equal(process.platform, 'win32');
+  assert.equal(process.argv.length, 3, '固定fixture選択以外の入力は拒否');
+  const origin = performance.now();
+  const totalDeadline = origin + LIMIT.total;
+  const workDeadline = totalDeadline - LIMIT.reserve;
+  const inputCommit = process.env.M21_INPUT_COMMIT ?? null;
+  if (inputCommit !== null) assert.match(inputCommit, /^[0-9a-f]{40}$/);
+  const script = path.join(__dirname, 'm21-windows-supervisor.ps1');
+  const inputSHA256 = Object.fromEntries([
+    ['supervisor', script], ['probe', __filename], ['fixture', path.join(__dirname, 'm21-windows-supervisor.readiness-fixture.ps1')],
+    ['operations', path.join(__dirname, '..', 'docs', 'development', 'm21-windows-supervisor.md')],
+  ].map(([name, file]) => [name, crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').toUpperCase()]));
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'm21-readiness-fixture-'));
+  const baseIdentity = fs.lstatSync(base);
+  const baseCanonical = fs.realpathSync(base);
+  atomic(path.join(base, 'owner.json'), { owner: OWNER, purpose: 'M21固定readiness試練' });
+  const results = [];
+  const fixtures = ['parent-before-certificate', 'lock-release', 'lock-held', 'invalid-json'];
+  for (const fixture of fixtures) {
+    if (remaining(workDeadline) === 0) break;
+    const run = path.join(base, fixture); fs.mkdirSync(run);
+    const nonce = crypto.randomBytes(16).toString('hex'); atomic(path.join(run, 'owner.json'), { owner: OWNER, nonce });
+    const parentCase = fixture === 'parent-before-certificate';
+    requireWork(workDeadline);
+    const p = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', script,
+      '-Mode', parentCase ? 'Observe' : 'ReadinessFixture', '-Scenario', parentCase ? 'kill-close' : 'normal',
+      '-TestFixture', fixture, '-RunDirectory', run, '-Nonce', nonce, '-NodePath', process.execPath,
+      '-WorkRemainingMs', String(remaining(workDeadline)), '-TotalRemainingMs', String(remaining(totalDeadline))],
+    { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    let exited = false, closed = false, code = null, signal = null, launchError = null;
+    p.once('exit', (value, kind) => { exited = true; code = value; signal = kind; });
+    p.once('close', () => { closed = true; });
+    p.once('error', error => { launchError = error; });
+    const channels = [observeChannel('stdout', p.stdout, fs.createWriteStream(path.join(run, 'launcher.out'), { flags: 'wx' })),
+      observeChannel('stderr', p.stderr, fs.createWriteStream(path.join(run, 'launcher.err'), { flags: 'wx' }))];
+    let parentSafe = false, parentActual = null, parentReceipt = null, receipt = null, stopped = false;
+    let parentExitObservedAt = null, stopAt = null, failure = null, evidence = null;
+    const recoveryFailures = [];
+    const stopOwnLauncher = () => {
+      if (!stopped && !exited && (!parentCase || parentSafe)) { stopped = true; stopAt = Math.floor(performance.now() - origin); p.kill(); }
+    };
+    try {
+      if (parentCase) {
+        await until(() => fs.existsSync(path.join(run, 'fixture-parent-exit.json')) || exited || launchError !== null, Infinity, workDeadline);
+        assert.ok(fs.existsSync(path.join(run, 'fixture-parent-exit.json')), 'fixture Parentの実exit未到達');
+        parentActual = read(path.join(run, 'fixture-parent-exit.json'));
+        assert.deepEqual(Object.keys(parentActual).sort(), ['owner', 'nonce', 'pid', 'creation', 'exited', 'exitCode'].sort());
+        assert.equal(parentActual.owner, OWNER); assert.equal(parentActual.nonce, nonce);
+        assert.ok(Number.isInteger(parentActual.pid) && parentActual.pid > 0); assert.match(parentActual.creation, /^[1-9][0-9]*$/);
+        assert.equal(parentActual.exited, true); assert.equal(parentActual.exitCode, 1);
+        parentReceipt = read(path.join(run, 'result.json'));
+        assert.equal(parentReceipt.mode, 'Parent'); assert.equal(parentReceipt.owner, OWNER); assert.equal(parentReceipt.nonce, nonce);
+        assert.equal(parentReceipt.process.pid, parentActual.pid); assert.equal(parentReceipt.process.creation, parentActual.creation);
+        assert.equal(parentReceipt.primary.reason, 'fixture-parent-exit');
+        assert.equal(parentReceipt.resourceRecovery.confirmed, true); assert.equal(parentReceipt.streams.length, 0);
+        for (const name of ['certified-tree.json', 'child-candidate.json', 'child.json', 'supervisor-owned.json']) assert.equal(fs.existsSync(path.join(run, name)), false);
+        parentSafe = true;
+        parentExitObservedAt = Math.floor(performance.now() - origin);
+        // 任意の性能条件を増やさず、既存Rと残G/Wの小さい方までだけ旧Observeを観測する。
+        const earlyDeadline = Math.min(workDeadline, totalDeadline, performance.now() + LIMIT.reserve);
+        try { await until(() => exited || launchError !== null, Infinity, earlyDeadline); }
+        catch { stopOwnLauncher(); throw new Error('fixture-parent-exit-observe-still-waiting'); }
+      } else {
+        try { await until(() => exited || launchError !== null, Infinity, workDeadline); }
+        catch { stopOwnLauncher(); throw new Error('fixture-work-budget-exhausted'); }
+      }
+      if (launchError) throw launchError;
+      const channelFailures = [];
+      for (const channel of channels) channelFailures.push(...await collectChannel(channel, totalDeadline));
+      assert.deepEqual(channelFailures, []);
+      await until(() => closed, LIMIT.channel, totalDeadline);
+      receipt = read(path.join(run, 'result.json'));
+      assert.equal(receipt.owner, OWNER); assert.equal(receipt.nonce, nonce); assert.equal(receipt.process.pid, p.pid);
+      assert.equal(receipt.resourceRecovery.confirmed, true);
+      if (parentCase) {
+        assert.equal(code, 1); assert.equal(receipt.mode, 'Observe');
+        assert.equal(receipt.primary.reason, 'parent-exited-before-certificate');
+        assert.equal(receipt.parentKilled, false); assert.equal(receipt.knownExited, 0);
+        assert.equal(fs.existsSync(path.join(run, 'certified-tree.json')), false);
+        assert.equal(receipt.streams.length, 1);
+        const captured = receipt.streams[0];
+        assert.equal(captured.role, 'direct'); assert.equal(captured.pid, parentActual.pid); assert.equal(captured.creation, parentActual.creation);
+        assert.equal(captured.exited, true); assert.equal(captured.exitCode, 1);
+        assert.equal(captured.stdoutEof, true); assert.equal(captured.stderrEof, true);
+      } else {
+        evidence = receipt.fixtureEvidence;
+        assert.equal(evidence.fixture, fixture);
+        if (fixture === 'invalid-json') {
+          assert.equal(code, 1); assert.equal(receipt.primary.ioOperation, 'decode');
+          assert.equal(evidence.realRead32, 0); assert.equal(evidence.accepted, 0); assert.equal(evidence.budgetExhausted, false);
+        } else {
+          assert.ok(evidence.realRead32 > 0); assert.equal(evidence.lastHResult, -2147024864); assert.equal(evidence.lockAcquired, true);
+          if (fixture === 'lock-release') {
+            assert.equal(evidence.lockReleased, true); assert.equal(code, 0); assert.equal(receipt.primary, null);
+            assert.equal(evidence.accepted, 1); assert.deepEqual(evidence.acceptedIdentity, evidence.expectedIdentity);
+            assert.deepEqual(evidence.events.map(e => e.event), ['lock-acquired', 'actual-read32', 'lock-released', 'accepted']);
+          } else {
+            assert.equal(code, 1); assert.equal(evidence.accepted, 0); assert.equal(evidence.budgetExhausted, true);
+            assert.equal(receipt.primary.reason, 'metadata-readiness-exhausted');
+          }
+        }
+      }
+    } catch (error) {
+      failure = error.message;
+      try { stopOwnLauncher(); } catch (stopError) { failure += '; own-stop:' + stopError.name; }
+      try { await until(() => exited || launchError !== null, LIMIT.recoveryExit, totalDeadline); } catch { /* exact状態を結果へ残す */ }
+      for (const channel of channels) {
+        const failures = await collectChannel(channel, totalDeadline);
+        recoveryFailures.push(...failures);
+        if (failures.length) await recoverChannel(channel, totalDeadline);
+      }
+      if (!exited) p.unref();
+    }
+    // 故意のREDでも次の独立対照へ進む。通常10case suiteは呼ばない。
+    results.push({ fixture, passed: failure === null, failure, parentSafe, parentActual, parentReceipt,
+      parentExitObservedAt, stopAt, stopped, launcherPid: p.pid, launcherExited: exited, launcherExitCode: code,
+      launcherSignal: signal, launcherClosed: closed, channels: channels.map(c => c.state), recoveryFailures, receipt,
+      unverifiedOwnedTree: !exited || (parentCase && !parentSafe), elapsedMs: Math.floor(performance.now() - origin) });
+    if (!exited || (parentCase && !parentSafe)) break;
+  }
+  let passed = results.length === fixtures.length && results.every(r => r.passed);
+  let cleanupFailure = null;
+  if (passed) {
+    try {
+      const current = fs.lstatSync(base);
+      assert.ok(current.isDirectory() && !current.isSymbolicLink()); assert.equal(current.dev, baseIdentity.dev); assert.equal(current.ino, baseIdentity.ino);
+      assert.equal(fs.realpathSync(base), baseCanonical); assert.equal(read(path.join(base, 'owner.json')).owner, OWNER);
+      fs.rmSync(base, { recursive: true });
+    } catch (error) { passed = false; cleanupFailure = error.message; }
+  }
+  console.log(JSON.stringify({ kind: 'fixed-readiness-fixture', passed, inputCommit, inputSHA256, totalMs: LIMIT.total, reserveMs: LIMIT.reserve,
+    results, notRun: fixtures.filter(f => !results.some(r => r.fixture === f)), cleanupFailure, retained: passed ? null : base }));
+  if (!passed) process.exitCode = 1;
+}
 async function suite() {
   assert.equal(process.platform, 'win32', 'Windows専用。非Windowsを合格扱いにしない');
   assert.equal(process.argv.length, 2, '任意commandや出力pathの入力は受け付けない');
@@ -351,6 +486,8 @@ async function suite() {
   if (process.argv[2] === '--dummy') {
     assert.equal(process.argv.length, 9);
     await dummy(...process.argv.slice(3));
+  } else if (process.argv[2] === '--readiness-fixture') {
+    await readinessFixtureSuite();
   } else {
     await suite();
   }
