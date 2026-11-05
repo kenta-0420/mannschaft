@@ -104,6 +104,16 @@ erDiagram
 | [property](property.md) | `property_work_packages` | `timeline_post_id` | ID参照 | `timeline_posts` |
 | [village](village.md) | `village_festival_live_posts` | `timeline_post_id` | ID参照 | `timeline_posts` |
 
+## 自己参照
+
+mermaid は同一テーブルの自己参照を複数描けず 1 本に畳むため、図に線が欠けることがある。自己参照はこの表を正とする。
+
+| テーブル | 列 | 種別 |
+| --- | --- | --- |
+| `timeline_posts` | `forward_source_post_id` | 外部キー |
+| `timeline_posts` | `parent_id` | 外部キー |
+| `timeline_posts` | `repost_of_id` | 外部キー |
+
 ## 多態参照（線を引かない）
 
 | テーブル | 種別列 | ID列 |

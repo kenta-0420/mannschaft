@@ -76,6 +76,15 @@ erDiagram
 | [property](property.md) | `property_work_packages` | `budget_transaction_id` | ID参照 | `budget_transactions` |
 | [shiftbudget](shiftbudget.md) | `shift_budget_allocations` | `budget_category_id` | ID参照 | `budget_categories` |
 
+## 自己参照
+
+mermaid は同一テーブルの自己参照を複数描けず 1 本に畳むため、図に線が欠けることがある。自己参照はこの表を正とする。
+
+| テーブル | 列 | 種別 |
+| --- | --- | --- |
+| `budget_categories` | `parent_id` | 外部キー |
+| `budget_transactions` | `reversal_of_id` | 外部キー |
+
 ## 多態参照（線を引かない）
 
 | テーブル | 種別列 | ID列 |

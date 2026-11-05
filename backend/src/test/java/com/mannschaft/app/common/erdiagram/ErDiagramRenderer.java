@@ -282,6 +282,24 @@ final class ErDiagramRenderer {
 
         renderInbound(m, domain, memberNames, out);
 
+        // mermaid は同一テーブルの自己参照を複数描けず 1 本に畳むため、全件を表で正として示す
+        List<Relation> selfRefs = m.relations.stream()
+                .filter(r -> r.child().equals(r.parent()) && memberNames.contains(r.child()))
+                .sorted(Comparator.comparing(Relation::child).thenComparing(Relation::columns))
+                .toList();
+        if (!selfRefs.isEmpty()) {
+            out.add("## 自己参照");
+            out.add("");
+            out.add("mermaid は同一テーブルの自己参照を複数描けず 1 本に畳むため、図に線が欠けることがある。"
+                    + "自己参照はこの表を正とする。");
+            out.add("");
+            out.add("| テーブル | 列 | 種別 |");
+            out.add("| --- | --- | --- |");
+            selfRefs.forEach(r -> out.add("| `" + r.child() + "` | `" + r.columns() + "` | "
+                    + (r.dotted() ? "ID参照" : "外部キー") + " |"));
+            out.add("");
+        }
+
         List<Polymorphic> poly = m.polymorphics.stream().filter(p -> memberNames.contains(p.table())).toList();
         if (!poly.isEmpty()) {
             out.add("## 多態参照（線を引かない）");
@@ -510,6 +528,7 @@ final class ErDiagramRenderer {
                 + "**列の DATA_TYPE が参照先の主キーと一致する場合だけ**推定して引く。");
         out.add("- 多態参照（同一テーブルに `<p>_type` と `<p>_id` がある）は線を引かず、各ファイルの表に列挙する。");
         out.add("- 推定できない `*_id` は各ファイルの「推定不能参照」表に列挙する。");
+        out.add("- mermaid は同一テーブルの自己参照を複数描けず1本に畳むため、自己参照は各ページの「自己参照」表を正とする。");
         out.add("- 参照先が他ドメインの場合は、列を持たないスタブ実体として描く。");
         out.add("- 図にはキー列（PK / FK / 参照推定列 / 単一列 UNIQUE=UK）のみを描く。全列は各ファイルの表。");
         out.add("- ビューは図に描かず、各ファイルの「ビュー」節に列挙する。");
