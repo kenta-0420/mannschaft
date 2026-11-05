@@ -1,8 +1,7 @@
 package com.mannschaft.app.dashboard.controller;
 
 import com.mannschaft.app.common.MembershipScopeQueryService;
-import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
-import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
+import com.mannschaft.app.bulletin.service.BulletinUnreadQueryService;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
@@ -32,13 +31,15 @@ import com.mannschaft.app.dashboard.service.DashboardWidgetService;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
-import com.mannschaft.app.organization.entity.OrganizationEntity;
-import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.dto.OrganizationNameIconView;
 import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.schedule.dto.ScopeScheduleView;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.service.ScheduleScopeQueryService;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.shift.dto.UpcomingAssignedSlotResponse;
 import com.mannschaft.app.shift.service.ShiftMyService;
+import com.mannschaft.app.team.dto.TeamNameIconView;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.service.TeamService;
@@ -74,7 +75,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -89,6 +89,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class DashboardController {
 
+    /** 未読スレッド集計で走査するチームあたりのスレッド上限（ピン留め優先→更新日時降順の先頭）。 */
+    private static final int UNREAD_BULLETIN_SCAN_LIMIT_PER_TEAM = 100;
+
     private final DashboardService dashboardService;
     private final DashboardWidgetService widgetService;
     private final ActivityFeedService activityFeedService;
@@ -98,11 +101,8 @@ public class DashboardController {
     private final TimelinePostRepository timelinePostRepository;
     private final ScheduleRepository scheduleRepository;
     private final MembershipScopeQueryService membershipScopeQueryService;
-    private final BulletinThreadRepository bulletinThreadRepository;
-    private final BulletinReadStatusRepository bulletinReadStatusRepository;
     private final ChatChannelMemberRepository chatChannelMemberRepository;
     private final TeamRepository teamRepository;
-    private final OrganizationRepository organizationRepository;
     private final ContentVisibilityChecker contentVisibilityChecker;
     /** 司令塔第二弾: 個人「今後の予定」への本人シフト統合用（ADHD-UX戦役第四陣）。 */
     /**
@@ -114,6 +114,10 @@ public class DashboardController {
      * shift ドメインの Service 経由で DTO を受け取る（モジュラーモノリス原則）。</p>
      */
     private final ShiftMyService shiftMyService;
+    /** CMP-261103-1225: 「今後の予定」のチーム・組織予定を所属スコープ数に依存せず一括取得する。 */
+    private final ScheduleScopeQueryService scheduleScopeQueryService;
+    /** CMP-261103-1225: 未読スレッド数をチーム数・スレッド数に依存せず 1 クエリで数える。 */
+    private final BulletinUnreadQueryService bulletinUnreadQueryService;
     /** 司令塔第二弾: 個人「今後の予定」への本人予約統合用（ADHD-UX戦役第四陣）。 */
     private final ReservationRepository reservationRepository;
 
@@ -298,44 +302,60 @@ public class DashboardController {
         List<ScheduleEntity> personalSchedules = scheduleRepository
                 .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(userId, from, until);
         // 所属チームのスケジュール（CMP-027: user_roles ∪ memberships の在籍チーム）
+        // CMP-261103-1225: 所属スコープごとの取得（N+1）を、schedule ドメインの照会 Service 経由の IN 句 1 クエリへまとめる。
+        // 並びは修正前と同じ「所属スコープ順 → 各スコープ内 start_at 昇順」で返る。
         List<Long> teamIdsForSchedule = membershipScopeQueryService.findActiveTeamIds(userId);
-        List<ScheduleEntity> teamSchedules = teamIdsForSchedule.stream()
-                .flatMap(teamId -> scheduleRepository
-                        .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, from, until).stream())
-                .toList();
+        List<ScopeScheduleView> teamSchedules =
+                scheduleScopeQueryService.findTeamSchedulesBetween(teamIdsForSchedule, from, until);
         // 所属組織のスケジュール（CMP-027: user_roles ∪ memberships の在籍組織）
         List<Long> orgIdsForSchedule = membershipScopeQueryService.findActiveOrganizationIds(userId);
-        List<ScheduleEntity> orgSchedules = orgIdsForSchedule.stream()
-                .flatMap(orgId -> scheduleRepository
-                        .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, from, until).stream())
-                .toList();
+        List<ScopeScheduleView> orgSchedules =
+                scheduleScopeQueryService.findOrganizationSchedulesBetween(orgIdsForSchedule, from, until);
 
         // F00 認可基盤連携（2026-05-29）: チーム横断・組織横断スケジュールは
         // visibility を必ず反映させるため、ID 群を
         // filterAccessible に通して可視なものだけ採用する（team/org をまとめて 1 回判定）。
         // 個人スケジュールは本人取得のため対象外で常に含める。
-        List<ScheduleEntity> teamOrgSchedules = new ArrayList<>();
-        teamOrgSchedules.addAll(teamSchedules);
-        teamOrgSchedules.addAll(orgSchedules);
-        Set<Long> visibleTeamOrgIds = teamOrgSchedules.isEmpty()
+        List<Long> teamOrgScheduleIds = new ArrayList<>();
+        teamSchedules.forEach(v -> teamOrgScheduleIds.add(v.id()));
+        orgSchedules.forEach(v -> teamOrgScheduleIds.add(v.id()));
+        Set<Long> visibleTeamOrgIds = teamOrgScheduleIds.isEmpty()
                 ? Set.of()
                 : contentVisibilityChecker.filterAccessible(
                         ReferenceType.SCHEDULE,
-                        teamOrgSchedules.stream().map(ScheduleEntity::getId).toList(),
+                        teamOrgScheduleIds,
                         userId);
+        List<ScopeScheduleView> visibleTeamSchedules = teamSchedules.stream()
+                .filter(v -> visibleTeamOrgIds.contains(v.id()))
+                .toList();
+        List<ScopeScheduleView> visibleOrgSchedules = orgSchedules.stream()
+                .filter(v -> visibleTeamOrgIds.contains(v.id()))
+                .toList();
+
+        // CMP-261103-1225: 予定ごとの team/organization の findById（N+1）を廃し、team / organization ドメインの
+        // Service 経由でそれぞれ IN 句 1 クエリにまとめて名前・アイコンを解決する。
+        // 論理削除済みチームは findById と同じく @SQLRestriction で除外され、名前・アイコンは null になる。
+        Map<Long, TeamNameIconView> teamLabels = teamService.getNameIconsByIds(visibleTeamSchedules.stream()
+                .map(ScopeScheduleView::teamId).filter(java.util.Objects::nonNull).collect(Collectors.toSet()));
+        Map<Long, OrganizationNameIconView> orgLabels = organizationService.getNameIconsByIds(
+                visibleOrgSchedules.stream()
+                        .map(ScopeScheduleView::organizationId).filter(java.util.Objects::nonNull)
+                        .collect(Collectors.toSet()));
 
         List<Map<String, Object>> items = new ArrayList<>();
         personalSchedules.stream()
                 .map(e -> toScheduleMapPersonal(e))
                 .forEach(items::add);
-        teamSchedules.stream()
-                .filter(e -> visibleTeamOrgIds.contains(e.getId()))
-                .map(e -> toScheduleMapTeam(e))
-                .forEach(items::add);
-        orgSchedules.stream()
-                .filter(e -> visibleTeamOrgIds.contains(e.getId()))
-                .map(e -> toScheduleMapOrg(e))
-                .forEach(items::add);
+        for (ScopeScheduleView v : visibleTeamSchedules) {
+            TeamNameIconView label = v.teamId() != null ? teamLabels.get(v.teamId()) : null;
+            items.add(toScopeScheduleMap(v, "TEAM",
+                    label != null ? label.name() : null, label != null ? label.iconUrl() : null));
+        }
+        for (ScopeScheduleView v : visibleOrgSchedules) {
+            OrganizationNameIconView label = v.organizationId() != null ? orgLabels.get(v.organizationId()) : null;
+            items.add(toScopeScheduleMap(v, "ORG",
+                    label != null ? label.name() : null, label != null ? label.iconUrl() : null));
+        }
 
         // 司令塔第二弾（ADHD-UX戦役第四陣）: 本人のシフト・予約（CONFIRMED・代表行）を統合する。
         // それぞれ userId で絞り込み済みのため他人分の混入はない（AC-B2-2）。
@@ -385,17 +405,12 @@ public class DashboardController {
 
         // 掲示板: 所属チームのスレッドで未読のもの（CMP-027: user_roles ∪ memberships の在籍チーム）
         List<Long> bulletinTeamIds = membershipScopeQueryService.findActiveTeamIds(userId);
-        long totalUnreadBulletin = 0;
-        for (Long teamId : bulletinTeamIds) {
-            Page<com.mannschaft.app.bulletin.entity.BulletinThreadEntity> threads =
-                    bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(
-                            com.mannschaft.app.bulletin.ScopeType.TEAM, teamId, PageRequest.of(0, 100));
-            for (var thread : threads.getContent()) {
-                if (!bulletinReadStatusRepository.existsByThreadIdAndUserId(thread.getId(), userId)) {
-                    totalUnreadBulletin++;
-                }
-            }
-        }
+        // CMP-261103-1225: チームごとの先頭 100 件取得 × スレッドごとの既読判定（N+1）を、
+        // 「チームごとの先頭 100 件のうち未読の件数」を数える 1 クエリへまとめる（走査上限の意味は不変）。
+        // bulletin ドメインの照会 Service を経由する（他ドメインの Repository を直接呼ばない）。
+        long totalUnreadBulletin = bulletinUnreadQueryService.countUnreadInTopThreadsPerScope(
+                com.mannschaft.app.bulletin.ScopeType.TEAM, bulletinTeamIds,
+                UNREAD_BULLETIN_SCAN_LIMIT_PER_TEAM, userId);
 
         // チャット: 未読数合計
         List<ChatChannelMemberEntity> chatMemberships = chatChannelMemberRepository.findByUserId(userId);
@@ -744,38 +759,24 @@ public class DashboardController {
     }
 
     /**
-     * チーム予定をMap表現に変換する。チーム名・アイコンを付与する。
+     * チーム・組織の予定（schedule ドメインの表示用の値）を統合予定 Map に変換する。
+     * キー構成は個人予定（{@link #toScheduleBaseMap}）と同一で、スコープ種別・名前・アイコンを付与する。
      */
-    private Map<String, Object> toScheduleMapTeam(ScheduleEntity entity) {
-        Map<String, Object> map = toScheduleBaseMap(entity);
-        map.put("scope_type", "TEAM");
-        Long teamId = entity.getTeamId();
-        if (teamId != null) {
-            Optional<TeamEntity> team = teamRepository.findById(teamId);
-            map.put("scope_name", team.map(TeamEntity::getName).orElse(null));
-            map.put("scope_icon_url", team.map(TeamEntity::getIconUrl).orElse(null));
-        } else {
-            map.put("scope_name", null);
-            map.put("scope_icon_url", null);
-        }
-        return map;
-    }
-
-    /**
-     * 組織予定をMap表現に変換する。組織名・アイコンを付与する。
-     */
-    private Map<String, Object> toScheduleMapOrg(ScheduleEntity entity) {
-        Map<String, Object> map = toScheduleBaseMap(entity);
-        map.put("scope_type", "ORG");
-        Long orgId = entity.getOrganizationId();
-        if (orgId != null) {
-            Optional<OrganizationEntity> org = organizationRepository.findById(orgId);
-            map.put("scope_name", org.map(OrganizationEntity::getName).orElse(null));
-            map.put("scope_icon_url", org.map(OrganizationEntity::getIconUrl).orElse(null));
-        } else {
-            map.put("scope_name", null);
-            map.put("scope_icon_url", null);
-        }
+    private Map<String, Object> toScopeScheduleMap(ScopeScheduleView view, String scopeType,
+                                                   String scopeName, String scopeIconUrl) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", view.id());
+        // 司令塔第二弾（ADHD-UX戦役第四陣）: kind でイベント/シフト/予約を区別する（AC-B2-1）。
+        map.put("kind", "EVENT");
+        map.put("title", view.title());
+        // 壁時計の日付・時刻から、予定 Entity と同じ LocalDateTime を復元する（修正前と同じ値・型）
+        map.put("start_at", view.startDate() != null ? LocalDateTime.of(view.startDate(), view.startTime()) : null);
+        map.put("end_at", view.endDate() != null ? LocalDateTime.of(view.endDate(), view.endTime()) : null);
+        map.put("location", view.location());
+        map.put("all_day", view.allDay());
+        map.put("scope_type", scopeType);
+        map.put("scope_name", scopeName);
+        map.put("scope_icon_url", scopeIconUrl);
         return map;
     }
 

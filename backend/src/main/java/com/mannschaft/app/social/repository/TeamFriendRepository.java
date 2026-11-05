@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -139,4 +140,23 @@ public interface TeamFriendRepository extends JpaRepository<TeamFriendEntity, Lo
             WHERE tf.teamAId = :teamId OR tf.teamBId = :teamId
             """)
     long countFriendsByTeamId(@Param("teamId") Long teamId);
+
+    /**
+     * 複数チームのフレンド関係数を 1 本の SQL でまとめて数える（CMP-261103-1225。{@link #countFriendsByTeamId} の一括版）。
+     *
+     * <p>{@code team_friends} は {@code team_a_id < team_b_id} で正規化され（CHECK 制約）、1 行が両チームの
+     * フレンド 1 件ずつに当たる。A 側と B 側をそれぞれ数えて足せば、チームごとに
+     * {@link #countFriendsByTeamId} を呼んだ結果と一致する。関係が 1 件も無いチームは結果に含まれない。</p>
+     *
+     * @param teamIds 対象チーム ID（空を渡してはならない。呼び出し側で早期 return すること）
+     * @return 各要素は {@code [チーム ID (Number), 件数 (Number)]}
+     */
+    @Query(value = """
+            SELECT f.team_id, COUNT(*) FROM (
+                SELECT team_a_id AS team_id FROM team_friends WHERE team_a_id IN (:teamIds)
+                UNION ALL
+                SELECT team_b_id AS team_id FROM team_friends WHERE team_b_id IN (:teamIds)
+            ) f GROUP BY f.team_id
+            """, nativeQuery = true)
+    List<Object[]> countFriendsGroupByTeamIdIn(@Param("teamIds") Collection<Long> teamIds);
 }

@@ -150,10 +150,15 @@ export function useEmergencyClosureApi() {
     return api<ClosurePreviewResponse>(`${base(teamId)}/emergency-closures/preview?${query}`)
   }
 
-  async function sendClosure(teamId: string, body: ClosureSendBody) {
+  /**
+   * 一括送信。`idempotencyKey` は連打・再送の二重送信防止用（BE が同キー同内容なら既存結果を返す）。
+   * 同じ送信操作の再送には同じキーを渡すこと。
+   */
+  async function sendClosure(teamId: string, body: ClosureSendBody, idempotencyKey?: string) {
     return api<ClosureSendResponse>(`${base(teamId)}/emergency-closures`, {
       method: 'POST',
       body,
+      headers: { 'Idempotency-Key': idempotencyKey ?? crypto.randomUUID() },
     })
   }
 
