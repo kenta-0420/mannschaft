@@ -497,6 +497,33 @@
       "runId": "alicization-cmp0035-run-20261030",
       "sourceHead": "0f8354b879e6f58103e07d76606928ea499a4dbf",
       "evidencePath": "docs/evidence/CMP-261011-0035/resident-observations.json"
+    },
+    {
+      "id": "ALIC-CMP0717-UI9-A",
+      "personaArchetype": "一般×連打せっかち",
+      "originalPersonaId": null,
+      "personaIdSource": "原本にpersonaIdなし。登録時に一意IDを付与。",
+      "runId": "CMP-261021-0717-ui9-20261105",
+      "sourceHead": "dc977b6724958111c149140ab83f0094b433bb78",
+      "evidencePath": "docs/evidence/CMP-261021-0717/resident-observations-20261105.json"
+    },
+    {
+      "id": "ALIC-CMP0717-UI9-B",
+      "personaArchetype": "ADHD傾向×中断放棄",
+      "originalPersonaId": null,
+      "personaIdSource": "原本にpersonaIdなし。登録時に一意IDを付与。",
+      "runId": "CMP-261021-0717-ui9-20261105",
+      "sourceHead": "dc977b6724958111c149140ab83f0094b433bb78",
+      "evidencePath": "docs/evidence/CMP-261021-0717/resident-observations-20261105.json"
+    },
+    {
+      "id": "resident-c",
+      "personaArchetype": "一般×隙間狙い",
+      "originalResidentId": "resident-c",
+      "personaIdSource": "raw IDは既存IDと衝突しないため原IDを保持。",
+      "runId": "CMP-261021-0717-ui9-20261105",
+      "sourceHead": "dc977b6724958111c149140ab83f0094b433bb78",
+      "evidencePath": "docs/evidence/CMP-261021-0717/resident-observations-20261105.json"
     }
   ],
   "journeys": [
@@ -1148,6 +1175,34 @@
       "sourceHead": "0f8354b879e6f58103e07d76606928ea499a4dbf",
       "evidencePath": "docs/evidence/CMP-261011-0035/resident-observations.json",
       "journeyIdSource": "登録時付与。原観測にjourneyIdなし。"
+    },
+    {
+      "id": "ALIC-CMP0717-UI9-A-J1",
+      "personaId": "ALIC-CMP0717-UI9-A",
+      "purpose": "シフトを公開・アーカイブした後、予算消化の戻りをUIから理解できるかを確認。公開/アーカイブ操作は観測、消化理解は未達。",
+      "runId": "CMP-261021-0717-ui9-20261105",
+      "sourceHead": "dc977b6724958111c149140ab83f0094b433bb78",
+      "evidencePath": "docs/evidence/CMP-261021-0717/resident-observations-20261105.json",
+      "journeyIdSource": "原本にjourneyIdなし。登録時付与。"
+    },
+    {
+      "id": "ALIC-CMP0717-UI9-B-J1",
+      "personaId": "ALIC-CMP0717-UI9-B",
+      "purpose": "中断後に自分の2026年12月シフトへ復帰し、管理者取消後の意味を理解できるかを確認。シフト発見は達成、取消理解は未達。",
+      "runId": "CMP-261021-0717-ui9-20261105",
+      "sourceHead": "dc977b6724958111c149140ab83f0094b433bb78",
+      "evidencePath": "docs/evidence/CMP-261021-0717/resident-observations-20261105.json",
+      "journeyIdSource": "原本にjourneyIdなし。登録時付与。"
+    },
+    {
+      "id": "resident-c-ui9",
+      "personaId": "resident-c",
+      "purpose": "別組織・別チームのシフト/予算に対する有限なUI閲覧探索。対象画面に到達しない観測を保持し、未発見を認可成功としない。",
+      "runId": "CMP-261021-0717-ui9-20261105",
+      "sourceHead": "dc977b6724958111c149140ab83f0094b433bb78",
+      "evidencePath": "docs/evidence/CMP-261021-0717/resident-observations-20261105.json",
+      "journeyIdSource": "raw IDは既存IDと衝突しないため原IDを保持。",
+      "originalJourneyId": "resident-c-ui9"
     }
   ],
   "insights": [
@@ -3535,6 +3590,69 @@
       "trusted": false,
       "status": "observed-unverified",
       "urgency": "when-free"
+    },
+    {
+      "id": "ALIC-CMP0717-UI9-A-01",
+      "featureKey": "shift-shift-budget",
+      "featureDetail": "アリシゼーション UI9 の未実証観測",
+      "title": "公開後のアーカイブ表示から予算消化の戻りを理解できなかった",
+      "detail": "住民Aは確定公開のダブルクリック後に確定済み表示、アーカイブのダブルクリック後にアーカイブ表示を観測。組織会計の収入・支出・残高は前後とも0円、チーム会計は会計年度がない表示で、画面から予算消化額の返還は確認できず目的未達。rootの03:32:06Z read-only照合ではfixture 2/2/2、消化3/4がCANCELLED 9,600/12,000（理由SHIFT_DELETED、03:14:14Z）、allocation2 consumed0/deleted=null。ARCHIVED後のFULL表示は既存仕様であり、この観測を新規欠陥と断定しない。既知CMP-261021-0652関連の一般会計0円観測とも分離する。selector/app errorなし。元run: CMP-261021-0717-ui9-20261105",
+      "page": "/shift/2",
+      "personaId": "ALIC-CMP0717-UI9-A",
+      "personaArchetype": "一般×連打せっかち",
+      "journeyId": "ALIC-CMP0717-UI9-A-J1",
+      "originalRunId": "CMP-261021-0717-ui9-20261105",
+      "runId": "CMP-261021-0717-ui9-20261105",
+      "sourceHead": "dc977b6724958111c149140ab83f0094b433bb78",
+      "evidencePath": "docs/evidence/CMP-261021-0717/resident-observations-20261105.json",
+      "sourceEvidencePath": "/home/kenta/verification-evidence/CMP-261021-0717-ui9-20261105/resident-a/journey-outcome.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "normal",
+      "screenshotPath": "docs/evidence/CMP-261021-0717/resident-a-budget.png"
+    },
+    {
+      "id": "ALIC-CMP0717-UI9-B-01",
+      "featureKey": "shift-shift",
+      "featureDetail": "アリシゼーション UI9 の未実証観測",
+      "title": "中断後の月表示とアーカイブ後の自分のシフト・交代導線を観測した",
+      "detail": "住民Bは12月のマイシフトで一度「シフトがありません」を観測（03:09:53Z、root確認ではA公開03:09:56Zより前）。カレンダー経由で戻ると11月表示へ戻り、交代依頼フォームの理由入力はEscapeで閉じ再表示すると空で未提出。後に12/15 09:00〜17:00・2/2割当済みを確認し、アーカイブ後も自分のシフトと交代依頼導線が表示され、取消説明は見つからず目的未達。通知一覧は公開通知2件で取消説明なし。原因は未確定でUI観測のみ。自動操作のstrict selector violation/timeoutは操作セレクタ失敗として記録し、アプリ例外・不具合とは扱わない。元run: CMP-261021-0717-ui9-20261105",
+      "page": "/my/shift",
+      "personaId": "ALIC-CMP0717-UI9-B",
+      "personaArchetype": "ADHD傾向×中断放棄",
+      "journeyId": "ALIC-CMP0717-UI9-B-J1",
+      "originalRunId": "CMP-261021-0717-ui9-20261105",
+      "runId": "CMP-261021-0717-ui9-20261105",
+      "sourceHead": "dc977b6724958111c149140ab83f0094b433bb78",
+      "evidencePath": "docs/evidence/CMP-261021-0717/resident-observations-20261105.json",
+      "sourceEvidencePath": "/home/kenta/verification-evidence/CMP-261021-0717-ui9-20261105/resident-b/journey.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "normal",
+      "screenshotPath": "docs/evidence/CMP-261021-0717/b-my-shift.png"
+    },
+    {
+      "id": "ALIC-CMP0717-UI9-C-01",
+      "featureKey": "shift-shift-budget",
+      "featureDetail": "アリシゼーション UI9 の未実証観測",
+      "title": "別組織の有限なシフト・予算探索で404と管理者拒否を観測した",
+      "detail": "住民C（別組織10 ADMIN）は/shift/2と編集でschedule/slots 404、他組織budgetで「管理者権限が必要」表示、推測したallocation詳細routeは404、teamId=1 URLは選択に反映されず自組織チーム表示、他チーム公開ページ経由でも/shift/2は404を観測。有限なUI探索で対象シフト/予算画面へ到達せず、書込みAPI認可は未検証。rootは他組織404と予算管理者拒否を既存挙動として確認。不存在推測を認可成功とは扱わず、一般的な安全性を主張しない。元run: CMP-261021-0717-ui9-20261105",
+      "page": "/organizations/s-98024ad7/budget",
+      "personaId": "resident-c",
+      "personaArchetype": "一般×隙間狙い",
+      "journeyId": "resident-c-ui9",
+      "originalRunId": "CMP-261021-0717-ui9-20261105",
+      "runId": "CMP-261021-0717-ui9-20261105",
+      "sourceHead": "dc977b6724958111c149140ab83f0094b433bb78",
+      "evidencePath": "docs/evidence/CMP-261021-0717/resident-observations-20261105.json",
+      "sourceEvidencePath": "/home/kenta/verification-evidence/CMP-261021-0717-ui9-20261105/resident-c/resident-summary.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "normal",
+      "screenshotPath": "docs/evidence/CMP-261021-0717/c-denied.png"
     }
   ],
   "runEnvironments": {
