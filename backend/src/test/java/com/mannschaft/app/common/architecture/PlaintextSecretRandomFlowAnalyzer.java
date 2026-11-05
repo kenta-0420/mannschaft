@@ -45,9 +45,10 @@ import org.objectweb.asm.tree.analysis.Value;
  * </ul>
  * <p>これで多次元・格納の前後・コピーした別名・分岐で合流した別名を、次数や形ごとの継ぎ当てなしに同じ規則で追う。
  * 類の印は流れに依らない（同じ類の配列は、書込みの前後を問わず乱数由来とみなす保守的な近似）。
- * 配列型の参照値を生む命令（NEWARRAY・ANEWARRAY・MULTIANEWARRAY・INVOKE* の戻り値・メソッド引数・AALOAD・
- * CHECKCAST・GETFIELD・GETSTATIC）はすべて命令位置（引数は局所変数番号）をキーとする場所を持ち、作った場所の空な
- * 配列参照は生まれない。合成の場所も同じ union-find の類に乗る。フィールドの読み出しは1回ごとに別の場所なので、
+ * 参照値を生む命令（NEW・NEWARRAY・ANEWARRAY・MULTIANEWARRAY・INVOKE* の戻り値・メソッド引数・AALOAD・
+ * GETFIELD・GETSTATIC・参照の LDC）は、配列型に限らずすべて命令位置（引数は局所変数番号）をキーとする場所を持ち、
+ * 場所の空な参照値は生まれない。CHECKCAST は新しい場所を作らず元の値の場所を引き継ぐ（同じ参照を2回キャストしても
+ * 同一性を保つ）。これらの場所も同じ union-find の類に乗る。格納による併合は配列でありうる値（配列型・Object 等）に限る。フィールドの読み出しは1回ごとに別の場所なので、
  * フィールドをまたぐ流れは既知の限界のまま、読み出したローカル配列に書いて同じメソッド内で読む流れは検出する。
  * それでも場所が空の値（{@code null} 定数など）へ {@code nextBytes} したときは {@link #ANY_CALL} を入れ、
  * 同居だけで違反とする側に倒す。</p>
@@ -171,14 +172,33 @@ final class PlaintextSecretRandomFlowAnalyzer {
     }
 
     /**
-     * 抽象値。{@code size} は 1 か 2（カテゴリ）、{@code tainted} は値自身の乱数の印、{@code sites} はこの値でありうる
-     * 配列を作った場所（命令の番号は 0 以上、引数は局所変数番号から作る負の番号）。配列の印は {@link AliasClasses} の類が持つ。
+     * 抽象値。{@code size} は 1 か 2（カテゴリ）、{@code tainted} は値自身の乱数の印、{@code sites} はこの参照値でありうる
+     * 参照を生んだ場所（命令の番号は 0 以上、引数は局所変数番号から作る負の番号）。配列の印は {@link AliasClasses} の類が持つ。
+     * {@code mayBeArray} は配列でありうるか（配列型か、{@code Object}・{@code Cloneable}・{@code Serializable} 型）。
+     * 格納による類の併合は配列でありうる値に限る（文字列など配列でない参照を格納しても、格納先の配列と同じ類にしない）。
      */
-    record TaintValue(int size, boolean tainted, Set<Integer> sites) implements Value {
-        static final TaintValue UNINITIALIZED = new TaintValue(1, false, Set.of());
+    record TaintValue(int size, boolean tainted, Set<Integer> sites, boolean mayBeArray) implements Value {
+        static final TaintValue UNINITIALIZED = new TaintValue(1, false, Set.of(), false);
 
         static TaintValue of(int size, boolean tainted) {
-            return new TaintValue(size, tainted, Set.of());
+            return new TaintValue(size, tainted, Set.of(), false);
+        }
+
+        /** 型が配列でありうるか（配列型、または配列の上位型である Object・Cloneable・Serializable）。 */
+        static boolean mayBeArray(Type type) {
+            if (type.getSort() == Type.ARRAY) {
+                return true;
+            }
+            if (type.getSort() != Type.OBJECT) {
+                return false;
+            }
+            String name = type.getInternalName();
+            return name.equals("java/lang/Object") || name.equals("java/lang/Cloneable")
+                    || name.equals("java/io/Serializable");
+        }
+
+        static boolean isReference(Type type) {
+            return type.getSort() == Type.OBJECT || type.getSort() == Type.ARRAY;
         }
 
         @Override
@@ -187,7 +207,7 @@ final class PlaintextSecretRandomFlowAnalyzer {
         }
 
         TaintValue withTaint() {
-            return tainted ? this : new TaintValue(size, true, sites);
+            return tainted ? this : new TaintValue(size, true, sites, mayBeArray);
         }
     }
 
@@ -226,11 +246,10 @@ final class PlaintextSecretRandomFlowAnalyzer {
 
         @Override
         public TaintValue newParameterValue(boolean isInstanceMethod, int local, Type type) {
-            TaintValue value = newValue(type);
-            if (type.getSort() == Type.ARRAY) {
-                return new TaintValue(value.size(), false, Set.of(-1 - local));
+            if (TaintValue.isReference(type)) {
+                return new TaintValue(1, false, Set.of(-1 - local), TaintValue.mayBeArray(type));
             }
-            return value;
+            return newValue(type);
         }
 
         @Override
@@ -239,11 +258,15 @@ final class PlaintextSecretRandomFlowAnalyzer {
                 case Opcodes.LCONST_0, Opcodes.LCONST_1, Opcodes.DCONST_0, Opcodes.DCONST_1 -> TaintValue.of(2, false);
                 case Opcodes.LDC -> {
                     Object constant = ((LdcInsnNode) insn).cst;
-                    yield TaintValue.of(constant instanceof Long || constant instanceof Double ? 2 : 1, false);
+                    if (constant instanceof Long || constant instanceof Double) {
+                        yield TaintValue.of(2, false);
+                    }
+                    boolean primitive = constant instanceof Integer || constant instanceof Float;
+                    yield primitive ? TaintValue.of(1, false) : new TaintValue(1, false, Set.of(insnIndex(insn)), false);
                 }
                 case Opcodes.GETSTATIC -> fieldValue(insn);
-                // NEW は <init> の後に印を付け替えるため、命令ごとに別の値（同一性で追う）にする
-                case Opcodes.NEW -> new TaintValue(1, false, Set.of());
+                // NEW は参照を生む場所を持つ。<init> の後に印を付け替えるため、命令ごとに別の値（同一性で追う）にする
+                case Opcodes.NEW -> new TaintValue(1, false, Set.of(insnIndex(insn)), false);
                 default -> TaintValue.of(1, false);
             };
         }
@@ -263,12 +286,10 @@ final class PlaintextSecretRandomFlowAnalyzer {
                 case Opcodes.LNEG, Opcodes.DNEG, Opcodes.I2L, Opcodes.I2D, Opcodes.L2D, Opcodes.F2L, Opcodes.F2D,
                      Opcodes.D2L -> TaintValue.of(2, isTainted(value));
                 // 配列を作った場所は命令の番号で識別する
-                case Opcodes.NEWARRAY, Opcodes.ANEWARRAY -> new TaintValue(1, false, Set.of(insnIndex(insn)));
-                // 配列型への CHECKCAST は、作った場所を持たない値（Object を返す呼び出し等）に合成の場所を与える
-                case Opcodes.CHECKCAST ->
-                        Type.getObjectType(((TypeInsnNode) insn).desc).getSort() == Type.ARRAY && value.sites().isEmpty()
-                                ? new TaintValue(1, value.tainted(), Set.of(insnIndex(insn)))
-                                : value;
+                case Opcodes.NEWARRAY, Opcodes.ANEWARRAY -> new TaintValue(1, false, Set.of(insnIndex(insn)), true);
+                // CHECKCAST は新しい場所を作らず、元の値の場所をそのまま引き継ぐ（同じ参照の2回のキャストでも同一性を保つ）
+                case Opcodes.CHECKCAST -> new TaintValue(1, value.tainted(), value.sites(),
+                        TaintValue.mayBeArray(Type.getObjectType(((TypeInsnNode) insn).desc)));
                 case Opcodes.INSTANCEOF -> TaintValue.of(1, false);
                 case Opcodes.GETFIELD -> fieldValue(insn);
                 // 分岐・switch・return・throw・PUTSTATIC・MONITOR* は値を返さない
@@ -284,7 +305,7 @@ final class PlaintextSecretRandomFlowAnalyzer {
                 // 参照の要素（内側の配列を含む）は格納先と同じ類に属する。印は配列の値自体の印（split の戻り値など、
                 // 作った場所の分からない乱数由来の配列）と類の印を合わせる
                 case Opcodes.AALOAD -> new TaintValue(1, value1.tainted(),
-                        value1.sites().isEmpty() ? Set.of(insnIndex(insn)) : value1.sites());
+                        value1.sites().isEmpty() ? Set.of(insnIndex(insn)) : value1.sites(), true);
                 case Opcodes.IALOAD, Opcodes.FALOAD, Opcodes.BALOAD, Opcodes.CALOAD, Opcodes.SALOAD ->
                         TaintValue.of(1, isTainted(value1));
                 case Opcodes.LALOAD, Opcodes.DALOAD -> TaintValue.of(2, isTainted(value1));
@@ -301,7 +322,7 @@ final class PlaintextSecretRandomFlowAnalyzer {
         public TaintValue ternaryOperation(AbstractInsnNode insn, TaintValue array, TaintValue index,
                                            TaintValue value) {
             // 配列要素への代入（xASTORE）
-            if (insn.getOpcode() == Opcodes.AASTORE && !value.sites().isEmpty()) {
+            if (insn.getOpcode() == Opcodes.AASTORE && value.mayBeArray() && !value.sites().isEmpty()) {
                 Set<Integer> merged = new HashSet<>(array.sites());
                 merged.addAll(value.sites());
                 aliases.union(merged);
@@ -316,7 +337,7 @@ final class PlaintextSecretRandomFlowAnalyzer {
         public TaintValue naryOperation(AbstractInsnNode insn, List<? extends TaintValue> values) {
             int opcode = insn.getOpcode();
             if (opcode == Opcodes.MULTIANEWARRAY) {
-                return new TaintValue(1, false, Set.of(insnIndex(insn)));
+                return new TaintValue(1, false, Set.of(insnIndex(insn)), true);
             }
             if (opcode == Opcodes.INVOKEDYNAMIC) {
                 boolean tainted = values.stream().anyMatch(this::isTainted);
@@ -348,22 +369,22 @@ final class PlaintextSecretRandomFlowAnalyzer {
             return resultValue(insn, returnType, argumentTainted || receiverTainted);
         }
 
-        /** 呼び出しの戻り値。配列型なら命令位置の合成の場所を与える（作った場所の空な配列参照を作らない）。 */
+        /** 呼び出しの戻り値。参照型なら命令位置の場所を与える（場所の空な参照値を作らない）。 */
         private TaintValue resultValue(AbstractInsnNode insn, Type type, boolean tainted) {
             if (type.getSort() == Type.VOID) {
                 return null;
             }
-            if (type.getSort() == Type.ARRAY) {
-                return new TaintValue(1, tainted, Set.of(insnIndex(insn)));
+            if (TaintValue.isReference(type)) {
+                return new TaintValue(1, tainted, Set.of(insnIndex(insn)), TaintValue.mayBeArray(type));
             }
             return TaintValue.of(type.getSize(), tainted);
         }
 
-        /** フィールドの値。配列型なら命令位置の合成の場所を与える（フィールドをまたぐ流れは追わず、読み出し1回ごとに別の場所）。 */
+        /** フィールドの値。参照型なら命令位置の場所を与える（フィールドをまたぐ流れは追わず、読み出し1回ごとに別の場所）。 */
         private TaintValue fieldValue(AbstractInsnNode insn) {
             Type type = Type.getType(((FieldInsnNode) insn).desc);
-            if (type.getSort() == Type.ARRAY) {
-                return new TaintValue(1, false, Set.of(insnIndex(insn)));
+            if (TaintValue.isReference(type)) {
+                return new TaintValue(1, false, Set.of(insnIndex(insn)), TaintValue.mayBeArray(type));
             }
             return TaintValue.of(type.getSize(), false);
         }
@@ -377,12 +398,14 @@ final class PlaintextSecretRandomFlowAnalyzer {
         public TaintValue merge(TaintValue value1, TaintValue value2) {
             int size = value1.size() == value2.size() ? value1.size() : 1;
             boolean tainted = value1.tainted() || value2.tainted();
-            if (size == value1.size() && tainted == value1.tainted() && value1.sites().containsAll(value2.sites())) {
+            boolean mayBeArray = value1.mayBeArray() || value2.mayBeArray();
+            if (size == value1.size() && tainted == value1.tainted() && mayBeArray == value1.mayBeArray()
+                    && value1.sites().containsAll(value2.sites())) {
                 return value1;
             }
             Set<Integer> sites = new HashSet<>(value1.sites());
             sites.addAll(value2.sites());
-            return new TaintValue(size, tainted, Set.copyOf(sites));
+            return new TaintValue(size, tainted, Set.copyOf(sites), mayBeArray);
         }
 
         /** 命令位置（0 以上）。配列を作った場所・合成の場所の識別子に使う。 */

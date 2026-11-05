@@ -37,6 +37,7 @@ import java.util.UUID;
  *   <li>{@link #issueWithArgumentArrayWrite(String[])}: 引数の配列に乱数を書き、同じ配列から読む</li>
  *   <li>{@link #issueWithFieldArrayReadIntoLocal()}: フィールドから読み出したローカル配列に乱数を書き、同じローカル配列から読む</li>
  *   <li>{@link #issueWithCastArrayWrite()}: CHECKCAST で得た配列に乱数を書き、同じ配列から読む</li>
+ *   <li>{@link #issueWithTwiceCastObject(Object)}: 同じ Object 引数を2回配列へキャストし、一方に書いて他方から読む</li>
  * </ul>
  * <p>陰性（検出されてはならない）:</p>
  * <ul>
@@ -326,6 +327,15 @@ public class FlowSelfIssuingFixtureService {
         String[] slots = (String[]) raw;
         slots[0] = UUID.randomUUID().toString();
         entity.setToken(slots[0]);
+        return entity;
+    }
+
+    public PlaintextTokenFixtureEntity issueWithTwiceCastObject(Object slots) {
+        PlaintextTokenFixtureEntity entity = new PlaintextTokenFixtureEntity();
+        String[] writer = (String[]) slots;
+        String[] reader = (String[]) slots;
+        writer[0] = UUID.randomUUID().toString();
+        entity.setToken(reader[0]);
         return entity;
     }
 

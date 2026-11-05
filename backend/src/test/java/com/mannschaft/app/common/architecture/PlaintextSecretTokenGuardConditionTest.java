@@ -465,10 +465,10 @@ class PlaintextSecretTokenGuardConditionTest {
         }
 
         @Test
-        @DisplayName("陽性: 戻り値・引数・フィールドから読んだローカル・CHECKCAST の配列に書いて読む乱数も違反（配列参照はすべて作った場所を持つ）")
+        @DisplayName("陽性: 戻り値・引数・フィールドから読んだローカル・CHECKCAST（同じ参照の2回のキャストを含む）の配列に書いて読む乱数も違反（参照値はすべて作った場所を持ち、キャストは同一性を保つ）")
         void arrayFromAnySourceIsViolation() {
             for (String name : List.of("issueWithReturnedArrayWrite", "issueWithArgumentArrayWrite",
-                    "issueWithFieldArrayReadIntoLocal", "issueWithCastArrayWrite")) {
+                    "issueWithFieldArrayReadIntoLocal", "issueWithCastArrayWrite", "issueWithTwiceCastObject")) {
                 assertListed(result.violations(), method(FlowSelfIssuingFixtureService.class, name),
                         "配列参照を生む命令はすべて命令位置の合成 site を持ち、要素への書込みの印が保持される");
             }
