@@ -1,5 +1,7 @@
 # M21 Windows Job監督 prototype
 
+正式adapterの先行試練は `ModuleEventRealE2eBootstrapBoundaryTest`。DB/full Appをrefreshせず、通常component走査のfixture候補0と明示sourceの既存4BeanDefinitionを対照にする。host formal子の既存env putだけをprivate methodへ挙動不変抽出し、固定JDK-only子へ公開sentinelを渡して不要key非到達/必要actor・run・Temp・URL到達を検査する。現段階はtest先行であり、TestConfiguration除去・env clearのgreen修正と実試験は未実施。production main CPだけの3source javacはrootのheavy gate/別GO後に一度行い、test CPをproductionと呼ばない。
+
 この入口はM21の固定dummy用で、正式FE/Java/Docker/browserを起動しない。実サービスへの結線、production CP生成、UI操作APIは未実装。Java host/helperのqualified結果やこのprototypeの結果を、Chromium互換・正式実機・探索の合格に流用しない。
 
 ## 所有と失敗時の境界

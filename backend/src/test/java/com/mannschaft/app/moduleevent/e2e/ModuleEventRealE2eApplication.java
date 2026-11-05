@@ -77,10 +77,7 @@ public final class ModuleEventRealE2eApplication {
                     "--trace=on", "--output=" + run.resolve("playwright-results"));
             builder.directory(frontend.toFile());
             // 資格情報はprivate子process環境だけ。ファイル・コマンド引数・stdoutへ保存しない。
-            builder.environment().put("M21_ACTORS_JSON", json.writeValueAsString(world.credentials()));
-            builder.environment().put("M21_RUN_DIRECTORY", run.toString());
-            builder.environment().put("BASE_URL", required("BASE_URL"));
-            builder.environment().put("API_BASE_URL", "http://localhost:8081");
+            configureFormalEnvironment(builder, json.writeValueAsString(world.credentials()), run, required("BASE_URL"));
             builder.redirectErrorStream(true).redirectOutput(run.resolve("playwright.raw.txt").toFile());
             try (WatchService watcher = controls.getFileSystem().newWatchService()) {
                 controls.register(watcher, StandardWatchEventKinds.ENTRY_CREATE);
@@ -132,6 +129,14 @@ public final class ModuleEventRealE2eApplication {
         }
         if (problem != null) throw problem;
         ModuleEventRealE2eFixtures.require(passed, "M21未合格");
+    }
+
+    /** 孫環境の境界試練用に既存putだけを抽出。clear/allowlist修正はRED確認後。 */
+    private static void configureFormalEnvironment(ProcessBuilder builder, String actors, Path run, String baseUrl) {
+        builder.environment().put("M21_ACTORS_JSON", actors);
+        builder.environment().put("M21_RUN_DIRECTORY", run.toString());
+        builder.environment().put("BASE_URL", baseUrl);
+        builder.environment().put("API_BASE_URL", "http://localhost:8081");
     }
 
     private static Process startResidentHelper(ObjectMapper json, Path run, Path temporary,
