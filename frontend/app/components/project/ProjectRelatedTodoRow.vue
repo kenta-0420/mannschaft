@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TodoResponse } from '~/types/todo'
+import { normalizeProjectRelatedTodo } from '~/utils/projectRelatedTodo'
 
 /**
  * プロジェクト詳細の「関連タスク」1行。
@@ -12,10 +13,7 @@ const props = defineProps<{
   todoHref?: string
 }>()
 
-const title = computed(() => props.todo.content?.title ?? '')
-const dueDate = computed(() => props.todo.schedule?.dueDate ?? null)
-const assigneeNames = computed(() => props.todo.assignees.map((a) => a.displayName).join(', '))
-const isCompleted = computed(() => props.todo.status === 'COMPLETED')
+const view = computed(() => normalizeProjectRelatedTodo(props.todo))
 </script>
 
 <template>
@@ -28,28 +26,28 @@ const isCompleted = computed(() => props.todo.status === 'COMPLETED')
         v-if="todoHref"
         :to="todoHref"
         class="min-w-0 break-words text-sm font-medium text-primary hover:underline"
-        :class="isCompleted ? 'line-through opacity-70' : ''"
+        :class="view.isCompleted ? 'line-through opacity-70' : ''"
         :title="$t('project.related_todo_open')"
       >
-        {{ title }}
+        {{ view.title }}
       </NuxtLink>
       <span
         v-else
         class="min-w-0 break-words text-sm font-medium"
-        :class="isCompleted ? 'line-through opacity-70' : ''"
+        :class="view.isCompleted ? 'line-through opacity-70' : ''"
       >
-        {{ title }}
+        {{ view.title }}
       </span>
-      <TodoStatusLabelBadge :label="todo.statusLabel" :fallback-bucket="todo.status" />
+      <TodoStatusLabelBadge :label="view.statusLabel" :fallback-bucket="view.statusBucket" />
     </div>
     <div class="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-surface-500">
       <span class="inline-flex items-center gap-1">
         <i class="pi pi-calendar" />
-        <span>{{ dueDate ?? $t('project.related_todo_no_due') }}</span>
+        <span>{{ view.dueDate ?? $t('project.related_todo_no_due') }}</span>
       </span>
       <span class="inline-flex min-w-0 items-center gap-1">
         <i class="pi pi-user" />
-        <span class="min-w-0 break-words">{{ assigneeNames || $t('project.related_todo_no_assignee') }}</span>
+        <span class="min-w-0 break-words">{{ view.assigneeNames || $t('project.related_todo_no_assignee') }}</span>
       </span>
     </div>
   </div>
