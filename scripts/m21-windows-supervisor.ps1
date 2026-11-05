@@ -495,13 +495,19 @@ function Invoke-FormalContractFixture {
   # 未実装の固定関数入口によるRED。vectorを実OS世代証明にしない。
   foreach($v in $vectors){if([string](Convert-M21FormalTicksToEpochMs $v.ticks) -cne $v.epochMs){throw 'formal ms整数vector不一致'}}
   if([string](Convert-M21FormalTicksToEpochMs $ticks) -cne $ms){throw 'formal実出生のms整数商不一致'}
+  Set-Operation 'Supervisor.formal-ms.canonical'
   $proof=Confirm-M21FormalJavaGeneration $self $javaIso
   if($proof.matched -ne $true -or [string]$proof.creationTicks -cne $ticks -or [string]$proof.epochMs -cne $ms){throw 'formal実出生の採用不一致'}
+  $script:formalContractEvidence.canonicalProof=$proof
+  Set-Operation 'Supervisor.formal-ms.zero-format'
   $zeroProof=Confirm-M21FormalJavaGeneration $self $zeroIso
   $script:formalContractEvidence.zeroFormat.proof=$zeroProof
   if($zeroProof.matched -ne $zeroExpected -or (!$zeroExpected -and $zeroProof.reason -cne 'formal-java-ms-mismatch')){throw 'formal Java秒表記対照不一致'}
   $wrong=[DateTimeOffset]::FromUnixTimeMilliseconds([long]::Parse($ms)+1).UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'",[Globalization.CultureInfo]::InvariantCulture)
-  if((Confirm-M21FormalJavaGeneration $self $wrong).matched -ne $false){throw '異なるmsを拒否しなかった'}
+  Set-Operation 'Supervisor.formal-ms.wrong-ms'
+  $wrongProof=Confirm-M21FormalJavaGeneration $self $wrong
+  $script:formalContractEvidence.wrongMs=@{javaIso=$wrong;proof=$wrongProof}
+  if($wrongProof.matched -ne $false){throw '異なるmsを拒否しなかった'}
  }else{
   $frontend=Join-Path $run 'frontend'
   $cli=[IO.Path]::GetFullPath((Join-Path $frontend 'node_modules/nuxt/bin/nuxt.mjs'))

@@ -1,6 +1,6 @@
 # M21 Windows Job監督 prototype
 
-Java Instantの正規表記はUTCの秒のみZまたは3桁msZとなるため、formal-msへ秒のみ候補1件をtest先行追加した。保持Processの実javaIsoのms部分を000へ丸めた同じ秒を使い、ms同一の場合だけmatched=true、それ以外はparse成功後formal-java-ms-mismatchを要求する。世代許容幅0、表記対照を実OS世代証明にしない。現adapterの.fffZ必須parserは未修正で、次の有限1回は通常ms経路後の秒表記REDを測る（まだ未実行）。6/9桁・offset・曖昧parseは許可しない。JDK21 Instant.ofEpochMilli(wholeSecond).toStringの一次挙動確認は後段の小さい確認として残し、Gradle/Appを起動しない。
+Java epoch-ms由来Instantの正規表記はUTCの秒のみZまたは3桁msZとなるため、formal-msへ秒のみ候補1件をtest先行追加した。保持Processの実javaIsoのms部分を000へ丸めた同じ秒を使い、ms同一の場合だけmatched=true、それ以外はparse成功後formal-java-ms-mismatchを要求する。世代許容幅0、表記対照を実OS世代証明にしない。ab4単発でformal-java-invalid-msの実REDを観測したが、呼出別地点が未保存だった制限は残す。現在は正規2形式だけのstrict parserとcanonicalProof/zero/wrong-msの地点・結果保存を追加した段階で、変更後実行は別GO待ち。6/9桁・offset・曖昧parseは許可しない。既存JDK21 src.zipのInstant346-349/1354-1355、DateTimeFormatter1199-1201、DateTimeFormatterBuilder895-897/3861-3873で0/3桁出力の一次sourceを確認済み（JDK実行なし、Gradle/App起動なし）。
 
 正式adapterのPS契約試練は既存probeの固定 `--formal-contract-fixture` で選ぶ。e340の単発で(1)の未実装関数REDへ到達した。現在はmsの2関数だけgreen実装を追加した段階で、変更後実行は別GO待ち。順番は (1) 保持Supervisor実出生のfull ticks文字列とJava epoch-ms整数商・別ms拒否、(2) 所有Temp内のfake Nuxt CLIによる絶対CLI/CWD/FE-role環境、(3) 同じadmission入口でW後work拒否→実owned cleanup dummy終了→G後cleanup拒否。実出生subms=0は有効とし、固定BigInteger vectorを実OS世代証明へ格上げしない。Java登録/envの3境界試練は別未実測のままで、このPS試練で代替しない。
 

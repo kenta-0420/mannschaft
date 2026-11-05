@@ -21,13 +21,14 @@ function Convert-M21FormalTicksToEpochMs([object]$Ticks) {
 }
 
 function Confirm-M21FormalJavaGeneration([Diagnostics.Process]$Process,[object]$JavaIso) {
- # JavaはUTCの厳密なミリ秒表現だけ。曖昧なtimezone/精度/空値は採用しない。
- if($JavaIso -isnot [string] -or $JavaIso -cnotmatch '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$'){
+ # Java epoch-ms由来の正規なUTC秒Z/3桁msZだけ。許容幅は増やさない。
+ if($JavaIso -isnot [string] -or $JavaIso -cnotmatch '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{3})?Z$'){
   Set-Reason 'formal-java-invalid-ms';throw ([IO.InvalidDataException]::new())
  }
  $parsed=[DateTimeOffset]::MinValue
  $styles=[Globalization.DateTimeStyles]::AssumeUniversal -bor [Globalization.DateTimeStyles]::AdjustToUniversal
- if(![DateTimeOffset]::TryParseExact($JavaIso,"yyyy-MM-dd'T'HH:mm:ss.fff'Z'",[Globalization.CultureInfo]::InvariantCulture,$styles,[ref]$parsed)){
+ $formats=[string[]]@("yyyy-MM-dd'T'HH:mm:ss'Z'","yyyy-MM-dd'T'HH:mm:ss.fff'Z'")
+ if(![DateTimeOffset]::TryParseExact($JavaIso,$formats,[Globalization.CultureInfo]::InvariantCulture,$styles,[ref]$parsed)){
   Set-Reason 'formal-java-invalid-ms';throw ([IO.InvalidDataException]::new())
  }
  if($null -eq $Process){Set-Reason 'formal-java-process-missing';throw ([IO.InvalidDataException]::new())}
