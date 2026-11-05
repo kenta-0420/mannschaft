@@ -89,10 +89,12 @@ export default defineConfig({
       testMatch: '**/real/**/*.spec.ts',
       // 所有fixture契約の8件はplaywright.restore.config.tsで省略せず別実行する。
       // F01.2.1 の実機E2E は作成データの後始末を globalTeardown で行うため、専用設定 playwright-f0121.config.ts で実行する。
+      // CMP-261103-1225 の N+1 実機E2E は前提データを専用の globalSetup で作るため、専用設定 playwright-n1p1.config.ts で実行する。
       testIgnore: [
         '**/real/team-restore-ui.spec.ts',
         '**/real/password-generator.real.spec.ts',
         '**/real/f0121-*.real.spec.ts',
+        '**/real/n1p1-regression.real.spec.ts',
       ],
       dependencies: ['setup-real-user'],
     },
