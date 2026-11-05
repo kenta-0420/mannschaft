@@ -119,7 +119,7 @@ erDiagram
 | 列名 | 型 | NULL | 既定値 | コメント |
 | --- | --- | --- | --- | --- |
 | `id` | `binary(16)` | NO | （なし） | UUIDv7 |
-| `actor_user_id` | `bigint` | NO | （なし） | 実行者ID。匿名参照を保持しusersへのFKは作らない |
+| `actor_user_id` | `bigint unsigned` | NO | （なし） | 実行者ID。匿名参照を保持しusersへのFKは作らない |
 | `purged` | `tinyint(1)` | NO | （なし） | 強匿名化済み。trueからfalseへ戻さない |
 
 ### `module_event_resume_audits`
