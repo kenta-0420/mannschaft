@@ -2,11 +2,21 @@
 
 現在の固定境界は、Job外Parentの非継承Job/ACK、保持Processの世代・actual exit・両EOFとwriter publication、Java epoch-msの整数投影とUTC秒Z/3桁msZの厳密照合、固定FEの絶対CLI/CWD/環境分離、fixture-markerだけのowned-cleanup admissionである。FEは127.0.0.1:3003とlocalhost public/API baseを固定し、8GiB NODE_OPTIONSはFEだけ。cleanupはOS2値と所有runのTEMP/TMPだけを再構成し、親秘密・任意command/envを転送しない。実Docker cleanupは未実装、未知kindは拒否する。
 
-`--formal-contract-fixture` はms→fake FE→W後work拒否/実owned marker cleanup/G後拒否の3件。G420秒/R18秒/W402秒を一度だけ設定しcase間resetなし、最大同時5process/Job1、最初の不合格で停止する。局所W/Gは短縮だけで、実OS subms=0は有効、整数vector/表記対照を実OS世代証明にしない。c59でms/FEとpublicationは合格、owned-cleanupの実REDを確認済み。今回cleanup実装後の3件と既存readiness4/通常10回帰は未実施で、次GO待ち。期待値・予算は変更していない。
+`--formal-contract-fixture` はms→fake FE→W後work拒否/実owned marker cleanup/G後拒否の3件。G420秒/R18秒/W402秒を一度だけ設定しcase間resetなし、最大同時5process/Job1、最初の不合格で停止する。局所W/Gは短縮だけで、実OS subms=0は有効、整数vector/表記対照を実OS世代証明にしない。fbcf603947a7b0299909479236775e8221417a09固定で3件＋readiness4＋通常10は合格した。asset準備関数は今回追加の未実行コードであり、この17件の資格をasset生成へ転用しない。期待値・予算は変更していない。
 
 Java登録/envの3境界試練、full productionCP/明示3source JAR、実App/FE、Chrome nested Job/Sky GUI、実Docker cleanupは未実測である。productionCP前に固定HEADのbackend main/resources/build-logic/Gradle設定/依存入力を全materializeしてGit manifestと照合し、focused test前はtest source/resourcesも揃える。test CPをproductionと呼ばず、既存prototype/Java/helperの資格を正式実機へ転用しない。Java innerRun/outerTemp契約は変更しない。
 
 過去runの経緯・原本・不足証拠は自隊private result packetに保持する。固定Node22/入力full HEADを記録し、保存dirを事前作成、stdout/stderr/actual exitをpacket整形前にprivate rawへ永続化する。原本はroot解放まで保持し、新tracked runnerは作らない。
+
+## Windows production assets（生成未実行）
+
+`New-M21ProductionAssetContext` はACK後のSupervisor/自隊Jobだけで呼ぶ。新規owned `run/assets` とownerを作り、固定Git実体によるHEAD・全backend/Gradle入力・launcher/initのtracked manifest、実在/reparse/raw SHA256、同HEADとのGit diffを照合する。main/resources/build-logic/wrapperとtest source/resourcesの欠落や未追跡sourceを拒否する。CRLF checkoutのraw SHAとGit blobは別記する。Gitの暗黙取得/認証promptは無効化し、既存M21Child/Remaining/Captureで自分のGit子だけを有限回収する。JDK21/Node22は既存固定path/SHAを検証し、追加downloadしない。
+
+rootの共通heavy順番取得前はturnstile待機wrapperも起動しない。取得後の固定CP生成は、backend CWD・`JAVA_HOME=固定JDK21`・`M21_BACKEND_DIR=context.backend`・`M21_CP_OUTPUT=context.cpFile`で、実体 `C:/Program Files/Git/usr/bin/bash.exe --noprofile --norc ./scripts/gradle-turnstile.sh ./gradlew --no-daemon --offline -Dorg.gradle.java.home=固定JDK21 -Dorg.gradle.java.installations.auto-download=false -I context.cpInit m21ProductionClasspath`。新initは同一canonical projectとowner/nonce、新規出力、Windows/JDK21を確認し、`classes`依存の`sourceSets.main.runtimeClasspath`だけをCREATE_NEW/UTF-8/BOM・改行なしで出力する。test/別WT出力・欠落entryは拒否する。旧CP/cacheへのfallbackはしない。
+
+actual0/両EOF/publicationを確認した保持CP processだけを`Get-M21FixtureCompilePlan`へ渡す。main classes/resourcesと既存Gradle cache JARのbytesを記録し、空output/別WT/test CP・source/tool変化を拒否する。返るjavac引数は`-J-Xmx512m --release 21 -encoding UTF-8 -parameters -implicit:none --source-path 空directory -cp productionCP -d 新規classes`とApplication/Fixtures/Cleanupの明示3sourceだけ。javac actual0の後だけ固定JDK jarの`--create --file 新規JAR -C 新規classes .`へ進む。保持javac/jar両actual0とpublication後、`Confirm-M21FixtureJar`は本体/内部class3系統＋META-INF/MANIFEST.MFだけを検査し、CP/JAR/entry SHAと正確な`productionCP + ';' + fixtureJAR`を保存する。JUnit/helper/test frameworkをJARへ混ぜない。
+
+大きい証拠は所有assets内の固定3 manifest名だけにCREATE_NEW保存する（上限16MiB）。16KiB protocol JSON境界は変更しない。Git子3本は`--no-optional-locks -c core.fsmonitor=false`を固定し、source/toolsの各再hash前にもRemainingを確認する。CP/JARの構造確認と資格は分離する。同じbash/CWD/actual0だけでは固定argv・own登録child・実taskの接続証拠が足りないため、後続callerで紐付くまで`productionCPVerified=false`/`fixtureJARVerified=false`を保持する。Gradle task outcomeは保持rawを別途確認し、offline解決の実証前は`offlineResolutionVerified=false`のまま。今回sliceは関数/固定initだけで、Gradle・javac・jarの起動実装/実行、正式55分Parent/Dockerは未接続である。Java3境界の実RED待ちをCPへtest依存追加で隠さない。
 
 ## 所有と失敗時の境界
 
