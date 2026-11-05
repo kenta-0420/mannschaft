@@ -233,7 +233,11 @@ test('M21 管理API運用と既存batch・6言語通知bell（実検体）', asy
     })
     await test.step('UI: 既存batch導線・詳細・再投入（個別再開の新画面なし）', async () => {
       const page = await pageFor('system')
-      await page.goto('/system-admin'); await waitForHydration(page)
+      await page.goto('/'); await waitForHydration(page)
+      const navigation = page.getByTestId('global-sidebar')
+      await expect(navigation).toBeVisible()
+      await navigation.locator('a[href="/system-admin"]').click()
+      await expect(page).toHaveURL(/\/system-admin$/)
       await page.locator('a[href="/system-admin/batches"]').first().click()
       await expect(page).toHaveURL(/\/system-admin\/batches/)
       await expect(page.locator('[data-test="batch-table"]')).toBeVisible()
@@ -254,6 +258,29 @@ test('M21 管理API運用と既存batch・6言語通知bell（実検体）', asy
       await expect(page.getByText(title, { exact: true }).first()).toBeVisible()
       await page.screenshot({ path: path.join(run, 'batch-ui.png'), fullPage: true })
     })
+    await test.step('UI: 非SYSTEM_ADMIN・他tenantは管理入口なし、URL直打ちも拒否', async () => {
+      // 常時描画のGlobalSidebarで正のケースと同じ入口を確認する。閉じたメニューの不在判定ではない。
+      // system-admin middlewareの既存契約は403ページではなく/dashboardへの遷移と拒否トースト。
+      for (const code of ['member', 'admin-ja', 'org-admin', 'outsider']) {
+        const page = await pageFor(code)
+        await page.goto('/'); await waitForHydration(page)
+        const navigation = page.getByTestId('global-sidebar')
+        await expect(navigation).toBeVisible()
+        await expect(navigation.locator('a[href="/system-admin"]')).toHaveCount(0)
+        await expect(page.locator('a[href="/system-admin/batches"]')).toHaveCount(0)
+        await page.screenshot({ path: path.join(run, `batch-entry-hidden-${code}.png`), fullPage: true })
+        for (const target of ['/system-admin', '/system-admin/batches']) {
+          await page.goto(target)
+          await expect(page).toHaveURL(/\/dashboard$/)
+          await expect(page.getByText('アクセスできません', { exact: true }).first()).toBeVisible()
+          await expect(page.getByText('管理者権限が必要です', { exact: true }).first()).toBeVisible()
+          await expect(page.locator('[data-test="batch-table"]')).toHaveCount(0)
+          await expect(page.locator('[data-test="detail-module-event-replay"]')).toHaveCount(0)
+          await expect(page.locator('[data-test="run-sync-module-event-replay"]')).toHaveCount(0)
+          await page.screenshot({ path: path.join(run, `batch-denied-${code}-${target.endsWith('batches') ? 'batches' : 'index'}.png`), fullPage: true })
+        }
+      }
+    })
     await test.step('UI: 既存bellクリックから通知一覧・6言語の永続配送文面', async () => {
       for (const locale of locales) {
         const page = await pageFor(`admin-${locale}`)
@@ -268,6 +295,23 @@ test('M21 管理API運用と既存batch・6言語通知bell（実検体）', asy
         await expect(page.getByText(messages[locale].RECOVERED[0], { exact: true }).first()).toBeVisible()
         await page.screenshot({ path: path.join(run, `bell-${locale}.png`), fullPage: true })
       }
+    })
+    await test.step('UI: 他tenantのbell・通知一覧に検体通知が混入しない', async () => {
+      const page = await pageFor('outsider')
+      await page.goto('/'); await waitForHydration(page)
+      await page.locator('button').filter({ has: page.locator('.pi-bell') }).first().click()
+      const loaded = page.waitForResponse(value => value.request().method() === 'GET'
+        && new URL(value.url()).pathname === '/api/v1/notifications'
+        && new URL(value.url()).searchParams.get('size') === '20')
+      await page.locator('button.notif-row').filter({ has: page.locator('.pi-bell') }).click()
+      expect((await loaded).status()).toBe(200)
+      await expect(page).toHaveURL(/\/notifications(?:\?.*)?$/)
+      await expect(page.getByText('通知はありません', { exact: true })).toBeVisible()
+      await expect(page.locator('[data-notification-id]')).toHaveCount(0)
+      for (const phase of ['DELAYED', 'QUARANTINED', 'RECOVERED'] as const) {
+        for (const message of messages.ja[phase]) await expect(page.getByText(message, { exact: true })).toHaveCount(0)
+      }
+      await page.screenshot({ path: path.join(run, 'bell-outsider.png'), fullPage: true })
     })
     await test.info().attach('fixture-final-state', { body: JSON.stringify(await snapshot()), contentType: 'application/json' })
     passed = true
