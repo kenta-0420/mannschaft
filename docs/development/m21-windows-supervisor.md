@@ -1,8 +1,12 @@
 # M21 Windows Job監督 prototype
 
-正式adapterの先行試練は `ModuleEventRealE2eBootstrapBoundaryTest`。DB/full Appをrefreshせず、通常component走査のfixture候補0と明示sourceの既存4BeanDefinitionを対照にする。host formal子の既存env putだけをprivate methodへ挙動不変抽出し、固定JDK-only子へ公開sentinelを渡して不要key非到達/必要actor・run・Temp・URL到達を検査する。現段階はtest先行であり、TestConfiguration除去・env clearのgreen修正と実試験は未実施。production main CPだけの3source javacはrootのheavy gate/別GO後に一度行い、test CPをproductionと呼ばない。
+現在の固定境界は、Job外Parentの非継承Job/ACK、保持Processの世代・actual exit・両EOFとwriter publication、Java epoch-msの整数投影とUTC秒Z/3桁msZの厳密照合、固定FEの絶対CLI/CWD/環境分離、fixture-markerだけのowned-cleanup admissionである。FEは127.0.0.1:3003とlocalhost public/API baseを固定し、8GiB NODE_OPTIONSはFEだけ。cleanupはOS2値と所有runのTEMP/TMPだけを再構成し、親秘密・任意command/envを転送しない。実Docker cleanupは未実装、未知kindは拒否する。
 
-この入口はM21の固定dummy用で、正式FE/Java/Docker/browserを起動しない。実サービスへの結線、production CP生成、UI操作APIは未実装。Java host/helperのqualified結果やこのprototypeの結果を、Chromium互換・正式実機・探索の合格に流用しない。
+`--formal-contract-fixture` はms→fake FE→W後work拒否/実owned marker cleanup/G後拒否の3件。G420秒/R18秒/W402秒を一度だけ設定しcase間resetなし、最大同時5process/Job1、最初の不合格で停止する。局所W/Gは短縮だけで、実OS subms=0は有効、整数vector/表記対照を実OS世代証明にしない。c59でms/FEとpublicationは合格、owned-cleanupの実REDを確認済み。今回cleanup実装後の3件と既存readiness4/通常10回帰は未実施で、次GO待ち。期待値・予算は変更していない。
+
+Java登録/envの3境界試練、full productionCP/明示3source JAR、実App/FE、Chrome nested Job/Sky GUI、実Docker cleanupは未実測である。productionCP前に固定HEADのbackend main/resources/build-logic/Gradle設定/依存入力を全materializeしてGit manifestと照合し、focused test前はtest source/resourcesも揃える。test CPをproductionと呼ばず、既存prototype/Java/helperの資格を正式実機へ転用しない。Java innerRun/outerTemp契約は変更しない。
+
+過去runの経緯・原本・不足証拠は自隊private result packetに保持する。固定Node22/入力full HEADを記録し、保存dirを事前作成、stdout/stderr/actual exitをpacket整形前にprivate rawへ永続化する。原本はroot解放まで保持し、新tracked runnerは作らない。
 
 ## 所有と失敗時の境界
 

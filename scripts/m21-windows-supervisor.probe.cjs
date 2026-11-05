@@ -144,7 +144,8 @@ async function dummy(role, run, nonce, scenario, workMs, totalMs) {
   await wait(Math.min(scenario === 'stdio-eof' || scenario === 'kill-close' ? 15000 : 800, remaining(workDeadline)));
   requireWork(workDeadline);
 }
-async function readinessFixtureSuite() {
+async function readinessFixtureSuite(kind = 'readiness') {
+  const formal = kind === 'formal-contract';
   assert.equal(process.platform, 'win32');
   assert.equal(process.argv.length, 3, '固定fixture選択以外の入力は拒否');
   const origin = performance.now();
@@ -157,20 +158,31 @@ async function readinessFixtureSuite() {
     ['supervisor', script], ['probe', __filename], ['fixture', path.join(__dirname, 'm21-windows-supervisor.readiness-fixture.ps1')],
     ['operations', path.join(__dirname, '..', 'docs', 'development', 'm21-windows-supervisor.md')],
   ].map(([name, file]) => [name, crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').toUpperCase()]));
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'm21-readiness-fixture-'));
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), formal ? 'm21-formal-contract-fixture-' : 'm21-readiness-fixture-'));
   const baseIdentity = fs.lstatSync(base);
   const baseCanonical = fs.realpathSync(base);
   atomic(path.join(base, 'owner.json'), { owner: OWNER, purpose: 'M21固定readiness試練' });
   const results = [];
-  const fixtures = ['parent-before-certificate', 'lock-release', 'lock-held', 'invalid-json'];
+  const fixtures = formal ? ['formal-ms', 'formal-fe', 'formal-admission'] : ['parent-before-certificate', 'lock-release', 'lock-held', 'invalid-json'];
   for (const fixture of fixtures) {
     if (remaining(workDeadline) === 0) break;
     const run = path.join(base, fixture); fs.mkdirSync(run);
     const nonce = crypto.randomBytes(16).toString('hex'); atomic(path.join(run, 'owner.json'), { owner: OWNER, nonce });
+    if (formal && fixture !== 'formal-ms') {
+      const cli = path.join(run, 'frontend', 'node_modules', 'nuxt', 'bin', 'nuxt.mjs');
+      fs.mkdirSync(path.dirname(cli), { recursive: true });
+      // 実Nuxtではなく、固定argv/CWD/role環境と実到達だけを返すowned dummy。
+      fs.writeFileSync(cli, `import fs from 'node:fs';import path from 'node:path';import {fileURLToPath} from 'node:url';
+const cli=fileURLToPath(import.meta.url),run=path.resolve(path.dirname(cli),'../../../..');
+const owner=JSON.parse(fs.readFileSync(path.join(run,'owner.json'),'utf8'));
+if(owner.owner!==${JSON.stringify(OWNER)}||JSON.stringify(process.argv.slice(2))!==JSON.stringify(['dev','--host','127.0.0.1','--port','3003']))process.exit(19);
+fs.writeFileSync(path.join(run,'formal-fe-entered.json'),JSON.stringify({owner:owner.owner,nonce:owner.nonce,pid:process.pid}),{flag:'wx'});
+console.log(JSON.stringify({owner:owner.owner,nonce:owner.nonce,pid:process.pid,cwd:process.cwd(),cli,forbiddenPresent:['M21_HOST_ONLY_SENTINEL','SPRING_DATASOURCE_PASSWORD','MANNSCHAFT_JWT_SECRET'].some(k=>Object.hasOwn(process.env,k)),nodeOptions:process.env.NODE_OPTIONS??null}));`, { flag: 'wx' });
+    }
     const parentCase = fixture === 'parent-before-certificate';
     requireWork(workDeadline);
     const p = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', script,
-      '-Mode', parentCase ? 'Observe' : 'ReadinessFixture', '-Scenario', parentCase ? 'kill-close' : 'normal',
+      '-Mode', formal ? 'Parent' : parentCase ? 'Observe' : 'ReadinessFixture', '-Scenario', parentCase ? 'kill-close' : 'normal',
       '-TestFixture', fixture, '-RunDirectory', run, '-Nonce', nonce, '-NodePath', process.execPath,
       '-WorkRemainingMs', String(remaining(workDeadline)), '-TotalRemainingMs', String(remaining(totalDeadline))],
     { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -219,7 +231,33 @@ async function readinessFixtureSuite() {
       receipt = read(path.join(run, parentCase ? 'observe-result.json' : 'result.json'));
       assert.equal(receipt.owner, OWNER); assert.equal(receipt.nonce, nonce); assert.equal(receipt.process.pid, p.pid);
       assert.equal(receipt.resourceRecovery.confirmed, true);
-      if (parentCase) {
+      if (formal) {
+        assert.equal(code, 0); assert.equal(receipt.primary, null);
+        assert.equal(receipt.resourceRecovery.jobEmpty, true);
+        evidence = receipt.formalContractEvidence;
+        assert.equal(evidence.fixture, fixture); assert.equal(evidence.passed, true);
+        assert.match(evidence.identity.creation, /^[1-9][0-9]*$/);
+        if (fixture === 'formal-ms') {
+          const actual = evidence.actualSubMs;
+          assert.match(actual.creationTicks, /^[1-9][0-9]*$/); assert.match(actual.epochMs, /^[0-9]+$/);
+          assert.equal(actual.actualHandleHeld, true);
+          assert.equal(BigInt(actual.creationTicks) - 621355968000000000n, BigInt(actual.epochMs) * 10000n + BigInt(actual.subMs));
+          assert.equal(actual.hasSubMs, actual.subMs !== '0'); // 実OS subms=0も有効。
+          assert.deepEqual(evidence.vectors.map(v => [v.ticks, v.epochMs, v.subMs]), [['638000000000009999','1664403200000','9999'],['638000000000010000','1664403200001','0']]);
+        } else {
+          assert.ok(evidence.child.pid > 0); assert.match(evidence.child.creation, /^[1-9][0-9]*$/);
+          assert.equal(evidence.child.exited, true); assert.equal(evidence.child.exitCode, 0);
+          assert.equal(evidence.child.stdoutEof, true); assert.equal(evidence.child.stderrEof, true);
+          if (fixture === 'formal-admission') {
+            assert.equal(evidence.observations.workMarkerAbsent, true); assert.equal(evidence.observations.cleanupMarkerPresent, true);
+            assert.equal(evidence.observations.afterGMarkerAbsent, true);
+            assert.equal(evidence.observations.workRemainingMs, 0); assert.equal(evidence.observations.totalRemainingMs, 0);
+            assert.equal(fs.existsSync(path.join(run, 'formal-fe-entered.json')), false);
+            assert.equal(read(path.join(run, 'hold-stream.json')).pid, evidence.child.pid);
+            assert.equal(fs.existsSync(path.join(run, 'grandchild.json')), false);
+          }
+        }
+      } else if (parentCase) {
         assert.equal(code, 1); assert.equal(receipt.mode, 'Observe');
         assert.equal(receipt.primary.reason, 'parent-exited-before-certificate');
         assert.equal(receipt.parentKilled, false); assert.equal(receipt.knownExited, 0);
@@ -275,7 +313,7 @@ async function readinessFixtureSuite() {
       parentExitObservedAt, stopAt, stopped, launcherPid: p.pid, launcherExited: exited, launcherExitCode: code,
       launcherSignal: signal, launcherClosed: closed, channels: channels.map(c => c.state), recoveryFailures, receipt,
       unverifiedOwnedTree: !exited || (parentCase && !parentSafe), elapsedMs: Math.floor(performance.now() - origin) });
-    if (!exited || (parentCase && !parentSafe)) break;
+    if (!exited || (parentCase && !parentSafe) || (formal && failure !== null)) break;
   }
   let passed = results.length === fixtures.length && results.every(r => r.passed);
   let cleanupFailure = null;
@@ -287,7 +325,7 @@ async function readinessFixtureSuite() {
       fs.rmSync(base, { recursive: true });
     } catch (error) { passed = false; cleanupFailure = error.message; }
   }
-  console.log(JSON.stringify({ kind: 'fixed-readiness-fixture', passed, inputCommit, inputSHA256, totalMs: LIMIT.total, reserveMs: LIMIT.reserve,
+  console.log(JSON.stringify({ kind: formal ? 'fixed-formal-contract-fixture' : 'fixed-readiness-fixture', passed, inputCommit, inputSHA256, totalMs: LIMIT.total, reserveMs: LIMIT.reserve,
     results, notRun: fixtures.filter(f => !results.some(r => r.fixture === f)), cleanupFailure, retained: passed ? null : base }));
   if (!passed) process.exitCode = 1;
 }
@@ -502,6 +540,8 @@ async function suite() {
     await dummy(...process.argv.slice(3));
   } else if (process.argv[2] === '--readiness-fixture') {
     await readinessFixtureSuite();
+  } else if (process.argv[2] === '--formal-contract-fixture') {
+    await readinessFixtureSuite('formal-contract');
   } else {
     await suite();
   }
