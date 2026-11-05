@@ -123,3 +123,33 @@ describe('空・不正入力は例外にせず空文字（safeParse と同流儀
     expect(formatClockTime('', loc)).toBe('')
   })
 })
+
+describe('不正入力は別の値に化けず空文字を返す（Codex 再検分 P2）', () => {
+  const badDays = ['2026-02-30', '2026-11-04junk', '2026-13-01', '2025-02-29', '2026-00-10', '2026-04-31', '2026-11-00', ' 2026-11-04']
+  for (const bad of badDays) {
+    it(`formatCalendarDay(${JSON.stringify(bad)}) は ''`, () => {
+      expect(formatCalendarDay(bad, 'ja')).toBe('')
+      expect(formatCalendarDay(bad, 'en')).toBe('')
+    })
+    it(`formatCalendarDayRange(${JSON.stringify(bad)}) は ''`, () => {
+      expect(formatCalendarDayRange(bad, '2026-11-05', 'ja')).toBe('')
+      expect(formatCalendarDayRange('2026-11-05', bad, 'en')).toBe('')
+    })
+  }
+  it('閏年 2024-02-29 は正常', () => {
+    expect(formatCalendarDay('2024-02-29', 'ja')).toBe('2月29日（木）')
+  })
+  const badTimes = ['25:00', '24:00', '12:60', '09:00junk', '9:5', '09:00:60', '09:00:7', '-1:00']
+  for (const bad of badTimes) {
+    it(`formatClockTime(${JSON.stringify(bad)}) は ''`, () => {
+      expect(formatClockTime(bad, 'ja')).toBe('')
+      expect(formatTimeRange(bad, '10:00', 'ja')).toBe('')
+      expect(formatTimeRange('10:00', bad, 'en')).toBe('')
+    })
+  }
+  it('正常な時刻は従来どおり', () => {
+    expect(formatClockTime('9:05', 'ja')).toBe('09:05')
+    expect(formatClockTime('23:59:59', 'ja')).toBe('23:59')
+    expect(formatClockTime('00:00', 'ja')).toBe('00:00')
+  })
+})

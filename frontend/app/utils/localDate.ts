@@ -152,10 +152,15 @@ export function formatInstantDateTime(date: Date, locale: string, timeZone: stri
 /** `yyyy-MM-dd` を UTC 暦日の Date にする（TZ 変換を経由しない。表示は必ず timeZone:'UTC' で行う）。空・不正は null。 */
 function ymdToUtcDate(ymd: string | null | undefined): Date | null {
   if (!ymd) return null
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd)
+  // 入力全体の完全一致 + 往復確認（Date.UTC は 2月30日 を 3月2日 へ自動補正するため、補正された値は不正として弾く）
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd)
   if (!m) return null
-  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])))
-  return Number.isNaN(d.getTime()) ? null : d
+  const y = Number(m[1])
+  const mo = Number(m[2])
+  const day = Number(m[3])
+  const d = new Date(Date.UTC(y, mo - 1, day))
+  if (Number.isNaN(d.getTime())) return null
+  return d.getUTCFullYear() === y && d.getUTCMonth() === mo - 1 && d.getUTCDate() === day ? d : null
 }
 
 const CALENDAR_DAY_OPTS: Intl.DateTimeFormatOptions = {
@@ -202,9 +207,14 @@ export function formatCalendarDayRange(
 /** `HH:mm` / `H:mm` / `HH:mm:ss` を UTC 基準の Date（1970-01-01）にする。不正は null。 */
 function hhmmToUtcDate(hhmm: string | null | undefined): Date | null {
   if (!hhmm) return null
-  const m = /^(\d{1,2}):(\d{2})/.exec(hhmm)
+  // 入力全体の完全一致 + 範囲検証（時 0-23 / 分 0-59 / 秒 0-59）。範囲外を Date.UTC に自動補正させない
+  const m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(hhmm)
   if (!m) return null
-  return new Date(Date.UTC(1970, 0, 1, Number(m[1]), Number(m[2])))
+  const h = Number(m[1])
+  const mi = Number(m[2])
+  const sec = m[3] === undefined ? 0 : Number(m[3])
+  if (h > 23 || mi > 59 || sec > 59) return null
+  return new Date(Date.UTC(1970, 0, 1, h, mi))
 }
 
 /** 時刻（`HH:mm[:ss]`、秒は表示しない）を 24 時間表記で整形する。ja は従来どおり `09:00`。空・不正は ''。 */
