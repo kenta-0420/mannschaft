@@ -1,5 +1,11 @@
 # M21 Windows Job監督 prototype
 
+正式adapterのPS契約試練は既存probeの固定 `--formal-contract-fixture` で選ぶ。実行は別GO待ちで、現在は未実装関数入口によるREDを予想するtest-only段階。順番は (1) 保持Supervisor実出生のfull ticks文字列とJava epoch-ms整数商・別ms拒否、(2) 所有Temp内のfake Nuxt CLIによる絶対CLI/CWD/FE-role環境、(3) 同じadmission入口でW後work拒否→実owned cleanup dummy終了→G後cleanup拒否。実出生subms=0は有効とし、固定BigInteger vectorを実OS世代証明へ格上げしない。Java登録/envの3境界試練は別未実測のままで、このPS試練で代替しない。
+
+既存readiness4/通常10のcase・期待値・予算は変更しない。新3件は全体G420秒/R18秒/W402秒を一度だけ設定しcase間でresetしない。最大同時5process（harness Node、Parent、Supervisor、固定dummy、過渡compiler）、同時Job1。実サービス・ネットワーク・Chrome・Gradleは起動しない。最初の不合格で後続を止め、actual exit/両EOF/Job回収と失敗を分け、失敗Tempを保持する。case3の局所W/Gを短縮するだけで延長せず、markerと実owned childを検査するが、本番cleanup実行済みとは呼ばない。
+
+固定後の実行案（rootの次GOまで未実行）: private Node22の `node.exe scripts/m21-windows-supervisor.probe.cjs --formal-contract-fixture`。`M21_INPUT_COMMIT` は当該test-only full HEAD、通常user/TTY/login:false、外側観測420秒、再試行0。予想初回REDは `formal-ms` の `Convert-M21FormalTicksToEpochMs` 未実装であり、残2件はnotRunとする。bootstrap/環境失敗なら指定RED成立とはしない。
+
 正式adapterの先行試練は `ModuleEventRealE2eBootstrapBoundaryTest`。DB/full Appをrefreshせず、通常component走査のfixture候補0と明示sourceの既存4BeanDefinitionを対照にする。host formal子の既存env putだけをprivate methodへ挙動不変抽出し、固定JDK-only子へ公開sentinelを渡して不要key非到達/必要actor・run・Temp・URL到達を検査する。現段階はtest先行であり、TestConfiguration除去・env clearのgreen修正と実試験は未実施。production main CPだけの3source javacはrootのheavy gate/別GO後に一度行い、test CPをproductionと呼ばない。
 
 この入口はM21の固定dummy用で、正式FE/Java/Docker/browserを起動しない。実サービスへの結線、production CP生成、UI操作APIは未実装。Java host/helperのqualified結果やこのprototypeの結果を、Chromium互換・正式実機・探索の合格に流用しない。
