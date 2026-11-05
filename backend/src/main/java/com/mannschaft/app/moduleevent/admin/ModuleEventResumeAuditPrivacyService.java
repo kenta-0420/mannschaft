@@ -1,6 +1,8 @@
 package com.mannschaft.app.moduleevent.admin;
 
+import com.mannschaft.app.common.UuidV7;
 import com.mannschaft.app.moduleevent.api.ModuleEventResumeAuditPrivacyApi.PersonalData;
+import com.mannschaft.app.moduleevent.repository.ModuleEventResumeActorStateRepository;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -10,13 +12,32 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 再開監査の本人取得と保持期限削除を moduleevent の短い TX で扱う。 */
+/** 再開監査の本人取得・強匿名化・保持期限削除を moduleevent の短い TX で扱う。 */
 @Service
 public class ModuleEventResumeAuditPrivacyService {
     private final EntityManager entityManager;
+    private final ModuleEventResumeActorStateRepository actorStates;
 
-    public ModuleEventResumeAuditPrivacyService(EntityManager entityManager) {
+    public ModuleEventResumeAuditPrivacyService(EntityManager entityManager,
+            ModuleEventResumeActorStateRepository actorStates) {
         this.entityManager = entityManager;
+        this.actorStates = actorStates;
+    }
+
+    /** 監査0件でも不可逆stateを残し、再開と同じactorロックで全理由を置換する。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
+    public void redactReasonsForPurgedUser(Long actorUserId) {
+        Objects.requireNonNull(actorUserId, "actorUserId");
+        actorStates.createIfAbsent(UuidV7.generate().toString(), actorUserId);
+        Long purged = actorStates.lockPurged(actorUserId);
+        if (purged == null || (purged != 0L && purged != 1L)) {
+            throw new IllegalStateException("再開理由の再生防止状態を確認できません");
+        }
+        actorStates.markPurged(actorUserId);
+        entityManager.createQuery("""
+                UPDATE ModuleEventResumeAuditEntity a SET a.reason = :reason WHERE a.actorUserId = :actorUserId
+                """)
+                .setParameter("reason", "[REDACTED]").setParameter("actorUserId", actorUserId).executeUpdate();
     }
 
     /** 外側が readOnly でも最新の本人データを primary から読む。 */

@@ -28,7 +28,7 @@ public class ModuleEventResumeAuditPrivacyApi {
     }
 
     public void redactReasonsForPurgedUser(Long actorUserId) {
-        throw new UnsupportedOperationException("未実装");
+        service.redactReasonsForPurgedUser(actorUserId);
     }
 
     /** UTC の暦年2年を過ぎた履歴を整理する内部処理。 */
