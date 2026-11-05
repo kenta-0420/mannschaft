@@ -10,7 +10,14 @@ import org.springframework.stereotype.Component;
 public class ModuleEventResumeAuditPrivacyApi {
     public record PersonalData(UUID id, UUID publicationId, String reason, Instant createdAt) { }
 
+    /** 本人に結び付く理由再生防止状態。認証状態は含めない。 */
+    public record ActorStateData(UUID id, boolean purged) { }
+
     public List<PersonalData> collectPersonalData(Long actorUserId) {
+        throw new UnsupportedOperationException("未実装");
+    }
+
+    public List<ActorStateData> collectActorStates(Long actorUserId) {
         throw new UnsupportedOperationException("未実装");
     }
 
