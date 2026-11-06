@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -33,30 +34,49 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
     List<ChatMessageEntity> findByChannelIdOrderByCreatedAtDescIdDesc(Long channelId, Pageable pageable);
 
     /**
-     * カーソル（指定ID）より前のメッセージを取得する。
+     * カーソル（メッセージID）の created_at を、論理削除済みの行も含めて取得する。
+     * <p>境界の (created_at, id) はカーソル対象が削除されていても解決できる必要がある
+     * （{@code @SQLRestriction} が副問い合わせにも効いて境界が NULL になり結果が空になるのを防ぐ）。
+     * 結果本体は従来どおり削除済みを除外する。native のため deleted_at を問わない。</p>
      */
-    @Query("SELECT m FROM ChatMessageEntity m WHERE m.channelId = :channelId AND (" +
-            "m.createdAt < (SELECT c.createdAt FROM ChatMessageEntity c WHERE c.id = :cursorId) " +
-            "OR (m.createdAt = (SELECT c2.createdAt FROM ChatMessageEntity c2 WHERE c2.id = :cursorId) " +
-            "AND m.id < :cursorId)) " +
-            "ORDER BY m.createdAt DESC, m.id DESC")
-    List<ChatMessageEntity> findByChannelIdAndIdLessThan(
-            @Param("channelId") Long channelId, @Param("cursorId") Long cursorId, Pageable pageable);
+    @Query(value = "SELECT created_at FROM chat_messages WHERE id = :id", nativeQuery = true)
+    Optional<LocalDateTime> findCreatedAtIncludingDeleted(@Param("id") Long id);
 
     /**
-     * カーソル（メッセージID）より新しいメッセージを昇順で取得する。
-     * WebSocket切断後のキャッチアップ用。cursor より大きいIDを持つメッセージを
-     * 古い順（ASC）で返すことで、切断中に積まれたメッセージを時系列順に復元できる。
+     * カーソル（指定ID）より前のメッセージを (created_at, id) 降順で取得する。
+     * カーソル対象が論理削除済みでも境界を解決する。カーソル対象が存在しなければ空。
      */
+    default List<ChatMessageEntity> findByChannelIdAndIdLessThan(
+            Long channelId, Long cursorId, Pageable pageable) {
+        return findCreatedAtIncludingDeleted(cursorId)
+                .map(at -> findBeforeBoundary(channelId, at, cursorId, pageable))
+                .orElseGet(List::of);
+    }
+
     @Query("SELECT m FROM ChatMessageEntity m WHERE m.channelId = :channelId AND (" +
-            "m.createdAt > (SELECT c.createdAt FROM ChatMessageEntity c WHERE c.id = :cursorId) " +
-            "OR (m.createdAt = (SELECT c2.createdAt FROM ChatMessageEntity c2 WHERE c2.id = :cursorId) " +
-            "AND m.id > :cursorId)) " +
+            "m.createdAt < :cursorAt OR (m.createdAt = :cursorAt AND m.id < :cursorId)) " +
+            "ORDER BY m.createdAt DESC, m.id DESC")
+    List<ChatMessageEntity> findBeforeBoundary(
+            @Param("channelId") Long channelId, @Param("cursorAt") LocalDateTime cursorAt,
+            @Param("cursorId") Long cursorId, Pageable pageable);
+
+    /**
+     * カーソル（メッセージID）より新しいメッセージを (created_at, id) 昇順で取得する。
+     * WebSocket切断後のキャッチアップ用。カーソル対象が論理削除済みでも境界を解決する。
+     */
+    default List<ChatMessageEntity> findMessagesAfterCursor(
+            Long channelId, Long cursorId, Pageable pageable) {
+        return findCreatedAtIncludingDeleted(cursorId)
+                .map(at -> findAfterBoundary(channelId, at, cursorId, pageable))
+                .orElseGet(List::of);
+    }
+
+    @Query("SELECT m FROM ChatMessageEntity m WHERE m.channelId = :channelId AND (" +
+            "m.createdAt > :cursorAt OR (m.createdAt = :cursorAt AND m.id > :cursorId)) " +
             "AND m.deletedAt IS NULL ORDER BY m.createdAt ASC, m.id ASC")
-    List<ChatMessageEntity> findMessagesAfterCursor(
-            @Param("channelId") Long channelId,
-            @Param("cursorId") Long cursorId,
-            Pageable pageable);
+    List<ChatMessageEntity> findAfterBoundary(
+            @Param("channelId") Long channelId, @Param("cursorAt") LocalDateTime cursorAt,
+            @Param("cursorId") Long cursorId, Pageable pageable);
 
     /**
      * スレッド返信を取得する（旧2階層ロジック用）。

@@ -106,4 +106,31 @@ class ChatMessageSameSecondOrderIT extends AbstractMySqlIntegrationTest {
                 .stream().map(ChatMessageEntity::getId).toList();
         assertThat(got).containsExactlyElementsOf(ids);
     }
+
+    private void softDelete(Long id) {
+        em.createNativeQuery("UPDATE chat_messages SET deleted_at = NOW() WHERE id = :id")
+                .setParameter("id", id).executeUpdate();
+        em.clear();
+    }
+
+    @Test
+    @DisplayName("before: カーソル対象が論理削除済みでも後続（古い側）が返る")
+    void beforeカーソル対象が削除済みでも返る() {
+        softDelete(ids.get(3));
+        List<Long> got = messageRepository
+                .findByChannelIdAndIdLessThan(channelId, ids.get(3), PageRequest.of(0, 10))
+                .stream().map(ChatMessageEntity::getId).toList();
+        assertThat(got).containsExactly(ids.get(2), ids.get(1), ids.get(0));
+    }
+
+    @Test
+    @DisplayName("after: カーソル対象が論理削除済みでも後続（新しい側）が返り、削除済みは除外")
+    void afterカーソル対象が削除済みでも返る() {
+        softDelete(ids.get(1));
+        softDelete(ids.get(3));
+        List<Long> got = messageRepository
+                .findMessagesAfterCursor(channelId, ids.get(1), PageRequest.of(0, 10))
+                .stream().map(ChatMessageEntity::getId).toList();
+        assertThat(got).containsExactly(ids.get(2), ids.get(4));
+    }
 }
