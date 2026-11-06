@@ -6,7 +6,13 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawn } = require('node:child_process');
-const OWNER = 'd7249e88-1678-4e0c-ae21-a550989098a6';
+// 所有者選択だけを末尾で受ける。既存fixture引数・期待値はそのまま検査する。
+let OWNER = 'd7249e88-1678-4e0c-ae21-a550989098a6';
+if (process.argv.at(-2) === '--owner-id') {
+  OWNER = process.argv.at(-1);
+  assert.match(OWNER, /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/);
+  process.argv.splice(-2);
+}
 const scenarios = ['normal', 'pre-ack', 'wrong-ack', 'assign-fail', 'host-fail', 'stdio-eof', 'cleanup-fail', 'save-fail', 'owner-mismatch', 'kill-close'];
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 const LIMIT = Object.freeze({ total: 420000, reserve: 18000, channel: 2000, recoveryExit: 5000, recoveryChannel: 2000, poll: 25 });
@@ -98,7 +104,7 @@ async function dummy(role, run, nonce, scenario, workMs, totalMs) {
   if (role !== 'grandchild' || !afterGrandchildExit) atomic(path.join(run, `${role}.json`), { pid: process.pid, nonce });
   if (role === 'child') {
     requireWork(workDeadline);
-    const grandchild = spawn(process.execPath, [__filename, '--dummy', 'grandchild', run, nonce, scenario, String(remaining(workDeadline)), String(remaining(totalDeadline))], { windowsHide: true, stdio: 'inherit', detached: scenario === 'stdio-eof' });
+    const grandchild = spawn(process.execPath, [__filename, '--dummy', 'grandchild', run, nonce, scenario, String(remaining(workDeadline)), String(remaining(totalDeadline)), '--owner-id', OWNER], { windowsHide: true, stdio: 'inherit', detached: scenario === 'stdio-eof' });
     let grandchildObserved = null;
     const grandchildExit = new Promise(resolve => {
       grandchild.once('exit', (code, signal) => { grandchildObserved = { code, signal }; resolve(grandchildObserved); });
@@ -183,7 +189,7 @@ console.log(JSON.stringify({owner:owner.owner,nonce:owner.nonce,pid:process.pid,
     requireWork(workDeadline);
     const p = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', script,
       '-Mode', formal ? 'Parent' : parentCase ? 'Observe' : 'ReadinessFixture', '-Scenario', parentCase ? 'kill-close' : 'normal',
-      '-TestFixture', fixture, '-RunDirectory', run, '-Nonce', nonce, '-NodePath', process.execPath,
+      '-TestFixture', fixture, '-RunDirectory', run, '-Nonce', nonce, '-OwnerId', OWNER, '-NodePath', process.execPath,
       '-WorkRemainingMs', String(remaining(workDeadline)), '-TotalRemainingMs', String(remaining(totalDeadline))],
     { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
     let exited = false, closed = false, code = null, signal = null, launchError = null;
@@ -364,7 +370,7 @@ async function suite() {
       stamp(scenario, 'spawn-before');
       const p = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', script,
         '-Mode', scenario === 'kill-close' ? 'Observe' : 'Parent', '-Scenario', scenario,
-        '-RunDirectory', run, '-Nonce', nonce, '-NodePath', process.execPath,
+        '-RunDirectory', run, '-Nonce', nonce, '-OwnerId', OWNER, '-NodePath', process.execPath,
         '-WorkRemainingMs', String(remaining(workDeadline)), '-TotalRemainingMs', String(remaining(totalDeadline))], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
       stamp(scenario, 'spawn-after');
       // 親stdioも捨てず、有限終端まで採取する。内容は資格情報を含まない固定dummyだけ。

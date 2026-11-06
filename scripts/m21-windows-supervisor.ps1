@@ -6,6 +6,7 @@ param(
  [Parameter(Mandatory=$true)][ValidateSet('normal','pre-ack','wrong-ack','assign-fail','host-fail','stdio-eof','cleanup-fail','save-fail','owner-mismatch','kill-close')][string]$Scenario,
  [Parameter(Mandatory=$true)][string]$RunDirectory,
  [Parameter(Mandatory=$true)][ValidatePattern('^[a-f0-9]{32}$')][string]$Nonce,
+ [ValidatePattern('^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$')][string]$OwnerId='d7249e88-1678-4e0c-ae21-a550989098a6',
  [Parameter(Mandatory=$true)][string]$NodePath,
  [Parameter(Mandatory=$true)][ValidateRange(0,420000)][int]$WorkRemainingMs,
  [Parameter(Mandatory=$true)][ValidateRange(0,420000)][int]$TotalRemainingMs
@@ -24,7 +25,7 @@ function Emit-Phase([ValidateSet('entry','guard-before','guard-after','hello-bef
 if($Mode -eq 'Supervisor'){Emit-Phase 'entry'}
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
-$owner='d7249e88-1678-4e0c-ae21-a550989098a6'
+$owner=$OwnerId
 $run=[IO.Path]::GetFullPath($RunDirectory).TrimEnd('\')
 $utf8=New-Object Text.UTF8Encoding($false)
 $primary=$null
@@ -425,7 +426,7 @@ function Wait-File([string]$name,[switch]$ParentCertificate) {
 function New-Supervisor([string]$childMode,[string]$prefix) {
  Require-Work
  $ps=[Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
- $childArguments=@('-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode',$childMode,'-Scenario',$Scenario,'-RunDirectory',$run,'-Nonce',$Nonce,'-NodePath',$NodePath,'-WorkRemainingMs',[string](Remaining),'-TotalRemainingMs',[string](Remaining -Recovery))
+ $childArguments=@('-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode',$childMode,'-Scenario',$Scenario,'-RunDirectory',$run,'-Nonce',$Nonce,'-OwnerId',$owner,'-NodePath',$NodePath,'-WorkRemainingMs',[string](Remaining),'-TotalRemainingMs',[string](Remaining -Recovery))
  if($TestFixture -in @('parent-before-certificate','formal-ms','formal-fe','formal-admission')){$childArguments+=@('-TestFixture',$TestFixture)}
  Require-Work
  return [M21Child]::Start($ps,$childArguments,$PSScriptRoot,(Join-Path $run $prefix),(Remaining -Recovery),($Scenario -eq 'stdio-eof'))
@@ -438,6 +439,14 @@ function Register-Child([M21Child]$child,[string]$role) {
   for($i=0;$i -lt $child.StartupCleanupExceptions.Count;$i++){Fail ($role+'-start-cleanup-'+$child.StartupCleanupFailures[$i].Split(':')[0]) $child.StartupCleanupExceptions[$i]}
   throw '起動境界失敗。保持Processはfinallyで再確認する'
  }
+}
+function Release-M21AssetChild([M21Child]$child) {
+ # 証拠保存後のasset CLIだけ。同じ保持参照の完了を確認してからhandleを解放する。
+ $matches=@($script:held|Where-Object {[object]::ReferenceEquals($_,$child)})
+ if($matches.Count -ne 1 -or !$child.Captured -or !$child.Started -or !$child.Process.WaitForExit(0) -or !$child.StdoutPublished -or !$child.StderrPublished){Set-Reason 'asset-release-unverified';throw ([InvalidOperationException]::new())}
+ $script:lastHandles.Add(@{pid=$child.RecordedPid;creation=$child.RecordedCreation;exited=$true;stdoutEof=$true;stderrEof=$true})
+ $child.Dispose()
+ $script:held.Remove($child) > $null
 }
 function P6-State([string]$stage) {
  if($Mode -ne 'Supervisor' -or $Scenario -ne 'stdio-eof' -or $null -eq $script:p6Grand){return}
@@ -584,7 +593,7 @@ try {
   if(![M21Job]::InJob($self,$null)){throw 'ack後Job不在'}
   Guard-Run
   Require-Work
-  $child=[M21Child]::Start($NodePath,@($dummy,'--dummy','child',$run,$Nonce,$Scenario,[string](Remaining),[string](Remaining -Recovery)),$run,(Join-Path $run 'dummy'),(Remaining -Recovery),($Scenario -eq 'stdio-eof'))
+  $child=[M21Child]::Start($NodePath,@($dummy,'--dummy','child',$run,$Nonce,$Scenario,[string](Remaining),[string](Remaining -Recovery),'--owner-id',$owner),$run,(Join-Path $run 'dummy'),(Remaining -Recovery),($Scenario -eq 'stdio-eof'))
   Register-Child $child 'dummy'
   $creatorIdentity=@{owner=$owner;nonce=$Nonce;pid=$child.RecordedPid;creation=$child.RecordedCreation}
   Write-Json 'child-candidate.json' $creatorIdentity
