@@ -95,7 +95,7 @@ public class ShiftBudgetPublicationLockOrderIT extends AbstractMySqlIntegrationT
     @BeforeEach
     void setUp() {
         assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
-        String nonce = UUID.randomUUID().toString().replace("-", "");
+        String nonce = UUID.randomUUID().toString().replace("-", "").substring(0, 28);
         transactionTemplate.executeWithoutResult(tx -> {
             organizationId = TeamOrgFixtureHelper.insertOrganization(em, "0718ロック組織", "o-" + nonce);
             teamId = TeamOrgFixtureHelper.insertTeam(em, "0718ロックチーム", "t-" + nonce);

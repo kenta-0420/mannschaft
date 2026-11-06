@@ -90,7 +90,7 @@ class ShiftBudgetUnauthenticatedTransitionIT extends AbstractMySqlIntegrationTes
     void setUp() {
         SecurityContextHolder.clearContext();
         FeatureFlagTestSupport.enable(featureFlags, cacheManager, "FEATURE_SHIFT_ENABLED");
-        String nonce = UUID.randomUUID().toString().replace("-", "");
+        String nonce = UUID.randomUUID().toString().replace("-", "").substring(0, 28);
         transactionTemplate.executeWithoutResult(tx -> {
             organizationId = TeamOrgFixtureHelper.insertOrganization(em, "0718未認証組織", "o-" + nonce);
             teamId = TeamOrgFixtureHelper.insertTeam(em, "0718未認証チーム", "t-" + nonce);

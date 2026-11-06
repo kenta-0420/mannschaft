@@ -210,7 +210,7 @@ class ShiftBudgetPublicationMigrationIT {
 
     private static String normalizeExpression(String expression) {
         return expression.toLowerCase(Locale.ROOT).replace("_utf8mb4", "")
-                .replace("`", "").replaceAll("[\\s()]", "");
+                .replace("\\'", "'").replace("`", "").replaceAll("[\\s()]", "");
     }
 
     private static void assertActiveStatusValues(Statement sql) throws SQLException {
