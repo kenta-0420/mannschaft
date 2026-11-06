@@ -31,6 +31,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * CMP-260920-1040: 確認通知の fan-out チャンク出力先（軍議第8版確定稿 §3.4・§8.1〜§8.4・§9.2・§10・§11）。
@@ -269,6 +270,7 @@ public class ConfirmableFanoutChunkSink implements FanoutChunkSink {
         return new HashSet<>(rows);
     }
 
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     private Map<Long, String> insertRecipients(ConfirmableNotificationEntity notification, List<Long> newUserIds) {
         int[] resolved = resolveReminderMinutes(notification);
         Map<Long, String> tokens = new HashMap<>();
