@@ -6,7 +6,8 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.provisioning.service.ProvisioningGate;
 import com.mannschaft.app.role.dto.CreateInviteTokenRequest;
 import com.mannschaft.app.role.dto.InvitePreviewResponse;
-import com.mannschaft.app.role.dto.InviteTokenResponse;
+import com.mannschaft.app.role.dto.InviteTokenIssuedResponse;
+import com.mannschaft.app.role.dto.InviteTokenSummary;
 import com.mannschaft.app.role.dto.InviteScopeState;
 import com.mannschaft.app.role.dto.SharedInviteTokenCommand;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
@@ -100,6 +101,9 @@ class InviteServiceTest {
     @Mock private InviteScopeStateService scopeStates;
     @Mock private SharedInviteTokenIssuer sharedTokenIssuer;
 
+    @org.mockito.Spy
+    private com.mannschaft.app.common.token.SecretTokenVault vault = new com.mannschaft.app.common.token.SecretTokenVault();
+
     @InjectMocks
     private InviteService inviteService;
 
@@ -141,7 +145,7 @@ class InviteServiceTest {
     private InviteTokenEntity createTeamInviteToken() {
         return InviteTokenEntity.builder()
                 .id(TOKEN_ID)
-                .token(TOKEN_STR)
+                .tokenHash(vault.hash(TOKEN_STR))
                 .teamId(TEAM_ID)
                 .roleId(ROLE_ID)
                 .expiresAt(LocalDateTime.now().plusDays(7))
@@ -154,7 +158,7 @@ class InviteServiceTest {
     private InviteTokenEntity createOrgInviteToken() {
         return InviteTokenEntity.builder()
                 .id(TOKEN_ID)
-                .token(TOKEN_STR)
+                .tokenHash(vault.hash(TOKEN_STR))
                 .organizationId(ORG_ID)
                 .roleId(ROLE_ID)
                 .expiresAt(LocalDateTime.now().plusDays(7))
@@ -167,7 +171,7 @@ class InviteServiceTest {
     private InviteTokenEntity createMaxedOutToken() {
         return InviteTokenEntity.builder()
                 .id(TOKEN_ID)
-                .token(TOKEN_STR)
+                .tokenHash(vault.hash(TOKEN_STR))
                 .teamId(TEAM_ID)
                 .roleId(ROLE_ID)
                 .expiresAt(LocalDateTime.now().plusDays(7))
@@ -194,22 +198,22 @@ class InviteServiceTest {
             given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(role));
             given(sharedTokenIssuer.issue(any(SharedInviteTokenCommand.class))).willAnswer(invocation -> {
                 SharedInviteTokenCommand command = invocation.getArgument(0);
-                return new InviteTokenResponse(TOKEN_ID, TOKEN_STR, command.roleName(),
+                return new InviteTokenIssuedResponse(TOKEN_ID, TOKEN_STR, command.roleName(),
                         command.expiresAt() == null ? null : LocalDateTime.ofInstant(command.expiresAt(),
                                 com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE),
                         command.maxUses(), 0, null, null);
             });
 
             // When
-            ApiResponse<InviteTokenResponse> response =
+            ApiResponse<InviteTokenIssuedResponse> response =
                     inviteService.createInviteToken(TEAM_ID, "TEAM", req, CREATED_BY);
 
             // Then
-            InviteTokenResponse data = response.getData();
-            assertThat(data.getRoleName()).isEqualTo(ROLE_NAME);
-            assertThat(data.getMaxUses()).isEqualTo(10);
-            assertThat(data.getUsedCount()).isZero();
-            assertThat(data.getToken()).isNotNull();
+            InviteTokenIssuedResponse data = response.getData();
+            assertThat(data.roleName()).isEqualTo(ROLE_NAME);
+            assertThat(data.maxUses()).isEqualTo(10);
+            assertThat(data.usedCount()).isZero();
+            assertThat(data.token()).isNotNull();
             var command = org.mockito.ArgumentCaptor.forClass(SharedInviteTokenCommand.class);
             verify(sharedTokenIssuer).issue(command.capture());
             assertThat(command.getValue().scopeId()).isEqualTo(TEAM_ID);
@@ -250,12 +254,11 @@ class InviteServiceTest {
             given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(createRole()));
 
             // When
-            List<InviteTokenResponse> result = inviteService.getInviteTokens(TEAM_ID, "TEAM", USER_ID);
+            List<InviteTokenSummary> result = inviteService.getInviteTokens(TEAM_ID, "TEAM", USER_ID);
 
             // Then
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getToken()).isEqualTo(TOKEN_STR);
-            assertThat(result.get(0).getRoleName()).isEqualTo(ROLE_NAME);
+            assertThat(result.get(0).roleName()).isEqualTo(ROLE_NAME);
         }
 
         @Test
@@ -268,12 +271,11 @@ class InviteServiceTest {
             given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(createRole()));
 
             // When
-            List<InviteTokenResponse> result = inviteService.getInviteTokens(ORG_ID, "ORGANIZATION", USER_ID);
+            List<InviteTokenSummary> result = inviteService.getInviteTokens(ORG_ID, "ORGANIZATION", USER_ID);
 
             // Then
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getToken()).isEqualTo(TOKEN_STR);
-            assertThat(result.get(0).getRoleName()).isEqualTo(ROLE_NAME);
+            assertThat(result.get(0).roleName()).isEqualTo(ROLE_NAME);
         }
     }
 
@@ -326,7 +328,7 @@ class InviteServiceTest {
         void プレビュー_正常_チーム招待情報返却() {
             // Given
             InviteTokenEntity token = createTeamInviteToken();
-            given(inviteTokenRepository.findByToken(TOKEN_STR)).willReturn(Optional.of(token));
+            given(inviteTokenRepository.findByTokenHash(vault.hash(TOKEN_STR))).willReturn(Optional.of(token));
             given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(createRole()));
             given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(
                     TeamEntity.builder().name("テストチーム").build()));
@@ -346,7 +348,7 @@ class InviteServiceTest {
         @DisplayName("異常系: トークン不在でROLE_002例外")
         void プレビュー_トークン不在_ROLE002例外() {
             // Given
-            given(inviteTokenRepository.findByToken(TOKEN_STR)).willReturn(Optional.empty());
+            given(inviteTokenRepository.findByTokenHash(vault.hash(TOKEN_STR))).willReturn(Optional.empty());
 
             // When / Then
             assertThatThrownBy(() -> inviteService.previewInvite(TOKEN_STR))
@@ -385,7 +387,7 @@ class InviteServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ROLE_002"));
-            verify(inviteTokenRepository, never()).findByTokenForUpdate(anyString());
+            verify(inviteTokenRepository, never()).findByTokenHashForUpdate(anyString());
         }
 
         @Test
@@ -393,7 +395,7 @@ class InviteServiceTest {
         void 参加_正常_ロール割当() {
             // Given
             InviteTokenEntity token = createTeamInviteToken();
-            given(inviteTokenRepository.findByTokenForUpdate(TOKEN_STR)).willReturn(Optional.of(token));
+            given(inviteTokenRepository.findByTokenHashForUpdate(vault.hash(TOKEN_STR))).willReturn(Optional.of(token));
             given(teamBlockRepository.existsByTeamIdAndUserId(TEAM_ID, USER_ID)).willReturn(false);
             given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, TEAM_ID)).willReturn(false);
             // F15.3: folderId 未指定なら findOrCreateDefaultInternal → addItemWithAssignedVia(DEFAULT) が呼ばれる
@@ -418,7 +420,7 @@ class InviteServiceTest {
         @DisplayName("異常系: トークン不在でROLE_002例外")
         void 参加_トークン不在_ROLE002例外() {
             // Given
-            given(inviteTokenRepository.findByTokenForUpdate(TOKEN_STR)).willReturn(Optional.empty());
+            given(inviteTokenRepository.findByTokenHashForUpdate(vault.hash(TOKEN_STR))).willReturn(Optional.empty());
 
             // When / Then
             assertThatThrownBy(() -> inviteService.joinByInvite(TOKEN_STR, USER_ID))
@@ -432,7 +434,7 @@ class InviteServiceTest {
         void 参加_使用回数上限_ROLE003例外() {
             // Given
             InviteTokenEntity token = createMaxedOutToken();
-            given(inviteTokenRepository.findByTokenForUpdate(TOKEN_STR)).willReturn(Optional.of(token));
+            given(inviteTokenRepository.findByTokenHashForUpdate(vault.hash(TOKEN_STR))).willReturn(Optional.of(token));
 
             // When / Then
             assertThatThrownBy(() -> inviteService.joinByInvite(TOKEN_STR, USER_ID))
@@ -446,7 +448,7 @@ class InviteServiceTest {
         void 参加_既参加_TEAM003例外() {
             // Given
             InviteTokenEntity token = createTeamInviteToken();
-            given(inviteTokenRepository.findByTokenForUpdate(TOKEN_STR)).willReturn(Optional.of(token));
+            given(inviteTokenRepository.findByTokenHashForUpdate(vault.hash(TOKEN_STR))).willReturn(Optional.of(token));
             given(teamBlockRepository.existsByTeamIdAndUserId(TEAM_ID, USER_ID)).willReturn(false);
             given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, TEAM_ID)).willReturn(true);
 
@@ -462,7 +464,7 @@ class InviteServiceTest {
         void 参加_ブロック済み_TEAM004例外() {
             // Given
             InviteTokenEntity token = createTeamInviteToken();
-            given(inviteTokenRepository.findByTokenForUpdate(TOKEN_STR)).willReturn(Optional.of(token));
+            given(inviteTokenRepository.findByTokenHashForUpdate(vault.hash(TOKEN_STR))).willReturn(Optional.of(token));
             given(teamBlockRepository.existsByTeamIdAndUserId(TEAM_ID, USER_ID)).willReturn(true);
 
             // When / Then

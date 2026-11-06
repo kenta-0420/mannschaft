@@ -159,7 +159,7 @@ public class MembershipInviteService {
                 token.id(), channelId, scopeType, scopeId, targetUserId);
 
         return new MembershipInviteResponse(
-                token.id(), token.token(), targetUserId,
+                token.id(), targetUserId,
                 scopeType, scopeId, scopeName, "PENDING", toApiTimestamp(expiresAt), cardMessageId);
     }
 
@@ -249,13 +249,9 @@ public class MembershipInviteService {
         boolean isTarget = viewerUserId != null && viewerUserId.equals(token.getTargetUserId());
         String status = deriveCardStatus(token, scopeType, scopeId);
 
-        // 防御多重化（B Low）: accept/decline に使う token(UUID) は宛先本人にのみ返す。
-        // 発行者側（isTarget=false）は「承諾待ち」表示のみで token を要さないため null にし、
-        // 万一の UI 実装ミスや将来のマルチ受信者化でも非宛先へトークンを露出させない（DM は 2 名固定で無害だが多層防御）。
-        String tokenForViewer = isTarget ? token.getToken() : null;
-
+        // 平文トークンはどこにも出さない（DB にはハッシュしか無い）。宛先本人は tokenId で承諾・辞退する。
         return new InviteCardData(
-                token.getId(), tokenForViewer,
+                token.getId(),
                 scopeType, scopeId, scopeName,
                 status, isTarget, toApiTimestamp(token.getExpiresAt()));
     }

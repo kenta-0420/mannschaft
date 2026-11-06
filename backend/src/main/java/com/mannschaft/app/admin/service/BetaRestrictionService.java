@@ -4,6 +4,7 @@ import com.mannschaft.app.admin.dto.BetaRestrictionConfigResponse;
 import com.mannschaft.app.admin.dto.UpdateBetaRestrictionRequest;
 import com.mannschaft.app.admin.entity.BetaRestrictionConfigEntity;
 import com.mannschaft.app.admin.repository.BetaRestrictionConfigRepository;
+import com.mannschaft.app.common.token.SecretTokenVault;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ public class BetaRestrictionService {
 
     private final BetaRestrictionConfigRepository repo;
     private final InviteTokenRepository inviteTokenRepository;
+    private final SecretTokenVault vault;
 
     /**
      * 設定を取得する。レコードが存在しない場合はデフォルト値（制限なし）で返す。
@@ -81,7 +83,7 @@ public class BetaRestrictionService {
      * @return 有効であれば true
      */
     public boolean isBetaTokenValid(String tokenStr) {
-        Optional<InviteTokenEntity> tokenOpt = inviteTokenRepository.findByToken(tokenStr);
+        Optional<InviteTokenEntity> tokenOpt = inviteTokenRepository.findByTokenHash(vault.hash(tokenStr));
         if (tokenOpt.isEmpty()) {
             return false;
         }

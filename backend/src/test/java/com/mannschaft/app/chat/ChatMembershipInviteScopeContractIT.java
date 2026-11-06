@@ -261,7 +261,7 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
         void 共有リンク型トークンは取消不可() throws Exception {
             String rawToken = seedNamedToken(
                     teamAId, null, resolveRoleId("MEMBER"), LocalDateTime.now().plusDays(7));
-            InviteTokenEntity token = inviteTokenRepository.findByToken(rawToken).orElseThrow();
+            InviteTokenEntity token = inviteTokenRepository.findByTokenHash(HASHER.hash(rawToken)).orElseThrow();
 
             setAuth(adminAId);
             mockMvc.perform(delete("/api/v1/chat/channels/{cid}/membership-invite/{tokenId}",
@@ -368,8 +368,8 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
 
             // revoked_at がセットされている（REVOKED へ導出される）。
             Object revokedAt = em.createNativeQuery(
-                            "SELECT revoked_at FROM invite_tokens WHERE token = :tk")
-                    .setParameter("tk", token)
+                            "SELECT revoked_at FROM invite_tokens WHERE token_hash = :tk")
+                    .setParameter("tk", HASHER.hash(token))
                     .getSingleResult();
             assertThat(revokedAt).isNotNull();
 
@@ -526,11 +526,15 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
         return body;
     }
 
-    /** 宛先付き（target_user_id 非 NULL）の招待トークンを直接 seed し、token 文字列を返す。 */
+    /** 平文 token からハッシュを作る（金庫は状態を持たない）。 */
+    private static final com.mannschaft.app.common.token.SecretTokenVault HASHER =
+            new com.mannschaft.app.common.token.SecretTokenVault();
+
+    /** 宛先付き（target_user_id 非 NULL）の招待トークンを直接 seed し、平文 token 文字列を返す（DB にはハッシュだけを保存）。 */
     private String seedNamedToken(Long teamId, Long target, Long roleId, LocalDateTime expiresAt) {
         String token = UUID.randomUUID().toString();
         inviteTokenRepository.save(InviteTokenEntity.builder()
-                .token(token)
+                .tokenHash(HASHER.hash(token))
                 .teamId(teamId)
                 .roleId(roleId)
                 .createdBy(adminAId)

@@ -53,10 +53,11 @@ export function useChatMembershipInvite() {
   /**
    * 招待を承諾する（宛先本人のみ・PENDING→参加）。
    *
-   * BE 既存の共有リンク参加 API を流用。宛先照合は BE 側で行い、不一致は 403。
+   * 招待 ID で承諾する（平文トークンは持ち回らない）。宛先照合は BE 側で認証済み本人と行い、
+   * 宛先違い・共有リンク型・不存在はいずれも 404 ROLE_002。
    */
-  async function joinInvite(token: string): Promise<void> {
-    await api(`/api/v1/invite/${encodeURIComponent(token)}/join`, {
+  async function joinInvite(tokenId: number): Promise<void> {
+    await api(`/api/v1/invite/invitations/${tokenId}/accept`, {
       method: 'POST',
       body: {},
     })
@@ -65,8 +66,8 @@ export function useChatMembershipInvite() {
   /**
    * 招待を辞退する（宛先本人のみ・revoked_at を立てカードを REVOKED 表示）。
    */
-  async function declineInvite(token: string): Promise<void> {
-    await api(`/api/v1/invite/${encodeURIComponent(token)}/decline`, {
+  async function declineInvite(tokenId: number): Promise<void> {
+    await api(`/api/v1/invite/invitations/${tokenId}/decline`, {
       method: 'POST',
     })
   }

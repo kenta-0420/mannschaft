@@ -547,7 +547,7 @@ HTTP|com.mannschaft.app.resident.controller.UserResidentController|2|2
 HTTP|com.mannschaft.app.resume.controller.ResumeController|10|11
 HTTP|com.mannschaft.app.returnstayplan.controller.ReturnStayPlanController|5|5
 HTTP|com.mannschaft.app.returnstayplan.controller.ReturnStayPlanTeamController|2|2
-HTTP|com.mannschaft.app.role.controller.InviteController|3|4
+HTTP|com.mannschaft.app.role.controller.InviteController|3|6
 HTTP|com.mannschaft.app.role.controller.InviteQrPdfController|1|1
 HTTP|com.mannschaft.app.role.controller.MeController|2|2
 HTTP|com.mannschaft.app.role.controller.MeInvitableScopesController|0|1

@@ -162,9 +162,9 @@ class InviteGenerationLifecycleIT extends InviteGenerationItSupport {
     /** 既存ConfirmableNotificationReminderBatchTransactionIT同型。TRIGGER/SUPER権限不要の最小DDL例外。 */
     private void addOwnedRevokeFailure(String constraintName, InviteTokenEntity token) {
         // 呼出元の専用container/URL/schema確認後、所有する不変UUIDだけを対象にする。
-        assertThat(UUID.fromString(token.getToken()).toString()).isEqualTo(token.getToken());
+        assertThat(token.getTokenHash()).matches("^[0-9a-f]{64}$");
         jdbc.execute("ALTER TABLE invite_tokens ADD CONSTRAINT " + constraintName
-                + " CHECK (revoked_at IS NULL OR token <> '" + token.getToken() + "')");
+                + " CHECK (revoked_at IS NULL OR token_hash <> '" + token.getTokenHash() + "')");
     }
 
     private void assertOwnedRevokeFailure(String constraintName, InviteTokenEntity token) {
@@ -284,7 +284,7 @@ class InviteGenerationLifecycleIT extends InviteGenerationItSupport {
                 .invitedAt(LocalDateTime.of(2026, 1, 1, 0, 0)).build()).getId());
         ownedAffiliations.add(affiliation);
         var before = jdbc.queryForMap("SELECT * FROM team_org_memberships WHERE id = ?", affiliation);
-        assertThat(invites.previewInvite(teamToken.getToken()).getData().isValid()).isTrue();
+        assertThat(invites.previewInvite(plaintext(teamToken)).getData().isValid()).isTrue();
 
         organizationService.archiveOrganization(org.id());
 
@@ -292,7 +292,7 @@ class InviteGenerationLifecycleIT extends InviteGenerationItSupport {
         assertThat(jdbc.queryForObject("SELECT closure_generation FROM teams WHERE id = ?", Long.class, team.id())).isZero();
         assertThat(tokens.findById(teamToken.getId()).orElseThrow().getRevokedAt()).isNull();
         assertThat(tokens.findById(teamToken.getId()).orElseThrow().getScopeClosureGeneration()).isZero();
-        assertThat(invites.previewInvite(teamToken.getToken()).getData().isValid()).isTrue();
+        assertThat(invites.previewInvite(plaintext(teamToken)).getData().isValid()).isTrue();
         assertThat(jdbc.queryForMap("SELECT * FROM team_org_memberships WHERE id = ?", affiliation)).isEqualTo(before);
     }
 

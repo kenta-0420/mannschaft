@@ -1784,11 +1784,12 @@ class FlywayFromScratchMigrationTest {
     void 全失効の検査ヘルパは平文列が残る表を不合格にする() throws Exception {
         migrateFromScratch();
         try (Connection conn = connect()) {
-            // 移行前の形（invite_tokens.token が平文のまま）は、各波が移行するまで不合格になるはず。
-            // いずれかの波で invite_tokens の移行が入ったら、この陰性対照は別の未移行表へ付け替える。
-            if (columnExists(conn, "invite_tokens", "token")) {
+            // 移行前の形（平文列 token が残る表）は、各波が移行するまで不合格になるはず。
+            // P1 で invite_tokens を移行したため、まだ平文のままの contact_invite_tokens（系統2）を使う。
+            // その表の移行が入ったら、この陰性対照は別の未移行表（event_guest_invite_tokens など）へ付け替える。
+            if (columnExists(conn, "contact_invite_tokens", "token")) {
                 assertThatThrownBy(() -> assertTokenHashMigrated(conn,
-                        new TokenHashMigrationExpectation("invite_tokens", "token", "token_hash", false)))
+                        new TokenHashMigrationExpectation("contact_invite_tokens", "token", "token_hash", false)))
                         .isInstanceOf(AssertionError.class);
             }
         }
