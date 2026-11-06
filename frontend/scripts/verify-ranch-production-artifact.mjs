@@ -22,8 +22,7 @@ const forbidden = [
   '/dev-fixtures/ranch/appearance64-v4/',
   '/dev-fixtures/ranch/base16-v3/',
   'outputs/dinosaur-care-complete16-20261106',
-  frontend,
-  frontend.replaceAll('\\', '/'),
+  ...(frontend === '/app' ? [] : [frontend, frontend.replaceAll('\\', '/')]),
 ]
 export function inspectArtifact(directory, blockedHashes, markers) {
   assert.ok(fs.existsSync(directory), 'production buildが必要')

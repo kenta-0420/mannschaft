@@ -12,6 +12,7 @@ test('v4 validator rejects count, frame, phase, hash and traversal changes', () 
   for (const mutate of [
     (d) => d.entries.pop(),
     (d) => d.entries.push(structuredClone(d.entries[0])),
+    (d) => (d.entries[0].habitat = 'SEA'),
     (d) => (d.entries[0].clips.idle.frames = 3),
     (d) => (d.entries[0].clips.idle.frames = 5),
     (d) => (d.entries[0].clips.idle.phaseStarts[1] = 0),

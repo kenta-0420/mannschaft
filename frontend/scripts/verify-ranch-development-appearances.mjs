@@ -43,6 +43,13 @@ export function validateMetadata(data) {
     assert.ok(['BABY', 'JUVENILE', 'ADULT'].includes(e.stage))
     assert.ok(['PIXEL', 'PAINT_2D'].includes(e.renderStyle))
     assert.equal(e.catalogVersion, '4')
+    const source = legacy.entries.find(
+      (v) =>
+        v.speciesKey === e.speciesKey && v.stage === e.stage && v.renderStyle === e.renderStyle,
+    )
+    assert.ok(source)
+    assert.equal(e.sourceSpecies, source.sourceSpecies)
+    assert.equal(e.habitat, source.habitat)
     const key = [e.speciesKey, e.variantKey, e.stage, e.renderStyle].join(':')
     assert.equal(e.assetKey, key)
     assert.ok(expected.has(key))

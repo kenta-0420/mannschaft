@@ -43,6 +43,7 @@ ENV NUXT_INTERNAL_API_BASE=${NUXT_INTERNAL_API_BASE}
 ENV NODE_OPTIONS=--max-old-space-size=8192
 
 RUN npm run build
+RUN node scripts/verify-ranch-production-artifact.mjs
 
 # ============================================================
 # Stage 3: Runtime
