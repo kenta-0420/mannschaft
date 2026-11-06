@@ -110,7 +110,9 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
 
         // AC-22: fanoutジョブも1件も残らない（本体が無い以上、scope_refで引ける行があってはならない）。
         long jobCount = ((Number) em.createNativeQuery(
-                        "SELECT COUNT(*) FROM notification_fanout_jobs WHERE scope_type = 'CONFIRMABLE_TARGETS'")
+                        "SELECT COUNT(*) FROM notification_fanout_jobs "
+                                + "WHERE scope_type = 'CONFIRMABLE_TARGETS' AND organization_id = :orgId")
+                .setParameter("orgId", orgId)
                 .getSingleResult()).longValue();
         assertThat(jobCount).as("AC-22: 本体が無い以上、fanoutジョブも孤立して残ってはならない").isZero();
     }
