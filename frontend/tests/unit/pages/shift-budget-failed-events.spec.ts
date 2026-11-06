@@ -20,6 +20,7 @@ mockNuxtImport('useShiftBudgetApi', () => () => ({
 }))
 mockNuxtImport('useNotification', () => () => ({ success: vi.fn(), error: vi.fn() }))
 mockNuxtImport('useDatetime', () => () => ({ formatDateTime: (value: string | null) => value ?? '-' }))
+mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
 vi.mock('~/composables/shift/useShiftBudgetAdminAccess', () => ({
   useShiftBudgetAdminAccess: () => ({ canManageBudget: computed(() => state.admin), ensureLoaded: vi.fn() }),
 }))
@@ -54,11 +55,11 @@ describe('CMP-260910-1606 失敗イベントの操作導線', () => {
     expect(rows).toHaveLength(10)
     for (const row of rows) {
       const id = Number(row.find('td').text())
-      const retries = row.findAll('button').filter(button => button.text() === '再実行')
-      expect(retries, `ID:${id}`).toHaveLength(id <= 1003 ? 1 : 0)
+      const retries = row.findAll('button').filter(button => button.text() === 'shiftBudget.failedEvent.retry')
+      expect(retries, `ID:${id}: ${row.html()}`).toHaveLength(id <= 1003 ? 1 : 0)
       if (id === 1004 || id === 1005) {
         expect(row.text()).toContain('元の診断')
-        expect(row.findAll('button').some(button => button.text() === '補正済マーク')).toBe(true)
+        expect(row.findAll('button').some(button => button.text() === 'shiftBudget.failedEvent.resolve')).toBe(true)
       }
     }
     expect(state.retry).not.toHaveBeenCalled()
