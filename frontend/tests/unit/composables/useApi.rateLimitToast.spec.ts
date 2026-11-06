@@ -31,13 +31,20 @@ const { useApi } = await import('~/composables/useApi')
 
 function fire(data: unknown, retryAfter?: string) {
   const toast = { add: vi.fn() }
-  const nuxtApp = useNuxtApp() as unknown as Record<string, unknown>
-  // Nuxt の $toast / $i18n は getter のみのため、defineProperty で差し替える。
-  Object.defineProperty(nuxtApp, '$toast', { value: toast, configurable: true })
-  Object.defineProperty(nuxtApp, '$i18n', {
-    value: { t: (key: string, named?: Record<string, unknown>) => (named ? `${key}:${JSON.stringify(named)}` : key) },
-    configurable: true,
-  })
+  const tMock = (key: string, named?: Record<string, unknown>) => (named ? `${key}:${JSON.stringify(named)}` : key)
+  const nuxtApp = useNuxtApp() as unknown as Record<string, { add?: unknown, t?: unknown } | undefined>
+  // $i18n は nuxt-i18n が非 configurable で定義するため defineProperty できない。
+  // 既存なら中身のメソッドだけ差し替え、無ければ（$toast はクライアントプラグイン由来）生やす。
+  const stub = (key: '$toast' | '$i18n', member: 'add' | 't', impl: unknown) => {
+    const existing = nuxtApp[key]
+    if (existing) {
+      existing[member] = impl
+      return
+    }
+    Object.defineProperty(nuxtApp, key, { value: { [member]: impl }, configurable: true, writable: true })
+  }
+  stub('$toast', 'add', toast.add)
+  stub('$i18n', 't', tMock)
   useApi()
   const hooks = captured.hooks as Hooks
   const options: HookOptions = {}
