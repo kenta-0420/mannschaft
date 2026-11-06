@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261106-0049",
+  "scope": "tooling",
+  "implementation": {
+    "pr": 4310,
+    "sha": "51f891745f400d984c3a81271d6919a52cd7c9e9"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-0049-1",
+      "description": "未完の全行の状態セル先頭に P1〜P5 が付き、番人が優先度なしの未完行を赤にする",
+      "tests": [
+        {
+          "name": "cmp行の状態セルは優先度か完了系で始まる",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/TaskListCmpIdDuplicateGuardTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-0049-2",
+      "description": "台帳ゲートの状態パーサが先頭の優先度を読める",
+      "tests": [
+        {
+          "name": "scripts/completion-evidence.test.mjs（22件合格）",
+          "evidence": "scripts/completion-evidence.test.mjs"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 42147446470
+    },
+    {
+      "runId": 42147444184
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4310"
+    },
+    "real": {
+      "status": "not-applicable",
+      "scope": "tooling",
+      "reason": "画面変更なし。台帳・番人テスト・CIゲート・スクリプトのみの変更"
+    },
+    "exploratory": {
+      "status": "not-applicable",
+      "scope": "tooling",
+      "reason": "画面変更なし。台帳・番人テスト・CIゲート・スクリプトのみの変更"
+    }
+  },
+  "regressions": []
+}
