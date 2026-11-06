@@ -198,6 +198,6 @@ jobs:
               ? trustedValidator.parseTaskList(taskList).byId.get(cmpId)
               : taskList.split(/\r?\n/).filter(line => line.startsWith('|') && line.includes(cmpId)).map(line => line.split('|').map(cell => cell.trim())).find(cells => cells[1] === cmpId);
             if (!matchedRow) throw new Error(`${cmpId} must appear exactly once in docs/task-list.md on ${pull.base.ref}; found 0.`);
-            const state = trustedValidator ? matchedRow.state : matchedRow[3]?.replace(/^\*\*(.*)\*\*$/, '$1');
+            const state = trustedValidator ? matchedRow.state : matchedRow[3]?.replace(/^\*\*(.*)\*\*$/, '$1').trim().replace(/^P[1-5]\s+/, '');
             if (state !== '\u5b9f\u88c5\u4e2d') throw new Error(`${cmpId} must be registered as 実装中 on ${pull.base.ref} (state: ${state || 'missing'}).`);
             core.info(`${cmpId} is registered as 実装中 on ${pull.base.ref}; checked ${codeFiles.length} code/configuration file(s).`);
