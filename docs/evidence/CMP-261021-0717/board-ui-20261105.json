@@ -1,0 +1,174 @@
+{
+  "schemaVersion": 1,
+  "campaignId": "CMP-261021-0717",
+  "runId": "CMP-261021-0717-ui9-20261105",
+  "sourceHead": "dc977b6724958111c149140ab83f0094b433bb78",
+  "purpose": "静的B0ボードの住民観測取込・再読込・表示確認。製品アプリは起動せず、外部通信は遮断。",
+  "inputHashes": {
+    "boardHtmlSha256": "64d62b5cae580815a09d353844cb45d44232417bfeaf9473953b22dcbca220d4",
+    "boardHtmlGitBlobOid": "5939210c58225795e1c168052903f5b4293b206d",
+    "generatedBoardJsSha256": "355c66e99a952de8de9ffb5850367e2403023bef0ce6bc91705edee8ba2d8c8b",
+    "residentOverlaySha256": "8d2b5fef82d16d287edf7897b8c99ded5ce3c19095b341fce2cc1edcdf87cf4b",
+    "observationRecordSha256": "2661c3cf82cf2a402f003a6f27505358ddf38ea30f53d3a6634a49efe5f97805",
+    "b0RunnerAtUiTestSha256": "f5e95fca2517c9fe6b99761547de93ff1351af278faa15e3420f94eeff153b20"
+  },
+  "priorRedAttempt": {
+    "receiptSha256": "695478ce29b22ce92b707307d3185c00b0f4c117a065c6c3bc6436d370f25c30",
+    "passed": false,
+    "initialCount": 111,
+    "reloadCount": 111,
+    "reloadDeepEqual": true,
+    "failure": "新3件のfeatureKeyがボードのcanonical capabilitiesに未登録で、未設定stageへfallbackしB4表示から検索できなかった。全111件取込・reload保持・cleanupは成功。",
+    "elapsedMs": 17321.3451,
+    "cleanup": {
+      "completed": true,
+      "elapsedMs": 11068.2554,
+      "liveKnown": 0,
+      "profileAbsent": true,
+      "ownPortReleased": true,
+      "clientsClosed": true
+    },
+    "originalExitCode": 1
+  },
+  "greenAttempt": {
+    "receiptSha256": "37efbc8824c455fd6850f1dea3a41a727547cf8dc2c3fbd2ba84cb54e771231f",
+    "passed": true,
+    "elapsedMs": 50059.723099999996,
+    "budgets": {
+      "workMs": 180000,
+      "cleanupMs": 120000,
+      "totalMs": 300000
+    },
+    "counts": {
+      "initial": 111,
+      "reload": 111,
+      "reloadDeepEqual": true,
+      "expectedOldProjection": 108,
+      "newResidents": 3,
+      "total": 111
+    },
+    "externalRequestsBlocked": 0,
+    "newCardCount": 3,
+    "featurePreflight": [
+      {
+        "key": "shift-shift-budget",
+        "canonicalFound": true,
+        "canonicalTitle": "シフト予算",
+        "decisionStage": "B4",
+        "resolvedStage": "B4"
+      },
+      {
+        "key": "shift-shift",
+        "canonicalFound": true,
+        "canonicalTitle": "シフト",
+        "decisionStage": "B4",
+        "resolvedStage": "B4"
+      }
+    ],
+    "newCards": [
+      {
+        "id": "ALI-october-wave2-login-resident-overlay-20261026-ALIC-CMP0717-UI9-A-01",
+        "featureKey": "shift-shift-budget",
+        "screenshotPath": "docs/evidence/CMP-261021-0717/resident-a-budget.png",
+        "cardCount": 1,
+        "visibleChecks": {
+          "title": true,
+          "persona": true,
+          "journey": true,
+          "registrationSource": true,
+          "originalRunId": true,
+          "evidencePath": true,
+          "screenshotPath": true,
+          "screenshotIndicator": true,
+          "featureKey": true,
+          "stageB4": true
+        }
+      },
+      {
+        "id": "ALI-october-wave2-login-resident-overlay-20261026-ALIC-CMP0717-UI9-B-01",
+        "featureKey": "shift-shift",
+        "screenshotPath": "docs/evidence/CMP-261021-0717/b-my-shift.png",
+        "cardCount": 1,
+        "visibleChecks": {
+          "title": true,
+          "persona": true,
+          "journey": true,
+          "registrationSource": true,
+          "originalRunId": true,
+          "evidencePath": true,
+          "screenshotPath": true,
+          "screenshotIndicator": true,
+          "featureKey": true,
+          "stageB4": true
+        }
+      },
+      {
+        "id": "ALI-october-wave2-login-resident-overlay-20261026-ALIC-CMP0717-UI9-C-01",
+        "featureKey": "shift-shift-budget",
+        "screenshotPath": "docs/evidence/CMP-261021-0717/c-denied.png",
+        "cardCount": 1,
+        "visibleChecks": {
+          "title": true,
+          "persona": true,
+          "journey": true,
+          "registrationSource": true,
+          "originalRunId": true,
+          "evidencePath": true,
+          "screenshotPath": true,
+          "screenshotIndicator": true,
+          "featureKey": true,
+          "stageB4": true
+        }
+      }
+    ],
+    "old108ImportedProjectionPreserved": true,
+    "originalRunIdPrecisionPassed": false,
+    "storedRunId": "october-wave2-login-resident-overlay-20261026",
+    "storedRunIdLimitation": "既存importerはtop旧runIdを保存。元runはdetail/選別証拠に保持され、stored runIdの精度は合格としない。",
+    "rootImageReview": "rootが選択3画像とボード確認画面を視認済み",
+    "cleanup": {
+      "completed": true,
+      "elapsedMs": 30398.9979,
+      "withinBudget": true,
+      "knownGenerationsLive": 0,
+      "profileAbsent": true,
+      "ownPortReleased": true,
+      "contextClosed": true,
+      "browserClosed": true,
+      "browserServerClosed": true,
+      "serverClosed": true,
+      "browserChildTerminal": true,
+      "generationSnapshotIncomplete": false
+    },
+    "originalExitCode": 0
+  },
+  "selectedBoardScreenshot": {
+    "path": "docs/evidence/CMP-261021-0717/board-new-three.png",
+    "sha256": "e50d7af44c2dd782fde9420c429de77734fa011e534c2a6f17438c80b5cf6606",
+    "bytes": 489137,
+    "rootReviewed": true
+  },
+  "limitations": [
+    "これは静的なボードUIの確認で、製品アプリ/DBの実操作ではない",
+    "既存importerはoverlayのトップ旧runIdを保存するためoriginalRunIdPrecisionPassed=falseを維持。元runIdは各カード詳細/evidenceに保持",
+    "resident observationsはtrusted=false / observed-unverifiedのまま。B0 coverage・completion statusを変更しない",
+    "task-list/正式完了証跡は本記録に含めない"
+  ],
+  "overlayValidation": {
+    "scope": "validate-beta-inventory-board.mjs内のvalidateRunOverlay関数と--self-test-overlayブロックのみを抽出し、最終featureKey+screenshotPath付きoverlayで実行",
+    "exitCode": 0,
+    "residentOverlayAccepted": true,
+    "emptyInsightsAccepted": true,
+    "syntheticBaselineAccepted": true,
+    "multipleSourceHeadsAndRunsAccepted": true,
+    "invalidOverlaysRejected": 10
+  },
+  "repositoryGlobalValidator": {
+    "postScreenshotPathRerun": false,
+    "knownEarlierNormalAndFullSelfTestExitCode": 1,
+    "knownReason": "validator line 37: CMP正本行数と参照抽出数が一致しません。限定overlay checkの成功とは区別。"
+  },
+  "sourceHeadMeaning": "住民が操作した製品アプリのsource",
+  "boardBaseHead": "f51ee7c58660297b9ce2eb7bd252da2b6eed2dd6",
+  "boardUiHelperSha256": "34c47211d702485c8dc176b24f82546a071492f2596110acc72151191f24ec68"
+}

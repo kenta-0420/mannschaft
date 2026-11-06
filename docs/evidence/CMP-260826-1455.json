@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260826-1455",
+  "scope": "app",
+  "implementation": {
+    "pr": 4244,
+    "sha": "6fbc19387e7353c68c615f7b9639f71e54cbecba"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1455-1",
+      "description": "BAN された村長・長老が権限操作（ロール変更・BAN 等）を実行できない",
+      "tests": [
+        {
+          "name": "VillageModeratorPredicateWideGuardArchTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/VillageModeratorPredicateWideGuardArchTest.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 41271403376
+    },
+    {
+      "runId": 41271403396
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4244"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260826-1455-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260826-1455-exploratory.md"
+    }
+  },
+  "regressions": []
+}
