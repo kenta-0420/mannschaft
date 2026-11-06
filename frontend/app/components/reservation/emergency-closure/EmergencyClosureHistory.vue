@@ -56,6 +56,8 @@ const { formatDateTime, formatCalendarDayRange, formatTimeRange } = useDatetime(
     <template v-else-if="items.length > 0">
       <!-- md 未満: カード表示（CMP-261104-0336）。表と同じデータ・同じ操作を縦積みで出す。 -->
       <ul class="space-y-3 md:hidden" data-testid="closure-history-cards">
+        <!-- text-spacing-trim:space-all: Chromium の約物詰め（全角約物が隣り合う箇所の幅を詰める既定動作）を止める。
+             詰めると文字は収まっても scrollWidth が詰める前の幅を返し、見た目と計測がずれるため。 -->
         <li
           v-for="item in items"
           :key="item.id"
@@ -65,7 +67,7 @@ const { formatDateTime, formatCalendarDayRange, formatTimeRange } = useDatetime(
           <dl class="min-w-0 space-y-2">
             <div>
               <dt class="text-xs font-medium text-surface-500">{{ $t('emergency_closure.section.period') }}</dt>
-              <dd data-field="period" class="whitespace-normal break-words [overflow-wrap:anywhere] [line-break:anywhere]">
+              <dd data-field="period" class="break-words [overflow-wrap:anywhere]">
                 <div>{{ formatCalendarDayRange(item.startDate, item.endDate) }}</div>
                 <div v-if="item.startTime && item.endTime" class="text-xs text-surface-500">
                   {{ formatTimeRange(item.startTime, item.endTime) }}
@@ -74,7 +76,7 @@ const { formatDateTime, formatCalendarDayRange, formatTimeRange } = useDatetime(
             </div>
             <div>
               <dt class="text-xs font-medium text-surface-500">{{ $t('emergency_closure.table.sent_at') }}</dt>
-              <dd data-field="sent-at" class="whitespace-normal break-words text-surface-600 [overflow-wrap:anywhere] [line-break:anywhere] dark:text-surface-300">{{ formatDateTime(item.createdAt) }}</dd>
+              <dd data-field="sent-at" class="break-words text-surface-600 [overflow-wrap:anywhere] dark:text-surface-300">{{ formatDateTime(item.createdAt) }}</dd>
             </div>
             <div>
               <dt class="text-xs font-medium text-surface-500">{{ $t('emergency_closure.table.reason') }}</dt>

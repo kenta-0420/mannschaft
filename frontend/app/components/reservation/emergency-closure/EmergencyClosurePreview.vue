@@ -45,6 +45,8 @@ const emit = defineEmits<{
       </p>
 
       <ul v-if="items.length > 0" class="space-y-2 md:hidden" data-testid="closure-preview-cards">
+        <!-- text-spacing-trim:space-all: Chromium の約物詰め（全角約物が隣り合う箇所の幅を詰める既定動作）を止める。
+             詰めると文字は収まっても scrollWidth が詰める前の幅を返し、見た目と計測がずれるため。 -->
         <li
           v-for="item in items"
           :key="item.reservationId"
