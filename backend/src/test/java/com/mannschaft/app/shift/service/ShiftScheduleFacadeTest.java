@@ -104,7 +104,9 @@ class ShiftScheduleFacadeTest {
     void 未公開サマリでもSUPPORTERは403() {
         given(scheduleService.resolveScope(SCHEDULE_ID)).willReturn(draft());
         given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
-        given(accessControlService.isSupporter(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        // 修正前の管理者ゲートはSUPPORTERを直接調べないが、主体の条件は両版で同じにする。
+        org.mockito.Mockito.lenient().when(accessControlService.isSupporter(USER_ID, TEAM_ID, "TEAM"))
+                .thenReturn(true);
 
         assertCode(catchThrowable(() -> facade.getScheduleSummary(SCHEDULE_ID, USER_ID)),
                 CommonErrorCode.COMMON_002);

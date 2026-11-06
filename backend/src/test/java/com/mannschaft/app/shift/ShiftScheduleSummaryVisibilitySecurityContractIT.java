@@ -33,6 +33,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
 import org.springframework.cache.CacheManager;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.context.transaction.AfterTransaction;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -134,6 +135,11 @@ class ShiftScheduleSummaryVisibilitySecurityContractIT extends AbstractMySqlInte
         em.flush();
         em.clear();
         assertThat(scheduleRepository.findById(ABSENT_ID)).isEmpty();
+    }
+
+    @AfterTransaction
+    void 機能フラグのキャッシュをrollback後に戻す() {
+        FeatureFlagTestSupport.clearFlagCaches(cacheManager);
     }
 
     @ParameterizedTest
