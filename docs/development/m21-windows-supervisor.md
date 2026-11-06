@@ -122,6 +122,22 @@ assign-fail/cleanup-fail/save-failは固定fault点への例外注入であり�
 
 ## 現段階の検証
 
+### 未接続の固定asset caller
+
+`Invoke-M21ProductionAssets` は引数なしの内部関数として定義するだけで、dummy・fixture・環境変数の有無からは呼ばない。正式 `formal-m21` 入口への接続と実行は後続の別GOとする。既存dummyのG420秒/R18秒は変更しない。
+
+callerは既存Job/Remaining/M21Child/Register-Child/Captureを用いて、source検査後に固定Git Bashの既存turnstile経由offline production CP、固定JDK21のjavac、jarの順で進む。正規WindowsユーザーのKnownFolderと `C:/Users/kenta/AppData/Local` の一致を確認し、既存machine gateを使う。Gradle cacheは `C:/Users/kenta/.gradle`、子環境は必要OS値・private TEMP/HOME・固定tool/cache/path・CP入出力だけを明示する。全親環境は継承しない。
+
+各buildはcreatorが保持する同一child参照、held登録、owner/nonce/input HEAD、固定exe/CWD/argv、実exit0、両EOFとpublicationを要求する。CPはCREATE_NEW出力とsource/tool再hash、同child rawのcompileJava/processResources/classes/m21ProductionClasspath outcomeを照合し、UP-TO-DATE/FROM-CACHEを実再compileへ読み替えない。未確認なら後続を起動しない。CP/JAR manifestへ固定生成元と各outcomeを保存する。fixture JARの構造・CP bytes・source/tool不変を確認した場合だけasset資格を立て、正式run資格はfalseのままとする。完了済みCLIは既存Capture証拠を保持してDispose/held解除し、未確認childは既存finally回収へ残す。
+
+`-OwnerId` は既存owner/nonce/runガードに渡すUUID一つだけの選択で、ParentからSupervisorへ伝達する。probeも末尾 `--owner-id <UUID>` を受け、全dummy子孫とfixtureの期待ownerへ同じ値を渡す。旧既定値は過去dummy互換用であり、今回のrunには必ず新ownerを明示する。引継済みNode22の固定ツールパス内の過去作成者名は変更せず、SHA確認して読取再利用する。
+
+今回の所有者を使うprobeの形（実行には別GOが必要）:
+
+    node scripts/m21-windows-supervisor.probe.cjs --owner-id 1d767b20-825c-4edc-b397-8d4367036462
+
+このsliceはPS parserと静的差分だけを確認し、asset生成・変更後dummy回帰・実Java/Gradle・正式環境・実UIは未実行。CP task outcomeの実ログ形式、実machine gate、途中失敗時の停止/EOF/publication/held解除は実測合格としていない。
+
 PS Parser.ParseFile、Node --check、diffの静的確認後、rootの限定GOごとに固定入力のsuiteを1回実行する。過去のprobeでAdd-Type実コンパイル・Win32 Job・host非0伝播まで観測したが、P6では孫の早期exit0によりpipe保持fixtureが不成立だった。P6限定修正版の全10caseは同一固定HEADの実測packetで判定する。正式環境・実UI・Chromium互換は未実施で、dummy成功を正式M21合格へ流用しない。過去のsharing違反やPS admission遅延の原因解消とも扱わない。
 
 根拠: [Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects)、[AssignProcessToJobObject](https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/nf-jobapi2-assignprocesstojobobject)。last handle閉鎖がkill条件であり、CreateProcess系の子は既定でJob継承する。WMI生成やbreakawayは利用しない。
