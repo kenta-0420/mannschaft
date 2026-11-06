@@ -11,10 +11,11 @@ type LoadOptions = { server?: boolean; default: () => Setting[] }
 const fixture = vi.hoisted(() => {
   const clientLoads: (() => Promise<void>)[] = []
   const rows: Setting[] = []
-  return { api: vi.fn(), asyncData: vi.fn(), clientLoads, rows }
+  return { api: vi.fn(), asyncData: vi.fn(), clientLoads, rows, auth: { user: { id: 42 }, loadFromStorage: vi.fn() } }
 })
 mockNuxtImport('useApi', () => () => fixture.api)
 mockNuxtImport('useAsyncData', () => fixture.asyncData)
+mockNuxtImport('useAuthStore', () => () => fixture.auth)
 
 beforeEach(() => {
   fixture.api.mockReset()

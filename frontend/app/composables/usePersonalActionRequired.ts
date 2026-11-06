@@ -1,3 +1,6 @@
+import { hasInjectionContext, inject, onScopeDispose, provide, watch, type InjectionKey } from 'vue'
+import { getAuthSessionContext } from '~/composables/authSessionContext'
+
 /**
  * 個人ダッシュボード向け「要対応」一覧取得 composable。
  *
@@ -26,6 +29,51 @@ interface RawActionRequiredResponse {
   total_count: number
 }
 
+type ActionRequiredResponse = { data: RawActionRequiredResponse }
+interface InitialActionRead {
+  read: (load: () => Promise<ActionRequiredResponse>) => Promise<ActionRequiredResponse> | null
+  stopJoining: () => void
+}
+const INITIAL_ACTION_READ_KEY: InjectionKey<InitialActionRead> = Symbol('personal-initial-action-read')
+
+/** 個人パネル初回の同時GETだけを共有し、結果は保持しない。 */
+export function provideInitialPersonalActionRequired() {
+  if (import.meta.server) return
+  const auth = useAuthStore()
+  const proxy = useProxyDeskStore()
+  const guardian = useGuardianshipSwitchStore()
+  const impersonation = useAdminImpersonationStore()
+  const normalMode = () => !proxy.isPinned && !guardian.isActingAs && !impersonation.isImpersonating
+  if (!auth.user || !normalMode()) return
+  const session = getAuthSessionContext(auth)
+  const owner = session.capture()
+  let disposed = false
+  let joinable = true
+  let flight: Promise<ActionRequiredResponse> | null = null
+  const current = () => !disposed && session.current(owner) && normalMode()
+  const stopJoining = () => { joinable = false }
+  const dispose = () => { disposed = true; stopJoining(); flight = null }
+  watch([() => proxy.isPinned, () => guardian.isActingAs, () => impersonation.isImpersonating], dispose, { flush: 'sync' })
+  onScopeDispose(dispose)
+  provide(INITIAL_ACTION_READ_KEY, {
+    stopJoining,
+    read(load) {
+      if (!joinable || !current()) return null
+      if (!flight) {
+        const pending = load().then(response => {
+          if (!current()) throw new Error('PERSONAL_ACTION_SESSION_CHANGED')
+          return response
+        }).finally(() => {
+          if (flight === pending) flight = null
+        })
+        flight = pending
+      }
+      return flight
+    },
+  })
+  return stopJoining
+}
+
 // camelCase に変換した型
 export interface PersonalActionItem {
   itemType: string // 'CIRCULATION' | 'SURVEY' | 'ATTENDANCE'
@@ -42,11 +90,13 @@ export interface PersonalActionItem {
 
 export function usePersonalActionRequired() {
   const api = useApi()
+  const shared = hasInjectionContext() ? inject(INITIAL_ACTION_READ_KEY, null) : null
+  if (shared) onScopeDispose(shared.stopJoining)
 
-  async function fetchActionRequired(): Promise<{ items: PersonalActionItem[]; totalCount: number }> {
-    const res = await api<{ data: RawActionRequiredResponse }>(
-      '/api/v1/dashboard/action-required',
-    )
+  async function fetchActionRequired(options: { shareInitial?: boolean } = {}): Promise<{ items: PersonalActionItem[]; totalCount: number }> {
+    if (!options.shareInitial) shared?.stopJoining()
+    const load = () => api<ActionRequiredResponse>('/api/v1/dashboard/action-required')
+    const res = await (options.shareInitial ? shared?.read(load) ?? load() : load())
     return {
       items: res.data.items.map(i => ({
         itemType: i.item_type,

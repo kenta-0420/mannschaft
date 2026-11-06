@@ -54,7 +54,7 @@ public class ShiftRequestAdminQueryService {
         long swapCount = swapRequestRepository.countPendingByTeam(teamId, SwapRequestStatus.PENDING);
         long total = changeCount + swapCount;
 
-        if (previewSize <= 0) {
+        if (previewSize <= 0 || total == 0) {
             return new PendingAggregate(total, List.of());
         }
 

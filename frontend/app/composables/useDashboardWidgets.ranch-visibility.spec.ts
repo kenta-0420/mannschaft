@@ -47,6 +47,7 @@ async function dashboard(initialVisible = false, scope: 'personal' | 'team' = 'p
   external.settings.mockReturnValue({
     data: ref([{ widgetKey: 'PERSONAL_DINOSAUR_RANCH', visible: initialVisible, sortOrder: 0 }]),
     status: ref('success'),
+    execute: vi.fn().mockResolvedValue(undefined),
   })
   const Ranch = defineComponent({
     setup() {

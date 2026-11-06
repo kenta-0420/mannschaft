@@ -58,7 +58,7 @@ public class ReservationAdminQueryService {
         long count = reservationRepository.countByTeamIdAndStatusAndIsGroupPrimaryTrue(
                 teamId, ReservationStatus.PENDING);
 
-        if (previewSize <= 0) {
+        if (previewSize <= 0 || count == 0) {
             return new PendingAggregate(count, List.of());
         }
 

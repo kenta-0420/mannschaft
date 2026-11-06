@@ -63,7 +63,7 @@ async function load() {
   loading.value = true
   try {
     const [actionSettled, todoSettled, adminSettled] = await Promise.allSettled([
-      fetchActionRequired(),
+      fetchActionRequired({ shareInitial: true }),
       getDashboardTodoSummary().then((res) => res.data),
       fetchAdminActionRequired(),
     ])

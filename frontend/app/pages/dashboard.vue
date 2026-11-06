@@ -14,6 +14,11 @@ definePageMeta({
 const teamStore = useTeamStore()
 const orgStore = useOrganizationStore()
 
+// 初期個人パネルだけ設定取得を前倒しし、子には同じAsyncData handleを渡す。
+if (useScopeDashboardStore().activePanel === 'PERSONAL') {
+  providePersonalDashboardWidgetSettings()
+}
+
 onMounted(async () => {
   // teams/index.vue や organizations/index.vue を経由せずに直接 /dashboard に来た場合も
   // ウィジェットが正しく表示されるようにストアを初期化する

@@ -45,7 +45,7 @@ public class MatchingAdminQueryService {
     public PendingAggregate pendingReceivedForTeam(Long teamId, String teamSlug, int previewSize) {
         long count = matchProposalRepository.countPendingReceivedByTeam(teamId, MatchProposalStatus.PENDING);
 
-        if (previewSize <= 0) {
+        if (previewSize <= 0 || count == 0) {
             return new PendingAggregate(count, List.of());
         }
 

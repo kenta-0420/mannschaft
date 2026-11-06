@@ -135,6 +135,19 @@ const calendarDays = computed<DayInfo[]>(() =>
     dateStr,
   })))
 
+// 表示42日分だけを保持する。国・言語・年月が変われば更新し、予定だけの再描画では再判定しない。
+// 色は国既定言語の祝日有無、ラベルはlocaleの名前という既存の判定を分けて維持する。
+const holidaysByDate = computed(() => {
+  const results = new Map<string, { isHoliday: boolean; name: string | null }>()
+  for (const day of calendarDays.value) {
+    results.set(day.dateStr, {
+      isHoliday: !!getHoliday(day.dateStr),
+      name: getHoliday(day.dateStr, locale.value),
+    })
+  }
+  return results
+})
+
 const weeks = computed<WeekData[]>(() =>
   Array.from({ length: 6 }, (_, w) => {
     const days = calendarDays.value.slice(w * 7, w * 7 + 7) as DayInfo[]
@@ -224,7 +237,7 @@ function fmtTime(iso: string): string {
 
 function dateColorClass(dateStr: string, isCurrentMonth: boolean, col: number): string {
   if (isToday(dateStr)) return ''
-  const holiday = !!getHoliday(dateStr)
+  const holiday = holidaysByDate.value.get(dateStr)?.isHoliday ?? false
   if (holiday || col === 0) return isCurrentMonth ? 'text-red-500' : 'text-red-300'
   if (col === 6) return isCurrentMonth ? 'text-blue-500' : 'text-blue-300'
   return isCurrentMonth ? '' : 'text-surface-400'
@@ -369,10 +382,10 @@ defineExpose({ focusToday })
           <div :style="{ height: `${week.lanesUsed}px` }" />
           <!-- 祝日名 -->
           <div
-            v-if="getHoliday(day.dateStr, locale)"
+            v-if="holidaysByDate.get(day.dateStr)?.name"
             class="truncate text-[10px] font-medium text-red-400"
           >
-            {{ getHoliday(day.dateStr, locale) }}
+            {{ holidaysByDate.get(day.dateStr)?.name }}
           </div>
           <!-- 1日イベント -->
           <div class="space-y-0.5">

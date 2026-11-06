@@ -1,9 +1,11 @@
+// @vitest-environment happy-dom
 /**
  * F15.3 Phase 2-C: WidgetNotices フォルダタブ追加機能のユニットテスト。
  *
  * mountSuspended は Nuxt の API クライアント・Pinia ストア・PrimeVue を
  * 一括で必要とし、テスト設定が広範化するため、本テストでは
- * コンポーネントの責務であるロジックを reproduction して検証する。
+ * 既存のタブ規則はロジックを reproduction して検証する。
+ * 取得待機の回帰試験は末尾で実コンポーネントを明示stub付きでmountする。
  *
  * 検証範囲:
  *  - タブ定義生成（「すべて」+ TEAM フォルダ群 + ORGANIZATION フォルダ群）
@@ -12,7 +14,11 @@
  *  - 「もっと見る」リンク生成（タブごとの URL）
  *  - 未読 0 件タブのバッジ非表示判定
  */
-import { describe, it, expect } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
+import { flushPromises, shallowMount } from '@vue/test-utils'
+import { reactive } from 'vue'
+import { mockNuxtImport } from '@nuxt/test-utils/runtime'
+import WidgetNotices from '~/components/widgets/WidgetNotices.vue'
 import type { ScopeFolder, ScopeType } from '~/types/scopeFolder'
 
 /** WidgetNotices 内のタブキー型を再現。 */
@@ -228,5 +234,305 @@ describe('WidgetNotices もっと見るリンク生成', () => {
         folderId: 21,
       }),
     ).toBe('/notifications?folderId=21&scopeType=ORGANIZATION')
+  })
+})
+
+// 以下は再現ロジックではなく実コンポーネントをmountし、取得開始順と表示完了を検証する。
+interface AllNotice {
+  id: number; type: string; title: string; body: null; is_read: boolean; created_at: string; action_url: string | null
+}
+interface FolderNotice {
+  id: number; notificationType: string; title: string; body: null; isRead: boolean; createdAt: string; actionUrl: string | null
+}
+const requests = vi.hoisted(() => ({
+  fetchAll: vi.fn<(scope: string) => Promise<void>>(),
+  summary: vi.fn<(scope: string) => Promise<void>>(),
+  notices: vi.fn<() => Promise<{ data: { items: AllNotice[] } }>>(),
+  actions: vi.fn<() => Promise<{ items: [] }>>(),
+  platform: vi.fn<() => Promise<{ data: [] }>>(),
+  folders: vi.fn<() => Promise<{ data: FolderNotice[] }>>(),
+  report: vi.fn(),
+}))
+const folderLists = reactive<Record<ScopeType, ScopeFolder[]>>({ TEAM: [], ORGANIZATION: [] })
+mockNuxtImport('useDashboardApi', () => () => ({
+  getNotices: requests.notices,
+  getPlatformAnnouncements: requests.platform,
+  markNoticeRead: vi.fn(), markAllNoticesRead: vi.fn(),
+}))
+mockNuxtImport('useApi', () => () => requests.folders)
+mockNuxtImport('useErrorReport', () => () => ({ captureQuiet: requests.report }))
+mockNuxtImport('useNotification', () => () => ({ success: vi.fn() }))
+mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
+mockNuxtImport('usePersonalActionRequired', () => () => ({ fetchActionRequired: requests.actions }))
+mockNuxtImport('useScopeFoldersStore', () => () => ({
+  foldersFor: (scope: ScopeType) => folderLists[scope],
+  unreadByFolder: {},
+  fetchAll: requests.fetchAll,
+  refreshNotificationSummary: requests.summary,
+  unreadCountOf: () => 0,
+}))
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason: Error) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, resolve, reject }
+}
+
+const noticeWrappers: Array<{ unmount: () => void }> = []
+function allNotice(title: string): AllNotice {
+  return { id: 1, type: 'INFO', title, body: null, is_read: false, created_at: '2026-01-01T00:00:00Z', action_url: '/notifications' }
+}
+function folderNotice(title: string): FolderNotice {
+  return { id: 2, notificationType: 'INFO', title, body: null, isRead: false, createdAt: '2026-01-01T00:00:00Z', actionUrl: '/notifications' }
+}
+function mountNotices() {
+  const wrapper = shallowMount(WidgetNotices, {
+    global: { stubs: {
+      DashboardWidgetCard: { name: 'DashboardWidgetCard', props: ['loading'], template: '<section :data-loading="loading"><div v-if="loading" data-testid="notice-skeleton" /><slot v-else /></section>' },
+      DashboardEmptyState: { props: ['message'], template: '<p>{{ message }}</p>' },
+      NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' },
+    } },
+  })
+  noticeWrappers.push(wrapper)
+  return wrapper
+}
+
+describe('WidgetNotices 実コンポーネントの取得待機境界', () => {
+  beforeEach(() => {
+    folderLists.TEAM = []
+    folderLists.ORGANIZATION = []
+    requests.fetchAll.mockReset().mockResolvedValue(undefined)
+    requests.summary.mockReset().mockResolvedValue(undefined)
+    requests.notices.mockReset().mockResolvedValue({ data: { items: [] } })
+    requests.actions.mockReset().mockResolvedValue({ items: [] })
+    requests.platform.mockReset().mockResolvedValue({ data: [] })
+    requests.folders.mockReset().mockResolvedValue({ data: [] })
+    requests.report.mockClear()
+  })
+  afterEach(() => {
+    noticeWrappers.forEach(wrapper => wrapper.unmount())
+    noticeWrappers.length = 0
+  })
+
+  it('フォルダ・集計・独立タブが未完了でも、すべての本文を先に表示する', async () => {
+    const folders = deferred<undefined>()
+    const summaries = deferred<undefined>()
+    requests.fetchAll.mockReturnValueOnce(folders.promise)
+    requests.summary.mockReturnValue(summaries.promise)
+    requests.actions.mockReturnValue(deferred<{ items: [] }>().promise)
+    requests.platform.mockReturnValue(deferred<{ data: [] }>().promise)
+    requests.notices.mockResolvedValue({ data: { items: [allNotice('all-ready')] } })
+    const wrapper = mountNotices()
+    await flushPromises()
+    expect(requests.fetchAll).toHaveBeenCalledWith('TEAM')
+    expect(requests.summary).toHaveBeenCalledTimes(2)
+    expect(requests.notices).toHaveBeenCalledOnce()
+    expect(wrapper.find('section').attributes('data-loading')).toBe('false')
+    expect(wrapper.text()).toContain('all-ready')
+    summaries.resolve(undefined)
+    await flushPromises()
+    expect(requests.notices).toHaveBeenCalledOnce()
+    folders.resolve(undefined)
+    await flushPromises()
+    expect(requests.fetchAll.mock.calls.map(([scope]) => scope)).toEqual(['TEAM', 'ORGANIZATION'])
+    expect(requests.notices).toHaveBeenCalledOnce()
+  })
+
+  it('他のフォルダが未完了でも、選択中のすべてが完了すればloadingを解除する', async () => {
+    const notices = deferred<{ data: { items: [] } }>()
+    const folders = deferred<{ data: [] }>()
+    const actions = deferred<{ items: [] }>()
+    const platform = deferred<{ data: [] }>()
+    folderLists.TEAM = [teamFolderA]
+    requests.notices.mockReturnValue(notices.promise)
+    requests.folders.mockReturnValue(folders.promise)
+    requests.actions.mockReturnValue(actions.promise)
+    requests.platform.mockReturnValue(platform.promise)
+    const wrapper = mountNotices()
+    await flushPromises()
+    expect(requests.notices).toHaveBeenCalledOnce()
+    expect(requests.folders).toHaveBeenCalledOnce()
+    expect(requests.actions).toHaveBeenCalledOnce()
+    expect(requests.platform).toHaveBeenCalledOnce()
+    actions.resolve({ items: [] })
+    platform.resolve({ data: [] })
+    notices.resolve({ data: { items: [] } })
+    await flushPromises()
+    expect(wrapper.find('section').attributes('data-loading')).toBe('false')
+    folders.resolve({ data: [] })
+    await flushPromises()
+    expect(wrapper.find('section').attributes('data-loading')).toBe('false')
+  })
+
+  it('選択中の取得失敗は空表示へ戻り、独立群の未完了を待たない', async () => {
+    const platform = deferred<{ data: [] }>()
+    requests.notices.mockRejectedValue(new Error('試験用の通知失敗'))
+    requests.actions.mockRejectedValue(new Error('試験用の要対応失敗'))
+    requests.platform.mockReturnValue(platform.promise)
+    const wrapper = mountNotices()
+    await flushPromises()
+    expect(requests.report).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('section').attributes('data-loading')).toBe('false')
+    platform.reject(new Error('試験用の運営失敗'))
+    await flushPromises()
+    expect(wrapper.find('section').attributes('data-loading')).toBe('false')
+    expect(wrapper.text()).toContain('dashboard.widgets.notices.empty')
+  })
+
+  it('フォルダ取得と集計が失敗しても空folderで通常取得と空表示を完了する', async () => {
+    requests.fetchAll.mockRejectedValue(new Error('試験用のフォルダ失敗'))
+    requests.summary.mockRejectedValue(new Error('試験用の集計失敗'))
+    const wrapper = mountNotices()
+    await flushPromises()
+    expect(requests.report).toHaveBeenCalledTimes(2)
+    expect(requests.notices).toHaveBeenCalledOnce()
+    expect(requests.actions).toHaveBeenCalledOnce()
+    expect(requests.platform).toHaveBeenCalledOnce()
+    expect(wrapper.find('section').attributes('data-loading')).toBe('false')
+    expect(wrapper.text()).toContain('dashboard.widgets.notices.empty')
+    expect(wrapper.findAll('[role="tab"]')).toHaveLength(3)
+  })
+
+  it('未完了フォルダへの切替は空表示にせず、そのフォルダ完了で表示する', async () => {
+    const folder = deferred<{ data: FolderNotice[] }>()
+    folderLists.TEAM = [teamFolderA]
+    requests.notices.mockResolvedValue({ data: { items: [allNotice('all-content')] } })
+    requests.folders.mockReturnValue(folder.promise)
+    const wrapper = mountNotices()
+    await flushPromises()
+    expect(wrapper.find('section').attributes('data-loading')).toBe('false')
+    await wrapper.get(`[data-testid="widget-notices-tab-TEAM-${teamFolderA.id}"]`).trigger('click')
+    expect(wrapper.find('[data-testid="notice-skeleton"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('dashboard.widgets.notices.empty')
+    folder.resolve({ data: [folderNotice('folder-ready')] })
+    await flushPromises()
+    expect(wrapper.find('section').attributes('data-loading')).toBe('false')
+    expect(wrapper.text()).toContain('folder-ready')
+  })
+
+  it('非選択フォルダの後着は現在の本文を上書きしない', async () => {
+    const folder = deferred<{ data: FolderNotice[] }>()
+    folderLists.TEAM = [teamFolderA]
+    requests.notices.mockResolvedValue({ data: { items: [allNotice('all-content')] } })
+    requests.folders.mockReturnValue(folder.promise)
+    const wrapper = mountNotices()
+    await flushPromises()
+    expect(wrapper.find('section').attributes('data-loading')).toBe('false')
+    expect(wrapper.text()).toContain('all-content')
+    folder.resolve({ data: [folderNotice('inactive-folder')] })
+    await flushPromises()
+    expect(wrapper.text()).toContain('all-content')
+    expect(wrapper.text()).not.toContain('inactive-folder')
+  })
+
+  it.each(['success', 'failure'] as const)('refresh前の%s応答とfinallyは新しい待機状態を解除しない', async (outcome) => {
+    const old = deferred<{ data: { items: AllNotice[] } }>()
+    const fresh = deferred<{ data: { items: AllNotice[] } }>()
+    requests.notices.mockReturnValueOnce(old.promise).mockReturnValueOnce(fresh.promise)
+    const wrapper = mountNotices()
+    await flushPromises()
+    wrapper.getComponent({ name: 'DashboardWidgetCard' }).vm.$emit('refresh')
+    await flushPromises()
+    if (outcome === 'success') old.resolve({ data: { items: [allNotice('old-content')] } })
+    else old.reject(new Error('試験用の古い失敗'))
+    await flushPromises()
+    expect(wrapper.find('section').attributes('data-loading')).toBe('true')
+    expect(wrapper.text()).not.toContain('old-content')
+    fresh.resolve({ data: { items: [allNotice('fresh-content')] } })
+    await flushPromises()
+    expect(wrapper.find('section').attributes('data-loading')).toBe('false')
+    expect(wrapper.text()).toContain('fresh-content')
+  })
+
+  it('一覧取得中のrefreshは一覧を重複取得せず、新しい本文とフォルダ先読みを完了する', async () => {
+    const bootstrap = deferred<undefined>()
+    requests.fetchAll.mockImplementationOnce(async () => {
+      await bootstrap.promise
+      folderLists.TEAM = [teamFolderA]
+    })
+    requests.notices.mockResolvedValueOnce({ data: { items: [allNotice('old-content')] } })
+      .mockResolvedValueOnce({ data: { items: [allNotice('fresh-content')] } })
+    const wrapper = mountNotices()
+    await flushPromises()
+    wrapper.getComponent({ name: 'DashboardWidgetCard' }).vm.$emit('refresh')
+    await flushPromises()
+    expect(requests.fetchAll).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('fresh-content')
+    bootstrap.resolve(undefined)
+    await flushPromises()
+    expect(requests.fetchAll.mock.calls.map(([scope]) => scope)).toEqual(['TEAM', 'ORGANIZATION'])
+    expect(requests.folders).toHaveBeenCalledOnce()
+    expect(requests.summary).toHaveBeenCalledTimes(2)
+    await wrapper.get(`[data-testid="widget-notices-tab-TEAM-${teamFolderA.id}"]`).trigger('click')
+    expect(wrapper.find('section').attributes('data-loading')).toBe('false')
+  })
+
+  it('一覧取得中のunmount後は後続の一覧・本文取得を開始しない', async () => {
+    const bootstrap = deferred<undefined>()
+    requests.fetchAll.mockReturnValueOnce(bootstrap.promise)
+    const wrapper = mountNotices()
+    await flushPromises()
+    wrapper.unmount()
+    noticeWrappers.splice(noticeWrappers.indexOf(wrapper), 1)
+    bootstrap.resolve(undefined)
+    await flushPromises()
+    expect(requests.fetchAll).toHaveBeenCalledTimes(1)
+    expect(requests.notices).toHaveBeenCalledOnce()
+    expect(requests.folders).not.toHaveBeenCalled()
+  })
+
+  it('古い要対応応答のfinallyでrefresh後の選択タブのloadingを落とさない', async () => {
+    const old = deferred<{ items: [] }>()
+    const fresh = deferred<{ items: [] }>()
+    requests.actions.mockResolvedValueOnce({ items: [] }).mockReturnValueOnce(old.promise).mockReturnValueOnce(fresh.promise)
+    const wrapper = mountNotices()
+    await flushPromises()
+    expect(wrapper.find('section').attributes('data-loading')).toBe('false')
+    await wrapper.get('[data-testid="widget-notices-tab-action-required"]').trigger('click')
+    wrapper.getComponent({ name: 'DashboardWidgetCard' }).vm.$emit('refresh')
+    await flushPromises()
+    wrapper.getComponent({ name: 'DashboardWidgetCard' }).vm.$emit('refresh')
+    await flushPromises()
+    old.resolve({ items: [] })
+    await flushPromises()
+    expect(wrapper.find('section').attributes('data-loading')).toBe('true')
+    fresh.resolve({ items: [] })
+    await flushPromises()
+    expect(wrapper.find('section').attributes('data-loading')).toBe('false')
+  })
+
+  it('選択フォルダが共有一覧から消えた後のrefreshはすべてへ戻る', async () => {
+    folderLists.TEAM = [teamFolderA]
+    requests.notices.mockResolvedValue({ data: { items: [allNotice('all-content')] } })
+    const wrapper = mountNotices()
+    await flushPromises()
+    await wrapper.get(`[data-testid="widget-notices-tab-TEAM-${teamFolderA.id}"]`).trigger('click')
+    folderLists.TEAM = []
+    await flushPromises()
+    wrapper.getComponent({ name: 'DashboardWidgetCard' }).vm.$emit('refresh')
+    await flushPromises()
+    expect(wrapper.get('[data-testid="widget-notices-tab-all"]').attributes('aria-selected')).toBe('true')
+    expect(wrapper.find('section').attributes('data-loading')).toBe('false')
+    expect(wrapper.text()).toContain('all-content')
+  })
+
+  it('mount後に一覧へ追加されたフォルダは選択時に取得して表示する', async () => {
+    const added = deferred<{ data: FolderNotice[] }>()
+    const wrapper = mountNotices()
+    await flushPromises()
+    folderLists.TEAM = [teamFolderA]
+    requests.folders.mockReturnValue(added.promise)
+    await flushPromises()
+    await wrapper.get(`[data-testid="widget-notices-tab-TEAM-${teamFolderA.id}"]`).trigger('click')
+    expect(wrapper.find('section').attributes('data-loading')).toBe('true')
+    expect(requests.folders).toHaveBeenCalledOnce()
+    added.resolve({ data: [folderNotice('added-folder')] })
+    await flushPromises()
+    expect(wrapper.find('section').attributes('data-loading')).toBe('false')
+    expect(wrapper.text()).toContain('added-folder')
   })
 })

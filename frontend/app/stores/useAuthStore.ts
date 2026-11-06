@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { useOrganizationStore } from './useOrganizationStore'
 import { useTeamStore } from './useTeamStore'
+import { useScopeFoldersStore } from '~/composables/useScopeFoldersStore'
 
 interface AuthUser {
   id: number
@@ -151,6 +152,8 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async setUser(user: AuthUser) {
+      // nullからのログインも新しいセッションとして扱い、同IDのprofile更新は保持する。
+      if (this.user?.id !== user.id) useScopeFoldersStore().clear()
       // 処理順: 旧ユーザー ID を先読み → state/localStorage を即時設定 → 非同期破棄を後置。
       // state 先行により、直後の isSystemAdmin 等の getter が新ユーザーの値で正しく評価される。
       // キャッシュ破棄はその後に実行されるため、破棄中の Dexie 書き込み競合も発生しない。
@@ -190,7 +193,11 @@ export const useAuthStore = defineStore('auth', {
         const savedUser = localStorage.getItem('currentUser')
         if (savedUser) {
           try {
-            this.user = JSON.parse(savedUser)
+            const restoredUser = JSON.parse(savedUser) as AuthUser | null
+            if (restoredUser && typeof restoredUser.id === 'number' && this.user?.id !== restoredUser.id) {
+              useScopeFoldersStore().clear()
+            }
+            this.user = restoredUser
           } catch {
             // ignore parse errors
           }
@@ -214,6 +221,7 @@ export const useAuthStore = defineStore('auth', {
      *   省略時は従来どおり /login へ遷移（後方互換）。
      */
     async logout(options?: { reason?: string }) {
+      useScopeFoldersStore().clear()
       // ① 即時処理: in-memory state と localStorage を同期的にクリアする。
       //   これ以降 isAuthenticated === false になり、ガードが /login にリダイレクトできる。
       this.accessToken = null
