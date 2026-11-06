@@ -27,21 +27,35 @@ const forbidden = [
 export function inspectArtifact(directory, blockedHashes, markers) {
   assert.ok(fs.existsSync(directory), 'production buildが必要')
   let files = 0
-  function check(dir) {
-    for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
-      const target = path.join(dir, item.name)
-      if (item.isDirectory()) check(target)
-      else if (item.isFile()) {
-        files++
-        const bytes = fs.readFileSync(target)
-        const hash = crypto.createHash('sha256').update(bytes).digest('hex')
-        assert.ok(!blockedHashes.has(hash), `開発PNG混入: ${target}`)
-        assert.ok(
-          !markers.some((marker) => bytes.includes(Buffer.from(marker))),
-          `開発path混入: ${target}`,
-        )
-      } else assert.fail(`通常ファイル以外: ${target}`)
-    }
+  const root = fs.realpathSync(directory)
+  const visited = new Set()
+  const active = new Set()
+  function check(target) {
+    fs.lstatSync(target) // 壊れたリンクも失敗させる。
+    const resolved = fs.realpathSync(target)
+    const relative = path.relative(root, resolved)
+    assert.ok(
+      relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative),
+      `成果物外へのリンク: ${target}`,
+    )
+    assert.ok(!active.has(resolved), `成果物内の循環リンク: ${target}`)
+    if (visited.has(resolved)) return
+    visited.add(resolved)
+    const stat = fs.statSync(resolved)
+    if (stat.isDirectory()) {
+      active.add(resolved)
+      for (const name of fs.readdirSync(resolved)) check(path.join(resolved, name))
+      active.delete(resolved)
+    } else if (stat.isFile()) {
+      files++
+      const bytes = fs.readFileSync(resolved)
+      const hash = crypto.createHash('sha256').update(bytes).digest('hex')
+      assert.ok(!blockedHashes.has(hash), `開発PNG混入: ${target}`)
+      assert.ok(
+        !markers.some((marker) => bytes.includes(Buffer.from(marker))),
+        `開発path混入: ${target}`,
+      )
+    } else assert.fail(`通常ファイル以外: ${target}`)
   }
   check(directory)
   assert.ok(files > 0)
