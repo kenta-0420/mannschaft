@@ -163,6 +163,24 @@ CONNECT／SUBSCRIBE をインターセプタで拒否するときは `StompRejec
 
 適用している購読 Interceptor: 臨時休業確認状況（未認証→`UNAUTHENTICATED`／ADMIN・DEPUTY_ADMIN 以外→`FORBIDDEN`）、match ライブ観戦（購読可否は `MatchAccessService.canView` → F00 `MatchVisibilityResolver` に委譲し、Interceptor は匿名を事前拒否しない。`canView=false` のとき未認証なら `UNAUTHENTICATED`・認証済みなら `FORBIDDEN`。**現状の `MatchVisibilityResolver` は閲覧者 null を常に不可とするため、匿名の match 購読は常に `UNAUTHENTICATED` で拒否される**＝匿名で観戦できる公開試合は現状存在しない。匿名 CONNECT 自体は従来どおり成立する）、チャットチャネル（未認証→`UNAUTHENTICATED`／不在・削除済み・非メンバー→`FORBIDDEN`）。いずれも宛先不正は `INVALID_DESTINATION`。
 
+#### 2.3.3 FE 側の扱い（CMP-261104-0337）
+
+STOMP を使う 4 composable（`useChatWebSocket`〔ユーザー宛通知 `useUserNotificationSocket` が相乗り〕／`useMatchLiveSpectator`／`useCorkboardEventListener`／`useEmergencyClosureLive`）は、共通補助 `frontend/app/composables/stomp/stompAuth.ts` を使う。
+
+- **接続ヘッダ**: `buildStompConnectHeaders(accessToken)` で組み立てる。トークンが無い（null・空・空白）ときは **Authorization ヘッダを付けない**（空の `Bearer ` を送らない）。リロード直後はこれでハンドシェイク Cookie の身元が採用される（§2.3.1）。`beforeConnect` で再接続ごとに最新トークンへ組み直す。
+- **拒否理由の読み分け**（`x-error-code`・§2.3.2）:
+
+| コード | FE の動き | 画面の状態 |
+|---|---|---|
+| `FORBIDDEN` / `INVALID_DESTINATION` | 専用接続（match・emergency・corkboard）は `client.deactivate()` で再接続を止める。共有接続（chat）は拒否された宛先だけを外す（下記） | `DENIED`（閲覧権限なし）|
+| `UNAUTHENTICATED` | ログイン中なら既存の `performTokenRefresh` でトークン更新を 1 回 → `beforeConnect` が更新完了を待って新トークンで再接続。更新が 401/403 なら既存の `handleAuthFailureLogout` でログアウト。**未ログイン（匿名の閲覧者）は更新もログアウトもしない** | 回復できなければ `UNAUTHENTICATED`（DENIED と区別）|
+| なし（未知）・通信断 | 従来どおり stompjs の自動再接続 | `RECONNECTING` 等（従来どおり）|
+
+- **更新の集約（single-flight）**: 更新は `performTokenRefresh` の同一セッション flight に乗るため、複数接続から同時に `UNAUTHENTICATED` が来ても refresh API は 1 回で済む。更新後 30 秒以内に同じ接続へ再び `UNAUTHENTICATED` が来たら、更新を繰り返さず `UNAUTHENTICATED` で止める（更新しても直らない状態での無限ループ防止）。通信断で更新できなかった場合（transient）は 1 回に数えない。
+- **共有接続での部分拒否（chat）**: ERROR を受けるとサーバが接続ごと閉じるため、1 宛先の拒否で通知購読まで止まらないよう次のようにする。(1) SUBSCRIBE ごとに `receipt` ヘッダを付ける（Spring の `StompSubProtocolErrorHandler` は拒否した SUBSCRIBE の receipt を ERROR の `receipt-id` に載せる）。(2) `receipt-id` から拒否された宛先を特定し、拒否済みとして記録する（チャンネルはメッセージ・イベントの両トピックをまとめて外す）。(3) 購読の定義は接続をまたいで保持し、stompjs の自動再接続後の `onConnect` で拒否済み以外をすべて張り直す。宛先を特定できない `FORBIDDEN` だけは接続ごと止める。チャンネルを開き直す（購読を新たに始める）と拒否記録は消え、再試行される。receipt→宛先の対応表は「現在の接続上の購読」と同じ寿命で管理する（張り直し・購読解除・拒否で該当分を消し、切断で全消去。ERROR の処理は切断より先なので特定に支障はない）。張り直しは既存の購読を外してから行い、二重購読しない。
+- **停止後の再開（corkboard）**: corkboard は共有接続を使うため、`DENIED` / `UNAUTHENTICATED` で止めた後も、新しい購読（別ボードへの移動・再ログイン後の再訪）を機に状態を戻して接続を再開する。停止状態は `useCorkboardWebSocketSync` の `realtimeState` でボード詳細画面に表示する。
+- **オンライン復帰・タブ復帰**: `DENIED` / `UNAUTHENTICATED` で止めた接続は、`online` イベントや Visibility 復帰では再開しない。
+
 ### 2.4 Valkey 現状（pub/sub 未使用 → 新設が必要）
 
 `config/RedisConfig` は **`RedisCacheManager`（キャッシュ）のみ**。pub/sub（`RedisMessageListenerContainer` / チャネル publish）は**皆無**。したがって購読専用の `RedisMessageListenerContainer`（Lettuce・購読専用接続）の**新設が必要**。

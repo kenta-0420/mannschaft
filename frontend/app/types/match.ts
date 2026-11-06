@@ -220,7 +220,9 @@ export interface MatchLiveUpdatePayload {
  * - LIVE:         STOMP 接続中・差分配信を受信中（ライブ）
  * - RECONNECTING: 切断→再接続中（復帰後にスナップショット再取得・07 §J.4）
  * - OFFLINE:      WebSocket・HTTP ともに不通（最終スナップショット表示＝「最新でない可能性」明示）
- * - DENIED:       購読拒否（可視性なし・F00／STOMP ERROR フレーム・07 §J.3.1）
+ * - DENIED:       購読拒否（可視性なし・F00／`x-error-code: FORBIDDEN`・07 §J.3.1）。再接続しない
+ * - UNAUTHENTICATED: 未認証で購読不可（`x-error-code: UNAUTHENTICATED`）。ログイン中ならトークン更新 1 回で
+ *                 再接続し、それでも回復しないとき・匿名の閲覧者のときにこの状態で止まる（匿名はログアウトさせない）
  */
 export type SpectatorConnectionState =
   | 'CONNECTING'
@@ -228,6 +230,7 @@ export type SpectatorConnectionState =
   | 'RECONNECTING'
   | 'OFFLINE'
   | 'DENIED'
+  | 'UNAUTHENTICATED'
 
 /** 試合種別の全候補（フィルタ/作成フォームの選択肢） */
 export const MATCH_KINDS: readonly MatchKind[] = [

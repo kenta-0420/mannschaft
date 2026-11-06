@@ -73,7 +73,8 @@
       "connecting": "Connecting…",
       "reconnecting": "Reconnecting…",
       "offline": "Offline",
-      "denied": "No access"
+      "denied": "No access",
+      "unauthenticated": "Login required"
     },
     "dialog": {
       "title": "Confirm Send",

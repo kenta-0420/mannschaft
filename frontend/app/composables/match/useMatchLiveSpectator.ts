@@ -29,6 +29,7 @@
  */
 import type { Client, IFrame, StompSubscription } from '@stomp/stompjs'
 import { Client as StompClient } from '@stomp/stompjs'
+import { buildStompConnectHeaders, handleStompErrorFrame, useStompAuthRecovery } from '~/composables/stomp/stompAuth'
 import type {
   MatchEventResponse,
   MatchLiveEventView,
@@ -235,6 +236,11 @@ export function useMatchLiveSpectator(ctx: MatchSpectatorContext) {
   const hasSnapshot = ref(false)
 
   let client: Client | null = null
+  /** UNAUTHENTICATED を受けたときの回復（トークン更新 1 回→失敗でログアウト）。生成時に取得する。 */
+  const authRecovery = useStompAuthRecovery()
+  const authStore = useAuthStore()
+  /** 進行中の UNAUTHENTICATED 回復。beforeConnect で完了を待ってから再接続する。 */
+  let pendingAuthRecovery: Promise<void> | null = null
   let subscription: StompSubscription | null = null
   /** 再接続後の再購読・再取得判定用（初回接続では再取得しない）。 */
   let isFirstConnect = true
@@ -287,6 +293,11 @@ export function useMatchLiveSpectator(ctx: MatchSpectatorContext) {
     // IGNORED は何もしない（古い/重複）。
   }
 
+  /** 再接続しても解消しない確定状態か（DENIED / UNAUTHENTICATED）。 */
+  function isTerminalState(): boolean {
+    return connectionState.value === 'DENIED' || connectionState.value === 'UNAUTHENTICATED'
+  }
+
   /** STOMP 購読を確立する（接続済み時のみ）。 */
   function subscribe(): void {
     if (client === null || !client.connected || disposed) return
@@ -307,17 +318,17 @@ export function useMatchLiveSpectator(ctx: MatchSpectatorContext) {
     if (disposed) return
     if (!ok) connectionState.value = 'OFFLINE'
 
-    const auth = useAuthStore()
     // BE の /ws は SockJS 登録のみのため、生 WebSocket は /ws/websocket でしか接続できない
     // （bare /ws は 400。共通ヘルパー useWsUrl 経由で apiBase 込みの URL を解決する）。
     const stomp = new StompClient({
       webSocketFactory: () => new WebSocket(useWsUrl()),
-      connectHeaders: { Authorization: `Bearer ${auth.accessToken ?? ''}` },
-      beforeConnect: () => {
-        // 再接続時に最新トークンへ差し替える（リフレッシュ対応・chat と同作法）。
-        if (client !== null) {
-          client.connectHeaders = { Authorization: `Bearer ${useAuthStore().accessToken ?? ''}` }
-        }
+      // トークンが無い（リロード直後）ときは Authorization を付けず Cookie 認証に任せる（空 Bearer 禁止）。
+      connectHeaders: buildStompConnectHeaders(authStore.accessToken),
+      beforeConnect: async () => {
+        // UNAUTHENTICATED の回復（トークン更新）中なら完了を待つ。回復不能なら deactivate 済みで再接続しない。
+        if (pendingAuthRecovery !== null) await pendingAuthRecovery
+        // 再接続時に最新トークンへ差し替える（リフレッシュ対応）。
+        if (client !== null) client.connectHeaders = buildStompConnectHeaders(authStore.accessToken)
       },
       reconnectDelay: 2000,
       onConnect: () => {
@@ -334,14 +345,32 @@ export function useMatchLiveSpectator(ctx: MatchSpectatorContext) {
       onWebSocketClose: () => {
         if (disposed) return
         // 切断＝再接続中（stompjs が reconnectDelay で自動再接続する）。
-        // DENIED は購読拒否の確定状態なので上書きしない。
-        if (connectionState.value !== 'DENIED') connectionState.value = 'RECONNECTING'
+        // DENIED / UNAUTHENTICATED は確定状態なので上書きしない。
+        if (!isTerminalState()) connectionState.value = 'RECONNECTING'
       },
-      onStompError: (_frame: IFrame) => {
+      onStompError: (frame: IFrame) => {
         if (disposed) return
-        // SUBSCRIBE 拒否（可視性なし・F00／07 §J.3.1）は ERROR フレームで届く。
-        // BE は match live 宛先の購読を canView=false で拒否する。観戦不可として DENIED にする。
-        connectionState.value = 'DENIED'
+        // 拒否理由は ERROR フレームの x-error-code で届く（設計書 §2.3.2）。ERROR 後はサーバが接続を閉じる。
+        //  - FORBIDDEN / INVALID_DESTINATION: 再接続しても解消しない → DENIED にして再接続を止める
+        //  - UNAUTHENTICATED: トークン更新 1 回 → 再接続。回復不能なら UNAUTHENTICATED にして止める
+        //  - 未知: 従来どおり自動再接続（onWebSocketClose が RECONNECTING を示す）
+        const recovery = handleStompErrorFrame(frame, authRecovery, {
+          onDenied: () => {
+            connectionState.value = 'DENIED'
+            void client?.deactivate()
+          },
+          onUnauthenticated: () => {
+            if (disposed) return
+            connectionState.value = 'UNAUTHENTICATED'
+            void client?.deactivate()
+          },
+        })
+        if (recovery !== null) {
+          const current: Promise<void> = recovery.finally(() => {
+            if (pendingAuthRecovery === current) pendingAuthRecovery = null
+          })
+          pendingAuthRecovery = current
+        }
       },
     })
     client = stomp
@@ -364,6 +393,8 @@ export function useMatchLiveSpectator(ctx: MatchSpectatorContext) {
   async function resync(): Promise<void> {
     if (disposed) return
     const ok = await fetchSnapshot()
+    // DENIED / UNAUTHENTICATED は再接続で解消しない確定状態。オンライン復帰でも再接続しない。
+    if (isTerminalState()) return
     if (ok && client !== null && !client.active) client.activate()
     if (ok && connectionState.value === 'OFFLINE') {
       connectionState.value = client?.connected ? 'LIVE' : 'RECONNECTING'
