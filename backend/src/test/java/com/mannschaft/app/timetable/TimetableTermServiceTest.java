@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -132,6 +133,93 @@ class TimetableTermServiceTest {
             assertThat(captor.getValue().getId()).isEqualTo(10L);
             // フィールドが更新されている
             assertThat(captor.getValue().getName()).isEqualTo("前期");
+        }
+    }
+
+    @Nested
+    @DisplayName("日付の前後検証（A2）")
+    class DateOrder {
+
+        @Test
+        @DisplayName("作成: 開始日が終了日より後なら COMMON_001 で endDate の fieldErrors を返す（保存しない）")
+        void 作成_開始日が終了日より後_COMMON_001() {
+            CreateTermData data = new CreateTermData(2025, "後期",
+                    LocalDate.of(2025, 12, 31), LocalDate.of(2025, 10, 1), 1);
+
+            assertThatThrownBy(() -> service.createTerm(1L, true, data, ACTOR_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> {
+                        BusinessException be = (BusinessException) ex;
+                        assertThat(be.getErrorCode().getCode()).isEqualTo("COMMON_001");
+                        assertThat(be.getFieldErrors()).extracting("field").containsExactly("endDate");
+                    });
+            verify(termRepository, never()).save(any(TimetableTermEntity.class));
+        }
+
+        @Test
+        @DisplayName("作成: 開始日と終了日が同日でも COMMON_001")
+        void 作成_同日_COMMON_001() {
+            CreateTermData data = new CreateTermData(2025, "後期",
+                    LocalDate.of(2025, 10, 1), LocalDate.of(2025, 10, 1), 1);
+
+            assertThatThrownBy(() -> service.createTerm(1L, false, data, ACTOR_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_001"));
+        }
+
+        @Test
+        @DisplayName("更新: 省略項目を既存値で補った後の範囲で判定する（終了日だけ前に動かすと COMMON_001）")
+        void 更新_補完後の範囲が逆転_COMMON_001() throws Exception {
+            TimetableTermEntity entity = TimetableTermEntity.builder()
+                    .teamId(1L).academicYear(2025).name("1学期")
+                    .startDate(LocalDate.of(2025, 4, 1))
+                    .endDate(LocalDate.of(2025, 7, 31)).sortOrder(1).build();
+            var idField = entity.getClass().getSuperclass().getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(entity, 10L);
+            given(termRepository.findById(10L)).willReturn(Optional.of(entity));
+
+            UpdateTermData data = new UpdateTermData(null, null, LocalDate.of(2025, 3, 31), null);
+
+            assertThatThrownBy(() -> service.updateTerm(10L, data, ACTOR_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_001"));
+            verify(termRepository, never()).save(any(TimetableTermEntity.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("getTeamTerms（D4）")
+    class GetTeamTerms {
+
+        @Test
+        @DisplayName("organizationId 省略: 所属組織を照合せずチーム固有の学期だけを返す")
+        void 組織ID省略_チーム固有のみ() {
+            TimetableTermEntity teamTerm = TimetableTermEntity.builder()
+                    .teamId(1L).academicYear(2025).name("1学期")
+                    .startDate(LocalDate.of(2025, 4, 1))
+                    .endDate(LocalDate.of(2025, 7, 31)).sortOrder(1).build();
+            given(termRepository.findByTeamIdOrderByAcademicYearDescSortOrder(1L))
+                    .willReturn(List.of(teamTerm));
+
+            List<TimetableTermEntity> result = service.getTeamTerms(1L, null, ACTOR_USER_ID);
+
+            assertThat(result).containsExactly(teamTerm);
+            verify(accessControlService).checkMembership(ACTOR_USER_ID, 1L, "TEAM");
+            verify(termRepository, never()).findByOrganizationIdOrderByAcademicYearDescSortOrder(any());
+        }
+
+        @Test
+        @DisplayName("organizationId 指定: 所属していない組織なら TIMETABLE_002（従来どおり）")
+        void 組織ID指定_非所属_例外() {
+            given(teamOrgMembershipQueryService.findActiveOrganizationIds(1L)).willReturn(List.of(5L));
+
+            assertThatThrownBy(() -> service.getTeamTerms(1L, 6L, ACTOR_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TIMETABLE_002"));
         }
     }
 
